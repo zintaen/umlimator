@@ -184,12 +184,14 @@ function erSections(n) {
   const cs = erCols(n), keys = cs.filter(c => erProps(c).primaryKey === true), rest = cs.filter(c => erProps(c).primaryKey !== true);
   return [...(keys.length ? [{ name: 'keys', rows: keys.map(row) }] : []), ...(rest.length || !keys.length ? [{ name: 'columns', rows: rest.map(row) }] : [])];
 }
-// IDEF1X's dependent entity: the child of an identifying relationship (its key holds the parent's)
-const erDependent = (I, id) => I.R.some(e => e.type === 'er.Relationship' && e.to === id && erIdentifying(e));
+// IDEF1X's dependent entity: the child of an identifying relationship (its key holds the parent's), one of the model's or one
+// written inline in an ER view (audit 14)
+const erRels = model => typedLines(model, v => v.diagram === 'er').map(([e]) => e).filter(e => ER_OBJ(e) && e.type === 'er.Relationship');
+const erDependent = (R, id) => R.some(e => e.to === id && erIdentifying(e));
 function erGeo({ model, view, pos, memo }) {
-  const { I, ids } = erShown(model, view), idef = view.notation === 'idef1x', lines = erLines(view, I, ids), P = id => erPick(pos, id) || [0, 0];
+  const { I, ids } = erShown(model, view), idef = view.notation === 'idef1x', lines = erLines(view, I, ids), P = id => erPick(pos, id) || [0, 0], R = idef ? erRels(model) : [];
   const nodes = ids.map(id => { const n = I.at.get(id), pr = ER_OBJ(erPick(view.present, id)) ? view.present[id] : {};
-    const d = n.type === 'uml.Comment' ? { shape: 'note' } : { shape: 'entity', sections: erSections(n), collapsed: ER_ARR(pr.collapsed), ...(Number.isFinite(pr.rows) ? { rows: pr.rows } : {}), ...(idef && erDependent(I, id) ? { dep: true } : {}) };
+    const d = n.type === 'uml.Comment' ? { shape: 'note' } : { shape: 'entity', sections: erSections(n), collapsed: ER_ARR(pr.collapsed), ...(Number.isFinite(pr.rows) ? { rows: pr.rows } : {}), ...(idef && erDependent(R, id) ? { dep: true } : {}) };
     const x = { id, label: erName(n), type: n.type || 'er.Entity', kind: 'file', ...d, aria: erFull(n, I), col: P(id)[0], row: P(id)[1] };
     return { ...x, ...SHAPE[x.shape].size(x) }; });
   const edges = lines.map(e => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: ER_HAS(e.label) ? String(e.label) : undefined, end: erLook(e, idef), aria: erLineName(e, I), cut: 280,
@@ -227,6 +229,7 @@ function erProblems(model) {
         else if (erProps(r.c).primaryKey !== true && erProps(r.c).unique !== true) say('warning', 'fk-target', `${path}.props.references`, [c.id, r.c.id], `${me} references ${qc(r)}, which is neither a key nor unique`); }
       if (ER_HAS(p.references) && p.foreignKey !== true) say('warning', 'fk-flag', path, [c.id], `${me} references a column but is not marked FK`);
       if (p.foreignKey === true && !ER_HAS(p.references)) say('warning', 'fk-flag', path, [c.id], `${me} is a foreign key that references no column`); }); });
+  const R = erRels(model);
   typedLines(model, v => v.diagram === 'er').forEach(([e, path]) => { if (!ER_OBJ(e) || e.type !== 'er.Relationship') return;
     const A = e.from, B = e.to, ent = id => (I.at.get(id) || {}).type === 'er.Entity';
     ['from', 'to'].forEach(w => { const t = erMult(e, w), b = erBounds(t);
@@ -242,7 +245,7 @@ function erProblems(model) {
     if (b && (b.lower !== 1 || b.upper !== 1)) say('error', 'identifying-parent', `${path}.props.ends.from.multiplicity`, [e.id, A], `${e.id} is identifying, so its parent end at ${q(A)} is 1, not ${JSON.stringify(String(erMult(e, 'from')))}`);
     // a column out of the key may be another relationship's of the pair, a non-identifying one: then one in the key will do.
     // ponytail: the model does not say which columns are which relationship's; a relationship naming its columns would
-    const out2 = fks.filter(c => erProps(c).primaryKey !== true), shared = I.R.some(x => x !== e && x.type === 'er.Relationship' && x.from === A && x.to === B && !erIdentifying(x));
+    const out2 = fks.filter(c => erProps(c).primaryKey !== true), shared = R.some(x => x !== e && x.from === A && x.to === B && !erIdentifying(x));
     if (out2.length && (!shared || out2.length === fks.length)) say('error', 'identifying-key', path, [e.id, B, ...out2.map(c => c.id)], `${e.id} is identifying, but ${erAnd(out2.map(erName))} of ${q(B)} ${out2.length === 1 ? 'is' : 'are'} not in its primary key`); });
   ER_ARR(model && model.views).forEach((v, i) => { if (ER_OBJ(v) && v.diagram === 'er' && v.notation != null && v.notation !== 'crowsfoot' && v.notation !== 'idef1x')
     say('warning', 'notation', `views[${i}].notation`, [v.id], `${JSON.stringify(String(v.id))} has notation ${JSON.stringify(String(v.notation))}, drawn as crowsfoot: write crowsfoot or idef1x`); });

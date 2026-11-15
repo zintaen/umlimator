@@ -45,7 +45,7 @@ test('the definition: uml.deployment is registered with its palette, its five li
   assert.deepEqual(T.lines.map(e => [e.type, e.label]), [['uml.Deployment', 'Deployment'], ['uml.Manifestation', 'Manifestation'], ['uml.CommunicationPath', 'Communication path'], ['uml.Dependency', 'Dependency'], ['uml.CommentLink', 'Comment link']]);
   for (const t of ['uml.Node', 'uml.Device', 'uml.ExecutionEnvironment', 'uml.Artifact', 'uml.DeploymentSpecification', 'uml.Component', 'uml.Deployment', 'uml.CommunicationPath']) assert.deepEqual(T.props[t].map(f => f.key), ['stereotypes'], t);
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
-  assert.deepEqual(Object.keys(T.edits), ['connect', 'remove']);
+  assert.deepEqual(Object.keys(T.edits), ['connect', 'remove', 'rename']);
   assert.deepEqual(Object.keys(T.rules), ['deploy-ends', 'deployed-twice', 'nest-kinds', 'path-ends', 'manifest-ends', 'own-boxes', 'line-inside']);
 });
 

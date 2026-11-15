@@ -77,6 +77,16 @@ test('conformance notes and the examples README agree with the code they describ
   for (const [, id] of doc('../examples/README.md').matchAll(/and `([^`]+)`, with its subject/g)) assert.ok(views.has(id), id);
 });
 
+test('audit 14: the sequence and communication notes say a self-line is in the PDF\'s lines table, as tablesOf lists it', async () => {
+  await Promise.all(['../src/map/typed.js', '../src/uml/sequence.js', '../src/uml/communication.js'].map(p => import(p))); const { mapContext } = await import('../src/map/context.js'), { tablesOf } = await import('../src/page/print.js');
+  for (const [f, vid] of [['checkout-sequence', 'checkout-sequence'], ['checkout-communication', 'checkout-communication']]) {
+    const ctx = mapContext(JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url), 'utf8'))), rows = tablesOf(ctx, ctx.V[vid], ctx.buildGeo(vid))[1].rows.map(r => r.replace(/<[^>]+>/g, ''));
+    assert.ok(rows.some(r => /api : ShopApi\s*→\s*api : ShopApi/.test(r)), f);
+    const note = readFileSync(new URL(`../docs/conformance/uml-${f.split('-')[1]}.md`, import.meta.url), 'utf8');
+    assert.doesNotMatch(note, /left out of the lines table/, f); assert.match(note, /listed in the lines table/, f);
+  }
+});
+
 test('audit 12: the schema names every type laid out down with no direction, and a direction neither right nor down is drawn right, as validate() warns', async () => {
   const { layout } = await import('../lib/umlimator-all.js'), doc = p => readFileSync(new URL(p, import.meta.url), 'utf8');
   const dirs = JSON.parse(doc('../lib/umlimator.schema.json')).$defs.view.properties.direction.description, said = console.warn, seen = new Set(), down = [];
@@ -109,4 +119,13 @@ test('audit 11: the schema names the flowchart\'s default direction; the informa
     for (const r of Object.keys(diagramOf({ diagram: t }).rules)) assert.ok(note.includes('`' + r + '`'), `${f}: ${r}`);
   }
   assert.match(doc('../docs/conformance/uml-composite-structure.md'), /`connector-drawn` \(a connector between two ports of the subject, or of one part/);
+});
+
+test('audit 14: the cloud notes do not say an icons-only update() keeps the picture (lifted in 0.28.0); AWS is in the editing guide, the examples README and the schema', () => {
+  const read = p => readFileSync(new URL(p, import.meta.url), 'utf8');
+  for (const f of ['gcp', 'azure']) assert.doesNotMatch(read(`../docs/conformance/${f}.md`), /changes only the `icons` table keeps/, f);
+  const editing = read('../docs/editing.md');
+  for (const s of ['AWS (`aws`)', '`aws.Connection`', '`pack fetch aws`']) assert.ok(editing.includes(s), s);
+  assert.match(read('../examples/README.md'), /`aws-`/);
+  assert.match(JSON.parse(read('../lib/umlimator.schema.json')).properties.iconPacks.description, /"aws"/);
 });

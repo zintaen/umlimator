@@ -7,3 +7,6 @@ __pycache__/
 .*.icons.json
 # local worktrees of agents and tools
 .claude/worktrees/
+node_modules/
+docs/.vitepress/dist/
+docs/.vitepress/cache/

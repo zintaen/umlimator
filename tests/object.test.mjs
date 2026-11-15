@@ -250,3 +250,24 @@ test('audit 8: a profile is drawn and named as a package, closed or open', () =>
   const open = { schemaVersion: 2, nodes: [{ id: 'P', type: 'uml.Profile', label: 'Persistence' }, I('o', 'o1', 'Order', [], { parent: 'P' })], edges: [], views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['P', 'o'] }] };
   assert.ok(describe(open, 'v').includes('Profile Persistence, holding 1 element.'), describe(open, 'v'));
 });
+
+test('audit 14: F2 on an instance edits its name alone (an anonymous one opens ": Customer"), on a link its label alone', () => {
+  const m = { schemaVersion: 2, nodes: [I('c1', null, 'Customer'), I('c2', 'bo', 'Customer')], edges: [{ ...L('k', 'c1', 'c2', { stereotypes: ['x'], association: 'knows' }) }], views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['c1', 'c2'] }] };
+  const g = layout(m, 'v'), F2 = (id, text) => apply(m, T.edits.rename(m, m.views[0], id, text));
+  assert.equal(g.nodes.find(n => n.id === 'c1').label, ': Customer');
+  const m2 = F2('c1', 'ada : Customer'); assert.equal(m2.nodes[0].label, 'ada'); assert.equal(layout(m2, 'v').nodes.find(n => n.id === 'c1').label, 'ada : Customer');
+  assert.deepEqual(T.edits.rename(m, m.views[0], 'c1', ': Customer'), []); // unchanged: still anonymous
+  assert.equal(F2('c2', 'bob').nodes[1].label, 'bob');
+  assert.equal(g.edges[0].label, '«x» knows'); assert.deepEqual(T.edits.rename(m, m.views[0], 'k', '«x» knows'), []);
+  assert.equal(F2('k', '«x» friends').edges[0].label, 'friends');
+});
+
+test('audit 14: an element of another kind is drawn and named as its kind, a line of another kind as a directed "Line"', () => {
+  const m = { schemaVersion: 2, nodes: [I('o1', 'order1', 'Order'), { id: 'api', type: 'uml.Component', label: 'Shop API' }, { id: 'u', type: 'uml.Actor', label: 'Shopper' }, { id: 'c', type: 'uml.Class', label: 'Order' }],
+    edges: [{ id: 'of', type: 'uml.Dependency', from: 'o1', to: 'c', props: { stereotypes: ['instanceOf'] } }], views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['o1', 'api', 'u', 'c'], edges: ['of'] }] };
+  const g = layout(m, 'v'), n = id => g.nodes.find(x => x.id === id);
+  assert.equal(n('o1').underline, true); assert.ok(!n('api').underline && !n('u').underline);
+  assert.match(n('api').aria, /^Component Shop API\b/); assert.match(n('u').aria, /^Actor Shopper\b/);
+  assert.deepEqual([g.edges[0].end.to, g.edges[0].aria], ['arrow', 'Line from order1 : Order to Order: «instanceOf»']);
+  const d = describe(m, 'v'); assert.match(d, /^Instance specification order1 : Order.*linked to Order/m); assert.doesNotMatch(d, /^Class Order.*linked to/m);
+});

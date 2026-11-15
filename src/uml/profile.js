@@ -1,7 +1,7 @@
 import { registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
-import { CLASS_DEF, CLASS_LINES, CLASS_TYPE, RULES, multBounds, printMember, classProblems, drawnLines, lineName, typeGeo } from './class.js';
+import { CLASS_DEF, CLASS_LINES, CLASS_TYPE, RULES, multBounds, printMember, classProblems, drawnLines, lineLabel, lineName, lineRename, typeGeo } from './class.js';
 import { OWN_BOXES, OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder } from './owners.js';
 import { STY_RULES, UML_META, appliedOf, metaKnown, styKey } from './stereotypes.js';
 
@@ -172,7 +172,7 @@ const PR_TYPE = registerDiagramType('uml.profile', {
   word: (model, id) => { const x = prIndex(model).at.get(id);
     return !x ? null : x.type === 'uml.Stereotype' ? (PR_OBJ(x.props) && x.props.isAbstract === true ? 'Stereotype (abstract)' : 'Stereotype') : x.type === 'uml.MetaclassReference' ? 'Metaclass' : x.type === 'uml.Profile' ? 'Profile' : null; },
   rows: (model, view, id) => { const I = prIndex(model), x = I.at.get(id); if (!x) return null; const r = prRows(model, x, I); return r.length || PR_DEFS.slice(0, 2).includes(x.type) ? r : null; },
-  edits: { add: prAdd, connect: prConnect },
+  edits: { add: prAdd, connect: prConnect, rename: lineRename(lineLabel) },
 });
 
 export { PR_TYPE, PR_RULES, prGeo, prProblems, prDescribe, prAdd, prConnect, prRows };

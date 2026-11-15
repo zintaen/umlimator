@@ -370,3 +370,11 @@ test('audit 12: F2 and Enter on the flow\'s text as drawn changes nothing, thoug
   assert.deepEqual(T.edits.rename(m, m.views[0], 'f1', 'Name, Address'), []);
   assert.deepEqual(T.edits.rename(m, m.views[0], 'f1', 'Name'), [{ op: 'set', id: 'f1', path: 'props.conveyed', value: ['nm'] }]);
 });
+
+test('a flow written inline in a view conveys as one of the model does: names, rows, text and Shift + Delete (audit 14)', () => {
+  const m = { schemaVersion: 2, nodes: [N('a', 'Actor', 'Shopper'), N('s', 'Component', 'Store'), N('o', 'InformationItem', 'Order'), N('p', 'InformationItem', 'Pay')], edges: [],
+    views: [{ id: 'v', diagram: 'uml.information-flow', nodeIds: ['a', 's', 'o', 'p'], edges: [F('f', 'a', 's', ['o', 'p'])] }] };
+  assert.match(describe(m, 'v'), /Information item Order, conveyed by 1 flow\./);
+  assert.deepEqual([T.rows(m, m.views[0], 'o'), T.text(m, m.views[0], 'f')], [['Shopper → Store'], 'Order, Pay']);
+  assert.deepEqual(T.edits.remove(m, m.views[0], ['o', 'p'], true).commands.map(c => c.id), ['o', 'p', 'f']);
+});

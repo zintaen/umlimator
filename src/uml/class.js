@@ -196,6 +196,15 @@ const stereoText = x => UML_ARR(UML_OBJ(x.props) ? x.props.stereotypes : null).f
 const keyword = e => e.type === 'uml.PackageImport' ? ((UML_OBJ(e.props) ? e.props.visibility : null) === 'private' ? '«access»' : '«import»') : e.type === 'uml.PackageMerge' ? '«merge»'
   : e.type === 'uml.ProfileApplication' ? '«apply»' : e.type === 'uml.Usage' ? '«use»' : e.type === 'uml.Abstraction' ? '«abstraction»' : e.type === 'uml.Extension' && UML_OBJ(e.props) && e.props.isRequired === true ? '{required}' : '';
 const lineLabel = e => [keyword(e), stereoText(e), e.label].filter(UML_HAS).join(' ');
+/* rename (F2) on a line: the field holds its drawn text, `drawn(e, model, view)`, the keyword and «stereotypes» before the
+   label; that prefix is the line's kind and props, so it is taken off and the rest set as the label. Anything else: null.
+   Shared by the class, package, profile, component and deployment types, each with its own drawn text */
+const lineRename = drawn => (model, view, id, text) => {
+  const e = UML_ARR(model.edges).find(x => UML_OBJ(x) && x.id === id); if (!e) return null;
+  const pre = drawn({ ...e, label: undefined }, model, view); let t = String(text ?? '').trim();
+  if (pre && (t === pre || t.startsWith(pre + ' '))) t = t.slice(pre.length).trim();
+  return t === String(e.label ?? '') ? [] : [{ op: 'set', id, path: 'label', value: t || undefined }];
+};
 const LINE_WORDS = { 'uml.Association': ['Association', 'a link between instances'], 'uml.Generalization': ['Generalization', 'is a kind of the one it points to'],
   'uml.InterfaceRealization': ['Realization', 'implements the interface it points to'], 'uml.Dependency': ['Dependency', 'uses the one it points to'],
   'uml.CommentLink': ['Comment link', 'what a comment is about'], 'uml.PackageImport': ['Package import', 'sees the names of the one it points to: «import», or «access» kept private'],
@@ -393,6 +402,7 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   validate: (model, view) => [...classProblems(model), ...ownerProblems(model, view, drawnLines(model, view, CLASS_LINES).lines)],
   rules: { ...RULES, ...OWNER_RULES },
   describe: classDescribe,
+  edits: { rename: lineRename(lineLabel) },
 });
 
-export { CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, classProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
+export { lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, classProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };

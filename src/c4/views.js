@@ -272,7 +272,7 @@ const DEP_DEF = {
   rules: DEP_RULES,
   describe: depDescribe,
   // a deleted container takes its instances (§3, Q7); read for every view, whichever type declares it
-  refs: { 'c4.ContainerInstance': { 'props.container': 'cascade' } },
+  refs: { 'c4.ContainerInstance': { 'props.container': 'cascade named' } }, // named: a renamed container's instances named as it follow (apply)
   word: C4_DEF.word,
   rows: (model, view, id) => { const I = c4Index(model), x = I.at.get(id); if (!x) return null; const P = V_P(x);
     if (x.type === 'c4.DeploymentNode') return [...(V_HAS(P.technology) ? [P.technology] : []), ...(V_HAS(P.description) ? [P.description] : [])];

@@ -278,7 +278,10 @@ function mmShow(model, view, id) {
   if (add.length === 1) return null;
   const list = [...MM_ARR(V.nodeIds)], u = X.up(id), k = u == null ? list.length : mmEnd(X, u) + 1;
   list.splice(k, 0, ...add);
-  return { commands: [...mmPinsAt(model, X, V, null), { op: 'set', view: V.id, path: 'nodeIds', value: list }], say: `Showed ${mmOne(X.N.get(id))} and ${mmPlural(add.length - 1, 'subtopic')} hidden with it` };
+  // a shown topic that hangs under id once id is back (shown on its own while id was hidden) is no first-level topic then:
+  // not pinned, and a side it has goes, so the show leaves no side-first warning (audit 14)
+  const under = X.ids.filter(t => X.shown.has(t) && mmUnder(X, id, t));
+  return { commands: [...mmPinsAt(model, X, V, null, new Set(under)), ...under.flatMap(t => mmUnside(X, V, t)), { op: 'set', view: V.id, path: 'nodeIds', value: list }], say: `Showed ${mmOne(X.N.get(id))} and ${mmPlural(add.length - 1, 'subtopic')} hidden with it` };
 }
 
 /* ---- the type ---- */
