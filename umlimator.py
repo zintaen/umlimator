@@ -55,6 +55,8 @@ def visual_cmd(tmp, *args):
 def not_objects(d):
     """Each entry upstream's validate_map reads as an object and is not one, as its problems (it would end in a traceback)."""
     lst = lambda x: x if isinstance(x, list) else []
+    name = lambda x: x is None or isinstance(x, (str, int, float)) and not isinstance(x, bool)
+    ids = lambda at, xs, ks: [f"{at}[{j}].{k} is not a string" for j, x in enumerate(lst(xs)) if isinstance(x, dict) for k in ks if not name(x.get(k))]
     out = [f"{k} is not a list" for k in ("nodes", "edges", "views") if k in d and not isinstance(d[k], list)]
     out += [f"{k}[{i}] is not an object" for k in ("nodes", "edges", "views") for i, x in enumerate(lst(d.get(k))) if not isinstance(x, dict)]
     out += ["meta is not an object"] if "meta" in d and not isinstance(d["meta"], dict) else []
@@ -68,6 +70,15 @@ def not_objects(d):
         o = v.get("nodeOverrides")
         out += [f"views[{i}].nodeOverrides is not an object"] if "nodeOverrides" in v and not isinstance(o, dict) else []
         out += [f"views[{i}].nodeOverrides.{k} is not an object" for k, x in (o.items() if isinstance(o, dict) else []) if not isinstance(x, dict)]
+        out += [f"views[{i}].parent is not a string"] if not name(v.get("parent")) else []
+        out += [f"views[{i}].{k}[{j}] is not a string" for k in ("nodeIds", "stepIds") for j, x in enumerate(lst(v.get(k))) if not name(x)]
+        out += ids(f"views[{i}].nodes", v.get("nodes"), ("id", "opensView", "view")) + ids(f"views[{i}].containers", v.get("containers"), ("id",))
+        out += ids(f"views[{i}].edges", v.get("edges"), ("id", "from", "to"))
+        out += [f"views[{i}].nodeOverrides.{k}.{f} is not a string" for k, x in (o.items() if isinstance(o, dict) else []) if isinstance(x, dict)
+                for f in ("opensView", "view") if not name(x.get(f))]
+    # an id, a line's end, a view a card opens: a list or an object there is no name, and ended in a TypeError (audit 7)
+    out += ids("nodes", d.get("nodes"), ("id", "opensView", "view")) + ids("edges", d.get("edges"), ("id", "from", "to"))
+    out += ["root is not a string"] if not name(d.get("root")) else []
     # a card's members, and theirs, at any depth (a stack, not recursion: a deep model never ends in a RecursionError)
     todo = [(f"nodes[{i}]", n) for i, n in enumerate(lst(d.get("nodes"))) if isinstance(n, dict)]
     while todo:
@@ -803,7 +814,8 @@ def still_keys(page, opts):
     data, t, m = page_data(page)
     engine = hashlib.sha256((t[:m.start()] + t[m.end():]).encode()).hexdigest()
     views = data.get("views") or []
-    V, N = {v["id"]: v for v in views}, {n["id"]: n for n in data.get("nodes", [])}
+    # a view's own cards join the model's, as the page's mapContext has them (audit 7): another view may list one
+    V, N = {v["id"]: v for v in views}, {n["id"]: n for n in [*data.get("nodes", []), *(n for v in views for n in v.get("nodes") or [])] if isinstance(n, dict)}
     icons, authors = data.get("icons") or {}, data.get("authors") or {}
     owner = {}  # each member's (a port's) card, at any depth: walked with a list, not recursion
     for n in data.get("nodes", []):

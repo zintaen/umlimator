@@ -230,7 +230,13 @@ with tempfile.TemporaryDirectory() as tmp:
                  ("nodes", '"nodes": 5'), ("ids", '"nodeIds": 5'), ("edges", '"edges": 5'), ("boxes", '"containers": 3'), ("box", '"containers": [3]'))},
               "members": '{"schemaVersion": 2, "nodes": [{"id": "a", "members": [{"id": "b", "members": 5}]}], "views": [{"id": "v", "nodeIds": ["a"]}]}',
               "meta_str": '{"meta": "draft", "nodes": [{"id": "a"}], "views": [{"id": "v", "nodeIds": ["a"]}]}',
-              "view_num_id": '{"nodes": [{"id": "a"}], "views": [{"id": "v", "nodeIds": ["a"]}, {"id": 7, "nodeIds": ["a"]}]}'}  # audit 6: stills and check ended in tracebacks
+              "view_num_id": '{"nodes": [{"id": "a"}], "views": [{"id": "v", "nodeIds": ["a"]}, {"id": 7, "nodeIds": ["a"]}]}',  # audit 6: stills and check ended in tracebacks
+              # audit 7: an id, a line's end, a view's parent or an opensView that is a list or an object ended in a TypeError
+              "node_id_list": '{"nodes": [{"id": ["a"]}], "views": [{"id": "v", "nodeIds": []}]}',
+              "opens_list": '{"nodes": [{"id": "a", "opensView": ["x"]}], "views": [{"id": "v", "nodeIds": ["a"]}]}',
+              "box_id_dict": '{"nodes": [{"id": "a"}], "views": [{"id": "v", "nodeIds": ["a"], "containers": [{"id": {"x": 1}, "nodeIds": ["a"]}]}]}',
+              "edge_to_list": '{"nodes": [{"id": "a"}], "edges": [{"id": "e", "from": "a", "to": ["a"]}], "views": [{"id": "v", "nodeIds": ["a"]}]}',
+              "parent_list": '{"nodes": [{"id": "a"}], "views": [{"id": "v", "parent": ["x"], "nodeIds": ["a"]}]}'}
     for k, text in shapes.items():
         f = t / "names" / f"{k}.json"
         f.write_bytes(b"\xef\xbb\xbf" + json.dumps(json.loads((t / "names" / "m.json").read_text())).encode() if text is None else text.encode())
@@ -278,6 +284,17 @@ with tempfile.TemporaryDirectory() as tmp:
         (t / f"kid{k}.json").write_text(json.dumps(kid(k))); cli("render", str(t / f"kid{k}.json"), "--out", str(t / f"kid{k}.html"), "--no-check")
         keys.append(u.still_keys(t / f"kid{k}.html", [2.0, "light", False]).get("a"))
     ok("stills · a view is drawn again when the inner view an override opens grows", None not in keys and keys[0] != keys[1], keys)
+    # a view's own card (view.nodes) is in the key, as the page indexes it (audit 7): the inner view it opens grows, and
+    # another view that lists it sees it renamed
+    local = lambda k, label: {"title": "t", "root": "top", "nodes": [{"id": c, "label": c} for c in "xbc"],
+                              "views": [{"id": "top", "nodes": [{"id": "s", "label": label, "opensView": "inner"}], "nodeIds": ["x", "s"]},
+                                        {"id": "inner", "parent": "top", "nodeIds": list("bc"[:k])}, {"id": "other", "parent": "top", "nodeIds": ["x", "s"]}]}
+    keys = []
+    for k, label in ((1, "Before"), (2, "Before"), (2, "After")):
+        (t / "local.json").write_text(json.dumps(local(k, label))); cli("render", str(t / "local.json"), "--out", str(t / "local.html"), "--no-check")
+        keys.append(u.still_keys(t / "local.html", [2.0, "light", False]))
+    ok("stills · a view is drawn again when a view-local card's inner view grows, or a view lists that card and it changes (audit 7)",
+       keys[0]["top"] != keys[1]["top"] and keys[1]["other"] != keys[2]["other"], keys)
 
     # the diff Action's step as CI runs it (C10, 2.6): a pull request's merge commit against its first parent, the pathspec
     # examples/*.json passed to git as written (set -f), on one object model and one package model
@@ -851,6 +868,9 @@ ok("mcp · highlight: shown on the page once it answers, with card and line ids 
 bad = [tool("highlight", refs=[x]) for x in ({"type": "node", "id": ["a"]}, {"type": "edge", "ids": 5}, {"type": "edge", "ids": [["x"]]}, {"type": "container", "container": ["x"]})]
 ok("mcp · highlight: a Ref whose fields are not strings is a tool error naming it, never an internal error (audit 2)",
    all(err is True and said.startswith("refs[0] is not a Ref") for said, err in bad), bad)
+bad = [tool("highlight", refs=[x]) for x in ({"type": "node", "id": "no-such-card"}, {"type": "edge", "ids": ["a->b#0"]}, "a->b")]
+ok("mcp · highlight: a Ref or a line id that names nothing in the model is a tool error, as a card id is (audit 7)",
+   all(err is True and "in the model" in said for said, err in bad), bad)
 c = web(); c.request("GET", "/"); r = c.getresponse(); page = r.read().decode()
 ok("mcp · serves the CLI's page, with the script that shows commands on its map handle (window.umlimatorMap)",
    r.status == 200 and "const map = window.umlimatorMap" in page and "new EventSource(`/events?page=" in page and "Fare calculator" in page)
