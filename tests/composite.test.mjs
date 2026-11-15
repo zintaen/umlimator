@@ -446,3 +446,14 @@ test('audit 6: a listed connector between two types\' ports that names no part i
   const p = validate(m).filter(x => x.rule === 'connector-part');
   assert.deepEqual(p.map(x => [x.level, x.path, x.ids]), [['warning', 'edges[0].props.ends.from.part', ['bare', 'T0.in']]], 'the unlisted one may belong to another view');
 });
+
+test('audit 8: a card or a port whose id is an Object.prototype name is sized as any other', () => {
+  const card = id => { const m = { schemaVersion: 2, nodes: [{ id: 'Shop', type: 'uml.Class', label: 'Shop', members: [port('sp', 'api')] }, { id, type: 'uml.Class', label: 'Helper' }],
+    edges: [{ id: 'c1', type: 'uml.Connector', from: 'sp', to: id }], views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 'Shop', nodeIds: ['Shop', id] }] };
+    const n = layout(m, 'v').byId[id]; return [n.w, n.h]; };
+  assert.deepEqual(card('toString'), card('Note1')); assert.deepEqual(card('valueOf'), card('Note1'));
+  const shop = pid => { const m = { schemaVersion: 2, nodes: [{ id: 'Shop', type: 'uml.Class', label: 'Shop', members: [port(pid, 'api')] }, { id: 'B', type: 'uml.Class', label: 'B' }],
+    edges: [{ id: 'c1', type: 'uml.Connector', from: pid, to: 'B' }], views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 'Shop', nodeIds: ['Shop', 'B'] }] };
+    const n = layout(m, 'v').byId.Shop; return [n.w, n.h]; };
+  assert.deepEqual(shop('constructor'), shop('p1')); assert.deepEqual(shop('toString'), shop('p1'));
+});

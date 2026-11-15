@@ -4,7 +4,7 @@ import { SHAPE } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { RULES, classProblems, drawnLines, printMember } from './class.js';
-import { OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder } from './owners.js';
+import { OWN_BOXES, OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder } from './owners.js';
 
 /* ---------- the object diagram, uml.object (work package 2.3, notes/stage-2.md §9) ----------
    Instance specifications drawn with the classifier shape, the head underlined, `name : Classifier` (or `: Classifier`
@@ -61,7 +61,7 @@ const obWord = t => t.split('.').pop().replace(/([a-z])([A-Z])/g, (_, a, b) => a
 function obNodeName(n, pic) {
   if (n.type === 'uml.Comment') return 'Comment: ' + String(n.label ?? n.id);
   const st = obStereo(n), why = st.length ? ` (${st.join(', ')})` : '';
-  if (n.type === 'uml.Package') { const b = pic.boxes.find(x => x.id === n.id); return b ? b.aria : `Package ${pic.name(n.id)} (${[...st, 'closed'].join(', ')})`; }
+  if (OWN_BOXES.includes(n.type)) { const b = pic.boxes.find(x => x.id === n.id); return b ? b.aria : `${obWord(n.type)} ${pic.name(n.id)} (${[...st, 'closed'].join(', ')})`; }
   if (!isInstance(n)) { const w = [...st, ...(OB_PROPS(n).isAbstract ? ['abstract'] : [])];
     return [`${obWord(n.type)} ${pic.name(n.id)}${w.length ? ` (${w.join(', ')})` : ''}`, ...classifierBoxes(n).map(c => { const k = c.members.length; return `${k} ${c.name.replace(/s$/, '')}${k === 1 ? '' : 's'}`; })].join(', '); }
   const k = slotsOf(n).length;
@@ -76,7 +76,7 @@ const obLegend = edges => OB_LEGEND.filter(([t]) => edges.some(e => e.type === t
 function objectGeo({ model, view, pos, memo }) {
   const { at, pic, lines } = drawnLines(model, view, OBJECT_LINES), present = OB_OBJ(view.present) ? view.present : {}, head = id => (at.get(id).x.type === 'uml.InstanceSpecification' ? headOf(at.get(id).x, pic.name(id)) : pic.name(id));
   const nodes = pic.ids.filter(id => !pic.open.has(id)).map(id => { const n = at.get(id).x, pr = OB_OBJ(OB_OWN(present, id)) ? present[id] : {}, slots = slotsOf(n);
-    const shape = n.type === 'uml.Comment' ? { shape: 'note' } : n.type === 'uml.Package' ? { shape: 'package', stereotypes: obStereo(n) }
+    const shape = n.type === 'uml.Comment' ? { shape: 'note' } : OWN_BOXES.includes(n.type) ? { shape: 'package', stereotypes: [...(n.type === 'uml.Profile' ? ['profile'] : []), ...obStereo(n)] }
       : !isInstance(n) ? { shape: 'classifier', stereotypes: [...(OB_OWN(OB_IMPLIED, n.type) ? [OB_IMPLIED[n.type]] : []), ...obStereo(n)], abstract: !!OB_PROPS(n).isAbstract, compartments: classifierBoxes(n),
         collapsed: OB_ARR(pr.collapsed), ...(Number.isFinite(pr.rows) ? { rows: pr.rows } : {}) }
       // memberText draws props.default after " = ": a slot passed as { label: feature, props: { default: value } } (§9.1)

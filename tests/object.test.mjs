@@ -242,3 +242,11 @@ test("the PDF prints a classifier's members as the class type does, as the pictu
   assert.equal(T.member.print({ id: 'a', type: 'uml.Property', label: 'id', props: { valueType: 'UUID', visibility: 'private' } }), '- id: UUID');
   assert.equal(T.member.print({ id: 's', type: 'uml.Slot', label: 'id', props: { value: '7' } }), 'id = 7');
 });
+
+test('audit 8: a profile is drawn and named as a package, closed or open', () => {
+  const closed = { schemaVersion: 2, nodes: [{ id: 'P', type: 'uml.Profile', label: 'Persistence' }, I('o', 'o1', 'Order')], edges: [], views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['P', 'o'] }] };
+  const p = layout(closed, 'v').byId.P;
+  assert.equal(p.shape, 'package'); assert.ok(!p.underline); assert.deepEqual(p.stereotypes, ['profile']); assert.equal(p.aria, 'Profile Persistence (closed)');
+  const open = { schemaVersion: 2, nodes: [{ id: 'P', type: 'uml.Profile', label: 'Persistence' }, I('o', 'o1', 'Order', [], { parent: 'P' })], edges: [], views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['P', 'o'] }] };
+  assert.ok(describe(open, 'v').includes('Profile Persistence, holding 1 element.'), describe(open, 'v'));
+});

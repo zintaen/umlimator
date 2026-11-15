@@ -1,3 +1,4 @@
+import { apply } from '../core/apply.js';
 import { registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, portsOn, r2 } from '../draw/shapes.js';
@@ -327,11 +328,20 @@ function stDescribe(model, viewId) {
 /* ---- editing (§10.3): each hook returns commands, { commands, say }, null for the default, or { error } ---- */
 const stFresh = (model, base) => { const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
   let k = 1; while (used.has(base + k)) k++; return base + k; };
-// add: a pseudostate with its entry's kind; a region into the state selected
+// a hook's commands, or { error } when they bring an error the model did not have (notes/stage-3.md S5), as the activity's acGuard
+function stGuard(model, commands) {
+  const key = p => p.rule + ' ' + p.ids.join(' '), errs = m => stProblems(m).filter(p => p.level === 'error');
+  let now; try { now = apply(model, commands); } catch (e) { return { error: String(e.message) }; }
+  const was = new Set(errs(model).map(key)), bad = errs(now).find(p => !was.has(key(p)));
+  return bad ? { error: bad.message } : commands;
+}
+// add: a pseudostate with its entry's kind, in the state or region selected (a state's lone region); a region into the state selected
 function stAdd(model, view, entry, label, at) {
   if (!ST_OBJ(entry)) return null;
-  if (entry.type === 'uml.Pseudostate') { const k = ST_KINDS.includes(ST_PROPS(entry).kind) ? entry.props.kind : 'junction';
-    return [{ op: 'add', element: { id: stFresh(model, k.replace(/[A-Z]/g, c => '-' + c.toLowerCase())), type: 'uml.Pseudostate', ...(ST_HAS(label) ? { label: String(label) } : {}), props: { kind: k } }, view: view.id }]; }
+  if (entry.type === 'uml.Pseudostate') { const k = ST_KINDS.includes(ST_PROPS(entry).kind) ? entry.props.kind : 'junction', I = stIndex(model);
+    const o = ST_ARR(at && at.sel).map(id => (I.M.has(id) && I.M.get(id).x.type === 'uml.Region' ? id : (I.N.get(id) || {}).x?.type === 'uml.State' ? id : null)).find(x => x != null);
+    const rs = o != null && I.N.has(o) ? stMembers(I.N.get(o).x, 'uml.Region') : [], parent = rs.length === 1 ? rs[0].id : o;
+    return stGuard(model, [{ op: 'add', element: { id: stFresh(model, k.replace(/[A-Z]/g, c => '-' + c.toLowerCase())), type: 'uml.Pseudostate', ...(ST_HAS(label) ? { label: String(label) } : {}), ...(parent != null ? { parent } : {}), props: { kind: k } }, view: view.id }]); }
   if (entry.type !== 'uml.Region') return null;
   const s = ST_ARR(at && at.sel).map(id => ST_ARR(model.nodes).find(n => ST_OBJ(n) && n.id === id)).find(n => n && n.type === 'uml.State');
   if (!s) return { error: 'Select a state to add a region to' };
@@ -345,7 +355,7 @@ function stRename(model, view, id, text) {
   if (printTransition(ST_PROPS(e)) == null) return { error: `${id}'s text does not read back: edit its trigger, guard and effect in the properties panel` };
   // the text F2 opens is the drawn label, its «stereotypes» first: they are not parts
   const pre = stStereo(e).map(t => `«${t}»`).join(' '), t = String(text ?? '').trimStart(), r = parseTransition(pre && t.startsWith(pre) ? t.slice(pre.length) : t);
-  return r.error ? r : stSetParts(e, r);
+  return r.error ? r : stGuard(model, stSetParts(e, r));
 }
 // a compartment row typed on a state: `entry / …`, `do / …` and `exit / …` set that activity (a second one replaces the
 // first, said); null for any other row, which is an internal transition or a region (member below). member: the row's id

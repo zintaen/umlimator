@@ -290,6 +290,9 @@ function tmConnect(model, view, from, to, at, line) {
     const [p, q] = b.c.at < a.c.at ? [b.c, a.c] : [a.c, b.c], put = tmPut(model, V, 'constraints', { id: tmNewId(model, 'duration'), type, from: p.id, to: q.id }); if (put.error) return put;
     return tmGuard(model, V, [put]); }
   if (!a || !b) return tmErr('a message joins two lifelines of the view, or two changes on them');
+  // a lifeline's end is never sent after the change it reaches, nor received before the change it leaves: the keyboard's slot
+  // (no slot follows a lifeline: the ruler's end) would make every such message one received before it is sent
+  if (!a.c && b.c) a.t = Math.min(a.t, b.t); else if (a.c && !b.c) b.t = Math.max(b.t, a.t);
   const props = { ...(TM_OBJ(line && line.props) ? structuredClone(line.props) : {}) }, sort = TM_SORTS.includes(props.sort) ? props.sort : (props.sort = 'call');
   Object.assign(props, { sentAt: a.t, receivedAt: b.t });
   if (sort === 'reply') { const c = X.msgs.filter(m => tmSort(m) === 'call' && m.from === b.lane && m.to === a.lane && tmProps(m).sentAt <= a.t).sort((p, q) => tmProps(q).sentAt - tmProps(p).sentAt)[0];

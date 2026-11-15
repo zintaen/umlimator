@@ -468,3 +468,9 @@ test('audit 6: Alt + arrow on a lifeline moves it in nodeIds, as docs/editing.md
   const row = readFileSync(new URL('../docs/editing.md', import.meta.url), 'utf8').split('\n').find(l => l.startsWith('| reorder lifelines | | `Alt + ↑/↓` on a lifeline'));
   assert.ok(row && row.includes('`move` on `nodeIds`'), row);
 });
+
+test('audit 8: a message drawn by keyboard from a lifeline to a change is sent at the change\'s time, not refused', () => {
+  const m = EX(), V0 = V(m), last = layout(m, 'charge').slots.at(-1); // L from a lifeline: no slot follows it, so the keyboard's is the ruler's end
+  assert.deepEqual(V(run(m, tmConnect(m, V0, 'worker', 'p-capturing', last, LINE('async')))).edges.at(-1).props, { sort: 'async', sentAt: 480, receivedAt: 480 });
+  assert.deepEqual(V(run(m, tmConnect(m, V0, 'w-recording', 'payments', { parent: 'payments', t: 0 }, LINE('async')))).edges.at(-1).props, { sort: 'async', sentAt: 760, receivedAt: 760 });
+});
