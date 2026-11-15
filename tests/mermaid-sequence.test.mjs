@@ -361,3 +361,8 @@ test('text over the reader\'s limit even unindented says so in its last line (au
   assert.equal(model.nodes.length, 450);
   assert.match(t.slice(t.lastIndexOf('%%')), /^%% not written: text the reader reads back: this is \d+ characters, over its limit of 1048576\n$/);
 });
+
+test('a lifeline whose id has a space or tab at an end is not written, and said: the reader trims a hint (audit 11)', () => {
+  const m = JSON.parse(JSON.stringify(read('sequenceDiagram\nparticipant A\nparticipant B\nA->>B: hi').model).replaceAll('"A"', '"A\\t"'));
+  assert.equal(write(m), 'sequenceDiagram\n  participant B\n  %% not written: A\t (uml.Lifeline)\n  %% not written: A-B (uml.Message)\n');
+});
