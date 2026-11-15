@@ -24,8 +24,9 @@ it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2
 Rules, each `validate()` problem naming its `rule` and its elements (`notes/stage-2.md` §9.3): `slot-kinds` (an instance
 holds slots only; a slot belongs to an instance), `link-ends` (a link joins two instances), `instance-of` (a warning:
 when `props.classifier` names exactly one classifier of the model, by its name or qualified name, each slot names an
-attribute of it or of one of its generals), `owner-kinds` (a warning: an instance's owner is a package) and the class
-diagram's `member-names` (two slots for one feature). Ownership cycles and references that do not resolve are the core's
+attribute of it or of one of its generals), `owner-kinds` (a warning: an instance's owner is a package), `line-inside` (a warning: a line between a package and
+what it holds is not drawn), `own-boxes` (a warning: a view's own `containers` are ignored) and the class diagram's
+`member-names` (two slots for one feature). Ownership cycles and references that do not resolve are the core's
 checks. A model with only object views gets no class rules but these.
 
 A view may set `direction: "down"`, `subject` (names are qualified from it) and pins in `layout`. A link from an

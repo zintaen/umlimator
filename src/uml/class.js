@@ -179,8 +179,9 @@ const endsOf = e => (UML_OBJ(e.props) && UML_OBJ(e.props.ends) ? e.props.ends : 
 function lineLook(e) {
   switch (e.type) {
     case 'uml.Generalization': return { from: 'none', to: 'triangle' };
-    case 'uml.InterfaceRealization': return { from: 'none', to: 'triangle', dashed: true };
-    case 'uml.Dependency': return { from: 'none', to: 'open', dashed: true };
+    case 'uml.InterfaceRealization': case 'uml.Realization': case 'uml.ComponentRealization': return { from: 'none', to: 'triangle', dashed: true };
+    case 'uml.Dependency': case 'uml.Usage': case 'uml.Abstraction': return { from: 'none', to: 'open', dashed: true };
+    case 'uml.Connector': return { from: 'none', to: 'none' };
     case 'uml.CommentLink': return { from: 'none', to: 'none', dashed: true };
     case 'uml.PackageImport': case 'uml.PackageMerge': case 'uml.ProfileApplication': return { from: 'none', to: 'open', dashed: true };
     case 'uml.Extension': return { from: 'none', to: 'filled-triangle' }; // to the metaclass (notes/stage-6.md §4.1)
@@ -193,13 +194,16 @@ const stereoText = x => UML_ARR(UML_OBJ(x.props) ? x.props.stereotypes : null).f
 // a package import says «import», or «access» when private; a merge «merge» (notes/stage-2.md §10.2)
 // a profile application «apply», a required extension {required} (notes/stage-6.md §4.1)
 const keyword = e => e.type === 'uml.PackageImport' ? ((UML_OBJ(e.props) ? e.props.visibility : null) === 'private' ? '«access»' : '«import»') : e.type === 'uml.PackageMerge' ? '«merge»'
-  : e.type === 'uml.ProfileApplication' ? '«apply»' : e.type === 'uml.Extension' && UML_OBJ(e.props) && e.props.isRequired === true ? '{required}' : '';
+  : e.type === 'uml.ProfileApplication' ? '«apply»' : e.type === 'uml.Usage' ? '«use»' : e.type === 'uml.Abstraction' ? '«abstraction»' : e.type === 'uml.Extension' && UML_OBJ(e.props) && e.props.isRequired === true ? '{required}' : '';
 const lineLabel = e => [keyword(e), stereoText(e), e.label].filter(UML_HAS).join(' ');
 const LINE_WORDS = { 'uml.Association': ['Association', 'a link between instances'], 'uml.Generalization': ['Generalization', 'is a kind of the one it points to'],
   'uml.InterfaceRealization': ['Realization', 'implements the interface it points to'], 'uml.Dependency': ['Dependency', 'uses the one it points to'],
   'uml.CommentLink': ['Comment link', 'what a comment is about'], 'uml.PackageImport': ['Package import', 'sees the names of the one it points to: «import», or «access» kept private'],
   'uml.PackageMerge': ['Package merge', 'takes in what the one it points to holds'], 'uml.Extension': ['Extension', 'the stereotype extends the metaclass it points to'],
-  'uml.ProfileApplication': ['Profile application', '«apply»: the package may use the profile\'s stereotypes'] };
+  'uml.ProfileApplication': ['Profile application', '«apply»: the package may use the profile\'s stereotypes'],
+  'uml.Usage': ['Usage', '«use»: needs the one it points to'], 'uml.Realization': ['Realization', 'realizes the one it points to'],
+  'uml.ComponentRealization': ['Component realization', 'realizes the component it points to'], 'uml.Abstraction': ['Abstraction', '«abstraction»: a more abstract view of the one it points to'],
+  'uml.Connector': ['Connector', 'a link between parts'] };
 const LEGEND_ENDS = { // small copies of src/typed/draw.js's ends, pointing right with the tip at x 26
   none: '', open: '<path d="M17 4L26 8L17 12" fill="none"/>', triangle: '<path d="M16 3L26 8L16 13Z" fill="var(--um-panel)"/>',
   diamond: '<path d="M12 8L19 4L26 8L19 12Z" fill="var(--um-panel)"/>', 'filled-diamond': '<path d="M12 8L19 4L26 8L19 12Z" fill="var(--um-muted)"/>',
@@ -228,8 +232,9 @@ const nameOfEl = x => String(x.label ?? x.id);
 const plural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 /* A type's look (notes/stage-2.md §10.2): the class, package and object views share classGeo's code. members: whether a
    classifier shows its compartments; own: the line types a view with no `edges` list draws (none: every type); word: the
-   diagram's name in describe() */
-const CLASS_LOOK = { members: true, own: null, word: 'class diagram' };
+   diagram's name in describe(). The class view's own: its row's lines (model.md); another diagram's (a usage, a connector) only when listed */
+const CLASS_LINES = ['uml.Association', 'uml.Generalization', 'uml.InterfaceRealization', 'uml.Dependency', 'uml.CommentLink'];
+const CLASS_LOOK = { members: true, own: CLASS_LINES, word: 'class diagram' };
 // an element's accessible name: "Class Order (entity, abstract), 5 attributes, 3 operations", by its drawn name (pic: the
 // view's owners, owners.js); "Package sales, holding 4 elements"; "Package payments (closed)"
 function nodeName(n, pic, look = CLASS_LOOK) {
@@ -254,7 +259,7 @@ function drawnLines(model, view, own) {
   const at = classIndex(model), pic = ownersOn(model, view), shown = new Set(pic.ids), top = id => { const r = at.get(id); return r && r.owner ? top(r.owner.id) : id; };
   const list = Array.isArray(view.edges) ? [...new Set(view.edges.map(e => (typeof e === 'string' ? (at.get(e) || {}).x : e)))] : UML_ARR(model.edges).filter(e => !own || (UML_OBJ(e) && own.includes(e.type)));
   const lines = list.map(e => (typeof e === 'string' ? (at.get(e) || {}).x : e)).filter(e => UML_OBJ(e) && typeof e.id === 'string')
-    .map(e => ({ e, from: top(e.from), to: top(e.to) })).filter(({ from, to }) => shown.has(from) && shown.has(to));
+    .map(e => ({ e, from: top(e.from), to: top(e.to) })).filter(({ e, from, to }) => shown.has(from) && shown.has(to) && !(from === to && e.from !== e.to)); // two members of one owner: no loop on it
   return { at, pic, lines };
 }
 
@@ -297,7 +302,7 @@ const RULES = {
   'realization-target': 'an interface realization runs from a classifier to an interface',
   'interface-composite': 'an interface owns no part by composition',
   'composite-multiplicity': 'a composite end\'s multiplicity is at most 1',
-  'member-kinds': 'literals belong to enumerations; packages and comments have no members',
+  'member-kinds': 'literals belong to enumerations; packages, profiles, metaclass references and comments have no members',
   'comment-link': 'a comment link runs from a comment',
 };
 function classProblems(model) {
@@ -312,7 +317,7 @@ function classProblems(model) {
       if (seen.has(k)) say('member-names', `${path}.members[${j}]`, [x.id, seen.get(k), m.id], `${q(x.id)} has two members named "${m.label}" (${seen.get(k)}, ${m.id})`); else seen.set(k, m.id);
       if (m.type === 'uml.EnumerationLiteral' && x.type !== 'uml.Enumeration') say('member-kinds', `${path}.members[${j}]`, [x.id, m.id], `literal "${m.label}" is in ${q(x.id)}, which is not an enumeration`);
       const mult = (m.props || {}).multiplicity; if (UML_HAS(mult)) multRule(String(mult), `${path}.members[${j}].props.multiplicity`, [m.id], `${q(x.id)}.${m.label}`); });
-    if ((x.type === 'uml.Package' || x.type === 'uml.Comment') && ms.length) say('member-kinds', `${path}.members`, [x.id], `${q(x.id)} is a ${typeWord(x.type).toLowerCase()}, which has no members`);
+    if ((OWN_BOXES.includes(x.type) || x.type === 'uml.Comment' || x.type === 'uml.MetaclassReference') && ms.length) say('member-kinds', `${path}.members`, [x.id], `${q(x.id)} is a ${typeWord(x.type).toLowerCase()}, which has no members`);
   });
   function multRule(t, path, ids, what) { const b = multBounds(t);
     if (!b) say('multiplicity', path, ids, `${what}: [${t}] is not a multiplicity (1, *, 0..1, 1..*)`);
@@ -382,9 +387,9 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   boxes: (model, view) => ownersOn(model, view).boxes,
   owners: ownerChoices,
   member: { print: printMember, edit: memberEdit, add: memberAdd, holds: n => compartmentsOf(n).length > 0 }, // holds: the panel offers members (not on a comment or a package)
-  validate: (model, view) => [...classProblems(model), ...ownerProblems(model, view, drawnLines(model, view, null).lines)],
+  validate: (model, view) => [...classProblems(model), ...ownerProblems(model, view, drawnLines(model, view, CLASS_LINES).lines)],
   rules: { ...RULES, ...OWNER_RULES },
   describe: classDescribe,
 });
 
-export { CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, classProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
+export { CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, classProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };

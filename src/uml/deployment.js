@@ -4,7 +4,7 @@ import { SHAPE, r2 } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
 import './class.js'; // SHAPE.note, a comment's look
 import { lineInside, ownersOn, readingOrder } from './owners.js';
-import { SN_SAY, structProblems } from './structure.js'; // SHAPE.artifact and SHAPE.component too
+import { SN_SAY, STRUCT_RULES, structProblems } from './structure.js'; // SHAPE.artifact and SHAPE.component too
 
 /* ---------- the deployment diagram, uml.deployment (work package 5.5, notes/stage-5.md §10.3) ----------
    Nodes, devices and execution environments (UML's cube: a front face with a top and a right face 10 px deep), each a box
@@ -165,6 +165,7 @@ const DP_RULES = {
   'nest-kinds': 'a node, device or execution environment is owned by one of the three (an error), in a usual pair (a warning): an execution environment in any, a device in a node or a device, a node in a node',
   'path-ends': 'a communication path joins two nodes, devices or execution environments, neither holding the other',
   'manifest-ends': 'a manifestation runs from an artifact (an error), to a component (a warning)',
+  'own-boxes': STRUCT_RULES['own-boxes'],
   'line-inside': 'a line between a box and something it holds, or from an open box to itself, is not drawn (a deployment and a communication path: their own rules)',
 };
 const DP_USUAL = { 'uml.ExecutionEnvironment': DP_TARGETS, 'uml.Device': ['uml.Node', 'uml.Device'], 'uml.Node': ['uml.Node'] };
@@ -185,7 +186,7 @@ function dpProblems(model, view) {
       say('error', 'path-ends', path, ends, `${e.id} joins ${q(e.from)} (${kind(e.from)}) and ${q(e.to)} (${kind(e.to)}): a communication path joins two nodes, devices or execution environments`); });
   if (view) { const vi = DP_ARR(model.views).indexOf(view), pic = dpPic(model, view); // a deployment and a communication path: their own rules
     dpListed(view, pic).forEach(e => { if (!['uml.Deployment', 'uml.CommunicationPath'].includes(e.type) && dpInside(pic, e)) out.push(lineInside(view, vi, e, e.from, e.to, q)); }); }
-  return [...out, ...structProblems(model, view).filter(p => p.rule === 'manifest-ends')];
+  return [...out, ...structProblems(model, view).filter(p => p.rule === 'manifest-ends' || p.rule === 'own-boxes')];
 }
 
 /* ---- describe(): the view in sentences, each element by its accessible name in reading order, then each line ---- */

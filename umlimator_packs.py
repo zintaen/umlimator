@@ -142,7 +142,7 @@ def table(models):
     if os.environ.get("UMLIMATOR_NO_PACKS"):
         return {}
     rs, out = rows(), {}
-    for n in (n for m in models for n in [*lists(m.get("nodes")), *(n for v in lists(m.get("views")) if isinstance(v, dict) for n in lists(v.get("nodes")))]):
+    for n in (n for m in models for n in cards(m)):
         p, i = pick(n)
         if p not in rs or not isinstance(i, str) or not i:
             continue
@@ -163,6 +163,11 @@ def lists(x):
     return x if isinstance(x, list) else []
 
 
+def cards(m):
+    """A model's cards and each view's own."""
+    return [*lists(m.get("nodes")), *(n for v in lists(m.get("views")) if isinstance(v, dict) for n in lists(v.get("nodes")))]
+
+
 def check(model):
     """What only the cached pack knows, for `umlimator.py check` (§5.5): an id the pack lacks with the three nearest, an
     id an alias moved, and a model's iconPacks label other than the pin. Lines on stderr; nothing fails on them."""
@@ -172,7 +177,7 @@ def check(model):
         if p in rs and label != rs[p]["label"]:
             print(f"icons: the model's icons were chosen from the {p} pack's pin {label}; this release pins {rs[p]['label']}", file=sys.stderr)
     seen = set()
-    for n in lists(model.get("nodes")):
+    for n in cards(model):  # a view's own cards too, whose icons table() draws (audit 9)
         p, i = pick(n)
         if p not in rs or not isinstance(i, str) or (p, i) in seen:
             continue

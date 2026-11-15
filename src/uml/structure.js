@@ -2,6 +2,7 @@ import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { endLabels } from '../typed/draw.js';
 import { idTable } from '../core/registry.js';
+import { OWNER_RULES } from './owners.js';
 
 /* ---------- structure notation: what the component, deployment and composite structure types share (work package 5.3,
    notes/stage-5.md §4, §9.1) ----------
@@ -186,8 +187,10 @@ function portsDrawn(g, ports) {
 }
 
 /* ---- the shared rules (§10.1, §10.3): each problem { level, rule, path, message, ids }, as src/uml/flow.js's; with a view,
-   only a port whose owner it shows and a manifestation that touches what it shows ---- */
+   only a port whose owner it shows and a manifestation that touches what it shows; and its hand-written containers, which the
+   type's own boxes replace (notes/stage-2.md §4.1, 5) ---- */
 const STRUCT_RULES = {
+  'own-boxes': OWNER_RULES['own-boxes'],
   'port-owner': 'a port is a member of a component or a class',
   'manifest-ends': 'a manifestation runs from an artifact (an error), to a component (a warning)',
 };
@@ -206,6 +209,7 @@ function structProblems(model, view) {
     const f = at.get(e.from), t = at.get(e.to);
     if (!f || !SN_ARTIFACTS.includes(f.type)) say('error', 'manifest-ends', `edges[${i}]`, [e.id, e.from], `${e.id} runs from ${nm(f)}: a manifestation runs from an artifact`);
     if (!t || t.type !== 'uml.Component') say('warning', 'manifest-ends', `edges[${i}]`, [e.id, e.to], `${e.id} runs to ${nm(t)}: «manifest» is drawn to a component only`); });
+  if (view && SN_ARR(view.containers).length) say('warning', 'own-boxes', `views[${SN_ARR(model.views).indexOf(view)}].containers`, [view.id], `view ${JSON.stringify(view.id)} draws its own boxes; its hand-written containers are ignored`);
   return out;
 }
 

@@ -415,3 +415,12 @@ test('two messages of one id, one naming no lifeline: layout() draws the other, 
   const h = layout({ ...two, views: [{ id: 's', diagram: 'uml.sequence', nodeIds: ['a', 'b'], edges: [M('x', 'a', 'b', 'one'), M('x', 'b', 'a', 'two')] }] }, 's');
   assert.deepEqual(h.edges.map(e => e.aria), ['Message 1 of 2: a to b, one, call', 'Message 2 of 2: b to a, two, call']);
 });
+test('audit 9: create-once and delete-once let each operand of one alt create or delete a lifeline, as reply-once does', () => {
+  const mk = edges => ({ schemaVersion: 2, nodes: [{ id: 'app', type: 'uml.Lifeline' }, { id: 'sess', type: 'uml.Lifeline' }], edges: [],
+    views: [{ id: 'v', diagram: 'uml.sequence', nodeIds: ['app', 'sess'], edges, fragments: [ALT('f', 'f-a', 'f-b')] }] });
+  const at = (id, sort, parent) => ({ ...M(id, 'app', 'sess', sort), parent });
+  for (const e of [[at('m1', 'delete', 'f-a'), at('m2', 'async', 'f-b')], [at('m1', 'create', 'f-a'), at('m2', 'create', 'f-b')], [at('m1', 'delete', 'f-a'), at('m2', 'delete', 'f-b')]])
+    assert.deepEqual(validate(mk(e)).filter(p => /-once$/.test(p.rule)), [], e.map(x => x.props.sort).join(' / '));
+  // in one operand they still are errors
+  assert.deepEqual(validate(mk([at('m1', 'create', 'f-a'), at('m2', 'create', 'f-a')])).map(p => p.rule).filter(r => /-once$/.test(r)), ['create-once']);
+});

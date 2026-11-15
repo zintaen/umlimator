@@ -58,3 +58,21 @@ test('every page in examples/, the gallery the site opens on included, declares 
   const bare = readdirSync(dir).filter(f => f.endsWith('.html') && !/<html lang="[a-z]/.test(readFileSync(new URL(f, dir), 'utf8')));
   assert.deepEqual(bare, []);
 });
+
+test('conformance notes and the examples README agree with the code they describe (audit 9)', async () => {
+  const { diagramOf } = await import('../src/core/registry.js');
+  await import('../src/map/typed.js'); await import('../src/uml/state.js'); await import('../src/uml/object.js');
+  const { writeMermaidFlowchart } = await import('../src/readers/mermaid-flowchart.js');
+  const doc = p => readFileSync(new URL(p, import.meta.url), 'utf8'), json = p => JSON.parse(doc(p));
+  const n = Object.keys(diagramOf({ diagram: 'uml.state-machine' }).rules).length;
+  assert.match(doc('../docs/conformance/uml-state-machine.md'), new RegExp(`its ${n} rules`));
+  const obj = doc('../docs/conformance/uml-object.md');
+  for (const r of Object.keys(diagramOf({ diagram: 'uml.object' }).rules)) assert.ok(obj.includes('`' + r + '`'), r);
+  // the flowchart writer's bracket lines (a process is `id[label]`) are named so in the note
+  assert.match(writeMermaidFlowchart(json('../examples/returns-flowchart.json')), /^\s*\S+\[[^/[(]/m);
+  assert.match(doc('../docs/conformance/flowchart.md'), /Each symbol in Mermaid's bracket form/);
+  const views = new Set(json('../examples/sales-classes.json').views.map(v => v.id));
+  for (const [, id] of doc('../examples/README.md').matchAll(/sales-classes `([^`]+)`/g)) assert.ok(views.has(id), id);
+  for (const [, id] of doc('../examples/README.md').matchAll(/sales-classes `domain` and `([^`]+)`/g)) assert.ok(views.has(id), id);
+  for (const [, id] of doc('../examples/README.md').matchAll(/and `([^`]+)`, with its subject/g)) assert.ok(views.has(id), id);
+});
