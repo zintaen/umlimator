@@ -88,6 +88,9 @@ try {
   a.addEventListener('umlimator:open', stop);
   fire('.node[data-id="api"]', 'dblclick'); await wait(300);
   check('umlimator:open: preventDefault() keeps the view', ev.some(x => x[0] === 'umlimator:open' && x[1].view === 'api') && a.map.view === 'overview');
+  { const opens = () => ev.filter(x => x[0] === 'umlimator:open').length, n0 = opens(), at = sr(a).querySelector('.node[data-id="api"] .n-label');
+    [['click', 1], ['click', 2], ['dblclick', 2]].forEach(([t, detail]) => at.dispatchEvent(new MouseEvent(t, { bubbles: true, composed: true, detail }))); await wait(300);
+    check('a double-click in the element\'s shadow root opens its card once, not again from the document (audit 10)', opens() - n0 === 1, opens() - n0); }
   a.removeEventListener('umlimator:open', stop);
   fire('.node[data-id="api"]', 'dblclick');
   check('umlimator:viewchange follows an open that goes ahead', await until(() => ev.some(x => x[0] === 'umlimator:viewchange' && x[1].view === 'api' && x[1].from === 'overview')) && a.map.view === 'api');

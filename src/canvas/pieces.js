@@ -108,12 +108,12 @@ function pieces(X, el, o) {
   // a model is data: a link it names is http(s), mailto, file or relative, never javascript: (audit 7). Cleaned as a browser
   // reads a URL first (tabs and newlines dropped, controls and spaces trimmed), so "java\tscript:" is caught too
   const safeUrl = u => (u = String(u ?? '').replace(/[\t\n\r]/g, '').replace(/^[\0- ]+|[\0- ]+$/g, ''), /^(https?|mailto|file):/i.test(u) || !/^[a-z][\w+.-]+:/i.test(u) ? u : '');
-  const authorChip = login => { const A = (X().ctx().D.authors || {})[login] || {};
+  const authorChip = login => { login = String(login); const A = (X().ctx().D.authors || {})[login] || {};
     return `<a class="author" href="${esc(safeUrl(A.url) || 'https://github.com/' + login)}" target="_blank" rel="noopener">${A.avatar ? `<img src="${esc(A.avatar)}" alt="">` : `<i>${esc([...login].slice(0, 2).join('').toUpperCase())}</i>`}<span>${esc(A.name || login)} <b>@${esc(login)}</b></span></a>`; };
   const focused = () => { const a = el.panel.getRootNode().activeElement; return a && el.panel.contains(a) ? a : null; };
   function show(nid) {
     const { D, N, V, nodeIn, opensOf, kidCount, unfoldable, viewsWith, viewEdges } = X().ctx(), geo = X().geo(), cur = X().view(), panel = el.panel;
-    const root = D.meta && D.meta.root ? D.meta.root.replace(/\/$/, '') : '';
+    const root = D.meta && D.meta.root ? String(D.meta.root).replace(/\/$/, '') : '';
     const base = D.sourcesBase ? String(D.sourcesBase).replace(/\/$/, '') + '/' : '';
     const srcPath = p => p.replace(/:\d+(-\d+)?$/, '');
     // meta.root is the repo root relative to this page (older pages: absolute). `~/…` sources live
