@@ -424,3 +424,17 @@ test('audit 9: create-once and delete-once let each operand of one alt create or
   // in one operand they still are errors
   assert.deepEqual(validate(mk([at('m1', 'create', 'f-a'), at('m2', 'create', 'f-a')])).map(p => p.rule).filter(r => /-once$/.test(r)), ['create-once']);
 });
+
+test('audit 10: what create-once and delete-once let one alt\'s operands do is drawn so: no message above a head or below the stem\'s end, a cross at each delete', () => {
+  const mk = edges => ({ schemaVersion: 2, nodes: [{ id: 'app', type: 'uml.Lifeline' }, { id: 'sess', type: 'uml.Lifeline' }], edges: [],
+    views: [{ id: 'v', diagram: 'uml.sequence', nodeIds: ['app', 'sess'], edges: [M('m0', 'app', 'app', 'call'), ...edges], fragments: [ALT('f', 'f-a', 'f-b')] }] });
+  const at = (id, sort, parent) => ({ ...M(id, 'app', 'sess', sort), parent });
+  // a use in one operand and the create in a later one: the head is at the create, under the use, so an error again
+  assert.deepEqual(validate(mk([at('m1', 'call', 'f-a'), at('m2', 'create', 'f-b')])).map(p => p.rule).filter(r => /-once$/.test(r)), ['create-once']);
+  for (const [es, kills] of [[[at('m1', 'delete', 'f-a'), at('m2', 'async', 'f-b')], 1], [[at('m1', 'delete', 'f-a'), at('m2', 'delete', 'f-b')], 1], [[at('m1', 'create', 'f-a'), at('m2', 'create', 'f-b')], 0]]) {
+    const m = mk(es), g = layout(m, 'v'), s = g.ta.stems.find(x => x.head === 'sess'), h = g.ta.heads.find(x => x.id === 'sess'), why = es.map(x => x.props.sort).join(' / ');
+    assert.deepEqual(validate(m).filter(p => /-once$/.test(p.rule)), [], why);
+    g.edges.filter(e => e.to === 'sess').forEach(e => { const y = e.pts[e.pts.length - 1][1]; assert.ok(y >= h.y && y <= s.y2 + 0.01, `${why}: ${e.id} at ${y}, the lifeline from ${h.y} to ${s.y2}`); });
+    assert.equal((s.kills || []).length, kills, why); assert.equal(s.cross, es[1].props.sort === 'delete', why);
+  }
+});

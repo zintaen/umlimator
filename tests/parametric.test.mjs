@@ -159,7 +159,8 @@ test('validators: each rule passes the examples and fails on a model that breaks
   const none = structuredClone(M19); delete none.views[0].subject;
   assert.deepEqual(validate(none).filter(p => p.rule === 'subject-kind').map(p => p.level), ['warning']);
   const m = structuredClone(M19); RULE_CASES['binding-ends'][0](m);
-  assert.deepEqual(validate(m).map(p => [p.rule, p.path, p.message]), [['binding-ends', 'edges[6].props.ends.to.part', 'binding-ends: bind-eco-range\'s to end goes through "ecoRange", not a constraint property of "EBike": a binding reaches a parameter through a constraint property'],
+  // audit 10: both its ends are now on ecoRange, one through a port: not drawn, and said
+  assert.deepEqual(validate(m).map(p => [p.rule, p.path, p.message]), [['connector-drawn', 'edges[6]', 'connector-drawn: bind-eco-range runs from "ecoRange" to itself through its ports, which this view does not draw: no line runs from a box or a part to itself'], ['binding-ends', 'edges[6].props.ends.to.part', 'binding-ends: bind-eco-range\'s to end goes through "ecoRange", not a constraint property of "EBike": a binding reaches a parameter through a constraint property'],
     ['parameter-bound', 'nodes[2].members[0]', 'parameter-bound: parameter "range" of "eco" has no binding: nothing gives it a value']]);
   const o = structuredClone(M19); o.nodes.push({ id: 'other', type: 'sysml.Block', label: 'Other', members: [{ id: 'other.v', type: 'sysml.ValueProperty', label: 'v' }] });
   o.edges.push(bind('far', 'other.v', 'range-equation.range', { to: { part: 'ebike.eco' } }));

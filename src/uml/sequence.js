@@ -61,13 +61,17 @@ function sqInput(model, view, X = sqIndex(model, view)) {
       return { id: o.id, kind: 'span', a: ends[0], b: ends[1], parent: o.parent, ...useSize(String(o.el.label ?? '')) }; }
     const t = SQ_HAS(o.el.label) ? String(o.el.label) : '';
     return { id: o.id, kind: o.from === o.to ? 'self' : 'line', a: o.from, b: o.to, parent: o.parent, ...(t ? { w: Math.ceil(textW(t, SQ_LABEL.px) + SQ_LABEL.pad), h: SQ_LABEL.h } : { w: 0, h: 0 }) }; });
-  const first = sort => { const at = new Map(); X.occ.forEach(o => { if (o.message && o.sort === sort && !at.has(o.to)) at.set(o.to, o.i); }); return at; };
-  const born = first('create'), ends = first('delete');
+  // born: a lifeline's first create; its deletes, each in its own operand of an alt (delete-once): the stem ends at the last,
+  // unless a message reaches the lifeline after it (in another operand), and every other is a cross on the stem (audit 10)
+  const born = new Map(), dels = new Map(), last = new Map();
+  X.occ.forEach(o => { if (!o.message) return; [o.from, o.to].forEach(id => last.set(id, Math.max(last.get(id) ?? -1, o.i)));
+    if (o.sort === 'create' && !born.has(o.to)) born.set(o.to, o.i); if (o.sort === 'delete') dels.set(o.to, [...(dels.get(o.to) || []), o.i]); });
+  const ends = new Map([...dels].map(([id, d]) => [id, Math.max(...d)]).filter(([id, d]) => last.get(id) === d));
   const depth = f => X.chain(f.parent).length;
   const groups = X.frags.map((f, k) => [f, depth(f), k]).sort((a, b) => a[1] - b[1] || a[2] - b[2]).map(([f]) => ({ id: f.id, parent: f.parent ?? null, tag: tagSize(sqOperator(f)),
     parts: SQ_ARR(f.members).filter(o => SQ_OBJ(o) && typeof o.id === 'string').map(o => ({ id: o.id, guard: guardSize(o.label) })) }));
   const bars = activationBars(model, view).map(b => ({ head: b.head, from: (X.byId.get(b.from) || {}).i, to: (X.byId.get(b.to) || {}).i, depth: b.depth }));
-  return { heads: heads.map(n => ({ id: n.id, ...SHAPE.lifeline.size({ label: sqHeadText(n), stereotypes: sqStereo(n) }), born: born.get(n.id) ?? null, ends: ends.get(n.id) ?? null })), rows, groups, bars };
+  return { heads: heads.map(n => ({ id: n.id, ...SHAPE.lifeline.size({ label: sqHeadText(n), stereotypes: sqStereo(n) }), born: born.get(n.id) ?? null, ends: ends.get(n.id) ?? null, kills: dels.get(n.id) || [] })), rows, groups, bars };
 }
 
 /* run(model, view): svgOf's geometry. Nodes: the heads (shape lifeline, with the stem's hit strip), the frames, operands and
@@ -110,7 +114,7 @@ function sqDraw(g, kit) {
     + o.stems.map(s => `<path class="seq-stem" d="M${r2(s.x)} ${r2(s.y1)}V${r2(s.y2)}" stroke="var(--um-muted)" stroke-width="1.2" stroke-dasharray="5 4"/>`).join('')
     + o.spans.map(s => `<rect class="seq-use" x="${r2(s.x)}" y="${r2(s.y)}" width="${r2(s.w)}" height="${r2(s.h)}" fill="var(--um-stage-bg)"/>${frame(s.x, s.y, s.w, s.h)}`).join('')
     + o.bars.map(b => `<rect class="seq-bar" x="${r2(b.x)}" y="${r2(b.y)}" width="${r2(b.w)}" height="${r2(b.h)}" fill="var(--um-stage-bg)" stroke="var(--um-text)" stroke-width="1.2"/>`).join('')
-    + o.stems.filter(s => s.cross).map(s => `<path class="seq-cross" d="M${r2(s.x - 8)} ${r2(s.y2 - 8)}l16 16m0 -16l-16 16" stroke="var(--um-text)" stroke-width="2"/>`).join('') + '</g>';
+    + o.stems.flatMap(s => [...(s.cross ? [s.y2] : []), ...(s.kills || [])].map(y => `<path class="seq-cross" d="M${r2(s.x - 8)} ${r2(y - 8)}l16 16m0 -16l-16 16" stroke="var(--um-text)" stroke-width="2"/>`)).join('') + '</g>';
   return { under, over: '' };
 }
 

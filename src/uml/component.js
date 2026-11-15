@@ -44,7 +44,7 @@ function cpKind(I, view, e) {
   if (e.type === 'uml.InterfaceRealization') return cpBall(I, view, e.to) ? 'stem' : 'realization';
   if (e.type === 'uml.Usage') return cpBall(I, view, e.to) ? 'socket' : 'usage';
   if (e.type === 'uml.Connector') return cpProps(e).kind === 'delegation' ? 'delegation' : 'assembly';
-  return { 'uml.ComponentRealization': 'component-realization', 'uml.Dependency': 'dependency', 'uml.Manifestation': 'manifestation', 'uml.CommentLink': 'comment-link' }[e.type] || 'dependency';
+  return { __proto__: null, 'uml.ComponentRealization': 'component-realization', 'uml.Dependency': 'dependency', 'uml.Manifestation': 'manifestation', 'uml.CommentLink': 'comment-link' }[e.type] || 'dependency';
 }
 // each kind: its ends and stroke (src/typed/draw.js's ENDS), its keyword, its word, and what the legend says of it
 const CP_LOOK = {
@@ -64,7 +64,7 @@ const CP_LOOK = {
 // a name is qualified by its components and packages only: an artifact nested in a node (deployed on it, as the
 // deployment view draws it) is not named by the node here (0.22.0, the Bookshop atlas); nor is a box's title (audit 5)
 const CP_BOX = { boxTypes: ['uml.Component', 'uml.Package'], qualifyBy: ['uml.Component', 'uml.Package'], shape: x => (x.type === 'uml.Component' ? 'component' : 'package'), word: x => (x.type === 'uml.Component' ? 'Component' : 'Package') };
-const CP_WORD = { 'uml.Component': 'component', 'uml.Interface': 'interface', 'uml.Artifact': 'artifact', 'uml.Package': 'package', 'uml.Comment': 'comment', 'uml.Port': 'port' };
+const CP_WORD = { __proto__: null, 'uml.Component': 'component', 'uml.Interface': 'interface', 'uml.Artifact': 'artifact', 'uml.Package': 'package', 'uml.Comment': 'comment', 'uml.Port': 'port' };
 function cpPic(model, view) {
   const I = cpIndex(model), pic = ownersOn(model, view, CP_BOX), shown = new Set(pic.ids);
   // each line the view lists (or with no list each of this type's kinds) whose ends, a port taken to its owner, it shows
@@ -337,7 +337,7 @@ const CP_TYPE = registerDiagramType('uml.component', {
   describe: cpDescribe,
   edits: { connect: cpConnect, moveTo: cpMoveTo, add: cpAdd, member: cpMember, key: cpKey, remove: cpRemove },
   // the PDF's tables (§11): a component's ports, each with what it provides and requires; an interface's operations; what an artifact manifests
-  word: (model, id) => { const x = cpIndex(model).N.get(id); return x ? ({ 'uml.Component': 'Component', 'uml.Interface': 'Interface', 'uml.Artifact': 'Artifact', 'uml.Package': 'Package', 'uml.Comment': 'Comment' }[x.type] || null) : null; },
+  word: (model, id) => { const x = cpIndex(model).N.get(id); return x ? ({ __proto__: null, 'uml.Component': 'Component', 'uml.Interface': 'Interface', 'uml.Artifact': 'Artifact', 'uml.Package': 'Package', 'uml.Comment': 'Comment' }[x.type] || null) : null; },
   rows: (model, view, id) => { const pic = cpPic(model, view), x = pic.I.N.get(id); if (!x) return null;
     // then the connectors from it or its ports with a port at an end (0.22.0), which the Lines table leaves out: a port is no card
     if (x.type === 'uml.Component') return [...cpPortsOf(x).map(p => cpNodeName(model, view, pic, p.id, 1).slice(5)),

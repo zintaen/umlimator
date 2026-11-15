@@ -105,9 +105,11 @@ function csPic(model, view) {
   const within = (b, n) => b === sid ? n !== sid && (partOf.get(n) === S || uses.includes(n)) : collabs.some(c => c.x.id === b && partOf.get(n) === c.x);
   const E = new Map(); CS_ARR(model && model.edges).forEach(e => { if (CS_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); });
   const list = Array.isArray(view && view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)))] : [...E.values()].filter(e => CS_LINES.includes(e.type));
-  const loops = []; // connectors between two ports of one box: not drawn (the router has no line from a box to itself), warned
+  // connectors from a box, or from a port of a part or of the subject, to itself: not drawn (the router's loop on a node ignores
+  // its ports, and a box has none), warned (audit 10)
+  const loops = new Map();
   const lines = list.filter(CS_OBJ).map(e => { const f = end(e, 'from'), t = end(e, 'to'); if (!f || !t) return null;
-    if (boxed.has(f.node) && f.node === t.node) { loops.push(e.id); return null; }
+    if (f.node === t.node && (boxed.has(f.node) || f.port || t.port)) { loops.set(e.id, f.node); return null; }
     // a line from a box to what it holds is drawn only from the box's port, inward (§5)
     const inner = boxed.has(f.node) && within(f.node, t.node) ? 'from' : boxed.has(t.node) && within(t.node, f.node) ? 'to' : null;
     if (inner && !(inner === 'from' ? f : t).port) return null;
@@ -135,7 +137,7 @@ function csNodeName(P, id) {
   return `${csWord(x.type)} ${csName(x)}${why}${id === P.sid && P.sPorts.length ? ', ' + csPlural(P.sPorts.length, 'port') : ''}`;
 }
 const csEndName = (P, x) => (x.part != null ? `${csName(P.mem.get(x.id).m)} of ${csName(P.el(x.part))}` : x.port != null ? `${csName(P.mem.get(x.id).m)} of ${csName(P.S)}` : csName(P.el(x.id)));
-const CS_LINE_WORD = { 'uml.Connector': 'Connector', 'uml.RoleBinding': 'Role binding', 'uml.CommentLink': 'Comment link' };
+const CS_LINE_WORD = { __proto__: null, 'uml.Connector': 'Connector', 'uml.RoleBinding': 'Role binding', 'uml.CommentLink': 'Comment link' };
 const csLineName = (P, { e, f, t }) => e.type === 'uml.RoleBinding' ? `Role binding from ${csEndName(P, f)} to ${csEndName(P, t)}${CS_HAS(e.label) ? ', as ' + e.label : ''}`
   : `${CS_LINE_WORD[e.type] || 'Line'} from ${csEndName(P, f)} to ${csEndName(P, t)}${CS_HAS(e.label) ? ': ' + e.label : ''}`;
 // the structure a connector is drawn in: its from end's part's or role's, else its from end's owner (a port of the subject)
@@ -148,7 +150,7 @@ function csOrder(P) {
   P.rest.forEach(id => { out.push(id); if (id === P.sid) out.push(...P.sPorts.map(q => q.id)); });
   return [...out, ...P.lines.map(l => l.e.id)];
 }
-const CS_LOOK = { 'uml.Connector': { from: 'none', to: 'none' }, 'uml.RoleBinding': { from: 'none', to: 'none', dashed: true }, 'uml.CommentLink': { from: 'none', to: 'none', dashed: true } };
+const CS_LOOK = { __proto__: null, 'uml.Connector': { from: 'none', to: 'none' }, 'uml.RoleBinding': { from: 'none', to: 'none', dashed: true }, 'uml.CommentLink': { from: 'none', to: 'none', dashed: true } };
 const CS_SAYS = { 'uml.Connector': 'a link between parts and ports at run time', 'uml.RoleBinding': 'the part plays the named role of the collaboration', 'uml.CommentLink': 'what a comment is about' };
 const csLegend = lines => Object.keys(CS_SAYS).filter(t => lines.some(l => l.e.type === t)).map(t => `<span class="lgi" title="${esc(CS_LINE_WORD[t] + ' — ' + CS_SAYS[t])}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true">`
   + `<path d="M2 8H26" stroke="var(--um-muted)" stroke-width="1.4"${CS_LOOK[t].dashed ? ' stroke-dasharray="3 2"' : ''}/></svg><b>${esc(CS_LINE_WORD[t])}</b><span>${esc(CS_SAYS[t])}</span></span>`);
@@ -244,7 +246,7 @@ const CS_RULES = {
   'part-multiplicity': 'a part\'s multiplicity is one: 1, *, 0..1, 1..*, its lower bound not above its upper',
   'connector-part': 'an end\'s part is a part of the subject, and the end is a port of that part\'s type',
   'connector-scope': 'a connector\'s ends lie in one structure: the subject\'s ports and parts; or one collaboration\'s roles',
-  'connector-drawn': 'a connector between two ports of the subject is not drawn: the box has no line to itself',
+  'connector-drawn': 'a connector between two ports of the subject, or of one part, is not drawn: no line runs from a box or a part to itself',
   'binding-ends': 'a role binding runs from a part of the subject to a collaboration use of it (a view with no subject: a warning)',
   'binding-role': 'a role binding\'s label names a role of the collaboration its use names',
   'collaboration-named': 'a collaboration use\'s collaboration names a collaboration of the model',
@@ -282,7 +284,7 @@ function csProblems(model, view) {
       // UML 2.5.1 §11.2: a connector's end is a part or a port, never the structured classifier itself
       if (bare) say('error', 'connector-scope', `${path}.${bare}`, [e.id, S.id], `${e.id}'s ${bare} end is ${q(S.id)} itself: a connector joins the subject's ports and parts`);
       else if (!a || a !== b) say('error', 'connector-scope', path, [e.id, e.from, e.to], `${e.id} joins ${q(e.from)} and ${q(e.to)}, which lie in ${a && b ? 'two structures' : 'no structure of this view'}: its ends are the subject's ports and parts, or one collaboration's roles`);
-      else if (P.loops.includes(e.id)) say('warning', 'connector-drawn', path, [e.id, S.id], `${e.id} joins two ports of ${q(S.id)}, which this view does not draw: the box has no line to itself`);
+      else if (P.loops.has(e.id)) say('warning', 'connector-drawn', path, [e.id, P.loops.get(e.id)], `${e.id} runs from ${q(P.loops.get(e.id))} to itself through its ports, which this view does not draw: no line runs from a box or a part to itself`);
     }
     if (e.type === 'uml.RoleBinding' && (P.at.get(e.to) || {}).type === 'uml.CollaborationUse' && P.ids.includes(e.to) || e.type === 'uml.RoleBinding' && S && owner(e.from) === S) {
       const u = P.at.get(e.to);
@@ -344,15 +346,16 @@ function csMoveTo(model, view, id, at) {
 // into the selected collaboration; a collaboration use into the subject. Anything else: the default
 function csAdd(model, view, entry, label, at) {
   if (!CS_OBJ(entry)) return null;
+  const PART = { type: 'uml.Property' }; // the Part and Role entries add a part, whatever the row says (audit 10)
   const P = csPic(model, view), sel = CS_ARR(at && at.sel).map(id => csOwnerOf(P, id)).map(id => P.el(id)).filter(Boolean)[0] || null, t = String(label ?? '').trim();
-  const member = (o, row, say) => { const r = csRow(o, row); if (r.error) return r; const c = [{ op: 'add', element: { id: csFresh(model, `${o.id}.${r.label.toLowerCase()}`), ...r }, owner: o.id }]; return say ? { commands: c, say } : c; };
+  const member = (o, row, say, was) => { const r = csRow(o, row, was); if (r.error) return r; const c = [{ op: 'add', element: { id: csFresh(model, `${o.id}.${r.label.toLowerCase()}`), ...r }, owner: o.id }]; return say ? { commands: c, say } : c; };
   if (entry.type === 'uml.Port') {
     if (sel && P.partOf.has(sel.id)) { const T = P.typeOf(sel); if (!T) return { error: `${csName(sel)}'s type, ${JSON.stringify(CS_PROPS(sel).valueType ?? null)}, names no one class or component to add a port to` };
       return member(T, 'port ' + t, `Added the port to ${csName(T)}, the type of ${csName(sel)}: every part of that type shows it`); }
     return sel && CS_TYPED.includes(sel.type) ? member(sel, 'port ' + t) : { error: 'Select the subject, a part, a class or a component to add a port to' };
   }
-  if (entry.type === 'uml.Property' && entry.label === 'Role') return sel && sel.type === 'uml.Collaboration' ? member(sel, t) : { error: 'Select a collaboration to add a role to' };
-  if (entry.type === 'uml.Property') return P.S ? member(P.S, t) : { error: 'This view has no subject to add a part to' };
+  if (entry.type === 'uml.Property' && entry.label === 'Role') return sel && sel.type === 'uml.Collaboration' ? member(sel, t, null, PART) : { error: 'Select a collaboration to add a role to' };
+  if (entry.type === 'uml.Property') return P.S ? member(P.S, t, null, PART) : { error: 'This view has no subject to add a part to' };
   if (entry.type === 'uml.CollaborationUse') { if (!P.S || !CS_TYPED.includes(P.S.type)) return { error: 'A collaboration use goes in a class or component subject' };
     const r = csParse(t); if (r.error || r.multiplicity) return { error: 'A collaboration use is name : Collaboration' };
     return [{ op: 'add', element: { id: csFresh(model, r.label.toLowerCase()), type: 'uml.CollaborationUse', label: r.label, parent: P.sid, props: r.valueType ? { collaboration: r.valueType } : {} }, view: view.id }]; }
@@ -424,11 +427,13 @@ const CS_TYPE = registerDiagramType('uml.composite-structure', {
   word: (model, id) => { const P = csPic(model, {}), q = P.mem.get(id), x = q ? q.m : P.at.get(id); if (!x) return null;
     return x.type === 'uml.Property' ? (q.owner.type === 'uml.Collaboration' ? 'Role' : 'Part') : x.type === 'uml.Port' ? 'Port' : x.type === 'uml.CollaborationUse' ? 'Collaboration use' : null; },
   rows: (model, view, id) => { const P = csPic(model, view), q = P.mem.get(id);
-    if (q && q.m.type === 'uml.Property') return [csPartText(q.m), CS_PROPS(q.m).aggregation === 'shared' ? 'shared' : 'composite'];
+    // a part with its aggregation; a role has none (csNodeName, audit 10)
+    const agg = m => (CS_PROPS(m).aggregation === 'shared' ? 'shared' : 'composite');
+    if (q && q.m.type === 'uml.Property') return q.owner.type === 'uml.Collaboration' ? [csPartText(q.m)] : [csPartText(q.m), agg(q.m)];
     const u = P.at.get(id); if (!u) return null;
     // the subject or an open collaboration (0.22.0): its members, a part or role with its aggregation, then the connectors
     // among them, which the Lines table leaves out (their ends are members, not cards)
-    if (id === P.sid && P.S || P.collabs.some(c => c.x.id === id)) return [...CS_ARR(u.members).filter(CS_OBJ).map(m => CS_MEMBER.print(m) + (m.type === 'uml.Property' && id === P.sid ? `, ${CS_PROPS(m).aggregation === 'shared' ? 'shared' : 'composite'}` : '')),
+    if (id === P.sid && P.S || P.collabs.some(c => c.x.id === id)) return [...CS_ARR(u.members).filter(CS_OBJ).map(m => CS_MEMBER.print(m) + (m.type === 'uml.Property' && id === P.sid && u.type !== 'uml.Collaboration' ? `, ${agg(m)}` : '')),
       ...P.lines.filter(l => l.e.type === 'uml.Connector' && csStructOf(P, l.e) === u).map(l => csLineName(P, l))];
     if (u.type !== 'uml.CollaborationUse') return null;
     return [...(CS_HAS(CS_PROPS(u).collaboration) ? [String(CS_PROPS(u).collaboration)] : []),

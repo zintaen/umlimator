@@ -367,7 +367,7 @@ const describeAs = look => (model, viewId) => {
         const verb = agg === 'composite' ? 'composed of' : agg === 'shared' ? 'aggregates' : whole === 'composite' ? 'part of' : whole === 'shared' ? 'held by' : 'associated with';
         said.push(`${verb} ${nm(far === 'to' ? t : f)}${end(e, far)}${stereoText(e) ? ' ' + stereoText(e) : ''}${UML_HAS(e.label) ? ` ("${e.label}")` : ''}`); }
       else if (f !== id) return;
-      else { const verb = { 'uml.Generalization': 'a kind of', 'uml.InterfaceRealization': 'realizes', 'uml.Dependency': 'depends on', 'uml.PackageMerge': 'merges', 'uml.ProfileApplication': 'applies', 'uml.CommentLink': 'about',
+      else { const verb = { __proto__: null, 'uml.Generalization': 'a kind of', 'uml.InterfaceRealization': 'realizes', 'uml.Dependency': 'depends on', 'uml.PackageMerge': 'merges', 'uml.ProfileApplication': 'applies', 'uml.CommentLink': 'about',
         'uml.Usage': 'uses', 'uml.Realization': 'realizes', 'uml.Abstraction': 'abstracts', 'uml.Extension': 'extends',
         'uml.PackageImport': keyword(e) === '«access»' ? 'accesses' : 'imports' }[e.type] || 'linked to'; // and the stereotypes and label the line draws (audit 5); any other kind it draws too (audit 6)
         said.push(`${verb} ${nm(t)}${stereoText(e) ? ' ' + stereoText(e) : ''}${UML_HAS(e.label) ? ` ("${e.label}")` : ''}`); } });

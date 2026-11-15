@@ -74,8 +74,13 @@ def not_objects(d):
     out = [f"{k} is not a list" for k in ("nodes", "edges", "views") if k in d and not isinstance(d[k], list)]
     out += [f"{k}[{i}] is not an object" for k in ("nodes", "edges", "views") for i, x in enumerate(lst(d.get(k))) if not isinstance(x, dict)]
     out += ["meta is not an object"] if "meta" in d and not isinstance(d["meta"], dict) else []
+    seen = set()
     for i, v in ((i, v) for i, v in enumerate(lst(d.get("views"))) if isinstance(v, dict)):
         out += [f"views[{i}].id is not a string"] if "id" in v and not isinstance(v["id"], str) else []  # the page's keys are strings (audit 6)
+        # none, empty or repeated: validate() refuses them, and stills, check and pdf read the page by view id (audit 10)
+        out += [f"views[{i}].id: a view needs an id"] if v.get("id", "") == "" else []
+        out += [f'views[{i}].id "{v["id"]}" is used twice'] if isinstance(v.get("id"), str) and v["id"] in seen else []
+        seen.add(v.get("id") if isinstance(v.get("id"), str) else None)
         out += [f"views[{i}].{k} is not a list" for k in ("nodes", "nodeIds", "edges", "containers", "stepIds", "browserOrder", "intake", "tour")
                 if k in v and not isinstance(v[k], list)]
         out += [f"views[{i}].{k}[{j}] is not an object" for k in ("nodes", "containers", "intake") for j, n in enumerate(lst(v.get(k))) if not isinstance(n, dict)]
@@ -467,8 +472,10 @@ def render(a, model, show=print):
     chk = rep.get("check", {})
     if chk.get("errors"):  # a check that timed out or never reported is not a clean check
         sys.exit(f"{a.out} is written, but its check did not complete: " + "; ".join(chk["errors"]))
-    said = {"out": str(Path(a.out).resolve()), "bytes": rep.get("bytes"), "checked": not a.no_check, "counts": chk.get("counts"),
-            "problems": chk.get("overlaps", []), "errors": chk.get("errors", [])}
+    if chk.get("skipped"):  # no Chrome: the engine drew no check, so none is claimed (audit 10)
+        print(f"{a.out} is written, but its layout check was skipped: {chk['skipped']}", file=sys.stderr)
+    said = {"out": str(Path(a.out).resolve()), "bytes": rep.get("bytes"), "checked": not (a.no_check or chk.get("skipped")), "counts": chk.get("counts"),
+            "problems": chk.get("overlaps", []), "errors": chk.get("errors", []), **({"skipped": chk["skipped"]} if chk.get("skipped") else {})}
     show(json.dumps(said, indent=1))
     return said
 
@@ -553,10 +560,12 @@ def diff_since(a):
     changed = git("diff", "--name-only", "-z", "--no-renames", a.base, "--", *(a.models or ["*.json"]))
     if changed.returncode:
         sys.exit(changed.stderr.strip())
+    # a new model not yet added to git is a working-tree change too, named from the top as diff's are (audit 10)
+    new = git("ls-files", "-z", "--others", "--exclude-standard", "--full-name", "--", *(a.models or ["*.json"]))
     top = Path(git("rev-parse", "--show-toplevel").stdout.strip())  # git names files from the top, wherever diff runs
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     done, md, stems = [], ["<!-- umlimator-diff -->", "### Map changes", ""], set()
-    for name in filter(None, changed.stdout.split("\0")):
+    for name in filter(None, (changed.stdout + new.stdout).split("\0")):
         old = subprocess.run(["git", "show", f"{a.base}:{name}"], capture_output=True)  # bytes: a file need not be UTF-8
         texts = (old.stdout if old.returncode == 0 else None, (top / name).read_bytes() if (top / name).is_file() else None)
         fname = flat(name.replace("`", "'"), code=True)  # the file's name in the summary: a code span of its own
@@ -565,6 +574,8 @@ def diff_since(a):
         # does not parse (a tsconfig.json with comments) is not a model
         why = [f"{at} is not valid JSON ({e})" for at, e, t, other in ((f"its version at {a.base}", e1, texts[0], after), ("it", e2, texts[1], before))
                if e and (other or b'"nodes"' in t and b'"views"' in t)]
+        if not why and before and texts[1] is not None and after is None:  # a key mistyped: not a deletion (audit 10)
+            why = ["it is no longer a map model (its nodes and views are not both lists)"]
         if why:
             done.append({"file": name, "error": "; ".join(why)})
             md += [f"**`{fname}`**: cannot be read: " + flat("; ".join(why)), ""]
@@ -611,9 +622,13 @@ def flat(s, code=False):
     """A model's words (labels, view ids) for one Markdown line of the summary a bot posts: one line, read as written (no
     tag, emphasis or link of GitHub's: List<Order> stays whole), and no backtick that opens a code block. In a code span
     (`code`) only the line: a code span shows an escape as it is. An @ is followed by a word joiner, so a label such as
-    @Transactional or "calls @ops" mentions (notifies) no one."""
+    @Transactional or "calls @ops" mentions (notifies) no one; so is a # or GH- before a digit, so "Order #42", owner/repo#7
+    or GH-12 links (and cross-references) no issue."""
     s = re.sub(r"\s*[\r\n]+\s*", " ", str(s))
-    return s if code else re.sub(r"([\\`*_\[\]~|])", r"\\\1", html.escape(s, quote=False)).replace("@", "@\u2060")
+    if code:
+        return s
+    s = re.sub(r"([\\`*_\[\]~|])", r"\\\1", html.escape(s, quote=False)).replace("@", "@\u2060")
+    return re.sub(r"(#|\bGH-)(?=\d)", "\\1\u2060", s, flags=re.I)
 
 
 MARKS = {"added": "#1a7f37", "changed": "#9a6700", "removed": "#cf222e"}
@@ -809,7 +824,7 @@ def page_data(page):
 
 def views_of(page):
     data = page_data(page)[0]
-    return [v["id"] for v in (data.get("views") or data.get("map", {}).get("views") or [])]
+    return [v["id"] for v in (data.get("views") or data.get("map", {}).get("views") or []) if isinstance(v, dict) and isinstance(v.get("id"), str)]
 
 
 def pick(page, spec):

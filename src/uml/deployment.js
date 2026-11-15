@@ -25,7 +25,7 @@ const DP_LINES = ['uml.Deployment', 'uml.Manifestation', 'uml.CommunicationPath'
 const DP_WORD = { 'uml.Node': 'Node', 'uml.Device': 'Device', 'uml.ExecutionEnvironment': 'Execution environment', 'uml.Artifact': 'Artifact',
   'uml.DeploymentSpecification': 'Deployment specification', 'uml.Component': 'Component', 'uml.Comment': 'Comment' };
 const dpWord = x => (Object.hasOwn(DP_WORD, x.type) ? DP_WORD[x.type] : String(x.type ?? '').split('.').pop());
-const DP_KW = { 'uml.Device': 'device', 'uml.ExecutionEnvironment': 'executionEnvironment' };
+const DP_KW = { __proto__: null, 'uml.Device': 'device', 'uml.ExecutionEnvironment': 'executionEnvironment' };
 
 /* ---- the cube (§9.1): SHAPE.node's outline and inset, 10 px deep, in the typed look's paint; closed a node, open a frame ---- */
 const DP = { d: 10, head: 15, pad: 10, name: 12, nlh: 16, st: 11, sth: 14, minW: 120, maxW: 320, minH: 60 };
@@ -86,7 +86,7 @@ function dpListed(view, pic) {
 }
 const dpLines = (model, view, pic) => dpListed(view, pic).filter(e => !dpInside(pic, e));
 const dpInside = (pic, e) => [[e.from, e.to], [e.to, e.from]].some(([b, x]) => pic.open.has(b) && (b === x || pic.chain(x).includes(b)));
-const DP_KEYWORD = { 'uml.Deployment': '«deploy»', 'uml.Manifestation': '«manifest»' };
+const DP_KEYWORD = { __proto__: null, 'uml.Deployment': '«deploy»', 'uml.Manifestation': '«manifest»' };
 const dpLineLabel = e => [DP_KEYWORD[e.type], ...dpStereo(e).map(t => `«${t}»`), e.label].filter(DP_HAS).join(' ');
 const DP_LINE_LOOK = { 'uml.Deployment': { from: 'none', to: 'open', dashed: true }, 'uml.Manifestation': { from: 'none', to: 'open', dashed: true },
   'uml.CommunicationPath': { from: 'none', to: 'none' }, 'uml.Dependency': { from: 'none', to: 'open', dashed: true }, 'uml.CommentLink': { from: 'none', to: 'none', dashed: true } };

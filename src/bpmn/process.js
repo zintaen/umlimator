@@ -362,10 +362,10 @@ function bzDescribe(model, viewId) {
   const out = [`${v.title || v.id}: a BPMN diagram of ${bzPlural(drawn.filter(id => BZ_FLOW.includes(I.ty(id))).length, 'flow node')}, ${bzPlural(flows, 'flow')} and ${bzPlural(P.pools.length, 'pool')}.`];
   const word = { [BZ_SEQ]: 'then', [BZ_MSG]: 'message to', [BZ_DATA_ASSOC]: 'data to', [BZ_ASSOC]: 'about' };
   // each element with what leaves it, a pool's message flows too; a line the picture leaves out said as not drawn
-  const say = id => { const said = from(id).map(e => `${word[e.type]} ${I.called(e.to)}${BZ_HAS(e.label) ? ` (${String(e.label).trim()})` : ''}${drew.has(e.id) ? '' : ', not drawn'}`);
+  const say = id => { const said = from(id).map(e => `${word[e.type]} ${I.called(e.to)}${BZ_HAS(e.label) ? ` (${String(e.label).trim()})` : ''}${doc(e)}${drew.has(e.id) ? '' : ', not drawn'}`);
     out.push(bzNodeName(P, id) + doc(I.el(id)) + (said.length ? '; ' + said.join('; ') : '') + '.'); };
   laneOrder(P.lanes).forEach(l => say(l.id)); walk.forEach(say);
-  P.groups.forEach(gid => { const ms = P.ids.filter(i => bzRefs(I.el(i)).includes(gid)).map(I.called); out.push(`Group ${bzLabel(I.el(gid))}${ms.length ? ': ' + ms.join(', ') : ', round nothing shown: not drawn'}.`); });
+  P.groups.forEach(gid => { const ms = P.ids.filter(i => bzRefs(I.el(i)).includes(gid)).map(I.called); out.push(`Group ${bzLabel(I.el(gid))}${doc(I.el(gid))}${ms.length ? ': ' + ms.join(', ') : ', round nothing shown: not drawn'}.`); });
   return out.join('\n');
 }
 
@@ -538,6 +538,9 @@ const BZ_TYPE = registerDiagramType('bpmn', {
   rows: (model, view, id) => { const P = bzPic(model, view), x = P.I.el(id); if (!x) return null;
     const r = [...(P.be.has(id) ? [`on ${P.I.called(P.be.get(id))}`] : P.laneOf(id) != null && P.laneOf(id) !== id ? [`in ${bzLabel(P.I.el(P.laneOf(id)))}`] : []), ...(BZ_HAS(bzProps(x).documentation) ? [String(bzProps(x).documentation).trim()] : [])];
     return r.length ? r : null; },
+  // the PDF's lines table: a line's name, then its documentation
+  text: (model, view, id) => { const e = BZ_ARR(model && model.edges).find(x => BZ_OBJ(x) && x.id === id), d = e && bzProps(e).documentation;
+    return BZ_HAS(d) ? [e.label, d].filter(BZ_HAS).map(t => String(t).trim()).join(' — ') : null; },
 });
 
 export { BZ_TYPE, BZ_RULES, bzGeo, bzProblems, bzDescribe, bzConnect, bzMoveTo, bzAdd, bzRemove, bzKey, bzOwners };

@@ -204,6 +204,8 @@ test('text over the size limit is refused with a report; links past the cap are 
     'flowchart TD\n' + ';'.repeat(1000000), 'flowchart TD\n' + 'a-'.repeat(500000), 'flowchart TD\nA ' + ' '.repeat(1000000) + '-- x', 'flowchart TD\n' + 'a --> b\n'.repeat(130000),
     'flowchart TD\n' + 'x@--> '.repeat(170000), 'flowchart TD\nsubgraph a[' + ' '.repeat(1000000) + 'x',
     'flowchart TD\n' + Array.from({ length: 80000 }, (_, k) => `A${k}([) `).join('& ') + ' --> Z', 'flowchart TD\n' + Array.from({ length: 80000 }, (_, k) => `A${k}[[x] `).join('& ') + ' --> Z',
+    // audit 10: a chained line, with and without an edge id at its end (the id search was quadratic in the rest of the line)
+    'flowchart TD\n' + Array.from({ length: 105000 }, (_, k) => `n${k}`).join('-->'), 'flowchart TD\n' + Array.from({ length: 95000 }, (_, k) => `n${k}`).join('-->') + ' e@--> z',
     'flowchart TD\nconstructor --> __proto__\n__proto__@{ shape: constructor }\nhasOwnProperty --> toString\n'];
   const cpu = f => { const c = process.cpuUsage(), out = f(), u = process.cpuUsage(c); return [out, (u.user + u.system) / 1000]; };
   const best = f => { let [out, ms] = cpu(f); for (let i = 0; i < 2 && ms >= 1000; i++) ms = Math.min(ms, cpu(f)[1]); return [out, ms]; };
@@ -221,6 +223,7 @@ test('text over the size limit is refused with a report; links past the cap are 
   assert.equal(capped.model.edges.length, 100000);
   assert.deepEqual(capped.report, [{ line: 2, status: 'skipped', message: 'over 100000 links: the rest are not read' }]);
   assert.equal(read(hostile[13]).model.edges.at(-1).id, 'a-b-100000');
+  assert.deepEqual(read(hostile.at(-2)).model.edges.at(-1), { id: 'e', type: 'flow.Flow', from: 'n94999', to: 'z' });
   const proto = read(hostile.at(-1));
   assert.deepEqual(proto.model.nodes.map(n => [n.id, n.type]), [['constructor', 'flow.Process'], ['__proto__', 'flow.Process'], ['hasOwnProperty', 'flow.Process'], ['toString', 'flow.Process']]);
   assert.deepEqual(proto.report.map(x => x.message), ['__proto__: shape constructor is read as a process']);

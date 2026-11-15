@@ -281,6 +281,10 @@ test('connect: Containment re-owns; a relationship breaking §6.3\'s errors is r
   const cp = c('availability', 'range', 'sysml.Copy');
   assert.deepEqual(cp, [{ op: 'add', element: { id: 'copy1', type: 'sysml.Copy', from: 'availability', to: 'range' }, view: V }, { op: 'set', id: 'availability', path: 'props.text', value: 'A full charge shall give at least 60 km of assisted riding.' }]);
   assert.deepEqual(T.validate(apply(M16, cp)), [], 'copy-text holds by construction');
+  // audit 10: a requirement in a copy already keeps its text: a copy that would change it is refused
+  assert.deepEqual(c('legal-speed', 'availability', 'sysml.Copy'), { error: 'copy-text: requirement "Maximum assisted speed" is copied by requirement "Assistance cut-off", whose text it keeps: a copy\'s client has its supplier\'s text' });
+  assert.deepEqual(c('cut-off', 'availability', 'sysml.Copy'), { error: 'copy-text: requirement "Assistance cut-off" copies requirement "Maximum assisted speed", whose text it keeps: a copy\'s client has its supplier\'s text' });
+  assert.equal(c('availability', 'legal-speed', 'sysml.Copy')[0].op, 'add', 'a second copy of the same text: allowed');
   assert.deepEqual(T.validate(apply(M16, c('battery', 'dock', 'sysml.Trace'))).map(p => p.rule), ['trace-ends'], 'a warning is not refused');
   assert.equal(c('why-500', 'range', 'uml.CommentLink'), null, 'the canvas\'s');
   assert.equal(apply(M16, c('capacity', 'range', 'containment')).nodes.find(n => n.id === 'capacity').parent, 'range');

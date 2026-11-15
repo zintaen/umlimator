@@ -61,6 +61,7 @@ TOOLS = [
          "whether that version renders; and what the assistant last asked it to show. Needs no page: with none open, it says so."),
 ]
 TOOL = {t["name"]: t for t in TOOLS}
+PAGE_TOOLS = {"show_view", "highlight", "tour", "play_story", "clear"}
 
 
 class Fail(Exception):
@@ -81,7 +82,7 @@ told = threading.Condition(lock)  # a page reported what it shows
 want = {"view": None, "highlight": None, "tour": None, "story": None}
 latest = None            # the latest command's event id: a page that connects after it is sent `want`
 pages = {}               # each page by the id it gives itself: q (its event queue while it is open), state, model, ack, seen
-drawn = [None, ""]       # the page as served: the model's version it shows (the last that rendered), and its HTML
+drawn = [None, "", None] # the page as served: the model's version it shows (the last that rendered), its HTML, and that model
 tried, why = None, None  # the model's version last rendered, and why it did not render (None: it did)
 ids = itertools.count(1)
 RUN = os.urandom(4).hex()  # event ids differ from one run of the server to the next, so a page that reconnects is not taken as up to date
@@ -133,9 +134,10 @@ def node(fn, *args):
         raise Fail((re.findall(r"^\w*Error: .*$", said, re.M) or [said])[-1])
 
 
-def refs(m, items):
-    """highlight's refs: a Ref as it is, a card's id as its Ref, else a line's."""
-    cards, lines, out = {n["id"] for n in every(m, "nodes")}, {e["id"] for e in every(m, "edges")}, []
+def known(m):
+    """The ids a Ref may name: cards, lines (those with no id as "<from>-><to>#<n>"), boxes and members at any depth; and
+    the cards and lines apart."""
+    cards, lines = {n["id"] for n in every(m, "nodes")}, {e["id"] for e in every(m, "edges")}
     for es in [m.get("edges"), *(v.get("edges") for v in views(m).values())]:  # "<from>-><to>#<n>": a line without an id, as Refs name it
         seen = {}
         for e in es if isinstance(es, list) else []:
@@ -148,7 +150,12 @@ def refs(m, items):
         x = todo.pop()
         if isinstance(x, dict):
             members.add(x.get("id")); todo += x.get("members") or []
-    known = cards | lines | boxes | members
+    return cards | lines | boxes | members, cards, lines
+
+
+def refs(m, items):
+    """highlight's refs: a Ref as it is, a card's id as its Ref, else a line's."""
+    (known_, cards, lines), out = known(m), []
     for i, x in enumerate(items if isinstance(items, list) else [items]):
         if isinstance(x, dict):
             text = [k for k in ("id", "node", "container", "view", "value") if k in x and not isinstance(x[k], str)]
@@ -156,7 +163,7 @@ def refs(m, items):
                     isinstance(x["ids"], list) and all(isinstance(j, str) for j in x["ids"])):
                 raise Fail(f"refs[{i}] is not a Ref: type is node, edge, container, chip or badge; ids a list of strings; "
                            f"id, node, container, view and value strings" + (f" ({', '.join(text)} is not)" if text else ""))
-            if gone := [j for j in (x.get("id"), x.get("node"), x.get("container"), *(x.get("ids") or [])) if j is not None and j not in known]:
+            if gone := [j for j in (x.get("id"), x.get("node"), x.get("container"), *(x.get("ids") or [])) if j is not None and j not in known_]:
                 raise Fail(f"refs[{i}] names {', '.join(map(repr, gone))}: no card, line or box in the model")
             out.append(x)
         elif x in cards:
@@ -169,7 +176,14 @@ def refs(m, items):
 
 
 def call(name, a):
-    m = load()
+    if name == "page_state":  # reads the model's bytes only: a version that is not JSON is said in it
+        return page_state()
+    try:
+        m = load()
+    except Fail:  # a page tool on a version that is not JSON (mid-edit): checked against the version the page shows, and says why
+        if name not in PAGE_TOOLS or not page()[0]:
+            raise
+        m = drawn[2]
     if name == "list_views":
         return {"views": [{"id": i, "title": v.get("title"), "parent": v.get("parent"), "cards": len(v.get("nodeIds") or [])} for i, v in views(m).items()],
                 "stories": [{"id": s.get("id"), "title": s.get("title"), "steps": len(s.get("steps") or [])} for s in m.get("stories") or [] if isinstance(s, dict)]}
@@ -196,8 +210,6 @@ def call(name, a):
             raise Fail(f"cannot read {a['other_model_path']} (looked for {' and '.join(map(str, tried))}): {e.code}")
         d = node("diff", before, m)
         return {"summary": d["summary"], "views": d["views"]}
-    if name == "page_state":
-        return page_state()
     # the page's tools: a command for the page, checked against the model first, then folded into `want`
     asked = view(m, a["view"])["id"] if a.get("view") else None
     if name == "show_view":
@@ -210,8 +222,8 @@ def call(name, a):
             w.update(view=at or w["view"], highlight={"refs": lit, "view": at or w["view"]}, story=None)
     elif name == "tour":
         cards = a["cards"] if isinstance(a["cards"], list) else [a["cards"]]
-        known = set(views(m)[asked].get("nodeIds") or []) if asked else {n["id"] for n in every(m, "nodes")}
-        if bad := [c for c in cards if c not in known]:
+        onview = set(views(m)[asked].get("nodeIds") or []) if asked else {n["id"] for n in every(m, "nodes")}
+        if bad := [c for c in cards if c not in onview]:
             raise Fail(f"no card {', '.join(map(repr, bad))}" + (f" on view {asked!r}" if asked else " in the model"))
         at = asked or view_for(m, [{"type": "node", "id": c} for c in cards], want["view"])
         def fold(w, n):
@@ -316,14 +328,14 @@ def refit(m):
     """`want`, kept to what the model has now: a view, card, line or story the latest version no longer has is dropped,
     so a page is never sent ids an older version had. Called with the lock held."""
     vs, stories = views(m), {s.get("id") for s in m.get("stories") or [] if isinstance(s, dict)}
-    known = {x["id"] for k in ("nodes", "edges") for x in every(m, k)} | {c.get("id") for v in vs.values() for c in v.get("containers") or [] if isinstance(c, dict)}
+    known_ = known(m)[0]
     if want["view"] not in vs:
         want["view"] = None
     if h := want["highlight"]:
-        h["refs"] = [r for r in h["refs"] if any(x in known or "->" in str(x) for x in (r.get("id"), r.get("node"), r.get("container"), *(r.get("ids") or [])) if x)]
+        h["refs"] = [r for r in h["refs"] if any(x in known_ for x in (r.get("id"), r.get("node"), r.get("container"), *(r.get("ids") or [])) if x)]
         if not h["refs"] or (h["view"] is not None and h["view"] not in vs):
             want["highlight"] = None
-    if want["tour"] and not set(want["tour"]["cards"]) <= known:
+    if want["tour"] and not set(want["tour"]["cards"]) <= known_:
         want["tour"] = None
     if want["story"] and want["story"]["story"] not in stories:
         want["story"] = None
@@ -440,7 +452,7 @@ def page():
                     why = said.strip()[-1500:] or "it does not render"
             else:
                 with lock:
-                    drawn[:] = [v, head + SCRIPT.replace("__MODEL__", v).replace("__MAP__", MAPID) + "</body>" + tail]
+                    drawn[:] = [v, head + SCRIPT.replace("__MODEL__", v).replace("__MAP__", MAPID) + "</body>" + tail, m]
                     why = None
                     refit(m)
         return drawn[0], why

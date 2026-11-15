@@ -210,6 +210,11 @@ test('validators: each rule passes the example and fails on a model that breaks 
   assert.deepEqual(validate(bare).filter(p => p.rule === 'connector-scope').map(p => [p.path, p.ids]), [['edges[8].from', ['bare', 'order-service']]]);
   const loop = structuredClone(CS); RULE_CASES['connector-drawn'](loop);
   assert.ok(!layout(loop, 'internals').edges.some(e => e.id === 'loop')); assert.doesNotMatch(describe(loop, 'internals'), /from api of OrderService to payments/);
+  // audit 10: two ports of one part, or of a subject drawn with no box, are not drawn either (the router's loop ignores ports), warned
+  const fb = twins(); fb.edges.push(con('fb', 'worker.idle', 'worker.job', { from: { part: 'shop.a' }, to: { part: 'shop.a' } }));
+  const nb = twins(); nb.nodes[0].members = [port('shop.in'), port('shop.out')]; nb.edges = [con('fb', 'shop.out', 'shop.in')];
+  [fb, nb].forEach((m, k) => { assert.ok(!layout(m, 'v').edges.some(e => e.id === 'fb'), `case ${k}`);
+    assert.deepEqual(validate(m).filter(p => p.rule === 'connector-drawn').map(p => p.ids), [['fb', k ? 'shop' : 'shop.a']]); });
   // a communication view's connectors between lifelines are no structure's: not checked
   const m = twins(); m.nodes.push({ id: 'l1', type: 'uml.Lifeline' }, { id: 'l2', type: 'uml.Lifeline' }); m.edges.push(con('talk', 'l1', 'l2'));
   assert.deepEqual(validate(m).filter(p => p.rule === 'connector-scope'), []);
@@ -249,6 +254,8 @@ test('add: a part into the subject; a port into the subject, or a selected part\
   let r = T.edits.add(CS, V, E('Part'), 'audit : AuditLog [0..1]', null);
   assert.deepEqual(r, [{ op: 'add', element: { id: 'order-service.audit', type: 'uml.Property', label: 'audit', props: { valueType: 'AuditLog', multiplicity: '0..1' } }, owner: 'order-service' }]);
   assert.ok(layout(run(CS, r), 'internals').byId['order-service.audit'], 'drawn in the subject');
+  // audit 10: the Part entry adds a part whatever its name starts with; 'port name : Type' is the member rows' syntax
+  assert.deepEqual(T.edits.add(CS, V, E('Part'), 'port authority : Authority', null), [{ op: 'add', element: { id: 'order-service.port-authority', type: 'uml.Property', label: 'port authority', props: { valueType: 'Authority' } }, owner: 'order-service' }]);
   r = T.edits.add(CS, V, E('Port'), 'admin : AdminApi', { sel: ['order-service'] });
   assert.deepEqual(r, [{ op: 'add', element: { id: 'order-service.admin', type: 'uml.Port', label: 'admin', props: { valueType: 'AdminApi' } }, owner: 'order-service' }]);
   r = T.edits.add(CS, V, E('Port'), 'audit', { sel: ['order-service.checkout->checkout-class.quotes'] });
@@ -345,8 +352,15 @@ test('the PDF\'s tables (§11): a part\'s and a role\'s kind and rows, a collabo
     'listeners : OrderListener [0..*], shared', 'Connector from api of OrderService to requests of checkout', 'Connector from quotes of checkout to quotes of pricing',
     'Connector from charges of checkout to payments of OrderService', 'Connector from checkout to orders', 'Connector from checkout to listeners']);
   assert.deepEqual(T.rows(CS, V, 'publish-subscribe'), ['publisher : EventSource [1]', 'subscriber : EventListener [0..*]', 'Connector from publisher to subscriber']);
+  // audit 10: a role has no aggregation, the collaboration shown open or as the subject
+  const sub = { ...V, subject: 'publish-subscribe', nodeIds: ['publish-subscribe'], edges: undefined };
+  assert.deepEqual(T.rows(CS, sub, 'publish-subscribe'), T.rows(CS, V, 'publish-subscribe'));
+  assert.deepEqual(T.rows(CS, sub, 'publish-subscribe.publisher'), ['publisher : EventSource [1]']);
   const ctx = mapContext(CS), [els] = tablesOf(ctx, ctx.V[V.id], ctx.buildGeo(V.id));
   assert.ok(els.rows.some(r => /Collaboration use/.test(r) && /publisher ← checkout/.test(r)), els.rows.join('\n'));
+  // audit 10: the view's hand-written containers, which the picture ignores (own-boxes), are in no Boxes table
+  const hand = structuredClone(CS); hand.views[0].containers = [{ id: 'hand', label: 'Handwritten', nodeIds: hand.views[0].nodeIds.slice(0, 2) }];
+  const hc = mapContext(hand); assert.deepEqual(tablesOf(hc, hc.V[V.id], hc.buildGeo(V.id))[2].rows, []);
 });
 
 /* ---- P1 (§14): a subject of 30 parts, 50 connectors, 20 ports on parts, its common edit a part's type changed ---- */
