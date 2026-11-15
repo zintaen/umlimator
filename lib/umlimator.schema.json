@@ -1674,7 +1674,7 @@
      "description": "Schema version 2: the element this diagram is the inside of. In a class, object or package view, the package names are qualified from (sales::Order without sales:: in a view of sales); not drawn unless the view lists it. In a composite structure view (0.22.0): the class, component or collaboration whose parts and ports it draws, listed in nodeIds. In a C4 view (0.24.0): the software system or container it zooms into, drawn as a boundary when nodeIds lists it. A SysML view (0.25.0): the element its frame names, a package (requirement, block definition), a block (internal block, parametric) or a constraint block (parametric); with none, the frame names [Model] and the model's title."
     },
     "direction": {
-     "description": "Schema version 2: a typed view's layout direction (default right; down for a flowchart). A map stays left to right. A sequence view is always down; another direction is a warning."
+     "description": "Schema version 2: a typed view's layout direction (default right; down for a flowchart, a profile, a SysML block definition or requirement view). A map stays left to right. A sequence view is always down; another direction is a warning."
     },
     "notation": {
      "description": "Schema version 2: a skin of the diagram type, drawn on one geometry: crowsfoot (default) or idef1x for er, yourdon (default) or gane-sarson for dfd (0.24.0)."

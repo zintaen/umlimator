@@ -241,6 +241,7 @@ test('connect: lifeline to lifeline at the slot\'s time; change to change across
   assert.ok(tmConnect(m, V0, 'worker', 'payments', null, DUR()).error);
   assert.match(tmConnect(m, V0, 'w-recording', 'p-authorising', null, LINE('call')).error, /message-times/);
   assert.match(tmConnect(m, V0, 'p-idle', 'worker', null, LINE('reply')).error, /reply-call/);
+  assert.equal(tmConnect(m, V0, 'p-idle', 'worker', null, LINE('reply')).error, 'reply-call: m1 names no call in replyTo: a reply from payments to worker needs a call from worker to payments sent no later', 'by name, never undefined (audit 12)');
   assert.ok(tmConnect(m, V0, TM_RULER, 'worker', null, LINE('call')).error);
 });
 

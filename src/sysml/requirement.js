@@ -144,7 +144,7 @@ function rqGeo({ model, view, pos: pins, memo }) {
   // ponytail: a pin is a cell of the frame's grid, not of a box's block, so a card pinned inside another box's block can overlap it; ranking pins into blocks would lift that
   [...ids.filter(pinOf), ...ids.filter(id => !pinOf(id))].forEach(id => { let [c, r] = pinOf(id) || at[id]; while (taken.some(([c2, r2]) => c2 === c && Math.abs(r2 - r) < 1)) r++; at[id] = [c, r]; taken.push([c, r]); });
   nodes.forEach(n => { [n.col, n.row] = at[n.id]; });
-  const down = view.direction !== 'right', wide = down ? 0 : Math.max(0, ...edges.filter(e => e.label).map(labelW)); // down by default (§6.1); laid out right, the class type's room for labels
+  const down = view.direction == null || view.direction === 'down', wide = down ? 0 : Math.max(0, ...edges.filter(e => e.label).map(labelW)); // down by default (§6.1); a direction neither right nor down is drawn right, as the core warns (audit 12); laid out right, the class type's room for labels
   const g = placeTabs(layoutTyped({ nodes, edges, containers: [frame, ...boxes], direction: down ? 'down' : 'right', gap: 96 + (wide ? Math.ceil(wide) + 40 : 0), rgap: 56, repair: false, reroute: false }, memo));
   // a new object: what layoutTyped returned is not edited (§2.4; a closed package's tab is placed once, as the class type's).
   // The reading order: the cards by their places, top to bottom, then left to right, then the lines. Slots at each card and box, so the palette's add hears what is selected

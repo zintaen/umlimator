@@ -168,6 +168,17 @@ try {
   click('.node[data-id="order-events"] .n-mask'); key('Delete');
   gives('Delete on a collaboration use: hidden from the view', [{ op: 'hide', id: 'order-events', view: 'internals' }], m => !m.views[0].nodeIds.includes('order-events'), m3);
   h.destroy();
+  // the details panel (audit 12): a part and a port by their drawn names and kind words, never "Script INTERNAL" and an id;
+  // a collaboration use's rows name its parts as drawn
+  h = mount(MODEL, { details: true });
+  const head = () => pick('.panel .ph .pt').textContent.replace(/\s+/g, ' ').trim();
+  h.select({ type: 'node', id: 'order-service.checkout' }); const partHead = head();
+  h.select({ type: 'node', id: 'order-service.api' }); const portHead = head();
+  h.select({ type: 'node', id: 'order-events' }); pick('.panel [data-tab="links"]').click();
+  const rows = all('.panel .rel .rel-l').map(e => e.textContent);
+  check('the details panel names a part and a port as drawn, with their kind words, and a collaboration use\'s rows its parts',
+    /^checkout : CheckoutFlow \[1\] ?Part/.test(partHead) && /^api ?Port/.test(portHead) && !/Script|INTERNAL/.test(partHead + portHead) && rows.length && !rows.some(r => r.startsWith('order-service.')), [partHead, portHead, rows]);
+  h.destroy();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

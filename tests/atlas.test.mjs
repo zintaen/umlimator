@@ -265,6 +265,9 @@ test('the gallery and the examples\' README reach every example model: the AWS v
   // a table's rows run on: a row after a blank line starts a table, so a delimiter row follows it (audit 3)
   assert.doesNotMatch(readme, /\n\n\|[^\n]*\n(?!\|[-| :]+\n)/);
   assert.doesNotMatch(gallery, /production's deployment, the components/);
+  // the state machine's card claims only the pseudostates order-states.json draws (audit 12)
+  const kinds = new Set(JSON.parse(readFileSync(new URL('order-states.json', dir), 'utf8')).nodes.filter(n => n.type === 'uml.Pseudostate').map(n => n.props.kind));
+  assert.doesNotMatch(gallery, /every pseudostate/); assert.ok(!kinds.has('junction') && !kinds.has('deepHistory') && kinds.has('shallowHistory'), [...kinds].join());
 });
 
 test('a typed view\'s key holds the titles of the views it opens: update() redraws "opens <view>" after a rename (audit 2)', () => {

@@ -349,7 +349,7 @@ test('the writer names in comments what it cannot write, and the reader passes o
   views: [{ id: 'v', diagram: 'sysml.requirement', direction: 'up', nodeIds: ['r', 'b', 't', 'pkg', 'n', 'r'] }] };
   const text = write(m, 'v');
   assert.deepEqual(text.split('\n').filter(l => l.includes('not written')).map(l => l.trim()), [
-    '%% not written: r: listed twice in the view, written once', '%% not written: v: direction up: written as Mermaid\'s TB', '%% not written: pkg (uml.Package)', '%% not written: n (uml.Comment)',
+    '%% not written: r: listed twice in the view, written once', '%% not written: v: direction up: written as Mermaid\'s LR, as it is drawn', '%% not written: pkg (uml.Package)', '%% not written: n (uml.Comment)',
     '%% not written: r: property source', '%% not written: r: ext', '%% not written: r: stereotype functionalRequirement', '%% not written: r: stereotype other',
     '%% not written: r: reqId a"b, which Mermaid\'s quotes cannot hold', '%% not written: r: text 7, which is not text', '%% not written: r: risk x\\ny, which is none of Mermaid\'s low, medium, high',
     '%% not written: b: property stereotypes', '%% not written: b: ext, but for ext.mermaid.type and docref', '%% not written: b: ext.mermaid.type test bench, which the reader would not read back as a block',
@@ -382,7 +382,7 @@ test('the writer keeps to Mermaid\'s strings: a value bare only with a word char
   assert.deepEqual(read(text).model.nodes.find(n => n.id === 'a').props, { reqId: '/x', text: '' });
 });
 
-test('a view direction "constructor" is named not written and written TB, not a function\'s source (audit 2)', () => {
+test('a view direction "constructor" is named not written and written LR, as it is drawn (audit 12), not a function\'s source (audit 2)', () => {
   const text = write({ schemaVersion: 2, nodes: [{ id: 'r', type: 'sysml.Requirement', label: 'R' }], views: [{ id: 'v', diagram: 'sysml.requirement', direction: 'constructor', nodeIds: ['r'] }] }, 'v');
-  assert.deepEqual(text.split('\n').filter(l => /direction/.test(l)).map(l => l.trim()), ['direction TB', '%% not written: v: direction constructor: written as Mermaid\'s TB']);
+  assert.deepEqual(text.split('\n').filter(l => /direction/.test(l)).map(l => l.trim()), ['direction LR', '%% not written: v: direction constructor: written as Mermaid\'s LR, as it is drawn']);
 });

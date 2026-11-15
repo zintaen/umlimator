@@ -260,7 +260,7 @@ function erDescribe(model, viewId) {
 
 /* ---- editing (§7.1) ---- */
 const erNewId = (model, base) => { const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
-  let k = 2, id = base; while (used.has(id)) id = `${base}-${k++}`; return id; };
+  base = base.replace(/->+/g, '-'); let k = 2, id = base; while (used.has(id)) id = `${base}-${k++}`; return id; }; // never "->" (model.md rule 5)
 // a row of the panel's Members, read as S9's: a new column, or a column's name and syntax props set (its other props kept)
 function erMember(model, view, owner, id, text) {
   const I = erIndex(model); if ((I.at.get(owner) || {}).type !== 'er.Entity') return null;

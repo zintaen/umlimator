@@ -181,6 +181,9 @@ test('edits.member (§7.1): a new row adds a column with its id from the entity\
   assert.deepEqual(validate(apply(m, cmds)), []);
   const n = apply(EX, M(EX, V, 'er-author', null, 'born date NULL')); assert.equal(layout(n, VID).byId['er-author'].sections[1].rows.length, 2, 'drawn: the entity grows');
   assert.equal(M(EX, V, 'er-customer-orders', null, 'x int'), null, 'not an entity: the default');
+  // audit 12: a name holding "->" (a JSON path) gives an id free of it, which apply() takes
+  const js = M(EX, V, 'er-book', null, '"payload->>type" text');
+  assert.equal(js[0].element.id, 'er-book.payload-type'); assert.match(JSON.stringify(apply(EX, js)), /"id":"er-book\.payload-type"/);
 });
 
 test('connect (§7.1): a relationship between two tables is the default with the palette\'s 1 to 0..*, non-identifying; a relationship from or to a comment is refused; a comment link is the default', () => {

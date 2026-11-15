@@ -337,8 +337,8 @@ function writeMermaidRequirement(model, viewId) {
   out.push('requirementDiagram');
   if (view && view.direction != null) {
     const d = view.direction === 'down' ? 'TB' : view.direction === 'right' ? 'LR' : null; // no table: "constructor" is no direction
-    if (!d) lose(view.id, `direction ${view.direction}: written as Mermaid's TB`);
-    out.push(`  direction ${d || 'TB'}`);
+    if (!d) lose(view.id, `direction ${view.direction}: written as Mermaid's LR, as it is drawn`);
+    out.push(`  direction ${d || 'LR'}`);
   }
 
   // each element's name: its label with what Mermaid's quotes cannot hold taken out, made unique; the label whole in %% name:

@@ -357,3 +357,16 @@ test('audit 9: a component, deployment or composite structure view warns that it
     assert.ok(p && p.level === 'warning' && p.ids.includes(v.id), n); assert.ok(diagramOf(v).rules['own-boxes'], n);
   }
 });
+
+test('audit 12: a line names its ends as the picture does, qualified: two components labelled Api read apart', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Package', label: 'orders' }, { id: 'b', type: 'uml.Package', label: 'billing' },
+    { id: 'oa', type: 'uml.Component', label: 'Api', parent: 'a' }, { id: 'ba', type: 'uml.Component', label: 'Api', parent: 'b', members: [{ id: 'ba.p', type: 'uml.Port', label: 'charge' }] },
+    { id: 'web', type: 'uml.Component', label: 'Web' }, { id: 'I', type: 'uml.Interface', label: 'Charge' }],
+  edges: [E('c1', 'Connector', 'web', 'oa', { kind: 'assembly' }), E('c2', 'Connector', 'web', 'ba', { kind: 'assembly' }), E('r', 'InterfaceRealization', 'ba.p', 'I')],
+  views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['oa', 'ba', 'web', 'I'] }] };
+  const aria = Object.fromEntries(layout(m, 'v').edges.map(e => [e.id, e.aria]));
+  assert.match(aria.c1, /from Web to orders::Api$/);
+  assert.match(aria.c2, /from Web to billing::Api$/);
+  assert.match(aria.r, /from charge of billing::Api to Charge$/);
+  assert.match(describe(m, 'v'), /from Web to billing::Api\./);
+});

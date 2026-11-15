@@ -77,6 +77,24 @@ test('conformance notes and the examples README agree with the code they describ
   for (const [, id] of doc('../examples/README.md').matchAll(/and `([^`]+)`, with its subject/g)) assert.ok(views.has(id), id);
 });
 
+test('audit 12: the schema names every type laid out down with no direction, and a direction neither right nor down is drawn right, as validate() warns', async () => {
+  const { layout } = await import('../lib/umlimator-all.js'), doc = p => readFileSync(new URL(p, import.meta.url), 'utf8');
+  const dirs = JSON.parse(doc('../lib/umlimator.schema.json')).$defs.view.properties.direction.description, said = console.warn, seen = new Set(), down = [];
+  console.warn = () => {};
+  try {
+    for (const f of readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).sort()) {
+      const m = JSON.parse(doc('../examples/' + f));
+      for (const v of Array.isArray(m.views) ? m.views : []) { if (!v || !v.diagram || v.diagram === 'map' || seen.has(v.diagram)) continue; seen.add(v.diagram);
+        const at = d => { const c = structuredClone(m), w = c.views.find(x => x.id === v.id); if (d) w.direction = d; else delete w.direction; return JSON.stringify(layout(c, v.id).byId); };
+        const [none, d, r, l] = [at(), at('down'), at('right'), at('left')];
+        if (d === r) continue; // a type that has no direction (a sequence, a timing diagram, a mind map)
+        assert.equal(l, r, `${v.diagram}: direction "left" is drawn right`);
+        if (none === d) down.push(v.diagram); } }
+  } finally { console.warn = said; }
+  assert.deepEqual(down.sort(), ['flowchart', 'sysml.block-definition', 'sysml.requirement', 'uml.profile']);
+  assert.match(dirs, /down for a flowchart, a profile, a SysML block definition or requirement view/);
+});
+
 test('audit 11: the schema names the flowchart\'s default direction; the information flow and structure notes match their rules', async () => {
   const { diagramOf } = await import('../src/core/registry.js');
   await import('../src/map/typed.js'); await import('../src/flowchart/flowchart.js'); await import('../src/uml/component.js'); await import('../src/uml/composite.js'); await import('../src/uml/deployment.js');

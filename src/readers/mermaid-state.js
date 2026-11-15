@@ -399,11 +399,11 @@ function writeMermaidState(model, viewId) {
   for (const n of nodes) { const k = keyOf.get(n.id); if (!kids.has(k)) kids.set(k, []); kids.get(k).push(n); }
 
   // the transitions; each initial pseudostate and final state that can be its scope's [*]
-  const edgeById = new Map(), trans = [], links = new Map();
+  const edgeById = new Map(), trans = [], links = new Map(), inView = new Set(arr(view.nodeIds));
   for (const x of arr(m.edges)) if (isObj(x) && !edgeById.has(x.id)) edgeById.set(x.id, x);
   for (const x of edgeById.values()) {
     if (x.type === 'uml.CommentLink' && shown.has(x.from) && shown.has(x.to)) { if (!links.has(x.from)) links.set(x.from, []); links.get(x.from).push(x); continue; }
-    if (!(shown.has(x.from) || shown.has(x.to))) continue;
+    if (!(inView.has(x.from) || inView.has(x.to))) continue; // a line between two skipped nodes is still the view's, and reported
     if (x.type === 'uml.Transition' && isNode.has(x.from) && isNode.has(x.to) && okId(x.id)) trans.push(x); else skip(x);
   }
   const ins = new Map(), outs = new Map(), push = (map, k, x) => { if (!map.has(k)) map.set(k, []); map.get(k).push(x); };
