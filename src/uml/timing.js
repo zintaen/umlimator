@@ -1,4 +1,4 @@
-import { registerDiagramType } from '../core/registry.js';
+import { registerDiagramType, idTable } from '../core/registry.js';
 import { apply } from '../core/apply.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -104,7 +104,7 @@ function tmRun(model, view) {
   const last = [...o.changes.map(h => X.C.get(h.id).at), ...o.lines.flatMap(l => [tmProps(M.get(l.id)).sentAt, tmProps(M.get(l.id)).receivedAt])].reduce((a, t) => (tmNum(t) && t > a ? t : a), s.t0); // the span of the times, not the room after
   nodes.push({ id: TM_RULER, shape: 'tm-ruler', label: X.unit ?? '', k: 'file', x: x0, y: R.y, w: rw, h: TR.ruler, ticks: R.ticks, unit: R.unit,
     aria: `Time ruler, ${s.t0} to ${X.t(last)}, a tick every ${X.t(s.step)}` });
-  const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
+  const byId = idTable(Object.fromEntries(nodes.map(n => [n.id, n])));
   const edges = o.lines.map(l => { const m = M.get(l.id), p = tmProps(m), t = tmLabel(m), sort = tmSort(m);
     return { id: m.id, _id: m.id, type: 'uml.Message', from: m.from, to: m.to, s: byId[m.from], t: byId[m.to], pts: l.pts, end: TM_END[sort], sort,
       label: tmPrint(t, p.sentAt, p.receivedAt), ...(t ? { lbl: { ...l.lbl, text: t } } : {}), aria: tmMsgSaid(X, m) }; });
@@ -379,10 +379,7 @@ function tmKeyHook(model, view, ids, key) {
   const V = tmView(model, view); if (!V || (key !== 's' && key !== 'S')) return null;
   const X = tmIndex(model, V), ls = TM_ARR(ids).filter(id => X.H.has(id)); if (!ls.length) return null;
   const as = id => (X.values(id) ? undefined : 'values');
-  if (!ls.some(id => ['__proto__', 'constructor', 'prototype'].includes(id))) return ls.map(id => ({ op: 'set', view: V.id, path: ['present', id, 'as'], value: as(id) }));
-  // an id no path of set may hold (core/apply.js UNSAFE): the whole present, each entry an own key
-  const P = TM_OBJ(V.present) ? V.present : {};
-  return [{ op: 'set', view: V.id, path: ['present'], value: ls.reduce((v, id) => { const e = { ...(Object.hasOwn(P, id) && TM_OBJ(P[id]) ? P[id] : {}), as: as(id) }; if (!e.as) delete e.as; return { ...v, [id]: e }; }, { ...P }) }];
+  return ls.map(id => ({ op: 'set', view: V.id, path: ['present', id, 'as'], value: as(id) })); // an id named __proto__ too: set writes own keys
 }
 
 /* ---- the type ---- */

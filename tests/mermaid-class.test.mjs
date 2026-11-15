@@ -529,3 +529,11 @@ test('a type ending in * or $ reads back as itself, else the member is not writt
   const ops = read('classDiagram\nclass C {\n  +lookup(d: Dict[str, int], k: str) int\n  +on(h: (e: Event, c: Ctx) => void) void\n}\n').model.nodes[0].members;
   assert.deepEqual(ops.map(o => o.props.parameters), [[{ name: 'd', valueType: 'Dict[str, int]' }, { name: 'k', valueType: 'str' }], [{ name: 'h', valueType: '(e: Event, c: Ctx) => void' }]]);
 });
+
+test('a class named like a statement keyword is written in backticks, so its relations read back (audit 9)', () => {
+  for (const k of ['note', 'class', 'classDef', 'cssClass', 'direction', 'namespace', 'style', 'click', 'link', 'callback', 'accTitle', 'accDescr']) {
+    const m = { schemaVersion: 2, root: 'v', nodes: [{ id: k, type: 'uml.Class', label: k }, { id: 'Order', type: 'uml.Class', label: 'Order' }],
+      edges: [{ id: `${k}-Order`, type: 'uml.Association', from: k, to: 'Order' }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: [k, 'Order'] }] };
+    assert.deepEqual(read(write(m, 'v')).model.edges.map(e => [e.from, e.to]), [[k, 'Order']], k);
+  }
+});

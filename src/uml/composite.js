@@ -95,7 +95,7 @@ function csPic(model, view) {
   const rest = ids.filter(id => !boxed.has(id) && !uses.includes(id));
   const partOf = new Map([...parts.map(m => [m.id, S]), ...collabs.flatMap(c => c.roles.map(m => [m.id, c.x]))]); // a part or role: its structure
   const classes = [...at.values()].filter(n => CS_TYPED.includes(n.type));
-  const typeOf = p => { const vt = CS_PROPS(p).valueType, c = CS_HAS(vt) ? classes.filter(n => n.label === vt) : []; return c.length === 1 ? c[0] : null; };
+  const typeOf = p => { const vt = CS_PROPS(p).valueType, c = CS_HAS(vt) ? classes.filter(n => (n.label ?? n.id) === vt) : []; return c.length === 1 ? c[0] : null; };
   const el = id => at.get(id) || (mem.get(id) || {}).m || null;
   // a line's end as drawn: { node, port?, id (the model's) }; null where nothing drawn is it
   const end = (e, k) => { const x = e[k], p = (CS_PROPS(e).ends || {})[k], part = CS_OBJ(p) ? p.part : null;
@@ -260,7 +260,7 @@ function csProblems(model, view) {
   else if (!S) say('error', 'subject-shown', `views[${vi}].subject`, [view.id, view.subject], `view ${JSON.stringify(view.id)}'s subject ${JSON.stringify(view.subject ?? null)} is not a class, a component or a collaboration it lists in nodeIds`);
   const nodeAt = id => CS_ARR(model.nodes).indexOf(P.at.get(id)), memPath = id => { const o = P.mem.get(id).owner; return `nodes[${nodeAt(o.id)}].members[${o.members.indexOf(P.mem.get(id).m)}]`; };
   if (S && S.type !== 'uml.Collaboration') P.parts.forEach(m => { if (!P.typeOf(m)) say('warning', 'part-type', memPath(m.id) + '.props.valueType', [m.id, S.id],
-    `part ${q(m.id)} of ${q(S.id)} is typed ${JSON.stringify(CS_PROPS(m).valueType ?? null)}, which names ${[...P.at.values()].some(n => CS_TYPED.includes(n.type) && CS_HAS(n.label) && n.label === CS_PROPS(m).valueType) ? 'more than one' : 'no'} class or component, so it shows only the ports its connectors reach through it`); });
+    `part ${q(m.id)} of ${q(S.id)} is typed ${JSON.stringify(CS_PROPS(m).valueType ?? null)}, which names ${[...P.at.values()].some(n => CS_TYPED.includes(n.type) && (n.label ?? n.id) === CS_PROPS(m).valueType) ? 'more than one' : 'no'} class or component, so it shows only the ports its connectors reach through it`); });
   P.parts.forEach(m => { const t = CS_PROPS(m).multiplicity, b = CS_HAS(t) ? multBounds(t) : { lower: 0, upper: 0 };
     if (!b || b.lower > b.upper) say('warning', 'part-multiplicity', memPath(m.id) + '.props.multiplicity', [m.id], `part ${q(m.id)}'s multiplicity [${t}] ${b ? 'has its lower bound above its upper' : 'is not one (1, *, 0..1, 1..*)'}`); });
   // where an end lies: the subject's structure ('S'), a collaboration's (its id), or nowhere (null)

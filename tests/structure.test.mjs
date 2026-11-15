@@ -177,7 +177,7 @@ test('portsDrawn: a copy, never the layout\'s geometry; each port a node of it, 
   assert.equal(portsDrawn(g, [{ ...PORTS[0], aria: 'Said by the type' }]).byId['a.p1'].aria, 'Said by the type');
   for (const n of out.nodes.slice(4)) assert.ok(n.x >= out.bounds.x && n.y >= out.bounds.y && n.x + n.w <= out.bounds.x + out.bounds.w && n.y + n.h <= out.bounds.y + out.bounds.h, `${n.id} in the bounds`);
   assert.deepEqual(portsDrawn(g, []).nodes, g.nodes); assert.equal(portsDrawn(g, []).edges.length, 5);
-  assert.deepEqual(portsDrawn({ nodes: [], edges: [] }, PORTS), { nodes: [], edges: [], byId: {} }, 'an empty view');
+  assert.deepEqual(portsDrawn({ nodes: [], edges: [] }, PORTS), { nodes: [], edges: [], byId: Object.create(null) }, 'an empty view (byId: an own-key table)');
 });
 
 test('portsDrawn: ports with no line keep 8 px apart, and from the ports with lines, within their side\'s free span', () => {
@@ -265,7 +265,7 @@ const CLEAN = () => M([{ id: 'c', type: 'uml.Component', label: 'Shop', members:
 [{ id: 'm1', type: 'uml.Manifestation', from: 'art', to: 'c' }, { id: 'm2', type: 'uml.Manifestation', from: 'spec', to: 'c' }, { id: 'r', type: 'uml.InterfaceRealization', from: 'c1', to: 'i' }]);
 
 test('the shared rules pass a clean model and the target examples 05 and 06, and name what they check', () => {
-  assert.deepEqual(Object.keys(STRUCT_RULES), ['port-owner', 'manifest-ends']);
+  assert.deepEqual(Object.keys(STRUCT_RULES), ['own-boxes', 'port-owner', 'manifest-ends']);
   assert.deepEqual(run(CLEAN()), []); assert.deepEqual(structProblems(CLEAN()), []);
   for (const f of ['bookshop-components', 'bookshop-deployment']) { const ex = JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url)));
     assert.deepEqual(structProblems(ex), [], f); ex.views.forEach(v => assert.deepEqual(structProblems(ex, v), [], `${f} ${v.id}`)); }

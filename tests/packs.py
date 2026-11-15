@@ -250,7 +250,8 @@ model = {"schemaVersion": 2, "iconPacks": {"gcp": "test-0"}, "nodes": [
     {"id": "x", "type": "gcp.Product", "label": "Typo", "props": {"icon": "Test-Rn"}},
     {"id": "z", "type": "azure.Service", "label": "Web", "props": {"icon": "Test-Service"}},
     {"id": "logo", "label": "Pipelines", "icon": "azuredevops"}, {"id": "id", "label": "Sign-in", "icon": "entra"}],
-    "edges": [], "views": [{"id": "v", "diagram": "gcp", "nodeIds": ["a", "b", "c", "w", "x"]}]}
+    "edges": [], "views": [{"id": "v", "diagram": "gcp", "nodeIds": ["a", "b", "c", "w", "x"],
+                            "nodes": [{"id": "y", "type": "gcp.Product", "label": "Own", "props": {"icon": "Test-Rnu"}}]}]}
 
 
 def probe(d, m=model, **more):
@@ -272,7 +273,7 @@ ok("table#3 · the Google pack gives its legal line; the Azure pack, with none, 
 ok("logos#1 · the manifest's Azure rows are read from the fetched Azure pack", icons.get("azuredevops", {}).get("src", "").startswith("data:image/svg+xml"), sorted(icons))
 ok("socket#1 · a render with packs fetched opens no socket, entra's missing logo included", not opened and "entra.svg: used from" in err, (opened, err))
 ok("check#1 · check names an id the pack lacks with the nearest ids, an id an alias moved, and a label other than the pin",
-   "no icon 'Test-Rn' (x); nearest: Test-Run" in err and "'Old-Run' is 'Test-Run' in the pin test-1" in err
+   "no icon 'Test-Rn' (x); nearest: Test-Run" in err and "no icon 'Test-Rnu' (y)" in err and "'Old-Run' is 'Test-Run' in the pin test-1" in err
    and "pin test-0; this release pins test-1" in err, err)
 icons, opened, err = probe(d, UMLIMATOR_NO_PACKS="1")
 ok("no-packs#1 · UMLIMATOR_NO_PACKS: no pack entry with a pack cached, and the Azure logos keep their sigil",

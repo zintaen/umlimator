@@ -1,3 +1,4 @@
+import { idTable } from '../core/registry.js';
 import { WIRE_KINDS, arrOf, endsIn, picks } from './validate.js';
 
 /* a lens (#94): what it lights on a view, as a layer of marks. Without `line`, the cards its pick picks and the lines
@@ -13,10 +14,10 @@ function lensOf(ctx, vid, lens) {
   // ponytail: eight tones, so the ninth owner shares the first's; a host that needs more rings cards itself with overlay()
   const names = [...new Set([...ctx.nodes, ...ctx.views.flatMap(w => Object.values(w.nodeOverrides || {}))].map(n => n && n.owner).filter(o => typeof o === 'string'))].sort();
   const tone = o => lens.color === 'owner' && names.includes(o) ? OWNER_TONES[names.indexOf(o) % OWNER_TONES.length] : null;
-  const nodes = Object.fromEntries(cards.filter(id => lit.has(id)).map(id => [id, tone(end(id).owner) ? { tone: tone(end(id).owner) } : {}]));
+  const nodes = idTable(Object.fromEntries(cards.filter(id => lit.has(id)).map(id => [id, tone(end(id).owner) ? { tone: tone(end(id).owner) } : {}])));
   const owners = [...new Set(Object.keys(nodes).map(id => end(id).owner).filter(tone))].sort().map(o => [o, tone(o)]);
   const dim = Object.keys(nodes).length < cards.length || lines.length < all.length; // a lens that lights everything leaves the selection its own dimming
-  return { layer: { nodes, edges: Object.fromEntries(lines.map(e => [e._id, {}])), dim }, owners };
+  return { layer: { nodes, edges: idTable(Object.fromEntries(lines.map(e => [e._id, {}]))), dim }, owners };
 }
 
 export { lensOf };

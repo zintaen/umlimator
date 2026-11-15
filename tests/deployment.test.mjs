@@ -46,7 +46,7 @@ test('the definition: uml.deployment is registered with its palette, its five li
   for (const t of ['uml.Node', 'uml.Device', 'uml.ExecutionEnvironment', 'uml.Artifact', 'uml.DeploymentSpecification', 'uml.Component', 'uml.Deployment', 'uml.CommunicationPath']) assert.deepEqual(T.props[t].map(f => f.key), ['stereotypes'], t);
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
   assert.deepEqual(Object.keys(T.edits), ['connect', 'remove']);
-  assert.deepEqual(Object.keys(T.rules), ['deploy-ends', 'deployed-twice', 'nest-kinds', 'path-ends', 'manifest-ends', 'line-inside']);
+  assert.deepEqual(Object.keys(T.rules), ['deploy-ends', 'deployed-twice', 'nest-kinds', 'path-ends', 'manifest-ends', 'own-boxes', 'line-inside']);
 });
 
 test('the cube: as wide as its widest text and 10 px of depth, its keyword over the name; its inset puts a slid point on its outline; open, its frame holds its faces', () => {

@@ -1,5 +1,6 @@
 import { h } from './render.js';
 import { esc, inline } from '../core/text.js';
+import { idTable } from '../core/registry.js';
 import { SHAPE, SHAPE_NAMES, shapeOf } from '../draw/shapes.js';
 import { WIRES, badgesOf } from '../map/cards.js';
 import { critical, msText, paths, reach, whatIf } from '../map/insight.js';
@@ -200,7 +201,7 @@ function pieces(X, el, o) {
   /* what is lit is the pieces' own layer, 'lit' (0.14.0): it never takes a host's highlight() or a story's away, nor they it */
   const lv = r => Math.min(1, Math.max(0, +(r.level ?? (r.distance > 0 ? Math.max(.45, 1 - .15 * r.distance) : 1)) || 0)); // as highlight() fades a Ref
   function litLayer(refs, marks) { // the cards and lines lit, the rest dimmed, with the marks that go with them (a path's total, the card that is down)
-    const L = { nodes: {}, edges: {}, dim: refs.length > 0 }, put = (to, x, r) => { to[x] = { level: Math.max(lv(r), (to[x] || {}).level || 0) }; };
+    const L = { nodes: idTable(), edges: idTable(), dim: refs.length > 0 }, put = (to, x, r) => { to[x] = { level: Math.max(lv(r), (to[x] || {}).level || 0) }; };
     refs.forEach(r => { if (r.type === 'node') put(L.nodes, r.id, r); else if (r.type === 'edge') (r.ids || []).forEach(x => put(L.edges, x, r)); });
     Object.entries((marks || {}).nodes || {}).forEach(([id, m]) => { L.nodes[id] = { ...L.nodes[id], ...m }; });
     return L;

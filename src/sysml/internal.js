@@ -1,4 +1,4 @@
-import { registerDiagramType } from '../core/registry.js';
+import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { r2 } from '../draw/shapes.js';
 import { csAdd, csConnect, csGeo, csMember, csMoveTo, csRemove, csRename } from '../uml/composite.js';
@@ -17,7 +17,7 @@ const SYS_IB_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x)
 const SYS_IB_PROPS = x => (SYS_IB_OBJ(x && x.props) ? x.props : {}), SYS_IB_HAS = x => x != null && x !== '';
 const SYS_IB_NAME = x => String(x.label ?? x.id);
 const SYS_IB_PLURAL = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
-const SYS_IB_PROP = { 'sysml.PartProperty': 'Part', 'sysml.ReferenceProperty': 'Reference', 'sysml.ValueProperty': 'Value' };
+const SYS_IB_PROP = { __proto__: null, 'sysml.PartProperty': 'Part', 'sysml.ReferenceProperty': 'Reference', 'sysml.ValueProperty': 'Value' };
 const SYS_IB_FLOWS = ['from-to', 'to-from'];
 
 /* ---- the model read: elements and members by id (the first of an id), the subject, a port's type and its flow ---- */
@@ -45,7 +45,7 @@ const SYS_IB_IF = e => { const f = SYS_IB_PROPS(e).itemFlow; return SYS_IB_OBJ(f
 
 /* ---- names (§13): the type's words for each part, port and connector; null leaves the composite type's ---- */
 const SYS_IB_TEXT = m => { const p = SYS_IB_PROPS(m); return `${m.label ?? m.id}${SYS_IB_HAS(p.valueType) ? ': ' + p.valueType : ''}${SYS_IB_HAS(p.multiplicity) ? ` [${p.multiplicity}]` : ''}`; };
-const SYS_IB_PORT_WORD = p => ({ proxy: 'Proxy port', full: 'Full port' })[SYS_IB_PROPS(p).kind] || 'Port';
+const SYS_IB_PORT_WORD = p => ({ __proto__: null, proxy: 'Proxy port', full: 'Full port' })[SYS_IB_PROPS(p).kind] || 'Port';
 function SYS_IB_PORT_SAY(I, p, owner) {
   const t = SYS_IB_TYPE(p), f = SYS_IB_FLOW(I, p);
   return `${SYS_IB_PORT_WORD(p)} ${SYS_IB_NAME(p)}${t.name ? ': ' + t.name : ''}${owner ? ' of ' + SYS_IB_NAME(owner) : ''}${t.conj ? ', conjugated' : ''}${f ? ', flow ' + SYS_IB_FLOW_SAY[f] : ''}`;
@@ -63,7 +63,7 @@ function SYS_IB_LINE_SAY(I, e) {
   return `Connector from ${SYS_IB_END(I, e, 'from')} to ${SYS_IB_END(I, e, 'to')}${f ? `, carrying ${f.item} from ${say(I, e, a)} to ${say(I, e, b)}` : SYS_IB_HAS(e.label) ? ': ' + e.label : ''}`;
 }
 function SYS_IB_SAY(I, g, id) {
-  const n = I.at.get(id); if (n && n.type === 'sysml.Block') { const c = g.byId && g.byId[id]; return c && c.aria ? String(c.aria).replace(/^Class\b/, 'Block') : null; } // a block's card: not "Class"
+  const n = I.at.get(id); if (n && n.type === 'sysml.Block') { const c = g.byId && Object.hasOwn(g.byId, id) && g.byId[id]; return c && c.aria ? String(c.aria).replace(/^Class\b/, 'Block') : null; } // a block's card: not "Class"
   const k = String(id).indexOf('->'), m = I.mem.get(k < 0 ? id : String(id).slice(k + 2));
   if (m && m.m.type === 'sysml.Port') return SYS_IB_PORT_SAY(I, m.m, k < 0 ? m.owner : I.el(String(id).slice(0, k)));
   if (m && I.S && m.owner === I.S && Object.hasOwn(SYS_IB_PROP, m.m.type)) { const ports = SYS_IB_ARR(g.nodes).filter(n => n.owner === id && n.shape === 'port').length;
@@ -126,7 +126,7 @@ function SYS_IB_GEO({ model, view, pos, memo }) {
   const out = { ...d, nodes: d.nodes.map(n => { if (n.shape !== 'port') return n; const m = I.el(memberOf(n.id)), f = m ? SYS_IB_FLOW(I, m) : null; return { ...n, member: memberOf(n.id), ...(f ? { flow: f } : {}) }; }),
     edges: d.edges.map(e => { const x = I.E.get(e.id), f = x && x.type === 'sysml.Connector' ? SYS_IB_IF(x) : null, s = f && SYS_IB_SPOT(e);
       return s ? { ...e, item: { ...s, u: f.direction === 'to-from' ? [-s.u[0], -s.u[1]] : s.u } } : e; }) };
-  const now = new Map(out.nodes.map(n => [n.id, n])); out.byId = Object.fromEntries(Object.entries(d.byId).map(([k, n]) => [k, now.get(k) || n]));
+  const now = new Map(out.nodes.map(n => [n.id, n])); out.byId = idTable(Object.fromEntries(Object.entries(d.byId).map(([k, n]) => [k, now.get(k) || n])));
   out.legend = SYS_IB_LEGEND.filter(([, , on]) => on(out, I)).map(([w, says, , sw]) => `<span class="lgi" title="${esc(w + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true">${sw}</svg><b>${esc(w)}</b><span>${esc(says)}</span></span>`);
   return out;
 }

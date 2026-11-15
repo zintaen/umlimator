@@ -69,7 +69,7 @@ def data_lt(out):
 def not_objects(d):
     """Each entry upstream's validate_map reads as an object and is not one, as its problems (it would end in a traceback)."""
     lst = lambda x: x if isinstance(x, list) else []
-    name = lambda x: x is None or isinstance(x, (str, int, float)) and not isinstance(x, bool)
+    name = lambda x: x is None or isinstance(x, str)  # a number id passed, then ended stills and MCP tools in a TypeError (audit 9)
     ids = lambda at, xs, ks: [f"{at}[{j}].{k} is not a string" for j, x in enumerate(lst(xs)) if isinstance(x, dict) for k in ks if not name(x.get(k))]
     out = [f"{k} is not a list" for k in ("nodes", "edges", "views") if k in d and not isinstance(d[k], list)]
     out += [f"{k}[{i}] is not an object" for k in ("nodes", "edges", "views") for i, x in enumerate(lst(d.get(k))) if not isinstance(x, dict)]
@@ -93,8 +93,11 @@ def not_objects(d):
     # an id, a line's end, a view a card opens: a list or an object there is no name, and ended in a TypeError (audit 7)
     out += ids("nodes", d.get("nodes"), ("id", "opensView", "view")) + ids("edges", d.get("edges"), ("id", "from", "to"))
     out += ["root is not a string"] if not name(d.get("root")) else []
-    # a card's members, and theirs, at any depth (a stack, not recursion: a deep model never ends in a RecursionError)
+    # a card's members, and theirs, at any depth (a stack, not recursion: a deep model never ends in a RecursionError);
+    # a view's own cards too, which MCP's refs walks (audit 9)
     todo = [(f"nodes[{i}]", n) for i, n in enumerate(lst(d.get("nodes"))) if isinstance(n, dict)]
+    todo += [(f"views[{i}].nodes[{j}]", n) for i, v in enumerate(lst(d.get("views"))) if isinstance(v, dict)
+             for j, n in enumerate(lst(v.get("nodes"))) if isinstance(n, dict)]
     while todo:
         at, n = todo.pop()
         if "members" in n and not isinstance(n["members"], list):
@@ -628,7 +631,7 @@ def sketch(m, most=60):
     if not near or len(near) > most:
         return [] if not near else [f"_{len(near)} cards changed or next to a change: too many to sketch; see the pictures._"]
     key = {i: f"n{k}" for k, i in enumerate(i for i in cards if i in near)}
-    q = lambda s: re.sub(r"[\r\n]+", " ", str(s)).replace('"', "#quot;").replace("`", "#96;").replace("<", "#lt;").replace(">", "#gt;")
+    q = lambda s: re.sub(r"[\r\n]+", " ", str(s)).replace("#", "#35;").replace('"', "#quot;").replace("`", "#96;").replace("<", "#lt;").replace(">", "#gt;")
     out = ["```mermaid", "flowchart LR"]
     out += [f'  {key[i]}["{q(cards[i].get("label") or i)}"]' + (f":::{cards[i]['change']}" if cards[i].get("change") in MARKS else "") for i in key]
     style = []

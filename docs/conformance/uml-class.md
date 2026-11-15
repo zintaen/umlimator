@@ -26,6 +26,7 @@ it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2
 | 9.2 Generalization | `uml.Generalization`, from the specific to the general | a hollow triangle at the general end; the general class above when the view runs `down` |
 | 10.4 InterfaceRealization | `uml.InterfaceRealization`, to the interface | a dashed line, a hollow triangle |
 | 7.7 Dependency, Usage | `uml.Dependency`, from the client; `props.stereotypes: ["use"]` | a dashed line, an open arrowhead, «use» as its label |
+| other diagrams' lines | `uml.Usage`, `uml.Abstraction`, `uml.Realization`, `uml.ComponentRealization`, `uml.Connector`, drawn only when the view's `edges` lists them (a view with no list draws the five kinds above: audit 9) | a usage and an abstraction dashed with an open arrowhead, «use» or «abstraction»; a realization dashed with a hollow triangle; a connector a plain line, none between two members of one class |
 | 7.2 Comment | `uml.Comment`, `uml.CommentLink` from the comment | a note with a folded corner; a dashed line with no ends |
 | 12.3 stereotype notation, as text | `props.stereotypes` on any element or line | «entity» over a name, before a line's label |
 | 12.2 Package | `uml.Package`; ownership is `parent` | from 0.19.0: a package owning something the view shows is a box holding it, its name in a tab; one owning nothing shown is a closed folder (`uml-package.md`). Names are qualified from the nearest shown owner, the view's `subject`, or the top (`sales::Order`). Until 0.19.0: a named box, its classes beside it |

@@ -127,6 +127,20 @@ try {
   check('a new selection clears the highlight; two cards selected offer paths', !pcard('trip-api').hasAttribute('opacity') && !!document.querySelector('#m-panel [data-lit="paths"]'));
   key('P');
   check('P lights every path between the two cards', /^Every path from Trip lifecycle to Fare calculator: 2 cards/.test(hint()) && pcard('pricing').getAttribute('opacity') === '0.2', hint());
+
+  // audit 9: cards named after Object.prototype's keys dim as any other under highlight() and a host's layer (a plain
+  // object), and select() refuses one the view does not draw, as it refuses any id not on it
+  { const ids = ['a', 'constructor', 'toString', 'valueOf', '__proto__'], el2 = document.getElementById('a');
+    const M = { nodes: [...ids, 'b'].map(id => ({ id, label: 'Card ' + id.replace(/_/g, '') })), edges: [], views: [{ id: 'v', title: 'V', nodeIds: ids }, { id: 'w', title: 'W', nodeIds: ['b'] }] };
+    const h2 = render(el2, M, { view: 'v', measure: false }), s2 = el2.querySelector('.umlimator').shadowRoot, op = () => ids.map(id => s2.querySelector(`.node[data-id="${id}"]`).getAttribute('opacity'));
+    h2.highlight([{ type: 'node', id: 'a', view: 'v' }]);
+    check('audit 9: highlight() dims a card named constructor, toString, valueOf or __proto__', op().join() === ',0.2,0.2,0.2,0.2', op()); h2.highlight(null);
+    h2.overlay('host', { nodes: { a: {} }, dim: true });
+    check("…as a host's layer does", op().join() === ',0.2,0.2,0.2,0.2', op()); h2.overlay('host', null);
+    await h2.setView('w');
+    h2.select({ type: 'node', id: 'constructor', view: 'w' });
+    check('…and select() refuses a card named constructor on a view that does not draw it', h2.selection == null, h2.selection);
+    h2.destroy(); }
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

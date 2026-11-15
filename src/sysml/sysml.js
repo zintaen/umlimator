@@ -5,6 +5,7 @@ import { frameTag } from '../uml/frame.js';
 import { LEGEND_ENDS } from '../uml/class.js';
 import { STY_FREE, UML_META_AS, styKey } from '../uml/stereotypes.js';
 import { csProblems } from '../uml/composite.js';
+import { idTable } from '../core/registry.js';
 
 /* ---------- SysML's base (work package M3.1, notes/milestone-3.md §3, §5, §8.1) ----------
    SysML's types are types of their own (sysml.Block), each declared once below as a UML metaclass, the stereotype it implies
@@ -152,7 +153,7 @@ function SYS_DRESS(g, model, view, names) {
   const h = SYS_HEAD(model, view), said = x => (names && names(x.id)) || x.aria, map = new Map(), sid = view.subject;
   const card = g.byId && Object.hasOwn(g.byId, sid) ? g.byId[sid] : null, frame = { shape: 'sysml-frame', title: h.title, label: h.title, aria: h.aria };
   const nodes = SYS_ARR(g.nodes).filter(n => n !== card).map(n => { const y = names ? { ...n, aria: said(n) } : n; map.set(n, y); return y; });
-  const byId = Object.fromEntries(Object.entries(g.byId || {}).filter(([k]) => k !== sid || !card).map(([k, n]) => [k, map.get(n) || n]));
+  const byId = idTable(Object.fromEntries(Object.entries(g.byId || {}).filter(([k]) => k !== sid || !card).map(([k, n]) => [k, map.get(n) || n])));
   return { ...g, nodes, byId, edges: names ? SYS_ARR(g.edges).map(e => ({ ...e, aria: said(e) })) : g.edges,
     families: [...(card ? [{ id: sid, x: card.x, y: card.y, w: card.w, h: card.h, nodeIds: [], ...frame }] : []), ...SYS_ARR(g.families).map(f => (f.id === sid ? { ...f, ...frame } : f))] };
 }

@@ -1,4 +1,4 @@
-import { registerDiagramType } from '../core/registry.js';
+import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { csAdd, csConnect, csGeo, csMember, csMoveTo, csRemove, csRename } from '../uml/composite.js';
@@ -18,8 +18,8 @@ const SYS_PAR_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x
 const SYS_PAR_PROPS = x => (SYS_PAR_OBJ(x && x.props) ? x.props : {}), SYS_PAR_HAS = x => x != null && x !== '';
 const SYS_PAR_NAME = x => String(x.label ?? x.id);
 const SYS_PAR_PLURAL = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
-const SYS_PAR_PROP = { 'sysml.ConstraintProperty': 'Constraint', 'sysml.ValueProperty': 'Value' };
-const SYS_PAR_SUBJ = { 'sysml.Block': 'Block', 'sysml.ConstraintBlock': 'Constraint block' };
+const SYS_PAR_PROP = { __proto__: null, 'sysml.ConstraintProperty': 'Constraint', 'sysml.ValueProperty': 'Value' };
+const SYS_PAR_SUBJ = { __proto__: null, 'sysml.Block': 'Block', 'sysml.ConstraintBlock': 'Constraint block' };
 
 /* ---- the model read: elements and members by id (the first of an id), the subject, a constraint block by its label ---- */
 function SYS_PAR_INDEX(model, view) {
@@ -59,7 +59,7 @@ function SYS_PAR_END(I, e, k) {
 }
 const SYS_PAR_LINE_SAY = (I, e) => `Binding from ${SYS_PAR_END(I, e, 'from')} to ${SYS_PAR_END(I, e, 'to')}`;
 function SYS_PAR_SAY(I, g, id) {
-  const n = I.at.get(id); if (n && Object.hasOwn(SYS_PAR_SUBJ, n.type)) { const c = g.byId && g.byId[id]; return c && c.aria ? String(c.aria).replace(/^Class\b/, SYS_PAR_SUBJ[n.type]) : null; }
+  const n = I.at.get(id); if (n && Object.hasOwn(SYS_PAR_SUBJ, n.type)) { const c = g.byId && Object.hasOwn(g.byId, id) && g.byId[id]; return c && c.aria ? String(c.aria).replace(/^Class\b/, SYS_PAR_SUBJ[n.type]) : null; }
   const k = String(id).indexOf('->'), m = I.mem.get(k < 0 ? id : String(id).slice(k + 2));
   if (m && m.m.type === 'sysml.ConstraintParameter') return SYS_PAR_PARAM_SAY(m.m, k < 0 ? m.owner : I.el(String(id).slice(0, k)));
   if (m && I.S && m.owner === I.S && Object.hasOwn(SYS_PAR_PROP, m.m.type)) { const B = m.m.type === 'sysml.ConstraintProperty' ? I.block(m.m) : null, ports = SYS_PAR_ARR(g.nodes).filter(x => x.owner === id && x.shape === 'port').length;
@@ -83,7 +83,7 @@ function SYS_PAR_GEO({ model, view, pos, memo }) {
   const nodes = d.nodes.map(n => { const m = I.mem.get(n.id); if (!m || m.owner !== I.S || m.m.type !== 'sysml.ConstraintProperty') return n;
     const x = SYS_PAR_EXPR(I.block(m.m)); return { ...n, shape: 'sysml-constraint', ...(x ? { expr: x } : {}) }; });
   const now = new Map(SYS_PAR_NAMES(d, nodes, I).map(n => [n.id, n]));
-  return { ...d, nodes: [...now.values()], ...SYS_PAR_BOUNDS(d, now), byId: Object.fromEntries(Object.entries(d.byId).map(([k, n]) => [k, now.get(k) || n])),
+  return { ...d, nodes: [...now.values()], ...SYS_PAR_BOUNDS(d, now), byId: idTable(Object.fromEntries(Object.entries(d.byId).map(([k, n]) => [k, now.get(k) || n]))),
     legend: SYS_PAR_LEGEND.filter(([, , on]) => on(d)).map(([w, says, , dash]) => `<span class="lgi" title="${esc(w + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><path d="M2 8H26" stroke="var(--um-muted)" stroke-width="1.4"${dash}/></svg><b>${esc(w)}</b><span>${esc(says)}</span></span>`) };
 }
 
@@ -152,7 +152,7 @@ function SYS_PAR_PROBLEMS(model, view) {
         say('error', 'binding-ends', `${path}.${k}`, [e.id, x], `${e.id}'s ${k} end ${q(x)} is not a value property or a parameter of ${q(S.id)}: a binding joins those, or a parameter through a constraint property`); } });
     const [ta, tb] = ['from', 'to'].map(k => SYS_PAR_PROPS(I.el(e[k])).valueType).map(t => (SYS_PAR_HAS(t) ? named.get(t) : null));
     if (ok && ta && tb && ta !== tb && !ups(ta).has(tb) && !ups(tb).has(ta))
-      say('warning', 'binding-types', path, [e.id, e.from, e.to], `${e.id} binds ${q(e.from)} of type ${ta.label} to ${q(e.to)} of type ${tb.label}: the two ends' types are equal, or one specializes the other`); });
+      say('warning', 'binding-types', path, [e.id, e.from, e.to], `${e.id} binds ${q(e.from)} of type ${SYS_PAR_NAME(ta)} to ${q(e.to)} of type ${SYS_PAR_NAME(tb)}: the two ends' types are equal, or one specializes the other`); });
   const nodeAt = n => SYS_PAR_ARR(model.nodes).indexOf(n);
   SYS_PAR_SHOWN(I).filter(m => m.type === 'sysml.ConstraintProperty').forEach(m => { const B = I.block(m);
     I.params(B).forEach(x => { if (!bound.has(`${m.id}|${x.id}`)) say('warning', 'parameter-bound', `nodes[${nodeAt(B)}].members[${B.members.indexOf(x)}]`, [x.id, m.id],

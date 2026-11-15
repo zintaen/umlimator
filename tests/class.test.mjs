@@ -395,7 +395,7 @@ test('audit 6: a card listed twice in view.nodeIds is drawn once', async () => {
 test('audit 6: describe names every line a class view draws, of any kind', () => {
   const m = { schemaVersion: 2, nodes: [{ id: 'o', type: 'uml.Class', label: 'Order' }, { id: 'p', type: 'uml.Class', label: 'Payment' }, { id: 'i', type: 'uml.Interface', label: 'Payable' }],
     edges: [{ id: 'u', type: 'uml.Usage', from: 'o', to: 'i' }, { id: 'r', type: 'uml.Realization', from: 'p', to: 'o', label: 'implements' }, { id: 'd', type: 'uml.Abstraction', from: 'p', to: 'i' }, { id: 'x', type: 'uml.Trace', from: 'i', to: 'o' }],
-    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['o', 'p', 'i'] }] };
+    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['o', 'p', 'i'], edges: ['u', 'r', 'd', 'x'] }] }; // listed: a class view draws only its own row's lines by itself (audit 9)
   const d = describe(m, 'v');
   for (const s of ['uses Payable', 'realizes Order ("implements")', 'abstracts Payable', 'linked to Order']) assert.ok(d.includes(s), s + ' in ' + d);
 });
@@ -414,4 +414,18 @@ test('audit 6: a member row with a function type keeps it whole', () => {
 test('audit 8: an operation whose parameter has a function type keeps the parameters after it', () => {
   assert.deepEqual(parseMember('+on(handler: (e: Event) => void, opts: Options): void').props.parameters, [{ name: 'handler', valueType: '(e: Event) => void' }, { name: 'opts', valueType: 'Options' }]);
   assert.deepEqual(parseMember('f(a: () -> Unit, b: Int)').props.parameters, [{ name: 'a', valueType: '() -> Unit' }, { name: 'b', valueType: 'Int' }]);
+});
+test('audit 9: a class view with no edges list draws its own row\'s lines only; a listed usage, realization or connector is drawn with its notation', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.Class', label: 'Checkout', members: [{ id: 'A.p', type: 'uml.Property', label: 'p' }, { id: 'A.q', type: 'uml.Property', label: 'q' }] },
+    { id: 'B', type: 'uml.Class', label: 'PriceList' }, { id: 'C', type: 'uml.Class', label: 'Tax' }],
+  edges: [{ id: 'u', type: 'uml.Usage', from: 'A', to: 'B' }, { id: 'r', type: 'uml.Realization', from: 'C', to: 'B' }, { id: 'd', type: 'uml.Dependency', from: 'A', to: 'C' },
+    { id: 'k', type: 'uml.Connector', from: 'A.p', to: 'A.q' }, { id: 'k2', type: 'uml.Connector', from: 'A.p', to: 'C' }],
+  views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['A', 'B', 'C'] }, { id: 'w', diagram: 'uml.class', nodeIds: ['A', 'B', 'C'], edges: ['u', 'r', 'k', 'k2'] }] };
+  assert.deepEqual(layout(m, 'v').edges.map(e => e.id), ['d']);
+  assert.match(describe(m, 'v'), /and 1 line\./);
+  const g = layout(m, 'w'), at = id => g.edges.find(e => e.id === id);
+  assert.deepEqual(g.edges.map(e => e.id), ['u', 'r', 'k2'], 'two members of one class: no loop on it');
+  assert.deepEqual([at('u').end, at('u').label, at('u').aria], [{ from: 'none', to: 'open', dashed: true }, '«use»', 'Usage from Checkout to PriceList: «use»']);
+  assert.deepEqual(at('r').end, { from: 'none', to: 'triangle', dashed: true }); assert.deepEqual(at('k2').end, { from: 'none', to: 'none' });
+  assert.deepEqual(g.legend.map(s => s.match(/<b>([^<]*)<\/b>/)[1]), ['Usage', 'Realization', 'Connector']);
 });

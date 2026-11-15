@@ -121,7 +121,7 @@ CPU time, best of N after a warm-up, on an Apple M5 laptop at a load average of 
 
 ## Tests
 
-`tests/state.test.mjs` and `tests/state-machine.html` (the type, its 17 rules, the example under three fonts, both
+`tests/state.test.mjs` and `tests/state-machine.html` (the type, its 18 rules, the example under three fonts, both
 themes and both directions, every gesture by pointer and key, a 30-step session, P1); `tests/transition.test.mjs` (the
 parser); `tests/flow.test.mjs` and `tests/flow.html` (the shared shapes); `tests/state-minimal.json` and
 `tests/state-stress.json` with `tests/stage4-fixtures.test.mjs` and `tests/stage4.html` (`notes/stage-4.md` §16);

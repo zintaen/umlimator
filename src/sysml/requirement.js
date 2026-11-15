@@ -29,7 +29,7 @@ const RQ_REL = {
   'sysml.Trace': ['Trace', 'traced from', 'traced to', 'is related to the one it points to'],
   'sysml.Copy': ['Copy', 'copied by', 'copies', 'a read-only copy of the requirement it points to'] };
 const RQ_LINES = [...Object.keys(RQ_REL), RQ_LINK];
-const RQ_WORD = { [RQ]: 'Requirement', [RQ_TC]: 'Test case', 'sysml.Block': 'Block', [RQ_PKG]: 'Package', 'uml.Comment': 'Comment' };
+const RQ_WORD = { __proto__: null, [RQ]: 'Requirement', [RQ_TC]: 'Test case', 'sysml.Block': 'Block', [RQ_PKG]: 'Package', 'uml.Comment': 'Comment' };
 const RQ_RISK = ['low', 'medium', 'high'], RQ_METHOD = ['analysis', 'inspection', 'test', 'demonstration'];
 const rqName = x => String(x.label ?? x.id);
 const rqStereo = x => RQ_ARR(RQ_PROPS(x).stereotypes).filter(RQ_HAS).map(String);
@@ -131,7 +131,7 @@ function rqGeo({ model, view, pos: pins, memo }) {
   const lines = rqLines(model, view, pic, shown);
   const owned = ids.filter(id => I.is(id, RQ) && I.is(I.at.get(id).parent, RQ) && shown.has(I.at.get(id).parent));
   const nodes = ids.map(id => { const x = I.at.get(id), pr = RQ_OBJ(present[id]) && Object.hasOwn(present, id) ? present[id] : {}, st = rqStereo(x);
-    const kw = { [RQ]: 'requirement', [RQ_TC]: 'testCase', 'sysml.Block': 'block' }[x.type];
+    const kw = { __proto__: null, [RQ]: 'requirement', [RQ_TC]: 'testCase', 'sysml.Block': 'block' }[x.type];
     const shape = x.type === 'uml.Comment' ? { shape: 'note', label: [...st.map(t => `«${t}»`), rqName(x)].join(' ') } : x.type === RQ_PKG ? { shape: 'package', stereotypes: st }
       : { shape: 'classifier', stereotypes: [...(kw ? [kw] : []), ...st], compartments: x.type === RQ ? [{ name: 'requirement', members: rqRows(x) }] : [], collapsed: RQ_ARR(pr.collapsed), ...(Number.isFinite(pr.rows) ? { rows: pr.rows } : {}), ariaOwn: rqAria(x) };
     const d = { id, label: rqName(x), type: x.type || 'sysml.Block', kind: 'file', aria: rqAria(x), ...shape };

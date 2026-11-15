@@ -20,7 +20,7 @@ the example is [`examples/bookshop-profile.json`](../../examples/bookshop-profil
 | 12.3 ProfileApplication | `uml.ProfileApplication` from a package to a profile | dashed, an open arrowhead at the profile, «apply» |
 | 9.9 Generalization | `uml.Generalization` between two stereotypes | the class type's hollow triangle |
 | 10.2 Enumeration | `uml.Enumeration` (a tag's type), `parent` a profile; its literals | the class type's, «enumeration» and its literals |
-| 12.3.4 applied stereotypes (notation) | `props.stereotypes` and `props.tags` on any element shown | the element's class or package look; under its name a compartment for each stereotype it has, headed «name», each row `tag = value` (a missing required value `tag = ?`); a member that applies a stereotype listed with it in front and its tags in braces |
+| 12.3.4 applied stereotypes (notation) | `props.stereotypes` and `props.tags` on any element shown | the element's class or package look (a closed package: over its name each stereotype it has, the required ones supplied too; its tags in its accessible name, as the package shape has no compartment); under a classifier's name a compartment for each stereotype it has, headed «name», each row `tag = value` (a missing required value `tag = ?`); a member that applies a stereotype listed with it in front and its tags in braces |
 | 7.8 Comment | `uml.Comment`, `uml.CommentLink` | a note, a dashed line |
 
 **Stereotypes across the model** (`notes/stage-6.md` §5). `validate()` runs the check once on every version-2 model that

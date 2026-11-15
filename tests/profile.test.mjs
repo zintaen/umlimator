@@ -348,3 +348,18 @@ test('validate() of a 3,000-deep stereotype chain listed most specialized first:
   for (let i = 1; i < 3000; i++) edges.push({ id: 'g' + i, type: 'uml.Generalization', from: 's' + i, to: 's' + (i - 1) });
   assert.deepEqual(validate({ schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'uml.profile', nodeIds: ['P'] }] }), []);
 });
+test('audit 9: a closed package on a profile view draws the required stereotype its profile supplies', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'P', type: 'uml.Profile', label: 'Arch' },
+    { id: 'mod', type: 'uml.Stereotype', label: 'module', parent: 'P', members: [{ id: 'team', type: 'uml.Property', label: 'team', props: { valueType: 'String', default: 'core' } }] },
+    { id: 'pk', type: 'uml.MetaclassReference', label: 'Package', parent: 'P' }, { id: 'app', type: 'uml.Package', label: 'app' }, { id: 'cat', type: 'uml.Package', label: 'catalog', parent: 'app' }],
+  edges: [{ id: 'ext', type: 'uml.Extension', from: 'mod', to: 'pk', props: { isRequired: true } }, { id: 'ap', type: 'uml.ProfileApplication', from: 'app', to: 'P' }],
+  views: [{ id: 'v', diagram: 'uml.profile', nodeIds: ['P', 'mod', 'pk', 'cat'] }] };
+  const n = layout(m, 'v').nodes.find(x => x.id === 'cat');
+  assert.equal(n.shape, 'package'); assert.deepEqual(n.stereotypes, ['module']); assert.match(n.aria, /«module» required team = core/);
+});
+test('audit 9: member-kinds: a profile and a metaclass reference hold no members, as a package', () => {
+  for (const t of ['uml.Profile', 'uml.MetaclassReference']) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'P', type: t, label: 'Arch', members: [{ id: 'P.a', type: 'uml.Property', label: 'version' }] }], edges: [] };
+    assert.deepEqual(classProblems(m).map(p => p.rule), ['member-kinds'], t);
+  }
+});

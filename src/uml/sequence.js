@@ -1,4 +1,4 @@
-import { registerDiagramType } from '../core/registry.js';
+import { registerDiagramType, idTable } from '../core/registry.js';
 import { apply } from '../core/apply.js';
 import { esc, textW } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
@@ -90,7 +90,7 @@ function sqRun(model, view) {
       return { ...s, shape: 'use', type: 'uml.InteractionUse', label: String(u.el.label ?? ''), k: 'file', holder: true,
         aria: `Interaction use ${u.el.label ?? ''}${ids.length ? `, over ${sqName(H.get(ids[0]))}${ids.length > 1 ? ' to ' + sqName(H.get(ids[ids.length - 1])) : ''}` : ''}` }; }),
   ];
-  const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
+  const byId = idTable(Object.fromEntries(nodes.map(n => [n.id, n])));
   const edges = o.lines.map(l => { const m = M.get(l.ri), t = SQ_HAS(m.el.label) ? String(m.el.label) : '';
     return { id: m.id, _id: m.id, type: 'uml.Message', from: m.from, to: m.to, s: byId[m.from], t: byId[m.to], pts: l.pts, end: SQ_END[m.sort], sort: m.sort,
       ...(t ? { lbl: { ...l.lbl, text: t }, label: t } : {}),
