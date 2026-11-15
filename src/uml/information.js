@@ -163,10 +163,11 @@ function ifRename(model, view, id, text) {
     return ids.length ? { ids: [...new Set(ids)] } : { error: 'A flow conveys one element at least' }; };
   const reads = [-1, ...[...t].flatMap((ch, k) => (ch === ':' ? [k] : []))].map(k => ({ name: k < 0 ? '' : t.slice(0, k).trim(), rest: (k < 0 ? t : t.slice(k + 1)).trim(), ...list(k < 0 ? t : t.slice(k + 1)) }));
   // the flow as it is: its name, and its elements as read or as drawn (names joined by ', ', which a name holding ', ' reads otherwise: audit 12)
+  // the drawn text is its elements whatever the name typed before it (audit 13), and that reading wins
   const now = I.conveyed(e), drawn = now.map(I.nm).join(', ');
   const same = r => r.name === (e.label ?? '') && (r.rest === drawn || r.ids && JSON.stringify(r.ids) === JSON.stringify(now));
   if (reads.some(same)) return [];
-  const r = reads.find(x => x.ids); if (!r) return { error: reads[reads.length > 1 ? 1 : 0].error };
+  const d = reads.find(x => x.rest === drawn), r = d ? { ...d, ids: now } : reads.find(x => x.ids); if (!r) return { error: reads[reads.length > 1 ? 1 : 0].error };
   return [...(JSON.stringify(r.ids) !== JSON.stringify(I.conveyed(e)) ? [{ op: 'set', id, path: 'props.conveyed', value: r.ids }] : []),
     ...(r.name !== (e.label ?? '') ? [{ op: 'set', id, path: 'label', value: r.name || undefined }] : [])];
 }
