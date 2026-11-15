@@ -46,6 +46,17 @@ function edgeIds(list) {
   (list || []).forEach(e => { if (!e || typeof e !== 'object') return; const k = e.from + '->' + e.to, n = seen[k] = (seen[k] ?? -1) + 1; e._id = e.id != null ? String(e.id) : `${k}#${n}`; });
 }
 
+// on a map view, whether box b holds the card or box x: no line joins the two (layered.js), so the view leaves such a
+// line out of what it says it draws (describe, rules, the print's tables), and validate() warns of it
+function boxHolds(v) {
+  const by = O(), at = O(); // a box by id; the boxes that list a card
+  (Array.isArray(v.containers) ? v.containers : []).forEach(c => { if (!c || c.id == null || by[c.id]) return; by[c.id] = c;
+    (Array.isArray(c.nodeIds) ? c.nodeIds : []).forEach(id => (at[id] ||= []).push(c.id)); });
+  const holds = (b, x) => { for (const s = by[x] ? [by[x].parent] : [...(at[x] || [])], seen = new Set(); s.length;) { const p = s.pop(); // a walk up, not recursion: boxes nested any deep
+    if (p === b) return true; if (by[p] && !seen.has(p)) { seen.add(p); s.push(by[p].parent); } } return false; };
+  return (b, x) => (v.diagram == null || v.diagram === 'map') && !!by[b] && holds(b, x); // b is a box that holds x
+}
+
 /* The model's views and everything that lays one out. Works on its own copy of the model, needs no DOM. */
 function mapContext(model, opts = {}) {
   const D = structuredClone(migrate(model) || {}); // a newer schemaVersion throws: drawn wrongly otherwise (F6)
@@ -74,11 +85,13 @@ function mapContext(model, opts = {}) {
   const viewsWith = nid => views.filter(v => (v.nodeIds || []).includes(nid));
   const kidsOf = id => views.filter(x => (x.parent || null) === id);
   const chain = vid => { const out = []; let c = V[vid]; const seen = new Set(); while (c && !seen.has(c.id)) { seen.add(c.id); out.unshift(c.id); c = V[c.parent]; } return out; };
-  const viewEdges = v => { // an edge's ends are cards of the view or its containers
+  const viewEdges = (v, say) => { // an edge's ends are cards of the view or its containers; say: warn of one left out for joining a box and what it holds
     const ids = new Set([...(v.nodeIds || []), ...(v.containers || []).map(c => c && c.id).filter(Boolean)]);
     const list = Array.isArray(v.edges) ? v.edges : (D.edges || []).filter(e => ids.has(e.from) && ids.has(e.to));
     const once = new Set(); // a line id listed twice is one line, drawn once (audit 7)
-    return list.filter(e => typeof e !== 'string' || !once.has(e) && once.add(e)).map(e => typeof e === 'string' ? (D.edges || []).find(x => x.id === e) : e).filter(e => e && ids.has(e.from) && ids.has(e.to));
+    const inside = boxHolds(v), apart = e => { const b = inside(e.from, e.to) ? e.from : inside(e.to, e.from) ? e.to : null;
+      if (b != null && say) warn(`no line for edge ${e.id ?? e.from + '->' + e.to}: it joins the box "${b}" and something inside it`); return b == null; };
+    return list.filter(e => typeof e !== 'string' || !once.has(e) && once.add(e)).map(e => typeof e === 'string' ? (D.edges || []).find(x => x.id === e) : e).filter(e => e && ids.has(e.from) && ids.has(e.to) && apart(e));
   };
   /* ---------- reading order: every view runs left → right ----------
      The trigger sits at the far left; each next step or callee goes one column to the right, branches
@@ -407,7 +420,7 @@ function mapContext(model, opts = {}) {
       if (k != null) Object.assign(memo, { runKey: k, runGeo: g });
       return g;
     }
-    const edges = viewEdges(v).map(e => ({ ...e }));
+    const edges = viewEdges(v, true).map(e => ({ ...e }));
     if (v.render === 'sequence') edges.forEach((e, i) => { e.step = i + 1; });
     const P = planCache[vid] || { flow: true, backKeys: loopsOf(v).keys, steps: O() };
     if (!override && P.hub) return hubGeo(vid, P, edges, repair, quick);
@@ -659,4 +672,4 @@ function mapContext(model, opts = {}) {
     layoutCache, geoCache, memos, buildGeo: withM(buildGeo), buildView: withM(buildView), optimize: withM(optimize), flowPos, kidCount, viewKey, brokenIn, unfoldable, unfolded };
 }
 
-export { mapContext };
+export { mapContext, boxHolds };

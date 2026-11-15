@@ -49,7 +49,8 @@ export function diff(before, after) {
   out.nodes = mark(arr(A.nodes), arr(out.nodes), card);
   out.edges = mark(arr(A.edges), arr(out.edges), line, lineKeys);
   const goneLines = new Map(out.edges.filter(e => how.get(e) === 'removed' && e.id != null).map(e => [String(e.id), String(e.id)]));
-  const line0 = new Map(arr(A.edges).filter(e => e && e.id != null && !goneLines.has(String(e.id))).map(e => [String(e.id), e])); // model lines in both, by id
+  const keyed = l => { const k = lineKeys(l); return new Map(l.map((e, i) => [e, k[i]])); }, k1 = new Set(lineKeys(arr(after && after.edges)));
+  const line0 = new Map([...keyed(arr(A.edges))].filter(([e, k]) => e && typeof e === 'object' && k1.has(k)).map(([e, k]) => [k, e])); // model lines in both, by their Ref name (an id-less one by its ends)
   const V0 = new Map(arr(A.views).filter(Boolean).map(v => [v.id, v])), V1 = new Set(arr(out.views).filter(Boolean).map(v => v.id));
   const moved = [], touched = new Set(), viewSaid = []; // cards put into or taken out of a view; views whose cards the diff marks there; what only a view changes
   const views = arr(out.views).map(v => {
@@ -78,7 +79,8 @@ export function diff(before, after) {
     if (left.length && v.layout && o.layout) { const L = idTable(v.layout), taken = new Set(Object.values(L).map(String));
       left.forEach(id => { const p = o.layout[id]; if (Array.isArray(p) && !taken.has(String(p))) { L[id] = p; taken.add(String(p)); } }); w.layout = plain(L); }
     // a model line the view hid or showed (its ends staying), and a sequence's steps in a new order: said, and marked in a list
-    const shown = (m, x) => linesOf(m, x).filter(e => e.id != null && line0.has(String(e.id)) && !left.includes(e.from) && !left.includes(e.to) && !came.includes(e.from) && !came.includes(e.to)).map(e => String(e.id));
+    const shown = (m, x) => { const K = keyed(arr(m.edges));
+      return linesOf(m, x).filter(e => line0.has(K.get(e)) && !left.includes(e.from) && !left.includes(e.to) && !came.includes(e.from) && !came.includes(e.to)).map(e => K.get(e)); };
     const s0 = shown(A, o), s1 = shown(out, v), hid = s0.filter(id => !s1.includes(id)), put = s1.filter(id => !s0.includes(id));
     const ln = id => { const e = line0.get(id); return `the line from ${(at.get(e.from) || {}).label || e.from} to ${(at.get(e.to) || {}).label || e.to}${e.label ? ` (${e.label})` : ''}`; };
     hid.forEach(id => { viewSaid.push(`takes ${ln(id)} out of the view ${vn}`); touched.add(v.id); }); put.forEach(id => says(`puts ${ln(id)}`));

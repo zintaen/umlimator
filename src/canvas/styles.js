@@ -85,7 +85,7 @@ const STYLES = `
   svg .node .tab-tx, svg .family .tab-tx { font: 800 8px var(--um-mono); letter-spacing: .14em; fill: var(--um-mask); text-transform: uppercase; } svg .family .pub-tab { cursor: pointer; outline: none; }
   /* focus targets for lines and a card's tabs (#43): outside the cards, never hit by the pointer, a ring when focused by key */
   svg .um-key { outline: none; pointer-events: none; } svg .key-ring { fill: none; stroke: none; }
-  svg .line-key:focus-visible .key-ring { stroke: var(--um-cyan); stroke-opacity: .55; stroke-width: calc(7.8px + 1.8px * (var(--um-ew, 1) - 1)); stroke-linecap: round; stroke-linejoin: round; }
+  svg .line-key:focus-visible .key-ring { stroke: var(--um-cyan); stroke-opacity: .8; stroke-width: calc(7.8px + 1.8px * (var(--um-ew, 1) - 1)); stroke-linecap: round; stroke-linejoin: round; }
   svg .tab-key:focus-visible .key-ring, svg .chip-key:focus-visible .key-ring, svg .family .pub-tab:focus-visible rect { stroke: var(--um-cyan); stroke-width: 2; }
   svg .node .verb-chip { fill: var(--um-mask); stroke-width: .9; stroke-opacity: .6; }
   svg .node .verb-tx { font: 600 9.5px var(--um-mono); }

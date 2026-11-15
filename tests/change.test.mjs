@@ -147,3 +147,13 @@ test('audit 6: diff() says a line a view hid or showed, and a sequence view\'s s
   assert.deepEqual(t(v => { v.edges = ['e2', 'e1']; }), [['reorders the steps in the view V'], ['v'], ['e2', 'e1']]);
   assert.deepEqual(t(() => {}), [[], [], ['e1', 'e2']]);
 });
+
+test('audit 11: diff() says a line with no id that a view stops drawing, lists the view and puts the line back removed', () => {
+  const a = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }, { id: 'c', label: 'C' }], edges: [{ from: 'a', to: 'b', label: 'pays' }, { id: 'bc', from: 'b', to: 'c' }],
+    views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }] };
+  const b = structuredClone(a); b.views[0].edges = ['bc'];
+  const d = diff(a, b);
+  assert.deepEqual([d.summary, d.views, d.model.views[0].edges.map(e => typeof e === 'string' ? e : `${e.from}->${e.to}:${e.style}`)],
+    [['takes the line from A to B (pays) out of the view v'], ['v'], ['bc', 'a->b:removed']]);
+  assert.deepEqual(diff(b, a).summary, ['puts the line from A to B (pays) in the view v']);
+});

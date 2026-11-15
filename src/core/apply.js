@@ -1,4 +1,5 @@
 import { diagramOf, propRefs } from './registry.js';
+import { lineNames } from './model.js';
 /* ---------- commands: apply() and references() (work package 1.6) ----------
    apply(model, commands) runs a transaction, one command or a list run in order, on a copy of the model and returns the
    new model; the one given is never changed. A command that cannot run throws, and none of the transaction is applied.
@@ -194,7 +195,7 @@ function run(m, c, gone) {
     }
     case 'delete': {
       if (!at.has(c.id) && gone.has(c.id)) return; // gone with an earlier command of this transaction
-      need(c.id); const now = new Set(), kids = new Map();
+      need(c.id); const now = new Set(), kids = new Map(), names0 = lineNames(m);
       for (const [k, o] of at) if ((o.kind === 'node' || o.kind === 'member') && o.x.parent != null) { if (!kids.has(o.x.parent)) kids.set(o.x.parent, []); kids.get(o.x.parent).push(k); }
       const take = id => { for (const s = [id]; s.length;) { const k = s.pop(), r = at.get(k); if (!r || now.has(k)) continue; now.add(k);
         arr(r.x.members).forEach(y => isObj(y) && s.push(y.id)); arr(kids.get(k)).forEach(x => s.push(x)); } }; // what it owns goes with it
@@ -213,6 +214,8 @@ function run(m, c, gone) {
       const ls = new Map(); for (const [k, o] of at) if (now.has(k) && !(o.owner && now.has(o.owner.id))) (ls.get(o.list) || ls.set(o.list, new Set()).get(o.list)).add(o.x);
       ls.forEach((xs, l) => { let j = 0; for (let i = 0; i < l.length; i++) if (!(i in l)) delete l[j++]; else if (!xs.delete(l[i])) l[j++] = l[i]; l.length = j; }); // its first time in its list, as indexOf found
       for (let found = refs(m, now); found.length; found = refs(m, now)) clear(m, found); // a line without an id to a gone line goes in a second round
+      const names1 = lineNames(m), lost = new Set([...names0].filter(k => !names1.has(k))); // what named a line with no id that went ("b->c#0"): a step's select or highlight
+      for (let found = refs(m, lost); found.length; found = refs(m, lost)) clear(m, found);
       now.forEach(id => gone.add(id));
       return;
     }

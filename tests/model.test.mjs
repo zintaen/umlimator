@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { validate, check, layout, rules } from '../lib/umlimator.js';
+import { validate, check, layout, rules, describe } from '../lib/umlimator.js';
 import { mapContext } from '../src/map/context.js';
 import { fit } from '../src/core/text.js';
 
@@ -26,7 +26,9 @@ test('validate() names each error and warning by where it is, and accepts what r
     'error views[0].browserOrder[0]', 'error views[0].containers[0].nodeIds[1]', 'error views[0].containers[0].parent', 'error views[0].containers[1].parent',
     'error views[0].containers[2].parent', 'error views[0].edges[1]', 'error views[0].edges[3].to', 'error views[0].nodeIds[2]',
     'error views[0].stepIds[0]', 'error views[0].tour[1]',
-    'warning edges[2].fromSide', 'warning edges[2].kind', 'warning edges[2].weight', 'warning nodes[3].kind', 'warning nodes[3].opensView', 'warning views[0].containers[2]', 'warning views[0].layout.zz',
+    'warning edges[2].fromSide', 'warning edges[2].kind', 'warning edges[2].weight', 'warning nodes[3].kind', 'warning nodes[3].opensView', 'warning views[0].containers[2]',
+    'warning views[0].edges[0]', 'warning views[0].edges[2]', // a line from a card to the box that holds it: no error, but not drawn (audit 11)
+    'warning views[0].layout.zz',
   ]);
   assert.match(validate(bad).find(p => p.path === 'views[0].containers[0].parent').message, /inside itself/);
   assert.deepEqual(validate({ nodes: [] }).map(p => p.path), ['views']);
@@ -203,4 +205,17 @@ test('a view\'s gap or rgap that is no positive number is the default, and valid
     const [g, probs] = at(gap); assert.deepEqual(g.bounds, plain.bounds, JSON.stringify(gap));
     assert.deepEqual(probs.map(p => p.path), [`views[0].${Object.keys(gap)[0]}`], JSON.stringify(gap)); }
   const [huge, hp] = at({ gap: 1e308 }); assert.ok(huge.bounds.w < 3000, huge.bounds.w); assert.match(hp[0].message, /drawn as 2000/);
+});
+
+test('audit 11: a map line from a box to a card or box inside it is warned of and left out of what the view says it draws', () => {
+  const m = { nodes: [{ id: 'api', label: 'API' }, { id: 'db', label: 'DB' }, { id: 'web', label: 'Web' }],
+    edges: [{ id: 'w', from: 'web', to: 'api' }, { id: 'audit', from: 'payments', to: 'db', label: 'writes audit rows' }, { id: 'up', from: 'core', to: 'payments' }],
+    views: [{ id: 'main', nodeIds: ['web', 'api', 'db'], containers: [{ id: 'core', label: 'Core', nodeIds: [] }, { id: 'payments', label: 'Payments', parent: 'core', nodeIds: ['api', 'db'] }] }],
+    rules: [{ id: 'r', from: { kind: 'script' }, to: { kind: 'store' }, allow: false }] };
+  assert.deepEqual(validate(m).map(p => [p.path, p.message]), [
+    ['edges[1]', 'joins the box "payments" and "db", which it holds: not drawn in view "main"'],
+    ['edges[2]', 'joins the box "core" and "payments", which it holds: not drawn in view "main"']]);
+  assert.deepEqual(layout(m, 'main').edges.map(e => e.ids), [['w']]);
+  assert.match(describe(m, 'main'), /^main: 3 cards and 1 line\./);
+  assert.deepEqual(mapContext(m).viewEdges(mapContext(m).V.main).map(e => e.id), ['w']);
 });
