@@ -185,3 +185,22 @@ test('the layout search render bakes stops on work, not on a clock: a slow machi
   performance.now = () => t + (now.call(performance) - t) * 1000; // a machine 1000 times slower, as its clock sees it
   try { assert.equal(run(), fast); } finally { performance.now = now; }
 });
+
+test('an entry that is no object in nodes, edges, a view\'s nodes or containers is left out: the view draws, and validate() says so (audit 9)', () => {
+  const base = () => ({ nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ id: 'ab', from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] });
+  for (const [what, f] of [['a model line', m => m.edges.unshift(null)], ['a card', m => m.nodes.unshift(null)],
+    ['a view\'s card', m => { m.views[0].nodes = [null]; }], ['a view\'s box', m => { m.views[0].containers = [null]; }]]) {
+    const m = base(); f(m);
+    assert.ok(validate(m).some(p => p.level === 'error'), what);
+    const g = layout(m, 'v'); assert.equal(g.nodes.length, 2, what); assert.equal(g.edges.length, 1, what); check(m, 'v');
+  }
+});
+
+test('a view\'s gap or rgap that is no positive number is the default, and validate() warns (audit 9)', () => {
+  const at = gap => { const m = { nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'], ...gap }] }; return [layout(m, 'v'), validate(m)]; };
+  const [plain] = at({});
+  for (const gap of [{ gap: 'wide' }, { gap: {} }, { gap: ['x'] }, { rgap: 'wide' }, { gap: -5 }]) {
+    const [g, probs] = at(gap); assert.deepEqual(g.bounds, plain.bounds, JSON.stringify(gap));
+    assert.deepEqual(probs.map(p => p.path), [`views[0].${Object.keys(gap)[0]}`], JSON.stringify(gap)); }
+  const [huge, hp] = at({ gap: 1e308 }); assert.ok(huge.bounds.w < 3000, huge.bounds.w); assert.match(hp[0].message, /drawn as 2000/);
+});

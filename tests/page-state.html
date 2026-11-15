@@ -233,6 +233,15 @@ try {
   const hitSaid = ($('m-res').querySelector('.fr span') || {}).textContent || '';
   check('search says a class is a Class, not a script', /^Class · /.test(hitSaid), hitSaid);
   key('Escape', $('m-q')); pg.destroy(); pg = null;
+  /* ---------- audit 9: a double-click whose second click lands on the page's legend; focus after a Find pick ---------- */
+  await mount('#view=context');
+  const mouse = (t, at, detail) => at.dispatchEvent(new MouseEvent(t, { bubbles: true, composed: true, cancelable: true, detail }));
+  mouse('click', card('bikeshare'), 1); mouse('click', $('m-legend'), 2); mouse('dblclick', $('m-legend'), 2);
+  check('a double-click on an unselected card opens it though its second click lands on the legend the details panel moved there (audit 9)', await until(() => pg.view === 'system'), pg.view);
+  key('/', document.body); await until(() => !$('m-pal').hidden); $('m-q').value = 'Trip service'; $('m-q').dispatchEvent(new Event('input')); key('Enter', $('m-q'));
+  await until(() => pg.selection && pg.selection.id === 'trips'); await until(() => document.activeElement !== document.body, 1000);
+  const onCard = sr().activeElement && sr().activeElement.closest('.node');
+  check('a Find pick by Enter puts focus on the card it found, not on <body> (audit 9)', onCard && onCard.dataset.id === 'trips', [document.activeElement && document.activeElement.tagName, onCard && onCard.dataset.id]);
   /* ---------- audit 8: Find reaches an element drawn as a box; a bare % in a source URL ---------- */
   box.innerHTML = ''; pg = mountAll(box, await (await fetch('../examples/bookshop-atlas.json')).json(), { instant: true, params: new URLSearchParams() });
   await until(() => pg.view && document.querySelector('#m-canvas .umlimator')); await pg.setView('production'); await wait(30);

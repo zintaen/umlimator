@@ -242,7 +242,7 @@ function pieces(X, el, o) {
   }
   // a card: selected here, or shown in the view that has it, nearest this one first
   const find = nid => { const { viewsWith, chain } = X().ctx(), cur = X().view(); if (X().geo().byId[nid] || X().boxHere(nid)) return X().go(cur, { select: nid }); // a card, or an element drawn here as a box
-    const vs = viewsWith(nid), v = vs.find(x => chain(x.id).includes(cur)) || vs[0]; if (v) X().go(v.id, { select: nid }); };
+    const vs = viewsWith(nid), v = vs.find(x => chain(x.id).includes(cur)) || vs[0]; return v ? X().go(v.id, { select: nid }) : false; };
 
   if (el.legend) el.legend.addEventListener('click', e => { if (!e.target.closest('#m-lfold')) return;
     folded = !folded; keep('visual-legend', folded ? '0' : '1'); legend(); if (!X().cam().touched) X().cam().set(X().startView()); });

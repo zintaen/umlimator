@@ -63,6 +63,7 @@ export function validate(model) {
   views.forEach((v, i) => { const lim = arr(v.nodeIds).length + 64; // a pin far off the grid, any view's: held there (context.js onGrid, layered.js)
     Object.entries(v.layout || {}).forEach(([id, p]) => { if (!Array.isArray(p) || typeof p[0] !== 'number' || typeof p[1] !== 'number') warn(`views[${i}].layout.${id}`, `"${id}"'s place ${JSON.stringify(p)} is not two numbers: ignored`);
       else if (p.some(x => !(Math.abs(x) <= lim))) warn(`views[${i}].layout.${id}`, `"${id}"'s place ${JSON.stringify(p)} is off the grid: held at ${lim} columns or rows out`); });
+    ['gap', 'rgap'].forEach(k => { if (v[k] != null && !(typeof v[k] === 'number' && v[k] > 0 && v[k] <= 2000)) warn(`views[${i}].${k}`, v[k] > 2000 && typeof v[k] === 'number' ? `${k} ${v[k]} is over 2000 px: drawn as 2000` : `${k} ${JSON.stringify(v[k])} is not a number above 0: ignored`); });
     if (typedView(v)) return;
     const at = `views[${i}]`, mine = new Set(), boxes = Object.create(null), home = Object.create(null), full = new Set(); // no prototype: a box or card named toString is no box (M3, audit 8)
     if (v.parent != null && !vids.has(v.parent) && !ids.has(v.parent)) err(at + '.parent', `parent "${v.parent}" is not a view`);
