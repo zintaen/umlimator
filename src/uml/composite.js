@@ -29,7 +29,7 @@ const CS_LINES = ['uml.Connector', 'uml.RoleBinding', 'uml.CommentLink'];
 const CS_WORD = { L: 'left', R: 'right', T: 'top', B: 'bottom' }, CS_SIDE = { left: 'L', right: 'R', top: 'T', bottom: 'B' }, CS_OPP = { L: 'R', R: 'L', T: 'B', B: 'T' }, CS_TURN = { L: 'T', T: 'L', R: 'B', B: 'R' };
 // a port on a part, by its geometry id (§6): no element id holds '->' (model.md rule 5)
 const csPortId = (part, port) => `${part}->${port}`;
-const csSplit = id => { const s = String(id), k = s.indexOf('->'); return k < 0 ? null : [s.slice(0, k), s.slice(k + 2)]; };
+const csSplit = id => { const s = String(id), k = s.lastIndexOf('->'); return k < 0 ? null : [s.slice(0, k), s.slice(k + 2)]; };
 
 /* ---- a part's text, `name : Type [multiplicity]`, both ways; a member row ---- */
 const csPartText = m => { const p = CS_PROPS(m); return `${m.label ?? ''}${CS_HAS(p.valueType) ? ' : ' + p.valueType : ''}${CS_HAS(p.multiplicity) ? ` [${p.multiplicity}]` : ''}`.trim(); };
@@ -127,7 +127,8 @@ const csUseText = u => `${u.label ?? ''}${CS_HAS(CS_PROPS(u).collaboration) ? ' 
 // role bindings to a collaboration use: "publisher to checkout"
 const csBindings = (P, u) => P.lines.filter(l => l.e.type === 'uml.RoleBinding' && l.e.to === u).map(l => `${CS_HAS(l.e.label) ? l.e.label : 'a role'} to ${csName(P.el(l.e.from))}`);
 function csNodeName(P, id) {
-  const x = P.el(id), st = csStereo(x), why = st.length ? ` (${st.join(', ')})` : '';
+  const x = P.el(id); if (!x) return String(id); // an id with '->' (invalid: validate says so) names nothing
+  const st = csStereo(x), why = st.length ? ` (${st.join(', ')})` : '';
   if (x.type === 'uml.Comment') return 'Comment: ' + csName(x);
   if (P.boxed.has(id)) { const held = id === P.sid ? [...P.parts.map(() => x.type === 'uml.Collaboration' ? 'role' : 'part'), ...P.uses.map(() => 'collaboration use')] : P.collabs.find(c => c.x.id === id).roles.map(() => 'role');
     return SN_SAY.component(csName(x), { stereotypes: st, ports: id === P.sid ? P.sPorts.length : 0, holds: held }).replace(/^Component/, csWord(x.type)); }
@@ -252,7 +253,7 @@ const CS_RULES = {
   'collaboration-named': 'a collaboration use\'s collaboration names a collaboration of the model',
   ...STRUCT_RULES,
 };
-const csCollab = (P, u) => [...P.at.values()].find(n => n.type === 'uml.Collaboration' && CS_HAS(CS_PROPS(u).collaboration) && n.label === CS_PROPS(u).collaboration) || null;
+const csCollab = (P, u) => [...P.at.values()].find(n => n.type === 'uml.Collaboration' && CS_HAS(CS_PROPS(u).collaboration) && (n.label ?? n.id) === CS_PROPS(u).collaboration) || null;
 function csProblems(model, view) {
   const out = [], P = csPic(model, view || {}), vi = CS_ARR(model && model.views).indexOf(view), S = P.S, say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const q = id => JSON.stringify(P.el(id) ? csName(P.el(id)) : String(id));
@@ -274,9 +275,10 @@ function csProblems(model, view) {
     if (e.type === 'uml.Connector') {
       const parts = ['from', 'to'].map(k => (CS_OBJ(ends[k]) ? ends[k].part : null)), touches = ['from', 'to'].some((k, j) => structOf(e[k], parts[j]) || P.collabs.some(c => owner(e[k]) === c.x) || (parts[j] != null && owner(parts[j]) === S));
       // a connector the view lists between ports of types, no part named: in no structure of the view, not drawn (audit 6)
-      // a view with no edges list draws every connector: there, one whose port's owner types a part of the subject (audit 11)
+      // a view with no edges list draws every connector: there, one whose port's owner types a part of the subject (audit 11),
+      // unless an end names another classifier's part: that classifier's own structure (a delegation in it), its view draws it (audit 12)
       if (!touches) { const ks = ['from', 'to'].filter((k, j) => parts[j] == null && ((P.mem.get(e[k]) || {}).m || {}).type === 'uml.Port');
-        const k = CS_ARR(view.edges).some(x => x === e.id || x === e) ? ks[0] : !Array.isArray(view.edges) && ks.find(k => P.parts.some(p => P.typeOf(p) === owner(e[k])));
+        const k = CS_ARR(view.edges).some(x => x === e.id || x === e) ? ks[0] : !Array.isArray(view.edges) && !parts.some(p => p != null && owner(p) && owner(p) !== S) && ks.find(k => P.parts.some(p => P.typeOf(p) === owner(e[k])));
         if (k) say('warning', 'connector-part', `${path}.props.ends.${k}.part`, [e.id, e[k]],
           `${e.id}'s ${k} end goes to port ${q(e[k])} of ${q(owner(e[k]).id)} without naming the part it goes through (props.ends.${k}.part), so it is not drawn`);
         return; }
