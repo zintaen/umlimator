@@ -125,13 +125,15 @@ function dynMoveTo(model, view, id, at) {
 // else a new one (the canvas's add, which lists it last); on a view that lists no steps yet, a new one and the list of it,
 // as the add lists nothing on a view without its own list
 function dynConnect(model, view, from, to, at, line) {
-  if (!V_OBJ(view) || (V_OBJ(line) && line.type !== 'c4.Relationship')) return null;
-  const listed = V_ARR(view.edges), r = c4Index(model).rels.find(e => e.from === from && e.to === to && !listed.includes(e.id));
+  if (!V_OBJ(view)) return null;
+  const t = V_OBJ(line) && line.type ? line.type : 'c4.Relationship', listed = V_ARR(view.edges);
+  const r = t === 'c4.Relationship' && c4Index(model).rels.find(e => e.from === from && e.to === to && !listed.includes(e.id));
   if (r) return [{ op: 'set', view: view.id, path: 'edges', value: [...listed, r.id] }];
   if (Array.isArray(view.edges)) return null;
-  const used = vUsed(model); let k = 1; while (used.has(`relationship${k}`)) k++;
+  // no list yet: the line (a relationship or a comment link) and the list of it, else the add would list it nowhere
+  const base = t === 'c4.Relationship' ? 'relationship' : 'link', used = vUsed(model); let k = 1; while (used.has(`${base}${k}`)) k++;
   const props = V_OBJ(line) && V_OBJ(line.props) ? { props: structuredClone(line.props) } : {};
-  return [{ op: 'add', element: { id: `relationship${k}`, type: 'c4.Relationship', from, to, ...props } }, { op: 'set', view: view.id, path: 'edges', value: [`relationship${k}`] }];
+  return [{ op: 'add', element: { id: `${base}${k}`, type: t, from, to, ...props } }, { op: 'set', view: view.id, path: 'edges', value: [`${base}${k}`] }];
 }
 // rename: F2 on a step holds its text, "description [technology]": the technology when unchanged, and a number typed before it
 // ("3." or "3 ·"), are not the description; what is left is set as its label. Anything else: null, the canvas's own
@@ -225,14 +227,17 @@ function depDescribe(model, viewId) {
   return [`${v.title || v.id}: a C4 deployment diagram of ${vPlural(pic.ids.length, 'element')} and ${vPlural(own.length + implied.length, 'relationship')}${implied.length ? `, ${implied.length} of them implied` : ''}.`,
     ...readingOrder(pic).map(id => (box.has(id) ? box.get(id).aria : depNodeName(pic.I, pic.at.get(id)))), ...[...own, ...implied].map(e => c4LineName(e, pic))].map(t => t.replace(/\.?$/, '.')).join('\n');
 }
+// the containers an instance may be of: on a view of a software system its own (c4-level), else every one
+const depCs = (I, view) => { const s = I.at.get(view.subject), cs = [...I.at.values()].filter(n => n.type === 'c4.Container');
+  return s && s.type === 'c4.SoftwareSystem' ? cs.filter(c => I.chain(c.id).includes(s.id)) : cs; };
 // the palette's instance: its container picked, put in the view's first deployment node that holds no other (the Owner field
 // or a drop into a box moves it). ponytail: the add hook hears no selection on a layered view (no slots), so not "the node selected"
 function depAdd(model, view, entry, label) {
   if (!V_OBJ(entry) || entry.type !== 'c4.ContainerInstance') return null;
-  const I = c4Index(model), cs = [...I.at.values()].filter(n => n.type === 'c4.Container'), ids = V_ARR(view.nodeIds).filter(id => (I.at.get(id) || {}).type === 'c4.DeploymentNode');
+  const I = c4Index(model), cs = depCs(I, view), ids = V_ARR(view.nodeIds).filter(id => (I.at.get(id) || {}).type === 'c4.DeploymentNode');
   const into = ids.find(id => !ids.some(o => (I.at.get(o) || {}).parent === id));
   if (into == null) return { error: 'Add a deployment node first: an instance runs on one' };
-  if (!cs.length) return { error: 'The model has no container to deploy' };
+  if (!cs.length) return { error: view.subject != null ? 'The view\'s system has no container to deploy' : 'The model has no container to deploy' };
   const used = vUsed(model);
   return { pick: cs.map(vName), then: i => { const c = cs[i], b = `${c.id}-instance`; let id = b, k = 2; while (used.has(id)) id = `${b}-${k++}`;
     return [{ op: 'add', element: { id, type: 'c4.ContainerInstance', label: V_HAS(label) ? label : vName(c), parent: into, props: { container: c.id } }, view: view.id }]; } };
@@ -241,7 +246,7 @@ function depAdd(model, view, entry, label) {
 function depKey(model, view, ids, key) {
   const I = c4Index(model), x = I.at.get(ids.at(-1));
   if (!(key === 't' || key === 'T') || !x || x.type !== 'c4.ContainerInstance') return c4Key(model, view, ids, key);
-  const cs = [...I.at.values()].filter(n => n.type === 'c4.Container');
+  const cs = depCs(I, view);
   return { pick: cs.map(vName), then: i => (cs[i].id === V_P(x).container ? [] : [{ op: 'set', id: x.id, path: 'props.container', value: cs[i].id }]) };
 }
 // the Owner field: an instance's and a deployment node's deployment nodes

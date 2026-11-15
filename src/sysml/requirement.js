@@ -248,6 +248,10 @@ function rqConnect(model, view, from, to, at, line) {
     return [{ op: 'reparent', id: from, parent: to }]; }
   if (!Object.hasOwn(RQ_REL, t)) return null;
   const bad = rqEnds(I, t, from, to); if (bad) return { error: `${bad}: ${RQ_RULES[bad]}` };
+  // a copy sets its client's text: refused when another copy holds that text (copies it, or is copied from it)
+  const txt = id => String(RQ_PROPS(I.at.get(id)).text ?? ''), tied = t === 'sysml.Copy' && txt(from) !== txt(to)
+    && I.rels.find(e => e.type === 'sysml.Copy' && (e.from === from || e.to === from) && I.is(e.from, RQ) && I.is(e.to, RQ));
+  if (tied) return { error: `copy-text: ${I.q(from)} ${tied.from === from ? 'copies ' + I.q(tied.to) : 'is copied by ' + I.q(tied.from)}, whose text it keeps: ${RQ_RULES['copy-text']}` };
   return [{ op: 'add', element: { id: rqNewId(model, t.split('.').pop().toLowerCase()), type: t, from, to }, view: view.id },
     ...(t === 'sysml.Copy' ? [{ op: 'set', id: from, path: 'props.text', value: RQ_PROPS(I.at.get(to)).text }] : [])];
 }
