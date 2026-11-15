@@ -287,10 +287,14 @@ test('Delete hides a topic\'s branch, said with the count; Shift + Delete delete
   const s = mmShow(h, V(h), 'mm-checkout');
   assert.deepEqual([s.commands, s.say], [[{ op: 'set', view: VID, path: 'nodeIds', value: V(m).nodeIds }], 'Showed Checkout and 2 subtopics hidden with it']);
   // a hidden topic's descendant shown on its own stays (drawn under Website then, so the branch comes back after it); one
-  // with nothing hidden under it is the canvas's Show (null)
+  // with nothing hidden under it is shown by the hook too, after its nearest shown ancestor's last shown descendant (audit 15)
   const part = apply(h, { op: 'set', view: VID, path: 'nodeIds', value: [...V(h).nodeIds, 'mm-card-payments'] });
   assert.deepEqual(mmShow(part, V(part), 'mm-checkout').commands[0].value, [...V(h).nodeIds, 'mm-card-payments', 'mm-checkout', 'mm-order-emails']);
-  assert.equal(mmShow(h, V(h), 'mm-card-payments'), null);
+  assert.equal(mmShow(h, V(h), 'mm-card-payments').say, 'Showed Card payments');
+  // a lone hidden topic whose child was shown on its own and given a side: the side goes, so no side-first (audit 15)
+  const lone = { schemaVersion: 2, nodes: [{ id: 'r', type: T, label: 'R' }, { id: 'h', type: T, label: 'H', parent: 'r' }, { id: 'x', type: T, label: 'X', parent: 'h' }, { id: 'y', type: T, label: 'Y', parent: 'r' }],
+    edges: [], views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['r', 'x', 'y'], present: { x: { side: 'left' } } }] };
+  assert.deepEqual(mmProblems(apply(lone, mmShow(lone, 'v', 'h').commands), 'v').map(p => p.rule), []);
   assert.equal(mmShow(m, V0, 'mm-checkout'), null, 'shown already');
   // a parent cycle among the hidden (which validation reports) ends the walk: each topic once
   const cyc = { schemaVersion: 2, nodes: [{ id: 'r', type: T, label: 'R' }, { id: 'a', type: T, label: 'A', parent: 'b' }, { id: 'b', type: T, label: 'B', parent: 'a' }], edges: [], views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['r'] }] };

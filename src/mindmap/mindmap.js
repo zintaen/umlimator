@@ -275,13 +275,12 @@ function mmShow(model, view, id) {
   const X = mmIndex(model, V); if (!X.topic(id) || X.shown.has(id)) return null;
   const all = mmAllKids(X), add = [], seen = new Set(); // seen: a parent cycle among the hidden ends the walk
   for (const s = [id]; s.length;) { const k = s.pop(); if (seen.has(k)) continue; seen.add(k); add.push(k); const c = MM_ARR(all.get(k)).filter(c => !X.shown.has(c)); for (let i = c.length - 1; i >= 0; i--) s.push(c[i]); }
-  if (add.length === 1) return null;
   const list = [...MM_ARR(V.nodeIds)], u = X.up(id), k = u == null ? list.length : mmEnd(X, u) + 1;
   list.splice(k, 0, ...add);
   // a shown topic that hangs under id once id is back (shown on its own while id was hidden) is no first-level topic then:
   // not pinned, and a side it has goes, so the show leaves no side-first warning (audit 14)
   const under = X.ids.filter(t => X.shown.has(t) && mmUnder(X, id, t));
-  return { commands: [...mmPinsAt(model, X, V, null, new Set(under)), ...under.flatMap(t => mmUnside(X, V, t)), { op: 'set', view: V.id, path: 'nodeIds', value: list }], say: `Showed ${mmOne(X.N.get(id))} and ${mmPlural(add.length - 1, 'subtopic')} hidden with it` };
+  return { commands: [...mmPinsAt(model, X, V, null, new Set(under)), ...under.flatMap(t => mmUnside(X, V, t)), { op: 'set', view: V.id, path: 'nodeIds', value: list }], say: `Showed ${mmOne(X.N.get(id))}${add.length > 1 ? ` and ${mmPlural(add.length - 1, 'subtopic')} hidden with it` : ''}` };
 }
 
 /* ---- the type ---- */

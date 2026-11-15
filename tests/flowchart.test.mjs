@@ -292,3 +292,11 @@ test('a decision\'s exit to a wait that loops back, laid out right, does not cro
     [F('f1', 's', 'd'), F('f3', 'd', 'e', 'yes'), F('f4', 'd', 'w', 'no'), F('f5', 'w', 'd')]);
   for (const d of ['right', 'down']) assert.deepEqual(check(withDir(m, d), 'v').map(p => p.message), [], d);
 });
+
+test('audit 15: an inline decision exit gets the PDF\'s no-label flag, and connect labels it yes and the new exit no', () => {
+  const m = { schemaVersion: 2, nodes: [N('s', 'Terminator', 'Start'), N('d', 'Decision', 'OK?'), N('e', 'Terminator', 'End')], edges: [],
+    views: [{ id: 'v', diagram: 'flowchart', nodeIds: ['s', 'd', 'e'], edges: [F('f0', 's', 'd'), F('f2', 'd', 's')] }] };
+  assert.equal(T.text(m, m.views[0], 'f2'), 'an exit of OK? with no label');
+  const r = T.edits.connect(m, m.views[0], 'd', 'e', null, { type: 'flow.Flow' });
+  assert.deepEqual([r[0], r[1].element.label], [{ op: 'set', id: 'f2', path: 'label', value: 'yes' }, 'no']);
+});

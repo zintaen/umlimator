@@ -422,3 +422,9 @@ test('a request and its reply between two systems, laid out right, do not cross 
   const swapped = structuredClone(m); swapped.edges = [m.edges[0], m.edges[2], m.edges[1], m.edges[3]];
   assert.deepEqual(check(swapped, 'v').map(p => p.message), [], 'either edge order');
 });
+
+test('audit 15: F2 on an inline relationship takes its unchanged [technology] off, as on a model relationship', () => {
+  const m = { schemaVersion: 2, nodes: [El('a', 'Person', 'A'), El('b', 'System', 'B')], edges: [],
+    views: [{ id: 'v', diagram: 'c4.context', nodeIds: ['a', 'b'], edges: [Rel('r2', 'a', 'b', 'Uses', 'HTTPS')] }] };
+  assert.deepEqual(T.edits.rename(m, m.views[0], 'r2', 'Calls [HTTPS]'), [{ op: 'set', id: 'r2', path: 'label', value: 'Calls' }]);
+});

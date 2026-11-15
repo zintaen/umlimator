@@ -337,3 +337,9 @@ test('a part typed by the id of a block with no label takes its ports, with no p
   assert.deepEqual(validate(m), []);
   assert.ok(layout(m, 'v').nodes.some(n => String(n.id).includes('out')));
 });
+
+test('audit 15: F2 on a connector with an item flow renames the item it draws, not a label never drawn', () => {
+  const v = M18.views.find(x => x.id === VID);
+  assert.deepEqual(T.edits.rename(M18, v, 'battery-dock-charge', 'Charge current'), [{ op: 'set', id: 'battery-dock-charge', path: 'props.itemFlow.item', value: 'Charge current' }]);
+  assert.ok(T.edits.rename(M18, v, 'battery-dock-charge', ' ').error);
+});

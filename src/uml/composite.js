@@ -42,7 +42,7 @@ function csParse(t) {
 // a member row on owner (§12.1): `port name : Type` on a class or component is a port, any other row a part (on a collaboration,
 // a role); was: the member the row edits, whose kind it keeps. A member as the model writes it, or { error }
 function csRow(owner, text, was) {
-  const t = String(text ?? '').trim(), port = was ? was.type === 'uml.Port' : /^port\s/i.test(t) && CS_TYPED.includes(owner && owner.type);
+  const t = String(text ?? '').trim(), port = was ? was.type === 'uml.Port' : /^port\s+[^\s:]/i.test(t) && CS_TYPED.includes(owner && owner.type);
   const r = csParse(port ? t.replace(/^port\s+/i, '') : t);
   if (r.error || (port && r.multiplicity)) return { error: port ? 'A port is port name : Type' : r.error };
   return { type: port ? 'uml.Port' : 'uml.Property', label: r.label, props: { ...(r.valueType ? { valueType: r.valueType } : {}), ...(r.multiplicity ? { multiplicity: r.multiplicity } : {}) } };

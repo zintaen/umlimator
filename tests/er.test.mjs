@@ -348,3 +348,12 @@ test('an identifying relationship written inline in a view makes its child depen
   assert.deepEqual(layout(m, 'v').nodes.map(n => [n.id, !!n.dep]), [['o', false], ['l', true]]);
   assert.deepEqual(validate(m), []);
 });
+
+test('audit 15: a row\'s NOT NULL is not nullable (no NOT in the type); an inline relationship has its PDF text', () => {
+  assert.deepEqual(parseColumn('name varchar(20) NOT NULL', { col: new Map() }), { label: 'name', props: { dataType: 'varchar(20)' } });
+  assert.match(parseColumn('name text NOT NULL NULL', { col: new Map() }).error, /NULL is written twice/);
+  const ends = { ends: { from: { multiplicity: '1' }, to: { multiplicity: '0..*' } } };
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'er.Entity', label: 'a' }, { id: 'b', type: 'er.Entity', label: 'b' }], edges: [],
+    views: [{ id: 'v', diagram: 'er', nodeIds: ['a', 'b'], edges: [{ id: 'r2', type: 'er.Relationship', from: 'a', to: 'b', props: ends }] }] };
+  assert.equal(T.text(m, m.views[0], 'r2'), '1 to 0..*, non-identifying');
+});
