@@ -88,8 +88,11 @@ export function diff(before, after) {
     if (Array.isArray(v.edges)) { const back = new Map([...goneLines, ...hid.map(id => [id, line(line0.get(id), 'removed')])]);
       w.edges = mark(arr(o.edges), v.edges, line, lineKeys, back).map(e => typeof e === 'string' && put.includes(e) ? line(out.edges.find(x => x && String(x.id) === e), 'added') : e);
       hid.forEach(id => { if (!w.edges.includes(back.get(id))) w.edges.push(back.get(id)); }); } // hidden from a view that listed none: at the end
-    else if (put.length) { const K = keyed(arr(out.edges)); // a view that dropped its list: its lines listed, so the ones it puts are marked
-      w.edges = linesOf(out, v).map(e => put.includes(K.get(e)) ? line(e, 'added') : e.id != null ? String(e.id) : e); }
+    else if (Array.isArray(o.edges)) { // a view that dropped its list: its lines listed (to the cards that left too), the ones it puts marked, and the old
+      // list's own and removed lines back in their place (as tags first: mark() keeps a string, so only those come back marked)
+      const K = keyed(arr(out.edges)), all = linesOf(out, w), tag = all.map((e, i) => e.id != null ? String(e.id) : '\0' + i), by = new Map(tag.map((t, i) => [t, all[i]]));
+      w.edges = mark(arr(o.edges), tag, line, lineKeys, goneLines).map(t => { const e = typeof t === 'string' && by.get(t);
+        return !e ? t : put.includes(K.get(e)) ? line(e, 'added') : e.id != null ? t : e; }); }
     return w;
   });
   arr(A.views).forEach(o => { if (!o || V1.has(o.id)) return; // a removed view comes back with everything in it removed
@@ -101,10 +104,27 @@ export function diff(before, after) {
     touched.add(o.id); views.push(w); });
   out.views = views;
 
+  // a removed item whose owner left too (a message in a fragment's operand, a state in a region) brings that owner back,
+  // removed, in its place: a member into its element, a fragment into its view
+  const at0 = new Map(), have = new Map(), ownIn = (x, to, up, i) => { // id -> [the object, where it sits]
+    for (const s = [[x, up, i]]; s.length;) { const [y, u, j] = s.pop(); if (!y || typeof y !== 'object' || y.id == null || to.has(y.id)) continue;
+      to.set(y.id, [y, u, j]); arr(y.members).forEach((z, k) => s.push([z, y.id, k])); } };
+  arr(A.nodes).forEach(n => ownIn(n, at0)); arr(A.views).forEach(v => v && arr(v.fragments).forEach((f, i) => ownIn(f, at0, { view: v.id }, i)));
+  out.nodes.forEach(n => ownIn(n, have)); views.forEach(v => v && [...arr(v.nodes), ...arr(v.fragments)].forEach(n => ownIn(n, have)));
+  // a member that left an element that stayed: the summary says it went, not that its owner's members changed; one a removed
+  // line ends on (a part, a port) comes back, removed, in its place, so the line's ends hold and it is drawn
+  const lost = new Map(), need = new Set(), top = id => { let t = id; while (at0.has(t) && typeof at0.get(t)[1] === 'string') t = at0.get(t)[1]; return t; };
+  [...out.edges, ...views.flatMap(v => arr(v && v.edges))].forEach(e => { if (!e || how.get(e) !== 'removed') return; const p = (e.props && e.props.ends) || {};
+    [e.from, e.to, (p.from || {}).part, (p.to || {}).part].forEach(r => { for (let t = r; at0.has(t) && !have.has(t) && !need.has(t); t = at0.get(t)[1]) need.add(t); }); });
+  at0.forEach(([x, up, i], id) => { if (typeof up !== 'string' || have.has(id) || !have.has(up)) return; lost.set(id, [x, top(up), up]);
+    if (!need.has(id)) return; const o = have.get(up)[0], y = { ...structuredClone(x), change: 'removed' };
+    (o.members = [...arr(o.members)]).splice(Math.min(i, o.members.length), 0, y); ownIn(y, have, up, i); });
+  const strip = x => { const y = structuredClone(x); for (const s = [y]; s.length;) { const z = s.pop(); if (Array.isArray(z.members)) { z.members = z.members.filter(m => !(m && typeof m === 'object' && lost.has(m.id))); z.members.forEach(m => m && typeof m === 'object' && s.push(m)); } } return y; };
+
   // the summary: views, then cards, then lines, in model order; a line to a card that came or went goes with the card
   const cards = [...out.nodes, ...views.flatMap(v => arr(v && v.nodes))].filter(Boolean);
-  const named = new Map([...views.flatMap(v => arr(v && v.containers)), ...cards].filter(Boolean).map(n => [n.id, n]));
-  const name = id => String((named.get(id) || {}).label || id), cardHow = new Map(cards.filter(n => how.has(n)).map(n => [n.id, how.get(n)]));
+  const named = new Map([...views.flatMap(v => arr(v && v.containers)), ...cards, ...[...lost.values()].map(([y]) => y), ...[...lost.values()].map(([, , u]) => (have.get(u) || [])[0])].filter(Boolean).map(n => [n.id, n]));
+  const name = id => String((named.get(id) || {}).label || id), cardHow = new Map([...cards.filter(n => how.has(n)).map(n => [n.id, how.get(n)]), ...[...lost.keys()].map(id => [id, 'removed'])]);
   const lines = [...out.edges, ...views.flatMap(v => arr(v && v.edges).filter(e => e && typeof e === 'object'))];
   const diffKeys = ([o, x]) => [...new Set([...Object.keys(o), ...Object.keys(x)])].filter(k => canon(o[k]) !== canon(x[k]));
   views.forEach(v => { if (v && !V0.has(v.id)) said.push(`adds the view ${v.title || v.id}`); });
@@ -113,11 +133,13 @@ export function diff(before, after) {
     if (h === 'added') { const ins = lines.filter(e => e.to === n.id && how.get(e) === 'added').map(e => name(e.from)), outs = lines.filter(e => e.from === n.id && how.get(e) === 'added').map(e => name(e.to));
       said.push(`adds ${name(n.id)}` + (ins.length === 1 && outs.length === 1 ? ` between ${ins[0]} and ${outs[0]}` : (ins.length ? `, from ${andList(ins)}` : '') + (outs.length ? `, to ${andList(outs)}` : ''))); }
     if (h === 'removed') said.push(`removes ${name(n.id)}`);
-    if (h === 'changed') { const [o, x] = was.get(n), keys = diffKeys([o, x]), rest = keys.filter(k => k !== 'label'), p0 = o.parent ?? null, p1 = x.parent ?? null;
+    lost.forEach(([y, t, u]) => { if (t === n.id) said.push(`removes ${name(y.id)} from ${name(u)}`); });
+    if (h === 'changed') { const [o, x] = lost.size ? was.get(n).map(strip) : was.get(n); if (canon(o) === canon(x)) return; const keys = diffKeys([o, x]), rest = keys.filter(k => k !== 'label'), p0 = o.parent ?? null, p1 = x.parent ?? null;
       if (keys.join() === 'parent' && p0 !== p1 && A.schemaVersion === 2 && out.schemaVersion === 2) return said.push(`moves ${name(n.id)} ${p1 != null ? 'into ' + name(p1) : 'out of ' + name(p0)}`); // a re-own (schema version 2; absent or null is no owner)
       const t = TYPED.diff && TYPED.diff(o, x, name, [A, out]); if (t) return said.push(...t); // a typed element's own words (src/uml/diff.js)
       said.push((keys.includes('label') ? `renames ${o.label || o.id} to ${x.label || x.id}` : `changes ${name(n.id)}`) + (rest.length ? ` (${rest.join(', ')})` : '')); } });
-  lines.forEach(e => { const h = how.get(e); if (!h || cardHow.get(e.from) === h && h !== 'changed' || cardHow.get(e.to) === h && h !== 'changed') return;
+  lines.forEach(e => { const h = how.get(e), p = (e.props && e.props.ends) || {}; // an end on a part: the part counts as its card
+    if (!h || h !== 'changed' && [e.from, e.to, (p.from || {}).part, (p.to || {}).part].some(id => id != null && cardHow.get(id) === h)) return;
     const ends = e.from == null && e.to == null ? null : `${name(e.from)} to ${name(e.to)}`, lab = e.label ? ` (${e.label})` : '', it = ends ? 'the line from ' + ends : e.label ?? e.id; // an item with no ends (an interaction use) by its name
     if (h === 'added') said.push(ends ? `adds a line from ${ends}${lab}` : `adds ${it}`);
     if (h === 'removed') said.push(ends ? `removes ${it}${lab}` : `removes ${it}`);
@@ -127,13 +149,6 @@ export function diff(before, after) {
   said.push(...viewSaid);
   if (TYPED.order) TYPED.order(A, out, views, V0, said, touched, name);
 
-  // a removed item whose owner left too (a message in a fragment's operand, a state in a region) brings that owner back,
-  // removed, in its place: a member into its element, a fragment into its view
-  const at0 = new Map(), have = new Map(), ownIn = (x, to, up, i) => { // id -> [the object, where it sits]
-    for (const s = [[x, up, i]]; s.length;) { const [y, u, j] = s.pop(); if (!y || typeof y !== 'object' || y.id == null || to.has(y.id)) continue;
-      to.set(y.id, [y, u, j]); arr(y.members).forEach((z, k) => s.push([z, y.id, k])); } };
-  arr(A.nodes).forEach(n => ownIn(n, at0)); arr(A.views).forEach(v => v && arr(v.fragments).forEach((f, i) => ownIn(f, at0, { view: v.id }, i)));
-  out.nodes.forEach(n => ownIn(n, have)); views.forEach(v => v && [...arr(v.nodes), ...arr(v.fragments)].forEach(n => ownIn(n, have)));
   const W = new Map(views.filter(Boolean).map(v => [v.id, v]));
   const back = [...out.nodes, ...out.edges, ...views.flatMap(v => v ? [...arr(v.nodes), ...arr(v.edges)] : [])].filter(x => x && how.get(x) === 'removed').map(x => x.parent);
   while (back.length) { const chain = []; // the owners that left, from the item's up to one still there

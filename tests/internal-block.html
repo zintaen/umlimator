@@ -156,6 +156,15 @@ try {
   click('.node[data-id="ebike.motor->motor.phases"] .n-mask'); key('Delete', { shiftKey: true });
   gives('Shift + Delete on a port on a part: the port from its block', [{ op: 'delete', id: 'motor.phases' }], m => !m.nodes.find(n => n.id === 'motor').members.length, m2);
   h.destroy();
+  // audit 13: a value property's binding to a constraint parameter drawn only in the parametric view: its row names the parameter
+  // of its constraint property ("capacity of usable") and opens that view with it selected
+  const ATLAS = await (await fetch('../examples/ebike-atlas.json')).json();
+  h = mount(ATLAS, { details: true }); h.select({ type: 'node', id: 'ebike.batteryCapacity' }); pick('.panel [data-tab="links"]').click();
+  const row = pick('.panel .rel'), said = row && [row.dataset.n, row.dataset.v, row.querySelector('.rel-l').textContent];
+  if (row) row.click(); await new Promise(r => setTimeout(r, 300));
+  check('audit 13: a binding\'s row names the parameter of its constraint property and opens the parametric view with it selected',
+    JSON.stringify(said) === JSON.stringify(['ebike.usable->usable-energy.capacity', 'range-analysis', 'capacity of usable']) && h.state.view === 'range-analysis' && JSON.stringify(h.state.selection).includes('"ebike.usable->usable-energy.capacity"'), [said, h.state.view, h.state.selection]);
+  h.destroy();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>
