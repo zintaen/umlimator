@@ -313,6 +313,15 @@ def read_json(path, model=True):
     return m
 
 
+def read_model(path):
+    """A model as render reads it: read_json, then refused in one line naming the file when not_objects finds a problem
+    (diff, drift, trace and export read it as render does, audit 11)."""
+    m = read_json(path)
+    if bad := not_objects(m):
+        sys.exit(f"{path}: " + "; ".join(bad))
+    return m
+
+
 def page_model(model_path, out, source=None):
     """The model as rendered: with an `icons` table of every icon its nodes name (`icon`): a Lucide line icon as its
     inner markup, drawn in the card's kind colour; a brand mark as a data URI on a white tile, never recoloured.
@@ -527,7 +536,7 @@ def cmd_diff(a):
         return diff_since(a)
     if len(a.files) != 2:
         sys.exit("diff: give BEFORE.json and AFTER.json, or --base REF")
-    before, after = map(read_json, a.files)
+    before, after = map(read_model, a.files)
     r = diff_page(before, after, a.files[1], a.out, a.stills)
     print(json.dumps({k: v for k, v in r.items() if k != "model"}, indent=1))
     if r.get("stillsFailed"):
@@ -576,6 +585,8 @@ def diff_since(a):
                if e and (other or b'"nodes"' in t and b'"views"' in t)]
         if not why and before and texts[1] is not None and after is None:  # a key mistyped: not a deletion (audit 10)
             why = ["it is no longer a map model (its nodes and views are not both lists)"]
+        if not why:  # each version as render reads it, said under its own version (audit 11)
+            why = [f"{at}: " + "; ".join(bad) for at, x in ((f"its version at {a.base}", before), ("it", after)) if x and (bad := not_objects(x))]
         if why:
             done.append({"file": name, "error": "; ".join(why)})
             md += [f"**`{fname}`**: cannot be read: " + flat("; ".join(why)), ""]
@@ -600,7 +611,7 @@ def diff_since(a):
         md += [f"- {flat(s)}" for s in r["summary"]] + [""] + sketch(r["model"]) + [""]
         if r.get("stillsFailed"):
             said = no_pictures(r["stillsFailed"])
-            md += [f"_{said[:1].upper()}{said[1:]}._", ""]
+            md += [f"_{flat(said[:1].upper() + said[1:])}._", ""]  # view ids are model words (audit 11)
     if not done:
         md += ["No map model changed."]
     write(out / "summary.md", capped("\n".join(md)) + "\n")
@@ -662,7 +673,7 @@ def cmd_drift(a):
     """The map against the traffic seen: lines that run but are not drawn come in dashed rose, drawn lines between
     services traffic reached that carried nothing fade. OBSERVED.json: [{from, to, count}], or a Jaeger or Tempo
     dependency list ([{parent, child, callCount}], or {"data": [...]}); --match: {service: card id} where names differ."""
-    m, seen = read_json(a.model), read_json(a.observed, model=False)
+    m, seen = read_model(a.model), read_json(a.observed, model=False)
     r = js("drift", m, seen, {"match": read_json(a.match, model=False) if a.match else {}})
     r["model"]["title"] = f"{m.get('title') or Path(a.model).stem}: drawn vs. seen"
     rep = render_model(r["model"], a.model, a.out)
@@ -679,7 +690,9 @@ def cmd_trace(a):
     --diagram uml.sequence: the view is a UML sequence view, and the model written is a version-2 model (which releases
     before 0.17.0 refuse); the summary printed adds `diagram` and the helper's `report`. It needs src/uml/convert.js, so
     a full clone of the repository: without it trace exits with a message."""
-    m, trace = read_json(a.model), read_json(a.trace, model=False)
+    if not a.view.strip():  # a view needs an id: render refuses the model it would write (audit 11)
+        sys.exit("trace: --view needs a view id")
+    m, trace = read_model(a.model), read_json(a.trace, model=False)
     was = next((v for v in m.get("views") or [] if isinstance(v, dict) and v.get("id") == a.view), None)
     if was and not str(was.get("caption") or "").startswith("From a trace"):  # a view a person made is theirs (audit 6)
         sys.exit(f"trace: {a.model} has a view {a.view!r} that no trace made: name another --view (trace replaces only a view it made)")
@@ -1173,7 +1186,7 @@ def cmd_export(a):
     writer in Node with the user's bpmn-moddle; what it does not write is listed on stderr, each with its element's id."""
     if not Path(a.model).is_file():
         sys.exit(f"no model at {a.model}")
-    m = read_json(a.model)
+    m = read_model(a.model)
     views = [v.get("id") for v in m.get("views") or [] if isinstance(v, dict) and v.get("diagram") == "bpmn"]
     view = a.view or (views[0] if views else None)
     if view not in views:
