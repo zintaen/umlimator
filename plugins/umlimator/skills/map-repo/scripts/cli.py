@@ -38,7 +38,8 @@ if not (home / "umlimator.py").is_file():
         if subprocess.run(["git", "-c", "advice.detachedHead=false", "clone", "--quiet", "--depth", "1", "--branch", ref,
                            "https://github.com/zintaen/umlimator.git", part]).returncode:
             sys.exit(f"umlimator {ref} could not be fetched (git says why, above): its first use needs the network, once; "
-                     f"or set UMLIMATOR_CLI_CACHE to a folder that holds {ref}/umlimator.py")
+                     f"or set UMLIMATOR_CLI_CACHE to a folder holding a git clone of the tag in {ref}/ "
+                     f"(git clone --branch {ref} https://github.com/zintaen/umlimator.git DIR/{ref})")
         if sha and (got := head(part)) != sha:
             sys.exit(f"umlimator {ref} is commit {got}, not the pinned {sha}: not running it")
         try:
