@@ -22,8 +22,9 @@
       "sha256": "0d06c39f4858683c468057909d562508ba3ad73fc0180ae64a98f60fe0588c2f"
     },
     "legal": "Google Cloud and the Google Cloud logo are trademarks of Google LLC.",
-    "names": {},
-    "aliases": {}
+    "names": {"Pub-Sub": "Pub/Sub"},
+    "aliases": {},
+    "category": {"Cloud-CDN": "Networking", "Cloud-DNS": "Networking", "Cloud-Load-Balancing": "Networking", "Pub-Sub": "Integration-Services"}
   },
   "azure": {
     "vendor": "Microsoft Azure",

@@ -504,6 +504,9 @@ function writeMermaidClass(model, viewId) {
   const name = id => (/^[\p{L}\p{N}_]+(-[\p{L}\p{N}_]+)*$/u.test(id) && !MC_KEYWORDS.has(id) ? id : '`' + id + '`');
   // what Mermaid cannot carry: an element, as `<id> (<type>)`, or one property of one, as `<id>: <what>`
   const out = [], notWritten = [], skip = x => notWritten.push(`${flat(x.id)} (${flat(x.type)})`), lose = (id, what) => notWritten.push(`${flat(id)}: ${flat(what)}`);
+  // the keys and props Mermaid has a place for; any other (ext, tags) is named, as the ER writer does
+  const extra = (x, keys, props = []) => { for (const k of Object.keys(x)) if (!keys.includes(k)) {
+    if (k === 'props' && isObj(x.props)) { for (const p of Object.keys(x.props)) if (!props.includes(p)) lose(x.id, `property ${p}`); } else lose(x.id, k); } };
   const title = view && has(view.title) ? view.title : m.title;
   if (has(title)) out.push('---', `title: ${/^[\p{L}\p{N}][\p{L}\p{N} _.,()-]*$/u.test(title) && !title.endsWith(' ') ? title : JSON.stringify(String(title))}`, '---');
   if (view && view.id !== MC_VIEW) { if (badId(view.id)) lose(view.id, "the view's id, which a hint cannot carry"); else out.push(`%% id: ${view.id}`); }
@@ -537,7 +540,7 @@ function writeMermaidClass(model, viewId) {
   // depth, is not written. The tree is parents first, so read backwards a namespace's contents come before it
   const full = new Set();
   for (let k = tree.length - 1; k >= 0; k--) if (!isPkg(tree[k]) || full.has(tree[k].id)) full.add(tree[k].parent);
-  for (const n of tree) if (isPkg(n) && !full.has(n.id)) skip(n);
+  for (const n of tree) if (isPkg(n)) { if (full.has(n.id)) extra(n, ['id', 'type', 'label', 'parent']); else skip(n); }
   for (const [at, n] of splits) if (full.has(n.id)) notWritten[at] += `, though Mermaid draws ${flat(n.parent)}, as it splits ${flat(n.id)} at its dots`;
   const written = new Set(tree.filter(n => !isPkg(n)).map(n => n.id));
   const used = new Set(tree.filter(n => !isPkg(n) || full.has(n.id)).map(n => n.id)), next = new Map();
@@ -547,6 +550,7 @@ function writeMermaidClass(model, viewId) {
   for (const n of tree) if (!isPkg(n)) {
     const rows = [], np = isObj(n.props) ? n.props : {};
     if (!has(n.label)) lose(n.id, 'no label, read as its name');
+    extra(n, ['id', 'type', 'label', 'members', 'parent'], ['isAbstract', 'stereotypes']);
     const anns = [...(KIND[n.type] ? [KIND[n.type]] : []), ...(np.isAbstract ? ['abstract'] : []), ...arr(np.stereotypes).filter(s => {
       const k = String(s).toLowerCase(), ok = !badId(s) && s !== '' && !String(s).includes('>>') && !String(s).endsWith('>') && k !== 'abstract' && !(k in MC_TYPES); // one the reader reads back as itself
       if (!ok) lose(n.id, `stereotype ${s}`);
@@ -575,6 +579,8 @@ function writeMermaidClass(model, viewId) {
       const drift = back && x.type !== 'uml.EnumerationLiteral' && (!!bp.isStatic !== !!p.isStatic || (x.type === 'uml.Property' ? back.abstractField || !same(bp.valueType, p.valueType)
         : !!bp.isAbstract !== !!p.isAbstract || !same(bp.returnType, p.returnType) || JSON.stringify(arr(bp.parameters).map(a => [a.name ?? '', a.valueType ?? ''])) !== JSON.stringify(arr(p.parameters).filter(isObj).map(a => [String(a.name ?? '').trim(), has(a.valueType) ? String(a.valueType).trim() : '']))));
       if (!back || drift || back.type !== x.type || back.label !== x.label || badId(x.id) || nl(text) || /^(\}$|<<|%%)/.test(text.trim())) { skip(x); continue; }
+      extra(x, ['id', 'type', 'label'], x.type === 'uml.Property' ? ['visibility', 'valueType', 'multiplicity', 'default', 'isStatic', 'isDerived']
+        : x.type === 'uml.Operation' ? ['visibility', 'parameters', 'returnType', 'isAbstract', 'isStatic'] : []);
       rows.push([idOf(x.id, `${n.id}.${x.label}`), text]);
     }
     heads.set(n.id, [anns, rows]);
@@ -591,6 +597,7 @@ function writeMermaidClass(model, viewId) {
     if (e.type === 'uml.CommentLink') { if (badId(e.id)) skip(e); else links.push(e); continue; }
     if (!(written.has(e.from) && written.has(e.to)) || !(e.type === 'uml.Association' || e.type in ARROW) || badId(e.id)) { skip(e); continue; }
     const p = isObj(e.props) ? e.props : {}, ends = isObj(p.ends) ? p.ends : {};
+    extra(e, ['id', 'type', 'from', 'to', 'label'], ['ends', 'stereotypes']);
     // the label's own « and its spaces at either end as entities: the reader takes its «stereotypes» before it decodes, and trims
     // a stereotype's » as an entity too, or it would end there; the reader trims one, so one with spaces at its ends is not written
     const label = [...arr(p.stereotypes).filter(s => String(s).trim() === String(s) || (lose(e.id, `stereotype ${s}`), false)).map(s => `«${enc(s).replace(/»/g, c => `#${c.codePointAt(0)};`)}»`), ...(has(e.label) ? [enc(e.label).replace(/^\s|\s$|«/g, c => `#${c.codePointAt(0)};`)] : [])].join(' ');
@@ -613,6 +620,7 @@ function writeMermaidClass(model, viewId) {
     const its = linksFrom.get(n.id) || [], mine = its.filter(e => written.has(e.to));
     its.filter(e => e !== mine[0]).forEach(skip);
     const hint = idOf(n.id, `note-${k + 1}`), link = mine[0] ? idOf(mine[0].id, `${n.id}-link`) : null;
+    extra(n, ['id', 'type', 'label', 'parent']); if (mine[0]) extra(mine[0], ['id', 'type', 'from', 'to']);
     return [hint, link, `note ${mine[0] ? `for ${name(mine[0].to)} ` : ''}"${enc(n.label ?? '')}"`];
   });
   links.filter(e => !noteIds.has(e.from)).forEach(skip);

@@ -41,7 +41,7 @@ served, log = t / "served", []
 served.mkdir()
 files = {
     "core.zip": zipped({"Unique Icons/Test Run/SVG/test-run.svg": svg("#4285f4"), "Unique Icons/Pub Sub/SVG/pub.svg": svg("#34a853")}),
-    "category.zip": zipped({"Category Icons/White Thing/SVG/white.svg": svg("#ffffff")}),
+    "category.zip": zipped({"Category Icons/White Thing/SVG/white.svg": svg("#ffffff"), "Category Icons/Networking/SVG/net.svg": svg("#ea4335")}),
     "azure.zip": zipped({"Azure_Public_Service_Icons/Icons/devops/10261-icon-service-Azure-DevOps.svg": svg("#0078d4"),
                          "Azure_Public_Service_Icons/Icons/other/10262-icon-service-Azure-DevOps.svg": svg("#005ba1"),
                          "Azure_Public_Service_Icons/Icons/web/10001-icon-service-Test-Service.svg": svg("#0078d4"),
@@ -70,7 +70,8 @@ def rows(**change):
                           {"url": f"{base}/category.zip", "bytes": len(files["category.zip"]), "sha256": sha(files["category.zip"])}],
                  "icons": REAL["gcp"]["icons"], "legal": REAL["gcp"]["legal"],
                  "terms": {"url": "https://example.invalid/gcp", "read": "2026-11-14", "text": GT, "sha256": sha(GT.encode())},
-                 "names": {"Pub-Sub": "Pub/Sub"}, "aliases": {"Old-Run": "Test-Run"}},
+                 "names": {"Pub-Sub": "Pub/Sub", "Cloud-DNS": "Cloud DNS"}, "aliases": {"Old-Run": "Test-Run"},
+                 "category": {"Cloud-DNS": "Networking"}},
          "azure": {"vendor": "Microsoft Azure", "label": "V-test",
                    "zips": [{"url": f"{base}/azure.zip", "bytes": len(files["azure.zip"]), "sha256": sha(files["azure.zip"])}],
                    "icons": REAL["azure"]["icons"],
@@ -247,6 +248,7 @@ model = {"schemaVersion": 2, "iconPacks": {"gcp": "test-0"}, "nodes": [
     {"id": "b", "type": "gcp.Product", "label": "Old", "props": {"icon": "Old-Run"}},
     {"id": "c", "type": "gcp.Product", "label": "Bus", "props": {"icon": "Pub-Sub"}},
     {"id": "w", "type": "gcp.Product", "label": "White", "props": {"icon": "White-Thing"}},
+    {"id": "dns", "type": "gcp.Product", "label": "DNS", "props": {"icon": "Cloud-DNS"}},
     {"id": "x", "type": "gcp.Product", "label": "Typo", "props": {"icon": "Test-Rn"}},
     {"id": "z", "type": "azure.Service", "label": "Web", "props": {"icon": "Test-Service"}},
     {"id": "logo", "label": "Pipelines", "icon": "azuredevops"}, {"id": "id", "label": "Sign-in", "icon": "entra"}],
@@ -268,6 +270,9 @@ ok("table#1 · a fetched pack's icons reach the page keyed <pack>/<id>, as data 
    and g("gcp/Test-Run").get("dark") is False and g("azure/Test-Service").get("name") == "Test Service", sorted(icons))
 ok("table#2 · an alias reads the pinned id; a names row gives the full name; a white icon is marked dark",
    g("gcp/Old-Run").get("src") == g("gcp/Test-Run").get("src") and g("gcp/Pub-Sub").get("name") == "Pub/Sub" and g("gcp/White-Thing").get("dark") is True, sorted(icons))
+ok("table#4 · a product the pack has no icon of draws its category's icon under its own name, and check says nothing of it",
+   g("gcp/Cloud-DNS").get("src", "").startswith("data:image/svg+xml;base64,") and g("gcp/Cloud-DNS").get("name") == "Cloud DNS"
+   and "'Cloud-DNS'" not in err, (sorted(icons), err))
 ok("table#3 · the Google pack gives its legal line; the Azure pack, with none, no `azure/` entry; an id the pack lacks none",
    icons.get("gcp/") == {"legal": REAL["gcp"]["legal"]} and "azure/" not in icons and "gcp/Test-Rn" not in icons, sorted(icons))
 ok("logos#1 · the manifest's Azure rows are read from the fetched Azure pack", icons.get("azuredevops", {}).get("src", "").startswith("data:image/svg+xml"), sorted(icons))
