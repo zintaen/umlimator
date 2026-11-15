@@ -715,9 +715,9 @@ def cmd_trace(a):
 
 
 def cmd_timelapse(a):
-    """The model's versions in git history, oldest first, as one page with a slider: the map eases from each version to
+    """The model's versions in git history, oldest first (the first-parent line, merges included, so the last is HEAD's), as one page with a slider: the map eases from each version to
     the next (new cards fade in, removed ones fade out, moved ones glide), with what changed in words."""
-    log = subprocess.run(["git", "log", "--follow", "--name-only", "--format=%x00%H%x09%cs%x09%s", "--", a.model], capture_output=True, text=True, errors="replace")
+    log = subprocess.run(["git", "log", "--follow", "--first-parent", "-m", "--name-only", "--format=%x00%H%x09%cs%x09%s", "--", a.model], capture_output=True, text=True, errors="replace")
     if log.returncode:
         sys.exit(log.stderr.strip())
     rows = [r.strip().split("\n") for r in log.stdout.split("\x00") if r.strip()][::-1][-a.limit:]  # each: "sha\tdate\tsubject", "", path
@@ -1274,7 +1274,8 @@ def main():
     if getattr(a, "page", None) and not Path(a.page).is_file():
         sys.exit(f"{a.cmd}: no page at {a.page}")
     ins = [getattr(a, k, None) for k in ("model", "file", "page", "observed")] + (getattr(a, "files", None) or [])
-    if a.cmd != "trace" and getattr(a, "out", None) and any(x and Path(x).resolve() == Path(a.out).resolve() for x in ins):
+    if a.cmd != "trace" and getattr(a, "out", None) and any(x and (Path(x).resolve() == Path(a.out).resolve()
+            or os.path.exists(x) and os.path.exists(a.out) and os.path.samefile(x, a.out)) for x in ins):  # the file, not its spelling: case, hard links
         sys.exit(f"{a.cmd}: --out {a.out} is its input: name another file")  # else replacing() renames the output over it
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))  # as Ctrl-C: temp files go, and the children run() started
     try:
