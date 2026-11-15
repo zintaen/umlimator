@@ -31,6 +31,7 @@ NODE_FORMATS = ["structurizr-json", "dbml"]  # read typed by the module's reader
 LIMIT = 1 << 20  # bytes: a Structurizr JSON or .dbml file over it is refused before it is parsed (notes/milestone-2.md §8); a
 # Structurizr DSL, C4-PlantUML or Mermaid text over it (in characters) is not read
 DEEP = 64  # elements nested deeper are read flat from there, so an id (the dotted path) stays short (the module's SZ_DEEP, R2)
+VIEW_WORK = 500000  # a DSL's views: elements and relationships walked in all, each view walking every one (the module's SZ_WORK)
 FLOWS = 100000  # a flowchart's links at most: a & b --> c & d is a product (the module's MF_FLOWS)
 EXT = {".dbml": "dbml", ".dsl": "structurizr", ".puml": "plantuml", ".plantuml": "plantuml", ".pu": "plantuml", ".iuml": "plantuml",
        ".mmd": "mermaid", ".mermaid": "mermaid", ".bpmn": "bpmn"}  # bpmn: XML the module's adapter reads (umlimator.py import)
@@ -144,7 +145,7 @@ def detect(path, text):
     if text.lstrip()[:1] in "{[":
         try:
             d = json.loads(text)
-        except ValueError:
+        except (ValueError, RecursionError):  # too deep for Python's parser: cmd_import says so
             d = None
         if isinstance(d, dict) and isinstance(d.get("model"), dict) and isinstance(d.get("views"), dict):
             return "structurizr-json"
@@ -437,8 +438,12 @@ def views(m, els, lines, specs, find, implied, groups):
     # implied: "any" draws one implied line per pair unless a relationship joins them; "same" one per description, unless a
     # relationship with that description joins them (Structurizr's two strategies)
     key = lambda x, y, r: (x, y) if implied == "any" else (x, y, r["desc"])
-    direct, made, placed = {key(a, b, r) for a, b, _, r in lines}, {}, []
+    direct, made, placed, work = {key(a, b, r) for a, b, _, r in lines}, {}, [], 0
     for s in specs:
+        work += len(els) + len(lines) + len(s["include"]) + len(s["exclude"])
+        if work > VIEW_WORK:  # hostile input (R2): views x elements is unbounded under the 1 MiB limit
+            m.say(s["line"], f"over {VIEW_WORK} elements and relationships walked in all views: this view and the rest are left out")
+            break
         typ, scope = s["type"], find(s["scope"]) if s["scope"] else None
         if typ != "systemlandscape" and not (scope and els[scope]["type"] == SCOPE[typ]):
             m.say(s["line"], f"{typ} view of {s['scope'] or '?'}: that is not a {C4TYPE[SCOPE[typ]].lower()}, so the view is left out")
@@ -504,9 +509,12 @@ def views(m, els, lines, specs, find, implied, groups):
         if level > 1:
             m.nodes[scope].setdefault("opensView", m.views[-1]["id"])
         placed.append((m.views[-1], level, scope))
+    first = [{}, {}, {}, {}]  # per level: a card -> the first view of that level showing it
+    for w, lv, _ in placed:
+        for c in w["nodeIds"]:
+            first[lv].setdefault(c, w["id"])
     for v, level, scope in placed:  # its parent: the most detailed view above it that shows its scope as a card
-        above = [(lv, w) for w, lv, _ in placed if lv < level and scope in w["nodeIds"]]
-        v["parent"] = max(above, key=lambda x: x[0])[1]["id"] if above else None
+        v["parent"] = next((first[lv][scope] for lv in range(level - 1, -1, -1) if scope in first[lv]), None)
 
 
 # ---------- C4-PlantUML, and Mermaid's C4 diagrams (the same macros) ----------

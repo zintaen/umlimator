@@ -31,7 +31,8 @@ Rules (`src/dfd/dfd.js`), run once on the whole model: error `dfd-balance` (a le
 process's flows by label, far end and direction; a local store does not count; the error names the missing flow);
 warnings `dfd-flow-process` (a flow with no process at either end), `dfd-process-io`, `dfd-flow-label`, `dfd-numbers`
 (numbered under the parent's number, none twice), `dfd-level` (a process opens a dfd view whose parent shows it; also a
-level two processes open, a view its own parent, a level showing its own process).
+level two processes open, a view its own parent, a level showing its own process), `dfd-notation` (a view's notation
+not `yourdon` or `gane-sarson`, drawn as Yourdon).
 
 **Departures:** no claim of Yourdon or Gane and Sarson conformance; Yourdon's process is an ellipse sized to its text.
 "A flow touches a process" is a warning, as later teaching material puts it. Balancing is by label: a flow that splits

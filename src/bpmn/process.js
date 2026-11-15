@@ -468,7 +468,8 @@ function bzRemove(model, view, ids, fromModel) {
   const keep = id => { let p = I.up(id); for (let k = 0; p != null && gone.has(p) && k < 64; k++) p = I.up(p); return p; };
   // the lanes nested under a deleted one move up: apply() cannot reparent a member, so each is deleted and added again
   const moved = [...I.L.keys()].filter(id => !gone.has(id) && I.chain(id).some(p => gone.has(p))), shift = new Set([...gone, ...moved]);
-  const held = [...I.N.values()].filter(n => shift.has(n.parent) && !rest.includes(n.id));
+  // a node selected with its lane is kept for a hide too (audit 12): only Delete from the model lets the lane take it
+  const held = [...I.N.values()].filter(n => shift.has(n.parent) && !(fromModel && rest.includes(n.id)));
   held.forEach(n => cmds.push({ op: 'reparent', id: n.id, parent: I.L.get(n.parent).pool }));
   [...gone, ...moved].forEach(id => cmds.push({ op: 'delete', id }));
   // each added again where the outermost deleted lane above it was among its pool's members, so the lanes keep their order

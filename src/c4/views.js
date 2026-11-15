@@ -175,7 +175,7 @@ function depPic(model, view) {
   const boxes = pic.boxes.map(b => { const x = pic.at.get(b.id), held = pic.holds(b.id).map(id => pic.at.get(id)), k = new Map();
     held.forEach(y => { const w = (C4_WORD[y.type] || 'element').toLowerCase(); k.set(w, (k.get(w) || 0) + 1); });
     return { ...b, title: `${vName(x)} ${depTag(x)}`, name: vName(x), kw: depTag(x), head: V_HEAD, aria: `Deployment node ${vName(x)}${V_HAS(V_P(x).technology) ? ', ' + V_P(x).technology : ''}, a box holding ${[...k].map(([w, c]) => vPlural(c, w)).join(', ')}` }; });
-  return { ...pic, I, boxes };
+  return { ...pic, I, boxes, nameOf: x => vName(x.type === 'c4.ContainerInstance' && depOf(I, x) || x) }; // an instance named as drawn: its container's name
 }
 // the key: a deployment node, each instance's look (as its container's), the relationship and the implied line
 function depLegend(nodes, edges, boxes) {
@@ -247,8 +247,12 @@ function depKey(model, view, ids, key) {
   const I = c4Index(model), x = I.at.get(ids.at(-1));
   if (!(key === 't' || key === 'T') || !x || x.type !== 'c4.ContainerInstance') return c4Key(model, view, ids, key);
   const cs = depCs(I, view);
-  return { pick: cs.map(vName), then: i => (cs[i].id === V_P(x).container ? [] : [{ op: 'set', id: x.id, path: 'props.container', value: cs[i].id }]) };
+  const was = depOf(I, x); // its label follows when it was the old container's name (the Name field shows it)
+  return { pick: cs.map(vName), then: i => (cs[i].id === V_P(x).container ? [] : [{ op: 'set', id: x.id, path: 'props.container', value: cs[i].id },
+    ...(was && vName(x) === vName(was) ? [{ op: 'set', id: x.id, path: 'label', value: vName(cs[i]) }] : [])]) };
 }
+// F2 on an instance: it is drawn and named as its container, so a name of its own would show nowhere; else C4's
+const depRename = (model, view, id, text) => ((c4Index(model).at.get(id) || {}).type === 'c4.ContainerInstance' ? { error: 'An instance is named as its container: T picks another container' } : c4Rename(model, view, id, text));
 // the Owner field: an instance's and a deployment node's deployment nodes
 function depOwners(model, x) {
   if (!V_OBJ(x) || x.from != null || (x.type !== 'c4.ContainerInstance' && x.type !== 'c4.DeploymentNode')) return c4Owners(model, x);
@@ -275,7 +279,7 @@ const DEP_DEF = {
     if (x.type !== 'c4.ContainerInstance') return C4_DEF.rows(model, view, id);
     const c = depOf(I, x); return [`Instance of ${c ? vName(c) : 'no container'}`, ...(c ? C4_DEF.rows(model, view, c.id) : [])]; },
   text: C4_DEF.text,
-  edits: { add: depAdd, key: depKey, rename: c4Rename },
+  edits: { add: depAdd, key: depKey, rename: depRename },
 };
 
 const C4_VIEW_TYPES = [registerDiagramType('c4.dynamic', DYN_DEF), registerDiagramType('c4.deployment', DEP_DEF)];
