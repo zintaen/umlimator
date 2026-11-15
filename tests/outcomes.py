@@ -279,7 +279,7 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("diff-base-run (audit 10) · a model whose views key is mistyped is said to be no model now, not diffed as deleted",
        "**`a/b-c.json`**: cannot be read: it is no longer a map model" in summary and "removes Web" not in summary, summary)
     ok("diff-base-run (audit 10) · a new model git does not track yet is a change too",
-       any(x.get("file") == "docs/new.json" and "adds Web" in x.get("summary", []) for x in said(r) or []), r.stdout + r.stderr)
+       any(x.get("file") == "docs/new.json" and "adds the view Plain" in x.get("summary", []) for x in said(r) or []), r.stdout + r.stderr)
     r = cli("render", ROOT / "examples" / "bookshop.json", "--out", t / "nc.html", stand_in="no-chrome")
     ok("render (audit 10) · with no Chrome the layout check is skipped, and said: checked is false, not a clean check",
        r.returncode == 0 and (said(r) or {}).get("checked") is False and "no Chrome" in (said(r) or {}).get("skipped", "") and "check was skipped" in r.stderr, r.stdout + r.stderr)
