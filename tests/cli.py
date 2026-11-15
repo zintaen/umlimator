@@ -295,6 +295,42 @@ with tempfile.TemporaryDirectory() as tmp:
         keys.append(u.still_keys(t / "local.html", [2.0, "light", False]))
     ok("stills · a view is drawn again when a view-local card's inner view grows, or a view lists that card and it changes (audit 7)",
        keys[0]["top"] != keys[1]["top"] and keys[1]["other"] != keys[2]["other"], keys)
+    # audit 8: a typed view's key holds what the page's viewKey adds for one: other views' titles, and a DFD level its parent's cards
+    typed = lambda ids, title: {"schemaVersion": 2, "title": "t", "nodes": [{"id": c, "label": c} for c in "xy"],
+                                "views": [{"id": "l1", "diagram": "dfd", "title": "Level 1", "nodeIds": ids},
+                                          {"id": "l2", "diagram": "dfd", "parent": "l1", "title": title, "nodeIds": ["x", "y"]}]}
+    keys = []
+    for ids, title in ((["x", "y"], "Level 2"), (["x"], "Level 2"), (["x"], "Take order")):
+        (t / "typed.json").write_text(json.dumps(typed(ids, title))); cli("render", str(t / "typed.json"), "--out", str(t / "typed.html"), "--no-check")
+        keys.append(u.still_keys(t / "typed.html", [2.0, "light", False]))
+    ok("stills · a DFD level is drawn again when its parent's cards change, and a typed view when another view is renamed (audit 8)",
+       keys[0]["l2"] != keys[1]["l2"] and keys[1]["l1"] != keys[2]["l1"], keys)
+    # audit 8: a view's own card names an icon the model's cards do not: the page's icons table has it
+    (t / "vicon.json").write_text(json.dumps({"title": "t", "nodes": [{"id": "a", "label": "A", "icon": "database"}],
+        "views": [{"id": "main", "title": "Main", "nodeIds": ["a", "b"], "nodes": [{"id": "b", "label": "B", "icon": "server"}]}]}))
+    cli("render", str(t / "vicon.json"), "--out", str(t / "vicon.html"), "--no-check")
+    ok("render · a view's own card gets its icon in the page's icons table (audit 8)",
+       "server" in ((u.page_data(t / "vicon.html")[0].get("icons") or {}) if (t / "vicon.html").is_file() else {}))
+    # audit 8: '<!--' then '<script' in a label left the data block open past its own </script>: every '<' in it is escaped
+    (t / "lt.json").write_text(json.dumps({"title": "t", "nodes": [{"id": "a", "label": "A", "what": "Renders <!-- old <script> tags"}, {"id": "b", "label": "B"}],
+        "edges": [{"from": "a", "to": "b"}], "views": [{"id": "main", "title": "Main", "nodeIds": ["a", "b"]}]}))
+    cli("render", str(t / "lt.json"), "--out", str(t / "lt.html"), "--no-check")
+    blk = u.DATA.search((t / "lt.html").read_text(encoding="utf-8")) if (t / "lt.html").is_file() else None
+    ok("render · a label holding <!-- and <script is data: the page's data block holds no '<' and reads back the same (audit 8)",
+       blk and "<" not in blk.group(1) and json.loads(blk.group(1))["nodes"][0]["what"] == "Renders <!-- old <script> tags"
+       and json.loads(u.script_json("<!--<script")) == "<!--<script" and "<" not in u.script_json("<!--<script"))
+    # audit 8: diff and drift name the user's file, not the hidden copy rendered beside it
+    (t / "badid.json").write_text(json.dumps({"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": ["b"]}], "views": [{"id": "main", "nodeIds": ["a"]}]}))
+    b = plain("diff", str(t / "vicon.json"), str(t / "badid.json"), "--out", str(t / "badid.html"))
+    ok("diff · a malformed model is named by its own file, not a deleted temp copy (audit 8)",
+       b.returncode == 1 and "badid.json: nodes[1].id is not a string" in b.stderr and ".change.json" not in b.stderr, b.stderr[-300:])
+    # audit 8: a story step that is not an object: one line, not a traceback (and before Chrome is looked for)
+    (t / "story.json").write_text(json.dumps({"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "edges": [{"from": "a", "to": "b"}],
+        "views": [{"id": "main", "title": "Main", "nodeIds": ["a", "b"]}], "stories": [{"id": "s", "title": "S", "steps": [None, {"view": "main", "tour": "ab"}]}]}))
+    cli("render", str(t / "story.json"), "--out", str(t / "story.html"), "--no-check")
+    b = plain("record", str(t / "story.html"), "--story", "s", "--out", str(t / "story.png"))
+    ok("record · a story step that is not an object is said in one line, not a traceback (audit 8)",
+       b.returncode == 1 and "step 1 is not an object" in b.stderr and "Traceback" not in b.stderr, b.stderr[-300:])
 
     # the diff Action's step as CI runs it (C10, 2.6): a pull request's merge commit against its first parent, the pathspec
     # examples/*.json passed to git as written (set -f), on one object model and one package model
