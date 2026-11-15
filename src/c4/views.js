@@ -122,11 +122,16 @@ function dynMoveTo(model, view, id, at) {
   return to < 0 || to >= steps.length || to === k ? [] : [{ op: 'move', id, view: view.id, index: steps[to].i }];
 }
 // connect: a relationship between two shown elements is a step: the model's own when one joins them and is not a step yet,
-// else a new one (the canvas's add, which lists it last)
+// else a new one (the canvas's add, which lists it last); on a view that lists no steps yet, a new one and the list of it,
+// as the add lists nothing on a view without its own list
 function dynConnect(model, view, from, to, at, line) {
   if (!V_OBJ(view) || (V_OBJ(line) && line.type !== 'c4.Relationship')) return null;
   const listed = V_ARR(view.edges), r = c4Index(model).rels.find(e => e.from === from && e.to === to && !listed.includes(e.id));
-  return r ? [{ op: 'set', view: view.id, path: 'edges', value: [...listed, r.id] }] : null;
+  if (r) return [{ op: 'set', view: view.id, path: 'edges', value: [...listed, r.id] }];
+  if (Array.isArray(view.edges)) return null;
+  const used = vUsed(model); let k = 1; while (used.has(`relationship${k}`)) k++;
+  const props = V_OBJ(line) && V_OBJ(line.props) ? { props: structuredClone(line.props) } : {};
+  return [{ op: 'add', element: { id: `relationship${k}`, type: 'c4.Relationship', from, to, ...props } }, { op: 'set', view: view.id, path: 'edges', value: [`relationship${k}`] }];
 }
 // rename: F2 on a step holds its text, "description [technology]": the technology when unchanged, and a number typed before it
 // ("3." or "3 ·"), are not the description; what is left is set as its label. Anything else: null, the canvas's own

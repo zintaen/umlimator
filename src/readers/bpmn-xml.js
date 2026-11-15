@@ -36,7 +36,9 @@
    among them) is a report item, never a throw; the walk over moddle's tree is iterative, a skipped element's JSON is cut
    at BX_DEEP levels, lookups are by Set and Map (no scan per element), and either report lists BX_MAX items, then counts
    the rest in one. Neither function ever throws. A tab
-   or carriage return in a name or id reads back as a space (XML's attribute rule). */
+   or carriage return in a name or id reads back as a space (XML's attribute rule). A character XML 1.0 cannot hold (a
+   control character such as U+000B, a lone surrogate) is written as a space, and said once per element. */
+const BX_BAD = /[^\t\n\r\x20-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/gu; // outside XML 1.0's Char
 const BX_LIMIT = 1 << 20; // characters of XML read (R2)
 const BX_MAX = 1000; // report items listed; the rest counted in one
 const BX_DEEP = 32; // levels of a skipped element kept under ext.bpmn
@@ -524,7 +526,10 @@ async function writeBpmnXml(model, viewId, geo, moddle) {
       while (path.length) level.set(path.pop(), ++d);
       most = Math.max(most, d);
     }
-    return result((await moddle.toXML(defs, { format: most <= BX_DEEP })).xml);
+    // a character XML cannot hold: a space, said for each element whose own text or props hold one (one level: what is written)
+    const bad = v => typeof v === 'string' && v.search(BX_BAD) >= 0, holds = x => x && typeof x === 'object' && Object.values(x).some(bad);
+    for (const x of [model, ...things]) if (holds(x) || holds(x.props)) if (report.length < BX_MAX) report.push({ line: x === model ? '' : x.id, status: 'weakened', message: 'a character XML cannot hold: written as a space' }); else more++;
+    return result((await moddle.toXML(defs, { format: most <= BX_DEEP })).xml.replace(BX_BAD, ' '));
   } catch (e) {
     say('', `the model (${bxMsg(e)})`);
     return result('');

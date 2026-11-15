@@ -438,3 +438,11 @@ test('a lane naming another process\'s flow node, and a second pool on one proce
   const b = await read(D('<collaboration id="c"><participant id="A" processRef="p"/><participant id="B" processRef="p"/></collaboration><process id="p"><task id="t"/></process>'), BpmnModdle());
   assert.deepEqual([parents(b.model), b.report.filter(r => r.line !== '').map(r => `${r.line} ${r.message}`)], [{ t: 'A' }, ["B its process p is also A's: its content is read into A"]]);
 });
+
+test('audit 8: a character XML 1.0 cannot hold (U+000B, a control character, a lone surrogate) is written as a space, said once per element', needs, async () => {
+  const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 't', type: 'bpmn.Task', label: 'Pay\u000bnow\uD800', props: { documentation: 'see\u0002note' } }, { id: 'a\u0001b', type: 'bpmn.Task', label: 'Ship' }],
+    edges: [], views: [{ id: 'v', diagram: 'bpmn', nodeIds: ['t', 'a\u0001b'] }] };
+  const w = await write(m, 'v', null, BpmnModdle());
+  assert.doesNotMatch(w.xml, /[^\t\n\r\x20-퟿-�\u{10000}-\u{10FFFF}]/u);
+  assert.deepEqual(w.report.map(r => `${r.line} ${r.status}`), ['t weakened', 'a\u0001b weakened']);
+});

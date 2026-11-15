@@ -44,7 +44,7 @@ const CL_DASHED = ['region', 'availability-zone', 'zone'];
 const clKindOf = (F, x) => { const k = clProps(x)[F.key]; return typeof k === 'string' && Object.hasOwn(F.kinds, k) ? k : null; };
 const clKindWord = (F, x) => { const k = clKindOf(F, x); return k ? F.kinds[k] : 'Group'; };
 const clU = (F, x) => F.user != null && x.type === F.user; // aws and azure have no user: a node with no type is not one
-const clWord = (F, x) => (x.type === F.group ? clKindWord(F, x) : Object.hasOwn(F.items, x.type) ? F.items[x.type] : clU(F, x) ? 'User' : String(x.type ?? '').split('.').pop());
+const clWord = (F, x) => (x.type === F.group ? clKindWord(F, x) : Object.hasOwn(F.items, x.type) ? F.items[x.type] : clU(F, x) ? 'User' : String(x.type ?? '').split('.').pop() || 'Element'); // no type: a card all the same
 const clThe = w => `the ${w === w.toUpperCase() ? w : w.toLowerCase()}`; // "the VPC", "the resource group"
 
 // a node's icon (S6, S8): its id, the table's entry for it (a data URL only, never markup) and the full name, from the table
@@ -199,7 +199,8 @@ function clDescribe(F, model, viewId) {
   const v = CL_ARR(model && model.views).find(x => CL_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
   const pic = clPic(F, model, v), I = clIndex(model), lines = clLinesOf(F, model, v, pic, I), box = new Map(pic.boxes.map(b => [b.id, b.aria]));
   const depth = id => { let d = 0; for (let o = pic.owner(id); o != null; o = pic.owner(o)) d++; return d; };
-  const legal = !!F.legal && pic.ids.some(id => { const x = pic.at.get(id), ic = Object.hasOwn(F.items, x.type) && clIcon(F, model, x); return ic && ic.src; });
+  // as layout() draws it: any card (not a group, not the user) whose icon the host gave
+  const legal = !!F.legal && pic.ids.some(id => { const x = pic.at.get(id), ic = !pic.open.has(id) && x.type !== F.group && !clU(F, x) && clIcon(F, model, x); return ic && ic.src; });
   return [`${v.title || v.id}: ${F.title} of ${clPlural(pic.ids.length, 'element')} and ${clPlural(lines.length, 'connection')}.`,
     ...readingOrder(pic).map(id => '  '.repeat(depth(id)) + (box.get(id) ?? clNodeName(F, model, pic.at.get(id))) + '.'),
     ...lines.map(e => clLineName(F, e, I) + '.'), ...(legal ? [F.legal] : [])].join('\n');

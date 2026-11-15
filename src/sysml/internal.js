@@ -31,7 +31,7 @@ function SYS_IB_INDEX(model, view) {
 }
 // a port's type: its name, and whether ~ conjugates it (§8.2)
 const SYS_IB_TYPE = p => { const t = String(SYS_IB_PROPS(p).valueType ?? '').trim(), name = t.replace(/^~\s*/, ''); return { conj: t.startsWith('~') && name !== '', name }; }; // a lone ~ conjugates nothing
-const SYS_IB_IFACE = (I, name) => { const c = name ? [...I.at.values()].filter(n => n.type === 'sysml.InterfaceBlock' && n.label === name) : []; return c.length === 1 ? c[0] : null; };
+const SYS_IB_IFACE = (I, name) => { const c = name ? [...I.at.values()].filter(n => n.type === 'sysml.InterfaceBlock' && (n.label ?? n.id) === name) : []; return c.length === 1 ? c[0] : null; };
 // the way a port's items flow, seen from its owner: in, out or inout (both), from the flow properties of the interface block
 // that types it, turned round by ~; null when no interface block with flow properties types it
 function SYS_IB_FLOW(I, p) {

@@ -174,6 +174,10 @@ test('connect on a dynamic view: a relationship the model has between the two, n
   // the canvas's add on a view that lists its lines lists the new one last: a new step
   const added = apply(C4, [{ op: 'add', element: Rel('new', 'c4-mail', 'c4-courier', 'Tells'), view: DV }]);
   assert.deepEqual([layout(added, DV).edges.at(-1).step, layout(added, DV).edges.at(-1).label], [11, 'Tells']);
+  // audit 8: a view that lists no steps yet: the new relationship is listed too, so it is step 1, drawn
+  const s = structuredClone(C4), sv = s.views[V(DV)]; delete sv.edges; s.edges = s.edges.filter(e => !(e.from === 'c4-api' && e.to === 'c4-db'));
+  const first = apply(s, DYN.edits.connect(s, sv, 'c4-api', 'c4-db', null, line));
+  assert.deepEqual(layout(first, DV).edges.map(e => [e.from, e.to, e.step]), [['c4-api', 'c4-db', 1]]);
 });
 
 test('F2 on a step (rename): its drawn text, number and technology, read back as its description; text typed without them is the description; a relationship that is no step, the canvas\'s', () => {
