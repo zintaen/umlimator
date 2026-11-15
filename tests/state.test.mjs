@@ -334,6 +334,12 @@ test('moveTo: a node dropped into the box of a state with one region goes to tha
   assert.match(T.edits.moveTo(m, m.views[0], 'cancelled', { pt: [fu.x + 6, fu.y + 6], geo: g }).error ?? '', /region-mixed.*one of its regions/);
   const mx = layout(apply(SM, [{ op: 'reparent', id: 'cancelled', parent: 'fulfilling' }]), 'order-life'), c = mx.byId.cancelled;
   for (const r of mx.families.filter(x => x.id.startsWith('fulfilling.'))) assert.ok(c.x >= r.x + r.w || c.x + c.w <= r.x || c.y >= r.y + r.h || c.y + c.h <= r.y, r.id);
+  // audit 15: one of two direct substates of an imported region-mixed state dropped into a region lessens the warning: allowed
+  const rm = { schemaVersion: 2, nodes: [{ id: 's', type: 'uml.State', label: 'S', members: [{ id: 'r1', type: 'uml.Region' }, { id: 'r2', type: 'uml.Region' }] },
+    { id: 'k1', type: 'uml.State', label: 'K1', parent: 's' }, { id: 'k2', type: 'uml.State', label: 'K2', parent: 's' }], edges: [], views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['s', 'k1', 'k2'] }] };
+  const rg = { families: [{ id: 's', x: 0, y: 0, w: 400, h: 300 }, { id: 'r1', x: 10, y: 30, w: 180, h: 260 }] };
+  assert.deepEqual(T.edits.moveTo(rm, rm.views[0], 'k1', { pt: [50, 100], geo: rg }), [{ op: 'reparent', id: 'k1', parent: 'r1' }]);
+  assert.match(T.edits.moveTo(apply(rm, [{ op: 'reparent', id: 'k1', parent: 'r1' }]), rm.views[0], 'k1', { pt: [6, 6], geo: rg }).error ?? '', /region-mixed/, 'back out: refused');
 });
 
 test('the Owner field: every state and region by its name from the top; deleting a state takes its regions and what they hold', () => {

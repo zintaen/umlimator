@@ -387,3 +387,10 @@ test('line-inside: a dependency between a node and the artifact it holds is not 
   assert.deepEqual(layout(m, 'v').edges, []);
   assert.deepEqual(validate(m).map(p => [p.rule, p.level, p.ids]), [['line-inside', 'warning', ['d1', 'srv', 'jar']]]);
 });
+
+test('audit 15: an interface or actor in a deployment view is drawn with its keyword, as it is named', () => {
+  const m = { schemaVersion: 2, nodes: [N('n', 'Node', 'Server'), N('i', 'Interface', 'Orders'), N('a', 'Actor', 'Clerk'), N('c', 'Class', 'Order')], edges: [], views: [{ id: 'v', diagram: 'uml.deployment', nodeIds: ['n', 'i', 'a', 'c'] }] };
+  const g = layout(m, 'v'), n = id => g.nodes.find(x => x.id === id);
+  assert.deepEqual(['i', 'a', 'c'].map(id => [n(id).shape, n(id).stereotypes, n(id).aria]),
+    [['classifier', ['interface'], 'Interface Orders'], ['classifier', ['actor'], 'Actor Clerk'], ['classifier', [], 'Class Order']]);
+});

@@ -119,6 +119,8 @@ test('audit 11: the schema names the flowchart\'s default direction; the informa
     for (const r of Object.keys(diagramOf({ diagram: t }).rules)) assert.ok(note.includes('`' + r + '`'), `${f}: ${r}`);
   }
   assert.match(doc('../docs/conformance/uml-composite-structure.md'), /`connector-drawn` \(a connector between two ports of the subject, or of one part/);
+  // audit 15: a duration with ends on two lanes sits under the lower one (src/layout/timeruler.js, notes/stage-6.md §6.6)
+  assert.match(doc('../docs/conformance/uml-timing.md'), /with ends on two lanes, under the lower of the two/);
 });
 
 test('audit 14: the cloud notes do not say an icons-only update() keeps the picture (lifted in 0.28.0); AWS is in the editing guide, the examples README and the schema', () => {

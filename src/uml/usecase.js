@@ -3,7 +3,7 @@ import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import './class.js'; // SHAPE.note, a comment's look
+import { lineIn } from './class.js'; // SHAPE.note, a comment's look too
 import { ownersOn, placeTabs, readingOrder } from './owners.js';
 
 /* ---------- the use case diagram, uml.use-case (work package 4.4, notes/stage-4.md §8) ----------
@@ -112,6 +112,20 @@ function ucExtendParts(model, e) {
 function ucLineLabel(model, e) {
   const x = e.type === 'uml.Extend' ? ucExtendParts(model, e) : null;
   return [UC_KEYWORD[e.type], ...ucStereo(e).map(t => `«${t}»`), e.label, x && x.points.length ? `(${x.points.join(', ')})` : '', x && x.cond ? `[${x.cond}]` : ''].filter(UC_HAS).join(' ');
+}
+/* rename (F2) on a line: the field holds ucLineLabel's text; its keyword and «stereotypes» come off the front, and on an
+   extend its "(points)" off the end (changed: { error }, they are edited in the panel) and a trailing "[condition]" is read
+   back as its condition (none: no condition). The rest is the label (audit 15). Anything else: null */
+function ucRename(model, view, id, text) {
+  const e = lineIn(model, view, id); if (!e) return null;
+  const pre = [UC_KEYWORD[e.type], ...ucStereo(e).map(t => `«${t}»`)].filter(UC_HAS).join(' ');
+  let t = String(text ?? '').trim(), cond = null;
+  if (pre && (t === pre || t.startsWith(pre + ' '))) t = t.slice(pre.length).trim();
+  if (e.type === 'uml.Extend') { const x = ucExtendParts(model, e), c = /\[([^\]]*)\]$/.exec(t), pts = x.points.length ? `(${x.points.join(', ')})` : '';
+    if (c) { cond = c[1].trim() || null; t = t.slice(0, c.index).trim(); }
+    if (pts) { if (t !== pts && !t.endsWith(' ' + pts)) return { error: 'Edit an extend\'s extension points in its properties' }; t = t.slice(0, -pts.length).trim(); }
+    if (cond !== x.cond) return [...(t === String(e.label ?? '') ? [] : [{ op: 'set', id, path: 'label', value: t || undefined }]), { op: 'set', id, path: 'props.condition', value: cond ?? undefined }]; }
+  return t === String(e.label ?? '') ? [] : [{ op: 'set', id, path: 'label', value: t || undefined }];
 }
 const UC_LINE_WORD = { 'uml.Association': 'Association', 'uml.Include': 'Include', 'uml.Extend': 'Extend', 'uml.Generalization': 'Generalization', 'uml.CommentLink': 'Comment link' };
 const UC_LINE_LOOK = { 'uml.Association': { from: 'none', to: 'none' }, 'uml.Include': { from: 'none', to: 'open', dashed: true }, 'uml.Extend': { from: 'none', to: 'open', dashed: true },
@@ -291,7 +305,7 @@ const UC_TYPE = registerDiagramType('uml.use-case', {
   validate: ucProblems,
   rules: UC_RULES,
   describe: ucDescribe,
-  edits: { connect: ucConnect, remove: ucRemove },
+  edits: { connect: ucConnect, remove: ucRemove, rename: ucRename },
 });
 
-export { UC_TYPE, UC_RULES, ucGeo, ucProblems, ucDescribe, ucConnect, ucRemove };
+export { UC_TYPE, UC_RULES, ucGeo, ucProblems, ucDescribe, ucConnect, ucRemove, ucRename };
