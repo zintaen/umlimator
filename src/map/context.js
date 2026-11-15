@@ -53,7 +53,10 @@ function mapContext(model, opts = {}) {
   const M = opts.measure || null, withM = f => (...a) => measured(M, () => f(...a));
   // a field that must be a list and is not (validate() says so) is left out, as a missing one is
   const lists = (o, ks) => o && ks.forEach(k => { if (o[k] != null && !Array.isArray(o[k])) delete o[k]; });
-  lists(D, ['edges', 'views']); D.views = (D.views || []).filter(v => v && typeof v === 'object');
+  // an entry that is no object (validate() says so) is left out, as a null view is: the rest draws (audit 9)
+  const objs = (o, k) => { if (o && Array.isArray(o[k])) o[k] = o[k].filter(x => x && typeof x === 'object'); };
+  lists(D, ['nodes', 'edges', 'views']); ['nodes', 'edges', 'views'].forEach(k => objs(D, k)); D.views = D.views || [];
+  D.views.forEach(v => ['nodes', 'containers'].forEach(k => objs(v, k)));
   edgeIds(D.edges); D.views.forEach(v => { if (Array.isArray(v.edges)) edgeIds(v.edges); });
   const views = D.views.filter(v => v.id);
   const nodes = [...(D.nodes || []), ...views.flatMap(v => v.nodes || [])];

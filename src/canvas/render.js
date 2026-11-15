@@ -710,7 +710,13 @@ export function render(container, model, options = {}) {
     select(null);
     if (P.onBackground) P.onBackground();
   });
-  stage.addEventListener('dblclick', e => { const g = e.target.closest('.node'), id = (hit1 && hit1.two && hit1.v === cur && performance.now() - hit1.at < 1000 && hit1.id) || g && g.dataset.id; hit1 = null;
+  const fresh = () => hit1 && hit1.v === cur && performance.now() - hit1.at < 1000 && hit1.id;
+  // the second click may land outside the map, on page chrome the first click's details panel moved there (the
+  // standalone page's legend): it still opens the card the first click hit (audit 9)
+  const away = e => { if (host.contains(e.target) || !fresh()) return; if (e.type === 'click') { if (e.detail === 2) hit1.two = true; else hit1 = null; return; }
+    const id = hit1.two && hit1.id; hit1 = null; if (id) { e.preventDefault(); open(id); } };
+  const doc = host.ownerDocument; doc.addEventListener('click', away, true); doc.addEventListener('dblclick', away, true);
+  stage.addEventListener('dblclick', e => { const g = e.target.closest('.node'), id = (hit1 && hit1.two && fresh()) || g && g.dataset.id; hit1 = null;
     if (!id) return; e.preventDefault(); if (e.target.closest('.open-hint') || (e.altKey && !E)) return; // Alt: its click unfolded
     if (can('rename') && sel && sel.type === 'node' && sel.id === id && g && g.dataset.id === id && e.target.closest('.n-label')) return rename(sel); // a selected card's name edits
     open(id); });
@@ -851,7 +857,7 @@ export function render(container, model, options = {}) {
   function destroy() {
     if (dead) return;
     cancelGesture();
-    dead = true; if (ro) ro.disconnect(); cancelAnimationFrame(rz); stopStory();
+    dead = true; if (ro) ro.disconnect(); doc.removeEventListener('click', away, true); doc.removeEventListener('dblclick', away, true); cancelAnimationFrame(rz); stopStory();
     answer(false); endTrip(); // every promise settles: a move's setView() false, a tour's and a replay's done false
     timers.forEach(clearTimeout); timers.clear(); sleeping.forEach(wake => wake());
     if (cam) cam.stopAnimation();

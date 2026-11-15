@@ -299,7 +299,8 @@ export function mountPage(container, model, options = {}) {
   let palBack = null; // where focus was before search opened: Esc gives it back
   const openPal = () => { toggleHelp(false); openMenu(null); palBack = document.activeElement; pal.hidden = false; q.value = ''; hi = 0; drawHits(); q.focus(); };
   const closePal = (back = false) => { pal.hidden = true; q.blur(); if (back && palBack && palBack.isConnected && palBack !== document.body) palBack.focus(); palBack = null; };
-  const pickHit = h => { if (!h) return; closePal(); if (h.t === 'n') findNode(h.n.id); else go(h.v.id); };
+  // a pick puts focus on what it found (the selected card, else the map): a keyboard reader carries on from there (audit 9)
+  const pickHit = h => { if (!h) return; closePal(); Promise.resolve(h.t === 'n' ? findNode(h.n.id) : go(h.v.id)).then(ok => { if (ok !== false) X.focus(); }); };
   q.addEventListener('input', () => { hi = 0; drawHits(); });
   q.addEventListener('keydown', e => {
     if (e.key === 'ArrowDown') { hi = Math.min(hits.length - 1, hi + 1); drawHits(); e.preventDefault(); }
