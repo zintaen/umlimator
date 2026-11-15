@@ -4824,3 +4824,84 @@ callers:
   `lib/umlimator-all.js` is 609.9 kB (609,925 B), up 1,858 B; the npm package is 880.2 kB (`npm pack --dry-run`). There
   is no core size cap until 1.0.0 (the maintainer's decision of 15 Nov 2026): sizes are reported each release and a
   budget is set at 1.0.0.
+
+## 0.35.0: fixes from the eighth audit
+
+The eighth audit confirmed 24 findings. All are fixed in this release, in five pull requests (#335 to #339), each with
+a test that fails without its fix. No map or example draws differently and `bench/expected.json` is unchanged. What
+changes for callers:
+
+- **Core (#339).** A card, box or view whose id is `toString`, `constructor`, `valueOf` or `__proto__` lays out like any
+  other: before, `layout()` threw or dropped cards (a hub view with a `__proto__` card drew three of its five). Every
+  object src/map/context.js, src/canvas/render.js and src/map/validate.js key by a card, box, view or lane id has no
+  prototype and is tested with `Object.hasOwn`, as are the id-keyed maps the same views reach in src/layout/audit.js,
+  src/layout/layered.js, src/draw/svg.js and src/map/typed.js. `validate()` and `rules()` see such a box or card as any
+  other: no false "used twice" error or "in box function toString()…" warning, and a `parent: "toString"` that names no
+  box is an error. A listed model line that ends on another view's box now warns too, and the warning's wording changes
+  for the card case as well: `"ac" ends on "c", which is not one of the view's cards or boxes: not drawn`.
+- **The page (#339).** Find and the details panel now select boxes. Picking an element this view draws as a box, in the
+  Find palette or in the details panel's Comes from, Leads to and Also shown in rows, selects the box (before, nothing);
+  Find picks a box on the current view in place, and its hit says "this view" and is ranked as such. `go(v, { select })`
+  and the inner handle's `selectId` take a box's id the same way; the inner handle gains `boxHere(id)`. Expand, open,
+  move and reorder still take a card. The details panel shows a source under `meta.sourceBase` that holds a bare `%` as
+  written (it threw "URI malformed"), and leaves out a `source` entry that is not text (`source: [42]` threw).
+- **UML types (#337).** Class: an operation whose parameter has a function type (`(e: Event) => void`, `() -> Unit`)
+  keeps the parameters after it when its row is saved. The PDF's Elements and Lines tables name an open package by the
+  qualified name it is drawn with (`sales::orders`). Composite structure: a card or port with an `Object.prototype` id
+  is sized as any other. Object: a profile is drawn and named as a package with «profile», closed ("Profile
+  Persistence (closed)") or open. Timing: a message drawn by keyboard (`L`) from a lifeline to a change is sent at the
+  change's time, not refused as "received before it is sent"; a lifeline end is never sent after the change it reaches
+  nor received before the change it leaves, and otherwise the slot's time applies. State machine: F2 on a transition
+  and `add` return `{ error }` for an edit that would add an error (`initial-out`, `fork-join`, `initial-one`,
+  `history-owner`) instead of emitting it. A palette pseudostate now goes into the selected state or region (or a
+  state's only region), so a history pseudostate can be added at all; with nothing selected, a second initial or a
+  history at the top is refused and the reason is shown (docs/editing.md says so).
+- **Flowchart, C4, SysML, cloud and BPMN (#336).** `writeMermaidFlowchart` writes the flows the view draws: its `edges`
+  list (ids resolved, inline flows kept) when it has one, else every flow; a flow it cannot write still gets a
+  `%% not written` line. It writes `flowchart LR` for every direction the layout draws right, anything but null or
+  `down` (before, only `right` gave LR). On a C4 dynamic view with no `edges` list, the first connect adds the
+  relationship and lists it as step 1, so it is drawn. SysML type names resolve `label ?? id`, the name an element is
+  drawn with (block labels, the parametric constraint and binding types, internal block interfaces, the property kind
+  chosen on add): no false errors for an element with no label. Cloud (AWS, GCP): `describe()` decides the trademark
+  line as `layout()` does, and an untyped card with an icon reads 'Element <name>' in `describe()` and its accessible
+  name. `writeBpmnXml` writes a character XML 1.0 cannot hold (a C0 control such as U+000B, a lone surrogate, U+FFFE,
+  U+FFFF) in a label, documentation or id as a space, so the file is well-formed, and reports it once per element
+  with status `weakened` ("a character XML cannot hold: written as a space"; `line: ''` for the model's title), the
+  first `weakened` item the writer gives. An id so written reads back with the space.
+- **CLI (#335).** A label or detail holding `<!--` and then `<script` no longer breaks `render`, `diff`, `drift`, the MCP
+  page and `timelapse`: every `<` in a page's JSON data block is written `<` (the same value). Every page rendered
+  from now on differs from earlier renders in that way; examples/bookshop.html was rendered again and draws the same.
+  `stills` draws a typed view again when another view's id, title or subject changes, and a DFD level when its parent
+  view's cards change, as the page's own view key does. A view's own card (`view.nodes`) gets its icon. `diff` and
+  `drift` name the user's file, not a deleted temp file, for a malformed model. `record` says in one line, before it
+  looks for Chrome, a story step that is not an object; a `tour` that is not a list counts as no tour.
+- **MCP (#338).** `tools/call` refuses an argument its tool's `inputSchema` does not list, with a tool error naming it
+  and the tool's arguments (`reach: no argument direction; its arguments: view, card, backward, depth`); before,
+  `reach` with `direction: 'backward'` silently walked forward. A model with a list or object id gets a tool error
+  saying where (`the model m.json: nodes[1].id is not a string`) from every tool, as `render` says it, never -32603
+  Internal error; `validate`, which answered on such a model before, now refuses it too.
+- **Known gaps.** Still open from 0.34.0: a box has no Tab stop; the keyboard reaches it through the outline. A
+  double-click (or Enter) on a box does not open its view (the 0.24.0 gap). Deep nesting is super-linear outside the
+  core. A composite structure or SysML internal block view's Lines rows name a part by its id, not its drawn name. The
+  JavaScript Mermaid readers still decode `#55296;` to a lone surrogate. The requirement layout leaves out a link into a
+  box nested more than 64 deep from its ranking. Typed hooks that answer Alt+arrows themselves were not checked on views
+  laid out down. `reach()` from a model id that the view draws under another id returns only that element. A negative
+  step duration plays 500 ms while `validate()`'s warning says 4000 ms. Mermaid C4 macro arguments keep entity codes as
+  written. `describe()` of an inline interaction does not say it opens a view. Room for a label in a turned view is
+  still mostly along the line. The map flowchart and Structurizr DSL readers turn a U+2028 inside a label into a space.
+  `validate()` gives typed views no "listed twice" warning for `view.edges` (typed views draw the line once). The
+  unfolded call behaviour box is a plain container frame. A page rendered before 0.33.0 with a numeric view id still
+  ends in a traceback in `stills` and `check`. Three or more delegations from one port into a grid of parts may still
+  cross; this needs a routing change. Other files in src/bpmn may still key plain objects by id (only process.js was
+  checked). The MCP server's `refit()` still keeps any `->` string when it trims a highlight after a model change. The
+  typed Mermaid reader's quote join skips `%%` comment lines but not the body of a multi-line `%%{ }%%` directive. New:
+  the `geo.byId` that src/layout/layered.js and the typed layouts build with `Object.fromEntries` still has a
+  prototype, so looking up an `Object.prototype` id that is not drawn there sees the inherited property. `validate()`
+  gives no warning for a node's `source` entry that is not a string (the page ignores it; the schema forbids it). The
+  PDF tables read an open package's qualified name off its drawn title, and only when the title ends in `::` and its
+  label; a real name field on boxes would need tests/core-diet.json recorded again.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 195.2 kB (195,186 B) with `gzip -9`, 18.33% over 0.16.0's
+  164,954 B, up 630 B from 0.34.0, nearly all in #339 (the prototype-free maps and Find reaching boxes) and #337.
+  `lib/umlimator-all.js` is 611.7 kB (611,709 B), up 1,784 B; the npm package is 882.6 kB (`npm pack --dry-run`). There
+  is no core size cap until 1.0.0 (the maintainer's decision of 15 Nov 2026): sizes are reported each release and a
+  budget is set at 1.0.0.
