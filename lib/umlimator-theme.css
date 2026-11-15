@@ -1,6 +1,8 @@
 /* umlimator's default palette and fonts: light, and dark when the system asks or <html data-theme="dark">; a
    <umlimator-map theme="light|dark"> takes that palette whatever the page's, and one without a theme is dark in a docs
-   site's dark mode too (VitePress's <html class="dark">, Docusaurus's <html data-theme="dark">).
+   site's dark mode too (VitePress's <html class="dark">, Docusaurus's <html data-theme="dark">), and light in its light
+   mode, whatever the system asks (Docusaurus's <html data-theme="light">; VitePress marks only dark, so a map in its
+   default theme's .VPContent is light whenever <html> is not .dark).
    The canvas reads only these --um-* variables (it bakes in no colour and loads no font), so a host may use this file,
    set the variables itself (e.g. --um-bg: var(--surface)), or switch light and dark by changing them on any ancestor
    of the map. Fonts are the host's: --um-sans and --um-mono name families the page already has; nothing is fetched.
@@ -8,7 +10,7 @@
    The tints (--um-<tone>-f) below are for page chrome: the map mixes its own from the tones and --um-panel in effect
    where it is, so setting a tone on any ancestor of the map recolours its tint too. */
 /* Clean flowchart (GitHub Primer-like): light first, dark when the system or the toggle asks. */
-:root, umlimator-map[theme="light"] {
+:root, umlimator-map[theme="light"], :where(html:not(.dark) .VPContent umlimator-map:not([theme])) {
   --um-stage-bg: #fbfcfd; --um-logo-tile: #ffffff; --um-logo-tile-dark: #1b1f23; --um-intake-mark: #1b1f23; --um-edited: #bf8700;
   --um-bg: #ffffff; --um-bg-2: #f6f8fa; --um-panel: #ffffff; --um-panel-2: #f6f8fa; --um-border: #d8dee4; --um-border-2: #d1d9e0;
   --um-text: #1f2328; --um-muted: #59636e; --um-dim: #818b98; --um-grid: rgba(31,35,40,.06); --um-mask: #ffffff; --um-arrow: #8c959f;

@@ -171,6 +171,13 @@ try {
   const M3 = structuredClone(M); M3.nodes.push({ id: 'amp', label: 'Sample & Mark <i>', kind: 'backend' }); M3.views[0].nodeIds.push('amp');
   pg.update(M3); await until(() => pg.navigating === null); found = await search('amp ma rk');
   check('a result reads its label, & and < as written, with each word marked on the label (audit 2)', /Sample & Mark <i>/.test(found), found);
+  const M4 = structuredClone(M); M4.nodes.push({ id: 'zeta-card', kind: 'backend' }); M4.views[0].nodeIds.push('zeta-card');
+  pg.update(M4); await until(() => pg.navigating === null);
+  key('/', document.body); await until(() => !$('m-pal').hidden); $('m-q').value = 'zeta'; $('m-q').dispatchEvent(new Event('input'));
+  const nameless = ($('m-res').querySelector('.fr b') || {}).textContent; key('Escape', $('m-q')); found = await search('zeta-cardx');
+  check('a card with no label is named by its id in a result, and in "Did you mean" (audit 15)', nameless === 'zeta-card' && /Did you mean zeta-card\?/.test(found), [nameless, found]);
+  check('the page\'s title is its level-one heading (audit 15)', ($('page').querySelector('h1') || {}).textContent === M.title, ($('page').querySelector('h1') || {}).outerHTML);
+  pg.update(M); await until(() => pg.navigating === null);
   key('/', document.body); await until(() => !$('m-pal').hidden); $('m-q').value = 'a'; $('m-q').dispatchEvent(new Event('input')); key('ArrowDown', $('m-q'));
   const on = $('m-res').querySelector('.fr.on');
   check('the search field is a combobox whose active result a reader hears, in a named list (audit 2)', $('m-q').getAttribute('role') === 'combobox' && !!on && $('m-q').getAttribute('aria-activedescendant') === on.id && !!$('m-res').getAttribute('aria-label'),
@@ -194,6 +201,8 @@ try {
   const phone = await frame(400), pd = phone.contentDocument, shownMenu = id => getComputedStyle(pd.getElementById(id).closest('.menu')).display !== 'none';
   check("on a phone's width the Stories and Lenses menus stay, as their glyphs, and keep their names", shownMenu('m-stories') && shownMenu('m-lenses') && !shownMenu('m-export')
     && pd.getElementById('m-stories').getBoundingClientRect().width <= 34 && pd.getElementById('m-lenses').textContent === '◎ Lenses', [shownMenu('m-stories'), shownMenu('m-lenses'), shownMenu('m-export')]);
+  const h1 = phone.contentWindow.getComputedStyle(pd.querySelector('h1.mbrand'));
+  check('the title heading keeps the bar\'s look: no margin, 14.5 px (audit 15)', h1.marginTop === '0px' && h1.fontSize === '14.5px', [h1.marginTop, h1.fontSize]);
   const ph = pd.getElementById('m-hint'), phs = () => phone.contentWindow.getComputedStyle(ph);
   check("on a phone's width the hint line's key hints stay hidden", phs().display === 'none', phs().display);
   pd.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true, cancelable: true }));

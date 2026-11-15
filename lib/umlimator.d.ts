@@ -50,7 +50,7 @@ export interface MapNode {
 /** A typed element in schema version 2's envelope (docs/diagrams/model.md §1): a node, a member, a typed edge, a
  *  fragment. Nodes, edges, members and fragments share one id space; an id never contains "->". A typed edge is an
  *  Element with `from` and `to`, which may name a member. A typed view is a MapView with `diagram` (uml.class), and may
- *  have `subject`, `direction` ('right' | 'down'), `notation`, `present`, `fragments` and `timeline`. umlimator/all draws `uml.class` (0.18.0), `uml.object` and `uml.package` (0.19.0), `uml.sequence` and `uml.communication` (0.20.0), `uml.use-case`, `uml.activity`, `uml.state-machine` and `uml.interaction-overview` (0.21.0), `uml.component`, `uml.deployment` and `uml.composite-structure` (0.22.0), `uml.profile` and `uml.timing` (0.23.0), `er`, `flowchart`, `dfd`, `uml.information-flow` and C4's six views `c4.landscape`, `c4.context`, `c4.container`, `c4.component`, `c4.dynamic` and `c4.deployment` (0.24.0), `mindmap`, `gcp`, `azure` and `aws` (0.26.0), `bpmn` (0.27.0); other types draw as plain cards.
+ *  have `subject`, `direction` ('right' | 'down'), `notation`, `present`, `fragments` and `timeline`. umlimator/all draws `uml.class` (0.18.0), `uml.object` and `uml.package` (0.19.0), `uml.sequence` and `uml.communication` (0.20.0), `uml.use-case`, `uml.activity`, `uml.state-machine` and `uml.interaction-overview` (0.21.0), `uml.component`, `uml.deployment` and `uml.composite-structure` (0.22.0), `uml.profile` and `uml.timing` (0.23.0), `er`, `flowchart`, `dfd`, `uml.information-flow` and C4's six views `c4.landscape`, `c4.context`, `c4.container`, `c4.component`, `c4.dynamic` and `c4.deployment` (0.24.0), `sysml.requirement`, `sysml.block-definition`, `sysml.internal-block` and `sysml.parametric` (0.25.0), `mindmap`, `gcp`, `azure` and `aws` (0.26.0), `bpmn` (0.27.0); other types draw as plain cards.
  *  From 0.19.0 the class, object and package types draw a shown package that owns something the view shows as a box holding it (`parent`), and
  *  qualify names (`sales::Order`) from the nearest shown owner, the view's `subject`, or the top. */
 export interface Element {
@@ -520,7 +520,7 @@ export interface Handle {
   /** Shows a view, zooming in or out as a drill-down does. A request during a move takes the move to its own view (the
    *  latest wins). Resolves true once the view shows; false for a view the model lacks (with a console warning), when a
    *  later request supersedes it, or on destroy(). */
-  setView(id: string): Promise<void> | void;
+  setView(id: string): Promise<boolean>;
   select(ref: Ref | null): void;
   fit(): void;
   /** A view (default: the one shown; another is drawn off screen) as a stand-alone SVG file: colours resolved from the

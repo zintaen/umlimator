@@ -2,7 +2,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { paths, reach, describe, otlpSpans } from '../lib/umlimator.js';
+import { paths, reach, describe, otlpSpans, layout } from '../lib/umlimator.js';
+import { svgOf } from '../src/draw/svg.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 const bike = read('../examples/bike-share.json');
@@ -50,4 +51,10 @@ test('otlpSpans() reads an OTLP JSON trace into spans, in milliseconds', () => {
   const spans = otlpSpans(otlp);
   assert.deepEqual(spans.map(s => [s.id, s.parent, s.service, s.name, s.end - s.start]), [['a1', null, 'trip-api', 'end ride', 170], ['b2', 'a1', 'pricing', 'GetPrice', 35]]);
   assert.deepEqual(otlpSpans(null), []);
+});
+
+test('a card with no label is named by its id in its tooltip and its lines\' tooltips, as in their names (audit 15)', () => {
+  const m = { nodes: [{ id: 'A', kind: 'script' }, { id: 'C', label: 'C' }], edges: [{ from: 'A', to: 'C' }], views: [{ id: 'v', nodeIds: ['A', 'C'] }] };
+  const titles = [...svgOf(layout(m, 'v')).matchAll(/<title>([^<]*)<\/title>/g)].map(x => x[1].split('\n')[0]);
+  assert.ok(titles.includes('A → C') && titles.some(t => /^A · /.test(t)), JSON.stringify(titles));
 });

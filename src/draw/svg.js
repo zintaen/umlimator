@@ -98,7 +98,7 @@ function svgOf(geo, opts = {}) {
       <path d="${fd}" class="flowline" stroke="${st.c}"/>${(e.all || [e]).some(x => x.edited) && !e.strong ? (() => { let m = [e.pts[0], e.pts[1]];
         e.pts.slice(1).forEach((p, k) => { const a = e.pts[k]; if (Math.abs(p[0] - a[0]) + Math.abs(p[1] - a[1]) > Math.abs(m[1][0] - m[0][0]) + Math.abs(m[1][1] - m[0][1])) m = [a, p]; });
         return `<circle cx="${(m[0][0] + m[1][0]) / 2}" cy="${(m[0][1] + m[1][1]) / 2}" r="4" class="edited-dot"><title>Edited</title></circle>`; })() : ''}${why.length ? ruleMark(e, why) : ''}
-      <title>${!map && e.aria != null ? esc(e.aria) : `${e.step != null ? 'Step ' + esc(e.step) + ': ' : ''}${esc(e.s.label)} ${e.both ? '⇄' : '→'} ${esc(e.t.label)}${e.label ? ': ' + esc(e.label) : ''}`}${e.label && e.sublabel ? ' (' + esc(e.sublabel) + ')' : ''}${e.when ? '\n' + esc(e.when) : ''}${why.length ? '\nBreaks rule: ' + esc(why.join('; ')) : ''}</title></g>`;
+      <title>${!map && e.aria != null ? esc(e.aria) : `${e.step != null ? 'Step ' + esc(e.step) + ': ' : ''}${esc(e.s.label || e.s.id)} ${e.both ? '⇄' : '→'} ${esc(e.t.label || e.t.id)}${e.label ? ': ' + esc(e.label) : ''}`}${e.label && e.sublabel ? ' (' + esc(e.sublabel) + ')' : ''}${e.when ? '\n' + esc(e.when) : ''}${why.length ? '\nBreaks rule: ' + esc(why.join('; ')) : ''}</title></g>`;
   });
   // the tour's dot rides over the lines and boxes but under the cards: it goes into a card and comes out at its next
   // line, rather than across the card's name
@@ -136,7 +136,7 @@ function svgOf(geo, opts = {}) {
     const tx0 = map ? n.x + 54 : n.x + n.w / 2, anchor = map ? 'start' : 'middle', lines = (t, dy) => `<tspan x="${tx0}">${esc(t[0])}</tspan> <tspan x="${tx0}" dy="${dy}">${esc(t[1])}</tspan>`;
     const label = two ? two.join(' ') : fit(n.label, lpx, lw, true), subShown = sub && !priv; // a script card hides its sub-line
     said.push((plain(n.label) ? part(label, n.label) : plain(n.id)) + (subTxt && !subShown ? ` (${subTxt})` : ''));
-    const parts = [`<title>${esc(n.label)}${subTxt ? ' · ' + esc(subTxt) : ''}${n.note ? '\n' + esc(n.note) : ''}${stacked ? '\nDouble-click to open' : ''}</title>`];
+    const parts = [`<title>${esc(n.label || n.id)}${subTxt ? ' · ' + esc(subTxt) : ''}${n.note ? '\n' + esc(n.note) : ''}${stacked ? '\nDouble-click to open' : ''}</title>`];
     if (L) { // a shape: its outline twice behind it when stacked, then the mask, the body and its details
       const o = S.out(L);
       if (stacked) parts.push([8, 4].map(k => `<path d="${o}" transform="translate(${k} ${k})" class="n-stack" stroke="${c}"/>`).join(''));
