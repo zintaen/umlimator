@@ -14,7 +14,7 @@ example is [`examples/order-service-structure.json`](../../examples/order-servic
 | UML 2.5.1 | In the model | Drawn as |
 |---|---|---|
 | 11.2 StructuredClassifier (the subject) | the view's `subject`: a `uml.Class`, `uml.Component` or `uml.Collaboration`, listed in `nodeIds` | a box with its name in the header room, holding its parts and collaboration uses; with neither, a node |
-| 11.2 Property (a part) | a `uml.Property` member of the subject; `props.valueType` (the class or component of that label, M8), `multiplicity`, `aggregation` | a rectangle `name : Type [multiplicity]`; dashed when `shared` |
+| 11.2 Property (a part) | a `uml.Property` member of the subject; `props.valueType` (the class or component of that label, or of that id when it has none, M8), `multiplicity`, `aggregation` | a rectangle `name : Type [multiplicity]`; dashed when `shared` |
 | 11.3 Port, on the subject and on a part | the subject's `uml.Port` members; a part shows every port of its type and every port its connectors reach through it | a 12 px square on the border, as the component diagram's; a port on a part is drawn under the id `<part>-><port>`, its side `present.<part>.ports.<port>.side` |
 | 11.2 Connector | `uml.Connector`; an end is a part, a port of the subject, or a port reached through a part (`props.ends.<end>.part`, UML's `partWithPort`) | a plain solid line; from the subject's port inward, it enters the box at the port |
 | 11.7 Collaboration | `uml.Collaboration`, its `uml.Property` members its roles | open (listed in `nodeIds` with roles): a dashed ellipse round its roles and the connectors between them, its name over a dashed line inside the top |
