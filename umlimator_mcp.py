@@ -90,9 +90,12 @@ WAIT, BEAT = 6, 2        # s: how long a page tool waits for a page to show its 
 
 def load():
     try:
-        return cli.read_json(MODEL)  # as render reads it: a BOM too, an object
+        m = cli.read_json(MODEL)  # as render reads it: a BOM too, an object
     except SystemExit as e:
         raise Fail(f"cannot read the model {MODEL.name}: {e.code}")
+    if bad := cli.not_objects(m):  # as render refuses it; an id that is a list ended in an internal error (audit 8)
+        raise Fail(f"the model {MODEL.name}: {'; '.join(bad)}")
+    return m
 
 
 def version():
@@ -570,6 +573,8 @@ def result(method, p):
             if missing := [k for k in t["inputSchema"]["required"] if k not in a]:
                 raise Fail(f"{t['name']} needs {', '.join(missing)}")
             props = t["inputSchema"]["properties"]  # a value of another type would fail inside the tool, as an internal error
+            if extra := [k for k in a if k not in props]:  # additionalProperties: false; a guessed name was dropped without a word (audit 8)
+                raise Fail(f"{t['name']}: no argument {', '.join(map(str, extra))}; its arguments: {', '.join(props) or 'none'}")
             if wrong := [f"{k} is not {json.dumps({x: y for x, y in props[k].items() if x != 'description'})}" for k in a if k in props and not fits(a[k], props[k])]:
                 raise Fail(f"{t['name']}: {'; '.join(wrong)}")
             said = call(t["name"], a)

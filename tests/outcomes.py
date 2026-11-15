@@ -317,6 +317,12 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("mcp-session#4 · a relative path is the model's folder's", r.get("isError") is False, r)
     r = ask({"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "diff", "arguments": {"other_model_path": "nope.json"}}})["result"]
     ok("mcp-session#4 · and a path it cannot read is said with where it looked", r.get("isError") and str((t / "mcp" / "nope.json").resolve()) in r["content"][0]["text"], r)
+    listed = json.loads(json.dumps(bike)); listed["nodes"][1]["id"] = [listed["nodes"][1]["id"]]
+    (t / "mcp" / "m.json").write_text(json.dumps(listed), encoding="utf-8")
+    r = [ask({"jsonrpc": "2.0", "id": 6 + i, "method": "tools/call", "params": {"name": n, "arguments": g}})
+         for i, (n, g) in enumerate([("describe_view", {"view": bike["views"][0]["id"]}), ("highlight", {"refs": ["x"]})])]
+    ok("mcp-session#5 · a model with a list for an id is a tool error saying where, as render says it, never an internal error (audit 8)",
+       all(x.get("result", {}).get("isError") and "nodes[1].id is not a string" in x["result"]["content"][0]["text"] for x in r), r)
     p.stdin.close(); p.wait(timeout=30)
     held = socket.socket()
     held.bind(("127.0.0.1", 0))
