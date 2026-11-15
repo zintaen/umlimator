@@ -51,7 +51,7 @@ function ownersOn(model, view, look = {}) {
   const by = new Map(); all.forEach(id => { const o = owner(id); if (!by.has(o)) by.set(o, []); by.get(o).push(id); }); // grouped once: a view of 10,000 elements
   const holds = o => by.get(o) || [], open = new Set([...by.keys()].filter(x => x != null));
   const boxes = all.filter(id => open.has(id)).map(id => { const p = at.get(id), st = stereoOf(p), held = holds(id), o = owner(id), nm = name(id);
-    return { id, label: ownName(p), name: nm, title: [...(p.type === 'uml.Profile' ? ['«profile»'] : []), ...st.map(t => `«${t}»`), nm].join(' '), nodeIds: held.filter(x => !open.has(x)), ...(o != null ? { parent: o } : {}), shape: shape(p),
+    return { id, label: ownName(p), title: [...(p.type === 'uml.Profile' ? ['«profile»'] : []), ...st.map(t => `«${t}»`), nm].join(' '), nodeIds: held.filter(x => !open.has(x)), ...(o != null ? { parent: o } : {}), shape: shape(p),
       aria: `${word(p)} ${nm}${st.length ? ` (${st.join(', ')})` : ''}, holding ${held.length} element${held.length === 1 ? '' : 's'}` }; });
   return { ids, owner, holds, boxes, name, full, open, chain, at };
 }
