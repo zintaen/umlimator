@@ -4905,3 +4905,91 @@ changes for callers:
   `lib/umlimator-all.js` is 611.7 kB (611,709 B), up 1,784 B; the npm package is 882.6 kB (`npm pack --dry-run`). There
   is no core size cap until 1.0.0 (the maintainer's decision of 15 Nov 2026): sizes are reported each release and a
   budget is set at 1.0.0.
+
+## 0.36.0: fixes from the ninth audit
+
+The ninth audit confirmed 33 findings. All are fixed in this release, in five pull requests (#341 to #345), each with a
+test that fails without its fix. 14 of them were one sweep: ids named `constructor`, `toString`, `valueOf` or
+`__proto__` outside the maps 0.35.0 made prototype-free. No map or example draws differently and `bench/expected.json`
+is unchanged. What changes for callers:
+
+- **Ids named after `Object.prototype`'s keys (#345).** Every id-keyed table is now prototype-free where it is built, so
+  a card, line, box or view named `constructor`, `toString`, `valueOf` or `__proto__` behaves like any other everywhere.
+  `geo.byId` has no prototype in src/layout/layered.js and in every typed layout that builds or copies it (use case,
+  timing, sequence, C4, SysML, internal block, parametric, activity, structure's `portsDrawn`, mind map, the empty
+  view), so a prototype name that the view does not draw is no longer "found": no NaN bounds from a box or intake, no
+  phantom pick for `select()`, the live region, Find or a panel link. `highlight()`, lenses, story steps and the tour
+  build their layers the same way and dim such cards and lines; the marks read every layer, a host's plain-object
+  `overlay()` layer included, by own key. `diff()` keeps the removed, added and changed marks of a card named
+  `__proto__`. A use case actor named `__proto__` stays in the actors' column. The PDF Lines table of a typed view no
+  longer lists a line named `constructor` or `toString` that the view does not draw. A DFD line or a SysML element typed
+  with a prototype name no longer gets a function as its end look, word or name, nor makes `validate()`, `layout()` or
+  `check()` throw. What a host sees: `geo.byId` and the highlight and lens layers now have no prototype, so a deep-equal
+  against `{}` differs (`[Object: null prototype] {}`). `apply()`'s `set` refuses `__proto__`, `constructor` and
+  `prototype` only as the first key of a path, where they name an element's or view's own field; every deeper key is
+  written as an own key, so `layout.<id>` and `present.<id>` work for such ids, and no path reaches `Object.prototype`
+  (`'__proto__.x'` is still refused).
+- **Core (#342).** `mapContext` leaves out an entry that is not an object in `nodes`, `edges`, `views`, a view's `nodes`
+  or `containers` (a `null` there made `layout()`, `check()` and `render()` throw for every view); `validate()` already
+  reported them as errors. A view's `gap` or `rgap` is used only when it is a number above 0, and one over 2000 is drawn
+  as 2000; any other value is the default, and `validate()` warns at `views[i].gap` / `views[i].rgap` ("is not a number
+  above 0: ignored", "is over 2000 px: drawn as 2000"). Before, `'wide'` blanked the view with NaN coordinates. A string
+  gap such as `'80'` is now ignored with that warning (the schema says number); it worked by accident before.
+- **The page (#342).** A double-click on an unselected card opens it even when the details panel that its first click
+  opened moved the legend under the pointer: for about 1 s after a click on a card (same view), `render()` listens on
+  the host document in the capture phase, and a second click or a dblclick outside the map opens the card the first
+  click hit; a single click outside clears it, and `destroy()` removes the listeners. Picking a Find result moves focus
+  to the pick (the selected card, or the map for a view) instead of dropping it to `<body>`.
+- **UML types (#343).** Class: a view with no `edges` list draws only class lines (Association, Generalization,
+  InterfaceRealization, Dependency, CommentLink; a profile view adds Extension and ProfileApplication), and `describe()`
+  and the `line-inside` check use the same list. Before, it drew other diagrams' lines (Usage, Connector, Realization,
+  PackageImport, InformationFlow and others) as solid filled arrows; list them in `view.edges` to draw them. Listed, a
+  Usage is dashed with an open arrowhead and «use», an Abstraction the same with «abstraction», a Realization or
+  ComponentRealization dashed with a hollow triangle, a Connector a plain line, each with a legend entry and its own
+  accessible word; a line between two members of one owner is no longer a loop on that owner. Profile: a closed package
+  draws the required stereotype its profile supplies (its tags stay in the accessible name). `member-kinds` now covers a
+  profile and a metaclass reference. Component, deployment and composite structure views warn `own-boxes` when a view
+  has hand-written containers, which they ignore. Sequence and communication: `create-once` and `delete-once` allow one
+  per operand of an `alt`, as `reply-once` does, and so does the drag that creates or deletes.
+- **SysML, Mermaid and the conformance notes (#341).** An internal block view finds a part's type by `label ?? id` (the
+  ports of a block with no label are drawn, no false `part-type` warning); UML composite structure finds a class with no
+  label by its id the same way, and a class with a label by its label only. The parametric `binding-types` warning names
+  a type with no label by its id, not "undefined". `writeMermaidClass` writes a class named like one of the reader's
+  statement keywords (`note`, `class`, `direction`, `style` and the rest) in backticks, so it reads back. The flowchart,
+  state machine and object conformance notes and examples/README.md say what the code does.
+- **CLI and MCP (#344).** A model with a number id (a card, a line's end, a `nodeIds` or `stepIds` entry, a view's
+  `parent`, `opensView`/`view`, `root`) is refused in one line by `render`, MCP and every command that reads a model
+  ("nodes[0].id is not a string"), as `validate()` says; before, `render` took it and `stills` and MCP `paths` and
+  `reach` crashed. MCP refuses a view's own card whose `members` is not a list in one line, before `highlight` hits it.
+  `check` reports a misspelt pack icon on a view's own card. The diff Action's Mermaid sketch writes `#` as `#35;`, so a
+  label such as "Order #42; paid" reads as written.
+- **Known gaps.** Still open from 0.35.0 (checked on main: the JavaScript Mermaid readers still decode `#55296;` to a
+  lone surrogate, typed views still get no "listed twice" warning, `validate()` still says nothing of a non-string
+  `source` entry): a box has no Tab stop; the keyboard reaches it through the outline. A double-click (or Enter) on a
+  box does not open its view (the 0.24.0 gap). Deep nesting is super-linear outside the core. A composite structure or
+  SysML internal block view's Lines rows name a part by its id, not its drawn name. The JavaScript Mermaid readers still
+  decode `#55296;` to a lone surrogate. The requirement layout leaves out a link into a box nested more than 64 deep
+  from its ranking. Typed hooks that answer Alt+arrows themselves were not checked on views laid out down. `reach()`
+  from a model id that the view draws under another id returns only that element. A negative step duration plays 500 ms
+  while `validate()`'s warning says 4000 ms. Mermaid C4 macro arguments keep entity codes as written. `describe()` of an
+  inline interaction does not say it opens a view. Room for a label in a turned view is still mostly along the line. The
+  map flowchart and Structurizr DSL readers turn a U+2028 inside a label into a space. `validate()` gives typed views no
+  "listed twice" warning for `view.edges` (typed views draw the line once). The unfolded call behaviour box is a plain
+  container frame. A page rendered before 0.33.0 with a numeric view id, or before 0.36.0 with a numeric card id, still
+  ends in a traceback in `stills` and `check`. Three or more delegations from one port into a grid of parts may still
+  cross; this needs a routing change. Other files in src/bpmn may still key plain objects by id (only process.js was
+  checked). The MCP server's `refit()` still keeps any `->` string when it trims a highlight after a model change. The
+  typed Mermaid reader's quote join skips `%%` comment lines but not the body of a multi-line `%%{ }%%` directive.
+  `validate()` gives no warning for a node's `source` entry that is not a string. The PDF tables read an open package's
+  qualified name off its drawn title, and only when the title ends in `::` and its label; a real name field on boxes
+  would need tests/core-diet.json recorded again. New: no example reaches the C4 and C4 views lift branch or
+  src/sysml/sysml.js's frame branch, so the sweep does not check their `byId`; Find and the panel links are fixed
+  through `geo.byId`, but only `select()` has a browser test of its own. The double-click test sends synthetic events; a
+  real-mouse sweep of the atlas cards was not run again. The SysML block definition view has no own list of line kinds,
+  so it still draws every kind (a Usage there now gets the dashed «use» look). The 21 typed examples do not set
+  `"$schema"`.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 196.1 kB (196,083 B) with `gzip -9`, 18.87% over 0.16.0's
+  164,954 B, up 897 B from 0.35.0, nearly all in #342 (the entry and gap checks, the double-click listeners, Find's
+  focus) and #345 (`idTable` at every id-keyed table). `lib/umlimator-all.js` is 613.2 kB (613,242 B), up 1,533 B; the
+  npm package is 885.1 kB (`npm pack --dry-run`). There is no core size cap until 1.0.0 (the maintainer's decision of 15
+  Nov 2026): sizes are reported each release and a budget is set at 1.0.0.
