@@ -160,7 +160,7 @@ test('the branch colours: the kind palette\'s six, cycled over first-level branc
   const cssText = readFileSync(new URL('../lib/umlimator-theme.css', import.meta.url), 'utf8');
   const block = start => { const i = cssText.indexOf(start); return cssText.slice(i, cssText.indexOf('}', i)); };
   const vars = b => Object.fromEntries([...b.matchAll(/--um-([\w-]+):\s*([^;]+);/g)].map(x => [x[1], x[2].trim()]));
-  const light = vars(block(':root, umlimator-map[theme="light"] {')), dark = { ...light, ...vars(block(':root[data-theme="dark"]')) };
+  const light = vars(block(':root, umlimator-map[theme="light"]')), dark = { ...light, ...vars(block(':root[data-theme="dark"]')) };
   const hex = (t, k) => { let v = t[k]; for (let i = 0; i < 4 && /^var\(--um-([\w-]+)\)$/.test(v); i++) v = t[v.match(/^var\(--um-([\w-]+)\)$/)[1]]; assert.match(v, /^#[0-9a-f]{6}$/i, k); return [1, 3, 5].map(j => parseInt(v.slice(j, j + 2), 16) / 255); };
   const lum = c => { const f = v => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4); return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
   const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };

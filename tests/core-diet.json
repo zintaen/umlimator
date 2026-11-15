@@ -279,8 +279,8 @@
   "umlimator.js examples/bookshop-c4.json c4-components": "7a9b6cdecefbe889",
   "umlimator.js examples/bookshop-c4.json c4-placing-an-order": "899d596495e0c9c2",
   "umlimator.js examples/bookshop-c4.json c4-deployment": "92b1d24e4db870eb",
-  "umlimator.js examples/fulfil-activity.json fulfil": "0b6e0b7d6eb770cf",
-  "umlimator.js examples/fulfil-activity.json take-payment": "a9523ac0a273cc4b",
+  "umlimator.js examples/fulfil-activity.json fulfil": "ee670e1a34ff3abb",
+  "umlimator.js examples/fulfil-activity.json take-payment": "6df0b751ed3e43e1",
   "umlimator-all.js examples/sales-classes.json domain": "9a07b2b4487118e0",
   "umlimator-all.js examples/sales-classes.json payments-only": "c7d6f6825adabba6"
  }
