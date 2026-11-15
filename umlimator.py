@@ -780,7 +780,7 @@ def at_least_1(s):
 # one kind: a label or a rule title may hold another kind's words ("Apps never cross ..."), which must not move it
 KINDS = {"rules": r' breaks rule ".*"$', "crossings": r" cross$", "rightToLeft": r" runs right-to-left$", "detours": r" takes a detour \(\d+px for \d+px\)$",
          "shortLine": r'" leaves its line \d+ px \(.*\)$', "roundEnd": r' runs round its own end ".*"$', "nearNode": r" passes within [\d.]+px of node ",
-         "onMark": r'" touches the mark on node "', "labelOnBorder": r'" sits on the border of family "', "labelNoRoom": r'" has no room on edge ',
+         "onMark": r'" touches the mark on node "', "labelOnBorder": r'" sits on the border of family "', "labelNoRoom": r'(?:"| step \S+) has no room on edge ',
          "labelOnLine": r'" lies on edge '}
 
 
