@@ -316,6 +316,7 @@ const ACT_TYPE = registerDiagramType('uml.activity', {
   layout: actGeo,
   draw: actDraw,
   owners: actOwners,
+  member: { holds: () => false }, // nothing here draws members: the panel offers no Members rows (audit 18)
   validate: actProblems,
   rules: ACT_RULES,
   describe: actDescribe,

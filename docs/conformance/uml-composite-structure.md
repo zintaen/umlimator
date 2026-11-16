@@ -29,12 +29,13 @@ open collaboration shown, and the end a port of its type), `connector-scope` (a 
 `collaboration-named`, `connector-drawn` (a connector between two ports of the subject, or of one part, or of a subject drawn with no box, is
 not drawn), `own-boxes` (the view draws its own boxes: its hand-written containers are ignored) (warnings); and the
 shared `port-owner` and `manifest-ends`. Deleting a part deletes the connectors through it (the type's `refs` cascade).
-`subject-shown` is a warning for a view with no subject at all, as deleting its subject, or hiding it from the view,
-leaves it: the view draws its other cards (collaborations, comments) and no structure until a subject is set; a subject
-set to something else, or not listed in `nodeIds`, stays an error. Hiding the subject (Delete) keeps its parts and their
-role bindings in the model, with no subject to bind into, so `binding-ends` is a warning in such a view too (Shift +
-Delete takes the parts, and so the bindings). So no single delete or hide leaves a `subject-shown` or `binding-ends`
-error (`tests/delete-cascade.test.mjs`); deleting the view with its subject was not taken, as the view and what else it
+`subject-shown` is a warning for a view with no subject at all, as deleting its subject (Shift + Delete) leaves it: the
+view draws its other cards (collaborations, comments) and no structure until a subject is set; a subject set to
+something else, or not listed in `nodeIds`, stays an error. Shift + Delete takes the subject's parts, and so their role
+bindings; `binding-ends` is a warning in a view with no subject too. Delete on the subject is refused (`apply()` does
+not hide a view's subject): the status line says to change the view's subject or use Shift + Delete, and the rest of a
+selection made with it (its parts, ports, lines) is still handled (audit 18). So no single delete or hide leaves a
+`subject-shown` or `binding-ends` error (`tests/delete-cascade.test.mjs`); deleting the view with its subject was not taken, as the view and what else it
 shows are the author's. An open collaboration's role shows its type's ports as a part does; a connector through them
 keeps the role in `props.ends.<end>.part` and is checked as one through a part (audit 11). `connect()` refuses a
 connector between two ports of one part, of one role or of the subject, which `connector-drawn` says is not drawn. In a

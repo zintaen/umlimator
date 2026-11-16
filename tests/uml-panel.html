@@ -1,0 +1,77 @@
+<!doctype html>
+<!-- The UML views' properties panel and F2 field (audit 18), in headless Chrome (tests/embed.py), on the built module and the
+     examples: a view that draws no members (activity, timing, communication, deployment, information flow) offers no
+     Members section; a member row's ✕ deletes the member through the type's remove hook (a use case's extension point
+     takes the extend naming no other point); F2 on a sequence fragment sets its operator; F2 emptied on the timing ruler
+     removes the view's unit, while an emptied lifeline name stays nothing. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator UML panel test</title>
+<body style="margin:0">
+<div id="m" style="width:1100px;height:760px"></div>
+<script type="module">
+import { render, apply, describe } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const el = document.getElementById('m');
+let sr, stage, ed = [], h = null;
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const load = async f => (await fetch('../examples/' + f)).json();
+const mount = async (model, view, editable = true) => { if (h) h.destroy(); el.innerHTML = ''; ed = []; h = render(el, model, { view, editable, on: { edit: e => ed.push(e) } });
+  sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); await wait(50); return h; };
+const last = () => ed[ed.length - 1];
+const f2 = async (ref, text) => { h.select(ref); await wait(10); key('F2'); await wait(10); const inp = pick('.um-rename'), was = inp && inp.value, n0 = ed.length;
+  if (inp) { inp.value = text; key('Enter', {}, inp); await wait(10); } return { was, edit: ed.length > n0 ? last() : null }; };
+try {
+  // ---- a view that draws no members: no Members section, no new-member row
+  for (const [f, view, id] of [['fulfil-activity.json', 'fulfil', 'pick'], ['bookshop-timing.json', 'one-charge', 'lifeline-worker'], ['checkout-communication.json', 'checkout-communication', 'lifeline-shopper'],
+    ['bookshop-deployment.json', null, 'shop-api-jar'], ['bookshop-deployment.json', null, 'database'], ['order-information-flow.json', null, null]]) {
+    const m = await load(f), v = view ? m.views.find(x => x.id === view) : m.views[0], at = id ?? v.nodeIds.find(i => m.nodes.some(n => n.id === i && !/Comment/.test(n.type)));
+    await mount(m, v.id); h.select({ type: 'node', id: at, view: v.id }); await wait(10);
+    const heads = all('.um-editor .um-props h3').map(x => x.textContent);
+    check(`${v.diagram}: ${at}'s properties have no Members section and no new-member row`, heads.length === 1 && /^Properties: /.test(heads[0]) && !pick('.um-editor [data-new]'), heads);
+  }
+  // ---- a member row's ✕: the type's remove, from the model
+  const uc = await load('shopping-use-cases.json'), uv = uc.views.find(x => x.diagram === 'uml.use-case'), co = uc.nodes.find(n => (n.members || []).some(p => uc.edges.some(e => e.type === 'uml.Extend' && (e.props.extensionPoints || []).includes(p.id))));
+  const pt = co.members.find(p => uc.edges.some(e => e.type === 'uml.Extend' && (e.props.extensionPoints || []).length === 1 && e.props.extensionPoints[0] === p.id));
+  const ext = uc.edges.filter(e => e.type === 'uml.Extend' && (e.props.extensionPoints || []).includes(pt.id));
+  await mount(uc, uv.id); h.select({ type: 'node', id: co.id, view: uv.id }); await wait(10);
+  const x = pick(`.um-editor .um-props li [data-del="${pt.id}"]`);
+  check('a use case\'s extension point row has a ✕, named for the point', !!x && x.textContent === '✕' && x.getAttribute('aria-label') === `Delete ${pt.label} from the model`, x && x.outerHTML);
+  x && x.click(); await wait(10);
+  check('…which deletes the point and the extend naming no other point, through the use case type\'s remove', !!last() && same(last().commands, [pt.id, ...ext.map(e => e.id)].map(id => ({ op: 'delete', id })))
+    && (() => { const m2 = apply(uc, last().commands); return !JSON.stringify(m2).includes(`"${pt.id}"`) && m2.nodes.some(n => n.id === co.id); })(), last());
+  const cl = await load('sales-classes.json'), cv = cl.views[0], cn = cl.nodes.find(n => cv.nodeIds.includes(n.id) && (n.members || []).length > 1);
+  await mount(cl, cv.id); h.select({ type: 'node', id: cn.id, view: cv.id }); await wait(10);
+  pick(`.um-editor .um-props li [data-del="${cn.members[1].id}"]`).click(); await wait(10);
+  check('a class member row\'s ✕ deletes that member', !!last() && same(last().commands, [{ op: 'delete', id: cn.members[1].id }]), last());
+  await mount(cl, cv.id, { rename: true, reorder: true });
+  h.select({ type: 'node', id: cn.id, view: cv.id }); await wait(10);
+  check('without delete, member rows have no ✕', !!pick('.um-editor .um-props li [data-up]') && !pick('.um-editor .um-props li [data-del]'));
+  // ---- F2 on a sequence fragment: its operator
+  const sq = await load('checkout-sequence.json'), sv = sq.views[0], fr = sv.fragments.find(f => f.props.operator === 'opt');
+  await mount(sq, sv.id);
+  const r1 = await f2({ type: 'node', id: fr.id, view: sv.id }, 'loop');
+  check('F2 on a fragment opens on its operator; Enter sets the operator, which its tag then draws', r1.was === 'opt' && !!r1.edit && same(r1.edit.commands, [{ op: 'set', id: fr.id, path: 'props.operator', value: 'loop' }])
+    && /loop \[shopper is still on the page\]/.test(describe(apply(sq, r1.edit.commands), sv.id)), r1);
+  const r2 = await f2({ type: 'node', id: fr.id, view: sv.id }, 'retry');
+  check('…a text that is no operator is refused, said', !r2.edit && /operator is one of alt, opt, loop, par, break/.test((pick('.um-live') || {}).textContent || pick('.um-hint')?.textContent || ''), r2);
+  // ---- F2 emptied on the timing ruler: no unit; on a lifeline, nothing
+  const tm = await load('bookshop-timing.json'), tv = tm.views.find(x => x.diagram === 'uml.timing');
+  await mount(tm, tv.id);
+  const rid = all('.node[data-id]').map(g => g.dataset.id).find(i => i.endsWith('->ruler'));
+  const r3 = await f2({ type: 'node', id: rid, view: tv.id }, '');
+  check('F2 on the ruler, emptied: the view\'s unit is removed', r3.was === tv.timeline.unit && !!r3.edit && same(r3.edit.commands, [{ op: 'set', view: tv.id, path: ['timeline', 'unit'] }])
+    && apply(tm, r3.edit.commands).views.find(x => x.id === tv.id).timeline.unit === undefined, r3);
+  const r4 = await f2({ type: 'node', id: 'lifeline-worker', view: tv.id }, '  ');
+  check('F2 on a lifeline, emptied: nothing, as before', !r4.edit, r4);
+  const r5 = await f2({ type: 'node', id: rid, view: tv.id }, 's');
+  check('F2 on the ruler with a unit: set, as before', !!r5.edit && same(r5.edit.commands, [{ op: 'set', view: tv.id, path: ['timeline', 'unit'], value: 's' }]), r5);
+  h.destroy(); h = null;
+} catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

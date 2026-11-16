@@ -38,7 +38,7 @@ test('the definition: palette, lines with their sorts, items, wraps, refs, a lay
   assert.deepEqual([T.items, T.wraps], [['uml.InteractionUse'], ['alt', 'opt', 'loop', 'par', 'break']]);
   assert.deepEqual(T.refs, { 'uml.Message': { 'props.replyTo': 'cascade' }, 'uml.InteractionUse': { 'props.covers': 'drop' } });
   assert.deepEqual([typeof T.layout.run, T.layout.pins, T.layout.key], ['function', false, undefined]);
-  assert.deepEqual(Object.keys(T.edits), ['connect', 'moveTo', 'wrap', 'add', 'remove']);
+  assert.deepEqual(Object.keys(T.edits), ['connect', 'moveTo', 'wrap', 'add', 'remove', 'rename']);
   assert.deepEqual(Object.keys(T.rules), ['parent-operand', 'contiguous', 'message-ends', 'reply-call', 'reply-once', 'create-once', 'delete-once', 'sort', 'covers', 'operator', 'empty', 'view']);
   assert.ok(T.member.holds({ type: 'uml.CombinedFragment' }) && !T.member.holds({ type: 'uml.Lifeline' }));
   assert.deepEqual(T.member.edit({ id: 'f1-paid' }, ' paid '), { commands: [{ op: 'set', id: 'f1-paid', path: 'label', value: 'paid' }] });
@@ -458,4 +458,15 @@ test('audit 16: a lifeline created in each operand of an alt gets a head at each
   assert.equal(l('c2')[1][0], l('c1')[1][0], 'the second create ends on a head edge too');
   assert.equal(l('c2')[1][1], H.again[0] + H.h / 2, 'at its head\'s middle');
   assert.equal(g.nodes.find(n => n.id === 'B').again.length, 1);
+});
+
+test('audit 18: F2 on a fragment sets its operator, which its tag draws, guarded; anything not an operator is refused; a lifeline keeps the default', () => {
+  const R = SEQ_TYPE.edits.rename, v = V(SEQ), f2 = v.fragments.find(f => f.props.operator === 'opt'), f1 = v.fragments.find(f => f.props.operator === 'alt');
+  const c = R(SEQ, v, f2.id, ' loop ');
+  assert.deepEqual(c, [{ op: 'set', id: f2.id, path: 'props.operator', value: 'loop' }]);
+  const m = apply(SEQ, c); assert.match(describeView(m, v.id), /\n *loop \[shopper is still on the page\]:/); assert.match(describeView(SEQ, v.id), /\n *opt \[shopper is still on the page\]:/); assert.equal(m.views[0].fragments.find(f => f.id === f2.id).label, undefined, 'no undrawn label');
+  assert.deepEqual(R(SEQ, v, f2.id, 'opt'), [], 'unchanged: nothing');
+  assert.match(R(SEQ, v, f2.id, 'Retry').error, /operator is one of alt, opt, loop, par, break/);
+  assert.match(R(SEQ, v, f1.id, 'opt').error, /^reply-once: /, 'an alt with two answers made an opt: the rule it would break');
+  assert.equal(R(SEQ, v, v.nodeIds[0], 'X'), null); assert.equal(R(SEQ, v, v.edges[0], 'go()'), null);
 });

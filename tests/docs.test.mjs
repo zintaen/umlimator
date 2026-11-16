@@ -174,3 +174,12 @@ test('audit 15: the API page states the typed views\' default direction as the s
   assert.match(row, /down for a flowchart, a profile, a SysML block definition or requirement view/);
   assert.match(JSON.parse(read('../lib/umlimator.schema.json')).$defs.view.properties.direction.description, /down for a flowchart, a profile, a SysML block definition or requirement view/);
 });
+
+test('audit 18: the composite note says Delete on the subject is refused; the sequence and communication notes count self-lines on the cover', () => {
+  const read = p => readFileSync(new URL(p, import.meta.url), 'utf8'), cs = read('../docs/conformance/uml-composite-structure.md');
+  assert.doesNotMatch(cs, /hiding it from the view,\s+leaves it|Hiding the subject \(Delete\) keeps/);
+  assert.match(cs, /Delete on the subject is refused/);
+  for (const f of ['uml-sequence', 'uml-communication']) { const t = read(`../docs/conformance/${f}.md`);
+    assert.doesNotMatch(t, /left out of the cover's/, f); assert.match(t, /listed in the lines table and counted on the cover/, f); }
+  assert.match(read('../docs/editing.md'), /\| a member row \| edit its row; ↑ ↓; ✕; the new row \|/);
+});

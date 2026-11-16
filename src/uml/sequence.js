@@ -394,6 +394,15 @@ const SQ_MEMBER = {
 };
 
 /* ---- the type ---- */
+/* rename(model, view, id, text): F2 on a fragment opens on its operator, which its tag draws (its label is drawn nowhere), so
+   the text typed is its operator, guarded as the panel's Operator field is; unchanged, nothing (audit 18). Anything else: the default */
+function sqRename(model, V, id, text) {
+  const f = sqIndex(model, V).F.get(id); if (!f) return null;
+  const t = String(text ?? '').trim(); if (t === sqOperator(f)) return [];
+  if (!SQ_OPS.includes(t)) return sqErr(`a fragment's operator is one of ${SQ_OPS.join(', ')}, not ${JSON.stringify(t)}`);
+  return sqGuard(model, V, [{ op: 'set', id, path: 'props.operator', value: t }]);
+}
+
 const SEQ_TYPE = registerDiagramType('uml.sequence', {
   title: 'sequence diagram',
   elements: [{ type: 'uml.Lifeline', label: 'Lifeline' }, { type: 'uml.InteractionUse', label: 'Interaction use' }],
@@ -414,7 +423,7 @@ const SEQ_TYPE = registerDiagramType('uml.sequence', {
   describe: sqDescribe,
   paths: sqPaths,
   member: SQ_MEMBER,
-  edits: { connect: sqConnect, moveTo: sqMoveTo, wrap: sqWrap, add: sqAdd, remove: sqRemove },
+  edits: { connect: sqConnect, moveTo: sqMoveTo, wrap: sqWrap, add: sqAdd, remove: sqRemove, rename: sqRename },
 });
 
-export { SEQ_TYPE, SQ_RULES, sqInput, sqRun, sqDraw, sqProblems, sqDescribe, sqPaths, sqConnect, sqMoveTo, sqWrap, sqAdd, sqRemove };
+export { SEQ_TYPE, SQ_RULES, sqInput, sqRun, sqDraw, sqProblems, sqDescribe, sqPaths, sqConnect, sqMoveTo, sqWrap, sqAdd, sqRemove, sqRename };

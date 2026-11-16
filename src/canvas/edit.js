@@ -76,10 +76,11 @@ function typedEditor(api) {
     if (!can('delete') || !ids.length) return false;
     if (fromModel) return emit(ids.map(id => ({ op: 'delete', id })));
     const v = view(), own = new Set([...arrOf(v.nodes), ...arrOf(v.edges), ...arrOf(TYPED.edit && v.fragments)].filter(isRec).map(x => x.id)), at = elementsOf(model()), out = [];
+    const holds = id => { for (let s = at.get(v.subject); s; s = s.owner && at.get(s.owner.id)) if (s.x.id === id) return true; return false; }; // the subject, or a member path to it (apply() refuses its hide)
     ids.forEach(id => { const e = at.get(id);
       if (own.has(id)) out.push({ op: 'delete', id }); // lives in this view only: hiding it is deleting it
       else if (e && e.kind === 'edge' && !Array.isArray(v.edges)) api.status('This view shows every line between its cards: Shift + Delete deletes the line');
-      else if (id === v.subject) api.status('This box is the view\'s subject: change the view\'s subject, or Shift + Delete deletes it'); // audit 17
+      else if (holds(id)) api.status(`This box ${id === v.subject ? 'is' : 'holds'} the view's subject: change the view's subject, or Shift + Delete deletes it`); // audit 17
       else out.push({ op: 'hide', id, view: v.id }); });
     return emit(out);
   }
@@ -190,7 +191,8 @@ function typedEditor(api) {
     if (e.kind === 'node' && !(M && M.holds && !M.holds(x))) { // a comment holds none
       const ms = arrOf(x.members).filter(m => isRec(m) && typeof m.id === 'string'), line = m => M ? M.print(m) : m.label ?? ''; // a type's member text: "+ total: Money [1]" (1.9)
       h += '<h3>Members</h3><ul>' + ms.map((m, i) => `<li><input data-f="m:${esc(m.id)}" data-m="${esc(m.id)}" data-was="${esc(line(m))}" value="${esc(line(m))}" aria-label="Member ${i + 1} of ${ms.length}${can('reorder') ? ', Alt + arrows to move it' : ''}"${off}>`
-        + (can('reorder') ? `<button data-f="up:${esc(m.id)}" data-up="${esc(m.id)}" aria-label="Move ${esc(nameOf(m))} up">↑</button><button data-f="down:${esc(m.id)}" data-down="${esc(m.id)}" aria-label="Move ${esc(nameOf(m))} down">↓</button>` : '') + '</li>').join('')
+        + (can('reorder') ? `<button data-f="up:${esc(m.id)}" data-up="${esc(m.id)}" aria-label="Move ${esc(nameOf(m))} up">↑</button><button data-f="down:${esc(m.id)}" data-down="${esc(m.id)}" aria-label="Move ${esc(nameOf(m))} down">↓</button>` : '')
+          + (can('delete') ? `<button data-f="mx:${esc(m.id)}" data-del="${esc(m.id)}" aria-label="Delete ${esc(nameOf(m))} from the model">✕</button>` : '') + '</li>').join('') // a member is not hidden: deleted, through the type's remove (audit 18)
         + '</ul>' + (can('add') ? '<input data-f="new" data-new placeholder="New member, Enter adds it" aria-label="New member">' : '');
     }
     return h + (can('delete') ? '<div class="um-row"><button data-f="hide" data-hide title="Delete">Remove from view</button><button data-f="kill" data-kill title="Shift + Delete">Delete from model</button></div>' : '');
