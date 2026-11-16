@@ -780,11 +780,14 @@ with tempfile.TemporaryDirectory() as tmp:
                                     "storefront : Storefront → api : ShopApifindBooks(title)Message"]), txt[:800])
     # 5.8: the three stage 5 types' tables (notes/stage-5.md §11): a component's ports with what they provide, an interface's
     # kind, what an artifact manifests; a target's kind and what is deployed on it; the subject's parts with their
-    # aggregation, a collaboration use's collaboration and bindings. A connector is a Lines row, once (audit 17)
+    # aggregation, a collaboration use's collaboration and bindings. A connector is a Lines row, once (audit 17), naming its kind
+    # and ports (audit 18)
     txt = "".join(read("bookshop-components.pdf"))
     ok("pdf · bookshop-components: its tables list each component's ports and what they provide, each interface and artifact by kind, each line between elements, a connector once",
        all(flat(s) in txt for s in ["Elements", "Shop APIComponentorders, provides Orderspayments", "OrdersInterface", "shop-api.jarArtifactmanifests Shop API",
-                                    "From → toLabelKind", "Storefront → OrdersUsage", "shop-api.jar → Shop APIManifestation", "Shop API → CheckoutConnector"]) and "Delegation from" not in txt, txt[:800])
+                                    "From → toLabelKind", "Storefront → OrdersUsage", "shop-api.jar → Shop APIManifestation",
+                                    "Shop API → CheckoutDelegation from orders of Shop API to orders of CheckoutConnector", "Shop API → Payment providerAssembly from payments of Shop API to charges of Payment providerConnector"])
+       and txt.count(flat("Delegation from")) == 2, txt[:800])  # each delegation once, in its Lines row, with its kind and ports (audit 18)
     txt = "".join(read("bookshop-deployment.pdf"))
     ok("pdf · bookshop-deployment: its tables list each target's kind and what is deployed on it (by nesting or a line), each artifact's manifestation, each path",
        all(flat(s) in txt for s in ["Shopper's deviceDevice", "Java 21 runtimeExecution environmentshop-api.jarorder-worker.jarshop-api.yaml", "Edge proxyNoderoutes.conf, by «deploy»",
