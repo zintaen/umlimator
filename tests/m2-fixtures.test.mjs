@@ -211,7 +211,8 @@ test('§11\'s budgets on each stress view all: a full layout and its SVG under 1
     const runs = [0, 1, 2, 3, 4, 5, 6].map(k => ({ full: timed(() => mapContext(M).buildView('all')), common: timed(() => draw(apply(M, EDITS[t].common(k)))),
       ...(EDITS[t].still ? { still: timed(() => draw(apply(M, EDITS[t].still(k)))) } : {}) }));
     const best = k => Math.min(...runs.map(r => r[k]));
-    for (const k of Object.keys(runs[0])) assert.ok(best(k) < 1000, `${t} ${k} ${best(k)} ms`);
+    const ceil = t === 'c4' ? 1500 : 1000; // C4's stress view: CI's ceiling 1.5 s (maintainer, 16 Nov 2026), as in tests/c4.test.mjs
+    for (const k of Object.keys(runs[0])) assert.ok(best(k) < ceil, `${t} ${k} ${best(k)} ms`);
     if (EDITS[t].still) { draw(M); const before = memos.all.runs; draw(apply(M, EDITS[t].still(0))); assert.equal(memos.all.runs, before, `${t}: the edit that moves nothing lays nothing out`); }
     if (t === 'er') { draw(M); const before = memos.all.runs; const sw = timed(() => draw(apply(M, [{ op: 'set', view: 'all', path: 'notation', value: 'idef1x' }])));
       assert.equal(memos.all.runs, before, 'the switch repaints'); assert.ok(sw < 1000); said.push(`er notation switch ${sw.toFixed(1)} ms`); }

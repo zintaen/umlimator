@@ -376,9 +376,11 @@ test('P1 (§11), C4\'s view measured first: on 50 elements and 70 relationships,
     assert.equal(memos.all.runs, was + 1, 'external repaints: nothing laid out');
     r.tech = timed(() => draw(apply(grown, [{ op: 'set', id: 'c5', path: 'props.technology', value: 'Rust' }]))); assert.equal(memos.all.runs, was + 1, 'a technology that keeps the node\'s size repaints: nothing laid out');
     draw(STRESS); return r; })[0]);
-  const best = k => Math.min(...runs.map(r => r[k]));
-  assert.ok(best('full') < 1000, `full layout ${best('full')} ms`);
-  assert.ok(best('desc') < 1000, `a description ${best('desc')} ms`); assert.ok(best('still') < 1000, `external ${best('still')} ms`); assert.ok(best('tech') < 1000, `technology ${best('tech')} ms`);
+  // CI's ceiling for C4's stress view is 1.5 s (maintainer, 16 Nov 2026): the same code measures 512-1075 ms on shared
+  // runners, so 1 s failed about one run in four with no change; the 100 ms target is still printed
+  const best = k => Math.min(...runs.map(r => r[k])), CEIL = 1500;
+  assert.ok(best('full') < CEIL, `full layout ${best('full')} ms`);
+  assert.ok(best('desc') < CEIL, `a description ${best('desc')} ms`); assert.ok(best('still') < CEIL, `external ${best('still')} ms`); assert.ok(best('tech') < CEIL, `technology ${best('tech')} ms`);
   console.log(`# P1 target 100 ms (C4, M2.6): an element's description ${best('desc').toFixed(1)} ms, external (moves nothing) ${best('still').toFixed(1)} ms, a container's technology (§11's named edit, moves nothing) ${best('tech').toFixed(1)} ms; full layout ${best('full').toFixed(1)} ms; routes ${JSON.stringify(said(() => layout(STRESS, 'all'))[0].stats)}`);
 });
 
