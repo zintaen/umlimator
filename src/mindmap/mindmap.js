@@ -254,7 +254,11 @@ function mmRemove(model, view, ids, fromModel) {
   if (!hide.length) return [];
   // core hide drops present.<id>: a side set again, so Show brings the topic back on it (a hidden topic's side is ignored)
   const side = hide.filter(id => MM_OBJ(X.P[id]) && X.P[id].side !== undefined).map(id => mmSide(V, id, X.P[id].side));
-  return { commands: [...mmPinsAt(model, X, V, null, new Set(hide)), ...hide.map(id => ({ op: 'hide', id, view: V.id })), ...side], say: `${said(hide.length - top.filter(id => X.shown.has(id)).length, 'Hid')}: the outline's Show, or undo, brings ${hide.length === 1 ? 'it' : 'them'} back` };
+  // a topic in the view's own nodes lives in this view only: hiding it is deleting it (audit 21), as the canvas's Delete does
+  const own = new Set(MM_ARR(V.nodes).filter(MM_OBJ).map(x => x.id));
+  return { commands: [...mmPinsAt(model, X, V, null, new Set(hide)), ...hide.filter(id => !own.has(id)).map(id => ({ op: 'hide', id, view: V.id })),
+    ...hide.filter(id => own.has(id)).map(id => ({ op: 'delete', id })), ...side.filter(c => !own.has(c.path[1]))], say: hide.every(id => own.has(id)) ? `${said(hide.length - top.filter(id => X.shown.has(id)).length, 'Deleted')}: ${hide.length === 1 ? 'it' : 'they'} lived in this view only; undo brings ${hide.length === 1 ? 'it' : 'them'} back`
+      : `${said(hide.length - top.filter(id => X.shown.has(id)).length, 'Hid')}: the outline's Show, or undo, brings ${hide.length === 1 ? 'it' : 'them'} back` };
 }
 const mmAllKids = X => { const m = new Map(); X.N.forEach((n, id) => { const p = X.topic(id) && X.parentOf(id); if (p != null) (m.get(p) || m.set(p, []).get(p)).push(id); }); return m; };
 const mmUnder = (X, id, of) => { for (let p = X.parentOf(of), seen = new Set(); p != null && !seen.has(p); seen.add(p), p = X.parentOf(p)) if (p === id) return true; return false; };

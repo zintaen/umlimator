@@ -70,7 +70,7 @@ const PINNED = {
       down: [1,["view edge-cases: nodes \"p0\" and \"p1\" overlap","view edge-cases: nodes \"p0\" and \"p2\" overlap","view edge-cases: nodes \"p0\" and \"p3\" overlap","view edge-cases: nodes \"p0\" and \"p4\" overlap","view edge-cases: nodes \"p0\" and \"p5\" overlap","view edge-cases: nodes \"p1\" and \"p2\" overlap","view edge-cases: nodes \"p1\" and \"p3\" overlap","view edge-cases: nodes \"p1\" and \"p4\" overlap","view edge-cases: nodes \"p1\" and \"p5\" overlap","view edge-cases: nodes \"p2\" and \"p3\" overlap","view edge-cases: nodes \"p2\" and \"p4\" overlap","view edge-cases: nodes \"p2\" and \"p5\" overlap","view edge-cases: nodes \"p3\" and \"p4\" overlap","view edge-cases: nodes \"p3\" and \"p5\" overlap","view edge-cases: nodes \"p4\" and \"p5\" overlap"],[]] },
     'all': {
       right: [116,[],["c0.b's name is over c4","c0.b's name is over u1","c0.b's name is over u9","c0.b's name is over u14","c21.b's name is over r8","c21.b's name is over r9"]],
-      down: [128,["view all: edges Component number 33→Api1 and Component number 5→Api1 share a line","view all: edge Component number 10→Api2 runs along the border of family \"Box 2\""],[]] } },
+      down: [128,["view all: edges Component number 33→Api1 and Component number 5→Api1 share a line","view all: family \"Box 1\": header crossed by edge Component number 9→Api1"],[]] } }, // audit 21: the fan keeps off box borders; the router's route for that pair runs along none, another line crosses a header
   'deployment-minimal': {
     'v': {
       right: [0,[],[]],

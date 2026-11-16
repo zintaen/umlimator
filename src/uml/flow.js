@@ -27,12 +27,14 @@ const flowNode = (n, shape, said, inner) => `<g class="node ${shape}" data-id="$
 const flowSvgText = (x, y, t, px, wt, fill, cls) => `<text x="${r2(x)}" y="${r2(y)}" text-anchor="middle" class="${cls}" fill="${fill}" style="font:${wt} ${px}px var(--um-sans)">${esc(t)}</text>`;
 const flowBody = (d, fill) => `<path d="${d}" class="n-mask"/><path d="${d}" class="n-body" fill="${fill}" stroke="${FL.line}"/>`;
 
-// t wrapped at max px into at most k lines, the last holding the rest, each cut to max (a word longer than a line too)
+// t wrapped at max px into at most k lines, the last holding the rest, each cut to max (a word longer than a line too); a
+// line break in t (a Mermaid <br>, F2's Shift+Enter) starts a new line where the author put it (audit 21)
 function flowWrap(t, px, max, k) {
-  const out = []; let line = '';
-  String(t ?? '').split(/\s+/).filter(Boolean).forEach(w => { const next = line ? line + ' ' + w : w;
-    if (line && textW(next, px) > max) { out.push(line); line = w; } else line = next; });
-  if (line) out.push(line);
+  const out = [];
+  String(t ?? '').split(/\r\n?|[\n\u2028\u2029]/).forEach(part => { let line = '';
+    part.split(/\s+/).filter(Boolean).forEach(w => { const next = line ? line + ' ' + w : w;
+      if (line && textW(next, px) > max) { out.push(line); line = w; } else line = next; });
+    if (line) out.push(line); });
   if (out.length > k) out.splice(k - 1, out.length, out.slice(k - 1).join(' '));
   return out.map(l => fit(l, px, max, true));
 }
@@ -51,7 +53,7 @@ SHAPE['flow-final'] = circle('flow-final', 22, 'Flow final', n => { const cx = n
   return flowBody(circleOut(n), FL.bg) + `<path d="M${r2(cx - k)} ${r2(cy - k)}L${r2(cx + k)} ${r2(cy + k)}M${r2(cx + k)} ${r2(cy - k)}L${r2(cx - k)} ${r2(cy + k)}" class="n-det" stroke="${FL.line}"/>`; });
 
 /* ---- the diamond: its text on at most two lines, the diamond twice the text's box, so the box fits inside it ---- */
-const diamondLines = n => { const t = String(n.label ?? '').trim(); return !t ? [] : textW(t, FL.px) <= 80 ? [fit(t, FL.px, FL.dmax)] : wrap2(t, FL.px, FL.dmax) || [fit(t, FL.px, FL.dmax)]; };
+const diamondLines = n => { const t = String(n.label ?? '').trim(); return !t ? [] : /[\r\n\u2028\u2029]/.test(t) ? flowWrap(t, FL.px, FL.dmax, 2) : textW(t, FL.px) <= 80 ? [fit(t, FL.px, FL.dmax)] : wrap2(t, FL.px, FL.dmax) || [fit(t, FL.px, FL.dmax)]; };
 SHAPE.diamond = {
   size(n) { const ls = diamondLines(n), tw = Math.max(0, ...ls.map(l => textW(l, FL.px)));
     return ls.length ? { w: Math.max(28, Math.ceil(2 * tw + 12)), h: Math.max(28, Math.ceil(2 * ls.length * FL.lh + 4)) } : { w: 28, h: 28 }; },
