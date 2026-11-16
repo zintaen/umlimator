@@ -265,6 +265,8 @@ function cpConnect(model, view, from, to, at, line) {
   const I = cpIndex(model), within = (a, b) => I.chain(I.comp(a)).includes(I.comp(b));
   if (I.comp(from) === I.comp(to)) return { error: 'A connector joins two elements' };
   const kind = within(from, to) || within(to, from) ? 'delegation' : 'assembly';
+  // an end that is no component nor a component's port (an interface, an artifact): assembly-ends or delegation-ends at once (audit 19)
+  if (I.ty(from) !== 'uml.Component' || I.ty(to) !== 'uml.Component') return { error: `${kind === 'delegation' ? 'A delegation' : 'An assembly'} joins two components or their ports` };
   if (kind === 'delegation' && !I.P.has(within(to, from) ? from : to)) return { error: 'Delegate from a port of the box' }; // drawn only from its port (cpPic)
   return [{ op: 'add', element: { id: cpNewId(model, 'connector'), type: 'uml.Connector', from, to, props: { kind } }, view: view.id }];
 }

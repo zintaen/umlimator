@@ -372,3 +372,15 @@ test('audit 17: a member\'s standard or unresolved stereotypes stay in its row a
   assert.match(T.rows(m, m.views[0], 'order').at(-1), /^«document» «nowhere» - placedAt: Instant: «column» name = placed_at/);
   assert.match(describe(m, 'profile'), /«document» «nowhere» - placedAt/);
 });
+
+test('audit 19: New member on a stereotype refuses an operation, which the profile view never draws; a tag and an enumeration\'s rows are read as before', async () => {
+  const { readFileSync } = await import('node:fs');
+  const m = JSON.parse(readFileSync(new URL('../examples/bookshop-profile.json', import.meta.url))), T = diagramOf(m.views[0]);
+  const st = m.nodes.find(n => n.type === 'uml.Stereotype');
+  const r = T.member.add('validate(): Boolean', st);
+  assert.ok(r.error && /a stereotype's row is a tag/.test(r.error), JSON.stringify(r));
+  assert.deepEqual(T.member.add('sla: Integer [0..1]', st), { type: 'uml.Property', label: 'sla', props: { valueType: 'Integer', multiplicity: '0..1' } });
+  const en = { id: 'e', type: 'uml.Enumeration' };
+  assert.equal(T.member.add('LOW', en).type, 'uml.EnumerationLiteral');
+  assert.equal(T.member.add('rank(): Integer', en).type, 'uml.Operation', 'an enumeration keeps the class type\'s rows');
+});

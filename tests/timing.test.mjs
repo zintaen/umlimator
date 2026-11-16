@@ -74,7 +74,7 @@ test('the definition: palette, lines with their sorts and the duration constrain
   assert.deepEqual(T.elements.map(e => [e.type, e.label]), [['uml.Lifeline', 'Lifeline'], ['uml.StateInvariant', 'Change'], ['uml.TimeConstraint', 'Time constraint']]);
   assert.deepEqual(T.lines.map(l => [l.type, l.label, l.props && l.props.sort]), [['uml.Message', 'Call', 'call'], ['uml.Message', 'Async', 'async'], ['uml.Message', 'Reply', 'reply'], ['uml.DurationConstraint', 'Duration constraint', undefined]]);
   assert.deepEqual(T.props['uml.Lifeline'].map(f => [f.key, f.kind]), [['represents', 'text'], ['states', 'list'], ['stereotypes', 'list']]);
-  assert.deepEqual(T.props['uml.Message'].map(f => [f.key, f.kind]), [['sort', 'enum'], ['replyTo', 'text']]);
+  assert.deepEqual(T.props['uml.Message'].map(f => [f.key, f.kind]), [['sort', 'enum'], ['replyTo', 'text'], ['stereotypes', 'list']]);
   assert.deepEqual(T.refs, { 'uml.Message': { 'props.replyTo': 'cascade' } });
   assert.deepEqual([typeof T.layout.run, T.layout.pins, typeof T.draw, typeof T.describe, typeof T.rows], ['function', false, 'function', 'function', 'function']);
   assert.deepEqual(Object.keys(T.edits), ['connect', 'moveTo', 'add', 'remove', 'rename', 'key']);
@@ -489,4 +489,15 @@ test('audit 17: a lifeline\'s «stereotypes», offered in the panel, are drawn o
   assert.equal(lane.aria, before.aria.replace(before.label, `${before.label} (boundary)`));
   const svg = svgOf(g); assert.ok(svg.includes('>«boundary»</text>') && svg.includes(`>${before.label}</text>`), 'drawn: the stereotypes over the name, whole');
   assert.ok(describe(m, V.id).includes(`«boundary» ${before.label}:`));
+});
+
+test('audit 19: a message\'s stereotypes are drawn «…» before its label, said in its accessible name, offered in the panel; F2 takes them off', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/bookshop-timing.json', import.meta.url))), V = m.views[0], el = V.edges.find(e => e && e.type === 'uml.Message' && e.label);
+  el.props = { ...(el.props || {}), stereotypes: ['secure'] };
+  const e = layout(m, V.id).edges.find(x => x._id === el.id);
+  assert.ok(e.label.startsWith(`«secure» ${el.label}`), e.label); assert.equal(e.lbl.text, `«secure» ${el.label}`); assert.ok(e.aria.includes(`«secure» ${el.label}`), e.aria);
+  assert.ok(mapContext(m).buildView(V.id).markup.includes('«secure»'));
+  assert.ok(TM_TYPE.props['uml.Message'].some(f => f.key === 'stereotypes'));
+  const r = tmRename(m, V, el.id, e.label);
+  assert.ok(Array.isArray(r) && r.some(c => c.path === 'label' && c.value === el.label), JSON.stringify(r));
 });

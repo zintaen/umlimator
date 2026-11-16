@@ -16,7 +16,7 @@ branch.
 |---|---|---|
 | 17.3 Lifeline | `uml.Lifeline`, `props.represents` as text, `props.stereotypes` | a head `name : Type`, «actor» over it as text |
 | 11.2 Connector (17.9 the link messages go along) | `uml.Connector`, a model edge the view lists in `edges`, before the messages | a line with no arrows; a connector from a lifeline to itself is a loop |
-| 17.4 Message, MessageSort | `uml.Message`, a model edge the view lists in `edges`, in time order; `props.sort`, a reply's `props.replyTo` | a row in the stack on its connector: its number, its text, and a small arrow toward its receiver, filled for a call or a delete, open for async and create («create» before the text), dashed and open for a reply |
+| 17.4 Message, MessageSort | `uml.Message`, a model edge the view lists in `edges`, in time order; `props.sort`, a reply's `props.replyTo`, `props.stereotypes` («name» after its number) | a row in the stack on its connector: its number, its text, and a small arrow toward its receiver, filled for a call or a delete, open for async and create («create» before the text), dashed and open for a reply |
 | 17.9 sequence numbers | derived (S8): a message's number is its place among the messages sent in the activation it is sent from, replies included | `1`, `1.1`, `1.1.2`, `1.1.2.1` |
 
 Each connector's messages are one stack, a node of the layered layout, with the connector drawn through it

@@ -43,7 +43,9 @@ const cmStereoOf = n => CM_ARR(cmPropsOf(n).stereotypes).filter(CM_HAS).map(Stri
 // a lifeline's head text: "api : ShopApi", or the name alone
 const cmHeadText = n => cmNameOf(n) + (CM_HAS(cmPropsOf(n).represents) ? ' : ' + cmPropsOf(n).represents : '');
 const CM_KEYWORD = { create: '«create»', delete: '«destroy»' };
-const cmRowText = (m, num) => { const t = [CM_KEYWORD[cmSortOf(m)], m.label].filter(CM_HAS).join(' '); return `${num ?? '?'}${t ? ': ' + t : ''}`; }; // "1.1.3: «create» new(order)"; a message with no text, its number
+// a message's «stereotypes» (audit 19), then its sort's keyword, then its label
+const cmMsgPre = m => cmStereoOf(m).map(t => `«${t}»`).join(' '), cmMsgSay = m => [cmMsgPre(m), m.label].filter(CM_HAS).join(' ');
+const cmRowText = (m, num) => { const t = [cmMsgPre(m), CM_KEYWORD[cmSortOf(m)], m.label].filter(CM_HAS).join(' '); return `${num ?? '?'}${t ? ': ' + t : ''}`; }; // "1.1.3: «create» new(order)"; a message with no text, its number
 const cmRowW = t => Math.ceil(Math.min(CM_ROW.max, textW(t, CM_ROW.px) + CM_ROW.arrow + 2 * CM_ROW.pad + 2));
 const cmPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 // numbers in their order: 1 < 1.1 < 1.1.2 < 1.2 < 2
@@ -182,7 +184,7 @@ function cmFinish(g, I, stacks, nums, view) {
     S.ms.forEach((m, k) => { const from = cmNameOf(I.N.get(m.from)), to = cmNameOf(I.N.get(m.to)), num = nums.get(m.id), sort = cmSortOf(m);
       const row = { id: m.id, type: 'uml.Message', shape: 'message-row', kind: 'file', k: box.k, label: S.texts[k], num, sort, dir: m.from === S.s ? fwd : bwd,
         x: box.x, y: box.y + k * CM_ROW.h, w: box.w, h: CM_ROW.h, col: box.col, row: box.row + k / S.ms.length,
-        aria: `Message ${place.get(m.id)} of ${total}, ${num}: ${from} to ${to}${CM_HAS(m.label) ? ', ' + m.label : ''}, ${sort}${sort === 'reply' && CM_HAS(cmPropsOf(m).replyTo) && nums.has(cmPropsOf(m).replyTo) ? ' to ' + nums.get(cmPropsOf(m).replyTo) : ''}` };
+        aria: `Message ${place.get(m.id)} of ${total}, ${num}: ${from} to ${to}${cmMsgSay(m) ? ', ' + cmMsgSay(m) : ''}, ${sort}${sort === 'reply' && CM_HAS(cmPropsOf(m).replyTo) && nums.has(cmPropsOf(m).replyTo) ? ' to ' + nums.get(cmPropsOf(m).replyTo) : ''}` };
       byId[row.id] = row; });
   });
   // reading order (S13): lifelines in the layout's order, left to right and top to bottom, then the message rows by number.
@@ -221,7 +223,7 @@ function commDescribe(model, viewId) {
   I.ids.forEach(id => { const n = I.N.get(id), st = cmStereoOf(n), links = [...new Set(I.connectors.filter(c => c.from === id || c.to === id).map(c => (c.from === c.to ? 'itself' : nm(c.from === id ? c.to : c.from))))];
     out.push(`Lifeline ${cmHeadText(n)}${st.length ? ` (${st.join(', ')})` : ''}${links.length ? '; linked to ' + links.join(', ') : '; linked to nothing'}.`); });
   drawn.forEach(m => { const s = cmSortOf(m), r = cmPropsOf(m).replyTo;
-    out.push(`${nums.get(m.id)}: ${nm(m.from)} to ${nm(m.to)}${CM_HAS(m.label) ? ', ' + m.label : ''}, ${s}${s === 'reply' && nums.has(r) ? ' to ' + nums.get(r) : ''}.`); });
+    out.push(`${nums.get(m.id)}: ${nm(m.from)} to ${nm(m.to)}${cmMsgSay(m) ? ', ' + cmMsgSay(m) : ''}, ${s}${s === 'reply' && nums.has(r) ? ' to ' + nums.get(r) : ''}.`); });
   return out.join('\n');
 }
 
@@ -293,13 +295,16 @@ function commMoveTo(model, view, id, at) {
 
 /* add(model, view, entry, label, at): the palette's lifeline, at `at.index` in nodeIds (a lifeline's slot: after the selected
    lifeline), else last (no slot, or a row's, which has no index) */
-/* rename (F2) on a message row: the field holds its drawn text (cmRowText), "<number>: «create» label"; the number and the
-   sort's keyword are derived, so they come off and the rest is set as the label (audit 15). Anything else: null */
+/* rename (F2) on a message row: the field holds its drawn text (cmRowText), "<number>: «stereotypes» «create» label"; the
+   number, the stereotypes (set in the panel) and the sort's keyword are not its label, so they come off and the rest is set
+   as the label (audits 15, 19). Anything else: null */
 function commRename(model, view, id, text) {
   const m = commIndex(model, view).messages.find(x => x.id === id); if (!m) return null;
   const num = String(messageNumbers(model, view).get(id) ?? '?'), kw = CM_KEYWORD[cmSortOf(m)];
   let t = String(text ?? '').trim();
-  if (t === num || t.startsWith(num + ':') || t.startsWith(num + ' ')) t = t.slice(num.length).replace(/^:/, '').trim(); // a row with no text: its number
+  // the drawn number: "1: …", or, on a row with no text (drawn "1"), "1 …"; on a row with text, "1 more book" is the user's (audit 19)
+  if (t === num || t.startsWith(num + ':') || (cmRowText(m, num) === num && t.startsWith(num + ' '))) t = t.slice(num.length).replace(/^:/, '').trim();
+  const pre = cmMsgPre(m); if (pre && t.startsWith(pre)) t = t.slice(pre.length).trim();
   if (kw && (t === kw || t.startsWith(kw + ' '))) t = t.slice(kw.length).trim();
   return t === String(m.label ?? '') ? [] : [{ op: 'set', id, path: 'label', value: t || undefined }];
 }
@@ -348,7 +353,7 @@ const COMM_TYPE = registerDiagramType('uml.communication', {
     .map(([sort, label]) => ({ type: 'uml.Message', label, props: { sort } }))],
   props: {
     'uml.Lifeline': [{ key: 'represents', label: 'Represents', kind: 'text' }, { key: 'stereotypes', label: 'Stereotypes', kind: 'list' }],
-    'uml.Message': [CM_SORT, { key: 'replyTo', label: 'Reply to', kind: 'text' }],
+    'uml.Message': [CM_SORT, { key: 'replyTo', label: 'Reply to', kind: 'text' }, { key: 'stereotypes', label: 'Stereotypes', kind: 'list' }],
     'uml.Connector': [],
   },
   refs: { 'uml.Message': { 'props.replyTo': 'cascade' } }, // a reply goes with its call

@@ -434,3 +434,13 @@ test('audit 18: the PDF\'s Lines row of a connector names its kind and the ports
   assert.match(T.edits.add(CM, v, P, ': AuditApi', { sel: ['shop-api'] }).error, /A port has a name/);
   assert.deepEqual(T.edits.add(CM, v, P, '', { sel: ['shop-api'] }), [{ op: 'add', element: { id: 'port1', type: 'uml.Port' }, owner: 'shop-api' }], 'no name: as before');
 });
+
+test('audit 19: the Assembly tool refuses an end that is no component nor a component\'s port (an interface, an artifact): assembly-ends would fail at once', () => {
+  const m = structuredClone(CM), v = m.views[0], T = diagramOf(v), line = T.lines.find(l => l.label === 'Assembly');
+  const iface = m.nodes.find(n => n.type === 'uml.Interface').id, art = m.nodes.find(n => n.type === 'uml.Artifact').id;
+  for (const [a, b] of [['storefront-component', iface], ['storefront-component', art], [iface, 'storefront-component']]) {
+    const r = T.edits.connect(m, v, a, b, null, line); assert.ok(r && r.error && /joins two components or their ports/.test(r.error), `${a} -> ${b}: ${JSON.stringify(r)}`); }
+  const ok = T.edits.connect(m, v, 'storefront-component', 'shop-api', null, line);
+  assert.ok(Array.isArray(ok) && ok[0].element.props.kind === 'assembly');
+  assert.deepEqual(validate(apply(m, ok)).filter(p => p.level === 'error'), []);
+});

@@ -169,7 +169,10 @@ const PR_TYPE = registerDiagramType('uml.profile', {
   boxes: (model, view) => { const pic = ownersOn(model, view); return pic.boxes.map(b => prBox(b, model, pic)); },
   owners: ownerChoices,
   // a stereotype's rows are its tag definitions, in the class type's member syntax; an enumeration's its literals
-  member: { ...CLASS_TYPE.member, holds: n => n.type === 'uml.Stereotype' || n.type === 'uml.Enumeration' },
+  // (audit 19): a stereotype takes no operation, which this view would never draw, name or print
+  member: { ...CLASS_TYPE.member, holds: n => n.type === 'uml.Stereotype' || n.type === 'uml.Enumeration',
+    add: (text, owner) => { const r = CLASS_TYPE.member.add(text, owner);
+      return owner && owner.type === 'uml.Stereotype' && r.type === 'uml.Operation' ? { error: `"${String(text ?? '').trim()}" is not a tag: a stereotype's row is a tag, name: Type` } : r; } },
   validate: (model, view) => [...classProblems(model), ...prProblems(model), ...ownerProblems(model, view, drawnLines(model, view, PR_LINES).lines)],
   rules: { ...RULES, ...OWNER_RULES, ...PR_RULES, ...STY_RULES },
   describe: prDescribe,

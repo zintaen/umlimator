@@ -35,6 +35,8 @@ const tmStates = n => [...new Set(TM_ARR(tmProps(n).states).filter(TM_HAS).map(S
 const TM_SEP = /\s*(?<!:):(?!:)\s*/; // a lone colon: '::' is part of a name (Shop::Worker)
 const tmNameType = s => { const [name, ...rest] = s.split(TM_SEP); return [name, rest.join(':').trim()]; }; // `a : B : C` is a, represents B:C
 const tmLabel = x => (TM_HAS(x.label) ? String(x.label) : '');
+// a message's drawn text: its «stereotypes», then its label (audit 19); F2 takes the «…» off before it reads the rest
+const tmMsgText = m => [tmSt(m), tmLabel(m)].filter(TM_HAS).join(' ');
 const tmPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 
 /* The view read once: its lanes (nodeIds that are nodes), every node by id, the timeline's changes and constraints, its
@@ -54,7 +56,7 @@ function tmIndex(model, V) {
 /* ---- names (§9): a change's, a message's, a constraint's, said the same in the picture, describe() and the PDF ---- */
 const tmSort = m => (TM_SORTS.includes(tmProps(m).sort) ? tmProps(m).sort : 'call');
 const tmChangeSaid = (X, c) => `${X.name(c.lifeline)}: ${c.state ?? ''} from ${X.t(c.at)}`;
-const tmMsgSaid = (X, m) => { const p = tmProps(m), t = tmLabel(m), s = tmSort(m);
+const tmMsgSaid = (X, m) => { const p = tmProps(m), t = tmMsgText(m), s = tmSort(m);
   return `${s[0].toUpperCase() + s.slice(1)}${t ? ' ' + t : ''} from ${X.name(m.from)} at ${X.t(p.sentAt)} to ${X.name(m.to)} at ${X.t(p.receivedAt)}`; };
 const tmConSaid = (X, c) => { const a = X.C.get(c.from), b = X.C.get(c.to), t = tmLabel(c);
   if (TM_KIND[c.type] === 'time') return `Time constraint${t ? ' ' + t : ''}${a ? ` on ${X.name(a.lifeline)} at ${X.t(a.at)}` : ''}`;
@@ -78,7 +80,7 @@ function tmInput(model, V, X = tmIndex(model, V)) {
     lanes: X.heads.map(n => { const vals = X.values(n.id);
       return { id: n.id, name: { w: Math.max(w(tmHead(n), TM.name), w(tmSt(n))), h: tmSt(n) ? 2 * TM.lbl : TM.lbl }, form: vals ? 'values' : 'states', rows: vals ? [] : tmStates(n).map(s => ({ state: s, w: w(s) })),
         changes: X.changes.filter(c => c.lifeline === n.id).map(c => ({ id: c.id, at: c.at, state: String(c.state ?? ''), w: w(c.state) })) }; }),
-    messages: X.msgs.map(m => { const t = tmLabel(m), p = tmProps(m);
+    messages: X.msgs.map(m => { const t = tmMsgText(m), p = tmProps(m);
       return { id: m.id, from: m.from, to: m.to, sentAt: p.sentAt, receivedAt: p.receivedAt, ...(t ? { w: w(t) + 12, h: TM.lbl } : { w: 0, h: 0 }) }; }),
     constraints: X.shown.map(c => { const t = tmLabel(c); return { id: c.id, kind: TM_KIND[c.type] ?? c.type, from: c.from, to: c.to, ...(t ? { w: w(t) + 6, h: TM.mark } : { w: 0, h: 0 }) }; }),
     unit: X.unit,
@@ -108,7 +110,7 @@ function tmRun(model, view) {
   nodes.push({ id: TM_RULER, shape: 'tm-ruler', label: X.unit ?? '', k: 'file', x: x0, y: R.y, w: rw, h: TR.ruler, ticks: R.ticks, unit: R.unit,
     aria: `Time ruler, ${s.t0} to ${X.t(last)}, a tick every ${X.t(s.step)}` });
   const byId = idTable(Object.fromEntries(nodes.map(n => [n.id, n])));
-  const edges = o.lines.map(l => { const m = M.get(l.id), p = tmProps(m), t = tmLabel(m), sort = tmSort(m);
+  const edges = o.lines.map(l => { const m = M.get(l.id), p = tmProps(m), t = tmMsgText(m), sort = tmSort(m);
     return { id: m.id, _id: m.id, type: 'uml.Message', from: m.from, to: m.to, s: byId[m.from], t: byId[m.to], pts: l.pts, end: TM_END[sort], sort,
       label: tmPrint(t, p.sentAt, p.receivedAt), ...(t ? { lbl: { ...l.lbl, text: t } } : {}), aria: tmMsgSaid(X, m) }; });
   order.push(...[...edges].sort((a, b) => tmProps(M.get(a.id)).sentAt - tmProps(M.get(b.id)).sentAt).map(e => e.id), ...o.marks.map(mk => mk.id), TM_RULER);
@@ -220,7 +222,7 @@ function tmRows(model, view, id) {
   const V = tmView(model, view); if (!V) return null; const X = tmIndex(model, V); if (!X.H.has(id)) return null;
   const mine = X.mine(id), ids = new Set(mine.map(c => c.id));
   return [...mine.map(c => `${X.t(c.at)}: ${c.state ?? ''}`),
-    ...X.msgs.filter(m => m.from === id).map(m => { const p = tmProps(m); return `${tmLabel(m) || tmSort(m)} to ${X.name(m.to)} at ${X.t(p.sentAt)} → ${X.t(p.receivedAt)}`; }),
+    ...X.msgs.filter(m => m.from === id).map(m => { const p = tmProps(m); return `${tmMsgText(m) || tmSort(m)} to ${X.name(m.to)} at ${X.t(p.sentAt)} → ${X.t(p.receivedAt)}`; }),
     ...X.shown.filter(c => ids.has(c.from) || ids.has(c.to)).map(c => tmConSaid(X, c))];
 }
 
@@ -338,7 +340,7 @@ function tmRename(model, view, id, text) {
     const st = X.H.has(c.lifeline) ? tmState(X, c.lifeline, r.text) : { cmds: [], said: null };
     return tmSaid(tmGuard(model, V, [...st.cmds, { op: 'set', id, path: 'state', value: r.text }, ...(r.times.length ? [{ op: 'set', id, path: 'at', value: r.times[0] }] : [])]), st.said && `Renamed the change; ${st.said}`); }
   const m = X.msgs.find(x => x.id === id);
-  if (m) { const r = tmParse(s), [t1, t2] = r.times.length === 1 ? [r.times[0], r.times[0]] : r.times;
+  if (m) { const pre = tmSt(m), r = tmParse(pre && s.startsWith(pre) ? s.slice(pre.length).trim() : s), [t1, t2] = r.times.length === 1 ? [r.times[0], r.times[0]] : r.times;
     return tmGuard(model, V, [{ op: 'set', id, path: 'label', value: r.text || undefined }, ...(r.times.length ? [{ op: 'set', id, path: 'props.sentAt', value: t1 }, { op: 'set', id, path: 'props.receivedAt', value: t2 }] : [])]); }
   if (X.cons.some(k => k.id === id)) return [{ op: 'set', id, path: 'label', value: s || undefined }];
   if (X.H.has(id)) { const [name, rep] = tmNameType(s);
@@ -396,7 +398,7 @@ const TM_TYPE = registerDiagramType('uml.timing', {
   refs: { 'uml.Message': { 'props.replyTo': 'cascade' } },
   props: {
     'uml.Lifeline': [{ key: 'represents', label: 'Represents', kind: 'text' }, { key: 'states', label: 'States', kind: 'list' }, TM_STEREO],
-    'uml.Message': [{ key: 'sort', label: 'Sort', kind: 'enum', options: TM_SORTS }, { key: 'replyTo', label: 'Reply to', kind: 'text' }],
+    'uml.Message': [{ key: 'sort', label: 'Sort', kind: 'enum', options: TM_SORTS }, { key: 'replyTo', label: 'Reply to', kind: 'text' }, TM_STEREO],
   },
   layout: { run: tmRun, pins: false },
   draw: tmDraw,

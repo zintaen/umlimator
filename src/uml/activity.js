@@ -7,7 +7,7 @@ import { laneBands, laneRows } from '../layout/lanes.js';
 import { layoutTyped } from '../typed/layout.js';
 import './class.js'; // SHAPE.note, a comment's
 import { frame } from './frame.js';
-import { FLOW_RULES, flowProblems, flowLabel, flowRename, flowStereo } from './flow.js';
+import { FLOW_RULES, flowOf, flowProblems, flowLabel, flowRename, flowStereo } from './flow.js';
 
 /* ---------- the activity diagram, uml.activity (work package 4.5, notes/stage-4.md §9) ----------
    Control nodes, actions and flows from src/uml/flow.js; the send and accept signals, the object node, the data store and
@@ -291,7 +291,7 @@ function actRemove(model, view, ids, fromModel) {
 }
 // rename: F2 on a flow reads "name [guard]" (§7.2) and sets each part that changed; on anything else, null (set label)
 function actRename(model, view, id, text) {
-  const e = AC_ARR(model && model.edges).find(x => AC_OBJ(x) && x.id === id);
+  const e = flowOf(model, view, id); // the view's own flow too (audit 19)
   if (!e || !AC_FLOWS.includes(e.type)) return null;
   return flowRename(e, text);
 }
