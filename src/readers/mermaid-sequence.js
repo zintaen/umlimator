@@ -266,7 +266,10 @@ function readMermaidSequence(text) {
         else say(no, 'skipped', 'option outside a critical region: not read');
       } else if (word === 'rect') { stack.push({ what: 'rect', cur: cur(), no }); say(no, 'skipped', `rect ${rest}: a background colour is not read; its content is`); }
       else if (word === 'box') { stack.push({ what: 'box', cur: cur(), no }); say(no, 'skipped', `box ${rest}: a group of participants is not read; the participants are`); }
-      else if (word === 'end') { if (top) { if (stack.pop().frag) frames--; } else say(no, 'skipped', 'an end that closes nothing'); }
+      else if (word === 'end') {
+        if (top) { if (stack.pop().frag) frames--; } else say(no, 'skipped', 'an end that closes nothing');
+        if (rest) say(no, 'skipped', `"${s}": the text after end is not read`);
+      }
       else if (word === 'note') {
         const c = rest.indexOf(':'), where = (c < 0 ? rest : rest.slice(0, c)).trim(), body = c < 0 ? '' : rest.slice(c + 1).trim();
         const names = where.replace(/^(over|left of|right of)\s+/i, '').split(',').map(x => x.trim()).filter(Boolean);

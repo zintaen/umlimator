@@ -196,6 +196,8 @@ function readMermaidState(text) {
       const o = stack.pop();
       if (!o) say(no, 'skipped', 'a } that closes nothing');
       else if (o.flat) flat--;
+      const tail = s.slice(1).trim();
+      if (tail) say(no, 'skipped', `"${s}": the text after } is not read`);
     } else if (s === '--') {
       const o = stack.at(-1);
       if (!o || o.flat) say(no, 'skipped', '-- outside a composite state: not read');

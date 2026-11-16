@@ -75,8 +75,11 @@ function SYS_HEAD(model, view) {
 // 17 px tag
 function SYS_FRAME(model, view, nodeIds) {
   const h = SYS_HEAD(model, view);
-  return { id: h.el ? h.el.id : `${view.id}->frame`, label: h.title, title: h.title, nodeIds, shape: 'sysml-frame', head: 14, aria: h.aria };
+  return { id: h.el ? h.el.id : `${view.id}->frame`, label: h.title, title: h.title, nodeIds, shape: 'sysml-frame', head: 14, aria: h.aria, edit: SYS_EDIT(view, h) };
 }
+// what F2 on a frame edits, its field filled with it (src/canvas/render.js): the subject's name, else the view's title. The
+// header is label and title, drawn whole; F2 filled with it stored the whole header as the name or title (audit 20)
+const SYS_EDIT = (view, h) => (h.el ? String(h.el.label ?? h.el.id) : String(view.title ?? ''));
 // F2 on a req or bdd frame that is no element (`<view>->frame`): the view's title (§5.1); else null (audit 19: bdd's too)
 const SYS_FRAME_RENAME = (view, id, text) => (id === `${view.id}->frame` ? [{ op: 'set', view: view.id, path: 'title', value: String(text) }] : null);
 // its shape: a rectangle and the tag, cut to the frame's width (src/uml/frame.js)
@@ -153,7 +156,7 @@ function SYS_CS_PROBLEMS(model, view) {
    names(id), when given, an element's accessible name in SysML's words (the type's, §13) ---- */
 function SYS_DRESS(g, model, view, names) {
   const h = SYS_HEAD(model, view), said = x => (names && names(x.id)) || x.aria, map = new Map(), sid = view.subject;
-  const card = g.byId && Object.hasOwn(g.byId, sid) ? g.byId[sid] : null, frame = { shape: 'sysml-frame', title: h.title, label: h.title, aria: h.aria };
+  const card = g.byId && Object.hasOwn(g.byId, sid) ? g.byId[sid] : null, frame = { shape: 'sysml-frame', title: h.title, label: h.title, aria: h.aria, ...(h.el ? { edit: SYS_EDIT(view, h) } : {}) };
   const nodes = SYS_ARR(g.nodes).filter(n => n !== card).map(n => { const y = names ? { ...n, aria: said(n) } : n; map.set(n, y); return y; });
   const byId = idTable(Object.fromEntries(Object.entries(g.byId || {}).filter(([k]) => k !== sid || !card).map(([k, n]) => [k, map.get(n) || n])));
   return { ...g, nodes, byId, edges: names ? SYS_ARR(g.edges).map(e => ({ ...e, aria: said(e) })) : g.edges,

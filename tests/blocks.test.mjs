@@ -381,3 +381,12 @@ test('audit 19: F2 on a frame with no subject sets the view\'s title, as on a re
   assert.deepEqual(T.edits.rename(m, v, 'g1', 'kind of'), [{ op: 'set', id: 'g1', path: 'label', value: 'kind of' }]);
   assert.equal(T.edits.rename(m, v, 'bike', 'Bicycle'), null, 'a block: the canvas\'s own label');
 });
+
+test('audit 20: what F2 on a frame edits (its field\'s text) is the view\'s title, or the package subject\'s name, never the whole header', () => {
+  const m = { schemaVersion: 2, nodes: [B('bike', 'Bike')], edges: [], views: [{ id: 'b', diagram: 'sysml.block-definition', title: 'Blocks', nodeIds: ['bike'] }] };
+  const F = (x, id) => layout(x, 'b').families.find(f => f.id === id);
+  assert.deepEqual([F(m, 'b->frame').title, F(m, 'b->frame').edit], ['bdd [Model] [Blocks]', 'Blocks']);
+  const p = structuredClone(m); p.nodes.push({ id: 'eb', type: 'uml.Package', label: 'E-bike' }); p.nodes[0].parent = 'eb'; Object.assign(p.views[0], { subject: 'eb', nodeIds: ['eb', 'bike'] });
+  assert.deepEqual([F(p, 'eb').title, F(p, 'eb').edit], ['bdd [Package] E-bike [Blocks]', 'E-bike']);
+  delete m.views[0].title; assert.equal(F(m, 'b->frame').edit, '', 'no title: an empty field');
+});

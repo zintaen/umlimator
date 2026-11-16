@@ -28,6 +28,9 @@ const BZ = { gap: 48, rgap: 64, cut: 200, ring: 16, grow: 24 };
 const BZ_POOL = 'bpmn.Participant', BZ_LANE = 'bpmn.Lane', BZ_SUB = 'bpmn.SubProcess', BZ_BE = 'bpmn.BoundaryEvent', BZ_GROUP = 'bpmn.Group', BZ_NOTE = 'bpmn.TextAnnotation';
 const BZ_SEQ = 'bpmn.SequenceFlow', BZ_MSG = 'bpmn.MessageFlow', BZ_ASSOC = 'bpmn.Association', BZ_DATA_ASSOC = 'bpmn.DataAssociation', BZ_LINES = [BZ_SEQ, BZ_MSG, BZ_ASSOC, BZ_DATA_ASSOC];
 const BZ_ACT = ['bpmn.Task', BZ_SUB, 'bpmn.CallActivity'], BZ_GATE = ['bpmn.ExclusiveGateway', 'bpmn.ParallelGateway'], BZ_DATA = ['bpmn.DataObject', 'bpmn.DataStoreReference'];
+// two different pools: data in no pool may join an activity or event of any pool, so validate (data-ends), a line drawn
+// (bzConnect) and a move (bzReown) refuse one rule (audit 20)
+const bzTwoPools = (a, b) => a != null && b != null && a !== b;
 const BZ_DEFS = { 'bpmn.StartEvent': ['none', 'message', 'timer'], 'bpmn.EndEvent': ['none', 'message', 'terminate'], 'bpmn.IntermediateCatchEvent': ['message', 'timer'],
   'bpmn.IntermediateThrowEvent': ['none', 'message'], [BZ_BE]: ['message', 'timer'] }; // §3.2, decision 21: a none throw event
 const BZ_EVENTS = Object.keys(BZ_DEFS), BZ_FLOW = [...BZ_ACT, ...BZ_EVENTS, ...BZ_GATE], BZ_CATCH = ['bpmn.StartEvent', 'bpmn.IntermediateCatchEvent', BZ_BE];
@@ -294,7 +297,7 @@ const BZ_RULES = {
   'gateway-flows': 'a gateway splits or joins; a diverging exclusive gateway names each way out',
   'lane-owner': 'a lane is in a lane of its pool or none; a flow node in a lane, pool or sub-process; data in a pool or none',
   'in-lane': 'in a pool with lanes, every flow node is in one',
-  'data-ends': 'a data association joins data with an activity or event of its own pool in BPMN\'s direction; an association has a text annotation at one end',
+  'data-ends': 'a data association joins data with an activity or event of its own pool (any pool for data in none) in BPMN\'s direction; an association has a text annotation at one end',
   'group-ref': 'every categoryValueRef names a group',
   'opens-view': 'a collapsed sub-process or a call activity opens a BPMN view, the sub-process\'s own',
 };
@@ -321,7 +324,7 @@ function bzProblems(model, view) {
       if (d.length !== 1 || !(BZ_ACT.includes(ty(o)) || BZ_EVENTS.includes(ty(o)))) say('error', 'data-ends', id, ids, `${id} joins ${q(e.from)} and ${q(e.to)}: a data association joins a data object or store with an activity or an event`);
       else if (BZ_CATCH.includes(ty(o)) && o === e.to) say('error', 'data-ends', id, ids, `${id} runs from ${q(e.from)} to ${q(o)}, a catch event, which only gives data: draw it from the event to the data`);
       else if (['bpmn.EndEvent', 'bpmn.IntermediateThrowEvent'].includes(ty(o)) && o === e.from) say('error', 'data-ends', id, ids, `${id} runs from ${q(o)}, a throw event, which only takes data: draw it from the data to the event`);
-      else if (I.poolOf(d[0]) != null && I.poolOf(o) != null && I.poolOf(d[0]) !== I.poolOf(o)) say('error', 'data-ends', id, ids, `${id} joins ${q(d[0])}, data of ${q(I.poolOf(d[0]))}, and ${q(o)} in ${q(I.poolOf(o))}: data stays in the pool (process) of what it is associated with`); }
+      else if (bzTwoPools(I.poolOf(d[0]), I.poolOf(o))) say('error', 'data-ends', id, ids, `${id} joins ${q(d[0])}, data of ${q(I.poolOf(d[0]))}, and ${q(o)} in ${q(I.poolOf(o))}: data stays in the pool (process) of what it is associated with`); }
     if (e.type === BZ_ASSOC && ty(e.from) !== BZ_NOTE && ty(e.to) !== BZ_NOTE) say('error', 'data-ends', id, ids, `${id} joins ${q(e.from)} and ${q(e.to)}: an association has a text annotation at one end`); });
   I.L.forEach(({ x, pool }, id) => { if (seen(id) && x.parent != null && !(I.L.has(x.parent) && I.L.get(x.parent).pool === pool && x.parent !== id))
     say('error', 'lane-owner', id, [id, x.parent], `lane ${q(id)}'s parent ${q(x.parent)} is not a lane of its pool`, '.parent'); });
@@ -398,7 +401,7 @@ function bzConnect(model, view, from, to) {
     if (!(BZ_ACT.includes(t) || BZ_EVENTS.includes(t))) return { error: 'Data joins an activity or an event' };
     if (BZ_CATCH.includes(t) && o === to) return { error: `${bzA(w(o), true)} only gives data: draw the line from the event to the data` };
     if (['bpmn.EndEvent', 'bpmn.IntermediateThrowEvent'].includes(t) && o === from) return { error: `${bzA(w(o), true)} only takes data: draw the line from the data to the event` };
-    if (I.poolOf(o === to ? from : to) !== I.poolOf(o)) return { error: 'Data stays in the pool of what it is associated with' }; // as a move refuses it (bzReown, audit 19)
+    if (bzTwoPools(I.poolOf(o === to ? from : to), I.poolOf(o))) return { error: 'Data stays in the pool of what it is associated with' }; // as a move refuses it (bzReown, audit 19) and data-ends says
     return add(BZ_DATA_ASSOC); }
   const pa = I.poolOf(from), pb = I.poolOf(to);
   if (![...BZ_FLOW, BZ_POOL].includes(a) || ![...BZ_FLOW, BZ_POOL].includes(b)) return { error: `${bzA(!BZ_FLOW.includes(a) && a !== BZ_POOL ? w(from) : w(to), true)} joins no flow` };
@@ -445,7 +448,7 @@ function bzReown(model, view, I, id, dest) {
   const x = I.el(id), data = BZ_DATA.includes(x.type), pool = dest == null ? null : I.poolOf(dest);
   const bes = [...I.N.values()].filter(n => n.type === BZ_BE && bzProps(n).attachedTo === id).map(n => n.id), mine = [id, ...bes];
   if (pool !== I.poolOf(id) && [...I.E.values()].some(e => e.type === BZ_SEQ && (mine.includes(e.from) || mine.includes(e.to)))) return { error: 'Move its sequence flows first: a sequence flow stays in its pool' };
-  if (data && [...I.E.values()].some(e => e.type === BZ_DATA_ASSOC && (e.from === id || e.to === id) && I.poolOf(e.from === id ? e.to : e.from) !== pool)) return { error: 'Data stays in the pool of what it is associated with' };
+  if (data && [...I.E.values()].some(e => e.type === BZ_DATA_ASSOC && (e.from === id || e.to === id) && bzTwoPools(I.poolOf(e.from === id ? e.to : e.from), pool))) return { error: 'Data stays in the pool of what it is associated with' };
   const L = view.layout;
   return bzGuard(model, view, [{ op: 'reparent', id, parent: dest }, ...bes.flatMap(b => bzOwnerTo(I, b, dest)), ...(BZ_OBJ(L) && Object.hasOwn(L, id) ? [{ op: 'set', view: view.id, path: ['layout', id], value: undefined }] : [])]);
 }
