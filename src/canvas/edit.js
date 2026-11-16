@@ -159,7 +159,7 @@ function typedEditor(api) {
     const a = root.activeElement, f = a && el.contains(a) ? a.dataset.f : null, text = f && a.type !== 'checkbox' ? a.value : null;
     el.innerHTML = html;
     const b = f && [...el.querySelectorAll('[data-f]')].find(x => x.dataset.f === f);
-    if (b) { if (text != null && b.tagName === 'INPUT') b.value = text; b.focus(); }
+    if (b) { if (text != null && (b.tagName === 'INPUT' || b.tagName === 'TEXTAREA')) b.value = text; b.focus(); }
   }
   const nameOf = x => String(x.label ?? (x.from != null ? `${x.from} → ${x.to}` : x.id));
   function palette() { // with `add` only
@@ -172,7 +172,10 @@ function typedEditor(api) {
     if (!e) return '<h3>Properties</h3><p class="um-note">Select a card or a line</p>';
     const x = e.x, P = isRec(x.props) ? x.props : {}, F = a => arrOf(a).filter(f => isRec(f) && typeof f.key === 'string'), own = F(isRec(def().props) ? def().props[x.type] : null), schema = [...own, ...F(TYPED.fields && TYPED.fields(model(), x))];
     const off = can('rename') ? '' : ' disabled'; // the editable flags: a field the host does not offer is shown, to read
-    const text = (f, v, name, more = '') => `<label>${esc(name)}<input data-f="${esc(f)}" data-was="${esc(v)}" value="${esc(v)}"${more}${off}></label>`;
+    // a value of more than one line in a <textarea>, which keeps its breaks (an <input> drops them, and Enter then wrote the
+    // lines joined, audit 20); the newline after its tag is the one the parser drops, so a value's own first one stays
+    const text = (f, v, name, more = '') => /[\r\n]/.test(v) ? `<label>${esc(name)}<textarea data-f="${esc(f)}" data-was="${esc(v)}" rows="${String(v).split(/\r\n|\r|\n/).length}"${more}${off}>\n${esc(v)}</textarea></label>`
+      : `<label>${esc(name)}<input data-f="${esc(f)}" data-was="${esc(v)}" value="${esc(v)}"${more}${off}></label>`;
     let h = `<h3>Properties${x.type != null ? ': ' + esc(x.type) : ''}</h3>` + text('label', x.label ?? '', 'Name');
     schema.forEach(f => { const v = Array.isArray(f.path) ? f.path.reduce((o, k) => isRec(o) ? o[k] : undefined, P) : P[f.key], name = f.label || f.key; // path: a field inside props (ends.from.role)
       const key = ` data-key="${esc(f.key)}"${Array.isArray(f.path) ? ` data-path="${esc(JSON.stringify(f.path))}"` : ''}`;
@@ -257,9 +260,9 @@ function typedEditor(api) {
       else if (d.orphans != null) { orphans = b.checked; put('.um-els', outline()); } });
     panel.addEventListener('change', e => { if (e.target.dataset.orphans == null) commit(e.target); });
     panel.addEventListener('keydown', e => { e.stopPropagation(); const t = e.target, K = e.key; // the panel's keys stay in it
-      if (K === 'Escape') { if (t.tagName === 'INPUT' && t.type !== 'checkbox') { t.value = t.dataset.was ?? ''; t.removeAttribute('aria-invalid'); } api.focus(); } // what was typed is not kept
+      if (K === 'Escape') { if ((t.tagName === 'INPUT' && t.type !== 'checkbox') || t.tagName === 'TEXTAREA') { t.value = t.dataset.was ?? ''; t.removeAttribute('aria-invalid'); } api.focus(); } // what was typed is not kept
       else if (K === 'Enter' && t.tagName === 'BUTTON') { e.preventDefault(); t.click(); }
-      else if (K === 'Enter' && t.tagName === 'INPUT' && t.type !== 'checkbox') { e.preventDefault(); commit(t); }
+      else if (K === 'Enter' && ((t.tagName === 'INPUT' && t.type !== 'checkbox') || (t.tagName === 'TEXTAREA' && !e.shiftKey))) { e.preventDefault(); commit(t); } // Shift + Enter breaks a line
       else if (e.altKey && t.dataset.m != null && (K === 'ArrowUp' || K === 'ArrowDown')) { e.preventDefault(); moveMember(t.dataset.m, K === 'ArrowUp' ? -1 : 1); } });
     root.appendChild(panel);
   }

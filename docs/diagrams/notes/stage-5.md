@@ -576,7 +576,9 @@ ball and socket.
   added into the selected component (or a selected port's owner), else refused.
 - `connect` sets a connector's kind by nesting; a line to an interface is the picker's Realization or Usage (no second pick).
   It refuses a connector from an element to itself or its own port, and a delegation whose box end is not a port (it would
-  not be drawn). A connector with no kind is drawn and checked as an assembly.
+  not be drawn). A connector with no kind is drawn and checked as an assembly. A manifestation drawn from a component to an
+  artifact is added from the artifact, as on the deployment view; a realization, a component realization or a manifestation
+  whose ends break provided-ends, component-realization-ends or manifest-ends is refused in the rule's words (audit 20).
 - A class on a component view is drawn as the class type's rectangle with its stereotypes. A class's ports are added from
   the palette; its member rows are not ports.
 - `edits.remove`: Delete on a port deletes it from the model, said on the hint line (§12.2); in a mixed selection the rest
@@ -691,8 +693,8 @@ from, or settles what is not said above:
   between a target and one it holds, at any depth, which is drawn nowhere. Of the shared rules the type runs `manifest-ends` alone:
   `port-owner` is the component type's.
 - Hooks: `connect` adds a deployment drawn from a target to an artifact, or a manifestation from a component to an artifact,
-  the other way round (as the use case type starts an association at its actor), and refuses a deployment or a communication
-  path between ends that cannot hold it, and any line between a box and what it holds, at any depth ("shop-api.jar is
+  the other way round (as the use case type starts an association at its actor), and refuses a deployment, a manifestation
+  from anything but an artifact, or a communication path between ends that cannot hold it, and any line between a box and what it holds, at any depth ("shop-api.jar is
   already deployed on Java 21 runtime by nesting", "A communication path cannot join a node and what it holds") (`{ error }`,
   said on the hint line); `remove` with Shift + Delete on a target that
   owns something says how many elements go with it (§10.4). `owners`: an artifact's, a deployment specification's or a

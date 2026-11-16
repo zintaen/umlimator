@@ -288,7 +288,7 @@ messages are inline in the view's `edges`; changes and constraints are in its `t
 | `UmlTimingElementType` | `uml.Lifeline` |
 | `UmlTimingLineType` | `uml.Message` |
 | `UmlTimingLifelineProps` | `represents`, `states` (top to bottom), `stereotypes`, `tags` |
-| `UmlTimingMessageProps` | `sort` (`call`, `async`, `reply`), `replyTo`, `sentAt`, `receivedAt` |
+| `UmlTimingMessageProps` | `sort` (`call`, `async`, `reply`), `replyTo`, `sentAt`, `receivedAt`, `stereotypes` |
 | `UmlTimeline` | `unit`, `changes`, `constraints` |
 | `UmlTimingChange` | `{ id, lifeline, at, state }` |
 | `UmlTimingConstraint` | `{ id, type, from, to, label }`, `type` `uml.DurationConstraint` or `uml.TimeConstraint` |
@@ -345,7 +345,7 @@ messages are inline in the view's `edges`; changes and constraints are in its `t
 | `C4ViewType` | `c4.landscape`, `c4.context`, `c4.container`, `c4.component`, `c4.dynamic`, `c4.deployment` |
 | `C4ElementType` | `c4.Person`, `c4.SoftwareSystem`, `c4.Container`, `c4.Component`, `c4.DeploymentNode`, `c4.ContainerInstance`, `uml.Comment` |
 | `C4LineType` | `c4.Relationship` (its `label` the description), `uml.CommentLink` |
-| `C4ElementProps` | `description`, `technology`, `external`, `shape` (a card [`Shape`](./model-and-schema.md#shape)), `container` (an instance's container) |
+| `C4ElementProps` | `description`, `technology`, `external`, `shape` (a card [`Shape`](./model-and-schema.md#shape) other than `node`, which is the deployment view's: `box`, `person`, `robot`, `browser`, `window`, `terminal`, `mobile`, `cylinder`, `pipe`, `folder`, `document` or `hexagon`; any other name draws the default, `person` for a person and `box` for the rest), `container` (an instance's container) |
 | `C4RelationshipProps` | `technology` |
 
 ### SysML

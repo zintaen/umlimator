@@ -384,3 +384,17 @@ test('audit 19: New member on a stereotype refuses an operation, which the profi
   assert.equal(T.member.add('LOW', en).type, 'uml.EnumerationLiteral');
   assert.equal(T.member.add('rank(): Integer', en).type, 'uml.Operation', 'an enumeration keeps the class type\'s rows');
 });
+
+test('audit 20: the palette refuses a stereotype or an enumeration named as one the profile has (stereotype-names, classifier-names); another profile, a new name and no name are added', async () => {
+  const { readFileSync } = await import('node:fs');
+  const m = JSON.parse(readFileSync(new URL('../examples/bookshop-profile.json', import.meta.url))), v = m.views[0], E = t => T.elements.find(e => e.type === 'uml.' + t), at = { sel: ['conventions'] };
+  for (const name of ['Entity', 'entity', 'AggregateRoot'])
+    assert.deepEqual(T.edits.add(m, v, E('Stereotype'), name, at), { error: `BookshopConventions has a stereotype ${name.charAt(0).toLowerCase() + name.slice(1)} already: names meet with the first letter in either case` });
+  assert.deepEqual(T.edits.add(m, v, E('Enumeration'), 'entity', at), { error: 'BookshopConventions has a classifier named entity already' });
+  const m2 = apply(m, T.edits.add(m, v, E('Enumeration'), 'Level', at)), v2 = m2.views[0];
+  assert.deepEqual(T.edits.add(m2, v2, E('Enumeration'), 'Level', at), { error: 'BookshopConventions has a classifier named Level already' });
+  assert.ok(Array.isArray(T.edits.add(m2, v2, E('Stereotype'), 'level', at)), 'a stereotype named as an enumeration in another case: no rule meets');
+  for (const [type, name] of [['Stereotype', 'audited'], ['Stereotype', ''], ['Enumeration', ''], ['MetaclassReference', 'Class']]) {
+    const c = T.edits.add(m, v, E(type), name, at); assert.ok(Array.isArray(c), `${type} ${JSON.stringify(name)}`);
+    assert.deepEqual(validate(apply(m, c)).filter(p => p.level === 'error'), [], `${type} ${JSON.stringify(name)}`); }
+});

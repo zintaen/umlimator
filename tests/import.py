@@ -108,6 +108,25 @@ m, un = imp.read("plantuml", '@startuml\nSystem(a, "A")\nSystem(a, "Again")\nCon
                  'Rel(a, nope, "Lost")\n@enduml\n', "x")
 ok("C4 · named arguments, and a repeated alias and an unknown end reported",
    card(m, "b").get("sublabel") == "Go" and (line(m, "a", "b") or {}).get("sublabel") == "gRPC" and [w for w, _ in un] == [3, 6], (m, un))
+# audit 20: what a macro holds past what is read (a sprite, a link, a line's tags, an argument past the known ones) is said,
+# never dropped silently; an end not written or blank is said so, never as None or an empty name
+m, un = imp.read("plantuml", '@startuml\nPerson(u, "User", "A user", "person2", "VIP", "https://x")\nSystem(s, "Shop", $link="https://shop", $sprite="cart")\n'
+                 'Rel(u, s, "Buys", "HTTPS", "via web", "sprite", "urgent", "https://y")\nSystem_Boundary(b, "B", $link="https://b") {\n}\n'
+                 'Rel(u)\nRel(u, , "x")\nRel(, s)\nContainer(c, "C", "Go", "d", "", "", "", "", "ninth")\n@enduml\n', "x")
+ok("C4 · a sprite, a link, a line's tags and an argument past the known ones are said; an end not written or blank is said so (audit 20)",
+   un == [(2, "Person(u): $sprite=person2; $link=https://x are not imported"), (3, "System(s): $link=https://shop; $sprite=cart are not imported"),
+          (4, "Rel(u, s): $sprite=sprite; $tags=urgent; $link=https://y are not imported"), (5, "System_Boundary(b): $link=https://b is not imported"),
+          (5, "box b: holds no card, so it is not drawn"), (7, "Rel(u): it names no target"), (8, "Rel(u, ): its target is empty"),
+          (9, "Rel(, s): its source is empty"), (10, "Container(c): argument 9 (ninth) is not imported")]
+   and (line(m, "u", "s") or {}).get("what") == "via web" and "None" not in json.dumps(un), un)
+m, un = imp.read("structurizr", 'workspace {\n model {\n  u = person "User"\n  s = softwareSystem "S"\n  u -> s "Uses" "HTTPS" "Async,Critical"\n'
+                 '  s -> u "Tells" {\n   tags "Email"\n  }\n }\n}\n', "x")
+ok("structurizr · a relationship's tags, inline or in its block, are said, and the line drawn (audit 20)",
+   un == [(5, "u -> s: tags Async, Critical are not imported"), (6, "s -> u: tags Email are not imported")] and line(m, "u", "s") and line(m, "s", "u"), un)
+m, un = imp.read("mermaid", 'flowchart LR\n  A:::warn --> B\n  D & F:::y --> E:::x\n  A -->|"yes | no"| C\n  A -->|plain| D\n', "x")
+ok("mermaid · a :::class is said, as the typed reader says it; a quoted pipe text may hold | (audit 20)",
+   un == [(2, "A:::warn: a style class is not imported"), (3, "F:::y: a style class is not imported"), (3, "E:::x: a style class is not imported")]
+   and (line(m, "A", "C") or {}).get("label") == "yes | no" and (line(m, "A", "D") or {}).get("label") == "plain" and line(m, "F", "E"), (un, m["edges"]))
 dsl = 'workspace "Shop" {\n  model {\n    u = person "User"\n    s = softwareSystem "Shop" {\n      w = container "Web"\n    }\n    u -> w "Uses"\n  }\n}\n'
 m, un = imp.read("structurizr", dsl, "x")
 ok("structurizr · no views: a landscape and a view per system, the line implied where its end is inside",

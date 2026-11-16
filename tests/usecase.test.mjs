@@ -323,3 +323,21 @@ test('audit 17: an extend\'s name and «stereotypes», drawn on its line, are in
   assert.ok(aria.startsWith(was.replace(/(, at |, when |$).*/, '') + ': «optional» voucher path'), aria);
   assert.ok(describe(m, V.id).includes(aria), 'describe() says the line as its aria does');
 });
+
+test('audit 20: the use case rules count a view\'s own lines (view.edges objects), which the view draws; deleting an extension point takes a view\'s own extend that named only it', () => {
+  const m = structuredClone(UC), v = m.views[0];
+  v.edges = [...m.edges.map(e => e.id), L('own-inc', 'Include', 'shopper', 'browse'), L('own-ext', 'Extend', 'gift-wrap', 'check-out'), L('own-assoc', 'Association', 'browse', 'track'),
+    L('own-cyc1', 'Include', 'browse', 'track'), L('own-cyc2', 'Include', 'track', 'browse')];
+  const g = layout(m, v.id); assert.ok(['own-inc', 'own-ext', 'own-assoc'].every(id => g.edges.some(e => (e._id ?? e.id) === id)), 'drawn');
+  const got = validate(m).filter(p => p.level !== 'info'), at = id => `views[0].edges[${v.edges.findIndex(e => e.id === id)}]`;
+  assert.deepEqual(got.map(p => [p.rule, p.path]), [['include-ends', at('own-inc')], ['extend-points', at('own-ext')], ['association-ends', at('own-assoc')], ['include-cycle', at('own-cyc1')]]);
+  // the same lines in the model: the same rules
+  const same = structuredClone(m); same.edges.push(...same.views[0].edges.filter(e => typeof e === 'object')); same.views[0].edges = same.views[0].edges.map(e => (typeof e === 'object' ? e.id : e));
+  assert.deepEqual(validate(same).filter(p => p.level !== 'info').map(p => p.rule), got.map(p => p.rule));
+  // Shift + Delete on the extension point a view's own extend names alone: the extend goes too
+  const x = structuredClone(UC), ext = x.edges.find(e => e.type === 'uml.Extend'); x.edges = x.edges.filter(e => e !== ext);
+  x.views[0].edges = [...x.edges.map(e => e.id), { ...ext, id: 'own-ext' }];
+  const r = T.edits.remove(x, x.views[0], ext.props.extensionPoints, true);
+  assert.deepEqual(r.commands.map(c => c.id), [...ext.props.extensionPoints, 'own-ext']);
+  assert.deepEqual(validate(apply(x, r.commands)).filter(p => p.level === 'error'), []);
+});

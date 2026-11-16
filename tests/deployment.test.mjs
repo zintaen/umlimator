@@ -394,3 +394,13 @@ test('audit 15: an interface or actor in a deployment view is drawn with its key
   assert.deepEqual(['i', 'a', 'c'].map(id => [n(id).shape, n(id).stereotypes, n(id).aria]),
     [['classifier', ['interface'], 'Interface Orders'], ['classifier', ['actor'], 'Actor Clerk'], ['classifier', [], 'Class Order']]);
 });
+
+test('audit 20: a manifestation from anything but an artifact, not drawn from a component to an artifact, is refused (manifest-ends); every pair the tool accepts passes the rule', () => {
+  const v = DEP.views[0], t = T.lines.find(l => l.type === 'uml.Manifestation');
+  assert.deepEqual(T.edits.connect(DEP, v, 'edge-node', 'shop-api', null, t), { error: 'A manifestation runs from an artifact' });
+  assert.deepEqual(T.edits.connect(DEP, v, 'shop-api', 'edge-node', null, t), { error: 'A manifestation runs from an artifact' });
+  assert.equal(T.edits.connect(DEP, v, 'shop-api-jar', 'shop-api', null, t), null, 'from the artifact: the default');
+  for (const a of v.nodeIds) for (const b of v.nodeIds) { if (a === b) continue; const r = T.edits.connect(DEP, v, a, b, null, t); if (r && r.error) continue;
+    const cmds = r || [{ op: 'add', element: { id: 'zz', type: t.type, from: a, to: b }, view: v.id }], m2 = apply(DEP, cmds);
+    assert.deepEqual(validate(m2).filter(p => p.level === 'error' && p.rule === 'manifest-ends' && p.ids.includes(cmds[0].element.id)), [], `${a} -> ${b}`); }
+});

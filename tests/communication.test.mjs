@@ -427,3 +427,13 @@ test('audit 19: a message\'s stereotypes are drawn «…» before its label, sai
   assert.deepEqual(T.edits.rename(x, v, m.id, row.label), [], 'its drawn text back: nothing');
   assert.deepEqual(T.edits.rename(x, v, m.id, row.label.replace(m.label, 'pay()')), [{ op: 'set', id: m.id, path: 'label', value: 'pay()' }]);
 });
+
+test('audit 20: the PDF\'s Lines row of a message reads its «stereotypes» before its label, as the picture and describe() do', async () => {
+  const { tablesOf } = await import('../src/page/print.js');
+  const m = structuredClone(EX), v = VIEW(m), msgs = [...(v.edges || []), ...m.edges].filter(e => e && typeof e === 'object' && e.type === 'uml.Message' && e.label);
+  const [msg, bare] = msgs; msg.props = { ...(msg.props || {}), stereotypes: ['secure'] };
+  const c = mapContext(m), rows = tablesOf(c, c.V[v.id], c.buildGeo(v.id)).find(t => t.cls === 'lines').rows.join('\n');
+  assert.ok(describe(m, v.id).includes(`«secure» ${msg.label}`));
+  assert.ok(rows.includes(`<td>«secure» ${msg.label}</td>`), rows);
+  assert.ok(rows.includes(`<td>${bare.label}</td>`), 'a message with none: its label as before');
+});

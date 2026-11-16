@@ -483,3 +483,15 @@ test('audit 19: a message\'s stereotypes are drawn «…» before its label (its
   assert.deepEqual(SEQ_TYPE.edits.rename(m, v, el.id, '«secure» pay()'), [{ op: 'set', id: el.id, path: 'label', value: 'pay()' }]);
   assert.equal(SEQ_TYPE.edits.rename(SEQ, SEQ.views[0], el.id, 'pay()'), null, 'with none: the default, as before');
 });
+
+test('audit 20: the PDF\'s Lines row of a message reads its «stereotypes» before its label, as the picture and describe() do', async () => {
+  const { tablesOf } = await import('../src/page/print.js');
+  const m = structuredClone(SEQ), v = V(m), all = [...v.edges, ...(m.edges || [])].filter(e => e && typeof e === 'object' && e.type === 'uml.Message');
+  const msg = all.find(e => e.label), bare = all.find(e => e !== msg && e.label);
+  msg.props = { ...(msg.props || {}), stereotypes: ['secure', 'audited'] };
+  const rows = () => { const c = mapContext(m); return tablesOf(c, c.V[v.id], c.buildGeo(v.id)).find(t => t.cls === 'lines').rows.join('\n'); };
+  const want = `«secure» «audited» ${msg.label}`;
+  assert.equal(layout(m, v.id).edges.find(e => e._id === msg.id).label, want, 'drawn');
+  assert.ok(rows().includes(`<td>${want}</td>`), rows());
+  assert.ok(rows().includes(`<td>${bare.label}</td>`), 'a message with none: its label as before');
+});

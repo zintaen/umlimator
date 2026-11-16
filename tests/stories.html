@@ -227,6 +227,29 @@ try {
   window.confirm = () => { asked++; return true; }; escape();
   check('…Esc asks too, and Yes closes it', asked === 2 && !rec(), asked);
   window.confirm = conf;
+
+  // audit 20: a story whose title, caption, duration or camera zoom is an object with a toString key ({"toString": 1}, valid
+  // JSON) plays with those left out, as validate() says; it stayed entering, with an unhandled rejection. So does the PDF's
+  // list of rules print a rule whose title is one
+  {
+  const rejected = [], onRej = e => rejected.push(String(e.reason && e.reason.message || e.reason)); window.addEventListener('unhandledrejection', onRej);
+  const T = () => JSON.parse('{"toString":1}'), HOST = { ...TINY, rules: [{ id: 'r', title: T(), from: 'a', to: 'c' }],
+    stories: [{ id: 's', title: T(), steps: [{ view: 'v', caption: T(), duration: T(), camera: { card: 'b', zoom: T() } }, { view: 'v', caption: 'two', camera: { x: 0, y: 0, zoom: T() } }] }] };
+  const el4 = document.getElementById('b'), h4 = render(el4, HOST), sr4 = el4.querySelector('.umlimator').shadowRoot;
+  const p4 = h4.play('s', { auto: false }); await until(() => p4 && p4.state === 'paused');
+  const st4 = p4 && p4.state, bar4 = (sr4.querySelector('.um-story .um-st') || {}).textContent; p4 && p4.next(); await until(() => p4.step === 1 && p4.state === 'paused');
+  check('audit 20: a story whose title, caption, duration and camera zoom are objects with a toString key plays, those left out; no unhandled rejection',
+    st4 === 'paused' && p4.step === 1 && p4.state === 'paused' && /^s · 1 \/ 2/.test(bar4) && !rejected.length, [st4, bar4, p4 && p4.step, p4 && p4.state, rejected]);
+  h4.destroy();
+  const fr = document.createElement('iframe'); fr.style.cssText = 'width:900px;height:600px'; document.body.appendChild(fr);
+  fr.contentDocument.open(); fr.contentDocument.write('<!doctype html><meta charset="utf-8"><body><div id="p" style="width:900px;height:600px"></div>'); fr.contentDocument.close();
+  const fw = fr.contentWindow, fRej = []; fw.addEventListener('unhandledrejection', e => fRej.push(String(e.reason && e.reason.message || e.reason)));
+  fw.eval(`import(${JSON.stringify(new URL('../lib/umlimator.js', location.href).href)}).then(U => U.mountPage(document.getElementById('p'), ${JSON.stringify(HOST)}, { instant: true, params: new URLSearchParams('pdf=1') }))`);
+  await until(() => (fw.document.getElementById('um-pdf') && /<b>r<\/b>/.test(fw.document.getElementById('um-pdf').innerHTML)) || fRej.length, 10000);
+  const pdf = fw.document.getElementById('um-pdf');
+  check('audit 20: the PDF lists a rule whose title is an object with a toString key, by its id', !!pdf && /<b>r<\/b>/.test(pdf.innerHTML) && !fRej.length, [!!pdf, fRej]);
+  fr.remove(); window.removeEventListener('unhandledrejection', onRej);
+  }
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

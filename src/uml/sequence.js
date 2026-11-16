@@ -427,6 +427,8 @@ const SEQ_TYPE = registerDiagramType('uml.sequence', {
   validate: sqProblems,
   rules: SQ_RULES,
   describe: sqDescribe,
+  // the PDF's Lines row of a message: its drawn text, «stereotypes» first (audit 20); a view's own message first, as drawn
+  text: (model, view, id) => { const e = [...SQ_ARR(view && view.edges), ...SQ_ARR(model && model.edges)].find(x => SQ_OBJ(x) && x.id === id); return e && e.type === 'uml.Message' ? sqMsgText(e) || null : null; },
   paths: sqPaths,
   member: SQ_MEMBER,
   edits: { connect: sqConnect, moveTo: sqMoveTo, wrap: sqWrap, add: sqAdd, remove: sqRemove, rename: sqRename },

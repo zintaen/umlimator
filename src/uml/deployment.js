@@ -207,7 +207,7 @@ function dpOwners(model, x) {
   return DP_ARR(model.nodes).filter(n => DP_OBJ(n) && DP_TARGETS.includes(n.type)).map(n => ({ id: n.id, label: dpName(n) }));
 }
 // connect: a deployment drawn from a target to an artifact, or a manifestation from a component to an artifact, is added from
-// the artifact; a deployment or a communication path between ends it cannot join, or any line between a box and what it holds
+// the artifact; a deployment, a manifestation or a communication path between ends it cannot join, or any line between a box and what it holds
 // (never drawn, dpLines), is refused, said on the hint line
 function dpConnect(model, view, from, to, at, line) {
   const I = dpIndex(model), ty = id => (I.at.get(id) || {}).type, t = DP_OBJ(line) ? line.type : null;
@@ -215,6 +215,7 @@ function dpConnect(model, view, from, to, at, line) {
     return { error: t === 'uml.Deployment' && DP_ARTIFACTS.includes(ty(x)) ? `${nm(x)} is already deployed on ${nm(o)} by nesting` : `A ${(DP_LINE_WORD[t] || 'line').toLowerCase()} cannot join a node and what it holds` }; }
   const flip = (t === 'uml.Deployment' && DP_TARGETS.includes(ty(from)) && DP_ARTIFACTS.includes(ty(to))) || (t === 'uml.Manifestation' && ty(from) === 'uml.Component' && DP_ARTIFACTS.includes(ty(to)));
   if (t === 'uml.Deployment' && !flip && !(DP_ARTIFACTS.includes(ty(from)) && DP_TARGETS.includes(ty(to)))) return { error: 'A deployment runs from an artifact to a node, a device or an execution environment' };
+  if (t === 'uml.Manifestation' && !flip && !DP_ARTIFACTS.includes(ty(from))) return { error: 'A manifestation runs from an artifact' }; // manifest-ends (audit 20)
   if (t === 'uml.CommunicationPath' && (!DP_TARGETS.includes(ty(from)) || !DP_TARGETS.includes(ty(to)) || from === to)) return { error: 'A communication path joins two nodes, devices or execution environments' };
   if (!flip) return null;
   const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });

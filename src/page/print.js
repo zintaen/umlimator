@@ -22,7 +22,7 @@ function printDoc(X, model, Q) {
   const { D, views, V, N, chain, viewEdges, geoCache } = X.ctx();
   const only = (Q.get('views') || '').split(',').filter(Boolean).map(p => { try { return decodeURIComponent(p); } catch { return p; } }), want = v => !only.length || only.some(p => p.endsWith('*') ? v.id.startsWith(p.slice(0, -1)) : v.id === p);
   const shown = views.filter(want).map(v => [v, X.standalone(1, v.id)]).filter(([, s]) => s), on = new Set(shown.map(([v]) => v.id));
-  const rs = shown.length ? arrOf(model.rules).filter(r => r && typeof r === 'object' && (r.from || r.to || r.noCycles)) : []; // as rules() reads them; none without a view
+  const rs = shown.length ? arrOf(D.rules).filter(r => r && typeof r === 'object' && (r.from || r.to || r.noCycles)) : []; // as rules() reads them; none without a view, read as mapContext reads them (audit 20)
   const broken = rules(model).filter(b => on.has(b.view)); // judged in the views printed, as the document says
   const [pw, ph] = Q.get('paper') === 'letter' ? [279.4, 215.9] : [297, 210], title = esc(D.title || 'Map'); // the paper across, in mm
   const count = (k, w, ws = w + 's') => `${k} ${k === 1 ? w : ws}`, T = v => esc(v.title || v.id), full = c => Object.assign(c, { full: true });
