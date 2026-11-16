@@ -71,7 +71,7 @@ function mapContext(model, opts = {}) {
   edgeIds(D.edges); D.views.forEach(v => { if (Array.isArray(v.edges)) edgeIds(v.edges); });
   const views = D.views.filter(v => v.id);
   const nodes = [...(D.nodes || []), ...views.flatMap(v => v.nodes || [])];
-  views.forEach(v => { lists(v, ['nodeIds', 'containers', 'intake']); [...(v.containers || []), ...(Array.isArray(v.lanes) ? v.lanes : [])].forEach(c => lists(c, ['nodeIds'])); Object.values(v.nodeOverrides || {}).forEach(o => lists(o, ['verbs'])); }); nodes.forEach(n => lists(n, ['verbs']));
+  views.forEach(v => { lists(v, ['nodeIds', 'containers', 'intake', 'stepIds', 'tour', 'browserOrder']); [...(v.containers || []), ...(Array.isArray(v.lanes) ? v.lanes : [])].forEach(c => lists(c, ['nodeIds'])); Object.values(v.nodeOverrides || {}).forEach(o => lists(o, ['verbs'])); }); nodes.forEach(n => lists(n, ['verbs']));
   // by id, with no prototype: a node or view named constructor is no view an element opens (M3, audit 7)
   const N = byId(nodes.map(n => [n.id, n]));
   const V = byId(views.map(v => [v.id, v]));
