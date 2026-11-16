@@ -590,3 +590,34 @@ test('audit 17: member text that both starts with << and ends with >> annotates 
   assert.deepEqual(read(text).model.nodes, m.nodes);
   assert.deepEqual(read(write(read('classDiagram\nclass Shape { <<interface>> }').model)).model.nodes.map(n => n.type), ['uml.Interface']);
 });
+
+test('a blank %% id: or %% link-id: is no hint: the element takes its derived id, and the comment is said (audit 19)', () => {
+  for (const [text, ids] of [
+    ['classDiagram\nclass A\nclass B\n%% id:\nA --> B', ['A-B']],
+    ['classDiagram\nclass A {\n%% id:\n+String name\n}', ['A.name']],
+    ['classDiagram\nclass A\n%% id:\nnote for A "n"', ['note-1', 'note-1-link']],
+    ['classDiagram\nclass A\n%% link-id:\nnote for A "n"', ['note-1-link']],
+  ]) {
+    const { model, report } = read(text), json = JSON.stringify(model);
+    assert.deepEqual(validate(model).filter(p => p.level === 'error'), [], text);
+    assert.ok(!json.includes('"id":""'), text);
+    for (const id of ids) assert.ok(json.includes(`"id":"${id}"`), `${text}: ${id}`);
+    assert.ok(report.some(r => r.status === 'skipped' && /^%% (id|link-id): holds no id/.test(r.message)), text);
+  }
+});
+
+test('a relation label ending in } reads back as written: the writer writes that } as #125;, and a member text ending in one is not written (audit 19)', () => {
+  for (const label of ['a}', '}', 'a }', 'x}}', 'returns {}']) {
+    const m = read('classDiagram\nclass A\nclass B\nA --> B : x').model;
+    m.edges[0].label = label;
+    const back = read(write(m));
+    assert.equal(back.model.edges[0].label, label);
+    assert.deepEqual(back.report, [], label);
+  }
+  const m = read('classDiagram\nclass A {\n+x\n}\nclass B\nA --> B').model;
+  m.nodes[0].members[0].label = 'a}';
+  const text = write(m), back = read(text);
+  assert.match(text, /%% not written: A\.x/);
+  assert.deepEqual(back.report, []);
+  assert.deepEqual(back.model.edges.map(e => [e.from, e.to]), [['A', 'B']]);
+});

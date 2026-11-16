@@ -404,3 +404,18 @@ test('audit 18: a renamed participant, or a %% id: that is taken or holds "->", 
   assert.deepEqual(said('A->>B: x\n%% id: A\n%% operand-id: B\nalt x\nA->>B: y\n%% id: A-B\nelse\nA->>B: z\nend')[1],
     ['5 %% id: A is taken, so the alt is A-2', "5 %% operand-id: B is taken, so the alt's operand 1 is B-2", "8 %% id: A-B is taken, so the alt's operand 2 is A-B-3"]);
 });
+
+test('a blank %% id: or %% operand-id: is no hint: the element takes its derived id, and the comment is said (audit 19)', () => {
+  for (const [text, ids] of [
+    ['sequenceDiagram\nparticipant Alice\nparticipant Bob\n%% id:\nAlice->>Bob: Hello', ['Alice-Bob']],
+    ['sequenceDiagram\n%% id:\nparticipant Alice\nAlice->>Alice: x', ['Alice']],
+    ['sequenceDiagram\nparticipant A\n%% id:  \nloop every minute\nA->>A: x\nend', ['loop-1', 'loop-1.1']],
+    ['sequenceDiagram\nparticipant A\n%% operand-id:\nalt ok\nA->>A: x\nend', ['alt-1.1']],
+  ]) {
+    const { model, report } = read(text), json = JSON.stringify(model);
+    assert.deepEqual(validate(model).filter(p => p.level === 'error'), [], text);
+    assert.ok(!json.includes('"id":""'), text);
+    for (const id of ids) assert.ok(json.includes(`"id":"${id}"`), `${text}: ${id}`);
+    assert.ok(report.some(r => r.status === 'skipped' && /^%% (id|operand-id): holds no id/.test(r.message)), text);
+  }
+});

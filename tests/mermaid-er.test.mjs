@@ -324,3 +324,17 @@ test('a reference to a column the text does not hold is named by the writer and 
   assert.equal(hand.model.nodes[1].members[0].props.references, undefined);
   assert.deepEqual(hand.report.filter(x => x.status === 'skipped').map(x => `${x.line} ${x.message}`), ['6 %% references: A.code on B.a: no column read here is A.code']);
 });
+
+test('a blank %% id: is no hint: the entity, column or relationship takes its derived id, and the comment is said (audit 19)', () => {
+  for (const [text, ids] of [
+    ['erDiagram\n%% id:\nA ||--o{ B : has', ['A-B']],
+    ['erDiagram\n%% id:\nA {\nint x\n}', ['A', 'A.x']],
+    ['erDiagram\nA {\n%% id:\nint x\n}', ['A.x']],
+  ]) {
+    const { model, report } = read(text), json = JSON.stringify(model);
+    assert.deepEqual(validate(model).filter(p => p.level === 'error'), [], text);
+    assert.ok(!json.includes('"id":""'), text);
+    for (const id of ids) assert.ok(json.includes(`"id":"${id}"`), `${text}: ${id}`);
+    assert.ok(report.some(r => r.status === 'skipped' && /^%% id: holds no id/.test(r.message)), text);
+  }
+});
