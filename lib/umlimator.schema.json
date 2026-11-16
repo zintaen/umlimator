@@ -609,7 +609,7 @@
          "description": "c4.ContainerInstance (0.24.0): the id of the container it is an instance of (a declared reference: deleting the container deletes its instances)."
         },
         "shape": {
-         "description": "A C4 element (0.24.0): one of the map's card shapes; a person is person and every other element box without it.",
+         "description": "A C4 element (0.24.0): one of the map's card shapes other than node (the deployment view's): box, person, robot, browser, window, terminal, mobile, cylinder, pipe, folder, document or hexagon; any other name draws the default, person for a person and box for every other element.",
          "examples": [
           "person",
           "robot",
