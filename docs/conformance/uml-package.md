@@ -71,7 +71,7 @@ when it is closed; a box takes its place from what it holds.
 Measured on `examples/bookshop-packages.json` (0.19.0): `umlimator.py stills` (SVG and PNG, light and dark) and
 `umlimator.py pdf` on its rendered page. Each file was opened and looked at.
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
 |---|---|---|---|
 | Open packages as boxes with their tabs, a box in a box, closed packages as folders | Yes | Yes | Yes, in vectors |
 | Classifiers by their names and keywords; qualified names | Yes | Yes | Yes |

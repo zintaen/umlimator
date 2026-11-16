@@ -22,7 +22,8 @@ function registerDiagramType(name, def = {}) {
      containers. A drop into, out of or between boxes emits reparent, and removes the node's pin; an edit that changes the box
      a shown element is drawn in lays the view out again (render.js withPlaces). None: no boxes, as before.
    - owners(model, element) -> [{ id, label }]: the properties panel's Owner field for that element, a select of these and
-     "none", which emits reparent (the element itself and what it holds are left out; its owner is added when not offered).
+     "none", which emits reparent, or what the type's edits.owner returns (src/typed/edit.js) (the element itself and what it
+     holds are left out; its owner is added when not offered).
      None, or not a list: no Owner field.
    - layout.pins false: pos is {}, no ranking; layout.rank false: pos is the view's pins alone, no ranking (risks.md P1).
      reroute is no registry field: reroute: false goes in the dg the type's own layout passes to layoutTyped (src/typed/layout.js).

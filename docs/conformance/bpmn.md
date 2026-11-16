@@ -101,7 +101,7 @@ Layout limits, measured on the example and `tests/bpmn-stress.json`:
 Measured on `examples/bookshop-order-to-shipment.json` (0.27.0); the PDF's text read back by `tests/cli.py`, the BPMN XML
 by `tests/import.py` and `tests/bpmn-xml.test.mjs`.
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` | BPMN XML: `umlimator.py export --format bpmn` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` | BPMN XML: `umlimator.py export --format bpmn` |
 |---|---|---|---|---|
 | Pools, lanes, shapes, markers, lines and names | Yes | Yes | Yes, in vectors | Every element of the subset, with its process, lane set, category and documentation |
 | Positions and sizes | As drawn | As drawn | As drawn | The type's layout of the view `--view` names (the first `bpmn` view by default): a pool or lane its band, a node its box, a line its points. Every other view's diagram on a plain grid. Not from any file read before |

@@ -469,3 +469,12 @@ test('audit 17: a Structurizr dynamic view at container level draws its implied 
   assert.deepEqual(layout(r.model, 'inside').edges.map(e => e._id), ['web-app-orders']);
   assert.ok(!r.report.some(x => x.path === 'model' && /implied/.test(x.message)), 'the one implied relationship is read');
 });
+
+test('audit 18: the deployment view\'s describe() header counts a comment link on its own, not as a relationship', () => {
+  const m = structuredClone(C4), d = m.views[V(PV)], inst = d.nodeIds.find(id => m.nodes.find(n => n.id === id).type === 'c4.ContainerInstance');
+  const before = describe(C4, PV).split('\n')[0];
+  m.nodes.push({ id: 'note1', type: 'uml.Comment', label: 'Prices in EUR' });
+  m.edges.push({ id: 'note1-link', type: 'uml.CommentLink', from: 'note1', to: inst }); d.nodeIds.push('note1');
+  const head = describe(m, PV).split('\n')[0];
+  assert.equal(head, before.replace(/(\d+) elements and (\d+) relationships\./, (_, n, r) => `${+n + 1} elements and ${r} relationships, and 1 comment link.`));
+});

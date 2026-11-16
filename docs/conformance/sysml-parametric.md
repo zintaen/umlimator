@@ -65,14 +65,14 @@ Layout limits, measured on `examples/ebike-range.json` and `tests/parametric-str
 
 Measured on `examples/ebike-range.json` (0.25.0); the PDF's text read back by `tests/cli.py`.
 
-| | SVG | PNG | PDF | Mermaid |
+| What is drawn | SVG | PNG | PDF | Mermaid |
 |---|---|---|---|---|
 | The frame, constraint properties, parameters, values, bindings | Yes | Yes | Yes, in vectors | No writer |
 | Expressions | Cut to the box | Cut | Cut; whole in the Elements table | |
 | The header | Cut to the frame | Cut | Cut | |
 | The legend | No | No | Yes: binding | |
 | Accessible names | Kept on nodes, lines' `<title>` removed | None | None | |
-| Tables | None | None | "Elements": the subject's values and constraint properties as rows, then each binding by its ends ("Binding from value ecoRange to parameter range of eco") | |
+| Tables | None | None | "Elements": the subject's values and constraint properties as rows; "Lines": each binding once, its text by its ends ("ecoRange to range of eco"), the subject's rows not listing it again (audit 18) | |
 
 ## Accessibility
 

@@ -56,7 +56,7 @@ instance to itself is drawn as a loop, and two links between one pair each keep 
 Measured on `examples/order-objects.json` (0.19.0): `umlimator.py stills` (SVG and PNG, light and dark) and
 `umlimator.py pdf` on its rendered page. Each file was opened and looked at.
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
 |---|---|---|---|
 | Instances, heads underlined, every slot row | Yes | Yes | Yes, in vectors |
 | Links, their names, the association's name, roles by each end | Yes | Yes | Yes |

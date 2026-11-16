@@ -19,6 +19,8 @@ import { arrOf } from '../map/validate.js';
      card's pin, as before, unless the type has layout.pins false.
    - wrap(model, view, ids, kind): W, then a picker of the type's `wraps` (strings, or entries with a label).
    - add(model, view, entry, label, at): the palette and N, once the name is typed; at as for L, with sel, the ids selected.
+   - owner(model, view, id, parent): the properties panel's Owner field set to parent (null: none). Null: reparent, and the
+     removal of a pin it had, as before (a BPMN activity's boundary events move with it, audit 18).
    - remove(model, view, ids, fromModel): Delete (fromModel false), Shift + Delete, the panel's buttons, a member row's ✕ and the outline's ✕.
    - rename(model, view, id, text): F2 or a double-click on a selected element, Enter with the text typed (I.label). Null:
      set label, as before (notes/stage-4.md §12.1). An id may be a geometry id no element has (a port on a part,
@@ -89,6 +91,7 @@ TYPED.edit = (I, c) => {
     const vs = arrOf(model().views).filter(v => isRec(v) && v.diagram === t.opens);
     choose(vs.map(v => v.title ?? v.id), i => emit([{ op: 'set', id, path: 'opensView', value: vs[i].id }]), 'Opens view', id); return true; }
   // the hook is given a line's geometry ids too ('owner->child', a type's derived line, sysml-requirement.md); the core's delete only element ids
+  I.owner = (id, parent) => { const h = hook('owner'), dflt = () => base.owner(id, parent); return h && can('move') ? ran(h(model(), view(), id, parent), dflt) : dflt(); };
   I.remove = (fromModel, ids) => { const h = hook('remove'), all = ids || [...new Set([...c.picks(), ...api.picked().flatMap(r => r && r.type === 'edge' ? arrOf(r.ids) : [])])], dflt = () => base.remove(fromModel, ids);
     return h && can('delete') && all.length ? ran(h(model(), view(), all, !!fromModel), dflt) : dflt(); };
   function wrap(ids) { // W: the picker of the type's wraps, under the first card selected, else under the far end of the first line
