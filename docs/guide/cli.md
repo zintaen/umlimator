@@ -7,7 +7,7 @@ models, imports diagrams you already have, and compares versions.
 `pdf`; Node 18+ for `diff`, `drift`, `trace` and `mcp`. Get it by cloning the repository at a release tag:
 
 ```bash
-git clone --depth 1 --branch v0.41.0 https://github.com/zintaen/umlimator.git
+git clone --depth 1 --branch v0.42.0 https://github.com/zintaen/umlimator.git
 ```
 
 A command that fails leaves its previous output as it was.
