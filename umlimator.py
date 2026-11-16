@@ -47,7 +47,7 @@ def visual_cmd(tmp, *args):
            "def load(name, path): s = importlib.util.spec_from_file_location(name, path); m = importlib.util.module_from_spec(s); s.loader.exec_module(m); return m\n"
            "v, u = load('visual', sys.argv[1]), load('umlimator', sys.argv[2]); v.TEMPLATE = pathlib.Path(sys.argv[3])\n"
            "check = v.validate_map; v.validate_map = lambda d: u.not_objects(d) or check(u.upstream_view(d))\n"
-           "w = v.write_page; v.write_page = lambda out, data: (w(out, data), u.data_lt(out))\n"
+           "v.write_page = lambda out, data: u.write_page(v, out, data)\n"
            "sys.argv = [sys.argv[1]] + sys.argv[4:]; v.main()")
     # -I: no folder of the caller's on sys.path, so a base64.py where it runs (a mapped repository, a pull request) never loads
     return [sys.executable, "-I", "-c", run, str(VISUAL), str(Path(__file__).resolve()), str(page), *args]
@@ -57,6 +57,18 @@ def script_json(x):
     """`x` as JSON to sit in a <script> block: every '<' escaped (the same value), so text such as '<!--' then '<script'
     in a label never opens a state where the block's own </script> no longer closes it (audit 8)."""
     return json.dumps(x, ensure_ascii=False).replace("<", "\\u003c")
+
+
+def write_page(v, out, data):
+    """upstream's write_page (visual.py `v`), with the model and the title filled in one pass: upstream fills the title after
+    the model is in, so model text holding __VISUAL_TITLE__ took the title, and a backslash in it left the data block no
+    JSON (audit 20). Then data_lt."""
+    t = v.TEMPLATE.read_text(encoding="utf8")
+    if v.PLACEHOLDER not in t:
+        sys.exit("template placeholder missing")
+    fill = {v.PLACEHOLDER: json.dumps(data, ensure_ascii=False).replace("</", "<\\/"), "__VISUAL_TITLE__": v.escape(data.get("title", "Visual"))}
+    Path(out).write_text(re.sub("|".join(map(re.escape, fill)), lambda x: fill[x.group(0)], t), encoding="utf8")
+    data_lt(out)
 
 
 def data_lt(out):
@@ -77,6 +89,8 @@ def not_objects(d):
     out += ["stories is not a list"] if d.get("stories") is not None and not isinstance(d["stories"], list) else []
     out += [f"stories[{i}] is not an object" if not isinstance(x, dict) else f"stories[{i}].steps is not a list"
             for i, x in enumerate(lst(d.get("stories"))) if not isinstance(x, dict) or x.get("steps") is not None and not isinstance(x["steps"], list)]
+    # a story's id is a name the page and MCP's play_story and refit key on: a list there ended MCP in an internal error (audit 20)
+    out += ids("stories", d.get("stories"), ("id",))
     out += ["meta is not an object"] if "meta" in d and not isinstance(d["meta"], dict) else []
     # upstream escapes the page's title and reads authors as an object: a number or a list there ended in a traceback (audit 18)
     out += ["title is not a string"] if not name(d.get("title")) else []
@@ -341,6 +355,8 @@ def read_json(path, model=True):
         sys.exit(f"cannot read {path} ({e.strerror or e})")
     except ValueError as e:
         sys.exit(f"{path} is not valid JSON ({e})")
+    except RecursionError:  # too deep for Python's parser, as import says it (audit 20)
+        sys.exit(f"{path} nests too deep to read")
     if model and not isinstance(m, dict):
         sys.exit(f"{path} is not a model: its JSON is not an object")
     return m
@@ -671,12 +687,13 @@ def diff_page(before, after, near, out, stills=None):
 
 def model_of(text):
     """A file's bytes as (its map model, or None; why it is not JSON, or None). json.loads reads UTF-8 (a BOM too),
-    UTF-16 and UTF-32; bytes that are none of them are not JSON (UnicodeDecodeError is a ValueError)."""
+    UTF-16 and UTF-32; bytes that are none of them are not JSON (UnicodeDecodeError is a ValueError). JSON too deep for
+    Python's parser is a RecursionError: said, not a traceback that ends the summary of every other file (audit 20)."""
     if text is None:
         return None, None
     try:
         m = json.loads(text)
-    except ValueError as e:
+    except (ValueError, RecursionError) as e:
         return None, e
     return (m if isinstance(m, dict) and isinstance(m.get("nodes"), list) and isinstance(m.get("views"), list) else None), None
 
@@ -694,15 +711,27 @@ def diff_since(a):
         sys.exit(f"diff --base: --out {out} is a file: name a folder for the pages and summary.md")
     out.mkdir(parents=True, exist_ok=True)
     done, md, stems = [], ["<!-- umlimator-diff -->", "### Map changes", ""], set()
+    # a path (or, folder=True, its folder) that resolves inside the checkout with no symbolic link on the way below its top
+    inside = lambda p, folder=False: (q := p.parent if folder else p).exists() and (q.is_dir() or not folder) and q.resolve().is_relative_to(top.resolve()) \
+        and not any(x.is_symlink() for x in [q, *q.parents] if x.is_relative_to(top) and x != top)
     for name in filter(None, (changed.stdout + new.stdout).split("\0")):
         old = subprocess.run(["git", "show", f"{a.base}:{name}"], capture_output=True)  # bytes: a file need not be UTF-8
-        texts = (old.stdout if old.returncode == 0 else None, (top / name).read_bytes() if (top / name).is_file() else None)
         fname = flat(name.replace("`", "'"), code=True)  # the file's name in the summary: a code span of its own
+        # a model file that is a symbolic link, or sits in a folder that is one, or resolves outside the checkout, is not
+        # read: a pull request could point it at another checkout's file, whose labels and logos would go into the comment
+        # and the page (audit 20, the security review)
+        if (top / name).is_file() and not inside(top / name):
+            why = "it is a symbolic link, or resolves outside the checkout: not read"
+            done.append({"file": name, "error": why})
+            md += [f"**`{fname}`**: cannot be read: {why}", ""]
+            continue
+        texts = (old.stdout if old.returncode == 0 else None, (top / name).read_bytes() if (top / name).is_file() else None)
         (before, e1), (after, e2) = model_of(texts[0]), model_of(texts[1])
         # a model that no longer parses (a conflict marker, a cut) is a change to say, not a file to skip; other JSON that
         # does not parse (a tsconfig.json with comments) is not a model
-        why = [f"{at} is not valid JSON ({e})" for at, e, t, other in ((f"its version at {a.base}", e1, texts[0], after), ("it", e2, texts[1], before))
-               if e and (other or b'"nodes"' in t and b'"views"' in t)]
+        why = [f"{at} nests too deep to read" if isinstance(e, RecursionError) else f"{at} is not valid JSON ({e})"
+               for at, e, t, other in ((f"its version at {a.base}", e1, texts[0], after), ("it", e2, texts[1], before))
+               if e and (other or isinstance(e, RecursionError) or b'"nodes"' in t and b'"views"' in t)]
         if not why and before and texts[1] is not None and after is None:  # a key mistyped: not a deletion (audit 10)
             why = ["it is no longer a map model (its nodes and views are not both lists)"]
         if not why:  # each version as render reads it, said under its own version (audit 11)
@@ -722,8 +751,7 @@ def diff_since(a):
             # and messages name it; else beside the pages (audit 19)
             # the copy is written there only when its folder resolves inside the checkout and no folder on the way is a
             # symbolic link, so a deleted model never writes outside it (audit 19)
-            inside = lambda p: p.parent.is_dir() and p.parent.resolve().is_relative_to(top.resolve()) and not any(q.is_symlink() for q in [p.parent, *p.parent.parents] if q.is_relative_to(top))
-            near = top / name if after or inside(top / name) else out / f"{stem}.json"
+            near = top / name if after or inside(top / name, folder=True) else out / f"{stem}.json"
             r = diff_page(before, after, near, out / f"{stem}.html", out / stem)
         except (SystemExit, Exception) as e:  # the module failed on this model (js() ends the CLI), or an odd one: said for this file, and the rest go on
             why = str(e.code if isinstance(e, SystemExit) else e)
@@ -859,7 +887,7 @@ def cmd_timelapse(a):
                 raise ValueError
             own_media(m, Path(a.model).resolve().parent, f"{sha[:7]}: {path}")  # as render's page: nothing fetched from an address the model names (audit 19)
             versions.append({"label": f"{day} {subject}".strip(), "model": m})
-        except ValueError:  # not JSON, bytes in no encoding JSON has, or JSON that is no model
+        except (ValueError, RecursionError):  # not JSON, bytes in no encoding JSON has, too deep to read (audit 20), or no model
             print(f"{sha[:7]}: {path} is not a JSON model there; left out", file=sys.stderr)
     if not versions:
         sys.exit(f"no versions of {a.model} in git history")
