@@ -267,6 +267,20 @@ test('audit 19: diff() says a sequence view\'s own steps reordered, as its model
   assert.ok(!diff(less, as).summary.some(s => s.startsWith('reorders')));
 });
 
+test('audit 20: diff() matches steps with no id by what they are, so taking out an earlier step of the same ends is no reorder', () => {
+  const N = [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }, { id: 'c', label: 'C' }], L = (from, to, label) => ({ from, to, label });
+  const own = e => ({ nodes: N, views: [{ id: 's', render: 'sequence', nodeIds: ['a', 'b', 'c'], edges: e }] });
+  const lines = e => ({ nodes: N, edges: e, views: [{ id: 's', render: 'sequence', nodeIds: ['a', 'b', 'c'] }] });
+  const B = [L('a', 'b', 'login'), L('b', 'c', 'query'), L('a', 'b', 'logout')], re = (x, y) => diff(x, y).summary.some(s => s.startsWith('reorders'));
+  for (const m of [own, lines]) {
+    assert.ok(!re(m(B), m(B.slice(1))), 'first step out'); assert.ok(!re(m(B.slice(1)), m(B)), 'first step back');
+    assert.ok(!re(m(B), m([B[0], B[2]])) && !re(m(B), m(B.slice(0, 2))), 'another step out');
+    assert.ok(!re(m([B[0], B[1], B[0]]), m([B[1], B[0]])), 'the first of two alike out');
+    assert.ok(re(m(B), m([B[1], B[0], B[2]])), 'a step moved'); assert.ok(re(m(B), m([B[2], B[1], B[0]])), 'two alike-ended steps swapped');
+    assert.ok(re(m(B), m([B[1], L('a', 'b', 'sign in'), B[2]])), 'a step changed and moved: matched by its Ref name');
+  }
+});
+
 test('audit 19: diff() says a numbered-card view with no stepIds reordered, since its cards number in nodeIds order', async () => {
   const { apply } = await import('../lib/umlimator.js');
   for (const how of [{ mainSteps: true }, { render: 'process' }]) {
