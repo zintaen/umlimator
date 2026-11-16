@@ -206,7 +206,9 @@ function bdConnect(model, view, from, to, at, line) {
   const cp = b.type === 'sysml.ConstraintBlock', mt = cp ? 'sysml.ConstraintProperty' : 'sysml.PartProperty';
   if (!cp && b.type !== 'sysml.Block') return { error: `A part association ends at a block or a constraint block, not ${BD_WORD(b.type || 'uml.Element').toLowerCase()}` };
   if (!bdHolds(a.type, { type: mt })) return { error: `A ${BD_WORD(a.type).toLowerCase()} holds no ${BD_MWORD[mt]}` };
-  const ty = String(b.label ?? b.id), base = (ty[0] || 'p').toLowerCase() + ty.slice(1).replace(/[^\p{L}\p{N}_$]/gu, ''), taken = new Set(BD_ARR(a.members).map(m => BD_OBJ(m) && m.label));
+  // the role: the type's name with what a member's name may not hold left out, its first letter lower case; one that would not
+  // start with a letter, _ or $ (3D Printer) starts with part (audit 17), so its row reads back
+  const ty = String(b.label ?? b.id), kept = ty.replace(/[^\p{L}\p{M}\p{N}_$]/gu, ''), base = /^[\p{L}_$]/u.test(kept) ? kept[0].toLowerCase() + kept.slice(1) : 'part' + kept, taken = new Set(BD_ARR(a.members).map(m => BD_OBJ(m) && m.label));
   let role = base, k = 2; while (taken.has(role)) role = base + k++;
   return [{ op: 'add', element: { id: bdFresh(model, `${a.id}.${role}`), type: mt, label: role, props: { valueType: ty, multiplicity: '1' } }, owner: a.id },
     { op: 'add', element: { id: bdFresh(model, 'association1'), type: 'uml.Association', from, to, props: { ends: { from: { aggregation: 'composite' }, to: { role, multiplicity: '1' } } } }, view: view.id }];

@@ -120,8 +120,9 @@ function memberEdit(m, text) {
 
 /* a line typed into an owner's "New member": on an enumeration a bare name is a literal, anything else a property or an operation */
 function memberAdd(text, owner) {
-  const t = String(text ?? '').trim(), nm = MEMBER_NAME.exec(t);
-  return parseMember(t, owner && owner.type === 'uml.Enumeration' && nm && nm[0] === t ? 'uml.EnumerationLiteral' : undefined);
+  // a bare name after its «stereotypes», as printMember writes a literal (audit 17)
+  const t = String(text ?? '').trim(), b = t.replace(/^(?:«[^«»]*»\s*)+/, ''), nm = MEMBER_NAME.exec(b);
+  return parseMember(t, owner && owner.type === 'uml.Enumeration' && nm && nm[0] === b ? 'uml.EnumerationLiteral' : undefined);
 }
 
 /* ---- the vocabulary (model.md, uml.class) ---- */

@@ -37,8 +37,11 @@ function prTags(e) {
 const prSay = e => { const t = prTags(e); return `«${e.key}»${e.required ? ' required' : ''}${t.length ? ' ' + t.join(', ') : ''}`; };
 
 /* ---- what each element says (§9): its PDF rows, and its accessible name after its kind and name ---- */
-// a member's text with its stereotypes left off, where the applied ones (stored ones too) are written beside it
-const prBare = m => printMember({ ...m, props: { ...(PR_OBJ(m.props) ? m.props : {}), stereotypes: undefined } });
+// a member's text with its applied stereotypes left off, which are written beside it; a standard or unresolved one it keeps
+// (audit 17): appliedOf leaves those out
+const prBare = (model, m) => { const P = PR_OBJ(m.props) ? m.props : {}, A = appliedOf(model, m.id), k = s => styKey(String(s).split('::').pop());
+  const st = PR_ARR(P.stereotypes).filter(s => !A.some(e => e.key === s || k(e.stereotype.label ?? e.stereotype.id) === k(s)));
+  return printMember({ ...m, props: { ...P, stereotypes: st.length ? st : undefined } }); };
 function prRows(model, x, I = prIndex(model)) {
   const nm = id => prName(I.at.get(id)), from = (t, id) => I.of(t).filter(e => e.from === id && I.at.has(e.to)), to = (t, id) => I.of(t).filter(e => e.to === id && I.at.has(e.from));
   if (x.type === 'uml.Profile') return [...[...I.at.values()].filter(n => n.parent === x.id && (n.type === 'uml.Stereotype' || n.type === 'uml.MetaclassReference')).map(n => (n.type === 'uml.Stereotype' ? `«${prName(n)}»` : `metaclass ${prName(n)}`)),
@@ -46,7 +49,7 @@ function prRows(model, x, I = prIndex(model)) {
   if (x.type === 'uml.Stereotype') return [...from('uml.Extension', x.id).map(e => `extends ${nm(e.to)}${PR_OBJ(e.props) && e.props.isRequired === true ? ' {required}' : ''}`),
     ...from('uml.Generalization', x.id).map(e => `a kind of «${nm(e.to)}»`), ...PR_ARR(x.members).filter(m => PR_OBJ(m) && m.type === 'uml.Property').map(printMember)];
   if (x.type === 'uml.MetaclassReference') return to('uml.Extension', x.id).map(e => `extended by «${nm(e.from)}»`);
-  return [...appliedOf(model, x.id).map(prSay), ...PR_ARR(x.members).filter(m => PR_OBJ(m) && appliedOf(model, m.id).length).map(m => `${prBare(m)}: ${appliedOf(model, m.id).map(prSay).join('; ')}`)];
+  return [...appliedOf(model, x.id).map(prSay), ...PR_ARR(x.members).filter(m => PR_OBJ(m) && appliedOf(model, m.id).length).map(m => `${prBare(model, m)}: ${appliedOf(model, m.id).map(prSay).join('; ')}`)];
 }
 // "Stereotype owned, extends Class {required}, team: String"; "Class Order: «entity» table = orders; «owned» required"
 function prAria(model, x, drawn, I) {
@@ -67,7 +70,7 @@ function prNode(d, n, model, pic) {
   if (d.shape !== 'classifier') return { ...d, aria };
   if (n.type === 'uml.Stereotype') return { ...d, shape: 'profiled', aria, compartments: d.compartments.filter(c => c.name === 'attributes') };
   const tags = appliedOf(model, n.id).map(e => ({ name: `«${e.key}»`, members: [row(`«${e.key}»`), ...prTags(e).map(row)] })), has = m => PR_OBJ(m) && appliedOf(model, m.id).length > 0;
-  const mrow = m => { const A = appliedOf(model, m.id), t = A.flatMap(prTags); return row(`${A.map(e => `«${e.key}»`).join(' ')} ${prBare(m)}${t.length ? ` {${t.join(', ')}}` : ''}`); };
+  const mrow = m => { const A = appliedOf(model, m.id), t = A.flatMap(prTags); return row(`${A.map(e => `«${e.key}»`).join(' ')} ${prBare(model, m)}${t.length ? ` {${t.join(', ')}}` : ''}`); };
   // a metaclass and an enumeration keep their own compartments (none; the literals), the tag compartments over them
   if (n.type === 'uml.MetaclassReference' || n.type === 'uml.Enumeration') return { ...d, shape: 'profiled', aria, compartments: [...tags, ...d.compartments.map(c => ({ ...c, members: c.members.map(m => (has(m) ? mrow(m) : m)) }))] };
   const ms = PR_ARR(n.members).filter(has).map(mrow);
