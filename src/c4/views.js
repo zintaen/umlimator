@@ -215,9 +215,9 @@ function depProblems(model, view) {
   // a relationship whose end is, or lies in, a node drawn as a box: a line ends on an element, so it is not drawn (§5.2 lifts onto
   // a node holding nothing shown only)
   const near = id => { for (const x of [id, ...I.chain(id)]) if (dp.ids.includes(x)) return x; return null; };
-  I.rels.forEach(r => { const a = near(r.from), b = near(r.to); if (a == null || b == null || a === b || I.chain(a).includes(b) || I.chain(b).includes(a)) return;
+  [...I.rels, ...V_ARR(view.edges).filter(e => V_OBJ(e) && e.type === 'c4.Relationship' && !I.rels.includes(e))].forEach(r => { const a = near(r.from), b = near(r.to); if (a == null || b == null || a === b || I.chain(a).includes(b) || I.chain(b).includes(a)) return;
     const box = [a, b].filter(x => dp.open.has(x)); if (!box.length) return;
-    const i = V_ARR(model.edges).indexOf(r); say('warning', 'c4-box-line', i >= 0 ? `edges[${i}]` : `${at}.edges`, [r.id, ...box], `${r.id}, from ${q(r.from)} to ${q(r.to)}, is not drawn: the view draws ${box.map(q).join(' and ')} as a box, which no line ends on`); });
+    const i = V_ARR(model.edges).indexOf(r); say('warning', 'c4-box-line', i >= 0 ? `edges[${i}]` : `${at}.edges[${V_ARR(view.edges).indexOf(r)}]`, [r.id, ...box], `${r.id}, from ${q(r.from)} to ${q(r.to)}, is not drawn: the view draws ${box.map(q).join(' and ')} as a box, which no line ends on`); });
   if (!V_HAS(view.title)) say('warning', 'c4-title', `${at}.title`, [], `view ${JSON.stringify(view.id)} has no title`);
   return out;
 }
