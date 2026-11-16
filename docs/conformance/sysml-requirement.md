@@ -84,7 +84,7 @@ Layout limits, measured on `examples/ebike-requirements.json` and `tests/require
 
 Measured on `examples/ebike-requirements.json` (0.25.0); the PDF's text read back by `tests/cli.py`.
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` | Mermaid: `writeMermaidRequirement` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` | Mermaid: `writeMermaidRequirement` |
 |---|---|---|---|---|
 | Requirements, their id and text | Yes, the text wrapped (a capped one ends "+k more") | Yes | Yes, in vectors; the tables give the text whole | Yes, each kind, `id`, `text`, `risk`, `verifymethod` |
 | The frame and its header | Yes, the header cut to the frame | Yes | Yes | No: Mermaid has no frame |

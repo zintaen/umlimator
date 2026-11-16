@@ -58,7 +58,7 @@ Layout limits, measured on `examples/fulfil-activity.json` and `tests/activity-s
 Measured on `examples/fulfil-activity.json` (0.21.0): `umlimator.py stills` (SVG and PNG) and `umlimator.py pdf` on
 its rendered page. Each file was opened and looked at.
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
 |---|---|---|---|
 | Lanes with their headers, every node's shape, the call action's rake | Yes | Yes | Yes, in vectors |
 | Flows, open arrowheads, guards | Yes. **Gap:** in Chrome's measure, example 9's `[else]` finds no room laid out down and is left to its line's name, which the still removes | Yes, the same | Yes, the same |

@@ -586,3 +586,16 @@ test('examples/layout.mjs reports a model with no title (optional in MapModel) b
     assert.match(r.stdout, /^untitled\.json\s+main\s+2 cards\s+1 lines/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('examples/layout.mjs refuses a --max that is no number of at least 1, so a CI step with a typo fails, not passes (audit 18)', () => {
+  const run = (...a) => spawnSync(process.execPath, [fileURLToPath(new URL('../examples/layout.mjs', import.meta.url)), ...a], { encoding: 'utf8' });
+  const weather = fileURLToPath(new URL('../examples/weather.json', import.meta.url));
+  for (const bad of [['--max', 'x2', weather], ['--max', '', weather], ['--max', '0.5', weather], ['--max', weather], ['--max=x', weather], [weather, '--max']]) {
+    const r = run(...bad);
+    assert.equal(r.status, 2, bad.join(' '));
+    assert.match(r.stderr, /^--max takes a number of at least 1/, bad.join(' '));
+  }
+  assert.equal(run('--max', '1', weather).status, 1);   // weather's longest line runs about 1.3 times its direct route
+  assert.equal(run('--max=1', weather).status, 1);
+  assert.equal(run('--max', '3', weather).status, 0);
+});

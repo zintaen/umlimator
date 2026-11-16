@@ -83,7 +83,7 @@ Layout limits, measured on `examples/bookshop-components.json` and `tests/compon
 Measured on `examples/bookshop-components.json` (0.22.0): `umlimator.py stills` (SVG and PNG) and `umlimator.py pdf` on
 its rendered page. The PNG was looked at, the SVG read, the PDF's text read back (`tests/cli.py` reads its tables).
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
 |---|---|---|---|
 | Components with their icons, the box, the ports on the borders, the ball, the rectangle interface, the artifact | Yes | Yes | Yes, in vectors |
 | Lines, dashes, the socket, the delegation's arrow, triangles, «use» and «manifest» | Yes | Yes | Yes |
