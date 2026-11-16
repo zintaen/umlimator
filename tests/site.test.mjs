@@ -48,4 +48,8 @@ test('the built changelog starts at the first release and names no host applicat
   assert.doesNotMatch(page, /(?<!SQL)Alchemy/);
   assert.doesNotMatch(page, /step 3 design note/);
   assert.match(page, /0\.5\.0: fixes from the first embedding/);
+  // module-api.md's links to its own headings are GitHub's ids: each goes to a heading here (audit 15)
+  const ids = new Set([...page.matchAll(/ id="([^"]+)"/g)].map(m => m[1]));
+  const dead = [...page.matchAll(/ href="#([^"]+)"/g)].map(m => m[1]).filter(h => !ids.has(decodeURIComponent(h)));
+  assert.deepEqual(dead, []);
 });

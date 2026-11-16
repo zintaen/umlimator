@@ -314,3 +314,8 @@ test('binding-types names value types with no label by their id (audit 9)', () =
   const msg = validate(m).filter(p => p.rule === 'binding-types').map(p => p.message);
   assert.equal(msg.length, 1); assert.match(msg[0], /of type Wh to .* of type km/);
 });
+
+test('audit 15: "port : Integer" is a value property named port; "param : Real" with no name is refused', () => {
+  assert.deepEqual(T.edits.member(M19, V, 'ebike', null, 'port : Integer')[0].element, { id: 'ebike.port', type: 'sysml.ValueProperty', label: 'port', props: { valueType: 'Integer' } });
+  assert.ok(T.edits.member(M19, V, 'usable-energy', null, 'param : Real').error);
+});

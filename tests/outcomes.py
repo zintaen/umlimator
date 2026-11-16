@@ -336,6 +336,15 @@ with tempfile.TemporaryDirectory() as tmp:
          for i, (n, g) in enumerate([("describe_view", {"view": bike["views"][0]["id"]}), ("highlight", {"refs": ["x"]})])]
     ok("mcp-session#5 · a model with a list for an id is a tool error saying where, as render says it, never an internal error (audit 8)",
        all(x.get("result", {}).get("isError") and "nodes[1].id is not a string" in x["result"]["content"][0]["text"] for x in r), r)
+    nulled = json.loads(json.dumps(bike)); nulled["views"][0]["nodeIds"].insert(1, None)
+    (t / "mcp" / "m.json").write_text(json.dumps(nulled), encoding="utf-8")
+    r = ask({"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "paths", "arguments": {"view": bike["views"][0]["id"], "from": "a", "to": "zz"}}})
+    ok("mcp-session#5 · a null in a view's nodeIds is a tool error saying where, never an internal error (audit 15)",
+       r.get("result", {}).get("isError") and "views[0].nodeIds[1] is not a string" in r["result"]["content"][0]["text"], r)
+    (t / "mcp" / "m.json").write_text(json.dumps(bike), encoding="utf-8")
+    r = ask({"jsonrpc": "2.0", "id": 9, "method": "tools/call", "params": {"name": "show_view", "arguments": {"view": ""}}})
+    ok("mcp-session#5 · show_view with view \"\" names no view: refused as an unknown view, not sent (audit 15)",
+       r.get("result", {}).get("isError") and "no view ''" in r["result"]["content"][0]["text"], r)
     p.stdin.close(); p.wait(timeout=30)
     held = socket.socket()
     held.bind(("127.0.0.1", 0))

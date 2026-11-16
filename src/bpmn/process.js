@@ -454,7 +454,10 @@ function bzAdd(model, view, entry, label, at) {
   if (t === BZ_BE) { const h = sel.find(id => BZ_ACT.includes(I.ty(id)));
     if (!h) return { error: 'Select an activity to attach a boundary event to' };
     return [{ op: 'add', element: { ...el, ...(I.el(h).parent != null ? { parent: I.el(h).parent } : {}), props: { definition: 'timer', ...el.props, attachedTo: h } }, view: view.id }]; }
-  const parent = t === BZ_POOL || t === BZ_NOTE || t === BZ_GROUP ? null : BZ_DATA.includes(t) ? (into == null ? null : I.poolOf(into)) : into;
+  let parent = t === BZ_POOL || t === BZ_NOTE || t === BZ_GROUP ? null : BZ_DATA.includes(t) ? (into == null ? null : I.poolOf(into)) : into;
+  // a flow node added into a pool with lanes goes in its first lane holding no lane, so the add brings no in-lane warning (BZ_KEPT)
+  const ls = I.ty(parent) === BZ_POOL && BZ_FLOW.includes(t) ? I.lanesOf(parent) : [];
+  if (ls.length) parent = ls.find(l => !ls.some(k => I.up(k) === l)) ?? ls[0];
   return [{ op: 'add', element: { ...el, ...(parent != null ? { parent } : {}) }, view: view.id }];
 }
 // remove: a lane is a member, never hidden: Delete and Shift + Delete delete it, what it held and its nested lanes moved to

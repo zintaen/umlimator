@@ -371,3 +371,7 @@ test('audit 4: a frame whose id holds $ keeps it in its title\'s data-o (no repl
     views: [{ id: 'v', diagram: 'sysml.requirement', subject: "pk$'", nodeIds: ['r1'] }] };
   assert.match(svgOf(layout(m, 'v')), /<text class="family-title" data-t="ft" data-o="pk\$&#39;" /);
 });
+
+test('audit 15: F2 on a relationship line takes its «keyword» off, so the keyword is not drawn twice', () => {
+  assert.deepEqual(T.edits.rename(M16, M16.views[0], 'capacity-from-range', '«deriveReqt» battery'), [{ op: 'set', id: 'capacity-from-range', path: 'label', value: 'battery' }]);
+});

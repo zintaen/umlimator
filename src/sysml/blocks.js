@@ -1,5 +1,5 @@
 import { registerDiagramType } from '../core/registry.js';
-import { CLASS_DEF, RULES, classProblems, drawnLines, lineLabel, lineName, parseMember, printMember, typeGeo } from '../uml/class.js';
+import { CLASS_DEF, RULES, classProblems, drawnLines, lineLabel, lineName, lineRename, parseMember, printMember, typeGeo } from '../uml/class.js';
 import { OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder } from '../uml/owners.js';
 import { SYS_FRAME, SYS_TABLE } from './sysml.js';
 
@@ -240,7 +240,7 @@ const BD_TYPE = registerDiagramType('sysml.block-definition', {
   word: (model, id) => { const x = bdNodeOf(model, id); return x && BD_CLS.includes(x.type) ? BD_WORD(x.type) : null; },
   rows: (model, view, id) => { const x = bdNodeOf(model, id); return x && BD_CLS.includes(x.type) ? bdRows(x) : null; },
   text: bdText,
-  edits: { connect: bdConnect, member: bdMember },
+  edits: { connect: bdConnect, member: bdMember, rename: lineRename(lineLabel) },
 });
 
 export { BD_TYPE, BD_RULES, bdGeo, bdProblems, bdDescribe, bdParse, bdPrint, bdConnect, bdMember };
