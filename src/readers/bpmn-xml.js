@@ -68,17 +68,20 @@ const bxEvent = t => (t || '').endsWith('Event');
 const bxStr = x => (typeof x === 'string' && x ? x : null);
 const bxMsg = e => { try { return String(e && e.message || e).split('\n')[0]; } catch { return 'an error'; } };
 
-// a moddle element as JSON: its own properties, a reference by its id, cut at BX_DEEP levels
+// a moddle element as JSON: its own properties, a reference by its id (or a list of ids), a generic (foreign) element's
+// children and body; cut at BX_DEEP levels. moddle defines a reference as a non-enumerable own property and keeps a generic
+// element's children in $children, so its descriptor's properties are read by name, not by Object.keys (audit 17)
 function bxJson(el, depth = 0) {
   if (!el || typeof el !== 'object') return el;
   if (Array.isArray(el)) return el.map(x => bxJson(x, depth));
   if (depth >= BX_DEEP) return { $type: el.$type, id: el.id, cut: true };
-  const out = { $type: el.$type }, refs = new Set(((el.$descriptor && el.$descriptor.properties) || []).filter(p => p.isReference).map(p => p.name));
-  for (const k of Object.keys(el)) {
+  const d = el.$descriptor || {}, props = d.properties || [], refs = new Set(props.filter(p => p.isReference).map(p => p.name));
+  const out = { $type: el.$type }, keys = new Set([...props.map(p => p.name).filter(k => Object.hasOwn(el, k)), ...Object.keys(el), '$attrs', '$body', ...(d.isGeneric ? ['$children'] : [])]);
+  for (const k of keys) {
     const v = el[k];
-    if (k.startsWith('$') && k !== '$attrs' && k !== '$body') continue;
-    if (v == null || k === '$attrs' && !Object.keys(v).length) continue;
-    out[k] = refs.has(k) ? (Array.isArray(v) ? v.map(x => x && x.id) : v.id) : k === '$attrs' ? { ...v } : bxJson(v, depth + 1);
+    if (k.startsWith('$') && k !== '$attrs' && k !== '$body' && k !== '$children') continue;
+    if (v == null || k === '$attrs' && !Object.keys(v).length || Array.isArray(v) && !v.length) continue;
+    out[k] = refs.has(k) ? (Array.isArray(v) ? v.map(x => (x && typeof x === 'object' ? x.id : x)) : typeof v === 'object' ? v.id : v) : k === '$attrs' ? { ...v } : bxJson(v, depth + 1);
   }
   return out;
 }

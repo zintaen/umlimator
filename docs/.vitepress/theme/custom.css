@@ -6,6 +6,9 @@
   --vp-c-brand-soft: rgba(9, 105, 218, .12);
   --vp-home-hero-name-color: var(--vp-c-brand-1);
   --vp-code-color: #0550ae; /* inline code: the accent is under 4.5:1 on a table row's tint (WCAG AA) */
+  --vp-code-link-color: #0550ae; /* inline code in a link too (audit 17) */
+  --vp-code-link-hover-color: #0a3069;
+  --vp-code-lang-color: var(--vp-c-text-2); /* a code block's language label: text-3 is under 4.5:1 on the block (audit 17) */
 }
 .dark {
   --vp-c-brand-1: #4493f8;
@@ -13,6 +16,9 @@
   --vp-c-brand-3: #1f6feb;
   --vp-c-brand-soft: rgba(68, 147, 248, .16);
   --vp-code-color: #6cb6ff;
+  --vp-code-link-color: #6cb6ff;
+  --vp-code-link-hover-color: #9cd1ff;
+  --vp-code-lang-color: var(--vp-c-text-2);
 }
 
 /* a live map in a page: framed like a code block */

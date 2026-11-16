@@ -50,7 +50,7 @@ The [getting started guide](https://zintaen.github.io/umlimator/guide/getting-st
 - **Maps and drill-down**: a view per level (system, containers, components, flows); a stacked card opens its inner
   view, or unfolds in place. Automatic layout with orthogonal lines that never run through a card, the same picture for
   the same model, and a layout check.
-- **28 diagram types**: UML's 14, ER, flowchart, data flow, C4's six views, SysML v1.7's four, mindmaps, Google
+- **28 diagram types**: UML's 14 and its information flow diagram, ER, flowchart, data flow, C4's six views, SysML v1.7's four, mindmaps, Google
   Cloud, Azure and AWS architecture diagrams and BPMN, each with a [conformance note](docs/conformance/) saying what it
   covers.
 - **Editing with `apply()`**: opt-in gestures emit events; the host decides, and `apply()` turns a typed diagram's

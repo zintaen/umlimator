@@ -930,7 +930,11 @@ As built (M2.10), where the reader departs from or adds to the above:
   name is; a container instance is `<container>-<instanceId>`.
 - **Relationships**: a `linkedRelationshipId` on a static element's relationship marks it implied (skipped, counted in
   one report line); on a container instance's it marks one replicated from its container's, which is read (§7.5.3).
-  A dynamic view's step naming an implied relationship becomes the relationship it is implied by, approximated; a
+  A dynamic view's step naming an implied relationship becomes the relationship it is implied by when the view draws both
+  of that one's ends; else (nearly always: an implied relationship sits a level above the one it is implied by, whose
+  ends the view then does not show) the implied relationship is kept as a relationship of the model, once, and is the
+  step, so the step is drawn between the elements the view shows; both approximated (audit 17). Failing both, the step
+  is the relationship it is implied by, reported as not drawn. A
   step marked `response` is drawn the relationship's way, approximated. A deployment node's `instances` over one is
   drawn once, approximated. A static view's own `relationships` list (its excludes) is not read: the type draws a
   view's lines from the model.

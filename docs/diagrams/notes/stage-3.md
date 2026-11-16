@@ -396,7 +396,7 @@ Also rejected: reading a trace directly and writing replies at span ends. That n
 | Mermaid | Read as | Report |
 |---|---|---|
 | `participant A`, `participant A as Name`, `actor A` | A `uml.Lifeline` with its id from `A` and the alias as its label. An actor gets `stereotypes: ['actor']` | |
-| `participant A@{ "type": … }` | The type as a stereotype | approximated |
+| `participant A@{ "type": … }` | The type as a stereotype; the writer writes a participant's first stereotype back so when it is one of Mermaid's six types (audit 17) | approximated |
 | `create participant B`, then a message to B | That message gets `sort: 'create'` | |
 | `destroy B`, then a message to B | That message gets `sort: 'delete'`. A message from B is kept as written, and its stem is not ended | skipped (the destruction) |
 | `->>` | call | |

@@ -168,6 +168,13 @@ said = []
 for bad in ({"stories": 7}, {"stories": [{"id": "s", "steps": 3}]}):
     model.write_text(json.dumps(bike | bad), encoding="utf-8")
     said += [tool("list_views"), tool("play_story", id="s")]
+# audit 17: a null stories, or a story's null steps, is no stories (as validate() reads it), not a refused model
+model.write_text(json.dumps(bike | {"stories": None}), encoding="utf-8")
+said17 = tool("list_views")
+model.write_text(json.dumps(bike | {"stories": [{"id": "s", "steps": None}]}), encoding="utf-8")
+said17b = tool("list_views")
+ok("list_views on a null stories or a null steps lists the views, no tool error (audit 17)",
+   '"trips"' in said17 and "not a list" not in said17 + said17b and re.search(r'"steps":\s*0', said17b), [said17[:200], said17b[:300]])
 model.write_text(json.dumps(bike), encoding="utf-8")
 ok("list_views and play_story on stories, or steps, that are no list: the tool names the field, no internal error (audit 16)",
    all("stories is not a list" in x for x in said[:2]) and all("stories[0].steps is not a list" in x for x in said[2:]), said)
