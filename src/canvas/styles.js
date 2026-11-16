@@ -189,6 +189,7 @@ const STYLES = `
   svg .rule-mark circle { fill: var(--um-rose); stroke: var(--um-mask); stroke-width: 1.5; } svg .rule-mark text { fill: var(--um-mask); font: 800 10px var(--um-sans); pointer-events: none; }
   svg .edge-g.faded .flowline { display: none; }
   .um-rename { position: absolute; z-index: 5; box-sizing: border-box; font-family: var(--um-sans); font-weight: 600; color: var(--um-text); background: var(--um-panel); border: 1.5px solid var(--um-accent); border-radius: 6px; padding: 0 6px; outline: none; box-shadow: var(--um-shadow); }
+  textarea.um-rename { resize: none; overflow: hidden; padding: 2px 6px; line-height: 1.3; }
   svg .um-ghost { opacity: .6; pointer-events: none; } svg .um-ghost.um-pending { opacity: .3; }
   svg .family.um-target .family-box { stroke: var(--um-accent); stroke-width: 2.5; stroke-dasharray: 6 4; }
   svg .um-handle circle { fill: var(--um-accent); stroke: var(--um-mask); stroke-width: 2; cursor: crosshair; }
@@ -202,8 +203,8 @@ const STYLES = `
   .um-editor ul { list-style: none; margin: 0; padding: 0; } .um-editor li, .um-editor .um-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 3px 0; }
   .um-editor li > :first-child { flex: 1; min-width: 0; text-align: left; } .um-editor small { color: var(--um-muted); }
   .um-editor label { display: block; margin: 4px 0; color: var(--um-muted); } .um-editor label.um-check { display: flex; gap: 6px; align-items: center; }
-  .um-editor input:not([type]), .um-editor select { display: block; width: 100%; min-height: 24px; box-sizing: border-box; border: 1px solid var(--um-border-2); border-radius: 6px; background: var(--um-bg-2); color: var(--um-text); font: inherit; padding: 1px 6px; }
-  .um-editor li input { display: inline-block; }
+  .um-editor input:not([type]), .um-editor select, .um-editor textarea { display: block; width: 100%; min-height: 24px; box-sizing: border-box; border: 1px solid var(--um-border-2); border-radius: 6px; background: var(--um-bg-2); color: var(--um-text); font: inherit; padding: 1px 6px; }
+  .um-editor textarea { resize: vertical; } .um-editor li input { display: inline-block; }
   .um-editor button, .um-pick button { min-height: 24px; min-width: 24px; border: 1px solid var(--um-border-2); border-radius: 6px; background: var(--um-bg-2); color: var(--um-text); font: inherit; padding: 1px 7px; cursor: pointer; }
   .um-editor button:hover, .um-editor button:focus-visible, .um-pick button:hover, .um-pick button:focus { border-color: var(--um-accent); color: var(--um-accent); outline: none; }
   .um-editor .um-err { border-color: color-mix(in srgb, var(--um-rose) 60%, var(--um-border-2)); } .um-editor .um-warn { border-color: color-mix(in srgb, var(--um-amber) 60%, var(--um-border-2)); }
