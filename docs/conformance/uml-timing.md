@@ -18,7 +18,7 @@ it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2
 | general value lifeline | `present.<lifeline>.as: "values"` | a 24 px band whose edges cross over 8 px at each change, the value centred, cut to its segment (no text under 16 px) |
 | time ruler | the view's `timeline.unit` | under the last lane: major ticks with labels, minor ticks a fifth of a step, the unit after the last label |
 | Message | `uml.Message` inline in the view's `edges`: `sort` (call, async, reply), `replyTo`, `sentAt`, `receivedAt` | a straight line from the sender's level at `sentAt` to the receiver's at `receivedAt`, with the sequence type's ends (a call filled, async open, a reply dashed and open); its label at its middle, moved up off what was placed before it |
-| 8.5 DurationConstraint | `timeline.constraints`, `type: "uml.DurationConstraint"`, `from` and `to` changes, `label` | a dimension line in a strip under the lane of its earlier change, an open arrow at each end, extension lines up to each change, its label over it; overlapping ones on levels 20 px apart |
+| 8.5 DurationConstraint | `timeline.constraints`, `type: "uml.DurationConstraint"`, `from` and `to` changes, `label` | a dimension line in a strip under the lane of its earlier change (with ends on two lanes, under the lower of the two, its extension lines reaching both), an open arrow at each end, extension lines up to each change, its label over it; overlapping ones on levels 20 px apart |
 | 8.5 TimeConstraint | `type: "uml.TimeConstraint"`, `from` a change, `label` | a 6 px tick in the strip, its label to its right |
 
 The scale (`notes/stage-6.md` §6.3): one time base for every lane, from the earlier of 0 and the first time; linear,

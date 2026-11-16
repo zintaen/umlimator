@@ -69,8 +69,9 @@ repository), carries glyphs and full names only. Since 16 Nov 2026 the GitHub Pa
 terms accepted, so the example there shows the real icons, Google's legal line and the not-affiliated line
 (`docs/diagrams/notes/milestone-4a.md` §16).
 
-The pin (0.26.0): Google's `core-products-icons.zip` and `category-icons.zip`, 45 icons (19 products, 26 categories). Ids
-the pin lacks (`Cloud-DNS`, `Cloud-Load-Balancing`, `Cloud-CDN`, `Pub-Sub` in the Bookshop example) draw a glyph.
+The pin (0.26.0): Google's `core-products-icons.zip` and `category-icons.zip`, 45 icons (19 products, 26 categories). Products
+the pin has no icon of (`Cloud-DNS`, `Cloud-Load-Balancing`, `Cloud-CDN`, `Pub-Sub` in the Bookshop example) draw their
+category's icon (Networking, Integration Services), Google's rule, under their own name (`icons/packs.json` `category`).
 
 ## Accessibility
 

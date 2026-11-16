@@ -215,7 +215,7 @@ def call(name, a):
         d = node("diff", before, m)
         return {"summary": d["summary"], "views": d["views"]}
     # the page's tools: a command for the page, checked against the model first, then folded into `want`
-    asked = view(m, a["view"])["id"] if a.get("view") else None
+    asked = view(m, a["view"])["id"] if "view" in a else None  # view "" is a view asked for, and none has that id (audit 15)
     if name == "show_view":
         def fold(w, n):
             w.update(view=asked, tour=None, story=None, highlight=w["highlight"] if w["highlight"] and w["highlight"]["view"] == asked else None)

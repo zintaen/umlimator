@@ -293,6 +293,16 @@ function commMoveTo(model, view, id, at) {
 
 /* add(model, view, entry, label, at): the palette's lifeline, at `at.index` in nodeIds (a lifeline's slot: after the selected
    lifeline), else last (no slot, or a row's, which has no index) */
+/* rename (F2) on a message row: the field holds its drawn text (cmRowText), "<number>: «create» label"; the number and the
+   sort's keyword are derived, so they come off and the rest is set as the label (audit 15). Anything else: null */
+function commRename(model, view, id, text) {
+  const m = commIndex(model, view).messages.find(x => x.id === id); if (!m) return null;
+  const num = String(messageNumbers(model, view).get(id) ?? '?'), kw = CM_KEYWORD[cmSortOf(m)];
+  let t = String(text ?? '').trim();
+  if (t === num || t.startsWith(num + ':') || t.startsWith(num + ' ')) t = t.slice(num.length).replace(/^:/, '').trim(); // a row with no text: its number
+  if (kw && (t === kw || t.startsWith(kw + ' '))) t = t.slice(kw.length).trim();
+  return t === String(m.label ?? '') ? [] : [{ op: 'set', id, path: 'label', value: t || undefined }];
+}
 function commAdd(model, view, entry, label, at) {
   if (!CM_OBJ(view) || !CM_OBJ(entry) || entry.type !== 'uml.Lifeline') return null;
   const id = cmFreshId(model, String(label ?? '').trim().toLowerCase().replace(/[^\p{L}\p{N}_$-]+/gu, '-').replace(/^-+|-+$/g, '') || 'lifeline');
@@ -350,7 +360,7 @@ const COMM_TYPE = registerDiagramType('uml.communication', {
   validate: commProblems,
   rules: CM_RULES,
   describe: commDescribe,
-  edits: { connect: commConnect, moveTo: commMoveTo, add: commAdd, remove: commRemove },
+  edits: { connect: commConnect, moveTo: commMoveTo, add: commAdd, remove: commRemove, rename: commRename },
 });
 
-export { COMM_TYPE, commGeo, commProblems, commDescribe, commConnect, commMoveTo, commAdd, commRemove, cmRank };
+export { COMM_TYPE, commGeo, commProblems, commDescribe, commConnect, commMoveTo, commAdd, commRemove, commRename, cmRank };

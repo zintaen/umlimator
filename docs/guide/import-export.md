@@ -63,8 +63,9 @@ What each element becomes, and what is left out: [`docs/module-api.md` § Import
 python3 umlimator.py export order.json --out order.bpmn   # a model's BPMN as BPMN XML, laid out (needs Node and bpmn-moddle)
 ```
 
-Mermaid writers exist for the types Mermaid can hold: a class diagram, a sequence diagram, a state machine and a
-requirement diagram are read from and written to Mermaid.
+`export` writes BPMN XML only. The Mermaid writers (class, sequence, state machine, requirement, entity-relationship,
+flowchart and mindmap) are internal to the module: they live in `src/readers/`, are used by the tests' round trips, and
+are not exported by the package or reachable from the command line.
 
 For pictures and documents rather than source formats:
 

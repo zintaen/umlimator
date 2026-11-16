@@ -56,11 +56,13 @@ function parseColumn(text, I, was) {
   if (!t) return fail('its brackets do not pair');
   if (q ? !q[1].trim() : !t.length) return fail('it is empty');
   const label = q ? q[1].replace(/\\(.)/g, '$1') : t.shift(), props = {}, type = [];
-  while (t.length && !erFlag(t[0])) type.push(t.shift()); // a type of several words: "double precision", "timestamp with time zone"
+  const notNull = () => /^not$/i.test(t[0]) && /^null$/i.test(t[1] ?? ''); let not = false; // SQL's NOT NULL: not nullable, the default
+  while (t.length && !erFlag(t[0]) && !notNull()) type.push(t.shift()); // a type of several words: "double precision", "timestamp with time zone"
   if (type.length) props.dataType = type.join(' ');
-  while (t.length) { const k = t.shift(), f = erFlag(k) && ER_FLAG[k.toLowerCase()];
+  while (t.length) { if (notNull()) { t.splice(0, 2); if (not || props.nullable) return fail('NULL is written twice'); not = true; continue; }
+    const k = t.shift(), f = erFlag(k) && ER_FLAG[k.toLowerCase()];
     if (!f) return fail(`"${k}" is left over: write name type [PK] [FK table.column] [UK] [NULL]`);
-    if (props[f]) return fail(`${k.toUpperCase()} is written twice`);
+    if (props[f] || (f === 'nullable' && not)) return fail(`${k.toUpperCase()} is written twice`);
     props[f] = true;
     if (f === 'foreignKey' && t.length && !erFlag(t[0])) { const r = t.shift(), u = /^"((?:[^"\\]|\\.)*)"$/.exec(r), id = erRef(u ? u[1].replace(/\\(.)/g, '$1') : r, I, was); if (id == null) return fail(`FK ${r} names no column (table.column)`); props.references = id; } }
   return { label, props };
@@ -301,7 +303,7 @@ const ER_TYPE = registerDiagramType('er', {
   // the PDF's tables (§9): an entity's word and its columns as S9 prints them; a relationship's multiplicities
   word: (model, id) => ((erIndex(model).at.get(id) || {}).type === 'er.Entity' ? 'Table' : null),
   rows: (model, view, id) => { const I = erIndex(model), n = I.at.get(id); return n && n.type === 'er.Entity' ? erCols(n).map(c => printColumn(c, I)) : null; },
-  text: (model, view, id) => { const e = erIndex(model).R.find(x => x.id === id);
+  text: (model, view, id) => { const e = erRels(model).find(x => x.id === id); // inline relationships too
     return e && e.type === 'er.Relationship' ? `${ER_HAS(e.label) ? e.label + ': ' : ''}${erMult(e, 'from') ?? '?'} to ${erMult(e, 'to') ?? '?'}, ${erIdentifying(e) ? 'identifying' : 'non-identifying'}` : null; },
   edits: { member: erMember, connect: erConnect },
 });

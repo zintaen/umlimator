@@ -199,8 +199,10 @@ const lineLabel = e => [keyword(e), stereoText(e), e.label].filter(UML_HAS).join
 /* rename (F2) on a line: the field holds its drawn text, `drawn(e, model, view)`, the keyword and «stereotypes» before the
    label; that prefix is the line's kind and props, so it is taken off and the rest set as the label. Anything else: null.
    Shared by the class, package, profile, component and deployment types, each with its own drawn text */
+// a line by id: the model's, else one the view owns (an object in view.edges, audit 15)
+const lineIn = (model, view, id) => [...UML_ARR(model && model.edges), ...UML_ARR(view && view.edges)].find(x => UML_OBJ(x) && x.id === id);
 const lineRename = drawn => (model, view, id, text) => {
-  const e = UML_ARR(model.edges).find(x => UML_OBJ(x) && x.id === id); if (!e) return null;
+  const e = lineIn(model, view, id); if (!e) return null;
   const pre = drawn({ ...e, label: undefined }, model, view); let t = String(text ?? '').trim();
   if (pre && (t === pre || t.startsWith(pre + ' '))) t = t.slice(pre.length).trim();
   return t === String(e.label ?? '') ? [] : [{ op: 'set', id, path: 'label', value: t || undefined }];
@@ -405,4 +407,4 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   edits: { rename: lineRename(lineLabel) },
 });
 
-export { lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, classProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
+export { lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, classProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };

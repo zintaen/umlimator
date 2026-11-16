@@ -335,7 +335,9 @@ const stFresh = (model, base) => { const used = new Set(); JSON.stringify(model,
 function stGuard(model, commands) {
   const key = p => p.rule + ' ' + p.ids.join(' '), errs = m => stProblems(m).filter(p => p.level === 'error' || p.rule === 'region-mixed');
   let now; try { now = apply(model, commands); } catch (e) { return { error: String(e.message) }; }
-  const was = new Set(errs(model).map(key)), bad = errs(now).find(p => !was.has(key(p)));
+  // region-mixed is new only where a state gains a direct vertex: one moved out into a region lessens it (audit 15)
+  const before = errs(model), was = new Set(before.map(key)), mixed = new Set(before.filter(p => p.rule === 'region-mixed').flatMap(p => p.ids.slice(1).map(d => p.ids[0] + ' ' + d)));
+  const bad = errs(now).find(p => (p.rule === 'region-mixed' ? p.ids.slice(1).some(d => !mixed.has(p.ids[0] + ' ' + d)) : !was.has(key(p))));
   return bad ? { error: bad.rule === 'region-mixed' ? `${bad.message}: put it in one of its regions` : bad.message } : commands;
 }
 // add: a pseudostate with its entry's kind, in the state or region selected (a state's lone region); a region into the state selected

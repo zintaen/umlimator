@@ -572,3 +572,9 @@ test('audit 11: a boundary event\'s side named for an Object.prototype key is no
   const plain = at();
   for (const side of ['toString', 'constructor', '__proto__', 'valueOf']) assert.deepEqual(at(side), plain, side);
 });
+
+test('audit 15: a flow node added with a pool that has lanes selected goes in its first lane: no in-lane warning', () => {
+  const r = bzAdd(EX, V(EX), { type: 'bpmn.Task' }, 'New step', { sel: ['bp-bookshop'] });
+  assert.equal(r[0].element.parent, 'bp-sales');
+  assert.deepEqual(bzProblems(apply(EX, r)).filter(p => p.rule === 'in-lane'), []);
+});

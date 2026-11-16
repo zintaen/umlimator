@@ -194,6 +194,9 @@ const SYS_IB_ON = hook => (model, view, ...a) => { const I = SYS_IB_INDEX(model,
   return SYS_IB_OBJ(r) && Array.isArray(r.commands) && !r.commands.length ? { commands: [] } : r; }; // nothing changed: nothing said
 // F2's text may start «proxy» or «full», as the projection names a port: it sets the port's kind
 function SYS_IB_RENAME(model, view, id, text) {
+  // a connector with an item flow draws its item (§8.1): F2 renames the item, not a label never drawn
+  const c = SYS_IB_ARR(model.edges).find(e => SYS_IB_OBJ(e) && e.id === id && e.type === 'sysml.Connector' && SYS_IB_IF(e)), t = String(text ?? '').trim();
+  if (c) return !t ? { error: 'An item flow names its item: type a name' } : t === SYS_IB_IF(c).item ? [] : [{ op: 'set', id, path: 'props.itemFlow.item', value: t }];
   const k = /^\s*«(proxy|full)»/.exec(String(text)), x = SYS_IB_INDEX(model, view).el(String(id).split('->').pop());
   const hook = (m, v, ...a) => { const r = csRename(m, v, ...a); return k && x && x.type === 'sysml.Port' && SYS_IB_PROPS(x).kind !== k[1] ? SYS_IB_MAP(r, cs => [...cs, { op: 'set', id: x.id, path: 'props.kind', value: k[1] }]) : r; };
   return SYS_IB_ON(hook)(model, view, id, text);
@@ -206,7 +209,7 @@ function SYS_IB_ADD(model, view, entry, label, at) {
 function SYS_IB_MEMBER(model, view, owner, id, text) {
   const k = /^(proxy|full)\s+(?=port\s)/i.exec(String(text)), ref = /^ref\s+/i.test(String(text)), t = String(text).replace(/^(proxy|full)\s+(?=port\s)/i, '').replace(/^ref\s+/i, '');
   const was = id == null ? null : SYS_IB_INDEX(model, view).el(id);
-  if (was && ((/^port\s/i.test(t) && was.type !== 'sysml.Port') || (ref && was.type !== 'sysml.ReferenceProperty'))) // a row keeps its member's kind
+  if (was && ((/^port\s+[^\s:]/i.test(t) && was.type !== 'sysml.Port') || (ref && was.type !== 'sysml.ReferenceProperty'))) // a row keeps its member's kind
     return { error: `A row keeps its member's kind: delete ${SYS_IB_NAME(was)} and add a ${ref ? 'ref' : 'port'} row` };
   const r = SYS_IB_ON(csMember)(model, view, owner, id, t), kind = k ? k[1].toLowerCase() : undefined;
   if (id == null) return SYS_IB_KIND(r, x => (x.type === 'sysml.Port' && kind ? { ...x, props: { ...SYS_IB_PROPS(x), kind } } : ref && Object.hasOwn(SYS_IB_PROP, x.type) ? { ...x, type: 'sysml.ReferenceProperty' } : x));

@@ -39,7 +39,7 @@ test('the definition: sysml.block-definition is registered with its palette, its
   assert.deepEqual(T.props['sysml.Port'][0], { key: 'kind', label: 'Kind', kind: 'enum', options: ['proxy', 'full'] });
   assert.deepEqual(T.props['sysml.FlowProperty'][0].options, ['in', 'out', 'inout']);
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows', 'text', 'rankFlip']) assert.equal(typeof T[k], 'function', k);
-  assert.deepEqual(Object.keys(T.edits), ['connect', 'member']);
+  assert.deepEqual(Object.keys(T.edits), ['connect', 'member', 'rename']);
   assert.deepEqual(Object.keys(BD_RULES), ['part-type', 'value-type', 'constraint-type', 'flow-direction', 'port-kind', 'member-kinds', 'general-kinds', 'part-agrees', 'part-unlisted']);
   for (const r of [...Object.keys(BD_RULES), 'generalization-kinds', 'composite-multiplicity', 'owner-kinds', 'line-inside']) assert.ok(Object.hasOwn(T.rules, r), r);
   assert.ok(T.rankFlip({ type: 'uml.Generalization' }) && !T.rankFlip({ type: 'uml.Association' }));
@@ -345,4 +345,9 @@ test('audit 12: member-names judges a SysML classifier as a class: two parts nam
   assert.deepEqual(T.validate(m, m.views[0]).filter(p => p.rule === 'member-names').map(p => [p.ids, p.message]),
     [[['ebike', 'ebike.battery', 'ebike.battery-2'], 'member-names: "EBike" has two members named "battery" (ebike.battery, ebike.battery-2)']]);
   assert.deepEqual(T.validate(M17, M17.views[0]).filter(p => p.rule === 'member-names'), []);
+});
+
+test('audit 15: F2 on a line takes its «stereotype» off, so it is not drawn twice', () => {
+  assert.deepEqual(T.edits.rename(M17, M17.views[0], 'dock-uses-charge-interface', '«use» powers'), [{ op: 'set', id: 'dock-uses-charge-interface', path: 'label', value: 'powers' }]);
+  assert.equal(T.edits.rename(M17, M17.views[0], 'dock', 'Docking station'), null, 'a card: the canvas\'s');
 });

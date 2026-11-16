@@ -201,7 +201,8 @@ function SYS_PAR_ADD(model, view, entry, label, at) {
 function SYS_PAR_MEMBER(model, view, owner, id, text) {
   const param = /^param\s+/i.test(String(text)), t = String(text).replace(/^param\s+/i, 'port '), was = id == null ? null : SYS_PAR_INDEX(model, view).el(id);
   // a port row (port, proxy port, full port) adds a port this view never draws
-  if (!param && /^(?:(?:proxy|full)\s+)?port\s/i.test(String(text).trim())) return SYS_PAR_MEMBERS.add();
+  if (!param && /^(?:(?:proxy|full)\s+)?port\s+[^\s:]/i.test(String(text).trim())) return SYS_PAR_MEMBERS.add();
+  if (param && /^param\s+:/i.test(String(text).trim())) return { error: 'A parameter is param name : Type' }; // no name: not a property named port
   if (was && param !== (was.type === 'sysml.ConstraintParameter')) return { error: `A row keeps its member's kind: delete ${SYS_PAR_NAME(was)} and add a ${param ? 'param' : 'property'} row` };
   // a new row's kind is its owner's: a constraint block holds parameters, a block constraint and value properties (no ports here)
   const o = was ? null : SYS_PAR_INDEX(model, view).el(owner), cb = o && o.type === 'sysml.ConstraintBlock';

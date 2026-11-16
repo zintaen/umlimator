@@ -189,7 +189,7 @@ function fcConnect(model, view, from, to, at, line) {
   if (!FC_OBJ(view) || !FC_OBJ(line) || line.type !== 'flow.Flow') return null;
   const I = fcIndex(model, null), bad = [from, to].find(id => !I.N.has(id) || !FC_NODES.includes(I.N.get(id).type));
   if (bad != null) return { error: `flow-ends: a flow joins two flowchart nodes, and ${fcCalled(I.N.get(bad))} is not one` };
-  const o = [...I.E.values()].filter(e => e.type === 'flow.Flow' && e.from === from);
+  const o = fcIndex(model, view).outs(from); // the view's drawn flows, inline ones too
   if (I.N.get(from).type !== 'flow.Decision' || o.length !== 1) return null;
   const was = FC_TXT(o[0].label).toLowerCase(), label = was === 'yes' || !was ? 'no' : was === 'no' ? 'yes' : null;
   if (!label) return null;
@@ -214,7 +214,7 @@ const FC_TYPE = registerDiagramType('flowchart', {
   edits: { connect: fcConnect, moveTo: fcMoveTo },
   // the PDF's tables: a node's symbol; a line's text, which flags a decision's exit with no label (milestone 2 §9)
   word: (model, id) => { const x = FC_ARR(model && model.nodes).find(n => FC_OBJ(n) && n.id === id); return x && Object.hasOwn(FC_LOOK, x.type) ? FC_LOOK[x.type][1] : null; },
-  text: (model, view, id) => { const by = x => FC_ARR(x).find(y => FC_OBJ(y) && y.id === id), e = by(model && model.edges), d = e && e.type === 'flow.Flow' && FC_ARR(model.nodes).find(n => FC_OBJ(n) && n.id === e.from);
+  text: (model, view, id) => { const by = x => FC_ARR(x).find(y => FC_OBJ(y) && y.id === id), e = by(model && model.edges) || by(FC_OBJ(view) && view.edges), d = e && e.type === 'flow.Flow' && FC_ARR(model.nodes).find(n => FC_OBJ(n) && n.id === e.from);
     return e && !FC_TXT(e.label) && d && d.type === 'flow.Decision' ? `an exit of ${fcCalled(d)} with no label` : null; },
 });
 

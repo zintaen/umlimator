@@ -113,7 +113,7 @@ function c4Lines(model, view, pic) {
 // what is left is set as its label. Anything else: null, the canvas's own
 function c4Rename(model, view, id, text) {
   // a container renamed: the default set label, which apply() carries to the instances named as it (the deployment type's refs)
-  const e = c4Index(model).rels.find(r => r.id === id); if (!e) return null;
+  const e = c4Index(model).rels.find(r => r.id === id) || (C4_OBJ(view) ? C4_ARR(view.edges) : []).find(r => C4_OBJ(r) && r.id === id && r.type === 'c4.Relationship'); if (!e) return null;
   const tech = C4_P(e).technology, t = String(text ?? '').trim(), label = C4_HAS(tech) && t.endsWith(`[${tech}]`) ? t.slice(0, -String(tech).length - 2).trim() : t;
   return label === (e.label ?? '') ? [] : [{ op: 'set', id, path: 'label', value: label || undefined }];
 }
