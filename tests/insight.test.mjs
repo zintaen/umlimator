@@ -97,3 +97,9 @@ test('otlpSpans() skips what a malformed export holds that is no list or object 
   for (const d of [{ resourceSpans: 5 }, { resourceSpans: [null] }, { resourceSpans: [{ scopeSpans: [{ spans: [null] }] }] }, { resourceSpans: [{ scopeSpans: [null, { spans: 3 }] }] }]) assert.deepEqual(otlpSpans(d), [], JSON.stringify(d));
   assert.equal(otlpSpans({ resourceSpans: [{ scopeSpans: [{ spans: [null, { spanId: 's', name: 'n', startTimeUnixNano: '1000000', endTimeUnixNano: '2000000' }] }] }] }).length, 1);
 });
+
+test('otlpSpans() skips attributes that are no list, and a name that is no string (audit 15)', () => {
+  const sp = { spanId: 's', name: { x: 1 }, startTimeUnixNano: '1000000', endTimeUnixNano: '2000000' };
+  for (const attributes of [{ 'service.name': 'api' }, 'api', 5, [null, { key: 'service.name', value: null }]])
+    assert.deepEqual(otlpSpans({ resourceSpans: [{ resource: { attributes }, scopeSpans: [{ spans: [sp] }] }] }).map(s => [s.service, s.name]), [[null, null]], JSON.stringify(attributes));
+});

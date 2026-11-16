@@ -31,6 +31,25 @@ test('every exported function of lib/umlimator.d.ts is quoted with its signature
   assert.deepEqual(stale, [], 'a signature on the API pages differs from lib/umlimator.d.ts');
 });
 
+test('a Handle method whose doc comment says it resolves true is typed Promise<boolean>, and is quoted on the API pages as the .d.ts has it (audit 15)', () => {
+  const d = read(join(root, 'lib/umlimator.d.ts')), handle = d.slice(d.indexOf('export interface Handle'), d.indexOf('\n}', d.indexOf('export interface Handle')));
+  const members = [...handle.matchAll(/\/\*\*((?:(?!\*\/)[\s\S])*)\*\/\s*\n\s*(\w+\(.*\): .+;)\n/g)];
+  assert.ok(members.length > 10, `only ${members.length} methods found`);
+  const wrong = members.filter(([, doc, sig]) => /Resolves true/.test(doc) && !/: Promise<boolean>;$/.test(sig)).map(m => m[2]);
+  assert.deepEqual(wrong, [], 'resolves true or false, typed otherwise');
+  const quoted = members.map(m => m[2]).filter(sig => all.includes('\n' + sig.slice(0, sig.indexOf('(') + 1)) && !all.includes(sig));
+  assert.deepEqual(quoted, [], 'a Handle method quoted on the API pages differs from lib/umlimator.d.ts');
+});
+
+test('the Element doc comment names every diagram type umlimator/all draws (audit 15)', async () => {
+  const { validate } = await import('../lib/umlimator-all.js'), { targets } = await import('../docs/diagrams/examples/check.mjs');
+  const line = read(join(root, 'lib/umlimator.d.ts')).split('\n').find(l => l.includes('umlimator/all draws `uml.class`'));
+  const types = [...new Set(targets().flatMap(([, url]) => JSON.parse(read(url)).views.map(v => v.diagram)).filter(Boolean))];
+  const drawn = types.filter(t => !validate({ schemaVersion: 2, nodes: [], views: [{ id: 'v', title: 'v', diagram: t, nodeIds: [] }] }).some(p => /not drawn/.test(p.message)));
+  assert.ok(drawn.length >= 28, `only ${drawn.length} drawn`);
+  assert.deepEqual(drawn.filter(t => !line.includes('`' + t + '`')), [], 'drawn, but the comment says plain cards');
+});
+
 // a heading's anchor as GitHub and VitePress both make it for the plain headings these pages use; a repeat gets -1, -2
 const anchors = md => {
   const seen = {}, out = new Set();
