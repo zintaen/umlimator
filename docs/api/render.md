@@ -394,7 +394,7 @@ the same model gives the same geometry, and Node and a browser give the same res
 
 | Option | Default | What it does |
 |---|---|---|
-| `repair` | the view's own `repair` | Port repair: moves line ends to cut crossings. |
+| `repair` | the view's own `repair` | Port repair, on a map view: moves line ends to cut crossings. A typed view's type decides, and its lines are never port-repaired, so the option does nothing there. |
 | `measure` | a font-independent estimate | Text widths in px for a text at a font size. |
 | `expand` | none | Cards of the view to unfold in place, as [`expand()`](#expand) draws them. The result's `unfolded` lists those that did. |
 

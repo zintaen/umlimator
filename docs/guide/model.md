@@ -79,7 +79,7 @@ kinds such as `public`, `lane`, `script`, `hook` and `board` work too). Fields b
 | edge | `latency`, `cost` | budgets, in ms and in any unit: `critical()` sums them along a path (not drawn) |
 | view | `gap`, `rgap` | the space between columns and between rows |
 | view | `keepPairs` | A→B and B→A drawn as two lines |
-| view | `repair: false` | no port repair |
+| view | `repair: false` | no port repair (a map view; a typed view's lines are never port-repaired) |
 | view | `subAndChips` | cards 80 px tall that show their sub-line, then their chips |
 | view | `kindsFromLabels` | a line whose edges name no `kind` takes one guessed from its label |
 | container | `badges` | tabs on the box's border |

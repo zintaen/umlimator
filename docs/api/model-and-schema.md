@@ -180,7 +180,7 @@ interface MapView {
 | `nodeIds` | The cards it shows. |
 | `edges` | The lines it draws: model edge ids, or lines of its own. Without it, every model edge between two of its cards. |
 | `layout` | A `[col, row]` place per card id. |
-| `repair` | `false` turns off port repair for this view. |
+| `repair` | `false` turns off port repair for this map view. A typed view ignores it: its lines are never port-repaired. |
 | `containers` | Boxes: each with a label, the cards it holds, an optional parent box, badges on its border, and a `tone` that tints the region behind it. |
 | `subAndChips` | Cards 80 px tall that show their sub-line, then their chips. |
 | `kindsFromLabels` | Guess a line's kind from its label's words when its edges name none. The standalone page always guesses. |

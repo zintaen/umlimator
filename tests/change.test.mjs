@@ -50,6 +50,24 @@ test('diff() of a model with itself changes nothing; from nothing, everything is
   assert.deepEqual([gone.views, gone.model.edges[0].style], [['v'], 'removed']);
 });
 
+test('audit 16: an added view of cards already there is listed, its own cards and lines marked added, as a removed one\'s are marked removed', () => {
+  const m = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b' }], views: [{ id: 'one', nodeIds: ['a', 'b'] }] };
+  const n = structuredClone(m); n.views.push({ id: 'two', title: 'Two', nodeIds: ['a', 'b', 'x'], nodes: [{ id: 'x', label: 'X' }], edges: [{ from: 'a', to: 'b', label: 'cancels' }, { from: 'b', to: 'x' }] });
+  const d = diff(m, n), two = d.model.views[1];
+  assert.deepEqual([d.views, d.summary], [['two'], ['adds the view Two', 'adds X']]);
+  assert.deepEqual([two.nodes[0].change, two.edges.map(e => e.style)], ['added', ['added', 'added']]);
+  const only = structuredClone(m); only.views.push({ id: 'two', nodeIds: ['a', 'b'] });
+  assert.deepEqual(diff(m, only).views, ['two']);
+});
+
+test('audit 16: a card\'s present in a typed view is said with the card, and hiding it says the hide only', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [], views: [{ id: 'v', title: 'V', nodeIds: ['a', 'b'], present: { a: { collapsed: ['ops'] } } }] };
+  const hid = structuredClone(m); hid.views[0].nodeIds = ['b']; delete hid.views[0].present;
+  assert.deepEqual(diff(m, hid).summary, ['takes A out of the view V']);
+  const open = structuredClone(m); open.views[0].present = {};
+  assert.deepEqual(diff(m, open).summary, ['changes A (present) in the view V']);
+});
+
 test('diff() marks a card put into a view or taken out of one there only, and a view\'s own cards and lines', () => {
   const base = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }, { id: 'c', label: 'C' }], edges: [{ from: 'a', to: 'b' }],
     views: [{ id: 'one', title: 'One', nodeIds: ['a', 'b', 'c'] }, { id: 'two', title: 'Two', nodeIds: ['a'], nodes: [{ id: 'x', label: 'X' }],

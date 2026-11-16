@@ -177,6 +177,11 @@ try {
   const nameless = ($('m-res').querySelector('.fr b') || {}).textContent; key('Escape', $('m-q')); found = await search('zeta-cardx');
   check('a card with no label is named by its id in a result, and in "Did you mean" (audit 15)', nameless === 'zeta-card' && /Did you mean zeta-card\?/.test(found), [nameless, found]);
   check('the page\'s title is its level-one heading (audit 15)', ($('page').querySelector('h1') || {}).textContent === M.title, ($('page').querySelector('h1') || {}).outerHTML);
+  pg.update(M); await until(() => pg.navigating === null); pg.select({ type: 'node', id: 'bikeshare' }); await until(() => panel() && $('m-panel').dataset.node === 'bikeshare');
+  const lv = [...$('page').querySelectorAll('h1, h2, h3, h4, h5, h6')].map(h => +h.tagName[1]);
+  check('under the title the headings go down one level at a time: the details panel\'s title an h2, its sections h3, the views list\'s an h2 (axe heading-order, audit 16)',
+    lv[0] === 1 && lv.every((l, i) => !i || l <= lv[i - 1] + 1) && !!$('m-panel').querySelector('.pt h2') && !!$('m-panel').querySelector('.pbody h3'), lv);
+  pg.select(null);
   pg.update(M); await until(() => pg.navigating === null);
   key('/', document.body); await until(() => !$('m-pal').hidden); $('m-q').value = 'a'; $('m-q').dispatchEvent(new Event('input')); key('ArrowDown', $('m-q'));
   const on = $('m-res').querySelector('.fr.on');
