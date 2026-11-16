@@ -47,6 +47,7 @@ const TYPED = {};
 
 // an id-keyed table with no prototype: an id named constructor, toString or __proto__ is an own key like any other
 const idTable = (o = {}) => Object.assign(Object.create(null), o);
-const propRefs = type => Object.assign({}, ...[...TYPES.values()].map(T => T.refs && Object.hasOwn(T.refs, type) && T.refs[type]));
+// a type is text: any other value (one with a toString key, which no key is read from) refers to nothing (audit 21)
+const propRefs = type => typeof type !== 'string' ? {} : Object.assign({}, ...[...TYPES.values()].map(T => T.refs && Object.hasOwn(T.refs, type) && T.refs[type]));
 
 export { registerDiagramType, diagramOf, propRefs, idTable, TYPED };

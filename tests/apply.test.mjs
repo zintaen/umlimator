@@ -353,3 +353,23 @@ test('audit 17: hide refuses a view\'s subject (or what owns it), which would le
   assert.throws(() => apply(m, { op: 'hide', id: 'S', view: 'v' }), /"S.p" is the subject of view "v"/);
   assert.deepEqual(apply(m, { op: 'hide', id: 'x', view: 'v' }).views[0].subject, 'S.p'); // another card: the subject stays
 });
+
+test('audit 21: apply() edits a model with a value no text is read from ({"toString": 1} as a line end, a type) as validate() reads it: delete and hide work, nothing else changes', () => {
+  const m = JSON.parse('{"nodes":[{"id":"a","label":"A"},{"id":"b","label":"B"},{"id":"c","label":"C"}],"edges":[{"id":"ab","from":"a","to":"b"},{"from":{"toString":1},"to":"b"},{"from":"a","to":"b"}],"views":[{"id":"v","nodeIds":["a","b","c"],"edges":["ab","a->b#0"]}]}');
+  const del = apply(m, { op: 'delete', id: 'c' }), hid = apply(m, { op: 'hide', id: 'c', view: 'v' });
+  assert.deepEqual([del.nodes.map(n => n.id), del.edges], [['a', 'b'], m.edges]);
+  assert.deepEqual(hid.views[0].nodeIds, ['a', 'b']);
+  assert.deepEqual(hid.views[0].edges, ['ab', 'a->b#0'], 'the view\'s lines, a positional one too, as they were');
+  assert.deepEqual(apply(m, { op: 'delete', id: 'a' }).edges, [m.edges[1]], 'its lines go with a card; the line with no readable end stays as it was');
+  // every typed example: a type, a member's type, a label or an end no text is read from, then each command on its first elements
+  const bad = () => JSON.parse('{"toString":1}'), thrown = [];
+  for (const f of ['bookshop-schema.json', 'bookshop-timing.json', 'bookshop-c4.json', 'order-states.json', 'bookshop-components.json']) {
+    const base = read('../examples/' + f), ids = []; JSON.stringify(base, (k, v) => { if (k === 'id' && typeof v === 'string' && ids.length < 8) ids.push(v); return v; });
+    const spots = [x => { x.nodes[0].type = bad(); }, x => { const n = x.nodes.find(y => Array.isArray(y.members) && y.members.length); if (n) n.members[0].type = bad(); },
+      x => { if (x.edges && x.edges[0]) { x.edges[0].type = bad(); x.edges[0].from = bad(); } }, x => { x.nodes[1].label = bad(); }];
+    for (const spot of spots) { const h = structuredClone(base); spot(h);
+      for (const id of ids) for (const c of [{ op: 'delete', id }, { op: 'hide', id, view: base.views[0].id }, { op: 'set', id, path: 'label', value: 'Z' }])
+        try { apply(h, c); } catch (e) { if (/primitive/.test(e.message)) thrown.push(`${f} ${JSON.stringify(c)}: ${e.message}`); } }
+  }
+  assert.deepEqual(thrown, []);
+});
