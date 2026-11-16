@@ -5,7 +5,7 @@ import { rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { lineRename, memberEdit, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, ownersOn, placeTabs, readingOrder } from './owners.js';
-import { SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, structProblems } from './structure.js';
+import { SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, snKindWord, structProblems } from './structure.js';
 
 /* ---------- the component diagram, uml.component (work package 5.4, notes/stage-5.md §10.1) ----------
    Components (src/uml/structure.js's look), a component or package that holds something shown a box (src/uml/owners.js),
@@ -88,12 +88,12 @@ function cpNodeName(model, view, pic, id, bare) { // bare: a port without " of <
   const { I, lines } = pic, x = I.N.get(id) || (I.P.get(id) || {}).x, of = k => lines.filter(l => l.e.type === k);
   if (!x) return String(id);
   if (I.P.has(id)) { const by = k => of(k).filter(l => l.e.from === id && I.ty(l.e.to) === 'uml.Interface').map(l => cpName(I.N.get(l.e.to)));
-    return SN_SAY.port(cpName(x), bare ? null : pic.name(I.P.get(id).owner), { valueType: cpProps(x).valueType, provides: by('uml.InterfaceRealization'), requires: by('uml.Usage') }); }
+    return SN_SAY.port(cpName(x), bare ? null : pic.name(I.P.get(id).owner), { valueType: cpProps(x).valueType, stereotypes: cpStereo(x), provides: by('uml.InterfaceRealization'), requires: by('uml.Usage') }); }
   const b = pic.boxes.find(y => y.id === id); if (b) return b.aria;
   const st = cpStereo(x), owners = k => of(k).filter(l => l.e.to === id).map(l => pic.name(I.comp(l.e.from)));
   if (x.type === 'uml.Component') return SN_SAY.component(pic.name(id), { stereotypes: st, ports: cpPortsOf(x).length });
-  if (x.type === 'uml.Interface') return SN_SAY.iface(pic.name(id), { ball: cpBall(I, view, id), providers: owners('uml.InterfaceRealization'), requirers: owners('uml.Usage') });
-  if (x.type === 'uml.Artifact') return SN_SAY.artifact(pic.name(id), { manifests: of('uml.Manifestation').filter(l => l.e.from === id).map(l => pic.name(l.e.to)) });
+  if (x.type === 'uml.Interface') return SN_SAY.iface(pic.name(id), { ball: cpBall(I, view, id), stereotypes: st, providers: owners('uml.InterfaceRealization'), requirers: owners('uml.Usage') });
+  if (x.type === 'uml.Artifact') return SN_SAY.artifact(pic.name(id), { stereotypes: st, manifests: of('uml.Manifestation').filter(l => l.e.from === id).map(l => pic.name(l.e.to)) });
   if (x.type === 'uml.Comment') return 'Comment: ' + cpName(x);
   return `${x.type === 'uml.Package' ? 'Package' : String(x.type).split('.').pop()} ${pic.name(id)}${st.length ? ` (${st.join(', ')})` : ''}`;
 }
@@ -175,8 +175,9 @@ function cpGeo({ model, view, pos: pins, memo }) {
   const nodes = pic.ids.filter(id => !pic.open.has(id)).map(id => { const n = I.N.get(id), st = cpStereo(n), pr = CP_OWN(present, id) || {};
     const ops = CP_ARR(n.members).filter(m => CP_OBJ(m) && (m.type === 'uml.Operation' || m.type === 'uml.Property'));
     const look = n.type === 'uml.Comment' ? { shape: 'note' } : n.type === 'uml.Package' ? { shape: 'package', stereotypes: st } : n.type === 'uml.Artifact' ? { shape: 'artifact', stereotypes: st }
-      : n.type === 'uml.Interface' ? (cpBall(I, view, id) ? { shape: 'ball' } : { shape: 'classifier', stereotypes: ['interface', ...st], compartments: ops.length ? [{ name: 'operations', members: ops }] : [] })
-        : n.type === 'uml.Class' ? { shape: 'classifier', stereotypes: st } : { shape: 'component', stereotypes: st, keyword: !!CP_OWN(pr, 'keyword') };
+      : n.type === 'uml.Interface' ? (cpBall(I, view, id) ? { shape: 'ball', stereotypes: st } : { shape: 'classifier', stereotypes: ['interface', ...st], compartments: ops.length ? [{ name: 'operations', members: ops }] : [] })
+        : n.type === 'uml.Class' ? { shape: 'classifier', stereotypes: st } : n.type == null || n.type === 'uml.Component' ? { shape: 'component', stereotypes: st, keyword: !!CP_OWN(pr, 'keyword') }
+          : { shape: 'classifier', stereotypes: [snKindWord(n.type), ...st] }; // another kind: a classifier with its kind's keyword, as it is named (audit 15)
     const d = { id, label: n.type === 'uml.Comment' ? cpName(n) : pic.name(id), type: n.type || 'uml.Component', kind: 'file', ...look, aria: cpNodeName(model, view, pic, id), col: (P(id) || [0, 0])[0], row: (P(id) || [0, 0])[1] };
     // a ball is laid out as its circle, so the router ends its lines level with the circle's centre; its name hangs under it in
     // the row gap. ponytail: the layout keeps no room for the name, which a line passing under the ball may cross (§17)
@@ -199,7 +200,7 @@ function cpGeo({ model, view, pos: pins, memo }) {
       end: CP_LOOK[l.kind][0], aria: cpLineName(pic, l), ...(CP_OBJ(l.e.style) || typeof l.e.style === 'string' ? { style: l.e.style } : {}) }; });
   const g = placeTabs(layoutTyped({ nodes, edges, ...(boxes.length ? { containers: boxes } : {}), direction: down ? 'down' : 'right', gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo));
   // on a copy (stage 4 §2.4): every port as a node, and its name
-  const d = portsDrawn(g, shownPorts.map(({ p, owner }) => ({ id: p.id, owner, side: side[p.id], label: cpName(p), valueType: cpProps(p).valueType, aria: cpNodeName(model, view, pic, p.id) })));
+  const d = portsDrawn(g, shownPorts.map(({ p, owner }) => ({ id: p.id, owner, side: side[p.id], label: cpName(p), valueType: cpProps(p).valueType, stereotypes: cpStereo(p), aria: cpNodeName(model, view, pic, p.id) })));
   // a slot after each element (src/typed/edit.js): the palette's add hears the selection through it (cpAdd, at.sel)
   const slots = Object.values(d.byId).map((n, index) => ({ index, x: n.x, y: n.y, after: n.id }));
   return { ...d, slots, legend: cpLegend(new Set(lines.map(l => l.kind))), order: cpOrder(pic) };

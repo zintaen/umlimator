@@ -529,3 +529,26 @@ test('audit 12: describe() of a model whose part id holds \'->\' (validate repor
   assert.ok(validate(m).some(x => x.level === 'error'));
   assert.equal(typeof describe(m, 'internals'), 'string');
 });
+
+test('audit 15: a connector\'s, a part\'s and a port\'s stereotypes are drawn and said; F2 on the connector edits its label alone', async () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'S', type: 'uml.Class', label: 'Shop', members: [P('a', 'a', { props: { valueType: 'X', stereotypes: ['service'] } }), P('b', 'b', { props: { valueType: 'Y' } }),
+    { id: 'q', type: 'uml.Port', label: 'in', props: { stereotypes: ['rest'] } }] }],
+  edges: [{ id: 'c1', type: 'uml.Connector', from: 'a', to: 'b', label: 'calls', props: { stereotypes: ['http'] } }], views: [{ id: 'v', diagram: 'uml.composite-structure', nodeIds: ['S'], subject: 'S' }] };
+  const g = layout(m, 'v'), c = g.edges.find(e => e.id === 'c1'), svg = String((await import('../src/draw/svg.js')).svgOf(mapContext(m).buildGeo('v')));
+  assert.deepEqual([c.label, c.aria], ['«http» calls', 'Connector from a to b: «http» calls']);
+  assert.equal(g.nodes.find(x => x.id === 'q').aria, 'Port in (rest) of Shop');
+  for (const w of ['«service»', '«rest» in']) assert.ok(svg.includes(w), w);
+  assert.ok(g.nodes.find(x => x.id === 'a').h === 48, 'one stereotype: the part keeps its height');
+  assert.deepEqual(T.edits.rename(m, m.views[0], 'c1', '«http» calls'), []);
+  assert.equal(layout(apply(m, T.edits.rename(m, m.views[0], 'c1', '«http» sends')), 'v').edges.find(e => e.id === 'c1').label, '«http» sends');
+});
+
+test('audit 15: a part or collaboration use with no name and no type is drawn and said by its id; one with a type alone, ": Y"', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'S', type: 'uml.Class', label: 'Shop', members: [P('a', undefined), P('b', undefined, { props: { valueType: 'Y' } })] }, { id: 'u', type: 'uml.CollaborationUse', parent: 'S' }],
+    edges: [], views: [{ id: 'v', diagram: 'uml.composite-structure', nodeIds: ['S', 'u'], subject: 'S' }] };
+  const g = layout(m, 'v'), n = id => g.nodes.find(x => x.id === id);
+  assert.deepEqual(['a', 'b', 'u'].map(id => [n(id).label, n(id).aria]), [['a', 'Part a, in Shop'], [': Y', 'Part : Y, in Shop'], ['u', 'Collaboration use u']]);
+  assert.deepEqual(T.edits.rename(m, m.views[0], 'a', 'a'), [], 'F2 unchanged: no name stored');
+  const c = mapContext(m), rows = tablesOf(c, c.V.v, c.buildGeo('v')).flatMap(t => t.rows).join(' ');
+  assert.doesNotMatch(rows, /(^|>)\s*, composite/, 'no blank part row');
+});

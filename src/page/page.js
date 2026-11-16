@@ -51,7 +51,7 @@ export function mountPage(container, model, options = {}) {
   app.innerHTML = `
     <header class="mbar">
       <button class="ibtn" id="m-outline" title="Views (O)" aria-label="Toggle the views list" aria-expanded="false">☰</button>
-      <span class="mbrand"><i></i><span>${esc(D.title || 'Map')}</span></span>
+      <h1 class="mbrand"><i></i><span>${esc(D.title || 'Map')}</span></h1>
       <nav class="crumbs" id="m-crumbs" aria-label="Breadcrumb"></nav>
       <button class="findbtn" id="m-find" type="button" aria-label="Find a node or view, ${modK}" aria-keyshortcuts="${mac ? 'Meta' : 'Control'}+K"><span aria-hidden="true">⌕</span><span class="ft">Find a node or view…</span> <span class="kbd">${modK}</span></button>
       <button class="ibtn" id="m-theme" title="Light / dark" aria-label="Dark theme" aria-pressed="false">◐</button>${(D.stories || []).length ? `
@@ -275,14 +275,14 @@ export function mountPage(container, model, options = {}) {
       hits = [...kidsOf(cur), ...views.filter(v => v.id !== cur && !kidsOf(cur).includes(v))].slice(0, 8).map(v => ({ t: 'v', v }));
     } else {
       const starts = s => String(s || '').toLowerCase().startsWith(qs) ? 0 : 1;
-      const ns = nodeIdx().filter(x => words.every(w => x.hay.includes(w))).sort((a, b) => starts(a.n.label) - starts(b.n.label) || drawnHere(b.n.id) - drawnHere(a.n.id)).slice(0, 7).map(x => ({ t: 'n', n: x.n }));
+      const ns = nodeIdx().filter(x => words.every(w => x.hay.includes(w))).sort((a, b) => starts(a.n.label || a.n.id) - starts(b.n.label || b.n.id) || drawnHere(b.n.id) - drawnHere(a.n.id)).slice(0, 7).map(x => ({ t: 'n', n: x.n }));
       const vs = viewIdx().filter(x => words.every(w => x.hay.includes(w))).slice(0, 5).map(x => ({ t: 'v', v: x.v }));
       hits = [...ns, ...vs];
     }
     hi = Math.min(hi, Math.max(0, hits.length - 1)); hits.length ? q.setAttribute('aria-activedescendant', 'm-o' + hi) : q.removeAttribute('aria-activedescendant'); // a reader says the highlighted result
     if (!hits.length) {
-      const near = nodes.map(n => [n, lev(qs, String(n.label).toLowerCase().replace(/^\//, '').slice(0, qs.length + 2))]).sort((a, b) => a[1] - b[1])[0];
-      res.innerHTML = ''; q.setAttribute('aria-expanded', false); none.innerHTML = `<div class="none"><div aria-hidden="true">⌕</div><h4>Nothing called “${esc(q.value.trim())}”</h4>${near && near[1] <= Math.max(2, qs.length / 3) ? `Did you mean <button data-fill="${esc(near[0].label)}">${esc(near[0].label)}</button>?` : 'Try a skill, verb, script or view name.'}</div>`;
+      const near = nodes.map(n => [n, lev(qs, String(n.label || n.id).toLowerCase().replace(/^\//, '').slice(0, qs.length + 2))]).sort((a, b) => a[1] - b[1])[0];
+      res.innerHTML = ''; q.setAttribute('aria-expanded', false); none.innerHTML = `<div class="none"><div aria-hidden="true">⌕</div><h4>Nothing called “${esc(q.value.trim())}”</h4>${near && near[1] <= Math.max(2, qs.length / 3) ? `Did you mean <button data-fill="${esc(near[0].label || near[0].id)}">${esc(near[0].label || near[0].id)}</button>?` : 'Try a skill, verb, script or view name.'}</div>`;
       return;
     }
     let html = '', last = ''; none.innerHTML = ''; q.setAttribute('aria-expanded', true);
@@ -290,7 +290,7 @@ export function mountPage(container, model, options = {}) {
       const grp = !qs ? 'Views' : h.t === 'n' ? 'Nodes' : 'Views';
       if (grp !== last) { html += `<div class="gt">${grp}</div>`; last = grp; }
       if (h.t === 'n') { const k = kindOf(h.n.kind, true), vs = viewsWith(h.n.id), here = drawnHere(h.n.id);
-        html += `<button class="fr${i === hi ? ' on' : ''}" role="option" id="m-o${i}" aria-selected="${i === hi}" data-i="${i}"><i style="background:var(--um-${KIND[k][0]})"></i><b>${mark(h.n.label, words)}</b><span>${esc(h.n.type ? wordOf(D, vs[0], h.n.id, h.n.type) : KIND[k][1])} · ${here ? 'this view' : esc(vs.map(v => shortT(v.title || v.id)).slice(0, 2).join(', ') || 'no view')}</span></button>`; }
+        html += `<button class="fr${i === hi ? ' on' : ''}" role="option" id="m-o${i}" aria-selected="${i === hi}" data-i="${i}"><i style="background:var(--um-${KIND[k][0]})"></i><b>${mark(h.n.label || h.n.id, words)}</b><span>${esc(h.n.type ? wordOf(D, vs[0], h.n.id, h.n.type) : KIND[k][1])} · ${here ? 'this view' : esc(vs.map(v => shortT(v.title || v.id)).slice(0, 2).join(', ') || 'no view')}</span></button>`; }
       else html += `<button class="fr${i === hi ? ' on' : ''}" role="option" id="m-o${i}" aria-selected="${i === hi}" data-i="${i}"><i style="background:var(--um-accent)"></i><b>${mark(h.v.title || h.v.id, words)}</b><span>${(h.v.nodeIds || []).length} nodes${h.v.id === cur ? ' · here' : ''}</span></button>`;
     });
     res.innerHTML = html;

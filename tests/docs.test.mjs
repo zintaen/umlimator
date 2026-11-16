@@ -119,6 +119,8 @@ test('audit 11: the schema names the flowchart\'s default direction; the informa
     for (const r of Object.keys(diagramOf({ diagram: t }).rules)) assert.ok(note.includes('`' + r + '`'), `${f}: ${r}`);
   }
   assert.match(doc('../docs/conformance/uml-composite-structure.md'), /`connector-drawn` \(a connector between two ports of the subject, or of one part/);
+  // audit 15: a duration with ends on two lanes sits under the lower one (src/layout/timeruler.js, notes/stage-6.md §6.6)
+  assert.match(doc('../docs/conformance/uml-timing.md'), /with ends on two lanes, under the lower of the two/);
 });
 
 test('audit 14: the cloud notes do not say an icons-only update() keeps the picture (lifted in 0.28.0); AWS is in the editing guide, the examples README and the schema', () => {
@@ -128,4 +130,31 @@ test('audit 14: the cloud notes do not say an icons-only update() keeps the pict
   for (const s of ['AWS (`aws`)', '`aws.Connection`', '`pack fetch aws`']) assert.ok(editing.includes(s), s);
   assert.match(read('../examples/README.md'), /`aws-`/);
   assert.match(JSON.parse(read('../lib/umlimator.schema.json')).properties.iconPacks.description, /"aws"/);
+});
+
+test('audit 15: the import and export guide names every Mermaid writer as internal, and says export writes BPMN only', () => {
+  const read = p => readFileSync(new URL(p, import.meta.url), 'utf8'), guide = read('../docs/guide/import-export.md');
+  const words = { class: 'class', sequence: 'sequence', state: 'state machine', requirement: 'requirement', er: 'entity-relationship', flowchart: 'flowchart', mindmap: 'mindmap' };
+  const writers = readdirSync(new URL('../src/readers/', import.meta.url)).filter(f => /^mermaid-.*\.js$/.test(f) && /function writeMermaid/.test(read(`../src/readers/${f}`))).map(f => f.slice(8, -3)).sort();
+  assert.deepEqual(writers, Object.keys(words).sort());
+  const said = guide.slice(guide.indexOf('## Export')).match(/The Mermaid writers \(([^)]*)\) are internal/);
+  assert.ok(said, 'the writers are said to be internal');
+  for (const w of writers) assert.ok(said[1].includes(words[w]), w);
+  assert.match(guide, /`export` writes BPMN XML only/);
+});
+
+test('audit 15: a Google Cloud product the pin has no icon of draws its category\'s icon, as the note, the examples README and the gallery say', async () => {
+  const read = p => readFileSync(new URL(p, import.meta.url), 'utf8'), packs = JSON.parse(read('../icons/packs.json'));
+  for (const id of ['Cloud-DNS', 'Cloud-Load-Balancing', 'Cloud-CDN', 'Pub-Sub']) assert.ok(packs.gcp.category[id], id);
+  assert.doesNotMatch(read('../docs/conformance/gcp.md'), /draw a glyph/);
+  assert.match(read('../docs/conformance/gcp.md'), /draw their\s+category's icon/);
+  assert.doesNotMatch(read('../examples/README.md'), /The site draws it with no icon pack|Glyphs and full names on the site/);
+  assert.doesNotMatch(read('../examples/index.html'), /a glyph where the pinned pack lacks one/);
+});
+
+test('audit 15: the API page states the typed views\' default direction as the schema does', () => {
+  const read = p => readFileSync(new URL(p, import.meta.url), 'utf8');
+  const row = read('../docs/api/typed-diagrams.md').split('\n').find(l => l.startsWith('| `direction` |'));
+  assert.match(row, /down for a flowchart, a profile, a SysML block definition or requirement view/);
+  assert.match(JSON.parse(read('../lib/umlimator.schema.json')).$defs.view.properties.direction.description, /down for a flowchart, a profile, a SysML block definition or requirement view/);
 });

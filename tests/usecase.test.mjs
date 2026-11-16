@@ -285,3 +285,15 @@ test('describe() of packages nested 6,000 deep reads them with a stack, not recu
   assert.ok(d[1].startsWith('Actor Shopper'), d[1]);
   assert.equal(d.length, N + 4);
 });
+
+test('F2 on an include or extend edits its label alone; an extend\'s [condition] is read back, its (points) are the panel\'s (audit 15)', () => {
+  const T = diagramOf({ diagram: 'uml.use-case' }), v = UC.views[0], drawn = (m, id) => layout(m, v.id).edges.find(x => x.id === id).label;
+  const inc = UC.edges.find(e => e.type === 'uml.Include'), ext = UC.edges.find(e => e.type === 'uml.Extend' && e.props?.condition && e.props?.extensionPoints?.length);
+  for (const e of [inc, ext]) assert.deepEqual(T.edits.rename(UC, v, e.id, drawn(UC, e.id)), [], `${e.id}: unchanged, nothing`);
+  const a = apply(UC, T.edits.rename(UC, v, inc.id, drawn(UC, inc.id) + ' for payment'));
+  assert.equal(drawn(a, inc.id), drawn(UC, inc.id) + ' for payment'); assert.doesNotMatch(a.edges.find(e => e.id === inc.id).label, /«/);
+  const b = apply(UC, T.edits.rename(UC, v, ext.id, drawn(UC, ext.id).replace(/\]$/, ' today]')));
+  assert.equal(b.edges.find(e => e.id === ext.id).props.condition, ext.props.condition + ' today'); assert.equal(drawn(b, ext.id), drawn(UC, ext.id).replace(/\]$/, ' today]'));
+  assert.match(T.edits.rename(UC, v, ext.id, drawn(UC, ext.id).replace(/\(.*\)/, '(other)')).error ?? '', /extension points/);
+  assert.equal(T.edits.rename(UC, v, v.nodeIds[0], 'x'), null, 'a node: the canvas\'s own');
+});

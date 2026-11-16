@@ -160,7 +160,7 @@ test('the branch colours: the kind palette\'s six, cycled over first-level branc
   const cssText = readFileSync(new URL('../lib/umlimator-theme.css', import.meta.url), 'utf8');
   const block = start => { const i = cssText.indexOf(start); return cssText.slice(i, cssText.indexOf('}', i)); };
   const vars = b => Object.fromEntries([...b.matchAll(/--um-([\w-]+):\s*([^;]+);/g)].map(x => [x[1], x[2].trim()]));
-  const light = vars(block(':root, umlimator-map[theme="light"] {')), dark = { ...light, ...vars(block(':root[data-theme="dark"]')) };
+  const light = vars(block(':root, umlimator-map[theme="light"]')), dark = { ...light, ...vars(block(':root[data-theme="dark"]')) };
   const hex = (t, k) => { let v = t[k]; for (let i = 0; i < 4 && /^var\(--um-([\w-]+)\)$/.test(v); i++) v = t[v.match(/^var\(--um-([\w-]+)\)$/)[1]]; assert.match(v, /^#[0-9a-f]{6}$/i, k); return [1, 3, 5].map(j => parseInt(v.slice(j, j + 2), 16) / 255); };
   const lum = c => { const f = v => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4); return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
   const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
@@ -287,10 +287,14 @@ test('Delete hides a topic\'s branch, said with the count; Shift + Delete delete
   const s = mmShow(h, V(h), 'mm-checkout');
   assert.deepEqual([s.commands, s.say], [[{ op: 'set', view: VID, path: 'nodeIds', value: V(m).nodeIds }], 'Showed Checkout and 2 subtopics hidden with it']);
   // a hidden topic's descendant shown on its own stays (drawn under Website then, so the branch comes back after it); one
-  // with nothing hidden under it is the canvas's Show (null)
+  // with nothing hidden under it is shown by the hook too, after its nearest shown ancestor's last shown descendant (audit 15)
   const part = apply(h, { op: 'set', view: VID, path: 'nodeIds', value: [...V(h).nodeIds, 'mm-card-payments'] });
   assert.deepEqual(mmShow(part, V(part), 'mm-checkout').commands[0].value, [...V(h).nodeIds, 'mm-card-payments', 'mm-checkout', 'mm-order-emails']);
-  assert.equal(mmShow(h, V(h), 'mm-card-payments'), null);
+  assert.equal(mmShow(h, V(h), 'mm-card-payments').say, 'Showed Card payments');
+  // a lone hidden topic whose child was shown on its own and given a side: the side goes, so no side-first (audit 15)
+  const lone = { schemaVersion: 2, nodes: [{ id: 'r', type: T, label: 'R' }, { id: 'h', type: T, label: 'H', parent: 'r' }, { id: 'x', type: T, label: 'X', parent: 'h' }, { id: 'y', type: T, label: 'Y', parent: 'r' }],
+    edges: [], views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['r', 'x', 'y'], present: { x: { side: 'left' } } }] };
+  assert.deepEqual(mmProblems(apply(lone, mmShow(lone, 'v', 'h').commands), 'v').map(p => p.rule), []);
   assert.equal(mmShow(m, V0, 'mm-checkout'), null, 'shown already');
   // a parent cycle among the hidden (which validation reports) ends the walk: each topic once
   const cyc = { schemaVersion: 2, nodes: [{ id: 'r', type: T, label: 'R' }, { id: 'a', type: T, label: 'A', parent: 'b' }, { id: 'b', type: T, label: 'B', parent: 'a' }], edges: [], views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['r'] }] };

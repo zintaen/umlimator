@@ -123,7 +123,7 @@ map.update({ ...model, nodes: [...model.nodes, { id: 'cache', label: 'Cache', ki
 ### setView
 
 ```ts
-setView(id: string): Promise<void> | void;
+setView(id: string): Promise<boolean>;
 ```
 
 Shows a view, zooming in or out as a drill-down does, and emits `viewchange`. A request made while a move is under way

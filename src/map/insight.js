@@ -72,11 +72,11 @@ export function describe(model, viewId) {
 /** The spans of an OpenTelemetry trace exported as OTLP JSON, as replay() takes them: { id, parent, service, name, start,
  *  end }, times in milliseconds. */
 export function otlpSpans(data) {
-  const out = [], attr = (list, k) => { const v = ((list || []).find(a => a && a.key === k) || {}).value || {}; return v.stringValue ?? v.intValue ?? null; };
   const objs = x => Array.isArray(x) ? x.filter(y => y && typeof y === 'object') : []; // a malformed export: what is no list or object is skipped
+  const out = [], attr = (list, k) => { const v = (objs(list).find(a => a.key === k) || {}).value; return v && typeof v === 'object' ? v.stringValue ?? v.intValue ?? null : null; };
   objs(data && data.resourceSpans).forEach(rs => { const service = attr(rs.resource && rs.resource.attributes, 'service.name');
     objs(rs.scopeSpans || rs.instrumentationLibrarySpans).forEach(ss => objs(ss.spans).forEach(s => out.push({ id: s.spanId, parent: s.parentSpanId || null,
-      service, name: s.name, start: Number(s.startTimeUnixNano) / 1e6, end: Number(s.endTimeUnixNano) / 1e6 }))); });
+      service, name: typeof s.name === 'string' ? s.name : null, start: Number(s.startTimeUnixNano) / 1e6, end: Number(s.endTimeUnixNano) / 1e6 }))); });
   return out;
 }
 // a service's card (#65, #96): the card `match` names, else the card with that id, else the one with that label (any case)

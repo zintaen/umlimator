@@ -432,3 +432,9 @@ test('the request/reply swap keeps no swap that leaves the finished view with mo
     views: [{ id: 'v', diagram: 'c4.container', nodeIds: n }] };
   assert.ok(check(m, 'v').length <= 9, check(m, 'v').map(i => i.message).join('\n'));
 });
+
+test('audit 15: F2 on an inline relationship takes its unchanged [technology] off, as on a model relationship', () => {
+  const m = { schemaVersion: 2, nodes: [El('a', 'Person', 'A'), El('b', 'System', 'B')], edges: [],
+    views: [{ id: 'v', diagram: 'c4.context', nodeIds: ['a', 'b'], edges: [Rel('r2', 'a', 'b', 'Uses', 'HTTPS')] }] };
+  assert.deepEqual(T.edits.rename(m, m.views[0], 'r2', 'Calls [HTTPS]'), [{ op: 'set', id: 'r2', path: 'label', value: 'Calls' }]);
+});

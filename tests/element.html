@@ -79,6 +79,13 @@ try {
   a.removeAttribute('theme'); delete html.dataset.theme;
   check('with no theme, it follows a docs site\'s dark mode (VitePress\'s html.dark, Docusaurus\'s data-theme); a theme still wins',
     seen.vitepress === dark && seen.docusaurus === dark && seen['vitepress, theme="light"'] === light && seen['docusaurus, theme="light"'] === light, seen);
+  // VitePress's light mode on a system that prefers dark (audit 15): VitePress marks only dark, never data-theme="light", so
+  // the system's dark palette sits on :root (set inline here, as theme.css's media rule would); in its .VPContent the map is light
+  html.style.setProperty('--um-stage-bg', dark); document.body.classList.add('VPContent');
+  const vpLight = bg(); html.classList.add('dark'); const vpDark = bg();
+  html.classList.remove('dark'); document.body.classList.remove('VPContent'); const plain = bg(); html.style.removeProperty('--um-stage-bg');
+  check('with no theme, a map in VitePress\'s light mode is light whatever the system asks, and dark in its dark mode; elsewhere the system rules',
+    vpLight === light && vpDark === dark && plain === dark, [vpLight, vpDark, plain]);
 
   let bubbled = null; document.addEventListener('umlimator:select', e => { bubbled = e.target; }, { once: true });
   fire('.node[data-id="api"] .n-label');
