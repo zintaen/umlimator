@@ -217,4 +217,4 @@ function structProblems(model, view) {
   return out;
 }
 
-export { SN_SAY, snKindWord, portLen, portSides, portFit, portsDrawn, STRUCT_RULES, structProblems };
+export { SN_ARTIFACTS, SN_SAY, snKindWord, portLen, portSides, portFit, portsDrawn, STRUCT_RULES, structProblems };

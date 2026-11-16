@@ -5,7 +5,7 @@ import { rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { lineRename, memberEdit, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, ownersOn, placeTabs, readingOrder } from './owners.js';
-import { SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, snKindWord, structProblems } from './structure.js';
+import { SN_ARTIFACTS, SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, snKindWord, structProblems } from './structure.js';
 
 /* ---------- the component diagram, uml.component (work package 5.4, notes/stage-5.md §10.1) ----------
    Components (src/uml/structure.js's look), a component or package that holds something shown a box (src/uml/owners.js),
@@ -261,8 +261,18 @@ const cpPortText = t => { const s = String(t ?? ''), k = s.indexOf(':'), [name, 
 const cpPortPrint = m => `${m.label ?? ''}${CP_HAS(cpProps(m).valueType) ? ' : ' + cpProps(m).valueType : ''}`;
 // connect: a connector between a port (or component) and one inside its owner is a delegation, else an assembly
 function cpConnect(model, view, from, to, at, line) {
-  if (!CP_OBJ(line) || line.type !== 'uml.Connector') return null;
-  const I = cpIndex(model), within = (a, b) => I.chain(I.comp(a)).includes(I.comp(b));
+  if (!CP_OBJ(line)) return null;
+  const I = cpIndex(model), within = (a, b) => I.chain(I.comp(a)).includes(I.comp(b)), t = line.type, port = id => I.P.has(id);
+  // a realization, a component realization or a manifestation the rules call an error is refused, said in the rule's words; a
+  // manifestation drawn from the component to its artifact is added from the artifact, as the deployment view's (audit 20)
+  if (t === 'uml.InterfaceRealization' && (!['uml.Component', 'uml.Class'].includes(I.ty(from)) || port(to) || I.ty(to) !== 'uml.Interface'))
+    return { error: 'A realization runs from a component, a class or a port to an interface' };
+  if (t === 'uml.ComponentRealization' && (port(from) || port(to) || !['uml.Class', 'uml.Component'].includes(I.ty(from)) || I.ty(to) !== 'uml.Component'))
+    return { error: 'A component realization runs from a class or a component to a component' };
+  if (t === 'uml.Manifestation') { const art = id => !port(id) && SN_ARTIFACTS.includes(I.ty(id));
+    if (!art(from) && art(to) && !port(from) && I.ty(from) === 'uml.Component') return [{ op: 'add', element: { id: cpNewId(model, 'manifestation'), type: t, from: to, to: from }, view: view.id }];
+    return art(from) ? null : { error: 'A manifestation runs from an artifact' }; }
+  if (t !== 'uml.Connector') return null;
   if (I.comp(from) === I.comp(to)) return { error: 'A connector joins two elements' };
   const kind = within(from, to) || within(to, from) ? 'delegation' : 'assembly';
   // an end that is no component nor a component's port (an interface, an artifact): assembly-ends or delegation-ends at once (audit 19)

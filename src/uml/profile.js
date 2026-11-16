@@ -1,7 +1,7 @@
 import { registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
-import { CLASS_DEF, CLASS_LINES, CLASS_TYPE, RULES, multBounds, printMember, classProblems, drawnLines, lineLabel, lineName, lineRename, typeGeo } from './class.js';
+import { CLASSIFIERS, CLASS_DEF, CLASS_LINES, CLASS_TYPE, RULES, multBounds, printMember, classProblems, drawnLines, lineLabel, lineName, lineRename, typeGeo } from './class.js';
 import { OWN_BOXES, OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder } from './owners.js';
 import { STY_RULES, UML_META, appliedOf, metaKnown, styKey } from './stereotypes.js';
 
@@ -141,6 +141,11 @@ function prAdd(model, view, entry, label, at) {
   if (!p) return { error: 'Add a profile first' };
   const add = name => [{ op: 'add', element: { id: prNewId(model, { 'uml.Stereotype': 'stereotype', 'uml.MetaclassReference': 'metaclass', 'uml.Enumeration': 'enumeration' }[entry.type]), type: entry.type, ...(name ? { label: name } : {}), parent: p }, view: view.id }];
   const nm = String(label ?? ''), lo = nm.toLowerCase(); // a metaclass with no name is added unnamed (metaclass-known then warns)
+  // a name the profile has already: refused, in the rule's words (stereotype-names, classifier-names) (audit 20)
+  const kin = PR_ARR(model.nodes).filter(n => PR_OBJ(n) && I.at.get(n.id) === n && n.parent === p), pn = prName(I.at.get(p));
+  if (nm && entry.type === 'uml.Stereotype' && kin.some(n => n.type === 'uml.Stereotype' && styKey(prName(n)) === styKey(nm)))
+    return { error: `${pn} has a stereotype ${styKey(nm)} already: names meet with the first letter in either case` };
+  if (nm && CLASSIFIERS.includes(entry.type) && kin.some(n => CLASSIFIERS.includes(n.type) && prName(n) === nm)) return { error: `${pn} has a classifier named ${nm} already` };
   if (entry.type !== 'uml.MetaclassReference' || !nm || metaKnown(nm)) return add(nm);
   const near = Object.keys(UML_META).sort((a, b) => prDist(lo, a.toLowerCase()) - prDist(lo, b.toLowerCase()) || a.localeCompare(b)).slice(0, 6);
   return { pick: near, then: i => add(near[i]) };

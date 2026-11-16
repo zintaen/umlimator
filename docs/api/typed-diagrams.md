@@ -288,7 +288,7 @@ messages are inline in the view's `edges`; changes and constraints are in its `t
 | `UmlTimingElementType` | `uml.Lifeline` |
 | `UmlTimingLineType` | `uml.Message` |
 | `UmlTimingLifelineProps` | `represents`, `states` (top to bottom), `stereotypes`, `tags` |
-| `UmlTimingMessageProps` | `sort` (`call`, `async`, `reply`), `replyTo`, `sentAt`, `receivedAt` |
+| `UmlTimingMessageProps` | `sort` (`call`, `async`, `reply`), `replyTo`, `sentAt`, `receivedAt`, `stereotypes` |
 | `UmlTimeline` | `unit`, `changes`, `constraints` |
 | `UmlTimingChange` | `{ id, lifeline, at, state }` |
 | `UmlTimingConstraint` | `{ id, type, from, to, label }`, `type` `uml.DurationConstraint` or `uml.TimeConstraint` |

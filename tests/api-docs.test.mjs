@@ -73,3 +73,14 @@ test('every relative link on the API pages names a file that exists, and an anch
   }
   assert.deepEqual(broken, []);
 });
+
+test('audit 20: every prop the sequence, communication and timing panels offer on a message is declared in its .d.ts props and listed in docs/api/typed-diagrams.md', async () => {
+  const { diagramOf } = await import('../src/core/registry.js'); await import('../src/map/typed.js');
+  for (const f of ['sequence', 'communication', 'timing']) await import(`../src/uml/${f}.js`);
+  const d = read(join(root, 'lib/umlimator.d.ts')), doc = pages['typed-diagrams.md'];
+  for (const [diagram, name] of [['uml.sequence', 'UmlMessageProps'], ['uml.communication', 'UmlMessageProps'], ['uml.timing', 'UmlTimingMessageProps']]) {
+    const keys = diagramOf({ diagram }).props['uml.Message'].map(f => f.key), decl = (d.match(new RegExp(`interface ${name} \\{([^}]*)\\}`)) || [])[1] || '';
+    const row = doc.split('\n').find(l => l.startsWith(`| \`${name}\` |`)) || '';
+    assert.deepEqual(keys.filter(k => !new RegExp(`\\b${k}\\?:`).test(decl)), [], `${diagram}: not in ${name}`);
+    assert.deepEqual(keys.filter(k => !row.includes(`\`${k}\``)), [], `${diagram}: not in the ${name} row`); }
+});

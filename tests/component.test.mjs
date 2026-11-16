@@ -444,3 +444,22 @@ test('audit 19: the Assembly tool refuses an end that is no component nor a comp
   assert.ok(Array.isArray(ok) && ok[0].element.props.kind === 'assembly');
   assert.deepEqual(validate(apply(m, ok)).filter(p => p.level === 'error'), []);
 });
+
+test('audit 20: Realization, Component realization and Manifestation never add a line their rule calls an error; a manifestation drawn from the component starts at its artifact', () => {
+  const m = structuredClone(CM), v = m.views[0], T = diagramOf(v), I = id => m.nodes.find(n => n.id === id);
+  const line = label => T.lines.find(l => l.label === label);
+  assert.deepEqual(T.edits.connect(m, v, 'shop-api', 'shop-api-jar', null, line('Manifestation')), [{ op: 'add', element: { id: 'manifestation1', type: 'uml.Manifestation', from: 'shop-api-jar', to: 'shop-api' }, view: 'components' }]);
+  assert.equal(T.edits.connect(m, v, 'shop-api-jar', 'shop-api', null, line('Manifestation')), null, 'from the artifact: the default');
+  assert.deepEqual(T.edits.connect(m, v, 'storefront-component', 'checkout-component', null, line('Realization')), { error: 'A realization runs from a component, a class or a port to an interface' });
+  assert.deepEqual(T.edits.connect(m, v, 'storefront-component', 'i-orders', null, line('Component realization')), { error: 'A component realization runs from a class or a component to a component' });
+  assert.equal(T.edits.connect(m, v, 'checkout-component', 'i-orders', null, line('Realization')), null, 'a component to an interface: the default');
+  // every pair of ends, ports among them: what the hook (or the canvas default) adds breaks none of the three rules
+  const ports = m.nodes.flatMap(n => (n.members || []).filter(x => x.type === 'uml.Port').map(x => x.id)), ends = [...v.nodeIds, ...ports];
+  const rules = { 'Realization': 'provided-ends', 'Component realization': 'component-realization-ends', 'Manifestation': 'manifest-ends' };
+  let added = 0, refused = 0;
+  for (const [label, rule] of Object.entries(rules)) for (const a of ends) for (const b of ends) { if (a === b) continue;
+    const t = line(label), r = T.edits.connect(m, v, a, b, null, t); if (r && r.error) { refused++; continue; }
+    const cmds = r || [{ op: 'add', element: { id: 'zz', type: t.type, from: a, to: b }, view: v.id }], nid = cmds[0].element.id, m2 = apply(m, cmds); added++;
+    assert.deepEqual(validate(m2).filter(p => p.level === 'error' && p.rule === rule && p.ids.includes(nid)).map(p => p.message), [], `${label} ${a} -> ${b} (${I(a) ? I(a).type : 'port'})`); }
+  assert.ok(added > 0 && refused > 0);
+});
