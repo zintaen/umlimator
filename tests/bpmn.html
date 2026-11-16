@@ -160,12 +160,20 @@ try {
   click('.node[data-id="send-invoice"] .n-body'); const own = pick('.um-editor [data-f="owner"]');
   check('the Owner field lists the pools, sub-processes and lanes', !!own && [...own.options].map(o => o.textContent).includes('Bookshop::Warehouse'), own && [...own.options].map(o => o.textContent));
   if (own) { change(own, 'bp-warehouse'); gives('the Owner field: another lane', null, m => m.nodes.find(n => n.id === 'send-invoice').parent === 'bp-warehouse', BASE); }
+  // audit 18: the Owner field moves an activity's boundary events with it, and offers no owner a drop refuses
+  click('.node[data-id="bp-take-payment"] .n-body'); const own2 = pick('.um-editor [data-f="owner"]'), offered = own2 ? [...own2.options].map(o => o.value) : [];
+  check('audit 18: the Owner field offers no other pool, sub-process or pool with lanes to an activity with sequence flows', same(offered.filter(Boolean).sort(), ['bp-sales', 'bp-warehouse']), offered);
+  if (own2) { change(own2, 'bp-warehouse'); gives('audit 18: the Owner field: its boundary event with it', [{ op: 'reparent', id: 'bp-take-payment', parent: 'bp-warehouse' }, { op: 'reparent', id: 'payment-timeout', parent: 'bp-warehouse' }],
+    m => m.nodes.find(n => n.id === 'payment-timeout').parent === 'bp-warehouse' && !validate(m).some(p => p.rule === 'boundary-host'), BASE); }
   // Delete and Shift + Delete
   click('.node[data-id="bp-warehouse"] text'); key('Delete');
   gives('Delete on a lane: deleted from the model, what it held kept in the pool', null, m => !m.nodes.find(n => n.id === 'bp-bookshop').members.some(l => l.id === 'bp-warehouse') && m.nodes.find(n => n.id === 'bp-ship').parent === 'bp-bookshop', BASE);
   check('the hint line says a lane is not hidden', /Deleted lane Warehouse from the model: a lane is not hidden from a view/.test(hint()), hint());
   click('.node[data-id="cancel-order"] .n-body'); key('Delete');
   gives('Delete on a task: hidden from the view', [{ op: 'hide', id: 'cancel-order', view: VID }], m => !m.views[0].nodeIds.includes('cancel-order'), BASE);
+  click('.node[data-id="bp-take-payment"] .n-body'); key('Delete');
+  gives('audit 18: Delete on an activity: its boundary event hidden with it', [{ op: 'hide', id: 'bp-take-payment', view: VID }, { op: 'hide', id: 'payment-timeout', view: VID }], m => !m.views[0].nodeIds.includes('payment-timeout'), BASE);
+  check('audit 18: the hint line says so', /Hid its boundary event No answer in 2 minutes with Take payment/.test(hint()), hint());
   click('.node[data-id="bp-take-payment"] .n-body'); key('Delete', { shiftKey: true });
   gives('Shift + Delete on a task: deleted, its boundary event with it', [{ op: 'delete', id: 'bp-take-payment' }], m => !m.nodes.some(n => n.id === 'bp-take-payment' || n.id === 'payment-timeout'), BASE);
   click('.node[data-id="bp-payment-provider"] text'); key('Delete', { shiftKey: true });

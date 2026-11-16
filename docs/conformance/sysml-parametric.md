@@ -72,7 +72,7 @@ Measured on `examples/ebike-range.json` (0.25.0); the PDF's text read back by `t
 | The header | Cut to the frame | Cut | Cut | |
 | The legend | No | No | Yes: binding | |
 | Accessible names | Kept on nodes, lines' `<title>` removed | None | None | |
-| Tables | None | None | "Elements": the subject's values and constraint properties as rows, then each binding by its ends ("Binding from value ecoRange to parameter range of eco") | |
+| Tables | None | None | "Elements": the subject's values and constraint properties as rows; "Lines": each binding once, its text by its ends ("ecoRange to range of eco"), the subject's rows not listing it again (audit 18) | |
 
 ## Accessibility
 

@@ -433,13 +433,28 @@ function bzMoveTo(model, view, id, at) {
   const bands = BZ_ARR(geo.bands);
   if (!Array.isArray(at && at.pt) || !bands.length || !BZ_ARR(view.nodeIds).includes(id) || I.ty(x.parent) === BZ_SUB) return null;
   const [px, py] = at.pt, hit = bands.filter(b => px >= b.x && px <= b.x + b.w && py >= b.y && py <= b.y + b.h).sort((a, b) => b.depth - a.depth)[0];
-  const to = hit ? hit.id : null, data = BZ_DATA.includes(x.type), pool = to == null ? null : I.poolOf(to), dest = data ? pool : to;
+  const to = hit ? hit.id : null, data = BZ_DATA.includes(x.type), dest = data ? (to == null ? null : I.poolOf(to)) : to;
   if (dest === (x.parent ?? null) || (!data && to === I.laneIn(id))) return null;
+  return bzReown(model, view, I, id, dest);
+}
+// a flow node or data to a new owner (a lane, a pool, a sub-process, or none), by a drop in a band or the Owner field (audit 18):
+// its boundary events with it, its pin removed, another pool refused while it has sequence flows, all through bzGuard
+function bzReown(model, view, I, id, dest) {
+  const x = I.el(id), data = BZ_DATA.includes(x.type), pool = dest == null ? null : I.poolOf(dest);
   const bes = [...I.N.values()].filter(n => n.type === BZ_BE && bzProps(n).attachedTo === id).map(n => n.id), mine = [id, ...bes];
   if (pool !== I.poolOf(id) && [...I.E.values()].some(e => e.type === BZ_SEQ && (mine.includes(e.from) || mine.includes(e.to)))) return { error: 'Move its sequence flows first: a sequence flow stays in its pool' };
   if (data && [...I.E.values()].some(e => e.type === BZ_DATA_ASSOC && (e.from === id || e.to === id) && I.poolOf(e.from === id ? e.to : e.from) !== pool)) return { error: 'Data stays in the pool of what it is associated with' };
   const L = view.layout;
   return bzGuard(model, view, [{ op: 'reparent', id, parent: dest }, ...bes.flatMap(b => bzOwnerTo(I, b, dest)), ...(BZ_OBJ(L) && Object.hasOwn(L, id) ? [{ op: 'set', view: view.id, path: ['layout', id], value: undefined }] : [])]);
+}
+// owner: the Owner field's choice (parent, null for none), moved as bzReown moves a drop; a boundary event, a lane or anything
+// else the field offers is left to the default
+function bzOwner(model, view, id, parent) {
+  if (!BZ_OBJ(view)) return null;
+  const I = bzIndex(model), x = I.el(id); if (!x || I.L.has(id) || !(BZ_FLOW.includes(x.type) || BZ_DATA.includes(x.type)) || x.type === BZ_BE) return null;
+  if ((parent ?? null) === (x.parent ?? null)) return [];
+  if (parent != null && !I.el(parent)) return { error: `No owner ${JSON.stringify(parent)}` };
+  return bzReown(model, view, I, id, parent ?? null);
 }
 // add: into the lane, pool or expanded sub-process selected, else the selected node's (a collapsed sub-process's) owner; a lane into the pool selected
 // (nested in the lane selected); a boundary event onto the activity selected; data in a pool, never a lane
@@ -467,8 +482,12 @@ function bzAdd(model, view, entry, label, at) {
 function bzRemove(model, view, ids, fromModel) {
   if (!BZ_OBJ(view)) return null;
   const I = bzIndex(model), gone = new Set(ids.filter(id => I.L.has(id))), pools = ids.filter(id => I.ty(id) === BZ_POOL);
-  if (!gone.size && !(fromModel && pools.length)) return null;
-  const cmds = [], rest = ids.filter(id => !gone.has(id)), own = new Set(BZ_ARR(view.nodes).filter(BZ_OBJ).map(x => x.id));
+  // Delete hides with an activity its boundary events, and with a sub-process what the view shows in it and on that, as X's
+  // collapse does (audit 18): BPMN has no boundary event without its activity, nor a sub-process's node outside it
+  const shown = BZ_ARR(view.nodeIds), hosts = fromModel ? [] : ids.filter(id => BZ_ACT.includes(I.ty(id))), under = (n, h) => n === h || I.chain(n).includes(h);
+  const bes = shown.filter(n => !ids.includes(n) && I.N.has(n) && hosts.some(h => (n !== h && under(n, h)) || (I.ty(n) === BZ_BE && under(bzProps(I.el(n)).attachedTo, h))));
+  if (!gone.size && !(fromModel && pools.length) && !bes.length) return null;
+  const cmds = [], rest = [...ids.filter(id => !gone.has(id)), ...bes], own = new Set(BZ_ARR(view.nodes).filter(BZ_OBJ).map(x => x.id));
   // a lane's new owner: the nearest lane above it not deleted, else its pool
   const keep = id => { let p = I.up(id); for (let k = 0; p != null && gone.has(p) && k < 64; k++) p = I.up(p); return p; };
   // the lanes nested under a deleted one move up: apply() cannot reparent a member, so each is deleted and added again
@@ -488,8 +507,9 @@ function bzRemove(model, view, ids, fromModel) {
   rest.forEach(id => { if (fromModel || own.has(id) || I.L.has(id)) cmds.push({ op: 'delete', id }); else if (!(kept && I.E.has(id))) cmds.push({ op: 'hide', id, view: view.id }); });
   const said = [...(gone.size ? [`Deleted ${gone.size === 1 ? 'lane ' + bzLabel(I.el([...gone][0])) : bzPlural(gone.size, 'lane')} from the model${fromModel ? '' : ': a lane is not hidden from a view'}, keeping what it held`] : []),
     ...(fromModel ? pools.map(p => `deleted pool ${bzLabel(I.el(p))} and the ${bzPlural(owned(p), 'element')} it holds`) : []),
+    ...(bes.length ? [`hid ${bes.length === 1 && I.ty(bes[0]) === BZ_BE ? 'its boundary event ' + bzLabel(I.el(bes[0])) : `the ${bzPlural(bes.length, 'element')} shown in or on it`} with ${hosts.filter(h => bes.some(n => under(n, h) || under(bzProps(I.el(n)).attachedTo, h))).map(h => bzLabel(I.el(h))).join(', ')}`] : []),
     ...(kept ? ['this view shows every line between its cards: Shift + Delete deletes the line'] : [])];
-  return { commands: cmds, say: said.join('; ').replace(/^d/, 'D') };
+  return { commands: cmds, say: said.join('; ').replace(/^[a-z]/, c => c.toUpperCase()) };
 }
 // key (§11, decision 22): A on a boundary event, a picker of its pool's activities; X on a sub-process, expanded or collapsed in the view
 function bzKey(model, view, ids, key) {
@@ -510,9 +530,15 @@ function bzKey(model, view, ids, key) {
 // the Owner field: a flow node's lanes, pools and sub-processes; data's pools. A lane's owner is not offered: a member moves by Delete
 function bzOwners(model, x) {
   if (!BZ_OBJ(x) || x.from != null || !(BZ_FLOW.includes(x.type) || BZ_DATA.includes(x.type))) return null;
-  const I = bzIndex(model), full = id => [...I.chain(id).reverse(), id].map(p => bzLabel(I.el(p))).join('::');
-  const lanes = BZ_DATA.includes(x.type) ? [] : [...I.L.keys()].map(id => ({ id, label: full(id) }));
-  return [...[...I.N.values()].filter(n => n.type === BZ_POOL || (!BZ_DATA.includes(x.type) && n.type === BZ_SUB && n.id !== x.id && !I.chain(n.id).includes(x.id))).map(n => ({ id: n.id, label: full(n.id) })), ...lanes];
+  const I = bzIndex(model), full = id => [...I.chain(id).reverse(), id].map(p => bzLabel(I.el(p))).join('::'), data = BZ_DATA.includes(x.type);
+  // not offered (audit 18), as the drop refuses them: with sequence flows (its own or its boundary events'), an owner at another
+  // process level (another pool, in or out of a sub-process); a flow node, a pool with lanes (in-lane). bzOwner guards the rest
+  const mine = [x.id, ...[...I.N.values()].filter(n => n.type === BZ_BE && bzProps(n).attachedTo === x.id).map(n => n.id)];
+  const seq = !data && [...I.E.values()].some(e => e.type === BZ_SEQ && (mine.includes(e.from) || mine.includes(e.to)));
+  const levelAt = o => ([BZ_SUB, BZ_POOL].includes(I.ty(o)) ? o : I.level(o)), lvl = I.level(x.id);
+  const ok = o => (!seq || levelAt(o) === lvl) && (data || I.ty(o) !== BZ_POOL || !I.lanesOf(o).length);
+  const lanes = data ? [] : [...I.L.keys()].filter(ok).map(id => ({ id, label: full(id) }));
+  return [...[...I.N.values()].filter(n => (n.type === BZ_POOL || (!data && n.type === BZ_SUB && n.id !== x.id && !I.chain(n.id).includes(x.id))) && ok(n.id)).map(n => ({ id: n.id, label: full(n.id) })), ...lanes];
 }
 
 /* ---- the type ---- */
@@ -543,7 +569,7 @@ const BZ_TYPE = registerDiagramType('bpmn', {
   validate: bzProblems,
   rules: BZ_RULES,
   describe: bzDescribe,
-  edits: { connect: bzConnect, moveTo: bzMoveTo, add: bzAdd, remove: bzRemove, key: bzKey },
+  edits: { connect: bzConnect, moveTo: bzMoveTo, add: bzAdd, remove: bzRemove, key: bzKey, owner: bzOwner },
   // the PDF's tables: an element's kind; its lane or activity, and its documentation
   word: (model, id) => { const x = bzIndex(model).el(id); return x && String(x.type).startsWith('bpmn.') ? bzWord(x) : null; },
   rows: (model, view, id) => { const P = bzPic(model, view), x = P.I.el(id); if (!x) return null;
@@ -556,4 +582,4 @@ const BZ_TYPE = registerDiagramType('bpmn', {
     return BZ_HAS(d) ? [e.label, d].filter(BZ_HAS).map(t => String(t).trim()).join(' — ') : null; },
 });
 
-export { BZ_TYPE, BZ_RULES, bzGeo, bzProblems, bzDescribe, bzConnect, bzMoveTo, bzAdd, bzRemove, bzKey, bzOwners };
+export { BZ_TYPE, BZ_RULES, bzGeo, bzProblems, bzDescribe, bzConnect, bzMoveTo, bzAdd, bzRemove, bzKey, bzOwners, bzOwner };

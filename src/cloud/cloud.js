@@ -45,6 +45,7 @@ const clKindOf = (F, x) => { const k = clProps(x)[F.key]; return typeof k === 's
 const clKindWord = (F, x) => { const k = clKindOf(F, x); return k ? F.kinds[k] : 'Group'; };
 const clU = (F, x) => F.user != null && x.type === F.user; // aws and azure have no user: a node with no type is not one
 const clWord = (F, x) => (x.type === F.group ? clKindWord(F, x) : Object.hasOwn(F.items, x.type) ? F.items[x.type] : clU(F, x) ? 'User' : String(x.type ?? '').split('.').pop() || 'Element'); // no type: a card all the same
+const clA = w => `${/^[aeiou]/i.test(w) ? 'an' : 'a'} ${w}`; // "an Account group", "a VPC group"
 const clThe = w => `the ${w === w.toUpperCase() ? w : w.toLowerCase()}`; // "the VPC", "the resource group"
 
 // a node's icon (S6, S8): its id, the table's entry for it (a data URL only, never markup) and the full name, from the table
@@ -179,10 +180,10 @@ function clProblems(F, model) {
   const q = id => JSON.stringify(I.at.has(id) ? clName(I.at.get(id)) : String(id)), given = clGiven(F, model), isG = id => (I.at.get(id) || {}).type === F.group;
   CL_ARR(model && model.nodes).forEach((n, i) => { if (!CL_OBJ(n) || I.at.get(n.id) !== n) return; const path = `nodes[${i}]`, up = n.parent != null && I.at.get(n.parent);
     if (n.type === F.group) { const k = clKindOf(F, n);
-      if (!k) say('error', 'group-kind', `${path}.props.${F.key}`, [n.id], `${q(n.id)}'s ${F.key} ${JSON.stringify(clProps(n)[F.key] ?? null)} is none of ${Object.keys(F.kinds).join(', ')}`);
+      if (!k) say('error', 'group-kind', `${path}.props.${F.key}`, [n.id], (clProps(n)[F.key] == null ? `${q(n.id)} has no ${F.key}: it is one of ${Object.keys(F.kinds).join(', ')}` : `${q(n.id)}'s ${F.key} ${JSON.stringify(clProps(n)[F.key])} is none of ${Object.keys(F.kinds).join(', ')}`));
       else if (up && k !== 'generic') { const pk = isG(up.id) ? clKindOf(F, up) : null;
-        if (!isG(up.id)) say('warning', 'group-nesting', `${path}.parent`, [n.id, up.id], `${q(n.id)}, a ${F.kinds[k]} group, sits in ${q(up.id)}, which is no group`);
-        else if (pk && pk !== 'generic' && !F.sits[k].includes(pk)) say('warning', 'group-nesting', `${path}.parent`, [n.id, up.id], `${q(n.id)}, a ${F.kinds[k]} group, sits in ${q(up.id)}, a ${F.kinds[pk]} group: ${F.sits[k].length ? `it sits in ${F.sits[k].map(x => F.kinds[x]).join(' or ')}` : 'it sits in no group'}`); } }
+        if (!isG(up.id)) say('warning', 'group-nesting', `${path}.parent`, [n.id, up.id], `${q(n.id)}, ${clA(F.kinds[k])} group, sits in ${q(up.id)}, which is no group`);
+        else if (pk && pk !== 'generic' && !F.sits[k].includes(pk)) say('warning', 'group-nesting', `${path}.parent`, [n.id, up.id], `${q(n.id)}, ${clA(F.kinds[k])} group, sits in ${q(up.id)}, ${clA(F.kinds[pk])} group: ${F.sits[k].length ? `it sits in ${F.sits[k].map(x => F.kinds[x]).join(' or ')}` : 'it sits in no group'}`); } }
     if (Object.hasOwn(F.items, n.type) || clU(F, n)) {
       if (up && !isG(up.id)) say('warning', 'group-nesting', `${path}.parent`, [n.id, up.id], `${q(n.id)} sits in ${q(up.id)}, which is no group`);
       if (clU(F, n)) return;

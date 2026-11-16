@@ -241,8 +241,8 @@ function c4Problems(model, view) {
 /* ---- describe(): the view in sentences, each element in reading order, then each line by its accessible name ---- */
 function c4Describe(model, viewId) {
   const v = C4_ARR(model && model.views).find(x => C4_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
-  const pic = c4Pic(model, v), { own, implied } = c4Lines(model, v, pic), K = C4_KIND[v.diagram] || 'C4', box = new Map(pic.boxes.map(b => [b.id, b]));
-  return [`${v.title || v.id}: a C4 ${K === 'landscape' ? 'system landscape' : K === 'context' ? 'system context' : K} diagram of ${c4Plural(pic.ids.length, 'element')} and ${c4Plural(own.length + implied.length, 'relationship')}${implied.length ? `, ${implied.length} of them implied` : ''}.`,
+  const pic = c4Pic(model, v), { own, implied } = c4Lines(model, v, pic), notes = own.filter(e => e.type === 'uml.CommentLink').length, K = C4_KIND[v.diagram] || 'C4', box = new Map(pic.boxes.map(b => [b.id, b]));
+  return [`${v.title || v.id}: a C4 ${K === 'landscape' ? 'system landscape' : K === 'context' ? 'system context' : K} diagram of ${c4Plural(pic.ids.length, 'element')} and ${c4Plural(own.length - notes + implied.length, 'relationship')}${implied.length ? `, ${implied.length} of them implied` : ''}${notes ? `, and ${c4Plural(notes, 'comment link')}` : ''}.`,
     ...readingOrder(pic).map(id => (box.has(id) ? box.get(id).aria : c4NodeName(pic.at.get(id)))), ...[...own, ...implied].map(e => c4LineName(e, pic))].map(t => t.replace(/\.?$/, '.')).join('\n');
 }
 

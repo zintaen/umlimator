@@ -147,7 +147,7 @@ function SYS_PAR_PROBLEMS(model, view) {
         if (!ofS(p) || kind(p) !== 'sysml.ConstraintProperty') { ok = false; return say('error', 'binding-ends', `${path}.props.ends.${k}.part`, [e.id, p], `${e.id}'s ${k} end goes through ${q(p)}, not a constraint property of ${q(S.id)}: a binding reaches a parameter through a constraint property`); }
         if (kind(x) !== 'sysml.ConstraintParameter') { ok = false; return say('error', 'binding-ends', `${path}.${k}`, [e.id, x], `${e.id}'s ${k} end ${q(x)} is not a parameter: through ${q(p)} a binding reaches one of its parameters`); }
         const B = I.block(I.el(p));
-        if (!B || I.owner(x) !== B) { ok = false; say('error', 'binding-parameter', `${path}.${k}`, [e.id, x, p], `${e.id}'s ${k} end ${q(x)} is not a parameter of ${B ? q(B.id) : JSON.stringify(SYS_PAR_PROPS(I.el(p)).valueType ?? null)}, the type of ${q(p)}`); }
+        if (!B || I.owner(x) !== B) { ok = false; say('error', 'binding-parameter', `${path}.${k}`, [e.id, x, p], (B || SYS_PAR_HAS(SYS_PAR_PROPS(I.el(p)).valueType) ? `${e.id}'s ${k} end ${q(x)} is not a parameter of ${B ? q(B.id) : JSON.stringify(String(SYS_PAR_PROPS(I.el(p)).valueType))}, the type of ${q(p)}` : `${e.id}'s ${k} end ${q(x)} is not a parameter of ${q(p)}, which has no type: type it by a constraint block`)); }
       } else if (!(ofS(x) && (kind(x) === 'sysml.ValueProperty' || kind(x) === 'sysml.ConstraintParameter'))) { ok = false;
         say('error', 'binding-ends', `${path}.${k}`, [e.id, x], `${e.id}'s ${k} end ${q(x)} is not a value property or a parameter of ${q(S.id)}: a binding joins those, or a parameter through a constraint property`); } });
     const [ta, tb] = ['from', 'to'].map(k => SYS_PAR_PROPS(I.el(e[k])).valueType).map(t => (SYS_PAR_HAS(t) ? named.get(t) : null));
@@ -230,10 +230,8 @@ function SYS_PAR_ROWS(model, view, id) {
   if (x.type === 'sysml.ConstraintParameter') return SYS_PAR_HAS(SYS_PAR_PROPS(x).valueType) ? [String(SYS_PAR_PROPS(x).valueType)] : [];
   if (x.type === 'sysml.ConstraintBlock' && x !== I.S) { const e = SYS_PAR_EXPR(x); return [...(e ? [e] : []), ...I.params(x).map(SYS_PAR_MEMBERS.print)]; }
   if (x !== I.S) return null;
-  // the subject: what it shows, then its bindings (their ends are members, which the Lines table leaves out)
-  const ofS = k => k != null && I.owner(k) === x;
-  return [...SYS_PAR_ARR(x.members).filter(m => SYS_PAR_OBJ(m) && (Object.hasOwn(SYS_PAR_PROP, m.type) || m.type === 'sysml.ConstraintParameter')).map(SYS_PAR_MEMBERS.print),
-    ...SYS_PAR_ARR(model.edges).filter(e => SYS_PAR_OBJ(e) && e.type === 'sysml.BindingConnector' && ['from', 'to'].some(k => ofS(SYS_PAR_PART(e, k) ?? e[k]))).map(e => SYS_PAR_LINE_SAY(I, e))];
+  // the subject: what it shows. Its bindings are the Lines table's (print.js lists a line drawn to a member's owner), not listed again here
+  return SYS_PAR_ARR(x.members).filter(m => SYS_PAR_OBJ(m) && (Object.hasOwn(SYS_PAR_PROP, m.type) || m.type === 'sysml.ConstraintParameter')).map(SYS_PAR_MEMBERS.print);
 }
 // "ecoRange to range of eco"
 function SYS_PAR_LINE_TEXT(model, view, id) {

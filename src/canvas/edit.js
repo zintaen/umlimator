@@ -222,7 +222,7 @@ function typedEditor(api) {
       const r = M && M.add(value, x.x); if (r && r.error) return bad(r.error);
       const prev = arrOf(x.x.members).filter(isRec).pop(); t.value = ''; t.removeAttribute('aria-invalid');
       return emit([{ op: 'add', element: r ? { ...typed(r, 'member'), label: r.label, ...(Object.keys(r.props).length ? { props: r.props } : {}) } : { ...typed(prev || {}, 'member'), label: value }, owner: id }]); }
-    if (d.owner != null) { const p = t.value || null; return id && can('move') && p !== (at.get(id).x.parent ?? null) && emit(reown(id, p)); }
+    if (d.owner != null) { const p = t.value || null; return id && can('move') && p !== (at.get(id).x.parent ?? null) && I.owner(id, p); }
     if (!can('rename') || (!id && d.m == null)) return;
     let value = t.type === 'checkbox' ? t.checked : t.value.trim();
     if (t.type !== 'checkbox') { if (t.value === d.was) return;
@@ -269,6 +269,7 @@ function typedEditor(api) {
   }
 
   const I = { on, key, label, drop, connect, mount, refresh, addNode, remove,
+    owner: (id, parent) => emit(reown(id, parent)), // the Owner field's choice (src/typed/edit.js asks the type's owner hook first)
     paint: () => { if (panel && on()) put('.um-props', props()); },
     add: () => I.addNode(0),
     cancel: () => { const a = endLink(), b = closeMenu(false); return a || b; },
