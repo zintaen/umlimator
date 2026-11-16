@@ -229,8 +229,9 @@ export type UmlTimingLineType = 'uml.Message';
 /** A timing lifeline's props: what it represents, and its states, top to bottom (ignored by the sequence and
  *  communication types). */
 export interface UmlTimingLifelineProps { represents?: string; states?: string[]; stereotypes?: string[]; tags?: UmlTags; [key: string]: unknown }
-/** A timing message's props: a sort of call, async or reply, and when it is sent and received, in the view's unit. */
-export interface UmlTimingMessageProps { sort?: 'call' | 'async' | 'reply'; replyTo?: string; sentAt?: number; receivedAt?: number; [key: string]: unknown }
+/** A timing message's props: a sort of call, async or reply, when it is sent and received, in the view's unit, and its
+ *  stereotypes, drawn «name» before its label. */
+export interface UmlTimingMessageProps { sort?: 'call' | 'async' | 'reply'; replyTo?: string; sentAt?: number; receivedAt?: number; stereotypes?: string[]; [key: string]: unknown }
 /** A change of state on a lifeline at a time; an element of the model's id space, drawn by `at`. */
 export interface UmlTimingChange { id: string; lifeline: string; at: number; state: string }
 /** A duration constraint from one change to a later one, or a time constraint on one change. */

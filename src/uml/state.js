@@ -256,6 +256,11 @@ function stProblems(model) {
       if (r && r.x.type === 'uml.Region') { out2.push([r.owner.id, p]); p = r.owner.parent; } else if (N.has(p)) { out2.push([p, null]); p = N.get(p).x.parent; } else break; }
     return out2; };
   const ts = ST_ARR(model && model.edges).map((e, i) => [e, `edges[${i}]`]).filter(([e]) => ST_OBJ(e) && e.type === 'uml.Transition');
+  // and each state machine view's own transitions (view.edges objects), which it draws as it draws the model's; one a model
+  // transition's id (or an earlier view's) takes is that one (audit 20, as flowProblems since audit 19)
+  const tids = new Set(ts.map(([e]) => e.id));
+  ST_ARR(model && model.views).forEach((v, vi) => { if (!ST_OBJ(v) || v.diagram !== 'uml.state-machine') return;
+    ST_ARR(v.edges).forEach((e, j) => { if (ST_OBJ(e) && e.type === 'uml.Transition' && !tids.has(e.id)) { tids.add(e.id); ts.push([e, `views[${vi}].edges[${j}]`]); } }); });
   const ins = new Map(), outs = new Map(), add = (m, id, x) => m.set(id, [...(m.get(id) || []), x]);
   ts.forEach(([e, path]) => { add(outs, e.from, [e, path]); add(ins, e.to, [e, path]);
     const bad = [e.from, e.to].filter(id => !vertex(id));
@@ -362,7 +367,8 @@ function stAdd(model, view, entry, label, at) {
 const stSetParts = (x, r) => ['trigger', 'guard', 'effect'].filter(k => (ST_PROPS(x)[k] ?? undefined) !== r[k]).map(k => ({ op: 'set', id: x.id, path: 'props.' + k, value: r[k] }));
 // rename: F2 on a transition parses its text (§7.2)
 function stRename(model, view, id, text) {
-  const e = ST_ARR(model && model.edges).find(x => ST_OBJ(x) && x.id === id); if (!e || e.type !== 'uml.Transition') return null;
+  // the view's own transition too (audit 20, as flowOf since audit 19)
+  const e = [...ST_ARR(view && view.edges), ...ST_ARR(model && model.edges)].find(x => ST_OBJ(x) && x.id === id); if (!e || e.type !== 'uml.Transition') return null;
   if (printTransition(ST_PROPS(e)) == null) return { error: `${id}'s text does not read back: edit its trigger, guard and effect in the properties panel` };
   // the text F2 opens is the drawn label, its «stereotypes» first: they are not parts
   const pre = stStereo(e).map(t => `«${t}»`).join(' '), t = String(text ?? '').trimStart(), r = parseTransition(pre && t.startsWith(pre) ? t.slice(pre.length) : t);

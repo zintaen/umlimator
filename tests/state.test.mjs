@@ -508,3 +508,28 @@ test('audit 17: a region draws and says its «stereotypes»; a pseudostate and a
     { id: 'a', type: 'uml.State', label: 'A', parent: 'S.r' }, { id: 'b', type: 'uml.State', label: 'B', parent: 'S.q' }], views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['S', 'a', 'b'] }] };
   assert.equal(layout(un, 'v').families.find(x => x.id === 'S.r').rname, '«x»'); // a region with no name: its stereotypes alone
 });
+
+test('audit 20: the state machine rules and F2 count a view\'s own transitions (view.edges objects), which the view draws', () => {
+  const m = structuredClone(SM), v = m.views[0], t0 = m.edges.find(e => e.from === 'created'), fin = m.nodes.find(n => n.type === 'uml.FinalState');
+  const auth = m.edges.find(e => e.id === 't-authorised'), own = { ...structuredClone(auth), id: 'own-auth' };
+  m.edges = m.edges.filter(e => e !== t0 && e !== auth);
+  v.edges = [...m.edges.map(e => e.id), t0, own, tr('own-from-final', fin.id, 'placed')];
+  const g = layout(m, v.id); assert.ok(['t-created', 'own-from-final', 'own-auth'].every(id => g.edges.some(e => (e._id ?? e.id) === id)), 'drawn');
+  const errs = validate(m).filter(p => p.level !== 'info');
+  assert.deepEqual(errs.map(p => [p.level, p.rule, p.path]), [['error', 'final-out', `nodes[${m.nodes.indexOf(fin)}]`]]);
+  assert.ok(errs[0].message.includes('(own-from-final)'), errs[0].message);
+  // the same lines in the model: the same problems
+  const same = structuredClone(SM); same.edges.push(tr('own-from-final', fin.id, 'placed'));
+  assert.deepEqual(validate(same).filter(p => p.level !== 'info').map(p => [p.level, p.rule]), [['error', 'final-out']]);
+  // a view's own transition out of a choice with no guard: choice-guards, at its path in the view
+  const b = structuredClone(m); delete b.views[0].edges.find(e => e.id === 'own-auth').props;
+  const cg = validate(b).filter(p => p.rule === 'choice-guards'); assert.equal(cg.length, 1); assert.ok(cg[0].ids.includes('own-auth'));
+  // F2 on the view's own transition reads trigger [guard] / effect
+  const r = T.edits.rename(m, v, 'own-auth', 'paid [card ok] / ship');
+  assert.deepEqual(r, [{ op: 'set', id: 'own-auth', path: 'props.trigger', value: 'paid' }, { op: 'set', id: 'own-auth', path: 'props.guard', value: 'card ok' }, { op: 'set', id: 'own-auth', path: 'props.effect', value: 'ship' }]);
+  const n = apply(m, r), ge = layout(n, v.id).edges.find(e => (e._id ?? e.id) === 'own-auth');
+  assert.equal(ge.label, 'paid [card ok] / ship'); assert.equal(n.views[0].edges.find(e => e.id === 'own-auth').label, undefined);
+  // the rules the add and move hooks guard with (stGuard): a second transition out of the initial, a view's own, is initial-out
+  const two = structuredClone(m); two.views[0].edges.push(tr('own-2', 'created', 'cancelled'));
+  assert.ok(validate(two).some(p => p.rule === 'initial-out' && p.level === 'error'));
+});

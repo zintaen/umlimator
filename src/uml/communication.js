@@ -366,6 +366,8 @@ const COMM_TYPE = registerDiagramType('uml.communication', {
   validate: commProblems,
   rules: CM_RULES,
   describe: commDescribe,
+  // the PDF's Lines row of a message: «stereotypes», then its label, as the picture writes it after its number (audit 20)
+  text: (model, view, id) => { const e = [...CM_ARR(view && view.edges), ...CM_ARR(model && model.edges)].find(x => CM_OBJ(x) && x.id === id); return e && e.type === 'uml.Message' ? cmMsgSay(e) || null : null; },
   edits: { connect: commConnect, moveTo: commMoveTo, add: commAdd, remove: commRemove, rename: commRename },
 });
 

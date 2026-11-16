@@ -232,8 +232,13 @@ function ucProblems(model) {
     if (n.type !== 'uml.UseCase') return;
     const seen = new Map(); ucPointsOf(n).forEach(m => { const k = ucName(m), was = seen.get(k);
       if (was) say('warning', 'point-names', `nodes[${i}].members[${UC_ARR(n.members).indexOf(m)}]`, [n.id, was, m.id], `${q(n.id)} has two extension points named "${k}" (${was}, ${m.id})`); else seen.set(k, m.id); }); });
-  const inc = new Map();
-  UC_ARR(model && model.edges).forEach((e, i) => { if (!UC_OBJ(e)) return; const path = `edges[${i}]`, ends = [e.id, e.from, e.to];
+  const inc = new Map(), lines = UC_ARR(model && model.edges).map((e, i) => [e, `edges[${i}]`]).filter(([e]) => UC_OBJ(e));
+  // and each use case view's own lines (view.edges objects), which ucLines draws; one a model line's id (or an earlier view's)
+  // takes is that one (audit 20, as flowProblems since audit 19)
+  const lids = new Set(lines.map(([e]) => e.id));
+  UC_ARR(model && model.views).forEach((v, vi) => { if (!UC_OBJ(v) || v.diagram !== 'uml.use-case') return;
+    UC_ARR(v.edges).forEach((e, j) => { if (UC_OBJ(e) && !lids.has(e.id)) { lids.add(e.id); lines.push([e, `views[${vi}].edges[${j}]`]); } }); });
+  lines.forEach(([e, path]) => { const ends = [e.id, e.from, e.to];
     if (e.type === 'uml.Association' && (UC_KINDS.includes(ty(e.from)) || UC_KINDS.includes(ty(e.to))) && ![ty(e.from), ty(e.to)].sort().every((t, k) => t === UC_KINDS[k]))
       say('error', 'association-ends', path, ends, `${e.id} joins ${q(e.from)} and ${q(e.to)}: an association joins an actor and a use case`);
     if ((e.type === 'uml.Include' || e.type === 'uml.Extend') && (!uc(e.from) || !uc(e.to) || e.from === e.to))
@@ -285,7 +290,9 @@ function ucConnect(model, view, from, to, at, line) {
 /* remove: Shift + Delete on extension points (the member list's ✕) takes every extend left naming none of its use case's
    (extend-points), in the same transaction, said on the hint line; an extend naming another point keeps it. Else the default */
 function ucRemove(model, view, ids, fromModel) {
-  const gone = new Set(UC_ARR(ids)), ext = fromModel ? UC_ARR(model && model.edges).filter(e => UC_OBJ(e) && e.type === 'uml.Extend' && ![e.id, e.from, e.to].some(x => gone.has(x))
+  // a use case view's own extends (view.edges objects) as well (audit 20)
+  const own = UC_ARR(model && model.views).filter(v => UC_OBJ(v) && v.diagram === 'uml.use-case').flatMap(v => UC_ARR(v.edges));
+  const gone = new Set(UC_ARR(ids)), ext = fromModel ? [...new Set([...UC_ARR(model && model.edges), ...own])].filter(e => UC_OBJ(e) && e.type === 'uml.Extend' && ![e.id, e.from, e.to].some(x => gone.has(x))
     && UC_ARR(UC_PROPS(e).extensionPoints).length && UC_ARR(UC_PROPS(e).extensionPoints).every(p => gone.has(p))) : [];
   if (!ext.length) return null;
   const N = UC_ARR(model.nodes).filter(UC_OBJ), pt = id => N.flatMap(n => UC_ARR(n.members)).find(p => UC_OBJ(p) && p.id === id);
