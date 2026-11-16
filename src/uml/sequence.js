@@ -33,6 +33,8 @@ function sqHeads(model, view) {
 const sqName = n => String(n.label ?? n.id);
 const sqHeadText = n => sqName(n) + (SQ_HAS(sqProps(n).represents) ? ' : ' + sqProps(n).represents : ''); // "api : ShopApi"
 const sqStereo = n => SQ_ARR(sqProps(n).stereotypes).filter(SQ_HAS).map(String);
+// a message's drawn text: its «stereotypes», then its label (audit 19); F2 takes the «…» off before it sets the label
+const sqMsgPre = el => sqStereo(el).map(t => `«${t}»`).join(' '), sqMsgText = el => [sqMsgPre(el), SQ_HAS(el.label) ? String(el.label) : ''].filter(Boolean).join(' ');
 const sqOperator = f => String(sqProps(f).operator ?? '');
 
 /* The view's structure, read once: the walk (interaction.js), each operand's fragment, each fragment's parent and its
@@ -59,7 +61,7 @@ function sqInput(model, view, X = sqIndex(model, view)) {
     if (!o.message) { const cs = SQ_ARR(sqProps(o.el).covers).filter(id => col.has(id)).sort((a, b) => col.get(a) - col.get(b)); // a use: over what it covers, else every lifeline
       const ends = cs.length ? [cs[0], cs[cs.length - 1]] : heads.length ? [heads[0].id, heads[heads.length - 1].id] : [null, null];
       return { id: o.id, kind: 'span', a: ends[0], b: ends[1], parent: o.parent, ...useSize(String(o.el.label ?? '')) }; }
-    const t = SQ_HAS(o.el.label) ? String(o.el.label) : '';
+    const t = sqMsgText(o.el);
     return { id: o.id, kind: o.from === o.to ? 'self' : 'line', a: o.from, b: o.to, parent: o.parent, ...(t ? { w: Math.ceil(textW(t, SQ_LABEL.px) + SQ_LABEL.pad), h: SQ_LABEL.h } : { w: 0, h: 0 }) }; });
   // born: a lifeline's first create; again: each later one (create-once: in another operand of an alt), a head drawn at its
   // row too (audit 16); its deletes, each in its own operand of an alt (delete-once): the stem ends at the last,
@@ -96,7 +98,7 @@ function sqRun(model, view) {
         aria: `Interaction use ${u.el.label ?? ''}${ids.length ? `, over ${sqName(H.get(ids[0]))}${ids.length > 1 ? ' to ' + sqName(H.get(ids[ids.length - 1])) : ''}` : ''}` }; }),
   ];
   const byId = idTable(Object.fromEntries(nodes.map(n => [n.id, n])));
-  const edges = o.lines.map(l => { const m = M.get(l.ri), t = SQ_HAS(m.el.label) ? String(m.el.label) : '';
+  const edges = o.lines.map(l => { const m = M.get(l.ri), t = sqMsgText(m.el);
     return { id: m.id, _id: m.id, type: 'uml.Message', from: m.from, to: m.to, s: byId[m.from], t: byId[m.to], pts: l.pts, end: SQ_END[m.sort], sort: m.sort,
       ...(t ? { lbl: { ...l.lbl, text: t }, label: t } : {}),
       aria: `Message ${nth.get(m)} of ${msgs.length}: ${sqName(H.get(m.from))} to ${sqName(H.get(m.to))}${t ? ', ' + t : ''}, ${m.sort}${inWhat(m.parent)}` }; });
@@ -193,7 +195,7 @@ function sqDescribe(model, viewId) {
     open = open.slice(0, k);
     for (; k < c.length; k++) { const { f, op } = c[k], m = SQ_ARR(f.members).find(x => SQ_OBJ(x) && x.id === op) || {};
       out.push(`${'  '.repeat(k)}${sqOperator(f) || 'fragment'}${SQ_HAS(m.label) ? ` [${m.label}]` : ''}:`); open.push(c[k]); }
-    const pad = '  '.repeat(c.length), t = SQ_HAS(o.el.label) ? `: ${o.el.label}` : '';
+    const pad = '  '.repeat(c.length), t = sqMsgText(o.el) ? `: ${sqMsgText(o.el)}` : '';
     if (!o.message) { const cs = SQ_ARR(sqProps(o.el).covers); out.push(`${pad}ref ${JSON.stringify(String(o.el.label ?? ''))}${cs.length ? ` over ${cs.map(nm).join(', ')}` : ''}.`); return; }
     const to = o.from === o.to ? 'itself' : nm(o.to), call = o.sort === 'reply' && n.has(o.replyTo) ? ` (answers ${n.get(o.replyTo)})` : '';
     out.push(`${pad}${n.get(o.id)}. ${nm(o.from)} ${SQ_VERB[o.sort]} ${to}${call}${t}.`); });
@@ -397,7 +399,11 @@ const SQ_MEMBER = {
 /* rename(model, view, id, text): F2 on a fragment opens on its operator, which its tag draws (its label is drawn nowhere), so
    the text typed is its operator, guarded as the panel's Operator field is; unchanged, nothing (audit 18). Anything else: the default */
 function sqRename(model, V, id, text) {
-  const f = sqIndex(model, V).F.get(id); if (!f) return null;
+  const X = sqIndex(model, V), o = X.byId.get(id), pre = o && o.message ? sqMsgPre(o.el) : '';
+  // a message with «stereotypes»: its field holds them before its label, as drawn; they come off, the rest is its label (audit 19)
+  if (pre) { let t = String(text ?? '').trim(); if (t.startsWith(pre)) t = t.slice(pre.length).trim();
+    return t === String(o.el.label ?? '') ? [] : [{ op: 'set', id, path: 'label', value: t || undefined }]; }
+  const f = X.F.get(id); if (!f) return null;
   const t = String(text ?? '').trim(); if (t === sqOperator(f)) return [];
   if (!SQ_OPS.includes(t)) return sqErr(`a fragment's operator is one of ${SQ_OPS.join(', ')}, not ${JSON.stringify(t)}`);
   return sqGuard(model, V, [{ op: 'set', id, path: 'props.operator', value: t }]);
@@ -412,7 +418,7 @@ const SEQ_TYPE = registerDiagramType('uml.sequence', {
   refs: { 'uml.Message': { 'props.replyTo': 'cascade' }, 'uml.InteractionUse': { 'props.covers': 'drop' } },
   props: {
     'uml.Lifeline': [{ key: 'represents', label: 'Represents', kind: 'text' }, { key: 'stereotypes', label: 'Stereotypes', kind: 'list' }],
-    'uml.Message': [{ key: 'sort', label: 'Sort', kind: 'enum', options: SQ_SORTS }, { key: 'replyTo', label: 'Reply to', kind: 'text' }],
+    'uml.Message': [{ key: 'sort', label: 'Sort', kind: 'enum', options: SQ_SORTS }, { key: 'replyTo', label: 'Reply to', kind: 'text' }, { key: 'stereotypes', label: 'Stereotypes', kind: 'list' }],
     'uml.InteractionUse': [{ key: 'refersTo', label: 'Refers to', kind: 'text' }, { key: 'covers', label: 'Covers', kind: 'list' }],
     'uml.CombinedFragment': [{ key: 'operator', label: 'Operator', kind: 'enum', options: SQ_OPS }],
   },

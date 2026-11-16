@@ -342,10 +342,14 @@ function csConnect(model, view, from, to, at, line) {
   // the node each end is drawn on: its part, the subject (its port), else itself. One node, through a port or a box: not drawn (audit 11)
   const at2 = x => x.part ?? (P.S && P.sPorts.some(q => q.id === x.id) ? P.sid : x.id), port = x => x.part != null || at2(x) !== x.id;
   if (at2(a) === at2(b) && (port(a) || port(b) || P.boxed.has(at2(a)))) return { error: 'A connector joins two parts or ports of two elements: no line runs from a part or a box to itself' };
+  const ends = Object.fromEntries([['from', a], ['to', b]].filter(([, x]) => x.part).map(([k, x]) => [k, { part: x.part }]));
+  // a connector whose ends lie in two structures (a part and a role), or on the subject itself: connector-scope's error at once (audit 19)
+  const e = { id: csFresh(model, 'connector'), type: 'uml.Connector', from: a.id, to: b.id, ...(a.part || b.part ? { props: { ends } } : {}) };
+  if (line.type === 'uml.Connector' && csProblems({ ...model, edges: [...CS_ARR(model.edges), e] }, view).some(p => p.rule === 'connector-scope' && p.ids[0] === e.id))
+    return { error: 'A connector\'s ends lie in one structure: the subject\'s ports and parts, or one collaboration\'s roles' };
   if (!a.part && !b.part) return null;
   if (line.type !== 'uml.Connector') return { error: `A ${String(line.label || 'line').toLowerCase()} joins the part, not a port on it` };
-  const ends = Object.fromEntries([['from', a], ['to', b]].filter(([, x]) => x.part).map(([k, x]) => [k, { part: x.part }]));
-  return [{ op: 'add', element: { id: csFresh(model, 'connector'), type: 'uml.Connector', from: a.id, to: b.id, props: { ends } }, view: view.id }];
+  return [{ op: 'add', element: e, view: view.id }];
 }
 // moveTo: a port dropped, or Alt + an arrow on it, goes to the side nearest the drop, or in the arrow's direction (§4.5); its place
 // along its side is not stored (S3). Anything else, and a member's ↑ and ↓ in the panel (no geometry): the default

@@ -470,3 +470,16 @@ test('audit 18: F2 on a fragment sets its operator, which its tag draws, guarded
   assert.match(R(SEQ, v, f1.id, 'opt').error, /^reply-once: /, 'an alt with two answers made an opt: the rule it would break');
   assert.equal(R(SEQ, v, v.nodeIds[0], 'X'), null); assert.equal(R(SEQ, v, v.edges[0], 'go()'), null);
 });
+
+test('audit 19: a message\'s stereotypes are drawn «…» before its label (its label box sized for them), said in describe() and its accessible name, offered in the panel; F2 takes them off', () => {
+  const m = structuredClone(SEQ), v = m.views[0], el = m.edges.find(e => e.type === 'uml.Message' && e.label) || v.edges.find(e => e && e.type === 'uml.Message' && e.label);
+  const w0 = layout(SEQ, v.id).edges.find(e => e._id === el.id).lbl.w;
+  el.props = { ...(el.props || {}), stereotypes: ['secure'] };
+  const e = layout(m, v.id).edges.find(x => x._id === el.id);
+  assert.equal(e.label, `«secure» ${el.label}`); assert.ok(e.lbl.w > w0, 'the box holds the keyword'); assert.ok(e.aria.includes(`«secure» ${el.label}`), e.aria);
+  assert.ok(describeView(m, v.id).includes(`: «secure» ${el.label}.`));
+  assert.ok(SEQ_TYPE.props['uml.Message'].some(f => f.key === 'stereotypes'));
+  assert.deepEqual(SEQ_TYPE.edits.rename(m, v, el.id, e.label), [], 'its drawn text back: nothing');
+  assert.deepEqual(SEQ_TYPE.edits.rename(m, v, el.id, '«secure» pay()'), [{ op: 'set', id: el.id, path: 'label', value: 'pay()' }]);
+  assert.equal(SEQ_TYPE.edits.rename(SEQ, SEQ.views[0], el.id, 'pay()'), null, 'with none: the default, as before');
+});

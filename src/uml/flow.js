@@ -91,7 +91,8 @@ for (const k of ['initial', 'final', 'flow-final', 'diamond', 'bar', 'rounded'])
 
 /* ---- the flow rules (§9.3), at S21's levels: what UML forbids is an error, what is only unfinished a warning. Each
    problem is { level, rule, path, message, ids }, as in src/uml/class.js. flowProblems(model, view, ends) checks the
-   model's flows that touch a node the view shows (all of them with no view), and the control nodes the view shows;
+   model's flows and the view's own (view.edges objects) that touch a node the view shows (all of them with no view), and
+   the control nodes the view shows;
    ends: the node types a flow of the calling type may end on ---- */
 const FLOW_LINES = ['uml.ControlFlow', 'uml.ObjectFlow'];
 const FLOW_CONTROL = ['uml.InitialNode', 'uml.ActivityFinalNode', 'uml.FlowFinalNode', 'uml.DecisionNode', 'uml.MergeNode', 'uml.ForkNode', 'uml.JoinNode'];
@@ -110,6 +111,9 @@ function flowProblems(model, view, ends) {
   const el = id => (at.get(id) || [])[0], nm = id => { const x = el(id); return x && x.label != null && x.label !== '' ? `${flowWord(x.type)} ${id} ("${x.label}")` : `${x ? flowWord(x.type) + ' ' : ''}${id}`; };
   const say = (rule, path, ids, msg, level = 'error') => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const flows = FL_ARR(model && model.edges).map((e, k) => [e, `edges[${k}]`]).filter(([e]) => FL_OBJ(e) && FLOW_LINES.includes(e.type) && (seen(e.from) || seen(e.to)));
+  // and the view's own flows (view.edges objects), which it draws as it draws the model's (audit 19); one a model flow's id takes is that flow's
+  const vi = FL_ARR(model && model.views).indexOf(view), ids = new Set(flows.map(([e]) => e.id));
+  FL_ARR(view && view.edges).forEach((e, j) => { if (FL_OBJ(e) && FLOW_LINES.includes(e.type) && !ids.has(e.id) && (seen(e.from) || seen(e.to))) { ids.add(e.id); flows.push([e, `views[${vi}].edges[${j}]`]); } });
   const ins = new Map(), outs = new Map(), add = (m, id, e) => m.set(id, [...(m.get(id) || []), e]);
   flows.forEach(([e, path]) => { add(outs, e.from, e); add(ins, e.to, e);
     [e.from, e.to].forEach(id => { const x = el(id); if (x && !FL_ARR(ends).includes(x.type)) say('flow-ends', path, [e.id, id], `${e.id} ends on ${nm(id)}, which a flow may not end on`); }); });
@@ -148,7 +152,8 @@ function parseFlow(text) {
 const flowStereo = e => FL_ARR(FL_OBJ(e.props) ? e.props.stereotypes : null).filter(t => t != null && String(t).trim() !== '').map(t => `«${t}»`);
 const flowLabel = e => [...flowStereo(e), flowText(e.label, FL_OBJ(e.props) ? e.props.guard : undefined)].filter(Boolean).join(' ');
 /* F2 on a flow, the activity's and the overview's: its drawn text, «stereotypes» first (not parts), read by parseFlow; a set
-   for each part that changed (undefined clears one). A flow whose name and guard do not read back (printFlow null) is
+   for each part that changed (undefined clears one). flowOf(model, view, id): the flow F2 is on, the view's own (a
+   view.edges object) or the model's, as the view draws it (audit 19). A flow whose name and guard do not read back (printFlow null) is
    { error }: they are edited in the properties panel, so one Enter never splits its name (audit 16) */
 function flowRename(e, text) {
   const p = FL_OBJ(e.props) ? e.props : {}, now = x => (x != null && String(x).trim() !== '' ? String(x).trim() : undefined);
@@ -157,4 +162,6 @@ function flowRename(e, text) {
   return [['label', now(e.label), r.name], ['props.guard', now(p.guard), r.guard]].filter(([, a, b]) => a !== b).map(([path, , value]) => ({ op: 'set', id: e.id, path, value }));
 }
 
-export { flowWrap, FLOW_LINES, FLOW_CONTROL, FLOW_RULES, flowProblems, flowText, printFlow, parseFlow, flowStereo, flowLabel, flowRename };
+const flowOf = (model, view, id) => [...FL_ARR(view && view.edges), ...FL_ARR(model && model.edges)].find(x => FL_OBJ(x) && x.id === id);
+
+export { flowOf, flowWrap, FLOW_LINES, FLOW_CONTROL, FLOW_RULES, flowProblems, flowText, printFlow, parseFlow, flowStereo, flowLabel, flowRename };

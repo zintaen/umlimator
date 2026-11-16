@@ -5,7 +5,7 @@ import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import './class.js'; // SHAPE.note, a comment
-import { FLOW_CONTROL, FLOW_RULES, flowProblems, flowText, flowLabel, flowRename, flowStereo } from './flow.js';
+import { FLOW_CONTROL, FLOW_RULES, flowOf, flowProblems, flowText, flowLabel, flowRename, flowStereo } from './flow.js';
 import { frameTag, tagSize, useSize } from './frame.js';
 import { interactionWalk } from './interaction.js';
 import { sqDraw, sqRun } from './sequence.js';
@@ -234,7 +234,7 @@ function ovAdd(model, view, entry, label, at) {
 /* rename(model, view, id, text): F2 on a control flow reads "name [guard]" (§7.2) and sets the parts that changed, an
    absent part cleared; a text the parser refuses is { error } (E3). Anything else: null, the default set label */
 function ovRename(model, view, id, text) {
-  const e = OV_ARR(model && model.edges).find(x => OV_OBJ(x) && x.id === id);
+  const e = flowOf(model, view, id); // the view's own flow too (audit 19)
   if (!e || e.type !== 'uml.ControlFlow') return null;
   return flowRename(e, text);
 }

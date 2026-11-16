@@ -626,3 +626,11 @@ test('audit 17: a role binding\'s picker offers the named roles, which binding-r
   const c = T.edits.connect(lost, lost.views[0], 'S.p', 'u', {}, { type: 'uml.RoleBinding' }); assert.equal(c[0].element.label, undefined);
   assert.deepEqual(validate(apply(lost, c)).filter(p => p.rule === 'binding-role'), []);
 });
+
+test('audit 19: the Connector tool refuses ends in two structures (a part or the subject\'s port, and a collaboration\'s role): connector-scope would fail at once', () => {
+  const m = structuredClone(CS), v = m.views[0], T = diagramOf(v), line = T.lines.find(l => l.type === 'uml.Connector');
+  for (const [a, b] of [['order-service.checkout', 'publish-subscribe.publisher'], ['order-service.api', 'publish-subscribe.subscriber'], ['publish-subscribe.subscriber', 'order-service.pricing']]) {
+    const r = T.edits.connect(m, v, a, b, null, line); assert.ok(r && r.error && /lie in one structure/.test(r.error), `${a} -> ${b}: ${JSON.stringify(r)}`); }
+  assert.equal(T.edits.connect(m, v, 'publish-subscribe.publisher', 'publish-subscribe.subscriber', null, line), null, 'two roles of one collaboration: drawn as is');
+  assert.equal(T.edits.connect(m, v, 'order-service.checkout', 'order-service.pricing', null, line), null, 'two parts of the subject: drawn as is');
+});

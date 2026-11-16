@@ -494,3 +494,14 @@ test('audit 17: on an enumeration, a bare name after its «stereotypes» is a li
   assert.equal(T.member.add('«deprecated» red: Int', E).type, 'uml.Property', 'not a bare name: an attribute');
   assert.equal(T.member.add('«deprecated» Red', { id: 'K', type: 'uml.Class', label: 'K' }).type, 'uml.Property', 'on a class: an attribute');
 });
+
+test('audit 19: a component, an actor or a node shown in a class or package view is drawn with its kind\'s keyword, as its accessible name says it', () => {
+  for (const diagram of ['uml.class', 'uml.package']) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'c', type: 'uml.Component', label: 'Shop' }, { id: 'a', type: 'uml.Actor', label: 'Buyer' }, { id: 'n', type: 'uml.Node', label: 'Server' },
+      { id: 'k', type: 'uml.Class', label: 'Order' }, { id: 'i', type: 'uml.Interface', label: 'Pay' }], views: [{ id: 'v', diagram, nodeIds: ['c', 'a', 'n', 'k', 'i'] }] };
+    const g = layout(m, 'v'), st = id => g.byId[id].stereotypes;
+    assert.deepEqual([st('c'), st('a'), st('n'), st('k'), st('i')], [['component'], ['actor'], ['node'], [], ['interface']], diagram);
+    const { markup } = mapContext(m).buildView('v');
+    assert.ok(markup.includes('«component»') && markup.includes('«actor»') && markup.includes('«node»'), diagram);
+  }
+});

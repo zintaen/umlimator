@@ -408,3 +408,22 @@ test('F2 on a message row: its drawn number and «create»/«destroy» come off,
   const n0 = layout(bare, v.id).byId[r0.id].label; assert.ok(!n0.includes(':'), n0);
   assert.equal(apply(bare, T.edits.rename(bare, v, r0.id, n0 + ' go')).edges.find(e => e.id === r0.id).label, 'go', 'a row with no text: its number off');
 });
+
+test('audit 19: F2 on a labelled row keeps a leading word equal to its number; only the drawn "1:" (or a bare row\'s "1 ") comes off', () => {
+  const v = EX.views[0], T = diagramOf(v), m = EX.edges.find(e => e.type === 'uml.Message' && e.label), num = layout(EX, v.id).byId[m.id].label.split(':')[0];
+  const set = t => T.edits.rename(EX, v, m.id, t);
+  assert.deepEqual(set(`${num} more book`), [{ op: 'set', id: m.id, path: 'label', value: `${num} more book` }]);
+  assert.deepEqual(set(`${num}: ${num} more book`), [{ op: 'set', id: m.id, path: 'label', value: `${num} more book` }]);
+  assert.deepEqual(set(`${num}: ${m.label}`), []);
+});
+
+test('audit 19: a message\'s stereotypes are drawn «…» before its label, said in describe() and its accessible name, offered in the panel, and F2 takes them off', () => {
+  const x = structuredClone(EX), v = x.views[0], T = diagramOf(v), m = x.edges.find(e => e.type === 'uml.Message' && e.label); m.props = { ...(m.props || {}), stereotypes: ['secure'] };
+  const row = layout(x, v.id).byId[m.id];
+  assert.ok(row.label.includes(`«secure» ${m.label}`), row.label);
+  assert.ok(describe(x, v.id).includes(`«secure» ${m.label}`));
+  assert.ok(mapContext(x).buildView(v.id).markup.includes('«secure»'));
+  assert.ok(T.props['uml.Message'].some(f => f.key === 'stereotypes'));
+  assert.deepEqual(T.edits.rename(x, v, m.id, row.label), [], 'its drawn text back: nothing');
+  assert.deepEqual(T.edits.rename(x, v, m.id, row.label.replace(m.label, 'pay()')), [{ op: 'set', id: m.id, path: 'label', value: 'pay()' }]);
+});

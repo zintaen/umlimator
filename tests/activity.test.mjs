@@ -416,3 +416,24 @@ test('audit 17: describe() says a flow\'s «stereotypes», as its line and its a
   assert.ok(layout(m, V.id).edges.some(e => (e.aria || '').includes('«retry»')));
   const d = describe(m, V.id); assert.ok(d.includes(`«retry» (${f.label})`), d); // before its name, as drawn
 });
+
+test('audit 19: the flow rules and F2 count a view\'s own flows (view.edges objects), which the view draws', () => {
+  for (const [diagram, mid] of [['uml.activity', 'uml.Action']]) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'start', type: 'uml.InitialNode' }, { id: 'ask', type: 'uml.DecisionNode', label: 'Paid?' }, { id: 'ship', type: mid, label: 'Ship' }, { id: 'end', type: 'uml.ActivityFinalNode' }],
+      edges: [{ id: 'm0', type: 'uml.ControlFlow', from: 'start', to: 'ask' }],
+      views: [{ id: 'v', diagram, nodeIds: ['start', 'ask', 'ship', 'end'], edges: ['m0',
+        { id: 'f1', type: 'uml.ControlFlow', from: 'ask', to: 'ship', props: { guard: 'yes' } }, { id: 'f2', type: 'uml.ControlFlow', from: 'ask', to: 'end', props: { guard: 'else' } },
+        { id: 'f3', type: 'uml.ControlFlow', from: 'ship', to: 'end' }, { id: 'bad', type: 'uml.ControlFlow', from: 'end', to: 'ship' }] }] };
+    const flow = validate(m).filter(p => /^(initial|final|decision|fork)/.test(p.rule || p.message));
+    assert.deepEqual(flow.map(p => [p.level, p.message.split(':')[0], p.path]), [['error', 'final-flows', 'nodes[3]']], diagram);
+    assert.ok(flow[0].message.includes('(bad)'), flow[0].message);
+    const T = diagramOf(m.views[0]), r = T.edits.rename(m, m.views[0], 'f1', 'go [paid]');
+    assert.deepEqual(r, [{ op: 'set', id: 'f1', path: 'label', value: 'go' }, { op: 'set', id: 'f1', path: 'props.guard', value: 'paid' }], diagram);
+    const n = apply(m, r).views[0].edges[1]; assert.deepEqual([n.label, n.props.guard], ['go', 'paid'], diagram);
+    // a view's own flow out of a decision with no guard: decision-guards, at its path in the view
+    const g = structuredClone(m); delete g.views[0].edges[1].props;
+    assert.ok(validate(g).some(p => p.message.startsWith('decision-guards') && p.ids.includes('f1')), diagram);
+  }
+  // a flow in the model with no view list, as before
+  assert.deepEqual(actProblems(EX, EX.views[0]).filter(p => p.level === 'error'), []);
+});

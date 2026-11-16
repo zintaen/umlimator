@@ -5,6 +5,7 @@ import '../typed/draw.js'; // SHAPE.classifier, which the note's outline and por
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { OWN_BOXES, OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder } from './owners.js';
+import { snKindWord } from './structure.js';
 
 /* ---------- the class diagram, uml.class (work package 1.9) ----------
    The subset of proposal.md §8.2: class, interface, enumeration with literals, data type, primitive type; attributes and
@@ -244,10 +245,11 @@ const typeWord = t => String(t || 'uml.Class').split('.').pop().replace(/([a-z])
 const nameOfEl = x => String(x.label ?? x.id);
 const plural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 /* A type's look (notes/stage-2.md §10.2): the class, package and object views share classGeo's code. members: whether a
-   classifier shows its compartments; own: the line types a view with no `edges` list draws (none: every type); word: the
+   classifier shows its compartments; kinds: whether another UML kind (a component, an actor, a node) shown here is drawn
+   with its kind's keyword, as its accessible name says it (audit 19); own: the line types a view with no `edges` list draws (none: every type); word: the
    diagram's name in describe(). The class view's own: its row's lines (model.md); another diagram's (a usage, a connector) only when listed */
 const CLASS_LINES = ['uml.Association', 'uml.Generalization', 'uml.InterfaceRealization', 'uml.Dependency', 'uml.CommentLink'];
-const CLASS_LOOK = { members: true, own: CLASS_LINES, word: 'class diagram' };
+const CLASS_LOOK = { members: true, own: CLASS_LINES, word: 'class diagram', kinds: true };
 // an element's accessible name: "Class Order (entity, abstract), 5 attributes, 3 operations", by its drawn name (pic: the
 // view's owners, owners.js); "Package sales, holding 4 elements"; "Package payments (closed)"
 function nodeName(n, pic, look = CLASS_LOOK) {
@@ -285,9 +287,9 @@ function drawnLines(model, view, own) {
 const typeGeo = look => ({ model, view, pos, memo }) => {
   const { at, pic, lines } = drawnLines(model, view, look.own), present = UML_OBJ(view.present) ? view.present : {}, boxes = look.box ? pic.boxes.map(b => look.box(b, model, pic)) : pic.boxes;
   const nodes = pic.ids.filter(id => !pic.open.has(id)).map(id => { const n = at.get(id).x, pr = UML_OBJ(UML_OWN(present, id)) ? present[id] : {}, p = UML_OBJ(n.props) ? n.props : {};
-    const st = UML_ARR(p.stereotypes).filter(UML_HAS);
+    const st = UML_ARR(p.stereotypes).filter(UML_HAS), kind = typeof n.type === 'string' && n.type.startsWith('uml.') && n.type !== 'uml.Class' && !UML_OWN(IMPLIED, n.type);
     const shape = n.type === 'uml.Comment' ? { shape: 'note' } : OWN_BOXES.includes(n.type) ? { shape: 'package', stereotypes: [...(UML_OWN(IMPLIED, n.type) ? [IMPLIED[n.type]] : []), ...st] }
-      : { shape: 'classifier', stereotypes: [...(UML_OWN(IMPLIED, n.type) ? [IMPLIED[n.type]] : []), ...st], abstract: !!p.isAbstract, compartments: look.members ? compartmentsOf(n) : [],
+      : { shape: 'classifier', stereotypes: [...(UML_OWN(IMPLIED, n.type) ? [IMPLIED[n.type]] : look.kinds && kind ? [snKindWord(n.type)] : []), ...st], abstract: !!p.isAbstract, compartments: look.members ? compartmentsOf(n) : [],
         collapsed: UML_ARR(pr.collapsed), ...(Number.isFinite(pr.rows) ? { rows: pr.rows } : {}) };
     const d0 = { id, label: n.type === 'uml.Comment' ? nameOfEl(n) : pic.name(id), type: n.type || 'uml.Class', kind: 'file', ...shape, aria: nodeName(n, pic, look), col: (UML_OWN(pos, id) || [0, 0])[0], row: (UML_OWN(pos, id) || [0, 0])[1] };
     const d = look.node ? look.node(d0, n, model, pic) : d0;
