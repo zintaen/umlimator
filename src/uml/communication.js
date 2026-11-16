@@ -358,6 +358,8 @@ const COMM_TYPE = registerDiagramType('uml.communication', {
     'uml.Message': [CM_SORT, { key: 'replyTo', label: 'Reply to', kind: 'text' }, { key: 'stereotypes', label: 'Stereotypes', kind: 'list' }],
     'uml.Connector': [],
   },
+  // a connector is drawn with no text (its messages are): no Name field (audit 21)
+  unnamed: ['uml.Connector'],
   refs: { 'uml.Message': { 'props.replyTo': 'cascade' } }, // a reply goes with its call
   layout: Object.assign(commGeo, { rank: false }), // commGeo ranks its own lifelines: the host passes only the pins
   // the host ranks a typed view's lifelines before commGeo runs (context.js autoPos), and commGeo ranks its own, with the

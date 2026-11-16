@@ -77,6 +77,25 @@ test('audit 20: the C4ElementProps row names the shapes C4 draws, the card shape
   c.props = { ...c.props, shape: 'node' }; const v = m.views.find(x => x.diagram === 'c4.container' && x.nodeIds.includes(c.id));
   assert.equal(layout(m, v.id).nodes.find(n => n.id === c.id).sh, 'box'); // the default, as the row says
 });
+test('audit 21: the guide\'s C4 row, the C4 conformance note and the schema name the shapes C4 draws (C4_SHAPES, not node) and the default for any other name', () => {
+  const read = p => readFileSync(new URL(p, import.meta.url), 'utf8'), names = t => [...t.matchAll(/`?\b([a-z]+)\b`?/g)].map(m => m[1]);
+  const guide = /a C4 element's [^|]*?`shape` \((.*?)\), an instance's/.exec(read('../docs/guide/model.md'))[1];
+  const note = read('../docs/conformance/c4.md').split('\n').find(l => l.startsWith('| Person, software system')).split(' | ')[2];
+  const schema = JSON.parse(read('../lib/umlimator.schema.json'));
+  let desc; JSON.stringify(schema, (k, v) => { if (k === 'shape' && v && typeof v.description === 'string' && v.description.startsWith('A C4 element')) desc = v.description; return v; });
+  for (const [where, text] of [['guide', guide], ['c4.md', note], ['schema', desc]]) {
+    assert.ok(text, where);
+    const said = new Set(names(text));
+    for (const s of C4_SHAPES) assert.ok(said.has(s), `${where} names ${s}: ${text}`);
+    assert.match(text, /other than `?node`?|not `node`/, where);
+    assert.match(text, /any other name draws the default, `?person`? for a person and `?box`? for/, where);
+  }
+  // and the code agrees: node, or a name C4 does not know, draws the default; a shape's name in any case draws that shape
+  const m = JSON.parse(read('../examples/bookshop-c4.json')), c = m.nodes.find(n => n.type === 'c4.Container'), p = m.nodes.find(n => n.type === 'c4.Person');
+  const sh = (x, s) => { x.props = { ...x.props, shape: s }; const v = m.views.find(w => w.nodeIds?.includes(x.id) && w.diagram?.startsWith('c4.')); return layout(m, v.id).nodes.find(n => n.id === x.id).sh; };
+  assert.deepEqual(['node', 'Node', 'cloud', 'Cylinder'].map(s => sh(c, s)), ['box', 'box', 'box', 'cylinder']);
+  assert.deepEqual(['node', 'robot'].map(s => sh(p, s)), ['person', 'robot']);
+});
 test('the element (§7.5): the shape props.shape names (a person by default, else a box), sized by its three lines, 160 to 280 px wide; its texts and outline', () => {
   const C = SHAPE.c4, base = { label: 'Shop API', tag: '[Container: Python, FastAPI]', desc: 'Catalogue, basket, checkout and accounts as a JSON API.' };
   const sizes = Object.fromEntries(C4_SHAPES.map(sh => [sh, C.size({ ...base, sh })]));

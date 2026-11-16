@@ -9,6 +9,7 @@ import { edgeRefIds } from '../map/api.js';
 import { badgesOf, mapTabs, toneOf } from '../map/cards.js';
 import { warn } from '../core/warn.js';
 import { diagramOf, idTable } from '../core/registry.js';
+import { unreadable } from '../core/model.js';
 import { mapContext } from '../map/context.js';
 import { canon } from '../map/diff.js';
 import { cardMatcher, msText } from '../map/insight.js';
@@ -565,13 +566,14 @@ export function render(container, model, options = {}) {
     // a name of more than one line (a mindmap topic's, one Mermaid's <br> wrote) in a field that keeps its breaks: an <input>
     // drops them, so F2 then Enter joined the lines (audit 20). Enter commits there too, Shift + Enter breaks a line
     const lines = /[\r\n]/.test(text), inp = document.createElement(lines ? 'textarea' : 'input');
-    inp.className = 'um-edit um-rename'; inp.value = text; if (lines) inp.rows = text.split(/\r\n|\r|\n/).length; inp.setAttribute('aria-label', text ? 'New name' : 'Name of the new card');
+    inp.className = 'um-edit um-rename'; inp.value = text; if (lines) inp.rows = text.split(/\r\n|\r|\n/).length; inp.setAttribute('aria-label', ref ? 'New name' : 'Name of the new card'); // a rename by what it renames, an empty name too (audit 21)
     const place = () => { const box = ref ? nameBox(ref) : where; if (!box) return; const k = cam.s.k, [W, H] = cam.size();
       Object.assign(inp.style, { left: (box.x - cam.s.cx) * k + W / 2 + 'px', top: (box.y - cam.s.cy) * k + H / 2 + 'px', width: Math.max(120, box.w * k) + 'px', height: Math.max(22, box.h * k) * (lines ? inp.rows : 1) + 'px', fontSize: Math.max(11, 13 * k) + 'px' }); };
     place(); stage.appendChild(inp); inp.focus(); inp.select();
     // once only: removing a focused field can fire blur (cancel) in the middle of a commit
     let closed = false;
-    const finish = ok => { if (closed) return; closed = true; naming = null; touch(); const v = inp.value.trim(); if (ok && (v || empty) && v !== text.trim()) done(v); inp.remove(); stage.focus({ preventScroll: true }); };
+    // the field's value has its line breaks as \n (a textarea's does): \r\n in the name is no change made (audit 21)
+    const finish = ok => { if (closed) return; closed = true; naming = null; touch(); const v = inp.value.trim(); if (ok && (v || empty) && v !== text.replace(/\r\n?/g, '\n').trim()) done(v); inp.remove(); stage.focus({ preventScroll: true }); };
     naming = { ref, place, close: finish }; touch();
     inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter' && !(lines && e.shiftKey)) { e.preventDefault(); finish(true); } else if (e.key === 'Escape') { e.preventDefault(); finish(false); } });
     inp.addEventListener('blur', () => finish(false));
@@ -1210,9 +1212,12 @@ export function render(container, model, options = {}) {
     return st.ctl;
   }
 
-  /* a typed view of a version 2 model (1.7): its gestures emit `edit`, a transaction of commands, and its panels show */
+  /* a typed view of a version 2 model (1.7): its gestures emit `edit`, a transaction of commands, and its panels show.
+     Its hooks read the model as it is drawn, through unreadable(), once for each model: a value String() throws on is left
+     out, as mapContext leaves it out (audit 21: F2 on one transition threw when another's trigger was {"toString": 1}) */
+  let readFor, readAs; const drawnModel = () => { if (readFor !== current) { readFor = current; readAs = unreadable(current).model; } return readAs; };
   const tx = E && typedEditor({ root, stage, can, say, status, touch, nearest, nameOf, editor, picked,
-    emit: commands => emit('edit', { view: cur, commands }), view: () => cur, model: () => current, geo: () => geo, svg: () => svg, cam: () => cam, sel: () => sel,
+    emit: commands => emit('edit', { view: cur, commands }), view: () => cur, model: drawnModel, geo: () => geo, svg: () => svg, cam: () => cam, sel: () => sel,
     selectId: id => { const e = geo.byId[id] ? null : geo.edges.find(x => edgeRefIds(x).includes(id)); return select(e ? edgeRef(e) : idRef(id)); }, // a box: the outline's way to select one
     drawn: id => !!geo.byId[id] || geo.edges.some(x => edgeRefIds(x).includes(id)), rename: () => rename(sel), focus: () => focusMap() });
   const typed = () => !!tx && tx.on();

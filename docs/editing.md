@@ -284,7 +284,7 @@ The **sequence diagram** (`uml.sequence`, `examples/checkout-sequence.json`) is 
 | add, rename, reorder operands | the frame's member list in the properties panel | F2, Enter; `Alt + ↑ / ↓` in a row | `add` with `owner`, `set label`; a reorder also moves the operand's occurrences, so they stay one run |
 | add an interaction use | the palette (Interaction use) | its palette button | `add` at the slot; `covers` is the selected lifeline, or every lifeline |
 | rename a lifeline, a message or a guard | double-click it once selected | `F2` | `set label` |
-| sort, replyTo, operator, covers, refersTo, represents | the properties panel | Enter | `set` |
+| sort, replyTo, operator, covers, refersTo, represents | the properties panel | Enter | `set`; a fragment has no Name field, since its label is drawn nowhere |
 | unwrap a fragment | Delete on its frame | `Delete`, `Shift + Delete` | `delete`: what it held goes to the operand around it |
 | delete one operand | its member row's ✕ | | its occurrences move to just after the fragment, then `delete`; the last operand deletes the fragment |
 | delete a message or a use | | `Delete` or `Shift + Delete` (it lives in the view) | `delete`; a call's replies go with it |
@@ -300,7 +300,7 @@ layout, as a class diagram:
 | Edit | Pointer | Keyboard | Commands |
 |---|---|---|---|
 | add a lifeline | the palette | `N` | `add` with `view` |
-| add a connector or a message | the handle or a drag to another lifeline (or its own), then Connector, Call, Async, Reply, Create or Delete | `L`, the other end, Enter | `add`; a new message goes after the selected one, or last, and a connector is added in the same transaction when none joins its two lifelines |
+| add a connector or a message | the handle or a drag to another lifeline (or its own), then Connector, Call, Async, Reply, Create or Delete | `L`, the other end, Enter | `add`; a new message goes after the selected one, or last, and a connector is added in the same transaction when none joins its two lifelines; a connector is drawn with no text, so the properties panel offers it no Name field |
 | move a message in time | drag its row onto another row: it takes that row's place | `Alt + ↑ / ↓` on a row: one place | `move` on the view's `edges` |
 | move a lifeline | drag it | `Alt + arrows` | a pin, as on a class view |
 | hide or delete a message or a connector | Remove from view, Delete from model | `Delete`, `Shift + Delete` | `hide`, with a hidden call's replies and a hidden connector's messages; or `delete`, which takes a connector's messages in every communication view where no other connector joins their lifelines |
@@ -352,7 +352,7 @@ The **state machine diagram** (`uml.state-machine`, `examples/order-states.json`
 | add a state, a pseudostate, a final state, a comment | the palette (State, Initial, Final state, Choice, Junction, Fork, Join, Shallow history, Deep history, Terminate, Comment) | `N` | `add`; a pseudostate's `props.kind` comes from its entry, and it goes into the state or region selected (a state's lone region); one that would break a rule (a second initial, a history at the top) is refused, said |
 | add a region | the palette's Region with a state selected | | `add` of a `uml.Region` member; with no state selected the hint line says so |
 | add a transition | the handle or a drag (to its own state: a self-transition) | `L`, the other end (or the state's own name), Enter | `add` |
-| a transition's text | double-click once selected | `F2`: `trigger [guard] / effect` | one `set` per part that changed (`undefined` clears one); a text the parser refuses is kept, with why |
+| a transition's text | double-click once selected, or the properties panel's Trigger, Guard and Effect | `F2`: `trigger [guard] / effect` | one `set` per part that changed (`undefined` clears one); a text the parser refuses is kept, with why. A transition has no Name field: its label is drawn nowhere |
 | an activity, an internal transition | the state's member rows: a row `entry / …`, `do / …` or `exit / …` sets that activity | F2, Enter | `set props.entry` …, or the member hook |
 | a pseudostate's kind | the properties panel | Enter | `set props.kind`: its shape is drawn again |
 | nest a state | drop it into an open state's box or a region's (a one-region state's drop goes to its region) | the Owner field: states and regions by their path, " / " between | `reparent` |

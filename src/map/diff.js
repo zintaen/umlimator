@@ -1,6 +1,6 @@
 import { TYPED, idTable, diagramOf } from '../core/registry.js';
 import { andList, arrOf, rules } from './validate.js';
-import { unreadable } from '../core/model.js';
+import { nameTable, unreadable } from '../core/model.js';
 
 /* ---------- change: diff (#66) and drift (#68) ----------
    Each returns a model marked with what the map draws already, so a page the CLI writes, or a still, shows the marks
@@ -116,11 +116,22 @@ export function diff(before, after) {
       const K = keyed(E); return linesOf({ edges: E }, x).map(e => e.id != null ? ['=' + e.id, '=' + e.id] : [what(e), '=' + K.get(e)]); };
     // in the same order: the steps in both, paired along a longest common run of what they are, then the rest by what they are
     // and last by Ref name, run in the same order in both lists (a step can repeat, so a pairing, not a lookup)
-    const same = (p, q) => { const T = p.map(() => new Array(q.length + 1).fill(0)).concat([new Array(q.length + 1).fill(0)]);
-      for (let i = p.length - 1; i >= 0; i--) for (let j = q.length - 1; j >= 0; j--) T[i][j] = p[i][0] === q[j][0] ? T[i + 1][j + 1] + 1 : Math.max(T[i + 1][j], T[i][j + 1]);
-      const pairs = [], P = new Set(), Q = new Set(), by = f => { const n = new Map(); q.forEach((y, j) => { if (!Q.has(j)) n.set(y[f], [...(n.get(y[f]) || []), j]); });
-        p.forEach((x, i) => { const js = !P.has(i) && n.get(x[f]); if (js && js.length) { const j = js.shift(); pairs.push([i, j]); P.add(i); Q.add(j); } }); };
-      for (let i = 0, j = 0; i < p.length && j < q.length;) if (p[i][0] === q[j][0]) { pairs.push([i, j]); P.add(i++); Q.add(j++); } else if (T[i + 1][j] >= T[i][j + 1]) i++; else j++;
+    // The common head and tail pair as they stand, so the table spans only the steps between them, and only up to LCS cells:
+    // past that the rest pair by what they are and by Ref name alone, in about linear time and memory (a trace's view of
+    // 20,000 steps, audit 21; a full table ran Node out of memory)
+    const LCS = 4e6;
+    const same = (p, q) => { let s = 0, e = 0; while (s < p.length && s < q.length && p[s][0] === q[s][0]) s++;
+      if (s === p.length && s === q.length) return true;
+      while (e < p.length - s && e < q.length - s && p[p.length - 1 - e][0] === q[q.length - 1 - e][0]) e++;
+      const pairs = [], P = new Set(), Q = new Set(), by = f => { const n = new Map(); q.forEach((y, j) => { if (Q.has(j)) return; const l = n.get(y[f]); if (l) l.push(j); else n.set(y[f], [j]); });
+        const at = new Map(); p.forEach((x, i) => { const js = !P.has(i) && n.get(x[f]), k = at.get(js) || 0; if (js && k < js.length) { const j = js[k]; at.set(js, k + 1); pairs.push([i, j]); P.add(i); Q.add(j); } }); };
+      const two = (i, j) => { pairs.push([i, j]); P.add(i); Q.add(j); };
+      for (let k = 0; k < s; k++) two(k, k);
+      for (let k = 1; k <= e; k++) two(p.length - k, q.length - k);
+      const a = p.length - e, b = q.length - e, w = b - s + 1; // the middle: p[s, a) and q[s, b)
+      if ((a - s + 1) * w <= LCS) { const T = new Int32Array((a - s + 1) * w), t = (i, j) => T[(i - s) * w + j - s];
+        for (let i = a - 1; i >= s; i--) for (let j = b - 1; j >= s; j--) T[(i - s) * w + j - s] = p[i][0] === q[j][0] ? t(i + 1, j + 1) + 1 : Math.max(t(i + 1, j), t(i, j + 1));
+        for (let i = s, j = s; i < a && j < b;) if (p[i][0] === q[j][0]) two(i++, j++); else if (t(i + 1, j) >= t(i, j + 1)) i++; else j++; }
       by(0); by(1); return pairs.sort((x, y) => x[0] - y[0]).every((x, k, l) => !k || l[k - 1][1] < x[1]); };
     const q0 = ord(o, s0, arr(A.edges)), q1 = ord(v, s1, E1), two = l => l.map(k => [k, k]);
     // a numbered-card view with no stepIds numbers its cards in nodeIds order (audit 19)
@@ -228,17 +239,21 @@ export function diff(before, after) {
  *  each a count of model edges (a drawn line that stands for several fades only when all are idle); views: those that
  *  show drift. */
 export function drift(model, observed, options = {}) {
-  [model, observed, options] = [model, observed, options].map(x => unreadable(x).model); // the model, the traffic and the match table: no text String() throws on (audit 20)
-  const arr = arrOf, out = structuredClone(model || {}), match = options.match || {};
+  // the model and the traffic: no text String() throws on (audit 20); the match table by name, where a service may be named toString (audit 21)
+  const match = nameTable(options && options.match); [model, observed] = [model, observed].map(x => unreadable(x).model);
+  const arr = arrOf, out = structuredClone(model || {});
   const list = Array.isArray(observed) ? observed : arr(observed && observed.data);
   const cards = [...arr(out.nodes), ...arr(out.views).flatMap(v => arr(v && v.nodes))].filter(n => n && n.id != null);
   const ids = new Set(cards.map(n => String(n.id))), lower = new Map();
   cards.forEach(n => [n.id, n.label].forEach(s => { if (s != null && !lower.has(String(s).toLowerCase())) lower.set(String(s).toLowerCase(), String(n.id)); }));
-  const cardOf = s => { s = String(s ?? ''); const id = Object.hasOwn(match, s) ? String(match[s]) : ids.has(s) ? s : lower.get(s.toLowerCase()); return ids.has(id) ? id : null; };
+  const cardOf = s => { s = String(s); const id = match.has(s) ? match.get(s) : ids.has(s) ? s : lower.get(s.toLowerCase()); return ids.has(id) ? id : null; };
   const seen = new Map(), live = new Set(), unmatched = new Set(); let counted = false;
+  // an end is a service's name, text or a number: an entry with no end (missing, null, or one unreadable() left out) is
+  // no traffic, and names no service (audit 21: it was listed as a service named "undefined")
+  const end = x => typeof x === 'string' || typeof x === 'number' ? x : null;
   list.forEach(o => { if (!o || typeof o !== 'object') return;
-    const f = o.from ?? o.parent, t = o.to ?? o.child, n = o.count ?? o.callCount, a = cardOf(f), b = cardOf(t);
-    if (a == null) unmatched.add(String(f)); if (b == null) unmatched.add(String(t));
+    const f = end(o.from ?? o.parent), t = end(o.to ?? o.child), n = o.count ?? o.callCount, a = f == null ? null : cardOf(f), b = t == null ? null : cardOf(t);
+    if (f != null && a == null) unmatched.add(String(f)); if (t != null && b == null) unmatched.add(String(t));
     if (a == null || b == null || a === b) return;
     live.add(a); live.add(b);
     if (n != null) { counted = true; if (!(+n > 0)) return; } // seen with no calls: both ends were watched, the line carried nothing

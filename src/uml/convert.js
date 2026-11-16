@@ -1,4 +1,4 @@
-import { migrate } from '../core/model.js';
+import { migrate, unreadable } from '../core/model.js';
 import { mapContext } from '../map/context.js';
 import { cardMatcher, sequenceFromTrace } from '../map/insight.js';
 import { interactionWalk } from './interaction.js';
@@ -104,6 +104,8 @@ function cvOverlaps(model, spans, match) {
 }
 
 function sequenceFromSpans(model, spans, options = {}) {
+  // read as sequenceFromTrace() reads them: no text String() throws on, and match a table by name (audit 21)
+  const match = options && options.match; [model, spans, options] = [model, [].concat(spans || []), { ...options, match: null }].map(x => unreadable(x).model); options.match = match;
   const id = String(options.view ?? 'trace'), m = sequenceFromTrace(migrate(model), spans, { ...options, view: id }), r = sequenceFromView(m, id, { ...options, view: id });
   const n = cvOverlaps(model, spans, options.match), v = r.model.views.find(x => x.id === id);
   if (n) v.caption = `${v.caption ? v.caption + ' ' : ''}${n} calls overlapped in the trace and are drawn one after another.`;

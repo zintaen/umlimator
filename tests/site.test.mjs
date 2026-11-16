@@ -99,6 +99,23 @@ test('the guide says timelapse keeps the latest 30 versions, and names --limit (
   assert.match(read('docs/guide/cli.md'), /timelapse model\.json[^\n]*latest 30[^\n]*--limit N/);
 });
 
+test('umlimator.py\'s usage names the timelapse --limit default the option has (audit 21)', async () => {
+  const run = (...a) => promisify(execFile)('python3', [new URL('umlimator.py', root).pathname, ...a]).then(r => r.stdout);
+  const usage = /timelapse MODEL\.json --out PAGE\.html \[--limit (\d+)\]/.exec(await run('-h')), own = /\(default (\d+)\)/.exec((await run('timelapse', '-h')).replace(/\s+/g, ' '));
+  assert.ok(usage && own, 'both name a default');
+  assert.equal(usage[1], own[1]);
+  assert.equal(own[1], '30'); // as the CLI and Action guides say
+});
+
+test('examples/README.md sends each docs-site setup to a heading that exists, not the README\'s old Embed section (audit 21)', () => {
+  const ex = read('examples/README.md'), readme = read('README.md'), slug = h => h.toLowerCase().replace(/[^a-z0-9 -]/g, '').trim().replace(/ /g, '-');
+  for (const [, name] of ex.matchAll(/the README's (\w[\w ]*?) section/g)) assert.match(readme, new RegExp(`^## ${name}$`, 'm'), `README.md has no ${name} section`);
+  const row = ex.split('\n').find(l => l.includes('`<umlimator-map>` element'));
+  const [, file, anchor] = /\]\(\.\.\/(docs\/[\w/.-]+\.md)#([\w-]+)\) has each docs setup/.exec(row) ?? [];
+  assert.ok(file, row);
+  assert.ok(read(file).split('\n').some(l => /^#+ /.test(l) && slug(l.replace(/^#+ /, '')) === anchor), `${file} has #${anchor}`);
+});
+
 test('risks.md M25 is closed: AWS accepted, the aws type and its pack row are on (audit 17)', () => {
   const m25 = read('docs/diagrams/risks.md').split('\n').find(l => l.startsWith('| M25 |'));
   assert.doesNotMatch(m25, /CLOUD_AWS = false|no pack row/);

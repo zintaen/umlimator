@@ -99,6 +99,11 @@ try {
     check('the panel: a name of two lines in a field holding both', !!nm && nm.value === lab, nm && [nm.tagName, nm.value]);
     if (nm) { nm.focus(); key('Enter', {}, nm); }
     check('the panel: Enter on an unchanged name of two lines: no edit', ed.length === n1, ed.slice(n1));
+    // its break written \r\n (a file from Windows): the field holds \n, which is no change made (audit 21)
+    const crlf = structuredClone(BASE); crlf.nodes.find(n => n.id === 'mm-checkout').label = 'Checkout\r\nand pay';
+    mount(crlf, { editable: true }); click('mm-checkout'); key('F2');
+    const g = pick('.um-rename'), n2 = ed.length; if (g) key('Enter', {}, g);
+    check('F2 then Enter on a topic of two lines written \\r\\n: no edit', !!g && ed.length === n2 && !pick('.um-rename'), ed.slice(n2));
     h = mount(BASE, { editable: true });
   }
   // Alt + arrows

@@ -533,3 +533,19 @@ test('audit 20: the state machine rules and F2 count a view\'s own transitions (
   const two = structuredClone(m); two.views[0].edges.push(tr('own-2', 'created', 'cancelled'));
   assert.ok(validate(two).some(p => p.rule === 'initial-out' && p.level === 'error'));
 });
+
+test('audit 21: each view\'s own transitions are checked with that view alone: two views together trip no rule neither has, and an edit in one is not refused for another\'s', () => {
+  const st = (id, more = {}) => ({ id, type: 'uml.State', label: id.toUpperCase(), ...more });
+  const m = { schemaVersion: 2, nodes: [{ id: 'i', type: 'uml.Pseudostate', props: { kind: 'initial' } }, st('a'), st('b')], edges: [],
+    views: [{ id: 'v1', diagram: 'uml.state-machine', nodeIds: ['i', 'a', 'b'], edges: [tr('t1', 'i', 'a')] }, { id: 'v2', diagram: 'uml.state-machine', nodeIds: ['i', 'a', 'b'], edges: [tr('t2', 'i', 'b')] }] };
+  assert.deepEqual(validate(m).filter(p => p.level !== 'info').map(p => p.message), [], 'each view draws one transition out of the initial');
+  const both = structuredClone(m); both.views[0].edges.push(tr('t3', 'i', 'b'));
+  assert.deepEqual(validate(both).filter(p => p.rule === 'initial-out').map(p => p.path), ['nodes[0]'], 'two in one view: initial-out, as before');
+  // a fork whose targets view v1 draws in two regions of S; in v2, which draws none of its lines, y moved into x's region is no error of v2's
+  const f = { schemaVersion: 2, nodes: [st('S', { members: [{ id: 'r1', type: 'uml.Region' }, { id: 'r2', type: 'uml.Region' }] }), st('x', { parent: 'r1' }), st('y', { parent: 'r2' }),
+    { id: 'f', type: 'uml.Pseudostate', props: { kind: 'fork' } }], edges: [],
+  views: [{ id: 'v1', diagram: 'uml.state-machine', nodeIds: ['S', 'x', 'y', 'f'], edges: [tr('fx', 'f', 'x'), tr('fy', 'f', 'y')] }, { id: 'v2', diagram: 'uml.state-machine', nodeIds: ['S', 'x', 'y', 'f'], edges: [] }] };
+  const at = { pt: [50, 50], geo: { families: [{ id: 'r1', x: 0, y: 0, w: 100, h: 100 }] } };
+  assert.deepEqual(T.edits.moveTo(f, f.views[1], 'y', at), [{ op: 'reparent', id: 'y', parent: 'r1' }]);
+  assert.match(T.edits.moveTo(f, f.views[0], 'y', at).error, /^fork-join: /, 'in v1, which draws the fork\'s lines: refused');
+});
