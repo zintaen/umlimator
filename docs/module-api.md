@@ -5545,3 +5545,126 @@ callers:
   ids) and #380 32 B. `lib/umlimator-all.js` is 629.3 kB (629,256 B), up 3,436 B: #382 1,729 B, #384 1,036 B, #381
   489 B, #383 152 B and #380 30 B; the npm package is 888.7 kB (`npm pack --dry-run`). There is no core size cap until
   1.0.0 (the maintainer's decision of 15 Nov 2026): sizes are reported each release and a budget is set at 1.0.0.
+
+## 0.42.0: fixes from the sixteenth audit
+
+The sixteenth audit confirmed 29 findings. All are fixed in this release, in five pull requests (#386 to #390), each
+with a test but one docs-only fix (finding 3: the code was already right); findings 1 and 21 are one defect, so there
+are 28 fixes. **Two change results a host can see without editing anything: `rules()` no longer judges a typed view's
+hand-written containers, and `diff()` lists a newly added view.** Pictures change only where something was not drawn
+(member, flow and node stereotypes, an anonymous part's name, a lifeline's second head); `bench/expected.json` is
+unchanged. What changes for callers:
+
+- **Rules, lenses and diff(), round 16 (#388).** **`rules()` ignores a typed view's hand-written containers**, as the
+  PDF's tables already did: a type that lays its view out never draws them (`validate()` warns `own-boxes`), so a rule's
+  `{ container }` end and its box scope find no box there, and a box cycle through them is no longer reported. Lenses,
+  `check()`'s rule lines and the PDF's Rules section ("Applies in") read the view the same way. **This changes rule
+  results for a typed view with hand-written containers**; maps and typed views without them judge as before. **`diff()`
+  puts a newly added view in `views`** and marks its own cards and lines added, as a removed view's are marked removed;
+  its cards are in the summary ("adds X"), its lines are styled added but not listed one by one. The CLI `diff`, the
+  diff Action and the MCP `diff` tool now take a still of the new view. `diff(null, model)` marks every view's own lines
+  added too. **`present` is compared per card**, with the card ("changes A (present) in the view V"), no longer as a
+  view field: a hide now says only "takes A out of the view V". The PDF cover counts a view's own line apart from a
+  model line with the same ends (both were named `a->b#0`). The docs now say `repair` (the option and the view field)
+  applies to map views; a typed view's lines are never port-repaired, as the code already did.
+- **Page, round 16 (#388).** **The details panel's title is an `<h2>` and its sections `<h3>`** (they were `<h3>` and
+  `<h4>`, a skip under 0.41.0's new `<h1>`); the views list's heading, Find's "Nothing called…" and an empty view's
+  "Nothing here yet" are `<h2>` (were `<h4>`). They are styled by selector, so the page looks the same.
+- **UML, round 16 (#390).** **A member's stereotypes are part of its row's text**: a class or SysML block member row
+  draws them before the row («column» on the atlas's Order.placedAt now shows), `printMember` writes them for the PDF
+  and the panel and `parseMember` reads them back. **Typing a row with no «…» clears the member's stereotypes**; a SysML
+  block row reads them after the keyword (`part «x» foo: T`). **The profile view prints members without their
+  stereotypes**, beside the applied ones, so nothing shows twice. Composite structure: **a part or role with no name is
+  named as drawn, `: Engine [1]`**, by its ports, connectors, role bindings, `describe()`, the PDF and remove; an
+  unnamed collaboration use draws `: Collab` with no leading space; **F2 on a collaboration use reads `name :
+  Collaboration`** (it returned null; the drawn text no longer becomes its label), and **F2 on the subject's own port
+  reads `name : Type`** (a name alone keeps the type). Component ports read `name : Type` too, through a new
+  `edits.rename` hook. Use case: F2 on an extend changes nothing when the text is unchanged, finds the condition by
+  matching brackets from the end (`[cart.items[0] is …]`), and **is refused with an error pointing to the properties
+  panel when the drawn text does not read back** (a name ending in `[..]`). Activity and interaction overview: F2 on a
+  flow whose name does not read back is refused (as a state transition's is); **flows draw «a» before `name [guard]`**
+  and say it, F2 strips it; partitions, decision and merge nodes, interaction uses and inline interactions draw their
+  stereotypes in their name; **initial, activity final, flow final, fork and join nodes no longer offer Stereotypes** in
+  the panel. Sequence: **a lifeline created again in another `alt` operand draws a second head at that create, and the
+  create ends on it**; the layout gives that row a head's room and `heads[i].again` lists each extra head's top y (only
+  when there is one, so other geometry is unchanged).
+- **Other types, round 16 (#387).** **C4: each line the type implies is a row of the PDF's Lines table** as drawn
+  ("Shopper → Shop | Browses [+1] | Implied relationship"), one per drawn line, and the page header and cover count it
+  (they said 0 lines). A deployment view's inline relationship ending on a node drawn as a box gets the `c4-box-line`
+  warning (path `views[i].edges[k]`); a container or component view listing a null id with a line between null ends no
+  longer overflows the stack in `layout()`, `check()` and the PDF. **ER: `x int FK NOT NULL` is read** (NOT was taken as
+  the FK's target). Flowchart: a flow written inline in the view refuses a drag or Alt+arrows ("A flow follows its
+  nodes: move a node instead"). BPMN: the first lane added to a pool that holds flow nodes takes them in, boundary
+  events with them; data and annotations stay in the pool.
+- **Readers and CLI, round 16 (#389).** Python flowchart import: an outer subgraph with no `end` draws its inner boxes
+  at the top level (render refused the model); a subgraph id opened again adds to the first box, and a box inside
+  itself, directly or through a cycle, is drawn at the top level with "subgraph P is inside itself: drawn at the top
+  level". **The Mermaid class reader closes a class body at its first `}`** and reads the rest of the line again, so
+  `namespace X { class Y { ... } }` closes X; a `}` that closes nothing is reported. **A model whose `stories`, or a
+  story's `steps`, is not a list is refused** by `render`, `diff` and the MCP server with "stories is not a list",
+  "stories[i] is not an object" or "stories[i].steps is not a list" (`render` accepted it, and MCP `list_views` and
+  `play_story` ended in an internal error). `timelapse` fills its template in one pass, so model text holding a
+  placeholder stays data.
+- **Documentation site, round 16 (#386).** Inline code reads at WCAG AA on a table row's tint in both themes
+  (`--vp-code-color` #0550ae light, #6cb6ff dark; links keep the accent). Every page in examples/ has an `<h1>` (ask,
+  drift, live, playground and replay make the header title one; embed and timelapse have a visually hidden one). The
+  standalone page guide says what a link keeps: a view, a selected card, a story step or a lens, not a selected line or
+  box.
+- **Known gaps.** Still open from 0.41.0 (checked on main with a small script: the JavaScript Mermaid readers still
+  decode `#55296;` to a lone surrogate, a typed view still gets no "listed twice" warning for `view.edges`, 21 of the 30
+  typed examples still do not set `"$schema"`, a composite or SysML internal block view's PDF Lines rows still name a
+  part by its id): a box has no Tab stop; the keyboard reaches it through the outline. A double-click (or Enter) on a
+  box does not open its view (the 0.24.0 gap). Deep nesting is super-linear outside the core. The requirement layout
+  leaves out a link into a box nested more than 64 deep from its ranking. Typed hooks that answer Alt+arrows themselves
+  were not checked on views laid out down. `reach()` from a model id that the view draws under another id returns only
+  that element. A negative step duration plays 500 ms while `validate()`'s warning says 4000 ms. Mermaid C4 macro
+  arguments keep entity codes as written. `describe()` of an inline interaction does not say it opens a view. Room for a
+  label in a turned view is still mostly along the line. The map flowchart and Structurizr DSL readers turn a U+2028
+  inside a label into a space. The unfolded call behaviour box is a plain container frame. A page rendered before 0.33.0
+  with a numeric view id, before 0.36.0 with a numeric card id, or before 0.37.0 with a view with no id, still ends in a
+  traceback in `stills`. Three or more delegations from one port into a grid of parts may still cross. Other files in
+  src/bpmn may still key plain objects by id. The typed Mermaid reader's quote join skips `%%` comment lines but not the
+  body of a multi-line `%%{ }%%` directive. The PDF tables read an open package's qualified name off its drawn title. No
+  example reaches the C4 views lift branch or src/sysml/sysml.js's frame branch; only `select()` has a browser test of
+  its own among Find and the panel links. The double-click tests send synthetic events. The SysML block definition view
+  has no own list of line kinds. The SysML tables `RQ_REL` and `BD_ORDER` are still plain objects. An MCP page tool on a
+  model that has never rendered still says it cannot read the model. `validate()` still accepts a positional name
+  (docs/diagrams/risks.md F9). `diff()` numbers id-less lines among id-less lines only, where Ref names count every line
+  with the same ends. The profile, package and SysML block definition conformance notes point to the class or package
+  note for the shared rules. No typed card draws a new, changed or removed badge, so a restored part, port, fragment or
+  region draws as present (only its lines show the removal); if a restored owner's members moved elsewhere in `after`,
+  they could come back twice. Component `validate()` messages still name ends by the bare label. A C4 deployment
+  instance's Name field still writes its label, which shows nowhere. #362's tests were not run against the unfixed code.
+  A removed operand under a fragment is still summarised through the type's order, and a member of a node that lives
+  only in one view is not restored. The details panel cuts a part's label at " : " ("checkout"). The panel lays out a
+  typed view once, the first time an end is not in the current view. Timing names still split at `:/` (`http://api`).
+  Mindmap "Delete half" of the 20,000-topic chain is about 160 ms against a printed 100 ms target (the assertion is 1
+  s). The guide's 4a model table says a group holds "a group or a service", narrower than the code (resources, products
+  and users can sit in a group). A communication connector can still route through another connector's message stack
+  (`check()` reports it; docs/conformance/uml-communication.md). The `named` rule in `apply()` has had no audit of its
+  own. **A typed view of more than 30 cards keeps the request/reply swap as the layout pass judged it, so a large C4
+  view can still come out with more crossings than without it.** The Mermaid class writer's timed test (1.5 s) failed
+  under heavy local load, then passed. #384's PDF cover check was not run against the unfixed code. The light/dark rule
+  for `<umlimator-map>` keys on VitePress's default theme (`.VPContent`): a custom VitePress theme without it, or
+  another site's class-based dark mode, still follows the system setting. An intake with no label has an empty tooltip.
+  The object view draws a non-instance kind outside the ones it implies (`uml.Node`, say) as a plain classifier with no
+  keyword. The Mermaid writers stay internal: `export --format mermaid` would be a new feature, for the maintainer to
+  decide. Closed by round 16 (each checked on main with a small script): `printDoc`'s rules section and `rules()`
+  counting a typed view's hand-written containers as boxes (#388; listed since 0.37.0), the second create of a lifeline
+  in another `alt` operand landing on the stem (#390), and F2 on a composite collaboration use taking the drawn `x : C`
+  as its label (#390). New from round 16: **the C4 stress timing test's 1 s CI ceiling still fails on slow shared
+  runners**: it failed in three of this round's CI runs (1010–1069 ms, every timing on those runners about 1.6 times
+  slower), and reruns passed. A stereotype already stored on an initial, final, fork or join node is still said in its
+  accessible name but not drawn, and the panel no longer offers to remove it. A SysML block row reads a stereotype only
+  after its keyword (`part «x» foo: T`), not before. The UML fixes have node tests only; the tests/*.html browser pages
+  were not changed. The editable embed's editor still uses `<h3>` headings with no `<h2>` above them. The time-lapse
+  page still has two moderate axe findings (landmark-one-main, region). A selected line or box is not kept in the
+  standalone page's link (`&edge=` and `&box=` would be a new feature). Card lookups by id elsewhere than block layout
+  still key by `String(id)`, so a null id finds a card named `"null"`. The timelapse placeholder test (tests/cli.py) has
+  run only in CI.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 202.8 kB (202,763 B) with `gzip -9`, 22.92% over 0.16.0's
+  164,954 B, up 361 B from 0.41.0: #388 246 B (`handBoxes`, the added view in `diff()`, `present` per card, the cover's
+  line ids, the heading levels) and #387 115 B (the C4 implied lines in the PDF, the block layout's string ids).
+  `lib/umlimator-all.js` is 631.6 kB (631,564 B), up 2,308 B: #390 1,774 B, #387 242 B, #388 224 B and #389 68 B; #386
+  changes no built file. The npm package is 891.4 kB (`npm pack --dry-run`). There is no core size cap until 1.0.0 (the
+  maintainer's decision of 15 Nov 2026): sizes are reported each release and a budget is set at 1.0.0.
