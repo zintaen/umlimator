@@ -72,6 +72,6 @@ python3 umlimator.py timelapse model.json --out history.html          # the mode
   dashed, labelled "not drawn" with its calls; a drawn line that carried nothing fades. `counts` says how many lines
   were carried, undrawn, idle or not judged. [`examples/drift.html`](../../examples/drift.html) shows a week of made-up
   traffic.
-- **The time-lapse** puts every version of the model in git history, oldest first, on a slider, saying what changed at
+- **The time-lapse** puts the model's latest 30 versions in git history (`--limit N` for more or fewer), oldest first, on a slider, saying what changed at
   each step. `update()` eases into each next model: cards that moved glide, new cards fade in, and cards that left fade
   out. [`examples/timelapse.html`](../../examples/timelapse.html) shows four made-up releases.

@@ -65,3 +65,27 @@ test('inline code on the site reads at WCAG AA (4.5:1) on a table row\'s tint, i
     assert.ok(ratio(c[1], row) >= 4.5, `${scope}: ${c[1]} on ${row} is ${ratio(c[1], row).toFixed(2)}:1`);
   }
 });
+
+test('each "28 diagram types" list names all 28: UML\'s 14 and its information flow diagram among them (audit 17)', () => {
+  for (const p of ['README.md', 'docs/index.md', 'examples/README.md'])
+    assert.match(read(p).replace(/\s+/g, ' '), /28 diagram types\W[^.]*information flow/, p);
+});
+
+test('the API docs send the field list to a page that exists, not the README\'s gone Model section (audit 17)', () => {
+  const api = read('docs/api/model-and-schema.md');
+  assert.doesNotMatch(api, /README's Model section/); // the README has no Model section since the guide split
+  assert.match(api, /\]\(\.\.\/guide\/model\.md\)/);
+});
+
+test('the guide says timelapse keeps the latest 30 versions, and names --limit (audit 17)', () => {
+  const action = read('docs/guide/github-action.md').replace(/\s+/g, ' ');
+  assert.doesNotMatch(action, /every version of the model/);
+  assert.match(action, /latest 30 versions[^.]*--limit N/);
+  assert.match(read('docs/guide/cli.md'), /timelapse model\.json[^\n]*latest 30[^\n]*--limit N/);
+});
+
+test('risks.md M25 is closed: AWS accepted, the aws type and its pack row are on (audit 17)', () => {
+  const m25 = read('docs/diagrams/risks.md').split('\n').find(l => l.startsWith('| M25 |'));
+  assert.doesNotMatch(m25, /CLOUD_AWS = false|no pack row/);
+  assert.match(m25, /conformance\/aws\.md/);
+});
