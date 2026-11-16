@@ -3,7 +3,9 @@
      examples: a view that draws no members (activity, timing, communication, deployment, information flow) offers no
      Members section; a member row's ✕ deletes the member through the type's remove hook (a use case's extension point
      takes the extend naming no other point); F2 on a sequence fragment sets its operator; F2 emptied on the timing ruler
-     removes the view's unit, while an emptied lifeline name stays nothing. -->
+     removes the view's unit, while an emptied lifeline name stays nothing. Audit 21: no Name field on an element whose label
+     nothing draws (a fragment, a transition, a communication connector), and F2 on an element with an empty name is
+     announced as a rename, not as naming a new card. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
@@ -71,6 +73,25 @@ try {
   check('F2 on a lifeline, emptied: nothing, as before', !r4.edit, r4);
   const r5 = await f2({ type: 'node', id: rid, view: tv.id }, 's');
   check('F2 on the ruler with a unit: set, as before', !!r5.edit && same(r5.edit.commands, [{ op: 'set', view: tv.id, path: ['timeline', 'unit'], value: 's' }]), r5);
+  // ---- audit 21: no Name field where the label is drawn nowhere; a class keeps its own
+  const nameField = async (m, view, ref) => { await mount(m, view); h.select({ view, ...ref }); await wait(10); return { name: !!pick('.um-editor .um-props [data-f="label"]'), head: (pick('.um-editor .um-props h3') || {}).textContent }; };
+  const st = await load('order-states.json'), cm = await load('checkout-communication.json');
+  for (const [what, m, view, ref] of [['a sequence fragment', sq, sv.id, { type: 'node', id: fr.id }], ['a state transition', st, 'order-life', { type: 'edge', ids: ['t-authorised'] }],
+    ['a communication connector', cm, 'checkout-communication', { type: 'edge', ids: ['shopper-storefront'] }]]) {
+    const r = await nameField(m, view, ref);
+    check(`audit 21: ${what}'s properties have no Name field (its label is drawn nowhere)`, /^Properties: /.test(r.head || '') && !r.name, r); }
+  const rc = await nameField(cl, cv.id, { type: 'node', id: cn.id });
+  check('audit 21: a class keeps its Name field', rc.name, rc);
+  // ---- audit 21: F2 on an element with an empty name is a rename; N's field names the new card
+  const bp = await load('bookshop-order-to-shipment.json');
+  await mount(bp, 'order-to-shipment'); h.select({ type: 'node', id: 'not-paid', view: 'order-to-shipment' }); await wait(10); key('F2'); await wait(10);
+  const gf = pick('.um-rename');
+  check('audit 21: F2 on an unnamed gateway: the field is announced as a new name, not a new card', !!gf && gf.value === '' && gf.getAttribute('aria-label') === 'New name', gf && gf.getAttribute('aria-label'));
+  gf && key('Escape', {}, gf); await wait(10);
+  await mount(cl, cv.id); key('n'); await wait(10);
+  const nf = pick('.um-rename');
+  check('audit 21: N\'s field still names the new card', !!nf && nf.getAttribute('aria-label') === 'Name of the new card', nf && nf.getAttribute('aria-label'));
+  nf && key('Escape', {}, nf);
   h.destroy(); h = null;
 } catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);

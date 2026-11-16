@@ -566,13 +566,14 @@ export function render(container, model, options = {}) {
     // a name of more than one line (a mindmap topic's, one Mermaid's <br> wrote) in a field that keeps its breaks: an <input>
     // drops them, so F2 then Enter joined the lines (audit 20). Enter commits there too, Shift + Enter breaks a line
     const lines = /[\r\n]/.test(text), inp = document.createElement(lines ? 'textarea' : 'input');
-    inp.className = 'um-edit um-rename'; inp.value = text; if (lines) inp.rows = text.split(/\r\n|\r|\n/).length; inp.setAttribute('aria-label', text ? 'New name' : 'Name of the new card');
+    inp.className = 'um-edit um-rename'; inp.value = text; if (lines) inp.rows = text.split(/\r\n|\r|\n/).length; inp.setAttribute('aria-label', ref ? 'New name' : 'Name of the new card'); // a rename by what it renames, an empty name too (audit 21)
     const place = () => { const box = ref ? nameBox(ref) : where; if (!box) return; const k = cam.s.k, [W, H] = cam.size();
       Object.assign(inp.style, { left: (box.x - cam.s.cx) * k + W / 2 + 'px', top: (box.y - cam.s.cy) * k + H / 2 + 'px', width: Math.max(120, box.w * k) + 'px', height: Math.max(22, box.h * k) * (lines ? inp.rows : 1) + 'px', fontSize: Math.max(11, 13 * k) + 'px' }); };
     place(); stage.appendChild(inp); inp.focus(); inp.select();
     // once only: removing a focused field can fire blur (cancel) in the middle of a commit
     let closed = false;
-    const finish = ok => { if (closed) return; closed = true; naming = null; touch(); const v = inp.value.trim(); if (ok && (v || empty) && v !== text.trim()) done(v); inp.remove(); stage.focus({ preventScroll: true }); };
+    // the field's value has its line breaks as \n (a textarea's does): \r\n in the name is no change made (audit 21)
+    const finish = ok => { if (closed) return; closed = true; naming = null; touch(); const v = inp.value.trim(); if (ok && (v || empty) && v !== text.replace(/\r\n?/g, '\n').trim()) done(v); inp.remove(); stage.focus({ preventScroll: true }); };
     naming = { ref, place, close: finish }; touch();
     inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter' && !(lines && e.shiftKey)) { e.preventDefault(); finish(true); } else if (e.key === 'Escape') { e.preventDefault(); finish(false); } });
     inp.addEventListener('blur', () => finish(false));

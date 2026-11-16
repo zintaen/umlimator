@@ -221,7 +221,7 @@ const UC_RULES = {
   'point-names': 'a use case\'s extension points have different names',
 };
 const UC_KINDS = ['uml.Actor', 'uml.UseCase'];
-function ucProblems(model) {
+function ucProblems(model, view) {
   const out = [], at = new Map(), say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   UC_ARR(model && model.nodes).forEach(n => { if (UC_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
   const ty = id => (at.get(id) || {}).type, q = id => JSON.stringify(at.has(id) ? ucName(at.get(id)) : String(id)), uc = id => ty(id) === 'uml.UseCase';
@@ -233,11 +233,10 @@ function ucProblems(model) {
     const seen = new Map(); ucPointsOf(n).forEach(m => { const k = ucName(m), was = seen.get(k);
       if (was) say('warning', 'point-names', `nodes[${i}].members[${UC_ARR(n.members).indexOf(m)}]`, [n.id, was, m.id], `${q(n.id)} has two extension points named "${k}" (${was}, ${m.id})`); else seen.set(k, m.id); }); });
   const inc = new Map(), lines = UC_ARR(model && model.edges).map((e, i) => [e, `edges[${i}]`]).filter(([e]) => UC_OBJ(e));
-  // and each use case view's own lines (view.edges objects), which ucLines draws; one a model line's id (or an earlier view's)
-  // takes is that one (audit 20, as flowProblems since audit 19)
-  const lids = new Set(lines.map(([e]) => e.id));
-  UC_ARR(model && model.views).forEach((v, vi) => { if (!UC_OBJ(v) || v.diagram !== 'uml.use-case') return;
-    UC_ARR(v.edges).forEach((e, j) => { if (UC_OBJ(e) && !lids.has(e.id)) { lids.add(e.id); lines.push([e, `views[${vi}].edges[${j}]`]); } }); });
+  // and the view's own lines (view.edges objects), which ucLines draws; one a model line's id takes is that one (audit 20, as
+  // flowProblems since audit 19). That view's alone: validate() asks once a view, so two views' own lines are never weighed together (audit 21)
+  const lids = new Set(lines.map(([e]) => e.id)), vi = UC_ARR(model && model.views).indexOf(view);
+  if (vi >= 0 && view.diagram === 'uml.use-case') UC_ARR(view.edges).forEach((e, j) => { if (UC_OBJ(e) && !lids.has(e.id)) { lids.add(e.id); lines.push([e, `views[${vi}].edges[${j}]`]); } });
   lines.forEach(([e, path]) => { const ends = [e.id, e.from, e.to];
     if (e.type === 'uml.Association' && (UC_KINDS.includes(ty(e.from)) || UC_KINDS.includes(ty(e.to))) && ![ty(e.from), ty(e.to)].sort().every((t, k) => t === UC_KINDS[k]))
       say('error', 'association-ends', path, ends, `${e.id} joins ${q(e.from)} and ${q(e.to)}: an association joins an actor and a use case`);
