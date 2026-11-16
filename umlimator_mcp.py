@@ -600,7 +600,7 @@ def result(method, p):
     if method == "tools/list":
         return {"tools": TOOLS, **CACHED}
     if method == "tools/call":
-        t, a = TOOL.get(p.get("name")), p.get("arguments") or {}
+        t, a = TOOL.get(p.get("name")) if isinstance(p.get("name"), str) else None, p.get("arguments") or {}  # a list is no name (audit 18)
         if not t or not isinstance(a, dict):
             raise RpcError(-32602, f"Unknown tool: {p.get('name')}" if not t else "Invalid params: arguments is an object")
         try:

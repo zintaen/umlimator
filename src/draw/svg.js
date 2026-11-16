@@ -1,5 +1,5 @@
 import { TYPED } from '../core/registry.js';
-import { clauseFit, esc, fit, measureText, sansW, textW, wrap2 } from '../core/text.js';
+import { clauseFit, esc, fit, glyph, measureText, sansW, textW, wrap2 } from '../core/text.js';
 import { roundPath, trimLine } from './lines.js';
 import { SHAPE, cardLook, drawnPts, r2, sidePorts, tabLine } from './shapes.js';
 import { CHG } from '../layout/layered.js';
@@ -148,11 +148,11 @@ function svgOf(geo, opts = {}) {
       parts.push(`<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${rx}" class="n-mask"/>
       <rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${rx}" class="n-body" fill="${f}" stroke="${c}" ${dash ? 'stroke-dasharray="6 4"' : ''} ${removed ? 'opacity=".6"' : ''}/>`); }
     // the mark, centred on the face
-    const glyph = L && SIGIL[L.sh] ? L.sh : n.k; // a person's, robot's, phone's, terminal's, folder's or node's own mark
+    const mark = L && SIGIL[L.sh] ? L.sh : n.k; // a person's, robot's, phone's, terminal's, folder's or node's own mark
     parts.push((() => { const I = (opts.icons || {})[n.icon], x = map ? n.x + 14 : n.x + (verb ? 14 : 9), y = map ? fy - 14 : n.y + (priv ? 8 : 11), M = map ? 28 : 16;  // map: one 28 px mark, left, centred
 return I && I.src ? `<rect x="${x - M * 3 / 28}" y="${y - M * 3 / 28}" width="${M * 34 / 28}" height="${M * 34 / 28}" rx="${M / 4}" class="n-logo${I.dark ? ' dark' : ''}"/><image href="${esc(I.src)}" x="${x}" y="${y}" width="${M}" height="${M}"/>`
-  : I && I.g ? `<g transform="translate(${x} ${y}) scale(${M / 24})" class="n-sigil" fill="none" stroke="${c}" stroke-width="${1.75 * 24 / M}" stroke-linecap="round" stroke-linejoin="round">${I.g}</g>`
-  : `<g transform="translate(${x} ${y}) scale(${M / 16})" class="n-sigil" fill="none" stroke="${c}" stroke-width="${1.75 * 16 / M}" stroke-linecap="round" stroke-linejoin="round">${SIGIL[glyph]}</g>`; })());
+  : I && I.g ? `<g transform="translate(${x} ${y}) scale(${M / 24})" class="n-sigil" fill="none" stroke="${c}" stroke-width="${1.75 * 24 / M}" stroke-linecap="round" stroke-linejoin="round">${glyph(I.g)}</g>`
+  : `<g transform="translate(${x} ${y}) scale(${M / 16})" class="n-sigil" fill="none" stroke="${c}" stroke-width="${1.75 * 16 / M}" stroke-linecap="round" stroke-linejoin="round">${SIGIL[mark]}</g>`; })());
     parts.push(`<text x="${tx0}" y="${ly}" text-anchor="${anchor}" class="n-label" data-o="${esc(n.id)}" data-t="nl" style="font-size:${lpx.toFixed(1)}px" ${removed ? 'text-decoration="line-through"' : ''}>${two ? lines(two, 15) : esc(label)}</text>`);
     const ty = tabLine(n, L); // the line the tabs, ⤢, the change badge and a step sit on
     if (map) { let tx = n.x + 12; mapTabs(n, c).forEach(t => { const tw = t.w; // each badge is its own tab, clickable on its own
