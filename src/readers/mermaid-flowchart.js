@@ -327,7 +327,8 @@ function readMermaidFlowchart(text) {
       if (c.startsWith('{')) {
         say(no, 'skipped', 'a %%{init}%% directive: Mermaid\'s configuration is not read');
         if (!s.includes('}%%')) while (i + 1 < lines.length && !lines[++i].includes('}%%')); // over several lines: to its }%%
-      } else if (c.startsWith('id:')) { unused(); hint = c.slice(3).trim(); hintNo = no; }
+      } else if (/^id:\s*$/.test(c)) say(no, 'skipped', `%% ${c} holds no id: not read`); // a blank hint is none (audit 19)
+      else if (c.startsWith('id:')) { unused(); hint = c.slice(3).trim(); hintNo = no; }
       continue;
     }
     if (!started) {

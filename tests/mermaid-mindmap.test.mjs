@@ -270,3 +270,12 @@ test('#constructor; is an entity Mermaid does not know, kept as written, not Obj
   const { model, report } = read('mindmap\n  root\n    a["x #constructor; y"]\n');
   assert.deepEqual([model.nodes.find(n => n.id === 'a').label, report.map(r => r.message)], ['x #constructor; y', ['#constructor;: an entity Mermaid does not know, kept as written']]);
 });
+
+test('a blank %% opens:, %% id: or %% side: is no hint, and is said (audit 19)', () => {
+  for (const k of ['opens', 'id', 'side']) {
+    const { model, report } = read(`mindmap\n  root\n    %% ${k}:\n    a`);
+    assert.ok(!JSON.stringify(model).match(/"(id|opensView|side)":""/), k);
+    assert.equal(model.nodes.find(n => n.label === 'a').opensView, undefined);
+    assert.deepEqual(report.map(r => r.message), [`%% ${k}: holds nothing: not read`]);
+  }
+});
