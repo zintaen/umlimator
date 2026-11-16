@@ -9,6 +9,7 @@ import { edgeRefIds } from '../map/api.js';
 import { badgesOf, mapTabs, toneOf } from '../map/cards.js';
 import { warn } from '../core/warn.js';
 import { diagramOf, idTable } from '../core/registry.js';
+import { unreadable } from '../core/model.js';
 import { mapContext } from '../map/context.js';
 import { canon } from '../map/diff.js';
 import { cardMatcher, msText } from '../map/insight.js';
@@ -1210,9 +1211,12 @@ export function render(container, model, options = {}) {
     return st.ctl;
   }
 
-  /* a typed view of a version 2 model (1.7): its gestures emit `edit`, a transaction of commands, and its panels show */
+  /* a typed view of a version 2 model (1.7): its gestures emit `edit`, a transaction of commands, and its panels show.
+     Its hooks read the model as it is drawn, through unreadable(), once for each model: a value String() throws on is left
+     out, as mapContext leaves it out (audit 21: F2 on one transition threw when another's trigger was {"toString": 1}) */
+  let readFor, readAs; const drawnModel = () => { if (readFor !== current) { readFor = current; readAs = unreadable(current).model; } return readAs; };
   const tx = E && typedEditor({ root, stage, can, say, status, touch, nearest, nameOf, editor, picked,
-    emit: commands => emit('edit', { view: cur, commands }), view: () => cur, model: () => current, geo: () => geo, svg: () => svg, cam: () => cam, sel: () => sel,
+    emit: commands => emit('edit', { view: cur, commands }), view: () => cur, model: drawnModel, geo: () => geo, svg: () => svg, cam: () => cam, sel: () => sel,
     selectId: id => { const e = geo.byId[id] ? null : geo.edges.find(x => edgeRefIds(x).includes(id)); return select(e ? edgeRef(e) : idRef(id)); }, // a box: the outline's way to select one
     drawn: id => !!geo.byId[id] || geo.edges.some(x => edgeRefIds(x).includes(id)), rename: () => rename(sel), focus: () => focusMap() });
   const typed = () => !!tx && tx.on();
