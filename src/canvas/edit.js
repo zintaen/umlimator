@@ -176,7 +176,8 @@ function typedEditor(api) {
     // lines joined, audit 20); the newline after its tag is the one the parser drops, so a value's own first one stays
     const text = (f, v, name, more = '') => /[\r\n]/.test(v) ? `<label>${esc(name)}<textarea data-f="${esc(f)}" data-was="${esc(v)}" rows="${String(v).split(/\r\n|\r|\n/).length}"${more}${off}>\n${esc(v)}</textarea></label>`
       : `<label>${esc(name)}<input data-f="${esc(f)}" data-was="${esc(v)}" value="${esc(v)}"${more}${off}></label>`;
-    let h = `<h3>Properties${x.type != null ? ': ' + esc(x.type) : ''}</h3>` + text('label', x.label ?? '', 'Name');
+    // no Name field for an element whose name nothing draws nor says (the type's unnamed): it wrote a label that changed nothing (audit 21)
+    let h = `<h3>Properties${x.type != null ? ': ' + esc(x.type) : ''}</h3>` + (arrOf(def().unnamed).includes(x.type) ? '' : text('label', x.label ?? '', 'Name'));
     schema.forEach(f => { const v = Array.isArray(f.path) ? f.path.reduce((o, k) => isRec(o) ? o[k] : undefined, P) : P[f.key], name = f.label || f.key; // path: a field inside props (ends.from.role)
       const key = ` data-key="${esc(f.key)}"${Array.isArray(f.path) ? ` data-path="${esc(JSON.stringify(f.path))}"` : ''}`;
       if (f.kind === 'bool') h += `<label class="um-check"><input type="checkbox" data-f="p:${esc(f.key)}"${key}${v ? ' checked' : ''}${off}>${esc(name)}</label>`;

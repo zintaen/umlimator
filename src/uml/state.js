@@ -246,7 +246,7 @@ const ST_RULES = {
   'pseudo-kind': 'a pseudostate\'s kind is one of initial, choice, junction, fork, join, shallowHistory, deepHistory, terminate',
   'label-syntax': 'a transition\'s trigger, guard and effect print as text that reads back as them',
 };
-function stProblems(model) {
+function stProblems(model, view) {
   const out = [], I = stIndex(ST_OBJ(model) ? model : {}), { N, M } = I, say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const el = id => (N.get(id) || M.get(id) || {}).x, q = id => { const x = el(id); return x ? JSON.stringify(x.type === 'uml.State' ? stName(x) : `${stWord(x)} ${id}`.trim()) : JSON.stringify(String(id)); };
   const ty = id => (el(id) || {}).type, vertex = id => N.has(id) && ST_VERTEX.includes(ty(id)), kind = id => (N.has(id) && ty(id) === 'uml.Pseudostate' ? stKind(el(id)) : null);
@@ -256,11 +256,11 @@ function stProblems(model) {
       if (r && r.x.type === 'uml.Region') { out2.push([r.owner.id, p]); p = r.owner.parent; } else if (N.has(p)) { out2.push([p, null]); p = N.get(p).x.parent; } else break; }
     return out2; };
   const ts = ST_ARR(model && model.edges).map((e, i) => [e, `edges[${i}]`]).filter(([e]) => ST_OBJ(e) && e.type === 'uml.Transition');
-  // and each state machine view's own transitions (view.edges objects), which it draws as it draws the model's; one a model
-  // transition's id (or an earlier view's) takes is that one (audit 20, as flowProblems since audit 19)
-  const tids = new Set(ts.map(([e]) => e.id));
-  ST_ARR(model && model.views).forEach((v, vi) => { if (!ST_OBJ(v) || v.diagram !== 'uml.state-machine') return;
-    ST_ARR(v.edges).forEach((e, j) => { if (ST_OBJ(e) && e.type === 'uml.Transition' && !tids.has(e.id)) { tids.add(e.id); ts.push([e, `views[${vi}].edges[${j}]`]); } }); });
+  // and the view's own transitions (view.edges objects), which it draws as it draws the model's; one a model transition's id
+  // takes is that one (audit 20, as flowProblems since audit 19). That view's alone: validate() asks once a view, so two views'
+  // own lines are never weighed together (audit 21)
+  const tids = new Set(ts.map(([e]) => e.id)), vs = ST_ARR(model && model.views), vi = vs.indexOf(view);
+  if (vi >= 0 && view.diagram === 'uml.state-machine') ST_ARR(view.edges).forEach((e, j) => { if (ST_OBJ(e) && e.type === 'uml.Transition' && !tids.has(e.id)) { tids.add(e.id); ts.push([e, `views[${vi}].edges[${j}]`]); } });
   const ins = new Map(), outs = new Map(), add = (m, id, x) => m.set(id, [...(m.get(id) || []), x]);
   ts.forEach(([e, path]) => { add(outs, e.from, [e, path]); add(ins, e.to, [e, path]);
     const bad = [e.from, e.to].filter(id => !vertex(id));
@@ -339,8 +339,9 @@ const stFresh = (model, base) => { const used = new Set(); JSON.stringify(model,
   let k = 1; while (used.has(base + k)) k++; return base + k; };
 // a hook's commands, or { error } when they bring an error the model did not have (notes/stage-3.md S5), as the activity's acGuard;
 // a vertex put directly in a state with regions (region-mixed) too: it would sit beside them in no region
-function stGuard(model, commands) {
-  const key = p => p.rule + ' ' + p.ids.join(' '), errs = m => stProblems(m).filter(p => p.level === 'error' || p.rule === 'region-mixed');
+function stGuard(model, view, commands) {
+  // the rules as the view sees them: the model's transitions and that view's own (audit 21)
+  const key = p => p.rule + ' ' + p.ids.join(' '), errs = m => stProblems(m, ST_ARR(m.views).find(v => ST_OBJ(v) && view && v.id === view.id)).filter(p => p.level === 'error' || p.rule === 'region-mixed');
   let now; try { now = apply(model, commands); } catch (e) { return { error: String(e.message) }; }
   // region-mixed is new only where a state gains a direct vertex: one moved out into a region lessens it (audit 15)
   const before = errs(model), was = new Set(before.map(key)), mixed = new Set(before.filter(p => p.rule === 'region-mixed').flatMap(p => p.ids.slice(1).map(d => p.ids[0] + ' ' + d)));
@@ -353,14 +354,14 @@ function stAdd(model, view, entry, label, at) {
   if (entry.type === 'uml.Pseudostate') { const k = ST_KINDS.includes(ST_PROPS(entry).kind) ? entry.props.kind : 'junction', I = stIndex(model);
     const o = ST_ARR(at && at.sel).map(id => (I.M.has(id) && I.M.get(id).x.type === 'uml.Region' ? id : (I.N.get(id) || {}).x?.type === 'uml.State' ? id : null)).find(x => x != null);
     const rs = o != null && I.N.has(o) ? stMembers(I.N.get(o).x, 'uml.Region') : [], parent = rs.length === 1 ? rs[0].id : o;
-    return stGuard(model, [{ op: 'add', element: { id: stFresh(model, k.replace(/[A-Z]/g, c => '-' + c.toLowerCase())), type: 'uml.Pseudostate', ...(ST_HAS(label) ? { label: String(label) } : {}), ...(parent != null ? { parent } : {}), props: { kind: k } }, view: view.id }]); }
+    return stGuard(model, view, [{ op: 'add', element: { id: stFresh(model, k.replace(/[A-Z]/g, c => '-' + c.toLowerCase())), type: 'uml.Pseudostate', ...(ST_HAS(label) ? { label: String(label) } : {}), ...(parent != null ? { parent } : {}), props: { kind: k } }, view: view.id }]); }
   if (entry.type !== 'uml.Region') return null;
   const s = ST_ARR(at && at.sel).map(id => ST_ARR(model.nodes).find(n => ST_OBJ(n) && n.id === id)).find(n => n && n.type === 'uml.State');
   if (!s) return { error: 'Select a state to add a region to' };
   // a state holding substates directly gets a first region for them, and the new one beside it (§3's implicit region made one)
   const kids = stMembers(s, 'uml.Region').length ? [] : stIndex(model).kids.get(s.id) || [], first = kids.length ? stFresh(model, `${s.id}.region`) : null;
   const id = stFresh({ model, first: { id: first } }, `${s.id}.region`);
-  return stGuard(model, [...(first ? [{ op: 'add', element: { id: first, type: 'uml.Region' }, owner: s.id }, ...kids.map(k => ({ op: 'reparent', id: k.id, parent: first }))] : []),
+  return stGuard(model, view, [...(first ? [{ op: 'add', element: { id: first, type: 'uml.Region' }, owner: s.id }, ...kids.map(k => ({ op: 'reparent', id: k.id, parent: first }))] : []),
     { op: 'add', element: { id, type: 'uml.Region', ...(ST_HAS(label) ? { label: String(label) } : {}) }, owner: s.id }]);
 }
 // the commands that give an element of `e`'s the parts `text` reads as, one set per part that changed (undefined clears one)
@@ -372,7 +373,7 @@ function stRename(model, view, id, text) {
   if (printTransition(ST_PROPS(e)) == null) return { error: `${id}'s text does not read back: edit its trigger, guard and effect in the properties panel` };
   // the text F2 opens is the drawn label, its «stereotypes» first: they are not parts
   const pre = stStereo(e).map(t => `«${t}»`).join(' '), t = String(text ?? '').trimStart(), r = parseTransition(pre && t.startsWith(pre) ? t.slice(pre.length) : t);
-  return r.error ? r : stGuard(model, stSetParts(e, r));
+  return r.error ? r : stGuard(model, view, stSetParts(e, r));
 }
 // a compartment row typed on a state: `entry / …`, `do / …` and `exit / …` set that activity (a second one replaces the
 // first, said); null for any other row, which is an internal transition or a region (member below). member: the row's id
@@ -412,7 +413,7 @@ function stMoveTo(model, view, id, at) {
   const I = stIndex(model), s = f && (I.N.get(f.id) || I.M.get(f.id) || {}).x, n = I.N.get(id)?.x;
   const rs = s && s.type === 'uml.State' ? stMembers(s, 'uml.Region') : [], parent = rs.length === 1 ? rs[0].id : s && (s.type === 'uml.State' || s.type === 'uml.Region') ? s.id : null;
   if (parent == null || !n || n.parent === parent || stWithin(I, s.id, id)) return null; // into itself: the default refuses it
-  const L = view.layout; return stGuard(model, [{ op: 'reparent', id, parent }, ...(ST_OBJ(L) && Object.hasOwn(L, id) ? [{ op: 'set', view: view.id, path: ['layout', id], value: undefined }] : [])]);
+  const L = view.layout; return stGuard(model, view, [{ op: 'reparent', id, parent }, ...(ST_OBJ(L) && Object.hasOwn(L, id) ? [{ op: 'set', view: view.id, path: ['layout', id], value: undefined }] : [])]);
 }
 // the Owner field (its path stops at an owner that is no element): every state and region of the model by its name from the top ("Fulfilling", "Fulfilling / Parcel"),
 // but the element itself and what lies under it
@@ -460,6 +461,8 @@ const ST_TYPE = registerDiagramType('uml.state-machine', {
   boxes: (model, view) => stPic(model, view).boxes,
   owners: stOwners,
   member: ST_MEMBER,
+  // a transition draws its trigger, guard and effect, never its label: no Name field (audit 21)
+  unnamed: ['uml.Transition', 'uml.InternalTransition'],
   validate: stProblems,
   rules: ST_RULES,
   describe: stDescribe,

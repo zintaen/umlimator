@@ -302,3 +302,17 @@ test('audit 15: an inline decision exit gets the PDF\'s no-label flag, and conne
   const r = T.edits.connect(m, m.views[0], 'd', 'e', null, { type: 'flow.Flow' });
   assert.deepEqual([r[0], r[1].element.label], [{ op: 'set', id: 'f2', path: 'label', value: 'yes' }, 'no']);
 });
+
+test('audit 21: a line break in a node\'s label (a Mermaid <br>) is drawn where the author put it, in a process, a decision and every symbol', async () => {
+  const m = one([N('a', 'Process', 'Check the\nparcel'), N('b', 'Decision', 'Fit for\nresale?'), N('c', 'Database', 'Data\nbase'), N('d', 'Terminator', 'Short\r\nstop')],
+    [F('f1', 'a', 'b'), F('f2', 'b', 'c', 'yes'), F('f3', 'b', 'd', 'no')]);
+  const s = svgOf(layout(m, 'v')), names = [...s.matchAll(/<text[^>]*class="c-name"[^>]*>([^<]*)<\/text>/g)].map(x => x[1]);
+  assert.deepEqual(names, ['Check the', 'parcel', 'Fit for', 'resale?', 'Data', 'base', 'Short', 'stop']);
+  assert.ok(!names.some(t => /[\r\n]/.test(t)), 'no raw line break inside one text, which SVG draws as a space');
+  const plain = svgOf(layout(one([N('a', 'Process', 'Check the parcel'), N('b', 'Decision', 'Is it fit for resale?')], [F('f', 'a', 'b')]), 'v'));
+  assert.deepEqual([...plain.matchAll(/class="c-name"[^>]*>([^<]*)</g)].map(x => x[1]), ['Check the parcel', 'Is it fit', 'for resale?'], 'with no break, as before: the decision splits at its own place');
+  const { readMermaidFlowchart } = await import('../src/readers/mermaid-flowchart.js');
+  const { model, report } = readMermaidFlowchart('flowchart TD\n  A["Check the<br>parcel"] --> B{"Fit for<br>resale?"}');
+  assert.deepEqual(report, []);
+  assert.deepEqual([...svgOf(layout(model, model.views[0].id)).matchAll(/class="c-name"[^>]*>([^<]*)</g)].map(x => x[1]), ['Check the', 'parcel', 'Fit for', 'resale?'], 'read from Mermaid, drawn as Mermaid draws it');
+});

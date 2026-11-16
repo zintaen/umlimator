@@ -14,6 +14,7 @@ import { validate } from '../src/map/validate.js';
 import { mapContext } from '../src/map/context.js';
 import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
+import { tablesOf } from '../src/page/print.js';
 import { parseSlot, printSlot, slotEdit } from '../src/uml/object.js';
 
 const OBJ = JSON.parse(readFileSync(new URL('../examples/order-objects.json', import.meta.url)));
@@ -270,4 +271,12 @@ test('audit 14: an element of another kind is drawn and named as its kind, a lin
   assert.match(n('api').aria, /^Component Shop API\b/); assert.match(n('u').aria, /^Actor Shopper\b/);
   assert.deepEqual([g.edges[0].end.to, g.edges[0].aria], ['arrow', 'Line from order1 : Order to Order: «instanceOf»']);
   const d = describe(m, 'v'); assert.match(d, /^Instance specification order1 : Order.*linked to Order/m); assert.doesNotMatch(d, /^Class Order.*linked to/m);
+});
+
+test('audit 21: the PDF\'s Lines row gives a link\'s label as drawn: its association\'s name when it has none, its «stereotypes» first', () => {
+  const m = structuredClone(OBJ), e = m.edges.find(x => x.id === 'ada-places-order'); delete e.label; e.props.association = 'places';
+  const row = mm => { const c = mapContext(mm), [, L] = tablesOf(c, c.V.snapshot, c.buildGeo('snapshot')); return L.rows.find(r => r.includes('ada : Customer → order1042 : Order')); };
+  assert.match(row(m), /<td>places<\/td><td>Link<\/td>/);
+  e.label = 'buys'; e.props.stereotypes = ['online']; assert.match(row(m), /<td>«online» buys<\/td><td>Link<\/td>/);
+  delete e.label; delete e.props.association; delete e.props.stereotypes; assert.match(row(m), /<td><\/td><td>Link<\/td>/, 'nothing drawn: an empty cell');
 });

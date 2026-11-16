@@ -80,8 +80,10 @@ function SYS_FRAME(model, view, nodeIds) {
 // what F2 on a frame edits, its field filled with it (src/canvas/render.js): the subject's name, else the view's title. The
 // header is label and title, drawn whole; F2 filled with it stored the whole header as the name or title (audit 20)
 const SYS_EDIT = (view, h) => (h.el ? String(h.el.label ?? h.el.id) : String(view.title ?? ''));
-// F2 on a req or bdd frame that is no element (`<view>->frame`): the view's title (§5.1); else null (audit 19: bdd's too)
-const SYS_FRAME_RENAME = (view, id, text) => (id === `${view.id}->frame` ? [{ op: 'set', view: view.id, path: 'title', value: String(text) }] : null);
+// F2 on a req or bdd frame that is no element (`<view>->frame`): the view's title (§5.1); else null (audit 19: bdd's too).
+// An emptied field removes the title (audit 21): SYS_FRAME_EMPTY is the rename hooks' rename.empty, so F2 passes '' on
+const SYS_FRAME_RENAME = (view, id, text) => (id === `${view.id}->frame` ? [{ op: 'set', view: view.id, path: 'title', value: String(text).trim() ? String(text) : undefined }] : null);
+const SYS_FRAME_EMPTY = (model, view, id) => !!view && id === `${view.id}->frame`;
 // its shape: a rectangle and the tag, cut to the frame's width (src/uml/frame.js)
 SHAPE['sysml-frame'] = {
   frame: f => `<rect class="family-box" x="${r2(f.x)}" y="${r2(f.y)}" width="${r2(f.w)}" height="${r2(f.h)}" stroke="var(--um-muted)"/>`
@@ -163,4 +165,4 @@ function SYS_DRESS(g, model, view, names) {
     families: [...(card ? [{ id: sid, x: card.x, y: card.y, w: card.w, h: card.h, nodeIds: [], ...frame }] : []), ...SYS_ARR(g.families).map(f => (f.id === sid ? { ...f, ...frame } : f))] };
 }
 
-export { SYS_TABLE, SYS_KIND, SYS_HEAD, SYS_FRAME, SYS_FRAME_RENAME, SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS };
+export { SYS_TABLE, SYS_KIND, SYS_HEAD, SYS_FRAME, SYS_FRAME_RENAME, SYS_FRAME_EMPTY, SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS };

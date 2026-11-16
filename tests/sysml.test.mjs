@@ -343,3 +343,17 @@ test('audit 9: an element or member typed toString or constructor, or a port of 
     }
   }
 });
+
+test('audit 21: F2 emptied on a bdd or req frame that is no element removes the view\'s title (rename.empty lets the field pass \'\' on)', async () => {
+  const { apply } = await import('../src/core/apply.js'), { layout } = await import('../src/map/api.js');
+  for (const [f, head] of [['ebike-blocks', 'bdd [Model] E-bike: blocks'], ['ebike-requirements', 'req [Model] E-bike: requirements']]) {
+    const m = JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url), 'utf8')), v = m.views[0], R = diagramOf(v).edits.rename, frame = `${v.id}->frame`;
+    assert.equal(typeof R.empty, 'function', f);
+    assert.equal(R.empty(m, v, frame), true, 'the frame reads an emptied field');
+    assert.equal(R.empty(m, v, v.nodeIds[0]), false, 'a card does not: an empty name does nothing, as before');
+    const n = apply(m, R(m, v, frame, ''));
+    assert.ok(!Object.hasOwn(n.views[0], 'title'), 'the title is removed, not stored empty');
+    assert.equal(layout(n, v.id).families.find(x => x.id === frame).title, head);
+    assert.equal(apply(m, R(m, v, frame, 'New')).views[0].title, 'New', 'a text sets it, as before');
+  }
+});

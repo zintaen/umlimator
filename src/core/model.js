@@ -49,6 +49,12 @@ function unreadable(model) {
   const copy = structuredClone(model); walk(copy, true);
   return { paths: paths.sort(), model: copy };
 }
+// a value as text, read as the model unreadable() gives back reads it: one it would leave out reads as no value
+// ("undefined"), so a raw model names a line as the drawn page names it (audit 21)
+const textOf = x => x === null || typeof x !== 'object' ? String(x) : Object.hasOwn(x, 'toString') && typeof x.toString !== 'function' ? 'undefined' : String(unreadable(x).model);
+// a table by name a host hands in (drift's and sequenceFromTrace's match): each own key, any name toString too, to text or a
+// number; any other value is no entry (audit 21)
+const nameTable = x => { const t = new Map(); if (x && typeof x === 'object' && !Array.isArray(x)) Object.keys(x).forEach(k => { const v = x[k]; if (typeof v === 'string' || typeof v === 'number') t.set(k, String(v)); }); return t; };
 
 /* The typed core's structural problems, as validate() words them: { level, path, message }. Only for schema version 2;
    a version-1 model has nothing typed. Ids, references, ownership and typed views; what a type's own properties mean
@@ -116,10 +122,10 @@ function typedProblems(model) {
 // context.js edgeIds() does. namesOf(list): name -> line. lineNames(m): list -> its names, the list keyed -1 for the model's
 // (drawn by a view with no edges list) and i for view i's own; listOf(m, i): the key of the list view i draws
 const namesOf = l => { const out = new Map(), seen = {};
-  (Array.isArray(l) ? l : []).forEach(e => { if (!e || typeof e !== 'object') return; const k = e.from + '->' + e.to, n = seen[k] = (seen[k] ?? -1) + 1;
+  (Array.isArray(l) ? l : []).forEach(e => { if (!e || typeof e !== 'object') return; const k = textOf(e.from) + '->' + textOf(e.to), n = seen[k] = (seen[k] ?? -1) + 1;
     if (e.id == null) out.set(`${k}#${n}`, e); }); return out; };
 const listOf = (m, i) => (Array.isArray(m.views[i] && m.views[i].edges) ? i : -1);
 const lineNames = m => { const out = new Map([[-1, namesOf(m && m.edges)]]);
   (Array.isArray(m && m.views) ? m.views : []).forEach((v, i) => { if (v && Array.isArray(v.edges)) out.set(i, namesOf(v.edges)); }); return out; };
 
-export { versionProblem, typedProblems, lineNames, namesOf, listOf, unreadable };
+export { versionProblem, typedProblems, lineNames, namesOf, listOf, unreadable, textOf, nameTable };

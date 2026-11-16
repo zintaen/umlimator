@@ -459,3 +459,19 @@ test('audit 13: N, Delete, Shift + Delete and the outline\'s Show leave the othe
   const h = apply(m, [{ op: 'add', element: { id: 'a1', type: T, label: 'A1', parent: 'a' } }, { op: 'hide', id: 'a', view: 'v' }]), hs = sides(h);
   const back = mmRun(apply(h, mmShow(h, 'v', 'a').commands), h.views[0]); assert.deepEqual(['b', 'c', 'd'].map(id => back.byId[id].side), hs);
 });
+
+test('audit 21: Delete on a topic in the view\'s own nodes deletes it (it lives in the view only), with an own subtopic; a model topic under it is hidden as before', () => {
+  const m = EX(), v = V(m), root = v.nodeIds[0];
+  v.nodes = [{ id: 'own-topic', type: T, label: 'Own topic', parent: root }, { id: 'own-kid', type: T, label: 'Own kid', parent: 'own-topic' }];
+  v.nodeIds.push('own-topic', 'own-kid'); v.present = { ...(v.present || {}), 'own-topic': { side: 'left' } };
+  assert.ok(layout(m, VID).byId['own-topic']);
+  const r = mmRemove(m, v, ['own-topic'], false), n = run(m, r);
+  assert.deepEqual(cmdsOf(r).filter(c => c.op === 'hide'), [], 'no hide, which apply() refuses for a view-only topic');
+  assert.deepEqual(V(n).nodes, []);
+  assert.ok(!V(n).nodeIds.includes('own-topic') && !V(n).nodeIds.includes('own-kid'));
+  assert.match(r.say, /^Deleted Own topic/);
+  // a model topic shown and selected with it is still only hidden
+  const t = v.nodeIds[1], r2 = mmRemove(m, v, [t, 'own-topic'], false), n2 = run(m, r2);
+  assert.ok(node(n2, t), 'the model topic stays in the model');
+  assert.ok(!V(n2).nodeIds.includes(t) && !V(n2).nodeIds.includes('own-topic'));
+});

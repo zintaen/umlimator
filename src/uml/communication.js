@@ -322,13 +322,15 @@ function commRemove(model, view, ids, fromModel) {
   if (!CM_OBJ(view)) return null;
   const I = commIndex(model, view), out = [], seen = new Set(), idOf = x => (typeof x === 'string' ? x : CM_OBJ(x) ? x.id : null);
   const views = fromModel ? CM_ARR(model && model.views).filter(v => CM_OBJ(v) && v.diagram === 'uml.communication') : [view];
+  // a line or lifeline in the view's own lists lives in this view only: hiding it is deleting it (audit 21), as the canvas's Delete does
+  const own = new Map([...CM_ARR(view.nodes), ...CM_ARR(view.edges)].filter(x => CM_OBJ(x) && typeof x.id === 'string').map(x => [x.id, x])), el = id => I.E.get(id) || own.get(id);
   const go = id => { if (seen.has(id)) return; seen.add(id);
-    out.push(fromModel ? { op: 'delete', id } : { op: 'hide', id, view: view.id });
-    if (I.E.has(id) && I.E.get(id).type === 'uml.Connector') views.forEach(v => { const on = commIndex(model, v).on.get(id); if (!on) return;
+    out.push(fromModel || own.has(id) ? { op: 'delete', id } : { op: 'hide', id, view: view.id });
+    if (el(id) && el(id).type === 'uml.Connector') views.forEach(v => { const on = commIndex(model, v).on.get(id); if (!on) return;
       const left = commIndex(model, { ...v, edges: CM_ARR(v.edges).filter(x => !seen.has(idOf(x))) });
       on.forEach(m => { if (v === view && !fromModel || !left.carrierOf(m.from, m.to)) go(m.id); }); });
     if (!fromModel) I.messages.filter(m => cmPropsOf(m).replyTo === id).forEach(m => go(m.id)); };
-  CM_ARR(ids).forEach(id => { if (I.shown.has(id) || I.E.has(id)) go(id); });
+  CM_ARR(ids).forEach(id => { if (I.shown.has(id) || I.E.has(id) || own.has(id)) go(id); });
   return cmSaid(model, view, ids, fromModel, I, fromModel ? cmGuard(model, view, out, true) : out);
 }
 // the messages a connector or a lifeline took (its own, or by apply()'s cascade), said on the hint line: { commands, say }
@@ -356,6 +358,8 @@ const COMM_TYPE = registerDiagramType('uml.communication', {
     'uml.Message': [CM_SORT, { key: 'replyTo', label: 'Reply to', kind: 'text' }, { key: 'stereotypes', label: 'Stereotypes', kind: 'list' }],
     'uml.Connector': [],
   },
+  // a connector is drawn with no text (its messages are): no Name field (audit 21)
+  unnamed: ['uml.Connector'],
   refs: { 'uml.Message': { 'props.replyTo': 'cascade' } }, // a reply goes with its call
   layout: Object.assign(commGeo, { rank: false }), // commGeo ranks its own lifelines: the host passes only the pins
   // the host ranks a typed view's lifelines before commGeo runs (context.js autoPos), and commGeo ranks its own, with the

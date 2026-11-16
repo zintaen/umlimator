@@ -5,7 +5,7 @@ import { labelW, rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { drawnLines, legendItem, lineRename } from '../uml/class.js'; // and SHAPE.note, a comment's look
 import { holdsLine, ownersOn, placeTabs } from '../uml/owners.js';
-import { SYS_FRAME, SYS_FRAME_RENAME, SYS_HEAD, SYS_TABLE } from './sysml.js';
+import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_HEAD, SYS_TABLE } from './sysml.js';
 
 /* ---------- the requirement diagram, sysml.requirement (work package M3.2, notes/milestone-3.md §6, §13) ----------
    Requirements, test cases, blocks, packages and comments in a SysML frame (§5): a requirement is the classifier with
@@ -263,6 +263,7 @@ function rqRename(model, view, id, text) {
   const m = /^(\S*\d\S*)\s+(\S[\s\S]*)$/.exec(String(text).trim());
   return rqIndex(model).is(id, RQ) && m ? [{ op: 'set', id, path: 'label', value: m[2].trim() }, { op: 'set', id, path: 'props.reqId', value: m[1] }] : null;
 }
+rqRename.empty = SYS_FRAME_EMPTY; // an emptied F2 on the frame removes the view's title (audit 21)
 // Delete or Shift + Delete on a containment line (§6.2): the child goes to its owner's own owner, so one in a package stays in
 // it. Shift + Delete on a requirement or a package (§6.4): what it holds goes to its nearest owner left, then it is deleted (the
 // core's delete would take it along). Anything else, and Delete on a card, the canvas's

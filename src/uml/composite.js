@@ -275,10 +275,11 @@ function csProblems(model, view) {
     `part ${q(m.id)} of ${q(S.id)} is typed ${JSON.stringify(CS_PROPS(m).valueType ?? null)}, which names ${[...P.at.values()].some(n => CS_TYPED.includes(n.type) && (n.label ?? n.id) === CS_PROPS(m).valueType) ? 'more than one' : 'no'} class or component, so it shows only the ports its connectors reach through it`); });
   P.parts.forEach(m => { const t = CS_PROPS(m).multiplicity, b = CS_HAS(t) ? multBounds(t) : { lower: 0, upper: 0 };
     if (!b || b.lower > b.upper) say('warning', 'part-multiplicity', memPath(m.id) + '.props.multiplicity', [m.id], `part ${q(m.id)}'s multiplicity [${t}] ${b ? 'has its lower bound above its upper' : 'is not one (1, *, 0..1, 1..*)'}`); });
-  // where an end lies: the subject's structure ('S'), a collaboration's (its id), or nowhere (null)
+  // where an end lies: the subject's structure ('S'), a collaboration's (its id), or nowhere (null). A collaboration use is in
+  // none: UML 2.5.1 §11.2, an end is a part or a port, and a use is neither (audit 21); a role binding's ends are checked apart
   const owner = id => (P.mem.get(id) || {}).owner, inS = id => S && (id === S.id || owner(id) === S);
   const structOf = (x, part) => { if (part != null) return S && owner(part) === S ? 'S' : P.partOf.has(part) ? P.partOf.get(part).id : null; // a role: its collaboration's (audit 11)
-    if (inS(x)) return 'S'; if (S && P.uses.includes(x)) return 'S';
+    if (inS(x)) return 'S';
     const o = owner(x); return o && o.type === 'uml.Collaboration' && (P.mem.get(x).m.type === 'uml.Property') ? o.id : null; };
   CS_ARR(model.edges).forEach((e, i) => { if (!CS_OBJ(e)) return; const ends = CS_OBJ(CS_PROPS(e).ends) ? CS_PROPS(e).ends : {}, path = `edges[${i}]`;
     if (e.type === 'uml.Connector') {
@@ -370,13 +371,13 @@ function csMoveTo(model, view, id, at) {
 // into the selected collaboration; a collaboration use into the subject. Anything else: the default
 function csAdd(model, view, entry, label, at) {
   if (!CS_OBJ(entry)) return null;
-  const PART = { type: 'uml.Property' }; // the Part and Role entries add a part, whatever the row says (audit 10)
+  const PART = { type: 'uml.Property' }, PORT = { type: 'uml.Port' }; // the Part and Role entries add a part, whatever the row says (audit 10); the Port entry a port, ': Api' or '' refused (audit 21)
   const P = csPic(model, view), sel = CS_ARR(at && at.sel).map(id => csOwnerOf(P, id)).map(id => P.el(id)).filter(Boolean)[0] || null, t = String(label ?? '').trim();
   const member = (o, row, say, was) => { const r = csRow(o, row, was); if (r.error) return r; const c = [{ op: 'add', element: { id: csFresh(model, csIdOf(o.id, r)), ...r }, owner: o.id }]; return say ? { commands: c, say } : c; };
   if (entry.type === 'uml.Port') {
     if (sel && P.partOf.has(sel.id)) { const T = P.typeOf(sel); if (!T) return { error: `${csName(sel)}'s type, ${JSON.stringify(CS_PROPS(sel).valueType ?? null)}, names no one class or component to add a port to` };
-      return member(T, 'port ' + t, `Added the port to ${csName(T)}, the type of ${csName(sel)}: every part of that type shows it`); }
-    return sel && CS_TYPED.includes(sel.type) ? member(sel, 'port ' + t) : { error: 'Select the subject, a part, a class or a component to add a port to' };
+      return member(T, t, `Added the port to ${csName(T)}, the type of ${csName(sel)}: every part of that type shows it`, PORT); }
+    return sel && CS_TYPED.includes(sel.type) ? member(sel, t, null, PORT) : { error: 'Select the subject, a part, a class or a component to add a port to' };
   }
   if (entry.type === 'uml.Property' && entry.label === 'Role') return sel && sel.type === 'uml.Collaboration' ? member(sel, t, null, PART) : { error: 'Select a collaboration to add a role to' };
   if (entry.type === 'uml.Property') return P.S ? member(P.S, t, null, PART) : { error: 'This view has no subject to add a part to' };

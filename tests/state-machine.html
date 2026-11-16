@@ -165,6 +165,20 @@ try {
   h.select({ type: 'container', id: 'delivery', view: 'order-life' }); key('Delete', { shiftKey: true });
   gives('Shift + Delete on a composite: it, its substates and their transitions go', [{ op: 'delete', id: 'delivery' }], m => !m.nodes.some(n => ['delivery', 'in-transit', 'delivery-history'].includes(n.id)) && !m.edges.some(e => e.id === 't-at-depot'), BASE);
   h.destroy();
+  // audit 21: another transition's trigger is {"toString": 1} (valid JSON, drawn without it): the hooks read the model as
+  // it is drawn, so F2 on t-authorised and Delete on a state edit as before, with nothing thrown
+  const HOST = structuredClone(BASE); HOST.edges[1].props.trigger = JSON.parse('{"toString":1}');
+  const thrown = [], caught = e => thrown.push(e.message); window.addEventListener('error', caught);
+  h = mount(HOST, { editable: true }); check('a hostile trigger: the machine is drawn', all('.node.state').length === 9 && all('.edge-g').length === 23);
+  h.select({ type: 'edge', ids: ['t-authorised'], view: 'order-life' }); key('F2');
+  const f2 = pick('.um-rename'); if (f2) { f2.value = 'go [ok]'; try { key('Enter', {}, f2); } catch (x) { thrown.push(x.message); } }
+  gives('a hostile trigger elsewhere: F2 on t-authorised sets its trigger and guard', [{ op: 'set', id: 't-authorised', path: 'props.trigger', value: 'go' }, { op: 'set', id: 't-authorised', path: 'props.guard', value: 'ok' }],
+    m => m.edges[2].props.trigger === 'go' && typeof m.edges[1].props.trigger === 'object', HOST, 1);
+  click('.node[data-id="enquiry"] .c-name'); try { key('Delete'); } catch (x) { thrown.push(x.message); }
+  gives('a hostile trigger elsewhere: Delete hides the state', [{ op: 'hide', id: 'enquiry', view: 'order-life' }], m => !m.views[0].nodeIds.includes('enquiry'), HOST, 1);
+  await new Promise(r => setTimeout(r, 0)); window.removeEventListener('error', caught);
+  check('a hostile trigger elsewhere: nothing thrown', !thrown.length, thrown);
+  h.destroy();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

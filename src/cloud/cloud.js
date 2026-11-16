@@ -110,6 +110,14 @@ function clIndex(model) {
   const chain = id => { const out = [], seen = new Set([id]); for (let p = (at.get(id) || {}).parent; p != null && at.has(p) && !seen.has(p); p = at.get(p).parent) { seen.add(p); out.push(p); } return out; };
   return { at, chain, E: CL_ARR(model && model.edges).filter(e => CL_OBJ(e) && typeof e.id === 'string'), holds: (a, b) => chain(b).includes(a) };
 }
+// each of the family's views' own lines (view.edges objects of its line type), which clLinesOf draws as it draws the model's,
+// with its path; one a model line's id (or an earlier view's) takes is that one (audit 21, as stProblems since audit 20)
+function clOwnLines(F, model, I) {
+  const ids = new Set(I.E.map(e => e.id)), out = [];
+  CL_ARR(model && model.views).forEach((v, vi) => { if (!CL_OBJ(v) || v.diagram !== F.pack) return;
+    CL_ARR(v.edges).forEach((e, j) => { if (CL_OBJ(e) && typeof e.id === 'string' && e.type === F.line[0] && !ids.has(e.id)) { ids.add(e.id); out.push({ e, path: `views[${vi}].edges[${j}]` }); } }); });
+  return out;
+}
 // the view's boxes: each open group, titled with its kind (decision 10), dashed by kind
 function clPic(F, model, view) {
   const pic = ownersOn(model, view, { boxTypes: [F.group], qualify: false, shape: () => 'cloud-group', word: x => clWord(F, x) });
@@ -190,8 +198,9 @@ function clProblems(F, model) {
       const ic = clIcon(F, model, n);
       if (!ic) say('warning', 'icon-set', `${path}.props.icon`, [n.id], `${q(n.id)} names no icon: it is drawn with a glyph`);
       else if (given && !ic.src) say('warning', 'icon-missing', `${path}.props.icon`, [n.id], `the ${F.pack} pack given has no icon ${JSON.stringify(ic.id)} for ${q(n.id)}: it is drawn with a glyph`); } });
-  CL_ARR(model && model.edges).forEach((e, i) => { if (!CL_OBJ(e) || e.type !== F.line[0] || !I.at.has(e.from) || !I.at.has(e.to) || !clInside(F, I, e.from, e.to)) return;
-    say('error', 'line-inside', `edges[${i}]`, [e.id, e.from, e.to], `${e.id} joins ${q(e.from)} and ${q(e.to)}, ${e.from === e.to ? 'a group and itself' : 'a group and something inside it'}: it cannot be drawn`); });
+  [...CL_ARR(model && model.edges).map((e, i) => ({ e, path: `edges[${i}]` })), ...clOwnLines(F, model, I)].forEach(({ e, path }) => {
+    if (!CL_OBJ(e) || e.type !== F.line[0] || !I.at.has(e.from) || !I.at.has(e.to) || !clInside(F, I, e.from, e.to)) return;
+    say('error', 'line-inside', path, [e.id, e.from, e.to], `${e.id} joins ${q(e.from)} and ${q(e.to)}, ${e.from === e.to ? 'a group and itself' : 'a group and something inside it'}: it cannot be drawn`); });
   return out;
 }
 
@@ -217,16 +226,17 @@ function clConnect(F, model, view, from, to) {
   return { error: `A line cannot join ${clThe(clKindWord(F, I.at.get(g)))} and what it holds` };
 }
 // a new owner for id that would put it, or what it holds, inside a group its line joins (line-inside): that group, else null (audit 19)
-function clBlocks(F, I, id, parent) {
+// (a line of the model, or one of a view's own: the owner is the model's, so every view's own lines count, audit 21)
+function clBlocks(F, I, id, parent, model) {
   if (parent == null || !I.at.has(id) || !I.at.has(parent)) return null;
   const up = new Set([parent, ...I.chain(parent)]); if (up.has(id)) return null; // inside itself: apply() refuses it
-  const mine = x => x === id || I.holds(id, x), e = I.E.find(e => e.type === F.line[0] && ((mine(e.from) && up.has(e.to)) || (mine(e.to) && up.has(e.from))));
+  const mine = x => x === id || I.holds(id, x), e = [...I.E, ...clOwnLines(F, model, I).map(o => o.e)].find(e => e.type === F.line[0] && ((mine(e.from) && up.has(e.to)) || (mine(e.to) && up.has(e.from))));
   return e ? (mine(e.from) && up.has(e.to) ? e.to : e.from) : null;
 }
 // owner: the Owner field's choice, and a drop into another group's box (src/typed/edit.js asks it where a type has no moveTo):
 // refused into a group a line of it (or of what it holds) joins, in connect's words; else the default reparent
 function clOwner(F, model, view, id, parent) {
-  const I = clIndex(model), g = clBlocks(F, I, id, parent);
+  const I = clIndex(model), g = clBlocks(F, I, id, parent, model);
   return g == null ? null : { error: `A line cannot join ${clThe(clKindWord(F, I.at.get(g)))} and what it holds` };
 }
 // add: the palette's entry (a group's kind in its props) into the group selected, else at the top
@@ -262,7 +272,7 @@ function clDef(pack, F) {
     boxes: (model, view) => clPic(F, model, view).boxes,
     // the Owner field: every group of the family, its kind in brackets, but one a line of it would join it to (line-inside, audit 19)
     owners: (model, x) => { if (!(mine(x) && x.from == null)) return null; const I = clIndex(model);
-      return CL_ARR(model.nodes).filter(n => CL_OBJ(n) && n.type === F.group && clBlocks(F, I, x.id, n.id) == null).map(n => ({ id: n.id, label: `${clName(n)} [${clKindWord(F, n)}]` })); },
+      return CL_ARR(model.nodes).filter(n => CL_OBJ(n) && n.type === F.group && clBlocks(F, I, x.id, n.id, model) == null).map(n => ({ id: n.id, label: `${clName(n)} [${clKindWord(F, n)}]` })); },
     validate: model => clProblems(F, model),
     rules: CL_RULES,
     describe: (model, viewId) => clDescribe(F, model, viewId),

@@ -634,3 +634,20 @@ test('audit 19: the Connector tool refuses ends in two structures (a part or the
   assert.equal(T.edits.connect(m, v, 'publish-subscribe.publisher', 'publish-subscribe.subscriber', null, line), null, 'two roles of one collaboration: drawn as is');
   assert.equal(T.edits.connect(m, v, 'order-service.checkout', 'order-service.pricing', null, line), null, 'two parts of the subject: drawn as is');
 });
+
+test('audit 21: the palette\'s Port adds a port, never a part: a port with no name (": Api", or nothing typed) is refused with the port syntax', () => {
+  const Port = T.elements.find(e => e.label === 'Port');
+  for (const sel of [['order-service'], ['order-service.checkout']]) {
+    for (const t of [': Api', '', null, undefined]) { const r = T.edits.add(CS, V, Port, t, { sel }); assert.deepEqual(r, { error: 'A port is port name : Type' }, `${sel[0]} ${JSON.stringify(t)}`); }
+    const r = T.edits.add(CS, V, Port, 'admin : Api', { sel }), c = Array.isArray(r) ? r : r.commands;
+    assert.deepEqual(c.map(x => [x.element.type, x.element.label, x.element.props]), [['uml.Port', 'admin', { valueType: 'Api' }]]);
+  }
+});
+
+test('audit 21: a connector from a part to a collaboration use lies in no structure: connector-scope says so, and the Connector tool refuses it', () => {
+  const m = structuredClone(CS), v = m.views[0], line = T.lines.find(l => l.type === 'uml.Connector'), use = v.nodeIds.find(id => (m.nodes.find(n => n.id === id) || {}).type === 'uml.CollaborationUse');
+  assert.match(T.edits.connect(m, v, 'order-service.checkout', use, null, line).error, /lie in one structure/);
+  m.edges.push({ id: 'c-use', type: 'uml.Connector', from: 'order-service.checkout', to: use });
+  assert.deepEqual(validate(m).filter(p => p.rule === 'connector-scope').map(p => [p.level, p.ids[0]]), [['error', 'c-use']]);
+  assert.equal(T.edits.connect(CS, CS.views[0], 'order-service.checkout', 'order-service.pricing', null, line), null, 'two parts: as before');
+});

@@ -252,7 +252,9 @@ function acGuard(model, view, commands) {
 // connect: a flow of the kind picked; a decision's second exit gets the guard else when neither has one
 function actConnect(model, view, from, to, at, line) {
   if (!AC_OBJ(view) || !AC_OBJ(line) || !AC_FLOWS.includes(line.type)) return null;
-  const I = actIndex(model, view), x = I.N.get(from), outs = [...I.E.values()].filter(e => AC_FLOWS.includes(e.type) && e.from === from);
+  // the decision's exits as decision-guards counts them (flowProblems): the model's flows and the view's own (audit 21)
+  const I = actIndex(model, view), x = I.N.get(from), own = AC_ARR(view.edges).filter(e => AC_OBJ(e) && !I.E.has(e.id));
+  const outs = [...I.E.values(), ...own].filter(e => AC_FLOWS.includes(e.type) && e.from === from);
   const props = { ...(AC_OBJ(line.props) ? structuredClone(line.props) : {}) };
   if (x && x.type === 'uml.DecisionNode' && outs.length === 1 && !AC_HAS(props.guard) && AC_PART(acProps(outs[0]).guard) !== 'else') props.guard = 'else';
   return acGuard(model, view, [{ op: 'add', element: { id: acFreshId(model, `${from}-${to}`), type: line.type, from, to, ...(Object.keys(props).length ? { props } : {}) }, view: view.id }]);

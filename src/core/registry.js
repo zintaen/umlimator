@@ -31,7 +31,8 @@ function registerDiagramType(name, def = {}) {
    opens on a palette entry; a line's cut, its label's width (150); rows(model, view, id) and word(model, id), the PDF's.
    Stage 5's: a line's fromPort, toPort, inner, portRank, a box's pad, round, head, a view's labelGaps (src/typed/layout.js);
    edits.member, edits.key (src/typed/edit.js). Audit 18's: steps true, a view whose lines are numbered by their order in its
-   edges (a C4 dynamic view), so diff() says a reorder as it does a map's sequence. */
+   edges (a C4 dynamic view), so diff() says a reorder as it does a map's sequence. Audit 21's: unnamed, the element types
+   whose label nothing draws nor says (a combined fragment, a transition): the properties panel offers them no Name field. */
 
 /* A view's type: the map for a view with no diagram, the registered type, or null for one this release does not draw */
 const diagramOf = view => TYPES.get(view && view.diagram != null ? view.diagram : 'map') || null;
@@ -47,6 +48,7 @@ const TYPED = {};
 
 // an id-keyed table with no prototype: an id named constructor, toString or __proto__ is an own key like any other
 const idTable = (o = {}) => Object.assign(Object.create(null), o);
-const propRefs = type => Object.assign({}, ...[...TYPES.values()].map(T => T.refs && Object.hasOwn(T.refs, type) && T.refs[type]));
+// a type is text: any other value (one with a toString key, which no key is read from) refers to nothing (audit 21)
+const propRefs = type => typeof type !== 'string' ? {} : Object.assign({}, ...[...TYPES.values()].map(T => T.refs && Object.hasOwn(T.refs, type) && T.refs[type]));
 
 export { registerDiagramType, diagramOf, propRefs, idTable, TYPED };
