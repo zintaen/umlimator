@@ -362,3 +362,11 @@ test('audit 17: a part association names its part so that the part\'s row reads 
   }
   assert.deepEqual(roles, ['batterypack', 'part3DPrinter', 'sparewheel', 'üMotor', '_x', 'part', 'part2']);
 });
+
+test('audit 18: part-type picks "an" before a vowel, and flow-direction says a missing direction plainly', () => {
+  const m = { schemaVersion: 2, nodes: [B('bike', 'Bike', [P('bike.dock', 'PartProperty', 'dock', { valueType: 'Dock' }), P('bike.f', 'FlowProperty', 'f')]),
+    { id: 'dock', type: 'sysml.InterfaceBlock', label: 'Dock' }], edges: [], views: [{ id: V, diagram: 'sysml.block-definition', nodeIds: ['bike', 'dock'] }] };
+  const said = validate(m).map(p => p.message);
+  assert.ok(said.includes('part-type: part "Bike".dock is typed by "Dock", an interface block, not a block'), said.join('\n'));
+  assert.ok(said.includes('flow-direction: flow property "Bike".f has no direction: give it in, out or inout'), said.join('\n'));
+});

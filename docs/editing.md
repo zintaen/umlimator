@@ -588,13 +588,11 @@ typed canvas's gestures (1.7), with the type's hooks:
 | a flow | the handle or a drag between two elements | `L`, the other end, Enter | `add` of the one kind the ends allow (no picker): a sequence flow in one pool and one level, a message flow between pools, a data association with data at one end, an association with an annotation at one end; anything else refused with the rule's words ("A sequence flow cannot leave its pool: …") |
 | a name, a flow's name, an annotation's text | double-click once selected | `F2` | `set label` |
 | task type, event definition, interrupting, called element, data store, direction, documentation | the properties panel | | `set props.<field>` |
-| move a flow node to another lane | drag it into the lane's band | | `reparent` to the lane, its pin removed; its boundary events with it; into another pool refused while it has sequence flows ("Move its sequence flows first"); a drop on a pool's header strip refused |
+| move a flow node to another lane | drag it into the lane's band, or the Owner field | | `reparent` to the lane, its pin removed; its boundary events with it; into another pool refused while it has sequence flows ("Move its sequence flows first"); a drop on a pool's header strip refused; an Owner that would bring a new problem refused with the rule's words (audit 18) |
 | move a boundary event | drag it onto another activity's border | `Alt + arrows` (its side) | `set props.attachedTo` (and `reparent` to that activity's owner); `set present.<id>.side` |
 | attach a boundary event | | `A`: a picker of the activities it can move to without a new problem | `set props.attachedTo` |
 | expand or collapse a sub-process in the view | | `X` | one `set` of the view's `nodeIds`: what it holds added or removed |
-| hide | | `Delete` | `hide`; on a lane (a member, never hidden) the lane is deleted and what it held moves to its parent, said on the hint line first |
+| hide | | `Delete` | `hide`; an activity's boundary events hidden with it, and an expanded sub-process's shown contents, said on the hint line (audit 18); on a lane (a member, never hidden) the lane is deleted and what it held moves to its parent, said on the hint line first |
 | delete | | `Shift + Delete` | `delete`; an activity takes its boundary events, a pool what it owns (counted on the hint line); a deleted group leaves the `categoryValueRef` entries that named it |
 
-A message flow between two pools, a flow from a boundary event back to its own activity and an annotation joined to a
-pool, a lane, a group or itself are refused, since the diagram does not draw them. The Owner field offers a flow node's
-pools, lanes and sub-processes, and no owner for a lane.
+A message flow between two pools, a flow from a boundary event back to its own activity and an annotation joined to a pool, a lane, a group or itself are refused, since the diagram does not draw them. The Owner field offers a flow node's pools, lanes and sub-processes, less those a drop refuses (audit 18): while it or its boundary events have sequence flows, none at another process level (another pool, or in or out of a sub-process), and never a pool that has lanes. It offers no owner for a lane.

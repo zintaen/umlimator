@@ -885,10 +885,10 @@ with tempfile.TemporaryDirectory() as tmp:
                              "RangeEquationConstraintblockconstraints:{range=energy/consumption}parameters:range:Distance", "EnergyValuetypequantity:unit=Wh",
                              "EBike→RentalVehicleGeneralization"],
             "ebike-structure": ["EBikeBlockbattery:Battery[1]", "refdock:Dock[0..1]", "DCPower,batterytocontrollerConnector"],  # a connector: a Lines row (audit 17)
-            "ebike-range": ["eco:RangeEquation", "BindingfromvalueecoRangetoparameterrangeofeco", "Bindingfromparameterusableofusabletoparameterenergyofboost"]}
+            "ebike-range": ["eco:RangeEquation", "ecoRangetorangeofecoBindingconnector", "usableofusabletoenergyofboostBindingconnector"]}  # a binding: a Lines row only (audit 18)
     for n, want in PDF3.items():
         txt = "".join(read(f"{n}.pdf"))
-        ok(f"pdf · {n}: its tables list what SysML's type says of each element and line (§13)", all(w in txt for w in want), [w for w in want if w not in txt] or txt[:800])
+        ok(f"pdf · {n}: its tables list what SysML's type says of each element and line (§13)", all(w in txt for w in want) and "Bindingfrom" not in txt, [w for w in want if w not in txt] or txt[:800])
     # 4a.7: import on the mindmap example (notes/milestone-4a.md §8.4): the module's writer gives its Mermaid, and
     # umlimator.py import reads it back to the same topics under the same parents, in the same order, on the same sides
     ex = json.loads((ROOT / "examples" / "bookshop-opening-plan.json").read_text(encoding="utf-8"))

@@ -100,16 +100,17 @@ function bdProblems(model) {
   nodes.forEach(n => { if (BD_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
   const q = x => JSON.stringify(String(x.label ?? x.id)), say = (rule, path, ids, msg, level = 'error') => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const is = ts => (ts ? ts.map(t => BD_WORD(t).toLowerCase()).join(' and ') : 'nothing');
+  const aIs = ts => { const w = is(ts); return `${/^[aeiou]/i.test(w) ? 'an' : 'a'} ${w}`; }; // "an enumeration", "a block"
   nodes.forEach((n, i) => { if (!BD_OBJ(n)) return; const seen = new Map();
     BD_ARR(n.members).forEach((m, j) => { if (!BD_OBJ(m)) return;
       const path = `nodes[${i}].members[${j}]`, p = BD_PROPS(m), T = named(p.valueType), of = `${q(n)}.${String(m.label ?? m.id)}`, ids = [n.id, m.id], typed = `typed by ${JSON.stringify(String(p.valueType))}`;
       // member-names on a SysML classifier, as classProblems judges a uml one's (it walks uml.* nodes only): an operation by its parameters' types too
       const k = m.type === 'uml.Operation' ? `${m.label}(${BD_ARR(p.parameters).map(a => (BD_OBJ(a) ? a.valueType ?? '' : '')).join(',')})` : `${m.label}`;
       if (BD_CLS.includes(n.type) && BD_HAS(m.label)) { if (seen.has(k)) say('member-names', path, [n.id, seen.get(k), m.id], `${q(n)} has two members named "${m.label}" (${seen.get(k)}, ${m.id})`); else seen.set(k, m.id); }
-      if ((m.type === 'sysml.PartProperty' || m.type === 'sysml.ReferenceProperty') && T && !T.includes('sysml.Block')) say('part-type', path, ids, `${bdMWord(m)} ${of} is ${typed}, a ${is(T)}, not a block`, 'warning');
-      if (m.type === 'sysml.ValueProperty' && T && !T.includes('sysml.ValueType') && !BD_PRIM.includes(String(p.valueType))) say('value-type', path, ids, `value ${of} is ${typed}, a ${is(T)}, not a value type`, 'warning');
-      if (m.type === 'sysml.ConstraintProperty' && !(T && T.includes('sysml.ConstraintBlock'))) say('constraint-type', path, ids, `constraint property ${of} is ${BD_HAS(p.valueType) ? `${typed}, ${T ? 'a ' + is(T) : 'which names nothing'}` : 'typed by nothing'}, not a constraint block`);
-      if (m.type === 'sysml.FlowProperty' && !['in', 'out', 'inout'].includes(p.direction)) say('flow-direction', path, ids, `flow property ${of} has direction ${JSON.stringify(p.direction ?? null)}, not in, out or inout`);
+      if ((m.type === 'sysml.PartProperty' || m.type === 'sysml.ReferenceProperty') && T && !T.includes('sysml.Block')) say('part-type', path, ids, `${bdMWord(m)} ${of} is ${typed}, ${aIs(T)}, not a block`, 'warning');
+      if (m.type === 'sysml.ValueProperty' && T && !T.includes('sysml.ValueType') && !BD_PRIM.includes(String(p.valueType))) say('value-type', path, ids, `value ${of} is ${typed}, ${aIs(T)}, not a value type`, 'warning');
+      if (m.type === 'sysml.ConstraintProperty' && !(T && T.includes('sysml.ConstraintBlock'))) say('constraint-type', path, ids, `constraint property ${of} is ${BD_HAS(p.valueType) ? `${typed}, ${T ? aIs(T) : 'which names nothing'}` : 'typed by nothing'}, not a constraint block`);
+      if (m.type === 'sysml.FlowProperty' && !['in', 'out', 'inout'].includes(p.direction)) say('flow-direction', path, ids, (p.direction == null ? `flow property ${of} has no direction: give it in, out or inout` : `flow property ${of} has direction ${JSON.stringify(p.direction)}, not in, out or inout`));
       if (m.type === 'sysml.Port') { const ib = T && T.includes('sysml.InterfaceBlock');
         if (BD_HAS(p.kind) && !Object.hasOwn(BD_KIND, p.kind)) say('port-kind', path, ids, `port ${of} has kind ${JSON.stringify(p.kind)}, not proxy or full`);
         else if (p.kind === 'proxy' && !ib) say('port-kind', path, ids, `proxy port ${of} is ${BD_HAS(p.valueType) ? typed + ', not an interface block' : 'typed by nothing: a proxy port is typed by an interface block'}`);

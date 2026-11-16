@@ -19,7 +19,7 @@ import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
-import { BZ_RULES, bzProblems, bzConnect, bzMoveTo, bzAdd, bzRemove, bzKey, bzOwners } from '../src/bpmn/process.js';
+import { BZ_RULES, bzProblems, bzConnect, bzMoveTo, bzAdd, bzRemove, bzKey, bzOwners, bzOwner } from '../src/bpmn/process.js';
 
 const EX = JSON.parse(readFileSync(new URL('../examples/bookshop-order-to-shipment.json', import.meta.url), 'utf8'));
 const T = diagramOf({ diagram: 'bpmn' }), VID = 'order-to-shipment', V = (m, id = VID) => m.views.find(v => v.id === id);
@@ -73,7 +73,7 @@ test('the definition: bpmn with row 24\'s palette, its lines, properties, refs, 
   assert.deepEqual(T.props['bpmn.BoundaryEvent'].map(f => f.key), ['documentation', 'definition', 'categoryValueRef', 'cancelActivity']);
   assert.deepEqual(T.props['bpmn.IntermediateThrowEvent'][1].options, ['none', 'message'], 'decision 21: the none intermediate throw event');
   assert.deepEqual(T.refs['bpmn.BoundaryEvent'], { 'props.categoryValueRef': 'drop', 'props.attachedTo': 'cascade' });
-  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'key', 'moveTo', 'remove']);
+  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'key', 'moveTo', 'owner', 'remove']);
   assert.deepEqual(Object.keys(T.rules), ['sequence-scope', 'sequence-ends', 'message-scope', 'message-ends', 'event-definition', 'boundary-host', 'boundary-out', 'flow-start', 'gateway-flows',
     'lane-owner', 'in-lane', 'data-ends', 'group-ref', 'opens-view']);
   for (const k of ['layout', 'draw', 'boxes', 'owners', 'validate', 'describe', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
@@ -405,7 +405,11 @@ test('key: A on a boundary event picks another activity of its pool; X expands o
 });
 test('the Owner field: a flow node\'s pools, sub-processes and lanes by their names from the top; data\'s pools; a lane\'s none', () => {
   const o = bzOwners(EX, EX.nodes.find(n => n.id === 'paid'));
-  assert.deepEqual(o.map(x => x.label), ['Shopper', 'Bookshop', 'Bookshop::Warehouse::Pick and pack', 'Payment provider', 'Bookshop::Sales', 'Bookshop::Warehouse']);
+  // with sequence flows, its pool's lanes only (audit 18): another pool or a sub-process would bring a sequence-scope error
+  assert.deepEqual(o.map(x => x.label), ['Bookshop::Sales', 'Bookshop::Warehouse']);
+  // with none, the other pools (not one with lanes) and the sub-processes too, by their names from the top
+  const free = structuredClone(EX); free.edges = free.edges.filter(e => e.from !== 'paid' && e.to !== 'paid');
+  assert.deepEqual(bzOwners(free, free.nodes.find(n => n.id === 'paid')).map(x => x.label), ['Shopper', 'Bookshop::Warehouse::Pick and pack', 'Payment provider', 'Bookshop::Sales', 'Bookshop::Warehouse']);
   assert.deepEqual(bzOwners(EX, EX.nodes.find(n => n.id === 'bp-order')).map(x => x.id), ['bp-shopper', 'bp-bookshop', 'bp-payment-provider']);
   assert.equal(bzOwners(EX, { id: 'bp-sales', type: 'bpmn.Lane' }), null); assert.equal(bzOwners(EX, EX.edges[0]), null);
 });
@@ -583,4 +587,43 @@ test('audit 16: the first lane added to a pool holding flow nodes takes them in:
   const m = JSON.parse(readFileSync(new URL('./bpmn-minimal.json', import.meta.url), 'utf8')), r = bzAdd(m, m.views[0], { type: 'bpmn.Lane' }, 'Sales', { sel: ['pool'] });
   assert.deepEqual(r.slice(1).map(c => [c.op, c.id, c.parent]), [['reparent', 'start', 'sales'], ['reparent', 'task', 'sales'], ['reparent', 'end', 'sales']]);
   assert.deepEqual(bzProblems(apply(m, r), m.views[0]).filter(p => p.rule === 'in-lane'), []);
+});
+
+test('audit 18: the Owner field moves an activity with its boundary events, offers no owner a drop refuses, and guards the rest', () => {
+  const act = EX.nodes.find(n => n.id === 'bp-take-payment'), key = p => p.rule + ' ' + p.ids.join(' '), was = new Set(validate(EX).map(key));
+  assert.deepEqual(bzOwners(EX, act).map(o => o.id).sort(), ['bp-sales', 'bp-warehouse']);
+  assert.deepEqual(T.edits.owner(EX, V(EX), 'bp-take-payment', 'bp-warehouse'), [{ op: 'reparent', id: 'bp-take-payment', parent: 'bp-warehouse' }, { op: 'reparent', id: 'payment-timeout', parent: 'bp-warehouse' }]);
+  // every owner the field could hold, offered or not: commands that bring no new problem, or a refusal
+  for (const o of [...EX.nodes.filter(n => ['bpmn.Participant', 'bpmn.SubProcess'].includes(n.type)).map(n => n.id), 'bp-sales', 'bp-warehouse', null]) {
+    const r = bzOwner(EX, V(EX), 'bp-take-payment', o);
+    if (r && r.error) continue;
+    const m = apply(EX, r), now = validate(m).filter(p => !was.has(key(p)) && (p.level === 'error' || ['boundary-host', 'in-lane'].includes(p.rule)));
+    assert.deepEqual(now, [], String(o));
+  }
+  assert.match(bzOwner(EX, V(EX), 'bp-take-payment', 'bp-payment-provider').error, /Move its sequence flows first/);
+  assert.match(bzOwner(EX, V(EX), 'bp-take-payment', 'bp-bookshop').error, /^in-lane/);
+  // a node with no sequence flow is offered the other pools, and a pool with lanes still not
+  const lone = one([N('p', 'Participant', 'P', { members: [{ id: 'l1', type: 'bpmn.Lane', label: 'L1' }, { id: 'l2', type: 'bpmn.Lane', label: 'L2' }] }), N('q', 'Participant', 'Q'), N('t', 'Task', 'T', { parent: 'l1' })], []);
+  assert.deepEqual(bzOwners(lone, lone.nodes[2]).map(o => o.id).sort(), ['l1', 'l2', 'q']);
+  assert.deepEqual(bzOwner(lone, lone.views[0], 't', 'q'), [{ op: 'reparent', id: 't', parent: 'q' }]);
+  // the drop is unchanged: its boundary events with it
+  assert.equal(bzOwner(EX, V(EX), 'payment-timeout', 'bp-warehouse'), null);
+});
+
+test('audit 18: Delete on an activity hides its boundary events with it, said on the hint line', () => {
+  const r = bzRemove(EX, V(EX), ['bp-take-payment'], false);
+  assert.deepEqual(r.commands, [{ op: 'hide', id: 'bp-take-payment', view: VID }, { op: 'hide', id: 'payment-timeout', view: VID }]);
+  assert.equal(r.say, 'Hid its boundary event No answer in 2 minutes with Take payment');
+  const m = apply(EX, r.commands);
+  assert.ok(!V(m).nodeIds.includes('payment-timeout'));
+  assert.ok(!describe(m, VID).includes('No answer'), describe(m, VID));
+  // the event selected too: hidden once; Shift + Delete is still the model's cascade; a task with none: the default
+  assert.deepEqual(bzRemove(EX, V(EX), ['bp-take-payment', 'payment-timeout'], false), null);
+  assert.equal(bzRemove(EX, V(EX), ['bp-take-payment'], true), null);
+  assert.equal(bzRemove(EX, V(EX), ['cancel-order'], false), null);
+  // an expanded sub-process: what the view shows in it hidden with it, as X's collapse does
+  const open = apply(EX, T.edits.key(EX, V(EX), ['pick-pack'], 'x')), s = bzRemove(open, V(open), ['pick-pack'], false);
+  assert.deepEqual(s.commands.map(c => c.id), ['pick-pack', 'picking-starts', 'pick-books', 'pack-parcel', 'parcel-packed']);
+  assert.equal(s.say, 'Hid the 4 elements shown in or on it with Pick and pack');
+  assert.deepEqual(V(apply(open, s.commands)).nodeIds, V(EX).nodeIds.filter(id => id !== 'pick-pack'));
 });
