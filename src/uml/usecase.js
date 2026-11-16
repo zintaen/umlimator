@@ -304,7 +304,7 @@ const UC_TYPE = registerDiagramType('uml.use-case', {
     'uml.Extend': [{ key: 'condition', label: 'Condition', kind: 'text' }, { key: 'extensionPoints', label: 'Extension points (ids)', kind: 'list' }],
     'uml.Include': [], 'uml.Generalization': [], 'uml.CommentLink': [],
   },
-  refs: { 'uml.Extend': { 'props.extensionPoints': 'drop' } }, // a deleted extension point leaves every extend that names it
+  refs: { 'uml.Extend': { 'props.extensionPoints': 'drop empties' } }, // a deleted extension point leaves every extend that names it; an extend left naming none goes too, on any path (audit 19)
   rankFlip: e => e.type === 'uml.Generalization' || e.type === 'uml.Extend', // the parent and the base first
   layout: ucGeo,
   boxes: (model, view) => ucPic(model, view).boxes,

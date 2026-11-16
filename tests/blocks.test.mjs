@@ -370,3 +370,14 @@ test('audit 18: part-type picks "an" before a vowel, and flow-direction says a m
   assert.ok(said.includes('part-type: part "Bike".dock is typed by "Dock", an interface block, not a block'), said.join('\n'));
   assert.ok(said.includes('flow-direction: flow property "Bike".f has no direction: give it in, out or inout'), said.join('\n'));
 });
+
+test('audit 19: F2 on a frame with no subject sets the view\'s title, as on a requirement view (milestone-3 §5.1); a line still takes its label', () => {
+  const m = { schemaVersion: 2, nodes: [B('bike', 'Bike'), B('wheel', 'Wheel')], edges: [{ id: 'g1', type: 'sysml.Generalization', from: 'bike', to: 'wheel' }],
+    views: [{ id: 'b', diagram: 'sysml.block-definition', title: 'Blocks', nodeIds: ['bike', 'wheel'] }] }, v = m.views[0];
+  assert.ok(layout(m, 'b').families.some(f => f.id === 'b->frame'), 'the frame is drawn as b->frame');
+  const r = T.edits.rename(m, v, 'b->frame', 'Bike blocks');
+  assert.deepEqual(r, [{ op: 'set', view: 'b', path: 'title', value: 'Bike blocks' }]);
+  assert.equal(apply(m, r).views[0].title, 'Bike blocks');
+  assert.deepEqual(T.edits.rename(m, v, 'g1', 'kind of'), [{ op: 'set', id: 'g1', path: 'label', value: 'kind of' }]);
+  assert.equal(T.edits.rename(m, v, 'bike', 'Bicycle'), null, 'a block: the canvas\'s own label');
+});

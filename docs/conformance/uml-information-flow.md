@@ -25,8 +25,9 @@ of Annex A's fourteen diagram types, and tools list it as a diagram kind.
 Rules (`src/uml/information.js`), all errors, run once on the model: `conveyed-some` (UML: `conveyed` is 1..*),
 `conveyed-kind` (UML 2.5.1's `convey_classifiers`: an information item, a class, an interface, a component or a signal of
 the model), `conveyed-once` (a set), `flow-ends` (two classes, interfaces, components or actors, never an information
-item or a comment). Deleting an element drops it from every `conveyed`; Shift + Delete also takes a flow left conveying
-nothing, and says so.
+item or a comment). Deleting an element drops it from every `conveyed`, and a flow left conveying nothing goes with it,
+whatever view the delete is made on and also when the element goes with its owner (`apply()`'s cascade); Shift + Delete on
+this view says so.
 
 **Departures from UML 2.5.1:** «flow» is drawn before the label on one line, not over it (a typed line has one label
 line). A flow from an element to itself is allowed (UML does not forbid it); the PDF's lines table lists it, as it does

@@ -606,8 +606,8 @@ test('audit 18: the Owner field moves an activity with its boundary events, offe
   const lone = one([N('p', 'Participant', 'P', { members: [{ id: 'l1', type: 'bpmn.Lane', label: 'L1' }, { id: 'l2', type: 'bpmn.Lane', label: 'L2' }] }), N('q', 'Participant', 'Q'), N('t', 'Task', 'T', { parent: 'l1' })], []);
   assert.deepEqual(bzOwners(lone, lone.nodes[2]).map(o => o.id).sort(), ['l1', 'l2', 'q']);
   assert.deepEqual(bzOwner(lone, lone.views[0], 't', 'q'), [{ op: 'reparent', id: 't', parent: 'q' }]);
-  // the drop is unchanged: its boundary events with it
-  assert.equal(bzOwner(EX, V(EX), 'payment-timeout', 'bp-warehouse'), null);
+  // a boundary event moves with its activity: another owner is refused (audit 19; the field offers none)
+  assert.deepEqual(bzOwner(EX, V(EX), 'payment-timeout', 'bp-warehouse'), { error: 'A boundary event moves with its activity: move Take payment' });
 });
 
 test('audit 18: Delete on an activity hides its boundary events with it, said on the hint line', () => {
@@ -626,4 +626,30 @@ test('audit 18: Delete on an activity hides its boundary events with it, said on
   assert.deepEqual(s.commands.map(c => c.id), ['pick-pack', 'picking-starts', 'pick-books', 'pack-parcel', 'parcel-packed']);
   assert.equal(s.say, 'Hid the 4 elements shown in or on it with Pick and pack');
   assert.deepEqual(V(apply(open, s.commands)).nodeIds, V(EX).nodeIds.filter(id => id !== 'pick-pack'));
+});
+
+test('audit 19: a data association across pools is refused by connect, as a move refuses it, and is a data-ends error', () => {
+  const v = V(EX);
+  assert.deepEqual(bzConnect(EX, v, 'bp-order', 'place-order'), { error: 'Data stays in the pool of what it is associated with' });
+  assert.deepEqual(bzConnect(EX, v, 'place-order', 'bp-order'), { error: 'Data stays in the pool of what it is associated with' });
+  const ok = bzConnect(EX, v, 'bp-order', 'bp-take-payment'); // the same pool: drawn
+  assert.ok(Array.isArray(ok) && ok[0].element.type === 'bpmn.DataAssociation', JSON.stringify(ok));
+  const m = structuredClone(EX); m.edges.push({ id: 'd-x', type: 'bpmn.DataAssociation', from: 'bp-order', to: 'place-order' });
+  assert.deepEqual(errors(m).map(p => p.message), ['data-ends: d-x joins bp-order ("Order"), data of bp-bookshop ("Bookshop"), and place-order ("Place order") in bp-shopper ("Shopper"): data stays in the pool (process) of what it is associated with']);
+  // data and activities in no pool at all: nothing to keep apart
+  const free = one([N('d', 'DataObject', 'D'), N('t', 'Task', 'T')], []);
+  assert.ok(Array.isArray(bzConnect(free, V(free, 'v'), 'd', 't')));
+});
+
+test('audit 19: a boundary event has no Owner field; an owner other than its activity\'s is refused, said', () => {
+  const be = EX.nodes.find(n => n.id === 'payment-timeout'), v = V(EX);
+  assert.equal(bzOwners(EX, be), null);
+  assert.equal(T.owners(EX, be), null);
+  assert.deepEqual(bzOwner(EX, v, 'payment-timeout', 'bp-warehouse'), { error: 'A boundary event moves with its activity: move Take payment' });
+  assert.deepEqual(bzOwner(EX, v, 'payment-timeout', 'bp-sales'), [], 'where it is: nothing');
+  const lone = one([N('p', 'Participant', 'P'), N('q', 'Participant', 'Q'), N('t', 'Task', 'T', { parent: 'p' }), N('b', 'BoundaryEvent', 'B', { parent: 'p', props: { attachedTo: 't' } })], []);
+  assert.equal(bzOwners(lone, lone.nodes[3]), null);
+  assert.deepEqual(bzOwner(lone, V(lone, 'v'), 'b', 'q'), { error: 'A boundary event moves with its activity: move T' });
+  const m = structuredClone(lone); m.nodes[3].parent = 'q'; // out of line already: back to its activity's owner, the default
+  assert.equal(bzOwner(m, V(m, 'v'), 'b', 'p'), null);
 });

@@ -19,8 +19,9 @@ import { arrOf } from '../map/validate.js';
      card's pin, as before, unless the type has layout.pins false.
    - wrap(model, view, ids, kind): W, then a picker of the type's `wraps` (strings, or entries with a label).
    - add(model, view, entry, label, at): the palette and N, once the name is typed; at as for L, with sel, the ids selected.
-   - owner(model, view, id, parent): the properties panel's Owner field set to parent (null: none). Null: reparent, and the
-     removal of a pin it had, as before (a BPMN activity's boundary events move with it, audit 18).
+   - owner(model, view, id, parent): the properties panel's Owner field set to parent (null: none), and, where the type has
+     no moveTo, a card dropped into another box (parent: the box's element, else the view's subject or none). Null: reparent,
+     and the removal of a pin it had, as before (a BPMN activity's boundary events move with it, audit 18).
    - remove(model, view, ids, fromModel): Delete (fromModel false), Shift + Delete, the panel's buttons, a member row's ✕ and the outline's ✕.
    - rename(model, view, id, text): F2 or a double-click on a selected element, Enter with the text typed (I.label). Null:
      set label, as before (notes/stage-4.md §12.1). An id may be a geometry id no element has (a port on a part,
@@ -73,6 +74,9 @@ TYPED.edit = (I, c) => {
 
   I.connect = (from, to, ev, at) => base.connect(from, to, ev, at !== undefined ? at : ev ? near(...world(ev)) : keyAt());
   I.drop = (n, hint, into, from) => { const h = hook('moveTo'), dflt = () => base.drop(n, hint, into, from), dy = hint.y - (n.y + n.h / 2);
+    // no moveTo: a drop into another box is a new owner, which the owner hook guards as it guards the Owner field (cloud, audit 19)
+    const o = !h && into !== from && can('move') && hook('owner');
+    if (o) { const m = model(), v = view(); return ran(o(m, v, n.id, arrOf(m.nodes).some(x => isRec(x) && x.id === into) ? into : v.subject ?? null), dflt); }
     const g = api.geo(), col = arrOf((view() || {}).nodeIds).filter(id => id !== n.id && isRec(g.byId[id]) && g.byId[id].x + g.byId[id].w / 2 < hint.x).length;
     return h && can('move') ? ran(h(model(), view(), n.id, { ...near(hint.x, hint.y + Math.sign(dy) * n.h / 2), pt: [hint.x, hint.y], col, geo: g }), dflt) : dflt(); };
   I.addNode = i => { const h = hook('add'), t = c.nodeTypes()[i], cam = api.cam(); if (!t || !can('add') || !cam || (!h && t.name !== false)) return base.addNode(i);

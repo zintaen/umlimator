@@ -57,7 +57,7 @@ test('the definitions: gcp, azure and aws registered by the module (CLOUD_AWS on
   for (const t of ['gcp.Product', 'azure.Service', 'aws.Service', 'aws.Resource']) assert.deepEqual(T[t.split('.')[0]].props[t], [{ key: 'icon', label: 'Icon', kind: 'text' }], t);
   for (const x of Object.values(T)) {
     for (const k of ['layout', 'draw', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows']) assert.equal(typeof x[k], 'function', `${x.name} ${k}`);
-    assert.deepEqual(Object.keys(x.edits), ['connect', 'add', 'remove']);
+    assert.deepEqual(Object.keys(x.edits), ['connect', 'add', 'remove', 'owner']);
     assert.deepEqual(Object.keys(x.rules), ['group-kind', 'group-nesting', 'line-inside', 'icon-set', 'icon-missing']);
   }
 });
@@ -419,4 +419,36 @@ test('audit 18: group-nesting and group-kind pick "an" before a vowel and say a 
   assert.ok(said.some(s => s.includes('"eu-west-1a", an Availability zone group, sits in "Shop account", an Account group')), said.join('\n'));
   assert.ok(said.every(s => !/\ba [AEIOU]/.test(s) && !/null/.test(s)), said.join('\n'));
   assert.ok(said.some(s => s.startsWith('group-kind: "Bare" has no groupType')), said.join('\n'));
+});
+
+test('audit 19: a service is not moved into a group it has a line to (Owner field or drop), in connect\'s words; the Owner field leaves the group out', () => {
+  const m = { schemaVersion: 2, nodes: [
+    { id: 'proj', type: 'gcp.Zone', label: 'Shop', props: { zoneType: 'project' } },
+    { id: 'net', type: 'gcp.Zone', label: 'VPC', parent: 'proj', props: { zoneType: 'network' } },
+    { id: 'sub', type: 'gcp.Zone', label: 'data', parent: 'net', props: { zoneType: 'subnetwork' } },
+    { id: 'other', type: 'gcp.Zone', label: 'Other', parent: 'proj', props: { zoneType: 'network' } },
+    { id: 'api', type: 'gcp.Product', label: 'API', parent: 'proj', props: { icon: 'cloud-run' } },
+    { id: 'db', type: 'gcp.Product', label: 'DB', parent: 'api', props: { icon: 'cloud-sql' } }],
+  edges: [{ id: 'p1', type: 'gcp.Path', from: 'api', to: 'net', label: 'peers' }],
+  views: [{ id: 'v', diagram: 'gcp', nodeIds: ['proj', 'net', 'sub', 'other', 'api'] }] }, V = m.views[0], G = T.gcp;
+  const errs = x => validate(x).filter(p => p.level === 'error').map(p => p.message);
+  assert.deepEqual(errs(m), []);
+  assert.equal(G.edits.connect(m, V, 'api', 'net'), null, 'the line itself is allowed: neither holds the other');
+  const refused = { error: 'A line cannot join the network and what it holds' };
+  assert.deepEqual(G.edits.owner(m, V, 'api', 'net'), refused);
+  assert.deepEqual(G.edits.owner(m, V, 'api', 'sub'), refused, 'into a group inside it: the network would hold it all the same');
+  assert.equal(G.edits.owner(m, V, 'api', 'other'), null, 'another group: the default reparent');
+  assert.equal(G.edits.owner(m, V, 'api', null), null);
+  assert.deepEqual(errs(apply(m, [{ op: 'reparent', id: 'api', parent: 'other' }])), []);
+  // what it holds counts too: a line from the db inside api to the network
+  const m2 = structuredClone(m); m2.edges[0] = { id: 'p1', type: 'gcp.Path', from: 'db', to: 'net' };
+  assert.deepEqual(G.edits.owner(m2, V, 'api', 'net'), refused);
+  assert.deepEqual(G.owners(m, m.nodes.find(n => n.id === 'api')).map(o => o.id), ['proj', 'other']);
+  assert.deepEqual(G.owners(m, m.nodes.find(n => n.id === 'db')).map(o => o.id), ['proj', 'net', 'sub', 'other'], 'db has no line: every group');
+});
+
+test('audit 19: a group with no kind is told to take one, not said to be one', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'shop', type: 'gcp.Zone', label: 'Shop' }], views: [{ id: 'v', diagram: 'gcp', nodeIds: ['shop'] }] };
+  assert.deepEqual(validate(m).filter(p => p.rule === 'group-kind').map(p => p.message),
+    ['group-kind: "Shop" has no zoneType: give it one of project, region, zone, network, subnetwork, generic']);
 });

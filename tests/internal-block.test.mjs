@@ -360,3 +360,17 @@ test('audit 17: an anonymous part, drawn ": Battery [1]", is said and printed as
   assert.deepEqual(T.edits.rename(m, V, 'ebike.battery', ': Battery [2]'), [{ op: 'set', id: 'ebike.battery', path: 'props.multiplicity', value: '2' }]);
   assert.deepEqual(T.edits.rename(m, V, 'ebike.battery', 'pack : Battery [1]'), [{ op: 'set', id: 'ebike.battery', path: 'label', value: 'pack' }]);
 });
+
+test('audit 19: a row keeps its member\'s kind both ways: ref or port taken off is refused, said, as ref or port put on is', () => {
+  const V = RICH.views[0], said = (owner, id, text) => T.edits.member(RICH, V, owner, id, text);
+  assert.deepEqual(said('ebike', 'ebike.dock', 'dock : Dock [0..1]'), { error: 'A row keeps its member\'s kind: delete dock and add a part row' });
+  assert.deepEqual(said('ebike', 'ebike.dock', 'dock2 : Dock [0..1]'), { error: 'A row keeps its member\'s kind: delete dock and add a part row' }, 'a new name with it: refused, not renamed quietly');
+  assert.deepEqual(said('dock', 'dock.charge', 'charge : ChargeInterface'), { error: 'A row keeps its member\'s kind: delete charge and add a part row' });
+  assert.deepEqual(said('ebike', 'ebike.battery', 'ref battery : Battery'), { error: 'A row keeps its member\'s kind: delete battery and add a ref row' });
+  // each row as printed still reads as itself: nothing to say
+  for (const [owner, x] of RICH.nodes.flatMap(n => (n.members || []).map(x => [n.id, x])).filter(([, x]) => ['sysml.PartProperty', 'sysml.ReferenceProperty', 'sysml.ValueProperty', 'sysml.Port'].includes(x.type))) {
+    const r = said(owner, x.id, T.member.print(x)); assert.ok(Array.isArray(r) && !r.length, `${x.id}: ${JSON.stringify(r)}`); }
+  const anon = structuredClone(RICH), p = anon.nodes.flatMap(n => n.members || []).find(x => x.type === 'sysml.Port'); delete p.label; // a port with no name: "port : Type"
+  const owner = anon.nodes.find(n => (n.members || []).includes(p)).id;
+  assert.doesNotMatch(String(Object(T.edits.member(anon, anon.views[0], owner, p.id, T.member.print(p))).error), /keeps its member's kind/, 'still a port row');
+});
