@@ -91,11 +91,11 @@ test('multiplicities: n, *, n..m, n..*, read into bounds, the text kept as writt
 
 test('a member edited as text: one transaction that sets its label and its props, keeping the props the syntax does not write', () => {
   const m = { id: 'o.t', type: 'uml.Property', label: 'total', props: { visibility: 'public', valueType: 'Money', stereotypes: ['id'], isDerived: true } };
-  const r = memberEdit(m, '- total: Decimal [0..1]');
+  const r = memberEdit(m, '«id» - total: Decimal [0..1]'); // its stereotypes are its text's too (audit 16)
   assert.deepEqual(r.commands, [{ op: 'set', id: 'o.t', path: 'label', value: 'total' },
     { op: 'set', id: 'o.t', path: 'props', value: { stereotypes: ['id'], visibility: 'private', valueType: 'Decimal', multiplicity: '0..1' } }]);
   const model = { schemaVersion: 2, nodes: [{ id: 'o', type: 'uml.Class', label: 'O', members: [m] }], views: [] };
-  assert.equal(printMember(apply(model, r.commands).nodes[0].members[0]), '- total: Decimal [0..1]');
+  assert.equal(printMember(apply(model, r.commands).nodes[0].members[0]), '«id» - total: Decimal [0..1]');
   assert.ok(memberEdit(m, '+ total Money').error, 'nothing to apply');
   assert.ok(memberEdit(m, 'go()').error, 'a property stays a property');
 });
@@ -472,4 +472,16 @@ test('audit 15: F2 on a line the view owns (an object in view.edges) edits its l
     const m2 = apply(m, T.edits.rename(m, m.views[0], 'e', drawn + ' y'));
     assert.equal(layout(m2, 'v').edges[0].label, drawn + ' y', m.views[0].diagram);
   }
+});
+
+test('audit 16: a member\'s stereotypes are drawn before its row, printed for the PDF and the panel, and read back', async () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'order', type: 'uml.Class', label: 'Order', props: { stereotypes: ['entity'] }, members: [
+    { id: 'order.id', type: 'uml.Property', label: 'id', props: { valueType: 'UUID', stereotypes: ['id'] } },
+    { id: 'order.place', type: 'uml.Operation', label: 'place', props: { stereotypes: ['command'] } }] }],
+  edges: [], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['order'] }] };
+  const svg = String((await import('../src/draw/svg.js')).svgOf(mapContext(m).buildGeo('v')));
+  for (const w of ['«id» id: UUID', '«command» place()']) assert.ok(svg.includes(w), w);
+  assert.equal(printMember(m.nodes[0].members[0]), '«id» id: UUID');
+  assert.deepEqual(parseMember('«id» «key» - id: UUID'), { type: 'uml.Property', label: 'id', props: { stereotypes: ['id', 'key'], visibility: 'private', valueType: 'UUID' } });
+  assert.deepEqual(memberEdit(m.nodes[0].members[0], 'id: UUID').commands[1].value, { valueType: 'UUID' }, 'taking «id» off the text drops it');
 });

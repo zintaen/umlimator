@@ -446,3 +446,16 @@ test('audit 14: a raw hide of a lifeline drops it from the covers of the view\'s
   assert.deepEqual(errors(after), []);
   assert.deepEqual(at(after, 'f3').props.covers, ['lifeline-payments', 'receipt']);
 });
+
+test('audit 16: a lifeline created in each operand of an alt gets a head at each create, which ends on it', () => {
+  const M = (id, from, to, sort, parent) => ({ id, type: 'uml.Message', from, to, label: id, parent, props: { sort } });
+  const m = { schemaVersion: 2, nodes: ['A', 'B'].map(id => ({ id, type: 'uml.Lifeline', label: id })), edges: [],
+    views: [{ id: 'v', diagram: 'uml.sequence', nodeIds: ['A', 'B'],
+      edges: [M('c1', 'A', 'B', 'create', 'o1'), M('x1', 'A', 'B', 'call', 'o1'), M('c2', 'A', 'B', 'create', 'o2'), M('x2', 'A', 'B', 'call', 'o2')],
+      fragments: [{ id: 'f', type: 'uml.CombinedFragment', props: { operator: 'alt' }, members: [{ id: 'o1', type: 'uml.InteractionOperand', label: 'a' }, { id: 'o2', type: 'uml.InteractionOperand', label: 'else' }] }] }] };
+  const g = layout(m, 'v'), H = g.ta.heads.find(h => h.id === 'B'), l = id => g.ta.lines.find(x => x.id === id).pts;
+  assert.equal(H.again.length, 1);
+  assert.equal(l('c2')[1][0], l('c1')[1][0], 'the second create ends on a head edge too');
+  assert.equal(l('c2')[1][1], H.again[0] + H.h / 2, 'at its head\'s middle');
+  assert.equal(g.nodes.find(n => n.id === 'B').again.length, 1);
+});

@@ -351,6 +351,15 @@ ok("a U+2028 in a label does not split its line (Mermaid, Structurizr DSL)", car
 m, un = imp.read("mermaid", "flowchart LR\nsubgraph\nA --> B\nend\nB --> C\n", "x")
 ok("mermaid · a bare subgraph is a box (Mermaid's subGraph0), not a card", [n["id"] for n in m["nodes"]] == ["A", "B", "C"]
    and box(m, "flowchart", "subGraph0").get("nodeIds") == ["A", "B"] and not un, (m, un))
+# audit 16: an outer subgraph with no end left its inner box's parent unknown; a subgraph id used twice (after or inside
+# itself) wrote two boxes of one id, or a box inside itself; render refused all three
+boxes_of = lambda m: [v.get("containers") for v in m["views"]][0]
+m, un = imp.read("mermaid", "flowchart LR\nsubgraph core [Order core]\nsubgraph pay [Payments]\ncard[Card]\nend\nstock[Stock]\ncard --> stock\n", "x")
+ok("mermaid · an inner box of a subgraph with no end is drawn at the top level", boxes_of(m) == [{"id": "pay", "label": "Payments", "nodeIds": ["card"]}]
+   and any("core has no end" in u[1] for u in un), (m, un))
+m, un = imp.read("mermaid", "flowchart LR\nsubgraph pay [Payments]\ncard\nend\nsubgraph pay [Again]\nfraud\nend\nsubgraph api\nsubgraph api\nh\nend\nr\nend\n", "x")
+ok("mermaid · a subgraph opened again, after or inside itself, is one box, with no parent of its own id",
+   boxes_of(m) == [{"id": "pay", "label": "Payments", "nodeIds": ["card", "fraud"]}, {"id": "api", "label": "api", "nodeIds": ["h", "r"]}], (m, un))
 m, un = imp.read("mermaid", "flowchart LR\naccDescr {\nCheckout\nA --> Z\n}\nA --> B\n", "x")
 c4m, c4un = imp.read("mermaid", 'C4Context\naccDescr {\nPerson(x, "y")\n}\nPerson(a, "A")\n', "x")
 ok("mermaid · an accDescr { ... } block is passed over whole (flowchart, C4)", [n["id"] for n in m["nodes"]] == ["A", "B"]

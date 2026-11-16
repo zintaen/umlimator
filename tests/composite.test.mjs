@@ -306,7 +306,7 @@ test('rename: F2 on a port on a part renames its class\'s port (said), keeping i
   assert.deepEqual(r, { commands: [{ op: 'set', id: 'checkout-class.quotes', path: 'label', value: 'prices' }], say: 'Renamed CheckoutFlow\'s port: every part of that type shows it' });
   assert.deepEqual(T.edits.rename(CS, V, 'order-service.pricing', 'pricer : PriceCalculator [0..1]'), [{ op: 'set', id: 'order-service.pricing', path: 'label', value: 'pricer' }, { op: 'set', id: 'order-service.pricing', path: 'props.multiplicity', value: '0..1' }]);
   assert.ok(T.edits.rename(CS, V, 'order-service.pricing', ': x').error);
-  assert.equal(T.edits.rename(CS, V, 'order-events', 'x'), null);
+  assert.deepEqual(T.edits.rename(CS, V, 'order-events', 'x'), [{ op: 'set', id: 'order-events', path: 'label', value: 'x' }], 'a collaboration use: name : Collaboration (audit 16)');
 });
 
 test('member rows (edits.member): on the subject `port name : Type` is a port and any other row a part; on a collaboration a role; an edit keeps the member\'s kind', () => {
@@ -558,4 +558,21 @@ test('audit 16: the PDF cover counts a view\'s own line apart from a model line 
     views: [{ id: 'one', nodeIds: ['a', 'b'] }, { id: 'two', nodeIds: ['a', 'b'], edges: [{ from: 'a', to: 'b', label: 'cancels order' }] }] };
   const c = mapContext(m), ids = c.views.flatMap(v => tablesOf(c, v, c.buildGeo(v.id)).lineIds);
   assert.equal(new Set(ids).size, 2, ids);
+});
+
+test('audit 16: an anonymous part is named ": Engine [1]" by its ports, connectors and bindings; F2 on a collaboration use and on the subject\'s port', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'E', type: 'uml.Class', label: 'Engine', members: [{ id: 'E.in', type: 'uml.Port', label: 'in' }] },
+    { id: 'S', type: 'uml.Class', label: 'Service', members: [P('S.p', undefined, { props: { valueType: 'Engine', multiplicity: '1' } }), { id: 'S.in', type: 'uml.Port', label: 'in', props: { valueType: 'Old' } }] },
+    { id: 'u', type: 'uml.CollaborationUse', parent: 'S', props: { collaboration: 'PubSub' } }],
+  edges: [{ id: 'c', type: 'uml.Connector', from: 'S.in', to: 'E.in', props: { ends: { to: { part: 'S.p' } } } }, { id: 'b', type: 'uml.RoleBinding', from: 'S.p', to: 'u', label: 'publisher' }],
+  views: [{ id: 'v', diagram: 'uml.composite-structure', nodeIds: ['S', 'u'], subject: 'S' }] };
+  const text = describe(m, 'v');
+  assert.doesNotMatch(text, /S\.p/, text);
+  assert.match(text, /in of : Engine \[1\]/);
+  const v = m.views[0];
+  assert.equal(layout(m, 'v').nodes.find(n => n.id === 'u').label, ': PubSub', 'no leading space');
+  assert.deepEqual(T.edits.rename(m, v, 'u', ': PubSub'), [], 'F2 unchanged');
+  assert.deepEqual(T.edits.rename(m, v, 'u', 'events : PubSub'), [{ op: 'set', id: 'u', path: 'label', value: 'events' }]);
+  assert.deepEqual(T.edits.rename(m, v, 'S.in', 'in : Request'), [{ op: 'set', id: 'S.in', path: 'props.valueType', value: 'Request' }]);
+  assert.deepEqual(T.edits.rename(m, v, 'S.in', 'out'), [{ op: 'set', id: 'S.in', path: 'label', value: 'out' }], 'a name alone keeps the type');
 });

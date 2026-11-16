@@ -178,7 +178,7 @@ function bdPrint(m) {
   const w = m.type === 'sysml.Port' ? (BD_HAS(kind) ? kind + ' port' : 'port') : m.type === 'sysml.FlowProperty' ? (BD_HAS(direction) ? String(direction) : 'inout') : BD_WORDS[m.type] || 'value';
   return `${w} ${printMember({ type: 'uml.Property', label: m.label, props: p })}`;
 }
-const BD_SYNTAX = ['visibility', 'valueType', 'multiplicity', 'default', 'isStatic', 'isDerived', 'isAbstract', 'parameters', 'returnType', 'kind', 'direction'];
+const BD_SYNTAX = ['stereotypes', 'visibility', 'valueType', 'multiplicity', 'default', 'isStatic', 'isDerived', 'isAbstract', 'parameters', 'returnType', 'kind', 'direction'];
 // a member row edited: one transaction, its kind too when the keyword changed it; props the syntax does not write are kept
 function bdEdit(model, owner, m, text) {
   const r = bdParse(text, owner, model); if (r.error) return r;

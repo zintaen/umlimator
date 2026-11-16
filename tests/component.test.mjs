@@ -391,3 +391,12 @@ test('audit 15: a kind outside the view\'s is drawn as a classifier with its key
   for (const w of ['«node»', '«actor»', '«rest» api', '«remote» Orders', '«local»', '«library»']) assert.ok(svg.includes(w), w);
   assert.match(describe(m, 'v'), /^Artifact shop\.jar \(library\)\.$/m);
 });
+
+test('audit 16: F2 on a component\'s port reads name : Type; a name alone keeps the type', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'P', type: 'uml.Component', label: 'Provider', members: [{ id: 'P.api', type: 'uml.Port', label: 'api', props: { valueType: 'Old' } }] }],
+    edges: [], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['P'] }] };
+  const v = m.views[0];
+  assert.deepEqual(T.edits.rename(m, v, 'P.api', 'api : Rest'), [{ op: 'set', id: 'P.api', path: 'props.valueType', value: 'Rest' }]);
+  assert.deepEqual(T.edits.rename(m, v, 'P.api', 'web'), [{ op: 'set', id: 'P.api', path: 'label', value: 'web' }]);
+  assert.ok(T.edits.rename(m, v, 'P.api', ' : X').error);
+});

@@ -5,7 +5,7 @@ import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import './class.js'; // SHAPE.note, a comment
-import { FLOW_CONTROL, FLOW_RULES, flowProblems, flowText, parseFlow } from './flow.js';
+import { FLOW_CONTROL, FLOW_RULES, flowProblems, flowText, flowLabel, flowRename, flowStereo } from './flow.js';
 import { frameTag, tagSize, useSize } from './frame.js';
 import { interactionWalk } from './interaction.js';
 import { sqDraw, sqRun } from './sequence.js';
@@ -118,7 +118,7 @@ function ovNodeName(model, I, x, ins, outs, sd) {
 }
 const ovFlowName = (I, e) => { const g = OV_PROPS(e).guard;
   return e.type === 'uml.CommentLink' ? `Comment link from ${ovNm(I, e.from)} to ${ovNm(I, e.to)}`
-    : `Control flow from ${ovNm(I, e.from)} to ${ovNm(I, e.to)}${OV_HAS(e.label) ? ', ' + e.label : ''}${OV_HAS(g) ? ', guard ' + g : ''}`; };
+    : `Control flow from ${ovNm(I, e.from)} to ${ovNm(I, e.to)}${flowStereo(e).length ? ', ' + flowStereo(e).join(' ') : ''}${OV_HAS(e.label) ? ', ' + e.label : ''}${OV_HAS(g) ? ', guard ' + g : ''}`; };
 
 /* ---- the legend: each line kind drawn, then each control glyph, by its node type (§14) ---- */
 const ovLegendItem = (svg, name, says) => `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true">${svg}</svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`;
@@ -146,7 +146,7 @@ function ovGeo({ model, view, pos, memo }) {
   const ins = new Map(), outs = new Map(), bump = (m, id) => m.set(id, (m.get(id) || 0) + 1);
   I.flows.forEach(e => { bump(outs, e.from); bump(ins, e.to); });
   const bar = id => I.el(id).type === 'uml.ForkNode' || I.el(id).type === 'uml.JoinNode';
-  const nodes = I.ids.map(id => { const x = I.el(id), shape = ovOwn(OV_SHAPE, x.type) || 'rounded', d = { id, label: OV_HAS(x.label) ? String(x.label) : '', type: x.type, kind: 'file', shape, col: at(id)[0], row: at(id)[1] };
+  const nodes = I.ids.map(id => { const x = I.el(id), shape = ovOwn(OV_SHAPE, x.type) || 'rounded', d = { id, label: [...(['diamond', 'ov-use', 'ov-inline'].includes(shape) ? ovStereo(x).map(t => `«${t}»`) : []), ...(OV_HAS(x.label) ? [String(x.label)] : [])].join(' '), type: x.type, kind: 'file', shape, col: at(id)[0], row: at(id)[1] };
     const sd = x.type === 'uml.Interaction' ? ovInline(model, I, x) : null;
     d.aria = ovNodeName(model, I, x, ins.get(id) || 0, outs.get(id) || 0, sd); d.saysOpens = x.type === 'uml.InteractionUse' || x.type === 'uml.Interaction' && !sd;
     if (shape === 'rounded') d.stereotypes = ovStereo(x);
@@ -156,7 +156,7 @@ function ovGeo({ model, view, pos, memo }) {
     return { ...d, ...SHAPE[shape].size(d) }; });
   const edges = I.lines.map(e => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, aria: ovFlowName(I, e), ...(OV_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}),
     ...(e.type === 'uml.CommentLink' ? { end: { from: 'none', to: 'none', dashed: true } }
-      : { end: { from: 'none', to: 'open' }, label: flowText(e.label, OV_PROPS(e).guard) || undefined, cut: 280, ...(bar(e.from) ? { fromSide: 'right' } : {}), ...(bar(e.to) ? { toSide: 'left' } : {}) }) }));
+      : { end: { from: 'none', to: 'open' }, label: flowLabel(e) || undefined, cut: 280, ...(bar(e.from) ? { fromSide: 'right' } : {}), ...(bar(e.to) ? { toSide: 'left' } : {}) }) }));
   // a typed view makes no room for a label (layoutGraph's labelRoom is a map's). A row's nodes share its top, not their middle,
   // so a flow between two of different heights jogs halfway across the gap, and its label sits on one half, clear of the
   // nodes' stubs (22 px): the gap is twice that and the widest label laid out right, its 18 px height laid out down.
@@ -236,9 +236,7 @@ function ovAdd(model, view, entry, label, at) {
 function ovRename(model, view, id, text) {
   const e = OV_ARR(model && model.edges).find(x => OV_OBJ(x) && x.id === id);
   if (!e || e.type !== 'uml.ControlFlow') return null;
-  const p = parseFlow(text); if (p.error) return p;
-  const now = { label: OV_HAS(e.label) ? String(e.label) : undefined, 'props.guard': OV_HAS(OV_PROPS(e).guard) ? String(OV_PROPS(e).guard) : undefined };
-  return [['label', p.name], ['props.guard', p.guard]].filter(([k, v]) => now[k] !== v).map(([path, value]) => ({ op: 'set', id, path, value }));
+  return flowRename(e, text);
 }
 
 /* ---- the type ---- */
@@ -251,7 +249,8 @@ const OVERVIEW_TYPE = registerDiagramType('uml.interaction-overview', {
     ['MergeNode', 'Merge', { name: false }], ['ForkNode', 'Fork', { name: false }], ['JoinNode', 'Join', { name: false }], ['InteractionUse', 'Interaction use', { opens: 'uml.sequence' }],
     ['Interaction', 'Inline interaction', { opens: 'uml.sequence' }], ['Comment', 'Comment']].map(([t, label, more]) => ({ type: 'uml.' + t, label, ...more })),
   lines: [{ type: 'uml.ControlFlow', label: 'Control flow' }, { type: 'uml.CommentLink', label: 'Comment link' }],
-  props: { ...Object.fromEntries(OV_NODES.map(t => [t, [OV_STEREO]])), 'uml.ControlFlow': [{ key: 'guard', label: 'Guard', kind: 'text' }, OV_STEREO], 'uml.CommentLink': [] },
+  // Stereotypes on every element but a glyph with no text (initial, final, a bar), which draws none (audit 16)
+  props: { ...Object.fromEntries(OV_NODES.map(t => [t, ['initial', 'final', 'flow-final', 'bar'].includes(OV_SHAPE[t]) ? [] : [OV_STEREO]])), 'uml.ControlFlow': [{ key: 'guard', label: 'Guard', kind: 'text' }, OV_STEREO], 'uml.CommentLink': [] },
   layout: ovGeo,
   member: { holds: () => false }, // nothing here has members
   validate: ovProblems,

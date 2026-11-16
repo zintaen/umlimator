@@ -6,7 +6,8 @@ import { r2 } from '../draw/shapes.js';
    what its shapes draw). Only lib/umlimator-all.js holds this file.
 
    input = {
-     heads:  [{ id, w, h, born, ends, kills }],  lifelines, left to right; born, ends: the row that creates it, deletes it;
+     heads:  [{ id, w, h, born, again, ends, kills }],  lifelines, left to right; born, ends: the row that creates it, deletes it;
+                                                  again: the rows of later creates (each in another operand), a head each
                                                   kills: the rows of other deletes, a cross each on a stem that runs on
      rows:   [{ id, kind, a, b, w, h, parent }],  occurrences in time order (an index here is an index into view.edges).
                                                   kind 'line' (head a to head b), 'self' (a), 'span' (heads a to b: an
@@ -15,7 +16,7 @@ import { r2 } from '../draw/shapes.js';
      groups: [{ id, parent, tag: { w, h }, parts: [{ id, guard: { w, h } }] }],  fragments, outermost first; parts: operands
      bars:   [{ head, from, to, depth }],         activations by row (src/uml/interaction.js); depth 1 is the outermost
    }
-   out = { heads: [{ id, x, y, w, h }], stems: [{ head, x, y1, y2, cross, kills?: [y], gaps: [{ y1, y2 }] }],
+   out = { heads: [{ id, x, y, w, h, again?: [y] }], stems: [{ head, x, y1, y2, cross, kills?: [y], gaps: [{ y1, y2 }] }],
            bars: [{ head, depth, x, y, w, h }], frames: [{ id, x, y, w, h, dividers: [{ part, y }], parts: [{ id, x, y, w, h, gx, gy }] }],
            spans: [{ id, x, y, w, h }], lines: [{ id, pts, lbl }], slots: [{ index, y, parent, after }], bounds, problems }
    A frame's tag is drawn at its top left corner; a part's guard at (gx, gy). Bars come deepest last, to be drawn in order.
@@ -42,6 +43,7 @@ function layoutTimeAxis(input = {}) {
   const col = new Map(heads.map((h, j) => [h.id, j])), cw = heads.map(h => Math.min(TA.cut, taNum(h.w))), hh = heads.map(h => taNum(h.h));
   const rowOk = i => Number.isInteger(i) && i >= 0 && i < rows.length;
   const born = heads.map(h => (h.born == null ? null : rowOk(h.born) ? h.born : (say('warning', `lifeline ${h.id}: born at row ${h.born}, which is not a row: drawn at the top`, [h.id]), null)));
+  const again = heads.map(h => new Set(taArr(h.again).filter(rowOk))), made = (j, i) => born[j] === i || again[j].has(i); // a row that creates head j
   const ends = heads.map(h => (h.ends == null ? null : rowOk(h.ends) ? h.ends : (say('warning', `lifeline ${h.id}: ends at row ${h.ends}, which is not a row: its stem runs on`, [h.id]), null)));
 
   // operands: each one's fragment and place in it
@@ -109,7 +111,7 @@ function layoutTimeAxis(input = {}) {
     const w = taNum(r.w), h = taNum(r.h), it = { r, ri, kind: r.kind === 'span' ? 'span' : self ? 'self' : 'line', a: Math.min(ia, ib), b: Math.max(ia, ib), from: ia, to: ib, w, h, top: y };
     if (it.kind === 'span') { it.y = y; it.yb = y + h; y += h; }
     else if (it.kind === 'self') { it.y = y + TA.above; it.yb = it.y + Math.max(TA.drop, h); y = it.yb + TA.after; }
-    else { const nb = born[ib] === ri ? hh[ib] / 2 : 0; it.y = Math.max(y + h + TA.above, y + nb); it.yb = it.y; y = Math.max(it.y + TA.after, it.y + nb); }
+    else { const nb = made(ib, ri) ? hh[ib] / 2 : 0; it.y = Math.max(y + h + TA.above, y + nb); it.yb = it.y; y = Math.max(it.y + TA.after, it.y + nb); }
     open.forEach(O => { O.fr.lo = Math.min(O.fr.lo, it.a); O.fr.hi = Math.max(O.fr.hi, it.b); });
     it.up = L ? L.fr : null; if (it.up && it.kind === 'span') it.up.kids.push(it);
     R.push(it); ri++;
@@ -125,8 +127,8 @@ function layoutTimeAxis(input = {}) {
     if (!ok) say('warning', `a bar on ${b.head} from row ${b.from} to row ${b.to}: ${b.j == null ? 'not a lifeline here' : 'its rows are not drawn, or end before they start'}: not drawn`, [b.head]);
     return ok; });
   const depth = heads.map((_, j) => Math.max(1, ...bars.filter(b => b.j === j).map(b => b.d)));
-  const solidL = heads.map((_, j) => Math.max(TA.bar / 2, born[j] != null ? cw[j] / 2 : 0));
-  const solidR = heads.map((_, j) => Math.max(TA.bar / 2 + (depth[j] - 1) * TA.step, born[j] != null ? cw[j] / 2 : 0));
+  const solidL = heads.map((_, j) => Math.max(TA.bar / 2, born[j] != null || again[j].size ? cw[j] / 2 : 0));
+  const solidR = heads.map((_, j) => Math.max(TA.bar / 2 + (depth[j] - 1) * TA.step, born[j] != null || again[j].size ? cw[j] / 2 : 0));
   const reachR = solidR.map((s, j) => Math.max(s, ...R.filter(it => it && it.kind === 'self' && it.a === j).map(it => s + TA.loop + TA.room + it.w)));
   const adj = heads.map((_, j) => (j ? Math.max((cw[j - 1] + cw[j]) / 2 + TA.gap, reachR[j - 1] + TA.room + solidL[j]) : 0));
   const far = []; // [i, k, need]: X[k] - X[i] >= need
@@ -161,13 +163,14 @@ function layoutTimeAxis(input = {}) {
     return { head: b.head, depth: b.d, j: b.j, y0, y1, x: X[b.j] + (b.d - 1) * TA.step - TA.bar / 2 }; }).sort((a, b) => a.depth - b.depth);
   const active = (j, at) => outBars.filter(b => b.j === j && b.y0 <= at + .5 && at - .5 <= b.y1).pop() || null; // the deepest
   const side = (j, b, dir) => (b ? X[j] + (b.depth - 1) * TA.step + dir * TA.bar / 2 : X[j]);
-  const outHeads = heads.map((h, j) => ({ id: h.id, x: r2(X[j] - cw[j] / 2), y: r2(born[j] != null && R[born[j]] ? yOf(born[j]) - hh[j] / 2 : TA.top), w: r2(cw[j]), h: r2(hh[j]) }));
+  const outHeads = heads.map((h, j) => { const ys = [...again[j]].filter(i => R[i] && i !== born[j]).map(i => r2(yOf(i) - hh[j] / 2));
+    return { id: h.id, x: r2(X[j] - cw[j] / 2), y: r2(born[j] != null && R[born[j]] ? yOf(born[j]) - hh[j] / 2 : TA.top), w: r2(cw[j]), h: r2(hh[j]), ...(ys.length ? { again: ys } : {}) }; });
   const lines = [];
   R.forEach(it => { if (!it || it.kind === 'span') return;
     if (it.kind === 'self') { const j = it.a, sx = side(j, active(j, it.y), 1), ex = side(j, active(j, it.yb), 1), lx = Math.max(sx, ex) + TA.loop;
       it.pts = [[sx, it.y], [lx, it.y], [lx, it.yb], [ex, it.yb]]; it.lbl = { x: lx + TA.room, y: it.y + (it.yb - it.y - it.h) / 2, w: it.w, h: it.h }; }
     else { const dir = Math.sign(it.to - it.from), sx = side(it.from, active(it.from, it.y), dir);
-      const ex = born[it.to] === it.ri ? X[it.to] - dir * cw[it.to] / 2 : side(it.to, active(it.to, it.y), -dir);
+      const ex = made(it.to, it.ri) ? X[it.to] - dir * cw[it.to] / 2 : side(it.to, active(it.to, it.y), -dir);
       const n = it.from + dir, near = n === it.to ? ex : dir > 0 ? X[n] - solidL[n] : X[n] + solidR[n], cx = (sx + near) / 2;
       it.pts = [[sx, it.y], [ex, it.y]]; it.lbl = { x: cx - it.w / 2, y: it.y - TA.above - it.h, w: it.w, h: it.h }; }
     lines.push({ id: it.r.id, ri: it.ri, pts: it.pts.map(p => p.map(r2)), lbl: { x: r2(it.lbl.x), y: r2(it.lbl.y), w: r2(it.w), h: r2(it.h) } }); });

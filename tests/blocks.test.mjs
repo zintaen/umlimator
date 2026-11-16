@@ -252,7 +252,7 @@ test('the panel\'s member rows (edits.member): New member adds the kind read, a 
   assert.deepEqual(k, [{ op: 'set', id: 'dock.charge', path: 'label', value: 'charge' }, { op: 'set', id: 'dock.charge', path: 'props', value: { valueType: '~ChargeInterface', kind: 'proxy' } }]);
   assert.deepEqual(validate(apply(M17, k)), []);
   const s = structuredClone(M17); mem(s, 'motor.ratedPower').props.stereotypes = ['measured'];
-  assert.deepEqual(T.edits.member(s, s.views[0], 'motor', 'motor.ratedPower', 'value ratedPower: Power = 250').commands.at(-1).value, { stereotypes: ['measured'], valueType: 'Power', default: '250' }, 'props the syntax does not write are kept');
+  assert.deepEqual(T.edits.member(s, s.views[0], 'motor', 'motor.ratedPower', 'value «measured» ratedPower: Power = 250').commands.at(-1).value, { stereotypes: ['measured'], valueType: 'Power', default: '250' }, 'props the syntax does not write are kept');
   // the model-less fallbacks the panel uses when no hook answers
   assert.deepEqual(T.member.add('part p: X', by(M17, 'ebike')), { type: 'sysml.PartProperty', label: 'p', props: { valueType: 'X' } });
   assert.deepEqual(T.member.edit(mem(M17, 'ebike.wheels'), 'wheels: Wheel [3]').commands[0], { op: 'set', id: 'ebike.wheels', path: 'type', value: 'sysml.ValueProperty' });

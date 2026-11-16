@@ -40,12 +40,14 @@ const frameNode = (n, shape, said, inner) => `<g class="node ${shape}" data-id="
 SHAPE.lifeline = {
   size: n => SHAPE.classifier.size({ ...n, compartments: [] }),
   draw(n, c, f) {
-    const head = SHAPE.classifier.draw({ ...n, compartments: [], type: n.type || 'uml.Lifeline' }, c, f), S = n.stem, cuts = [];
+    const one = y => SHAPE.classifier.draw({ ...n, y, compartments: [], type: n.type || 'uml.Lifeline' }, c, f), head = one(n.y), S = n.stem, cuts = [];
+    // a head again at each later create's row (n.again: its tops; audit 16), over the stem, inside this lifeline's group
+    const again = (Array.isArray(n.again) ? n.again : []).map(y => one(y).replace(/^<g [^>]*>|<\/g>$/g, '').replace(/ data-o="[^"]*"/g, '')).join('');
     if (S) { let at = S.y1; [...(S.gaps || []), { y1: S.y2, y2: S.y2 }].forEach(g => { if (g.y1 > at) cuts.push(`M${r2(S.x)} ${r2(at)}V${r2(g.y1)}`); at = Math.max(at, g.y2); }); }
     const strip = cuts.length ? `<path d="${cuts.join('')}" class="ll-hit" fill="none" stroke="transparent" stroke-width="${2 * TA.hit}"/>` : '';
     // the classifier's group, named a lifeline, with the strip inside it
     return head.replace('class="node classifier"', 'class="node lifeline"').replace('data-shape="classifier"', 'data-shape="lifeline"')
-      .replace(/aria-label="[^"]*"/, m => (n.aria ? `aria-label="${esc(n.aria)}"` : m)).replace(/<\/g>$/, strip + '</g>');
+      .replace(/aria-label="[^"]*"/, m => (n.aria ? `aria-label="${esc(n.aria)}"` : m)).replace(/<\/g>$/, again + strip + '</g>');
   },
 };
 SHAPE.frame = {

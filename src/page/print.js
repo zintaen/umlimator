@@ -149,7 +149,9 @@ function tablesOf({ D, N, nodeIn, viewEdges }, v, g) {
   const at = idTable(Object.fromEntries(g.nodes.map(n => [n.id, n]))), ids = cards(v), es = viewEdges(v).filter(e => (typed ? wk.has(e._id) || at[e._id] : e.from !== e.to)), seq = v.render === 'sequence', stepped = es.some(e => e.step != null); // a typed view's: those its type draws, a self-line too (a communication message is drawn as a row); a map draws no self-loop
   if (typed) { const have = new Set(es.map(e => e._id)); // and a line its type draws to an end's owner (a member's, a port's), between the owners
     const M = new Map(arrOf(D.edges).filter(Boolean).map(x => [x._id, x]));
-    g.edges.forEach(d => edgeRefIds(d).forEach(id => { const e = M.get(id); if (e && !have.has(id)) { have.add(id); es.push({ ...e, from: d.from, to: d.to }); } })); }
+    g.edges.forEach(d => edgeRefIds(d).forEach(id => { const e = M.get(id); if (e && !have.has(id)) { have.add(id); es.push({ ...e, from: d.from, to: d.to }); } }));
+    // a line its type implies (C4's, from relationships between what the view's elements hold): one row, as drawn
+    g.edges.forEach(d => { if (Array.isArray(d.implied) && !have.has(d._id)) { have.add(d._id); es.push({ _id: d._id, from: d.from, to: d.to, label: d.label, type: 'Implied' + String(d.type).split('.').pop() }); } }); }
   // an open package's qualified name, its title less its «stereotypes» (owners.js); not a frame's title ("ibd [Block] EBike")
   const boxName = f => { const t = f && typeof f.title === 'string' ? f.title.replace(/^(«[^»]*» )+/, '') : ''; return t.endsWith('::' + f?.label) ? t : undefined; };
   const drawn = id => (typed && (at[id]?.label ?? boxName((g.families || []).find(f => f.id === id)))) || nodeIn(id, v.id).label || id; // a typed view's drawn name: sales::Order

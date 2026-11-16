@@ -316,10 +316,13 @@ function readMermaidClass(text) {
         else if (s.startsWith(':::', k)) {
           const c = mcName(s, k + 3); say(no, 'skipped', `:::${c ? c[0] : ''} on class ${n[0]}: styling is not read`); k = c ? c[1] : k + 3;
         } else if (s[k] === '{') {
-          const after = s.slice(k + 1).trim();
-          if (after === '}') break;
-          if (after.endsWith('}')) { member(rec, after.slice(0, -1), no); break; }
-          stack.push({ kind: 'class', rec }); member(rec, after, no); break;
+          // the first } closes the body; what follows it is read again, as a namespace's } on the same line (audit 16)
+          const after = s.slice(k + 1), c = after.indexOf('}');
+          if (c < 0) { stack.push({ kind: 'class', rec }); member(rec, after.trim(), no); break; }
+          const body = after.slice(0, c).trim(), tail = after.slice(c + 1).trim();
+          if (body) member(rec, body, no);
+          if (tail) lines[i--] = tail;
+          break;
         } else { rest = s.slice(k); break; }
       }
       if (rest) say(no, 'skipped', `class ${n[0]}: "${rest}" is not read`);

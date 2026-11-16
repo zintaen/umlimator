@@ -396,3 +396,16 @@ test('audit 7: a called activity with a partition of its own unfolds in the call
   assert.deepEqual(g.bands.map(b => b.id), p.bands.map(b => b.id));
   for (const id of inner) assert.deepEqual([g.byId[id].x, g.byId[id].y, g.byId[id].aria], [p.byId[id].x, p.byId[id].y, p.byId[id].aria], id);
 });
+
+test('audit 16: a flow\'s stereotypes are drawn and said, F2 takes them off; a name that does not read back is refused; a partition\'s and a decision\'s are drawn', () => {
+  const m = structuredClone(EX), f = m.edges.find(e => e.id === 'f-start'), lane = m.nodes.find(n => n.id === 'lane-worker');
+  f.props = { stereotypes: ['retry'] }; lane.props = { ...lane.props, stereotypes: ['team'] };
+  const g = layout(m, 'fulfil'), e = g.edges.find(x => x.id === 'f-start');
+  assert.equal(e.label, '«retry»'); assert.match(e.aria, /«retry»/);
+  assert.match(g.nodes.find(n => n.id === 'lane-worker').label, /^«team» /);
+  assert.deepEqual(actRename(m, V(m), 'f-start', '«retry»'), []);
+  assert.deepEqual(actRename(m, V(m), 'f-start', '«retry» go'), [{ op: 'set', id: 'f-start', path: 'label', value: 'go' }]);
+  f.label = 'send items[0]';
+  assert.ok(actRename(m, V(m), 'f-start', '«retry» send items[0]').error, 'the name is not split into name and guard');
+  assert.deepEqual(T.props['uml.ForkNode'], [], 'a bar draws no stereotypes: the panel offers none');
+});

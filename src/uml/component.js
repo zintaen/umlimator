@@ -294,6 +294,14 @@ function cpMember(model, view, owner, id, text) {
   if (id == null) return [{ op: 'add', element: { id: cpNewId(model, 'port'), type: 'uml.Port', label: r.label, ...(r.valueType ? { props: { valueType: r.valueType } } : {}) }, owner }];
   return [{ op: 'set', id, path: 'label', value: r.label }, { op: 'set', id, path: 'props.valueType', value: r.valueType }];
 }
+// rename: F2 on a port reads `name` or `name : Type`, a name alone keeping its type (F2 opens on the name; audit 16); a line, its label
+const cpLineRename = lineRename((e, model, view) => cpLabel({ e, kind: cpKind(cpIndex(model), view, e) }));
+function cpRename(model, view, id, text) {
+  const q = cpIndex(model).P.get(id); if (!q) return cpLineRename(model, view, id, text);
+  const r = cpPortText(text); if (r.error) return r;
+  return [['label', q.x.label, r.label], ['props.valueType', cpProps(q.x).valueType, String(text).includes(':') ? r.valueType : cpProps(q.x).valueType]]
+    .filter(([, a, b]) => (a ?? undefined) !== b).map(([path, , value]) => ({ op: 'set', id, path, value }));
+}
 // B on an interface: a ball, or back to a rectangle (S11)
 function cpKey(model, view, ids, key) {
   if (key !== 'b' && key !== 'B') return null;
@@ -338,7 +346,7 @@ const CP_TYPE = registerDiagramType('uml.component', {
   validate: cpProblems,
   rules: CP_RULES,
   describe: cpDescribe,
-  edits: { connect: cpConnect, moveTo: cpMoveTo, add: cpAdd, member: cpMember, key: cpKey, remove: cpRemove, rename: lineRename((e, model, view) => cpLabel({ e, kind: cpKind(cpIndex(model), view, e) })) },
+  edits: { connect: cpConnect, moveTo: cpMoveTo, add: cpAdd, member: cpMember, key: cpKey, remove: cpRemove, rename: cpRename },
   // the PDF's tables (§11): a component's ports, each with what it provides and requires; an interface's operations; what an artifact manifests
   word: (model, id) => { const x = cpIndex(model).N.get(id); return x ? ({ __proto__: null, 'uml.Component': 'Component', 'uml.Interface': 'Interface', 'uml.Artifact': 'Artifact', 'uml.Package': 'Package', 'uml.Comment': 'Comment' }[x.type] || null) : null; },
   rows: (model, view, id) => { const pic = cpPic(model, view), x = pic.I.N.get(id); if (!x) return null;

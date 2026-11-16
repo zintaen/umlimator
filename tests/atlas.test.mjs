@@ -182,11 +182,11 @@ test('the profile in the atlas: «owned», required on Class, is supplied to exa
   assert.deepEqual(all.filter(n => appliedOf(M, n.id).some(e => e.key === 'owned')).map(n => n.id), ['customer', 'order', 'line']);
   const placedAt = M.nodes.find(n => n.id === 'order').members.find(m => m.id === 'order.placedAt');
   assert.deepEqual([placedAt.props.stereotypes, placedAt.props.tags], [['column'], { column: { name: 'placed_at', indexed: 'true' } }]);
-  // the class view leaves member stereotypes undrawn, so its describe() and PDF rows are the class file's
+  // the class view draws a member's stereotypes (audit 16): its describe() and PDF rows are the class file's, placedAt's row «column» first
   const S = JSON.parse(readFileSync(new URL('../examples/sales-classes.json', import.meta.url), 'utf8'));
-  const rows = m => { const c = mapContext(m); return tablesOf(c, c.V.domain, c.buildGeo('domain')); };
+  const rows = m => { const c = mapContext(m); return JSON.stringify(tablesOf(c, c.V.domain, c.buildGeo('domain'))); };
   assert.equal(describe(M, 'domain'), describe(S, 'domain'));
-  assert.deepEqual(rows(M), rows(S));
+  assert.equal(rows(M), rows(S).replace('<p>- placedAt:', '<p>«column» - placedAt:'));
 });
 
 test('deleting lifeline-worker from the sequence view (Shift + Delete) takes its timing changes and their constraints', () => {

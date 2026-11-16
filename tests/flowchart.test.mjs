@@ -226,6 +226,8 @@ test('moveTo: a flow dragged is refused; a node is the canvas\'s, which reads a 
   assert.equal(T.edits.moveTo(m, m.views[0], 'letter', { pt: [to.x + to.w / 2, to.y + to.h / 2], geo: g }), null);
   assert.equal(T.edits.moveTo(m, m.views[0], 'letter', { by: [0, 1], geo: g }), null, 'Alt + arrows: the default');
   for (const v of [m.views[0], EX.views[0]]) assert.match(T.edits.moveTo(m, v, 'resaleable-no', null).error, /^A flow follows its nodes/, 'a flow dragged: said, not a ghost that vanishes');
+  const iv = { ...m.views[0], edges: [{ id: 'inline', type: 'flow.Flow', from: 'letter', to: 'wait' }] };
+  assert.match(T.edits.moveTo(m, iv, 'inline', null).error, /^A flow follows its nodes/, 'audit 16: a flow written inline in the view, too');
   assert.ok(g.down && layout(EX, 'returns').down && !layout(withDir(EX, 'right'), 'returns').down, 'g.down: laid out down');
 });
 

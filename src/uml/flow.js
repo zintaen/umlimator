@@ -144,4 +144,17 @@ function parseFlow(text) {
   return r.error ? r : r.slash >= 0 ? { error: 'a flow is name [guard]: it has an effect; a name holding / is written in the properties panel' } : { name: r.trigger, guard: r.guard };
 }
 
-export { flowWrap, FLOW_LINES, FLOW_CONTROL, FLOW_RULES, flowProblems, flowText, printFlow, parseFlow };
+// a flow's stereotypes, drawn «…» before its name [guard] and said in its accessible name (audit 16)
+const flowStereo = e => FL_ARR(FL_OBJ(e.props) ? e.props.stereotypes : null).filter(t => t != null && String(t).trim() !== '').map(t => `«${t}»`);
+const flowLabel = e => [...flowStereo(e), flowText(e.label, FL_OBJ(e.props) ? e.props.guard : undefined)].filter(Boolean).join(' ');
+/* F2 on a flow, the activity's and the overview's: its drawn text, «stereotypes» first (not parts), read by parseFlow; a set
+   for each part that changed (undefined clears one). A flow whose name and guard do not read back (printFlow null) is
+   { error }: they are edited in the properties panel, so one Enter never splits its name (audit 16) */
+function flowRename(e, text) {
+  const p = FL_OBJ(e.props) ? e.props : {}, now = x => (x != null && String(x).trim() !== '' ? String(x).trim() : undefined);
+  if (printFlow(now(e.label), now(p.guard)) == null) return { error: `${e.id}'s name does not read back: edit its name and guard in the properties panel` };
+  const pre = flowStereo(e).join(' '), t = String(text ?? '').trimStart(), r = parseFlow(pre && t.startsWith(pre) ? t.slice(pre.length) : t); if (r.error) return r;
+  return [['label', now(e.label), r.name], ['props.guard', now(p.guard), r.guard]].filter(([, a, b]) => a !== b).map(([path, , value]) => ({ op: 'set', id: e.id, path, value }));
+}
+
+export { flowWrap, FLOW_LINES, FLOW_CONTROL, FLOW_RULES, flowProblems, flowText, printFlow, parseFlow, flowStereo, flowLabel, flowRename };
