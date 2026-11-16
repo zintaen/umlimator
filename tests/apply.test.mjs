@@ -344,7 +344,7 @@ test('audit 13: a name of a line with no id counts in its own list: a delete in 
 
 test('audit 17: hide refuses a view\'s subject (or what owns it), which would leave the view without one', () => {
   const c4 = JSON.parse(readFileSync(new URL('../examples/bookshop-c4.json', import.meta.url)));
-  assert.throws(() => apply(c4, { op: 'hide', id: 'c4-api', view: 'c4-components' }), /"c4-api" is the subject of view "c4-components": change the view's subject, or delete the view/);
+  assert.throws(() => apply(c4, { op: 'hide', id: 'c4-api', view: 'c4-components' }), /"c4-api" is the subject of view "c4-components": change the view's subject, or delete it from the model \(no command deletes a view\)/);
   assert.throws(() => apply(c4, { op: 'hide', id: 'c4-bookshop', view: 'c4-containers' }), /is the subject of view "c4-containers"/);
   const os = JSON.parse(readFileSync(new URL('../examples/order-service-structure.json', import.meta.url))), v = os.views[0];
   assert.throws(() => apply(os, { op: 'hide', id: v.subject, view: v.id }), /is the subject of view/);

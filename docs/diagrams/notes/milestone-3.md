@@ -446,7 +446,7 @@ With (a), the parts compartment lists the block's part members, and an end that 
 |---|---|---|
 | `part-type` | warning | a part or reference property's type, when it names an element of the model by label, names a block (not a value type or a constraint block) |
 | `value-type` | warning | a value property's type, when it names an element, names a value type (`Real`, `Integer`, `Boolean`, `String` and any name of no element are fine, rule 11) |
-| `constraint-type` | error | a constraint property's type names a constraint block |
+| `constraint-type` | error; a warning when the type names nothing (audit 18) | a constraint property's type names a constraint block |
 | `flow-direction` | error | a flow property's `direction` is `in`, `out` or `inout`; it is owned by a block or interface block |
 | `port-kind` | error (confirm) | a port's `kind` is `proxy`, `full` or none; a proxy port is typed by an interface block, a full port is not (clause 9's constraints on ProxyPort and FullPort) |
 | `member-kinds` | error | each member type is one its owner may hold: a constraint block holds only parameters and constraint properties (and its expression; clause 10); an interface block holds only flow properties, proxy ports and operations, no part (clause 9); a constraint parameter only in a constraint block; a flow property not in a constraint block or value type |

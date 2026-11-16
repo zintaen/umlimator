@@ -69,7 +69,7 @@ removal:
 
 | Command | Takes away | Keeps |
 |---|---|---|
-| `hide` (Delete) | all one view says of the element: its place, pin, `present`, box, tour, the view's lines to it, the story steps on that view. The view's `subject` (or what owns it) is refused: change the subject, or delete the view | the element, and every other view of it |
+| `hide` (Delete) | all one view says of the element: its place, pin, `present`, box, tour, the view's lines to it, the story steps on that view. The view's `subject` (or what owns it) is refused: change the subject, or delete it from the model (Shift + Delete; no command deletes a view) | the element, and every other view of it |
 | `delete` (Shift + Delete) | the element, its members, what it owns, the lines to them, and every place that names them | nothing of it; undo brings all of it back |
 
 Undo is a snapshot of the model before (`history()`), so undo and redo give back byte-identical models.

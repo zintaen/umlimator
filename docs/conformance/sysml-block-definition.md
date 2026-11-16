@@ -37,7 +37,7 @@ fixture in `tests/blocks.test.mjs`:
 |---|---|---|
 | `part-type` | warning | clause 8: a part or reference property is typed by a block (a name of no element is fine, model.md rule 11) |
 | `value-type` | warning | clause 8: a value property is typed by a value type (`Real`, `Integer`, `Boolean`, `String` fine) |
-| `constraint-type` | error | clause 10: a constraint property is typed by a constraint block |
+| `constraint-type` | error; a warning when the type names nothing, as after its constraint block is deleted | clause 10: a constraint property is typed by a constraint block |
 | `flow-direction` | error | clause 9, FlowProperty: its direction is in, out or inout |
 | `port-kind` | error | clause 9's constraints on ProxyPort and FullPort: a proxy port is typed by an interface block, a full port is not. Settled as an error, as the note recommends ("(confirm)": both constraints are SysML's, on the stereotypes) |
 | `member-kinds` | error | clause 10: a constraint block owns only parameters and constraint properties; clause 9: an interface block owns no part, and only flow properties, proxy ports and operations here; a value type only values and operations (clause 8: a data type) |

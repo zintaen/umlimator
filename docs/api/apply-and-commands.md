@@ -37,9 +37,7 @@ command that cannot run throws, and none of the transaction is applied. The mode
 
 Returns the next model. Undo is the model before: keep it with [`history()`](#history).
 
-`delete` takes with it the element's members, what it owns, the lines to them and every place that names them (see
-[`references()`](#references)); one already gone in the same transaction is passed over. `hide` takes an element out of
-one view, with everything the view says of it.
+`delete` takes with it the element's members, what it owns, the lines to them and every place that names them (see [`references()`](#references)); one already gone in the same transaction is passed over. `hide` takes an element out of one view, with everything the view says of it. It refuses the view's `subject`, or an element that holds the subject as a member, and says why: change the view's subject with `set`, or delete the element from the model.
 
 ```js
 import { apply } from 'umlimator';
@@ -84,7 +82,7 @@ type Command =
 | `add` | Adds an element to the model: a node, a line (with `from` and `to`), or with `owner` a member of that element, at `index`. With `view`, the view shows it too. |
 | `add` with `in: 'view'` | Adds an element to the view's own list for its kind: a line or an inline item to `edges`, a node to `nodes`, else `fragments`. |
 | `move` | Moves an element to `index` among its owner's members, or within a view's list. |
-| `hide` | Takes an element out of one view, and everything the view says of it. |
+| `hide` | Takes an element out of one view, and everything the view says of it. Refused for the view's `subject` (or an element that holds it as a member). |
 | `delete` | Deletes an element, its members, what it owns, the lines to them and every reference to them. |
 | `reparent` | Gives an element a new owner (`parent`), or none with `null`. |
 | `addView` | Adds a view at `index`, else last. Refused when its id is taken. No command deletes a view. |
