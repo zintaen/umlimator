@@ -102,7 +102,7 @@ try {
   { const ev = [], [h, sr, q] = make({ details: true, on: { open: e => ev.push(['open', e.view]), expand: e => ev.push(['expand', e.target.id, e.expanded]) } }), panel = q('.panel');
     check('details alone: the panel, hidden until a card is selected, and no other piece', panel.hidden && !q('.outline, .m-legend, .hint, .um-navbtn'));
     h.select({ type: 'node', id: 'trips' });
-    check("a card selected: its details under the map, as the page shows them", !panel.hidden && q('.ph h3').textContent === 'Trip service' && /Unlock, pause, end/.test(q('.pbody').textContent)
+    check("a card selected: its details under the map, as the page shows them", !panel.hidden && q('.ph h2').textContent === 'Trip service' && /Unlock, pause, end/.test(q('.pbody').textContent)
       && box(panel).top >= box(q('.stage')).bottom - 1);
     const tabs = [...sr.querySelectorAll('[role="tab"]')], body = q('[role="tabpanel"]');
     check('…its tabs: one selected, each controlling the tab panel, which the selected one names', tabs.length === 4 && tabs.filter(t => t.getAttribute('aria-selected') === 'true').length === 1
@@ -122,7 +122,7 @@ try {
     h.collapse('trips'); h.select({ type: 'node', id: 'trips' }); q('[data-lit="out"]').click();
     check('→ lights what the card leads to, and says so in the live region (there is no hint line)', !!sr.querySelector('.node[opacity]') && /^Trip service leads to/.test(q('.um-live').textContent), q('.um-live').textContent);
     q('[data-tab="links"]').click(); const to = q('.rel[data-n]').dataset.n; q('.rel[data-n]').click();
-    check('a card named in Behind the scenes is selected on the map', h.selection && h.selection.id === to && q('.ph h3').textContent !== 'Trip service', [to, h.selection]);
+    check('a card named in Behind the scenes is selected on the map', h.selection && h.selection.id === to && q('.ph h2').textContent !== 'Trip service', [to, h.selection]);
     q('[data-close]').focus(); key('Escape', q('[data-close]')); await wait(0);
     check('Esc in the panel closes it and gives the focus back to the map', panel.hidden && h.selection === null && !!sr.activeElement && !!sr.activeElement.closest('.stage'), sr.activeElement && sr.activeElement.className);
     click(sr.querySelector('.edge-g'));
@@ -160,9 +160,9 @@ try {
     check('accessibility: every control named, none inside another, ids unique and found where named, landmarks named, one selected tab, polite live regions', !bad.length, bad);
     const m2 = structuredClone(BIKE); m2.views.push({ id: 'ops-only', title: 'Operations', parent: 'system', nodeIds: ['ops', 'ops-console'] });
     h.update(m2);
-    check('update(): the views list shows a view the model gained, and the details stay open', !!q('.mit[data-v="ops-only"]') && !q('.panel').hidden && q('.ph h3').textContent === 'Trip service');
+    check('update(): the views list shows a view the model gained, and the details stay open', !!q('.mit[data-v="ops-only"]') && !q('.panel').hidden && q('.ph h2').textContent === 'Trip service');
     const m3 = structuredClone(m2); m3.nodes.find(n => n.id === 'trips').when = 'Whenever a ride starts.'; h.update(m3);
-    check('…and the card as the model now has it', /Whenever a ride starts/.test(q('.pbody').textContent) && q('.ph h3').textContent === 'Trip service', q('.pbody').textContent);
+    check('…and the card as the model now has it', /Whenever a ride starts/.test(q('.pbody').textContent) && q('.ph h2').textContent === 'Trip service', q('.pbody').textContent);
     el.style.setProperty('--um-panel', 'rgb(10, 20, 30)');
     check("the pieces take the --um-* colours set on the map's element", getComputedStyle(q('.panel')).backgroundColor === 'rgb(10, 20, 30)' && getComputedStyle(q('.m-legend')).backgroundColor === 'rgb(10, 20, 30)');
     el.style.removeProperty('--um-panel');
