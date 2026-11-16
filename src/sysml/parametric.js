@@ -3,6 +3,7 @@ import { esc, fit } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { csAdd, csConnect, csGeo, csMember, csMoveTo, csRemove, csRename } from '../uml/composite.js';
 import { SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS } from './sysml.js';
+import { bdProblems } from './blocks.js';
 
 /* ---------- SysML's parametric diagram, sysml.parametric (work package M3.5, notes/milestone-3.md §9, §13) ----------
    The view's subject, a block or a constraint block, is drawn as the composite structure type draws a class
@@ -124,6 +125,8 @@ const SYS_PAR_RULES = {
   'binding-types': 'the two ends\' types, when both are set and name elements, are equal or one specializes the other',
   'parameter-bound': 'each parameter of a constraint property shown has a binding',
   'connector-drawn': 'a binding between two parameters of the subject is not drawn: the frame has no line to itself',
+  'value-type': 'a value property\'s type, when it names an element, names a value type (as the block definition view says)',
+  'constraint-type': 'a constraint property\'s type names a constraint block (as the block definition view says)',
 };
 function SYS_PAR_PROBLEMS(model, view) {
   if (!view) return [];
@@ -133,6 +136,9 @@ function SYS_PAR_PROBLEMS(model, view) {
   else if (!S || !Object.hasOwn(SYS_PAR_SUBJ, S.type) || !SYS_PAR_ARR(view.nodeIds).includes(S.id)) say('error', 'subject-kind', `views[${vi}].subject`, [view.id, view.subject], `view ${JSON.stringify(view.id)}'s subject ${JSON.stringify(view.subject)} is not a block or a constraint block it lists in nodeIds`);
   if (!S || !Object.hasOwn(SYS_PAR_SUBJ, S.type)) return out;
   out.push(...SYS_CS_PROBLEMS(model, view).filter(p => p.rule === 'connector-drawn'));
+  // the subject's properties typed as their kind says, as the block definition view judges them: a model with a parametric
+  // view only says so too (audit 20); with both views validate() says each once
+  out.push(...bdProblems(model).filter(p => (p.rule === 'value-type' || p.rule === 'constraint-type') && p.ids[0] === S.id));
   const ofS = id => id != null && I.owner(id) === S, kind = id => (I.el(id) || {}).type;
   // a binding's type: its end's valueType, when it names an element of the model by label (else id, as drawn)
   const named = new Map(); I.at.forEach(n => { const k = n.label ?? n.id; if (SYS_PAR_HAS(k) && !named.has(k)) named.set(k, n); });
@@ -207,8 +213,21 @@ function SYS_PAR_MEMBER(model, view, owner, id, text) {
   // a new row's kind is its owner's: a constraint block holds parameters, a block constraint and value properties (no ports here)
   const o = was ? null : SYS_PAR_INDEX(model, view).el(owner), cb = o && o.type === 'sysml.ConstraintBlock';
   if (o && Object.hasOwn(SYS_PAR_SUBJ, o.type) && param !== cb) return { error: cb ? 'A constraint block holds parameters: add a row param name : Type' : 'A parameter belongs to a constraint block: on a block a row is name : Type' };
-  return SYS_PAR_ON(csMember)(model, view, owner, id, t);
+  return param ? SYS_PAR_ON(csMember)(model, view, owner, id, t) : SYS_PAR_KEEP(model, was, SYS_PAR_ON(csMember)(model, view, owner, id, t));
 }
+// a property row's kind is its type's, as a new row's is (SYS_BACK): a type that names a constraint block makes a constraint
+// property, any other a value property. A retype across that line, by its row or by F2, is refused as a changed keyword is
+// (audit 20: it kept the kind, typed by the other's type)
+function SYS_PAR_KEEP(model, was, r) {
+  const cs = Array.isArray(r) ? r : SYS_PAR_OBJ(r) && Array.isArray(r.commands) ? r.commands : [];
+  const to = was && Object.hasOwn(SYS_PAR_PROP, was.type) && cs.find(c => SYS_PAR_OBJ(c) && c.op === 'set' && c.id === was.id && String(c.path) === 'props.valueType');
+  if (!to) return r;
+  const cb = SYS_PAR_HAS(to.value) && SYS_PAR_ARR(model.nodes).some(n => SYS_PAR_OBJ(n) && n.type === 'sysml.ConstraintBlock' && (n.label ?? n.id) === to.value);
+  if (cb === (was.type === 'sysml.ConstraintProperty')) return r;
+  return { error: `A row keeps its member's kind: ${cb ? `value ${SYS_PAR_NAME(was)} is typed by no constraint block; delete it and add a constraint property row`
+    : `constraint property ${SYS_PAR_NAME(was)} is typed by a constraint block; delete it and add a value row`}` };
+}
+const SYS_PAR_RENAME = (model, view, id, ...a) => SYS_PAR_KEEP(model, SYS_PAR_INDEX(model, view).el(id), SYS_PAR_ON(csRename)(model, view, id, ...a));
 const SYS_PAR_MEMBERS = {
   print: m => (m.type === 'sysml.ConstraintParameter' ? `param ${m.label ?? ''}${SYS_PAR_HAS(SYS_PAR_PROPS(m).valueType) ? ' : ' + SYS_PAR_PROPS(m).valueType : ''}`
     : `${m.label ?? ''}${SYS_PAR_HAS(SYS_PAR_PROPS(m).valueType) ? ' : ' + SYS_PAR_PROPS(m).valueType : ''}${SYS_PAR_HAS(SYS_PAR_PROPS(m).multiplicity) ? ` [${SYS_PAR_PROPS(m).multiplicity}]` : ''}`),
@@ -261,7 +280,7 @@ const SYS_PAR_TYPE = registerDiagramType('sysml.parametric', {
   word: SYS_PAR_WORD,
   rows: SYS_PAR_ROWS,
   text: SYS_PAR_LINE_TEXT,
-  edits: { connect: SYS_PAR_CONNECT, moveTo: SYS_PAR_ON(csMoveTo), add: SYS_PAR_ADD, remove: SYS_PAR_ON(csRemove), rename: SYS_PAR_ON(csRename), member: SYS_PAR_MEMBER },
+  edits: { connect: SYS_PAR_CONNECT, moveTo: SYS_PAR_ON(csMoveTo), add: SYS_PAR_ADD, remove: SYS_PAR_ON(csRemove), rename: SYS_PAR_RENAME, member: SYS_PAR_MEMBER },
 });
 
 export { SYS_PAR_TYPE, SYS_PAR_GEO, SYS_PAR_PROBLEMS };

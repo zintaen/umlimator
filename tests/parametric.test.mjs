@@ -54,7 +54,7 @@ test('the definition: sysml.parametric with its palette, two lines, its properti
   assert.equal(T.layout.rank, false);
   for (const k of ['layout', 'validate', 'describe', 'word', 'rows', 'text']) assert.equal(typeof T[k], 'function', k);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'member', 'moveTo', 'remove', 'rename']);
-  assert.deepEqual(Object.keys(T.rules), ['subject-kind', 'binding-ends', 'binding-parameter', 'binding-types', 'parameter-bound', 'connector-drawn']);
+  assert.deepEqual(Object.keys(T.rules), ['subject-kind', 'binding-ends', 'binding-parameter', 'binding-types', 'parameter-bound', 'connector-drawn', 'value-type', 'constraint-type']);
   assert.deepEqual(['sysml.Block', 'sysml.ConstraintBlock', 'sysml.InterfaceBlock'].map(t => T.member.holds({ type: t })), [true, true, false]);
 });
 
@@ -148,6 +148,9 @@ const RULE_CASES = {
     m.edges.push(bind('mixed', 'ebike.batteryCapacity', 'range-equation.range', { to: { part: 'ebike.eco' } })); }, 'warning'],
   'parameter-bound': [m => { m.edges = m.edges.filter(e => e.id !== 'bind-eco-range'); }, 'warning'],
   'connector-drawn': [m => { m.views[0].subject = 'range-model'; m.views[0].nodeIds = ['range-model']; m.edges.push(bind('loop', 'range-model.capacity', 'range-model.range')); }, 'warning'],
+  // the block definition view's two, said with a parametric view only (audit 20)
+  'value-type': [m => { mem(m, 'ebike.ecoRange').props.valueType = 'RangeEquation'; }, 'warning'],
+  'constraint-type': [m => { delete mem(m, 'ebike.eco').props.valueType; }, 'error'],
 };
 test('validators: each rule passes the examples and fails on a model that breaks it, at its level', () => {
   assert.deepEqual(Object.keys(RULE_CASES), Object.keys(T.rules));
@@ -215,6 +218,12 @@ test('remove, rename, moveTo and member rows on the projection: SysML\'s types b
   assert.deepEqual(T.edits.member(M19, V, 'range-equation', 'range-equation.range', 'param range : Length'), [{ op: 'set', id: 'range-equation.range', path: 'props.valueType', value: 'Length' }]);
   assert.match(T.edits.member(M19, V, 'ebike', 'ebike.eco', 'param eco : RangeEquation').error, /keeps its member's kind/);
   assert.match(T.edits.member(M19, V, 'ebike', null, 'param x : Real').error, /belongs to a constraint block/, 'a param row on a block: no port added');
+  // a property row's kind is its type's, as a new row's is: a retype across it, by the row or by F2, refused (audit 20)
+  for (const [id, t] of [['ebike.ecoRange', 'ecoRange : RangeEquation'], ['ebike.eco', 'eco : Distance'], ['ebike.eco', 'eco2 : Real'], ['ebike.eco', 'eco']]) {
+    assert.match(T.edits.member(M19, V, 'ebike', id, t).error, /^A row keeps its member's kind: /, t);
+    if (t.includes(':')) assert.match(T.edits.rename(M19, V, id, t).error, /^A row keeps its member's kind: /, `F2 ${t}`); }
+  assert.deepEqual(T.edits.member(M19, V, 'ebike', 'ebike.eco', 'eco : UsableEnergy'), [{ op: 'set', id: 'ebike.eco', path: 'props.valueType', value: 'UsableEnergy' }], 'another constraint block');
+  assert.deepEqual(T.edits.member(M19, V, 'ebike', 'ebike.ecoRange', 'ecoRange : Real'), [{ op: 'set', id: 'ebike.ecoRange', path: 'props.valueType', value: 'Real' }]);
   // a port row adds no port this view never draws, new or over a value property's row (audit 14)
   for (const [id, t] of [[null, 'port zz : Real'], [null, 'Full Port zz : Real'], ['ebike.eco', 'proxy port eco : RangeEquation']]) assert.match(T.edits.member(M19, V, 'ebike', id, t).error, /constraint or value property/, t);
   assert.match(T.edits.member(M19, V, 'range-equation', null, 'x : Real').error, /holds parameters/, 'a plain row on a constraint block: refused');

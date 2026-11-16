@@ -32,6 +32,8 @@ Rules (`src/sysml/parametric.js`), each with a passing and a failing fixture in 
 | `binding-types` | warning | clause 8, BindingConnector: the two ends' types are the same or compatible |
 | `parameter-bound` | warning | each parameter of a constraint property shown has a binding (what is usual) |
 | `connector-drawn` | as the composite type's | a binding between two parameters of the subject is not drawn |
+| `value-type` | warning | the block definition view's rule on the subject's value properties: a type that names an element names a value type (audit 20) |
+| `constraint-type` | error, or warning for a type that names nothing | the block definition view's rule on the subject's constraint properties: typed by a constraint block (audit 20) |
 
 **Departures from SysML v1.7:**
 
@@ -40,6 +42,8 @@ Rules (`src/sysml/parametric.js`), each with a passing and a failing fixture in 
   whole in its accessible name and the PDF's rows.
 - **A binding drawn from a parameter** to a value runs from the value, so the parameter's constraint property is
   `ends.to.part` either way; one drawn to a constraint property's box is refused.
+- **A property row's kind is its type's**: a row typed by a constraint block is a constraint property, any other a value
+  property, new or edited; a retype across that line, by the row or by F2, is refused (audit 20).
 - **A subject holding no part** (a constraint block with only parameters) is framed at its card's size, the header cut to it.
 
 ## Left out

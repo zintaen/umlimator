@@ -130,6 +130,10 @@ try {
   name('sport : RangeEquation');
   const m2 = gives('F2 on a constraint property: its name set', [{ op: 'set', id: 'ebike.boost', path: 'label', value: 'sport' }], m => m.nodes[0].members.find(x => x.id === 'ebike.boost').label === 'sport', m1);
   h.update(m2);
+  // F2 on the frame: a field holding the subject's name, not the whole header (audit 20)
+  h.select({ type: 'container', id: 'ebike', view: VID }); key('F2');
+  check('F2 on the frame: a field holding the block\'s name', pick('.um-rename') && pick('.um-rename').value === 'EBike', pick('.um-rename') && pick('.um-rename').value);
+  if (pick('.um-rename')) key('Escape', {}, pick('.um-rename'));
   // a binding from a value by L, arrows to a parameter and Enter, the picker: it runs to the parameter, through its constraint property
   click('.node[data-id="ebike.ecoRange"] .c-name'); key('l');
   for (let i = 0; i < 24 && !(pick('.um-target') && pick('.um-target').dataset.id.includes('->')); i++) key(['ArrowRight', 'ArrowDown', 'ArrowUp', 'ArrowLeft'][Math.floor(i / 6)]);

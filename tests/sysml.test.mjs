@@ -244,7 +244,7 @@ test('the header: kind [ElementType] name [view title]; [Model] and the model\'s
 test('a req or bdd frame is a box of the layout: the package subject\'s id, else <view>->frame; 38 px above its cards', () => {
   const pk = { title: 'T', nodes: [{ id: 'eb', type: 'uml.Package', label: 'E-bike' }] };
   assert.deepEqual(SYS_FRAME(pk, { id: 'v', diagram: 'sysml.block-definition', subject: 'eb', title: 'B' }, ['a']),
-    { id: 'eb', label: 'bdd [Package] E-bike [B]', title: 'bdd [Package] E-bike [B]', nodeIds: ['a'], shape: 'sysml-frame', head: 14, aria: 'Block definition diagram of package E-bike: B' });
+    { id: 'eb', label: 'bdd [Package] E-bike [B]', title: 'bdd [Package] E-bike [B]', nodeIds: ['a'], shape: 'sysml-frame', head: 14, aria: 'Block definition diagram of package E-bike: B', edit: 'E-bike' });
   assert.equal(SYS_FRAME(pk, { id: 'v', diagram: 'sysml.requirement' }, []).id, 'v->frame');
   // laid out down and right: its head is on top either way (laid out down, the turned layout's left), the tag above its cards
   for (const direction of ['right', 'down']) {

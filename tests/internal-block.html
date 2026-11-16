@@ -131,6 +131,11 @@ try {
   const m2 = gives('F2 on a part: its name and multiplicity set', [{ op: 'set', id: 'ebike.controller', path: 'label', value: 'ecu' }, { op: 'set', id: 'ebike.controller', path: 'props.multiplicity', value: '1' }],
     m => m.nodes[0].members.find(x => x.id === 'ebike.controller').label === 'ecu', m1);
   h.update(m2);
+  // F2 on the frame: a field holding the subject's name, not the whole header, which it would store as the name (audit 20)
+  h.select({ type: 'container', id: 'ebike', view: VID }); key('F2');
+  check('F2 on the frame: a field holding the block\'s name', pick('.um-rename') && pick('.um-rename').value === 'EBike', pick('.um-rename') && pick('.um-rename').value);
+  if (pick('.um-rename')) name('E-bike');
+  gives('F2 on the frame: the block renamed', [{ op: 'set', id: 'ebike', path: 'label', value: 'E-bike' }], m => m.nodes[0].label === 'E-bike', m2);
   // a connector from a port on a part by L, an arrow and Enter, the picker: ← reaches the controller's drive port (→ reached the
   // motor itself, a connector through its own port that the view does not draw, which connect() refuses since audit 11)
   click('.node[data-id="ebike.motor->motor.phases"] .n-mask'); key('l'); key('ArrowLeft'); key('Enter');

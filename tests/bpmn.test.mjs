@@ -641,6 +641,20 @@ test('audit 19: a data association across pools is refused by connect, as a move
   assert.ok(Array.isArray(bzConnect(free, V(free, 'v'), 'd', 't')));
 });
 
+test('audit 20: data in no pool joins an activity of any pool: connect, a move and validate keep one rule', () => {
+  const top = structuredClone(EX); delete top.nodes.find(n => n.id === 'bp-stock').parent;
+  assert.ok(!errors(top).some(p => /data-ends|lane-owner/.test(p.message)), 'a store outside every pool, read in the bookshop: no problem');
+  const r = bzConnect(top, V(top), 'bp-stock', 'bp-take-payment');
+  assert.ok(Array.isArray(r) && r[0].element.type === 'bpmn.DataAssociation', JSON.stringify(r));
+  assert.ok(!errors(apply(top, r)).some(p => /data-ends/.test(p.message)));
+  const back = bzConnect(top, V(top), 'place-order', 'bp-stock'); // another pool's task: drawn too, as validate allows it
+  assert.ok(Array.isArray(back) && !errors(apply(top, back)).some(p => /data-ends/.test(p.message)), JSON.stringify(back));
+  // a move of associated data to no pool is no move to another pool; into another pool it still is
+  const out = bzOwner(EX, V(EX), 'bp-stock', null);
+  assert.ok(Array.isArray(out) && out[0].op === 'reparent' && out[0].parent === null, JSON.stringify(out));
+  assert.deepEqual(bzOwner(EX, V(EX), 'bp-stock', 'bp-shopper'), { error: 'Data stays in the pool of what it is associated with' });
+});
+
 test('audit 19: a boundary event has no Owner field; an owner other than its activity\'s is refused, said', () => {
   const be = EX.nodes.find(n => n.id === 'payment-timeout'), v = V(EX);
   assert.equal(bzOwners(EX, be), null);

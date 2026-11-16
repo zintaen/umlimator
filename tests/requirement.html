@@ -139,7 +139,7 @@ try {
   check('after update() the requirement reads its new name and id', pick('.node[data-id="range"] .c-name').textContent === 'Full range' && pick('.node[data-id="range"] .c-row').textContent === 'id = "EB-1.4"');
   // F2 on the frame: the view's title
   h.select({ type: 'container', id: 'requirements->frame', view: V }); key('F2'); const ft = pick('.um-rename');
-  check('F2 on the frame: a field', !!ft, hint());
+  check('F2 on the frame: a field holding the view\'s title, not the whole header (audit 20)', !!ft && ft.value === 'E-bike requirements', ft ? ft.value : hint());
   if (ft) { ft.value = 'All requirements'; key('Enter', {}, ft); }
   gives('F2 on the frame that is no element: set the view\'s title', [{ op: 'set', view: V, path: 'title', value: 'All requirements' }], m => m.views[0].title === 'All requirements', m2);
   // lines by L, a name and the picker: Containment re-owns

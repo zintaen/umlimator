@@ -256,6 +256,9 @@ test('malformed input is reported, never thrown', () => {
     assert.ok(Array.isArray(r.report) && r.model.schemaVersion === 2, String(x));
   }
   assert.deepEqual(read('flowchart LR\nA-->B').report, [{ line: 1, status: 'skipped', message: 'not a Mermaid stateDiagram: nothing read' }]);
+  // text after a composite state's } on the same line is reported, never dropped in silence
+  assert.deepEqual(read('stateDiagram-v2\nstate A {\n[*] --> X\n} B --> C\n').report.map(x => `${x.line} ${x.status} ${x.message}`),
+    ['4 skipped "} B --> C": the text after } is not read']);
   // only a state holds activities, internal transitions and a body; [*] is no state's name; the view's id holds no ->
   const odd = read('stateDiagram-v2\n%% kind: final\nstate F {\n a\n}\nstate K <<fork>>\nK : entry / x\nK : ev / y\n%% kind: initial\ni\ni : do / z\n');
   assert.deepEqual(odd.report.map(x => `${x.line} ${x.message}`), ['3 state F {: F is a final state, which holds nothing: what its body holds is read into the scope around it',

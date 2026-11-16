@@ -236,6 +236,11 @@ test('malformed input is reported, never thrown', () => {
     assert.ok(Array.isArray(r.report) && r.model.schemaVersion === 2, String(x));
   }
   assert.deepEqual(read('flowchart LR\nA-->B').report, [{ line: 1, status: 'skipped', message: 'not a Mermaid sequenceDiagram: nothing read' }]);
+  // text after a block's end on the same line is reported, never dropped in silence
+  const tail = read('sequenceDiagram\nloop x\nA->>B: one\nend B->>A: lost\nloop y\nA->>B: two\nend->>B: lost2\n');
+  assert.deepEqual(tail.report.map(x => `${x.line} ${x.status} ${x.message}`),
+    ['4 skipped "end B->>A: lost": the text after end is not read', '7 skipped "end->>B: lost2": the text after end is not read']);
+  assert.deepEqual(tail.model.views[0].fragments.map(f => [f.id, f.parent ?? null]), [['loop-1', null], ['loop-2', null]]); // the end still closes
   assert.deepEqual(read('sequenceDiagram\nalt x\nA->>B: y').report, [{ line: 2, status: 'approximated', message: 'alt is never closed: read to the end' }]);
   assert.deepEqual(read('sequenceDiagram\ncreate participant B\nB->>A: x\ndestroy C\n').report.map(x => `${x.line} ${x.message}`),
     ['2 create B: the next message is from it, so nothing creates it', '4 destroy C: no message to it follows']);
