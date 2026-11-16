@@ -477,3 +477,16 @@ test('audit 8: a message drawn by keyboard from a lifeline to a change is sent a
   assert.deepEqual(V(run(m, tmConnect(m, V0, 'worker', 'p-capturing', last, LINE('async')))).edges.at(-1).props, { sort: 'async', sentAt: 480, receivedAt: 480 });
   assert.deepEqual(V(run(m, tmConnect(m, V0, 'w-recording', 'payments', { parent: 'payments', t: 0 }, LINE('async')))).edges.at(-1).props, { sort: 'async', sentAt: 760, receivedAt: 760 });
 });
+
+test('audit 17: a lifeline\'s «stereotypes», offered in the panel, are drawn over its name and said in its accessible name and describe()', async () => {
+  const { svgOf } = await import('../src/draw/svg.js');
+  const m = JSON.parse(readFileSync(new URL('../examples/bookshop-timing.json', import.meta.url))), V = m.views[0], n = m.nodes.find(x => x.id === V.nodeIds[0]);
+  assert.ok(diagramOf(V).props['uml.Lifeline'].some(f => f.key === 'stereotypes'));
+  const before = layout(m, V.id).nodes.find(x => x.id === n.id); (n.props ||= {}).stereotypes = ['boundary'];
+  const g = layout(m, V.id), lane = g.nodes.find(x => x.id === n.id);
+  assert.equal(lane.label, before.label); // F2 edits the name and type, not the stereotypes
+  assert.equal(lane.st, '«boundary»'); assert.equal(before.st, undefined);
+  assert.equal(lane.aria, before.aria.replace(before.label, `${before.label} (boundary)`));
+  const svg = svgOf(g); assert.ok(svg.includes('>«boundary»</text>') && svg.includes(`>${before.label}</text>`), 'drawn: the stereotypes over the name, whole');
+  assert.ok(describe(m, V.id).includes(`«boundary» ${before.label}:`));
+});

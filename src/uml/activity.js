@@ -229,7 +229,7 @@ function actDescribe(model, viewId) {
   const out = [`${v.title || v.id}: an activity diagram of ${acPlural(I.drawn.length, 'node')}, ${acPlural(flows.length, 'flow')} and ${acPlural(I.parts.length, 'partition')}.`];
   I.parts.forEach(p => out.push(acNodeName(model, I, I.N.get(p), I.lines) + '.'));
   walk.forEach(id => { const x = I.N.get(id), said = I.lines.filter(e => e.from === id).map(e => { const g = AC_PART(acProps(e).guard), nm = AC_PART(e.label);
-    return e.type === 'uml.CommentLink' ? `about ${acCalled(I.N.get(e.to))}` : `then ${acCalled(I.N.get(e.to))}${nm ? ` (${nm})` : ''}${g ? ` [${g}]` : ''}${e.type === 'uml.ObjectFlow' ? ', an object flow' : ''}`; });
+    return e.type === 'uml.CommentLink' ? `about ${acCalled(I.N.get(e.to))}` : `then ${acCalled(I.N.get(e.to))}${flowStereo(e).length ? ' ' + flowStereo(e).join(' ') : ''}${nm ? ` (${nm})` : ''}${g ? ` [${g}]` : ''}${e.type === 'uml.ObjectFlow' ? ', an object flow' : ''}`; });
     out.push(acNodeName(model, I, x, I.lines) + (said.length ? '; ' + said.join('; ') : '') + '.'); });
   return out.join('\n');
 }

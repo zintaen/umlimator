@@ -190,7 +190,9 @@ test('delete and hide leave a model that validates, for every element in every v
       ...m.views.flatMap(v => [...(v.nodes || []).map(n => n.id), ...(v.edges || []).filter(e => e && typeof e === 'object').map(e => e.id), ...(v.fragments || []).flatMap(function all(x) { return [x.id, ...(x.members || []).flatMap(all)]; })])].filter(Boolean);
     for (const id of ids) { deleted++; assert.deepEqual(errors(apply(m, { op: 'delete', id })), [], `${f}: delete ${id}`); }
     const shared = new Set(m.nodes.map(n => n.id)); // a card of one view only is deleted, not hidden
-    for (const v of m.views) for (const id of (v.nodeIds || []).filter(i => shared.has(i))) { hidden++; assert.deepEqual(errors(apply(m, { op: 'hide', id, view: v.id })), [], `${f}: hide ${id} in ${v.id}`); }
+    for (const v of m.views) for (const id of (v.nodeIds || []).filter(i => shared.has(i))) { hidden++;
+      if (id === v.subject) { assert.throws(() => apply(m, { op: 'hide', id, view: v.id }), /is the subject of view/); continue; } // audit 17: refused
+      assert.deepEqual(errors(apply(m, { op: 'hide', id, view: v.id })), [], `${f}: hide ${id} in ${v.id}`); }
   }
   assert.ok(deleted > 400 && hidden > 300, `${deleted} deleted, ${hidden} hidden`);
 });
@@ -338,4 +340,16 @@ test('audit 13: a name of a line with no id counts in its own list: a delete in 
   assert.deepEqual([n.views[0].present, n.views[1].present], [{ 'a->b#1': { hidden: true } }, { 'a->b#1': { hidden: true } }]);
   assert.deepEqual(validate({ ...m, stories: [{ id: 's', steps: [{ view: 'v2', select: 'a->b#2' }, { view: 'v3', select: 'a->b#2' }] }] }).map(p => p.path),
     ['stories[0].steps[0].select', 'stories[0].steps[1].select'], 'a->b#2 is a line of v1 only');
+});
+
+test('audit 17: hide refuses a view\'s subject (or what owns it), which would leave the view without one', () => {
+  const c4 = JSON.parse(readFileSync(new URL('../examples/bookshop-c4.json', import.meta.url)));
+  assert.throws(() => apply(c4, { op: 'hide', id: 'c4-api', view: 'c4-components' }), /"c4-api" is the subject of view "c4-components": change the view's subject, or delete the view/);
+  assert.throws(() => apply(c4, { op: 'hide', id: 'c4-bookshop', view: 'c4-containers' }), /is the subject of view "c4-containers"/);
+  const os = JSON.parse(readFileSync(new URL('../examples/order-service-structure.json', import.meta.url))), v = os.views[0];
+  assert.throws(() => apply(os, { op: 'hide', id: v.subject, view: v.id }), /is the subject of view/);
+  const m = { schemaVersion: 2, nodes: [{ id: 'S', type: 'uml.Component', members: [{ id: 'S.p', type: 'uml.Property' }] }, { id: 'x', type: 'uml.Component' }],
+    views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 'S.p', nodeIds: ['S', 'x'] }] };
+  assert.throws(() => apply(m, { op: 'hide', id: 'S', view: 'v' }), /"S.p" is the subject of view "v"/);
+  assert.deepEqual(apply(m, { op: 'hide', id: 'x', view: 'v' }).views[0].subject, 'S.p'); // another card: the subject stays
 });

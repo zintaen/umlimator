@@ -29,6 +29,8 @@ const tmView = (model, view) => (TM_OBJ(view) ? view : TM_ARR(model && model.vie
 const tmProps = x => (TM_OBJ(x && x.props) ? x.props : {});
 const tmName = n => String(n.label ?? n.id);
 const tmHead = n => tmName(n) + (TM_HAS(tmProps(n).represents) ? ' : ' + tmProps(n).represents : ''); // "worker : OrderWorker"
+const tmStereo = n => TM_ARR(tmProps(n).stereotypes).filter(TM_HAS).map(String);
+const tmSt = n => tmStereo(n).map(t => `«${t}»`).join(' '), tmShown = n => [tmSt(n), tmHead(n)].filter(TM_HAS).join(' '); // its «stereotypes»: a line over its name, and first in describe() (audit 17); F2 edits tmHead
 const tmStates = n => [...new Set(TM_ARR(tmProps(n).states).filter(TM_HAS).map(String))]; // a state listed twice is one row
 const TM_SEP = /\s*(?<!:):(?!:)\s*/; // a lone colon: '::' is part of a name (Shop::Worker)
 const tmNameType = s => { const [name, ...rest] = s.split(TM_SEP); return [name, rest.join(':').trim()]; }; // `a : B : C` is a, represents B:C
@@ -74,7 +76,7 @@ function tmInput(model, V, X = tmIndex(model, V)) {
   const w = (t, px = TM.text) => Math.ceil(textW(String(t ?? ''), px));
   return {
     lanes: X.heads.map(n => { const vals = X.values(n.id);
-      return { id: n.id, name: { w: w(tmHead(n), TM.name), h: TM.lbl }, form: vals ? 'values' : 'states', rows: vals ? [] : tmStates(n).map(s => ({ state: s, w: w(s) })),
+      return { id: n.id, name: { w: Math.max(w(tmHead(n), TM.name), w(tmSt(n))), h: tmSt(n) ? 2 * TM.lbl : TM.lbl }, form: vals ? 'values' : 'states', rows: vals ? [] : tmStates(n).map(s => ({ state: s, w: w(s) })),
         changes: X.changes.filter(c => c.lifeline === n.id).map(c => ({ id: c.id, at: c.at, state: String(c.state ?? ''), w: w(c.state) })) }; }),
     messages: X.msgs.map(m => { const t = tmLabel(m), p = tmProps(m);
       return { id: m.id, from: m.from, to: m.to, sentAt: p.sentAt, receivedAt: p.receivedAt, ...(t ? { w: w(t) + 12, h: TM.lbl } : { w: 0, h: 0 }) }; }),
@@ -91,8 +93,8 @@ function tmRun(model, view) {
   const V = tmView(model, view), X = tmIndex(model, V), o = layoutTimeRuler(tmInput(model, V, X)), x0 = o.ruler.x0;
   const nodes = [], order = [];
   o.lanes.forEach(l => { const n = X.N.get(l.id), vals = X.values(l.id), cs = X.mine(l.id);
-    nodes.push({ id: l.id, shape: 'tm-lane', type: 'uml.Lifeline', label: tmHead(n), k: 'file', holder: true, x: l.x, y: l.y, w: l.w, h: l.h, nx: l.name.x, ny: l.name.y,
-      aria: `${vals ? 'Value lifeline' : 'Lifeline'} ${tmHead(n)}${vals ? '' : `, ${tmPlural(l.rows.length, 'state')}`}, ${tmPlural(cs.length, 'change')}` });
+    nodes.push({ id: l.id, shape: 'tm-lane', type: 'uml.Lifeline', label: tmHead(n), ...tmSt(n) ? { st: tmSt(n) } : {}, k: 'file', holder: true, x: l.x, y: l.y, w: l.w, h: l.h, nx: l.name.x, ny: l.name.y,
+      aria: `${vals ? 'Value lifeline' : 'Lifeline'} ${tmHead(n)}${tmStereo(n).length ? ` (${tmStereo(n).join(', ')})` : ''}${vals ? '' : `, ${tmPlural(l.rows.length, 'state')}`}, ${tmPlural(cs.length, 'change')}` });
     order.push(l.id);
     l.rows.forEach(r => { const w = Math.ceil(textW(r.state, TM.text)), id = tmRowId(l.id, r.state);
       nodes.push({ id, shape: 'tm-row', label: r.state, k: 'file', x: r2(x0 - TR.pad - w), y: r2(r.y - 8), w, h: 16, aria: `State ${r.state} of ${tmName(n)}` }); order.push(id); }); });
@@ -129,7 +131,7 @@ function tmDraw(g) {
 /* the shapes, each a node the canvas selects, names and focuses (§6.7) */
 const tmNode = (n, shape, inner) => `<g class="node ${shape}" data-id="${esc(n.id)}" data-shape="${shape}" tabindex="-1" role="img" aria-label="${esc(n.aria || n.label || n.id)}">${inner}</g>`;
 const tmText = (x, y, t, px, w = 500, a = 'start', cls = '') => `<text x="${r2(x)}" y="${r2(y)}" text-anchor="${a}"${cls ? ` class="${cls}"` : ''} fill="var(--um-text)" style="font:${w} ${px}px var(--um-sans)">${esc(t)}</text>`;
-SHAPE['tm-lane'] = { draw: n => tmNode(n, 'tm-lane', `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" class="n-body" fill="transparent"/>${tmText(n.nx, n.ny + 12, fit(n.label, TM.name, TR.cut), TM.name, 600, 'start', 'c-name')}`) };
+SHAPE['tm-lane'] = { draw: n => tmNode(n, 'tm-lane', `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" class="n-body" fill="transparent"/>${n.st ? tmText(n.nx, n.ny + 12, fit(n.st, TM.text, TR.cut), TM.text) : ''}${tmText(n.nx, n.ny + 12 + (n.st ? TM.lbl : 0), fit(n.label, TM.name, TR.cut), TM.name, 600, 'start', 'c-name')}`) };
 SHAPE['tm-row'] = { draw: n => tmNode(n, 'tm-row', `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" fill="transparent"/>${tmText(n.x + n.w, n.y + 12, n.label, TM.text, 500, 'end')}`) };
 SHAPE['tm-change'] = { draw: n => tmNode(n, 'tm-change', `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" class="n-body" fill="transparent"/>`) };
 SHAPE['tm-mark'] = {
@@ -207,7 +209,7 @@ function tmDescribe(model, viewId) {
   const V = TM_ARR(model && model.views).find(x => TM_OBJ(x) && x.id === viewId); if (!V) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
   const X = tmIndex(model, V), shown = X.changes.filter(c => X.H.has(c.lifeline));
   const out = [`${V.title || V.id}: a timing diagram of ${tmPlural(X.heads.length, 'lifeline')}, ${tmPlural(shown.length, 'change')}, ${tmPlural(X.msgs.length, 'message')} and ${tmPlural(X.shown.length, 'constraint')}${X.unit ? `, in ${X.unit}` : ''}.`];
-  X.heads.forEach(n => { const cs = X.mine(n.id); out.push(`${tmHead(n)}${X.values(n.id) ? ' (values)' : ''}: ${cs.length ? cs.map(c => `${c.state ?? ''} from ${X.t(c.at)}`).join('; ') : 'no change'}.`); });
+  X.heads.forEach(n => { const cs = X.mine(n.id); out.push(`${tmShown(n)}${X.values(n.id) ? ' (values)' : ''}: ${cs.length ? cs.map(c => `${c.state ?? ''} from ${X.t(c.at)}`).join('; ') : 'no change'}.`); });
   [...X.msgs].sort((a, b) => tmProps(a).sentAt - tmProps(b).sentAt).forEach(m => out.push(tmMsgSaid(X, m) + '.'));
   X.shown.forEach(c => out.push(tmConSaid(X, c) + '.'));
   return out.join('\n');

@@ -206,7 +206,7 @@ function ovDescribe(model, viewId) {
   visit(...I.ids.filter(id => I.el(id).type === 'uml.InitialNode')); I.ids.forEach(id => visit(id));
   const count = id => I.flows.filter(e => e.to === id).length;
   const lines = [`${v.title || v.id}: an interaction overview diagram of ${ovPlural(I.ids.length, 'node')} and ${ovPlural(I.flows.length, 'flow')}.`];
-  walk.forEach(id => { const x = I.el(id), next = (out.get(id) || []).map(e => { const t = flowText(e.label, OV_PROPS(e).guard); return `${ovNm(I, e.to)}${!t ? '' : OV_HAS(e.label) ? ' by ' + t : ' ' + t}`; });
+  walk.forEach(id => { const x = I.el(id), next = (out.get(id) || []).map(e => { const t = flowText(e.label, OV_PROPS(e).guard); return `${ovNm(I, e.to)}${flowStereo(e).length ? ' ' + flowStereo(e).join(' ') : ''}${!t ? '' : OV_HAS(e.label) ? ' by ' + t : ' ' + t}`; }); // its «stereotypes» too (audit 17)
     lines.push(`${ovNodeName(model, I, x, count(id), (out.get(id) || []).length, x.type === 'uml.Interaction' ? ovInline(model, I, x, false) : null)}${next.length ? '; then ' + next.join(', ') : ''}.`); });
   I.lines.filter(e => e.type === 'uml.CommentLink').forEach(e => lines.push(ovFlowName(I, e) + '.'));
   return lines.join('\n');
@@ -250,7 +250,7 @@ const OVERVIEW_TYPE = registerDiagramType('uml.interaction-overview', {
     ['Interaction', 'Inline interaction', { opens: 'uml.sequence' }], ['Comment', 'Comment']].map(([t, label, more]) => ({ type: 'uml.' + t, label, ...more })),
   lines: [{ type: 'uml.ControlFlow', label: 'Control flow' }, { type: 'uml.CommentLink', label: 'Comment link' }],
   // Stereotypes on every element but a glyph with no text (initial, final, a bar), which draws none (audit 16)
-  props: { ...Object.fromEntries(OV_NODES.map(t => [t, ['initial', 'final', 'flow-final', 'bar'].includes(OV_SHAPE[t]) ? [] : [OV_STEREO]])), 'uml.ControlFlow': [{ key: 'guard', label: 'Guard', kind: 'text' }, OV_STEREO], 'uml.CommentLink': [] },
+  props: { ...Object.fromEntries(OV_NODES.map(t => [t, ['initial', 'final', 'flow-final', 'bar'].includes(OV_SHAPE[t]) ? [] : [OV_STEREO]])), 'uml.Comment': [], 'uml.ControlFlow': [{ key: 'guard', label: 'Guard', kind: 'text' }, OV_STEREO], 'uml.CommentLink': [] },
   layout: ovGeo,
   member: { holds: () => false }, // nothing here has members
   validate: ovProblems,

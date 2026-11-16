@@ -72,6 +72,10 @@ export function diff(before, after) {
     // and what else it draws differently (audit 15): its caption, lanes and the like, a box's tone or badges, a card's pin
     const other = (x, y, skip) => [...new Set([...Object.keys(x), ...Object.keys(y)])].filter(k => !skip.includes(k) && canon(x[k]) !== canon(y[k]));
     const vk = other(o, v, ['id', 'title', 'nodeIds', 'nodes', 'edges', 'containers', 'nodeOverrides', 'layout', 'present', 'fragments']); // a card's pin and present: said with the card
+    // present keyed by what is no card of the view (a port's side, a part's ports, audit 17), or present that is no table: said with the view
+    const tb = x => x && typeof x === 'object' && !Array.isArray(x), P0 = tb(o.present) ? o.present : {}, P1 = tb(v.present) ? v.present : {};
+    if (canon(o.present) !== canon(v.present) && ((o.present != null && !tb(o.present)) || (v.present != null && !tb(v.present))
+      || [...new Set([...Object.keys(P0), ...Object.keys(P1)])].some(k => !ids.includes(k) && !oldIds.includes(k) && canon(P0[k]) !== canon(P1[k])))) vk.push('present');
     if (vk.length) { viewSaid.push(`changes the view ${vn} (${vk.join(', ')})`); touched.add(v.id); }
     const ob = new Map(arr(o.containers).filter(Boolean).map(c => [c.id, c]));
     arr(v.containers).forEach(c => { const b = c && ob.get(c.id); if (!b) return; if (bn(b) !== bn(c)) says(`renames the box ${bn(b)} to ${bn(c)}`);
@@ -136,7 +140,7 @@ export function diff(before, after) {
   const cards = [...out.nodes, ...views.flatMap(v => arr(v && v.nodes))].filter(Boolean);
   const named = new Map([...views.flatMap(v => arr(v && v.containers)), ...cards, ...[...lost.values()].map(([y]) => y), ...[...lost.values()].map(([, , u]) => (have.get(u) || [])[0])].filter(Boolean).map(n => [n.id, n]));
   const name = id => String((named.get(id) || {}).label || id), cardHow = new Map([...cards.filter(n => how.has(n)).map(n => [n.id, how.get(n)]), ...[...lost.keys()].map(id => [id, 'removed'])]);
-  const lines = [...new Set([...out.edges, ...views.flatMap(v => arr(v && v.edges).filter(e => e && typeof e === 'object'))])]; // a view that dropped its list holds the model's lines themselves
+  const lines = [...new Set([...out.edges.filter(e => e && typeof e === 'object'), ...views.flatMap(v => arr(v && v.edges).filter(e => e && typeof e === 'object'))])]; // a view that dropped its list holds the model's lines themselves
   const diffKeys = ([o, x]) => [...new Set([...Object.keys(o), ...Object.keys(x)])].filter(k => canon(o[k]) !== canon(x[k]));
   views.forEach(v => { if (v && !V0.has(v.id)) said.push(`adds the view ${v.title || v.id}`); });
   arr(A.views).forEach(o => { if (o && !V1.has(o.id)) said.push(`removes the view ${o.title || o.id}`); });
