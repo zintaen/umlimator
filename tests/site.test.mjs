@@ -4,6 +4,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { execFile } from 'node:child_process';
+import { createServer } from 'node:http';
+import { promisify } from 'node:util';
 import { MOVED } from '../docs/diagrams/examples/check.mjs';
 
 const root = new URL('../', import.meta.url), read = p => readFileSync(new URL(p, root), 'utf8');
@@ -125,11 +128,44 @@ test('the built site\'s pages each have one main landmark and one contentinfo (a
   const bad = [];
   for (const p of pages()) {
     const page = readFileSync(p, 'utf8'), name = p.pathname.split('/dist/')[1];
-    if (page.includes('class="NotFound"') || name === '404.html') continue;
+    if (name === '404.html') continue;   // written with an empty #app: the test below reads it drawn, in the browser
     if ((page.match(/<main[ >]/g) || []).length !== 1) bad.push(`${name}: ${(page.match(/<main[ >]/g) || []).length} main`);
     // the site footer shows unless VitePress hides it beside a sidebar (has-sidebar: display none)
     const footers = (page.match(/<footer class="VPFooter"/g) || []).length + (page.match(/<footer class="VPDocFooter"/g) || []).length;
     if (footers > 1) bad.push(`${name}: ${footers} footers`);
   }
   assert.deepEqual(bad, []);
+});
+
+test('the built site\'s table header cells each hold text (axe empty-table-header, audit 18)', { skip: !built && 'the site is not built (npm --prefix docs run build)' }, () => {
+  const bad = [];
+  for (const p of pages()) {
+    const page = readFileSync(p, 'utf8'), name = p.pathname.split('/dist/')[1];
+    for (const [, th] of page.matchAll(/<th\b[^>]*>([\s\S]*?)<\/th>/g)) if (!th.replace(/<[^>]*>/g, '').trim()) bad.push(name);
+  }
+  assert.deepEqual([...new Set(bad)], []);
+});
+
+// VitePress writes 404.html with an empty #app: the page is drawn in the browser, so it is read in headless Chrome, as
+// GitHub Pages serves it for a dead link (any path under the base)
+test('the built site\'s 404 page, drawn in the browser, has one main landmark (axe landmark-one-main and region, audit 18)', { skip: !built && 'the site is not built (npm --prefix docs run build)', timeout: 120000 }, async t => {
+  const py = 'import sys; sys.path.insert(0, "engine/scripts"); import visual; print(visual.find_chrome() or "")';
+  const chrome = (await promisify(execFile)('python3', ['-c', py], { cwd: root })).stdout.trim();
+  if (!chrome) return t.skip('no Chrome or Chromium');
+  const dist = new URL('docs/.vitepress/dist/', root), types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json' };
+  const server = createServer((req, res) => {
+    const path = decodeURIComponent(new URL(req.url, 'http://x').pathname).replace(/^\/umlimator\//, '');
+    const file = new URL(path || 'index.html', dist), ok = !path.includes('..') && existsSync(file) && !file.pathname.endsWith('/');
+    res.writeHead(ok ? 200 : 404, { 'content-type': types[(ok ? file.pathname : '.html').match(/\.\w+$/)?.[0]] || 'application/octet-stream' });
+    res.end(readFileSync(ok ? file : new URL('404.html', dist)));
+  });
+  await new Promise(r => server.listen(0, '127.0.0.1', r));
+  try {
+    const url = `http://127.0.0.1:${server.address().port}/umlimator/no-such-page`;
+    const run = `import sys; sys.path.insert(0, "engine/scripts"); import visual; print(visual.chrome(sys.argv[1], "--virtual-time-budget=15000", "--dump-dom", sys.argv[2], done=lambda s: "</html>" in s, timeout=90))`;
+    const dom = (await promisify(execFile)('python3', ['-c', run, chrome, url], { cwd: root, maxBuffer: 1 << 26 })).stdout;
+    assert.match(dom, /class="NotFound/, 'the 404 page is drawn');
+    assert.equal((dom.match(/<main[ >]/g) || []).length, 1, 'one main landmark');
+    assert.match(dom, /<main[^>]*>\s*<div[^>]*class="NotFound"/, 'the 404 content is inside it');
+  } finally { server.close(); }
 });

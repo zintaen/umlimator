@@ -234,6 +234,17 @@ m, _, dt = quick("compose", json.dumps({"services": {f"s{i}": {"networks": [f"n{
 ok("hostile · 20000 compose services on their own networks read in linear time", dt < 3 and m["views"][0]["containers"][0]["nodeIds"] == ["s0", "s2"], dt)
 m, un, _ = quick("compose", json.dumps({"services": {}, "x": " " * imp.LIMIT}))
 ok("hostile · compose or Kubernetes JSON over 1 MiB is not read", m["nodes"] == [] and "over the limit of 1048576" in un[0][1], un)
+env = [("PG", "jdbc:postgresql://postgres:5432/orders"), ("MY", "jdbc:mysql://u:pw@mysql.shop.svc.cluster.local:3306/x"),
+       ("MS", "jdbc:sqlserver://mssql:1433;databaseName=orders"), ("ORA", "jdbc:oracle:thin:@//oracle:1521/ORCL"),
+       ("CACHE", "redis://cache:6379"), ("SEMI", "cache;x"), ("ASK", "cache?x"), ("MEM", "jdbc:h2:mem:cache")]
+k8s = [{"kind": "Deployment", "metadata": {"name": "orders", "namespace": "shop"},
+        "spec": {"template": {"spec": {"containers": [{"name": "o", "env": [{"name": n, "value": v} for n, v in env]}]}}}}] + [
+       {"kind": "Service", "metadata": {"name": n, "namespace": "shop"}, "spec": {"selector": {"app": n}}} for n in ("postgres", "mysql", "mssql", "oracle", "cache")]
+m, un = imp.read("kubernetes", json.dumps(k8s), "x")
+ok("kubernetes · a JDBC URL in an env value names its Service: a scheme of words joined by colons, ; or ? after it (audit 18); "
+   "a bare word with ; or ? and a URL with no host name nothing",
+   sorted((e["to"], e.get("label")) for e in m["edges"] if e["from"] == "deploy-orders")
+   == [("svc-cache", "CACHE"), ("svc-mssql", "MS"), ("svc-mysql", "MY"), ("svc-oracle", "ORA"), ("svc-postgres", "PG")], (ends(m), un))
 odd = {"kubernetes": ([[{"kind": "Deployment"}]], 5, {"items": [None]}, [{"kind": "Deployment", "metadata": "x"}],
                       [{"kind": "Service", "metadata": {"name": "s"}, "spec": {"selector": ["a"], "ports": [80]}}],
                       [{"kind": "Ingress", "metadata": {"name": "i"}, "spec": {"rules": [None]}}],

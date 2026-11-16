@@ -125,3 +125,15 @@ test('audit 18: deleting a C4 view\'s subject, or the constraint block a constra
   const q = validate(apply(eb, { op: 'delete', id: cb.id })).filter(x => x.rule === 'constraint-type');
   assert.ok(q.length > 0 && q.every(x => x.level === 'warning' && /which names nothing/.test(x.message)), JSON.stringify(q));
 });
+
+test('audit 18: Delete on the subject selected with a part, a port or a lane keeps the subject, said, and still handles the rest', async () => {
+  await import('../src/sysml/internal.js'); await import('../src/sysml/parametric.js'); await import('../src/bpmn/process.js');
+  const cases = [['order-service-structure.json', 'order-service.checkout'], ['ebike-structure.json', null], ['ebike-range.json', null], ['bookshop-order-to-shipment.json', 'bp-sales']];
+  for (const [f, other] of cases) { const m = ex(f), v = m.views.find(x => x.subject != null);
+    const o = other ?? arr(m.nodes.find(n => n.id === v.subject).members)[0].id, r = hookOf(v)(m, v, [v.subject, o], false);
+    assert.ok(!r.commands.some(c => c.op === 'hide' && c.id === v.subject), `${f}: no hide of the subject`);
+    const after = apply(m, r.commands); // apply() refuses a hide of the subject, which refused the whole selection before
+    assert.ok(!JSON.stringify(after).includes(`"id":"${o}"`), `${f}: ${o} is deleted`);
+    assert.equal(after.views.find(x => x.id === v.id).subject, v.subject, `${f}: the subject stays`);
+    assert.match(r.say, /kept .+, the view's subject: change the view's subject, or Shift \+ Delete deletes it$/, f); }
+});

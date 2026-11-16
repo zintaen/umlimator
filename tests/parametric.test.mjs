@@ -256,10 +256,18 @@ test('the PDF (§13): words, rows, a binding\'s ends as its line text', () => {
   assert.deepEqual(T.rows(M19, V, 'ebike.eco'), ['eco: RangeEquation', '{range = energy / consumption}']);
   assert.deepEqual(T.rows(M19, V, 'range-equation.range'), ['Distance']);
   assert.deepEqual(T.rows(M19, V, 'range-equation'), ['{range = energy / consumption}', 'param range : Distance', 'param energy : Energy', 'param consumption : EnergyPerDistance']);
-  assert.deepEqual(T.rows(M19, V, 'ebike').slice(8, 10), ['boost : RangeEquation', 'Binding from value batteryCapacity to parameter capacity of usable']);
+  // its bindings are Lines rows, not member rows too (audit 18, as the internal block view since audit 17)
+  assert.deepEqual(T.rows(M19, V, 'ebike').slice(8), ['boost : RangeEquation']);
   assert.deepEqual(['bind-eco-range', 'bind-usable-eco', 'nope'].map(id => T.text(M19, V, id)), ['ecoRange to range of eco', 'usable of usable to energy of eco', null]);
   const ctx = mapContext(M19), tables = tablesOf(ctx, ctx.V[VID], ctx.buildGeo(VID)), cards = tables.find(t => t.cls === 'cards');
-  assert.ok(cards.rows.some(r => r.includes('Binding from value ecoRange to parameter range of eco')), cards.rows.join('\n'));
+  const lines = tables.find(t => t.cls === 'lines');
+  assert.equal(lines.rows.filter(r => r.includes('ecoRange to range of eco')).length, 1, lines.rows.join('\n'));
+  assert.equal(lines.rows.length, 8);
+  assert.ok(!cards.rows.some(r => /Binding from/.test(r)), cards.rows.join('\n'));
+  // a constraint block as the subject: its nested binding is a Lines row too, and its rows hold none
+  const nc = mapContext(NEST), nt = tablesOf(nc, nc.V.model, nc.buildGeo('model'));
+  assert.ok(nt.find(t => t.cls === 'lines').rows.filter(r => r.includes('Binding connector')).length === 5, JSON.stringify(nt));
+  assert.ok(!nt.find(t => t.cls === 'cards').rows.some(r => /Binding from/.test(r)), JSON.stringify(nt));
 });
 
 /* ---- P1 (§14): 16 constraint properties, 48 parameters, 30 value properties, 60 bindings; a binding added and a constraint
@@ -318,4 +326,14 @@ test('binding-types names value types with no label by their id (audit 9)', () =
 test('audit 15: "port : Integer" is a value property named port; "param : Real" with no name is refused', () => {
   assert.deepEqual(T.edits.member(M19, V, 'ebike', null, 'port : Integer')[0].element, { id: 'ebike.port', type: 'sysml.ValueProperty', label: 'port', props: { valueType: 'Integer' } });
   assert.ok(T.edits.member(M19, V, 'usable-energy', null, 'param : Real').error);
+});
+
+test('audit 18: a constraint property with no type: binding-parameter says it has none, never "a parameter of null"', () => {
+  const m = run(M19, [{ op: 'set', id: 'ebike.eco', path: 'props.valueType', value: undefined }]);
+  const said = validate(m).filter(p => p.rule === 'binding-parameter').map(p => p.message);
+  assert.ok(said.length >= 1, said.join('\n'));
+  for (const s of said) { assert.ok(!/null/.test(s), s); assert.match(s, /is not a parameter of "eco", which has no type: type it by a constraint block/); }
+  // a type set but naming no constraint block keeps its quoted name
+  const named = validate(run(M19, [{ op: 'set', id: 'ebike.eco', path: 'props.valueType', value: 'Nothing' }])).filter(p => p.rule === 'binding-parameter');
+  assert.ok(named.length && named.every(p => /a parameter of "Nothing", the type of "eco"/.test(p.message)), named.map(p => p.message).join('\n'));
 });

@@ -336,6 +336,7 @@ function csConnect(model, view, from, to, at, line) {
     const C = csCollab(P, P.at.get(u)), all = C ? P.kids(C, 'uml.Property') : [], roles = all.filter(m => CS_HAS(m.label)).map(m => String(m.label));
     const add = role => [{ op: 'add', element: { id: csFresh(model, 'binding'), type: 'uml.RoleBinding', from: p, to: u, ...(role != null ? { label: role } : {}) }, view: view.id }];
     if (!roles.length && all.length) return { error: `Name a role of ${csName(C)} first: a role binding names the role it binds` };
+    if (C && !all.length) return { error: `Add a role to ${csName(C)} first: a role binding names the role it binds` }; // binding-role would warn (audit 18)
     return roles.length ? { pick: roles, then: i => add(roles[i]) } : add(null);
   }
   // the node each end is drawn on: its part, the subject (its port), else itself. One node, through a port or a box: not drawn (audit 11)
@@ -383,9 +384,11 @@ function csAdd(model, view, entry, label, at) {
 /* remove: a part, a port or a role is a member, which a view cannot hide (S20): Delete deletes it from the model, as Shift +
    Delete does, said. Delete on a port on a part deletes the connectors through that part to it; Shift + Delete, the port from
    its class (§6). Other ids as the default */
+// x is the element id, or holds it among its members, at any depth
+const csHolds = (x, id) => CS_OBJ(x) && id != null && (x.id === id || CS_ARR(x.members).some(m => csHolds(m, id)));
 function csRemove(model, view, ids, fromModel) {
   const P = csPic(model, view); if (!CS_ARR(ids).some(id => csSplit(id) || P.mem.has(id))) return null;
-  const out = [], hide = [], said = [], del = id => { if (!out.some(c => c.op === 'delete' && c.id === id)) out.push({ op: 'delete', id }); };
+  const out = [], hide = [], said = [], kept = [], del = id => { if (!out.some(c => c.op === 'delete' && c.id === id)) out.push({ op: 'delete', id }); };
   ids.forEach(id => { const s = csSplit(id), x = P.mem.get(s ? s[1] : id);
     if (s && x && !fromModel) { const through = CS_ARR(model.edges).filter(e => CS_OBJ(e) && ['from', 'to'].some(k => e[k] === s[1] && CS_OBJ((CS_PROPS(e).ends || {})[k]) && CS_PROPS(e).ends[k].part === s[0]));
       through.forEach(e => del(e.id)); said.push(`the ${csPlural(through.length, 'connector')} through ${csName(P.el(s[0]))} to its port ${csName(x.m)}; Shift + Delete deletes the port from ${csName(x.owner)}`); }
@@ -394,11 +397,12 @@ function csRemove(model, view, ids, fromModel) {
     else if (s) return;
     else if (fromModel) del(id);
     else { const e = CS_ARR(model.edges).find(x => CS_OBJ(x) && x.id === id); // a node or a line selected with them: as the canvas does
-      if (e && !Array.isArray(view.edges)) said.push(`not the line ${csName(e)}: this view shows every line between its cards, and Shift + Delete deletes it`);
+      if (csHolds(P.el(id), view.subject)) kept.push(`kept ${csName(P.el(id))}, ${id === view.subject ? '' : 'which holds '}the view's subject: change the view's subject, or Shift + Delete deletes it`); // apply() refuses its hide (audit 18)
+      else if (e && !Array.isArray(view.edges)) said.push(`not the line ${csName(e)}: this view shows every line between its cards, and Shift + Delete deletes it`);
       else if (e || P.at.has(id)) hide.push({ op: 'hide', id, view: view.id }); } });
   // hidden first: a line hidden after the part it ends at is deleted would be gone with it
-  if (!out.length && !hide.length) return { error: `Nothing to delete: ${said[0] || 'no connector'}` };
-  return { commands: [...hide, ...out], say: 'Deleted ' + said.join('; ') };
+  if (!out.length && !hide.length) return { error: `Nothing to delete: ${said[0] || kept[0] || 'no connector'}` };
+  return { commands: [...hide, ...out], say: ['Deleted ' + said.join('; '), ...kept].join('; ') };
 }
 // rename: F2 on a port on a part renames its class's port, for every part of that type (said), and on the subject's own
 // port, `name : Type` as well (audit 16); on a collaboration use, `name : Collaboration`; on a part or a role, its row

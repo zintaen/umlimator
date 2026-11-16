@@ -357,6 +357,7 @@ const COMM_TYPE = registerDiagramType('uml.communication', {
   // stacks. Connectors turned round make the messages along them close cycles, which that ranking passes over: a third of
   // its time on the stress fixture; layout.rank false (above) now skips that ranking
   rankFlip: e => e.type === 'uml.Connector',
+  member: { holds: () => false }, // nothing here draws members: the panel offers no Members rows (audit 18)
   validate: commProblems,
   rules: CM_RULES,
   describe: commDescribe,

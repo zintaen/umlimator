@@ -560,7 +560,7 @@ export function render(container, model, options = {}) {
     if (ref.type === 'edge') { const e = geo.edges[edgeIndex(ref)]; if (!e) return null; const L = e.lbl, m = e.pts[Math.floor(e.pts.length / 2)];
       return L ? { x: L.x - 8, y: L.y - 2, w: L.w + 16, h: L.h + 4 } : { x: m[0] - 60, y: m[1] - 12, w: 120, h: 24 }; }
     const f = ref.type === 'container' && (geo.families || []).find(x => x.id === ref.id); return f ? { x: f.x + 8, y: f.y + 2 + (f.head || 0), w: Math.min(f.w - 16, 220), h: 24 } : null; };
-  function editor(where, text, done, ref = null) { // where: a box in map units (a new card's), or ref names what the field sits over
+  function editor(where, text, done, ref = null, empty = false) { // where: a box in map units (a new card's), or ref names what the field sits over; empty: an emptied field is a change
     if (naming) naming.close(false);
     const inp = document.createElement('input');
     inp.className = 'um-edit um-rename'; inp.value = text; inp.setAttribute('aria-label', text ? 'New name' : 'Name of the new card');
@@ -569,7 +569,7 @@ export function render(container, model, options = {}) {
     place(); stage.appendChild(inp); inp.focus(); inp.select();
     // once only: removing a focused field can fire blur (cancel) in the middle of a commit
     let closed = false;
-    const finish = ok => { if (closed) return; closed = true; naming = null; touch(); const v = inp.value.trim(); if (ok && v && v !== text) done(v); inp.remove(); stage.focus({ preventScroll: true }); };
+    const finish = ok => { if (closed) return; closed = true; naming = null; touch(); const v = inp.value.trim(); if (ok && (v || empty) && v !== text) done(v); inp.remove(); stage.focus({ preventScroll: true }); };
     naming = { ref, place, close: finish }; touch();
     inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); finish(true); } else if (e.key === 'Escape') { e.preventDefault(); finish(false); } });
     inp.addEventListener('blur', () => finish(false));
@@ -580,7 +580,7 @@ export function render(container, model, options = {}) {
     ref = copyRef(ref); if (!can('rename') || !ref || !nameBox(ref)) return;
     const n = ref.type === 'node' && geo.byId[ref.id], e = ref.type === 'edge' && geo.edges[edgeIndex(ref)], f = ref.type === 'container' && (geo.families || []).find(x => x.id === ref.id);
     const text = n ? String(ctx.nodeIn(n.id, cur).label ?? n.label ?? '') : e ? String((e.all || [e])[0].label || '') : String(f.label || f.id);
-    editor(null, text, v => typed() ? tx.label(ref, v) : change({ op: 'rename', target: ref, label: v }), ref);
+    editor(null, text, v => typed() ? tx.label(ref, v) : change({ op: 'rename', target: ref, label: v }), ref, typed() && !!(tx && tx.empty && tx.empty(ref)));
   }
   function addAt(x, y) {
     if (!can('add') || !geo) return;

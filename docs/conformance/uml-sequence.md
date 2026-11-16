@@ -58,7 +58,7 @@ refused, and may leave one.
 Measured on `examples/checkout-sequence.json` (0.20.0): `umlimator.py stills` (SVG and PNG) and `umlimator.py pdf` on
 its rendered page. Each file was opened and looked at.
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
 |---|---|---|---|
 | Heads, stems, bars, crosses | Yes | Yes | Yes, in vectors |
 | Messages, their arrowheads and dashes, labels on their backings, self-message loops | Yes | Yes | Yes |
@@ -67,7 +67,7 @@ its rendered page. Each file was opened and looked at.
 | Text | Text, in the page's font family; the font is not embedded unless `fontCSS` is given | Pixels | Selectable text |
 | Accessible names | Each head's, frame's, operand's and use's `aria-label` kept; the messages' `<title>` removed, as for maps | None | None |
 | Theme | The page's, light or dark, every colour resolved, so the file opens alone | The page's | `--theme`, light by default |
-| Tables | None | None | Per type (R8): each lifeline by its drawn name (`api : ShopApi`) and kind ("Lifeline"); each message from → to, its label and its kind ("Message"). **Gaps:** a self-message (`api → api`) is listed in the lines table and the page's line count, but left out of the cover's ("9 lines" on the cover for 10 messages); fragments, operands and interaction uses are not listed; a message's sort is not given (every kind reads "Message") |
+| Tables | None | None | Per type (R8): each lifeline by its drawn name (`api : ShopApi`) and kind ("Lifeline"); each message from → to, its label and its kind ("Message"). A self-message (`api → api`) is listed in the lines table and counted on the cover. **Gaps:** fragments, operands and interaction uses are not listed; a message's sort is not given (every kind reads "Message") |
 
 The site builds every example's stills and PDF ([zintaen.github.io/umlimator](https://zintaen.github.io/umlimator/)),
 this one's among them.

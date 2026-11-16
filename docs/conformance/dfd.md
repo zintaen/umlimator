@@ -60,7 +60,7 @@ Layout limits, measured on `examples/bookshop-data-flow.json` and `tests/dfd-str
 
 Measured on `examples/bookshop-data-flow.json` (0.24.0); the PDF's text read back by `tests/cli.py`.
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
 |---|---|---|---|
 | Processes, stores, entities and flows, in the view's notation | Yes | Yes | Yes, in vectors, each level on a page of its own |
 | The legend | No: the legend is a piece of the page | No | Yes, under the picture |

@@ -400,11 +400,12 @@ const TM_TYPE = registerDiagramType('uml.timing', {
   },
   layout: { run: tmRun, pins: false },
   draw: tmDraw,
+  member: { holds: () => false }, // nothing here draws members: the panel offers no Members rows (audit 18)
   validate: tmProblems,
   rules: TM_RULES,
   describe: tmDescribe,
   rows: tmRows,
-  edits: { connect: tmConnect, moveTo: tmMoveTo, add: tmAdd, remove: tmRemove, rename: tmRename, key: tmKeyHook },
+  edits: { connect: tmConnect, moveTo: tmMoveTo, add: tmAdd, remove: tmRemove, rename: Object.assign(tmRename, { empty: (model, view, id) => id === TM_RULER }), key: tmKeyHook }, // F2 emptied on the ruler: no unit (audit 18)
 });
 
 export { TM_TYPE, TM_RULES, TM_RULER, tmRowId, tmInput, tmRun, tmDraw, tmProblems, tmDescribe, tmRows, tmParse, tmPrint, tmAdd, tmConnect, tmMoveTo, tmRename, tmRemove, tmKeyHook };

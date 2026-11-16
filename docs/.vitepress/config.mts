@@ -137,8 +137,12 @@ export default defineConfig({
   },
   vite: {
     build: { chunkSizeWarningLimit: 1000 },   // the changelog's page is about 700 kB
-    // the home page in a main landmark: VPContent's VPHome, a <div>, drawn inside <main> (theme/VPHomeMain.vue, audit 17)
-    resolve: { alias: [{ find: /^\.\/VPHome\.vue$/, replacement: fileURLToPath(new URL('./theme/VPHomeMain.vue', import.meta.url)) }] },
+    // the home page and the 404 page in a main landmark: VPContent's VPHome and NotFound, each a <div>, drawn inside
+    // <main> (theme/VPHomeMain.vue, audit 17; theme/NotFoundMain.vue, audit 18)
+    resolve: { alias: [
+      { find: /^\.\/VPHome\.vue$/, replacement: fileURLToPath(new URL('./theme/VPHomeMain.vue', import.meta.url)) },
+      { find: /^\.\.\/NotFound\.vue$/, replacement: fileURLToPath(new URL('./theme/NotFoundMain.vue', import.meta.url)) },
+    ] },
   },
   vue: { template: { compilerOptions: { isCustomElement: t => t.startsWith('umlimator-') } } },
   themeConfig: {

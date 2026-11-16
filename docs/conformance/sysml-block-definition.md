@@ -79,7 +79,7 @@ Layout limits, measured on `examples/ebike-blocks.json` and `tests/block-definit
 
 Measured on `examples/ebike-blocks.json` (0.25.0); the PDF's text read back by `tests/cli.py`.
 
-| | SVG | PNG | PDF | Mermaid |
+| What is drawn | SVG | PNG | PDF | Mermaid |
 |---|---|---|---|---|
 | Blocks and their titled compartments | Yes; a row longer than the box cut | Yes | Yes, in vectors | No writer |
 | The frame and its header | Yes, the header cut to the frame | Yes | Yes | |

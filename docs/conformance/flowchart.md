@@ -58,7 +58,7 @@ Layout limits, measured on `examples/returns-flowchart.json` and `tests/flowchar
 
 Measured on `examples/returns-flowchart.json` (0.24.0); the PDF's text read back by `tests/cli.py`.
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
 |---|---|---|---|
 | The ten symbols, flows and their labels | Yes | Yes | Yes, in vectors |
 | The legend | No: the legend is a piece of the page | No | Yes, under the picture |

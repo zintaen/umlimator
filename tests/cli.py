@@ -418,6 +418,51 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("render · a non-string tour, browserOrder, box card, box parent or intake to is refused in one line naming it, no traceback (audit 17)",
        all(b.returncode == 1 and b.stderr.strip().endswith(f"b17{k}.json: {said[k]}") and "Traceback" not in b.stderr and not (t / f"b17{k}.html").exists()
            for k, b in bs.items()), {k: b.stderr[-200:] for k, b in bs.items()})
+    # audit 18: a title, a view's title, authors, an intake logo or a member id of the wrong type ended in upstream's traceback;
+    # a null title is no title (as validate() reads it) and renders under the root view's title
+    bad = {"title": {"title": 5}, "vtitle": {"views": [two["views"][0] | {"title": 7}]}, "authors": {"authors": ["x"]},
+           "logo": {"views": [two["views"][0] | {"intake": [{"to": "a", "label": "in", "logo": ["x"]}]}]},
+           "member": {"nodes": [two["nodes"][0] | {"members": [{"id": ["p"], "label": "p"}]}, two["nodes"][1]]}}
+    said = {"title": "title is not a string", "vtitle": "views[0].title is not a string", "authors": "authors is not an object",
+            "logo": "views[0].intake[0].logo is not a string", "member": "nodes[0].members[0].id is not a string"}
+    for k, v in bad.items():
+        (t / f"b18{k}.json").write_text(json.dumps(two | v))
+    (t / "b18null.json").write_text(json.dumps(two | {"title": None, "views": [two["views"][0] | {"title": "Main view"}]}))
+    bs = {k: plain("render", str(t / f"b18{k}.json"), "--out", str(t / f"b18{k}.html"), "--no-check") for k in [*bad, "null"]}
+    ok("render · a non-string title, view title, intake logo or member id, or authors that is no object, is refused in one line naming it; a null title renders (audit 18)",
+       all(b.returncode == 1 and b.stderr.strip().endswith(f"b18{k}.json: {said[k]}") and "Traceback" not in b.stderr for k, b in bs.items() if k != "null")
+       and bs["null"].returncode == 0 and "<title>Main view</title>" in (t / "b18null.html").read_text(), {k: b.stderr[-200:] for k, b in bs.items()})
+    # audit 18: a card's icon or author that is no string names nothing in a still's key (it ended stills in a TypeError)
+    for k, v in (("icon", ["server"]), ("author", {"x": 1})):
+        (t / f"k18{k}.json").write_text(json.dumps(two | {"nodes": [two["nodes"][0] | {k: v}, two["nodes"][1]]}))
+    bs = [plain("render", str(t / f"k18{k}.json"), "--out", str(t / f"k18{k}.html"), "--no-check") for k in ("icon", "author")]
+    try:
+        keys = [u.still_keys(t / f"k18{k}.html", {}) for k in ("icon", "author")]
+    except Exception as e:
+        keys = [repr(e)]
+    ok("stills · a page whose card has an icon or author that is no string has a still key for each view, no traceback (audit 18)",
+       [b.returncode for b in bs] == [0, 0] and all(isinstance(k, dict) and list(k) == ["main"] for k in keys), keys)
+    # audit 18: an intake logo is an SVG in the model's own folder; any other file named there (a path out of the folder, an
+    # absolute path, a link to a file outside, a file that is not an SVG) is never read into the page, render's or diff's
+    lg = t / "lg18"; (lg / "sub" / "art").mkdir(parents=True)
+    secret = "SECRET-TOKEN-1234\n"; (lg / "secret.txt").write_text(secret); (lg / "secret.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg"><!-- SECRET-TOKEN-1234 --></svg>')
+    (lg / "sub" / "art" / "mark.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2 2"><circle r="1"/></svg>')
+    (lg / "sub" / "fake.svg").write_text(secret)
+    (lg / "sub" / "link.svg").symlink_to(lg / "secret.svg")
+    logos = ["../secret.txt", str(lg / "secret.txt"), str(lg / "secret.svg"), "../secret.svg", "link.svg", "fake.svg", "art/../../secret.svg", "nope.svg",
+             "data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==", "art/mark.svg", "data:image/png;base64,iVBORw0KGgo="]
+    lm = two | {"views": [two["views"][0] | {"intake": [{"to": "a", "label": f"in{j}", "logo": x} for j, x in enumerate(logos)]}]}
+    (lg / "sub" / "map.json").write_text(json.dumps(lm)); (lg / "before.json").write_text(json.dumps(two))
+    at = lambda *x: subprocess.run([sys.executable, str(ROOT / "umlimator.py"), *x], capture_output=True, text=True, cwd=lg)
+    b, d = at("render", "sub/map.json", "--out", "rel.html", "--no-check"), at("diff", "before.json", "sub/map.json", "--out", "diff.html")
+    leaked = [u.base64.b64encode(x.encode()).decode() for x in (secret, (lg / "secret.svg").read_text())]
+    pages = {f: (lg / f).read_text() if (lg / f).is_file() else "" for f in ("rel.html", "diff.html")}
+    kept = u.page_data(lg / "rel.html")[0]["views"][0]["intake"] if pages["rel.html"] else []
+    ok("render, diff · an intake logo outside the model's folder, absolute, linked out of it, or not an SVG is left out and said; one in the folder is embedded (audit 18)",
+       b.returncode == 0 and d.returncode == 0 and all(p and not any(x in p for x in leaked) and "SECRET-TOKEN" not in p for p in pages.values())
+       and [i for i, x in enumerate(kept) if "logo" in x] == [9, 10] and kept[9]["logo"].startswith("data:image/svg+xml;base64,")
+       and all(f"views[0].intake[{j}].logo is" in b.stderr for j in range(9)) and "Traceback" not in b.stderr + d.stderr,
+       [b.stderr[-600:], d.stderr[-300:], [x.get("logo", "")[:40] for x in kept]])
     b = plain("trace", str(ROOT / "examples" / "bike-share.json"), rides, "--view", "", "--out", str(t / "t11.json"))
     ok("trace · an empty --view is refused in one line, and nothing is written (audit 11)",
        b.returncode == 1 and "--view needs a view id" in b.stderr and not (t / "t11.json").exists(), b.stderr[-300:])
@@ -780,11 +825,14 @@ with tempfile.TemporaryDirectory() as tmp:
                                     "storefront : Storefront → api : ShopApifindBooks(title)Message"]), txt[:800])
     # 5.8: the three stage 5 types' tables (notes/stage-5.md §11): a component's ports with what they provide, an interface's
     # kind, what an artifact manifests; a target's kind and what is deployed on it; the subject's parts with their
-    # aggregation, a collaboration use's collaboration and bindings. A connector is a Lines row, once (audit 17)
+    # aggregation, a collaboration use's collaboration and bindings. A connector is a Lines row, once (audit 17), naming its kind
+    # and ports (audit 18)
     txt = "".join(read("bookshop-components.pdf"))
     ok("pdf · bookshop-components: its tables list each component's ports and what they provide, each interface and artifact by kind, each line between elements, a connector once",
        all(flat(s) in txt for s in ["Elements", "Shop APIComponentorders, provides Orderspayments", "OrdersInterface", "shop-api.jarArtifactmanifests Shop API",
-                                    "From → toLabelKind", "Storefront → OrdersUsage", "shop-api.jar → Shop APIManifestation", "Shop API → CheckoutConnector"]) and "Delegation from" not in txt, txt[:800])
+                                    "From → toLabelKind", "Storefront → OrdersUsage", "shop-api.jar → Shop APIManifestation",
+                                    "Shop API → CheckoutDelegation from orders of Shop API to orders of CheckoutConnector", "Shop API → Payment providerAssembly from payments of Shop API to charges of Payment providerConnector"])
+       and txt.count(flat("Delegation from")) == 2, txt[:800])  # each delegation once, in its Lines row, with its kind and ports (audit 18)
     txt = "".join(read("bookshop-deployment.pdf"))
     ok("pdf · bookshop-deployment: its tables list each target's kind and what is deployed on it (by nesting or a line), each artifact's manifestation, each path",
        all(flat(s) in txt for s in ["Shopper's deviceDevice", "Java 21 runtimeExecution environmentshop-api.jarorder-worker.jarshop-api.yaml", "Edge proxyNoderoutes.conf, by «deploy»",
@@ -840,10 +888,10 @@ with tempfile.TemporaryDirectory() as tmp:
                              "RangeEquationConstraintblockconstraints:{range=energy/consumption}parameters:range:Distance", "EnergyValuetypequantity:unit=Wh",
                              "EBike→RentalVehicleGeneralization"],
             "ebike-structure": ["EBikeBlockbattery:Battery[1]", "refdock:Dock[0..1]", "DCPower,batterytocontrollerConnector"],  # a connector: a Lines row (audit 17)
-            "ebike-range": ["eco:RangeEquation", "BindingfromvalueecoRangetoparameterrangeofeco", "Bindingfromparameterusableofusabletoparameterenergyofboost"]}
+            "ebike-range": ["eco:RangeEquation", "ecoRangetorangeofecoBindingconnector", "usableofusabletoenergyofboostBindingconnector"]}  # a binding: a Lines row only (audit 18)
     for n, want in PDF3.items():
         txt = "".join(read(f"{n}.pdf"))
-        ok(f"pdf · {n}: its tables list what SysML's type says of each element and line (§13)", all(w in txt for w in want), [w for w in want if w not in txt] or txt[:800])
+        ok(f"pdf · {n}: its tables list what SysML's type says of each element and line (§13)", all(w in txt for w in want) and "Bindingfrom" not in txt, [w for w in want if w not in txt] or txt[:800])
     # 4a.7: import on the mindmap example (notes/milestone-4a.md §8.4): the module's writer gives its Mermaid, and
     # umlimator.py import reads it back to the same topics under the same parents, in the same order, on the same sides
     ex = json.loads((ROOT / "examples" / "bookshop-opening-plan.json").read_text(encoding="utf-8"))

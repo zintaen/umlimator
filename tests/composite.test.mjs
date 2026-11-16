@@ -620,5 +620,9 @@ test('audit 17: a role binding\'s picker offers the named roles, which binding-r
   const r = T.edits.connect(two, two.views[0], 'S.p', 'u', {}, { type: 'uml.RoleBinding' });
   assert.deepEqual(r.pick, ['subscriber']);
   assert.deepEqual(validate(apply(two, r.then(0))).filter(p => p.rule === 'binding-role'), []);
-  const none = mk([]); assert.equal(T.edits.connect(none, none.views[0], 'S.p', 'u', {}, { type: 'uml.RoleBinding' })[0].element.label, undefined, 'a collaboration with no roles: an unlabelled binding, as before');
+  // audit 18: a collaboration with no roles is refused too, where binding-role would warn of the unlabelled binding at once
+  const none = mk([]); assert.match(T.edits.connect(none, none.views[0], 'S.p', 'u', {}, { type: 'uml.RoleBinding' }).error, /^Add a role to PubSub first/);
+  const lost = mk([]); lost.nodes[3].props.collaboration = 'Gone'; // no collaboration resolves: collaboration-named says so, the binding is added
+  const c = T.edits.connect(lost, lost.views[0], 'S.p', 'u', {}, { type: 'uml.RoleBinding' }); assert.equal(c[0].element.label, undefined);
+  assert.deepEqual(validate(apply(lost, c)).filter(p => p.rule === 'binding-role'), []);
 });

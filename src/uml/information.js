@@ -192,6 +192,7 @@ const IF_TYPE = registerDiagramType('uml.information-flow', {
   props: { 'uml.Class': [IF_STEREO], 'uml.Interface': [IF_STEREO], 'uml.Component': [IF_STEREO], 'uml.Actor': [IF_STEREO], 'uml.InformationItem': [], 'uml.InformationFlow': [], 'uml.CommentLink': [] },
   refs: { 'uml.InformationFlow': { 'props.conveyed': 'drop' } }, // a deleted element leaves every flow that conveys it
   layout: ifGeo,
+  member: { holds: () => false }, // nothing here draws members: the panel offers no Members rows (audit 18)
   validate: ifProblems,
   rules: IF_RULES,
   describe: ifDescribe,

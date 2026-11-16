@@ -457,3 +457,14 @@ test('audit 16: a component view listing a card with a null id, and a line betwe
     const keep = console.warn; console.warn = () => {}; try { assert.ok(layout(m, 'v').nodes.length, diagram); } finally { console.warn = keep; }
   }
 });
+
+test('audit 18: describe()\'s header counts relationships, and a comment link on its own', () => {
+  const m = structuredClone(C4), v = m.views.find(x => x.id === 'c4-context'), before = describe(C4, 'c4-context').split('\n')[0];
+  m.nodes.push({ id: 'note1', type: 'uml.Comment', label: 'Prices in EUR' });
+  m.edges.push({ id: 'note1-link', type: 'uml.CommentLink', from: 'note1', to: v.subject });
+  v.nodeIds.push('note1');
+  const text = describe(m, 'c4-context').split('\n'), rels = text.filter(t => /^Relationship from/.test(t)).length;
+  assert.ok(text.includes('Comment link from Prices in EUR to Bookshop.'), text.join('\n'));
+  assert.equal(text[0], before.replace(/(\d+) elements and (\d+) relationships\./, (_, n, r) => `${+n + 1} elements and ${r} relationships, and 1 comment link.`));
+  assert.match(text[0], new RegExp(` and ${rels} relationships, and 1 comment link\\.$`));
+});

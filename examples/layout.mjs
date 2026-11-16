@@ -1,10 +1,13 @@
 // layout() in Node, with no DOM and no browser: lays out every view of the example models and reports each view's
 // longest line against its direct route. A host can run the same on the maps it generates, in CI.
-//   node examples/layout.mjs [--max 3] [model.json ...]     exits 1 when a line runs more than --max times its direct route
+//   node examples/layout.mjs [--max 3] [model.json ...]     exits 1 when a line runs more than --max times its direct route, 2 when --max is not a number of at least 1
 import { readFileSync } from 'node:fs';
 import { layout } from '../lib/umlimator.js';
 
-const args = process.argv.slice(2), at = args.indexOf('--max'), max = at >= 0 ? Number(args.splice(at, 2)[1]) : 3;
+const args = process.argv.slice(2), at = args.findIndex(a => a === '--max' || a.startsWith('--max='));
+const given = at < 0 ? '3' : args[at] === '--max' ? args.splice(at, 2)[1] : args.splice(at, 1)[0].slice(6), max = Number(given);
+// a limit that is no number (NaN) would let every layout pass: refused, so a CI step with a typo fails (audit 18)
+if (!/^\s*\d/.test(given ?? '') || !Number.isFinite(max) || max < 1) { console.error(`--max takes a number of at least 1, not ${given === undefined ? 'nothing' : JSON.stringify(given)}`); process.exit(2); }
 const files = args.length ? args : ['bookshop', 'bike-share', 'weather', 'assistant', 'clinic'].map(n => new URL(`${n}.json`, import.meta.url));
 const length = pts => pts.slice(1).reduce((a, p, i) => a + Math.abs(p[0] - pts[i][0]) + Math.abs(p[1] - pts[i][1]), 0);
 

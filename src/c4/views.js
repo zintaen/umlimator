@@ -224,8 +224,8 @@ function depProblems(model, view) {
 }
 function depDescribe(model, viewId) {
   const v = V_ARR(model && model.views).find(x => V_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
-  const pic = depPic(model, v), { own, implied } = c4Lines(model, v, pic), box = new Map(pic.boxes.map(b => [b.id, b]));
-  return [`${v.title || v.id}: a C4 deployment diagram of ${vPlural(pic.ids.length, 'element')} and ${vPlural(own.length + implied.length, 'relationship')}${implied.length ? `, ${implied.length} of them implied` : ''}.`,
+  const pic = depPic(model, v), { own, implied } = c4Lines(model, v, pic), notes = own.filter(e => e.type === 'uml.CommentLink').length, box = new Map(pic.boxes.map(b => [b.id, b]));
+  return [`${v.title || v.id}: a C4 deployment diagram of ${vPlural(pic.ids.length, 'element')} and ${vPlural(own.length - notes + implied.length, 'relationship')}${implied.length ? `, ${implied.length} of them implied` : ''}${notes ? `, and ${vPlural(notes, 'comment link')}` : ''}.`,
     ...readingOrder(pic).map(id => (box.has(id) ? box.get(id).aria : depNodeName(pic.I, pic.at.get(id)))), ...[...own, ...implied].map(e => c4LineName(e, pic))].map(t => t.replace(/\.?$/, '.')).join('\n');
 }
 // the containers an instance may be of: on a view of a software system its own (c4-level), else every one

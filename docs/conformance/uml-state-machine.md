@@ -85,7 +85,7 @@ read; text over 1 MiB is refused, nesting past 64 is read flat, and the reader n
 Measured on `examples/order-states.json` (0.21.0): `umlimator.py stills` (SVG and PNG) and `umlimator.py pdf` on its
 rendered page. Each file was opened and looked at.
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
 |---|---|---|---|
 | States and their compartments, composites, regions and dividers, every pseudostate's shape | Yes | Yes | Yes, in vectors |
 | Transitions, open arrowheads, `trigger [guard] / effect` labels | Yes | Yes | Yes |

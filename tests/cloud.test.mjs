@@ -406,3 +406,17 @@ test('audit 8: a card with no type but a given icon draws the legal line, so des
     assert.equal(g.nodes[0].aria, 'Element Shop, Run');
   }
 });
+
+test('audit 18: group-nesting and group-kind pick "an" before a vowel and say a missing kind plainly', () => {
+  const m = { schemaVersion: 2, nodes: [
+    { id: 'vpc', type: 'aws.Group', label: 'vpc-main', props: { groupType: 'vpc' } },
+    { id: 'acct', type: 'aws.Group', label: 'Shop account', parent: 'vpc', props: { groupType: 'account' } },
+    { id: 'az', type: 'aws.Group', label: 'eu-west-1a', parent: 'acct', props: { groupType: 'availability-zone' } },
+    { id: 'bare', type: 'aws.Group', label: 'Bare' }],
+  edges: [], views: [{ id: 'v', diagram: 'aws', nodeIds: ['vpc', 'acct', 'az', 'bare'] }] };
+  const said = validate(m).filter(p => /^group-/.test(p.rule)).map(p => p.message);
+  assert.ok(said.some(s => s.includes('"Shop account", an Account group, sits in "vpc-main", a VPC group')), said.join('\n'));
+  assert.ok(said.some(s => s.includes('"eu-west-1a", an Availability zone group, sits in "Shop account", an Account group')), said.join('\n'));
+  assert.ok(said.every(s => !/\ba [AEIOU]/.test(s) && !/null/.test(s)), said.join('\n'));
+  assert.ok(said.some(s => s.startsWith('group-kind: "Bare" has no groupType')), said.join('\n'));
+});

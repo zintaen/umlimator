@@ -1,5 +1,5 @@
 import { h } from './render.js';
-import { esc, inline } from '../core/text.js';
+import { esc, glyph, inline } from '../core/text.js';
 import { idTable } from '../core/registry.js';
 import { SHAPE, SHAPE_NAMES, shapeOf } from '../draw/shapes.js';
 import { WIRES, badgesOf } from '../map/cards.js';
@@ -173,7 +173,7 @@ function pieces(X, el, o) {
     panel.innerHTML = `<div class="ph" style="--c:${c}">
         ${(() => { const I = (D.icons || {})[n.icon];
   return I && I.src ? `<span class="big logo${I.dark ? ' dark' : ''}" aria-hidden="true"><img src="${esc(I.src)}" width="22" height="22" alt=""></span>`
-  : `<span class="big" style="background:${c}" aria-hidden="true"><svg viewBox="0 0 ${I && I.g ? 24 : 16} ${I && I.g ? 24 : 16}" width="20" height="20" fill="none" stroke="currentColor" stroke-width="${I && I.g ? 2 : 1.5}" stroke-linecap="round" stroke-linejoin="round">${I && I.g ? I.g : SIGIL[k]}</svg></span>`; })()}
+  : `<span class="big" style="background:${c}" aria-hidden="true"><svg viewBox="0 0 ${I && I.g ? 24 : 16} ${I && I.g ? 24 : 16}" width="20" height="20" fill="none" stroke="currentColor" stroke-width="${I && I.g ? 2 : 1.5}" stroke-linecap="round" stroke-linejoin="round">${I && I.g ? glyph(I.g) : SIGIL[k]}</svg></span>`; })()}
         <div class="pt"><h2>${esc(n.label || nid)}</h2><small><span>${esc(ty || KIND[k][1])}</span><span class="vis ${pub ? 'pub' : ext ? 'ext' : ''}">${ty ? '' : badgesOf(n).length ? badgesOf(n).map(b => esc(b.text.toUpperCase())).join(' · ') : pub ? 'PUBLIC' : ext ? 'EXTERNAL' : 'INTERNAL'}</span>${by}${n.origin ? `<span class="origin">${esc(n.origin)}</span>` : ''}</small></div>
         <div class="acts">${V[child] || later ? `<button class="obtn" data-open="${esc(nid)}" style="--c:${c}">⤢ Open ${esc(shortT(V[child] ? V[child].title || child : child))} <span>${V[child] || count ? count + ' nodes · ' : ''}Enter</span></button>` : ''}${!X().editable && (unfoldable(nid, cur) || later) ? `<button class="obtn" data-unfold="${esc(nid)}" style="--c:${c}">⤡ Unfold here <span>E</span></button>` : ''}${litButtons()}<button class="ibtn x" data-close title="Close (Esc)" aria-label="Close details">×</button></div>
       </div>

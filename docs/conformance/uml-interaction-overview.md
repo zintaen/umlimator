@@ -49,7 +49,7 @@ Layout limits, measured on `examples/buy-book-overview.json` and `tests/overview
 Measured on `examples/buy-book-overview.json` (0.21.0): `umlimator.py stills` (SVG and PNG) and `umlimator.py pdf` on
 its rendered page. Each file was opened and looked at.
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
 |---|---|---|---|
 | Control nodes, interaction uses, the inline interaction's frame and its sequence diagram | Yes | Yes | Yes, in vectors |
 | Flows, open arrowheads, guards | Yes | Yes | Yes |

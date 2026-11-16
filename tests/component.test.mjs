@@ -420,3 +420,17 @@ test('audit 17: the PDF lists each connector to a port once, in the Lines table,
   assert.equal((all.match(/Connector</g) || []).length, 3, 'three connectors: three Lines rows');
   assert.doesNotMatch(els.rows.join(''), /Delegation from|Assembly from/);
 });
+
+test('audit 18: the PDF\'s Lines row of a connector names its kind and the ports it joins; the palette\'s Port reads name : Type', () => {
+  const c = mapContext(CM), [, lines] = tablesOf(c, c.V[V], c.buildGeo(V)), txt = s => s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const rows = lines.rows.map(txt).filter(r => /Connector$/.test(r));
+  assert.deepEqual(rows, ['Shop API → Checkout Delegation from orders of Shop API to orders of Checkout Connector',
+    'Checkout → Shop API Delegation from payments of Checkout to payments of Shop API Connector',
+    'Shop API → Payment provider Assembly from payments of Shop API to charges of Payment provider Connector']);
+  assert.equal(T.text(CM, CM.views[0], CM.edges.find(e => e.type !== 'uml.Connector').id), null, 'another line: its label, as before');
+  const v = CM.views[0], P = { type: 'uml.Port', label: 'Port' };
+  assert.deepEqual(T.edits.add(CM, v, P, 'audit : AuditApi', { sel: ['shop-api'] }), [{ op: 'add', element: { id: 'port1', type: 'uml.Port', label: 'audit', props: { valueType: 'AuditApi' } }, owner: 'shop-api' }]);
+  assert.deepEqual(T.edits.add(CM, v, P, 'audit : AuditApi', { sel: ['shop-api'] }), T.edits.member(CM, v, 'shop-api', null, 'audit : AuditApi'), 'as the panel\'s row');
+  assert.match(T.edits.add(CM, v, P, ': AuditApi', { sel: ['shop-api'] }).error, /A port has a name/);
+  assert.deepEqual(T.edits.add(CM, v, P, '', { sel: ['shop-api'] }), [{ op: 'add', element: { id: 'port1', type: 'uml.Port' }, owner: 'shop-api' }], 'no name: as before');
+});
