@@ -74,7 +74,9 @@ export function describe(model, viewId) {
  *  end }, times in milliseconds. */
 export function otlpSpans(data) {
   const objs = x => Array.isArray(x) ? x.filter(y => y && typeof y === 'object') : []; // a malformed export: what is no list or object is skipped
-  const out = [], attr = (list, k) => { const v = (objs(list).find(a => a.key === k) || {}).value; return v && typeof v === 'object' ? v.stringValue ?? v.intValue ?? null : null; };
+  data = unreadable(data).model; // no value String() or Number() throws on (audit 20)
+  const prim = x => x == null || typeof x === 'object' ? null : x; // text or a number; anything else no service
+  const out = [], attr = (list, k) => { const v = (objs(list).find(a => a.key === k) || {}).value; return v && typeof v === 'object' ? prim(v.stringValue) ?? prim(v.intValue) : null; };
   objs(data && data.resourceSpans).forEach(rs => { const service = attr(rs.resource && rs.resource.attributes, 'service.name');
     objs(rs.scopeSpans || rs.instrumentationLibrarySpans).forEach(ss => objs(ss.spans).forEach(s => out.push({ id: s.spanId, parent: s.parentSpanId || null,
       service, name: typeof s.name === 'string' ? s.name : null, start: Number(s.startTimeUnixNano) / 1e6, end: Number(s.endTimeUnixNano) / 1e6 }))); });
@@ -129,6 +131,7 @@ export function whatIf(model, viewId, options = {}) {
  *  the view's caption names the services with no card. The view (`view`, default "trace"; `title`) takes the place of one
  *  with its id, else comes last, under the view that shows the most of its cards. The model passed in is not changed. */
 export function sequenceFromTrace(model, spans, options = {}) {
+  [model, spans, options] = [model, [].concat(spans || []), options].map(x => unreadable(x).model); // read as mapContext reads a model (audit 20)
   const out = structuredClone(model || {}), id = String(options.view ?? 'trace'), views = arrOf(out.views);
   const cards = [...arrOf(out.nodes), ...views.flatMap(v => arrOf(v && v.nodes))].filter(n => n && n.id != null);
   const list = [].concat(spans || []).filter(s => s && Number.isFinite(+s.start) && Number.isFinite(+s.end));

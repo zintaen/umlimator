@@ -200,7 +200,9 @@ TYPED.fan = (free, { simplify, through, STUB, SEP }) => { const pairs = new Map(
     const xl = turns(0), xr = turns(1);
     if (Math.min(...xr) - Math.max(...xl) < 18 + 16) return;
     const pts = list.map((e, i) => { const [a, b] = lr(e), P = simplify([a, [xl[i], a[1]], [xl[i], lanes[i]], [xr[i], lanes[i]], [xr[i], b[1]], b]); return e.fs === 'R' ? P : P.reverse(); });
-    if (list.some((e, i) => through(pts[i], e))) return;
+    // each lane keeps 4 px off every other card: the router's test lets a line run 2 px inside one, and a pair's second lane,
+    // pushed out by the first's label, ran 1 px inside the card beyond the gap for its whole height (audit 20)
+    if (list.some((e, i) => through(pts[i], e, -4))) return;
     list.forEach((e, i) => { Object.assign(e, { [OWN_ROUTE]: 'fan', fixed: pts[i], pts: pts[i], stubs: [], how: 'fan' }); free.splice(free.indexOf(e), 1); }); }); };
 
 // a type's lines, each with its path: the model's, then those written inline in the edges of the views keep(view) takes (model.md)

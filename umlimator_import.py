@@ -373,7 +373,10 @@ def structurizr(text, name):
         a, b = find(r["src"]), find(r["dst"])
         if not (a and b):
             m.say(r["line"], f"{r['src']} -> {r['dst']}: {r['src'] if not a else r['dst']} is not an element")
-        elif eid := m.line(a, b, r["desc"], r["tech"], where=r["line"], loop=els[b]["type"] == "person"):
+            continue
+        if r["tags"]:  # a relationship's tags style it in Structurizr; nothing here reads them, so they are said (audit 20)
+            m.say(r["line"], f"{r['src']} -> {r['dst']}: tags {clip(', '.join(r['tags']), 60)} are not imported")
+        if eid := m.line(a, b, r["desc"], r["tech"], where=r["line"], loop=els[b]["type"] == "person"):
             lines.append((a, b, eid, r))
     holders = {e["parent"] for e in els.values()}
     # no views to follow: the landscape, then a view per system with containers and per container with components
@@ -417,7 +420,7 @@ def relationship(toks, this):
         src, dst, a = (this if toks[0] == "this" else toks[0]), toks[2], toks[3:]
     else:
         return None
-    return {"src": src, "dst": dst, "desc": (a + [""])[0], "tech": (a + ["", ""])[1]}
+    return {"src": src, "dst": dst, "desc": (a + [""])[0], "tech": (a + ["", ""])[1], "tags": [t.strip() for t in (a + ["", "", ""])[2].split(",") if t.strip()]}
 
 
 def prop(x, kw, args):
@@ -525,7 +528,12 @@ def views(m, els, lines, specs, find, implied, groups):
 CALL = re.compile(r"([A-Za-z_]\w*)\s*\((.*)\)\s*(\{)?$")
 ARG = re.compile(r'\s*(?:\$(\w+)\s*=\s*)?("(?:[^"\\]|\\.)*"\s*|[^,]*)(,|$)')
 ELEMENT = re.compile(r"(Person|System|Container|Component)(Db|Queue)?(_Ext)?")
-ARGS = {"Person": "alias label descr", "System": "alias label descr", "Container": "alias label techn descr", "Component": "alias label techn descr"}
+# each macro's arguments, in order (C4-PlantUML's, and Mermaid's C4, which takes the same); READ are those imported, the
+# rest are said (audit 20)
+ARGS = {"Person": "alias label descr sprite tags link type", "System": "alias label descr sprite tags link type baseshape",
+        "Container": "alias label techn descr sprite tags link baseshape", "Component": "alias label techn descr sprite tags link baseshape"}
+RELARGS, BOXARGS = "from to label techn descr sprite tags link", "alias label type tags link descr"
+READ = {"alias", "label", "descr", "techn", "tags", "from", "to"}
 REL = re.compile(r"(Bi)?Rel(_Back)?(_(U|Up|D|Down|L|Left|R|Right|Neighbor))?")
 BOUNDARY = re.compile(r"(Enterprise_|System_|Container_)?Boundary")
 QUIET = re.compile(r"Lay_\w+|LAYOUT_\w+|SHOW_\w+|HIDE_\w+|Update\w+|Add\w*Tag|AddProperty|SetPropertyHeader|WithoutPropertyHeader|SetSketchStyle")
@@ -546,6 +554,15 @@ def call_args(s):
         if not sep:
             return pos, named
         i = a.end()
+
+
+def unread(names, pos, named, read=READ):
+    """A macro's arguments that are written and not imported, as one phrase (or ""): named ones past its known
+    positions, and those its reader does not read."""
+    a = {**dict(zip(names.split(), pos)), **named}
+    left = [f"${k}={clip(v, 40)}" for k, v in a.items() if k not in read and v.strip()]
+    left += [f"argument {j + 1} ({clip(v, 40)})" for j, v in enumerate(pos) if j >= len(names.split()) and v.strip()]
+    return "; ".join(left) and "; ".join(left) + (" is" if len(left) == 1 else " are") + " not imported"
 
 
 def c4(lines, m):
@@ -576,6 +593,8 @@ def c4(lines, m):
                 m.card(cid, a.get("label"), kind, a.get("techn") or ("External " + TYPE[base].lower() if ext else TYPE[base]),
                        a.get("descr"), icon="user" if base == "Person" else None,
                        shape="box" if not shape and (base == "Component" and kind in TOOL_KINDS or kind == "cloud") else None)  # a component its words guess is a box, as a Structurizr one; a cloud is never a node
+                if left := unread(ARGS[base], pos, named):
+                    m.say(no, f"{name}({a['alias']}): {left}")
                 bases.add(base)
                 if base == "Person":
                     people.add(cid)
@@ -588,9 +607,11 @@ def c4(lines, m):
             else:
                 alias = m.uniq(pos[0])
                 boxes.append({"id": alias, "label": clip(named.get("label") or (pos + [""])[1] or alias, 40), "nodeIds": [], "parent": box, "line": no})
+                if left := unread(BOXARGS, pos, named, {"alias", "label"}):
+                    m.say(no, f"{name}({pos[0]}): {left}")
         elif c and (r := REL.fullmatch(name)):
-            a = {**dict(zip("from to label techn descr".split(), pos)), **named}
-            rels.append((no, a, r.group(1), r.group(2)))
+            a = {**dict(zip(RELARGS.split(), pos)), **named}
+            rels.append((no, a, r.group(1), r.group(2), name, unread(RELARGS, pos, named, READ - {"tags"})))  # a line's tags style nothing here
         elif not (c and QUIET.fullmatch(name)):
             m.say(no, f"not imported: {clip(s, 80)}")
         elif named.get("shape"):  # ponytail: a tag's $shape (RoundedBoxShape, EightSidedShape) is said, not drawn
@@ -600,11 +621,19 @@ def c4(lines, m):
             opened.append((no, s))
     left_open(m, opened)
     ids = m.view("components" if "Component" in bases else "containers" if "Container" in bases else "context", list(m.nodes), boxes)
-    for no, a, bi, back in rels:
+    for no, a, bi, back, name, left in rels:
         x, y = (a.get("to"), a.get("from")) if back else (a.get("from"), a.get("to"))
-        if bad := [v for v in (x, y) if v not in m.nodes and v not in ids]:
-            m.say(no, f"Rel({a.get('from')}, {a.get('to')}): {bad[0]} is not defined")
+        said = f"{name}({', '.join(v for v in (a.get('from'), a.get('to')) if v is not None)})"
+        # an end not written, or blank, is said so: Python's None or an empty name in the message read as a card's (audit 20)
+        if gap := next((f"it names no {k}" if a.get(e) is None else f"its {k} is empty" for e, k in (("from", "source"), ("to", "target"))
+                        if not (a.get(e) or "").strip()), None):
+            m.say(no, f"{said}: {gap}")
             continue
+        if bad := [v for v in (x, y) if v not in m.nodes and v not in ids]:
+            m.say(no, f"{said}: {bad[0]} is not defined")
+            continue
+        if left:
+            m.say(no, f"{said}: {left}")
         m.line(x, y, a.get("label"), a.get("techn"), where=no, what=a.get("descr"), loop=y in people)
         if bi:
             m.line(y, x, a.get("label"), a.get("techn"), where=no, what=a.get("descr"), loop=x in people)
@@ -661,7 +690,7 @@ SHAPES = [("(((", ")))"), ("([", "])"), ("[[", "]]"), ("[(", ")]"), ("((", "))")
 NODE = re.compile(r"\s*([\w$]+(?:[.-][\w$]+)*)")
 LINK = re.compile(r"""\s*(?:(?P<plain>[<ox]?(?:-{2,}[->ox]|={2,}[=>ox]|-?\.+-[>ox]?|~{3,}))
                      |(?P<open>[<ox]?(?:--|==|-\.))(?P<text>[^|]+?)(?P<close>-{2,}[->ox]|={2,}[=>ox]|(?<!\.)\.+-[>ox]?))
-                     \s*(?:\|(?P<pipe>[^|]*)\|)?""", re.X)
+                     \s*(?:\|(?P<pipe>"[^"]*"|[^|]*)\|)?""", re.X)  # a quoted text may hold | (audit 20), as the typed reader's MF_PIPE
 FLOW_QUIET = re.compile(r"(classDef|class|style|linkStyle|click|direction|accTitle|accDescr)\b")
 
 
@@ -692,8 +721,8 @@ def fnode(s, i, find=None):
                 break
     else:
         label = shape = None
-    cls = re.compile(r":::[\w-]+").match(s, i)
-    return nid, label, shape, cls.end() if cls else i
+    cls = re.compile(r":::([\w-]+)").match(s, i)
+    return nid, label, shape, cls.end() if cls else i, cls and cls[1]
 
 
 def statement(s):
@@ -711,7 +740,7 @@ def statement(s):
     while True:
         grp = []
         while (n := fnode(s, i, find)):
-            grp.append(n[:3])
+            grp.append((*n[:3], n[4]))
             i = n[3]
             amp = re.compile(r"\s*&").match(s, i)
             if not amp:
@@ -756,7 +785,9 @@ def flowchart(lines, m):
                 m.say(no, f"{q[1]}: accessibility text is not imported" if q[1].startswith("acc") else f"not imported: {clip(s, 80)}")
             elif p := statement(s):
                 groups, joins = p
-                for nid, label, shape in (n for grp in groups for n in grp):
+                for nid, label, shape, cls in (n for grp in groups for n in grp):
+                    if cls:  # said, as the typed reader says it (audit 20)
+                        m.say(no, f"{nid}:::{cls}: a style class is not imported")
                     old = nodes.setdefault(nid, {"label": nid, "shape": None})
                     if label is not None:
                         old.update(label=label, shape=shape)

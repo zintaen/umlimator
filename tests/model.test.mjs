@@ -264,3 +264,42 @@ test('audit 19: an object with a toString key ({"toString": 1}, valid JSON) is n
   assert.deepEqual(v(named).filter(p => /toString/.test(p.message)), []);
   assert.equal(l(named, 'v').nodes.find(n => n.id === 'toString').label, 'Tee');
 });
+
+test('audit 20: every exported function reads a hostile model (an object with a toString or valueOf key in a label, a title, an id, a rule, a story) as validate() does: none throws', async () => {
+  const U = await import('../lib/umlimator-all.js'), { readdirSync } = await import('node:fs');
+  const browser = ['render', 'mountPage'], ran = new Set(); // render(): tests/stories.html plays a hostile story
+  const call = (name, fn) => { ran.add(name); return fn(); };
+  const files = readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')), thrown = [];
+  for (const f of files) for (const bad of ['{"toString":1}', '{"valueOf":1}', '{"toString":1,"valueOf":1}', '[{"toString":1}]']) {
+    const plain = read(`../examples/${f}`); if (!Array.isArray(plain.views) || !plain.views.length) continue;
+    const m = structuredClone(plain), B = () => JSON.parse(bad), v = m.views[0].id, nodes = m.nodes || [], a = nodes[0] && nodes[0].id, b = nodes[1] && nodes[1].id;
+    [...nodes, ...(m.edges || [])].forEach((x, i) => { if (x && typeof x === 'object' && i % 2) x.label = B(); });
+    if (nodes[2]) nodes[2].id = B(); // a card whose id is no text
+    m.views.forEach(w => { w.title = B(); }); m.title = B();
+    m.rules = [{ id: 'r', title: B(), from: a, to: b }, { id: B(), noCycles: true }];
+    m.stories = [{ id: 's', title: B(), steps: [{ view: v, caption: B(), duration: B(), camera: { card: a, zoom: B() }, highlight: [a, B()] }] }];
+    const spans = [{ id: 's1', service: a, start: 0, end: 5 }, { id: 's2', parent: 's1', service: B(), start: 1, end: 3 }, { id: 's3', parent: 's1', service: b, start: B(), end: 4, name: B() }];
+    const otlp = { resourceSpans: [{ resource: { attributes: [{ key: 'service.name', value: { stringValue: B() } }] }, scopeSpans: [{ spans: [{ spanId: B(), startTimeUnixNano: B(), endTimeUnixNano: '9' }] }] }] };
+    const observed = [{ from: a, to: b, count: B() }, { from: B(), to: b, count: 1 }, { parent: a, child: B(), callCount: 2 }];
+    const runs = {
+      migrate: () => U.migrate(m), validate: () => U.validate(m), rules: () => U.rules(m), references: () => U.references(m, a), apply: () => U.apply(m, { op: 'set', id: b, path: 'label', value: 'Q' }),
+      history: () => { const h = U.history(m); h.push(plain); h.undo(); return h.model; },
+      diff: () => [U.diff(plain, m), U.diff(m, plain), U.diff(m, m)].map(d => d.summary.join()),
+      drift: () => U.drift(m, observed, { match: { [a]: B(), x: a } }).counts,
+      otlpSpans: () => U.otlpSpans(otlp), sequenceFromTrace: () => U.sequenceFromTrace(m, spans, { match: { [a]: B() } }),
+      layout: () => U.layout(m, v), check: () => U.check(m, v), describe: () => U.describe(m, v), paths: () => U.paths(m, v, a, b), reach: () => U.reach(m, v, a),
+      critical: () => U.critical(m, v, { from: a }), whatIf: () => U.whatIf(m, v, { remove: [a] }),
+    };
+    for (const [k, fn] of Object.entries(runs)) try { call(k, fn); } catch (e) { thrown.push(`${f} ${bad} ${k}: ${e.message}`); }
+  }
+  assert.deepEqual(thrown, []);
+  assert.deepEqual(Object.keys(U).filter(k => typeof U[k] === 'function' && !browser.includes(k) && !ran.has(k)), [], 'every exported function is run');
+});
+
+test('audit 20: a map by name one level down may hold a key named toString: a stereotype\'s tagged value, a part\'s port; a value with one is still said', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'c', type: 'uml.Class', label: 'Order', props: { tags: { Entity: { toString: 'yes', table: 'orders' }, toString: { a: 1 } } } }],
+    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['c'], present: { c: { ports: { toString: { side: 'left' } } } } }] };
+  assert.deepEqual(validate(m).filter(p => /toString/.test(p.message)), []);
+  const bad = structuredClone(m); bad.nodes[0].props.tags.Entity.table = { toString: 1 }; bad.views[0].present.c.ports.toString = { toString: 1 };
+  assert.deepEqual(validate(bad).filter(p => /toString/.test(p.message)).map(p => p.path).sort(), ['nodes[0].props.tags.Entity.table', 'views[0].present.c.ports.toString']);
+});

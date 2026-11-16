@@ -562,16 +562,18 @@ export function render(container, model, options = {}) {
     const f = ref.type === 'container' && (geo.families || []).find(x => x.id === ref.id); return f ? { x: f.x + 8, y: f.y + 2 + (f.head || 0), w: Math.min(f.w - 16, 220), h: 24 } : null; };
   function editor(where, text, done, ref = null, empty = false) { // where: a box in map units (a new card's), or ref names what the field sits over; empty: an emptied field is a change
     if (naming) naming.close(false);
-    const inp = document.createElement('input');
-    inp.className = 'um-edit um-rename'; inp.value = text; inp.setAttribute('aria-label', text ? 'New name' : 'Name of the new card');
+    // a name of more than one line (a mindmap topic's, one Mermaid's <br> wrote) in a field that keeps its breaks: an <input>
+    // drops them, so F2 then Enter joined the lines (audit 20). Enter commits there too, Shift + Enter breaks a line
+    const lines = /[\r\n]/.test(text), inp = document.createElement(lines ? 'textarea' : 'input');
+    inp.className = 'um-edit um-rename'; inp.value = text; if (lines) inp.rows = text.split(/\r\n|\r|\n/).length; inp.setAttribute('aria-label', text ? 'New name' : 'Name of the new card');
     const place = () => { const box = ref ? nameBox(ref) : where; if (!box) return; const k = cam.s.k, [W, H] = cam.size();
-      Object.assign(inp.style, { left: (box.x - cam.s.cx) * k + W / 2 + 'px', top: (box.y - cam.s.cy) * k + H / 2 + 'px', width: Math.max(120, box.w * k) + 'px', height: Math.max(22, box.h * k) + 'px', fontSize: Math.max(11, 13 * k) + 'px' }); };
+      Object.assign(inp.style, { left: (box.x - cam.s.cx) * k + W / 2 + 'px', top: (box.y - cam.s.cy) * k + H / 2 + 'px', width: Math.max(120, box.w * k) + 'px', height: Math.max(22, box.h * k) * (lines ? inp.rows : 1) + 'px', fontSize: Math.max(11, 13 * k) + 'px' }); };
     place(); stage.appendChild(inp); inp.focus(); inp.select();
     // once only: removing a focused field can fire blur (cancel) in the middle of a commit
     let closed = false;
-    const finish = ok => { if (closed) return; closed = true; naming = null; touch(); const v = inp.value.trim(); if (ok && (v || empty) && v !== text) done(v); inp.remove(); stage.focus({ preventScroll: true }); };
+    const finish = ok => { if (closed) return; closed = true; naming = null; touch(); const v = inp.value.trim(); if (ok && (v || empty) && v !== text.trim()) done(v); inp.remove(); stage.focus({ preventScroll: true }); };
     naming = { ref, place, close: finish }; touch();
-    inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); finish(true); } else if (e.key === 'Escape') { e.preventDefault(); finish(false); } });
+    inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter' && !(lines && e.shiftKey)) { e.preventDefault(); finish(true); } else if (e.key === 'Escape') { e.preventDefault(); finish(false); } });
     inp.addEventListener('blur', () => finish(false));
     inp.addEventListener('pointerdown', e => e.stopPropagation());
     return inp;
@@ -1160,7 +1162,7 @@ export function render(container, model, options = {}) {
   stage.addEventListener('wheel', e => { if (!ctrlWheel || e.ctrlKey || e.metaKey || stage.classList.contains('full')) readerMoved(); }, { capture: true, passive: true }); // a wheel that zooms (wheel: 'ctrl' leaves the rest to the page)
   function restory() { // update(): the story shown takes the model's steps, at the step it is on, or stops when the model has it no more
     const st = story; if (!st) return;
-    const s = arrOf(current.stories).find(x => x && x.id === st.s.id), steps = stepsOf(s);
+    const s = arrOf(ctx.D.stories).find(x => x && x.id === st.s.id), steps = stepsOf(s); // the model as mapContext reads it: no text String() throws on (audit 20)
     if (!steps.length) return stopStory();
     const was = JSON.stringify(st.steps[st.at]), k = Math.min(st.at, steps.length - 1);
     st.s = s; st.steps = steps;
@@ -1192,7 +1194,7 @@ export function render(container, model, options = {}) {
   }
   function play(id, o = {}) {
     if (id == null) { stopStory(); return null; } // play(null): the story shown stops
-    const s = arrOf(current.stories).find(x => x && x.id === id), steps = stepsOf(s);
+    const s = ctx && arrOf(ctx.D.stories).find(x => x && x.id === id), steps = stepsOf(s); // as mapContext reads it (audit 20)
     if (dead || !geo || !steps.length) return null; // a story the model lacks: the one shown plays on
     stopStory();
     let end; const st = { s, steps, at: -1, seq: 0, timer: 0, auto: o.auto !== false, phase: 'entering', told: false, toured: Promise.resolve(true), done: new Promise(r => { end = r; }) };
