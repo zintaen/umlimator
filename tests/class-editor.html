@@ -1,7 +1,8 @@
 <!doctype html>
 <!-- The class diagram editor host page (examples/class-editor.html, 1.11) in headless Chrome (tests/embed.py), in a frame:
      an edit made in the properties panel reaches the host, which applies it and draws it; Undo and Redo give back the
-     models before and after; a refused edit changes nothing. -->
+     models before and after; a refused edit changes nothing. Then examples/edit.html, the editing demo: a typed label goes
+     into its log as text (audit 17). -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <title>umlimator class editor test</title>
@@ -34,6 +35,19 @@ try {
   const r2 = pick('.um-editor [data-m="order.total"]'); r2.value = '+ /total: Money [0..1]';
   r2.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true, cancelable: true })); await tick();
   check('a refused edit changes nothing, and the log says so', rows().includes('+ /total: Money [1]') && /^refused /.test(log()[0]), [rows(), log()[0]]);
+  // examples/edit.html logs each change event: a label with markup in it is shown as typed, and nothing in it runs (audit 17)
+  const g = document.createElement('iframe'); g.style.cssText = 'width:1300px;height:900px;border:0'; g.src = '../examples/edit.html';
+  document.body.append(g); await new Promise(r => g.addEventListener('load', r, { once: true }));
+  const ew = g.contentWindow, ed = g.contentDocument;
+  for (let i = 0; i < 100 && !(ew.map && ed.querySelector('.umlimator')); i++) await tick();
+  const er = ed.querySelector('.umlimator').shadowRoot, label = 'Orders <v2> <img src=x onerror=window.pwned=1> & "co"';
+  ew.map.select({ type: 'node', id: 'api', view: ew.map.view }); ew.map.focus({ type: 'node', id: 'api', view: ew.map.view }); await tick();
+  er.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true, composed: true })); await tick();
+  const inp = er.activeElement; inp.value = label; inp.dispatchEvent(new Event('input', { bubbles: true }));
+  inp.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true })); await tick(); await tick();
+  const li = ed.querySelector('#log li');
+  check('examples/edit.html: a typed label is logged as text, its markup neither parsed nor run', !!li && li.textContent.includes(JSON.stringify(label).slice(1, -1))
+    && !li.querySelector('img, v2') && ew.pwned === undefined, [li && li.innerHTML, ew.pwned]);
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

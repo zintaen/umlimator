@@ -10,13 +10,14 @@
 <style>
   body { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) 340px; height: 100dvh; background: var(--um-bg); color: var(--um-text); font: 14px/1.5 var(--um-sans); }
   #map { min-height: 0; }
+  main { display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); min-height: 0; } /* the page's main landmark, around the map */
   aside { border-left: 1px solid var(--um-border); padding: 12px 14px; overflow: auto; }
   h1 { font-size: 15px; margin: 0 0 6px; } p { margin: 0 0 10px; color: var(--um-muted); font-size: 12.5px; }
   kbd { font: 600 11px var(--um-mono); border: 1px solid var(--um-border-2); border-radius: 4px; padding: 0 4px; }
   ol { margin: 0; padding-left: 18px; font: 12px/1.45 var(--um-mono); } li { margin-bottom: 6px; word-break: break-word; }
   label { display: block; margin: 8px 0; font-size: 12.5px; }
 </style>
-<div id="map"></div>
+<main><div id="map"></div></main>
 <aside>
   <h1>Editing</h1>
   <p><kbd>Alt</kbd> + double-click or <kbd>N</kbd>: add a card · drag the dot on a selected card to another card: add a line ·
@@ -51,12 +52,14 @@ function apply(c) {
   if ((c.op === 'move' || c.op === 'reorder') && t.type === 'node' && c.hint && Number.isFinite(c.hint.col)) v.layout = { ...v.layout, [t.id]: [c.hint.col, c.hint.row] };
   return m;
 }
+// note() takes HTML: an event's text (a typed label is in it) goes in escaped
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const log = document.getElementById('log'), note = t => log.insertAdjacentHTML('afterbegin', `<li>${t}</li>`);
 // undo is the host's: history() keeps the models it had, and the host hands one back to the map
 const steps = history(model);
 const map = render(document.getElementById('map'), model, { editable: true, minimap: true, on: { change: c => {
   const ok = document.getElementById('apply').checked;
-  note((ok ? '' : '<b>refused</b> ') + JSON.stringify(c));
+  note((ok ? '' : '<b>refused</b> ') + esc(JSON.stringify(c)));
   if (ok) { model = steps.push(apply(c)); map.update(model); }
 } } });
 addEventListener('keydown', e => {

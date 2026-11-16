@@ -64,6 +64,11 @@ test('every page in examples/ has a level-one heading to jump to (axe page-has-h
   assert.deepEqual(readdirSync(dir).filter(f => f.endsWith('.html') && !/<h1[ >]/.test(readFileSync(new URL(f, dir), 'utf8'))), []);
 });
 
+test('every page in examples/ has a main landmark, around its map (axe landmark-one-main, region, audit 17)', () => {
+  const dir = new URL('../examples/', import.meta.url);
+  assert.deepEqual(readdirSync(dir).filter(f => f.endsWith('.html') && !/<main[ >]/.test(readFileSync(new URL(f, dir), 'utf8'))), []);
+});
+
 test('the standalone-page guide claims for its links only what page.js writes to the hash: no selected line or box (audit 16)', () => {
   const guide = readFileSync(new URL('../docs/guide/standalone-page.md', import.meta.url), 'utf8');
   assert.doesNotMatch(guide, /Every state the page shows can be linked/);
