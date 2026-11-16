@@ -78,6 +78,9 @@ def not_objects(d):
     out += [f"stories[{i}] is not an object" if not isinstance(x, dict) else f"stories[{i}].steps is not a list"
             for i, x in enumerate(lst(d.get("stories"))) if not isinstance(x, dict) or x.get("steps") is not None and not isinstance(x["steps"], list)]
     out += ["meta is not an object"] if "meta" in d and not isinstance(d["meta"], dict) else []
+    # upstream escapes the page's title and reads authors as an object: a number or a list there ended in a traceback (audit 18)
+    out += ["title is not a string"] if not name(d.get("title")) else []
+    out += ["authors is not an object"] if d.get("authors") is not None and not isinstance(d["authors"], dict) else []
     seen = set()
     for i, v in ((i, v) for i, v in enumerate(lst(d.get("views"))) if isinstance(v, dict)):
         out += [f"views[{i}].id is not a string"] if "id" in v and not isinstance(v["id"], str) else []  # the page's keys are strings (audit 6)
@@ -93,13 +96,13 @@ def not_objects(d):
         o = v.get("nodeOverrides")
         out += [f"views[{i}].nodeOverrides is not an object"] if "nodeOverrides" in v and not isinstance(o, dict) else []
         out += [f"views[{i}].nodeOverrides.{k} is not an object" for k, x in (o.items() if isinstance(o, dict) else []) if not isinstance(x, dict)]
-        out += [f"views[{i}].parent is not a string"] if not name(v.get("parent")) else []
+        out += [f"views[{i}].{k} is not a string" for k in ("parent", "title") if not name(v.get(k))]
         # a list's entry is never absent, so a null is no name either (it ended MCP tools in an internal error, audit 15)
         # tour and browserOrder too, and a box's cards: upstream hashes each (an unhashable one ended in a traceback, audit 17)
         out += [f"views[{i}].{k}[{j}] is not a string" for k in ("nodeIds", "stepIds", "tour", "browserOrder") for j, x in enumerate(lst(v.get(k))) if not isinstance(x, str)]
         out += [f"views[{i}].containers[{j}].nodeIds[{k}] is not a string" for j, c in enumerate(lst(v.get("containers"))) if isinstance(c, dict)
                 for k, x in enumerate(lst(c.get("nodeIds"))) if not isinstance(x, str)]
-        out += ids(f"views[{i}].containers", v.get("containers"), ("parent",)) + ids(f"views[{i}].intake", v.get("intake"), ("to",))
+        out += ids(f"views[{i}].containers", v.get("containers"), ("parent",)) + ids(f"views[{i}].intake", v.get("intake"), ("to", "logo"))
         out += ids(f"views[{i}].nodes", v.get("nodes"), ("id", "opensView", "view")) + ids(f"views[{i}].containers", v.get("containers"), ("id",))
         out += ids(f"views[{i}].edges", v.get("edges"), ("id", "from", "to"))
         out += [f"views[{i}].nodeOverrides.{k}.{f} is not a string" for k, x in (o.items() if isinstance(o, dict) else []) if isinstance(x, dict)
@@ -116,6 +119,8 @@ def not_objects(d):
         at, n = todo.pop()
         if "members" in n and not isinstance(n["members"], list):
             out.append(f"{at}.members is not a list")
+        # a member's id is a Ref's name and a key: a list there ended stills and MCP's highlight and tour in a TypeError (audit 18)
+        out += [f"{at}.members[{j}].id is not a string" for j, x in enumerate(lst(n.get("members"))) if isinstance(x, dict) and not name(x.get("id"))]
         todo += [(f"{at}.members[{j}]", x) for j, x in enumerate(lst(n.get("members"))) if isinstance(x, dict)]
     return out
 
@@ -339,6 +344,9 @@ def page_model(model_path, out, source=None):
     m = read_json(model_path)
     if bad := not_objects(m):  # before the engine, whose loader reads a view as an object before it checks anything
         sys.exit(f"{source or model_path}: " + "; ".join(bad))
+    if "title" in m and m["title"] is None:  # no title, as validate() reads it: the root view's, or the file's name (audit 18)
+        del m["title"]
+    own_logos(m, Path(model_path).resolve().parent, source or model_path)
     # visual.py records the checkout's root relative to the page; for a page outside the checkout that path climbs
     # through the folders above it (a home folder, a user name) into a page that gets shared
     root = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip()
@@ -353,6 +361,44 @@ def page_model(model_path, out, source=None):
     m.setdefault("source", next((pre + src.relative_to(b).as_posix() for b, pre in ((base, ""), (Path.home().resolve(), "~/"))
                                  if src.is_relative_to(b)), src.name))
     return temp_json(m, model_path, ".icons.json")
+
+
+LOGO_MAX = 1 << 20  # bytes: an intake logo is a small mark
+
+
+def own_logos(m, folder, said):
+    """Each view's intake `logo` embedded here, before the engine (which reads any path it is given, risks.md S1): an SVG
+    file inside the model's own folder, a symbolic link's target included, as a data URI. A path that leaves the folder,
+    an absolute path, a file that is not an SVG, and a data URI that is not an image are dropped, each said in one line,
+    so a page never carries an unrelated local file (a key, a token in .git/config) (audit 18)."""
+    folder = folder.resolve()
+    for i, v in enumerate(m.get("views") or []):
+        for j, src in enumerate(v.get("intake") or [] if isinstance(v, dict) else []):
+            logo = src.get("logo") if isinstance(src, dict) else None
+            if not logo:
+                continue
+            if logo.startswith("data:"):
+                if re.match(r"data:image/[\w.+-]+[;,]", logo):
+                    continue
+                why = "a data URI that is not an image"
+            else:
+                try:
+                    f, b = (folder / logo).resolve(), b""
+                    if Path(logo).is_absolute() or not f.is_relative_to(folder):
+                        why = "a path outside the model's folder"
+                    elif f.suffix.lower() != ".svg" or not f.is_file():
+                        why = "no SVG file in the model's folder"
+                    else:
+                        with f.open("rb") as h:
+                            b = h.read(LOGO_MAX + 1)
+                        why = "not an SVG file" if len(b) > LOGO_MAX or not re.search(rb"<svg[\s>]", b) else None
+                except (OSError, ValueError) as e:  # a NUL in the path, a loop of links, no permission
+                    why = f"not a file that can be read ({e.__class__.__name__})"
+                if not why:
+                    src["logo"] = "data:image/svg+xml;base64," + base64.b64encode(b).decode()
+                    continue
+            del src["logo"]
+            print(f"{said}: views[{i}].intake[{j}].logo is {why}; it is left out", file=sys.stderr)
 
 
 _temps = set()  # temp_json's copies still on disk: removed however the process ends, SIGTERM (exit 143) included
@@ -886,8 +932,10 @@ def still_keys(page, opts):
         todo = list(n.get("members") or [])
         while todo:
             x = todo.pop()
-            if isinstance(x, dict):
-                owner.setdefault(x.get("id"), n.get("id")); todo += x.get("members") or []
+            if isinstance(x, dict):  # a member id that is no string names nothing (a list there ended in a TypeError, audit 18)
+                if isinstance(x.get("id"), str):
+                    owner.setdefault(x["id"], n.get("id"))
+                todo += x.get("members") or []
     own = lambda x: owner.get(x, x) if isinstance(x, str) else x
     of_node = {}
     for x in views:
@@ -909,7 +957,7 @@ def still_keys(page, opts):
         lines = data.get("edges", []) if v.get("diagram") else [e for e in data.get("edges", []) if own(e.get("from")) in ends and own(e.get("to")) in ends]
         kids = {i: len((V.get(inner(i, v)) or {}).get("nodeIds") or []) for i in sorted(ids)}
         cards = [n for n in nodes if n] + list((v.get("nodeOverrides") or {}).values())
-        used, who = ({n.get(k) for n in cards} - {None} for k in ("icon", "author"))
+        used, who = ({n.get(k) for n in cards if isinstance(n.get(k), str)} for k in ("icon", "author"))  # a list names none (audit 18)
         used |= {f"{p}/{i}" for p, i in map(packs().pick, cards) if isinstance(i, str)} | {f"{p}/" for p, _ in map(packs().pick, cards)}  # a pack's icon and its legal line
         # a typed view also draws other views' titles (a card that opens one) and a DFD level its parent's cards, as the page's viewKey
         typed = [[[w.get("id"), w.get("title"), w.get("subject")] for w in views], (V.get(v.get("parent")) or {}).get("nodeIds")] if v.get("diagram") else None
