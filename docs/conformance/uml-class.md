@@ -72,7 +72,7 @@ something it holds is not drawn (`line-inside`).
 Measured on `examples/sales-classes.json` (0.18.0; its PDF tables and packages again on 0.19.0): `toSVG()` and `toPNG()` in Chrome, light and dark; `umlimator.py
 stills` and `umlimator.py pdf` on its rendered page. Each file was opened and looked at.
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
 |---|---|---|---|
 | Classifiers, compartments and every member row | Yes | Yes | Yes, in vectors |
 | Abstract in italics, static underlined, `/` derived | Yes | Yes | Yes |

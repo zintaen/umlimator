@@ -325,3 +325,11 @@ test('audit 8: the writer writes the flows the view lists (inline ones too), and
   assert.match(text, /^flowchart LR$/m);
   assert.ok(!text.includes('debug only') && text.includes('again'), text);
 });
+
+test('audit 18: a link\'s @{ } names each field it does not read: animate and animation as its animation, curve and the rest by key', () => {
+  const said = text => read(`flowchart LR\n  A e1@--> B\n  ${text}`).report.map(x => `${x.line} ${x.status}: ${x.message}`);
+  assert.deepEqual(said('e1@{ curve: linear }'), ['3 skipped: e1: curve is not read']);
+  assert.deepEqual(said('e1@{ animate: true }'), ["3 skipped: e1@{ ... }: a link's animation is not read"]);
+  assert.deepEqual(said('e1@{ animation: fast, curve: basis }'), ["3 skipped: e1@{ ... }: a link's animation is not read", '3 skipped: e1: curve is not read']);
+  assert.deepEqual(read('flowchart LR\n  A e1@--> B\n  e1@{ curve: linear }').model.edges.map(e => e.id), ['e1']);
+});

@@ -56,7 +56,7 @@ Layout limits, measured on `examples/order-information-flow.json` and `tests/inf
 
 Measured on `examples/order-information-flow.json` (0.24.0); the PDF's text read back by `tests/cli.py`.
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
 |---|---|---|---|
 | Classifiers, actors, items and «flow» lines with what they convey | Yes | Yes | Yes, in vectors |
 | The legend | No: the legend is a piece of the page | No | Yes, under the picture |

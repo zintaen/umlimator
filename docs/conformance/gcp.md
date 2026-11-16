@@ -54,7 +54,7 @@ Layout limits, with port repair and rerouting off (`repair: false`, `reroute: fa
 
 ## Writers: what each shows of a Google Cloud diagram
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
 |---|---|---|---|
 | Cards, groups, lines and their labels | Yes | Yes | Yes, in vectors |
 | The vendor's icons | Those the host's `icons` table gave, as `<image>` from data URLs, scaled only; without the table, glyphs | The same, as pixels | The same, in the picture |

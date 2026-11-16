@@ -211,7 +211,7 @@ function readMermaidSequence(text) {
     }
     frames++;
     const frag = { kind: 'frag', operator, no, hint: hint.id, parent: cur(), ops: [] };
-    const op = { kind: 'op', frag, k: 1, label: guard ? msDecode(guard) : undefined, hint: hint.operand };
+    const op = { kind: 'op', no, frag, k: 1, label: guard ? msDecode(guard) : undefined, hint: hint.operand };
     frag.ops.push(op); items.push(frag, op); stack.push({ frag, cur: op, no });
   };
 
@@ -256,7 +256,7 @@ function readMermaidSequence(text) {
       else if (word === 'par_over') { open('par', rest, no); say(no, 'approximated', `par_over ${rest}: read as par (a par drawn over its participants only)`); }
       else if (word === 'else' || word === 'and') {
         if (top && top.frag && top.frag.operator === (word === 'else' ? 'alt' : 'par')) {
-          const op = { kind: 'op', frag: top.frag, k: top.frag.ops.length + 1, label: rest ? msDecode(rest) : word === 'else' ? 'else' : undefined, hint: hint.id };
+          const op = { kind: 'op', no, frag: top.frag, k: top.frag.ops.length + 1, label: rest ? msDecode(rest) : word === 'else' ? 'else' : undefined, hint: hint.id };
           top.frag.ops.push(op); items.push(op); top.cur = op;
         } else say(no, 'skipped', `${word} outside ${word === 'else' ? 'an alt' : 'a par'}: not read`);
       } else if (word === 'critical') { stack.push({ what: 'critical', cur: cur(), no }); say(no, 'approximated', `critical ${rest}: its content is read, with no frame (critical is not in the subset)`); }
@@ -305,17 +305,25 @@ function readMermaidSequence(text) {
   for (const [name, no] of destroying) say(no, 'skipped', `destroy ${name}: no message to it follows`);
 
   // ids: lifelines first, by name; then, in the order they come, messages, uses, fragments and operands
+  // a name or %% id: that holds "->" or is taken is said, with the reason it has (audit 18), as the state and ER readers say it
   const used = new Set(), next = new Map(), uniq = name => { const id = msFree(used, next, msId(name)); used.add(id); return id; };
+  const why = h => msId(h) !== h ? ': an id holds no "->"' : ' is taken';
+  const hinted = (h, base, no, what, how = '%% id:') => {
+    const id = uniq(h ?? base);
+    if (h != null && h !== '' && id !== h) say(no, 'approximated', `${how} ${h}${why(h)}, so ${what} is ${id}`);
+    return id;
+  };
   for (const rec of order) {
-    rec.node.id = uniq(rec.hint ?? rec.name);
-    if (rec.hint == null && rec.node.id !== rec.name) say(rec.no, 'approximated', `participant ${rec.name}: an id holds no "->", so it is ${rec.node.id}`);
+    rec.node.id = hinted(rec.hint, rec.name, rec.no, `participant ${rec.name}`);
+    if (rec.hint == null && rec.node.id !== rec.name)
+      say(rec.no, 'approximated', `participant ${rec.name}: ${msId(rec.name) !== rec.name ? 'an id holds no "->"' : 'its name is another\'s id'}, so it is ${rec.node.id}`);
   }
   const seen = new Map();
   for (const x of items) {
-    if (x.kind === 'msg') x.id = uniq(x.hint ?? `${x.from.node.id}-${x.to.node.id}`);
-    else if (x.kind === 'use') x.id = uniq(x.id || 'use');
-    else if (x.kind === 'frag') { const n = (seen.get(x.operator) || 0) + 1; seen.set(x.operator, n); x.id = uniq(x.hint ?? `${x.operator}-${n}`); }
-    else x.id = uniq(x.hint ?? `${x.frag.id}.${x.k}`);
+    if (x.kind === 'msg') x.id = hinted(x.hint, `${x.from.node.id}-${x.to.node.id}`, x.no, 'the message');
+    else if (x.kind === 'use') x.id = hinted(x.id || undefined, 'use', x.no, 'the use', '%% use:');
+    else if (x.kind === 'frag') { const n = (seen.get(x.operator) || 0) + 1; seen.set(x.operator, n); x.id = hinted(x.hint, `${x.operator}-${n}`, x.no, `the ${x.operator}`); }
+    else x.id = hinted(x.hint, `${x.frag.id}.${x.k}`, x.no, `the ${x.frag.operator}'s operand ${x.k}`, x.k === 1 ? '%% operand-id:' : '%% id:');
   }
 
   const nodes = order.map(r => r.node), at = new Map(nodes.map((n, k) => [n.id, k]));

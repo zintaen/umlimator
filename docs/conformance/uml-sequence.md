@@ -58,7 +58,7 @@ refused, and may leave one.
 Measured on `examples/checkout-sequence.json` (0.20.0): `umlimator.py stills` (SVG and PNG) and `umlimator.py pdf` on
 its rendered page. Each file was opened and looked at.
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
 |---|---|---|---|
 | Heads, stems, bars, crosses | Yes | Yes | Yes, in vectors |
 | Messages, their arrowheads and dashes, labels on their backings, self-message loops | Yes | Yes | Yes |

@@ -393,3 +393,14 @@ test('audit 17: a participant\'s Mermaid type is written back as @{ "type" }, so
   assert.match(t, /\n {2}participant b\n/);
   assert.match(t, /%% not written: b: stereotype service/);
 });
+
+test('audit 18: a renamed participant, or a %% id: that is taken or holds "->", is said with the reason it has', () => {
+  const said = text => { const r = read(`sequenceDiagram\n${text}`); return [r.model.nodes.map(n => n.id), r.report.map(x => `${x.line} ${x.message}`)]; };
+  assert.deepEqual(said('%% id: B\nparticipant A\nparticipant B\nA->>B: hi'), [['B', 'B-2'], ["4 participant B: its name is another's id, so it is B-2"]]);
+  assert.deepEqual(said('participant a->b\nparticipant a-b'), [['a-b', 'a-b-2'], ['2 participant a->b: an id holds no "->", so it is a-b', "3 participant a-b: its name is another's id, so it is a-b-2"]]);
+  assert.deepEqual(said('%% id: X\nparticipant A\n%% id: X\nparticipant B'), [['X', 'X-2'], ['5 %% id: X is taken, so participant B is X-2']]);
+  assert.deepEqual(said('%% id: a->b\nparticipant A'), [['a-b'], ['3 %% id: a->b: an id holds no "->", so participant A is a-b']]);
+  assert.deepEqual(said('A->>B: x\n%% id: A-B\nA->>B: y')[1], ['4 %% id: A-B is taken, so the message is A-B-2']);
+  assert.deepEqual(said('A->>B: x\n%% id: A\n%% operand-id: B\nalt x\nA->>B: y\n%% id: A-B\nelse\nA->>B: z\nend')[1],
+    ['5 %% id: A is taken, so the alt is A-2', "5 %% operand-id: B is taken, so the alt's operand 1 is B-2", "8 %% id: A-B is taken, so the alt's operand 2 is A-B-3"]);
+});
