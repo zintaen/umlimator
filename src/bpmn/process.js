@@ -450,7 +450,9 @@ function bzAdd(model, view, entry, label, at) {
   const el = { id: bzFreshId(model, name || entry.label || t.split('.').pop()), type: t, ...(name ? { label: name } : {}), ...(BZ_OBJ(entry.props) ? { props: structuredClone(entry.props) } : {}) };
   if (t === BZ_LANE) { const p = sel.map(id => (I.ty(id) === BZ_POOL ? id : I.L.has(id) ? I.L.get(id).pool : null)).find(Boolean);
     if (!p) return { error: 'Select a pool to add a lane to' };
-    const parent = sel.find(id => I.L.has(id)); return [{ op: 'add', element: { ...el, ...(parent ? { parent } : {}) }, owner: p }]; }
+    const parent = sel.find(id => I.L.has(id)), add = { op: 'add', element: { ...el, ...(parent ? { parent } : {}) }, owner: p };
+    // the pool's first lane takes the flow nodes it held (boundary events with their activities), so no in-lane warning (BZ_KEPT)
+    return I.lanesOf(p).length ? [add] : [add, ...[...I.N.values()].filter(n => n.parent === p && BZ_FLOW.includes(n.type)).map(n => ({ op: 'reparent', id: n.id, parent: el.id }))]; }
   if (t === BZ_BE) { const h = sel.find(id => BZ_ACT.includes(I.ty(id)));
     if (!h) return { error: 'Select an activity to attach a boundary event to' };
     return [{ op: 'add', element: { ...el, ...(I.el(h).parent != null ? { parent: I.el(h).parent } : {}), props: { definition: 'timer', ...el.props, attachedTo: h } }, view: view.id }]; }

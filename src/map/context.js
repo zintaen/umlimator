@@ -251,7 +251,7 @@ function mapContext(model, opts = {}) {
      placed by its own lines alone, so a box fed from outside, and the lines that pass it, ran into the cards beside it. */
   // A typed view whose type gives boxes (notes/stage-2.md §3.2) passes them, T: { boxes, flip }; their ids are not cards
   function blockPos(vid, T) {
-    const v = T ? flipView(vid, T.flip) : V[vid], boxes = T ? T.boxes : (v.containers || []).filter(c => c && c.id), ids = (v.nodeIds || []).filter(i => N[i] && !(T && boxes.some(b => b.id === i))), isId = new Set(ids), lp = loopsOf(v);
+    const v = T ? flipView(vid, T.flip) : V[vid], boxes = T ? T.boxes : (v.containers || []).filter(c => c && c.id), ids = (v.nodeIds || []).filter(i => typeof i === 'string' && N[i] && !(T && boxes.some(b => b.id === i))), isId = new Set(ids), lp = loopsOf(v);
     const byBox = byId(boxes.map(b => [b.id, b])), known = x => ids.includes(x) || Object.hasOwn(byBox, x), fwd = lp.edges.filter((e, k) => !lp.back.has(k) && e.from !== e.to && known(e.from) && known(e.to)); // not a line to an id that is neither (M3.3)
     const home = byId(ids.map(i => [i, (boxes.filter(b => (b.nodeIds || []).includes(i)).pop() || {}).id ?? null])); // the box a card is drawn in
     const up = x => isId.has(x) ? home[x] : byBox[x] && byBox[byBox[x].parent] ? byBox[x].parent : null; // the box a card or box sits in
