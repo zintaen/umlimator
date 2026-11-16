@@ -29,20 +29,23 @@ const snBody = d => `<path d="${d}" class="n-mask"/><path d="${d}" class="n-body
 const snHit = (x, y, w, h) => `<rect x="${r2(x)}" y="${r2(y)}" width="${r2(w)}" height="${r2(h)}" class="fl-hit" fill="transparent"/>`;
 const snRect = boxOut(0);
 
-/* ---- the accessible names (§10.1, §10.3): each look's, which the types write into n.aria ---- */
+/* ---- the accessible names (§10.1, §10.3): each look's, which the types write into n.aria; stereotypes after the name ---- */
+const snWhy = st => (st.length ? ` (${st.join(', ')})` : '');
+// the keyword a kind outside a view's own is drawn with, as a classifier: «node», «actor», «interface» (audit 15)
+const snKindWord = t => { const k = String(t ?? '').split('.').pop(); return t === 'uml.PrimitiveType' ? 'primitive' : k.charAt(0).toLowerCase() + k.slice(1); };
 const SN_SAY = {
   // "Component Shop API (service), 2 ports, holding 1 component, 2 artifacts"; holds: a word for each element held
   component(label, { stereotypes = [], ports = 0, holds = [] } = {}) { const k = new Map(); holds.forEach(w => k.set(w, (k.get(w) || 0) + 1));
-    return [`Component ${label ?? ''}${stereotypes.length ? ` (${stereotypes.join(', ')})` : ''}`, ...(ports ? [snPlural(ports, 'port')] : []),
+    return [`Component ${label ?? ''}${snWhy(stereotypes)}`, ...(ports ? [snPlural(ports, 'port')] : []),
       ...(k.size ? ['holding ' + [...k].map(([w, c]) => snPlural(c, w)).join(', ')] : [])].join(', '); },
-  // "Port orders : OrderApi of Shop API, provides Orders, requires Payments"
-  port: (label, owner, { valueType, provides = [], requires = [] } = {}) => `Port ${label ?? ''}${valueType ? ' : ' + valueType : ''}${owner ? ' of ' + owner : ''}`
+  // "Port orders : OrderApi (rest) of Shop API, provides Orders, requires Payments"
+  port: (label, owner, { valueType, stereotypes = [], provides = [], requires = [] } = {}) => `Port ${label ?? ''}${valueType ? ' : ' + valueType : ''}${snWhy(stereotypes)}${owner ? ' of ' + owner : ''}`
     + (provides.length ? ', provides ' + provides.join(', ') : '') + (requires.length ? ', requires ' + requires.join(', ') : ''),
   // "Interface Orders, as a ball, provided by Shop API, required by Storefront"
-  iface: (label, { ball, providers = [], requirers = [] } = {}) => `Interface ${label ?? ''}${ball ? ', as a ball' : ''}`
+  iface: (label, { ball, stereotypes = [], providers = [], requirers = [] } = {}) => `Interface ${label ?? ''}${snWhy(stereotypes)}${ball ? ', as a ball' : ''}`
     + (providers.length ? ', provided by ' + providers.join(', ') : '') + (requirers.length ? ', required by ' + requirers.join(', ') : ''),
   // "Artifact shop-api.jar, on Java 21 runtime, manifests Shop API"
-  artifact: (label, { spec, on, manifests = [] } = {}) => `${spec ? 'Deployment specification' : 'Artifact'} ${label ?? ''}${on ? ', on ' + on : ''}${manifests.length ? ', manifests ' + manifests.join(', ') : ''}`,
+  artifact: (label, { spec, stereotypes = [], on, manifests = [] } = {}) => `${spec ? 'Deployment specification' : 'Artifact'} ${label ?? ''}${snWhy(stereotypes)}${on ? ', on ' + on : ''}${manifests.length ? ', manifests ' + manifests.join(', ') : ''}`,
 };
 
 /* ---- the port: its square, a 24 px area to hit, and its name (n.nameBox, placed by portsDrawn) ---- */
@@ -82,7 +85,7 @@ SHAPE.component.frame = f => `<rect class="family-box" x="${f.x}" y="${f.y}" wid
   + snCompIcon(f.x + f.w - 26, f.y + 6);
 
 /* ---- the ball: the circle at the top, centred, its name under it; a line's end slides onto the circle ---- */
-const snBallName = n => fit(String(n.label ?? ''), SN.bpx, SN.bmax);
+const snBallName = n => fit([...SN_ARR(n.stereotypes).map(t => `«${t}»`), n.label].filter(t => t != null && t !== '').join(' '), SN.bpx, SN.bmax);
 const snBallBox = n => ({ x: n.x + n.w / 2 - SN.ball / 2, y: n.y, w: SN.ball, h: SN.ball });
 const snCircleIn = (b, s, t) => { const r = b.w / 2, u = t - (s === 'L' || s === 'R' ? b.y + r : b.x + r); return r - Math.sqrt(Math.max(0, r * r - u * u)); };
 const snCircle = (b, d = 0) => { const r = b.w / 2 + d, cx = b.x + b.w / 2, cy = b.y + b.h / 2;
@@ -129,7 +132,7 @@ function portFit(ports, sides) {
 }
 
 /* ---- after the layout, on a copy (§4.3, §4.5) ----
-   g: what layoutTyped returned, never edited. ports: [{ id, owner, side, label, valueType, aria }] in members order, side as
+   g: what layoutTyped returned, never edited. ports: [{ id, owner, side, label, valueType, stereotypes, aria }] in members order, side as
    portSides gave it; id is the port's geometry id (`<part>-><port>` on a part, §6), the one its lines name as fromPort or
    toPort. A port with lines is where the router's port hook put it (e.fpb, e.tpb: its box on that end; with neither, a 12 px
    square round the line's end); those with none go on their side in members order, 8 px clear of each other and of the
@@ -175,7 +178,7 @@ function portsDrawn(g, ports) {
   const segs = edges.filter(e => e.pts).flatMap(e => e.pts.slice(1).map((q, k) => { const p = e.pts[k]; return { x: Math.min(p[0], q[0]) - 3, y: Math.min(p[1], q[1]) - 3, w: Math.abs(q[0] - p[0]) + 6, h: Math.abs(q[1] - p[1]) + 6 }; }));
   const keep = [...SN_ARR(g.nodes).map(n => ({ x: n.x - 2, y: n.y - 2, w: n.w + 4, h: n.h + 4 })), ...[...at.values()].map(r => ({ x: r.x - 2, y: r.y - 2, w: r.w + 4, h: r.h + 4 })), ...segs, ...edges.filter(e => e.lbl).map(e => e.lbl),
     ...fams.flatMap(f => [{ x: f.x - 2, y: f.y - 2, w: f.w + 4, h: 26 }, { x: f.x - 2, y: f.y, w: 4, h: f.h }, { x: f.x + f.w - 2, y: f.y, w: 4, h: f.h }, { x: f.x - 2, y: f.y + f.h - 2, w: f.w + 4, h: 4 }])];
-  const nodes = list.map(p => { const r = at.get(p.id), o = owner(p.owner), s = p.side, text = `${p.label ?? ''}${p.valueType ? ' : ' + p.valueType : ''}`;
+  const nodes = list.map(p => { const r = at.get(p.id), o = owner(p.owner), s = p.side, text = [...SN_ARR(p.stereotypes).map(t => `«${t}»`), `${p.label ?? ''}${p.valueType ? ' : ' + p.valueType : ''}`].join(' ');
     const out = edges.find(e => e.pts && ((e.fromPort === p.id && e.fs === s) || (e.toPort === p.id && e.ts === s)));
     const v = s === 'L' || s === 'R', face = [r.x + r.w / 2 + (v ? r.w / 2 * SN_OUT[s][0] : 0), r.y + r.h / 2 + (v ? 0 : r.h / 2 * SN_OUT[s][1])];
     const pts = out ? (out.fromPort === p.id && out.fs === s ? out.pts : out.pts.slice().reverse()) : [face, [face[0] + 30 * SN_OUT[s][0], face[1] + 30 * SN_OUT[s][1]]];
@@ -213,4 +216,4 @@ function structProblems(model, view) {
   return out;
 }
 
-export { SN_SAY, portLen, portSides, portFit, portsDrawn, STRUCT_RULES, structProblems };
+export { SN_SAY, snKindWord, portLen, portSides, portFit, portsDrawn, STRUCT_RULES, structProblems };

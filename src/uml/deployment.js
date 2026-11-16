@@ -4,7 +4,7 @@ import { SHAPE, r2 } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
 import { lineRename } from './class.js'; // SHAPE.note, a comment's look too
 import { lineInside, ownersOn, readingOrder } from './owners.js';
-import { SN_SAY, STRUCT_RULES, structProblems } from './structure.js'; // SHAPE.artifact and SHAPE.component too
+import { SN_SAY, STRUCT_RULES, snKindWord, structProblems } from './structure.js'; // SHAPE.artifact and SHAPE.component too
 
 /* ---------- the deployment diagram, uml.deployment (work package 5.5, notes/stage-5.md §10.3) ----------
    Nodes, devices and execution environments (UML's cube: a front face with a top and a right face 10 px deep), each a box
@@ -96,7 +96,7 @@ const DP_LINE_WORD = { 'uml.Deployment': 'Deployment', 'uml.Manifestation': 'Man
 function dpNodeName(n, pic, I) {
   if (n.type === 'uml.Comment') return 'Comment: ' + dpName(n);
   const nm = id => dpName(I.at.get(id)), st = dpStereo(n), up = n.parent != null && I.at.get(n.parent);
-  if (DP_ARTIFACTS.includes(n.type)) return SN_SAY.artifact(dpName(n), { spec: n.type === 'uml.DeploymentSpecification',
+  if (DP_ARTIFACTS.includes(n.type)) return SN_SAY.artifact(dpName(n), { spec: n.type === 'uml.DeploymentSpecification', stereotypes: st,
     on: [...new Set([...(up && DP_TARGETS.includes(up.type) ? [up.id] : []), ...I.outOf('uml.Deployment', n.id).map(e => e.to).filter(x => I.at.has(x))])].map(nm).join(', ') || null,
     manifests: I.outOf('uml.Manifestation', n.id).map(e => e.to).filter(x => I.at.has(x)).map(nm) });
   if (n.type === 'uml.Component') return SN_SAY.component(dpName(n), { stereotypes: st });
@@ -140,7 +140,9 @@ function dpGeo({ model, view, pos, memo }) {
   const pic = dpPic(model, view), lines = dpLines(model, view, pic), P = id => (DP_OBJ(pos) && Object.hasOwn(pos, id) ? pos[id] : [0, 0]);
   const nodes = pic.ids.filter(id => !pic.open.has(id)).map(id => { const n = pic.at.get(id), st = dpStereo(n);
     const shape = n.type === 'uml.Comment' ? 'note' : DP_TARGETS.includes(n.type) ? 'cube' : DP_ARTIFACTS.includes(n.type) ? 'artifact' : n.type === 'uml.Component' ? 'component' : 'classifier';
-    const d = { id, label: dpName(n), type: n.type || 'uml.Node', kind: 'file', shape, stereotypes: st, ...(shape === 'classifier' ? { compartments: [] } : {}), aria: dpNodeName(n, pic, pic.I), col: P(id)[0], row: P(id)[1] };
+    // a classifier of another kind: its kind's keyword first (a class has none), as it is named (audit 15)
+    const kw = shape === 'classifier' && n.type !== 'uml.Class' && snKindWord(n.type) ? [snKindWord(n.type)] : [];
+    const d = { id, label: dpName(n), type: n.type || 'uml.Node', kind: 'file', shape, stereotypes: [...kw, ...st], ...(shape === 'classifier' ? { compartments: [] } : {}), aria: dpNodeName(n, pic, pic.I), col: P(id)[0], row: P(id)[1] };
     return { ...d, ...SHAPE[shape].size(d) }; });
   const edges = lines.map(e => { const label = dpLineLabel(e);
     return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: label || undefined, end: Object.hasOwn(DP_LINE_LOOK, e.type) ? DP_LINE_LOOK[e.type] : { from: 'none', to: 'arrow' }, aria: dpLineName(e, pic),

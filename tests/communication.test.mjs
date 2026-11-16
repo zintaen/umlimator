@@ -53,7 +53,7 @@ test('the definition: uml.communication is registered with its palette, its line
   assert.deepEqual(Object.keys(T.props).sort(), ['uml.Connector', 'uml.Lifeline', 'uml.Message']);
   assert.deepEqual(T.refs, { 'uml.Message': { 'props.replyTo': 'cascade' } });
   for (const k of ['layout', 'validate', 'describe']) assert.equal(typeof T[k], 'function', k);
-  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'moveTo', 'remove']);
+  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'moveTo', 'remove', 'rename']);
   assert.deepEqual(Object.keys(T.rules), ['message-link', 'reply-call', 'reply-once', 'create-once', 'delete-once', 'sort']);
 });
 
@@ -391,4 +391,20 @@ test('a connector routed through another connector\'s message rows is said by ch
     assert.equal(said.length, hit.length, JSON.stringify(said)); // each row a line runs through, said; none, none said
     assert.ok(warned.every(w => !w.includes('\u0000')), JSON.stringify(warned));
   } finally { console.warn = was; }
+});
+
+test('F2 on a message row: its drawn number and «create»/«destroy» come off, the rest is the label; unchanged, nothing (audit 15)', () => {
+  const T = diagramOf({ diagram: 'uml.communication' }), v = VIEW(EX), rows = rowsOf(layout(EX, v.id));
+  for (const r of rows) {
+    assert.deepEqual(T.edits.rename(EX, v, r.id, r.label), [], `${r.id}: unchanged`);
+    const next = apply(EX, T.edits.rename(EX, v, r.id, r.label + ' later'));
+    const was = EX.edges.find(e => e.id === r.id).label;
+    assert.equal(next.edges.find(e => e.id === r.id).label, `${was ?? ''} later`.trim(), r.id);
+    assert.equal(layout(next, v.id).byId[r.id].label, r.label + ' later', `${r.id}: drawn once`);
+  }
+  assert.ok(rows.some(r => /«create»/.test(r.label)), 'the example has a create message');
+  assert.equal(T.edits.rename(EX, v, v.nodeIds[0], 'x'), null, 'a lifeline: the default');
+  const bare = structuredClone(EX), r0 = rows[0]; delete bare.edges.find(e => e.id === r0.id).label;
+  const n0 = layout(bare, v.id).byId[r0.id].label; assert.ok(!n0.includes(':'), n0);
+  assert.equal(apply(bare, T.edits.rename(bare, v, r0.id, n0 + ' go')).edges.find(e => e.id === r0.id).label, 'go', 'a row with no text: its number off');
 });

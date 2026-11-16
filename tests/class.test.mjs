@@ -452,3 +452,13 @@ test('audit 14: F2 on a UML line edits its label alone: its keyword and «stereo
   run('uml.component', ['uml.Artifact', 'uml.Component'], { type: 'uml.Manifestation', label: 'built' }, t => t.replace('built', 'packaged'), 'packaged', '«manifest» packaged');
   run('uml.deployment', ['uml.Artifact', 'uml.Node'], { type: 'uml.Deployment', label: 'nightly' }, t => t.replace('nightly', 'hourly'), 'hourly', '«deploy» hourly');
 });
+test('audit 15: F2 on a line the view owns (an object in view.edges) edits its label alone, in the class and object views too', async () => {
+  await import('../src/uml/object.js');
+  const own = (diagram, ty, e) => ({ schemaVersion: 2, nodes: [{ id: 'a', type: ty, label: 'A' }, { id: 'b', type: ty, label: 'B' }], edges: [], views: [{ id: 'v', diagram, nodeIds: ['a', 'b'], edges: [{ id: 'e', from: 'a', to: 'b', ...e }] }] });
+  for (const m of [own('uml.class', 'uml.Class', { type: 'uml.Usage', label: 'x' }), own('uml.object', 'uml.InstanceSpecification', { type: 'uml.Link', props: { association: 'owns' } })]) {
+    const T = diagramOf(m.views[0]), drawn = layout(m, 'v').edges[0].label;
+    assert.deepEqual(T.edits.rename(m, m.views[0], 'e', drawn), [], `${m.views[0].diagram}: unchanged, nothing`);
+    const m2 = apply(m, T.edits.rename(m, m.views[0], 'e', drawn + ' y'));
+    assert.equal(layout(m2, 'v').edges[0].label, drawn + ' y', m.views[0].diagram);
+  }
+});

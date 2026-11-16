@@ -377,3 +377,17 @@ test('audit 14: a line of a kind the view does not draw is a plain arrow named "
   const e = layout(m, 'v').edges[0];
   assert.deepEqual([e.end.to, !!e.end.dashed, e.aria], ['arrow', false, 'Line from Special to Base']);
 });
+
+test('audit 15: a kind outside the view\'s is drawn as a classifier with its keyword («node», «actor»); a port\'s and a ball\'s stereotypes are drawn and said, an artifact\'s and an interface\'s said', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'c1', type: 'uml.Component', label: 'Shop', members: [{ id: 'p1', type: 'uml.Port', label: 'api', props: { stereotypes: ['rest'] } }] },
+    { id: 'i1', type: 'uml.Interface', label: 'Orders', props: { stereotypes: ['remote'] } }, { id: 'i2', type: 'uml.Interface', label: 'Admin', props: { stereotypes: ['local'] } },
+    { id: 'f', type: 'uml.Artifact', label: 'shop.jar', props: { stereotypes: ['library'] } }, { id: 'n1', type: 'uml.Node', label: 'Server' }, { id: 'a1', type: 'uml.Actor', label: 'Clerk' }],
+  edges: [E('e1', 'InterfaceRealization', 'p1', 'i1')], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['c1', 'i1', 'i2', 'f', 'n1', 'a1'], present: { i1: { as: 'ball' } } }] };
+  const g = layout(m, 'v'), n = id => g.nodes.find(x => x.id === id), svg = String(svgOf(mapContext(m).buildGeo('v')));
+  assert.deepEqual([n('n1').shape, n('n1').stereotypes, n('a1').shape, n('a1').stereotypes], ['classifier', ['node'], 'classifier', ['actor']]);
+  assert.equal(n('c1').shape, 'component');
+  assert.equal(n('p1').aria, 'Port api (rest) of Shop, provides Orders'); assert.match(n('i1').aria, /^Interface Orders \(remote\), as a ball/);
+  assert.equal(n('i2').aria, 'Interface Admin (local)'); assert.equal(n('f').aria, 'Artifact shop.jar (library)');
+  for (const w of ['«node»', '«actor»', '«rest» api', '«remote» Orders', '«local»', '«library»']) assert.ok(svg.includes(w), w);
+  assert.match(describe(m, 'v'), /^Artifact shop\.jar \(library\)\.$/m);
+});

@@ -3,7 +3,7 @@ import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { RULES, classProblems, drawnLines, printMember } from './class.js';
+import { RULES, classProblems, drawnLines, lineIn, printMember } from './class.js';
 import { OWN_BOXES, OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder } from './owners.js';
 
 /* ---------- the object diagram, uml.object (work package 2.3, notes/stage-2.md §9) ----------
@@ -148,7 +148,7 @@ function objectDescribe(model, viewId) {
 /* rename (F2): an instance's name alone, so a drawn ` : Classifier` (an anonymous one opens with `: Classifier`) is taken off;
    a link's label alone, so its drawn «stereotypes» are, and its association it draws with no label. Anything else: null */
 function obRename(model, view, id, text) {
-  const x = [...OB_ARR(model.nodes), ...OB_ARR(model.edges)].find(y => OB_OBJ(y) && y.id === id), c = x && OB_PROPS(x).classifier;
+  const x = OB_ARR(model.nodes).find(y => OB_OBJ(y) && y.id === id) || lineIn(model, view, id), c = x && OB_PROPS(x).classifier;
   let t = String(text ?? '').trim();
   if (x && x.type === 'uml.InstanceSpecification') { if (OB_HAS(c) && (t === ': ' + c || t.endsWith(' : ' + c))) t = t.slice(0, -String(c).length - 2).trim(); }
   else if (x && x.type === 'uml.Link') { const pre = linkText({ ...x, label: undefined }), st = obStereo(x).map(s => `«${s}»`).join(' ');
