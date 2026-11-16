@@ -437,3 +437,17 @@ test('audit 20: the PDF\'s Lines row of a message reads its «stereotypes» befo
   assert.ok(rows.includes(`<td>«secure» ${msg.label}</td>`), rows);
   assert.ok(rows.includes(`<td>${bare.label}</td>`), 'a message with none: its label as before');
 });
+
+test('audit 21: Delete or Shift + Delete on a connector in the view\'s own lines deletes it (it lives in the view only), with the messages it carries', () => {
+  const m = structuredClone(EX), v = m.views.find(x => x.diagram === 'uml.communication');
+  const c = m.edges.find(e => e.type === 'uml.Connector' && v.edges.includes(e.id));
+  m.edges.splice(m.edges.indexOf(c), 1); v.edges[v.edges.indexOf(c.id)] = c;
+  assert.ok(layout(m, v.id).edges.some(e => e.id === c.id), 'an own connector is drawn');
+  for (const fromModel of [false, true]) {
+    const r = commRemove(m, v, [c.id], fromModel), cs = Array.isArray(r) ? r : r.commands;
+    assert.deepEqual(cs.filter(x => x.id === c.id), [{ op: 'delete', id: c.id }]);
+    const n = apply(m, cs);
+    assert.ok(!layout(n, v.id).edges.some(e => e.id === c.id));
+    assert.deepEqual(validate(n).filter(p => p.level === 'error'), []);
+  }
+});
