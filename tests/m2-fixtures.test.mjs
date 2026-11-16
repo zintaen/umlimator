@@ -283,3 +283,15 @@ test('a line listed twice in view.edges is drawn, named and counted once in ever
     assert.deepEqual(validate(two).map(p => p.message), validate(one).map(p => p.message), d);
   }
 });
+
+test('audit 20: a pair\'s lines fanned out in a view laid out down keep off every other card, not 1 px inside the one past the gap', () => {
+  const t = (id, label, col) => ({ id, type: 'er.Entity', label, members: [{ id: id + '.id', type: 'er.Column', label: 'id', props: { dataType: 'bigint', primaryKey: true } }, { id: id + '.name', type: 'er.Column', label: col, props: { dataType: 'varchar(255)' } }] });
+  const r = (id, from, to, label, a, b) => ({ id, type: 'er.Relationship', from, to, ...(label ? { label } : {}), props: { identifying: false, ends: { from: { multiplicity: a }, to: { multiplicity: b } } } });
+  const m = { schemaVersion: 2, nodes: [t('t1', 'table_1', 'invoice'), t('t2', 'table_2', 'shipping_label'), t('t3', 'table_3', 'basket'), t('t11', 'table_11', 'order')],
+    edges: [r('r0', 't11', 't1', null, '1', '0..1'), r('r1', 't1', 't3', 'payment', '1', '1..*'), r('r2', 't11', 't3', 'shipping label', '0..1', '1..*'), r('r6', 't11', 't2', 'payment', '0..1', '1'), r('r9', 't11', 't3', null, '1', '0..*')],
+    views: [{ id: 'v', diagram: 'er', title: 'v', nodeIds: ['t1', 't2', 't3', 't11'], notation: 'idef1x', direction: 'down' }] };
+  const g = layout(m, 'v'), bad = check(m, 'v').map(i => i.message).filter(s => /passes through|share a line/.test(s));
+  assert.deepEqual(bad, []);
+  for (const e of g.edges) for (const n of g.nodes) if (n.id !== e.from && n.id !== e.to)
+    assert.ok(!e.pts.some((p, k) => k && Math.max(p[0], e.pts[k - 1][0]) > n.x && Math.min(p[0], e.pts[k - 1][0]) < n.x + n.w && Math.max(p[1], e.pts[k - 1][1]) > n.y && Math.min(p[1], e.pts[k - 1][1]) < n.y + n.h), `${e.id} through ${n.id}`);
+});
