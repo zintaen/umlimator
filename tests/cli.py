@@ -576,6 +576,63 @@ with tempfile.TemporaryDirectory() as tmp:
     leak = [x for x in lg if x.startswith("data:") and b"SECRET-19" in __import__("base64").b64decode(x.split(",", 1)[1])]
     ok("diff --base · a removed model whose folder is now a symbolic link out of the checkout reads no file from there (audit 19)",
        r.returncode == 0 and len(lg) == 1 and not leak, (r.returncode, lg, r.stderr[-300:]))
+    # audit 20, the security review: a model file that is itself a symbolic link to a file outside the checkout was read, so
+    # its labels went into the comment, an SVG beside its target into the page, and the temp copy was written out there
+    g = t / "g20s"; far = t / "g20s-outside"; (g / "docs").mkdir(parents=True); far.mkdir()
+    sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True)
+    (g / "docs" / "a.json").write_text(json.dumps(two)); (g / "docs" / "b.json").write_text(json.dumps(two)); sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "one")
+    (far / "private.json").write_text(json.dumps(lm | {"nodes": [two["nodes"][0] | {"label": "PRIVATE-20"}, two["nodes"][1]]}))
+    (far / "secret.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg"><!-- SECRET-20 --></svg>')
+    (g / "docs" / "a.json").unlink(); (g / "docs" / "a.json").symlink_to(far / "private.json")
+    (g / "docs" / "b.json").write_text(json.dumps(two | {"nodes": [two["nodes"][0] | {"label": "A2"}, two["nodes"][1]]}))
+    sh("add", "-A"); sh("commit", "-qm", "pr")
+    r = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                        "sys.argv = ['umlimator.py', 'diff', '--base', 'HEAD~1', '--out', 'out']; u.main()", str(ROOT)], cwd=g, capture_output=True, text=True)
+    md = (g / "out" / "summary.md").read_text() if (g / "out" / "summary.md").is_file() else ""
+    pages = "".join(f.read_text() for f in (g / "out").glob("*.html"))
+    ok("diff --base · a model file that is a symbolic link out of the checkout is not read: said, its labels and logos stay out, nothing written there; the rest are diffed (audit 20)",
+       r.returncode == 0 and "**`docs/a.json`**: cannot be read: it is a symbolic link" in md and "PRIVATE-20" not in md + pages and "SECRET-20" not in pages
+       and "U0VDUkVULTIw" not in pages and sorted(f.name for f in far.iterdir()) == ["private.json", "secret.svg"] and "renames A to A2" in md, (r.stderr[-300:], md))
+    # audit 20, the security review of the fix above: a model committed as a dangling symbolic link (its target outside the
+    # checkout, not there yet) read as deleted, and the deleted model's copy was written through the link, out of the checkout
+    g = t / "g20l"; far = t / "g20l-outside"; (g / "docs").mkdir(parents=True); far.mkdir()
+    sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True)
+    (g / "docs" / "a.json").write_text(json.dumps(two)); sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "one")
+    (g / "docs" / "a.json").unlink(); (g / "docs" / "a.json").symlink_to(far / "planted.json"); sh("add", "-A"); sh("commit", "-qm", "pr")
+    r = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                        "sys.argv = ['umlimator.py', 'diff', '--base', 'HEAD~1', '--out', 'out']; u.main()", str(ROOT)], cwd=g, capture_output=True, text=True)
+    md = (g / "out" / "summary.md").read_text() if (g / "out" / "summary.md").is_file() else ""
+    ok("diff --base · a model file that is a dangling symbolic link out of the checkout is not read nor written through (audit 20)",
+       r.returncode == 0 and not (far / "planted.json").exists() and list(far.iterdir()) == [] and "**`docs/a.json`**: cannot be read: it is a symbolic link" in md,
+       (r.returncode, list(far.iterdir()), md, r.stderr[-300:]))
+    # audit 20: one file nested too deep for Python's parser ended diff --base in a RecursionError, with no summary for the rest;
+    # render, drift and the MCP server read it the same way
+    g = t / "g20d"; (g / "docs").mkdir(parents=True)
+    sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True)
+    (g / "docs" / "a.json").write_text(json.dumps(two)); sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "one")
+    (g / "docs" / "a.json").write_text(json.dumps(two | {"nodes": [two["nodes"][0] | {"label": "A2"}, two["nodes"][1]]}))
+    (g / "docs" / "deep.json").write_text("[" * 100000 + "]" * 100000)
+    r = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                        "sys.argv = ['umlimator.py', 'diff', '--base', 'HEAD', '--out', 'out']; u.main()", str(ROOT)], cwd=g, capture_output=True, text=True)
+    md = (g / "out" / "summary.md").read_text() if (g / "out" / "summary.md").is_file() else ""
+    b = plain("render", str(g / "docs" / "deep.json"), "--out", str(t / "deep.html"), "--no-check")
+    ok("diff --base and render · a file nested too deep is said in one line, and the other models are still diffed (audit 20)",
+       r.returncode == 0 and "**`docs/deep.json`**: cannot be read: it nests too deep to read" in md and "renames A to A2" in md
+       and b.returncode == 1 and b.stderr.strip().endswith("deep.json nests too deep to read") and "Traceback" not in r.stderr + b.stderr, (r.stderr[-300:], md, b.stderr[-300:]))
+    # audit 20: upstream filled __VISUAL_TITLE__ after the model was in the page, so a card holding it took the title, and a
+    # backslash in the title left the data block no JSON
+    for title in ("Ops", "Ops \\ on-call"):
+        (t / "vt20.json").write_text(json.dumps(two | {"title": title, "nodes": [two["nodes"][0] | {"label": "__VISUAL_TITLE__"}, two["nodes"][1]]}))
+        b = plain("render", str(t / "vt20.json"), "--out", str(t / "vt20.html"), "--no-check")
+        d = u.page_data(t / "vt20.html")[0] if b.returncode == 0 else {}
+        ok(f"render · model text holding __VISUAL_TITLE__ stays data, the title {title!r} only in <title> (audit 20)",
+           b.returncode == 0 and d["nodes"][0]["label"] == "__VISUAL_TITLE__" and d["title"] == title
+           and f"<title>{title}</title>" in (t / "vt20.html").read_text(), (b.stderr[-300:], d.get("nodes")))
+    # audit 20: a story id that is not a string rendered, then MCP's refit hashed it and answered an internal error
+    (t / "sid20.json").write_text(json.dumps(two | {"stories": [{"id": ["tour"], "steps": [{"view": "main"}]}]}))
+    b = plain("render", str(t / "sid20.json"), "--out", str(t / "sid20.html"), "--no-check")
+    ok("render · a story id that is not a string is refused in one line naming it (audit 20)",
+       b.returncode == 1 and b.stderr.strip().endswith("sid20.json: stories[0].id is not a string") and not (t / "sid20.html").exists(), b.stderr[-300:])
 
     # the diff Action's step as CI runs it (C10, 2.6): a pull request's merge commit against its first parent, the pathspec
     # examples/*.json passed to git as written (set -f), on one object model and one package model
