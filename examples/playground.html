@@ -31,9 +31,10 @@
     body { grid-template: auto minmax(240px, 42dvh) minmax(0, 1fr) / minmax(0, 1fr); }
     .side { border-right: 0; border-bottom: 1px solid var(--um-border); }
   }
+  header h1 { margin: 0; font-size: inherit; } /* the page's heading, drawn as the bold title it was */
 </style>
 <header>
-  <b>Playground</b>
+  <h1>Playground</h1>
   <label>Example <select id="example">
     <option value="bike-share.json">Bike share</option>
     <option value="weather.json">Weather stations</option>

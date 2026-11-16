@@ -53,3 +53,15 @@ test('the built changelog starts at the first release and names no host applicat
   const dead = [...page.matchAll(/ href="#([^"]+)"/g)].map(m => m[1]).filter(h => !ids.has(decodeURIComponent(h)));
   assert.deepEqual(dead, []);
 });
+
+test('inline code on the site reads at WCAG AA (4.5:1) on a table row\'s tint, in both themes (audit 16)', () => {
+  const css = read('docs/.vitepress/theme/custom.css');
+  const lum = h => { const [r, g, b] = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(c => c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  // VitePress colours inline code with --vp-code-color; the even table rows under it are these (bg-soft plus the code tint)
+  for (const [scope, row] of [[':root', '#e7e9ec'], ['.dark', '#2b2e36']]) {
+    const block = css.match(new RegExp(`^${scope.replace('.', '\\.')} \\{([^}]*)\\}`, 'm'))[1], c = block.match(/--vp-code-color:\s*(#[0-9a-f]{6})/i);
+    assert.ok(c, `${scope} sets --vp-code-color (else it is the brand accent, under 4.5:1)`);
+    assert.ok(ratio(c[1], row) >= 4.5, `${scope}: ${c[1]} on ${row} is ${ratio(c[1], row).toFixed(2)}:1`);
+  }
+});
