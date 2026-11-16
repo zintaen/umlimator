@@ -349,7 +349,7 @@ def report(pid, msg):
 def refit(m):
     """`want`, kept to what the model has now: a view, card, line or story the latest version no longer has is dropped,
     so a page is never sent ids an older version had. Called with the lock held."""
-    vs, stories = views(m), {s.get("id") for s in m.get("stories") or [] if isinstance(s, dict)}
+    vs, stories = views(m), {s.get("id") for s in m.get("stories") or [] if isinstance(s, dict) and isinstance(s.get("id"), str)}  # a list id is no name (audit 20)
     known_ = known(m)[0]
     if want["view"] not in vs:
         want["view"] = None
@@ -469,7 +469,7 @@ def page():
                     cli.render_model(m, MODEL, out)  # drawn as the model's own file is: its copy sits next to it
                     head, _, tail = out.read_text(encoding="utf-8").rpartition("</body>")
             except (Exception, SystemExit) as e:  # the CLI ends on a model the engine rejects: here it is the page's
-                said = f"it is not JSON ({e})" if isinstance(e, ValueError) else str(e.code) if isinstance(e, SystemExit) else repr(e)
+                said = f"it is not JSON ({e})" if isinstance(e, ValueError) else "it nests too deep to read" if isinstance(e, RecursionError) else str(e.code) if isinstance(e, SystemExit) else repr(e)
                 with lock:
                     why = said.strip()[-1500:] or "it does not render"
             else:
@@ -522,7 +522,7 @@ class Page(http.server.BaseHTTPRequestHandler):
             return self.send_error(413)
         try:
             msg = json.loads(self.rfile.read(size))
-        except ValueError:
+        except (ValueError, RecursionError):  # too deep for Python's parser is no message either (audit 20)
             return self.send_error(400)
         if not (isinstance(msg, dict) and isinstance(msg.get("page"), str) and 0 < len(msg["page"]) <= 64):
             return self.send_error(400)
@@ -623,7 +623,7 @@ def answer(line):
     server speaks, has batches), or None for notifications and responses."""
     try:
         msg = json.loads(line)
-    except ValueError:
+    except (ValueError, RecursionError):  # a line nested too deep for Python's parser ended the server (audit 20)
         return failure(None, -32700, "Parse error")
     if isinstance(msg, list):
         return [r for r in map(reply, msg) if r is not None] or None if msg else failure(None, -32600, "Invalid Request")

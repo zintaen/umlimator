@@ -1,5 +1,6 @@
 import { TYPED, idTable, diagramOf } from '../core/registry.js';
 import { andList, arrOf, rules } from './validate.js';
+import { unreadable } from '../core/model.js';
 
 /* ---------- change: diff (#66) and drift (#68) ----------
    Each returns a model marked with what the map draws already, so a page the CLI writes, or a still, shows the marks
@@ -35,6 +36,7 @@ const boxOf = (v, id) => { const cs = arrOf(v.containers).filter(Boolean), by = 
  *  or removed (removed ones come back from `before`, in their views, boxes and places), a summary in words, and the
  *  views that show a change. Cards and lines are matched by id (a line without one by its ends, as a Ref names it). */
 export function diff(before, after) {
+  before = unreadable(before).model; after = unreadable(after).model; // each read as validate() and mapContext read it (audit 20)
   const arr = arrOf, A = structuredClone(before || {}), out = structuredClone(after || {});
   const how = new Map(), was = new Map(), said = []; // each marked card or line: added, changed or removed; a changed one's [before, after]
   const card = (x, h) => ({ ...x, change: h });
@@ -226,6 +228,7 @@ export function diff(before, after) {
  *  each a count of model edges (a drawn line that stands for several fades only when all are idle); views: those that
  *  show drift. */
 export function drift(model, observed, options = {}) {
+  [model, observed, options] = [model, observed, options].map(x => unreadable(x).model); // the model, the traffic and the match table: no text String() throws on (audit 20)
   const arr = arrOf, out = structuredClone(model || {}), match = options.match || {};
   const list = Array.isArray(observed) ? observed : arr(observed && observed.data);
   const cards = [...arr(out.nodes), ...arr(out.views).flatMap(v => arr(v && v.nodes))].filter(n => n && n.id != null);

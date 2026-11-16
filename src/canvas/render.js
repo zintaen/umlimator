@@ -1162,7 +1162,7 @@ export function render(container, model, options = {}) {
   stage.addEventListener('wheel', e => { if (!ctrlWheel || e.ctrlKey || e.metaKey || stage.classList.contains('full')) readerMoved(); }, { capture: true, passive: true }); // a wheel that zooms (wheel: 'ctrl' leaves the rest to the page)
   function restory() { // update(): the story shown takes the model's steps, at the step it is on, or stops when the model has it no more
     const st = story; if (!st) return;
-    const s = arrOf(current.stories).find(x => x && x.id === st.s.id), steps = stepsOf(s);
+    const s = arrOf(ctx.D.stories).find(x => x && x.id === st.s.id), steps = stepsOf(s); // the model as mapContext reads it: no text String() throws on (audit 20)
     if (!steps.length) return stopStory();
     const was = JSON.stringify(st.steps[st.at]), k = Math.min(st.at, steps.length - 1);
     st.s = s; st.steps = steps;
@@ -1194,7 +1194,7 @@ export function render(container, model, options = {}) {
   }
   function play(id, o = {}) {
     if (id == null) { stopStory(); return null; } // play(null): the story shown stops
-    const s = arrOf(current.stories).find(x => x && x.id === id), steps = stepsOf(s);
+    const s = ctx && arrOf(ctx.D.stories).find(x => x && x.id === id), steps = stepsOf(s); // as mapContext reads it (audit 20)
     if (dead || !geo || !steps.length) return null; // a story the model lacks: the one shown plays on
     stopStory();
     let end; const st = { s, steps, at: -1, seq: 0, timer: 0, auto: o.auto !== false, phase: 'entering', told: false, toured: Promise.resolve(true), done: new Promise(r => { end = r; }) };
