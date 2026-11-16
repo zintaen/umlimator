@@ -565,3 +565,12 @@ test('a } at the end of a line closes its class or namespace, as Mermaid\'s lexe
   assert.deepEqual(shape('classDiagram\nnamespace Zoo {\n  class Cage }\nclass Keeper\n'),
     [[['Zoo', null, []], ['Cage', 'Zoo', []], ['Keeper', null, []]], 0, []]);
 });
+
+test('a class body closed on its own line closes at its first }, and a } after it closes the namespace (audit 16)', () => {
+  const shape = s => { const r = read(s); return [r.model.nodes.map(n => [n.id, n.parent ?? null, (n.members || []).map(m => m.label)]), r.report.map(x => x.message)]; };
+  assert.deepEqual(shape('classDiagram\nnamespace Shop { class Cart { +total() } }\nclass Other\n'),
+    [[['Shop', null, []], ['Cart', 'Shop', ['total']], ['Other', null, []]], []]);
+  assert.deepEqual(shape('classDiagram\nnamespace Shop {\nclass Cart { +total() } }\nclass Other\n'),
+    [[['Shop', null, []], ['Cart', 'Shop', ['total']], ['Other', null, []]], []]);
+  assert.deepEqual(shape('classDiagram\nclass Cart { +total() } }\n')[1], ['a } that closes nothing']);
+});

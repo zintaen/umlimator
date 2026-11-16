@@ -73,6 +73,9 @@ def not_objects(d):
     ids = lambda at, xs, ks: [f"{at}[{j}].{k} is not a string" for j, x in enumerate(lst(xs)) if isinstance(x, dict) for k in ks if not name(x.get(k))]
     out = [f"{k} is not a list" for k in ("nodes", "edges", "views") if k in d and not isinstance(d[k], list)]
     out += [f"{k}[{i}] is not an object" for k in ("nodes", "edges", "views") for i, x in enumerate(lst(d.get(k))) if not isinstance(x, dict)]
+    out += [f"{k} is not a list" for k in ("stories",) if k in d and not isinstance(d[k], list)]  # list_views and play_story read them (audit 16)
+    out += [f"stories[{i}] is not an object" if not isinstance(x, dict) else f"stories[{i}].steps is not a list"
+            for i, x in enumerate(lst(d.get("stories"))) if not isinstance(x, dict) or "steps" in x and not isinstance(x["steps"], list)]
     out += ["meta is not an object"] if "meta" in d and not isinstance(d["meta"], dict) else []
     seen = set()
     for i, v in ((i, v) for i, v in enumerate(lst(d.get("views"))) if isinstance(v, dict)):
@@ -742,9 +745,10 @@ def cmd_timelapse(a):
         sys.exit(f"no versions of {a.model} in git history")
     data = {"title": str(versions[-1]["model"].get("title") or Path(a.model).stem), "icons": {**icon_table(ms := [v["model"] for v in versions]), **packs().table(ms)}, "versions": versions}
     page = (HERE / "engine" / "assets" / "timelapse.html").read_text(encoding="utf-8")
-    page = page.replace("__TITLE__", html.escape(data["title"]), 1).replace("/*__UMLIMATOR_THEME__*/", THEME.read_text(encoding="utf-8"), 1)
-    page = page.replace("/*__VERSIONS__*/", script_json(data), 1)
-    page = page.replace("/*__UMLIMATOR_LIB__*/", LIB.read_text(encoding="utf-8"), 1)
+    # each placeholder filled once, in one pass: a model's text holding a placeholder is data, never filled (audit 16)
+    fill = {"__TITLE__": html.escape(data["title"]), "/*__UMLIMATOR_THEME__*/": THEME.read_text(encoding="utf-8"),
+            "/*__VERSIONS__*/": script_json(data), "/*__UMLIMATOR_LIB__*/": LIB.read_text(encoding="utf-8")}
+    page = re.sub("|".join(map(re.escape, fill)), lambda x: fill.pop(x[0], x[0]), page)
     write(a.out, page)
     print(json.dumps({"out": a.out, "versions": [v["label"] for v in versions]}, indent=1))
 
