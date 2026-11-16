@@ -190,6 +190,17 @@ with tempfile.TemporaryDirectory() as tmp:
     head = json.loads(git("show", "HEAD:docs/map.json").stdout)
     ok("timelapse · merge commits are kept and a branch's commits are not interleaved: the last version is HEAD's model (audit 13)",
        [v["label"][11:] for v in vs][3:] == ["trunk", "Merge branch 'feat' into trunk"] and vs[-1]["model"] == head, [v["label"] for v in vs])
+    # audit 16: the placeholders were filled one after another, so a model's text holding a later one had the module put in its data
+    g2 = t / "repo-ph"; g2.mkdir()
+    git2 = lambda *a: subprocess.run(["git", "-C", str(g2), "-c", "user.name=test", "-c", "user.email=test@example.invalid", *a], capture_output=True, text=True, check=True)
+    git2("init", "-q"); (g2 / "map.json").write_text(json.dumps(bike | {"title": "T /*__UMLIMATOR_THEME__*/", "description": "inlines /*__UMLIMATOR_LIB__*/ and /*__VERSIONS__*/"}))
+    git2("add", "map.json"); git2("commit", "-q", "-m", "one")
+    cli("timelapse", "map.json", "--out", str(t / "lapse-ph.html"), cwd=g2)
+    lapse = (t / "lapse-ph.html").read_text(encoding="utf-8") if (t / "lapse-ph.html").is_file() else ""
+    data = re.search(r'<script id="versions" type="application/json">(.*?)</script>', lapse, re.S)
+    ok("timelapse · a model's text holding a placeholder is data: the versions read back as the model, the module is in the page (audit 16)",
+       bool(data) and json.loads(data.group(1))["versions"][0]["model"]["description"] == "inlines /*__UMLIMATOR_LIB__*/ and /*__VERSIONS__*/"
+       and "/*__UMLIMATOR_LIB__*/" not in lapse.replace(data.group(1), "") and "export function render" in lapse, lapse[:300])
 
     (g / "docs" / "map.json").write_text(json.dumps(edited(json.loads((g / "docs" / "map.json").read_text()))))
     (g / "notes.json").write_text('{"not": "a map"}'); git("add", "notes.json")
