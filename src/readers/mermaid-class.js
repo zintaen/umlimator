@@ -20,7 +20,9 @@
 
    How UML maps onto Mermaid's text, both ways:
    - classes: `<<interface>>`, `<<enumeration>>`, `<<dataType>>`, `<<primitive>>` pick the type, `<<abstract>>` sets
-     isAbstract; any other annotation is a stereotype;
+     isAbstract; any other annotation is a stereotype. As Mermaid's addMember, a member's text (a body line, a one-line
+     body, `Name : text`) that both starts with << and ends with >> is an annotation, and a `<<x>>` in front of any
+     other is the member's stereotype (written back so);
    - attributes: `+name : Type[0..1] = default`, `/` for derived, a closing `$` for static; Mermaid's own `Type name`
      is read too. Operations: `+name(p : T, out q : U) Return`, a closing `*` abstract, `$` static, or one right after
      the `)` (`draw()$ bool`). `List~int~` is List<int>. In an enumeration a bare name is a literal;
@@ -258,7 +260,17 @@ function readMermaidClass(text) {
   };
   const take = k => { const h = hint[k]; delete hint[k]; return h; }; // a hint its line uses; one left is said where it is dropped
   const drop = no => { for (const k in hint) say(no, 'skipped', `%% ${k === 'id' ? 'id' : 'link-id'}: ${hint[k]} is above a line that takes none: not read`); hint = {}; };
-  const member = (rec, s, no) => { if (s.trim()) rec.raw.push({ text: s, line: no, hint: take('id') }); };
+  /* a member's text, from a body line, a one-line body or `Name : text`, as Mermaid's classDb.addMember takes it: one that
+     starts with << and ends with >> is an annotation of the class; any other is a member, a <<x>> in front of it read as
+     its stereotype (audit 17) */
+  const member = (rec, s, no) => {
+    let t = s.trim();
+    if (!t) return;
+    if (t.length >= 4 && t.startsWith('<<') && t.endsWith('>>')) { rec.anns.push(t.slice(2, -2).trim()); return; }
+    const st = [];
+    for (let e; t.startsWith('<<') && (e = t.indexOf('>>', 2)) >= 0;) { st.push(t.slice(2, e).trim()); t = t.slice(e + 2).trimStart(); }
+    rec.raw.push({ text: t, line: no, hint: take('id'), st: st.filter(Boolean) });
+  };
 
   for (; i < lines.length; i++) {
     const no = i + 1;
@@ -286,7 +298,6 @@ function readMermaidClass(text) {
     const cut = s.search(/[\s{:("[<`]/), word = cut < 0 ? s : s.slice(0, cut);
     if (top && top.kind === 'class') { // a class body
       if (s === '}') stack.pop();
-      else if (s.startsWith('<<')) annotate(top.rec, s);
       else member(top.rec, s, no);
     } else if (s === '}') {
       if (top) stack.pop(); else say(no, 'skipped', 'a } that closes nothing');
@@ -477,6 +488,10 @@ function readMermaidClass(text) {
       const key = x.type === 'uml.Operation' ? `${x.label}(${(x.props.parameters || []).map(a => a.valueType ?? '').join(',')})` : x.label;
       if (seen.has(key)) { say(r.line, 'skipped', `${rec.node.id}.${x.label}: ${rec.node.id} has a member ${key} already`); continue; }
       seen.add(key);
+      if (r.st.length) {
+        x.props = { ...x.props, stereotypes: [...r.st, ...((x.props && x.props.stereotypes) || [])] };
+        say(r.line, 'approximated', `${rec.node.id}.${x.label}: ${r.st.map(t => `<<${t}>>`).join(' ')} in front of it is read as its stereotype${r.st.length > 1 ? 's' : ''}`);
+      }
       if (x.props && !Object.keys(x.props).length) delete x.props;
       members.push({ id: hinted(r.hint, `${rec.node.id}.${x.label}`, r.line, `${rec.node.id}.${x.label}`), ...x });
     }
@@ -589,9 +604,12 @@ function writeMermaidClass(model, viewId) {
       const drift = back && x.type !== 'uml.EnumerationLiteral' && (!!bp.isStatic !== !!p.isStatic || (x.type === 'uml.Property' ? back.abstractField || !same(bp.valueType, p.valueType)
         : !!bp.isAbstract !== !!p.isAbstract || !same(bp.returnType, p.returnType) || JSON.stringify(arr(bp.parameters).map(a => [a.name ?? '', a.valueType ?? ''])) !== JSON.stringify(arr(p.parameters).filter(isObj).map(a => [String(a.name ?? '').trim(), has(a.valueType) ? String(a.valueType).trim() : '']))));
       if (!back || drift || back.type !== x.type || back.label !== x.label || badId(x.id) || nl(text) || /^(\}$|<<|%%)/.test(text.trim())) { skip(x); continue; }
-      extra(x, ['id', 'type', 'label'], x.type === 'uml.Property' ? ['visibility', 'valueType', 'multiplicity', 'default', 'isStatic', 'isDerived']
-        : x.type === 'uml.Operation' ? ['visibility', 'parameters', 'returnType', 'isAbstract', 'isStatic'] : []);
-      rows.push([idOf(x.id, `${n.id}.${x.label}`), text]);
+      // its stereotypes as <<x>> in front, which the reader takes off as them (audit 17); one it would not read back as itself is said
+      const st = arr(p.stereotypes).filter(s => { const ok = typeof s === 'string' && s !== '' && s.trim() === s && !nl(s) && !s.includes('>>') && !s.endsWith('>') && !s.startsWith('<') && !text.trim().endsWith('>>');
+        if (!ok) lose(x.id, `stereotype ${s}`); return ok; });
+      extra(x, ['id', 'type', 'label'], [...(x.type === 'uml.Property' ? ['visibility', 'valueType', 'multiplicity', 'default', 'isStatic', 'isDerived']
+        : x.type === 'uml.Operation' ? ['visibility', 'parameters', 'returnType', 'isAbstract', 'isStatic'] : []), 'stereotypes']);
+      rows.push([idOf(x.id, `${n.id}.${x.label}`), st.map(s => `<<${s}>> `).join('') + text]);
     }
     heads.set(n.id, [anns, rows]);
   }

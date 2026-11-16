@@ -238,8 +238,9 @@ test('the readers\' construct files read into models their types\' validate pass
     // the shapes page's nodes stand alone: no start reaches them
     'flowchart.mmd': [61, ['flowchart'], { 'warning start-end': 1, 'warning reachable': 101, 'warning terminator-flows': 4, 'warning decision-exits': 2 }],
     'structurizr.json clinic': [6, ['c4.context', 'c4.container', 'c4.component'], {}],
-    // a dynamic view's three steps with an end that view does not show, not drawn
-    'structurizr.json every': [27, ['c4.landscape', 'c4.context', 'c4.container', 'c4.component', 'c4.dynamic', 'c4.deployment'], { 'warning c4-steps': 3 }],
+    // a dynamic view's one step with an end that view does not show (a component), not drawn; its implied steps are kept
+    // between the containers it shows and drawn (audit 17)
+    'structurizr.json every': [27, ['c4.landscape', 'c4.context', 'c4.container', 'c4.component', 'c4.dynamic', 'c4.deployment'], { 'warning c4-steps': 1 }],
     'dbml.json': [20, ['er'], { 'warning pk-exists': 1, 'warning relationship-fk': 1 }],
   });
 });

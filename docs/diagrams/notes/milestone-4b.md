@@ -604,7 +604,9 @@ resolves.
   id; a send or receive task is read as a `bpmn.Task` with `taskType: none`, its kind kept under `ext.bpmn`. Each is one
   report item, `weakened`. The writer writes them plain, and its report says what was dropped (§12.3).
 - Any other element outside S1's subset (a signal event, an inclusive gateway…) is reported `skipped` and kept under the
-  model's `ext.bpmn` as moddle's JSON with its parent's id (`model.md` rule 12); its flows are reported too.
+  model's `ext.bpmn` as moddle's JSON with its parent's id (`model.md` rule 12); its flows are reported too. That JSON
+  holds its references as ids (moddle's are non-enumerable properties, read by the descriptor's names) and a foreign
+  extension's children (`$children`), attributes and bodies (audit 17).
 
 ### 12.3 Writing
 

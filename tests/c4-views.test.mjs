@@ -442,3 +442,30 @@ test('audit 7: a dynamic view\'s c4-level message keeps a subject named with $\'
   const s = validate(m).map(p => p.message).filter(x => x.startsWith('c4-level'));
   assert.ok(s.some(x => x.endsWith('in a dynamic view of "Price$\'s API"')), s);
 });
+
+test('audit 17: a Structurizr dynamic view at container level draws its implied steps between the containers it shows', async () => {
+  const { readStructurizr } = await import('../src/readers/structurizr.js');
+  const { model } = readStructurizr(JSON.parse(readFileSync(new URL('import/structurizr.json', import.meta.url), 'utf8')).every);
+  // steps 2, 3 and 4 are Structurizr's implied relationships (Web app -> API ...): drawn, not swapped for component-level ones
+  assert.deepEqual(layout(model, 'placing-an-order').edges.map(e => [e._id, e.step]),
+    [['shops', 1], ['shop.web-shop.api', 2], ['shop.api-shop.db', 3], ['shop.api-payments', 4], ['shop.api-shop.bus', 5]]);
+  assert.match(describe(model, 'placing-an-order'), /^Shop: dynamic: a C4 dynamic diagram of 7 elements and 5 steps\.\nSoftware system Shop/);
+  assert.match(describe(model, 'placing-an-order'), /\nStep 2: Relationship from Web app to API: Places orders through \[JSON\/HTTPS\]\./);
+  // the one step that names a component-level relationship directly is still not drawn, and validate() says so
+  assert.deepEqual(validate(model).filter(p => p.rule === 'c4-steps').map(p => p.ids), [['shop.web-shop.api.orders', 'shop.api.orders']]);
+  // a minimal workspace: its one implied step is kept as the model's relationship and drawn
+  const ws = { name: 'Shop', model: {
+    people: [{ id: '1', name: 'Customer', relationships: [{ id: '10', sourceId: '1', destinationId: '3', description: 'Shops in' }] }],
+    softwareSystems: [{ id: '2', name: 'Shop', containers: [
+      { id: '3', name: 'Web app', relationships: [{ id: '11', sourceId: '3', destinationId: '5', description: 'Orders through' },
+        { id: '12', sourceId: '3', destinationId: '4', description: 'Orders through', linkedRelationshipId: '11' }] },
+      { id: '4', name: 'API', components: [{ id: '5', name: 'Orders' }] }] }] },
+    views: { dynamicViews: [{ key: 'checkout', elementId: '2', elements: [{ id: '1' }, { id: '3' }, { id: '4' }], relationships: [{ id: '10', order: '1' }, { id: '12', order: '2' }] },
+      // the same implied step in a component-level view of the API, which draws Orders: the relationship it is implied by
+      { key: 'inside', elementId: '4', elements: [{ id: '3' }, { id: '5' }], relationships: [{ id: '12', order: '1' }] }] } };
+  const r = readStructurizr(ws);
+  assert.deepEqual(r.model.views.map(v => v.edges), [['customer-web-app', 'web-app-api'], ['web-app-orders']]);
+  assert.deepEqual(layout(r.model, 'checkout').edges.map(e => e._id), ['customer-web-app', 'web-app-api']);
+  assert.deepEqual(layout(r.model, 'inside').edges.map(e => e._id), ['web-app-orders']);
+  assert.ok(!r.report.some(x => x.path === 'model' && /implied/.test(x.message)), 'the one implied relationship is read');
+});
