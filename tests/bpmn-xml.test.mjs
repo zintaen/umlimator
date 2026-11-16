@@ -419,6 +419,22 @@ test('a taskType or direction outside row 24 ("constructor" among them) is repor
   const { model, report } = await read(`<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d"><process id="p"><dataObjectReference id="a" dataObjectRef="o"/>
     <dataObjectReference id="b" dataObjectRef="o"/><dataObject id="o"/><task id="t"><dataInputAssociation id="da"><sourceRef>a</sourceRef><sourceRef>b</sourceRef></dataInputAssociation></task></process></definitions>`, BpmnModdle());
   assert.deepEqual([model.edges.map(e => `${e.from}-${e.to}`), report[0].message, model.ext.bpmn.skipped[0].parent], [['a-t'], 'its sources after the first (b): kept under ext.bpmn, not read', 't']);
+  // audit 17: kept, with its references (moddle's non-enumerable properties) as ids
+  assert.deepEqual(model.ext.bpmn.skipped[0].element, { $type: 'bpmn:DataInputAssociation', id: 'da', sourceRef: ['a', 'b'] });
+});
+
+test('audit 17: what is kept under ext.bpmn keeps its references as ids and a foreign extension\'s children, attributes and bodies', needs, async () => {
+  const flows = await read(`<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d"><process id="p"><laneSet id="ls"><lane id="l"><flowNodeRef>s</flowNodeRef></lane></laneSet><startEvent id="s"/><task id="t"/>
+    <inclusiveGateway id="g" default="f2"/><sequenceFlow id="f1" sourceRef="s" targetRef="g"/><sequenceFlow id="f2" sourceRef="g" targetRef="t"/></process></definitions>`, BpmnModdle());
+  const kept = Object.fromEntries(flows.model.ext.bpmn.skipped.map(x => [x.element.id, x.element]));
+  assert.deepEqual(kept.g, { $type: 'bpmn:InclusiveGateway', id: 'g', default: 'f2' });
+  assert.deepEqual(kept.f1, { $type: 'bpmn:SequenceFlow', id: 'f1', sourceRef: 's', targetRef: 'g' });
+  assert.deepEqual(kept.f2, { $type: 'bpmn:SequenceFlow', id: 'f2', sourceRef: 'g', targetRef: 't' });
+  const ext = await read(`<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" id="d"><process id="p">
+    <serviceTask id="t"><extensionElements><camunda:inputOutput><camunda:inputParameter name="amount">\${total}</camunda:inputParameter></camunda:inputOutput><camunda:properties><camunda:property name="retries" value="3"/></camunda:properties></extensionElements></serviceTask></process></definitions>`, BpmnModdle());
+  assert.deepEqual(ext.model.ext.bpmn.skipped, [{ parent: 't', element: { $type: 'bpmn:ExtensionElements', values: [
+    { $type: 'camunda:inputOutput', $children: [{ $type: 'camunda:inputParameter', name: 'amount', $body: '${total}' }] },
+    { $type: 'camunda:properties', $children: [{ $type: 'camunda:property', name: 'retries', value: '3' }] }] } }]);
 });
 
 test('a BPMN attribute outside the subset, set off its default, is reported once per name; isExecutable is passed over (audit 3)', needs, async () => {

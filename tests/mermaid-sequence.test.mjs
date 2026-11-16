@@ -371,3 +371,25 @@ test('the writer names ext and props it has no place for: a lifeline\'s tags and
   const m = json('./sequence-minimal.json'); m.nodes[0].ext = { x: 1 }; m.nodes[0].props = { ...m.nodes[0].props, tags: { a: 1 } }; m.views[0].edges[0].ext = { x: 1 }; m.views[0].edges[0].props.zz = 1;
   assert.deepEqual(write(m, 'v').match(/not written: .*/g), ['not written: get: property zz', 'not written: get: ext', 'not written: client: property tags', 'not written: client: ext']);
 });
+
+test('audit 17: a participant\'s Mermaid type is written back as @{ "type" }, so read, write, read keeps the stereotype', () => {
+  const lives = m => m.nodes.filter(n => n.type === 'uml.Lifeline').map(n => [n.id, n.label, n.props?.stereotypes ?? null]);
+  const a = read(every).model, text = write(a), b = read(text).model;
+  assert.deepEqual(lives(b), lives(a));
+  assert.deepEqual(lives(a).filter(x => x[2] && x[2][0] !== 'actor').map(x => x[0]), ['Boundary', 'API', 'Auth']);
+  assert.match(text, /\n {2}participant API@\{ "type": "boundary" \} as Public API\n/);
+  assert.doesNotMatch(text, /not written: (Boundary|API|Auth): stereotype/);
+  // each of Mermaid's six types, a created participant among them; a second stereotype, or an actor's, is still said
+  const six = ['boundary', 'control', 'entity', 'database', 'collections', 'queue'];
+  const src = `sequenceDiagram\n${six.map((t, k) => `participant P${k}@{ "type": "${t}" }`).join('\n')}\nP0->>P1: a\ncreate participant Q@{ "type": "queue" }\nP1->>Q: b`;
+  const m = read(src).model, back = read(write(m)).model;
+  assert.deepEqual(lives(back), lives(m));
+  assert.deepEqual(lives(m).map(x => x[2][0]), [...six, 'queue']);
+  const odd = { schemaVersion: 2, root: 'v', nodes: [{ id: 'a', type: 'uml.Lifeline', label: 'a', props: { stereotypes: ['database', 'boundary'] } }, { id: 'b', type: 'uml.Lifeline', label: 'b', props: { stereotypes: ['service'] } }],
+    edges: [], views: [{ id: 'v', diagram: 'uml.sequence', nodeIds: ['a', 'b'] }] };
+  const t = write(odd);
+  assert.match(t, /participant a@\{ "type": "database" \}\n/);
+  assert.match(t, /%% not written: a: stereotype boundary/);
+  assert.match(t, /\n {2}participant b\n/);
+  assert.match(t, /%% not written: b: stereotype service/);
+});

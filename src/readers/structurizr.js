@@ -28,9 +28,12 @@
    - Views: each kind as its c4 view, its key slugged as id, its `subject` the software system or container it is scoped
      to, `nodeIds` its elements; a container, component or dynamic view lists its subject, as Structurizr draws it as a
      boundary;
-     a dynamic view's steps, ordered by `order`, are its `edges`, each relationship once (S13); a deployment view's
+     a dynamic view's steps, ordered by `order`, are its `edges`, each relationship once (S13); a step naming an implied
+     relationship is the relationship it is implied by when the view draws that one's ends, else the implied one, kept as a
+     relationship of the model when the view draws its ends (approximated either way); a deployment view's
      environment is in its title; a view's automatic layout gives its direction.
-   - Skipped, each reported: implied relationships (`linkedRelationshipId`: the C4 type works them out, §5.2), software
+   - Skipped, each reported: implied relationships but those a dynamic view's step keeps (`linkedRelationshipId`: the C4
+     type works them out, §5.2), software
      system instances, infrastructure nodes and custom elements and their relationships, groups, filtered, custom and
      image views, perspectives, element properties but the identifier, urls, documentation and decisions, themes,
      animations, element positions, style fields but an element's shape, relationship styles, a deployment node's shape,
@@ -209,7 +212,7 @@ function szRead(workspace, report, recs, rels, views) {
     if (x === null || typeof x !== 'object' || Array.isArray(x)) { say(path, 'skipped', 'not a relationship: not read'); continue; }
     // a static element's linked relationship is implied; an instance's is replicated from its container's, and read (§7.5.3)
     const k = szKey(szOwn(x, 'id')), linked = szKey(szOwn(x, 'linkedRelationshipId'));
-    if (linked !== undefined && from.node.type !== 'c4.ContainerInstance' && from.node.type !== 'c4.DeploymentNode') { if (k !== undefined) implied.set(k, linked); impliedCount++; continue; }
+    if (linked !== undefined && from.node.type !== 'c4.ContainerInstance' && from.node.type !== 'c4.DeploymentNode') { if (k !== undefined) implied.set(k, { linked, x, from }); impliedCount++; continue; }
     if (rels.length === SZ_MAX) { if (!fullR) { fullR = true; say(path, 'skipped', `over ${SZ_MAX} relationships: this and the rest are not read`); } continue; }
     const to = bySid.get(szKey(szOwn(x, 'destinationId')));
     if (!to) { say(path, 'skipped', `a relationship from ${from.node.label} whose destination is not read: not read`); continue; }
@@ -221,7 +224,8 @@ function szRead(workspace, report, recs, rels, views) {
     unread(x, path, `relationship ${from.node.label} → ${to.node.label}`);
     if (szOwn(x, 'interactionStyle') === 'Asynchronous') say(`${path}.interactionStyle`, 'approximated', `relationship ${from.node.label} → ${to.node.label} is asynchronous: it is drawn as any other`);
   }
-  if (impliedCount) say('model', 'skipped', `${impliedCount} implied relationship${impliedCount > 1 ? 's are' : ' is'} not read: the C4 type works them out when it draws`);
+  // (the count is said here and set when the views are read: a dynamic view's step may keep one)
+  const impliedSaid = impliedCount ? report[report.push({ path: 'model', status: 'skipped' }) - 1] : null;
 
   // ---- ids (R3): identifiers first, so a name never takes one; then the rest in order ----
   const used = new Set(), next = new Map(), plain = /^[A-Za-z0-9_.-]+$/;
@@ -259,7 +263,32 @@ function szRead(workspace, report, recs, rels, views) {
   for (const r of rels) { r.edge.from = r.edge.from.node.id; r.edge.to = r.edge.to.node.id; }
 
   // ---- views ----
-  const vused = new Set(), vnext = new Map();
+  const vused = new Set(), vnext = new Map(), kept = new Map(), heldBy = new Map(), recById = new Map(recs.map(r => [r.node.id, r]));
+  /* a dynamic view's step naming an implied relationship (Structurizr's, a level above the relationship it is implied by): the
+     relationship it is implied by when the view draws both its ends; else the implied one, kept as a relationship of the
+     model, when the view draws both of its ends (a dynamic view's steps are never lifted, notes/milestone-2.md §7.5.2);
+     else the one it is implied by, reported as not drawn. An end is drawn when the view shows it and it is not drawn as a
+     boundary: the view's subject, or an element owning another the view shows */
+  const impliedStep = (k, v, shown, q, id, n) => {
+    const { linked, x, from } = implied.get(k), r = relBySid.get(linked);
+    if (!heldBy.has(v)) { const held = new Set(); heldBy.set(v, held);
+      for (const s of recs) if (shown.has(s.node.id)) for (let p = s.parent; p && !held.has(p.node.id); p = p.parent) held.add(p.node.id); }
+    const held = heldBy.get(v), drawn = rec => !!rec && shown.has(rec.node.id) && rec.node.id !== v.subject && !held.has(rec.node.id);
+    if (r && drawn(recById.get(r.edge.from)) && drawn(recById.get(r.edge.to))) { say(q, 'approximated', `view ${id}: step ${n} is an implied relationship: the relationship it is implied by, ${r.edge.id}, is the step`); return r; }
+    const to = bySid.get(szKey(szOwn(x, 'destinationId')));
+    if (kept.has(k) || (drawn(from) && drawn(to))) {
+      if (!kept.has(k)) {
+        const description = text(x, 'description', q), technology = text(x, 'technology', q);
+        const edge = { id: szFree(used, next, `${from.node.id}-${to.node.id}`), type: 'c4.Relationship', from: from.node.id, to: to.node.id, ...(description ? { label: description } : {}), ...(technology ? { props: { technology } } : {}) };
+        kept.set(k, { edge }); rels.push(kept.get(k));
+      }
+      const e = kept.get(k).edge;
+      say(q, 'approximated', `view ${id}: step ${n} is an implied relationship: it is kept as the model's relationship ${e.id}, ${from.node.label} → ${to.node.label}`);
+      return kept.get(k);
+    }
+    if (r) say(q, 'skipped', `view ${id}: step ${n} is an implied relationship: neither it nor the relationship it is implied by, ${r.edge.id}, is between two elements the view draws, so the step is not drawn`);
+    return r;
+  };
   for (const [key, diagram, field, word] of SZ_VIEWS) list(vs, key, 'views').forEach((x, k) => {
     const path = `views.${key}[${k}]`;
     if (x === null || typeof x !== 'object' || Array.isArray(x)) { say(path, 'skipped', 'not a view: not read'); return; }
@@ -295,7 +324,7 @@ function szRead(workspace, report, recs, rels, views) {
       for (const { s, j, order } of steps) {
         const q = `${path}.relationships[${j}]`, k = szKey(szOwn(s, 'id'));
         let r = relBySid.get(k);
-        if (!r && implied.has(k) && (r = relBySid.get(implied.get(k)))) say(q, 'approximated', `view ${id}: step ${order || j + 1} is an implied relationship: the relationship it is implied by, ${r.edge.id}, is the step`);
+        if (!r && implied.has(k)) r = impliedStep(k, v, shown, q, id, order || j + 1);
         if (!r) { say(q, 'skipped', `view ${id}: a step whose relationship is not read`); continue; }
         if (seen.has(r)) { say(q, 'approximated', `view ${id}: ${r.edge.id} is a step twice: the first is kept (each relationship is one step)`); continue; }
         seen.add(r); v.edges.push(r.edge.id);
@@ -307,6 +336,9 @@ function szRead(workspace, report, recs, rels, views) {
     if (list(x, 'animations', path).length) say(`${path}.animations`, 'skipped', `view ${id}: animations are not read`);
     views.push(v);
   });
+  if (impliedSaid) { const n = impliedCount - kept.size;
+    if (n) impliedSaid.message = `${n} implied relationship${n > 1 ? 's are' : ' is'} not read: the C4 type works them out when it draws`;
+    else report.splice(report.indexOf(impliedSaid), 1); }
   for (const [key, word] of [['filteredViews', 'a filtered view'], ['customViews', 'a custom view'], ['imageViews', 'an image view']])
     list(vs, key, 'views').forEach((x, k) => say(`views.${key}[${k}]`, 'skipped', `${word}${typeof szOwn(x, 'key') === 'string' ? ' ' + szOwn(x, 'key') : ''} is not read`));
   if (szDocumented(workspace)) say('documentation', 'skipped', 'documentation and decisions are not read');
