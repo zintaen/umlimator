@@ -9,7 +9,8 @@ import { history } from '../src/core/history.js';
 import '../src/map/typed.js';
 import { layout, check } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
-import { validate } from '../src/map/validate.js';
+import { validate, rules } from '../src/map/validate.js';
+import { lensOf } from '../src/map/lens.js';
 import '../src/uml/package.js';
 import { describe } from '../src/map/insight.js';
 import { multBounds, parseMember, printMember, memberEdit, classProblems } from '../src/uml/class.js';
@@ -330,6 +331,16 @@ test('a class view with a box lays out a line to a listed id that is no element:
   assert.ok(validate(m).some(p => p.level === 'error' && /ghost/.test(p.message)));
   const g = layout(m, 'v');
   assert.deepEqual(g.edges.map(e => e.id), ['f']);
+});
+
+test('audit 16: rules() and lenses judge no hand-written box of a class view, which draws its packages as boxes and ignores them (own-boxes)', () => {
+  const C = id => ({ id, type: 'uml.Class', label: id.toUpperCase() });
+  const m = { schemaVersion: 2, nodes: [C('a'), C('b')], edges: [{ id: 'ab', type: 'uml.Association', from: 'a', to: 'b' }, { id: 'ba', type: 'uml.Dependency', from: 'b', to: 'a' }],
+    views: [{ id: 'cls', diagram: 'uml.class', nodeIds: ['a', 'b'], containers: [{ id: 'left', label: 'Left', nodeIds: ['a'] }, { id: 'right', label: 'Right', nodeIds: ['b'] }] }],
+    rules: [{ id: 'cyc', noCycles: true }, { id: 'nr', from: { container: 'left' }, to: { container: 'right' } }] };
+  assert.ok(validate(m).some(p => p.rule === 'own-boxes'));
+  assert.deepEqual(rules(m), []);
+  assert.deepEqual(Object.keys(lensOf(mapContext(m), 'cls', { pick: { container: 'left' } }).layer.nodes), []);
 });
 
 test('class and package views: Tab reaches every element, then every line (one node-key ring per card, audit 1)', () => {

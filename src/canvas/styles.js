@@ -174,7 +174,7 @@ const STYLES = `
   .mctl .ctl button:hover:not(:disabled) { color: var(--um-accent); }
   .empty-view { position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); text-align: center; width: min(380px, 86%); z-index: 2; }
   .empty-view .ico { font-size: 28px; color: var(--um-dim); }
-  .empty-view h4 { margin: 6px 0 4px; font: 650 16px var(--um-sans); }
+  .empty-view h2 { margin: 6px 0 4px; font: 650 16px var(--um-sans); }
   .empty-view p { margin: 0 0 12px; color: var(--um-muted); font-size: 13px; }
   svg .family-box { fill: var(--um-panel); fill-opacity: .45; stroke-width: 1.5; }
   svg .family-title { font: 650 11px var(--um-mono); }
@@ -272,7 +272,7 @@ const STYLES = `
   .ph { display: flex; align-items: center; gap: 12px; padding: 12px 18px 6px; }
   .ph .big { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; color: var(--um-accent-fg); flex: none; }
   .ph .pt { min-width: 0; flex: 1; }
-  .ph h3 { margin: 0; font: 650 17px var(--um-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ph h2 { margin: 0; font: 650 17px var(--um-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ph small { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: var(--um-muted); font-size: 12.5px; }
   .ph .acts { display: flex; gap: 8px; align-items: center; flex: none; }
   .vis { font: 700 9px var(--um-sans); letter-spacing: .1em; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--um-border-2); color: var(--um-muted); }
@@ -293,8 +293,8 @@ const STYLES = `
   .ptab[aria-selected="true"] { color: var(--um-text); font-weight: 650; border-bottom-color: var(--um-accent); }
   .pnav { margin-left: auto; display: flex; gap: 4px; }
   .pbody { padding: 10px 18px 14px; }
-  .pbody h4 { margin: 0 0 4px; font: 700 10px var(--um-sans); letter-spacing: .1em; text-transform: uppercase; color: var(--um-muted); display: flex; gap: 6px; }
-  .pbody h4 span { color: var(--um-muted); }
+  .pbody h3 { margin: 0 0 4px; font: 700 10px var(--um-sans); letter-spacing: .1em; text-transform: uppercase; color: var(--um-muted); display: flex; gap: 6px; }
+  .pbody h3 span { color: var(--um-muted); }
   .clamp { font-size: 14px; line-height: 1.55; max-width: 980px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .clamp.open { display: block; -webkit-line-clamp: unset; }
   .clamp p { margin: 0 0 6px; } .clamp ul { margin: 0 0 6px; padding-left: 18px; }

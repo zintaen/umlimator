@@ -136,7 +136,7 @@ export function render(container, model, options = {}) {
       geo = { nodes: [], edges: [], groups: [], lanes: [], families: [], byId: idTable(), stats: {}, bounds: { x: 0, y: 0, w: 400, h: 300 } };
       stage.insertAdjacentHTML('afterbegin', '<svg class="map-svg" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"></svg>');
       const p = v && v.parent;
-      stage.insertAdjacentHTML('beforeend', `<div class="empty-view"><div class="ico">◌</div><h4>Nothing here yet</h4><p>${v ? 'This view has no nodes yet.' : 'This map has no views yet.'}</p>${p ? `<button class="btn" data-v="${esc(p)}">← Back to ${esc(String(ctx.V[p].title || p).split(' · ')[0])}</button>` : ''}</div>`);
+      stage.insertAdjacentHTML('beforeend', `<div class="empty-view"><div class="ico">◌</div><h2>Nothing here yet</h2><p>${v ? 'This view has no nodes yet.' : 'This map has no views yet.'}</p>${p ? `<button class="btn" data-v="${esc(p)}">← Back to ${esc(String(ctx.V[p].title || p).split(' · ')[0])}</button>` : ''}</div>`);
     } else {
       const c = pic(vid);
       stage.insertAdjacentHTML('afterbegin', c.markup); geo = c.g;

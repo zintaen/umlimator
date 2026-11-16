@@ -188,8 +188,10 @@ const picks = (s, end) => !s || ((s.id == null || [s.id].flat().includes(end.id)
 const andList = xs => xs.length > 1 ? xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1] : xs.join(''), arrOf = x => (Array.isArray(x) ? x : []);
 // a view's cards and boxes as a selector sees them (rules, lenses): a card's kind as drawn, the boxes it is in (outermost
 // first) and its owner; a box is in itself and its parents, and has no kind or owner
+// a view's hand-written boxes: none on a typed view whose type lays it out, which draws its own boxes (own-boxes, audit 10)
+const handBoxes = v => ((v.diagram ?? 'map') !== 'map' && (diagramOf(v) || {}).layout ? [] : arrOf(v.containers));
 function endsIn(ctx, v) {
-  const cs = arrOf(v.containers).filter(c => c && c.id), box = Object.create(null); cs.forEach(c => { box[c.id] ||= c; }); // no prototype (M3, audit 8)
+  const cs = handBoxes(v).filter(c => c && c.id), box = Object.create(null); cs.forEach(c => { box[c.id] ||= c; }); // no prototype (M3, audit 8)
   const home = Object.create(null); cs.forEach(c => arrOf(c.nodeIds).forEach(id => { home[id] ??= c.id; }));
   const chain = b => { const c = []; for (const seen = new Set(); b != null && box[b] && !seen.has(b); b = box[b].parent) { seen.add(b); c.unshift(b); } return c; }; // outermost first
   const end = id => box[id] ? { id, kind: null, boxes: chain(id), label: box[id].label || id }
@@ -201,7 +203,7 @@ export function rules(model) {
   const list = arrOf(model && model.rules).filter(r => r && typeof r === 'object' && (r.from || r.to || r.noCycles));
   if (!list.length) return [];
   const ctx = mapContext(model), { views, N, viewEdges } = ctx, out = [];
-  const anyBox = new Set(views.flatMap(v => arrOf(v.containers).map(c => c && c.id).filter(Boolean)));
+  const anyBox = new Set(views.flatMap(v => handBoxes(v).map(c => c && c.id).filter(Boolean)));
   const named = new Map(list.map(r => [r, [r.from, r.to].flatMap(s => boxesNamed(s, id => anyBox.has(id) && !N[id]))]));
   views.forEach(v => {
     const { box, end } = endsIn(ctx, v), order = Object.values(box).map(c => c.id);
@@ -240,4 +242,4 @@ export function rules(model) {
   return out;
 }
 
-export { WIRE_KINDS, boxesNamed, picks, andList, arrOf, endsIn };
+export { WIRE_KINDS, boxesNamed, picks, andList, arrOf, endsIn, handBoxes };

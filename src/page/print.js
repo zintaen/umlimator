@@ -4,7 +4,7 @@ import { esc, md } from '../core/text.js';
 import { stepOrder } from '../layout/layered.js';
 import { edgeRefIds } from '../map/api.js';
 import { KIND, kindOf } from '../map/kinds.js';
-import { andList, arrOf, boxesNamed, rules } from '../map/validate.js';
+import { andList, arrOf, boxesNamed, handBoxes, rules } from '../map/validate.js';
 
 /* #pdf=1[&views=a,pic-*][&paper=letter] (umlimator.py pdf): the map as a document to hand in for a review, laid out here a
    page at a time, as Chrome's own page breaks can't be read back for the contents. Each sheet is one page: @page sets the
@@ -26,7 +26,7 @@ function printDoc(X, model, Q) {
   const broken = rules(model).filter(b => on.has(b.view)); // judged in the views printed, as the document says
   const [pw, ph] = Q.get('paper') === 'letter' ? [279.4, 215.9] : [297, 210], title = esc(D.title || 'Map'); // the paper across, in mm
   const count = (k, w, ws = w + 's') => `${k} ${k === 1 ? w : ws}`, T = v => esc(v.title || v.id), full = c => Object.assign(c, { full: true });
-  const cards = v => arrOf(v.nodeIds).filter(i => N[i]), boxes = v => arrOf(v.containers).filter(c => c && c.id); // as describe() reads a view
+  const cards = v => arrOf(v.nodeIds).filter(i => N[i]), boxes = v => handBoxes(v).filter(c => c && c.id); // as rules() reads a view
   // each view's tables, made once: the cover counts the lines they list (a typed view's are those its type draws, audit 15)
   const made = new Map(shown.map(([v]) => [v, tablesOf(X.ctx(), v, geoCache[v.id].g)]));
   document.title = D.title || 'Map'; document.body.removeAttribute('class');
@@ -143,9 +143,8 @@ const word = t => String(t || '').split('.').pop().replace(/([a-z])([A-Z])/g, (_
 // a typed element's word in view v: "Class", "Table"
 const wordOf = (D, v, id, t) => (diagramOf(v) || {}).word?.(D, id) ?? word(t || 'uml.Class');
 function tablesOf({ D, N, nodeIn, viewEdges }, v, g) {
-  // a type that lays its view out draws its own boxes, never the view's hand-written containers (own-boxes, audit 10)
-  const typed = (v.diagram ?? 'map') !== 'map', own = typed && !!(diagramOf(v) || {}).layout;
-  const cards = v => arrOf(v.nodeIds).filter(i => N[i]), boxes = v => (own ? [] : arrOf(v.containers).filter(c => c && c.id));
+  const typed = (v.diagram ?? 'map') !== 'map';
+  const cards = v => arrOf(v.nodeIds).filter(i => N[i]), boxes = v => handBoxes(v).filter(c => c && c.id);
   const wk = new Map(g.edges.flatMap(d => edgeRefIds(d).map(id => [id, d.wk])));
   const at = idTable(Object.fromEntries(g.nodes.map(n => [n.id, n]))), ids = cards(v), es = viewEdges(v).filter(e => (typed ? wk.has(e._id) || at[e._id] : e.from !== e.to)), seq = v.render === 'sequence', stepped = es.some(e => e.step != null); // a typed view's: those its type draws, a self-line too (a communication message is drawn as a row); a map draws no self-loop
   if (typed) { const have = new Set(es.map(e => e._id)); // and a line its type draws to an end's owner (a member's, a port's), between the owners
@@ -167,7 +166,7 @@ function tablesOf({ D, N, nodeIn, viewEdges }, v, g) {
     { title: `Lines <span>${es.length}</span>`, cls: 'lines', head: `${seq || stepped ? '<th class="n">#</th>' : ''}<th>From → to</th><th>Label</th><th>${typed ? 'Kind' : 'Technology'}</th>`, rows: (stepped && !seq ? [...es].sort((a, b) => stepOrder(a.step, b.step)) : es).map((e, i) => { const w = wk.get(e._id) || 'calls', t = typed && T.text?.(D, v, e._id); // a type's text for the line (S17), else its label
       return `<tr>${seq ? `<td>${i + 1}</td>` : stepped ? `<td>${esc(e.step ?? '')}</td>` : ''}<td><i class="w" style="border-color:var(--um-w-${w})"></i>${name(v, e.from)} → ${name(v, e.to)}</td><td>${t || e.label ? esc(t || e.label) : typed ? '' : `<span class="up">${w}</span>`}</td><td>${esc(typed ? word(e.type) : e.sublabel || '')}</td></tr>`; }) },
     { title: `Boxes <span>${held.length}</span>`, cls: 'boxes', head: '<th>Box</th><th>Holds</th>', rows: held.map(([c, ins]) => `<tr><td><b>${esc(c.label || c.id)}</b></td><td>${andList(ins.map(i => name(v, i)))}</td></tr>`) },
-  ], { lineIds: es.map(e => e._id) }); // the lines it lists, for the cover's count
+  ], { lineIds: (mine => es.map(e => mine.has(e) ? v.id + '\0' + e._id : e._id))(new Set(arrOf(v.edges))) }); // the lines it lists, for the cover's count: a view's own line by its view too, as two lists name theirs alike (a->b#0)
 }
 
 export { printDoc, tablesOf, wordOf };

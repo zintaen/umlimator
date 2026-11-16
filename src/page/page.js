@@ -103,7 +103,7 @@ export function mountPage(container, model, options = {}) {
     $('m-vpill').innerHTML = `<button class="pill" id="m-pillbtn" aria-expanded="false" aria-controls="m-vpop" title="About this view (i)"><b>${esc(shortT(v.title || v.id))}</b><span class="n">${mainSteps ? (v.stepIds || v.nodeIds || []).length + ' steps' : seq ? ve.length + ' steps' : geo.nodes.length + ' nodes'}</span><span class="kbd">i</span></button>
       ${mainSteps && (v.note || v.caption) ? `<p class="view-note">${inline(v.note || v.caption)}</p>` : ''}
       <div class="vpop" id="m-vpop" hidden>${parent ? `<button class="back" data-v="${esc(parent)}">← ${esc(shortT(V[parent].title || parent))}</button>` : ''}
-        <h4>${esc(v.title || v.id)}</h4>${v.caption || v.description ? `<p>${inline(v.caption || v.description)}</p>` : ''}
+        <h2>${esc(v.title || v.id)}</h2>${v.caption || v.description ? `<p>${inline(v.caption || v.description)}</p>` : ''}
         ${L ? `<div class="vlanes">${L.lanes.map((l, i) => `${i ? '<i>→</i>' : ''}<span><em>${i + 1}</em>${esc(l.title)} <small>${l.ids.length}</small></span>`).join('')}</div>` : ''}
         ${seq ? `<ol>${ve.map(e => `<li title="${esc((N[e.from] || {}).label || e.from)} → ${esc((N[e.to] || {}).label || e.to)}">${esc(e.label || (N[e.to] || {}).label || e.to)}</li>`).join('')}</ol>` : ''}
         <div class="vm">${geo.nodes.length} nodes · ${geo.edges.length} wires${views.length > 1 ? ` · level ${chain(cur).length} of ${depth}` : ''}</div></div>`;
@@ -282,7 +282,7 @@ export function mountPage(container, model, options = {}) {
     hi = Math.min(hi, Math.max(0, hits.length - 1)); hits.length ? q.setAttribute('aria-activedescendant', 'm-o' + hi) : q.removeAttribute('aria-activedescendant'); // a reader says the highlighted result
     if (!hits.length) {
       const near = nodes.map(n => [n, lev(qs, String(n.label || n.id).toLowerCase().replace(/^\//, '').slice(0, qs.length + 2))]).sort((a, b) => a[1] - b[1])[0];
-      res.innerHTML = ''; q.setAttribute('aria-expanded', false); none.innerHTML = `<div class="none"><div aria-hidden="true">⌕</div><h4>Nothing called “${esc(q.value.trim())}”</h4>${near && near[1] <= Math.max(2, qs.length / 3) ? `Did you mean <button data-fill="${esc(near[0].label || near[0].id)}">${esc(near[0].label || near[0].id)}</button>?` : 'Try a skill, verb, script or view name.'}</div>`;
+      res.innerHTML = ''; q.setAttribute('aria-expanded', false); none.innerHTML = `<div class="none"><div aria-hidden="true">⌕</div><h2>Nothing called “${esc(q.value.trim())}”</h2>${near && near[1] <= Math.max(2, qs.length / 3) ? `Did you mean <button data-fill="${esc(near[0].label || near[0].id)}">${esc(near[0].label || near[0].id)}</button>?` : 'Try a skill, verb, script or view name.'}</div>`;
       return;
     }
     let html = '', last = ''; none.innerHTML = ''; q.setAttribute('aria-expanded', true);

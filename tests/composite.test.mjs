@@ -553,6 +553,13 @@ test('audit 15: a part or collaboration use with no name and no type is drawn an
   assert.doesNotMatch(rows, /(^|>)\s*, composite/, 'no blank part row');
 });
 
+test('audit 16: the PDF cover counts a view\'s own line apart from a model line with the same ends (both named a->b#0)', () => {
+  const m = { nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ from: 'a', to: 'b', label: 'places order' }],
+    views: [{ id: 'one', nodeIds: ['a', 'b'] }, { id: 'two', nodeIds: ['a', 'b'], edges: [{ from: 'a', to: 'b', label: 'cancels order' }] }] };
+  const c = mapContext(m), ids = c.views.flatMap(v => tablesOf(c, v, c.buildGeo(v.id)).lineIds);
+  assert.equal(new Set(ids).size, 2, ids);
+});
+
 test('audit 16: an anonymous part is named ": Engine [1]" by its ports, connectors and bindings; F2 on a collaboration use and on the subject\'s port', () => {
   const m = { schemaVersion: 2, nodes: [{ id: 'E', type: 'uml.Class', label: 'Engine', members: [{ id: 'E.in', type: 'uml.Port', label: 'in' }] },
     { id: 'S', type: 'uml.Class', label: 'Service', members: [P('S.p', undefined, { props: { valueType: 'Engine', multiplicity: '1' } }), { id: 'S.in', type: 'uml.Port', label: 'in', props: { valueType: 'Old' } }] },

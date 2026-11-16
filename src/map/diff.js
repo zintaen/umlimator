@@ -54,7 +54,10 @@ export function diff(before, after) {
   const V0 = new Map(arr(A.views).filter(Boolean).map(v => [v.id, v])), V1 = new Set(arr(out.views).filter(Boolean).map(v => v.id));
   const moved = [], touched = new Set(), viewSaid = []; // cards put into or taken out of a view; views whose cards the diff marks there; what only a view changes
   const views = arr(out.views).map(v => {
-    const o = v && V0.get(v.id); if (!o) return v;
+    const o = v && V0.get(v.id); if (!v) return v;
+    if (!o) { touched.add(v.id); // an added view comes with everything of its own added, as a removed one goes
+      const w = { ...v }; if (Array.isArray(v.nodes)) w.nodes = v.nodes.map(n => { if (!n || typeof n !== 'object') return n; const y = card(n, 'added'); how.set(y, 'added'); return y; });
+      if (Array.isArray(v.edges)) w.edges = v.edges.map(e => e && typeof e === 'object' ? line(e, 'added') : e); return w; }
     const w = { ...v }, ids = arr(v.nodeIds), oldIds = arr(o.nodeIds);
     if (v.nodes || o.nodes) w.nodes = mark(arr(o.nodes), arr(v.nodes), card);
     const at = new Map([...out.nodes, ...arr(w.nodes)].filter(Boolean).map(n => [n.id, n]));
@@ -68,13 +71,15 @@ export function diff(before, after) {
     if ((o.title || o.id) !== vn) { viewSaid.push(`retitles the view ${o.title || o.id} to ${vn}`); touched.add(v.id); }
     // and what else it draws differently (audit 15): its caption, lanes and the like, a box's tone or badges, a card's pin
     const other = (x, y, skip) => [...new Set([...Object.keys(x), ...Object.keys(y)])].filter(k => !skip.includes(k) && canon(x[k]) !== canon(y[k]));
-    const vk = other(o, v, ['id', 'title', 'nodeIds', 'nodes', 'edges', 'containers', 'nodeOverrides', 'layout', 'fragments']);
+    const vk = other(o, v, ['id', 'title', 'nodeIds', 'nodes', 'edges', 'containers', 'nodeOverrides', 'layout', 'present', 'fragments']); // a card's pin and present: said with the card
     if (vk.length) { viewSaid.push(`changes the view ${vn} (${vk.join(', ')})`); touched.add(v.id); }
     const ob = new Map(arr(o.containers).filter(Boolean).map(c => [c.id, c]));
     arr(v.containers).forEach(c => { const b = c && ob.get(c.id); if (!b) return; if (bn(b) !== bn(c)) says(`renames the box ${bn(b)} to ${bn(c)}`);
       const bk = other(b, c, ['id', 'label', 'title', 'nodeIds']); if (bk.length) says(`changes the box ${bn(c)} (${bk.join(', ')})`); });
     ids.filter(id => oldIds.includes(id)).forEach(id => { const a = (o.nodeOverrides || {})[id] || {}, b = (v.nodeOverrides || {})[id] || {}, base = (at.get(id) || {}).label || id;
-      const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(k => canon(a[k]) !== canon(b[k])), rest = keys.filter(k => k !== 'label'), b0 = boxOf(o, id), b1 = boxOf(v, id);
+      const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(k => canon(a[k]) !== canon(b[k])), b0 = boxOf(o, id), b1 = boxOf(v, id);
+      if (canon((o.present || {})[id]) !== canon((v.present || {})[id])) keys.push('present'); // its compartments shown (a typed view's present, by card)
+      const rest = keys.filter(k => k !== 'label');
       if (keys.length) says((keys.includes('label') ? `renames ${a.label ?? base} to ${b.label ?? base}` : `changes ${b.label ?? base}`) + (rest.length ? ` (${rest.join(', ')})` : ''));
       if ((b0 && b0.id) !== (b1 && b1.id)) says(`moves ${b.label ?? base} ${b0 ? 'out of ' + bn(b0) : ''}${b0 && b1 ? ' ' : ''}${b1 ? 'into ' + bn(b1) : ''}`);
       else if (canon((o.layout || {})[id]) !== canon((v.layout || {})[id])) says(`moves ${b.label ?? base}`);
