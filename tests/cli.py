@@ -119,7 +119,8 @@ ok("record · a step's duration the page only warns about is played as the page 
 
 bike = json.loads((ROOT / "examples" / "bike-share.json").read_text(encoding="utf-8"))
 SAID = ["renames Accounts to Accounts and sign-in", "adds Payments queue between Trip service and Payment provider",
-        "removes Feature flags", "removes the line from Trip service to Payment provider (charges)"]
+        "removes Feature flags", "removes the line from Trip service to Payment provider (charges)",
+        "moves Payment provider in the view What runs"]  # its pin moved too (audit 15)
 with tempfile.TemporaryDirectory() as tmp:
     t = Path(tmp)
     (t / "before.json").write_text(json.dumps(bike)); (t / "after.json").write_text(json.dumps(edited(bike)))
@@ -759,6 +760,9 @@ with tempfile.TemporaryDirectory() as tmp:
        all(flat(s) in txt for s in ["Shopper's deviceDevice", "Java 21 runtimeExecution environmentshop-api.jarorder-worker.jarshop-api.yaml", "Edge proxyNoderoutes.conf, by «deploy»",
                                     "shop-api.yamlDeployment specification", "order-worker.jarArtifactmanifests Order worker",
                                     "Edge proxy → Application serverHTTPCommunication path", "routes.conf → Edge proxyDeployment"]), txt[:800])
+    # audit 15: the cover counts the lines each view's Lines table lists (it said 0 for the composite structure's 8, 9 for the sequence's 10)
+    ok("pdf · a typed model's cover counts the lines its views' tables list", all(re.search(rf"1view·\d+cards·{n}lines", (read(f"{name}.pdf") or [""])[0])
+       for name, n in (("order-service-structure", 8), ("checkout-sequence", 10))), [(read(f"{name}.pdf") or [""])[0][:120] for name in ("order-service-structure", "checkout-sequence")])
     txt = "".join(read("order-service-structure.pdf"))
     ok("pdf · order-service-structure: its tables list the subject's ports and parts, each part shared or composite, its connectors, the collaboration use's collaboration and bindings, the collaboration's roles",
        all(flat(s) in txt for s in ["OrderServiceClassport apiport payments", "checkout : CheckoutFlow [1], composite", "listeners : OrderListener [0..*], shared",
@@ -950,7 +954,7 @@ with tempfile.TemporaryDirectory() as tmp:
     (Path(tmp) / "other.json").write_text(json.dumps(edited(bike)))
     said, err = tool("diff", other_model_path=str(Path(tmp) / "other.json"))
 ok("mcp · diff: what changed from another model file to this one", not err and json.loads(said) == {"summary": ["renames Accounts and sign-in to Accounts", "adds Feature flags",
-   "removes Payments queue", "adds a line from Trip service to Payment provider (charges)"], "views": ["system"]}, said)
+   "removes Payments queue", "adds a line from Trip service to Payment provider (charges)", "moves Payment provider in the view What runs"], "views": ["system"]}, said)
 with tempfile.TemporaryDirectory() as tmp:
     (Path(tmp) / "v5.json").write_text(json.dumps({"nodes": [{"id": "a"}], "views": [{"id": 5, "nodeIds": ["a"]}]}))
     said, err = tool("diff", other_model_path=str(Path(tmp) / "v5.json"))
