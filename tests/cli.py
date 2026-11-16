@@ -463,6 +463,72 @@ with tempfile.TemporaryDirectory() as tmp:
        and [i for i, x in enumerate(kept) if "logo" in x] == [9, 10] and kept[9]["logo"].startswith("data:image/svg+xml;base64,")
        and all(f"views[0].intake[{j}].logo is" in b.stderr for j in range(9)) and "Traceback" not in b.stderr + d.stderr,
        [b.stderr[-600:], d.stderr[-300:], [x.get("logo", "")[:40] for x in kept]])
+    # audit 19: a page, its stills and the diff Action's browser fetch nothing from an address the model names: an author's
+    # avatar, the model's own icons table (whether or not a card names a manifest icon), an example's image; timelapse too
+    off = lambda *x, cwd=None: subprocess.run([sys.executable, str(ROOT / "umlimator.py"), *x], capture_output=True, text=True, cwd=cwd,
+                                              env={**os.environ, "UMLIMATOR_OFFLINE": "1"})
+    far, png = "127.0.0.1:9/beacon.png?leak=19", "data:image/png;base64,iVBORw0KGgo="
+    h19 = two | {"authors": {"nobody-19": {"name": "N", "avatar": "http://" + far}, "kept-19": {"avatar": png}},
+                 "icons": {"evil": {"src": "http://" + far}, "glyph": {"g": f'<image href="http://{far}"/>'}},
+                 "nodes": [two["nodes"][0] | {"author": "nobody-19", "icon": "evil", "examples": [{"title": "x", "thumb": "http://" + far, "full": " //" + far},
+                                                                                                    {"title": "y", "thumb": "shots/y.png", "full": "\thttps://" + far}]},
+                           two["nodes"][1] | {"author": "kept-19", "icon": "glyph"}]}
+    h19b = h19 | {"nodes": [h19["nodes"][0], h19["nodes"][1] | {"icon": "server"}]}
+    for k, m in (("", h19), ("b", h19b), ("-before", two)):
+        (t / f"h19{k}.json").write_text(json.dumps(m))
+    bs = [off("render", str(t / f"h19{k}.json"), "--out", str(t / f"h19{k}.html"), "--no-check") for k in ("", "b")]
+    bs.append(off("diff", str(t / "h19-before.json"), str(t / "h19.json"), "--out", str(t / "h19d.html")))
+    g19 = t / "g19"; g19.mkdir()
+    sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g19, capture_output=True)
+    sh("init", "-q"); (g19 / "m.json").write_text(json.dumps(h19)); sh("add", "."); sh("commit", "-qm", "one")
+    bs.append(off("timelapse", "m.json", "--out", str(t / "h19t.html"), cwd=g19))
+    pages = [(t / f).read_text() if (t / f).is_file() else "" for f in ("h19.html", "h19b.html", "h19d.html", "h19t.html")]
+    d19 = [u.page_data(t / f)[0] if (t / f).is_file() else {} for f in ("h19.html", "h19b.html")]
+    exs = [x for n in d19[0].get("nodes", []) for x in n.get("examples") or []]
+    ok("render, diff, timelapse · an author's avatar, the model's own icons and an example's image that name an address are left out and said; a data: avatar and a path beside the page are kept (audit 19)",
+       [b.returncode for b in bs] == [0] * 4 and all(p and "127.0.0.1:9" not in p for p in pages)
+       and d19[0]["authors"]["kept-19"]["avatar"] == png and "avatar" not in d19[0]["authors"]["nobody-19"]
+       and not d19[0].get("icons") and set(d19[1].get("icons") or {}) == {"server"} and exs == [{"title": "x"}, {"title": "y", "thumb": "shots/y.png"}]
+       and "authors.nobody-19.avatar" in bs[0].stderr and "icons is built by render" in bs[0].stderr and "nodes[0].examples[0].thumb" in bs[0].stderr
+       and "Traceback" not in "".join(b.stderr for b in bs), [b.stderr[-400:] for b in bs])
+    # audit 19: a top-level files or hunks key (upstream's explore and recap keys, which a map never draws) of another shape
+    # ended render in upstream's traceback
+    for k, v in enumerate([{"files": [{"name": "a.txt"}]}, {"files": 5}, {"hunks": [{"missing": True}]}, {"hunks": 7}, {"areas": 3, "files": [{"path": "x"}]}]):
+        (t / f"fh19-{k}.json").write_text(json.dumps(two | v))
+    bs = [plain("render", str(t / f"fh19-{k}.json"), "--out", str(t / f"fh19-{k}.html"), "--no-check") for k in range(5)]
+    ok("render · a top-level files, hunks or areas key of any shape is left out: the map renders, no traceback (audit 19)",
+       [b.returncode for b in bs] == [0] * 5 and "Traceback" not in "".join(b.stderr for b in bs)
+       and all(not {"files", "hunks", "areas"} & set(u.page_data(t / f"fh19-{k}.html")[0]) for k in range(5)), [b.stderr[-300:] for b in bs])
+    # audit 19: a label that is no text, or an object with a toString key anywhere ({"toString": 1} is valid JSON), ended the
+    # page's drawing in a TypeError; a map by id may name a card toString
+    ts = lambda: {"toString": 1}
+    bad = {"label": {"nodes": [two["nodes"][0] | {"label": ts()}, two["nodes"][1]]}, "obj": {"edges": [{"from": "a", "to": "b", "label": {"a": 1}}]},
+           "kind": {"nodes": [two["nodes"][0] | {"kind": ts(), "props": {"guard": ts()}}, two["nodes"][1]]}}
+    said = {"label": "nodes[0].label is not text", "obj": "edges[0].label is not text",
+            "kind": "nodes[0].kind is an object with a toString key, which is no text; nodes[0].props.guard is an object with a toString key, which is no text"}
+    for k, v in bad.items():
+        (t / f"ts19{k}.json").write_text(json.dumps(two | v))
+    (t / "ts19ok.json").write_text(json.dumps({"title": "t", "nodes": [{"id": "toString", "label": "T"}, {"id": "b", "label": "B"}], "edges": [],
+                                               "views": [{"id": "main", "nodeIds": ["toString", "b"], "layout": {"toString": [0, 0], "b": [1, 0]}, "nodeOverrides": {"toString": {"label": "Tee"}}}]}))
+    bs = {k: plain("render", str(t / f"ts19{k}.json"), "--out", str(t / f"ts19{k}.html"), "--no-check") for k in [*bad, "ok"]}
+    ok("render · a label that is no text, or an object with a toString key, is refused in one line naming it; a card named toString renders (audit 19)",
+       all(b.returncode == 1 and b.stderr.strip().endswith(f"ts19{k}.json: {said[k]}") and not (t / f"ts19{k}.html").exists() for k, b in bs.items() if k != "ok")
+       and bs["ok"].returncode == 0, {k: b.stderr[-300:] for k, b in bs.items()})
+    # audit 19: diff --base drew a removed model from a copy beside --out, so its intake logo was dropped and stderr named a file
+    # that never existed; a model whose folder is gone too is still drawn
+    g = t / "g19d"; (g / "docs").mkdir(parents=True); (g / "gone").mkdir()
+    sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True)
+    (g / "docs" / "mark.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2 2"><circle cx="1" cy="1" r="1"/></svg>')
+    lm = two | {"views": [two["views"][0] | {"intake": [{"to": "a", "label": "in", "logo": "mark.svg"}]}]}
+    (g / "docs" / "m.json").write_text(json.dumps(lm)); (g / "gone" / "g.json").write_text(json.dumps(two))
+    sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "one"); sh("rm", "-q", "docs/m.json", "gone/g.json")
+    r = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                        "sys.argv = ['umlimator.py', 'diff', '--base', 'HEAD', '--out', 'out']; u.main()", str(ROOT)], cwd=g, capture_output=True, text=True)
+    pg = [u.page_data(g / "out" / f)[0] if (g / "out" / f).is_file() else {} for f in ("docs-m.html", "gone-g.html")]
+    logo = [x.get("logo", "") for v in pg[0].get("views", []) for x in v.get("intake") or []]
+    ok("diff --base · a removed model is drawn from its own folder: its intake logo is embedded and no message names a file beside --out; one whose folder is gone is drawn too (audit 19)",
+       r.returncode == 0 and len(logo) == 1 and logo[0].startswith("data:image/svg+xml;base64,") and "out/docs-m.json" not in r.stderr and bool(pg[1])
+       and not [p.name for p in (g / "docs").iterdir() if p.name.startswith(".")], [r.stderr[-500:], logo])
     b = plain("trace", str(ROOT / "examples" / "bike-share.json"), rides, "--view", "", "--out", str(t / "t11.json"))
     ok("trace · an empty --view is refused in one line, and nothing is written (audit 11)",
        b.returncode == 1 and "--view needs a view id" in b.stderr and not (t / "t11.json").exists(), b.stderr[-300:])
