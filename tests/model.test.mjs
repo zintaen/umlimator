@@ -115,6 +115,26 @@ test('an icon\'s src and an author\'s avatar are escaped in href: an SVG data UR
   assert.ok(!/ on(error|load)="/.test(s));
 });
 
+test('a model\'s icon glyph (icons[k].g) draws as inert shapes only: no event attribute, image, use, foreignObject, script or style; Lucide\'s glyphs unchanged (audit 18)', () => {
+  const hostile = ['<path d="M2 2h20"/><image href="x" onerror="alert(1)"/>', '<path d="M0 0" onload="alert(2)"/>', '<script>alert(3)</script><circle r="2"/>',
+    '<foreignObject><div onclick="alert(4)">x</div></foreignObject>', '<use href="data:image/svg+xml,x#a"/>', '<g onclick="alert(5)"><rect width="2"/></g>',
+    '<path d="a" fill="url(http://example.com/x#a)" style="x"/>', '<path d="a" fill="u&#114;l(x)"/>', '<path/onload=alert(6)>', '<path d=">" onload="alert(7)"/>',
+    '<!--<path onload=alert(8)>--><rect width="2"/>', '<svg onload="alert(9)"><path d="M1 1"/></svg>', '<g><path d="M1 1"/>', '<path d="M1 1"><animate onbegin="alert(10)"/></path>'];
+  const m = { icons: Object.fromEntries(hostile.map((g, i) => ['h' + i, { g }])), nodes: hostile.map((_, i) => ({ id: 'n' + i, label: 'N', icon: 'h' + i })),
+    views: [{ id: 'v', nodeIds: hostile.map((_, i) => 'n' + i) }] };
+  const s = mapContext(m).buildView('v').markup;
+  assert.equal(s.match(/<svg\b/g).length, 1); // the view's own
+  assert.ok(!/<(image|use|foreignObject|script|animate|div)\b|\son\w+=|style="x"|url\(|&#114;/i.test(s), s.match(/<(image|use|foreignObject|script|svg|animate)\b.{0,60}|\son\w+=.{0,40}/i)?.[0]);
+  assert.ok(s.includes('<path d="M2 2h20"/>') && s.includes('<g><rect width="2"/></g>') && s.includes('<g><path d="M1 1"/></g>'));
+  // every line icon the CLI ships (its `icons` table: the SVG's inner markup) draws exactly as written
+  const dir = new URL('../icons/', import.meta.url), man = read('../icons/manifest.json');
+  const lucide = Object.entries(man).filter(([, e]) => e.source === 'lucide').map(([k, e]) => [k, readFileSync(new URL(e.file, dir), 'utf8').replace(/^[\s\S]*?<svg[^>]*>|<\/svg>\s*$/g, '').trim()]);
+  assert.ok(lucide.length > 20);
+  const L = { icons: Object.fromEntries(lucide.map(([k, g]) => [k, { g }])), nodes: lucide.map(([k]) => ({ id: k, label: k, icon: k })), views: [{ id: 'v', nodeIds: lucide.map(([k]) => k) }] };
+  const t = mapContext(L).buildView('v').markup;
+  for (const [k, g] of lucide) assert.ok(t.includes(`stroke-linejoin="round">${g}</g>`), k);
+});
+
 test('a cut label ends on whole characters: never half an emoji (audit 1)', () => {
   const t = fit('\u{1F600}'.repeat(40), 13, 100, true);
   assert.ok(t.endsWith('…') && !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(t), JSON.stringify(t));

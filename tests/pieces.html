@@ -217,6 +217,13 @@ try {
     M.icons = { ...M.icons, quoted: { src } }; M.nodes.find(n => n.id === 'trips').icon = 'quoted';
     const [h, sr, q] = make({ details: true }, M); h.select({ type: 'node', id: 'trips' }); const img = q('.panel .logo img');
     check('the panel\'s logo holds an icon\'s whole src, quotes and all (audit 4)', !!img && img.getAttribute('src') === src && !q('.panel circle'), img && img.getAttribute('src')); h.destroy(); }
+  { const M = structuredClone(BIKE); M.icons = { ...M.icons, evil: { g: '<path d="M2 2h20"/><image href="x" onerror="window.__hit=(window.__hit||0)+1"/><circle r="2" onclick="window.__hit=9"/>' } };
+    M.nodes.find(n => n.id === 'trips').icon = 'evil';
+    const [h, sr, q] = make({ details: true }, M); h.select({ type: 'node', id: 'trips' }); await wait(300);
+    const marks = [...sr.querySelectorAll('.n-sigil, .panel .big svg')].map(e => e.innerHTML).join(''), circle = q('.panel .big circle');
+    check('a model\'s icon glyph draws as inert shapes on the card and in the panel: its image and event attributes are dropped, no handler runs (audit 18)',
+      window.__hit === undefined && !sr.querySelector('.stage image:not([href^="data:"]), .panel .big image') && !/\son\w+=/.test(marks) && marks.includes('<path d="M2 2h20"></path>') && !!circle,
+      [window.__hit, marks.slice(0, 200)]); h.destroy(); }
 } catch (err) {
   out.fail.push('threw: ' + (err && err.stack || err));
 }
