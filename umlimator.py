@@ -712,7 +712,8 @@ def diff_since(a):
     out.mkdir(parents=True, exist_ok=True)
     done, md, stems = [], ["<!-- umlimator-diff -->", "### Map changes", ""], set()
     # a path (or, folder=True, its folder) that resolves inside the checkout with no symbolic link on the way below its top
-    inside = lambda p, folder=False: (q := p.parent if folder else p).exists() and (q.is_dir() or not folder) and q.resolve().is_relative_to(top.resolve()) \
+    # a path that is itself a symbolic link never counts, even one whose target is gone (a dangling link: written through)
+    inside = lambda p, folder=False: not p.is_symlink() and (q := p.parent if folder else p).exists() and (q.is_dir() or not folder) and q.resolve().is_relative_to(top.resolve()) \
         and not any(x.is_symlink() for x in [q, *q.parents] if x.is_relative_to(top) and x != top)
     for name in filter(None, (changed.stdout + new.stdout).split("\0")):
         old = subprocess.run(["git", "show", f"{a.base}:{name}"], capture_output=True)  # bytes: a file need not be UTF-8
@@ -720,7 +721,7 @@ def diff_since(a):
         # a model file that is a symbolic link, or sits in a folder that is one, or resolves outside the checkout, is not
         # read: a pull request could point it at another checkout's file, whose labels and logos would go into the comment
         # and the page (audit 20, the security review)
-        if (top / name).is_file() and not inside(top / name):
+        if ((top / name).is_symlink() or (top / name).is_file()) and not inside(top / name):  # a dangling link too
             why = "it is a symbolic link, or resolves outside the checkout: not read"
             done.append({"file": name, "error": why})
             md += [f"**`{fname}`**: cannot be read: {why}", ""]

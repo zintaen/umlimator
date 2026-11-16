@@ -593,6 +593,18 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("diff --base · a model file that is a symbolic link out of the checkout is not read: said, its labels and logos stay out, nothing written there; the rest are diffed (audit 20)",
        r.returncode == 0 and "**`docs/a.json`**: cannot be read: it is a symbolic link" in md and "PRIVATE-20" not in md + pages and "SECRET-20" not in pages
        and "U0VDUkVULTIw" not in pages and sorted(f.name for f in far.iterdir()) == ["private.json", "secret.svg"] and "renames A to A2" in md, (r.stderr[-300:], md))
+    # audit 20, the security review of the fix above: a model committed as a dangling symbolic link (its target outside the
+    # checkout, not there yet) read as deleted, and the deleted model's copy was written through the link, out of the checkout
+    g = t / "g20l"; far = t / "g20l-outside"; (g / "docs").mkdir(parents=True); far.mkdir()
+    sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True)
+    (g / "docs" / "a.json").write_text(json.dumps(two)); sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "one")
+    (g / "docs" / "a.json").unlink(); (g / "docs" / "a.json").symlink_to(far / "planted.json"); sh("add", "-A"); sh("commit", "-qm", "pr")
+    r = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                        "sys.argv = ['umlimator.py', 'diff', '--base', 'HEAD~1', '--out', 'out']; u.main()", str(ROOT)], cwd=g, capture_output=True, text=True)
+    md = (g / "out" / "summary.md").read_text() if (g / "out" / "summary.md").is_file() else ""
+    ok("diff --base · a model file that is a dangling symbolic link out of the checkout is not read nor written through (audit 20)",
+       r.returncode == 0 and not (far / "planted.json").exists() and list(far.iterdir()) == [] and "**`docs/a.json`**: cannot be read: it is a symbolic link" in md,
+       (r.returncode, list(far.iterdir()), md, r.stderr[-300:]))
     # audit 20: one file nested too deep for Python's parser ended diff --base in a RecursionError, with no summary for the rest;
     # render, drift and the MCP server read it the same way
     g = t / "g20d"; (g / "docs").mkdir(parents=True)
