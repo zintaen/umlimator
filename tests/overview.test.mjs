@@ -56,7 +56,7 @@ test('the definition: uml.interaction-overview is registered with its palette, l
     ['InteractionUse', 'Interaction use', null, 'uml.sequence'], ['Interaction', 'Inline interaction', null, 'uml.sequence'], ['Comment', 'Comment', null, null]]);
   assert.deepEqual(T.lines, [{ type: 'uml.ControlFlow', label: 'Control flow' }, { type: 'uml.CommentLink', label: 'Comment link' }]);
   assert.deepEqual(T.props['uml.ControlFlow'].map(f => f.key), ['guard', 'stereotypes']);
-  assert.ok(T.elements.every(e => ['uml.InitialNode', 'uml.ActivityFinalNode', 'uml.FlowFinalNode', 'uml.ForkNode', 'uml.JoinNode'].includes(e.type) !== T.props[e.type].some(f => f.key === 'stereotypes')), 'stereotypes on every element but a glyph with no text (audit 16)');
+  assert.ok(T.elements.every(e => ['uml.InitialNode', 'uml.ActivityFinalNode', 'uml.FlowFinalNode', 'uml.ForkNode', 'uml.JoinNode', 'uml.Comment'].includes(e.type) !== T.props[e.type].some(f => f.key === 'stereotypes')), 'stereotypes on every element but a glyph with no text (audit 16) and a comment, which draws none (audit 17)');
   assert.deepEqual(Object.keys(T.rules), [...Object.keys(FLOW_RULES), 'opens-sequence', 'overview-kinds', 'comment-link', 'inline-size']);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'rename']);
   for (const k of ['layout', 'validate', 'describe']) assert.equal(typeof T[k], 'function', k);
@@ -318,4 +318,12 @@ test('audit 16: a flow\'s and an interaction use\'s stereotypes are drawn; F2 on
   assert.deepEqual(ovRename(m, v, 'f-buy-start', '«retry»'), []);
   f.label = 'send items[0]';
   assert.ok(ovRename(m, v, 'f-buy-start', '«retry» send items[0]').error);
+});
+
+test('audit 17: describe() says a flow\'s «stereotypes», as its line and its accessible name do; a comment is not offered stereotypes', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/buy-book-overview.json', import.meta.url))), V = m.views[0];
+  assert.deepEqual(diagramOf(V).props['uml.Comment'], []);
+  const f = m.edges.find(e => e.type === 'uml.ControlFlow') || V.edges.find(e => e && e.type === 'uml.ControlFlow'); (f.props ||= {}).stereotypes = ['retry'];
+  assert.ok(layout(m, V.id).edges.some(e => (e.aria || '').includes('«retry»')));
+  assert.ok(describe(m, V.id).includes('«retry»'), describe(m, V.id));
 });

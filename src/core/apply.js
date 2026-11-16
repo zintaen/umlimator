@@ -19,7 +19,8 @@ import { lineNames, namesOf, listOf } from './model.js';
                { id, view, index }           an element or line to another place in a view's order (its nodeIds or edges)
      hide      { id, view }                  out of one view, with all the view says of it: its place, pin, present,
                                              box, tour, the view's lines to it, the story steps on that view; the model
-                                             keeps it (risks.md E5). A line that lives only in that view goes with it
+                                             keeps it (risks.md E5). A line that lives only in that view goes with it.
+                                             The view's subject (or what owns it) is refused (audit 17)
      delete    { id }                        out of the model, with its members, what it owns, the lines to them, and
                                              every place that names them (references()). One already gone in the same
                                              transaction is passed over, so a selection deletes in one transaction (E2).
@@ -213,6 +214,7 @@ function run(m, c, gone) {
       if (e.kind === 'edge' && !Array.isArray(v.edges)) throw new Error(`hide: view "${c.view}" shows every line between its cards; hide a card, or list its lines`);
       const names0 = lineNames(m);
       const ids = new Set(), own = x => { ids.add(x.id); arr(x.members).forEach(y => isObj(y) && typeof y.id === 'string' && own(y)); }; own(e.x);
+      if (ids.has(v.subject)) throw new Error(`hide: "${v.subject}" is the subject of view "${c.view}": change the view's subject, or delete the view`); // audit 17
       const ends = l => isObj(l) && (ids.has(l.from) || ids.has(l.to)); // the view's lines to it, listed or its own, leave the view with it
       if (Array.isArray(v.edges)) v.edges = v.edges.filter(y => { const l = typeof y === 'string' ? (at.get(y) || {}).x : y, out = y === c.id || ends(l);
         if (out && isObj(l) && typeof l.id === 'string') ids.add(l.id); return !out; }); // what names those lines in this view goes too

@@ -493,3 +493,18 @@ test('audit 8: F2 and add never emit an edit that breaks a rule: { error } inste
   const r = add('deepHistory', ['delivery']);
   assert.equal(r[0].element.parent, 'delivery'); assert.deepEqual(validate(apply(SM, r)).filter(p => p.level === 'error'), []);
 });
+
+test('audit 17: a region draws and says its «stereotypes»; a pseudostate and a final state, glyphs with no text, are not offered them', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/order-states.json', import.meta.url))), V = m.views[0], T = diagramOf(V);
+  assert.deepEqual([T.props['uml.Pseudostate'].map(f => f.key), T.props['uml.FinalState'].map(f => f.key), T.props['uml.Region'].map(f => f.key)], [['kind'], [], ['stereotypes']]);
+  const reg = m.nodes.flatMap(n => n.members || []).find(x => x.type === 'uml.Region' && x.label); (reg.props ||= {}).stereotypes = ['audited'];
+  const g = layout(m, V.id), f = g.families.find(x => x.id === reg.id), svg = svgOf(g);
+  assert.equal(f.rname, `«audited» ${reg.label}`);
+  assert.match(f.aria, new RegExp(`^Region ${reg.label} \\(audited\\) of `));
+  assert.ok(svg.includes(`>«audited» ${reg.label}</text>`), 'drawn');
+  const plain = layout(JSON.parse(readFileSync(new URL('../examples/order-states.json', import.meta.url))), V.id).families.find(x => x.id === reg.id);
+  assert.equal(plain.rname, reg.label); // no stereotypes: its name, as before
+  const un = { schemaVersion: 2, nodes: [{ id: 'S', type: 'uml.State', label: 'S', members: [{ id: 'S.r', type: 'uml.Region', props: { stereotypes: ['x'] } }, { id: 'S.q', type: 'uml.Region' }] },
+    { id: 'a', type: 'uml.State', label: 'A', parent: 'S.r' }, { id: 'b', type: 'uml.State', label: 'B', parent: 'S.q' }], views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['S', 'a', 'b'] }] };
+  assert.equal(layout(un, 'v').families.find(x => x.id === 'S.r').rname, '«x»'); // a region with no name: its stereotypes alone
+});

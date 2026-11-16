@@ -79,6 +79,7 @@ function typedEditor(api) {
     ids.forEach(id => { const e = at.get(id);
       if (own.has(id)) out.push({ op: 'delete', id }); // lives in this view only: hiding it is deleting it
       else if (e && e.kind === 'edge' && !Array.isArray(v.edges)) api.status('This view shows every line between its cards: Shift + Delete deletes the line');
+      else if (id === v.subject) api.status('This box is the view\'s subject: change the view\'s subject, or Shift + Delete deletes it'); // audit 17
       else out.push({ op: 'hide', id, view: v.id }); });
     return emit(out);
   }

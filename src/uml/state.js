@@ -90,7 +90,7 @@ SHAPE.state = {
 SHAPE.region = {
   frame: f => `<rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" stroke="transparent" style="fill-opacity:0"/>`
     + (f.div ? `<path d="M${r2(f.div[0])} ${r2(f.div[1])}L${r2(f.div[2])} ${r2(f.div[3])}" class="st-div" fill="none" stroke="var(--um-muted)" stroke-dasharray="6 4"/>` : '')
-    + (ST_HAS(f.label) ? `<text class="family-title" x="${r2(f.x + 8)}" y="${r2(f.y + 14)}" fill="var(--um-muted)" style="font:400 10px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(f.label, 10, f.w - 16))}</text>` : ''),
+    + (t => ST_HAS(t) ? `<text class="family-title" x="${r2(f.x + 8)}" y="${r2(f.y + 14)}" fill="var(--um-muted)" style="font:400 10px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(t, 10, f.w - 16))}</text>` : '')(f.rname ?? f.label), // rname: its «stereotypes» and name (stPic)
 };
 for (const k of ['junction', 'history', 'terminate', 'state']) { const S = SHAPE[k]; S.face = n => [n.y, n.y + n.h]; S.ports = (n, side, j = 1) => portsOn(S, n, side, j); }
 
@@ -118,7 +118,9 @@ function stPic(model, view) {
   const pic = ownersOn(model, view, ST_LOOK), I = stIndex(model);
   const boxes = pic.boxes.map(b => { const x = pic.at.get(b.id);
     if (x.type === 'uml.Region') { const s = pic.at.get(b.parent), rs = stMembers(s, 'uml.Region'), k = rs.indexOf(x) + 1; // s: none when ownersOn broke a cycle
-      return { ...b, aria: `Region ${ST_HAS(x.label) ? x.label : k} of ${s ? stName(s) : String(b.parent ?? '')}, ${stPlural(pic.holds(b.id).length, 'state')}` }; }
+      const st = stStereo(x); // its «stereotypes» before its name, drawn and said (audit 17)
+      return { ...b, rname: [...st.map(t => `«${t}»`), ...ST_HAS(x.label) ? [x.label] : []].join(' '),
+        aria: `Region ${ST_HAS(x.label) ? x.label : k}${st.length ? ` (${st.join(', ')})` : ''} of ${s ? stName(s) : String(b.parent ?? '')}, ${stPlural(pic.holds(b.id).length, 'state')}` }; }
     return { ...b, aria: stNodeName(x, pic, I, true) }; });
   return { ...pic, I, boxes };
 }
@@ -443,8 +445,9 @@ const ST_TYPE = registerDiagramType('uml.state-machine', {
   lines: [{ type: 'uml.Transition', label: 'Transition' }, { type: 'uml.CommentLink', label: 'Comment link' }],
   props: {
     'uml.State': [...ST_ACTS.map(k => ({ key: k, label: k[0].toUpperCase() + k.slice(1), kind: 'text' })), ST_STEREO],
-    'uml.Pseudostate': [{ key: 'kind', label: 'Kind', kind: 'enum', options: ST_KINDS }, ST_STEREO],
-    'uml.FinalState': [ST_STEREO], 'uml.Region': [ST_STEREO],
+    // a pseudostate and a final state are glyphs with no text, which draw no stereotypes: not offered (audit 17)
+    'uml.Pseudostate': [{ key: 'kind', label: 'Kind', kind: 'enum', options: ST_KINDS }],
+    'uml.FinalState': [], 'uml.Region': [ST_STEREO],
     'uml.Transition': [...ST_PARTS, ST_STEREO], 'uml.InternalTransition': ST_PARTS, 'uml.CommentLink': [],
   },
   layout: stGeo,

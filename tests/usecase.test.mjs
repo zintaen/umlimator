@@ -309,3 +309,13 @@ test('audit 16: F2 on an extend, unchanged, changes nothing; a condition holding
   assert.deepEqual(T.edits.rename(m2, m2.views[0], 'x', '«extend» apply code [beta]'), []);
   assert.ok(T.edits.rename(m2, m2.views[0], 'x', '«extend» apply code [gamma]').error);
 });
+
+test('audit 17: an extend\'s name and «stereotypes», drawn on its line, are in its accessible name and describe()', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/shopping-use-cases.json', import.meta.url))), V = m.views[0];
+  const e = [...(m.edges || []), ...(V.edges || [])].find(x => x && x.type === 'uml.Extend');
+  const was = layout(m, V.id).edges.find(x => x.id === e.id).aria;
+  e.label = 'voucher path'; (e.props ||= {}).stereotypes = ['optional'];
+  const aria = layout(m, V.id).edges.find(x => x.id === e.id).aria;
+  assert.ok(aria.startsWith(was.replace(/(, at |, when |$).*/, '') + ': «optional» voucher path'), aria);
+  assert.ok(describe(m, V.id).includes(aria), 'describe() says the line as its aria does');
+});

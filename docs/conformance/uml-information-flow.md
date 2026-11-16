@@ -29,8 +29,8 @@ item or a comment). Deleting an element drops it from every `conveyed`; Shift + 
 nothing, and says so.
 
 **Departures from UML 2.5.1:** «flow» is drawn before the label on one line, not over it (a typed line has one label
-line). A flow from an element to itself is allowed (UML does not forbid it); the PDF's lines table leaves it out, as it
-does every type's. Clause numbers are as the note cites them.
+line). A flow from an element to itself is allowed (UML does not forbid it); the PDF's lines table lists it, as it does
+every typed view's line from an element to itself (`Shop API -> Shop API retry: Order`). Clause numbers are as the note cites them.
 
 ## Left out
 

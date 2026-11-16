@@ -358,3 +358,13 @@ test('audit 15: a row\'s NOT NULL is not nullable (no NOT in the type); an inlin
     views: [{ id: 'v', diagram: 'er', nodeIds: ['a', 'b'], edges: [{ id: 'r2', type: 'er.Relationship', from: 'a', to: 'b', props: ends }] }] };
   assert.equal(T.text(m, m.views[0], 'r2'), '1 to 0..*, non-identifying');
 });
+
+test('audit 17: the PDF\'s Lines table lists a self-reference, as er.md says', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/bookshop-schema.json', import.meta.url))), vid = 'er-schema';
+  const ctx = mapContext(m), [, lines] = tablesOf(ctx, ctx.V[vid], { nodes: [], edges: layout(m, vid).edges }), cells = r => [...r.matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1]);
+  const rows = lines.rows.map(r => cells(r).slice(0, 2).map(c => c.replace(/<[^>]*>/g, '')));
+  assert.ok(rows.some(([a, b]) => a === 'customer → customer' && b === 'referred: 0..1 to 0..*, non-identifying'), rows.join('\n'));
+  const doc = readFileSync(new URL('../docs/conformance/er.md', import.meta.url), 'utf8');
+  assert.ok(doc.includes('a self-reference is listed too') && doc.includes('`customer -> customer referred: 0..1 to 0..*, non-identifying`'));
+  assert.match(readFileSync(new URL('../docs/conformance/uml-information-flow.md', import.meta.url), 'utf8'), /the PDF's lines table lists it/); // the same for a flow to itself
+});

@@ -150,9 +150,10 @@ function ucNodeName(model, n, pic) {
 // "Extend from Redeem a voucher to Check out, at payment, when the shopper has a voucher code"
 function ucLineName(model, e, pic) {
   const nm = id => ucName(pic.at.get(id)), word = Object.hasOwn(UC_LINE_WORD, e.type) ? UC_LINE_WORD[e.type] : 'Line';
-  if (e.type !== 'uml.Extend') { const said = [...ucStereo(e).map(t => `«${t}»`), e.label].filter(UC_HAS).join(' '); return `${word} from ${nm(e.from)} to ${nm(e.to)}${said ? ': ' + said : ''}`; }
-  const { points, cond } = ucExtendParts(model, e);
-  return `Extend from ${nm(e.from)} to ${nm(e.to)}${points.length ? `, at ${points.join(', ')}` : ''}${cond ? `, when ${cond}` : ''}`;
+  const said = [...ucStereo(e).map(t => `«${t}»`), e.label].filter(UC_HAS).join(' ');
+  if (e.type !== 'uml.Extend') return `${word} from ${nm(e.from)} to ${nm(e.to)}${said ? ': ' + said : ''}`;
+  const { points, cond } = ucExtendParts(model, e); // an extend's name and «stereotypes», drawn, said too (audit 17)
+  return `Extend from ${nm(e.from)} to ${nm(e.to)}${said ? ': ' + said : ''}${points.length ? `, at ${points.join(', ')}` : ''}${cond ? `, when ${cond}` : ''}`;
 }
 // reading order (§14): actors, then each subject (or package) and what it holds, then the rest, then the lines
 function ucOrder(pic, lines) {

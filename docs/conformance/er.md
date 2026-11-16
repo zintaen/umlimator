@@ -67,7 +67,7 @@ PDF's text read back by `tests/cli.py`.
 | The legend of line looks and ends | No: the legend is a piece of the page | No | Yes, under the picture |
 | Text | Text, in the page's font family; not embedded unless `fontCSS` is given | Pixels | Selectable text |
 | Accessible names | Each node's `aria-label` kept; the lines' `<title>` removed | None | None |
-| Tables | None | None | "Elements": each table (Table) and its columns as rows, `referred_by bigint FK customer.id NULL`. "Lines": each relationship's text, `places: 1 to 0..*, non-identifying` (the type's `text`); a self-reference is left out, as the lines table leaves out every type's line from an element to itself |
+| Tables | None | None | "Elements": each table (Table) and its columns as rows, `referred_by bigint FK customer.id NULL`. "Lines": each relationship's text, `places: 1 to 0..*, non-identifying` (the type's `text`); a self-reference is listed too, as the lines table lists every typed view's line from an element to itself (`customer -> customer referred: 0..1 to 0..*, non-identifying`) |
 | Mermaid `erDiagram` (`writeMermaidEr`) | | | Entities, columns with `PK`, `FK`, `UK` and `?`, relationships with their ends and identifying; ids and references in `%% id:` and `%% references:` comments; the IDEF1X notation named in `%% not written:` |
 
 ## Accessibility

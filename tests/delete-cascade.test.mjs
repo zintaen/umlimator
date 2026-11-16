@@ -32,6 +32,7 @@ const hookOf = v => { const T = diagramOf(v), h = T && T.edits && T.edits.remove
 // the canvas's Delete (src/canvas/edit.js remove): what the view owns goes from the model, a listed line or a card is hidden
 function hideOf(v, id, m) {
   if ([...arr(v.nodes), ...arr(v.edges), ...arr(v.fragments)].some(x => x && x.id === id)) return [{ op: 'delete', id }];
+  if (id === v.subject) return null; // the view's subject: a status, no command (audit 17)
   const line = arr(m.edges).some(e => e.id === id); // a member is not hidden (apply() refuses it, so nothing changes)
   return line && !Array.isArray(v.edges) || !line && !arr(m.nodes).some(n => n.id === id) ? null : [{ op: 'hide', id, view: v.id }];
 }

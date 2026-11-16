@@ -226,3 +226,28 @@ test('diff() says a pin, a caption, lanes, a box tone and a rule, and lists the 
   assert.deepEqual(t(B => { B.rules = [{ id: 'r', title: 'A never calls B', from: { id: 'a' }, to: { id: 'b' } }]; }), [['adds the rule A never calls B'], ['v']]);
   assert.deepEqual(t(() => {}), [[], []]);
 });
+
+test('audit 17: present keyed by a member (a port\'s side, a part\'s ports) is said with its view', () => {
+  const read = f => JSON.parse(readFileSync(new URL(`../examples/${f}`, import.meta.url)));
+  const os = read('order-service-structure.json'), os2 = structuredClone(os); os2.views[0].present = { ...os2.views[0].present, 'order-service.api': { side: 'right' } };
+  assert.deepEqual([diff(os, os2).summary, diff(os, os2).views], [[`changes the view ${os.views[0].title} (present)`], [os.views[0].id]]);
+  const bc = read('bookshop-components.json'), bc2 = structuredClone(bc), cv = bc2.views.find(v => v.id === 'components');
+  cv.present = { ...cv.present, 'shop-api.orders': { side: 'left' } };
+  assert.deepEqual([diff(bc, bc2).summary, diff(bc, bc2).views], [[`changes the view ${cv.title} (present)`], ['components']]);
+  // a card's present stays said with the card, and a card taken out with its present says the hide only
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', label: 'A', members: [{ id: 'a.p', label: 'p' }] }, { id: 'b', label: 'B' }], edges: [],
+    views: [{ id: 'v', title: 'V', nodeIds: ['a', 'b'], present: { a: { collapsed: ['ops'] }, b: {} } }] };
+  const both = structuredClone(m); both.views[0].present = { a: {}, b: {}, 'a.p': { side: 'top' } };
+  assert.deepEqual(diff(m, both).summary, ['changes the view V (present)', 'changes A (present) in the view V']);
+  const hid = structuredClone(m); hid.views[0].nodeIds = ['a']; delete hid.views[0].present.b;
+  assert.deepEqual(diff(m, hid).summary, ['takes B out of the view V']);
+  const odd = structuredClone(m); odd.views[0].present = 'all';
+  assert.deepEqual(diff(m, odd).summary, ['changes the view V (present)', 'changes A (present) in the view V', 'changes B (present) in the view V']);
+  assert.deepEqual(diff(m, structuredClone(m)).summary, []);
+});
+
+test('audit 17: diff() passes over a null in the after model\'s lines, as layout() and validate() do', () => {
+  const as = JSON.parse(readFileSync(new URL('../examples/assistant.json', import.meta.url))), nul = structuredClone(as); nul.edges[1] = null;
+  assert.doesNotThrow(() => diff(as, nul));
+  assert.ok(diff(as, nul).summary.length > 0);
+});

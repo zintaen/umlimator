@@ -409,3 +409,10 @@ test('audit 16: a flow\'s stereotypes are drawn and said, F2 takes them off; a n
   assert.ok(actRename(m, V(m), 'f-start', '«retry» send items[0]').error, 'the name is not split into name and guard');
   assert.deepEqual(T.props['uml.ForkNode'], [], 'a bar draws no stereotypes: the panel offers none');
 });
+
+test('audit 17: describe() says a flow\'s «stereotypes», as its line and its accessible name do', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/fulfil-activity.json', import.meta.url))), V = m.views[0];
+  const f = m.edges.find(e => e.type === 'uml.ControlFlow'); f.label = 'again'; (f.props ||= {}).stereotypes = ['retry'];
+  assert.ok(layout(m, V.id).edges.some(e => (e.aria || '').includes('«retry»')));
+  const d = describe(m, V.id); assert.ok(d.includes(`«retry» (${f.label})`), d); // before its name, as drawn
+});
