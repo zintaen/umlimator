@@ -202,6 +202,7 @@ function endsIn(ctx, v) {
 }
 /** Every rule the model breaks, in each view that draws it broken: a line a rule forbids, or a cycle of boxes. */
 export function rules(model) {
+  model = unreadable(model).model; // read as validate() and mapContext read it: no text String() throws on (audit 20)
   const list = arrOf(model && model.rules).filter(r => r && typeof r === 'object' && (r.from || r.to || r.noCycles));
   if (!list.length) return [];
   const ctx = mapContext(model), { views, N, viewEdges } = ctx, out = [];

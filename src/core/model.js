@@ -27,16 +27,21 @@ export function migrate(model) {
 
 /* String() throws on an object whose own toString is no function, and {"toString": 1} is valid JSON (audit 19).
    unreadable(model): the paths of such objects, and the model without them (itself when it has none, else a copy).
-   A map by id or name may have a key named toString: only what it holds is checked. A walk with a list, no recursion. */
+   A map by id or name may have a key named toString: only what it holds is checked. So may a map one level further down,
+   by name too: a stereotype's tagged values (tags.<stereotype>.<tag>) and a part's ports (present.<part>.ports.<port>)
+   (audit 20). Any value may be read this way: a host's spans or traffic too. A walk with a list, no recursion. */
 const BY_ID = new Set(['layout', 'nodeOverrides', 'present', 'authors', 'icons', 'tags']);
 function unreadable(model) {
   const bad = x => x !== null && typeof x === 'object' && Object.hasOwn(x, 'toString') && typeof x.toString !== 'function';
-  const walk = (root, fix) => { const at = [], todo = [[root, '']], seen = new Set();
-    while (todo.length) { const [o, p] = todo.pop(); if (seen.has(o)) continue; seen.add(o);
+  // role: what the object walked is. 'tags' (its values are maps by tag name), 'present' (by element id), 'part' (one
+  // element's entry in present, whose ports is a map by port id)
+  const walk = (root, fix) => { const at = [], todo = [[root, '', null]], seen = new Set();
+    while (todo.length) { const [o, p, role] = todo.pop(); if (seen.has(o)) continue; seen.add(o);
       const list = Array.isArray(o), keys = Object.keys(o);
       for (let i = keys.length - 1; i >= 0; i--) { const k = keys[i], x = o[k], q = list ? `${p}[${k}]` : p ? `${p}.${k}` : k;
-        if (bad(x) && !(BY_ID.has(k) && !list)) { at.push(q); if (fix) list ? o.splice(+k, 1) : delete o[k]; }
-        else if (x !== null && typeof x === 'object') todo.push([x, q]); } }
+        const map = !list && (BY_ID.has(k) || role === 'tags' || (role === 'part' && k === 'ports'));
+        if (bad(x) && !map) { at.push(q); if (fix) list ? o.splice(+k, 1) : delete o[k]; }
+        else if (x !== null && typeof x === 'object') todo.push([x, q, list ? null : role === 'present' ? 'part' : role ? null : k === 'tags' || k === 'present' ? k : null]); } }
     return at; };
   if (!model || typeof model !== 'object') return { paths: [], model };
   const paths = walk(model, false);
