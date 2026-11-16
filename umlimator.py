@@ -414,10 +414,15 @@ def own_media(m, folder, said):
     where = [(f"nodes[{i}]", n) for i, n in enumerate(lst(m.get("nodes")))]
     where += [(f"views[{i}].nodes[{j}]", n) for i, v in enumerate(lst(m.get("views"))) for j, n in enumerate(lst(d(v).get("nodes")))]
     where += [(f"views[{i}].nodeOverrides.{k}", n) for i, v in enumerate(lst(m.get("views"))) for k, n in d(d(v).get("nodeOverrides")).items()]
-    for at, n in where:
+    stack = list(where)
+    while stack:  # members too, at any depth (a member's examples draw in its details panel like a card's)
+        at, n = stack.pop()
+        stack += [(f"{at}.members[{j}]", c) for j, c in enumerate(lst(d(n).get("members")))]
         for j, x in enumerate(lst(d(n).get("examples"))):
             for k in ("thumb", "full"):
-                if isinstance(d(x).get(k), str) and fetched(x[k]) and not image(x[k]):
+                # kept only when it is known safe: a data: image, or a string the browser reads as a path beside the page;
+                # anything else (an address, a list, an object, a number) is dropped (an allowlist, not a deny-list)
+                if isinstance(x, dict) and k in x and not (isinstance(x[k], str) and (image(x[k]) or not fetched(x[k]))):
                     del x[k]
                     print(f"{said}: {at}.examples[{j}].{k} names an address the page would fetch; it is left out (a path beside the page, or a data: image)", file=sys.stderr)
 
@@ -715,7 +720,10 @@ def diff_since(a):
         try:
             # a removed model is drawn from a copy in its own folder while that folder is there, so its intake logos resolve
             # and messages name it; else beside the pages (audit 19)
-            near = top / name if after or (top / name).parent.is_dir() else out / f"{stem}.json"
+            # the copy is written there only when its folder resolves inside the checkout and no folder on the way is a
+            # symbolic link, so a deleted model never writes outside it (audit 19)
+            inside = lambda p: p.parent.is_dir() and p.parent.resolve().is_relative_to(top.resolve()) and not any(q.is_symlink() for q in [p.parent, *p.parent.parents] if q.is_relative_to(top))
+            near = top / name if after or inside(top / name) else out / f"{stem}.json"
             r = diff_page(before, after, near, out / f"{stem}.html", out / stem)
         except (SystemExit, Exception) as e:  # the module failed on this model (js() ends the CLI), or an odd one: said for this file, and the rest go on
             why = str(e.code if isinstance(e, SystemExit) else e)

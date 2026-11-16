@@ -553,6 +553,30 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("record · a story step that is not an object is said in one line, not a traceback (audit 8)",
        b.returncode == 1 and "step 1 is not an object" in b.stderr and "Traceback" not in b.stderr, b.stderr[-300:])
 
+    # audit 19, the security review of the fix: an example image that is not a string (a list, an object) slipped past a
+    # filter that dropped only remote strings, and members were not walked; both are now kept only when known safe
+    mx = {"nodes": [{"id": "a", "members": [{"id": "a.p", "examples": [{"title": "m", "thumb": "https://evil.example/m.png"},
+                                                                     {"title": "l", "thumb": ["https://evil.example/l.png"], "full": {"u": "//evil.example"}}]}],
+                     "examples": [{"title": "k", "thumb": "shots/k.png", "full": 7}]}], "views": []}
+    u.own_media(mx, t, "m.json")
+    ok("own_media · an example image that is a list, an object, a number or an address is dropped, a member's too; a path beside the page is kept (audit 19)",
+       mx["nodes"][0]["members"][0]["examples"] == [{"title": "m"}, {"title": "l"}] and mx["nodes"][0]["examples"] == [{"title": "k", "thumb": "shots/k.png"}],
+       json.dumps(mx))
+    # audit 19, the security review: a removed model whose folder is now a symbolic link out of the checkout was drawn from
+    # that folder, so its intake logo read an SVG file outside the checkout into the page
+    g = t / "g19s"; far = t / "g19s-outside"; (g / "docs").mkdir(parents=True); far.mkdir()
+    sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True)
+    lm = two | {"views": [two["views"][0] | {"intake": [{"to": two["views"][0]["nodeIds"][0], "label": "in", "logo": "secret.svg"}]}] + two["views"][1:]}
+    (g / "docs" / "m.json").write_text(json.dumps(lm)); sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "one")
+    (far / "secret.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg"><!-- SECRET-19 --></svg>')
+    sh("rm", "-q", "-r", "docs"); (g / "docs").symlink_to(far, target_is_directory=True)
+    r = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                        "sys.argv = ['umlimator.py', 'diff', '--base', 'HEAD', '--out', 'out']; u.main()", str(ROOT)], cwd=g, capture_output=True, text=True)
+    lg = [x.get("logo", "") for f in (g / "out").glob("*.html") for v in u.page_data(f)[0].get("views", []) for x in v.get("intake") or []]
+    leak = [x for x in lg if x.startswith("data:") and b"SECRET-19" in __import__("base64").b64decode(x.split(",", 1)[1])]
+    ok("diff --base · a removed model whose folder is now a symbolic link out of the checkout reads no file from there (audit 19)",
+       r.returncode == 0 and len(lg) == 1 and not leak, (r.returncode, lg, r.stderr[-300:]))
+
     # the diff Action's step as CI runs it (C10, 2.6): a pull request's merge commit against its first parent, the pathspec
     # examples/*.json passed to git as written (set -f), on one object model and one package model
     a = t / "action"; (a / "examples").mkdir(parents=True)
