@@ -114,6 +114,11 @@ ok("diff · the summary mentions no one: a label @Transactional or 'calls @ops' 
    u.flat("calls @ops @Transactional") == "calls @\u2060ops @\u2060Transactional" and u.flat("@x", code=True) == "@x", u.flat("calls @ops"))
 ok("diff · the summary links no issue: a # or GH- before a digit gets a word joiner, so Order #42, o/r#7 and GH-12 cross-reference nothing (audit 10)",
    u.flat("Order #42 o/r#7 gh-12 #x") == "Order #\u206042 o/r#\u20607 gh-\u206012 #x" and u.flat("#42", code=True) == "#42", u.flat("Order #42 o/r#7 gh-12"))
+ok("diff · the summary links no address: a word joiner after http:, https:, mailto: and www., so GitHub's extended autolinks find none (audit 21)",
+   u.flat("see https://example.com/login, HTTP://x.org, www.example.org, WWW.y.org mailto:a@b.c xmpp:me@x.org")
+   == "see https:\u2060//example.com/login, HTTP:\u2060//x.org, www.\u2060example.org, WWW.\u2060y.org mailto:\u2060a@\u2060b.c xmpp:\u2060me@\u2060x.org"
+   and u.flat("https://x.org", code=True) == "https://x.org" and not re.search(r"(?i)(https?://|www\.\w)", u.flat("<https://evil.example/x> www.a.org")),
+   u.flat("see https://example.com/login www.example.org"))
 ok("record · a step's duration the page only warns about is played as the page plays it, not a traceback (audit 4)",
    [u.step_ms(d) for d in (None, 1200, -500, "slow", 0, "nan", [1])] == [4000, 1200, 500, 4000, 4000, 4000, 4000])
 
@@ -659,6 +664,39 @@ with tempfile.TemporaryDirectory() as tmp:
     b = plain("render", str(t / "sid20.json"), "--out", str(t / "sid20.html"), "--no-check")
     ok("render · a story id that is not a string is refused in one line naming it (audit 20)",
        b.returncode == 1 and b.stderr.strip().endswith("sid20.json: stories[0].id is not a string") and not (t / "sid20.html").exists(), b.stderr[-300:])
+    # audit 21: a trace view named as a card turned that card, on every other view, into a way into the trace (a card opens
+    # the view of its id)
+    b = plain("trace", bike_m, rides, "--view", "pricing", "--match", str(ROOT / "examples" / "traces" / "match.json"), "--out", str(t / "tr21.json"))
+    c = plain("trace", bike_m, rides, "--view", "pricing-trace", "--match", str(ROOT / "examples" / "traces" / "match.json"), "--out", str(t / "tr21b.json"))
+    ok("trace · a --view that is a card's id is refused in one line, nothing written; another id is written (audit 21)",
+       b.returncode == 1 and "--view 'pricing' is a card's id" in b.stderr and not (t / "tr21.json").exists() and c.returncode == 0, (b.stderr[-300:], c.stderr[-300:]))
+    # audit 21: two models whose stems differ only in case shared one page and stills folder on a disk that ignores case
+    g = t / "g21c"; (g / "docs").mkdir(parents=True)
+    sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True)
+    lab = lambda x: json.dumps(two | {"nodes": [two["nodes"][0] | {"label": x}, two["nodes"][1]]})
+    (g / "docs" / "Map.json").write_text(lab("old-one")); (g / "Docs-map.json").write_text(lab("old-two")); sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "one")
+    (g / "docs" / "Map.json").write_text(lab("NEW-ONE")); (g / "Docs-map.json").write_text(lab("NEW-TWO"))
+    r = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                        "sys.argv = ['umlimator.py', 'diff', '--base', 'HEAD', '--out', 'out']; u.main()", str(ROOT)], cwd=g, capture_output=True, text=True)
+    outs = {x["file"]: x.get("out") for x in json.loads(r.stdout or "[]")}
+    seen = {f: (Path(o).read_text() if o and Path(o).is_file() else "") for f, o in outs.items()}
+    ok("diff --base · two models whose stems differ only in case get pages whose names differ in more than case, each its own model's (audit 21)",
+       len({str(o).casefold() for o in outs.values()}) == 2 and "NEW-ONE" in seen.get("docs/Map.json", "") and "NEW-TWO" not in seen.get("docs/Map.json", "")
+       and "NEW-TWO" in seen.get("Docs-map.json", "") and "NEW-ONE" not in seen.get("Docs-map.json", ""), (outs, r.stderr[-300:]))
+    # audit 21: --out in a folder that cannot be written, or under a path that is a file, ended in a traceback
+    (t / "afile").write_text("x")
+    ro = t / "ro21"; ro.mkdir(); ro.chmod(0o500)
+    runs = [plain("render", str(t / "vt20.json"), "--out", str(t / "afile" / "page.html"), "--no-check"),
+            plain("import", str(ROOT / "tests" / "import" / "kubernetes.json"), "--out", str(t / "afile" / "x.json")),
+            plain("trace", bike_m, rides, "--view", "t21", "--match", str(ROOT / "examples" / "traces" / "match.json"), "--out", str(t / "afile" / "t.json")),
+            plain("stills", str(t / "vt20.html"), "--out", str(t / "afile" / "st")),
+            subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "diff", "--base", "HEAD", "--out", str(t / "afile" / "d")], capture_output=True, text=True, cwd=g)]
+    if os.geteuid() != 0:  # root writes anywhere
+        runs.append(plain("import", str(ROOT / "tests" / "import" / "kubernetes.json"), "--out", str(ro / "x.json")))
+    ro.chmod(0o700)
+    ok("render, import, trace, stills, diff --base · an --out that cannot be written is said in one line, never a traceback (audit 21)",
+       all(x.returncode == 1 and "Traceback" not in x.stderr and re.search(r"cannot (write|make the folder) .*\((a folder on its path is a file|Permission denied)\)", x.stderr) for x in runs),
+       [x.stderr[-200:] for x in runs])
 
     # the diff Action's step as CI runs it (C10, 2.6): a pull request's merge commit against its first parent, the pathspec
     # examples/*.json passed to git as written (set -f), on one object model and one package model
