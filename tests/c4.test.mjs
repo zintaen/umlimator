@@ -67,6 +67,16 @@ test('maps draw as now: the map\'s shapes are read only; C4 adds its own two (c4
   assert.equal(svgOf(layout(map, vid)).includes('data-shape="c4"'), false);
 });
 
+
+test('audit 20: the C4ElementProps row names the shapes C4 draws, the card shapes but node, as C4_SHAPES holds them', () => {
+  const row = readFileSync(new URL('../docs/api/typed-diagrams.md', import.meta.url), 'utf8').split('\n').find(l => l.startsWith('| `C4ElementProps`'));
+  const shape = /`shape` \((.*?)\), `container`/.exec(row)[1], named = [...shape.matchAll(/`([a-z]+)`/g)].map(m => m[1]);
+  assert.deepEqual(named.slice(named.indexOf('node') + 1, named.indexOf('node') + 1 + C4_SHAPES.length).sort(), [...C4_SHAPES].sort());
+  assert.ok(/other than `node`/.test(shape), shape);
+  const m = JSON.parse(readFileSync(new URL('../examples/bookshop-c4.json', import.meta.url))), c = m.nodes.find(n => n.type === 'c4.Container');
+  c.props = { ...c.props, shape: 'node' }; const v = m.views.find(x => x.diagram === 'c4.container' && x.nodeIds.includes(c.id));
+  assert.equal(layout(m, v.id).nodes.find(n => n.id === c.id).sh, 'box'); // the default, as the row says
+});
 test('the element (§7.5): the shape props.shape names (a person by default, else a box), sized by its three lines, 160 to 280 px wide; its texts and outline', () => {
   const C = SHAPE.c4, base = { label: 'Shop API', tag: '[Container: Python, FastAPI]', desc: 'Catalogue, basket, checkout and accounts as a JSON API.' };
   const sizes = Object.fromEntries(C4_SHAPES.map(sh => [sh, C.size({ ...base, sh })]));
