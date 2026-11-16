@@ -26,7 +26,7 @@ const UML_OWN = (o, k) => (o != null && Object.hasOwn(o, k) ? o[k] : undefined);
    { type, label, props } or { error }; printMember() writes a member back, and print(parse(x)) is stable. */
 const MEMBER_SIGN = { public: '+', private: '-', protected: '#', package: '~' }, SIGN_VIS = { '+': 'public', '-': 'private', '#': 'protected', '~': 'package' };
 const MEMBER_NAME = /^[\p{L}_$][\p{L}\p{M}\p{N}_$]*/u; // a name in any script: Größe, 名前
-const SYNTAX_KEYS = ['visibility', 'valueType', 'multiplicity', 'default', 'isStatic', 'isDerived', 'isAbstract', 'parameters', 'returnType'];
+const SYNTAX_KEYS = ['stereotypes', 'visibility', 'valueType', 'multiplicity', 'default', 'isStatic', 'isDerived', 'isAbstract', 'parameters', 'returnType'];
 
 /* a multiplicity's bounds: '1', '*', '0..1', '1..*', '2..5' → { lower, upper } (upper Infinity for *); null for anything else */
 function multBounds(t) {
@@ -52,8 +52,9 @@ function parseMember(text, kind) {
   let s = String(text ?? '').trim();
   const fail = why => ({ error: `"${String(text ?? '').trim()}" is not a member: ${why}` });
   if (!s) return fail('it is empty');
-  if (kind === 'uml.EnumerationLiteral') return MEMBER_NAME.test(s) && MEMBER_NAME.exec(s)[0] === s ? { type: kind, label: s, props: {} } : fail('a literal is a name');
-  const props = {};
+  const props = {}; // its «stereotypes» first, as printMember writes them (audit 16)
+  for (let m; (m = /^«([^«»]*)»\s*/.exec(s));) { const t = m[1].trim(); if (t) (props.stereotypes ||= []).push(t); s = s.slice(m[0].length); }
+  if (kind === 'uml.EnumerationLiteral') return MEMBER_NAME.test(s) && MEMBER_NAME.exec(s)[0] === s ? { type: kind, label: s, props } : fail('a literal is a name');
   if (SIGN_VIS[s[0]]) { props.visibility = SIGN_VIS[s[0]]; s = s.slice(1).trim(); }
   for (let m; (m = /^\{\s*(static|abstract)\s*\}\s*/.exec(s));) { props[m[1] === 'static' ? 'isStatic' : 'isAbstract'] = true; s = s.slice(m[0].length); }
   if (s[0] === '{') return fail('a modifier is {static} or {abstract}');
@@ -101,9 +102,9 @@ function parseMember(text, kind) {
 
 /* a member back in its text form: the inverse of parseMember */
 function printMember(m) {
-  const p = UML_OBJ(m && m.props) ? m.props : {}, label = String((m && m.label) ?? '');
-  if (m && m.type === 'uml.EnumerationLiteral') return label;
-  const head = (Object.hasOwn(MEMBER_SIGN, p.visibility) ? MEMBER_SIGN[p.visibility] + ' ' : '') + (p.isStatic ? '{static} ' : '') + (p.isAbstract ? '{abstract} ' : '');
+  const p = UML_OBJ(m && m.props) ? m.props : {}, label = String((m && m.label) ?? ''), st = UML_ARR(p.stereotypes).filter(UML_HAS).map(t => `«${t}» `).join('');
+  if (m && m.type === 'uml.EnumerationLiteral') return st + label;
+  const head = st + (Object.hasOwn(MEMBER_SIGN, p.visibility) ? MEMBER_SIGN[p.visibility] + ' ' : '') + (p.isStatic ? '{static} ' : '') + (p.isAbstract ? '{abstract} ' : '');
   if (m && m.type === 'uml.Operation') return head + label + '(' + UML_ARR(p.parameters).filter(UML_OBJ).map(a => (UML_HAS(a.direction) ? a.direction + ' ' : '') + (a.name ?? '') + (UML_HAS(a.valueType) ? ': ' + a.valueType : '')).join(', ') + ')' + (UML_HAS(p.returnType) ? ': ' + p.returnType : '');
   return head + (p.isDerived ? '/' : '') + label + (UML_HAS(p.valueType) ? ': ' + p.valueType : '') + (UML_HAS(p.multiplicity) ? ` [${p.multiplicity}]` : '') + (UML_HAS(p.default) ? ' = ' + p.default : '');
 }

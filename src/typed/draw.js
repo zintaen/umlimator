@@ -16,9 +16,9 @@ import { hasKey } from '../map/kinds.js';
 // §7.1); ariaOwn: the accessible name in full, in place of the one built here (§6.1). No UML type sets either
 const CL = { pad: 8, name: 13, row: 11, st: 14, nl: 18, rl: 15, gap: 5, empty: 10, minW: 96, maxW: 320 };
 const VIS = { public: '+', private: '-', protected: '#', package: '~' };
-// a member's row in UML's form: "+ total: Money [1]", "+ /count: Integer = 0", "+ place(at: Date): Order"; a literal's label
+// a member's row in UML's form, its «stereotypes» first: "+ total: Money [1]", "+ /count: Integer = 0", "+ place(at: Date): Order"; a literal's label
 const obj = x => !!x && typeof x === 'object'; // an entry the classifier reads; null, text or a number is passed over
-function memberText(m) { const p = obj(m.props) ? m.props : {}, has = x => x != null && x !== '', name = (hasKey(VIS, p.visibility) ? VIS[p.visibility] + ' ' : '') + (p.isDerived ? '/' : '') + (m.label ?? '');
+function memberText(m) { const p = obj(m.props) ? m.props : {}, has = x => x != null && x !== '', name = (Array.isArray(p.stereotypes) ? p.stereotypes.filter(has).map(t => `«${t}» `).join('') : '') + (hasKey(VIS, p.visibility) ? VIS[p.visibility] + ' ' : '') + (p.isDerived ? '/' : '') + (m.label ?? '');
   if (/Operation$/.test(m.type || '')) return name + '(' + (Array.isArray(p.parameters) ? p.parameters.filter(obj) : []).map(a => (has(a.direction) && a.direction !== 'in' ? a.direction + ' ' : '') + (a.name ?? '') + (has(a.valueType) ? ': ' + a.valueType : '')).join(', ') + ')' + (has(p.returnType) ? ': ' + p.returnType : '');
   return name + (has(p.valueType) ? ': ' + p.valueType : '') + (has(p.multiplicity) ? ` [${p.multiplicity}]` : '') + (has(p.default) ? ' = ' + p.default : ''); }
 // the classifier as drawn: its stereotypes, its compartments (all: every one, each with every member; comps: those shown,

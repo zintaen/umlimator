@@ -56,7 +56,7 @@ test('the definition: uml.interaction-overview is registered with its palette, l
     ['InteractionUse', 'Interaction use', null, 'uml.sequence'], ['Interaction', 'Inline interaction', null, 'uml.sequence'], ['Comment', 'Comment', null, null]]);
   assert.deepEqual(T.lines, [{ type: 'uml.ControlFlow', label: 'Control flow' }, { type: 'uml.CommentLink', label: 'Comment link' }]);
   assert.deepEqual(T.props['uml.ControlFlow'].map(f => f.key), ['guard', 'stereotypes']);
-  assert.ok(T.elements.every(e => T.props[e.type].some(f => f.key === 'stereotypes')), 'stereotypes on every element');
+  assert.ok(T.elements.every(e => ['uml.InitialNode', 'uml.ActivityFinalNode', 'uml.FlowFinalNode', 'uml.ForkNode', 'uml.JoinNode'].includes(e.type) !== T.props[e.type].some(f => f.key === 'stereotypes')), 'stereotypes on every element but a glyph with no text (audit 16)');
   assert.deepEqual(Object.keys(T.rules), [...Object.keys(FLOW_RULES), 'opens-sequence', 'overview-kinds', 'comment-link', 'inline-size']);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'rename']);
   for (const k of ['layout', 'validate', 'describe']) assert.equal(typeof T[k], 'function', k);
@@ -305,4 +305,17 @@ test('an inline interaction counts a lifeline its sequence view lists three time
   const n = layout(m, 'buy-book').byId['sd-queue'];
   assert.match(n.aria, /, 3 lifelines, 3 messages, opens Queue the order$/); assert.ok(n.sd);
   assert.deepEqual(validate(m), []);
+});
+
+test('audit 16: a flow\'s and an interaction use\'s stereotypes are drawn; F2 on a name that does not read back is refused', () => {
+  const m = structuredClone(EX), f = m.edges.find(e => e.id === 'f-buy-start'), u = m.nodes.find(n => n.id === 'ref-find');
+  f.props = { stereotypes: ['retry'] }; u.props = { ...u.props, stereotypes: ['cached'] };
+  const g = layout(m, 'buy-book');
+  assert.equal(g.edges.find(e => e.id === 'f-buy-start').label, '«retry»');
+  assert.match(g.edges.find(e => e.id === 'f-buy-start').aria, /«retry»/);
+  assert.match(g.nodes.find(n => n.id === 'ref-find').label, /^«cached» /);
+  const v = m.views.find(x => x.id === 'buy-book');
+  assert.deepEqual(ovRename(m, v, 'f-buy-start', '«retry»'), []);
+  f.label = 'send items[0]';
+  assert.ok(ovRename(m, v, 'f-buy-start', '«retry» send items[0]').error);
 });

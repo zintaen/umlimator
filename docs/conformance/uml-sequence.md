@@ -44,7 +44,8 @@ refused, and may leave one.
   of done item 4).
 - `represents` is text, not a reference to a class (M8). Copy and paste (E7). XMI.
 - A lifeline created in one operand of an `alt` keeps its stem through the other operands (spike risk 4.5): accepted,
-  as the stem has nowhere else to go; `tests/sequence-stress.json`'s `edge-cases` view draws it.
+  as the stem has nowhere else to go; `tests/sequence-stress.json`'s `edge-cases` view draws it. A create of it in another
+  operand draws a head of its own at that create's row, over the stem, and ends on it.
 - The Mermaid reader and writer (`src/readers/mermaid-sequence.js`, `umlimator.py import`) are internal. What Mermaid
   cannot carry is written as `%% not written:` comments; a `destroy`, `critical`/`option`, `rect`, notes, `autonumber`,
   `box`, links and styling are read as `notes/stage-3.md` §8 says, each reported. `read(write(model))` equals the model

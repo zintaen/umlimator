@@ -7,7 +7,7 @@ import { laneBands, laneRows } from '../layout/lanes.js';
 import { layoutTyped } from '../typed/layout.js';
 import './class.js'; // SHAPE.note, a comment's
 import { frame } from './frame.js';
-import { FLOW_RULES, flowProblems, flowText, parseFlow } from './flow.js';
+import { FLOW_RULES, flowProblems, flowLabel, flowRename, flowStereo } from './flow.js';
 
 /* ---------- the activity diagram, uml.activity (work package 4.5, notes/stage-4.md §9) ----------
    Control nodes, actions and flows from src/uml/flow.js; the send and accept signals, the object node, the data store and
@@ -96,6 +96,8 @@ function actIndex(model, view) {
 const acName = x => String(x.label ?? x.id);
 const acProps = x => (AC_OBJ(x && x.props) ? x.props : {});
 const acStereo = x => AC_ARR(acProps(x).stereotypes).filter(AC_HAS).map(String);
+// a diamond's or a partition's drawn name, its stereotypes first: their shapes draw no «…» row of their own (audit 16)
+const acStLabel = x => [...acStereo(x).map(t => `«${t}»`), acName(x)].join(' ');
 const acPlural = (k, w, ws = w + 's') => `${k} ${k === 1 ? w : ws}`;
 // a node as a line's end names it: its label, else its word ("merge")
 const acCalled = x => (x ? (AC_HAS(x.label) ? String(x.label) : acLook(x)[1].toLowerCase()) : '?');
@@ -114,7 +116,8 @@ function acNodeName(model, I, x, lines) {
 const AC_LINE_WORDS = { 'uml.ControlFlow': ['Control flow', 'the next step, once the one before ends'], 'uml.ObjectFlow': ['Object flow', 'an object or data passed on'], 'uml.CommentLink': ['Comment link', 'what a comment is about'] };
 function acLineName(I, e) {
   const [word] = Object.hasOwn(AC_LINE_WORDS, e.type) ? AC_LINE_WORDS[e.type] : ['Line'], g = AC_PART(acProps(e).guard), nm = AC_PART(e.label);
-  return `${word} from ${acCalled(I.N.get(e.from))} to ${acCalled(I.N.get(e.to))}${nm ? `, named ${nm}` : ''}${g ? `, guard ${g}` : ''}`;
+  const st = flowStereo(e).join(' ');
+  return `${word} from ${acCalled(I.N.get(e.from))} to ${acCalled(I.N.get(e.to))}${st ? ', ' + st : ''}${nm ? `, named ${nm}` : ''}${g ? `, guard ${g}` : ''}`;
 }
 
 /* ---- the legend: each line kind and each control glyph the view draws (1.9's legendItem form) ---- */
@@ -139,12 +142,12 @@ function actGeo({ model, view, pos, memo }) {
   const P = I.lanes.length ? laneRows(Object.fromEntries(I.drawn.map(id => [id, at(id)])), I.laneOf, I.lanes) : null; // each lane a run of rows
   const bar = id => acLook(I.N.get(id))[0] === 'bar', side = (id, w) => I.lines.filter(e => e[w] === id).length;
   const nodes = I.drawn.map(id => { const x = I.N.get(id), [shape] = acLook(x), [col, row] = P ? P[id] : at(id), st = acStereo(x);
-    const d = { id, label: ['initial', 'final', 'flow-final', 'bar'].includes(shape) ? '' : acName(x), type: x.type, kind: 'file', shape, aria: acNodeName(model, I, x, I.lines), col, row, saysOpens: x.type === 'uml.CallBehaviorAction',
+    const d = { id, label: ['initial', 'final', 'flow-final', 'bar'].includes(shape) ? '' : shape === 'diamond' ? acStLabel(x) : acName(x), type: x.type, kind: 'file', shape, aria: acNodeName(model, I, x, I.lines), col, row, saysOpens: x.type === 'uml.CallBehaviorAction',
       stereotypes: x.type === 'uml.DataStoreNode' ? ['datastore', ...st] : st, ...(shape === 'bar' ? { busy: Math.max(side(id, 'from'), side(id, 'to')), down } : {}) };
     return { ...d, ...SHAPE[shape].size(d) }; });
   // a bar's lines enter on the side facing the flow's start and leave on the other (§4.1): left and right in the layout's
   // own axes, which a view laid out down turns to top and bottom
-  const edges = I.lines.map(e => { const note = e.type === 'uml.CommentLink', label = note ? '' : flowText(e.label, acProps(e).guard);
+  const edges = I.lines.map(e => { const note = e.type === 'uml.CommentLink', label = note ? '' : flowLabel(e);
     return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, ...(label ? { label, cut: AC.cut } : {}), end: note ? { from: 'none', to: 'none', dashed: true } : { from: 'none', to: 'open' },
       aria: acLineName(I, e), ...(bar(e.from) ? { fromSide: 'right' } : {}), ...(bar(e.to) ? { toSide: 'left' } : {}), ...(AC_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }; });
   // a typed view's router makes no room for a label (labelRoom is a map's): with guards to draw, the columns are spread by the
@@ -165,7 +168,7 @@ function acFinish(model, g, I, down) {
   // nodes when every one has them (render.js gridView, hintAt)
   const byId = idTable(g.byId), { col = 0, row = 0 } = g.nodes[0] || {};
   const heads = bands.map(b => { const x = I.N.get(b.id); // k: the 'file' kind's, as layoutTyped gives the nodes, so a view of partitions only draws
-    return (byId[b.id] = { id: b.id, label: acName(x), type: x.type, kind: 'file', k: 'file', shape: 'partition', aside: true, col, row, aria: acNodeName(model, I, x, I.lines), ...b.head }); });
+    return (byId[b.id] = { id: b.id, label: acStLabel(x), type: x.type, kind: 'file', k: 'file', shape: 'partition', aside: true, col, row, aria: acNodeName(model, I, x, I.lines), ...b.head }); });
   // reading order (§14): a partition, then its nested partitions, then its own nodes by rank; then the nodes in no lane by
   // rank; then the lines. The nodes are drawn in it, then the headers, so the canvas's first node is a laid-out one
   const rank = (a, b) => byId[a].col - byId[b].col || byId[a].row - byId[b].row, order = [];
@@ -290,8 +293,7 @@ function actRemove(model, view, ids, fromModel) {
 function actRename(model, view, id, text) {
   const e = AC_ARR(model && model.edges).find(x => AC_OBJ(x) && x.id === id);
   if (!e || !AC_FLOWS.includes(e.type)) return null;
-  const r = parseFlow(text); if (r.error) return r;
-  return [...(r.name !== AC_PART(e.label) ? [{ op: 'set', id, path: 'label', value: r.name }] : []), ...(r.guard !== AC_PART(acProps(e).guard) ? [{ op: 'set', id, path: 'props.guard', value: r.guard }] : [])];
+  return flowRename(e, text);
 }
 // the Owner field: every partition of the model, by its name from the top
 function actOwners(model, x) {
@@ -309,7 +311,8 @@ const ACT_TYPE = registerDiagramType('uml.activity', {
     ['SendSignalAction', 'Send signal'], ['AcceptEventAction', 'Accept event'], ['ObjectNode', 'Object node'], ['DataStoreNode', 'Data store'], ['ActivityPartition', 'Partition'], ['Comment', 'Comment']]
     .map(([t, label, name, opens]) => ({ type: 'uml.' + t, label, ...(name === false ? { name: false } : {}), ...(opens ? { opens } : {}) })),
   lines: [{ type: 'uml.ControlFlow', label: 'Control flow' }, { type: 'uml.ObjectFlow', label: 'Object flow' }, { type: 'uml.CommentLink', label: 'Comment link' }],
-  props: { ...Object.fromEntries(Object.keys(AC_LOOK).map(t => [t, [AC_ST]])), 'uml.Comment': [], 'uml.ControlFlow': [AC_GUARD, AC_ST], 'uml.ObjectFlow': [AC_GUARD, AC_ST], 'uml.CommentLink': [] },
+  // Stereotypes on every element but a glyph with no text (initial, final, a bar), which draws none (audit 16)
+  props: { ...Object.fromEntries(Object.keys(AC_LOOK).map(t => [t, ['initial', 'final', 'flow-final', 'bar'].includes(AC_LOOK[t][0]) ? [] : [AC_ST]])), 'uml.Comment': [], 'uml.ControlFlow': [AC_GUARD, AC_ST], 'uml.ObjectFlow': [AC_GUARD, AC_ST], 'uml.CommentLink': [] },
   layout: actGeo,
   draw: actDraw,
   owners: actOwners,
