@@ -77,7 +77,9 @@ test('a part\'s text, `name : Type [multiplicity]`, both ways; a member row is a
   assert.deepEqual(csParse('checkout : CheckoutFlow [1]'), { label: 'checkout', valueType: 'CheckoutFlow', multiplicity: '1' });
   assert.deepEqual(csParse(' listeners:OrderListener[0..*] '), { label: 'listeners', valueType: 'OrderListener', multiplicity: '0..*' });
   assert.deepEqual(csParse('x'), { label: 'x', valueType: undefined, multiplicity: undefined });
-  assert.ok(csParse(': T').error && csParse('a : b : c').error);
+  assert.deepEqual(csParse(': T [1]'), { label: undefined, valueType: 'T', multiplicity: '1' }, 'an anonymous part, as drawn (audit 17)');
+  assert.ok(csParse(':').error && csParse('[1]').error && csParse('a : b : c').error);
+  assert.ok(csRow({ type: 'uml.Class' }, ': T', { type: 'uml.Port' }).error, 'a port has a name');
   assert.deepEqual(csRow({ type: 'uml.Class' }, 'port api : OrderApi'), { type: 'uml.Port', label: 'api', props: { valueType: 'OrderApi' } });
   assert.deepEqual(csRow({ type: 'uml.Collaboration' }, 'port x'), { type: 'uml.Property', label: 'port x', props: {} }, 'a collaboration owns no port: a role');
   assert.ok(csRow({ type: 'uml.Class' }, 'port api [2]').error, 'a port takes no multiplicity');
@@ -305,7 +307,9 @@ test('rename: F2 on a port on a part renames its class\'s port (said), keeping i
   const r = T.edits.rename(m, m.views[0], 'order-service.checkout->checkout-class.quotes', 'prices');
   assert.deepEqual(r, { commands: [{ op: 'set', id: 'checkout-class.quotes', path: 'label', value: 'prices' }], say: 'Renamed CheckoutFlow\'s port: every part of that type shows it' });
   assert.deepEqual(T.edits.rename(CS, V, 'order-service.pricing', 'pricer : PriceCalculator [0..1]'), [{ op: 'set', id: 'order-service.pricing', path: 'label', value: 'pricer' }, { op: 'set', id: 'order-service.pricing', path: 'props.multiplicity', value: '0..1' }]);
-  assert.ok(T.edits.rename(CS, V, 'order-service.pricing', ': x').error);
+  assert.deepEqual(T.edits.rename(CS, V, 'order-service.pricing', ': x'), [{ op: 'set', id: 'order-service.pricing', path: 'label', value: undefined }, { op: 'set', id: 'order-service.pricing', path: 'props.valueType', value: 'x' },
+    { op: 'set', id: 'order-service.pricing', path: 'props.multiplicity', value: undefined }], 'no name before the type: an anonymous part (audit 17)');
+  assert.ok(T.edits.rename(CS, V, 'order-service.pricing', ' [2]').error, 'neither a name nor a type');
   assert.deepEqual(T.edits.rename(CS, V, 'order-events', 'x'), [{ op: 'set', id: 'order-events', path: 'label', value: 'x' }], 'a collaboration use: name : Collaboration (audit 16)');
 });
 
@@ -346,12 +350,11 @@ test('the PDF\'s tables (§11): a part\'s and a role\'s kind and rows, a collabo
   assert.deepEqual(['order-service.checkout', 'publish-subscribe.publisher', 'order-service.api', 'order-events', 'order-service', 'nope'].map(id => T.word(CS, id)), ['Part', 'Role', 'Port', 'Collaboration use', null, null]);
   assert.deepEqual(T.rows(CS, V, 'order-service.listeners'), ['listeners : OrderListener [0..*]', 'shared']);
   assert.deepEqual(T.rows(CS, V, 'order-events'), ['PublishSubscribe', 'publisher ← checkout', 'subscriber ← listeners']);
-  // 0.22.0 (5.8): the subject's and an open collaboration's rows, each part with its aggregation and the connectors the
-  // Lines table leaves out (their ends are members); a closed element has none
+  // 0.22.0 (5.8): the subject's and an open collaboration's rows, each part with its aggregation; a closed element has none.
+  // Their connectors are Lines rows (audit 3 lists a line drawn to a member's owner), not member rows too (audit 17)
   assert.deepEqual(T.rows(CS, V, 'order-service'), ['port api', 'port payments', 'checkout : CheckoutFlow [1], composite', 'pricing : PriceCalculator [1], composite', 'orders : OrderRepository [1], composite',
-    'listeners : OrderListener [0..*], shared', 'Connector from api of OrderService to requests of checkout', 'Connector from quotes of checkout to quotes of pricing',
-    'Connector from charges of checkout to payments of OrderService', 'Connector from checkout to orders', 'Connector from checkout to listeners']);
-  assert.deepEqual(T.rows(CS, V, 'publish-subscribe'), ['publisher : EventSource [1]', 'subscriber : EventListener [0..*]', 'Connector from publisher to subscriber']);
+    'listeners : OrderListener [0..*], shared']);
+  assert.deepEqual(T.rows(CS, V, 'publish-subscribe'), ['publisher : EventSource [1]', 'subscriber : EventListener [0..*]']);
   // audit 10: a role has no aggregation, the collaboration shown open or as the subject
   const sub = { ...V, subject: 'publish-subscribe', nodeIds: ['publish-subscribe'], edges: undefined };
   assert.deepEqual(T.rows(CS, sub, 'publish-subscribe'), T.rows(CS, V, 'publish-subscribe'));
@@ -575,4 +578,47 @@ test('audit 16: an anonymous part is named ": Engine [1]" by its ports, connecto
   assert.deepEqual(T.edits.rename(m, v, 'u', 'events : PubSub'), [{ op: 'set', id: 'u', path: 'label', value: 'events' }]);
   assert.deepEqual(T.edits.rename(m, v, 'S.in', 'in : Request'), [{ op: 'set', id: 'S.in', path: 'props.valueType', value: 'Request' }]);
   assert.deepEqual(T.edits.rename(m, v, 'S.in', 'out'), [{ op: 'set', id: 'S.in', path: 'label', value: 'out' }], 'a name alone keeps the type');
+});
+
+test('audit 17: F2 and the panel row on an anonymous part, role or collaboration use read the text it is drawn with', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'E', type: 'uml.Class', label: 'Engine' },
+    { id: 'S', type: 'uml.Class', label: 'Car', members: [P('S.p', undefined, { props: { valueType: 'Engine', multiplicity: '1' } }), P('S.q', 'wheel', { props: { valueType: 'Wheel', multiplicity: '4' } })] },
+    { id: 'C', type: 'uml.Collaboration', label: 'PubSub', members: [P('C.r', undefined, { props: { valueType: 'Publisher' } })] },
+    { id: 'u', type: 'uml.CollaborationUse', parent: 'S', props: { collaboration: 'PubSub' } }],
+  edges: [], views: [{ id: 'v', diagram: 'uml.composite-structure', nodeIds: ['S', 'u', 'C'], subject: 'S' }] };
+  const v = m.views[0], g = layout(m, 'v'), set = (id, path, value) => ({ op: 'set', id, path, value });
+  assert.equal(g.nodes.find(n => n.id === 'S.p').label, ': Engine [1]');
+  assert.deepEqual(T.edits.rename(m, v, 'S.p', ': Engine [1]'), [], 'Enter unchanged');
+  assert.deepEqual(T.edits.rename(m, v, 'S.p', ': Engine [2]'), [set('S.p', 'props.multiplicity', '2')], 'still anonymous');
+  assert.deepEqual(T.edits.rename(m, v, 'S.p', 'e : Engine [1]'), [set('S.p', 'label', 'e')]);
+  assert.deepEqual(T.edits.rename(m, v, 'S.q', ': Wheel [4]'), [set('S.q', 'label', undefined)], 'a name taken off');
+  assert.deepEqual(T.edits.rename(m, v, 'C.r', ': Listener'), [set('C.r', 'props.valueType', 'Listener')], 'a role');
+  assert.deepEqual(T.member.edit(node(m, 'S').members[0], ': Engine [1]'), { commands: [] });
+  assert.deepEqual(T.member.edit(node(m, 'S').members[0], ': Motor [1]'), { commands: [set('S.p', 'props.valueType', 'Motor')] });
+  assert.deepEqual(T.edits.member(m, v, 'S', 'S.p', ': Engine [3]'), [set('S.p', 'props.multiplicity', '3')]);
+  assert.deepEqual(T.edits.member(m, v, 'S', null, ': Gearbox'), [{ op: 'add', element: { id: 'S.gearbox', type: 'uml.Property', props: { valueType: 'Gearbox' } }, owner: 'S' }], 'added by text, its id from its type');
+  assert.deepEqual(T.edits.rename(m, v, 'u', ': Other'), [set('u', 'props.collaboration', 'Other')], 'an anonymous collaboration use re-typed');
+  assert.deepEqual(T.edits.add(m, v, { type: 'uml.CollaborationUse' }, ': PubSub', {})[0].element, { id: 'pubsub', type: 'uml.CollaborationUse', parent: 'S', props: { collaboration: 'PubSub' } });
+  for (const t of ['', ':', '[1]', ' : ']) assert.ok(T.edits.rename(m, v, 'S.p', t).error, JSON.stringify(t));
+  assert.ok(T.edits.rename(m, v, 'u', '[1]').error);
+  // a label of '' is no name: drawn, said and edited as an absent one (finding 9)
+  const e = structuredClone(m); node(e, 'S').members[0].label = '';
+  e.nodes[0].members = [port('E.in', 'in')]; node(e, 'S').members.push(port('S.in', 'in')); e.edges.push(con('c', 'S.in', 'E.in', { to: { part: 'S.p' } }));
+  const said = describe(e, 'v');
+  assert.match(said, /Port in of : Engine \[1\]\./); assert.match(said, /Connector from in of Car to in of : Engine \[1\]\./);
+  assert.deepEqual(T.edits.rename(e, e.views[0], 'S.p', ': Engine [1]'), [], 'Enter unchanged on a label of ""');
+});
+
+test('audit 17: a role binding\'s picker offers the named roles, which binding-role accepts; with none named, it says so', () => {
+  const mk = roles => ({ schemaVersion: 2, nodes: [{ id: 'C', type: 'uml.Collaboration', label: 'PubSub', members: roles },
+    { id: 'S', type: 'uml.Class', label: 'Shop', members: [P('S.p', 'checkout', { props: { valueType: 'Checkout' } })] }, { id: 'Checkout', type: 'uml.Class', label: 'Checkout' },
+    { id: 'u', type: 'uml.CollaborationUse', label: 'events', parent: 'S', props: { collaboration: 'PubSub' } }],
+  edges: [], views: [{ id: 'v', diagram: 'uml.composite-structure', nodeIds: ['S', 'u'], subject: 'S' }] });
+  const anon = mk([P('C.r', undefined, { props: { valueType: 'Publisher' } })]), r0 = T.edits.connect(anon, anon.views[0], 'S.p', 'u', {}, { type: 'uml.RoleBinding' });
+  assert.match(r0.error, /^Name a role of PubSub first/);
+  const two = mk([P('C.r', undefined, { props: { valueType: 'Publisher' } }), P('C.s', 'subscriber', { props: { valueType: 'Listener' } })]);
+  const r = T.edits.connect(two, two.views[0], 'S.p', 'u', {}, { type: 'uml.RoleBinding' });
+  assert.deepEqual(r.pick, ['subscriber']);
+  assert.deepEqual(validate(apply(two, r.then(0))).filter(p => p.rule === 'binding-role'), []);
+  const none = mk([]); assert.equal(T.edits.connect(none, none.views[0], 'S.p', 'u', {}, { type: 'uml.RoleBinding' })[0].element.label, undefined, 'a collaboration with no roles: an unlabelled binding, as before');
 });

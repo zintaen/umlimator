@@ -83,6 +83,9 @@ function cpPic(model, view) {
     return { ...b, aria: SN_SAY.component(pic.name(b.id), { stereotypes: cpStereo(x), ports: cpPortsOf(x).length, holds: pic.holds(b.id).map(id => CP_WORD[(I.N.get(id) || {}).type] || 'element') }) }; });
   return { ...pic, boxes, I, lines, inside };
 }
+// a line's end as drawn: a port "orders of Shop API" (qualified, audit 12), any other end its drawn name. A line may end on a
+// port where the view names only cards (a manifestation, audit 17): pic.name knows nodes alone
+const cpEnd = (pic, id) => (pic.I.P.has(id) ? `${cpName(pic.I.P.get(id).x)} of ${pic.name(pic.I.P.get(id).owner)}` : pic.name(id));
 // "Port orders of Shop API, provides Orders"; "Interface Orders, as a ball, provided by Shop API, required by Storefront"
 function cpNodeName(model, view, pic, id, bare) { // bare: a port without " of <owner>" (the PDF's rows)
   const { I, lines } = pic, x = I.N.get(id) || (I.P.get(id) || {}).x, of = k => lines.filter(l => l.e.type === k);
@@ -93,15 +96,14 @@ function cpNodeName(model, view, pic, id, bare) { // bare: a port without " of <
   const st = cpStereo(x), owners = k => of(k).filter(l => l.e.to === id).map(l => pic.name(I.comp(l.e.from)));
   if (x.type === 'uml.Component') return SN_SAY.component(pic.name(id), { stereotypes: st, ports: cpPortsOf(x).length });
   if (x.type === 'uml.Interface') return SN_SAY.iface(pic.name(id), { ball: cpBall(I, view, id), stereotypes: st, providers: owners('uml.InterfaceRealization'), requirers: owners('uml.Usage') });
-  if (x.type === 'uml.Artifact') return SN_SAY.artifact(pic.name(id), { stereotypes: st, manifests: of('uml.Manifestation').filter(l => l.e.from === id).map(l => pic.name(l.e.to)) });
+  if (x.type === 'uml.Artifact') return SN_SAY.artifact(pic.name(id), { stereotypes: st, manifests: of('uml.Manifestation').filter(l => l.e.from === id).map(l => cpEnd(pic, l.e.to)) });
   if (x.type === 'uml.Comment') return 'Comment: ' + cpName(x);
   return `${x.type === 'uml.Package' ? 'Package' : String(x.type).split('.').pop()} ${pic.name(id)}${st.length ? ` (${st.join(', ')})` : ''}`;
 }
 const cpLabel = (l, said) => [CP_LOOK[l.kind][1], ...cpStereo(l.e).map(t => `«${t}»`), said ? null : l.e.label].filter(CP_HAS).join(' ');
 // "Delegation from orders of Shop API to orders of Checkout"
 const cpLineName = (pic, l) => { const t = [...cpStereo(l.e).map(s => `«${s}»`), l.e.label].filter(CP_HAS).join(' ');
-  const end = id => (pic.I.P.has(id) ? `${cpName(pic.I.P.get(id).x)} of ${pic.name(pic.I.P.get(id).owner)}` : pic.name(id)); // as drawn: qualified (audit 12)
-  return `${CP_LOOK[l.kind][2]} from ${end(l.e.from)} to ${end(l.e.to)}${t ? ': ' + t : ''}`; };
+  return `${CP_LOOK[l.kind][2]} from ${cpEnd(pic, l.e.from)} to ${cpEnd(pic, l.e.to)}${t ? ': ' + t : ''}`; };
 // reading order (§10.1): each box and what it holds, each element's ports after it in members order, then the lines
 const cpOrder = pic => [...readingOrder(pic).flatMap(id => [id, ...cpPortsOf(pic.I.N.get(id)).map(p => p.id)]), ...pic.lines.map(l => l.e.id)];
 
@@ -350,11 +352,10 @@ const CP_TYPE = registerDiagramType('uml.component', {
   // the PDF's tables (§11): a component's ports, each with what it provides and requires; an interface's operations; what an artifact manifests
   word: (model, id) => { const x = cpIndex(model).N.get(id); return x ? ({ __proto__: null, 'uml.Component': 'Component', 'uml.Interface': 'Interface', 'uml.Artifact': 'Artifact', 'uml.Package': 'Package', 'uml.Comment': 'Comment' }[x.type] || null) : null; },
   rows: (model, view, id) => { const pic = cpPic(model, view), x = pic.I.N.get(id); if (!x) return null;
-    // then the connectors from it or its ports with a port at an end (0.22.0), which the Lines table leaves out: a port is no card
-    if (x.type === 'uml.Component') return [...cpPortsOf(x).map(p => cpNodeName(model, view, pic, p.id, 1).slice(5)),
-      ...pic.lines.filter(l => l.e.type === 'uml.Connector' && pic.I.comp(l.e.from) === id && (pic.I.P.has(l.e.from) || pic.I.P.has(l.e.to))).map(l => cpLineName(pic, l))];
+    // its connectors are rows of the Lines table, which lists a line drawn to a port's owner (audit 3), so not again here (audit 17)
+    if (x.type === 'uml.Component') return cpPortsOf(x).map(p => cpNodeName(model, view, pic, p.id, 1).slice(5));
     if (x.type === 'uml.Interface') return CP_ARR(x.members).filter(CP_OBJ).map(printMember);
-    if (x.type === 'uml.Artifact') return pic.lines.filter(l => l.e.type === 'uml.Manifestation' && l.e.from === id).map(l => `manifests ${pic.name(l.e.to)}`);
+    if (x.type === 'uml.Artifact') return pic.lines.filter(l => l.e.type === 'uml.Manifestation' && l.e.from === id).map(l => `manifests ${cpEnd(pic, l.e.to)}`);
     return null; },
 });
 

@@ -15,6 +15,7 @@ import { layout, check } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
+import { tablesOf } from '../src/page/print.js';
 import { svgOf } from '../src/draw/svg.js';
 import { SHAPE, drawnPts } from '../src/draw/shapes.js';
 import '../src/uml/component.js';
@@ -103,14 +104,14 @@ test('names, reading order, describe(), the legend, and the PDF\'s words and row
   const legend = g.legend.map(x => x.match(/<b>([^<]*)/)[1]);
   assert.deepEqual(legend, ['Realization', 'Usage', 'Realization', 'Usage', 'Assembly', 'Delegation', 'Dependency', 'Manifestation'], 'stem, socket, then the rectangle\'s');
   assert.deepEqual([T.word(CM, 'shop-api'), T.word(CM, 'i-orders'), T.word(CM, 'shop-api.orders')], ['Component', 'Interface', null]);
-  // 0.22.0 (5.8): then the connectors from its ports, which the Lines table leaves out
-  assert.deepEqual(T.rows(CM, CM.views[0], 'shop-api'), ['orders, provides Orders', 'payments', 'Delegation from orders of Shop API to orders of Checkout', 'Assembly from payments of Shop API to charges of Payment provider']);
+  // audit 17: its ports alone; its connectors are rows of the Lines table (audit 3 lists a line drawn to a port's owner), not again here
+  assert.deepEqual(T.rows(CM, CM.views[0], 'shop-api'), ['orders, provides Orders', 'payments']);
   assert.deepEqual(T.rows(CM, CM.views[0], 'shop-api-jar'), ['manifests Shop API']);
   const typed = structuredClone(CM); typed.nodes[1].members[0].props = { valueType: 'OrderApi' };
   assert.deepEqual(T.rows(typed, typed.views[0], 'shop-api')[0], 'orders : OrderApi, provides Orders');
-  // audit 1: a connector from the component itself to another's port is listed under it
+  // audit 17: a connector from the component itself to another's port is a Lines row, not a member row too
   const own = structuredClone(CM); own.edges.push({ id: 'sf-orders', type: 'uml.Connector', from: 'storefront-component', to: 'shop-api.orders', label: 'calls', props: { kind: 'assembly' } });
-  assert.ok(T.rows(own, own.views[0], 'storefront-component').includes('Assembly from Storefront to orders of Shop API: calls'));
+  assert.deepEqual(T.rows(own, own.views[0], 'storefront-component'), []);
 });
 
 test('a class on a component view is drawn as a classifier, with no «component»', () => {
@@ -399,4 +400,23 @@ test('audit 16: F2 on a component\'s port reads name : Type; a name alone keeps 
   assert.deepEqual(T.edits.rename(m, v, 'P.api', 'api : Rest'), [{ op: 'set', id: 'P.api', path: 'props.valueType', value: 'Rest' }]);
   assert.deepEqual(T.edits.rename(m, v, 'P.api', 'web'), [{ op: 'set', id: 'P.api', path: 'label', value: 'web' }]);
   assert.ok(T.edits.rename(m, v, 'P.api', ' : X').error);
+});
+
+test('audit 17: a manifestation to a component\'s port is laid out, said and checked, the port named as drawn; validate names the port', () => {
+  const m = structuredClone(CM); m.edges.find(e => e.id === 'api-jar-manifests-api').to = 'shop-api.orders';
+  const g = layout(m, V);
+  assert.equal(g.edges.find(e => e.id === 'api-jar-manifests-api').aria, 'Manifestation from shop-api.jar to orders of Shop API');
+  assert.match(describe(m, V), /Artifact shop-api\.jar, manifests orders of Shop API\./);
+  assert.ok(Array.isArray(check(m, V)));
+  assert.deepEqual(T.rows(m, m.views[0], 'shop-api-jar'), ['manifests orders of Shop API']);
+  assert.match(validate(m).find(p => p.rule === 'manifest-ends').message, /runs to port shop-api\.orders \("orders"\)/);
+  // a line of any kind from or to a port of a shown component, a nested one too: never a throw
+  for (const k of ['uml.Manifestation', 'uml.Dependency', 'uml.Usage', 'uml.CommentLink']) for (const [f, t] of [['shop-api-jar', 'checkout-component.orders'], ['shop-api.payments', 'shop-api-jar']]) {
+    const x = structuredClone(CM); x.edges.push(E('z', k.slice(4), f, t)); assert.doesNotThrow(() => { layout(x, V); describe(x, V); check(x, V); }, `${k} ${f} -> ${t}`); }
+});
+
+test('audit 17: the PDF lists each connector to a port once, in the Lines table, not again under its component', () => {
+  const c = mapContext(CM), [els, lines] = tablesOf(c, c.V[V], c.buildGeo(V)), all = [...els.rows, ...lines.rows].join('');
+  assert.equal((all.match(/Connector</g) || []).length, 3, 'three connectors: three Lines rows');
+  assert.doesNotMatch(els.rows.join(''), /Delegation from|Assembly from/);
 });

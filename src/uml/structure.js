@@ -202,6 +202,7 @@ const snWord = t => String(t ?? '').split('.').pop().replace(/([a-z])([A-Z])/g, 
 function structProblems(model, view) {
   const out = [], at = new Map(), shown = new Set(SN_ARR(view && view.nodeIds)), seen = id => !view || shown.has(id);
   SN_ARR(model && model.nodes).forEach(n => { if (SN_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
+  [...at.values()].forEach(n => SN_ARR(n.members).forEach(m => { if (SN_OBJ(m) && typeof m.id === 'string' && !at.has(m.id)) at.set(m.id, m); })); // a line may end on a port: named, not "nothing" (audit 17)
   const nm = x => (x ? `${snWord(x.type)} ${x.id}${x.label != null && x.label !== '' ? ` ("${x.label}")` : ''}` : 'nothing');
   const say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   SN_ARR(model && model.nodes).forEach((n, i) => { if (!SN_OBJ(n) || !seen(n.id)) return;

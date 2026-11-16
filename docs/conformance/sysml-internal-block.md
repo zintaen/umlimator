@@ -44,8 +44,8 @@ Rules (`src/sysml/internal.js`), each with a passing and a failing fixture in `t
 - **A subject holding no part** (a block with ports only) is framed at its card's size, which the composite type sizes for
   its ports: the header is cut to it.
 - **A connector joins members**, which the PDF's Lines table lists since 0.30.0 (`risks.md` R10) between the parts its
-  ends are drawn on, each part named by its id (`ebike.battery`), not its drawn name; the subject's rows also name each
-  connector with what it carries.
+  ends are drawn on, each part named by its id (`ebike.battery`), not its drawn name, with what it carries in its label
+  column ("DCPower, battery to controller"); the subject's rows do not list it again (audit 17).
 
 ## Left out
 
@@ -74,7 +74,7 @@ Measured on `examples/ebike-structure.json` (0.25.0); the PDF's text read back b
 | Item names | The line's label (one with no room left off) | Yes | Yes; whole in the subject's rows | |
 | The legend | No | No | Yes: connector, item flow, proxy and full port | |
 | Accessible names | Kept on nodes, lines' `<title>` removed | None | None | |
-| Tables | None | None | "Elements": the subject, its parts, references and values as rows, then each connector with what it carries ("Connector from power of battery to supply of controller, carrying DCPower from power to supply") | |
+| Tables | None | None | "Elements": the subject, its parts, references, values and ports as rows; "Lines": each connector, once, with what it carries ("DCPower, battery to controller") | |
 
 ## Accessibility
 
