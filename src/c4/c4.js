@@ -220,8 +220,9 @@ function c4Problems(model, view) {
   const ids = C4_ARR(view.nodeIds), S = C4_SUBJECT[K], subj = view.subject != null ? I.at.get(view.subject) : null;
   if (K === 'context' && !(subj && subj.type === S && ids.includes(view.subject)))
     say('warning', 'c4-subject', `${at}.subject`, [view.subject], view.subject == null ? 'a context view names the software system it is about as its subject' : `${q(view.subject)} is ${!subj || subj.type !== S ? 'not a software system' : 'not shown'}: a context view shows its software system`);
+  // none (its subject deleted, as composite structure's subject-shown, audit 18): a warning; one of the wrong kind: an error
   if ((K === 'container' || K === 'component') && !(subj && subj.type === S))
-    say('error', 'c4-subject', `${at}.subject`, [view.subject], `${view.subject == null ? 'the view has no subject' : `its subject ${q(view.subject)} is ${c4A(kind(view.subject))}`}: a ${K} view zooms into ${c4A(C4_WORD[S].toLowerCase())}`);
+    say(view.subject == null ? 'warning' : 'error', 'c4-subject', `${at}.subject`, [view.subject], `${view.subject == null ? 'the view has no subject' : `its subject ${q(view.subject)} is ${c4A(kind(view.subject))}`}: a ${K} view zooms into ${c4A(C4_WORD[S].toLowerCase())}`);
   ids.forEach((id, k) => { const x = I.at.get(id); if (!x || x.type === 'uml.Comment') return;
     const ok = C4_SHOWS[K].includes(x.type) && !(K === 'component' && x.type === 'c4.Component' && x.parent !== view.subject);
     if (!ok) say('error', 'c4-level', `${at}.nodeIds[${k}]`, [id], `${q(id)}, ${c4A(kind(id))}${x.type === 'c4.Component' && K === 'component' ? ` of ${q(x.parent)}` : ''}, is not drawn in a ${K} view`);

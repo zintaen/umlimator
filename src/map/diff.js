@@ -1,4 +1,4 @@
-import { TYPED, idTable } from '../core/registry.js';
+import { TYPED, idTable, diagramOf } from '../core/registry.js';
 import { andList, arrOf, rules } from './validate.js';
 
 /* ---------- change: diff (#66) and drift (#68) ----------
@@ -17,10 +17,14 @@ const lineKeys = list => { const seen = {}; return list.map(e => typeof e === 's
 const markOf = all => { const top = all.find(x => x.style === 'removed' || x.drift === 'undrawn') || all.find(x => x.style === 'added');
   if (top) return { style: top.style, strong: true };
   return { style: all.every(x => x.style === 'faded') ? 'faded' : (all.find(x => x.style && x.style !== 'faded') || {}).style }; };
-// the lines a view draws: its own list (a model line by id, or one of its own), else every model line between its cards and boxes
-const linesOf = (m, v) => { const all = Array.isArray(m.edges) ? m.edges.filter(Boolean) : [];
+// the lines a view draws: its own list (a model line by id, or one of its own), else every model line between its cards and boxes;
+// with ups (id -> the ids of its owners), also each line of a kind the view's type draws whose ends are members of them (a port, a
+// part, or a port on a part: audit 18)
+const linesOf = (m, v, ups) => { const all = Array.isArray(m.edges) ? m.edges.filter(Boolean) : [];
   if (Array.isArray(v.edges)) { const byId = new Map(all.filter(e => e.id != null).map(e => [String(e.id), e])); return v.edges.map(e => typeof e === 'string' ? byId.get(e) : e).filter(Boolean); }
-  const ids = new Set([...arrOf(v.nodeIds), ...arrOf(v.containers).map(c => c && c.id)]); return all.filter(e => ids.has(e.from) && ids.has(e.to)); }; // a list it is not is ignored, as validate() says
+  const ids = new Set([...arrOf(v.nodeIds), ...arrOf(v.containers).map(c => c && c.id)]), on = id => id != null && (ids.has(id) || ups(id).some(u => ids.has(u)));
+  const kinds = ups ? new Set(arrOf((diagramOf(v) || {}).lines).map(t => t && t.type)) : null, end = (e, k) => on(e[k]) || on((((e.props && e.props.ends) || {})[k] || {}).part);
+  return all.filter(e => ids.has(e.from) && ids.has(e.to) || ups && kinds.has(e.type) && end(e, 'from') && end(e, 'to')); }; // a list it is not is ignored, as validate() says
 
 // the box a card sits in on a view: the innermost of the boxes that list it
 const boxOf = (v, id) => { const cs = arrOf(v.containers).filter(Boolean), by = new Map(cs.map(c => [c.id, c]));
@@ -52,6 +56,7 @@ export function diff(before, after) {
   const keyed = l => { const k = lineKeys(l); return new Map(l.map((e, i) => [e, k[i]])); }, k1 = new Set(lineKeys(arr(after && after.edges)));
   const line0 = new Map([...keyed(arr(A.edges))].filter(([e, k]) => e && typeof e === 'object' && k1.has(k)).map(([e, k]) => [k, e])); // model lines in both, by their Ref name (an id-less one by its ends)
   const V0 = new Map(arr(A.views).filter(Boolean).map(v => [v.id, v])), V1 = new Set(arr(out.views).filter(Boolean).map(v => v.id));
+  const stepped = x => x.render === 'sequence' || (diagramOf(x) || {}).steps === true; // a view that numbers its lines by their order (a C4 dynamic view's steps, audit 18)
   const moved = [], touched = new Set(), viewSaid = []; // cards put into or taken out of a view; views whose cards the diff marks there; what only a view changes
   const views = arr(out.views).map(v => {
     const o = v && V0.get(v.id); if (!v) return v;
@@ -99,7 +104,7 @@ export function diff(before, after) {
     const s0 = shown(A, o), s1 = shown(out, v), hid = s0.filter(id => !s1.includes(id)), put = s1.filter(id => !s0.includes(id));
     const ln = id => { const e = line0.get(id); return `the line from ${(at.get(e.from) || {}).label || e.from} to ${(at.get(e.to) || {}).label || e.to}${e.label ? ` (${e.label})` : ''}`; };
     hid.forEach(id => { viewSaid.push(`takes ${ln(id)} out of the view ${vn}`); touched.add(v.id); }); put.forEach(id => says(`puts ${ln(id)}`));
-    if (v.render === 'sequence' && o.render === 'sequence' && s0.filter(id => s1.includes(id)).join('\n') !== s1.filter(id => s0.includes(id)).join('\n')) says('reorders the steps');
+    if (stepped(v) && stepped(o) && s0.filter(id => s1.includes(id)).join('\n') !== s1.filter(id => s0.includes(id)).join('\n')) says('reorders the steps');
     if (Array.isArray(v.edges)) { const back = new Map([...goneLines, ...hid.map(id => [id, line(line0.get(id), 'removed')])]);
       w.edges = mark(arr(o.edges), v.edges, line, lineKeys, back).map(e => typeof e === 'string' && put.includes(e) ? line(out.edges.find(x => x && String(x.id) === e), 'added') : e);
       hid.forEach(id => { if (!w.edges.includes(back.get(id))) w.edges.push(back.get(id)); }); } // hidden from a view that listed none: at the end
@@ -139,7 +144,14 @@ export function diff(before, after) {
   // the summary: views, then cards, then lines, in model order; a line to a card that came or went goes with the card
   const cards = [...out.nodes, ...views.flatMap(v => arr(v && v.nodes))].filter(Boolean);
   const named = new Map([...views.flatMap(v => arr(v && v.containers)), ...cards, ...[...lost.values()].map(([y]) => y), ...[...lost.values()].map(([, , u]) => (have.get(u) || [])[0])].filter(Boolean).map(n => [n.id, n]));
-  const name = id => String((named.get(id) || {}).label || id), cardHow = new Map([...cards.filter(n => how.has(n)).map(n => [n.id, how.get(n)]), ...[...lost.keys()].map(id => [id, 'removed'])]);
+  const name = id => String((named.get(id) || {}).label || id);
+  // a line's end on a member, as describe() names it (audit 18): a port by its owner ("orders of Shop API"), an end through a part by
+  // that part ("charge of battery"); else a member by its own name
+  const ups = id => { const s = []; for (let t = id, r; (r = have.get(t) || at0.get(t)) && typeof r[1] === 'string' && !s.includes(r[1]);) s.push(t = r[1]); return s; };
+  const endName = (e, k) => { const id = e[k], r = have.get(id) || at0.get(id), part = (((e.props && e.props.ends) || {})[k] || {}).part, own = r && r[1];
+    if (!r || typeof own !== 'string') return name(id); const m = r[0], word = x => String(x.label ?? x.id), pr = part != null && (have.get(part) || at0.get(part));
+    return word(m) + (part != null && part !== id ? ' of ' + (pr ? word(pr[0]) : name(part)) : /\.Port$/.test(String(m.type)) ? ' of ' + name(own) : ''); };
+  const cardHow = new Map([...cards.filter(n => how.has(n)).map(n => [n.id, how.get(n)]), ...[...lost.keys()].map(id => [id, 'removed'])]);
   const lines = [...new Set([...out.edges.filter(e => e && typeof e === 'object'), ...views.flatMap(v => arr(v && v.edges).filter(e => e && typeof e === 'object'))])]; // a view that dropped its list holds the model's lines themselves
   const diffKeys = ([o, x]) => [...new Set([...Object.keys(o), ...Object.keys(x)])].filter(k => canon(o[k]) !== canon(x[k]));
   views.forEach(v => { if (v && !V0.has(v.id)) said.push(`adds the view ${v.title || v.id}`); });
@@ -155,7 +167,7 @@ export function diff(before, after) {
       said.push((keys.includes('label') ? `renames ${o.label || o.id} to ${x.label || x.id}` : `changes ${name(n.id)}`) + (rest.length ? ` (${rest.join(', ')})` : '')); } });
   lines.forEach(e => { const h = how.get(e), p = (e.props && e.props.ends) || {}; // an end on a part: the part counts as its card
     if (!h || h !== 'changed' && [e.from, e.to, (p.from || {}).part, (p.to || {}).part].some(id => id != null && cardHow.get(id) === h)) return;
-    const ends = e.from == null && e.to == null ? null : `${name(e.from)} to ${name(e.to)}`, lab = e.label ? ` (${e.label})` : '', it = ends ? 'the line from ' + ends : e.label ?? e.id; // an item with no ends (an interaction use) by its name
+    const ends = e.from == null && e.to == null ? null : `${endName(e, 'from')} to ${endName(e, 'to')}`, lab = e.label ? ` (${e.label})` : '', it = ends ? 'the line from ' + ends : e.label ?? e.id; // an item with no ends (an interaction use) by its name
     if (h === 'added') said.push(ends ? `adds a line from ${ends}${lab}` : `adds ${it}`);
     if (h === 'removed') said.push(ends ? `removes ${it}${lab}` : `removes ${it}`);
     if (h === 'changed') { const [o, x] = was.get(e), t = TYPED.diff && TYPED.diff(o, x, name, [A, out]); if (t) return said.push(...t);
@@ -183,7 +195,7 @@ export function diff(before, after) {
       ownIn(y, have, up, i); if (v) back.push(y.parent); } }
 
   // the views that show a change: a card or line the diff marks, or a card it put in or took out
-  const changed = views.filter(v => v && (touched.has(v.id) || arr(v.nodeIds).some(id => cardHow.has(id)) || linesOf(out, v).some(e => how.has(e)))).map(v => v.id);
+  const changed = views.filter(v => v && (touched.has(v.id) || arr(v.nodeIds).some(id => cardHow.has(id)) || linesOf(out, v, ups).some(e => how.has(e)))).map(v => v.id);
   return { model: out, summary: said, views: changed };
 }
 

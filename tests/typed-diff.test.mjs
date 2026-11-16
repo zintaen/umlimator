@@ -113,3 +113,27 @@ test('audit 13: a deleted part or port comes back removed in its owner, so its c
   const sc = load('examples/sales-classes.json'), a = all.diff(sc, all.apply(sc, { op: 'delete', id: 'customer.email' }));
   assert.deepEqual([a.summary, a.model.nodes.find(n => n.id === 'customer').members.some(x => x.id === 'customer.email')], [['removes email from Customer'], false]);
 });
+
+test('audit 18: a line that ends on a port or a part names the view that draws it, and its ends as describe() does', () => {
+  const cases = [['examples/bookshop-components.json', 'api-provides-orders', 'components', 'the line from orders of Shop API to Orders'],
+    ['examples/bookshop-components.json', 'orders-to-checkout', 'components', 'the line from orders of Shop API to orders of Checkout'],
+    ['examples/ebike-structure.json', 'battery-dock-charge', 'inside-ebike', 'the line from charge of battery to charge of dock'],
+    ['examples/order-service-structure.json', 'checkout-to-orders', 'internals', 'the line from checkout to orders'],
+    ['examples/order-service-structure.json', 'api-to-checkout', 'internals', 'the line from api of OrderService to requests of checkout'],
+    ['examples/ebike-range.json', 'bind-usable-eco', 'range-analysis', 'the line from usable of usable to energy of eco']];
+  for (const [f, id, view, it] of cases) { const m = load(f);
+    const del = all.diff(m, all.apply(m, { op: 'delete', id })), set = all.diff(m, all.apply(m, { op: 'set', id, path: 'label', value: 'Zq' }));
+    assert.deepEqual([del.summary, del.views], [[`removes ${it}`], [view]], `${f} ${id}: delete`);
+    assert.deepEqual([set.summary, set.views], [[`changes ${it} (label - → Zq)`], [view]], `${f} ${id}: set`); }
+  // a view that does not draw that kind of line is not named: the atlas's requirement and parametric views of the e-bike
+  const at = load('examples/ebike-atlas.json');
+  assert.deepEqual(all.diff(at, all.apply(at, { op: 'delete', id: 'battery-dock-charge' })).views, ['inside-ebike']);
+});
+
+test('audit 18: a C4 dynamic view whose steps are reordered says so and names the view; its steps renumbered are drawn', () => {
+  const c4 = load('examples/bookshop-c4.json'), v = c4.views.find(x => x.diagram === 'c4.dynamic');
+  const d = all.diff(c4, all.apply(c4, { op: 'move', id: v.edges[0], view: v.id, index: 1 }));
+  assert.deepEqual([d.summary, d.views], [[`reorders the steps in the view ${v.title}`], [v.id]]);
+  const same = all.diff(c4, all.apply(c4, { op: 'set', view: v.id, path: 'title', value: 'Z' }));
+  assert.ok(!same.summary.some(s => /reorders/.test(s)), 'no reorder said when the order stays');
+});

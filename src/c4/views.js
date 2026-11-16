@@ -152,6 +152,7 @@ const DYN_DEF = { ...C4_DEF,
   // the PDF's lines table: a step's number before its text, as drawn
   text: (model, view, id) => { const t = C4_DEF.text(model, view, id), s = dynSteps(model, view).find(x => x.e.id === id); return s ? [String(s.k), t].filter(V_HAS).join(' · ') : t; },
   edits: { ...C4_DEF.edits, add: dynAdd, connect: dynConnect, moveTo: dynMoveTo, rename: dynRename },
+  steps: true, // its lines are numbered by their order in view.edges: diff() says a reorder (audit 18)
 };
 
 /* ---- the deployment view (§7.5.3) ---- */

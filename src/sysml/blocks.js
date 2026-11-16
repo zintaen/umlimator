@@ -108,7 +108,8 @@ function bdProblems(model) {
       if (BD_CLS.includes(n.type) && BD_HAS(m.label)) { if (seen.has(k)) say('member-names', path, [n.id, seen.get(k), m.id], `${q(n)} has two members named "${m.label}" (${seen.get(k)}, ${m.id})`); else seen.set(k, m.id); }
       if ((m.type === 'sysml.PartProperty' || m.type === 'sysml.ReferenceProperty') && T && !T.includes('sysml.Block')) say('part-type', path, ids, `${bdMWord(m)} ${of} is ${typed}, a ${is(T)}, not a block`, 'warning');
       if (m.type === 'sysml.ValueProperty' && T && !T.includes('sysml.ValueType') && !BD_PRIM.includes(String(p.valueType))) say('value-type', path, ids, `value ${of} is ${typed}, a ${is(T)}, not a value type`, 'warning');
-      if (m.type === 'sysml.ConstraintProperty' && !(T && T.includes('sysml.ConstraintBlock'))) say('constraint-type', path, ids, `constraint property ${of} is ${BD_HAS(p.valueType) ? `${typed}, ${T ? 'a ' + is(T) : 'which names nothing'}` : 'typed by nothing'}, not a constraint block`);
+      // a type name that names nothing (its constraint block deleted, as a part's block may be): a warning (audit 18)
+      if (m.type === 'sysml.ConstraintProperty' && !(T && T.includes('sysml.ConstraintBlock'))) say('constraint-type', path, ids, `constraint property ${of} is ${BD_HAS(p.valueType) ? `${typed}, ${T ? 'a ' + is(T) : 'which names nothing'}` : 'typed by nothing'}, not a constraint block`, BD_HAS(p.valueType) && !T ? 'warning' : 'error');
       if (m.type === 'sysml.FlowProperty' && !['in', 'out', 'inout'].includes(p.direction)) say('flow-direction', path, ids, `flow property ${of} has direction ${JSON.stringify(p.direction ?? null)}, not in, out or inout`);
       if (m.type === 'sysml.Port') { const ib = T && T.includes('sysml.InterfaceBlock');
         if (BD_HAS(p.kind) && !Object.hasOwn(BD_KIND, p.kind)) say('port-kind', path, ids, `port ${of} has kind ${JSON.stringify(p.kind)}, not proxy or full`);
