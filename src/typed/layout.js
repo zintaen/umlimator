@@ -186,7 +186,7 @@ TYPED.rows = (dg, nodes, pitch, NH, RG) => {
 // A view laid out down (turned): the labels of lines between one pair are wider than the 16 px between the lines, so the
 // lines fan out in the gap between the pair's columns, each to a lane of its own that holds its label. Above the middle, the
 // outer line turns nearer each node, so none crosses another; a group the gap or another node leaves no room for goes to the router
-TYPED.fan = (free, { simplify, through, STUB, SEP }) => { const pairs = new Map(), lr = e => e.fs === 'R' ? [e.p1, e.p2] : [e.p2, e.p1];
+TYPED.fan = (free, { simplify, through, STUB, SEP, families = [] }) => { const pairs = new Map(), lr = e => e.fs === 'R' ? [e.p1, e.p2] : [e.p2, e.p1];
   free.forEach(e => { const [l, r] = e.fs === 'R' ? [e.s, e.t] : [e.t, e.s], k = l.id + '\u0001' + r.id;
     if (/^(RL|LR)$/.test(e.fs + e.ts) && l.x + l.w < r.x) pairs.set(k, [...(pairs.get(k) || []), e]); });
   pairs.forEach(list => { if (list.length < 2 || !list.some(e => e.label || e.step != null)) return;
@@ -203,7 +203,19 @@ TYPED.fan = (free, { simplify, through, STUB, SEP }) => { const pairs = new Map(
     // each lane keeps 4 px off every other card: the router's test lets a line run 2 px inside one, and a pair's second lane,
     // pushed out by the first's label, ran 1 px inside the card beyond the gap for its whole height (audit 20)
     if (list.some((e, i) => through(pts[i], e, -4))) return;
+    // and each lane keeps off every box (a C4 boundary, a deployment node): it neither runs along a border (8 px, 40 px long:
+    // check()'s test) nor crosses one, but where the box holds one end of it (audit 21)
+    if (list.some((e, i) => families.some(f => fanBox(pts[i], f, e)))) return;
     list.forEach((e, i) => { Object.assign(e, { [OWN_ROUTE]: 'fan', fixed: pts[i], pts: pts[i], stubs: [], how: 'fan' }); free.splice(free.indexOf(e), 1); }); }); };
+
+// a fanned path's trouble with box f: a run along one of its borders, or a crossing of one where f holds neither end or both
+const fanIn = (f, n) => n.x >= f.x && n.y >= f.y && n.x + n.w <= f.x + f.w && n.y + n.h <= f.y + f.h;
+const fanBox = (pts, f, e) => pts.slice(1).some((b, i) => { const a = pts[i], v = a[0] === b[0], c = v ? a[0] : a[1], p = v ? [a[1], b[1]] : [a[0], b[0]];
+  const lo = Math.max(Math.min(...p), v ? f.y : f.x), hi = Math.min(Math.max(...p), v ? f.y + f.h : f.x + f.w);
+  if (hi - lo > 40 && (v ? [f.x, f.x + f.w] : [f.y, f.y + f.h]).some(u => Math.abs(c - u) < 8)) return true;
+  if (fanIn(f, e.s) !== fanIn(f, e.t)) return false;
+  const inA = a[0] > f.x && a[0] < f.x + f.w && a[1] > f.y && a[1] < f.y + f.h, inB = b[0] > f.x && b[0] < f.x + f.w && b[1] > f.y && b[1] < f.y + f.h;
+  return inA !== inB || (!inA && (v ? c > f.x && c < f.x + f.w && Math.min(...p) < f.y && Math.max(...p) > f.y + f.h : c > f.y && c < f.y + f.h && Math.min(...p) < f.x && Math.max(...p) > f.x + f.w)); });
 
 // a type's lines, each with its path: the model's, then those written inline in the edges of the views keep(view) takes (model.md)
 function typedLines(model, keep) {

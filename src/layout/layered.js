@@ -410,7 +410,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   });
   edges.filter(e => e.under > 0).forEach(e => { const P = e.fixed; e.pts = e.fixed = [...P.slice(0, 4), [P[3][0], e.p2[1]], e.p2]; });
   const corners = LP ? LP.route() : []; // a loop's corners: obstacles to the other routes
-  if (dg.typed && dg.turned) TYPED.fan(free, { simplify, through, STUB, SEP }); // a view laid out down: lines between one pair fan out (src/typed/layout.js)
+  if (dg.typed && dg.turned) TYPED.fan(free, { simplify, through, STUB, SEP, families }); // a view laid out down: lines between one pair fan out (src/typed/layout.js)
   const BEND = map ? 60 : 26, CROSS = 900; // maps: few bends
   const OUT = { R: [1, 0], L: [-1, 0], T: [0, -1], B: [0, 1] };
   const nodeRects = nodes.map(n => ({ x: n.x, y: n.y, w: n.w, h: n.h }));

@@ -295,3 +295,22 @@ test('audit 20: a pair\'s lines fanned out in a view laid out down keep off ever
   for (const e of g.edges) for (const n of g.nodes) if (n.id !== e.from && n.id !== e.to)
     assert.ok(!e.pts.some((p, k) => k && Math.max(p[0], e.pts[k - 1][0]) > n.x && Math.min(p[0], e.pts[k - 1][0]) < n.x + n.w && Math.max(p[1], e.pts[k - 1][1]) > n.y && Math.min(p[1], e.pts[k - 1][1]) < n.y + n.h), `${e.id} through ${n.id}`);
 });
+
+test('audit 21: a pair\'s lines fanned out in a C4 view laid out down keep off a boundary\'s or deployment node\'s border, and stay in the node that holds both ends', () => {
+  const P = (id, label) => ({ id, type: 'c4.Person', label, props: { description: 'A user of things' } }), X = (id, label) => ({ id, type: 'c4.SoftwareSystem', label, props: { external: true, description: 'Some system outside' } });
+  const C = (id, label, shape) => ({ id, type: 'c4.Container', parent: 'S', label, props: { technology: 'Python', description: 'Does work in the shop', shape } }), S = { id: 'S', type: 'c4.SoftwareSystem', label: 'Shop', props: { description: 'The shop' } };
+  const R = (id, from, to, what) => ({ id, type: 'c4.Relationship', from, to, label: 'Uses ' + what, props: { technology: 'HTTPS' } });
+  const view = (diagram, nodeIds, more = {}) => [{ id: 'v', diagram, title: 't', nodeIds, direction: 'down', ...more }];
+  const models = [
+    { schemaVersion: 2, nodes: [S, P('n0', 'Person 0'), C('n1', 'Container 1', 'cylinder'), P('n3', 'Person 3'), P('n4', 'Person 4'), C('n5', 'Container 5', 'box')],
+      edges: [R('r2', 'n5', 'n0', 'review'), R('r3', 'n5', 'n4', 'shipment'), R('r4', 'n5', 'n0', 'supplier'), R('r7', 'n1', 'n3', 'author')], views: view('c4.container', ['S', 'n0', 'n1', 'n3', 'n4', 'n5'], { subject: 'S' }) },
+    { schemaVersion: 2, nodes: [S, X('n2', 'Ext 2'), C('n3', 'Container 3', 'cylinder'), C('n4', 'Container 4', 'cylinder'), X('n8', 'Ext 8'), C('n9', 'Container 9', 'browser')],
+      edges: [R('r1', 'n9', 'n8', 'supplier'), R('r3', 'n9', 'n2', 'customer'), R('r5', 'n9', 'n8', 'refund')], views: view('c4.container', ['S', 'n2', 'n3', 'n4', 'n8', 'n9'], { subject: 'S' }) },
+    { schemaVersion: 2, nodes: [{ id: 'd1', type: 'c4.DeploymentNode', label: 'Node 1', props: { technology: 'Ubuntu' } }, { id: 'i0', type: 'c4.ContainerInstance', parent: 'd1', label: 'x', props: { container: 'c3' } }, { id: 'i1', type: 'c4.ContainerInstance', parent: 'd1', label: 'x', props: { container: 'c2' } }],
+      edges: [R('r1', 'i0', 'i1', 'stock'), R('r3', 'i1', 'i0', 'payment'), R('r5', 'i0', 'i1', 'address')], views: view('c4.deployment', ['d1', 'i0', 'i1']) }];
+  for (const m of models) {
+    assert.deepEqual(check(m, 'v').map(i => i.message).filter(s => /along the border/.test(s)), [], m.views[0].diagram);
+    const g = layout(m, 'v'), d1 = g.families.find(f => f.id === 'd1');
+    if (d1) for (const e of g.edges) assert.ok(e.pts.every(([x, y]) => x > d1.x && x < d1.x + d1.w && y > d1.y && y < d1.y + d1.h), `${e.id} stays in the node that holds both its ends`);
+  }
+});
