@@ -1,4 +1,4 @@
-import { lineNames, listOf, typedProblems, versionProblem } from '../core/model.js';
+import { lineNames, listOf, typedProblems, unreadable, versionProblem } from '../core/model.js';
 import { TYPED, diagramOf } from '../core/registry.js';
 import { SHAPE_NAMES, shapeOf } from '../draw/shapes.js';
 import { boxHolds, mapContext } from './context.js';
@@ -10,6 +10,8 @@ const WIRE_KINDS = ['calls', 'feeds', 'triggers', 'state', 'guard'], SIDES = ['l
  *  a side that is not one, a view opened before the host has loaded it, a line to itself, which is not drawn). Each says where: `views[2].nodeIds[4]`. */
 export function validate(model) {
   const out = [], err = (path, message) => out.push({ level: 'error', path, message }), warn = (path, message) => out.push({ level: 'warning', path, message });
+  // an object with a toString key is no text (String() throws on it): said, and the rest checked without it (audit 19)
+  const read = unreadable(model); model = read.model; read.paths.forEach(at => err(at, 'an object with a "toString" key, which no text is read from: left out'));
   const arr = x => (Array.isArray(x) ? x : []), m = model && typeof model === 'object' ? model : {}, views = arr(m.views).filter(v => v && typeof v === 'object');
   const ver = versionProblem(m); if (ver) (ver.level === 'error' ? err : warn)('schemaVersion', ver.message); // a model this release cannot read is drawn wrongly: say so (F6)
   if (!Array.isArray(m.nodes)) err('nodes', 'the model needs a list of cards');
@@ -42,7 +44,7 @@ export function validate(model) {
   if (m.root != null && !vids.has(m.root)) err('root', `root "${m.root}" is not a view`);
   const later = (x, at) => { if (x && x.opensView && !vids.has(x.opensView)) warn(at + '.opensView', `opens "${x.opensView}", a view the model does not have: fine if the host loads it when it is opened`); };
   arr(m.nodes).forEach((n, i) => later(n, `nodes[${i}]`));
-  views.forEach((v, i) => { gone(v, `views[${i}].`); ['nodeIds', 'containers', 'intake'].forEach(k => list(v, `views[${i}]`, k)); });
+  views.forEach((v, i) => { gone(v, `views[${i}].`); ['nodeIds', 'containers', 'intake', 'stepIds', 'tour', 'browserOrder'].forEach(k => list(v, `views[${i}]`, k)); });
   // a frontend card is drawn as a browser: a person's icon on one says the model means a person (0.15.0); not said of a card
   // only typed views hold, which keep their own notation (0.21.0)
   const typedOnly = id => { const vs = views.filter(v => arr(v.nodeIds).includes(id)); return vs.length && vs.every(v => typedView(v) && diagramOf(v)); };

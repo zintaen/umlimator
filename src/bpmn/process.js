@@ -294,7 +294,7 @@ const BZ_RULES = {
   'gateway-flows': 'a gateway splits or joins; a diverging exclusive gateway names each way out',
   'lane-owner': 'a lane is in a lane of its pool or none; a flow node in a lane, pool or sub-process; data in a pool or none',
   'in-lane': 'in a pool with lanes, every flow node is in one',
-  'data-ends': 'a data association joins data with an activity or event in BPMN\'s direction; an association has a text annotation at one end',
+  'data-ends': 'a data association joins data with an activity or event of its own pool in BPMN\'s direction; an association has a text annotation at one end',
   'group-ref': 'every categoryValueRef names a group',
   'opens-view': 'a collapsed sub-process or a call activity opens a BPMN view, the sub-process\'s own',
 };
@@ -320,7 +320,8 @@ function bzProblems(model, view) {
     if (e.type === BZ_DATA_ASSOC) { const d = [e.from, e.to].filter(x => BZ_DATA.includes(ty(x))), o = [e.from, e.to].find(x => !BZ_DATA.includes(ty(x)));
       if (d.length !== 1 || !(BZ_ACT.includes(ty(o)) || BZ_EVENTS.includes(ty(o)))) say('error', 'data-ends', id, ids, `${id} joins ${q(e.from)} and ${q(e.to)}: a data association joins a data object or store with an activity or an event`);
       else if (BZ_CATCH.includes(ty(o)) && o === e.to) say('error', 'data-ends', id, ids, `${id} runs from ${q(e.from)} to ${q(o)}, a catch event, which only gives data: draw it from the event to the data`);
-      else if (['bpmn.EndEvent', 'bpmn.IntermediateThrowEvent'].includes(ty(o)) && o === e.from) say('error', 'data-ends', id, ids, `${id} runs from ${q(o)}, a throw event, which only takes data: draw it from the data to the event`); }
+      else if (['bpmn.EndEvent', 'bpmn.IntermediateThrowEvent'].includes(ty(o)) && o === e.from) say('error', 'data-ends', id, ids, `${id} runs from ${q(o)}, a throw event, which only takes data: draw it from the data to the event`);
+      else if (I.poolOf(d[0]) != null && I.poolOf(o) != null && I.poolOf(d[0]) !== I.poolOf(o)) say('error', 'data-ends', id, ids, `${id} joins ${q(d[0])}, data of ${q(I.poolOf(d[0]))}, and ${q(o)} in ${q(I.poolOf(o))}: data stays in the pool (process) of what it is associated with`); }
     if (e.type === BZ_ASSOC && ty(e.from) !== BZ_NOTE && ty(e.to) !== BZ_NOTE) say('error', 'data-ends', id, ids, `${id} joins ${q(e.from)} and ${q(e.to)}: an association has a text annotation at one end`); });
   I.L.forEach(({ x, pool }, id) => { if (seen(id) && x.parent != null && !(I.L.has(x.parent) && I.L.get(x.parent).pool === pool && x.parent !== id))
     say('error', 'lane-owner', id, [id, x.parent], `lane ${q(id)}'s parent ${q(x.parent)} is not a lane of its pool`, '.parent'); });
@@ -397,6 +398,7 @@ function bzConnect(model, view, from, to) {
     if (!(BZ_ACT.includes(t) || BZ_EVENTS.includes(t))) return { error: 'Data joins an activity or an event' };
     if (BZ_CATCH.includes(t) && o === to) return { error: `${bzA(w(o), true)} only gives data: draw the line from the event to the data` };
     if (['bpmn.EndEvent', 'bpmn.IntermediateThrowEvent'].includes(t) && o === from) return { error: `${bzA(w(o), true)} only takes data: draw the line from the data to the event` };
+    if (I.poolOf(o === to ? from : to) !== I.poolOf(o)) return { error: 'Data stays in the pool of what it is associated with' }; // as a move refuses it (bzReown, audit 19)
     return add(BZ_DATA_ASSOC); }
   const pa = I.poolOf(from), pb = I.poolOf(to);
   if (![...BZ_FLOW, BZ_POOL].includes(a) || ![...BZ_FLOW, BZ_POOL].includes(b)) return { error: `${bzA(!BZ_FLOW.includes(a) && a !== BZ_POOL ? w(from) : w(to), true)} joins no flow` };
@@ -447,12 +449,15 @@ function bzReown(model, view, I, id, dest) {
   const L = view.layout;
   return bzGuard(model, view, [{ op: 'reparent', id, parent: dest }, ...bes.flatMap(b => bzOwnerTo(I, b, dest)), ...(BZ_OBJ(L) && Object.hasOwn(L, id) ? [{ op: 'set', view: view.id, path: ['layout', id], value: undefined }] : [])]);
 }
-// owner: the Owner field's choice (parent, null for none), moved as bzReown moves a drop; a boundary event, a lane or anything
-// else the field offers is left to the default
+// owner: the Owner field's choice (parent, null for none), moved as bzReown moves a drop; a boundary event moves with its
+// activity, so another owner than its activity's is refused (audit 19: no field is offered, a host's call is said); a lane or
+// anything else the field offers is left to the default
 function bzOwner(model, view, id, parent) {
   if (!BZ_OBJ(view)) return null;
-  const I = bzIndex(model), x = I.el(id); if (!x || I.L.has(id) || !(BZ_FLOW.includes(x.type) || BZ_DATA.includes(x.type)) || x.type === BZ_BE) return null;
+  const I = bzIndex(model), x = I.el(id); if (!x || I.L.has(id) || !(BZ_FLOW.includes(x.type) || BZ_DATA.includes(x.type))) return null;
   if ((parent ?? null) === (x.parent ?? null)) return [];
+  if (x.type === BZ_BE) { const a = bzProps(x).attachedTo, act = I.el(a);
+    return act && (act.parent ?? null) === (parent ?? null) ? null : { error: `A boundary event moves with its activity${act ? `: move ${bzLabel(act)}` : ''}` }; }
   if (parent != null && !I.el(parent)) return { error: `No owner ${JSON.stringify(parent)}` };
   return bzReown(model, view, I, id, parent ?? null);
 }
@@ -530,9 +535,10 @@ function bzKey(model, view, ids, key) {
     const k = now.indexOf(id) + 1; return [{ op: 'set', view: view.id, path: 'nodeIds', value: [...now.slice(0, k), ...[...kids, ...bes].filter(n => !now.includes(n)), ...now.slice(k)] }]; }
   return null;
 }
-// the Owner field: a flow node's lanes, pools and sub-processes; data's pools. A lane's owner is not offered: a member moves by Delete
+// the Owner field: a flow node's lanes, pools and sub-processes; data's pools. A lane's owner is not offered: a member moves by Delete;
+// nor is a boundary event's, which lies where its activity does
 function bzOwners(model, x) {
-  if (!BZ_OBJ(x) || x.from != null || !(BZ_FLOW.includes(x.type) || BZ_DATA.includes(x.type))) return null;
+  if (!BZ_OBJ(x) || x.from != null || !(BZ_FLOW.includes(x.type) || BZ_DATA.includes(x.type)) || x.type === BZ_BE) return null; // a boundary event moves with its activity: no field (audit 19)
   const I = bzIndex(model), full = id => [...I.chain(id).reverse(), id].map(p => bzLabel(I.el(p))).join('::'), data = BZ_DATA.includes(x.type);
   // not offered (audit 18), as the drop refuses them: with sequence flows (its own or its boundary events'), an owner at another
   // process level (another pool, in or out of a sub-process); a flow node, a pool with lanes (in-lane). bzOwner guards the rest

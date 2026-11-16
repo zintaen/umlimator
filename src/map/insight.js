@@ -1,3 +1,4 @@
+import { unreadable } from '../core/model.js';
 import { diagramOf } from '../core/registry.js';
 import { edgeRefIds } from './api.js';
 import { mapContext } from './context.js';
@@ -24,7 +25,7 @@ const walkFrom = (edges, start, back) => { const seen = new Set([start]); // bre
 /** Every card and line on a path from one card to another, following lines forward: the cards both reachable from `from`
  *  and leading to `to`, and the lines between them. [] when no path joins them. */
 export function paths(model, viewId, from, to) {
-  const T = viewType(model, viewId); if (T && T.paths) return T.paths(model, viewId, from, to); // a type's own walk (a sequence's, in time)
+  const T = viewType(model, viewId); if (T && T.paths) return T.paths(unreadable(model).model, viewId, from, to); // a type's own walk (a sequence's, in time)
   const { ids, edges } = lineGraph(model, viewId);
   if (!ids.includes(from) || !ids.includes(to)) return [];
   const F = walkFrom(edges, from), B = walkFrom(edges, to, true), on = id => F.has(id) && B.has(id);
@@ -49,7 +50,7 @@ export function reach(model, viewId, from, options = {}) {
 /** A view in plain sentences: its cards and their kinds, its boxes, what each card's lines do (in run order on a sequence
  *  view), and the cards with no line. The same model gives the same words: a text alternative, docs, or an AI's context. */
 export function describe(model, viewId) {
-  const T = viewType(model, viewId); if (T && T.describe) return T.describe(model, viewId); // a type's own words (1.9)
+  const T = viewType(model, viewId); if (T && T.describe) return T.describe(unreadable(model).model, viewId); // a type's own words (1.9), read as mapContext reads them (audit 19)
   const { ctx, v, ids, edges } = lineGraph(model, viewId), boxes = (v.containers || []).filter(c => c && c.id);
   const name = id => ctx.N[id] ? ctx.nodeIn(id, viewId).label || id : (boxes.find(c => c.id === id) || {}).label || id;
   const list = xs => xs.length < 3 ? xs.join(' and ') : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1];

@@ -180,7 +180,7 @@ function clProblems(F, model) {
   const q = id => JSON.stringify(I.at.has(id) ? clName(I.at.get(id)) : String(id)), given = clGiven(F, model), isG = id => (I.at.get(id) || {}).type === F.group;
   CL_ARR(model && model.nodes).forEach((n, i) => { if (!CL_OBJ(n) || I.at.get(n.id) !== n) return; const path = `nodes[${i}]`, up = n.parent != null && I.at.get(n.parent);
     if (n.type === F.group) { const k = clKindOf(F, n);
-      if (!k) say('error', 'group-kind', `${path}.props.${F.key}`, [n.id], (clProps(n)[F.key] == null ? `${q(n.id)} has no ${F.key}: it is one of ${Object.keys(F.kinds).join(', ')}` : `${q(n.id)}'s ${F.key} ${JSON.stringify(clProps(n)[F.key])} is none of ${Object.keys(F.kinds).join(', ')}`));
+      if (!k) say('error', 'group-kind', `${path}.props.${F.key}`, [n.id], (clProps(n)[F.key] == null ? `${q(n.id)} has no ${F.key}: give it one of ${Object.keys(F.kinds).join(', ')}` : `${q(n.id)}'s ${F.key} ${JSON.stringify(clProps(n)[F.key])} is none of ${Object.keys(F.kinds).join(', ')}`));
       else if (up && k !== 'generic') { const pk = isG(up.id) ? clKindOf(F, up) : null;
         if (!isG(up.id)) say('warning', 'group-nesting', `${path}.parent`, [n.id, up.id], `${q(n.id)}, ${clA(F.kinds[k])} group, sits in ${q(up.id)}, which is no group`);
         else if (pk && pk !== 'generic' && !F.sits[k].includes(pk)) say('warning', 'group-nesting', `${path}.parent`, [n.id, up.id], `${q(n.id)}, ${clA(F.kinds[k])} group, sits in ${q(up.id)}, ${clA(F.kinds[pk])} group: ${F.sits[k].length ? `it sits in ${F.sits[k].map(x => F.kinds[x]).join(' or ')}` : 'it sits in no group'}`); } }
@@ -216,6 +216,19 @@ function clConnect(F, model, view, from, to) {
   const g = from === to || I.holds(from, to) ? from : to;
   return { error: `A line cannot join ${clThe(clKindWord(F, I.at.get(g)))} and what it holds` };
 }
+// a new owner for id that would put it, or what it holds, inside a group its line joins (line-inside): that group, else null (audit 19)
+function clBlocks(F, I, id, parent) {
+  if (parent == null || !I.at.has(id) || !I.at.has(parent)) return null;
+  const up = new Set([parent, ...I.chain(parent)]); if (up.has(id)) return null; // inside itself: apply() refuses it
+  const mine = x => x === id || I.holds(id, x), e = I.E.find(e => e.type === F.line[0] && ((mine(e.from) && up.has(e.to)) || (mine(e.to) && up.has(e.from))));
+  return e ? (mine(e.from) && up.has(e.to) ? e.to : e.from) : null;
+}
+// owner: the Owner field's choice, and a drop into another group's box (src/typed/edit.js asks it where a type has no moveTo):
+// refused into a group a line of it (or of what it holds) joins, in connect's words; else the default reparent
+function clOwner(F, model, view, id, parent) {
+  const I = clIndex(model), g = clBlocks(F, I, id, parent);
+  return g == null ? null : { error: `A line cannot join ${clThe(clKindWord(F, I.at.get(g)))} and what it holds` };
+}
 // add: the palette's entry (a group's kind in its props) into the group selected, else at the top
 function clAdd(F, model, view, entry, label, at) {
   const I = clIndex(model), sel = CL_ARR(at && at.sel).find(id => (I.at.get(id) || {}).type === F.group);
@@ -247,8 +260,9 @@ function clDef(pack, F) {
     layout: clGeo(F),
     draw: clDraw,
     boxes: (model, view) => clPic(F, model, view).boxes,
-    // the Owner field: every group of the family, its kind in brackets
-    owners: (model, x) => (mine(x) && x.from == null ? CL_ARR(model.nodes).filter(n => CL_OBJ(n) && n.type === F.group).map(n => ({ id: n.id, label: `${clName(n)} [${clKindWord(F, n)}]` })) : null),
+    // the Owner field: every group of the family, its kind in brackets, but one a line of it would join it to (line-inside, audit 19)
+    owners: (model, x) => { if (!(mine(x) && x.from == null)) return null; const I = clIndex(model);
+      return CL_ARR(model.nodes).filter(n => CL_OBJ(n) && n.type === F.group && clBlocks(F, I, x.id, n.id) == null).map(n => ({ id: n.id, label: `${clName(n)} [${clKindWord(F, n)}]` })); },
     validate: model => clProblems(F, model),
     rules: CL_RULES,
     describe: (model, viewId) => clDescribe(F, model, viewId),
@@ -257,7 +271,8 @@ function clDef(pack, F) {
     rows: (model, view, id) => { const I = clIndex(model), x = I.at.get(id); if (!x || !Object.hasOwn(F.items, x.type)) return null;
       const ic = clIcon(F, model, x), up = x.parent != null && I.at.get(x.parent);
       return [...(ic ? [ic.name, `icon ${ic.id}`] : ['no icon']), ...(up ? [`in ${clName(up)} [${clWord(F, up)}]`] : [])]; },
-    edits: { connect: (m, v, from, to) => clConnect(F, m, v, from, to), add: (m, v, entry, label, at) => clAdd(F, m, v, entry, label, at), remove: (m, v, ids, fromModel) => clRemove(F, m, v, ids, fromModel) },
+    edits: { connect: (m, v, from, to) => clConnect(F, m, v, from, to), add: (m, v, entry, label, at) => clAdd(F, m, v, entry, label, at), remove: (m, v, ids, fromModel) => clRemove(F, m, v, ids, fromModel),
+      owner: (m, v, id, parent) => clOwner(F, m, v, id, parent) },
   };
 }
 const CLOUD_DEFS = Object.fromEntries(Object.entries(CL_FAM).map(([k, F]) => [k, clDef(k, F)]));

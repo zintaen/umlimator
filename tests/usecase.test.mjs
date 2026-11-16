@@ -44,7 +44,7 @@ test('the definition: uml.use-case is registered with its palette, its five line
   for (const t of ['uml.Actor', 'uml.UseCase', 'uml.Subject']) assert.deepEqual(T.props[t].map(f => f.key), ['stereotypes'], t);
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'rankFlip']) assert.equal(typeof T[k], 'function', k);
   assert.equal(typeof T.edits.connect, 'function');
-  assert.deepEqual(T.refs, { 'uml.Extend': { 'props.extensionPoints': 'drop' } });
+  assert.deepEqual(T.refs, { 'uml.Extend': { 'props.extensionPoints': 'drop empties' } });
   assert.deepEqual(['uml.UseCase', 'uml.Actor', 'uml.Subject'].map(t => T.member.holds({ type: t })), [true, false, false]);
   assert.deepEqual(['Generalization', 'Extend', 'Include', 'Association'].map(t => T.rankFlip({ type: 'uml.' + t })), [true, true, false, false], 'the parent and the base first');
   assert.deepEqual(Object.keys(T.rules).sort(), ['association-ends', 'extend-ends', 'extend-points', 'generalization-kinds', 'include-cycle', 'include-ends', 'named', 'point-names', 'use-case-owner']);
@@ -195,7 +195,7 @@ test('validators: shopping-use-cases.json (example 8) breaks no rule; each rule 
 });
 
 // ---- §8.4: editing
-test('extension points are member rows by name; deleting one drops it from every extend that names it', () => {
+test('extension points are member rows by name; deleting one drops it from every extend that names it, and an extend left naming none goes too', () => {
   const ep = { id: 'checkout.payment', type: 'uml.ExtensionPoint', label: 'payment' };
   assert.equal(T.member.print(ep), 'payment');
   assert.deepEqual(T.member.add('  gift card '), { type: 'uml.ExtensionPoint', label: 'gift card', props: {} });
@@ -203,9 +203,13 @@ test('extension points are member rows by name; deleting one drops it from every
   assert.deepEqual(T.member.edit(ep, 'pay now').commands, [{ op: 'set', id: 'checkout.payment', path: 'label', value: 'pay now' }]);
   assert.ok(T.member.edit(ep, '').error);
   const m = apply(UC, [{ op: 'delete', id: 'checkout.payment' }]);
-  assert.deepEqual(m.edges.find(e => e.id === 'voucher-extends-checkout').props.extensionPoints, []);
-  assert.deepEqual(T.validate(m).map(p => p.rule), ['extend-points'], 'the extend now names none: said');
-  assert.equal(layout(m, 'shopping').edges.find(e => e.id === 'voucher-extends-checkout').label, '«extend» [the shopper has a voucher code]');
+  assert.equal(m.edges.find(e => e.id === 'voucher-extends-checkout'), undefined, 'it named that point alone: it goes (refs: empties, audit 19)');
+  assert.deepEqual(T.validate(m).map(p => p.rule), [], 'nothing left naming no point');
+  const two = structuredClone(UC), ext = two.edges.find(e => e.id === 'voucher-extends-checkout'), uc = two.nodes.find(n => n.id === ext.to);
+  uc.members.push({ id: 'checkout.gift', type: 'uml.ExtensionPoint', label: 'gift' }); ext.props.extensionPoints.push('checkout.gift');
+  const k = apply(two, [{ op: 'delete', id: 'checkout.payment' }]);
+  assert.deepEqual(k.edges.find(e => e.id === 'voucher-extends-checkout').props.extensionPoints, ['checkout.gift'], 'one naming another keeps it');
+  assert.equal(layout(k, 'shopping').edges.find(e => e.id === 'voucher-extends-checkout').label, '«extend» (gift) [the shopper has a voucher code]');
 });
 
 test('the Owner field and connect: subjects and packages for a use case, packages for an actor; an association drawn from a use case starts at the actor', () => {

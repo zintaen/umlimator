@@ -211,8 +211,11 @@ function SYS_IB_ADD(model, view, entry, label, at) {
 function SYS_IB_MEMBER(model, view, owner, id, text) {
   const k = /^(proxy|full)\s+(?=port\s)/i.exec(String(text)), ref = /^ref\s+/i.test(String(text)), t = String(text).replace(/^(proxy|full)\s+(?=port\s)/i, '').replace(/^ref\s+/i, '');
   const was = id == null ? null : SYS_IB_INDEX(model, view).el(id);
-  if (was && ((/^port\s+[^\s:]/i.test(t) && was.type !== 'sysml.Port') || (ref && was.type !== 'sysml.ReferenceProperty'))) // a row keeps its member's kind
-    return { error: `A row keeps its member's kind: delete ${SYS_IB_NAME(was)} and add a ${ref ? 'ref' : 'port'} row` };
+  // a row keeps its member's kind, whichever way the keyword changed (audit 19: dropping ref or port was dropped without a word);
+  // a port row may have no name (`port : Charger`), a part named port none of the keyword's
+  const want = (was && was.type === 'sysml.Port' ? /^port(\s|$)/i : /^port\s+[^\s:]/i).test(t) ? 'port' : ref ? 'ref' : 'part';
+  if (was && want !== (was.type === 'sysml.Port' ? 'port' : was.type === 'sysml.ReferenceProperty' ? 'ref' : 'part'))
+    return { error: `A row keeps its member's kind: delete ${SYS_IB_NAME(was)} and add a ${want} row` };
   const r = SYS_IB_ON(csMember)(model, view, owner, id, t), kind = k ? k[1].toLowerCase() : undefined;
   if (id == null) return SYS_IB_KIND(r, x => (x.type === 'sysml.Port' && kind ? { ...x, props: { ...SYS_IB_PROPS(x), kind } } : ref && Object.hasOwn(SYS_IB_PROP, x.type) ? { ...x, type: 'sysml.ReferenceProperty' } : x));
   return was && was.type === 'sysml.Port' && SYS_IB_PROPS(was).kind !== kind ? SYS_IB_MAP(r, cs => [...cs, { op: 'set', id, path: 'props.kind', value: kind }]) : r;

@@ -375,12 +375,15 @@ def structurizr(text, name):
             m.say(r["line"], f"{r['src']} -> {r['dst']}: {r['src'] if not a else r['dst']} is not an element")
         elif eid := m.line(a, b, r["desc"], r["tech"], where=r["line"], loop=els[b]["type"] == "person"):
             lines.append((a, b, eid, r))
-    if not specs:  # no views to follow: the landscape, then a view per system with containers and per container with components
-        holders = {e["parent"] for e in els.values()}
-        specs = [{"type": "systemlandscape", "scope": None, "include": [], "exclude": [], "line": None}] + [
-            {"type": "container" if e["type"] == "softwaresystem" else "component", "scope": c, "include": [], "exclude": [], "line": None}
-            for c, e in els.items() if c in holders]
-    views(m, els, lines, specs, find, implied, groups)
+    holders = {e["parent"] for e in els.values()}
+    # no views to follow: the landscape, then a view per system with containers and per container with components
+    default = [{"type": "systemlandscape", "scope": None, "include": [], "exclude": [], "line": None}] + [
+        {"type": "container" if e["type"] == "softwaresystem" else "component", "scope": c, "include": [], "exclude": [], "line": None}
+        for c, e in els.items() if c in holders]
+    views(m, els, lines, specs or default, find, implied, groups)
+    if specs and not m.views and els:  # every view left out (a mistyped scope, say): the same, rather than a model with none (audit 19)
+        m.say(None, "no view in the workspace is drawn, so the landscape and a view per system and container are drawn instead")
+        views(m, els, lines, default, find, implied, groups)
     return m
 
 
@@ -855,9 +858,10 @@ def compose(d, name):
 
 SHORT = {"Deployment": "deploy", "StatefulSet": "sts", "DaemonSet": "ds", "Service": "svc", "Ingress": "ing"}
 # a host, or a URL's: its scheme may be words joined by colons (jdbc:postgresql://, jdbc:oracle:thin:@//, audit 18), and
-# after a scheme the rest may start with ; or ? (jdbc:sqlserver://db:1433;databaseName=x)
-HOST = re.compile(r"(?P<scheme>(?:[a-z][a-z0-9+.-]*:)+@?//)?(?:[^@/\s]*@)?(?P<host>[a-z0-9-]+(?:\.[a-z0-9-]+)*)(?::\d+)?"
-                  r"(?(scheme)(?:[/;?]\S*)?|(?:/\S*)?)", re.I)
+# after a scheme the rest may start with ; or ? (jdbc:sqlserver://db:1433;databaseName=x); Oracle's thin URL may name its host
+# after a bare @ and end in :SID (jdbc:oracle:thin:@db:1521:ORCL, audit 19)
+HOST = re.compile(r"(?P<scheme>(?:[a-z][a-z0-9+.-]*:)+(?:@?//|@))?(?:[^@/\s]*@)?(?P<host>[a-z0-9-]+(?:\.[a-z0-9-]+)*)(?::\d+)?"
+                  r"(?(scheme)(?:[/;?]\S*|:[a-z_][\w$#]*)?|(?:/\S*)?)", re.I)
 
 
 def obj(x):

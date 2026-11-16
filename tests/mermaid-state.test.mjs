@@ -358,3 +358,10 @@ test('the writer names ext it has no place for: a state\'s, and a transition\'s 
   const m = json('./state-minimal.json'); m.nodes[1].ext = { x: 1 }; m.edges[0].ext = { x: 1, mermaid: { label: 'a' } };
   assert.deepEqual(write(m, 'v').match(/not written: .*/g), ['not written: idle: ext', 'not written: t1: ext, but for ext.mermaid.label']);
 });
+
+test('a blank %% id:, %% link-id:, %% start-id: or %% end-id: is no hint, and is said (audit 19)', () => {
+  const { model, report } = read('stateDiagram-v2\n%% id:\nstate a\n%% link-id:\nnote right of a : n\n%% start-id:\n[*] --> a\n%% end-id:\na --> [*]');
+  assert.deepEqual(validate(model).filter(p => p.level === 'error'), []);
+  assert.ok(!JSON.stringify(model).includes('"id":""'));
+  assert.deepEqual(report.map(r => r.message), ['id', 'link-id', 'start-id', 'end-id'].map(k => `%% ${k}: holds no id: not read`));
+});

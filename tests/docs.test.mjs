@@ -183,3 +183,13 @@ test('audit 18: the composite note says Delete on the subject is refused; the se
     assert.doesNotMatch(t, /left out of the cover's/, f); assert.match(t, /listed in the lines table and counted on the cover/, f); }
   assert.match(read('../docs/editing.md'), /\| a member row \| edit its row; ↑ ↓; ✕; the new row \|/);
 });
+
+test('audit 19: the CLI guide says check exits 1 on a broken rule or a failed check, as cmd_check does, and 0 on layout problems alone', () => {
+  const guide = readFileSync(new URL('../docs/guide/cli.md', import.meta.url), 'utf8'), py = readFileSync(new URL('../umlimator.py', import.meta.url), 'utf8');
+  const body = py.slice(py.indexOf('def cmd_check'), py.indexOf('\ndef ', py.indexOf('def cmd_check') + 1)), exits = [...body.matchAll(/sys\.exit\(f?"([^"]*)/g)].map(x => x[1]);
+  assert.ok(exits.some(x => /broken rule/.test(x)) && exits.some(x => /reported errors/.test(x)) && !exits.some(x => /crossing|detour|overflow/.test(x)), 'cmd_check exits 1 only on rules and errors');
+  const para = guide.split('\n\n').find(p => p.startsWith('`check` reports'));
+  assert.ok(para && !/and then exits 1/.test(para), 'no unconditional exit 1');
+  assert.match(para, /exits 1 when the model breaks a rule/);
+  assert.match(para, /reported with exit 0/);
+});

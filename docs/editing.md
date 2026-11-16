@@ -326,7 +326,7 @@ The **use case diagram** (`uml.use-case`, `examples/shopping-use-cases.json`):
 | add an actor, a use case, a subject, a comment | the palette | `N` (an actor) | `add` with `view` |
 | add an association, include, extend, generalization, comment link | the handle or a drag, then the line's kind | `L`, the other end, Enter, the kind | `add`; an association drawn from a use case to an actor is added from the actor |
 | an extend's condition and extension points | the properties panel | Enter | `set props.condition`, `set props.extensionPoints` (ids) |
-| add, rename, reorder an extension point | the use case's member rows | F2, Enter; `Alt + ↑ / ↓` in a row | the member hook; deleting one drops it from every extend that names it |
+| add, rename, reorder an extension point | the use case's member rows | F2, Enter; `Alt + ↑ / ↓` in a row | the member hook; deleting one drops it from every extend that names it, and takes an extend left naming none |
 | put a use case in a subject | drop it into the subject's box | the Owner field | `reparent` |
 | rename | double-click once selected | `F2` | `set label` |
 | hide, delete | Remove from view, Delete from model | `Delete`, `Shift + Delete` | `hide`, `delete` |
@@ -500,7 +500,8 @@ gestures (1.7), with each type's hooks:
 | ER (`er`) | a column, its type and flags | the panel's Members, one row per column | Enter; the row's text `name type [PK] [FK table.column] [UK] [NULL]` | the type's member hook: `add` or `set` of the column's label and props; `FK` names the referenced column by its table's and its own labels (or its id) and resolves it to `references` |
 | | a relationship | the handle or a drag between two tables | `L`, the other table, Enter | `add` of an `er.Relationship`, `1` to `0..*`, non-identifying; one from or to anything but a table is refused |
 | | a relationship's ends and identifying | the properties panel | | `set props.identifying`, `set props.ends.<from\|to>.multiplicity` |
-| | a column deleted, the notation switched | | | for a host: `delete` of the column's id; `set { view, path: 'notation', value: 'idef1x' }` (a repaint) |
+| | a column deleted | the ✕ on its Members row in the properties panel | | `delete` of the column's id; a column that referenced it loses `references` (the type's `refs`) |
+| | the notation switched | | | for a host: `set { view, path: 'notation', value: 'idef1x' }` (a repaint) |
 | Flowchart (`flowchart`) | a node of each of the ten symbols | the palette | `N` | `add` with `view` |
 | | a flow | the handle or a drag | `L` | `add`; a decision's second exit is labelled to answer its first (`no` after `yes`); an end that is no flowchart node is refused |
 | | move a node | drag it | `Alt + arrows` | `set` of its place (the canvas's); a flow is not dragged: "A flow follows its nodes: move a node instead" |
@@ -566,7 +567,7 @@ typed canvas's (1.7) with the type's hooks, and every one goes through `apply()`
 | Google Cloud (`gcp`), Azure (`azure`), AWS (`aws`) | a group of each kind, a product, service or resource (Google Cloud's user) | the palette | `N` | `add`, into the group selected, else at the top; a group's kind in `props.zoneType` (Google Cloud) or `props.groupType` (Azure; AWS's `aws.Group`: cloud, account, region, availability-zone, vpc, public-subnet, private-subnet, security-group, generic) |
 | | a line | the handle or a drag between two cards | `L` | `add` of a `gcp.Path`, `azure.Connector` or `aws.Connection`; one between a group and what it holds is refused ("A line cannot join the VPC and what it holds"). A line from or to a group is written in the model or by a host: the canvas's handle and `L` end on cards |
 | | the label, a line's label | double-click once selected | `F2` | `set label` |
-| | move into a group | a drop on the group | `Alt + arrows`: a pin | `reparent` (stage 2's), or the canvas's pin |
+| | move into a group | a drop on the group, or the Owner field | `Alt + arrows`: a pin | `reparent` (stage 2's), or the canvas's pin; into a group it (or what it holds) has a line to is refused in the line's words, and the Owner field leaves that group out |
 | | the group's kind, the icon | the properties panel | | `set props.zoneType`, `props.groupType`, `props.icon` (the pack's own id: `umlimator.py check` names the nearest ids of one the pack lacks) |
 | | hide a group | Delete | `Delete` | `hide`: what it holds is drawn in the next shown group |
 | | delete a group | Delete from model | `Shift + Delete` | `delete`: it and what it holds (`apply()`'s cascade), counted on the hint line |
@@ -585,7 +586,7 @@ typed canvas's gestures (1.7), with the type's hooks:
 |---|---|---|---|
 | a pool, a lane, a task, an event, a gateway, data, an annotation, a group | the palette (22 entries) | `N` | `add`: into the lane, pool or expanded sub-process selected; a lane into the pool or lane selected (a member); data into the pool, never a lane; events and gateways with no name field |
 | a boundary event | the palette's Boundary with an activity selected | `N` | `add` with `props.attachedTo`; refused with no activity selected |
-| a flow | the handle or a drag between two elements | `L`, the other end, Enter | `add` of the one kind the ends allow (no picker): a sequence flow in one pool and one level, a message flow between pools, a data association with data at one end, an association with an annotation at one end; anything else refused with the rule's words ("A sequence flow cannot leave its pool: …") |
+| a flow | the handle or a drag between two elements | `L`, the other end, Enter | `add` of the one kind the ends allow (no picker): a sequence flow in one pool and one level, a message flow between pools, a data association with data at one end and an activity or event of the data's pool ("Data stays in the pool of what it is associated with", as a move says, audit 19), an association with an annotation at one end; anything else refused with the rule's words ("A sequence flow cannot leave its pool: …") |
 | a name, a flow's name, an annotation's text | double-click once selected | `F2` | `set label` |
 | task type, event definition, interrupting, called element, data store, direction, documentation | the properties panel | | `set props.<field>` |
 | move a flow node to another lane | drag it into the lane's band, or the Owner field | | `reparent` to the lane, its pin removed; its boundary events with it; into another pool refused while it has sequence flows ("Move its sequence flows first"); a drop on a pool's header strip refused; an Owner that would bring a new problem refused with the rule's words (audit 18) |
@@ -595,4 +596,4 @@ typed canvas's gestures (1.7), with the type's hooks:
 | hide | | `Delete` | `hide`; an activity's boundary events hidden with it, and an expanded sub-process's shown contents, said on the hint line (audit 18); on a lane (a member, never hidden) the lane is deleted and what it held moves to its parent, said on the hint line first |
 | delete | | `Shift + Delete` | `delete`; an activity takes its boundary events, a pool what it owns (counted on the hint line); a deleted group leaves the `categoryValueRef` entries that named it |
 
-A message flow between two pools, a flow from a boundary event back to its own activity and an annotation joined to a pool, a lane, a group or itself are refused, since the diagram does not draw them. The Owner field offers a flow node's pools, lanes and sub-processes, less those a drop refuses (audit 18): while it or its boundary events have sequence flows, none at another process level (another pool, or in or out of a sub-process), and never a pool that has lanes. It offers no owner for a lane.
+A message flow between two pools, a flow from a boundary event back to its own activity and an annotation joined to a pool, a lane, a group or itself are refused, since the diagram does not draw them. The Owner field offers a flow node's pools, lanes and sub-processes, less those a drop refuses (audit 18): while it or its boundary events have sequence flows, none at another process level (another pool, or in or out of a sub-process), and never a pool that has lanes. It offers no owner for a lane, nor for a boundary event, which lies where its activity does (a host's reparent of one elsewhere is refused: "A boundary event moves with its activity: move Take payment", audit 19).

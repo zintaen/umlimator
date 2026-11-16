@@ -41,7 +41,7 @@ test('the definition: uml.information-flow is registered with its palette, its t
   assert.equal(T.name, 'uml.information-flow');
   assert.deepEqual(T.elements.map(e => [e.type, e.label]), [['uml.Class', 'Class'], ['uml.Interface', 'Interface'], ['uml.Component', 'Component'], ['uml.Actor', 'Actor'], ['uml.InformationItem', 'Information item'], ['uml.Comment', 'Comment']]);
   assert.deepEqual(T.lines.map(e => [e.type, e.label]), [['uml.InformationFlow', 'Information flow'], ['uml.CommentLink', 'Comment link']]);
-  assert.deepEqual(T.refs, { 'uml.InformationFlow': { 'props.conveyed': 'drop' } });
+  assert.deepEqual(T.refs, { 'uml.InformationFlow': { 'props.conveyed': 'drop empties' } });
   for (const k of ['layout', 'validate', 'describe', 'word', 'rows', 'text']) assert.equal(typeof T[k], 'function', k);
   assert.equal(T.validate.length, 1, 'validate(model): run once, not once a view');
   assert.deepEqual(Object.keys(T.edits), ['connect', 'rename', 'remove']);
@@ -204,11 +204,11 @@ test('validators: 15-information-flow.json breaks no rule; each rule fails on a 
   assert.equal(T.validate(toComment)[0].message, 'flow-ends: c runs from "Shopper" (actor) to "x" (comment): a flow joins two classes, interfaces, components or actors');
 });
 
-test('conveyed is a declared reference: deleting an item drops it from every flow that conveys it, and the flows stay; hiding it changes nothing', () => {
+test('conveyed is a declared reference: deleting an item drops it from every flow that conveys it, and a flow left conveying nothing goes too; hiding it changes nothing', () => {
   const m = apply(IF, [{ op: 'delete', id: 'order-info' }]);
-  assert.deepEqual(m.edges.map(e => e.props.conveyed), [['card-details'], ['card-details'], [], [], ['stock-info'], ['stock-info'], ['receipt-info'], ['receipt-info']]);
-  assert.equal(m.edges.length, 8, 'no flow is deleted with it');
-  assert.deepEqual(T.validate(m).map(p => [p.rule, p.ids[0]]), [['conveyed-some', 'flow-storefront-api'], ['conveyed-some', 'api-warehouse']], 'a flow left conveying nothing is said');
+  assert.deepEqual(m.edges.map(e => e.props.conveyed), [['card-details'], ['card-details'], ['stock-info'], ['stock-info'], ['receipt-info'], ['receipt-info']]);
+  assert.deepEqual(IF.edges.filter(e => !m.edges.some(x => x.id === e.id)).map(e => e.id), ['flow-storefront-api', 'api-warehouse'], 'the two that conveyed it alone go with it (refs: empties, audit 19)');
+  assert.deepEqual(T.validate(m), [], 'no flow is left conveying nothing');
   assert.equal(layout(m, V).edges.find(e => e.id === 'api-email').label, '«flow» Receipt');
   const h = apply(IF, [{ op: 'hide', id: 'order-info', view: V }]);
   assert.deepEqual(h.edges.map(e => e.props.conveyed), IF.edges.map(e => e.props.conveyed));

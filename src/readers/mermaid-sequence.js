@@ -225,6 +225,7 @@ function readMermaidSequence(text) {
         say(no, 'skipped', 'a %%{init}%% directive: Mermaid\'s configuration is not read');
         if (!line.includes('}%%')) while (i + 1 < lines.length && !lines[++i].includes('}%%')); // over several lines: to its }%%
       }
+      else if (/^(id|operand-id):\s*$/.test(c)) say(no, 'skipped', `%% ${c} holds no id: not read`); // a blank hint is none (audit 19)
       else if (c.startsWith('id:')) hint.id = c.slice(3).trim();
       else if (c.startsWith('operand-id:')) hint.operand = c.slice(11).trim();
       else if (c.startsWith('represents:')) hint.represents = c.slice(11).trim();

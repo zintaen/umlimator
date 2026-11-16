@@ -333,3 +333,9 @@ test('audit 18: a link\'s @{ } names each field it does not read: animate and an
   assert.deepEqual(said('e1@{ animation: fast, curve: basis }'), ["3 skipped: e1@{ ... }: a link's animation is not read", '3 skipped: e1: curve is not read']);
   assert.deepEqual(read('flowchart LR\n  A e1@--> B\n  e1@{ curve: linear }').model.edges.map(e => e.id), ['e1']);
 });
+
+test('a blank %% id: is no hint, and is said (audit 19)', () => {
+  const { model, report } = read('flowchart TD\n%% id:\nA --> B');
+  assert.deepEqual(model.edges.map(e => e.id), ['A-B']);
+  assert.deepEqual(report.map(r => r.message), ['%% id: holds no id: not read']);
+});

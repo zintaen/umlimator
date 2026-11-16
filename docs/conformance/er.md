@@ -35,9 +35,10 @@ Crow's foot's dashed non-identifying line is a tool convention (Mermaid's `--` a
 
 `notes/milestone-2.md` §13: Chen's notation; IDEF1X's key-based level; lines that end on columns; weak entities beyond
 IDEF1X's dependent corners; subtype clusters; check constraints, defaults and indexes other than keys; SQL DDL; several
-schemas; a DBML writer. And copy and paste, per-type `diff()` writers, deleting a view. Three things have no canvas
-gesture and are commands through `apply()` for a host: deleting a column (`delete` by its id), switching `notation`
-(`set { view, path: 'notation' }`), a column's flags as fields (they are changed by retyping its row).
+schemas; a DBML writer. And copy and paste, per-type `diff()` writers, deleting a view. Two things have no canvas
+gesture and are commands through `apply()` for a host: switching `notation` (`set { view, path: 'notation' }`), a
+column's flags as fields (they are changed by retyping its row). A column is deleted with the ✕ on its Members row in the
+properties panel (`delete` by its id, which a host can also send).
 
 Readers: `readMermaidEr` reads every construct on Mermaid 12.3.0's ER page; Mermaid's text says nothing of which column
 a foreign key references (a `%% references:` comment carries it), and its relationship ends are read left to right, so

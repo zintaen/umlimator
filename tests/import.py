@@ -114,6 +114,10 @@ ok("structurizr · no views: a landscape and a view per system, the line implied
    [(v["id"], v.get("parent"), v["edges"]) for v in m["views"]] == [("landscape", None, ["u-s"]), ("s-containers", "landscape", ["u-w"])], m["views"])
 m, un = imp.read("structurizr", dsl.replace("model {", "!impliedRelationships false\n  model {"), "x")
 ok("structurizr · !impliedRelationships false draws no implied line", m["views"][0]["edges"] == [], m["views"])
+for typo in ("systemContext shop {\n include *\n }", "container nope {\n }", "systemLandscape {\n exclude u\n exclude s\n }"):
+    m, un = imp.read("structurizr", dsl.replace("  }\n}\n", f"  }}\n  views {{\n {typo}\n  }}\n}}\n"), "x")
+    ok(f"structurizr · every view left out ({typo.split(chr(10))[0]}): the landscape and a view per system, as for no views, and said (audit 19)",
+       [v["id"] for v in m["views"]] == ["landscape", "s-containers"] and any("no view in the workspace is drawn" in w for _, w in un), (m["views"], un))
 styled = ('workspace {\n model {\n  u = person "User"\n  s = softwareSystem "Shop" {\n   w = container "Web" "" "React" "Web Browser"\n'
           '   a = container "App" "" "Swift" "Mobile,Bucketed"\n   d = container "Data" "" "Postgres" "Database"\n  }\n }\n views {\n  styles {\n'
           + "".join(f'   element "{t}" {{\n    {p}\n   }}\n' for t, p in (("Database", "shape Cylinder"), ("Element", "shape RoundedBox"),
@@ -245,6 +249,14 @@ ok("kubernetes · a JDBC URL in an env value names its Service: a scheme of word
    "a bare word with ; or ? and a URL with no host name nothing",
    sorted((e["to"], e.get("label")) for e in m["edges"] if e["from"] == "deploy-orders")
    == [("svc-cache", "CACHE"), ("svc-mssql", "MS"), ("svc-mysql", "MY"), ("svc-oracle", "ORA"), ("svc-postgres", "PG")], (ends(m), un))
+k8s = [{"kind": "Deployment", "metadata": {"name": "api"}, "spec": {"template": {"spec": {"containers": [{"name": "a", "env": [
+        {"name": n, "value": v} for n, v in (("SID", "jdbc:oracle:thin:@ora:1521:ORCL"), ("SVC", "jdbc:oracle:thin:@ora2:1521/orders"),
+                                             ("MONGO", "mongodb://mongo-0.mongo:27017,mongo-1.mongo:27017/?replicaSet=rs0"))]}]}}}}] + [
+       {"kind": "Service", "metadata": {"name": n}, "spec": {"selector": {"app": n}}} for n in ("ora", "ora2", "mongo", "mongo-0")]
+m, un = imp.read("kubernetes", json.dumps(k8s), "x")
+ok("kubernetes · an Oracle thin URL with its host after a bare @ names its Service, ending in :SID or /service (audit 19); "
+   "a list of hosts names none",
+   sorted((e["to"], e.get("label")) for e in m["edges"] if e["from"] == "deploy-api") == [("svc-ora", "SID"), ("svc-ora2", "SVC")], (ends(m), un))
 odd = {"kubernetes": ([[{"kind": "Deployment"}]], 5, {"items": [None]}, [{"kind": "Deployment", "metadata": "x"}],
                       [{"kind": "Service", "metadata": {"name": "s"}, "spec": {"selector": ["a"], "ports": [80]}}],
                       [{"kind": "Ingress", "metadata": {"name": "i"}, "spec": {"rules": [None]}}],
