@@ -24,7 +24,7 @@ The same viewer is `mountPage(container, model)` in the module, built on `render
 
 ## Links
 
-Every state the page shows can be linked to:
+A view, a selected card, a story step or a lens can be linked to. A selected line or box is not kept in the link:
 
 | Link | Opens |
 |---|---|

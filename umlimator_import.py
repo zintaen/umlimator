@@ -727,7 +727,7 @@ def statement(s):
 
 
 def flowchart(lines, m):
-    nodes, subs, boxes, claimed, links, nsub = {}, [], [], {}, [], 0
+    nodes, subs, boxes, claimed, links, nsub = {}, [], {}, {}, [], 0
     lines = list(lines)
     for k, (no, line) in enumerate(lines):  # a quoted label over several lines (Mermaid's lexer allows it) is one line
         if line.count('"') % 2:  # its close is the next line with an odd count of quotes; none: left as it is
@@ -744,8 +744,9 @@ def flowchart(lines, m):
             elif s == "end" and not subs:
                 m.say(no, "an end that closes no subgraph")
             elif s == "end":
-                sg = subs.pop()
-                boxes.append({k: sg[k] for k in ("id", "label", "parent", "line")} | {"nodeIds": [n for n in dict.fromkeys(sg["seen"]) if claimed.setdefault(n, sg["id"]) == sg["id"]]})
+                sg = subs.pop()  # a subgraph is known by its id: one opened again adds to its box, first label and parent kept (audit 16)
+                b = boxes.setdefault(sg["id"], {k: sg[k] for k in ("id", "label", "parent", "line")} | {"nodeIds": {}})
+                b["nodeIds"].update(dict.fromkeys(n for n in sg["seen"] if claimed.setdefault(n, sg["id"]) == sg["id"]))
             elif not s:
                 pass
             elif q := FLOW_QUIET.match(s):
@@ -768,14 +769,28 @@ def flowchart(lines, m):
                 m.say(no, f"not imported: {clip(s, 80)}")
     for sg in subs:
         m.say(sg["line"], f"subgraph {sg['id']} has no end: its nodes are imported, without the box")
-    sgs = {b["id"] for b in boxes}
+    state = {}  # a parent that is no box (a subgraph with no end) or a box inside itself: drawn at the top level, in one linear walk (audit 16)
+    for b in boxes.values():
+        path, x = [], b
+        while x and x["id"] not in state:
+            state[x["id"]] = b["id"]
+            path.append(x)
+            x = boxes.get(x["parent"])
+        if not path:
+            continue
+        if path[-1]["parent"] is not None and not x:
+            path[-1]["parent"] = None
+        elif x and state[x["id"]] == b["id"]:
+            m.say(path[-1]["line"], f"subgraph {path[-1]['id']} is inside itself: drawn at the top level")
+            path[-1]["parent"] = None
+    sgs = set(boxes)
     for nid, n in nodes.items():
         if nid not in sgs:  # a subgraph's id in a link is its box
             m.ids.add(nid)
             m.card(nid, n["label"], "database" if n["shape"] == "[(" else guess([n["label"], nid]))
-    for b in boxes:
+    for b in boxes.values():
         b["nodeIds"] = [n for n in b["nodeIds"] if n not in sgs]
-    ids = m.view("flowchart", list(m.nodes), boxes)
+    ids = m.view("flowchart", list(m.nodes), list(boxes.values()))
     for a, b, lk, no in links:
         arrow = lk["plain"] or lk["open"] + lk["close"]
         if arrow.startswith("~"):  # an invisible link only spaces Mermaid's layout

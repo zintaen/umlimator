@@ -163,6 +163,14 @@ LOOK = """(() => { const m = window.umlimatorMap, host = document.querySelector(
   return m && { view: m.view, lit: cards.filter(c => !c.getAttribute('opacity')).map(c => c.dataset.id).sort(), dimmed: cards.filter(c => c.getAttribute('opacity')).length,
     overlays: m.state.overlays, story: m.state.story, banner: (document.getElementById('mcp-banner') || {}).textContent || null }; })()"""
 BOXES = "(() => { const host = document.querySelector('#m-canvas .umlimator'); return host ? host.shadowRoot.querySelectorAll('.family').length : -1; })()"
+# audit 16: stories, or a story's steps, that are no list ended list_views and play_story in an internal error
+said = []
+for bad in ({"stories": 7}, {"stories": [{"id": "s", "steps": 3}]}):
+    model.write_text(json.dumps(bike | bad), encoding="utf-8")
+    said += [tool("list_views"), tool("play_story", id="s")]
+model.write_text(json.dumps(bike), encoding="utf-8")
+ok("list_views and play_story on stories, or steps, that are no list: the tool names the field, no internal error (audit 16)",
+   all("stories is not a list" in x for x in said[:2]) and all("stories[0].steps is not a list" in x for x in said[2:]), said)
 chrome = Chrome()
 try:
     # the assistant builds a picture before any page is open: a view, then a highlight on it (no view named)

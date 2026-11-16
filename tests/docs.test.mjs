@@ -59,6 +59,17 @@ test('every page in examples/, the gallery the site opens on included, declares 
   assert.deepEqual(bare, []);
 });
 
+test('every page in examples/ has a level-one heading to jump to (axe page-has-heading-one, audit 16)', () => {
+  const dir = new URL('../examples/', import.meta.url);
+  assert.deepEqual(readdirSync(dir).filter(f => f.endsWith('.html') && !/<h1[ >]/.test(readFileSync(new URL(f, dir), 'utf8'))), []);
+});
+
+test('the standalone-page guide claims for its links only what page.js writes to the hash: no selected line or box (audit 16)', () => {
+  const guide = readFileSync(new URL('../docs/guide/standalone-page.md', import.meta.url), 'utf8');
+  assert.doesNotMatch(guide, /Every state the page shows can be linked/);
+  assert.match(guide, /A selected line or box is not kept in the link/);
+});
+
 test('conformance notes and the examples README agree with the code they describe (audit 9)', async () => {
   const { diagramOf } = await import('../src/core/registry.js');
   await import('../src/map/typed.js'); await import('../src/uml/state.js'); await import('../src/uml/object.js');
