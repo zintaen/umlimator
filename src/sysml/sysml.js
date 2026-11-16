@@ -77,6 +77,8 @@ function SYS_FRAME(model, view, nodeIds) {
   const h = SYS_HEAD(model, view);
   return { id: h.el ? h.el.id : `${view.id}->frame`, label: h.title, title: h.title, nodeIds, shape: 'sysml-frame', head: 14, aria: h.aria };
 }
+// F2 on a req or bdd frame that is no element (`<view>->frame`): the view's title (§5.1); else null (audit 19: bdd's too)
+const SYS_FRAME_RENAME = (view, id, text) => (id === `${view.id}->frame` ? [{ op: 'set', view: view.id, path: 'title', value: String(text) }] : null);
 // its shape: a rectangle and the tag, cut to the frame's width (src/uml/frame.js)
 SHAPE['sysml-frame'] = {
   frame: f => `<rect class="family-box" x="${r2(f.x)}" y="${r2(f.y)}" width="${r2(f.w)}" height="${r2(f.h)}" stroke="var(--um-muted)"/>`
@@ -158,4 +160,4 @@ function SYS_DRESS(g, model, view, names) {
     families: [...(card ? [{ id: sid, x: card.x, y: card.y, w: card.w, h: card.h, nodeIds: [], ...frame }] : []), ...SYS_ARR(g.families).map(f => (f.id === sid ? { ...f, ...frame } : f))] };
 }
 
-export { SYS_TABLE, SYS_KIND, SYS_HEAD, SYS_FRAME, SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS };
+export { SYS_TABLE, SYS_KIND, SYS_HEAD, SYS_FRAME, SYS_FRAME_RENAME, SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS };

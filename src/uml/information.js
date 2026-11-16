@@ -1,4 +1,5 @@
 import { registerDiagramType } from '../core/registry.js';
+import { apply } from '../core/apply.js';
 import { esc, fit } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
@@ -11,7 +12,8 @@ import './usecase.js'; // SHAPE.actor
    use case type's figure), each read only; information items, a classifier with a small filled triangle at its top right
    (UML 2.5.1 §20.2.4); comments. Information flows: a dashed line with an open arrow, its label «flow» then what it conveys
    by name (`Order, Card details`), after its own name when it has one (`place: Order`), cut at 280; comment links.
-   props.conveyed is a declared reference (refs: drop), so deleting an element drops it from every flow. Laid out by
+   props.conveyed is a declared reference (refs: drop empties), so deleting an element drops it from every flow, and a flow
+   left conveying nothing goes with it, whatever view the delete is made on. Laid out by
    layoutTyped from the host's ranking: gap 48 with gapAfter's widening, labelGaps, repair and reroute off (S19). Ships in
    lib/umlimator-all.js only. */
 
@@ -175,10 +177,13 @@ function ifRename(model, view, id, text) {
 }
 
 // remove: Shift + Delete on what flows convey takes every flow left conveying nothing (conveyed-some), in the same
-// transaction, said on the hint line; a flow conveying something else keeps it (apply() drops the id: refs). Else the default
+// transaction, said on the hint line; a flow conveying something else keeps it (apply() drops the id: refs). What the delete
+// takes is apply()'s own: an owner takes what it owns, and the flows conveying only that go too (refs: empties, audit 19). Else the default
 function ifRemove(model, view, ids, fromModel) {
-  const I = ifIndex(model), gone = new Set(IF_ARR(ids)), flows = fromModel ? I.E.filter(e => e.type === 'uml.InformationFlow' && ![e.id, e.from, e.to].some(x => gone.has(x))
-    && I.conveyed(e).length && I.conveyed(e).every(x => gone.has(x))) : [];
+  const I = ifIndex(model), gone = new Set(IF_ARR(ids));
+  let after = null; if (fromModel) try { after = ifIndex(apply(model, [...gone].map(id => ({ op: 'delete', id })))); } catch { after = null; }
+  const left = after ? new Set(after.E.map(e => e.id)) : null;
+  const flows = after ? I.E.filter(e => e.type === 'uml.InformationFlow' && !gone.has(e.id) && !left.has(e.id) && after.at.has(e.from) && after.at.has(e.to) && I.conveyed(e).length) : [];
   if (!flows.length) return null;
   return { commands: [...gone, ...flows.map(e => e.id)].map(id => ({ op: 'delete', id })),
     say: `Deleted ${[...gone].map(id => { const l = I.E.find(e => e.id === id); return l ? `the line ${I.nm(l.from)} → ${I.nm(l.to)}` : JSON.stringify(I.nm(id)); }).join(', ')} and the ${ifPlural(flows.length, 'flow')} that conveyed nothing else: ${flows.map(e => `${I.nm(e.from)} → ${I.nm(e.to)}`).join(', ')}` };
@@ -190,7 +195,7 @@ const IF_TYPE = registerDiagramType('uml.information-flow', {
   elements: [['Class', 'Class'], ['Interface', 'Interface'], ['Component', 'Component'], ['Actor', 'Actor'], ['InformationItem', 'Information item'], ['Comment', 'Comment']].map(([t, label]) => ({ type: 'uml.' + t, label })),
   lines: [['InformationFlow', 'Information flow'], ['CommentLink', 'Comment link']].map(([t, label]) => ({ type: 'uml.' + t, label })),
   props: { 'uml.Class': [IF_STEREO], 'uml.Interface': [IF_STEREO], 'uml.Component': [IF_STEREO], 'uml.Actor': [IF_STEREO], 'uml.InformationItem': [], 'uml.InformationFlow': [], 'uml.CommentLink': [] },
-  refs: { 'uml.InformationFlow': { 'props.conveyed': 'drop' } }, // a deleted element leaves every flow that conveys it
+  refs: { 'uml.InformationFlow': { 'props.conveyed': 'drop empties' } }, // a deleted element leaves every flow that conveys it; a flow left conveying nothing goes too (audit 19)
   layout: ifGeo,
   member: { holds: () => false }, // nothing here draws members: the panel offers no Members rows (audit 18)
   validate: ifProblems,

@@ -5,7 +5,7 @@ import { labelW, rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { drawnLines, legendItem, lineRename } from '../uml/class.js'; // and SHAPE.note, a comment's look
 import { holdsLine, ownersOn, placeTabs } from '../uml/owners.js';
-import { SYS_FRAME, SYS_HEAD, SYS_TABLE } from './sysml.js';
+import { SYS_FRAME, SYS_FRAME_RENAME, SYS_HEAD, SYS_TABLE } from './sysml.js';
 
 /* ---------- the requirement diagram, sysml.requirement (work package M3.2, notes/milestone-3.md §6, §13) ----------
    Requirements, test cases, blocks, packages and comments in a SysML frame (§5): a requirement is the classifier with
@@ -258,7 +258,7 @@ function rqConnect(model, view, from, to, at, line) {
 // F2: on a requirement, "EB-1.2 Range" sets its id and name together (a first word holding a digit and no space); on a frame
 // that is no element, the view's title (§5.1); anything else the canvas's
 function rqRename(model, view, id, text) {
-  if (id === `${view.id}->frame`) return [{ op: 'set', view: view.id, path: 'title', value: String(text) }];
+  const f = SYS_FRAME_RENAME(view, id, text); if (f) return f;
   const e = rqIndex(model).at.get(id); if (e && RQ_LINES.includes(e.type)) return lineRename(rqLabel)(model, view, id, text); // «keyword» «stereotypes» off
   const m = /^(\S*\d\S*)\s+(\S[\s\S]*)$/.exec(String(text).trim());
   return rqIndex(model).is(id, RQ) && m ? [{ op: 'set', id, path: 'label', value: m[2].trim() }, { op: 'set', id, path: 'props.reqId', value: m[1] }] : null;

@@ -1,7 +1,7 @@
 import { registerDiagramType } from '../core/registry.js';
 import { CLASS_DEF, RULES, classProblems, drawnLines, lineLabel, lineName, lineRename, parseMember, printMember, typeGeo } from '../uml/class.js';
 import { OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder } from '../uml/owners.js';
-import { SYS_FRAME, SYS_TABLE } from './sysml.js';
+import { SYS_FRAME, SYS_FRAME_RENAME, SYS_TABLE } from './sysml.js';
 
 /* ---------- the block definition diagram, sysml.block-definition (work package M3.3, notes/milestone-3.md §7) ----------
    Blocks, interface blocks, constraint blocks and value types drawn by the classifier with «block», «interfaceBlock»,
@@ -244,7 +244,7 @@ const BD_TYPE = registerDiagramType('sysml.block-definition', {
   word: (model, id) => { const x = bdNodeOf(model, id); return x && BD_CLS.includes(x.type) ? BD_WORD(x.type) : null; },
   rows: (model, view, id) => { const x = bdNodeOf(model, id); return x && BD_CLS.includes(x.type) ? bdRows(x) : null; },
   text: bdText,
-  edits: { connect: bdConnect, member: bdMember, rename: lineRename(lineLabel) },
+  edits: { connect: bdConnect, member: bdMember, rename: (model, view, id, text) => SYS_FRAME_RENAME(view, id, text) ?? lineRename(lineLabel)(model, view, id, text) }, // F2 on a frame with no subject: the view's title (audit 19)
 });
 
 export { BD_TYPE, BD_RULES, bdGeo, bdProblems, bdDescribe, bdParse, bdPrint, bdConnect, bdMember };

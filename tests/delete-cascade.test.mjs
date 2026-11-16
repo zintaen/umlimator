@@ -134,3 +134,28 @@ test('audit 18: Delete on the subject selected with a part, a port or a lane kee
     assert.equal(after.views.find(x => x.id === v.id).subject, v.subject, `${f}: the subject stays`);
     assert.match(r.say, /kept .+, the view's subject: change the view's subject, or Shift \+ Delete deletes it$/, f); }
 });
+
+test('audit 19: a flow left conveying nothing goes with what it conveyed, when that goes with its owner or from another view; an extend likewise', () => {
+  const m = { schemaVersion: 2, nodes: [
+    { id: 'shopper', type: 'uml.Actor', label: 'Shopper' }, { id: 'shop', type: 'uml.Component', label: 'Shop' },
+    { id: 'order', type: 'uml.Class', label: 'Order', parent: 'shop' }, { id: 'card', type: 'uml.InformationItem', label: 'Card' },
+    { id: 'bank', type: 'uml.Component', label: 'Bank' } ],
+  edges: [{ id: 'f1', type: 'uml.InformationFlow', from: 'shopper', to: 'bank', props: { conveyed: ['order'] } },
+    { id: 'f2', type: 'uml.InformationFlow', from: 'shopper', to: 'bank', props: { conveyed: ['order', 'card'] } }],
+  views: [{ id: 'v', diagram: 'uml.information-flow', nodeIds: ['shopper', 'shop', 'card', 'bank'] }, { id: 'classes', diagram: 'uml.class', nodeIds: ['order'] }] };
+  const errs = x => validate(x).filter(p => p.level === 'error').map(p => p.message);
+  assert.deepEqual(errs(m), []);
+  // Shift + Delete of the owner on the information flow view: the hook sees what the delete takes, and says the flow it takes
+  const r = hookOf(m.views[0])(m, m.views[0], ['shop'], true);
+  assert.deepEqual(r && r.commands, [{ op: 'delete', id: 'shop' }, { op: 'delete', id: 'f1' }]);
+  assert.match(r.say, /^Deleted "Shop" and the 1 flow that conveyed nothing else: Shopper → Bank$/);
+  for (const n of [apply(m, r.commands), apply(m, [{ op: 'delete', id: 'shop' }]), apply(m, [{ op: 'delete', id: 'order' }])]) { // the hook, a bare delete of the owner, the class view's bare delete
+    assert.deepEqual(errs(n), []); assert.deepEqual(n.edges.map(e => [e.id, e.props.conveyed]), [['f2', ['card']]]); }
+  assert.equal(hookOf(m.views[1]), null, 'the class view has no remove hook: the bare delete keeps the rule by itself');
+  // a use case's extension point deleted by a bare delete (a host's, or its owner's view of another type): the extend goes too
+  const u = ex('shopping-use-cases.json'), uc = byLabel(u.nodes, 'Check out');
+  const pay = arr(uc.members).find(p => u.edges.some(e => e.type === 'uml.Extend' && arr(e.props.extensionPoints).includes(p.id)));
+  const ext = u.edges.filter(e => e.type === 'uml.Extend' && arr(e.props.extensionPoints).length === 1 && e.props.extensionPoints[0] === pay.id);
+  assert.ok(ext.length); const after = apply(u, [{ op: 'delete', id: pay.id }]);
+  assert.ok(ext.every(e => !after.edges.some(x => x.id === e.id))); assert.deepEqual(errs(after).filter(x => /extend/.test(x)), []);
+});

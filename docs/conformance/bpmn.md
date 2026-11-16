@@ -58,7 +58,8 @@ Rules (`src/bpmn/process.js`, the note's §4), each with a passing and a failing
 `sequence-scope`, `sequence-ends`, `message-scope`, `message-ends`, `event-definition`, `boundary-host`, `lane-owner`,
 `data-ends`; warnings `boundary-host` (a boundary event in another lane than its activity), `boundary-out`, `flow-start`,
 `gateway-flows`, `in-lane`, `group-ref`, `opens-view`. A line's kind is picked by its ends when it is drawn (no picker):
-a sequence flow in one pool and one level, a message flow between two pools, a data association with data at one end, an
+a sequence flow in one pool and one level, a message flow between two pools, a data association with data at one end and
+an activity or event of its pool (`data-ends` is an error for one that joins two pools, audit 19), an
 association with an annotation at one end; anything else is refused with the rule's words.
 
 **Departures** (2.2.3 allows a tool's own sizes, colours, line styles and text positions; none changes a shape): the name

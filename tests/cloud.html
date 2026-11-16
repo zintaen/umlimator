@@ -155,6 +155,14 @@ try {
   const to = pick('.family[data-family="gcp-zone-c"] .family-box').getBoundingClientRect(), from = centre('.node[data-id="gcp-assets"] .n-mask'), at = [to.left + to.width / 2, to.top + to.height - 6];
   ptr(pick('.node[data-id="gcp-assets"]'), 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (at[0] - from[0]) * i / 4, from[1] + (at[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', at);
   gives('a product dropped into a zone\'s box: reparent', [{ op: 'reparent', id: 'gcp-assets', parent: 'gcp-zone-c' }], m => m.nodes.find(n => n.id === 'gcp-assets').parent === 'gcp-zone-c', m3);
+  // audit 19: a product with a path to the zone, dropped into it, is refused in connect's words (line-inside), and so is the Owner field's choice
+  const m4 = structuredClone(m3); m4.edges.push({ id: 'assets-zone', type: 'gcp.Path', from: 'gcp-assets', to: 'gcp-zone-c' }); h.update(m4); ed = [];
+  ptr(pick('.node[data-id="gcp-assets"]'), 'pointerdown', centre('.node[data-id="gcp-assets"] .n-mask'));
+  { const t2 = pick('.family[data-family="gcp-zone-c"] .family-box').getBoundingClientRect(), f2 = centre('.node[data-id="gcp-assets"] .n-mask'), a2 = [t2.left + t2.width / 2, t2.top + t2.height - 6];
+    for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [f2[0] + (a2[0] - f2[0]) * i / 4, f2[1] + (a2[1] - f2[1]) * i / 4]); ptr(stage, 'pointerup', a2); }
+  check('audit 19: a product dropped into a zone it has a path to: refused, said', !ed.length && hint() === 'A line cannot join the zone and what it holds', [ed.map(e => e.commands), hint()]);
+  click('.node[data-id="gcp-assets"] .c-name');
+  check('audit 19: the Owner field leaves out the zone it has a path to', ![...panel('[data-f="owner"]').options].some(o => o.value === 'gcp-zone-c'), [...panel('[data-f="owner"]').options].map(o => o.value));
   // hide, delete
   h = mount(BASE, V, { editable: true });
   click('.node[data-id="gcp-cdn"] .c-name'); key('Delete');
