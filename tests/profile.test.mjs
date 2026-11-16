@@ -363,3 +363,12 @@ test('audit 9: member-kinds: a profile and a metaclass reference hold no members
     assert.deepEqual(classProblems(m).map(p => p.rule), ['member-kinds'], t);
   }
 });
+
+test('audit 17: a member\'s standard or unresolved stereotypes stay in its row and its PDF row; its profile ones are written once', () => {
+  const m = structuredClone(PROFILE), x = by(m, 'order').members[0];
+  x.props.stereotypes = ['document', 'column', 'BookshopConventions::column', 'nowhere'];
+  const g = layout(m, 'profile'), rows = g.byId.order.compartments.at(-1).members.map(r => r.label);
+  assert.deepEqual(rows, ['«column» «document» «nowhere» - placedAt: Instant {name = placed_at, indexed = true}']);
+  assert.match(T.rows(m, m.views[0], 'order').at(-1), /^«document» «nowhere» - placedAt: Instant: «column» name = placed_at/);
+  assert.match(describe(m, 'profile'), /«document» «nowhere» - placedAt/);
+});

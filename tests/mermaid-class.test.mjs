@@ -574,3 +574,19 @@ test('a class body closed on its own line closes at its first }, and a } after i
     [[['Shop', null, []], ['Cart', 'Shop', ['total']], ['Other', null, []]], []]);
   assert.deepEqual(shape('classDiagram\nclass Cart { +total() } }\n')[1], ['a } that closes nothing']);
 });
+
+test('audit 17: member text that both starts with << and ends with >> annotates the class, as Mermaid\'s addMember; a <<x>> in front of a member is its stereotype', () => {
+  const look = s => { const r = read(s); return [r.model.nodes.map(n => [n.id, n.type, n.props?.stereotypes ?? null, (n.members || []).map(m => [m.label, m.props?.stereotypes ?? null])]), r.report.map(x => x.message)]; };
+  // a body line: the member is kept, its <<column>> its own stereotype, not the class's
+  const body = 'classDiagram\nclass Order {\n  <<entity>>\n  <<column>> -placedAt : Instant\n  +total : Money\n}';
+  assert.deepEqual(look(body), [[['Order', 'uml.Class', ['entity'], [['placedAt', ['column']], ['total', null]]]], ['Order.placedAt: <<column>> in front of it is read as its stereotype']]);
+  // a one-line body, `Name : text` and the opening line of a body: annotations, so Shape is an interface and C an enumeration
+  assert.deepEqual(look('classDiagram\nclass Shape { <<interface>> }\nclass C\nC : <<enumeration>>\nclass X {<<interface>>\n+run()\n}'),
+    [[['Shape', 'uml.Interface', null, []], ['C', 'uml.Enumeration', null, []], ['X', 'uml.Interface', null, [['run', null]]]], []]);
+  assert.deepEqual(look('classDiagram\nC : <<a>> <<b>> +x : int')[0], [['C', 'uml.Class', null, [['x', ['a', 'b']]]]]);
+  // written back as Mermaid has it, and read back the same
+  const m = read(body).model, text = write(m);
+  assert.match(text, /\n {4}<<column>> -placedAt : Instant\n/);
+  assert.deepEqual(read(text).model.nodes, m.nodes);
+  assert.deepEqual(read(write(read('classDiagram\nclass Shape { <<interface>> }').model)).model.nodes.map(n => n.type), ['uml.Interface']);
+});

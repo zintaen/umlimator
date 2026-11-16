@@ -22,7 +22,7 @@ const CS_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), CS
 const CS_HAS = x => x != null && x !== '';
 const CS_PROPS = x => (CS_OBJ(x && x.props) ? x.props : {});
 // a part or role with no name is named as drawn, ': Engine [1]', by every port, line and binding that names it (audit 16)
-const csName = x => (x.type === 'uml.Property' && x.label == null ? csPartSaid(x) : String(x.label ?? x.id));
+const csName = x => (x.type === 'uml.Property' && !CS_HAS(x.label) ? csPartSaid(x) : String(x.label ?? x.id)); // '' too, as csPartText (audit 17)
 const csPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const csStereo = x => CS_ARR(CS_PROPS(x).stereotypes).filter(CS_HAS).map(String);
 const CS_SUBJECTS = ['uml.Class', 'uml.Component', 'uml.Collaboration'], CS_TYPED = ['uml.Class', 'uml.Component']; // a subject; what owns ports and types parts
@@ -40,20 +40,23 @@ const csPortText = m => `${m.label ?? ''}${CS_HAS(CS_PROPS(m).valueType) ? ' : '
 function csParse(t) {
   // the name runs to the first lone ':' (a type may be ns::T), the multiplicity is a closing [...] that is one (T[], list[str] are types)
   const s = String(t ?? '').trim(), b = /\s*\[([^[\]]*)\]$/.exec(s), k = b && multBounds(b[1]) ? b[1].trim() : undefined, h = k ? s.slice(0, b.index) : s, m = /^((?:[^:]|::)*?)\s*(?::(?!:)\s*((?:[^:]|::)*))?$/s.exec(h);
-  return m && m[1] ? { label: m[1], valueType: m[2] || undefined, multiplicity: k } : { error: 'A part is name : Type [multiplicity]' };
+  // no name before a type, ': Engine [1]', is an anonymous part (or role, or collaboration use), as drawn (audit 17)
+  return m && (m[1] || m[2]) ? { label: m[1] || undefined, valueType: m[2] || undefined, multiplicity: k } : { error: 'A part is name : Type [multiplicity]' };
 }
 // a member row on owner (§12.1): `port name : Type` on a class or component is a port, any other row a part (on a collaboration,
 // a role); was: the member the row edits, whose kind it keeps. A member as the model writes it, or { error }
 function csRow(owner, text, was) {
   const t = String(text ?? '').trim(), port = was ? was.type === 'uml.Port' : /^port\s+[^\s:]/i.test(t) && CS_TYPED.includes(owner && owner.type);
   const r = csParse(port ? t.replace(/^port\s+/i, '') : t);
-  if (r.error || (port && r.multiplicity)) return { error: port ? 'A port is port name : Type' : r.error };
-  return { type: port ? 'uml.Port' : 'uml.Property', label: r.label, props: { ...(r.valueType ? { valueType: r.valueType } : {}), ...(r.multiplicity ? { multiplicity: r.multiplicity } : {}) } };
+  if (r.error || (port && (r.multiplicity || r.label == null))) return { error: port ? 'A port is port name : Type' : r.error };
+  return { type: port ? 'uml.Port' : 'uml.Property', ...(r.label != null ? { label: r.label } : {}), props: { ...(r.valueType ? { valueType: r.valueType } : {}), ...(r.multiplicity ? { multiplicity: r.multiplicity } : {}) } };
 }
 // the sets that give x what r reads as: its name, its type and its multiplicity, one set each that changed (undefined clears one)
 const csSets = (x, r, keepType) => [['label', x.label, r.label], ['props.valueType', CS_PROPS(x).valueType, keepType ? CS_PROPS(x).valueType : r.props.valueType],
   ['props.multiplicity', CS_PROPS(x).multiplicity, x.type === 'uml.Port' ? CS_PROPS(x).multiplicity : r.props.multiplicity]]
-  .filter(([, a, b]) => (a ?? undefined) !== b).map(([path, , value]) => ({ op: 'set', id: x.id, path, value }));
+  .filter(([, a, b]) => (CS_HAS(a) ? a : undefined) !== (CS_HAS(b) ? b : undefined)).map(([path, , value]) => ({ op: 'set', id: x.id, path, value })); // '' is none, as drawn
+// a new member's or use's id: owner.<its name>, else .<its type> when it has none
+const csIdOf = (o, r) => `${o ? o + '.' : ''}${String(r.label ?? r.valueType ?? (r.props || {}).valueType ?? 'part').toLowerCase()}`;
 // an id not yet in the model: base, else base-2, base-3, …
 function csFresh(model, base) {
   const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
@@ -149,8 +152,6 @@ const CS_LINE_WORD = { __proto__: null, 'uml.Connector': 'Connector', 'uml.RoleB
 const csLineText = e => (e.type === 'uml.CommentLink' ? '' : [...csStereo(e).map(t => `«${t}»`), e.label].filter(CS_HAS).join(' '));
 const csLineName = (P, { e, f, t }) => e.type === 'uml.RoleBinding' ? `Role binding from ${csEndName(P, f)} to ${csEndName(P, t)}${csLineText(e) ? ', as ' + csLineText(e) : ''}`
   : `${CS_LINE_WORD[e.type] || 'Line'} from ${csEndName(P, f)} to ${csEndName(P, t)}${csLineText(e) ? ': ' + csLineText(e) : ''}`;
-// the structure a connector is drawn in: its from end's part's or role's, else its from end's owner (a port of the subject)
-const csStructOf = (P, e) => { const p = (CS_PROPS(e).ends || {}).from, k = CS_OBJ(p) && p.part != null ? p.part : e.from; return P.partOf.get(k) || (P.mem.get(k) || {}).owner; };
 // the subject and its ports, each part and its ports, the collaboration uses, each open collaboration and its roles, the rest; then the lines
 function csOrder(P) {
   const out = [], part = m => { out.push(m.id); P.partPorts.get(m.id).forEach(q => out.push(csPortId(m.id, q.id))); };
@@ -331,8 +332,10 @@ function csConnect(model, view, from, to, at, line) {
     const isPart = id => P.parts.some(m => m.id === id), isUse = id => P.uses.includes(id);
     let [p, u] = [a.part ?? a.id, b.part ?? b.id]; if (isUse(p) && isPart(u)) [p, u] = [u, p];
     if (!isPart(p) || !isUse(u)) return { error: 'A role binding runs from a part of the subject to a collaboration use' };
-    const C = csCollab(P, P.at.get(u)), roles = C ? P.kids(C, 'uml.Property').map(csName) : [];
+    // the roles a binding's label can name (binding-role): those with a name; a role drawn ': Publisher' has none (audit 17)
+    const C = csCollab(P, P.at.get(u)), all = C ? P.kids(C, 'uml.Property') : [], roles = all.filter(m => CS_HAS(m.label)).map(m => String(m.label));
     const add = role => [{ op: 'add', element: { id: csFresh(model, 'binding'), type: 'uml.RoleBinding', from: p, to: u, ...(role != null ? { label: role } : {}) }, view: view.id }];
+    if (!roles.length && all.length) return { error: `Name a role of ${csName(C)} first: a role binding names the role it binds` };
     return roles.length ? { pick: roles, then: i => add(roles[i]) } : add(null);
   }
   // the node each end is drawn on: its part, the subject (its port), else itself. One node, through a port or a box: not drawn (audit 11)
@@ -364,7 +367,7 @@ function csAdd(model, view, entry, label, at) {
   if (!CS_OBJ(entry)) return null;
   const PART = { type: 'uml.Property' }; // the Part and Role entries add a part, whatever the row says (audit 10)
   const P = csPic(model, view), sel = CS_ARR(at && at.sel).map(id => csOwnerOf(P, id)).map(id => P.el(id)).filter(Boolean)[0] || null, t = String(label ?? '').trim();
-  const member = (o, row, say, was) => { const r = csRow(o, row, was); if (r.error) return r; const c = [{ op: 'add', element: { id: csFresh(model, `${o.id}.${r.label.toLowerCase()}`), ...r }, owner: o.id }]; return say ? { commands: c, say } : c; };
+  const member = (o, row, say, was) => { const r = csRow(o, row, was); if (r.error) return r; const c = [{ op: 'add', element: { id: csFresh(model, csIdOf(o.id, r)), ...r }, owner: o.id }]; return say ? { commands: c, say } : c; };
   if (entry.type === 'uml.Port') {
     if (sel && P.partOf.has(sel.id)) { const T = P.typeOf(sel); if (!T) return { error: `${csName(sel)}'s type, ${JSON.stringify(CS_PROPS(sel).valueType ?? null)}, names no one class or component to add a port to` };
       return member(T, 'port ' + t, `Added the port to ${csName(T)}, the type of ${csName(sel)}: every part of that type shows it`); }
@@ -374,7 +377,7 @@ function csAdd(model, view, entry, label, at) {
   if (entry.type === 'uml.Property') return P.S ? member(P.S, t, null, PART) : { error: 'This view has no subject to add a part to' };
   if (entry.type === 'uml.CollaborationUse') { if (!P.S || !CS_TYPED.includes(P.S.type)) return { error: 'A collaboration use goes in a class or component subject' };
     const r = csParse(t); if (r.error || r.multiplicity) return { error: 'A collaboration use is name : Collaboration' };
-    return [{ op: 'add', element: { id: csFresh(model, r.label.toLowerCase()), type: 'uml.CollaborationUse', label: r.label, parent: P.sid, props: r.valueType ? { collaboration: r.valueType } : {} }, view: view.id }]; }
+    return [{ op: 'add', element: { id: csFresh(model, csIdOf(null, r)), type: 'uml.CollaborationUse', ...(r.label != null ? { label: r.label } : {}), parent: P.sid, props: r.valueType ? { collaboration: r.valueType } : {} }, view: view.id }]; }
   return null;
 }
 /* remove: a part, a port or a role is a member, which a view cannot hide (S20): Delete deletes it from the model, as Shift +
@@ -407,7 +410,7 @@ function csRename(model, view, id, text) {
   if (!x && lineIn(model, view, id)) return csLineRename(model, view, id, text);
   const u = !x && P.at.get(id); if (u && u.type === 'uml.CollaborationUse') return csUseRename(u, text);
   if (!x || (!s && x.m.type !== 'uml.Property' && x.m.type !== 'uml.Port')) return null;
-  if (!s && !csPartText(x.m) && String(text ?? '').trim() === x.m.id) return [];
+  if (!s && String(text ?? '').trim() === (x.m.type === 'uml.Property' ? csPartSaid(x.m) : csPartText(x.m) || x.m.id)) return []; // as drawn, unchanged (an anonymous part: ': Engine [1]', audit 17)
   const r = csRow(x.owner, text, x.m); if (r.error) return r;
   const c = csSets(x.m, r, x.m.type === 'uml.Port' && !String(text).includes(':')); // a name alone keeps a port's type: F2 opens on its name
   return s ? { commands: c, say: `Renamed ${csName(x.owner)}'s port: every part of that type shows it` } : c;
@@ -426,7 +429,7 @@ function csMember(model, view, owner, id, text) {
   const was = id != null ? CS_ARR(o.members).find(m => CS_OBJ(m) && m.id === id) : null;
   if (id != null && (!was || !['uml.Port', 'uml.Property'].includes(was.type))) return null;
   const r = csRow(o, text, was); if (r.error) return r;
-  return was ? csSets(was, r) : [{ op: 'add', element: { id: csFresh(model, `${o.id}.${r.label.toLowerCase()}`), ...r }, owner: o.id }];
+  return was ? csSets(was, r) : [{ op: 'add', element: { id: csFresh(model, csIdOf(o.id, r)), ...r }, owner: o.id }];
 }
 const CS_MEMBER = {
   print: m => (m.type === 'uml.Port' ? `port ${csPortText(m)}` : m.type === 'uml.Property' ? csPartText(m) : printMember(m)),
@@ -460,10 +463,9 @@ const CS_TYPE = registerDiagramType('uml.composite-structure', {
     const agg = m => (CS_PROPS(m).aggregation === 'shared' ? 'shared' : 'composite');
     if (q && q.m.type === 'uml.Property') return q.owner.type === 'uml.Collaboration' ? [csPartSaid(q.m)] : [csPartSaid(q.m), agg(q.m)];
     const u = P.at.get(id); if (!u) return null;
-    // the subject or an open collaboration (0.22.0): its members, a part or role with its aggregation, then the connectors
-    // among them, which the Lines table leaves out (their ends are members, not cards)
-    if (id === P.sid && P.S || P.collabs.some(c => c.x.id === id)) return [...CS_ARR(u.members).filter(CS_OBJ).map(m => (m.type === 'uml.Property' ? csPartSaid(m) : CS_MEMBER.print(m)) + (m.type === 'uml.Property' && id === P.sid && u.type !== 'uml.Collaboration' ? `, ${agg(m)}` : '')),
-      ...P.lines.filter(l => l.e.type === 'uml.Connector' && csStructOf(P, l.e) === u).map(l => csLineName(P, l))];
+    // the subject or an open collaboration (0.22.0): its members, a part or role with its aggregation. Its connectors are rows
+    // of the Lines table, which lists a line drawn to a member's owner (audit 3), so not again here (audit 17)
+    if (id === P.sid && P.S || P.collabs.some(c => c.x.id === id)) return CS_ARR(u.members).filter(CS_OBJ).map(m => (m.type === 'uml.Property' ? csPartSaid(m) : CS_MEMBER.print(m)) + (m.type === 'uml.Property' && id === P.sid && u.type !== 'uml.Collaboration' ? `, ${agg(m)}` : ''));
     if (u.type !== 'uml.CollaborationUse') return null;
     return [...(CS_HAS(CS_PROPS(u).collaboration) ? [String(CS_PROPS(u).collaboration)] : []),
       ...CS_ARR(model.edges).filter(e => CS_OBJ(e) && e.type === 'uml.RoleBinding' && e.to === id).map(e => `${e.label ?? '?'} ← ${csName(P.el(e.from) || { id: e.from })}`)]; },

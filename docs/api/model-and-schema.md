@@ -26,7 +26,7 @@ and the other functions that return a model return a new one.
 }
 ```
 
-The full field list, with examples, is in the README's Model section and `engine/references/schema.md` (§ Map model);
+The full field list, with examples, is in [The model](../guide/model.md) and `engine/references/schema.md` (§ Map model);
 `examples/bookshop.json` uses most of it.
 
 ## MapModel

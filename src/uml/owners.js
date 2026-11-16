@@ -11,7 +11,7 @@ const OWN_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), O
 const OWN_BOXES = ['uml.Package', 'uml.Profile']; // the node types that may be a box (§4.1, 1); a profile is a package (notes/stage-6.md §4.1)
 // the types of rows 1 to 3 whose owner is a package (rule owner-kinds); comments are not checked
 const OWNED = ['uml.Class', 'uml.Interface', 'uml.Enumeration', 'uml.DataType', 'uml.PrimitiveType', 'uml.Package', 'uml.InstanceSpecification'];
-const ownName = x => String(x.label ?? x.id);
+const ownName = x => String(x.label ?? x.id), ownAt = (at, id) => at.get(id) || { id }; // an id the index lacks (a member's) by itself, not a throw (audit 17)
 const stereoOf = x => OWN_ARR(OWN_OBJ(x.props) ? x.props.stereotypes : null).filter(t => t != null && t !== '').map(String);
 
 // every node of a model by id (the first of an id), and the chain of its owners, nearest first. An ownership cycle (the
@@ -45,9 +45,9 @@ function ownersOn(model, view, look = {}) {
   const kept = [...live].filter(many).sort((a, b) => place(a) - place(b)), all = [...ids, ...kept], shown = new Set(all);
   const ow = new Map(all.map(id => [id, chain(id).find(p => shown.has(p) && (mems.has(p) || boxTypes.includes(at.get(p).type))) ?? null])), owner = id => ow.get(id) ?? null;
   const upTo = (id, stop, by) => { const c = chain(id), k = c.indexOf(stop), q = by ? c.findIndex(p => !by.includes((at.get(p) || {}).type)) : -1;
-    return [...c.slice(0, Math.min(k < 0 ? c.length : k, q < 0 ? c.length : q)).reverse(), id].map(x => ownName(at.get(x))).join('::'); };
+    return [...c.slice(0, Math.min(k < 0 ? c.length : k, q < 0 ? c.length : q)).reverse(), id].map(x => ownName(ownAt(at, x))).join('::'); };
   const full = id => upTo(id, null), subject = OWN_OBJ(view) ? view.subject : null;
-  const name = id => { const o = owner(id); return !qualify ? ownName(at.get(id)) : upTo(id, o != null ? o : chain(id).includes(subject) ? subject : null, qualifyBy); };
+  const name = id => { const o = owner(id); return !qualify ? ownName(ownAt(at, id)) : upTo(id, o != null ? o : chain(id).includes(subject) ? subject : null, qualifyBy); };
   const by = new Map(); all.forEach(id => { const o = owner(id); if (!by.has(o)) by.set(o, []); by.get(o).push(id); }); // grouped once: a view of 10,000 elements
   const holds = o => by.get(o) || [], open = new Set([...by.keys()].filter(x => x != null));
   const boxes = all.filter(id => open.has(id)).map(id => { const p = at.get(id), st = stereoOf(p), held = holds(id), o = owner(id), nm = name(id);

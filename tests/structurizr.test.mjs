@@ -61,20 +61,20 @@ test('a workspace with every view kind and every shape reads into typed C4 that 
     ['model.deploymentNodes[0].children[0].instances', 'approximated', 'deployment node Server stands for 3 instances: it is drawn once'],
     ['model.deploymentNodes[0].children[0].infrastructureNodes[0]', 'skipped', 'an infrastructure node Load balancer is not read, nor its relationships'],
     ['model.deploymentNodes[1].softwareSystemInstances[0]', 'skipped', 'a software system instance is not read, nor its relationships'],
-    ['model', 'skipped', '4 implied relationships are not read: the C4 type works them out when it draws'],
+    ['model', 'skipped', '1 implied relationship is not read: the C4 type works them out when it draws'],
     ['views.configuration.styles.elements', 'skipped', 'element styles: only shape is read, not background, color'],
     ['model.softwareSystems[0].containers[6].components[1]', 'approximated', 'Order store: shape Ellipse is drawn as a box'],
     ['model.softwareSystems[0].containers[6].components[2]', 'approximated', 'Search: shape Component is drawn as a box'],
     ['model.softwareSystems[2]', 'approximated', 'Warehouse: shape Circle is drawn as a box'],
     ['views.systemLandscapeViews[0].animations', 'skipped', 'view landscape: animations are not read'],
     ['views.componentViews[0].automaticLayout', 'approximated', 'view components: BottomTop is drawn top to bottom'],
-    ['views.dynamicViews[0].relationships[2]', 'approximated', 'view placing-an-order: step 2 is an implied relationship: the relationship it is implied by, shop.web-shop.api.orders, is the step'],
-    ['views.dynamicViews[0].relationships[3]', 'approximated', 'view placing-an-order: step 3 is an implied relationship: the relationship it is implied by, shop.api.store-shop.db, is the step'],
-    ['views.dynamicViews[0].relationships[3]', 'approximated', 'view placing-an-order: step shop.api.store-shop.db says "Saves the order in": the relationship\'s own description is drawn'],
-    ['views.dynamicViews[0].relationships[4]', 'approximated', 'view placing-an-order: step 4 is an implied relationship: the relationship it is implied by, shop.api.orders-payments, is the step'],
-    ['views.dynamicViews[0].relationships[5]', 'approximated', 'view placing-an-order: step 5 is an implied relationship: the relationship it is implied by, shop.web-shop.api.orders, is the step'],
-    ['views.dynamicViews[0].relationships[5]', 'approximated', 'view placing-an-order: shop.web-shop.api.orders is a step twice: the first is kept (each relationship is one step)'],
-    ['views.dynamicViews[0].relationships[6]', 'approximated', 'view placing-an-order: shop.web-shop.api.orders is a step twice: the first is kept (each relationship is one step)'],
+    ['views.dynamicViews[0].relationships[2]', 'approximated', 'view placing-an-order: step 2 is an implied relationship: it is kept as the model\'s relationship shop.web-shop.api, Web app → API'],
+    ['views.dynamicViews[0].relationships[3]', 'approximated', 'view placing-an-order: step 3 is an implied relationship: it is kept as the model\'s relationship shop.api-shop.db, API → Database'],
+    ['views.dynamicViews[0].relationships[3]', 'approximated', 'view placing-an-order: step shop.api-shop.db says "Saves the order in": the relationship\'s own description is drawn'],
+    ['views.dynamicViews[0].relationships[4]', 'approximated', 'view placing-an-order: step 4 is an implied relationship: it is kept as the model\'s relationship shop.api-payments, API → Payments'],
+    ['views.dynamicViews[0].relationships[5]', 'approximated', 'view placing-an-order: step 5 is an implied relationship: it is kept as the model\'s relationship shop.web-shop.api, Web app → API'],
+    ['views.dynamicViews[0].relationships[5]', 'approximated', 'view placing-an-order: shop.web-shop.api is a step twice: the first is kept (each relationship is one step)'],
+    ['views.dynamicViews[0].relationships[6]', 'approximated', 'view placing-an-order: step shop.web-shop.api.orders is a response: it is drawn the relationship\'s way'],
     ['views.dynamicViews[0].relationships[7]', 'skipped', 'view placing-an-order: a step whose relationship is not read'],
     ['views.deploymentViews[0].elements', 'skipped', 'view live: 2 elements not read are not shown'],
     ['views.filteredViews[0]', 'skipped', 'a filtered view internal-only is not read'],
@@ -99,7 +99,7 @@ test('a workspace with every view kind and every shape reads into typed C4 that 
   assert.equal(at('warehouse').props.external, undefined); // location: Internal
   // a relationship's DSL identifier is its id; an instance's relationship, replicated from its container's, is read
   assert.deepEqual(model.edges.map(e => e.id), ['shops', 'robot-shop.db', 'shop.web-shop.api.orders', 'shop.api-shop.bus', 'shop.api.orders-shop.api.store',
-    'shop.api.orders-payments', 'shop.api.store-shop.db', 'shop.api-1-shop.db-1']);
+    'shop.api.orders-payments', 'shop.api.store-shop.db', 'shop.api-1-shop.db-1', 'shop.web-shop.api', 'shop.api-shop.db', 'shop.api-payments']);
   assert.deepEqual(model.views.map(v => [v.id, v.diagram, v.title, v.subject ?? null, v.direction ?? null]), [
     ['landscape', 'c4.landscape', 'Shop: everything at once', null, null],
     ['context', 'c4.context', 'Shop: system context', 'shop', null],
@@ -110,8 +110,12 @@ test('a workspace with every view kind and every shape reads into typed C4 that 
   const view = id => model.views.find(v => v.id === id);
   assert.deepEqual(view('components').nodeIds, ['shop.api', 'shop.web', 'shop.db', 'shop.api.orders', 'shop.api.store', 'shop.api.search', 'payments']);
   assert.deepEqual(view('context').nodeIds, ['customer', 'robot', 'shop', 'payments']); // a context view draws no boundary
-  // steps by `order`, 10 after 4; each relationship once; an implied step as the relationship it is implied by
-  assert.deepEqual(view('placing-an-order').edges, ['shops', 'shop.web-shop.api.orders', 'shop.api.store-shop.db', 'shop.api.orders-payments', 'shop.api-shop.bus']);
+  // steps by `order`, 10 after 4; each relationship once; an implied step whose linked relationship has an end the view
+  // does not draw (a component, in this container-level view) is kept as a relationship of the model, so all 5 are drawn
+  // (audit 17: they were swapped for the component-level relationships, and steps 2, 3 and 4 were not drawn)
+  assert.deepEqual(view('placing-an-order').edges, ['shops', 'shop.web-shop.api', 'shop.api-shop.db', 'shop.api-payments', 'shop.web-shop.api.orders', 'shop.api-shop.bus']);
+  assert.deepEqual(model.edges.find(e => e.id === 'shop.web-shop.api'), { id: 'shop.web-shop.api', type: 'c4.Relationship', from: 'shop.web', to: 'shop.api', label: 'Places orders through', props: { technology: 'JSON/HTTPS' } });
+  // (that all 5 are drawn: tests/c4-views.test.mjs, where the dynamic view's type is loaded)
   assert.deepEqual(view('placing-an-order').nodeIds[0], 'shop'); // a dynamic view draws its scope's boundary too
   assert.deepEqual(view('live').nodeIds, ['live.dc', 'live.dc.server', 'shop.api-1', 'shop.api-2', 'live.dc.dbs', 'shop.db-1', 'payments-cloud']);
 });

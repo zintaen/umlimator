@@ -351,3 +351,14 @@ test('audit 15: F2 on a line takes its «stereotype» off, so it is not drawn tw
   assert.deepEqual(T.edits.rename(M17, M17.views[0], 'dock-uses-charge-interface', '«use» powers'), [{ op: 'set', id: 'dock-uses-charge-interface', path: 'label', value: 'powers' }]);
   assert.equal(T.edits.rename(M17, M17.views[0], 'dock', 'Docking station'), null, 'a card: the canvas\'s');
 });
+
+test('audit 17: a part association names its part so that the part\'s row reads back, whatever the block\'s name starts with', () => {
+  const roles = [];
+  for (const label of ['Battery pack', '3D Printer', '(Spare) wheel', 'Ü-Motor', '_x', '---', '2']) {
+    const m = { schemaVersion: 2, nodes: [B('bike', 'Bike'), B('b', label)], edges: [], views: [{ id: 'v', diagram: 'sysml.block-definition', nodeIds: ['bike', 'b'] }] };
+    const r = T.edits.connect(m, m.views[0], 'bike', 'b', null, { type: 'uml.Association', props: { ends: { from: { aggregation: 'composite' } } } });
+    const m2 = apply(m, r), x = m2.nodes[0].members[0], back = bdParse(bdPrint(x), m2.nodes[0], m2);
+    assert.ok(!back.error, `${label}: ${bdPrint(x)} ${back.error}`); assert.equal(back.label, x.label); roles.push(x.label);
+  }
+  assert.deepEqual(roles, ['batterypack', 'part3DPrinter', 'sparewheel', 'üMotor', '_x', 'part', 'part2']);
+});

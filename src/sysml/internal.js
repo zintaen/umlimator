@@ -15,7 +15,8 @@ import { SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS } from './sysml.js';
 
 const SYS_IB_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), SYS_IB_ARR = x => (Array.isArray(x) ? x : []);
 const SYS_IB_PROPS = x => (SYS_IB_OBJ(x && x.props) ? x.props : {}), SYS_IB_HAS = x => x != null && x !== '';
-const SYS_IB_NAME = x => String(x.label ?? x.id);
+// a part, reference or value with no name is named as drawn, ': Battery [1]' (the composite type's csName, audit 17)
+const SYS_IB_NAME = x => (Object.hasOwn(SYS_IB_PROP, x.type) && !SYS_IB_HAS(x.label) ? SYS_IB_TEXT(x) : String(x.label ?? x.id));
 const SYS_IB_PLURAL = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const SYS_IB_PROP = { __proto__: null, 'sysml.PartProperty': 'Part', 'sysml.ReferenceProperty': 'Reference', 'sysml.ValueProperty': 'Value' };
 const SYS_IB_FLOWS = ['from-to', 'to-from'];
@@ -44,7 +45,8 @@ const SYS_IB_FLOW_SAY = { in: 'in', out: 'out', inout: 'in and out' };
 const SYS_IB_IF = e => { const f = SYS_IB_PROPS(e).itemFlow; return SYS_IB_OBJ(f) && typeof f.item === 'string' && f.item.trim() && SYS_IB_FLOWS.includes(f.direction) ? f : null; };
 
 /* ---- names (§13): the type's words for each part, port and connector; null leaves the composite type's ---- */
-const SYS_IB_TEXT = m => { const p = SYS_IB_PROPS(m); return `${m.label ?? m.id}${SYS_IB_HAS(p.valueType) ? ': ' + p.valueType : ''}${SYS_IB_HAS(p.multiplicity) ? ` [${p.multiplicity}]` : ''}`; };
+const SYS_IB_TEXT = m => { const p = SYS_IB_PROPS(m), t = SYS_IB_HAS(p.valueType); // with no name, ': Battery [1]' as drawn; with neither name nor type, its id
+  return `${SYS_IB_HAS(m.label) ? m.label : t ? '' : m.id}${t ? ': ' + p.valueType : ''}${SYS_IB_HAS(p.multiplicity) ? ` [${p.multiplicity}]` : ''}`; };
 const SYS_IB_PORT_WORD = p => ({ __proto__: null, proxy: 'Proxy port', full: 'Full port' })[SYS_IB_PROPS(p).kind] || 'Port';
 function SYS_IB_PORT_SAY(I, p, owner) {
   const t = SYS_IB_TYPE(p), f = SYS_IB_FLOW(I, p);
@@ -218,7 +220,7 @@ function SYS_IB_MEMBER(model, view, owner, id, text) {
 const SYS_IB_MEMBERS = {
   print: m => { const p = SYS_IB_PROPS(m);
     if (m.type === 'sysml.Port') return `${SYS_IB_HAS(p.kind) ? p.kind + ' ' : ''}port ${m.label ?? ''}${SYS_IB_HAS(p.valueType) ? ' : ' + p.valueType : ''}`;
-    return Object.hasOwn(SYS_IB_PROP, m.type) ? `${m.type === 'sysml.ReferenceProperty' ? 'ref ' : ''}${m.label ?? ''}${SYS_IB_HAS(p.valueType) ? ' : ' + p.valueType : ''}${SYS_IB_HAS(p.multiplicity) ? ` [${p.multiplicity}]` : ''}` : String(m.label ?? ''); },
+    return Object.hasOwn(SYS_IB_PROP, m.type) ? `${m.type === 'sysml.ReferenceProperty' ? 'ref ' : ''}${`${m.label ?? ''}${SYS_IB_HAS(p.valueType) ? ' : ' + p.valueType : ''}${SYS_IB_HAS(p.multiplicity) ? ` [${p.multiplicity}]` : ''}`.trim()}` : String(m.label ?? ''); }, // with no name, ': Battery [1]'
   // what edits.member does not read (an operation's or a flow property's row) is the block definition view's
   add: () => ({ error: 'A member here is a part, a reference (ref), a value or a port (proxy port, full port)' }),
   edit: () => ({ error: 'This view edits parts, references, values and ports: the block definition view edits the rest' }),
@@ -235,10 +237,9 @@ function SYS_IB_ROWS(model, view, id) {
   if (Object.hasOwn(SYS_IB_PROP, x.type)) return [SYS_IB_TEXT(x)];
   if (x.type === 'sysml.Port') { const t = SYS_IB_TYPE(x), f = SYS_IB_FLOW(I, x); return [...(t.name ? [t.name + (t.conj ? ', conjugated' : '')] : []), ...(f ? ['flow ' + SYS_IB_FLOW_SAY[f]] : [])]; }
   if (x !== I.S) return null;
-  // the subject: its parts, references, values and ports, then its connectors (their ends are members, which the Lines table leaves out)
-  const inS = id2 => id2 != null && (I.mem.get(id2) || {}).owner === x, part = (e, k) => { const p = (SYS_IB_PROPS(e).ends || {})[k]; return SYS_IB_OBJ(p) ? p.part : null; };
-  return [...SYS_IB_ARR(x.members).filter(m => SYS_IB_OBJ(m) && (Object.hasOwn(SYS_IB_PROP, m.type) || m.type === 'sysml.Port')).map(m => SYS_IB_MEMBERS.print(m)),
-    ...SYS_IB_ARR(model.edges).filter(e => SYS_IB_OBJ(e) && e.type === 'sysml.Connector' && ['from', 'to'].some(k => inS(part(e, k)) || inS(e[k]))).map(e => SYS_IB_LINE_SAY(I, e))];
+  // the subject: its parts, references, values and ports. Its connectors are rows of the Lines table, which lists a line drawn
+  // to a member's owner, so not again here (audit 17)
+  return SYS_IB_ARR(x.members).filter(m => SYS_IB_OBJ(m) && (Object.hasOwn(SYS_IB_PROP, m.type) || m.type === 'sysml.Port')).map(m => SYS_IB_MEMBERS.print(m));
 }
 // "DCPower, battery to dock": the item, then the parts (or ports) it flows from and to
 function SYS_IB_LINE_TEXT(model, view, id) {

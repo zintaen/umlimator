@@ -485,3 +485,12 @@ test('audit 16: a member\'s stereotypes are drawn before its row, printed for th
   assert.deepEqual(parseMember('«id» «key» - id: UUID'), { type: 'uml.Property', label: 'id', props: { stereotypes: ['id', 'key'], visibility: 'private', valueType: 'UUID' } });
   assert.deepEqual(memberEdit(m.nodes[0].members[0], 'id: UUID').commands[1].value, { valueType: 'UUID' }, 'taking «id» off the text drops it');
 });
+
+test('audit 17: on an enumeration, a bare name after its «stereotypes» is a literal, as printMember writes one', () => {
+  const T = diagramOf({ diagram: 'uml.class' }), E = { id: 'Color', type: 'uml.Enumeration', label: 'Color', members: [] };
+  const lit = { id: 'c.r', type: 'uml.EnumerationLiteral', label: 'Red', props: { stereotypes: ['deprecated'] } };
+  assert.deepEqual(T.member.add(printMember(lit), E), { type: 'uml.EnumerationLiteral', label: 'Red', props: { stereotypes: ['deprecated'] } });
+  assert.deepEqual(T.member.add('«a» «b»Red', E), { type: 'uml.EnumerationLiteral', label: 'Red', props: { stereotypes: ['a', 'b'] } });
+  assert.equal(T.member.add('«deprecated» red: Int', E).type, 'uml.Property', 'not a bare name: an attribute');
+  assert.equal(T.member.add('«deprecated» Red', { id: 'K', type: 'uml.Class', label: 'K' }).type, 'uml.Property', 'on a class: an attribute');
+});

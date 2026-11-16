@@ -293,13 +293,16 @@ test('the PDF (§13): words, rows, a connector\'s item flow as its line text', (
     ['Part', 'Reference', 'Proxy port', 'Full port', 'Port', 'Block', 'Interface block', null]);
   assert.deepEqual(T.rows(RICH, V, 'ebike.dock'), ['dock: Dock [0..1]']);
   assert.deepEqual(T.rows(RICH, V, 'dock.charge'), ['ChargeInterface, conjugated', 'flow out']);
-  assert.deepEqual(T.rows(RICH, V, 'ebike').slice(5, 8), ['ref dock : Dock [0..1]', 'proxy port plug : ChargeInterface', 'Connector from charge of battery to charge of dock, carrying DCPower from charge of dock to charge of battery']);
+  // its connectors are Lines rows, not member rows too (audit 17)
+  assert.deepEqual(T.rows(RICH, V, 'ebike').slice(5), ['ref dock : Dock [0..1]', 'proxy port plug : ChargeInterface']);
   assert.equal(T.rows(RICH, V, 'battery'), null);
   assert.deepEqual(['battery-dock-charge', 'battery-feeds-controller', 'battery-controller-bus', 'nope'].map(id => T.text(RICH, V, id)), ['DCPower, dock to battery', 'DCPower, battery to controller', null, null]);
   const ctx = mapContext(RICH), tables = tablesOf(ctx, ctx.V[VID], ctx.buildGeo(VID)), cards = tables.find(t => t.cls === 'cards');
-  // the connectors join members, which the Lines table leaves out: the subject's rows carry them, as the composite type's (0.22.0)
-  assert.ok(cards.rows.some(r => r.includes('carrying DCPower from power to supply')), cards.rows.join('\n'));
-  assert.ok(T.rows(RICH, V, 'ebike').some(r => /carrying DCPower/.test(r)));
+  // the connectors are Lines rows, each with its item flow (audit 3 lists a line drawn to a member's owner); the subject's
+  // rows do not list them again (audit 17)
+  const lines = tables.find(t => t.cls === 'lines');
+  assert.ok(lines.rows.some(r => r.includes('DCPower, battery to controller')), lines.rows.join('\n'));
+  assert.ok(!cards.rows.some(r => /carrying DCPower|Connector from/.test(r)), cards.rows.join('\n'));
 });
 
 /* ---- P1 (§14): 30 parts, 60 connectors; an item flow set (its label grows) and a part added, the projection's time beside ---- */
@@ -342,4 +345,18 @@ test('audit 15: F2 on a connector with an item flow renames the item it draws, n
   const v = M18.views.find(x => x.id === VID);
   assert.deepEqual(T.edits.rename(M18, v, 'battery-dock-charge', 'Charge current'), [{ op: 'set', id: 'battery-dock-charge', path: 'props.itemFlow.item', value: 'Charge current' }]);
   assert.ok(T.edits.rename(M18, v, 'battery-dock-charge', ' ').error);
+});
+
+test('audit 17: an anonymous part, drawn ": Battery [1]", is said and printed as drawn, and F2 reads that text', () => {
+  const m = structuredClone(M18), V = m.views.find(v => v.id === VID); delete mem(m, 'ebike.battery').label; mem(m, 'ebike.battery').props.multiplicity = '1';
+  const g = layout(m, VID), n = g.byId['ebike.battery'];
+  assert.equal(n.label, ': Battery [1]');
+  assert.match(n.aria, /^Part : Battery \[1\], in EBike/);
+  const said = describe(m, VID);
+  assert.doesNotMatch(said, /ebike\.battery/, said); assert.match(said, /Connector from power of : Battery \[1\] to supply of controller/);
+  assert.deepEqual(T.rows(m, V, 'ebike.battery'), [': Battery [1]']);
+  assert.equal(T.rows(m, V, 'ebike')[0], ': Battery [1]', 'the subject\'s row, no leading space');
+  assert.deepEqual(T.edits.rename(m, V, 'ebike.battery', ': Battery [1]'), [], 'Enter unchanged');
+  assert.deepEqual(T.edits.rename(m, V, 'ebike.battery', ': Battery [2]'), [{ op: 'set', id: 'ebike.battery', path: 'props.multiplicity', value: '2' }]);
+  assert.deepEqual(T.edits.rename(m, V, 'ebike.battery', 'pack : Battery [1]'), [{ op: 'set', id: 'ebike.battery', path: 'label', value: 'pack' }]);
 });

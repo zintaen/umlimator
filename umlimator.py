@@ -73,9 +73,10 @@ def not_objects(d):
     ids = lambda at, xs, ks: [f"{at}[{j}].{k} is not a string" for j, x in enumerate(lst(xs)) if isinstance(x, dict) for k in ks if not name(x.get(k))]
     out = [f"{k} is not a list" for k in ("nodes", "edges", "views") if k in d and not isinstance(d[k], list)]
     out += [f"{k}[{i}] is not an object" for k in ("nodes", "edges", "views") for i, x in enumerate(lst(d.get(k))) if not isinstance(x, dict)]
-    out += [f"{k} is not a list" for k in ("stories",) if k in d and not isinstance(d[k], list)]  # list_views and play_story read them (audit 16)
+    # list_views and play_story read them (audit 16); a null is no list, as validate() and the page read it (audit 17)
+    out += ["stories is not a list"] if d.get("stories") is not None and not isinstance(d["stories"], list) else []
     out += [f"stories[{i}] is not an object" if not isinstance(x, dict) else f"stories[{i}].steps is not a list"
-            for i, x in enumerate(lst(d.get("stories"))) if not isinstance(x, dict) or "steps" in x and not isinstance(x["steps"], list)]
+            for i, x in enumerate(lst(d.get("stories"))) if not isinstance(x, dict) or x.get("steps") is not None and not isinstance(x["steps"], list)]
     out += ["meta is not an object"] if "meta" in d and not isinstance(d["meta"], dict) else []
     seen = set()
     for i, v in ((i, v) for i, v in enumerate(lst(d.get("views"))) if isinstance(v, dict)):
@@ -94,7 +95,11 @@ def not_objects(d):
         out += [f"views[{i}].nodeOverrides.{k} is not an object" for k, x in (o.items() if isinstance(o, dict) else []) if not isinstance(x, dict)]
         out += [f"views[{i}].parent is not a string"] if not name(v.get("parent")) else []
         # a list's entry is never absent, so a null is no name either (it ended MCP tools in an internal error, audit 15)
-        out += [f"views[{i}].{k}[{j}] is not a string" for k in ("nodeIds", "stepIds") for j, x in enumerate(lst(v.get(k))) if not isinstance(x, str)]
+        # tour and browserOrder too, and a box's cards: upstream hashes each (an unhashable one ended in a traceback, audit 17)
+        out += [f"views[{i}].{k}[{j}] is not a string" for k in ("nodeIds", "stepIds", "tour", "browserOrder") for j, x in enumerate(lst(v.get(k))) if not isinstance(x, str)]
+        out += [f"views[{i}].containers[{j}].nodeIds[{k}] is not a string" for j, c in enumerate(lst(v.get("containers"))) if isinstance(c, dict)
+                for k, x in enumerate(lst(c.get("nodeIds"))) if not isinstance(x, str)]
+        out += ids(f"views[{i}].containers", v.get("containers"), ("parent",)) + ids(f"views[{i}].intake", v.get("intake"), ("to",))
         out += ids(f"views[{i}].nodes", v.get("nodes"), ("id", "opensView", "view")) + ids(f"views[{i}].containers", v.get("containers"), ("id",))
         out += ids(f"views[{i}].edges", v.get("edges"), ("id", "from", "to"))
         out += [f"views[{i}].nodeOverrides.{k}.{f} is not a string" for k, x in (o.items() if isinstance(o, dict) else []) if isinstance(x, dict)

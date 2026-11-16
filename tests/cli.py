@@ -398,6 +398,26 @@ with tempfile.TemporaryDirectory() as tmp:
        [b.returncode for b in bs] == [1] * 5 and "vstr.json: views is not a list" in bs[0].stderr and "v5.json: views[0].id is not a string" in bs[1].stderr
        and "vstr.json: views is not a list" in bs[2].stderr + bs[3].stderr and "v5.json: views[0].id" in bs[4].stderr
        and not any((t / f).exists() for f in ("d11.html", "t11.json", "e11.bpmn")), [b.stderr[-200:] for b in bs])
+    # audit 17: a null stories, or a story's null steps, is absent (as validate() and the page read it), not refused (a round-16 regression);
+    # a list or an object, though, still is
+    two = {"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "edges": [{"from": "a", "to": "b"}], "views": [{"id": "main", "nodeIds": ["a", "b"]}]}
+    for f, extra in (("sn", {"stories": None}), ("ssn", {"stories": [{"id": "s", "steps": None}]}), ("so", {"stories": {}}), ("sso", {"stories": [{"id": "s", "steps": {}}]})):
+        (t / f"{f}.json").write_text(json.dumps(two | extra))
+    bs = [plain("render", str(t / f"{f}.json"), "--out", str(t / f"{f}.html"), "--no-check") for f in ("sn", "ssn", "so", "sso")]
+    ok("render · a null stories or a null steps renders; stories or steps that are an object are still refused in one line (audit 17)",
+       [b.returncode for b in bs] == [0, 0, 1, 1] and (t / "sn.html").exists() and (t / "ssn.html").exists()
+       and "so.json: stories is not a list" in bs[2].stderr and "sso.json: stories[0].steps is not a list" in bs[3].stderr, [b.stderr[-200:] for b in bs])
+    # audit 17: a tour or browserOrder entry, a box's card or parent, an intake's to that is no string ended in upstream's traceback
+    bad = {"tour": {"tour": [{"id": "a"}, "b"]}, "browserOrder": {"browserOrder": [["main"]]}, "cnode": {"containers": [{"id": "x", "nodeIds": [["a"]]}]},
+           "cparent": {"containers": [{"id": "x", "nodeIds": ["a"], "parent": ["y"]}]}, "intake": {"intake": [{"label": "in", "to": ["a"]}]}}
+    said = {"tour": "views[0].tour[0] is not a string", "browserOrder": "views[0].browserOrder[0] is not a string", "cnode": "views[0].containers[0].nodeIds[0] is not a string",
+            "cparent": "views[0].containers[0].parent is not a string", "intake": "views[0].intake[0].to is not a string"}
+    for k, v in bad.items():
+        (t / f"b17{k}.json").write_text(json.dumps(two | {"views": [two["views"][0] | v]}))
+    bs = {k: plain("render", str(t / f"b17{k}.json"), "--out", str(t / f"b17{k}.html"), "--no-check") for k in bad}
+    ok("render · a non-string tour, browserOrder, box card, box parent or intake to is refused in one line naming it, no traceback (audit 17)",
+       all(b.returncode == 1 and b.stderr.strip().endswith(f"b17{k}.json: {said[k]}") and "Traceback" not in b.stderr and not (t / f"b17{k}.html").exists()
+           for k, b in bs.items()), {k: b.stderr[-200:] for k, b in bs.items()})
     b = plain("trace", str(ROOT / "examples" / "bike-share.json"), rides, "--view", "", "--out", str(t / "t11.json"))
     ok("trace · an empty --view is refused in one line, and nothing is written (audit 11)",
        b.returncode == 1 and "--view needs a view id" in b.stderr and not (t / "t11.json").exists(), b.stderr[-300:])
@@ -758,14 +778,13 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("pdf · buy-book-overview: its tables list each node's kind and each flow, then each sequence view it opens",
        all(flat(s) in txt for s in ["Find a bookInteraction use", "Queue the orderInteraction", "Payment accepted?Decision node", "buy-splitFork node", "Payment accepted? → buy-splitControl flow",
                                     "storefront : Storefront → api : ShopApifindBooks(title)Message"]), txt[:800])
-    # 5.8: the three stage 5 types' tables (notes/stage-5.md §11): a component's ports with what they provide and the
-    # connectors from them, an interface's kind, what an artifact manifests; a target's kind and what is deployed on it; the
-    # subject's parts with their aggregation and its connectors, a collaboration use's collaboration and bindings
+    # 5.8: the three stage 5 types' tables (notes/stage-5.md §11): a component's ports with what they provide, an interface's
+    # kind, what an artifact manifests; a target's kind and what is deployed on it; the subject's parts with their
+    # aggregation, a collaboration use's collaboration and bindings. A connector is a Lines row, once (audit 17)
     txt = "".join(read("bookshop-components.pdf"))
-    ok("pdf · bookshop-components: its tables list each component's ports and what they provide, the connectors from them, each interface and artifact by kind, each line between elements",
-       all(flat(s) in txt for s in ["Elements", "Shop APIComponentorders, provides Orderspayments", "Delegation from orders of Shop API to orders of Checkout",
-                                    "Assembly from payments of Shop API to charges of Payment provider", "OrdersInterface", "shop-api.jarArtifactmanifests Shop API",
-                                    "From → toLabelKind", "Storefront → OrdersUsage", "shop-api.jar → Shop APIManifestation"]), txt[:800])
+    ok("pdf · bookshop-components: its tables list each component's ports and what they provide, each interface and artifact by kind, each line between elements, a connector once",
+       all(flat(s) in txt for s in ["Elements", "Shop APIComponentorders, provides Orderspayments", "OrdersInterface", "shop-api.jarArtifactmanifests Shop API",
+                                    "From → toLabelKind", "Storefront → OrdersUsage", "shop-api.jar → Shop APIManifestation", "Shop API → CheckoutConnector"]) and "Delegation from" not in txt, txt[:800])
     txt = "".join(read("bookshop-deployment.pdf"))
     ok("pdf · bookshop-deployment: its tables list each target's kind and what is deployed on it (by nesting or a line), each artifact's manifestation, each path",
        all(flat(s) in txt for s in ["Shopper's deviceDevice", "Java 21 runtimeExecution environmentshop-api.jarorder-worker.jarshop-api.yaml", "Edge proxyNoderoutes.conf, by «deploy»",
@@ -775,10 +794,10 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("pdf · a typed model's cover counts the lines its views' tables list", all(re.search(rf"1view·\d+cards·{n}lines", (read(f"{name}.pdf") or [""])[0])
        for name, n in (("order-service-structure", 8), ("checkout-sequence", 10))), [(read(f"{name}.pdf") or [""])[0][:120] for name in ("order-service-structure", "checkout-sequence")])
     txt = "".join(read("order-service-structure.pdf"))
-    ok("pdf · order-service-structure: its tables list the subject's ports and parts, each part shared or composite, its connectors, the collaboration use's collaboration and bindings, the collaboration's roles",
+    ok("pdf · order-service-structure: its tables list the subject's ports and parts, each part shared or composite, the collaboration use's collaboration and bindings, the collaboration's roles, a connector once",
        all(flat(s) in txt for s in ["OrderServiceClassport apiport payments", "checkout : CheckoutFlow [1], composite", "listeners : OrderListener [0..*], shared",
-                                    "Connector from api of OrderService to requests of checkout", "orderEvents : PublishSubscribeCollaboration usePublishSubscribepublisher ← checkoutsubscriber ← listeners",
-                                    "PublishSubscribeCollaborationpublisher : EventSource [1]subscriber : EventListener [0..*]Connector from publisher to subscriber"]), txt[:800])
+                                    "orderEvents : PublishSubscribeCollaboration usePublishSubscribepublisher ← checkoutsubscriber ← listeners",
+                                    "PublishSubscribeCollaborationpublisher : EventSource [1]subscriber : EventListener [0..*]"]) and "Connector from" not in txt, txt[:800])
     # 6.6: the two stage 6 types' tables (notes/stage-6.md §9): a profile's stereotypes and metaclasses and the packages it is
     # applied to, a metaclass's extensions, a stereotype's extension, generals and tags, an element's stereotypes with their
     # tags (a required one marked), a member's; a lifeline's changes in time order, the messages it sends and the
@@ -814,13 +833,13 @@ with tempfile.TemporaryDirectory() as tmp:
         ok(f"pdf · {n}: its tables list what milestone 2's type says of each element and line (§9)", all(w in txt for w in want), [w for w in want if w not in txt] or txt[:800])
     # M3.7: SysML's tables (notes/milestone-3.md §13): a requirement's id, text and derived relations, each relationship by its
     # keyword; a block's compartments, an interface block's flow properties, a constraint block's expression and parameters, a
-    # value type's unit; the subject's members, each connector with the item it carries; each binding by its ends
+    # value type's unit; the subject's members; each connector with the item it carries, each binding by its ends
     PDF3 = {"ebike-requirements": ["RangeRequirementid:EB-1.2text:Afullchargeshallgiveatleast60kmofassistedriding.containedinE-bikespecificationderivesBatterycapacity",
                                    "BatterycapacityRequirementid:BAT-1", "Battery→Batterycapacity«satisfy»Satisfy", "Rangerideonthetestcircuit→Range«verify»Verify"],
             "ebike-blocks": ["ChargeInterfaceInterfaceblockflowproperties:indc:DCPowerflowproperties:outstateOfCharge:Percent",
                              "RangeEquationConstraintblockconstraints:{range=energy/consumption}parameters:range:Distance", "EnergyValuetypequantity:unit=Wh",
                              "EBike→RentalVehicleGeneralization"],
-            "ebike-structure": ["EBikeBlockbattery:Battery[1]", "refdock:Dock[0..1]", "Connectorfrompowerofbatterytosupplyofcontroller,carryingDCPowerfrompowertosupply"],
+            "ebike-structure": ["EBikeBlockbattery:Battery[1]", "refdock:Dock[0..1]", "DCPower,batterytocontrollerConnector"],  # a connector: a Lines row (audit 17)
             "ebike-range": ["eco:RangeEquation", "BindingfromvalueecoRangetoparameterrangeofeco", "Bindingfromparameterusableofusabletoparameterenergyofboost"]}
     for n, want in PDF3.items():
         txt = "".join(read(f"{n}.pdf"))

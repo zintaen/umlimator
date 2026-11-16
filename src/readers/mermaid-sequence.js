@@ -24,7 +24,8 @@
    How UML maps onto Mermaid's text, both ways:
    - `participant A`, `actor A` (stereotype actor), `as <label>`: the alias is the label, as Mermaid shows it; under a
      `%% represents:` comment it is `<label> : <type>`, split at its first colon (an encoded one, #58;, stays in the
-     label). `@{ "type": ... }` is read as a stereotype, approximated;
+     label). `@{ "type": ... }` is read as a stereotype, approximated, and a participant's first stereotype that is one of
+     Mermaid's types (boundary, control, entity, database, collections, queue) is written so;
    - `->>` call, `-)` async, `-->>` reply, its `replyTo` the latest unanswered call from its receiver to its sender (a
      call answered only in another operand of an alt is unanswered); `create participant B` makes the next message to
      B a create, `destroy B` the next message to B a delete. Other arrows are read as the nearest, approximated;
@@ -97,6 +98,8 @@ function msMessage(s) {
   return a && b ? { a, b, arrow, central, plus, minus, text: colon < 0 ? '' : s.slice(colon + 1).trim() } : null;
 }
 
+// Mermaid 12.3.0's participant types, which `participant NAME@{ "type": ... }` gives (the writer writes a stereotype so)
+const MS_TYPES = new Set(['boundary', 'control', 'entity', 'database', 'collections', 'queue']);
 // participant NAME [@{ ... }] [as ALIAS]: { name, type, alias }
 function msParticipant(rest) {
   let name = rest, type, alias, after = '';
@@ -419,13 +422,15 @@ function msWrite(model, viewId) {
     if (!safe(name)) { let base = name.replace(/[^\p{L}\p{N}_]+/gu, '_').replace(/^_+|_+$/g, ''); if (!safe(base)) base = 'L_' + base; name = msFree(taken, takenNext, base); taken.add(name); }
     names.set(n.id, name);
     const p = isObj(n.props) ? n.props : {}, st = arr(p.stereotypes), actor = st[0] === 'actor', rep = has(p.represents);
-    st.slice(actor ? 1 : 0).forEach(s => lose(n.id, `stereotype ${s}`));
+    // a participant's first stereotype that is one of Mermaid's participant types is written as its @{ "type" } (audit 17)
+    const type = !actor && MS_TYPES.has(st[0]) ? st[0] : null;
+    st.slice(actor || type ? 1 : 0).forEach(s => lose(n.id, `stereotype ${s}`));
     // the reader takes the alias as the label, and splits it at its first colon only under a %% represents: comment
     const label = has(n.label) ? String(n.label) : name, alias = label !== name || rep ? encA(label) + (rep ? ' : ' + encA(p.represents) : '') : '';
     if (!has(n.label)) lose(n.id, 'no label, read as its name');
     extra(n, ['id', 'type', 'label'], ['represents', 'stereotypes']);
     heads.set(n.id, [...(idOf(n.id, name) != null ? [`%% id: ${n.id}`] : []), ...(rep ? [`%% represents: ${enc(p.represents)}`] : []),
-      `${actor ? 'actor' : 'participant'} ${name}${alias ? ' as ' + alias : ''}`]);
+      `${actor ? 'actor' : 'participant'} ${name}${type ? `@{ "type": "${type}" }` : ''}${alias ? ' as ' + alias : ''}`]);
   }
   for (const n of lifes) if (!isCreated.has(n.id)) out.push(...heads.get(n.id).map(l => '  ' + l));
 

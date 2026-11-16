@@ -73,7 +73,7 @@ ffmpeg -f apng -i ride.png -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -pix_fmt yuv4
 python3 umlimator.py diff before.json after.json --out diff.html --stills diff/   # what changed, marked and in words
 python3 umlimator.py diff --base origin/main --out diff/              # every model changed since a ref, and a summary.md
 python3 umlimator.py drift model.json traffic.json --out drift.html   # drawn vs. seen (a Jaeger or Tempo dependency list)
-python3 umlimator.py timelapse model.json --out history.html          # the model's versions in git history, on a slider
+python3 umlimator.py timelapse model.json --out history.html          # the latest 30 versions in git history (--limit N), on a slider
 ```
 
 [GitHub Action and diff](./github-action.md) has the details, and the Action that posts a diff on pull requests.

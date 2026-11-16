@@ -575,3 +575,14 @@ test('a labelled line whose label finds no spot is said by check(), on a map or 
   assert.deepEqual(g.edges.filter(e => e.label && !e.lbl).map(e => e.label), []);
   assert.deepEqual(check(w, 'forecaster'), []);
 });
+
+test('examples/layout.mjs reports a model with no title (optional in MapModel) by its file name, not a TypeError (audit 17)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'layout-mjs-')), p = join(dir, 'untitled.json');
+  try {
+    writeFileSync(p, JSON.stringify({ nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b' }], views: [{ id: 'main', nodeIds: ['a', 'b'] }] }));
+    assert.deepEqual(validate(JSON.parse(readFileSync(p, 'utf8'))), []);
+    const r = spawnSync(process.execPath, [fileURLToPath(new URL('../examples/layout.mjs', import.meta.url)), p], { encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /^untitled\.json\s+main\s+2 cards\s+1 lines/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});

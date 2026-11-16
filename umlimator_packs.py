@@ -224,8 +224,7 @@ def fetch(pack, accept=None):
     if os.environ.get("UMLIMATOR_OFFLINE"):
         sys.exit("pack fetch: UMLIMATOR_OFFLINE is set, so nothing is fetched")
     rs = rows()
-    row = rs.get(pack) or sys.exit("pack fetch: the AWS pack is not offered in this release" if pack == "aws" else
-                                   f"pack fetch: no pack {pack!r}; packs: {', '.join(rs)}")
+    row = rs.get(pack) or sys.exit(f"pack fetch: no pack {pack!r}; packs: {', '.join(rs)}")
     t, want = row["terms"], f"{pack}@{row['label']}"
     if sha(t["text"].encode()) != t["sha256"]:
         sys.exit(f"pack fetch: the {pack} terms in packs.json do not match their pinned sha256")
