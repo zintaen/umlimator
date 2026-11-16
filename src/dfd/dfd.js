@@ -192,7 +192,9 @@ function dfdProblems(model) {
     const left = [...inner], miss = outer.filter(([, k]) => { const i = left.findIndex(([, j]) => j.join('\u0001') === k.join('\u0001')); if (i < 0) return true; left.splice(i, 1); return false; });
     if (!miss.length && !left.length) return;
     const said = ([e, [dir, o, l]]) => `"${l}" ${dir === 'in' ? 'in from' : 'out to'} ${I.q(o)} (${e.id})`, lv = `level "${L.v.title || L.v.id}"`;
-    say('error', 'dfd-balance', path, [p.id, ...miss.map(([e]) => e.id), ...left.map(([e]) => e.id)], `${I.q(p.id)} does not balance with ${lv}: ${[
+    // a warning, not an error (the maintainer's decision of 16 Nov 2026): a level out of balance is a modelling issue, and
+    // normal partway through an edit, so a delete or hide on one level never leaves an error
+    say('warning', 'dfd-balance', path, [p.id, ...miss.map(([e]) => e.id), ...left.map(([e]) => e.id)], `${I.q(p.id)} does not balance with ${lv}: ${[
       miss.length ? `its flow${miss.length > 1 ? 's' : ''} ${miss.map(said).join(', ')} ${miss.length > 1 ? 'have' : 'has'} none at the level` : '',
       left.length ? `the level's flow${left.length > 1 ? 's' : ''} ${left.map(said).join(', ')} ${left.length > 1 ? 'are' : 'is'} not the process's` : ''].filter(Boolean).join('; ')}`); });
   DFD_ARR(model && model.views).forEach((v, i) => { if (DFD_OBJ(v) && v.diagram === 'dfd' && v.notation != null && v.notation !== 'yourdon' && v.notation !== 'gane-sarson')
