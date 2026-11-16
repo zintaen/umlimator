@@ -46,7 +46,7 @@ whose parent is a note) and the `all` view (300 topics, eight levels) lay out cl
 
 ## Writers: what each shows of a mindmap
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
 |---|---|---|---|
 | Topics and branch curves, in their colours | Yes | Yes | Yes, in vectors |
 | Text | Text, in the page's font family; not embedded unless `fontCSS` is given | Pixels | Selectable text |

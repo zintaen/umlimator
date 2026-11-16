@@ -67,7 +67,7 @@ Layout limits, measured on `examples/ebike-structure.json` and `tests/internal-b
 
 Measured on `examples/ebike-structure.json` (0.25.0); the PDF's text read back by `tests/cli.py`.
 
-| | SVG | PNG | PDF | Mermaid |
+| What is drawn | SVG | PNG | PDF | Mermaid |
 |---|---|---|---|---|
 | The frame, parts, ports, port arrows, item triangles | Yes | Yes | Yes, in vectors | No writer |
 | The header | Cut to the frame | Cut | Cut | |

@@ -175,6 +175,14 @@ model.write_text(json.dumps(bike | {"stories": [{"id": "s", "steps": None}]}), e
 said17b = tool("list_views")
 ok("list_views on a null stories or a null steps lists the views, no tool error (audit 17)",
    '"trips"' in said17 and "not a list" not in said17 + said17b and re.search(r'"steps":\s*0', said17b), [said17[:200], said17b[:300]])
+# audit 18: a member id that is no string ended highlight and tour in an internal error (-32603); so did a tool name that is no string
+mem = json.loads(json.dumps(bike)); mem["nodes"][0]["members"] = [{"id": ["p"], "label": "p"}]
+model.write_text(json.dumps(mem), encoding="utf-8")
+said18 = [tool("highlight", refs=[bike["nodes"][0]["id"]]), tool("tour", cards=[bike["nodes"][0]["id"], bike["nodes"][1]["id"]])]
+named18 = [rpc("tools/call", {"name": x, "arguments": {}}).get("error", {}) for x in (["list_views"], {"a": 1})]
+ok("highlight and tour on a model whose member id is no string name the field; a tool name that is no string is an unknown tool (-32602), no internal error (audit 18)",
+   all("nodes[0].members[0].id is not a string" in x for x in said18) and [e.get("code") for e in named18] == [-32602, -32602]
+   and all(e.get("message", "").startswith("Unknown tool") for e in named18), [said18, named18])
 model.write_text(json.dumps(bike), encoding="utf-8")
 ok("list_views and play_story on stories, or steps, that are no list: the tool names the field, no internal error (audit 16)",
    all("stories is not a list" in x for x in said[:2]) and all("stories[0].steps is not a list" in x for x in said[2:]), said)

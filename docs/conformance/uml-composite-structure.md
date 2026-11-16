@@ -76,7 +76,7 @@ Layout limits, measured on `examples/order-service-structure.json` and `tests/co
 Measured on `examples/order-service-structure.json` (0.22.0): `umlimator.py stills` (SVG and PNG) and `umlimator.py
 pdf`. The PNG was looked at, the SVG read, the PDF's text read back (`tests/cli.py` reads its tables).
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
 |---|---|---|---|
 | The subject's box and ports, parts with their types' ports, the shared part dashed, the collaboration's dashed ellipse, the collaboration use | Yes | Yes | Yes, in vectors |
 | Connectors, role bindings with their roles | Yes | Yes | Yes |

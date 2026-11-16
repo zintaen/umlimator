@@ -61,7 +61,7 @@ Layout limits, measured on `examples/bookshop-schema.json` and `tests/er-stress.
 Measured on `examples/bookshop-schema.json` (0.24.0): `umlimator.py stills` (SVG and PNG) and `umlimator.py pdf`; the
 PDF's text read back by `tests/cli.py`.
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
 |---|---|---|---|
 | Entities, rows and marks, both notations' ends, IDEF1X's letters | Yes | Yes | Yes, in vectors |
 | The legend of line looks and ends | No: the legend is a piece of the page | No | Yes, under the picture |

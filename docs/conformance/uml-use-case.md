@@ -56,7 +56,7 @@ Layout limits, measured on `examples/shopping-use-cases.json` and `tests/usecase
 Measured on `examples/shopping-use-cases.json` (0.21.0): `umlimator.py stills` (SVG and PNG) and `umlimator.py pdf` on
 its rendered page. Each file was opened and looked at.
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
 |---|---|---|---|
 | Actors' figures, ellipses with their extension points, the subject's box | Yes | Yes | Yes, in vectors |
 | Lines, dashes, open arrowheads and triangles, «include» and `«extend» (point) [condition]` labels | Yes | Yes | Yes |

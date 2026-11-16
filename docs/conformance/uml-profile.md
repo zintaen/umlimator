@@ -78,7 +78,7 @@ Layout limits, measured on `examples/bookshop-profile.json` and `tests/profile-s
 Measured on `examples/bookshop-profile.json` (0.23.0): `umlimator.py stills` (SVG and PNG) and `umlimator.py pdf`. The
 PNG was looked at, the SVG read, the PDF's text read back (`tests/cli.py` reads its tables).
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
 |---|---|---|---|
 | Profile and package boxes, «stereotype» and «metaclass» classifiers, tag definitions | Yes | Yes | Yes, in vectors |
 | Tag compartments | Yes; a long member row cut with an ellipsis | Yes, cut alike | Yes, cut alike in the picture; whole in the tables |

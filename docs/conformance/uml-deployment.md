@@ -61,7 +61,7 @@ Layout limits, measured on `examples/bookshop-deployment.json` and `tests/deploy
 Measured on `examples/bookshop-deployment.json` (0.22.0): `umlimator.py stills` (SVG and PNG) and `umlimator.py pdf`. The
 PNG was looked at, the SVG read, the PDF's text read back (`tests/cli.py` reads its tables).
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
 |---|---|---|---|
 | Cubes, boxes nested with their faces, keywords over names, artifacts with their icons | Yes | Yes | Yes, in vectors |
 | Lines, «deploy» and «manifest», path labels | Yes | Yes | Yes |

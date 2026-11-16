@@ -854,7 +854,10 @@ def compose(d, name):
 # ---------- Kubernetes ----------
 
 SHORT = {"Deployment": "deploy", "StatefulSet": "sts", "DaemonSet": "ds", "Service": "svc", "Ingress": "ing"}
-HOST = re.compile(r"(?:[a-z][a-z0-9+.-]*://)?(?:[^@/\s]*@)?([a-z0-9-]+(?:\.[a-z0-9-]+)*)(?::\d+)?(?:/\S*)?", re.I)
+# a host, or a URL's: its scheme may be words joined by colons (jdbc:postgresql://, jdbc:oracle:thin:@//, audit 18), and
+# after a scheme the rest may start with ; or ? (jdbc:sqlserver://db:1433;databaseName=x)
+HOST = re.compile(r"(?P<scheme>(?:[a-z][a-z0-9+.-]*:)+@?//)?(?:[^@/\s]*@)?(?P<host>[a-z0-9-]+(?:\.[a-z0-9-]+)*)(?::\d+)?"
+                  r"(?(scheme)(?:[/;?]\S*)?|(?:/\S*)?)", re.I)
 
 
 def obj(x):
@@ -930,7 +933,7 @@ def kubernetes(d, name):
             for c in objs_in(obj(obj(spec.get("template")).get("spec")).get("containers")):
                 for env in objs_in(c.get("env")):
                     h = HOST.fullmatch(str(env.get("value") or ""))
-                    parts = re.sub(r"\.svc(\.cluster\.local)?$", "", h.group(1)).split(".") if h else []
+                    parts = re.sub(r"\.svc(\.cluster\.local)?$", "", h.group("host")).split(".") if h else []
                     to = svc.get((parts[1] if len(parts) == 2 else ns, parts[0])) if 0 < len(parts) <= 2 else None
                     if to and to not in seen:
                         seen.add(to)

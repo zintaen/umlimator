@@ -52,7 +52,7 @@ connector for them, in the same transaction (the type's remove hook), so no sing
 Measured on `examples/checkout-communication.json` (0.20.0): `umlimator.py stills` (SVG and PNG) and `umlimator.py pdf`
 on its rendered page. Each file was opened and looked at.
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
 |---|---|---|---|
 | Lifelines, connectors, a self connector's loop | Yes | Yes | Yes, in vectors |
 | Message rows: numbers, text, the arrow toward the receiver | Yes | Yes | Yes |

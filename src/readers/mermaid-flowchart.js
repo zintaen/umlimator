@@ -262,7 +262,10 @@ function readMermaidFlowchart(text) {
     const p = mfStatement(s);
     if (!p) { say(no, 'skipped', `not read: ${mfClip(s)}`); return; }
     if (p.groups.length === 1 && p.groups[0].length === 1 && edgeIds.has(p.groups[0][0].id) && p.groups[0][0].fields) { // e1@{ animate: true }
-      say(no, 'skipped', `${p.groups[0][0].id}@{ ... }: a link's animation is not read`);
+      // each field named for what it is: animate and animation are its animation, curve and the rest by their key (audit 18)
+      const { id, fields } = p.groups[0][0], keys = [...fields.keys()];
+      if (keys.some(k => k === 'animate' || k === 'animation')) say(no, 'skipped', `${id}@{ ... }: a link's animation is not read`);
+      for (const k of keys) if (k !== 'animate' && k !== 'animation') say(no, 'skipped', `${id}: ${k} is not read`);
       return;
     }
     for (const n of p.groups.flat()) {

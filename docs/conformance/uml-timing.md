@@ -71,7 +71,7 @@ dropped 21 false findings on the stress view's `all`); the timing views are held
 Measured on `examples/bookshop-timing.json` (0.23.0): `umlimator.py stills` (SVG and PNG) and `umlimator.py pdf`. The PNG
 was looked at, the SVG read, the PDF's text read back (`tests/cli.py` reads its tables).
 
-| | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
 |---|---|---|---|
 | Lanes, state rows, step lines, value bands, the ruler and its labels | Yes | Yes | Yes, in vectors |
 | A lifeline's name over 160 px; a value in a short segment | Cut with an ellipsis | Cut alike | Cut alike in the picture; whole in the tables |
