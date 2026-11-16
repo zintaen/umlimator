@@ -251,7 +251,7 @@ Not shown: `repair: false`, a switch for debugging the router.
 
 ## Diagram types to come
 
-Umlimator is growing from maps to 28 diagram types: UML's 14, SysML's four, ER, flowchart, data flow, C4, BPMN,
+Umlimator is growing from maps to 28 diagram types: UML's 14 and its information flow diagram, SysML's four, ER, flowchart, data flow, C4, BPMN,
 mindmap, and AWS, GCP and Azure architecture. One target model per type is in
 [`docs/diagrams/examples/`](../docs/diagrams/examples/). Each moves here, into the gallery and CI, when its stage
 ships: the class diagram's is `sales-classes.json`, the object diagram's `order-objects.json`, the package

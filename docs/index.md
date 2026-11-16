@@ -25,7 +25,7 @@ features:
     link: /guide/views-and-layers
     linkText: Views and layers
   - title: 28 diagram types
-    details: UML's 14, SysML's four, C4, ER, flowchart, data flow, BPMN, mindmaps, and Google Cloud, Azure and AWS architecture diagrams, each with a conformance note.
+    details: UML's 14 and its information flow diagram, SysML's four, C4, ER, flowchart, data flow, BPMN, mindmaps, and Google Cloud, Azure and AWS architecture diagrams, each with a conformance note.
     link: /types
     linkText: See the types
   - title: Embed anywhere

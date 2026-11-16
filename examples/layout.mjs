@@ -19,7 +19,7 @@ for (const file of files) {
       if (ratio > top.ratio) top = { ratio, line: `${e.from} -> ${e.to}` };
     }
     worst = Math.max(worst, top.ratio);
-    console.log(`${model.title.padEnd(32)} ${view.id.padEnd(11)} ${String(g.nodes.length).padStart(2)} cards ${String(g.edges.length).padStart(2)} lines` +
+    console.log(`${String(model.title ?? String(file).split('/').pop()).padEnd(32)} ${String(view.id).padEnd(11)} ${String(g.nodes.length).padStart(2)} cards ${String(g.edges.length).padStart(2)} lines` +
       `  longest ${top.ratio.toFixed(2)}x its direct route${top.line ? ` (${top.line})` : ''}`);
   }
 }
