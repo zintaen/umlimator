@@ -5425,3 +5425,123 @@ and category icons for Google Cloud products the pinned pack has no icon of (#37
   867 B, #374 793 B and #376 246 B; the npm package is 884.2 kB (`npm pack --dry-run`, down from 894.1 kB with the
   shorter README). There is no core size cap until 1.0.0 (the maintainer's decision of 15 Nov 2026): sizes are reported
   each release and a budget is set at 1.0.0.
+
+## 0.41.0: fixes from the fifteenth audit
+
+The fifteenth audit, the first to cover the documentation site, confirmed 40 findings. All are fixed in this release, in
+five pull requests (#380 to #384), each with a test; findings 5 and 27, 18, 26 and 31, 30 and 35, and 32 and 36 are one
+defect each, so there are 35 fixes. **#384 fixes a regression of 0.40.0's request/reply port swap (#377):** it ran on
+maps with `repair: false`, which turned their port repair off, and it could leave some C4 views with more crossings. Maps
+draw as in 0.39.0 again; `bench/expected.json` and every pinned example's crossing count are unchanged. What changes for
+callers:
+
+- **Layout, round 15 (#384).** **The request/reply swap runs on typed views only**: a map's `repair: false` means no
+  repair again, as docs/guide/model.md says, so a map that set it draws as in 0.39.0. **A typed view of up to 30 cards
+  that kept a swap is judged on the finished picture**: it is laid out once more without the swap, after the type's own
+  finishing steps (BPMN's, for one), and that picture is kept when `routeAudit` finds fewer issues. A pinned C4 container
+  view (five containers, three call/reply pairs) is back to 9 issues (0.40.0 drew 13); of 240 random C4 container views,
+  none is worse than before #377 and 78 are better. **A view of more than 30 cards keeps the swap as the pass judged
+  it**, so the C4 stress view takes no extra layout and a large C4 view can still come out worse than without the swap.
+- **diff() and the PDF, round 15 (#384).** **`diff()` reports a change that moves nothing but the layout** and lists the
+  view: a kept card's pin ("moves Payment provider in the view What runs"), any other view field ("changes the view V
+  (caption, lanes)"; every key but `id`, `title`, `nodeIds`, `nodes`, `edges`, `containers`, `nodeOverrides`, `layout`
+  and `fragments`, so `render`, `direction` and `repair` too), a box's tone or badges ("changes the box B (tone) in the
+  view V") and added, removed or changed rules ("adds the rule T", touching the views where `rules()` finds something
+  different). The bike-share diff fixture moves Payment provider's pin, so its summary now says so. **The PDF cover's line
+  count matches the Lines tables**: it counts the union of the line ids each view's table lists (`tablesOf()`'s new
+  `lineIds`), so a typed view's self-lines count (checkout-sequence 10 lines, was 9; order-service-structure 8, was 0).
+- **Page and API surface, round 15 (#380).** **A card with no label is named by its id** in its tooltip (`<title>`) and
+  in the tooltips of its lines (`alpha → Charlie`), as its accessible name already was, and on the standalone page in
+  Find's result and in "Did you mean". **`<umlimator-map>` with no `theme` follows VitePress's light/dark switch**:
+  inside VitePress's default theme (`.VPContent`), a map is light whenever `<html>` is not `.dark`, whatever the system
+  prefers (the rule is in `:where()`, so a host's own `--um-*` still win); elsewhere the system setting decides, as
+  before. **The standalone page's title is its `<h1>`** (`h1.mbrand`, the bar looks the same). **`setView()` is declared
+  `Promise<boolean>`** in lib/umlimator.d.ts, what it has resolved since 0.14.0, so `if (await map.setView(...))`
+  compiles under `tsc --strict`; code that awaited the old type still compiles. The `Element` doc comment names the four
+  `sysml.*` types. `otlpSpans()` skips `attributes` that are not a list (the span reads `service: null`, and `trace` no
+  longer ends in a Node stack trace) and reads a `name` that is not text as null.
+- **UML, round 15 (#382).** **F2 stores only the label**: on a communication message row it strips the drawn number and
+  «create»/«destroy»; on a use case include or extend it strips the keyword and stereotypes, reads a trailing
+  `[condition]` back into `props.condition` and refuses a changed `(points)` with `{ error }`; on a line a class,
+  package, profile, component, deployment or object view owns in its own `edges`, it strips the keyword too.
+  `uml.communication` and `uml.use-case` gain an `edits.rename` hook. **The component view draws only a `uml.Component`
+  (or an element with no type) as a component**; another kind is a classifier with its keyword (`«node»`, `«actor»`), and
+  the deployment view gives an interface or actor its keyword. Composite structure and component views draw the
+  stereotypes the panel offers: on a connector (before its label, and said), a part (over its name; the box grows 14 px
+  for each after the first), a port and a ball; component and deployment ports, interfaces and artifacts say them
+  ("(a, b)"). A part or collaboration use with no name and no type is drawn and said by its id. State machine: a drag
+  that moves a direct substate of an imported region-mixed state into one of its regions is allowed (only a move that
+  gives a state a direct vertex is refused). The timing note says where a duration between two lanes sits.
+- **Other types, round 15 (#381).** **C4: F2 on a relationship written inline in a view no longer adds its technology to
+  the label a second time.** **ER: a row's `NOT NULL` leaves the column not nullable** (it made it nullable and put NOT
+  in its type); `NOT NULL` with `NULL` is refused ("NULL is written twice"); the PDF text names an inline relationship.
+  Flowchart: the PDF text and the connect hook count inline flows (an inline decision exit is yes, the new one no). SysML:
+  **F2 on a requirement relationship or a block definition line stores only the label** (block definition gains an
+  `edits.rename` hook), and F2 on an internal block connector with an item flow sets `props.itemFlow.item`, the text
+  drawn (empty text is refused). **The row `port : Integer` is a value property named port** in parametric, composite
+  structure and internal block views (a port row needs a name after the keyword); a parametric `param : Real` with no
+  name is refused. Mindmap: Show on a lone hidden topic runs the type's Show ("Showed X"). BPMN: a flow node added with a
+  pool that has lanes goes into the pool's first lane that holds no other lane.
+- **Readers, MCP and documentation site, round 15 (#383).** **The Mermaid class reader closes a block at any `}`**, as
+  Mermaid's lexer does: `+quack() }`, `class Cage }` and `namespace Zoo { class Cage }` no longer swallow the rest of the
+  file. MCP: a null (or anything not a string) in a view's `nodeIds` or `stepIds` is a tool error saying where
+  ("views[0].nodeIds[1] is not a string"; it was "Internal error"), and `show_view`, `highlight` and `tour` with view
+  `""` answer "no view ''" (it cleared the tour and story). Site: a same-page link written with GitHub's heading slug now
+  reaches its heading on every page (the changelog's links were dead); the import and export guide says `export` writes
+  BPMN XML only and the seven Mermaid writers are internal to the module; docs/api/typed-diagrams.md states each type's
+  default direction as the schema does (down for a flowchart, profile, SysML block definition or requirement view, a
+  sequence view always); docs/conformance/gcp.md and examples/README.md say what the site and a copy draw for cloud icons.
+- **Corrections to earlier sections.** 0.14.0 says of `setView()`: "The declared type stays `Promise<void> | void`".
+  From 0.41.0 it is declared `Promise<boolean>` (#380). 0.26.0's known gaps say `Cloud-DNS`, `Cloud-Load-Balancing`,
+  `Cloud-CDN` and `Pub-Sub` draw a glyph; since 0.40.0 (#378) they draw their category's icon.
+- **Known gaps.** Still open from 0.40.0 (checked on main with a small script: the JavaScript Mermaid readers still
+  decode `#55296;` to a lone surrogate, a typed view still gets no "listed twice" warning for `view.edges`, 21 of the 30
+  typed examples still do not set `"$schema"`): a box has no Tab stop; the keyboard reaches it through the outline. A
+  double-click (or Enter) on a box does not open its view (the 0.24.0 gap). Deep nesting is super-linear outside the
+  core. A composite structure or SysML internal block view's PDF Lines rows name a part by its id, not its drawn name.
+  The requirement layout leaves out a link into a box nested more than 64 deep from its ranking. Typed hooks that answer
+  Alt+arrows themselves were not checked on views laid out down. `reach()` from a model id that the view draws under
+  another id returns only that element. A negative step duration plays 500 ms while `validate()`'s warning says 4000 ms.
+  Mermaid C4 macro arguments keep entity codes as written. `describe()` of an inline interaction does not say it opens a
+  view. Room for a label in a turned view is still mostly along the line. The map flowchart and Structurizr DSL readers
+  turn a U+2028 inside a label into a space. The unfolded call behaviour box is a plain container frame. A page rendered
+  before 0.33.0 with a numeric view id, before 0.36.0 with a numeric card id, or before 0.37.0 with a view with no id,
+  still ends in a traceback in `stills`. Three or more delegations from one port into a grid of parts may still cross.
+  Other files in src/bpmn may still key plain objects by id. The typed Mermaid reader's quote join skips `%%` comment
+  lines but not the body of a multi-line `%%{ }%%` directive. The PDF tables read an open package's qualified name off
+  its drawn title. No example reaches the C4 views lift branch or src/sysml/sysml.js's frame branch; only `select()` has
+  a browser test of its own among Find and the panel links. The double-click tests send synthetic events. The SysML block
+  definition view has no own list of line kinds. The SysML tables `RQ_REL` and `BD_ORDER` are still plain objects. When
+  two operands of one `alt` each create a lifeline, the second create arrow lands on the stem below the single head.
+  `printDoc`'s rules section and `rules()` still count a typed view's hand-written containers as boxes a rule can name.
+  An MCP page tool on a model that has never rendered still says it cannot read the model. `validate()` still accepts a
+  positional name (docs/diagrams/risks.md F9). `diff()` numbers id-less lines among id-less lines only, where Ref names
+  count every line with the same ends. The profile, package and SysML block definition conformance notes point to the
+  class or package note for the shared rules. No typed card draws a new, changed or removed badge, so a restored part,
+  port, fragment or region draws as present (only its lines show the removal); if a restored owner's members moved
+  elsewhere in `after`, they could come back twice. Component `validate()` messages still name ends by the bare label. A
+  C4 deployment instance's Name field still writes its label, which shows nowhere. #362's tests were not run against the
+  unfixed code. A removed operand under a fragment is still summarised through the type's order, and a member of a node
+  that lives only in one view is not restored. The details panel cuts a part's label at " : " ("checkout"). The panel
+  lays out a typed view once, the first time an end is not in the current view. Timing names still split at `:/`
+  (`http://api`). Mindmap "Delete half" of the 20,000-topic chain is about 160 ms against a printed 100 ms target (the
+  assertion is 1 s). The guide's 4a model table says a group holds "a group or a service", narrower than the code
+  (resources, products and users can sit in a group). A communication connector can still route through another
+  connector's message stack (`check()` reports it; docs/conformance/uml-communication.md). The `named` rule in `apply()`
+  has had no audit of its own. Closed by round 15: the PDF cover's line count (#384), a component view drawing a
+  `uml.Actor` or `uml.Node` in the component shape (#382), and the SysML block definition view's missing line rename hook
+  (#381). New from round 15: **a typed view of more than 30 cards keeps the request/reply swap as the layout pass judged
+  it, so a large C4 view can still come out with more crossings than without it**; the next step is an in-pass judgement
+  that tracks the type's finishing steps. The C4 stress timing test's 1 s CI ceiling fails on slow shared runners (the
+  same code measures 512–1075 ms); reruns pass. The Mermaid class writer's timed test (1.5 s) failed under heavy local
+  load, then passed. #384's PDF cover check was not run against the unfixed code. The light/dark rule for
+  `<umlimator-map>` keys on VitePress's default theme (`.VPContent`): a custom VitePress theme without it, or another
+  site's class-based dark mode, still follows the system setting. An intake with no label has an empty tooltip. F2 on a
+  composite collaboration use still takes the drawn text (`x : C`) as its label. The object view draws a non-instance
+  kind outside the ones it implies (`uml.Node`, say) as a plain classifier with no keyword. The Mermaid writers stay
+  internal: `export --format mermaid` would be a new feature, for the maintainer to decide.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 202.4 kB (202,402 B) with `gzip -9`, 22.70% over 0.16.0's
+  164,954 B, up 1,044 B from 0.40.0: #384 1,012 B (the finished-picture check, the `diff()` reports, the cover's line
+  ids) and #380 32 B. `lib/umlimator-all.js` is 629.3 kB (629,256 B), up 3,436 B: #382 1,729 B, #384 1,036 B, #381
+  489 B, #383 152 B and #380 30 B; the npm package is 888.7 kB (`npm pack --dry-run`). There is no core size cap until
+  1.0.0 (the maintainer's decision of 15 Nov 2026): sizes are reported each release and a budget is set at 1.0.0.
