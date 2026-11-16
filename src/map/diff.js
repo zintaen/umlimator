@@ -51,6 +51,7 @@ export function diff(before, after) {
     return res;
   }
   out.nodes = mark(arr(A.nodes), arr(out.nodes), card);
+  const E1 = arr(out.edges); // the after model's lines as given, before the removed ones come back
   out.edges = mark(arr(A.edges), arr(out.edges), line, lineKeys);
   const goneLines = new Map(out.edges.filter(e => how.get(e) === 'removed' && e.id != null).map(e => [String(e.id), String(e.id)]));
   const keyed = l => { const k = lineKeys(l); return new Map(l.map((e, i) => [e, k[i]])); }, k1 = new Set(lineKeys(arr(after && after.edges)));
@@ -104,12 +105,25 @@ export function diff(before, after) {
     const s0 = shown(A, o), s1 = shown(out, v), hid = s0.filter(id => !s1.includes(id)), put = s1.filter(id => !s0.includes(id));
     const ln = id => { const e = line0.get(id); return `the line from ${(at.get(e.from) || {}).label || e.from} to ${(at.get(e.to) || {}).label || e.to}${e.label ? ` (${e.label})` : ''}`; };
     hid.forEach(id => { viewSaid.push(`takes ${ln(id)} out of the view ${vn}`); touched.add(v.id); }); put.forEach(id => says(`puts ${ln(id)}`));
-    // the steps' order: a view's list as it runs (a model line by id, one of its own by its Ref name, audit 19), else its model lines
-    const ord = (x, s) => Array.isArray(x.edges) ? (k => x.edges.map((e, i) => typeof e === 'string' ? (s.includes(e) ? '=' + e : null) : e && typeof e === 'object' ? '+' + k[i] : null).filter(Boolean))(lineKeys(x.edges)) : s.map(id => '=' + id);
-    const same = (p, q) => p.filter(k => q.includes(k)).join('\n') === q.filter(k => p.includes(k)).join('\n'), q0 = ord(o, s0), q1 = ord(v, s1);
+    // the steps' order: a view's list as it runs (a model line by id, one of its own by its id), else its model lines. A step
+    // with no id is matched by what it is (its ends and label), and by its Ref name only when nothing matches it, so taking
+    // out an earlier a->b step does not read as the later one moving (audit 20)
+    const what = e => 'c' + canon([e.from, e.to, e.label ?? null]);
+    const ord = (x, s, E) => { if (Array.isArray(x.edges)) { const k = lineKeys(x.edges);
+        return x.edges.map((e, i) => typeof e === 'string' ? (s.includes(e) ? ['=' + e, '=' + e] : null) : e && typeof e === 'object' ? [e.id != null ? '+' + e.id : what(e), '+' + k[i]] : null).filter(Boolean); }
+      const K = keyed(E); return linesOf({ edges: E }, x).map(e => e.id != null ? ['=' + e.id, '=' + e.id] : [what(e), '=' + K.get(e)]); };
+    // in the same order: the steps in both, paired along a longest common run of what they are, then the rest by what they are
+    // and last by Ref name, run in the same order in both lists (a step can repeat, so a pairing, not a lookup)
+    const same = (p, q) => { const T = p.map(() => new Array(q.length + 1).fill(0)).concat([new Array(q.length + 1).fill(0)]);
+      for (let i = p.length - 1; i >= 0; i--) for (let j = q.length - 1; j >= 0; j--) T[i][j] = p[i][0] === q[j][0] ? T[i + 1][j + 1] + 1 : Math.max(T[i + 1][j], T[i][j + 1]);
+      const pairs = [], P = new Set(), Q = new Set(), by = f => { const n = new Map(); q.forEach((y, j) => { if (!Q.has(j)) n.set(y[f], [...(n.get(y[f]) || []), j]); });
+        p.forEach((x, i) => { const js = !P.has(i) && n.get(x[f]); if (js && js.length) { const j = js.shift(); pairs.push([i, j]); P.add(i); Q.add(j); } }); };
+      for (let i = 0, j = 0; i < p.length && j < q.length;) if (p[i][0] === q[j][0]) { pairs.push([i, j]); P.add(i++); Q.add(j++); } else if (T[i + 1][j] >= T[i][j + 1]) i++; else j++;
+      by(0); by(1); return pairs.sort((x, y) => x[0] - y[0]).every((x, k, l) => !k || l[k - 1][1] < x[1]); };
+    const q0 = ord(o, s0, arr(A.edges)), q1 = ord(v, s1, E1), two = l => l.map(k => [k, k]);
     // a numbered-card view with no stepIds numbers its cards in nodeIds order (audit 19)
     const numbered = x => (x.mainSteps || x.render === 'process') && !Array.isArray(x.stepIds);
-    if ((stepped(v) && stepped(o) && !same(q0, q1)) || (numbered(v) && numbered(o) && !same(oldIds, ids))) says('reorders the steps');
+    if ((stepped(v) && stepped(o) && !same(q0, q1)) || (numbered(v) && numbered(o) && !same(two(oldIds), two(ids)))) says('reorders the steps');
     if (Array.isArray(v.edges)) { const back = new Map([...goneLines, ...hid.map(id => [id, line(line0.get(id), 'removed')])]);
       w.edges = mark(arr(o.edges), v.edges, line, lineKeys, back).map(e => typeof e === 'string' && put.includes(e) ? line(out.edges.find(x => x && String(x.id) === e), 'added') : e);
       hid.forEach(id => { if (!w.edges.includes(back.get(id))) w.edges.push(back.get(id)); }); } // hidden from a view that listed none: at the end
