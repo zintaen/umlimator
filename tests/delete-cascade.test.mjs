@@ -94,3 +94,15 @@ test('composite structure: a view whose subject is deleted is a warning, not an 
   const w = structuredClone(m); w.views.find(x => x.id === v.id).nodeIds = w.views.find(x => x.id === v.id).nodeIds.filter(id => id !== v.subject);
   assert.deepEqual(validate(w).filter(x => x.rule === 'subject-shown').map(x => x.level), ['error']);
 });
+
+test('audit 18: Delete on the subject selected with a part, a port or a lane keeps the subject, said, and still handles the rest', async () => {
+  await import('../src/sysml/internal.js'); await import('../src/sysml/parametric.js'); await import('../src/bpmn/process.js');
+  const cases = [['order-service-structure.json', 'order-service.checkout'], ['ebike-structure.json', null], ['ebike-range.json', null], ['bookshop-order-to-shipment.json', 'bp-sales']];
+  for (const [f, other] of cases) { const m = ex(f), v = m.views.find(x => x.subject != null);
+    const o = other ?? arr(m.nodes.find(n => n.id === v.subject).members)[0].id, r = hookOf(v)(m, v, [v.subject, o], false);
+    assert.ok(!r.commands.some(c => c.op === 'hide' && c.id === v.subject), `${f}: no hide of the subject`);
+    const after = apply(m, r.commands); // apply() refuses a hide of the subject, which refused the whole selection before
+    assert.ok(!JSON.stringify(after).includes(`"id":"${o}"`), `${f}: ${o} is deleted`);
+    assert.equal(after.views.find(x => x.id === v.id).subject, v.subject, `${f}: the subject stays`);
+    assert.match(r.say, /kept .+, the view's subject: change the view's subject, or Shift \+ Delete deletes it$/, f); }
+});

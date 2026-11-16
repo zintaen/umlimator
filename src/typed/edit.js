@@ -21,10 +21,11 @@ import { arrOf } from '../map/validate.js';
    - add(model, view, entry, label, at): the palette and N, once the name is typed; at as for L, with sel, the ids selected.
    - owner(model, view, id, parent): the properties panel's Owner field set to parent (null: none). Null: reparent, and the
      removal of a pin it had, as before (a BPMN activity's boundary events move with it, audit 18).
-   - remove(model, view, ids, fromModel): Delete (fromModel false), Shift + Delete, the panel's buttons and the outline's ✕.
+   - remove(model, view, ids, fromModel): Delete (fromModel false), Shift + Delete, the panel's buttons, a member row's ✕ and the outline's ✕.
    - rename(model, view, id, text): F2 or a double-click on a selected element, Enter with the text typed (I.label). Null:
      set label, as before (notes/stage-4.md §12.1). An id may be a geometry id no element has (a port on a part,
-     `<part>-><port>`, notes/stage-5.md §6): rename, remove and key hear it as drawn, and map it back themselves.
+     `<part>-><port>`, notes/stage-5.md §6): rename, remove and key hear it as drawn, and map it back themselves. An
+     emptied field reaches rename only where rename.empty(model, view, id) is true (the timing ruler: no unit); else nothing.
    - member(model, view, owner, id, text): Enter or a change on a row of the panel's Members (id: the member's; null for the
      New member field), owner the element selected, text trimmed, before the panel commits it (notes/stage-5.md §12.1, S13).
      Null: the type's member.add or member.edit, as before. An { error } also marks the row invalid; a row read by the hook
@@ -79,8 +80,11 @@ TYPED.edit = (I, c) => {
     const go = label => ran(h && h(model(), view(), t, label, at), () => emit([{ op: 'add', element: { ...c.typed(t, 'node'), ...(label ? { label } : {}) }, view: api.view() }]));
     if (t.name === false) return go('');
     api.editor({ x: cam.s.cx - 80, y: cam.s.cy - 13, w: 160, h: 26 }, '', go); };
-  I.label = (ref, text) => { const h = hook('rename'), id = ref && (ref.type === 'edge' ? arrOf(ref.ids).find(x => !String(x).includes('->')) : ref.id), dflt = () => base.label(ref, text);
+  const refId = ref => ref && (ref.type === 'edge' ? arrOf(ref.ids).find(x => !String(x).includes('->')) : ref.id);
+  I.label = (ref, text) => { const h = hook('rename'), id = refId(ref), dflt = () => (text === '' ? true : base.label(ref, text)); // an empty text: the hook's alone (I.empty)
     return h && can('rename') && id != null ? ran(h(model(), view(), id, text), dflt) : dflt(); };
+  // F2's field passes an empty text on only where the rename hook says it reads one (rename.empty: the timing ruler's unit, audit 18)
+  I.empty = ref => { const h = hook('rename'), id = refId(ref); return !!(h && typeof h.empty === 'function' && can('rename') && id != null && h.empty(model(), view(), id)); };
   // V: the views a selected node may open, by its palette entry's opens; the one chosen is its opensView (notes/stage-4.md S18)
   function opens(id) { const x = arrOf(model().nodes).find(n => isRec(n) && n.id === id), t = x && c.nodeTypes().find(e => e.type === x.type && typeof e.opens === 'string');
     if (!t) return false;

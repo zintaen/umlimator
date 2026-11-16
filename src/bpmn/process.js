@@ -504,11 +504,14 @@ function bzRemove(model, view, ids, fromModel) {
   const owned = p => [...I.N.values()].filter(n => I.chain(n.id).includes(p)).length;
   // a model line on a view with no edges list is not hidden (apply() refuses it): skipped, as the canvas's Delete does
   const kept = !fromModel && !Array.isArray(view.edges) && rest.some(id => !own.has(id) && I.E.has(id));
-  rest.forEach(id => { if (fromModel || own.has(id) || I.L.has(id)) cmds.push({ op: 'delete', id }); else if (!(kept && I.E.has(id))) cmds.push({ op: 'hide', id, view: view.id }); });
+  // the view's subject is not hidden (apply() refuses it): skipped, said, as the canvas's Delete does (audit 18)
+  const subj = !fromModel && rest.includes(view.subject) && !own.has(view.subject);
+  rest.forEach(id => { if (fromModel || own.has(id) || I.L.has(id)) cmds.push({ op: 'delete', id }); else if (!(kept && I.E.has(id)) && !(subj && id === view.subject)) cmds.push({ op: 'hide', id, view: view.id }); });
   const said = [...(gone.size ? [`Deleted ${gone.size === 1 ? 'lane ' + bzLabel(I.el([...gone][0])) : bzPlural(gone.size, 'lane')} from the model${fromModel ? '' : ': a lane is not hidden from a view'}, keeping what it held`] : []),
     ...(fromModel ? pools.map(p => `deleted pool ${bzLabel(I.el(p))} and the ${bzPlural(owned(p), 'element')} it holds`) : []),
     ...(bes.length ? [`hid ${bes.length === 1 && I.ty(bes[0]) === BZ_BE ? 'its boundary event ' + bzLabel(I.el(bes[0])) : `the ${bzPlural(bes.length, 'element')} shown in or on it`} with ${hosts.filter(h => bes.some(n => under(n, h) || under(bzProps(I.el(n)).attachedTo, h))).map(h => bzLabel(I.el(h))).join(', ')}`] : []),
-    ...(kept ? ['this view shows every line between its cards: Shift + Delete deletes the line'] : [])];
+    ...(kept ? ['this view shows every line between its cards: Shift + Delete deletes the line'] : []),
+    ...(subj ? [`kept ${bzLabel(I.el(view.subject))}, the view's subject: change the view's subject, or Shift + Delete deletes it`] : [])];
   return { commands: cmds, say: said.join('; ').replace(/^[a-z]/, c => c.toUpperCase()) };
 }
 // key (§11, decision 22): A on a boundary event, a picker of its pool's activities; X on a sub-process, expanded or collapsed in the view

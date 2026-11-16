@@ -175,7 +175,7 @@ committed field, per drag, per multi-select delete (E2). New elements get ids th
 | delete from the model | Delete from model (properties), ✕ (outline) | `Shift + Delete` | `delete` |
 | add a line | drag a selected card's handle to a card, then pick its kind | `L`, then arrows or type a name, Enter; the picker by arrows and Enter | `add` of a line, shown in the view |
 | add an element | a palette entry, then its name | `N` (the first entry), or Enter on an entry | `add` with `view` |
-| a member row | edit its row; ↑ ↓; the new row | Enter; `Alt + ↑ / ↓` in a row; Enter in the new row | `set label`, `move`, `add` with `owner` |
+| a member row | edit its row; ↑ ↓; ✕; the new row | Enter; `Alt + ↑ / ↓` in a row; Enter on ✕; Enter in the new row | `set label`, `move`, `delete` (through the type's remove, as Shift + Delete), `add` with `owner` |
 | a property | edit the field | Enter (a text field), Space, arrows | `set` of `props.<key>` |
 | show an element here | Show (outline) | Enter on it | `set` of the view's `nodeIds` (or `edges`) |
 

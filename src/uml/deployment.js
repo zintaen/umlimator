@@ -241,6 +241,7 @@ const DP_TYPE = registerDiagramType('uml.deployment', {
   layout: dpGeo,
   boxes: (model, view) => dpPic(model, view).boxes,
   owners: dpOwners,
+  member: { holds: () => false }, // nothing here draws members: the panel offers no Members rows (audit 18)
   validate: dpProblems,
   rules: DP_RULES,
   describe: dpDescribe,

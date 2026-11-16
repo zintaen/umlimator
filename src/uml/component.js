@@ -283,7 +283,9 @@ function cpMoveTo(model, view, id, at) {
 // the palette: a port into the selected component; an interface as a ball or a rectangle, picked
 function cpAdd(model, view, entry, label, at) {
   const I = cpIndex(model), sel = CP_ARR(at && at.sel).map(id => (I.P.has(id) ? I.P.get(id).owner : id)).find(id => ['uml.Component', 'uml.Class'].includes((I.N.get(id) || {}).type));
-  if (entry.type === 'uml.Port') return sel ? [{ op: 'add', element: { id: cpNewId(model, 'port'), type: 'uml.Port', ...(label ? { label } : {}) }, owner: sel }] : { error: 'Select a component to add a port to' };
+  if (entry.type === 'uml.Port') { if (!sel) return { error: 'Select a component to add a port to' };
+    const r = String(label ?? '').trim() ? cpPortText(label) : {}; if (r.error) return r; // `name : Type`, as the panel's row and F2 read it (audit 18)
+    return [{ op: 'add', element: { id: cpNewId(model, 'port'), type: 'uml.Port', ...(r.label ? { label: r.label } : {}), ...(r.valueType ? { props: { valueType: r.valueType } } : {}) }, owner: sel }]; }
   if (entry.type !== 'uml.Interface') return null;
   const id = cpNewId(model, 'interface'), add = { op: 'add', element: { id, type: 'uml.Interface', ...(label ? { label } : {}) }, view: view.id };
   return { pick: ['Ball', 'Rectangle'], then: i => (i === 0 ? [add, { op: 'set', view: view.id, path: ['present', id, 'as'], value: 'ball' }] : [add]) };
@@ -351,6 +353,8 @@ const CP_TYPE = registerDiagramType('uml.component', {
   edits: { connect: cpConnect, moveTo: cpMoveTo, add: cpAdd, member: cpMember, key: cpKey, remove: cpRemove, rename: cpRename },
   // the PDF's tables (§11): a component's ports, each with what it provides and requires; an interface's operations; what an artifact manifests
   word: (model, id) => { const x = cpIndex(model).N.get(id); return x ? ({ __proto__: null, 'uml.Component': 'Component', 'uml.Interface': 'Interface', 'uml.Artifact': 'Artifact', 'uml.Package': 'Package', 'uml.Comment': 'Comment' }[x.type] || null) : null; },
+  // a connector's Lines row: its kind (delegation or assembly) and the ports it joins, as the picture and describe() give them (audit 18)
+  text: (model, view, id) => { const pic = cpPic(model, view), l = pic.lines.find(y => y.e.id === id); return l && (l.kind === 'assembly' || l.kind === 'delegation') ? cpLineName(pic, l) : null; },
   rows: (model, view, id) => { const pic = cpPic(model, view), x = pic.I.N.get(id); if (!x) return null;
     // its connectors are rows of the Lines table, which lists a line drawn to a port's owner (audit 3), so not again here (audit 17)
     if (x.type === 'uml.Component') return cpPortsOf(x).map(p => cpNodeName(model, view, pic, p.id, 1).slice(5));
