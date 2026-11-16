@@ -52,11 +52,15 @@ const bzWord = x => bpmnName({ ...bzLook(x), label: '' }).trim();
 const bzA = (w, cap) => `${/^[aeiou]/i.test(w) ? (cap ? 'An' : 'an') : cap ? 'A' : 'a'} ${w}`; // "a start event", "an end event"
 
 /* ---- the model read: nodes, lanes (members of a pool), lines; each element's owner up to its pool ---- */
-function bzIndex(model) {
+function bzIndex(model, view) {
   const N = new Map(), L = new Map(), E = new Map(), path = new Map();
   BZ_ARR(model && model.nodes).forEach((n, i) => { if (!BZ_OBJ(n) || typeof n.id !== 'string' || N.has(n.id)) return; N.set(n.id, n); path.set(n.id, `nodes[${i}]`);
     if (n.type === BZ_POOL) BZ_ARR(n.members).forEach((m, j) => { if (BZ_OBJ(m) && m.type === BZ_LANE && typeof m.id === 'string' && !L.has(m.id) && !N.has(m.id)) { L.set(m.id, { x: m, pool: n.id }); path.set(m.id, `nodes[${i}].members[${j}]`); } }); });
   BZ_ARR(model && model.edges).forEach((e, i) => { if (BZ_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) { E.set(e.id, e); path.set(e.id, `edges[${i}]`); } });
+  // with a view, its own lines too (view.edges objects), which bzPic draws as it draws the model's; one a model line's id
+  // takes is that one. Per view, so two views' own lines never meet (audit 21, as stProblems and ucProblems since audit 20)
+  if (BZ_OBJ(view)) { const vi = BZ_ARR(model && model.views).indexOf(view), at = vi >= 0 ? `views[${vi}]` : `views[${BZ_ARR(model && model.views).findIndex(v => BZ_OBJ(v) && v.id === view.id)}]`;
+    BZ_ARR(view.edges).forEach((e, j) => { if (BZ_OBJ(e) && typeof e.id === 'string' && BZ_LINES.includes(e.type) && !E.has(e.id)) { E.set(e.id, e); path.set(e.id, `${at}.edges[${j}]`); } }); }
   const el = id => N.get(id) || (L.get(id) || {}).x, ty = id => (el(id) || {}).type;
   // a lane's owner: its parent lane of the same pool, else its pool; a node's: its parent
   const up = id => { if (L.has(id)) { const { x, pool } = L.get(id); return L.has(x.parent) && L.get(x.parent).pool === pool && x.parent !== id ? x.parent : pool; } return (N.get(id) || {}).parent; };
@@ -302,7 +306,7 @@ const BZ_RULES = {
   'opens-view': 'a collapsed sub-process or a call activity opens a BPMN view, the sub-process\'s own',
 };
 function bzProblems(model, view) {
-  const I = bzIndex(model), out = [], shown = new Set(BZ_ARR(view && view.nodeIds));
+  const I = bzIndex(model, view), out = [], shown = new Set(BZ_ARR(view && view.nodeIds));
   const seen = id => !view || shown.has(id) || (I.L.has(id) && shown.has(I.L.get(id).pool));
   const say = (level, rule, id, ids, msg, at = '') => out.push({ level, rule, path: (I.path.get(id) || '') + at, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const q = id => { const x = I.el(id); return x && BZ_HAS(x.label) ? `${id} ("${x.label}")` : String(id); }, ty = I.ty, flow = id => BZ_FLOW.includes(ty(id));
@@ -424,7 +428,7 @@ function bzConnect(model, view, from, to) {
 const bzOwnerTo = (I, id, p) => ((I.N.get(id).parent ?? null) === (p ?? null) ? [] : [{ op: 'reparent', id, parent: p ?? null }]);
 function bzMoveTo(model, view, id, at) {
   if (!BZ_OBJ(view)) return null;
-  const I = bzIndex(model), x = I.el(id); if (!x) return null;
+  const I = bzIndex(model, view), x = I.el(id); if (!x) return null;
   if (I.L.has(id) || x.type === BZ_POOL || x.type === BZ_GROUP) return [];
   if (x.type === BZ_NOTE) return null;
   const geo = BZ_OBJ(at) && BZ_OBJ(at.geo) ? at.geo : {}, set = s => [{ op: 'set', view: view.id, path: ['present', id, 'side'], value: BZ_NAME[s] }];
@@ -457,7 +461,7 @@ function bzReown(model, view, I, id, dest) {
 // anything else the field offers is left to the default
 function bzOwner(model, view, id, parent) {
   if (!BZ_OBJ(view)) return null;
-  const I = bzIndex(model), x = I.el(id); if (!x || I.L.has(id) || !(BZ_FLOW.includes(x.type) || BZ_DATA.includes(x.type))) return null;
+  const I = bzIndex(model, view), x = I.el(id); if (!x || I.L.has(id) || !(BZ_FLOW.includes(x.type) || BZ_DATA.includes(x.type))) return null;
   if ((parent ?? null) === (x.parent ?? null)) return [];
   if (x.type === BZ_BE) { const a = bzProps(x).attachedTo, act = I.el(a);
     return act && (act.parent ?? null) === (parent ?? null) ? null : { error: `A boundary event moves with its activity${act ? `: move ${bzLabel(act)}` : ''}` }; }

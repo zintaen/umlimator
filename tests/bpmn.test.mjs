@@ -667,3 +667,18 @@ test('audit 19: a boundary event has no Owner field; an owner other than its act
   const m = structuredClone(lone); m.nodes[3].parent = 'q'; // out of line already: back to its activity's owner, the default
   assert.equal(bzOwner(m, V(m, 'v'), 'b', 'p'), null);
 });
+
+test('audit 21: the rules, the guard and the Owner field read a view\'s own lines (view.edges objects), which it draws', () => {
+  const m = structuredClone(EX), v = V(m), f = m.edges.find(e => e.id === 'f-basket');
+  m.edges = m.edges.filter(e => e !== f); v.edges = [...m.edges.map(e => e.id), { ...f }];
+  assert.ok(layout(m, VID).edges.some(e => e.id === 'f-basket'));
+  assert.deepEqual(validate(m).filter(p => p.ids.includes('place-order')), [], 'the same picture, no false flow-start');
+  const bad = { id: 'own-bad', type: 'bpmn.SequenceFlow', from: 'order-placed', to: 'basket-ready' }; v.edges.push(bad);
+  const got = bzProblems(m, v).filter(p => p.ids.includes('own-bad')), asModel = bzProblems({ ...structuredClone(EX), edges: [...EX.edges, bad] }, V(EX)).filter(p => p.ids.includes('own-bad'));
+  assert.deepEqual(got.map(p => p.message), asModel.map(p => p.message), 'the errors a model line gets');
+  assert.equal(got.length, 2);
+  assert.ok(got.every(p => p.path === `views[0].edges[${v.edges.length - 1}]`), 'its path is in the view');
+  assert.deepEqual(bzProblems(m, V(m, 'pick-and-pack')).filter(p => p.ids.includes('own-bad')), [], 'another view does not read it');
+  assert.match(bzOwner(m, v, 'basket-ready', 'bp-bookshop').error, /sequence flow stays in its pool/, 'an own sequence flow holds its ends in their pool');
+  assert.ok('error' in bzConnect(m, v, 'order-placed', 'basket-ready'), 'the guard sees them too');
+});
