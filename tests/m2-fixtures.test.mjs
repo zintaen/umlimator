@@ -314,3 +314,18 @@ test('audit 21: a pair\'s lines fanned out in a C4 view laid out down keep off a
     if (d1) for (const e of g.edges) assert.ok(e.pts.every(([x, y]) => x > d1.x && x < d1.x + d1.w && y > d1.y && y < d1.y + d1.h), `${e.id} stays in the node that holds both its ends`);
   }
 });
+
+test('audit 21: an ER line the router found no way for goes round the tables it does not join, never through one (a self-reference\'s loop in the gap, its own end behind it)', () => {
+  const TY = { i: 'int', v: 'varchar(255)', t: 'timestamp with time zone', n: 'numeric(10, 2)' };
+  const model = ([tabs, rels, direction]) => ({ schemaVersion: 2,
+    nodes: tabs.map(([id, label, cols]) => ({ id, type: 'er.Entity', label, members: cols.split(' ').map((c, j) => ({ id: `${id}.c${j}`, type: 'er.Column', label: `col_${j}${c[1] ? '_long_name_here' : ''}`, props: { dataType: TY[c[0]], primaryKey: !j } })) })),
+    edges: rels.map(([id, from, to, label, identifying, a, b]) => ({ id, type: 'er.Relationship', from, to, ...(label ? { label } : {}), props: { identifying, ends: { from: { multiplicity: a }, to: { multiplicity: b } } } })),
+    views: [{ id: 'v', diagram: 'er', nodeIds: tabs.map(t => t[0]), direction }] });
+  // three tables in a column laid out down, a self-reference on the middle one; seven laid out right
+  for (const m of [model([[['e1', 'customer', 'tL v v tL'], ['e8', 'address', 'vL n vL iL t n'], ['e11', 'supplier', 'n iL iL']], [['r0', 'e1', 'e1', null, true, '1', '1'], ['r10', 'e1', 'e8', null, true, '1', '1..*'], ['r14', 'e11', 'e8', null, true, '1', '1'], ['r16', 'e11', 'e1', "has", true, '1', '0..1']], 'down']), model([[['e0', 'order', 'iL tL v t'], ['e1', 'customer', 'v vL'], ['e2', 'line', 't i nL t'], ['e3', 'book', 'vL v i t i i'], ['e4', 'author', 'n nL iL tL v i'], ['e6', 'invoice', 'nL'], ['e7', 'shipment', 'n']], [['r0', 'e7', 'e3', "holds", false, '1', '0..*'], ['r1', 'e1', 'e0', "holds", false, '1', '0..1'], ['r2', 'e7', 'e0', null, false, '1', '1'], ['r3', 'e0', 'e4', null, false, '1', '0..*'], ['r4', 'e6', 'e1', null, true, '1', '0..1'], ['r5', 'e1', 'e2', null, false, '1', '1'], ['r7', 'e7', 'e6', "refers to", true, '1', '0..*'], ['r8', 'e2', 'e6', null, false, '1', '0..1'], ['r9', 'e3', 'e1', "places", false, '1', '1..*']], 'right'])]) {
+    assert.deepEqual(check(m, 'v').map(i => i.message).filter(s => /passes through/.test(s)), [], m.views[0].direction);
+    const g = layout(m, 'v');
+    for (const e of g.edges) for (const n of g.nodes) if (n.id !== e.from && n.id !== e.to)
+      assert.ok(!e.pts.some((p, k) => k && Math.max(p[0], e.pts[k - 1][0]) > n.x && Math.min(p[0], e.pts[k - 1][0]) < n.x + n.w && Math.max(p[1], e.pts[k - 1][1]) > n.y && Math.min(p[1], e.pts[k - 1][1]) < n.y + n.h), `${e.id} through ${n.id}`);
+  }
+});
