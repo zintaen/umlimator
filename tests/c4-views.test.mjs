@@ -257,6 +257,9 @@ test('validators: 23-c4.json breaks no rule in its two views; each rule fails on
     `warning edges[${C4.edges.findIndex(e => e.id === 'c4-api-1-db-1')}] c4-box-line: c4-api-1-db-1, from "Shop API" to "Database", is not drawn: the view draws "PostgreSQL" as a box, which no line ends on`,
     `warning edges[${C4.edges.findIndex(e => e.id === 'c4-worker-1-db-1')}] c4-box-line: c4-worker-1-db-1, from "Order worker" to "Database", is not drawn: the view draws "PostgreSQL" as a box, which no line ends on`]);
   assert.deepEqual(msg(hide(['c4-db-1', 'c4-queue-1'])), []);
+  // audit 16: the same relationship written inline in the view is not drawn either, and said so
+  assert.deepEqual(msg(m => { hide(['c4-db-1'])(m); const k = m.edges.findIndex(e => e.id === 'c4-api-1-db-1'); m.views[V(PV)].edges = [...(m.views[V(PV)].edges || []), ...m.edges.splice(k, 1)]; })
+    .filter(x => x.includes('c4-api-1-db-1')), [`warning ${p}.edges[${(C4.views[V(PV)].edges || []).length}] c4-box-line: c4-api-1-db-1, from "Shop API" to "Database", is not drawn: the view draws "PostgreSQL" as a box, which no line ends on`]);
   // the dynamic view's own c4-label, c4-description and c4-technology, as on a static view
   assert.deepEqual(msg(m => { delete m.edges.find(e => e.id === 'c4-api-queue').label; }).map(x => x.split(' ').slice(0, 3).join(' ')), ['warning edges[11].label c4-label:']);
 });

@@ -64,7 +64,7 @@ function parseColumn(text, I, was) {
     if (!f) return fail(`"${k}" is left over: write name type [PK] [FK table.column] [UK] [NULL]`);
     if (props[f] || (f === 'nullable' && not)) return fail(`${k.toUpperCase()} is written twice`);
     props[f] = true;
-    if (f === 'foreignKey' && t.length && !erFlag(t[0])) { const r = t.shift(), u = /^"((?:[^"\\]|\\.)*)"$/.exec(r), id = erRef(u ? u[1].replace(/\\(.)/g, '$1') : r, I, was); if (id == null) return fail(`FK ${r} names no column (table.column)`); props.references = id; } }
+    if (f === 'foreignKey' && t.length && !erFlag(t[0]) && !notNull()) { const r = t.shift(), u = /^"((?:[^"\\]|\\.)*)"$/.exec(r), id = erRef(u ? u[1].replace(/\\(.)/g, '$1') : r, I, was); if (id == null) return fail(`FK ${r} names no column (table.column)`); props.references = id; } }
   return { label, props };
 }
 function printColumn(c, I = erIndex(ER_SEEN.get(c))) {

@@ -198,7 +198,7 @@ function fcConnect(model, view, from, to, at, line) {
 // moveTo: a line dragged (or Alt + arrows on it) is refused, said on the hint line: a flow follows its ends. Anything else: null,
 // the default, which reads a view laid out down (no direction too) from its geometry (render.js hintAt, g.down)
 function fcMoveTo(model, view, id) {
-  return FC_ARR(model && model.edges).some(e => FC_OBJ(e) && e.id === id) ? { error: 'A flow follows its nodes: move a node instead' } : null;
+  return [...FC_ARR(model && model.edges), ...FC_ARR(FC_OBJ(view) && view.edges)].some(e => FC_OBJ(e) && e.id === id) ? { error: 'A flow follows its nodes: move a node instead' } : null;
 }
 
 /* ---- the type ---- */

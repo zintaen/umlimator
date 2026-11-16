@@ -148,6 +148,7 @@ test('a column\'s row (S9): name type [PK] [FK table.column] [UK] [NULL], flags 
   assert.deepEqual(parseColumn('note  numeric(10, 2)  null uk', I), { label: 'note', props: { dataType: 'numeric(10, 2)', nullable: true, unique: true } });
   assert.deepEqual(parseColumn('ref FK er-book.id PK', I), { label: 'ref', props: { foreignKey: true, references: 'er-book.id', primaryKey: true } }, 'by id; no type');
   assert.deepEqual(parseColumn('x int FK', I), { label: 'x', props: { dataType: 'int', foreignKey: true } }, 'FK alone (fk-flag then warns)');
+  assert.deepEqual(parseColumn('x int FK NOT NULL', I), { label: 'x', props: { dataType: 'int', foreignKey: true } }, 'audit 16: FK with no target, then NOT NULL: NOT is no target');
   assert.deepEqual(parseColumn('id', I), { label: 'id', props: {} });
   for (const [t, why] of [['', 'it is empty'], ['id int PK pk', 'PK is written twice'], ['id int PK extra', '"extra" is left over: write name type [PK] [FK table.column] [UK] [NULL]'], ['x int FK customer.nope', 'FK customer.nope names no column (table.column)'],
     ['a numeric(10 PK', 'its brackets do not pair'], ['a int) PK', 'its brackets do not pair'], ['"" int', 'it is empty']])

@@ -578,3 +578,9 @@ test('audit 15: a flow node added with a pool that has lanes selected goes in it
   assert.equal(r[0].element.parent, 'bp-sales');
   assert.deepEqual(bzProblems(apply(EX, r)).filter(p => p.rule === 'in-lane'), []);
 });
+
+test('audit 16: the first lane added to a pool holding flow nodes takes them in: no in-lane warning', () => {
+  const m = JSON.parse(readFileSync(new URL('./bpmn-minimal.json', import.meta.url), 'utf8')), r = bzAdd(m, m.views[0], { type: 'bpmn.Lane' }, 'Sales', { sel: ['pool'] });
+  assert.deepEqual(r.slice(1).map(c => [c.op, c.id, c.parent]), [['reparent', 'start', 'sales'], ['reparent', 'task', 'sales'], ['reparent', 'end', 'sales']]);
+  assert.deepEqual(bzProblems(apply(m, r), m.views[0]).filter(p => p.rule === 'in-lane'), []);
+});

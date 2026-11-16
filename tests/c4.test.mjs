@@ -18,6 +18,7 @@ import { throughIssues } from '../src/layout/audit.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
+import { tablesOf } from '../src/page/print.js';
 import { C4_SHAPES, c4Zoom } from '../src/c4/c4.js';
 
 const C4 = JSON.parse(readFileSync(new URL('../examples/bookshop-c4.json', import.meta.url)));
@@ -437,4 +438,20 @@ test('audit 15: F2 on an inline relationship takes its unchanged [technology] of
   const m = { schemaVersion: 2, nodes: [El('a', 'Person', 'A'), El('b', 'System', 'B')], edges: [],
     views: [{ id: 'v', diagram: 'c4.context', nodeIds: ['a', 'b'], edges: [Rel('r2', 'a', 'b', 'Uses', 'HTTPS')] }] };
   assert.deepEqual(T.edits.rename(m, m.views[0], 'r2', 'Calls [HTTPS]'), [{ op: 'set', id: 'r2', path: 'label', value: 'Calls' }]);
+});
+
+test('audit 16: an implied line is a row of the PDF\'s Lines table and counted on the cover', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'u', type: 'c4.Person', label: 'Shopper' }, { id: 'S', type: 'c4.SoftwareSystem', label: 'Shop' }, { id: 'C1', type: 'c4.Container', parent: 'S', label: 'Web' }, { id: 'C2', type: 'c4.Container', parent: 'S', label: 'API' }],
+    edges: [{ id: 'r1', type: 'c4.Relationship', from: 'u', to: 'C1', label: 'Browses' }, { id: 'r2', type: 'c4.Relationship', from: 'u', to: 'C2', label: 'Calls' }],
+    views: [{ id: 'ctx', diagram: 'c4.context', title: 'Context', subject: 'S', nodeIds: ['u', 'S'] }] };
+  const ctx = mapContext(m), t = tablesOf(ctx, ctx.V.ctx, layout(m, 'ctx'));
+  assert.deepEqual(t[1].rows.map(r => r.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()), ['Shopper → Shop Browses [+1] Implied relationship']);
+  assert.deepEqual(t.lineIds, ['u->S']);
+});
+
+test('audit 16: a component view listing a card with a null id, and a line between null ends, lays out (no stack overflow)', () => {
+  for (const diagram of ['c4.component', 'c4.container']) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'c4.Container' }, { id: 'c', type: 'c4.Container', parent: 'a' }, { id: null }], edges: [{ id: 'x', from: null, to: null }], views: [{ id: 'v', diagram, nodeIds: ['a', 'c', null] }] };
+    const keep = console.warn; console.warn = () => {}; try { assert.ok(layout(m, 'v').nodes.length, diagram); } finally { console.warn = keep; }
+  }
 });
