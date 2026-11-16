@@ -25,6 +25,26 @@ export function migrate(model) {
   return model;
 }
 
+/* String() throws on an object whose own toString is no function, and {"toString": 1} is valid JSON (audit 19).
+   unreadable(model): the paths of such objects, and the model without them (itself when it has none, else a copy).
+   A map by id or name may have a key named toString: only what it holds is checked. A walk with a list, no recursion. */
+const BY_ID = new Set(['layout', 'nodeOverrides', 'present', 'authors', 'icons', 'tags']);
+function unreadable(model) {
+  const bad = x => x !== null && typeof x === 'object' && Object.hasOwn(x, 'toString') && typeof x.toString !== 'function';
+  const walk = (root, fix) => { const at = [], todo = [[root, '']], seen = new Set();
+    while (todo.length) { const [o, p] = todo.pop(); if (seen.has(o)) continue; seen.add(o);
+      const list = Array.isArray(o), keys = Object.keys(o);
+      for (let i = keys.length - 1; i >= 0; i--) { const k = keys[i], x = o[k], q = list ? `${p}[${k}]` : p ? `${p}.${k}` : k;
+        if (bad(x) && !(BY_ID.has(k) && !list)) { at.push(q); if (fix) list ? o.splice(+k, 1) : delete o[k]; }
+        else if (x !== null && typeof x === 'object') todo.push([x, q]); } }
+    return at; };
+  if (!model || typeof model !== 'object') return { paths: [], model };
+  const paths = walk(model, false);
+  if (!paths.length) return { paths, model };
+  const copy = structuredClone(model); walk(copy, true);
+  return { paths: paths.sort(), model: copy };
+}
+
 /* The typed core's structural problems, as validate() words them: { level, path, message }. Only for schema version 2;
    a version-1 model has nothing typed. Ids, references, ownership and typed views; what a type's own properties mean
    is the type's to check (a registered type, from 1.3). */
@@ -97,4 +117,4 @@ const listOf = (m, i) => (Array.isArray(m.views[i] && m.views[i].edges) ? i : -1
 const lineNames = m => { const out = new Map([[-1, namesOf(m && m.edges)]]);
   (Array.isArray(m && m.views) ? m.views : []).forEach((v, i) => { if (v && Array.isArray(v.edges)) out.set(i, namesOf(v.edges)); }); return out; };
 
-export { versionProblem, typedProblems, lineNames, namesOf, listOf };
+export { versionProblem, typedProblems, lineNames, namesOf, listOf, unreadable };

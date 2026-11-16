@@ -104,7 +104,12 @@ export function diff(before, after) {
     const s0 = shown(A, o), s1 = shown(out, v), hid = s0.filter(id => !s1.includes(id)), put = s1.filter(id => !s0.includes(id));
     const ln = id => { const e = line0.get(id); return `the line from ${(at.get(e.from) || {}).label || e.from} to ${(at.get(e.to) || {}).label || e.to}${e.label ? ` (${e.label})` : ''}`; };
     hid.forEach(id => { viewSaid.push(`takes ${ln(id)} out of the view ${vn}`); touched.add(v.id); }); put.forEach(id => says(`puts ${ln(id)}`));
-    if (stepped(v) && stepped(o) && s0.filter(id => s1.includes(id)).join('\n') !== s1.filter(id => s0.includes(id)).join('\n')) says('reorders the steps');
+    // the steps' order: a view's list as it runs (a model line by id, one of its own by its Ref name, audit 19), else its model lines
+    const ord = (x, s) => Array.isArray(x.edges) ? (k => x.edges.map((e, i) => typeof e === 'string' ? (s.includes(e) ? '=' + e : null) : e && typeof e === 'object' ? '+' + k[i] : null).filter(Boolean))(lineKeys(x.edges)) : s.map(id => '=' + id);
+    const same = (p, q) => p.filter(k => q.includes(k)).join('\n') === q.filter(k => p.includes(k)).join('\n'), q0 = ord(o, s0), q1 = ord(v, s1);
+    // a numbered-card view with no stepIds numbers its cards in nodeIds order (audit 19)
+    const numbered = x => (x.mainSteps || x.render === 'process') && !Array.isArray(x.stepIds);
+    if ((stepped(v) && stepped(o) && !same(q0, q1)) || (numbered(v) && numbered(o) && !same(oldIds, ids))) says('reorders the steps');
     if (Array.isArray(v.edges)) { const back = new Map([...goneLines, ...hid.map(id => [id, line(line0.get(id), 'removed')])]);
       w.edges = mark(arr(o.edges), v.edges, line, lineKeys, back).map(e => typeof e === 'string' && put.includes(e) ? line(out.edges.find(x => x && String(x.id) === e), 'added') : e);
       hid.forEach(id => { if (!w.edges.includes(back.get(id))) w.edges.push(back.get(id)); }); } // hidden from a view that listed none: at the end

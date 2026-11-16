@@ -239,3 +239,28 @@ test('audit 11: a map line from a box to a card or box inside it is warned of an
   assert.match(describe(m, 'main'), /^main: 3 cards and 1 line\./);
   assert.deepEqual(mapContext(m).viewEdges(mapContext(m).V.main).map(e => e.id), ['w']);
 });
+
+test('audit 19: an object with a toString key ({"toString": 1}, valid JSON) is no text: validate() says where and goes on, layout, the drawing and describe() read the rest', async () => {
+  const dir = new URL('../src/', import.meta.url), { readdirSync } = await import('node:fs'); // every type registered, as the bundle has them
+  for (const f of readdirSync(dir, { recursive: true }).filter(f => f.endsWith('.js') && !/^(page|canvas)[\\/]/.test(f))) await import(new URL(f.replaceAll('\\', '/'), dir));
+  const { validate: v, layout: l, svgOf } = { ...(await import('../src/map/validate.js')), ...(await import('../src/map/api.js')), ...(await import('../src/draw/svg.js')) };
+  const { describe: d } = await import('../src/map/insight.js'), bad = () => JSON.parse('{"toString":1}');
+  const files = readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')), thrown = [];
+  for (const f of files) {
+    const m = read(`../examples/${f}`); if (!Array.isArray(m.views)) continue;
+    const said = [], todo = [...(m.nodes || []).map((x, i) => [x, `nodes[${i}]`]), ...(m.edges || []).map((x, i) => [x, `edges[${i}]`]),
+      ...m.views.flatMap((w, i) => [...(w.nodes || []).map((x, j) => [x, `views[${i}].nodes[${j}]`]), ...(Array.isArray(w.edges) ? w.edges : []).map((x, j) => [x, `views[${i}].edges[${j}]`])])];
+    while (todo.length) { const [x, at] = todo.pop(); if (!x || typeof x !== 'object') continue; x.label = bad(); said.push(at + '.label'); if (x.props) { x.props.guard = bad(); said.push(at + '.props.guard'); }
+      (x.members || []).forEach((y, j) => todo.push([y, `${at}.members[${j}]`])); }
+    m.views[0].title = bad(); said.push('views[0].title');
+    let ps; try { ps = v(m); } catch (e) { thrown.push(`${f} validate: ${e.message}`); continue; }
+    const errs = new Set(ps.filter(p => p.level === 'error' && /toString/.test(p.message)).map(p => p.path));
+    assert.deepEqual(said.filter(p => !errs.has(p)), [], f + ': each one said');
+    for (const w of m.views) for (const [k, fn] of [['layout', () => svgOf(l(m, w.id))], ['describe', () => d(m, w.id)]]) try { fn(); } catch (e) { thrown.push(`${f} ${k} ${w.id}: ${e.message}`); }
+  }
+  assert.deepEqual(thrown, []);
+  // a map by id may name a card toString: its layout and override are read, and nothing is said
+  const named = { nodes: [{ id: 'toString', label: 'T' }, { id: 'b' }], views: [{ id: 'v', nodeIds: ['toString', 'b'], layout: { toString: [0, 0], b: [1, 0] }, nodeOverrides: { toString: { label: 'Tee' } } }] };
+  assert.deepEqual(v(named).filter(p => /toString/.test(p.message)), []);
+  assert.equal(l(named, 'v').nodes.find(n => n.id === 'toString').label, 'Tee');
+});

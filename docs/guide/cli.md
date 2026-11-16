@@ -34,9 +34,7 @@ python3 umlimator.py check page.html --views 'pic-*'   # the layout check on cho
 python3 umlimator.py check page.html --expand          # also each view with each stacked card unfolded
 ```
 
-`check` reports crossings, shared lines, detours, labels on lines and text that overflows its card, and each rule the
-model breaks, and then exits 1. Run it in CI to fail a build on a broken rule. For a model with cloud diagrams, it also
-compares the model's `iconPacks` with the release's ([Icons and icon packs](./icon-packs.md)).
+`check` reports crossings, shared lines, detours, labels on lines and text that overflows its card, and each rule the model breaks. It exits 1 when the model breaks a rule (one `--ignore` does not leave out) or when the check itself fails; crossings, detours and the other layout problems are reported with exit 0. Run it in CI to fail a build on a broken rule. For a model with cloud diagrams, it also compares the model's `iconPacks` with the release's ([Icons and icon packs](./icon-packs.md)).
 
 ## PDF
 

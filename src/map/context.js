@@ -1,5 +1,5 @@
 import { esc, fit, measured, sansW, textW } from '../core/text.js';
-import { migrate } from '../core/model.js';
+import { migrate, unreadable } from '../core/model.js';
 import { diagramOf } from '../core/registry.js';
 import { held, warn } from '../core/warn.js';
 import { r2 } from '../draw/shapes.js';
@@ -59,7 +59,7 @@ function boxHolds(v) {
 
 /* The model's views and everything that lays one out. Works on its own copy of the model, needs no DOM. */
 function mapContext(model, opts = {}) {
-  const D = structuredClone(migrate(model) || {}); // a newer schemaVersion throws: drawn wrongly otherwise (F6)
+  const D = structuredClone(unreadable(migrate(model)).model || {}); // a newer schemaVersion throws: drawn wrongly otherwise (F6); no text String() throws on (audit 19)
   plainViews(D); // typed views of a diagram this release does not draw: plain cards
   const M = opts.measure || null, withM = f => (...a) => measured(M, () => f(...a));
   // a field that must be a list and is not (validate() says so) is left out, as a missing one is
@@ -71,7 +71,7 @@ function mapContext(model, opts = {}) {
   edgeIds(D.edges); D.views.forEach(v => { if (Array.isArray(v.edges)) edgeIds(v.edges); });
   const views = D.views.filter(v => v.id);
   const nodes = [...(D.nodes || []), ...views.flatMap(v => v.nodes || [])];
-  views.forEach(v => { lists(v, ['nodeIds', 'containers', 'intake']); [...(v.containers || []), ...(Array.isArray(v.lanes) ? v.lanes : [])].forEach(c => lists(c, ['nodeIds'])); Object.values(v.nodeOverrides || {}).forEach(o => lists(o, ['verbs'])); }); nodes.forEach(n => lists(n, ['verbs']));
+  views.forEach(v => { lists(v, ['nodeIds', 'containers', 'intake', 'stepIds', 'tour', 'browserOrder']); [...(v.containers || []), ...(Array.isArray(v.lanes) ? v.lanes : [])].forEach(c => lists(c, ['nodeIds'])); Object.values(v.nodeOverrides || {}).forEach(o => lists(o, ['verbs'])); }); nodes.forEach(n => lists(n, ['verbs']));
   // by id, with no prototype: a node or view named constructor is no view an element opens (M3, audit 7)
   const N = byId(nodes.map(n => [n.id, n]));
   const V = byId(views.map(v => [v.id, v]));

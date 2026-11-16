@@ -251,3 +251,49 @@ test('audit 17: diff() passes over a null in the after model\'s lines, as layout
   assert.doesNotThrow(() => diff(as, nul));
   assert.ok(diff(as, nul).summary.length > 0);
 });
+
+test('audit 19: diff() says a sequence view\'s own steps reordered, as its model lines\' are, and lists that view', () => {
+  for (const [f, vid] of [['assistant.json', 'answer'], ['weather.json', 'forecaster'], ['bike-share.json', 'ride-end'], ['bookshop.json', 'api']]) {
+    const a = JSON.parse(readFileSync(new URL('../examples/' + f, import.meta.url))), b = structuredClone(a), v = b.views.find(x => x.id === vid);
+    [v.edges[0], v.edges[1]] = [v.edges[1], v.edges[0]];
+    const d = diff(a, b);
+    assert.deepEqual([d.summary, d.views], [[`reorders the steps in the view ${v.title || v.id}`], [vid]], f);
+    assert.deepEqual(diff(a, structuredClone(a)).summary, [], f);
+  }
+  // an own step added or taken away is no reorder of the steps that stayed
+  const as = JSON.parse(readFileSync(new URL('../examples/assistant.json', import.meta.url))), less = structuredClone(as);
+  less.views.find(x => x.id === 'answer').edges.splice(1, 1);
+  assert.ok(!diff(as, less).summary.some(s => s.startsWith('reorders')));
+  assert.ok(!diff(less, as).summary.some(s => s.startsWith('reorders')));
+});
+
+test('audit 19: diff() says a numbered-card view with no stepIds reordered, since its cards number in nodeIds order', async () => {
+  const { apply } = await import('../lib/umlimator.js');
+  for (const how of [{ mainSteps: true }, { render: 'process' }]) {
+    const a = { nodes: [{ id: 'a', label: 'Order' }, { id: 'b', label: 'Pay' }, { id: 'c', label: 'Ship' }], edges: [{ id: 'ab', from: 'a', to: 'b' }, { id: 'bc', from: 'b', to: 'c' }],
+      views: [{ id: 'v', title: 'Flow', ...how, nodeIds: ['a', 'b', 'c'] }] };
+    const b = apply(a, { op: 'move', id: 'c', view: 'v', index: 0 }), d = diff(a, b);
+    assert.deepEqual(layout(b, 'v').nodes.map(n => n.step), [1, 2, 3]);
+    assert.deepEqual([d.summary, d.views], [['reorders the steps in the view Flow'], ['v']], JSON.stringify(how));
+    // a card added or taken out of the view is no reorder; with stepIds the order is stepIds', said as a change of the view
+    const more = structuredClone(a); more.nodes.push({ id: 'd', label: 'Bill' }); more.views[0].nodeIds = ['a', 'd', 'b', 'c'];
+    assert.deepEqual(diff(a, more).summary, ['adds Bill']);
+    const s0 = structuredClone(a); s0.views[0].stepIds = ['a', 'b', 'c']; const s1 = structuredClone(s0); s1.views[0].nodeIds = ['c', 'a', 'b'];
+    assert.deepEqual(diff(s0, s1).summary, []);
+  }
+  // a view that does not number its cards: nodeIds order is no step order
+  const p = { nodes: [{ id: 'a' }, { id: 'b' }], edges: [], views: [{ id: 'v', nodeIds: ['a', 'b'] }] }, q = structuredClone(p); q.views[0].nodeIds = ['b', 'a'];
+  assert.deepEqual(diff(p, q).summary, []);
+});
+
+test('audit 19: a view\'s stepIds, tour or browserOrder that is no list is warned and drawn as absent', () => {
+  const base = { nodes: [{ id: 'a', label: 'A' }, { id: 'ab', label: 'AB' }, { id: 'c', label: 'C' }], edges: [{ from: 'a', to: 'ab' }, { from: 'ab', to: 'c' }],
+    views: [{ id: 'v', mainSteps: true, nodeIds: ['a', 'ab', 'c'] }] };
+  const steps = m => layout(m, 'v').nodes.map(n => `${n.id}:${n.step}`).join(' ');
+  for (const [k, x] of [['stepIds', 7], ['stepIds', 'ab'], ['stepIds', { 0: 'a' }], ['tour', 'ab'], ['tour', 3], ['browserOrder', 5]]) {
+    const m = structuredClone(base); m.views[0][k] = x;
+    assert.deepEqual(validate(m).map(p => [p.level, p.path, p.message]), [['warning', `views[0].${k}`, `${k} is a list: ignored`]], `${k} ${JSON.stringify(x)}`);
+    assert.equal(steps(m), 'a:1 ab:2 c:3', `${k} ${JSON.stringify(x)}`);
+    assert.equal(layout(m, 'v').tour, null);
+  }
+});
