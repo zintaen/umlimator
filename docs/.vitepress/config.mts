@@ -1,6 +1,7 @@
 // The documentation site (GitHub Pages, under /umlimator/). The examples gallery and pages are built beside it by CI's
 // site job, at /umlimator/examples/, and keep their URLs; links to them leave the site's router (target="_self").
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { posix } from 'node:path';
 import { defineConfig } from 'vitepress';
 import umlimator from '../../lib/umlimator-markdown-it.js';
@@ -122,13 +123,23 @@ export default defineConfig({
   head: [['link', { rel: 'icon', type: 'image/svg+xml', href: `${BASE}logo.svg` }]],
   // links to the gallery and its pages, built beside the site by CI
   ignoreDeadLinks: [/^\/examples\//],
+  // one contentinfo landmark per page: a doc page has its own footer (VPDocFooter), and the site footer (themeConfig.footer)
+  // shows beside it on a page with no sidebar (types, changelog), so the site footer is the home page's only (audit 17)
+  transformPageData(page) { if (page.frontmatter.layout !== 'home') page.frontmatter.footer ??= false; },
   markdown: {
+    // code blocks at WCAG AA (4.5:1) on VitePress's block background in both themes: Shiki's default github-light and
+    // github-dark have keywords, parameters and comments under it (audit 17)
+    theme: { light: 'github-light-high-contrast', dark: 'github-dark-high-contrast' },
     config: md => {
       md.core.ruler.before('normalize', 'version', s => { s.src = s.src.replaceAll('@@VERSION@@', version); });
       md.use(changelog).use(umlimator).use(links).use(ghAnchors).use(plain);
     },
   },
-  vite: { build: { chunkSizeWarningLimit: 1000 } },   // the changelog's page is about 700 kB
+  vite: {
+    build: { chunkSizeWarningLimit: 1000 },   // the changelog's page is about 700 kB
+    // the home page in a main landmark: VPContent's VPHome, a <div>, drawn inside <main> (theme/VPHomeMain.vue, audit 17)
+    resolve: { alias: [{ find: /^\.\/VPHome\.vue$/, replacement: fileURLToPath(new URL('./theme/VPHomeMain.vue', import.meta.url)) }] },
+  },
   vue: { template: { compilerOptions: { isCustomElement: t => t.startsWith('umlimator-') } } },
   themeConfig: {
     logo: '/logo.svg',
