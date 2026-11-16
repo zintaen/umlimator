@@ -143,7 +143,7 @@ test('dfd-stress.json, edge-cases: three levels, the second balanced and the thi
     ['warning', 'dfd-process-io', ['ec-idle']], // a process with no flow out
     ['warning', 'dfd-process-io', ['p29']], // the generated chain's last process (all)
     ['warning', 'dfd-numbers', ['ec-stray', 'ec-sell']], // a process numbered outside its parent's
-    ['error', 'dfd-balance', ['ec-price', 'ec-receipt-2']], // level 3 lacks the receipt
+    ['warning', 'dfd-balance', ['ec-price', 'ec-receipt-2']], // level 3 lacks the receipt
   ], 'level 2, with its local store Cart, balances; so does the level D made');
   assert.match(validate(m).find(p => p.rule === 'dfd-balance').message, /receipt/);
   assert.deepEqual(['edge-cases', 'ec-level-2', 'ec-level-3'].map(id => V(m, id).parent ?? null), [null, 'edge-cases', 'ec-level-2'], 'three levels');

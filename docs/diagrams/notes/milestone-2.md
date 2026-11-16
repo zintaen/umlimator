@@ -570,7 +570,7 @@ cut at 280.
 | `dfd-process-io` | warning | a process has a flow in and a flow out |
 | `dfd-flow-label` | warning | a flow to or from a process has a label |
 | `dfd-numbers` | warning | §6.4 |
-| `dfd-balance` | error | §6.4 |
+| `dfd-balance` | error (a warning since 16 Nov 2026, the maintainer's decision; `risks.md` M15) | §6.4 |
 | `dfd-level` | warning | a process's `opensView` names a `dfd` view whose `parent` is a view showing the process |
 
 Hooks: `key` (`D`, §6.1); `add` numbers a new process under the view's parent process; `connect`; `rename` on a flow sets

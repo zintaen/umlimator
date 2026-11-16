@@ -27,9 +27,9 @@ switch repaints and lays nothing out (§4.3).
 process's flows and one child process numbered `<n>.1` (the next free), each flow copied to it, so the level balances
 from the start; Enter opens it.
 
-Rules (`src/dfd/dfd.js`), run once on the whole model: error `dfd-balance` (a level's flows across its edge match its
-process's flows by label, far end and direction; a local store does not count; the error names the missing flow);
-warnings `dfd-flow-process` (a flow with no process at either end), `dfd-process-io`, `dfd-flow-label`, `dfd-numbers`
+Rules (`src/dfd/dfd.js`), run once on the whole model, all warnings: `dfd-balance` (a level's flows across its edge match
+its process's flows by label, far end and direction; a local store does not count; the warning names the missing flow;
+a warning since 16 Nov 2026, so an edit partway through never leaves an error), `dfd-flow-process` (a flow with no process at either end), `dfd-process-io`, `dfd-flow-label`, `dfd-numbers`
 (numbered under the parent's number, none twice), `dfd-level` (a process opens a dfd view whose parent shows it; also a
 level two processes open, a view its own parent, a level showing its own process), `dfd-notation` (a view's notation
 not `yourdon` or `gane-sarson`, drawn as Yourdon).
@@ -52,8 +52,8 @@ Layout limits, measured on `examples/bookshop-data-flow.json` and `tests/dfd-str
   with repair off (audit 14). `check()` finds nothing else.
 - `tests/m2-fixtures.test.mjs` pins the stress file. Its `edge-cases` levels are clean but for the second level's 2
   crossings right and 1 down, in both notations; its generated `all` view (50 nodes, 60 flows) is clean both ways.
-- Deleting or hiding an external entity or store a level and its parent both show leaves `dfd-balance` on the
-  process: the type's `remove` hook does not yet follow it onto the other level (`risks.md` M15).
+- Deleting or hiding an external entity or store a level and its parent both show leaves a `dfd-balance` warning on the
+  process until the other level is edited to match: the type's `remove` hook does not follow it onto the other level.
 - A long number is cut at 160 px, as a name wraps there.
 
 ## Writers: what each shows of a data flow diagram

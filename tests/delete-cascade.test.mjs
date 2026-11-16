@@ -52,9 +52,6 @@ function gesture(m, v, id, fromModel = true) {
   return r.error != null ? null : Array.isArray(r) ? { commands: r } : r;
 }
 const errors = m => validate(m).filter(p => p.level === 'error').map(p => p.message);
-// still open (risks.md M15, for the DFD type's remove hook): deleting or hiding a level's entity, store, process or flow can
-// leave a parent process that no longer balances with its level
-const OPEN = /^dfd-balance: /;
 
 test('no single delete or hide of any element of any example, target or the atlas leaves a new validate() error', () => {
   const bad = []; let n = 0;
@@ -67,7 +64,7 @@ test('no single delete or hide of any element of any example, target or the atla
       for (const [v, fromModel] of [...ways.map(v => [v, true]), ...on.map(v => [v, false])]) { const g = gesture(m, v, id, fromModel); if (!g) continue;
         let after; try { after = apply(m, g.commands); } catch (err) { // a bare delete of an id apply() does not delete (a view's, a story's); a hide of a member, refused
           if (v ? fromModel || !/^hide: ".+" is a member, shown with its owner/.test(err.message) : !/is not an element/.test(err.message)) throw err; continue; }
-        n++; errors(after).filter(e => !was.has(e) && !OPEN.test(e)).forEach(e => bad.push(`${name}: ${id}${v ? ` in ${v.id}` : ''}${fromModel ? '' : ' (Delete)'}: ${e}`)); } }
+        n++; errors(after).filter(e => !was.has(e)).forEach(e => bad.push(`${name}: ${id}${v ? ` in ${v.id}` : ''}${fromModel ? '' : ' (Delete)'}: ${e}`)); } }
   }
   assert.ok(n > 2500, `${n} deletes`);
   assert.deepEqual(bad, []);

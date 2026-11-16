@@ -170,7 +170,7 @@ test('validators: 22-data-flow.json breaks no rule; each rule fails on a model t
     assert.deepEqual(got.map(p => p.rule), [rule], `${rule}: ${JSON.stringify(got)}`);
     const [p] = got;
     assert.match(p.message, new RegExp('^' + rule + ': '));
-    assert.equal(p.level, rule === 'dfd-balance' ? 'error' : 'warning', rule);
+    assert.equal(p.level, 'warning', rule); // dfd-balance too, since 16 Nov 2026 (the maintainer's decision)
     assert.deepEqual([...p.ids].sort(), [...ids].sort(), rule);
     assert.ok(validate(m).some(q => q.rule === rule && q.path === p.path), `${rule}: in validate()`);
   }
