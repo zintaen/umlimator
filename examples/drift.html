@@ -15,12 +15,13 @@
   header span { color: var(--um-muted); }
   i.k { display: inline-block; width: 22px; vertical-align: middle; border-top: 2px solid var(--um-rose); margin-right: 6px; }
   i.k.idle { border-top-color: var(--um-w-calls); opacity: .35; } i.k.new { border-top-style: dashed; }
+  main { flex: 1; min-height: 0; display: flex; flex-direction: column; } /* the page's main landmark */
   #map { flex: 1; min-height: 0; }
   header h1 { margin: 0; font-size: inherit; } /* the page's heading, drawn as the bold title it was */
 </style>
 <header><h1>Drawn vs. seen</h1><label><input id="on" type="checkbox" checked> Show drift</label>
   <span><i class="k new"></i>runs, not drawn</span><span><i class="k idle"></i>drawn, carried nothing</span><span id="counts" aria-live="polite"></span></header>
-<div id="map"></div>
+<main><div id="map"></div></main>
 <script type="module">
 import { render, drift } from '../lib/umlimator.js';
 import { withIcons } from './icons.js';
