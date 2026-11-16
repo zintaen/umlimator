@@ -1,5 +1,5 @@
 import { esc, fit, measured, sansW, textW } from '../core/text.js';
-import { migrate } from '../core/model.js';
+import { migrate, unreadable } from '../core/model.js';
 import { diagramOf } from '../core/registry.js';
 import { held, warn } from '../core/warn.js';
 import { r2 } from '../draw/shapes.js';
@@ -59,7 +59,7 @@ function boxHolds(v) {
 
 /* The model's views and everything that lays one out. Works on its own copy of the model, needs no DOM. */
 function mapContext(model, opts = {}) {
-  const D = structuredClone(migrate(model) || {}); // a newer schemaVersion throws: drawn wrongly otherwise (F6)
+  const D = structuredClone(unreadable(migrate(model)).model || {}); // a newer schemaVersion throws: drawn wrongly otherwise (F6); no text String() throws on (audit 19)
   plainViews(D); // typed views of a diagram this release does not draw: plain cards
   const M = opts.measure || null, withM = f => (...a) => measured(M, () => f(...a));
   // a field that must be a list and is not (validate() says so) is left out, as a missing one is

@@ -110,6 +110,10 @@ def not_objects(d):
     # an id, a line's end, a view a card opens: a list or an object there is no name, and ended in a TypeError (audit 7)
     out += ids("nodes", d.get("nodes"), ("id", "opensView", "view")) + ids("edges", d.get("edges"), ("id", "from", "to"))
     out += ["root is not a string"] if not name(d.get("root")) else []
+    # a label is text or a number: an object there ({"toString": 1} is valid JSON) ended the page's drawing in a TypeError (audit 19)
+    text = lambda x: x is None or isinstance(x, (str, int, float))
+    out += [f"{at}[{j}].label is not text" for at, xs in [("edges", d.get("edges")), *((f"views[{i}].edges", v.get("edges"))
+            for i, v in enumerate(lst(d.get("views"))) if isinstance(v, dict))] for j, x in enumerate(lst(xs)) if isinstance(x, dict) and not text(x.get("label"))]
     # a card's members, and theirs, at any depth (a stack, not recursion: a deep model never ends in a RecursionError);
     # a view's own cards too, which MCP's refs walks (audit 9)
     todo = [(f"nodes[{i}]", n) for i, n in enumerate(lst(d.get("nodes"))) if isinstance(n, dict)]
@@ -117,12 +121,27 @@ def not_objects(d):
              for j, n in enumerate(lst(v.get("nodes"))) if isinstance(n, dict)]
     while todo:
         at, n = todo.pop()
+        out += [f"{at}.label is not text"] if not text(n.get("label")) else []
         if "members" in n and not isinstance(n["members"], list):
             out.append(f"{at}.members is not a list")
         # a member's id is a Ref's name and a key: a list there ended stills and MCP's highlight and tour in a TypeError (audit 18)
         out += [f"{at}.members[{j}].id is not a string" for j, x in enumerate(lst(n.get("members"))) if isinstance(x, dict) and not name(x.get("id"))]
         todo += [(f"{at}.members[{j}]", x) for j, x in enumerate(lst(n.get("members"))) if isinstance(x, dict)]
+    # an object with a toString key anywhere ({"toString": 1}, valid JSON) is no text: the page's String() throws on it, as
+    # unreadable() in src/core/model.js reads it; a map by id or name may have a key named toString (audit 19)
+    todo, said = [("", d)], {x.split(" ")[0] for x in out}  # a label said once
+    while todo:
+        at, o = todo.pop()
+        for k, x in (enumerate(o) if isinstance(o, list) else o.items()):
+            q = f"{at}[{k}]" if isinstance(o, list) else f"{at}.{k}" if at else str(k)
+            if isinstance(x, dict) and "toString" in x and not (isinstance(o, dict) and k in BY_ID):
+                out += [] if q in said else [f"{q} is an object with a toString key, which is no text"]
+            elif isinstance(x, (dict, list)):
+                todo.append((q, x))
     return out
+
+
+BY_ID = {"layout", "nodeOverrides", "present", "authors", "icons", "tags"}  # maps by id or name, as src/core/model.js's BY_ID
 
 
 def upstream_view(d):
@@ -346,7 +365,9 @@ def page_model(model_path, out, source=None):
         sys.exit(f"{source or model_path}: " + "; ".join(bad))
     if "title" in m and m["title"] is None:  # no title, as validate() reads it: the root view's, or the file's name (audit 18)
         del m["title"]
-    own_logos(m, Path(model_path).resolve().parent, source or model_path)
+    own_media(m, Path(model_path).resolve().parent, source or model_path)
+    for k in ENGINE_ONLY:  # upstream's explore and recap keys, which a map never draws: a shape it does not expect ended in a traceback (audit 19)
+        m.pop(k, None)
     # visual.py records the checkout's root relative to the page; for a page outside the checkout that path climbs
     # through the folders above it (a home folder, a user name) into a page that gets shared
     root = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip()
@@ -354,7 +375,7 @@ def page_model(model_path, out, source=None):
     if not Path(out).resolve().is_relative_to(base):
         m.setdefault("meta", {}).setdefault("root", "")
     table = {**icon_table([m]), **packs().table([m])}  # pack keys hold a `/`, logos' never
-    if table:
+    if table:  # only this table: own_media dropped the model's own, whose entries name what a page draws through <image> (audit 19)
         m["icons"] = table
     # the path visual.py would record for the model itself (its portable_path): in the checkout, under home as ~/, else the name
     src = Path(source or model_path).resolve()
@@ -364,6 +385,46 @@ def page_model(model_path, out, source=None):
 
 
 LOGO_MAX = 1 << 20  # bytes: an intake logo is a small mark
+ENGINE_ONLY = ("files", "hunks", "areas", "fileNotes", "stats")
+
+
+def fetched(url):
+    """Whether a browser would fetch `url` from somewhere other than the page's own folder: it names a scheme (http:, file:)
+    or a host (//host, \\\\host), read as a browser reads it (with tabs, newlines and leading controls or spaces removed)."""
+    u = re.sub(r"[\t\n\r]", "", url).lstrip("".join(map(chr, range(33))))
+    return bool(re.match(r"[a-z][a-z0-9+.-]*:|[\\/]{2}", u, re.I))
+
+
+def own_media(m, folder, said):
+    """The model with nothing a page, its stills or the diff Action's browser would fetch from an address the model names
+    (risks.md S1, S2): intake logos embedded as own_logos does; an author's avatar kept only as a data: image (the engine
+    inlines the author's GitHub picture in its place, or the page draws initials); an example's thumbnail or full image
+    kept only as a path beside the page or a data: image; and the model's own icons table dropped (page_model builds the
+    table from the pinned manifest and fetched packs). Each dropped address is said in one line (audit 19)."""
+    own_logos(m, folder, said)
+    if m.pop("icons", None):
+        print(f"{said}: icons is built by render from the icon manifest and fetched packs; the model's own table is left out", file=sys.stderr)
+    image = lambda x: re.match(r"data:image/[\w.+-]+[;,]", x) is not None
+    d = lambda x: x if isinstance(x, dict) else {}
+    lst = lambda x: x if isinstance(x, list) else []
+    for login, a in d(m.get("authors")).items():
+        if isinstance(a, dict) and a.get("avatar") not in (None, "") and not (isinstance(a["avatar"], str) and image(a["avatar"])):
+            del a["avatar"]
+            print(f"{said}: authors.{login}.avatar is not a data: image; it is left out (render inlines the author's GitHub picture, else draws initials)", file=sys.stderr)
+    where = [(f"nodes[{i}]", n) for i, n in enumerate(lst(m.get("nodes")))]
+    where += [(f"views[{i}].nodes[{j}]", n) for i, v in enumerate(lst(m.get("views"))) for j, n in enumerate(lst(d(v).get("nodes")))]
+    where += [(f"views[{i}].nodeOverrides.{k}", n) for i, v in enumerate(lst(m.get("views"))) for k, n in d(d(v).get("nodeOverrides")).items()]
+    stack = list(where)
+    while stack:  # members too, at any depth (a member's examples draw in its details panel like a card's)
+        at, n = stack.pop()
+        stack += [(f"{at}.members[{j}]", c) for j, c in enumerate(lst(d(n).get("members")))]
+        for j, x in enumerate(lst(d(n).get("examples"))):
+            for k in ("thumb", "full"):
+                # kept only when it is known safe: a data: image, or a string the browser reads as a path beside the page;
+                # anything else (an address, a list, an object, a number) is dropped (an allowlist, not a deny-list)
+                if isinstance(x, dict) and k in x and not (isinstance(x[k], str) and (image(x[k]) or not fetched(x[k]))):
+                    del x[k]
+                    print(f"{said}: {at}.examples[{j}].{k} names an address the page would fetch; it is left out (a path beside the page, or a data: image)", file=sys.stderr)
 
 
 def own_logos(m, folder, said):
@@ -372,10 +433,11 @@ def own_logos(m, folder, said):
     an absolute path, a file that is not an SVG, and a data URI that is not an image are dropped, each said in one line,
     so a page never carries an unrelated local file (a key, a token in .git/config) (audit 18)."""
     folder = folder.resolve()
-    for i, v in enumerate(m.get("views") or []):
-        for j, src in enumerate(v.get("intake") or [] if isinstance(v, dict) else []):
+    lst = lambda x: x if isinstance(x, list) else []  # timelapse reads old versions, which render's not_objects never saw
+    for i, v in enumerate(lst(m.get("views"))):
+        for j, src in enumerate(lst(v.get("intake")) if isinstance(v, dict) else []):
             logo = src.get("logo") if isinstance(src, dict) else None
-            if not logo:
+            if not isinstance(logo, str) or not logo:
                 continue
             if logo.startswith("data:"):
                 if re.match(r"data:image/[\w.+-]+[;,]", logo):
@@ -656,7 +718,13 @@ def diff_since(a):
             stem += "-" + hashlib.sha256(name.encode()).hexdigest()[:6]
         stems.add(stem)
         try:
-            r = diff_page(before, after, top / name if after else out / f"{stem}.json", out / f"{stem}.html", out / stem)
+            # a removed model is drawn from a copy in its own folder while that folder is there, so its intake logos resolve
+            # and messages name it; else beside the pages (audit 19)
+            # the copy is written there only when its folder resolves inside the checkout and no folder on the way is a
+            # symbolic link, so a deleted model never writes outside it (audit 19)
+            inside = lambda p: p.parent.is_dir() and p.parent.resolve().is_relative_to(top.resolve()) and not any(q.is_symlink() for q in [p.parent, *p.parent.parents] if q.is_relative_to(top))
+            near = top / name if after or inside(top / name) else out / f"{stem}.json"
+            r = diff_page(before, after, near, out / f"{stem}.html", out / stem)
         except (SystemExit, Exception) as e:  # the module failed on this model (js() ends the CLI), or an odd one: said for this file, and the rest go on
             why = str(e.code if isinstance(e, SystemExit) else e)
             done.append({"file": name, "error": why})
@@ -789,6 +857,7 @@ def cmd_timelapse(a):
             m = json.loads(r.stdout)
             if not isinstance(m, dict):
                 raise ValueError
+            own_media(m, Path(a.model).resolve().parent, f"{sha[:7]}: {path}")  # as render's page: nothing fetched from an address the model names (audit 19)
             versions.append({"label": f"{day} {subject}".strip(), "model": m})
         except ValueError:  # not JSON, bytes in no encoding JSON has, or JSON that is no model
             print(f"{sha[:7]}: {path} is not a JSON model there; left out", file=sys.stderr)
