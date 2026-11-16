@@ -423,6 +423,8 @@ const SEQ_TYPE = registerDiagramType('uml.sequence', {
     'uml.CombinedFragment': [{ key: 'operator', label: 'Operator', kind: 'enum', options: SQ_OPS }],
   },
   layout: { run: sqRun, pins: false },
+  // a fragment draws its operator, never its label: no Name field (audit 21; F2 sets the operator, audit 18)
+  unnamed: ['uml.CombinedFragment'],
   draw: sqDraw,
   validate: sqProblems,
   rules: SQ_RULES,

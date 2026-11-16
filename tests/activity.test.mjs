@@ -437,3 +437,11 @@ test('audit 19: the flow rules and F2 count a view\'s own flows (view.edges obje
   // a flow in the model with no view list, as before
   assert.deepEqual(actProblems(EX, EX.views[0]).filter(p => p.level === 'error'), []);
 });
+
+test('audit 21: connect gives a decision\'s second unguarded exit else when the first is the view\'s own flow', () => {
+  const CF = { type: 'uml.ControlFlow' }, base = own => ({ schemaVersion: 2, nodes: [N('d', 'DecisionNode', 'In stock?'), N('a', 'Action', 'Ship'), N('b', 'Action', 'Wait')], edges: own ? [] : [F('f1', 'd', 'a')],
+    views: [{ id: 'v', diagram: 'uml.activity', nodeIds: ['d', 'a', 'b'], ...(own ? { edges: [F('f1', 'd', 'a')] } : {}) }] });
+  for (const own of [false, true]) { const m = base(own), r = actConnect(m, m.views[0], 'd', 'b', null, CF);
+    assert.equal(r[0].element.props?.guard, 'else', own ? 'the first exit the view\'s own' : 'the first exit a model flow');
+    assert.ok(!validate(apply(m, r)).some(p => p.rule === 'decision-guards' && /2 outgoing flows/.test(p.message)), 'no two bare exits'); }
+});

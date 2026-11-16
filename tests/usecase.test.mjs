@@ -341,3 +341,11 @@ test('audit 20: the use case rules count a view\'s own lines (view.edges objects
   assert.deepEqual(r.commands.map(c => c.id), [...ext.props.extensionPoints, 'own-ext']);
   assert.deepEqual(validate(apply(x, r.commands)).filter(p => p.level === 'error'), []);
 });
+
+test('audit 21: each view\'s own lines are checked with that view alone: two views\' own includes make no cycle neither has', () => {
+  const m = { schemaVersion: 2, nodes: [U('u1', 'Pay'), U('u2', 'Check out')], edges: [],
+    views: [{ id: 'w1', diagram: 'uml.use-case', nodeIds: ['u1', 'u2'], edges: [L('g1', 'Include', 'u1', 'u2')] }, { id: 'w2', diagram: 'uml.use-case', nodeIds: ['u1', 'u2'], edges: [L('g2', 'Include', 'u2', 'u1')] }] };
+  assert.deepEqual(validate(m).filter(p => p.level !== 'info').map(p => p.message), []);
+  const one = structuredClone(m); one.views[0].edges.push(L('g3', 'Include', 'u2', 'u1'));
+  assert.deepEqual(validate(one).filter(p => p.rule === 'include-cycle').map(p => p.path), ['views[0].edges[1]'], 'both in one view: a cycle, as before');
+});

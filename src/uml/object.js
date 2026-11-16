@@ -174,6 +174,8 @@ const OBJECT_TYPE = registerDiagramType('uml.object', {
   validate: (model, view) => [...classProblems(model).filter(p => p.rule === 'member-names'), ...objectProblems(model), ...ownerProblems(model, view, drawnLines(model, view, OBJECT_LINES).lines)],
   rules: { 'member-names': RULES['member-names'], ...OBJECT_RULES, ...OWNER_RULES }, // of the class rules, member-names only: two slots for one feature (§9.3)
   describe: objectDescribe,
+  // a link's text as drawn, for the PDF's Lines table: its «stereotypes» and its name, else its association's (audit 21)
+  text: (model, view, id) => { const e = lineIn(model, view, id); return e && e.type === 'uml.Link' ? linkText(e) || null : null; },
   edits: { rename: obRename },
 });
 
