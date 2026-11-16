@@ -378,3 +378,14 @@ test('a flow written inline in a view conveys as one of the model does: names, r
   assert.deepEqual([T.rows(m, m.views[0], 'o'), T.text(m, m.views[0], 'f')], [['Shopper → Store'], 'Order, Pay']);
   assert.deepEqual(T.edits.remove(m, m.views[0], ['o', 'p'], true).commands.map(c => c.id), ['o', 'p', 'f']);
 });
+
+test('audit 21: docs/diagrams/model.md names each declared reference as the type declares it (conveyed is "drop empties", an instance\'s container "cascade named")', async () => {
+  await import('../src/c4/views.js'); await import('../src/er/er.js');
+  const { propRefs } = await import('../src/core/registry.js');
+  const doc = readFileSync(new URL('../docs/diagrams/model.md', import.meta.url), 'utf8');
+  for (const [anchor, type, prop] of [['`props.conveyed`', 'uml.InformationFlow', 'props.conveyed'], ['`props.container`', 'c4.ContainerInstance', 'props.container'], ['`references`', 'er.Column', 'props.references']]) {
+    const at = doc.indexOf(anchor), said = /declared reference[^`]*(?:`refs`[^`]*)?`([^`]+)`/.exec(doc.slice(at));
+    assert.ok(at >= 0 && said, anchor);
+    assert.equal(said[1], propRefs(type)[prop], `${type} ${prop}`);
+  }
+});
