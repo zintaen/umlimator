@@ -452,3 +452,21 @@ test('audit 19: a group with no kind is told to take one, not said to be one', (
   assert.deepEqual(validate(m).filter(p => p.rule === 'group-kind').map(p => p.message),
     ['group-kind: "Shop" has no zoneType: give it one of project, region, zone, network, subnetwork, generic']);
 });
+
+test('audit 21: a view\'s own line (view.edges object) between a group and what it holds is a line-inside error, and the Owner field refuses a move its own line forbids', () => {
+  for (const [fam, EXM, vid] of TARGETS) {
+    if (fam === 'aws' && !CLOUD_AWS) continue;
+    const D = CLOUD_DEFS[fam], line = D.lines[0].type, group = D.elements[0].type, m = structuredClone(EXM), v = m.views.find(x => x.id === vid);
+    const up = id => { const out = []; for (let p = m.nodes.find(n => n.id === id)?.parent; p != null; p = m.nodes.find(n => n.id === p)?.parent) out.push(p); return out; };
+    const kid = m.nodes.find(n => n.type !== group && n.parent != null && v.nodeIds.includes(n.id)), g = up(kid.id).find(p => v.nodeIds.includes(p));
+    v.edges = [...m.edges.map(e => e.id), { id: 'own-1', type: line, from: g, to: kid.id }];
+    const p = validate(m).filter(x => x.rule === 'line-inside');
+    assert.deepEqual(p.map(x => [x.path, x.ids]), [[`views[${m.views.indexOf(v)}].edges[${v.edges.length - 1}]`, ['own-1', g, kid.id]]], fam);
+    // an own line from a service to a group it is not in: the Owner field offers that group no more, and the hook refuses the move
+    const other = m.nodes.find(n => n.type === group && n.id !== kid.parent && !up(kid.id).includes(n.id) && !up(n.id).includes(kid.id));
+    v.edges[v.edges.length - 1] = { id: 'own-2', type: line, from: kid.id, to: other.id };
+    assert.ok(layout(m, vid).edges.some(e => e.id === 'own-2'), `${fam}: drawn`);
+    assert.ok(!D.owners(m, kid).some(o => o.id === other.id), `${fam}: not offered`);
+    assert.match(D.edits.owner(m, v, kid.id, other.id).error, /A line cannot join/, fam);
+  }
+});
