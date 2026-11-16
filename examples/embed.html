@@ -19,8 +19,9 @@
   /* a host's own palette: any --um-* variable, set on the map's element or above it; --um-tint: 2 doubles the tints */
   #map.plum { --um-accent: #7a3ea8; --um-cyan: #7a3ea8; --um-green: #2f7d5b; --um-amber: #a35a00; --um-rose: #b3305b;
     --um-w-calls: #4b3d57; --um-w-feeds: #7a3ea8; --um-stage-bg: #fbf8fd; --um-panel: #fffdfe; --um-dot: #ece4f2; --um-tint: 2; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: 0; } /* a heading for screen readers */
 </style>
-<header>
+<header><h1 class="sr">A host page</h1>
   <label>Model <select id="model">
     <option value="bike-share.json">Bike share</option>
     <option value="weather.json">Weather stations</option>
