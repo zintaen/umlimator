@@ -297,3 +297,15 @@ test('F2 on an include or extend edits its label alone; an extend\'s [condition]
   assert.match(T.edits.rename(UC, v, ext.id, drawn(UC, ext.id).replace(/\(.*\)/, '(other)')).error ?? '', /extension points/);
   assert.equal(T.edits.rename(UC, v, v.nodeIds[0], 'x'), null, 'a node: the canvas\'s own');
 });
+
+test('audit 16: F2 on an extend, unchanged, changes nothing; a condition holding brackets reads back; a label ending in [..] is refused', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.UseCase', label: 'Redeem' }, { id: 'b', type: 'uml.UseCase', label: 'Check out' }],
+    edges: [{ id: 'x', type: 'uml.Extend', from: 'a', to: 'b', props: { condition: 'cart.items[0] is a voucher' } }],
+    views: [{ id: 'v', diagram: 'uml.use-case', nodeIds: ['a', 'b'], edges: ['x'] }] };
+  const v = m.views[0], shown = layout(m, 'v').edges.find(e => e.id === 'x').label;
+  assert.deepEqual(T.edits.rename(m, v, 'x', shown), []);
+  assert.deepEqual(T.edits.rename(m, v, 'x', '«extend» [cart.items[1] is a voucher]'), [{ op: 'set', id: 'x', path: 'props.condition', value: 'cart.items[1] is a voucher' }]);
+  const m2 = structuredClone(m); m2.edges[0] = { id: 'x', type: 'uml.Extend', from: 'a', to: 'b', label: 'apply code [beta]' };
+  assert.deepEqual(T.edits.rename(m2, m2.views[0], 'x', '«extend» apply code [beta]'), []);
+  assert.ok(T.edits.rename(m2, m2.views[0], 'x', '«extend» apply code [gamma]').error);
+});

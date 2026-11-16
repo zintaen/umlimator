@@ -21,7 +21,8 @@ import { SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, structProblems } 
 const CS_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), CS_ARR = x => (Array.isArray(x) ? x : []);
 const CS_HAS = x => x != null && x !== '';
 const CS_PROPS = x => (CS_OBJ(x && x.props) ? x.props : {});
-const csName = x => String(x.label ?? x.id);
+// a part or role with no name is named as drawn, ': Engine [1]', by every port, line and binding that names it (audit 16)
+const csName = x => (x.type === 'uml.Property' && x.label == null ? csPartSaid(x) : String(x.label ?? x.id));
 const csPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const csStereo = x => CS_ARR(CS_PROPS(x).stereotypes).filter(CS_HAS).map(String);
 const CS_SUBJECTS = ['uml.Class', 'uml.Component', 'uml.Collaboration'], CS_TYPED = ['uml.Class', 'uml.Component']; // a subject; what owns ports and types parts
@@ -128,7 +129,7 @@ function csPic(model, view) {
 
 /* ---- names (§10.2, A1), reading order and the legend ---- */
 const csWord = t => String(t ?? '').split('.').pop().replace(/([a-z])([A-Z])/g, '$1 $2').replace(/ ./g, s => s.toLowerCase()); // 'uml.CollaborationUse': "Collaboration use"
-const csUseText = u => `${u.label ?? ''}${CS_HAS(CS_PROPS(u).collaboration) ? ' : ' + CS_PROPS(u).collaboration : ''}` || String(u.id);
+const csUseText = u => `${u.label ?? ''}${CS_HAS(CS_PROPS(u).collaboration) ? ' : ' + CS_PROPS(u).collaboration : ''}`.trim() || String(u.id);
 // role bindings to a collaboration use: "publisher to checkout"
 const csBindings = (P, u) => P.lines.filter(l => l.e.type === 'uml.RoleBinding' && l.e.to === u).map(l => `${CS_HAS(l.e.label) ? l.e.label : 'a role'} to ${csName(P.el(l.e.from))}`);
 function csNodeName(P, id) {
@@ -396,18 +397,27 @@ function csRemove(model, view, ids, fromModel) {
   if (!out.length && !hide.length) return { error: `Nothing to delete: ${said[0] || 'no connector'}` };
   return { commands: [...hide, ...out], say: 'Deleted ' + said.join('; ') };
 }
-// rename: F2 on a port on a part renames its class's port, for every part of that type (said); on a part or a role, its row
+// rename: F2 on a port on a part renames its class's port, for every part of that type (said), and on the subject's own
+// port, `name : Type` as well (audit 16); on a collaboration use, `name : Collaboration`; on a part or a role, its row
 // `name : Type [multiplicity]` sets its name, type and multiplicity (one drawn by its id, unchanged: nothing); on a line, its
 // label, its drawn «stereotypes» taken off (audit 15). Anything else: the default
 const csLineRename = lineRename(e => csLineText({ ...e, label: undefined }));
 function csRename(model, view, id, text) {
   const P = csPic(model, view), s = csSplit(id), x = P.mem.get(s ? s[1] : id);
   if (!x && lineIn(model, view, id)) return csLineRename(model, view, id, text);
-  if (!x || (!s && x.m.type !== 'uml.Property')) return null;
+  const u = !x && P.at.get(id); if (u && u.type === 'uml.CollaborationUse') return csUseRename(u, text);
+  if (!x || (!s && x.m.type !== 'uml.Property' && x.m.type !== 'uml.Port')) return null;
   if (!s && !csPartText(x.m) && String(text ?? '').trim() === x.m.id) return [];
   const r = csRow(x.owner, text, x.m); if (r.error) return r;
   const c = csSets(x.m, r, x.m.type === 'uml.Port' && !String(text).includes(':')); // a name alone keeps a port's type: F2 opens on its name
   return s ? { commands: c, say: `Renamed ${csName(x.owner)}'s port: every part of that type shows it` } : c;
+}
+// a collaboration use's `name : Collaboration`: its name, and its collaboration when one is typed (audit 16); unchanged: nothing
+function csUseRename(u, text) {
+  const t = String(text ?? '').trim(); if (t === csUseText(u)) return [];
+  const r = csParse(t); if (r.error || r.multiplicity) return { error: 'A collaboration use is name : Collaboration' };
+  return [['label', u.label, r.label], ['props.collaboration', CS_PROPS(u).collaboration, r.valueType ?? CS_PROPS(u).collaboration]]
+    .filter(([, a, b]) => (a ?? undefined) !== b).map(([path, , value]) => ({ op: 'set', id: u.id, path, value }));
 }
 // the panel's member rows (edits.member, §12.1): on the subject (or any class or component) a row `port name : Type` is a port
 // and `name : Type [multiplicity]` a part; on a collaboration, a role; added, or the member edited. Other members: the panel's

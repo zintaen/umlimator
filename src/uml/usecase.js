@@ -114,18 +114,25 @@ function ucLineLabel(model, e) {
   return [UC_KEYWORD[e.type], ...ucStereo(e).map(t => `«${t}»`), e.label, x && x.points.length ? `(${x.points.join(', ')})` : '', x && x.cond ? `[${x.cond}]` : ''].filter(UC_HAS).join(' ');
 }
 /* rename (F2) on a line: the field holds ucLineLabel's text; its keyword and «stereotypes» come off the front, and on an
-   extend its "(points)" off the end (changed: { error }, they are edited in the panel) and a trailing "[condition]" is read
-   back as its condition (none: no condition). The rest is the label (audit 15). Anything else: null */
+   extend its "(points)" off the end (changed: { error }, they are edited in the panel) and a trailing "[condition]", its
+   brackets matched from the end, is read back as its condition (none: no condition). The rest is the label (audit 15).
+   The text unchanged is nothing; an extend whose drawn text does not read back as its label and condition (a label
+   ending in [..]) is { error }: those are edited in the panel (audit 16). Anything else: null */
 function ucRename(model, view, id, text) {
   const e = lineIn(model, view, id); if (!e) return null;
-  const pre = [UC_KEYWORD[e.type], ...ucStereo(e).map(t => `«${t}»`)].filter(UC_HAS).join(' ');
-  let t = String(text ?? '').trim(), cond = null;
-  if (pre && (t === pre || t.startsWith(pre + ' '))) t = t.slice(pre.length).trim();
-  if (e.type === 'uml.Extend') { const x = ucExtendParts(model, e), c = /\[([^\]]*)\]$/.exec(t), pts = x.points.length ? `(${x.points.join(', ')})` : '';
-    if (c) { cond = c[1].trim() || null; t = t.slice(0, c.index).trim(); }
+  const t0 = String(text ?? '').trim(); if (t0 === ucLineLabel(model, e)) return [];
+  const pre = [UC_KEYWORD[e.type], ...ucStereo(e).map(t => `«${t}»`)].filter(UC_HAS).join(' '), x = e.type === 'uml.Extend' ? ucExtendParts(model, e) : null;
+  const read = s => { let t = s, cond = null;
+    if (pre && (t === pre || t.startsWith(pre + ' '))) t = t.slice(pre.length).trim();
+    if (!x) return { label: t, cond };
+    if (t.endsWith(']')) { let d = 0, i = t.length - 1; for (; i >= 0; i--) { if (t[i] === ']') d++; else if (t[i] === '[' && --d === 0) break; }
+      if (i >= 0) { cond = t.slice(i + 1, -1).trim() || null; t = t.slice(0, i).trim(); } }
+    const pts = x.points.length ? `(${x.points.join(', ')})` : '';
     if (pts) { if (t !== pts && !t.endsWith(' ' + pts)) return { error: 'Edit an extend\'s extension points in its properties' }; t = t.slice(0, -pts.length).trim(); }
-    if (cond !== x.cond) return [...(t === String(e.label ?? '') ? [] : [{ op: 'set', id, path: 'label', value: t || undefined }]), { op: 'set', id, path: 'props.condition', value: cond ?? undefined }]; }
-  return t === String(e.label ?? '') ? [] : [{ op: 'set', id, path: 'label', value: t || undefined }];
+    return { label: t, cond }; };
+  if (x) { const b = read(ucLineLabel(model, e)); if (b.error || b.label !== String(e.label ?? '').trim() || b.cond !== x.cond) return { error: 'This extend\'s text does not read back as its name and condition: edit them in its properties' }; }
+  const r = read(t0); if (r.error) return r;
+  return [...(r.label === String(e.label ?? '') ? [] : [{ op: 'set', id, path: 'label', value: r.label || undefined }]), ...(x && r.cond !== x.cond ? [{ op: 'set', id, path: 'props.condition', value: r.cond ?? undefined }] : [])];
 }
 const UC_LINE_WORD = { 'uml.Association': 'Association', 'uml.Include': 'Include', 'uml.Extend': 'Extend', 'uml.Generalization': 'Generalization', 'uml.CommentLink': 'Comment link' };
 const UC_LINE_LOOK = { 'uml.Association': { from: 'none', to: 'none' }, 'uml.Include': { from: 'none', to: 'open', dashed: true }, 'uml.Extend': { from: 'none', to: 'open', dashed: true },
