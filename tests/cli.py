@@ -514,6 +514,32 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("render · a label that is no text, or an object with a toString key, is refused in one line naming it; a card named toString renders (audit 19)",
        all(b.returncode == 1 and b.stderr.strip().endswith(f"ts19{k}.json: {said[k]}") and not (t / f"ts19{k}.html").exists() for k, b in bs.items() if k != "ok")
        and bs["ok"].returncode == 0, {k: b.stderr[-300:] for k, b in bs.items()})
+    # audit 20: a tagged value or a port named toString is a name in a map by name, a level down: the model renders
+    tg = {"schemaVersion": 2, "title": "t", "nodes": [{"id": "c", "type": "uml.Class", "label": "Order", "props": {"tags": {"Entity": {"toString": "yes", "table": "orders"}}}}],
+          "views": [{"id": "v", "diagram": "uml.class", "nodeIds": ["c"], "present": {"c": {"ports": {"toString": {"side": "left"}}}}}]}
+    (t / "tg20.json").write_text(json.dumps(tg))
+    b = plain("render", str(t / "tg20.json"), "--out", str(t / "tg20.html"), "--no-check")
+    ok("render · a stereotype's tagged value and a part's port named toString render: maps by name a level down (audit 20)", b.returncode == 0 and (t / "tg20.html").is_file(), b.stderr[-300:])
+    # audit 20: drift and trace ended in a Node stack trace on an object with a toString key in the traffic, the --match
+    # table or the trace: such a value is left out, as validate() leaves it out of a model
+    (t / "m20.json").write_text(json.dumps(two))
+    files = {"obs-count": [{"from": "a", "to": "b", "count": ts()}], "obs-from": [{"from": ts(), "to": "b", "count": 1}, {"from": "a", "to": "b", "count": 2}],
+             "match": {"a": ts()}}
+    res = lambda svc, *spans: {"resource": {"attributes": [{"key": "service.name", "value": {"stringValue": svc}}]}, "scopeSpans": [{"spans": list(spans)}]}
+    span = lambda i, p=None, start="1000000", end="9000000": {"spanId": i, **({"parentSpanId": p} if p else {}), "name": "call", "startTimeUnixNano": start, "endTimeUnixNano": end}
+    calls = [res("a", span("1")), res("b", span("2", "1"))]  # a calls b
+    files["otlp-time"] = {"resourceSpans": [*calls, res("b", span("3", "1", start=ts()))]}
+    files["otlp-service"] = {"resourceSpans": [*calls, res(ts(), span("4", "1"))]}
+    for k, v in files.items():
+        (t / f"h20-{k}.json").write_text(json.dumps(v))
+    seen = str(t / "h20-obs-count.json")
+    bs = [plain("drift", str(t / "m20.json"), str(t / "h20-obs-count.json"), "--out", str(t / "h20a.html")), plain("drift", str(t / "m20.json"), str(t / "h20-obs-from.json"), "--out", str(t / "h20b.html")),
+          plain("drift", str(t / "m20.json"), seen, "--match", str(t / "h20-match.json"), "--out", str(t / "h20c.html")),
+          plain("trace", str(t / "m20.json"), str(t / "h20-otlp-time.json"), "--view", "t", "--out", str(t / "h20d.json")),
+          plain("trace", str(t / "m20.json"), str(t / "h20-otlp-service.json"), "--view", "t", "--out", str(t / "h20e.json"))]
+    ok("drift, trace · an object with a toString key in the traffic, --match or an OTLP trace is left out: no stack trace, the page or model written (audit 20)",
+       [b.returncode for b in bs] == [0] * 5 and not any("TypeError" in b.stderr or "    at " in b.stderr for b in bs)
+       and all((t / f).is_file() for f in ("h20a.html", "h20b.html", "h20c.html", "h20d.json", "h20e.json")), [b.stderr[-300:] for b in bs])
     # audit 19: diff --base drew a removed model from a copy beside --out, so its intake logo was dropped and stderr named a file
     # that never existed; a model whose folder is gone too is still drawn
     g = t / "g19d"; (g / "docs").mkdir(parents=True); (g / "gone").mkdir()

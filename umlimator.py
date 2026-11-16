@@ -142,16 +142,18 @@ def not_objects(d):
         out += [f"{at}.members[{j}].id is not a string" for j, x in enumerate(lst(n.get("members"))) if isinstance(x, dict) and not name(x.get("id"))]
         todo += [(f"{at}.members[{j}]", x) for j, x in enumerate(lst(n.get("members"))) if isinstance(x, dict)]
     # an object with a toString key anywhere ({"toString": 1}, valid JSON) is no text: the page's String() throws on it, as
-    # unreadable() in src/core/model.js reads it; a map by id or name may have a key named toString (audit 19)
-    todo, said = [("", d)], {x.split(" ")[0] for x in out}  # a label said once
+    # unreadable() in src/core/model.js reads it; a map by id or name may have a key named toString (audit 19), and so may
+    # one a level further down: tags.<stereotype> and present.<part>.ports (audit 20). role: as unreadable()'s
+    todo, said = [("", d, None)], {x.split(" ")[0] for x in out}  # a label said once
     while todo:
-        at, o = todo.pop()
+        at, o, role = todo.pop()
         for k, x in (enumerate(o) if isinstance(o, list) else o.items()):
             q = f"{at}[{k}]" if isinstance(o, list) else f"{at}.{k}" if at else str(k)
-            if isinstance(x, dict) and "toString" in x and not (isinstance(o, dict) and k in BY_ID):
+            named = isinstance(o, dict) and (k in BY_ID or role == "tags" or (role == "part" and k == "ports"))
+            if isinstance(x, dict) and "toString" in x and not named:
                 out += [] if q in said else [f"{q} is an object with a toString key, which is no text"]
             elif isinstance(x, (dict, list)):
-                todo.append((q, x))
+                todo.append((q, x, None if isinstance(o, list) else "part" if role == "present" else None if role else k if k in ("tags", "present") else None))
     return out
 
 
