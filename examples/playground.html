@@ -9,9 +9,10 @@
 <title>umlimator: playground</title>
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
 <style>
-  body { margin: 0; display: grid; grid-template: auto minmax(0, 1fr) / minmax(300px, 38%) minmax(0, 1fr); height: 100dvh;
+  body { margin: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100dvh;
     background: var(--um-bg); color: var(--um-text); font: 14px/1.5 var(--um-sans); }
-  header { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 8px 14px;
+  main { display: grid; grid-template: minmax(0, 1fr) / minmax(300px, 38%) minmax(0, 1fr); min-height: 0; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 8px 14px;
     border-bottom: 1px solid var(--um-border); font-size: 13px; }
   header .grow { flex: 1; }
   button, select { font: inherit; }
@@ -28,7 +29,7 @@
   #map { min-height: 0; }
   #note { color: var(--um-muted); }
   @media (max-width: 760px) {
-    body { grid-template: auto minmax(240px, 42dvh) minmax(0, 1fr) / minmax(0, 1fr); }
+    main { grid-template: minmax(240px, 42dvh) minmax(0, 1fr) / minmax(0, 1fr); }
     .side { border-right: 0; border-bottom: 1px solid var(--um-border); }
   }
   header h1 { margin: 0; font-size: inherit; } /* the page's heading, drawn as the bold title it was */
@@ -49,11 +50,13 @@
   <button id="svg" title="The view as an SVG file">SVG</button>
   <button id="png" title="The view as a PNG file">PNG</button>
 </header>
+<main>
 <div class="side">
   <textarea id="src" spellcheck="false" autocomplete="off" aria-label="The model, as JSON"></textarea>
   <section id="problems" aria-live="polite"></section>
 </div>
 <div id="map"></div>
+</main>
 <script type="module">
 import { render, validate, check, rules } from '../lib/umlimator.js';
 import { withIcons } from './icons.js';

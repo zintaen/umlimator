@@ -158,7 +158,8 @@ ok("test-only#2 · UMLIMATOR_TEST other than 1 does not unlock UMLIMATOR_PACKS",
 r = cli(d, "pack", "fetch", "gcp", "--accept-terms", "gcp@test-1", UMLIMATOR_OFFLINE="1")
 ok("offline#1 · UMLIMATOR_OFFLINE refuses, with no request", r.returncode and "UMLIMATOR_OFFLINE" in r.stderr and not log and not kept(d), (r.stderr, log))
 r = cli(d, "pack", "fetch", "aws")
-ok("aws#1 · a packs file with no AWS row does not offer it", r.returncode and "AWS pack is not offered in this release" in r.stderr, r.stderr)
+ok("aws#1 · a packs file with no AWS row does not offer it, in the generic words: no AWS-only message (audit 17)",
+   r.returncode and "no pack 'aws'; packs: " in r.stderr and "not offered in this release" not in r.stderr, r.stderr)
 r = cli(d, "pack", "fetch", "gcp")
 ok("yes#1 · no terminal and no flag: the terms are shown and nothing is requested",
    r.returncode and GT in r.stdout and "Umlimator is not affiliated" in r.stdout and "--accept-terms gcp@test-1" in r.stderr

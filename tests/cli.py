@@ -398,6 +398,26 @@ with tempfile.TemporaryDirectory() as tmp:
        [b.returncode for b in bs] == [1] * 5 and "vstr.json: views is not a list" in bs[0].stderr and "v5.json: views[0].id is not a string" in bs[1].stderr
        and "vstr.json: views is not a list" in bs[2].stderr + bs[3].stderr and "v5.json: views[0].id" in bs[4].stderr
        and not any((t / f).exists() for f in ("d11.html", "t11.json", "e11.bpmn")), [b.stderr[-200:] for b in bs])
+    # audit 17: a null stories, or a story's null steps, is absent (as validate() and the page read it), not refused (a round-16 regression);
+    # a list or an object, though, still is
+    two = {"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "edges": [{"from": "a", "to": "b"}], "views": [{"id": "main", "nodeIds": ["a", "b"]}]}
+    for f, extra in (("sn", {"stories": None}), ("ssn", {"stories": [{"id": "s", "steps": None}]}), ("so", {"stories": {}}), ("sso", {"stories": [{"id": "s", "steps": {}}]})):
+        (t / f"{f}.json").write_text(json.dumps(two | extra))
+    bs = [plain("render", str(t / f"{f}.json"), "--out", str(t / f"{f}.html"), "--no-check") for f in ("sn", "ssn", "so", "sso")]
+    ok("render · a null stories or a null steps renders; stories or steps that are an object are still refused in one line (audit 17)",
+       [b.returncode for b in bs] == [0, 0, 1, 1] and (t / "sn.html").exists() and (t / "ssn.html").exists()
+       and "so.json: stories is not a list" in bs[2].stderr and "sso.json: stories[0].steps is not a list" in bs[3].stderr, [b.stderr[-200:] for b in bs])
+    # audit 17: a tour or browserOrder entry, a box's card or parent, an intake's to that is no string ended in upstream's traceback
+    bad = {"tour": {"tour": [{"id": "a"}, "b"]}, "browserOrder": {"browserOrder": [["main"]]}, "cnode": {"containers": [{"id": "x", "nodeIds": [["a"]]}]},
+           "cparent": {"containers": [{"id": "x", "nodeIds": ["a"], "parent": ["y"]}]}, "intake": {"intake": [{"label": "in", "to": ["a"]}]}}
+    said = {"tour": "views[0].tour[0] is not a string", "browserOrder": "views[0].browserOrder[0] is not a string", "cnode": "views[0].containers[0].nodeIds[0] is not a string",
+            "cparent": "views[0].containers[0].parent is not a string", "intake": "views[0].intake[0].to is not a string"}
+    for k, v in bad.items():
+        (t / f"b17{k}.json").write_text(json.dumps(two | {"views": [two["views"][0] | v]}))
+    bs = {k: plain("render", str(t / f"b17{k}.json"), "--out", str(t / f"b17{k}.html"), "--no-check") for k in bad}
+    ok("render · a non-string tour, browserOrder, box card, box parent or intake to is refused in one line naming it, no traceback (audit 17)",
+       all(b.returncode == 1 and b.stderr.strip().endswith(f"b17{k}.json: {said[k]}") and "Traceback" not in b.stderr and not (t / f"b17{k}.html").exists()
+           for k, b in bs.items()), {k: b.stderr[-200:] for k, b in bs.items()})
     b = plain("trace", str(ROOT / "examples" / "bike-share.json"), rides, "--view", "", "--out", str(t / "t11.json"))
     ok("trace · an empty --view is refused in one line, and nothing is written (audit 11)",
        b.returncode == 1 and "--view needs a view id" in b.stderr and not (t / "t11.json").exists(), b.stderr[-300:])

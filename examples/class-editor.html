@@ -11,6 +11,7 @@
 <style>
   body { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) 340px; height: 100dvh; background: var(--um-bg); color: var(--um-text); font: 14px/1.5 var(--um-sans); }
   #map { min-height: 0; }
+  main { display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); min-height: 0; } /* the page's main landmark, around the map */
   aside { border-left: 1px solid var(--um-border); padding: 12px 14px; overflow: auto; }
   h1 { font-size: 15px; margin: 0 0 6px; } p { margin: 0 0 10px; color: var(--um-muted); font-size: 12.5px; }
   kbd { font: 600 11px var(--um-mono); border: 1px solid var(--um-border-2); border-radius: 4px; padding: 0 4px; }
@@ -22,7 +23,7 @@
   button:disabled { color: var(--um-dim); cursor: default; }
   @media (max-width: 760px) { body { grid-template-columns: 1fr; grid-template-rows: 60dvh auto; height: auto; } aside { border-left: 0; border-top: 1px solid var(--um-border); } }
 </style>
-<div id="map"></div>
+<main><div id="map"></div></main>
 <aside>
   <h1>A class diagram editor</h1>
   <p>Select a class to edit it in the properties panel: its name, stereotypes, and each member as one line of UML
