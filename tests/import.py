@@ -114,7 +114,7 @@ m, un = imp.read("plantuml", '@startuml\nPerson(u, "User", "A user", "person2", 
                  'Rel(u, s, "Buys", "HTTPS", "via web", "sprite", "urgent", "https://y")\nSystem_Boundary(b, "B", $link="https://b") {\n}\n'
                  'Rel(u)\nRel(u, , "x")\nRel(, s)\nContainer(c, "C", "Go", "d", "", "", "", "", "ninth")\n@enduml\n', "x")
 ok("C4 · a sprite, a link, a line's tags and an argument past the known ones are said; an end not written or blank is said so (audit 20)",
-   un == [(2, "Person(u): $sprite=person2; $link=https://x are not imported"), (3, "System(s): $link=https://shop; $sprite=cart are not imported"),
+   un == [(2, "Person(u): $sprite=person2; $tags=VIP; $link=https://x are not imported"), (3, "System(s): $link=https://shop; $sprite=cart are not imported"),
           (4, "Rel(u, s): $sprite=sprite; $tags=urgent; $link=https://y are not imported"), (5, "System_Boundary(b): $link=https://b is not imported"),
           (5, "box b: holds no card, so it is not drawn"), (7, "Rel(u): it names no target"), (8, "Rel(u, ): its target is empty"),
           (9, "Rel(, s): its source is empty"), (10, "Container(c): argument 9 (ninth) is not imported")]
@@ -187,7 +187,8 @@ ok("C4 · a component its words make a store is drawn a box; a ComponentDb is a 
 m, un = imp.read("plantuml", '@startuml\nComponent(mc, "Mobile Controller", "Spring MVC")\nContainer(app, "Mobile App", "Xamarin")\n@enduml\n', "x")
 ok("C4 · a component its words make mobile is drawn a box, a container a phone", [(card(m, i).get("kind"), card(m, i).get("shape")) for i in ("mc", "app")] == [("mobile", "box"), ("mobile", None)], m["nodes"])
 m, un = imp.read("plantuml", '@startuml\nAddElementTag("v2", $shape=EightSidedShape())\nAddElementTag("old", $bgColor="grey")\nSystem(a, "A", $tags="v2")\n@enduml\n', "x")
-ok("C4 · a tag's $shape is said, not drawn", un == [(2, 'AddElementTag(v2): $shape=EightSidedShape() is not imported')], un)
+ok("C4 · a tag's $shape is said, not drawn (and a system's tags, which change nothing, audit 21)",
+   un == [(2, 'AddElementTag(v2): $shape=EightSidedShape() is not imported'), (4, 'System(a): $tags=v2 is not imported')], un)
 nested = dsl.replace('u = person "User"', 'group "Company" {\n group "Sales" {\n u = person "User"\n }').replace('u -> w', '}\n u -> w')
 m, un = imp.read("structurizr", nested, "x")
 ok("structurizr · groups nest as boxes, and a view's scope sits in its own group's box",
@@ -294,6 +295,57 @@ ok("hostile · a nested array is said, not imported", m["nodes"] == [] and un ==
 m, un = imp.read("compose", json.dumps({"services": {"web": {"depends_on": "db", "ports": "8080:80"}, "db": {}}}), "x")
 ok("compose · a string depends_on or ports is one entry, not its characters",
    line(m, "web", "db") and card(m, "web").get("what") == "Publishes 8080:80." and un == [], (m, un))
+
+# audit 21: an owned Pod or ReplicaSet was skipped whether or not its workload was in the file, so `kubectl get pods,svc`
+# lost every Pod with no message; it is said unless its owners lead to a workload the file holds
+pod = lambda n, kind, owner, ns="default": {"kind": kind, "metadata": {"name": n, "namespace": ns, "ownerReferences": [{"kind": owner[0], "name": owner[1], "controller": True}]}}
+k8s = [pod("api-7d9c-x", "Pod", ("ReplicaSet", "api-7d9c")), pod("db-0", "Pod", ("StatefulSet", "db")),
+       pod("web-5f-y", "Pod", ("ReplicaSet", "web-5f")), pod("web-5f", "ReplicaSet", ("Deployment", "web")),
+       {"kind": "Deployment", "metadata": {"name": "web"}, "spec": {"template": {"metadata": {"labels": {"app": "web"}}}}},
+       pod("job-1-z", "Pod", ("Job", "job-1")), pod("old-rs", "ReplicaSet", ("Deployment", "gone"), ns="shop"),
+       {"kind": "Service", "metadata": {"name": "api"}, "spec": {"selector": {"app": "api"}}}]
+m, un = imp.read("kubernetes", json.dumps(k8s), "x")
+ok("kubernetes · an owned Pod or ReplicaSet whose workload is not in the file is said, one whose Deployment is drawn is not (audit 21)",
+   [n["id"] for n in m["nodes"]] == ["deploy-web", "svc-api"] and un == [
+       ("[0]", "Pod api-7d9c-x: owned by ReplicaSet api-7d9c, which is not in the file: not imported (export its workload too, a Deployment, StatefulSet or DaemonSet)"),
+       ("[1]", "Pod db-0: owned by StatefulSet db, which is not in the file: not imported (export its workload too, a Deployment, StatefulSet or DaemonSet)"),
+       ("[5]", "Pod job-1-z: owned by Job job-1, which is not in the file: not imported (export its workload too, a Deployment, StatefulSet or DaemonSet)"),
+       ("[6]", "ReplicaSet old-rs: owned by Deployment gone, which is not in the file: not imported (export its workload too, a Deployment, StatefulSet or DaemonSet)")], un)
+k8s = [pod("a", "ReplicaSet", ("ReplicaSet", "b")), pod("b", "ReplicaSet", ("ReplicaSet", "a")), pod("p", "Pod", ("ReplicaSet", "a")),
+       {"kind": "Pod", "metadata": {"name": "q", "ownerReferences": [None, {"kind": 5}, "x"]}}]
+m, un = imp.read("kubernetes", json.dumps(k8s), "x")
+ok("hostile · owners in a circle, or owner references of odd shapes, are said and end",
+   len(un) == 4 and "Pod p: owned by ReplicaSet a, whose workload is not in the file" in un[2][1]
+   and "owned by an owner reference that names no kind and name" in un[3][1], un)
+m, un, dt = quick("kubernetes", json.dumps([pod(f"r{i}", "ReplicaSet", ("ReplicaSet", f"r{i + 1}")) for i in range(6000)]))
+ok("hostile · a chain of 6000 ReplicaSets, each owned by the next, reads in linear time", len(un) == 6000 and dt < 1, dt)
+
+# audit 21: System_, Container_ and Enterprise_Boundary take $tags third (only Boundary a $type), so the report named the
+# wrong argument; a Person's, a System's, a Db, Queue or _Ext element's tags were dropped with no message
+m, un = imp.read("plantuml", "\n".join(['Person(u, "User", "d", $tags="vip")', 'System(s, "Shop", "d", "", "legacy")',
+                                        'ContainerDb(db, "DB", "pg", "d", $tags="critical")', 'Person_Ext(p, "P", "d", $tags="ext")',
+                                        'Container(api, "API", "Go", "d", "", "database")',
+                                        'System_Boundary(b1, "B1", "v2", "https://wiki/b1") {', 'Container(w, "W", "Go")', '}',
+                                        'Container_Boundary(b2, "B2", "legacy") {', 'Container(w2, "W2", "Go")', '}',
+                                        'Enterprise_Boundary(b3, "B3", "t", "l", "about", "extra") {', 'Person(u3, "U3")', '}',
+                                        'Boundary(b4, "B4", "type", "tags") {', 'Person(u4, "U4")', '}']), "x")
+ok("C4 · each boundary's arguments by its own signature, and tags said wherever they change nothing (audit 21)",
+   un == [(1, "Person(u): $tags=vip is not imported"), (2, "System(s): $tags=legacy is not imported"),
+          (3, "ContainerDb(db): $tags=critical is not imported"), (4, "Person_Ext(p): $tags=ext is not imported"),
+          (6, "System_Boundary(b1): $tags=v2; $link=https://wiki/b1 are not imported"), (9, "Container_Boundary(b2): $tags=legacy is not imported"),
+          (12, "Enterprise_Boundary(b3): $tags=t; $link=l; $descr=about; argument 6 (extra) are not imported"),
+          (15, "Boundary(b4): $type=type; $tags=tags are not imported")]
+   and card(m, "api")["kind"] == "database", un)
+
+# audit 21: a description, a relationship's and a view's were cut at 600 and 200 characters with no message
+long = " ".join(f"word{i}" for i in range(200))
+m, un = imp.read("structurizr", f'workspace {{\nmodel {{\na = softwareSystem "A" "{long}"\nb = softwareSystem "{long}"\na -> b "{long}"\n}}\n'
+                 f'views {{\nsystemLandscape {{\ninclude *\ndescription "{long}"\n}}\n}}\n}}\n', "x")
+ok("import · a long description, label and view description are whole in the details panel and caption (audit 21)",
+   card(m, "a").get("what") == long and card(m, "b").get("what") == long and line(m, "a", "b").get("what") == long
+   and m["views"][0].get("caption") == long and un == [], (un, [len(card(m, "a").get("what", ""))]))
+m, un = imp.read("plantuml", f'Person(u, "U", "{long}")\nSystem(s, "S")\nRel(u, s, "uses", "", "{long}")', "x")
+ok("C4 · a long $descr is whole in the details panel, a card's and a line's (audit 21)", card(m, "u").get("what") == long and line(m, "u", "s").get("what") == long, un)
 
 with tempfile.TemporaryDirectory() as tmp:
     t = Path(tmp)

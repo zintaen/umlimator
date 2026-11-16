@@ -216,13 +216,36 @@ def replacing(path):
     path = Path(path)
     if path.is_dir():  # before any work is written (render: before the engine runs), not an IsADirectoryError at the end
         sys.exit(f"--out {path} is a folder: name a file")
-    path.parent.mkdir(parents=True, exist_ok=True)  # as render's --out: a folder that is not there yet is made
     tmp = path.with_name(f".{path.stem}.{os.urandom(4).hex()}{path.suffix}")  # not mkstemp: the file takes the usual mode
+    try:  # a folder that cannot be written, or a path under a file: one line before any work, never a traceback (audit 21)
+        path.parent.mkdir(parents=True, exist_ok=True)  # as render's --out: a folder that is not there yet is made
+        os.close(os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600))
+        os.unlink(tmp)  # only a probe: what writes the file (the engine, Chrome) makes it, so a file it never wrote is said
+    except OSError as e:
+        sys.exit(cannot_write(path, e))
     try:
         yield tmp
-        os.replace(tmp, path)
+        try:
+            os.replace(tmp, path)
+        except OSError as e:
+            sys.exit(cannot_write(path, e))
     finally:
         tmp.unlink(missing_ok=True)
+
+
+def cannot_write(path, e):
+    """An OSError writing `path` (or making its folder), as the one line the CLI ends with."""
+    why = "a folder on its path is a file" if isinstance(e, (FileExistsError, NotADirectoryError)) else e.strerror or e
+    return f"cannot write {path} ({why}): name a file in a folder you can write"
+
+
+def make_folder(out):
+    """`out` and the folders above it, made, or the one line the CLI ends with (stills' and diff --base's --out, audit 21)."""
+    try:
+        out.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        why = "a folder on its path is a file" if isinstance(e, (FileExistsError, NotADirectoryError)) else e.strerror or e
+        sys.exit(f"cannot make the folder {out} ({why}): name a folder you can write")
 
 
 def write(path, text):
@@ -711,7 +734,7 @@ def diff_since(a):
     out = Path(a.out)
     if out.exists() and not out.is_dir():
         sys.exit(f"diff --base: --out {out} is a file: name a folder for the pages and summary.md")
-    out.mkdir(parents=True, exist_ok=True)
+    make_folder(out)
     done, md, stems = [], ["<!-- umlimator-diff -->", "### Map changes", ""], set()
     # a path (or, folder=True, its folder) that resolves inside the checkout with no symbolic link on the way below its top
     # a path that is itself a symbolic link never counts, even one whose target is gone (a dangling link: written through)
@@ -746,9 +769,11 @@ def diff_since(a):
         if not (before or after):
             continue  # JSON, but not a map model
         stem = name.replace("/", "-")[:-5] if name.endswith(".json") else name.replace("/", "-")
-        if stem in stems:  # a/b-c.json and a-b/c.json
+        # a/b-c.json and a-b/c.json; and docs/Map.json and Docs-map.json, one file on a disk that ignores case (macOS,
+        # Windows), as still_names does for view ids (audit 21)
+        if stem.casefold() in stems:
             stem += "-" + hashlib.sha256(name.encode()).hexdigest()[:6]
-        stems.add(stem)
+        stems.add(stem.casefold())
         try:
             # a removed model is drawn from a copy in its own folder while that folder is there, so its intake logos resolve
             # and messages name it; else beside the pages (audit 19)
@@ -796,6 +821,9 @@ def flat(s, code=False):
     if code:
         return s
     s = re.sub(r"([\\`*_\[\]~|])", r"\\\1", html.escape(s, quote=False)).replace("@", "@\u2060")
+    # GFM's extended autolinks: an address (https://, www.) and a scheme GitHub links (mailto:, xmpp:) are text (audit 21)
+    s = re.sub(r"(?i)\b(https?|ftp|mailto|xmpp):", "\\1:\u2060", s)
+    s = re.sub(r"(?i)\bwww\.", lambda x: x[0] + "\u2060", s)
     return re.sub(r"(#|\bGH-)(?=\d)", "\\1\u2060", s, flags=re.I)
 
 
@@ -853,6 +881,12 @@ def cmd_trace(a):
     was = next((v for v in m.get("views") or [] if isinstance(v, dict) and v.get("id") == a.view), None)
     if was and not str(was.get("caption") or "").startswith("From a trace"):  # a view a person made is theirs (audit 6)
         sys.exit(f"trace: {a.model} has a view {a.view!r} that no trace made: name another --view (trace replaces only a view it made)")
+    # a card opens the view of its id: a trace view named as a card turns that card, on every view, into a way into the
+    # trace (audit 21)
+    lst = lambda x: x if isinstance(x, list) else []
+    if any(isinstance(n, dict) and n.get("id") is not None and str(n["id"]) == a.view
+           for n in [*lst(m.get("nodes")), *(n for v in lst(m.get("views")) if isinstance(v, dict) for n in lst(v.get("nodes")))]):
+        sys.exit(f"trace: --view {a.view!r} is a card's id in {a.model}, and a card opens the view of its id: name another --view")
     opts = {"view": a.view, "match": read_json(a.match, model=False) if a.match else {}, **({"title": a.title} if a.title else {})}
     report = None
     if a.diagram:  # a UML sequence view (notes/stage-3.md §7): the numbered view through the internal helper, in src/uml/convert.js
@@ -1094,8 +1128,8 @@ def stills(page, out, views, scale=2.0, theme="light", reader=False, again=False
     A file another run, or a person, changed since is drawn again, never trusted."""
     if out.exists() and not out.is_dir():
         sys.exit(f"--out {out} is a file: name a folder for the stills")
+    make_folder(out)  # before Chrome is looked for, as the check above
     b, page = chrome(), Path(page).resolve()  # as_uri needs an absolute path (a relative --out)
-    out.mkdir(parents=True, exist_ok=True)
     keys = still_keys(page, [float(scale), theme, bool(reader)])
     done, failed, skipped, names = [], {}, [], still_names(views_of(page))
     for v in views:

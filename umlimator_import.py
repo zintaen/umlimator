@@ -80,6 +80,12 @@ def clip(s, n):
     return s if len(s) <= n else s[:n - 1].rsplit(" ", 1)[0].rstrip(",;:") + "…"
 
 
+def whole(s):
+    """A text the details panel shows (a description, a view's caption): on one line as clip() puts it, never cut. The
+    file it comes from is LIMIT at most; a cut here would be silent (audit 21)."""
+    return clip(s, float("inf"))
+
+
 def ident(s):
     """An alias as an id: as it is when it is plain, else a slug."""
     s = str(s).strip()
@@ -103,17 +109,17 @@ class Model:
         return got
 
     def card(self, cid, label, kind, sub=None, what=None, **more):
-        if clip(label, 34) != clip(label, 600):  # a name cut short is whole in the details panel
-            what = clip(label, 600) + (f"\n\n{what}" if what else "")
-        n = {"id": cid, "label": clip(label, 34) or cid, "kind": kind, "sublabel": clip(sub, 44), "what": clip(what, 600), **more}
+        if clip(label, 34) != whole(label):  # a name cut short is whole in the details panel
+            what = whole(label) + (f"\n\n{what}" if what else "")
+        n = {"id": cid, "label": clip(label, 34) or cid, "kind": kind, "sublabel": clip(sub, 44), "what": whole(what), **more}
         self.nodes[cid] = {k: v for k, v in n.items() if v}
 
     def line(self, a, b, label=None, sub=None, where=None, **more):
         if a == b:
             return self.say(where, f"{a} -> {b}: a line from a card to itself is not drawn")
         e = {"id": self.uniq(f"{a}-{b}"), "from": a, "to": b, "label": clip(label, 28), "sublabel": clip(sub, 28), **more}
-        if clip(label, 28) != clip(label, 600):  # a label cut short is whole in the details panel
-            e["what"] = clip(label, 600) + (f"\n\n{e['what']}" if e.get("what") else "")
+        if clip(label, 28) != whole(label):  # a label cut short is whole in the details panel
+            e["what"] = whole(label) + (f"\n\n{e['what']}" if e.get("what") else "")
         self.edges.append({k: v for k, v in e.items() if v})
         return e["id"]
 
@@ -511,7 +517,7 @@ def views(m, els, lines, specs, find, implied, groups):
         for c in ids:
             if els[c]["group"] is not None:
                 group_box(els[c]["group"])["nodeIds"].append(c)
-        m.view(hint, ids, box, title=clip(title, 60), caption=clip(s.get("desc"), 200), edges=drawn)
+        m.view(hint, ids, box, title=clip(title, 60), caption=whole(s.get("desc")), edges=drawn)
         if level > 1:
             m.nodes[scope].setdefault("opensView", m.views[-1]["id"])
         placed.append((m.views[-1], level, scope))
@@ -532,8 +538,10 @@ ELEMENT = re.compile(r"(Person|System|Container|Component)(Db|Queue)?(_Ext)?")
 # rest are said (audit 20)
 ARGS = {"Person": "alias label descr sprite tags link type", "System": "alias label descr sprite tags link type baseshape",
         "Container": "alias label techn descr sprite tags link baseshape", "Component": "alias label techn descr sprite tags link baseshape"}
-RELARGS, BOXARGS = "from to label techn descr sprite tags link", "alias label type tags link descr"
-READ = {"alias", "label", "descr", "techn", "tags", "from", "to"}
+RELARGS = "from to label techn descr sprite tags link"
+# a boundary's: only Boundary takes a $type; Enterprise_, System_ and Container_Boundary take $tags third (audit 21)
+BOXARGS = {"Boundary": "alias label type tags link descr"}
+READ = {"alias", "label", "descr", "techn", "tags", "from", "to"}  # tags: read only where c4guess reads them, else said
 REL = re.compile(r"(Bi)?Rel(_Back)?(_(U|Up|D|Down|L|Left|R|Right|Neighbor))?")
 BOUNDARY = re.compile(r"(Enterprise_|System_|Container_)?Boundary")
 QUIET = re.compile(r"Lay_\w+|LAYOUT_\w+|SHOW_\w+|HIDE_\w+|Update\w+|Add\w*Tag|AddProperty|SetPropertyHeader|WithoutPropertyHeader|SetSketchStyle")
@@ -593,7 +601,8 @@ def c4(lines, m):
                 m.card(cid, a.get("label"), kind, a.get("techn") or ("External " + TYPE[base].lower() if ext else TYPE[base]),
                        a.get("descr"), icon="user" if base == "Person" else None,
                        shape="box" if not shape and (base == "Component" and kind in TOOL_KINDS or kind == "cloud") else None)  # a component its words guess is a box, as a Structurizr one; a cloud is never a node
-                if left := unread(ARGS[base], pos, named):
+                guessed = base in ("Container", "Component") and not shape and not ext  # its tags guess its kind, else they are said (audit 21)
+                if left := unread(ARGS[base], pos, named, READ if guessed else READ - {"tags"}):
                     m.say(no, f"{name}({a['alias']}): {left}")
                 bases.add(base)
                 if base == "Person":
@@ -607,7 +616,7 @@ def c4(lines, m):
             else:
                 alias = m.uniq(pos[0])
                 boxes.append({"id": alias, "label": clip(named.get("label") or (pos + [""])[1] or alias, 40), "nodeIds": [], "parent": box, "line": no})
-                if left := unread(BOXARGS, pos, named, {"alias", "label"}):
+                if left := unread(BOXARGS.get(name, "alias label tags link descr"), pos, named, {"alias", "label"}):
                     m.say(no, f"{name}({pos[0]}): {left}")
         elif c and (r := REL.fullmatch(name)):
             a = {**dict(zip(RELARGS.split(), pos)), **named}
@@ -905,6 +914,13 @@ def objs_in(x):
     return [o for o in x if isinstance(o, dict)] if isinstance(x, list) else []
 
 
+def owner(md):
+    """An object's owner, as (kind, name): its controller among its ownerReferences, else the first; None when none names both."""
+    refs = [r for r in objs_in(md.get("ownerReferences")) if isinstance(r.get("kind"), str) and r.get("name")]
+    r = next((r for r in refs if r.get("controller") is True), refs[0] if refs else None)
+    return (r["kind"], str(r["name"])) if r else None
+
+
 def kubernetes(d, name):
     m = Model(name)
     if isinstance(d, list):
@@ -914,6 +930,33 @@ def kubernetes(d, name):
     else:
         items, at = [d], lambda i: "the object"
     objs = []
+    # each object by (namespace, kind, name), and who owns it: a Pod, ReplicaSet or ControllerRevision is drawn as the
+    # workload its owners lead to; one whose workload is not in the file is said, never dropped (audit 21)
+    here = {}
+    for o in items:
+        md = obj(o.get("metadata")) if isinstance(o, dict) else {}
+        if isinstance(o, dict) and isinstance(o.get("kind"), str) and md.get("name"):
+            here[(str(md.get("namespace") or "default"), o["kind"], str(md["name"]))] = owner(md)
+
+    led = {}  # (namespace, kind, name) -> the workload it leads to, or None: each chain walked once (linear)
+
+    def drawn_as(ns, ref):
+        """The workload in the file that an owner reference leads to (a Pod's ReplicaSet to its Deployment), else None:
+        walked with a set, so a long or circular chain of owners ends."""
+        path, seen, got = [], set(), None
+        while ref is not None and ref not in seen and (ns, *ref) in here:
+            if (ns, *ref) in led:
+                got = led[(ns, *ref)]
+                break
+            if ref[0] in ("Deployment", "StatefulSet", "DaemonSet"):
+                got = ref
+                break
+            seen.add(ref)
+            path.append((ns, *ref))
+            ref = here[(ns, *ref)]
+        led.update(dict.fromkeys(path, got))
+        return got
+
     for i, o in enumerate(items):
         if not isinstance(o, dict):
             m.say(at(i), "not an object: not imported")
@@ -921,6 +964,11 @@ def kubernetes(d, name):
         kind, md = o.get("kind"), obj(o.get("metadata"))
         kind = kind if isinstance(kind, str) else None
         if kind in ("Pod", "ReplicaSet", "ControllerRevision") and md.get("ownerReferences"):
+            ns, ref = str(md.get("namespace") or "default"), owner(md)
+            if not drawn_as(ns, ref):  # its owner, or the owner's own, is not in the file
+                by = f"{ref[0]} {ref[1]}" if ref else "an owner reference that names no kind and name"
+                m.say(at(i), f"{kind} {md.get('name', '')}: owned by {by}, " + ("whose workload is not in the file" if ref and (ns, *ref) in here else "which is not in the file")
+                      + ": not imported (export its workload too, a Deployment, StatefulSet or DaemonSet)")
             continue  # drawn as the workload that owns it
         if kind not in SHORT or not md.get("name"):
             m.say(at(i), f"{kind} {md.get('name', '')}: not imported")
