@@ -128,3 +128,11 @@ test('derived ids stay unique: cards with "-", a card m<n>, cards "a->b" and "a-
   const proto = structuredClone(EX11); proto.views[0].fragments.find(f => f.id === 'f1').id = '__proto__';
   assert.deepEqual(communicationFromView(proto, 'checkout-sequence').report.filter(r => r.id === '__proto__'), []);
 });
+
+test('audit 21: sequenceFromSpans() reads hostile spans and options as sequenceFromTrace() does: no throw, match a table by name', () => {
+  const bad = () => JSON.parse('{"toString":1}');
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+  const spans = [{ id: '1', service: 'svc', start: 0, end: 10 }, { id: bad(), parent: '1', service: 'b', start: 1, end: 3 }, { id: '3', parent: '1', service: 'b', start: 2, end: 4, name: bad() }];
+  const r = sequenceFromSpans(m, spans, { match: { svc: 'a', toString: 'a' }, view: bad() }), v = r.model.views.find(x => x.id === 'trace');
+  assert.ok(v && v.edges.length === 2, JSON.stringify(v && v.edges));
+});

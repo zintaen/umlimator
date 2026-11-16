@@ -103,3 +103,16 @@ test('otlpSpans() skips attributes that are no list, and a name that is no strin
   for (const attributes of [{ 'service.name': 'api' }, 'api', 5, [null, { key: 'service.name', value: null }]])
     assert.deepEqual(otlpSpans({ resourceSpans: [{ resource: { attributes }, scopeSpans: [{ spans: [sp] }] }] }).map(s => [s.service, s.name]), [[null, null]], JSON.stringify(attributes));
 });
+
+test('audit 21: sequenceFromTrace() reads match as a table by name: a service named toString is one more entry, and a value that is no name none', () => {
+  const model = { nodes: [{ id: 'api', label: 'API' }, { id: 'db', label: 'Database' }], edges: [{ id: 'e', from: 'api', to: 'db' }], views: [{ id: 'v', nodeIds: ['api', 'db'] }] };
+  const spans = [{ id: '1', service: 'checkout-svc', start: 0, end: 10 }, { id: '2', parent: '1', service: 'pg-main', name: 'q', start: 1, end: 5 }, { id: '3', parent: '2', service: 'toString', name: 'r', start: 2, end: 3 }];
+  const steps = match => { const v = sequenceFromTrace(model, spans, { match, title: JSON.parse('{"toString":1}') }).views.at(-1); return [v.edges.map(e => [e.from, e.to, e.label]), v.caption, v.title]; };
+  assert.deepEqual(steps({ 'checkout-svc': 'api', 'pg-main': 'db', toString: 'api' }),
+    [[['api', 'db', 'q'], ['db', 'api', 'r']], 'From a trace: 2 calls between cards, in time order, each with its duration.', 'trace']);
+  assert.deepEqual(steps({ 'checkout-svc': 'api', 'pg-main': 'db', toString: { toString: 1 } }),
+    [[['api', 'db', 'q']], 'From a trace: 1 call between cards, in time order, each with its duration. No card for toString.', 'trace']);
+  // a service that is no name (an object, one with a toString key) is no service: never "No card for undefined"
+  const odd = [{ id: '1', service: 'api', start: 0, end: 10 }, { id: '2', parent: '1', service: { a: 1 }, start: 1, end: 5 }, { id: '3', parent: '1', service: JSON.parse('{"toString":1}'), start: 1, end: 5 }];
+  assert.equal(sequenceFromTrace(model, odd).views.at(-1).caption, 'From a trace: 0 calls between cards, in time order, each with its duration.');
+});

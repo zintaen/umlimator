@@ -1,4 +1,4 @@
-import { unreadable } from '../core/model.js';
+import { nameTable, unreadable } from '../core/model.js';
 import { diagramOf } from '../core/registry.js';
 import { edgeRefIds } from './api.js';
 import { mapContext } from './context.js';
@@ -83,8 +83,10 @@ export function otlpSpans(data) {
   return out;
 }
 // a service's card (#65, #96): the card `match` names, else the card with that id, else the one with that label (any case)
-const cardMatcher = (cards, match) => { const m = match || {}, ids = new Set(cards.map(n => String(n.id))), low = x => String(x ?? '').trim().toLowerCase();
-  return s => s == null ? null : Object.hasOwn(m, s) && m[s] != null ? (ids.has(String(m[s])) ? String(m[s]) : null)
+// match is a table by name (a service may be named toString), read for text or a number; a service is text or a number
+// too, anything else no service (audit 21)
+const cardMatcher = (cards, match) => { const m = nameTable(match), ids = new Set(cards.map(n => String(n.id))), low = x => String(x ?? '').trim().toLowerCase();
+  return s => typeof s !== 'string' && typeof s !== 'number' ? null : m.has(String(s)) ? (ids.has(m.get(String(s))) ? m.get(String(s)) : null)
     : ids.has(String(s)) ? String(s) : (n => n ? String(n.id) : null)(cards.find(n => low(n.label) === low(s))); };
 // a duration in words, as replay() labels a line and a trace's view says a step's: "37 ms", "1.2 s"
 const msText = x => x >= 1000 ? `${+(x / 1000).toFixed(x >= 1e4 ? 0 : 1)} s` : `${x >= 10 ? Math.round(x) : +x.toFixed(1)} ms`;
@@ -131,12 +133,13 @@ export function whatIf(model, viewId, options = {}) {
  *  the view's caption names the services with no card. The view (`view`, default "trace"; `title`) takes the place of one
  *  with its id, else comes last, under the view that shows the most of its cards. The model passed in is not changed. */
 export function sequenceFromTrace(model, spans, options = {}) {
-  [model, spans, options] = [model, [].concat(spans || []), options].map(x => unreadable(x).model); // read as mapContext reads a model (audit 20)
+  // read as mapContext reads a model (audit 20); the match table by name, where a service may be named toString (audit 21)
+  const match = options && options.match; [model, spans, options] = [model, [].concat(spans || []), { ...options, match: null }].map(x => unreadable(x).model);
   const out = structuredClone(model || {}), id = String(options.view ?? 'trace'), views = arrOf(out.views);
   const cards = [...arrOf(out.nodes), ...views.flatMap(v => arrOf(v && v.nodes))].filter(n => n && n.id != null);
   const list = [].concat(spans || []).filter(s => s && Number.isFinite(+s.start) && Number.isFinite(+s.end));
-  const span = new Map(list.map(s => [String(s.id), s])), cardOf = cardMatcher(cards, options.match), hops = [], lost = new Set();
-  list.forEach(s => { const to = cardOf(s.service); if (!to) { if (s.service != null) lost.add(String(s.service)); return; }
+  const span = new Map(list.map(s => [String(s.id), s])), cardOf = cardMatcher(cards, match), hops = [], lost = new Set();
+  list.forEach(s => { const to = cardOf(s.service); if (!to) { if (typeof s.service === 'string' || typeof s.service === 'number') lost.add(String(s.service)); return; }
     const p = s.parent != null ? span.get(String(s.parent)) : null, from = p && cardOf(p.service);
     if (from && from !== to) hops.push([from, to, s]); }); // a root span, a caller with no card, or work inside one card: no step
   hops.sort((a, b) => +a[2].start - +b[2].start); // stable: calls that start together keep the trace's order

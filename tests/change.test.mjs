@@ -311,3 +311,50 @@ test('audit 19: a view\'s stepIds, tour or browserOrder that is no list is warne
     assert.equal(layout(m, 'v').tour, null);
   }
 });
+
+test('audit 21: diff() of a 20,000-step trace view pairs its steps in linear memory, in under CI\'s 1.5 s, and still finds a reorder (timed)', async () => {
+  const { sequenceFromTrace } = await import('../lib/umlimator.js');
+  const n = 20000, nodes = Array.from({ length: 20 }, (_, i) => ({ id: 's' + i, label: 'svc' + i })), spans = [{ id: 'root', service: 's0', start: 0, end: n + 10 }];
+  for (let i = 0; i < n; i++) spans.push({ id: 'x' + i, parent: i ? 'x' + (i - 1) : 'root', service: 's' + ((i + 1) % 20), name: 'op' + (i % 7), start: i + 1, end: i + 2 });
+  const m = sequenceFromTrace({ nodes, edges: [], views: [{ id: 'all', nodeIds: nodes.map(x => x.id) }] }, spans, { view: 'trace' });
+  const run = (f, label) => { const h = process.memoryUsage().heapUsed, t = performance.now(), d = diff(m, f(structuredClone(m)));
+    const ms = performance.now() - t, mb = (process.memoryUsage().heapUsed - h) / 1e6; console.log(`# ${label}: ${Math.round(ms)} ms, heap ${Math.round(mb)} MB more`);
+    assert.ok(ms < 1500 && mb < 400, `${label}: ${ms} ms, ${mb} MB`); return d.summary; }; // a (n+1) x (n+1) table: gigabytes, out of memory at 25,000
+  assert.equal(m.views[1].edges.length, n);
+  assert.deepEqual(run(x => { x.views[1].edges[0].label = 'renamed'; return x; }, 'one label'), ['changes the line from svc0 to svc1 (label op0 → renamed)']);
+  assert.deepEqual(run(x => x, 'the same'), []);
+  assert.deepEqual(run(x => { const E = x.views[1].edges; E.push(E.shift()); return x; }, 'the first step last'), ['reorders the steps in the view trace']);
+  assert.deepEqual(run(x => { x.views[1].edges.reverse(); return x; }, 'reversed'), ['reorders the steps in the view trace']);
+  assert.deepEqual(run(x => { x.views[1].edges.splice(n / 2, 1); return x; }, 'a step out'), ['removes the line from svc0 to svc1 (op4)']);
+});
+
+test('audit 21: drift() reads match as a table by name (a service may be named toString), and an entry with no end names no service', () => {
+  const model = { nodes: [{ id: 'api', label: 'API' }, { id: 'db', label: 'Database' }], edges: [{ id: 'e', from: 'api', to: 'db' }], views: [{ id: 'v', nodeIds: ['api', 'db'] }] };
+  const seen = [{ from: 'checkout-svc', to: 'pg-main', count: 4 }];
+  for (const match of [{ 'checkout-svc': 'api', 'pg-main': 'db' }, { 'checkout-svc': 'api', 'pg-main': 'db', toString: 'api' }, { 'checkout-svc': 'api', 'pg-main': 'db', toString: { toString: 1 }, x: [1] }])
+    assert.deepEqual(drift(model, seen, { match }).counts, { carried: 1, undrawn: 0, idle: 0, unknown: 0, unmatched: [] }, JSON.stringify(match));
+  assert.deepEqual(drift(model, [{ from: 'toString', to: 'db', count: 1 }], { match: { toString: 'api' } }).counts.carried, 1, 'a service named toString');
+  assert.deepEqual(drift(model, [{ from: 'x', to: 'db', count: 1 }], { match: { x: { toString: 1 } } }).counts.unmatched, ['x'], 'a match that is no name: no card');
+  // a missing, null or left-out end, or one that is no name: no service named "undefined" or "null"
+  const bad = JSON.parse('{"toString":1}');
+  for (const o of [[{ parent: 'api', count: 3 }], [{ to: 'db', count: 3 }], [{ from: 'api', to: null, count: 2 }], [{ from: bad, to: 'db', count: 3 }], [{ parent: 'api', child: bad, callCount: 3 }], [{ from: { a: 1 }, to: 'db' }], [{ from: true, to: 'db' }]])
+    assert.deepEqual(drift(model, o).counts, { carried: 0, undrawn: 0, idle: 0, unknown: 1, unmatched: [] }, JSON.stringify(o));
+  assert.deepEqual(drift(model, [{ from: 'web', count: 1 }, { from: 7, to: 'db', count: 1 }]).counts.unmatched, ['7', 'web'], 'an end that is there and has no card is still said');
+  assert.deepEqual(drift(model, [{ from: bad, to: 'b', count: 3 }, { from: 'api', to: 'db', count: 2 }]).counts, { carried: 1, undrawn: 0, idle: 0, unknown: 0, unmatched: ['b'] });
+});
+
+test('audit 21: validate() says a value it leaves out once, at its path, and not again as a missing end, type or name', () => {
+  const m = JSON.parse('{"nodes":[{"id":"a","label":"A"},{"id":"b","label":"B"},{"id":"c","label":"C"}],"edges":[{"id":"ab","from":"a","to":"b"},{"from":{"toString":1},"to":"b"}],"views":[{"id":"v","nodeIds":["a","b","c"]}]}');
+  assert.deepEqual(validate(m), [{ level: 'error', path: 'edges[1].from', message: 'an object with a "toString" key, which no text is read from: left out' }]);
+  m.edges[1].from = 'z'; assert.deepEqual(validate(m).map(p => p.message), ['"z" is neither a card nor a box'], 'an end that names nothing is still said');
+  // a typed model: a member's type, a timing change's lifeline; every example, each text value in turn
+  for (const f of ['bookshop-schema.json', 'bookshop-timing.json', 'order-states.json', 'bike-share.json']) {
+    const base = JSON.parse(readFileSync(new URL('../examples/' + f, import.meta.url))), was = new Set(validate(base).map(p => p.path + p.message));
+    const at = [], walk = (o, p) => Object.entries(o).forEach(([k, v]) => { const q = Array.isArray(o) ? `${p}[${k}]` : p ? `${p}.${k}` : k;
+      if (typeof v === 'string') at.push([o, k, q]); else if (v && typeof v === 'object') walk(v, q); });
+    walk(base, '');
+    for (const [o, k, q] of at) { const v = o[k]; o[k] = JSON.parse('{"toString":1}');
+      const ps = validate(base).filter(p => !was.has(p.path + p.message) && p.path === q);
+      assert.deepEqual(ps.map(p => p.message), ['an object with a "toString" key, which no text is read from: left out'], `${f} ${q}`); o[k] = v; }
+  }
+});

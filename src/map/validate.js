@@ -11,7 +11,7 @@ const WIRE_KINDS = ['calls', 'feeds', 'triggers', 'state', 'guard'], SIDES = ['l
 export function validate(model) {
   const out = [], err = (path, message) => out.push({ level: 'error', path, message }), warn = (path, message) => out.push({ level: 'warning', path, message });
   // an object with a toString key is no text (String() throws on it): said, and the rest checked without it (audit 19)
-  const read = unreadable(model); model = read.model; read.paths.forEach(at => err(at, 'an object with a "toString" key, which no text is read from: left out'));
+  const read = unreadable(model), left = new Set(read.paths); model = read.model; read.paths.forEach(at => err(at, 'an object with a "toString" key, which no text is read from: left out'));
   const arr = x => (Array.isArray(x) ? x : []), m = model && typeof model === 'object' ? model : {}, views = arr(m.views).filter(v => v && typeof v === 'object');
   const ver = versionProblem(m); if (ver) (ver.level === 'error' ? err : warn)('schemaVersion', ver.message); // a model this release cannot read is drawn wrongly: say so (F6)
   if (!Array.isArray(m.nodes)) err('nodes', 'the model needs a list of cards');
@@ -168,7 +168,9 @@ export function validate(model) {
     views.filter(typedView).forEach(v => { const T = diagramOf(v); if (!T || !T.validate || once.has(T)) return; if (T.validate.length < 2) once.add(T); T.validate(m, v).forEach(say); });
     if (TYPED.across) arrOf(TYPED.across(m)).forEach(say);
   }
-  return out;
+  // a value left out is said once, as left out: not again at its path as a missing end, type or name (audit 21: a line's
+  // end {"toString": 1} was also '"undefined" is neither a card nor a box')
+  return left.size ? out.filter((p, i) => i < read.paths.length || !left.has(p.path)) : out;
 }
 
 /* ================= rules (#70): what a model says must hold =================
