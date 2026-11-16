@@ -49,6 +49,18 @@ line_gone = mcp.want["highlight"]
 mcp.want["highlight"] = None
 ok("audit 10 · refit() keeps a member's highlight after an edit, and drops a line with no id the new version no longer has",
    port_kept and port_kept["refs"] == [{"type": "node", "id": "a.p"}] and line_gone is None, (port_kept, line_gone))
+# audit 20: a story id that is not a string (a list) ended refit() in a TypeError, an internal error on the next page tool;
+# a line nested too deep for Python's parser ended the server
+m = {"nodes": [{"id": "a"}], "edges": [], "views": [{"id": "v", "nodeIds": ["a"]}], "stories": [{"id": ["tour"], "steps": [{"view": "v"}]}, {"id": "s", "steps": []}]}
+mcp.want["story"] = {"n": 1, "story": "s"}
+try:
+    mcp.refit(m); said = mcp.want["story"]
+except TypeError as e:
+    said = e
+mcp.want["story"] = None
+deep = mcp.answer(b"[" * 100000 + b"]" * 100000)
+ok("audit 20 · refit() reads a story id that is not a string as no name; a line nested too deep is a parse error, not the server's end",
+   said == {"n": 1, "story": "s"} and deep["error"]["code"] == -32700, (said, deep))
 # view_for (audit 11): a line with no id, a box, a chip lands on the view that shows it, never on the first view (every card dimmed)
 m = {"nodes": [{"id": x} for x in "abcd"], "edges": [{"from": "c", "to": "d"}], "views": [{"id": "ctx", "nodeIds": ["a", "b"]},
      {"id": "inner", "nodeIds": ["c", "d"], "containers": [{"id": "box", "nodeIds": ["c", "d"]}]}]}
