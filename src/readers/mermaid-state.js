@@ -172,7 +172,8 @@ function readMermaidState(text) {
       else if (c.startsWith('{')) {
         say(no, 'skipped', 'a %%{init}%% directive: Mermaid\'s configuration is not read');
         if (!s.includes('}%%')) while (i + 1 < lines.length && !lines[++i].includes('}%%')); // over several lines: to its }%%
-      } else if (c.startsWith('id:')) hint.id = after('id:');
+      } else if (/^(id|link-id|start-id|end-id):\s*$/.test(c)) say(no, 'skipped', `%% ${c} holds no id: not read`); // a blank hint is none (audit 19)
+      else if (c.startsWith('id:')) hint.id = after('id:');
       else if (c.startsWith('link-id:')) hint.link = after('link-id:');
       else if (c.startsWith('start-id:')) hint.start = after('start-id:');
       else if (c.startsWith('end-id:')) hint.end = after('end-id:');

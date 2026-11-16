@@ -125,6 +125,7 @@ function mmrRead(text, report, say, empty) {
         if (!s.includes('}%%')) while (i + 1 < lines.length && !lines[++i].includes('}%%')); // over several lines: to its }%%
       } else if (h) {
         const k = h[1], v = h[2].trim(), was = hints.get(k);
+        if (!v) { say(no, 'skipped', `%% ${k}: holds nothing: not read`); continue; } // a blank hint is none (audit 19)
         if (was) say(was.no, 'skipped', `%% ${k}: ${was.v}: no topic below it takes it`);
         if (k === 'side' && v !== 'left' && v !== 'right') { hints.delete(k); say(no, 'skipped', `%% side: ${v}: a side is left or right`); } else hints.set(k, { v, no });
       }
