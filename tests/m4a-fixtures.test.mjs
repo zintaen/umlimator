@@ -89,7 +89,8 @@ const PINNED = {
     'az-edge-cases': { right: [0, 0, 0, 0], down: [0, 0, 0, 0] }, 'aws-edge-cases': { right: [0, 0, 0, 0], down: [0, 0, 0, 0] }, all: { right: [56, 0, 0, 0], down: [54, 1, 0, 0] } }, // three labels left off before audit 6: drawn, laid out with room for them
   'bookshop-opening-plan': { 'mm-plan': [0, 0, 0, 0] },
   'bookshop-gcp': { 'gcp-on-gcp': { right: [1, 0, 0, 0], down: [1, 0, 0, 0] } },
-  'bookshop-azure': { 'az-on-azure': { right: [1, 0, 0, 0], down: [3, 0, 0, 0] } },
+  // audit 27: right, the subnet's line to Logs and alerts ran back through its own subnet box to dodge one crossing; it keeps out of it now
+  'bookshop-azure': { 'az-on-azure': { right: [2, 0, 0, 0], down: [3, 0, 0, 0] } },
 };
 
 test('every view of the four fixtures and the three examples (cloud views right and down, with a synthetic icons table): nothing meets, texts inside, no curve through a topic, each element in its group, ends on outlines; check()\'s findings only as pinned', () => {

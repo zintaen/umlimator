@@ -31,7 +31,7 @@ const IF_WORD = { 'uml.Class': 'Class', 'uml.Interface': 'Interface', 'uml.Compo
   'uml.Signal': 'Signal' };
 const ifWord = t => (Object.hasOwn(IF_WORD, t) ? IF_WORD[t] : String(t ?? 'untyped').split('.').pop());
 // an accessible name's kind: another kind in words, "Data type Money", as the class view and the PDF say it (audit 23)
-const ifKindName = t => (Object.hasOwn(IF_WORD, t) || t == null ? ifWord(t) : snKindName(t));
+const ifKindName = t => (Object.hasOwn(IF_WORD, t) ? ifWord(t) : snKindName(t)); // no type: "Element" (audit 27)
 // the keyword over a classifier's name: an interface's, a signal's, and any other kind a view shows its own («useCase»), so none passes for a class
 const IF_KEY = { 'uml.Class': null, 'uml.InformationItem': null, 'uml.PrimitiveType': 'primitive' };
 const ifKey = t => (Object.hasOwn(IF_KEY, t) ? IF_KEY[t] : String(t ?? '').split('.').pop().replace(/^./, c => c.toLowerCase()) || null);

@@ -6,7 +6,7 @@ import { brLines } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
 import { LINE_WORDS, legendOf, lineIn, lineLook, lineRename, memberEdit, multBounds, printMember } from './class.js'; // a subject's other members, as the class type's; SHAPE.note, a comment's look
 import './usecase.js'; // SHAPE.ellipse, a collaboration use's; SHAPE.subject, a class subject's frame
-import { SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, structProblems } from './structure.js';
+import { SN_SAY, STRUCT_RULES, snKindName, portFit, portSides, portsDrawn, structProblems } from './structure.js';
 import { viewLines } from './owners.js';
 
 /* ---------- the composite structure diagram, uml.composite-structure (work package 5.6, notes/stage-5.md §6, §10.2) ----------
@@ -135,7 +135,7 @@ function csPic(model, view) {
 }
 
 /* ---- names (§10.2, A1), reading order and the legend ---- */
-const csWord = t => String(t ?? '').split('.').pop().replace(/([a-z])([A-Z])/g, '$1 $2').replace(/ ./g, s => s.toLowerCase()); // 'uml.CollaborationUse': "Collaboration use"
+const csWord = snKindName; // 'uml.CollaborationUse': "Collaboration use"; no type: "Element" (audit 27)
 const csUseText = u => `${u.label ?? ''}${CS_HAS(CS_PROPS(u).collaboration) ? ' : ' + CS_PROPS(u).collaboration : ''}`.trim() || String(u.id);
 // role bindings to a collaboration use: "publisher to checkout"
 const csBindings = (P, u) => P.lines.filter(l => l.e.type === 'uml.RoleBinding' && l.e.to === u).map(l => `${CS_HAS(l.e.label) ? l.e.label : 'a role'} to ${csName(P.el(l.e.from))}`);

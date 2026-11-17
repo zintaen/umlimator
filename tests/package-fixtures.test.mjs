@@ -92,10 +92,13 @@ test('the stress fixture: 50 nodes over three levels of packages and 60 lines, w
 
 test('the stress fixture lays out clean, right and down; its crossings are the ones the conformance note states', () => {
   // the counts docs/conformance/uml-package.md and risks.md L4 state: a change of layout that moves them updates both
-  const want = { down: 0, right: 1 };
+  // audit 27: a line out of a box keeps out of that box once it has left it. Right, imp3 no longer runs 6,000 px out and back
+  // through catalog-core to reach its near side, and crosses once more; down, merge0 no longer winds through billing-core,
+  // and d56, whose port lies on billing-core's border line, now runs 27 px down it before it turns, clear of merge0
+  const want = { down: 0, right: 2 }, along = { down: ["d56 runs along billing-core's border"], right: [] };
   for (const direction of ['down', 'right']) {
     const r = clean(turned(STRESS, 'all', direction), 'all');
-    assert.deepEqual(r.bad, [], direction);
+    assert.deepEqual(r.bad, along[direction], direction);
     assert.deepEqual(r.others, [], `${direction}: check() finds nothing but lines that cross`);
     console.log(`# all, ${direction}: ${r.g.nodes.length} nodes, ${r.g.families.length} boxes, ${r.g.edges.length} lines, ${r.crossings.length} crossings`);
     assert.equal(r.crossings.length, want[direction], `${direction}: the crossings the conformance note states`);

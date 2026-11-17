@@ -120,7 +120,12 @@ function throughIssues(geo, where, refs) {
   geo.edges.forEach(e => { const ends = [e.s, e.t].filter(Boolean), P = e.pts || [];
     geo.nodes.forEach(n => { if (n.holder || n.shape === 'message-row' && (e.stack || []).includes(n.id) || /^tm-/.test(n.shape) || ends.some(m => m === n || n.owner === m.id || m.owner === n.id || inside(m, n) || inside(n, m))) return;
       if (P.some((a, k) => k && Math.max(a[0], P[k - 1][0]) > n.x + 1 && Math.min(a[0], P[k - 1][0]) < n.x + n.w - 1 && Math.max(a[1], P[k - 1][1]) > n.y + 1 && Math.min(a[1], P[k - 1][1]) < n.y + n.h - 1))
-        say(`${where}: edge ${name(e)} passes through card "${nm(n)}"`, e, n); }); });
+        say(`${where}: edge ${name(e)} passes through card "${nm(n)}"`, e, n); });
+    // a line out of a box (an open package, a node) to something outside it that runs back inside that box past its first and
+    // before its last run (audit 27: the router shuts the box to it; what it cannot avoid is said, as a map's roundEnd is)
+    if (!e.inner) [[e.s, e.t], [e.t, e.s]].forEach(([b, o]) => { if (!b || !b.box || !o || inside(o, b)) return;
+      if (P.some((a, k) => k > 1 && k < P.length - 1 && Math.max(a[0], P[k - 1][0]) > b.x + 1 && Math.min(a[0], P[k - 1][0]) < b.x + b.w - 1 && Math.max(a[1], P[k - 1][1]) > b.y + 1 && Math.min(a[1], P[k - 1][1]) < b.y + b.h - 1))
+        say(`${where}: edge ${name(e)} runs back inside its own box "${nm(b)}"`, e, (geo.families || []).find(f => f.id === b.id) || b); }); });
   return issues;
 }
 function leaveIssues(geo, where, refs) {

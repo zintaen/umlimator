@@ -330,3 +330,33 @@ test('audit 24: a box whose name the author broke into lines is as wide as its w
     assert.equal(w(lines.join('\n')), w(lines[0]), `${d}: the broken name's box is sized by its widest line`);
   }
 });
+
+// audit 27: a dependency out of an open package turned back into the box, ran down inside it and crossed its border again,
+// and check() said nothing; the same in the class view and a deployment view's node
+test('audit 27: a line out of a box to something outside it keeps out of that box, and check() says when one runs back inside', async () => {
+  await import('../src/uml/class.js'); await import('../src/uml/deployment.js');
+  const { throughIssues } = await import('../src/layout/audit.js');
+  const N = (id, type, label, parent) => ({ id, type, label, ...(parent ? { parent } : {}) }), D = (id, from, to) => ({ id, type: 'uml.Dependency', from, to });
+  const pk = d => ({ schemaVersion: 2, nodes: [N('pay', 'uml.Package', 'payments'), N('a1', 'uml.Class', 'Card', 'pay'), N('ord', 'uml.Package', 'orders'), N('l1', 'uml.Package', 'lines'), N('l2', 'uml.Package', 'stock')],
+    edges: [D('p5', 'pay', 'ord'), D('p6', 'pay', 'l1'), D('p8', 'ord', 'l1'), D('p9', 'ord', 'l2'), D('p10', 'l1', 'l2')], views: [{ id: 'v', diagram: d, nodeIds: ['pay', 'a1', 'ord', 'l1', 'l2'] }] });
+  const H = (id, label, type = 'uml.Node') => ({ id, type, label }), P = (id, from, to, label) => ({ id, type: 'uml.CommunicationPath', from, to, ...(label ? { label } : {}) });
+  const dp = { schemaVersion: 2, nodes: [H('pay', 'Payment host'), { id: 'a1', type: 'uml.Artifact', label: 'app.war', parent: 'pay' }, H('ord', 'Order host', 'uml.Device'), H('l1', 'Line host'), H('l2', 'Stock host')],
+    edges: [P('p5', 'pay', 'ord'), P('p6', 'pay', 'l1', 'calls api'), P('p7', 'pay', 'l2'), P('p8', 'ord', 'l1', 'calls api'), P('p9', 'ord', 'l2', 'owns'), P('p10', 'l1', 'l2')],
+    views: [{ id: 'v', diagram: 'uml.deployment', nodeIds: ['pay', 'a1', 'ord', 'l1', 'l2'] }] };
+  const inside = (p, f) => p[0] > f.x + 1 && p[0] < f.x + f.w - 1 && p[1] > f.y + 1 && p[1] < f.y + f.h - 1;
+  for (const [tag, m] of [['package', pk('uml.package')], ['class', pk('uml.class')], ['deployment', dp]]) for (const direction of ['right', 'down']) {
+    m.views[0].direction = direction;
+    const g = layout(m, 'v'), f = g.families.find(x => x.id === 'pay');
+    for (const e of g.edges.filter(x => x.from === 'pay' || x.to === 'pay')) {
+      const mid = e.pts.slice(1, -1); assert.ok(!mid.some(p => inside(p, f)), `${tag} ${direction}: ${e.id} runs back inside payments: ${JSON.stringify(e.pts)}`);
+      for (let k = 2; k < e.pts.length - 1; k++) { const a = e.pts[k - 1], b = e.pts[k];
+        assert.ok(!(Math.max(a[0], b[0]) > f.x + 1 && Math.min(a[0], b[0]) < f.x + f.w - 1 && Math.max(a[1], b[1]) > f.y + 1 && Math.min(a[1], b[1]) < f.y + f.h - 1), `${tag} ${direction}: ${e.id} crosses payments' inside`); }
+    }
+    assert.ok(!check(m, 'v').some(p => /runs back inside/.test(p.message)), `${tag} ${direction}`);
+  }
+  // what the router cannot avoid, check() says: the old route of p6, turned back into the box (the real check on that geometry)
+  const m = pk('uml.package'), g = layout(m, 'v'), e = g.edges.find(x => x.id === 'p6'), f = g.families.find(x => x.id === 'pay');
+  const [x0, y0] = e.pts[0], [x9, y9] = e.pts.at(-1), back = [[x0, y0], [x0 + 18, y0], [x0 + 18, y0 + 6], [f.x + f.w - 35, y0 + 6], [f.x + f.w - 35, 51], [x9 - 48, 51], [x9 - 48, y9], [x9, y9]];
+  assert.deepEqual(throughIssues({ ...g, edges: g.edges.map(x => x === e ? { ...e, pts: back } : x) }, 'view v'), ['view v: edge payments→lines runs back inside its own box "payments"']);
+  assert.deepEqual(throughIssues(g, 'view v'), [], 'the route it draws now keeps out');
+});

@@ -52,7 +52,10 @@ function prRows(model, x, I = prIndex(model)) {
   if (x.type === 'uml.Stereotype') return [...from('uml.Extension', x.id).map(e => `extends ${nm(e.to)}${PR_OBJ(e.props) && e.props.isRequired === true ? ' {required}' : ''}`),
     ...from('uml.Generalization', x.id).map(e => `a kind of «${nm(e.to)}»`), ...PR_ARR(x.members).filter(m => PR_OBJ(m) && m.type === 'uml.Property').map(printMember)];
   if (x.type === 'uml.MetaclassReference') return to('uml.Extension', x.id).map(e => `extended by «${nm(e.from)}»`);
-  return [...appliedOf(model, x.id).map(prSay), ...PR_ARR(x.members).filter(m => PR_OBJ(m) && appliedOf(model, m.id).length).map(m => `${prBare(model, m)}: ${appliedOf(model, m.id).map(prSay).join('; ')}`)];
+  // any other element: its stereotypes, then its members as prNode draws them: a stereotyped one with its stereotypes; an
+  // enumeration's others too, the literals it keeps drawn under its tag compartments (audit 27)
+  const keeps = x.type === 'uml.Enumeration', said = m => (appliedOf(model, m.id).length ? `${prBare(model, m)}: ${appliedOf(model, m.id).map(prSay).join('; ')}` : printMember(m));
+  return [...appliedOf(model, x.id).map(prSay), ...PR_ARR(x.members).filter(m => PR_OBJ(m) && (keeps || appliedOf(model, m.id).length)).map(said)];
 }
 // "Stereotype owned, extends Class {required}, team: String"; "Class Order: «entity» table = orders; «owned» required"
 function prAria(model, x, drawn, I) {
@@ -187,7 +190,9 @@ const PR_TYPE = registerDiagramType('uml.profile', {
   // the PDF's tables (§9): a profile's, a stereotype's and a metaclass's kind; each element's stereotypes and tags
   word: (model, id) => { const x = prIndex(model).at.get(id);
     return !x ? null : x.type === 'uml.Stereotype' ? (PR_OBJ(x.props) && x.props.isAbstract === true ? 'Stereotype (abstract)' : 'Stereotype') : x.type === 'uml.MetaclassReference' ? 'Metaclass' : x.type === 'uml.Profile' ? 'Profile' : null; },
-  rows: (model, view, id) => { const I = prIndex(model), x = I.at.get(id); if (!x) return null; const r = prRows(model, x, I); return r.length || PR_DEFS.slice(0, 2).includes(x.type) ? r : null; },
+  // an element drawn as a profiled classifier prints what it draws, nothing more (a class with no stereotype: no row, not its
+  // members, which the view does not draw; audit 27); a comment and a closed package with none, their own rows
+  rows: (model, view, id) => { const I = prIndex(model), x = I.at.get(id); if (!x) return null; const r = prRows(model, x, I); return r.length || !(x.type === 'uml.Comment' || OWN_BOXES.includes(x.type)) ? r : null; },
   edits: { add: prAdd, connect: prConnect, rename: lineRename(lineLabel) },
 });
 

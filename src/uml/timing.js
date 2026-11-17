@@ -67,7 +67,7 @@ const tmConSaid = (X, c) => { const a = X.C.get(c.from), b = X.C.get(c.to), t = 
 /* ---- F2's micro-syntax (§8.1): `text`, `text @ t`, `text @ t1 → t2` (or ->); times are numbers in the view's unit. A
    text whose part after its last @ is not one or two numbers is all text (an address with @ is a name) ---- */
 function tmParse(text) {
-  const s = String(text ?? '').trim(), m = /^(.*?)\s*@\s*([^@]*)$/.exec(s);
+  const s = String(text ?? '').trim(), m = /^([\s\S]*?)\s*@\s*([^@]*)$/.exec(s);
   const ts = m ? m[2].split(/\s*(?:→|->)\s*/).map(x => x.trim()) : [];
   if (!m || ts.length > 2 || ts.some(x => !/^[-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?$/i.test(x) || !Number.isFinite(Number(x)))) return { text: s, times: [] };
   return { text: m[1].trim(), times: ts.map(Number) };
@@ -127,10 +127,11 @@ function tmDraw(g) {
   const L = new Map(o.lanes.map(l => [l.id, l])), path = pts => 'M' + pts.map(p => `${p[0]} ${p[1]}`).join('L');
   const rules = o.lanes.slice(1).map(l => `<path d="M${l.x} ${l.y}H${r2(l.x + l.w)}" stroke="var(--um-muted)" stroke-width="1"/>`).join('');
   const steps = o.steps.map(s => `<path class="tm-step" d="${path(s.pts)}" fill="none" stroke="var(--um-text)" stroke-width="1.5" stroke-linejoin="round"/>`).join('');
-  const bands = o.bands.map(b => { const l = L.get(b.lane), m = r2(l.y + l.h / 2), up = r2(m - TR.band / 2), dn = r2(m + TR.band / 2);
+  const bands = o.bands.map(b => { const l = L.get(b.lane), m = r2(l.y + l.h / 2), bh = b.h ?? TR.band, up = r2(m - bh / 2), dn = r2(m + bh / 2);
     return b.segs.map(s => { const c = Math.min(4, (s.x1 - s.x0) / 2), a = r2(s.x0 + c), z = r2(s.x1 - c); // the edges cross over 8 px at each change
       return `<path class="tm-band" d="M${s.x0} ${m}L${a} ${up}H${z}L${s.x1} ${m}L${z} ${dn}H${a}Z" fill="none" stroke="var(--um-text)" stroke-width="1.5" stroke-linejoin="round"/>`
-        + (s.text != null ? `<text x="${r2((s.x0 + s.x1) / 2)}" y="${r2(m + 4)}" text-anchor="middle" class="tm-value" fill="var(--um-text)" style="font:500 ${TM.text}px var(--um-sans)">${esc(fit(s.text, TM.text, Math.min(TR.cut, s.x1 - s.x0 - TR.room)))}</text>` : ''); }).join(''); }).join('');
+        + (s.text != null ? brLines(s.text).map((t, i, ls) => // a value its author broke: a line each, centred on the band's middle (audit 27)
+          `<text x="${r2((s.x0 + s.x1) / 2)}" y="${r2(m + 4 + (i - (ls.length - 1) / 2) * TR.rl)}" text-anchor="middle" class="tm-value" fill="var(--um-text)" style="font:500 ${TM.text}px var(--um-sans)">${esc(fit(t, TM.text, Math.min(TR.cut, s.x1 - s.x0 - TR.room)))}</text>`).join('') : ''); }).join(''); }).join('');
   return { under: `<g class="tm-under">${rules}${steps}${bands}</g>`, over: '' };
 }
 

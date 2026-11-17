@@ -3,7 +3,7 @@ import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { RULES, classProblems, drawnLines, lineIn, lineVerb, printMember } from './class.js';
+import { RULES, classProblems, drawnLines, lineIn, lineItem, lineVerb, printMember } from './class.js';
 import { OWN_BOXES, OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 
 /* ---------- the object diagram, uml.object (work package 2.3, notes/stage-2.md §9) ----------
@@ -72,10 +72,11 @@ const linkText = e => [obStereo(e).map(t => `«${t}»`).join(' '), OB_HAS(e.labe
 const roleOf = (e, w) => { const E = OB_PROPS(e).ends, r = OB_OBJ(E) && OB_OBJ(E[w]) ? E[w].role : null; return OB_HAS(r) ? String(r) : null; };
 
 /* ---- the view laid out (layoutTyped) ---- */
-// a kind the view lists that it does not draw as its own: its plain arrow, "Line", as the component view's legend has it (audit 26)
-const OB_LEGEND = [['uml.Link', false, 'Link', 'joins two instances, an instance of an association'], ['uml.CommentLink', true, 'Comment link', 'what a comment is about'],
-  [null, false, 'Line', 'a kind of line this view does not draw as its own']];
-const obLegend = edges => OB_LEGEND.filter(([t]) => edges.some(e => (t ? e.type === t : e.type !== 'uml.Link' && e.type !== 'uml.CommentLink'))).map(([, dashed, name, says]) => `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4"><path d="M2 8H26"${dashed ? ' stroke-dasharray="3 2"' : ''}/></g></svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`);
+// a kind the view lists that it does not draw as its own (audit 26): "Line", its arrow with its head, as every structural
+// view's legend has it (class.js lineItem, audit 27)
+const OB_LEGEND = [['uml.Link', false, 'Link', 'joins two instances, an instance of an association'], ['uml.CommentLink', true, 'Comment link', 'what a comment is about']];
+const obLegend = edges => [...OB_LEGEND.filter(([t]) => edges.some(e => e.type === t)).map(([, dashed, name, says]) => `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4"><path d="M2 8H26"${dashed ? ' stroke-dasharray="3 2"' : ''}/></g></svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`),
+  ...(edges.some(e => e.type !== 'uml.Link' && e.type !== 'uml.CommentLink') ? [lineItem()] : [])];
 function objectGeo({ model, view, pos, memo }) {
   const { at, pic, lines } = drawnLines(model, view, OBJECT_LINES), present = OB_OBJ(view.present) ? view.present : {}, head = id => (at.get(id).x.type === 'uml.InstanceSpecification' ? headOf(at.get(id).x, pic.name(id)) : pic.name(id));
   const nodes = pic.ids.filter(id => !pic.open.has(id)).map(id => { const n = at.get(id).x, pr = OB_OBJ(OB_OWN(present, id)) ? present[id] : {}, slots = slotsOf(n);

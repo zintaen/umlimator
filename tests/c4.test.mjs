@@ -605,3 +605,25 @@ test('audit 26: no routed line ends in a forward stair a few px wide next to an 
     assert.deepEqual(stairs(layout(x, vid)), [], `${vid} ${dir}`);
   }
 });
+
+// audit 27: the use case view named an untyped card "undefined Plain", the composite structure, interaction overview,
+// internal block and parametric views " Plain" and the information flow view "untyped Plain"; each now says "Element",
+// through the shared kind word (snKindName), in the accessible name, describe() and validate()'s words
+test('audit 27: a node with no type is named an element in every typed view, never "undefined", "untyped" or a blank kind', async () => {
+  const { readdirSync } = await import('node:fs');
+  for (const dir of ['uml', 'sysml', 'cloud', 'c4', 'er', 'flowchart', 'bpmn', 'mindmap']) for (const f of readdirSync(new URL(`../src/${dir}/`, import.meta.url))) if (f.endsWith('.js')) await import(`../src/${dir}/${f}`);
+  const view = d => ({ schemaVersion: 2, nodes: [{ id: 'x', label: 'Plain' }], edges: [], views: [{ id: 'v', diagram: d, title: 'T', nodeIds: ['x'] }] });
+  const types = ['uml.class', 'uml.object', 'uml.package', 'uml.composite-structure', 'uml.component', 'uml.deployment', 'uml.profile', 'uml.use-case', 'uml.activity', 'uml.state-machine',
+    'uml.sequence', 'uml.communication', 'uml.interaction-overview', 'uml.timing', 'uml.information-flow', 'sysml.requirement', 'sysml.block-definition', 'sysml.internal-block', 'sysml.parametric',
+    'er', 'flowchart', 'dfd', 'c4.landscape', 'c4.container', 'c4.deployment', 'c4.dynamic', 'bpmn', 'mindmap', 'gcp', 'azure', 'aws'];
+  for (const d of types) assert.ok(diagramOf({ diagram: d }), d);
+  for (const d of types) {
+    const m = view(d), n = layout(m, 'v').nodes.find(c => c.id === 'x' || c._id === 'x'), says = [n && n.aria, describe(m, 'v'), ...validate(m).map(p => p.message)].filter(t => typeof t === 'string');
+    for (const t of says) assert.doesNotMatch(t, /undefined|untyped|(^|\n) \S|  /, `${d}: ${t}`);
+  }
+  for (const d of ['uml.use-case', 'uml.composite-structure', 'uml.interaction-overview', 'uml.information-flow', 'sysml.internal-block', 'sysml.parametric']) {
+    assert.equal(layout(view(d), 'v').nodes.find(c => c.id === 'x').aria, 'Element Plain', d);
+    assert.match(describe(view(d), 'v'), /^Element Plain\.$/m, d);
+  }
+  assert.ok(validate(view('uml.interaction-overview')).some(p => p.message.includes('shows element x ("Plain")')));
+});

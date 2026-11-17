@@ -86,15 +86,7 @@ Layout limits, measured on the example and `tests/bpmn-stress.json`:
 - Port repair and rerouting off (`repair: false`, `reroute: false`, S16).
 - The example lays out with 4 crossings laid out right and 6 down, nothing else `check()` finds; its sub-process's view
   is clean.
-- `tests/m4b-fixtures.test.mjs` pins the stress file. Its `edge-cases` view (two boundary events on one side, their task
-  pinned and the pin moved; a non-interrupting one on an expanded sub-process; an interrupting message one on the call
-  activity; two message flows to a black-box pool from one column and one from it, lanes three deep, an empty
-  lane, a gateway with one exit, a flow node in a pool with lanes but in none, a sequence flow across pools, a group
-  across two pools, an annotation, data both ways, 40-character labels) crosses 12 times each way; `ec-closed`, the same
-  with the sub-process closed, 13 laid out right and 14 down; `ec-inside` none. Its generated `all` view (57 flow nodes
-  and ten boundary events, three pools, six lanes, ten message flows, two expanded sub-processes) crosses 30 times laid
-  out right and 29 down. In every view no node overlaps another, no line runs through a node, every line ends on its
-  node, no sequence flow leaves its pool's band and every boundary circle is centred on its activity's border.
+- `tests/m4b-fixtures.test.mjs` pins the stress file. Its `edge-cases` view (two boundary events on one side, their task pinned and the pin moved; a non-interrupting one on an expanded sub-process; an interrupting message one on the call activity; two message flows to a black-box pool from one column and one from it, lanes three deep, an empty lane, a gateway with one exit, a flow node in a pool with lanes but in none, a sequence flow across pools, a group across two pools, an annotation, data both ways, 40-character labels) crosses 14 times laid out right and 12 down (12 right before audit 27, when a line still ran back inside the sub-process it leaves); `ec-closed`, the same with the sub-process closed, 13 laid out right and 14 down; `ec-inside` none. Its generated `all` view (57 flow nodes and ten boundary events, three pools, six lanes, ten message flows, two expanded sub-processes) crosses 31 times laid out right and 30 down (30 and 29 before audit 27). In every view no node overlaps another, no line runs through a node, every line ends on its node, no sequence flow leaves its pool's band and every boundary circle is centred on its activity's border.
 - A task's name is wrapped to three lines of 180 px; a name outside to two lines of 120 px, then cut with an ellipsis.
   The whole text is in the accessible name, `describe()` and the PDF.
 

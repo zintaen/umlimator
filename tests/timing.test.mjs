@@ -172,6 +172,14 @@ test('F2\'s micro-syntax (§8.1): `text`, `text @ t`, `text @ t1 → t2` (or ->)
   assert.deepEqual(tmParse('mail me@home'), { text: 'mail me@home', times: [] });
   assert.deepEqual(tmParse('x @ 1 → 2 → 3'), { text: 'x @ 1 → 2 → 3', times: [] });
   assert.deepEqual(tmParse('x @ '), { text: 'x @', times: [] });
+  // a text with a line break (drawn on two rows, edited in a textarea) still has its `@ t` read (audit 27)
+  assert.deepEqual(tmParse('Waiting\nfor pay @ 120'), { text: 'Waiting\nfor pay', times: [120] });
+  assert.deepEqual(tmParse('charge\n(total) @ 200 -> 240'), { text: 'charge\n(total)', times: [200, 240] });
+  const b = EX(); b.nodes[0].props.states[1] = 'Waiting\nfor payment'; ch(b, 'w-waiting').state = 'Waiting\nfor payment'; msg(b, 'm-charge').label = 'charge\n(total)';
+  let nb = run(b, tmRename(b, V(b), 'w-waiting', 'Waiting\nfor payment @ 120'));
+  assert.deepEqual([ch(nb, 'w-waiting').state, ch(nb, 'w-waiting').at, nb.nodes[0].props.states.length], ['Waiting\nfor payment', 120, 3], 'the change moves and no state is added');
+  nb = run(b, tmRename(b, V(b), 'm-charge', 'charge\n(total) @ 110 -> 150'));
+  assert.deepEqual([msg(nb, 'm-charge').label, msg(nb, 'm-charge').props.sentAt, msg(nb, 'm-charge').props.receivedAt], ['charge\n(total)', 110, 150]);
   const g = layout(EX(), 'charge');
   assert.equal(g.byId['w-waiting'].label, 'Waiting for payment @ 100', 'F2 opens on a change with its printed form');
   assert.equal(g.edges[0].label, 'charge(total) @ 100 → 140', 'and on a message with its');
@@ -520,4 +528,19 @@ test('audit 25: Delete of an own and a model lifeline together says each part of
   assert.equal(r.say, 'Deleted payments, 4 changes and 2 messages; Hid worker; its changes stay in the timeline');
   assert.deepEqual(n.views[0].timeline.changes.map(c => c.id), ['w-idle', 'w-waiting', 'w-recording', 'w-done'], 'the changes that stay are worker\'s');
   assert.ok(!r.say.includes('their'), r.say);
+});
+
+test('audit 27: a value its author broke is drawn a line each, centred in its segment, and the band grows a line for it', () => {
+  const m = EX(); V(m).present = { payments: { as: 'values' } }; ch(m, 'p-authorising').state = 'Auth\norising';
+  const g = layout(m, 'charge'), band = g.tr.bands.find(b => b.lane === 'payments'), lane = g.tr.lanes.find(l => l.id === 'payments');
+  assert.deepEqual(unclean(g, m), []);
+  const one = layout((() => { const o = EX(); V(o).present = { payments: { as: 'values' } }; return o; })(), 'charge');
+  assert.equal(band.h, one.tr.bands.find(b => b.lane === 'payments').h + 13, 'the band a line taller');
+  assert.equal(lane.h, one.tr.lanes.find(l => l.id === 'payments').h + 13, 'and its lane');
+  assert.equal(g.byId['p-authorising'].h, band.h, 'the change\'s hit box spans the band');
+  const vals = [...mapContext(m).buildView('charge').markup.matchAll(/<text[^>]*y="([\d.]+)"[^>]*class="tm-value"[^>]*>([^<]*)</g)];
+  const a = vals.find(x => x[2] === 'Auth'), b = vals.find(x => x[2] === 'orising');
+  assert.ok(a && b, vals.map(x => x[2]).join('|')); assert.ok(!vals.some(x => x[2].includes('\n')), 'no raw line break in a text');
+  assert.equal(+b[1] - +a[1], 13, 'a line under the one before');
+  const mid = lane.y + lane.h / 2; assert.ok(Math.abs((+a[1] + +b[1]) / 2 - (mid + 4)) < .01, 'centred on the band\'s middle');
 });
