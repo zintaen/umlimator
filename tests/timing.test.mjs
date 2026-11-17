@@ -544,3 +544,16 @@ test('audit 27: a value its author broke is drawn a line each, centred in its se
   assert.equal(+b[1] - +a[1], 13, 'a line under the one before');
   const mid = lane.y + lane.h / 2; assert.ok(Math.abs((+a[1] + +b[1]) / 2 - (mid + 4)) < .01, 'centred on the band\'s middle');
 });
+
+test('audit 29: a model message the view lists by id is drawn, said and printed, as a sequence view draws one; its reply resolves', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/bookshop-timing.json', import.meta.url), 'utf8')), v = m.views[0], was = structuredClone(m);
+  m.edges = [v.edges[0]]; v.edges = [v.edges[0].id, v.edges[1]];
+  assert.deepEqual(layout(m, v.id).edges.map(e => e.id), [m.edges[0].id, v.edges[1].id]);
+  assert.deepEqual(validate(m), []);
+  assert.match(describe(m, v.id).split('\n')[0], / 2 messages /);
+  const lines = x => { const ctx = mapContext(x); return tablesOf(ctx, ctx.V[v.id], ctx.buildGeo(v.id))[1].rows; };
+  assert.deepEqual(lines(m), lines(was), 'the PDF\'s Lines, as with the message inline');
+  // F2 on it sets the model's message
+  const r = tmRename(m, v, m.edges[0].id, 'pay @ 3 → 5'), next = apply(m, r);
+  assert.equal(next.edges[0].label, 'pay'); assert.equal(next.edges[0].props.sentAt, 3);
+});

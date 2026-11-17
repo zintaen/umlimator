@@ -540,3 +540,18 @@ test('audit 28: an element of no type, drawn and named a class, is judged as a c
   const bad = { ...m, edges: [{ id: 'g', type: 'uml.Generalization', from: 'u', to: 'i' }] };
   assert.deepEqual(validate(bad).map(p => p.message), ['generalization-kinds: class "Thing" specializes interface "Payable" (g)']);
 });
+
+test('audit 29: a node with no type the view shows is judged a class by every class rule, as it is drawn and named; one no class view shows is not', () => {
+  const mk = t => ({ schemaVersion: 2, nodes: [
+    { id: 'a', ...(t ? { type: t } : {}), label: 'Order', parent: 'b', members: [{ id: 'a1', type: 'uml.Property', label: 'id' }, { id: 'a2', type: 'uml.Property', label: 'id' }, { id: 'a3', type: 'uml.EnumerationLiteral', label: 'RED' }] },
+    { id: 'b', type: 'uml.Class', label: 'Order' }, { id: 'c', type: 'uml.Class', label: 'Order', parent: 'b' }],
+    edges: [], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b', 'c'] }] });
+  const said = m => validate(m).filter(p => p.path !== 'nodes[0].type').map(p => `${p.rule} ${p.path}`).sort();
+  const typed = said(mk('uml.Class'));
+  assert.deepEqual(typed, ['classifier-names nodes[2]', 'member-kinds nodes[0].members[2]', 'member-names nodes[0].members[1]', 'owner-kinds nodes[0].parent', 'owner-kinds nodes[2].parent']);
+  assert.deepEqual(said(mk()), typed, 'untyped: the same problems as a uml.Class');
+  assert.equal(describe(mk(), 'v').split('\n')[1], 'Class Order::Order, 2 attributes, 0 operations.');
+  // a map's untyped nodes beside a class view that does not show them: no class rule judges them
+  const map = mk(); map.views[0].nodeIds = ['b', 'c'];
+  assert.ok(!validate(map).some(p => p.ids.includes('a')), JSON.stringify(validate(map)));
+});

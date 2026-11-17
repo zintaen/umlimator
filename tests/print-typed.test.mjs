@@ -123,3 +123,20 @@ test('audit 8: an open package is named in the tables as it is drawn, by its qua
   assert.deepEqual(text(els), ['sales::orders Package', 'Order Class', 'sales::billing Package']);
   assert.deepEqual(text(lines), ['sales::billing → sales::orders Package import']);
 });
+
+test('audit 29: the PDF prints what the view draws: type "" is no type, its Kind "Element" as named; a class drawn with no compartments lists no members', async () => {
+  for (const f of ['component', 'composite', 'activity', 'information', 'usecase', 'state', 'overview']) await import(`../src/uml/${f}.js`);
+  for (const f of ['internal', 'parametric', 'requirement']) await import(`../src/sysml/${f}.js`);
+  const text = (m, i = 0) => { const ctx = mapContext(m); return tablesOf(ctx, ctx.V.v, ctx.buildGeo('v'))[i].rows.map(r => r.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()); };
+  for (const diagram of ['uml.component', 'uml.deployment', 'uml.composite-structure', 'uml.activity', 'uml.information-flow', 'uml.use-case', 'uml.state-machine', 'uml.interaction-overview', 'sysml.internal-block', 'sysml.parametric', 'sysml.requirement'])
+    for (const type of [undefined, '']) { const m = { schemaVersion: 2, nodes: [{ id: 'u', ...(type !== undefined ? { type } : {}), label: 'Plain' }], edges: [], views: [{ id: 'v', diagram, nodeIds: ['u'] }] };
+      assert.equal(layout(m, 'v').nodes.find(n => n.id === 'u').aria, 'Element Plain', `${diagram} ${JSON.stringify(type)}`);
+      assert.deepEqual(text(m), ['Plain Element'], `${diagram} ${JSON.stringify(type)}: the Kind, as its accessible name`); }
+  const money = { id: 'money', type: 'uml.Class', label: 'Money', members: [{ id: 'amt', type: 'uml.Property', label: 'amount', props: { valueType: 'Int' } }, { id: 'add', type: 'uml.Operation', label: 'add' }] };
+  for (const diagram of ['uml.component', 'uml.composite-structure', 'uml.deployment', 'uml.package'])
+    assert.deepEqual(text({ schemaVersion: 2, nodes: [money], edges: [], views: [{ id: 'v', diagram, nodeIds: ['money'] }] }), ['Money Class'], diagram);
+  // an interface as a ball draws no compartment; as a box, its operations and attributes
+  const I = { id: 'i', type: 'uml.Interface', label: 'Pay', members: [{ id: 'op', type: 'uml.Operation', label: 'pay' }] }, cv = present => ({ schemaVersion: 2, nodes: [I], edges: [], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['i'], ...present }] });
+  assert.deepEqual(text(cv({})), ['Pay Interface pay()']);
+  assert.deepEqual(text(cv({ present: { i: { as: 'ball' } } })), ['Pay Interface']);
+});

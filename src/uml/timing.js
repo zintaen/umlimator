@@ -45,7 +45,9 @@ const tmPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 function tmIndex(model, V) {
   const N = new Map(); [...TM_ARR(V.nodes), ...TM_ARR(model && model.nodes)].forEach(n => { if (TM_OBJ(n) && typeof n.id === 'string' && !N.has(n.id)) N.set(n.id, n); });
   const TL = TM_OBJ(V.timeline) ? V.timeline : {}, item = x => TM_OBJ(x) && typeof x.id === 'string';
-  const changes = TM_ARR(TL.changes).filter(item), cons = TM_ARR(TL.constraints).filter(item), msgs = TM_ARR(V.edges).filter(e => item(e) && e.type === 'uml.Message');
+  // its messages: each the view holds, or a model message it lists by id, as a sequence view lists one (audit 29); once each
+  const E = new Map(); TM_ARR(model && model.edges).forEach(e => { if (item(e) && !E.has(e.id)) E.set(e.id, e); });
+  const changes = TM_ARR(TL.changes).filter(item), cons = TM_ARR(TL.constraints).filter(item), msgs = [...new Set(TM_ARR(V.edges).map(e => (typeof e === 'string' ? E.get(e) : e)))].filter(e => item(e) && e.type === 'uml.Message');
   const heads = [...new Set(TM_ARR(V.nodeIds))].filter(id => N.has(id) && N.get(id).type === 'uml.Lifeline').map(id => N.get(id)), P = TM_OBJ(V.present) ? V.present : {};
   const unit = TM_HAS(TL.unit) ? String(TL.unit) : null, t = x => `${x}${unit ? ' ' + unit : ''}`;
   const name = id => (N.has(id) ? tmName(N.get(id)) : String(id)), C = new Map(changes.map(c => [c.id, c]));
@@ -188,7 +190,7 @@ function tmProblems(model, view) {
   const out = [], V = tmView(model, view); if (!TM_OBJ(model) || !V) return out;
   const vi = TM_ARR(model.views).indexOf(V), at = `views[${vi}]`, X = tmIndex(model, V), TL = TM_OBJ(V.timeline) ? V.timeline : {};
   const say = (rule, path, who, msg, level = 'error') => out.push({ level, rule, path, ids: who.filter(x => x != null), message: `${rule}: ${msg}` });
-  const cPath = c => `${at}.timeline.changes[${TM_ARR(TL.changes).indexOf(c)}]`, kPath = c => `${at}.timeline.constraints[${TM_ARR(TL.constraints).indexOf(c)}]`, ePath = m => `${at}.edges[${TM_ARR(V.edges).indexOf(m)}]`;
+  const cPath = c => `${at}.timeline.changes[${TM_ARR(TL.changes).indexOf(c)}]`, kPath = c => `${at}.timeline.constraints[${TM_ARR(TL.constraints).indexOf(c)}]`, ePath = m => (TM_ARR(V.edges).includes(m) ? `${at}.edges[${TM_ARR(V.edges).indexOf(m)}]` : `edges[${TM_ARR(model.edges).indexOf(m)}]`); // a model message the view lists: at its own place
   const seen = new Map();
   X.changes.forEach(c => { const n = X.N.get(c.lifeline);
     if (!n || n.type !== 'uml.Lifeline') return say('change-lifeline', cPath(c) + '.lifeline', [c.id], `change ${c.id} names ${jsonText(c.lifeline)}, which is not a lifeline of the model`);
