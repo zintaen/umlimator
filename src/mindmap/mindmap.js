@@ -1,5 +1,5 @@
 import { TYPED, registerDiagramType, idTable, ownGuard } from '../core/registry.js';
-import { esc, fit, textW, widest } from '../core/text.js';
+import { brLines, esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { layoutTree } from '../layout/tree.js';
 import '../typed/edit.js'; // TYPED.edit, which the outline's Show on a topic wraps (mmShow)
@@ -53,11 +53,12 @@ function mmIndex(model, V) {
   return { N, topic, pos, ids, shown, up, kids, roots, trees, depth, hung, P, side, parentOf };
 }
 
-/* a topic's text, wrapped to four lines of 200 px (a newline breaks one), the last cut with fit; its box */
+/* a topic's text, wrapped to four lines of 200 px (a line break breaks one: \n, \r\n, \r, U+2028, U+2029, as brLines reads
+   them: audit 27), the last cut with fit; its box */
 function mmSize(n, root, opens) {
   const S = root ? MM.root : MM.topic, out = [];
   // ponytail: text past 400 characters per paragraph is cut before wrapping (four lines hold about 130); fit's loop is quadratic in what it gets
-  const paras = mmText(n).split('\n').map(p => p.trim().slice(0, 400).replace(/[\uD800-\uDBFF]$/, '')); // never half a letter
+  const paras = brLines(mmText(n)).map(p => p.trim().slice(0, 400).replace(/[\uD800-\uDBFF]$/, '')); // never half a letter
   for (const p of paras) { let line = '';
     for (const w of p.split(/\s+/).filter(Boolean)) { const t = line ? line + ' ' + w : w;
       if (textW(t, S.px) <= MM.max || !line) line = t; else { out.push(line); line = w; } }

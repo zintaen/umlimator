@@ -136,6 +136,9 @@ test('23-c4.json\'s static views draw: people and boxes, external grey, the subj
   }
   console.log(`# M2.6 23-c4.json check(): ${JSON.stringify(got)}`);
   assert.deepEqual(got, pinned, 'no overlap, overflow, line through a node or label over a node; the crossings and one label on a line pinned (repair and reroute off, §11)');
+  // the conformance note states the container view's labels on lines laid out down as counted here (audit 27: it said 8 after audit 25 made it 6)
+  const onLine = parseInt(got['c4-containers down'].find(k => / label on a line$/.test(k)), 10);
+  assert.ok(readFileSync(new URL('../docs/conformance/c4.md', import.meta.url), 'utf8').replace(/\s+/g, ' ').includes(`the container view's on a looser spot, ${onLine} labels on lines, which \`check()\` names`), `the C4 note says ${onLine} labels on lines`);
   const g = layout(C4, 'c4-containers'), f = g.families;
   assert.deepEqual(f.map(x => [x.id, x.title, x.shape]), [['c4-bookshop', 'Bookshop [Software System]', 'c4-boundary']]);
   ['c4-storefront', 'c4-api', 'c4-worker', 'c4-db', 'c4-queue'].forEach(id => assert.ok(inside(g.byId[id], f[0]), id));
@@ -626,4 +629,24 @@ test('audit 27: a node with no type is named an element in every typed view, nev
     assert.match(describe(view(d), 'v'), /^Element Plain\.$/m, d);
   }
   assert.ok(validate(view('uml.interaction-overview')).some(p => p.message.includes('shows element x ("Plain")')));
+});
+
+test('audit 27: an element with no type is keyed, in the PDF and the key, as its tag and name say it, "Element"; a listed line of another kind is counted and keyed as itself, never a relationship', () => {
+  const key = g => g.legend.map(s => s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', label: 'Billing' }, { id: 'b', label: 'Ledger' }, { id: 's', type: 'c4.SoftwareSystem', label: 'Shop', props: { description: 'd' } }, { id: 'u', type: 'c4.Person', label: 'User', props: { description: 'd' } }],
+    edges: [{ id: 'r', type: 'c4.Relationship', from: 'a', to: 'b', label: 'posts to' }, { id: 'r2', type: 'c4.Relationship', from: 'u', to: 's', label: 'uses' },
+      { id: 'as', type: 'uml.Association', from: 'u', to: 's', label: 'knows' }, { id: 'dp', type: 'uml.Dependency', from: 's', to: 'u' }, { id: 'n', type: 'uml.CommentLink', from: 'u', to: 's' }],
+    views: [{ id: 'v', diagram: 'c4.context', title: 'V', subject: 's', nodeIds: ['a', 'b', 's'] }, { id: 'w', diagram: 'c4.landscape', title: 'W', nodeIds: ['u', 's'], edges: ['r2', 'as', 'dp'] }] };
+  const g = layout(m, 'v');
+  assert.deepEqual([g.byId.a.tag, g.byId.a.aria], ['[Element]', 'Element Billing']);
+  assert.deepEqual(key(g).slice(0, 2), ['Element an element', 'Software system a software system'], 'its own entry, not folded into the software system\'s');
+  const ctx = mapContext(m), [els] = tablesOf(ctx, ctx.V.v, { nodes: g.nodes, edges: g.edges });
+  assert.deepEqual(els.rows.map(r => [...r.matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1].replace(/<[^>]+>/g, ''))).filter(c => c[0] !== 'Shop').map(c => c.slice(0, 2)), [['Billing', 'Element'], ['Ledger', 'Element']], 'the PDF\'s kind, never "Class"');
+  // the header counts what the sentences under it name: one relationship and two other lines (a comment link apart, as before)
+  assert.equal(describe(m, 'w').split('\n')[0], 'W: a C4 system landscape diagram of 2 elements and 1 relationship, and 2 other lines.');
+  assert.equal(describe({ ...m, views: [{ ...m.views[1], edges: ['r2', 'dp', 'n'] }] }, 'w').split('\n')[0], 'W: a C4 system landscape diagram of 2 elements and 1 relationship, and 1 comment link and 1 other line.');
+  for (const v of C4.views) assert.doesNotMatch(describe(C4, v.id).split('\n')[0], /other line/, `${v.id}: the example lists no other line`);
+  const k = key(layout(m, 'w'));
+  assert.ok(k.includes('Line a kind of line this view does not draw as its own'), k.join(' | '));
+  assert.ok(!key(layout(C4, 'c4-containers')).some(s => /^Line /.test(s)), 'none where none is drawn');
 });

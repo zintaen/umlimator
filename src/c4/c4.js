@@ -155,7 +155,19 @@ function c4Legend(nodes, edges, says = 'uses, with its technology in brackets') 
     n.ext ? 'outside the system, drawn grey' : c4A(c4Word(n).toLowerCase()), swatch(n))), // "an actor" (audit 26)
   ...(edges.some(e => e.type === 'c4.Relationship' && !e.implied) ? [item('Relationship', says, line(false))] : []),
   ...(edges.some(e => e.implied) ? [item('Implied relationship', 'stands for relationships between what the two hold', line(true))] : []),
-  ...(edges.some(e => e.type === 'uml.CommentLink') ? [item('Comment link', 'what a comment is about', C4_NOTE_LINE)] : [])]; // dashed, no head: never the implied line (audit 23)
+  ...(edges.some(e => e.type === 'uml.CommentLink') ? [item('Comment link', 'what a comment is about', C4_NOTE_LINE)] : []), // dashed, no head: never the implied line (audit 23)
+  ...c4OtherKey(edges)];
+}
+// a listed line of another kind, drawn plain (c4LineLook): keyed "Line", as the object and component views key it (audit 27)
+const c4Other = e => !e.implied && e.type !== 'c4.Relationship' && e.type !== 'uml.CommentLink';
+const C4_OTHER_LINE = '<path d="M2 8H26" stroke="var(--um-muted)" stroke-width="1.4" fill="none"/>';
+const c4OtherKey = edges => (edges.some(c4Other) ? [`<span class="lgi" title="Line — a kind of line this view does not draw as its own"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true">${C4_OTHER_LINE}</svg><b>Line</b><span>a kind of line this view does not draw as its own</span></span>`] : []);
+// describe()'s count of the lines drawn: the relationships (the implied ones among them), the comment links, the lines of
+// another kind, each by its own kind and never as a relationship (audit 27)
+function c4Count(own, implied) {
+  const notes = own.filter(e => e.type === 'uml.CommentLink').length, other = own.filter(c4Other).length, rels = own.length - notes - other + implied.length;
+  const more = [...(notes ? [c4Plural(notes, 'comment link')] : []), ...(other ? [c4Plural(other, 'other line')] : [])];
+  return `${c4Plural(rels, 'relationship')}${implied.length ? `, ${implied.length} of them implied` : ''}${more.length ? `, and ${more.join(' and ')}` : ''}`;
 }
 const C4_NOTE_LINE = '<path d="M2 8H26" stroke="var(--um-muted)" stroke-width="1.4" stroke-dasharray="3 2" fill="none"/>';
 
@@ -164,7 +176,8 @@ function c4Geo({ model, view, pos, memo }) {
   const pic = c4Pic(model, view), { own, implied } = c4Lines(model, view, pic), P = id => (C4_OBJ(pos) && Object.hasOwn(pos, id) ? pos[id] : [0, 0]);
   const nodes = pic.ids.filter(id => !pic.open.has(id)).map(id => { const x = pic.at.get(id);
     if (x.type === 'uml.Comment') { const d = { id, label: c4Name(x), type: x.type, kind: 'file', shape: 'note', aria: c4NodeName(x), col: P(id)[0], row: P(id)[1] }; return { ...d, ...SHAPE.note.size(d) }; }
-    const ext = c4Ext(x), d = { id, label: c4Name(x), type: x.type || 'c4.SoftwareSystem', kind: ext ? 'external' : 'frontend', shape: 'c4', sh: c4Shape(x), ext, tag: c4TagOf(x), desc: C4_P(x).description,
+    // its own type, none kept as none: the key words a card as its tag and its name do, "Element" (audit 27)
+    const ext = c4Ext(x), d = { id, label: c4Name(x), type: x.type, kind: ext ? 'external' : 'frontend', shape: 'c4', sh: c4Shape(x), ext, tag: c4TagOf(x), desc: C4_P(x).description,
       aria: c4NodeName(x), col: P(id)[0], row: P(id)[1] };
     return { ...d, ...C4_EL.size(d) }; });
   const edges = [...own.map(e => { const note = e.type === 'uml.CommentLink', label = note ? '' : c4LineLabel(e);
@@ -266,8 +279,8 @@ function c4NoteBox(model, view, pic, say, q) {
 /* ---- describe(): the view in sentences, each element in reading order, then each line by its accessible name ---- */
 function c4Describe(model, viewId) {
   const v = C4_ARR(model && model.views).find(x => C4_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
-  const pic = c4Pic(model, v), { own, implied } = c4Lines(model, v, pic), notes = own.filter(e => e.type === 'uml.CommentLink').length, K = C4_KIND[v.diagram] || 'C4', box = new Map(pic.boxes.map(b => [b.id, b]));
-  return [`${v.title || v.id}: a C4 ${K === 'landscape' ? 'system landscape' : K === 'context' ? 'system context' : K} diagram of ${c4Plural(pic.ids.length, 'element')} and ${c4Plural(own.length - notes + implied.length, 'relationship')}${implied.length ? `, ${implied.length} of them implied` : ''}${notes ? `, and ${c4Plural(notes, 'comment link')}` : ''}.`,
+  const pic = c4Pic(model, v), { own, implied } = c4Lines(model, v, pic), K = C4_KIND[v.diagram] || 'C4', box = new Map(pic.boxes.map(b => [b.id, b]));
+  return [`${v.title || v.id}: a C4 ${K === 'landscape' ? 'system landscape' : K === 'context' ? 'system context' : K} diagram of ${c4Plural(pic.ids.length, 'element')} and ${c4Count(own, implied)}.`,
     ...readingOrder(pic).map(id => (box.has(id) ? box.get(id).aria : c4NodeName(pic.at.get(id)))), ...[...own, ...implied].map(e => c4LineName(e, pic))].map(t => t.replace(/\.?$/, '.')).join('\n');
 }
 
@@ -343,7 +356,7 @@ const C4_DEF = {
   rules: C4_RULES,
   describe: c4Describe,
   // the PDF's tables (§9): an element's type; its technology and description; a relationship's text, with its technology
-  word: (model, id) => { const x = c4Index(model).at.get(id); return x && Object.hasOwn(C4_WORD, x.type) ? C4_WORD[x.type] : null; },
+  word: (model, id) => { const x = c4Index(model).at.get(id); return x && (Object.hasOwn(C4_WORD, x.type) || x.type == null) ? c4Word(x) : null; }, // none: "Element", as its tag (audit 27)
   rows: (model, view, id) => { const x = c4Index(model).at.get(id); if (!x || !C4_STATIC.includes(x.type)) return null; const P = C4_P(x);
     return [...(C4_HAS(P.technology) ? [P.technology] : []), ...(C4_HAS(P.description) ? [P.description] : []), ...(c4Ext(x) ? ['external'] : [])]; },
   text: (model, view, id) => { const e = c4Index(model).rels.find(r => r.id === id) || (C4_OBJ(view) ? C4_ARR(view.edges) : []).find(r => C4_OBJ(r) && r.id === id && r.type === 'c4.Relationship'); return e ? c4LineLabel(e) || null : null; },
@@ -351,4 +364,4 @@ const C4_DEF = {
 };
 const C4_TYPES = Object.keys(C4_KIND).map(name => registerDiagramType(name, C4_DEF));
 
-export { c4LineLook, C4_NOTE_LINE, C4_TYPES, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, C4_SHAPES, c4Index, c4Pic, c4Lift, c4Lines, c4Geo, c4Problems, c4Describe, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Zoom, c4Key, c4Add, c4Owners, c4Rename };
+export { c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, C4_TYPES, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, C4_SHAPES, c4Index, c4Pic, c4Lift, c4Lines, c4Geo, c4Problems, c4Describe, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Zoom, c4Key, c4Add, c4Owners, c4Rename };

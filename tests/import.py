@@ -295,6 +295,14 @@ ok("hostile · a nested array is said, not imported", m["nodes"] == [] and un ==
 m, un = imp.read("compose", json.dumps({"services": {"web": {"depends_on": "db", "ports": "8080:80"}, "db": {}}}), "x")
 ok("compose · a string depends_on or ports is one entry, not its characters",
    line(m, "web", "db") and card(m, "web").get("what") == "Publishes 8080:80." and un == [], (m, un))
+# audit 27: a service named "" became a card with no id and a line with no end (the blank values were dropped unsaid), a
+# model validate() refuses; a blank name is said and not imported, as is a dependency on it
+m, un = imp.read("compose", json.dumps({"services": {"": {"image": "y"}, " ": {}, "web": {"image": "nginx", "depends_on": ["", " "]}, "0": {}}}), "x")
+ok("hostile · compose services named \"\" or blank are said and not imported, and the model validates (audit 27)",
+   sorted(n.get("id", "?") for n in m["nodes"]) == ["0", "web"] and m["edges"] == [] and m["views"][0]["nodeIds"] == ["web", "0"]
+   and ("services.''", "a service with no name: not imported") in un and ("services.' '", "a service with no name: not imported") in un
+   and ("services.web", "depends on '', which is not a service here") in un and ("services.web", "depends on ' ', which is not a service here") in un
+   and u.js("validate", m) == [], (m, un))
 
 # audit 21: an owned Pod or ReplicaSet was skipped whether or not its workload was in the file, so `kubectl get pods,svc`
 # lost every Pod with no message; it is said unless its owners lead to a workload the file holds
@@ -826,6 +834,24 @@ with tempfile.TemporaryDirectory() as tmp:
     bad = [x for x in said if re.search("[\x00-\x08\x0b-\x1f\x7f-\x9f]", x)]
     ok("a hostile file's escape sequences reach stderr as \\xNN, never raw, from the map importer, a typed reader and the file's name (audit 26)",
        not bad and "zzz \\x1b]0\n" in said[0] and "PWNED\\x07 \\x1b[31mRED" in said[0] and "\\x9b2J" in said[0] and "\\x1b]8;;http://evil/" in said[1] and "x\\x1b[2Jy.mmd:3:" in said[2], said)
+
+# audit 27: the bidi marks, embeddings, overrides and isolates (U+202E shows the rest of the line reversed) reached stderr
+# raw too; each is written as \uNNNN, from the map importer (Python), a typed reader (Node) and the file's own name
+with tempfile.TemporaryDirectory() as tmp:
+    t = Path(tmp)
+    bidi = "\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069\u200e\u200f\u061c"
+    hostile = {"bidi.mmd": f"flowchart TD\n  A --> B\n  zzz \u202eexe.txt\u202c {bidi} \x1b[31mred\n",
+               "bidi2.mmd": "classDiagram\n  class A\n  \u2066\u202e junk!!\u2069\n",
+               "x\u202ey.mmd": "flowchart TD\n  A --> B\n  zzz ???\n"}
+    said = []
+    for f, text in hostile.items():
+        (t / f).write_text(text, encoding="utf-8")
+        r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", f, "--out", "o.json"], capture_output=True, text=True, encoding="utf-8", cwd=t)
+        said.append(r.stderr)
+    raw = [x for x in said if re.search("[\x00-\x08\x0b-\x1f\x7f-\x9f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]", x)]
+    ok("a hostile file's bidi controls reach stderr as \\uNNNN, never raw, from the map importer, a typed reader and the file's name (audit 27)",
+       not raw and "zzz \\u202eexe.txt\\u202c " in said[0] and "\\u202a\\u202b\\u202c\\u202d\\u202e\\u2066\\u2067\\u2068\\u2069\\u200e\\u200f\\u061c \\x1b[31mred" in said[0]
+       and "\\u2066\\u202e junk!!\\u2069" in said[1] and "x\\u202ey.mmd:3:" in said[2] and all(r for r in said), said)
 
 # notes/milestone-2.md §8.5 (M2.12): an erDiagram, a flowchart given --typed, a Structurizr JSON workspace and a .dbml file
 # are read by the module's readers in Node (tests/mermaid-er, mermaid-flowchart, structurizr and dbml.test.mjs pin their

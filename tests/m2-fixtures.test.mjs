@@ -83,6 +83,9 @@ test('every view of the ten fixtures, right and down: a line through a node, an 
     if (vid !== 'all') other.push(...o, ...bad); }
   if (process.env.PIN) console.log(JSON.stringify(counts));
   assert.deepEqual(counts, PINNED);
+  // the information flow note states the generated view's crossings as counted here (audit 27: it said 122 down after audit 25 made it 121)
+  const ifAll = counts['information-flow-stress'].all, ifNote = readFileSync(new URL('../docs/conformance/uml-information-flow.md', import.meta.url), 'utf8').replace(/\s+/g, ' ');
+  assert.match(ifNote, new RegExp(`crosses ${ifAll.right[0]} times right and ${ifAll.down[0]} down, with ${['', 'one', 'two', 'three'][ifAll.right[1]] || ifAll.right[1]} labels on lines right and ${ifAll.down[1]} findings down`));
   // outside the generated views, no finding but crossings
   assert.deepEqual(other, []);
 });
