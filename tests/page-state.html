@@ -285,7 +285,7 @@ try {
     HTMLAnchorElement.prototype.click = function () {}; // no file: the blob is what it would be
     try { document.querySelector('#m-export-pop [data-x="json"]').click(); await until(() => blobs.length, 2000); } finally { URL.createObjectURL = own; HTMLAnchorElement.prototype.click = click; }
     pg.destroy(); pg = null; return blobs.length ? JSON.parse(await blobs[0].text()) : null; };
-  const less = m => { const { meta, kind, ...rest } = structuredClone(m); return rest; }; // the page tool's meta and kind, as before
+  const less = m => structuredClone(m); // a model no render gave: as it is, its own meta too (audit 30)
   const ODD = { title: 'Shop', meta: { owner: 'team-a' }, root: 'top', nodes: [{ id: 'web', label: 'Web' }, { id: 'api', label: 'API' }, { id: 'db', label: 'DB' }, 'no card'],
     edges: [{ from: 'web', to: 'api' }, { from: 'api', to: 'db' }, { id: 'own', from: 'web', to: 'db' }],
     views: [{ id: 'top', nodeIds: ['web', 'api'], containers: 'none' }, { id: 'inside-api', parent: 'api', nodeIds: ['db'], edges: [{ from: 'db', to: 'db' }] }, { id: 'x', diagram: 'nosuch.kind', nodeIds: ['db'] }] };
@@ -293,6 +293,21 @@ try {
     const got = await exported(model);
     check(`Export ▸ Map model (JSON) of ${name} is the model given: no _id on a line, each view's parent as written, no list dropped (audit 29)`,
       !!got && JSON.stringify(got) === JSON.stringify(less(model)), got && { edges: got.edges && got.edges.slice(0, 2), views: got.views && got.views.map(v => [v.id, v.parent, v.containers]) }); }
+  /* ---------- audit 30: the page render wrote exports the model file as written: none of render's icons, source, avatarsEmbedded,
+     kind or meta keys (meta.added names them), and the model's own meta kept; a page an older render wrote loses render's keys too ---------- */
+  { const page = await (await fetch('../examples/bookshop.html')).text(), given = JSON.parse(new DOMParser().parseFromString(page, 'text/html').getElementById('visual-data').textContent);
+    const file = await (await fetch('../examples/bookshop.json')).json(), got = await exported(given), keys = o => o && Object.keys(o).sort().join();
+    check('audit 30: Export ▸ Map model (JSON) of examples/bookshop.html is examples/bookshop.json: no icons, source, avatarsEmbedded or kind, and its meta {project} kept',
+      !!got && JSON.stringify(got) === JSON.stringify(file), got && { keys: keys(got), meta: got.meta, added: given.meta && given.meta.added });
+    const old = structuredClone(given); delete old.meta.added; old.meta.owner = 'team-a'; const was = await exported(old);
+    check('audit 30: a page an older render wrote (no meta.added) exports without render\'s keys, the model\'s other meta kept',
+      !!was && keys(was) === keys({ ...file, source: 1 }) && JSON.stringify(was.meta) === JSON.stringify({ owner: 'team-a' }), was && { keys: keys(was), meta: was.meta });
+    // a hostile meta.added: paths through a prototype, a list, what is no object, or no text take nothing off but own keys, and change neither
+    // the model the page was given nor Object.prototype
+    const H = { kind: 'map', meta: { added: ['__proto__.polluted', 'constructor.prototype.polluted', 'nodes.__proto__', 'nodes.0.label.x', 'views.0', 'title.length', 'nope.x', 7, null, 'meta.added'], owner: 'o' },
+      title: 'T', nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] }, before = JSON.stringify(H), hx = await exported(H);
+    check('audit 30: a hostile meta.added takes off only own keys it names, and changes neither the page\'s model nor Object.prototype',
+      !!hx && JSON.stringify(hx) === JSON.stringify({ kind: 'map', meta: { owner: 'o' }, title: 'T', nodes: H.nodes, views: H.views }) && JSON.stringify(H) === before && !('polluted' in {}) && !('polluted' in Object.prototype), hx); }
   /* ---------- audit 29: a host's BigInt weight or latency on a line: the map draws (as 1), and update() takes it ---------- */
   { box.innerHTML = ''; const H = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ id: 'ab', from: 'a', to: 'b', weight: 2n, latency: 5n }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
     let threw = null; try { pg = mountPage(box, H, { instant: true, params: new URLSearchParams() }); } catch (e) { threw = String(e); }

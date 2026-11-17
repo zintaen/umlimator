@@ -1,6 +1,6 @@
 import { TYPED, idTable, diagramOf } from '../core/registry.js';
 import { andList, arrOf, rules } from './validate.js';
-import { canon, copyOf, jsonText, nameTable, unreadable } from '../core/model.js';
+import { canon, copyOf, jsonText, labelOr, nameTable, unreadable } from '../core/model.js';
 
 /* ---------- change: diff (#66) and drift (#68) ----------
    Each returns a model marked with what the map draws already, so a page the CLI writes, or a still, shows the marks
@@ -133,7 +133,7 @@ export function diff(before, after) {
     const ob = new Map(arr(o.containers).filter(Boolean).map(c => [c.id, c]));
     arr(v.containers).forEach(c => { const b = c && ob.get(c.id); if (!b) return; if (bn(b) !== bn(c)) says(`renames the box ${bn(b)} to ${bn(c)}`);
       const bk = other(b, c, ['id', 'label', 'title', 'nodeIds']); if (bk.length) says(`changes the box ${bn(c)} (${bk.join(', ')})`); });
-    ids.filter(id => oldIds.includes(id)).forEach(id => { const a = (o.nodeOverrides || {})[id] || {}, b = (v.nodeOverrides || {})[id] || {}, base = (at.get(id) || {}).label || id;
+    ids.filter(id => oldIds.includes(id)).forEach(id => { const a = (o.nodeOverrides || {})[id] || {}, b = (v.nodeOverrides || {})[id] || {}, base = labelOr((at.get(id) || {}).label, id);
       const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(k => canon(a[k]) !== canon(b[k])), b0 = boxOf(o, id), b1 = boxOf(v, id);
       if (canon((o.present || {})[id]) !== canon((v.present || {})[id])) keys.push('present'); // its compartments shown (a typed view's present, by card)
       const rest = keys.filter(k => k !== 'label');
@@ -150,7 +150,7 @@ export function diff(before, after) {
     const shown = (m, x) => { const K = keyed(arr(m.edges));
       return linesOf(m, x).filter(e => line0.has(K.get(e)) && !left.includes(e.from) && !left.includes(e.to) && !came.includes(e.from) && !came.includes(e.to)).map(e => K.get(e)); };
     const s0 = shown(A, o), s1 = shown(out, v), hid = s0.filter(id => !s1.includes(id)), put = s1.filter(id => !s0.includes(id));
-    const ln = id => { const e = line0.get(id); return `the line from ${(at.get(e.from) || {}).label || e.from} to ${(at.get(e.to) || {}).label || e.to}${e.label ? ` (${e.label})` : ''}`; };
+    const ln = id => { const e = line0.get(id); return `the line from ${labelOr((at.get(e.from) || {}).label, e.from)} to ${labelOr((at.get(e.to) || {}).label, e.to)}${labelOr(e.label, null) != null ? ` (${e.label})` : ''}`; };
     hid.forEach(id => { viewSaid.push(`takes ${ln(id)} out of the view ${vn}`); touched.add(v.id); }); put.forEach(id => says(`puts ${ln(id)}`));
     // the steps' order: a view's list as it runs (a model line by id, one of its own by its id), else its model lines. A step
     // with no id is matched by what it is (its ends and label), and by its Ref name only when nothing matches it, so taking
@@ -202,7 +202,7 @@ export function diff(before, after) {
   // the summary: views, then cards, then lines, in model order; a line to a card that came or went goes with the card
   const cards = [...out.nodes, ...views.flatMap(v => arr(v && v.nodes))].filter(Boolean);
   const named = new Map([...views.flatMap(v => arr(v && v.containers)), ...cards, ...[...lost.values()].map(([y]) => y), ...[...lost.values()].map(([, , u]) => (have.get(u) || [])[0])].filter(Boolean).map(n => [n.id, n]));
-  const name = id => String((named.get(id) || {}).label || id);
+  const name = id => String(labelOr((named.get(id) || {}).label, id));
   // a line's end on a member, as describe() names it (audit 18): a port by its owner ("orders of Shop API"), an end through a part by
   // that part ("charge of battery"); else a member by its own name
   const ups = id => { const s = []; for (let t = id, r; (r = have.get(t) || at0.get(t)) && typeof r[1] === 'string' && !s.includes(r[1]);) s.push(t = r[1]); return s; };
@@ -224,10 +224,10 @@ export function diff(before, after) {
     if (h === 'changed') { const [o, x] = lost.size ? was.get(n).map(strip) : was.get(n); if (canon(o) === canon(x)) return; const keys = diffKeys([o, x]), rest = keys.filter(k => k !== 'label'), p0 = o.parent ?? null, p1 = x.parent ?? null;
       if (keys.join() === 'parent' && p0 !== p1 && A.schemaVersion === 2 && out.schemaVersion === 2) return said.push(`moves ${name(n.id)} ${p1 != null ? 'into ' + name(p1) : 'out of ' + name(p0)}`); // a re-own (schema version 2; absent or null is no owner)
       const t = TYPED.diff && TYPED.diff(o, x, name, [A, out]); if (t) return said.push(...t); // a typed element's own words (src/uml/diff.js)
-      said.push((keys.includes('label') ? `renames ${o.label || o.id} to ${x.label || x.id}` : `changes ${name(n.id)}`) + (rest.length ? ` (${rest.join(', ')})` : '')); } });
+      said.push((keys.includes('label') ? `renames ${labelOr(o.label, o.id)} to ${labelOr(x.label, x.id)}` : `changes ${name(n.id)}`) + (rest.length ? ` (${rest.join(', ')})` : '')); } });
   lines.forEach(e => { const h = how.get(e), p = (e.props && e.props.ends) || {}; // an end on a part: the part counts as its card
     if (!h || h !== 'changed' && [e.from, e.to, (p.from || {}).part, (p.to || {}).part].some(id => id != null && cardHow.get(id) === h)) return;
-    const ends = e.from == null && e.to == null ? null : `${endName(e, 'from')} to ${endName(e, 'to')}`, lab = e.label ? ` (${e.label})` : '', it = ends ? 'the line from ' + ends : e.label ?? e.id; // an item with no ends (an interaction use) by its name
+    const ends = e.from == null && e.to == null ? null : `${endName(e, 'from')} to ${endName(e, 'to')}`, lab = labelOr(e.label, null) != null ? ` (${e.label})` : '', it = ends ? 'the line from ' + ends : e.label ?? e.id; // an item with no ends (an interaction use) by its name
     if (h === 'added') said.push(ends ? `adds a line from ${ends}${lab}` : `adds ${it}`);
     if (h === 'removed') said.push(ends ? `removes ${it}${lab}` : `removes ${it}`);
     if (h === 'changed') { const [o, x] = was.get(e), t = TYPED.diff && TYPED.diff(o, x, name, [A, out]); if (t) return said.push(...t);
