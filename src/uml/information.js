@@ -6,7 +6,7 @@ import { layoutTyped, typedLines } from '../typed/layout.js';
 import { LINE_SAYS, legendItem } from './class.js'; // SHAPE.classifier and SHAPE.note too
 import { snKindName } from './structure.js'; // SHAPE.component too
 import './usecase.js'; // SHAPE.actor
-import { usedIds } from '../core/model.js';
+import { usedIds, jsonText } from '../core/model.js';
 
 /* ---------- the information flow diagram, uml.information-flow (work package M2.5, notes/milestone-2.md §7.4) ----------
    Classes and interfaces (the class type's classifier, name only), components (src/uml/structure.js's look) and actors (the
@@ -126,7 +126,7 @@ function ifProblems(model) {
     if (!c.length) say('conveyed-some', path, [e.id], `${e.id} conveys nothing: a flow conveys one element at least`);
     c.forEach((id, j) => { if (c.indexOf(id) < j) say('conveyed-once', `${path}.props.conveyed[${j}]`, [e.id, typeof id === 'string' ? id : null], `${e.id} conveys ${q(id)} twice: a flow conveys each element once`);
       else if (!I.at.has(id) || !IF_CONVEY.includes(I.at.get(id).type))
-      say('conveyed-kind', `${path}.props.conveyed[${j}]`, [e.id, typeof id === 'string' ? id : null], I.at.has(id) ? `${e.id} conveys ${q(id)}, ${a(kind(id))}: it conveys information items, classes, interfaces, components and signals` : `${e.id} conveys ${JSON.stringify(id)}, which the model does not hold`); });
+      say('conveyed-kind', `${path}.props.conveyed[${j}]`, [e.id, typeof id === 'string' ? id : null], I.at.has(id) ? `${e.id} conveys ${q(id)}, ${a(kind(id))}: it conveys information items, classes, interfaces, components and signals` : `${e.id} conveys ${jsonText(id)}, which the model does not hold`); });
     if (!IF_ENDS.includes((I.at.get(e.from) || {}).type) || !IF_ENDS.includes((I.at.get(e.to) || {}).type))
       say('flow-ends', path, [e.id, e.from, e.to], `${e.id} runs from ${q(e.from)} (${kind(e.from)}) to ${q(e.to)} (${kind(e.to)}): a flow joins two classes, interfaces, components or actors`); });
   return out;
@@ -134,7 +134,7 @@ function ifProblems(model) {
 
 /* ---- describe(): the view in sentences, each element by its accessible name in the view's order, then each line ---- */
 function ifDescribe(model, viewId) {
-  const v = IF_ARR(model && model.views).find(x => IF_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const v = IF_ARR(model && model.views).find(x => IF_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const I = ifIndex(model), ids = ifShown(I, v), lines = ifLines(I, v, new Set(ids));
   return [`${v.title || v.id}: an information flow diagram of ${ifPlural(ids.length, 'element')} and ${ifPlural(lines.length, 'line')}.`,
     ...ids.map(id => ifNodeName(I, I.at.get(id)) + '.'), ...lines.map(e => ifLineName(I, e) + '.')].join('\n');

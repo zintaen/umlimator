@@ -4,7 +4,7 @@ import { SHAPE } from '../draw/shapes.js';
 import { CLASSIFIERS, CLASS_DEF, CLASS_LINES, CLASS_TYPE, RULES, multBounds, printMember, classProblems, drawnLines, lineLabel, lineName, lineRename, typeGeo } from './class.js';
 import { OWN_BOXES, OWNER_RULES, boxHead, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder, viewLines, modelLines } from './owners.js';
 import { STY_RULES, UML_META, appliedOf, metaKnown, styKey } from './stereotypes.js';
-import { usedIds } from '../core/model.js';
+import { usedIds, jsonText } from '../core/model.js';
 
 /* ---------- the profile diagram, uml.profile (work package 6.3, notes/stage-6.md §4) ----------
    A profile (a package with «profile») holding its stereotypes («stereotype», their tag definitions as attribute rows),
@@ -123,7 +123,7 @@ function prProblems(model, view) {
 
 /* ---- describe(): the view in sentences, each element by its accessible name in reading order, then each line ---- */
 function prDescribe(model, viewId) {
-  const v = PR_ARR(model && model.views).find(x => PR_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const v = PR_ARR(model && model.views).find(x => PR_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const { at, pic, lines: all } = drawnLines(model, v, PR_LINES), lines = all.filter(({ from, to }) => !holdsLine(pic, from, to)), I = prIndex(model), ids = readingOrder(pic);
   const pl = (k, w) => `${k} ${k === 1 ? w : w + 's'}`, box = new Map(pic.boxes.map(b => [b.id, prBox(b, model, pic).aria]));
   const said = id => { const x = at.get(id).x; return box.get(id) ?? (x.type === 'uml.Comment' ? 'Comment: ' + prName(x) : prAria(model, x, pic.name(id), I)); };

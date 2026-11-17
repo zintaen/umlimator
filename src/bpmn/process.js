@@ -1,5 +1,5 @@
 import { apply } from '../core/apply.js';
-import { copyOf, usedIds } from '../core/model.js';
+import { copyOf, usedIds, jsonText } from '../core/model.js';
 import { heldBy, registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -353,7 +353,7 @@ function bzProblems(model, view) {
   I.N.forEach((x, id) => { if (!seen(id)) return; const t = x.type, p = bzProps(x);
     // a kind outside the subset (a typo, another notation's): drawn as a task, so said by its own name, as the typed core says a
     // malformed type (no rule: none of §4's is about it; audit 27)
-    if (!BZ_KINDS.includes(t)) out.push({ level: 'warning', path: (I.path.get(id) || '') + '.type', ids: [id], message: t == null || t === '' ? `${q(id)} has no type, so it is no BPMN element umlimator draws: drawn as a task` : `${q(id)} is of type ${JSON.stringify(t)}, which is no BPMN element umlimator draws: drawn as a task` }); // an untyped node has no type, never "undefined" (audit 27)
+    if (!BZ_KINDS.includes(t)) out.push({ level: 'warning', path: (I.path.get(id) || '') + '.type', ids: [id], message: t == null || t === '' ? `${q(id)} has no type, so it is no BPMN element umlimator draws: drawn as a task` : `${q(id)} is of type ${jsonText(t)}, which is no BPMN element umlimator draws: drawn as a task` }); // an untyped node has no type, never "undefined" (audit 27)
     if (flow(id)) { const k = I.level(id); if (!procs.has(k)) procs.set(k, []); procs.get(k).push(id); }
     if (BZ_EVENTS.includes(t) && !BZ_DEFS[t].includes(bzDef(x))) say('error', 'event-definition', id, [id], `${q(id)} is ${bzA(bzWord({ type: t }).toLowerCase())} with definition "${bzDef(x)}": it takes ${BZ_DEFS[t].join(', ')}`, '.props.definition');
     if (Object.hasOwn(p, 'cancelActivity') && t !== BZ_BE) say('error', 'event-definition', id, [id], `${q(id)} has cancelActivity: only a boundary event has it`, '.props.cancelActivity');
@@ -371,10 +371,10 @@ function bzProblems(model, view) {
     if (flow(id) && t !== BZ_BE) { const p0 = I.poolOf(id); if (p0 != null && I.level(id) === p0 && I.lanesOf(p0).length && I.laneIn(id) == null) say('warning', 'in-lane', id, [id, p0], `${q(id)} is in pool ${q(p0)}, which has lanes, but in none of them`); }
     bzRefs(x).forEach(r => { if (ty(r) !== BZ_GROUP) say('warning', 'group-ref', id, [id, r], `${q(id)} names ${q(r)} as its group, which is no group`, '.props.categoryValueRef'); });
     // a lone id, not a list, is read as nothing: said, never dropped without a word (audit 26)
-    if (p.categoryValueRef != null && !Array.isArray(p.categoryValueRef)) say('warning', 'group-ref', id, [id], `${q(id)}'s categoryValueRef is ${JSON.stringify(p.categoryValueRef)}, not a list of group ids: it is ignored`, '.props.categoryValueRef');
+    if (p.categoryValueRef != null && !Array.isArray(p.categoryValueRef)) say('warning', 'group-ref', id, [id], `${q(id)}'s categoryValueRef is ${jsonText(p.categoryValueRef)}, not a list of group ids: it is ignored`, '.props.categoryValueRef');
     if ((t === BZ_SUB || t === 'bpmn.CallActivity') && (x.opensView != null || (t === BZ_SUB && view && !BZ_ARR(view.nodeIds).some(n => (I.N.get(n) || {}).parent === id) && [...I.N.values()].some(n => n.parent === id)))) {
       const v = BZ_ARR(model.views).find(w => BZ_OBJ(w) && w.id === x.opensView);
-      if (!v || v.diagram !== 'bpmn' || (t === BZ_SUB && v.subject !== id)) say('warning', 'opens-view', id, [id], `${q(id)} ${x.opensView == null ? 'is collapsed and opens no view' : `opens ${JSON.stringify(x.opensView)}, ${!v ? 'no view of the model' : v.diagram !== 'bpmn' ? 'not a BPMN view' : 'whose subject is not it'}`}`, '.opensView'); } });
+      if (!v || v.diagram !== 'bpmn' || (t === BZ_SUB && v.subject !== id)) say('warning', 'opens-view', id, [id], `${q(id)} ${x.opensView == null ? 'is collapsed and opens no view' : `opens ${jsonText(x.opensView)}, ${!v ? 'no view of the model' : v.diagram !== 'bpmn' ? 'not a BPMN view' : 'whose subject is not it'}`}`, '.opensView'); } });
   procs.forEach((list, k) => { if (!list.some(id => ty(id) === 'bpmn.StartEvent')) say('warning', 'flow-start', k ?? list[0], [k, ...list.slice(0, 1)].filter(x => x != null), `${k == null ? 'the process in no pool' : q(k)} has no start event`);
     if (!list.some(id => ty(id) === 'bpmn.EndEvent')) say('warning', 'flow-start', k ?? list[0], [k, ...list.slice(0, 1)].filter(x => x != null), `${k == null ? 'the process in no pool' : q(k)} has no end event`); });
   return out;
@@ -383,7 +383,7 @@ function bzProblems(model, view) {
 /* ---- describe(): the view in words: its pools and lanes, then from each start event each flow node once with what leaves
    it, then the rest, then the groups ---- */
 function bzDescribe(model, viewId) {
-  const v = BZ_ARR(model && model.views).find(x => BZ_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const v = BZ_ARR(model && model.views).find(x => BZ_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const P = bzPic(model, v), { I } = P, drawn = [...P.items, ...P.open, ...P.be.keys()].filter(id => P.ids.includes(id)), seen = new Set(), walk = [];
   const drew = new Set(P.lines.map(l => l.e.id)), from = id => P.said.filter(e => e.from === id), flows = P.said.filter(e => e.type === BZ_SEQ || e.type === BZ_MSG).length;
   const visit = s => { const q = [s]; while (q.length) { const id = q.shift(); if (seen.has(id)) continue; seen.add(id); walk.push(id);
@@ -488,7 +488,7 @@ function bzOwner(model, view, id, parent) {
   if ((parent ?? null) === (x.parent ?? null)) return [];
   if (x.type === BZ_BE) { const a = bzProps(x).attachedTo, act = I.el(a);
     return act && (act.parent ?? null) === (parent ?? null) ? null : { error: `A boundary event moves with its activity${act ? `: move ${bzLabel(act)}` : ''}` }; }
-  if (parent != null && !I.el(parent)) return { error: `No owner ${JSON.stringify(parent)}` };
+  if (parent != null && !I.el(parent)) return { error: `No owner ${jsonText(parent)}` };
   return bzReown(model, view, I, id, parent ?? null);
 }
 // add: into the lane, pool or expanded sub-process selected, else the selected node's (a collapsed sub-process's) owner; a lane into the pool selected

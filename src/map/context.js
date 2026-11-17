@@ -384,7 +384,7 @@ function mapContext(model, opts = {}) {
   };
   const layoutCache = O(); // M3
   // the cards a card opens: its inner view's, else the count the host gives for one it has not loaded (opensCount)
-  const kidCount = (nid, vid) => { const c = childOf(nid, vid), k = c && c !== vid ? (V[c].nodeIds || []).length : 0, n = +nodeIn(nid, vid).opensCount;
+  const kidCount = (nid, vid) => { const c = childOf(nid, vid), k = c && c !== vid ? (V[c].nodeIds || []).length : 0, n = Number(nodeIn(nid, vid).opensCount); // Number(), not +: a host's BigInt is a count too (audit 29)
     return k || (opensOf(nid, vid) && n > 0 ? Math.floor(n) : 0); };
   // a line's kind: the first one its edges name (#45); else a hook's line is a guard and a board's is state; else, only where
   // a legend says what the colours mean (the standalone page, or a view's kindsFromLabels), a guess from the label's words
@@ -404,7 +404,7 @@ function mapContext(model, opts = {}) {
     return out.filter(e => { const r = !(V[vid] || {}).keepPairs && pair[e.to + '>' + e.from]; if (r) { r.both = true; r.back = false; r.all = [...(r.all || [r]), ...(e.all || [e])]; if (e.label && e.label !== r.label) r.label = (r.label ? r.label + ' / ' : '') + e.label;
       if (r.all.some(x => x.step != null)) r.when = r.all.map(x => (x.step != null ? x.step + '. ' : '') + (x.label || '')).join('\n'); else if (e.when) r.when = [r.when, e.when].filter(Boolean).join(' · '); return false; } pair[e.from + '>' + e.to] = e; return true; })
       .map(e => { const all = e.all || [e], subs = [...new Set(all.map(x => x.sublabel).filter(x => x != null && x !== '').map(String))];
-        return { ...e, wk: wireKind(e, opts.kinds || (V[vid] || {}).kindsFromLabels), weight: Math.max(...all.map(x => [2, 3].includes(+x.weight) ? +x.weight : 1)), sublabel: subs.join(' / ') || undefined, ...markOf(all) }; });
+        return { ...e, wk: wireKind(e, opts.kinds || (V[vid] || {}).kindsFromLabels), weight: Math.max(...all.map(x => [2, 3].includes(x.weight) ? x.weight : 1)), sublabel: subs.join(' / ') || undefined, ...markOf(all) }; });
   }
   const condTag = l => { const m = /^(?:routes|on-ramp:?)\s+(\S+)$/i.exec(String(l || '').trim()); return m ? m[1] : null; }; // "routes bug" → a "bug" tag
   // quick: a candidate the layout searches below score and may drop, laid out once, as it was before 0.6.0 (no room for lines

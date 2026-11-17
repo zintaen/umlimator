@@ -1,4 +1,4 @@
-import { lineNames, listOf, typedProblems, unreadable, versionProblem } from '../core/model.js';
+import { jsonText, labelProblem, lineNames, listOf, typedProblems, unreadable, versionProblem } from '../core/model.js';
 import { TYPED, diagramOf } from '../core/registry.js';
 import { SHAPE_NAMES, shapeOf } from '../draw/shapes.js';
 import { boxHolds, mapContext } from './context.js';
@@ -27,6 +27,7 @@ export function validate(model) {
     const k = String(n.kind ?? '').toLowerCase();
     if (n.kind != null && !(hasKey(KIND, k) || hasKey(MAPK, k) || hasKey(ALIAS, k))) warn(at + '.kind', `unknown kind "${n.kind}": drawn as a script card`);
     if (n.owner != null && typeof n.owner !== 'string') warn(at + '.owner', 'an owner is a name: ignored');
+    const l = labelProblem(n, at); if (l) out.push(l);
     ['when', 'what', 'how', 'origin', 'author', 'note'].forEach(k => { if (n[k] != null && typeof n[k] !== 'string') warn(`${at}.${k}`, `${k} is text: drawn as written`); });
     if (n.source != null && !(typeof n.source === 'string' || Array.isArray(n.source) && n.source.every(s => typeof s === 'string'))) warn(at + '.source', 'source is a path or a list of paths: what is not text is ignored');
     list(n, at, 'verbs');
@@ -55,20 +56,23 @@ export function validate(model) {
     ['from', 'to'].forEach(k => { if (!ends.has(e[k])) err(`${at}.${k}`, `"${e[k]}" is neither a card nor a box`); });
     if (e.from != null && e.from === e.to) warn(at, `a line from "${e.from}" to itself: not drawn`); // a self-loop (risks.md F1); typed views will draw one
     if (e.kind != null && !WIRE_KINDS.includes(e.kind)) warn(at + '.kind', `unknown line kind "${e.kind}": drawn as calls`);
-    if (e.weight != null && ![1, 2, 3].includes(e.weight)) warn(at + '.weight', `weight ${JSON.stringify(e.weight)} is not 1, 2 or 3: drawn as 1`);
+    const l = labelProblem(e, at); if (l) out.push(l);
+    if (e.weight != null && ![1, 2, 3].includes(e.weight)) warn(at + '.weight', `weight ${jsonText(e.weight)} is not 1, 2 or 3: drawn as 1`);
     ['fromSide', 'toSide'].forEach(k => { if (e[k] != null && !SIDES.includes(e[k])) warn(`${at}.${k}`, `"${e[k]}" is not left, right, top or bottom: ignored`); });
-    ['latency', 'cost'].forEach(k => { if (e[k] != null && !(typeof e[k] === 'number' && e[k] >= 0)) warn(`${at}.${k}`, `${k} ${JSON.stringify(e[k])} is not a number of 0 or more: counted as 0`); }); // budgets (#95)
+    ['latency', 'cost'].forEach(k => { if (e[k] != null && !(typeof e[k] === 'number' && e[k] >= 0)) warn(`${at}.${k}`, `${k} ${jsonText(e[k])} is not a number of 0 or more: counted as 0`); }); // budgets (#95)
     if (e.step != null && !(typeof e.step === 'number' ? e.step >= 0 : typeof e.step === 'string' && e.step.length >= 1 && e.step.length <= 3))
-      warn(at + '.step', `step ${JSON.stringify(e.step)} is not a number of 0 or more, or text of 1 to 3 characters (2a): drawn as written`);
+      warn(at + '.step', `step ${jsonText(e.step)} is not a number of 0 or more, or text of 1 to 3 characters (2a): drawn as written`);
   };
+  // a card's id is no line's (model-and-schema.md): apply(), references() and a lens read one id space, where the card wins (audit 29)
+  const shared = (e, at) => { if (typeof e.id === 'string' && ids.has(e.id)) err(at + '.id', `line id "${e.id}" is also a card's id`); };
   // a model line may end on any view's box (#28); a view's own line only on that view's boxes
   const anyBox = new Set(views.flatMap(v => arr(v.containers).map(c => c && c.id)));
   arr(m.edges).forEach((e, i) => { if (!(typed && e && e.type != null)) line(e, `edges[${i}]`, new Set([...ids, ...anyBox]));
-    if (e && e.id != null) { if (lineIds.has(e.id)) err(`edges[${i}].id`, `line id "${e.id}" is used twice`); lineIds.add(e.id); } });
+    if (e && e.id != null) { if (lineIds.has(e.id)) err(`edges[${i}].id`, `line id "${e.id}" is used twice`); lineIds.add(e.id); shared(e, `edges[${i}]`); } });
   views.forEach((v, i) => { const lim = arr(v.nodeIds).length + 64; // a pin far off the grid, any view's: held there (context.js onGrid, layered.js)
-    Object.entries(v.layout || {}).forEach(([id, p]) => { if (!Array.isArray(p) || typeof p[0] !== 'number' || typeof p[1] !== 'number') warn(`views[${i}].layout.${id}`, `"${id}"'s place ${JSON.stringify(p)} is not two numbers: ignored`);
-      else if (p.some(x => !(Math.abs(x) <= lim))) warn(`views[${i}].layout.${id}`, `"${id}"'s place ${JSON.stringify(p)} is off the grid: held at ${lim} columns or rows out`); });
-    ['gap', 'rgap'].forEach(k => { if (v[k] != null && !(typeof v[k] === 'number' && v[k] > 0 && v[k] <= 2000)) warn(`views[${i}].${k}`, v[k] > 2000 && typeof v[k] === 'number' ? `${k} ${v[k]} is over 2000 px: drawn as 2000` : `${k} ${JSON.stringify(v[k])} is not a number above 0: ignored`); });
+    Object.entries(v.layout || {}).forEach(([id, p]) => { if (!Array.isArray(p) || typeof p[0] !== 'number' || typeof p[1] !== 'number') warn(`views[${i}].layout.${id}`, `"${id}"'s place ${jsonText(p)} is not two numbers: ignored`);
+      else if (p.some(x => !(Math.abs(x) <= lim))) warn(`views[${i}].layout.${id}`, `"${id}"'s place ${jsonText(p)} is off the grid: held at ${lim} columns or rows out`); });
+    ['gap', 'rgap'].forEach(k => { if (v[k] != null && !(typeof v[k] === 'number' && v[k] > 0 && v[k] <= 2000)) warn(`views[${i}].${k}`, v[k] > 2000 && typeof v[k] === 'number' ? `${k} ${v[k]} is over 2000 px: drawn as 2000` : `${k} ${jsonText(v[k])} is not a number above 0: ignored`); });
     if (typedView(v)) return;
     const at = `views[${i}]`, mine = new Set(), boxes = Object.create(null), home = Object.create(null), full = new Set(); // no prototype: a box or card named toString is no box (M3, audit 8)
     if (v.parent != null && !vids.has(v.parent) && !ids.has(v.parent)) err(at + '.parent', `parent "${v.parent}" is not a view`);
@@ -85,13 +89,13 @@ export function validate(model) {
         const h = home[id]; if (h && !outer(c.id).has(h) && !outer(h).has(c.id)) warn(`${at}.containers[${j}].nodeIds[${k}]`, `"${id}" is in box "${h}" too, and neither box holds the other: they overlap`);
         if (!h || outer(c.id).has(h)) home[id] = c.id; for (let p = c.id; boxes[p] && !full.has(p); p = boxes[p].parent) full.add(p); });
       if (c.parent != null && !boxes[c.parent]) err(`${at}.containers[${j}].parent`, `"${c.parent}" is not a box of this view`);
-      if (c.tone != null && typeof c.tone !== 'string') warn(`${at}.containers[${j}].tone`, `tone ${JSON.stringify(c.tone)} is not a palette name (green, amber, ...): ${c.tone ? 'drawn in slate' : 'ignored'}`);
+      if (c.tone != null && typeof c.tone !== 'string') warn(`${at}.containers[${j}].tone`, `tone ${jsonText(c.tone)} is not a palette name (green, amber, ...): ${c.tone ? 'drawn in slate' : 'ignored'}`);
       for (let p = c.parent, seen = new Set([c.id]); p != null && boxes[p]; p = boxes[p].parent) { if (seen.has(p)) { err(`${at}.containers[${j}].parent`, `box "${c.id}" ends up inside itself`); break; } seen.add(p); } });
     arr(v.containers).forEach((c, j) => { if (c && boxes[c.id] === c && !full.has(c.id)) warn(`${at}.containers[${j}]`, `box "${c.id}" holds no cards: it is not drawn, nor its lines`); });
     const ends = new Set([...ids, ...Object.keys(boxes)]);
     const listed = new Set(), byId = new Map(Array.from(arr(m.edges), e => [e && e.id, e])), here = x => mine.has(x) || !!boxes[x]; // audit 7: a listed line is drawn once, between this view's cards and boxes
     if (Array.isArray(v.edges)) v.edges.forEach((e, j) => { const p = `${at}.edges[${j}]`;
-      if (typeof e !== 'string') line(e, p, ends); else if (!lineIds.has(e)) return err(p, `"${e}" is not a line`); else if (listed.has(e)) return warn(p, `"${e}" is listed twice: drawn once`); else listed.add(e);
+      if (typeof e !== 'string') { line(e, p, ends); if (e && typeof e === 'object') shared(e, p); } else if (!lineIds.has(e)) return err(p, `"${e}" is not a line`); else if (listed.has(e)) return warn(p, `"${e}" is listed twice: drawn once`); else listed.add(e);
       const l = typeof e === 'string' ? byId.get(e) : e, off = l && [l.from, l.to].find(x => (ids.has(x) || anyBox.has(x)) && !here(x)); // a card or any view's box (audit 8)
       if (off != null) warn(p, `${typeof e === 'string' ? `"${e}"` : 'the line'} ends on "${off}", which is not one of the view's cards or boxes: not drawn`); });
     // a line from a box to a card or box inside it has no line (audit 11): said, as a line to itself is
@@ -133,7 +137,7 @@ export function validate(model) {
     if (!l || typeof l !== 'object') return err(at, 'a lens is an object with an id');
     if (typeof l.id !== 'string' || !l.id) err(at + '.id', 'a lens needs an id'); else if (lensIds.has(l.id)) err(at + '.id', `lens id "${l.id}" is used twice`); else lensIds.add(l.id);
     pick(l.pick, at + '.pick', true);
-    if (l.color != null && l.color !== 'owner') warn(at + '.color', `color ${JSON.stringify(l.color)} is not "owner": ignored`);
+    if (l.color != null && l.color !== 'owner') warn(at + '.color', `color ${jsonText(l.color)} is not "owner": ignored`);
   });
   // stories (#69): each step's view, and the cards, lines and tour it names there
   if (m.stories != null && !Array.isArray(m.stories)) err('stories', 'stories is a list of stories');
@@ -155,7 +159,7 @@ export function validate(model) {
       const c = st.camera, fit = ': the step shows the whole view';
       if (c && typeof c === 'object' && c.card != null) { if (!mine.has(c.card)) warn(p + '.camera.card', `"${c.card}" is not one of the view's cards${fit}`); }
       else if (c != null && c !== 'fit' && !(c && Number.isFinite(c.x) && Number.isFinite(c.y))) warn(p + '.camera', `the camera is "fit", { x, y, zoom } or { card, zoom }${fit}`);
-      if (st.duration != null && !(st.duration > 0)) warn(p + '.duration', `duration ${JSON.stringify(st.duration)} is not a number of ms: 4000`);
+      if (st.duration != null && !(st.duration > 0)) warn(p + '.duration', `duration ${jsonText(st.duration)} is not a number of ms: 4000`);
     });
   });
   if (typed) {

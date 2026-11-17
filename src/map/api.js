@@ -1,3 +1,4 @@
+import { jsonText } from '../core/model.js';
 import { leaveIssues, overlapIssues, routeAudit, throughIssues } from '../layout/audit.js';
 import { mapContext } from './context.js';
 
@@ -6,7 +7,7 @@ const edgeRefIds = e => [...new Set((e.all || [e]).map(x => x._id).filter(Boolea
 /* layout(model, viewId): one view's geometry, as the canvas draws it. No DOM. */
 export function layout(model, viewId, options = {}) {
   const ctx = mapContext(model, { measure: options.measure, ...(options.expand ? { expand: { [viewId]: options.expand } } : {}) }); // expand: cards unfolded in place (#71)
-  if (!ctx.V[viewId]) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  if (!ctx.V[viewId]) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   ctx.planOf(viewId);
   const g = ctx.buildGeo(viewId, undefined, options.repair);
   g.edges.forEach(e => { e.ids = edgeRefIds(e); });

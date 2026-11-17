@@ -117,3 +117,41 @@ test('render.md says render() appends the map\'s element and destroy() removes i
   assert.match(r, /The map's element is appended after what it already holds/); assert.match(r, /`destroy\(\)` removes only the map's element/);
   assert.match(r, /removes\s+the map's element \(whatever else the container holds stays\)/);
 });
+
+// audit 29: what Geometry declares an edge always has, every view's layout() gives it (a typed view's lines have no weight or wk)
+test('every field Geometry declares required on an edge or a node is on every line and card layout() returns, in every example view', async () => {
+  const { layout } = await import('../lib/umlimator-all.js');
+  const d = read(join(root, 'lib/umlimator.d.ts')), g = d.slice(d.indexOf('export interface Geometry'), d.indexOf('\n}', d.indexOf('export interface Geometry')));
+  const fields = kind => { let body = g.slice(g.indexOf(`${kind}: {`) + kind.length + 3); body = body.slice(0, body.indexOf('}[];'));
+    for (let b = ''; b !== body;) { b = body; body = body.replace(/\{[^{}]*\}/g, ''); } // the fields of the line or card itself, not those of its label box
+    return [...body.matchAll(/(?:^|;)\s*(\w+)(\??):/g)].filter(m => !m[2]).map(m => m[1]); };
+  const need = { edges: fields('edges'), nodes: fields('nodes') };
+  assert.deepEqual(need, { edges: ['from', 'to', 'ids', 'pts'], nodes: ['id', 'x', 'y', 'w', 'h'] });
+  const md = read(join(root, 'docs/api/render.md')), mg = md.slice(md.indexOf('interface Geometry'), md.indexOf('\n}', md.indexOf('interface Geometry')));
+  assert.equal(mg.replace(/^export /, ''), g.replace(/^export /, ''), 'render.md quotes Geometry as the .d.ts has it');
+  const missing = new Set(), warn = console.warn; console.warn = () => {};
+  try { for (const f of readdirSync(join(root, 'examples')).filter(f => f.endsWith('.json')).sort().concat(['../tests/class-minimal.json'])) { const m = JSON.parse(read(join(root, 'examples', f)));
+    for (const v of (m.views || []).filter(v => v && v.id)) { const out = layout(m, v.id);
+      for (const k of ['edges', 'nodes']) out[k].forEach(x => need[k].forEach(n => { if (x[n] === undefined) missing.add(`${v.diagram || 'map'} ${k}.${n}`); })); } } } finally { console.warn = warn; }
+  assert.deepEqual([...missing], []);
+});
+
+// audit 29: the MapView edges row names each typed view that leaves out a listed line of another kind
+test('the edges row of model-and-schema.md names every typed view that does not draw a listed line of another kind', async () => {
+  const { layout } = await import('../lib/umlimator-all.js');
+  const row = (pages['model-and-schema.md'].match(/^\| `edges` \| The lines it draws.*$/m) || [''])[0];
+  const word = { 'uml.state-machine': 'state machine', 'sysml.requirement': 'requirement', 'uml.sequence': 'sequence', 'uml.timing': 'timing', 'uml.communication': 'communication',
+    'uml.interaction-overview': 'interaction overview', mindmap: 'mindmap', gcp: 'cloud', azure: 'cloud', aws: 'cloud', 'c4.dynamic': 'C4 dynamic' };
+  const types = { 'uml.class': 'uml.Class', 'uml.package': 'uml.Package', 'uml.object': 'uml.InstanceSpecification', 'uml.use-case': 'uml.UseCase', 'uml.component': 'uml.Component',
+    'uml.deployment': 'uml.Node', 'sysml.block-definition': 'sysml.Block', 'sysml.requirement': 'sysml.Requirement', er: 'er.Entity', flowchart: 'flow.Process', dfd: 'dfd.Process',
+    'uml.activity': 'uml.Action', 'uml.state-machine': 'uml.State', 'c4.context': 'c4.SoftwareSystem', 'c4.container': 'c4.Container', 'c4.dynamic': 'c4.Container',
+    'c4.deployment': 'c4.DeploymentNode', bpmn: 'bpmn.Task', gcp: 'gcp.Product', azure: 'azure.Service', mindmap: 'mindmap.Topic', 'uml.sequence': 'uml.Lifeline',
+    'uml.communication': 'uml.Lifeline', 'uml.timing': 'uml.Lifeline', 'uml.interaction-overview': 'uml.InteractionUse' };
+  const left = [], warn = console.warn; console.warn = () => {};
+  try { for (const [d, t] of Object.entries(types)) { const own = ['uml.package', 'uml.component', 'uml.class', 'uml.use-case', 'uml.deployment', 'uml.object', 'sysml.block-definition'].includes(d);
+    const m = { schemaVersion: 2, nodes: [{ id: 'a', type: t, label: 'A' }, { id: 'b', type: t, label: 'B', ...(d === 'mindmap' ? { parent: 'a' } : {}) }],
+      edges: [{ id: 'x', type: own ? 'er.Relationship' : 'uml.Dependency', from: 'a', to: 'b', label: 'xx' }], views: [{ id: 'v', diagram: d, nodeIds: ['a', 'b'], edges: ['x'] }] };
+    if (!layout(m, 'v').edges.some(e => e.id === 'x' || e._id === 'x' || (e.ids || []).includes('x'))) left.push(d); } } finally { console.warn = warn; }
+  assert.ok(left.includes('uml.state-machine') && left.length > 5, left.join(', '));
+  assert.deepEqual(left.filter(d => !word[d] || !row.includes(word[d])), [], 'a view that leaves the line out, which the row does not name');
+});
