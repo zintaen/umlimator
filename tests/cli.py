@@ -36,7 +36,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6})
 
 
 def ok(name, cond, info=""):
@@ -1642,5 +1642,38 @@ if part("audit 26"):
             ok("mcp · diff of a FIFO, a device or a folder is a tool error saying it is not a file, and the next call is answered (audit 26)",
                all(x.get("result", {}).get("isError") and x["result"]["content"][0]["text"].endswith(": not a file") for x in said)
                and after.get("id") == 5 and not after.get("result", {}).get("isError"), (said, after))
+if part("audit 27"):
+    with tempfile.TemporaryDirectory() as tmp:
+        t = Path(tmp)
+        # audit 27: a view id or a model file name holding " : < > | * ? gave stills and pages of those names, and the diff
+        # Action's upload-artifact refuses any such path, so the whole artifact (every model's pictures) was lost
+        odd = ["level:1", 'q"<>|*?\r\nx']
+        m = {"title": "m", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "edges": [{"id": "ab", "from": "a", "to": "b"}],
+             "views": [{"id": v, "title": "V", "nodeIds": ["a", "b"]} for v in odd]}
+        g = t / "g27"; (g / "docs").mkdir(parents=True)
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
+        model = g / "docs" / "c4:ctx?.json"
+        model.write_text(json.dumps(m)); sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "one")
+        model.write_text(json.dumps(m | {"nodes": [m["nodes"][0] | {"label": "A2"}, m["nodes"][1]]}))
+        r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "diff", "--base", "HEAD", "--out", "out"], cwd=g, capture_output=True, text=True)
+        got = json.loads(r.stdout or "[]")
+        files = [p.relative_to(g / "out").as_posix() for p in (g / "out").rglob("*")] if (g / "out").is_dir() else []
+        refused = [f for f in files if re.search('[\x00-\x1f"*:<>?|]', f)]  # @actions/artifact's validateFilePath, and Windows
+        pngs = sorted(f for f in files if f.endswith(".png"))
+        ok("diff --base · a view id or model name holding \" : < > | * ? gets stills and a page the Action's artifact takes, named %XX (audit 27)",
+           [x["file"] for x in got] == ["docs/c4:ctx?.json"] and not refused and "docs-c4%3Actx%3F.html" in files
+           and pngs == ["docs-c4%3Actx%3F/level%3A1.png", "docs-c4%3Actx%3F/q%22%3C%3E%7C%2A%3F%0D%0Ax.png"]
+           and [urllib.parse.unquote(Path(f).stem) for f in pngs] == sorted(odd), (got, files, r.stderr[-400:]))
+        # audit 27: the MCP diff tool's ~name for no such user, and a name too long for the disk, ended in an Internal error
+        (t / "m.json").write_text(json.dumps(m))
+        msgs = [{"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "tests/cli.py", "version": "0"}}}]
+        msgs += [{"jsonrpc": "2.0", "id": i + 1, "method": "tools/call", "params": {"name": "diff", "arguments": {"other_model_path": p}}}
+                 for i, p in enumerate(["~no-such-user-27/m.json", "x" * 5000 + ".json", "m.json"])]
+        r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(t / "m.json"), "--port", "0"], input="\n".join(map(json.dumps, msgs)) + "\n",
+                           capture_output=True, text=True, timeout=120)
+        said = [json.loads(x) for x in r.stdout.splitlines()[1:]]
+        ok("mcp · diff of ~name for no such user, or of a name too long for the disk, is a tool error, never an Internal error (audit 27)",
+           len(said) == 3 and all("error" not in x for x in said) and [x["result"]["isError"] for x in said] == [True, True, False]
+           and "no such user" in said[0]["result"]["content"][0]["text"] and "Traceback" not in r.stderr, (said, r.stderr[-600:]))
 part.done()
 sys.exit(1 if failed else 0)
