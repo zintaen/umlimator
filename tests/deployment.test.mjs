@@ -232,7 +232,7 @@ test('the PDF\'s tables (§11): a target\'s kind and what is deployed on it, by 
   assert.deepEqual(T.rows(DEP, v, 'edge-node'), ['routes.conf, by «deploy»']);
   assert.deepEqual(T.rows(DEP, v, 'database'), []);
   assert.deepEqual(T.rows(DEP, v, 'shop-api-jar'), ['manifests Shop API']);
-  assert.equal(T.rows(DEP, v, 'shop-api'), null);
+  assert.deepEqual(T.rows(DEP, v, 'shop-api'), []); // drawn with no compartments: the PDF lists no members (audit 29)
   // a «deploy» line from what is no artifact (deploy-ends' error) is no artifact deployed
   const bad = structuredClone(DEP); bad.edges.push(L('bad', 'Deployment', 'database', 'edge-node'));
   assert.deepEqual(T.rows(bad, v, 'edge-node'), ['routes.conf, by «deploy»']);

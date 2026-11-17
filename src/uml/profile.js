@@ -90,7 +90,8 @@ function prBox(b, model, pic) {
   return boxHead({ ...b, title: [...(x.type === 'uml.Profile' ? ['«profile»'] : []), ...all.map(t => `«${t}»`), pic.name(b.id)].join(' '), aria: `${b.aria}: ${A.map(prSay).join('; ')}` }); // its header room as its title's lines need (audit 23)
 }
 const PR_LINES = [...CLASS_LINES, 'uml.Extension', 'uml.ProfileApplication'];
-const PR_LOOK = { members: true, own: PR_LINES, word: 'profile diagram', node: prNode, box: prBox, dg: { repair: false, reroute: false } };
+// kinds: another UML kind (a component, an actor) drawn with its kind's keyword, as it is named, as the class view's (audit 29)
+const PR_LOOK = { members: true, kinds: true, own: PR_LINES, word: 'profile diagram', node: prNode, box: prBox, dg: { repair: false, reroute: false } };
 const prGeo0 = typeGeo(PR_LOOK);
 // down unless the view says right; slots at each node and box, so the palette's add hears what is selected (composite.js's)
 function prGeo(a) {

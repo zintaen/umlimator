@@ -349,3 +349,17 @@ test('audit 28: a type that is not a string, even an array naming a classifier, 
     assert.deepEqual(validate(m).map(p => p.path), ['nodes[0].type'], `${d}: only the type's own warning, no link-ends`);
   }
 });
+
+test('audit 29: an element of no UML kind is drawn, said and edited as an instance specification: its head, its slots, member-names, the panel\'s slot rows, F2', () => {
+  const mk = t => ({ schemaVersion: 2, nodes: [{ id: 'o', ...(t ? { type: t } : {}), label: 'order1', props: { classifier: 'Order' },
+    members: [{ id: 's1', type: 'uml.Slot', label: 'total', props: { value: '3' } }, { id: 's2', type: 'uml.Slot', label: 'total', props: { value: '4' } }] }],
+    edges: [], views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['o'] }] });
+  const T = diagramOf({ diagram: 'uml.object' });
+  for (const t of ['uml.InstanceSpecification', undefined]) { const m = mk(t), d = `type ${t}`, n = layout(m, 'v').nodes[0];
+    assert.equal(n.label, 'order1 : Order', d);
+    assert.equal(describe(m, 'v').split('\n')[1], 'Instance specification order1 : Order, 2 slots: total = 3, total = 4.', d);
+    assert.deepEqual(validate(m).filter(p => p.rule === 'member-names').map(p => p.path), ['nodes[0].members[1]'], d);
+    assert.equal(T.member.holds(m.nodes[0]), true, d);
+    assert.deepEqual(T.edits.rename(m, m.views[0], 'o', 'order2 : Order'), [{ op: 'set', id: 'o', path: 'label', value: 'order2' }], d);
+    const ctx = mapContext(m); assert.match(tablesOf(ctx, ctx.V.v, ctx.buildGeo('v'))[0].rows[0], /order1 : Order/, d); }
+});

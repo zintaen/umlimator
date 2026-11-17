@@ -228,6 +228,7 @@ const UC_RULES = {
   'generalization-kinds': 'a generalization joins two actors or two use cases',
   'use-case-owner': 'a use case is owned by a subject or a package, an actor by a package or nothing',
   'include-cycle': 'no use case includes itself, through other includes or directly',
+  'generalization-cycle': 'no actor or use case is its own ancestor',
   named: 'every actor and use case has a name',
   'point-names': 'a use case\'s extension points have different names',
 };
@@ -243,7 +244,7 @@ function ucProblems(model, view) {
     if (n.type !== 'uml.UseCase') return;
     const seen = new Map(); ucPointsOf(n).forEach(m => { const k = ucName(m), was = seen.get(k);
       if (was) say('warning', 'point-names', `nodes[${i}].members[${UC_ARR(n.members).indexOf(m)}]`, [n.id, was, m.id], `${q(n.id)} has two extension points named "${k}" (${was}, ${m.id})`); else seen.set(k, m.id); }); });
-  const inc = new Map(), lines = UC_ARR(model && model.edges).map((e, i) => [e, `edges[${i}]`]).filter(([e]) => UC_OBJ(e));
+  const inc = new Map(), gen = new Map(), lines = UC_ARR(model && model.edges).map((e, i) => [e, `edges[${i}]`]).filter(([e]) => UC_OBJ(e));
   // and the view's own lines (view.edges objects), which ucLines draws; one a model line's id takes is that one (audit 20, as
   // flowProblems since audit 19). That view's alone: validate() asks once a view, so two views' own lines are never weighed together (audit 21)
   const lids = new Set(lines.map(([e]) => e.id)), vi = UC_ARR(model && model.views).indexOf(view);
@@ -258,16 +259,19 @@ function ucProblems(model, view) {
       if (!pts.length) say('error', 'extend-points', path, [e.id, e.to], `${e.id} names no extension point of ${q(e.to)}`);
       else if (bad.length) say('error', 'extend-points', `${path}.props.extensionPoints`, [e.id, e.to, ...bad.map(String)], `${e.id} names ${bad.map(p => JSON.stringify(String(p))).join(', ')}, not ${bad.length === 1 ? 'an extension point' : 'extension points'} of ${q(e.to)}`); }
     if (e.type === 'uml.Generalization' && (UC_KINDS.includes(ty(e.from)) || UC_KINDS.includes(ty(e.to))) && (ty(e.from) !== ty(e.to) || e.from === e.to))
-      say('error', 'generalization-kinds', path, ends, `${e.id} runs from ${q(e.from)} to ${q(e.to)}: a generalization joins two actors or two use cases`); });
-  // an include cycle: said once, at the include that closes it, naming every use case on it
-  const state = new Map(), stack = [];
-  const walk = id => { const at = [0]; state.set(id, 1); stack.push(id); // a stack of frames, not recursion: a chain of any depth
-    while (at.length) { const top = stack[stack.length - 1], ps = inc.get(top) || [];
-      if (at[at.length - 1] === ps.length) { at.pop(); stack.pop(); state.set(top, 2); continue; }
-      const [p, path, eid] = ps[at[at.length - 1]++];
-      if (state.get(p) === 1) { const loop = stack.slice(stack.indexOf(p)); say('error', 'include-cycle', path, [...loop, eid], `${[...loop, p].map(q).join(' → ')} includes itself (${eid})`); }
-      else if (!state.has(p)) { state.set(p, 1); stack.push(p); at.push(0); } } };
-  [...inc.keys()].forEach(id => { if (!state.has(id)) walk(id); });
+      say('error', 'generalization-kinds', path, ends, `${e.id} runs from ${q(e.from)} to ${q(e.to)}: a generalization joins two actors or two use cases`);
+    else if (e.type === 'uml.Generalization' && UC_KINDS.includes(ty(e.from))) gen.set(e.from, [...(gen.get(e.from) || []), [e.to, path, e.id]]); });
+  // an include cycle, and a generalization cycle between actors or use cases (UML 2.5.1 forbids one for every classifier, as
+  // the class view's rule says it, audit 29): each said once, at the line that closes it, naming every element on it
+  const cycles = (next, rule, said) => { const state = new Map(), stack = [];
+    const walk = id => { const at = [0]; state.set(id, 1); stack.push(id); // a stack of frames, not recursion: a chain of any depth
+      while (at.length) { const top = stack[stack.length - 1], ps = next.get(top) || [];
+        if (at[at.length - 1] === ps.length) { at.pop(); stack.pop(); state.set(top, 2); continue; }
+        const [p, path, eid] = ps[at[at.length - 1]++];
+        if (state.get(p) === 1) { const loop = stack.slice(stack.indexOf(p)); say('error', rule, path, [...loop, eid], `${[...loop, p].map(q).join(' → ')} ${said} (${eid})`); }
+        else if (!state.has(p)) { state.set(p, 1); stack.push(p); at.push(0); } } };
+    [...next.keys()].forEach(id => { if (!state.has(id)) walk(id); }); };
+  cycles(inc, 'include-cycle', 'includes itself'); cycles(gen, 'generalization-cycle', 'is its own ancestor');
   return out;
 }
 
@@ -332,7 +336,7 @@ const UC_TYPE = registerDiagramType('uml.use-case', {
   rules: UC_RULES,
   describe: ucDescribe,
   // the PDF's Kind of an element of no type: "Element", as its accessible name (audit 28); null: the type's word
-  word: (model, id) => { const x = UC_ARR(model && model.nodes).find(n => UC_OBJ(n) && n.id === id); return x && x.type == null ? snKindName(x.type) : null; },
+  word: (model, id) => { const x = UC_ARR(model && model.nodes).find(n => UC_OBJ(n) && n.id === id); return x && !x.type ? snKindName(x.type) : null; }, // no type (or ""): "Element", as named (audit 29)
   edits: { connect: ucConnect, remove: ucRemove, rename: ucRename },
 });
 

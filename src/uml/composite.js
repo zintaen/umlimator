@@ -495,7 +495,7 @@ const CS_TYPE = registerDiagramType('uml.composite-structure', {
   // the PDF's tables (§11): a part's and a collaboration use's kind and rows; null: as before
   word: (model, id) => { const P = csPic(model, {}), q = P.mem.get(id), x = q ? q.m : P.at.get(id); if (!x) return null;
     // a uml.Property kept as a node, not a member (audit 28): null, so the PDF says the type's word, "Property", as layout does
-    return x.type === 'uml.Property' ? (q ? (q.owner.type === 'uml.Collaboration' ? 'Role' : 'Part') : null) : x.type === 'uml.Port' ? 'Port' : x.type === 'uml.CollaborationUse' ? 'Collaboration use' : x.type == null ? snKindName(x.type) : null; }, // no type: "Element", as named (audit 28)
+    return x.type === 'uml.Property' ? (q ? (q.owner.type === 'uml.Collaboration' ? 'Role' : 'Part') : null) : x.type === 'uml.Port' ? 'Port' : x.type === 'uml.CollaborationUse' ? 'Collaboration use' : !x.type ? snKindName(x.type) : null; }, // no type (or ""): "Element", as named (audits 28, 29)
   rows: (model, view, id) => { const P = csPic(model, view), q = P.mem.get(id);
     // a part with its aggregation; a role has none (csNodeName, audit 10)
     const agg = m => (CS_PROPS(m).aggregation === 'shared' ? 'shared' : 'composite');
@@ -504,7 +504,7 @@ const CS_TYPE = registerDiagramType('uml.composite-structure', {
     // the subject or an open collaboration (0.22.0): its members, a part or role with its aggregation. Its connectors are rows
     // of the Lines table, which lists a line drawn to a member's owner (audit 3), so not again here (audit 17)
     if (id === P.sid && P.S || P.collabs.some(c => c.x.id === id)) return CS_ARR(u.members).filter(CS_OBJ).map(m => (m.type === 'uml.Property' ? csPartSaid(m) : CS_MEMBER.print(m)) + (m.type === 'uml.Property' && id === P.sid && u.type !== 'uml.Collaboration' ? `, ${agg(m)}` : ''));
-    if (u.type !== 'uml.CollaborationUse') return null;
+    if (u.type !== 'uml.CollaborationUse') return []; // any other element is drawn with no compartments: no members in the PDF (audit 29)
     return [...(CS_HAS(CS_PROPS(u).collaboration) ? [String(CS_PROPS(u).collaboration)] : []),
       // its bindings as the view draws and describe() says them (P.lines: a view's own line too, audit 26)
       ...P.lines.filter(({ e }) => e.type === 'uml.RoleBinding' && e.to === id).map(({ e }) => `${e.label ?? '?'} ← ${csName(P.el(e.from) || { id: e.from })}`)]; },

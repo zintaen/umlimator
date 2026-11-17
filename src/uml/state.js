@@ -509,7 +509,7 @@ const ST_TYPE = registerDiagramType('uml.state-machine', {
   // panel prints them (each internal transition's `trigger [guard] / effect`, each region); null: its members as before
   word: (model, id) => { const I = stIndex(model), x = (I.N.get(id) || {}).x; if (!x) return null;
     return x.type === 'uml.Pseudostate' ? ST_OWN(ST_KIND_WORD, stKind(x)) || 'Pseudostate' : x.type === 'uml.FinalState' ? 'Final state'
-      : x.type === 'uml.State' ? (I.subs(id).length || stMembers(x, 'uml.Region').length ? 'Composite state' : 'State') : x.type == null ? snKindName(x.type) : null; }, // no type: "Element", as named (audit 28)
+      : x.type === 'uml.State' ? (I.subs(id).length || stMembers(x, 'uml.Region').length ? 'Composite state' : 'State') : !x.type ? snKindName(x.type) : null; }, // no type (or ""): "Element", as named (audits 28, 29)
   rows: (model, view, id) => { const x = (stIndex(model).N.get(id) || {}).x;
     return x && x.type === 'uml.State' ? [...stActs(x).map(([k, t]) => `${k} / ${t}`), ...ST_ARR(x.members).filter(ST_OBJ).map(ST_MEMBER.print)] : null; },
   // member is not enumerable: Object.keys(edits) stays 4.6's four (tests/state.test.mjs), as notes/stage-5.md §12.1 (as built) says

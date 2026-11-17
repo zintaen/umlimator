@@ -40,7 +40,7 @@ const AC_LOOK = {
 const AC_NODES = Object.keys(AC_LOOK).filter(t => t !== 'uml.ActivityPartition' && t !== 'uml.Comment'); // what a flow may end on
 // another kind in words, as the use case view says one: "Data type", "Element" for no type (audit 28)
 // a type of no notation as written ("toString", audit 26)
-const acLook = x => (Object.hasOwn(AC_LOOK, x.type) ? AC_LOOK[x.type] : ['rounded', x.type == null || String(x.type).includes('.') ? snKindName(x.type) : String(x.type)]);
+const acLook = x => (Object.hasOwn(AC_LOOK, x.type) ? AC_LOOK[x.type] : ['rounded', !x.type || String(x.type).includes('.') ? snKindName(x.type) : String(x.type)]);
 
 /* ---- the activity's own shapes, each a look over SHAPE.rounded (flow.js): its text drawn in `body` (part of the node's
    box), its outline replaced by `path`, and `extra` drawn over it ---- */
@@ -357,7 +357,7 @@ const ACT_TYPE = registerDiagramType('uml.activity', {
   boxes: (model, view) => actIndex(model, view).boxes,
   edits: { connect: actConnect, moveTo: actMoveTo, add: actAdd, remove: actRemove, rename: actRename },
   // the PDF's tables (§15): a node's kind, and its partition
-  word: (model, id) => { const x = AC_ARR(model && model.nodes).find(n => AC_OBJ(n) && n.id === id); return x && (Object.hasOwn(AC_LOOK, x.type) || x.type == null) ? acLook(x)[1] : null; }, // no type: "Element", as named (audit 28)
+  word: (model, id) => { const x = AC_ARR(model && model.nodes).find(n => AC_OBJ(n) && n.id === id); return x && (Object.hasOwn(AC_LOOK, x.type) || !x.type) ? acLook(x)[1] : null; }, // no type (or ""): "Element", as named (audits 28, 29)
   rows: (model, view, id) => { const I = actIndex(model, view), l = I.N.has(id) ? I.laneOf(id) : null; return l != null ? [`in ${acName(I.N.get(l))}`] : null; },
 });
 

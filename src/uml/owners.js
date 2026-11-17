@@ -116,7 +116,9 @@ function ownerProblems(model, view, lines) {
   const out = [], say = (rule, path, ids, msg) => out.push({ level: 'warning', rule, path, ids, message: `${rule}: ${msg}` });
   const all = new Map(), put = (x, kind) => { if (OWN_OBJ(x) && typeof x.id === 'string' && !all.has(x.id)) { all.set(x.id, { x, kind }); OWN_ARR(x.members).forEach(m => put(m, 'member')); } };
   OWN_ARR(model.nodes).forEach(n => put(n, 'node')); const q = id => JSON.stringify(ownName((all.get(id) || { x: { id } }).x));
-  OWN_ARR(model.nodes).forEach((n, i) => { if (!OWN_OBJ(n) || !OWNED.includes(n.type) || n.parent == null || !all.has(n.parent)) return;
+  // and a node with no type the view shows, which it draws as a class or an instance (audit 29)
+  const inView = new Set(OWN_OBJ(view) ? OWN_ARR(view.nodeIds) : []);
+  OWN_ARR(model.nodes).forEach((n, i) => { if (!OWN_OBJ(n) || !(OWNED.includes(n.type) || !n.type && inView.has(n.id)) || n.parent == null || !all.has(n.parent)) return;
     const p = all.get(n.parent).x; if (!OWN_BOXES.includes(p.type)) say('owner-kinds', `nodes[${i}].parent`, [n.id, p.id], `${q(n.id)} is owned by ${q(p.id)}, a ${String(p.type).split('.').pop()}, not a package`); });
   if (!view) return out;
   const vi = OWN_ARR(model.views).indexOf(view), pic = ownersOn(model, view);

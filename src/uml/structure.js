@@ -215,7 +215,7 @@ function structProblems(model, view) {
   SN_ARR(model && model.nodes).forEach((n, i) => { if (!SN_OBJ(n) || !seen(n.id)) return;
     if (n.type === 'uml.Port') say('error', 'port-owner', `nodes[${i}]`, [n.id], `${nm(n)} is a node; a port is a member of a component or a class`);
     // the component view draws an element of no type as a component, holding its ports (component.js cpGeo, audit 28)
-    const holds = n.type === 'uml.Component' || n.type === 'uml.Class' || n.type == null && view && view.diagram === 'uml.component';
+    const holds = n.type === 'uml.Component' || n.type === 'uml.Class' || !n.type && view && view.diagram === 'uml.component';
     SN_ARR(n.members).forEach((m, j) => { if (SN_OBJ(m) && m.type === 'uml.Port' && !holds)
       say('error', 'port-owner', `nodes[${i}].members[${j}]`, [m.id, n.id], `${nm(m)} is a member of ${nm(n)}; a port is a member of a component or a class`); }); });
   viewLines(model, view).forEach(([e, path]) => { if (!SN_OBJ(e) || e.type !== 'uml.Manifestation' || !(seen(e.from) || seen(e.to))) return;
