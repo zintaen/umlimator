@@ -336,21 +336,24 @@ test('save and reopen (DoD 6): a 30-step communication session undoes and redoes
 });
 
 test('performance (§10, risks.md P1): the stress view lays out in under 1 s, and a message added, renamed or reordered is laid out again and drawn (SVG markup) in under 100 ms (timed)', () => {
-  // best of three, in this process's CPU time: CI runs the timed tests one file at a time in their own step, but on a busy
-  // machine the wall clock counts the time other processes hold the CPU. Both are printed
+  // best of five after one warm-up run that is not counted, in this process's CPU time: CI runs the timed tests one file at a
+  // time in their own step, but on a busy machine the wall clock counts the time other processes hold the CPU. Both are
+  // printed. The process's CPU time also counts V8's own threads (compiling, collecting), which a shared runner slows: of
+  // three runs the first two were cold and one busy third failed the budget though the layout's work had not changed
+  // (Linux, 18 Nov 2026: about 30 ms warm before and after audit 27; the budget is the maintainer's and stays)
   const V = STRESS.views.find(v => v.id === 'all'), edits = {
     add: commConnect(STRESS, V, 'gateway', 'auth', { after: 'a100' }, { type: 'uml.Message', props: { sort: 'call' } }),
     rename: [{ op: 'set', id: 'a5', path: 'label', value: 'renamed(with, a, longer, label)' }],
     reorder: commMoveTo(STRESS, V, 'a40', { by: [0, -1] }) };
   const timed = f => { const c = process.cpuUsage(), t = performance.now(), out = f(), u = process.cpuUsage(c); return [out, (u.user + u.system) / 1000, performance.now() - t]; };
   const runs = [];
-  for (let i = 0; i < 3; i++) { // the first run is cold (the JIT warms up on it)
+  for (let i = 0; i < 6; i++) { // the first run is cold (the JIT warms up on it) and is dropped below
     const memos = {}, r = {};
     [, r.full, r.fullWall] = timed(() => mapContext(STRESS, { memos }).buildGeo('all'));
     for (const [k, c] of Object.entries(edits)) { const m = apply(STRESS, c), was = memos.all.runs; let out;
       [out, r[k], r[k + 'Wall']] = timed(() => mapContext(m, { memos }).buildView('all').markup);
       assert.equal(memos.all.runs, was + 1, `${k} lays the view out again`); assert.match(out, /^<svg /); }
-    runs.push(r);
+    if (i) runs.push(r);
   }
   const best = k => Math.min(...runs.map(r => r[k])), ms = k => runs.map(r => Math.round(r[k])).join(', ');
   console.log(`# 20 lifelines, 30 connectors, 200 messages, CPU (wall) ms: full layout ${ms('full')} (${ms('fullWall')}); a message added ${ms('add')} (${ms('addWall')}), renamed ${ms('rename')} (${ms('renameWall')}), reordered ${ms('reorder')} (${ms('reorderWall')})`);
