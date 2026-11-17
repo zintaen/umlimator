@@ -128,7 +128,8 @@ function SYS_LINES(model, view) {
 /* ---- what the composite type's hooks return on the projection, mapped back (§8.1): an element they add takes its SysML type,
    a name loses «proxy» or «full» (no command writes them into the model). A list, { commands, say }, { pick, then }, { error } ---- */
 const SYS_PRIM = ['Real', 'Integer', 'Boolean', 'String'];
-const SYS_UNKIND = v => (typeof v === 'string' ? v.replace(/^«(proxy|full)» /, '') : v);
+// the keyword with any spacing round it, as F2 reads it (SYS_IB_RENAME), never stored in the name (audit 27); alone it stays
+const SYS_UNKIND = v => (typeof v === 'string' ? v.replace(/^\s*«(proxy|full)»\s*(?=\S)/, '') : v);
 function SYS_BACK(r, model, view) {
   if (Array.isArray(r)) return r.map(c => SYS_BACK_ONE(c, model, view));
   if (!SYS_OBJ(r)) return r;

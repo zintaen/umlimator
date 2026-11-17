@@ -136,6 +136,8 @@ function leaveIssues(geo, where, refs) {
   if (!geo.tr) geo.edges.forEach(e => { if (!e.lbl && (e.label || e.step != null && !e.fixed)) say(`${where}: ${e.label ? `label "${e.label}"` : `step ${e.step}`} has no room on edge ${name(e)}: not drawn`, e); });
   // a numbered line's label with no room on it: only its step shows, its words in the line's title and the details only; on a
   // map or a typed view (a C4 dynamic view's step, its lbl.step null there: audit 23)
+  // a line the view shows that its type leaves out of the picture (geo.notDrawn: BPMN's, audit 27)
+  (geo.notDrawn || []).forEach(x => say(`${where}: ${x.what}: not drawn`, x));
   if (!geo.tr) geo.edges.forEach(e => { if (e.label && e.lbl && e.lbl.short) say(`${where}: label "${e.label}" has no room on edge ${name(e)}: only its step ${e.lbl.step ?? e.step} shows`, e); });
   if (geo.map) geo.edges.forEach(e => { const L = e.lbl; if (!L || (!e.label && L.step == null) || !e.pts) return; // a label, or a step's mark, must leave some of its own line visible
     const c = [L.x + L.w / 2, L.y + L.h / 2], P = e.pts; let s = 0, at = null, half = 0, tot = 0;

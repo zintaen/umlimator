@@ -126,14 +126,22 @@ const DEFAULTS = { 'bpmn.Task': { taskType: 'none' }, 'bpmn.StartEvent': { defin
 const filled = m => ({ ...m, nodes: m.nodes.map(n => (DEFAULTS[n.type] ? { ...n, props: { ...DEFAULTS[n.type], ...n.props } } : n)) });
 
 test('read(write(model)) equals the model, its defaults filled in, for 500 generated models in the subset', needs, async () => {
-  let left = 0;
+  let left = 0, saidUndrawn = 0;
   for (let seed = 1; seed <= 500; seed++) {
     const m = generated(seed), [w, back] = await roundTrip(m);
     left += m.nodes.filter(n => DEFAULTS[n.type] && Object.keys(DEFAULTS[n.type]).some(k => !(n.props && k in n.props))).length;
     assert.deepEqual(w.report, [], `seed ${seed}`);
-    assert.deepEqual(back.report.filter(x => x !== R5 && x.message !== R5.message), [], `seed ${seed}\n${w.xml}`);
+    // a line the diagram keeps and does not draw (a message flow between two pools, a line from a boundary event to its own
+    // activity) is said, and nothing else (audit 27)
+    const by = new Map(m.nodes.map(n => [n.id, n])), on = x => (x.type === 'bpmn.BoundaryEvent' && x.props && x.props.attachedTo) || null;
+    const undrawn = m.edges.filter(e => { const a = by.get(e.from), b = by.get(e.to); return (e.type === 'bpmn.MessageFlow' && a.type === 'bpmn.Participant' && b.type === 'bpmn.Participant')
+      || ((on(a) || on(b)) && (on(a) || a.id) === (on(b) || b.id)); }).map(e => e.id);
+    assert.deepEqual(back.report.filter(x => x !== R5 && x.message !== R5.message), back.report.filter(x => undrawn.includes(x.line) && x.status === 'weakened' && /: kept, not drawn/.test(x.message)), `seed ${seed}\n${w.xml}`);
+    assert.deepEqual(back.report.filter(x => x.status === 'weakened').map(x => x.line).sort(), undrawn.sort(), `seed ${seed}`);
+    saidUndrawn += undrawn.length;
     assert.deepEqual(canon(back.model), canon(filled(m)), `seed ${seed}\n${w.xml}`);
   }
+  assert.ok(saidUndrawn > 20, saidUndrawn); // the generated models hold such lines often enough to test the report
   assert.ok(left > 100, left); // the generated models leave defaults out often enough to test the filling
 });
 
@@ -468,4 +476,47 @@ test('a blank id is said: the reader reads a blank umlimator:id as none (audit 1
     edges: [{ id: 'f', type: 'bpmn.SequenceFlow', from: ' ', to: 'e' }], views: [{ id: 'v', diagram: 'bpmn', nodeIds: [' ', 'e'] }] };
   const [w] = await roundTrip(m);
   assert.deepEqual(w.report.map(x => `${x.line}: ${x.message}`), [' : a blank id, which a reader reads as none: not written']);
+});
+
+// audit 27: a categoryValueRef that is a lone id (or any non-list) threw in the writer's placing loop, and the whole model
+// went unwritten; validate() says it is ignored, and the writer writes the model, leaves the groups out and says so
+test('audit 27: a categoryValueRef that is not a list is reported, the model written all the same', needs, async () => {
+  for (const ref of ['g', { 0: 'g' }, 7]) {
+    const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 's', type: 'bpmn.StartEvent', props: { definition: 'none' } }, { id: 't', type: 'bpmn.Task', label: 'Pack', props: { taskType: 'none', categoryValueRef: ref } },
+      { id: 'g', type: 'bpmn.Group', label: 'Grp' }], edges: [{ id: 'f', type: 'bpmn.SequenceFlow', from: 's', to: 't' }], views: [{ id: 'v', diagram: 'bpmn', parent: null, nodeIds: ['s', 't', 'g'] }] };
+    const [w, back] = await roundTrip(m);
+    assert.deepEqual(w.report, [{ line: 't', status: 'skipped', message: 'props.categoryValueRef, which is not a list of group ids: not written' }], JSON.stringify(ref));
+    const { categoryValueRef, ...rest } = m.nodes[1].props;
+    assert.deepEqual(canon(back.model), canon({ ...m, nodes: [m.nodes[0], { ...m.nodes[1], props: rest }, m.nodes[2]] }), JSON.stringify(ref));
+  }
+  const pool = { schemaVersion: 2, root: 'v', nodes: [{ id: 'p', type: 'bpmn.Participant', label: 'Shop', members: 'lane' }], edges: [], views: [{ id: 'v', diagram: 'bpmn', parent: null, nodeIds: ['p'] }] };
+  assert.notEqual((await write(pool, 'v', null, BpmnModdle())).xml, '', 'a pool\'s members that are no list: no lanes, written');
+});
+
+// audit 27: the writer wrote XML over the reader's 1 MiB limit and said nothing, so the file it wrote read back as nothing;
+// it writes unindented when that fits, else writes and reports it, as the Mermaid writers do
+test('audit 27: XML over the reader\'s limit is written unindented when that fits, else reported', needs, async () => {
+  const flat = k => ({ schemaVersion: 2, root: 'v', nodes: Array.from({ length: k }, (_, i) => ({ id: `t${i}`, type: 'bpmn.Task', label: `Task ${i}`, props: { taskType: 'none' } })),
+    edges: Array.from({ length: k - 1 }, (_, i) => ({ id: `f${i + 1}`, type: 'bpmn.SequenceFlow', from: `t${i}`, to: `t${i + 1}` })), views: [{ id: 'v', diagram: 'bpmn', parent: null, nodeIds: Array.from({ length: k }, (_, i) => `t${i}`) }] });
+  const [fits, back] = await roundTrip(flat(2500));
+  assert.deepEqual(fits.report, []); assert.ok(fits.xml.length <= 1 << 20 && !/\n  </.test(fits.xml), 'unindented, under the limit');
+  assert.equal(back.model.nodes.length, 2500, 'and read back');
+  const over = await write(flat(3200), 'v', null, BpmnModdle());
+  assert.ok(over.xml.length > 1 << 20);
+  assert.deepEqual(over.report, [{ line: '', status: 'skipped', message: `the XML is ${over.xml.length} characters, over the reader's limit of 1048576: a reader reads none of it` }]);
+});
+
+// audit 27: a message flow between two pools, and a line from a boundary event to its own activity, imported with no word:
+// the diagram keeps each and draws neither (§8.3); the reader says so (check() too: tests/bpmn.test.mjs)
+test('audit 27: the reader says a line the diagram keeps and does not draw', needs, async () => {
+  const pools = '<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d"><bpmn:collaboration id="c"><bpmn:participant id="a" name="Bank"/>'
+    + '<bpmn:participant id="b" name="Customer"/><bpmn:messageFlow id="m1" name="statement" sourceRef="a" targetRef="b"/></bpmn:collaboration></bpmn:definitions>';
+  assert.deepEqual((await read(pools, BpmnModdle())).report.filter(r => r.line), [{ line: 'm1', status: 'weakened', message: 'a message flow between two pools: kept, not drawn (it needs an activity or event at one end)' }]);
+  const loop = '<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d"><bpmn:process id="p"><bpmn:startEvent id="s"/><bpmn:task id="call"/>'
+    + '<bpmn:boundaryEvent id="retry" attachedToRef="call"><bpmn:timerEventDefinition/></bpmn:boundaryEvent><bpmn:endEvent id="e"/><bpmn:sequenceFlow id="f1" sourceRef="s" targetRef="call"/>'
+    + '<bpmn:sequenceFlow id="f2" sourceRef="call" targetRef="e"/><bpmn:sequenceFlow id="f3" sourceRef="retry" targetRef="call"/></bpmn:process></bpmn:definitions>';
+  assert.deepEqual((await read(loop, BpmnModdle())).report.filter(r => r.line), [{ line: 'f3', status: 'weakened', message: 'a line from a boundary event to its own activity: kept, not drawn' }]);
+  const one = pools.replace('<bpmn:participant id="b" name="Customer"/>', '<bpmn:participant id="b" name="Customer" processRef="pb"/>').replace('targetRef="b"', 'targetRef="t"')
+    .replace('</bpmn:collaboration>', '</bpmn:collaboration><bpmn:process id="pb"><bpmn:task id="t"/></bpmn:process>');
+  assert.deepEqual((await read(one, BpmnModdle())).report.filter(r => r.line), [], 'a message flow to a task is drawn: nothing said');
 });
