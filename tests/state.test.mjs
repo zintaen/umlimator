@@ -620,3 +620,16 @@ test('audit 26: laid out down, a composite state holds a two-way pair\'s fanned 
   // laid out right, as before (the room is the down view's alone)
   assert.deepEqual(on(SM, V.id), []);
 });
+
+// audit 27: laid out right, a self-loop and a two-way pair with sentence-length labels out of the same state: the pair's
+// other line and its label left the outgoing line no clean track, and with reroute off it climbed through the loop
+test('audit 27: a self-loop beside a two-way pair laid out right (an ordinary Mermaid LR state diagram) crosses nothing', async () => {
+  const { readMermaidState } = await import('../src/readers/mermaid-state.js');
+  const src = ['stateDiagram-v2', 'direction LR', '[*] --> A', 'A --> B : go there now', 'B --> A : come back here', 'A --> A : self loop label'];
+  for (const d of ['LR', 'TB']) {
+    const m = readMermaidState(src.join('\n').replace('direction LR', 'direction ' + d)).model, v = m.views[0].id;
+    assert.deepEqual(check(m, v), [], d);
+    const g = layout(m, v), loop = g.edges.find(e => e.from === e.to), ab = g.edges.find(e => e.from !== e.to && e.label === 'go there now');
+    assert.ok(loop && ab, d);
+  }
+});

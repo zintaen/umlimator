@@ -703,7 +703,11 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // rip-up and reroute: an edge that had to cross goes first next time; keep the best attempt (not when the view is laid
   // out again with room for lines: that layout's tries seldom gained anything, and they cost a third of its time; with room for
   // a label it tries, as the layout it may replace did; none with reroute: false)
-  for (let tries = 0; bad && dg.reroute !== false && (!last || room.lx) && tries < 4; tries++) {
+  // reroute: false still tries once when a line that had to cross runs across its own card's loop (audit 27: laid out right, a
+  // two-way pair's line out of a card with a loop climbed through the loop; routed first, it keeps clear of it)
+  const acrossLoop = () => { const L = edges.filter(e => e[OWN_ROUTE] === 'loop' && e.pts);
+    return L.length > 0 && order.some(e => e.how !== 'grid' && L.some(l => (l.s === e.s || l.s === e.t) && segsOf(e.pts || []).some(([p, q]) => segsOf(l.pts).some(([r, s]) => crosses(p, q, r, s))))); };
+  for (let tries = 0; bad && (dg.reroute !== false || !tries && acrossLoop()) && (!last || room.lx) && tries < 4; tries++) {
     const stuck = order.filter(e => e.how !== 'grid');
     const next = [...stuck, ...order.filter(e => e.how === 'grid')];
     const snap = order.map(e => [e, e.pts, e.lbl, e.how]), snapStats = stats, snapR = [routed.slice(), reserved.slice(), placed.slice()];
