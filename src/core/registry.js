@@ -42,10 +42,12 @@ function ownGuard(model, r) {
   const held = heldBy(model), hold = x => { if (R_OBJ(x) && typeof x.id === 'string') { held.set(x.id, x); R_ARR(x.members).forEach(hold); } }, out = [];
   for (const c of list) {
     const x = R_OBJ(c) && c.op === 'add' && R_OBJ(c.element) ? c.element : null;
-    if (x && c.in === 'view') hold(x);
+    // where add { in: 'view' } puts it (apply.js): a view's nodes, not its lines nor its fragments (a sequence's)
+    const node = () => { const v = R_ARR(model.views).find(w => R_OBJ(w) && w.id === c.view), T = v ? diagramOf(v) || {} : {}, pal = R_ARR(T.elements);
+      return !!v && x.from == null && x.to == null && !R_ARR(T.items).includes(x.type) && (!pal.length || pal.some(t => R_OBJ(t) && t.type === x.type)); };
+    if (x && c.in === 'view') { if (node()) hold(x); }
     else if (x && c.owner == null && x.from == null && x.to == null && x.parent != null && held.has(x.parent)) {
-      const v = R_ARR(model.views).find(w => R_OBJ(w) && w.id === c.view), T = v ? diagramOf(v) || {} : {}, pal = R_ARR(T.elements);
-      if (v && !R_ARR(T.items).includes(x.type) && (!pal.length || pal.some(t => R_OBJ(t) && t.type === x.type))) { out.push({ ...c, in: 'view' }); hold(x); continue; }
+      if (node()) { out.push({ ...c, in: 'view' }); hold(x); continue; }
       const { parent, ...y } = x; out.push({ ...c, element: y }); continue; }
     else if (R_OBJ(c) && c.op === 'reparent' && c.parent != null && held.has(c.parent) && !held.has(c.id)) {
       const p = held.get(c.parent); return { error: `${String(p.label ?? p.id)} lives in this view only: an element of the model cannot go under it` }; }
