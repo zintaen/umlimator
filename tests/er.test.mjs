@@ -434,3 +434,29 @@ test('audit 25: a node of another kind in an er view is drawn and named as itsel
   assert.match(describe(m, 'er'), /^Class Customer\.$/m);
   assert.ok(!/no key/.test(svgOf(g)), 'no table words for it');
 });
+
+test('audit 27: a node with no type, drawn and named as a table, is a table to the rules, L, the Members row, the PDF and the key', () => {
+  const m = { schemaVersion: 2, nodes: [
+    { id: 'customer', label: 'customer', members: [{ id: 'customer.id', type: 'er.Column', label: 'id', props: { dataType: 'int', primaryKey: true } }] },
+    { id: 'orders', type: 'er.Entity', label: 'orders', members: [{ id: 'orders.id', type: 'er.Column', label: 'id', props: { dataType: 'int', primaryKey: true } }, { id: 'orders.cid', type: 'er.Column', label: 'customer_id', props: { dataType: 'int', foreignKey: true, references: 'customer.id' } }] },
+    { id: 'gone-key', label: 'gone key' }, { id: 'cls', type: 'uml.Class', label: 'Cls' }, { id: 'elsewhere', label: 'elsewhere' }],
+  edges: [{ id: 'places', type: 'er.Relationship', from: 'customer', to: 'orders', label: 'places', props: { identifying: false, ends: { from: { multiplicity: '1' }, to: { multiplicity: '0..*' } } } },
+    { id: 'dep', type: 'uml.Dependency', from: 'orders', to: 'customer' }],
+  views: [{ id: 'v', diagram: 'er', nodeIds: ['customer', 'orders', 'gone-key'] }, { id: 'c', diagram: 'uml.class', nodeIds: ['elsewhere'] }] };
+  const g = layout(m, 'v');
+  assert.equal(g.byId.customer.shape, 'entity');
+  // its column is a column of a table, its relationship joins two tables; one shown with no key is warned as any table is; one
+  // only another view shows is not this type's
+  assert.deepEqual(validate(m).filter(p => /^(fk-|relationship-|pk-)/.test(p.rule ?? '')).map(p => p.message), ['pk-exists: "gone key" has no primary key column']);
+  assert.equal(T.edits.connect(m, m.views[0], 'customer', 'orders', null, { type: 'er.Relationship' }), null, 'L joins it');
+  assert.deepEqual(T.edits.connect(m, m.views[0], 'cls', 'orders', null, { type: 'er.Relationship' }), { error: 'A relationship joins two tables' }, 'another kind is still refused');
+  assert.deepEqual(T.edits.member(m, m.views[0], 'customer', null, 'email text'), [{ op: 'add', element: { id: 'customer.email', type: 'er.Column', label: 'email', props: { dataType: 'text' } }, owner: 'customer' }]);
+  assert.equal(T.member.holds(m.nodes[0]), true);
+  const ctx = mapContext(m), [els] = tablesOf(ctx, ctx.V.v, { nodes: g.nodes, edges: g.edges });
+  const row = els.rows.map(r => [...r.matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1].replace(/<[^>]+>/g, ''))).find(c => c[0] === 'customer');
+  assert.deepEqual(row, ['customer', 'Table', 'id int PK'], 'the PDF calls it a table, with its columns');
+  // the key names the plain look of a listed line of another kind (round 26's), never leaving it to pass for Identifying
+  const m2 = withView(m, { edges: ['places', 'dep'] }), key = layout(m2, 'v').legend.map(s => s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
+  assert.ok(key.includes('Line a kind of line this view does not draw as its own'), key.join(' | '));
+  assert.ok(!layout(m, 'v').legend.some(s => />Line</.test(s)), 'none when no such line is drawn');
+});

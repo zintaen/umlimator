@@ -377,12 +377,14 @@ function bzDescribe(model, viewId) {
     [...P.be].filter(([, h]) => h === id).forEach(([b]) => q.push(b)); from(id).filter(e => e.type === BZ_SEQ).forEach(e => q.push(e.to)); } };
   drawn.filter(id => I.ty(id) === 'bpmn.StartEvent').forEach(visit); drawn.forEach(visit);
   const doc = x => (BZ_HAS(bzProps(x).documentation) ? ` (${String(bzProps(x).documentation).trim()})` : '');
-  const out = [`${v.title || v.id}: a BPMN diagram of ${bzPlural(drawn.filter(id => BZ_FLOW.includes(I.ty(id))).length, 'flow node')}, ${bzPlural(flows, 'flow')} and ${bzPlural(P.pools.length, 'pool')}.`];
+  // a listed line of another kind, drawn (P.lines) but none of BPMN's: counted and said by its accessible name (audit 27)
+  const other = [...new Set(P.lines.map(l => l.e))].filter(e => !BZ_LINES.includes(e.type));
+  const out = [`${v.title || v.id}: a BPMN diagram of ${bzPlural(drawn.filter(id => BZ_FLOW.includes(I.ty(id))).length, 'flow node')}, ${bzPlural(flows, 'flow')}${other.length ? ', ' : ' and '}${bzPlural(P.pools.length, 'pool')}${other.length ? ` and ${bzPlural(other.length, 'other line')}` : ''}.`];
   const word = { [BZ_SEQ]: 'then', [BZ_MSG]: 'message to', [BZ_DATA_ASSOC]: 'data to', [BZ_ASSOC]: 'about' };
   // each element with what leaves it, a pool's message flows too; a line the picture leaves out said as not drawn
   const say = id => { const said = from(id).map(e => `${word[e.type]} ${I.called(e.to)}${BZ_HAS(e.label) ? ` (${String(e.label).trim()})` : ''}${doc(e)}${drew.has(e.id) ? '' : ', not drawn'}`);
     out.push(bzNodeName(P, id) + doc(I.el(id)) + (said.length ? '; ' + said.join('; ') : '') + '.'); };
-  laneOrder(P.lanes).forEach(l => say(l.id)); walk.forEach(say);
+  laneOrder(P.lanes).forEach(l => say(l.id)); walk.forEach(say); other.forEach(e => out.push(bzLineName(I, e) + '.'));
   P.groups.forEach(gid => { const ms = P.ids.filter(i => bzRefs(I.el(i)).includes(gid)).map(I.called); out.push(`Group ${bzLabel(I.el(gid))}${doc(I.el(gid))}${ms.length ? ': ' + ms.join(', ') : ', round nothing shown: not drawn'}.`); });
   return out.join('\n');
 }
