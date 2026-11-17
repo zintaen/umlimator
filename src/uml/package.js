@@ -42,7 +42,7 @@ const PACKAGE_TYPE = registerDiagramType('uml.package', {
   owners: ownerChoices,
   member: { holds: () => false }, // a classifier is drawn by its name here; its members are edited in a class view
   rows: () => [], // so the PDF lists no members
-  validate: (model, view) => [...classProblems(model), ...packageProblems(model), ...ownerProblems(model, view, drawnLines(model, view, PACKAGE_LINES).lines)],
+  validate: (model, view) => [...classProblems(model, view), ...packageProblems(model), ...ownerProblems(model, view, drawnLines(model, view, PACKAGE_LINES).lines)],
   rules: { ...RULES, ...OWNER_RULES, ...PACKAGE_RULES },
   describe: describeAs(PACKAGE_LOOK),
   edits: { rename: lineRename(lineLabel) },

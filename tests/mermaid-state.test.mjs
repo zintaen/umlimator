@@ -286,7 +286,7 @@ test('malformed input is reported, never thrown', () => {
 test('the writer names in comments what it cannot write, and the reader passes over them', () => {
   // a title that is not text is written as text; a region's empty label is reported
   const v = { id: 'v', diagram: 'uml.state-machine', nodeIds: [] };
-  assert.match(write({ schemaVersion: 2, title: 12, nodes: [], edges: [], views: [v] }), /^---\ntitle: 12\n---\n/);
+  assert.match(write({ schemaVersion: 2, title: 12, nodes: [], edges: [], views: [v] }), /^---\ntitle: "12"\n---\n/);
   const r2 = write({ schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.State', label: 'A', members: [{ id: 'A.r1', type: 'uml.Region', label: '' }, { id: 'A.r2', type: 'uml.Region' }] }], edges: [], views: [{ ...v, nodeIds: ['A'] }] });
   assert.match(r2, /%% not written: A\.r1: an empty label\n/);
   const S = (id, more) => ({ id, type: 'uml.State', label: id, ...more });

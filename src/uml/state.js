@@ -7,7 +7,7 @@ import { brLines } from '../typed/draw.js';
 import '../typed/edit.js'; // TYPED.edit, which asks edits.member for the activity rows below
 import './class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from './flow.js'; // SHAPE.initial, final, diamond and bar too
-import { ownersOn, readingOrder, withOwnNodes } from './owners.js';
+import { ownersOn, readingOrder } from './owners.js';
 import { parseTransition, printTransition, transitionText } from './transition.js';
 
 /* ---------- the state machine diagram, uml.state-machine (work package 4.6, notes/stage-4.md §6, §10) ----------
@@ -449,7 +449,7 @@ const stMemberRow = (model, view, owner, id, text) => stActivityRow(model, owner
 /* ---- the type ---- */
 const ST_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
 const ST_PARTS = [['trigger', 'Trigger'], ['guard', 'Guard'], ['effect', 'Effect']].map(([key, label]) => ({ key, label, kind: 'text' }));
-const ST_TYPE = registerDiagramType('uml.state-machine', withOwnNodes({
+const ST_TYPE = registerDiagramType('uml.state-machine', {
   title: 'state machine diagram',
   elements: [{ type: 'uml.State', label: 'State' },
     ...[['initial', 'Initial'], ['finalState', 'Final state'], ['choice', 'Choice'], ['junction', 'Junction'], ['fork', 'Fork'], ['join', 'Join'], ['shallowHistory', 'Shallow history'], ['deepHistory', 'Deep history'], ['terminate', 'Terminate']]
@@ -481,6 +481,6 @@ const ST_TYPE = registerDiagramType('uml.state-machine', withOwnNodes({
     return x && x.type === 'uml.State' ? [...stActs(x).map(([k, t]) => `${k} / ${t}`), ...ST_ARR(x.members).filter(ST_OBJ).map(ST_MEMBER.print)] : null; },
   // member is not enumerable: Object.keys(edits) stays 4.6's four (tests/state.test.mjs), as notes/stage-5.md §12.1 (as built) says
   edits: Object.defineProperty({ add: stAdd, rename: stRename, moveTo: stMoveTo, remove: stRemove }, 'member', { value: stMemberRow }),
-}));
+});
 
 export { ST_TYPE, ST_RULES, stGeo, stProblems, stDescribe, stAdd, stRename, stMoveTo, stActivityRow, stOwners, stRemove, ST_MEMBER };

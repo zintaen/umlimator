@@ -151,33 +151,4 @@ function placeTabs(g) {
   return g;
 }
 
-/* A typed view's own nodes (view.nodes: what apply()'s add { in: 'view' } puts there, docs/editing.md "From 0.18.0") read as
-   the model's: ownNodes(model, view) is the model with them after its nodes, one whose id a model node takes being that node
-   (as mapContext reads them); at: their places in view.nodes, k: where they start in nodes. withOwnNodes(def) gives a type's
-   layout, boxes, validate, describe and edits (all but remove, which tells a view's own node from the model's) that model,
-   and says a problem at one of them at its own path, views[i].nodes[j] (audit 22: the use case, activity, state machine,
-   communication and overview types read model.nodes alone, so such a node was neither drawn, said nor checked) */
-function ownNodes(model, view) {
-  const own = OWN_ARR(OWN_OBJ(view) ? view.nodes : null), base = OWN_ARR(OWN_OBJ(model) ? model.nodes : null);
-  if (!own.length) return { model, at: [], k: base.length };
-  const ids = new Set(base.filter(OWN_OBJ).map(n => n.id)), at = [];
-  own.forEach((n, j) => { if (OWN_OBJ(n) && typeof n.id === 'string' && !ids.has(n.id)) { ids.add(n.id); at.push(j); } });
-  return { model: at.length ? { ...model, nodes: [...base, ...at.map(j => own[j])] } : model, at, k: base.length };
-}
-function withOwnNodes(def) {
-  const M = (model, view) => ownNodes(model, view).model, out = { ...def }, L = def.layout;
-  if (typeof L === 'function') out.layout = Object.assign(a => L({ ...a, model: M(a.model, a.view) }), L);
-  if (def.boxes) out.boxes = (model, view) => def.boxes(M(model, view), view);
-  if (def.validate) out.validate = (model, view) => { const o = ownNodes(model, view), ps = def.validate(o.model, view); if (!o.at.length) return ps;
-    const vi = OWN_ARR(model.views).indexOf(view);
-    return ps.map(p => { const r = /^nodes\[(\d+)\]/.exec(String(p.path ?? '')), i = r ? Number(r[1]) - o.k : -1;
-      return i >= 0 && i < o.at.length ? { ...p, path: `views[${vi}].nodes[${o.at[i]}]` + p.path.slice(r[0].length) } : p; }); };
-  if (def.describe) out.describe = (model, viewId) => def.describe(M(model, OWN_ARR(OWN_OBJ(model) ? model.views : null).find(v => OWN_OBJ(v) && v.id === viewId)), viewId);
-  if (def.edits) { const ed = {}; Object.getOwnPropertyNames(def.edits).forEach(k => { const d = Object.getOwnPropertyDescriptor(def.edits, k), f = d.value;
-      if (typeof f === 'function' && k !== 'remove') d.value = (model, view, ...rest) => f(M(model, view), view, ...rest);
-      Object.defineProperty(ed, k, d); });
-    out.edits = ed; }
-  return out;
-}
-
-export { boxHead, ownNodes, withOwnNodes, OWN_BOXES, OWNER_RULES, ownersOn, readingOrder, holdsLine, lineInside, ownerChoices, ownerProblems, placeTabs };
+export { boxHead, OWN_BOXES, OWNER_RULES, ownersOn, readingOrder, holdsLine, lineInside, ownerChoices, ownerProblems, placeTabs };

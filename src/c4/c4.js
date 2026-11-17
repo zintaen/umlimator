@@ -278,9 +278,13 @@ function c4Retype(model, ids) {
   return { pick: C4_STATIC.map(t => C4_WORD[t]), then: i => (C4_STATIC[i] === x.type ? [] : [{ op: 'set', id: x.id, path: 'type', value: C4_STATIC[i] }]) };
 }
 const c4Key = (model, view, ids, key) => (key === 'd' || key === 'D' ? c4Zoom(model, view, ids) : key === 't' || key === 'T' ? c4Retype(model, ids) : null);
-// add: a container added to a container view, or a component to a component view, is owned by the view's subject
+// add: a container added to a container view, or a component to a component view, is owned by the view's subject; one the
+// view's level does not show (a container on a context view) is refused, not added owned by nothing (audit 23)
+const C4_PLURAL = { 'c4.Person': 'people', 'c4.SoftwareSystem': 'software systems', 'c4.Container': 'containers', 'c4.Component': 'components' };
 function c4Add(model, view, entry, label) {
   const I = c4Index(model), s = I.at.get(view.subject), K = C4_KIND[view.diagram];
+  if (K && C4_STATIC.includes(entry.type) && !C4_SHOWS[K].includes(entry.type)) { const w = C4_SHOWS[K].map(t => C4_PLURAL[t]), lvl = C4_WORD[entry.type].toLowerCase();
+    return { error: `This view shows ${w.slice(0, -1).join(', ')} and ${w.at(-1)}: ${c4A(lvl)} is added on ${c4A(lvl)} view` }; }
   if (!s || !((K === 'container' && entry.type === 'c4.Container') || (K === 'component' && entry.type === 'c4.Component')) || s.type !== C4_OWNER[entry.type]) return null;
   const base = entry.type.split('.').pop().toLowerCase(), used = c4Used(model); let k = 1; while (used.has(base + k)) k++;
   return [{ op: 'add', element: { id: base + k, type: entry.type, ...(label ? { label } : {}), parent: s.id }, view: view.id }];

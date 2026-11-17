@@ -2,7 +2,7 @@ import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { csAdd, csConnect, csGeo, csMember, csMoveTo, csRemove, csRename } from '../uml/composite.js';
-import { SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS } from './sysml.js';
+import { SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS, SYS_LINES } from './sysml.js';
 import { bdProblems } from './blocks.js';
 
 /* ---------- SysML's parametric diagram, sysml.parametric (work package M3.5, notes/milestone-3.md §9, §13) ----------
@@ -27,7 +27,7 @@ function SYS_PAR_INDEX(model, view) {
   const at = new Map(), mem = new Map();
   SYS_PAR_ARR(model && model.nodes).forEach(n => { if (SYS_PAR_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
   at.forEach(n => SYS_PAR_ARR(n.members).forEach(m => { if (SYS_PAR_OBJ(m) && typeof m.id === 'string' && !at.has(m.id) && !mem.has(m.id)) mem.set(m.id, { m, owner: n }); }));
-  const E = new Map(); SYS_PAR_ARR(model && model.edges).forEach(e => { if (SYS_PAR_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); });
+  const E = new Map(); SYS_LINES(model, view).forEach(([e]) => { if (SYS_PAR_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); }); // the view's own lines too (audit 23)
   const S = view && at.has(view.subject) ? at.get(view.subject) : null;
   // the constraint block a constraint property's type names (exactly one, by label, else id, as the composite type finds a part's type)
   const block = m => { const t = SYS_PAR_PROPS(m).valueType, c = SYS_PAR_HAS(t) ? [...at.values()].filter(n => n.type === 'sysml.ConstraintBlock' && (n.label ?? n.id) === t) : []; return c.length === 1 ? c[0] : null; };
@@ -145,8 +145,8 @@ function SYS_PAR_PROBLEMS(model, view) {
   const ups = n => { const seen = new Set(), go = [n]; while (go.length) { const x = go.pop(); if (seen.has(x)) continue; seen.add(x);
     I.E.forEach(e => { if (e.type === 'uml.Generalization' && e.from === x.id && I.at.has(e.to)) go.push(I.at.get(e.to)); }); } return seen; };
   const bound = new Set();
-  SYS_PAR_ARR(model.edges).forEach((e, i) => { if (!SYS_PAR_OBJ(e) || e.type !== 'sysml.BindingConnector' || !['from', 'to'].some(k => ofS(SYS_PAR_PART(e, k) ?? e[k]))) return; // a binding is the view's whose end lies in the subject: through its property, else itself
-    const path = `edges[${i}]`; let ok = true;
+  SYS_LINES(model, view).forEach(([e, path]) => { if (!SYS_PAR_OBJ(e) || e.type !== 'sysml.BindingConnector' || !['from', 'to'].some(k => ofS(SYS_PAR_PART(e, k) ?? e[k]))) return; // a binding is the view's whose end lies in the subject: through its property, else itself; its own too (audit 23)
+    let ok = true;
     ['from', 'to'].forEach(k => { const x = e[k], p = SYS_PAR_PART(e, k);
       bound.add(`${p ?? ''}|${x}`);
       if (p != null) {
@@ -254,8 +254,8 @@ function SYS_PAR_ROWS(model, view, id) {
 }
 // "ecoRange to range of eco"
 function SYS_PAR_LINE_TEXT(model, view, id) {
-  const e = SYS_PAR_ARR(model && model.edges).find(x => SYS_PAR_OBJ(x) && x.id === id); if (!e || e.type !== 'sysml.BindingConnector') return null;
-  const I = SYS_PAR_INDEX(model, view), at = k => { const x = I.el(e[k]), p = SYS_PAR_PART(e, k); return `${x ? SYS_PAR_NAME(x) : String(e[k])}${p != null ? ' of ' + SYS_PAR_NAME(I.el(p) || { id: p }) : ''}`; };
+  const I = SYS_PAR_INDEX(model, view), e = I.E.get(id); if (!e || e.type !== 'sysml.BindingConnector') return null;
+  const at = k => { const x = I.el(e[k]), p = SYS_PAR_PART(e, k); return `${x ? SYS_PAR_NAME(x) : String(e[k])}${p != null ? ' of ' + SYS_PAR_NAME(I.el(p) || { id: p }) : ''}`; };
   return `${at('from')} to ${at('to')}`;
 }
 

@@ -390,3 +390,18 @@ test('audit 20: what F2 on a frame edits (its field\'s text) is the view\'s titl
   assert.deepEqual([F(p, 'eb').title, F(p, 'eb').edit], ['bdd [Package] E-bike [Blocks]', 'E-bike']);
   delete m.views[0].title; assert.equal(F(m, 'b->frame').edit, '', 'no title: an empty field');
 });
+
+test('audit 23: a view\'s own line (view.edges object) is checked as a model one, at its own path (general-kinds, part-agrees, the class rules), and gives its text', () => {
+  const at = (m, id) => validate(m).filter(p => (p.ids || []).includes(id)).map(p => [p.rule, p.path]);
+  const lines = [{ id: 'own-gen', type: 'uml.Generalization', from: 'battery', to: 'energy' },
+    { id: 'own-part', type: 'uml.Association', from: 'ebike', to: 'battery', props: { ends: { from: { aggregation: 'composite' }, to: { role: 'battery', multiplicity: '3' } } } },
+    { id: 'own-real', type: 'uml.InterfaceRealization', from: 'battery', to: 'motor' }];
+  for (const line of lines) {
+    const m = structuredClone(M17); m.edges.push(line); const own = structuredClone(M17); own.views[0].edges = [...M17.edges.map(e => e.id), structuredClone(line)];
+    const want = at(m, line.id), k = `edges[${M17.edges.length}]`;
+    assert.ok(want.length, `${line.id}: the model line is said`);
+    assert.ok(layout(own, V).edges.some(e => e.id === line.id), `${line.id}: drawn`);
+    assert.deepEqual(at(own, line.id), want.map(([r, p]) => [r, p.replace(k, `views[0].edges[${M17.edges.length}]`)]), `${line.id}: the own line alike, at its own path`);
+    assert.equal(T.text(own, own.views[0], line.id), T.text(m, m.views[0], line.id));
+  }
+});

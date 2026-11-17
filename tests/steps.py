@@ -307,7 +307,7 @@ git("init", "-q"); git("add", "."); git("commit", "-q", "-m", "a release"); git(
 pinned = git("rev-parse", "HEAD")
 slow = tmp / "slowgit"
 slow.mkdir()
-(slow / "git").write_text(f'#!/bin/sh\n# a clone at a network\'s pace\nfor a in "$@"; do [ "$a" = clone ] && sleep 1 && break; done\nexec "{real_git}" "$@"\n')
+(slow / "git").write_text(f'#!/bin/sh\n# a clone or fetch at a network\'s pace\nfor a in "$@"; do {{ [ "$a" = clone ] || [ "$a" = fetch ]; }} && sleep 1 && break; done\nexec "{real_git}" "$@"\n')
 (slow / "git").chmod(0o755)
 CLI = ROOT / "plugins" / "umlimator" / "skills" / "map-repo" / "scripts" / "cli.py"
 

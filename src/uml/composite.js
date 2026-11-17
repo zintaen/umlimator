@@ -292,7 +292,11 @@ function csProblems(model, view) {
   const structOf = (x, part) => { if (part != null) return S && owner(part) === S ? 'S' : P.partOf.has(part) ? P.partOf.get(part).id : null; // a role: its collaboration's (audit 11)
     if (inS(x)) return 'S';
     const o = owner(x); return o && o.type === 'uml.Collaboration' && (P.mem.get(x).m.type === 'uml.Property') ? o.id : null; };
-  CS_ARR(model.edges).forEach((e, i) => { if (!CS_OBJ(e)) return; const ends = CS_OBJ(CS_PROPS(e).ends) ? CS_PROPS(e).ends : {}, path = `edges[${i}]`;
+  // the model's lines, then the view's own (view.edges objects, drawn as the model's are) at their own paths; one a model line's
+  // id (or an earlier own line's) takes is that one (audit 23, as clOwnLines and stProblems)
+  const taken = new Set(CS_ARR(model.edges).filter(CS_OBJ).map(e => e.id)), lines = CS_ARR(model.edges).map((e, i) => [e, `edges[${i}]`]);
+  CS_ARR(view.edges).forEach((e, j) => { if (CS_OBJ(e) && typeof e.id === 'string' && !taken.has(e.id)) { taken.add(e.id); lines.push([e, `views[${vi}].edges[${j}]`]); } });
+  lines.forEach(([e, path]) => { if (!CS_OBJ(e)) return; const ends = CS_OBJ(CS_PROPS(e).ends) ? CS_PROPS(e).ends : {};
     if (e.type === 'uml.Connector') {
       const parts = ['from', 'to'].map(k => (CS_OBJ(ends[k]) ? ends[k].part : null)), touches = ['from', 'to'].some((k, j) => structOf(e[k], parts[j]) || P.collabs.some(c => owner(e[k]) === c.x) || (parts[j] != null && owner(parts[j]) === S));
       // a connector the view lists between ports of types, no part named: in no structure of the view, not drawn (audit 6)

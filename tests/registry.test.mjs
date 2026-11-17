@@ -98,7 +98,8 @@ test('a type\'s boxes and owners (2.1, notes/stage-2.md §4.2, §8): kept on its
   const { layout: srcLayout } = await import('../src/map/api.js');
   const asked = [], boxes = (m, v) => { asked.push(v.id); return [{ id: 'p', label: 'P', nodeIds: ['a'] }]; }, owners = () => [];
   const T = registerDiagramType('test.boxed', { boxes, owners, layout: ({ view, pos }) => ({ nodes: view.nodeIds.filter(i => i !== 'p').map(id => ({ id, col: pos[id][0], row: pos[id][1] })), edges: [], families: [] }) });
-  assert.equal(T.boxes, boxes); assert.equal(T.owners, owners);
+  // wrapped (audit 23): a view's own nodes read as the model's; the hooks answer as given
+  assert.equal(typeof T.boxes, 'function'); assert.deepEqual(T.owners(), []);
   const m = { nodes: [{ id: 'p' }, { id: 'a', parent: 'p' }], views: [{ id: 'v', diagram: 'test.boxed', nodeIds: ['p', 'a'] }, { id: 'm', nodeIds: ['p', 'a'] }] };
   srcLayout(m, 'v'); srcLayout({ ...m, schemaVersion: 2 }, 'm');
   assert.deepEqual(asked, [], 'a version-1 model is a map, and a map view never asks');

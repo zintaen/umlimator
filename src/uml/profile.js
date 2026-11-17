@@ -178,7 +178,7 @@ const PR_TYPE = registerDiagramType('uml.profile', {
   member: { ...CLASS_TYPE.member, holds: n => n.type === 'uml.Stereotype' || n.type === 'uml.Enumeration',
     add: (text, owner) => { const r = CLASS_TYPE.member.add(text, owner);
       return owner && owner.type === 'uml.Stereotype' && r.type === 'uml.Operation' ? { error: `"${String(text ?? '').trim()}" is not a tag: a stereotype's row is a tag, name: Type` } : r; } },
-  validate: (model, view) => [...classProblems(model), ...prProblems(model), ...ownerProblems(model, view, drawnLines(model, view, PR_LINES).lines)],
+  validate: (model, view) => [...classProblems(model, view), ...prProblems(model), ...ownerProblems(model, view, drawnLines(model, view, PR_LINES).lines)],
   rules: { ...RULES, ...OWNER_RULES, ...PR_RULES, ...STY_RULES },
   describe: prDescribe,
   // the PDF's tables (§9): a profile's, a stereotype's and a metaclass's kind; each element's stereotypes and tags

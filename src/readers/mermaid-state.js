@@ -1,3 +1,4 @@
+import { unreadable } from '../core/model.js';
 import { parseTransition, printTransition, trScan } from '../uml/transition.js';
 /* ---------- Mermaid stateDiagram: a reader and a writer (notes/stage-4.md §13, S12, S22; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's state diagram page (docs/syntax/stateDiagram.md, read 13 Nov 2026) and its lexer, as
@@ -341,8 +342,12 @@ function readMermaidState(text) {
 }
 
 function writeMermaidState(model, viewId) {
+  // the model as validate() reads it: a value String() throws on (JSON's {"toString":1}) left out (audit 23)
+  model = unreadable(model).model;
   const m = model && typeof model === 'object' ? model : {}, arr = x => (Array.isArray(x) ? x : []), isObj = x => !!x && typeof x === 'object';
-  const flat = s => String(s).replace(/\r\n|\r|\n/g, '\\n'), has = x => x != null && x !== '', str = x => typeof x === 'string';
+  // text of any value: an object whose toString is no function (JSON's {"toString":1}) gives its tag, not a throw (audit 23)
+  const txt = s => { try { return String(s); } catch { return Object.prototype.toString.call(s); } };
+  const flat = s => txt(s).replace(/\r\n|\r|\n/g, '\\n'), has = x => x != null && x !== '', str = x => typeof x === 'string';
   const views = arr(m.views).filter(isObj);
   const view = viewId != null ? views.find(v => v.id === viewId) : views.find(v => v.diagram === 'uml.state-machine');
   if (viewId != null && !view) return `%% not written: view ${flat(viewId)}, which the model does not have\n`;
@@ -354,8 +359,11 @@ function writeMermaidState(model, viewId) {
   const enc = s => String(s).replace(/[#;:"<>\\\r]/g, ent).replace(/\n/g, '<br>').replace(/^\s|\s$/g, ent).replace(/(direction)(\s)/gi, (_, w, c) => w + ent(c));
   const okId = id => str(id) && id !== '' && id.trim() === id && !/[\r\n]/.test(id); // a hint keeps it
   const out = [], notWritten = [], skip = x => notWritten.push(`${flat(x.id)} (${flat(x.type)})`), lose = (id, what) => notWritten.push(`${flat(id)}: ${flat(what)}`);
-  const title = String(has(view.title) ? view.title : m.title ?? '');
-  if (has(title)) out.push('---', `title: ${/^[\p{L}\p{N}][\p{L}\p{N} _.,()-]*$/u.test(title) && !title.endsWith(' ') ? title : JSON.stringify(String(title))}`, '---');
+  // the title as text (a number or true too, audit 23), as it is only when YAML reads it as text: a letter first, and
+  // not one of YAML's null or boolean words; a title that is no text is not written
+  const word = x => ['string', 'number', 'boolean'].includes(typeof x) ? String(x) : '', title = word(view.title) || word(m.title);
+  const yamlText = t => /^\p{L}[\p{L}\p{N} _.,()-]*$/u.test(t) && !t.endsWith(' ') && !/^(null|true|false|yes|no|on|off|y|n)$/i.test(t) ? t : JSON.stringify(t);
+  if (title) out.push('---', `title: ${yamlText(title)}`, '---');
   if (view.id !== MT_VIEW) { if (/[\r\n]/.test(view.id)) lose(view.id, "the view's id, which has a line break"); else out.push(`%% id: ${view.id}`); }
   out.push('stateDiagram-v2', view.direction === 'down' ? '  direction TB' : '  direction LR');
 

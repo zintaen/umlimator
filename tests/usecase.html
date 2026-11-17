@@ -178,6 +178,20 @@ try {
   h.select({ type: 'edge', ids: ['card-is-pay'], view: 'shopping' }); key('Delete', { shiftKey: true });
   gives('Shift + Delete on a generalization: delete it', [{ op: 'delete', id: 'card-is-pay' }], m => !m.edges.some(e => e.id === 'card-is-pay'), m7);
   h.destroy();
+  // audit 23: a box this view alone holds (a subject in view.nodes, holding a use case of its own) takes no model use case:
+  // a drop into it emits nothing, and a model use case's Owner field does not offer it; the view's own use case is offered it
+  const mo = apply(m7, [{ op: 'add', in: 'view', view: 'shopping', element: { id: 'lab', type: 'uml.Subject', label: 'Lab' } },
+    { op: 'add', in: 'view', view: 'shopping', element: { id: 'idea', type: 'uml.UseCase', label: 'Try an idea', parent: 'lab' } }]);
+  h = mount(mo, { editable: true });
+  check('audit 23: the view\'s own subject is drawn as a box', !!pick('.family[data-family="lab"] .family-box'));
+  const n0 = ed.length, lb = pick('.family[data-family="lab"] .family-box').getBoundingClientRect(), tf = centre('.node[data-id="track"] .n-mask'), ta = [lb.right - 20, lb.bottom - 14];
+  ptr(pick('.node[data-id="track"]'), 'pointerdown', tf); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [tf[0] + (ta[0] - tf[0]) * i / 4, tf[1] + (ta[1] - tf[1]) * i / 4]); ptr(stage, 'pointerup', ta);
+  check('audit 23: a model use case dropped into a box the view alone holds: nothing emitted', ed.length === n0, ed.slice(n0));
+  click('.node[data-id="browse"] .c-name');
+  check('audit 23: a model use case\'s Owner field does not offer the view\'s own subject', ![...panel('[data-f="owner"]').options].some(o => o.value === 'lab'), [...panel('[data-f="owner"]').options].map(o => o.value));
+  click('.node[data-id="idea"] .c-name');
+  check('audit 23: the view\'s own use case\'s Owner field offers it', [...panel('[data-f="owner"]').options].some(o => o.value === 'lab'), [...panel('[data-f="owner"]').options].map(o => o.value));
+  h.destroy();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

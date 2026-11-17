@@ -1,4 +1,4 @@
-import { TYPED, registerDiagramType, idTable } from '../core/registry.js';
+import { TYPED, registerDiagramType, idTable, ownGuard } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { layoutTree } from '../layout/tree.js';
@@ -199,8 +199,9 @@ function mmMoveTo(model, view, id, at) {
   const V = mmView(model, view); if (!V || !MM_OBJ(at)) return null;
   const X = mmIndex(model, V); if (!X.shown.has(id)) return null;
   const g = mmGeo(model, V, at), T = g.byId[id]; if (!T) return null;
-  if (Array.isArray(at.by)) return mmKeyMove(X, V, g, T, at.by);
-  if (Array.isArray(at.pt)) return mmDrop(X, V, g, T, at.pt);
+  // a model topic never goes under one this view alone holds (registry.js ownGuard, audit 23): refused, said
+  if (Array.isArray(at.by)) return ownGuard(model, mmKeyMove(X, V, g, T, at.by));
+  if (Array.isArray(at.pt)) return ownGuard(model, mmDrop(X, V, g, T, at.pt));
   return null;
 }
 // the siblings T is drawn among, top to bottom: a first-level topic's on its side
@@ -249,8 +250,9 @@ function mmRemove(model, view, ids, fromModel) {
   const X = mmIndex(model, V), mine = [...new Set(MM_ARR(ids))]; if (!mine.length || mine.some(id => !X.topic(id))) return null;
   const top = mine.filter(id => !mine.some(o => o !== id && (fromModel ? mmUnder(X, o, id) : mmInside(X, o, id)))); // one under another goes with it
   const said = (k, verb) => `${verb} ${top.map(id => mmOne(X.N.get(id))).join(', ')}${k ? ` and ${top.length === 1 ? 'its' : 'their'} ${mmPlural(k, 'subtopic')}` : ''}`;
-  if (fromModel) { const all = mmAllKids(X), gone = new Set();
-    top.forEach(r => { for (const s = [r]; s.length;) { const k = s.pop(); if (gone.has(k)) continue; gone.add(k); MM_ARR(all.get(k)).forEach(c => s.push(c)); } });
+  if (fromModel) { const all = mmAllKids(X), gone = new Set(), own = new Set(MM_ARR(V.nodes).filter(MM_OBJ).map(x => x.id));
+    // a model topic under one this view alone holds is not taken with it: apply() lifts it (audit 23)
+    top.forEach(r => { for (const s = [r]; s.length;) { const k = s.pop(); if (gone.has(k)) continue; gone.add(k); MM_ARR(all.get(k)).forEach(c => (!own.has(k) || own.has(c)) && s.push(c)); } });
     return { commands: [...mmPinsAt(model, X, V, null, gone), ...top.map(id => ({ op: 'delete', id }))], say: said(gone.size - top.length, 'Deleted') }; }
   const hide = []; top.filter(id => X.shown.has(id)).forEach(r => { for (const s = [r]; s.length;) { const k = s.pop(); hide.push(k); s.push(...X.kids.get(k)); } });
   if (!hide.length) return [];

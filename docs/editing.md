@@ -511,7 +511,7 @@ gestures (1.7), with each type's hooks:
 | Information flow (`uml.information-flow`) | a flow | the handle or a drag between two classifiers or actors | `L`, the other end, Enter | a picker of what to convey (the model's items and classifiers), then `add` with `props.conveyed` |
 | | what a flow conveys, its name | double-click once selected | `F2`: `[name:] Order, Card details` («flow» typed or not) | `set props.conveyed` and `set label`, each only when it changed; a name no element has is refused on the hint line |
 | | delete an element | Delete from model | `Shift + Delete` | `delete`: dropped from every `conveyed`; a flow left conveying nothing is deleted with it, said |
-| C4 (six views) | an element at the view's level | the palette | `N` | `add`; a container on a container view (or a dynamic view of a system) has the subject as `parent`, a component likewise |
+| C4 (six views) | an element at the view's level | the palette | `N` | `add`; a container on a container view (or a dynamic view of a system) has the subject as `parent`, a component likewise; one the view's level does not show (a container on a context view) is refused on the hint line |
 | | a level | | `D` on a software system or a container | `addView` of its container or component view, `set` of its `opensView` |
 | | an element's type, an instance's container | | `T`: a picker | `set type` (`c4-owner` and `c4-level` say what no longer fits); `set props.container` |
 | | description, technology, external, shape | the properties panel | | `set props.<field>` |

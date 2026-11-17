@@ -320,10 +320,14 @@ const RULES = {
   'member-kinds': 'literals belong to enumerations; packages, profiles, metaclass references and comments have no members',
   'comment-link': 'a comment link runs from a comment',
 };
-function classProblems(model) {
+function classProblems(model, view) {
   const out = [], at = classIndex(UML_OBJ(model) ? model : {}), q = id => JSON.stringify(nameOfEl((at.get(id) || { x: { id } }).x));
   const say = (rule, path, ids, msg, level = 'error') => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` }); // a line with no end names what it has
   const els = [...at.values()], nodes = els.filter(r => r.kind === 'node' && String(r.x.type || '').startsWith('uml.')), lines = els.filter(r => r.kind === 'edge' && String(r.x.type || '').startsWith('uml.'));
+  // and the view's own lines (view.edges objects), which drawnLines draws, at their own paths; one a model element's id (or an
+  // earlier own line's) takes is that one. That view's alone: validate() asks once a view (audit 23, as ucProblems since audit 20)
+  const vi = UML_OBJ(view) ? UML_ARR(model && model.views).indexOf(view) : -1, taken = new Set(at.keys());
+  if (vi >= 0) UML_ARR(view.edges).forEach((e, j) => { if (UML_OBJ(e) && typeof e.id === 'string' && !taken.has(e.id) && String(e.type || '').startsWith('uml.')) { taken.add(e.id); lines.push({ x: e, kind: 'edge', owner: null, path: `views[${vi}].edges[${j}]` }); } });
   const typeOfId = id => (at.get(id) || { x: {} }).x.type, isCls = id => CLASSIFIERS.includes(typeOfId(id));
   nodes.forEach(({ x, path }) => {
     const ms = UML_ARR(x.members).filter(UML_OBJ), seen = new Map();
@@ -405,7 +409,7 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   boxes: (model, view) => ownersOn(model, view).boxes,
   owners: ownerChoices,
   member: { print: printMember, edit: memberEdit, add: memberAdd, holds: n => compartmentsOf(n).length > 0 }, // holds: the panel offers members (not on a comment or a package)
-  validate: (model, view) => [...classProblems(model), ...ownerProblems(model, view, drawnLines(model, view, CLASS_LINES).lines)],
+  validate: (model, view) => [...classProblems(model, view), ...ownerProblems(model, view, drawnLines(model, view, CLASS_LINES).lines)],
   rules: { ...RULES, ...OWNER_RULES },
   describe: classDescribe,
   edits: { rename: lineRename(lineLabel) },

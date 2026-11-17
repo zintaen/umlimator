@@ -35,7 +35,7 @@ VIEW_WORK = 500000  # a DSL's views: elements and relationships walked in all, e
 FLOWS = 100000  # a flowchart's links at most: a & b --> c & d is a product (the module's MF_FLOWS)
 EXT = {".dbml": "dbml", ".dsl": "structurizr", ".puml": "plantuml", ".plantuml": "plantuml", ".pu": "plantuml", ".iuml": "plantuml",
        ".mmd": "mermaid", ".mermaid": "mermaid", ".bpmn": "bpmn"}  # bpmn: XML the module's adapter reads (umlimator.py import)
-MERMAID = re.compile(r"(flowchart|graph|C4Context|C4Container|C4Component|classDiagram|sequenceDiagram|stateDiagram|erDiagram|requirementDiagram|mindmap)\b")
+MERMAID = re.compile(r"(flowchart(?:-elk)?|graph|C4Context|C4Container|C4Component|classDiagram|sequenceDiagram|stateDiagram|erDiagram|requirementDiagram|mindmap)\b")
 TYPED = ("classDiagram", "sequenceDiagram", "stateDiagram", "erDiagram", "requirementDiagram", "mindmap")  # the diagrams the module's readers read, in Node (src/readers/)
 
 # ponytail: a keyword guess over names, technologies, tags and images, the first match winning; a source's own type
@@ -942,15 +942,15 @@ def kubernetes(d, name):
 
     def drawn_as(ns, ref):
         """Where an owner reference leads, as (the workload in the file it leads to, as a Pod's ReplicaSet to its
-        Deployment, else None; the last owner of the chain that is in the file, None when the chain leaves the file):
-        walked with a set, so a long or circular chain of owners ends."""
-        path, seen, got, end = [], set(), None, None
+        Deployment, else None; the last owner of the chain that is in the file, None when the chain leaves the file;
+        the owner the chain leaves the file at, else None): walked with a set, so a long or circular chain of owners ends."""
+        path, seen, got, end, miss = [], set(), None, None, None
         while ref is not None and ref not in seen:  # no owner past `end`, or a circle back to it: the chain ends in the file
             if (ns, *ref) not in here:  # an owner that is not in the file
-                end = None
+                end, miss = None, ref
                 break
             if (ns, *ref) in led:
-                got, end = led[(ns, *ref)]
+                got, end, miss = led[(ns, *ref)]
                 break
             if ref[0] in ("Deployment", "StatefulSet", "DaemonSet"):
                 got = end = ref
@@ -958,8 +958,8 @@ def kubernetes(d, name):
             seen.add(ref)
             path.append((ns, *ref))
             end, ref = ref, here[(ns, *ref)]
-        led.update(dict.fromkeys(path, (got, end)))
-        return got, end
+        led.update(dict.fromkeys(path, (got, end, miss)))
+        return got, end, miss
 
     for i, o in enumerate(items):
         if not isinstance(o, dict):
@@ -969,10 +969,13 @@ def kubernetes(d, name):
         kind = kind if isinstance(kind, str) else None
         if kind in ("Pod", "ReplicaSet", "ControllerRevision") and md.get("ownerReferences"):
             ns, ref = str(md.get("namespace") or "default"), owner(md)
-            got, end = drawn_as(ns, ref)
+            got, end, miss = drawn_as(ns, ref)
             by = f"{ref[0]} {ref[1]}" if ref else "an owner reference that names no kind and name"
             if end and not got:  # every owner is in the file, and the last is a kind not imported (a Job's CronJob, audit 22)
                 m.say(at(i), f"{kind} {md.get('name', '')}: owned by {by}" + (f" ({end[0]} {end[1]})" if end != ref else "") + ", which is not imported")
+            elif not got and miss and miss[0] not in ("Deployment", "StatefulSet", "DaemonSet", "ReplicaSet", "ControllerRevision"):
+                # the owner that is not in the file is a kind not imported either (a Job's CronJob): exporting it draws nothing (audit 23)
+                m.say(at(i), f"{kind} {md.get('name', '')}: owned by {by} (" + (f"{miss[0]} {miss[1]}, " if miss != ref else "") + "not in the file), which is not imported")
             elif not got:  # its owner, or the owner's own, is not in the file
                 m.say(at(i), f"{kind} {md.get('name', '')}: owned by {by}, " + ("whose workload is not in the file" if ref and (ns, *ref) in here else "which is not in the file")
                       + ": not imported (export its workload too, a Deployment, StatefulSet or DaemonSet)")
@@ -992,8 +995,8 @@ def kubernetes(d, name):
         else:
             pod = obj(obj(spec.get("template")).get("spec"))
             images = [str(c.get("image") or "") for c in objs_in(pod.get("containers"))]
-            n = spec.get("replicas")
-            what = " ".join(x for x in [f"{n} replica{'s' * (n != 1)}." if n else "", f"Images: {', '.join(images)}." if images else ""] if x)
+            n = spec.get("replicas")  # a count, 0 too (scaled down: audit 23); one that is no whole number is not said
+            what = " ".join(x for x in [f"{n} replica{'s' * (n != 1)}." if isinstance(n, int) and not isinstance(n, bool) else "", f"Images: {', '.join(images)}." if images else ""] if x)
             m.card(cid, nm, guess([*images, nm], "database" if kind == "StatefulSet" else "backend"), f"{kind} · {images[0].rsplit('/', 1)[-1]}" if images else kind, what)
     svc, pods = {(ns, nm): cid for _, kind, ns, nm, _, cid in objs if kind == "Service"}, {}
     for _, k2, ns2, _, s2, wid in objs:  # each workload under each of its pods' labels, so a selector looks at the few it may pick

@@ -95,7 +95,7 @@ function bdLabels(model) {
   const by = new Map(); BD_ARR(model && model.nodes).forEach(n => { if (BD_OBJ(n) && (n.label ?? n.id) != null) { const k = String(n.label ?? n.id); if (!by.has(k)) by.set(k, []); by.get(k).push(n.type); } });
   return t => (BD_HAS(t) ? by.get(String(t).replace(/^~\s*/, '')) : undefined);
 }
-function bdProblems(model) {
+function bdProblems(model, view) {
   const out = [], nodes = BD_ARR(model && model.nodes), at = new Map(), named = bdLabels(model);
   nodes.forEach(n => { if (BD_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
   const q = x => JSON.stringify(String(x.label ?? x.id)), say = (rule, path, ids, msg, level = 'error') => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
@@ -117,7 +117,11 @@ function bdProblems(model) {
         else if (p.kind === 'proxy' && !ib) say('port-kind', path, ids, `proxy port ${of} is ${BD_HAS(p.valueType) ? typed + ', not an interface block' : 'typed by nothing: a proxy port is typed by an interface block'}`);
         else if (p.kind === 'full' && ib) say('port-kind', path, ids, `full port ${of} is ${typed}, an interface block`); }
       if ((String(m.type).startsWith('sysml.') || BD_CLS.includes(n.type)) && !bdHolds(n.type, m)) say('member-kinds', path, ids, `${BD_WORD(n.type).toLowerCase()} ${q(n)} holds ${bdMWord(m)} ${q(m)}, which it may not`); }); });
-  BD_ARR(model && model.edges).forEach((e, i) => { if (!BD_OBJ(e)) return; const path = `edges[${i}]`, a = at.get(e.from), b = at.get(e.to);
+  // the model's lines, and the view's own (view.edges objects, drawn as the model's are) at their own paths; one a model line's
+  // id (or an earlier own line's) takes is that one (audit 23)
+  const lines = BD_ARR(model && model.edges).map((e, i) => [e, `edges[${i}]`]), taken = new Set(lines.filter(([e]) => BD_OBJ(e)).map(([e]) => e.id)), vi = BD_OBJ(view) ? BD_ARR(model && model.views).indexOf(view) : -1;
+  if (vi >= 0) BD_ARR(view.edges).forEach((e, j) => { if (BD_OBJ(e) && typeof e.id === 'string' && !taken.has(e.id)) { taken.add(e.id); lines.push([e, `views[${vi}].edges[${j}]`]); } });
+  lines.forEach(([e, path]) => { if (!BD_OBJ(e)) return; const a = at.get(e.from), b = at.get(e.to);
     if (e.type === 'uml.Generalization' && a && b && (BD_CLS.includes(a.type) || BD_CLS.includes(b.type)) && a.type !== b.type)
       say('general-kinds', path, [e.id, a.id, b.id], `${BD_WORD(a.type).toLowerCase()} ${q(a)} specializes ${BD_WORD(b.type).toLowerCase()} ${q(b)} (${e.id})`);
     if (e.type !== 'uml.Association') return;
@@ -150,7 +154,7 @@ const bdNodeOf = (model, id) => BD_ARR(model && model.nodes).find(n => BD_OBJ(n)
 const bdRows = n => bdComps(n).flatMap(c => c.members.map(m => `${c.name}: ${m.id == null ? m.label : printMember({ ...m, type: m.type === 'uml.Operation' ? m.type : 'uml.Property' })}`));
 // a line's text: its label, then each end's role and multiplicity
 function bdText(model, view, id) {
-  const e = BD_ARR(model && model.edges).find(x => BD_OBJ(x) && x.id === id); if (!e) return null;
+  const is = x => BD_OBJ(x) && x.id === id, e = BD_ARR(model && model.edges).find(is) || BD_ARR(BD_OBJ(view) ? view.edges : null).find(is); if (!e) return null; // the view's own line too (audit 23)
   const E = BD_OBJ(BD_PROPS(e).ends) ? BD_PROPS(e).ends : {}, end = w => { const x = BD_OBJ(E[w]) ? E[w] : {}; return [x.role, BD_HAS(x.multiplicity) ? `[${x.multiplicity}]` : ''].filter(BD_HAS).join(' '); };
   return [lineLabel(e), ...(e.type === 'uml.Association' ? ['from', 'to'].map(end) : [])].filter(BD_HAS).join(' · ') || null;
 }
@@ -238,7 +242,7 @@ const BD_TYPE = registerDiagramType('sysml.block-definition', {
   // a SysML classifier is owned by a package as a class is
   owners: (model, x) => ownerChoices(model, BD_OBJ(x) && BD_CLS.includes(x.type) ? { ...x, type: 'uml.Class' } : x),
   member: { print: bdPrint, add: (text, owner) => bdParse(text, owner, null), edit: (m, text) => bdEdit(null, null, m, text), holds: n => BD_CLS.includes(n.type) },
-  validate: (model, view) => [...classProblems(model), ...bdProblems(model), ...ownerProblems(model, view, drawnLines(model, view, null).lines)],
+  validate: (model, view) => [...classProblems(model, view), ...bdProblems(model, view), ...ownerProblems(model, view, drawnLines(model, view, null).lines)],
   rules: { ...RULES, ...OWNER_RULES, ...BD_RULES, 'member-kinds': `${RULES['member-kinds']}; ${BD_RULES['member-kinds']}` },
   describe: bdDescribe,
   word: (model, id) => { const x = bdNodeOf(model, id); return x && BD_CLS.includes(x.type) ? BD_WORD(x.type) : null; },

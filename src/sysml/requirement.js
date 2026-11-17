@@ -38,14 +38,19 @@ const rqPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const rqCid = (owner, child) => `${owner}->${child}`;
 
 /* ---- the model read ---- */
-function rqIndex(model) {
-  const at = new Map(), path = new Map(), put = (x, p) => { if (RQ_OBJ(x) && typeof x.id === 'string' && !at.has(x.id)) { at.set(x.id, x); path.set(x.id, p); } };
+// view: a requirement view whose own lines (view.edges objects of its kinds, which rqLines draws) are read as the model's are,
+// at their own paths; one a model element's id (or an earlier own line's) takes is that one. That view's alone: validate()
+// asks once a view, describe() and the rows of one (audit 23, as ucProblems since audit 20)
+function rqIndex(model, view) {
+  const at = new Map(), path = new Map(), lines = [], put = (x, p) => { if (RQ_OBJ(x) && typeof x.id === 'string' && !at.has(x.id)) { at.set(x.id, x); path.set(x.id, p); return true; } return false; };
   RQ_ARR(model && model.nodes).forEach((n, i) => put(n, `nodes[${i}]`));
-  RQ_ARR(model && model.edges).forEach((e, i) => put(e, `edges[${i}]`));
+  RQ_ARR(model && model.edges).forEach((e, i) => { if (put(e, `edges[${i}]`)) lines.push(e); });
+  const vi = RQ_OBJ(view) && view.diagram === 'sysml.requirement' ? RQ_ARR(model && model.views).indexOf(view) : -1;
+  if (vi >= 0) RQ_ARR(view.edges).forEach((e, j) => { if (RQ_OBJ(e) && RQ_LINES.includes(e.type) && put(e, `views[${vi}].edges[${j}]`)) lines.push(e); });
   const ty = id => (at.get(id) || {}).type, is = (id, t) => at.has(id) && ty(id) === t;
   const q = id => (at.has(id) ? `${(RQ_WORD[ty(id)] || 'element').toLowerCase()} ${JSON.stringify(rqName(at.get(id)))}` : JSON.stringify(String(id)));
-  const rels = RQ_ARR(model && model.edges).filter(e => RQ_OBJ(e) && Object.hasOwn(RQ_REL, e.type) && at.has(e.from) && at.has(e.to));
-  return { at, path, ty, is, q, rels };
+  const rels = lines.filter(e => Object.hasOwn(RQ_REL, e.type) && at.has(e.from) && at.has(e.to));
+  return { at, path, ty, is, q, rels, lines };
 }
 // what an element's relations say of it (§13): its containment, then each relationship, as its rows and describe() read them
 function rqSays(I, id) {
@@ -182,8 +187,8 @@ const RQ_RULES = {
 // a relationship's ends broken (§6.3's errors): the rule, or null. The connect gesture refuses what this refuses
 const rqEnds = (I, t, from, to) => (t === 'sysml.DeriveReqt' && !(I.is(from, RQ) && I.is(to, RQ)) ? 'derive-ends' : t === 'sysml.Copy' && !(I.is(from, RQ) && I.is(to, RQ)) ? 'copy-ends'
   : t === 'sysml.Satisfy' && !I.is(to, RQ) ? 'satisfy-ends' : t === 'sysml.Verify' && !I.is(to, RQ) ? 'verify-ends' : null);
-function rqProblems(model) {
-  const I = rqIndex(model), out = [], say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: [...new Set(ids.filter(x => x != null))], message: `${rule}: ${msg}` });
+function rqProblems(model, view) {
+  const I = rqIndex(model, view), out = [], say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: [...new Set(ids.filter(x => x != null))], message: `${rule}: ${msg}` });
   // a name that labels a block or a value type too types by that (bdd reads it so): only a requirement's name alone is one
   const types = new Set([...I.at.values()].filter(x => ['sysml.Block', 'sysml.InterfaceBlock', 'sysml.ConstraintBlock', 'sysml.ValueType', 'uml.Class', 'uml.DataType'].includes(x.type)).map(rqName));
   const reqs = [...I.at.values()].filter(x => x.type === RQ && x.from == null), byName = new Map(reqs.filter(r => !types.has(rqName(r))).map(r => [rqName(r), r.id])), ids = new Map();
@@ -199,7 +204,7 @@ function rqProblems(model) {
     if (RQ_HAS(p.risk) && !RQ_RISK.includes(p.risk)) say('warning', 'risk-value', `${path}.props.risk`, [x.id], `${I.q(x.id)}'s risk is ${JSON.stringify(p.risk)}, not low, medium or high`);
     if (RQ_HAS(p.verifyMethod) && !RQ_METHOD.includes(p.verifyMethod)) say('warning', 'verify-method', `${path}.props.verifyMethod`, [x.id], `${I.q(x.id)}'s verify method is ${JSON.stringify(p.verifyMethod)}, not analysis, inspection, test or demonstration`); });
   const derives = new Map();
-  RQ_ARR(model && model.edges).forEach(e => { if (!RQ_OBJ(e) || I.at.get(e.id) !== e || !I.at.has(e.from) || !I.at.has(e.to)) return; const path = I.path.get(e.id), ends = [e.id, e.from, e.to], runs = `${e.id} runs from ${I.q(e.from)} to ${I.q(e.to)}`;
+  I.lines.forEach(e => { if (!I.at.has(e.from) || !I.at.has(e.to)) return; const path = I.path.get(e.id), ends = [e.id, e.from, e.to], runs = `${e.id} runs from ${I.q(e.from)} to ${I.q(e.to)}`;
     if ((e.type === 'uml.Generalization' || e.type === 'uml.Association') && (I.is(e.from, RQ) || I.is(e.to, RQ))) say('error', e.type === 'uml.Generalization' ? 'requirement-general' : 'requirement-association', path, ends, `${runs}: a requirement takes part in no ${e.type === 'uml.Generalization' ? 'generalization' : 'association'}`);
     if (!Object.hasOwn(RQ_REL, e.type)) return;
     const bad = rqEnds(I, e.type, e.from, e.to);
@@ -222,7 +227,7 @@ function rqProblems(model) {
 /* ---- describe(): the view in sentences, the frame first, each element in reading order with what its relations say ---- */
 function rqDescribe(model, viewId) {
   const v = RQ_ARR(model && model.views).find(x => RQ_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
-  const I = rqIndex(model), { ids, pic } = rqBoxes(model, v), shown = new Set(ids), h = SYS_HEAD(model, v);
+  const I = rqIndex(model, v), { ids, pic } = rqBoxes(model, v), shown = new Set(ids), h = SYS_HEAD(model, v);
   const lines = rqLines(model, v, pic, shown).length;
   const owned = ids.filter(id => I.is(id, RQ) && I.is(I.at.get(id).parent, RQ) && shown.has(I.at.get(id).parent)).length;
   return [`${v.title || v.id}: a requirement diagram (${h.title}) of ${rqPlural(ids.length, 'element')} and ${rqPlural(lines + owned, 'line')}.`,
@@ -242,7 +247,7 @@ function rqAdd(model, view, entry, label, at) {
 // connect: Containment re-owns the first in the second; a relationship whose ends break §6.3's errors is refused in the rule's
 // words; a copy takes its supplier's text in the same transaction; anything else the canvas's
 function rqConnect(model, view, from, to, at, line) {
-  const I = rqIndex(model), t = RQ_OBJ(line) ? line.type : null;
+  const I = rqIndex(model, view), t = RQ_OBJ(line) ? line.type : null;
   if (t === 'containment') { if (!I.is(from, RQ) || !(I.is(to, RQ) || I.is(to, RQ_PKG))) return { error: 'Containment runs from a requirement to the requirement or package that holds it' };
     for (let p = to, k = 0; p != null && k < 1e4; p = (I.at.get(p) || {}).parent, k++) if (p === from) return { error: `${rqName(I.at.get(to))} is inside ${rqName(I.at.get(from))}: it cannot hold it` };
     return [{ op: 'reparent', id: from, parent: to }]; }
@@ -259,7 +264,7 @@ function rqConnect(model, view, from, to, at, line) {
 // that is no element, the view's title (§5.1); anything else the canvas's
 function rqRename(model, view, id, text) {
   const f = SYS_FRAME_RENAME(view, id, text); if (f) return f;
-  const e = rqIndex(model).at.get(id); if (e && RQ_LINES.includes(e.type)) return lineRename(rqLabel)(model, view, id, text); // «keyword» «stereotypes» off
+  const e = rqIndex(model, view).at.get(id); if (e && RQ_LINES.includes(e.type)) return lineRename(rqLabel)(model, view, id, text); // «keyword» «stereotypes» off
   const m = /^(\S*\d\S*)\s+(\S[\s\S]*)$/.exec(String(text).trim());
   return rqIndex(model).is(id, RQ) && m ? [{ op: 'set', id, path: 'label', value: m[2].trim() }, { op: 'set', id, path: 'props.reqId', value: m[1] }] : null;
 }
@@ -295,9 +300,9 @@ const RQ_TYPE = registerDiagramType('sysml.requirement', {
   edits: { add: rqAdd, connect: rqConnect, rename: rqRename, remove: rqRemove },
   // the PDF's tables (§13): an element's kind; a requirement's id, text whole, risk, verify method and relations; a test case's and a block's relations; a line's keyword
   word: (model, id) => { const x = rqIndex(model).at.get(id); return x && x.from == null && Object.hasOwn(RQ_WORD, x.type) && x.type !== 'uml.Comment' ? RQ_WORD[x.type] : null; },
-  rows: (model, view, id) => { const I = rqIndex(model), x = I.at.get(id); if (!x || ![RQ, RQ_TC, 'sysml.Block'].includes(x.type)) return null; const p = RQ_PROPS(x);
+  rows: (model, view, id) => { const I = rqIndex(model, view), x = I.at.get(id); if (!x || ![RQ, RQ_TC, 'sysml.Block'].includes(x.type)) return null; const p = RQ_PROPS(x);
     return [...[['id', p.reqId], ['text', p.text], ['risk', p.risk], ['verify method', p.verifyMethod]].filter(([, v]) => RQ_HAS(v)).map(([k, v]) => `${k}: ${v}`), ...rqSays(I, id)]; },
-  text: (model, view, id) => { const e = rqIndex(model).at.get(id); return e && Object.hasOwn(RQ_REL, e.type) ? rqLabel(e) : null; },
+  text: (model, view, id) => { const e = rqIndex(model, view).at.get(id); return e && Object.hasOwn(RQ_REL, e.type) ? rqLabel(e) : null; },
 });
 
 export { RQ_TYPE, RQ_RULES, rqGeo, rqProblems, rqDescribe, rqAdd, rqConnect, rqRename, rqRemove, rqWrap, rqRank };

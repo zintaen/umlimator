@@ -375,3 +375,22 @@ test('audit 4: a frame whose id holds $ keeps it in its title\'s data-o (no repl
 test('audit 15: F2 on a relationship line takes its «keyword» off, so the keyword is not drawn twice', () => {
   assert.deepEqual(T.edits.rename(M16, M16.views[0], 'capacity-from-range', '«deriveReqt» battery'), [{ op: 'set', id: 'capacity-from-range', path: 'label', value: 'battery' }]);
 });
+
+test('audit 23: a view\'s own line (view.edges object) is checked, described, given rows and text as a model one, at its own path', () => {
+  const at = (m, id) => validate(m).filter(p => (p.ids || []).includes(id)).map(p => [p.rule, p.path]);
+  const both = line => { const m = structuredClone(M16); m.edges.push(line); const own = structuredClone(M16); own.views[0].edges = [...M16.edges.map(e => e.id), structuredClone(line)]; return [m, own, `edges[${M16.edges.length}]`, `views[0].edges[${M16.edges.length}]`]; };
+  // a derive between two blocks: derive-ends; a derive closing a cycle: derive-cycle; a copy with another text: copy-text
+  for (const line of [L('own-derive', 'DeriveReqt', 'battery', 'controller'), L('own-cycle', 'DeriveReqt', 'range', 'capacity'), L('own-copy', 'Copy', 'range', 'availability')]) {
+    const [m, own, k, j] = both(line), want = at(m, line.id);
+    assert.ok(want.length, `${line.id}: the model line is said`);
+    assert.deepEqual(at(own, line.id), want.map(([r, p]) => [r, p.replace(k, j)]), `${line.id}: the own line alike, at its own path`);
+  }
+  // an own satisfy: in describe(), the rows and the line's text, as a model one
+  const sat = L('own-sat', 'Satisfy', 'battery', 'assist'), [m, own] = both(sat), v = own.views[0];
+  assert.equal(describe(own, V), describe(m, V));
+  assert.ok(describe(own, V).includes('Block Battery; satisfies Battery capacity; satisfies Pedal assistance.'));
+  assert.deepEqual(T.rows(own, v, 'battery'), T.rows(m, m.views[0], 'battery'));
+  assert.deepEqual(T.rows(own, v, 'assist'), T.rows(m, m.views[0], 'assist'));
+  assert.equal(T.text(own, v, 'own-sat'), T.text(m, m.views[0], 'own-sat'));
+  assert.ok(!describe({ ...own, views: [{ ...v, id: 'other', edges: undefined }] }, 'other').includes('satisfies Pedal assistance'), 'another view: its own line is not that view\'s');
+});

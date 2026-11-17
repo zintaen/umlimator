@@ -483,3 +483,18 @@ test('a line break in a cloud card or group name is drawn as a new line (audit 2
     assert.ok(check(m, vid).length <= before, `${f}: nothing more in the way`);
   }
 });
+
+test('audit 23: a view that lists its lines draws only its family\'s kind, as with no list (a listed uml.Dependency, model or own, is left out)', () => {
+  for (const [fam, EXM, vid] of TARGETS) {
+    if (fam === 'aws' && !CLOUD_AWS) continue;
+    const D = CLOUD_DEFS[fam], line = D.lines[0].type, m = structuredClone(EXM), v = m.views.find(x => x.id === vid);
+    const [a, b] = v.nodeIds.filter(id => m.nodes.some(n => n.id === id && n.type !== D.elements[0].type));
+    m.edges.push({ id: 'dep1', type: 'uml.Dependency', from: a, to: b, label: 'not a line of this family' });
+    const before = layout(m, vid).edges.map(e => e.id);
+    assert.ok(!before.includes('dep1'), `${fam}: no list, not drawn`);
+    v.edges = [...before, 'dep1', { id: 'own-dep', type: 'uml.Dependency', from: a, to: b }, { id: 'own-ok', type: line, from: a, to: b }];
+    const got = layout(m, vid).edges.map(e => e.id);
+    assert.deepEqual(got.filter(id => !before.includes(id)), ['own-ok'], `${fam}: listed, only the family's own line is added`);
+    assert.ok(!describe(m, vid).includes('not a line of this family'), fam);
+  }
+});
