@@ -192,3 +192,24 @@ test('apply() delete of a view\'s own owner keeps the model nodes under it, each
   const a = apply(m, [{ op: 'delete', id: 'M' }]);
   assert.deepEqual([a.nodes.map(n => [n.id, n.parent]), a.views[0].nodes], [[['x', undefined]], []]);
 });
+
+// audit 24: a drop out of every box re-owns a card to the view's subject, and that subject may be one this view alone holds:
+// the rule is checked on the owner the drop gives, not on the box under it (canvas/edit.js drop)
+test('audit 24: the canvas refuses a drop that puts a model card under a view\'s subject only that view holds, out of a box as onto it', async () => {
+  await import('../src/typed/edit.js'); // the hooks the canvas runs (C4's static views have no owner hook: the core drop runs)
+  const own = { id: 'own', type: 'c4.SoftwareSystem', label: 'Own system' };
+  const mk = (subject, nodes = [own]) => ({ schemaVersion: 2, nodes: [{ id: 'k', type: 'c4.Container', label: 'Kiosk', parent: 'web' }, { id: 'web', type: 'c4.SoftwareSystem', label: 'Web' }],
+    edges: [], views: [{ id: 'v', diagram: 'c4.container', subject, nodeIds: ['own', 'web', 'k'], nodes }, { id: 'w', diagram: 'c4.container', subject: 'web', nodeIds: ['web', 'k'] }] });
+  const drop = (m, id, into, from) => { let out = null; const said = [];
+    const I = typedEditor({ root: { addEventListener() {} }, stage: { addEventListener() {} }, can: () => true, say() {}, status: s => said.push(s), emit: c => { out = c; }, view: () => 'v', model: () => m,
+      picked: () => [], sel: () => null, geo: () => ({ byId: {}, nodes: [] }), cam: () => null, focus() {}, touch() {} });
+    I.drop({ id, col: 0, row: 0, x: 0, y: 0, w: 50, h: 20 }, { col: 1, row: 0, x: 400, y: 10 }, into, from); return { out, said }; };
+  const m = mk('own');
+  for (const into of [null, 'own']) { const r = drop(m, 'k', into, 'web'); // out of web onto the canvas, or onto the own box
+    assert.equal(r.out, null, `into ${into}: nothing emitted`); assert.match(r.said.join(), /Own system lives in this view only/, `into ${into}`); }
+  // what stays: the view's own card goes under its own subject, and a model card under a model box
+  const t = mk('own', [own, { id: 'o2', type: 'c4.Container', label: 'Own container', parent: 'web' }]); t.views[0].nodeIds.push('o2');
+  const r2 = drop(t, 'o2', null, 'web'); assert.deepEqual(r2.out && r2.out[0], { op: 'reparent', id: 'o2', parent: 'own' });
+  assert.equal(apply(t, r2.out).views[0].nodes[1].parent, 'own');
+  const r3 = drop(t, 'k', 'web', 'own'); assert.deepEqual(r3.out && r3.out[0], { op: 'reparent', id: 'k', parent: 'web' });
+});
