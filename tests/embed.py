@@ -124,7 +124,7 @@ def dom(path, done, wait=60, motion=False):
 
 
 failed = False
-# CI runs this script as two jobs side by side (UMLIMATOR_TEST_SHARD=k/2): each page and each check below is a part,
+# CI runs this script as three jobs side by side (UMLIMATOR_TEST_SHARD=k/3): each page and each check below is a part,
 # with about its seconds on a runner, in exactly one of them; unset (as on a developer's machine) every part runs, in
 # order. A check outside every part, or a part not declared here, fails the run (tests/shards.py)
 # the motion pass: tests/motion.html runs with motion on, so a bug in what animates can't hide behind reduced motion
@@ -133,10 +133,11 @@ DEMOS = (("examples/edit.html", "the editing demo"), ("examples/embed.html", "th
          ("examples/playground.html", "the playground"), ("examples/ask.html", "the ask-the-map page"), ("examples/replay.html", "the trace replay page"), ("examples/timelapse.html", "the time-lapse"), ("examples/drift.html", "the drift page"))
 spec = importlib.util.spec_from_file_location("shards", ROOT / "tests" / "shards.py")
 shards = importlib.util.module_from_spec(spec); spec.loader.exec_module(shards)
-SLOW = {"tests/m2.html": 33, "tests/embed.html": 33, "tests/sysml.html": 24, "tests/stage5.html": 13, "tests/m4a.html": 13, "tests/stage4.html": 8,
-        "tests/package-object.html": 6, "tests/m4b.html": 6, "tests/stage6.html": 5, "tests/class.html": 5}  # about their seconds; the rest about 2
-part = shards.Parts(__file__, {**{page: SLOW.get(page, 2) for page, _ in PAGES}, **{page: 2 for page, _ in DEMOS}, "examples/element.html": 2,
-                              "examples/notations.html": 2, "the standalone page's legend": 2, "keepPairs": 5, "rules": 3, "label kinds": 3, "record": 20})
+SLOW = {"tests/m2.html": 46, "tests/sysml.html": 31, "tests/embed.html": 29, "tests/stage5.html": 18, "tests/m4a.html": 17, "tests/stage4.html": 11,
+        "tests/package-object.html": 10, "tests/m4b.html": 8, "tests/class.html": 7, "tests/stage6.html": 6, "tests/notation.html": 6,
+        "tests/unfold.html": 5}  # their seconds on a runner; the rest about 3
+part = shards.Parts(__file__, {**{page: SLOW.get(page, 3) for page, _ in PAGES}, **{page: 3 for page, _ in DEMOS}, "examples/element.html": 3,
+                              "examples/notations.html": 3, "the standalone page's legend": 3, "keepPairs": 4, "rules": 3, "label kinds": 3, "record": 16})
 for page, motion in PAGES:
     if not part(page):
         continue

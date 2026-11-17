@@ -266,14 +266,14 @@ jobs:
           UMLIMATOR_TEST_SHARD: ${{ matrix.shard }}/5
         run: python3 tests/cli.py
 
-  # render() and the standalone page in headless Chrome (tests/embed.py), its pages split over two jobs as tests/cli.py's
-  # parts are (about 2.5 min each)
+  # render() and the standalone page in headless Chrome (tests/embed.py), its pages split over three jobs as tests/cli.py's
+  # parts are (about 2 min each)
   embed:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
 
@@ -285,9 +285,9 @@ jobs:
         with:
           node-version: 24
 
-      - name: render() embedded in a plain page reports its events and follows update() and destroy() (shard ${{ matrix.shard }} of 2 of its pages)
+      - name: render() embedded in a plain page reports its events and follows update() and destroy() (shard ${{ matrix.shard }} of 3 of its pages)
         env:
-          UMLIMATOR_TEST_SHARD: ${{ matrix.shard }}/2
+          UMLIMATOR_TEST_SHARD: ${{ matrix.shard }}/3
         run: python3 tests/embed.py
 
   # The MCP server's page in headless Chrome; Python 3.9; the schema and the plugin (about 2 min)

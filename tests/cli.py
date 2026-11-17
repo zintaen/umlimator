@@ -27,15 +27,16 @@ TYPED_EXAMPLES = ("sales-classes", "order-objects", "bookshop-packages", "checko
                   "bookshop-profile", "bookshop-timing", "bookshop-schema", "returns-flowchart", "bookshop-data-flow", "order-information-flow",
                   "bookshop-c4", "ebike-requirements", "ebike-blocks", "ebike-structure", "ebike-range", "bookshop-opening-plan", "bookshop-gcp",
                   "bookshop-azure", "bookshop-order-to-shipment")  # the typed examples the map-repo and schema version 2 loops below take, each a part
+SLOW = {"bookshop-c4": 18, "buy-book-overview": 16, "checkout-sequence": 14, "sales-classes": 13, "fulfil-activity": 12, "order-states": 10, "bookshop-gcp": 10}
 part = shards.Parts(__file__, {
-    "the summary's text and the icon cache": 3, "diff and drift": 4, "trace": 6, "timelapse": 10, "stills file names": 34,
+    "the summary's text and the icon cache": 3, "diff and drift": 13, "trace": 15, "timelapse": 10, "stills file names": 34,
     "odd input": "stills file names", "stills keys": "stills file names",  # they read the folder of pages the first writes
-    "audits 8 to 18": 14, "audits 19 and 20": 25, "audits 19 to 21": 12, "diff Action 2.6": 6, "diff Action stage 4": 16,
-    "diff Action stage 5": 13, "diff Action stage 6": 7, "diff Action package": 19, "diff Action milestone 2": 34, "diff Action milestone 3": 14,
+    "audits 8 to 18": 16, "audits 19 and 20": 28, "audits 19 to 21": 27, "diff Action 2.6": 6, "diff Action stage 4": 26,
+    "diff Action stage 5": 10, "diff Action stage 6": 7, "diff Action package": 14, "diff Action milestone 2": 32, "diff Action milestone 3": 14,
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
-    **{f"typed {n}": 10 for n in TYPED_EXAMPLES}, "typed checkout-sequence": 20,
+    **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 19, "four renders at once": 3, "mcp": 5})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6})
 
 
 def ok(name, cond, info=""):
