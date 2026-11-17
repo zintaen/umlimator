@@ -308,10 +308,10 @@ jobs:
         with:
           node-version: 24
 
-      - uses: actions/cache@v4  # npx's download of the validator, ajv-cli 5 (5.0.0, its last 5.x), checked against its integrity hash
+      - uses: actions/cache@v4  # only npm's content-addressed tarball store, each read checked against its integrity hash; npx's install tree (~/.npm/_npx) stays out, so ajv-cli 5 and its unpinned dependencies (ajv ^8 among them) resolve fresh on every run, as before
         with:
-          path: ~/.npm
-          key: npm-ajv-cli@5
+          path: ~/.npm/_cacache
+          key: npm-cacache-ajv-cli@5
 
       - name: The MCP server's page in headless Chrome says what it shows, and a tool says shown only once it did
         run: python3 tests/mcp.py
