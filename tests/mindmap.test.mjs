@@ -545,3 +545,12 @@ test('audit 26: Show keeps a first-level topic\'s side and clears one no longer 
     assert.ok(cmds.some(c => c.op === 'reparent'), on); assert.deepEqual(sides(apply(two, cmds)), [], `dropped on ${on}`);
     assert.ok(!cmds.some(c => c.op === 'set' && Array.isArray(c.path) && ['b', 'c'].includes(c.path[1]) && c.value !== undefined), `no side pinned on r2's topics (${on})`); }
 });
+
+// audit 27: a topic's text split on \n only, so a lone carriage return or U+2028 drew as a space, though the Mermaid writer
+// writes either as a line break (and read back, it draws two lines); every break brLines reads breaks a line now
+test('audit 27: a topic\'s text breaks at \\r, \\r\\n, U+2028 and U+2029 as at \\n', () => {
+  for (const br of ['\n', '\r', '\r\n', ' ', ' ']) {
+    const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 'r', type: T, label: 'Root' }, { id: 'a', type: T, parent: 'r', label: `First${br}Second` }], edges: [], views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['r', 'a'] }] };
+    assert.deepEqual(mmRun(m, m.views[0]).byId.a.lines, ['First', 'Second'], JSON.stringify(br));
+  }
+});

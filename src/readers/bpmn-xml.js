@@ -28,8 +28,9 @@
    points), the model's id in `umlimator:id`. Not written, and reported: what `ext.bpmn` holds, other diagrams' elements
    and views, a property or field outside row 24 or on a type it is not for, a data association against BPMN's direction
    (§4's data-ends), and whatever a reader would read back otherwise (note §12.5: a cycle of lanes, a lane as the parent
-   of data or an artifact, a process id taken, a view's subject or parent, an opensView, a node in no view). The root's
-   diagram is written first. The reader fills in the defaults: taskType none, definition none, cancelActivity true.
+   of data or an artifact, a process id taken, a view's subject or parent, an opensView, a node in no view). XML over
+   BX_LIMIT characters indented is written unindented; over it still, it is written and reported, as no reader reads it
+   back. The root's diagram is written first. The reader fills in the defaults: taskType none, definition none, cancelActivity true.
 
    Hostile input (§12.2; a departure from R2, which asks for hand-written linear readers): text over BX_LIMIT characters
    is refused; moddle's parser and handlers and this file's walk run inside one `try`, so a throw (a RangeError at depth
@@ -40,6 +41,7 @@
    control character such as U+000B, a lone surrogate) is written as a space, and said once per element. */
 const BX_BAD = /[^\t\n\r\x20-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/gu; // outside XML 1.0's Char
 const BX_LIMIT = 1 << 20; // characters of XML read (R2)
+const bxList = x => (Array.isArray(x) ? x : []); // a list the model gives, else none (a lone id is no list: audit 27)
 const BX_MAX = 1000; // report items listed; the rest counted in one
 const BX_DEEP = 32; // levels of a skipped element kept under ext.bpmn
 const BX_NS = 'https://zintaen.github.io/umlimator/bpmn'; // the umlimator: attributes' namespace
@@ -277,6 +279,10 @@ async function readBpmnXml(xml, moddle) {
       const e = { id, type, from: from.id, to: to.id, ...(bxStr(el.name) && type.endsWith('Flow') ? { label: el.name } : {}), ...(Object.keys(props).length ? { props } : {}) };
       edges.push(e); byId.set(id, e); foreign(el, id); ext(el, id);
       if (w) weak(e, w[0], w[1], w[2]);
+      // what the diagram keeps and does not draw (notes/milestone-4b.md §8.3): said, never shown as nothing (audit 27)
+      const on = x => (x.type === 'bpmn.BoundaryEvent' && x.props && x.props.attachedTo) || null; // a boundary event's activity
+      if (type === 'bpmn.MessageFlow' && from.type === 'bpmn.Participant' && to.type === 'bpmn.Participant') say(id, 'weakened', 'a message flow between two pools: kept, not drawn (it needs an activity or event at one end)');
+      else if ((on(from) || on(to)) && (on(from) || from.id) === (on(to) || to.id)) say(id, 'weakened', 'a line from a boundary event to its own activity: kept, not drawn');
       if ((el.categoryValueRef || []).length) {
         (e.ext ??= { bpmn: {} }).bpmn.categoryValueRef = el.categoryValueRef.map(v => v.id);
         say(id, 'skipped', 'its groups (categoryValueRef, which row 24 gives no line): kept under ext.bpmn, not read');
@@ -338,7 +344,7 @@ async function writeBpmnXml(model, viewId, geo, moddle) {
     if (model && model.views && model.views.length > views.length) say('', `views of other diagrams (${model.views.length - views.length})`);
     if (model && model.ext && model.ext.bpmn) say('', 'what the model keeps under ext.bpmn (elements a reader skipped)');
     for (const k of Object.keys(model && typeof model.ext === 'object' && model.ext || {})) if (k !== 'bpmn') say('', `what the model keeps under ext.${k}`);
-    const pools = nodes.filter(n => n.type === 'bpmn.Participant'), members = pools.flatMap(p => (p.members || []).filter(m => m && m.type === 'bpmn.Lane').map(m => [m, p]));
+    const pools = nodes.filter(n => n.type === 'bpmn.Participant'), members = pools.flatMap(p => bxList(p.members).filter(m => m && m.type === 'bpmn.Lane').map(m => [m, p]));
     // ids: a model id that is an XML name is the element's; the others escaped, after them, so none takes a model's id
     const used = new Set(), xid = new Map(), ok = id => typeof id === 'string' && /^[A-Za-z_][\w.-]*$/.test(id);
     const free = base => { let id = base, k = 1; while (used.has(id)) id = `${base}-${++k}`; used.add(id); return id; };
@@ -426,10 +432,13 @@ async function writeBpmnXml(model, viewId, geo, moddle) {
     // place each node; a flow node in a lane is named by it and every lane around it
     for (const n of nodes) {
       const e = els.get(n); if (!e) continue;
-      const groups = bxProp(n.type, 'categoryValueRef') ? ((n.props && n.props.categoryValueRef) || []).map(g => el(g) && el(g).categoryValueRef).filter(Boolean) : [];
+      // a lone id, not a list, is no group (validate's group-ref says so): said, the model written all the same (audit 27)
+      const refs = n.props && n.props.categoryValueRef;
+      if (refs != null && !Array.isArray(refs) && bxProp(n.type, 'categoryValueRef')) say(n.id, 'props.categoryValueRef, which is not a list of group ids');
+      const groups = bxProp(n.type, 'categoryValueRef') ? bxList(refs).map(g => el(g) && el(g).categoryValueRef).filter(Boolean) : [];
       if (groups.length && e.$descriptor.properties.some(p => p.name === 'categoryValueRef')) e.categoryValueRef = groups;
       else if (groups.length) e.$attrs['umlimator:groups'] = groups.map(g => g.id).join(' ');
-      if (n.type === 'bpmn.Participant') { collab.participants.push(e); if (n.props && n.props.processRef || (n.members || []).length) proc(n); continue; }
+      if (n.type === 'bpmn.Participant') { collab.participants.push(e); if (n.props && n.props.processRef || bxList(n.members).length) proc(n); continue; }
       if (BX_LOOSE.has(n.type) && laneOf.has(n.parent)) say(n.id, `parent ${n.parent}, a lane, which BPMN gives no ${n.type.slice(5)} (written in its pool)`);
       const c = holder(n), art = n.type === 'bpmn.TextAnnotation' || n.type === 'bpmn.Group';
       if (art) (c || collab || proc(null)).artifacts.push(e);
@@ -481,13 +490,13 @@ async function writeBpmnXml(model, viewId, geo, moddle) {
     const opens = new Map(), showing = new Map(); // a sub-process -> the view it opens; a node -> the first two views showing it
     for (const v of views) {
       if (sub(v) && !opens.has(v.subject)) opens.set(v.subject, v.id);
-      for (const id of v.nodeIds || []) { const f = showing.get(id) || []; if (f.length < 2 && !f.includes(v)) showing.set(id, [...f, v]); }
+      for (const id of bxList(v.nodeIds)) { const f = showing.get(id) || []; if (f.length < 2 && !f.includes(v)) showing.set(id, [...f, v]); }
     }
     for (const v of views) {
       if (v.subject != null && !sub(v)) say(v.id, `the view's subject ${v.subject}, which is no sub-process written`);
       const w = sub(v) && (showing.get(v.subject) || []).find(x => x !== v), parent = w ? w.id : null;
       if ((v.parent ?? null) !== parent) say(v.id, `the view's parent ${v.parent ?? null} (a reader takes ${parent} from its subject)`);
-      for (const id of v.nodeIds || []) if (!els.get(byId.get(id))) say(v.id, `the view's node ${id}, which is no element written`);
+      for (const id of bxList(v.nodeIds)) if (!els.get(byId.get(id))) say(v.id, `the view's node ${id}, which is no element written`);
     }
     for (const n of nodes) {
       if ((n.opensView ?? null) !== (opens.get(n.id) ?? null)) say(n.id, `opensView ${n.opensView ?? 'none'} (a reader takes ${opens.get(n.id) ?? null}, the first view with it as subject)`);
@@ -497,7 +506,7 @@ async function writeBpmnXml(model, viewId, geo, moddle) {
     const G = new Map(((geo && geo.nodes) || []).map(g => [g.id, g])), GE = new Map(((geo && geo.edges) || []).map(g => [g.id, g]));
     const diagrams = views.map(v => {
       for (const k of Object.keys(v)) if (!['id', 'diagram', 'title', 'parent', 'subject', 'nodeIds'].includes(k)) say(v.id, `the view's ${k}`);
-      const box = new Map(), ids = new Set(v.nodeIds || []), planeElement = [], mine = v.id === viewId;
+      const box = new Map(), ids = new Set(bxList(v.nodeIds)), planeElement = [], mine = v.id === viewId;
       const shape = (x, more) => {
         const g = mine && G.get(x.id), [w, h] = BX_SIZE[x.type] || (bxEvent(x.type) ? [36, 36] : [100, 80]), k = box.size;
         const b = g ? { x: g.x, y: g.y, w: g.w, h: g.h } : { x: 40 + (k % 8) * 180, y: 40 + Math.floor(k / 8) * 140, w, h };
@@ -505,7 +514,7 @@ async function writeBpmnXml(model, viewId, geo, moddle) {
         planeElement.push(M('bpmndi:BPMNShape', { id: free(`${els.get(x).id}_di`), bpmnElement: els.get(x), ...more,
           bounds: M('dc:Bounds', { x: b.x, y: b.y, width: b.w, height: b.h }) }));
       };
-      for (const id of v.nodeIds || []) {
+      for (const id of bxList(v.nodeIds)) {
         const n = byId.get(id); if (!n || !els.get(n) || box.has(id)) continue;
         shape(n, n.type === 'bpmn.Participant' ? { isHorizontal: true } : n.type === 'bpmn.SubProcess' ? { isExpanded: nodes.some(c => c.parent === id && ids.has(c.id)) } : {});
         if (n.type === 'bpmn.Participant') for (const [m] of members.filter(x => x[1] === n)) shape(m, { isHorizontal: true });
@@ -537,7 +546,12 @@ async function writeBpmnXml(model, viewId, geo, moddle) {
     // a character XML cannot hold: a space, said for each element whose own text or props hold one (one level: what is written)
     const bad = v => typeof v === 'string' && v.search(BX_BAD) >= 0, holds = x => x && typeof x === 'object' && Object.values(x).some(bad);
     for (const x of [model, ...things]) if (holds(x) || holds(x.props)) if (report.length < BX_MAX) report.push({ line: x === model ? '' : x.id, status: 'weakened', message: 'a character XML cannot hold: written as a space' }); else more++;
-    return result((await moddle.toXML(defs, { format: most <= BX_DEEP })).xml.replace(BX_BAD, ' '));
+    // unindented when indented XML would be over the reader's limit; XML still over it cannot be read again, and says so
+    // in the report, as the Mermaid writers do (audit 27)
+    let xml = (await moddle.toXML(defs, { format: most <= BX_DEEP })).xml;
+    if (xml.length > BX_LIMIT && most <= BX_DEEP) xml = (await moddle.toXML(defs, { format: false })).xml;
+    if (xml.length > BX_LIMIT) report.push({ line: '', status: 'skipped', message: `the XML is ${xml.length} characters, over the reader's limit of ${BX_LIMIT}: a reader reads none of it` });
+    return result(xml.replace(BX_BAD, ' '));
   } catch (e) {
     say('', `the model (${bxMsg(e)})`);
     return result('');

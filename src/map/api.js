@@ -19,7 +19,7 @@ export function layout(model, viewId, options = {}) {
  *  (`umlimator.py check`) adds what it measures in the DOM: text that overflows its card or touches its mark, titles
  *  that overflow, edge labels on cards or on each other. Each issue names the cards and lines it is about. */
 export function check(model, viewId, options = {}) {
-  const g = layout(model, viewId, options), where = `view ${viewId}`, about = [], lines = new Set(g.edges), boxes = new Set(g.families || []);
+  const g = layout(model, viewId, options), where = `view ${viewId}`, about = [], lines = new Set([...g.edges, ...(g.notDrawn || [])]), boxes = new Set(g.families || []);
   const ref = x => lines.has(x) ? { type: 'edge', ids: x.ids, view: viewId } : boxes.has(x) ? { type: 'container', id: x.id, view: viewId } : { type: 'node', id: x.id, view: viewId };
   return [...overlapIssues(g, where, about), ...routeAudit(g, where, null, about), ...throughIssues(g, where, about), ...leaveIssues(g, where, about)]
     .map((message, i) => ({ message, targets: about[i].filter(Boolean).map(ref) }));

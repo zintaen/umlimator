@@ -191,6 +191,24 @@ test('the group\'s frame (§9.3): 16 px round its members, its title at the top 
   assert.doesNotMatch(s, /n-mask/, 'nothing fills the inside');
 });
 
+// audit 27: an expanded sub-process's name and a group's name drew a break the author put in them as a space, in one <text>;
+// each is a line each now, 16 px apart, as the collapsed sub-process, the pools and lanes and cloud's frames draw theirs
+test('audit 27: an expanded sub-process\'s and a group\'s name break where the author broke them', () => {
+  const texts = s => [...s.matchAll(/<text [^>]*y="([\d.]+)"[^>]*>([^<]*)<\/text>/g)].map(x => [+x[1], x[2]]);
+  for (const br of ['\n', '\r\n', '\u2028']) {
+    const f = SHAPE['bpmn-frame'].frame({ id: 'sp', x: 10, y: 20, w: 300, h: 200, title: `Pack the${br}books` });
+    assert.deepEqual(texts(f), [[37, 'Pack the'], [53, 'books']], JSON.stringify(br));
+    const m = [{ x: 100, y: 100, w: 100, h: 64 }], g = bpmnGroupFrame(`First line${br}second line`, m), one = bpmnGroupFrame('First line', m);
+    assert.deepEqual([g.y, g.h], [one.y - 16, one.h + 16], 'the frame a line taller at its top, so the second line keeps off its members');
+    const d = SHAPE['bpmn-group'].draw({ id: 'gr', label: `First line${br}second line`, ...g });
+    assert.deepEqual(texts(d), [[g.y + 12, 'First line'], [g.y + 28, 'second line']], JSON.stringify(br));
+    assert.match(d, /height="40" class="bp-hit"/, 'its title hit round both lines');
+    assert.ok(g.y + 28 + 4 <= m[0].y, 'the last line above the member');
+  }
+  assert.equal(SHAPE['bpmn-frame'].titleLh, 16, 'the box\'s header room grown 16 px a line (boxHead)');
+  assert.deepEqual(texts(SHAPE['bpmn-frame'].frame({ id: 'sp', x: 10, y: 20, w: 300, h: 200, title: 'Pack' })), [[37, 'Pack']], 'one line as before');
+});
+
 test('performance (S16, risks.md P1): the labels outside of 200 events with two lines each, 41-character names, on a grid, placed under 100 ms (timed)', () => {
   const items = [], lines = [];
   for (let i = 0; i < 200; i++) { const x = (i % 15) * 90, y = Math.floor(i / 15) * 70;

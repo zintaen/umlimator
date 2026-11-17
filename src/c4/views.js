@@ -5,7 +5,7 @@ import { SHAPE, r2, sidePorts } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
 import { ownersOn, readingOrder } from '../uml/owners.js';
 import { brLines } from '../typed/draw.js';
-import { c4LineLook, C4_NOTE_LINE, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Problems, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners, c4Rename } from './c4.js';
+import { c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Problems, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners, c4Rename } from './c4.js';
 
 /* ---------- C4's dynamic and deployment views, c4.dynamic and c4.deployment (work package M2.7, notes/milestone-2.md §7.5.2,
    §7.5.3, §5.1) ----------
@@ -60,7 +60,7 @@ const vSwatch = ext => `<rect x="3" y="2" width="22" height="12" rx="3" fill="va
 const vLine = dashed => `<g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round" fill="none"><path d="M2 8H25"${dashed ? ' stroke-dasharray="3 2"' : ''}/><path d="M17 4L26 8L17 12"/></g>`;
 const vLines = (edges, says = 'uses, with its technology in brackets') => [...(edges.some(e => e.type === 'c4.Relationship' && !e.implied) ? [vItem('Relationship', says, vLine(false))] : []),
   ...(edges.some(e => e.implied) ? [vItem('Implied relationship', 'stands for relationships between what the two hold', vLine(true))] : []),
-  ...(edges.some(e => e.type === 'uml.CommentLink') ? [vItem('Comment link', 'what a comment is about', C4_NOTE_LINE)] : [])]; // as src/c4/c4.js keys it (audit 23)
+  ...(edges.some(e => e.type === 'uml.CommentLink') ? [vItem('Comment link', 'what a comment is about', C4_NOTE_LINE)] : []), ...c4OtherKey(edges)]; // as src/c4/c4.js keys it (audit 23)
 const V_LINE = { rel: { from: 'none', to: 'open' }, implied: { from: 'none', to: 'open', dashed: true }, note: { from: 'none', to: 'none', dashed: true }, other: { from: 'none', to: 'none' } };
 // an element of a C4 view as src/c4/c4.js draws it (shape c4: its map shape and three lines), or a comment
 function vNode(id, x, P, more = {}) {
@@ -103,7 +103,7 @@ function dynProblems(model, view) {
     if (!rel.has(x)) return null;
     if (seen.has(x)) return out.push(say('error', 'c4-steps', p, [x], `${x} is a step twice: each relationship is one step`));
     seen.add(x); const e = I.E.find(r => r.id === x), gone = [e.from, e.to].filter(id => !ends.has(id));
-    if (gone.length) out.push(say('warning', 'c4-steps', p, [x, ...gone], `${x}, from ${q(e.from)} to ${q(e.to)}, is not drawn: the view ${gone.map(id => (pic.open.has(id) ? `draws ${q(id)} as a boundary` : `does not show ${q(id)}`)).join(' or ')}`)); return null; });
+    if (gone.length) out.push(say('warning', 'c4-steps', p, [x, ...gone], `${x}, from ${q(e.from)} to ${q(e.to)}, is not drawn: the view ${gone.map(id => (pic.open.has(id) ? `draws ${q(id)} as a boundary` : `does not show ${q(id)}`)).join(' and ')}`)); return null; });
   if (!V_ARR(view.edges).some(x => typeof x === 'string' && rel.has(x))) out.push(say('warning', 'c4-steps', `${at}.edges`, [], `view ${JSON.stringify(String(view.id))} lists no step: a dynamic view draws its steps alone`));
   return out;
 }
@@ -230,8 +230,8 @@ function depProblems(model, view) {
 }
 function depDescribe(model, viewId) {
   const v = V_ARR(model && model.views).find(x => V_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
-  const pic = depPic(model, v), { own, implied } = c4Lines(model, v, pic), notes = own.filter(e => e.type === 'uml.CommentLink').length, box = new Map(pic.boxes.map(b => [b.id, b]));
-  return [`${v.title || v.id}: a C4 deployment diagram of ${vPlural(pic.ids.length, 'element')} and ${vPlural(own.length - notes + implied.length, 'relationship')}${implied.length ? `, ${implied.length} of them implied` : ''}${notes ? `, and ${vPlural(notes, 'comment link')}` : ''}.`,
+  const pic = depPic(model, v), { own, implied } = c4Lines(model, v, pic), box = new Map(pic.boxes.map(b => [b.id, b]));
+  return [`${v.title || v.id}: a C4 deployment diagram of ${vPlural(pic.ids.length, 'element')} and ${c4Count(own, implied)}.`,
     ...readingOrder(pic).map(id => (box.has(id) ? box.get(id).aria : depNodeName(pic.I, pic.at.get(id)))), ...[...own, ...implied].map(e => c4LineName(e, pic))].map(t => t.replace(/\.?$/, '.')).join('\n');
 }
 // the containers an instance may be of: on a view of a software system its own (c4-level), else every one

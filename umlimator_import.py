@@ -112,7 +112,7 @@ class Model:
         if clip(label, 34) != whole(label):  # a name cut short is whole in the details panel
             what = whole(label) + (f"\n\n{what}" if what else "")
         n = {"id": cid, "label": clip(label, 34) or cid, "kind": kind, "sublabel": clip(sub, 44), "what": whole(what), **more}
-        self.nodes[cid] = {k: v for k, v in n.items() if v}
+        self.nodes[cid] = {k: v for k, v in n.items() if v or k == "id"}  # a blank id stays, for validate to say, never dropped unsaid
 
     def line(self, a, b, label=None, sub=None, where=None, **more):
         if a == b:
@@ -120,7 +120,7 @@ class Model:
         e = {"id": self.uniq(f"{a}-{b}"), "from": a, "to": b, "label": clip(label, 28), "sublabel": clip(sub, 28), **more}
         if clip(label, 28) != whole(label):  # a label cut short is whole in the details panel
             e["what"] = whole(label) + (f"\n\n{e['what']}" if e.get("what") else "")
-        self.edges.append({k: v for k, v in e.items() if v})
+        self.edges.append({k: v for k, v in e.items() if v or k in ("id", "from", "to")})
         return e["id"]
 
     def view(self, hint, nodes, boxes=(), **more):
@@ -1020,7 +1020,9 @@ def compose(d, name):
     if not isinstance(d.get("services") or {}, dict):
         m.say("services", "not an object of services: not imported")
     for s, c in (d.get("services") if isinstance(d.get("services"), dict) else {}).items():
-        if c is None or isinstance(c, dict):
+        if not s.strip():  # compose itself refuses a blank name; as a card id it would make a model that does not validate (audit 27)
+            m.say(f"services.{s!r}", "a service with no name: not imported")
+        elif c is None or isinstance(c, dict):
             svcs[s] = c or {}
         else:
             m.say(f"services.{s}", "not an object: not imported")
@@ -1040,7 +1042,7 @@ def compose(d, name):
             if t in svcs:
                 m.line(s, t, where=f"services.{s}", what=label)  # every line is one: no label on each
             else:
-                m.say(f"services.{s}", f"{label} {t}, which is not a service here")
+                m.say(f"services.{s}", f"{label} {t if t.strip() else repr(t)}, which is not a service here")
     used, alone = sorted({n for ns in nets.values() for n in ns}), {}
     for s in svcs:
         if len(nets[s]) == 1:

@@ -36,18 +36,21 @@ THEME = HERE / "lib" / "umlimator-theme.css"   # its default palette and fonts (
 PAGE = HERE / "engine" / "assets" / "template.html"  # the page around it; visual.py fills in the model
 
 
-CONTROLS = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f]")  # C0 and C1 controls, but tab and newline
+# C0 and C1 controls, but tab and newline; and the bidi marks, embeddings, overrides and isolates (U+061C, U+200E, U+200F,
+# U+202A to U+202E, U+2066 to U+2069), which reorder what the terminal shows of the rest of the line (audit 27)
+CONTROLS = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]")
 
 
 class Terminal:
-    """stderr with each control character written as \\xNN: every line the CLI says there (an importer's or a reader's
-    report, which quote the source; a file name; a child's own error) may hold a hostile file's text, and its escape
-    sequences would clear the reader's screen, retitle the window, draw a disguised link or set the clipboard (audit 26)."""
+    """stderr with each control character written as \\xNN, and each bidi control as \\uNNNN: every line the CLI says
+    there (an importer's or a reader's report, which quote the source; a file name; a child's own error) may hold a
+    hostile file's text, and its escape sequences would clear the reader's screen, retitle the window, draw a disguised
+    link or set the clipboard (audit 26), and its bidi overrides would show the rest of the line reversed (audit 27)."""
     def __init__(self, to):
         self.to = to
 
     def write(self, s):
-        self.to.write(CONTROLS.sub(lambda c: f"\\x{ord(c[0]):02x}", s))
+        self.to.write(CONTROLS.sub(lambda c: f"\\x{ord(c[0]):02x}" if ord(c[0]) < 0x100 else f"\\u{ord(c[0]):04x}", s))
         return len(s)
 
     def flush(self):
@@ -865,6 +868,8 @@ def diff_since(a):
         # a model in a dot folder (.github/maps/x.json): a page and stills folder named .github-maps-x would be hidden,
         # and the Action's artifact leaves hidden names out (audit 25); its dot written as still_names writes one
         stem = "%2E" + stem[1:] if stem.startswith(".") else stem
+        # a name holding " : < > | * ? or a control character: the Action's artifact refuses the whole upload (audit 27)
+        stem = NOT_IN_NAMES.sub(lambda c: f"%{ord(c[0]):02X}", stem)
         # a deep path: a file name holds 255 bytes, so a long stem is cut and hashed as still_names cuts a view id (audit 26)
         if len(stem.encode()) > 200:
             stem = stem.encode()[:180].decode(errors="ignore") + "-" + hashlib.sha256(name.encode()).hexdigest()[:8]
@@ -1223,13 +1228,19 @@ def sha(f):
     return hashlib.sha256(Path(f).read_bytes()).hexdigest()
 
 
+# what a written file's name never holds raw, beside / and %: a control character, and what upload-artifact (the diff
+# Action's artifact) refuses in any path, " : < > | * ? CR LF, which Windows refuses too (audit 27); each is written %XX
+NOT_IN_NAMES = re.compile('[\x00-\x1f"*:<>?|]')
+
+
 def still_names(ids):
     """Each view's file name in a stills folder: its id, with only what would leave the folder or break the name encoded
-    (% / \\ NUL, an id of . or ..), an id too long for a file name cut and hashed, and a hash after an id that one before it matches but for case (macOS and Windows
-    fold case in file names, so the two would share files)."""
+    (% / \\, a control character, " : < > | * ?, an id of . or ..), an id too long for a file name cut and hashed, and a
+    hash after an id that one before it matches but for case (macOS and Windows fold case in file names, so the two would
+    share files)."""
     out, seen = {}, set()
     for v in ids:
-        n = v.replace("%", "%25").replace("/", "%2F").replace("\\", "%5C").replace("\0", "%00")
+        n = NOT_IN_NAMES.sub(lambda c: f"%{ord(c[0]):02X}", v.replace("%", "%25").replace("/", "%2F").replace("\\", "%5C"))
         n = {".": "%2E", "..": "%2E%2E"}.get(n, n)
         if len(n.encode()) > 200:  # a file name holds 255 bytes, and replacing() adds its own to it
             n = n.encode()[:180].decode(errors="ignore") + "-" + hashlib.sha256(v.encode()).hexdigest()[:8]
