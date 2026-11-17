@@ -469,3 +469,33 @@ test('a blank id is said: the reader reads a blank umlimator:id as none (audit 1
   const [w] = await roundTrip(m);
   assert.deepEqual(w.report.map(x => `${x.line}: ${x.message}`), [' : a blank id, which a reader reads as none: not written']);
 });
+
+test('an association with a pool or a group is kept and said not drawn, as describe() says; one from a note to itself is drawn (audit 28)', needs, async () => {
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d" targetNamespace="x">
+  <collaboration id="c">
+    <participant id="P" name="Customer" /><participant id="Q" name="Shop" processRef="pr" />
+    <textAnnotation id="N"><text>an outside party</text></textAnnotation><association id="A1" sourceRef="P" targetRef="N" />
+    <textAnnotation id="N2"><text>the shop</text></textAnnotation><association id="A2" sourceRef="Q" targetRef="N2" />
+  </collaboration>
+  <process id="pr">
+    <laneSet id="ls"><lane id="L1" name="Desk"><flowNodeRef>t</flowNodeRef></lane></laneSet>
+    <task id="t" name="Ship"/>
+    <textAnnotation id="N3"><text>the desk</text></textAnnotation><association id="A3" sourceRef="L1" targetRef="N3" />
+    <group id="G" categoryValueRef="cv"/>
+    <textAnnotation id="N4"><text>a group note</text></textAnnotation><association id="A4" sourceRef="N4" targetRef="G" />
+    <textAnnotation id="N5"><text>itself</text></textAnnotation><association id="A5" sourceRef="N5" targetRef="N5" />
+    <textAnnotation id="N6"><text>the task</text></textAnnotation><association id="A6" sourceRef="t" targetRef="N6" />
+  </process>
+  <category id="cat"><categoryValue id="cv" value="Fast"/></category>
+</definitions>`;
+  const r = await read(xml, BpmnModdle());
+  assert.deepEqual(r.model.edges.map(e => [e.id, e.type]), [['A1', 'bpmn.Association'], ['A2', 'bpmn.Association'], ['A4', 'bpmn.Association'], ['A5', 'bpmn.Association'], ['A6', 'bpmn.Association']]);
+  assert.deepEqual(r.report.filter(x => x !== R5 && x.message !== R5.message).map(x => [x.line, x.status, x.message]).sort((a, b) => (a[0] < b[0] ? -1 : 1)), [
+    ['', 'skipped', 'no diagram interchange: every element is in one view, process'],
+    ['A3', 'skipped', 'Association whose source is not read: kept under ext.bpmn, not read'],
+    ['A1', 'weakened', 'an association with a pool: kept, not drawn'],
+    ['A2', 'weakened', 'an association with a pool: kept, not drawn'],
+    ['A4', 'weakened', 'an association with a group: kept, not drawn'],
+  ].sort((a, b) => (a[0] < b[0] ? -1 : 1)));
+});
