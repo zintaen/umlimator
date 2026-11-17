@@ -625,17 +625,6 @@ test('audit 26: laid out down, a composite state holds a two-way pair\'s fanned 
 
 // audit 27: laid out right, a self-loop and a two-way pair with sentence-length labels out of the same state: the pair's
 // other line and its label left the outgoing line no clean track, and with reroute off it climbed through the loop
-test('audit 27: a self-loop beside a two-way pair laid out right (an ordinary Mermaid LR state diagram) crosses nothing', async () => {
-  const { readMermaidState } = await import('../src/readers/mermaid-state.js');
-  const src = ['stateDiagram-v2', 'direction LR', '[*] --> A', 'A --> B : go there now', 'B --> A : come back here', 'A --> A : self loop label'];
-  for (const d of ['LR', 'TB']) {
-    const m = readMermaidState(src.join('\n').replace('direction LR', 'direction ' + d)).model, v = m.views[0].id;
-    assert.deepEqual(check(m, v), [], d);
-    const g = layout(m, v), loop = g.edges.find(e => e.from === e.to), ab = g.edges.find(e => e.from !== e.to && e.label === 'go there now');
-    assert.ok(loop && ab, d);
-  }
-});
-
 test('audit 28: a kind outside the view\'s own, or no type, is named in words, alike in the drawn box, describe() and the PDF', () => {
   for (const [d, t, own] of [['uml.state-machine', 'uml.State', 'State Idle'], ['uml.use-case', 'uml.UseCase', 'Use case Idle'], ['uml.activity', 'uml.Action', 'Action Idle']]) {
     const m = { schemaVersion: 2, title: 'f', nodes: [{ id: 's', type: t, label: 'Idle' }, { id: 'plain', label: 'Plain' }, { id: 'db', type: 'uml.DataType', label: 'Money' }, { id: 'order', type: 'uml.Class', label: 'Order' }], edges: [],
@@ -645,5 +634,16 @@ test('audit 28: a kind outside the view\'s own, or no type, is named in words, a
     assert.deepEqual(describe(m, 'v').split('\n').slice(1).filter(l => !/^Lines?:|^$/.test(l)).slice(0, 4), [own, 'Element Plain', 'Data type Money', 'Class Order'].map(x => x + '.'), `${d}: describe()`);
     const rows = tablesOf(c, c.V.v, c.buildGeo('v'))[0].rows.map(r => r.split('<td>').slice(1).map(x => x.replace(/<[^>]+>/g, '')));
     assert.deepEqual(['Plain', 'Money', 'Order'].map(l => rows.find(r => r[0] === l)[1]), ['Element', 'Data type', 'Class'], `${d}: the PDF's Kind`);
+  }
+});
+
+test('audit 27: a self-loop beside a two-way pair laid out right (an ordinary Mermaid LR state diagram) crosses nothing', async () => {
+  const { readMermaidState } = await import('../src/readers/mermaid-state.js');
+  const src = ['stateDiagram-v2', 'direction LR', '[*] --> A', 'A --> B : go there now', 'B --> A : come back here', 'A --> A : self loop label'];
+  for (const d of ['LR', 'TB']) {
+    const m = readMermaidState(src.join('\n').replace('direction LR', 'direction ' + d)).model, v = m.views[0].id;
+    assert.deepEqual(check(m, v), [], d);
+    const g = layout(m, v), loop = g.edges.find(e => e.from === e.to), ab = g.edges.find(e => e.from !== e.to && e.label === 'go there now');
+    assert.ok(loop && ab, d);
   }
 });
