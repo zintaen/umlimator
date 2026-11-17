@@ -1,4 +1,4 @@
-import { EDGE_BREAK, EDGE_LH, fit, sansW, textW } from '../core/text.js';
+import { EDGE_BREAK, EDGE_LH, brLines, fit, linesW, sansW, textW } from '../core/text.js';
 import { behind, detour, onBorder, routeAudit } from './audit.js';
 import { edgeRefIds } from '../map/api.js';
 import { badgesOf, mapNodeW, mapTabs, toneOf } from '../map/cards.js';
@@ -218,11 +218,16 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // A typed view's boxes (notes/stage-2.md §3.2) take the same code as a map's: their title is the type's (`title`), and a box
   // grows to hold it; laid out turned (direction down), the 24 px header room goes left, the side that becomes the top
   const familyDefs = dg.containers || [], tagged = n => map && (n.author || n.k === 'm-ext'), TB = !map && dg.turned; // tagged: a name tag hangs under the card
-  const headW = f => textW(!map && f.title || f.label || f.id, !map && f.head ? 12 : 11) + 16; // a box's title, as the audit measures it (two lines: at 12 px)
+  const headW = f => (map ? textW(f.label || f.id, 11) : linesW(f.title || f.label || f.id, f.head ? 12 : 11)) + 16; // a box's title, as the audit measures it (two lines: at 12 px); a broken one by its widest line (audit 24)
   const kids = new Map(), held = new Set(familyDefs.flatMap(f => f.nodeIds || [])); // a box's boxes; the cards in a box
   familyDefs.forEach(f => { kids.has(f.parent) || kids.set(f.parent, []); kids.get(f.parent).push(f); });
   // a card in a box (a port: on its owner's border) is in what it lies within; a card in none is in none, though a deep box's padding covers it
-  const within = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h, owns = (f, n) => within(n, f) && (n.owner != null || held.has(n.id));
+  // a box whose title the author broke (its header room grown for the lines) holds only the cards it or a box in it holds:
+  // grown up over another box's card, it would otherwise take that card for its own and never move off it (audit 24)
+  const boxesOf = new Map(), upOf = new Map(familyDefs.map(f => [f.id, f.parent])); // a card's boxes; a box's parent (a walk up, no recursion: boxes nest 3,000 deep)
+  familyDefs.forEach(f => (f.nodeIds || []).forEach(id => { boxesOf.has(id) || boxesOf.set(id, []); boxesOf.get(id).push(f.id); }));
+  const under = (f, id) => (boxesOf.get(id) || []).some(b => { for (let k = 0; b != null && k <= familyDefs.length; b = upOf.get(b), k++) if (b === f.id) return true; return false; });
+  const within = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h, owns = (f, n) => within(n, f) && (n.owner != null || held.has(n.id) && (!(f.head > 0 && brLines(f.title ?? f.label ?? f.id).length > 1) || under(f, n.id)));
   const framesNow = () => { const cache = Object.create(null); // a box may be named 'constructor'
     const make = (f, children) => {
       const members = (f.nodeIds || []).map(id => byId[id]).filter(Boolean);
