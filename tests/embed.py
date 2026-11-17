@@ -124,8 +124,20 @@ def dom(path, done, wait=60, motion=False):
 
 
 failed = False
+# CI runs this script as two jobs side by side (UMLIMATOR_TEST_SHARD=k/2): each page and each check below is a part,
+# with about its seconds on a runner, in exactly one of them; unset (as on a developer's machine) every part runs, in
+# order. A check outside every part, or a part not declared here, fails the run (tests/shards.py)
 # the motion pass: tests/motion.html runs with motion on, so a bug in what animates can't hide behind reduced motion
-for page, motion in [(p, False) for p in ("tests/embed.html", "tests/edit.html", "tests/typed-edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html", "tests/insight.html", "tests/page-handle.html", "tests/element.html", "tests/pieces.html", "tests/state.html", "tests/page-state.html", "tests/shapes.html", "tests/aids.html", "tests/notation.html", "tests/class.html", "tests/class-editor.html", "tests/package.html", "tests/object.html", "tests/package-object.html", "tests/type-hooks.html", "tests/core-diet.html", "tests/timeaxis.html", "tests/sequence.html", "tests/sequence-fixtures.html", "tests/communication.html", "tests/flow.html", "tests/c4.html", "tests/information-flow.html", "tests/dfd.html", "tests/flowchart.html", "tests/stage5.html", "tests/composite.html", "tests/deployment.html", "tests/typed-ports.html", "tests/structure.html", "tests/stage4.html", "tests/state-machine.html", "tests/overview.html", "tests/activity.html", "tests/usecase.html", "tests/component.html", "tests/profile.html", "tests/timing.html", "tests/stage6.html", "tests/er.html", "tests/m2.html", "tests/c4-views.html", "tests/bpmn-engine.html", "tests/bpmn-notation.html", "tests/bpmn.html", "tests/m4b.html", "tests/requirement.html", "tests/blocks.html", "tests/internal-block.html", "tests/parametric.html", "tests/mindmap.html", "tests/cloud.html", "tests/sysml.html", "tests/m4a.html", "tests/uml-panel.html")] + [("tests/motion.html", True), ("tests/page-motion.html", True)]:
+PAGES = [(p, False) for p in ("tests/embed.html", "tests/edit.html", "tests/typed-edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html", "tests/insight.html", "tests/page-handle.html", "tests/element.html", "tests/pieces.html", "tests/state.html", "tests/page-state.html", "tests/shapes.html", "tests/aids.html", "tests/notation.html", "tests/class.html", "tests/class-editor.html", "tests/package.html", "tests/object.html", "tests/package-object.html", "tests/type-hooks.html", "tests/core-diet.html", "tests/timeaxis.html", "tests/sequence.html", "tests/sequence-fixtures.html", "tests/communication.html", "tests/flow.html", "tests/c4.html", "tests/information-flow.html", "tests/dfd.html", "tests/flowchart.html", "tests/stage5.html", "tests/composite.html", "tests/deployment.html", "tests/typed-ports.html", "tests/structure.html", "tests/stage4.html", "tests/state-machine.html", "tests/overview.html", "tests/activity.html", "tests/usecase.html", "tests/component.html", "tests/profile.html", "tests/timing.html", "tests/stage6.html", "tests/er.html", "tests/m2.html", "tests/c4-views.html", "tests/bpmn-engine.html", "tests/bpmn-notation.html", "tests/bpmn.html", "tests/m4b.html", "tests/requirement.html", "tests/blocks.html", "tests/internal-block.html", "tests/parametric.html", "tests/mindmap.html", "tests/cloud.html", "tests/sysml.html", "tests/m4a.html", "tests/uml-panel.html")] + [("tests/motion.html", True), ("tests/page-motion.html", True)]
+DEMOS = (("examples/edit.html", "the editing demo"), ("examples/embed.html", "the host page"), ("examples/live.html", "the live page"),
+         ("examples/playground.html", "the playground"), ("examples/ask.html", "the ask-the-map page"), ("examples/replay.html", "the trace replay page"), ("examples/timelapse.html", "the time-lapse"), ("examples/drift.html", "the drift page"))
+spec = importlib.util.spec_from_file_location("shards", ROOT / "tests" / "shards.py")
+shards = importlib.util.module_from_spec(spec); spec.loader.exec_module(shards)
+part = shards.Parts(__file__, {**{page: 4 for page, _ in PAGES}, **{page: 4 for page, _ in DEMOS}, "examples/element.html": 4,
+                              "examples/notations.html": 4, "the standalone page's legend": 4, "keepPairs": 3, "rules": 3, "label kinds": 4, "record": 10})
+for page, motion in PAGES:
+    if not part(page):
+        continue
     t = dom(page, lambda t: 'id="result"' in t, motion=motion)
     m = re.search(r'<pre id="result">(.*?)</pre>', t, re.S)
     if not m:  # each check names itself in the page title: say where it stopped
@@ -137,17 +149,20 @@ for page, motion in [(p, False) for p in ("tests/embed.html", "tests/edit.html",
     for name in r["fail"]:
         print("FAIL", page, "·", name)
     failed |= bool(r["fail"])
-for page, what in (("examples/edit.html", "the editing demo"), ("examples/embed.html", "the host page"), ("examples/live.html", "the live page"),
-                   ("examples/playground.html", "the playground"), ("examples/ask.html", "the ask-the-map page"), ("examples/replay.html", "the trace replay page"), ("examples/timelapse.html", "the time-lapse"), ("examples/drift.html", "the drift page")):
+for page, what in DEMOS:
+    if not part(page):
+        continue
     demo = dom(page, lambda t: 'class="umlimator"' in t)
     print(("ok  " if 'class="umlimator"' in demo else "FAIL"), f"{page} · {what} draws its map")
     failed |= 'class="umlimator"' not in demo
-demo = dom("examples/element.html", lambda t: "Drawn: " in t)  # the map is in the element's shadow root: the page says when it is drawn
-print(("ok  " if "Drawn: " in demo else "FAIL"), "examples/element.html · the element page draws its map")
-failed |= "Drawn: " not in demo
-demo = dom("examples/notations.html", lambda t: "Drawn: 2 maps" in t)  # two elements, light and dark: the page says when both have drawn
-print(("ok  " if "Drawn: 2 maps" in demo else "FAIL"), "examples/notations.html · the card shapes gallery draws its two maps")
-failed |= "Drawn: 2 maps" not in demo
+if part("examples/element.html"):
+    demo = dom("examples/element.html", lambda t: "Drawn: " in t)  # the map is in the element's shadow root: the page says when it is drawn
+    print(("ok  " if "Drawn: " in demo else "FAIL"), "examples/element.html · the element page draws its map")
+    failed |= "Drawn: " not in demo
+if part("examples/notations.html"):
+    demo = dom("examples/notations.html", lambda t: "Drawn: 2 maps" in t)  # two elements, light and dark: the page says when both have drawn
+    print(("ok  " if "Drawn: 2 maps" in demo else "FAIL"), "examples/notations.html · the card shapes gallery draws its two maps")
+    failed |= "Drawn: 2 maps" not in demo
 # the standalone page (mountPage) shows a legend, so it still names line kinds from label words: "reads metrics" is state
 
 
@@ -175,78 +190,84 @@ class Legend(html.parser.HTMLParser):
             self.b += data
 
 
-names = Legend(dom("examples/bookshop.html", lambda t: bool(Legend(t).names))).names  # waits for the legend itself; none if it never draws
-legend = {"calls", "state"} <= set(names)
-print(("ok  " if legend else "FAIL"), "examples/bookshop.html · the standalone page's legend names the kinds it reads from labels (calls, state)", "" if legend else names)
-failed |= not legend
-# the layout check of a page umlimator.py renders: a view that keeps A→B and B→A apart (keepPairs) draws the return line
-# right to left, as it should; the check does not count it against the view
-with tempfile.TemporaryDirectory() as tmp:
-    pairs = {"nodes": [{"id": "app", "label": "App", "kind": "frontend"}, {"id": "api", "label": "API", "kind": "backend"}, {"id": "db", "label": "Store", "kind": "database"}],
-             "edges": [{"from": "app", "to": "api", "label": "asks"}, {"from": "api", "to": "app", "label": "pushes"}, {"from": "api", "to": "db", "label": "writes"}],
-             "views": [{"id": "v", "keepPairs": True, "nodeIds": ["app", "api", "db"], "layout": {"app": [0, 0], "api": [1, 0], "db": [2, 0]}}]}
-    (Path(tmp) / "pairs.json").write_text(json.dumps(pairs))
-    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(Path(tmp) / "pairs.json"), "--out", str(Path(tmp) / "pairs.html")], capture_output=True, text=True)
-    i = r.stdout.find("{"); rep = json.loads(r.stdout[i:]) if i >= 0 else {}
-    pairs_ok = r.returncode == 0 and rep.get("counts") is not None and not any("right-to-left" in p for p in rep.get("problems", []))
-print(("ok  " if pairs_ok else "FAIL"), "umlimator.py render · keepPairs: the layout check does not flag a pair's return line as running right to left",
-      "" if pairs_ok else rep.get("problems") or r.stderr[-400:])
-failed |= not pairs_ok
-# a model's rules (#70): the check names each rule the page's model breaks, counts them, and fails
-with tempfile.TemporaryDirectory() as tmp:
-    page = Path(tmp) / "rules.html"
-    subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(ROOT / "tests" / "rules.json"), "--out", str(page), "--no-check"], capture_output=True)
-    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "check", str(page)], capture_output=True, text=True)
-    i = r.stdout.find("{"); rep = json.loads(r.stdout[i:]) if i >= 0 else {}
-    broken = [p for p in rep.get("problems", []) if ' breaks rule "' in p]
-    rules_ok = r.returncode == 1 and (rep.get("counts") or {}).get("rules") == 3 and len(broken) == 3 and "3 broken rules" in r.stderr
-print(("ok  " if rules_ok else "FAIL"), "umlimator.py check · the rules a model breaks: each named and counted, and the check fails",
-      "" if rules_ok else (rep.get("problems"), r.stderr[-400:]))
-failed |= not rules_ok
-# a label with no room (#142) and one on a box's border (#108) are kinds of their own: counted, and --ignore leaves them out.
-# Six numbered lines from a card down a column to six cards: their labels have no room beside each other, only their steps show
-with tempfile.TemporaryDirectory() as tmp:
-    ids = [f"t{i}" for i in range(6)]
-    col = {"nodes": [{"id": "a", "label": "A"}] + [{"id": t, "label": t.upper()} for t in ids],
-           "edges": [{"from": "a", "to": t, "label": f"hands over job {i}", "step": i + 1} for i, t in enumerate(ids)],
-           "views": [{"id": "v", "nodeIds": ["a"] + ids, "layout": {"a": [0, 0], **{t: [0, i + 1] for i, t in enumerate(ids)}}}]}
-    (Path(tmp) / "col.json").write_text(json.dumps(col)); page = Path(tmp) / "col.html"
-    subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(Path(tmp) / "col.json"), "--out", str(page), "--no-check"], capture_output=True)
-    reps = []
-    for extra in ([], ["--ignore", "labelOnBorder,labelNoRoom"]):
-        r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "check", str(page), *extra], capture_output=True, text=True)
-        i = r.stdout.find("{"); reps.append((r.returncode, json.loads(r.stdout[i:]) if i >= 0 else {}))
-    cut = [p for p in reps[0][1].get("problems", []) if " has no room on edge " in p and "only its step" in p]
-    kinds_ok = reps[0][0] == 0 and cut and (reps[0][1].get("counts") or {}).get("labelNoRoom") == len(cut) and "labelOnBorder" in reps[0][1]["counts"] \
-        and reps[1][0] == 0 and reps[1][1].get("ignored") == len(cut) and not any(" has no room " in p for p in reps[1][1].get("problems", []))
-print(("ok  " if kinds_ok else "FAIL"), "umlimator.py check · a label that shows only its step is named and counted as labelNoRoom; --ignore labelOnBorder,labelNoRoom leaves them out",
-      "" if kinds_ok else reps)
-failed |= not kinds_ok
+if part("the standalone page's legend"):
+    names = Legend(dom("examples/bookshop.html", lambda t: bool(Legend(t).names))).names  # waits for the legend itself; none if it never draws
+    legend = {"calls", "state"} <= set(names)
+    print(("ok  " if legend else "FAIL"), "examples/bookshop.html · the standalone page's legend names the kinds it reads from labels (calls, state)", "" if legend else names)
+    failed |= not legend
+if part("keepPairs"):
+    # the layout check of a page umlimator.py renders: a view that keeps A→B and B→A apart (keepPairs) draws the return line
+    # right to left, as it should; the check does not count it against the view
+    with tempfile.TemporaryDirectory() as tmp:
+        pairs = {"nodes": [{"id": "app", "label": "App", "kind": "frontend"}, {"id": "api", "label": "API", "kind": "backend"}, {"id": "db", "label": "Store", "kind": "database"}],
+                 "edges": [{"from": "app", "to": "api", "label": "asks"}, {"from": "api", "to": "app", "label": "pushes"}, {"from": "api", "to": "db", "label": "writes"}],
+                 "views": [{"id": "v", "keepPairs": True, "nodeIds": ["app", "api", "db"], "layout": {"app": [0, 0], "api": [1, 0], "db": [2, 0]}}]}
+        (Path(tmp) / "pairs.json").write_text(json.dumps(pairs))
+        r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(Path(tmp) / "pairs.json"), "--out", str(Path(tmp) / "pairs.html")], capture_output=True, text=True)
+        i = r.stdout.find("{"); rep = json.loads(r.stdout[i:]) if i >= 0 else {}
+        pairs_ok = r.returncode == 0 and rep.get("counts") is not None and not any("right-to-left" in p for p in rep.get("problems", []))
+    print(("ok  " if pairs_ok else "FAIL"), "umlimator.py render · keepPairs: the layout check does not flag a pair's return line as running right to left",
+          "" if pairs_ok else rep.get("problems") or r.stderr[-400:])
+    failed |= not pairs_ok
+if part("rules"):
+    # a model's rules (#70): the check names each rule the page's model breaks, counts them, and fails
+    with tempfile.TemporaryDirectory() as tmp:
+        page = Path(tmp) / "rules.html"
+        subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(ROOT / "tests" / "rules.json"), "--out", str(page), "--no-check"], capture_output=True)
+        r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "check", str(page)], capture_output=True, text=True)
+        i = r.stdout.find("{"); rep = json.loads(r.stdout[i:]) if i >= 0 else {}
+        broken = [p for p in rep.get("problems", []) if ' breaks rule "' in p]
+        rules_ok = r.returncode == 1 and (rep.get("counts") or {}).get("rules") == 3 and len(broken) == 3 and "3 broken rules" in r.stderr
+    print(("ok  " if rules_ok else "FAIL"), "umlimator.py check · the rules a model breaks: each named and counted, and the check fails",
+          "" if rules_ok else (rep.get("problems"), r.stderr[-400:]))
+    failed |= not rules_ok
+if part("label kinds"):
+    # a label with no room (#142) and one on a box's border (#108) are kinds of their own: counted, and --ignore leaves them out.
+    # Six numbered lines from a card down a column to six cards: their labels have no room beside each other, only their steps show
+    with tempfile.TemporaryDirectory() as tmp:
+        ids = [f"t{i}" for i in range(6)]
+        col = {"nodes": [{"id": "a", "label": "A"}] + [{"id": t, "label": t.upper()} for t in ids],
+               "edges": [{"from": "a", "to": t, "label": f"hands over job {i}", "step": i + 1} for i, t in enumerate(ids)],
+               "views": [{"id": "v", "nodeIds": ["a"] + ids, "layout": {"a": [0, 0], **{t: [0, i + 1] for i, t in enumerate(ids)}}}]}
+        (Path(tmp) / "col.json").write_text(json.dumps(col)); page = Path(tmp) / "col.html"
+        subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(Path(tmp) / "col.json"), "--out", str(page), "--no-check"], capture_output=True)
+        reps = []
+        for extra in ([], ["--ignore", "labelOnBorder,labelNoRoom"]):
+            r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "check", str(page), *extra], capture_output=True, text=True)
+            i = r.stdout.find("{"); reps.append((r.returncode, json.loads(r.stdout[i:]) if i >= 0 else {}))
+        cut = [p for p in reps[0][1].get("problems", []) if " has no room on edge " in p and "only its step" in p]
+        kinds_ok = reps[0][0] == 0 and cut and (reps[0][1].get("counts") or {}).get("labelNoRoom") == len(cut) and "labelOnBorder" in reps[0][1]["counts"] \
+            and reps[1][0] == 0 and reps[1][1].get("ignored") == len(cut) and not any(" has no room " in p for p in reps[1][1].get("problems", []))
+    print(("ok  " if kinds_ok else "FAIL"), "umlimator.py check · a label that shows only its step is named and counted as labelNoRoom; --ignore labelOnBorder,labelNoRoom leaves them out",
+          "" if kinds_ok else reps)
+    failed |= not kinds_ok
 
-# umlimator.py record (#69): bike-share's story as an animated PNG, a frame per step, shown for the step's duration; a step
-# that plays a tour has 2 to 6 frames, each a different picture (the dot rides), which share the step's duration (#83)
-with tempfile.TemporaryDirectory() as tmp:
-    page, png = Path(tmp) / "bike-share.html", Path(tmp) / "ride.png"
-    subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(ROOT / "examples" / "bike-share.json"), "--out", str(page), "--no-check"], capture_output=True)
-    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "record", str(page), "--story", "ride", "--out", str(png)], capture_output=True, text=True)
-    b, chunks, i = png.read_bytes() if png.is_file() else b"", [], 8
-    while i + 8 <= len(b):
-        n = int.from_bytes(b[i:i + 4], "big"); chunks.append((b[i + 4:i + 8], b[i + 8:i + 8 + n])); i += 12 + n
-    frames = []  # [delay, image data]: fcTL is sequence, size, offset, then the delay; fdAT is a sequence, then the data
-    for t, d in chunks:
-        if t == b"fcTL":
-            frames.append([int.from_bytes(d[20:22], "big"), b""])
-        elif t in (b"IDAT", b"fdAT") and frames:
-            frames[-1][1] += d if t == b"IDAT" else d[4:]
-    k, steps_ok = 0, []
-    for s in json.loads((ROOT / "examples" / "bike-share.json").read_text())["stories"][0]["steps"]:
-        mine, ms = [], s.get("duration") or 4000
-        while k < len(frames) and sum(d for d, _ in mine) < ms:
-            mine.append(frames[k]); k += 1
-        steps_ok.append(sum(d for d, _ in mine) == ms and (1 < len(mine) <= 6 and len({f for _, f in mine}) == len(mine) if s.get("tour") else len(mine) == 1))
-    rec_ok = r.returncode == 0 and b[:8] == b"\x89PNG\r\n\x1a\n" and [t for t, _ in chunks].count(b"acTL") == 1 and all(steps_ok) and k == len(frames)
-print(("ok  " if rec_ok else "FAIL"), "umlimator.py record · a story as an animated PNG: a frame per step, frames along a step's tour (the dot rides), each step for its duration",
-      "" if rec_ok else [[d for d, _ in frames], steps_ok, r.stderr[-400:]])
-failed |= not rec_ok
+if part("record"):
+    # umlimator.py record (#69): bike-share's story as an animated PNG, a frame per step, shown for the step's duration; a step
+    # that plays a tour has 2 to 6 frames, each a different picture (the dot rides), which share the step's duration (#83)
+    with tempfile.TemporaryDirectory() as tmp:
+        page, png = Path(tmp) / "bike-share.html", Path(tmp) / "ride.png"
+        subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(ROOT / "examples" / "bike-share.json"), "--out", str(page), "--no-check"], capture_output=True)
+        r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "record", str(page), "--story", "ride", "--out", str(png)], capture_output=True, text=True)
+        b, chunks, i = png.read_bytes() if png.is_file() else b"", [], 8
+        while i + 8 <= len(b):
+            n = int.from_bytes(b[i:i + 4], "big"); chunks.append((b[i + 4:i + 8], b[i + 8:i + 8 + n])); i += 12 + n
+        frames = []  # [delay, image data]: fcTL is sequence, size, offset, then the delay; fdAT is a sequence, then the data
+        for t, d in chunks:
+            if t == b"fcTL":
+                frames.append([int.from_bytes(d[20:22], "big"), b""])
+            elif t in (b"IDAT", b"fdAT") and frames:
+                frames[-1][1] += d if t == b"IDAT" else d[4:]
+        k, steps_ok = 0, []
+        for s in json.loads((ROOT / "examples" / "bike-share.json").read_text())["stories"][0]["steps"]:
+            mine, ms = [], s.get("duration") or 4000
+            while k < len(frames) and sum(d for d, _ in mine) < ms:
+                mine.append(frames[k]); k += 1
+            steps_ok.append(sum(d for d, _ in mine) == ms and (1 < len(mine) <= 6 and len({f for _, f in mine}) == len(mine) if s.get("tour") else len(mine) == 1))
+        rec_ok = r.returncode == 0 and b[:8] == b"\x89PNG\r\n\x1a\n" and [t for t, _ in chunks].count(b"acTL") == 1 and all(steps_ok) and k == len(frames)
+    print(("ok  " if rec_ok else "FAIL"), "umlimator.py record · a story as an animated PNG: a frame per step, frames along a step's tour (the dot rides), each step for its duration",
+          "" if rec_ok else [[d for d, _ in frames], steps_ok, r.stderr[-400:]])
+    failed |= not rec_ok
+part.done()
 server.shutdown()
 sys.exit(1 if failed else 0)
