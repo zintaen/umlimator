@@ -403,3 +403,17 @@ test('audit 26: F2 with only «full» or «proxy» on a port sets its kind and k
   assert.deepEqual(D.edits.rename(m2, v.id, p.id, '«full»'), { commands: [] }, 'the kind it has already: nothing');
   assert.deepEqual(D.edits.rename(m, v.id, p.id, '«proxy» plug').commands.map(c => c.value), ['plug', 'proxy']);
 });
+
+// audit 27: F2 with the keyword glued to the name ("«full»charge") or two spaces after it stored the keyword, or a leading
+// space, in the port's name; F2 reads the keyword with any spacing, so the name loses it the same way
+test('audit 27: F2 with «full» glued to the name or spaced twice sets the kind and stores the bare name', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/ebike-structure.json', import.meta.url), 'utf8')), v = m.views.find(x => x.diagram === 'sysml.internal-block'), D = diagramOf(v);
+  const p = layout(m, v.id).nodes.find(n => n.shape === 'port' && /charge$/.test(n.id));
+  for (const t of ['«full»charge', '«full»  charge', ' «full»\tcharge', '«full» charge']) {
+    const cs = D.edits.rename(m, v.id, p.id, t).commands;
+    assert.deepEqual(cs.find(c => c.path === 'props.kind'), { op: 'set', id: 'battery.charge', path: 'props.kind', value: 'full' }, JSON.stringify(t));
+    assert.ok(!cs.some(c => c.path === 'label'), `${JSON.stringify(t)}: the name, charge, kept (${JSON.stringify(cs)})`);
+    assert.equal(layout(apply(m, cs), v.id).nodes.find(n => n.id === p.id).label, '«full» charge', JSON.stringify(t));
+  }
+  assert.deepEqual(D.edits.rename(m, v.id, p.id, '«proxy»plug').commands.map(c => c.value), ['plug', 'proxy']);
+});
