@@ -1,4 +1,5 @@
 import { registerDiagramType, idTable } from '../core/registry.js';
+import { copyOf } from '../core/model.js';
 import { esc, fit } from '../core/text.js';
 import { SHAPE, r2, sidePorts } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
@@ -134,7 +135,7 @@ function dynConnect(model, view, from, to, at, line) {
   if (Array.isArray(view.edges)) return null;
   // no list yet: the line (a relationship or a comment link) and the list of it, else the add would list it nowhere
   const base = t === 'c4.Relationship' ? 'relationship' : 'link', used = vUsed(model); let k = 1; while (used.has(`${base}${k}`)) k++;
-  const props = V_OBJ(line) && V_OBJ(line.props) ? { props: structuredClone(line.props) } : {};
+  const props = V_OBJ(line) && V_OBJ(line.props) ? { props: copyOf(line.props) } : {};
   return [{ op: 'add', element: { id: `${base}${k}`, type: t, from, to, ...props } }, { op: 'set', view: view.id, path: 'edges', value: [`${base}${k}`] }];
 }
 // rename: F2 on a step holds its text, "description [technology]": the technology when unchanged, and a number typed before it

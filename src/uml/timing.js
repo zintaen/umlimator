@@ -1,4 +1,5 @@
 import { registerDiagramType, idTable } from '../core/registry.js';
+import { copyOf } from '../core/model.js';
 import { apply } from '../core/apply.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -304,7 +305,7 @@ function tmConnect(model, view, from, to, at, line) {
   // a lifeline's end is never sent after the change it reaches, nor received before the change it leaves: the keyboard's slot
   // (no slot follows a lifeline: the ruler's end) would make every such message one received before it is sent
   if (!a.c && b.c) a.t = Math.min(a.t, b.t); else if (a.c && !b.c) b.t = Math.max(b.t, a.t);
-  const props = { ...(TM_OBJ(line && line.props) ? structuredClone(line.props) : {}) }, sort = TM_SORTS.includes(props.sort) ? props.sort : (props.sort = 'call');
+  const props = { ...(TM_OBJ(line && line.props) ? copyOf(line.props) : {}) }, sort = TM_SORTS.includes(props.sort) ? props.sort : (props.sort = 'call');
   Object.assign(props, { sentAt: a.t, receivedAt: b.t });
   if (sort === 'reply') { const c = X.msgs.filter(m => tmSort(m) === 'call' && m.from === b.lane && m.to === a.lane && tmProps(m).sentAt <= a.t).sort((p, q) => tmProps(q).sentAt - tmProps(p).sentAt)[0];
     if (c) props.replyTo = c.id; }

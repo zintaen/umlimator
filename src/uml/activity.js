@@ -9,6 +9,7 @@ import { brLines } from '../typed/draw.js';
 import './class.js'; // SHAPE.note, a comment's
 import { frame } from './frame.js';
 import { FLOW_RULES, flowOf, flowProblems, flowLabel, flowRename, flowStereo, viewFlows } from './flow.js';
+import { copyOf } from '../core/model.js';
 
 /* ---------- the activity diagram, uml.activity (work package 4.5, notes/stage-4.md §9) ----------
    Control nodes, actions and flows from src/uml/flow.js; the send and accept signals, the object node, the data store and
@@ -261,7 +262,7 @@ function actConnect(model, view, from, to, at, line) {
   // the decision's exits as decision-guards counts them (flowProblems): the model's flows and the view's own (audit 21)
   const I = actIndex(model, view), x = I.N.get(from), own = AC_ARR(view.edges).filter(e => AC_OBJ(e) && !I.E.has(e.id));
   const outs = [...I.E.values(), ...own].filter(e => AC_FLOWS.includes(e.type) && e.from === from);
-  const props = { ...(AC_OBJ(line.props) ? structuredClone(line.props) : {}) };
+  const props = { ...(AC_OBJ(line.props) ? copyOf(line.props) : {}) };
   if (x && x.type === 'uml.DecisionNode' && outs.length === 1 && !AC_HAS(props.guard) && AC_PART(acProps(outs[0]).guard) !== 'else') props.guard = 'else';
   return acGuard(model, view, [{ op: 'add', element: { id: acFreshId(model, `${from}-${to}`), type: line.type, from, to, ...(Object.keys(props).length ? { props } : {}) }, view: view.id }]);
 }
