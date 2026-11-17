@@ -38,7 +38,7 @@ function ucWrap(t, px, max, k) {
 }
 // a use case's texts: its stereotypes, its name on at most three lines, then its extension points' heading and names
 function ucEllParts(n) {
-  const st = UC_ARR(n.stereotypes).map(t => `«${t}»`), name = ucWrap(n.label, UC.px, UC.max, 3), eps = UC_ARR(n.points);
+  const st = UC_ARR(n.stereotypes).map(t => `«${t}»`), name = ucWrap(n.label, UC.px, UC.max, 3), eps = UC_ARR(n.points).flatMap(p => brLines(p)); // a point its author broke: a line each (audit 26)
   const w = Math.min(UC.max, Math.max(widest(st, t => textW(t, UC.st)), widest(name, l => textW(l, UC.px)), ...(eps.length ? [textW('extension points', UC.st), widest(eps, p => textW(p, UC.ep))] : [])));
   const h = st.length * UC.sth + name.length * UC.lh + (eps.length ? UC.gap + UC.head + eps.length * UC.eph : 0);
   return { st, name, eps, w, h };

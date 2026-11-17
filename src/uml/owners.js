@@ -27,6 +27,15 @@ function viewLines(model, view) {
   OWN_ARR(view.edges).forEach((e, j) => { if (OWN_OBJ(e) && typeof e.id === 'string' && !taken.has(e.id) && String(e.type || '').startsWith('uml.')) { taken.add(e.id); out.push([e, `views[${vi}].edges[${j}]`]); } });
   return out;
 }
+/* every line the model means: its own (edges), then each view's own (view.edges objects) whose id no model element or earlier
+   line takes, first id wins. A line one view alone draws is a fact of the model all the same (stereotypes.js styIndex), so a
+   profile's rows and names in another view say it too (audit 26) */
+function modelLines(model) {
+  const es = OWN_ARR(OWN_OBJ(model) ? model.edges : null), out = [...es], taken = new Set([...OWN_ARR(OWN_OBJ(model) ? model.nodes : null), ...es].filter(OWN_OBJ).map(x => x.id));
+  OWN_ARR(OWN_OBJ(model) ? model.views : null).forEach(v => OWN_OBJ(v) && OWN_ARR(v.edges).forEach(e => {
+    if (OWN_OBJ(e) && typeof e.id === 'string' && !taken.has(e.id) && String(e.type || '').startsWith('uml.')) { taken.add(e.id); out.push(e); } }));
+  return out;
+}
 const ownName = x => String(x.label ?? x.id), ownAt = (at, id) => at.get(id) || { id }; // an id the index lacks (a member's) by itself, not a throw (audit 17)
 const stereoOf = x => OWN_ARR(OWN_OBJ(x.props) ? x.props.stereotypes : null).filter(t => t != null && t !== '').map(String);
 
@@ -162,4 +171,4 @@ function placeTabs(g) {
   return g;
 }
 
-export { viewLines, boxHead, OWN_BOXES, OWNER_RULES, ownersOn, readingOrder, holdsLine, lineInside, ownerChoices, ownerProblems, placeTabs };
+export { viewLines, modelLines, boxHead, OWN_BOXES, OWNER_RULES, ownersOn, readingOrder, holdsLine, lineInside, ownerChoices, ownerProblems, placeTabs };
