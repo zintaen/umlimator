@@ -16,6 +16,7 @@ import { layout, check } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
+import { svgOf } from '../src/draw/svg.js';
 import { tablesOf } from '../src/page/print.js';
 import { csParse, csRow } from '../src/uml/composite.js';
 
@@ -650,4 +651,27 @@ test('audit 21: a connector from a part to a collaboration use lies in no struct
   m.edges.push({ id: 'c-use', type: 'uml.Connector', from: 'order-service.checkout', to: use });
   assert.deepEqual(validate(m).filter(p => p.rule === 'connector-scope').map(p => [p.level, p.ids[0]]), [['error', 'c-use']]);
   assert.equal(T.edits.connect(CS, CS.views[0], 'order-service.checkout', 'order-service.pricing', null, line), null, 'two parts: as before');
+});
+
+// audit 22: a listed line of another kind (a dependency) is drawn by its kind, never as a connector's plain line; a comment
+// link's label, which this view neither draws nor says, has no Name field and F2 writes none; connector-scope names the one
+// end out of scope
+test('a dependency in a composite view keeps its direction, a comment link has no name here, and connector-scope names the stray end (audit 22)', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'svc', type: 'uml.Class', label: 'OrderService', members: [P('svc.p', 'repo', { props: { valueType: 'Repo' } })] },
+    { id: 'repo', type: 'uml.Class', label: 'Repo' }, { id: 'db', type: 'uml.Class', label: 'Database' }, { id: 'n', type: 'uml.Comment', label: 'A note' }],
+    edges: [{ id: 'dep', type: 'uml.Dependency', from: 'repo', to: 'db' }, { id: 'use', type: 'uml.Usage', from: 'db', to: 'repo' }, con('c', 'db', 'repo'), { id: 'cl', type: 'uml.CommentLink', from: 'n', to: 'repo', label: 'ZZLABEL' }],
+    views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 'svc', nodeIds: ['svc', 'repo', 'db', 'n'], edges: ['dep', 'use', 'c', 'cl'] }] };
+  const g = layout(m, 'v'), end = id => g.edges.find(e => e.id === id).end;
+  assert.deepEqual(end('c'), { from: 'none', to: 'none' });
+  for (const id of ['dep', 'use']) assert.deepEqual(end(id), { from: 'none', to: 'open', dashed: true }, id);
+  assert.ok(!svgOf(g).includes('ZZLABEL') && !describe(m, 'v').includes('ZZLABEL'), 'the label is neither drawn nor said');
+  assert.ok(T.unnamed.includes('uml.CommentLink'));
+  assert.ok(T.edits.rename(m, m.views[0], 'cl', 'NEW').error);
+  assert.deepEqual(T.edits.rename(m, m.views[0], 'c', 'NEW'), [{ op: 'set', id: 'c', path: 'label', value: 'NEW' }], 'a connector is renamed as before');
+  // a connector from a part of the subject to a collaboration use: only the use lies in no structure
+  const s = structuredClone(CS), part = mem(s, 'order-service.checkout') ? 'order-service.checkout' : s.nodes[0].members.find(x => x.type === 'uml.Property').id;
+  const use = s.nodes.find(n => n.type === 'uml.CollaborationUse').id; s.edges.push(con('c-use', part, use));
+  const msg = validate(s).find(p => p.rule === 'connector-scope' && p.ids.includes('c-use')).message, nm = x => JSON.stringify((mem(s, x) || node(s, x)).label);
+  assert.ok(msg.includes(`and ${nm(use)} lies in no structure of this view`), msg);
+  assert.ok(!msg.includes('which lie in no structure'), msg);
 });

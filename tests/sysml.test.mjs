@@ -216,7 +216,7 @@ test('the composite type\'s problems are kept where their words fit, in SysML\'s
   // parametric: a binding through a value property, not a constraint property
   const p = structuredClone(M19); p.edges.push({ id: 'b2', type: 'sysml.BindingConnector', from: 'ebike.ecoRange', to: 'range-equation.range', props: { ends: { to: { part: 'ebike.missing' } } } });
   assert.deepEqual(SYS_CS_PROBLEMS(p, p.views[0]).map(x => x.message), ['connector-part: b2\'s to end goes through "ebike.missing", not a constraint property of the subject',
-    'connector-scope: b2 joins "ecoRange" and "range", which lie in no structure of this view: its ends are the subject\'s parameters and properties']);
+    'connector-scope: b2 joins "ecoRange" and "range", and "range" lies in no structure of this view: its ends are the subject\'s parameters and properties']); // the one end out of scope named (audit 22)
 });
 
 // ---- the frame (§5)

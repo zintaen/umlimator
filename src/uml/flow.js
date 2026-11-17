@@ -107,15 +107,22 @@ const FLOW_RULES = {
   'decision-guards': 'each flow out of a decision has a guard, and at most one is else',
 };
 const flowWord = t => String(t ?? '').split('.').pop().replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase(); // 'uml.ForkNode': "fork node"
+// the flows a view's checks weigh, each [flow, path]: the model's that touch a node it shows (all of them with no view), and
+// the view's own (view.edges objects), which it draws as it draws the model's (audit 19); one a model flow's id takes is that
+// flow's. flowProblems and the activity's object-flow rule both read this list, so they weigh the same flows (audit 22)
+function viewFlows(model, view) {
+  const shown = new Set(FL_ARR(view && view.nodeIds)), seen = id => !view || shown.has(id);
+  const flows = FL_ARR(model && model.edges).map((e, k) => [e, `edges[${k}]`]).filter(([e]) => FL_OBJ(e) && FLOW_LINES.includes(e.type) && (seen(e.from) || seen(e.to)));
+  const vi = FL_ARR(model && model.views).indexOf(view), ids = new Set(flows.map(([e]) => e.id));
+  FL_ARR(view && view.edges).forEach((e, j) => { if (FL_OBJ(e) && FLOW_LINES.includes(e.type) && !ids.has(e.id) && (seen(e.from) || seen(e.to))) { ids.add(e.id); flows.push([e, `views[${vi}].edges[${j}]`]); } });
+  return flows;
+}
 function flowProblems(model, view, ends) {
   const at = new Map(), out = [], shown = new Set(FL_ARR(view && view.nodeIds)), seen = id => !view || shown.has(id);
   FL_ARR(model && model.nodes).forEach((x, k) => { if (FL_OBJ(x) && !at.has(x.id)) at.set(x.id, [x, `nodes[${k}]`]); });
   const el = id => (at.get(id) || [])[0], nm = id => { const x = el(id); return x && x.label != null && x.label !== '' ? `${flowWord(x.type)} ${id} ("${x.label}")` : `${x ? flowWord(x.type) + ' ' : ''}${id}`; };
   const say = (rule, path, ids, msg, level = 'error') => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
-  const flows = FL_ARR(model && model.edges).map((e, k) => [e, `edges[${k}]`]).filter(([e]) => FL_OBJ(e) && FLOW_LINES.includes(e.type) && (seen(e.from) || seen(e.to)));
-  // and the view's own flows (view.edges objects), which it draws as it draws the model's (audit 19); one a model flow's id takes is that flow's
-  const vi = FL_ARR(model && model.views).indexOf(view), ids = new Set(flows.map(([e]) => e.id));
-  FL_ARR(view && view.edges).forEach((e, j) => { if (FL_OBJ(e) && FLOW_LINES.includes(e.type) && !ids.has(e.id) && (seen(e.from) || seen(e.to))) { ids.add(e.id); flows.push([e, `views[${vi}].edges[${j}]`]); } });
+  const flows = viewFlows(model, view);
   const ins = new Map(), outs = new Map(), add = (m, id, e) => m.set(id, [...(m.get(id) || []), e]);
   flows.forEach(([e, path]) => { add(outs, e.from, e); add(ins, e.to, e);
     [e.from, e.to].forEach(id => { const x = el(id); if (x && !FL_ARR(ends).includes(x.type)) say('flow-ends', path, [e.id, id], `${e.id} ends on ${nm(id)}, which a flow may not end on`); }); });
@@ -166,4 +173,4 @@ function flowRename(e, text) {
 
 const flowOf = (model, view, id) => [...FL_ARR(view && view.edges), ...FL_ARR(model && model.edges)].find(x => FL_OBJ(x) && x.id === id);
 
-export { flowOf, flowWrap, FLOW_LINES, FLOW_CONTROL, FLOW_RULES, flowProblems, flowText, printFlow, parseFlow, flowStereo, flowLabel, flowRename };
+export { flowOf, flowWrap, viewFlows, FLOW_LINES, FLOW_CONTROL, FLOW_RULES, flowProblems, flowText, printFlow, parseFlow, flowStereo, flowLabel, flowRename };

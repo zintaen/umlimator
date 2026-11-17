@@ -3,8 +3,9 @@ import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
+import { brLines } from '../typed/draw.js';
 import { lineIn } from './class.js'; // SHAPE.note, a comment's look too
-import { ownersOn, placeTabs, readingOrder } from './owners.js';
+import { ownersOn, placeTabs, readingOrder, withOwnNodes } from './owners.js';
 
 /* ---------- the use case diagram, uml.use-case (work package 4.4, notes/stage-4.md §8) ----------
    Actors (a stick figure), use cases (an ellipse, its extension points in a compartment under the name) and subjects: a
@@ -25,10 +26,14 @@ const ucPointsOf = n => UC_ARR(n.members).filter(m => UC_OBJ(m) && m.type === 'u
 
 /* ---- the shapes (§4.1): ellipse and actor; a subject's frame ---- */
 const UC = { px: 12, lh: 16, max: 160, st: 10, sth: 13, ep: 11, eph: 15, head: 14, gap: 6, k: 1.42, minW: 96, minH: 44 };
-// a text in lines of at most max px, at most k lines: the last holds the rest, cut when drawn
+// a text in lines of at most max px, at most k lines: the last holds the rest, cut when drawn. A line break in t (a Mermaid
+// <br>, F2's Shift+Enter) starts a new line where the author put it (audit 22, as flowWrap)
 function ucWrap(t, px, max, k) {
-  const out = []; String(t ?? '').split(/\s+/).filter(Boolean).forEach(w => { const l = out.length ? out[out.length - 1] : null;
-    if (l != null && (out.length === k || textW(l + ' ' + w, px) <= max)) out[out.length - 1] = l + ' ' + w; else out.push(w); });
+  const out = []; brLines(t).forEach(part => { let fresh = true;
+    part.split(/\s+/).filter(Boolean).forEach(w => { const l = out.length && !fresh ? out[out.length - 1] : null;
+      if (l != null && (out.length === k || textW(l + ' ' + w, px) <= max)) out[out.length - 1] = l + ' ' + w;
+      else if (out.length === k) out[k - 1] += ' ' + w; else out.push(w);
+      fresh = false; }); });
   return out.length ? out : [''];
 }
 // a use case's texts: its stereotypes, its name on at most three lines, then its extension points' heading and names
@@ -81,9 +86,10 @@ SHAPE.actor = {
 };
 // a subject with something shown is a box: a rectangle on its border, its stereotypes and name in bold at the top left of its
 // header room (24 px). Closed, it is a classifier with its name only (src/typed/draw.js)
+// header room; a title the author broke (a Mermaid <br>) a line each, its room grown by ucPic's head (audit 22)
 SHAPE.subject = {
   frame: f => `<rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" stroke="var(--um-muted)"/>`
-    + `<text class="family-title" x="${r2(f.x + 12)}" y="${r2(f.y + 17)}" fill="var(--um-text)" style="font:600 12px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(f.title ?? f.label ?? f.id, 12, f.w - 24))}</text>`,
+    + brLines(f.title ?? f.label ?? f.id).map((l, i) => `<text class="family-title" x="${r2(f.x + 12)}" y="${r2(f.y + 17 + i * UC.lh)}" fill="var(--um-text)" style="font:600 12px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(l, 12, f.w - 24))}</text>`).join(''),
 };
 
 /* ---- the view read: its owners (§8.2), its lines, and every element's words ---- */
@@ -92,7 +98,8 @@ const UC_LOOK = { boxTypes: ['uml.Subject', 'uml.Package'], qualify: false, shap
 function ucPic(model, view) {
   const pic = ownersOn(model, view, UC_LOOK);
   const boxes = pic.boxes.map(b => { const held = pic.holds(b.id), x = pic.at.get(b.id), st = ucStereo(x);
-    return held.every(id => pic.at.get(id).type === 'uml.UseCase') ? { ...b, aria: `${UC_LOOK.word(x)} ${ucName(x)}${st.length ? ` (${st.join(', ')})` : ''}, holding ${ucPlural(held.length, 'use case')}` } : b; });
+    const k = x.type === 'uml.Subject' ? brLines(b.title ?? b.label).length : 1, c = k > 1 ? { ...b, head: (k - 1) * UC.lh } : b;
+    return held.every(id => pic.at.get(id).type === 'uml.UseCase') ? { ...c, aria: `${UC_LOOK.word(x)} ${ucName(x)}${st.length ? ` (${st.join(', ')})` : ''}, holding ${ucPlural(held.length, 'use case')}` } : c; });
   return { ...pic, boxes };
 }
 // the lines drawn: those the view lists, or with no list the model's of this type's kinds, between two elements it shows; a
@@ -301,7 +308,7 @@ function ucRemove(model, view, ids, fromModel) {
 }
 
 const UC_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
-const UC_TYPE = registerDiagramType('uml.use-case', {
+const UC_TYPE = registerDiagramType('uml.use-case', withOwnNodes({
   title: 'use case diagram',
   elements: [['Actor', 'Actor'], ['UseCase', 'Use case'], ['Subject', 'Subject'], ['Comment', 'Comment']].map(([t, label]) => ({ type: 'uml.' + t, label })),
   lines: [['Association', 'Association'], ['Include', 'Include'], ['Extend', 'Extend'], ['Generalization', 'Generalization'], ['CommentLink', 'Comment link']].map(([t, label]) => ({ type: 'uml.' + t, label })),
@@ -320,6 +327,6 @@ const UC_TYPE = registerDiagramType('uml.use-case', {
   rules: UC_RULES,
   describe: ucDescribe,
   edits: { connect: ucConnect, remove: ucRemove, rename: ucRename },
-});
+}));
 
 export { UC_TYPE, UC_RULES, ucGeo, ucProblems, ucDescribe, ucConnect, ucRemove, ucRename };

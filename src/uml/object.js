@@ -138,7 +138,7 @@ function objectDescribe(model, viewId) {
   const out = [`${v.title || v.id}: an object diagram of ${k(pic.ids.length, 'element')} and ${k(lines.length, 'line')}.`];
   readingOrder(pic).forEach(id => { const x = at.get(id).x, said = [], slots = x.type === 'uml.InstanceSpecification' ? slotsOf(x).map(printSlot) : [];
     lines.forEach(({ e, from: f, to: t }) => {
-      if (e.type === 'uml.CommentLink') { if (f === id) said.push(`about ${nm(t)}`); return; }
+      if (e.type === 'uml.CommentLink') { const l = linkText(e); if (f === id) said.push(`about ${nm(t)}${l ? ` ("${l}")` : ''}`); return; } // its drawn text too, as the class view says it (audit 22)
       if (f !== id && (t !== id || e.type !== 'uml.Link')) return; const far = f === id ? 'to' : 'from', r = roleOf(e, far), l = linkText(e);
       said.push(`linked to ${nm(far === 'to' ? t : f)}${r ? ` (${r})` : ''}${l ? ` ("${l}")` : ''}`); });
     out.push(obNodeName(x, pic) + (slots.length ? ': ' + slots.join(', ') : '') + (said.length ? '; ' + said.join('; ') : '') + '.'); });

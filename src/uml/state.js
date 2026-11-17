@@ -3,10 +3,11 @@ import { registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, portsOn, r2 } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
+import { brLines } from '../typed/draw.js';
 import '../typed/edit.js'; // TYPED.edit, which asks edits.member for the activity rows below
 import './class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from './flow.js'; // SHAPE.initial, final, diamond and bar too
-import { ownersOn, readingOrder } from './owners.js';
+import { ownersOn, readingOrder, withOwnNodes } from './owners.js';
 import { parseTransition, printTransition, transitionText } from './transition.js';
 
 /* ---------- the state machine diagram, uml.state-machine (work package 4.6, notes/stage-4.md §6, §10) ----------
@@ -63,6 +64,7 @@ function stParts(n) {
   const w = Math.ceil(Math.min(ST.maxW, Math.max(ST.minW, ...st.map(t => textW(t, ST.st) + 2 * ST.padX), ...ls.map(l => textW(l, ST.name) + 2 * ST.padX), ...rows.map(r => textW(r, ST.row) + 2 * ST.padX))));
   return { st, ls, rows, head, comp, dec, w, h: Math.max(ST.minH, head + comp + dec) };
 }
+const ST_TL = 16; // a composite state's title line, the second and after
 SHAPE.state = {
   size: n => { const p = stParts(n); return { w: p.w, h: p.h }; },
   out: SHAPE.box.out, inset: SHAPE.box.inset,
@@ -81,9 +83,11 @@ SHAPE.state = {
     return stNode(n, 'state', `State ${n.label ?? ''}`, out.join(''));
   },
   // open: a rectangle with 10 px corners on the box's border, the name centred in the 24 px header room, a line under it
-  frame: f => `<rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="10" stroke="var(--um-muted)"/>`
-    + `<text class="family-title" x="${r2(f.x + f.w / 2)}" y="${r2(f.y + 16)}" text-anchor="middle" fill="var(--um-text)" style="font:600 12px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(f.title ?? f.label ?? f.id, 12, f.w - 24))}</text>`
-    + `<path d="M${f.x} ${r2(f.y + 24)}H${f.x + f.w}" class="st-head" stroke="var(--um-muted)"/>`,
+  // a title the author broke (a Mermaid <br>): a line each, the header room grown by stPic's head (audit 22)
+  frame: f => { const ls = brLines(f.title ?? f.label ?? f.id), hd = (ls.length - 1) * ST_TL;
+    return `<rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="10" stroke="var(--um-muted)"/>`
+      + ls.map((l, i) => `<text class="family-title" x="${r2(f.x + f.w / 2)}" y="${r2(f.y + 16 + i * ST_TL)}" text-anchor="middle" fill="var(--um-text)" style="font:600 12px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(l, 12, f.w - 24))}</text>`).join('')
+      + `<path d="M${f.x} ${r2(f.y + 24 + hd)}H${f.x + f.w}" class="st-head" stroke="var(--um-muted)"/>`; },
 };
 // a region: no border (its box is there to select, drop into and outline), its name at its top left in 10 px, and the
 // dashed divider before it (f.div: [x1, y1, x2, y2]) when it is not its state's first
@@ -121,7 +125,8 @@ function stPic(model, view) {
       const st = stStereo(x); // its «stereotypes» before its name, drawn and said (audit 17)
       return { ...b, rname: [...st.map(t => `«${t}»`), ...ST_HAS(x.label) ? [x.label] : []].join(' '),
         aria: `Region ${ST_HAS(x.label) ? x.label : k}${st.length ? ` (${st.join(', ')})` : ''} of ${s ? stName(s) : String(b.parent ?? '')}, ${stPlural(pic.holds(b.id).length, 'state')}` }; }
-    return { ...b, aria: stNodeName(x, pic, I, true) }; });
+    const k = brLines(b.title ?? b.label).length; // a title the author broke: a line each, the header room grown for them (audit 22)
+    return { ...b, aria: stNodeName(x, pic, I, true), ...(k > 1 ? { head: (k - 1) * ST_TL } : {}) }; });
   return { ...pic, I, boxes };
 }
 // accessible names (§14): "State Placed, entry reserve the books, …, 1 internal transition"; "Composite state Fulfilling,
@@ -443,7 +448,7 @@ const stMemberRow = (model, view, owner, id, text) => stActivityRow(model, owner
 /* ---- the type ---- */
 const ST_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
 const ST_PARTS = [['trigger', 'Trigger'], ['guard', 'Guard'], ['effect', 'Effect']].map(([key, label]) => ({ key, label, kind: 'text' }));
-const ST_TYPE = registerDiagramType('uml.state-machine', {
+const ST_TYPE = registerDiagramType('uml.state-machine', withOwnNodes({
   title: 'state machine diagram',
   elements: [{ type: 'uml.State', label: 'State' },
     ...[['initial', 'Initial'], ['finalState', 'Final state'], ['choice', 'Choice'], ['junction', 'Junction'], ['fork', 'Fork'], ['join', 'Join'], ['shallowHistory', 'Shallow history'], ['deepHistory', 'Deep history'], ['terminate', 'Terminate']]
@@ -475,6 +480,6 @@ const ST_TYPE = registerDiagramType('uml.state-machine', {
     return x && x.type === 'uml.State' ? [...stActs(x).map(([k, t]) => `${k} / ${t}`), ...ST_ARR(x.members).filter(ST_OBJ).map(ST_MEMBER.print)] : null; },
   // member is not enumerable: Object.keys(edits) stays 4.6's four (tests/state.test.mjs), as notes/stage-5.md §12.1 (as built) says
   edits: Object.defineProperty({ add: stAdd, rename: stRename, moveTo: stMoveTo, remove: stRemove }, 'member', { value: stMemberRow }),
-});
+}));
 
 export { ST_TYPE, ST_RULES, stGeo, stProblems, stDescribe, stAdd, stRename, stMoveTo, stActivityRow, stOwners, stRemove, ST_MEMBER };

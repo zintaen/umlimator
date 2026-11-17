@@ -280,3 +280,11 @@ test('audit 21: the PDF\'s Lines row gives a link\'s label as drawn: its associa
   e.label = 'buys'; e.props.stereotypes = ['online']; assert.match(row(m), /<td>«online» buys<\/td><td>Link<\/td>/);
   delete e.label; delete e.props.association; delete e.props.stereotypes; assert.match(row(m), /<td><\/td><td>Link<\/td>/, 'nothing drawn: an empty cell');
 });
+
+// audit 22: describe() says a comment link's drawn text, as the class view does
+test('describe() says a comment link\'s label, which the object view draws (audit 22)', () => {
+  const m = { schemaVersion: 2, nodes: [I('ada', 'ada', 'Customer'), { id: 'n', type: 'uml.Comment', label: 'A note' }],
+    edges: [{ id: 'cl', type: 'uml.CommentLink', from: 'n', to: 'ada', label: 'checked on Friday' }], views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['ada', 'n'] }] };
+  assert.ok(svgOf(layout(m, 'v')).includes('checked on Friday'));
+  assert.ok(describe(m, 'v').includes('Comment: A note; about ada : Customer ("checked on Friday").'), describe(m, 'v'));
+});

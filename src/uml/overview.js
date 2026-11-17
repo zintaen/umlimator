@@ -4,11 +4,13 @@ import { trimLine } from '../draw/lines.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
+import { brLines } from '../typed/draw.js';
 import './class.js'; // SHAPE.note, a comment
 import { FLOW_CONTROL, FLOW_RULES, flowOf, flowProblems, flowText, flowLabel, flowRename, flowStereo } from './flow.js';
-import { frameTag, tagSize, useSize } from './frame.js';
+import { frLines, frameTag, tagSize, useSize } from './frame.js';
 import { interactionWalk } from './interaction.js';
 import { sqDraw, sqRun } from './sequence.js';
+import { withOwnNodes } from './owners.js'; // a view's own nodes read as the model's (audit 22)
 
 /* ---------- the interaction overview diagram, uml.interaction-overview (work package 4.7, notes/stage-4.md §11) ----------
    Activity notation whose nodes are interactions: the control nodes of src/uml/flow.js (flow final included), interaction
@@ -81,7 +83,7 @@ function ovMessage(e) {
   const tip = `M${r2(b[0] + s[0])} ${r2(b[1] + s[1])}L${r2(q[0])} ${r2(q[1])}L${r2(b[0] - s[0])} ${r2(b[1] - s[1])}${T[2] ? 'Z' : ''}`, l = e.lbl;
   return `<g class="ov-msg" data-sort="${esc(e.sort)}"><path d="M${pts.map(c => `${r2(c[0])} ${r2(c[1])}`).join('L')}" fill="none" stroke="${OV_SD.line}" stroke-width="1.4"${dash}/>`
     + `<path d="${tip}" fill="${T[2] ? OV_SD.line : 'none'}" stroke="${OV_SD.line}" stroke-width="1.4" stroke-linejoin="round"/>`
-    + (l && OV_HAS(l.text) ? `<g class="ov-lab"><rect x="${r2(l.x)}" y="${r2(l.y)}" width="${r2(l.w)}" height="${r2(l.h)}" fill="${OV_SD.bg}"/><text x="${r2(l.x + l.w / 2)}" y="${r2(l.y + 12)}" text-anchor="middle" fill="var(--um-text)" style="font:500 10.5px var(--um-sans)">${esc(fit(l.text, 10.5, l.w))}</text></g>` : '') + '</g>';
+    + (l && OV_HAS(l.text) ? `<g class="ov-lab"><rect x="${r2(l.x)}" y="${r2(l.y)}" width="${r2(l.w)}" height="${r2(l.h)}" fill="${OV_SD.bg}"/>${brLines(l.text).map((t, i) => `<text x="${r2(l.x + l.w / 2)}" y="${r2(l.y + 12 + i * 13)}" text-anchor="middle" fill="var(--um-text)" style="font:500 10.5px var(--um-sans)">${esc(fit(t, 10.5, l.w))}</text>`).join('')}</g>` : '') + '</g>';
 }
 // the sequence's picture inside the frame: sqDraw's layer (frames, stems, uses' boxes, bars, crosses), then each head, each
 // fragment's tag, each operand's guard and each use's name by frame.js's shapes, then the messages
@@ -90,12 +92,13 @@ function ovInner(run) {
   return ovQuiet(sqDraw(run, { esc, r2, textW }).under + by('lifeline').map(n => SHAPE.lifeline.draw(n, C, F)).join('')
     + ['frame', 'operand', 'use'].map(s => by(s).map(n => SHAPE[s].draw(n, C, F)).join('')).join('') + run.edges.map(ovMessage).join(''));
 }
-const ovTagH = tagSize('sd').h;
+const ovTagOf = t => tagSize(`sd ${t}`).h; // the tag over an inline sequence: its name's lines
 SHAPE['ov-inline'] = { ...ovBox,
   draw(n) {
-    const S = n.sd, t = String(n.label ?? ''), b = S && S.bounds;
-    const inner = b ? frameTag(n.x, n.y, `sd ${t}`, n.w) + `<g class="ov-sd" aria-hidden="true" transform="translate(${r2(n.x + (n.w - b.w) / 2 - b.x)} ${r2(n.y + ovTagH)})">${S.markup}</g>`
-      : frameTag(n.x, n.y, 'sd', n.w) + `<text x="${r2(n.x + n.w / 2)}" y="${r2(n.y + n.h / 2 + 4)}" text-anchor="middle" fill="var(--um-text)" style="font:600 11px var(--um-sans)">${esc(fit(t, 11, n.w - 2 * (tagSize('sd').w + 8)))}</text>`;
+    // a name the author broke: a line each, the tag as tall as its lines (ovTagOf) or the name centred (audit 22)
+    const S = n.sd, t = String(n.label ?? ''), b = S && S.bounds, m = (brLines(t).length - 1) * 13;
+    const inner = b ? frameTag(n.x, n.y, `sd ${t}`, n.w) + `<g class="ov-sd" aria-hidden="true" transform="translate(${r2(n.x + (n.w - b.w) / 2 - b.x)} ${r2(n.y + ovTagOf(t))})">${S.markup}</g>`
+      : frameTag(n.x, n.y, 'sd', n.w) + frLines(n.x + n.w / 2, n.y + n.h / 2 + 4 - m / 2, t, 11, n.w - 2 * (tagSize('sd').w + 8), 600, 'middle');
     return `<g class="node ov-inline" data-id="${esc(n.id)}" data-shape="ov-inline" tabindex="-1" role="img" aria-label="${esc(n.aria || 'Inline interaction ' + t)}">${ovBody(n)}${inner}</g>`;
   },
 };
@@ -152,7 +155,7 @@ function ovGeo({ model, view, pos, memo }) {
     if (shape === 'rounded') d.stereotypes = ovStereo(x);
     if (shape === 'bar') Object.assign(d, { busy: Math.max(ins.get(id) || 0, outs.get(id) || 0), down });
     if (shape === 'ov-inline') { const b = sd && sd.run && sd.run.bounds, tw = tagSize(`sd ${d.label}`).w + 2 * OV_SD.pad;
-      return { ...d, ...(b ? { w: Math.ceil(Math.max(b.w + 2 * OV_SD.pad, tw)), h: Math.ceil(ovTagH + b.h), sd: { bounds: b, markup: ovInner(sd.run) } } : useSize(d.label)) }; }
+      return { ...d, ...(b ? { w: Math.ceil(Math.max(b.w + 2 * OV_SD.pad, tw)), h: Math.ceil(ovTagOf(d.label) + b.h), sd: { bounds: b, markup: ovInner(sd.run) } } : useSize(d.label)) }; }
     return { ...d, ...SHAPE[shape].size(d) }; });
   const edges = I.lines.map(e => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, aria: ovFlowName(I, e), ...(OV_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}),
     ...(e.type === 'uml.CommentLink' ? { end: { from: 'none', to: 'none', dashed: true } }
@@ -241,7 +244,7 @@ function ovRename(model, view, id, text) {
 
 /* ---- the type ---- */
 const OV_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
-const OVERVIEW_TYPE = registerDiagramType('uml.interaction-overview', {
+const OVERVIEW_TYPE = registerDiagramType('uml.interaction-overview', withOwnNodes({
   title: 'interaction overview diagram',
   // control nodes but the decision (its question, S8) are added with no name prompt (§12.1); a use and an inline
   // interaction ask for the view they open, V changes it
@@ -257,6 +260,6 @@ const OVERVIEW_TYPE = registerDiagramType('uml.interaction-overview', {
   rules: OV_RULES,
   describe: ovDescribe,
   edits: { add: ovAdd, rename: ovRename },
-});
+}));
 
 export { OVERVIEW_TYPE, OV_RULES, ovGeo, ovProblems, ovDescribe, ovAdd, ovRename };

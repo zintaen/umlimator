@@ -445,3 +445,15 @@ test('audit 21: connect gives a decision\'s second unguarded exit else when the 
     assert.equal(r[0].element.props?.guard, 'else', own ? 'the first exit the view\'s own' : 'the first exit a model flow');
     assert.ok(!validate(apply(m, r)).some(p => p.rule === 'decision-guards' && /2 outgoing flows/.test(p.message)), 'no two bare exits'); }
 });
+
+// audit 22: the object-flow rule weighs a view's own flows (view.edges objects), as the other flow rules do since audit 19
+test('object-flow checks a view\'s own flows as it checks the model\'s (audit 22)', () => {
+  const nodes = [N('a', 'Action', 'Pick'), N('b', 'Action', 'Pack'), N('o', 'ObjectNode', 'Parcel')];
+  const f1 = { id: 'f1', type: 'uml.ObjectFlow', from: 'a', to: 'b' }, f2 = { id: 'f2', type: 'uml.ControlFlow', from: 'b', to: 'o' };
+  const said = m => validate(m).filter(p => p.rule === 'object-flow').map(p => [p.path, p.ids[0]]);
+  const model = { schemaVersion: 2, nodes, edges: [f1, f2], views: [{ id: 'v', diagram: 'uml.activity', nodeIds: ['a', 'b', 'o'] }] };
+  const own = { schemaVersion: 2, nodes, edges: [], views: [{ id: 'v', diagram: 'uml.activity', nodeIds: ['a', 'b', 'o'], edges: [f1, f2] }] };
+  assert.deepEqual(said(model), [['edges[0]', 'f1'], ['edges[1]', 'f2']]);
+  assert.deepEqual(layout(own, 'v').edges.map(e => e.id).sort(), ['f1', 'f2'], 'both drawn');
+  assert.deepEqual(said(own), [['views[0].edges[0]', 'f1'], ['views[0].edges[1]', 'f2']]);
+});
