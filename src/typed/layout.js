@@ -212,6 +212,9 @@ TYPED.loops = (loops, dg, { byId, extraX, extraY, STUB, RG, CG, SEP, gapAfter })
     else { const r = side === 'B' ? Math.max(...at('row')) + .5 : Math.min(...at('row')) - .5; extraY[r] = Math.max(extraY[r] || 0, need - RG); } });
   const loopsOf = n => edges.filter(e => e[OWN_ROUTE] === 'loop' && e.s === n);
   return {
+    // how far a node's loops reach: above its top (to the outer label's far side) and right of its right side (audit 26: a box laid
+    // out down holds them, so a loop and its label keep inside the box that holds the node)
+    reach(id) { const list = loops[id]; if (!list) return null; const d = dims(list, list.map(() => 0)).at(-1); return { top: d.top, right: d.R }; },
     mark(all) { edges = all; edges.forEach(e => { if (e.s === e.t) Object.assign(e, { [OWN_ROUTE]: 'loop', fixed: true, fs: 'R', ts: 'T', stubs: [], how: 'self' }); }); }, // its loop is drawn once its ports are known
     ports(pushSide, sides) { edges.filter(e => e[OWN_ROUTE] === 'loop').forEach(e => { const n = e.s, k = loopsOf(n).indexOf(e);
       pushSide(n, 'R', e, { x: n.x + n.w, y: -1e6 + k, w: 0, h: 0 }); pushSide(n, 'T', e, { x: 1e6 - k, y: n.y, w: 0, h: 0 }); });
