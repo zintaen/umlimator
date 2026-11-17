@@ -126,13 +126,16 @@ HOSTILE = ["see https://evil.example/x", "_https://evil.example/x", "login_https
            "wwww.evil.example", "WWW.EVIL.EXAMPLE", "HTTPS://EVIL.EXAMPLE", "ftp://evil.example", "a_ftp://evil.example", "mail me@evil.example",
            "user_me@evil.example", "mailto:me@evil.example", "x_mailto:me@evil.example", "xmpp:me@evil.example", "<https://evil.example>",
            "[x](https://evil.example)", "![x](https://evil.example/t.png)", "Order #42", "ping @ops", "GH-12"]
-GFM = Path(tempfile.gettempdir()) / "umlimator-tests-cmarkgfm-2025.10.22"  # GitHub's Markdown renderer, its wheel only, pinned
 try:
-    import cmarkgfm
+    import cmarkgfm  # GitHub's Markdown renderer
 except ImportError:
-    if not (GFM / "cmarkgfm").is_dir():
-        subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "--disable-pip-version-check", "--only-binary", ":all:",
-                        "--target", str(GFM), "cmarkgfm==2025.10.22"], capture_output=True)
+    # its pinned wheel only, into a fresh folder only this user can write (mkdtemp is 0700): never a fixed name in the
+    # shared temp folder, where another user could plant a package that this import would then run
+    import atexit, shutil
+    GFM = Path(tempfile.mkdtemp(prefix="umlimator-cmarkgfm-"))
+    atexit.register(shutil.rmtree, GFM, True)
+    subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "--disable-pip-version-check", "--only-binary", ":all:",
+                    "--target", str(GFM), "cmarkgfm==2025.10.22"], capture_output=True)
     sys.path.append(str(GFM))
     try:
         import cmarkgfm
