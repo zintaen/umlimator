@@ -392,5 +392,19 @@ test('audit 23: a view\'s own line (view.edges object) is checked, described, gi
   assert.deepEqual(T.rows(own, v, 'battery'), T.rows(m, m.views[0], 'battery'));
   assert.deepEqual(T.rows(own, v, 'assist'), T.rows(m, m.views[0], 'assist'));
   assert.equal(T.text(own, v, 'own-sat'), T.text(m, m.views[0], 'own-sat'));
-  assert.ok(!describe({ ...own, views: [{ ...v, id: 'other', edges: undefined }] }, 'other').includes('satisfies Pedal assistance'), 'another view: its own line is not that view\'s');
+  // both views in the model (audit 24: with v left out, the own line was nowhere and this could not fail)
+  assert.ok(!describe({ ...own, views: [v, { ...v, id: 'other', edges: undefined }] }, 'other').includes('satisfies Pedal assistance'), 'another view: its own line is not that view\'s');
+});
+
+test('audit 24: Shift + Delete on a requirement the view alone holds keeps what it contains, and Delete on their containment line cuts it, as for the model\'s', () => {
+  for (const own of [false, true]) {
+    const P = { id: 'p', type: 'sysml.Requirement', label: 'Range', props: { reqId: 'R1', text: 'go far' } }, C = { id: 'c', type: 'sysml.Requirement', label: 'Battery', parent: 'p', props: { reqId: 'R1.1', text: 'big' } };
+    const m = { schemaVersion: 2, root: 'v', nodes: own ? [] : [P, C], edges: [], views: [{ id: 'v', diagram: 'sysml.requirement', nodeIds: ['p', 'c'], ...(own ? { nodes: [P, C] } : {}) }] }, v = m.views[0];
+    assert.ok(layout(m, 'v').edges.some(e => e.id === 'p->c'), `${own ? 'own' : 'model'}: the containment line is drawn`);
+    const del = T.edits.remove(m, v, ['p'], true), left = apply(m, del.commands), all = x => [...x.nodes, ...(x.views[0].nodes || [])];
+    assert.deepEqual(all(left).map(x => [x.id, x.parent ?? null]), [['c', null]], `${own ? 'own' : 'model'}: Shift + Delete keeps the sub-requirement`);
+    const cut = T.edits.remove(m, v, ['p->c'], false);
+    assert.deepEqual(cut.commands, [{ op: 'reparent', id: 'c', parent: null }], `${own ? 'own' : 'model'}: Delete on the line cuts it`);
+    assert.deepEqual(all(apply(m, cut.commands)).map(x => [x.id, x.parent ?? null]), [['p', null], ['c', null]]);
+  }
 });

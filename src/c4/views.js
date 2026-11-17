@@ -4,7 +4,7 @@ import { SHAPE, r2, sidePorts } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
 import { ownersOn, readingOrder } from '../uml/owners.js';
 import { brLines } from '../typed/draw.js';
-import { C4_NOTE_LINE, C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Problems, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners, c4Rename } from './c4.js';
+import { C4_NOTE_LINE, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Problems, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners, c4Rename } from './c4.js';
 
 /* ---------- C4's dynamic and deployment views, c4.dynamic and c4.deployment (work package M2.7, notes/milestone-2.md §7.5.2,
    §7.5.3, §5.1) ----------
@@ -90,8 +90,8 @@ function dynProblems(model, view) {
   const say = (level, rule, path, ids, msg) => ({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` }), q = id => JSON.stringify(I.at.has(id) ? vName(I.at.get(id)) : String(id));
   // the subject's level checked as that static view would be, on a copy of the model whose view says it
   const as = { ...view, diagram: lvl || 'c4.landscape' }, kind = { 'c4.landscape': 'landscape', 'c4.container': 'container', 'c4.component': 'component' }[as.diagram];
-  const w = (C4_WORD[(I.at.get(view.subject) || {}).type] || 'element').toLowerCase(), out = lvl ? [] : [say('error', 'c4-subject', `${at}.subject`, [view.subject],
-    `its subject ${q(view.subject)} is ${I.at.has(view.subject) ? (/^[aeiou]/.test(w) ? 'an ' : 'a ') + w : 'no element'}: a dynamic view zooms into a software system, a container or nothing`)];
+  const out = lvl ? [] : [say('error', 'c4-subject', `${at}.subject`, [view.subject],
+    `its subject ${q(view.subject)} ${I.at.has(view.subject) ? 'is ' + c4A(c4Word(I.at.get(view.subject)).toLowerCase()) : 'names no element'}: a dynamic view zooms into a software system, a container or nothing`)];
   out.push(...c4Problems({ ...model, views: views.map(v => (v === view ? as : v)) }, as).map(p => (p.rule === 'c4-level' ? { ...p, message: p.message.replace(`in a ${kind} view`, () => `in a dynamic view${lvl && view.subject != null ? ' of ' + q(view.subject) : ''}`) } : p)));
   // its steps (§5.1): each a model relationship, each once, between elements the view shows
   const pic = c4Pic(model, view), ends = new Set(pic.ids.filter(id => !pic.open.has(id))), rel = new Set(I.rels.map(r => r.id)), seen = new Set();
@@ -208,8 +208,8 @@ function depProblems(model, view) {
   const out = c4Problems(model, view); if (!V_OBJ(view)) return out;
   const views = V_ARR(model && model.views), vi = views.indexOf(view), at = vi >= 0 ? `views[${vi}]` : 'view', dp = depPic(model, view), I = dp.I;
   const say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` }), q = id => JSON.stringify(I.at.has(id) ? dp.nameOf(I.at.get(id)) : String(id)); // an instance as drawn
-  const kind = id => (C4_WORD[(I.at.get(id) || {}).type] || 'nothing').toLowerCase(), a = w => (/^[aeiou]/.test(w) ? 'an ' : 'a ') + w, subj = I.at.get(view.subject);
-  if (view.subject != null && (!subj || subj.type !== 'c4.SoftwareSystem')) say('error', 'c4-subject', `${at}.subject`, [view.subject], `its subject ${q(view.subject)} is ${a(kind(view.subject))}: a deployment view is of a software system or of all`);
+  const kind = id => c4Word(I.at.get(id)).toLowerCase(), a = c4A, subj = I.at.get(view.subject); // a kind from another family in words (audit 24)
+  if (view.subject != null && (!subj || subj.type !== 'c4.SoftwareSystem')) say('error', 'c4-subject', `${at}.subject`, [view.subject], `its subject ${q(view.subject)} ${subj ? 'is ' + a(kind(view.subject)) : 'names no element'}: a deployment view is of a software system or of all`);
   V_ARR(view.nodeIds).forEach((id, k) => { const x = I.at.get(id); if (!x || x.type === 'uml.Comment') return;
     if (x.type !== 'c4.DeploymentNode' && x.type !== 'c4.ContainerInstance') return say('error', 'c4-level', `${at}.nodeIds[${k}]`, [id], `${q(id)}, ${a(kind(id))}, is not drawn in a deployment view`);
     const c = x.type === 'c4.ContainerInstance' && depOf(I, x);
@@ -223,6 +223,7 @@ function depProblems(model, view) {
   [...I.rels, ...V_ARR(view.edges).filter(e => V_OBJ(e) && e.type === 'c4.Relationship' && !I.rels.includes(e))].forEach(r => { const a = near(r.from), b = near(r.to); if (a == null || b == null || a === b || I.chain(a).includes(b) || I.chain(b).includes(a)) return;
     const box = [a, b].filter(x => dp.open.has(x)); if (!box.length) return;
     const i = V_ARR(model.edges).indexOf(r); say('warning', 'c4-box-line', i >= 0 ? `edges[${i}]` : `${at}.edges[${V_ARR(view.edges).indexOf(r)}]`, [r.id, ...box], `${r.id}, from ${q(r.from)} to ${q(r.to)}, is not drawn: the view draws ${box.map(q).join(' and ')} as a box, which no line ends on`); });
+  c4NoteBox(model, view, dp, say, q);
   if (!V_HAS(view.title)) say('warning', 'c4-title', `${at}.title`, [], `view ${JSON.stringify(view.id)} has no title`);
   return out;
 }

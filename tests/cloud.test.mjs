@@ -498,3 +498,14 @@ test('audit 23: a view that lists its lines draws only its family\'s kind, as wi
     assert.ok(!describe(m, vid).includes('not a line of this family'), fam);
   }
 });
+
+test('audit 24: a group whose name has line breaks keeps clear of a card it does not hold (its header room reserved, not grown over the card)', () => {
+  for (const lab of ['europe-west1\nprimary', 'europe-west1\nprimary\nlondon']) {
+    const m = structuredClone(GCP); m.nodes.find(x => x.id === 'gcp-region').label = lab;
+    const g = layout(m, 'gcp-on-gcp'), F = g.families.find(f => f.id === 'gcp-region'), at = new Map(m.nodes.map(n => [n.id, n]));
+    const under = id => { for (let p = at.get(id)?.parent; p != null; p = at.get(p)?.parent) if (p === 'gcp-region') return true; return false; };
+    const foreign = g.nodes.filter(c => !under(c.id) && meets(c, F)).map(c => c.id);
+    assert.deepEqual(foreign, [], `${JSON.stringify(lab)}: the region box covers cards it does not hold`);
+    assert.ok(!check(m, 'gcp-on-gcp').some(p => /header crossed/.test(p.message)), `${JSON.stringify(lab)}: a line crosses the region's header`);
+  }
+});

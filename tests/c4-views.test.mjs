@@ -514,3 +514,59 @@ test('audit 23: N on a dynamic view refuses an element its level does not show (
   assert.deepEqual(add(1, 'c4.Component'), { error: 'This view shows people, software systems and containers: a component is added on a component view' });
   assert.equal(add(1, 'c4.Container')[0].element.parent, 's');
 });
+
+test('audit 24: no palette add on a static or dynamic view leaves an error: a container on a component view goes under the subject\'s system, one with nothing to own it is refused', () => {
+  const m = structuredClone(C4), comp = m.views.find(v => v.diagram === 'c4.component');
+  m.views.push({ id: 'dyn-api', diagram: 'c4.dynamic', title: 'Inside the API', subject: comp.subject, nodeIds: [...comp.nodeIds], edges: [] });
+  const errs = x => validate(x).filter(p => p.level === 'error').map(p => p.message), was = errs(m);
+  for (const v of m.views.filter(v => /^c4\.(landscape|context|container|component|dynamic)$/.test(v.diagram))) { const T = diagramOf(v);
+    for (const entry of T.elements.filter(e => /^c4\./.test(e.type))) { const r = T.edits.add(m, v, entry, 'Cache');
+      if (r && r.error) continue; // refused on the hint line
+      const cmds = r || [{ op: 'add', element: { id: 'added1', type: entry.type, label: 'Cache' }, view: v.id }], mm = apply(m, cmds);
+      assert.deepEqual(errs(mm.model || mm).filter(e => !was.includes(e)), [], `${v.id}: ${entry.label} added`); } }
+  const T = diagramOf(comp), r = T.edits.add(m, comp, T.elements.find(e => e.type === 'c4.Container'), 'Cache');
+  assert.equal(r[0].element.parent, C4.nodes.find(n => n.id === comp.subject).parent, 'a container on a component view: its subject\'s software system');
+  const bare = { ...comp, id: 'bare', subject: undefined }; m.views.push(bare);
+  assert.match(String(T.edits.add(m, bare, T.elements.find(e => e.type === 'c4.Container'), 'Cache').error), /owned by a software system/, 'no subject: refused');
+});
+
+test('audit 24: D on an element one view alone holds is refused, not zoomed into a view that cannot reach it; a subject that names nothing is said so', () => {
+  for (const [t, parent] of [['c4.SoftwareSystem'], ['c4.Container', 'c4-bookshop']]) {
+    const m = structuredClone(C4), v = m.views.find(x => x.diagram === (parent ? 'c4.container' : 'c4.context'));
+    let mm = apply(m, [{ op: 'add', in: 'view', view: v.id, element: { id: 'own1', type: t, label: 'Own', ...(parent ? { parent } : {}), props: { description: 'd', technology: 't' } } }]); mm = mm.model || mm;
+    const r = diagramOf(v).edits.key(mm, mm.views.find(x => x.id === v.id), ['own1'], 'd');
+    assert.match(String(r && r.error), /Own lives in this view only/, `${t}: D refused`);
+  }
+  const m = structuredClone(C4), comp = m.views.find(v => v.diagram === 'c4.component'); comp.subject = 'gone';
+  const p = validate(m).find(x => x.rule === 'c4-subject' && x.ids.includes('gone'));
+  assert.match(p.message, /its subject "gone" names no element: a component view/);
+  assert.ok(!validate(m).some(x => / a nothing/.test(x.message)), 'never "a nothing"');
+});
+
+test('audit 24: a kind from another family on a C4 view is named in words: tag, accessible name, describe() and validate()', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'shop', type: 'c4.SoftwareSystem', label: 'Shop' }, { id: 'pay', type: 'uml.UseCase', label: 'Pay' }, { id: 'money', type: 'uml.DataType', label: 'Money' }],
+    edges: [{ id: 'e1', type: 'c4.Relationship', from: 'shop', to: 'pay', label: 'uses' }], views: [{ id: 'ctx', diagram: 'c4.context', subject: 'shop', nodeIds: ['shop', 'pay', 'money'] },
+      { id: 'dep', diagram: 'c4.deployment', title: 'Live', nodeIds: ['pay'] }] };
+  const g = layout(m, 'ctx'), n = id => g.nodes.find(x => x.id === id);
+  assert.deepEqual([n('pay').tag, n('pay').aria, n('money').tag, n('money').aria], ['[Use case]', 'Use case Pay', '[Data type]', 'Data type Money']);
+  assert.match(describe(m, 'ctx'), /\nUse case Pay\.\nData type Money\./);
+  const said = validate(m).map(p => p.message);
+  assert.ok(said.includes('c4-level: "Pay", a use case, is not drawn in a context view'), said.join('\n'));
+  assert.ok(said.includes('c4-level: "Money", a data type, is not drawn in a context view'));
+  assert.ok(said.some(x => x.includes('joins "Shop", a software system, and "Pay", a use case')));
+  assert.ok(said.includes('c4-level: "Pay", a use case, is not drawn in a deployment view'), 'the deployment view: not "a nothing"');
+});
+
+test('audit 24: a comment link to what a container, component or deployment view draws as a box is not drawn, and validate() says so', () => {
+  for (const vid of ['c4-containers', 'c4-components', 'c4-deployment']) {
+    const m = structuredClone(C4), v = m.views.find(x => x.id === vid), box = layout(m, vid).families[0].id;
+    m.nodes.push({ id: 'n1', type: 'uml.Comment', label: 'About the box' }); m.edges.push({ id: 'n1-l', type: 'uml.CommentLink', from: 'n1', to: box });
+    v.nodeIds.push('n1'); if (Array.isArray(v.edges)) v.edges.push('n1-l');
+    assert.ok(!layout(m, vid).edges.some(e => e.id === 'n1-l'), `${vid}: a line ends on an element, never on a box`);
+    const p = validate(m).filter(x => x.rule === 'c4-note-box');
+    assert.equal(p.length, 1, `${vid}: said once`);
+    assert.equal(p[0].level, 'warning'); assert.deepEqual(p[0].ids, ['n1-l', box]);
+    assert.match(p[0].message, /^c4-note-box: n1-l, from "About the box" to "[^"]+", is not drawn: the view draws "[^"]+" as a box, which no line ends on$/);
+  }
+  assert.ok(!validate(C4).some(p => p.rule === 'c4-note-box'), 'the example: nothing to say');
+});
