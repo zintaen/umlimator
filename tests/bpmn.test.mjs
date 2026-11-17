@@ -682,3 +682,38 @@ test('audit 21: the rules, the guard and the Owner field read a view\'s own line
   assert.match(bzOwner(m, v, 'basket-ready', 'bp-bookshop').error, /sequence flow stays in its pool/, 'an own sequence flow holds its ends in their pool');
   assert.ok('error' in bzConnect(m, v, 'order-placed', 'basket-ready'), 'the guard sees them too');
 });
+
+test('audit 22: a view\'s own node (add ... in: \'view\') is a flow node for the rules, drawn, and described; a sequence flow to it is valid', () => {
+  const base = { schemaVersion: 2, nodes: [{ id: 's', type: 'bpmn.StartEvent', label: 'Start' }, { id: 't', type: 'bpmn.Task', label: 'Work' }],
+    edges: [{ id: 'f1', type: 'bpmn.SequenceFlow', from: 's', to: 't' }], views: [{ id: 'p', diagram: 'bpmn', nodeIds: ['s', 't'] }] };
+  let m = apply(base, [{ op: 'add', element: { id: 'e', type: 'bpmn.EndEvent', label: 'Done' }, view: 'p', in: 'view' }]);
+  m = apply(m, [{ op: 'add', element: { id: 'f2', type: 'bpmn.SequenceFlow', from: 't', to: 'e' }, view: 'p' }]);
+  assert.deepEqual(validate(m), [], 'no sequence-ends error, no flow-start warning');
+  const g = layout(m, 'p');
+  assert.deepEqual([g.nodes.map(n => n.id).sort(), g.edges.map(e => e.id).sort()], [['e', 's', 't'], ['f1', 'f2']]);
+  assert.match(describe(m, 'p'), /End event Done/);
+  // a view-own line to it in the view's edges, too
+  const own = structuredClone(m); own.edges = own.edges.filter(e => e.id !== 'f2'); own.views[0].edges = ['f1', { id: 'f2', type: 'bpmn.SequenceFlow', from: 't', to: 'e' }];
+  assert.deepEqual(validate(own), []);
+  // a real error still found on a view-own node: a sequence flow out of an end event
+  const bad = structuredClone(own); bad.views[0].edges.push({ id: 'f3', type: 'bpmn.SequenceFlow', from: 'e', to: 't' });
+  assert.ok(validate(bad).some(p => p.rule === 'end-out' || /end event/.test(p.message)), JSON.stringify(validate(bad)));
+});
+
+test('audit 22: Delete with a view-own line selected beside an activity with a boundary event, or a lane, deletes the line and applies', () => {
+  const M = { schemaVersion: 2, nodes: [{ id: 'pool', type: 'bpmn.Participant', label: 'Pool', members: [{ id: 'lane', type: 'bpmn.Lane', label: 'Lane' }] },
+    { id: 'start', type: 'bpmn.StartEvent', label: 'Start', parent: 'lane', props: { definition: 'none' } },
+    { id: 'task', type: 'bpmn.Task', label: 'Task', parent: 'lane' }, { id: 'end', type: 'bpmn.EndEvent', label: 'End', parent: 'lane', props: { definition: 'none' } },
+    { id: 'be', type: 'bpmn.BoundaryEvent', label: 'Timeout', parent: 'lane', props: { definition: 'timer', attachedTo: 'task' } }],
+  edges: [{ id: 'f1', type: 'bpmn.SequenceFlow', from: 'start', to: 'task' }],
+  views: [{ id: 'v', diagram: 'bpmn', nodeIds: ['pool', 'start', 'task', 'end', 'be'], edges: ['f1', { id: 'own', type: 'bpmn.SequenceFlow', from: 'task', to: 'end' }, { id: 'own2', type: 'bpmn.SequenceFlow', from: 'be', to: 'end' }] }] };
+  for (const [ids, gone] of [[['task', 'own'], ['own', 'own2']], [['own2', 'task'], ['own', 'own2']], [['lane', 'own'], ['own']], [['task', 'own2'], ['own', 'own2']], [['start', 'own'], ['own']]]) {
+    const r = bzRemove(M, M.views[0], ids, false), cs = r ? r.commands : null;
+    if (!cs) { assert.ok(!ids.includes('task') && !ids.includes('lane'), `${ids}: bzRemove's own path`); continue; }
+    const m2 = apply(M, cs), left = m2.views[0].edges.map(e => (typeof e === 'string' ? e : e.id));
+    for (const id of gone) assert.ok(!left.includes(id), `${ids}: ${id} gone`);
+    assert.deepEqual(m2.nodes.map(n => n.id), M.nodes.map(n => n.id), `${ids}: the model keeps its nodes`);
+  }
+  // the line deleted, not hidden: its first command
+  assert.deepEqual(bzRemove(M, M.views[0], ['task', 'own'], false).commands[0], { op: 'delete', id: 'own' });
+});
