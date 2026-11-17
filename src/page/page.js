@@ -54,9 +54,9 @@ export function mountPage(container, model, options = {}) {
       <h1 class="mbrand"><i></i><span>${esc(D.title || 'Map')}</span></h1>
       <nav class="crumbs" id="m-crumbs" aria-label="Breadcrumb"></nav>
       <button class="findbtn" id="m-find" type="button" aria-label="Find a node or view, ${modK}" aria-keyshortcuts="${mac ? 'Meta' : 'Control'}+K"><span aria-hidden="true">⌕</span><span class="ft">Find a node or view…</span> <span class="kbd">${modK}</span></button>
-      <button class="ibtn" id="m-theme" title="Light / dark" aria-label="Dark theme" aria-pressed="false">◐</button>${(D.stories || []).length ? `
+      <button class="ibtn" id="m-theme" title="Light / dark" aria-label="Dark theme" aria-pressed="false">◐</button>${arrOf(D.stories).length ? `
       <div class="menu"><button class="ibtn txt" id="m-stories" aria-controls="m-stories-pop" aria-expanded="false" title="Stories: walk-throughs of this map">▶<span class="lbl"> Stories</span></button>
-        <div class="menu-pop" id="m-stories-pop" hidden>${D.stories.map(s => `<button data-story="${esc(s && s.id)}">${esc((s && (s.title || s.id)) || '')}</button>`).join('')}</div></div>` : ''}${arrOf(D.lenses).some(l => l && l.id) ? `
+        <div class="menu-pop" id="m-stories-pop" hidden>${arrOf(D.stories).map(s => `<button data-story="${esc(s && s.id)}">${esc((s && (s.title || s.id)) || '')}</button>`).join('')}</div></div>` : ''}${arrOf(D.lenses).some(l => l && l.id) ? `
       <div class="menu"><button class="ibtn txt" id="m-lenses" aria-controls="m-lenses-pop" aria-expanded="false" title="Lenses: ways to look at this map">◎<span class="lbl"> Lenses</span></button>
         <div class="menu-pop" id="m-lenses-pop" hidden>${D.lenses.filter(l => l && l.id).map(l => `<button data-lens="${esc(l.id)}" aria-pressed="false">${esc(l.title || l.id)}</button>`).join('')}<hr><button data-lens="" aria-pressed="true">No lens</button></div></div>` : ''}
       <div class="menu"><button class="pbtn" id="m-export" aria-controls="m-export-pop" aria-expanded="false">Export ▾</button>

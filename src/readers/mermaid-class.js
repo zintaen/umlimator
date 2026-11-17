@@ -520,6 +520,7 @@ function writeMermaidClass(model, viewId) {
   if (views.length && !view) return '%% not written: the model, which has no uml.class view\n';
   if (view && view.diagram !== 'uml.class') return `%% not written: view ${flat(view.id)}, a ${flat(view.diagram)} view, not a uml.class one\n`;
   const byId = new Map(arr(m.nodes).filter(isObj).map(n => [n.id, n]));
+  if (view) for (const n of arr(view.nodes)) if (isObj(n) && !byId.has(n.id)) byId.set(n.id, n); // a card the view alone holds (view.nodes), written as a model one (audit 22)
   const shown = (view ? arr(view.nodeIds) : [...byId.keys()]).filter(id => byId.has(id));
   const KIND = mcTable({ 'uml.Class': '', 'uml.Interface': 'interface', 'uml.Enumeration': 'enumeration', 'uml.DataType': 'dataType', 'uml.PrimitiveType': 'primitive' });
   const VIS = mcTable({ public: '+', private: '-', protected: '#', package: '~' });

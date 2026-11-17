@@ -315,7 +315,7 @@ function readMermaidState(text) {
       if (sid) x.node.parent = sid;
       nodes.push(x.node);
     } else if (x.kind === 'trans') {
-      const e = { id: take(x.hint, `${x.from.node.id}-${x.to.node.id}`, x.no, x.what), type: 'uml.Transition', from: x.from.node.id, to: x.to.node.id };
+      const e = { id: take(x.hint, mtId(`${x.from.node.id}-${x.to.node.id}`), x.no, x.what), type: 'uml.Transition', from: x.from.node.id, to: x.to.node.id };
       if (x.text) {
         const p = parseTransition(x.text, 'its text is not trigger [guard] / effect');
         if (p.error) { e.props = { trigger: x.text }; e.ext = { mermaid: { label: x.text } }; say(x.no, 'approximated', `${x.what}: ${p.error}: it is kept as its trigger`); }
@@ -362,6 +362,7 @@ function writeMermaidState(model, viewId) {
   // what is written: the view's states, pseudostates, final states and comments
   const byId = new Map();
   for (const n of arr(m.nodes)) if (isObj(n) && !byId.has(n.id)) byId.set(n.id, n);
+  if (view) for (const n of arr(view.nodes)) if (isObj(n) && !byId.has(n.id)) byId.set(n.id, n); // a card the view alone holds (view.nodes), written as a model one (audit 22)
   const nodes = [], comments = [], shown = new Set();
   for (const id of arr(view.nodeIds)) {
     const n = byId.get(id);
@@ -405,7 +406,11 @@ function writeMermaidState(model, viewId) {
   // the transitions; each initial pseudostate and final state that can be its scope's [*]
   const edgeById = new Map(), trans = [], links = new Map(), inView = new Set(arr(view.nodeIds));
   for (const x of arr(m.edges)) if (isObj(x) && !edgeById.has(x.id)) edgeById.set(x.id, x);
-  for (const x of edgeById.values()) {
+  // the lines the view draws (stLines): those it lists, a model one by id and one of its own as itself, each id once; with
+  // no list, the model's (audit 22: a list was not read, so a line it hid was written and one of its own was lost)
+  const listed = new Map();
+  if (Array.isArray(view.edges)) for (const e of view.edges) { const x = typeof e === 'string' ? edgeById.get(e) : e; if (isObj(x) && !listed.has(x.id)) listed.set(x.id, x); }
+  for (const x of (Array.isArray(view.edges) ? listed : edgeById).values()) {
     if (x.type === 'uml.CommentLink' && shown.has(x.from) && shown.has(x.to)) { if (!links.has(x.from)) links.set(x.from, []); links.get(x.from).push(x); continue; }
     if (!(inView.has(x.from) || inView.has(x.to))) continue; // a line between two skipped nodes is still the view's, and reported
     if (x.type === 'uml.Transition' && isNode.has(x.from) && isNode.has(x.to) && okId(x.id)) trans.push(x); else skip(x);
@@ -530,7 +535,7 @@ function writeMermaidState(model, viewId) {
       if (!seenStar.has(x)) { seenStar.add(x); const k = keyOf.get(x), h = idOf(x, k ? `${k}.${s}` : s); if (h) lines.push(`%% ${s}-id: ${h}`); }
       return '[*]';
     };
-    const a = end(t.from), b = end(t.to), h = idOf(t.id, `${t.from}-${t.to}`), p = isObj(t.props) ? t.props : {};
+    const a = end(t.from), b = end(t.to), h = idOf(t.id, mtId(`${t.from}-${t.to}`)), p = isObj(t.props) ? t.props : {};
     let label = '';
     const raw = t.ext?.mermaid?.label;
     if (str(raw) && raw === p.trigger && p.guard === undefined && p.effect === undefined && parseTransition(raw).error) label = raw;
