@@ -36,7 +36,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12})
 
 
 def ok(name, cond, info=""):
@@ -1749,5 +1749,22 @@ if part("audit 29"):
            [r.returncode for r in runs] == [0] * len(names) and seen == [[f"{n} 1", f"{n} 2"] for n in names]
            and all([v[11:] for v in json.loads(r.stdout)["versions"]] == ["version 1", "version 2"] for r in runs),
            [(r.returncode, r.stdout[-200:], r.stderr[-300:]) for r in runs])
+if part("audit 30"):
+    with tempfile.TemporaryDirectory() as tmp:
+        t = Path(tmp)
+        # audit 30: an overview's inline interaction draws another view's lifelines and messages: a message renamed there, or a
+        # fragment added, draws the overview again (its key held only the other views' ids and titles)
+        ov = json.loads((ROOT / "examples" / "buy-book-overview.json").read_text(encoding="utf-8"))
+        keys = []
+        for step in range(3):
+            q = next(v for v in ov["views"] if v["id"] == "queue-order")
+            if step == 1:
+                q["edges"][0]["label"] = "putOnQueue(order)"
+            if step == 2:
+                q["fragments"] = [{"id": "f1", "operator": "opt", "guard": "x", "messages": ["queue-3"]}]
+            (t / "ov.json").write_text(json.dumps(ov)); cli("render", str(t / "ov.json"), "--out", str(t / "ov.html"), "--no-check")
+            keys.append(u.still_keys(t / "ov.html", [2.0, "light", False]).get("buy-book"))
+        ok("stills · an interaction overview is drawn again when a message or fragment of the sequence view its inline interaction draws changes (audit 30)",
+           None not in keys and len(set(keys)) == 3, keys)
 part.done()
 sys.exit(1 if failed else 0)

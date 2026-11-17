@@ -1223,8 +1223,9 @@ def still_keys(page, opts):
         cards = [n for n in nodes if n] + list((v.get("nodeOverrides") or {}).values())
         used, who = ({n.get(k) for n in cards if isinstance(n.get(k), str)} for k in ("icon", "author"))  # a list names none (audit 18)
         used |= {f"{p}/{i}" for p, i in map(packs().pick, cards) if isinstance(i, str)} | {f"{p}/" for p, _ in map(packs().pick, cards)}  # a pack's icon and its legal line
-        # a typed view also draws other views' titles (a card that opens one) and a DFD level its parent's cards, as the page's viewKey
-        typed = [[[w.get("id"), w.get("title"), w.get("subject")] for w in views], (V.get(v.get("parent")) or {}).get("nodeIds")] if v.get("diagram") else None
+        # a typed view also draws other views: their titles (a card that opens one), the lifelines, messages and fragments of the
+        # sequence view an overview's inline interaction draws (audit 30), and a DFD level its parent's cards, as the page's viewKey
+        typed = [views, (V.get(v.get("parent")) or {}).get("nodeIds")] if v.get("diagram") else None
         blob = json.dumps([v, data.get("nodes") if v.get("diagram") else nodes, typed, lines, kids, {k: icons[k] for k in sorted(used) if k in icons},
                            {k: authors[k] for k in sorted(who) if k in authors}, data.get("rules"), engine, opts], sort_keys=True)
         keys[v["id"]] = hashlib.sha256(blob.encode()).hexdigest()
