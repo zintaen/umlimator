@@ -133,8 +133,10 @@ DEMOS = (("examples/edit.html", "the editing demo"), ("examples/embed.html", "th
          ("examples/playground.html", "the playground"), ("examples/ask.html", "the ask-the-map page"), ("examples/replay.html", "the trace replay page"), ("examples/timelapse.html", "the time-lapse"), ("examples/drift.html", "the drift page"))
 spec = importlib.util.spec_from_file_location("shards", ROOT / "tests" / "shards.py")
 shards = importlib.util.module_from_spec(spec); spec.loader.exec_module(shards)
-part = shards.Parts(__file__, {**{page: 4 for page, _ in PAGES}, **{page: 4 for page, _ in DEMOS}, "examples/element.html": 4,
-                              "examples/notations.html": 4, "the standalone page's legend": 4, "keepPairs": 3, "rules": 3, "label kinds": 4, "record": 10})
+SLOW = {"tests/m2.html": 33, "tests/embed.html": 33, "tests/sysml.html": 24, "tests/stage5.html": 13, "tests/m4a.html": 13, "tests/stage4.html": 8,
+        "tests/package-object.html": 6, "tests/m4b.html": 6, "tests/stage6.html": 5, "tests/class.html": 5}  # about their seconds; the rest about 2
+part = shards.Parts(__file__, {**{page: SLOW.get(page, 2) for page, _ in PAGES}, **{page: 2 for page, _ in DEMOS}, "examples/element.html": 2,
+                              "examples/notations.html": 2, "the standalone page's legend": 2, "keepPairs": 5, "rules": 3, "label kinds": 3, "record": 20})
 for page, motion in PAGES:
     if not part(page):
         continue
