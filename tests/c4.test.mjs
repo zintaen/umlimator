@@ -20,6 +20,8 @@ import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
 import { tablesOf } from '../src/page/print.js';
 import { C4_SHAPES, c4Zoom } from '../src/c4/c4.js';
+import '../src/dfd/dfd.js';
+import '../src/uml/deployment.js';
 
 const C4 = JSON.parse(readFileSync(new URL('../examples/bookshop-c4.json', import.meta.url)));
 const T = diagramOf({ diagram: 'c4.container' });
@@ -563,5 +565,43 @@ test('audit 25: a container view laid out down runs no relationship through the 
   for (const [k, m] of [['one', one], ['two', two]]) {
     assert.deepEqual(check(m, 'v').map(p => p.message).filter(s => /header crossed|sits on the border/.test(s)), [], k);
     assert.ok(layout(m, 'v').edges.every(e => e.pts && e.pts.length > 1 && (!e.label || e.lbl)), `${k}: every line drawn, with its label`);
+  }
+});
+
+// audit 26: the key worded an element of another family "a actor", "a information item": the article as c4A gives it
+test('audit 26: the key names an element of another family with the right article ("an actor", "an information item")', () => {
+  const m = { schemaVersion: 2, nodes: [El('s', 'SoftwareSystem', 'Shop'), { id: 'a', type: 'uml.Actor', label: 'Clerk' }, { id: 'i', type: 'uml.InformationItem', label: 'Order' }, { id: 'u', type: 'uml.UseCase', label: 'Pay' }],
+    edges: [], views: [{ id: 'v', diagram: 'c4.landscape', title: 'L', nodeIds: ['s', 'a', 'i', 'u'] }] };
+  const says = layout(m, 'v').legend.map(x => x.replace(/<svg.*?<\/svg>/, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
+  assert.deepEqual(says, ['Software system a software system', 'Actor an actor', 'Information item an information item', 'Use case a use case']);
+});
+
+// audit 26: a node with no type on a C4 or DFD view had a blank kind: " Shop", a "[]" tag, "a , is not drawn"; now
+// "Element", as a cloud view names an untyped card (the shared kind word, snKindName, which the deployment and component
+// views use too)
+test('audit 26: a node with no type on a C4, DFD or deployment view is named an element, with no blank kind or "[]" tag', () => {
+  const view = d => ({ schemaVersion: 2, nodes: [{ id: 'x', label: 'Shop', kind: 'frontend' }], edges: [], views: [{ id: 'v', diagram: d, title: 'T', nodeIds: ['x'] }] });
+  const c4 = view('c4.landscape'), n = layout(c4, 'v').nodes[0];
+  assert.equal(n.aria, 'Element Shop'); assert.equal(n.tag, '[Element]');
+  assert.equal(describe(c4, 'v').split('\n')[1], 'Element Shop.');
+  assert.deepEqual(validate(c4).map(p => p.message), ['c4-level: "Shop", an element, is not drawn in a landscape view']);
+  const dfd = view('dfd');
+  assert.equal(layout(dfd, 'v').nodes[0].aria, 'Element Shop, 0 flows in, 0 out');
+  assert.equal(describe(dfd, 'v').split('\n')[1], 'Element Shop, 0 flows in, 0 out.');
+  for (const d of ['c4.landscape', 'dfd', 'uml.deployment']) for (const t of [layout(view(d), 'v').nodes[0].aria, describe(view(d), 'v')]) assert.doesNotMatch(t, /(^|\n) |\[\]|a , /, `${d}: ${t}`);
+});
+
+// audit 26: unhook folded only stretches that step back; a forward stair next to an end's stretch (the shipped container
+// view's Order worker to Database: up, 10 px right, 7 px up, into the card) is folded to one turn too, under the same checks
+const stairs = g => g.edges.filter(e => (e.pts || []).some((_, i, p) => { if (i < 1 || i + 3 >= p.length || !(i === 2 || i === p.length - 4)) return false;
+  const d = j => [Math.sign(p[j + 1][0] - p[j][0]), Math.sign(p[j + 1][1] - p[j][1])], a = d(i - 1), c = d(i + 1);
+  return (a[0] || a[1]) && a[0] === c[0] && a[1] === c[1] && Math.abs(p[i + 1][0] - p[i][0]) + Math.abs(p[i + 1][1] - p[i][1]) < 8; })).map(e => `${e.id} ${JSON.stringify(e.pts)}`);
+test('audit 26: no routed line ends in a forward stair a few px wide next to an end (the container view\'s Order worker to Database)', () => {
+  const e = layout(C4, 'c4-containers').edges.find(x => x.id === 'c4-worker-db'), db = layout(C4, 'c4-containers').byId['c4-db'];
+  assert.equal(e.pts.length, 4, JSON.stringify(e.pts)); assert.deepEqual(e.pts.at(-1), [db.x, e.pts.at(-1)[1]]);
+  const S = JSON.parse(readFileSync(new URL('c4-stress.json', import.meta.url)));
+  for (const [m, vid] of [[C4, 'c4-containers'], [S, 'all']]) for (const dir of ['right', 'down']) {
+    const x = structuredClone(m); x.views.find(v => v.id === vid).direction = dir;
+    assert.deepEqual(stairs(layout(x, vid)), [], `${vid} ${dir}`);
   }
 });

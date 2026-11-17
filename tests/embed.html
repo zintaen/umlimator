@@ -81,6 +81,13 @@ try {
   check('destroy empties the container', el.childElementCount === 0);
   let threw = null; try { h.update(MODEL); h.select(null); h.destroy(); } catch (e) { threw = String(e); }
   check('a destroyed handle ignores later calls', threw === null, threw);
+  // audit 26: render() appends the map's element after what the container holds, and destroy() removes that element alone
+  // (docs/api/render.md says so; it said the content was replaced and the container left empty)
+  const held = document.createElement('div'); held.style.cssText = 'width:400px;height:300px'; held.innerHTML = '<p id="ph">Loading the map...</p>'; document.body.append(held);
+  const hh = render(held, MODEL), kids = [...held.children].map(x => x.id || x.className);
+  check('render() appends the map after the container\'s content', JSON.stringify(kids) === '["ph","umlimator"]', kids);
+  hh.destroy();
+  check('destroy() removes the map\'s element alone', held.innerHTML === '<p id="ph">Loading the map...</p>', held.innerHTML); held.remove();
 
   // chips and containers
   const small = { nodes: [{ id: 'a', label: 'Reader', verbs: ['read', 'write'] }, { id: 'b', label: 'Store' }, { id: 'c', label: 'Index' }],

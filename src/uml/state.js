@@ -59,9 +59,11 @@ SHAPE.terminate = { size: () => ({ w: 20, h: 20 }), out: (n, d = 0) => `M${r2(n.
 function stParts(n) {
   const st = ST_ARR(n.stereotypes).filter(ST_HAS).map(t => `«${t}»`), ls = flowWrap(n.label, ST.name, ST.nmax, 3);
   const all = ST_ARR(n.acts), shown = ST_ARR(n.collapsed).includes('activities') ? null : all, cap = Number.isFinite(n.cap) ? Math.max(0, Math.floor(n.cap)) : Infinity;
-  const rows = shown ? [...shown.slice(0, cap), ...(shown.length > cap ? [`+${shown.length - cap} more`] : [])] : [];
+  // each row a line per break its author put in (an entry, an internal transition: F2's Shift+Enter), the compartment grown
+  // for them, so a break is never drawn as a space (audit 26); more: the "+k more" row's line
+  const rows = (shown ? [...shown.slice(0, cap), ...(shown.length > cap ? [`+${shown.length - cap} more`] : [])] : []).flatMap((r, j) => brLines(r).map(t => ({ t, more: j >= cap })));
   const head = 2 * ST.padY + st.length * ST.sth + Math.max(1, ls.length) * ST.nlh, comp = rows.length ? 8 + rows.length * ST.rl : 0, dec = n.composite ? ST.dec : 0;
-  const w = Math.ceil(Math.min(ST.maxW, Math.max(ST.minW, widest(st, t => textW(t, ST.st) + 2 * ST.padX), widest(ls, l => textW(l, ST.name) + 2 * ST.padX), widest(rows, r => textW(r, ST.row) + 2 * ST.padX))));
+  const w = Math.ceil(Math.min(ST.maxW, Math.max(ST.minW, widest(st, t => textW(t, ST.st) + 2 * ST.padX), widest(ls, l => textW(l, ST.name) + 2 * ST.padX), widest(rows, r => textW(r.t, ST.row) + 2 * ST.padX))));
   return { st, ls, rows, head, comp, dec, w, h: Math.max(ST.minH, head + comp + dec) };
 }
 const ST_TL = 16; // a composite state's title line, the second and after
@@ -76,7 +78,7 @@ SHAPE.state = {
     const out = [stBody(SHAPE.box.out(n), ST.bg), `<g class="c-head" data-band="${r2(y)} ${r2(y + hh)}">${hd.join('')}</g>`];
     if (p.comp) { const top = y + p.head;
       out.push(`<g class="c-comp" data-comp="activities" data-band="${r2(top)} ${r2(top + p.comp)}"><path d="M${x} ${r2(top)}H${x + w}" class="n-det" stroke="${ST.line}"/>`
-        + p.rows.map((r, j) => text(x + ST.padX, top + 4 + j * ST.rl + 11, r, ST.row, 400, j >= (n.cap ?? Infinity) ? ST.line : ST.ink, j >= (n.cap ?? Infinity) ? 'c-more' : 'c-row')).join('') + '</g>'); }
+        + p.rows.map((r, j) => text(x + ST.padX, top + 4 + j * ST.rl + 11, r.t, ST.row, 400, r.more ? ST.line : ST.ink, r.more ? 'c-more' : 'c-row')).join('') + '</g>'); }
     // UML's decomposition indicator: two small rounded rectangles joined, at the bottom right
     if (p.dec) { const by = y + h - 9, bx = x + w - 27;
       out.push(`<g class="st-dec" fill="none" stroke="${ST.line}" stroke-width="1.2"><rect x="${r2(bx)}" y="${r2(by - 2.5)}" width="7" height="5" rx="2"/><rect x="${r2(bx + 12)}" y="${r2(by - 2.5)}" width="7" height="5" rx="2"/><path d="M${r2(bx + 7)} ${r2(by)}H${r2(bx + 12)}"/></g>`); }
@@ -441,9 +443,28 @@ function stRemove(model, view, ids, fromModel) {
   const own = new Set(), put = x => { if (ST_OBJ(x) && typeof x.id === 'string') { own.add(x.id); ST_ARR(x.members).forEach(put); } };
   if (ST_OBJ(view)) [...ST_ARR(view.nodes), ...ST_ARR(view.edges)].forEach(put);
   const I = stIndex(ST_OBJ(view) ? ownNodes(model, view).model : model), rs = fromModel || ids.every(id => own.has(id)) ? ids.filter(id => I.M.has(id) && I.M.get(id).x.type === 'uml.Region') : [];
-  if (!rs.length) return null;
+  if (!rs.length) return fromModel || !ST_OBJ(view) ? null : stHide(model, view, ids, I, own);
   const held = [...I.N.keys()].filter(n => rs.some(r => stWithin(I, n, r))).length, x = I.M.get(rs[0]).x;
   return { commands: ids.map(id => ({ op: 'delete', id })), say: `Deleted ${rs.length === 1 ? 'region ' + (ST_HAS(x.label) ? x.label : x.id) : stPlural(rs.length, 'region')} and the ${stPlural(held, 'element')} ${rs.length === 1 ? 'it' : 'they'} held` };
+}
+
+// Delete (out of the view) on a state takes the states and pseudostates the view shows within it, at any depth and in every
+// region, with it, said on the hint line (docs/editing.md), as a BPMN sub-process takes what it shows (audit 26): a substate
+// is not drawn loose at the top, its regions' orthogonality lost. A selection with none under it is the canvas's (null)
+function stHide(model, view, ids, I, own) {
+  const shown = [...new Set([...ST_ARR(view.nodeIds), ...ST_ARR(view.nodes).filter(ST_OBJ).map(n => n.id)])], tops = ids.filter(id => I.N.has(id));
+  const under = shown.filter(n => !ids.includes(n) && I.N.has(n) && tops.some(t => n !== t && stWithin(I, n, t)));
+  if (!under.length) return null;
+  const E = new Set(ST_ARR(model.edges).filter(ST_OBJ).map(e => e.id)), all = [...ids, ...under];
+  // a model line on a view with no edges list is not hidden (apply() refuses it): skipped, said, as the canvas's Delete does
+  const kept = !Array.isArray(view.edges) && all.some(id => E.has(id) && !own.has(id));
+  // a view-own line first, deleted: a hide or delete of a state after it takes the lines to it out of the view (audit 22)
+  const ownLine = id => own.has(id) && !I.N.has(id) && !I.M.has(id);
+  const commands = [...all.filter(ownLine).map(id => ({ op: 'delete', id })),
+    ...all.filter(id => !ownLine(id) && !(kept && E.has(id) && !own.has(id))).map(id => (own.has(id) ? { op: 'delete', id } : { op: 'hide', id, view: view.id }))];
+  const hosts = tops.filter(t => under.some(n => stWithin(I, n, t))).map(t => stName(I.N.get(t).x));
+  return { commands, say: [`Removed ${hosts.join(', ')} from the view with the ${stPlural(under.length, 'element')} ${hosts.length === 1 ? 'it holds' : 'they hold'}`,
+    ...(kept ? ['this view shows every line between its cards: Shift + Delete deletes the line'] : [])].join('; ') };
 }
 
 /* the panel's member rows (edits.member, src/typed/edit.js; notes/stage-5.md §12.1): a row `entry / …` typed on a selected

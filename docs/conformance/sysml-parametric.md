@@ -62,7 +62,7 @@ Layout limits, measured on `examples/ebike-range.json` and `tests/parametric-str
   crosses once, right and down. `ec-constraint-block` (a constraint block subject built from constraint properties of
   another, its parameters on the frame) is clean right; laid out down, one parameter on the frame's top crosses the
   header band with its line inward (a gap of the composite geometry's port sides, M3.5's, pinned). The generated `all`
-  (16 constraint properties, 48 parameters, 30 values, 60 bindings) crosses 207 times right and 206 down, with 23 and 24
+  (16 constraint properties, 48 parameters, 30 values, 60 bindings) crosses 207 times right and 205 down, with 23 and 24
   findings of lines sharing a track.
 
 ## Writers: what each shows of a parametric diagram

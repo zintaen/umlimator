@@ -78,7 +78,7 @@ function ifNodeName(I, n) {
 function ifLineName(I, e) {
   const ends = `from ${I.nm(e.from)} to ${I.nm(e.to)}`;
   if (e.type === 'uml.CommentLink') return `Comment link ${IF_HAS(e.label) ? e.label + ' ' : ''}${ends}`; // its label as drawn (audit 23)
-  if (e.type !== 'uml.InformationFlow') return `Line ${ends}`;
+  if (e.type !== 'uml.InformationFlow') return `${e.type == null ? 'Line' : snKindName(e.type)} ${IF_HAS(e.label) ? e.label + ' ' : ''}${ends}`; // a listed line of another kind by its kind, plain (audit 26)
   const c = I.conveyed(e).map(I.nm);
   return `Information flow${IF_HAS(e.label) ? ' ' + e.label : ''} ${ends}${c.length ? ', conveys ' + ifAnd(c) : ''}`;
 }
@@ -101,7 +101,7 @@ function ifGeo({ model, view, pos, memo }) {
     const d = { id, label: ifName(n), type: n.type || 'uml.Class', kind: 'file', ...look, aria: ifNodeName(I, n), col: P(id)[0], row: P(id)[1] };
     return { ...d, ...SHAPE[d.shape].size(d) }; });
   const edges = lines.map(e => { const flow = e.type === 'uml.InformationFlow', label = flow ? '«flow» ' + ifSays(I, e) : e.label;
-    return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: IF_HAS(label) ? label : undefined, end: flow ? { from: 'none', to: 'open', dashed: true } : { from: 'none', to: 'none', dashed: true },
+    return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: IF_HAS(label) ? label : undefined, end: flow ? { from: 'none', to: 'open', dashed: true } : { from: 'none', to: 'none', dashed: e.type === 'uml.CommentLink' },
       aria: ifLineName(I, e), cut: 280, ...(P(e.from)[0] - P(e.to)[0] > 1 ? { fromSide: 'bottom', toSide: 'bottom' } : {}), ...(IF_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }; });
   const g = layoutTyped({ nodes, edges, direction: view.direction === 'down' ? 'down' : 'right', gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo);
   return { ...g, legend: ifLegend(g.edges), order: [...ids, ...lines.map(e => e.id)] }; // a new object: what layoutTyped returned is never edited (§2.6)
@@ -139,12 +139,18 @@ function ifDescribe(model, viewId) {
 /* ---- editing (§7.4) ---- */
 // the elements a flow may convey, information items first, then classifiers, each in the model's order
 const ifConveyable = I => [...I.at.values()].filter(n => IF_CONVEY.includes(n.type)).sort((a, b) => (b.type === 'uml.InformationItem') - (a.type === 'uml.InformationItem'));
+// what this view alone holds (view.nodes, read as the model's: src/core/registry.js): a model flow never conveys one, which
+// another view would name by its id (audit 26)
+const ifOwn = (model, I, view) => { const V = IF_OBJ(view) ? view : IF_ARR(model && model.views).find(v => IF_OBJ(v) && v.id === view);
+  return new Set(IF_ARR(V && V.nodes).filter(n => IF_OBJ(n) && I.at.get(n.id) === n).map(n => n.id)); };
+const IF_OWN_SAY = 'lives in this view only: a flow between model elements conveys a model element';
 // connect: a flow between two classifiers or actors asks which element it conveys; other ends are refused, said on the hint line
 function ifConnect(model, view, from, to, at, line) {
   if (!IF_OBJ(line) || line.type !== 'uml.InformationFlow') return null;
   const I = ifIndex(model);
   if (![from, to].every(id => IF_ENDS.includes((I.at.get(id) || {}).type))) return { error: 'An information flow joins two classes, interfaces, components or actors' };
-  const can = ifConveyable(I); if (!can.length) return { error: 'Add an information item for the flow to convey first' };
+  const own = ifOwn(model, I, view), all = ifConveyable(I), can = own.has(from) || own.has(to) ? all : all.filter(n => !own.has(n.id));
+  if (!can.length) return { error: all.length ? `${ifName(all[0])} ${IF_OWN_SAY}` : 'Add an information item for the flow to convey first' };
   const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
   let k = 1; while (used.has('flow' + k)) k++;
   return { pick: can.map(ifName), then: i => [{ op: 'add', element: { id: 'flow' + k, type: 'uml.InformationFlow', from, to, props: { conveyed: [can[i].id] } }, view: view.id }] };
@@ -155,7 +161,7 @@ function ifConnect(model, view, from, to, at, line) {
 // that names elements throughout. Sets conveyed (each once) and the name, each when it changed
 function ifRename(model, view, id, text) {
   const I = ifIndex(model), e = I.E.find(x => x.id === id); if (!e || e.type !== 'uml.InformationFlow') return null;
-  const t = String(text ?? '').replace(/^\s*«flow»\s*/, ''), can = ifConveyable(I), at = new Map();
+  const own = I.M.includes(e) ? ifOwn(model, I, view) : new Set(), t = String(text ?? '').replace(/^\s*«flow»\s*/, ''), can = ifConveyable(I).filter(n => !own.has(n.id)), at = new Map();
   // names, then ids, looked up in one map, each to its elements in order (what the flow conveys now first, so an unchanged
   // name keeps its element, then as before; a name two elements share, each in turn: audit 6); a run is never longer than the
   // most commas a name holds
@@ -166,7 +172,8 @@ function ifRename(model, view, id, text) {
   const list = s => { const p = s.split(','), ids = []; let i = 0;
     while (i < p.length) { if (!p[i].trim()) { i++; continue; }
       let j = Math.min(p.length, i + most), x; while (j > i && !(x = find(p.slice(i, j).join(',').trim()))) j--;
-      if (!x) return { error: `No information item or classifier is named ${p[i].trim()}` }; ids.push((x.find(n => !ids.includes(n.id)) || x[0]).id); i = j; }
+      if (!x) { const o = [...own].map(id => I.at.get(id)).find(n => IF_CONVEY.includes(n.type) && [ifName(n).trim(), n.id].includes(p[i].trim()));
+        return { error: o ? `${ifName(o)} ${IF_OWN_SAY}` : `No information item or classifier is named ${p[i].trim()}` }; } ids.push((x.find(n => !ids.includes(n.id)) || x[0]).id); i = j; }
     return ids.length ? { ids: [...new Set(ids)] } : { error: 'A flow conveys one element at least' }; };
   const reads = [-1, ...[...t].flatMap((ch, k) => (ch === ':' ? [k] : []))].map(k => ({ name: k < 0 ? '' : t.slice(0, k).trim(), rest: (k < 0 ? t : t.slice(k + 1)).trim(), ...list(k < 0 ? t : t.slice(k + 1)) }));
   // the flow as it is: its name, and its elements as read or as drawn (names joined by ', ', which a name holding ', ' reads otherwise: audit 12)

@@ -9,6 +9,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { layout, check, history, validate } from '../lib/umlimator.js';
 import { leaveIssues } from '../src/layout/audit.js';
+import { mapContext } from '../src/map/context.js';
+import { fit } from '../src/core/text.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 // the bench's geometry hash (bench/bench.py, #bench=1): FNV-1a over node boxes, route points and label spots
@@ -647,4 +649,27 @@ test('audit 25: a map box with the id of a card it holds lays out', () => {
     const both = structuredClone(m); both.views[0].containers.push({ id: 'b', label: 'B box', nodeIds: ['b'], parent: 'a' });
     assert.equal(layout(both, 'v').nodes.length, 2);
   } finally { console.warn = warn; }
+});
+
+// audit 26: wrap2() measured both halves at every word of a text and fit() shrank one character at a time, so drawing a map
+// card whose 'what' (its sub-line) or name ran to some thousands of characters measured text quadratic in its length: 16,000
+// characters froze render() for seconds. Now each cut is searched for, in a few measures of the text
+const longCards = n => { const long = 'word '.repeat(n / 5).trim();
+  return [{ nodes: [{ id: 'a', label: 'A', kind: 'service', what: long }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] },
+    { nodes: [{ id: 'a', label: long, kind: 'service' }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] }]; };
+test('audit 26: a card whose what or name runs to 16,000 characters is drawn measuring its text a few times, not once per word', () => {
+  let chars = 0; const measure = (s, px) => { chars += s.length; return s.length * px * .55; };
+  for (const [k, m] of longCards(16000).entries()) { chars = 0;
+    const out = mapContext(m, { measure }).buildView('v').markup; assert.match(out, /word word/, `#${k}: the text drawn, cut`);
+    assert.ok(chars < 100 * 16000, `#${k}: ${chars} characters measured`); }
+  // the cut is where it was: a sub-line on two lines at the word where the wider line is narrowest, a name cut between words
+  const lines = (label, what) => mapContext({ nodes: [{ id: 'a', label, kind: 'service', what }], views: [{ id: 'v', nodeIds: ['a'] }] }, { measure }).buildView('v').markup.match(/<tspan[^>]*>[^<]*<\/tspan>/g);
+  assert.deepEqual(lines('Order and invoice service for shops', 'Reads the orders and writes the invoices for every shop'), ['<tspan x="54">Reads the orders and writes</tspan>', '<tspan x="54" dy="12">the invoices for every shop</tspan>']);
+  assert.deepEqual(lines('Order and invoice service for every shop in the whole land of shops'), ['<tspan x="54">Order and invoice service for every</tspan>', '<tspan x="54" dy="15">shop in the whole land of shops</tspan>']);
+  assert.equal(fit('alpha beta gamma delta', 10, 80, true), 'alpha beta…'); assert.equal(fit('ab', 10, 5), 'ab…');
+});
+test('audit 26: a card whose what or name runs to 40,000 characters is drawn in well under a second, in a measurer that reads every character (timed)', () => {
+  const measure = (s, px) => { let w = 0; for (let i = 0; i < s.length; i++) w += s.charCodeAt(i) === 32 ? .28 * px : .55 * px; return w; }; // as a canvas does: each character read
+  for (const [k, m] of longCards(40000).entries()) { const t = performance.now(); mapContext(m, { measure }).buildView('v');
+    const ms = performance.now() - t; assert.ok(ms < 1000, `#${k}: ${Math.round(ms)} ms`); }
 });

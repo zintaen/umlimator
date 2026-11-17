@@ -504,7 +504,8 @@ const CS_TYPE = registerDiagramType('uml.composite-structure', {
     if (id === P.sid && P.S || P.collabs.some(c => c.x.id === id)) return CS_ARR(u.members).filter(CS_OBJ).map(m => (m.type === 'uml.Property' ? csPartSaid(m) : CS_MEMBER.print(m)) + (m.type === 'uml.Property' && id === P.sid && u.type !== 'uml.Collaboration' ? `, ${agg(m)}` : ''));
     if (u.type !== 'uml.CollaborationUse') return null;
     return [...(CS_HAS(CS_PROPS(u).collaboration) ? [String(CS_PROPS(u).collaboration)] : []),
-      ...CS_ARR(model.edges).filter(e => CS_OBJ(e) && e.type === 'uml.RoleBinding' && e.to === id).map(e => `${e.label ?? '?'} ← ${csName(P.el(e.from) || { id: e.from })}`)]; },
+      // its bindings as the view draws and describe() says them (P.lines: a view's own line too, audit 26)
+      ...P.lines.filter(({ e }) => e.type === 'uml.RoleBinding' && e.to === id).map(({ e }) => `${e.label ?? '?'} ← ${csName(P.el(e.from) || { id: e.from })}`)]; },
   edits: { connect: csConnect, moveTo: csMoveTo, add: csAdd, remove: csRemove, rename: csRename, member: csMember },
 });
 

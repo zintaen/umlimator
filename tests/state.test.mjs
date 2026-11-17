@@ -81,11 +81,10 @@ test('the shapes: junction, history and terminate; a state\'s compartment, its r
 // the crossings that turning port repair off leaves (notes/stage-4.md §17): pinned
 const PINNED = { // a pseudostate is named by its id (audit 5)
   right: ['view order-life: edges payment-outcome→Fulfilling and Picking→Packed cross', 'view order-life: edges payment-outcome→Cancelled and Capturing payment→Cancelled cross'],
-  down: ['view order-life: edges payment-outcome→Fulfilling and prepaid→Payment captured cross', 'view order-life: edges payment-outcome→Cancelled and prepaid→Payment captured cross', 'view order-life: edges payment-outcome→Cancelled and Payment captured→ready cross',
+  // audit 26: the payment region holds the retry loop and its label (its label no longer on two lines), and one more crossing
+  down: ['view order-life: edges payment-outcome→Fulfilling and payment-outcome→Cancelled cross', 'view order-life: edges payment-outcome→Fulfilling and prepaid→Payment captured cross', 'view order-life: edges payment-outcome→Cancelled and prepaid→Payment captured cross', 'view order-life: edges payment-outcome→Cancelled and Payment captured→ready cross',
     'view order-life: edges payment-outcome→Cancelled and Fulfilling→Cancelled cross', 'view order-life: edges Capturing payment→Cancelled and Capturing payment→Payment captured cross',
-    // two labels that found no spot and were left off with nothing said: drawn now, on a looser spot (audit 6)
-    'view order-life: label "capture failed [attempts < 3] / count the att…" lies on edge Capturing payment→Cancelled',
-    'view order-life: label "capture failed [attempts < 3] / count the att…" lies on edge Capturing payment→Payment captured',
+    // a label that found no spot and was left off with nothing said: drawn now, on a looser spot (audit 6)
     'view order-life: label "cancel requested / refund the payment" lies on edge Capturing payment→Cancelled',
     'view order-life: label "cancel requested / refund the payment" lies on edge Payment captured→ready'],
 };
@@ -591,4 +590,33 @@ test('audit 25: Shift + Delete on a region of a state the view holds as its own 
   assert.deepEqual(T.edits.remove(own, own.views[0], ['r1'], true), want);
   assert.deepEqual(T.edits.remove(own, own.views[0], ['r1'], false), want, 'Delete deletes an own region too (the canvas\'s), and says so');
   assert.equal(T.edits.remove(own, own.views[0], ['r1', 'a'], false), null, 'with a model state in it: the canvas\'s Delete');
+});
+
+test('audit 26: Delete (out of the view) on a composite state takes the states and pseudostates shown within it, said on the hint line', () => {
+  const r = T.edits.remove(SM, V, ['delivery'], false), subs = SM.nodes.filter(n => n.parent === 'delivery').map(n => n.id);
+  assert.deepEqual(r.commands, ['delivery', ...V.nodeIds.filter(id => subs.includes(id))].map(id => ({ op: 'hide', id, view: V.id })));
+  assert.equal(r.say, `Removed In delivery from the view with the ${subs.length} elements it holds`);
+  const m = apply(SM, r.commands), g = layout(m, V.id);
+  assert.deepEqual(g.nodes.filter(n => subs.includes(n.id)), [], 'no substate is drawn loose at the top');
+  // a state of two regions: both regions' states go, at any depth
+  const two = T.edits.remove(SM, V, ['fulfilling'], false), within = id => { for (let p = SM.nodes.find(n => n.id === id)?.parent; p; p = SM.nodes.find(n => n.id === p)?.parent ?? SM.nodes.find(n => (n.members || []).some(x => x.id === p))?.id) if (p === 'fulfilling') return true; return false; };
+  assert.deepEqual(two.commands.map(c => c.id).slice(1).sort(), V.nodeIds.filter(within).sort());
+  assert.ok(two.commands.every(c => c.op === 'hide'));
+  // a simple state, and Delete from the model, are the canvas's as before
+  assert.equal(T.edits.remove(SM, V, ['placed'], false), null);
+  assert.equal(T.edits.remove(SM, V, ['delivery'], true), null);
+});
+
+test('audit 26: laid out down, a composite state holds a two-way pair\'s fanned labels and a loop\'s label, so none is set on another line', async () => {
+  const { readMermaidState } = await import('../src/readers/mermaid-state.js');
+  const on = (m, v) => check(m, v).map(p => p.message).filter(t => /lies on edge/.test(t));
+  const kb = readMermaidState(['stateDiagram-v2', '[*] --> Active', 'state Active {', '  [*] --> NumLockOff', '  NumLockOff --> NumLockOn : EvNumLockPressed', '  NumLockOn --> NumLockOff : EvNumLockPressed', '}'].join('\n')).model;
+  assert.equal(kb.views[0].direction ?? 'down', 'down', 'Mermaid\'s default');
+  assert.deepEqual(on(kb, kb.views[0].id), [], 'Mermaid\'s keyboard example');
+  const g = layout(kb, kb.views[0].id), box = g.families.find(f => f.id === 'Active');
+  for (const e of g.edges.filter(x => x.lbl)) assert.ok(e.lbl.x >= box.x + 3 && e.lbl.x + e.lbl.w <= box.x + box.w - 3, `${e.id}: its label inside the composite`);
+  const os = withDir(SM, 'down');
+  assert.deepEqual(on(os, V.id).filter(t => /attempts < 3/.test(t)), [], 'the retry loop\'s label inside its region');
+  // laid out right, as before (the room is the down view's alone)
+  assert.deepEqual(on(SM, V.id), []);
 });

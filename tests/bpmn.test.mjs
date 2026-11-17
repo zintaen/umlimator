@@ -755,3 +755,18 @@ test('audit 24: the PDF\'s line text reads a view\'s own line as a model one: it
       edges: [{ id: 'f1', type: 'bpmn.SequenceFlow', from: 's', to: 't' }, ...(own ? [] : [f])], views: [{ id: 'v', diagram: 'bpmn', nodeIds: ['s', 't', 'e'], ...(own ? { edges: ['f1', f] } : {}) }] }; };
   for (const own of [false, true]) { const m = mk(own); assert.equal(T.text(m, m.views[0], 'f2'), 'done — Only after the payment cleared', own ? 'own line' : 'model line'); }
 });
+
+// audit 26: a categoryValueRef written as a lone id, not a list, was read as nothing with no word (the group not drawn); and
+// two messages put "a" before a kind that starts with a vowel ("a end event")
+test('audit 26: a categoryValueRef that is not a list is warned of; the event and parent messages take "an" before a vowel', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'p', type: 'bpmn.Participant', label: 'Shop' }, { id: 's', type: 'bpmn.StartEvent', parent: 'p', label: 'Go' }, { id: 't', type: 'bpmn.Task', parent: 'p', label: 'Pack', props: { categoryValueRef: 'g' } },
+    { id: 'e', type: 'bpmn.EndEvent', parent: 'p', label: 'Done' }, { id: 'g', type: 'bpmn.Group', label: 'Dispatch' }],
+  edges: [{ id: 'f1', type: 'bpmn.SequenceFlow', from: 's', to: 't' }, { id: 'f2', type: 'bpmn.SequenceFlow', from: 't', to: 'e' }], views: [{ id: 'v', diagram: 'bpmn', nodeIds: ['p', 's', 't', 'e', 'g'] }] };
+  const ps = validate(m).filter(p => p.rule === 'group-ref');
+  assert.deepEqual(ps.map(p => [p.level, p.path, p.message]), [['warning', 'nodes[2].props.categoryValueRef', 'group-ref: t ("Pack")\'s categoryValueRef is "g", not a list of group ids: it is ignored']]);
+  m.nodes[2].props.categoryValueRef = ['g']; assert.deepEqual(validate(m).filter(p => p.rule === 'group-ref'), []);
+  m.nodes[3].props = { definition: 'timer' }; m.nodes.push({ id: 'e2', type: 'bpmn.EndEvent', parent: 'p', label: 'Stop' }, { id: 'x', type: 'bpmn.Task', parent: 'e2', label: 'Odd' }); m.views[0].nodeIds.push('e2', 'x');
+  const said = validate(m).map(p => p.message).join('\n');
+  assert.match(said, /e \("Done"\) is an end event with definition "timer"/); assert.match(said, /x \("Odd"\)'s parent e2 \("Stop"\) is an end event:/);
+  assert.doesNotMatch(said, /\ba [aeiou]/);
+});

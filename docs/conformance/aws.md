@@ -39,7 +39,7 @@ and every other output in its first row stays icon-free (`docs/diagrams/notes/mi
 | `aws.Connection` | Solid, an open arrow at `to`, its label cut at 280 px; from or to a group, it ends on the group's border |
 
 An icon id is the name of the pack's 64 px service icon (`Arch_<id>_64.svg`) or 48 px resource icon (`Res_<id>_48.svg`,
-the general icons' light set); the name drawn is the id with hyphens as spaces, or the row's `names` entry
+the general icons' light set); the name drawn is the row's `names` entry, read with no pack fetched too, else the id with hyphens and underscores as spaces
 (`Amazon-VPC_NAT-Gateway` is "Amazon VPC NAT Gateway"). Three ids are filed twice in the zip
 (`AWS-Compute-Optimizer`, `AWS-Management-Console`, `Amazon-Kinesis-Video-Streams`); the first is used.
 

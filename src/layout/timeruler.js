@@ -1,4 +1,4 @@
-import { textW } from '../core/text.js';
+import { brLines, textW } from '../core/text.js';
 import { r2 } from '../draw/shapes.js';
 
 /* ---------- the time ruler (work package 6.4, notes/stage-6.md §6) ----------
@@ -34,7 +34,8 @@ import { r2 } from '../draw/shapes.js';
 
 const TR = {
   edge: 16, pad: 8, cut: 160, // the margin; a column's padding each side; the widest name and value text
-  row: 24, above: 12, band: 24, // a state row's pitch; above the first row and below the last; a value band's height
+  row: 24, above: 12, band: 24, rl: 13, // a state row's pitch; above the first row and below the last; a value band's height; each
+  // line more a state's or the unit's text the author broke takes (a row's pitch grown by it, audit 26)
   gap: 12, room: 12, bare: 16, // two changes' least distance; a value's room in its segment; a segment too short for text
   plot: 480, max: 4800, tick: 64, font: 10, // the plot's least and greatest width; majors' least distance; their labels' size
   lift: 4, level: 20, hit: 12, mark: 6, ruler: 28, // a label over its line, and each move; a strip's level; a change's hit width; a tick; the ruler's height
@@ -85,11 +86,14 @@ function layoutTimeRuler(input = {}) {
 
   // ---- each lane's rows, height, and the strip its constraints need
   lanes.forEach(L => {
-    L.rows = L.form === 'values' ? [] : trArr(L.ln.rows).map(r => ({ state: r.state, w: trNum(r.w) }));
+    const lines = r => Math.max(1, Math.floor(trNum(r.n))); // n: the state's text's lines, 1 when not given
+    L.rows = L.form === 'values' ? [] : trArr(L.ln.rows).map(r => ({ state: r.state, w: trNum(r.w), n: lines(r) }));
     const listed = new Set(L.rows.map(r => r.state));
-    L.cs.forEach(c => { if (L.form === 'states' && !listed.has(c.state)) { listed.add(c.state); L.rows.push({ state: c.state, w: trNum(c.w) }); } });
+    L.cs.forEach(c => { if (L.form === 'states' && !listed.has(c.state)) { listed.add(c.state); L.rows.push({ state: c.state, w: trNum(c.w), n: lines(c) }); } });
+    // each row's level, from the lane's top: its pitch's middle, a row of one line 24 px (TR.row) apart
+    let at = 0; L.at = new Map(); L.rows.forEach(r => { const p = TR.row + (r.n - 1) * TR.rl; if (!L.at.has(r.state)) L.at.set(r.state, at + p / 2); at += p; });
     const nh = trNum((L.ln.name || {}).h) + 2 * TR.pad;
-    L.h = Math.max(nh, L.form === 'values' ? TR.band + 2 * TR.above : Math.max(1, L.rows.length) * TR.row);
+    L.h = Math.max(nh, L.form === 'values' ? TR.band + 2 * TR.above : L.rows.length ? at : TR.row);
     L.levels = []; L.lh = []; L.marks = []; });
   const states = Math.max(0, ...lanes.flatMap(L => L.rows.map(r => r.w)));
   const X0 = TR.edge + name + (states ? states + 2 * TR.pad : 0), xOf = t => X0 + (t - t0) * k, X1 = xOf(t1);
@@ -111,7 +115,7 @@ function layoutTimeRuler(input = {}) {
   lanes.forEach(L => { L.y = y; L.mid = y + L.h / 2; y += L.h; L.sy = y;
     L.top = L.lh.map((h, v) => L.lh.slice(0, v).reduce((s, x) => s + x, 0)); L.sh = L.lh.length ? L.lh.reduce((s, x) => s + x, 0) + TR.lift : 0; y += L.sh; });
   const rulerY = y + TR.pad;
-  const rowY = (L, s) => L.y + TR.above + L.rows.findIndex(r => r.state === s) * TR.row;
+  const rowY = (L, s) => L.y + (L.at.has(s) ? L.at.get(s) : TR.above - TR.row); // a state no row holds (every change's has one) a row above the first, as before
   const lvl = (L, c) => (L.form === 'values' ? L.mid : rowY(L, c.state));
   const levelAt = (L, t) => { let c = null; for (const d of L.cs) { if (d.at > t) break; c = d; } return c ? lvl(L, c) : L.mid; };
 
@@ -171,9 +175,10 @@ function layoutTimeRuler(input = {}) {
   const outLanes = lanes.map(L => ({ id: L.ln.id, x: TR.edge, y: r2(L.y), w: r2(X1 - TR.edge), h: r2(L.h),
     name: { x: TR.edge + TR.pad, y: r2(L.y + (L.h - trNum((L.ln.name || {}).h)) / 2) }, rows: L.rows.map(r => ({ state: r.state, y: r2(rowY(L, r.state)) })),
     strip: { y: r2(L.sy), h: r2(L.sh) } }));
-  const last = ticks.filter(t => t.major).pop(), right = X1 + (last ? textW(last.label, TR.font) / 2 : 0) + (unit ? TR.lift + textW(unit, TR.font) : 0);
+  const uls = unit == null ? [] : brLines(unit); // a unit the author broke: a line each, under the one before (audit 26)
+  const last = ticks.filter(t => t.major).pop(), right = X1 + (last ? textW(last.label, TR.font) / 2 : 0) + (unit ? TR.lift + Math.max(...uls.map(l => textW(l, TR.font))) : 0);
   const boxes = [...lines.map(l => l.lbl), ...outMarks.map(o => o.lbl)];
-  const xs = [right, X1, ...boxes.flatMap(b => [b.x, b.x + b.w])], ys = [rulerY + TR.ruler, ...boxes.flatMap(b => [b.y, b.y + b.h])];
+  const xs = [right, X1, ...boxes.flatMap(b => [b.x, b.x + b.w])], ys = [rulerY + TR.ruler + Math.max(0, uls.length - 1) * (TR.font + 2), ...boxes.flatMap(b => [b.y, b.y + b.h])];
   const bx0 = Math.min(0, ...xs.map(v => v - TR.edge)), by0 = Math.min(0, ...ys.map(v => v - TR.edge));
   return {
     lanes: outLanes, steps: steps.map(s => ({ lane: s.lane, pts: s.pts.map(p => p.map(r2)) })),

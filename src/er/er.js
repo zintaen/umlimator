@@ -138,7 +138,8 @@ function erEnd(e, w, idef) {
 }
 const erIdentifying = e => erProps(e).identifying === true;
 function erLook(e, idef) {
-  if (e.type !== 'er.Relationship') return { from: 'none', to: 'none', dashed: true }; // a comment link
+  if (e.type === 'uml.CommentLink') return { from: 'none', to: 'none', dashed: true };
+  if (e.type !== 'er.Relationship') return { from: 'none', to: 'none' }; // a listed line of another kind: plain, never a comment link's look (audit 26)
   const [f, fl] = erEnd(e, 'from', idef), [t, tl] = erEnd(e, 'to', idef);
   return { from: f, to: t, dashed: !erIdentifying(e), labels: { from: { mult: fl }, to: { mult: tl } } };
 }
@@ -157,7 +158,8 @@ const erFull = (n, I) => { const cs = erTable(n) ? erCols(n) : []; return erNode
 // "Identifying relationship contains from order (exactly one) to order_line (one or more)"
 function erLineName(e, I) {
   const nm = id => (I.at.has(id) ? erName(I.at.get(id)) : String(id));
-  if (e.type !== 'er.Relationship') return `Comment link ${ER_HAS(e.label) ? e.label + ' ' : ''}from ${nm(e.from)} to ${nm(e.to)}`; // its label as drawn, as the data flow type says it (audit 23)
+  // its label as drawn, as the data flow type says it (audit 23); a listed line of another kind by its own kind, "Association owns" (audit 26)
+  if (e.type !== 'er.Relationship') return `${e.type == null ? 'Line' : snKindName(e.type)} ${ER_HAS(e.label) ? e.label + ' ' : ''}from ${nm(e.from)} to ${nm(e.to)}`;
   return `${erIdentifying(e) ? 'Identifying' : 'Non-identifying'} relationship ${ER_HAS(e.label) ? e.label + ' ' : ''}from ${nm(e.from)} (${erSay(erMult(e, 'from'))}) to ${nm(e.to)} (${erSay(erMult(e, 'to'))})`;
 }
 const erShown = (model, view) => { const I = erIndex(model); return { I, ids: [...new Set(ER_ARR(view.nodeIds))].filter(id => I.at.has(id)) }; };
@@ -274,8 +276,15 @@ const erNewId = (model, base) => { const used = new Set(); JSON.stringify(model,
   base = base.replace(/->+/g, '-'); let k = 2, id = base; while (used.has(id)) id = `${base}-${k++}`; return id; }; // never "->" (model.md rule 5)
 // a row of the panel's Members, read as S9's: a new column, or a column's name and syntax props set (its other props kept)
 function erMember(model, view, owner, id, text) {
-  const I = erIndex(model); if ((I.at.get(owner) || {}).type !== 'er.Entity') return null;
-  const r = parseColumn(text, I, erProps((I.col.get(id) || {}).c || {}).references); if (r.error) return r;
+  const all = erIndex(model); if ((all.at.get(owner) || {}).type !== 'er.Entity') return null;
+  // a model table's column references no column of a table this view alone holds (view.nodes, read as the model's), which
+  // another view would print by its id (audit 26)
+  const V = ER_OBJ(view) ? view : ER_ARR(model && model.views).find(v => ER_OBJ(v) && v.id === view);
+  const own = new Set(ER_ARR(V && V.nodes).filter(n => ER_OBJ(n) && all.at.get(n.id) === n).map(n => n.id));
+  const I = own.has(owner) ? all : { ...all, col: new Map([...all.col].filter(([, { e }]) => !own.has(e.id))) }, was = erProps((all.col.get(id) || {}).c || {}).references;
+  const r = parseColumn(text, I, was);
+  if (r.error && I !== all && !parseColumn(text, all, was).error) return { error: `"${String(text ?? '').trim()}" is not a column: its FK names a column of a table this view alone holds, and a model table's column references a model column` };
+  if (r.error) return r;
   if (id == null) return [{ op: 'add', element: { id: erNewId(model, `${owner}.${r.label}`), type: 'er.Column', label: r.label, ...(Object.keys(r.props).length ? { props: r.props } : {}) }, owner }];
   const m = (I.col.get(id) || {}).c; if (!m) return null;
   const keep = Object.fromEntries(Object.entries(erProps(m)).filter(([k]) => !ER_SYNTAX.includes(k)));

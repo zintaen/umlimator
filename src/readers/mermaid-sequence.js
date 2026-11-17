@@ -197,7 +197,7 @@ function readMermaidSequence(text) {
   const cur = () => (stack.length ? stack[stack.length - 1].cur : null); // the operand an element lies in
   const declare = (rest, actor, no, created) => {
     const p = msParticipant(rest);
-    if (!p.name) return say(no, 'skipped', `a ${actor ? 'actor' : 'participant'} with no name`);
+    if (!p.name) return say(no, 'skipped', `${actor ? 'an actor' : 'a participant'} with no name`);
     if (created && lifelines.has(p.name)) return say(no, 'skipped', `create ${p.name}: ${p.name} is in the diagram already, so it is not created`);
     const rec = life(p.name, no), n = rec.node, stereotypes = [...(actor ? ['actor'] : []), ...(p.type ? [p.type] : [])];
     if (hint.id != null) rec.hint = hint.id;

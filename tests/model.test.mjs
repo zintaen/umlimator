@@ -392,3 +392,35 @@ test('audit 25: describe(), paths(), reach(), critical(), whatIf() and reference
   assert.deepEqual(L.references(typed(), 'a'), [{ path: ['views', 0, 'nodeIds', 0], kind: 'view' }]);
   assert.deepEqual(L.references(edge(), 'b'), L.references(base(), 'b'));
 });
+
+// audit 26: copyOf() structuredClone'd an object that is no plain one (a class's instance) alone and, when that threw (the
+// instance held a function), kept the host's object as it was: apply() wrote its set into the host's node (history()'s
+// undo gave back the edited model) and layout() wrote an _id into the host's line. Such an object is copied key by key now
+test('audit 26: apply(), layout() and diff() never write into a host\'s model of class instances holding functions', async () => {
+  const L = await import('../lib/umlimator-all.js');
+  class Node { constructor(id, label) { this.id = id; this.label = label; } }
+  class Line { constructor(from, to) { this.from = from; this.to = to; } }
+  class Secret { #v = 'B'; constructor(id) { this.id = id; } get label() { return this.#v; } } // a getter on the prototype, reading a private field
+  const mk = () => { const a = new Node('a', 'A'), e = new Line('a', 'b'), f = () => 1; a.onClick = f; e.onClick = f; a.props = { by: new Map([['k', f]]), seen: new Set([{ f }]), weak: new WeakMap() };
+    return { schemaVersion: 2, nodes: [a, new Node('b', 'B'), new Secret('c')], edges: [e], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }] }; };
+  const snap = m => JSON.stringify(m, (k, v) => (v instanceof Map || v instanceof Set ? [...v] : v));
+  const m = mk(), before = snap(m), [a] = m.nodes, [e] = m.edges;
+  const h = L.history(m), out = h.push(L.apply(m, [{ op: 'set', id: 'a', path: 'label', value: 'Renamed' }, { op: 'set', id: 'a', path: 'props.x', value: 1 }]));
+  assert.equal(snap(m), before, 'the host\'s model unchanged'); assert.equal(a.label, 'A'); assert.equal(a.props.x, undefined);
+  const o = out.nodes[0]; assert.notEqual(o, a); assert.equal(o.label, 'Renamed'); assert.equal(o.props.x, 1);
+  assert.equal(o.onClick, a.onClick, 'a function kept');
+  assert.ok(o.props.by instanceof Map && o.props.by !== a.props.by && o.props.by.get('k') === a.onClick, 'a Map holding a function: copied');
+  assert.ok(o.props.seen instanceof Set && [...o.props.seen][0] !== [...a.props.seen][0], 'a Set holding an object: copied');
+  assert.equal(o.props.weak, a.props.weak, 'a WeakMap: kept, as its entries cannot be read');
+  assert.equal(snap(h.undo()), before, 'undo gives back the model as it was');
+  for (const k of ['layout', 'check', 'describe', 'validate']) { const r = k === 'validate' ? L.validate(m) : L[k](m, 'v'); assert.ok(r != null, k); }
+  assert.ok(L.diff(m, out).summary.length >= 1); L.diff(out, m);
+  assert.equal(snap(m), before, 'layout(), check(), describe(), validate() and diff() wrote nothing');
+  assert.deepEqual(Object.keys(e), ['from', 'to', 'onClick'], 'no _id on the host\'s line');
+  // a cycle through an instance: kept, in the copy
+  const cyc = mk(); cyc.nodes[0].self = cyc.nodes[0]; const c2 = L.apply(cyc, { op: 'set', id: 'a', path: 'label', value: 'Z' }).nodes[0];
+  assert.equal(c2.self, c2); assert.equal(cyc.nodes[0].label, 'A');
+  // a model with no function: as it was (structuredClone)
+  const plain = { nodes: [new Node('a', 'A')], views: [{ id: 'v', nodeIds: ['a'] }] }, p2 = L.apply(plain, { op: 'set', id: 'a', path: 'label', value: 'Z' });
+  assert.equal(plain.nodes[0].label, 'A'); assert.equal(p2.nodes[0].label, 'Z');
+});
