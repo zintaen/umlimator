@@ -260,11 +260,11 @@ const DP_TYPE = registerDiagramType('uml.deployment', {
   rules: DP_RULES,
   describe: dpDescribe,
   // the PDF's tables (§11): an element's kind; a target's rows, what is deployed on it, by nesting or by a line; an artifact's, what it manifests
-  word: (model, id) => { const x = dpIndex(model).at.get(id); return x && Object.hasOwn(DP_WORD, x.type) ? DP_WORD[x.type] : x && x.type == null ? snKindName(x.type) : null; }, // no type: "Element", as named (audit 28)
+  word: (model, id) => { const x = dpIndex(model).at.get(id); return x && Object.hasOwn(DP_WORD, x.type) ? DP_WORD[x.type] : x && !x.type ? snKindName(x.type) : null; }, // no type (or ""): "Element", as named (audits 28, 29)
   rows: (model, view, id) => { const I = dpIndex(model, view), x = I.at.get(id), nm = k => dpName(I.at.get(k));
     if (x && DP_TARGETS.includes(x.type)) return I.deployed(id).map(a => (I.at.get(a).parent === id ? nm(a) : `${nm(a)}, by «deploy»`));
     if (x && DP_ARTIFACTS.includes(x.type)) return I.outOf('uml.Manifestation', id).filter(e => I.at.has(e.to)).map(e => `manifests ${nm(e.to)}`);
-    return null; },
+    return x ? [] : null; }, // any other kind is drawn with no compartments: no members in the PDF (audit 29)
   edits: { connect: dpConnect, remove: dpRemove, rename: lineRename(dpLineLabel) },
 });
 

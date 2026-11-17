@@ -245,7 +245,7 @@ const SYS_PAR_MEMBERS = {
 /* ---- the PDF (§13): a word for each element, its rows, a binding's ends as its line text ---- */
 function SYS_PAR_WORD(model, id) {
   const x = SYS_PAR_INDEX(model, null).el(id); if (!x) return null;
-  return SYS_PAR_PROP[x.type] || SYS_PAR_SUBJ[x.type] || (x.type === 'sysml.ConstraintParameter' ? 'Parameter' : null);
+  return SYS_PAR_PROP[x.type] || SYS_PAR_SUBJ[x.type] || (x.type === 'sysml.ConstraintParameter' ? 'Parameter' : !x.type ? 'Element' : null); // no type: "Element", as named (audit 29)
 }
 function SYS_PAR_ROWS(model, view, id) {
   const I = SYS_PAR_INDEX(model, view), x = I.el(id); if (!x) return null;

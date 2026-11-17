@@ -309,7 +309,7 @@ const RQ_TYPE = registerDiagramType('sysml.requirement', {
   describe: rqDescribe,
   edits: { add: rqAdd, connect: rqConnect, rename: rqRename, remove: rqRemove },
   // the PDF's tables (§13): an element's kind; a requirement's id, text whole, risk, verify method and relations; a test case's and a block's relations; a line's keyword
-  word: (model, id) => { const x = rqIndex(model).at.get(id); return x && x.from == null && Object.hasOwn(RQ_WORD, x.type) && x.type !== 'uml.Comment' ? RQ_WORD[x.type] : null; },
+  word: (model, id) => { const x = rqIndex(model).at.get(id); return x && x.from == null && Object.hasOwn(RQ_WORD, x.type) && x.type !== 'uml.Comment' ? RQ_WORD[x.type] : x && x.from == null && !x.type ? 'Element' : null; }, // no type: "Element", as named (audit 29)
   rows: (model, view, id) => { const I = rqIndex(model, view), x = I.at.get(id); if (!x || ![RQ, RQ_TC, 'sysml.Block'].includes(x.type)) return null; const p = RQ_PROPS(x);
     return [...[['id', p.reqId], ['text', p.text], ['risk', p.risk], ['verify method', p.verifyMethod]].filter(([, v]) => RQ_HAS(v)).map(([k, v]) => `${k}: ${v}`), ...rqSays(I, id)]; },
   text: (model, view, id) => { const e = rqIndex(model, view).at.get(id); return e && Object.hasOwn(RQ_REL, e.type) ? rqLabel(e) : null; },

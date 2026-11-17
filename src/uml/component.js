@@ -36,7 +36,8 @@ function cpIndex(model) {
   N.forEach(n => cpPortsOf(n).forEach(p => { if (!P.has(p.id) && !N.has(p.id)) P.set(p.id, { x: p, owner: n.id }); }));
   const chain = id => { const out = []; for (let p = (N.get(id) || {}).parent; p != null && N.has(p) && !out.includes(p) && p !== id; p = N.get(p).parent) out.push(p); return out; };
   const comp = id => (P.has(id) ? P.get(id).owner : id); // a port's end: its owner
-  const ty = id => (N.get(comp(id)) || {}).type;
+  // an element of no type is drawn as a component holding its ports (cpGeo), so the rules and connect() judge it as one (audit 29)
+  const ty = id => { const n = N.get(comp(id)); return n && !n.type ? 'uml.Component' : (n || {}).type; };
   return { N, P, chain, comp, ty, name: id => (P.has(id) ? `${cpName(P.get(id).x)} of ${cpName(N.get(P.get(id).owner))}` : N.has(id) ? cpName(N.get(id)) : String(id)) };
 }
 const cpBall = (I, view, id) => (I.N.get(id) || {}).type === 'uml.Interface' && (CP_OWN(CP_OWN(view && view.present, id), 'as') === 'ball');
@@ -95,7 +96,8 @@ function cpNodeName(model, view, pic, id, bare) { // bare: a port without " of <
     return SN_SAY.port(cpName(x), bare ? null : pic.name(I.P.get(id).owner), { valueType: cpProps(x).valueType, stereotypes: cpStereo(x), provides: by('uml.InterfaceRealization'), requires: by('uml.Usage') }); }
   const b = pic.boxes.find(y => y.id === id); if (b) return b.aria;
   const st = cpStereo(x), owners = k => of(k).filter(l => l.e.to === id).map(l => pic.name(I.comp(l.e.from)));
-  if (x.type === 'uml.Component') return SN_SAY.component(pic.name(id), { stereotypes: st, ports: cpPortsOf(x).length });
+  // an element of no type, drawn as a component: "Element Shop, 1 port", as audit 28 named it, with its ports (audit 29)
+  if (x.type === 'uml.Component' || !x.type) { const s = SN_SAY.component(pic.name(id), { stereotypes: st, ports: cpPortsOf(x).length }); return x.type ? s : snKindName(x.type) + s.slice('Component'.length); }
   if (x.type === 'uml.Interface') return SN_SAY.iface(pic.name(id), { ball: cpBall(I, view, id), stereotypes: st, providers: owners('uml.InterfaceRealization'), requirers: owners('uml.Usage') });
   if (x.type === 'uml.Artifact') return SN_SAY.artifact(pic.name(id), { stereotypes: st, manifests: of('uml.Manifestation').filter(l => l.e.from === id).map(l => cpEnd(pic, l.e.to)) });
   if (x.type === 'uml.Comment') return 'Comment: ' + cpName(x);
@@ -179,7 +181,7 @@ function cpGeo({ model, view, pos: pins, memo }) {
     const ops = CP_ARR(n.members).filter(m => CP_OBJ(m) && (m.type === 'uml.Operation' || m.type === 'uml.Property'));
     const look = n.type === 'uml.Comment' ? { shape: 'note' } : n.type === 'uml.Package' ? { shape: 'package', stereotypes: st } : n.type === 'uml.Artifact' ? { shape: 'artifact', stereotypes: st }
       : n.type === 'uml.Interface' ? (cpBall(I, view, id) ? { shape: 'ball', stereotypes: st } : { shape: 'classifier', stereotypes: ['interface', ...st], compartments: ops.length ? [{ name: 'operations', members: ops }] : [] })
-        : n.type === 'uml.Class' ? { shape: 'classifier', stereotypes: st } : n.type == null || n.type === 'uml.Component' ? { shape: 'component', stereotypes: st, keyword: !!CP_OWN(pr, 'keyword') }
+        : n.type === 'uml.Class' ? { shape: 'classifier', stereotypes: st } : !n.type || n.type === 'uml.Component' ? { shape: 'component', stereotypes: st, keyword: !!CP_OWN(pr, 'keyword') }
           : { shape: 'classifier', stereotypes: [snKindWord(n.type), ...st] }; // another kind: a classifier with its kind's keyword, as it is named (audit 15)
     const d = { id, label: n.type === 'uml.Comment' ? cpName(n) : pic.name(id), type: n.type || 'uml.Component', kind: 'file', ...look, aria: cpNodeName(model, view, pic, id), col: (P(id) || [0, 0])[0], row: (P(id) || [0, 0])[1] };
     // a ball is laid out as its circle, so the router ends its lines level with the circle's centre; its name hangs under it in
@@ -366,15 +368,16 @@ const CP_TYPE = registerDiagramType('uml.component', {
   describe: cpDescribe,
   edits: { connect: cpConnect, moveTo: cpMoveTo, add: cpAdd, member: cpMember, key: cpKey, remove: cpRemove, rename: cpRename },
   // the PDF's tables (§11): a component's ports, each with what it provides and requires; an interface's operations; what an artifact manifests
-  word: (model, id) => { const x = cpIndex(model).N.get(id); return x ? ({ __proto__: null, 'uml.Component': 'Component', 'uml.Interface': 'Interface', 'uml.Artifact': 'Artifact', 'uml.Package': 'Package', 'uml.Comment': 'Comment' }[x.type] || (x.type == null ? snKindName(x.type) : null)) : null; }, // no type: "Element", as its accessible name (audit 28)
+  word: (model, id) => { const x = cpIndex(model).N.get(id); return x ? ({ __proto__: null, 'uml.Component': 'Component', 'uml.Interface': 'Interface', 'uml.Artifact': 'Artifact', 'uml.Package': 'Package', 'uml.Comment': 'Comment' }[x.type] || (!x.type ? snKindName(x.type) : null)) : null; }, // no type (or ""): "Element", as its accessible name (audits 28, 29)
   // a connector's Lines row: its kind (delegation or assembly) and the ports it joins, as the picture and describe() give them (audit 18)
   text: (model, view, id) => { const pic = cpPic(model, view), l = pic.lines.find(y => y.e.id === id); return l && (l.kind === 'assembly' || l.kind === 'delegation') ? cpLineName(pic, l) : null; },
   rows: (model, view, id) => { const pic = cpPic(model, view), x = pic.I.N.get(id); if (!x) return null;
     // its connectors are rows of the Lines table, which lists a line drawn to a port's owner (audit 3), so not again here (audit 17)
-    if (x.type === 'uml.Component') return cpPortsOf(x).map(p => cpNodeName(model, view, pic, p.id, 1).slice(5));
-    if (x.type === 'uml.Interface') return CP_ARR(x.members).filter(CP_OBJ).map(printMember);
+    if (x.type === 'uml.Component' || !x.type) return cpPortsOf(x).map(p => cpNodeName(model, view, pic, p.id, 1).slice(5)); // no type: drawn as a component, with its ports (audit 29)
+    // an interface: the operations and attributes its box draws, none as a ball (audit 29)
+    if (x.type === 'uml.Interface') return cpBall(pic.I, view, id) ? [] : CP_ARR(x.members).filter(m => CP_OBJ(m) && (m.type === 'uml.Operation' || m.type === 'uml.Property')).map(printMember);
     if (x.type === 'uml.Artifact') return pic.lines.filter(l => l.e.type === 'uml.Manifestation' && l.e.from === id).map(l => `manifests ${cpEnd(pic, l.e.to)}`);
-    return null; },
+    return []; }, // any other kind is drawn with no compartments: the PDF prints what the view draws, nothing more (audit 29)
 });
 
 export { CP_TYPE, CP_RULES, cpGeo, cpProblems, cpDescribe, cpConnect, cpMoveTo, cpAdd, cpMember, cpKey, cpRemove, cpRank, cpPlace };

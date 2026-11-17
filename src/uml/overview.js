@@ -261,7 +261,7 @@ const OVERVIEW_TYPE = registerDiagramType('uml.interaction-overview', {
   rules: OV_RULES,
   describe: ovDescribe,
   // the PDF's Kind of an element of no type: "Element", as its accessible name (audit 28); null: the type's word
-  word: (model, id) => { const x = OV_ARR(model && model.nodes).find(n => OV_OBJ(n) && n.id === id); return x && x.type == null ? ovWordOf(x.type) : null; },
+  word: (model, id) => { const x = OV_ARR(model && model.nodes).find(n => OV_OBJ(n) && n.id === id); return x && !x.type ? ovWordOf(x.type) : null; }, // no type (or ""): "Element" (audit 29)
   edits: { add: ovAdd, rename: ovRename },
 });
 

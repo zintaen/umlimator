@@ -238,7 +238,7 @@ const SYS_IB_MEMBERS = {
 /* ---- the PDF (§13): a word for each element, its rows, a connector's item flow ---- */
 function SYS_IB_WORDS(model, id) {
   const I = SYS_IB_INDEX(model, null), x = I.el(id); if (!x) return null;
-  return SYS_IB_PROP[x.type] || (x.type === 'sysml.Port' ? SYS_IB_PORT_WORD(x) : x.type === 'sysml.Block' ? 'Block' : x.type === 'sysml.InterfaceBlock' ? 'Interface block' : null);
+  return SYS_IB_PROP[x.type] || (x.type === 'sysml.Port' ? SYS_IB_PORT_WORD(x) : x.type === 'sysml.Block' ? 'Block' : x.type === 'sysml.InterfaceBlock' ? 'Interface block' : !x.type ? 'Element' : null); // no type: "Element", as named (audit 29)
 }
 function SYS_IB_ROWS(model, view, id) {
   const I = SYS_IB_INDEX(model, view), x = I.el(id); if (!x) return null;

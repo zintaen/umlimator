@@ -219,7 +219,7 @@ const IF_TYPE = registerDiagramType('uml.information-flow', {
   describe: ifDescribe,
   edits: { connect: ifConnect, rename: ifRename, remove: ifRemove },
   // the PDF (§9): an element's kind; an information item's rows, and any conveyed element's, the flows that convey it; a flow's text, what it conveys
-  word: (model, id) => { const x = ifIndex(model).at.get(id); return x && (Object.hasOwn(IF_WORD, x.type) || x.type == null) ? ifKindName(x.type) : null; }, // no type: "Element", as its name says (audit 28)
+  word: (model, id) => { const x = ifIndex(model).at.get(id); return x && (Object.hasOwn(IF_WORD, x.type) || !x.type) ? ifKindName(x.type) : null; }, // no type (or ""): "Element", as its name says (audits 28, 29)
   rows: (model, view, id) => { const I = ifIndex(model), x = I.at.get(id); return x && (x.type === 'uml.InformationItem' || I.flowsOf(id).length) ? I.flowsOf(id).map(e => `${I.nm(e.from)} → ${I.nm(e.to)}`) : null; },
   text: (model, view, id) => { const I = ifIndex(model), e = I.E.find(x => x.id === id); return e && e.type === 'uml.InformationFlow' ? ifSays(I, e) : null; },
 });
