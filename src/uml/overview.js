@@ -11,6 +11,7 @@ import { frLines, frameTag, tagSize, useSize } from './frame.js';
 import { interactionWalk } from './interaction.js';
 import { snKindName } from './structure.js';
 import { sqDraw, sqRun } from './sequence.js';
+import { usedIds } from '../core/model.js';
 
 /* ---------- the interaction overview diagram, uml.interaction-overview (work package 4.7, notes/stage-4.md §11) ----------
    Activity notation whose nodes are interactions: the control nodes of src/uml/flow.js (flow final included), interaction
@@ -217,7 +218,7 @@ function ovDescribe(model, viewId) {
 
 /* ---- editing (§11.3, §12): each hook returns commands, { pick, then }, null for the default, or { error } ---- */
 function ovFreshId(model, base) {
-  const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+  const used = new Set(); usedIds(model, used);
   const b = String(base).trim().toLowerCase().replace(/[^\p{L}\p{N}_$]+/gu, '-').replace(/^-+|-+$/g, '') || 'node';
   let k = 1; while (used.has(k === 1 ? b : `${b}-${k}`)) k++;
   return k === 1 ? b : `${b}-${k}`;

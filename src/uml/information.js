@@ -6,6 +6,7 @@ import { layoutTyped, typedLines } from '../typed/layout.js';
 import './class.js'; // SHAPE.classifier and SHAPE.note
 import { snKindName } from './structure.js'; // SHAPE.component too
 import './usecase.js'; // SHAPE.actor
+import { usedIds } from '../core/model.js';
 
 /* ---------- the information flow diagram, uml.information-flow (work package M2.5, notes/milestone-2.md §7.4) ----------
    Classes and interfaces (the class type's classifier, name only), components (src/uml/structure.js's look) and actors (the
@@ -151,7 +152,7 @@ function ifConnect(model, view, from, to, at, line) {
   if (![from, to].every(id => IF_ENDS.includes((I.at.get(id) || {}).type))) return { error: 'An information flow joins two classes, interfaces, components or actors' };
   const own = ifOwn(model, I, view), all = ifConveyable(I), can = own.has(from) || own.has(to) ? all : all.filter(n => !own.has(n.id));
   if (!can.length) return { error: all.length ? `${ifName(all[0])} ${IF_OWN_SAY}` : 'Add an information item for the flow to convey first' };
-  const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+  const used = new Set(); usedIds(model, used);
   let k = 1; while (used.has('flow' + k)) k++;
   return { pick: can.map(ifName), then: i => [{ op: 'add', element: { id: 'flow' + k, type: 'uml.InformationFlow', from, to, props: { conveyed: [can[i].id] } }, view: view.id }] };
 }

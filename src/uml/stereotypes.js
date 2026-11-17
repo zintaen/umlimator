@@ -124,10 +124,10 @@ const STY_RULES = {
 // apply() returns a new model, so the canvas never does. A version stamp per model is the upgrade if a host edits in place
 const STY_SEEN = new WeakMap();
 function styIndex(model) {
-  const at = new Map(), up = new Map(), rec = new Map(), els = []; // up: an element's owner (§5.2); a view's own elements have none
-  const put = (x, path, own, scoped) => { if (!STY_OBJ(x) || typeof x.id !== 'string') return; const r = { x, path, own: scoped ? own : undefined, line: scoped && (x.from != null || x.to != null) };
+  const at = new Map(), up = new Map(), rec = new Map(), els = [], inside = new Set(); // up: an element's owner (§5.2); a view's own elements have none
+  const put = (x, path, own, scoped) => { if (!STY_OBJ(x) || typeof x.id !== 'string' || inside.has(x)) return; const r = { x, path, own: scoped ? own : undefined, line: scoped && (x.from != null || x.to != null) };
     if (!at.has(x.id)) { at.set(x.id, x); rec.set(x.id, r); if (scoped) up.set(x.id, own); }
-    els.push(r); STY_ARR(x.members).forEach((m, j) => put(m, `${path}.members[${j}]`, x.id, scoped)); };
+    els.push(r); inside.add(x); STY_ARR(x.members).forEach((m, j) => put(m, `${path}.members[${j}]`, x.id, scoped)); inside.delete(x); }; // inside: its owners, so a host's cycle ends (audit 28)
   STY_ARR(model.nodes).forEach((n, i) => put(n, `nodes[${i}]`, n && n.parent, true));
   // a line's owner: its parent, else its from end's owner (§5.2), read once every node and member is in
   STY_ARR(model.edges).forEach((e, i) => put(e, `edges[${i}]`, undefined, true));

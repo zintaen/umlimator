@@ -9,6 +9,7 @@ import './class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from './flow.js'; // SHAPE.initial, final, diamond and bar too
 import { ownersOn, readingOrder } from './owners.js';
 import { parseTransition, printTransition, transitionText } from './transition.js';
+import { usedIds } from '../core/model.js';
 
 /* ---------- the state machine diagram, uml.state-machine (work package 4.6, notes/stage-4.md §6, §10) ----------
    States (a rounded box, its name, then one compartment of rows: entry, do and exit, then each internal transition), a
@@ -343,7 +344,7 @@ function stDescribe(model, viewId) {
 }
 
 /* ---- editing (§10.3): each hook returns commands, { commands, say }, null for the default, or { error } ---- */
-const stFresh = (model, base) => { const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+const stFresh = (model, base) => { const used = new Set(); usedIds(model, used);
   let k = 1; while (used.has(base + k)) k++; return base + k; };
 // a hook's commands, or { error } when they bring an error the model did not have (notes/stage-3.md S5), as the activity's acGuard;
 // a vertex put directly in a state with regions (region-mixed) too: it would sit beside them in no region
