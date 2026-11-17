@@ -6,6 +6,7 @@ import { layoutTyped } from '../typed/layout.js';
 import { brLines } from '../typed/draw.js';
 import { lineIn } from './class.js'; // SHAPE.note, a comment's look too
 import { ownersOn, placeTabs, readingOrder } from './owners.js';
+import { snKindName } from './structure.js';
 
 /* ---------- the use case diagram, uml.use-case (work package 4.4, notes/stage-4.md §8) ----------
    Actors (a stick figure), use cases (an ellipse, its extension points in a compartment under the name) and subjects: a
@@ -152,8 +153,8 @@ function ucNodeName(model, n, pic) {
   const st = ucStereo(n), why = st.length ? ` (${st.join(', ')})` : '', up = n.parent != null && pic.at.get(n.parent), k = ucPointsOf(n).length;
   if (n.type === 'uml.UseCase') return `Use case ${ucName(n)}${why}${up ? `, in ${ucName(up)}` : ''}${k ? `, ${ucPlural(k, 'extension point')}` : ''}`;
   if (n.type === 'uml.Package') return `Package ${ucName(n)} (${[...st, 'closed'].join(', ')})`;
-  // a kind outside the view's own in words, "Data type Money", never its type's name (audit 23)
-  return `${n.type === 'uml.Actor' ? 'Actor' : n.type === 'uml.Subject' ? 'Subject' : String(n.type).split('.').pop().replace(/([a-z])([A-Z])/g, (_, a, b) => a + ' ' + b.toLowerCase())} ${ucName(n)}${why}`;
+  // a kind outside the view's own in words, "Data type Money", never its type's name (audit 23); no type: "Element Plain" (audit 27)
+  return `${n.type === 'uml.Actor' ? 'Actor' : n.type === 'uml.Subject' ? 'Subject' : snKindName(n.type)} ${ucName(n)}${why}`;
 }
 // "Extend from Redeem a voucher to Check out, at payment, when the shopper has a voucher code"
 function ucLineName(model, e, pic) {
