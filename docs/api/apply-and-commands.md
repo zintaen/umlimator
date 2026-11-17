@@ -273,7 +273,7 @@ type Observed = { from: string; to: string; count?: number } | { parent: string;
 
 A call between two services as traffic showed it: `{ from, to, count }`, or a Jaeger or Tempo dependency
 (`{ parent, child, callCount }`). Jaeger's `/api/dependencies` response, `{ data: [...] }`, can be passed as it is.
-An end is a service's name, text or a number: an entry without one (missing, `null`, or any other value) is skipped, and names no service.
+An end is a service's name, text or a number. An end that is anything else (missing, `null`, or any other value) names no service, and its entry carries no traffic; the entry's other end, when it is a name with no card, is still listed in `counts.unmatched`.
 
 ## DriftResult
 
@@ -288,7 +288,7 @@ interface DriftResult { model: MapModel; counts: { carried: number; undrawn: num
 | `counts.undrawn` | Lines that carried traffic and were added. |
 | `counts.idle` | Drawn lines that carried nothing. |
 | `counts.unknown` | Drawn lines that could not be judged: an end traffic never reached. |
-| `counts.unmatched` | Services with no card, by name. An entry with no end names none. |
+| `counts.unmatched` | Services with no card, by name. An end that is not a name names none; the other end of its entry is still listed. |
 | `views` | The views that show drift. |
 
 The counts are of model edges, not drawn lines: a line that stands for several edges fades only when every one of them

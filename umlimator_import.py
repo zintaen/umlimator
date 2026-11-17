@@ -938,24 +938,28 @@ def kubernetes(d, name):
         if isinstance(o, dict) and isinstance(o.get("kind"), str) and md.get("name"):
             here[(str(md.get("namespace") or "default"), o["kind"], str(md["name"]))] = owner(md)
 
-    led = {}  # (namespace, kind, name) -> the workload it leads to, or None: each chain walked once (linear)
+    led = {}  # (namespace, kind, name) -> where its chain ends: each chain walked once (linear)
 
     def drawn_as(ns, ref):
-        """The workload in the file that an owner reference leads to (a Pod's ReplicaSet to its Deployment), else None:
+        """Where an owner reference leads, as (the workload in the file it leads to, as a Pod's ReplicaSet to its
+        Deployment, else None; the last owner of the chain that is in the file, None when the chain leaves the file):
         walked with a set, so a long or circular chain of owners ends."""
-        path, seen, got = [], set(), None
-        while ref is not None and ref not in seen and (ns, *ref) in here:
+        path, seen, got, end = [], set(), None, None
+        while ref is not None and ref not in seen:  # no owner past `end`, or a circle back to it: the chain ends in the file
+            if (ns, *ref) not in here:  # an owner that is not in the file
+                end = None
+                break
             if (ns, *ref) in led:
-                got = led[(ns, *ref)]
+                got, end = led[(ns, *ref)]
                 break
             if ref[0] in ("Deployment", "StatefulSet", "DaemonSet"):
-                got = ref
+                got = end = ref
                 break
             seen.add(ref)
             path.append((ns, *ref))
-            ref = here[(ns, *ref)]
-        led.update(dict.fromkeys(path, got))
-        return got
+            end, ref = ref, here[(ns, *ref)]
+        led.update(dict.fromkeys(path, (got, end)))
+        return got, end
 
     for i, o in enumerate(items):
         if not isinstance(o, dict):
@@ -965,8 +969,11 @@ def kubernetes(d, name):
         kind = kind if isinstance(kind, str) else None
         if kind in ("Pod", "ReplicaSet", "ControllerRevision") and md.get("ownerReferences"):
             ns, ref = str(md.get("namespace") or "default"), owner(md)
-            if not drawn_as(ns, ref):  # its owner, or the owner's own, is not in the file
-                by = f"{ref[0]} {ref[1]}" if ref else "an owner reference that names no kind and name"
+            got, end = drawn_as(ns, ref)
+            by = f"{ref[0]} {ref[1]}" if ref else "an owner reference that names no kind and name"
+            if end and not got:  # every owner is in the file, and the last is a kind not imported (a Job's CronJob, audit 22)
+                m.say(at(i), f"{kind} {md.get('name', '')}: owned by {by}" + (f" ({end[0]} {end[1]})" if end != ref else "") + ", which is not imported")
+            elif not got:  # its owner, or the owner's own, is not in the file
                 m.say(at(i), f"{kind} {md.get('name', '')}: owned by {by}, " + ("whose workload is not in the file" if ref and (ns, *ref) in here else "which is not in the file")
                       + ": not imported (export its workload too, a Deployment, StatefulSet or DaemonSet)")
             continue  # drawn as the workload that owns it

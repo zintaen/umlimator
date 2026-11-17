@@ -84,3 +84,14 @@ test('audit 20: every prop the sequence, communication and timing panels offer o
     assert.deepEqual(keys.filter(k => !new RegExp(`\\b${k}\\?:`).test(decl)), [], `${diagram}: not in ${name}`);
     assert.deepEqual(keys.filter(k => !row.includes(`\`${k}\``)), [], `${diagram}: not in the ${name} row`); }
 });
+
+test('audit 22: drift()\'s page says what an entry with one end that is no name does, as drift() does it', async () => {
+  const { drift } = await import('../lib/umlimator.js');
+  const model = { nodes: [{ id: 'api', label: 'API' }], edges: [], views: [{ id: 'v', nodeIds: ['api'] }] };
+  for (const o of [{ from: 'ghost', to: null }, { from: 'ghost', to: {} }, { parent: 'ghost', child: true, callCount: 3 }, { from: 'ghost' }])
+    assert.deepEqual(drift(model, [o]).counts, { carried: 0, undrawn: 0, idle: 0, unknown: 0, unmatched: ['ghost'] }, JSON.stringify(o));
+  const page = pages['apply-and-commands.md'];
+  assert.ok(!/is skipped, and names no service|An entry with no end names none/.test(page), 'the page says such an entry is skipped whole');
+  assert.match(page, /other end, when it is a name with no card, is still listed in `counts\.unmatched`/);
+  assert.match(page, /\| `counts\.unmatched` \|[^\n]*the other end of its entry is still listed/);
+});
