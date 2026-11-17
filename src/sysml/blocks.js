@@ -2,6 +2,7 @@ import { registerDiagramType } from '../core/registry.js';
 import { CLASS_DEF, RULES, classProblems, drawnLines, lineLabel, lineName, lineRename, parseMember, printMember, typeGeo } from '../uml/class.js';
 import { OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder } from '../uml/owners.js';
 import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_TABLE } from './sysml.js';
+import { usedIds } from '../core/model.js';
 
 /* ---------- the block definition diagram, sysml.block-definition (work package M3.3, notes/milestone-3.md §7) ----------
    Blocks, interface blocks, constraint blocks and value types drawn by the classifier with «block», «interfaceBlock»,
@@ -191,7 +192,7 @@ function bdEdit(model, owner, m, text) {
   const keep = Object.fromEntries(Object.entries(BD_PROPS(m)).filter(([k]) => !BD_SYNTAX.includes(k)));
   return { commands: [...(r.type !== m.type ? [{ op: 'set', id: m.id, path: 'type', value: r.type }] : []), { op: 'set', id: m.id, path: 'label', value: r.label }, { op: 'set', id: m.id, path: 'props', value: { ...keep, ...r.props } }] };
 }
-const bdFresh = (model, base) => { const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+const bdFresh = (model, base) => { const used = new Set(); usedIds(model, used);
   if (!used.has(base)) return base; let k = 2; while (used.has(base + k)) k++; return base + k; };
 // the panel's member rows (edits.member): a row of a block, interface block, constraint block or value type, read with the model
 function bdMember(model, view, ownerId, id, text) {

@@ -12,8 +12,10 @@ const plain = t => Object.fromEntries(Object.entries(t)); // an own-key table ba
 // the sorted copy the replacer gives is new each time, so JSON.stringify's own check never fired and the stack overflowed)
 const canon = x => { const path = [], of = new WeakMap(); // path: the objects above the value written, as the model has them
   return JSON.stringify(x, function (k, v) { const h = of.get(this) || this, i = path.lastIndexOf(h); if (i < 0) path.push(h); else path.length = i + 1;
-    if (!v || typeof v !== 'object') return v; if (path.includes(v)) return '[cycle]';
+    if (typeof v === 'bigint') return v + 'n'; if (!v || typeof v !== 'object') return v; if (path.includes(v)) return '[cycle]'; // a BigInt, which JSON cannot write, as 10n (audit 28)
     const y = Array.isArray(v) ? v : Object.fromEntries(Object.keys(v).sort().map(f => [f, v[f]])); of.set(y, v); return y; }); };
+// any value as text, to show or tell two apart: JSON, else (a host's cycle or BigInt, which JSON.stringify throws on) as canon() writes it (audit 28)
+const jsonText = x => { try { return JSON.stringify(x); } catch { return canon(x); } };
 // a line's identity in a list, as a Ref names it: its id, else "<from>-><to>#<n>"; "=<id>" for a view's reference to a model line
 const lineKeys = list => { const seen = {}; return list.map(e => typeof e === 'string' ? '=' + e : e && typeof e === 'object'
   ? (e.id != null ? String(e.id) : (k => `${k}#${seen[k] = (seen[k] ?? -1) + 1}`)(e.from + '->' + e.to)) : ''); };
@@ -93,7 +95,7 @@ export function diff(before, after) {
   const card = (x, h) => ({ ...x, change: h });
   const line = (x, h) => ({ ...x, change: h, ...(h === 'changed' ? { edited: true } : { style: h }) });
   function mark(old, now, put, keys = l => l.map(x => x && x.id), inPlace) { // now's items, marked; old's that left come back, marked removed; inPlace: the removed model lines' ids
-    const ko = keys(old), kn = keys(now), O = new Map(old.map((x, i) => [ko[i], x])), kept = new Set(kn);
+    const ko = keys(old), kn = keys(now), O = new Map(Array.from(old, (x, i) => [ko[i], x])), kept = new Set(kn); // a list's hole as undefined, as map() would keep it and Map() throws on (audit 28)
     const res = now.map((x, i) => { if (!x || typeof x !== 'object') return x; const o = O.get(kn[i]);
       if (o && typeof o === 'object' && canon(o) === canon(x)) return x;
       const h = o && typeof o === 'object' ? 'changed' : 'added', y = put(x, h); how.set(y, h); if (h === 'changed') was.set(y, [o, x]); return y; });
@@ -107,7 +109,7 @@ export function diff(before, after) {
   const E1 = arr(out.edges); // the after model's lines as given, before the removed ones come back
   out.edges = mark(arr(A.edges), arr(out.edges), line, lineKeys);
   const goneLines = new Map(out.edges.filter(e => how.get(e) === 'removed' && e.id != null).map(e => [String(e.id), String(e.id)]));
-  const keyed = l => { const k = lineKeys(l); return new Map(l.map((e, i) => [e, k[i]])); }, k1 = new Set(lineKeys(arr(after && after.edges)));
+  const keyed = l => { const k = lineKeys(l); return new Map(Array.from(l, (e, i) => [e, k[i]])); }, k1 = new Set(lineKeys(arr(after && after.edges)));
   const line0 = new Map([...keyed(arr(A.edges))].filter(([e, k]) => e && typeof e === 'object' && k1.has(k)).map(([e, k]) => [k, e])); // model lines in both, by their Ref name (an id-less one by its ends)
   const V0 = new Map(arr(A.views).filter(Boolean).map(v => [v.id, v])), V1 = new Set(arr(out.views).filter(Boolean).map(v => v.id));
   const stepped = x => x.render === 'sequence' || (diagramOf(x) || {}).steps === true; // a view that numbers its lines by their order (a C4 dynamic view's steps, audit 18)
@@ -307,4 +309,4 @@ export function drift(model, observed, options = {}) {
   return { model: out, counts, views: arr(out.views).filter(v => v && linesOf(out, v).some(e => e.drift)).map(v => v.id) };
 }
 
-export { canon, markOf, sameOrder };
+export { canon, jsonText, markOf, sameOrder };

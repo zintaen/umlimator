@@ -1,5 +1,5 @@
 import { registerDiagramType, idTable } from '../core/registry.js';
-import { copyOf } from '../core/model.js';
+import { copyOf, usedIds } from '../core/model.js';
 import { esc, fit } from '../core/text.js';
 import { SHAPE, r2, sidePorts } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
@@ -32,7 +32,7 @@ const V_RULES = { ...C4_RULES,
   'c4-steps': 'a dynamic view\'s steps are the model\'s relationships, each once, between elements it shows; it lists at least one' };
 const DEP_RULES = { ...V_RULES, 'c4-box-line': 'a deployment view draws no line onto a deployment node drawn as a box: a relationship with an end in or on one is not drawn' };
 // every id the model holds, views' too (src/c4/c4.js's c4Used, not exported; src/c4/c4.js is M2.6's)
-const vUsed = model => { const used = new Set(V_ARR(model.views).filter(V_OBJ).map(v => v.id)); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; }); return used; };
+const vUsed = model => { const used = new Set(V_ARR(model.views).filter(V_OBJ).map(v => v.id)); usedIds(model, used); return used; };
 
 /* ---- the dynamic view (§7.5.2) ---- */
 // its steps drawn: [{ e, k, i }], each model relationship listed (the first time) between two elements the view shows (not a

@@ -4,6 +4,7 @@ import { SHAPE } from '../draw/shapes.js';
 import { CLASSIFIERS, CLASS_DEF, CLASS_LINES, CLASS_TYPE, RULES, multBounds, printMember, classProblems, drawnLines, lineLabel, lineName, lineRename, typeGeo } from './class.js';
 import { OWN_BOXES, OWNER_RULES, boxHead, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder, viewLines, modelLines } from './owners.js';
 import { STY_RULES, UML_META, appliedOf, metaKnown, styKey } from './stereotypes.js';
+import { usedIds } from '../core/model.js';
 
 /* ---------- the profile diagram, uml.profile (work package 6.3, notes/stage-6.md §4) ----------
    A profile (a package with «profile») holding its stereotypes («stereotype», their tag definitions as attribute rows),
@@ -130,7 +131,7 @@ function prDescribe(model, viewId) {
 }
 
 /* ---- editing (§4.3) ---- */
-const prNewId = (model, base) => { const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+const prNewId = (model, base) => { const used = new Set(); usedIds(model, used);
   let k = 1; while (used.has(base + k)) k++; return base + k; };
 // edit distance, for the metaclass names nearest one typed. ponytail: quadratic in the names' lengths, over about 90 names
 function prDist(a, b) {

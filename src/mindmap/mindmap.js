@@ -3,6 +3,7 @@ import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { layoutTree } from '../layout/tree.js';
 import '../typed/edit.js'; // TYPED.edit, which the outline's Show on a topic wraps (mmShow)
+import { usedIds } from '../core/model.js';
 
 /* ---------- the mindmap, mindmap (work package 4a.4, notes/milestone-4a.md §7) ----------
    Topics (mindmap.Topic) form a tree by parent; the view's nodeIds say which are shown and, among siblings, in what order.
@@ -163,7 +164,7 @@ function mmRows(model, view, id) {
 /* ---- the gesture hooks (§7.3). Each takes the model and the view (or its id) and returns the commands of one transaction,
    { commands, say }, null to leave the gesture to the canvas, or { error } for the hint line ---- */
 function mmNewId(model, label) { // from the topic's words, as the Mermaid reader takes one: base, base-2, base-3…
-  const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+  const used = new Set(); usedIds(model, used);
   const b = String(label).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40).replace(/-$/, '') || 'topic';
   if (!used.has(b)) return b; let k = 2; while (used.has(`${b}-${k}`)) k++; return `${b}-${k}`;
 }

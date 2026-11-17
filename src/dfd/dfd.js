@@ -6,6 +6,7 @@ import '../uml/class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from '../uml/flow.js';
 import '../uml/usecase.js'; // SHAPE.ellipse, Yourdon's process
 import { snKindName } from '../uml/structure.js';
+import { usedIds } from '../core/model.js';
 
 /* ---------- the data flow diagram, dfd (work package M2.4, notes/milestone-2.md §4.3, §6.1, §6.4, §7.3) ----------
    Processes, data stores and external entities, joined by data flows; comments. Two skins on one geometry (§4.3): each
@@ -217,7 +218,7 @@ function dfdDescribe(model, viewId) {
 }
 
 /* ---- editing (§6.1, §7.3) ---- */
-const dfdUsed = model => { const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; }); return used; };
+const dfdUsed = model => { const used = new Set(); usedIds(model, used); return used; };
 // a free id: base, else base-2, base-3, …; numbered (the palette's): base1, base2, …. Taken once given
 const dfdFree = (used, base, numbered) => { let k = 1, id = numbered ? base + 1 : base; while (used.has(id)) id = base + (numbered ? '' : '-') + ++k; used.add(id); return id; };
 // the next free number of a type after pre: pre1, pre2, …

@@ -5,6 +5,7 @@ import { ENDS, brLines } from '../typed/draw.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
 import { multBounds } from '../uml/class.js'; // SHAPE.note too, a comment's look
 import { snKindName } from '../uml/structure.js';
+import { usedIds } from '../core/model.js';
 
 /* ---------- the entity-relationship diagram, er (work package M2.2, notes/milestone-2.md §4, §7.1) ----------
    Entities (tables) with their columns as rows, the key columns first under a divider; relationships from the referenced
@@ -272,7 +273,7 @@ function erDescribe(model, viewId) {
 }
 
 /* ---- editing (§7.1) ---- */
-const erNewId = (model, base) => { const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+const erNewId = (model, base) => { const used = new Set(); usedIds(model, used);
   base = base.replace(/->+/g, '-'); let k = 2, id = base; while (used.has(id)) id = `${base}-${k++}`; return id; }; // never "->" (model.md rule 5)
 // a row of the panel's Members, read as S9's: a new column, or a column's name and syntax props set (its other props kept)
 function erMember(model, view, owner, id, text) {

@@ -482,3 +482,12 @@ test('audit 27: diff() names each card an added card is joined to once, however 
   assert.deepEqual(said([{ from: 'q', to: 'w' }, { from: 'd', to: 'w' }, { from: 'w', to: 'q' }]), ['adds Worker, from DB, to and from Queue']);
   assert.deepEqual(said([{ from: 'w', to: 'q' }, { from: 'w', to: 'd' }, { from: 'w', to: 'q' }]), ['adds Worker, to Queue and DB']);
 });
+
+test('audit 28: diff() reads a BigInt in a card and a list with a hole, as validate() and layout() do', () => {
+  const m = structuredClone(bike); m.nodes[0].props = { ...(m.nodes[0].props || {}), n: 10n };
+  const d = diff(bike, m); assert.ok(d.summary.length && d.model.nodes.some(n => n.change === 'changed'), d.summary);
+  assert.deepEqual(diff(m, m).views, []); // the same BigInt both sides: no change
+  const n = structuredClone(m); n.nodes[0].props.n = 11n; assert.ok(diff(m, n).model.nodes.some(x => x.change === 'changed'));
+  for (const key of ['nodes', 'edges']) { const h = structuredClone(bike); h[key] = [...h[key]]; h[key].length += 1; delete h[key][1]; // a hole, and one at the end
+    assert.doesNotThrow(() => diff(h, bike), key); assert.doesNotThrow(() => diff(bike, h), key); assert.doesNotThrow(() => validate(h), key); }
+});

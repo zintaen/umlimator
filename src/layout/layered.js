@@ -7,6 +7,8 @@ import { kindOf } from '../map/kinds.js';
 import { TYPED, idTable } from '../core/registry.js';
 
 const CHG = Object.assign(Object.create(null), { added: ['green', 'NEW'], new: ['green', 'NEW'], modified: ['amber', 'CHANGED'], changed: ['amber', 'CHANGED'], removed: ['rose', 'REMOVED'], planned: ['cyan', 'PLANNED'] }); // no prototype: a change named constructor is none
+// a line's fromSide or toSide, as its side's letter; no prototype: a side named toString is none, as validate() says (audit 28: it was a function)
+const EDGE_SIDE = Object.assign(Object.create(null), { left: 'L', right: 'R', top: 'T', bottom: 'B' });
 const NW = 168, CG0 = 84, RG0 = 44;
 const pillW = (label, sub, max = 440) => Math.max(sansW(fit(label, 10.5, max), 10.5, .92), sub ? sansW(fit(sub, 9.5, max), 9.5, .92) : 0) + 18; // a line's label, and its sublabel under it (#44)
 const stepW = s => String(s).length > 1 ? Math.max(20, sansW(String(s), 9.5, .9) + 8) : 16; // a line's step mark: a 16 px circle, or a pill for 2a, 12 or 4.1 (#82)
@@ -364,7 +366,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     const gapX = tc > sc ? t.x - (s.x + s.w) : s.x - (t.x + t.w), gapY = ty >= sy ? t.y - (s.y + s.h) : s.y - (t.y + t.h);
     if (s.box || t.box ? gapX >= gapY : gapX > 24) { e.fs = tc > sc ? 'R' : 'L'; e.ts = tc > sc ? 'L' : 'R'; } // a box: the sides facing across the wider gap
     else { e.fs = ty >= sy ? 'B' : 'T'; e.ts = ty >= sy ? 'T' : 'B'; }
-    const SIDE = { left: 'L', right: 'R', top: 'T', bottom: 'B' }; if (SIDE[e.fromSide]) e.fs = SIDE[e.fromSide]; if (SIDE[e.toSide]) e.ts = SIDE[e.toSide];
+    if (EDGE_SIDE[e.fromSide]) e.fs = EDGE_SIDE[e.fromSide]; if (EDGE_SIDE[e.toSide]) e.ts = EDGE_SIDE[e.toSide];
   });
   // a side holds only as many ports as fit 14px apart; the steepest extras move to the top/bottom side
   const sideSpan = (n, side) => { // longest stretch of a top/bottom border free of decorations

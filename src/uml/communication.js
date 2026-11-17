@@ -1,5 +1,5 @@
 import { apply } from '../core/apply.js';
-import { copyOf } from '../core/model.js';
+import { copyOf, usedIds } from '../core/model.js';
 import { ownNodes, registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -236,7 +236,7 @@ function commDescribe(model, viewId) {
    { error } for the hint line, and never a transaction that breaks a rule (S5) ---- */
 // an id no element of the model has: the base, else the base and the first number free ('m10', 'api-payments-2')
 function cmFreshId(model, base) {
-  const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+  const used = new Set(); usedIds(model, used);
   const b = String(base).replace(/->/g, '-') || 'el', next = k => (b === 'm' ? b + k : k === 1 ? b : `${b}-${k}`); // ids never hold "->" (M2)
   let k = 1; while (used.has(next(k))) k++;
   return next(k);

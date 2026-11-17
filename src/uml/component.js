@@ -6,6 +6,7 @@ import { layoutTyped } from '../typed/layout.js';
 import { lineRename, memberEdit, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 import { SN_ARTIFACTS, SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, snKindName, snKindWord, structProblems } from './structure.js';
+import { usedIds } from '../core/model.js';
 
 /* ---------- the component diagram, uml.component (work package 5.4, notes/stage-5.md §10.1) ----------
    Components (src/uml/structure.js's look), a component or package that holds something shown a box (src/uml/owners.js),
@@ -254,7 +255,7 @@ function cpDescribe(model, viewId) {
 }
 
 /* ---- editing (§12) ---- */
-const cpNewId = (model, base) => { const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+const cpNewId = (model, base) => { const used = new Set(); usedIds(model, used);
   let k = 1; while (used.has(base + k)) k++; return base + k; };
 // a port's row: `name` or `name : Type`
 const cpPortText = t => { const s = String(t ?? ''), k = s.indexOf(':'), [name, type] = (k < 0 ? [s] : [s.slice(0, k), s.slice(k + 1)]).map(x => x.trim()); return name ? { label: name, valueType: type || undefined } : { error: 'A port has a name: name or name : Type' }; };
