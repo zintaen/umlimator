@@ -9,13 +9,13 @@ function render(container: HTMLElement, model: MapModel, options?: RenderOptions
 ```
 
 Draws one view of `model` into `container`, with pan, zoom, drill-down and keyboard access, and returns a
-[`Handle`](#handle) to drive it. The map goes into a shadow root on the container, so the page's CSS cannot break it,
-and its colours come from `--um-*` CSS variables (include `umlimator/theme.css`, or set them yourself). Give the
-container a height.
+[`Handle`](#handle) to drive it. The map is a new element appended to the container, drawn in that element's shadow
+root, so the page's CSS cannot break it, and its colours come from `--um-*` CSS variables (include `umlimator/theme.css`,
+or set them yourself). Give the container a height.
 
 | Parameter | Type | What it is |
 |---|---|---|
-| `container` | `HTMLElement` | The element to draw in. Its earlier content is replaced; `destroy()` leaves it empty. |
+| `container` | `HTMLElement` | The element to draw in. The map's element is appended after what it already holds: empty it first if it holds a placeholder. `destroy()` removes only the map's element. |
 | `model` | [`MapModel`](./model-and-schema.md#mapmodel) | The model. It is never changed. |
 | `options` | [`RenderOptions`](#renderoptions) | Optional. |
 
@@ -328,7 +328,7 @@ destroy(): void;
 ```
 
 Cancels a gesture in progress, stops the story shown, settles every waiting promise with `false`, stops timers, removes
-the map's element (the container is left empty), and emits a last `state` event with `destroyed: true`. After it every
+the map's element (whatever else the container holds stays), and emits a last `state` event with `destroyed: true`. After it every
 call does nothing: `setView()` and `tour()` resolve `false`, `play()` returns `null`, `toSVG()` returns `''` and
 `toPNG()` `null`, and `lens()`, `expand()` and `collapse()` return `false`.
 
