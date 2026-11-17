@@ -506,6 +506,29 @@ ok("mermaid · a link with an edge id (A e1@--> B) is imported, its id naming th
                                                               ("b", "L", "M"), ("M-N", "M", "N"), ("I-J", "I", "J"), ("O-Q0", "O", "Q0")]
    and (m["edges"][-1]["id"], m["edges"][-1]["from"], m["edges"][-1]["to"]) == ("last", "Q499", "Z") and len(m["edges"]) == 510
    and un == [(8, "not imported: e1@{ animate: true }")] and card(m, "J")["label"] == "a@b", ([(e["id"], e["from"], e["to"]) for e in m["edges"]][:12], un))
+# audit 30: a JSON value of the wrong type (an image that is a list, a port that is true, a name that is an object) was
+# written into the model as Python spells it ("['nginx']", "True", "deploy-{'a': 1}"), with nothing said
+m, un = imp.read("compose", json.dumps({"name": {"n": 1}, "services": {
+    "web": {"image": ["nginx"], "ports": [True, {"published": False, "target": 80}, None, 8080], "networks": [None, "a", 1], "build": {"context": [1]}},
+    "db": {"image": {"x": 1}, "depends_on": [None, True, "web", 5]}, "q": {"image": 3, "links": [{"a": 1}]}}}), "x")
+said = [msg for _, msg in un]
+ok("compose · an image, port, network, build path, dependency or link of the wrong JSON type is said in JSON's spelling, never written as Python's (audit 30)",
+   m["title"] == "x" and card(m, "web").get("sublabel") is None and card(m, "web").get("what") == "Publishes 80, 8080. On networks a, 1."
+   and card(m, "db").get("sublabel") is None and card(m, "q").get("sublabel") == "3" and line(m, "db", "web") is not None
+   and all(w in said for w in ['{"n": 1} is not text: not imported', '["nginx"] is not an image\'s name: not imported', "true is not a port: not imported",
+                               "null is not a port: not imported", "null is not a network's name: not imported", "[1] is not a path: not imported",
+                               '{"x": 1} is not an image\'s name: not imported', "depends on null, which is not a service's name: not imported",
+                               "depends on true, which is not a service's name: not imported", "depends on 5, which is not a service here",
+                               'links {"a": 1}, which is not a service\'s name: not imported'])
+   and not re.search(r"True|None|\{'|\['", json.dumps(m) + json.dumps(un)), (m, un))
+m, un = imp.read("kubernetes", json.dumps({"kind": "List", "items": [{"kind": "Deployment", "metadata": {"name": {"a": 1}}}, {"kind": "Service", "metadata": {"name": True}, "spec": {"selector": {"app": "x"}, "ports": [{"port": None}, {"port": 80, "targetPort": True}]}},
+    {"kind": "Deployment", "metadata": {"name": 5, "namespace": ["n"]}, "spec": {"template": {"spec": {"containers": [{"image": {"i": 1}}]}}}}, {"kind": True, "metadata": {"name": "z"}},
+    {"kind": "Service", "metadata": {"name": "s"}, "spec": {"type": ["x"], "ports": [{"port": None}, {"port": 80, "targetPort": True}]}}]}), "x")
+ok("kubernetes · a name, namespace, kind, image, type or port of the wrong JSON type is said in JSON's spelling, never written as Python's (audit 30)",
+   [(n["id"], n["label"], n.get("sublabel")) for n in m["nodes"]] == [("deploy-5", "5", "Deployment"), ("svc-s", "s", "Service · ClusterIP · 80→80")]
+   and [msg for _, msg in un] == ['Deployment {"a": 1}: its name is not text: not imported', "Service true: its name is not text: not imported",
+                                  'Deployment 5: namespace ["n"] is not text: read as default', 'Deployment 5: image {"i": 1} is not text: not imported', "true z: not imported"]
+   and not re.search(r"True|None|\{'|\['", json.dumps(m) + json.dumps(un)), (m["nodes"], un))
 # audit 25: a Markdown string ("`**Bold**`") lost its backticks and kept its ** and _ as text, with no word, where the typed
 # reader says it is read as plain text: on a node, a line's label and a subgraph's title
 m, un = imp.read("mermaid", 'flowchart LR\n  A["`**Bold** and _it_`"] -->|"`*e*`"| B\n  B -- "`x`" --> C\n  subgraph s1 ["`**S**`"]\n  E\n  end\n'

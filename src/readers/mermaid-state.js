@@ -1,5 +1,5 @@
 import { unreadable } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort } from './mermaid-front.js';
 import { parseTransition, printTransition, trScan } from '../uml/transition.js';
 /* ---------- Mermaid stateDiagram: a reader and a writer (notes/stage-4.md §13, S12, S22; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's state diagram page (docs/syntax/stateDiagram.md, read 13 Nov 2026) and its lexer, as
@@ -79,7 +79,7 @@ function mtLine(text) {
 }
 
 function readMermaidState(text) {
-  const report = [], say = (line, status, message) => report.push({ line, status, message });
+  const report = [], say = mermaidSay(report);
   const empty = () => ({ model: { schemaVersion: 2, root: MT_VIEW, nodes: [], edges: [], views: [{ id: MT_VIEW, diagram: 'uml.state-machine', direction: 'down', nodeIds: [] }] }, report });
   if (typeof text !== 'string') { say(1, 'skipped', 'the input is not text: nothing read'); return empty(); }
   if (text.length > MT_LIMIT) { say(1, 'skipped', `the input is ${text.length} characters, over the limit of ${MT_LIMIT}: nothing read`); return empty(); }
@@ -340,7 +340,7 @@ function readMermaidState(text) {
   for (const n of nodes) if (n.members) n.members.sort((a, b) => (a.type === b.type ? 0 : a.type === 'uml.Region' ? -1 : 1)); // regions, then internal transitions
 
   const view = { id: viewId || MT_VIEW, diagram: 'uml.state-machine', ...(title ? { title } : {}), ...(direction === 'down' ? { direction } : {}), nodeIds: nodes.map(n => n.id) };
-  report.sort((a, b) => a.line - b.line); // stable: one line's items keep their order
+  mermaidSort(report); // by line, stable: one line's items keep their order
   return { model: { schemaVersion: 2, ...(title ? { title } : {}), root: view.id, nodes, edges, views: [view] }, report };
 }
 

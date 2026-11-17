@@ -319,3 +319,14 @@ test('a properties object shared by many elements is counted each time it is rea
   assert.ok(report.some(x => x.message.startsWith('over 500000 list entries')), 'the budget runs out and says so');
   assert.ok(report.reduce((n, x) => n + x.message.length, 0) < 10000);
 });
+
+test('audit 30: the report lists 1,000 items, then counts the rest in one, for a workspace of 340,000 empty relationships', () => {
+  const ws = JSON.stringify({ model: { people: [{ id: '1', name: 'a', relationships: Array.from({ length: 340000 }, () => ({})) }] } });
+  assert.ok(ws.length < 1048576);
+  const r = read(ws);
+  assert.equal(r.report.length, 1001);
+  assert.deepEqual(r.report[999], { path: 'model.people[0].relationships[999]', status: 'skipped', message: 'a relationship from a whose destination is not read: not read' });
+  // what is said after the 1,000th item still counts, the landscape view's own approximation among them
+  assert.deepEqual(r.report[1000], { path: '', status: 'skipped', message: '339001 more items like these: not listed' });
+  assert.deepEqual(r.model.nodes.map(n => n.label), ['a']);
+});

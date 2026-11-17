@@ -310,8 +310,10 @@ test('text over the size limit is refused; the deepest chain under it, 10,000 re
   assert.deepEqual([deep.nodes.length, deep.nodes.at(-1).parent], [depth, `e${depth - 2}`]);
   const wide = read(many);
   // each copy runs between different texts: read, and reported for copy-text
-  assert.deepEqual([wide.model.nodes.length, wide.model.edges.length, wide.report.length], [10000, 10000, 2500]);
-  assert.ok(wide.report.every(x => x.status === 'approximated' && x.message.endsWith('(copy-text): read as written')));
+  // 2,500 of them: the report lists 1,000, then counts the rest in one (audit 30)
+  assert.deepEqual([wide.model.nodes.length, wide.model.edges.length, wide.report.length], [10000, 10000, 1001]);
+  assert.ok(wide.report.slice(0, -1).every(x => x.status === 'approximated' && x.message.endsWith('(copy-text): read as written')));
+  assert.deepEqual(wide.report.at(-1), { line: '', status: 'skipped', message: '1500 more items like these: not listed' });
   assert.equal(read(hostile[10][1]).report.length, 1); // the ring loses one contains
   const proto = read(hostile.at(-1)[1]);
   assert.deepEqual(proto.model.nodes.map(n => [n.id, n.type]), [['__proto__', 'sysml.Requirement'], ['constructor', 'sysml.Block']]);

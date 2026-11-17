@@ -1,5 +1,5 @@
 import { unreadable } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort } from './mermaid-front.js';
 /* ---------- Mermaid requirementDiagram: a reader and a writer (notes/milestone-3.md §12, M3.6; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's requirement diagram page (docs/syntax/requirementDiagram.md, read 14 Nov 2026), as the
    other readers are against theirs. Internal: the CLI (`umlimator.py import`) imports this file through Node; a host gets it
@@ -76,7 +76,7 @@ function mqName(s, k) {
 }
 
 function readMermaidRequirement(text) {
-  const report = [], say = (line, status, message) => report.push({ line, status, message });
+  const report = [], say = mermaidSay(report);
   const empty = () => ({ model: { schemaVersion: 2, root: MQ_VIEW, nodes: [], edges: [], views: [{ id: MQ_VIEW, diagram: MQ_DIAGRAM, nodeIds: [] }] }, report });
   if (typeof text !== 'string') { say(1, 'skipped', 'the input is not text: nothing read'); return empty(); }
   if (text.length > MQ_LIMIT) { say(1, 'skipped', `the input is ${text.length} characters, over the limit of ${MQ_LIMIT}: nothing read`); return empty(); }
@@ -297,7 +297,7 @@ function readMermaidRequirement(text) {
     else say(viewHint.idNo, 'skipped', `%% id: ${mqShort(viewHint.id)} breaks the id rule (not empty, no "->"): the view is ${MQ_VIEW}`);
   }
   const view = { id: vid, diagram: MQ_DIAGRAM, ...(title ? { title } : {}), ...(direction ? { direction } : {}), nodeIds: nodes.map(n => n.id) };
-  report.sort((a, b) => a.line - b.line); // stable: one line's items keep their order
+  mermaidSort(report); // by line, stable: one line's items keep their order
   return { model: { schemaVersion: 2, ...(title ? { title } : {}), root: view.id, nodes, edges, views: [view] }, report };
 }
 

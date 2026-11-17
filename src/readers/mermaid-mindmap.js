@@ -1,5 +1,5 @@
 import { unreadable } from '../core/model.js';
-import { mermaidFrontTitle, mermaidCut, mermaidClip } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidCut, mermaidClip, mermaidSay, mermaidSort } from './mermaid-front.js';
 /* ---------- Mermaid mindmap: a reader and a writer (notes/milestone-4a.md §8, 4a.5; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's mindmap page (docs/syntax/mindmap.md) and its lexer and database
    (diagrams/mindmap/parser/mindmap.jison, mindmapDb.ts), read on Mermaid's repository 14 Nov 2026. Internal: the CLI
@@ -82,7 +82,7 @@ function mmrTopic(s, more) {
 }
 
 function readMermaidMindmap(text) {
-  const report = [], say = (line, status, message) => report.push({ line, status, message });
+  const report = [], say = mermaidSay(report);
   const empty = () => ({ model: { schemaVersion: 2, root: MMR_VIEW, nodes: [], edges: [], views: [{ id: MMR_VIEW, diagram: 'mindmap', nodeIds: [] }] }, report });
   if (typeof text !== 'string') { say(1, 'skipped', 'the input is not text: nothing read'); return empty(); }
   if (text.length > MMR_LIMIT) { say(1, 'skipped', `the input is ${text.length} characters, over the limit of ${MMR_LIMIT}: nothing read`); return empty(); }
@@ -206,7 +206,7 @@ function mmrRead(text, report, say, empty) {
     return n;
   });
   const view = { id: vid, diagram: 'mindmap', ...(title ? { title } : {}), nodeIds: nodes.map(n => n.id), ...(present.size ? { present: Object.fromEntries(present) } : {}) };
-  report.sort((a, b) => a.line - b.line); // stable: one line's items keep their order
+  mermaidSort(report); // by line, stable: one line's items keep their order
   return { model: { schemaVersion: 2, ...(title ? { title } : {}), root: vid, nodes, edges: [], views: [view] }, report };
 }
 

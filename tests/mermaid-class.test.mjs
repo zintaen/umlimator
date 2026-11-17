@@ -642,3 +642,33 @@ test('audit 23: every Mermaid writer writes a title that is a number or true as 
     assert.match(wr(one(), JSON.parse('{"toString":1}')), /not written: view \[object Object\], which the model does not have/, f);
   }
 });
+
+test('audit 30: a member labelled with a number or true is written as that text, an object label is said, and nothing throws', () => {
+  const lit = label => ({ type: 'uml.EnumerationLiteral', label });
+  const m = { schemaVersion: 2, root: 'v', nodes: [
+    { id: 'Level', type: 'uml.Enumeration', label: 'Level', members: [{ id: 'Level.1', ...lit(1) }, { id: 'Level.2', ...lit(2) }, { id: 'Level.t', ...lit(true) },
+      { id: 'Level.o', ...lit({ en: 'one' }) }, { id: 'Level.s', ...lit(JSON.parse('{"toString":1}')) }] },
+    { id: 'C', type: 'uml.Class', label: 'C', members: [{ id: 'C.p', type: 'uml.Property', label: 7 }, { id: 'C.o', type: 'uml.Operation', label: { a: 1 } }] }],
+    edges: [], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['Level', 'C'] }] };
+  const text = write(m);
+  assert.match(text, /^\s+1$/m); assert.match(text, /^\s+2$/m); assert.match(text, /^\s+true$/m);
+  assert.match(text, /%% not written: .*Level\.o/); assert.match(text, /%% not written: .*Level\.s/); assert.match(text, /%% not written: .*C\.o/);
+  const back = read(text).model, lv = back.nodes.find(n => n.label === 'Level');
+  assert.deepEqual(lv.members.map(x => x.label), ['1', '2', 'true']);
+  assert.deepEqual(back.nodes.find(n => n.label === 'C').members.map(x => x.label), ['7']);
+});
+
+test('audit 30: every Mermaid reader lists 1,000 report items, then counts the rest in one', async () => {
+  const heads = { class: 'classDiagram', sequence: 'sequenceDiagram', state: 'stateDiagram-v2', er: 'erDiagram', flowchart: 'flowchart LR', requirement: 'requirementDiagram', mindmap: 'mindmap\n  root' };
+  for (const [f, head] of Object.entries(heads)) {
+    const mod = await import(`../src/readers/mermaid-${f}.js`), rd = Object.values(mod).find(x => x.name.startsWith('read'));
+    const r = rd(head + '\n' + Array(5000).fill('?').join('\n'));
+    assert.ok(r.report.length <= 1001, `${f}: ${r.report.length} items`);
+    if (r.report.length === 1001) assert.match(r.report[1000].message, /^\d+ more items like these: not listed$/, f);
+    // a short input keeps its whole report, with no counting line
+    const few = rd(head + '\n?\n?\n?');
+    assert.ok(few.report.every(x => !/more items like these/.test(x.message)), f);
+  }
+  const { readMermaidClass } = await import('../src/readers/mermaid-class.js');
+  assert.equal(readMermaidClass('classDiagram\n' + Array(400000).fill('?').join('\n')).report.at(-1).message, '399000 more items like these: not listed');
+});
