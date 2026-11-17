@@ -569,3 +569,13 @@ test('word, rows and owners read a view\'s own nodes as the model\'s; a model el
   assert.deepEqual(T.owners(m, m.nodes[1], m.views[0]).map(o => o.id), ['mp']);
   assert.deepEqual(T.owners(m, m.views[0].nodes[1], m.views[0]).map(o => o.id), ['mp', 'lane']);
 });
+
+test('audit 24: two transitions out of a substate and one into the next, a stub\'s length apart, are drawn apart (no shared line)', () => {
+  const T = (id, from, to, trigger) => ({ id, type: 'uml.Transition', from, to, ...(trigger ? { props: { trigger } } : {}) });
+  const m = { schemaVersion: 2, nodes: [{ id: 'S', type: 'uml.State', label: 'Fulfilling' },
+    { id: 'a', type: 'uml.State', label: 'Picking', parent: 'S' }, { id: 'b', type: 'uml.State', label: 'X', parent: 'S' }, { id: 'c', type: 'uml.State', label: 'Packed', parent: 'S' },
+    { id: 'w', type: 'uml.State', label: 'Waiting for payment' }, { id: 'd', type: 'uml.State', label: 'Done' }],
+    edges: [T('t0', 'a', 'b'), T('t1', 'b', 'c'), T('x0', 'w', 'c', 'e0'), T('x1', 'b', 'd', 'e1'), T('x3', 'b', 'd', 'e3')],
+    views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['S', 'a', 'b', 'c', 'w', 'd'] }] };
+  assert.deepEqual(check(m, 'v').map(p => p.message).filter(t => !/ cross$/.test(t)), []);
+});

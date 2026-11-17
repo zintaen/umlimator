@@ -1,4 +1,4 @@
-import { registerDiagramType } from '../core/registry.js';
+import { ownNodes, registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
@@ -7,6 +7,7 @@ import { layoutTyped } from '../typed/layout.js';
 import { LINE_WORDS, legendOf, lineIn, lineLook, lineRename, memberEdit, multBounds, printMember } from './class.js'; // a subject's other members, as the class type's; SHAPE.note, a comment's look
 import './usecase.js'; // SHAPE.ellipse, a collaboration use's; SHAPE.subject, a class subject's frame
 import { SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, structProblems } from './structure.js';
+import { viewLines } from './owners.js';
 
 /* ---------- the composite structure diagram, uml.composite-structure (work package 5.6, notes/stage-5.md §6, §10.2) ----------
    The view's subject (a class, a component or a collaboration, listed in nodeIds) is a box holding its parts (its uml.Property
@@ -283,7 +284,8 @@ function csProblems(model, view) {
   else if (!S) say('error', 'subject-shown', `views[${vi}].subject`, [view.id, view.subject], `view ${JSON.stringify(view.id)}'s subject ${JSON.stringify(view.subject ?? null)} is not a class, a component or a collaboration it lists in nodeIds`);
   const nodeAt = id => CS_ARR(model.nodes).indexOf(P.at.get(id)), memPath = id => { const o = P.mem.get(id).owner; return `nodes[${nodeAt(o.id)}].members[${o.members.indexOf(P.mem.get(id).m)}]`; };
   if (S && S.type !== 'uml.Collaboration') P.parts.forEach(m => { if (!P.typeOf(m)) say('warning', 'part-type', memPath(m.id) + '.props.valueType', [m.id, S.id],
-    `part ${q(m.id)} of ${q(S.id)} is typed ${JSON.stringify(CS_PROPS(m).valueType ?? null)}, which names ${[...P.at.values()].some(n => CS_TYPED.includes(n.type) && (n.label ?? n.id) === CS_PROPS(m).valueType) ? 'more than one' : 'no'} class or component, so it shows only the ports its connectors reach through it`); });
+    // a part given no type (the panel's row "engine") said in words, not "typed null" (audit 24)
+    `part ${q(m.id)} of ${q(S.id)} ${!CS_HAS(CS_PROPS(m).valueType) ? 'has no type' : `is typed ${JSON.stringify(CS_PROPS(m).valueType)}, which names ${[...P.at.values()].some(n => CS_TYPED.includes(n.type) && (n.label ?? n.id) === CS_PROPS(m).valueType) ? 'more than one' : 'no'} class or component`}, so it shows only the ports its connectors reach through it`); });
   P.parts.forEach(m => { const t = CS_PROPS(m).multiplicity, b = CS_HAS(t) ? multBounds(t) : { lower: 0, upper: 0 };
     if (!b || b.lower > b.upper) say('warning', 'part-multiplicity', memPath(m.id) + '.props.multiplicity', [m.id], `part ${q(m.id)}'s multiplicity [${t}] ${b ? 'has its lower bound above its upper' : 'is not one (1, *, 0..1, 1..*)'}`); });
   // where an end lies: the subject's structure ('S'), a collaboration's (its id), or nowhere (null). A collaboration use is in
@@ -391,7 +393,7 @@ function csAdd(model, view, entry, label, at) {
   const P = csPic(model, view), sel = CS_ARR(at && at.sel).map(id => csOwnerOf(P, id)).map(id => P.el(id)).filter(Boolean)[0] || null, t = String(label ?? '').trim();
   const member = (o, row, say, was) => { const r = csRow(o, row, was); if (r.error) return r; const c = [{ op: 'add', element: { id: csFresh(model, csIdOf(o.id, r)), ...r }, owner: o.id }]; return say ? { commands: c, say } : c; };
   if (entry.type === 'uml.Port') {
-    if (sel && P.partOf.has(sel.id)) { const T = P.typeOf(sel); if (!T) return { error: `${csName(sel)}'s type, ${JSON.stringify(CS_PROPS(sel).valueType ?? null)}, names no one class or component to add a port to` };
+    if (sel && P.partOf.has(sel.id)) { const T = P.typeOf(sel); if (!T) return { error: !CS_HAS(CS_PROPS(sel).valueType) ? `${csName(sel)} has no type: type it as a class or component to add a port to` : `${csName(sel)}'s type, ${JSON.stringify(CS_PROPS(sel).valueType)}, names no one class or component to add a port to` };
       return member(T, t, `Added the port to ${csName(T)}, the type of ${csName(sel)}: every part of that type shows it`, PORT); }
     return sel && CS_TYPED.includes(sel.type) ? member(sel, t, null, PORT) : { error: 'Select the subject, a part, a class or a component to add a port to' };
   }
@@ -408,17 +410,21 @@ function csAdd(model, view, entry, label, at) {
 // x is the element id, or holds it among its members, at any depth
 const csHolds = (x, id) => CS_OBJ(x) && id != null && (x.id === id || CS_ARR(x.members).some(m => csHolds(m, id)));
 function csRemove(model, view, ids, fromModel) {
-  const P = csPic(model, view); if (!CS_ARR(ids).some(id => csSplit(id) || P.mem.has(id))) return null;
+  // with the view's own nodes and lines, as csProblems weighs them (remove gets the model as it is: registry.js), audit 24
+  const P = csPic(ownNodes(model, view).model, view); if (!CS_ARR(ids).some(id => csSplit(id) || P.mem.has(id))) return null;
+  const lines = viewLines(model, view).map(([e]) => e).filter(CS_OBJ), mine = new Set(CS_ARR(model.nodes).filter(CS_OBJ).map(n => n.id));
+  const own = id => CS_ARR(view.nodes).some(n => CS_OBJ(n) && n.id === id && !mine.has(id)) || CS_ARR(view.edges).some(x => CS_OBJ(x) && x.id === id);
   const out = [], hide = [], said = [], kept = [], del = id => { if (!out.some(c => c.op === 'delete' && c.id === id)) out.push({ op: 'delete', id }); };
   ids.forEach(id => { const s = csSplit(id), x = P.mem.get(s ? s[1] : id);
-    if (s && x && !fromModel) { const through = CS_ARR(model.edges).filter(e => CS_OBJ(e) && ['from', 'to'].some(k => e[k] === s[1] && CS_OBJ((CS_PROPS(e).ends || {})[k]) && CS_PROPS(e).ends[k].part === s[0]));
+    if (s && x && !fromModel) { const through = lines.filter(e => ['from', 'to'].some(k => e[k] === s[1] && CS_OBJ((CS_PROPS(e).ends || {})[k]) && CS_PROPS(e).ends[k].part === s[0]));
       through.forEach(e => del(e.id)); said.push(`the ${csPlural(through.length, 'connector')} through ${csName(P.el(s[0]))} to its port ${csName(x.m)}; Shift + Delete deletes the port from ${csName(x.owner)}`); }
-    else if (x) { const lines = CS_ARR(model.edges).filter(e => CS_OBJ(e) && (e.from === x.m.id || e.to === x.m.id || ['from', 'to'].some(k => CS_OBJ((CS_PROPS(e).ends || {})[k]) && CS_PROPS(e).ends[k].part === x.m.id))).length;
-      del(x.m.id); said.push(`${x.m.type === 'uml.Port' ? 'port' : x.owner.type === 'uml.Collaboration' ? 'role' : 'part'} ${csName(x.m)} of ${csName(x.owner)}${lines ? ` and its ${csPlural(lines, 'line')}` : ''}${fromModel ? '' : ' (a member is not hidden: it goes from the model)'}`); }
+    else if (x) { const n = lines.filter(e => (e.from === x.m.id || e.to === x.m.id || ['from', 'to'].some(k => CS_OBJ((CS_PROPS(e).ends || {})[k]) && CS_PROPS(e).ends[k].part === x.m.id))).length;
+      del(x.m.id); said.push(`${x.m.type === 'uml.Port' ? 'port' : x.owner.type === 'uml.Collaboration' ? 'role' : 'part'} ${csName(x.m)} of ${csName(x.owner)}${n ? ` and its ${csPlural(n, 'line')}` : ''}${fromModel ? '' : ' (a member is not hidden: it goes from the model)'}`); }
     else if (s) return;
     else if (fromModel) del(id);
-    else { const e = CS_ARR(model.edges).find(x => CS_OBJ(x) && x.id === id); // a node or a line selected with them: as the canvas does
-      if (csHolds(P.el(id), view.subject)) kept.push(`kept ${csName(P.el(id))}, ${id === view.subject ? '' : 'which holds '}the view's subject: change the view's subject, or Shift + Delete deletes it`); // apply() refuses its hide (audit 18)
+    else { const e = lines.find(x => x.id === id); // a node or a line selected with them: as the canvas does
+      if (own(id)) del(id); // lives in this view only: hiding it is deleting it
+      else if (csHolds(P.el(id), view.subject)) kept.push(`kept ${csName(P.el(id))}, ${id === view.subject ? '' : 'which holds '}the view's subject: change the view's subject, or Shift + Delete deletes it`); // apply() refuses its hide (audit 18)
       else if (e && !Array.isArray(view.edges)) said.push(`not the line ${csName(e)}: this view shows every line between its cards, and Shift + Delete deletes it`);
       else if (e || P.at.has(id)) hide.push({ op: 'hide', id, view: view.id }); } });
   // hidden first: a line hidden after the part it ends at is deleted would be gone with it

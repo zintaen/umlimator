@@ -1,5 +1,5 @@
 import { apply } from '../core/apply.js';
-import { registerDiagramType, idTable } from '../core/registry.js';
+import { ownNodes, registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
@@ -292,7 +292,8 @@ function actAdd(model, view, entry, label, at) {
 // remove: Shift + Delete on a partition keeps what it holds, which goes to the partition's own owner (S10)
 function actRemove(model, view, ids, fromModel) {
   if (!fromModel) return null;
-  const N = new Map(AC_ARR(model.nodes).filter(AC_OBJ).map(n => [n.id, n])), gone = new Set(AC_ARR(ids)), parts = [...gone].filter(id => (N.get(id) || {}).type === 'uml.ActivityPartition');
+  // the view's own partitions and what they hold too (remove gets the model as it is: registry.js), audit 24
+  const N = new Map(AC_ARR(ownNodes(model, view).model.nodes).filter(AC_OBJ).map(n => [n.id, n])), gone = new Set(AC_ARR(ids)), parts = [...gone].filter(id => (N.get(id) || {}).type === 'uml.ActivityPartition');
   if (!parts.length) return null;
   const keep = p => { const seen = new Set(); while (p != null && gone.has(p) && !seen.has(p)) { seen.add(p); p = (N.get(p) || {}).parent; } return p != null && N.has(p) && !gone.has(p) ? p : null; };
   return [...[...N.values()].filter(n => !gone.has(n.id) && parts.includes(n.parent)).map(n => ({ op: 'reparent', id: n.id, parent: keep(n.parent) })), ...[...gone].map(id => ({ op: 'delete', id }))];

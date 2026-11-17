@@ -480,3 +480,15 @@ test('an action or pseudostate added in a view\'s own partition or state lives i
   const m = { schemaVersion: 2, nodes: [N('a0', 'Action', 'Start'), N('P', 'ActivityPartition', 'Warehouse')], edges: [], views: [{ id: 'v', diagram: 'uml.activity', nodeIds: ['a0', 'P'] }] };
   assert.deepEqual(T.edits.add(m, m.views[0], { type: 'uml.Action' }, 'Pack', { sel: ['P'] }), [{ op: 'add', element: { id: 'pack', type: 'uml.Action', label: 'Pack', parent: 'P' }, view: 'v' }]);
 });
+
+test('audit 24: Shift + Delete on a partition the view holds as its own keeps the actions in it, moved to its owner', () => {
+  let m = { schemaVersion: 2, nodes: [{ id: 'i', type: 'uml.InitialNode' }], edges: [], views: [{ id: 'v', diagram: 'uml.activity', nodeIds: ['i'] }] };
+  m = apply(m, [{ op: 'add', element: { id: 'P', type: 'uml.ActivityPartition', label: 'Warehouse' }, view: 'v', in: 'view' }]);
+  const T = diagramOf(m.views[0]), add = T.edits.add(m, m.views[0], { type: 'uml.Action' }, 'Pack the books', { sel: ['P'] });
+  m = apply(m, add); const id = add[0].element.id;
+  const r = T.edits.remove(m, m.views[0], ['P'], true);
+  assert.deepEqual(r, [{ op: 'reparent', id, parent: null }, { op: 'delete', id: 'P' }]);
+  const n = apply(m, r);
+  assert.ok(n.views[0].nodes.some(x => x.id === id && x.parent == null), 'the action stays, in no partition');
+  assert.ok(!n.views[0].nodes.some(x => x.id === 'P'));
+});

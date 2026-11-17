@@ -4,7 +4,7 @@ import { SHAPE } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { RULES, classProblems, drawnLines, lineIn, printMember } from './class.js';
-import { OWN_BOXES, OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder } from './owners.js';
+import { OWN_BOXES, OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 
 /* ---------- the object diagram, uml.object (work package 2.3, notes/stage-2.md §9) ----------
    Instance specifications drawn with the classifier shape, the head underlined, `name : Classifier` (or `: Classifier`
@@ -103,7 +103,7 @@ const OBJECT_RULES = {
   'link-ends': 'a link joins two instance specifications',
   'instance-of': 'an instance\'s slots name attributes of its classifier, when the classifier is in the model',
 };
-function objectProblems(model) {
+function objectProblems(model, view) {
   const out = [], nodes = OB_ARR(model.nodes), say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const at = new Map(); nodes.forEach(n => { if (OB_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
   const q = id => JSON.stringify(String((at.get(id) || {}).label ?? id)), isInst = id => (at.get(id) || {}).type === 'uml.InstanceSpecification';
@@ -123,8 +123,8 @@ function objectProblems(model) {
     if (hits.length !== 1) return; // no classifier, or one the model does not hold once: types are text (M8)
     const has = attrs(hits[0]);
     ms.forEach((m, j) => { if (OB_OBJ(m) && m.type === 'uml.Slot' && !has.has(String(m.label))) say('warning', 'instance-of', `nodes[${i}].members[${j}]`, [n.id, m.id, hits[0]], `${q(n.id)} is an instance of ${q(hits[0])}, which has no attribute "${m.label}" (${m.id})`); }); });
-  OB_ARR(model.edges).forEach((e, i) => { if (OB_OBJ(e) && e.type === 'uml.Link' && !(isInst(e.from) && isInst(e.to)))
-    say('error', 'link-ends', `edges[${i}]`, [e.id, e.from, e.to], `${e.id} runs from ${q(e.from)} to ${q(e.to)}: a link joins two instance specifications`); });
+  viewLines(model, view).forEach(([e, path]) => { if (OB_OBJ(e) && e.type === 'uml.Link' && !(isInst(e.from) && isInst(e.to)))
+    say('error', 'link-ends', path, [e.id, e.from, e.to], `${e.id} runs from ${q(e.from)} to ${q(e.to)}: a link joins two instance specifications`); });
   return out;
 }
 
@@ -171,7 +171,7 @@ const OBJECT_TYPE = registerDiagramType('uml.object', {
   owners: ownerChoices,
   // a slot is a member row, `feature = value` (§9.2); a comment and a package hold none
   member: { print: m => (m.type === 'uml.Slot' ? printSlot(m) : printMember(m)), edit: slotEdit, add: parseSlot, holds: n => n.type === 'uml.InstanceSpecification' },
-  validate: (model, view) => [...classProblems(model).filter(p => p.rule === 'member-names'), ...objectProblems(model), ...ownerProblems(model, view, drawnLines(model, view, OBJECT_LINES).lines)],
+  validate: (model, view) => [...classProblems(model).filter(p => p.rule === 'member-names'), ...objectProblems(model, view), ...ownerProblems(model, view, drawnLines(model, view, OBJECT_LINES).lines)],
   rules: { 'member-names': RULES['member-names'], ...OBJECT_RULES, ...OWNER_RULES }, // of the class rules, member-names only: two slots for one feature (§9.3)
   describe: objectDescribe,
   // a link's text as drawn, for the PDF's Lines table: its «stereotypes» and its name, else its association's (audit 21)

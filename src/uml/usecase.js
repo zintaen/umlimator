@@ -1,4 +1,4 @@
-import { registerDiagramType, idTable } from '../core/registry.js';
+import { ownNodes, registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
@@ -302,7 +302,8 @@ function ucRemove(model, view, ids, fromModel) {
   const gone = new Set(UC_ARR(ids)), ext = fromModel ? [...new Set([...UC_ARR(model && model.edges), ...own])].filter(e => UC_OBJ(e) && e.type === 'uml.Extend' && ![e.id, e.from, e.to].some(x => gone.has(x))
     && UC_ARR(UC_PROPS(e).extensionPoints).length && UC_ARR(UC_PROPS(e).extensionPoints).every(p => gone.has(p))) : [];
   if (!ext.length) return null;
-  const N = UC_ARR(model.nodes).filter(UC_OBJ), pt = id => N.flatMap(n => UC_ARR(n.members)).find(p => UC_OBJ(p) && p.id === id);
+  // named with the view's own use cases too (remove gets the model as it is: registry.js), audit 24
+  const N = UC_ARR(ownNodes(model, view).model.nodes).filter(UC_OBJ), pt = id => N.flatMap(n => UC_ARR(n.members)).find(p => UC_OBJ(p) && p.id === id);
   const nm = id => (pt(id) ? 'extension point ' : '') + JSON.stringify(ucName(pt(id) || N.find(n => n.id === id) || { id }));
   return { commands: [...gone, ...ext.map(e => e.id)].map(id => ({ op: 'delete', id })),
     say: `Deleted ${[...gone].map(nm).join(', ')} and ${ext.length > 1 ? 'the extends' : 'the extend'} from ${[...new Set(ext.map(e => nm(e.from)))].join(', ')}, which named no other extension point` };

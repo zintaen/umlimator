@@ -88,7 +88,13 @@ function sequenceFromView(model, viewId, options = {}) {
 
 function communicationFromView(model, viewId, options = {}) {
   const { D, v } = cvSource(model, viewId), id = String(options.view ?? `${viewId}.communication`);
-  if (v.diagram === 'uml.sequence') { const r = cvCommunication(D, v, id, options); return { model: cvPlace(D, r.view, [], r.edges), report: r.report }; }
+  if (v.diagram === 'uml.sequence') { const r = cvCommunication(D, v, id, options);
+    // the lifelines the sequence view holds as its own (view.nodes) go with it: the new view's own when it takes the view's
+    // place, else the model's, which both views then list (a card's id is the model's once, audit 24)
+    const own = CV_ARR(v.nodes).filter(n => CV_OBJ(n) && n.type === 'uml.Lifeline' && CV_ARR(v.nodeIds).includes(n.id) && !CV_ARR(D.nodes).some(x => CV_OBJ(x) && x.id === n.id));
+    if (own.length && id === v.id) r.view.nodes = own;
+    else if (own.length) { v.nodes = CV_ARR(v.nodes).filter(n => !own.includes(n)); if (!v.nodes.length) delete v.nodes; }
+    return { model: cvPlace(D, r.view, id === v.id ? [] : own, r.edges), report: r.report }; }
   const s = cvNumbered(D, v, id, options.title), r = cvCommunication(D, s.view, id, { title: s.view.title });
   return { model: cvPlace(D, r.view, s.nodes, r.edges), report: [...s.report, ...r.report] };
 }

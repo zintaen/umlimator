@@ -451,3 +451,15 @@ test('audit 21: Delete or Shift + Delete on a connector in the view\'s own lines
     assert.deepEqual(validate(n).filter(p => p.level === 'error'), []);
   }
 });
+
+test('audit 24: Delete or Shift + Delete on a connector to a lifeline the view holds as its own takes its messages too', () => {
+  const mk = own => ({ schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.Lifeline', label: 'shop' }, ...(own ? [] : [{ id: 'B', type: 'uml.Lifeline', label: 'bank' }])],
+    edges: [{ id: 'k', type: 'uml.Connector', from: 'A', to: 'B' }, { id: 'm1', type: 'uml.Message', from: 'A', to: 'B', label: 'pay', props: { sort: 'call' } }],
+    views: [{ id: 'v', diagram: 'uml.communication', nodeIds: ['A', 'B'], ...(own ? { nodes: [{ id: 'B', type: 'uml.Lifeline', label: 'bank' }] } : {}), edges: ['k', 'm1'] }] });
+  for (const fromModel of [false, true]) {
+    const want = (() => { const m = mk(false); return diagramOf(m.views[0]).edits.remove(m, m.views[0], ['k'], fromModel); })();
+    const m = mk(true), r = diagramOf(m.views[0]).edits.remove(m, m.views[0], ['k'], fromModel);
+    assert.deepEqual(r, want, String(fromModel));
+    assert.deepEqual(validate(apply(m, r.commands)).filter(p => p.level === 'error'), [], String(fromModel));
+  }
+});

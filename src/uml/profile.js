@@ -2,7 +2,7 @@ import { registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { CLASSIFIERS, CLASS_DEF, CLASS_LINES, CLASS_TYPE, RULES, multBounds, printMember, classProblems, drawnLines, lineLabel, lineName, lineRename, typeGeo } from './class.js';
-import { OWN_BOXES, OWNER_RULES, boxHead, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder } from './owners.js';
+import { OWN_BOXES, OWNER_RULES, boxHead, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder, viewLines } from './owners.js';
 import { STY_RULES, UML_META, appliedOf, metaKnown, styKey } from './stereotypes.js';
 
 /* ---------- the profile diagram, uml.profile (work package 6.3, notes/stage-6.md §4) ----------
@@ -100,7 +100,7 @@ const PR_RULES = {
   'application-ends': 'a profile application runs from a package to a profile, not from a profile to itself',
   'metaclass-known': 'a metaclass reference names a UML metaclass',
 };
-function prProblems(model) {
+function prProblems(model, view) {
   const out = [], I = prIndex(model), q = id => JSON.stringify(I.at.has(id) ? prName(I.at.get(id)) : String(id)), say = (rule, path, ids, msg, level = 'error') => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const seen = new Map(), names = (k, id, path, what) => { const was = seen.get(k); if (was) say('stereotype-names', path, [was, id], `${q(id)} and ${q(was)} are one name ${what} (${was}, ${id})`); else seen.set(k, id); };
   PR_ARR(model && model.nodes).forEach((n, i) => { if (!PR_OBJ(n) || I.at.get(n.id) !== n) return; const path = `nodes[${i}]`;
@@ -108,7 +108,7 @@ function prProblems(model) {
     if (n.type === 'uml.Stereotype' && I.ty(n.parent) === 'uml.Profile') names(`s\u0000${n.parent}\u0000${styKey(prName(n))}`, n.id, path, `in ${q(n.parent)}`);
     if (n.type === 'uml.Profile') names(`p\u0000${prName(n)}`, n.id, path, 'for two profiles');
     if (n.type === 'uml.MetaclassReference' && !metaKnown(prName(n))) say('metaclass-known', path, [n.id], `${q(n.id)} is no UML metaclass`, 'warning'); });
-  PR_ARR(model && model.edges).forEach((e, i) => { if (!PR_OBJ(e)) return; const path = `edges[${i}]`, ends = [...new Set([e.id, e.from, e.to])], k = id => (I.at.has(id) ? prWord(I.ty(id)).toLowerCase() : 'nothing');
+  viewLines(model, view).forEach(([e, path]) => { if (!PR_OBJ(e)) return; const ends = [...new Set([e.id, e.from, e.to])], k = id => (I.at.has(id) ? prWord(I.ty(id)).toLowerCase() : 'nothing');
     if (e.type === 'uml.Extension' && (I.ty(e.from) !== 'uml.Stereotype' || I.ty(e.to) !== 'uml.MetaclassReference')) say('extension-ends', path, ends, `${e.id} runs from ${q(e.from)} (${k(e.from)}) to ${q(e.to)} (${k(e.to)}): from a stereotype to a metaclass`);
     if (e.type === 'uml.ProfileApplication' && (!OWN_BOXES.includes(I.ty(e.from)) || I.ty(e.to) !== 'uml.Profile' || e.from === e.to)) say('application-ends', path, ends, `${e.id} runs from ${q(e.from)} (${k(e.from)}) to ${q(e.to)} (${k(e.to)}): from a package to a profile${e.from === e.to ? ' other than itself' : ''}`); });
   return out;
@@ -178,7 +178,7 @@ const PR_TYPE = registerDiagramType('uml.profile', {
   member: { ...CLASS_TYPE.member, holds: n => n.type === 'uml.Stereotype' || n.type === 'uml.Enumeration',
     add: (text, owner) => { const r = CLASS_TYPE.member.add(text, owner);
       return owner && owner.type === 'uml.Stereotype' && r.type === 'uml.Operation' ? { error: `"${String(text ?? '').trim()}" is not a tag: a stereotype's row is a tag, name: Type` } : r; } },
-  validate: (model, view) => [...classProblems(model, view), ...prProblems(model), ...ownerProblems(model, view, drawnLines(model, view, PR_LINES).lines)],
+  validate: (model, view) => [...classProblems(model, view), ...prProblems(model, view), ...ownerProblems(model, view, drawnLines(model, view, PR_LINES).lines)],
   rules: { ...RULES, ...OWNER_RULES, ...PR_RULES, ...STY_RULES },
   describe: prDescribe,
   // the PDF's tables (§9): a profile's, a stereotype's and a metaclass's kind; each element's stereotypes and tags
