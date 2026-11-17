@@ -80,7 +80,9 @@ test('the shapes: junction, history and terminate; a state\'s compartment, its r
 
 // the crossings that turning port repair off leaves (notes/stage-4.md §17): pinned
 const PINNED = { // a pseudostate is named by its id (audit 5)
-  right: ['view order-life: edges payment-outcome→Fulfilling and Picking→Packed cross', 'view order-life: edges payment-outcome→Cancelled and Capturing payment→Cancelled cross'],
+  // audit 27: payment-outcome's line into Fulfilling went in at its top, across the whole box and back to its left border from
+  // inside; now it keeps out of the box it ends on, into the left border from outside, and crosses prepaid's line there instead
+  right: ['view order-life: edges payment-outcome→Fulfilling and prepaid→Picking cross', 'view order-life: edges payment-outcome→Cancelled and Capturing payment→Cancelled cross'],
   // audit 26: the payment region holds the retry loop and its label (its label no longer on two lines), and one more crossing
   down: ['view order-life: edges payment-outcome→Fulfilling and payment-outcome→Cancelled cross', 'view order-life: edges payment-outcome→Fulfilling and prepaid→Payment captured cross', 'view order-life: edges payment-outcome→Cancelled and prepaid→Payment captured cross', 'view order-life: edges payment-outcome→Cancelled and Payment captured→ready cross',
     'view order-life: edges payment-outcome→Cancelled and Fulfilling→Cancelled cross', 'view order-life: edges Capturing payment→Cancelled and Capturing payment→Payment captured cross',

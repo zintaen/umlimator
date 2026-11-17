@@ -472,6 +472,10 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     // line may run round its own end
     const loose = allowCross === 3;
     const obs = [...nodeRects.map(r => ({ x: r.x - C, y: r.y - C, w: r.w + 2 * C, h: r.h + 2 * C })), ...tagRects, ...(loose ? [] : corners), ...(any ? [] : reserved.map(r => ({ x: r.x - 3, y: r.y - 3, w: r.w + 6, h: r.h + 6 })))];
+    // a typed view's line out of a box to something outside it keeps out of that box once it has left it: the box's inside is
+    // shut to it, as a card is, though its border makes no grid line (audit 27: a dependency out of an open package turned back
+    // in, ran down inside it and crossed its border again)
+    const own = dg.typed && !loose && !e.inner ? [[e.s, e.t], [e.t, e.s]].filter(([b, o]) => b.box && !holds(b, o)).map(([b]) => ({ x: b.x, y: b.y, w: b.w, h: b.h })) : [];
     const avoid = [...routed.flatMap(r => segsOf(r.pts)), ...free.filter(o => o !== e && !routed.includes(o)).flatMap(o => o.stubs || [])];
     const xs = new Set([st[0], en[0], ...gapLinesX]), ys = new Set([st[1], en[1], ...gapLinesY]);
     obs.forEach(r => { xs.add(r.x - 1); xs.add(r.x + r.w + 1); ys.add(r.y - 1); ys.add(r.y + r.h + 1); });
@@ -494,7 +498,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     // made one route cost O(cells x obstacles)
     const from = (A, v) => { let a = 0, b = A.length; while (a < b) { const m = (a + b) >> 1; if (A[m] < v) a = m + 1; else b = m; } return a; };
     const inObs = new Uint8Array(N), onAv = new Uint8Array(N), blockH = new Uint8Array(N), blockV = new Uint8Array(N), alongH = any ? new Uint8Array(N) : blockH, alongV = any ? new Uint8Array(N) : blockV;
-    for (const r of obs) {
+    for (const r of [...obs, ...own]) {
       const i0 = from(X, r.x - 1), j0 = from(Y, r.y - 1), qx = r.x + .5, qy = r.y + .5, qx2 = qx + (r.w - 1), qy2 = qy + (r.h - 1);
       for (let i = i0; i < nx && X[i] <= r.x + r.w + 1; i++) for (let j = j0; j < ny && Y[j] <= r.y + r.h + 1; j++)
         if (X[i] > r.x && X[i] < r.x + r.w && Y[j] > r.y && Y[j] < r.y + r.h) inObs[i * ny + j] = 1;

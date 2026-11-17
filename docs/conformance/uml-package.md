@@ -23,11 +23,7 @@ draws it as plain cards with a warning. The vocabulary is `docs/diagrams/model.m
 | 9.2, 10.2, 10.4, 11.4 classifiers | the class diagram's `uml.Class`, `uml.Interface`, `uml.Enumeration`, `uml.DataType`, `uml.PrimitiveType` | by their names and keywords only (`«interface» Payable`); their members are drawn and edited in a class view |
 | 7.2 Comment | `uml.Comment`, `uml.CommentLink` | a note with a folded corner; a dashed line with no ends |
 
-A line whose end is an open package ends on the box's border; a line from an element in a box to anything outside
-crosses each border between them. A line between a package and something it holds, at any depth, and a line from an
-open package to itself, are not drawn (UML draws containment with ⊕, which is out of the subset); on a closed package
-a line to itself is a loop. A line to an element the view does not show is not drawn, and never moved to its owner.
-A view with no `edges` list draws the package diagram's line types only; a line it lists of another type is drawn.
+A line whose end is an open package ends on the box's border, and once it has left the box it keeps out of it (`check()` reports one that runs back inside its own box, audit 27); a line from an element in a box to anything outside crosses each border between them. A line between a package and something it holds, at any depth, and a line from an open package to itself, are not drawn (UML draws containment with ⊕, which is out of the subset); on a closed package a line to itself is a loop. A line to an element the view does not show is not drawn, and never moved to its owner. A view with no `edges` list draws the package diagram's line types only; a line it lists of another type is drawn.
 
 Class views draw packages the same way from 0.19.0 (`uml-class.md`), and so do object views.
 
@@ -62,9 +58,7 @@ when it is closed; a box takes its place from what it holds.
   reads as if it passed through `payments`. With the profile, the example's layout moves and the line goes round
   `catalog`'s right side to `shared`, outside `payments`; the limit stands.
 - XMI and UML diagram interchange; a reader of its own.
-- Lines cross where the layered layout finds no better order. `tests/package-stress.json` (50 nodes in 10 boxes over three
-  levels of packages, 60 lines) has none laid out down and 1 laid out right; `tests/package-fixtures.test.mjs` pins both
-  counts (`docs/diagrams/risks.md` L4). `tests/package-minimal.json` has none in any of its three views, either way.
+- Lines cross where the layered layout finds no better order. `tests/package-stress.json` (50 nodes in 10 boxes over three levels of packages, 60 lines) has none laid out down and 2 laid out right (1 before audit 27, when a line still ran back through the box it ends on to reach its near side); `tests/package-fixtures.test.mjs` pins both counts (`docs/diagrams/risks.md` L4). `tests/package-minimal.json` has none in any of its three views, either way.
 
 ## Writers: what each shows of a package diagram
 

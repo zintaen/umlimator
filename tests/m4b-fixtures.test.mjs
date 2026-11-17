@@ -67,8 +67,10 @@ function clean(m, vid) {
 // flow (an error in the JSON, refused by connect) is drawn, and left out of the band check, which is for flows in one pool
 const PINNED = {
   'bpmn-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
-  'bpmn-stress': { 'edge-cases': { right: [12, 0, 0], down: [12, 0, 0] }, 'ec-closed': { right: [13, 0, 0], down: [14, 0, 0] }, 'ec-inside': { right: [0, 0, 0], down: [0, 0, 0] },
-    all: { right: [30, 0, 0], down: [29, 0, 0] } },
+  // audit 27: a line out of a box keeps out of it (edge-cases right: the fork's line into its sub-process no longer runs
+  // back through it); all: the lines routed after such a one move, a crossing more each way
+  'bpmn-stress': { 'edge-cases': { right: [14, 0, 0], down: [12, 0, 0] }, 'ec-closed': { right: [13, 0, 0], down: [14, 0, 0] }, 'ec-inside': { right: [0, 0, 0], down: [0, 0, 0] },
+    all: { right: [31, 0, 0], down: [30, 0, 0] } },
   example: { 'order-to-shipment': { right: [4, 0, 0], down: [6, 0, 0] }, 'pick-and-pack': { right: [0, 0, 0], down: [0, 0, 0] } },
 };
 
