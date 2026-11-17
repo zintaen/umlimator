@@ -2,7 +2,7 @@ import { registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { CLASSIFIERS, CLASS_DEF, CLASS_LINES, CLASS_TYPE, RULES, multBounds, printMember, classProblems, drawnLines, lineLabel, lineName, lineRename, typeGeo } from './class.js';
-import { OWN_BOXES, OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder } from './owners.js';
+import { OWN_BOXES, OWNER_RULES, boxHead, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder } from './owners.js';
 import { STY_RULES, UML_META, appliedOf, metaKnown, styKey } from './stereotypes.js';
 
 /* ---------- the profile diagram, uml.profile (work package 6.3, notes/stage-6.md §4) ----------
@@ -80,7 +80,7 @@ function prNode(d, n, model, pic) {
 function prBox(b, model, pic) {
   const x = pic.at.get(b.id), A = appliedOf(model, b.id); if (!A.length) return b;
   const st = PR_ARR(PR_OBJ(x.props) ? x.props.stereotypes : null).filter(t => t != null && t !== '').map(String), all = [...st, ...A.map(e => e.key).filter(k => !st.includes(k))];
-  return { ...b, title: [...(x.type === 'uml.Profile' ? ['«profile»'] : []), ...all.map(t => `«${t}»`), pic.name(b.id)].join(' '), aria: `${b.aria}: ${A.map(prSay).join('; ')}` };
+  return boxHead({ ...b, title: [...(x.type === 'uml.Profile' ? ['«profile»'] : []), ...all.map(t => `«${t}»`), pic.name(b.id)].join(' '), aria: `${b.aria}: ${A.map(prSay).join('; ')}` }); // its header room as its title's lines need (audit 23)
 }
 const PR_LINES = [...CLASS_LINES, 'uml.Extension', 'uml.ProfileApplication'];
 const PR_LOOK = { members: true, own: PR_LINES, word: 'profile diagram', node: prNode, box: prBox, dg: { repair: false, reroute: false } };

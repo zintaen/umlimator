@@ -3,7 +3,8 @@ import { esc, fit } from '../core/text.js';
 import { SHAPE, r2, sidePorts } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
 import { ownersOn, readingOrder } from '../uml/owners.js';
-import { C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Problems, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners, c4Rename } from './c4.js';
+import { brLines } from '../typed/draw.js';
+import { C4_NOTE_LINE, C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Problems, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners, c4Rename } from './c4.js';
 
 /* ---------- C4's dynamic and deployment views, c4.dynamic and c4.deployment (work package M2.7, notes/milestone-2.md §7.5.2,
    §7.5.3, §5.1) ----------
@@ -57,7 +58,8 @@ const vItem = (name, says, svg) => `<span class="lgi" title="${esc(name + ' — 
 const vSwatch = ext => `<rect x="3" y="2" width="22" height="12" rx="3" fill="var(--um-${ext ? 'slate' : 'cyan'}-f)" stroke="var(--um-${ext ? 'slate' : 'cyan'})"/>`;
 const vLine = dashed => `<g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round" fill="none"><path d="M2 8H25"${dashed ? ' stroke-dasharray="3 2"' : ''}/><path d="M17 4L26 8L17 12"/></g>`;
 const vLines = (edges, says = 'uses, with its technology in brackets') => [...(edges.some(e => e.type === 'c4.Relationship' && !e.implied) ? [vItem('Relationship', says, vLine(false))] : []),
-  ...(edges.some(e => e.implied) ? [vItem('Implied relationship', 'stands for relationships between what the two hold', vLine(true))] : [])];
+  ...(edges.some(e => e.implied) ? [vItem('Implied relationship', 'stands for relationships between what the two hold', vLine(true))] : []),
+  ...(edges.some(e => e.type === 'uml.CommentLink') ? [vItem('Comment link', 'what a comment is about', C4_NOTE_LINE)] : [])]; // as src/c4/c4.js keys it (audit 23)
 const V_LINE = { rel: { from: 'none', to: 'open' }, implied: { from: 'none', to: 'open', dashed: true }, note: { from: 'none', to: 'none', dashed: true } };
 // an element of a C4 view as src/c4/c4.js draws it (shape c4: its map shape and three lines), or a comment
 function vNode(id, x, P, more = {}) {
@@ -167,15 +169,17 @@ function depNodeName(I, x) {
 // a deployment node holding something: a solid box, its name over "[Deployment Node: technology]" in a header as tall as the
 // deployment type's (head 15 px more), so the layout measures the title at 12 px and the box is as wide as it
 const V_HEAD = 15;
-SHAPE['c4-node'] = { frame: f => { const line = (t, dy, wt, px, fill) => `<text class="family-title" x="${r2(f.x + 12)}" y="${r2(f.y + dy)}" fill="${fill}" style="font:${wt} ${px}px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(t, px, f.w - 24))}</text>`;
+// A name the author broke (a Mermaid <br>): a line each, 16 px apart, the tag under the last, the head grown for them (depPic, audit 23)
+const V_LH = 16;
+SHAPE['c4-node'] = { frame: f => { const line = (t, dy, wt, px, fill) => brLines(t).map((l, i) => `<text class="family-title" x="${r2(f.x + 12)}" y="${r2(f.y + dy + i * V_LH)}" fill="${fill}" style="font:${wt} ${px}px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(l, px, f.w - 24))}</text>`).join('');
   return `<rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="6" fill="none" stroke="var(--um-muted)" stroke-width="1.4"/>`
-    + (f.kw ? line(f.name, 17, 600, 12, 'var(--um-text)') + line(f.kw, 17 + V_HEAD, 400, 11, 'var(--um-muted)') : line(f.title ?? f.label ?? f.id, 17, 600, 12, 'var(--um-text)')); } };
+    + (f.kw ? line(f.name, 17, 600, 12, 'var(--um-text)') + line(f.kw, 17 + V_HEAD + (brLines(f.name).length - 1) * V_LH, 400, 11, 'var(--um-muted)') : line(f.title ?? f.label ?? f.id, 17, 600, 12, 'var(--um-text)')); } };
 const DEP_LOOK = { boxTypes: ['c4.DeploymentNode'], qualify: false, shape: () => 'c4-node', word: () => 'Deployment node' };
 function depPic(model, view) {
   const pic = ownersOn(model, view, DEP_LOOK), I = c4Index(model);
   const boxes = pic.boxes.map(b => { const x = pic.at.get(b.id), held = pic.holds(b.id).map(id => pic.at.get(id)), k = new Map();
     held.forEach(y => { const w = (C4_WORD[y.type] || 'element').toLowerCase(); k.set(w, (k.get(w) || 0) + 1); });
-    return { ...b, title: `${vName(x)} ${depTag(x)}`, name: vName(x), kw: depTag(x), head: V_HEAD, aria: `Deployment node ${vName(x)}${V_HAS(V_P(x).technology) ? ', ' + V_P(x).technology : ''}, a box holding ${[...k].map(([w, c]) => vPlural(c, w)).join(', ')}` }; });
+    return { ...b, title: `${vName(x)} ${depTag(x)}`, name: vName(x), kw: depTag(x), head: V_HEAD + (brLines(vName(x)).length - 1) * V_LH, aria: `Deployment node ${vName(x)}${V_HAS(V_P(x).technology) ? ', ' + V_P(x).technology : ''}, a box holding ${[...k].map(([w, c]) => vPlural(c, w)).join(', ')}` }; });
   return { ...pic, I, boxes, nameOf: x => vName(x.type === 'c4.ContainerInstance' && depOf(I, x) || x) }; // an instance named as drawn: its container's name
 }
 // the key: a deployment node, each instance's look (as its container's), the relationship and the implied line

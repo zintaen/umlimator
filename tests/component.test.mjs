@@ -463,3 +463,18 @@ test('audit 20: Realization, Component realization and Manifestation never add a
     assert.deepEqual(validate(m2).filter(p => p.level === 'error' && p.rule === rule && p.ids.includes(nid)).map(p => p.message), [], `${label} ${a} -> ${b} (${I(a) ? I(a).type : 'port'})`); }
   assert.ok(added > 0 && refused > 0);
 });
+
+// audit 23: a kind outside the component, deployment, use case or information flow view's own is said in words, as the class
+// view and the PDF's Kind column say it: "Use case Pay", "Data type Money", never the type's name "UseCase Pay"
+test('a kind outside the view\'s own is said in words in its accessible name and describe() (audit 23)', async () => {
+  for (const f of ['deployment', 'usecase', 'information']) await import(`../src/uml/${f}.js`);
+  const want = ['Use case Pay', 'Data type Money', 'Execution environment JVM', 'Instance specification ada'];
+  for (const d of ['uml.component', 'uml.deployment', 'uml.use-case', 'uml.information-flow']) {
+    const nodes = [{ id: 'uc', type: 'uml.UseCase', label: 'Pay' }, { id: 'dt', type: 'uml.DataType', label: 'Money' }, { id: 'ee', type: 'uml.ExecutionEnvironment', label: 'JVM' }, { id: 'is', type: 'uml.InstanceSpecification', label: 'ada' }]
+      .filter(n => !(d === 'uml.use-case' && n.id === 'uc')); // the use case view's own: "Use case Pay" already
+    const m = { schemaVersion: 2, nodes, edges: [], views: [{ id: 'v', diagram: d, nodeIds: nodes.map(n => n.id) }] }, g = layout(m, 'v'), said = describe(m, 'v').split('\n');
+    want.filter(w => nodes.some(n => w.endsWith(' ' + n.label))).forEach(w => {
+      assert.ok(g.nodes.some(n => n.aria === w || String(n.aria).startsWith(w + ',')), `${d}: "${w}" (${g.nodes.map(n => n.aria).join(' | ')})`);
+      assert.ok(said.some(l => l === w + '.' || l.startsWith(w + ',')), `${d}: describe() says "${w}"`); });
+  }
+});

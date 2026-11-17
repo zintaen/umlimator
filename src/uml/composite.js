@@ -2,8 +2,9 @@ import { registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
+import { brLines } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
-import { lineIn, lineLook, lineRename, memberEdit, multBounds, printMember } from './class.js'; // a subject's other members, as the class type's; SHAPE.note, a comment's look
+import { LINE_WORDS, legendOf, lineIn, lineLook, lineRename, memberEdit, multBounds, printMember } from './class.js'; // a subject's other members, as the class type's; SHAPE.note, a comment's look
 import './usecase.js'; // SHAPE.ellipse, a collaboration use's; SHAPE.subject, a class subject's frame
 import { SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, structProblems } from './structure.js';
 
@@ -66,26 +67,28 @@ function csFresh(model, base) {
 
 /* ---- the shapes (§9.1): a part (and a role), a collaboration use, an open collaboration's frame ---- */
 const CS = { pad: 10, px: 12, minW: 96, maxW: 320, h: 48 };
-// its «stereotypes» over its name, 14 px a line, the box 14 px taller for each past the first (audit 15)
+// its «stereotypes» over its name, 14 px a line, the box 14 px taller for each past the first (audit 15); a name the author broke
+// (a Mermaid <br>) a line each, 14 px apart, each line past the first one more (audit 23)
 const csPartSt = n => CS_ARR(n.stereotypes).filter(CS_HAS).map(t => `«${t}»`);
 SHAPE.part = {
-  size: n => { const st = csPartSt(n); return { w: Math.ceil(Math.min(CS.maxW, Math.max(CS.minW, textW(n.label ?? '', CS.px) + 2 * CS.pad, ...st.map(t => textW(t, 11) + 2 * CS.pad)))), h: CS.h + 14 * Math.max(0, st.length - 1) }; },
+  size: n => { const st = csPartSt(n), nm = brLines(n.label); return { w: Math.ceil(Math.min(CS.maxW, Math.max(CS.minW, ...nm.map(l => textW(l, CS.px) + 2 * CS.pad), ...st.map(t => textW(t, 11) + 2 * CS.pad)))), h: CS.h + 14 * Math.max(0, st.length + nm.length - 2) }; },
   out: boxOut(0), face: n => [n.y, n.y + n.h], inset: () => 0,
-  draw(n, c, f) { const { x, y, w, h } = n, st = csPartSt(n), y0 = y + h / 2 + 4 - 7 * st.length;
+  draw(n, c, f) { const { x, y, w, h } = n, st = csPartSt(n), nm = brLines(n.label), y0 = y + h / 2 + 4 - 7 * (st.length + nm.length - 1);
     return `<g class="node part" data-id="${esc(n.id)}" data-shape="part" tabindex="-1" role="img" aria-label="${esc(n.aria || 'Part ' + (n.label ?? ''))}">`
       + `<rect x="${x}" y="${y}" width="${w}" height="${h}" class="n-mask"/><rect x="${x}" y="${y}" width="${w}" height="${h}" class="n-body" fill="${f}" stroke="${c}"${n.shared ? ' stroke-dasharray="6 4"' : ''}/>`
       + st.map((t, k) => `<text x="${r2(x + w / 2)}" y="${r2(y0 + 14 * k)}" text-anchor="middle" class="c-st" fill="var(--um-muted)" style="font:400 11px var(--um-sans)">${esc(fit(t, 11, w - 2 * CS.pad))}</text>`).join('')
-      + `<text x="${r2(x + w / 2)}" y="${r2(y0 + 14 * st.length)}" text-anchor="middle" class="c-name" fill="var(--um-text)" style="font:500 ${CS.px}px var(--um-sans)" data-o="${esc(n.id)}">${esc(fit(n.label ?? '', CS.px, w - 2 * CS.pad))}</text></g>`; },
+      + nm.map((l, k) => `<text x="${r2(x + w / 2)}" y="${r2(y0 + 14 * (st.length + k))}" text-anchor="middle" class="c-name" fill="var(--um-text)" style="font:500 ${CS.px}px var(--um-sans)" data-o="${esc(n.id)}">${esc(fit(l, CS.px, w - 2 * CS.pad))}</text>`).join('') + '</g>'; },
 };
 SHAPE.part.ports = (n, side, k = 1) => portsOn(SHAPE.part, n, side, k);
 // a collaboration use: the use case's ellipse (src/uml/usecase.js), dashed
 SHAPE['collab-use'] = { ...SHAPE.ellipse, draw: (n, c, f) => SHAPE.ellipse.draw(n, c, f).replace('class="node usecase"', 'class="node collab-use"').replace('class="n-body"', 'class="n-body" stroke-dasharray="6 4"') };
 // an open collaboration: a dashed ellipse in its frame, which TYPED.frame grew by √2 round the rectangle of its contents (round,
-// §9.3); its name in that rectangle's header room, over a dashed line across the ellipse
+// §9.3); its name in that rectangle's header room, over a dashed line across the ellipse; a name the author broke a line each,
+// 16 px apart, in the room its head grew (csGeo, audit 23)
 SHAPE.collaboration = {
-  frame(f) { const cx = f.x + f.w / 2, cy = f.y + f.h / 2, w0 = f.w / Math.SQRT2, top = cy - f.h / Math.SQRT2 / 2, y = top + 24, hw = f.w / 2 * Math.sqrt(Math.max(0, 1 - ((y - cy) / (f.h / 2)) ** 2));
+  frame(f) { const ls = brLines(f.title ?? f.label ?? f.id), cx = f.x + f.w / 2, cy = f.y + f.h / 2, w0 = f.w / Math.SQRT2, top = cy - f.h / Math.SQRT2 / 2, y = top + 24 + (ls.length - 1) * 16, hw = f.w / 2 * Math.sqrt(Math.max(0, 1 - ((y - cy) / (f.h / 2)) ** 2));
     return `<ellipse class="family-box" cx="${r2(cx)}" cy="${r2(cy)}" rx="${r2(f.w / 2)}" ry="${r2(f.h / 2)}" stroke="var(--um-muted)" stroke-dasharray="6 4"/>`
-      + `<text class="family-title" x="${r2(cx)}" y="${r2(top + 17)}" text-anchor="middle" fill="var(--um-text)" style="font:600 12px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(f.title ?? f.label ?? f.id, 12, w0 - 24))}</text>`
+      + ls.map((l, i) => `<text class="family-title" x="${r2(cx)}" y="${r2(top + 17 + i * 16)}" text-anchor="middle" fill="var(--um-text)" style="font:600 12px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(l, 12, w0 - 24))}</text>`).join('')
       + `<path d="M${r2(cx - hw)} ${r2(y)}H${r2(cx + hw)}" class="cs-rule" stroke="var(--um-muted)" stroke-dasharray="4 3"/>`; },
 };
 
@@ -148,10 +151,13 @@ function csNodeName(P, id) {
 }
 const csEndName = (P, x) => (x.part != null ? `${csName(P.mem.get(x.id).m)} of ${csName(P.el(x.part))}` : x.port != null ? `${csName(P.mem.get(x.id).m)} of ${csName(P.S)}` : csName(P.el(x.id)));
 const CS_LINE_WORD = { __proto__: null, 'uml.Connector': 'Connector', 'uml.RoleBinding': 'Role binding', 'uml.CommentLink': 'Comment link' };
+// a kind outside the view's own (a dependency, a usage the view lists) named as the class view and the PDF name it, "Line" only for one
+// the class view has no word for (audit 23)
+const csLineWord = t => CS_LINE_WORD[t] || (Object.hasOwn(LINE_WORDS, t) ? LINE_WORDS[t][0] : 'Line');
 // a line's drawn text: its «stereotypes», then its label (a comment link has none)
 const csLineText = e => (e.type === 'uml.CommentLink' ? '' : [...csStereo(e).map(t => `«${t}»`), e.label].filter(CS_HAS).join(' '));
 const csLineName = (P, { e, f, t }) => e.type === 'uml.RoleBinding' ? `Role binding from ${csEndName(P, f)} to ${csEndName(P, t)}${csLineText(e) ? ', as ' + csLineText(e) : ''}`
-  : `${CS_LINE_WORD[e.type] || 'Line'} from ${csEndName(P, f)} to ${csEndName(P, t)}${csLineText(e) ? ': ' + csLineText(e) : ''}`;
+  : `${csLineWord(e.type)} from ${csEndName(P, f)} to ${csEndName(P, t)}${csLineText(e) ? ': ' + csLineText(e) : ''}`;
 // the subject and its ports, each part and its ports, the collaboration uses, each open collaboration and its roles, the rest; then the lines
 function csOrder(P) {
   const out = [], part = m => { out.push(m.id); P.partPorts.get(m.id).forEach(q => out.push(csPortId(m.id, q.id))); };
@@ -238,7 +244,9 @@ function csGeo({ model, view, pos: pins, memo }) {
   // a named line inward from the subject's port has its label between the border and the parts: the box's pad makes it room (audit 5)
   const inLbl = Math.max(0, ...P.lines.filter(l => l.inner && csLineText(l.e)).map(l => Math.min(280, textW(csLineText(l.e), 10)) + 12));
   const shape = { 'uml.Component': 'component', 'uml.Collaboration': 'collaboration' };
+  // a title the author broke: its header room a line taller for each past the first, as its frame draws them (audit 23)
   const containers = [...(sBox ? [P.S] : []), ...P.collabs.map(c => c.x)].map(x => ({ id: x.id, label: csName(x), title: [...csStereo(x).map(t => `«${t}»`), csName(x)].join(' '),
+    ...(brLines(csName(x)).length > 1 ? { head: (brLines(csName(x)).length - 1) * 16 } : {}),
     nodeIds: x === P.S ? blocks[0][0] : P.collabs.find(c => c.x === x).roles.map(m => m.id), shape: shape[x.type] || 'subject', aria: csNodeName(P, x.id),
     ...(x === P.S && portsWithLines ? { pad: 48 + (inLbl && inLbl + 24) } : {}), ...(x.type === 'uml.Collaboration' ? { round: true } : {}) }));
   // labelGaps (§8, decision 9): the role names on role bindings, which span the subject's columns, else find no spot
@@ -248,7 +256,8 @@ function csGeo({ model, view, pos: pins, memo }) {
   const out = portsDrawn(g, ports), byId = out.byId; // a copy: what layoutTyped returned is never edited (§2.4)
   // the slots (src/typed/edit.js): one at each node and box, so the palette's add hears what is selected (state.js's)
   const slots = [...out.nodes, ...CS_ARR(out.families)].map(n => ({ after: n.id, parent: null, x: n.x + n.w / 2, y: n.y + n.h / 2 }));
-  return { ...out, slots, legend: csLegend(P.lines), order: csOrder(P).filter(id => Object.hasOwn(byId, id) || CS_ARR(out.families).some(f => f.id === id) || out.edges.some(e => e.id === id)) };
+  // the legend: this view's kinds, then each kind drawn as the class view draws it (a dependency, a usage), keyed as its legend keys it (audit 23)
+  return { ...out, slots, legend: [...csLegend(P.lines), ...legendOf(out.edges.filter(e => !CS_LOOK[e.type]))], order: csOrder(P).filter(id => Object.hasOwn(byId, id) || CS_ARR(out.families).some(f => f.id === id) || out.edges.some(e => e.id === id)) };
 }
 
 /* ---- validators (§10.2). Each problem: { level, rule, path, message, ids }; the shared port-owner and manifest-ends too ---- */

@@ -295,3 +295,33 @@ test('the shapes and helpers ship in lib/umlimator-all.js only (risks.md C5)', (
   const all = readFileSync(new URL('../lib/umlimator-all.js', import.meta.url), 'utf8'), core = readFileSync(new URL('../lib/umlimator.js', import.meta.url), 'utf8');
   for (const k of ['function portsDrawn(', 'function portSides(', 'SHAPE.ball = {', 'function structProblems(']) { assert.ok(all.includes(k), k); assert.ok(!core.includes(k), k); }
 });
+
+// audit 23: a line break in a name (a Mermaid <br>, F2's Shift+Enter) starts a new line on every structural shape, as the classifier
+// card's has since audit 22: a package open and closed, a profile's box, a component card and box, an artifact, a cube node card and
+// box, a composite part, the subject and a port's name. Never one <text> holding the break, which SVG draws as a space; a box's
+// header room grows for the lines and the layout check finds nothing in the way
+test('a line break in a structural name is drawn as a new line, the shape grown to hold it (audit 23)', async () => {
+  await import('../src/map/typed.js');
+  for (const f of ['class', 'package', 'component', 'deployment', 'profile', 'composite']) await import(`../src/uml/${f}.js`);
+  const { layout, check } = await import('../src/map/api.js'), { svgOf } = await import('../src/draw/svg.js');
+  const NL = String.fromCharCode(10), B = s => s.replace(' ', NL);
+  const texts = s => [...s.matchAll(/<(text|tspan)(?:[^>"]|"[^"]*")*>([^<]*)<\/\1>/g)].map(x => x[2]);
+  const cases = [
+    ['uml.class', [{ id: 'P', type: 'uml.Package', label: B('Sales Core') }, { id: 'Q', type: 'uml.Package', label: B('Closed Pkg') }, { id: 'A', type: 'uml.Class', label: B('Order Line'), parent: 'P' }], ['Sales', 'Core', 'Closed', 'Pkg']],
+    ['uml.component', [{ id: 'P', type: 'uml.Component', label: B('Shop Front') }, { id: 'A', type: 'uml.Component', label: B('Cart Svc'), parent: 'P' }, { id: 'J', type: 'uml.Artifact', label: B('shop .jar') }], ['Shop', 'Front', 'Cart', 'Svc', 'shop', '.jar']],
+    ['uml.deployment', [{ id: 'P', type: 'uml.Node', label: B('App Server') }, { id: 'A', type: 'uml.Artifact', label: B('shop .war'), parent: 'P' }, { id: 'X', type: 'uml.Device', label: B('Edge Box') }], ['App', 'Server', 'shop', '.war', 'Edge', 'Box']],
+    ['uml.profile', [{ id: 'P', type: 'uml.Profile', label: B('Pro file') }, { id: 'A', type: 'uml.Stereotype', label: B('Ste reo'), parent: 'P' }], ['«profile» Pro', 'file']],
+    ['uml.composite-structure', [{ id: 'S', type: 'uml.Class', label: B('Order Service'), members: [{ id: 'S.p', type: 'uml.Port', label: B('ap i') }, { id: 'S.a', type: 'uml.Property', label: B('che ckout'), props: { valueType: 'Flow' } }] }], ['Order', 'Service', 'che', 'ckout : Flow', 'ap', 'i']],
+  ];
+  for (const [d, nodes, want] of cases) {
+    const m = { schemaVersion: 2, nodes, edges: [], views: [{ id: 'v', diagram: d, nodeIds: nodes.map(n => n.id), ...(d === 'uml.composite-structure' ? { subject: 'S' } : {}) }] };
+    const g = layout(m, 'v'), t = texts(svgOf(g, {}));
+    assert.deepEqual(t.filter(x => /[\r\n]/.test(x)), [], `${d}: no text holds a break`);
+    want.forEach(w => assert.ok(t.includes(w), `${d}: "${w}" on a line of its own (${t.join(' | ')})`));
+    assert.deepEqual(check(m, 'v').map(x => x.message), [], `${d}: nothing in the way`);
+    (g.families || []).forEach(f => assert.ok(f.head > 0, `${d}: box ${f.id}'s header room grown`));
+    // the same model without its breaks: each closed shape taller with them (a part's 48 px holds two lines as it is)
+    const one = structuredClone(m); JSON.stringify(one, (k, v) => { if (v && typeof v.label === 'string') v.label = v.label.replace(NL, ' '); return v; });
+    const g1 = layout(one, 'v'); g.nodes.filter(n => n.shape !== 'port').forEach(n => assert.ok(n.shape === 'part' ? n.h >= g1.byId[n.id].h : n.h > g1.byId[n.id].h, `${d}: ${n.id} taller for its second line`));
+  }
+});

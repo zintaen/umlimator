@@ -524,4 +524,15 @@ test('a line break in a name is drawn as a new line in every behavioural view (a
   lines(uc, 'v', 'Store', 'clerk', 'Buy', 'books');
   const tm = { schemaVersion: 2, nodes: [{ id: 'l', type: 'uml.Lifeline', label: 'Order' + NL + 'worker', props: { states: ['idle', 'busy'] } }], edges: [], views: [{ id: 'v', diagram: 'uml.timing', nodeIds: ['l'] }] };
   lines(tm, 'v', 'Order', 'worker');
+  // audit 23: a state region's name, its room grown for the second line; an unfolded call behaviour's title, its header grown too
+  const os = JSON.parse(readFileSync(new URL('../examples/order-states.json', import.meta.url), 'utf8'));
+  os.nodes.find(n => n.id === 'fulfilling').members.find(r => r.id === 'fulfilling.parcel').label = 'Parcel' + NL + 'tracking';
+  lines(os, 'order-life', 'Parcel', 'tracking');
+  assert.ok(layout(os, 'order-life').families.find(f => f.id === 'fulfilling.parcel').head > 0, 'the region\'s room grown');
+  const fa = JSON.parse(readFileSync(new URL('../examples/fulfil-activity.json', import.meta.url), 'utf8'));
+  fa.nodes.find(n => n.id === 'call-payment').label = 'Take' + NL + 'payment';
+  const ga = layout(fa, 'fulfil', { expand: ['call-payment'] }), ta = texts(svgOf(ga));
+  assert.deepEqual(ta.filter(x => BR.test(x)), [], 'the unfolded call: no text holds a break');
+  ['Take', 'payment'].forEach(w => assert.ok(ta.includes(w), `the unfolded call: "${w}" on a line of its own`));
+  assert.ok(ga.families.find(f => f.id === 'call-payment').head > 0, 'the unfolded call\'s header grown');
 });
