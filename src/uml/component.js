@@ -5,7 +5,7 @@ import { rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { lineRename, memberEdit, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, ownersOn, placeTabs, readingOrder } from './owners.js';
-import { SN_ARTIFACTS, SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, snKindWord, structProblems } from './structure.js';
+import { SN_ARTIFACTS, SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, snKindName, snKindWord, structProblems } from './structure.js';
 
 /* ---------- the component diagram, uml.component (work package 5.4, notes/stage-5.md §10.1) ----------
    Components (src/uml/structure.js's look), a component or package that holds something shown a box (src/uml/owners.js),
@@ -98,7 +98,7 @@ function cpNodeName(model, view, pic, id, bare) { // bare: a port without " of <
   if (x.type === 'uml.Interface') return SN_SAY.iface(pic.name(id), { ball: cpBall(I, view, id), stereotypes: st, providers: owners('uml.InterfaceRealization'), requirers: owners('uml.Usage') });
   if (x.type === 'uml.Artifact') return SN_SAY.artifact(pic.name(id), { stereotypes: st, manifests: of('uml.Manifestation').filter(l => l.e.from === id).map(l => cpEnd(pic, l.e.to)) });
   if (x.type === 'uml.Comment') return 'Comment: ' + cpName(x);
-  return `${x.type === 'uml.Package' ? 'Package' : String(x.type).split('.').pop()} ${pic.name(id)}${st.length ? ` (${st.join(', ')})` : ''}`;
+  return `${snKindName(x.type)} ${pic.name(id)}${st.length ? ` (${st.join(', ')})` : ''}`;
 }
 const cpLabel = (l, said) => [CP_LOOK[l.kind][1], ...cpStereo(l.e).map(t => `«${t}»`), said ? null : l.e.label].filter(CP_HAS).join(' ');
 // "Delegation from orders of Shop API to orders of Checkout"

@@ -4,7 +4,7 @@ import { esc, fit } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
 import './class.js'; // SHAPE.classifier and SHAPE.note
-import './structure.js'; // SHAPE.component
+import { snKindName } from './structure.js'; // SHAPE.component too
 import './usecase.js'; // SHAPE.actor
 
 /* ---------- the information flow diagram, uml.information-flow (work package M2.5, notes/milestone-2.md §7.4) ----------
@@ -30,6 +30,8 @@ const IF_LINES = ['uml.InformationFlow', 'uml.CommentLink'];
 const IF_WORD = { 'uml.Class': 'Class', 'uml.Interface': 'Interface', 'uml.Component': 'Component', 'uml.Actor': 'Actor', 'uml.InformationItem': 'Information item', 'uml.Comment': 'Comment',
   'uml.Signal': 'Signal' };
 const ifWord = t => (Object.hasOwn(IF_WORD, t) ? IF_WORD[t] : String(t ?? 'untyped').split('.').pop());
+// an accessible name's kind: another kind in words, "Data type Money", as the class view and the PDF say it (audit 23)
+const ifKindName = t => (Object.hasOwn(IF_WORD, t) || t == null ? ifWord(t) : snKindName(t));
 // the keyword over a classifier's name: an interface's, a signal's, and any other kind a view shows its own («useCase»), so none passes for a class
 const IF_KEY = { 'uml.Class': null, 'uml.InformationItem': null, 'uml.PrimitiveType': 'primitive' };
 const ifKey = t => (Object.hasOwn(IF_KEY, t) ? IF_KEY[t] : String(t ?? '').split('.').pop().replace(/^./, c => c.toLowerCase()) || null);
@@ -70,12 +72,12 @@ const ifShown = (I, view) => [...new Set(IF_ARR(view && view.nodeIds))].filter(i
    conveys Order and Card details" ---- */
 function ifNodeName(I, n) {
   if (n.type === 'uml.Comment') return 'Comment: ' + ifName(n);
-  const st = ifStereo(n), w = ifWord(n.type), k = I.flowsOf(n.id).length;
+  const st = ifStereo(n), w = ifKindName(n.type), k = I.flowsOf(n.id).length;
   return `${w} ${ifName(n)}${st.length ? ` (${st.join(', ')})` : ''}${k ? `, conveyed by ${ifPlural(k, 'flow')}` : ''}`;
 }
 function ifLineName(I, e) {
   const ends = `from ${I.nm(e.from)} to ${I.nm(e.to)}`;
-  if (e.type === 'uml.CommentLink') return `Comment link ${ends}`;
+  if (e.type === 'uml.CommentLink') return `Comment link ${IF_HAS(e.label) ? e.label + ' ' : ''}${ends}`; // its label as drawn (audit 23)
   if (e.type !== 'uml.InformationFlow') return `Line ${ends}`;
   const c = I.conveyed(e).map(I.nm);
   return `Information flow${IF_HAS(e.label) ? ' ' + e.label : ''} ${ends}${c.length ? ', conveys ' + ifAnd(c) : ''}`;

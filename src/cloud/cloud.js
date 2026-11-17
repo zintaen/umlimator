@@ -1,8 +1,9 @@
 import { registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW, wrap2 } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
+import { brLines } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
-import { ownersOn, readingOrder } from '../uml/owners.js';
+import { boxHead, ownersOn, readingOrder } from '../uml/owners.js';
 
 /* ---------- the cloud architecture family: aws, gcp and azure (work package 4a.6, notes/milestone-4a.md §5) ----------
    Groups (a project, a region, a VPC, a subnet…) as stage 2's boxes, nested by parent to any depth as the deployment type
@@ -60,7 +61,8 @@ const clGiven = (F, D) => CL_OBJ(D && D.icons) && Object.keys(D.icons).some(k =>
 
 /* ---- the service card (§5.2): the icon on its tile, the label (13 px, two lines of 180 px), the full name under it ---- */
 const CLD = { pad: 12, icon: 32, gap: 10, label: 13, llh: 16, name: 11, nlh: 14, text: 180, minW: 180, maxW: 280, minH: 56 }, CL_TILE = CLD.icon * 34 / 28; // svgOf's tile rule
-const clWrap = (s, px) => { s = String(s ?? ''); return textW(s, px) <= CLD.text ? [s] : wrap2(s, px, CLD.text) || [fit(s, px, CLD.text, true)]; };
+// a text the author broke (a Mermaid <br>): a line each where they broke it, never one line with a space (audit 23)
+const clWrap = (s, px) => { s = String(s ?? ''); const ls = brLines(s); return ls.length > 1 ? ls : textW(s, px) <= CLD.text ? [s] : wrap2(s, px, CLD.text) || [fit(s, px, CLD.text, true)]; };
 const clText = (x, y, t, px, wt, fill, cls, more = '', anchor = 'start') => `<text x="${r2(x)}" y="${r2(y)}"${anchor === 'start' ? '' : ` text-anchor="${anchor}"`} class="${cls}"${more} fill="${fill}" style="font:${wt} ${px}px var(--um-sans)">${esc(t)}</text>`;
 function clParts(n) {
   const label = clWrap(n.label, CLD.label), name = CL_HAS(n.name) && n.name !== n.label ? clWrap(n.name, CLD.name) : [], left = CLD.pad + CL_TILE + CLD.gap;
@@ -83,16 +85,18 @@ SHAPE['cloud-card'] = {
     return clNodeG(n, 'cloud-card', `<path d="${o}" class="n-mask"/><path d="${o}" class="n-body" fill="var(--um-stage-bg)" stroke="var(--um-muted)"/>${mark}<g class="c-head">${t.join('')}</g>`);
   },
 };
-// a group (§5.3): open, stage 2's box titled "<label> [<kind>]", dashed by kind; closed (holding nothing shown), a card of that title
+// a group (§5.3): open, stage 2's box titled "<label> [<kind>]", dashed by kind; closed (holding nothing shown), a card of that title.
+// A title the author broke: a line each, 16 px apart, the card taller and the box's header room grown for them (titleLh, audit 23)
 const clDash = d => (d ? ' stroke-dasharray="6 4"' : '');
 SHAPE['cloud-group'] = {
-  size: n => ({ w: Math.ceil(Math.min(CLD.maxW, Math.max(120, textW(n.title, 12) + 24))), h: 44 }),
+  size: n => { const ls = brLines(n.title); return { w: Math.ceil(Math.min(CLD.maxW, Math.max(120, ...ls.map(l => textW(l, 12) + 24)))), h: 44 + (ls.length - 1) * 16 }; },
   out: SHAPE.box.out, face: SHAPE.box.face, inset: SHAPE.box.inset,
   draw: n => { const o = SHAPE.box.out(n);
     return clNodeG(n, 'cloud-group', `<path d="${o}" class="n-mask"/><path d="${o}" class="n-body" fill="var(--um-stage-bg)" stroke="var(--um-muted)"${clDash(n.dashed)}/>`
-      + `<g class="c-head">${clText(n.x + n.w / 2, n.y + n.h / 2 + 4, fit(n.title, 12, n.w - 24), 12, 600, 'var(--um-text)', 'c-name', ` data-o="${esc(n.id)}"`, 'middle')}</g>`); },
+      + `<g class="c-head">${brLines(n.title).map((l, i, a) => clText(n.x + n.w / 2, n.y + n.h / 2 + 4 + (i - (a.length - 1) / 2) * 16, fit(l, 12, n.w - 24), 12, 600, 'var(--um-text)', 'c-name', ` data-o="${esc(n.id)}"`, 'middle')).join('')}</g>`); },
   frame: f => `<rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="6" fill="none" stroke="var(--um-muted)"${clDash(f.dashed)}/>`
-    + `<text class="family-title" x="${r2(f.x + 12)}" y="${r2(f.y + 18)}" fill="var(--um-text)" style="font:600 12px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(f.title ?? f.label ?? f.id, 12, f.w - 24))}</text>`,
+    + brLines(f.title ?? f.label ?? f.id).map((l, i) => `<text class="family-title" x="${r2(f.x + 12)}" y="${r2(f.y + 18 + i * 16)}" fill="var(--um-text)" style="font:600 12px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(l, 12, f.w - 24))}</text>`).join(''),
+  titleLh: 16,
 };
 // a user (gcp.User): the map's person, no icon, its name under the head
 SHAPE['cloud-user'] = {
@@ -121,7 +125,7 @@ function clOwnLines(F, model, I) {
 // the view's boxes: each open group, titled with its kind (decision 10), dashed by kind
 function clPic(F, model, view) {
   const pic = ownersOn(model, view, { boxTypes: [F.group], qualify: false, shape: () => 'cloud-group', word: x => clWord(F, x) });
-  return { ...pic, boxes: pic.boxes.map(b => { const x = pic.at.get(b.id); return { ...b, title: `${clName(x)} [${clKindWord(F, x)}]`, dashed: CL_DASHED.includes(clKindOf(F, x)) }; }) };
+  return { ...pic, boxes: pic.boxes.map(b => { const x = pic.at.get(b.id); return { ...boxHead({ ...b, title: `${clName(x)} [${clKindWord(F, x)}]` }), dashed: CL_DASHED.includes(clKindOf(F, x)) }; }) };
 }
 // the lines drawn: those of the family's kind the view lists, or with no list the model's of that kind, between two elements it
 // shows (a listed line of another kind is left out, as with no list: audit 23); one between a group and what it holds, or from a

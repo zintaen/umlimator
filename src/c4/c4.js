@@ -4,7 +4,8 @@ import { SHAPE, portsOn, r2, sidePorts } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
 import '../uml/class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from '../uml/flow.js';
-import { ownersOn, readingOrder } from '../uml/owners.js';
+import { boxHead, ownersOn, readingOrder } from '../uml/owners.js';
+import { brLines } from '../typed/draw.js';
 
 /* ---------- C4's elements and static views, c4.landscape, c4.context, c4.container, c4.component (work package M2.6,
    notes/milestone-2.md §5.1, §5.2, §6.1, §6.5, §7.5, §7.5.1) ----------
@@ -66,9 +67,10 @@ const C4_EL = {
 };
 C4_EL.ports = (n, side, k = 1) => portsOn(C4_EL, n, side, k);
 SHAPE.c4 = C4_EL;
-// a boundary (§7.5.1): a dashed box titled "<name> [Software System]", as C4 draws it
-SHAPE['c4-boundary'] = { frame: f => `<rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="6" fill="none" stroke="var(--um-muted)" stroke-dasharray="6 4"/>`
-  + `<text class="family-title" x="${r2(f.x + 12)}" y="${r2(f.y + 18)}" fill="var(--um-text)" style="font:600 12px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(f.title ?? f.label ?? f.id, 12, f.w - 24))}</text>` };
+// a boundary (§7.5.1): a dashed box titled "<name> [Software System]", as C4 draws it; a name the author broke a line each, 16 px
+// apart, in the header room its head grew (titleLh: src/uml/owners.js, audit 23)
+SHAPE['c4-boundary'] = { titleLh: 16, frame: f => `<rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="6" fill="none" stroke="var(--um-muted)" stroke-dasharray="6 4"/>`
+  + brLines(f.title ?? f.label ?? f.id).map((l, i) => `<text class="family-title" x="${r2(f.x + 12)}" y="${r2(f.y + 18 + i * 16)}" fill="var(--um-text)" style="font:600 12px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(l, 12, f.w - 24))}</text>`).join('') };
 
 /* ---- the model read: elements by id, their owners, relationships ---- */
 function c4Index(model) {
@@ -85,7 +87,7 @@ function c4Pic(model, view) {
   const pic = ownersOn(model, view, C4_LOOK), I = c4Index(model);
   const boxes = pic.boxes.map(b => { const x = pic.at.get(b.id), held = pic.holds(b.id).map(id => pic.at.get(id)), k = new Map();
     held.forEach(y => { const w = c4Word(y).toLowerCase(); k.set(w, (k.get(w) || 0) + 1); });
-    return { ...b, title: `${c4Name(x)} [${C4_TAG[x.type]}]`, aria: `${c4Word(x)} ${c4Name(x)}, a boundary holding ${[...k].map(([w, c]) => c4Plural(c, w)).join(', ') || 'nothing'}` }; });
+    return { ...boxHead({ ...b, title: `${c4Name(x)} [${C4_TAG[x.type]}]` }), aria: `${c4Word(x)} ${c4Name(x)}, a boundary holding ${[...k].map(([w, c]) => c4Plural(c, w)).join(', ') || 'nothing'}` }; });
   return { ...pic, I, boxes };
 }
 
@@ -145,8 +147,10 @@ function c4Legend(nodes, edges, says = 'uses, with its technology in brackets') 
   return [...els.map(n => item(`${n.ext ? 'External ' + c4Word(n).toLowerCase() : c4Word(n)}${n.sh !== 'box' && !(n.sh === 'person' && n.type === 'c4.Person') ? ', ' + n.sh : ''}`,
     n.ext ? 'outside the system, drawn grey' : `a ${c4Word(n).toLowerCase()}`, swatch(n))),
   ...(edges.some(e => e.type === 'c4.Relationship' && !e.implied) ? [item('Relationship', says, line(false))] : []),
-  ...(edges.some(e => e.implied) ? [item('Implied relationship', 'stands for relationships between what the two hold', line(true))] : [])];
+  ...(edges.some(e => e.implied) ? [item('Implied relationship', 'stands for relationships between what the two hold', line(true))] : []),
+  ...(edges.some(e => e.type === 'uml.CommentLink') ? [item('Comment link', 'what a comment is about', C4_NOTE_LINE)] : [])]; // dashed, no head: never the implied line (audit 23)
 }
+const C4_NOTE_LINE = '<path d="M2 8H26" stroke="var(--um-muted)" stroke-width="1.4" stroke-dasharray="3 2" fill="none"/>';
 
 /* ---- the view laid out (§7.5, §11) ---- */
 function c4Geo({ model, view, pos, memo }) {
@@ -320,4 +324,4 @@ const C4_DEF = {
 };
 const C4_TYPES = Object.keys(C4_KIND).map(name => registerDiagramType(name, C4_DEF));
 
-export { C4_TYPES, C4_DEF, C4_RULES, C4_WORD, C4_SHAPES, c4Index, c4Pic, c4Lift, c4Lines, c4Geo, c4Problems, c4Describe, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Zoom, c4Key, c4Add, c4Owners, c4Rename };
+export { C4_NOTE_LINE, C4_TYPES, C4_DEF, C4_RULES, C4_WORD, C4_SHAPES, c4Index, c4Pic, c4Lift, c4Lines, c4Geo, c4Problems, c4Describe, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Zoom, c4Key, c4Add, c4Owners, c4Rename };
