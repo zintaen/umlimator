@@ -31,7 +31,7 @@ SLOW = {"bookshop-c4": 18, "buy-book-overview": 16, "checkout-sequence": 14, "sa
 part = shards.Parts(__file__, {
     "the summary's text and the icon cache": 3, "diff and drift": 13, "trace": 15, "timelapse": 10, "stills file names": 34,
     "odd input": "stills file names", "stills keys": "stills file names",  # they read the folder of pages the first writes
-    "audits 8 to 18": 16, "audits 19 and 20": 28, "audits 19 to 21": 27, "diff Action 2.6": 6, "diff Action stage 4": 26,
+    "audits 8 to 18": 16, "audits 19 and 20": 28, "audits 19 to 21": 27, "audit 25 diff": 4, "diff Action 2.6": 6, "diff Action stage 4": 26,
     "diff Action stage 5": 10, "diff Action stage 6": 7, "diff Action package": 14, "diff Action milestone 2": 32, "diff Action milestone 3": 14,
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
@@ -839,6 +839,43 @@ with tempfile.TemporaryDirectory() as tmp:
         ok("render, import, trace, stills, diff --base · an --out that cannot be written is said in one line, never a traceback (audit 21)",
            all(x.returncode == 1 and "Traceback" not in x.stderr and re.search(r"cannot (write|make the folder) .*\((a folder on its path is a file|Permission denied)\)", x.stderr) for x in runs),
            [x.stderr[-200:] for x in runs])
+
+    if part("audit 25 diff"):
+        nocr = lambda g, *x: subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                                             "sys.argv = ['umlimator.py', 'diff', *sys.argv[2:]]; u.main()", str(ROOT), *x], cwd=g, capture_output=True, text=True)
+        lab = lambda x: json.dumps(two | {"nodes": [two["nodes"][0] | {"label": x}, two["nodes"][1]]})
+        # audit 25: a model in a dot folder got a page and stills folder whose names start with a dot, which the Action's
+        # artifact (upload-artifact, hidden files left out) dropped
+        g = t / "g25d"; (g / ".architecture").mkdir(parents=True)
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
+        (g / ".architecture" / "map.json").write_text(lab("old-one")); sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "one")
+        (g / ".architecture" / "map.json").write_text(lab("NEW-ONE"))
+        r = nocr(g, "--base", "HEAD", "--out", "out")
+        got = json.loads(r.stdout or "[]")
+        names = sorted(x.name for x in (g / "out").iterdir()) if (g / "out").is_dir() else []
+        action = (ROOT / "action.yml").read_text(encoding="utf-8")  # the upload step, up to the next step
+        up = re.search(r"^\s+include-hidden-files: true\b", action.partition("uses: actions/upload-artifact@")[2].partition("- id:")[0], re.M)
+        ok("diff --base · a model in a dot folder gets a page whose name starts with no dot, and the Action's artifact takes hidden names too (audit 25)",
+           [x["file"] for x in got] == [".architecture/map.json"] and names and not any(n.startswith(".") for n in names)
+           and "NEW-ONE" in (g / "out" / "%2Earchitecture-map.html").read_text(encoding="utf-8") and up, (names, got, r.stderr[-300:]))
+        # audit 25: a model moved with a plain mv, not yet added, was said as every card removed and every card added; and the
+        # user's index is never written to find the move
+        g = t / "g25m"; (g / "docs").mkdir(parents=True)
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
+        (g / "map.json").write_text(lab("old-one")); (g / "keep.json").write_text(lab("keep")); sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "one")
+        (g / "map.json").rename(g / "docs" / "m*[1] :x.json")  # a name that, read as a pathspec, would match or mean something else
+        status = sh("status", "--porcelain", "-z", "--", ".", ":!out*").stdout
+        r = nocr(g, "--base", "HEAD", "--out", "out")
+        md = (g / "out" / "summary.md").read_text(encoding="utf-8") if (g / "out" / "summary.md").is_file() else ""
+        ok("diff --base · a model moved with a plain mv, not added, is no change: no entry, no page; the index is as it was (audit 25)",
+           r.returncode == 0 and json.loads(r.stdout or "null") == [] and "No map model changed." in md and not list((g / "out").glob("*.html"))
+           and sh("status", "--porcelain", "-z", "--", ".", ":!out*").stdout == status, (r.stdout, r.stderr[-300:], md))
+        (g / "docs" / "m*[1] :x.json").write_text(lab("NEW-ONE")); (g / "new.json").write_text(lab("brand new"))
+        r = nocr(g, "--base", "HEAD", "--out", "out2")
+        got = json.loads(r.stdout or "[]")
+        ok("diff --base · a model moved with a plain mv and edited is one entry naming where it moved from; a new model is still new (audit 25)",
+           [(x["file"], x.get("movedFrom")) for x in got] == [("docs/m*[1] :x.json", "map.json"), ("new.json", None)] and len(got[0]["summary"]) == 1
+           and "NEW-ONE" in got[0]["summary"][0] and all("removes" not in y for x in got for y in x["summary"]) and sh("status", "--porcelain", "-z", "--", ".", ":!out*").stdout != status, (got, r.stderr[-300:]))
 
     if part("diff Action 2.6"):
         # the diff Action's step as CI runs it (C10, 2.6): a pull request's merge commit against its first parent, the pathspec

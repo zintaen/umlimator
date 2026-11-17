@@ -236,7 +236,7 @@ test('the readers\' construct files read into models their types\' validate pass
     // is identifying with its many end first: the type names it (identifying-parent), as Mermaid draws it without a word
     'er.mmd': [29, ['er'], { 'warning pk-exists': 25, 'warning fk-flag': 2, 'warning relationship-fk': 20, 'error identifying-parent': 1 }],
     // the shapes page's nodes stand alone: no start reaches them
-    'flowchart.mmd': [61, ['flowchart'], { 'warning start-end': 1, 'warning reachable': 101, 'warning terminator-flows': 4, 'warning decision-exits': 2 }],
+    'flowchart.mmd': [62, ['flowchart'], { 'warning start-end': 1, 'warning reachable': 101, 'warning terminator-flows': 4, 'warning decision-exits': 2 }],
     'structurizr.json clinic': [6, ['c4.context', 'c4.container', 'c4.component'], {}],
     // a dynamic view's one step with an end that view does not show (a component), not drawn; its implied steps are kept
     // between the containers it shows and drawn (audit 17)

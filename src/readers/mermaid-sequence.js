@@ -1,5 +1,5 @@
 import { unreadable } from '../core/model.js';
-import { mermaidTitle, mermaidClip } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip } from './mermaid-front.js';
 /* ---------- Mermaid sequenceDiagram: a reader and a writer (notes/stage-3.md §8, S10; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's sequence diagram page (docs/syntax/sequenceDiagram.md, read 12 Nov 2026), as the class
    reader is against its class page. Internal: the CLI (`umlimator.py import`) imports this file through Node; a host
@@ -178,9 +178,10 @@ function readMermaidSequence(text) {
       if (!l.trim() || l.trim().startsWith('#') || /^\s/.test(l)) continue;
       const c = l.indexOf(':'), key = (c < 0 ? l : l.slice(0, c)).trim(), val = c < 0 ? '' : l.slice(c + 1).trim();
       if (key === 'title') {
-        const ft = mermaidTitle(val); // a comment after it is not the title (audit 24)
+        const ft = mermaidFrontTitle(lines, j); // a comment after it is not the title (audit 24); over its lines (audit 25)
         title = ft.title;
         if (ft.rest) say(j + 1, 'skipped', `front matter title: ${ft.rest}, after the quoted title, is not read`);
+        j = ft.end;
       } else say(j + 1, 'skipped', `front matter ${key}: Mermaid's configuration is not read`);
     }
     if (j >= lines.length) { say(i + 1, 'skipped', 'the front matter is never closed with ---: nothing read'); return empty(); }

@@ -6,7 +6,14 @@
    mermaidTitle(val) -> { title, rest }: val is the text after `title:`, trimmed. title is the value; rest is what a
    line holds after a closed quote that is no comment (the caller says it is not read), cut to 60 letters, or null. A
    plain value ends at its comment. A double-quoted value is read as JSON reads it, which covers YAML's common escapes;
-   one JSON does not read keeps its text between the quotes. A quote never closed on its line is read to the line's end. */
+   one JSON does not read keeps its text between the quotes. A quote never closed on its line is read to the line's end.
+
+   mermaidFrontTitle(lines, j) -> { title, rest, end }: the title whose key is on lines[j], read over the lines that
+   carry it as js-yaml reads them (audit 25), and end, the last of them. A block scalar (`title: >`, `title: |-`, with
+   an indentation digit or not) holds the more-indented lines under it: | keeps their line breaks, > folds them with
+   spaces, as YAML folds (a blank line, or a more-indented line, keeps its break). A plain or quoted value goes on over
+   the indented lines after it, each joined with one space (a blank line with a line break). Line breaks at the start
+   and end of the title are dropped, whatever the chomping indicator says, as a title is drawn on its own. */
 function mermaidTitle(val) {
   const q = val[0];
   if (q !== '"' && q !== "'") return { title: val.replace(/(^|\s)#.*$/s, '').trim(), rest: null };
@@ -22,10 +29,45 @@ function mermaidTitle(val) {
   return { title, rest: after && !after.startsWith('#') ? mermaidClip(after) : null };
 }
 
+function mermaidFrontTitle(lines, j) {
+  const l = lines[j], val = l.slice(l.indexOf(':') + 1).trim();
+  const more = k => k < lines.length && lines[k].trim() !== '---' && (!lines[k].trim() || /^\s/.test(lines[k]));
+  let end = j;
+  while (more(end + 1)) end++;
+  while (end > j && !lines[end].trim()) end--; // blank lines after the value are not its own
+  const body = lines.slice(j + 1, end + 1), block = /^([|>])(?:[1-9][+-]?|[+-][1-9]?)?(?:\s+#.*)?$/.exec(val);
+  if (block) {
+    const digit = /\d/.exec(val), first = body.find(x => x.trim());
+    const base = digit ? +digit[0] : first ? first.length - first.trimStart().length : 0;
+    let out = '', prev = null, blanks = 0;
+    for (let k = 0; k < body.length; k++) {
+      const x = body[k];
+      if (!x.trim()) { blanks++; continue; }
+      if (x.length - x.trimStart().length < base) { end = j + k; break; } // less indented: the block ends (YAML refuses what follows)
+      const t = x.slice(base), wide = /^\s/.test(t);
+      if (prev === null) out = '\n'.repeat(blanks) + t;
+      else if (block[1] === '>' && prev && !wide) out += blanks ? '\n'.repeat(blanks) + t : ' ' + t;
+      else out += '\n'.repeat(blanks + 1) + t;
+      prev = !wide; blanks = 0;
+    }
+    return { title: out.replace(/^\n+|\n+$/g, ''), rest: null, end };
+  }
+  let parts = [val], held = !!val, nl = false; // held: a word read so far; nl: a blank line since the last
+  for (const x of body) { // in parts, joined once: a title over many lines is read in linear time (hostile input, R2)
+    const y = x.trim();
+    if (!y) { parts.push('\n'); nl = true; continue; }
+    if (!held) parts = []; // what came before held no word: the title starts here
+    parts.push(nl || !held ? y : ` ${y}`);
+    held = true; nl = false;
+  }
+  const ft = mermaidTitle(parts.join(''));
+  return { title: ft.title.replace(/^\n+|\n+$/g, ''), rest: ft.rest, end };
+}
+
 // s cut to its first n UTF-16 units, one less where the cut would fall between the two halves of an astral letter, so
 // an id or a report never ends in a lone surrogate, which no UTF-8 file, SVG or XML holds
 const mermaidCut = (s, n) => (s.length > n && /[\uD800-\uDBFF]/.test(s[n - 1]) ? s.slice(0, n - 1) : s.slice(0, n));
 // a report's quote of the source: up to 60, else its first 57 and ...
 const mermaidClip = s => (s.length > 60 ? mermaidCut(s, 57) + '...' : s);
 
-export { mermaidTitle, mermaidCut, mermaidClip };
+export { mermaidTitle, mermaidFrontTitle, mermaidCut, mermaidClip };

@@ -452,7 +452,14 @@ WAITING = """<!doctype html><meta charset="utf-8"><meta name="umlimator-map" con
 <body style="font: 15px/1.5 system-ui, sans-serif; margin: 3em auto; max-width: 46em; padding: 0 1em">
 <h1 style="font-size: 1.3em">The model does not render yet</h1><pre style="white-space: pre-wrap">__WHY__</pre>
 <p>This page draws the map once a version of the model renders.</p>
-<script>new EventSource('/events?token=__TOKEN__').onmessage = e => { if (JSON.parse(e.data).model) location.reload(); };</script>
+<script>
+const MAP = '__MAP__', es = new EventSource('/events?map=__MAP__&token=__TOKEN__');
+es.onmessage = e => { if (JSON.parse(e.data).model) location.reload(); };
+// refused: this map's server ran again, with a new TOKEN, so the page reloads and takes it; or another map's server has the
+// port (audit 25: the page stopped listening for good, as the map page did before round 24)
+es.onerror = () => { if (es.readyState === EventSource.CLOSED) fetch('/', { cache: 'no-store' }).then(r => r.text()).catch(() => '').then(t => { if (t.includes(MAP)) location.reload();
+  else document.querySelector('p').textContent = "This page's server now serves another map: this page no longer follows the assistant."; }); };
+</script>
 """
 
 

@@ -1,5 +1,5 @@
 import { unreadable } from '../core/model.js';
-import { mermaidTitle, mermaidCut, mermaidClip } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidCut, mermaidClip } from './mermaid-front.js';
 /* ---------- Mermaid mindmap: a reader and a writer (notes/milestone-4a.md §8, 4a.5; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's mindmap page (docs/syntax/mindmap.md) and its lexer and database
    (diagrams/mindmap/parser/mindmap.jison, mindmapDb.ts), read on Mermaid's repository 14 Nov 2026. Internal: the CLI
@@ -105,9 +105,10 @@ function mmrRead(text, report, say, empty) {
       if (/^\s/.test(l)) { if (top && top !== 'title' && c > 0) say(j + 1, 'skipped', `front matter ${top}.${key}: Mermaid's configuration is not read`); continue; }
       top = val ? '' : key;
       if (key === 'title') {
-        const ft = mermaidTitle(val); // a comment after it is not the title (audit 24)
+        const ft = mermaidFrontTitle(lines, j); // a comment after it is not the title (audit 24); over its lines (audit 25)
         title = ft.title;
         if (ft.rest) say(j + 1, 'skipped', `front matter title: ${ft.rest}, after the quoted title, is not read`);
+        j = ft.end;
       } else if (val) say(j + 1, 'skipped', `front matter ${key}: Mermaid's configuration is not read`);
     }
     if (j >= lines.length) { say(i + 1, 'skipped', 'the front matter is never closed with ---: nothing read'); return empty(); }

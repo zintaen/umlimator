@@ -58,6 +58,7 @@ runs:
       with:
         name: umlimator-diff
         path: ${{ runner.temp }}/umlimator-diff
+        include-hidden-files: true   # a view whose id starts with a dot has stills of hidden names (audit 25)
     - id: comment
       if: ${{ !cancelled() }}   # after a failed diff too, so the comment never goes on showing an older push's map
       shell: bash

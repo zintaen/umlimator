@@ -336,6 +336,27 @@ try:
     said = until(lambda: (chrome.eval(sid, "(document.getElementById('mcp-banner') || {}).textContent") or "").startswith("This page's server now serves another map"), 20)
     ok("mcp-session#1 · a tab outlives its server, and another map's server takes the port: the tab stays, and says so",
        taken == str(port) and said and chrome.eval(sid, "document.title").endswith("Bike share, an example"), (taken, port, said, chrome.eval(sid, "document.title")))
+
+    # audit 25: the page shown while no version renders listened with the run's TOKEN and had no onerror, so after the
+    # server ran again (a new TOKEN) its stream was refused and it never drew the map once the model rendered
+    late = work / "late.json"
+    late.write_text(json.dumps(bike)[:-40], encoding="utf-8")
+    def again():
+        global srv
+        srv.stdin.close()
+        srv.wait(timeout=30)
+        srv = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(late), "--port", str(port)], stdin=subprocess.PIPE,
+                               stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        return re.search(r"127\.0\.0\.1:(\d+)", rpc("server/discover")["result"]["instructions"]).group(1)
+    first = again()
+    tab2, sid2 = chrome.open(url + "/")
+    waits = until(lambda: chrome.eval(sid2, "document.title") == "The map does not render yet")
+    second = again()
+    time.sleep(1)  # the page's stream is refused by the new run before the model renders again
+    late.write_text(json.dumps(bike), encoding="utf-8")
+    drawn = until(lambda: tool("show_view", view="system") and (chrome.eval(sid2, "document.title") or "").endswith("Bike share, an example"), 30)
+    ok("audit 25 · the page shown while the model does not render follows its server across a restart, and draws the map once it renders",
+       first == second == str(port) and waits and drawn, (first, second, waits, chrome.eval(sid2, "document.title")))
 finally:
     chrome.quit()
     srv.stdin.close()

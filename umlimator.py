@@ -741,10 +741,27 @@ def model_of(text):
 
 
 def diff_since(a):
-    git = lambda *x: subprocess.run(["git", *x], capture_output=True, text=True)
-    # renames found (audit 24): a model only moved or renamed is its old version against its new, not one map removed and
-    # one added; an R row is its status, the old path and the new
-    changed = git("diff", "--name-status", "-z", "-M", a.base, "--", *(a.models or ["*.json"]))
+    git = lambda *x, env=None, put=None: subprocess.run(["git", *x], capture_output=True, text=True, env=env, input=put)
+    # a new model not yet added to git is a working-tree change too, named from the top as diff's are (audit 10)
+    new = git("ls-files", "-z", "--others", "--exclude-standard", "--full-name", "--", *(a.models or ["*.json"]))
+    top = Path(git("rev-parse", "--show-toplevel").stdout.strip())  # git names files from the top, wherever diff runs
+    with tempfile.TemporaryDirectory() as tmp:
+        # a model moved with a plain mv, not yet added: git pairs only the paths its index holds, so each new file goes,
+        # with intent to add, into a copy of the index, which the rename detection then reads; the user's own index is
+        # never written (audit 25). Names are passed as literal paths, never read as patterns; should git refuse the
+        # copy, the moves are found as before
+        index, env = Path(git("rev-parse", "--git-path", "index").stdout.strip()), None
+        if new.stdout.strip("\0") and index.is_file():
+            shutil.copyfile(index, Path(tmp) / "index")
+            env = {**os.environ, "GIT_INDEX_FILE": str(Path(tmp) / "index")}
+            added = git("-C", str(top), "add", "-N", "--pathspec-from-file=-", "--pathspec-file-nul",
+                        env=env, put="\0".join(f":(top,literal){x}" for x in new.stdout.split("\0") if x))
+            env = env if added.returncode == 0 else None
+        # renames found (audit 24): a model only moved or renamed is its old version against its new, not one map removed
+        # and one added; an R row is its status, the old path and the new
+        changed = git("diff", "--name-status", "-z", "-M", a.base, "--", *(a.models or ["*.json"]), env=env)
+        if changed.returncode and env:
+            env, changed = None, git("diff", "--name-status", "-z", "-M", a.base, "--", *(a.models or ["*.json"]))
     if changed.returncode:
         sys.exit(changed.stderr.strip())
     rows, moved = changed.stdout.split("\0"), {}  # moved: each new path, the old path its version at --base is read from
@@ -758,9 +775,6 @@ def diff_since(a):
         else:
             names.append(rows[i + 1])
             i += 2
-    # a new model not yet added to git is a working-tree change too, named from the top as diff's are (audit 10)
-    new = git("ls-files", "-z", "--others", "--exclude-standard", "--full-name", "--", *(a.models or ["*.json"]))
-    top = Path(git("rev-parse", "--show-toplevel").stdout.strip())  # git names files from the top, wherever diff runs
     out = Path(a.out)
     if out.exists() and not out.is_dir():
         sys.exit(f"diff --base: --out {out} is a file: name a folder for the pages and summary.md")
@@ -770,9 +784,11 @@ def diff_since(a):
     # a path that is itself a symbolic link never counts, even one whose target is gone (a dangling link: written through)
     inside = lambda p, folder=False: not p.is_symlink() and (q := p.parent if folder else p).exists() and (q.is_dir() or not folder) and q.resolve().is_relative_to(top.resolve()) \
         and not any(x.is_symlink() for x in [q, *q.parents] if x.is_relative_to(top) and x != top)
-    for name in filter(None, names + new.stdout.split("\0")):
+    for name in dict.fromkeys(filter(None, names + ([] if env else new.stdout.split("\0")))):  # with the copy, diff named the new ones
         was = moved.get(name, name)
-        old = subprocess.run(["git", "show", f"{a.base}:{was}"], capture_output=True)  # bytes: a file need not be UTF-8
+        # bytes: a file need not be UTF-8. cat-file, as git show reads a rev:path it cannot find as a pathspec, so a new
+        # model named a*.json was its version at --base, empty, and no JSON (audit 25)
+        old = subprocess.run(["git", "cat-file", "blob", f"{a.base}:{was}"], capture_output=True)
         # the file's name in the summary: a code span of its own, and the one it moved from
         span = lambda x: "`" + flat(x.replace("`", "'"), code=True) + "`"
         fname = span(name) + (f" (moved from {span(was)})" if was != name else "")
@@ -804,6 +820,9 @@ def diff_since(a):
         if was != name and before == after:
             continue  # only moved: nothing on the map changed, so no page and no stills (audit 24)
         stem = name.replace("/", "-")[:-5] if name.endswith(".json") else name.replace("/", "-")
+        # a model in a dot folder (.github/maps/x.json): a page and stills folder named .github-maps-x would be hidden,
+        # and the Action's artifact leaves hidden names out (audit 25); its dot written as still_names writes one
+        stem = "%2E" + stem[1:] if stem.startswith(".") else stem
         # a/b-c.json and a-b/c.json; and docs/Map.json and Docs-map.json, one file on a disk that ignores case (macOS,
         # Windows), as still_names does for view ids (audit 21)
         if stem.casefold() in stems:

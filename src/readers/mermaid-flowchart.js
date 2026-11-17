@@ -1,5 +1,5 @@
 import { unreadable } from '../core/model.js';
-import { mermaidTitle, mermaidClip } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip } from './mermaid-front.js';
 /* ---------- Mermaid flowchart: a reader and a writer (notes/milestone-2.md §8, §8.2, M2.9; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's flowchart page (docs/syntax/flowchart.md) and its shapes' names and aliases
    (rendering-elements/shapes.ts), both read on Mermaid's repository 14 Nov 2026, and ported from the map
@@ -227,9 +227,10 @@ function readMermaidFlowchart(text) {
       if (!l.trim() || l.trim().startsWith('#') || /^\s/.test(l)) continue;
       const c = l.indexOf(':'), key = (c < 0 ? l : l.slice(0, c)).trim(), val = c < 0 ? '' : l.slice(c + 1).trim();
       if (key === 'title') {
-        const ft = mermaidTitle(val); // a comment after it is not the title (audit 24)
+        const ft = mermaidFrontTitle(lines, j); // a comment after it is not the title (audit 24); over its lines (audit 25)
         title = ft.title;
         if (ft.rest) say(j + 1, 'skipped', `front matter title: ${ft.rest}, after the quoted title, is not read`);
+        j = ft.end;
       } else say(j + 1, 'skipped', `front matter ${key}: Mermaid's configuration is not read`);
     }
     if (j >= lines.length) { say(i + 1, 'skipped', 'the front matter is never closed with ---: nothing read'); return empty(); }
@@ -294,7 +295,8 @@ function readMermaidFlowchart(text) {
       const arrow = lk.arrow;
       if (arrow.startsWith('~')) { say(no, 'skipped', `${p.groups[k].map(n => n.id).join(' & ')} ~~~ ${p.groups[k + 1].map(n => n.id).join(' & ')}: an invisible link is not read`); return; }
       if (lk.id) edgeIds.add(lk.id);
-      const label = lk.pipe !== undefined ? mfText(lk.pipe) : lk.text !== undefined ? mfText(lk.text) : undefined, head = arrow.at(-1), tail = arrow[0];
+      const md = () => say(no, 'approximated', `${p.groups[k].map(n => n.id).join(' & ')} -> ${p.groups[k + 1].map(n => n.id).join(' & ')}: a Markdown string is read as plain text`); // audit 25
+      const label = lk.pipe !== undefined ? mfText(lk.pipe, md) : lk.text !== undefined ? mfText(lk.text, md) : undefined, head = arrow.at(-1), tail = arrow[0];
       const two = '<ox'.includes(tail), how = [...(arrow.includes('.') ? ['dotted'] : []), ...(arrow.includes('=') ? ['thick'] : []), ...('>ox'.includes(head) ? [] : ['no arrowhead']),
         ...(head === 'o' || tail === 'o' ? ['a circle end'] : []), ...(head === 'x' || tail === 'x' ? ['a cross end'] : []), ...(two ? ['an arrowhead at each end'] : [])];
       for (const a of p.groups[k]) for (const b of p.groups[k + 1]) {
