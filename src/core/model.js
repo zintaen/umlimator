@@ -38,11 +38,15 @@ const BY_ID = new Set(['layout', 'nodeOverrides', 'present', 'authors', 'icons',
 // anyone else, where such a value is left out (audit 25: a shared frozen stand-in in apply()'s model took no set)
 const GONE = Object.freeze({ toString: undefined });
 /* a deep copy of a host's model: structuredClone, and when that throws (a function, a Symbol, a Proxy: audit 24) a copy
-   walked by hand, cycles and gaps kept, with a list, no recursion. Only a plain object or list is copied key by key, each
-   key written as an own one (a key named __proto__ stays a key, never the copy's prototype); any other object (a Date, a
-   Map, a Set) is structuredClone'd alone, and kept as it is when that throws too, as a function is (audit 25: they came
-   back as {}). A value that cannot be read is left out, a list's entries after it moved up one; mark: what stands in its
-   place instead (GONE, for unreadable() to find) */
+   walked by hand, cycles and gaps kept, with a list, no recursion. Each key is written as an own one (a key named __proto__
+   stays a key, never the copy's prototype). An object that is no plain object or list (a Date, a Map, a Set) is
+   structuredClone'd alone (audit 25: they came back as {}); when that throws too (a class's instance with a method, a Map
+   holding a function) it is copied by hand all the same, a Map or Set entry by entry, anything else key by key into a plain
+   object, as structuredClone copies a class's instance (audit 26: it was kept as it was, and apply() and layout() wrote into
+   the host's model). Kept as they are: what is no object (a function, a Symbol), and an object whose contents cannot be
+   read (a WeakMap, a WeakSet, a Promise). A value that cannot be read is left out, a list's entries after it moved up one;
+   mark: what stands in its place instead (GONE, for unreadable() to find) */
+const SEALED = [WeakMap, WeakSet, globalThis.WeakRef, Promise].filter(Boolean);
 const ownKey = (o, k, value) => Object.defineProperty(o, k, { value, writable: true, enumerable: true, configurable: true });
 function copyOf(model, mark) {
   try { return structuredClone(model); } catch { /* not cloneable: copied by hand below */ }
@@ -50,10 +54,15 @@ function copyOf(model, mark) {
   const take = x => { if (!obj(x)) return x; if (made.has(x)) return made.get(x); let keys, list, plain, n;
     try { list = Array.isArray(x); const p = Object.getPrototypeOf(x); plain = p === null || (list ? Array.isArray(p) : Object.getPrototypeOf(p) === null);
       keys = Object.keys(x); n = list ? x.length : 0; } catch { return NONE; } // a list's prototype is a list: Array.prototype, in any realm
-    if (!plain) { let y; try { y = structuredClone(x); } catch { y = x; } made.set(x, y); return y; }
+    if (!plain) { try { const y = structuredClone(x); made.set(x, y); return y; } catch { /* copied by hand below (audit 26) */ }
+      if (SEALED.some(C => x instanceof C)) { made.set(x, x); return x; } // a WeakMap's entries cannot be read: kept as it is
+      let es = null; try { es = x instanceof Map ? [...x] : x instanceof Set ? [...x].map(v => [v, v]) : null; } catch { return NONE; }
+      if (es) { const y = x instanceof Map ? new Map() : new Set(); made.set(x, y); todo.push([x, y, es, 'entries']); return y; }
+    } // anything else as a plain object or list is (structuredClone too makes a class's instance a plain object)
     const y = list ? new Array(n) : {}; made.set(x, y); todo.push([x, y, keys, list]); return y; };
   const out = take(model);
   while (todo.length) { const [x, y, keys, list] = todo.pop(); let off = 0;
+    if (list === 'entries') { for (const [k, v] of keys) { const a = take(k), b = take(v); if (a === NONE || b === NONE) continue; if (y instanceof Map) y.set(a, b); else y.add(a); } continue; }
     for (const k of keys) { let v; try { v = take(x[k]); } catch { v = NONE; } const at = list && index.test(k);
       if (v === NONE && !mark) { if (at) off++; continue; }
       ownKey(y, at && off ? String(+k - off) : k, v); }

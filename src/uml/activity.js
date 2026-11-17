@@ -115,7 +115,7 @@ function acNodeName(model, I, x, lines) {
   if (x.type === 'uml.Comment') return 'Comment: ' + acName(x);
   if (x.type === 'uml.ActivityPartition') return `Partition ${acName(x)}${st.length ? ` (${st.join(', ')})` : ''}, ${acPlural(I.under(x.id), 'node')}`;
   const named = !['initial', 'final', 'flow-final', 'bar'].includes(acLook(x)[0]) && AC_HAS(x.label) ? ' ' + String(x.label).trim() : '';
-  const count = { 'uml.DecisionNode': acPlural(outs, 'exit'), 'uml.MergeNode': acPlural(ins, 'entry', 'entries'), 'uml.ForkNode': acPlural(outs, 'branch', 'branches'), 'uml.JoinNode': acPlural(ins, 'branch', 'branches') }[x.type];
+  const count = { __proto__: null, 'uml.DecisionNode': acPlural(outs, 'exit'), 'uml.MergeNode': acPlural(ins, 'entry', 'entries'), 'uml.ForkNode': acPlural(outs, 'branch', 'branches'), 'uml.JoinNode': acPlural(ins, 'branch', 'branches') }[x.type];
   const opens = x.type === 'uml.CallBehaviorAction' ? `opens ${acViewName(model, x.opensView) ?? 'no view'}` : null;
   return [`${word}${named}${st.length ? ` (${st.join(', ')})` : ''}`, count, opens, lane != null ? `in ${acName(I.N.get(lane))}` : null].filter(Boolean).join(', ');
 }

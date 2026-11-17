@@ -26,13 +26,21 @@ function hostMeasure(el) { // widths in the font the host gives the map (--um-sa
   const cs = getComputedStyle(el), family = cs.getPropertyValue('--um-sans').trim() || cs.fontFamily || 'sans-serif', memo = new Map();
   return (s, px) => { const k = px + '\u0000' + s; let w = memo.get(k); if (w === undefined) { c.font = `600 ${px}px ${family}`; w = c.measureText(s).width; memo.set(k, w); } return w; };
 }
-function wrap2(s, px, max) { const w = String(s ?? '').split(' '); let best = null;
-  for (let i = 1; i < w.length; i++) { const a = w.slice(0, i).join(' '), b = w.slice(i).join(' '), m = Math.max(textW(a, px), textW(b, px)); if (!best || m < best[2]) best = [a, b, m]; }
-  if (best && Math.max(textW(best[0], px), textW(best[1], px)) > max) { let i = 1; while (i < w.length - 1 && textW(w.slice(0, i + 1).join(' '), px) <= max) i++; best = [w.slice(0, i).join(' '), w.slice(i).join(' ')]; }
-  return best ? [fit(best[0], px, max, true), fit(best[1], px, max, true)] : null; }
+/* the last i in [lo, hi] where ok(i) holds, ok true up to some i and false after it; lo - 1 when it holds for none. A text's
+   width grows as words or characters are added, so wrap2() and fit() search their cut in a few measures rather than
+   measuring every one: a card's 'what' or name of some thousands of characters froze render() for seconds (audit 26) */
+const lastOk = (lo, hi, ok) => { let r = lo - 1; while (lo <= hi) { const m = (lo + hi) >> 1; if (ok(m)) { r = m; lo = m + 1; } else hi = m - 1; } return r; };
+// a text on two lines: split at the word where the wider line is narrowest (the first such word), each line then fit to max
+function wrap2(s, px, max) { const w = String(s ?? '').split(' '), n = w.length; if (n < 2) return null;
+  const A = i => textW(w.slice(0, i).join(' '), px), B = i => textW(w.slice(i).join(' '), px), m = i => Math.max(A(i), B(i));
+  // the first line widens and the second narrows as the split moves on: the narrowest wider line is where they cross
+  const c = lastOk(1, n - 1, i => A(i) < B(i)) + 1; let i = c > n - 1 ? n - 1 : c > 1 && m(c - 1) <= m(c) ? c - 1 : c;
+  if (m(i) > max) i = Math.max(1, lastOk(2, n - 1, j => A(j) <= max)); // too wide all the same: as much on the first line as fits
+  return [fit(w.slice(0, i).join(' '), px, max, true), fit(w.slice(i).join(' '), px, max, true)]; }
 function clauseFit(s, px, max) { s = String(s ?? ''); if (textW(s, px) <= max) return s; for (const sep of ['; ', ', ', ' (']) { const q = s.split(sep); let o = q[0]; if (textW(o, px) > max) continue; for (const x of q.slice(1)) { if (textW(o + sep + x, px) > max) break; o += sep + x; } return o; } return fit(s, px, max, true); }
 function fit(s, px, max, words) { s = String(s ?? ''); if (textW(s, px) <= max) return s; // words: cut between words where it can (a card's texts)
-  let k; if (measureText) { k = s.length; while (k > 3 && textW(s.slice(0, k) + '…', px) > max) k--; } else k = Math.max(Math.floor(max / (px * 0.6)) - 1, 3);
+  let k; if (measureText) k = s.length <= 3 ? s.length : lastOk(4, s.length, j => textW(s.slice(0, j) + '…', px) <= max); // 3: none fits
+  else k = Math.max(Math.floor(max / (px * 0.6)) - 1, 3);
   if (/[\uD800-\uDBFF]/.test(s[k - 1])) k--; // never half an emoji: a lone surrogate draws as a broken glyph
   const w = words ? s.slice(0, k + 1).replace(/\S*$/, '').replace(/[\s,;:]+$/, '') : '';
   return (w || s.slice(0, k)) + '…'; }

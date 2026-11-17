@@ -537,6 +537,35 @@ test('a line break in a name is drawn as a new line in every behavioural view (a
   assert.ok(ga.families.find(f => f.id === 'call-payment').head > 0, 'the unfolded call\'s header grown');
 });
 
+// audit 26: the rows under a name too: a state's entry, exit and internal transition, a use case's extension point, a timing
+// state's row, a constraint and the unit, a line each, the row or box grown for them
+test('audit 26: a line break in a state activity, an internal transition, an extension point and a timing row, constraint or unit is a new line', async () => {
+  const { svgOf } = await import('../src/draw/svg.js');
+  for (const f of ['usecase', 'state', 'timing']) await import(`../src/uml/${f}.js`);
+  const NL = String.fromCharCode(10), BR = /[\r\n\u2028\u2029]/;
+  const texts = s => [...s.matchAll(/<(text|tspan)(?:[^>"]|"[^"]*")*>([^<]*)<\/\1>/g)].map(x => x[2]);
+  const lines = (m, ...want) => { const g = layout(m, 'v'), t = texts(svgOf(g));
+    assert.deepEqual(t.filter(x => BR.test(x)), [], `${m.views[0].diagram}: no text holds a break`);
+    want.forEach(w => assert.ok(t.includes(w), `${m.views[0].diagram}: "${w}" on a line of its own (${t.join(' | ')})`)); return g; };
+  const one = { id: 's', type: 'uml.State', label: 'S', props: { entry: 'open the till', exit: 'close the till' }, members: [{ id: 'it', type: 'uml.InternalTransition', props: { trigger: 'coin inserted', effect: 'count' } }] };
+  const two = { ...one, props: { entry: 'open' + NL + 'the till', exit: 'close' + NL + 'the till' }, members: [{ id: 'it', type: 'uml.InternalTransition', props: { trigger: 'coin' + NL + 'inserted', effect: 'count' } }] };
+  const sm = s => ({ schemaVersion: 2, nodes: [s], edges: [], views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['s'] }] });
+  const gs = lines(sm(two), 'entry / open', 'the till', 'exit / close', 'coin', 'inserted / count');
+  assert.equal(gs.byId.s.h - layout(sm(one), 'v').byId.s.h, 3 * 15, 'the compartment grows a row for each break');
+  const uc = p => ({ schemaVersion: 2, nodes: [{ id: 'u', type: 'uml.UseCase', label: 'Check out', members: [{ id: 'p', type: 'uml.ExtensionPoint', label: p }] }], edges: [], views: [{ id: 'v', diagram: 'uml.use-case', nodeIds: ['u'] }] });
+  const gu = lines(uc('payment' + NL + 'chosen'), 'payment', 'chosen');
+  assert.ok(gu.byId.u.h > layout(uc('payment chosen'), 'v').byId.u.h, 'the ellipse grows for the second line');
+  const tm = (st, lbl, unit) => ({ schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.Lifeline', label: 'worker', props: { states: [st, 'Idle'] } }], edges: [],
+    views: [{ id: 'v', diagram: 'uml.timing', nodeIds: ['A'], timeline: { unit, changes: [{ id: 'c1', lifeline: 'A', at: 0, state: st }, { id: 'c2', lifeline: 'A', at: 500, state: 'Idle' }],
+      constraints: [{ id: 'k', type: 'uml.DurationConstraint', from: 'c1', to: 'c2', label: lbl }] } }] });
+  const flat = layout(tm('Waiting for payment', '{<= 800 ms at most}', 'ms'), 'v'), gt = lines(tm('Waiting for' + NL + 'payment', '{<= 800 ms' + NL + 'at most}', 'milli' + NL + 'seconds'), 'Waiting for', 'payment', '{&lt;= 800 ms', 'at most}', 'milli', 'seconds');
+  const row = g => g.nodes.find(n => n.shape === 'tm-row' && /Waiting/.test(n.label)), mark = g => g.nodes.find(n => n.id === 'k');
+  assert.ok(row(gt).h > row(flat).h && gt.byId.A.h > flat.byId.A.h, 'the state\'s row and its lane grow for the second line');
+  assert.ok(mark(gt).h > mark(flat).h, 'the constraint\'s label box holds two lines');
+  const idle = g => g.nodes.find(n => n.shape === 'tm-row' && n.label === 'Idle');
+  assert.ok(idle(gt).y >= row(gt).y + row(gt).h, 'the next row sits below the grown one');
+});
+
 test('audit 25: Delete on a lifeline the view holds as its own says it is deleted, as it is; a model one is still removed from the view', () => {
   const m = structuredClone(SEQ), v = V(m), T = diagramOf(v);
   v.nodes = [m.nodes.splice(m.nodes.findIndex(n => n.id === 'lifeline-payments'), 1)[0]];

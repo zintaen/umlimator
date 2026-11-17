@@ -270,7 +270,7 @@ test('audit 14: an element of another kind is drawn and named as its kind, a lin
   assert.equal(n('o1').underline, true); assert.ok(!n('api').underline && !n('u').underline);
   assert.match(n('api').aria, /^Component Shop API\b/); assert.match(n('u').aria, /^Actor Shopper\b/);
   assert.deepEqual([g.edges[0].end.to, g.edges[0].aria], ['arrow', 'Line from order1 : Order to Order: «instanceOf»']);
-  const d = describe(m, 'v'); assert.match(d, /^Instance specification order1 : Order.*linked to Order/m); assert.doesNotMatch(d, /^Class Order.*linked to/m);
+  const d = describe(m, 'v'); assert.match(d, /^Instance specification order1 : Order.*depends on Order/m); assert.doesNotMatch(d, /^Class Order.*(linked to|depends on)/m); // by its verb (audit 26)
 });
 
 test('audit 21: the PDF\'s Lines row gives a link\'s label as drawn: its association\'s name when it has none, its «stereotypes» first', () => {
@@ -287,4 +287,21 @@ test('describe() says a comment link\'s label, which the object view draws (audi
     edges: [{ id: 'cl', type: 'uml.CommentLink', from: 'n', to: 'ada', label: 'checked on Friday' }], views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['ada', 'n'] }] };
   assert.ok(svgOf(layout(m, 'v')).includes('checked on Friday'));
   assert.ok(describe(m, 'v').includes('Comment: A note; about ada : Customer ("checked on Friday").'), describe(m, 'v'));
+});
+
+test('audit 26: a line of another kind an object view lists is said by its kind\'s verb, not "linked to", and the legend has its "Line"', () => {
+  const E = (id, type, from, to) => ({ id, type, from, to });
+  const m = { schemaVersion: 2, nodes: [I('a', 'a', 'A'), I('b', 'b')],
+    edges: [E('g', 'uml.Generalization', 'a', 'b'), E('s', 'uml.Association', 'b', 'a'), E('d', 'uml.Dependency', 'a', 'b'), E('u', 'uml.Usage', 'b', 'a'), E('f', 'uml.InformationFlow', 'a', 'b'), L('k', 'a', 'b')],
+    views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['a', 'b'], edges: ['g', 's', 'd', 'u', 'f', 'k'] }] };
+  const d = describe(m, 'v').split('\n');
+  assert.equal(d[1], 'Instance specification a : A; a kind of b; associated with b; depends on b; a line to b; linked to b.');
+  assert.equal(d[2], 'Instance specification b; associated with a : A; uses a : A; linked to a : A.');
+  const g = layout(m, 'v');
+  assert.deepEqual(g.legend.map(x => x.match(/<b>([^<]*)<\/b>/)[1]), ['Link', 'Line']);
+  assert.equal(g.edges.find(e => e.id === 'd').aria, 'Line from a : A to b', 'the accessible name stays "Line" (audit 14)');
+  // a view of links alone says and keys them as before
+  const only = { ...m, views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['a', 'b'], edges: ['k'] }] };
+  assert.equal(describe(only, 'v').split('\n')[1], 'Instance specification a : A; linked to b.');
+  assert.deepEqual(layout(only, 'v').legend.map(x => x.match(/<b>([^<]*)<\/b>/)[1]), ['Link']);
 });

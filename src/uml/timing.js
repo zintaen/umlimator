@@ -22,7 +22,7 @@ const TM = { name: 12, text: 10.5, lbl: 16, mark: 14 }; // a lane's name, a stat
 const TM_SORTS = ['call', 'async', 'reply'];
 // the sequence type's ends for these sorts (sequence.js's SQ_END): a call filled, async open, a reply dashed and open
 const TM_END = { call: { from: 'none', to: 'arrow' }, async: { from: 'none', to: 'open' }, reply: { from: 'none', to: 'open', dashed: true } };
-const TM_KIND = { 'uml.DurationConstraint': 'duration', 'uml.TimeConstraint': 'time' };
+const TM_KIND = { __proto__: null, 'uml.DurationConstraint': 'duration', 'uml.TimeConstraint': 'time' }; // no Object.prototype key is a kind (audit 26)
 const TM_RULER = '->ruler', tmRowId = (lane, state) => `${lane}->${state}`; // geometry ids: no element id holds '->' (model.md rule 5)
 
 const tmView = (model, view) => (TM_OBJ(view) ? view : TM_ARR(model && model.views).find(v => TM_OBJ(v) && v.id === view)) || null;
@@ -61,7 +61,7 @@ const tmMsgSaid = (X, m) => { const p = tmProps(m), t = tmMsgText(m), s = tmSort
 const tmConSaid = (X, c) => { const a = X.C.get(c.from), b = X.C.get(c.to), t = tmLabel(c);
   if (TM_KIND[c.type] === 'time') return `Time constraint${t ? ' ' + t : ''}${a ? ` on ${X.name(a.lifeline)} at ${X.t(a.at)}` : ''}`;
   const [p, q] = a && b && b.at < a.at ? [b, a] : [a, b];
-  return `Duration constraint${t ? ' ' + t : ''}${p && q ? ` on ${X.name(p.lifeline)}${q.lifeline !== p.lifeline ? ` and ${X.name(q.lifeline)}` : ''} from ${X.t(p.at)} to ${X.t(q.at)}` : ''}`; };
+  return `${TM_KIND[c.type] === 'duration' ? 'Duration constraint' : 'Constraint'}${t ? ' ' + t : ''}${p && q ? ` on ${X.name(p.lifeline)}${q.lifeline !== p.lifeline ? ` and ${X.name(q.lifeline)}` : ''} from ${X.t(p.at)} to ${X.t(q.at)}` : ''}`; };
 
 /* ---- F2's micro-syntax (§8.1): `text`, `text @ t`, `text @ t1 → t2` (or ->); times are numbers in the view's unit. A
    text whose part after its last @ is not one or two numbers is all text (an address with @ is a name) ---- */
@@ -80,11 +80,11 @@ function tmInput(model, V, X = tmIndex(model, V)) {
     lanes: X.heads.map(n => { const vals = X.values(n.id);
       // a name the author broke (a Mermaid <br>): a line each, its room grown for them (audit 22)
       const ls = brLines(tmHead(n));
-      return { id: n.id, name: { w: Math.max(widest(ls, l => w(l, TM.name)), w(tmSt(n))), h: (tmSt(n) ? 2 * TM.lbl : TM.lbl) + (ls.length - 1) * TM.lbl }, form: vals ? 'values' : 'states', rows: vals ? [] : tmStates(n).map(s => ({ state: s, w: w(s) })),
-        changes: X.changes.filter(c => c.lifeline === n.id).map(c => ({ id: c.id, at: c.at, state: String(c.state ?? ''), w: w(c.state) })) }; }),
+      return { id: n.id, name: { w: Math.max(widest(ls, l => w(l, TM.name)), w(tmSt(n))), h: (tmSt(n) ? 2 * TM.lbl : TM.lbl) + (ls.length - 1) * TM.lbl }, form: vals ? 'values' : 'states', rows: vals ? [] : tmStates(n).map(s => ({ state: s, w: widest(brLines(s), l => w(l)), n: brLines(s).length })),
+        changes: X.changes.filter(c => c.lifeline === n.id).map(c => ({ id: c.id, at: c.at, state: String(c.state ?? ''), w: widest(brLines(c.state), l => w(l)), n: brLines(c.state).length })) }; }), // a state the author broke: a line each, its row's pitch grown (audit 26)
     messages: X.msgs.map(m => { const t = tmMsgText(m), p = tmProps(m);
       return { id: m.id, from: m.from, to: m.to, sentAt: p.sentAt, receivedAt: p.receivedAt, ...(t ? { w: widest(brLines(t), l => w(l)) + 12, h: TM.lbl + (brLines(t).length - 1) * 13 } : { w: 0, h: 0 }) }; }), // a line each, as svgOf draws a box tall enough (audit 22)
-    constraints: X.shown.map(c => { const t = tmLabel(c); return { id: c.id, kind: TM_KIND[c.type] ?? c.type, from: c.from, to: c.to, ...(t ? { w: w(t) + 6, h: TM.mark } : { w: 0, h: 0 }) }; }),
+    constraints: X.shown.map(c => { const t = tmLabel(c); return { id: c.id, kind: TM_KIND[c.type] ?? c.type, from: c.from, to: c.to, ...(t ? { w: widest(brLines(t), l => w(l)) + 6, h: TM.mark + (brLines(t).length - 1) * TR.rl } : { w: 0, h: 0 }) }; }), // a line each (audit 26)
     unit: X.unit,
   };
 }
@@ -100,8 +100,9 @@ function tmRun(model, view) {
     nodes.push({ id: l.id, shape: 'tm-lane', type: 'uml.Lifeline', label: tmHead(n), ...tmSt(n) ? { st: tmSt(n) } : {}, k: 'file', holder: true, x: l.x, y: l.y, w: l.w, h: l.h, nx: l.name.x, ny: l.name.y,
       aria: `${vals ? 'Value lifeline' : 'Lifeline'} ${tmHead(n)}${tmStereo(n).length ? ` (${tmStereo(n).join(', ')})` : ''}${vals ? '' : `, ${tmPlural(l.rows.length, 'state')}`}, ${tmPlural(cs.length, 'change')}` });
     order.push(l.id);
-    l.rows.forEach(r => { const w = Math.ceil(textW(r.state, TM.text)), id = tmRowId(l.id, r.state);
-      nodes.push({ id, shape: 'tm-row', label: r.state, k: 'file', x: r2(x0 - TR.pad - w), y: r2(r.y - 8), w, h: 16, aria: `State ${r.state} of ${tmName(n)}` }); order.push(id); }); });
+    l.rows.forEach(r => { const w = Math.ceil(widest(brLines(r.state), t => textW(t, TM.text))), id = tmRowId(l.id, r.state);
+      const more = (brLines(r.state).length - 1) * TR.rl; // a line each, centred on the row's level (audit 26)
+      nodes.push({ id, shape: 'tm-row', label: r.state, k: 'file', x: r2(x0 - TR.pad - w), y: r2(r.y - 8 - more / 2), w, h: 16 + more, aria: `State ${r.state} of ${tmName(n)}` }); order.push(id); }); });
   o.changes.forEach(h => { const c = X.C.get(h.id); nodes.push({ ...h, shape: 'tm-change', label: tmPrint(c.state, c.at), k: 'file', aria: tmChangeSaid(X, c) }); });
   o.lanes.forEach(l => { const at = o.changes.filter(h => X.C.get(h.id).lifeline === l.id).sort((a, b) => a.x - b.x).map(h => h.id); order.splice(order.indexOf(l.id) + 1 + l.rows.length, 0, ...at); });
   const byCon = new Map(X.cons.map(c => [c.id, c]));
@@ -136,20 +137,20 @@ function tmDraw(g) {
 const tmNode = (n, shape, inner) => `<g class="node ${shape}" data-id="${esc(n.id)}" data-shape="${shape}" tabindex="-1" role="img" aria-label="${esc(n.aria || n.label || n.id)}">${inner}</g>`;
 const tmText = (x, y, t, px, w = 500, a = 'start', cls = '') => `<text x="${r2(x)}" y="${r2(y)}" text-anchor="${a}"${cls ? ` class="${cls}"` : ''} fill="var(--um-text)" style="font:${w} ${px}px var(--um-sans)">${esc(t)}</text>`;
 SHAPE['tm-lane'] = { draw: n => tmNode(n, 'tm-lane', `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" class="n-body" fill="transparent"/>${n.st ? tmText(n.nx, n.ny + 12, fit(n.st, TM.text, TR.cut), TM.text) : ''}${brLines(n.label).map((l, i) => tmText(n.nx, n.ny + 12 + (n.st ? TM.lbl : 0) + i * TM.lbl, fit(l, TM.name, TR.cut), TM.name, 600, 'start', 'c-name')).join('')}`) };
-SHAPE['tm-row'] = { draw: n => tmNode(n, 'tm-row', `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" fill="transparent"/>${tmText(n.x + n.w, n.y + 12, n.label, TM.text, 500, 'end')}`) };
+SHAPE['tm-row'] = { draw: n => tmNode(n, 'tm-row', `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" fill="transparent"/>${brLines(n.label).map((l, i) => tmText(n.x + n.w, n.y + 12 + i * TR.rl, l, TM.text, 500, 'end')).join('')}`) };
 SHAPE['tm-change'] = { draw: n => tmNode(n, 'tm-change', `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" class="n-body" fill="transparent"/>`) };
 SHAPE['tm-mark'] = {
   draw(n) { const P = n.pts, d = n.kind === 'time' ? `M${P[0][0]} ${P[0][1]}V${P[1][1]}` : `M${P[0][0]} ${P[0][1]}V${P[1][1]}M${P[2][0]} ${P[2][1]}V${P[3][1]}`;
     const arrows = n.kind === 'time' ? '' : (() => { const [b, c] = [P[1], P[2]], k = Math.sign(c[0] - b[0]) || 1, y = b[1], tip = (x, s) => `M${r2(x + 7 * s)} ${r2(y - 3.5)}L${x} ${y}L${r2(x + 7 * s)} ${r2(y + 3.5)}`;
       return `<path d="M${b[0]} ${y}H${c[0]}${tip(b[0], k)}${tip(c[0], -k)}" fill="none" stroke="var(--um-muted)" stroke-width="1.2"/>`; })();
     return tmNode(n, 'tm-mark', `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" fill="transparent"/><path d="${d}" stroke="var(--um-muted)" stroke-width="${n.kind === 'time' ? 1.5 : 0.8}"/>${arrows}`
-      + (n.label ? tmText(n.lbl.x + (n.kind === 'time' ? 0 : n.lbl.w / 2), n.lbl.y + 11, n.label, TM.text, 500, n.kind === 'time' ? 'start' : 'middle') : '')); },
+      + (n.label ? brLines(n.label).map((l, i) => tmText(n.lbl.x + (n.kind === 'time' ? 0 : n.lbl.w / 2), n.lbl.y + 11 + i * TR.rl, l, TM.text, 500, n.kind === 'time' ? 'start' : 'middle')).join('') : '')); },
 };
 SHAPE['tm-ruler'] = {
   draw(n) { const y = n.y, ticks = TM_ARR(n.ticks), last = ticks.filter(t => t.major).pop();
     const d = `M${n.x} ${y}H${r2(n.x + n.w)}` + ticks.map(t => `M${t.x} ${y}v${t.major ? TR.mark : 3}`).join('');
     const labels = ticks.filter(t => t.major).map(t => tmText(t.x, y + 18, t.label, TR.font, 500, 'middle')).join('');
-    const unit = n.unit && last ? tmText(last.x + textW(last.label, TR.font) / 2 + 4, y + 18, n.unit, TR.font, 500) : '';
+    const unit = n.unit && last ? brLines(n.unit).map((l, i) => tmText(last.x + textW(last.label, TR.font) / 2 + 4, y + 18 + i * (TR.font + 2), l, TR.font, 500)).join('') : ''; // a line each (audit 26)
     return tmNode(n, 'tm-ruler', `<rect x="${n.x}" y="${y}" width="${n.w}" height="${n.h}" fill="transparent"/><path d="${d}" stroke="var(--um-muted)" stroke-width="1"/>${labels}${unit}`); },
 };
 

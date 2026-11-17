@@ -306,6 +306,23 @@ test('audit 10: a listed line whose type is an Object.prototype name lays out, r
   } finally { console.warn = warn; }
 });
 
+test('audit 26: an activity node or a timing constraint whose type is an Object.prototype name is named and checked as an unknown kind', async () => {
+  await Promise.all(['uml/activity', 'uml/timing', 'map/typed'].map(f => import(`../src/${f}.js`)));
+  const { describe } = await import('../src/map/insight.js'), { validate } = await import('../src/map/validate.js'), { svgOf } = await import('../src/draw/svg.js');
+  const ex = n => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url)));
+  const warn = console.warn; console.warn = () => {};
+  try {
+    for (const type of ['toString', 'constructor', '__proto__', 'valueOf']) {
+      const a = ex('fulfil-activity'); a.nodes.find(n => n.id === 'stock-ready').type = type;
+      const aria = svgOf(layout(a, 'fulfil')).match(/data-id="stock-ready"[^>]*aria-label="([^"]*)"/)[1];
+      assert.equal(aria, `${type}, in Warehouse`, `activity ${type}`);
+      const t = ex('bookshop-timing'), c = t.views[0].timeline.constraints[0]; c.type = type;
+      assert.ok(validate(t).some(p => p.rule === 'constraint-ends' && p.ids.includes(c.id)), `timing ${type}: an error, as "uml.Bogus" is`);
+      assert.doesNotMatch(describe(t, t.views[0].id), /^Duration constraint \{<= 800 ms\}/m, `timing ${type}: not said a duration constraint`);
+    }
+  } finally { console.warn = warn; }
+});
+
 // audit 13: a typed view draws a self-line (Employee manages Employee), so its PDF Lines table lists it, as describe() does
 test('audit 13: a class view\'s self-association is one row of the PDF Lines table', async () => {
   await import('../src/uml/class.js');

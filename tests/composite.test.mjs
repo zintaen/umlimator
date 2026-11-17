@@ -744,3 +744,19 @@ test('audit 25: a collaboration use naming none and a role binding with no role 
   assert.ok(named.includes('collaboration-named: collaboration use "observer" names "Watcher", not a collaboration of the model'), JSON.stringify(named));
   assert.ok(named.includes('binding-role: rb binds "other", not a role of "Observer"'), JSON.stringify(named));
 });
+
+test('audit 26: a role binding the view holds as its own line is a row of its collaboration use, as describe() and the picture have it', () => {
+  const b = CS.edges.find(e => e.id === 'listeners-are-subscribers'), vid = V.id;
+  let m = apply(CS, [{ op: 'set', view: vid, path: 'edges', value: CS.edges.map(e => e.id) }]);
+  m = apply(m, [{ op: 'delete', id: b.id }]);
+  m = apply(m, [{ op: 'add', element: structuredClone(b), in: 'view', view: vid }]);
+  const v = m.views.find(x => x.id === vid);
+  assert.ok(v.edges.some(e => typeof e === 'object' && e.id === b.id) && !m.edges.some(e => e.id === b.id), 'the binding is the view\'s own');
+  assert.match(describe(m, vid), /binding publisher to checkout, subscriber to listeners/);
+  assert.deepEqual(T.rows(m, v, 'order-events'), ['PublishSubscribe', 'publisher ← checkout', 'subscriber ← listeners']);
+  const c = mapContext(m), t = JSON.stringify(tablesOf(c, c.V[vid], c.buildGeo(vid)));
+  assert.match(t, /subscriber ← listeners/, 'and the PDF\'s table');
+  // a binding the view leaves out of its edges list is not drawn, said or listed
+  const off = apply(CS, [{ op: 'set', view: vid, path: 'edges', value: CS.edges.filter(e => e.id !== b.id).map(e => e.id) }]);
+  assert.deepEqual(T.rows(off, off.views.find(x => x.id === vid), 'order-events'), ['PublishSubscribe', 'publisher ← checkout']);
+});

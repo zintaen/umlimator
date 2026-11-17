@@ -515,3 +515,17 @@ test('audit 23: a class view\'s own line (view.edges object) is checked as a mod
     assert.deepEqual(at(own, line.id), want.map(([r, p]) => [r, p.replace(k, `views[0].edges[${CLASS.edges.length}]`)]), `${line.id}: the own line alike, at its own path`);
   }
 });
+
+test('audit 26: a comment\'s line breaks are drawn a line each (SHAPE.note), a blank line kept, the note growing to fit', () => {
+  const texts = (m, v) => [...mapContext(m).buildView(v).markup.matchAll(/data-shape="note"[\s\S]*?<\/g><\/g>/g)].map(g => [...g[0].matchAll(/<text[^>]*>([^<]*)</g)].map(x => x[1]));
+  for (const [diagram, other] of [['uml.class', 'uml.Class'], ['uml.package', 'uml.Package']]) { // SHAPE.note, which every type that draws a uml.Comment shares
+    const m = { schemaVersion: 2, nodes: [{ id: 'k', type: other, label: 'Order' }, { id: 'n', type: 'uml.Comment', label: 'Total is the sum of lines\nTax added at checkout' },
+      { id: 'p', type: 'uml.Comment', label: 'one\r\n\r\ntwo' }, { id: 'q', type: 'uml.Comment', label: 'a plain note that is long enough to wrap at two hundred and twenty pixels wide' }],
+    views: [{ id: 'v', diagram, nodeIds: ['k', 'n', 'p', 'q'] }] };
+    const [n, p, q] = texts(m, 'v');
+    assert.deepEqual(n, ['Total is the sum of lines', 'Tax added at checkout'], diagram);
+    assert.deepEqual(p, ['one', '', 'two'], `${diagram}: the blank line stays`);
+    assert.ok(q.length > 1 && q.every(l => l), `${diagram}: a note with no break is still wrapped at 220 px, with no empty line`);
+    const g = layout(m, 'v'); assert.ok(g.byId.p.h > g.byId.n.h, `${diagram}: the note grows a line for each`);
+  }
+});
