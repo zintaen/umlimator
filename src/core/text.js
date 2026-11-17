@@ -63,4 +63,6 @@ function glyph(g) {
   return o;
 }
 
-export { measureText, measured, esc, inline, md, textW, sansW, hostMeasure, wrap2, clauseFit, fit, glyph };
+// a line break in a typed view's line label: each part its own line, EDGE_LH px below the one before (audit 22)
+const EDGE_BREAK = /\r\n?|[\n\u2028\u2029]/, EDGE_LH = 12;
+export { measureText, measured, esc, inline, md, textW, sansW, hostMeasure, wrap2, clauseFit, fit, glyph, EDGE_BREAK, EDGE_LH };

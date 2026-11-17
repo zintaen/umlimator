@@ -316,3 +316,30 @@ test('audit 21: a line break in a node\'s label (a Mermaid <br>) is drawn where 
   assert.deepEqual(report, []);
   assert.deepEqual([...svgOf(layout(model, model.views[0].id)).matchAll(/class="c-name"[^>]*>([^<]*)</g)].map(x => x[1]), ['Check the', 'parcel', 'Fit for', 'resale?'], 'read from Mermaid, drawn as Mermaid draws it');
 });
+
+test('audit 22: a line break in a flow\'s label draws a new line, in a box as tall as its lines, on every typed line the label placer places; a map draws as before', async () => {
+  const { readMermaidFlowchart } = await import('../src/readers/mermaid-flowchart.js');
+  const { model } = readMermaidFlowchart('flowchart TD\n  A(["Start"]) --> B{"Fit for<br>resale?"}\n  B -->|"yes, once<br>checked"| C["Refund"]\n  B -->|no| D(["End"])\n  C --> D');
+  const labs = (m, vid) => [...svgOf(layout(m, vid)).matchAll(/<g class="e-lab" data-i="\d+"><rect [^>]*height="([\d.]+)"[^>]*\/><text [^>]*class="e-label" data-t="el" data-o="[^"]*">(.*?)<\/text><\/g>/g)].map(x => [+x[1], x[2]]);
+  for (const direction of ['down', 'right']) {
+    const m = structuredClone(model); m.views[0].direction = direction;
+    const got = labs(m, m.views[0].id);
+    const [h, t] = got.find(([, x]) => /yes/.test(x)), x = /x="([\d.-]+)"/.exec(t)[1];
+    assert.deepEqual([h, t], [30, `<tspan x="${x}">yes, once</tspan><tspan x="${x}" dy="12">checked</tspan>`], direction);
+    assert.deepEqual(got.find(([, t]) => t === 'no'), [18, 'no'], 'one line, as before');
+    assert.deepEqual(check(m, m.views[0].id), [], `${direction}: the taller box placed clear`);
+    const L = layout(m, m.views[0].id).edges.find(e => /yes/.test(e.label)).lbl;
+    assert.deepEqual([L.h, L.text], [30, 'yes, once\nchecked']);
+  }
+  // the same on a DFD data flow, a C4 relationship and an ER relationship: each line's label two lines tall
+  await import('../src/dfd/dfd.js'); await import('../src/c4/c4.js'); await import('../src/er/er.js');
+  for (const f of ['bookshop-data-flow.json', 'bookshop-c4.json', 'bookshop-schema.json']) {
+    const m = JSON.parse(readFileSync(new URL(`../examples/${f}`, import.meta.url))), v = m.views[0], vid = v.id;
+    const was = labs(m, vid), shown = new Set(layout(m, vid).edges.filter(e => e.lbl).map(e => e.id)), e = m.edges.find(x => shown.has(x.id) && x.label);
+    assert.ok(e, f); e.label += '\nat once';
+    const L = layout(m, vid).edges.find(x => x.id === e.id).lbl;
+    assert.equal(L.h, 30, `${f}: two lines tall`); assert.equal(L.text.split('\n').length, 2, f);
+    const now = labs(m, vid); assert.equal(now.length, was.length, f);
+    assert.equal(now.filter(([, t]) => t.includes('<tspan')).length, 1, `${f}: one label in two tspans`);
+  }
+});
