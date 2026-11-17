@@ -7,7 +7,7 @@ import { brLines } from '../typed/draw.js';
 import { lineIn, lineItem } from './class.js'; // SHAPE.note, a comment's look too
 import { ownersOn, placeTabs, readingOrder } from './owners.js';
 import { snKindName } from './structure.js';
-import { usedIds } from '../core/model.js';
+import { usedIds, jsonText } from '../core/model.js';
 
 /* ---------- the use case diagram, uml.use-case (work package 4.4, notes/stage-4.md §8) ----------
    Actors (a stick figure), use cases (an ellipse, its extension points in a compartment under the name) and subjects: a
@@ -277,7 +277,7 @@ function ucProblems(model, view) {
 
 /* ---- describe(): the view in sentences, each element by its accessible name in reading order, then each line ---- */
 function ucDescribe(model, viewId) {
-  const v = UC_ARR(model && model.views).find(x => UC_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const v = UC_ARR(model && model.views).find(x => UC_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const pic = ucPic(model, v), lines = ucLines(model, v, pic), by = new Map(lines.map(e => [e.id, e]));
   return [`${v.title || v.id}: a use case diagram of ${ucPlural(pic.ids.length, 'element')} and ${ucPlural(lines.length, 'line')}.`,
     ...ucOrder(pic, lines).map(id => (by.has(id) ? ucLineName(model, by.get(id), pic) : ucNodeName(model, pic.at.get(id), pic)) + '.')].join('\n');

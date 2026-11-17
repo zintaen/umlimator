@@ -278,6 +278,28 @@ try {
     check(`stories ${JSON.stringify(stories)}, no list: the page draws, with no Stories menu and the Lenses menu as ever (audit 22)`,
       drawn && !$('m-stories') && !$('m-stories-pop') && !!$('m-lenses'), threw || [!!drawn, !!$('m-stories'), !!$('m-lenses')]);
     if (pg) { pg.destroy(); pg = null; } }
+  /* ---------- audit 29: Export ▸ Map model (JSON) writes the model the page was given, not the map's working copy ---------- */
+  const exported = async model => { box.innerHTML = ''; pg = mountPage(box, structuredClone(model), { instant: true, params: new URLSearchParams() });
+    await until(() => pg.view && document.querySelector('#m-canvas .umlimator')); await wait(30);
+    const blobs = [], own = URL.createObjectURL, click = HTMLAnchorElement.prototype.click; URL.createObjectURL = b => { blobs.push(b); return own.call(URL, b); };
+    HTMLAnchorElement.prototype.click = function () {}; // no file: the blob is what it would be
+    try { document.querySelector('#m-export-pop [data-x="json"]').click(); await until(() => blobs.length, 2000); } finally { URL.createObjectURL = own; HTMLAnchorElement.prototype.click = click; }
+    pg.destroy(); pg = null; return blobs.length ? JSON.parse(await blobs[0].text()) : null; };
+  const less = m => { const { meta, kind, ...rest } = structuredClone(m); return rest; }; // the page tool's meta and kind, as before
+  const ODD = { title: 'Shop', meta: { owner: 'team-a' }, root: 'top', nodes: [{ id: 'web', label: 'Web' }, { id: 'api', label: 'API' }, { id: 'db', label: 'DB' }, 'no card'],
+    edges: [{ from: 'web', to: 'api' }, { from: 'api', to: 'db' }, { id: 'own', from: 'web', to: 'db' }],
+    views: [{ id: 'top', nodeIds: ['web', 'api'], containers: 'none' }, { id: 'inside-api', parent: 'api', nodeIds: ['db'], edges: [{ from: 'db', to: 'db' }] }, { id: 'x', diagram: 'nosuch.kind', nodeIds: ['db'] }] };
+  for (const [name, model] of [['bookshop', await (await fetch('../examples/bookshop.json')).json()], ['bike-share', BIKE], ['a model with id-less lines, a parent naming a card and fields that are no list', ODD]]) {
+    const got = await exported(model);
+    check(`Export ▸ Map model (JSON) of ${name} is the model given: no _id on a line, each view's parent as written, no list dropped (audit 29)`,
+      !!got && JSON.stringify(got) === JSON.stringify(less(model)), got && { edges: got.edges && got.edges.slice(0, 2), views: got.views && got.views.map(v => [v.id, v.parent, v.containers]) }); }
+  /* ---------- audit 29: a host's BigInt weight or latency on a line: the map draws (as 1), and update() takes it ---------- */
+  { box.innerHTML = ''; const H = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ id: 'ab', from: 'a', to: 'b', weight: 2n, latency: 5n }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+    let threw = null; try { pg = mountPage(box, H, { instant: true, params: new URLSearchParams() }); } catch (e) { threw = String(e); }
+    const drawn = !threw && await until(() => pg.view && sr() && sr().querySelector('.node[data-id="b"]'));
+    try { if (pg) pg.update({ ...H, edges: [{ ...H.edges[0], weight: 3n, step: 1n }] }); await wait(50); } catch (e) { threw = String(e); }
+    check('a line whose weight and latency are BigInts: the page draws the map, and update() with one takes it (audit 29)', !threw && !!drawn, threw);
+    if (pg) { pg.destroy(); pg = null; } }
 } catch (err) { out.fail.push('threw: ' + (err && err.stack || err)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

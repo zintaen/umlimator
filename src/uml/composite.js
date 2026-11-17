@@ -8,7 +8,7 @@ import { LINE_WORDS, legendOf, lineIn, lineLook, lineRename, memberEdit, multBou
 import './usecase.js'; // SHAPE.ellipse, a collaboration use's; SHAPE.subject, a class subject's frame
 import { SN_SAY, STRUCT_RULES, snKindName, portFit, portSides, portsDrawn, structProblems } from './structure.js';
 import { viewLines } from './owners.js';
-import { usedIds } from '../core/model.js';
+import { usedIds, jsonText } from '../core/model.js';
 
 /* ---------- the composite structure diagram, uml.composite-structure (work package 5.6, notes/stage-5.md §6, §10.2) ----------
    The view's subject (a class, a component or a collaboration, listed in nodeIds) is a box holding its parts (its uml.Property
@@ -281,12 +281,12 @@ function csProblems(model, view) {
   const q = id => JSON.stringify(P.el(id) ? csName(P.el(id)) : String(id));
   if (!view) return structProblems(model);
   // a view with no subject at all (its subject deleted, or hidden from it, takes it: apply()) draws its other cards: a warning
-  if (!S && view.subject == null) say('warning', 'subject-shown', `views[${vi}]`, [view.id], `view ${JSON.stringify(view.id)} has no subject (deleted, or hidden from it): it draws its other cards, and no structure until one is set`);
-  else if (!S) say('error', 'subject-shown', `views[${vi}].subject`, [view.id, view.subject], `view ${JSON.stringify(view.id)}'s subject ${JSON.stringify(view.subject ?? null)} is not a class, a component or a collaboration it lists in nodeIds`);
+  if (!S && view.subject == null) say('warning', 'subject-shown', `views[${vi}]`, [view.id], `view ${jsonText(view.id)} has no subject (deleted, or hidden from it): it draws its other cards, and no structure until one is set`);
+  else if (!S) say('error', 'subject-shown', `views[${vi}].subject`, [view.id, view.subject], `view ${jsonText(view.id)}'s subject ${jsonText(view.subject ?? null)} is not a class, a component or a collaboration it lists in nodeIds`);
   const nodeAt = id => CS_ARR(model.nodes).indexOf(P.at.get(id)), memPath = id => { const o = P.mem.get(id).owner; return `nodes[${nodeAt(o.id)}].members[${o.members.indexOf(P.mem.get(id).m)}]`; };
   if (S && S.type !== 'uml.Collaboration') P.parts.forEach(m => { if (!P.typeOf(m)) say('warning', 'part-type', memPath(m.id) + '.props.valueType', [m.id, S.id],
     // a part given no type (the panel's row "engine") said in words, not "typed null" (audit 24)
-    `part ${q(m.id)} of ${q(S.id)} ${!CS_HAS(CS_PROPS(m).valueType) ? 'has no type' : `is typed ${JSON.stringify(CS_PROPS(m).valueType)}, which names ${[...P.at.values()].some(n => CS_TYPED.includes(n.type) && (n.label ?? n.id) === CS_PROPS(m).valueType) ? 'more than one' : 'no'} class or component`}, so it shows only the ports its connectors reach through it`); });
+    `part ${q(m.id)} of ${q(S.id)} ${!CS_HAS(CS_PROPS(m).valueType) ? 'has no type' : `is typed ${jsonText(CS_PROPS(m).valueType)}, which names ${[...P.at.values()].some(n => CS_TYPED.includes(n.type) && (n.label ?? n.id) === CS_PROPS(m).valueType) ? 'more than one' : 'no'} class or component`}, so it shows only the ports its connectors reach through it`); });
   P.parts.forEach(m => { const t = CS_PROPS(m).multiplicity, b = CS_HAS(t) ? multBounds(t) : { lower: 0, upper: 0 };
     if (!b || b.lower > b.upper) say('warning', 'part-multiplicity', memPath(m.id) + '.props.multiplicity', [m.id], `part ${q(m.id)}'s multiplicity [${t}] ${b ? 'has its lower bound above its upper' : 'is not one (1, *, 0..1, 1..*)'}`); });
   // where an end lies: the subject's structure ('S'), a collaboration's (its id), or nowhere (null). A collaboration use is in
@@ -325,17 +325,17 @@ function csProblems(model, view) {
       if (!(S && owner(e.from) === S && P.mem.get(e.from).m.type === 'uml.Property' && u && u.type === 'uml.CollaborationUse' && u.parent === S.id))
         return say(S || view.subject != null ? 'error' : 'warning', 'binding-ends', path, [e.id, e.from, e.to], `${e.id} runs from ${q(e.from)} to ${q(e.to)}: a role binding runs from a part of the subject to a collaboration use of it`);
       const C = csCollab(P, u);
-      if (C && !P.kids(C, 'uml.Property').some(m => m.label === e.label)) say('warning', 'binding-role', `${path}.label`, [e.id, C.id], !CS_HAS(e.label) ? `${e.id} binds no role: name one of ${q(C.id)}'s roles` : `${e.id} binds ${JSON.stringify(e.label)}, not a role of ${q(C.id)}`);
+      if (C && !P.kids(C, 'uml.Property').some(m => m.label === e.label)) say('warning', 'binding-role', `${path}.label`, [e.id, C.id], !CS_HAS(e.label) ? `${e.id} binds no role: name one of ${q(C.id)}'s roles` : `${e.id} binds ${jsonText(e.label)}, not a role of ${q(C.id)}`);
     } });
   P.uses.forEach(id => { const u = P.at.get(id); if (!csCollab(P, u)) say('warning', 'collaboration-named', `nodes[${nodeAt(id)}].props.collaboration`, [id],
     !CS_HAS(CS_PROPS(u).collaboration) ? `collaboration use ${q(id)} names no collaboration` // said in words, not "names null" (audit 25)
-      : `collaboration use ${q(id)} names ${JSON.stringify(CS_PROPS(u).collaboration)}, not a collaboration of the model`); });
+      : `collaboration use ${q(id)} names ${jsonText(CS_PROPS(u).collaboration)}, not a collaboration of the model`); });
   return [...out, ...structProblems(model, view)];
 }
 
 /* ---- describe(): the view in sentences, each element by its accessible name in reading order, then each line ---- */
 function csDescribe(model, viewId) {
-  const v = CS_ARR(model && model.views).find(x => CS_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const v = CS_ARR(model && model.views).find(x => CS_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const P = csPic(model, v), by = new Map(P.lines.map(l => [l.e.id, l])), els = csOrder(P).filter(id => !by.has(id));
   const name = id => { const s = csSplit(id), q = P.mem.get(s ? s[1] : id); if (q && q.m.type === 'uml.Port') return SN_SAY.port(csName(q.m), csName(P.el(s ? s[0] : P.sid)), { valueType: CS_PROPS(q.m).valueType, stereotypes: csStereo(q.m) }); return csNodeName(P, id); };
   return [`${v.title || v.id}: a composite structure diagram of ${csPlural(els.length, 'element')} and ${csPlural(P.lines.length, 'line')}.`,
@@ -395,7 +395,7 @@ function csAdd(model, view, entry, label, at) {
   const P = csPic(model, view), sel = CS_ARR(at && at.sel).map(id => csOwnerOf(P, id)).map(id => P.el(id)).filter(Boolean)[0] || null, t = String(label ?? '').trim();
   const member = (o, row, say, was) => { const r = csRow(o, row, was); if (r.error) return r; const c = [{ op: 'add', element: { id: csFresh(model, csIdOf(o.id, r)), ...r }, owner: o.id }]; return say ? { commands: c, say } : c; };
   if (entry.type === 'uml.Port') {
-    if (sel && P.partOf.has(sel.id)) { const T = P.typeOf(sel); if (!T) return { error: !CS_HAS(CS_PROPS(sel).valueType) ? `${csName(sel)} has no type: type it as a class or component to add a port to` : `${csName(sel)}'s type, ${JSON.stringify(CS_PROPS(sel).valueType)}, names no one class or component to add a port to` };
+    if (sel && P.partOf.has(sel.id)) { const T = P.typeOf(sel); if (!T) return { error: !CS_HAS(CS_PROPS(sel).valueType) ? `${csName(sel)} has no type: type it as a class or component to add a port to` : `${csName(sel)}'s type, ${jsonText(CS_PROPS(sel).valueType)}, names no one class or component to add a port to` };
       return member(T, t, `Added the port to ${csName(T)}, the type of ${csName(sel)}: every part of that type shows it`, PORT); }
     return sel && CS_TYPED.includes(sel.type) ? member(sel, t, null, PORT) : { error: 'Select the subject, a part, a class or a component to add a port to' };
   }

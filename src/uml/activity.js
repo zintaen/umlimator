@@ -10,7 +10,7 @@ import './class.js'; // SHAPE.note, a comment's
 import { snKindName } from './structure.js';
 import { frame } from './frame.js';
 import { FLOW_RULES, flowOf, flowProblems, flowLabel, flowRename, flowStereo, viewFlows } from './flow.js';
-import { copyOf, usedIds } from '../core/model.js';
+import { copyOf, usedIds, jsonText } from '../core/model.js';
 import { LINE_SAYS } from './class.js'; // the "Line" key's words, for a line of another kind (audit 28)
 
 /* ---------- the activity diagram, uml.activity (work package 4.5, notes/stage-4.md §9) ----------
@@ -234,16 +234,16 @@ function actProblems(model, view) {
     const p = I.N.get(x.parent); if (p.type !== 'uml.ActivityPartition') say('partition-owner', `${I.path.get(id)}.parent`, [id, p.id], `${q(id)} is owned by ${q(p.id)}, a ${String(p.type).split('.').pop()}, not a partition`, 'error'); });
   I.N.forEach((x, id) => { if (x.type !== 'uml.CallBehaviorAction' || !seen(id)) return;
     const v = AC_ARR(model.views).find(w => AC_OBJ(w) && w.id === x.opensView);
-    if (!v || v.diagram !== 'uml.activity') say('calls-view', I.path.get(id), [id], `${q(id)} ${x.opensView == null ? 'opens no view' : `opens ${JSON.stringify(x.opensView)}, which is ${v ? 'not an activity view' : 'no view of the model'}`}`); });
+    if (!v || v.diagram !== 'uml.activity') say('calls-view', I.path.get(id), [id], `${q(id)} ${x.opensView == null ? 'opens no view' : `opens ${jsonText(x.opensView)}, which is ${v ? 'not an activity view' : 'no view of the model'}`}`); });
   if (view && I.parts.length) { const vi = AC_ARR(model.views).indexOf(view);
-    I.drawn.forEach(id => { if (I.N.get(id).type !== 'uml.Comment' && I.laneOf(id) == null) say('in-lane', `views[${vi}].nodeIds`, [id, view.id], `${q(id)} is in no partition view ${JSON.stringify(view.id)} shows: it is drawn after the lanes`); }); }
+    I.drawn.forEach(id => { if (I.N.get(id).type !== 'uml.Comment' && I.laneOf(id) == null) say('in-lane', `views[${vi}].nodeIds`, [id, view.id], `${q(id)} is in no partition view ${jsonText(view.id)} shows: it is drawn after the lanes`); }); }
   return out;
 }
 
 /* ---- describe(): the view in words: its partitions, then from each initial node each node once with the flows out of it,
    then the nodes no flow reaches ---- */
 function actDescribe(model, viewId) {
-  const v = AC_ARR(model && model.views).find(x => AC_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const v = AC_ARR(model && model.views).find(x => AC_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const I = actIndex(model, v), flows = I.lines.filter(e => AC_FLOWS.includes(e.type)), seen = new Set(), walk = [];
   const visit = s => { const q = [s]; while (q.length) { const id = q.shift(); if (seen.has(id)) continue; seen.add(id); walk.push(id); flows.filter(e => e.from === id).forEach(e => q.push(e.to)); } };
   I.drawn.filter(id => I.N.get(id).type === 'uml.InitialNode').forEach(visit); I.drawn.forEach(visit);

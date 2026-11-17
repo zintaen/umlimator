@@ -11,7 +11,7 @@ import { frLines, frameTag, tagSize, useSize } from './frame.js';
 import { interactionWalk } from './interaction.js';
 import { snKindName } from './structure.js';
 import { sqDraw, sqRun } from './sequence.js';
-import { usedIds } from '../core/model.js';
+import { usedIds, jsonText } from '../core/model.js';
 
 /* ---------- the interaction overview diagram, uml.interaction-overview (work package 4.7, notes/stage-4.md §11) ----------
    Activity notation whose nodes are interactions: the control nodes of src/uml/flow.js (flow final included), interaction
@@ -190,7 +190,7 @@ function ovProblems(model, view) {
     if (!OV_NODES.includes(x.type)) say('warning', 'overview-kinds', `views[${vi}].nodeIds[${OV_ARR(view.nodeIds).indexOf(id)}]`, [id], `view ${view.id} shows ${nm}, which an interaction overview does not draw: drawn as an action`);
     if (x.type !== 'uml.InteractionUse' && x.type !== 'uml.Interaction') return;
     const v = I.V.get(x.opensView);
-    if (!v || v.diagram !== 'uml.sequence') return say('error', 'opens-sequence', `${path}.opensView`, [id], `${nm} opens ${x.opensView == null ? 'no view' : !v ? `${JSON.stringify(x.opensView)}, which is not a view of the model` : `view ${v.id}, a ${v.diagram || 'map'}, not a sequence`}`);
+    if (!v || v.diagram !== 'uml.sequence') return say('error', 'opens-sequence', `${path}.opensView`, [id], `${nm} opens ${x.opensView == null ? 'no view' : !v ? `${jsonText(x.opensView)}, which is not a view of the model` : `view ${v.id}, a ${v.diagram || 'map'}, not a sequence`}`);
     const sd = x.type === 'uml.Interaction' && ovInline(model, I, x, false);
     if (sd && !sd.small) say('warning', 'inline-size', `${path}.opensView`, [id, v.id], `${nm} shows view ${v.id}, of ${ovPlural(sd.heads, 'lifeline')} and ${ovPlural(sd.messages, 'message')}: over ${OV_MAX.heads} lifelines or ${OV_MAX.messages} messages it is drawn as its frame only`); });
   const eIdx = e => OV_ARR(view.edges).findIndex(x => x === e || x === e.id), ePath = e => (Array.isArray(view.edges) ? `views[${vi}].edges[${eIdx(e)}]` : `edges[${OV_ARR(model.edges).indexOf(e)}]`);
@@ -204,7 +204,7 @@ function ovProblems(model, view) {
    each node once by its accessible name and where its flows go, each by "name [guard]"; then what no flow reaches; then the
    comments' links ---- */
 function ovDescribe(model, viewId) {
-  const v = OV_ARR(model && model.views).find(x => OV_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const v = OV_ARR(model && model.views).find(x => OV_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const I = ovIndex(model, v), seen = new Set(), walk = [], out = I.flows.reduce((m, e) => m.set(e.from, [...(m.get(e.from) || []), e]), new Map());
   const visit = (...q) => { for (const id of q) if (!seen.has(id)) { seen.add(id); walk.push(id); q.push(...(out.get(id) || []).map(e => e.to)); } };
   visit(...I.ids.filter(id => I.el(id).type === 'uml.InitialNode')); I.ids.forEach(id => visit(id));

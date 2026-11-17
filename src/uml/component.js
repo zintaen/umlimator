@@ -6,7 +6,7 @@ import { layoutTyped } from '../typed/layout.js';
 import { lineRename, memberEdit, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 import { SN_ARTIFACTS, SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, snKindName, snKindWord, structProblems } from './structure.js';
-import { usedIds } from '../core/model.js';
+import { usedIds, jsonText } from '../core/model.js';
 
 /* ---------- the component diagram, uml.component (work package 5.4, notes/stage-5.md §10.1) ----------
    Components (src/uml/structure.js's look), a component or package that holds something shown a box (src/uml/owners.js),
@@ -244,13 +244,13 @@ function cpProblems(model, view) {
   if (view) { const vi = CP_ARR(model.views).indexOf(view);
     cpPic(model, view).inside.forEach(({ e, from, to }) => { if (e.type !== 'uml.Connector') out.push(lineInside(view, vi, e, from, to, q)); });
     Object.entries(CP_OBJ(view.present) ? view.present : {}).forEach(([id, p]) => { if (CP_OWN(p, 'as') === 'ball' && (I.N.get(id) || {}).type !== 'uml.Interface')
-      say('warning', 'ball-interface', `views[${vi}].present`, [id], `${q(id)} is not an interface: view ${JSON.stringify(view.id)} does not draw it as a ball`); }); }
+      say('warning', 'ball-interface', `views[${vi}].present`, [id], `${q(id)} is not an interface: view ${jsonText(view.id)} does not draw it as a ball`); }); }
   return out;
 }
 
 /* ---- describe(): the view in sentences, each element by its accessible name in reading order, then each line ---- */
 function cpDescribe(model, viewId) {
-  const v = CP_ARR(model && model.views).find(x => CP_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const v = CP_ARR(model && model.views).find(x => CP_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const pic = cpPic(model, v), by = new Map(pic.lines.map(l => [l.e.id, l]));
   return [`${v.title || v.id}: a component diagram of ${cpPlural(pic.ids.length, 'element')} and ${cpPlural(pic.lines.length, 'line')}.`,
     ...cpOrder(pic).map(id => (by.has(id) ? cpLineName(pic, by.get(id)) : cpNodeName(model, v, pic, id)) + '.')].join('\n');

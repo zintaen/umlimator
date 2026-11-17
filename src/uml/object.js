@@ -1,3 +1,4 @@
+import { jsonText } from '../core/model.js';
 import { registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
@@ -136,7 +137,7 @@ function objectProblems(model, view) {
 /* ---- describe(): the view in words, each box then what it holds: "Instance specification order1042 : Order, 2 slots:
    status = placed, total = 34.00 EUR; linked to line1 : OrderLine (lines)" ---- */
 function objectDescribe(model, viewId) {
-  const v = OB_ARR(model && model.views).find(x => OB_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const v = OB_ARR(model && model.views).find(x => OB_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const { at, pic, lines: all } = drawnLines(model, v, OBJECT_LINES), lines = all.filter(({ from, to }) => !holdsLine(pic, from, to));
   const nm = id => { const x = at.get(id).x; return x.type === 'uml.Comment' ? String(x.label ?? x.id) : isInstance(x) ? headOf(x, pic.name(id)) : pic.name(id); };
   const k = (n, w) => `${n} ${n === 1 ? w : w + 's'}`;

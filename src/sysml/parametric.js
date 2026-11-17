@@ -1,3 +1,4 @@
+import { jsonText } from '../core/model.js';
 import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -137,8 +138,8 @@ function SYS_PAR_PROBLEMS(model, view) {
   if (!view) return [];
   const out = [], I = SYS_PAR_INDEX(model, view), S = I.S, vi = SYS_PAR_ARR(model.views).indexOf(view), q = id => JSON.stringify(I.el(id) ? SYS_PAR_NAME(I.el(id)) : String(id));
   const say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
-  if (view.subject == null) say('warning', 'subject-kind', `views[${vi}]`, [view.id], `view ${JSON.stringify(view.id)} has no subject (deleted, or hidden from it): it draws no frame until one is set`);
-  else if (!S || !Object.hasOwn(SYS_PAR_SUBJ, S.type) || !SYS_PAR_ARR(view.nodeIds).includes(S.id)) say('error', 'subject-kind', `views[${vi}].subject`, [view.id, view.subject], `view ${JSON.stringify(view.id)}'s subject ${JSON.stringify(view.subject)} is not a block or a constraint block it lists in nodeIds`);
+  if (view.subject == null) say('warning', 'subject-kind', `views[${vi}]`, [view.id], `view ${jsonText(view.id)} has no subject (deleted, or hidden from it): it draws no frame until one is set`);
+  else if (!S || !Object.hasOwn(SYS_PAR_SUBJ, S.type) || !SYS_PAR_ARR(view.nodeIds).includes(S.id)) say('error', 'subject-kind', `views[${vi}].subject`, [view.id, view.subject], `view ${jsonText(view.id)}'s subject ${jsonText(view.subject)} is not a block or a constraint block it lists in nodeIds`);
   if (!S || !Object.hasOwn(SYS_PAR_SUBJ, S.type)) return out;
   out.push(...SYS_CS_PROBLEMS(model, view).filter(p => p.rule === 'connector-drawn'));
   // the subject's properties typed as their kind says, as the block definition view judges them: a model with a parametric
@@ -173,7 +174,7 @@ function SYS_PAR_PROBLEMS(model, view) {
 
 /* ---- describe(): the frame, then what it holds in reading order, then the bindings, each by its name ---- */
 function SYS_PAR_DESCRIBE(model, viewId) {
-  const v = SYS_PAR_ARR(model && model.views).find(x => SYS_PAR_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const v = SYS_PAR_ARR(model && model.views).find(x => SYS_PAR_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const g = SYS_PAR_GEO({ model, view: v, pos: SYS_PAR_OBJ(v.layout) ? v.layout : {}, memo: {} }), lines = new Set(g.edges.map(e => e.id));
   const said = new Map([...SYS_PAR_ARR(g.families), ...g.nodes, ...g.edges].map(x => [x.id, x.aria])), ids = SYS_PAR_ARR(g.order).filter(id => said.has(id));
   return [`${v.title || v.id}: a parametric diagram of ${SYS_PAR_PLURAL(ids.filter(id => !lines.has(id)).length, 'element')} and ${SYS_PAR_PLURAL(ids.filter(id => lines.has(id)).length, 'line')}.`,

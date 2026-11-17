@@ -1,3 +1,4 @@
+import { jsonText } from '../core/model.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { brLines } from '../typed/draw.js'; // SHAPE.classifier, whose ports the closed package takes
@@ -108,7 +109,7 @@ const OWNER_RULES = {
 };
 // the line-inside warning: line e, between box from and to, which it holds (or itself), is not drawn; q(id), an element's quoted name
 const lineInside = (view, vi, e, from, to, q) => ({ level: 'warning', rule: 'line-inside', path: `views[${vi}]`, ids: from === to ? [e.id, from] : [e.id, from, to],
-  message: `line-inside: ${e.id}, ${from === to ? `from ${q(from)} to itself, a box,` : `between ${q(from)} and ${q(to)}, which one holds,`} is not drawn in view ${JSON.stringify(view.id)}` });
+  message: `line-inside: ${e.id}, ${from === to ? `from ${q(from)} to itself, a box,` : `between ${q(from)} and ${q(to)}, which one holds,`} is not drawn in view ${jsonText(view.id)}` });
 // model: the owner-kinds rule; view (the type's view): line-inside and own-boxes for it, lines as `drawn(model, view)` gives
 // them ({ e, from, to }, the ends as nodes, before a line between a package and what it holds is left out)
 function ownerProblems(model, view, lines) {
@@ -122,7 +123,7 @@ function ownerProblems(model, view, lines) {
   if (!view) return out;
   const vi = OWN_ARR(model.views).indexOf(view), pic = ownersOn(model, view);
   lines.forEach(({ e, from, to }) => { if (holdsLine(pic, from, to)) out.push(lineInside(view, vi, e, from, to, q)); });
-  if (OWN_ARR(view.containers).length) say('own-boxes', `views[${vi}].containers`, [view.id], `view ${JSON.stringify(view.id)} draws its packages as boxes; its own containers are ignored`);
+  if (OWN_ARR(view.containers).length) say('own-boxes', `views[${vi}].containers`, [view.id], `view ${jsonText(view.id)} draws its packages as boxes; its own containers are ignored`);
   return out;
 }
 

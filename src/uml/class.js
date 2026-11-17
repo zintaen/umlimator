@@ -1,3 +1,4 @@
+import { jsonText } from '../core/model.js';
 import { registerDiagramType } from '../core/registry.js';
 import { brLines, esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -393,7 +394,7 @@ const lineVerb = e => ({ __proto__: null, 'uml.Generalization': 'a kind of', 'um
   'uml.Usage': 'uses', 'uml.Realization': 'realizes', 'uml.Abstraction': 'abstracts', 'uml.Extension': 'extends',
   'uml.PackageImport': keyword(e) === '«access»' ? 'accesses' : 'imports' }[e.type] || null);
 const describeAs = look => (model, viewId) => {
-  const v = UML_ARR(model && model.views).find(x => UML_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const v = UML_ARR(model && model.views).find(x => UML_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const { at, pic, lines: all } = drawnLines(model, v, look.own), lines = all.filter(({ from, to }) => !holdsLine(pic, from, to));
   const nm = id => (at.get(id).x.type === 'uml.Comment' ? nameOfEl(at.get(id).x) : pic.name(id));
   const end = (e, w) => { const E = endsOf(e)[w] || {}, t = [E.role, E.multiplicity].filter(UML_HAS); return t.length ? ` (${t.join(', ')})` : ''; };

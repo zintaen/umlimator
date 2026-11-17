@@ -1,3 +1,4 @@
+import { jsonText } from './model.js';
 /* ---------- diagram types (work package 1.3) ----------
    A typed view's `diagram` names its type; a view with none is a map, and the map registers itself as the default
    (src/map/typed.js). A type this release does not know is drawn as plain cards, with a warning. Internal until the
@@ -5,7 +6,7 @@
 const TYPES = new Map();
 
 function registerDiagramType(name, def = {}) {
-  if (typeof name !== 'string' || !/^[a-z0-9]+(\.[a-z0-9-]+)?$/.test(name)) throw new TypeError(`a diagram type's name is <notation> or <notation>.<kind> (uml.class), not ${JSON.stringify(name)}`);
+  if (typeof name !== 'string' || !/^[a-z0-9]+(\.[a-z0-9-]+)?$/.test(name)) throw new TypeError(`a diagram type's name is <notation> or <notation>.<kind> (uml.class), not ${jsonText(name)}`);
   if (TYPES.has(name)) throw new Error(`diagram type "${name}" is registered already`);
   const type = Object.freeze({ ...(def.ownNodes === false ? def : withOwnNodes(def)), name });
   TYPES.set(name, type);

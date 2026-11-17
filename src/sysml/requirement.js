@@ -6,7 +6,7 @@ import { layoutTyped } from '../typed/layout.js';
 import { drawnLines, legendItem, lineRename } from '../uml/class.js'; // and SHAPE.note, a comment's look
 import { holdsLine, ownersOn, placeTabs } from '../uml/owners.js';
 import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_HEAD, SYS_TABLE } from './sysml.js';
-import { usedIds } from '../core/model.js';
+import { usedIds, jsonText } from '../core/model.js';
 
 /* ---------- the requirement diagram, sysml.requirement (work package M3.2, notes/milestone-3.md §6, §13) ----------
    Requirements, test cases, blocks, packages and comments in a SysML frame (§5): a requirement is the classifier with
@@ -49,7 +49,7 @@ function rqIndex(model, view) {
   const vi = RQ_OBJ(view) && view.diagram === 'sysml.requirement' ? RQ_ARR(model && model.views).indexOf(view) : -1;
   if (vi >= 0) RQ_ARR(view.edges).forEach((e, j) => { if (RQ_OBJ(e) && RQ_LINES.includes(e.type) && put(e, `views[${vi}].edges[${j}]`)) lines.push(e); });
   const ty = id => (at.get(id) || {}).type, is = (id, t) => at.has(id) && ty(id) === t;
-  const q = id => (at.has(id) ? `${(RQ_WORD[ty(id)] || 'element').toLowerCase()} ${JSON.stringify(rqName(at.get(id)))}` : JSON.stringify(String(id)));
+  const q = id => (at.has(id) ? `${(RQ_WORD[ty(id)] || 'element').toLowerCase()} ${jsonText(rqName(at.get(id)))}` : JSON.stringify(String(id)));
   const rels = lines.filter(e => Object.hasOwn(RQ_REL, e.type) && at.has(e.from) && at.has(e.to));
   return { at, path, ty, is, q, rels, lines };
 }
@@ -202,13 +202,13 @@ function rqProblems(model, view) {
     if (x.type === RQ && x.parent != null && I.at.has(x.parent) && !I.is(x.parent, RQ) && !I.is(x.parent, RQ_PKG)) say('warning', 'requirement-owner', `${path}.parent`, [x.id, x.parent], `${I.q(x.id)} is owned by ${I.q(x.parent)}, not a requirement or a package`);
     if (x.type !== RQ && x.type !== 'uml.Comment' && I.is(x.parent, RQ)) say('error', 'requirement-nested', `${path}.parent`, [x.id, x.parent], `${I.q(x.id)} is owned by ${I.q(x.parent)}: what a requirement owns is a requirement`);
     RQ_ARR(x.members).forEach((m, j) => { const t = RQ_PROPS(m).valueType, k = typeof t === 'string' ? t.replace(/^~/, '').trim() : null;
-      if (k != null && byName.has(k)) say('error', 'requirement-typing', `${path}.members[${j}].props.valueType`, [m.id, byName.get(k)], `${JSON.stringify(rqName(m))} of ${I.q(x.id)} is typed by ${I.q(byName.get(k))}: a requirement types nothing`); });
+      if (k != null && byName.has(k)) say('error', 'requirement-typing', `${path}.members[${j}].props.valueType`, [m.id, byName.get(k)], `${jsonText(rqName(m))} of ${I.q(x.id)} is typed by ${I.q(byName.get(k))}: a requirement types nothing`); });
     if (x.type !== RQ) return;
     if (RQ_ARR(x.members).length) say('error', 'requirement-members', `${path}.members`, [x.id], `${I.q(x.id)} has ${rqPlural(x.members.length, 'member')}: a requirement has none`);
     if (RQ_HAS(p.reqId)) { const k = String(p.reqId).trim(); if (ids.has(k)) say('warning', 'requirement-id', `${path}.props.reqId`, [ids.get(k), x.id], `${I.q(ids.get(k))} and ${I.q(x.id)} share the id ${k}`); else ids.set(k, x.id); }
     if (!RQ_HAS(p.text)) say('warning', 'requirement-text', path, [x.id], `${I.q(x.id)} has no text`);
-    if (RQ_HAS(p.risk) && !RQ_RISK.includes(p.risk)) say('warning', 'risk-value', `${path}.props.risk`, [x.id], `${I.q(x.id)}'s risk is ${JSON.stringify(p.risk)}, not low, medium or high`);
-    if (RQ_HAS(p.verifyMethod) && !RQ_METHOD.includes(p.verifyMethod)) say('warning', 'verify-method', `${path}.props.verifyMethod`, [x.id], `${I.q(x.id)}'s verify method is ${JSON.stringify(p.verifyMethod)}, not analysis, inspection, test or demonstration`); });
+    if (RQ_HAS(p.risk) && !RQ_RISK.includes(p.risk)) say('warning', 'risk-value', `${path}.props.risk`, [x.id], `${I.q(x.id)}'s risk is ${jsonText(p.risk)}, not low, medium or high`);
+    if (RQ_HAS(p.verifyMethod) && !RQ_METHOD.includes(p.verifyMethod)) say('warning', 'verify-method', `${path}.props.verifyMethod`, [x.id], `${I.q(x.id)}'s verify method is ${jsonText(p.verifyMethod)}, not analysis, inspection, test or demonstration`); });
   const derives = new Map();
   I.lines.forEach(e => { if (!I.at.has(e.from) || !I.at.has(e.to)) return; const path = I.path.get(e.id), ends = [e.id, e.from, e.to], runs = `${e.id} runs from ${I.q(e.from)} to ${I.q(e.to)}`;
     if ((e.type === 'uml.Generalization' || e.type === 'uml.Association') && (I.is(e.from, RQ) || I.is(e.to, RQ))) say('error', e.type === 'uml.Generalization' ? 'requirement-general' : 'requirement-association', path, ends, `${runs}: a requirement takes part in no ${e.type === 'uml.Generalization' ? 'generalization' : 'association'}`);
@@ -232,7 +232,7 @@ function rqProblems(model, view) {
 
 /* ---- describe(): the view in sentences, the frame first, each element in reading order with what its relations say ---- */
 function rqDescribe(model, viewId) {
-  const v = RQ_ARR(model && model.views).find(x => RQ_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const v = RQ_ARR(model && model.views).find(x => RQ_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const I = rqIndex(model, v), { ids, pic } = rqBoxes(model, v), shown = new Set(ids), h = SYS_HEAD(model, v);
   const lines = rqLines(model, v, pic, shown).length;
   const owned = ids.filter(id => I.is(id, RQ) && I.is(I.at.get(id).parent, RQ) && shown.has(I.at.get(id).parent)).length;
