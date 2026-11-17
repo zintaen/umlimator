@@ -287,6 +287,10 @@ async function readBpmnXml(xml, moddle) {
         (e.ext ??= { bpmn: {} }).bpmn.categoryValueRef = el.categoryValueRef.map(v => v.id);
         say(id, 'skipped', 'its groups (categoryValueRef, which row 24 gives no line): kept under ext.bpmn, not read');
       }
+      // an association with a pool or a group is kept and not drawn (notes/milestone-4b.md §8.3; connect refuses it): said,
+      // as the lane case is (audit 28)
+      const ends = [from.type, to.type];
+      if (type === 'bpmn.Association' && (ends.includes('bpmn.Participant') || ends.includes('bpmn.Group'))) say(id, 'weakened', `an association with a ${ends.includes('bpmn.Group') ? 'group' : 'pool'}: kept, not drawn`);
     }
     // views: one per diagram, its shapes in order; what no plane shows goes to the first
     const shown = new Set(), seen = new Set(), first = new Map(); // nodes in a plane; view ids; a node -> the first two views showing it

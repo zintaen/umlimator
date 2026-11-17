@@ -286,6 +286,17 @@ ok("socket#1 · a render with packs fetched opens no socket, entra's missing log
 ok("check#1 · check names an id the pack lacks with the nearest ids, an id an alias moved, and a label other than the pin",
    "no icon 'Test-Rn' (x); nearest: Test-Run" in err and "no icon 'Test-Rnu' (y)" in err and "'Old-Run' is 'Test-Run' in the pin test-1" in err
    and "pin test-0; this release pins test-1" in err, err)
+# audit 28: an accepted.json that is JSON but no object (null, a list, a number, a string) ended pack list and every render of
+# a cloud model in an AttributeError; it is no yes, as a file cut short is not
+kept_yes = a.read_text()
+for bad in ("null", "[1]", "7", '"yes"'):
+    a.write_text(bad)
+    r = cli(d, "pack", "list")
+    got, opened, err = probe(d)
+    ok(f"list#3 · an accepted.json holding {bad} is no yes: pack list says not fetched, not accepted, and a render draws no gcp icon, no traceback (audit 28)",
+       r.returncode == 0 and "gcp  Google Cloud  pin test-1  not fetched, terms not accepted" in r.stdout and "(failed)" not in opened
+       and not [k for k in got if k.startswith("gcp/")] and "Traceback" not in r.stderr + err, (r.stdout, r.stderr[-300:], err[-300:]))
+a.write_text(kept_yes)
 icons, opened, err = probe(d, UMLIMATOR_NO_PACKS="1")
 ok("no-packs#1 · UMLIMATOR_NO_PACKS: no pack entry with a pack cached, and the Azure logos keep their sigil",
    not [k for k in icons if "/" in k] and "azuredevops" not in icons and not opened

@@ -213,6 +213,28 @@ def mermaid_lines(text, said=None):
         yield no, s
 
 
+# JavaScript's whitespace (its \s and trim()), which the typed readers' front matter reading uses: str.strip() and
+# isspace() also take U+001C to U+001F and U+0085 and leave U+FEFF, so a title read here and the same title read --typed
+# came out different (audit 28)
+JS_SPACE = "\t\n\v\f\r \u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
+JS_S = "[" + re.escape(JS_SPACE) + "]"
+
+
+def js_strip(s):
+    """s trimmed as JavaScript's trim() trims it."""
+    return s.strip(JS_SPACE)
+
+
+def js_indented(s):
+    r"""Whether s starts with whitespace as JavaScript's /^\s/ finds it."""
+    return s[:1] != "" and s[:1] in JS_SPACE
+
+
+def js_indent(s):
+    """How many characters of whitespace s starts with, as JavaScript's trimStart() counts them."""
+    return len(s) - len(s.lstrip(JS_SPACE))
+
+
 def front(text, said=None):
     """Mermaid's front matter (--- title: ... ---): its title, and the text with the block as blank lines. The title is
     read as YAML (Mermaid's js-yaml) reads it, as the typed readers' mermaidTitle(): a plain one to a # comment, a
@@ -224,10 +246,10 @@ def front(text, said=None):
     title, first, lines, j = None, text[:m.start(1)].count("\n") + 1, split_lines(m.group(1)), 0
     while j < len(lines):
         l, no = lines[j], first + j
-        if not l.strip() or l.strip().startswith("#") or l[:1].isspace():
+        if not js_strip(l) or js_strip(l).startswith("#") or js_indented(l):
             j += 1
             continue
-        key = l.partition(":")[0].strip()
+        key = js_strip(l.partition(":")[0])
         if key == "title":
             title, rest, j = front_title(lines, j)
             if rest and said is not None:
@@ -244,27 +266,27 @@ def front_title(lines, j):
     A block scalar (title: >, title: |-) holds the more-indented lines under it, | with their line breaks, > folded as
     YAML folds them; a plain or quoted value goes on over the indented lines after it, joined with a space. Line breaks
     at the title's start and end are dropped (audit 25: the block indicator was the title, a second line was lost)."""
-    val = lines[j].partition(":")[2].strip()
-    more = lambda k: k < len(lines) and lines[k].strip() != "---" and (not lines[k].strip() or lines[k][:1].isspace())
+    val = js_strip(lines[j].partition(":")[2])
+    more = lambda k: k < len(lines) and js_strip(lines[k]) != "---" and (not js_strip(lines[k]) or js_indented(lines[k]))
     end = j
     while more(end + 1):
         end += 1
-    while end > j and not lines[end].strip():  # blank lines after the value are not its own
+    while end > j and not js_strip(lines[end]):  # blank lines after the value are not its own
         end -= 1
-    body, block = lines[j + 1:end + 1], re.fullmatch(r"([|>])(?:[1-9][+-]?|[+-][1-9]?)?(?:\s+#.*)?", val, re.S)
+    body, block = lines[j + 1:end + 1], re.fullmatch(r"([|>])(?:[1-9][+-]?|[+-][1-9]?)?(?:" + JS_S + "+#[^\n\r\u2028\u2029]*)?", val)  # JS's . stops at a line terminator
     if block:
-        digit, first = re.search(r"\d", val), next((x for x in body if x.strip()), None)
-        base = int(digit[0]) if digit else len(first) - len(first.lstrip()) if first else 0
+        digit, first = re.search(r"\d", val), next((x for x in body if js_strip(x)), None)
+        base = int(digit[0]) if digit else js_indent(first) if first else 0
         out, prev, blanks = "", None, 0
         for k, x in enumerate(body):
-            if not x.strip():
+            if not js_strip(x):
                 blanks += 1
                 continue
-            if len(x) - len(x.lstrip()) < base:  # less indented: the block ends (YAML refuses what follows)
+            if js_indent(x) < base:  # less indented: the block ends (YAML refuses what follows)
                 end = j + k
                 break
             t = x[base:]
-            wide = t[:1].isspace()
+            wide = js_indented(t)
             if prev is None:
                 out = "\n" * blanks + t
             elif block[1] == ">" and prev and not wide:
@@ -275,7 +297,7 @@ def front_title(lines, j):
         return out.strip("\n"), None, end
     parts, held, nl = [val], bool(val), False  # held: a word read so far; nl: a blank line since the last
     for x in body:  # in parts, joined once: a title over many lines is read in linear time (hostile input, R2)
-        y = x.strip()
+        y = js_strip(x)
         if not y:
             parts.append("\n")
             nl = True
@@ -307,7 +329,7 @@ def yaml_title(val):
     (cut as utf16_clip() cuts it), or None: the typed readers' mermaidTitle() (src/readers/mermaid-front.js)."""
     q = val[:1]
     if q not in ('"', "'"):
-        return re.sub(r"(^|\s)#.*$", "", val, flags=re.S).strip(), None
+        return js_strip(re.sub(r"(^|" + JS_S + r")#.*$", "", val, flags=re.S)), None
     k = 1
     while k < len(val):
         if q == '"' and val[k] == "\\":
@@ -318,7 +340,7 @@ def yaml_title(val):
             else:
                 break
         k += 1
-    span, after = val[1:k], val[k + 1:].strip()
+    span, after = val[1:k], js_strip(val[k + 1:])
     title = span.replace("''", "'") if q == "'" else span
     if q == '"':
         try:

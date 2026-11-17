@@ -472,6 +472,18 @@ ok("mermaid · a block-scalar or multi-line front-matter title is read whole, as
    and [sorted(un) for _, un in got] == [sorted([(3 + fm.count("\n"), "front matter next: Mermaid's configuration is not read")]
                                                 + ([(2, "front matter title: tail, after the quoted title, is not read")] if "tail" in fm else [])) for fm in fms]
    and js.returncode == 0 and [list(imp.front_title(fm.split("\n"), 0)) for fm in fms] == json.loads(js.stdout), ([m["title"] for m, _ in got], [un for _, un in got], js.stdout, js.stderr[-300:]))
+# audit 28: front_title() trimmed with str.strip() and isspace(), which take U+001C to U+001F and U+0085 and leave U+FEFF,
+# where mermaidFrontTitle() uses JavaScript's trim() and \s: one front matter gave two titles. A table both read alike
+fl = [["title: Orders", "\ufeffand returns"], ["title: Orders\ufeff"], ["title: \x1cOrders"], ["title: Orders", "\x1c and returns"], ["title: \x85Orders\x85"],
+      ["title: Orders", "\u00a0and returns"], ["title: |", "\u3000a", "\u3000b"], ["title: >\u00a0# c", "  kept"], ["title: 'q'\ufeff# c"], ["title: a\u2028# c"],
+      ["title: |\u2028 #x |", "  b"], ["title: Orders\x1f # c"]]
+js = subprocess.run(["node", "--input-type=module", "-e", "import { mermaidFrontTitle } from " + json.dumps((ROOT / "src" / "readers" / "mermaid-front.js").as_uri())
+                     + "; console.log(JSON.stringify(JSON.parse(process.argv[1]).map(x => { const r = mermaidFrontTitle(x, 0); return [r.title, r.rest, r.end]; })))",
+                     json.dumps(fl)], capture_output=True, text=True)
+got = [list(imp.front_title(x, 0)) for x in fl]
+ok("mermaid · a front-matter title holding U+FEFF, U+001C to U+001F, U+0085 or a Unicode space is read as the typed readers read it (audit 28)",
+   js.returncode == 0 and got == json.loads(js.stdout) and got[0] == ["Orders and returns", None, 1] and got[3] == ["Orders", None, 0]
+   and imp.read("mermaid", "---\ntitle: Orders\n\ufeffand returns\n---\nflowchart LR\n  a --> b\n", "x")[0]["title"] == "Orders and returns", (got, js.stdout, js.stderr[-300:]))
 # audit 25: a Markdown string ("`**Bold**`") lost its backticks and kept its ** and _ as text, with no word, where the typed
 # reader says it is read as plain text: on a node, a line's label and a subgraph's title
 m, un = imp.read("mermaid", 'flowchart LR\n  A["`**Bold** and _it_`"] -->|"`*e*`"| B\n  B -- "`x`" --> C\n  subgraph s1 ["`**S**`"]\n  E\n  end\n'

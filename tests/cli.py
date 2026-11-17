@@ -36,7 +36,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6})
 
 
 def ok(name, cond, info=""):
@@ -1642,6 +1642,55 @@ if part("audit 26"):
             ok("mcp · diff of a FIFO, a device or a folder is a tool error saying it is not a file, and the next call is answered (audit 26)",
                all(x.get("result", {}).get("isError") and x["result"]["content"][0]["text"].endswith(": not a file") for x in said)
                and after.get("id") == 5 and not after.get("result", {}).get("isError"), (said, after))
+if part("audit 28"):
+    with tempfile.TemporaryDirectory() as tmp:
+        t = Path(tmp)
+        two = {"title": "m", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "edges": [{"id": "ab", "from": "a", "to": "b"}],
+               "views": [{"id": "v", "nodeIds": ["a", "b"]}]}
+        lab = lambda x: json.dumps(two | {"nodes": [two["nodes"][0] | {"label": x}, two["nodes"][1]]})
+        nocr = lambda g, *x: subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                                             "sys.argv = ['umlimator.py', *sys.argv[2:]]; u.main()", str(ROOT), *x], cwd=g, capture_output=True, text=True)
+        # audit 28: a model named summary.md.json took out/summary.md as its stills folder, and the run ended with no summary;
+        # x.json.json's stills folder was x.json, where a removed x.json's copy goes; y.html.json's was y.json's page
+        g = t / "g28"; g.mkdir()
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
+        names = ["summary.md.json", "y.json", "y.html.json", "x.json", "x.json.json"]
+        for n in names:
+            (g / n).write_text(lab("old"))
+        sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "one")
+        for n in names:
+            (g / n).write_text(lab("NEW " + n)) if n != "x.json" else (g / n).unlink()
+        r = nocr(g, "diff", "--base", "HEAD", "--out", "out")
+        got = json.loads(r.stdout or "[]")
+        md = (g / "out" / "summary.md").read_text(encoding="utf-8") if (g / "out" / "summary.md").is_file() else ""
+        outs = [x.get("out") or "" for x in got]
+        own = all(Path(x["out"]).is_file() and (x["file"] == "x.json" or "NEW " + x["file"] in Path(x["out"]).read_text(encoding="utf-8")) for x in got if x.get("out"))
+        ok("diff --base · a model whose page or stills folder would take summary.md, or another model's page, folder or copy, gets a name of its own; summary.md is written (audit 28)",
+           r.returncode == 0 and sorted(x["file"] for x in got) == sorted(names) and not any("error" in x for x in got) and md.startswith("<!-- umlimator-diff -->")
+           and all(f"`{n}`" in md for n in names) and len({o.casefold() for o in outs}) == len(names) and own, (got, md[:400], r.stderr[-400:]))
+        # audit 28: timelapse ran git in the working folder, so a model given by its path from outside its repository failed
+        h = t / "h28"; (h / "docs").mkdir(parents=True)
+        gh = lambda *x: subprocess.run(["git", "-C", str(h), "-c", "user.name=t", "-c", "user.email=t@t", *x], capture_output=True, text=True)
+        gh("init", "-q")
+        for k, x in enumerate(["one", "two"]):
+            (h / "docs" / "map.json").write_text(lab(x)); gh("add", "."); gh("commit", "-qm", f"version {k + 1}")
+        other = t / "other"; other.mkdir(); subprocess.run(["git", "init", "-q"], cwd=other, capture_output=True)
+        plain28 = t / "plain"; plain28.mkdir()
+        runs = [subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "timelapse", str(m), "--out", str(t / f"tl{k}.html")], cwd=c, capture_output=True, text=True,
+                               env={**os.environ, "GIT_CEILING_DIRECTORIES": str(t)})
+                for k, (c, m) in enumerate([(plain28, h / "docs" / "map.json"), (other, h / "docs" / "map.json"), (h / "docs", "map.json"), (plain28, Path("..") / "h28" / "docs" / "map.json")])]
+        ok("timelapse · a model's history is read from its own repository, from a folder outside any repository, inside another, or beside the model (audit 28)",
+           [r.returncode for r in runs] == [0, 0, 0, 0] and all([v[11:] for v in json.loads(r.stdout)["versions"]] == ["version 1", "version 2"] for r in runs),
+           [(r.returncode, r.stdout[-200:], r.stderr[-300:]) for r in runs])
+        # audit 28: --views split every spec at its commas, so a view whose id holds one could not be named
+        (t / "comma.json").write_text(json.dumps(two | {"views": [{"id": "orders,payments", "nodeIds": ["a", "b"]}, {"id": "orders", "nodeIds": ["a"]}, {"id": "payments", "nodeIds": ["b"]}]}))
+        b = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(t / "comma.json"), "--out", str(t / "comma.html"), "--no-check"], capture_output=True, text=True)
+        picked = [u.pick(t / "comma.html", x) for x in ("orders,payments", "orders", "payments,orders", "orders,pay*")]
+        bad = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.pick(sys.argv[2], 'nope')", str(ROOT), str(t / "comma.html")],
+                             capture_output=True, text=True)
+        ok("--views · a spec that is a view's id whole names that view, comma and all; else it is split at commas; the error quotes each id (audit 28)",
+           b.returncode == 0 and picked == [["orders,payments"], ["orders"], ["orders", "payments"], ["orders", "payments"]]
+           and "its views: 'orders,payments', 'orders', 'payments'" in bad.stderr, (b.stderr[-300:], picked, bad.stderr[-300:]))
 if part("audit 27"):
     with tempfile.TemporaryDirectory() as tmp:
         t = Path(tmp)
