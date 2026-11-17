@@ -501,3 +501,14 @@ test('audit 19: a message\'s stereotypes are drawn «…» before its label, sai
   const r = tmRename(m, V, el.id, e.label);
   assert.ok(Array.isArray(r) && r.some(c => c.path === 'label' && c.value === el.label), JSON.stringify(r));
 });
+
+test('audit 24: Delete on a lifeline the view holds as its own says it is deleted, as it is', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.Lifeline', label: 'worker', props: { states: ['Idle', 'Busy'] } }], edges: [],
+    views: [{ id: 'v', diagram: 'uml.timing', nodeIds: ['A', 'B'], nodes: [{ id: 'B', type: 'uml.Lifeline', label: 'bank', props: { states: ['Up', 'Down'] } }],
+      edges: [], timeline: { unit: 'ms', changes: [{ id: 'c1', lifeline: 'A', at: 0, state: 'Idle' }, { id: 'c2', lifeline: 'B', at: 10, state: 'Up' }], constraints: [] } }] };
+  const T = diagramOf(m.views[0]);
+  assert.deepEqual(T.edits.remove(m, m.views[0], ['B'], false), { commands: [{ op: 'delete', id: 'B' }], say: 'Deleted bank, 1 change' });
+  const both = T.edits.remove(m, m.views[0], ['A', 'B'], false);
+  assert.deepEqual(both.commands, [{ op: 'hide', id: 'A', view: 'v' }, { op: 'delete', id: 'B' }]);
+  assert.match(both.say, /^Deleted bank; Hid worker/);
+});

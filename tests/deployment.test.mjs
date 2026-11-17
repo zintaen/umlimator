@@ -404,3 +404,13 @@ test('audit 20: a manifestation from anything but an artifact, not drawn from a 
     const cmds = r || [{ op: 'add', element: { id: 'zz', type: t.type, from: a, to: b }, view: v.id }], m2 = apply(DEP, cmds);
     assert.deepEqual(validate(m2).filter(p => p.level === 'error' && p.rule === 'manifest-ends' && p.ids.includes(cmds[0].element.id)), [], `${a} -> ${b}`); }
 });
+
+test('audit 24: Shift + Delete on a target counts what the view holds as its own in it too; Delete on a target the view holds as its own counts likewise', () => {
+  let m = { schemaVersion: 2, nodes: [{ id: 'srv', type: 'uml.Node', label: 'Server' }, { id: 'web', type: 'uml.Artifact', label: 'web.war', parent: 'srv' }], views: [{ id: 'v', diagram: 'uml.deployment', nodeIds: ['srv', 'web'] }] };
+  m = apply(m, [{ op: 'add', in: 'view', view: 'v', element: { id: 'cfg', type: 'uml.Artifact', label: 'app.yml', parent: 'srv' } }, { op: 'add', in: 'view', view: 'v', element: { id: 'log', type: 'uml.Artifact', label: 'log.jar', parent: 'srv' } }]);
+  const T = diagramOf(m.views[0]);
+  assert.equal(T.edits.remove(m, m.views[0], ['srv'], true).say, 'Deleted node Server and the 3 elements it held');
+  let o = { schemaVersion: 2, nodes: [], views: [{ id: 'v', diagram: 'uml.deployment', nodeIds: [] }] };
+  o = apply(o, [{ op: 'add', in: 'view', view: 'v', element: { id: 'srv', type: 'uml.Node', label: 'Server' } }, { op: 'add', in: 'view', view: 'v', element: { id: 'a', type: 'uml.Artifact', label: 'a.jar', parent: 'srv' } }]);
+  for (const fromModel of [true, false]) assert.deepEqual(T.edits.remove(o, o.views[0], ['srv'], fromModel), { commands: [{ op: 'delete', id: 'srv' }], say: 'Deleted node Server and the 1 element it held' }, String(fromModel));
+});

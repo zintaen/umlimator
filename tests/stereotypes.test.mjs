@@ -323,3 +323,13 @@ test('packages nested 20,000 deep, listed deepest first: the scope and profile w
     N('c', 'Class', 'C', 'p' + (n - 1), { props: { stereotypes: ['x'] } })].reverse();
   assert.deepEqual(stereoProblems({ schemaVersion: 2, nodes, edges: [] }), []);
 });
+
+test('audit 24: a class a view holds as its own, in a package applying a profile, has that profile\'s stereotypes', async () => {
+  await import('../src/uml/class.js');
+  const ex = read(new URL('../examples/bookshop-profile.json', here));
+  for (const own of [false, true]) {
+    let m = structuredClone(ex); m.views.push({ id: 'cls', diagram: 'uml.class', nodeIds: ['sales'] });
+    m = apply(m, { op: 'add', ...(own ? { in: 'view' } : {}), view: 'cls', element: { id: 'invoice', type: 'uml.Class', label: 'Invoice', parent: 'sales', props: { stereotypes: ['entity'], tags: { entity: { table: 'invoices' } } } } });
+    assert.deepEqual(validate(m).filter(p => (p.ids || []).includes('invoice')).map(p => p.message), [], own ? 'the view\'s own class' : 'a model class');
+  }
+});

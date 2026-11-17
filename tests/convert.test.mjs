@@ -136,3 +136,14 @@ test('audit 21: sequenceFromSpans() reads hostile spans and options as sequenceF
   const r = sequenceFromSpans(m, spans, { match: { svc: 'a', toString: 'a' }, view: bad() }), v = r.model.views.find(x => x.id === 'trace');
   assert.ok(v && v.edges.length === 2, JSON.stringify(v && v.edges));
 });
+
+test('audit 24: communicationFromView takes a sequence view\'s own lifelines along: the model\'s when the source stays, the new view\'s when it takes its place', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.Lifeline', label: 'shop' }], edges: [],
+    views: [{ id: 'v', diagram: 'uml.sequence', nodeIds: ['A', 'B'], nodes: [{ id: 'B', type: 'uml.Lifeline', label: 'bank' }], edges: [{ id: 'm1', type: 'uml.Message', from: 'A', to: 'B', label: 'pay', props: { sort: 'call' } }] }] };
+  const a = communicationFromView(m, 'v').model;
+  assert.deepEqual(validate(a).filter(p => p.level !== 'info'), []);
+  assert.ok(a.nodes.some(n => n.id === 'B') && !a.views[0].nodes, 'B is the model\'s, both views list it');
+  const b = communicationFromView(m, 'v', { view: 'v' }).model;
+  assert.deepEqual(validate(b).filter(p => p.level !== 'info'), []);
+  assert.deepEqual([b.nodes.map(n => n.id), b.views[0].nodes.map(n => n.id)], [['A'], ['B']]);
+});
