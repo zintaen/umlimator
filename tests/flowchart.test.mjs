@@ -364,3 +364,15 @@ test('audit 25: no routed line steps back a few px against its own way round a t
     assert.deepEqual(bad.map(e => e.id), [], dir);
   }
 });
+
+test('audit 27: a listed line of another kind is counted in describe() and keyed as "Line"; a node with no type is "Node" in the PDF, as named', () => {
+  const m = one([N('a', 'Process', 'A'), N('b', 'Process', 'B'), { id: 'u', label: 'Untyped' }], [{ id: 'd', type: 'uml.Dependency', from: 'a', to: 'b', label: 'needs' }, F('f', 'a', 'u')], { title: 'V', edges: ['d', 'f'] });
+  assert.deepEqual(describe(m, 'v').split('\n').filter(l => /^V:|^Dependency/.test(l)), ['V: a flowchart of 3 nodes, 1 flow and 1 other line.', 'Dependency from A to B: needs.']);
+  assert.equal(describe(EX, EX.views[0].id).split('\n')[0].includes('other line'), false, 'the example: none');
+  const g = layout(m, 'v'), key = g.legend.map(s => s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
+  assert.ok(key.includes('Line a kind of line this view does not draw as its own'), key.join(' | '));
+  assert.ok(!layout(EX, EX.views[0].id).legend.some(s => /<b>Line<\/b>/.test(s)), 'none where none is drawn');
+  assert.equal(g.byId.u.aria, 'Node Untyped');
+  const ctx = mapContext(m), [els] = tablesOf(ctx, ctx.V.v, { nodes: g.nodes, edges: g.edges });
+  assert.deepEqual(els.rows.map(r => [...r.matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1].replace(/<[^>]+>/g, ''))).find(c => c[0] === 'Untyped').slice(0, 2), ['Untyped', 'Node']);
+});

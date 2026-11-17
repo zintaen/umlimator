@@ -206,11 +206,17 @@ def call(name, a):
     if name == "validate":
         return node("validate", m)
     if name == "diff":
-        given = Path(a["other_model_path"]).expanduser()
+        try:
+            given = Path(a["other_model_path"]).expanduser()
+        except RuntimeError:  # ~name for no user of that name: an Internal error, and a traceback in the log (audit 27)
+            raise Fail(f"cannot read {a['other_model_path']}: no such user, so no home folder to look in") from None
         tried = list(dict.fromkeys([given] if given.is_absolute() else [MODEL.parent / given, Path.cwd() / given]))
-        other = next((p for p in tried if p.is_file()), None)
+        try:  # a name too long for the disk raises (ENAMETOOLONG) where a missing one is only not there (audit 27)
+            other = next((p for p in tried if p.is_file()), None)
+            said = "" if other else "no such file" if not any(p.exists() for p in tried) else "not a file"
+        except OSError as e:
+            other, said = None, e.strerror or str(e)
         if other is None:  # a FIFO, /dev/stdin or /dev/zero, read on the one thread that answers, blocked every call after it (audit 26)
-            said = "no such file" if not any(p.exists() for p in tried) else "not a file"
             raise Fail(f"cannot read {a['other_model_path']} (looked for {' and '.join(map(str, tried))}): {said}")
         try:
             before = cli.read_json(other)

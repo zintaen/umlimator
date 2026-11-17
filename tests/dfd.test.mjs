@@ -421,3 +421,17 @@ test('audit 26: a listed line of another family is drawn plain and named by its 
     assert.match(describe(m, 'v'), /Association (owns )?from A to B/, d);
   }
 });
+
+test('audit 27: a listed line of another family is keyed as "Line"; a node with no type is "Element" in the PDF, as named', async () => {
+  const { tablesOf } = await import('../src/page/print.js');
+  const m = { schemaVersion: 2, nodes: [P('p', 'Take order', '1'), { id: 'e', type: 'dfd.ExternalEntity', label: 'Customer' }, { id: 'u', label: 'Untyped' }],
+    edges: [{ id: 'f', type: 'dfd.DataFlow', from: 'e', to: 'p', label: 'order' }, { id: 'd', type: 'uml.Dependency', from: 'p', to: 'u' }],
+    views: [{ id: 'v', diagram: 'dfd', nodeIds: ['p', 'e', 'u'], edges: ['f', 'd'] }] };
+  const g = layout(m, 'v'), key = g.legend.map(s => s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
+  assert.ok(key.includes('Line a kind of line this view does not draw as its own'), key.join(' | '));
+  for (const v of DF.views) assert.ok(!layout(DF, v.id).legend.some(s => /<b>Line<\/b>/.test(s)), `${v.id}: none where none is drawn`);
+  assert.equal(g.byId.u.aria, 'Element Untyped, 0 flows in, 0 out');
+  const ctx = mapContext(m), [els] = tablesOf(ctx, ctx.V.v, { nodes: g.nodes, edges: g.edges }), rows = els.rows.map(r => [...r.matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1].replace(/<[^>]+>/g, '')));
+  assert.deepEqual(rows.find(c => c[0] === 'Untyped').slice(0, 2), ['Untyped', 'Element']);
+  assert.deepEqual(rows.find(c => c[0] === 'Customer').slice(0, 2), ['Customer', 'External entity'], 'a typed one as before');
+});

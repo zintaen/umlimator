@@ -20,6 +20,8 @@ const erProps = x => (ER_OBJ(x.props) ? x.props : {});
 const erCols = n => ER_ARR(n.members).filter(c => ER_OBJ(c) && c.type === 'er.Column');
 const erPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const erAnd = a => (a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a.at(-1));
+// a table: an entity, or a node with no type (drawn as one, as before), to the rules, the edits and the PDF as to the picture (audit 27)
+const erTable = n => ER_OBJ(n) && (n.type == null || n.type === 'er.Entity');
 
 // the model read once: nodes by id, every entity's columns by id ({ c, e }), the lines. Each column remembers the model it
 // was last read in, which print (the panel's rows, given a column alone) needs to name what it references
@@ -27,7 +29,7 @@ const ER_SEEN = new WeakMap();
 function erIndex(model) {
   const at = new Map(), col = new Map();
   ER_ARR(model && model.nodes).forEach(n => { if (!ER_OBJ(n) || typeof n.id !== 'string' || at.has(n.id)) return; at.set(n.id, n);
-    if (n.type === 'er.Entity') erCols(n).forEach(c => { ER_SEEN.set(c, model); if (typeof c.id === 'string' && !col.has(c.id)) col.set(c.id, { c, e: n }); }); });
+    if (erTable(n)) erCols(n).forEach(c => { ER_SEEN.set(c, model); if (typeof c.id === 'string' && !col.has(c.id)) col.set(c.id, { c, e: n }); }); });
   return { at, col, R: ER_ARR(model && model.edges).filter(e => ER_OBJ(e) && typeof e.id === 'string') };
 }
 
@@ -145,8 +147,6 @@ function erLook(e, idef) {
 }
 
 /* ---- names (A1) and the view's words ---- */
-// a table: an entity, or a node with no type (drawn as one, as before)
-const erTable = n => n.type == null || n.type === 'er.Entity';
 function erNodeName(n) {
   if (n.type === 'uml.Comment') return 'Comment: ' + erName(n);
   if (!erTable(n)) return `${snKindName(n.type)} ${erName(n)}`; // another kind, as itself: "Class Customer", no table (audit 25)
@@ -183,7 +183,9 @@ function erLegend(edges, dep) {
     ...(rel.some(e => e.end.dashed) ? [erGlyph('none', true, 'Non-identifying', 'the child refers to the parent outside its key')] : []),
     ...Object.keys(ER_SAYS).filter(k => ends.has(k)).map(k => erGlyph(k, false, ...ER_SAYS[k])),
     ...(dep ? [`<span class="lgi" title="Dependent entity — its key holds its parent's"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><rect x="3" y="2" width="22" height="12" rx="4" fill="none" stroke="var(--um-muted)" stroke-width="1.4"/></svg><b>Dependent entity</b><span>rounded corners: its key holds its parent's</span></span>`] : []),
-    ...(edges.some(e => e.type === 'uml.CommentLink') ? [erGlyph('none', true, 'Comment link', 'what a comment is about')] : [])];
+    ...(edges.some(e => e.type === 'uml.CommentLink') ? [erGlyph('none', true, 'Comment link', 'what a comment is about')] : []),
+    // a listed line of another kind, drawn plain (erLook): "Line", as the object and component views key it (audit 27)
+    ...(edges.some(e => e.type !== 'er.Relationship' && e.type !== 'uml.CommentLink') ? [erGlyph('none', false, 'Line', 'a kind of line this view does not draw as its own')] : [])];
 }
 
 /* ---- the view laid out: one geometry for both notations (§4.3): the notation picks the ends and IDEF1X's rounded corners,
@@ -228,7 +230,9 @@ const erFks = (I, a, b) => erCols(I.at.get(b) || {}).filter(c => { const r = I.c
 function erProblems(model) {
   const out = [], I = erIndex(model), say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const q = id => JSON.stringify(I.at.has(id) ? erName(I.at.get(id)) : String(id)), qc = r => JSON.stringify(`${erName(r.e)}.${erName(r.c)}`);
-  ER_ARR(model && model.nodes).forEach((n, i) => { if (!ER_OBJ(n) || n.type !== 'er.Entity' || I.at.get(n.id) !== n) return;
+  // a node with no type is a table here when it holds a column or an er view shows it: one only other views show is theirs
+  const onEr = new Set(ER_ARR(model && model.views).filter(v => ER_OBJ(v) && v.diagram === 'er').flatMap(v => ER_ARR(v.nodeIds)));
+  ER_ARR(model && model.nodes).forEach((n, i) => { if (!erTable(n) || I.at.get(n.id) !== n || (n.type == null && !erCols(n).length && !onEr.has(n.id))) return;
     const seen = new Map();
     if (!erCols(n).some(c => erProps(c).primaryKey === true)) say('warning', 'pk-exists', `nodes[${i}]`, [n.id], `${q(n.id)} has no primary key column`);
     ER_ARR(n.members).forEach((c, j) => { if (!ER_OBJ(c) || c.type !== 'er.Column') return;
@@ -241,7 +245,7 @@ function erProblems(model) {
       if (p.foreignKey === true && !ER_HAS(p.references)) say('warning', 'fk-flag', path, [c.id], `${me} is a foreign key that references no column`); }); });
   const R = erRels(model);
   typedLines(model, v => v.diagram === 'er').forEach(([e, path]) => { if (!ER_OBJ(e) || e.type !== 'er.Relationship') return;
-    const A = e.from, B = e.to, ent = id => (I.at.get(id) || {}).type === 'er.Entity';
+    const A = e.from, B = e.to, ent = id => erTable(I.at.get(id));
     ['from', 'to'].forEach(w => { const t = erMult(e, w), b = erBounds(t);
       if (!b) say('error', 'relationship-ends', `${path}.props.ends.${w}.multiplicity`, [e.id], `the ${w} end of ${e.id} has ${ER_HAS(t) ? `multiplicity ${JSON.stringify(String(t))}, which is not readable` : 'no multiplicity'}`);
       else if (!erForm(b)) say('warning', 'relationship-ends', `${path}.props.ends.${w}.multiplicity`, [e.id], `the ${w} end of ${e.id} has multiplicity ${JSON.stringify(String(t))}, none of 1, 0..1, 1..* and 0..*: drawn as the nearest, with its text`); });
@@ -276,7 +280,7 @@ const erNewId = (model, base) => { const used = new Set(); JSON.stringify(model,
   base = base.replace(/->+/g, '-'); let k = 2, id = base; while (used.has(id)) id = `${base}-${k++}`; return id; }; // never "->" (model.md rule 5)
 // a row of the panel's Members, read as S9's: a new column, or a column's name and syntax props set (its other props kept)
 function erMember(model, view, owner, id, text) {
-  const all = erIndex(model); if ((all.at.get(owner) || {}).type !== 'er.Entity') return null;
+  const all = erIndex(model); if (!erTable(all.at.get(owner))) return null;
   // a model table's column references no column of a table this view alone holds (view.nodes, read as the model's), which
   // another view would print by its id (audit 26)
   const V = ER_OBJ(view) ? view : ER_ARR(model && model.views).find(v => ER_OBJ(v) && v.id === view);
@@ -293,7 +297,7 @@ function erMember(model, view, owner, id, text) {
 // connect: a relationship joins two tables (the palette's entry gives it 1 to 0..*, non-identifying); else said
 function erConnect(model, view, from, to, at, line) {
   if (!ER_OBJ(line) || line.type !== 'er.Relationship') return null;
-  const I = erIndex(model), ent = id => (I.at.get(id) || {}).type === 'er.Entity';
+  const I = erIndex(model), ent = id => erTable(I.at.get(id));
   return ent(from) && ent(to) ? null : { error: 'A relationship joins two tables' };
 }
 
@@ -311,13 +315,13 @@ const ER_TYPE = registerDiagramType('er', {
   // ponytail: the panel's member.print is given a column alone; the panel asks owners, with the live model, just before it,
   // so that model is read here and print names a referenced column by labels. No Owner field (null). A hook given the model ends this
   owners: model => (erIndex(model), null),
-  member: { print: c => printColumn(c), holds: n => n.type === 'er.Entity' }, // rows are read by edits.member, which has the model
+  member: { print: c => printColumn(c), holds: erTable }, // rows are read by edits.member, which has the model
   validate: erProblems,
   rules: ER_RULES,
   describe: erDescribe,
   // the PDF's tables (§9): an entity's word and its columns as S9 prints them; a relationship's multiplicities
-  word: (model, id) => ((erIndex(model).at.get(id) || {}).type === 'er.Entity' ? 'Table' : null),
-  rows: (model, view, id) => { const I = erIndex(model), n = I.at.get(id); return n && n.type === 'er.Entity' ? erCols(n).map(c => printColumn(c, I)) : null; },
+  word: (model, id) => (erTable(erIndex(model).at.get(id)) ? 'Table' : null),
+  rows: (model, view, id) => { const I = erIndex(model), n = I.at.get(id); return erTable(n) ? erCols(n).map(c => printColumn(c, I)) : null; },
   text: (model, view, id) => { const e = erRels(model).find(x => x.id === id); // inline relationships too
     return e && e.type === 'er.Relationship' ? `${ER_HAS(e.label) ? e.label + ': ' : ''}${erMult(e, 'from') ?? '?'} to ${erMult(e, 'to') ?? '?'}, ${erIdentifying(e) ? 'identifying' : 'non-identifying'}` : null; },
   edits: { member: erMember, connect: erConnect },

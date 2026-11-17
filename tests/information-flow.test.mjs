@@ -429,3 +429,13 @@ test('audit 26: a model flow conveys no element only this view holds, nor does a
   assert.equal(E.edits.member(er, 'a', 'cust', null, 'order_id int FK order.id')[0].element.props.references, 'order.id');
   assert.equal(E.edits.member(er, er.views[0], 'order', null, 'parent_id int FK order.id')[0].element.props.references, 'order.id');
 });
+
+test('audit 27: F2 on a flow from an end this view alone holds may add an item this view alone holds, as L offers it; between model ends it is still refused', () => {
+  const m = { schemaVersion: 2, nodes: [N('c', 'Component', 'Shop'), N('k', 'Component', 'Bank'), N('b', 'InformationItem', 'Invoice')], edges: [F('mf', 'c', 'k', ['b'])],
+    views: [{ id: 'v', diagram: 'uml.information-flow', nodeIds: ['x', 'a', 'c', 'k', 'b'], nodes: [N('x', 'Actor', 'Clerk'), N('a', 'InformationItem', 'Note')] }] };
+  const r = T.edits.connect(m, m.views[0], 'x', 'c', null, { type: 'uml.InformationFlow' });
+  assert.ok(r.pick.includes('Note'), 'L offers the own item');
+  const m2 = apply(m, r.then(r.pick.indexOf('Invoice'))), fid = m2.edges.find(e => e.from === 'x').id;
+  assert.deepEqual(T.edits.rename(m2, m2.views[0], fid, 'Invoice, Note'), [{ op: 'set', id: fid, path: 'props.conveyed', value: ['b', 'a'] }]);
+  assert.deepEqual(T.edits.rename(m2, m2.views[0], 'mf', 'Invoice, Note'), { error: 'Note lives in this view only: a flow between model elements conveys a model element' });
+});

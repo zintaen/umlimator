@@ -1,5 +1,5 @@
 import { ownNodes, registerDiagramType } from '../core/registry.js';
-import { fit, textW } from '../core/text.js';
+import { brLines, fit, textW } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { labelW, rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
@@ -63,11 +63,13 @@ function rqSays(I, id) {
 
 /* ---- the classifier's drawing input (§6.1): the requirement compartment's rows, its text wrapped at 224 px ---- */
 const RQ_WRAP = 224, RQ_PX = 11; // the classifier's row font
+// a break the author put in the text breaks the line there, as flowWrap's (audit 27)
 function rqWrap(t) {
-  const out = []; let line = '';
-  String(t).split(/\s+/).filter(Boolean).map(w => (textW(w, RQ_PX) > RQ_WRAP ? fit(w, RQ_PX, RQ_WRAP) : w)).forEach(w => { const next = line ? line + ' ' + w : w; // a word wider than 224 px is cut there
-    if (line && textW(next, RQ_PX) > RQ_WRAP) { out.push(line); line = w; } else line = next; });
-  if (line) out.push(line);
+  const out = [];
+  brLines(t).forEach(par => { let line = '';
+    par.split(/\s+/).filter(Boolean).map(w => (textW(w, RQ_PX) > RQ_WRAP ? fit(w, RQ_PX, RQ_WRAP) : w)).forEach(w => { const next = line ? line + ' ' + w : w; // a word wider than 224 px is cut there
+      if (line && textW(next, RQ_PX) > RQ_WRAP) { out.push(line); line = w; } else line = next; });
+    if (line) out.push(line); });
   return out;
 }
 const rqRows = x => { const p = RQ_PROPS(x);

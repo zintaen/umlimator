@@ -770,3 +770,53 @@ test('audit 26: a categoryValueRef that is not a list is warned of; the event an
   assert.match(said, /e \("Done"\) is an end event with definition "timer"/); assert.match(said, /x \("Odd"\)'s parent e2 \("Stop"\) is an end event:/);
   assert.doesNotMatch(said, /\ba [aeiou]/);
 });
+
+test('audit 27: describe() counts a listed line of another kind and says it by its accessible name, as drawn', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'bpmn.Task', label: 'A' }, { id: 'b', type: 'bpmn.Task', label: 'B' }],
+    edges: [{ id: 'd', type: 'uml.Dependency', from: 'a', to: 'b', label: 'needs' }], views: [{ id: 'v', diagram: 'bpmn', title: 'V', nodeIds: ['a', 'b'], edges: ['d'] }] };
+  const g = layout(m, 'v'), d = describe(m, 'v').split('\n');
+  assert.equal(d[0], 'V: a BPMN diagram of 2 flow nodes, 0 flows, 0 pools and 1 other line.');
+  assert.ok(d.includes(g.edges.find(e => e._id === 'd').aria + '.'), d.join(' | '));
+  assert.doesNotMatch(describe(EX, VID), /other line/, 'the example: none');
+});
+
+// audit 27: a node of a kind outside the subset (a typo, another notation's) was drawn and named a task, with no word on its
+// kind, and lane-owner called such a parent a task; validate() says its type, and its name is its own
+test('audit 27: a kind outside BPMN\'s subset is said by validate() and named by its own type, not called a task', () => {
+  for (const [t, w] of [['bpmn.InclusiveGateway', 'InclusiveGateway'], ['bpmn.Taks', 'Taks'], ['uml.Class', 'Class']]) {
+    const m = { schemaVersion: 2, nodes: [{ id: 's', type: 'bpmn.StartEvent', label: 'Go' }, { id: 'x', type: t, label: 'Which way' }, { id: 'e', type: 'bpmn.EndEvent', label: 'Done' },
+      { id: 'k', type: 'bpmn.Task', label: 'Pack', parent: 'x' }],
+    edges: [{ id: 'f1', type: 'bpmn.SequenceFlow', from: 's', to: 'x' }, { id: 'f2', type: 'bpmn.SequenceFlow', from: 'x', to: 'e' }], views: [{ id: 'v', diagram: 'bpmn', nodeIds: ['s', 'x', 'e', 'k'] }] };
+    const said = validate(m).filter(p => p.path === 'nodes[1].type');
+    assert.deepEqual(said.map(p => [p.level, p.message]), [['warning', `x ("Which way") is of type "${t}", which is no BPMN element umlimator draws: drawn as a task`]], t);
+    const g = layout(m, 'v');
+    assert.equal(g.byId.x.shape, 'bpmn-task', 'drawn as a task'); assert.equal(g.byId.x.aria, `${w} Which way`, t);
+    assert.match(validate(m).find(p => p.rule === 'lane-owner').message, new RegExp(`'s parent x \\("Which way"\\) is an? ${w.toLowerCase()}:`), t);
+    assert.equal(T.word(m, 'x'), t.startsWith('bpmn.') ? w : null, 'the PDF\'s word');
+  }
+  assert.deepEqual(validate(EX).filter(p => /no BPMN element/.test(p.message)), [], 'example 24 holds none');
+});
+
+// audit 27: a message flow between two pools and a line from a boundary event to its own activity are kept and not drawn
+// (§8.3); describe() alone said so. check() says each, as the import's report does (tests/bpmn-xml.test.mjs)
+test('audit 27: check() says a line the picture leaves out: a message flow between two pools, a boundary event\'s line to its own activity', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'bpmn.Participant', label: 'Bank' }, { id: 'b', type: 'bpmn.Participant', label: 'Customer' },
+    { id: 'c', type: 'bpmn.Participant', label: 'Shop' }, { id: 's', type: 'bpmn.StartEvent', parent: 'c' }, { id: 't', type: 'bpmn.Task', label: 'Call', parent: 'c' },
+    { id: 'r', type: 'bpmn.BoundaryEvent', label: 'retry', parent: 'c', props: { definition: 'timer', attachedTo: 't' } }, { id: 'e', type: 'bpmn.EndEvent', parent: 'c' }],
+  edges: [{ id: 'm1', type: 'bpmn.MessageFlow', from: 'a', to: 'b', label: 'statement' }, { id: 'f1', type: 'bpmn.SequenceFlow', from: 's', to: 't' },
+    { id: 'f2', type: 'bpmn.SequenceFlow', from: 't', to: 'e' }, { id: 'f3', type: 'bpmn.SequenceFlow', from: 'r', to: 't', label: 'try again' }],
+  views: [{ id: 'v', diagram: 'bpmn', nodeIds: ['a', 'b', 'c', 's', 't', 'r', 'e'] }] };
+  const said = check(m, 'v').filter(p => /not drawn$/.test(p.message));
+  assert.deepEqual(said, [{ message: 'view v: Message flow from Bank to Customer, named statement: not drawn', targets: [{ type: 'edge', ids: ['m1'], view: 'v' }] },
+    { message: 'view v: Sequence flow from retry to Call, named try again: not drawn', targets: [{ type: 'edge', ids: ['f3'], view: 'v' }] }]);
+  assert.deepEqual(layout(m, 'v').edges.map(e => e.id).sort(), ['f1', 'f2'], 'neither drawn');
+  assert.deepEqual(check(EX, VID).filter(p => /not drawn$/.test(p.message)), [], 'example 24 draws every line it shows');
+});
+
+// audit 27: a node with no type is said to have none, never 'of type undefined' (the untyped-node wording every typed view shares)
+test('audit 27: an untyped node on a BPMN view is said to have no type, never "undefined"', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'x', label: 'Plain' }], edges: [], views: [{ id: 'v', diagram: 'bpmn', title: 'T', nodeIds: ['x'] }] };
+  const said = validate(m).filter(p => (p.ids || []).includes('x')).map(p => p.message);
+  assert.ok(said.includes('x ("Plain") has no type, so it is no BPMN element umlimator draws: drawn as a task'), said.join(' | '));
+  for (const t of said) assert.doesNotMatch(t, /undefined/);
+});
