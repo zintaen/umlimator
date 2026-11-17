@@ -339,3 +339,20 @@ test('a blank %% id: is no hint, and is said (audit 19)', () => {
   assert.deepEqual(model.edges.map(e => e.id), ['A-B']);
   assert.deepEqual(report.map(r => r.message), ['%% id: holds no id: not read']);
 });
+
+test('audit 24: a front-matter title ends at a YAML comment, and a quoted one is read to its closing quote, in all seven readers', async () => {
+  const bodies = { flowchart: 'flowchart LR\n  a --> b', class: 'classDiagram\n  class A', er: 'erDiagram\n  A ||--o{ B : x', state: 'stateDiagram-v2\n  [*] --> A',
+    sequence: 'sequenceDiagram\n  A->>B: x', mindmap: 'mindmap\n  root', requirement: 'requirementDiagram\n  requirement r {\n  id: 1\n  }' };
+  const cases = [['Shop # the main flow', 'Shop', []], ['"Shop" # the main flow', 'Shop', []], ["'Bob''s shop' # a comment", "Bob's shop", []],
+    ['"The \\"returns\\" flow"', 'The "returns" flow', []], ['a#b c', 'a#b c', []], ['C# tips', 'C# tips', []],
+    ['"Shop" and more', 'Shop', ['2 skipped: front matter title: and more, after the quoted title, is not read']],
+    ['"Shop', 'Shop', []], ['"x \\', 'x \\', []]];
+  for (const [kind, body] of Object.entries(bodies)) {
+    const M = await import(`../src/readers/mermaid-${kind}.js`), rd = Object.values(M).find(f => f.name.startsWith('read'));
+    for (const [val, title, said] of cases) {
+      const { model, report } = rd(`---\ntitle: ${val}\n---\n${body}\n`);
+      assert.equal(model.title, title, `${kind}: title: ${val}`);
+      assert.deepEqual(report.filter(r => r.line === 2).map(r => `${r.line} ${r.status}: ${r.message}`), said, `${kind}: title: ${val}`);
+    }
+  }
+});

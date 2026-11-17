@@ -1,4 +1,5 @@
 import { unreadable } from '../core/model.js';
+import { mermaidTitle, mermaidClip } from './mermaid-front.js';
 /* ---------- Mermaid requirementDiagram: a reader and a writer (notes/milestone-3.md §12, M3.6; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's requirement diagram page (docs/syntax/requirementDiagram.md, read 14 Nov 2026), as the
    other readers are against theirs. Internal: the CLI (`umlimator.py import`) imports this file through Node; a host gets it
@@ -50,7 +51,7 @@ const MQ_RULE = new Map([['derives', ['derive-ends', 'a deriveReqt runs from a r
   ['satisfies', ['satisfy-ends', 'a satisfy runs to a requirement', (a, b) => MQ_REQ(b)]], ['verifies', ['verify-ends', 'a verify runs to a requirement', (a, b) => MQ_REQ(b)]],
   ['contains', ['requirement-nested', 'what a requirement contains is a requirement', (a, b) => !MQ_REQ(a) || MQ_REQ(b)]]]);
 const mqSkip = (s, k) => { while (k < s.length && (s[k] === ' ' || s[k] === '\t')) k++; return k; };
-const mqShort = s => (s.length > 60 ? s.slice(0, 57) + '...' : s);
+const mqShort = mermaidClip;
 const mqMarkdown = s => /\*\*|__|`|(?:^|\s)[*_]\S/.test(s); // emphasis or code: reported once, kept as written
 // the id a name gives: the name when it is one, else a slug of it
 const mqWant = name => (/^[\p{L}\p{N}_.-]+$/u.test(name) ? name : name.replace(/[^\p{L}\p{N}_.-]+/gu, '-').replace(/^-+|-+$/g, '') || 'element');
@@ -91,8 +92,9 @@ function readMermaidRequirement(text) {
       if (!l.trim() || l.trim().startsWith('#') || /^\s/.test(l)) continue;
       const c = l.indexOf(':'), key = (c < 0 ? l : l.slice(0, c)).trim(), val = c < 0 ? '' : l.slice(c + 1).trim();
       if (key === 'title') {
-        if (val.startsWith('"')) { try { title = JSON.parse(val); } catch { title = val.slice(1, -1); } }
-        else title = val.startsWith("'") ? val.slice(1, -1).replaceAll("''", "'") : val;
+        const ft = mermaidTitle(val); // a comment after it is not the title (audit 24)
+        title = ft.title;
+        if (ft.rest) say(j + 1, 'skipped', `front matter title: ${ft.rest}, after the quoted title, is not read`);
       } else say(j + 1, 'skipped', `front matter ${key}: Mermaid's configuration is not read`);
     }
     if (j >= lines.length) { say(i + 1, 'skipped', 'the front matter is never closed with ---: nothing read'); return empty(); }

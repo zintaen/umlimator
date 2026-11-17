@@ -26,7 +26,7 @@ readers are the module's, in src/readers/).
 BPMN XML is read and written by the module's adapter in Node through bpmn-moddle, which umlimator never installs: `npm
 install bpmn-moddle@10.3.1` in the working folder, or name its folder with --moddle or UMLIMATOR_BPMN_MODDLE.
 """
-import argparse, atexit, base64, contextlib, hashlib, html, io, json, os, re, shutil, signal, struct, subprocess, sys, tempfile, urllib.parse, urllib.request, zipfile, zlib
+import argparse, atexit, base64, contextlib, hashlib, html, io, json, math, os, re, shutil, signal, struct, subprocess, sys, tempfile, urllib.parse, urllib.request, zipfile, zlib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -742,9 +742,22 @@ def model_of(text):
 
 def diff_since(a):
     git = lambda *x: subprocess.run(["git", *x], capture_output=True, text=True)
-    changed = git("diff", "--name-only", "-z", "--no-renames", a.base, "--", *(a.models or ["*.json"]))
+    # renames found (audit 24): a model only moved or renamed is its old version against its new, not one map removed and
+    # one added; an R row is its status, the old path and the new
+    changed = git("diff", "--name-status", "-z", "-M", a.base, "--", *(a.models or ["*.json"]))
     if changed.returncode:
         sys.exit(changed.stderr.strip())
+    rows, moved = changed.stdout.split("\0"), {}  # moved: each new path, the old path its version at --base is read from
+    names, i = [], 0
+    while i + 1 < len(rows):
+        if rows[i][:1] in ("R", "C") and i + 2 < len(rows):
+            if rows[i][:1] == "R":
+                moved[rows[i + 2]] = rows[i + 1]
+            names.append(rows[i + 2])
+            i += 3
+        else:
+            names.append(rows[i + 1])
+            i += 2
     # a new model not yet added to git is a working-tree change too, named from the top as diff's are (audit 10)
     new = git("ls-files", "-z", "--others", "--exclude-standard", "--full-name", "--", *(a.models or ["*.json"]))
     top = Path(git("rev-parse", "--show-toplevel").stdout.strip())  # git names files from the top, wherever diff runs
@@ -757,16 +770,19 @@ def diff_since(a):
     # a path that is itself a symbolic link never counts, even one whose target is gone (a dangling link: written through)
     inside = lambda p, folder=False: not p.is_symlink() and (q := p.parent if folder else p).exists() and (q.is_dir() or not folder) and q.resolve().is_relative_to(top.resolve()) \
         and not any(x.is_symlink() for x in [q, *q.parents] if x.is_relative_to(top) and x != top)
-    for name in filter(None, (changed.stdout + new.stdout).split("\0")):
-        old = subprocess.run(["git", "show", f"{a.base}:{name}"], capture_output=True)  # bytes: a file need not be UTF-8
-        fname = flat(name.replace("`", "'"), code=True)  # the file's name in the summary: a code span of its own
+    for name in filter(None, names + new.stdout.split("\0")):
+        was = moved.get(name, name)
+        old = subprocess.run(["git", "show", f"{a.base}:{was}"], capture_output=True)  # bytes: a file need not be UTF-8
+        # the file's name in the summary: a code span of its own, and the one it moved from
+        span = lambda x: "`" + flat(x.replace("`", "'"), code=True) + "`"
+        fname = span(name) + (f" (moved from {span(was)})" if was != name else "")
         # a model file that is a symbolic link, or sits in a folder that is one, or resolves outside the checkout, is not
         # read: a pull request could point it at another checkout's file, whose labels and logos would go into the comment
         # and the page (audit 20, the security review)
         if ((top / name).is_symlink() or (top / name).is_file()) and not inside(top / name):  # a dangling link too
             why = "it is a symbolic link, or resolves outside the checkout: not read"
             done.append({"file": name, "error": why})
-            md += [f"**`{fname}`**: cannot be read: {why}", ""]
+            md += [f"**{fname}**: cannot be read: {why}", ""]
             continue
         texts = (old.stdout if old.returncode == 0 else None, (top / name).read_bytes() if (top / name).is_file() else None)
         (before, e1), (after, e2) = model_of(texts[0]), model_of(texts[1])
@@ -781,10 +797,12 @@ def diff_since(a):
             why = [f"{at}: " + "; ".join(bad) for at, x in ((f"its version at {a.base}", before), ("it", after)) if x and (bad := not_objects(x))]
         if why:
             done.append({"file": name, "error": "; ".join(why)})
-            md += [f"**`{fname}`**: cannot be read: " + flat("; ".join(why)), ""]
+            md += [f"**{fname}**: cannot be read: " + flat("; ".join(why)), ""]
             continue
         if not (before or after):
             continue  # JSON, but not a map model
+        if was != name and before == after:
+            continue  # only moved: nothing on the map changed, so no page and no stills (audit 24)
         stem = name.replace("/", "-")[:-5] if name.endswith(".json") else name.replace("/", "-")
         # a/b-c.json and a-b/c.json; and docs/Map.json and Docs-map.json, one file on a disk that ignores case (macOS,
         # Windows), as still_names does for view ids (audit 21)
@@ -801,12 +819,12 @@ def diff_since(a):
         except (SystemExit, Exception) as e:  # the module failed on this model (js() ends the CLI), or an odd one: said for this file, and the rest go on
             why = str(e.code if isinstance(e, SystemExit) else e)
             done.append({"file": name, "error": why})
-            md += [f"**`{fname}`**: cannot be diffed: {flat(why)}", ""]
+            md += [f"**{fname}**: cannot be diffed: {flat(why)}", ""]
             continue
         if not r["summary"]:
             continue
-        done.append({"file": name, **{k: v for k, v in r.items() if k != "model"}})
-        md += [f"**`{fname}`**: " + flat(", ".join(r["views"])) if r["views"] else f"**`{fname}`**", ""]
+        done.append({"file": name, **({"movedFrom": was} if was != name else {}), **{k: v for k, v in r.items() if k != "model"}})
+        md += [f"**{fname}**: " + flat(", ".join(r["views"])) if r["views"] else f"**{fname}**", ""]
         md += [f"- {flat(s)}" for s in r["summary"]] + [""] + sketch(r["model"]) + [""]
         if r.get("stillsFailed"):
             said = no_pictures(r["stillsFailed"])
@@ -1257,14 +1275,27 @@ def apng(frames, delays, out):
     if any(p[0] != (b"IHDR", head) for p in pngs):
         sys.exit("record: the frames are not all the same size and kind of PNG")
     w, h = struct.unpack(">II", head[:8])
-    parts = [b"\x89PNG\r\n\x1a\n", chunk(b"IHDR", head), chunk(b"acTL", struct.pack(">II", len(pngs), 0))]
+    # a delay is a fraction of two 16-bit numbers: in ms up to 65.535 s, else in coarser units, so a step of minutes or
+    # hours lasts as long as the page plays it; past 65535 s the frame is shown again, the delay shared (audit 24)
+    shown = []
+    for k, (p, ms) in enumerate(zip(pngs, delays)):
+        n = max(1, -(-int(ms) // 65535000))
+        shown += [(k, p, int(ms) / n)] * n
+    def delay(ms):  # in ms while that fits (as before), else ms / 1000 in lowest terms when that does, else the finest unit that does
+        ms = round(ms)
+        g = 1 if ms <= 65535 else math.gcd(ms, 1000)
+        if ms // g <= 65535:
+            return ms // g, 1000 // g
+        den = next(d for d in (100, 10, 1) if round(ms * d / 1000) <= 65535)
+        return round(ms * den / 1000), den
+    parts = [b"\x89PNG\r\n\x1a\n", chunk(b"IHDR", head), chunk(b"acTL", struct.pack(">II", len(shown), 0))]
     parts += [chunk(t, d) for t, d in pngs[0] if t in (b"sRGB", b"gAMA", b"cHRM", b"iCCP", b"pHYs")]  # the colour space, as the first frame says
     seq = 0
-    for k, (p, ms) in enumerate(zip(pngs, delays)):
-        parts.append(chunk(b"fcTL", struct.pack(">IIIIIHHBB", seq, w, h, 0, 0, min(int(ms), 65535), 1000, 0, 0)))
+    for i, (k, p, ms) in enumerate(shown):
+        parts.append(chunk(b"fcTL", struct.pack(">IIIIIHHBB", seq, w, h, 0, 0, *delay(ms), 0, 0)))
         seq += 1
         for t, d in p:
-            if t == b"IDAT" and k == 0:
+            if t == b"IDAT" and i == 0:
                 parts.append(chunk(b"IDAT", d))  # the first frame is the still a viewer without APNG shows
             elif t == b"IDAT":
                 parts.append(chunk(b"fdAT", seq.to_bytes(4, "big") + d))

@@ -279,3 +279,19 @@ test('a blank %% opens:, %% id: or %% side: is no hint, and is said (audit 19)',
     assert.deepEqual(report.map(r => r.message), [`%% ${k}: holds nothing: not read`]);
   }
 });
+
+test('audit 24: an id derived from a topic, and a report quoting the source, are never cut between the halves of an astral letter (all seven readers)', async () => {
+  for (const n of [58, 59, 60]) { // the letter's first half at the 59th, 60th or 61st unit: a cut at 60 falls inside it once
+    const { model } = read('mindmap\n  ' + 'a'.repeat(n) + '\u{1D400}\u{1D401} topic\n');
+    assert.ok(model.nodes[0].id.isWellFormed(), `${n}: ${model.nodes[0].id}`);
+    assert.ok(model.nodes[0].id.startsWith('a'.repeat(Math.min(n, 59))));
+  }
+  const L = 'x'.repeat(56) + '\u{1D400} more words here'; // the letter's first half at the 57th unit, where a report's quote is cut
+  const bodies = { class: `classDiagram\n  ${L} %% ?? ::`, state: `stateDiagram-v2\n  ${L} --> `, sequence: `sequenceDiagram\n  ${L}`,
+    flowchart: `flowchart LR\n  ${L} -->`, er: `erDiagram\n  ${L}`, requirement: `requirementDiagram\n  ${L}`, mindmap: `mindmap\n  root\n${L}` };
+  for (const [kind, body] of Object.entries(bodies)) {
+    const M = await import(`../src/readers/mermaid-${kind}.js`), rd = Object.values(M).find(f => f.name.startsWith('read'));
+    const { report } = rd(body);
+    assert.ok(report.length && report.every(r => r.message.isWellFormed() && r.message.includes('x'.repeat(56) + '...')), `${kind}: ${JSON.stringify(report)}`);
+  }
+});
