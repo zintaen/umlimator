@@ -409,3 +409,25 @@ test('audit 24: apply() refuses a model element, or another view\'s own one, und
   }
   assert.ok(n24 >= 20, `${n24} views tried`);
 });
+
+// audit 27: a host's model may hold a function (audit 24: copyOf keeps it as it is), and so may a command or the props of
+// the palette entry a canvas edit copies; each was copied with structuredClone, which threw a DOMException ("could not be cloned")
+test('audit 27: a function in a command\'s value, a new element or view, or a palette entry\'s props is kept as it is, not thrown on', async () => {
+  const { diagramOf } = await import('../src/core/registry.js');
+  for (const x of ['uml/activity', 'uml/sequence', 'uml/timing', 'uml/communication', 'c4/c4', 'c4/views', 'bpmn/process']) await import(`../src/${x}.js`);
+  const hook = () => 1, m = () => ({ nodes: [{ id: 'a', label: 'A' }], views: [{ id: 'v', nodeIds: ['a'] }] });
+  assert.equal(run(m(), { op: 'set', id: 'a', path: 'props.on', value: { hook } }).nodes[0].props.on.hook, hook);
+  assert.equal(run(m(), { op: 'add', element: { id: 'b', label: 'B', hook } }).nodes[1].hook, hook);
+  assert.equal(run(m(), { op: 'addView', view: { id: 'w', nodeIds: [], hook } }).views[1].hook, hook);
+  const ex = p => read(p), edit = (model, vid, name, ...args) => { const v = model.views.find(w => w.id === vid); return diagramOf(v).edits[name](model, v, ...args); };
+  const hooked = cmds => { assert.ok(Array.isArray(cmds), JSON.stringify(cmds)); return cmds.some(c => c.element && c.element.props && c.element.props.hook === hook); };
+  const c4 = ex('../examples/bookshop-c4.json'), dv = c4.views.find(v => v.id === 'c4-placing-an-order'); delete dv.edges; // a dynamic view with no list of its lines yet
+  for (const [what, cmds] of [
+    ['activity', edit(ex('./activity-minimal.json'), 'v', 'connect', 'work', 'end', null, { type: 'uml.ControlFlow', props: { hook } })],
+    ['sequence', edit(ex('./sequence-minimal.json'), 'v', 'connect', 'client', 'server', null, { type: 'uml.Message', props: { sort: 'call', hook } })],
+    ['communication', edit(ex('./communication-minimal.json'), 'v', 'connect', 'client', 'server', null, { type: 'uml.Message', props: { sort: 'call', hook } })],
+    ['timing', edit(ex('../examples/bookshop-timing.json'), 'one-charge', 'connect', 'lifeline-worker', 'lifeline-payments', { parent: 'lifeline-payments', t: 200 }, { type: 'uml.Message', props: { sort: 'async', hook } })],
+    ['c4 dynamic', edit(c4, 'c4-placing-an-order', 'connect', 'c4-db', 'c4-api', null, { type: 'c4.Relationship', label: 'Relationship', props: { hook } })],
+    ['bpmn', edit(ex('../examples/bookshop-order-to-shipment.json'), 'order-to-shipment', 'add', { type: 'bpmn.Task', label: 'Task', props: { hook } }, 'Gift wrap', { sel: [] })]])
+    assert.ok(hooked(cmds), what);
+});
