@@ -1027,17 +1027,24 @@ def cmd_timelapse(a):
     # git run in the model's own folder, so its history is its repository's wherever the command runs (audit 28: from a
     # folder outside it, git said "not a git repository" or that the model is outside the repository)
     here = Path(a.model).absolute()
-    git = lambda *x, **k: subprocess.run(["git", "-C", str(here.parent), *x], capture_output=True, **k)
-    log = git("log", "--follow", "--first-parent", "-m", "--name-only", "--format=%x00%H%x09%cs%x09%s", "--", str(here), text=True, errors="replace")
+    # the model named as a literal path, never a pattern: map[v].json is no glob that takes in mapv.json's history (audit 29)
+    git = lambda *x: subprocess.run(["git", "-C", str(here.parent), *x], capture_output=True, env={**os.environ, "GIT_LITERAL_PATHSPECS": "1"})
+    # -z: each path as it is, never C-quoted ("s\306\241.json", audit 29: a name with a non-ASCII letter, a quote, a
+    # backslash or a tab had no version). Read as fields at NUL: "", "sha\tdate\tsubject", "\n" and its first path, its
+    # other paths, then "" before the next commit's; no path is empty, so the field after an empty one is a commit's
+    log = git("log", "-z", "--follow", "--first-parent", "-m", "--name-only", "--format=%x00%H%x09%cs%x09%s", "--", str(here))
     if log.returncode:
-        sys.exit(log.stderr.strip())
-    rows = [r.strip().split("\n") for r in log.stdout.split("\x00") if r.strip()][::-1][-a.limit:]  # each: "sha\tdate\tsubject", "", path
+        sys.exit(log.stderr.decode(errors="replace").strip())
+    rows, fields = [], log.stdout.split(b"\0")
+    for k in range(1, len(fields)):
+        if not fields[k - 1] and fields[k]:  # a commit: its line, then its first path, if any
+            rows.append([fields[k].decode(errors="replace"), fields[k + 1][1:] if k + 1 < len(fields) and fields[k + 1][:1] == b"\n" else b""])
     versions = []
-    for head, *rest in rows:
-        sha, day, subject = (head.split("\t", 2) + ["", ""])[:3]
-        path = next((p for p in rest if p.strip()), None)  # from the top, as --name-only names it
+    for head, raw in rows[::-1][-a.limit:]:
+        sha, day, subject = (head.strip().split("\t", 2) + ["", ""])[:3]
+        path = os.fsdecode(raw) if raw else None  # from the top, as --name-only names it; bytes in no encoding kept as they are
         r = git("show", f"{sha}:{path}" if path else f"{sha}:./{here.name}")  # bytes: json.loads finds the encoding
-        path = path or a.model
+        path = raw.decode(errors="replace") if raw else a.model
         try:
             subject = subject if len(subject) <= 90 else subject[:89].rstrip() + "…"
             m = json.loads(r.stdout)

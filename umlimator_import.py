@@ -114,10 +114,10 @@ class Model:
         n = {"id": cid, "label": clip(label, 34) or cid, "kind": kind, "sublabel": clip(sub, 44), "what": whole(what), **more}
         self.nodes[cid] = {k: v for k, v in n.items() if v or k == "id"}  # a blank id stays, for validate to say, never dropped unsaid
 
-    def line(self, a, b, label=None, sub=None, where=None, **more):
+    def line(self, a, b, label=None, sub=None, where=None, hint=None, **more):
         if a == b:
             return self.say(where, f"{a} -> {b}: a line from a card to itself is not drawn")
-        e = {"id": self.uniq(f"{a}-{b}"), "from": a, "to": b, "label": clip(label, 28), "sublabel": clip(sub, 28), **more}
+        e = {"id": self.uniq(*([ident(hint)] if hint else []), f"{a}-{b}"), "from": a, "to": b, "label": clip(label, 28), "sublabel": clip(sub, 28), **more}
         if clip(label, 28) != whole(label):  # a label cut short is whole in the details panel
             e["what"] = whole(label) + (f"\n\n{e['what']}" if e.get("what") else "")
         self.edges.append({k: v for k, v in e.items() if v or k in ("id", "from", "to")})
@@ -273,10 +273,11 @@ def front_title(lines, j):
         end += 1
     while end > j and not js_strip(lines[end]):  # blank lines after the value are not its own
         end -= 1
-    body, block = lines[j + 1:end + 1], re.fullmatch(r"([|>])(?:[1-9][+-]?|[+-][1-9]?)?(?:" + JS_S + "+#[^\n\r\u2028\u2029]*)?", val)  # JS's . stops at a line terminator
+    body, block = lines[j + 1:end + 1], re.fullmatch(r"([|>])(?:([1-9])[+-]?|[+-]([1-9])?)?(?:" + JS_S + "+#[^\n\r\u2028\u2029]*)?", val)  # JS's . stops at a line terminator
     if block:
-        digit, first = re.search(r"\d", val), next((x for x in body if js_strip(x)), None)
-        base = int(digit[0]) if digit else js_indent(first) if first else 0
+        # the indicator's own ASCII digit, never one in the comment after it (audit 29)
+        digit, first = block[2] or block[3], next((x for x in body if js_strip(x)), None)
+        base = int(digit) if digit else js_indent(first) if first else 0
         out, prev, blanks = "", None, 0
         for k, x in enumerate(body):
             if not js_strip(x):
@@ -844,6 +845,7 @@ NODE = re.compile(r"\s*([\w$]+(?:[.-][\w$]+)*)")
 LINK = re.compile(r"""\s*(?:(?P<plain>[<ox]?(?:-{2,}[->ox]|={2,}[=>ox]|-?\.+-[>ox]?|~{3,}))
                      |(?P<open>[<ox]?(?:--|==|-\.))(?P<text>[^|]+?)(?P<close>-{2,}[->ox]|={2,}[=>ox]|(?<!\.)\.+-[>ox]?))
                      \s*(?:\|(?P<pipe>"[^"]*"|[^|]*)\|)?""", re.X)  # a quoted text may hold | (audit 20), as the typed reader's MF_PIPE
+WS, BREAK = re.compile(r"\s*"), re.compile(r'[\s"&|]')  # an edge id ends at a break (statement())
 FLOW_QUIET = re.compile(r"(classDef|class|style|linkStyle|click|direction|accTitle|accDescr)\b")
 
 
@@ -886,8 +888,8 @@ def fnode(s, i, find=None):
 
 
 def statement(s):
-    """Node groups (a & b) joined by links, or None."""
-    groups, links, i, miss = [], [], 0, {}
+    """Node groups (a & b) joined by links, each link (its match, its edge id or None), or None."""
+    groups, links, i, miss, at, brk = [], [], 0, {}, -1, -1
 
     def find(c, frm):  # a closer missing from frm on is missing from any later frm: each node does not rescan the line (as mfStatement)
         if frm >= miss.get(c, len(s) + 1):
@@ -911,10 +913,20 @@ def statement(s):
         groups.append(grp)
         if not s[i:].strip():
             return groups, links
-        lk = LINK.match(s, i)
+        # A e1@--> B: an edge id runs from the link's start to the next @, holding no space, " & or | (Mermaid's LINK_ID), with
+        # no { or " after the @ (audit 29: the statement was not imported). The next @ and the next break are each kept
+        # while the line is read left to right, as the typed reader's mfStatement: a scan at each link would be quadratic (R2)
+        j = WS.match(s, i).end()
+        if at < j:
+            at = k if (k := s.find("@", j)) >= 0 else len(s) + 1
+        if brk < j:
+            b = BREAK.search(s, j)
+            brk = b.start() if b else len(s) + 1
+        eid = j < at < brk and at + 1 < len(s) and s[at + 1] not in '{"'
+        lk = LINK.match(s, at + 1 if eid else i)
         if not lk:
             return None
-        links.append(lk)
+        links.append((lk, s[j:at] if eid else None))
         i = lk.end()
 
 
@@ -958,7 +970,7 @@ def flowchart(lines, m):
                         old.update(label=label, shape=shape)
                     if subs:
                         subs[-1]["seen"].append(nid)
-                for k, lk in enumerate(joins):
+                for k, (lk, _) in enumerate(joins):
                     if markdown(lk["pipe"] or lk["text"]) and not (lk["plain"] or lk["open"]).startswith("~"):
                         m.say(no, f"{' & '.join(n[0] for n in groups[k])} -> {' & '.join(n[0] for n in groups[k + 1])}: a Markdown string is read as plain text")
                 if len(links) <= FLOWS:  # a & b --> c & d is a product: lazily, never past the cap (hostile input, R2)
@@ -993,7 +1005,7 @@ def flowchart(lines, m):
     for b in boxes.values():
         b["nodeIds"] = [n for n in b["nodeIds"] if n not in sgs]
     ids = m.view("flowchart", list(m.nodes), list(boxes.values()))
-    for a, b, lk, no in links:
+    for a, b, (lk, eid), no in links:
         arrow = lk["plain"] or lk["open"] + lk["close"]
         if arrow.startswith("~"):  # an invisible link only spaces Mermaid's layout
             m.say(no, f"{a} ~~~ {b}: an invisible link is not imported")
@@ -1002,7 +1014,7 @@ def flowchart(lines, m):
             m.say(no, f"{a} -> {b}: {bad[0]} is a subgraph that is not drawn")
             continue
         style = {"style": "async"} if "." in arrow else {"weight": 2} if "=" in arrow else {}
-        m.line(a, b, text(lk["pipe"] or lk["text"]), where=no, **style)
+        m.line(a, b, text(lk["pipe"] or lk["text"]), where=no, hint=eid, **style)  # the edge id names its first line
         if arrow[0] == "<":
             m.line(b, a, text(lk["pipe"] or lk["text"]), where=no, **style)
 
