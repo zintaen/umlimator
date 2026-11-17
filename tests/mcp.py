@@ -198,26 +198,6 @@ ok("highlight and tour on a model whose member id is no string name the field; a
 model.write_text(json.dumps(bike), encoding="utf-8")
 ok("list_views and play_story on stories, or steps, that are no list: the tool names the field, no internal error (audit 16)",
    all("stories is not a list" in x for x in said[:2]) and all("stories[0].steps is not a list" in x for x in said[2:]), said)
-# audit 28: on a model no version of which has rendered, a page tool said the page showed "its last version that did"
-never = work / "never.json"
-never.write_text(json.dumps({"schemaVersion": 2, "root": "v", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}],
-                             "edges": [{"id": "e", "from": "a", "to": "b"}], "views": [{"id": "v", "nodeIds": ["a", "b", "ghost"]}]}), encoding="utf-8")
-p28 = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(never), "--port", "0"], stdin=subprocess.PIPE,
-                       stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
-try:
-    got28 = []
-    for i, (m, a) in enumerate([("initialize", {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "tests/mcp.py", "version": "0"}}),
-                                ("tools/call", {"name": "highlight", "arguments": {"refs": ["a"]}}), ("tools/call", {"name": "page_state", "arguments": {}})]):
-        p28.stdin.write(json.dumps({"jsonrpc": "2.0", "id": i + 1, "method": m, "params": a}) + "\n")
-        p28.stdin.flush()
-        r = json.loads(p28.stdout.readline())
-        got28.append("".join(c["text"] for c in r["result"]["content"]) if m == "tools/call" and "result" in r else r)
-    said28, ps28 = got28[1], json.loads(got28[2])
-finally:
-    p28.kill()
-ok("a page tool on a model that has never rendered says it does not render yet, never that the page shows a last version that did (audit 28)",
-   said28.startswith("The model does not render yet: ") and "ghost" in said28 and "last version" not in said28
-   and ps28["model"].get("shown") is None and ps28["model"].get("renders") is False, (said28, ps28.get("model")))
 chrome = Chrome()
 try:
     # the assistant builds a picture before any page is open: a view, then a highlight on it (no view named)
@@ -459,4 +439,24 @@ for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order
         chrome.quit()
         srv.stdin.close()
         srv.wait(timeout=30)
+# audit 28: on a model no version of which has rendered, a page tool said the page showed "its last version that did"
+never = Path(tempfile.mkdtemp()) / "never.json"
+never.write_text(json.dumps({"schemaVersion": 2, "root": "v", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}],
+                             "edges": [{"id": "e", "from": "a", "to": "b"}], "views": [{"id": "v", "nodeIds": ["a", "b", "ghost"]}]}), encoding="utf-8")
+p28 = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(never), "--port", "0"], stdin=subprocess.PIPE,
+                       stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+try:
+    got28 = []
+    for i, (m, a) in enumerate([("initialize", {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "tests/mcp.py", "version": "0"}}),
+                                ("tools/call", {"name": "highlight", "arguments": {"refs": ["a"]}}), ("tools/call", {"name": "page_state", "arguments": {}})]):
+        p28.stdin.write(json.dumps({"jsonrpc": "2.0", "id": i + 1, "method": m, "params": a}) + "\n")
+        p28.stdin.flush()
+        r = json.loads(p28.stdout.readline())
+        got28.append("".join(c["text"] for c in r["result"]["content"]) if m == "tools/call" and "result" in r else r)
+    said28, ps28 = got28[1], json.loads(got28[2])
+finally:
+    p28.kill()
+ok("a page tool on a model that has never rendered says it does not render yet, never that the page shows a last version that did (audit 28)",
+   said28.startswith("The model does not render yet: ") and "ghost" in said28 and "last version" not in said28
+   and ps28["model"].get("shown") is None and ps28["model"].get("renders") is False, (said28, ps28.get("model")))
 sys.exit(1 if failed else 0)
