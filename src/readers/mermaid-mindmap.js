@@ -1,3 +1,4 @@
+import { unreadable } from '../core/model.js';
 /* ---------- Mermaid mindmap: a reader and a writer (notes/milestone-4a.md §8, 4a.5; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's mindmap page (docs/syntax/mindmap.md) and its lexer and database
    (diagrams/mindmap/parser/mindmap.jison, mindmapDb.ts), read on Mermaid's repository 14 Nov 2026. Internal: the CLI
@@ -207,16 +208,23 @@ function mmrRead(text, report, say, empty) {
 }
 
 function writeMermaidMindmap(model, viewId) {
+  // the model as validate() reads it: a value String() throws on (JSON's {"toString":1}) left out (audit 23)
+  model = unreadable(model).model;
   const m = model && typeof model === 'object' ? model : {}, arr = x => (Array.isArray(x) ? x : []), isObj = x => !!x && typeof x === 'object';
-  const flat = s => String(s).replace(/\r\n|\r|\n/g, '\\n'), has = x => x != null && x !== '', str = x => typeof x === 'string';
+  // text of any value: an object whose toString is no function (JSON's {"toString":1}) gives its tag, not a throw (audit 23)
+  const txt = s => { try { return String(s); } catch { return Object.prototype.toString.call(s); } };
+  const flat = s => txt(s).replace(/\r\n|\r|\n/g, '\\n'), has = x => x != null && x !== '', str = x => typeof x === 'string';
   const views = arr(m.views).filter(isObj);
   const view = viewId != null ? views.find(v => v.id === viewId) : views.find(v => v.diagram === 'mindmap');
   if (viewId != null && !view) return `%% not written: view ${flat(viewId)}, which the model does not have\n`;
   if (!view) return '%% not written: the model, which has no mindmap view\n';
   if (view.diagram !== 'mindmap') return `%% not written: view ${flat(view.id)}, a ${flat(view.diagram)} view, not a mindmap one\n`;
   const out = [], notWritten = [], lose = (id, what) => notWritten.push(`${flat(id)}: ${flat(what)}`);
-  const title = String(has(view.title) ? view.title : m.title ?? '');
-  if (has(title)) out.push('---', `title: ${/^[\p{L}\p{N}][\p{L}\p{N} _.,()-]*$/u.test(title) && !title.endsWith(' ') ? title : JSON.stringify(title)}`, '---');
+  // the title as text (a number or true too, audit 23), as it is only when YAML reads it as text: a letter first, and
+  // not one of YAML's null or boolean words; a title that is no text is not written
+  const word = x => ['string', 'number', 'boolean'].includes(typeof x) ? String(x) : '', title = word(view.title) || word(m.title);
+  const yamlText = t => /^\p{L}[\p{L}\p{N} _.,()-]*$/u.test(t) && !t.endsWith(' ') && !/^(null|true|false|yes|no|on|off|y|n)$/i.test(t) ? t : JSON.stringify(t);
+  if (title) out.push('---', `title: ${yamlText(title)}`, '---');
   const hintable = s => str(s) && s !== '' && s.trim() === s && !/[\r\n]/.test(s);
   if (has(view.id) && view.id !== MMR_VIEW) { if (hintable(view.id)) out.push(`%% id: ${view.id}`); else lose(view.id, "the view's id, which a comment cannot hold"); }
   out.push('mindmap');

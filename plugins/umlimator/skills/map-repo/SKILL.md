@@ -12,7 +12,7 @@ Write, in `docs/architecture/` unless the repository or the user says otherwise:
 - `stills/<view>.svg` and `.png`: each view as a picture for READMEs and docs.
 
 The CLI is `python3 "${CLAUDE_PLUGIN_ROOT}/skills/map-repo/scripts/cli.py"`, the `scripts/cli.py` next to this file;
-below it is `cli`. On first use it fetches one pinned umlimator release (a 2.5 MB shallow clone of
+below it is `cli`. On first use it fetches one pinned umlimator commit, a release's or one of main's with a security fix (a 5 MB shallow fetch of
 github.com/zintaen/umlimator) into `~/.cache/umlimator/cli`: say so before that first run. It needs git, Python 3.9+,
 and Google Chrome or Chromium.
 

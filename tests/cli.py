@@ -9,7 +9,7 @@ through its pipes as an MCP client drives it, with a page's event stream.
 Needs Node (diff, drift, trace and the MCP server's read tools run the module's own functions), git, and Chrome or
 Chromium (pdf).
 """
-import contextlib, hashlib, http.client, io, json, os, re, subprocess, sys, tempfile, threading, time, urllib.request, zlib
+import base64, contextlib, hashlib, http.client, io, json, os, re, subprocess, sys, tempfile, threading, time, urllib.request, zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -974,6 +974,37 @@ with tempfile.TemporaryDirectory() as tmp:
         ok(f"map-repo's cli.py · renders a typed model it is given ({path.stem}): the page, and its check" + (f" (at most {len(said)} crossings, stated)" if said else " clean"),
            p.returncode == 0 and r is not None and not r.get("errors") and all(q.endswith(" cross") for q in r.get("problems") or []) and len(r.get("problems") or []) <= len(said)
            and (t / f"skill-{path.stem}.html").is_file(), (p.returncode, p.stdout[-400:], p.stderr[-400:]))
+
+    # map-repo's pin (C10, audit 23): it ran v0.31.0 for eleven releases, so the pages it wrote embedded any local file an
+    # intake logo named (risks.md S1; own_logos, audit 18) and fetched the addresses an example or avatar names (own_media,
+    # audit 19), and no release has those guards yet. The pinned commit, fetched as the skill fetches it, renders a hostile
+    # model without them; and its version is the newest release up to package.json's (a release PR, whose own tag comes at
+    # its merge, keeps the one before; once tagged, the pin moves). Needs the network, as the skill's first use does
+    launcher = (ROOT / "plugins" / "umlimator" / "skills" / "map-repo" / "scripts" / "cli.py").read_text(encoding="utf-8")
+    ref, sha = re.search(r'REF, SHA = "([^"]+)", "([0-9a-f]{40})"', launcher).groups()
+    ver = lambda p: tuple(map(int, json.loads(Path(p).read_text())["version"].split(".")))
+    ls = subprocess.run(["git", "ls-remote", "--tags", "https://github.com/zintaen/umlimator.git", "v*"], capture_output=True, text=True, timeout=60)
+    if ls.returncode:
+        print("skip map-repo's pin: the release tags could not be listed (no network)", ls.stderr[-300:])
+    else:
+        home = t / "skill-pinned"
+        (home / "repo" / "docs").mkdir(parents=True)
+        (home / "repo" / "secret.txt").write_text("SECRET-TOKEN-abc123\n")
+        (home / "repo" / "docs" / "map.json").write_text(json.dumps({"title": "T", "nodes": [{"id": "a", "label": "A", "examples": [{"title": "x", "thumb": "https://tracker.example/t.png"}]}], "edges": [],
+            "authors": {"someone": {"avatar": "https://tracker.example/a.png"}},
+            "views": [{"id": "root", "title": "Root", "nodeIds": ["a"], "intake": [{"label": "In", "to": "a", "logo": "../secret.txt"}, {"label": "Abs", "to": "a", "logo": str(home / "repo" / "secret.txt")}]}]}))
+        env = {k: v for k, v in os.environ.items() if k not in ("UMLIMATOR_REF", "UMLIMATOR_SHA")}
+        p = subprocess.run([sys.executable, str(ROOT / "plugins" / "umlimator" / "skills" / "map-repo" / "scripts" / "cli.py"), "render", "docs/map.json", "--out", "map.html", "--no-check"],
+                           capture_output=True, text=True, cwd=home / "repo", env={**env, "UMLIMATOR_CLI_CACHE": str(home / "cache")}, timeout=600)
+        page = (home / "repo" / "map.html").read_text(encoding="utf-8") if (home / "repo" / "map.html").is_file() else ""
+        blobs = [base64.b64decode(b + "=" * (-len(b) % 4)) for b in re.findall(r"base64,([A-Za-z0-9+/=]+)", page)]
+        ok(f"map-repo's cli.py · its pinned commit ({ref}) leaves a logo outside the model's folder, and an example's or avatar's address, out of the page (risks.md S1, S2; audit 23)",
+           p.returncode == 0 and page and "SECRET-TOKEN" not in page and not any(b"SECRET-TOKEN" in b for b in blobs) and "tracker.example" not in page
+           and "outside the model's folder" in p.stderr, (p.returncode, p.stderr[-800:]))
+        released = [tuple(map(int, q)) for q in re.findall(r"refs/tags/v(\d+)\.(\d+)\.(\d+)$", ls.stdout, re.M)]
+        newest, pinned = max(v for v in released if v <= ver(ROOT / "package.json")), (home / "cache" / ref / "package.json")
+        ok(f"map-repo's cli.py · its pinned commit is version {'.'.join(map(str, newest))}, the newest release up to package.json's (audit 23)",
+           pinned.is_file() and ver(pinned) == newest and ref.startswith(".".join(map(str, newest))), (ref, pinned.is_file() and ver(pinned), newest))
 
     # pdf (#93): the bike share as a document for a review; its words are text. A cover with the contents; each view from a
     # page of its own, under its path, with its legend and tables of its cards, lines and boxes; the rules as a table. The

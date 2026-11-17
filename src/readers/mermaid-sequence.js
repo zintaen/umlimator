@@ -1,3 +1,4 @@
+import { unreadable } from '../core/model.js';
 /* ---------- Mermaid sequenceDiagram: a reader and a writer (notes/stage-3.md §8, S10; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's sequence diagram page (docs/syntax/sequenceDiagram.md, read 12 Nov 2026), as the class
    reader is against its class page. Internal: the CLI (`umlimator.py import`) imports this file through Node; a host
@@ -362,8 +363,12 @@ function writeMermaidSequence(model, viewId) { // it never throws: what a host b
 }
 
 function msWrite(model, viewId) {
+  // the model as validate() reads it: a value String() throws on (JSON's {"toString":1}) left out (audit 23)
+  model = unreadable(model).model;
   const m = model && typeof model === 'object' ? model : {}, arr = x => (Array.isArray(x) ? x : []), isObj = x => !!x && typeof x === 'object';
-  const flat = s => String(s).replace(/\r\n|\r|\n/g, '\\n'), nl = s => /[\r\n]/.test(String(s)), badId = id => nl(id) || String(id).trim() !== String(id), has = x => x != null && x !== '';
+  // text of any value: an object whose toString is no function (JSON's {"toString":1}) gives its tag, not a throw (audit 23)
+  const txt = s => { try { return String(s); } catch { return Object.prototype.toString.call(s); } };
+  const flat = s => txt(s).replace(/\r\n|\r|\n/g, '\\n'), nl = s => /[\r\n]/.test(txt(s)), badId = id => nl(id) || txt(id).trim() !== txt(id), has = x => x != null && x !== '';
   const views = arr(m.views).filter(isObj);
   const view = viewId != null ? views.find(v => v.id === viewId) : views.find(v => v.diagram === 'uml.sequence');
   if (viewId != null && !view) return `%% not written: view ${flat(viewId)}, which the model does not have\n`;
@@ -377,8 +382,11 @@ function msWrite(model, viewId) {
   // the keys and props Mermaid has a place for; any other (ext, tags) is named, as the ER writer does
   const extra = (x, keys, props = []) => { for (const k of Object.keys(x)) if (!keys.includes(k)) {
     if (k === 'props' && isObj(x.props)) { for (const p of Object.keys(x.props)) if (!props.includes(p)) lose(x.id, `property ${p}`); } else lose(x.id, k); } };
-  const title = has(view.title) ? view.title : m.title;
-  if (has(title)) out.push('---', `title: ${/^[\p{L}\p{N}][\p{L}\p{N} _.,()-]*$/u.test(title) && !title.endsWith(' ') ? title : JSON.stringify(String(title))}`, '---');
+  // the title as text (a number or true too, audit 23), as it is only when YAML reads it as text: a letter first, and
+  // not one of YAML's null or boolean words; a title that is no text is not written
+  const word = x => ['string', 'number', 'boolean'].includes(typeof x) ? String(x) : '', title = word(view.title) || word(m.title);
+  const yamlText = t => /^\p{L}[\p{L}\p{N} _.,()-]*$/u.test(t) && !t.endsWith(' ') && !/^(null|true|false|yes|no|on|off|y|n)$/i.test(t) ? t : JSON.stringify(t);
+  if (title) out.push('---', `title: ${yamlText(title)}`, '---');
   if (view.id !== MS_VIEW) { if (badId(view.id)) lose(view.id, "the view's id, which a hint cannot carry"); else out.push(`%% id: ${view.id}`); }
   out.push('sequenceDiagram');
 

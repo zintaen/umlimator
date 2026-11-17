@@ -343,6 +343,25 @@ test('audit 22: diff() past the table\'s cap pairs a long view\'s id-less steps 
   assert.deepEqual(said(2500, E => { E.shift(); E.pop(); }), ['removes the line from A to B (ask)', 'removes the line from B to A (answer)']);
 });
 
+test('audit 23: diff() past the table\'s cap pairs the run the table pairs: the same edit reads as a reorder, or not, whatever the view\'s size', async () => {
+  const { sameOrder } = await import('../src/map/diff.js');
+  let seed = 23; const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+  // random steps of a few kinds that repeat and a few Ref names, short and long (the long ones walk the band in blocks)
+  for (const [runs, len] of [[20000, 7], [2000, 40], [100, 300]]) for (let t = 0; t < runs; t++) {
+    const kinds = 1 + Math.floor(rnd() * 4), refs = 1 + Math.floor(rnd() * 5);
+    const gen = n => Array.from({ length: n }, () => ['k' + Math.floor(rnd() * kinds), 'r' + Math.floor(rnd() * refs)]);
+    const p = gen(Math.floor(rnd() * len)), q = gen(Math.floor(rnd() * len));
+    assert.equal(sameOrder(p, q, 0), sameOrder(p, q, Infinity), `${JSON.stringify(p)} ${JSON.stringify(q)}`);
+  }
+  assert.equal(sameOrder([['k0', 'r3'], ['k0', 'r6']], [['k2', 'r6'], ['k0', 'r5']], 0), true, 'the finding\'s pair, past the cap');
+  // the same four-step edit among 5 or 2,001 unrelated steps taken out and put in: only the second passes the cap
+  const core0 = [['a', 'a', 'x'], ['a', 'a', 'y'], ['b', 'b', 'x'], ['a', 'a', 'x']], core1 = [['b', 'b', 'y'], ['a', 'a', 'x'], ['b', 'b', 'y'], ['b', 'b', 'y']];
+  const model = (pre, core, n) => ({ nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }],
+    views: [{ id: 'v', render: 'sequence', nodeIds: ['a', 'b'], edges: [...Array.from({ length: n }, (_, i) => ({ id: pre + i, from: 'a', to: 'b', label: pre + i })), ...core.map(([from, to, label]) => ({ from, to, label }))] }] });
+  const said = n => diff(model('u', core0, n), model('w', core1, n)).summary.includes('reorders the steps in the view v');
+  assert.equal(said(2001), said(5));
+});
+
 test('audit 21: drift() reads match as a table by name (a service may be named toString), and an entry with no end names no service', () => {
   const model = { nodes: [{ id: 'api', label: 'API' }, { id: 'db', label: 'Database' }], edges: [{ id: 'e', from: 'api', to: 'db' }], views: [{ id: 'v', nodeIds: ['api', 'db'] }] };
   const seen = [{ from: 'checkout-svc', to: 'pg-main', count: 4 }];

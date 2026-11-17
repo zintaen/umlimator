@@ -1,3 +1,4 @@
+import { unreadable } from '../core/model.js';
 /* ---------- Mermaid erDiagram: a reader and a writer (notes/milestone-2.md §8.1, M2.8; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's entity relationship page (docs/syntax/entityRelationshipDiagram.md, read 14 Nov 2026)
    and its lexer (packages/mermaid/src/diagrams/er/parser/erDiagram.jison), as the other readers are against theirs.
@@ -331,8 +332,12 @@ function readMermaidEr(text) {
 }
 
 function writeMermaidEr(model, viewId) {
+  // the model as validate() reads it: a value String() throws on (JSON's {"toString":1}) left out (audit 23)
+  model = unreadable(model).model;
   const m = model && typeof model === 'object' ? model : {}, arr = x => (Array.isArray(x) ? x : []), isObj = x => !!x && typeof x === 'object';
-  const has = x => x != null && x !== '', flat = s => String(s).replace(/\r\n|\r|\n/g, '\\n'), nl = s => /[\r\n]/.test(String(s)); // a comment is one line
+  // text of any value: an object whose toString is no function (JSON's {"toString":1}) gives its tag, not a throw (audit 23)
+  const txt = s => { try { return String(s); } catch { return Object.prototype.toString.call(s); } };
+  const has = x => x != null && x !== '', flat = s => txt(s).replace(/\r\n|\r|\n/g, '\\n'), nl = s => /[\r\n]/.test(txt(s)); // a comment is one line
   const views = arr(m.views).filter(isObj);
   const view = viewId != null ? views.find(v => v.id === viewId) : views.find(v => v.diagram === 'er');
   // a model with views is written through its er view; one with none, whole
@@ -354,10 +359,11 @@ function writeMermaidEr(model, viewId) {
       else lose(x.id, k);
     }
   };
-  const title = view && has(view.title) ? view.title : m.title;
-  // as it is only when YAML reads it as text: a letter first, and not one of YAML's null or boolean words
-  const plain = t => /^\p{L}[\p{L}\p{N} _.,()-]*$/u.test(t) && !t.endsWith(' ') && !/^(null|true|false|yes|no|on|off|y|n)$/i.test(t);
-  if (has(title)) out.push('---', `title: ${plain(title) ? title : JSON.stringify(String(title))}`, '---');
+  // the title as text (a number or true too, audit 23), as it is only when YAML reads it as text: a letter first, and
+  // not one of YAML's null or boolean words; a title that is no text is not written
+  const word = x => ['string', 'number', 'boolean'].includes(typeof x) ? String(x) : '', title = word(view && view.title) || word(m.title);
+  const yamlText = t => /^\p{L}[\p{L}\p{N} _.,()-]*$/u.test(t) && !t.endsWith(' ') && !/^(null|true|false|yes|no|on|off|y|n)$/i.test(t) ? t : JSON.stringify(t);
+  if (title) out.push('---', `title: ${yamlText(title)}`, '---');
   if (view && view.id !== ME_VIEW) { if (keeps(view.id)) out.push(`%% id: ${view.id}`); else lose(view.id, "the view's id, which the reader would not keep"); }
   out.push('erDiagram', view && view.direction === 'down' ? '  direction TB' : '  direction LR');
   if (view && has(view.notation) && view.notation !== 'crowsfoot') lose(view.id, `notation ${view.notation}: Mermaid draws crow's foot`);
