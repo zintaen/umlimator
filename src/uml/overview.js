@@ -10,7 +10,6 @@ import { FLOW_CONTROL, FLOW_RULES, flowOf, flowProblems, flowText, flowLabel, fl
 import { frLines, frameTag, tagSize, useSize } from './frame.js';
 import { interactionWalk } from './interaction.js';
 import { sqDraw, sqRun } from './sequence.js';
-import { withOwnNodes } from './owners.js'; // a view's own nodes read as the model's (audit 22)
 
 /* ---------- the interaction overview diagram, uml.interaction-overview (work package 4.7, notes/stage-4.md §11) ----------
    Activity notation whose nodes are interactions: the control nodes of src/uml/flow.js (flow final included), interaction
@@ -244,7 +243,7 @@ function ovRename(model, view, id, text) {
 
 /* ---- the type ---- */
 const OV_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
-const OVERVIEW_TYPE = registerDiagramType('uml.interaction-overview', withOwnNodes({
+const OVERVIEW_TYPE = registerDiagramType('uml.interaction-overview', {
   title: 'interaction overview diagram',
   // control nodes but the decision (its question, S8) are added with no name prompt (§12.1); a use and an inline
   // interaction ask for the view they open, V changes it
@@ -260,6 +259,6 @@ const OVERVIEW_TYPE = registerDiagramType('uml.interaction-overview', withOwnNod
   rules: OV_RULES,
   describe: ovDescribe,
   edits: { add: ovAdd, rename: ovRename },
-}));
+});
 
 export { OVERVIEW_TYPE, OV_RULES, ovGeo, ovProblems, ovDescribe, ovAdd, ovRename };

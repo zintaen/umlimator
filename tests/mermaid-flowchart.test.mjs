@@ -256,7 +256,7 @@ test('malformed input is reported, never thrown', () => {
 
 test('the writer names in comments what it cannot write, and the reader passes over them', () => {
   const v = { id: 'v', diagram: 'flowchart', nodeIds: [] };
-  assert.match(write({ schemaVersion: 2, title: 12, nodes: [], edges: [], views: [v] }), /^---\ntitle: 12\n---\n%% id: v\nflowchart TD\n$/);
+  assert.match(write({ schemaVersion: 2, title: 12, nodes: [], edges: [], views: [v] }), /^---\ntitle: "12"\n---\n%% id: v\nflowchart TD\n$/);
   const P = (id, more) => ({ id, type: 'flow.Process', label: id, ...more });
   const m = { schemaVersion: 2, nodes: [P('a', { props: { x: 1 } }), P('b', { parent: 'a' }), { id: 'k', type: 'uml.Class', label: 'K' }, { id: 'c', type: 'uml.Comment', label: 'note' },
     { id: 'n', type: 'flow.Decision' }, P('w', { label: 7 })],

@@ -141,7 +141,7 @@ function printDoc(X, model, Q) {
 // a view's tables, out of printDoc for Node's tests
 const word = t => String(t || '').split('.').pop().replace(/([a-z])([A-Z])/g, (_, a, b) => a + ' ' + b.toLowerCase()); // 'uml.DataType': "Data type"
 // a typed element's word in view v: "Class", "Table"
-const wordOf = (D, v, id, t) => (diagramOf(v) || {}).word?.(D, id) ?? word(t || 'uml.Class');
+const wordOf = (D, v, id, t) => (diagramOf(v) || {}).word?.(D, id, v) ?? word(t || 'uml.Class');
 function tablesOf({ D, N, nodeIn, viewEdges }, v, g) {
   const typed = (v.diagram ?? 'map') !== 'map';
   const cards = v => arrOf(v.nodeIds).filter(i => N[i]), boxes = v => handBoxes(v).filter(c => c && c.id);

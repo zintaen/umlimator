@@ -457,3 +457,26 @@ test('object-flow checks a view\'s own flows as it checks the model\'s (audit 22
   assert.deepEqual(layout(own, 'v').edges.map(e => e.id).sort(), ['f1', 'f2'], 'both drawn');
   assert.deepEqual(said(own), [['views[0].edges[0]', 'f1'], ['views[0].edges[1]', 'f2']]);
 });
+
+// audit 23: an add under an owner one view alone holds (a partition, a state in view.nodes) never makes a model node with a
+// parent other views lack: it is added to that view (in: 'view'), so the view's Delete of the owner takes no model element
+test('an action or pseudostate added in a view\'s own partition or state lives in that view, and Delete of the owner leaves the model alone (audit 23)', async () => {
+  await import('../src/uml/state.js');
+  for (const [d, own, entry, label, keep] of [['uml.activity', { id: 'P', type: 'uml.ActivityPartition', label: 'Warehouse' }, { type: 'uml.Action' }, 'Pack box', N('a0', 'Action', 'Start work')],
+    ['uml.activity', { id: 'P', type: 'uml.ActivityPartition', label: 'Warehouse' }, { type: 'uml.CallBehaviorAction' }, 'Ship', N('a0', 'Action', 'Start work')],
+    ['uml.state-machine', { id: 'P', type: 'uml.State', label: 'Busy' }, { type: 'uml.Pseudostate', props: { kind: 'choice' } }, '', N('a0', 'State', 'Idle')]]) {
+    const m = { schemaVersion: 2, nodes: [keep], edges: [], views: [{ id: 'v', diagram: d, nodeIds: ['a0', 'P'], nodes: [own] }, { id: 'w', diagram: d, nodeIds: ['a0'] }] }, v = m.views[0];
+    let r = diagramOf(v).edits.add(m, v, entry, label, { sel: ['P'] });
+    if (r && r.pick) r = r.then(0); const cmds = Array.isArray(r) ? r : r.commands, add = cmds.find(c => c.op === 'add'), id = add.element.id;
+    const a = apply(m, cmds);
+    assert.ok(!a.nodes.some(n => n.parent === 'P'), `${d} ${entry.type}: no model node under the view's own owner`);
+    assert.ok(a.views[0].nodes.some(n => n.id === id && n.parent === 'P') && a.views[0].nodeIds.includes(id), `${d} ${entry.type}: added to the view, under P`);
+    assert.ok(layout(a, 'v').byId[id], `${d} ${entry.type}: drawn`);
+    assert.deepEqual(validate(a).filter(p => p.level === 'error'), [], `${d} ${entry.type}: no error`);
+    const b = apply(a, [{ op: 'delete', id: 'P' }]); // the canvas's Delete of a view's own node
+    assert.deepEqual(b.nodes.map(n => n.id), ['a0'], `${d} ${entry.type}: the model as it was`);
+  }
+  // with the owner a model node, the add stays a model add, under it, as before
+  const m = { schemaVersion: 2, nodes: [N('a0', 'Action', 'Start'), N('P', 'ActivityPartition', 'Warehouse')], edges: [], views: [{ id: 'v', diagram: 'uml.activity', nodeIds: ['a0', 'P'] }] };
+  assert.deepEqual(T.edits.add(m, m.views[0], { type: 'uml.Action' }, 'Pack', { sel: ['P'] }), [{ op: 'add', element: { id: 'pack', type: 'uml.Action', label: 'Pack', parent: 'P' }, view: 'v' }]);
+});

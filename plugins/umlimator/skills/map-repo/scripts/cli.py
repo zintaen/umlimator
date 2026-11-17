@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """The umlimator CLI for the map-repo skill.
 
-On first use this clones one pinned release of https://github.com/zintaen/umlimator (a shallow clone of its tag, about
-2.5 MB: the CLI, the module, the page template, the icon manifest and line icons) into ~/.cache/umlimator/cli/<tag>,
-checks that the tag still names the commit it was pinned to (and, on every run, that the cache holds that commit), and
-from then on runs `python3 umlimator.py ...` from there. The CLI itself downloads a brand logo only when a model's card
+On first use this fetches one pinned commit of https://github.com/zintaen/umlimator (a shallow fetch, about 5 MB: the
+CLI, the module, the page template, the icon manifest and line icons) into ~/.cache/umlimator/cli/<name>, checks that it
+is the commit pinned (and, on every run, that the cache holds that commit), and from then on runs
+`python3 umlimator.py ...` from there. The pin is a release's commit, or main's when the release lags behind a security
+fix the pages it writes need (audit 23: v0.42.0 has neither the own_logos nor the own_media guard of risks.md S1, S2). The CLI itself downloads a brand logo only when a model's card
 names one (into ~/.cache/umlimator/icons).
 
   python3 cli.py render map.json --out map.html     the page, then its layout check
   python3 cli.py check map.html                     the layout check again
   python3 cli.py stills map.html --out stills/      every view as SVG and PNG
 
-Environment: UMLIMATOR_REF picks another release tag (UMLIMATOR_SHA then pins its commit, if you want that check);
+Environment: UMLIMATOR_REF picks a release tag instead (UMLIMATOR_SHA then pins its commit, if you want that check);
 UMLIMATOR_CLI_CACHE moves the cache. Needs git, Python 3.9+, and Google Chrome or Chromium for render, check and stills.
 """
 import os
@@ -21,7 +22,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-REF, SHA = "v0.31.0", "c6c00d74c584ee4bb36bcb0899748a7d930ef7b8"   # the release this skill is written for
+REF, SHA = "0.42.0-847d167", "847d167beea0ab6d1a3ecbabdf8bf700fa264519"   # the version and commit this skill runs
 ref = os.environ.get("UMLIMATOR_REF", REF)
 sha = os.environ.get("UMLIMATOR_SHA", SHA if ref == REF else "")
 cache = Path(os.environ.get("UMLIMATOR_CLI_CACHE") or Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "umlimator" / "cli")
@@ -35,11 +36,14 @@ if not (home / "umlimator.py").is_file():
     # ponytail: a run killed mid-clone (SIGKILL, SIGTERM) leaves its .<ref>.* folder; sweep old ones if they ever pile up
     part = tempfile.mkdtemp(dir=cache, prefix=f".{ref}.")
     try:
-        if subprocess.run(["git", "-c", "advice.detachedHead=false", "clone", "--quiet", "--depth", "1", "--branch", ref,
-                           "https://github.com/zintaen/umlimator.git", part]).returncode:
+        # the pinned commit by its id (GitHub serves any commit of the repository), else the tag named
+        git = lambda *a: subprocess.run(["git", "-c", "advice.detachedHead=false", "-C", part, *a]).returncode
+        if (git("init", "--quiet") or git("fetch", "--quiet", "--depth", "1", "https://github.com/zintaen/umlimator.git", sha if ref == REF else ref)
+                or git("checkout", "--quiet", "FETCH_HEAD")):
             sys.exit(f"umlimator {ref} could not be fetched (git says why, above): its first use needs the network, once; "
-                     f"or set UMLIMATOR_CLI_CACHE to a folder holding a git clone of the tag in {ref}/ "
-                     f"(git clone --branch {ref} https://github.com/zintaen/umlimator.git DIR/{ref})")
+                     f"or set UMLIMATOR_CLI_CACHE to a folder holding a checkout of it in {ref}/ "
+                     + (f"(git clone https://github.com/zintaen/umlimator.git DIR/{ref}, then git -C DIR/{ref} checkout {sha})" if ref == REF
+                        else f"(git clone --branch {ref} https://github.com/zintaen/umlimator.git DIR/{ref})"))
         if sha and (got := head(part)) != sha:
             sys.exit(f"umlimator {ref} is commit {got}, not the pinned {sha}: not running it")
         try:

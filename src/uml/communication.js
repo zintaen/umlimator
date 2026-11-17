@@ -7,7 +7,6 @@ import { layoutTyped } from '../typed/layout.js';
 import { brLines } from '../typed/draw.js';
 import './frame.js'; // SHAPE.lifeline, the head a lifeline is drawn with
 import { interactionWalk, messageNumbers, replyCallFor, INTERACTION_RULES, interactionProblems } from './interaction.js';
-import { withOwnNodes } from './owners.js'; // a view's own nodes read as the model's (audit 22)
 
 /* ---------- the communication diagram, uml.communication (work package 3.5, notes/stage-3.md §6) ----------
    Lifelines joined by connectors; messages are model edges, and the view's `edges` lists the connectors, then the messages
@@ -353,7 +352,7 @@ function cmSaid(model, view, ids, fromModel, I, r) {
 
 /* ---- the type ---- */
 const CM_SORT = { key: 'sort', label: 'Sort', kind: 'enum', options: CM_SORTS };
-const COMM_TYPE = registerDiagramType('uml.communication', withOwnNodes({
+const COMM_TYPE = registerDiagramType('uml.communication', {
   title: 'communication diagram',
   elements: [{ type: 'uml.Lifeline', label: 'Lifeline' }],
   lines: [{ type: 'uml.Connector', label: 'Connector' }, ...[['call', 'Call'], ['async', 'Async'], ['reply', 'Reply'], ['create', 'Create'], ['delete', 'Delete']]
@@ -378,6 +377,6 @@ const COMM_TYPE = registerDiagramType('uml.communication', withOwnNodes({
   // the PDF's Lines row of a message: «stereotypes», then its label, as the picture writes it after its number (audit 20)
   text: (model, view, id) => { const e = [...CM_ARR(view && view.edges), ...CM_ARR(model && model.edges)].find(x => CM_OBJ(x) && x.id === id); return e && e.type === 'uml.Message' ? cmMsgSay(e) || null : null; },
   edits: { connect: commConnect, moveTo: commMoveTo, add: commAdd, remove: commRemove, rename: commRename },
-}));
+});
 
 export { COMM_TYPE, commGeo, commProblems, commDescribe, commConnect, commMoveTo, commAdd, commRemove, commRename, cmRank };

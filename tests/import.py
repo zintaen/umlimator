@@ -309,7 +309,7 @@ ok("kubernetes · an owned Pod or ReplicaSet whose workload is not in the file i
    [n["id"] for n in m["nodes"]] == ["deploy-web", "svc-api"] and un == [
        ("[0]", "Pod api-7d9c-x: owned by ReplicaSet api-7d9c, which is not in the file: not imported (export its workload too, a Deployment, StatefulSet or DaemonSet)"),
        ("[1]", "Pod db-0: owned by StatefulSet db, which is not in the file: not imported (export its workload too, a Deployment, StatefulSet or DaemonSet)"),
-       ("[5]", "Pod job-1-z: owned by Job job-1, which is not in the file: not imported (export its workload too, a Deployment, StatefulSet or DaemonSet)"),
+       ("[5]", "Pod job-1-z: owned by Job job-1 (not in the file), which is not imported"),
        ("[6]", "ReplicaSet old-rs: owned by Deployment gone, which is not in the file: not imported (export its workload too, a Deployment, StatefulSet or DaemonSet)")], un)
 k8s = [pod("a", "ReplicaSet", ("ReplicaSet", "b")), pod("b", "ReplicaSet", ("ReplicaSet", "a")), pod("p", "Pod", ("ReplicaSet", "a")),
        {"kind": "Pod", "metadata": {"name": "q", "ownerReferences": [None, {"kind": 5}, "x"]}}]
@@ -329,8 +329,33 @@ ok("kubernetes · a Pod whose owners are in the file but end at a kind not impor
    [n["id"] for n in m["nodes"]] == ["deploy-web"] and [u for u in un if "Pod" in u[1]] == [
        ("[2]", "Pod nightly-1-abc: owned by Job nightly-1 (CronJob nightly), which is not imported"),
        ("[4]", "Pod once-x: owned by Job once, which is not imported"),
-       ("[5]", "Pod lost-x: owned by Job lost, which is not in the file: not imported (export its workload too, a Deployment, StatefulSet or DaemonSet)"),
-       ("[7]", "Pod half-x: owned by Job half, whose workload is not in the file: not imported (export its workload too, a Deployment, StatefulSet or DaemonSet)")], un)
+       ("[5]", "Pod lost-x: owned by Job lost (not in the file), which is not imported"),
+       ("[7]", "Pod half-x: owned by Job half (CronJob gone, not in the file), which is not imported")], un)
+# audit 23: a chain that leaves the file at a kind not imported (a Job's CronJob, as `kubectl get jobs,pods` writes it) was
+# told to export a Deployment, StatefulSet or DaemonSet; one that leaves it at a workload or a ReplicaSet still is
+k8s = [pod("nightly-123", "Job", ("CronJob", "nightly"), ns="ops"), pod("nightly-123-abcde", "Pod", ("Job", "nightly-123"), ns="ops"),
+       pod("api-7d9c", "ReplicaSet", ("Deployment", "api")), pod("api-7d9c-x", "Pod", ("ReplicaSet", "api-7d9c")),
+       pod("rs-x", "Pod", ("ReplicaSet", "rs")), pod("rs", "ReplicaSet", ("ReplicaSet", "rs0")), pod("w", "Pod", ("Workflow", "wf")),
+       pod("wf-1", "Job", ("Workflow", "wf")), pod("wf-1-x", "Pod", ("Job", "wf-1"))]
+m, un = imp.read("kubernetes", json.dumps(k8s), "x")
+ok("kubernetes · a Pod whose owner chain leaves the file at a kind not imported says so, naming that owner (audit 23)",
+   [u for u in un if u[1].startswith("Pod")] == [
+       ("[1]", "Pod nightly-123-abcde: owned by Job nightly-123 (CronJob nightly, not in the file), which is not imported"),
+       ("[3]", "Pod api-7d9c-x: owned by ReplicaSet api-7d9c, whose workload is not in the file: not imported (export its workload too, a Deployment, StatefulSet or DaemonSet)"),
+       ("[4]", "Pod rs-x: owned by ReplicaSet rs, whose workload is not in the file: not imported (export its workload too, a Deployment, StatefulSet or DaemonSet)"),
+       ("[6]", "Pod w: owned by Workflow wf (not in the file), which is not imported"),
+       ("[8]", "Pod wf-1-x: owned by Job wf-1 (Workflow wf, not in the file), which is not imported")], un)
+# audit 23: a workload scaled to zero lost its count on the card (`if n` read 0 as none); a count that is no whole number is not said
+dep = lambda n, r: {"kind": "Deployment", "metadata": {"name": n}, "spec": {"replicas": r}}
+m, un = imp.read("kubernetes", json.dumps([dep("a", 0), dep("b", 1), dep("c", 3), dep("d", None), dep("e", True), dep("f", "x"), {"kind": "StatefulSet", "metadata": {"name": "g"}, "spec": {"replicas": 0}}]), "x")
+ok("kubernetes · replicas 0 is said on the card as 0 replicas, as 1 and 3 are; none, true or text is not said (audit 23)",
+   [n.get("what") for n in m["nodes"]] == ["0 replicas.", "1 replica.", "3 replicas.", None, None, None, "0 replicas."], [n.get("what") for n in m["nodes"]])
+# audit 23: the map importer read the header flowchart-elk as flowchart and "-elk LR" as a statement it could not read
+for head in ["flowchart-elk LR", "flowchart-elk TD;", "flowchart-elk", "flowchart LR", "graph TD"]:
+    m, un = imp.read("mermaid", head + "\n  A --> B\n", "x")
+    ok(f"mermaid · the header {head!r} is read, and nothing reported (audit 23)", un == [] and [n["id"] for n in m["nodes"]] == ["A", "B"] and len(m["edges"]) == 1, (un, m))
+m, un = imp.read("mermaid", "flowchart-elkish LR\n  A --> B\n", "x")
+ok("mermaid · a header that only starts like flowchart-elk is not read as one", un != [], un)
 m, un, dt = quick("kubernetes", json.dumps([pod(f"r{i}", "ReplicaSet", ("ReplicaSet", f"r{i + 1}")) for i in range(6000)]))
 ok("hostile · a chain of 6000 ReplicaSets, each owned by the next, reads in linear time", len(un) == 6000 and dt < 1, dt)
 
