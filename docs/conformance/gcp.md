@@ -15,7 +15,7 @@ Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Service
 | Piece | In the model | Drawn as |
 |---|---|---|
 | Group | `gcp.Zone`, its kind in `props.zoneType`: `project`, `region`, `zone`, `network`, `subnetwork`, `generic` | a box holding what it owns by `parent`, at any depth, titled "<label> [<kind>]" ("europe-west1 [Region]"); dashed for a region and a zone, solid otherwise; no group icon (decision 10). A group holding nothing shown is a closed card of that title |
-| Product | `gcp.Product`, its icon in `props.icon`, the pinned pack's own id (`Cloud-Run`) | a card 180 to 280 px wide and 56 px tall at least on the map's box outline: the icon, 32 px, on a 39 px tile (dark under a white icon), from the host's `icons` table at `gcp/<id>`; beside it the label (13 px, two lines of 180 px) and under it the full service name (11 px, muted), from the table's `name`, else the row's `names` entry in `icons/packs.json`, which is read with no pack fetched too (`Pub-Sub` is "Pub/Sub"), else the id with hyphens and underscores as spaces; a label equal to the name drawn once. With no icon in the table, a 24 px outlined square, the glyph |
+| Product | `gcp.Product`, its icon in `props.icon`, the pinned pack's own id (`Cloud-Run`) | a card 180 to 280 px wide and 56 px tall at least on the map's box outline: the icon, 32 px, on a 39 px tile (dark under a white icon), from the host's `icons` table at `gcp/<id>`; beside it the label (13 px, two lines of 180 px, or one per line the author broke it into) and under it the full service name (11 px, muted), from the table's `name`, else the row's `names` entry in `icons/packs.json`, which is read with no pack fetched too (`Pub-Sub` is "Pub/Sub"), else the id with hyphens and underscores as spaces; a label equal to the name drawn once. With no icon in the table, a 24 px outlined square, the glyph |
 | User | `gcp.User` | the map's person shape, no icon |
 | Line | `gcp.Path` | solid, an open arrow at `to`, its label cut at 280 px. It may start or end at a group, drawn to the group's border |
 | Google's legal line | none: drawn by the type | 10 px, muted, under any picture that draws a Google icon, in a card or the legend, inside its bounds; the legend and `describe()` end with it. Its words are in `icons/packs.json` and in the type, and a test keeps them equal |
@@ -49,8 +49,7 @@ Layout limits, with port repair and rerouting off (`repair: false`, `reroute: fa
   five levels of groups, 80 paths) crosses 56 times laid out right and 54 down, where one path's label lies on another.
   Laid out right, three labels found no spot and were left off with nothing said; since audit 6 they are drawn, the view
   laid out with room for them. The example's "paid order" (and the Azure example's "secrets") too.
-- A label is wrapped to two lines of 180 px, the full name to two, then cut with an ellipsis; both are in the card's
-  accessible name, `describe()` and the PDF.
+- A label is wrapped to two lines of 180 px, the full name to two, then cut with an ellipsis. A label or full name the author broke (a Mermaid `<br>`, a newline) keeps each of its lines as written, however many, and the card grows to hold them (audit 23); only unbroken text is wrapped and cut. Both are in the card's accessible name, `describe()` and the PDF.
 
 ## Writers: what each shows of a Google Cloud diagram
 

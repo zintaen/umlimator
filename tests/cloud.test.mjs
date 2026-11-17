@@ -525,3 +525,13 @@ test('audit 26: a cloud card whose name runs to 16,000 characters is drawn measu
   assert.match(mapContext(m, { measure }).buildView('v').markup, /word word/);
   assert.ok(chars < 100 * 16000, `${chars} characters measured`);
 });
+
+test('audit 30: a label the author broke draws each of its lines, as docs/conformance/gcp.md and azure.md say; unbroken text is cut at two', () => {
+  const m = structuredClone(GCP), api = m.nodes.find(n => n.id === 'gcp-api');
+  api.label = 'Shop API\nline two\nline three\nline four\nline five\nline six';
+  const mk = mapContext(m).buildView('gcp-on-gcp').markup, card = mk.match(/<g class="node cloud-card" data-id="gcp-api"[^]*?<\/g><\/g>/)[0];
+  assert.deepEqual(card.match(/>line [a-z]+</g), ['>line two<', '>line three<', '>line four<', '>line five<', '>line six<'], 'every line drawn, none cut');
+  for (const f of ['gcp', 'azure']) { const d = readFileSync(new URL(`../docs/conformance/${f}.md`, import.meta.url), 'utf8');
+    assert.match(d, /A label is wrapped to two lines of 180 px, the full name to two, then cut with an ellipsis\. A label or full name the author broke \(a Mermaid `<br>`, a newline\) keeps each of its lines/, f);
+    assert.match(d, /two lines of 180 px, or one per line the author broke it into\)/, f); }
+});

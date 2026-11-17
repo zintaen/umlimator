@@ -363,3 +363,18 @@ test('audit 29: an element of no UML kind is drawn, said and edited as an instan
     assert.deepEqual(T.edits.rename(m, m.views[0], 'o', 'order2 : Order'), [{ op: 'set', id: 'o', path: 'label', value: 'order2' }], d);
     const ctx = mapContext(m); assert.match(tablesOf(ctx, ctx.V.v, ctx.buildGeo('v'))[0].rows[0], /order1 : Order/, d); }
 });
+
+test('audit 30: instance-of reads a generalization a class view draws as its own line: a slot may name an attribute of a general', () => {
+  const m = { schemaVersion: 2,
+    nodes: [{ id: 'base', type: 'uml.Class', label: 'Base', members: [{ id: 'bid', type: 'uml.Property', label: 'id' }] },
+      { id: 'ord', type: 'uml.Class', label: 'Order', members: [{ id: 'tot', type: 'uml.Property', label: 'total' }] },
+      { id: 'o1', type: 'uml.InstanceSpecification', label: 'o1', props: { classifier: 'Order' }, members: [{ id: 's1', type: 'uml.Slot', label: 'id', props: { value: '7' } }] }],
+    edges: [],
+    views: [{ id: 'classes', diagram: 'uml.class', nodeIds: ['base', 'ord'], edges: [{ id: 'g', type: 'uml.Generalization', from: 'ord', to: 'base' }] },
+      { id: 'objects', diagram: 'uml.object', nodeIds: ['o1'] }] };
+  assert.deepEqual(validate(m), []);
+  const n = structuredClone(m); n.edges.push(n.views[0].edges.pop());
+  assert.deepEqual(validate(n), [], 'as with the same generalization a model line');
+  const x = structuredClone(m); x.views[0].edges = [];
+  assert.deepEqual(validate(x).map(p => p.rule), ['instance-of'], 'with none, warned');
+});

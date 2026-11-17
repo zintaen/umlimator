@@ -514,3 +514,16 @@ test('audit 29: an element of no type, drawn as a component holding its ports, i
   const e = structuredClone(m); e.nodes[0].type = '';
   assert.equal(layout(e, 'v').nodes.find(n => n.id === 'a').shape, 'component');
 });
+
+test('audit 30: the PDF\'s Members column of a class lists the ports the view draws on its border, as a component\'s does', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'c', type: 'uml.Class', label: 'Order', members: [{ id: 'p', type: 'uml.Port', label: 'api', props: { valueType: 'Rest' } }, { id: 'op', type: 'uml.Operation', label: 'pay' }] },
+    { id: 'k', type: 'uml.Component', label: 'Shop', members: [{ id: 'q', type: 'uml.Port', label: 'api', props: { valueType: 'Rest' } }] }, { id: 'i', type: 'uml.Interface', label: 'IPay' }],
+    edges: [{ id: 'r', type: 'uml.InterfaceRealization', from: 'p', to: 'i' }], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['c', 'k', 'i'] }] };
+  assert.equal(layout(m, 'v').byId.p.aria, 'Port api : Rest of Order, provides IPay', 'the view draws the class\'s port');
+  const c = mapContext(m), rows = tablesOf(c, c.V.v, c.buildGeo('v'))[0].rows.map(r => r.split('<td>').slice(1).map(x => x.replace(/<[^>]+>/g, '').trim()));
+  assert.deepEqual(rows.find(r => r[0] === 'Order'), ['Order', 'Class', 'api : Rest, provides IPay'], 'its port, not the operation the box does not draw');
+  assert.deepEqual(rows.find(r => r[0] === 'Shop'), ['Shop', 'Component', 'api : Rest']);
+  // a class with no ports: an empty cell, as before
+  const n = structuredClone(m); n.nodes[0].members = [n.nodes[0].members[1]]; n.edges = [];
+  assert.deepEqual(T.rows(n, n.views[0], 'c'), []);
+});

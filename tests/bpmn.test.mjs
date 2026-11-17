@@ -19,6 +19,7 @@ import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
+import { tablesOf } from '../src/page/print.js';
 import { BZ_RULES, bzProblems, bzConnect, bzMoveTo, bzAdd, bzRemove, bzKey, bzOwners, bzOwner } from '../src/bpmn/process.js';
 
 const EX = JSON.parse(readFileSync(new URL('../examples/bookshop-order-to-shipment.json', import.meta.url), 'utf8'));
@@ -847,4 +848,15 @@ test('audit 29: a listed line of another kind the picture cannot draw is said as
     assert.match(d[0], /, 3 pools and 1 other line\.$/, to);
     assert.ok(d.includes(`${name}${drawn ? '' : ', not drawn'}.`), d.join('\n'));
   }
+});
+
+test('audit 30: the PDF names an unnamed gateway by its kind, as its accessible name and describe() do, never by its model id', () => {
+  const ctx = mapContext(EX), [els, lines] = tablesOf(ctx, ctx.V[VID], ctx.buildGeo(VID));
+  const txt = r => r.split('<td>').slice(1).map(x => x.replace(/<[^>]+>/g, '').trim());
+  const all = [...els.rows, ...lines.rows].map(r => txt(r).join(' | '));
+  assert.equal(layout(EX, VID).nodes.find(n => n.id === 'bp-join').aria, 'Parallel gateway, in Warehouse');
+  assert.ok(!all.some(r => /\b(bp-join|fork|not-paid)\b/.test(r)), all.join('\n'));
+  assert.ok(all.includes('Parallel gateway | Parallel gateway | in Warehouse'), all.join('\n'));
+  assert.ok(all.includes('Pick and pack → Parallel gateway |  | Sequence flow'), all.join('\n'));
+  assert.ok(all.includes('Paid? → Exclusive gateway | no | Sequence flow'), 'a named gateway keeps its name; an unnamed one is named by its kind');
 });

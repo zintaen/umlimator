@@ -503,7 +503,9 @@ const CS_TYPE = registerDiagramType('uml.composite-structure', {
     const u = P.at.get(id); if (!u) return null;
     // the subject or an open collaboration (0.22.0): its members, a part or role with its aggregation. Its connectors are rows
     // of the Lines table, which lists a line drawn to a member's owner (audit 3), so not again here (audit 17)
-    if (id === P.sid && P.S || P.collabs.some(c => c.x.id === id)) return CS_ARR(u.members).filter(CS_OBJ).map(m => (m.type === 'uml.Property' ? csPartSaid(m) : CS_MEMBER.print(m)) + (m.type === 'uml.Property' && id === P.sid && u.type !== 'uml.Collaboration' ? `, ${agg(m)}` : ''));
+    // Only the members its box draws: its parts and ports, a collaboration's roles; an operation or a literal is not drawn (audit 30)
+    const c = P.collabs.find(y => y.x.id === id), drawn = new Set(id === P.sid && P.S ? [...P.parts, ...P.sPorts] : c ? c.roles : []);
+    if (id === P.sid && P.S || c) return CS_ARR(u.members).filter(m => drawn.has(m)).map(m => (m.type === 'uml.Property' ? csPartSaid(m) : CS_MEMBER.print(m)) + (m.type === 'uml.Property' && id === P.sid && u.type !== 'uml.Collaboration' ? `, ${agg(m)}` : ''));
     if (u.type !== 'uml.CollaborationUse') return []; // any other element is drawn with no compartments: no members in the PDF (audit 29)
     return [...(CS_HAS(CS_PROPS(u).collaboration) ? [String(CS_PROPS(u).collaboration)] : []),
       // its bindings as the view draws and describe() says them (P.lines: a view's own line too, audit 26)

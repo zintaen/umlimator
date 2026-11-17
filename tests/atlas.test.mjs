@@ -308,3 +308,19 @@ test('audit 5: each typed element that opens a view says so in its accessible na
     if (![c.aria || '', said].every(t => /\bopens\b/.test(t))) silent.push(`${v.id} ${x.id}: ${c.aria} | ${said}`); } } finally { console.warn = was; }
   assert.ok(n > 20, n); assert.deepEqual(silent, []);
 });
+
+test('audit 30: every classifier box the atlas draws has, as its SVG aria-label, the accessible name the type computes; a foreign kind\'s instance too', () => {
+  const ctx = mapContext(M), un = s => s.replace(/&quot;/g, '"').replace(/&#39;/g, '\'').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  let n = 0; const bad = [];
+  for (const v of M.views) { if (!v.diagram || v.diagram === 'map') continue; const g = layout(M, v.id), mk = ctx.buildView(v.id).markup;
+    for (const [, d, a] of mk.matchAll(/<g class="node classifier" data-id="([^"]*)"[^>]*aria-label="([^"]*)"/g)) { const x = g.nodes.find(y => y.id === un(d)); n++;
+      if (x && x.aria && un(a) !== x.aria) bad.push(`${v.id} ${un(d)}: ${un(a)} | ${x.aria}`); } }
+  assert.ok(n > 30, `${n} boxes`); assert.deepEqual(bad, []);
+  const at = mk => mk.match(/<g class="node classifier" data-id="i-sign-in"[^>]*aria-label="([^"]*)"/)[1];
+  assert.equal(un(at(ctx.buildView('components').markup)), 'Interface SignIn, provided by Accounts and sign-in, required by Storefront, Shop API');
+  // an object view's instance of a kind outside UML's, drawn, said and printed as an instance specification
+  const o = { schemaVersion: 2, nodes: [{ id: 'o3', type: 'acme.Thing', label: 'o3', props: { classifier: 'Order' } }], edges: [], views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['o3'] }] };
+  const s = mapContext(o).buildView('v').markup;
+  assert.equal(layout(o, 'v').nodes[0].aria, 'Instance specification o3 : Order');
+  assert.match(s, /aria-label="Instance specification o3 : Order"/);
+});

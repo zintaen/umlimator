@@ -464,7 +464,7 @@ machine; icons unmodified with the service name beside each; a not-affiliated li
   `slice`, and no `clip-path`, `filter`, `opacity`, `mask` or transform on the image in screen, print or PDF (Microsoft
   forbids cropping). A test asserts these on every vendor `<image>` the fixtures draw. With no icon in the table: a 24 px outlined square in `--um-muted`, the
   glyph risks.md §6 asks for, and the accessible name says "icon not available".
-- Beside it: the label (13 px, 600, two lines of 180 px), and under it the full service name (11 px, `--um-muted`, two
+- Beside it: the label (13 px, 600, two lines of 180 px; since audit 23 a label the author broke keeps each of its lines, audit 30), and under it the full service name (11 px, `--um-muted`, two
   lines), from the table's `name`, else the row's `names` entry in `icons/packs.json` ("Pub/Sub" for `Pub-Sub`, read with no
   pack fetched too), else the id with hyphens and underscores as spaces (S8). A label equal to the name is drawn once.
 - The geometry key holds each card's drawn text, so a name arriving with a fetched pack lays the view out again.
