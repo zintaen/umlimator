@@ -289,14 +289,21 @@ function actAdd(model, view, entry, label, at) {
   const vs = AC_ARR(model.views).filter(v => AC_OBJ(v) && v.diagram === 'uml.activity');
   return { pick: vs.map(v => String(v.title ?? v.id)), then: i => make(vs[i].id) };
 }
-// remove: Shift + Delete on a partition keeps what it holds, which goes to the partition's own owner (S10)
+// remove: Shift + Delete on a partition keeps what it holds, which goes to the partition's own owner (S10). Delete hides a
+// partition of the model; one the view holds as its own is deleted by Delete too, so it keeps what it holds as Shift + Delete does (audit 25)
 function actRemove(model, view, ids, fromModel) {
-  if (!fromModel) return null;
+  if (!AC_OBJ(view)) return null;
   // the view's own partitions and what they hold too (remove gets the model as it is: registry.js), audit 24
-  const N = new Map(AC_ARR(ownNodes(model, view).model.nodes).filter(AC_OBJ).map(n => [n.id, n])), gone = new Set(AC_ARR(ids)), parts = [...gone].filter(id => (N.get(id) || {}).type === 'uml.ActivityPartition');
+  const N = new Map(AC_ARR(ownNodes(model, view).model.nodes).filter(AC_OBJ).map(n => [n.id, n])), gone = new Set(AC_ARR(ids));
+  const own = new Set(), put = x => { if (AC_OBJ(x) && typeof x.id === 'string') { own.add(x.id); AC_ARR(x.members).forEach(put); } }; // as the canvas's Delete reads them
+  [...AC_ARR(view.nodes), ...AC_ARR(view.edges)].forEach(put);
+  const del = fromModel ? gone : new Set([...gone].filter(id => own.has(id))), parts = [...del].filter(id => (N.get(id) || {}).type === 'uml.ActivityPartition');
   if (!parts.length) return null;
-  const keep = p => { const seen = new Set(); while (p != null && gone.has(p) && !seen.has(p)) { seen.add(p); p = (N.get(p) || {}).parent; } return p != null && N.has(p) && !gone.has(p) ? p : null; };
-  return [...[...N.values()].filter(n => !gone.has(n.id) && parts.includes(n.parent)).map(n => ({ op: 'reparent', id: n.id, parent: keep(n.parent) })), ...[...gone].map(id => ({ op: 'delete', id }))];
+  const keep = p => { const seen = new Set(); while (p != null && del.has(p) && !seen.has(p)) { seen.add(p); p = (N.get(p) || {}).parent; } return p != null && N.has(p) && !del.has(p) ? p : null; };
+  // the rest of a Delete as the canvas's: a model element is hidden, a model line only from a view that lists its lines, the subject never
+  const lines = new Set(AC_ARR(model.edges).filter(AC_OBJ).map(e => e.id)), rest = fromModel ? [] : [...gone].filter(id => !del.has(id) && id !== view.subject && (!lines.has(id) || Array.isArray(view.edges)));
+  return [...[...N.values()].filter(n => !del.has(n.id) && parts.includes(n.parent)).map(n => ({ op: 'reparent', id: n.id, parent: keep(n.parent) })),
+    ...[...del].map(id => ({ op: 'delete', id })), ...rest.map(id => ({ op: 'hide', id, view: view.id }))];
 }
 // rename: F2 on a flow reads "name [guard]" (§7.2) and sets each part that changed; on anything else, null (set label)
 function actRename(model, view, id, text) {

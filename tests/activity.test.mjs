@@ -492,3 +492,21 @@ test('audit 24: Shift + Delete on a partition the view holds as its own keeps th
   assert.ok(n.views[0].nodes.some(x => x.id === id && x.parent == null), 'the action stays, in no partition');
   assert.ok(!n.views[0].nodes.some(x => x.id === 'P'));
 });
+
+test('audit 25: Delete on a partition the view holds as its own keeps what it holds, as Shift + Delete does; a model partition is still hidden', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'M', type: 'uml.ActivityPartition', label: 'Office' }, { id: 'file', type: 'uml.Action', label: 'File it', parent: 'M' }], edges: [],
+    views: [{ id: 'a', diagram: 'uml.activity', nodeIds: ['M', 'file', 'P', 'Q', 'start', 'pack', 'ship', 'wrap'], nodes: [
+      { id: 'P', type: 'uml.ActivityPartition', label: 'Warehouse' }, { id: 'Q', type: 'uml.ActivityPartition', label: 'Packing', parent: 'P' },
+      { id: 'start', type: 'uml.InitialNode' }, { id: 'pack', type: 'uml.Action', label: 'Pack', parent: 'P' },
+      { id: 'ship', type: 'uml.Action', label: 'Ship', parent: 'P' }, { id: 'wrap', type: 'uml.Action', label: 'Wrap', parent: 'Q' }],
+    edges: [{ id: 'f1', type: 'uml.ControlFlow', from: 'start', to: 'pack' }, { id: 'f2', type: 'uml.ControlFlow', from: 'pack', to: 'ship' }] }] };
+  const v = m.views[0], left = r => { const n = apply(m, r), w = n.views[0]; return { nodes: w.nodes.map(x => [x.id, x.parent ?? null]), edges: w.edges.map(e => e.id), model: n.nodes.map(x => x.id), listed: w.nodeIds }; };
+  const del = T.edits.remove(m, v, ['P'], false), shift = T.edits.remove(m, v, ['P'], true);
+  assert.deepEqual(left(del), left(shift), 'Delete and Shift + Delete agree on an own partition');
+  assert.deepEqual(left(del).nodes, [['Q', null], ['start', null], ['pack', null], ['ship', null], ['wrap', 'Q']], 'its actions and nested partition stay, lifted out of it');
+  assert.deepEqual(left(del).edges, ['f1', 'f2'], 'and the flows between them');
+  // with a model partition in the selection: that one hidden, its action kept in the model
+  const both = left(T.edits.remove(m, v, ['P', 'M'], false));
+  assert.deepEqual(both.model, ['M', 'file'], 'the model partition is hidden, not deleted'); assert.ok(!both.listed.includes('M') && both.nodes.some(([id]) => id === 'pack'));
+  assert.equal(T.edits.remove(m, v, ['M'], false), null, 'a model partition alone: the canvas\'s hide');
+});

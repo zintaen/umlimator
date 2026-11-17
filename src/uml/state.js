@@ -1,5 +1,5 @@
 import { apply } from '../core/apply.js';
-import { registerDiagramType } from '../core/registry.js';
+import { ownNodes, registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, portsOn, r2 } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
@@ -436,7 +436,11 @@ function stOwners(model, x) {
 }
 // remove: a region deleted from the model (Shift + Delete on its box, the member list's ✕) says how many elements it held (§10.3)
 function stRemove(model, view, ids, fromModel) {
-  const I = stIndex(model), rs = fromModel ? ids.filter(id => I.M.has(id) && I.M.get(id).x.type === 'uml.Region') : [];
+  // the regions of the view's own states too (remove gets the model as it is: registry.js), audit 25. Delete deletes a selection
+  // the view holds as its own (the canvas's Delete), so it is said the same way; a selection with a model element in it is the canvas's
+  const own = new Set(), put = x => { if (ST_OBJ(x) && typeof x.id === 'string') { own.add(x.id); ST_ARR(x.members).forEach(put); } };
+  if (ST_OBJ(view)) [...ST_ARR(view.nodes), ...ST_ARR(view.edges)].forEach(put);
+  const I = stIndex(ST_OBJ(view) ? ownNodes(model, view).model : model), rs = fromModel || ids.every(id => own.has(id)) ? ids.filter(id => I.M.has(id) && I.M.get(id).x.type === 'uml.Region') : [];
   if (!rs.length) return null;
   const held = [...I.N.keys()].filter(n => rs.some(r => stWithin(I, n, r))).length, x = I.M.get(rs[0]).x;
   return { commands: ids.map(id => ({ op: 'delete', id })), say: `Deleted ${rs.length === 1 ? 'region ' + (ST_HAS(x.label) ? x.label : x.id) : stPlural(rs.length, 'region')} and the ${stPlural(held, 'element')} ${rs.length === 1 ? 'it' : 'they'} held` };

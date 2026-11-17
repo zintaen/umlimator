@@ -510,5 +510,14 @@ test('audit 24: Delete on a lifeline the view holds as its own says it is delete
   assert.deepEqual(T.edits.remove(m, m.views[0], ['B'], false), { commands: [{ op: 'delete', id: 'B' }], say: 'Deleted bank, 1 change' });
   const both = T.edits.remove(m, m.views[0], ['A', 'B'], false);
   assert.deepEqual(both.commands, [{ op: 'hide', id: 'A', view: 'v' }, { op: 'delete', id: 'B' }]);
-  assert.match(both.say, /^Deleted bank; Hid worker/);
+  assert.equal(both.say, 'Deleted bank, 1 change; Hid worker; its change stays in the timeline', 'each part of its own lanes (audit 25)');
+});
+
+test('audit 25: Delete of an own and a model lifeline together says each part of its own lanes: the deleted one\'s changes go, the hidden one\'s stay', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/bookshop-timing.json', import.meta.url), 'utf8')), v = m.views[0], T = diagramOf(v);
+  v.nodes = [m.nodes.splice(m.nodes.findIndex(n => n.id === 'lifeline-payments'), 1)[0]];
+  const r = T.edits.remove(m, v, ['lifeline-worker', 'lifeline-payments'], false), n = apply(m, r.commands);
+  assert.equal(r.say, 'Deleted payments, 4 changes and 2 messages; Hid worker; its changes stay in the timeline');
+  assert.deepEqual(n.views[0].timeline.changes.map(c => c.id), ['w-idle', 'w-waiting', 'w-recording', 'w-done'], 'the changes that stay are worker\'s');
+  assert.ok(!r.say.includes('their'), r.say);
 });
