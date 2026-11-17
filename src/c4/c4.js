@@ -6,6 +6,7 @@ import '../uml/class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from '../uml/flow.js';
 import { boxHead, ownersOn, readingOrder } from '../uml/owners.js';
 import { brLines } from '../typed/draw.js';
+import { snKindName } from '../uml/structure.js';
 
 /* ---------- C4's elements and static views, c4.landscape, c4.context, c4.container, c4.component (work package M2.6,
    notes/milestone-2.md §5.1, §5.2, §6.1, §6.5, §7.5, §7.5.1) ----------
@@ -27,7 +28,9 @@ const c4Plural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const C4_WORD = { __proto__: null, 'c4.Person': 'Person', 'c4.SoftwareSystem': 'Software system', 'c4.Container': 'Container', 'c4.Component': 'Component',
   'c4.DeploymentNode': 'Deployment node', 'c4.ContainerInstance': 'Container instance', 'uml.Comment': 'Comment' };
 const C4_TAG = { __proto__: null, 'c4.Person': 'Person', 'c4.SoftwareSystem': 'Software System', 'c4.Container': 'Container', 'c4.Component': 'Component' };
-const c4Word = x => (Object.hasOwn(C4_WORD, x.type) ? C4_WORD[x.type] : String(x.type ?? '').split('.').pop());
+// a kind from another family in words, "Use case", "Data type", as the other views name it since audit 23 (audit 24); a type
+// of no family ("constructor") as written
+const c4Word = x => (Object.hasOwn(C4_WORD, x.type) ? C4_WORD[x.type] : String(x.type ?? '').includes('.') ? snKindName(x.type) : String(x.type ?? ''));
 const C4_STATIC = ['c4.Person', 'c4.SoftwareSystem', 'c4.Container', 'c4.Component'], C4_DEPLOY = ['c4.DeploymentNode', 'c4.ContainerInstance'];
 // the map's card shapes an element may name (S11): all but UML's node, which is the deployment view's
 const C4_SHAPES = ['box', 'person', 'robot', 'browser', 'window', 'terminal', 'mobile', 'cylinder', 'pipe', 'folder', 'document', 'hexagon'];
@@ -187,6 +190,7 @@ const C4_RULES = {
   'c4-technology': 'every container and component has a technology',
   'c4-label': 'every relationship has a description',
   'c4-title': 'every view has a title',
+  'c4-note-box': 'a comment\'s link to what the view draws as a box (a boundary, a deployment node holding what it shows) is not drawn: a line ends on an element, never on a box',
 };
 const C4_KIND = { 'c4.landscape': 'landscape', 'c4.context': 'context', 'c4.container': 'container', 'c4.component': 'component' };
 // what each static view kind may show (§5.1), and the type its subject is
@@ -194,7 +198,7 @@ const C4_SHOWS = { landscape: ['c4.Person', 'c4.SoftwareSystem'], context: ['c4.
   component: ['c4.Person', 'c4.SoftwareSystem', 'c4.Container', 'c4.Component'] };
 const C4_SUBJECT = { context: 'c4.SoftwareSystem', container: 'c4.SoftwareSystem', component: 'c4.Container' };
 const C4_OWNER = { 'c4.Container': 'c4.SoftwareSystem', 'c4.Component': 'c4.Container', 'c4.ContainerInstance': 'c4.DeploymentNode' };
-const c4A = w => (/^[aeiou]/i.test(w) ? 'an ' : 'a ') + w;
+const c4A = w => (/^(?!us|uni)[aeiou]/i.test(w) ? 'an ' : 'a ') + w; // "a use case", "an untyped"
 function c4Problems(model, view) {
   const out = [], I = c4Index(model), say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const q = id => JSON.stringify(I.at.has(id) ? c4Name(I.at.get(id)) : String(id)), kind = id => (I.at.has(id) ? c4Word(I.at.get(id)).toLowerCase() : 'nothing');
@@ -226,7 +230,7 @@ function c4Problems(model, view) {
     say('warning', 'c4-subject', `${at}.subject`, [view.subject], view.subject == null ? 'a context view names the software system it is about as its subject' : `${q(view.subject)} is ${!subj || subj.type !== S ? 'not a software system' : 'not shown'}: a context view shows its software system`);
   // none (its subject deleted, as composite structure's subject-shown, audit 18): a warning; one of the wrong kind: an error
   if ((K === 'container' || K === 'component') && !(subj && subj.type === S))
-    say(view.subject == null ? 'warning' : 'error', 'c4-subject', `${at}.subject`, [view.subject], `${view.subject == null ? 'the view has no subject' : `its subject ${q(view.subject)} is ${c4A(kind(view.subject))}`}: a ${K} view zooms into ${c4A(C4_WORD[S].toLowerCase())}`);
+    say(view.subject == null ? 'warning' : 'error', 'c4-subject', `${at}.subject`, [view.subject], `${view.subject == null ? 'the view has no subject' : I.at.has(view.subject) ? `its subject ${q(view.subject)} is ${c4A(kind(view.subject))}` : `its subject ${q(view.subject)} names no element`}: a ${K} view zooms into ${c4A(C4_WORD[S].toLowerCase())}`);
   ids.forEach((id, k) => { const x = I.at.get(id); if (!x || x.type === 'uml.Comment') return;
     const ok = C4_SHOWS[K].includes(x.type) && !(K === 'component' && x.type === 'c4.Component' && x.parent !== view.subject);
     if (!ok) say('error', 'c4-level', `${at}.nodeIds[${k}]`, [id], `${q(id)}, ${c4A(kind(id))}${x.type === 'c4.Component' && K === 'component' ? ` of ${q(x.parent)}` : ''}, is not drawn in a ${K} view`);
@@ -237,10 +241,22 @@ function c4Problems(model, view) {
     if (C4_STATIC.includes(x.type) && !C4_HAS(P.description)) say('warning', 'c4-description', `nodes[${j}].props.description`, [id], `${q(id)} has no description`);
     if ((x.type === 'c4.Container' || x.type === 'c4.Component') && !C4_HAS(P.technology)) say('warning', 'c4-technology', `nodes[${j}].props.technology`, [id], `${q(id)}, ${c4A(kind(id))}, has no technology`); });
   const pic = c4Pic(model, view);
+  c4NoteBox(model, view, pic, say, q);
   c4Lines(model, view, pic).own.forEach(e => {
     if (e.type === 'c4.Relationship' && !C4_HAS(e.label)) say('warning', 'c4-label', `${pathOf(e)}.label`, [e.id, e.from, e.to], `${e.id}, from ${q(e.from)} to ${q(e.to)}, has no description`); });
   if (!C4_HAS(view.title)) say('warning', 'c4-title', `${at}.title`, [], `view ${JSON.stringify(view.id)} has no title`);
   return out;
+}
+
+// a comment link the view would draw but for an end it draws as a box (pic.open): a line ends on an element, never on a box
+// (§7.5.1, §7.5.5), so it is left out, and said, as the deployment view's c4-box-line says a relationship (audit 24)
+function c4NoteBox(model, view, pic, say, q) {
+  const E = C4_ARR(model && model.edges), vE = C4_OBJ(view) ? C4_ARR(view.edges) : [], byId = new Map(pic.I.E.map(e => [e.id, e]));
+  const listed = Array.isArray(view.edges) ? vE.map(x => (typeof x === 'string' ? byId.get(x) : x)).filter(C4_OBJ) : pic.I.E;
+  [...new Set(listed)].forEach(e => { if (e.type !== 'uml.CommentLink' || !pic.ids.includes(e.from) || !pic.ids.includes(e.to)) return;
+    const box = [e.from, e.to].filter(id => pic.open.has(id)); if (box.length !== 1) return;
+    const i = E.indexOf(e); say('warning', 'c4-note-box', i >= 0 ? `edges[${i}]` : `views[${C4_ARR(model.views).indexOf(view)}].edges[${vE.indexOf(e)}]`, [e.id, ...box],
+      `${e.id}, from ${q(e.from)} to ${q(e.to)}, is not drawn: the view draws ${q(box[0])} as a box, which no line ends on`); });
 }
 
 /* ---- describe(): the view in sentences, each element in reading order, then each line by its accessible name ---- */
@@ -259,6 +275,8 @@ const c4Free = (used, base) => { if (!used.has(base)) return base; let k = 2; wh
 function c4Zoom(model, view, ids) {
   const I = c4Index(model), x = [...ids].reverse().map(id => I.at.get(id)).find(y => y && (y.type === 'c4.SoftwareSystem' || y.type === 'c4.Container'));
   if (!x) return null; if (x.opensView != null) return { error: `${c4Name(x)} opens "${x.opensView}" already: Enter opens it` };
+  // one this view alone holds (view.nodes): no other view reaches it, so none zooms into it (audit 24)
+  if (C4_OBJ(view) && C4_ARR(view.nodes).includes(x)) return { error: `${c4Name(x)} lives in this view only: no other view can show it` };
   const sys = x.type === 'c4.SoftwareSystem', kids = I.kids(x.id, sys ? 'c4.Container' : 'c4.Component'), inside = new Set(kids);
   // the far end of a relationship, at the new view's level: a person or a software system as it is, a container as it is (a
   // system's own are inside already), a component as its container, anything else not at all
@@ -278,16 +296,19 @@ function c4Retype(model, ids) {
   return { pick: C4_STATIC.map(t => C4_WORD[t]), then: i => (C4_STATIC[i] === x.type ? [] : [{ op: 'set', id: x.id, path: 'type', value: C4_STATIC[i] }]) };
 }
 const c4Key = (model, view, ids, key) => (key === 'd' || key === 'D' ? c4Zoom(model, view, ids) : key === 't' || key === 'T' ? c4Retype(model, ids) : null);
-// add: a container added to a container view, or a component to a component view, is owned by the view's subject; one the
-// view's level does not show (a container on a context view) is refused, not added owned by nothing (audit 23)
+// add: a container added to a container view, or a component to a component view, is owned by the view's subject; a container
+// added to a component view by its subject's software system (audit 24); one the view's level does not show (a container on a
+// context view) is refused, not added owned by nothing (audit 23), and so is one with nothing to own it
 const C4_PLURAL = { 'c4.Person': 'people', 'c4.SoftwareSystem': 'software systems', 'c4.Container': 'containers', 'c4.Component': 'components' };
 function c4Add(model, view, entry, label) {
   const I = c4Index(model), s = I.at.get(view.subject), K = C4_KIND[view.diagram];
   if (K && C4_STATIC.includes(entry.type) && !C4_SHOWS[K].includes(entry.type)) { const w = C4_SHOWS[K].map(t => C4_PLURAL[t]), lvl = C4_WORD[entry.type].toLowerCase();
     return { error: `This view shows ${w.slice(0, -1).join(', ')} and ${w.at(-1)}: ${c4A(lvl)} is added on ${c4A(lvl)} view` }; }
-  if (!s || !((K === 'container' && entry.type === 'c4.Container') || (K === 'component' && entry.type === 'c4.Component')) || s.type !== C4_OWNER[entry.type]) return null;
+  if (!((K === 'container' && entry.type === 'c4.Container') || (K === 'component' && (entry.type === 'c4.Component' || entry.type === 'c4.Container')))) return null;
+  const o = K === 'component' && entry.type === 'c4.Container' ? s && I.at.get(s.parent) : s, w = C4_WORD[entry.type].toLowerCase(), ow = C4_WORD[C4_OWNER[entry.type]].toLowerCase();
+  if (!o || o.type !== C4_OWNER[entry.type]) return { error: `${c4A(w).replace(/^./, c => c.toUpperCase())} is owned by ${c4A(ow)}: this view has none to put it in` };
   const base = entry.type.split('.').pop().toLowerCase(), used = c4Used(model); let k = 1; while (used.has(base + k)) k++;
-  return [{ op: 'add', element: { id: base + k, type: entry.type, ...(label ? { label } : {}), parent: s.id }, view: view.id }];
+  return [{ op: 'add', element: { id: base + k, type: entry.type, ...(label ? { label } : {}), parent: o.id }, view: view.id }];
 }
 // the Owner field: a container's software systems, a component's containers
 function c4Owners(model, x) {
@@ -324,4 +345,4 @@ const C4_DEF = {
 };
 const C4_TYPES = Object.keys(C4_KIND).map(name => registerDiagramType(name, C4_DEF));
 
-export { C4_NOTE_LINE, C4_TYPES, C4_DEF, C4_RULES, C4_WORD, C4_SHAPES, c4Index, c4Pic, c4Lift, c4Lines, c4Geo, c4Problems, c4Describe, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Zoom, c4Key, c4Add, c4Owners, c4Rename };
+export { C4_NOTE_LINE, C4_TYPES, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, C4_SHAPES, c4Index, c4Pic, c4Lift, c4Lines, c4Geo, c4Problems, c4Describe, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Zoom, c4Key, c4Add, c4Owners, c4Rename };

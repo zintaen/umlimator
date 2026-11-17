@@ -314,3 +314,23 @@ test('audit 13: a class view\'s self-association is one row of the PDF Lines tab
     views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['emp'] }] }, ctx = mapContext(m), rows = tablesOf(ctx, ctx.V.v, ctx.buildGeo('v'))[1].rows;
   assert.equal(rows.length, 1); assert.match(rows[0], /Employee → Employee.*manages/);
 });
+
+// audit 24: a typed view whose id names one of its cards is no drill-down into that card: the map's hub plan never runs for
+// a type with its own layout (it read g.stats, which a typed geometry has none of, and threw a TypeError)
+test('audit 24: a sequence, timing or mindmap view named as a card with three lines out lays out as it does under any other name', async () => {
+  const L = await import('../lib/umlimator-all.js');
+  const mk = (d, T, vid) => ({ schemaVersion: 2, nodes: ['shop', 'b', 'c', 'd'].map(id => ({ id, type: T, label: id.toUpperCase() })),
+    edges: ['b', 'c', 'd'].map((to, i) => ({ id: 'e' + i, from: 'shop', to })), views: [{ id: vid, diagram: d, nodeIds: ['shop', 'b', 'c', 'd'] }] });
+  const strip = g => JSON.stringify(g, (k, x) => (k === 'ms' ? 0 : x)).split('"named"').join('"shop"');
+  for (const [d, T] of [['uml.sequence', 'uml.Lifeline'], ['uml.timing', 'uml.Lifeline'], ['mindmap', 'mindmap.Topic']]) {
+    const m = mk(d, T, 'shop'), g = L.layout(m, 'shop'); // threw: Cannot read properties of undefined (reading 'cross')
+    assert.ok(g.nodes.length >= 4, d);
+    assert.deepEqual(L.validate(m).filter(p => p.level === 'error'), [], d);
+    assert.equal(strip(g).length, strip(L.layout(mk(d, T, 'named'), 'named')).length, `${d}: drawn as under another name`);
+  }
+  // a shipped view: the atlas's checkout sequence given the id of its lifeline with most messages out
+  const atlas = JSON.parse(readFileSync(new URL('../examples/bookshop-atlas.json', import.meta.url))), v = atlas.views.find(x => x.id === 'checkout-sequence');
+  const outs = new Map(); atlas.edges.forEach(e => v.nodeIds.includes(e.from) && outs.set(e.from, (outs.get(e.from) || 0) + 1));
+  const top = [...outs].sort((a, b) => b[1] - a[1])[0][0]; atlas.views.forEach(x => { if (x.parent === v.id) x.parent = top; }); v.id = top;
+  assert.ok(L.layout(atlas, top).nodes.length > 0, `checkout-sequence renamed ${top}`);
+});

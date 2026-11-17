@@ -478,3 +478,12 @@ test('a kind outside the view\'s own is said in words in its accessible name and
       assert.ok(said.some(l => l === w + '.' || l.startsWith(w + ',')), `${d}: describe() says "${w}"`); });
   }
 });
+
+test('audit 24: Delete on a port of a component the view holds as its own deletes it, as on a model component\'s', () => {
+  let m = { schemaVersion: 2, nodes: [{ id: 'shop', type: 'uml.Component', label: 'Shop', members: [{ id: 'shop.api', type: 'uml.Port', label: 'api' }] }], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['shop'] }] };
+  m = apply(m, { op: 'add', in: 'view', view: 'v', element: { id: 'pay', type: 'uml.Component', label: 'Payments', members: [{ id: 'pay.in', type: 'uml.Port', label: 'in' }] } });
+  const T = diagramOf(m.views[0]), r = T.edits.remove(m, m.views[0], ['pay.in'], false);
+  assert.deepEqual(r && r.commands, [{ op: 'delete', id: 'pay.in' }]);
+  assert.match(r.say, /^Deleted port in from the model/);
+  assert.deepEqual(apply(m, r.commands).views[0].nodes[0].members, []);
+});

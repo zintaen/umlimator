@@ -83,8 +83,8 @@ type Command =
 | `add` with `in: 'view'` | Adds an element to the view's own list for its kind: a line or an inline item to `edges`, a node to `nodes`, else `fragments`. |
 | `move` | Moves an element to `index` among its owner's members, or within a view's list. |
 | `hide` | Takes an element out of one view, and everything the view says of it. Refused for the view's `subject` (or an element that holds it as a member). |
-| `delete` | Deletes an element, its members, what it owns, the lines to them and every reference to them. |
-| `reparent` | Gives an element a new owner (`parent`), or none with `null`. |
+| `delete` | Deletes an element, its members, what it owns, the lines to them and every reference to them. A model element owned by something one view alone holds (a view's own node) is kept: it moves to its nearest owner left, else to none. |
+| `reparent` | Gives an element a new owner (`parent`), or none with `null`. A node one view alone holds owns only that view's own elements: `reparent`, or `add` with `parent`, of a model element (or another view's) under it throws, and `validate()` warns of a model saved with one. |
 | `addView` | Adds a view at `index`, else last. Refused when its id is taken. No command deletes a view. |
 
 ```js

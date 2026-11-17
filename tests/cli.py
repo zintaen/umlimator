@@ -235,6 +235,15 @@ with tempfile.TemporaryDirectory() as tmp:
        and all(isinstance(e, dict) and e.get("type") == "uml.Message" and "->" not in e["id"] for e in v.get("edges", [])), r)
     rv = cli("render", str(t / "traced-uml.json"), "--out", str(t / "traced-uml.html"))
     ok("trace --diagram uml.sequence · the model renders and its check is clean", rv is not None and not rv.get("problems") and not rv.get("errors"), rv)
+    # traced again into that view (audit 24): the UML sequence view it replaces takes its lifelines, those no view lists, with it
+    span = lambda svc, sid, par, name, a, b: {"resource": {"attributes": [{"key": "service.name", "value": {"stringValue": svc}}]}, "scopeSpans": [{"spans": [
+        {"traceId": "5b8aa5a2d2c872e8321cf37308d69df2", "spanId": sid, "parentSpanId": par, "name": name, "startTimeUnixNano": str(1762700000000000000 + a), "endTimeUnixNano": str(1762700000000000000 + b)}]}]}
+    (t / "small-trace.json").write_text(json.dumps({"resourceSpans": [span("rider-app", "a1", "", "tap End ride", 0, 212000000), span("trip-api", "b1", "a1", "POST /rides/{id}/end", 5000000, 200000000)]}))
+    lone = lambda m: sorted(n["id"] for n in m.get("nodes", []) if n.get("type") == "uml.Lifeline" and not any(n["id"] in (w.get("nodeIds") or []) for w in m.get("views", [])))
+    for extra, name in ((["--diagram", "uml.sequence"], "again-uml"), ([], "again")):
+        cli("trace", str(t / "traced-uml.json"), str(t / "small-trace.json"), "--view", "ride-end", "--match", str(tr / "match.json"), *extra, "--out", str(t / f"{name}.json"))
+        got = json.loads((t / f"{name}.json").read_text(encoding="utf-8")) if (t / f"{name}.json").is_file() else {"nodes": [{"id": "?", "type": "uml.Lifeline"}]}
+        ok(f"trace {' '.join(extra) or '(a numbered view)'} · traced again into a UML sequence view it made: no lifeline of the old view left on no view", lone(got) == [], lone(got))
     (t / "bare").mkdir(); (t / "bare" / "umlimator.py").write_bytes((ROOT / "umlimator.py").read_bytes())  # a copy with no src/
     r = subprocess.run([sys.executable, str(t / "bare" / "umlimator.py"), "trace", str(t / "before.json"), str(tr / "ride-end.json"), "--view", "ride-end",
                         "--diagram", "uml.sequence", "--out", str(t / "bare" / "out.json")], capture_output=True, text=True)

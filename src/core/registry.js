@@ -62,7 +62,7 @@ const OWN_WRAPS = new Map(), ownWrap = (kind, f, make) => { const w = OWN_WRAPS.
 function withOwnNodes(def) {
   const out = { ...def }, L = def.layout, views = model => R_ARR(R_OBJ(model) ? model.views : null), viewOf = (model, id) => views(model).find(v => R_OBJ(v) && v.id === id);
   const M = (model, view) => ownNodes(model, R_OBJ(view) ? view : viewOf(model, view)).model; // a view, or its id (mindmap's hooks take either)
-  const all = model => ownMerge(model, views(model).filter(v => R_OBJ(v) && v.diagram != null && v.diagram !== 'map'));
+  const typed = model => views(model).filter(v => R_OBJ(v) && v.diagram != null && v.diagram !== 'map'), all = model => ownMerge(model, typed(model));
   const said = (o, ps) => (!o.at.length || !Array.isArray(ps) ? ps : ps.map(p => { const r = /^nodes\[(\d+)\]/.exec(String((R_OBJ(p) ? p.path : '') ?? '')), i = r ? Number(r[1]) - o.k : -1;
     return i >= 0 && i < o.at.length ? { ...p, path: `views[${o.at[i][0]}].nodes[${o.at[i][1]}]` + p.path.slice(r[0].length) } : p; }));
   if (typeof L === 'function') out.layout = ownWrap('layout', L, f => a => f({ ...a, model: M(a.model, a.view) }));
@@ -74,7 +74,10 @@ function withOwnNodes(def) {
   if (typeof def.owners === 'function') out.owners = ownWrap('owners', def.owners, f => (model, x, view) => { const os = f(view ? M(model, view) : all(model).model, x), held = heldBy(model);
     return Array.isArray(os) && R_OBJ(x) && !held.has(x.id) ? os.filter(o => !(R_OBJ(o) && held.has(o.id))) : os; });
   if (typeof def.validate === 'function') out.validate = def.validate.length < 2 ? ownWrap('validate1', def.validate, f => model => { const o = all(model); return said(o, f(o.model)); })
-    : ownWrap('validate', def.validate, f => (model, view) => { const o = ownNodes(model, view); return said(o, f(o.model, view)); });
+    // a view's, its own nodes first, then the other typed views' (audit 24: a model line from one view's own node is not "from
+    // nothing" to another view's rules); a problem at another view's own node is that view's to say, not this one's
+    : ownWrap('validate', def.validate, f => (model, view) => { const vs = typed(model), o = ownMerge(model, [view, ...vs.filter(v => v !== view)]), vi = views(model).indexOf(view);
+      return said(o, f(o.model, view)).filter(p => { const r = /^views\[(\d+)\]\.nodes\[/.exec(String((R_OBJ(p) ? p.path : '') ?? '')); return !r || Number(r[1]) === vi || !o.at.some(([i]) => i === Number(r[1])); }); });
   if (typeof def.describe === 'function') out.describe = ownWrap('describe', def.describe, f => (model, viewId) => f(M(model, viewOf(model, viewId)), viewId));
   if (R_OBJ(def.edits)) { const ed = {}; Object.getOwnPropertyNames(def.edits).forEach(k => { const d = Object.getOwnPropertyDescriptor(def.edits, k);
       // remove tells a view's own node from the model's: it gets the model as it is

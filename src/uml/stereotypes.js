@@ -132,7 +132,9 @@ function styIndex(model) {
   // a line's owner: its parent, else its from end's owner (§5.2), read once every node and member is in
   STY_ARR(model.edges).forEach((e, i) => put(e, `edges[${i}]`, undefined, true));
   els.forEach(r => { if (r.line) { r.own = r.x.parent != null ? r.x.parent : up.get(r.x.from); if (rec.get(r.x.id) === r) up.set(r.x.id, r.own); } });
-  STY_ARR(model.views).forEach((v, k) => { if (STY_OBJ(v)) ['nodes', 'edges', 'fragments'].forEach(f => STY_ARR(v[f]).forEach((x, j) => put(x, `views[${k}].${f}[${j}]`, undefined, false))); }); // a view's own: no scope
+  // a view's own lines and fragments (a sequence's inline message): no scope. A view's own node keeps the parent it names, as
+  // ownMerge reads it (registry.js): a class added { in: 'view' } in a package applying a profile has its stereotypes (audit 24)
+  STY_ARR(model.views).forEach((v, k) => { if (STY_OBJ(v)) ['nodes', 'edges', 'fragments'].forEach(f => STY_ARR(v[f]).forEach((x, j) => put(x, `views[${k}].${f}[${j}]`, f === 'nodes' && STY_OBJ(x) ? x.parent : undefined, f === 'nodes'))); });
   const isT = (id, t) => (at.get(id) || {}).type === t, profiles = [...at.values()].filter(x => x.type === 'uml.Profile');
   const I = { at, rec, els, profiles, byProfile: new Map(), byName: new Map(), byLabel: new Map(), enums: new Map(), applied: new Map(), gens: new Map(), ext: new Map(), req: new Map(), memo: new Map(), cache: new Map(), defsOf: new Map(), upOf: new Map(), probs: [] };
   if (!profiles.length) return I;

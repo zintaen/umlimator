@@ -1,5 +1,5 @@
 import { TYPED } from '../core/registry.js';
-import { esc, fit, textW } from '../core/text.js';
+import { brLines, esc, fit, textW } from '../core/text.js';
 import { trimLine } from '../draw/lines.js';
 import { SHAPE, boxOut, drawnPts, portsOn, r2 } from '../draw/shapes.js';
 import { hasKey } from '../map/kinds.js';
@@ -25,9 +25,6 @@ function memberText(m) { const p = obj(m.props) ? m.props : {}, has = x => x != 
 // with their rows and how many they leave out), the head's height, and the size its text needs: as wide as its widest text,
 // within minW and maxW (a longer row is cut: classSvg). An abstract name is in italics, which the measure (upright) does
 // not see: it is measured a tenth wider (slant)
-// a text's lines where its author broke it (a Mermaid <br>, F2's Shift+Enter), one line where it has none: each drawn on its
-// own line, not as a space (audit 22, as flowWrap since audit 21)
-const brLines = t => String(t ?? '').split(/\r\n?|[\n\u2028\u2029]/);
 function classParts(n) {
   const hidden = new Set(Array.isArray(n.collapsed) ? n.collapsed : []), cap = Number.isFinite(n.rows) ? Math.max(0, Math.floor(n.rows)) : Infinity, slant = n.abstract ? 1.1 : 1;
   const stereo = (Array.isArray(n.stereotypes) ? n.stereotypes : []).filter(t => t != null && t !== '').map(String), st = stereo.map(t => `«${t}»`);

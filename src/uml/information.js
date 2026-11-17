@@ -116,12 +116,13 @@ const IF_RULES = {
 };
 function ifProblems(model) {
   const out = [], I = ifIndex(model), say = (rule, path, ids, msg) => out.push({ level: 'error', rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
-  const q = id => JSON.stringify(I.nm(id)), kind = id => (I.at.has(id) ? ifWord(I.at.get(id).type).toLowerCase() : 'nothing');
+  const q = id => JSON.stringify(I.nm(id)), kind = id => (I.at.has(id) ? (String(I.at.get(id).type ?? '').includes('.') ? ifKindName : ifWord)(I.at.get(id).type).toLowerCase() : 'nothing'); // "an actor", "a data type", "a use case" (audit 24)
+  const a = w => (/^(?!us|uni)[aeiou]/i.test(w) ? 'an ' : 'a ') + w;
   typedLines(model, v => v.diagram === 'uml.information-flow').forEach(([e, path]) => { if (!IF_OBJ(e) || e.type !== 'uml.InformationFlow') return; const c = I.conveyed(e);
     if (!c.length) say('conveyed-some', path, [e.id], `${e.id} conveys nothing: a flow conveys one element at least`);
     c.forEach((id, j) => { if (c.indexOf(id) < j) say('conveyed-once', `${path}.props.conveyed[${j}]`, [e.id, typeof id === 'string' ? id : null], `${e.id} conveys ${q(id)} twice: a flow conveys each element once`);
       else if (!I.at.has(id) || !IF_CONVEY.includes(I.at.get(id).type))
-      say('conveyed-kind', `${path}.props.conveyed[${j}]`, [e.id, typeof id === 'string' ? id : null], I.at.has(id) ? `${e.id} conveys ${q(id)}, a ${kind(id)}: it conveys information items, classes, interfaces, components and signals` : `${e.id} conveys ${JSON.stringify(id)}, which the model does not hold`); });
+      say('conveyed-kind', `${path}.props.conveyed[${j}]`, [e.id, typeof id === 'string' ? id : null], I.at.has(id) ? `${e.id} conveys ${q(id)}, ${a(kind(id))}: it conveys information items, classes, interfaces, components and signals` : `${e.id} conveys ${JSON.stringify(id)}, which the model does not hold`); });
     if (!IF_ENDS.includes((I.at.get(e.from) || {}).type) || !IF_ENDS.includes((I.at.get(e.to) || {}).type))
       say('flow-ends', path, [e.id, e.from, e.to], `${e.id} runs from ${q(e.from)} (${kind(e.from)}) to ${q(e.to)} (${kind(e.to)}): a flow joins two classes, interfaces, components or actors`); });
   return out;
