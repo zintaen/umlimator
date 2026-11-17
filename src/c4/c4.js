@@ -7,6 +7,7 @@ import { flowWrap } from '../uml/flow.js';
 import { boxHead, ownersOn, readingOrder } from '../uml/owners.js';
 import { brLines } from '../typed/draw.js';
 import { snKindName } from '../uml/structure.js';
+import { usedIds } from '../core/model.js';
 
 /* ---------- C4's elements and static views, c4.landscape, c4.context, c4.container, c4.component (work package M2.6,
    notes/milestone-2.md §5.1, §5.2, §6.1, §6.5, §7.5, §7.5.1) ----------
@@ -285,7 +286,7 @@ function c4Describe(model, viewId) {
 }
 
 /* ---- editing (§6.1, §7.5) ---- */
-const c4Used = model => { const used = new Set(C4_ARR(model.views).filter(C4_OBJ).map(v => v.id)); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; }); return used; };
+const c4Used = model => { const used = new Set(C4_ARR(model.views).filter(C4_OBJ).map(v => v.id)); usedIds(model, used); return used; };
 const c4Free = (used, base) => { if (!used.has(base)) return base; let k = 2; while (used.has(`${base}-${k}`)) k++; return `${base}-${k}`; };
 // D (§6.1): a software system's container view, or a container's component view, made: the element (its boundary), what it
 // owns a level down, and what their relationships reach, each lifted to that level; the element then opens it. One transaction

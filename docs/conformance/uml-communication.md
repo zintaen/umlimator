@@ -28,7 +28,7 @@ the message's two lifelines; a self-message needs a self connector), and the sha
 `create-once`, `delete-once` and `sort` (`src/uml/interaction.js`).
 
 Deleting a connector (Shift + Delete) takes the messages it carries, from every communication view with no other
-connector for them, in the same transaction (the type's remove hook), so no single delete leaves a `message-link` error
+connector for them, in the same transaction; a message another view still carries on its own connector stays in the model, hidden from the views left with none (the type's remove hook), so no single delete leaves a `message-link` error
 (`tests/delete-cascade.test.mjs`). A bare `apply()` delete of a connector leaves its messages, and so the error.
 
 ## Left out

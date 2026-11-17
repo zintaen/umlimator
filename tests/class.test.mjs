@@ -529,3 +529,14 @@ test('audit 26: a comment\'s line breaks are drawn a line each (SHAPE.note), a b
     const g = layout(m, 'v'); assert.ok(g.byId.p.h > g.byId.n.h, `${diagram}: the note grows a line for each`);
   }
 });
+
+test('audit 28: an element of no type, drawn and named a class, is judged as a class by the class rules', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'u', label: 'Thing' }, { id: 'k', type: 'uml.Class', label: 'Order' }, { id: 'i', type: 'uml.Interface', label: 'Payable' }, { id: 'w', label: 'Other' }],
+    edges: [{ id: 'g', type: 'uml.Generalization', from: 'u', to: 'k' }, { id: 'g2', type: 'uml.Generalization', from: 'w', to: 'u' }, { id: 'r', type: 'uml.InterfaceRealization', from: 'u', to: 'i' }],
+    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['u', 'k', 'i', 'w'] }] };
+  assert.match(layout(m, 'v').byId.u.aria, /^Class Thing/);
+  assert.deepEqual(validate(m), [], 'a class specializing a class, and realizing an interface');
+  // a class specializing an interface is still refused, the untyped end said as the class it is drawn as
+  const bad = { ...m, edges: [{ id: 'g', type: 'uml.Generalization', from: 'u', to: 'i' }] };
+  assert.deepEqual(validate(bad).map(p => p.message), ['generalization-kinds: class "Thing" specializes interface "Payable" (g)']);
+});

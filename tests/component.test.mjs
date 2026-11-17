@@ -487,3 +487,16 @@ test('audit 24: Delete on a port of a component the view holds as its own delete
   assert.match(r.say, /^Deleted port in from the model/);
   assert.deepEqual(apply(m, r.commands).views[0].nodes[0].members, []);
 });
+
+test('audit 28: an element of no type, drawn as a component holding its port, may hold it; the rules name it an element', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'u', label: 'Billing', members: [{ id: 'pt', type: 'uml.Port', label: 'api' }] }, { id: 'k', type: 'uml.Package', label: 'Pk', members: [{ id: 'pt2', type: 'uml.Port', label: 'api2' }] }],
+    edges: [], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['u', 'k'] }] };
+  const g = layout(m, 'v');
+  assert.deepEqual([g.byId.u.shape, g.byId.pt.shape], ['component', 'port']);
+  assert.deepEqual(validate(m).map(p => p.message), ['port-owner: port pt2 ("api2") is a member of package k ("Pk"); a port is a member of a component or a class'], 'a package still may not');
+  const c = mapContext(m), rows = tablesOf(c, c.V.v, c.buildGeo('v'))[0].rows.map(r => r.split('<td>').slice(1).map(x => x.replace(/<[^>]+>/g, '')));
+  assert.equal(rows.find(r => r[0] === 'Billing')[1], 'Element', 'the PDF\'s Kind, as its accessible name');
+  // a view that does not draw it as a component (composite structure) still refuses the port, naming its kind in words
+  const cs = { ...m, views: [{ id: 'v', diagram: 'uml.composite-structure', nodeIds: ['u'] }] };
+  assert.ok(validate(cs).some(p => p.message === 'port-owner: port pt ("api") is a member of element u ("Billing"); a port is a member of a component or a class'));
+});

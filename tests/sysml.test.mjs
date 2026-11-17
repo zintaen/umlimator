@@ -99,9 +99,10 @@ test('17 with a class view added has no generalization-kinds problem; a UML gene
   assert.ok(m.edges.some(e => e.type === 'uml.Generalization' && e.from === 'ebike' && e.to === 'rental-vehicle'));
   const bad = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'A' }, { id: 'p', type: 'uml.Package', label: 'p' }], edges: [{ id: 'g', type: 'uml.Generalization', from: 'a', to: 'p' }], views: [] };
   assert.deepEqual(classProblems(bad).map(p => p.rule), ['generalization-kinds']);
-  // an end of another notation is left to it (§7.3, option (a)); one untyped, or of a type of no notation, is still judged
+  // an end of another notation is left to it (§7.3, option (a)); one of a type of no notation is still judged; one untyped is a
+  // class, as it is drawn and named (audit 28), so a class specializing it is no problem
   const to = t => ({ ...bad, nodes: [bad.nodes[0], { id: 'p', label: 'p', ...(t ? { type: t } : {}) }] });
-  assert.deepEqual(classProblems(to(undefined)).filter(p => p.rule === 'generalization-kinds').length, 1);
+  assert.deepEqual(classProblems(to(undefined)).filter(p => p.rule === 'generalization-kinds').length, 0);
   assert.deepEqual(classProblems(to('Class')).filter(p => p.rule === 'generalization-kinds').length, 1);
   assert.deepEqual(classProblems(to('c4.System')).filter(p => p.rule === 'generalization-kinds'), []);
 });

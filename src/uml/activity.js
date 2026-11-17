@@ -10,7 +10,7 @@ import './class.js'; // SHAPE.note, a comment's
 import { snKindName } from './structure.js';
 import { frame } from './frame.js';
 import { FLOW_RULES, flowOf, flowProblems, flowLabel, flowRename, flowStereo, viewFlows } from './flow.js';
-import { copyOf } from '../core/model.js';
+import { copyOf, usedIds } from '../core/model.js';
 import { LINE_SAYS } from './class.js'; // the "Line" key's words, for a line of another kind (audit 28)
 
 /* ---------- the activity diagram, uml.activity (work package 4.5, notes/stage-4.md §9) ----------
@@ -28,7 +28,7 @@ const AC_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), AC
 const AC_HAS = x => x != null && String(x).trim() !== '', AC_PART = x => (AC_HAS(x) ? String(x).trim() : undefined);
 const AC = { rgap: 64, gap: 64, cut: 280, sig: 14, rake: 10, line: 'var(--um-muted)' };
 const AC_FLOWS = ['uml.ControlFlow', 'uml.ObjectFlow'], AC_LINES = [...AC_FLOWS, 'uml.CommentLink'];
-const AC_OBJECTS = ['uml.ObjectNode', 'uml.DataStoreNode'];
+const AC_OBJECTS = ['uml.ObjectNode', 'uml.DataStoreNode'], AC_CONTROL = ['uml.DecisionNode', 'uml.MergeNode', 'uml.ForkNode', 'uml.JoinNode'];
 // each node type: its shape and its word (accessible names, the PDF)
 const AC_LOOK = {
   'uml.InitialNode': ['initial', 'Initial node'], 'uml.ActivityFinalNode': ['final', 'Activity final'], 'uml.FlowFinalNode': ['flow-final', 'Flow final'],
@@ -38,7 +38,9 @@ const AC_LOOK = {
   'uml.ActivityPartition': ['partition', 'Partition'], 'uml.Comment': ['note', 'Comment'],
 };
 const AC_NODES = Object.keys(AC_LOOK).filter(t => t !== 'uml.ActivityPartition' && t !== 'uml.Comment'); // what a flow may end on
-const acLook = x => (Object.hasOwn(AC_LOOK, x.type) ? AC_LOOK[x.type] : ['rounded', String(x.type || 'Node').split('.').pop()]);
+// another kind in words, as the use case view says one: "Data type", "Element" for no type (audit 28)
+// a type of no notation as written ("toString", audit 26)
+const acLook = x => (Object.hasOwn(AC_LOOK, x.type) ? AC_LOOK[x.type] : ['rounded', x.type == null || String(x.type).includes('.') ? snKindName(x.type) : String(x.type)]);
 
 /* ---- the activity's own shapes, each a look over SHAPE.rounded (flow.js): its text drawn in `body` (part of the node's
    box), its outline replaced by `path`, and `extra` drawn over it ---- */
@@ -210,7 +212,7 @@ function actDraw(g) {
    message, ids } ---- */
 const ACT_RULES = {
   ...FLOW_RULES,
-  'object-flow': 'an object flow has an object node or a data store at one end; a control flow has none at either',
+  'object-flow': 'an object flow has an object node or a data store at one end, or reaches one through decisions, merges, forks and joins; a control flow has none at either end',
   'partition-owner': 'a partition\'s owner is a partition or none; a node\'s owner is a partition or none',
   'in-lane': 'on a view that shows a partition, every node is in one',
   'calls-view': 'a call behaviour action opens an activity view of the model',
@@ -220,8 +222,13 @@ function actProblems(model, view) {
   const say = (rule, path, ids, msg, level = 'warning') => out.push({ level, rule, path, ids, message: `${rule}: ${msg}` });
   const q = id => { const x = I.N.get(id); return x && AC_HAS(x.label) ? `${id} ("${x.label}")` : id; };
   // the model's flows and the view's own, as flowProblems weighs them (viewFlows, audit 22)
-  viewFlows(model, view).forEach(([e, path]) => { const id = e.id, objs = [e.from, e.to].filter(x => I.N.has(x) && AC_OBJECTS.includes(I.N.get(x).type));
-    if (e.type === 'uml.ObjectFlow' && !objs.length) say('object-flow', path, [id, e.from, e.to], `object flow ${id} joins ${q(e.from)} and ${q(e.to)}, neither an object node nor a data store`);
+  // an object flow reaches an object node or a data store through decisions, merges, forks and joins, whose flows carry its
+  // tokens on as object flows (UML 2.5.1 15.3, 15.4.3.1; audit 28)
+  const flows = viewFlows(model, view), objOut = new Map(); flows.forEach(([e]) => { if (e.type === 'uml.ObjectFlow') [[e.from, e.to], [e.to, e.from]].forEach(([a, b]) => objOut.set(a, [...(objOut.get(a) || []), b])); });
+  const reaches = e => { const seen = new Set(), st = [e.from, e.to]; while (st.length) { const id = st.pop(); if (seen.has(id) || !I.N.has(id)) continue; seen.add(id);
+    const t = I.N.get(id).type; if (AC_OBJECTS.includes(t)) return true; if (AC_CONTROL.includes(t)) st.push(...(objOut.get(id) || [])); } return false; };
+  flows.forEach(([e, path]) => { const id = e.id, objs = [e.from, e.to].filter(x => I.N.has(x) && AC_OBJECTS.includes(I.N.get(x).type));
+    if (e.type === 'uml.ObjectFlow' && !objs.length && !reaches(e)) say('object-flow', path, [id, e.from, e.to], `object flow ${id} joins ${q(e.from)} and ${q(e.to)}, neither an object node nor a data store`);
     if (e.type === 'uml.ControlFlow' && objs.length) say('object-flow', path, [id, ...objs], `control flow ${id} ends on ${objs.map(q).join(' and ')}: a flow to or from an object node is an object flow`); });
   I.N.forEach((x, id) => { if (!seen(id) || !(AC_NODES.includes(x.type) || x.type === 'uml.ActivityPartition') || x.parent == null || !I.N.has(x.parent)) return;
     const p = I.N.get(x.parent); if (p.type !== 'uml.ActivityPartition') say('partition-owner', `${I.path.get(id)}.parent`, [id, p.id], `${q(id)} is owned by ${q(p.id)}, a ${String(p.type).split('.').pop()}, not a partition`, 'error'); });
@@ -253,7 +260,7 @@ function actDescribe(model, viewId) {
 /* ---- editing (§9.4, §12.1): each hook returns commands, null to leave the gesture to the default, or { error } for the
    hint line, and never a transaction that breaks a rule (S5) ---- */
 function acFreshId(model, base) {
-  const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+  const used = new Set(); usedIds(model, used);
   const b = String(base).toLowerCase().replace(/->/g, '-').replace(/[^\p{L}\p{N}_$-]+/gu, '-').replace(/^-+|-+$/g, '') || 'node'; // ids never hold "->" (M2)
   let k = 1; while (used.has(k === 1 ? b : `${b}-${k}`)) k++;
   return k === 1 ? b : `${b}-${k}`;
@@ -350,7 +357,7 @@ const ACT_TYPE = registerDiagramType('uml.activity', {
   boxes: (model, view) => actIndex(model, view).boxes,
   edits: { connect: actConnect, moveTo: actMoveTo, add: actAdd, remove: actRemove, rename: actRename },
   // the PDF's tables (§15): a node's kind, and its partition
-  word: (model, id) => { const x = AC_ARR(model && model.nodes).find(n => AC_OBJ(n) && n.id === id); return x && Object.hasOwn(AC_LOOK, x.type) ? AC_LOOK[x.type][1] : null; },
+  word: (model, id) => { const x = AC_ARR(model && model.nodes).find(n => AC_OBJ(n) && n.id === id); return x && (Object.hasOwn(AC_LOOK, x.type) || x.type == null) ? acLook(x)[1] : null; }, // no type: "Element", as named (audit 28)
   rows: (model, view, id) => { const I = actIndex(model, view), l = I.N.has(id) ? I.laneOf(id) : null; return l != null ? [`in ${acName(I.N.get(l))}`] : null; },
 });
 

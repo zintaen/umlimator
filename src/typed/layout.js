@@ -137,7 +137,7 @@ function unhook(g, stub) {
    border, ties by portRank, and spread over the border's free span (a box's: below its title, off its corners, as layoutPass
    spreads a box's ends), 8 px apart (down to 4 where they do not fit, and a warning where they still leave the side),
    centred; a port's ends 10 px apart on each face */
-const PORT_SIDE = { left: 'L', right: 'R', top: 'T', bottom: 'B' }, PORT_OPP = { L: 'R', R: 'L', T: 'B', B: 'T' };
+const PORT_SIDE = Object.assign(Object.create(null), { left: 'L', right: 'R', top: 'T', bottom: 'B' }), PORT_OPP = { L: 'R', R: 'L', T: 'B', B: 'T' };
 function placePorts(sides, turned) {
   const hot = new Map(), at = (n, side) => { const k = n.id + '|' + side; if (!hot.has(k)) hot.set(k, { n, side, ends: [] }); return hot.get(k).ends; };
   Object.entries(sides).forEach(([key, list]) => { sides[key] = list.filter(it => { const { e, n } = it, from = n === e.s && (e.s !== e.t || key.endsWith('|R')), port = from ? e.fromPort : e.toPort;

@@ -4,6 +4,7 @@ import { SHAPE, r2 } from '../draw/shapes.js';
 import { brLines } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
 import { boxHead, ownersOn, readingOrder } from '../uml/owners.js';
+import { usedIds } from '../core/model.js';
 
 /* ---------- the cloud architecture family: aws, gcp and azure (work package 4a.6, notes/milestone-4a.md §5) ----------
    Groups (a project, a region, a VPC, a subnet…) as stage 2's boxes, nested by parent to any depth as the deployment type
@@ -206,7 +207,7 @@ function clProblems(F, model) {
       const ic = clIcon(F, model, n);
       if (!ic) say('warning', 'icon-set', `${path}.props.icon`, [n.id], `${q(n.id)} names no icon: it is drawn with a glyph`);
       else if (given && !ic.src) say('warning', 'icon-missing', `${path}.props.icon`, [n.id], `the ${F.pack} pack given has no icon ${JSON.stringify(ic.id)} for ${q(n.id)}: it is drawn with a glyph`); } });
-  [...CL_ARR(model && model.edges).map((e, i) => ({ e, path: `edges[${i}]` })), ...clOwnLines(F, model, I)].forEach(({ e, path }) => {
+  [...Array.from(CL_ARR(model && model.edges), (e, i) => ({ e, path: `edges[${i}]` })), ...clOwnLines(F, model, I)].forEach(({ e, path }) => {
     if (!CL_OBJ(e) || e.type !== F.line[0] || !I.at.has(e.from) || !I.at.has(e.to) || !clInside(F, I, e.from, e.to)) return;
     say('error', 'line-inside', path, [e.id, e.from, e.to], `${e.id} joins ${q(e.from)} and ${q(e.to)}, ${e.from === e.to ? 'a group and itself' : 'a group and something inside it'}: it cannot be drawn`); });
   return out;
@@ -225,7 +226,7 @@ function clDescribe(F, model, viewId) {
 }
 
 /* ---- editing (§5.6) ---- */
-const clNewId = (model, base) => { const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+const clNewId = (model, base) => { const used = new Set(); usedIds(model, used);
   let k = 1; while (used.has(base + k)) k++; return base + k; };
 // connect: refused between a group and what it holds, or from a group to itself, said on the hint line; else the default
 function clConnect(F, model, view, from, to) {

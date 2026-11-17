@@ -1,5 +1,5 @@
 import { apply } from '../core/apply.js';
-import { copyOf } from '../core/model.js';
+import { copyOf, usedIds } from '../core/model.js';
 import { heldBy, registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -405,7 +405,7 @@ function bzDescribe(model, viewId) {
 /* ---- editing (§11): each hook returns commands, null to leave the gesture to the default, { error } for the hint line, or
    { commands, say }; none emits a transaction that brings an error the model did not have ---- */
 function bzFreshId(model, base) {
-  const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+  const used = new Set(); usedIds(model, used);
   const b = String(base).toLowerCase().replace(/->/g, '-').replace(/[^\p{L}\p{N}_$-]+/gu, '-').replace(/^-+|-+$/g, '') || 'element';
   let k = 1; while (used.has(k === 1 ? b : `${b}-${k}`)) k++;
   return k === 1 ? b : `${b}-${k}`;

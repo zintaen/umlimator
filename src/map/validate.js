@@ -89,7 +89,7 @@ export function validate(model) {
       for (let p = c.parent, seen = new Set([c.id]); p != null && boxes[p]; p = boxes[p].parent) { if (seen.has(p)) { err(`${at}.containers[${j}].parent`, `box "${c.id}" ends up inside itself`); break; } seen.add(p); } });
     arr(v.containers).forEach((c, j) => { if (c && boxes[c.id] === c && !full.has(c.id)) warn(`${at}.containers[${j}]`, `box "${c.id}" holds no cards: it is not drawn, nor its lines`); });
     const ends = new Set([...ids, ...Object.keys(boxes)]);
-    const listed = new Set(), byId = new Map(arr(m.edges).map(e => [e && e.id, e])), here = x => mine.has(x) || !!boxes[x]; // audit 7: a listed line is drawn once, between this view's cards and boxes
+    const listed = new Set(), byId = new Map(Array.from(arr(m.edges), e => [e && e.id, e])), here = x => mine.has(x) || !!boxes[x]; // audit 7: a listed line is drawn once, between this view's cards and boxes
     if (Array.isArray(v.edges)) v.edges.forEach((e, j) => { const p = `${at}.edges[${j}]`;
       if (typeof e !== 'string') line(e, p, ends); else if (!lineIds.has(e)) return err(p, `"${e}" is not a line`); else if (listed.has(e)) return warn(p, `"${e}" is listed twice: drawn once`); else listed.add(e);
       const l = typeof e === 'string' ? byId.get(e) : e, off = l && [l.from, l.to].find(x => (ids.has(x) || anyBox.has(x)) && !here(x)); // a card or any view's box (audit 8)

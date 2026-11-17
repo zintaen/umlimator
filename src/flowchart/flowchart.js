@@ -5,6 +5,7 @@ import { layoutTyped, typedLines } from '../typed/layout.js';
 import '../uml/class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from '../uml/flow.js'; // and SHAPE.diamond, SHAPE.initial's circle, read only
 import { snKindName } from '../uml/structure.js';
+import { usedIds } from '../core/model.js';
 
 /* ---------- the flowchart, flowchart (work package M2.3, notes/milestone-2.md §7.2) ----------
    Ten symbols: the decision is stage 4's diamond and the connector a circle over SHAPE.initial's outline, both read only;
@@ -189,7 +190,7 @@ function fcDescribe(model, viewId) {
 }
 
 /* ---- editing: each hook returns commands, null to leave the gesture to the default, or { error } for the hint line ---- */
-const fcId = (model, base) => { const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+const fcId = (model, base) => { const used = new Set(); usedIds(model, used);
   let k = 1; while (used.has(base + k)) k++; return base + k; }; // as the canvas names a line: 'flow1'
 // connect: a flow joins two flowchart nodes (refused otherwise); a decision's second exit is labelled to answer its first,
 // yes then no, and an unlabelled first exit becomes yes

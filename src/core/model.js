@@ -69,6 +69,18 @@ function copyOf(model, mark) {
     if (off) y.length -= off; }
   return out === NONE ? {} : out;
 }
+/* usedIds(model, into): every id the model holds, into a Set (a new one by default): each string under a key named id, in any
+   object or list, at any depth, as JSON.stringify's replacer read them before (a new element's id is the first one free). A walk
+   with a list and a seen set, no recursion, so a host's cycle or a BigInt, which JSON.stringify throws on, is read too (audit 28);
+   a value that throws when read (a getter, a Proxy) holds no id. */
+function usedIds(model, into = new Set()) {
+  const todo = [model], seen = new Set();
+  while (todo.length) { const o = todo.pop(); if (o === null || typeof o !== 'object' || seen.has(o)) continue; seen.add(o);
+    let keys; try { keys = Object.keys(o); } catch { continue; }
+    for (const k of keys) { let v; try { v = o[k]; } catch { continue; }
+      if (k === 'id' && typeof v === 'string') into.add(v); else if (v !== null && typeof v === 'object') todo.push(v); } }
+  return into;
+}
 function unreadable(model) {
   const bad = x => { try { return x !== null && typeof x === 'object' && Object.hasOwn(x, 'toString') && typeof x.toString !== 'function'; } catch { return true; } };
   // role: what the object walked is. 'tags' (its values are maps by tag name), 'present' (by element id), 'part' (one
@@ -112,7 +124,7 @@ function typedProblems(model) {
   const m = model && typeof model === 'object' ? model : {}, arr = x => (Array.isArray(x) ? x : []), isObj = x => x && typeof x === 'object';
   if (m.schemaVersion !== SCHEMA_VERSION) return out;
   const views = arr(m.views).filter(isObj), TYPE = /^[a-z0-9]+\.[A-Z][A-Za-z0-9]*$/;
-  const where = new Map(), kindOf = new Map(), ownerOf = new Map(), parents = []; // id -> its path, its kind, its owner; [element, path]
+  const where = new Map(), kindOf = new Map(), ownerOf = new Map(), parents = [], up = new Set(); // id -> its path, its kind, its owner; [element, path]; the elements whose members are being read
   const element = (x, at, kind, owner) => { // a node, typed edge, member, fragment or timeline item: one id space
     if (!isObj(x)) return err(at, 'an element is an object');
     if (typeof x.id !== 'string' || !x.id) return err(at + '.id', 'a typed element needs an id');
@@ -120,7 +132,8 @@ function typedProblems(model) {
     if (where.has(x.id)) err(at + '.id', `id "${x.id}" is used twice (also ${where.get(x.id)})`); else { where.set(x.id, at); kindOf.set(x.id, kind); }
     if (owner != null) ownerOf.set(x.id, owner);
     if (x.parent != null) parents.push([x, at]);
-    arr(x.members).forEach((y, j) => { element(y, `${at}.members[${j}]`, 'member', x.id); typeOf(y, `${at}.members[${j}]`, true); });
+    if (up.has(x)) return; up.add(x); // a host's member that holds its owner: said used twice, and not read again (audit 28)
+    arr(x.members).forEach((y, j) => { element(y, `${at}.members[${j}]`, 'member', x.id); typeOf(y, `${at}.members[${j}]`, true); }); up.delete(x);
   };
   const typeOf = (x, at, needed) => { if (!isObj(x)) return;
     if (x.type == null ? needed : typeof x.type !== 'string' || !TYPE.test(x.type)) warn(at + '.type', `type ${JSON.stringify(x.type)} is not <notation>.<Name> (uml.Class): drawn as a plain card`); };
@@ -190,4 +203,4 @@ const listOf = (m, i) => (Array.isArray(m.views[i] && m.views[i].edges) ? i : -1
 const lineNames = m => { const out = new Map([[-1, namesOf(m && m.edges)]]);
   (Array.isArray(m && m.views) ? m.views : []).forEach((v, i) => { if (v && Array.isArray(v.edges)) out.set(i, namesOf(v.edges)); }); return out; };
 
-export { versionProblem, typedProblems, lineNames, namesOf, listOf, unreadable, copyOf, textOf, nameTable };
+export { versionProblem, typedProblems, lineNames, namesOf, listOf, unreadable, copyOf, textOf, nameTable, usedIds };

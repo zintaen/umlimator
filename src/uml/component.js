@@ -6,6 +6,7 @@ import { layoutTyped } from '../typed/layout.js';
 import { lineRename, memberEdit, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 import { SN_ARTIFACTS, SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, snKindName, snKindWord, structProblems } from './structure.js';
+import { usedIds } from '../core/model.js';
 
 /* ---------- the component diagram, uml.component (work package 5.4, notes/stage-5.md §10.1) ----------
    Components (src/uml/structure.js's look), a component or package that holds something shown a box (src/uml/owners.js),
@@ -254,7 +255,7 @@ function cpDescribe(model, viewId) {
 }
 
 /* ---- editing (§12) ---- */
-const cpNewId = (model, base) => { const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+const cpNewId = (model, base) => { const used = new Set(); usedIds(model, used);
   let k = 1; while (used.has(base + k)) k++; return base + k; };
 // a port's row: `name` or `name : Type`
 const cpPortText = t => { const s = String(t ?? ''), k = s.indexOf(':'), [name, type] = (k < 0 ? [s] : [s.slice(0, k), s.slice(k + 1)]).map(x => x.trim()); return name ? { label: name, valueType: type || undefined } : { error: 'A port has a name: name or name : Type' }; };
@@ -365,7 +366,7 @@ const CP_TYPE = registerDiagramType('uml.component', {
   describe: cpDescribe,
   edits: { connect: cpConnect, moveTo: cpMoveTo, add: cpAdd, member: cpMember, key: cpKey, remove: cpRemove, rename: cpRename },
   // the PDF's tables (§11): a component's ports, each with what it provides and requires; an interface's operations; what an artifact manifests
-  word: (model, id) => { const x = cpIndex(model).N.get(id); return x ? ({ __proto__: null, 'uml.Component': 'Component', 'uml.Interface': 'Interface', 'uml.Artifact': 'Artifact', 'uml.Package': 'Package', 'uml.Comment': 'Comment' }[x.type] || null) : null; },
+  word: (model, id) => { const x = cpIndex(model).N.get(id); return x ? ({ __proto__: null, 'uml.Component': 'Component', 'uml.Interface': 'Interface', 'uml.Artifact': 'Artifact', 'uml.Package': 'Package', 'uml.Comment': 'Comment' }[x.type] || (x.type == null ? snKindName(x.type) : null)) : null; }, // no type: "Element", as its accessible name (audit 28)
   // a connector's Lines row: its kind (delegation or assembly) and the ports it joins, as the picture and describe() give them (audit 18)
   text: (model, view, id) => { const pic = cpPic(model, view), l = pic.lines.find(y => y.e.id === id); return l && (l.kind === 'assembly' || l.kind === 'delegation') ? cpLineName(pic, l) : null; },
   rows: (model, view, id) => { const pic = cpPic(model, view), x = pic.I.N.get(id); if (!x) return null;

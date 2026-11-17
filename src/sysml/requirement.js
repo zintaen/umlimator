@@ -6,6 +6,7 @@ import { layoutTyped } from '../typed/layout.js';
 import { drawnLines, legendItem, lineRename } from '../uml/class.js'; // and SHAPE.note, a comment's look
 import { holdsLine, ownersOn, placeTabs } from '../uml/owners.js';
 import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_HEAD, SYS_TABLE } from './sysml.js';
+import { usedIds } from '../core/model.js';
 
 /* ---------- the requirement diagram, sysml.requirement (work package M3.2, notes/milestone-3.md §6, §13) ----------
    Requirements, test cases, blocks, packages and comments in a SysML frame (§5): a requirement is the classifier with
@@ -240,7 +241,7 @@ function rqDescribe(model, viewId) {
 }
 
 /* ---- editing (§6.4) ---- */
-const rqNewId = (model, base) => { const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+const rqNewId = (model, base) => { const used = new Set(); usedIds(model, used);
   let k = 1; while (used.has(base + k)) k++; return base + k; };
 // add: a requirement into the requirement or package selected, else the frame's package, else none; the rest the canvas's
 function rqAdd(model, view, entry, label, at) {

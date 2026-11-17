@@ -336,21 +336,24 @@ test('save and reopen (DoD 6): a 30-step communication session undoes and redoes
 });
 
 test('performance (§10, risks.md P1): the stress view lays out in under 1 s, and a message added, renamed or reordered is laid out again and drawn (SVG markup) in under 100 ms (timed)', () => {
-  // best of three, in this process's CPU time: CI runs the timed tests one file at a time in their own step, but on a busy
-  // machine the wall clock counts the time other processes hold the CPU. Both are printed
+  // best of five after one warm-up run that is not counted, in this process's CPU time: CI runs the timed tests one file at a
+  // time in their own step, but on a busy machine the wall clock counts the time other processes hold the CPU. Both are
+  // printed. The process's CPU time also counts V8's own threads (compiling, collecting), which a shared runner slows: of
+  // three runs the first two were cold and one busy third failed the budget though the layout's work had not changed
+  // (Linux, 18 Nov 2026: about 30 ms warm before and after audit 27; the budget is the maintainer's and stays)
   const V = STRESS.views.find(v => v.id === 'all'), edits = {
     add: commConnect(STRESS, V, 'gateway', 'auth', { after: 'a100' }, { type: 'uml.Message', props: { sort: 'call' } }),
     rename: [{ op: 'set', id: 'a5', path: 'label', value: 'renamed(with, a, longer, label)' }],
     reorder: commMoveTo(STRESS, V, 'a40', { by: [0, -1] }) };
   const timed = f => { const c = process.cpuUsage(), t = performance.now(), out = f(), u = process.cpuUsage(c); return [out, (u.user + u.system) / 1000, performance.now() - t]; };
   const runs = [];
-  for (let i = 0; i < 3; i++) { // the first run is cold (the JIT warms up on it)
+  for (let i = 0; i < 6; i++) { // the first run is cold (the JIT warms up on it) and is dropped below
     const memos = {}, r = {};
     [, r.full, r.fullWall] = timed(() => mapContext(STRESS, { memos }).buildGeo('all'));
     for (const [k, c] of Object.entries(edits)) { const m = apply(STRESS, c), was = memos.all.runs; let out;
       [out, r[k], r[k + 'Wall']] = timed(() => mapContext(m, { memos }).buildView('all').markup);
       assert.equal(memos.all.runs, was + 1, `${k} lays the view out again`); assert.match(out, /^<svg /); }
-    runs.push(r);
+    if (i) runs.push(r);
   }
   const best = k => Math.min(...runs.map(r => r[k])), ms = k => runs.map(r => Math.round(r[k])).join(', ');
   console.log(`# 20 lifelines, 30 connectors, 200 messages, CPU (wall) ms: full layout ${ms('full')} (${ms('fullWall')}); a message added ${ms('add')} (${ms('addWall')}), renamed ${ms('rename')} (${ms('renameWall')}), reordered ${ms('reorder')} (${ms('reorderWall')})`);
@@ -473,4 +476,21 @@ test('audit 25: Delete on a lifeline the view holds as its own says it is delete
   const both = T.edits.remove(m, v, ['receipt', 'lifeline-shopper'], false);
   assert.match(both.say, /^Deleted lifeline "receipt" and its 1 message: "new\(order\)"; hid lifeline "shopper" and its \d+ messages?: /, both.say);
   assert.match(T.edits.remove(m, v, ['lifeline-shopper'], false).say, /^Hid lifeline "shopper" and its/, 'a model lifeline: as before');
+});
+
+test('audit 28: Shift + Delete of a connector keeps in the model a message another view still carries on its own connector', () => {
+  const L = id => ({ id, type: 'uml.Lifeline', label: id });
+  const m = { schemaVersion: 2, title: 'c', nodes: [L('a'), L('b')],
+    edges: [{ id: 'c1', type: 'uml.Connector', from: 'a', to: 'b' }, { id: 'c2', type: 'uml.Connector', from: 'a', to: 'b' },
+      { id: 'm', type: 'uml.Message', from: 'a', to: 'b', label: 'ping()', props: { sort: 'call' } }],
+    views: [{ id: 'A', diagram: 'uml.communication', nodeIds: ['a', 'b'], edges: ['c1', 'm'] }, { id: 'B', diagram: 'uml.communication', nodeIds: ['a', 'b'], edges: ['c2', 'm'] }] };
+  const T = diagramOf(m.views[0]), r = T.edits.remove(m, m.views[0], ['c1'], true), cmds = r.commands || r;
+  assert.deepEqual(cmds, [{ op: 'delete', id: 'c1' }, { op: 'hide', id: 'm', view: 'A' }], 'm leaves A only');
+  const n = apply(m, cmds);
+  assert.deepEqual(n.edges.map(e => e.id), ['c2', 'm']);
+  assert.match(describe(n, 'B'), /1 connector and 1 message/);
+  assert.deepEqual(validate(n), []);
+  // both connectors deleted: no view carries m, so it goes from the model
+  const both = T.edits.remove(m, m.views[0], ['c1', 'c2'], true);
+  assert.deepEqual(apply(m, both.commands || both).edges, []);
 });
