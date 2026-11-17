@@ -315,8 +315,22 @@ k8s = [pod("a", "ReplicaSet", ("ReplicaSet", "b")), pod("b", "ReplicaSet", ("Rep
        {"kind": "Pod", "metadata": {"name": "q", "ownerReferences": [None, {"kind": 5}, "x"]}}]
 m, un = imp.read("kubernetes", json.dumps(k8s), "x")
 ok("hostile · owners in a circle, or owner references of odd shapes, are said and end",
-   len(un) == 4 and "Pod p: owned by ReplicaSet a, whose workload is not in the file" in un[2][1]
+   len(un) == 4 and un[2][1].startswith("Pod p: owned by ReplicaSet a") and un[2][1].endswith(", which is not imported")
    and "owned by an owner reference that names no kind and name" in un[3][1], un)
+# audit 22: a Pod whose owners are all in the file, ending at a kind not imported (a Job's CronJob), was told to export a
+# Deployment, StatefulSet or DaemonSet the cluster does not have
+k8s = [{"kind": "CronJob", "metadata": {"name": "nightly"}}, pod("nightly-1", "Job", ("CronJob", "nightly")),
+       pod("nightly-1-abc", "Pod", ("Job", "nightly-1")), {"kind": "Job", "metadata": {"name": "once"}}, pod("once-x", "Pod", ("Job", "once")),
+       pod("lost-x", "Pod", ("Job", "lost")), pod("half", "Job", ("CronJob", "gone")), pod("half-x", "Pod", ("Job", "half")),
+       pod("web-1", "ReplicaSet", ("Deployment", "web")), pod("web-1-x", "Pod", ("ReplicaSet", "web-1")),
+       {"kind": "Deployment", "metadata": {"name": "web"}, "spec": {"template": {"metadata": {"labels": {"app": "web"}}}}}]
+m, un = imp.read("kubernetes", json.dumps(k8s), "x")
+ok("kubernetes · a Pod whose owners are in the file but end at a kind not imported (a Job, a CronJob) is not told to export a Deployment (audit 22)",
+   [n["id"] for n in m["nodes"]] == ["deploy-web"] and [u for u in un if "Pod" in u[1]] == [
+       ("[2]", "Pod nightly-1-abc: owned by Job nightly-1 (CronJob nightly), which is not imported"),
+       ("[4]", "Pod once-x: owned by Job once, which is not imported"),
+       ("[5]", "Pod lost-x: owned by Job lost, which is not in the file: not imported (export its workload too, a Deployment, StatefulSet or DaemonSet)"),
+       ("[7]", "Pod half-x: owned by Job half, whose workload is not in the file: not imported (export its workload too, a Deployment, StatefulSet or DaemonSet)")], un)
 m, un, dt = quick("kubernetes", json.dumps([pod(f"r{i}", "ReplicaSet", ("ReplicaSet", f"r{i + 1}")) for i in range(6000)]))
 ok("hostile · a chain of 6000 ReplicaSets, each owned by the next, reads in linear time", len(un) == 6000 and dt < 1, dt)
 

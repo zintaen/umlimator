@@ -253,7 +253,10 @@ def fetch(pack, accept=None):
             sys.exit(f"pack fetch: no terminal to answer, so nothing was downloaded; once you (the user) have read the "
                      f"terms above, `--accept-terms {want}` is your yes")
     d = folder(pack, row)
-    d.mkdir(parents=True, exist_ok=True)
+    try:  # an icon cache that cannot be written: one line, not a traceback (audit 22, as a render's)
+        d.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        sys.exit(f"pack fetch: cannot make {d} ({e.strerror or e}): UMLIMATOR_ICON_CACHE names a folder you can write; nothing was downloaded")
     tmps = [d / f".{n}.{os.urandom(4).hex()}.part" for n in range(len(row["zips"]))]
     try:
         for z, tmp in zip(row["zips"], tmps):

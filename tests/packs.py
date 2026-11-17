@@ -194,6 +194,11 @@ ok("size#2 · a download shorter than its pinned size is a failed download, not 
 d = setup("pdf", azure__terms__memberSha256="0" * 64)
 r = cli(d, "pack", "fetch", "azure", "--accept-terms", "azure@V-test")
 ok("pdf#1 · an Azure zip whose terms PDF differs from its pin keeps nothing", r.returncode and "Microsoft's terms changed" in r.stderr and not kept(d), (r.stderr, kept(d)))
+d = setup("cache-under-a-file")
+(d / "afile").write_text("x")
+r = cli(d, "pack", "fetch", "gcp", "--accept-terms", "gcp@test-1", UMLIMATOR_ICON_CACHE=str(d / "afile" / "cache"))
+ok("cache#1 · an icon cache that cannot be made is said in one line naming it, not a traceback, and nothing is downloaded (audit 22)",
+   r.returncode == 1 and "cannot make" in r.stderr and "UMLIMATOR_ICON_CACHE" in r.stderr and "Traceback" not in r.stderr and not log, (r.stderr, log))
 
 # ---------- fetched ----------
 d = setup("fetched")
