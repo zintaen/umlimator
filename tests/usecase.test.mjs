@@ -349,3 +349,27 @@ test('audit 21: each view\'s own lines are checked with that view alone: two vie
   const one = structuredClone(m); one.views[0].edges.push(L('g3', 'Include', 'u2', 'u1'));
   assert.deepEqual(validate(one).filter(p => p.rule === 'include-cycle').map(p => p.path), ['views[0].edges[1]'], 'both in one view: a cycle, as before');
 });
+
+// audit 22: a palette node apply() puts in a view's own nodes (add { in: 'view' }) is drawn, said and checked by the use case,
+// activity, state machine, communication and interaction overview types, as by the sequence type; a problem at one is said at
+// its own path
+test('the behavioural types draw, say and check a view\'s own nodes (audit 22)', async () => {
+  for (const f of ['activity', 'state', 'communication', 'overview', 'sequence']) await import(`../src/uml/${f}.js`);
+  const ex = n => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url), 'utf8'));
+  for (const [file, diagram, el] of [['shopping-use-cases', 'uml.use-case', U('gift', 'Send as a gift')], ['fulfil-activity', 'uml.activity', { id: 'wrap', type: 'uml.Action', label: 'Gift-wrap the books' }],
+    ['order-states', 'uml.state-machine', { id: 'held', type: 'uml.State', label: 'On hold' }], ['checkout-communication', 'uml.communication', { id: 'audit', type: 'uml.Lifeline', label: 'audit' }],
+    ['buy-book-overview', 'uml.interaction-overview', { id: 'wait', type: 'uml.DecisionNode', label: 'Wait here' }]]) {
+    const m = ex(file), v = m.views.find(x => x.diagram === diagram), n = apply(m, [{ op: 'add', element: el, view: v.id, in: 'view' }]), nv = n.views.find(x => x.id === v.id);
+    assert.ok(nv.nodes.some(x => x.id === el.id) && !n.nodes.some(x => x.id === el.id), `${diagram}: in the view's own nodes`);
+    assert.ok(layout(n, v.id).byId[el.id], `${diagram}: drawn`);
+    assert.ok(describe(n, v.id).includes(el.label), `${diagram}: said`);
+  }
+  // a model association from an actor to a view's own use case: drawn, and no false association-ends; a view's own actor with no
+  // name: named, at its own path
+  const m = structuredClone(UC), v = m.views[0], actor = m.nodes.find(x => x.type === 'uml.Actor').id;
+  const n = apply(m, [{ op: 'add', element: U('gift', 'Send as a gift'), view: v.id, in: 'view' }, { op: 'add', element: L('as-gift', 'Association', actor, 'gift'), view: v.id }]);
+  assert.ok(layout(n, v.id).edges.some(e => e.id === 'as-gift'));
+  assert.deepEqual(validate(n).filter(p => p.rule === 'association-ends'), []);
+  n.views[0].nodes[0].label = '';
+  assert.deepEqual(validate(n).filter(p => p.rule === 'named').map(p => [p.path, p.ids]), [[`views[0].nodes[0]`, ['gift']]]);
+});

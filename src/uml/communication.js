@@ -4,8 +4,10 @@ import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
+import { brLines } from '../typed/draw.js';
 import './frame.js'; // SHAPE.lifeline, the head a lifeline is drawn with
 import { interactionWalk, messageNumbers, replyCallFor, INTERACTION_RULES, interactionProblems } from './interaction.js';
+import { withOwnNodes } from './owners.js'; // a view's own nodes read as the model's (audit 22)
 
 /* ---------- the communication diagram, uml.communication (work package 3.5, notes/stage-3.md §6) ----------
    Lifelines joined by connectors; messages are model edges, and the view's `edges` lists the connectors, then the messages
@@ -18,7 +20,7 @@ import { interactionWalk, messageNumbers, replyCallFor, INTERACTION_RULES, inter
 const CM_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), CM_ARR = x => (Array.isArray(x) ? x : []);
 const CM_HAS = x => x != null && x !== '';
 const CM_SORTS = ['call', 'async', 'reply', 'create', 'delete'];
-const CM_ROW = { h: 16, px: 11, arrow: 16, pad: 5, max: 280 }; // a message row: its height, font, arrow's room, padding, widest stack
+const CM_ROW = { h: 16, px: 11, arrow: 16, pad: 5, max: 280, lh: 13 }; // a message row: its height, font, arrow's room, padding, widest stack, each line more
 const CM_STACK = '\u0000'; // a stack's id and its connector's halves': the connector's id after it, never a model id
 
 /* ---- the view read: lifelines, connectors and messages, each message on the connector that carries it ---- */
@@ -46,7 +48,9 @@ const CM_KEYWORD = { create: '«create»', delete: '«destroy»' };
 // a message's «stereotypes» (audit 19), then its sort's keyword, then its label
 const cmMsgPre = m => cmStereoOf(m).map(t => `«${t}»`).join(' '), cmMsgSay = m => [cmMsgPre(m), m.label].filter(CM_HAS).join(' ');
 const cmRowText = (m, num) => { const t = [cmMsgPre(m), CM_KEYWORD[cmSortOf(m)], m.label].filter(CM_HAS).join(' '); return `${num ?? '?'}${t ? ': ' + t : ''}`; }; // "1.1.3: «create» new(order)"; a message with no text, its number
-const cmRowW = t => Math.ceil(Math.min(CM_ROW.max, textW(t, CM_ROW.px) + CM_ROW.arrow + 2 * CM_ROW.pad + 2));
+const cmRowW = t => Math.ceil(Math.min(CM_ROW.max, Math.max(...brLines(t).map(l => textW(l, CM_ROW.px))) + CM_ROW.arrow + 2 * CM_ROW.pad + 2));
+// a row's height: a text the author broke (a Mermaid <br>, F2's Shift+Enter) a line each (audit 22)
+const cmRowH = t => CM_ROW.h + (brLines(t).length - 1) * CM_ROW.lh;
 const cmPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 // numbers in their order: 1 < 1.1 < 1.1.2 < 1.2 < 2
 const cmByNumber = (a, b) => { const p = String(a).split('.').map(Number), q = String(b).split('.').map(Number);
@@ -63,10 +67,10 @@ function cmArrowOf(sort, cx, cy, dir) {
 }
 SHAPE['message-row'] = {
   draw(n) {
-    const { x, y, w, h } = n, cy = y + h / 2, t = String(n.label ?? '');
+    const { x, y, w, h } = n, t = String(n.label ?? ''), ls = brLines(t), cy = y + h / 2, ty = cy - (ls.length - 1) * CM_ROW.lh / 2; // the arrow by the first line
     return `<g class="node message-row" data-id="${esc(n.id)}" data-shape="message-row" data-sort="${esc(n.sort)}" tabindex="-1" role="img" aria-label="${esc(n.aria || 'Message ' + t)}">`
-      + `<rect x="${r2(x)}" y="${r2(y)}" width="${r2(w)}" height="${r2(h)}" class="mr-back" fill="var(--um-stage-bg)"/>${cmArrowOf(n.sort, x + CM_ROW.pad + 6, cy, n.dir)}`
-      + `<text x="${r2(x + CM_ROW.pad + CM_ROW.arrow)}" y="${r2(cy + 3.8)}" fill="var(--um-text)" style="font:500 ${CM_ROW.px}px var(--um-sans)">${esc(fit(t, CM_ROW.px, w - CM_ROW.arrow - 2 * CM_ROW.pad))}</text></g>`;
+      + `<rect x="${r2(x)}" y="${r2(y)}" width="${r2(w)}" height="${r2(h)}" class="mr-back" fill="var(--um-stage-bg)"/>${cmArrowOf(n.sort, x + CM_ROW.pad + 6, ty, n.dir)}`
+      + ls.map((l, i) => `<text x="${r2(x + CM_ROW.pad + CM_ROW.arrow)}" y="${r2(ty + i * CM_ROW.lh + 3.8)}" fill="var(--um-text)" style="font:500 ${CM_ROW.px}px var(--um-sans)">${esc(fit(l, CM_ROW.px, w - CM_ROW.arrow - 2 * CM_ROW.pad))}</text>`).join('') + '</g>';
   },
 };
 
@@ -129,7 +133,7 @@ function commGeo({ model, view, memo }) {
     const ms = I.on.get(c.id), plain = { id: c.id, _id: c.id, type: c.type, from: c.from, to: c.to, end: { from: 'none', to: 'none' }, aria: conAria(c) };
     if (!ms.length) { edges.push(plain); if (c.from !== c.to) links.push(onward(c.from, c.to)); return; }
     const [s, t] = onward(c.from, c.to), texts = ms.map(m => cmRowText(m, nums.get(m.id))), id = CM_STACK + c.id;
-    const st = { id, label: '', name: `the messages on ${cmNameOf(I.N.get(c.from))}–${cmNameOf(I.N.get(c.to))}`, kind: 'file', w: Math.max(...texts.map(cmRowW)), h: ms.length * CM_ROW.h }; // name: what a warning calls it
+    const st = { id, label: '', name: `the messages on ${cmNameOf(I.N.get(c.from))}–${cmNameOf(I.N.get(c.to))}`, kind: 'file', w: Math.max(...texts.map(cmRowW)), h: texts.reduce((a, t) => a + cmRowH(t), 0) }; // name: what a warning calls it
     nodes.push(st); stacks.set(c.id, { st, ms, texts, s, t });
     links.push([s, id], ...(s === t ? [] : [[id, t]]));
     edges.push({ ...plain, id: id + CM_STACK + 'a', from: s, to: id }, { ...plain, id: id + CM_STACK + 'b', from: id, to: t });
@@ -181,11 +185,12 @@ function cmFinish(g, I, stacks, nums, view) {
     // a row's arrow points the way its connector leaves the stack toward the message's receiver
     const way = (u, v) => { const dx = v[0] - u[0], dy = v[1] - u[1]; return Math.abs(dx) >= Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : dy < 0 ? 'up' : 'down'; };
     const out = pts => pts.find(r => r[0] !== pts[0][0] || r[1] !== pts[0][1]) || pts[0], fwd = way(q, out(b.pts)), bwd = way(p, out([...a.pts].reverse()));
-    S.ms.forEach((m, k) => { const from = cmNameOf(I.N.get(m.from)), to = cmNameOf(I.N.get(m.to)), num = nums.get(m.id), sort = cmSortOf(m);
+    let top = box.y; // each row as tall as its lines (cmRowH)
+    S.ms.forEach((m, k) => { const from = cmNameOf(I.N.get(m.from)), to = cmNameOf(I.N.get(m.to)), num = nums.get(m.id), sort = cmSortOf(m), rh = cmRowH(S.texts[k]);
       const row = { id: m.id, type: 'uml.Message', shape: 'message-row', kind: 'file', k: box.k, label: S.texts[k], num, sort, dir: m.from === S.s ? fwd : bwd,
-        x: box.x, y: box.y + k * CM_ROW.h, w: box.w, h: CM_ROW.h, col: box.col, row: box.row + k / S.ms.length,
+        x: box.x, y: top, w: box.w, h: rh, col: box.col, row: box.row + k / S.ms.length,
         aria: `Message ${place.get(m.id)} of ${total}, ${num}: ${from} to ${to}${cmMsgSay(m) ? ', ' + cmMsgSay(m) : ''}, ${sort}${sort === 'reply' && CM_HAS(cmPropsOf(m).replyTo) && nums.has(cmPropsOf(m).replyTo) ? ' to ' + nums.get(cmPropsOf(m).replyTo) : ''}` };
-      byId[row.id] = row; });
+      top += rh; byId[row.id] = row; });
   });
   // reading order (S13): lifelines in the layout's order, left to right and top to bottom, then the message rows by number.
   // The nodes are drawn in it too, so a screen reader that reads the picture in document order reads it so. geo.order, the
@@ -348,7 +353,7 @@ function cmSaid(model, view, ids, fromModel, I, r) {
 
 /* ---- the type ---- */
 const CM_SORT = { key: 'sort', label: 'Sort', kind: 'enum', options: CM_SORTS };
-const COMM_TYPE = registerDiagramType('uml.communication', {
+const COMM_TYPE = registerDiagramType('uml.communication', withOwnNodes({
   title: 'communication diagram',
   elements: [{ type: 'uml.Lifeline', label: 'Lifeline' }],
   lines: [{ type: 'uml.Connector', label: 'Connector' }, ...[['call', 'Call'], ['async', 'Async'], ['reply', 'Reply'], ['create', 'Create'], ['delete', 'Delete']]
@@ -373,6 +378,6 @@ const COMM_TYPE = registerDiagramType('uml.communication', {
   // the PDF's Lines row of a message: «stereotypes», then its label, as the picture writes it after its number (audit 20)
   text: (model, view, id) => { const e = [...CM_ARR(view && view.edges), ...CM_ARR(model && model.edges)].find(x => CM_OBJ(x) && x.id === id); return e && e.type === 'uml.Message' ? cmMsgSay(e) || null : null; },
   edits: { connect: commConnect, moveTo: commMoveTo, add: commAdd, remove: commRemove, rename: commRename },
-});
+}));
 
 export { COMM_TYPE, commGeo, commProblems, commDescribe, commConnect, commMoveTo, commAdd, commRemove, commRename, cmRank };

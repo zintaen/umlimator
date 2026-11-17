@@ -3,7 +3,7 @@ import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { lineIn, lineRename, memberEdit, multBounds, printMember } from './class.js'; // a subject's other members, as the class type's; SHAPE.note, a comment's look
+import { lineIn, lineLook, lineRename, memberEdit, multBounds, printMember } from './class.js'; // a subject's other members, as the class type's; SHAPE.note, a comment's look
 import './usecase.js'; // SHAPE.ellipse, a collaboration use's; SHAPE.subject, a class subject's frame
 import { SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, structProblems } from './structure.js';
 
@@ -231,7 +231,9 @@ function csGeo({ model, view, pos: pins, memo }) {
       ...(f.port || t.port ? { portRank: f.port && t.port ? rk : rk[f.port ? 0 : 1] } : {}),
       // a role binding's role is its line's label, which the router gives room and the port names keep clear of (portsDrawn); an
       // end label, placed when drawn (src/typed/draw.js), would not see them
-      end: CS_LOOK[e.type] || { from: 'none', to: 'none' }, ...(csLineText(e) ? { label: csLineText(e), cut: 280 } : {}), ...(CS_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }; });
+      // a kind with no look here (a dependency, a usage the view lists) as the class view draws it, a plain arrow else: never a
+      // connector's undirected line (audit 22)
+      end: CS_LOOK[e.type] || lineLook(e), ...(csLineText(e) ? { label: csLineText(e), cut: 280 } : {}), ...(CS_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }; });
   const portsWithLines = P.lines.some(l => l.f.node === P.sid && l.f.port || l.t.node === P.sid && l.t.port);
   // a named line inward from the subject's port has its label between the border and the parts: the box's pad makes it room (audit 5)
   const inLbl = Math.max(0, ...P.lines.filter(l => l.inner && csLineText(l.e)).map(l => Math.min(280, textW(csLineText(l.e), 10)) + 12));
@@ -298,7 +300,8 @@ function csProblems(model, view) {
       const a = structOf(e.from, parts[0]), b = structOf(e.to, parts[1]), bare = ['from', 'to'].find((k, j) => S && e[k] === S.id && parts[j] == null);
       // UML 2.5.1 §11.2: a connector's end is a part or a port, never the structured classifier itself
       if (bare) say('error', 'connector-scope', `${path}.${bare}`, [e.id, S.id], `${e.id}'s ${bare} end is ${q(S.id)} itself: a connector joins the subject's ports and parts`);
-      else if (!a || a !== b) say('error', 'connector-scope', path, [e.id, e.from, e.to], `${e.id} joins ${q(e.from)} and ${q(e.to)}, which lie in ${a && b ? 'two structures' : 'no structure of this view'}: its ends are the subject's ports and parts, or one collaboration's roles`);
+      else if (!a || a !== b) say('error', 'connector-scope', path, [e.id, e.from, e.to], `${e.id} joins ${q(e.from)} and ${q(e.to)}, ${a && b ? 'which lie in two structures' : a || b
+        ? `and ${q(a ? e.to : e.from)} lies in no structure of this view` : 'which lie in no structure of this view'}: its ends are the subject's ports and parts, or one collaboration's roles`); // one end out of scope: that end named (audit 22)
       else if (P.loops.has(e.id)) say('warning', 'connector-drawn', path, [e.id, P.loops.get(e.id)], `${e.id} runs from ${q(P.loops.get(e.id))} to itself through its ports, which this view does not draw: no line runs from a box or a part to itself`);
     }
     if (e.type === 'uml.RoleBinding' && (P.at.get(e.to) || {}).type === 'uml.CollaborationUse' && P.ids.includes(e.to) || e.type === 'uml.RoleBinding' && S && owner(e.from) === S) {
@@ -416,7 +419,10 @@ function csRemove(model, view, ids, fromModel) {
 const csLineRename = lineRename(e => csLineText({ ...e, label: undefined }));
 function csRename(model, view, id, text) {
   const P = csPic(model, view), s = csSplit(id), x = P.mem.get(s ? s[1] : id);
-  if (!x && lineIn(model, view, id)) return csLineRename(model, view, id, text);
+  const ln = !x && lineIn(model, view, id);
+  // a comment link's label is neither drawn nor said here (csLineText): F2 writes none (audit 22), as the panel offers no Name
+  if (ln && ln.type === 'uml.CommentLink') return { error: 'A comment link has no name in this view' };
+  if (ln) return csLineRename(model, view, id, text);
   const u = !x && P.at.get(id); if (u && u.type === 'uml.CollaborationUse') return csUseRename(u, text);
   if (!x || (!s && x.m.type !== 'uml.Property' && x.m.type !== 'uml.Port')) return null;
   if (!s && String(text ?? '').trim() === (x.m.type === 'uml.Property' ? csPartSaid(x.m) : csPartText(x.m) || x.m.id)) return []; // as drawn, unchanged (an anonymous part: ': Engine [1]', audit 17)
@@ -458,6 +464,7 @@ const CS_TYPE = registerDiagramType('uml.composite-structure', {
     'uml.CollaborationUse': [{ key: 'collaboration', label: 'Collaboration', kind: 'text' }, CS_STEREO],
     'uml.Class': [CS_STEREO], 'uml.Component': [CS_STEREO], 'uml.Collaboration': [CS_STEREO], 'uml.Connector': [CS_STEREO], 'uml.RoleBinding': [], 'uml.CommentLink': [],
   },
+  unnamed: ['uml.CommentLink'], // its label is neither drawn nor said (csLineText): the panel offers no Name field (audit 22)
   refs: { 'uml.Connector': { 'props.ends.from.part': 'cascade', 'props.ends.to.part': 'cascade' } }, // a deleted part takes its connectors (S14)
   layout: Object.assign(csGeo, { rank: false }), // csGeo ranks the parts itself: the host passes only the pins
   member: CS_MEMBER,

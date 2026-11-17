@@ -3,7 +3,7 @@ import { apply } from '../core/apply.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { TR, layoutTimeRuler } from '../layout/timeruler.js';
-import '../typed/draw.js'; // a typed line's ends (TYPED.lines): a message's arrowheads
+import { brLines } from '../typed/draw.js'; // a typed line's ends (TYPED.lines): a message's arrowheads
 
 /* ---------- the timing diagram, uml.timing (work package 6.5, notes/stage-6.md §7 and §8) ----------
    Lifelines (nodeIds) are lanes stacked down the page, each drawn in the states form (a step line over its `states`, top to
@@ -78,10 +78,12 @@ function tmInput(model, V, X = tmIndex(model, V)) {
   const w = (t, px = TM.text) => Math.ceil(textW(String(t ?? ''), px));
   return {
     lanes: X.heads.map(n => { const vals = X.values(n.id);
-      return { id: n.id, name: { w: Math.max(w(tmHead(n), TM.name), w(tmSt(n))), h: tmSt(n) ? 2 * TM.lbl : TM.lbl }, form: vals ? 'values' : 'states', rows: vals ? [] : tmStates(n).map(s => ({ state: s, w: w(s) })),
+      // a name the author broke (a Mermaid <br>): a line each, its room grown for them (audit 22)
+      const ls = brLines(tmHead(n));
+      return { id: n.id, name: { w: Math.max(...ls.map(l => w(l, TM.name)), w(tmSt(n))), h: (tmSt(n) ? 2 * TM.lbl : TM.lbl) + (ls.length - 1) * TM.lbl }, form: vals ? 'values' : 'states', rows: vals ? [] : tmStates(n).map(s => ({ state: s, w: w(s) })),
         changes: X.changes.filter(c => c.lifeline === n.id).map(c => ({ id: c.id, at: c.at, state: String(c.state ?? ''), w: w(c.state) })) }; }),
     messages: X.msgs.map(m => { const t = tmMsgText(m), p = tmProps(m);
-      return { id: m.id, from: m.from, to: m.to, sentAt: p.sentAt, receivedAt: p.receivedAt, ...(t ? { w: w(t) + 12, h: TM.lbl } : { w: 0, h: 0 }) }; }),
+      return { id: m.id, from: m.from, to: m.to, sentAt: p.sentAt, receivedAt: p.receivedAt, ...(t ? { w: Math.max(...brLines(t).map(l => w(l))) + 12, h: TM.lbl + (brLines(t).length - 1) * 13 } : { w: 0, h: 0 }) }; }), // a line each, as svgOf draws a box tall enough (audit 22)
     constraints: X.shown.map(c => { const t = tmLabel(c); return { id: c.id, kind: TM_KIND[c.type] ?? c.type, from: c.from, to: c.to, ...(t ? { w: w(t) + 6, h: TM.mark } : { w: 0, h: 0 }) }; }),
     unit: X.unit,
   };
@@ -133,7 +135,7 @@ function tmDraw(g) {
 /* the shapes, each a node the canvas selects, names and focuses (§6.7) */
 const tmNode = (n, shape, inner) => `<g class="node ${shape}" data-id="${esc(n.id)}" data-shape="${shape}" tabindex="-1" role="img" aria-label="${esc(n.aria || n.label || n.id)}">${inner}</g>`;
 const tmText = (x, y, t, px, w = 500, a = 'start', cls = '') => `<text x="${r2(x)}" y="${r2(y)}" text-anchor="${a}"${cls ? ` class="${cls}"` : ''} fill="var(--um-text)" style="font:${w} ${px}px var(--um-sans)">${esc(t)}</text>`;
-SHAPE['tm-lane'] = { draw: n => tmNode(n, 'tm-lane', `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" class="n-body" fill="transparent"/>${n.st ? tmText(n.nx, n.ny + 12, fit(n.st, TM.text, TR.cut), TM.text) : ''}${tmText(n.nx, n.ny + 12 + (n.st ? TM.lbl : 0), fit(n.label, TM.name, TR.cut), TM.name, 600, 'start', 'c-name')}`) };
+SHAPE['tm-lane'] = { draw: n => tmNode(n, 'tm-lane', `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" class="n-body" fill="transparent"/>${n.st ? tmText(n.nx, n.ny + 12, fit(n.st, TM.text, TR.cut), TM.text) : ''}${brLines(n.label).map((l, i) => tmText(n.nx, n.ny + 12 + (n.st ? TM.lbl : 0) + i * TM.lbl, fit(l, TM.name, TR.cut), TM.name, 600, 'start', 'c-name')).join('')}`) };
 SHAPE['tm-row'] = { draw: n => tmNode(n, 'tm-row', `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" fill="transparent"/>${tmText(n.x + n.w, n.y + 12, n.label, TM.text, 500, 'end')}`) };
 SHAPE['tm-change'] = { draw: n => tmNode(n, 'tm-change', `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" class="n-body" fill="transparent"/>`) };
 SHAPE['tm-mark'] = {

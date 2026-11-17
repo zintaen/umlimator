@@ -5,9 +5,11 @@ import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { laneBands, laneRows } from '../layout/lanes.js';
 import { layoutTyped } from '../typed/layout.js';
+import { brLines } from '../typed/draw.js';
 import './class.js'; // SHAPE.note, a comment's
 import { frame } from './frame.js';
-import { FLOW_RULES, flowOf, flowProblems, flowLabel, flowRename, flowStereo } from './flow.js';
+import { FLOW_RULES, flowOf, flowProblems, flowLabel, flowRename, flowStereo, viewFlows } from './flow.js';
+import { withOwnNodes } from './owners.js'; // a view's own nodes read as the model's (audit 22)
 
 /* ---------- the activity diagram, uml.activity (work package 4.5, notes/stage-4.md §9) ----------
    Control nodes, actions and flows from src/uml/flow.js; the send and accept signals, the object node, the data store and
@@ -58,12 +60,14 @@ SHAPE.call = { size: n => { const s = SHAPE.rounded.size(n); return { w: s.w, h:
     return acOver('call', n, { h: n.h - AC.rake }, SHAPE.rounded.out(n), `<path d="M${r2(x)} ${r2(y - 10)}V${r2(y)}M${r2(x - 5)} ${r2(y)}V${r2(y - 5)}H${r2(x + 5)}V${r2(y)}" class="n-det ac-rake" fill="none" stroke="${AC.line}" stroke-width="1.3"/>`); } };
 for (const k of ['send', 'accept', 'object', 'call']) { const S = SHAPE[k]; S.face = n => [n.y, n.y + n.h]; S.ports = (n, side, j = 1) => portsOn(S, n, side, j); }
 // a partition: its name on its band's header strip (n: the strip), over a transparent area 24 px across to hit
+// its lines where the author broke it, each across the strip (audit 22)
+const AC_PH = 22, AC_PL = 13; // a header strip with one line (laneBands' 22), and each line more
 SHAPE.partition = {
-  draw(n) { const flat = n.w >= n.h, t = fit(String(n.label ?? ''), 11, (flat ? n.w : n.h) - 12), cx = n.x + n.w / 2, cy = n.y + n.h / 2;
+  draw(n) { const flat = n.w >= n.h, ls = brLines(n.label).map(l => fit(l, 11, (flat ? n.w : n.h) - 12)), cx = n.x + n.w / 2, cy = n.y + n.h / 2;
     const hit = flat ? [n.x, n.y - 1, n.w, n.h + 2] : [n.x - 1, n.y, n.w + 2, n.h];
     return `<g class="node partition" data-id="${esc(n.id)}" data-shape="partition" tabindex="-1" role="img" aria-label="${esc(n.aria || 'Partition ' + (n.label ?? ''))}">`
       + `<rect x="${r2(hit[0])}" y="${r2(hit[1])}" width="${r2(hit[2])}" height="${r2(hit[3])}" class="fl-hit" fill="transparent"/>`
-      + `<text x="${r2(cx)}" y="${r2(cy + 4)}" text-anchor="middle" class="c-name" fill="var(--um-text)" style="font:600 11px var(--um-sans)"${flat ? '' : ` transform="rotate(-90 ${r2(cx)} ${r2(cy)})"`}>${esc(t)}</text></g>`; },
+      + ls.map((t, i) => `<text x="${r2(cx)}" y="${r2(cy + 4 + (i - (ls.length - 1) / 2) * AC_PL)}" text-anchor="middle" class="c-name" fill="var(--um-text)" style="font:600 11px var(--um-sans)"${flat ? '' : ` transform="rotate(-90 ${r2(cx)} ${r2(cy)})"`}>${esc(t)}</text>`).join('') + '</g>'; },
 };
 
 /* ---- the view read: its nodes, its partitions and the lane each node is drawn in, its lines ---- */
@@ -91,7 +95,8 @@ function actIndex(model, view) {
   drawn.forEach(id => { for (let l = laneOf(id); l != null; l = outer(l)) n.set(l, under(l) + 1); });
   return { N, E, path, ids, shown, parts, drawn, lines, up, laneOf, isPart, under, boxes: boxes.map(b => ({ id: b.id, label: acName(N.get(b.id)), title: acName(N.get(b.id)),
       nodeIds: AC_ARR(b.nodeIds).filter(i => on.has(i)), ...(inBox.has(b.id) ? { parent: inBox.get(b.id) } : {}), aria: `Call behaviour ${acName(N.get(b.id))}, unfolded` })),
-    lanes: parts.map((id, order) => ({ id, parent: outer(id), order })) };
+    // a name the author broke (a Mermaid <br>): its header strip as wide as its lines (laneBands, audit 22)
+    lanes: parts.map((id, order) => { const k = brLines(acStLabel(N.get(id))).length; return { id, parent: outer(id), order, ...(k > 1 ? { head: AC_PH + (k - 1) * AC_PL } : {}) }; }) };
 }
 const acName = x => String(x.label ?? x.id);
 const acProps = x => (AC_OBJ(x && x.props) ? x.props : {});
@@ -205,10 +210,10 @@ function actProblems(model, view) {
   const I = actIndex(model, view), out = [...flowProblems(model, view, AC_NODES)], seen = id => !view || I.shown.has(id);
   const say = (rule, path, ids, msg, level = 'warning') => out.push({ level, rule, path, ids, message: `${rule}: ${msg}` });
   const q = id => { const x = I.N.get(id); return x && AC_HAS(x.label) ? `${id} ("${x.label}")` : id; };
-  I.E.forEach((e, id) => { if (!AC_FLOWS.includes(e.type) || !(seen(e.from) || seen(e.to))) return;
-    const objs = [e.from, e.to].filter(x => I.N.has(x) && AC_OBJECTS.includes(I.N.get(x).type));
-    if (e.type === 'uml.ObjectFlow' && !objs.length) say('object-flow', I.path.get(id), [id, e.from, e.to], `object flow ${id} joins ${q(e.from)} and ${q(e.to)}, neither an object node nor a data store`);
-    if (e.type === 'uml.ControlFlow' && objs.length) say('object-flow', I.path.get(id), [id, ...objs], `control flow ${id} ends on ${objs.map(q).join(' and ')}: a flow to or from an object node is an object flow`); });
+  // the model's flows and the view's own, as flowProblems weighs them (viewFlows, audit 22)
+  viewFlows(model, view).forEach(([e, path]) => { const id = e.id, objs = [e.from, e.to].filter(x => I.N.has(x) && AC_OBJECTS.includes(I.N.get(x).type));
+    if (e.type === 'uml.ObjectFlow' && !objs.length) say('object-flow', path, [id, e.from, e.to], `object flow ${id} joins ${q(e.from)} and ${q(e.to)}, neither an object node nor a data store`);
+    if (e.type === 'uml.ControlFlow' && objs.length) say('object-flow', path, [id, ...objs], `control flow ${id} ends on ${objs.map(q).join(' and ')}: a flow to or from an object node is an object flow`); });
   I.N.forEach((x, id) => { if (!seen(id) || !(AC_NODES.includes(x.type) || x.type === 'uml.ActivityPartition') || x.parent == null || !I.N.has(x.parent)) return;
     const p = I.N.get(x.parent); if (p.type !== 'uml.ActivityPartition') say('partition-owner', `${I.path.get(id)}.parent`, [id, p.id], `${q(id)} is owned by ${q(p.id)}, a ${String(p.type).split('.').pop()}, not a partition`, 'error'); });
   I.N.forEach((x, id) => { if (x.type !== 'uml.CallBehaviorAction' || !seen(id)) return;
@@ -306,7 +311,7 @@ function actOwners(model, x) {
 
 /* ---- the type ---- */
 const AC_ST = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' }, AC_GUARD = { key: 'guard', label: 'Guard', kind: 'text' };
-const ACT_TYPE = registerDiagramType('uml.activity', {
+const ACT_TYPE = registerDiagramType('uml.activity', withOwnNodes({
   title: 'activity diagram',
   elements: [['Action', 'Action'], ['InitialNode', 'Initial', false], ['ActivityFinalNode', 'Activity final', false], ['FlowFinalNode', 'Flow final', false],
     ['DecisionNode', 'Decision'], ['MergeNode', 'Merge'], ['ForkNode', 'Fork', false], ['JoinNode', 'Join', false], ['CallBehaviorAction', 'Call behaviour', true, 'uml.activity'],
@@ -328,6 +333,6 @@ const ACT_TYPE = registerDiagramType('uml.activity', {
   // the PDF's tables (§15): a node's kind, and its partition
   word: (model, id) => { const x = AC_ARR(model && model.nodes).find(n => AC_OBJ(n) && n.id === id); return x && Object.hasOwn(AC_LOOK, x.type) ? AC_LOOK[x.type][1] : null; },
   rows: (model, view, id) => { const I = actIndex(model, view), l = I.N.has(id) ? I.laneOf(id) : null; return l != null ? [`in ${acName(I.N.get(l))}`] : null; },
-});
+}));
 
 export { ACT_TYPE, ACT_RULES, AC_NODES, actGeo, actProblems, actDescribe, actConnect, actMoveTo, actAdd, actRemove, actRename, actOwners };

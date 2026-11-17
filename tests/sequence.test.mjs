@@ -495,3 +495,33 @@ test('audit 20: the PDF\'s Lines row of a message reads its «stereotypes» befo
   assert.ok(rows().includes(`<td>${want}</td>`), rows());
   assert.ok(rows().includes(`<td>${bare.label}</td>`), 'a message with none: its label as before');
 });
+
+// audit 22: a line break in a name (a Mermaid <br>, F2's Shift+Enter) starts a new line in every behavioural shape that
+// draws a name, as round 21 made an action and a simple state do: never one <text> holding the break, drawn as a space
+test('a line break in a name is drawn as a new line in every behavioural view (audit 22)', async () => {
+  const { svgOf } = await import('../src/draw/svg.js');
+  for (const f of ['usecase', 'activity', 'state', 'communication', 'overview', 'timing']) await import(`../src/uml/${f}.js`);
+  const { readMermaidState } = await import('../src/readers/mermaid-state.js'), { readMermaidSequence } = await import('../src/readers/mermaid-sequence.js');
+  const NL = String.fromCharCode(10), BR = /[\r\n\u2028\u2029]/;
+  const texts = s => [...s.matchAll(/<text(?:[^>"]|"[^"]*")*>([^<]*)<\/text>/g)].map(x => x[1]);
+  const lines = (m, vid, ...want) => { const t = texts(svgOf(layout(m, vid)));
+    assert.deepEqual(t.filter(x => BR.test(x)), [], `${vid}: no text holds a break`);
+    want.forEach(w => assert.ok(t.includes(w), `${vid}: "${w}" on a line of its own (${t.join(' | ')})`)); };
+  const st = readMermaidState(['stateDiagram-v2', '[*] --> Shipping', 'state "In<br>delivery" as Shipping {', '  [*] --> Transit', '  Transit --> [*]', '}'].join(NL)).model;
+  lines(st, st.views[0].id, 'In', 'delivery');
+  const sq = readMermaidSequence(['sequenceDiagram', 'participant W as Order<br>Worker', 'W->>W: retry<br>after 30 s', 'loop every<br>minute', 'W->>W: poll', 'end'].join(NL)).model, sv = sq.views[0].id;
+  lines(sq, sv, 'Order', 'Worker', 'retry', 'after 30 s', '[every', 'minute]');
+  assert.ok(layout(sq, sv).edges.find(e => e.label === 'retry' + NL + 'after 30 s').lbl.h >= 29, 'the label box holds two lines');
+  // the examples, every label's first space a break
+  const br = x => { if (Array.isArray(x)) return x.forEach(br); if (x && typeof x === 'object') { if (typeof x.label === 'string' && x.label.includes(' ')) x.label = x.label.replace(' ', NL); Object.values(x).forEach(br); } };
+  for (const [f, vid, ...want] of [['shopping-use-cases', 'shopping', 'Online', 'bookshop', 'Payment', 'provider'], ['fulfil-activity', 'fulfil', 'Order', 'worker'],
+    ['checkout-sequence', 'checkout-sequence', 'Send', 'receipt email'], ['checkout-communication', 'checkout-communication', '1.2: confirmation', 'page'],
+    ['buy-book-overview', 'buy-book', 'Find', 'a book', 'sd Queue', 'the order'], ['bookshop-timing', 'one-charge']]) {
+    const m = JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url), 'utf8')); br(m.nodes); br(m.edges); m.views.forEach(v => { br(v.edges); br(v.nodes); });
+    lines(m, vid, ...want); }
+  // a use case and an actor keep their break, not wrapped away as a space; a timing lane's name
+  const uc = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Actor', label: 'Store' + NL + 'clerk' }, { id: 'u', type: 'uml.UseCase', label: 'Buy' + NL + 'books' }], edges: [], views: [{ id: 'v', diagram: 'uml.use-case', nodeIds: ['a', 'u'] }] };
+  lines(uc, 'v', 'Store', 'clerk', 'Buy', 'books');
+  const tm = { schemaVersion: 2, nodes: [{ id: 'l', type: 'uml.Lifeline', label: 'Order' + NL + 'worker', props: { states: ['idle', 'busy'] } }], edges: [], views: [{ id: 'v', diagram: 'uml.timing', nodeIds: ['l'] }] };
+  lines(tm, 'v', 'Order', 'worker');
+});

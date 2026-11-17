@@ -20,7 +20,8 @@ import { r2 } from '../draw/shapes.js';
    Rows: lanes in depth-first order, a lane's own nodes in the rows before its nested lanes'; in each column a lane's nodes
    keep their ranked order and take its rows from the first; a lane takes as many rows as it has nodes in its busiest
    column, an empty lane one. A pin's row is so an order inside its lane, and nodes in no lane come after every lane.
-   Bands: along the flow, the whole diagram and a 22 px header strip per level of nesting at its start; across it, from the
+   Bands: along the flow, the whole diagram and a 22 px header strip per level of nesting at its start (a lane's head, px,
+   widens its level's: a name on more lines, audit 22); across it, from the
    divider before a lane's first row to the one after its last, each 12 px past the router's line rgap / 2 before the later
    row (gapLinesY), toward it; the outer edges 12 px inside the router's line. An empty lane at an end takes a row that
    leaves its band 120 px across at least. A box's frame (g.families) counts toward the extent of the first and last rows
@@ -91,11 +92,14 @@ function laneBands(g, lanes, laneOf, turned, rgap, runs) {
   // each lane's rows: its own and its nested lanes'
   const at = new Map(order.map((l, s) => [l.id, s]));
   order.forEach((l, s) => { for (let p = order[at.get(l.parent)]; p; p = order[at.get(p.parent)]) { const q = at.get(p.id); first[q] = Math.min(first[q], first[s]); last[q] = Math.max(last[q], last[s]); } });
-  const levels = order.length ? 1 + Math.max(...order.map(l => l.depth)) : 0, shift = { x: 0, y: 0, [L]: levels * LN.head };
+  // each level's header strip: 22 px, or the most a lane of that level asks for (a lane's head: a name on two or more lines)
+  const levels = order.length ? 1 + Math.max(...order.map(l => l.depth)) : 0, asks = new Map((Array.isArray(lanes) ? lanes : []).filter(l => l && Number.isFinite(l.head)).map(l => [l.id, l.head]));
+  const th = Array.from({ length: levels }, (_, d) => Math.max(LN.head, ...order.filter(l => l.depth === d && asks.has(l.id)).map(l => asks.get(l.id))));
+  const off = d => th.slice(0, d).reduce((a, t) => a + t, 0), shift = { x: 0, y: 0, [L]: off(levels) };
   const a0 = b[L] + LN.pad, a1 = b[L] + b[T] + shift[L] - LN.pad;
-  const bands = order.flatMap((l, s) => { if (!(first[s] <= last[s])) return []; const c0 = before(first[s]), c1 = after(last[s]), s0 = a0 + l.depth * LN.head;
+  const bands = order.flatMap((l, s) => { if (!(first[s] <= last[s])) return []; const c0 = before(first[s]), c1 = after(last[s]), s0 = a0 + off(l.depth);
     const box = len => ({ [L]: r2(s0), [T]: r2(len), [A]: r2(c0), [S]: r2(c1 - c0) });
-    return [{ id: l.id, parent: l.parent, depth: l.depth, ...box(a1 - s0), head: box(LN.head) }]; });
+    return [{ id: l.id, parent: l.parent, depth: l.depth, ...box(a1 - s0), head: box(th[l.depth]) }]; });
   const x0 = Math.min(b.x + shift.x, ...bands.map(d => d.x - LN.pad)), y0 = Math.min(b.y + shift.y, ...bands.map(d => d.y - LN.pad));
   const x1 = Math.max(b.x + b.w + shift.x, ...bands.map(d => d.x + d.w + LN.pad)), y1 = Math.max(b.y + b.h + shift.y, ...bands.map(d => d.y + d.h + LN.pad));
   return { bands, shift, bounds: { x: r2(x0), y: r2(y0), w: r2(x1 - x0), h: r2(y1 - y0) } };

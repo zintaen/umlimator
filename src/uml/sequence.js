@@ -3,6 +3,7 @@ import { apply } from '../core/apply.js';
 import { esc, textW } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { layoutTimeAxis } from '../layout/timeaxis.js';
+import { brLines } from '../typed/draw.js';
 import { frame, tagSize, guardSize, useSize } from './frame.js';
 import { interactionWalk, activationBars, replyCallFor, INTERACTION_RULES, interactionProblems } from './interaction.js';
 
@@ -18,7 +19,9 @@ import { interactionWalk, activationBars, replyCallFor, INTERACTION_RULES, inter
 const SQ_ARR = x => (Array.isArray(x) ? x : []), SQ_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x);
 const SQ_HAS = x => x != null && x !== '';
 const SQ_SORTS = ['call', 'async', 'reply', 'create', 'delete'], SQ_OPS = ['alt', 'opt', 'loop', 'par', 'break'];
-const SQ_LABEL = { px: 10.5, pad: 12, h: 16 }; // a message's label as svgOf draws a typed line's: 10.5 px text on a backing
+const SQ_LABEL = { px: 10.5, pad: 12, h: 16, lh: 13 }; // a message's label as svgOf draws a typed line's: 10.5 px text on a backing
+// its box: a text the author broke (a Mermaid <br>) a line each, as svgOf draws a label box tall enough for them (audit 22)
+const sqLabelSize = t => { const ls = brLines(t); return { w: Math.ceil(Math.max(...ls.map(l => textW(l, SQ_LABEL.px))) + SQ_LABEL.pad), h: SQ_LABEL.h + (ls.length - 1) * SQ_LABEL.lh }; };
 // how each sort is drawn (src/typed/draw.js's ENDS): a call filled, async, reply and create open, reply and create dashed
 const SQ_END = { call: { from: 'none', to: 'arrow' }, async: { from: 'none', to: 'open' }, reply: { from: 'none', to: 'open', dashed: true },
   create: { from: 'none', to: 'open', dashed: true }, delete: { from: 'none', to: 'arrow' } };
@@ -62,7 +65,7 @@ function sqInput(model, view, X = sqIndex(model, view)) {
       const ends = cs.length ? [cs[0], cs[cs.length - 1]] : heads.length ? [heads[0].id, heads[heads.length - 1].id] : [null, null];
       return { id: o.id, kind: 'span', a: ends[0], b: ends[1], parent: o.parent, ...useSize(String(o.el.label ?? '')) }; }
     const t = sqMsgText(o.el);
-    return { id: o.id, kind: o.from === o.to ? 'self' : 'line', a: o.from, b: o.to, parent: o.parent, ...(t ? { w: Math.ceil(textW(t, SQ_LABEL.px) + SQ_LABEL.pad), h: SQ_LABEL.h } : { w: 0, h: 0 }) }; });
+    return { id: o.id, kind: o.from === o.to ? 'self' : 'line', a: o.from, b: o.to, parent: o.parent, ...(t ? sqLabelSize(t) : { w: 0, h: 0 }) }; });
   // born: a lifeline's first create; again: each later one (create-once: in another operand of an alt), a head drawn at its
   // row too (audit 16); its deletes, each in its own operand of an alt (delete-once): the stem ends at the last,
   // unless a message reaches the lifeline after it (in another operand), and every other is a cross on the stem (audit 10)
