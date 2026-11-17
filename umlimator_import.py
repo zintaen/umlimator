@@ -193,9 +193,10 @@ def split_lines(text):
     return parts[:-1] if parts[-1] == "" else parts  # as splitlines(): no line after the last line break
 
 
-def mermaid_lines(text):
+def mermaid_lines(text, said=None):
     """Each line of Mermaid text as (number from 1, stripped), a %% comment and a %%{ ... }%% directive, on one line or
-    several, blank; of an accDescr { ... } over several lines, only its first line is kept."""
+    several, blank; of an accDescr { ... } over several lines, only its first line is kept. With said, a list, each
+    directive's first line goes in it, (number, what is said), as the typed readers say it (audit 24)."""
     directive = acc = False
     for no, l in enumerate(split_lines(text), 1):
         s = l.strip()
@@ -206,17 +207,59 @@ def mermaid_lines(text):
         elif re.match(r"accDescr\s*\{", s):
             acc = "}" not in s
         elif s.startswith("%%"):
+            if said is not None and s[2:].strip().startswith("{"):
+                said.append((no, "a %%{init}%% directive: Mermaid's configuration is not read"))
             directive, s = s[2:].strip().startswith("{") and "}%%" not in s, ""
         yield no, s
 
 
-def front(text):
-    """Mermaid's front matter (--- title: ... ---): its title, and the text with the block as blank lines."""
+def front(text, said=None):
+    """Mermaid's front matter (--- title: ... ---): its title, and the text with the block as blank lines. The title is
+    read as YAML (Mermaid's js-yaml) reads it, as the typed readers' mermaidTitle(): a plain one to a # comment, a
+    "double-quoted" one with its escapes, a 'single-quoted' one with '' as a quote (audit 24). With said, a list, each
+    other key of the block goes in it, (line, what is said), as the typed readers say it: its configuration is not read."""
     m = re.match(r"\s*---[^\S\n]*\n(.*?)\n---[^\S\n]*(?:\n|$)", text, re.S)
     if not m:
         return None, text
-    title = re.search(r"^title:\s*(.+)$", m.group(1), re.M)
-    return title and title.group(1).strip().strip("\"'"), "\n" * m.group(0).count("\n") + text[m.end():]
+    title, first = None, text[:m.start(1)].count("\n") + 1
+    for no, l in enumerate(split_lines(m.group(1)), first):
+        if not l.strip() or l.strip().startswith("#") or l[:1].isspace():
+            continue
+        key, colon, val = l.partition(":")
+        key, val = key.strip(), val.strip()
+        if key == "title":
+            title, rest = yaml_title(val)
+            if rest and said is not None:
+                said.append((no, f"front matter title: {rest}, after the quoted title, is not read"))
+        elif said is not None:
+            said.append((no, f"front matter {key}: Mermaid's configuration is not read"))
+    return title, "\n" * m.group(0).count("\n") + text[m.end():]
+
+
+def yaml_title(val):
+    """A front-matter title's value, val stripped, as YAML reads it, and what follows a closed quote that is no comment
+    (cut to 60 letters), or None: the typed readers' mermaidTitle() (src/readers/mermaid-front.js)."""
+    q = val[:1]
+    if q not in ('"', "'"):
+        return re.sub(r"(^|\s)#.*$", "", val, flags=re.S).strip(), None
+    k = 1
+    while k < len(val):
+        if q == '"' and val[k] == "\\":
+            k += 1
+        elif val[k] == q:
+            if q == "'" and val[k + 1:k + 2] == "'":
+                k += 1
+            else:
+                break
+        k += 1
+    span, after = val[1:k], val[k + 1:].strip()
+    title = span.replace("''", "'") if q == "'" else span
+    if q == '"':
+        try:
+            title = json.loads(f'"{span}"')
+        except ValueError:  # YAML's own escape, \x41 say: the text as written
+            pass
+    return title, (after[:60] + ("..." if len(after) > 60 else "")) if after and not after.startswith("#") else None
 
 
 def read(fmt, text, name):
@@ -263,7 +306,9 @@ def dsl_lines(text):
 
 def structurizr(text, name):
     m = Model(name)
-    els, ref, path, rels, specs, stack, groups, styles, depth = {}, {}, {}, [], [], [], [], [], {}
+    # ref: each identifier, lowered, as (its spelling, its element): Structurizr compares identifiers ignoring case
+    # (IdentifiersRegister); fulls: the lowered full identifiers (an alias alone may name another, nested, element)
+    els, ref, path, rels, specs, stack, groups, styles, depth, fulls = {}, {}, {}, [], [], [], [], [], {}, set()
     implied, comment, opened, flat = "any", 0, [], False  # comment: the line a /* ... */ opened on; opened: each open block's line and text
     for no, s in dsl_lines(text):
         if comment or s.startswith("/*"):
@@ -319,8 +364,13 @@ def structurizr(text, name):
                 els[cid] = {"type": typ, "name": nm, "desc": desc, "tech": tech, "tags": tags, "parent": parent, "group": grp}
                 if alias:
                     path[cid] = full
-                    ref.setdefault(alias, cid)
-                    ref[full] = cid
+                    ref.setdefault(alias.lower(), (alias, cid))
+                    was = ref.get(full.lower())
+                    if was and was[0] != full and full.lower() in fulls:  # one identifier twice, in two cases: Structurizr refuses it
+                        m.say(no, f"{full}: Structurizr reads identifiers ignoring case, so this is {was[0]} again; references name {was[0]}")
+                    else:
+                        ref[full.lower()] = (full, cid)
+                        fulls.add(full.lower())
                 push = ("el", cid)
             elif r:
                 rels.append({**r, "line": no})
@@ -373,7 +423,7 @@ def structurizr(text, name):
         m.card(cid, e["name"], kind, e["tech"] or C4TYPE[e["type"]], e["desc"], icon="user" if e["type"] == "person" else None, shape=shape)
     for g in groups:  # after the cards, so a group's name never takes an element's alias
         g["id"] = m.uniq(ident(g["label"]), f"group-{ident(g['label'])}")
-    find = lambda t: ref.get(t) or (t if t in els else None)
+    find = lambda t: (ref.get(t.lower()) or ("", None))[1] or (t if t in els else None)
     lines = []
     for r in rels:
         a, b = find(r["src"]), find(r["dst"])
@@ -677,14 +727,17 @@ def plantuml(text, name):
 # ---------- Mermaid ----------
 
 def mermaid(text, name):
-    title, body = front(text)
+    said = []  # its configuration, which is not read: front matter keys and %%{init}%% directives (audit 24)
+    title, body = front(text, said)
     m = Model(title or name)
-    lines = [(no, s) for no, s in mermaid_lines(body) if s]
+    lines = [(no, s) for no, s in mermaid_lines(body, said) if s]
     head = MERMAID.match(lines[0][1]) if lines else None
     if not head or head.group(1) in TYPED:
         m.say(lines[0][0] if lines else 1, f"{'an' if head.group(1)[0] == 'e' else 'a'} {head.group(1)} is read by the module's reader, in Node (umlimator.py import): nothing imported here"
               if head else "not a flowchart, graph or C4 diagram: nothing imported")
         return m
+    for no, what in said:
+        m.say(no, what)
     rest = re.sub(r"^\s*(TB|TD|BT|RL|LR)?\s*;?", "", lines[0][1][head.end():])
     body = ([(lines[0][0], rest)] if rest.strip() else []) + lines[1:]
     if head.group(1).startswith("C4"):

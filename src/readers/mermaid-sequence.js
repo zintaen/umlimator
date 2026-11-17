@@ -1,4 +1,5 @@
 import { unreadable } from '../core/model.js';
+import { mermaidTitle, mermaidClip } from './mermaid-front.js';
 /* ---------- Mermaid sequenceDiagram: a reader and a writer (notes/stage-3.md §8, S10; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's sequence diagram page (docs/syntax/sequenceDiagram.md, read 12 Nov 2026), as the class
    reader is against its class page. Internal: the CLI (`umlimator.py import`) imports this file through Node; a host
@@ -177,8 +178,9 @@ function readMermaidSequence(text) {
       if (!l.trim() || l.trim().startsWith('#') || /^\s/.test(l)) continue;
       const c = l.indexOf(':'), key = (c < 0 ? l : l.slice(0, c)).trim(), val = c < 0 ? '' : l.slice(c + 1).trim();
       if (key === 'title') {
-        if (val.startsWith('"')) { try { title = JSON.parse(val); } catch { title = val.slice(1, -1); } }
-        else title = val.startsWith("'") ? val.slice(1, -1).replaceAll("''", "'") : val;
+        const ft = mermaidTitle(val); // a comment after it is not the title (audit 24)
+        title = ft.title;
+        if (ft.rest) say(j + 1, 'skipped', `front matter title: ${ft.rest}, after the quoted title, is not read`);
       } else say(j + 1, 'skipped', `front matter ${key}: Mermaid's configuration is not read`);
     }
     if (j >= lines.length) { say(i + 1, 'skipped', 'the front matter is never closed with ---: nothing read'); return empty(); }
@@ -288,7 +290,7 @@ function readMermaidSequence(text) {
         const m = msMessage(s), what = m && `${m.a}${m.arrow[0]}${m.b}`;
         if (!m) {
           const half = /-(\|[\\/]|\\\\|\/\/)|(\/\||\/\/|\\\\)-/.test(s); // Mermaid's half arrows (v11.12.3+)
-          say(no, 'skipped', `"${s.length > 60 ? s.slice(0, 57) + '...' : s}" is not understood${half ? ': a half arrow is not in the subset' : ''}`); hint = {}; continue;
+          say(no, 'skipped', `"${mermaidClip(s)}" is not understood${half ? ': a half arrow is not in the subset' : ''}`); hint = {}; continue;
         }
         const from = life(m.a, no), to = life(m.b, no);
         let sort = m.arrow[1];

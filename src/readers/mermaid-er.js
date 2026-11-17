@@ -1,4 +1,5 @@
 import { unreadable } from '../core/model.js';
+import { mermaidTitle, mermaidClip } from './mermaid-front.js';
 /* ---------- Mermaid erDiagram: a reader and a writer (notes/milestone-2.md §8.1, M2.8; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's entity relationship page (docs/syntax/entityRelationshipDiagram.md, read 14 Nov 2026)
    and its lexer (packages/mermaid/src/diagrams/er/parser/erDiagram.jison), as the other readers are against theirs.
@@ -52,7 +53,7 @@ const ME_DIRECTION = /direction\s+(TB|BT|RL|LR)/gi; // the lexer takes any line 
 const meId = name => String(name).replace(/->+/g, '-'); // an id never holds "->" (model.md rule 5)
 const meSkip = (s, k) => { while (k < s.length && (s[k] === ' ' || s[k] === '\t')) k++; return k; };
 const meAt = (re, s, k) => { re.lastIndex = k; const m = re.exec(s); return m; };
-const meShort = s => (s.length > 60 ? s.slice(0, 57) + '...' : s);
+const meShort = mermaidClip;
 
 // the first of base, base-2, base-3 ... not in used, resuming where the last ask for base stopped (R2)
 function meFree(used, next, base) {
@@ -153,8 +154,9 @@ function readMermaidEr(text) {
       if (!l.trim() || l.trim().startsWith('#') || /^\s/.test(l)) continue;
       const c = l.indexOf(':'), key = (c < 0 ? l : l.slice(0, c)).trim(), val = c < 0 ? '' : l.slice(c + 1).trim();
       if (key === 'title') {
-        if (val.startsWith('"')) { try { title = JSON.parse(val); } catch { title = val.slice(1, -1); } }
-        else title = val.startsWith("'") ? val.slice(1, -1).replaceAll("''", "'") : val;
+        const ft = mermaidTitle(val); // a comment after it is not the title (audit 24)
+        title = ft.title;
+        if (ft.rest) say(j + 1, 'skipped', `front matter title: ${ft.rest}, after the quoted title, is not read`);
       } else say(j + 1, 'skipped', `front matter ${key}: Mermaid's configuration is not read`);
     }
     if (j >= lines.length) { say(i + 1, 'skipped', 'the front matter is never closed with ---: nothing read'); return empty(); }

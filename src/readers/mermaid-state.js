@@ -1,4 +1,5 @@
 import { unreadable } from '../core/model.js';
+import { mermaidTitle, mermaidClip } from './mermaid-front.js';
 import { parseTransition, printTransition, trScan } from '../uml/transition.js';
 /* ---------- Mermaid stateDiagram: a reader and a writer (notes/stage-4.md §13, S12, S22; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's state diagram page (docs/syntax/stateDiagram.md, read 13 Nov 2026) and its lexer, as
@@ -94,8 +95,9 @@ function readMermaidState(text) {
       if (!l.trim() || l.trim().startsWith('#') || /^\s/.test(l)) continue;
       const c = l.indexOf(':'), key = (c < 0 ? l : l.slice(0, c)).trim(), val = c < 0 ? '' : l.slice(c + 1).trim();
       if (key === 'title') {
-        if (val.startsWith('"')) { try { title = JSON.parse(val); } catch { title = val.slice(1, -1); } }
-        else title = val.startsWith("'") ? val.slice(1, -1).replaceAll("''", "'") : val;
+        const ft = mermaidTitle(val); // a comment after it is not the title (audit 24)
+        title = ft.title;
+        if (ft.rest) say(j + 1, 'skipped', `front matter title: ${ft.rest}, after the quoted title, is not read`);
       } else say(j + 1, 'skipped', `front matter ${key}: Mermaid's configuration is not read`);
     }
     if (j >= lines.length) { say(i + 1, 'skipped', 'the front matter is never closed with ---: nothing read'); return empty(); }
@@ -250,12 +252,12 @@ function readMermaidState(text) {
       const pct = target.indexOf('%%');
       if (pct >= 0) target = target.slice(0, pct);
       const a = nameOf(left, no, true), b = nameOf(target, no, true);
-      if (!a || !b) { say(no, 'skipped', `"${s.length > 60 ? s.slice(0, 57) + '...' : s}" is not understood`); hint = {}; continue; }
+      if (!a || !b) { say(no, 'skipped', `"${mermaidClip(s)}" is not understood`); hint = {}; continue; }
       const from = a === '[*]' ? star(true, no) : mention(a, no), to = b === '[*]' ? star(false, no) : mention(b, no);
       items.push({ kind: 'trans', no, from, to, what: `${a} --> ${b}`, text: c < 0 ? '' : mtDecode(after.slice(c + 1).trim()), hint: hint.id });
     } else if (colon > 0) { // s1 : text
       const name = nameOf(s.slice(0, colon), no), rawText = s.slice(colon + 1).trim(), t = mtDecode(rawText);
-      if (!name) { say(no, 'skipped', `"${s.length > 60 ? s.slice(0, 57) + '...' : s}" is not understood`); hint = {}; continue; }
+      if (!name) { say(no, 'skipped', `"${mermaidClip(s)}" is not understood`); hint = {}; continue; }
       const rec = mention(name, no), line = mtLine(t);
       if (line.activity) {
         if (rec.acts.some(a => a.activity === line.activity)) say(no, 'approximated', `${name} : ${line.activity}: a second ${line.activity} replaces the first`);
@@ -264,7 +266,7 @@ function readMermaidState(text) {
       else items.push({ kind: 'note', target: rec, no, hint: hint.id, link: hint.link, text: [rawText], desc: true });
     } else {
       const pct = s.indexOf('%%'), name = nameOf(pct < 0 ? s : s.slice(0, pct), no);
-      if (!name) say(no, 'skipped', `"${s.length > 60 ? s.slice(0, 57) + '...' : s}" is not understood`);
+      if (!name) say(no, 'skipped', `"${mermaidClip(s)}" is not understood`);
       else { const rec = mention(name, no); declare(rec); kindOf(rec, no); }
     }
     hint = {};

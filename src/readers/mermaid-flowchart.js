@@ -1,4 +1,5 @@
 import { unreadable } from '../core/model.js';
+import { mermaidTitle, mermaidClip } from './mermaid-front.js';
 /* ---------- Mermaid flowchart: a reader and a writer (notes/milestone-2.md §8, §8.2, M2.9; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's flowchart page (docs/syntax/flowchart.md) and its shapes' names and aliases
    (rendering-elements/shapes.ts), both read on Mermaid's repository 14 Nov 2026, and ported from the map
@@ -61,7 +62,7 @@ const MF_WS = /\s*/y, MF_BRK = /[\s"&|]/g;
 const MF_QUIET = /^(classDef|class|style|linkStyle|click|direction|accTitle|accDescr)(?![\p{L}\p{N}_])/u;
 const MF_WORDS = /^(end|subgraph|graph|flowchart|classDef|class|style|linkStyle|click|direction|accTitle|accDescr|default|call|href)(?![\p{L}\p{N}_])/u; // no name the writer gives starts so
 const mfId = s => String(s).replace(/->+/g, '-'); // an id never holds "->" (model.md rule 5)
-const mfClip = s => (s.length > 60 ? s.slice(0, 57) + '...' : s);
+const mfClip = mermaidClip;
 
 function mfFree(used, next, base) { // the first of base, base-2, ... not in used, resuming where the last ask stopped (R2)
   let k = next.get(base) || 1, id = k > 1 ? `${base}-${k}` : base;
@@ -226,8 +227,9 @@ function readMermaidFlowchart(text) {
       if (!l.trim() || l.trim().startsWith('#') || /^\s/.test(l)) continue;
       const c = l.indexOf(':'), key = (c < 0 ? l : l.slice(0, c)).trim(), val = c < 0 ? '' : l.slice(c + 1).trim();
       if (key === 'title') {
-        if (val.startsWith('"')) { try { title = JSON.parse(val); } catch { title = val.slice(1, -1); } }
-        else title = val.startsWith("'") ? val.slice(1, -1).replaceAll("''", "'") : val;
+        const ft = mermaidTitle(val); // a comment after it is not the title (audit 24)
+        title = ft.title;
+        if (ft.rest) say(j + 1, 'skipped', `front matter title: ${ft.rest}, after the quoted title, is not read`);
       } else say(j + 1, 'skipped', `front matter ${key}: Mermaid's configuration is not read`);
     }
     if (j >= lines.length) { say(i + 1, 'skipped', 'the front matter is never closed with ---: nothing read'); return empty(); }
