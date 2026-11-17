@@ -1,4 +1,4 @@
-import { esc, fit, textW, widest } from '../core/text.js';
+import { brLines, esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { flowWrap } from '../uml/flow.js';
 import '../uml/activity.js'; // SHAPE.partition, the pools' and lanes' header look
@@ -41,9 +41,12 @@ const bpThrows = n => ['bpmn.EndEvent', 'bpmn.IntermediateThrowEvent'].includes(
 
 // an element's accessible name: "User task Check stock", "Message start event Order placed", "Timer boundary event
 // (non-interrupting) Wait", "Sub-process Pack (expanded)"
+// A type of its own outside the subset (a typo such as bpmn.Taks, uml.Class) is named by its own last part, never called a
+// task, though drawn as one (audit 27, as DFD and ER name theirs)
 function bpmnName(n) {
-  const t = bpType(n), label = String(n.label ?? '').trim(), d = bpDef(n);
-  let w = BP_WORD[t];
+  const t = bpType(n), label = String(n.label ?? '').trim(), d = bpDef(n), own = typeof n.type !== 'string' || !n.type || t === n.type;
+  let w = own ? BP_WORD[t] : n.type.split('.').pop() || n.type;
+  if (!own) return `${w}${label ? ' ' + label : ''}`;
   if (t === 'bpmn.Task' && ['user', 'service'].includes(n.taskType)) w = n.taskType === 'user' ? 'User task' : 'Service task';
   if (/Event$/.test(t)) { w = d === 'none' ? w[0].toUpperCase() + w.slice(1) : `${d[0].toUpperCase() + d.slice(1)} ${w}`; if (t === 'bpmn.BoundaryEvent' && n.cancelActivity === false) w += ' (non-interrupting)'; }
   const how = t === 'bpmn.SubProcess' ? (n.shape === 'bpmn-frame' ? ' (expanded)' : ' (collapsed)') : '';
@@ -75,9 +78,11 @@ SHAPE['bpmn-task'] = {
 };
 
 /* ---- the expanded sub-process: a box's frame, its name in the title room at the top left ---- */
+// a name the author broke: a line each, 16 px apart, in the header room its head grew (titleLh: src/uml/owners.js, audit 27)
 SHAPE['bpmn-frame'] = {
   frame: f => `<rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="10" stroke="${BP.line}"/>`
-    + `<text class="family-title" x="${r2(f.x + 12)}" y="${r2(f.y + 17)}" fill="${BP.ink}" style="font:600 12px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(f.title ?? f.label ?? f.id, 12, f.w - 24))}</text>`,
+    + brLines(f.title ?? f.label ?? f.id).map((l, i) => `<text class="family-title" x="${r2(f.x + 12)}" y="${r2(f.y + 17 + i * BP.nlh)}" fill="${BP.ink}" style="font:600 12px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(l, 12, f.w - 24))}</text>`).join(''),
+  titleLh: BP.nlh,
 };
 
 /* ---- events: the ring by kind, the marker by definition ---- */
@@ -138,18 +143,21 @@ const bpMeets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h 
 // Null with no member
 function bpmnGroupFrame(label, members, others) {
   if (!members || !members.length) return null;
-  const x = Math.min(...members.map(m => m.x)) - 16, y = Math.min(...members.map(m => m.y)) - 16, w = Math.max(...members.map(m => m.x + m.w)) + 16 - x, h = Math.max(...members.map(m => m.y + m.h)) + 16 - y;
-  const tw = textW(fit(String(label ?? ''), BP.lab, w - 24), BP.lab) + 4;
-  for (let tx = x + 12; tx === x + 12 || tx + tw <= x + w - 10; tx += 4) if (!(others || []).some(o => bpMeets({ x: tx - 2, y: y + 1, w: tw, h: 14 }, o))) return { x, y, w, h, tx };
+  // a name the author broke: a line each, 16 px apart, the frame taller at its top by a line for each past the first, so they
+  // keep off its members; its widest line measured (audit 27)
+  const ls = brLines(label), more = (ls.length - 1) * BP.nlh;
+  const x = Math.min(...members.map(m => m.x)) - 16, y = Math.min(...members.map(m => m.y)) - 16 - more, w = Math.max(...members.map(m => m.x + m.w)) + 16 - x, h = Math.max(...members.map(m => m.y + m.h)) + 16 - y;
+  const tw = widest(ls, l => textW(fit(l, BP.lab, w - 24), BP.lab)) + 4, th = 14 + more;
+  for (let tx = x + 12; tx === x + 12 || tx + tw <= x + w - 10; tx += 4) if (!(others || []).some(o => bpMeets({ x: tx - 2, y: y + 1, w: tw, h: th }, o))) return { x, y, w, h, tx };
   return { x, y, w, h, tx: x + 12, clash: true };
 }
 SHAPE['bpmn-group'] = {
   out: boxOut(10), inset: () => 0,
   // hit on a band 24 px wide along its border and a 24 px box round its title (§9.1); every node is drawn over it
-  draw(n) { const d = boxOut(10)(n), t = fit(String(n.label ?? ''), BP.lab, n.w - 24), tx = n.tx ?? n.x + 12;
+  draw(n) { const d = boxOut(10)(n), ts = brLines(n.label).map(l => fit(l, BP.lab, n.w - 24)), t = ts.some(Boolean), tx = n.tx ?? n.x + 12;
     return bpNode(n, 'bpmn-group', `<path d="${d}" class="bp-hit" fill="none" stroke="transparent" stroke-width="24"/>`
-      + (t ? `<rect x="${r2(tx - 2)}" y="${r2(n.y - 4)}" width="${r2(Math.max(24, textW(t, BP.lab) + 4))}" height="24" class="bp-hit" fill="transparent"/>` : '')
-      + `<path d="${d}" class="n-body" fill="none" stroke="${BP.line}" stroke-dasharray="8 3 2 3"/>` + (t ? bpText(tx, n.y + 12, t, BP.lab, 600, 'start') : '')); },
+      + (t ? `<rect x="${r2(tx - 2)}" y="${r2(n.y - 4)}" width="${r2(Math.max(24, widest(ts, l => textW(l, BP.lab)) + 4))}" height="${24 + (ts.length - 1) * BP.nlh}" class="bp-hit" fill="transparent"/>` : '')
+      + `<path d="${d}" class="n-body" fill="none" stroke="${BP.line}" stroke-dasharray="8 3 2 3"/>` + (t ? ts.map((l, i) => bpText(tx, n.y + 12 + i * BP.nlh, l, BP.lab, 600, 'start')).join('') : '')); },
 };
 
 /* ---- labels outside (§9.2): each item's name on up to two lines of 120 px, under its shape; where that box meets a line

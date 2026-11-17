@@ -408,3 +408,12 @@ test('audit 24: Shift + Delete on a requirement the view alone holds keeps what 
     assert.deepEqual(all(apply(m, cut.commands)).map(x => [x.id, x.parent ?? null]), [['p', null], ['c', null]]);
   }
 });
+
+// audit 27: a break the author put in a requirement's text (\n, \r\n, \r, U+2028) was drawn as a space: rqWrap split on
+// white space only; it breaks the row there, as flowWrap does, each part wrapped at 224 px
+test('audit 27: a line break in a requirement\'s text breaks its row there', () => {
+  for (const br of ['\n', '\r\n', '\r', ' ']) assert.deepEqual(rqWrap(`text = "Assist.${br}Stop at 25."`), ['text = "Assist.', 'Stop at 25."'], JSON.stringify(br));
+  const m = { schemaVersion: 2, nodes: [R('n', 'Assist', null, 'N-1', 'Assist.\nStop at 25.')], edges: [], views: [{ id: V, diagram: 'sysml.requirement', nodeIds: ['n'] }] };
+  assert.deepEqual(layout(m, V).byId.n.compartments.find(c => c.name === 'requirement').members.map(r => r.label), ['id = "N-1"', 'text = "Assist.', 'Stop at 25."']);
+  const long = rqWrap(`text = "${'word '.repeat(60).trim()}\nend"`); assert.equal(long.at(-1), 'end"', 'each part wrapped on its own');
+});

@@ -6,6 +6,7 @@ import { SHAPE, r2 } from '../draw/shapes.js';
 import { laneBands, laneOrder } from '../layout/lanes.js';
 import { layoutTyped } from '../typed/layout.js';
 import { cpPlace } from '../uml/component.js';
+import { boxHead } from '../uml/owners.js';
 import { bpmnGroupFrame, bpmnLabelSvg, bpmnLabels, bpmnName } from './notation.js';
 
 /* ---------- the BPMN diagram, bpmn (work package 4b.3, notes/milestone-4b.md §3 to §8, §11) ----------
@@ -35,6 +36,7 @@ const bzTwoPools = (a, b) => a != null && b != null && a !== b;
 const BZ_DEFS = { 'bpmn.StartEvent': ['none', 'message', 'timer'], 'bpmn.EndEvent': ['none', 'message', 'terminate'], 'bpmn.IntermediateCatchEvent': ['message', 'timer'],
   'bpmn.IntermediateThrowEvent': ['none', 'message'], [BZ_BE]: ['message', 'timer'] }; // §3.2, decision 21: a none throw event
 const BZ_EVENTS = Object.keys(BZ_DEFS), BZ_FLOW = [...BZ_ACT, ...BZ_EVENTS, ...BZ_GATE], BZ_CATCH = ['bpmn.StartEvent', 'bpmn.IntermediateCatchEvent', BZ_BE];
+const BZ_KINDS = [...BZ_FLOW, ...BZ_DATA, BZ_POOL, BZ_LANE, BZ_GROUP, BZ_NOTE]; // the subset's node types (§3.1)
 const BZ_SHAPE = t => (BZ_EVENTS.includes(t) ? 'bpmn-event' : BZ_GATE.includes(t) ? 'bpmn-gateway' : t === 'bpmn.DataObject' ? 'bpmn-data' : t === 'bpmn.DataStoreReference' ? 'bpmn-store' : t === BZ_NOTE ? 'bpmn-note' : 'bpmn-task');
 const BZ_OUT = ['bpmn-event', 'bpmn-gateway', 'bpmn-data', 'bpmn-store']; // their names drawn outside (§9.2)
 // null-prototype: a side read from the model ('toString', say) finds no inherited value
@@ -113,7 +115,7 @@ function bzPic(model, view) {
   const held = new Map(); [...items, ...open].forEach(x => { const o = owner(x); held.has(o) ? held.get(o).push(x) : held.set(o, [x]); });
   const holds = o => held.get(o) || [];
   const boxes = ids.filter(id => open.has(id)).map(id => { const x = I.N.get(id), o = owner(id);
-    return { id, label: bzLabel(x), title: bzLabel(x), nodeIds: holds(id).filter(k => !open.has(k)), ...(o != null ? { parent: o } : {}), shape: 'bpmn-frame', aria: bpmnName(bzLook(x, true)) }; });
+    return boxHead({ id, label: bzLabel(x), title: bzLabel(x), nodeIds: holds(id).filter(k => !open.has(k)), ...(o != null ? { parent: o } : {}), shape: 'bpmn-frame', aria: bpmnName(bzLook(x, true)) }); });
   return { I, ids, shown, pools, groups, lanes, band, be, open, owner, items, lines, said, laneOf, dataLane, holds, boxes, inLane };
 }
 
@@ -284,7 +286,10 @@ function bzFinish(P, g, { runs, anchors, grown, side, down }) {
   return { ...g, nodes, byId, edges, families, bounds, bands, labels, order: order.filter(id => byId[id] || families.some(f => f.id === id) || edges.some(e => e.id === id)),
     // the slots (src/typed/edit.js): one per node, header and box, so the palette's add hears what is selected
     slots: [...drawn.map(n => ({ after: n.id, parent: P.laneOf(P.be.get(n.id) ?? n.id), ...mid(n) })), ...heads.map(h => ({ after: h.id, parent: h.id, ...mid(h) })), ...families.map(f => ({ after: f.id, parent: f.id, ...mid(f) }))],
-    legend: bzLegend(new Set(edges.map(e => e.type))) };
+    legend: bzLegend(new Set(edges.map(e => e.type))),
+    // the lines the view shows and the picture leaves out (§8.3: a message flow between two pools, a line from a boundary
+    // event to its own activity), for check(), as describe() says them (audit 27)
+    notDrawn: P.said.filter(e => !lineOf.has(e.id)).map(e => ({ id: e.id, ids: [e.id], what: bzLineName(I, e) })) };
 }
 
 /* the pools and lanes (§5.3), under the lines: a pool's outline 1.5 px, a lane's 1 px, each closing its header strip; the
@@ -346,6 +351,9 @@ function bzProblems(model, view) {
   // the processes: each pool's flow, each sub-process's, and what is in no pool
   const procs = new Map();
   I.N.forEach((x, id) => { if (!seen(id)) return; const t = x.type, p = bzProps(x);
+    // a kind outside the subset (a typo, another notation's): drawn as a task, so said by its own name, as the typed core says a
+    // malformed type (no rule: none of §4's is about it; audit 27)
+    if (!BZ_KINDS.includes(t)) out.push({ level: 'warning', path: (I.path.get(id) || '') + '.type', ids: [id], message: t == null || t === '' ? `${q(id)} has no type, so it is no BPMN element umlimator draws: drawn as a task` : `${q(id)} is of type ${JSON.stringify(t)}, which is no BPMN element umlimator draws: drawn as a task` }); // an untyped node has no type, never "undefined" (audit 27)
     if (flow(id)) { const k = I.level(id); if (!procs.has(k)) procs.set(k, []); procs.get(k).push(id); }
     if (BZ_EVENTS.includes(t) && !BZ_DEFS[t].includes(bzDef(x))) say('error', 'event-definition', id, [id], `${q(id)} is ${bzA(bzWord({ type: t }).toLowerCase())} with definition "${bzDef(x)}": it takes ${BZ_DEFS[t].join(', ')}`, '.props.definition');
     if (Object.hasOwn(p, 'cancelActivity') && t !== BZ_BE) say('error', 'event-definition', id, [id], `${q(id)} has cancelActivity: only a boundary event has it`, '.props.cancelActivity');
