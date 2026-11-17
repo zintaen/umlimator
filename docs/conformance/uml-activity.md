@@ -27,7 +27,7 @@ loads, draws it as plain cards with a warning. The vocabulary is `docs/diagrams/
 Rules, each `validate()` problem naming its `rule` and its elements (`notes/stage-4.md` §9.3); the first six are shared
 with the interaction overview diagram (`src/uml/flow.js`): `flow-ends`, `initial-flows`, `final-flows`, `fork-join`,
 `decision-merge` (errors where UML forbids, a warning where a diagram is only unfinished: a fork with one branch, a
-decision with one exit), `decision-guards` (a warning); `object-flow`, `in-lane`, `calls-view` (warnings);
+decision with one exit), `decision-guards` (a warning); `object-flow` (an object flow reaches an object node or a data store, at its own end or through decisions, merges, forks and joins), `in-lane`, `calls-view` (warnings);
 `partition-owner` (an error).
 
 **Deviation from UML:** a decision's question is drawn inside its diamond, as flowchart readers expect; UML puts it in a

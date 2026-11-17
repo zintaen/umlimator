@@ -332,11 +332,16 @@ function commRemove(model, view, ids, fromModel) {
   const views = fromModel ? CM_ARR(model && model.views).filter(v => CM_OBJ(v) && v.diagram === 'uml.communication') : [view];
   // a line or lifeline in the view's own lists lives in this view only: hiding it is deleting it (audit 21), as the canvas's Delete does
   const own = new Map([...CM_ARR(view.nodes), ...CM_ARR(view.edges)].filter(x => CM_OBJ(x) && typeof x.id === 'string').map(x => [x.id, x])), el = id => I.E.get(id) || own.get(id);
+  const hid = new Set(), carried = (w, m) => { const L = cmIx(model, { ...w, edges: CM_ARR(w.edges).filter(x => !seen.has(idOf(x))) }); return L.messages.some(x => x.id === m.id) && !!L.carrierOf(m.from, m.to); };
   const go = id => { if (seen.has(id)) return; seen.add(id);
     out.push(fromModel || own.has(id) ? { op: 'delete', id } : { op: 'hide', id, view: view.id });
     if (el(id) && el(id).type === 'uml.Connector') views.forEach(v => { const on = cmIx(model, v).on.get(id); if (!on) return;
       const left = cmIx(model, { ...v, edges: CM_ARR(v.edges).filter(x => !seen.has(idOf(x))) });
-      on.forEach(m => { if (v === view && !fromModel || !left.carrierOf(m.from, m.to)) go(m.id); }); });
+      on.forEach(m => { if (!(v === view && !fromModel || !left.carrierOf(m.from, m.to))) return;
+        // Shift + Delete: a message another communication view lists and still carries on its own connector stays in the model,
+        // taken out of this view only (audit 28)
+        if (fromModel && views.some(w => w !== v && carried(w, m))) { const k = v.id + '\u0000' + m.id; if (!hid.has(k)) { hid.add(k); out.push({ op: 'hide', id: m.id, view: v.id }); } }
+        else go(m.id); }); });
     if (!fromModel) I.messages.filter(m => cmPropsOf(m).replyTo === id).forEach(m => go(m.id)); };
   CM_ARR(ids).forEach(id => { if (I.shown.has(id) || I.E.has(id) || own.has(id)) go(id); });
   return cmSaid(model, view, ids, fromModel, I, fromModel ? cmGuard(model, view, out, true) : out);

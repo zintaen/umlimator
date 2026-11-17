@@ -325,3 +325,27 @@ test('audit 27: every structural view that draws a line of another kind as "Line
     assert.equal(sw(items[0]).replace(/^.*?(<path d="M2 8H17"\/>)/, '$1'), sw(line), `${d}: the object view's swatch`);
   }
 });
+
+test('audit 28: an element of no UML kind, drawn as an instance with its slots, is judged and printed as one', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'u', label: 'order1', members: [{ id: 's', type: 'uml.Slot', label: 'total', props: { value: '3' } }] }, { id: 'k', type: 'uml.InstanceSpecification', label: 'line1' }],
+    edges: [{ id: 'l', type: 'uml.Link', from: 'u', to: 'k' }], views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['u', 'k'] }] };
+  assert.equal(layout(m, 'v').byId.u.aria, 'Instance specification order1, 1 slot');
+  assert.deepEqual(validate(m), [], 'its slot is in an instance, and its link joins two');
+  const c = mapContext(m), rows = tablesOf(c, c.V.v, c.buildGeo('v'))[0].rows.map(r => r.split('<td>').slice(1).map(x => x.replace(/<[^>]+>/g, '')));
+  assert.equal(rows.find(r => r[0] === 'order1')[1], 'Instance specification', 'the PDF\'s Kind');
+  // a uml.Class still holds no slot, and a link to it is still refused
+  const cls = { ...m, nodes: [{ ...m.nodes[0], type: 'uml.Class' }, m.nodes[1]] };
+  assert.deepEqual(validate(cls).map(p => p.rule).sort(), ['link-ends', 'slot-kinds']);
+});
+
+test('audit 28: a type that is not a string, even an array naming a classifier, is drawn as an instance: nothing throws', () => {
+  for (const t of [['uml.Class'], ['uml.Package'], 42, {}]) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'a', type: t, label: 'Aa' }, { id: 'b', type: 'uml.InstanceSpecification', label: 'Bb' }], edges: [{ id: 'x', type: 'uml.Link', from: 'a', to: 'b' }],
+      views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['a', 'b'], edges: ['x'] }] };
+    const d = JSON.stringify(t);
+    assert.equal(layout(m, 'v').byId.a.aria, 'Instance specification Aa', d);
+    assert.match(describe(m, 'v'), /^Instance specification Aa; linked to Bb/m, d);
+    assert.deepEqual(check(m, 'v'), [], d);
+    assert.deepEqual(validate(m).map(p => p.path), ['nodes[0].type'], `${d}: only the type's own warning, no link-ends`);
+  }
+});

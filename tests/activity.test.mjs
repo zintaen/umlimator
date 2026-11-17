@@ -510,3 +510,17 @@ test('audit 25: Delete on a partition the view holds as its own keeps what it ho
   assert.deepEqual(both.model, ['M', 'file'], 'the model partition is hidden, not deleted'); assert.ok(!both.listed.includes('M') && both.nodes.some(([id]) => id === 'pack'));
   assert.equal(T.edits.remove(m, v, ['M'], false), null, 'a model partition alone: the canvas\'s hide');
 });
+
+test('audit 28: an object flow that reaches an object node through a decision, merge, fork or join is not warned of', () => {
+  const N = (id, type, label) => ({ id, type, ...(label ? { label } : {}) }), F = (id, type, from, to, guard) => ({ id, type, from, to, ...(guard ? { props: { guard } } : {}) });
+  const mk = ctrl => ({ schemaVersion: 2, title: 'o', nodes: [N('i', 'uml.InitialNode'), N('take', 'uml.Action', 'Take order'), N('order', 'uml.ObjectNode', 'Order'), N('d', ctrl), N('d2', 'uml.MergeNode'),
+    N('ship', 'uml.Action', 'Ship'), N('refund', 'uml.Action', 'Refund'), N('end', 'uml.ActivityFinalNode')],
+  edges: [F('f1', 'uml.ControlFlow', 'i', 'take'), F('f2', 'uml.ObjectFlow', 'take', 'order'), F('f3', 'uml.ObjectFlow', 'order', 'd'), F('f3b', 'uml.ObjectFlow', 'd', 'd2'),
+    F('f4', 'uml.ObjectFlow', 'd2', 'ship', 'paid'), F('f5', 'uml.ObjectFlow', 'd2', 'refund', 'else'), F('f6', 'uml.ControlFlow', 'ship', 'end'), F('f7', 'uml.ControlFlow', 'refund', 'end')],
+  views: [{ id: 'v', diagram: 'uml.activity', nodeIds: ['i', 'take', 'order', 'd', 'd2', 'ship', 'refund', 'end'] }] });
+  for (const ctrl of ['uml.DecisionNode', 'uml.MergeNode', 'uml.ForkNode', 'uml.JoinNode'])
+    assert.deepEqual(validate(mk(ctrl)).filter(p => p.rule === 'object-flow'), [], ctrl);
+  // fed by a control flow, the decision carries no object: its object flows are still warned of
+  const m = mk('uml.DecisionNode'); m.edges.find(e => e.id === 'f3').type = 'uml.ControlFlow'; m.edges.find(e => e.id === 'f3').from = 'take';
+  assert.deepEqual(validate(m).filter(p => p.rule === 'object-flow').map(p => p.ids[0]), ['f3b', 'f4', 'f5']);
+});
