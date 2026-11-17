@@ -820,7 +820,8 @@ def diff_since(a):
     if out.exists() and not out.is_dir():
         sys.exit(f"diff --base: --out {out} is a file: name a folder for the pages and summary.md")
     make_folder(out)
-    done, md, stems = [], ["<!-- umlimator-diff -->", "### Map changes", ""], set()
+    # stems: each name written in --out, casefolded: the run's own summary.md, and each model's page, stills folder and copy
+    done, md, stems = [], ["<!-- umlimator-diff -->", "### Map changes", ""], {"summary.md"}
     # a path (or, folder=True, its folder) that resolves inside the checkout with no symbolic link on the way below its top
     # a path that is itself a symbolic link never counts, even one whose target is gone (a dangling link: written through)
     inside = lambda p, folder=False: not p.is_symlink() and (q := p.parent if folder else p).exists() and (q.is_dir() or not folder) and q.resolve().is_relative_to(top.resolve()) \
@@ -868,10 +869,13 @@ def diff_since(a):
         if len(stem.encode()) > 200:
             stem = stem.encode()[:180].decode(errors="ignore") + "-" + hashlib.sha256(name.encode()).hexdigest()[:8]
         # a/b-c.json and a-b/c.json; and docs/Map.json and Docs-map.json, one file on a disk that ignores case (macOS,
-        # Windows), as still_names does for view ids (audit 21)
-        if stem.casefold() in stems:
+        # Windows), as still_names does for view ids (audit 21). A stem's names are its page, its stills folder and its
+        # copy, none of them one already written: summary.md.json's stills folder was summary.md, and the summary was
+        # never written (audit 28); x.json.json's folder was x.json's copy
+        mine = lambda x: {x.casefold(), f"{x}.html".casefold(), f"{x}.json".casefold()}
+        if mine(stem) & stems:
             stem += "-" + hashlib.sha256(name.encode()).hexdigest()[:6]
-        stems.add(stem.casefold())
+        stems |= mine(stem)
         try:
             # a removed model is drawn from a copy in its own folder while that folder is there, so its intake logos resolve
             # and messages name it; else beside the pages (audit 19)
@@ -1015,15 +1019,20 @@ def cmd_trace(a):
 def cmd_timelapse(a):
     """The model's versions in git history, oldest first (the first-parent line, merges included, so the last is HEAD's), as one page with a slider: the map eases from each version to
     the next (new cards fade in, removed ones fade out, moved ones glide), with what changed in words."""
-    log = subprocess.run(["git", "log", "--follow", "--first-parent", "-m", "--name-only", "--format=%x00%H%x09%cs%x09%s", "--", a.model], capture_output=True, text=True, errors="replace")
+    # git run in the model's own folder, so its history is its repository's wherever the command runs (audit 28: from a
+    # folder outside it, git said "not a git repository" or that the model is outside the repository)
+    here = Path(a.model).absolute()
+    git = lambda *x, **k: subprocess.run(["git", "-C", str(here.parent), *x], capture_output=True, **k)
+    log = git("log", "--follow", "--first-parent", "-m", "--name-only", "--format=%x00%H%x09%cs%x09%s", "--", str(here), text=True, errors="replace")
     if log.returncode:
         sys.exit(log.stderr.strip())
     rows = [r.strip().split("\n") for r in log.stdout.split("\x00") if r.strip()][::-1][-a.limit:]  # each: "sha\tdate\tsubject", "", path
     versions = []
     for head, *rest in rows:
         sha, day, subject = (head.split("\t", 2) + ["", ""])[:3]
-        path = next((p for p in rest if p.strip()), a.model)
-        r = subprocess.run(["git", "show", f"{sha}:{path}"], capture_output=True)  # bytes: json.loads finds the encoding
+        path = next((p for p in rest if p.strip()), None)  # from the top, as --name-only names it
+        r = git("show", f"{sha}:{path}" if path else f"{sha}:./{here.name}")  # bytes: json.loads finds the encoding
+        path = path or a.model
         try:
             subject = subject if len(subject) <= 90 else subject[:89].rstrip() + "…"
             m = json.loads(r.stdout)
@@ -1142,12 +1151,14 @@ def views_of(page):
 
 def pick(page, spec):
     """--views (a,b,pic-*: a trailing * is a prefix) as the page's view ids, in the page's order; every view without it.
-    A name that matches no view ends the command before Chrome starts, saying which views there are."""
+    A spec that is a view's id whole names that view, comma and all (audit 28: an id holding a comma could not be named);
+    else it is split at its commas. A name that matches no view ends the command before Chrome starts, saying which views
+    there are, each quoted, so a comma in an id reads as the id's."""
     ids = views_of(page)
-    want = [w for w in (spec or "").split(",") if w]
+    want = [spec] if spec in ids else [w for w in (spec or "").split(",") if w]
     hit = lambda w, i: i.startswith(w[:-1]) if w.endswith("*") else i == w
     if bad := [w for w in want if not any(hit(w, i) for i in ids)]:
-        sys.exit(f"--views: no view {', '.join(map(repr, bad))} in {Path(page).name}; its views: {', '.join(ids)}")
+        sys.exit(f"--views: no view {', '.join(map(repr, bad))} in {Path(page).name}; its views: {', '.join(map(repr, ids))}")
     return [i for i in ids if not want or any(hit(w, i) for w in want)]
 
 
