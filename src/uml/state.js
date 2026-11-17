@@ -59,9 +59,11 @@ SHAPE.terminate = { size: () => ({ w: 20, h: 20 }), out: (n, d = 0) => `M${r2(n.
 function stParts(n) {
   const st = ST_ARR(n.stereotypes).filter(ST_HAS).map(t => `«${t}»`), ls = flowWrap(n.label, ST.name, ST.nmax, 3);
   const all = ST_ARR(n.acts), shown = ST_ARR(n.collapsed).includes('activities') ? null : all, cap = Number.isFinite(n.cap) ? Math.max(0, Math.floor(n.cap)) : Infinity;
-  const rows = shown ? [...shown.slice(0, cap), ...(shown.length > cap ? [`+${shown.length - cap} more`] : [])] : [];
+  // each row a line per break its author put in (an entry, an internal transition: F2's Shift+Enter), the compartment grown
+  // for them, so a break is never drawn as a space (audit 26); more: the "+k more" row's line
+  const rows = (shown ? [...shown.slice(0, cap), ...(shown.length > cap ? [`+${shown.length - cap} more`] : [])] : []).flatMap((r, j) => brLines(r).map(t => ({ t, more: j >= cap })));
   const head = 2 * ST.padY + st.length * ST.sth + Math.max(1, ls.length) * ST.nlh, comp = rows.length ? 8 + rows.length * ST.rl : 0, dec = n.composite ? ST.dec : 0;
-  const w = Math.ceil(Math.min(ST.maxW, Math.max(ST.minW, widest(st, t => textW(t, ST.st) + 2 * ST.padX), widest(ls, l => textW(l, ST.name) + 2 * ST.padX), widest(rows, r => textW(r, ST.row) + 2 * ST.padX))));
+  const w = Math.ceil(Math.min(ST.maxW, Math.max(ST.minW, widest(st, t => textW(t, ST.st) + 2 * ST.padX), widest(ls, l => textW(l, ST.name) + 2 * ST.padX), widest(rows, r => textW(r.t, ST.row) + 2 * ST.padX))));
   return { st, ls, rows, head, comp, dec, w, h: Math.max(ST.minH, head + comp + dec) };
 }
 const ST_TL = 16; // a composite state's title line, the second and after
@@ -76,7 +78,7 @@ SHAPE.state = {
     const out = [stBody(SHAPE.box.out(n), ST.bg), `<g class="c-head" data-band="${r2(y)} ${r2(y + hh)}">${hd.join('')}</g>`];
     if (p.comp) { const top = y + p.head;
       out.push(`<g class="c-comp" data-comp="activities" data-band="${r2(top)} ${r2(top + p.comp)}"><path d="M${x} ${r2(top)}H${x + w}" class="n-det" stroke="${ST.line}"/>`
-        + p.rows.map((r, j) => text(x + ST.padX, top + 4 + j * ST.rl + 11, r, ST.row, 400, j >= (n.cap ?? Infinity) ? ST.line : ST.ink, j >= (n.cap ?? Infinity) ? 'c-more' : 'c-row')).join('') + '</g>'); }
+        + p.rows.map((r, j) => text(x + ST.padX, top + 4 + j * ST.rl + 11, r.t, ST.row, 400, r.more ? ST.line : ST.ink, r.more ? 'c-more' : 'c-row')).join('') + '</g>'); }
     // UML's decomposition indicator: two small rounded rectangles joined, at the bottom right
     if (p.dec) { const by = y + h - 9, bx = x + w - 27;
       out.push(`<g class="st-dec" fill="none" stroke="${ST.line}" stroke-width="1.2"><rect x="${r2(bx)}" y="${r2(by - 2.5)}" width="7" height="5" rx="2"/><rect x="${r2(bx + 12)}" y="${r2(by - 2.5)}" width="7" height="5" rx="2"/><path d="M${r2(bx + 7)} ${r2(by)}H${r2(bx + 12)}"/></g>`); }
