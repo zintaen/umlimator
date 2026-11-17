@@ -246,7 +246,9 @@ def call(name, a):
 
 def end(e, k):
     """A line's end as drawn: a port on a part's type is drawn on the part (props.ends.<from|to>.part), else the end itself."""
-    part = ((e.get("props") or {}).get("ends") or {}).get(k) if isinstance(e.get("props"), dict) else None
+    props = e.get("props")
+    ends = props.get("ends") if isinstance(props, dict) else None
+    part = ends.get(k) if isinstance(ends, dict) else None  # props.ends of another shape: the end itself (audit 22)
     return part.get("part") if isinstance(part, dict) and isinstance(part.get("part"), str) else e.get(k)
 
 
@@ -483,8 +485,14 @@ def page():
 class Page(http.server.BaseHTTPRequestHandler):
     def ours(self):
         """A request of this server's own page: its Host (a site that points its own name at 127.0.0.1, DNS rebinding, reads
-        nothing) and, when one is sent, its Origin (another site's page posts nothing)."""
-        return self.headers.get("Host") in HOSTS and self.headers.get("Origin", URL) in ORIGINS
+        nothing) and, when one is sent, its Origin (another site's page posts nothing). A browser that says where a request
+        comes from (Sec-Fetch-Site) must say this page, or the person (an address typed, a bookmark): another site's image,
+        script or frame naming /events sends no Origin, and was counted as an open page (audit 22). Only a link another
+        site's page follows, to the page itself, is let through: the page it opens is this server's own."""
+        site = self.headers.get("Sec-Fetch-Site")
+        opened = self.command == "GET" and urllib.parse.urlsplit(self.path).path == "/" and self.headers.get("Sec-Fetch-Dest") == "document" \
+            and self.headers.get("Sec-Fetch-Mode") == "navigate"
+        return self.headers.get("Host") in HOSTS and self.headers.get("Origin", URL) in ORIGINS and (site in (None, "same-origin", "none") or opened)
 
     def do_GET(self):
         if not self.ours():
