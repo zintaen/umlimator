@@ -1,5 +1,5 @@
 import { TYPED } from '../core/registry.js';
-import { brLines, esc, fit, textW } from '../core/text.js';
+import { brLines, esc, fit, textW, widest } from '../core/text.js';
 import { trimLine } from '../draw/lines.js';
 import { SHAPE, boxOut, drawnPts, portsOn, r2 } from '../draw/shapes.js';
 import { hasKey } from '../map/kinds.js';
@@ -31,7 +31,7 @@ function classParts(n) {
   const all = (Array.isArray(n.compartments) ? n.compartments : []).filter(obj).map(c => ({ name: String(c.name ?? ''), title: c.title === true, members: Array.isArray(c.members) ? c.members.filter(obj) : [] }));
   const comps = all.filter(c => !hidden.has(c.name)).map(c => ({ name: c.name, title: c.title, rows: c.members.slice(0, cap).map(m => ({ m, text: memberText(m) })), more: Math.max(0, c.members.length - cap) }));
   const name = brLines(n.label), texts = [...name.map(l => [l, CL.name, slant]), ...st.map(t => [t, CL.row, 1]), ...comps.flatMap(c => [...(c.title ? [[c.name, CL.row, 1]] : []), ...c.rows.map(r => [r.text, CL.row, 1]), ...(c.more ? [[`+${c.more} more`, CL.row, 1]] : [])])];
-  const w = Math.ceil(Math.min(CL.maxW, Math.max(CL.minW, ...texts.map(([t, px, k]) => textW(t, px) * k + 2 * CL.pad))));
+  const w = Math.ceil(Math.min(CL.maxW, Math.max(CL.minW, widest(texts, ([t, px, k]) => textW(t, px) * k + 2 * CL.pad))));
   const head = 2 * CL.gap + st.length * CL.st + CL.nl + (name.length - 1) * CL.nlh, tall = c => { const k = +c.title + c.rows.length + (c.more ? 1 : 0); return k ? 2 * CL.gap - 2 + k * CL.rl : CL.empty; };
   return { stereo, st, name, all, comps, head, tall, slant, size: { w, h: comps.reduce((a, c) => a + tall(c), head) } };
 }
@@ -92,7 +92,7 @@ function endLabels(e, pts = e.pts, also = []) { // also: boxes to keep clear of 
   [['from', pts[0], pts[1]], ['to', pts[pts.length - 1], pts[pts.length - 2]]].forEach(([end, p, q]) => {
     const at = T[end] || {}, flat = Math.abs(q[0] - p[0]) >= Math.abs(q[1] - p[1]), dir = Math.sign(flat ? q[0] - p[0] : q[1] - p[1]) || 1;
     [['role', at.role, -1], ['mult', at.mult, 1]].forEach(([kind, t, side]) => { if (t == null || t === '') return;
-      const ls = brLines(t), w = r2(Math.max(...ls.map(l => textW(l, 10))) + 6), h = 14 + (ls.length - 1) * 12, along = (v, d, mid) => mid ? v - d / 2 : dir > 0 ? v + 4 : v - 4 - d, aside = (v, d, s, o) => s < 0 ? v - o - d : v + o;
+      const ls = brLines(t), w = r2(widest(ls, l => textW(l, 10)) + 6), h = 14 + (ls.length - 1) * 12, along = (v, d, mid) => mid ? v - d / 2 : dir > 0 ? v + 4 : v - 4 - d, aside = (v, d, s, o) => s < 0 ? v - o - d : v + o;
       const box = (o, s, mid) => ({ end, kind, text: String(t), x: r2(flat ? along(p[0], w, mid) : aside(p[0], w, s, o)), y: r2(flat ? aside(p[1], h, s, o) : along(p[1], h, mid)), w, h });
       let b = null;
       for (let o = 8; !b && o <= 400; o += 4) for (const s of [side, -side]) for (const mid of [false, true]) { const c = box(o, s, mid); if (!b && ![...keep, ...out].some(k => meets(c, k))) b = c; }

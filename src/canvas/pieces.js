@@ -30,9 +30,10 @@ function detailBullets(body) {
     const index = parts.reduce((best, p, i) => p.length > (parts[best] || '').length ? i : best, 0), value = parts[index];
     if (!value || value.length < 8) break;
     const separators = [...value.matchAll(/:\s+|,\s+|\s+(?=then\b|with\b|before\b|after\b|once\b|to\b|and\b|or\b|during\b|by\b|whose\b|outside\b|on\b|for\b|as\b|whenever\b|into\b|in\b|from\b|when\b|includes\b|typed\b)/g)].map(m => m.index + m[0].length);
-    const safe = i => (value.slice(0, i).match(/`/g) || []).length % 2 === 0;
+    const ticks = [0]; for (let i = 0; i < value.length; i++) ticks.push(ticks[i] + (value[i] === '`')); // backticks before each place, counted once (audit 25)
+    const safe = i => ticks[i] % 2 === 0;
     const cuts = separators.filter(i => i >= 6 && i < value.length - 4 && safe(i));
-    if (!cuts.length && parts.length < 2) cuts.push(...[...value.matchAll(/\s+/g)].map(m => m.index).filter(i => i >= 6 && i < value.length - 4 && safe(i)));
+    if (!cuts.length && parts.length < 2) for (const m of value.matchAll(/\s+/g)) if (m.index >= 6 && m.index < value.length - 4 && safe(m.index)) cuts.push(m.index); // a loop: a spread throws past ~120,000 (audit 25)
     const cut = cuts.sort((a, b) => Math.abs(a - value.length / 2) - Math.abs(b - value.length / 2))[0];
     if (!cut) break;
     parts.splice(index, 1, value.slice(0, cut).replace(/[,;:]\s*$/, '').trim(), value.slice(cut).trim());
@@ -312,4 +313,4 @@ function pieces(X, el, o) {
   };
 }
 
-export { shortT, hintHTML, hinter, legendItems, pieces };
+export { shortT, hintHTML, hinter, legendItems, pieces, detailBullets };

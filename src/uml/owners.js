@@ -1,4 +1,4 @@
-import { esc, fit, textW } from '../core/text.js';
+import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { brLines } from '../typed/draw.js'; // SHAPE.classifier, whose ports the closed package takes
 
@@ -122,7 +122,7 @@ const pkTexts = n => [...OWN_ARR(n.stereotypes).map(t => [`«${t}»`, PK.st]), .
 SHAPE.package = {
   // closed: a folder, its body the node's box and its empty tab above it (UML 2.5.1, 12.2.4), the stereotypes and the name
   // centred in the body; as wide as its widest text, within 96 and 320 px (a longer one is cut)
-  size: n => ({ w: Math.ceil(Math.min(PK.maxW, Math.max(PK.minW, ...pkTexts(n).map(([t, px]) => textW(t, px) + 2 * PK.pad)))), h: 2 * PK.gap + OWN_ARR(n.stereotypes).length * PK.sth + PK.nl + (brLines(n.label).length - 1) * PK.nlh }),
+  size: n => ({ w: Math.ceil(Math.min(PK.maxW, Math.max(PK.minW, widest(pkTexts(n), ([t, px]) => textW(t, px) + 2 * PK.pad)))), h: 2 * PK.gap + OWN_ARR(n.stereotypes).length * PK.sth + PK.nl + (brLines(n.label).length - 1) * PK.nlh }),
   out: SHAPE.classifier.out, face: n => [n.y, n.y + n.h], inset: () => 0, ports: SHAPE.classifier.ports,
   draw(n, c, f) {
     const { x, y, w, h } = n, tw = pkTabW(n), tabX = n.tabX ?? x, cx = r2(x + w / 2), st = OWN_ARR(n.stereotypes); let ty = y + PK.gap;
@@ -136,7 +136,7 @@ SHAPE.package = {
   // holding the stereotypes and the name (the box's title, cut to its width). The border has class family-box, which the
   // canvas outlines on selection and under a drag; the title keeps class family-title, which the audit and the canvas read
   frame(f) {
-    const ls = brLines(f.title ?? f.label ?? f.id), hd = Math.min(f.w - 16, Math.max(...ls.map(l => textW(l, 11))) + 16), tr = r2(f.x + 8 + hd), more = (ls.length - 1) * PK.tl;
+    const ls = brLines(f.title ?? f.label ?? f.id), hd = Math.min(f.w - 16, widest(ls, l => textW(l, 11)) + 16), tr = r2(f.x + 8 + hd), more = (ls.length - 1) * PK.tl;
     return `<rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" stroke="var(--um-muted)"/><path d="M${f.x} ${r2(f.y + 24 + more)}H${tr}V${f.y}" class="pk-tab" fill="none" stroke="var(--um-muted)" stroke-width="1.2"/>`
       + ls.map((l, i) => `<text class="family-title" x="${r2(f.x + 12)}" y="${r2(f.y + 16 + i * PK.tl)}" fill="var(--um-text)" style="font:600 11px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(l, 11, hd - 4))}</text>`).join('');
   },

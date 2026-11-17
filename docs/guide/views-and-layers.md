@@ -34,10 +34,7 @@ The full list is in [`engine/references/schema.md`](../../engine/references/sche
 
 ## Drill-down
 
-A card opens a view when its `opensView` names one, or when a view shares its id. Such a card draws as a stack with a
-⤢ badge; double-click (or Enter) opens it, and Esc or Backspace, with nothing selected, goes back up. A host can load the inner view only when it is
-asked for: `opensView` may name a view that is not in the model yet, and `opensCount` sets the number on the badge.
-Cancel the `open` event to stay on the view, then load the next one and call `update()`.
+A card opens a view when its `opensView` names one, or when a view shares its id. Such a card draws as a stack with a ⤢ badge; double-click (or Enter on the selected card) opens it, and Esc or Backspace, with nothing selected, goes back up. A host can load the inner view only when it is asked for: `opensView` may name a view that is not in the model yet, and `opensCount` sets the number on the badge. Cancel the `open` event to stay on the view, then load the next one and call `update()`.
 
 ## Unfolding in place
 

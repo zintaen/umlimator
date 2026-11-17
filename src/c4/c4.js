@@ -1,5 +1,5 @@
 import { registerDiagramType, idTable } from '../core/registry.js';
-import { esc, fit, textW } from '../core/text.js';
+import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, portsOn, r2, sidePorts } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
 import '../uml/class.js'; // SHAPE.note, a comment's look
@@ -45,7 +45,7 @@ const C4_TOP = { person: 26, robot: 16, browser: 14, window: 14, terminal: 14, f
 function c4Parts(n) {
   const pad = C4.px + (C4_SIDE[n.sh] || 0), max = C4.maxW - 2 * pad, name = flowWrap(n.label, C4.name, max, 2), tag = fit(n.tag || '', C4.tag, max);
   const desc = C4_HAS(n.desc) ? flowWrap(n.desc, C4.d, Math.min(C4.dw, max), C4.dk) : [];
-  const w = Math.ceil(Math.min(C4.maxW, Math.max(C4.minW, Math.max(...name.map(t => textW(t, C4.name) * 1.05), textW(tag, C4.tag), ...desc.map(t => textW(t, C4.d))) + 2 * pad)));
+  const w = Math.ceil(Math.min(C4.maxW, Math.max(C4.minW, Math.max(widest(name, t => textW(t, C4.name) * 1.05), textW(tag, C4.tag), widest(desc, t => textW(t, C4.d))) + 2 * pad)));
   const text = Math.max(1, name.length) * C4.nlh + C4.tlh + (desc.length ? C4.gap + desc.length * C4.dlh : 0), body = text + 2 * C4.py;
   let h = (C4_TOP[n.sh] || 0) + body, top = C4_TOP[n.sh] || 0;
   if (n.sh === 'cylinder') { for (let k = 0; k < 4; k++) h = body + 3 * Math.max(5, Math.round(h * .11)); top = 2 * Math.max(5, Math.round(h * .11)); } // the lid above, its rim below

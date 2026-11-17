@@ -1,5 +1,5 @@
 import { registerDiagramType } from '../core/registry.js';
-import { esc, fit, textW } from '../core/text.js';
+import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
 import '../uml/class.js'; // SHAPE.note, a comment's look
@@ -63,7 +63,7 @@ for (const [shape, [pad, out, inset, det, face]] of Object.entries(FC_SHAPES)) {
   const word = Object.values(FC_LOOK).find(l => l[0] === shape)[1];
   const S = SHAPE[shape] = { out, inset, face: face || (n => [n.y, n.y + n.h]),
     size(n) { const ls = flowWrap(n.label, FC.px, FC.max, 3), h = Math.max(FC.minH, 2 * FC.padY + Math.max(1, ls.length) * FC.lh), [l, r, t, b] = pad(h);
-      return { w: Math.ceil(Math.max(FC.minW, ...ls.map(x => textW(x, FC.px) + 2 * FC.padX)) + l + r), h: Math.ceil(h + t + b) }; },
+      return { w: Math.ceil(Math.max(FC.minW, widest(ls, x => textW(x, FC.px) + 2 * FC.padX)) + l + r), h: Math.ceil(h + t + b) }; },
     draw(n) { const [l, r, t, b] = pad(n.h), w = n.w - l - r - 2 * FC.padX, ls = flowWrap(n.label, FC.px, FC.max, 3);
       const y0 = n.y + t + (n.h - t - b - ls.length * FC.lh) / 2, cx = n.x + l + (n.w - l - r) / 2;
       return fcG(n, shape, fcSaid(n, word), fcBody(out(n)) + (det ? det(n) : '') + ls.map((x, i) => fcText(cx, y0 + i * FC.lh + 12, fit(x, FC.px, w))).join('')); } };

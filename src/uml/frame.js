@@ -1,4 +1,4 @@
-import { esc, fit, textW } from '../core/text.js';
+import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { brLines } from '../typed/draw.js'; // SHAPE.classifier, the lifeline's head too
 import { TA } from '../layout/timeaxis.js';
@@ -19,7 +19,7 @@ import { TA } from '../layout/timeaxis.js';
 const FR = { tag: 11, guard: 10.5, name: 11, tagH: 17, guardH: 14, cut: 5, lh: 13 }; // font sizes; the tag's and the guard's height; the tag's cut corner; each line more
 const FR_LINE = 'var(--um-muted)'; // 3:1 or more on the stage in both themes, as a typed view's lines (1.11)
 // a text the author broke (a Mermaid <br>, F2's Shift+Enter) is a line each, every size grown by its lines (audit 22)
-const frWide = (t, px) => Math.max(...brLines(t).map(l => textW(l, px))), frMore = t => (brLines(t).length - 1) * FR.lh;
+const frWide = (t, px) => widest(brLines(t), l => textW(l, px)), frMore = t => (brLines(t).length - 1) * FR.lh;
 const tagSize = t => ({ w: Math.ceil(frWide(t, FR.tag) + 14), h: FR.tagH + frMore(t) });
 const guardSize = t => (t == null || t === '' ? { w: 0, h: 0 } : { w: Math.ceil(frWide(`[${t}]`, FR.guard) + 6), h: FR.guardH + frMore(t) });
 const useSize = t => ({ w: Math.ceil(2 * (tagSize('ref').w + TA.gx) + frWide(t, FR.name) + 6), h: 2 * FR.tagH + 4 + frMore(t) });

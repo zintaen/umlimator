@@ -1,5 +1,5 @@
 import { registerDiagramType } from '../core/registry.js';
-import { esc, fit, textW } from '../core/text.js';
+import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { ENDS, brLines } from '../typed/draw.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
@@ -84,10 +84,10 @@ const ER_MARK = [['primaryKey', 'PK'], ['foreignKey', 'FK'], ['unique', 'UK'], [
 function erParts(n) {
   const cap = Number.isFinite(n.rows) ? Math.max(0, Math.floor(n.rows)) : Infinity, hidden = new Set(ER_ARR(n.collapsed));
   const secs = ER_ARR(n.sections).filter(S => !hidden.has(S.name)).map(S => ({ name: S.name, rows: S.rows.slice(0, cap), more: Math.max(0, S.rows.length - cap) }));
-  const rows = secs.flatMap(S => S.rows), W = (k, px) => Math.max(0, ...rows.flatMap(r => brLines(r[k]).map(l => textW(l, px)))), name = brLines(n.label), head = ER.head + (name.length - 1) * ER.nlh;
+  const rows = secs.flatMap(S => S.rows), W = (k, px) => Math.max(0, widest(rows, r => widest(brLines(r[k]), l => textW(l, px)))), name = brLines(n.label), head = ER.head + (name.length - 1) * ER.nlh;
   const fw = W('marks', ER.fpx), nw = W('name', ER.px), tw = W('type', ER.px), lead = fw ? fw + ER.sep : 0;
-  const w = Math.ceil(Math.min(ER.maxW, Math.max(ER.minW, 2 * ER.pad + lead + nw + (tw ? ER.sep + tw : 0), ...name.map(l => textW(l, ER.name) + 2 * ER.pad),
-    ...secs.filter(S => S.more).map(S => 2 * ER.pad + lead + textW(`+${S.more} more`, ER.px)))));
+  const w = Math.ceil(Math.min(ER.maxW, Math.max(ER.minW, 2 * ER.pad + lead + nw + (tw ? ER.sep + tw : 0), widest(name, l => textW(l, ER.name) + 2 * ER.pad),
+    widest(secs.filter(S => S.more), S => 2 * ER.pad + lead + textW(`+${S.more} more`, ER.px)))));
   const lines = r => brLines(r.name).length, tall = S => { const k = S.rows.reduce((a, r) => a + lines(r), 0) + (S.more ? 1 : 0); return k ? 2 * ER.gap + k * ER.rl : ER.empty; };
   return { secs, fw, nw, tw, lead, w, tall, lines, name, head, h: head + secs.reduce((a, S) => a + tall(S), 0) };
 }

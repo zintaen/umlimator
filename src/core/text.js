@@ -14,7 +14,10 @@ const md = s => String(s ?? '').trim().split(/\n{2,}/).map(b => /^\s*[-*] /.test
 const textW = (s, px) => measureText ? measureText(String(s ?? ''), px) : String(s ?? '').length * px * 0.6;
 // a text's lines where its author broke it (a Mermaid <br>, F2's Shift+Enter), one line where it has none: each drawn on its
 // own line, not as a space (audit 22, as flowWrap since audit 21); a broken text is as wide as its widest line (audit 24)
-const brLines = t => String(t ?? '').split(/\r\n?|[\n\u2028\u2029]/), linesW = (s, px) => Math.max(...brLines(s).map(l => textW(l, px)));
+// the largest f(x) over xs (-Infinity for none), in a loop: Math.max(...xs) spreads every x as an argument, and a text
+// broken on some 120,000 lines (a file under 1 MiB) throws a RangeError there (audit 25)
+const widest = (xs, f) => { let w = -Infinity; for (const x of xs) w = Math.max(w, f(x)); return w; };
+const brLines = t => String(t ?? '').split(/\r\n?|[\n\u2028\u2029]/), linesW = (s, px) => widest(brLines(s), l => textW(l, px));
 const sansW = (s, px, k) => measureText ? measureText(String(s ?? ''), px) : textW(s, px) * k; // k: the estimate's sans correction
 let ctx2d; // the 2D context text is measured on, probed once per module: jsdom has none, and says so on every try
 function hostMeasure(el) { // widths in the font the host gives the map (--um-sans), memoised; null without a 2D canvas (jsdom)
@@ -68,4 +71,4 @@ function glyph(g) {
 
 // a line break in a typed view's line label: each part its own line, EDGE_LH px below the one before (audit 22)
 const EDGE_BREAK = /\r\n?|[\n\u2028\u2029]/, EDGE_LH = 12;
-export { measureText, measured, esc, inline, md, textW, brLines, linesW, sansW, hostMeasure, wrap2, clauseFit, fit, glyph, EDGE_BREAK, EDGE_LH };
+export { measureText, measured, esc, inline, md, textW, widest, brLines, linesW, sansW, hostMeasure, wrap2, clauseFit, fit, glyph, EDGE_BREAK, EDGE_LH };

@@ -1,5 +1,5 @@
 import { ownNodes, registerDiagramType } from '../core/registry.js';
-import { esc, fit, textW } from '../core/text.js';
+import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
 import { brLines } from '../typed/draw.js';
@@ -72,7 +72,7 @@ const CS = { pad: 10, px: 12, minW: 96, maxW: 320, h: 48 };
 // (a Mermaid <br>) a line each, 14 px apart, each line past the first one more (audit 23)
 const csPartSt = n => CS_ARR(n.stereotypes).filter(CS_HAS).map(t => `«${t}»`);
 SHAPE.part = {
-  size: n => { const st = csPartSt(n), nm = brLines(n.label); return { w: Math.ceil(Math.min(CS.maxW, Math.max(CS.minW, ...nm.map(l => textW(l, CS.px) + 2 * CS.pad), ...st.map(t => textW(t, 11) + 2 * CS.pad)))), h: CS.h + 14 * Math.max(0, st.length + nm.length - 2) }; },
+  size: n => { const st = csPartSt(n), nm = brLines(n.label); return { w: Math.ceil(Math.min(CS.maxW, Math.max(CS.minW, widest(nm, l => textW(l, CS.px) + 2 * CS.pad), widest(st, t => textW(t, 11) + 2 * CS.pad)))), h: CS.h + 14 * Math.max(0, st.length + nm.length - 2) }; },
   out: boxOut(0), face: n => [n.y, n.y + n.h], inset: () => 0,
   draw(n, c, f) { const { x, y, w, h } = n, st = csPartSt(n), nm = brLines(n.label), y0 = y + h / 2 + 4 - 7 * (st.length + nm.length - 1);
     return `<g class="node part" data-id="${esc(n.id)}" data-shape="part" tabindex="-1" role="img" aria-label="${esc(n.aria || 'Part ' + (n.label ?? ''))}">`

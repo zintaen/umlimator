@@ -1,5 +1,5 @@
 import { registerDiagramType } from '../core/registry.js';
-import { esc, fit, textW, wrap2 } from '../core/text.js';
+import { esc, fit, textW, widest, wrap2 } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { brLines } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
@@ -66,7 +66,7 @@ const clWrap = (s, px) => { s = String(s ?? ''); const ls = brLines(s); return l
 const clText = (x, y, t, px, wt, fill, cls, more = '', anchor = 'start') => `<text x="${r2(x)}" y="${r2(y)}"${anchor === 'start' ? '' : ` text-anchor="${anchor}"`} class="${cls}"${more} fill="${fill}" style="font:${wt} ${px}px var(--um-sans)">${esc(t)}</text>`;
 function clParts(n) {
   const label = clWrap(n.label, CLD.label), name = CL_HAS(n.name) && n.name !== n.label ? clWrap(n.name, CLD.name) : [], left = CLD.pad + CL_TILE + CLD.gap;
-  const tw = Math.max(...label.map(t => textW(t, CLD.label)), ...name.map(t => textW(t, CLD.name))), text = label.length * CLD.llh + (name.length ? 2 + name.length * CLD.nlh : 0);
+  const tw = Math.max(widest(label, t => textW(t, CLD.label)), widest(name, t => textW(t, CLD.name))), text = label.length * CLD.llh + (name.length ? 2 + name.length * CLD.nlh : 0);
   return { label, name, left, text, w: Math.ceil(Math.min(CLD.maxW, Math.max(CLD.minW, left + tw + CLD.pad))), h: Math.max(CLD.minH, Math.ceil(text + 20)) };
 }
 const clNodeG = (n, cls, body) => `<g class="node ${cls}" data-id="${esc(n.id)}" data-shape="${cls}" tabindex="-1" role="img" aria-label="${esc(n.aria || n.label || n.id)}">${body}</g>`;
@@ -89,7 +89,7 @@ SHAPE['cloud-card'] = {
 // A title the author broke: a line each, 16 px apart, the card taller and the box's header room grown for them (titleLh, audit 23)
 const clDash = d => (d ? ' stroke-dasharray="6 4"' : '');
 SHAPE['cloud-group'] = {
-  size: n => { const ls = brLines(n.title); return { w: Math.ceil(Math.min(CLD.maxW, Math.max(120, ...ls.map(l => textW(l, 12) + 24)))), h: 44 + (ls.length - 1) * 16 }; },
+  size: n => { const ls = brLines(n.title); return { w: Math.ceil(Math.min(CLD.maxW, Math.max(120, widest(ls, l => textW(l, 12) + 24)))), h: 44 + (ls.length - 1) * 16 }; },
   out: SHAPE.box.out, face: SHAPE.box.face, inset: SHAPE.box.inset,
   draw: n => { const o = SHAPE.box.out(n);
     return clNodeG(n, 'cloud-group', `<path d="${o}" class="n-mask"/><path d="${o}" class="n-body" fill="var(--um-stage-bg)" stroke="var(--um-muted)"${clDash(n.dashed)}/>`
@@ -100,7 +100,7 @@ SHAPE['cloud-group'] = {
 };
 // a user (gcp.User): the map's person, no icon, its name under the head
 SHAPE['cloud-user'] = {
-  size: n => { const L = clWrap(n.label, CLD.label); return { w: Math.ceil(Math.min(240, Math.max(120, ...L.map(t => textW(t, CLD.label) + 28)))), h: Math.max(CLD.minH, 40 + L.length * CLD.llh) }; },
+  size: n => { const L = clWrap(n.label, CLD.label); return { w: Math.ceil(Math.min(240, Math.max(120, widest(L, t => textW(t, CLD.label) + 28)))), h: Math.max(CLD.minH, 40 + L.length * CLD.llh) }; },
   out: (n, d) => SHAPE.person.out(n, d), face: n => SHAPE.person.face(n), inset: (n, s, t) => SHAPE.person.inset(n, s, t),
   draw: n => { const o = SHAPE.person.out(n), L = clWrap(n.label, CLD.label); let y = n.y + 30; const t = [];
     L.forEach((s, i) => { t.push(clText(n.x + n.w / 2, y + 12.5, fit(s, CLD.label, n.w - 24, true), CLD.label, 600, 'var(--um-text)', 'c-name', i ? '' : ` data-o="${esc(n.id)}"`, 'middle')); y += CLD.llh; });
