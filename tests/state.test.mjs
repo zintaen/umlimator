@@ -80,7 +80,9 @@ test('the shapes: junction, history and terminate; a state\'s compartment, its r
 
 // the crossings that turning port repair off leaves (notes/stage-4.md §17): pinned
 const PINNED = { // a pseudostate is named by its id (audit 5)
-  right: ['view order-life: edges payment-outcome→Fulfilling and Picking→Packed cross', 'view order-life: edges payment-outcome→Cancelled and Capturing payment→Cancelled cross'],
+  // audit 27: payment-outcome's line into Fulfilling went in at its top, across the whole box and back to its left border from
+  // inside; now it keeps out of the box it ends on, into the left border from outside, and crosses prepaid's line there instead
+  right: ['view order-life: edges payment-outcome→Fulfilling and prepaid→Picking cross', 'view order-life: edges payment-outcome→Cancelled and Capturing payment→Cancelled cross'],
   // audit 26: the payment region holds the retry loop and its label (its label no longer on two lines), and one more crossing
   down: ['view order-life: edges payment-outcome→Fulfilling and payment-outcome→Cancelled cross', 'view order-life: edges payment-outcome→Fulfilling and prepaid→Payment captured cross', 'view order-life: edges payment-outcome→Cancelled and prepaid→Payment captured cross', 'view order-life: edges payment-outcome→Cancelled and Payment captured→ready cross',
     'view order-life: edges payment-outcome→Cancelled and Fulfilling→Cancelled cross', 'view order-life: edges Capturing payment→Cancelled and Capturing payment→Payment captured cross',
@@ -619,4 +621,17 @@ test('audit 26: laid out down, a composite state holds a two-way pair\'s fanned 
   assert.deepEqual(on(os, V.id).filter(t => /attempts < 3/.test(t)), [], 'the retry loop\'s label inside its region');
   // laid out right, as before (the room is the down view's alone)
   assert.deepEqual(on(SM, V.id), []);
+});
+
+// audit 27: laid out right, a self-loop and a two-way pair with sentence-length labels out of the same state: the pair's
+// other line and its label left the outgoing line no clean track, and with reroute off it climbed through the loop
+test('audit 27: a self-loop beside a two-way pair laid out right (an ordinary Mermaid LR state diagram) crosses nothing', async () => {
+  const { readMermaidState } = await import('../src/readers/mermaid-state.js');
+  const src = ['stateDiagram-v2', 'direction LR', '[*] --> A', 'A --> B : go there now', 'B --> A : come back here', 'A --> A : self loop label'];
+  for (const d of ['LR', 'TB']) {
+    const m = readMermaidState(src.join('\n').replace('direction LR', 'direction ' + d)).model, v = m.views[0].id;
+    assert.deepEqual(check(m, v), [], d);
+    const g = layout(m, v), loop = g.edges.find(e => e.from === e.to), ab = g.edges.find(e => e.from !== e.to && e.label === 'go there now');
+    assert.ok(loop && ab, d);
+  }
 });

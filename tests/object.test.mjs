@@ -305,3 +305,23 @@ test('audit 26: a line of another kind an object view lists is said by its kind\
   assert.equal(describe(only, 'v').split('\n')[1], 'Instance specification a : A; linked to b.');
   assert.deepEqual(layout(only, 'v').legend.map(x => x.match(/<b>([^<]*)<\/b>/)[1]), ['Link']);
 });
+
+// audit 27: the object view's "Line" swatch was the bare stroke "Link" has, though the line is drawn with an arrowhead;
+// and the class, package, profile, component, deployment and use case views drew the same arrow with no "Line" entry
+test('audit 27: every structural view that draws a line of another kind as "Line" lists it in its legend, its swatch with the arrowhead it is drawn with', async () => {
+  for (const f of ['component', 'deployment', 'usecase', 'package', 'profile']) await import(`../src/uml/${f}.js`);
+  const sw = s => /<g[^>]*>(.*?)<\/g>/.exec(s)[1], name = s => /<b>([^<]*)<\/b>/.exec(s)[1];
+  const o = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.InstanceSpecification', label: 'a' }, { id: 'b', type: 'uml.InstanceSpecification', label: 'b' }],
+    edges: [{ id: 'k', type: 'uml.Link', from: 'a', to: 'b' }, { id: 'd', type: 'uml.Dependency', from: 'b', to: 'a' }], views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['a', 'b'], edges: ['k', 'd'] }] };
+  const g = layout(o, 'v'), link = g.legend.find(s => name(s) === 'Link'), line = g.legend.find(s => name(s) === 'Line');
+  assert.equal(g.edges.find(e => e.id === 'd').end.to, 'arrow');
+  assert.notEqual(sw(line), sw(link), 'the Line swatch is not the Link swatch');
+  assert.match(sw(line), /<path d="M2 8H17"\/><path d="M16 4L26 8L16 12Z" fill="var\(--um-muted\)"\/>/, 'a shorter stroke and a filled arrowhead');
+  for (const [d, A] of [['uml.class', 'uml.Class'], ['uml.package', 'uml.Package'], ['uml.profile', 'uml.Class'], ['uml.component', 'uml.Component'], ['uml.deployment', 'uml.Node'], ['uml.use-case', 'uml.UseCase']]) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'a', type: A, label: 'A' }, { id: 'b', type: A, label: 'B' }], edges: [{ id: 'x', type: 'uml.Link', from: 'a', to: 'b' }], views: [{ id: 'v', diagram: d, nodeIds: ['a', 'b'], edges: ['x'] }] };
+    const h = layout(m, 'v'), e = h.edges.find(x => x.id === 'x');
+    assert.deepEqual([e.end.to, e.aria.split(' ')[0]], ['arrow', 'Line'], d);
+    const items = h.legend.filter(s => name(s) === 'Line'); assert.equal(items.length, 1, `${d}: one "Line" entry`);
+    assert.equal(sw(items[0]).replace(/^.*?(<path d="M2 8H17"\/>)/, '$1'), sw(line), `${d}: the object view's swatch`);
+  }
+});
