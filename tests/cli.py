@@ -1254,7 +1254,7 @@ with tempfile.TemporaryDirectory() as tmp:
         txt = "".join(read("fulfil-activity.pdf"))
         ok("pdf · fulfil-activity: its tables list each node's kind and its partition (rows), each partition, each flow's kind",
            all(flat(s) in txt for s in ["Order workerPartition", "All books in stock?Decisionin Warehouse", "Stock levelsData storein Warehouse", "Take paymentCall behaviour actionin Order worker",
-                                        "toldFlow finalin Email service", "Initial nodeInitial node", "Control flow", "Object flow"]), txt[:800])
+                                        "Flow finalFlow finalin Email service", "Initial nodeInitial node", "Control flow", "Object flow"]), txt[:800])
     if part.of("typed order-states"):
         txt = "".join(read("order-states.pdf"))
         ok("pdf · order-states: its tables list each element's kind (a pseudostate's), a state's entry, do and exit and internal transitions, a composite's regions, each transition",
@@ -1323,7 +1323,7 @@ with tempfile.TemporaryDirectory() as tmp:
             # event is on, its documentation); each flow's ends, name and kind
             "bookshop-order-to-shipment": ["TakepaymentServicetaskinSales", "Noanswerin2minutesTimerboundaryeventonTakepayment", "BookshopPool",
                                            "CancelorderServicetaskinSalesNothingtorefund:nopaymentwastaken.", "Takepayment→PaymentproviderChargerequestMessageflow",
-                                           "Paid?→forkyesSequenceflow"]}
+                                           "Paid?→ParallelgatewayyesSequenceflow"]}
     for n, want in PDF2.items():
         if not part.of(f"typed {n}"):
             continue
