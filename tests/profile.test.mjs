@@ -135,7 +135,7 @@ test('an open package\'s and an enumeration\'s stereotypes and tags (§4.1, §4.
   assert.equal(T.boxes(m, m.views[0]).find(b => b.id === 'sales').aria, want);
   assert.ok(describe(m, 'profile').split('\n').includes(want + '.'));
   assert.deepEqual(g.byId.tier.compartments.map(c => c.members.map(x => x.label)), [['«coded»', 'code = T'], ['A']]);
-  assert.equal(g.byId.tier.aria, 'Enumeration Tier: «coded» code = T');
+  assert.equal(g.byId.tier.aria, 'Enumeration Tier: «coded» code = T; A', 'its tags, then the literal drawn under them (audit 27)');
   assert.match(svgOf(g), /class="c-row"[^>]*>code = T<\/text>/, 'the compartment the name says is drawn');
   assert.deepEqual(validate(m), []);
 });
@@ -429,4 +429,25 @@ test('audit 26: an extension or an application one profile view draws as its own
     assert.ok(T.rows(m, v, owned).includes('extends Class {required}'), `${v.id}: the stereotype's row`);
     assert.ok(T.rows(m, v, prof).some(r => /applied to sales/.test(r)), `${v.id}: the profile's row`);
   }
+});
+
+// audit 27: the PDF's rows fell back to the class rows when an element had no stereotype, listing a plain class's members,
+// which the view does not draw; and a stereotyped enumeration's row dropped the literals the view draws
+test('audit 27: the PDF rows and describe() say what the profile view draws: a plain class no members, an enumeration its literals', () => {
+  const m = structuredClone(PROFILE), cls = (id, label, extra) => N(id, 'Class', label, 'sales', { ...extra, members: [P(id + '.total', 'total', 'Money'), N(id + '.pay', 'Operation', 'pay')] });
+  m.nodes.push(cls('invoice', 'Invoice'), N('coded', 'Stereotype', 'coded', 'conventions'), N('mc-enum', 'MetaclassReference', 'Enumeration', 'conventions'),
+    N('kind', 'Enumeration', 'Kind', 'sales', { props: { stereotypes: ['coded'] }, members: [N('kind.a', 'EnumerationLiteral', 'RETAIL'), N('kind.b', 'EnumerationLiteral', 'TRADE')] }),
+    N('plain', 'Enumeration', 'Plain', 'sales', { members: [N('plain.a', 'EnumerationLiteral', 'ONE')] }));
+  m.edges.push(L('coded-ext', 'Extension', 'coded', 'mc-enum')); m.views[0].nodeIds.push('invoice', 'coded', 'mc-enum', 'kind', 'plain');
+  const g = layout(m, 'profile'), drawn = svgOf(g);
+  assert.doesNotMatch(drawn, />total: Money<|>\+? ?pay\(\)</, 'the plain class\'s members are not drawn');
+  assert.deepEqual(T.rows(m, V, 'invoice'), ['«owned» required team = ?'], 'so the PDF lists none, only the required «owned» it draws');
+  assert.ok(describe(m, 'profile').split('\n').includes('Class Invoice: «owned» required team = ?.'));
+  const iface = structuredClone(m); by(iface, 'invoice').type = 'uml.Interface'; // no stereotype at all: an empty row, not the class rows
+  assert.deepEqual(T.rows(iface, V, 'invoice'), []);
+  for (const t of ['RETAIL', 'TRADE', 'ONE']) assert.match(drawn, new RegExp(`>${t}</`), t);
+  assert.deepEqual(T.rows(m, V, 'kind'), ['«coded»', 'RETAIL', 'TRADE']);
+  assert.deepEqual(T.rows(m, V, 'plain'), ['ONE']);
+  assert.ok(describe(m, 'profile').split('\n').includes('Enumeration Kind: «coded»; RETAIL; TRADE.'));
+  assert.equal(T.rows(m, V, 'sales'), null, 'a closed package with no stereotype keeps its own rows');
 });

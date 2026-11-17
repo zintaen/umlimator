@@ -1,4 +1,5 @@
 import { TYPED, diagramOf, heldBy } from '../core/registry.js';
+import { copyOf } from '../core/model.js';
 import { esc } from '../core/text.js';
 import { arrOf, validate } from '../map/validate.js';
 
@@ -95,7 +96,7 @@ function typedEditor(api) {
     api.editor({ x: cam.s.cx - 80, y: cam.s.cy - 13, w: 160, h: 26 }, '', value => emit([{ op: 'add', element: { ...typed(t, 'node'), label: value }, view: api.view() }]));
   }
   const hook = k => { const E = def().edits; return isRec(E) && typeof E[k] === 'function' ? E[k] : null; }; // registry.js edits
-  const addLine = (from, to, t, at) => { const c = hook('connect'), dflt = () => emit([{ op: 'add', element: { ...typed(t, 'line'), from, to, ...(isRec(t.props) ? { props: structuredClone(t.props) } : {}) }, view: api.view() }]); // at: a slot (src/typed/edit.js)
+  const addLine = (from, to, t, at) => { const c = hook('connect'), dflt = () => emit([{ op: 'add', element: { ...typed(t, 'line'), from, to, ...(isRec(t.props) ? { props: copyOf(t.props) } : {}) }, view: api.view() }]); // at: a slot (src/typed/edit.js)
     return c ? (I.ran || (r => emit(arrOf(r))))(c(model(), view(), from, to, at, t), dflt) : dflt(); }; // I.ran: src/typed/edit.js's null and { error }
   function connect(from, to, ev, at = null) { // the relationship picker, when the type has more than one kind of line
     if (!can('add') || !from || !to || from === to && !I.self) return;

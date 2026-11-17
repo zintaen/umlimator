@@ -9,6 +9,7 @@ import './class.js'; // SHAPE.note, a comment
 import { FLOW_CONTROL, FLOW_RULES, flowOf, flowProblems, flowText, flowLabel, flowRename, flowStereo } from './flow.js';
 import { frLines, frameTag, tagSize, useSize } from './frame.js';
 import { interactionWalk } from './interaction.js';
+import { snKindName } from './structure.js';
 import { sqDraw, sqRun } from './sequence.js';
 
 /* ---------- the interaction overview diagram, uml.interaction-overview (work package 4.7, notes/stage-4.md §11) ----------
@@ -33,7 +34,7 @@ const OV_MAX = { heads: 8, messages: 20 }; // an inline interaction past either 
 const OV_GAP = 26; // a label's room past its own size on half a gap: a stub's 22 px and a little air
 const OV_SD = { pad: 10, line: 'var(--um-muted)', bg: 'var(--um-stage-bg)' };
 const ovOwn = (o, k) => (Object.hasOwn(o, k) ? o[k] : undefined); // a lookup by a model's type: 'constructor' is not Object's (risks.md M3)
-const ovWordOf = t => ovOwn(OV_WORD, t) || String(t ?? '').split('.').pop().replace(/([a-z])([A-Z])/g, (_, a, b) => a + ' ' + b.toLowerCase());
+const ovWordOf = t => ovOwn(OV_WORD, t) || snKindName(t); // no type: "Element" (audit 27)
 const ovPlural = (k, w, ws = w + 's') => `${k} ${k === 1 ? w : ws}`;
 const ovStereo = x => OV_ARR(OV_PROPS(x).stereotypes).filter(OV_HAS).map(String);
 

@@ -4,8 +4,9 @@ import { SHAPE, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { brLines } from '../typed/draw.js';
-import { lineIn } from './class.js'; // SHAPE.note, a comment's look too
+import { lineIn, lineItem } from './class.js'; // SHAPE.note, a comment's look too
 import { ownersOn, placeTabs, readingOrder } from './owners.js';
+import { snKindName } from './structure.js';
 
 /* ---------- the use case diagram, uml.use-case (work package 4.4, notes/stage-4.md §8) ----------
    Actors (a stick figure), use cases (an ellipse, its extension points in a compartment under the name) and subjects: a
@@ -152,8 +153,8 @@ function ucNodeName(model, n, pic) {
   const st = ucStereo(n), why = st.length ? ` (${st.join(', ')})` : '', up = n.parent != null && pic.at.get(n.parent), k = ucPointsOf(n).length;
   if (n.type === 'uml.UseCase') return `Use case ${ucName(n)}${why}${up ? `, in ${ucName(up)}` : ''}${k ? `, ${ucPlural(k, 'extension point')}` : ''}`;
   if (n.type === 'uml.Package') return `Package ${ucName(n)} (${[...st, 'closed'].join(', ')})`;
-  // a kind outside the view's own in words, "Data type Money", never its type's name (audit 23)
-  return `${n.type === 'uml.Actor' ? 'Actor' : n.type === 'uml.Subject' ? 'Subject' : String(n.type).split('.').pop().replace(/([a-z])([A-Z])/g, (_, a, b) => a + ' ' + b.toLowerCase())} ${ucName(n)}${why}`;
+  // a kind outside the view's own in words, "Data type Money", never its type's name (audit 23); no type: "Element Plain" (audit 27)
+  return `${n.type === 'uml.Actor' ? 'Actor' : n.type === 'uml.Subject' ? 'Subject' : snKindName(n.type)} ${ucName(n)}${why}`;
 }
 // "Extend from Redeem a voucher to Check out, at payment, when the shopper has a voucher code"
 function ucLineName(model, e, pic) {
@@ -175,7 +176,8 @@ const UC_ENDS = { none: '', open: '<path d="M17 4L26 8L17 12" fill="none"/>', tr
 const UC_SAYS = { 'uml.Association': 'an actor takes part in the use case', 'uml.Include': 'the base always does the included use case',
   'uml.Extend': 'adds to the base at its extension points, when the condition holds', 'uml.Generalization': 'is a kind of the one it points to', 'uml.CommentLink': 'what a comment is about' };
 const ucLegend = edges => Object.keys(UC_SAYS).filter(t => edges.some(e => e.type === t)).map(t => { const L = UC_LINE_LOOK[t], name = UC_LINE_WORD[t], says = UC_SAYS[t];
-  return `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round"><path d="M2 8H${L.to === 'none' ? 26 : 17}"${L.dashed ? ' stroke-dasharray="3 2"' : ''}/>${UC_ENDS[L.to]}</g></svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`; });
+  return `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round"><path d="M2 8H${L.to === 'none' ? 26 : 17}"${L.dashed ? ' stroke-dasharray="3 2"' : ''}/>${UC_ENDS[L.to]}</g></svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`; })
+  .concat(edges.some(e => !Object.hasOwn(UC_LINE_WORD, e.type)) ? [lineItem()] : []); // a kind it does not draw as its own: "Line", its arrow (audit 27)
 
 /* ---- the view laid out (§8.1) ---- */
 // actors first: each actor the view shows outside a box goes to a column before the rest, in the order of the rows of the

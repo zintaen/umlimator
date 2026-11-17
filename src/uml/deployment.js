@@ -3,7 +3,7 @@ import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { brLines } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
-import { lineRename } from './class.js'; // SHAPE.note, a comment's look too
+import { lineItem, lineRename } from './class.js'; // SHAPE.note, a comment's look too
 import { lineInside, ownersOn, readingOrder, viewLines } from './owners.js';
 import { SN_SAY, STRUCT_RULES, snKindName, snKindWord, structProblems } from './structure.js'; // SHAPE.artifact and SHAPE.component too
 
@@ -126,7 +126,8 @@ const DP_ENDS = { none: '', open: '<path d="M17 4L26 8L17 12" fill="none"/>' };
 const DP_SAYS = { 'uml.Deployment': '«deploy»: the artifact runs on the target', 'uml.Manifestation': '«manifest»: the artifact is built from the component',
   'uml.CommunicationPath': 'the two exchange messages', 'uml.Dependency': 'uses the one it points to', 'uml.CommentLink': 'what a comment is about' };
 const dpLegend = edges => DP_LINES.filter(t => edges.some(e => e.type === t)).map(t => { const L = DP_LINE_LOOK[t], name = DP_LINE_WORD[t], says = DP_SAYS[t];
-  return `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round"><path d="M2 8H${L.to === 'none' ? 26 : 17}"${L.dashed ? ' stroke-dasharray="3 2"' : ''}/>${DP_ENDS[L.to]}</g></svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`; });
+  return `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round"><path d="M2 8H${L.to === 'none' ? 26 : 17}"${L.dashed ? ' stroke-dasharray="3 2"' : ''}/>${DP_ENDS[L.to]}</g></svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`; })
+  .concat(edges.some(e => !DP_LINES.includes(e.type)) ? [lineItem()] : []); // a kind it does not draw as its own: "Line", its arrow (audit 27)
 
 /* ---- the view laid out (§10.3) ---- */
 // on a copy: a label left over a cube box's front face's top or right line (in the box's padding, where check() does not

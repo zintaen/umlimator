@@ -688,9 +688,10 @@ test('a dependency or usage in a composite view has its legend entry, and its ac
   assert.equal(g.edges.find(e => e.id === 'd').aria, 'Dependency from repo to db: reads');
   assert.equal(g.edges.find(e => e.id === 'u').aria, 'Usage from db to repo');
   const said = describe(m, 'w').split('\n'); assert.ok(said.includes('Dependency from repo to db: reads.') && said.includes('Usage from db to repo.'), said.join('\n'));
-  // a kind the class view has no word for is still a plain "Line", keyed by none
+  // a kind the class view has no word for is still a plain "Line", keyed "Line" with its arrow as every structural view keys it (audit 27)
   const odd = structuredClone(m); odd.edges.push({ id: 'x', type: 'uml.Flow', from: 'svc.p', to: 'svc.q' }); odd.views[0].edges.push('x');
-  const go = layout(odd, 'w'); assert.equal(go.edges.find(e => e.id === 'x').aria, 'Line from repo to db'); assert.equal(go.legend.length, 3);
+  const go = layout(odd, 'w'); assert.equal(go.edges.find(e => e.id === 'x').aria, 'Line from repo to db');
+  assert.deepEqual(go.legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Connector', 'Dependency', 'Usage', 'Line']); assert.equal(go.edges.find(e => e.id === 'x').end.to, 'arrow');
 });
 
 test('audit 23: a view\'s own connector (view.edges object) is checked as a model one, at its own path (a bad ends.part: connector-part)', () => {

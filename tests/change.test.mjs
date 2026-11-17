@@ -426,3 +426,59 @@ test('audit 24: diff()\'s order check past the cap leaves out the steps no pairi
     const p = gen(Math.floor(rnd() * 12), 3 + Math.floor(rnd() * 6)), q = gen(Math.floor(rnd() * 12), 3 + Math.floor(rnd() * 6));
     assert.equal(sameOrder(p, q, 0), sameOrder(p, q, Infinity), `${JSON.stringify(p)} ${JSON.stringify(q)}`); }
 });
+
+// audit 27: diff() copies both models with copyOf(), which keeps a host's function (audit 24), but a member it brought back
+// (one a removed line ends on), a changed card's copy with its lost members left out, and an owner it brought back were
+// each copied with structuredClone, which threw a DOMException ("could not be cloned")
+test('audit 27: diff() brings back a member or an owner, and compares a changed card, when they hold a host\'s function', async () => {
+  const U = await import('../lib/umlimator-all.js'), fn = () => 1;
+  const cls = members => ({ schemaVersion: 2, nodes: [{ id: 'k', type: 'uml.Class', label: 'K', members }, { id: 'j', type: 'uml.Class', label: 'J' }], edges: [], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['k', 'j'] }] });
+  const a = cls([{ id: 'm', type: 'uml.Property', label: 'm', onEdit() {} }]); a.edges = [{ id: 'e', type: 'uml.Association', from: 'j', to: 'm' }];
+  const r = U.diff(a, cls([]));
+  const p = cls([{ id: 'm', type: 'uml.Property', label: 'm' }]); p.edges = a.edges;
+  assert.deepEqual(r.summary, U.diff(p, cls([])).summary); assert.deepEqual(r.summary, ['removes m from K']);
+  assert.equal(typeof r.model.nodes[0].members[0].onEdit, 'function'); assert.equal(r.model.nodes[0].members[0].change, 'removed');
+  const two = () => cls([{ id: 'm', type: 'uml.Property', label: 'm' }, { id: 'n', type: 'uml.Property', label: 'n' }]), one = () => cls([{ id: 'n', type: 'uml.Property', label: 'n' }]);
+  const b0 = two(), b1 = one(); b0.nodes[0].hook = fn; b1.nodes[0].hook = fn; b1.nodes[0].label = 'K2';
+  const c0 = two(), c1 = one(); c1.nodes[0].label = 'K2';
+  assert.deepEqual(U.diff(b0, b1).summary, U.diff(c0, c1).summary); assert.deepEqual(U.diff(c0, c1).summary, ['removes m from K2', 'renames K to K2']);
+  // an owner that left with what it held (a removed card whose parent was a member that left too) comes back, removed
+  const own = gone => ({ schemaVersion: 2, nodes: [{ id: 'k', label: 'K', members: gone ? [] : [{ id: 'r', label: 'R', hook: fn }] }, ...(gone ? [] : [{ id: 's', label: 'S', parent: 'r' }])], edges: [], views: [{ id: 'v', nodeIds: gone ? ['k'] : ['k', 's'] }] });
+  const o = U.diff(own(false), own(true)), back = o.model.nodes[0].members.find(x => x.id === 'r');
+  assert.ok(back && back.change === 'removed' && back.hook === fn, JSON.stringify(o.model.nodes[0]));
+  // and a fragment that left with its message, where no card changed (the owner chain alone copies it)
+  const seq = () => JSON.parse(readFileSync(new URL('../examples/checkout-sequence.json', import.meta.url))), s0 = seq(), s1 = seq();
+  s0.views[0].fragments[1].hook = fn; s1.views[0].fragments.pop(); s1.views[0].edges = s1.views[0].edges.filter(e => e.id !== 'm7');
+  const f = U.diff(s0, s1); assert.deepEqual(f.summary, ['removes the line from api to storefront (orderPlaced)', 'removes the opt fragment']);
+  assert.deepEqual(f.model.views[0].fragments.map(x => [x.id, x.change, typeof x.hook]), [['f1', undefined, 'undefined'], ['f2', 'removed', 'function']]);
+});
+
+// audit 27: diff()'s canon() is JSON.stringify with a replacer that writes each object's keys sorted, into a new object each
+// time, so JSON.stringify's own check never saw a cycle (which copyOf(), validate() and layout() keep) and the stack overflowed
+test('audit 27: diff() compares a model that holds a cycle, and says what changed', () => {
+  const m = () => ({ nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [], views: [{ id: 'v', nodeIds: ['a', 'b'] }] });
+  const self = m(); self.nodes[0].self = self.nodes[0];
+  const owner = m(); owner.nodes[0].props = { owner: owner.nodes[0] };
+  const deep = m(); deep.nodes[0].props = { a: { b: {} } }; deep.nodes[0].props.a.b.up = deep.nodes[0].props; deep.nodes[0].props.a.list = [deep.nodes[0].props.a];
+  for (const c of [self, owner, deep]) {
+    assert.deepEqual(diff(c, c).summary, []);
+    assert.equal(diff(m(), c).summary.length, 1); assert.match(diff(m(), c).summary[0], /^changes A \((self|props)\)$/);
+    const d = structuredClone(c); d.nodes[1].label = 'B2'; assert.deepEqual(diff(c, d).summary, ['renames B to B2'], 'the cycle copied the same way is no change');
+  }
+  // the same object twice, side by side, is no cycle: it is written out each time, as before
+  const shared = m(), t = { x: 1 }; shared.nodes[0].props = { p: t, q: t }; const flat = m(); flat.nodes[0].props = { p: { x: 1 }, q: { x: 1 } };
+  assert.deepEqual(diff(shared, flat).summary, []);
+});
+
+// audit 27: an added card's sentence named its far card once for each line that joins them
+test('audit 27: diff() names each card an added card is joined to once, however many lines join them', () => {
+  const a = { nodes: [{ id: 'q', label: 'Queue' }, { id: 'd', label: 'DB' }], edges: [], views: [{ id: 'v', nodeIds: ['q', 'd'] }] };
+  const add = edges => ({ nodes: [...a.nodes, { id: 'w', label: 'Worker' }], edges, views: [{ id: 'v', nodeIds: ['q', 'd', 'w'] }] });
+  const said = edges => diff(a, add(edges)).summary;
+  assert.deepEqual(said([{ from: 'w', to: 'q', label: 'reads' }, { from: 'w', to: 'q', label: 'acks' }]), ['adds Worker, to Queue']);
+  assert.deepEqual(said([{ from: 'q', to: 'w', label: 'push' }, { from: 'q', to: 'w', label: 'retry' }, { from: 'w', to: 'q', label: 'ack' }]), ['adds Worker, to and from Queue']);
+  assert.deepEqual(said([{ from: 'q', to: 'w' }, { from: 'w', to: 'd' }]), ['adds Worker between Queue and DB']);
+  assert.deepEqual(said([{ from: 'q', to: 'w' }, { from: 'q', to: 'w' }, { from: 'w', to: 'd' }, { from: 'w', to: 'd' }]), ['adds Worker between Queue and DB']);
+  assert.deepEqual(said([{ from: 'q', to: 'w' }, { from: 'd', to: 'w' }, { from: 'w', to: 'q' }]), ['adds Worker, from DB, to and from Queue']);
+  assert.deepEqual(said([{ from: 'w', to: 'q' }, { from: 'w', to: 'd' }, { from: 'w', to: 'q' }]), ['adds Worker, to Queue and DB']);
+});

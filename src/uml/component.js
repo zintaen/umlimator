@@ -109,8 +109,8 @@ const cpOrder = pic => [...readingOrder(pic).flatMap(id => [id, ...cpPortsOf(pic
 
 /* ---- the legend: each line kind drawn. ponytail: copies class.js's legend ends, which it does not export ---- */
 const CP_ENDS = { none: '', open: '<path d="M17 4L26 8L17 12" fill="none"/>', triangle: '<path d="M16 3L26 8L16 13Z" fill="var(--um-panel)"/>',
-  socket: '<path d="M26 2A6 6 0 0 0 26 14" fill="none"/>', ball: '<circle cx="21" cy="8" r="5" fill="var(--um-panel)"/>' };
-const cpLegend = kinds => Object.keys(CP_LOOK).filter(k => kinds.has(k) && k !== 'line').map(k => { const [L, , name, says] = CP_LOOK[k], end = k === 'stem' ? 'ball' : L.to;
+  socket: '<path d="M26 2A6 6 0 0 0 26 14" fill="none"/>', ball: '<circle cx="21" cy="8" r="5" fill="var(--um-panel)"/>', arrow: '<path d="M16 4L26 8L16 12Z" fill="var(--um-muted)"/>' };
+const cpLegend = kinds => Object.keys(CP_LOOK).filter(k => kinds.has(k)).map(k => { const [L, , name, says] = CP_LOOK[k], end = k === 'stem' ? 'ball' : L.to;
   return `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round"><path d="M2 8H${end === 'none' ? 26 : end === 'ball' ? 16 : end === 'socket' ? 23 : 17}"${L.dashed ? ' stroke-dasharray="3 2"' : ''}/>${CP_ENDS[end]}</g></svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`; });
 
 /* ---- the view laid out (§10.1) ----

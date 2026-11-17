@@ -39,7 +39,7 @@ pointer or `L` (the canvas's handle ends on cards: such a line is written in the
 Layout limits, with port repair and rerouting off (`repair: false`, `reroute: false`, §11), measured on the example and
 `tests/cloud-stress.json`:
 
-- The example crosses once laid out right and 3 times down; no line runs through a node.
+- The example crosses twice laid out right (once before audit 27, when the apps subnet's line to Logs and alerts ran back through its own box) and 3 times down; no line runs through a node.
 - `tests/m4a-fixtures.test.mjs` pins the stress file's `az-edge-cases` view (five levels of groups, a generic group, a
   subnet in a resource group, a line from a subnet to a service in a sibling group), clean both ways.
 - A label is wrapped to two lines of 180 px, the full name to two, then cut with an ellipsis; both are in the card's
