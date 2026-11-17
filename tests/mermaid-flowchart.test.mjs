@@ -119,6 +119,7 @@ test("a file with every construct on Mermaid's flowchart page gives the pinned r
     '106 skipped: one --> three: one is a subgraph, which is not read',
     '107 skipped: three --> c2: three is a subgraph, which is not read',
     '109 approximated: g: a Markdown string is read as plain text',
+    '109 approximated: g -> h: a Markdown string is read as plain text',
     '111 skipped: click A1 callback "Tooltip for a callback": styles and interaction are not read',
     '112 skipped: click B1 "https://www.github.com" "This is a tooltip for ...: styles and interaction are not read',
     '113 skipped: linkStyle 3 stroke:#ff3,stroke-width:4px,color:red: styles and interaction are not read',
@@ -353,6 +354,23 @@ test('audit 24: a front-matter title ends at a YAML comment, and a quoted one is
       const { model, report } = rd(`---\ntitle: ${val}\n---\n${body}\n`);
       assert.equal(model.title, title, `${kind}: title: ${val}`);
       assert.deepEqual(report.filter(r => r.line === 2).map(r => `${r.line} ${r.status}: ${r.message}`), said, `${kind}: title: ${val}`);
+    }
+  }
+});
+
+test('audit 25: a block-scalar front-matter title, and a plain or quoted one over more lines, are read as js-yaml reads them, in all seven readers', async () => {
+  const bodies = { flowchart: 'flowchart LR\n  a --> b', class: 'classDiagram\n  class A', er: 'erDiagram\n  A ||--o{ B : x', state: 'stateDiagram-v2\n  [*] --> A',
+    sequence: 'sequenceDiagram\n  A->>B: x', mindmap: 'mindmap\n  root', requirement: 'requirementDiagram\n  requirement r {\n  id: 1\n  }' };
+  // [front matter, title, its last line]: the key after it is still said, on its own line
+  const cases = [['title: >\n  Orders and\n  payments', 'Orders and payments', 4], ['title: |-\n  Orders', 'Orders', 3], ['title: Orders\n  and payments', 'Orders and payments', 3],
+    ['title: |\n  a\n  b', 'a\nb', 4], ['title: >\n  a\n\n  b\n    deep\n  c', 'a\nb\n  deep\nc', 7], ['title: >2\n   x\n  y', ' x\ny', 4],
+    ["title: 'quoted\n  more' # c", 'quoted more', 3], ['title:\n  on the next line', 'on the next line', 3], ['title: >+ # a comment\n  kept', 'kept', 3]];
+  for (const [kind, body] of Object.entries(bodies)) {
+    const M = await import(`../src/readers/mermaid-${kind}.js`), rd = Object.values(M).find(f => f.name.startsWith('read'));
+    for (const [fm, title, last] of cases) {
+      const { model, report } = rd(`---\n${fm}\ntheme: x\n---\n${body}\n`);
+      assert.equal(model.title, title, `${kind}: ${fm}`);
+      assert.deepEqual(report.filter(r => r.message.startsWith('front matter')).map(r => `${r.line}: ${r.message}`), [`${last + 1}: front matter theme: Mermaid's configuration is not read`], `${kind}: ${fm}`);
     }
   }
 });

@@ -432,6 +432,46 @@ m, un = imp.read("mermaid", FM, "x")
 m2, un2 = imp.read("mermaid", FM.replace("flowchart LR\n  a --> b", 'C4Context\n  Person(a, "A")'), "x")
 ok("mermaid · front-matter configuration and %%{init}%% directives are said, in a flowchart and a C4 diagram (audit 24)",
    un == want and un2 == want and m["title"] == m2["title"] == "Shop" and len(m["edges"]) == 1, (un, un2))
+# audit 25: what follows a quoted title was quoted to 60 letters and ..., 63 in all, where the typed readers' mermaidClip()
+# quotes 57 and ... (60 UTF-16 units, never half an astral letter)
+tails = ["x" * 60, "x" * 61, "x" * 80, "\U0001F600" * 40, "a" + "\U0001F600" * 40, "#not a comment " * 9]
+js = subprocess.run(["node", "--input-type=module", "-e", "import { mermaidTitle } from " + json.dumps((ROOT / "src" / "readers" / "mermaid-front.js").as_uri())
+                     + "; const t = JSON.parse(process.argv[1]); console.log(JSON.stringify(t.map(x => mermaidTitle(x).rest)))", json.dumps(['"T" ' + x for x in tails])],
+                    capture_output=True, text=True)
+got = [imp.yaml_title('"T" ' + x)[1] for x in tails]
+ok("mermaid · what follows a quoted title is quoted as the typed readers quote it: 60 UTF-16 units at most, never half an astral letter (audit 25)",
+   js.returncode == 0 and got == json.loads(js.stdout) and len(got[2]) == 60 and got[2].endswith("x...") and got[0] == "x" * 60, (got, js.stdout, js.stderr[-300:]))
+# audit 25: 'this -> x' with no element around it (in the model, or a group there) ended the import in an AttributeError
+for where, dsl in [("the model", 'workspace {\nmodel {\na = softwareSystem "A"\nthis -> a "uses"\nb = softwareSystem "B"\na -> b\n}\n}'),
+                   ("a group in the model", 'workspace {\nmodel {\na = softwareSystem "A"\ngroup "G" {\nthis -> a "uses"\nb = softwareSystem "B"\n}\na -> b\n}\n}')]:
+    try:
+        m, un = imp.read("structurizr", dsl, "x")
+    except Exception as e:  # what the defect did
+        m, un = {"edges": []}, [repr(e)]
+    ok(f"structurizr · this -> x in {where}, where this names no element, is said and skipped; the rest is read (audit 25)",
+       [(e["from"], e["to"]) for e in m["edges"]] == [("a", "b")] and un == [(4 if where == "the model" else 5, "this -> a: this names no element here")], (m["edges"], un))
+# audit 25: a block-scalar title (title: > or |) was the title '>' or '|', and a plain title over two lines lost its second,
+# with no word; read as js-yaml reads them, as the typed readers' mermaidFrontTitle() does
+fms = ["title: >\n  Orders and\n  payments", "title: |-\n  Orders", "title: Orders\n  and payments", "title: |\n  a\n  b\n", "title: >\n  a\n\n  b\n    deep\n  c",
+       "title: >2\n   x\n  y", "title: 'quoted\n  more' # c", "title:\n  on the next line", "title: >+ # a comment\n  kept", "title: \"a\n  b\" tail"]
+want = ["Orders and payments", "Orders", "Orders and payments", "a\nb", "a\nb\n  deep\nc", " x\ny", "quoted more", "on the next line", "kept", "a b"]
+js = subprocess.run(["node", "--input-type=module", "-e", "import { mermaidFrontTitle } from " + json.dumps((ROOT / "src" / "readers" / "mermaid-front.js").as_uri())
+                     + "; const t = JSON.parse(process.argv[1]); console.log(JSON.stringify(t.map(x => { const r = mermaidFrontTitle(x.split('\\n'), 0); return [r.title, r.rest, r.end]; })))",
+                     json.dumps(fms)], capture_output=True, text=True)
+got = [imp.read("mermaid", f"---\n{fm}\nnext: 1\n---\nflowchart LR\n  a --> b\n", "x") for fm in fms]
+ok("mermaid · a block-scalar or multi-line front-matter title is read whole, as the typed readers read it, and the key after it still said (audit 25)",
+   [m["title"] for m, _ in got] == want
+   and [sorted(un) for _, un in got] == [sorted([(3 + fm.count("\n"), "front matter next: Mermaid's configuration is not read")]
+                                                + ([(2, "front matter title: tail, after the quoted title, is not read")] if "tail" in fm else [])) for fm in fms]
+   and js.returncode == 0 and [list(imp.front_title(fm.split("\n"), 0)) for fm in fms] == json.loads(js.stdout), ([m["title"] for m, _ in got], [un for _, un in got], js.stdout, js.stderr[-300:]))
+# audit 25: a Markdown string ("`**Bold**`") lost its backticks and kept its ** and _ as text, with no word, where the typed
+# reader says it is read as plain text: on a node, a line's label and a subgraph's title
+m, un = imp.read("mermaid", 'flowchart LR\n  A["`**Bold** and _it_`"] -->|"`*e*`"| B\n  B -- "`x`" --> C\n  subgraph s1 ["`**S**`"]\n  E\n  end\n'
+                 '  subgraph "`**T**`"\n  F\n  end\n  G["plain `ticks`"] --> H["`"]\n', "x")
+ok("mermaid · a Markdown string is said as read as plain text, on a node, a line and a subgraph; a label with backticks inside is not one (audit 25)",
+   un == [(2, "A: a Markdown string is read as plain text"), (2, "A -> B: a Markdown string is read as plain text"), (3, "B -> C: a Markdown string is read as plain text"),
+          (4, "subgraph s1: a Markdown string is read as plain text"), (7, "subgraph t: a Markdown string is read as plain text")]
+   and card(m, "A")["label"] == "**Bold** and _it_" and card(m, "G")["label"] == "plain `ticks`", un)
 
 with tempfile.TemporaryDirectory() as tmp:
     t = Path(tmp)
@@ -545,7 +585,8 @@ c4m, c4un = imp.read("mermaid", 'C4Context\naccDescr {\nPerson(x, "y")\n}\nPerso
 ok("mermaid · an accDescr { ... } block is passed over whole (flowchart, C4)", [n["id"] for n in m["nodes"]] == ["A", "B"]
    and un == [(2, "accDescr: accessibility text is not imported")] and [n["id"] for n in c4m["nodes"]] == ["a"] and not c4un, (m, un, c4m, c4un))
 m, un = imp.read("mermaid", 'flowchart LR\na("`The **cat**\n  in the hat`") -- "edge label" --> b{{"`The **dog** in the hog`"}}\n', "x")
-ok("mermaid · a quoted label over two lines is read", card(m, "a").get("label") == "The **cat** in the hat" and (line(m, "a", "b") or {}).get("label") == "edge label" and not un, (m, un))
+ok("mermaid · a quoted label over two lines is read", card(m, "a").get("label") == "The **cat** in the hat" and (line(m, "a", "b") or {}).get("label") == "edge label"
+   and un == [(2, "a: a Markdown string is read as plain text"), (2, "b: a Markdown string is read as plain text")], (m, un))  # said since audit 25
 m, un = imp.read("mermaid", 'flowchart LR\nA --> B\nB ~~~ C\nstyle A fill:#f9f\nclick A "x"\n', "x")
 ok("mermaid · an invisible link and style and click lines are said", un == [(3, "B ~~~ C: an invisible link is not imported"), (4, "not imported: style A fill:#f9f"),
    (5, 'not imported: click A "x"')], un)

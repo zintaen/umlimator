@@ -221,24 +221,90 @@ def front(text, said=None):
     m = re.match(r"\s*---[^\S\n]*\n(.*?)\n---[^\S\n]*(?:\n|$)", text, re.S)
     if not m:
         return None, text
-    title, first = None, text[:m.start(1)].count("\n") + 1
-    for no, l in enumerate(split_lines(m.group(1)), first):
+    title, first, lines, j = None, text[:m.start(1)].count("\n") + 1, split_lines(m.group(1)), 0
+    while j < len(lines):
+        l, no = lines[j], first + j
         if not l.strip() or l.strip().startswith("#") or l[:1].isspace():
+            j += 1
             continue
-        key, colon, val = l.partition(":")
-        key, val = key.strip(), val.strip()
+        key = l.partition(":")[0].strip()
         if key == "title":
-            title, rest = yaml_title(val)
+            title, rest, j = front_title(lines, j)
             if rest and said is not None:
                 said.append((no, f"front matter title: {rest}, after the quoted title, is not read"))
         elif said is not None:
             said.append((no, f"front matter {key}: Mermaid's configuration is not read"))
+        j += 1
     return title, "\n" * m.group(0).count("\n") + text[m.end():]
+
+
+def front_title(lines, j):
+    """The title whose key is on lines[j], read over the lines that carry it as js-yaml reads them, (title, what follows a
+    closed quote or None, the last of its lines): the typed readers' mermaidFrontTitle() (src/readers/mermaid-front.js).
+    A block scalar (title: >, title: |-) holds the more-indented lines under it, | with their line breaks, > folded as
+    YAML folds them; a plain or quoted value goes on over the indented lines after it, joined with a space. Line breaks
+    at the title's start and end are dropped (audit 25: the block indicator was the title, a second line was lost)."""
+    val = lines[j].partition(":")[2].strip()
+    more = lambda k: k < len(lines) and lines[k].strip() != "---" and (not lines[k].strip() or lines[k][:1].isspace())
+    end = j
+    while more(end + 1):
+        end += 1
+    while end > j and not lines[end].strip():  # blank lines after the value are not its own
+        end -= 1
+    body, block = lines[j + 1:end + 1], re.fullmatch(r"([|>])(?:[1-9][+-]?|[+-][1-9]?)?(?:\s+#.*)?", val, re.S)
+    if block:
+        digit, first = re.search(r"\d", val), next((x for x in body if x.strip()), None)
+        base = int(digit[0]) if digit else len(first) - len(first.lstrip()) if first else 0
+        out, prev, blanks = "", None, 0
+        for k, x in enumerate(body):
+            if not x.strip():
+                blanks += 1
+                continue
+            if len(x) - len(x.lstrip()) < base:  # less indented: the block ends (YAML refuses what follows)
+                end = j + k
+                break
+            t = x[base:]
+            wide = t[:1].isspace()
+            if prev is None:
+                out = "\n" * blanks + t
+            elif block[1] == ">" and prev and not wide:
+                out += "\n" * blanks + t if blanks else " " + t
+            else:
+                out += "\n" * (blanks + 1) + t
+            prev, blanks = not wide, 0
+        return out.strip("\n"), None, end
+    parts, held, nl = [val], bool(val), False  # held: a word read so far; nl: a blank line since the last
+    for x in body:  # in parts, joined once: a title over many lines is read in linear time (hostile input, R2)
+        y = x.strip()
+        if not y:
+            parts.append("\n")
+            nl = True
+            continue
+        if not held:
+            parts = []  # what came before held no word: the title starts here
+        parts.append(y if nl or not held else " " + y)
+        held, nl = True, False
+    title, rest = yaml_title("".join(parts))
+    return title.strip("\n"), rest, end
+
+
+def utf16_clip(s, n=60):
+    """s as the typed readers' mermaidClip() quotes it: up to n UTF-16 units, else its first n - 3 and ..., never cut
+    between the halves of an astral letter (audit 25: this cut at 60 letters and added ..., 63 in all)."""
+    if len(s.encode("utf-16-le")) // 2 <= n:
+        return s
+    out, units = [], 0
+    for ch in s:
+        units += 2 if ord(ch) > 0xFFFF else 1
+        if units > n - 3:
+            break
+        out.append(ch)
+    return "".join(out) + "..."
 
 
 def yaml_title(val):
     """A front-matter title's value, val stripped, as YAML reads it, and what follows a closed quote that is no comment
-    (cut to 60 letters), or None: the typed readers' mermaidTitle() (src/readers/mermaid-front.js)."""
+    (cut as utf16_clip() cuts it), or None: the typed readers' mermaidTitle() (src/readers/mermaid-front.js)."""
     q = val[:1]
     if q not in ('"', "'"):
         return re.sub(r"(^|\s)#.*$", "", val, flags=re.S).strip(), None
@@ -259,7 +325,7 @@ def yaml_title(val):
             title = json.loads(f'"{span}"')
         except ValueError:  # YAML's own escape, \x41 say: the text as written
             pass
-    return title, (after[:60] + ("..." if len(after) > 60 else "")) if after and not after.startswith("#") else None
+    return title, utf16_clip(after) if after and not after.startswith("#") else None
 
 
 def read(fmt, text, name):
@@ -423,9 +489,12 @@ def structurizr(text, name):
         m.card(cid, e["name"], kind, e["tech"] or C4TYPE[e["type"]], e["desc"], icon="user" if e["type"] == "person" else None, shape=shape)
     for g in groups:  # after the cards, so a group's name never takes an element's alias
         g["id"] = m.uniq(ident(g["label"]), f"group-{ident(g['label'])}")
-    find = lambda t: (ref.get(t.lower()) or ("", None))[1] or (t if t in els else None)
+    find = lambda t: isinstance(t, str) and ((ref.get(t.lower()) or ("", None))[1] or (t if t in els else None)) or None
     lines = []
     for r in rels:
+        if r["src"] is None:  # this -> x with no element around it, in the model or a group there (audit 25)
+            m.say(r["line"], f"this -> {r['dst']}: this names no element here")
+            continue
         a, b = find(r["src"]), find(r["dst"])
         if not (a and b):
             m.say(r["line"], f"{r['src']} -> {r['dst']}: {r['src'] if not a else r['dst']} is not an element")
@@ -759,10 +828,17 @@ FLOW_QUIET = re.compile(r"(classDef|class|style|linkStyle|click|direction|accTit
 ENTITY = {"quot": '"', "lt": "<", "gt": ">", "amp": "&"}
 
 
-def text(s):
-    """A flowchart label: quotes and backticks taken off, Mermaid's entity codes read (as the module's mfText)."""
+def markdown(s):
+    """Whether a flowchart label is a Markdown string, "`...`", which text() reads as plain text (as the module's mfText)."""
     s = (s or "").strip()
-    s = s[1:-1].strip("`") if len(s) > 1 and s[0] == s[-1] == '"' else s
+    return len(s) > 3 and s[0] == s[-1] == '"' and s[1] == s[-2] == "`"
+
+
+def text(s):
+    """A flowchart label: quotes and a Markdown string's backticks taken off, Mermaid's entity codes read (as the module's
+    mfText); markdown() says which labels lose their Markdown, for the caller to say (audit 25)."""
+    s = (s or "").strip()
+    s = s[2:-2] if markdown(s) else s[1:-1] if len(s) > 1 and s[0] == s[-1] == '"' else s
     return re.sub(r"#(quot|lt|gt|amp|\d{1,6});", lambda e: ENTITY.get(e[1]) or chr(min(int(e[1]), 0x10FFFF)), s)
 
 
@@ -779,12 +855,12 @@ def fnode(s, i, find=None):
             # of the closers this opener takes ([/ takes /] and \]), the nearest: [/a\] --> B[\b/] is two trapezoids
             k, c = min(((k, c) for p, c in SHAPES if p == o and (k := find(c, j)) > 0), default=(-1, ""))
             if j and k > 0:  # j is 0 when a quote opens and never closes: find no ] behind it
-                i, label, shape = k + len(c), text(s[i + len(o):k]), o
+                i, label, shape, md = k + len(c), text(s[i + len(o):k]), o, markdown(s[i + len(o):k])
                 break
     else:
-        label = shape = None
+        label = shape = md = None
     cls = re.compile(r":::([\w-]+)").match(s, i)
-    return nid, label, shape, cls.end() if cls else i, cls and cls[1]
+    return nid, label, shape, cls.end() if cls else i, cls and cls[1], md
 
 
 def statement(s):
@@ -802,7 +878,7 @@ def statement(s):
     while True:
         grp = []
         while (n := fnode(s, i, find)):
-            grp.append((*n[:3], n[4]))
+            grp.append((*n[:3], n[4], n[5]))
             i = n[3]
             amp = re.compile(r"\s*&").match(s, i)
             if not amp:
@@ -832,9 +908,12 @@ def flowchart(lines, m):
         for s in (x.strip() for x in re.findall(r'(?:"[^"]*"?|#[0-9A-Za-z_]+;|[^;"])*', line)):
             g = re.match(r'subgraph(?:\s+(?:([^\s\["]+)\s*\[([^\]]*)\]|"(.+)"|(\S+)$|(.+))|$)', s)
             if g:
-                label, nsub = text(g.group(2) or g.group(3) or g.group(4) or g.group(5)), nsub + 1
+                raw = g.group(2) or (g.group(3) and f'"{g.group(3)}"') or g.group(4) or g.group(5)  # its quotes kept, so a Markdown string is seen
+                label, nsub = text(raw), nsub + 1
                 subs.append({"id": ident(g.group(1) or g.group(4) or label) if g.group(0) != "subgraph" else f"subGraph{nsub - 1}", "label": clip(label, 40), "seen": [], "line": no,
                              "parent": subs[-1]["id"] if subs else None})
+                if markdown(raw):
+                    m.say(no, f"subgraph {subs[-1]['id']}: a Markdown string is read as plain text")
             elif s == "end" and not subs:
                 m.say(no, "an end that closes no subgraph")
             elif s == "end":
@@ -847,14 +926,19 @@ def flowchart(lines, m):
                 m.say(no, f"{q[1]}: accessibility text is not imported" if q[1].startswith("acc") else f"not imported: {clip(s, 80)}")
             elif p := statement(s):
                 groups, joins = p
-                for nid, label, shape, cls in (n for grp in groups for n in grp):
+                for nid, label, shape, cls, md in (n for grp in groups for n in grp):
                     if cls:  # said, as the typed reader says it (audit 20)
                         m.say(no, f"{nid}:::{cls}: a style class is not imported")
+                    if md:  # its ** and _ are drawn as written: said, as the typed reader says it (audit 25)
+                        m.say(no, f"{nid}: a Markdown string is read as plain text")
                     old = nodes.setdefault(nid, {"label": nid, "shape": None})
                     if label is not None:
                         old.update(label=label, shape=shape)
                     if subs:
                         subs[-1]["seen"].append(nid)
+                for k, lk in enumerate(joins):
+                    if markdown(lk["pipe"] or lk["text"]) and not (lk["plain"] or lk["open"]).startswith("~"):
+                        m.say(no, f"{' & '.join(n[0] for n in groups[k])} -> {' & '.join(n[0] for n in groups[k + 1])}: a Markdown string is read as plain text")
                 if len(links) <= FLOWS:  # a & b --> c & d is a product: lazily, never past the cap (hostile input, R2)
                     links += itertools.islice(((a[0], b[0], lk, no) for k, lk in enumerate(joins) for a in groups[k] for b in groups[k + 1]),
                                               FLOWS + 1 - len(links))
