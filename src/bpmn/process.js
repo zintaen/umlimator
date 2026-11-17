@@ -97,6 +97,8 @@ function bzPic(model, view) {
   const items = ids.filter(id => I.ty(id) !== BZ_POOL && I.ty(id) !== BZ_GROUP && !be.has(id) && !open.has(id)), laid = new Set([...items, ...open]);
   const list = Array.isArray(view && view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? I.E.get(x) : x)))] : [...I.E.values()].filter(e => BZ_LINES.includes(e.type));
   const both = id => shown.has(id) || (I.L.has(id) && shown.has(I.L.get(id).pool)), said = list.filter(e => BZ_OBJ(e) && BZ_LINES.includes(e.type) && both(e.from) && both(e.to));
+  // a listed line of another kind between two things shown: drawn plain where its ends are laid, said as not drawn where not (audit 29)
+  const foreign = list.filter(e => BZ_OBJ(e) && typeof e.id === 'string' && !BZ_LINES.includes(e.type) && both(e.from) && both(e.to));
   const end = (id, msg) => (laid.has(id) ? { at: id } : be.has(id) ? { at: be.get(id), port: id } : msg && pools.includes(id) ? { pool: id } : null);
   // ponytail: a line between two pools, or from a boundary event to its own activity, is not drawn (a rework loop); drawing
   // either needs a route of the type's own
@@ -116,7 +118,7 @@ function bzPic(model, view) {
   const holds = o => held.get(o) || [];
   const boxes = ids.filter(id => open.has(id)).map(id => { const x = I.N.get(id), o = owner(id);
     return boxHead({ id, label: bzLabel(x), title: bzLabel(x), nodeIds: holds(id).filter(k => !open.has(k)), ...(o != null ? { parent: o } : {}), shape: 'bpmn-frame', aria: bpmnName(bzLook(x, true)) }); });
-  return { I, ids, shown, pools, groups, lanes, band, be, open, owner, items, lines, said, laneOf, dataLane, holds, boxes, inLane };
+  return { I, ids, shown, pools, groups, lanes, band, be, open, owner, items, lines, said, foreign, laneOf, dataLane, holds, boxes, inLane };
 }
 
 // accessible names (§9.4): "Service task Take payment, in Sales"; "Timer boundary event No answer, on Take payment"; "Pool
@@ -289,7 +291,7 @@ function bzFinish(P, g, { runs, anchors, grown, side, down }) {
     legend: bzLegend(new Set(edges.map(e => e.type))),
     // the lines the view shows and the picture leaves out (§8.3: a message flow between two pools, a line from a boundary
     // event to its own activity), for check(), as describe() says them (audit 27)
-    notDrawn: P.said.filter(e => !lineOf.has(e.id)).map(e => ({ id: e.id, ids: [e.id], what: bzLineName(I, e) })) };
+    notDrawn: [...P.said, ...P.foreign].filter(e => !lineOf.has(e.id)).map(e => ({ id: e.id, ids: [e.id], what: bzLineName(I, e) })) };
 }
 
 /* the pools and lanes (§5.3), under the lines: a pool's outline 1.5 px, a lane's 1 px, each closing its header strip; the
@@ -390,14 +392,15 @@ function bzDescribe(model, viewId) {
     [...P.be].filter(([, h]) => h === id).forEach(([b]) => q.push(b)); from(id).filter(e => e.type === BZ_SEQ).forEach(e => q.push(e.to)); } };
   drawn.filter(id => I.ty(id) === 'bpmn.StartEvent').forEach(visit); drawn.forEach(visit);
   const doc = x => (BZ_HAS(bzProps(x).documentation) ? ` (${String(bzProps(x).documentation).trim()})` : '');
-  // a listed line of another kind, drawn (P.lines) but none of BPMN's: counted and said by its accessible name (audit 27)
-  const other = [...new Set(P.lines.map(l => l.e))].filter(e => !BZ_LINES.includes(e.type));
+  // a listed line of another kind, none of BPMN's: counted and said by its accessible name (audit 27), as not drawn where the
+  // picture leaves it out (a pool's end: audit 29), as BPMN's own kinds are
+  const other = P.foreign;
   const out = [`${v.title || v.id}: a BPMN diagram of ${bzPlural(drawn.filter(id => BZ_FLOW.includes(I.ty(id))).length, 'flow node')}, ${bzPlural(flows, 'flow')}${other.length ? ', ' : ' and '}${bzPlural(P.pools.length, 'pool')}${other.length ? ` and ${bzPlural(other.length, 'other line')}` : ''}.`];
   const word = { [BZ_SEQ]: 'then', [BZ_MSG]: 'message to', [BZ_DATA_ASSOC]: 'data to', [BZ_ASSOC]: 'about' };
   // each element with what leaves it, a pool's message flows too; a line the picture leaves out said as not drawn
   const say = id => { const said = from(id).map(e => `${word[e.type]} ${I.called(e.to)}${BZ_HAS(e.label) ? ` (${String(e.label).trim()})` : ''}${doc(e)}${drew.has(e.id) ? '' : ', not drawn'}`);
     out.push(bzNodeName(P, id) + doc(I.el(id)) + (said.length ? '; ' + said.join('; ') : '') + '.'); };
-  laneOrder(P.lanes).forEach(l => say(l.id)); walk.forEach(say); other.forEach(e => out.push(bzLineName(I, e) + '.'));
+  laneOrder(P.lanes).forEach(l => say(l.id)); walk.forEach(say); other.forEach(e => out.push(bzLineName(I, e) + (drew.has(e.id) ? '' : ', not drawn') + '.'));
   P.groups.forEach(gid => { const ms = P.ids.filter(i => bzRefs(I.el(i)).includes(gid)).map(I.called); out.push(`Group ${bzLabel(I.el(gid))}${doc(I.el(gid))}${ms.length ? ': ' + ms.join(', ') : ', round nothing shown: not drawn'}.`); });
   return out.join('\n');
 }

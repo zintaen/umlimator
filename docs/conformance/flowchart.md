@@ -25,7 +25,7 @@ other direction is drawn right, as the core warns.
 | Database | `flow.Database` | the map's cylinder |
 | Manual input | `flow.ManualInput` | a rectangle with its top sloping up to the right |
 | Delay | `flow.Delay` | a D |
-| Connector | `flow.Connector` | a circle with its label (one or two characters), 28 to 40 px across; with flows in and out, a junction |
+| Connector | `flow.Connector` | a circle with its label (one or two characters), 28 to 40 px across; with flows in and out, a junction; with no flow out, carried on at each connector of the same label with no flow in (an on-page connector pair), which the reachable rule and the reading order follow |
 | Flow | `flow.Flow` | a solid line with a filled arrow, its label beside it |
 | Comment | `uml.Comment`, `uml.CommentLink` | a note, a dashed line |
 

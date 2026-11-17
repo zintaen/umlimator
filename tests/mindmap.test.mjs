@@ -565,3 +565,16 @@ test('audit 27: a topic\'s text breaks at \\r, \\r\\n, U+2028 and U+2029 as at \
     assert.deepEqual(mmRun(m, m.views[0]).byId.a.lines, ['First', 'Second'], JSON.stringify(br));
   }
 });
+
+// audit 29: the PDF listed every element the view names, a class or an untyped node a mindmap does not draw too, each a "Topic"
+test('audit 29: the PDF\'s Elements table lists the topics drawn, each once: a node of another kind, not drawn, is not a Topic row', () => {
+  const m = { schemaVersion: 2, title: 'Plan', nodes: [{ id: 'r', type: T, label: 'Root' }, { id: 'a', type: T, label: 'A', parent: 'r' }, { id: 'cls', type: 'uml.Class', label: 'Order' }, { id: 'bare', label: 'Untyped note' }],
+    edges: [], views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['r', 'a', 'cls', 'bare', 'a'] }] };
+  assert.deepEqual(layout(m, 'v').nodes.map(n => n.id), ['r', 'a']);
+  const ctx = mapContext(m), [els] = tablesOf(ctx, ctx.V.v, ctx.buildGeo('v')), names = els.rows.map(r => /<b>(.*?)<\/b>/.exec(r)[1]);
+  assert.match(els.title, /^Elements <span>2<\/span>$/);
+  assert.deepEqual(names, ['Root', 'A']);
+  assert.match(describe(m, 'v'), /^v: a mindmap of 2 topics\./);
+  const ex = EX(), ec = mapContext(ex);
+  assert.equal(tablesOf(ec, ec.V[VID], ec.buildGeo(VID))[0].rows.length, ex.views[0].nodeIds.length, 'the example as before');
+});

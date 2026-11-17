@@ -435,3 +435,25 @@ test('audit 27: a listed line of another family is keyed as "Line"; a node with 
   assert.deepEqual(rows.find(c => c[0] === 'Untyped').slice(0, 2), ['Untyped', 'Element']);
   assert.deepEqual(rows.find(c => c[0] === 'Customer').slice(0, 2), ['Customer', 'External entity'], 'a typed one as before');
 });
+
+// audit 29: a listed line of no type is drawn as a data flow (audit 9), so it is keyed, counted and checked as one too
+test('audit 29: a listed line of no type is a data flow throughout: the key, the flow counts, the rules and D read it as drawn', () => {
+  for (const type of [undefined, 'nonsense']) {
+    const m = { schemaVersion: 2, nodes: [X('c', 'Customer'), P('p', 'Take order', '1')], edges: [],
+      views: [{ id: 'v', diagram: 'dfd', title: 'Level 0', nodeIds: ['c', 'p'], edges: [{ id: 'e', from: 'c', to: 'p', label: 'order', ...(type ? { type } : {}) }] }] };
+    const g = layout(m, 'v'), key = g.legend.map(s => /<b>([^<]+)<\/b>/.exec(s)[1]);
+    assert.deepEqual([g.edges[0].end, g.edges[0].aria], [{ from: 'none', to: 'arrow' }, 'Data flow order from Customer to 1 Take order'], String(type));
+    assert.deepEqual(key, ['Process', 'External entity', 'Data flow'], String(type));
+    assert.equal(g.byId.p.aria, 'Process 1 Take order, 1 flow in, 0 out', String(type));
+    assert.match(describe(m, 'v'), /^External entity Customer, 0 flows in, 1 out\.$/m, String(type));
+    assert.deepEqual(validate(m).filter(p => p.rule === 'dfd-process-io').map(p => p.message), ['dfd-process-io: process "1 Take order" has no flow out'], String(type));
+    // D copies it to the level as a data flow, so the level balances
+    const m2 = apply(m, T.edits.key(m, m.views[0], ['p'], 'd').commands);
+    assert.deepEqual(validate(m2).filter(p => p.rule === 'dfd-balance'), [], String(type));
+  }
+  // not listed, a line of no type is drawn by no view, and no rule reads it
+  const n = { schemaVersion: 2, nodes: [X('c', 'Customer'), P('p', 'Take order', '1')], edges: [{ id: 'e', from: 'c', to: 'p', label: 'order' }], views: [{ id: 'v', diagram: 'dfd', nodeIds: ['c', 'p'] }] };
+  assert.equal(layout(n, 'v').edges.length, 0);
+  assert.equal(validate(n).filter(p => p.rule === 'dfd-process-io').length, 1);
+  assert.match(validate(n).find(p => p.rule === 'dfd-process-io').message, /no flow in and no flow out/);
+});

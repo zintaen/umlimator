@@ -16,7 +16,9 @@ import { mapContext } from '../src/map/context.js';
 import { tablesOf } from '../src/page/print.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
-const NONE = { nodes: [], edges: ['go', 'back', 'none'].map(_id => ({ _id })) }; // the geometry the tables read: steps and opened views of cards, the lines drawn and their kinds
+// the geometry the tables read: the cards drawn, their steps and opened views, the lines drawn and their kinds (a typed view's
+// tables list only what its type draws: audits 15, 29)
+const NONE = { nodes: ['placed', 'plain', 'empty', 'nil', 'text'].map(id => ({ id })), edges: ['go', 'back', 'none'].map(_id => ({ _id })) };
 const cells = row => [...row.matchAll(/<td>(.*?)<\/td>/g)].map(m => m[1]);
 
 const seen = [];
