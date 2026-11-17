@@ -254,6 +254,18 @@ test('D on a process that opens no view makes its level in one transaction, bala
   assert.equal(rv.notation, 'gane-sarson'); assert.equal(rv.direction, 'down');
 });
 
+test('audit 22: D takes the level\'s view id from every id in the model, so an element already named <process>-level keeps its meaning', () => {
+  const m = structuredClone(DF), v = m.views[0];
+  m.nodes.push({ id: 'dfd-ship-order-level', type: 'uml.Comment', label: 'Couriers collect at 4 pm' }); v.nodeIds.push('dfd-ship-order-level');
+  const r = T.edits.key(m, v, ['dfd-ship-order'], 'D');
+  assert.equal(r.commands[0].view.id, 'dfd-ship-order-level-2');
+  const m2 = apply(m, r.commands), ctx = mapContext(m2);
+  assert.equal(ctx.opensOf('dfd-ship-order-level', v.id), null, 'the comment opens nothing');
+  assert.equal(ctx.opensOf('dfd-ship-order', v.id), 'dfd-ship-order-level-2');
+  assert.equal(layout(m2, v.id).byId['dfd-ship-order-level'].aria, 'Comment: Couriers collect at 4 pm');
+  assert.deepEqual(validate(m2), []);
+});
+
 test('the palette\'s add numbers a process under the view\'s parent process, else 1, 2, …; a store D1, D2, …; the rest is the canvas\'s', () => {
   assert.deepEqual(T.edits.add(DF, DF.views[1], { type: 'dfd.Process' }, 'Check stock'), [{ op: 'add', element: { id: 'process1', type: 'dfd.Process', label: 'Check stock', props: { number: '1.4' } }, view: L2 }]);
   assert.deepEqual(T.edits.add(DF, DF.views[0], { type: 'dfd.Process' }, '')[0].element.props, { number: '4' });
