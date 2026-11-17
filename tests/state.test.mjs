@@ -549,3 +549,23 @@ test('audit 21: each view\'s own transitions are checked with that view alone: t
   assert.deepEqual(T.edits.moveTo(f, f.views[1], 'y', at), [{ op: 'reparent', id: 'y', parent: 'r1' }]);
   assert.match(T.edits.moveTo(f, f.views[0], 'y', at).error, /^fork-join: /, 'in v1, which draws the fork\'s lines: refused');
 });
+
+// audit 23: a view's own nodes read as the model's in the PDF's Kind and Members columns (word, rows) and in the panel's
+// Owner field (owners), which offers a view's own owner to what that view alone holds, never to a model element
+test('word, rows and owners read a view\'s own nodes as the model\'s; a model element is offered no view-own owner (audit 23)', () => {
+  const st = [{ id: 'init', type: 'uml.Pseudostate', props: { kind: 'initial' } }, { id: 'comp', type: 'uml.State', label: 'Busy', members: [{ id: 'r1', type: 'uml.Region', label: 'A' }, { id: 'r2', type: 'uml.Region', label: 'B' }] }, { id: 'sub', type: 'uml.State', label: 'Sub', parent: 'r1' }];
+  const part = [{ id: 'lane', type: 'uml.ActivityPartition', label: 'Warehouse' }, { id: 'act', type: 'uml.CallBehaviorAction', label: 'Pack', parent: 'lane' }];
+  const ask = (d, nodes, own, ids, ownerOf) => { const m = { schemaVersion: 2, nodes, edges: [], views: [{ id: 'v', diagram: d, nodeIds: [...nodes, ...own].map(n => n.id), nodes: own }] }, v = m.views[0], T = diagramOf(v);
+    const x = [...nodes, ...own].find(n => n.id === ownerOf), c = mapContext(m), rows = tablesOf(c, c.V.v, c.buildGeo('v'))[0].rows.join('');
+    return { ...Object.fromEntries(ids.map(id => [id, [T.word(m, id), T.word(m, id, v), T.rows(m, v, id)]])), owners: [(T.owners(m, x) || []).map(o => o.id), (T.owners(m, x, v) || []).map(o => o.id)], rows }; };
+  for (const [d, all, ids, ownerOf] of [['uml.state-machine', st, ['init', 'comp'], 'sub'], ['uml.activity', part, ['act', 'lane'], 'act']]) {
+    const model = ask(d, all, [], ids, ownerOf), own = ask(d, [], all, ids, ownerOf);
+    assert.deepEqual(own, model, d);
+    assert.ok(model.owners[0].length && model.rows.length, d);
+  }
+  // a model element in the view: the view's own partition is no owner it is offered; the model's is
+  const m = { schemaVersion: 2, nodes: [{ id: 'mp', type: 'uml.ActivityPartition', label: 'Shop' }, { id: 'a', type: 'uml.Action', label: 'Pack' }], edges: [],
+    views: [{ id: 'v', diagram: 'uml.activity', nodeIds: ['mp', 'a', 'lane', 'oa'], nodes: [{ id: 'lane', type: 'uml.ActivityPartition', label: 'Warehouse' }, { id: 'oa', type: 'uml.Action', label: 'Own' }] }] }, T = diagramOf(m.views[0]);
+  assert.deepEqual(T.owners(m, m.nodes[1], m.views[0]).map(o => o.id), ['mp']);
+  assert.deepEqual(T.owners(m, m.views[0].nodes[1], m.views[0]).map(o => o.id), ['mp', 'lane']);
+});

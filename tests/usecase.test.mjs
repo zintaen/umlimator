@@ -373,3 +373,52 @@ test('the behavioural types draw, say and check a view\'s own nodes (audit 22)',
   n.views[0].nodes[0].label = '';
   assert.deepEqual(validate(n).filter(p => p.rule === 'named').map(p => [p.path, p.ids]), [[`views[0].nodes[0]`, ['gift']]]);
 });
+
+// audit 23: every registered type reads a view's own nodes as the model's (registry.js): the structural UML types, the
+// milestone-2 types, the cloud family and SysML's block definition and requirement views draw, say and check a node added
+// with add { in: 'view' } as they do the same node added to the model, a problem at it said at its own path
+test('every type draws, says and checks a view\'s own nodes as the model\'s (audit 23)', async () => {
+  for (const f of ['uml/class', 'uml/package', 'uml/object', 'uml/component', 'uml/deployment', 'uml/profile', 'uml/information', 'er/er', 'flowchart/flowchart', 'dfd/dfd', 'c4/c4', 'c4/views', 'cloud/cloud', 'sysml/blocks', 'sysml/requirement']) await import(`../src/${f}.js`);
+  const ex = n => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url), 'utf8'));
+  const two = (type, member) => ({ id: 'zed', type, label: 'Zed', members: ['a', 'b'].map(k => ({ id: `zed.${k}`, type: member, label: 'a' })) }); // two members of one name
+  const rows = [['sales-classes', two('uml.Class', 'uml.Property')], ['bookshop-packages', two('uml.Class', 'uml.Property')], ['bookshop-components', { id: 'zed', type: 'uml.Component', label: 'Zed' }],
+    ['bookshop-deployment', { id: 'zed', type: 'uml.Node', label: 'Zed' }], ['order-objects', two('uml.InstanceSpecification', 'uml.Slot')], ['bookshop-profile', two('uml.Stereotype', 'uml.Property')],
+    ['order-information-flow', { id: 'zed', type: 'uml.Class', label: 'Zed' }], ['bookshop-schema', { id: 'zed', type: 'er.Entity', label: 'Zed' }], ['returns-flowchart', { id: 'zed', type: 'flow.Process', label: 'Zed' }],
+    ['bookshop-data-flow', { id: 'zed', type: 'dfd.Process', label: 'Zed', props: { number: '9' } }], ['bookshop-c4', { id: 'zed', type: 'c4.SoftwareSystem', label: 'Zed' }],
+    ['bookshop-gcp', { id: 'zed', type: 'gcp.Product', label: 'Zed', props: { icon: 'cloud-run' } }], ['bookshop-aws', { id: 'zed', type: 'aws.Service', label: 'Zed' }], ['bookshop-azure', { id: 'zed', type: 'azure.Service', label: 'Zed' }],
+    ['ebike-blocks', two('sysml.Block', 'sysml.PartProperty')], ['ebike-requirements', { id: 'zed', type: 'sysml.Requirement', label: 'Zed', props: { reqId: 'EB-9', text: 'x' } }]];
+  let checked = 0;
+  for (const [file, el] of rows) {
+    const m = ex(file), v = m.views[0], said = (n, where) => validate(n).filter(p => (p.ids || []).includes('zed')).map(p => [p.rule, where === 'view' ? String(p.path).replace(/^views\[0\]\.nodes\[0\]/, 'X') : String(p.path).replace(/^nodes\[\d+\]/, 'X')]);
+    const got = ['model', 'view'].map(where => { const n = apply(m, [{ op: 'add', element: el, view: v.id, in: where }]);
+      if (where === 'view') assert.ok(!n.nodes.some(x => x.id === 'zed') && n.views[0].nodes.some(x => x.id === 'zed'), `${file}: in the view's own nodes`);
+      return { drawn: !!layout(n, v.id).byId.zed, said: describe(n, v.id).includes('Zed'), problems: said(n, where) }; });
+    assert.deepEqual(got[1], got[0], `${v.diagram} (${file}): as the model's`);
+    assert.ok(got[1].drawn && got[1].said, `${v.diagram}: drawn and said`);
+    checked += got[1].problems.length > 0;
+  }
+  assert.ok(checked >= 5, 'checked: a problem at the view\'s own node is said, at its own path');
+});
+
+// audit 23: a hostile model's view-own nodes (ids a prototype has, parents in a loop between a view and the model, a URL and
+// markup in labels) are read without a throw, drawn escaped and fetching nothing, and a delete of one ends
+test('a view\'s own nodes in a hostile model: no throw, nothing fetched, a delete ends (audit 23)', async () => {
+  await import('../src/uml/activity.js');
+  const bad = '<img src=https://track.example/p.gif onerror=alert(1)><a href="javascript:alert(1)">x</a> url(https://track.example/u)';
+  const m = { schemaVersion: 2, nodes: [{ id: 'constructor', type: 'uml.Action', label: bad, parent: '__proto__' }, { id: 'toString', type: 'uml.ActivityPartition', label: bad, parent: 'hasOwnProperty' }],
+    edges: [{ id: 'f', type: 'uml.ControlFlow', from: 'constructor', to: '__proto__' }],
+    views: [{ id: 'v', diagram: 'uml.activity', nodeIds: ['constructor', 'toString', '__proto__', 'hasOwnProperty'],
+      nodes: [{ id: '__proto__', type: 'uml.ActivityPartition', label: bad, parent: 'toString' }, { id: 'hasOwnProperty', type: 'uml.ActivityPartition', label: bad, parent: '__proto__' }, { id: 'toString', type: 'uml.Action', label: 'taken by the model' }] }] };
+  const g = layout(m, 'v'), svg = svgOf(g, {});
+  const tags = svg.match(/<[^>]+>/g) || [], attrs = tags.flatMap(t => [...t.matchAll(/([\w:-]+)="([^"]*)"/g)].map(([, k, v]) => [k, v]));
+  assert.ok(!tags.some(t => /^<\/?(img|a|image|script|foreignObject|use)\b/i.test(t)), 'markup escaped: no tag of the model\'s');
+  assert.deepEqual(attrs.filter(([k, v]) => (/^(href|src|xlink:href)$/i.test(k) && /^\s*(https?:|javascript:|\/\/)/i.test(v)) || (/^style$/i.test(k) && /url\(/i.test(v)) || /^on/i.test(k)), [], 'no attribute fetches or runs the model\'s text');
+  assert.ok(Array.isArray(validate(m)) && typeof describe(m, 'v') === 'string');
+  const a = apply(m, [{ op: 'delete', id: '__proto__' }]);
+  assert.deepEqual(a.nodes.map(n => n.id), ['constructor', 'toString'], 'the model\'s nodes kept');
+  assert.ok(!a.nodes.some(n => ['__proto__', 'hasOwnProperty', n.id].includes(n.parent)), 'none left under what the view alone held, nor under itself');
+  assert.ok(!(a.views[0].nodes || []).some(n => n.id === '__proto__' || n.id === 'hasOwnProperty'));
+  // a hook's add under such an owner: added to the view, not under a prototype key
+  const r = diagramOf(m.views[0]).edits.add(m, m.views[0], { type: 'uml.Action' }, 'x', { sel: ['hasOwnProperty'] });
+  assert.equal(r[0].in, 'view'); assert.equal(Object.getPrototypeOf({}).polluted, undefined);
+});
