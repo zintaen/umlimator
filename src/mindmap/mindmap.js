@@ -3,7 +3,7 @@ import { brLines, esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { layoutTree } from '../layout/tree.js';
 import '../typed/edit.js'; // TYPED.edit, which the outline's Show on a topic wraps (mmShow)
-import { usedIds } from '../core/model.js';
+import { usedIds, jsonText } from '../core/model.js';
 
 /* ---------- the mindmap, mindmap (work package 4a.4, notes/milestone-4a.md §7) ----------
    Topics (mindmap.Topic) form a tree by parent; the view's nodeIds say which are shown and, among siblings, in what order.
@@ -138,17 +138,17 @@ function mmProblems(model, view) {
   const vi = MM_ARR(model.views).indexOf(V), at = `views[${vi}]`, X = mmIndex(model, V), q = id => `"${id}"`;
   const say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids, message: `${rule}: ${msg}` });
   MM_ARR(model.nodes).forEach((n, i) => { if (!MM_OBJ(n) || n.type !== MM_T || n.parent == null || X.topic(n.parent)) return;
-    say('error', 'topic-parent', `nodes[${i}].parent`, [n.id], `topic ${q(n.id)}'s parent ${JSON.stringify(n.parent)} is not a topic`); });
+    say('error', 'topic-parent', `nodes[${i}].parent`, [n.id], `topic ${q(n.id)}'s parent ${jsonText(n.parent)} is not a topic`); });
   X.roots.slice(1).forEach(r => say('warning', 'mindmap-root', `${at}.nodeIds[${X.pos.get(r)}]`, [X.roots[0], r], `view ${V.id} shows a second root, ${q(r)}, besides ${q(X.roots[0])}: drawn as its own tree under the first`));
   Object.keys(X.P).forEach(id => { const s = MM_OBJ(X.P[id]) ? X.P[id].side : undefined; if (s === undefined || !X.shown.has(id)) return;
     if (mmKept(X, id) && (s === 'left' || s === 'right')) return; // kept for its parent's return, as a hidden topic's (audit 26)
-    if (s !== 'left' && s !== 'right') say('warning', 'side-first', `${at}.present.${id}.side`, [id], `${q(id)}'s side ${JSON.stringify(s)} is not left or right: ignored`);
+    if (s !== 'left' && s !== 'right') say('warning', 'side-first', `${at}.present.${id}.side`, [id], `${q(id)}'s side ${jsonText(s)} is not left or right: ignored`);
     else if (X.depth.get(id) !== 1) say('warning', 'side-first', `${at}.present.${id}.side`, [id], `${q(id)} is not a first-level topic: its side is ignored, it follows its branch`); });
   // a listed node that is no topic (no type, a typo'd one, another notation's): not drawn, so said, as BPMN says a kind outside
   // its subset; each once, where the view first lists it (audit 28)
   MM_ARR(V.nodeIds).forEach((id, i) => { if (typeof id !== 'string' || !X.N.has(id) || X.topic(id) || MM_ARR(V.nodeIds).indexOf(id) !== i) return; const t = X.N.get(id).type;
-    say('warning', 'mindmap-kinds', `${at}.nodeIds[${i}]`, [id], t == null || t === '' ? `${q(id)} (${JSON.stringify(mmOne(X.N.get(id)))}) has no type, so it is no mindmap topic: not drawn`
-      : `${q(id)} (${JSON.stringify(mmOne(X.N.get(id)))}) is of type ${JSON.stringify(t)}, which is no mindmap topic: not drawn`); });
+    say('warning', 'mindmap-kinds', `${at}.nodeIds[${i}]`, [id], t == null || t === '' ? `${q(id)} (${jsonText(mmOne(X.N.get(id)))}) has no type, so it is no mindmap topic: not drawn`
+      : `${q(id)} (${jsonText(mmOne(X.N.get(id)))}) is of type ${jsonText(t)}, which is no mindmap topic: not drawn`); });
   const deep = X.ids.filter(id => X.depth.get(id) === MM_DEEP + 1);
   if (deep.length) say('warning', 'mindmap-depth', at, deep, `${deep.map(q).join(', ')} ${deep.length === 1 ? 'is' : 'are'} ${MM_DEEP + 1} levels below the root, deeper than ${MM_DEEP}: drawn, but a Mermaid write and read hangs ${deep.length === 1 ? 'it' : 'them'} ${MM_DEEP} levels below the root`);
   return out;
@@ -156,7 +156,7 @@ function mmProblems(model, view) {
 
 /* ---- describe(): the trees as indented outlines, in the reading order (each root, its right branches, then its left) ---- */
 function mmDescribe(model, viewId) {
-  const V = MM_ARR(model && model.views).find(x => MM_OBJ(x) && x.id === viewId); if (!V) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const V = MM_ARR(model && model.views).find(x => MM_OBJ(x) && x.id === viewId); if (!V) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const g = mmRun(model, V), trees = g.nodes.filter(n => n.root).length;
   return [`${V.title || V.id}: a mindmap of ${mmPlural(g.nodes.length, 'topic')}${trees > 1 ? ` in ${trees} trees` : ''}.`,
     ...g.order.map(id => { const n = g.byId[id]; return '  '.repeat(n.depth) + n.label.replace(/\s+/g, ' ').trim() + (n.opens ? ` (opens ${n.opens})` : ''); })].join('\n');

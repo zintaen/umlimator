@@ -1,4 +1,4 @@
-import { copyOf, nameTable, unreadable } from '../core/model.js';
+import { copyOf, nameTable, unreadable, jsonText } from '../core/model.js';
 import { diagramOf } from '../core/registry.js';
 import { edgeRefIds } from './api.js';
 import { mapContext } from './context.js';
@@ -11,7 +11,7 @@ import { WIRE_KINDS, andList, arrOf } from './validate.js';
 const viewType = (model, viewId) => model && model.schemaVersion === 2 && diagramOf(arrOf(model.views).find(v => v && v.id === viewId));
 function lineGraph(model, viewId) {
   const ctx = mapContext(model), v = ctx.V[viewId];
-  if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const ids = (v.nodeIds || []).filter(i => ctx.N[i]), M = new Map(arrOf(ctx.D.edges).map(e => [e && e._id, e]));
   if (!viewType(model, viewId)) return { ctx, v, ids, edges: ctx.viewEdges(v).filter(e => e.from !== e.to) };
   // a typed view: its lines as drawn (a port's between the cards it is on)

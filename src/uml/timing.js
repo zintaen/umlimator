@@ -1,5 +1,5 @@
 import { registerDiagramType, idTable } from '../core/registry.js';
-import { copyOf, usedIds } from '../core/model.js';
+import { copyOf, usedIds, jsonText } from '../core/model.js';
 import { apply } from '../core/apply.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -51,7 +51,7 @@ function tmIndex(model, V) {
   const name = id => (N.has(id) ? tmName(N.get(id)) : String(id)), C = new Map(changes.map(c => [c.id, c]));
   const H = new Map(heads.map(n => [n.id, n])), hid = id => C.has(id) && !H.has(C.get(id).lifeline); // a change of a hidden lifeline
   return { N, H, heads, changes, C, cons, shown: cons.filter(c => !hid(c.from) && !hid(c.to)), msgs, unit, t, name, values: id => TM_OBJ(P[id]) && P[id].as === 'values',
-    mine: id => changes.filter(c => c.lifeline === id).sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1)) };
+    mine: id => changes.filter(c => c.lifeline === id).sort((a, b) => tmBy(a.at) - tmBy(b.at) || (a.id < b.id ? -1 : 1)) };
 }
 
 /* ---- names (§9): a change's, a message's, a constraint's, said the same in the picture, describe() and the PDF ---- */
@@ -117,7 +117,7 @@ function tmRun(model, view) {
   const edges = o.lines.map(l => { const m = M.get(l.id), p = tmProps(m), t = tmMsgText(m), sort = tmSort(m);
     return { id: m.id, _id: m.id, type: 'uml.Message', from: m.from, to: m.to, s: byId[m.from], t: byId[m.to], pts: l.pts, end: TM_END[sort], sort,
       label: tmPrint(t, p.sentAt, p.receivedAt), ...(t ? { lbl: { ...l.lbl, text: t } } : {}), aria: tmMsgSaid(X, m) }; });
-  order.push(...[...edges].sort((a, b) => tmProps(M.get(a.id)).sentAt - tmProps(M.get(b.id)).sentAt).map(e => e.id), ...o.marks.map(mk => mk.id), TM_RULER);
+  order.push(...[...edges].sort((a, b) => tmBy(tmProps(M.get(a.id)).sentAt) - tmBy(tmProps(M.get(b.id)).sentAt)).map(e => e.id), ...o.marks.map(mk => mk.id), TM_RULER);
   return { nodes, edges, groups: [], byId, bounds: o.bounds, map: false, order, slots: o.slots, problems: o.problems, tr: o, legend: tmLegend(X, o) };
 }
 
@@ -182,6 +182,8 @@ const TM_RULES = {
   'constraint-order': 'a duration constraint\'s to is no earlier than its from',
 };
 const tmNum = x => typeof x === 'number' && Number.isFinite(x);
+// a time to sort by: a host's BigInt, which validate() reports as no number, sorts as one that is none (a - b throws on it: audit 29)
+const tmBy = x => typeof x === 'bigint' ? NaN : x;
 function tmProblems(model, view) {
   const out = [], V = tmView(model, view); if (!TM_OBJ(model) || !V) return out;
   const vi = TM_ARR(model.views).indexOf(V), at = `views[${vi}]`, X = tmIndex(model, V), TL = TM_OBJ(V.timeline) ? V.timeline : {};
@@ -189,10 +191,10 @@ function tmProblems(model, view) {
   const cPath = c => `${at}.timeline.changes[${TM_ARR(TL.changes).indexOf(c)}]`, kPath = c => `${at}.timeline.constraints[${TM_ARR(TL.constraints).indexOf(c)}]`, ePath = m => `${at}.edges[${TM_ARR(V.edges).indexOf(m)}]`;
   const seen = new Map();
   X.changes.forEach(c => { const n = X.N.get(c.lifeline);
-    if (!n || n.type !== 'uml.Lifeline') return say('change-lifeline', cPath(c) + '.lifeline', [c.id], `change ${c.id} names ${JSON.stringify(c.lifeline)}, which is not a lifeline of the model`);
-    if (!tmNum(c.at)) return say('change-time', cPath(c) + '.at', [c.id], `change ${c.id}'s time ${JSON.stringify(c.at)} is not a number`);
+    if (!n || n.type !== 'uml.Lifeline') return say('change-lifeline', cPath(c) + '.lifeline', [c.id], `change ${c.id} names ${jsonText(c.lifeline)}, which is not a lifeline of the model`);
+    if (!tmNum(c.at)) return say('change-time', cPath(c) + '.at', [c.id], `change ${c.id}'s time ${jsonText(c.at)} is not a number`);
     if (!X.H.has(c.lifeline)) return; // a hidden lifeline keeps its changes, not drawn and not warned (§7.2)
-    if (!X.values(c.lifeline) && !tmStates(n).includes(String(c.state ?? ''))) say('change-state', cPath(c) + '.state', [c.id, c.lifeline], `change ${c.id}'s state ${JSON.stringify(c.state)} is not one of ${tmName(n)}'s states: drawn on an extra row`, 'warning');
+    if (!X.values(c.lifeline) && !tmStates(n).includes(String(c.state ?? ''))) say('change-state', cPath(c) + '.state', [c.id, c.lifeline], `change ${c.id}'s state ${jsonText(c.state)} is not one of ${tmName(n)}'s states: drawn on an extra row`, 'warning');
     const k = `${c.lifeline} ${c.at}`; if (!seen.has(k)) seen.set(k, [n]); seen.get(k).push(c); });
   seen.forEach(([n, ...cs]) => { const ids = cs.map(c => c.id); // one warning an instant, naming all its changes and the one drawn
     if (cs.length > 1) say('change-instant', cPath(cs[1]) + '.at', ids, `${tmName(n)} changes ${cs.length > 2 ? cs.length + ' times' : 'twice'} at ${X.t(cs[0].at)} (${ids.slice(0, -1).join(', ')} and ${ids.at(-1)}): only ${[...ids].sort().pop()} is drawn`, 'warning'); });
@@ -200,24 +202,24 @@ function tmProblems(model, view) {
     if (off.length) say('message-ends', ePath(m), [m.id, ...off], `${m.id} runs from ${m.from} to ${m.to}, and ${[...new Set(off)].join(' and ')} ${new Set(off).size > 1 ? 'are not lifelines' : 'is not a lifeline'} of view ${V.id}`);
     if (!tmNum(p.sentAt) || !tmNum(p.receivedAt)) say('change-time', ePath(m) + '.props', [m.id], `message ${m.id}'s sentAt and receivedAt are not both numbers`);
     else if (p.receivedAt < p.sentAt) say('message-times', ePath(m) + '.props.receivedAt', [m.id], `${m.id} is received at ${X.t(p.receivedAt)}, before it is sent at ${X.t(p.sentAt)}`);
-    if (!TM_SORTS.includes(p.sort)) say('sort', ePath(m) + '.props.sort', [m.id], `${m.id} has ${p.sort === undefined ? 'no sort' : `sort ${JSON.stringify(p.sort)}`}, not one of ${TM_SORTS.join(', ')}: it is drawn as a call`, 'warning');
+    if (!TM_SORTS.includes(p.sort)) say('sort', ePath(m) + '.props.sort', [m.id], `${m.id} has ${p.sort === undefined ? 'no sort' : `sort ${jsonText(p.sort)}`}, not one of ${TM_SORTS.join(', ')}: it is drawn as a call`, 'warning');
     else if (p.sort === 'reply') { const c = X.msgs.find(x => x.id === p.replyTo);
       if (!c || tmSort(c) !== 'call' || c.from !== m.to || c.to !== m.from || !(tmProps(c).sentAt <= p.sentAt)) say('reply-call', ePath(m) + '.props.replyTo', [m.id, c && c.id], p.replyTo == null
         ? `${m.id} names no call in replyTo: a reply from ${X.name(m.from)} to ${X.name(m.to)} needs a call from ${X.name(m.to)} to ${X.name(m.from)} sent no later`
-        : `${m.id} answers ${JSON.stringify(p.replyTo)}, which is not a call of this view from ${X.name(m.to)} to ${X.name(m.from)} sent no later`); } }); // by name, never 'undefined' (audit 12)
+        : `${m.id} answers ${jsonText(p.replyTo)}, which is not a call of this view from ${X.name(m.to)} to ${X.name(m.from)} sent no later`); } }); // by name, never 'undefined' (audit 12)
   X.cons.forEach(c => { const kind = TM_KIND[c.type], a = X.C.get(c.from), b = X.C.get(c.to);
-    if (!kind || (kind === 'time' ? !a || c.to != null : !a || !b)) return say('constraint-ends', kPath(c), [c.id], kind === 'time' ? `time constraint ${c.id} needs a change of the view in from, and no to` : kind ? `duration constraint ${c.id} needs two changes of the view in from and to` : `${c.id} is a ${JSON.stringify(c.type)}, not a duration or time constraint`);
+    if (!kind || (kind === 'time' ? !a || c.to != null : !a || !b)) return say('constraint-ends', kPath(c), [c.id], kind === 'time' ? `time constraint ${c.id} needs a change of the view in from, and no to` : kind ? `duration constraint ${c.id} needs two changes of the view in from and to` : `${c.id} is a ${jsonText(c.type)}, not a duration or time constraint`);
     if (kind === 'duration' && tmNum(a.at) && tmNum(b.at) && b.at < a.at) say('constraint-order', kPath(c) + '.to', [c.id, c.from, c.to], `${c.id} runs from ${X.t(a.at)} back to ${X.t(b.at)}`, 'warning'); });
   return out;
 }
 
 /* ---- describe(): the view in words, lanes top to bottom, then messages in time order, then constraints ---- */
 function tmDescribe(model, viewId) {
-  const V = TM_ARR(model && model.views).find(x => TM_OBJ(x) && x.id === viewId); if (!V) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const V = TM_ARR(model && model.views).find(x => TM_OBJ(x) && x.id === viewId); if (!V) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const X = tmIndex(model, V), shown = X.changes.filter(c => X.H.has(c.lifeline));
   const out = [`${V.title || V.id}: a timing diagram of ${tmPlural(X.heads.length, 'lifeline')}, ${tmPlural(shown.length, 'change')}, ${tmPlural(X.msgs.length, 'message')} and ${tmPlural(X.shown.length, 'constraint')}${X.unit ? `, in ${X.unit}` : ''}.`];
   X.heads.forEach(n => { const cs = X.mine(n.id); out.push(`${tmShown(n)}${X.values(n.id) ? ' (values)' : ''}: ${cs.length ? cs.map(c => `${c.state ?? ''} from ${X.t(c.at)}`).join('; ') : 'no change'}.`); });
-  [...X.msgs].sort((a, b) => tmProps(a).sentAt - tmProps(b).sentAt).forEach(m => out.push(tmMsgSaid(X, m) + '.'));
+  [...X.msgs].sort((a, b) => tmBy(tmProps(a).sentAt) - tmBy(tmProps(b).sentAt)).forEach(m => out.push(tmMsgSaid(X, m) + '.'));
   X.shown.forEach(c => out.push(tmConSaid(X, c) + '.'));
   return out.join('\n');
 }
@@ -307,7 +309,7 @@ function tmConnect(model, view, from, to, at, line) {
   if (!a.c && b.c) a.t = Math.min(a.t, b.t); else if (a.c && !b.c) b.t = Math.max(b.t, a.t);
   const props = { ...(TM_OBJ(line && line.props) ? copyOf(line.props) : {}) }, sort = TM_SORTS.includes(props.sort) ? props.sort : (props.sort = 'call');
   Object.assign(props, { sentAt: a.t, receivedAt: b.t });
-  if (sort === 'reply') { const c = X.msgs.filter(m => tmSort(m) === 'call' && m.from === b.lane && m.to === a.lane && tmProps(m).sentAt <= a.t).sort((p, q) => tmProps(q).sentAt - tmProps(p).sentAt)[0];
+  if (sort === 'reply') { const c = X.msgs.filter(m => tmSort(m) === 'call' && m.from === b.lane && m.to === a.lane && tmProps(m).sentAt <= a.t).sort((p, q) => tmBy(tmProps(q).sentAt) - tmBy(tmProps(p).sentAt))[0];
     if (c) props.replyTo = c.id; }
   return tmGuard(model, V, [{ op: 'add', element: { id: tmNewId(model, 'm'), type: 'uml.Message', from: a.lane, to: b.lane, props }, view: V.id, in: 'view' }]);
 }

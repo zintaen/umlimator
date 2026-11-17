@@ -5,7 +5,7 @@ import { layoutTyped, typedLines } from '../typed/layout.js';
 import '../uml/class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from '../uml/flow.js'; // and SHAPE.diamond, SHAPE.initial's circle, read only
 import { snKindName } from '../uml/structure.js';
-import { usedIds } from '../core/model.js';
+import { usedIds, jsonText } from '../core/model.js';
 
 /* ---------- the flowchart, flowchart (work package M2.3, notes/milestone-2.md §7.2) ----------
    Ten symbols: the decision is stage 4's diamond and the connector a circle over SHAPE.initial's outline, both read only;
@@ -183,7 +183,7 @@ function fcProblems(model, view) {
 
 /* ---- describe(): the view in sentences: each node in reading order (from the start, along its flows), then each line ---- */
 function fcDescribe(model, viewId) {
-  const v = FC_ARR(model && model.views).find(x => FC_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const v = FC_ARR(model && model.views).find(x => FC_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const I = fcIndex(model, v), other = I.lines.filter(fcOther).length; // a line of another kind counted as itself, never left out (audit 27)
   return [`${v.title || v.id}: a flowchart of ${fcPlural(I.ids.length, 'node')}${other ? ', ' : ' and '}${fcPlural(I.flows.length, 'flow')}${other ? ` and ${fcPlural(other, 'other line')}` : ''}.`,
     ...I.walk.map(id => fcNodeName(I, I.N.get(id)) + '.'), ...I.lines.map(e => fcLineName(I, e) + '.')].join('\n');

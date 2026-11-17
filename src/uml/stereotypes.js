@@ -1,3 +1,4 @@
+import { jsonText } from '../core/model.js';
 import { TYPED } from '../core/registry.js';
 import { multBounds } from './class.js';
 
@@ -246,7 +247,7 @@ function styResolve(I, r, say) {
     Object.keys(inner).forEach(n => { const d = D.get(n), v = inner[n];
       if (!d) return say(stySay('tag-defined', 'warning', tp, [x.id, e.stereotype.id], `«${k}» on ${styQ(x)} has no tag "${n}"`));
       const ok = v == null || styTagFits(I, d.def, I.at.get(d.st.parent), v);
-      if (ok !== true) say(stySay('tag-value', 'warning', tp, [x.id, d.def.id], `«${k}» ${n} = ${JSON.stringify(v)} on ${styQ(x)} is not ${ok}`)); }); });
+      if (ok !== true) say(stySay('tag-value', 'warning', tp, [x.id, d.def.id], `«${k}» ${n} = ${jsonText(v)} on ${styQ(x)} is not ${ok}`)); }); });
   out.forEach(e => { const inner = STY_OBJ(T) && Object.hasOwn(T, e.key) && STY_OBJ(T[e.key]) ? T[e.key] : {};
     e.tags = [...styDefs(I, e.stereotype)].map(([name, { def }]) => ({ name, def, value: Object.hasOwn(inner, name) ? inner[name] : undefined }));
     e.tags.forEach(({ name, def, value }) => { const dp = STY_OBJ(def.props) ? def.props : {};

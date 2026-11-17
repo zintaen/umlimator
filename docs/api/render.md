@@ -410,16 +410,14 @@ console.log(g.bounds);   // { x, y, w, h }
 ```ts
 interface Geometry {
   nodes: { id: string; x: number; y: number; w: number; h: number; [key: string]: unknown }[];
-  edges: { from: string; to: string; ids: string[]; pts: [number, number][]; weight: 1 | 2 | 3; wk: WireKind;
-    lbl: { x: number; y: number; w: number; h: number; text: string; sub?: string } | null; [key: string]: unknown }[];
+  edges: { from: string; to: string; ids: string[]; pts: [number, number][]; weight?: 1 | 2 | 3; wk?: WireKind;
+    lbl?: { x: number; y: number; w: number; h: number; text: string; sub?: string } | null; [key: string]: unknown }[];
   bounds: { x: number; y: number; w: number; h: number };
   [key: string]: unknown;
 }
 ```
 
-Card boxes, drawn lines (one may stand for several model edges, listed in `ids`) with their points, width bucket,
-[kind](./model-and-schema.md#wirekind) and label box, and the view's bounds, all in map units. Fields beyond these are
-internal and may change.
+Card boxes, drawn lines (one may stand for several model edges, listed in `ids`) with their points, width bucket, [kind](./model-and-schema.md#wirekind) and label box, and the view's bounds, all in map units. A map view's lines carry `weight` and `wk`; a typed view's lines carry neither (their notation says what they are), and a line with no label may have no `lbl`. Fields beyond these are internal and may change.
 
 ## check
 

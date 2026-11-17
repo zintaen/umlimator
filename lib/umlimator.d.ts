@@ -634,8 +634,8 @@ export interface Replay { readonly hops: number; readonly skipped: number; reado
 
 export interface Geometry {
   nodes: { id: string; x: number; y: number; w: number; h: number; [key: string]: unknown }[];
-  edges: { from: string; to: string; ids: string[]; pts: [number, number][]; weight: 1 | 2 | 3; wk: WireKind;
-    lbl: { x: number; y: number; w: number; h: number; text: string; sub?: string } | null; [key: string]: unknown }[];
+  edges: { from: string; to: string; ids: string[]; pts: [number, number][]; weight?: 1 | 2 | 3; wk?: WireKind;
+    lbl?: { x: number; y: number; w: number; h: number; text: string; sub?: string } | null; [key: string]: unknown }[];
   bounds: { x: number; y: number; w: number; h: number };
   [key: string]: unknown;
 }

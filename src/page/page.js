@@ -362,7 +362,10 @@ export function mountPage(container, model, options = {}) {
     else if (x === 'png') {
       pngOf(standalone(2)).then(bl => bl && download(stem + '.png', bl));
     } else if (x === 'link') { navigator.clipboard && navigator.clipboard.writeText(location.href).then(() => status('Link copied'), () => status(location.href)); }
-    else if (x === 'json') { const { meta, kind, ...model } = D; download(stem.split('-' + cur)[0] + '.json', new Blob([JSON.stringify(model, null, 2)], { type: 'application/json' })); }
+    // the model the page was given, less the page tool's meta and kind: not the map's working copy, whose lines carry an _id and
+    // whose views a parent rewritten to the view it names, which a file saved and opened again would keep (audit 29)
+    else if (x === 'json') { const { meta, kind, ...model } = X.model(); let text; try { text = JSON.stringify(model, null, 2); } catch { return status('This model cannot be written as JSON'); }
+      download(stem.split('-' + cur)[0] + '.json', new Blob([text], { type: 'application/json' })); }
     if (x !== 'link') status('Exported ' + x.toUpperCase());
   }
 
