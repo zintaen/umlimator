@@ -1,10 +1,10 @@
-import { registerDiagramType } from '../core/registry.js';
+import { ownNodes, registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { brLines } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
 import { lineRename } from './class.js'; // SHAPE.note, a comment's look too
-import { lineInside, ownersOn, readingOrder } from './owners.js';
+import { lineInside, ownersOn, readingOrder, viewLines } from './owners.js';
 import { SN_SAY, STRUCT_RULES, snKindName, snKindWord, structProblems } from './structure.js'; // SHAPE.artifact and SHAPE.component too
 
 /* ---------- the deployment diagram, uml.deployment (work package 5.5, notes/stage-5.md §10.3) ----------
@@ -183,7 +183,7 @@ function dpProblems(model, view) {
     const p = I.at.get(n.parent);
     if (!DP_TARGETS.includes(p.type)) say('error', 'nest-kinds', `nodes[${i}].parent`, [n.id, p.id], `${q(n.id)}, ${a(n.id)}, is owned by ${q(p.id)}, ${a(p.id)}: its owner is a node, a device or an execution environment`);
     else if (!DP_USUAL[n.type].includes(p.type)) say('warning', 'nest-kinds', `nodes[${i}].parent`, [n.id, p.id], `${q(n.id)}, ${a(n.id)}, is in ${q(p.id)}, ${a(p.id)}: an unusual pair`); });
-  DP_ARR(model && model.edges).forEach((e, i) => { if (!DP_OBJ(e)) return; const path = `edges[${i}]`, ends = [e.id, e.from, e.to];
+  viewLines(model, view).forEach(([e, path]) => { if (!DP_OBJ(e)) return; const ends = [e.id, e.from, e.to];
     if (e.type === 'uml.Deployment') {
       if (!DP_ARTIFACTS.includes(ty(e.from)) || !DP_TARGETS.includes(ty(e.to))) say('error', 'deploy-ends', path, ends, `${e.id} runs from ${q(e.from)} (${kind(e.from)}) to ${q(e.to)} (${kind(e.to)}): from an artifact or deployment specification to a node, device or execution environment`);
       else { const a = I.at.get(e.from); if (a.parent != null && DP_TARGETS.includes(ty(a.parent)) && a.parent !== e.to)
@@ -228,10 +228,14 @@ function dpConnect(model, view, from, to, at, line) {
 }
 // remove: a target deleted from the model takes what it owns with it (apply()); the hint line counts what goes (§10.4)
 function dpRemove(model, view, ids, fromModel) {
-  const I = dpIndex(model), ts = fromModel ? ids.filter(id => DP_TARGETS.includes((I.at.get(id) || {}).type)) : [];
+  // with the view's own elements (remove gets the model as it is: registry.js), and a target the view holds as its own, which
+  // Delete deletes too (audit 24)
+  const I = dpIndex(ownNodes(model, view).model), own = new Set(DP_ARR(DP_OBJ(view) ? view.nodes : null).filter(DP_OBJ).map(n => n.id));
+  const ts = ids.filter(id => (fromModel || own.has(id) && !DP_ARR(model.nodes).some(n => DP_OBJ(n) && n.id === id)) && DP_TARGETS.includes((I.at.get(id) || {}).type));
   const under = id => { for (let p = (I.at.get(id) || {}).parent, seen = new Set(); p != null && !seen.has(p); p = (I.at.get(p) || {}).parent) { if (ts.includes(p)) return true; seen.add(p); } return false; };
   const held = [...I.at.keys()].filter(id => !ids.includes(id) && under(id)).length;
   if (!held) return null;
+  if (!fromModel && ids.some(id => !ts.includes(id))) return null; // hid with them: as the default
   return { commands: ids.map(id => ({ op: 'delete', id })), say: `Deleted ${ts.length === 1 ? `${dpWord(I.at.get(ts[0])).toLowerCase()} ${dpName(I.at.get(ts[0]))}` : dpPlural(ts.length, 'target')} and the ${dpPlural(held, 'element')} ${ts.length === 1 ? 'it' : 'they'} held` };
 }
 

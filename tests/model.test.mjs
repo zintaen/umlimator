@@ -303,3 +303,31 @@ test('audit 20: a map by name one level down may hold a key named toString: a st
   const bad = structuredClone(m); bad.nodes[0].props.tags.Entity.table = { toString: 1 }; bad.views[0].present.c.ports.toString = { toString: 1 };
   assert.deepEqual(validate(bad).filter(p => /toString/.test(p.message)).map(p => p.path).sort(), ['nodes[0].props.tags.Entity.table', 'views[0].present.c.ports.toString']);
 });
+
+// audit 24: a host's model may hold what structuredClone refuses (a function, a Symbol, a Proxy) or a value that throws when
+// read. unreadable() copied a model with structuredClone once it found a value to leave out, and layout(), apply() and diff()
+// copied every model so: each threw a DataCloneError. Now such a value stays as it is (a function by reference), and one that
+// throws when read is left out, as a toString that is no function is
+test('audit 24: a model holding a function, a Symbol, a Proxy or a getter that throws is read, never thrown on', async () => {
+  const L = await import('../lib/umlimator-all.js');
+  const mk = (d, T, extra) => { const f = () => 1, m = { schemaVersion: 2, nodes: [{ id: 'a', type: T, label: 'A', props: { onClick: f, tag: Symbol('s') } }, ...extra], edges: [], views: [{ id: 'v', diagram: d, nodeIds: ['a', ...extra.map(n => n.id)] }], root: 'v' }; return [m, f]; };
+  const hostile = T => [[], [{ id: 'b', type: T, label: { toString: 1 } }], [{ id: 'b', type: T, label: 'B', props: { p: new Proxy({}, { ownKeys() { throw new Error('trap'); } }) } }],
+    [{ id: 'b', type: T, label: 'B', props: { get g() { throw new Error('getter'); } } }], [{ id: 'b', type: T, get label() { throw new Error('label'); } }]];
+  const writers = { 'mermaid-class': ['uml.class', 'uml.Class'], 'mermaid-er': ['er', 'er.Entity'], 'mermaid-flowchart': ['flowchart', 'flowchart.Process'], 'mermaid-mindmap': ['mindmap', 'mindmap.Topic'],
+    'mermaid-requirement': ['sysml.requirement', 'sysml.Requirement'], 'mermaid-sequence': ['uml.sequence', 'uml.Lifeline'], 'mermaid-state': ['uml.state-machine', 'uml.State'] };
+  for (const [file, [d, T]] of Object.entries(writers)) {
+    const W = await import(`../src/readers/${file}.js`), write = Object.values(W).find(x => typeof x === 'function' && /^write/.test(x.name));
+    hostile(T).forEach((extra, k) => { const what = `${file} #${k}`, [m, f] = mk(d, T, extra);
+      assert.equal(typeof write(m), 'string', what);
+      const said = L.validate(m); assert.ok(Array.isArray(said), what);
+      if (k >= 2) assert.ok(said.some(p => /left out/.test(p.message)), `${what}: said`);
+      assert.equal(typeof L.describe(m, 'v'), 'string', what);
+      assert.ok(L.layout(m, 'v').nodes.length >= 1, what);
+      assert.ok(L.diff(m, m), what);
+      const a = L.apply(m, { op: 'set', id: 'a', path: 'label', value: 'A2' }); assert.equal(a.nodes[0].props.onClick, f, `${what}: the function kept`);
+      assert.equal(m.nodes[0].label, 'A', `${what}: the host's model unchanged`); });
+  }
+  // the words: a value that throws is said as one, at its path
+  const [m] = mk('uml.class', 'uml.Class', hostile('uml.Class')[3]);
+  assert.deepEqual(L.validate(m).filter(p => /throws when it is read/.test(p.message)).map(p => p.path), ['nodes[1].props.g']);
+});

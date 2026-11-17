@@ -704,3 +704,26 @@ test('audit 23: a view\'s own connector (view.edges object) is checked as a mode
   assert.ok(want.some(([r]) => r === 'connector-part'), 'the model line: said');
   assert.deepEqual(at(own), want.map(([r, p]) => [r, p.replace(k, `views[0].edges[${j}]`)]), 'the own line: said alike, at its own path');
 });
+
+test('audit 24: Delete on a role of a collaboration the view holds as its own deletes it; on a port on a part, the view\'s own connector through it', () => {
+  let m = { schemaVersion: 2, nodes: [{ id: 'svc', type: 'uml.Class', label: 'Service', members: [{ id: 'svc.a', type: 'uml.Property', label: 'a' }] }], views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 'svc', nodeIds: ['svc'] }] };
+  m = apply(m, { op: 'add', in: 'view', view: 'v', element: { id: 'ps', type: 'uml.Collaboration', label: 'PubSub', members: [{ id: 'ps.pub', type: 'uml.Property', label: 'pub' }, { id: 'ps.sub', type: 'uml.Property', label: 'sub' }] } });
+  const T = diagramOf(m.views[0]);
+  assert.deepEqual(T.edits.remove(m, m.views[0], ['ps.pub'], false), { commands: [{ op: 'delete', id: 'ps.pub' }], say: 'Deleted role pub of PubSub (a member is not hidden: it goes from the model)' });
+  // the example's checkout-to-pricing connector held as the view's own line
+  const o = structuredClone(CS), i = o.edges.findIndex(e => e.id === 'checkout-to-pricing'), own = o.edges.splice(i, 1)[0];
+  o.views[0].edges = [...o.edges.map(e => e.id), own];
+  assert.ok(layout(o, o.views[0].id).edges.some(e => e.id === own.id), 'drawn');
+  const r = T.edits.remove(o, o.views[0], ['order-service.checkout->checkout-class.quotes'], false);
+  assert.deepEqual(r.commands, [{ op: 'delete', id: own.id }]);
+  assert.match(T.edits.remove(o, o.views[0], ['order-service.pricing'], false).say, /^Deleted part pricing of OrderService and its 1 line/);
+});
+
+test('audit 24: a part given no type is said to have none, not to be "typed null"', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'car', type: 'uml.Class', label: 'Car', members: [{ id: 'car.wheel', type: 'uml.Property', label: 'wheel', props: { valueType: 'Wheel' } }] }, { id: 'w', type: 'uml.Class', label: 'Wheel' }], views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 'car', nodeIds: ['car'] }] };
+  const T = diagramOf(m.views[0]), n = apply(m, T.edits.member(m, m.views[0], 'car', null, 'engine'));
+  const said = validate(n).filter(p => p.rule === 'part-type').map(p => p.message);
+  assert.deepEqual(said, ['part-type: part "engine" of "Car" has no type, so it shows only the ports its connectors reach through it']);
+  const port = T.edits.add(n, n.views[0], { type: 'uml.Port' }, 'p', { sel: ['car.engine'] });
+  assert.deepEqual(port, { error: 'engine has no type: type it as a class or component to add a port to' });
+});

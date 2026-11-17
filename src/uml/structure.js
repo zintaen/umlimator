@@ -2,7 +2,7 @@ import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { brLines, endLabels } from '../typed/draw.js';
 import { idTable } from '../core/registry.js';
-import { OWNER_RULES } from './owners.js';
+import { OWNER_RULES, viewLines } from './owners.js';
 
 /* ---------- structure notation: what the component, deployment and composite structure types share (work package 5.3,
    notes/stage-5.md §4, §9.1) ----------
@@ -214,10 +214,10 @@ function structProblems(model, view) {
     if (n.type === 'uml.Port') say('error', 'port-owner', `nodes[${i}]`, [n.id], `${nm(n)} is a node; a port is a member of a component or a class`);
     SN_ARR(n.members).forEach((m, j) => { if (SN_OBJ(m) && m.type === 'uml.Port' && n.type !== 'uml.Component' && n.type !== 'uml.Class')
       say('error', 'port-owner', `nodes[${i}].members[${j}]`, [m.id, n.id], `${nm(m)} is a member of ${nm(n)}; a port is a member of a component or a class`); }); });
-  SN_ARR(model && model.edges).forEach((e, i) => { if (!SN_OBJ(e) || e.type !== 'uml.Manifestation' || !(seen(e.from) || seen(e.to))) return;
+  viewLines(model, view).forEach(([e, path]) => { if (!SN_OBJ(e) || e.type !== 'uml.Manifestation' || !(seen(e.from) || seen(e.to))) return;
     const f = at.get(e.from), t = at.get(e.to);
-    if (!f || !SN_ARTIFACTS.includes(f.type)) say('error', 'manifest-ends', `edges[${i}]`, [e.id, e.from], `${e.id} runs from ${nm(f)}: a manifestation runs from an artifact`);
-    if (!t || t.type !== 'uml.Component') say('warning', 'manifest-ends', `edges[${i}]`, [e.id, e.to], `${e.id} runs to ${nm(t)}: «manifest» is drawn to a component only`); });
+    if (!f || !SN_ARTIFACTS.includes(f.type)) say('error', 'manifest-ends', path, [e.id, e.from], `${e.id} runs from ${nm(f)}: a manifestation runs from an artifact`);
+    if (!t || t.type !== 'uml.Component') say('warning', 'manifest-ends', path, [e.id, e.to], `${e.id} runs to ${nm(t)}: «manifest» is drawn to a component only`); });
   if (view && SN_ARR(view.containers).length) say('warning', 'own-boxes', `views[${SN_ARR(model.views).indexOf(view)}].containers`, [view.id], `view ${JSON.stringify(view.id)} draws its own boxes; its hand-written containers are ignored`);
   return out;
 }

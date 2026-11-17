@@ -325,3 +325,45 @@ test('a line break in a structural name is drawn as a new line, the shape grown 
     const g1 = layout(one, 'v'); g.nodes.filter(n => n.shape !== 'port').forEach(n => assert.ok(n.shape === 'part' ? n.h >= g1.byId[n.id].h : n.h > g1.byId[n.id].h, `${d}: ${n.id} taller for its second line`));
   }
 });
+
+// audit 24: the structural types' rules on lines, read with every view's own nodes and with each view's own lines
+test('audit 24: a model line from one view\'s own node is not "from nothing" to another view of the type', async () => {
+  const { apply } = await import('../src/core/apply.js'); await import('../src/map/typed.js');
+  const { validate } = await import('../src/map/validate.js');
+  for (const f of ['class', 'object', 'package', 'component', 'deployment']) await import(`../src/uml/${f}.js`);
+  const C = [
+    ['uml.class', { id: 'X', type: 'uml.Comment', label: 'note' }, { id: 'Y', type: 'uml.Class', label: 'Order' }, 'uml.CommentLink'],
+    ['uml.object', { id: 'X', type: 'uml.InstanceSpecification', label: 'a' }, { id: 'Y', type: 'uml.InstanceSpecification', label: 'b' }, 'uml.Link'],
+    ['uml.package', { id: 'X', type: 'uml.Package', label: 'a' }, { id: 'Y', type: 'uml.Package', label: 'b' }, 'uml.PackageImport'],
+    ['uml.component', { id: 'X', type: 'uml.Artifact', label: 'a.jar' }, { id: 'Y', type: 'uml.Component', label: 'C' }, 'uml.Manifestation'],
+    ['uml.deployment', { id: 'X', type: 'uml.Node', label: 'M' }, { id: 'Y', type: 'uml.Node', label: 'N' }, 'uml.CommunicationPath'],
+  ];
+  for (const [d, x, y, t] of C) {
+    let m = { schemaVersion: 2, nodes: [y], views: [{ id: 'v1', diagram: d, nodeIds: ['Y'], edges: [] }, { id: 'v2', diagram: d, nodeIds: ['Y'] }] };
+    m = apply(m, [{ op: 'add', in: 'view', view: 'v1', element: x }, { op: 'add', view: 'v1', element: { id: 'L', type: t, from: 'X', to: 'Y' } }]);
+    assert.deepEqual(validate(m).filter(p => p.level !== 'info'), [], d);
+    // a bad own node the other view does not show: said once, by its own view, at its own path
+    const bad = structuredClone(m); bad.views[0].nodes[0].members = [{ id: 'X.p', type: 'uml.Property', label: 'p' }, { id: 'X.q', type: 'uml.Property', label: 'p' }];
+    for (const p of validate(bad)) assert.ok(!/^views\[1\]/.test(p.path), `${d}: ${p.path} ${p.message}`);
+  }
+});
+
+test('audit 24: a view\'s own line (view.edges object) gets the object, package, component, deployment and profile rules, at its own path', async () => {
+  await import('../src/map/typed.js'); const { validate } = await import('../src/map/validate.js');
+  for (const f of ['object', 'package', 'component', 'deployment', 'profile']) await import(`../src/uml/${f}.js`);
+  const C = [
+    ['uml.object', 'link-ends', [{ id: 'a', type: 'uml.InstanceSpecification', label: 'a' }, { id: 'b', type: 'uml.Class', label: 'B' }], { id: 'l', type: 'uml.Link', from: 'a', to: 'b' }],
+    ['uml.package', 'import-ends', [{ id: 'a', type: 'uml.Package', label: 'a' }, { id: 'b', type: 'uml.Class', label: 'B' }], { id: 'l', type: 'uml.PackageImport', from: 'a', to: 'b' }],
+    ['uml.component', 'assembly-ends', [{ id: 'a', type: 'uml.Component', label: 'A' }, { id: 'b', type: 'uml.Interface', label: 'B' }], { id: 'l', type: 'uml.Connector', from: 'a', to: 'b' }],
+    ['uml.component', 'manifest-ends', [{ id: 'a', type: 'uml.Component', label: 'A' }, { id: 'b', type: 'uml.Component', label: 'B' }], { id: 'l', type: 'uml.Manifestation', from: 'a', to: 'b' }],
+    ['uml.deployment', 'deploy-ends', [{ id: 'a', type: 'uml.Node', label: 'A' }, { id: 'b', type: 'uml.Node', label: 'B' }], { id: 'l', type: 'uml.Deployment', from: 'a', to: 'b' }],
+    ['uml.deployment', 'path-ends', [{ id: 'a', type: 'uml.Artifact', label: 'A' }, { id: 'b', type: 'uml.Node', label: 'B' }], { id: 'l', type: 'uml.CommunicationPath', from: 'a', to: 'b' }],
+    ['uml.profile', 'extension-ends', [{ id: 'a', type: 'uml.Class', label: 'A' }, { id: 'b', type: 'uml.Class', label: 'B' }], { id: 'l', type: 'uml.Extension', from: 'a', to: 'b' }],
+  ];
+  for (const [d, rule, nodes, line] of C) {
+    const mk = own => ({ schemaVersion: 2, nodes: structuredClone(nodes), edges: own ? [] : [structuredClone(line)], views: [{ id: 'v', diagram: d, nodeIds: nodes.map(n => n.id), edges: [own ? structuredClone(line) : line.id] }] });
+    const hit = m => validate(m).filter(p => p.message.startsWith(rule + ':')).map(p => p.path);
+    assert.deepEqual(hit(mk(false)), ['edges[0]'], `${d} ${rule}: the model line`);
+    assert.deepEqual(hit(mk(true)), ['views[0].edges[0]'], `${d} ${rule}: the own line, alike`);
+  }
+});

@@ -1,6 +1,6 @@
 import { TYPED, idTable, diagramOf } from '../core/registry.js';
 import { andList, arrOf, rules } from './validate.js';
-import { nameTable, unreadable } from '../core/model.js';
+import { copyOf, nameTable, unreadable } from '../core/model.js';
 
 /* ---------- change: diff (#66) and drift (#68) ----------
    Each returns a model marked with what the map draws already, so a page the CLI writes, or a still, shows the marks
@@ -54,20 +54,28 @@ const sameOrder = (p, q, cap = LCS) => { let s = 0, e = 0; while (s < p.length &
   if ((a - s + 1) * w <= cap) { const T = new Int32Array((a - s + 1) * w), t = (i, j) => T[(i - s) * w + j - s];
     for (let i = a - 1; i >= s; i--) for (let j = b - 1; j >= s; j--) T[(i - s) * w + j - s] = p[i][0] === q[j][0] ? t(i + 1, j + 1) + 1 : Math.max(t(i + 1, j), t(i, j + 1));
     for (let i = s, j = s; i < a && j < b;) if (p[i][0] === q[j][0]) two(i++, j++); else if (t(i + 1, j) >= t(i, j + 1)) i++; else j++; }
-  else { const id = new Map(), num = x => id.get(x[0]) ?? id.set(x[0], id.size).get(x[0]), A = Int32Array.from(p.slice(s, a), num), B = Int32Array.from(q.slice(s, b), num), c = new Int32Array(2 * id.size);
-    A.forEach(k => c[2 * k]++); B.forEach(k => c[2 * k + 1]++);
+  else { const id = new Map(), num = x => id.get(x[0]) ?? id.set(x[0], id.size).get(x[0]), A0 = Int32Array.from(p.slice(s, a), num), B0 = Int32Array.from(q.slice(s, b), num), c = new Int32Array(2 * id.size);
+    A0.forEach(k => c[2 * k]++); B0.forEach(k => c[2 * k + 1]++);
     let most = 0; for (let k = 0; k < id.size; k++) most += Math.min(c[2 * k], c[2 * k + 1]);
-    // the table's cell (i, j), i - j from most - m to n - most, at row i and column j - i + hi; NO off the band or the lists
-    const n = A.length, m = B.length, hi = n - most, W = n + m - 2 * most + 1, NO = -(1 << 29), K = Math.ceil(Math.sqrt(n + 1));
-    const row = (i, nx, cur) => { for (let c = W - 1; c >= 0; c--) { const j = i - hi + c;
-      cur[c] = j < 0 || j > m ? NO : i === n || j === m ? 0 : A[i] === B[j] ? nx[c] + 1 : Math.max(c ? nx[c - 1] : NO, c < W - 1 ? cur[c + 1] : NO); } };
-    const kept = new Map(); let nx = new Int32Array(W), cur = new Int32Array(W);
-    for (let i = n; i >= 0; i--) { row(i, nx, cur); if (i % K === 0 || i === n) kept.set(i, cur.slice()); [nx, cur] = [cur, nx]; }
-    if (nx[hi] < most) return false;
-    for (let i = 0, j = 0, r0 = 0; i < n && j < m; r0 += K) { const r1 = Math.min(r0 + K, n), R = new Array(r1 - r0 + 1); R[r1 - r0] = kept.get(r1);
-      for (let r = r1 - 1; r >= r0; r--) { R[r - r0] = new Int32Array(W); row(r, R[r - r0 + 1], R[r - r0]); }
-      while (i < r1 && j < m) { const c = j - i + hi; if (A[i] === B[j]) two(s + i++, s + j++);
-        else if ((c ? R[i + 1 - r0][c - 1] : NO) >= (c < W - 1 ? R[i - r0][c + 1] : NO)) i++; else j++; } } }
+    // the band spans only the steps of a kind both middles hold (audit 24: with the rest in, 20,000 new ids walked 20,000 x
+    // 40,001 cells for nothing). A step of a kind one list alone has changes no cell of the table, t(i, j) = T(fa[i], fb[j]),
+    // so the walk below goes step by step in the lists as they are, reading the band, and pairs the table's own run
+    const N0 = A0.length, M0 = B0.length, both = k => c[2 * k] && c[2 * k + 1];
+    if (most) { const fa = new Int32Array(N0 + 1), fb = new Int32Array(M0 + 1);
+      for (let i = 0; i < N0; i++) fa[i + 1] = fa[i] + (both(A0[i]) ? 1 : 0); for (let j = 0; j < M0; j++) fb[j + 1] = fb[j] + (both(B0[j]) ? 1 : 0);
+      const A = A0.filter(both), B = B0.filter(both);
+      // the table's cell (i, j), i - j from most - m to n - most, at row i and column j - i + hi; NO off the band or the lists
+      const n = A.length, m = B.length, hi = n - most, W = n + m - 2 * most + 1, NO = -(1 << 29), K = Math.ceil(Math.sqrt(n + 1));
+      const row = (i, nx, cur) => { for (let c = W - 1; c >= 0; c--) { const j = i - hi + c;
+        cur[c] = j < 0 || j > m ? NO : i === n || j === m ? 0 : A[i] === B[j] ? nx[c] + 1 : Math.max(c ? nx[c - 1] : NO, c < W - 1 ? cur[c + 1] : NO); } };
+      const kept = new Map(); let nx = new Int32Array(W), cur = new Int32Array(W);
+      for (let i = n; i >= 0; i--) { row(i, nx, cur); if (i % K === 0 || i === n) kept.set(i, cur.slice()); [nx, cur] = [cur, nx]; }
+      if (nx[hi] < most) return false;
+      for (let i = 0, j = 0, r0 = 0; i < N0 && j < M0; r0 += K) { const r1 = Math.min(r0 + K, n), R = new Array(r1 - r0 + 1); R[r1 - r0] = kept.get(r1);
+        for (let r = r1 - 1; r >= r0; r--) { R[r - r0] = new Int32Array(W); row(r, R[r - r0 + 1], R[r - r0]); }
+        const t = (i, j) => { const x = fa[i], y = fb[j], c = y - x + hi; return c < 0 || c >= W ? NO : R[x - r0][c]; };
+        while (i < N0 && j < M0 && (fa[i] < r1 || r1 === n)) { if (A0[i] === B0[j]) two(s + i++, s + j++);
+          else if (t(i + 1, j) >= t(i, j + 1)) i++; else j++; } } } }
   by(0); by(1); return pairs.sort((x, y) => x[0] - y[0]).every((x, k, l) => !k || l[k - 1][1] < x[1]); };
 
 /** What changed from one model to the next, as one model to draw: `after`, with each card and line marked added, changed
@@ -75,7 +83,7 @@ const sameOrder = (p, q, cap = LCS) => { let s = 0, e = 0; while (s < p.length &
  *  views that show a change. Cards and lines are matched by id (a line without one by its ends, as a Ref names it). */
 export function diff(before, after) {
   before = unreadable(before).model; after = unreadable(after).model; // each read as validate() and mapContext read it (audit 20)
-  const arr = arrOf, A = structuredClone(before || {}), out = structuredClone(after || {});
+  const arr = arrOf, A = copyOf(before || {}), out = copyOf(after || {}); // a host's function stays as it is (audit 24)
   const how = new Map(), was = new Map(), said = []; // each marked card or line: added, changed or removed; a changed one's [before, after]
   const card = (x, h) => ({ ...x, change: h });
   const line = (x, h) => ({ ...x, change: h, ...(h === 'changed' ? { edited: true } : { style: h }) });
@@ -260,7 +268,7 @@ export function diff(before, after) {
 export function drift(model, observed, options = {}) {
   // the model and the traffic: no text String() throws on (audit 20); the match table by name, where a service may be named toString (audit 21)
   const match = nameTable(options && options.match); [model, observed] = [model, observed].map(x => unreadable(x).model);
-  const arr = arrOf, out = structuredClone(model || {});
+  const arr = arrOf, out = copyOf(model || {});
   const list = Array.isArray(observed) ? observed : arr(observed && observed.data);
   const cards = [...arr(out.nodes), ...arr(out.views).flatMap(v => arr(v && v.nodes))].filter(n => n && n.id != null);
   const ids = new Set(cards.map(n => String(n.id))), lower = new Map();

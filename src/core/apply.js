@@ -1,5 +1,5 @@
 import { diagramOf, propRefs } from './registry.js';
-import { lineNames, namesOf, listOf } from './model.js';
+import { copyOf, lineNames, namesOf, listOf } from './model.js';
 /* ---------- commands: apply() and references() (work package 1.6) ----------
    apply(model, commands) runs a transaction, one command or a list run in order, on a copy of the model and returns the
    new model; the one given is never changed. A command that cannot run throws, and none of the transaction is applied.
@@ -138,6 +138,15 @@ function follow(m, names0, only) {
   });
 }
 
+/* registry.js ownGuard's rule, kept by apply() too (audit 24): what one view alone holds (its own node, a member of one) owns
+   nothing of the model's nor of another view's; it is no owner in the other views, and goes with its view's nodes */
+function ownParent(at, op, id, parent, home) {
+  const p = at.get(parent); if (!p || !p.view) return;
+  let t = p; for (let n = 0; t && t.kind === 'member' && t.owner && n++ < at.size;) t = at.get(t.owner.id);
+  if (!t || t.kind !== 'node' || p.view === home) return;
+  throw new Error(`${op}: ${JSON.stringify(parent)} lives in view ${JSON.stringify(p.view.id)} only: ${home ? `"${id}", an element of view ${JSON.stringify(home.id)},` : `"${id}", an element of the model,`} cannot go under it`);
+}
+
 function checkNew(x, at) { // an element to add: an object with a new id that is not positional, and its members alike
   const seen = new Set(), walk = (y, what) => {
     if (!isObj(y) || typeof y.id !== 'string' || !y.id) throw new Error(`add: ${what} needs an id`);
@@ -183,6 +192,7 @@ function run(m, c, gone) {
       if (c.in === 'view') {
         if (c.view == null || owner) throw new Error('add: in \'view\' needs a view, and no owner');
         const v = viewOf(c.view), T = diagramOf(v) || {}, pal = arr(T.elements);
+        if (x.parent != null) ownParent(at, 'add', x.id, x.parent, v);
         const k = isLine(x) || arr(T.items).includes(x.type) ? 'edges' : !pal.length || pal.some(t => isObj(t) && t.type === x.type) ? 'nodes' : 'fragments';
         if (k === 'edges' && !Array.isArray(v.edges) && arr(m.edges).length) throw new Error(`add: view "${c.view}" shows every line between its cards; list its lines first`);
         const list = (v[k] ||= []);
@@ -190,6 +200,7 @@ function run(m, c, gone) {
         return;
       }
       if (owner && owner.kind !== 'node' && owner.kind !== 'member' && owner.kind !== 'fragment') throw new Error(`add: "${c.owner}" holds no members`);
+      if (!owner && x.parent != null) ownParent(at, 'add', x.id, x.parent, undefined);
       const v = c.view != null ? viewOf(c.view) : null, list = owner ? (owner.x.members ||= []) : isLine(x) ? (m.edges ||= []) : (m.nodes ||= []);
       list.splice(owner ? place(list, c.index) : list.length, 0, x);
       if (v && !owner) { const shown = isLine(x) ? (Array.isArray(v.edges) ? v.edges : null) : (v.nodeIds ||= []); // a view that lists no lines shows every line between its cards
@@ -271,6 +282,7 @@ function run(m, c, gone) {
       const p = need(c.parent);
       if (p.kind === 'edge' || p.kind === 'time') throw new Error(`reparent: "${c.parent}" is not an owner`);
       if (inside(c.id, c.parent)) throw new Error(`reparent: "${c.id}" would end up inside itself`);
+      ownParent(at, 'reparent', c.id, c.parent, e.view);
       e.x.parent = c.parent;
       return;
     }
@@ -288,7 +300,7 @@ function run(m, c, gone) {
 /* apply(model, commands): the model after a transaction (a command, or a list of them run in order). See above. */
 export function apply(model, commands) {
   if (!isObj(model)) throw new TypeError('apply() needs a model');
-  const m = structuredClone(model), gone = new Set();
+  const m = copyOf(model), gone = new Set(); // a host's function stays as it is (audit 24)
   for (const c of Array.isArray(commands) ? commands : [commands]) run(m, c, gone);
   return m;
 }

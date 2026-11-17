@@ -362,10 +362,11 @@ function tmRename(model, view, id, text) {
    the ruler is not deleted on its own */
 function tmRemove(model, view, ids, fromModel) {
   const V = tmView(model, view); if (!V) return null;
-  const X = tmIndex(model, V), out = [], gone = { lane: [] };
+  const X = tmIndex(model, V), out = [], gone = { lane: [], hid: [] };
   for (const id of new Set(TM_ARR(ids))) {
     if (id === TM_RULER || String(id).includes('->')) return tmErr('a state\'s row and the ruler go with their lifeline or view: rename a state with F2, or edit the lifeline\'s states');
-    if (X.H.has(id)) { gone.lane.push(id); out.push(fromModel || TM_ARR(V.nodes).some(n => TM_OBJ(n) && n.id === id) ? { op: 'delete', id } : { op: 'hide', id, view: V.id }); continue; }
+    if (X.H.has(id)) { const del = fromModel || TM_ARR(V.nodes).some(n => TM_OBJ(n) && n.id === id); gone.lane.push(id); if (!del) gone.hid.push(id);
+      out.push(del ? { op: 'delete', id } : { op: 'hide', id, view: V.id }); continue; }
     if (X.C.has(id) || X.msgs.some(m => m.id === id) || X.cons.some(c => c.id === id)) { out.push({ op: 'delete', id }); continue; }
     return null;
   }
@@ -378,7 +379,9 @@ function tmRemove(model, view, ids, fromModel) {
     .filter(([c]) => c).map(([c, w]) => tmPlural(c, w)).join(', ').replace(/, ([^,]*)$/, ' and $1'); // "1 change, 2 messages and 1 constraint"
   const who = gone.lane.map(X.name).join(', '), its = gone.lane.length === 1 ? 'its' : 'their', more = list(theirs), all = list();
   const hid = [n ? `deleted ${its} ${tmPlural(n, 'message')}${more ? `, and ${more}` : ''}` : more && `deleted ${more}`, k && `${its} ${k === 1 ? 'change stays' : 'changes stay'} in the timeline`].filter(Boolean); // only the clauses that hold (audit 5)
-  const say = gone.lane.length ? (fromModel ? `Deleted ${who}${all ? ', ' + all : ''}` : [`Hid ${who}`, ...hid].join('; '))
+  // said as done: a lifeline the view holds as its own is deleted by Delete too, not hidden (audit 24)
+  const dels = gone.lane.filter(id => !gone.hid.includes(id)).map(X.name).join(', ');
+  const say = gone.lane.length ? (!gone.hid.length ? `Deleted ${who}${all ? ', ' + all : ''}` : [...(dels ? [`Deleted ${dels}`] : []), `Hid ${gone.hid.map(X.name).join(', ')}`, ...hid].join('; '))
     : `Deleted ${all}: a change, a message or a constraint is deleted, not hidden`;
   return { commands: r, say };
 }

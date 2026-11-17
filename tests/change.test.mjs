@@ -410,3 +410,19 @@ test('audit 22: validate() says a problem after a list entry it leaves out at th
   assert.ok(plain.some(([, s]) => /^reply-call: m2/.test(s)) && plain.some(([, s]) => /used twice \(also views\[0\]\.edges\[1\]\)/.test(s)), JSON.stringify(plain));
   assert.deepEqual(shifted, [['views[0].edges[1]', LEFT], ...plain.map(([p, s]) => [up(p), up(s)])]);
 });
+
+// audit 24: past the cap the band spans only the steps of a kind both lists hold; with every step given a new kind (a trace
+// re-imported with new line ids) it walked 20,000 x 40,001 cells for nothing, 5 to 33 times slower than before audit 23
+test('audit 24: diff()\'s order check past the cap leaves out the steps no pairing can use, and pairs as the table does', async () => {
+  const { sameOrder } = await import('../src/map/diff.js');
+  const n = 30000, all = Array.from({ length: n }, (_, i) => ['x' + i, 'r']), none = Array.from({ length: n }, (_, i) => ['y' + i, 'r']);
+  const half = all.map((s, i) => (i % 2 ? ['y' + i, 'r'] : s));
+  for (const [what, p, q, want] of [['every step new', all, none, true], ['every other step new', all, half, true], ['two swapped among new ones', all, [...half.slice(0, 10), all[12], half[11], all[10], ...half.slice(13)], false]]) {
+    const t = performance.now(); assert.equal(sameOrder(p, q), want, what);
+    assert.ok(performance.now() - t < 2000, `${what}: ${Math.round(performance.now() - t)} ms`); } // before: about 6,000 ms or more each
+  // kinds one list alone has, among shared ones, past the cap as under it
+  let seed = 24; const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+  for (let t = 0; t < 20000; t++) { const gen = (n, k) => Array.from({ length: n }, () => ['k' + Math.floor(rnd() * k), 'r' + Math.floor(rnd() * 3)]);
+    const p = gen(Math.floor(rnd() * 12), 3 + Math.floor(rnd() * 6)), q = gen(Math.floor(rnd() * 12), 3 + Math.floor(rnd() * 6));
+    assert.equal(sameOrder(p, q, 0), sameOrder(p, q, Infinity), `${JSON.stringify(p)} ${JSON.stringify(q)}`); }
+});

@@ -1,5 +1,5 @@
 import { esc, fit, measured, sansW, textW } from '../core/text.js';
-import { migrate, unreadable } from '../core/model.js';
+import { copyOf, migrate, unreadable } from '../core/model.js';
 import { diagramOf } from '../core/registry.js';
 import { held, warn } from '../core/warn.js';
 import { r2 } from '../draw/shapes.js';
@@ -59,7 +59,7 @@ function boxHolds(v) {
 
 /* The model's views and everything that lays one out. Works on its own copy of the model, needs no DOM. */
 function mapContext(model, opts = {}) {
-  const D = structuredClone(unreadable(migrate(model)).model || {}); // a newer schemaVersion throws: drawn wrongly otherwise (F6); no text String() throws on (audit 19)
+  const D = copyOf(unreadable(migrate(model)).model || {}); // a newer schemaVersion throws: drawn wrongly otherwise (F6); no text String() throws on (audit 19)
   plainViews(D); // typed views of a diagram this release does not draw: plain cards
   const M = opts.measure || null, withM = f => (...a) => measured(M, () => f(...a));
   // a field that must be a list and is not (validate() says so) is left out, as a missing one is
@@ -206,12 +206,13 @@ function mapContext(model, opts = {}) {
     if (hub && outs(hub) < 3) hub = null;
     const steps = O(); if (v.render === 'sequence') lp.edges.forEach((e, i) => { (steps[e.to] ||= []).push(i + 1); });
     const flow = { flow: true, backKeys: lp.keys, steps, hub: null };
-    if (!hub || v.containers || v.mainSteps || v.render === 'process') return (planCache[vid] = flow);
+    // a type with its own layout has no hub plan: a typed view named as one of its cards is no drill-down into it (audit 24)
+    if (!hub || v.containers || v.mainSteps || v.render === 'process' || ownLayout(vid)) return (planCache[vid] = flow);
     planCache[vid] = { ...hubPlan(v, hub, lp), hub, backKeys: lp.keys, steps };
     const was = opts.prev && opts.prev[vid]; // after an update: cards keep the lane, column and order they had
     if (was && was.hub === hub && was.lanes) return (planCache[vid] = keepHub(planCache[vid], was));
     // a hub plan that cannot route cleanly gives way to the plain left-to-right flow, if that does better
-    const bad = g => routeAudit(g, '').length + ((g.stats.cross || 0) + (g.stats.fallback || 0)) * 5;
+    const bad = g => { const st = g.stats || {}; return routeAudit(g, '').length + ((st.cross || 0) + (st.fallback || 0)) * 5; };
     let hb = bad(buildGeo(vid, undefined, undefined, true));
     if (hb) { // try other orders inside each lane column before giving up on the hub layout
       const P0 = planCache[vid]; let evals = 0;
@@ -497,7 +498,8 @@ function mapContext(model, opts = {}) {
   function scoreGeo(g) {
     const bad = routeAudit(g, '').length, len = g.edges.reduce((a, e) => a + e.pts.slice(1).reduce((s, p, i) => s + Math.abs(p[0] - e.pts[i][0]) + Math.abs(p[1] - e.pts[i][1]), 0), 0);
     const bends = g.edges.reduce((a, e) => a + e.pts.length, 0), drop = g.edges.filter(e => e.label && !e.lbl).length;
-    return bad * 1000 + ((g.stats.cross || 0) + (g.stats.fallback || 0)) * 150 + drop * 40 + len / 15 + bends * 12 + g.bounds.w * g.bounds.h / 4e5;
+    const st = g.stats || {};
+    return bad * 1000 + ((st.cross || 0) + (st.fallback || 0)) * 150 + drop * 40 + len / 15 + bends * 12 + g.bounds.w * g.bounds.h / 4e5;
   }
   function optimize(vid, budget = 160) {
     budget = Math.max(budget, Math.min(400, 20 * (V[vid].nodeIds || []).length));
