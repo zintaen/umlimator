@@ -1,5 +1,5 @@
 import { apply } from '../core/apply.js';
-import { registerDiagramType } from '../core/registry.js';
+import { ownNodes, registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
@@ -253,10 +253,13 @@ function cmMessageIndex(view, at) {
 
 // the commands, or { error } naming the first rule they would break that the view does not break already (S5); all: in every
 // communication view, for commands that delete from the model
+// a view's index with its own lifelines (remove gets the model as it is: registry.js), audit 24
+const cmIx = (model, v) => commIndex(ownNodes(model, v).model, v);
 function cmGuard(model, view, commands, all) {
   const key = p => p.view + ' ' + p.rule + ' ' + p.ids.join(' ');
   const errs = m => CM_ARR(m.views).filter(v => CM_OBJ(v) && (v.id === view.id || all && v.diagram === 'uml.communication'))
-    .flatMap(v => commProblems(m, v).filter(p => p.level === 'error').map(p => ({ ...p, view: v.id })));
+    // as validate() asks: with the view's own lifelines (audit 24)
+    .flatMap(v => COMM_TYPE.validate(m, v).filter(p => p.level === 'error').map(p => ({ ...p, view: v.id })));
   let now; try { now = apply(model, commands); } catch (e) { return { error: String(e.message) }; }
   const was = new Set(errs(model).map(key)), bad = errs(now).find(p => !was.has(key(p)));
   return bad ? { error: bad.message } : commands;
@@ -324,14 +327,14 @@ function commAdd(model, view, entry, label, at) {
    does), said on the hint line ({ commands, say }). { error } when what is left breaks a rule */
 function commRemove(model, view, ids, fromModel) {
   if (!CM_OBJ(view)) return null;
-  const I = commIndex(model, view), out = [], seen = new Set(), idOf = x => (typeof x === 'string' ? x : CM_OBJ(x) ? x.id : null);
+  const I = cmIx(model, view), out = [], seen = new Set(), idOf = x => (typeof x === 'string' ? x : CM_OBJ(x) ? x.id : null);
   const views = fromModel ? CM_ARR(model && model.views).filter(v => CM_OBJ(v) && v.diagram === 'uml.communication') : [view];
   // a line or lifeline in the view's own lists lives in this view only: hiding it is deleting it (audit 21), as the canvas's Delete does
   const own = new Map([...CM_ARR(view.nodes), ...CM_ARR(view.edges)].filter(x => CM_OBJ(x) && typeof x.id === 'string').map(x => [x.id, x])), el = id => I.E.get(id) || own.get(id);
   const go = id => { if (seen.has(id)) return; seen.add(id);
     out.push(fromModel || own.has(id) ? { op: 'delete', id } : { op: 'hide', id, view: view.id });
-    if (el(id) && el(id).type === 'uml.Connector') views.forEach(v => { const on = commIndex(model, v).on.get(id); if (!on) return;
-      const left = commIndex(model, { ...v, edges: CM_ARR(v.edges).filter(x => !seen.has(idOf(x))) });
+    if (el(id) && el(id).type === 'uml.Connector') views.forEach(v => { const on = cmIx(model, v).on.get(id); if (!on) return;
+      const left = cmIx(model, { ...v, edges: CM_ARR(v.edges).filter(x => !seen.has(idOf(x))) });
       on.forEach(m => { if (v === view && !fromModel || !left.carrierOf(m.from, m.to)) go(m.id); }); });
     if (!fromModel) I.messages.filter(m => cmPropsOf(m).replyTo === id).forEach(m => go(m.id)); };
   CM_ARR(ids).forEach(id => { if (I.shown.has(id) || I.E.has(id) || own.has(id)) go(id); });
@@ -342,7 +345,7 @@ function cmSaid(model, view, ids, fromModel, I, r) {
   const what = CM_ARR(ids).filter(id => I.shown.has(id) || I.E.has(id) && I.E.get(id).type === 'uml.Connector');
   if (!Array.isArray(r) || !what.length) return r;
   let next; try { next = apply(model, r); } catch { return r; }
-  const left = new Set(fromModel ? CM_ARR(next.edges).filter(CM_OBJ).map(e => e.id) : commIndex(next, CM_ARR(next.views).find(v => CM_OBJ(v) && v.id === view.id)).messages.map(m => m.id));
+  const left = new Set(fromModel ? CM_ARR(next.edges).filter(CM_OBJ).map(e => e.id) : cmIx(next, CM_ARR(next.views).find(v => CM_OBJ(v) && v.id === view.id)).messages.map(m => m.id));
   const msgs = fromModel ? CM_ARR(model.edges).filter(e => CM_OBJ(e) && e.type === 'uml.Message') : I.messages;
   const took = msgs.filter(m => !left.has(m.id) && !CM_ARR(ids).includes(m.id)); if (!took.length) return r;
   const q = x => JSON.stringify(cmNameOf(x)), nm = id => cmNameOf(I.N.get(id) || { id });

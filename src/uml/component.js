@@ -1,10 +1,10 @@
-import { registerDiagramType } from '../core/registry.js';
+import { ownNodes, registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { lineRename, memberEdit, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
-import { lineInside, ownersOn, placeTabs, readingOrder } from './owners.js';
+import { lineInside, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 import { SN_ARTIFACTS, SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, snKindName, snKindWord, structProblems } from './structure.js';
 
 /* ---------- the component diagram, uml.component (work package 5.4, notes/stage-5.md §10.1) ----------
@@ -226,8 +226,8 @@ function cpProblems(model, view) {
   const q = id => JSON.stringify(I.name(id)), comp = id => I.ty(id) === 'uml.Component', within = (a, b) => I.chain(I.comp(a)).includes(I.comp(b));
   CP_ARR(model && model.nodes).forEach((n, i) => { if (!CP_OBJ(n) || n.type !== 'uml.Component' || !seen(n.id) || n.parent == null || !I.N.has(n.parent)) return;
     const p = I.N.get(n.parent); if (!['uml.Component', 'uml.Package'].includes(p.type)) say('warning', 'component-owner', `nodes[${i}].parent`, [n.id, p.id], `${q(n.id)} is owned by ${q(p.id)}, a ${String(p.type).split('.').pop()}: a component's owner is a component or a package`); });
-  CP_ARR(model && model.edges).forEach((e, i) => { if (!CP_OBJ(e) || !(seen(e.from) || seen(e.to)) || (listed && !listed.has(e.id))) return;
-    const path = `edges[${i}]`, ends = [e.id, e.from, e.to], from = I.P.has(e.from) ? 'port' : I.ty(e.from), kind = cpProps(e).kind === 'delegation' ? 'delegation' : 'assembly'; // drawn as an assembly without one (cpKind)
+  viewLines(model, view).forEach(([e, path]) => { if (!CP_OBJ(e) || !(seen(e.from) || seen(e.to)) || (listed && !listed.has(e.id))) return;
+    const ends = [e.id, e.from, e.to], from = I.P.has(e.from) ? 'port' : I.ty(e.from), kind = cpProps(e).kind === 'delegation' ? 'delegation' : 'assembly'; // drawn as an assembly without one (cpKind)
     if (e.type === 'uml.InterfaceRealization' && (!['uml.Component', 'uml.Class', 'port'].includes(from) || I.P.has(e.to) || I.ty(e.to) !== 'uml.Interface'))
       say('error', 'provided-ends', path, ends, `${e.id} runs from ${q(e.from)} to ${q(e.to)}: a realization runs from a component, a class or a port to an interface`);
     if (e.type === 'uml.Usage' && e.to != null && (from === 'port' || from === 'uml.Component') && (I.P.has(e.to) || I.ty(e.to) !== 'uml.Interface'))
@@ -327,7 +327,8 @@ function cpKey(model, view, ids, key) {
 // Delete on a port: a member is not hidden, it is deleted from the model, as said (§12.2, S20)
 // the rest of a mixed selection as the canvas's default (src/canvas/edit.js): hidden, or deleted when it lives in this view only
 function cpRemove(model, view, ids, fromModel) {
-  const I = cpIndex(model), ps = ids.filter(id => I.P.has(id)); if (!ps.length) return null;
+  // the ports of the view's own components too (remove gets the model as it is: registry.js), audit 24
+  const I = cpIndex(ownNodes(model, view).model), ps = ids.filter(id => I.P.has(id)); if (!ps.length) return null;
   const own = new Set([...CP_ARR(view.nodes), ...CP_ARR(view.edges)].filter(CP_OBJ).map(x => x.id)), lines = new Set(CP_ARR(model.edges).filter(CP_OBJ).map(e => e.id));
   const rest = ids.filter(id => !I.P.has(id) && (fromModel || own.has(id) || !lines.has(id) || Array.isArray(view.edges))); // a line of a view listing none: not hidden, as the default
   const hid = fromModel ? 0 : rest.filter(id => !own.has(id)).length;

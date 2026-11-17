@@ -422,3 +422,10 @@ test('a view\'s own nodes in a hostile model: no throw, nothing fetched, a delet
   const r = diagramOf(m.views[0]).edits.add(m, m.views[0], { type: 'uml.Action' }, 'x', { sel: ['hasOwnProperty'] });
   assert.equal(r[0].in, 'view'); assert.equal(Object.getPrototypeOf({}).polluted, undefined);
 });
+
+test('audit 24: Shift + Delete on an extension point of a use case the view holds as its own names it as a point', () => {
+  const U = { id: 'co', type: 'uml.UseCase', label: 'Check out', members: [{ id: 'co.pay', type: 'uml.ExtensionPoint', label: 'payment' }] };
+  const m = { schemaVersion: 2, nodes: [{ id: 'rv', type: 'uml.UseCase', label: 'Redeem a voucher' }], edges: [{ id: 'x', type: 'uml.Extend', from: 'rv', to: 'co', props: { extensionPoints: ['co.pay'] } }],
+    views: [{ id: 'v', diagram: 'uml.use-case', nodeIds: ['rv', 'co'], nodes: [U] }] };
+  assert.equal(diagramOf(m.views[0]).edits.remove(m, m.views[0], ['co.pay'], true).say, 'Deleted extension point "payment" and the extend from "Redeem a voucher", which named no other extension point');
+});

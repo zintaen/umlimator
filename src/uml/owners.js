@@ -16,6 +16,17 @@ const OWNED = ['uml.Class', 'uml.Interface', 'uml.Enumeration', 'uml.DataType', 
 // with none draws its title as it did (audit 23)
 function boxHead(b) { const { head, ...rest } = b, S = Object.hasOwn(SHAPE, b.shape) ? SHAPE[b.shape] : null, k = brLines(b.title ?? b.label ?? b.id).length;
   return S && S.titleLh && k > 1 ? { ...rest, head: (k - 1) * S.titleLh } : S && S.titleLh ? rest : b; }
+/* the lines a view draws, each with its path: the model's (edges[i]), then the view's own (view.edges objects, drawn as the
+   model's are) at views[vi].edges[j]; one a model element's id (or an earlier own line's) takes is that one. That view's alone:
+   validate() asks once a view (audit 24: the object, package, component, deployment and profile rules, as classProblems since
+   audit 23) */
+function viewLines(model, view) {
+  const es = OWN_ARR(OWN_OBJ(model) ? model.edges : null), out = es.map((e, i) => [e, `edges[${i}]`]), vi = OWN_OBJ(view) ? OWN_ARR(model.views).indexOf(view) : -1;
+  if (vi < 0) return out;
+  const taken = new Set([...OWN_ARR(model.nodes), ...es].filter(OWN_OBJ).map(x => x.id));
+  OWN_ARR(view.edges).forEach((e, j) => { if (OWN_OBJ(e) && typeof e.id === 'string' && !taken.has(e.id) && String(e.type || '').startsWith('uml.')) { taken.add(e.id); out.push([e, `views[${vi}].edges[${j}]`]); } });
+  return out;
+}
 const ownName = x => String(x.label ?? x.id), ownAt = (at, id) => at.get(id) || { id }; // an id the index lacks (a member's) by itself, not a throw (audit 17)
 const stereoOf = x => OWN_ARR(OWN_OBJ(x.props) ? x.props.stereotypes : null).filter(t => t != null && t !== '').map(String);
 
@@ -151,4 +162,4 @@ function placeTabs(g) {
   return g;
 }
 
-export { boxHead, OWN_BOXES, OWNER_RULES, ownersOn, readingOrder, holdsLine, lineInside, ownerChoices, ownerProblems, placeTabs };
+export { viewLines, boxHead, OWN_BOXES, OWNER_RULES, ownersOn, readingOrder, holdsLine, lineInside, ownerChoices, ownerProblems, placeTabs };

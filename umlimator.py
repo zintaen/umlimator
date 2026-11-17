@@ -918,6 +918,11 @@ def cmd_trace(a):
         out, report = r["model"], r["report"]
     else:
         out = js("sequenceFromTrace", m, js("otlpSpans", trace), opts)
+    # the UML sequence view replaced takes its lifelines with it: those no view of the result lists (audit 24: they piled up)
+    if was and was.get("diagram") == "uml.sequence":
+        listed = {i for x in lst(out.get("views")) if isinstance(x, dict) for i in lst(x.get("nodeIds")) if isinstance(i, str)}
+        old = {i for i in lst(was.get("nodeIds")) if isinstance(i, str)} - listed
+        out["nodes"] = [n for n in lst(out.get("nodes")) if not (isinstance(n, dict) and n.get("type") == "uml.Lifeline" and n.get("id") in old)]
     v = next(x for x in out["views"] if x.get("id") == a.view)
     if not v["edges"]:
         sys.exit(f"trace: no call in {a.trace} runs between two cards of {a.model} (--match names a service's card)")
