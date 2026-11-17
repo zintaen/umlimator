@@ -374,3 +374,20 @@ test('audit 19: a row keeps its member\'s kind both ways: ref or port taken off 
   const owner = anon.nodes.find(n => (n.members || []).includes(p)).id;
   assert.doesNotMatch(String(Object(T.edits.member(anon, anon.views[0], owner, p.id, T.member.print(p))).error), /keeps its member's kind/, 'still a port row');
 });
+
+test('audit 23: a view\'s own connector (view.edges object) is drawn, named, described, checked and edited as a model one: item flow, no arrowhead', () => {
+  const c = M18.edges.find(e => e.id === 'battery-dock-charge'), own = structuredClone(M18);
+  own.edges = own.edges.filter(e => e.id !== c.id); own.views[0].edges = M18.edges.map(e => (e.id === c.id ? structuredClone(c) : e.id));
+  const pick = g => g.edges.map(e => [e.id, e.type, e.label, e.aria, e.end, e.pts, e.item]);
+  assert.deepEqual(pick(layout(own, VID)), pick(layout(M18, VID)), 'the same picture');
+  assert.equal(describe(own, VID), describe(M18, VID));
+  assert.equal(T.text(own, own.views[0], c.id), T.text(M18, M18.views[0], c.id));
+  assert.deepEqual(T.edits.rename(own, own.views[0], c.id, 'ACPower'), [{ op: 'set', id: c.id, path: 'props.itemFlow.item', value: 'ACPower' }], 'F2 renames its item');
+  // a bad end: connector-part at its own path, as the model line's at its own
+  const j = own.views[0].edges.findIndex(x => typeof x === 'object');
+  own.views[0].edges[j].props.ends.from.part = 'nope'; const m = structuredClone(M18); m.edges.find(e => e.id === c.id).props.ends.from.part = 'nope';
+  const at = x => validate(x).filter(p => (p.ids || []).includes(c.id)).map(p => [p.rule, p.path]);
+  const want = at(m), k = `edges[${M18.edges.indexOf(c)}]`;
+  assert.ok(want.some(([r]) => r === 'connector-part'), 'the model line: said');
+  assert.deepEqual(at(own), want.map(([r, p]) => [r, p.replace(k, `views[0].edges[${j}]`)]), 'the own line: said alike, at its own path');
+});

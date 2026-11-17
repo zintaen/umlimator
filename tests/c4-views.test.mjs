@@ -57,10 +57,10 @@ test('the definitions: c4.dynamic and c4.deployment, each its own; the static ty
   assert.deepEqual(STATIC.refs, undefined, 'the static type is as M2.6 left it');
 });
 
-const pinned = (m, vid) => { const kinds = {}; check(m, vid).map(p => p.message).forEach(p => { const k = / cross$/.test(p) ? 'cross' : / lies on edge /.test(p) ? 'label on a line' : p; kinds[k] = (kinds[k] || 0) + 1; });
+const pinned = (m, vid) => { const kinds = {}; check(m, vid).map(p => p.message).forEach(p => { const k = / cross$/.test(p) ? 'cross' : / lies on edge /.test(p) ? 'label on a line' : / shows$/.test(p) ? 'label cut to its step' : p; kinds[k] = (kinds[k] || 0) + 1; });
   return Object.entries(kinds).map(([k, n]) => `${n} ${k}`); };
 test('23-c4.json\'s dynamic and deployment views lay out right and down: every line routed, no overlap, ends on outlines, boxes holding what they hold; the crossings and labels on lines pinned', () => {
-  const want = { [`${DV} right`]: ['2 cross'], [`${DV} down`]: ['3 cross', '1 label on a line'], [`${PV} right`]: ['1 cross'], [`${PV} down`]: ['1 cross'] }, got = {};
+  const want = { [`${DV} right`]: ['2 cross'], [`${DV} down`]: ['3 cross', '1 label on a line', '2 label cut to its step'], [`${PV} right`]: ['1 cross'], [`${PV} down`]: ['1 cross'] }, got = {};
   for (const vid of [DV, PV]) for (const direction of ['right', 'down']) {
     const m = withDir(C4, vid, direction), [g, warned] = said(() => layout(m, vid)), tag = `${vid} ${direction}`;
     assert.deepEqual(warned, [], `${tag}: drawn, every line routed`);
@@ -72,6 +72,14 @@ test('23-c4.json\'s dynamic and deployment views lay out right and down: every l
   }
   console.log(`# M2.7 23-c4.json check(): ${JSON.stringify(got)}`);
   assert.deepEqual(got, want, 'no overlap, overflow or line through a node; the crossings and labels on lines pinned (repair and reroute off, §11)');
+});
+
+test('audit 23: check() names a dynamic view\'s step whose label had no room and is cut to its number, as on a map (laid out down: steps 1 and 8)', () => {
+  const m = withDir(C4, DV, 'down'), g = layout(m, DV), cut = g.edges.filter(e => e.lbl && e.lbl.short);
+  assert.deepEqual(cut.map(e => [e.step, e.lbl.text]), [[1, '1'], [8, '8']]);
+  assert.deepEqual(check(m, DV).map(p => p.message).filter(s => / shows$/.test(s)),
+    cut.map(e => `view ${DV}: label "${e.label}" has no room on edge ${e.s.label}→${e.t.label}: only its step ${e.step} shows`));
+  assert.deepEqual(check(withDir(C4, DV, 'right'), DV).map(p => p.message).filter(s => / shows$/.test(s)), [], 'right: every label whole');
 });
 
 test('the dynamic view (§7.5.2): each step numbered by its place, "k · description [technology]" (the layout\'s step), over the elements it shows; no line implied; people first', () => {
@@ -357,11 +365,12 @@ test('the deployment view\'s hooks: the palette\'s instance picks its container 
   const ops = DEP.edits.add(taken, taken.views[V(PV)], { type: 'c4.ContainerInstance' }, '').then(1);
   assert.equal(ops[0].element.id, 'c4-api-instance-2'); assert.ok(apply(taken, ops).nodes.some(x => x.id === 'c4-api-instance-2'));
   assert.deepEqual(DEP.owners(C4, C4.nodes.find(n => n.id === 'c4-api')), STATIC.owners(C4, C4.nodes.find(n => n.id === 'c4-api')));
-  // the dynamic view: add at its subject's level (a container owned by the software system; a component, as on a container view, the canvas's own)
+  // the dynamic view: add at its subject's level (a container owned by the software system; a component, as on a container view, refused: audit 23)
   const dv = C4.views[V(DV)], add = DYN.edits.add(C4, dv, { type: 'c4.Container' }, 'Search');
   assert.deepEqual(add, [{ op: 'add', element: { id: 'container1', type: 'c4.Container', label: 'Search', parent: 'c4-bookshop' }, view: DV }]);
   assert.deepEqual(ours(apply(C4, add)).filter(p => p.level === 'error'), []);
-  assert.equal(DYN.edits.add(C4, dv, { type: 'c4.Component' }, 'X'), null); assert.equal(DYN.edits.add(C4, { ...dv, subject: undefined }, { type: 'c4.Container' }, 'X'), null);
+  assert.match(DYN.edits.add(C4, dv, { type: 'c4.Component' }, 'X').error, /^This view shows people, software systems and containers: /);
+  assert.match(DYN.edits.add(C4, { ...dv, subject: undefined }, { type: 'c4.Container' }, 'X').error, /^This view shows people and software systems: /);
   assert.equal(DYN.edits.add(C4, { ...dv, subject: 'c4-api' }, { type: 'c4.Component' }, 'X')[0].element.parent, 'c4-api');
   // the dynamic view: D and T as on a static view
   assert.deepEqual(DYN.edits.key(C4, C4.views[V(DV)], ['c4-worker'], 'T').pick, ['Person', 'Software system', 'Container', 'Component']);
@@ -477,4 +486,15 @@ test('audit 18: the deployment view\'s describe() header counts a comment link o
   m.edges.push({ id: 'note1-link', type: 'uml.CommentLink', from: 'note1', to: inst }); d.nodeIds.push('note1');
   const head = describe(m, PV).split('\n')[0];
   assert.equal(head, before.replace(/(\d+) elements and (\d+) relationships\./, (_, n, r) => `${+n + 1} elements and ${r} relationships, and 1 comment link.`));
+});
+
+test('audit 23: N on a dynamic view refuses an element its level does not show (with no subject, a landscape\'s: a container or a component), not added owned by nothing', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 's', type: 'c4.SoftwareSystem', label: 'Shop', props: { description: 'd' } }, { id: 'c', type: 'c4.Container', label: 'API', parent: 's' }], edges: [],
+    views: [{ id: 'dyn', diagram: 'c4.dynamic', title: 'Steps', nodeIds: ['s'] }, { id: 'dyn2', diagram: 'c4.dynamic', title: 'Steps', subject: 's', nodeIds: ['c'] }] };
+  const D = diagramOf(m.views[0]), add = (vi, type) => D.edits.add(m, m.views[vi], { type }, 'X');
+  assert.deepEqual(add(0, 'c4.Container'), { error: 'This view shows people and software systems: a container is added on a container view' });
+  assert.deepEqual(add(0, 'c4.Component'), { error: 'This view shows people and software systems: a component is added on a component view' });
+  assert.equal(add(0, 'c4.Person'), null, 'the default add');
+  assert.deepEqual(add(1, 'c4.Component'), { error: 'This view shows people, software systems and containers: a component is added on a component view' });
+  assert.equal(add(1, 'c4.Container')[0].element.parent, 's');
 });

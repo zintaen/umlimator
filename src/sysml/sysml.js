@@ -112,8 +112,17 @@ function SYS_AS_UML(model, view) {
     if (SYS_OBJ(p.itemFlow) && p.itemFlow.item != null && p.itemFlow.item !== '') y.label = String(p.itemFlow.item); // an item flow's label wins (§8.1)
     return y; };
   const nodes = SYS_ARR(model.nodes).map(n => { const y = as(n); return SYS_OBJ(n) && Array.isArray(n.members) ? { ...y, members: n.members.map(m => as(m, n.id !== sid || keep.has(m && m.type))) } : y; });
-  const V = { ...view, diagram: 'uml.composite-structure' };
+  // the view's own lines (view.edges objects) projected as the model's are: an own connector drawn, named and checked as one (audit 23)
+  const V = { ...view, diagram: 'uml.composite-structure', ...(Array.isArray(view.edges) ? { edges: view.edges.map(x => (SYS_OBJ(x) ? as(x) : x)) } : {}) };
   return { model: { ...model, nodes, edges: SYS_ARR(model.edges).map(e => as(e)), views: SYS_ARR(model.views).map(v => (v === view ? V : v)) }, view: V };
+}
+
+// a view's lines with their paths: the model's, then the view's own (view.edges objects, drawn as the model's are); one a model
+// line's id (or an earlier own line's) takes is that one (audit 23, as clOwnLines and stProblems)
+function SYS_LINES(model, view) {
+  const out = SYS_ARR(model && model.edges).map((e, i) => [e, `edges[${i}]`]), ids = new Set(out.filter(([e]) => SYS_OBJ(e)).map(([e]) => e.id)), vi = SYS_ARR(model && model.views).indexOf(view);
+  SYS_ARR(view && view.edges).forEach((e, j) => { if (SYS_OBJ(e) && typeof e.id === 'string' && !ids.has(e.id)) { ids.add(e.id); out.push([e, `views[${vi}].edges[${j}]`]); } });
+  return out;
 }
 
 /* ---- what the composite type's hooks return on the projection, mapped back (§8.1): an element they add takes its SysML type,
@@ -165,4 +174,4 @@ function SYS_DRESS(g, model, view, names) {
     families: [...(card ? [{ id: sid, x: card.x, y: card.y, w: card.w, h: card.h, nodeIds: [], ...frame }] : []), ...SYS_ARR(g.families).map(f => (f.id === sid ? { ...f, ...frame } : f))] };
 }
 
-export { SYS_TABLE, SYS_KIND, SYS_HEAD, SYS_FRAME, SYS_FRAME_RENAME, SYS_FRAME_EMPTY, SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS };
+export { SYS_TABLE, SYS_KIND, SYS_HEAD, SYS_FRAME, SYS_FRAME_RENAME, SYS_FRAME_EMPTY, SYS_AS_UML, SYS_LINES, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS };

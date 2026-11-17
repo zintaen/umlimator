@@ -505,3 +505,13 @@ test('audit 19: a component, an actor or a node shown in a class or package view
     assert.ok(markup.includes('«component»') && markup.includes('«actor»') && markup.includes('«node»'), diagram);
   }
 });
+
+test('audit 23: a class view\'s own line (view.edges object) is checked as a model one, at its own path (generalization-kinds, realization-target)', () => {
+  const at = (m, id) => validate(m).filter(p => (p.ids || []).includes(id)).map(p => [p.rule, p.path]);
+  for (const line of [{ id: 'own-gen', type: 'uml.Generalization', from: 'order', to: 'payable' }, { id: 'own-real', type: 'uml.InterfaceRealization', from: 'order', to: 'book' }]) {
+    const m = structuredClone(CLASS); m.edges.push(line); const own = structuredClone(CLASS); own.views[0].edges = [...CLASS.edges.map(e => e.id), structuredClone(line)];
+    const want = at(m, line.id), k = `edges[${CLASS.edges.length}]`;
+    assert.ok(want.length, `${line.id}: the model line is said`);
+    assert.deepEqual(at(own, line.id), want.map(([r, p]) => [r, p.replace(k, `views[0].edges[${CLASS.edges.length}]`)]), `${line.id}: the own line alike, at its own path`);
+  }
+});

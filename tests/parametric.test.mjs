@@ -346,3 +346,18 @@ test('audit 18: a constraint property with no type: binding-parameter says it ha
   const named = validate(run(M19, [{ op: 'set', id: 'ebike.eco', path: 'props.valueType', value: 'Nothing' }])).filter(p => p.rule === 'binding-parameter');
   assert.ok(named.length && named.every(p => /a parameter of "Nothing", the type of "eco"/.test(p.message)), named.map(p => p.message).join('\n'));
 });
+
+test('audit 23: a view\'s own binding (view.edges object) is drawn, named, described and checked as a model one: no arrowhead', () => {
+  const c = M19.edges.find(e => e.id === 'bind-capacity'), own = structuredClone(M19);
+  own.edges = own.edges.filter(e => e.id !== c.id); own.views[0].edges = M19.edges.map(e => (e.id === c.id ? structuredClone(c) : e.id));
+  const pick = g => g.edges.map(e => [e.id, e.type, e.label, e.aria, e.end, e.pts]);
+  assert.deepEqual(pick(layout(own, VID)), pick(layout(M19, VID)), 'the same picture');
+  assert.equal(describe(own, VID), describe(M19, VID));
+  assert.equal(T.text(own, own.views[0], c.id), T.text(M19, M19.views[0], c.id));
+  const j = own.views[0].edges.findIndex(x => typeof x === 'object');
+  own.views[0].edges[j].props.ends.to.part = 'ebike.batteryCapacity'; const m = structuredClone(M19); m.edges.find(e => e.id === c.id).props.ends.to.part = 'ebike.batteryCapacity';
+  const at = x => validate(x).filter(p => (p.ids || []).includes(c.id)).map(p => [p.rule, p.path]);
+  const want = at(m), k = `edges[${M19.edges.indexOf(c)}]`;
+  assert.ok(want.some(([r]) => r === 'binding-ends'), 'the model line: said');
+  assert.deepEqual(at(own), want.map(([r, p]) => [r, p.replace(k, `views[0].edges[${j}]`)]), 'the own line: said alike, at its own path');
+});
