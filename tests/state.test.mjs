@@ -592,3 +592,18 @@ test('audit 25: Shift + Delete on a region of a state the view holds as its own 
   assert.deepEqual(T.edits.remove(own, own.views[0], ['r1'], false), want, 'Delete deletes an own region too (the canvas\'s), and says so');
   assert.equal(T.edits.remove(own, own.views[0], ['r1', 'a'], false), null, 'with a model state in it: the canvas\'s Delete');
 });
+
+test('audit 26: Delete (out of the view) on a composite state takes the states and pseudostates shown within it, said on the hint line', () => {
+  const r = T.edits.remove(SM, V, ['delivery'], false), subs = SM.nodes.filter(n => n.parent === 'delivery').map(n => n.id);
+  assert.deepEqual(r.commands, ['delivery', ...V.nodeIds.filter(id => subs.includes(id))].map(id => ({ op: 'hide', id, view: V.id })));
+  assert.equal(r.say, `Removed In delivery from the view with the ${subs.length} elements it holds`);
+  const m = apply(SM, r.commands), g = layout(m, V.id);
+  assert.deepEqual(g.nodes.filter(n => subs.includes(n.id)), [], 'no substate is drawn loose at the top');
+  // a state of two regions: both regions' states go, at any depth
+  const two = T.edits.remove(SM, V, ['fulfilling'], false), within = id => { for (let p = SM.nodes.find(n => n.id === id)?.parent; p; p = SM.nodes.find(n => n.id === p)?.parent ?? SM.nodes.find(n => (n.members || []).some(x => x.id === p))?.id) if (p === 'fulfilling') return true; return false; };
+  assert.deepEqual(two.commands.map(c => c.id).slice(1).sort(), V.nodeIds.filter(within).sort());
+  assert.ok(two.commands.every(c => c.op === 'hide'));
+  // a simple state, and Delete from the model, are the canvas's as before
+  assert.equal(T.edits.remove(SM, V, ['placed'], false), null);
+  assert.equal(T.edits.remove(SM, V, ['delivery'], true), null);
+});

@@ -443,9 +443,28 @@ function stRemove(model, view, ids, fromModel) {
   const own = new Set(), put = x => { if (ST_OBJ(x) && typeof x.id === 'string') { own.add(x.id); ST_ARR(x.members).forEach(put); } };
   if (ST_OBJ(view)) [...ST_ARR(view.nodes), ...ST_ARR(view.edges)].forEach(put);
   const I = stIndex(ST_OBJ(view) ? ownNodes(model, view).model : model), rs = fromModel || ids.every(id => own.has(id)) ? ids.filter(id => I.M.has(id) && I.M.get(id).x.type === 'uml.Region') : [];
-  if (!rs.length) return null;
+  if (!rs.length) return fromModel || !ST_OBJ(view) ? null : stHide(model, view, ids, I, own);
   const held = [...I.N.keys()].filter(n => rs.some(r => stWithin(I, n, r))).length, x = I.M.get(rs[0]).x;
   return { commands: ids.map(id => ({ op: 'delete', id })), say: `Deleted ${rs.length === 1 ? 'region ' + (ST_HAS(x.label) ? x.label : x.id) : stPlural(rs.length, 'region')} and the ${stPlural(held, 'element')} ${rs.length === 1 ? 'it' : 'they'} held` };
+}
+
+// Delete (out of the view) on a state takes the states and pseudostates the view shows within it, at any depth and in every
+// region, with it, said on the hint line (docs/editing.md), as a BPMN sub-process takes what it shows (audit 26): a substate
+// is not drawn loose at the top, its regions' orthogonality lost. A selection with none under it is the canvas's (null)
+function stHide(model, view, ids, I, own) {
+  const shown = [...new Set([...ST_ARR(view.nodeIds), ...ST_ARR(view.nodes).filter(ST_OBJ).map(n => n.id)])], tops = ids.filter(id => I.N.has(id));
+  const under = shown.filter(n => !ids.includes(n) && I.N.has(n) && tops.some(t => n !== t && stWithin(I, n, t)));
+  if (!under.length) return null;
+  const E = new Set(ST_ARR(model.edges).filter(ST_OBJ).map(e => e.id)), all = [...ids, ...under];
+  // a model line on a view with no edges list is not hidden (apply() refuses it): skipped, said, as the canvas's Delete does
+  const kept = !Array.isArray(view.edges) && all.some(id => E.has(id) && !own.has(id));
+  // a view-own line first, deleted: a hide or delete of a state after it takes the lines to it out of the view (audit 22)
+  const ownLine = id => own.has(id) && !I.N.has(id) && !I.M.has(id);
+  const commands = [...all.filter(ownLine).map(id => ({ op: 'delete', id })),
+    ...all.filter(id => !ownLine(id) && !(kept && E.has(id) && !own.has(id))).map(id => (own.has(id) ? { op: 'delete', id } : { op: 'hide', id, view: view.id }))];
+  const hosts = tops.filter(t => under.some(n => stWithin(I, n, t))).map(t => stName(I.N.get(t).x));
+  return { commands, say: [`Removed ${hosts.join(', ')} from the view with the ${stPlural(under.length, 'element')} ${hosts.length === 1 ? 'it holds' : 'they hold'}`,
+    ...(kept ? ['this view shows every line between its cards: Shift + Delete deletes the line'] : [])].join('; ') };
 }
 
 /* the panel's member rows (edits.member, src/typed/edit.js; notes/stage-5.md §12.1): a row `entry / …` typed on a selected
