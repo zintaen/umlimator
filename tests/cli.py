@@ -9,7 +9,7 @@ through its pipes as an MCP client drives it, with a page's event stream.
 Needs Node (diff, drift, trace and the MCP server's read tools run the module's own functions), git, and Chrome or
 Chromium (pdf).
 """
-import http.client, json, os, re, subprocess, sys, tempfile, threading, time, zlib
+import contextlib, hashlib, http.client, io, json, os, re, subprocess, sys, tempfile, threading, time, urllib.request, zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -114,11 +114,59 @@ ok("diff · the summary mentions no one: a label @Transactional or 'calls @ops' 
    u.flat("calls @ops @Transactional") == "calls @\u2060ops @\u2060Transactional" and u.flat("@x", code=True) == "@x", u.flat("calls @ops"))
 ok("diff · the summary links no issue: a # or GH- before a digit gets a word joiner, so Order #42, o/r#7 and GH-12 cross-reference nothing (audit 10)",
    u.flat("Order #42 o/r#7 gh-12 #x") == "Order #\u206042 o/r#\u20607 gh-\u206012 #x" and u.flat("#42", code=True) == "#42", u.flat("Order #42 o/r#7 gh-12"))
-ok("diff · the summary links no address: a word joiner after http:, https:, mailto: and www., so GitHub's extended autolinks find none (audit 21)",
+ok("diff · the summary links no address: a word joiner after http:, https:, mailto: and inside www., so GitHub's extended autolinks find none (audit 21, 22)",
    u.flat("see https://example.com/login, HTTP://x.org, www.example.org, WWW.y.org mailto:a@b.c xmpp:me@x.org")
-   == "see https:\u2060//example.com/login, HTTP:\u2060//x.org, www.\u2060example.org, WWW.\u2060y.org mailto:\u2060a@\u2060b.c xmpp:\u2060me@\u2060x.org"
-   and u.flat("https://x.org", code=True) == "https://x.org" and not re.search(r"(?i)(https?://|www\.\w)", u.flat("<https://evil.example/x> www.a.org")),
+   == "see https:\u2060//example.com/login, HTTP:\u2060//x.org, w\u2060ww.example.org, W\u2060WW.y.org mailto:\u2060a@\u2060b.c xmpp:\u2060me@\u2060x.org"
+   and u.flat("https://x.org", code=True) == "https://x.org" and not re.search(r"(?i)(https?://|www\.)", u.flat("<https://evil.example/x> www.a.org")),
    u.flat("see https://example.com/login www.example.org"))
+# audit 22: rendered by cmark-gfm, GitHub's own Markdown: a joiner after www. was read as part of the domain, and a scheme or
+# www. right after a word character (login_https://, v2https://, id_www.) got none, so the comment linked them
+HOSTILE = ["see https://evil.example/x", "_https://evil.example/x", "login_https://evil.example/x", "v2https://evil.example", "xhttp://evil.example",
+           "www.evil.example", "_www.evil.example", "id_www.evil.example", "(www.evil.example)", "*www.evil.example*", "~www.evil.example~",
+           "wwww.evil.example", "WWW.EVIL.EXAMPLE", "HTTPS://EVIL.EXAMPLE", "ftp://evil.example", "a_ftp://evil.example", "mail me@evil.example",
+           "user_me@evil.example", "mailto:me@evil.example", "x_mailto:me@evil.example", "xmpp:me@evil.example", "<https://evil.example>",
+           "[x](https://evil.example)", "![x](https://evil.example/t.png)", "Order #42", "ping @ops", "GH-12"]
+try:
+    import cmarkgfm
+except ImportError:  # CI installs it (check.yml); here it is said, and fails only on CI
+    cmarkgfm = None
+    print("skip umlimator.py diff · the summary in GitHub's Markdown: pip install cmarkgfm to run it")
+    failed |= bool(os.environ.get("CI"))
+if cmarkgfm:
+    gfm = lambda md: cmarkgfm.github_flavored_markdown_to_html(md, options=cmarkgfm.cmark.Options.CMARK_OPT_UNSAFE)
+    linked = [(x, gfm(f"- {u.flat(x)}")) for x in HOSTILE]
+    linked = [(x, h) for x, h in linked if re.search(r"<a |<img |\bhref=|\bsrc=", h)]
+    ok("diff · the summary in GitHub's Markdown (cmark-gfm): no hostile label is a link or an image, after a word character too (audit 22)",
+       linked == [] and "<a " in gfm("- see https://example.org") and "<a " in gfm("- www.example.org"), linked)
+# audit 22: an icon cache that cannot be written (a read-only home on a CI runner, a folder under a file) ended the render:
+# a traceback, or a line that named --out; the card keeps its sigil, said in one line, and the render goes on
+with tempfile.TemporaryDirectory() as tmp:
+    t, logo = Path(tmp), b"<svg xmlns='http://www.w3.org/2000/svg'/>"
+    (t / "icons").mkdir()
+    (t / "icons" / "manifest.json").write_text(json.dumps({"logo": {"file": "logo.svg", "source": "x/brand", "url": "https://example.invalid/logo.svg",
+                                                                  "sha256": hashlib.sha256(logo).hexdigest()}}))
+    (t / "afile").write_text("x")
+    (t / "ro").mkdir(); (t / "ro").chmod(0o555)
+    was = u.ICONS, u.CACHE, urllib.request.urlopen
+    u.ICONS, urllib.request.urlopen = t / "icons", lambda *a, **k: io.BytesIO(logo)
+    got = {}
+    try:
+        for name, cache in [("under a file", t / "afile" / "cache"), ("a missing folder under a read-only one", t / "ro" / "cache"),
+                            ("a read-only folder", t / "ro"), ("a folder it can write", t / "rw" / "cache")]:
+            u.CACHE, err = cache, io.StringIO()
+            with contextlib.redirect_stderr(err):
+                try:
+                    got[name] = (u.icon_table([{"nodes": [{"id": "a", "icon": "logo"}], "views": []}]), err.getvalue())
+                except (Exception, SystemExit) as e:
+                    got[name] = (repr(e), err.getvalue())
+    finally:
+        u.ICONS, u.CACHE, urllib.request.urlopen = was
+        (t / "ro").chmod(0o755)
+    root = hasattr(os, "geteuid") and os.geteuid() == 0  # root writes a read-only folder
+    ok("render · an icon cache that cannot be written leaves the card its sigil, in one line naming the cache, and the render goes on (audit 22)",
+       all(got[n][0] == {} and "cannot keep it in the icon cache" in got[n][1] and "--out" not in got[n][1]
+           for n in got if n != "a folder it can write" and not (root and n != "under a file"))
+       and "logo" in got["a folder it can write"][0] and (t / "rw" / "cache" / "logo.svg").read_bytes() == logo, got)
 ok("record · a step's duration the page only warns about is played as the page plays it, not a traceback (audit 4)",
    [u.step_ms(d) for d in (None, 1200, -500, "slow", 0, "nan", [1])] == [4000, 1200, 500, 4000, 4000, 4000, 4000])
 
@@ -312,6 +360,12 @@ with tempfile.TemporaryDirectory() as tmp:
     b, s = plain("render", str(n / "m.json"), "--out", str(t / "outdir"), "--no-check"), plain("stills", str(n / "page.html"), "--out", str(n / "m.json"))
     ok("render · --out an existing folder, and stills --out an existing file, are said in one line", b.returncode == 1 and "is a folder" in b.stderr
        and s.returncode == 1 and "is a file" in s.stderr and "Traceback" not in b.stderr + s.stderr, (b.stderr[-300:], s.stderr[-300:]))
+    # audit 22: diff's or drift's --stills naming a file ended the command after the page was written, naming --out
+    runs = [plain("diff", bike_m, bike_m, "--out", str(n / "st.html"), "--stills", str(n / "m.json")),
+            plain("drift", bike_m, str(ROOT / "examples" / "traces" / "ride-end.json"), "--out", str(n / "st.html"), "--stills", str(n / "m.json"))]
+    ok("diff, drift · --stills naming a file is refused in one line naming --stills, before the page is written (audit 22)",
+       all(r.returncode == 1 and f"--stills {n / 'm.json'} is a file" in r.stderr and "--out" not in r.stderr for r in runs) and not (n / "st.html").exists(),
+       [r.stderr[-300:] for r in runs])
     mj = (n / "m.json").read_text()
     b, s = plain("render", str(n / "m.json"), "--out", str(n / "m.json"), "--no-check"), plain("diff", bike_m, str(n / "m.json"), "--out", str(n / "m.json"))
     ok("render, diff · --out naming the input is refused in one line, and the model is kept (audit 12)",
@@ -1296,6 +1350,33 @@ c = web(); c.request("POST", "/state", "{}", {"Content-Type": "application/json"
 ok("mcp · another site's page posts nothing", c.getresponse().status == 403)
 c = web(); c.request("GET", "/", headers={"Host": f"attacker.example:{url.group(1)}"})
 ok("mcp · a request for another host name (DNS rebinding) gets nothing", c.getresponse().status == 403)
+# audit 22: another site's image, script or frame naming /events sends no Origin, and was counted as an open page, so the
+# page tools waited for it and said it did not show the command
+fetched = {}
+for name, path, how in [("an image", "/events?page=x-site", ("cross-site", "no-cors", "image")), ("a script", "/events?page=x-site", ("same-site", "no-cors", "script")),
+                        ("a frame", "/", ("cross-site", "navigate", "iframe")), ("a post", "/state", ("cross-site", "cors", "empty"))]:
+    c = web(); c.request("POST" if path == "/state" else "GET", path, json.dumps({"page": "x-site"}) if path == "/state" else None,
+                         {"Content-Type": "application/json", "Sec-Fetch-Site": how[0], "Sec-Fetch-Mode": how[1], "Sec-Fetch-Dest": how[2]})
+    fetched[name] = c.getresponse().status; c.close()
+c = web(); c.request("GET", "/", headers={"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document"}); opened = c.getresponse(); opened.read()
+c = web(); c.request("GET", "/", headers={"Sec-Fetch-Site": "none", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document"}); typed = c.getresponse(); typed.read()
+said, err = tool("page_state")
+ok("mcp · another site's image, script, frame or post naming the server gets nothing and is no page; a link to the page, or its address typed, opens it (audit 22)",
+   set(fetched.values()) == {403} and opened.status == 200 and typed.status == 200 and "x-site" not in said, (fetched, opened.status, typed.status, said))
 mcp.stdin.close()
 ok("mcp · exits when its input closes", mcp.wait(timeout=30) == 0)
+
+# audit 22: a line whose props.ends is not an object of objects ended highlight in an internal error; it is lit by its own ends
+with tempfile.TemporaryDirectory() as tmp:
+    odd = Path(tmp) / "ends.json"
+    odd.write_text(json.dumps({"title": "m", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "views": [{"id": "v", "nodeIds": ["a", "b"]}],
+                               "edges": [{"id": f"e{i}", "from": "a", "to": "b", "props": {"ends": x}} for i, x in
+                                         enumerate(["a", ["to"], 5, None, {"to": "b"}, {"from": {"part": 7}}, {"to": ["part"]}, {"from": {"part": "a"}}])]}))
+    mcp = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(odd), "--port", "0"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                           stderr=subprocess.PIPE, text=True)
+    rpc("initialize", {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "tests/cli.py", "version": "0"}})
+    lit = [rpc("tools/call", {"name": "highlight", "arguments": {"refs": [f"e{i}"]}}) for i in range(8)]
+    mcp.stdin.close(); mcp.wait(timeout=30); err = mcp.stderr.read()
+    ok("mcp · highlight: a line whose props.ends is a string, a list, a number or holds odd parts is lit, never an internal error (audit 22)",
+       all("result" in r and not r["result"].get("isError") for r in lit) and "Traceback" not in err, (lit, err[-500:]))
 sys.exit(1 if failed else 0)

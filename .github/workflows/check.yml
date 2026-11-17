@@ -158,6 +158,9 @@ jobs:
         with:
           node-version: 24  # --test-skip-pattern (22.1+) in the node --test steps; the runner's own Node is whatever its image ships
 
+      - name: GitHub's Markdown renderer (cmark-gfm), so tests/cli.py reads the diff Action's summary as GitHub links it
+        run: python3 -m pip install --only-binary :all: cmarkgfm==2025.10.22
+
       - name: The CLI's diff, drift and timelapse write their pages, diff --base a pull request's summary, mcp answers an MCP client, and pdf an example's PDF
         run: python3 tests/cli.py
 

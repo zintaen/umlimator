@@ -319,8 +319,11 @@ def icon_bytes(e):
             print(f"icon {e['file']}: the {e['pack']} pack {row['label']} has no icon {e['id']!r}; the card keeps its kind sigil", file=sys.stderr)
         return got and got[0]
     cached = CACHE / e["file"]
-    if cached.is_file():
-        data = cached.read_bytes()
+    try:  # a copy that cannot be read is fetched again, never a traceback (audit 22)
+        data = cached.read_bytes() if cached.is_file() else None
+    except OSError:
+        data = None
+    if data is not None:
         if hashlib.sha256(data).hexdigest() == e.get("sha256"):
             return data
         print(f"icon {e['file']}: the copy in {CACHE} does not match its pinned sha256; fetching it again", file=sys.stderr)
@@ -341,9 +344,21 @@ def icon_bytes(e):
         print(f"icon {e['file']}: {e['url']} no longer matches its pinned sha256; the card keeps its kind sigil "
               "(fetch it again with tools/fetch_icons.py and pin it with `umlimator.py pin-icons`)", file=sys.stderr)
         return None
-    CACHE.mkdir(parents=True, exist_ok=True)
-    with replacing(cached) as tmp:  # two renders fetching one logo never read half of it
+    # a render reads a brand's logo from the cache only: one that cannot be kept there (a read-only home on a CI runner or
+    # in a container) leaves the card its sigil, said in one line, and the render goes on (audit 22). Not replacing(): it
+    # ends the command, and names --out
+    tmp = cached.with_name(f".{cached.stem}.{os.urandom(4).hex()}{cached.suffix}")
+    try:
+        CACHE.mkdir(parents=True, exist_ok=True)
         tmp.write_bytes(data)
+        os.replace(tmp, cached)  # two renders fetching one logo never read half of it
+    except OSError as err:
+        with contextlib.suppress(OSError):
+            tmp.unlink(missing_ok=True)
+        why = "a folder on its path is a file" if isinstance(err, (FileExistsError, NotADirectoryError)) else err.strerror or err
+        print(f"icon {e['file']}: cannot keep it in the icon cache {CACHE} ({why}); the card keeps its kind sigil "
+              "(UMLIMATOR_ICON_CACHE names a folder you can write)", file=sys.stderr)
+        return None
     return data
 
 
@@ -695,6 +710,8 @@ def cmd_diff(a):
     if len(a.files) != 2:
         sys.exit("diff: give BEFORE.json and AFTER.json, or --base REF")
     before, after = map(read_model, a.files)
+    if a.stills:
+        stills_folder(a.stills, "--stills")  # before any work: the page and the summary are not left half done (audit 22)
     r = diff_page(before, after, a.files[1], a.out, a.stills)
     print(json.dumps({k: v for k, v in r.items() if k != "model"}, indent=1))
     if r.get("stillsFailed"):
@@ -821,9 +838,11 @@ def flat(s, code=False):
     if code:
         return s
     s = re.sub(r"([\\`*_\[\]~|])", r"\\\1", html.escape(s, quote=False)).replace("@", "@\u2060")
-    # GFM's extended autolinks: an address (https://, www.) and a scheme GitHub links (mailto:, xmpp:) are text (audit 21)
-    s = re.sub(r"(?i)\b(https?|ftp|mailto|xmpp):", "\\1:\u2060", s)
-    s = re.sub(r"(?i)\bwww\.", lambda x: x[0] + "\u2060", s)
+    # GFM's extended autolinks: an address (https://, www.) and a scheme GitHub links (mailto:, xmpp:) are text (audit 21).
+    # The joiner goes inside what GFM looks for: after the scheme's colon, and inside www. (a joiner after www. is read as
+    # part of the domain); and with no \b, since GFM finds a scheme after _, a digit or a letter too (login_https://, audit 22)
+    s = re.sub(r"(?i)(https?|ftp|mailto|xmpp):", "\\1:\u2060", s)
+    s = re.sub(r"(?i)w(?=ww\.)", "\\g<0>\u2060", s)
     return re.sub(r"(#|\bGH-)(?=\d)", "\\1\u2060", s, flags=re.I)
 
 
@@ -859,6 +878,8 @@ def cmd_drift(a):
     services traffic reached that carried nothing fade. OBSERVED.json: [{from, to, count}], or a Jaeger or Tempo
     dependency list ([{parent, child, callCount}], or {"data": [...]}); --match: {service: card id} where names differ."""
     m, seen = read_model(a.model), read_json(a.observed, model=False)
+    if a.stills:
+        stills_folder(a.stills, "--stills")  # before any work (audit 22)
     r = js("drift", m, seen, {"match": read_json(a.match, model=False) if a.match else {}})
     r["model"]["title"] = f"{m.get('title') or Path(a.model).stem}: drawn vs. seen"
     rep = render_model(r["model"], a.model, a.out)
@@ -1121,14 +1142,21 @@ def still_names(ids):
     return out
 
 
+def stills_folder(out, flag):
+    """`out` made as a folder for stills, or the one line naming the flag that named it (`stills --out`, and diff's and
+    drift's --stills, said before their page is written, audit 22) the CLI ends with."""
+    out = Path(out)
+    if out.exists() and not out.is_dir():
+        sys.exit(f"{flag} {out} is a file: name a folder for the stills")
+    make_folder(out)
+
+
 def stills(page, out, views, scale=2.0, theme="light", reader=False, again=False):
     """Each view's still as out/<view>.svg and .png: (what was exported, {view: why it failed}, the views skipped). A view
     whose key file (out/.stills/<view>.json) holds its key and both files' hashes is unchanged and skipped, unless
     `again`. A view counts as exported only once both files are whole and the PNG is a PNG; its key file is written last.
     A file another run, or a person, changed since is drawn again, never trusted."""
-    if out.exists() and not out.is_dir():
-        sys.exit(f"--out {out} is a file: name a folder for the stills")
-    make_folder(out)  # before Chrome is looked for, as the check above
+    stills_folder(out, "--out")  # before Chrome is looked for
     b, page = chrome(), Path(page).resolve()  # as_uri needs an absolute path (a relative --out)
     keys = still_keys(page, [float(scale), theme, bool(reader)])
     done, failed, skipped, names = [], {}, [], still_names(views_of(page))
