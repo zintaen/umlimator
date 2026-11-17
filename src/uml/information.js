@@ -161,7 +161,9 @@ function ifConnect(model, view, from, to, at, line) {
 // that names elements throughout. Sets conveyed (each once) and the name, each when it changed
 function ifRename(model, view, id, text) {
   const I = ifIndex(model), e = I.E.find(x => x.id === id); if (!e || e.type !== 'uml.InformationFlow') return null;
-  const own = I.M.includes(e) ? ifOwn(model, I, view) : new Set(), t = String(text ?? '').replace(/^\s*«flow»\s*/, ''), can = ifConveyable(I).filter(n => !own.has(n.id)), at = new Map();
+  // a model flow conveys a model element, unless an end is this view's own: then it is no model flow, as connect offers (audit 27)
+  const mine = I.M.includes(e) ? ifOwn(model, I, view) : new Set(), own = mine.has(e.from) || mine.has(e.to) ? new Set() : mine;
+  const t = String(text ?? '').replace(/^\s*«flow»\s*/, ''), can = ifConveyable(I).filter(n => !own.has(n.id)), at = new Map();
   // names, then ids, looked up in one map, each to its elements in order (what the flow conveys now first, so an unchanged
   // name keeps its element, then as before; a name two elements share, each in turn: audit 6); a run is never longer than the
   // most commas a name holds

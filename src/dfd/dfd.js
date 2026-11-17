@@ -142,7 +142,9 @@ const DFD_SAYS = { process: 'transforms the data flowing in into the data flowin
 const dfdLegendItem = (glyph, name, says) => `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round" fill="none">${glyph}</g></svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`;
 const dfdLegend = (I, ids, lines, skin) => [
   ...['process', 'store', 'entity'].filter(k => ids.some(id => DFD_KIND[I.ty(id)] === k)).map(k => dfdLegendItem(DFD_GLYPH[`${k}-${skin}`], DFD_WORD[Object.keys(DFD_KIND).find(t => DFD_KIND[t] === k)], DFD_SAYS[k])),
-  ...DFD_LINES.filter(t => lines.some(e => e.type === t)).map(t => dfdLegendItem(DFD_GLYPH[t], t === 'dfd.DataFlow' ? 'Data flow' : 'Comment link', DFD_SAYS[t]))];
+  ...DFD_LINES.filter(t => lines.some(e => e.type === t)).map(t => dfdLegendItem(DFD_GLYPH[t], t === 'dfd.DataFlow' ? 'Data flow' : 'Comment link', DFD_SAYS[t])),
+  // a listed line of another family, drawn plain (dfdOther): "Line", as the object and component views key it (audit 27)
+  ...(lines.some(dfdOther) ? [dfdLegendItem('<path d="M2 8H26"/>', 'Line', 'a kind of line this view does not draw as its own')] : [])];
 
 /* ---- the view laid out (§7): labels cut at 280 with room made for them (labelGaps); a gap of 64 px, as 48 laid a label of
    22-data-flow.json on a line, down (the note's §7.3, amended) ---- */
@@ -268,7 +270,7 @@ const DFD_TYPE = registerDiagramType('dfd', {
   describe: dfdDescribe,
   edits: { add: dfdAdd, key: dfdKey },
   // the PDF's tables (§9): an element's kind; a process's number and the level it opens, a store's number
-  word: (model, id) => { const x = dfdIndex(model).at.get(id); return x && Object.hasOwn(DFD_WORD, x.type) ? DFD_WORD[x.type] : null; },
+  word: (model, id) => { const x = dfdIndex(model).at.get(id); return x && (Object.hasOwn(DFD_WORD, x.type) || x.type == null) ? DFD_WORD[x.type] || snKindName(x.type) : null; }, // none: "Element", as named (audit 27)
   rows: (model, view, id) => { const I = dfdIndex(model), x = I.at.get(id); if (!x || !['dfd.Process', 'dfd.DataStore'].includes(x.type)) return null;
     const v = x.type === 'dfd.Process' && I.views.get(x.opensView); return [...(dfdNum(x) ? [`number ${dfdNum(x)}`] : []), ...(v ? [`opens level ${v.title || v.id}`] : [])]; },
 });

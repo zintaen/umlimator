@@ -570,3 +570,17 @@ test('audit 24: a comment link to what a container, component or deployment view
   }
   assert.ok(!validate(C4).some(p => p.rule === 'c4-note-box'), 'the example: nothing to say');
 });
+
+test('audit 27: c4-steps says each end a step lacks, joined by "and", as both are missing; the deployment view counts and keys a listed line of another kind as itself', () => {
+  const m = structuredClone(C4), dv = m.views.find(v => v.id === DV), rel = m.edges.find(e => e.type === 'c4.Relationship' && !dv.nodeIds.includes(e.from) && !dv.nodeIds.includes(e.to));
+  dv.edges.push(rel.id);
+  const p = validate(m).find(x => x.rule === 'c4-steps' && x.ids.includes(rel.id));
+  const q = id => JSON.stringify(m.nodes.find(n => n.id === id).label ?? id);
+  assert.ok(p.message.endsWith(`the view does not show ${q(rel.from)} and does not show ${q(rel.to)}`), p.message);
+  const d = structuredClone(C4), pv = d.views.find(v => v.id === PV), ids = pv.nodeIds.filter(id => d.nodes.find(n => n.id === id).type === 'c4.ContainerInstance');
+  const before = describe(d, PV).split('\n')[0];
+  d.edges.push({ id: 'assoc27', type: 'uml.Association', from: ids[0], to: ids[1] }); pv.edges = [...(Array.isArray(pv.edges) ? pv.edges : d.edges.filter(e => e.type === 'c4.Relationship' || e.type === 'uml.CommentLink').map(e => e.id)), 'assoc27'];
+  assert.equal(describe(d, PV).split('\n')[0], before.replace(/\.$/, ', and 1 other line.'), 'the relationships counted as before, the association apart');
+  assert.ok(layout(d, PV).legend.some(s => /<b>Line<\/b>/.test(s)), 'keyed');
+  assert.ok(!layout(C4, PV).legend.some(s => /<b>Line<\/b>/.test(s)));
+});

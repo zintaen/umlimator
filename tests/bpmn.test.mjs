@@ -771,6 +771,15 @@ test('audit 26: a categoryValueRef that is not a list is warned of; the event an
   assert.doesNotMatch(said, /\ba [aeiou]/);
 });
 
+test('audit 27: describe() counts a listed line of another kind and says it by its accessible name, as drawn', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'bpmn.Task', label: 'A' }, { id: 'b', type: 'bpmn.Task', label: 'B' }],
+    edges: [{ id: 'd', type: 'uml.Dependency', from: 'a', to: 'b', label: 'needs' }], views: [{ id: 'v', diagram: 'bpmn', title: 'V', nodeIds: ['a', 'b'], edges: ['d'] }] };
+  const g = layout(m, 'v'), d = describe(m, 'v').split('\n');
+  assert.equal(d[0], 'V: a BPMN diagram of 2 flow nodes, 0 flows, 0 pools and 1 other line.');
+  assert.ok(d.includes(g.edges.find(e => e._id === 'd').aria + '.'), d.join(' | '));
+  assert.doesNotMatch(describe(EX, VID), /other line/, 'the example: none');
+});
+
 // audit 27: a node of a kind outside the subset (a typo, another notation's) was drawn and named a task, with no word on its
 // kind, and lane-owner called such a parent a task; validate() says its type, and its name is its own
 test('audit 27: a kind outside BPMN\'s subset is said by validate() and named by its own type, not called a task', () => {
