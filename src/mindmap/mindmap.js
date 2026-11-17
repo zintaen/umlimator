@@ -56,7 +56,7 @@ function mmIndex(model, V) {
 function mmSize(n, root, opens) {
   const S = root ? MM.root : MM.topic, out = [];
   // ponytail: text past 400 characters per paragraph is cut before wrapping (four lines hold about 130); fit's loop is quadratic in what it gets
-  const paras = mmText(n).split('\n').map(p => p.trim().slice(0, 400));
+  const paras = mmText(n).split('\n').map(p => p.trim().slice(0, 400).replace(/[\uD800-\uDBFF]$/, '')); // never half a letter
   for (const p of paras) { let line = '';
     for (const w of p.split(/\s+/).filter(Boolean)) { const t = line ? line + ' ' + w : w;
       if (textW(t, S.px) <= MM.max || !line) line = t; else { out.push(line); line = w; } }

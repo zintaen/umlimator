@@ -13,7 +13,7 @@ The protocol: JSON-RPC 2.0, one message per line on stdin and stdout; logs go to
 the current specification (per-request `_meta`, server/discover), and the `initialize` handshake of the versions before
 it, which a client sends that predates 2026-07-28 or falls back to it.
 """
-import hashlib, html, http.server, itertools, json, os, queue, re, sys, tempfile, threading, time, traceback, urllib.parse
+import hashlib, hmac, html, http.server, itertools, json, os, queue, re, secrets, sys, tempfile, threading, time, traceback, urllib.parse
 from pathlib import Path
 
 import umlimator as cli
@@ -73,6 +73,9 @@ class RpcError(Exception):
 
 
 MODEL = URL = HELLO = MAPID = None  # MAPID: the model file's own id, which its pages carry
+# a secret of this run, in the page it serves only: /events and /state need it, so a request another site's page makes
+# (an image, a script, a frame), which cannot read the page, is no page, whatever headers its browser sends (audit 24)
+TOKEN = secrets.token_urlsafe(24)
 HOSTS, ORIGINS = set(), set()
 lock, rendering = threading.Lock(), threading.Lock()
 told = threading.Condition(lock)  # a page reported what it shows
@@ -385,11 +388,11 @@ SCRIPT = """<script type="module">
    highlight, tour, story), folded from its commands, over Server-Sent Events. This shows it on the map's handle, the
    highlight on a layer of its own ('mcp'), and posts back what the page then shows (map.state) with the command's id: a
    tool says "shown" only after that, and page_state() reads it. */
-const map = window.umlimatorMap, model = '__MODEL__', MAP = '__MAP__'; // MAP: which model file this page is (another's server may take the port later)
+const map = window.umlimatorMap, model = '__MODEL__', MAP = '__MAP__', TOKEN = '__TOKEN__'; // MAP: which model file this page is (another's server may take the port later); TOKEN: this run's, which its requests carry
 const page = self.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2);
 const LIMIT = 5000; // ms a command may take here before it is answered as not shown (a tab in the background stops animation)
 let want = {}, done = null, tour = { n: 0 }, story = null, queue = Promise.resolve(); // tour: the assistant's last, n, and on while it is on the map (#132)
-const post = extra => fetch('/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
+const post = extra => fetch('/state', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Umlimator-Token': TOKEN }, keepalive: true,
   body: JSON.stringify({ page, map: MAP, model, state: map.state, ...extra }) }).catch(() => {});
 // the assistant's highlight is about its view: on another it would dim every card, so it shows on that view only
 const lit = () => { const h = want.highlight; map.highlight(h && (h.view || map.view) === map.view ? h.refs : null, { layer: 'mcp' }); };
@@ -433,9 +436,11 @@ map.on('state', ({ changed }) => { if (changed.includes('view')) lit(); post({})
 map.on('story', () => { if (!map.story || map.story.state === 'entering') tour.on = false; }); // a step entered, or the end, took the trip off the map
 function listen() {
   if (!map.view) return setTimeout(listen, 50); // once the map is drawn
-  const es = new EventSource(`/events?page=${encodeURIComponent(page)}&map=${MAP}`);
+  const es = new EventSource(`/events?page=${encodeURIComponent(page)}&map=${MAP}&token=${TOKEN}`);
   es.onmessage = e => { const c = JSON.parse(e.data); queue = queue.then(() => apply(c)); };
-  es.onerror = () => { if (es.readyState === EventSource.CLOSED) banner("This page's server now serves another map: this page no longer follows the assistant."); };
+  // refused: another map's server took the port, or this map's server ran again, with a new TOKEN: then the page reloads
+  es.onerror = () => { if (es.readyState === EventSource.CLOSED) fetch('/', { cache: 'no-store' }).then(r => r.text()).catch(() => '').then(t => t.includes(MAP)
+    ? location.reload() : banner("This page's server now serves another map: this page no longer follows the assistant.")); };
   post({});
 }
 listen();
@@ -443,11 +448,11 @@ listen();
 """
 
 # The page while no version of the model has rendered: why, and it draws the map once one does.
-WAITING = """<!doctype html><meta charset="utf-8"><title>The map does not render yet</title>
+WAITING = """<!doctype html><meta charset="utf-8"><meta name="umlimator-map" content="__MAP__"><title>The map does not render yet</title>
 <body style="font: 15px/1.5 system-ui, sans-serif; margin: 3em auto; max-width: 46em; padding: 0 1em">
 <h1 style="font-size: 1.3em">The model does not render yet</h1><pre style="white-space: pre-wrap">__WHY__</pre>
 <p>This page draws the map once a version of the model renders.</p>
-<script>new EventSource('/events').onmessage = e => { if (JSON.parse(e.data).model) location.reload(); };</script>
+<script>new EventSource('/events?token=__TOKEN__').onmessage = e => { if (JSON.parse(e.data).model) location.reload(); };</script>
 """
 
 
@@ -476,7 +481,7 @@ def page():
                     why = said.strip()[-1500:] or "it does not render"
             else:
                 with lock:
-                    drawn[:] = [v, head + SCRIPT.replace("__MODEL__", v).replace("__MAP__", MAPID) + "</body>" + tail, m]
+                    drawn[:] = [v, head + SCRIPT.replace("__MODEL__", v).replace("__MAP__", MAPID).replace("__TOKEN__", TOKEN) + "</body>" + tail, m]
                     why = None
                     refit(m)
         return drawn[0], why
@@ -488,11 +493,16 @@ class Page(http.server.BaseHTTPRequestHandler):
         nothing) and, when one is sent, its Origin (another site's page posts nothing). A browser that says where a request
         comes from (Sec-Fetch-Site) must say this page, or the person (an address typed, a bookmark): another site's image,
         script or frame naming /events sends no Origin, and was counted as an open page (audit 22). Only a link another
-        site's page follows, to the page itself, is let through: the page it opens is this server's own."""
+        site's page follows, to the page itself, is let through: the page it opens is this server's own. A browser that
+        sends no Fetch Metadata and no Origin passes here: /events and /state need this run's TOKEN too (audit 24)."""
         site = self.headers.get("Sec-Fetch-Site")
         opened = self.command == "GET" and urllib.parse.urlsplit(self.path).path == "/" and self.headers.get("Sec-Fetch-Dest") == "document" \
             and self.headers.get("Sec-Fetch-Mode") == "navigate"
         return self.headers.get("Host") in HOSTS and self.headers.get("Origin", URL) in ORIGINS and (site in (None, "same-origin", "none") or opened)
+
+    def token(self, given):
+        """Whether a request names this run's TOKEN, which only the page it serves holds."""
+        return isinstance(given, str) and hmac.compare_digest(given.encode(), TOKEN.encode())
 
     def do_GET(self):
         if not self.ours():
@@ -500,6 +510,8 @@ class Page(http.server.BaseHTTPRequestHandler):
         at = urllib.parse.urlsplit(self.path)
         if at.path == "/events":
             asked = urllib.parse.parse_qs(at.query)
+            if not self.token((asked.get("token") or [""])[0]):
+                return self.send_error(403)
             if (asked.get("map") or [MAPID])[0] != MAPID:  # a page of another model's server, which had this port: it stops listening
                 return self.send_error(409, explain="this server serves another map")
             return self.events((asked.get("page") or [""])[0][:64])
@@ -509,7 +521,7 @@ class Page(http.server.BaseHTTPRequestHandler):
             shown, broken = page()
         except Fail as e:
             return self.send_error(500, explain=str(e))
-        body = (drawn[1] if shown else WAITING.replace("__WHY__", html.escape(broken or ""))).encode("utf-8")
+        body = (drawn[1] if shown else WAITING.replace("__TOKEN__", TOKEN).replace("__MAP__", MAPID).replace("__WHY__", html.escape(broken or ""))).encode("utf-8")
         self.send_response(200 if shown else 503)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -523,6 +535,8 @@ class Page(http.server.BaseHTTPRequestHandler):
             return self.send_error(403)
         if urllib.parse.urlsplit(self.path).path != "/state":
             return self.send_error(404)
+        if not self.token(self.headers.get("X-Umlimator-Token")):
+            return self.send_error(403)
         if self.headers.get_content_type() != "application/json":  # a form on another site can't send one
             return self.send_error(415)
         size = int(self.headers.get("Content-Length") or 0)
