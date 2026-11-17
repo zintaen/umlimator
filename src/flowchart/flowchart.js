@@ -112,6 +112,7 @@ function fcLineName(I, e) {
 }
 
 /* ---- the legend: each line kind and each symbol the view draws (1.9's legendItem form) ---- */
+const FC_OTHER = Symbol('another kind of line'); // its key in the legend's list: no node's or line's type
 const fcKey = (svg, name, says) => `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round" fill="none">${svg}</g></svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`;
 const FC_KEYS = [
   ['flow.Flow', '<path d="M2 8H18"/><path d="M17 4L26 8L17 12Z" fill="var(--um-muted)"/>', 'Flow', 'the next step'],
@@ -127,7 +128,10 @@ const FC_KEYS = [
   ['flow.Delay', '<path d="M4 3H18A5 5 0 0 1 18 13H4Z"/>', 'Delay', 'a wait'],
   ['flow.Connector', '<circle cx="14" cy="8" r="5"/>', 'Connector', 'flows joined, or carried on elsewhere'],
   ['uml.Comment', '<path d="M4 3H20L24 7V13H4Z"/>', 'Comment', 'a note on the chart'],
+  // a listed line of another kind, drawn plain: "Line", as the object and component views key it (audit 27)
+  [FC_OTHER, '<path d="M2 8H26"/>', 'Line', 'a kind of line this view does not draw as its own'],
 ];
+const fcOther = e => e.type !== 'flow.Flow' && e.type !== 'uml.CommentLink';
 
 /* ---- the view laid out: { model, view, pos, memo } ---- */
 function fcGeo({ model, view, pos, memo }) {
@@ -138,7 +142,7 @@ function fcGeo({ model, view, pos, memo }) {
     return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, ...(label ? { label, cut: 280 } : {}), end: note ? { from: 'none', to: 'none', dashed: true } : e.type === 'flow.Flow' ? { from: 'none', to: 'arrow' } : { from: 'none', to: 'none' },
       aria: fcLineName(I, e), ...(FC_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }; });
   const g = layoutTyped({ nodes, edges, direction: down ? 'down' : 'right', gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo);
-  const types = new Set([...I.lines.map(e => e.type), ...I.ids.map(id => I.N.get(id).type)]);
+  const types = new Set([...I.lines.map(e => (fcOther(e) ? FC_OTHER : e.type)), ...I.ids.map(id => I.N.get(id).type)]);
   // a new object: what layoutTyped returned is never edited (stage 4 §2.4). The slots: one per node, so L and the palette hear the selection
   return { ...g, order: [...I.walk, ...I.lines.map(e => e.id)], slots: g.nodes.map(n => ({ after: n.id, x: n.x + n.w / 2, y: n.y + n.h / 2 })),
     legend: FC_KEYS.filter(([t]) => types.has(t)).map(([, svg, name, says]) => fcKey(svg, name, says)) };
@@ -179,8 +183,8 @@ function fcProblems(model, view) {
 /* ---- describe(): the view in sentences: each node in reading order (from the start, along its flows), then each line ---- */
 function fcDescribe(model, viewId) {
   const v = FC_ARR(model && model.views).find(x => FC_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
-  const I = fcIndex(model, v);
-  return [`${v.title || v.id}: a flowchart of ${fcPlural(I.ids.length, 'node')} and ${fcPlural(I.flows.length, 'flow')}.`,
+  const I = fcIndex(model, v), other = I.lines.filter(fcOther).length; // a line of another kind counted as itself, never left out (audit 27)
+  return [`${v.title || v.id}: a flowchart of ${fcPlural(I.ids.length, 'node')}${other ? ', ' : ' and '}${fcPlural(I.flows.length, 'flow')}${other ? ` and ${fcPlural(other, 'other line')}` : ''}.`,
     ...I.walk.map(id => fcNodeName(I, I.N.get(id)) + '.'), ...I.lines.map(e => fcLineName(I, e) + '.')].join('\n');
 }
 
@@ -217,7 +221,7 @@ const FC_TYPE = registerDiagramType('flowchart', {
   // F2 on a node or a flow sets its label: the default
   edits: { connect: fcConnect, moveTo: fcMoveTo },
   // the PDF's tables: a node's symbol; a line's text, which flags a decision's exit with no label (milestone 2 §9)
-  word: (model, id) => { const x = FC_ARR(model && model.nodes).find(n => FC_OBJ(n) && n.id === id); return x && Object.hasOwn(FC_LOOK, x.type) ? FC_LOOK[x.type][1] : null; },
+  word: (model, id) => { const x = FC_ARR(model && model.nodes).find(n => FC_OBJ(n) && n.id === id); return x && (Object.hasOwn(FC_LOOK, x.type) || x.type == null) ? fcLook(x)[1] : null; }, // none: "Node", as named (audit 27)
   text: (model, view, id) => { const by = x => FC_ARR(x).find(y => FC_OBJ(y) && y.id === id), e = by(model && model.edges) || by(FC_OBJ(view) && view.edges), d = e && e.type === 'flow.Flow' && FC_ARR(model.nodes).find(n => FC_OBJ(n) && n.id === e.from);
     return e && !FC_TXT(e.label) && d && d.type === 'flow.Decision' ? `an exit of ${fcCalled(d)} with no label` : null; },
 });
