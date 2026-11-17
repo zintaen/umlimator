@@ -1,5 +1,5 @@
 import { registerDiagramType } from '../core/registry.js';
-import { esc, fit, textW } from '../core/text.js';
+import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, portsOn, r2 } from '../draw/shapes.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
 import '../uml/class.js'; // SHAPE.note, a comment's look
@@ -28,7 +28,7 @@ const dfdSkin = view => (view && view.notation === 'gane-sarson' ? 'gane-sarson'
 /* ---- the shapes (§4.3): one size for both skins; each draws its number and name inside its box ---- */
 const DF = { px: 12, lh: 16, nmax: 160, num: 11, numh: 14, pad: 10, k: 1.42, band: 22, shadow: 4, minW: 96 };
 const dfdName = (t, k) => flowWrap(t, DF.px, DF.nmax, k);
-const dfdTextW = ls => Math.max(0, ...ls.map(l => textW(l, DF.px)));
+const dfdTextW = ls => Math.max(0, widest(ls, l => textW(l, DF.px)));
 const dfdText = (x, y, t, px, wt, fill, max, cls, anchor = 'middle', more = '') => `<text x="${r2(x)}" y="${r2(y)}" text-anchor="${anchor}" class="${cls}" fill="${fill}"${more} style="font:${wt} ${px}px var(--um-sans)">${esc(fit(t, px, max))}</text>`;
 const dfdNode = (n, kind, inner) => `<g class="node dfd-${kind}" data-id="${esc(n.id)}" data-shape="${n.shape}" tabindex="-1" role="img" aria-label="${esc(n.aria || n.label || '')}">${inner}</g>`;
 const dfdBody = (d, c, f) => `<path d="${d}" class="n-mask"/><path d="${d}" class="n-body" fill="${f}" stroke="${c}"/>`;

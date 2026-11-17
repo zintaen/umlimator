@@ -579,3 +579,16 @@ test('audit 24: two transitions out of a substate and one into the next, a stub\
     views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['S', 'a', 'b', 'c', 'w', 'd'] }] };
   assert.deepEqual(check(m, 'v').map(p => p.message).filter(t => !/ cross$/.test(t)), []);
 });
+
+test('audit 25: Shift + Delete on a region of a state the view holds as its own says what went with it, as a model state\'s', () => {
+  const own = { schemaVersion: 2, root: 'sm', nodes: [{ id: 'a', type: 'uml.State', label: 'A' }], edges: [],
+    views: [{ id: 'sm', diagram: 'uml.state-machine', nodeIds: ['a', 's', 'b'], nodes: [
+      { id: 's', type: 'uml.State', label: 'S', members: [{ id: 'r1', type: 'uml.Region', label: 'R1' }, { id: 'r2', type: 'uml.Region', label: 'R2' }] },
+      { id: 'b', type: 'uml.State', label: 'B', parent: 'r1' }] }] };
+  const inModel = { ...own, nodes: [...own.nodes, ...own.views[0].nodes], views: [{ ...own.views[0], nodes: undefined }] };
+  const want = { commands: [{ op: 'delete', id: 'r1' }], say: 'Deleted region R1 and the 1 element it held' };
+  assert.deepEqual(T.edits.remove(inModel, inModel.views[0], ['r1'], true), want);
+  assert.deepEqual(T.edits.remove(own, own.views[0], ['r1'], true), want);
+  assert.deepEqual(T.edits.remove(own, own.views[0], ['r1'], false), want, 'Delete deletes an own region too (the canvas\'s), and says so');
+  assert.equal(T.edits.remove(own, own.views[0], ['r1', 'a'], false), null, 'with a model state in it: the canvas\'s Delete');
+});

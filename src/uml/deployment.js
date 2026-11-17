@@ -1,5 +1,5 @@
 import { ownNodes, registerDiagramType } from '../core/registry.js';
-import { esc, fit, textW } from '../core/text.js';
+import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { brLines } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
@@ -32,7 +32,7 @@ const DP_KW = { __proto__: null, 'uml.Device': 'device', 'uml.ExecutionEnvironme
 const DP = { d: 10, head: 15, pad: 10, name: 12, nlh: 16, st: 11, sth: 14, minW: 120, maxW: 320, minH: 60 };
 // a name the author broke (a Mermaid <br>): a line each, 16 px apart, the cube as wide as the widest and taller by the rest (audit 23)
 const dpParts = n => { const st = [...(DP_KW[n.type] ? [DP_KW[n.type]] : []), ...DP_ARR(n.stereotypes)].map(t => `«${t}»`), name = brLines(n.label);
-  return { st, name, w: Math.ceil(Math.min(DP.maxW, Math.max(DP.minW, ...st.map(t => textW(t, DP.st) + 2 * DP.pad), ...name.map(l => textW(l, DP.name) + 2 * DP.pad))) + DP.d),
+  return { st, name, w: Math.ceil(Math.min(DP.maxW, Math.max(DP.minW, widest(st, t => textW(t, DP.st) + 2 * DP.pad), widest(name, l => textW(l, DP.name) + 2 * DP.pad))) + DP.d),
     h: Math.max(DP.minH, DP.d + 16 + st.length * DP.sth + name.length * DP.nlh) }; };
 const dpOut = (n, g = 0) => { const p = DP.d, x = n.x - g, y = n.y - g, w = n.w + 2 * g, h = n.h + 2 * g;
   return `M${r2(x)} ${r2(y + p)}L${r2(x + p)} ${r2(y)}H${r2(x + w)}V${r2(y + h - p)}L${r2(x + w - p)} ${r2(y + h)}H${r2(x)}Z`; };
@@ -63,9 +63,12 @@ SHAPE.cube = {
 
 /* ---- the view read: its boxes (§7), its lines, and every element's words ---- */
 const DP_LOOK = { boxTypes: DP_TARGETS, qualify: false, shape: () => 'cube', word: dpWord };
-function dpIndex(model) {
+// view: its own lines too (view.edges objects, drawn as the model's are: viewLines), so a «deploy» or a «manifest» line it alone
+// draws counts in names and rows as a model one does, as the component view's (audit 25)
+function dpIndex(model, view) {
   const at = new Map(); DP_ARR(model && model.nodes).forEach(n => { if (DP_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
-  const E = DP_ARR(model && model.edges).filter(e => DP_OBJ(e) && typeof e.id === 'string');
+  const V = DP_OBJ(view) ? DP_ARR(model && model.views).find(x => x === view) || DP_ARR(model && model.views).find(x => DP_OBJ(x) && x.id === view.id) : null; // a copy by its id
+  const E = viewLines(model, V).map(([e]) => e).filter(e => DP_OBJ(e) && typeof e.id === 'string');
   const into = (t, id) => E.filter(e => e.type === t && e.to === id), outOf = (t, id) => E.filter(e => e.type === t && e.from === id);
   // what is deployed on a target: the artifacts it owns, then those a «deploy» line brings, each once
   const deployed = id => [...new Set([...[...at.values()].filter(n => n.parent === id && DP_ARTIFACTS.includes(n.type)).map(n => n.id), ...into('uml.Deployment', id).map(e => e.from).filter(x => at.has(x) && DP_ARTIFACTS.includes(at.get(x).type))])];
@@ -75,7 +78,7 @@ function dpIndex(model) {
 }
 // the view's boxes, each titled with its keyword and stereotypes and named as §10.3 says
 function dpPic(model, view) {
-  const pic = ownersOn(model, view, DP_LOOK), I = dpIndex(model);
+  const pic = ownersOn(model, view, DP_LOOK), I = dpIndex(model, view);
   // a box with a keyword or stereotypes: they go on a line above its name (the frame's f.kw, f.name), in DP.head more header room
   const boxes = pic.boxes.map(b => { const x = pic.at.get(b.id), kw = [...(DP_KW[x.type] ? [DP_KW[x.type]] : []), ...dpStereo(x)].map(t => `«${t}»`).join(' ');
     const hd = (kw ? DP.head : 0) + (brLines(dpName(x)).length - 1) * DP.nlh;
@@ -256,7 +259,7 @@ const DP_TYPE = registerDiagramType('uml.deployment', {
   describe: dpDescribe,
   // the PDF's tables (§11): an element's kind; a target's rows, what is deployed on it, by nesting or by a line; an artifact's, what it manifests
   word: (model, id) => { const x = dpIndex(model).at.get(id); return x && Object.hasOwn(DP_WORD, x.type) ? DP_WORD[x.type] : null; },
-  rows: (model, view, id) => { const I = dpIndex(model), x = I.at.get(id), nm = k => dpName(I.at.get(k));
+  rows: (model, view, id) => { const I = dpIndex(model, view), x = I.at.get(id), nm = k => dpName(I.at.get(k));
     if (x && DP_TARGETS.includes(x.type)) return I.deployed(id).map(a => (I.at.get(a).parent === id ? nm(a) : `${nm(a)}, by «deploy»`));
     if (x && DP_ARTIFACTS.includes(x.type)) return I.outOf('uml.Manifestation', id).filter(e => I.at.has(e.to)).map(e => `manifests ${nm(e.to)}`);
     return null; },

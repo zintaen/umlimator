@@ -1523,9 +1523,11 @@ if part("mcp"):
     # audit 24: a browser that sends no Fetch Metadata and no Origin (another site's <img src=".../events">) was counted as an
     # open page; /events and /state need this run's token, which only the page the server serves holds
     fetched = {}
-    for name, path, extra in [("no token", "/events?page=old-browser", {}), ("a wrong token", f"/events?page=old-browser&token={token[:-1]}x", {}),
+    # a wrong token: one character changed to another, never to the one it was (a token ending in "x" was right: a flake)
+    flip = lambda ch: "y" if ch == "x" else "x"
+    for name, path, extra in [("no token", "/events?page=old-browser", {}), ("a wrong token", f"/events?page=old-browser&token={token[:-1]}{flip(token[-1])}", {}),
                               ("a token twice", f"/events?page=old-browser&token=x&token={token}", {}),
-                              ("a post with no token", "/state", {}), ("a post with a wrong token", "/state", {"X-Umlimator-Token": "x" + token[1:]})]:
+                              ("a post with no token", "/state", {}), ("a post with a wrong token", "/state", {"X-Umlimator-Token": flip(token[0]) + token[1:]})]:
         c = web(); c.request("POST" if path == "/state" else "GET", path, json.dumps({"page": "old-browser"}) if path == "/state" else None,
                              {"Content-Type": "application/json", "Referer": "https://evil.example/", **extra})
         fetched[name] = c.getresponse().status; c.close()

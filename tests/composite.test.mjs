@@ -727,3 +727,20 @@ test('audit 24: a part given no type is said to have none, not to be "typed null
   const port = T.edits.add(n, n.views[0], { type: 'uml.Port' }, 'p', { sel: ['car.engine'] });
   assert.deepEqual(port, { error: 'engine has no type: type it as a class or component to add a port to' });
 });
+
+test('audit 25: a collaboration use naming none and a role binding with no role say so in words, not "null"', () => {
+  const m = { schemaVersion: 2, nodes: [
+    { id: 'S', type: 'uml.Class', label: 'Service', members: [{ id: 'S.p', type: 'uml.Property', label: 'p', props: { valueType: 'Service' } }] },
+    { id: 'C', type: 'uml.Collaboration', label: 'Observer', members: [{ id: 'C.o', type: 'uml.Property', label: 'subject' }] },
+    { id: 'u', type: 'uml.CollaborationUse', label: 'observer', parent: 'S', props: {} },
+    { id: 'u2', type: 'uml.CollaborationUse', label: 'watch', parent: 'S', props: { collaboration: 'Observer' } }],
+    edges: [{ id: 'rb', type: 'uml.RoleBinding', from: 'S.p', to: 'u2' }], views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 'S', nodeIds: ['S', 'u', 'u2'] }] };
+  const said = validate(m).map(p => p.message);
+  assert.ok(said.includes('collaboration-named: collaboration use "observer" names no collaboration'), JSON.stringify(said));
+  assert.ok(said.includes('binding-role: rb binds no role: name one of "Observer"\'s roles'), JSON.stringify(said));
+  assert.ok(!said.some(s => s.includes('null')), JSON.stringify(said));
+  m.nodes[2].props.collaboration = 'Watcher'; m.edges[0].label = 'other';
+  const named = validate(m).map(p => p.message);
+  assert.ok(named.includes('collaboration-named: collaboration use "observer" names "Watcher", not a collaboration of the model'), JSON.stringify(named));
+  assert.ok(named.includes('binding-role: rb binds "other", not a role of "Observer"'), JSON.stringify(named));
+});

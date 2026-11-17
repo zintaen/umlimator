@@ -143,7 +143,11 @@ function styIndex(model) {
     if (x.type === 'uml.Stereotype' && !I.byProfile.get(x.parent).has(k)) { I.byProfile.get(x.parent).set(k, x); if (!I.byName.has(k)) I.byName.set(k, []); I.byName.get(k).push(at.get(x.parent)); }
     if (x.type === 'uml.Enumeration') I.enums.get(x.parent).set(styName(x), STY_ARR(x.members).filter(m => STY_OBJ(m) && m.type === 'uml.EnumerationLiteral').map(styName)); });
   const add = (map, k, v) => { if (!map.has(k)) map.set(k, []); map.get(k).push(v); };
-  STY_ARR(model.edges).forEach(e => { if (!STY_OBJ(e)) return;
+  // the model's lines, then each view's own (view.edges objects, drawn as the model's are: owners.js viewLines), one whose id a
+  // model element takes being that element: an application, a generalization or an extension is a fact of the model, whichever draws it (audit 25)
+  const taken = new Set([...STY_ARR(model.nodes), ...STY_ARR(model.edges)].filter(STY_OBJ).map(x => x.id)), own = [];
+  STY_ARR(model.views).forEach(v => STY_OBJ(v) && STY_ARR(v.edges).forEach(e => { if (STY_OBJ(e) && typeof e.id === 'string' && !taken.has(e.id)) { taken.add(e.id); own.push(e); } }));
+  [...STY_ARR(model.edges), ...own].forEach(e => { if (!STY_OBJ(e)) return;
     if (e.type === 'uml.ProfileApplication' && isT(e.to, 'uml.Profile') && at.has(e.from)) add(I.applied, e.from, e.to);
     if (e.type === 'uml.Generalization' && isT(e.from, 'uml.Stereotype') && isT(e.to, 'uml.Stereotype')) add(I.gens, e.from, e.to);
     if (e.type === 'uml.Extension' && isT(e.from, 'uml.Stereotype') && isT(e.to, 'uml.MetaclassReference')) { const meta = styName(at.get(e.to)); add(I.ext, e.from, meta);

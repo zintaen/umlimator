@@ -1,4 +1,4 @@
-import { esc, fit, textW } from '../core/text.js';
+import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { flowWrap } from '../uml/flow.js';
 import '../uml/activity.js'; // SHAPE.partition, the pools' and lanes' header look
@@ -59,7 +59,7 @@ const bpCircle = (cx, cy, r) => `M${r2(cx - r)} ${r2(cy)}A${r2(r)} ${r2(r)} 0 1 
 /* ---- the activity: its name on up to three lines between its markers' rows ---- */
 const bpTaskParts = n => { const t = bpType(n), mark = t === 'bpmn.Task' && ['user', 'service'].includes(n.taskType), plus = t === 'bpmn.SubProcess', ls = flowWrap(n.label, BP.name, BP.nmax, 3);
   const top = mark ? 22 : 8, bottom = plus ? 20 : 8;
-  return { t, mark, plus, ls, top, bottom, w: Math.ceil(Math.min(BP.maxW, Math.max(BP.minW, ...ls.map(l => textW(l, BP.name) + 2 * BP.pad)))), h: Math.max(BP.minH, top + bottom + Math.max(1, ls.length) * BP.nlh) }; };
+  return { t, mark, plus, ls, top, bottom, w: Math.ceil(Math.min(BP.maxW, Math.max(BP.minW, widest(ls, l => textW(l, BP.name) + 2 * BP.pad)))), h: Math.max(BP.minH, top + bottom + Math.max(1, ls.length) * BP.nlh) }; };
 const bpUser = (x, y) => bpMark(`M${x} ${y + 14}V${y + 12}Q${x} ${y + 8} ${x + 7} ${y + 8}Q${x + 14} ${y + 8} ${x + 14} ${y + 12}V${y + 14}Z`, BP.bg) + bpMark(bpCircle(x + 7, y + 4, 3.5), BP.bg, ' data-mark="user"');
 const bpGear = (x, y) => { const cx = x + 7, cy = y + 7, teeth = Array.from({ length: 8 }, (_, i) => { const a = i * Math.PI / 4; return `M${r2(cx + 4.5 * Math.cos(a))} ${r2(cy + 4.5 * Math.sin(a))}L${r2(cx + 7 * Math.cos(a))} ${r2(cy + 7 * Math.sin(a))}`; }).join('');
   return bpMark(teeth, 'none', ' stroke-width="2.5"') + bpMark(bpCircle(cx, cy, 4.5), BP.bg, ' data-mark="service"') + bpMark(bpCircle(cx, cy, 1.8)); };
@@ -119,7 +119,7 @@ SHAPE['bpmn-store'] = {
 /* ---- the text annotation: an open bracket and its text ---- */
 const bpNoteLines = n => flowWrap(n.label, BP.note, BP.nomax, 5);
 SHAPE['bpmn-note'] = {
-  size: n => { const ls = bpNoteLines(n); return { w: Math.ceil(Math.max(40, ...ls.map(l => textW(l, BP.note) + 16))), h: Math.max(30, ls.length * BP.nlh + 12) }; },
+  size: n => { const ls = bpNoteLines(n); return { w: Math.ceil(Math.max(40, widest(ls, l => textW(l, BP.note) + 16))), h: Math.max(30, ls.length * BP.nlh + 12) }; },
   out: boxOut(0), inset: () => 0,
   draw(n) { const ls = bpNoteLines(n), y0 = n.y + (n.h - ls.length * BP.nlh) / 2;
     return bpNode(n, 'bpmn-note', `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" class="bp-hit" fill="transparent"/>`
@@ -161,7 +161,7 @@ function bpmnLabels(items, lines, also) {
   const keep = [...(lines || []).flatMap(p => (p || []).slice(1).map((q, k) => ({ x: Math.min(p[k][0], q[0]) - 4, y: Math.min(p[k][1], q[1]) - 4, w: Math.abs(q[0] - p[k][0]) + 8, h: Math.abs(q[1] - p[k][1]) + 8 }))),
     ...items.map(n => ({ x: n.x - 2, y: n.y - 2, w: n.w + 4, h: n.h + 4 })), ...(also || [])], out = [];
   items.forEach(n => { const ls = flowWrap(n.label, BP.lab, BP.lmax, 2); if (!ls.length) return;
-    const w = r2(Math.max(...ls.map(l => textW(l, BP.lab))) + 4), h = ls.length * BP.llh + 2, cx = n.x + n.w / 2, cy = n.y + n.h / 2;
+    const w = r2(widest(ls, l => textW(l, BP.lab)) + 4), h = ls.length * BP.llh + 2, cx = n.x + n.w / 2, cy = n.y + n.h / 2;
     const at = (s, o) => ({ id: n.id, lines: ls, w, h, x: r2(s === 'R' ? n.x + n.w + o : s === 'L' ? n.x - o - w : cx - w / 2), y: r2(s === 'B' ? n.y + n.h + o : s === 'T' ? n.y - o - h : cy - h / 2) });
     // only the boxes within the search's reach are tried: one pass over keep per item, so a view's cost grows with its
     // items times its boxes (ponytail: a grid of buckets if a view passes a thousand items)

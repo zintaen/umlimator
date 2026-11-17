@@ -34,19 +34,31 @@ export function migrate(model) {
    has it (audit 22: a problem with the next entry was said one entry too early, on the left-out one, and dropped). */
 const BY_ID = new Set(['layout', 'nodeOverrides', 'present', 'authors', 'icons', 'tags']);
 // a value unreadable() leaves out: an object it cannot read the keys of, or a value that throws when read (a host's Proxy,
-// a getter), stands in the copy as one more object whose toString is no function (audit 24)
+// a getter), stands in its copy as one more object whose toString is no function (audit 24); never in what copyOf() gives
+// anyone else, where such a value is left out (audit 25: a shared frozen stand-in in apply()'s model took no set)
 const GONE = Object.freeze({ toString: undefined });
-/* a deep copy of a host's model: structuredClone, and when that throws (a function, a Symbol, a Proxy: audit 24) a copy of
-   every object and list walked, keeping each other value as it is (a function by reference), cycles and gaps too. A list,
-   no recursion */
-function copyOf(model) {
+/* a deep copy of a host's model: structuredClone, and when that throws (a function, a Symbol, a Proxy: audit 24) a copy
+   walked by hand, cycles and gaps kept, with a list, no recursion. Only a plain object or list is copied key by key, each
+   key written as an own one (a key named __proto__ stays a key, never the copy's prototype); any other object (a Date, a
+   Map, a Set) is structuredClone'd alone, and kept as it is when that throws too, as a function is (audit 25: they came
+   back as {}). A value that cannot be read is left out, a list's entries after it moved up one; mark: what stands in its
+   place instead (GONE, for unreadable() to find) */
+const ownKey = (o, k, value) => Object.defineProperty(o, k, { value, writable: true, enumerable: true, configurable: true });
+function copyOf(model, mark) {
   try { return structuredClone(model); } catch { /* not cloneable: copied by hand below */ }
-  const obj = x => x !== null && typeof x === 'object', made = new Map(), todo = [];
-  const take = x => { if (!obj(x)) return x; if (made.has(x)) return made.get(x); let keys; try { keys = Object.keys(x); } catch { return GONE; }
-    const y = Array.isArray(x) ? new Array(x.length) : {}; made.set(x, y); todo.push([x, y, keys]); return y; };
+  const obj = x => x !== null && typeof x === 'object', made = new Map(), todo = [], NONE = mark || {}, index = /^(?:0|[1-9]\d*)$/;
+  const take = x => { if (!obj(x)) return x; if (made.has(x)) return made.get(x); let keys, list, plain, n;
+    try { list = Array.isArray(x); const p = Object.getPrototypeOf(x); plain = p === null || (list ? Array.isArray(p) : Object.getPrototypeOf(p) === null);
+      keys = Object.keys(x); n = list ? x.length : 0; } catch { return NONE; } // a list's prototype is a list: Array.prototype, in any realm
+    if (!plain) { let y; try { y = structuredClone(x); } catch { y = x; } made.set(x, y); return y; }
+    const y = list ? new Array(n) : {}; made.set(x, y); todo.push([x, y, keys, list]); return y; };
   const out = take(model);
-  while (todo.length) { const [x, y, keys] = todo.pop(); for (const k of keys) { let v; try { v = x[k]; } catch { v = GONE; } y[k] = take(v); } }
-  return out;
+  while (todo.length) { const [x, y, keys, list] = todo.pop(); let off = 0;
+    for (const k of keys) { let v; try { v = take(x[k]); } catch { v = NONE; } const at = list && index.test(k);
+      if (v === NONE && !mark) { if (at) off++; continue; }
+      ownKey(y, at && off ? String(+k - off) : k, v); }
+    if (off) y.length -= off; }
+  return out === NONE ? {} : out;
 }
 function unreadable(model) {
   const bad = x => { try { return x !== null && typeof x === 'object' && Object.hasOwn(x, 'toString') && typeof x.toString !== 'function'; } catch { return true; } };
@@ -70,7 +82,7 @@ function unreadable(model) {
   if (!model || typeof model !== 'object') return { paths: [], model, back: same, thrown };
   const paths = walk(model, false);
   if (!paths.length) return { paths, model, back: same, thrown };
-  const copy = copyOf(model); walk(copy, true);
+  const copy = copyOf(model, GONE); walk(copy, true);
   // each [n] in turn, under the path before it as the model has it: the n-th entry of that list the copy kept
   const back = path => typeof path !== 'string' || !cut.size ? path : path.replace(/\[(\d+)\]/g, (w, n, i, s) => { const gone = cut.get(back(s.slice(0, i)));
     if (!gone) return w; let j = +n; for (const g of gone) if (g <= j) j++; else break; return `[${j}]`; });

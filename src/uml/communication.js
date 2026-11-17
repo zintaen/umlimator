@@ -1,6 +1,6 @@
 import { apply } from '../core/apply.js';
 import { ownNodes, registerDiagramType } from '../core/registry.js';
-import { esc, fit, textW } from '../core/text.js';
+import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
@@ -47,7 +47,7 @@ const CM_KEYWORD = { create: '«create»', delete: '«destroy»' };
 // a message's «stereotypes» (audit 19), then its sort's keyword, then its label
 const cmMsgPre = m => cmStereoOf(m).map(t => `«${t}»`).join(' '), cmMsgSay = m => [cmMsgPre(m), m.label].filter(CM_HAS).join(' ');
 const cmRowText = (m, num) => { const t = [cmMsgPre(m), CM_KEYWORD[cmSortOf(m)], m.label].filter(CM_HAS).join(' '); return `${num ?? '?'}${t ? ': ' + t : ''}`; }; // "1.1.3: «create» new(order)"; a message with no text, its number
-const cmRowW = t => Math.ceil(Math.min(CM_ROW.max, Math.max(...brLines(t).map(l => textW(l, CM_ROW.px))) + CM_ROW.arrow + 2 * CM_ROW.pad + 2));
+const cmRowW = t => Math.ceil(Math.min(CM_ROW.max, widest(brLines(t), l => textW(l, CM_ROW.px)) + CM_ROW.arrow + 2 * CM_ROW.pad + 2));
 // a row's height: a text the author broke (a Mermaid <br>, F2's Shift+Enter) a line each (audit 22)
 const cmRowH = t => CM_ROW.h + (brLines(t).length - 1) * CM_ROW.lh;
 const cmPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
@@ -349,8 +349,15 @@ function cmSaid(model, view, ids, fromModel, I, r) {
   const msgs = fromModel ? CM_ARR(model.edges).filter(e => CM_OBJ(e) && e.type === 'uml.Message') : I.messages;
   const took = msgs.filter(m => !left.has(m.id) && !CM_ARR(ids).includes(m.id)); if (!took.length) return r;
   const q = x => JSON.stringify(cmNameOf(x)), nm = id => cmNameOf(I.N.get(id) || { id });
-  const who = what.map(id => (I.shown.has(id) ? 'lifeline ' + q(I.N.get(id)) : `connector ${JSON.stringify(nm(I.E.get(id).from) + '–' + nm(I.E.get(id).to))}`)).join(', ');
-  return { commands: r, say: `${fromModel ? 'Deleted' : 'Hid'} ${who} and ${what.length === 1 ? 'its' : 'their'} ${cmPlural(took.length, 'message')}: ${took.map(q).join(', ')}` };
+  const who = xs => xs.map(id => (I.shown.has(id) ? 'lifeline ' + q(I.N.get(id)) : `connector ${JSON.stringify(nm(I.E.get(id).from) + '–' + nm(I.E.get(id).to))}`)).join(', ');
+  // said as done: what the view holds as its own is deleted by Delete too, not hidden (audit 25, as timing's audit 24); a message by what became of it
+  const nv = CM_ARR(next.views).find(v => CM_OBJ(v) && v.id === view.id) || {}, still = new Set([...CM_ARR(next.edges), ...CM_ARR(nv.edges)].filter(CM_OBJ).map(e => e.id));
+  const deleted = id => r.some(c => CM_OBJ(c) && c.op === 'delete' && c.id === id);
+  const part = (verb, xs, ms) => { const m = ms.length ? `${cmPlural(ms.length, 'message')}: ${ms.map(q).join(', ')}` : '';
+    return !xs.length ? (m ? [`${verb} ${m}`] : []) : [`${verb} ${who(xs)}${m ? ` and ${xs.length === 1 ? 'its' : 'their'} ${m}` : ''}`]; };
+  const gone = took.filter(m => !still.has(m.id)), kept = took.filter(m => still.has(m.id));
+  const said = [...part('Deleted', what.filter(deleted), gone), ...part('hid', what.filter(id => !deleted(id)), kept)].join('; ');
+  return { commands: r, say: said.charAt(0).toUpperCase() + said.slice(1) };
 }
 
 /* ---- the type ---- */

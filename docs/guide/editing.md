@@ -69,7 +69,7 @@ removal:
 
 | Command | Takes away | Keeps |
 |---|---|---|
-| `hide` (Delete) | all one view says of the element: its place, pin, `present`, box, tour, the view's lines to it, the story steps on that view. The view's `subject` (or what owns it) is refused: change the subject, or delete it from the model (Shift + Delete; no command deletes a view) | the element, and every other view of it |
+| `hide` (Delete) | all one view says of the element: its place, pin, `present`, box, tour, the view's lines to it, the story steps on that view. The view's `subject` (or what owns it) is refused: change the subject, or delete it from the model (Shift + Delete; no command deletes a view). So is an element only this view holds (its own node or line), since hiding it would delete it: Delete on one, or on a member of one, sends `delete` instead and removes it from the model | the element, and every other view of it; not an element only this view holds |
 | `delete` (Shift + Delete) | the element, its members, what it owns, the lines to them, and every place that names them | nothing of it, except a model element under a node only this view holds: it moves to its nearest owner left, else to none. Undo brings all of it back |
 
 Undo is a snapshot of the model before (`history()`), so undo and redo give back byte-identical models.
@@ -78,7 +78,7 @@ Undo is a snapshot of the model before (`history()`), so undo and redo give back
 |---|---|---|---|
 | rename a node or line | double-click a selected card's name | `F2`, Enter | `set label` |
 | move a card | drag it to a slot | `Alt + arrows` | `set` of the view's `layout` pin |
-| remove from this view | Remove from view (properties) | `Delete` | `hide` |
+| remove from this view | Remove from view (properties) | `Delete` | `hide` (`delete` for an element only this view holds) |
 | delete from the model | Delete from model (properties), ✕ (outline) | `Shift + Delete` | `delete` |
 | add a line | drag a selected card's handle to a card, then pick its kind | `L`, then arrows or type a name, Enter | `add` of a line |
 | add an element | a palette entry, then its name | `N` (the first entry), or Enter on an entry | `add` with `view` |

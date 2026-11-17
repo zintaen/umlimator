@@ -147,3 +147,19 @@ test('audit 24: communicationFromView takes a sequence view\'s own lifelines alo
   assert.deepEqual(validate(b).filter(p => p.level !== 'info'), []);
   assert.deepEqual([b.nodes.map(n => n.id), b.views[0].nodes.map(n => n.id)], [['A'], ['B']]);
 });
+
+test('audit 25: sequenceFromSpans() into a view it made before takes the lifelines only that view listed with it, as cmd_trace does', () => {
+  const m = { schemaVersion: 2, root: 'root', nodes: [{ id: 'web', kind: 'frontend', label: 'web' }, { id: 'api', kind: 'service', label: 'api' }, { id: 'db', kind: 'database', label: 'db' }], edges: [], views: [{ id: 'root', nodeIds: ['web', 'api', 'db'] }] };
+  const S = [{ id: '1', service: 'web', start: 0, end: 100 }, { id: '2', parent: '1', service: 'api', start: 10, end: 90 }, { id: '3', parent: '2', service: 'db', start: 20, end: 30 }];
+  const one = sequenceFromSpans(m, S).model, two = sequenceFromSpans(one, S.slice(0, 2)).model;
+  const lifelines = x => x.nodes.filter(n => n.type === 'uml.Lifeline').map(n => n.id).sort();
+  assert.ok(lifelines(one).length === 3, JSON.stringify(lifelines(one)));
+  assert.deepEqual(lifelines(two), [...view(two, 'trace').nodeIds].filter(id => lifelines(one).includes(id)).sort(), 'no lifeline left that no view lists');
+  const listed = new Set(two.views.flatMap(v => v.nodeIds || [])), msgs = new Set(two.views.flatMap(v => (v.edges || []).map(e => (typeof e === 'string' ? e : e.id))));
+  assert.deepEqual(two.nodes.filter(n => n.type === 'uml.Lifeline' && !listed.has(n.id)), []);
+  assert.deepEqual(two.edges.filter(e => ['uml.Message', 'uml.Connector'].includes(e.type) && !msgs.has(e.id)), []);
+  assert.deepEqual(errors(two), []);
+  // a lifeline another view lists stays
+  const kept = structuredClone(one); kept.views.push({ id: 'other', diagram: 'uml.sequence', nodeIds: lifelines(one) });
+  assert.deepEqual(lifelines(sequenceFromSpans(kept, S.slice(0, 2)).model), lifelines(one));
+});

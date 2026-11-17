@@ -331,3 +331,64 @@ test('audit 24: a model holding a function, a Symbol, a Proxy or a getter that t
   const [m] = mk('uml.class', 'uml.Class', hostile('uml.Class')[3]);
   assert.deepEqual(L.validate(m).filter(p => /throws when it is read/.test(p.message)).map(p => p.path), ['nodes[1].props.g']);
 });
+
+// audit 25: copyOf()'s copy by hand (a model structuredClone refuses, one holding a function) made a {} of every object, a
+// Date, a Map or a Set too, and wrote each key by assignment: an own "__proto__" key, as JSON.parse gives it, became the
+// copy's prototype, and its keys were read through it
+test('audit 25: a model holding a function keeps its Dates, Maps and Sets, and an own __proto__ key stays a key', async () => {
+  const L = await import('../lib/umlimator-all.js'), when = new Date('2026-01-02T00:00:00Z');
+  const mk = () => ({ schemaVersion: 2, nodes: [{ id: 'a', label: 'A', props: { created: new Date(when), tags: new Set(['x']), by: new Map([['k', 1]]), list: [1, , 3] } }], views: [{ id: 'v', nodeIds: ['a'] }] });
+  for (const fn of [false, true]) { const m = mk(); if (fn) m.nodes[0].onClick = () => 1;
+    const p = L.apply(m, { op: 'set', id: 'a', path: 'label', value: 'Z' }).nodes[0].props, what = fn ? 'with a function' : 'without';
+    assert.ok(p.created instanceof Date && +p.created === +when, what); assert.deepEqual([...p.tags], ['x'], what); assert.equal(p.by.get('k'), 1, what);
+    assert.equal(p.list.length, 3, what); assert.ok(!(1 in p.list), `${what}: a gap kept`);
+    assert.notEqual(p.created, m.nodes[0].props.created, `${what}: a copy`); }
+  const f = mk(); f.onOpen = () => 1;
+  assert.deepEqual(L.diff(mk(), f).summary, [], 'a function alone is no change');
+  const later = mk(); later.onOpen = () => 1; later.nodes[0].props.created = new Date('2027-05-05T00:00:00Z');
+  assert.deepEqual(L.diff(mk(), later).summary, ['changes A (props)']);
+  // a class's instance, and one structuredClone refuses (a WeakMap): kept as they are
+  class Box { constructor() { this.v = 1; } } const weak = new WeakMap(), box = new Box(), w = mk(); w.onOpen = () => 1; w.nodes[0].props.weak = weak; w.nodes[0].props.box = box;
+  const pw = L.apply(w, { op: 'set', id: 'a', path: 'label', value: 'Z' }).nodes[0].props; assert.equal(pw.weak, weak); assert.equal(pw.box.v, 1);
+  // __proto__: an own key, as JSON.parse writes it, in the copy as in the model, with or without a function
+  const json = '{"schemaVersion":2,"nodes":[{"id":"a","label":"A"},{"id":"b","__proto__":{"label":"Injected","type":"x"}}],"views":[{"id":"v","nodeIds":["a","b"]}]}';
+  for (const fn of [false, true]) { const m = JSON.parse(json); if (fn) m.onOpen = () => {};
+    const b = L.apply(m, { op: 'set', id: 'a', path: 'label', value: 'Z' }).nodes[1], what = fn ? 'with a function' : 'without';
+    assert.ok(Object.hasOwn(b, '__proto__'), what); assert.equal(b.label, undefined, what); assert.equal(Object.getPrototypeOf(b), Object.prototype, what);
+    assert.equal(JSON.stringify(b), '{"id":"b","__proto__":{"label":"Injected","type":"x"}}', what);
+    assert.deepEqual(L.layout(m, 'v').nodes.map(n => n.label).filter(x => x === 'Injected'), [], what); }
+  assert.equal({}.label, undefined, 'nothing written to Object.prototype');
+});
+
+// audit 25: a value apply() could not read (a Proxy whose keys throw) stood in its model as one shared frozen object: a later
+// set into it threw a raw TypeError, and validate() of the result named a "toString" key the host never wrote
+test('audit 25: apply() leaves out a value it cannot read; what it returns takes a set and validates clean', async () => {
+  const L = await import('../lib/umlimator-all.js');
+  const mk = () => ({ schemaVersion: 2, nodes: [{ id: 'a', label: 'A', props: new Proxy({ x: 1 }, { ownKeys() { throw new Error('k'); } }) }, { id: 'b', label: 'B', list: [1, new Proxy({}, { ownKeys() { throw new Error('k'); } }), 3] }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] });
+  assert.deepEqual(L.apply(mk(), { op: 'set', id: 'a', path: 'props.y', value: 2 }).nodes[0].props, { y: 2 });
+  const out = L.apply(mk(), { op: 'set', id: 'a', path: 'label', value: 'B' });
+  assert.equal(Object.hasOwn(out.nodes[0], 'props'), false); assert.deepEqual(out.nodes[1].list, [1, 3]);
+  assert.deepEqual(L.validate(out), []);
+  assert.deepEqual(L.apply(out, { op: 'set', id: 'a', path: 'props.y', value: 3 }).nodes[0].props, { y: 3 });
+  assert.ok(L.validate(mk()).some(p => p.path === 'nodes[0].props'), 'the model itself: said where');
+});
+
+// audit 25: describe(), paths(), reach(), critical(), whatIf() and references() read the raw model, and a host's getter that
+// threw was thrown out of them; layout() and validate() read it as no value (audit 24). Now all of them do
+test('audit 25: describe(), paths(), reach(), critical(), whatIf() and references() read a model whose getter throws', async () => {
+  const L = await import('../lib/umlimator-all.js');
+  const base = () => ({ schemaVersion: 2, nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b', latency: 3 }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] });
+  const getRoot = () => new Proxy(base(), { get(t, k) { if (k === 'views') throw new Error('host'); return t[k]; } });
+  const typed = () => { const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'A' }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a'] }] };
+    Object.defineProperty(m.views[0], 'diagram', { get() { throw new Error('host'); }, enumerable: true }); return m; };
+  const edge = () => { const m = base(); Object.defineProperty(m.edges[0], 'label', { get() { throw new Error('host'); }, enumerable: true }); return m; };
+  const run = { describe: m => L.describe(m, 'v'), paths: m => L.paths(m, 'v', 'a', 'b'), reach: m => L.reach(m, 'v', 'a'), critical: m => L.critical(m, 'v'), whatIf: m => L.whatIf(m, 'v', { remove: 'a' }) };
+  for (const [name, f] of Object.entries(run)) {
+    assert.throws(() => f(getRoot()), /no view "v"/, `${name}: as layout() says`); assert.throws(() => L.layout(getRoot(), 'v'), /no view "v"/);
+    assert.doesNotThrow(() => f(typed()), name); assert.doesNotThrow(() => f(edge()), name);
+  }
+  assert.equal(L.paths(edge(), 'v', 'a', 'b').length, 3); assert.match(L.describe(edge(), 'v'), /A calls B/);
+  assert.deepEqual(L.references(getRoot(), 'a'), [{ path: ['edges', 0, 'from'], kind: 'end' }]);
+  assert.deepEqual(L.references(typed(), 'a'), [{ path: ['views', 0, 'nodeIds', 0], kind: 'view' }]);
+  assert.deepEqual(L.references(edge(), 'b'), L.references(base(), 'b'));
+});

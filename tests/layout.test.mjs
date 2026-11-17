@@ -599,3 +599,52 @@ test('examples/layout.mjs refuses a --max that is no number of at least 1, so a 
   assert.equal(run('--max=1', weather).status, 1);
   assert.equal(run('--max', '3', weather).status, 0);
 });
+
+// audit 25: a text's widest line was Math.max(...lines): every line one argument, and a box title, a card's name or a typed
+// line's label broken on some 120,000 lines (a file under 1 MiB) threw a RangeError from layout() and check(). Now a loop
+test('audit 25: a name or line label broken on 200,000 lines lays out and is checked, in every family', async () => {
+  const L = await import('../lib/umlimator-all.js'), many = 'P' + '\n'.repeat(200000) + 'Q';
+  const kinds = [['uml.package', 'uml.Package'], ['uml.class', 'uml.Class'], ['er', 'er.Entity'], ['flowchart', 'flowchart.Process'], ['mindmap', 'mindmap.Topic'],
+    ['uml.state-machine', 'uml.State'], ['uml.sequence', 'uml.Lifeline'], ['sysml.requirement', 'sysml.Requirement']];
+  for (const [d, T] of kinds) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'p', type: T, label: many }, { id: 'c', type: T, label: 'C' }], views: [{ id: 'v', diagram: d, nodeIds: ['p', 'c'] }] };
+    assert.ok(L.layout(m, 'v').nodes.length >= 1, d); assert.ok(Array.isArray(L.check(m, 'v')), d);
+  }
+  // a package holding a class: the box's title; a typed line's label; a map card and line
+  const box = { schemaVersion: 2, nodes: [{ id: 'p', type: 'uml.Package', label: many }, { id: 'c', type: 'uml.Class', label: 'C', parent: 'p' }], views: [{ id: 'v', diagram: 'uml.package', nodeIds: ['p', 'c'] }] };
+  assert.equal(L.layout(box, 'v').nodes.length, 1); assert.ok(Array.isArray(L.check(box, 'v')));
+  const line = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'A' }, { id: 'b', type: 'uml.Class', label: 'B' }],
+    edges: [{ id: 'e', type: 'uml.Association', from: 'a', to: 'b', label: many, props: { ends: { from: { role: many }, to: { mult: many } } } }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b'] }] };
+  assert.equal(L.layout(line, 'v').edges.length, 1); assert.ok(Array.isArray(L.check(line, 'v')));
+  const map = { nodes: [{ id: 'a', label: many }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b', label: many }], views: [{ id: 'v', nodeIds: ['a', 'b'], containers: [{ id: 'g', label: many, nodeIds: ['a'] }] }] };
+  assert.equal(L.layout(map, 'v').nodes.length, 2); assert.ok(Array.isArray(L.check(map, 'v')));
+  // the width is still the widest line's
+  const two = { schemaVersion: 2, nodes: [{ id: 'p', type: 'uml.Class', label: 'P\n' + 'W'.repeat(30) }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['p'] }] };
+  const one = { schemaVersion: 2, nodes: [{ id: 'p', type: 'uml.Class', label: 'W'.repeat(30) }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['p'] }] };
+  assert.equal(L.layout(two, 'v').nodes[0].w, L.layout(one, 'v').nodes[0].w);
+});
+
+// audit 25: a card's details cut in two at a space pushed every space as an argument (a spread) and counted the backticks
+// before each one again: a body of 150,000 words threw, and a long one took seconds
+test('audit 25: a card\'s details of 150,000 words are cut into points, quickly', async () => {
+  const { detailBullets } = await import('../src/canvas/pieces.js');
+  const t = Date.now(), out = detailBullets('word '.repeat(150000));
+  assert.ok(out.length >= 2); assert.ok(Date.now() - t < 2000, `${Date.now() - t} ms`);
+  assert.deepEqual(detailBullets('A short one. And `a b` then c.'), ['A short one.', 'And `a b` then c.']);
+});
+
+// audit 25: a map view whose box shares the id of a card it holds (validate's error) overflowed the stack in blockPos: the
+// box 'a' was read as the card 'a' again, for ever. It lays out, as every other invalid view does
+test('audit 25: a map box with the id of a card it holds lays out', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', kind: 'service', label: 'A' }, { id: 'b', kind: 'service', label: 'B' }], edges: [{ id: 'e', from: 'a', to: 'b' }],
+    views: [{ id: 'v', nodeIds: ['a', 'b'], containers: [{ id: 'a', label: 'Box', nodeIds: ['a'] }] }] };
+  assert.ok(validate(m).some(p => p.level === 'error' && /box id "a" is one of the view's cards/.test(p.message)));
+  const warn = console.warn; console.warn = () => {};
+  try {
+    assert.equal(layout(m, 'v').nodes.length, 2);
+    const nest = structuredClone(m); nest.views[0].containers = [{ id: 'g', label: 'G', nodeIds: ['a'] }, { id: 'a', label: 'In', nodeIds: ['a', 'b'], parent: 'g' }];
+    assert.equal(layout(nest, 'v').nodes.length, 2);
+    const both = structuredClone(m); both.views[0].containers.push({ id: 'b', label: 'B box', nodeIds: ['b'], parent: 'a' });
+    assert.equal(layout(both, 'v').nodes.length, 2);
+  } finally { console.warn = warn; }
+});
