@@ -1,6 +1,6 @@
 import { apply } from '../core/apply.js';
 import { ownNodes, registerDiagramType } from '../core/registry.js';
-import { esc, fit, textW } from '../core/text.js';
+import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
@@ -47,7 +47,7 @@ const CM_KEYWORD = { create: '«create»', delete: '«destroy»' };
 // a message's «stereotypes» (audit 19), then its sort's keyword, then its label
 const cmMsgPre = m => cmStereoOf(m).map(t => `«${t}»`).join(' '), cmMsgSay = m => [cmMsgPre(m), m.label].filter(CM_HAS).join(' ');
 const cmRowText = (m, num) => { const t = [cmMsgPre(m), CM_KEYWORD[cmSortOf(m)], m.label].filter(CM_HAS).join(' '); return `${num ?? '?'}${t ? ': ' + t : ''}`; }; // "1.1.3: «create» new(order)"; a message with no text, its number
-const cmRowW = t => Math.ceil(Math.min(CM_ROW.max, Math.max(...brLines(t).map(l => textW(l, CM_ROW.px))) + CM_ROW.arrow + 2 * CM_ROW.pad + 2));
+const cmRowW = t => Math.ceil(Math.min(CM_ROW.max, widest(brLines(t), l => textW(l, CM_ROW.px)) + CM_ROW.arrow + 2 * CM_ROW.pad + 2));
 // a row's height: a text the author broke (a Mermaid <br>, F2's Shift+Enter) a line each (audit 22)
 const cmRowH = t => CM_ROW.h + (brLines(t).length - 1) * CM_ROW.lh;
 const cmPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;

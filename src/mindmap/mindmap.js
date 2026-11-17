@@ -1,5 +1,5 @@
 import { TYPED, registerDiagramType, idTable, ownGuard } from '../core/registry.js';
-import { esc, fit, textW } from '../core/text.js';
+import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { layoutTree } from '../layout/tree.js';
 import '../typed/edit.js'; // TYPED.edit, which the outline's Show on a topic wraps (mmShow)
@@ -63,7 +63,7 @@ function mmSize(n, root, opens) {
     out.push(line);
     if (out.length > MM.lines) break; }
   const lines = out.length > MM.lines ? [...out.slice(0, MM.lines - 1), out.slice(MM.lines - 1).join(' ')] : out;
-  const shown = lines.map(l => fit(l, S.px, MM.max, true)), tw = Math.max(1, ...shown.map(l => Math.ceil(textW(l, S.px))));
+  const shown = lines.map(l => fit(l, S.px, MM.max, true)), tw = Math.max(1, widest(shown, l => Math.ceil(textW(l, S.px))));
   if (lines.length === MM.lines && out.length > MM.lines && !shown.at(-1).endsWith('…')) shown[MM.lines - 1] = fit(shown.at(-1) + '…', S.px, MM.max);
   return { lines: shown, tw, w: tw + 2 * S.pad + (opens ? MM.open : 0), h: shown.length * S.lh + 2 * S.pad };
 }

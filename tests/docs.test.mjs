@@ -193,3 +193,28 @@ test('audit 19: the CLI guide says check exits 1 on a broken rule or a failed ch
   assert.match(para, /exits 1 when the model breaks a rule/);
   assert.match(para, /reported with exit 0/);
 });
+
+// audit 25: the hide docs said only the subject is refused, and the editing guide that Delete keeps the element; apply()
+// refuses an element only that view holds (hiding it would delete it), and the canvas's Delete sends delete for one
+test('audit 25: the hide docs say an element only one view holds is refused, as apply() refuses it', async () => {
+  const { apply } = await import('../lib/umlimator.js');
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', label: 'A' }], edges: [], views: [{ id: 'v', nodeIds: ['a'], nodes: [{ id: 'P', label: 'P' }], edges: [{ id: 'e', from: 'P', to: 'a' }] }] };
+  for (const id of ['P', 'e']) assert.throws(() => apply(m, { op: 'hide', id, view: 'v' }), /lives only in view "v": delete it/, id);
+  const doc = p => readFileSync(new URL(p, import.meta.url), 'utf8').replace(/\s+/g, ' ');
+  const api = doc('../docs/api/apply-and-commands.md');
+  assert.match(api, /It also refuses an element that lives only in that view \(the view's own node or line/);
+  assert.match(api, /\| `hide` \|[^\n]*for an element that lives only in that view/);
+  for (const p of ['../docs/guide/editing.md', '../docs/editing.md']) assert.match(doc(p), /An element only this view holds \(its own node or line\)[^|]*sends `delete`|So is an element only this view holds \(its own node or line\)[^|]*sends `delete`/i, p);
+});
+
+// audit 25: the keyboard guides said one Enter opens a card's view; the canvas selects the focused card on the first Enter
+// and opens its view on the next (docs/module-api.md, the design notes), and Esc or Backspace first clears a selection
+test('audit 25: the keyboard guides say Enter selects a card, and Enter on the selected card opens its view', () => {
+  const doc = p => readFileSync(new URL(p, import.meta.url), 'utf8').replace(/\s+/g, ' ');
+  const page = doc('../docs/guide/standalone-page.md'), views = doc('../docs/guide/views-and-layers.md');
+  assert.doesNotMatch(page, /Enter opens a card's view/); assert.doesNotMatch(views, /double-click \(or Enter\) opens it/);
+  assert.match(page, /Enter selects the focused card, and Enter on the selected card opens its view\. Esc or Backspace clears the selection, and with nothing selected goes back up/);
+  assert.match(views, /double-click \(or Enter on the selected card\) opens it/);
+  const render = readFileSync(new URL('../src/canvas/render.js', import.meta.url), 'utf8');
+  assert.match(render, /sel && sel\.type === 'node' && sel\.id === id && ctx\.opensOf\(id, cur\)/, 'the canvas opens only a selected card');
+});

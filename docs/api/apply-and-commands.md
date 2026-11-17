@@ -37,7 +37,7 @@ command that cannot run throws, and none of the transaction is applied. The mode
 
 Returns the next model. Undo is the model before: keep it with [`history()`](#history).
 
-`delete` takes with it the element's members, what it owns, the lines to them and every place that names them (see [`references()`](#references)); one already gone in the same transaction is passed over. `hide` takes an element out of one view, with everything the view says of it. It refuses the view's `subject`, or an element that holds the subject as a member, and says why: change the view's subject with `set`, or delete the element from the model.
+`delete` takes with it the element's members, what it owns, the lines to them and every place that names them (see [`references()`](#references)); one already gone in the same transaction is passed over. `hide` takes an element out of one view, with everything the view says of it. It refuses the view's `subject`, or an element that holds the subject as a member, and says why: change the view's subject with `set`, or delete the element from the model. It also refuses an element that lives only in that view (the view's own node or line, from `add` with `in: 'view'`), since hiding it would delete it: use `delete`. A member is shown with its owner, so `hide` of one is refused too: collapse its compartment with `set` of `present`, or delete it.
 
 ```js
 import { apply } from 'umlimator';
@@ -82,7 +82,7 @@ type Command =
 | `add` | Adds an element to the model: a node, a line (with `from` and `to`), or with `owner` a member of that element, at `index`. With `view`, the view shows it too. |
 | `add` with `in: 'view'` | Adds an element to the view's own list for its kind: a line or an inline item to `edges`, a node to `nodes`, else `fragments`. |
 | `move` | Moves an element to `index` among its owner's members, or within a view's list. |
-| `hide` | Takes an element out of one view, and everything the view says of it. Refused for the view's `subject` (or an element that holds it as a member). |
+| `hide` | Takes an element out of one view, and everything the view says of it. Refused for the view's `subject` (or an element that holds it as a member), for an element that lives only in that view (its own node or line: use `delete`), and for a member (shown with its owner). |
 | `delete` | Deletes an element, its members, what it owns, the lines to them and every reference to them. A model element owned by something one view alone holds (a view's own node) is kept: it moves to its nearest owner left, else to none. |
 | `reparent` | Gives an element a new owner (`parent`), or none with `null`. A node one view alone holds owns only that view's own elements: `reparent`, or `add` with `parent`, of a model element (or another view's) under it throws, and `validate()` warns of a model saved with one. |
 | `addView` | Adds a view at `index`, else last. Refused when its id is taken. No command deletes a view. |
