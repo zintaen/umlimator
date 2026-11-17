@@ -229,8 +229,10 @@ function run(m, c, gone) {
       if (!at.has(c.id) && gone.has(c.id)) return; // gone with an earlier command of this transaction
       need(c.id); const now = new Set(), kids = new Map(), names0 = lineNames(m);
       for (const [k, o] of at) if ((o.kind === 'node' || o.kind === 'member') && o.x.parent != null) { if (!kids.has(o.x.parent)) kids.set(o.x.parent, []); kids.get(o.x.parent).push(k); }
-      const take = id => { for (const s = [id]; s.length;) { const k = s.pop(), r = at.get(k); if (!r || now.has(k)) continue; now.add(k);
-        arr(r.x.members).forEach(y => isObj(y) && s.push(y.id)); arr(kids.get(k)).forEach(x => s.push(x)); } }; // what it owns goes with it
+      // what one view alone holds (its own node, a member of one): a model element in it is no part of it (audit 23)
+      const held = id => { let r = at.get(id); for (let n = 0; r && r.owner && n++ < at.size;) r = at.get(r.owner.id); return !!(r && r.view && r.kind === 'node'); };
+      const take = id => { for (const s = [id]; s.length;) { const k = s.pop(), r = at.get(k); if (!r || now.has(k)) continue; now.add(k); const h = held(k);
+        arr(r.x.members).forEach(y => isObj(y) && s.push(y.id)); arr(kids.get(k)).forEach(x => (!h || held(x)) && s.push(x)); } }; // what it owns goes with it
       take(c.id);
       // lines to what is gone go too, lines to those lines, a timeline's items, and what a type's refs cascade (a reply with its call)
       const by = new Map(); for (const [k, o] of at) [...o.kind === 'edge' ? [o.x.from, o.x.to] : o.kind === 'time' ? [o.x.lifeline, o.x.from, o.x.to] : [],
@@ -244,8 +246,11 @@ function run(m, c, gone) {
       const above = id => { const r = at.get(id); return r && (r.x.parent ?? (r.owner && above(r.owner.id))); };
       const left = new Map(); // a gone id's nearest owner left, once found
       for (const [k, o] of at) if (!now.has(k) && now.has(o.x.parent)) { let p = o.x.parent; const way = [];
-        for (let n = 0; p != null && now.has(p) && !left.has(p) && n++ < at.size;) way.push(p), p = above(p);
-        if (left.has(p)) p = left.get(p); else if (now.has(p)) p = undefined; way.forEach(i => left.set(i, p));
+        if (!held(k)) { // a model element: to its nearest owner left that no view alone holds, else none (as mindmap's remove lifts a topic, audit 22)
+          for (let n = 0; p != null && (now.has(p) || held(p)) && n++ < at.size;) p = above(p);
+          if (p != null && (now.has(p) || held(p) || p === k)) p = undefined; } // round a loop back to itself: none
+        else { for (let n = 0; p != null && now.has(p) && !left.has(p) && n++ < at.size;) way.push(p), p = above(p);
+          if (left.has(p)) p = left.get(p); else if (now.has(p)) p = undefined; way.forEach(i => left.set(i, p)); }
         if (p != null) o.x.parent = p; else delete o.x.parent; }
       const ls = new Map(); for (const [k, o] of at) if (now.has(k) && !(o.owner && now.has(o.owner.id))) (ls.get(o.list) || ls.set(o.list, new Set()).get(o.list)).add(o.x);
       ls.forEach((xs, l) => { let j = 0; for (let i = 0; i < l.length; i++) if (!(i in l)) delete l[j++]; else if (!xs.delete(l[i])) l[j++] = l[i]; l.length = j; }); // its first time in its list, as indexOf found

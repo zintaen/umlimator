@@ -159,3 +159,36 @@ test('audit 19: a flow left conveying nothing goes with what it conveyed, when t
   assert.ok(ext.length); const after = apply(u, [{ op: 'delete', id: pay.id }]);
   assert.ok(ext.every(e => !after.edges.some(x => x.id === e.id))); assert.deepEqual(errs(after).filter(x => /extend/.test(x)), []);
 });
+
+// audit 23: deleting what one view alone holds (a node in view.nodes, the canvas's Delete of one) takes the view's own nodes
+// under it, never a model node: that goes to its nearest owner left that no view alone holds, else none, and stays in every view
+test('apply() delete of a view\'s own owner keeps the model nodes under it, each under its nearest model owner (audit 23)', async () => {
+  for (const f of ['usecase', 'activity', 'state']) await import(`../src/uml/${f}.js`);
+  const two = (d, nodes, own, edges = []) => ({ schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: d, nodeIds: [...nodes, ...own].map(n => n.id), nodes: own }, { id: 'w', diagram: d, nodeIds: nodes.map(n => n.id) }] });
+  for (const [m, gone, kept, parents] of [
+    // a use case view's own subject holding a model use case and its association, and a use case of its own
+    [two('uml.use-case', [{ id: 'a', type: 'uml.Actor', label: 'Clerk' }, { id: 'u', type: 'uml.UseCase', label: 'Buy', parent: 's' }],
+      [{ id: 's', type: 'uml.Subject', label: 'Shop' }, { id: 'o', type: 'uml.UseCase', label: 'Own', parent: 's' }], [{ id: 'as1', type: 'uml.Association', from: 'a', to: 'u' }]), 's', ['a', 'u'], { u: undefined }],
+    // an activity view's own partitions, nested in a model partition: the model action goes to the model partition
+    [two('uml.activity', [{ id: 'M', type: 'uml.ActivityPartition', label: 'Shop' }, { id: 'x', type: 'uml.Action', label: 'Pack', parent: 'P2' }],
+      [{ id: 'P1', type: 'uml.ActivityPartition', label: 'Floor', parent: 'M' }, { id: 'P2', type: 'uml.ActivityPartition', label: 'Shelf', parent: 'P1' }]), 'P1', ['M', 'x'], { x: 'M' }],
+    // a state machine view's own composite state: a model state in one of its regions
+    [two('uml.state-machine', [{ id: 'i', type: 'uml.State', label: 'Idle' }, { id: 'k', type: 'uml.State', label: 'Packing', parent: 'r1' }],
+      [{ id: 'S', type: 'uml.State', label: 'Busy', members: [{ id: 'r1', type: 'uml.Region', label: 'A' }, { id: 'r2', type: 'uml.Region', label: 'B' }] }]), 'S', ['i', 'k'], { k: undefined }]]) {
+    const d = m.views[0].diagram, a = apply(m, [{ op: 'delete', id: gone }]);
+    assert.deepEqual(a.nodes.map(n => n.id), kept, `${d}: every model node kept`);
+    assert.deepEqual(a.views[1].nodeIds, m.views[1].nodeIds, `${d}: the other view as it was`);
+    assert.deepEqual(a.edges, m.edges, `${d}: the model's lines kept`);
+    Object.entries(parents).forEach(([id, p]) => assert.equal(a.nodes.find(n => n.id === id).parent, p, `${d}: ${id}'s owner`));
+    assert.ok(!(a.views[0].nodes || []).some(n => n.id === gone), `${d}: the own node is gone`);
+    assert.deepEqual(validate(a).filter(p => p.level === 'error'), [], d);
+    // the canvas's Delete on it, through the type's remove where it has one, gives the same
+    const T = diagramOf(m.views[0]), r = T.edits && T.edits.remove ? T.edits.remove(m, m.views[0], [gone], false) : null;
+    const b = apply(m, r == null ? [{ op: 'delete', id: gone }] : Array.isArray(r) ? r : r.commands);
+    assert.deepEqual(b.nodes.map(n => n.id), kept, `${d}: Delete keeps the model`);
+  }
+  // a model node deleted takes what one view holds under it, as before, and that view's model node under it is lifted out
+  const m = two('uml.activity', [{ id: 'M', type: 'uml.ActivityPartition', label: 'Shop' }, { id: 'x', type: 'uml.Action', label: 'Pack', parent: 'P' }], [{ id: 'P', type: 'uml.ActivityPartition', label: 'Floor', parent: 'M' }]);
+  const a = apply(m, [{ op: 'delete', id: 'M' }]);
+  assert.deepEqual([a.nodes.map(n => [n.id, n.parent]), a.views[0].nodes], [[['x', undefined]], []]);
+});
