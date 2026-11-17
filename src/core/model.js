@@ -58,11 +58,12 @@ function unreadable(model) {
   const thrown = new Set(); // paths of values that threw when read
   const walk = (root, fix) => { const at = [], todo = [[root, '', null]], seen = new Set();
     while (todo.length) { const [o, p, role] = todo.pop(); if (seen.has(o)) continue; seen.add(o);
-      const list = Array.isArray(o); let keys; try { keys = Object.keys(o); } catch { keys = []; }
+      // keys that cannot be read: said at the object's own path (the copy holds it as one more left-out value: copyOf)
+      const list = Array.isArray(o); let keys; try { keys = Object.keys(o); } catch { at.push(p); if (!fix) thrown.add(p); continue; }
       for (let i = keys.length - 1; i >= 0; i--) { const k = keys[i], q = list ? `${p}[${k}]` : p ? `${p}.${k}` : k; let x, gone = false;
-        try { x = o[k]; if (x !== null && typeof x === 'object') Object.keys(x); } catch { gone = true; }
+        try { x = o[k]; } catch { gone = true; }
         const map = !list && (BY_ID.has(k) || role === 'tags' || (role === 'part' && k === 'ports'));
-        if (gone || bad(x) && !map) { at.push(q); if (gone && !fix) thrown.add(q); if (fix && list) { o.splice(+k, 1); cut.set(p, [+k, ...cut.get(p) || []]); } else if (fix) delete o[k]; }
+        if (gone || x === GONE || bad(x) && !map) { at.push(q); if (gone && !fix) thrown.add(q); if (fix && list) { o.splice(+k, 1); cut.set(p, [+k, ...cut.get(p) || []]); } else if (fix) delete o[k]; }
         else if (x !== null && typeof x === 'object') todo.push([x, q, list ? null : role === 'present' ? 'part' : role ? null : k === 'tags' || k === 'present' ? k : null]); } }
     return at; };
   const same = path => path;
