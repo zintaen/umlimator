@@ -11,7 +11,7 @@ const WIRE_KINDS = ['calls', 'feeds', 'triggers', 'state', 'guard'], SIDES = ['l
 export function validate(model) {
   const out = [], err = (path, message) => out.push({ level: 'error', path, message }), warn = (path, message) => out.push({ level: 'warning', path, message });
   // an object with a toString key is no text (String() throws on it): said, and the rest checked without it (audit 19)
-  const read = unreadable(model), left = new Set(read.paths); model = read.model; read.paths.forEach(at => err(at, 'an object with a "toString" key, which no text is read from: left out'));
+  const read = unreadable(model), left = new Set(read.paths); model = read.model; read.paths.forEach(at => err(at, read.thrown.has(at) ? 'a value that throws when it is read (a getter, a Proxy): left out' : 'an object with a "toString" key, which no text is read from: left out'));
   const arr = x => (Array.isArray(x) ? x : []), m = model && typeof model === 'object' ? model : {}, views = arr(m.views).filter(v => v && typeof v === 'object');
   const ver = versionProblem(m); if (ver) (ver.level === 'error' ? err : warn)('schemaVersion', ver.message); // a model this release cannot read is drawn wrongly: say so (F6)
   if (!Array.isArray(m.nodes)) err('nodes', 'the model needs a list of cards');

@@ -1,4 +1,4 @@
-import { migrate, unreadable } from '../core/model.js';
+import { copyOf, migrate, unreadable } from '../core/model.js';
 import { mapContext } from '../map/context.js';
 import { cardMatcher, sequenceFromTrace } from '../map/insight.js';
 import { interactionWalk } from './interaction.js';
@@ -25,7 +25,7 @@ const cvId = s => String(s).replaceAll('->', '-'); // M2: a derived id never nam
 const cvFresh = (used = []) => { const seen = new Set(used); return want => { let s = want; for (let k = 2; seen.has(s); k++) s = `${want}~${k}`; seen.add(s); return s; }; };
 
 function cvSource(model, viewId) {
-  const D = structuredClone(migrate(model) || {}), v = CV_ARR(D.views).find(x => CV_OBJ(x) && x.id === viewId);
+  const D = copyOf(migrate(model) || {}), v = CV_ARR(D.views).find(x => CV_OBJ(x) && x.id === viewId);
   if (!v) throw new Error(`convert: the model has no view ${JSON.stringify(viewId)}`);
   return { D, v };
 }

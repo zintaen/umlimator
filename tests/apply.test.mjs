@@ -373,3 +373,39 @@ test('audit 21: apply() edits a model with a value no text is read from ({"toStr
   }
   assert.deepEqual(thrown, []);
 });
+
+// audit 24: registry.js ownGuard's rule (a model node never has a parent other views lack) is kept by apply() itself and said
+// by validate(): a host's apply(), an import or a model saved before audit 23 no longer puts a model element under a node one
+// view alone holds without a word, where deleting that node then lifts it into new errors
+test('audit 24: apply() refuses a model element, or another view\'s own one, under a node one view alone holds; validate() warns of a saved one', async () => {
+  const L = await import('../lib/umlimator-all.js');
+  let m = { schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.Class', label: 'Order' }], edges: [],
+    views: [{ id: 'v1', diagram: 'uml.class', nodeIds: ['A'] }, { id: 'v2', diagram: 'uml.class', nodeIds: ['A'] }] };
+  m = L.apply(m, [{ op: 'add', in: 'view', view: 'v1', element: { id: 'P', type: 'uml.Package', label: 'sales' } }, { op: 'add', in: 'view', view: 'v2', element: { id: 'Q', type: 'uml.Package', label: 'other' } }]);
+  const refused = /"P" lives in view "v1" only/;
+  assert.throws(() => L.apply(m, { op: 'reparent', id: 'A', parent: 'P' }), refused);
+  assert.throws(() => L.apply(m, { op: 'add', view: 'v1', element: { id: 'B', type: 'uml.Class', label: 'Line', parent: 'P' } }), refused);
+  assert.throws(() => L.apply(m, { op: 'reparent', id: 'Q', parent: 'P' }), /"Q", an element of view "v2"/);
+  assert.throws(() => L.apply(m, { op: 'add', in: 'view', view: 'v2', element: { id: 'C', type: 'uml.Class', label: 'C', parent: 'P' } }), refused);
+  // what stays allowed: v1's own under v1's own, and a model owner for anything
+  const ok = L.apply(m, [{ op: 'add', in: 'view', view: 'v1', element: { id: 'D', type: 'uml.Class', label: 'D', parent: 'P' } }, { op: 'reparent', id: 'P', parent: 'A' }]);
+  assert.deepEqual(L.validate(ok).filter(p => /lives in view/.test(p.message)), []);
+  // a model saved with one (before audit 23, or written by hand): a warning at the element's parent, naming the view
+  const saved = structuredClone(m); saved.nodes[0].parent = 'P'; saved.views[1].nodes[0].parent = 'P';
+  assert.deepEqual(L.validate(saved).filter(p => /lives in view/.test(p.message)).map(p => [p.level, p.path]), [['warning', 'nodes[0].parent'], ['warning', 'views[1].nodes[0].parent']]);
+  // every example: a node of its own added to a typed view, then a model node the view draws put under it
+  let n24 = 0;
+  for (const f of readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json'))) {
+    const x = read('../examples/' + f); if (x.schemaVersion !== 2) continue;
+    assert.deepEqual(L.validate(x).filter(p => /lives in view/.test(p.message)), [], `${f} as shipped`);
+    for (const v of x.views) { if (!v || v.diagram == null || v.diagram === 'map') continue;
+      const n = (x.nodes || []).find(n => n && typeof n.id === 'string' && typeof n.type === 'string' && (v.nodeIds || []).includes(n.id)); if (!n) continue;
+      let y; try { y = L.apply(x, { op: 'add', in: 'view', view: v.id, element: { id: 'own24', type: n.type, label: 'Own' } }); } catch { continue; }
+      if (!(y.views.find(w => w.id === v.id).nodes || []).some(o => o.id === 'own24')) continue;
+      assert.throws(() => L.apply(y, { op: 'reparent', id: n.id, parent: 'own24' }), new RegExp(`"own24" lives in view "${v.id}" only`), `${f} ${v.id}`);
+      y.nodes.find(z => z.id === n.id).parent = 'own24'; n24++;
+      assert.ok(L.validate(y).some(p => p.level === 'warning' && p.message.startsWith(`parent "own24" lives in view "${v.id}" only`)), `${f} ${v.id}: warned`);
+    }
+  }
+  assert.ok(n24 >= 20, `${n24} views tried`);
+});
