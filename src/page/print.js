@@ -144,9 +144,11 @@ const word = t => String(t || '').split('.').pop().replace(/([a-z])([A-Z])/g, (_
 const wordOf = (D, v, id, t) => (diagramOf(v) || {}).word?.(D, id, v) ?? word(t || 'uml.Class');
 function tablesOf({ D, N, nodeIn, viewEdges }, v, g) {
   const typed = (v.diagram ?? 'map') !== 'map';
-  const cards = v => arrOf(v.nodeIds).filter(i => N[i]), boxes = v => handBoxes(v).filter(c => c && c.id);
   const wk = new Map(g.edges.flatMap(d => edgeRefIds(d).map(id => [id, d.wk])));
-  const at = idTable(Object.fromEntries(g.nodes.map(n => [n.id, n]))), ids = cards(v), es = viewEdges(v).filter(e => (typed ? wk.has(e._id) || at[e._id] : e.from !== e.to)), seq = v.render === 'sequence', stepped = es.some(e => e.step != null); // a typed view's: those its type draws, a self-line too (a communication message is drawn as a row); a map draws no self-loop
+  const at = idTable(Object.fromEntries(g.nodes.map(n => [n.id, n]))), framed = new Set([...arrOf(g.families), ...arrOf(g.bands)].map(f => f && f.id));
+  // each listed element once; a typed view's only those its type draws, as a box, a frame or a band (a mindmap draws no class: audit 29)
+  const cards = v => [...new Set(arrOf(v.nodeIds).filter(i => N[i] && (!typed || at[i] || framed.has(i))))], boxes = v => handBoxes(v).filter(c => c && c.id);
+  const ids = cards(v), es = viewEdges(v).filter(e => (typed ? wk.has(e._id) || at[e._id] : e.from !== e.to)), seq = v.render === 'sequence', stepped = es.some(e => e.step != null); // a typed view's: those its type draws, a self-line too (a communication message is drawn as a row); a map draws no self-loop
   if (typed) { const have = new Set(es.map(e => e._id)); // and a line its type draws to an end's owner (a member's, a port's), between the owners
     const M = new Map(arrOf(D.edges).filter(Boolean).map(x => [x._id, x]));
     g.edges.forEach(d => edgeRefIds(d).forEach(id => { const e = M.get(id); if (e && !have.has(id)) { have.add(id); es.push({ ...e, from: d.from, to: d.to }); } }));

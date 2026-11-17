@@ -30,9 +30,8 @@ const IF_CONVEY = ['uml.InformationItem', 'uml.Class', 'uml.Interface', 'uml.Com
 const IF_LINES = ['uml.InformationFlow', 'uml.CommentLink'];
 const IF_WORD = { 'uml.Class': 'Class', 'uml.Interface': 'Interface', 'uml.Component': 'Component', 'uml.Actor': 'Actor', 'uml.InformationItem': 'Information item', 'uml.Comment': 'Comment',
   'uml.Signal': 'Signal' };
-const ifWord = t => (Object.hasOwn(IF_WORD, t) ? IF_WORD[t] : String(t ?? 'untyped').split('.').pop());
 // an accessible name's kind: another kind in words, "Data type Money", as the class view and the PDF say it (audit 23)
-const ifKindName = t => (Object.hasOwn(IF_WORD, t) ? ifWord(t) : snKindName(t)); // no type: "Element" (audit 27)
+const ifKindName = t => (Object.hasOwn(IF_WORD, t) ? IF_WORD[t] : snKindName(t)); // no type: "Element" (audit 27)
 // the keyword over a classifier's name: an interface's, a signal's, and any other kind a view shows its own («useCase»), so none passes for a class
 const IF_KEY = { 'uml.Class': null, 'uml.InformationItem': null, 'uml.PrimitiveType': 'primitive' };
 const ifKey = t => (Object.hasOwn(IF_KEY, t) ? IF_KEY[t] : String(t ?? '').split('.').pop().replace(/^./, c => c.toLowerCase()) || null);
@@ -120,7 +119,8 @@ const IF_RULES = {
 };
 function ifProblems(model) {
   const out = [], I = ifIndex(model), say = (rule, path, ids, msg) => out.push({ level: 'error', rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
-  const q = id => JSON.stringify(I.nm(id)), kind = id => (I.at.has(id) ? (String(I.at.get(id).type ?? '').includes('.') ? ifKindName : ifWord)(I.at.get(id).type).toLowerCase() : 'nothing'); // "an actor", "a data type", "a use case" (audit 24)
+  const q = id => JSON.stringify(I.nm(id)), kind = id => { if (!I.at.has(id)) return 'nothing'; const t = I.at.get(id).type; // "an actor", "a data type", "a use case" (audit 24); no type "an element", as named (audit 29)
+    return (typeof t === 'string' && t !== '' && !t.includes('.') && !Object.hasOwn(IF_WORD, t) ? t : ifKindName(t)).toLowerCase(); };
   const a = w => (/^(?!us|uni)[aeiou]/i.test(w) ? 'an ' : 'a ') + w;
   typedLines(model, v => v.diagram === 'uml.information-flow').forEach(([e, path]) => { if (!IF_OBJ(e) || e.type !== 'uml.InformationFlow') return; const c = I.conveyed(e);
     if (!c.length) say('conveyed-some', path, [e.id], `${e.id} conveys nothing: a flow conveys one element at least`);

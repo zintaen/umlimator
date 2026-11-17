@@ -92,7 +92,9 @@ function dfdIndex(model) {
   const at = new Map(), path = new Map(), views = new Map();
   DFD_ARR(model && model.nodes).forEach((x, i) => { if (DFD_OBJ(x) && typeof x.id === 'string' && !at.has(x.id)) { at.set(x.id, x); path.set(x.id, `nodes[${i}]`); } });
   DFD_ARR(model && model.views).forEach(v => { if (DFD_OBJ(v) && typeof v.id === 'string' && !views.has(v.id)) views.set(v.id, v); });
-  const flows = typedLines(model, v => v.diagram === 'dfd').filter(([e]) => DFD_OBJ(e) && e.type === 'dfd.DataFlow');
+  // the flows: the data flows, and a line of no family a dfd view lists, which it draws as a data flow (dfdFlow, audit 29)
+  const asFlow = new Set(); views.forEach(v => { if (v.diagram === 'dfd' && Array.isArray(v.edges)) dfdLines(model, v).forEach(e => { if (dfdFlow(e)) asFlow.add(e); }); });
+  const flows = typedLines(model, v => v.diagram === 'dfd').filter(([e]) => DFD_OBJ(e) && (e.type === 'dfd.DataFlow' || asFlow.has(e)));
   const ty = id => (at.get(id) || {}).type, proc = id => ty(id) === 'dfd.Process';
   const name = id => { const x = at.get(id); if (!x) return String(id); const k = dfdNum(x); return (k ? k + ' ' : '') + String(x.label ?? x.id); };
   const q = id => `${(DFD_WORD[ty(id)] || 'element').toLowerCase()} "${name(id)}"`;
@@ -117,13 +119,15 @@ function dfdLines(model, view) {
 // accessible names (A1): "Process 1 Take order, opens level 1 Take order, 2 flows in, 2 out"; a flow: "Data flow basket from Customer to 1 Take order"
 function dfdNodeName(I, id, lines) {
   const x = I.at.get(id); if (x.type === 'uml.Comment') return 'Comment: ' + String(x.label ?? id);
-  const ins = lines.filter(e => e.type === 'dfd.DataFlow' && e.to === id && e.from !== id).length, outs = lines.filter(e => e.type === 'dfd.DataFlow' && e.from === id && e.to !== id).length;
+  const ins = lines.filter(e => dfdFlow(e) && e.to === id && e.from !== id).length, outs = lines.filter(e => dfdFlow(e) && e.from === id && e.to !== id).length;
   const v = x.type === 'dfd.Process' && I.views.get(x.opensView);
   return `${DFD_WORD[x.type] || snKindName(x.type)} ${I.name(id)}${v ? `, opens level ${v.title || v.id}` : ''}, ${dfdPlural(ins, 'flow')} in, ${outs} out`;
 }
 // a listed line of another family by its own kind, plain, "Association", never "Comment link" (audit 26); one of no family
 // (no type, "constructor") a data flow, as audit 9 draws it
 const dfdOther = e => typeof e.type === 'string' && e.type.includes('.') && !DFD_LINES.includes(e.type);
+// a line drawn as a data flow: one, or one of no family; keyed, counted and checked as one too, as it is drawn (audit 29)
+const dfdFlow = e => e.type === 'dfd.DataFlow' || (e.type !== 'uml.CommentLink' && !dfdOther(e));
 const dfdLineName = (I, e) => `${dfdOther(e) ? snKindName(e.type) : e.type === 'uml.CommentLink' ? 'Comment link' : 'Data flow'}${DFD_HAS(e.label) ? ' ' + e.label : ''} from ${I.name(e.from)} to ${I.name(e.to)}`;
 // reading order: the processes by number, then the stores, the entities and the rest as the view lists them, then the lines
 function dfdOrder(I, ids, lines) {
@@ -143,7 +147,7 @@ const DFD_SAYS = { process: 'transforms the data flowing in into the data flowin
 const dfdLegendItem = (glyph, name, says) => `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round" fill="none">${glyph}</g></svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`;
 const dfdLegend = (I, ids, lines, skin) => [
   ...['process', 'store', 'entity'].filter(k => ids.some(id => DFD_KIND[I.ty(id)] === k)).map(k => dfdLegendItem(DFD_GLYPH[`${k}-${skin}`], DFD_WORD[Object.keys(DFD_KIND).find(t => DFD_KIND[t] === k)], DFD_SAYS[k])),
-  ...DFD_LINES.filter(t => lines.some(e => e.type === t)).map(t => dfdLegendItem(DFD_GLYPH[t], t === 'dfd.DataFlow' ? 'Data flow' : 'Comment link', DFD_SAYS[t])),
+  ...DFD_LINES.filter(t => lines.some(e => (t === 'dfd.DataFlow' ? dfdFlow(e) : e.type === t))).map(t => dfdLegendItem(DFD_GLYPH[t], t === 'dfd.DataFlow' ? 'Data flow' : 'Comment link', DFD_SAYS[t])),
   // a listed line of another family, drawn plain (dfdOther): "Line", as the object and component views key it (audit 27)
   ...(lines.some(dfdOther) ? [dfdLegendItem('<path d="M2 8H26"/>', 'Line', 'a kind of line this view does not draw as its own')] : [])];
 
@@ -195,7 +199,7 @@ function dfdProblems(model) {
     // the flows each view draws: the process's on its parent view; on the level, those across the edge of its own processes,
     // but to a store the parent view does not show (a local store)
     const kids = new Set(L.kids), key = (e, mine) => { const o = e.from === mine ? e.to : e.from; return [e.from === mine ? 'out' : 'in', o, String(e.label ?? '').trim()]; };
-    const drawn = v => dfdLines(model, v).filter(e => e.type === 'dfd.DataFlow');
+    const drawn = v => dfdLines(model, v).filter(dfdFlow);
     const outer = drawn(L.pv).filter(e => (e.from === p.id) !== (e.to === p.id)).map(e => [e, key(e, p.id)]);
     const inner = drawn(L.v).filter(e => { const o = kids.has(e.from) ? e.to : e.from; return kids.has(e.from) !== kids.has(e.to) && o !== p.id && (L.up.has(o) || I.ty(o) !== 'dfd.DataStore'); }).map(e => [e, key(e, kids.has(e.from) ? e.from : e.to)]);
     const left = [...inner], miss = outer.filter(([, k]) => { const i = left.findIndex(([, j]) => j.join('\u0001') === k.join('\u0001')); if (i < 0) return true; left.splice(i, 1); return false; });
@@ -246,7 +250,7 @@ function dfdKey(model, view, ids, key) {
   const used = dfdUsed(model), n = dfdNum(p), kn = dfdFreeNum(I, 'dfd.Process', n ? n + '.' : '');
   // a far end this view alone holds (view.nodes) no other view can show: it and its flow stay out, said (audit 25)
   const own = new Set(DFD_ARR(view.nodes).filter(x => DFD_OBJ(x) && I.at.get(x.id) === x).map(x => x.id)), far = e => (e.from === p.id ? e.to : e.from);
-  const all = dfdLines(model, view).filter(e => e.type === 'dfd.DataFlow' && (e.from === p.id) !== (e.to === p.id)), flows = all.filter(e => !own.has(far(e)));
+  const all = dfdLines(model, view).filter(e => dfdFlow(e) && (e.from === p.id) !== (e.to === p.id)), flows = all.filter(e => !own.has(far(e)));
   const out = [...new Set(all.filter(e => own.has(far(e))).map(far))].map(I.name);
   const vid = dfdFree(used, p.id + '-level'), kid = dfdFree(used, `${p.id}-${kn}`), title = `${n ? n + ' ' : ''}${p.label ?? p.id}`;
   return { commands: [

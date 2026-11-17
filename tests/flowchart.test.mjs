@@ -376,3 +376,26 @@ test('audit 27: a listed line of another kind is counted in describe() and keyed
   const ctx = mapContext(m), [els] = tablesOf(ctx, ctx.V.v, { nodes: g.nodes, edges: g.edges });
   assert.deepEqual(els.rows.map(r => [...r.matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1].replace(/<[^>]+>/g, ''))).find(c => c[0] === 'Untyped').slice(0, 2), ['Untyped', 'Node']);
 });
+
+// audit 29: a pair of connectors of one label (ISO 5807's on-page connector) joins its halves, as the key's Connector entry says
+test('audit 29: a connector with no flow out carries on at the connector of its label with no flow in: reached, read in order', () => {
+  const N = (id, t, label) => ({ id, type: 'flow.' + t, label }), F = (id, from, to) => ({ id, type: 'flow.Flow', from, to });
+  const m = { schemaVersion: 2, nodes: [N('s', 'Terminator', 'Start'), N('p1', 'Process', 'Take the order'), N('ca', 'Connector', 'A'), N('p2', 'Process', 'Ship it'), N('cb', 'Connector', ' a '), N('e', 'Terminator', 'Done'),
+    N('lone', 'Connector', 'B'), N('p3', 'Process', 'Cut off')],
+    edges: [F('f1', 's', 'p1'), F('f2', 'p1', 'ca'), F('f3', 'cb', 'p2'), F('f4', 'p2', 'e'), F('f5', 'lone', 'p3')],
+    views: [{ id: 'v', diagram: 'flowchart', title: 'Orders', nodeIds: ['s', 'p1', 'ca', 'p2', 'cb', 'e', 'lone', 'p3'] }] };
+  // the second half reached through the pair; a connector of another label is still cut off
+  assert.deepEqual(validate(m).filter(p => p.rule === 'reachable').map(p => p.ids[0]), ['lone', 'p3']);
+  assert.deepEqual(describe(m, 'v').split('\n').slice(1, 7), ['Terminator Start, a start.', 'Process Take the order.', 'Connector A.', 'Connector a.', 'Process Ship it.', 'Terminator Done, an end.']);
+  assert.deepEqual(validate(EX).filter(p => p.rule === 'reachable'), [], 'the example as before');
+});
+
+test('audit 29: describe() counts the comment links it draws and names, as C4 does', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 's', type: 'flow.Terminator', label: 'Start' }, { id: 'p', type: 'flow.Process', label: 'Do' }, { id: 'e', type: 'flow.Terminator', label: 'End' }, { id: 'c', type: 'uml.Comment', label: 'Note' }],
+    edges: [{ id: 'f1', type: 'flow.Flow', from: 's', to: 'p' }, { id: 'f2', type: 'flow.Flow', from: 'p', to: 'e' }, { id: 'n', type: 'uml.CommentLink', from: 'c', to: 'p' }, { id: 'd', type: 'uml.Dependency', from: 'c', to: 'e' }],
+    views: [{ id: 'v', diagram: 'flowchart', title: 'F', nodeIds: ['s', 'p', 'e', 'c'] }] };
+  assert.equal(describe(m, 'v').split('\n')[0], 'F: a flowchart of 4 nodes, 2 flows and 1 comment link.');
+  assert.equal(layout(m, 'v').edges.length, 3);
+  m.views[0].edges = ['f1', 'f2', 'n', 'd'];
+  assert.equal(describe(m, 'v').split('\n')[0], 'F: a flowchart of 4 nodes, 2 flows and 1 comment link and 1 other line.');
+});
