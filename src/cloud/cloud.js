@@ -49,12 +49,15 @@ const clWord = (F, x) => (x.type === F.group ? clKindWord(F, x) : Object.hasOwn(
 const clA = w => `${/^[aeiou]/i.test(w) ? 'an' : 'a'} ${w}`; // "an Account group", "a VPC group"
 const clThe = w => `the ${w === w.toUpperCase() ? w : w.toLowerCase()}`; // "the VPC", "the resource group"
 
-// a node's icon (S6, S8): its id, the table's entry for it (a data URL only, never markup) and the full name, from the table
-// or the id with hyphens and underscores as spaces; null with no props.icon
+// the full names an id does not spell, as icons/packs.json's names hold them (tests/cloud.test.mjs keeps the two equal): read
+// with no pack fetched too, so a picture says "Pub/Sub" with or without it (audit 25)
+const CL_NAMES = { __proto__: null, 'gcp/Pub-Sub': 'Pub/Sub', 'aws/Amazon-VPC_NAT-Gateway': 'Amazon VPC NAT Gateway' };
+// a node's icon (S6, S8): its id, the table's entry for it (a data URL only, never markup) and the full name, from the table,
+// else CL_NAMES, else the id with hyphens and underscores as spaces; null with no props.icon
 function clIcon(F, D, n) {
   const id = clProps(n).icon; if (typeof id !== 'string' || !id) return null;
   const T = CL_OBJ(D && D.icons) ? D.icons : {}, k = F.pack + '/' + id, e = Object.hasOwn(T, k) && CL_OBJ(T[k]) ? T[k] : {};
-  return { id, src: typeof e.src === 'string' && /^data:image\//.test(e.src) ? e.src : null, dark: e.dark === true, name: CL_HAS(e.name) ? String(e.name) : id.split(/[-_\s]+/).filter(Boolean).join(' ') };
+  return { id, src: typeof e.src === 'string' && /^data:image\//.test(e.src) ? e.src : null, dark: e.dark === true, name: CL_HAS(e.name) ? String(e.name) : CL_NAMES[k] || id.split(/[-_\s]+/).filter(Boolean).join(' ') };
 }
 // the host gave this family's pack: its legal entry or any icon of it (icon-missing reads only then)
 const clGiven = (F, D) => CL_OBJ(D && D.icons) && Object.keys(D.icons).some(k => k.startsWith(F.pack + '/'));
@@ -294,4 +297,4 @@ const CLOUD_DEFS = Object.fromEntries(Object.entries(CL_FAM).map(([k, F]) => [k,
 const GCP_TYPE = registerDiagramType('gcp', CLOUD_DEFS.gcp), AZURE_TYPE = registerDiagramType('azure', CLOUD_DEFS.azure);
 if (CLOUD_AWS) registerDiagramType('aws', CLOUD_DEFS.aws); // on since AWS accepted the maintainer's request (14 Nov 2026, 4a.8)
 
-export { CLOUD_AWS, CLOUD_DEFS, GCP_LEGAL, AWS_LEGAL, GCP_TYPE, AZURE_TYPE, CL_RULES };
+export { CLOUD_AWS, CLOUD_DEFS, CL_NAMES, GCP_LEGAL, AWS_LEGAL, GCP_TYPE, AZURE_TYPE, CL_RULES };

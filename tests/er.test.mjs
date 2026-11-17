@@ -424,3 +424,13 @@ test('a comment link\'s drawn label is in its accessible name and describe(), in
     assert.equal(layout(bare, 'v').edges[0].aria, want.replace('see runbook ', ''), `${k}: a link with no label`);
   }
 });
+
+test('audit 25: a node of another kind in an er view is drawn and named as itself ("Class Customer"), not as a table with no key', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 't', type: 'er.Entity', label: 'order', members: [{ id: 't.id', type: 'er.Column', label: 'id', props: { primaryKey: true } }] },
+    { id: 'c', type: 'uml.Class', label: 'Customer' }], edges: [], views: [{ id: 'er', diagram: 'er', title: 'ER', nodeIds: ['t', 'c'] }] };
+  const g = layout(m, 'er');
+  assert.deepEqual([g.byId.c.shape, g.byId.c.aria], ['classifier', 'Class Customer']);
+  assert.deepEqual([g.byId.t.shape, g.byId.t.aria], ['entity', 'Table order, key id, 1 column: id PK']);
+  assert.match(describe(m, 'er'), /^Class Customer\.$/m);
+  assert.ok(!/no key/.test(svgOf(g)), 'no table words for it');
+});

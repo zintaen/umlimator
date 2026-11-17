@@ -19,7 +19,7 @@ import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
-import { CLOUD_AWS, CLOUD_DEFS, GCP_LEGAL, AWS_LEGAL } from '../src/cloud/cloud.js';
+import { CL_NAMES, CLOUD_AWS, CLOUD_DEFS, GCP_LEGAL, AWS_LEGAL } from '../src/cloud/cloud.js';
 
 const read = f => JSON.parse(readFileSync(new URL(f, import.meta.url)));
 const GCP = read('../examples/bookshop-gcp.json'), AZ = read('../examples/bookshop-azure.json'), AWS = read('../examples/bookshop-aws.json'); // moved by 4a.7 and 4a.8, AWS's ids prefixed aws-
@@ -163,7 +163,7 @@ test('icons only from the host\'s table, through <image> from a data URL: meet, 
 test('a view with no table (offline, no pack): glyphs and full names derived from the ids, "icon not available" in each name; no legal line', () => {
   const g = layout(GCP, 'gcp-on-gcp'), s = svgOf(g);
   assert.equal(images(s).length, 0); assert.equal((s.match(/class="cl-glyph"/g) || []).length, 9);
-  assert.deepEqual(['gcp-dns', 'gcp-queue', 'gcp-db'].map(id => g.byId[id].name), ['Cloud DNS', 'Pub Sub', 'Cloud SQL']);
+  assert.deepEqual(['gcp-dns', 'gcp-queue', 'gcp-db'].map(id => g.byId[id].name), ['Cloud DNS', 'Pub/Sub', 'Cloud SQL']);
   assert.match(s, /class="c-st cl-name"[^>]*>Cloud Load Balancing</);
   assert.equal(g.byId['gcp-lb'].aria, 'Product Load balancer, Cloud Load Balancing, icon not available');
   assert.ok(!g.legal && !/cl-legal/.test(s) && !g.legend.some(l => l.includes(GCP_LEGAL)));
@@ -508,4 +508,11 @@ test('audit 24: a group whose name has line breaks keeps clear of a card it does
     assert.deepEqual(foreign, [], `${JSON.stringify(lab)}: the region box covers cards it does not hold`);
     assert.ok(!check(m, 'gcp-on-gcp').some(p => /header crossed/.test(p.message)), `${JSON.stringify(lab)}: a line crosses the region's header`);
   }
+});
+
+test('audit 25: a full name the id does not spell is the same with or without a pack ("Pub/Sub"), from the names icons/packs.json holds, which the module\'s copy equals', () => {
+  const P = read('../icons/packs.json'), mine = Object.fromEntries(Object.entries(P).filter(([, r]) => r && r.names).flatMap(([k, r]) => Object.entries(r.names).map(([i, n]) => [k + '/' + i, n])));
+  assert.deepEqual({ ...CL_NAMES }, mine);
+  assert.match(describe(GCP, 'gcp-on-gcp'), /Product Order queue, Pub\/Sub, icon not available\./);
+  assert.equal(layout(GCP, 'gcp-on-gcp').byId['gcp-queue'].aria, 'Product Order queue, Pub/Sub, icon not available');
 });
