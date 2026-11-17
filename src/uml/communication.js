@@ -365,6 +365,8 @@ function cmSaid(model, view, ids, fromModel, I, r) {
 const CM_SORT = { key: 'sort', label: 'Sort', kind: 'enum', options: CM_SORTS };
 const COMM_TYPE = registerDiagramType('uml.communication', {
   title: 'communication diagram',
+  // the kinds of line it draws: any other a view lists is not drawn, which validate() says (src/core/model.js, audit 28)
+  drawsOnly: ['uml.Connector', 'uml.Message'],
   elements: [{ type: 'uml.Lifeline', label: 'Lifeline' }],
   lines: [{ type: 'uml.Connector', label: 'Connector' }, ...[['call', 'Call'], ['async', 'Async'], ['reply', 'Reply'], ['create', 'Create'], ['delete', 'Delete']]
     .map(([sort, label]) => ({ type: 'uml.Message', label, props: { sort } }))],

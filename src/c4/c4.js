@@ -105,8 +105,9 @@ function c4Lines(model, view, pic) {
   const ends = new Set(pic.ids.filter(id => !pic.open.has(id))), byId = new Map(pic.I.E.map(e => [e.id, e]));
   const listed = Array.isArray(view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? byId.get(x) : x)))].filter(C4_OBJ) : null;
   const own = (listed || pic.I.E.filter(e => e.type === 'c4.Relationship' || e.type === 'uml.CommentLink')).filter(e => typeof e.id === 'string' && ends.has(e.from) && ends.has(e.to));
-  // a pair a relationship joins already, drawn or hidden by the view's list, takes no implied line
-  const joined = new Set([...own, ...pic.I.rels].filter(e => ends.has(e.from) && ends.has(e.to)).map(e => e.from + '\n' + e.to)), implied = new Map();
+  // a pair a relationship joins already, drawn or hidden by the view's list, takes no implied line; a listed line of another
+  // kind (a uml.Dependency, a comment link) is no relationship, and leaves the implied line drawn (audit 28)
+  const joined = new Set([...own.filter(e => e.type === 'c4.Relationship'), ...pic.I.rels].filter(e => ends.has(e.from) && ends.has(e.to)).map(e => e.from + '\n' + e.to)), implied = new Map();
   pic.I.rels.forEach(r => { if (ends.has(r.from) && ends.has(r.to)) return; // shown as itself, or hidden from the view: never lifted
     const a = c4Lift(pic, r.from), b = c4Lift(pic, r.to), k = a + '\n' + b;
     if (a == null || b == null || a === b || joined.has(k)) return;

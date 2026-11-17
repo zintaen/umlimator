@@ -126,6 +126,7 @@ const MM_RULES = {
   'topic-parent': 'a topic\'s parent is a topic',
   'side-first': 'present.<id>.side is left or right, on a first-level topic; anywhere else it is ignored',
   'mindmap-depth': `a topic is at most ${MM_DEEP} levels below the root: a deeper topic is drawn, but a Mermaid write and read hangs it ${MM_DEEP} levels below the root`,
+  'mindmap-kinds': 'a mindmap draws topics only: any other node a view lists is not drawn',
 };
 // a root shown while its parent topic is hidden: a side it has is kept for when the parent comes back, as a hidden topic's is
 // (mmRemove), so the outline's Show of the parent puts it back where it was (audit 26)
@@ -141,6 +142,11 @@ function mmProblems(model, view) {
     if (mmKept(X, id) && (s === 'left' || s === 'right')) return; // kept for its parent's return, as a hidden topic's (audit 26)
     if (s !== 'left' && s !== 'right') say('warning', 'side-first', `${at}.present.${id}.side`, [id], `${q(id)}'s side ${JSON.stringify(s)} is not left or right: ignored`);
     else if (X.depth.get(id) !== 1) say('warning', 'side-first', `${at}.present.${id}.side`, [id], `${q(id)} is not a first-level topic: its side is ignored, it follows its branch`); });
+  // a listed node that is no topic (no type, a typo'd one, another notation's): not drawn, so said, as BPMN says a kind outside
+  // its subset; each once, where the view first lists it (audit 28)
+  MM_ARR(V.nodeIds).forEach((id, i) => { if (typeof id !== 'string' || !X.N.has(id) || X.topic(id) || MM_ARR(V.nodeIds).indexOf(id) !== i) return; const t = X.N.get(id).type;
+    say('warning', 'mindmap-kinds', `${at}.nodeIds[${i}]`, [id], t == null || t === '' ? `${q(id)} (${JSON.stringify(mmOne(X.N.get(id)))}) has no type, so it is no mindmap topic: not drawn`
+      : `${q(id)} (${JSON.stringify(mmOne(X.N.get(id)))}) is of type ${JSON.stringify(t)}, which is no mindmap topic: not drawn`); });
   const deep = X.ids.filter(id => X.depth.get(id) === MM_DEEP + 1);
   if (deep.length) say('warning', 'mindmap-depth', at, deep, `${deep.map(q).join(', ')} ${deep.length === 1 ? 'is' : 'are'} ${MM_DEEP + 1} levels below the root, deeper than ${MM_DEEP}: drawn, but a Mermaid write and read hangs ${deep.length === 1 ? 'it' : 'them'} ${MM_DEEP} levels below the root`);
   return out;
@@ -309,6 +315,8 @@ function mmShow(model, view, id) {
 /* ---- the type ---- */
 const MM_TYPE = registerDiagramType('mindmap', {
   title: 'mindmap',
+  // the kinds of line it draws: any other a view lists is not drawn, which validate() says (src/core/model.js, audit 28)
+  drawsOnly: [],
   elements: [{ type: MM_T, label: 'Topic' }],
   lines: [],
   layout: { run: mmRun, pins: false },

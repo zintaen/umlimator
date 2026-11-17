@@ -57,7 +57,8 @@ function rqSays(I, id) {
   const x = I.at.get(id), out = [], nm = k => rqName(I.at.get(k));
   if (x.type === RQ && I.is(x.parent, RQ)) out.push(`contained in ${nm(x.parent)}`);
   I.at.forEach(y => { if (y.type === RQ && y.parent === id && x.type === RQ && y.from == null) out.push(`contains ${nm(y.id)}`); });
-  I.rels.forEach(e => { const [, sup, cli] = RQ_REL[e.type]; if (e.to === id) out.push(`${sup} ${nm(e.from)}`); if (e.from === id) out.push(`${cli} ${nm(e.to)}`); });
+  // a relationship's own text, as drawn after its keyword, in brackets: "derived from B (because of law X)" (audit 28)
+  I.rels.forEach(e => { const [, sup, cli] = RQ_REL[e.type], t = rqOwnText(e) ? ` (${rqOwnText(e)})` : ''; if (e.to === id) out.push(`${sup} ${nm(e.from)}${t}`); if (e.from === id) out.push(`${cli} ${nm(e.to)}${t}`); });
   return out;
 }
 
@@ -80,10 +81,12 @@ function rqAria(x) {
   return `${RQ_WORD[x.type] || String(x.type || 'Element').split('.').pop()} ${rqName(x)}${st.length ? ` (${st.join(', ')})` : ''}${x.type === RQ ? `${RQ_HAS(p.reqId) ? ', ' + p.reqId : ''}${RQ_HAS(p.text) ? ': ' + p.text : ''}` : ''}`;
 }
 const rqKind = (I, id) => `${(RQ_WORD[I.ty(id)] || 'element').toLowerCase()} ${rqName(I.at.get(id) || { id })}`;
+const rqOwnText = e => [...rqStereo(e).map(t => `«${t}»`), e.label].filter(RQ_HAS).join(' ');
 const rqLabel = e => [Object.hasOwn(RQ_REL, e.type) ? `«${SYS_TABLE[e.type].st}»` : '', ...rqStereo(e).map(t => `«${t}»`), e.label].filter(RQ_HAS).join(' ');
 // the view's relationships and comment links whose ends it shows (not the frame's package); a view's own edges list is filtered by type too
 const rqLines = (model, view, pic, shown) => drawnLines(model, view, RQ_LINES).lines.filter(({ e, from, to }) => RQ_LINES.includes(e.type) && shown.has(from) && shown.has(to) && !holdsLine(pic, from, to));
-const rqLineName = (I, e) => `${(RQ_REL[e.type] || ['Comment link'])[0]} from ${rqKind(I, e.from)} to ${rqKind(I, e.to)}`;
+// a line's name, then what is drawn on it after its keyword (its «stereotypes» and label), as every typed view names a line (audit 28)
+const rqLineName = (I, e) => `${(RQ_REL[e.type] || ['Comment link'])[0]} from ${rqKind(I, e.from)} to ${rqKind(I, e.to)}${rqOwnText(e) ? ': ' + rqOwnText(e) : ''}`;
 
 /* ---- the frame and its boxes (§5.1): every node in the frame; a package that holds something shown a box in it; a package
    subject is the frame, not a box or a card of its own ---- */
@@ -288,6 +291,8 @@ function rqRemove(model, view, ids, fromModel) {
 const RQ_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
 const RQ_TYPE = registerDiagramType('sysml.requirement', {
   title: 'requirement diagram',
+  // the kinds of line it draws: any other a view lists is not drawn, which validate() says (src/core/model.js, audit 28)
+  drawsOnly: RQ_LINES,
   elements: [[RQ, 'Requirement'], [RQ_TC, 'Test case'], ['sysml.Block', 'Block'], [RQ_PKG, 'Package'], ['uml.Comment', 'Comment']].map(([type, label]) => ({ type, label })),
   // Containment is no model element: the connect gesture re-owns (its type names no element type)
   lines: [{ type: 'containment', label: 'Containment' }, ...Object.entries(RQ_REL).map(([type, [label]]) => ({ type, label })), { type: RQ_LINK, label: 'Comment link' }],

@@ -6,7 +6,8 @@ import { labelW } from '../layout/layered.js';
 import { laneBands, laneRows } from '../layout/lanes.js';
 import { layoutTyped } from '../typed/layout.js';
 import { brLines } from '../typed/draw.js';
-import './class.js'; // SHAPE.note, a comment's
+import { LINE_SAYS } from './class.js'; // SHAPE.note, a comment's too
+import { snKindName } from './structure.js';
 import { frame } from './frame.js';
 import { FLOW_RULES, flowOf, flowProblems, flowLabel, flowRename, flowStereo, viewFlows } from './flow.js';
 import { copyOf } from '../core/model.js';
@@ -121,8 +122,10 @@ function acNodeName(model, I, x, lines) {
   return [`${word}${named}${st.length ? ` (${st.join(', ')})` : ''}`, count, opens, lane != null ? `in ${acName(I.N.get(lane))}` : null].filter(Boolean).join(', ');
 }
 const AC_LINE_WORDS = { 'uml.ControlFlow': ['Control flow', 'the next step, once the one before ends'], 'uml.ObjectFlow': ['Object flow', 'an object or data passed on'], 'uml.CommentLink': ['Comment link', 'what a comment is about'] };
+// a listed line of another kind by its own kind, "Dependency", as the structural views say it; no type: "Line" (audit 28)
+const acOtherWord = e => (e.type == null || e.type === '' ? 'Line' : snKindName(e.type));
 function acLineName(I, e) {
-  const [word] = Object.hasOwn(AC_LINE_WORDS, e.type) ? AC_LINE_WORDS[e.type] : ['Line'], g = AC_PART(acProps(e).guard), nm = AC_PART(e.label);
+  const [word] = Object.hasOwn(AC_LINE_WORDS, e.type) ? AC_LINE_WORDS[e.type] : [acOtherWord(e)], g = AC_PART(acProps(e).guard), nm = AC_PART(e.label);
   const st = flowStereo(e).join(' ');
   return `${word} from ${acCalled(I.N.get(e.from))} to ${acCalled(I.N.get(e.to))}${st ? ', ' + st : ''}${nm ? `, named ${nm}` : ''}${g ? `, guard ${g}` : ''}`;
 }
@@ -140,7 +143,10 @@ const AC_KEYS = [
   ['uml.DecisionNode', '<path d="M14 2L21 8L14 14L7 8Z"/>', 'Decision', 'takes the one exit whose guard holds'],
   ['uml.MergeNode', '<path d="M14 2L21 8L14 14L7 8Z"/>', 'Merge', 'goes on with whichever flow arrives'],
 ];
-const acLegend = types => AC_KEYS.filter(([t]) => types.has(t)).map(([t, svg, name, says]) => (AC_LINE_WORDS[t] ? acKey(svg, ...AC_LINE_WORDS[t]) : acKey(svg, name, says)));
+// a listed line of another kind: drawn plain, never with a flow's arrow, and keyed "Line" with that plain swatch (audit 28)
+const acOther = e => !AC_LINES.includes(e.type);
+const acLegend = (types, edges) => [...AC_KEYS.filter(([t]) => types.has(t)).map(([t, svg, name, says]) => (AC_LINE_WORDS[t] ? acKey(svg, ...AC_LINE_WORDS[t]) : acKey(svg, name, says))),
+  ...(edges.some(acOther) ? [acKey('<path d="M2 8H26"/>', 'Line', LINE_SAYS)] : [])];
 
 /* ---- the view laid out: { model, view, pos, memo } (§9.1, §5) ---- */
 function actGeo({ model, view, pos, memo }) {
@@ -155,7 +161,7 @@ function actGeo({ model, view, pos, memo }) {
   // a bar's lines enter on the side facing the flow's start and leave on the other (§4.1): left and right in the layout's
   // own axes, which a view laid out down turns to top and bottom
   const edges = I.lines.map(e => { const note = e.type === 'uml.CommentLink', label = note ? '' : flowLabel(e);
-    return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, ...(label ? { label, cut: AC.cut } : {}), end: note ? { from: 'none', to: 'none', dashed: true } : { from: 'none', to: 'open' },
+    return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, ...(label ? { label, cut: AC.cut } : {}), end: note ? { from: 'none', to: 'none', dashed: true } : acOther(e) ? { from: 'none', to: 'none' } : { from: 'none', to: 'open' },
       aria: acLineName(I, e), ...(bar(e.from) ? { fromSide: 'right' } : {}), ...(bar(e.to) ? { toSide: 'left' } : {}), ...(AC_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }; });
   // a typed view's router makes no room for a label (labelRoom is a map's): with guards to draw, the columns are spread by the
   // widest label and 40 px for its stubs laid out right, as the class type does, and by 48 px laid out down, where a label
@@ -188,7 +194,7 @@ function acFinish(model, g, I, down) {
   const types = new Set([...g.edges.map(e => e.type), ...I.drawn.map(id => I.N.get(id).type)]);
   return { ...g, nodes: [...order.filter(id => !I.isPart(id)), ...I.parts].map(id => byId[id]), byId, bounds, bands, partitions: heads.map(h => h.id), order: [...order, ...g.edges.map(e => e.id)],
     // the slots (src/typed/edit.js): one per node and one per partition's header, so the palette's add hears what is selected
-    slots: [...I.drawn.map(id => ({ after: id, parent: I.laneOf(id), ...mid(byId[id]) })), ...heads.map(h => ({ after: h.id, parent: h.id, ...mid(h) }))], legend: acLegend(types) };
+    slots: [...I.drawn.map(id => ({ after: id, parent: I.laneOf(id), ...mid(byId[id]) })), ...heads.map(h => ({ after: h.id, parent: h.id, ...mid(h) }))], legend: acLegend(types, g.edges) };
 }
 
 /* the bands (§5.3), under the lines: each band's outline and the line closing its header strip */
@@ -233,10 +239,12 @@ function actDescribe(model, viewId) {
   const I = actIndex(model, v), flows = I.lines.filter(e => AC_FLOWS.includes(e.type)), seen = new Set(), walk = [];
   const visit = s => { const q = [s]; while (q.length) { const id = q.shift(); if (seen.has(id)) continue; seen.add(id); walk.push(id); flows.filter(e => e.from === id).forEach(e => q.push(e.to)); } };
   I.drawn.filter(id => I.N.get(id).type === 'uml.InitialNode').forEach(visit); I.drawn.forEach(visit);
-  const out = [`${v.title || v.id}: an activity diagram of ${acPlural(I.drawn.length, 'node')}, ${acPlural(flows.length, 'flow')} and ${acPlural(I.parts.length, 'partition')}.`];
+  // a listed line of another kind: counted apart and said by its kind, never as a flow ("then"), as BPMN says one (audit 28)
+  const other = I.lines.filter(acOther).length;
+  const out = [`${v.title || v.id}: an activity diagram of ${acPlural(I.drawn.length, 'node')}, ${acPlural(flows.length, 'flow')}${other ? ', ' : ' and '}${acPlural(I.parts.length, 'partition')}${other ? ` and ${acPlural(other, 'other line')}` : ''}.`];
   I.parts.forEach(p => out.push(acNodeName(model, I, I.N.get(p), I.lines) + '.'));
   walk.forEach(id => { const x = I.N.get(id), said = I.lines.filter(e => e.from === id).map(e => { const g = AC_PART(acProps(e).guard), nm = AC_PART(e.label);
-    return e.type === 'uml.CommentLink' ? `about ${acCalled(I.N.get(e.to))}` : `then ${acCalled(I.N.get(e.to))}${flowStereo(e).length ? ' ' + flowStereo(e).join(' ') : ''}${nm ? ` (${nm})` : ''}${g ? ` [${g}]` : ''}${e.type === 'uml.ObjectFlow' ? ', an object flow' : ''}`; });
+    return e.type === 'uml.CommentLink' ? `about ${acCalled(I.N.get(e.to))}` : acOther(e) ? `${acOtherWord(e).toLowerCase()} to ${acCalled(I.N.get(e.to))}${nm ? ` (${nm})` : ''}` : `then ${acCalled(I.N.get(e.to))}${flowStereo(e).length ? ' ' + flowStereo(e).join(' ') : ''}${nm ? ` (${nm})` : ''}${g ? ` [${g}]` : ''}${e.type === 'uml.ObjectFlow' ? ', an object flow' : ''}`; });
     out.push(acNodeName(model, I, x, I.lines) + (said.length ? '; ' + said.join('; ') : '') + '.'); });
   return out.join('\n');
 }

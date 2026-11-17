@@ -439,3 +439,24 @@ test('audit 27: F2 on a flow from an end this view alone holds may add an item t
   assert.deepEqual(T.edits.rename(m2, m2.views[0], fid, 'Invoice, Note'), [{ op: 'set', id: fid, path: 'props.conveyed', value: ['b', 'a'] }]);
   assert.deepEqual(T.edits.rename(m2, m2.views[0], 'mf', 'Invoice, Note'), { error: 'Note lives in this view only: a flow between model elements conveys a model element' });
 });
+
+test('audit 28: an information item whose name the author broke draws each line whole, fitted on its own, as a component draws it', () => {
+  for (const label of ['Order\nconfirmation', 'Order\r\nconfirmation note']) {
+    const m = structuredClone(IF); m.nodes.find(n => n.id === 'order-info').label = label;
+    const g = layout(m, V), s = svgOf(g), i = s.indexOf('data-id="order-info"'), item = s.slice(i, s.indexOf('</g>', i));
+    assert.deepEqual([...item.matchAll(/<text[^>]*class="c-name"[^>]*>([^<]*)<\/text>/g)].map(x => x[1]), label.split(/\r?\n/), JSON.stringify(label));
+  }
+});
+
+test('audit 28: a listed line of another kind, drawn plain, is keyed "Line" with that plain swatch; an element with no type is an "Element" in the PDF too', () => {
+  const m = { schemaVersion: 2, nodes: [N('s', 'Actor', 'Shopper'), N('p', 'Component', 'Shop'), N('o', 'InformationItem', 'Order'), { id: 'u', label: 'Untyped' }],
+    edges: [F('f', 's', 'p', ['o']), { id: 'd', type: 'uml.Dependency', from: 'p', to: 's', label: 'needs' }], views: [{ id: 'v', diagram: 'uml.information-flow', nodeIds: ['s', 'p', 'o', 'u'], edges: ['f', 'd'] }] };
+  const g = layout(m, 'v'), d = g.edges.find(e => e.id === 'd');
+  assert.deepEqual(d.end, { from: 'none', to: 'none', dashed: false });
+  assert.deepEqual(g.legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Information flow', 'Line']);
+  assert.match(g.legend[1], /<path d="M2 8H26"\/>/, 'a plain swatch, as the line is drawn');
+  assert.equal(layout({ ...m, views: [{ ...m.views[0], edges: ['f'] }] }, 'v').legend.length, 1, 'no other kind: no Line key');
+  const ctx = mapContext(m), [els] = tablesOf(ctx, ctx.V.v, { nodes: [], edges: g.edges }), row = els.rows.map(r => [...r.matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1])).find(c => c[0] === '<b>Untyped</b>');
+  assert.equal(row[1], 'Element');
+  assert.match(g.nodes.find(n => n.id === 'u').aria, /^Element Untyped/);
+});

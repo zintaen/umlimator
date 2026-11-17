@@ -421,6 +421,8 @@ function sqRename(model, V, id, text) {
 
 const SEQ_TYPE = registerDiagramType('uml.sequence', {
   title: 'sequence diagram',
+  // the kinds of line it draws: any other a view lists is not drawn, which validate() says (src/core/model.js, audit 28)
+  drawsOnly: ['uml.Message'],
   elements: [{ type: 'uml.Lifeline', label: 'Lifeline' }, { type: 'uml.InteractionUse', label: 'Interaction use' }],
   lines: [['Call', 'call'], ['Async', 'async'], ['Reply', 'reply'], ['Create', 'create'], ['Delete', 'delete']].map(([label, sort]) => ({ type: 'uml.Message', label, props: { sort } })),
   items: ['uml.InteractionUse'],

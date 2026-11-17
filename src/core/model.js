@@ -157,7 +157,10 @@ function typedProblems(model) {
       const part = (((e.props || {}).ends || {})[k] || {}).part; if (part != null && !has(part)) err(`${at}.props.ends.${k}.part`, `part ${name(part)} is not an element`); });
   };
   arr(m.edges).forEach((e, i) => { if (typedEdge(e)) ends(e, `edges[${i}]`, boxes); });
-  const nodeIds = new Set(nodes.filter(isObj).map(n => n.id));
+  const nodeIds = new Set(nodes.filter(isObj).map(n => n.id)), modelEdge = new Map();
+  arr(m.edges).forEach(e => { if (typedEdge(e) && typeof e.id === 'string' && !modelEdge.has(e.id)) modelEdge.set(e.id, e); });
+  // a line's kind in words: 'uml.Dependency' "dependency", 'sysml.DeriveReqt' "derive reqt"
+  const lineWord = t => String(t).split('.').pop().replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
   views.forEach((v, i) => { if (!typedView(v)) return; const at = `views[${i}]`;
     if (typeof v.diagram !== 'string' || !/^[a-z0-9]+(\.[a-z0-9-]+)?$/.test(v.diagram)) warn(at + '.diagram', `diagram ${name(v.diagram)} is not <notation> or <notation>.<kind> (uml.class)`);
     if (v.direction != null && !['right', 'down'].includes(v.direction)) warn(at + '.direction', `direction ${name(v.direction)} is not right or down: drawn right`);
@@ -165,6 +168,13 @@ function typedProblems(model) {
     const mine = new Set(arr(v.containers).map(c => isObj(c) && c.id)), T = diagramOf(v); // an item (the type's items; else no ends) is no line
     const item = e => (T ? arr(T.items).includes(e.type) : e.from == null && e.to == null);
     arr(v.edges).forEach((e, j) => { if (typeof e === 'string') { if (kindOf.get(e) !== 'edge') err(`${at}.edges[${j}]`, `${name(e)} is not a typed edge`); } else if (isObj(e) && !item(e)) ends(e, `${at}.edges[${j}]`, mine); });
+    // a type that draws only its own kinds of line (T.drawsOnly: a state machine, a mindmap, a cloud diagram) leaves any other
+    // a view lists out of the picture: said, as the interaction overview says it (overview-kinds), never lost silently (audit 28)
+    if (T && Array.isArray(T.drawsOnly)) arr(v.edges).forEach((e, j) => { const x = typeof e === 'string' ? modelEdge.get(e) : e;
+      if (!isObj(x) || item(x) || T.drawsOnly.includes(x.type)) return; const what = String(T.title || T.name), a = /^[aeiou]/i.test(what) ? 'an' : 'a';
+      out.push({ level: 'warning', path: `${at}.edges[${j}]`, ids: typeof x.id === 'string' ? [x.id] : [], message: x.type == null || x.type === ''
+        ? `view ${name(v.id)} lists ${name(x.id)}, a line with no type, which ${a} ${what} does not draw: not drawn`
+        : `view ${name(v.id)} lists ${lineWord(x.type)} ${name(x.id)}, a line ${a} ${what} does not draw: not drawn` }); });
     if (v.subject != null && !has(v.subject)) err(at + '.subject', `subject ${name(v.subject)} is not an element`);
     ['layout', 'present'].forEach(k => Object.keys(isObj(v[k]) ? v[k] : {}).forEach(id => { if (!has(id)) warn(`${at}.${k}.${id}`, `${name(id)} is not an element: ignored`); })); });
   return out;
