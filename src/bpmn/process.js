@@ -1,4 +1,5 @@
 import { apply } from '../core/apply.js';
+import { copyOf } from '../core/model.js';
 import { heldBy, registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -484,7 +485,7 @@ function bzAdd(model, view, entry, label, at) {
   if (!BZ_OBJ(view) || !BZ_OBJ(entry) || !String(entry.type).startsWith('bpmn.')) return null;
   const I = bzIndex(model, view), sel = BZ_ARR(BZ_OBJ(at) ? at.sel : null), t = entry.type, name = BZ_HAS(label) ? String(label).trim() : '';
   const into = sel.map(id => (I.L.has(id) || I.ty(id) === BZ_POOL || (I.ty(id) === BZ_SUB && bzPic(model, view).open.has(id)) ? id : I.el(id) && BZ_FLOW.includes(I.ty(id)) ? I.el(id).parent : null)).find(p => p != null) ?? null;
-  const el = { id: bzFreshId(model, name || entry.label || t.split('.').pop()), type: t, ...(name ? { label: name } : {}), ...(BZ_OBJ(entry.props) ? { props: structuredClone(entry.props) } : {}) };
+  const el = { id: bzFreshId(model, name || entry.label || t.split('.').pop()), type: t, ...(name ? { label: name } : {}), ...(BZ_OBJ(entry.props) ? { props: copyOf(entry.props) } : {}) };
   if (t === BZ_LANE) { const p = sel.map(id => (I.ty(id) === BZ_POOL ? id : I.L.has(id) ? I.L.get(id).pool : null)).find(Boolean);
     if (!p) return { error: 'Select a pool to add a lane to' };
     const parent = sel.find(id => I.L.has(id)), add = { op: 'add', element: { ...el, ...(parent ? { parent } : {}) }, owner: p };
@@ -520,7 +521,7 @@ function bzRemove(model, view, ids, fromModel) {
   [...gone, ...moved].forEach(id => cmds.push({ op: 'delete', id }));
   // each added again where the outermost deleted lane above it was among its pool's members, so the lanes keep their order
   const top = id => I.chain(id).filter(p => gone.has(p)).at(-1), after = pool => BZ_ARR(I.el(pool).members).flatMap(m => (!BZ_OBJ(m) || !shift.has(m.id) ? [m] : moved.filter(id => top(id) === m.id)));
-  moved.map(id => [after(I.L.get(id).pool).indexOf(id), id]).sort((a, b) => a[0] - b[0]).forEach(([index, id]) => { const { x, pool } = I.L.get(id), p = keep(id), c = structuredClone(x);
+  moved.map(id => [after(I.L.get(id).pool).indexOf(id), id]).sort((a, b) => a[0] - b[0]).forEach(([index, id]) => { const { x, pool } = I.L.get(id), p = keep(id), c = copyOf(x);
     delete c.parent; if (p !== pool) c.parent = p; cmds.push({ op: 'add', element: c, owner: pool, index }); });
   held.forEach(n => { const p = gone.has(n.parent) ? keep(n.parent) : n.parent; if (p !== I.L.get(n.parent).pool) cmds.push({ op: 'reparent', id: n.id, parent: p }); });
   const owned = p => [...I.N.values()].filter(n => I.chain(n.id).includes(p)).length;

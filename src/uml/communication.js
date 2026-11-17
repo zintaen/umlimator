@@ -1,4 +1,5 @@
 import { apply } from '../core/apply.js';
+import { copyOf } from '../core/model.js';
 import { ownNodes, registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -275,7 +276,7 @@ function commConnect(model, view, from, to, at, line) {
   const cons = CM_ARR(view.edges).filter(x => { const e = typeof x === 'string' ? I.E.get(x) : x; return CM_OBJ(e) && e.type === 'uml.Connector'; }).length; // connectors first, then messages
   const link = id => ({ op: 'add', element: { id, type: 'uml.Connector', from, to }, view: view.id, index: cons });
   if (type === 'uml.Connector') return I.carrierOf(from, to) ? { error: `${from === to ? `${from} is linked to itself` : `${from} and ${to} are linked`} already` } : [link(cmFreshId(model, from === to ? `${from}-self` : `${from}-${to}`))];
-  const props = { ...(CM_OBJ(line.props) ? structuredClone(line.props) : {}) }, i = Math.max(cons, cmMessageIndex(view, at));
+  const props = { ...(CM_OBJ(line.props) ? copyOf(line.props) : {}) }, i = Math.max(cons, cmMessageIndex(view, at));
   if (props.sort === 'reply') { const c = replyCallFor(model, view, from, to, { index: i }); if (c) props.replyTo = c; }
   const id = cmFreshId(model, 'm'), out = [{ op: 'add', element: { id, type: 'uml.Message', from, to, ...(Object.keys(props).length ? { props } : {}) }, view: view.id, index: i }];
   if (!I.carrierOf(from, to)) out.push(link(cmFreshId(model, from === to ? `${from}-self` : `${from}-${to}`))); // added after, at the connectors' end: the message moves one down with it
