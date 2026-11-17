@@ -1,6 +1,7 @@
 import { TYPED } from '../core/registry.js';
 import { warn } from '../core/warn.js';
 import { NW, OWN_ROUTE, labelW, layoutGraph } from '../layout/layered.js';
+import { routeAudit } from '../layout/audit.js';
 
 /* A typed view's layout (work package 1.4): layoutGraph's plain layout with what a typed view needs, none of it on a map.
    The parts of layoutPass only a typed view takes are here too (TYPED, registry.js); only lib/umlimator-all.js holds this
@@ -46,7 +47,58 @@ function layoutTyped(dg, memo) {
   const t = { ...dg, typed: true, noSwap: !!(memo && memo.noSwap) }, g = dg.direction === 'down'
     ? transpose(layoutGraph({ ...t, turned: true, nodes: (dg.nodes || []).map(n => ({ ...n, w: n.h || dg.nodeH || 64, h: n.w || NW })) }, false))
     : layoutGraph(t, false);
+  unhook(g, dg.mainSteps ? 12 : 18);
   if (memo) Object.assign(memo, { key, g, dg, runs: (memo.runs || 0) + 1, rr: !!g.rr });
+  return g;
+}
+
+/* A route that steps back near a turn (audit 25): two stretches the opposite way round one shorter than a stub, an S-shaped
+   notch the router's grid leaves where it meets an end's stub. Each is folded by moving one stretch onto another's line: the
+   one between (the two opposite stretches each shorter by the less of them), one of the two opposite ones onto the other's
+   (the one between gone), or the stretch before or after them onto the one between (the stretch that steps back gone). A fold is kept when it moves neither end nor the way a line leaves or
+   meets its card, leaves the first and last stretches a stub long (or as long as they were), takes the route through no card
+   it did not cross, takes no label off its line, and gives check() nothing new to say of that line; then the next */
+const UH_EQ = (p, q) => Math.abs(p[0] - q[0]) < 1e-6 && Math.abs(p[1] - q[1]) < 1e-6;
+const uhDir = (p, q) => [Math.sign(Math.round((q[0] - p[0]) * 1e6)), Math.sign(Math.round((q[1] - p[1]) * 1e6))];
+const uhLen = (p, q) => Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1]);
+// the points with no repeats and no point between two stretches along one line
+const uhTidy = pts => { const o = [];
+  for (const q of pts) { if (o.length && UH_EQ(o[o.length - 1], q)) continue;
+    if (o.length >= 2) { const a = o[o.length - 2], b = o[o.length - 1]; if ((Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(b[0] - q[0]) < 1e-6) || (Math.abs(a[1] - b[1]) < 1e-6 && Math.abs(b[1] - q[1]) < 1e-6)) { o[o.length - 1] = q; continue; } }
+    o.push(q); }
+  return o; };
+// the stretches k between two opposite ones, k shorter than a stub
+const uhAt = (p, stub) => { const o = []; for (let k = 1; k + 2 < p.length; k++) { const a = uhDir(p[k - 1], p[k]), c = uhDir(p[k + 1], p[k + 2]);
+  if ((a[0] || a[1]) && a[0] === -c[0] && a[1] === -c[1] && uhLen(p[k], p[k + 1]) < stub) o.push(k); } return o; };
+// stretch k (points k and k + 1) moved onto the line through point q, along the other axis
+const uhMove = (p, k, q) => { const o = p.map(x => [...x]), ax = Math.abs(p[k][1] - p[k + 1][1]) < 1e-6 ? 1 : 0; o[k][ax] = q[ax]; o[k + 1][ax] = q[ax]; return o; };
+const uhIn = (a, b, r) => Math.max(a[0], b[0]) > r.x + 0.5 && Math.min(a[0], b[0]) < r.x + r.w - 0.5 && Math.max(a[1], b[1]) > r.y + 0.5 && Math.min(a[1], b[1]) < r.y + r.h - 0.5;
+// (each card grown by 7 px: a port drawn later on its border stands 6 px out of it, and a fold ran through one, audit 25)
+const uhCards = (g, p) => (g.nodes || []).filter(n => p.slice(1).some((b, i) => uhIn(p[i], b, { x: n.x - 7, y: n.y - 7, w: n.w + 14, h: n.h + 14 })));
+const uhNear = (p, L) => Math.min(...p.slice(1).map((b, i) => { const a = p[i], x = Math.max(Math.min(a[0], b[0]), Math.min(Math.max(a[0], b[0]), L.x + L.w / 2)), y = Math.max(Math.min(a[1], b[1]), Math.min(Math.max(a[1], b[1]), L.y + L.h / 2));
+  return Math.max(0, Math.abs(x - L.x - L.w / 2) - L.w / 2) + Math.max(0, Math.abs(y - L.y - L.h / 2) - L.h / 2); }));
+function unhook(g, stub) {
+  for (const e of g.edges || []) {
+    if (e.fixed || e.from === e.to || !Array.isArray(e.pts) || e.pts.length < 4 || e.pts.some((b, i) => i && e.pts[i - 1][0] !== b[0] && e.pts[i - 1][1] !== b[1])) continue;
+    for (let round = 0; round < 6; round++) {
+      const p = e.pts, ks = uhAt(p, stub); if (!ks.length) break;
+      const n = p.length - 1, first = uhLen(p[0], p[1]), last = uhLen(p[n - 1], p[n]), d0 = uhDir(p[0], p[1]), d1 = uhDir(p[n - 1], p[n]);
+      let was = null, cards = null, got = null;
+      for (const k of ks) { const a = uhLen(p[k - 1], p[k]), c = uhLen(p[k + 1], p[k + 2]);
+        const tries = [uhMove(p, k, a <= c ? p[k - 1] : p[k + 2]), ...(k - 1 >= 1 ? [uhMove(p, k - 1, p[k + 1])] : []), ...(k + 1 <= n - 2 ? [uhMove(p, k + 1, p[k])] : []),
+          ...(k - 2 >= 1 ? [uhMove(p, k - 2, p[k])] : []), ...(k + 2 <= n - 2 ? [uhMove(p, k + 2, p[k])] : [])];
+        for (const t of tries.map(uhTidy)) { const m = t.length - 1;
+          if (m < 1 || !UH_EQ(t[0], p[0]) || !UH_EQ(t[m], p[n]) || uhAt(t, stub).length >= ks.length) continue;
+          const e0 = uhDir(t[0], t[1]), e1 = uhDir(t[m - 1], t[m]);
+          if (e0[0] !== d0[0] || e0[1] !== d0[1] || e1[0] !== d1[0] || e1[1] !== d1[1] || uhLen(t[0], t[1]) < Math.min(stub, first) || uhLen(t[m - 1], t[m]) < Math.min(stub, last)) continue;
+          if (e.lbl && uhNear(t, e.lbl) > uhNear(p, e.lbl) + 0.5) continue;
+          cards ||= uhCards(g, p); if (uhCards(g, t).some(x => !cards.includes(x))) continue;
+          if (was == null) was = new Set(routeAudit(g, '', new Set([e])));
+          e.pts = t; if (routeAudit(g, '', new Set([e])).every(x => was.has(x))) { got = t; break; } e.pts = p; }
+        if (got) break; }
+      if (!got) break;
+    }
+  }
   return g;
 }
 
@@ -186,7 +238,7 @@ TYPED.rows = (dg, nodes, pitch, NH, RG) => {
 // A view laid out down (turned): the labels of lines between one pair are wider than the 16 px between the lines, so the
 // lines fan out in the gap between the pair's columns, each to a lane of its own that holds its label. Above the middle, the
 // outer line turns nearer each node, so none crosses another; a group the gap or another node leaves no room for goes to the router
-TYPED.fan = (free, { simplify, through, STUB, SEP, families = [] }) => { const pairs = new Map(), lr = e => e.fs === 'R' ? [e.p1, e.p2] : [e.p2, e.p1];
+TYPED.fan = (free, { simplify, through, STUB, SEP, families = [], heads = [] }) => { const pairs = new Map(), lr = e => e.fs === 'R' ? [e.p1, e.p2] : [e.p2, e.p1];
   free.forEach(e => { const [l, r] = e.fs === 'R' ? [e.s, e.t] : [e.t, e.s], k = l.id + '\u0001' + r.id;
     if (/^(RL|LR)$/.test(e.fs + e.ts) && l.x + l.w < r.x) pairs.set(k, [...(pairs.get(k) || []), e]); });
   pairs.forEach(list => { if (list.length < 2 || !list.some(e => e.label || e.step != null)) return;
@@ -206,6 +258,8 @@ TYPED.fan = (free, { simplify, through, STUB, SEP, families = [] }) => { const p
     // and each lane keeps off every box (a C4 boundary, a deployment node): it neither runs along a border (8 px, 40 px long:
     // check()'s test) nor crosses one, but where the box holds one end of it (audit 21)
     if (list.some((e, i) => families.some(f => fanBox(pts[i], f, e)))) return;
+    // nor through a box's title (audit 25: a line out of a boundary ran up through "Shop [Software System]")
+    if (list.some((e, i) => heads.some(h => pts[i].slice(1).some((b, k) => uhIn(pts[i][k], b, h))))) return;
     list.forEach((e, i) => { Object.assign(e, { [OWN_ROUTE]: 'fan', fixed: pts[i], pts: pts[i], stubs: [], how: 'fan' }); free.splice(free.indexOf(e), 1); }); }); };
 
 // a fanned path's trouble with box f: a run along one of its borders, or a crossing of one where f holds neither end or both

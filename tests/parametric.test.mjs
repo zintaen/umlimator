@@ -361,3 +361,13 @@ test('audit 23: a view\'s own binding (view.edges object) is drawn, named, descr
   assert.ok(want.some(([r]) => r === 'binding-ends'), 'the model line: said');
   assert.deepEqual(at(own), want.map(([r, p]) => [r, p.replace(k, `views[0].edges[${j}]`)]), 'the own line: said alike, at its own path');
 });
+
+test('audit 25: a view whose parameter names move inside the frame keeps the layout\'s margin round it, as one where none moves', () => {
+  const margin = (m, vid, dir) => { if (dir) { m = structuredClone(m); m.views.find(x => x.id === vid).direction = dir; }
+    const g = layout(m, vid), F = g.families[0], B = g.bounds; return [F.x - B.x, F.y - B.y, B.x + B.w - F.x - F.w, B.y + B.h - F.y - F.h]; };
+  const S = JSON.parse(readFileSync(new URL('parametric-stress.json', import.meta.url))), E = JSON.parse(readFileSync(new URL('../examples/ebike-range.json', import.meta.url)));
+  const ref = margin(S, 'edge-cases', 'right'); // no name moves
+  assert.ok(ref.every(x => x >= 36), String(ref));
+  for (const [m, vid, dir] of [[E, 'range-analysis'], [S, 'edge-cases', 'down'], [S, 'ec-constraint-block']]) { const got = margin(m, vid, dir);
+    assert.ok(got.every(x => x >= Math.min(...ref)), `${vid} ${dir || ''}: ${got}`); }
+});

@@ -4,6 +4,7 @@ import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { ENDS, brLines } from '../typed/draw.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
 import { multBounds } from '../uml/class.js'; // SHAPE.note too, a comment's look
+import { snKindName } from '../uml/structure.js';
 
 /* ---------- the entity-relationship diagram, er (work package M2.2, notes/milestone-2.md §4, §7.1) ----------
    Entities (tables) with their columns as rows, the key columns first under a divider; relationships from the referenced
@@ -143,13 +144,16 @@ function erLook(e, idef) {
 }
 
 /* ---- names (A1) and the view's words ---- */
+// a table: an entity, or a node with no type (drawn as one, as before)
+const erTable = n => n.type == null || n.type === 'er.Entity';
 function erNodeName(n) {
   if (n.type === 'uml.Comment') return 'Comment: ' + erName(n);
+  if (!erTable(n)) return `${snKindName(n.type)} ${erName(n)}`; // another kind, as itself: "Class Customer", no table (audit 25)
   const cs = erCols(n), keys = cs.filter(c => erProps(c).primaryKey === true).map(erName);
   return `Table ${erName(n)}, ${keys.length ? 'key ' + erAnd(keys) : 'no key'}, ${erPlural(cs.length, 'column')}`;
 }
 // an entity's name and its rows, whole (a row cut in the drawing is read here): its accessible name and describe()'s line
-const erFull = (n, I) => { const cs = erCols(n); return erNodeName(n) + (cs.length ? ': ' + cs.map(c => printColumn(c, I)).join('; ') : ''); };
+const erFull = (n, I) => { const cs = erTable(n) ? erCols(n) : []; return erNodeName(n) + (cs.length ? ': ' + cs.map(c => printColumn(c, I)).join('; ') : ''); };
 // "Identifying relationship contains from order (exactly one) to order_line (one or more)"
 function erLineName(e, I) {
   const nm = id => (I.at.has(id) ? erName(I.at.get(id)) : String(id));
@@ -195,7 +199,7 @@ const erDependent = (R, id) => R.some(e => e.to === id && erIdentifying(e));
 function erGeo({ model, view, pos, memo }) {
   const { I, ids } = erShown(model, view), idef = view.notation === 'idef1x', lines = erLines(view, I, ids), P = id => erPick(pos, id) || [0, 0], R = idef ? erRels(model) : [];
   const nodes = ids.map(id => { const n = I.at.get(id), pr = ER_OBJ(erPick(view.present, id)) ? view.present[id] : {};
-    const d = n.type === 'uml.Comment' ? { shape: 'note' } : { shape: 'entity', sections: erSections(n), collapsed: ER_ARR(pr.collapsed), ...(Number.isFinite(pr.rows) ? { rows: pr.rows } : {}), ...(idef && erDependent(R, id) ? { dep: true } : {}) };
+    const d = n.type === 'uml.Comment' ? { shape: 'note' } : !erTable(n) ? { shape: 'classifier', compartments: [] } : { shape: 'entity', sections: erSections(n), collapsed: ER_ARR(pr.collapsed), ...(Number.isFinite(pr.rows) ? { rows: pr.rows } : {}), ...(idef && erDependent(R, id) ? { dep: true } : {}) };
     const x = { id, label: erName(n), type: n.type || 'er.Entity', kind: 'file', ...d, aria: erFull(n, I), col: P(id)[0], row: P(id)[1] };
     return { ...x, ...SHAPE[x.shape].size(x) }; });
   const edges = lines.map(e => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: ER_HAS(e.label) ? String(e.label) : undefined, end: erLook(e, idef), aria: erLineName(e, I), cut: 280,

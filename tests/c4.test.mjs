@@ -117,7 +117,7 @@ test('the element (§7.5): the shape props.shape names (a person by default, els
 });
 
 test('23-c4.json\'s static views draw: people and boxes, external grey, the subject a dashed boundary; laid out right and down with no overlap, no line through a node, ends on outlines; the crossings pinned', () => {
-  const pinned = { 'c4-context right': [], 'c4-context down': [], 'c4-containers right': ['3 cross'], 'c4-containers down': ['3 cross', '8 label on a line'], // five labels left off with nothing said, laid out down: now drawn (audit 6)
+  const pinned = { 'c4-context right': [], 'c4-context down': [], 'c4-containers right': ['3 cross'], 'c4-containers down': ['3 cross', '6 label on a line'], // five labels left off with nothing said, laid out down: now drawn (audit 6); 8 on a line till a label beside its line kept off the boundary's border (audit 25)
     'c4-components right': ['2 cross'], 'c4-components down': ['2 cross'] }, got = {};
   for (const vid of STATIC) for (const direction of ['right', 'down']) {
     const m = withDir(C4, vid, direction), [g, warned] = said(() => layout(m, vid)), tag = `${vid} ${direction}`;
@@ -517,5 +517,51 @@ test('audit 23: N refuses an element the view\'s level does not show (a context 
     const r = add(vid, type); if (r && r.error) continue;
     const out = apply(m, r || [{ op: 'add', element: { id: 'x1', type, label: 'X' }, view: vid }]);
     assert.deepEqual(validate(out).filter(p => /^c4-(owner|level)$/.test(p.rule)).map(p => p.message), [], `${vid} ${type}`);
+  }
+});
+
+test('audit 25: D on a software system leaves out a far end this view alone holds (view.nodes), said, so the new view validates', () => {
+  const El = (id, t, label, parent) => ({ id, type: 'c4.' + t, label, ...(parent ? { parent } : {}), props: { description: label + '.', technology: 'x' } });
+  const m = { schemaVersion: 2, nodes: [El('shop', 'SoftwareSystem', 'Shop'), El('api', 'Container', 'API', 'shop'), El('pay', 'SoftwareSystem', 'Payments')],
+    edges: [{ id: 'r1', type: 'c4.Relationship', from: 'who', to: 'api', label: 'uses' }, { id: 'r2', type: 'c4.Relationship', from: 'api', to: 'pay', label: 'charges' }],
+    views: [{ id: 'land', diagram: 'c4.landscape', title: 'Landscape', nodeIds: ['shop', 'who', 'pay'], nodes: [{ id: 'who', type: 'c4.Person', label: 'Shopper', props: { description: 'buys' } }] }] };
+  assert.deepEqual(validate(m).filter(p => p.level === 'error'), []);
+  const v = m.views[0], r = diagramOf(v).edits.key(m, v, ['shop'], 'd');
+  assert.deepEqual(r.commands[0].view.nodeIds, ['shop', 'api', 'pay'], 'the model\'s far end stays, the view\'s own one is left out');
+  assert.equal(r.say, 'Made the view Shop: containers; Shopper lives in this view only and stays out: Enter opens it');
+  assert.deepEqual(validate(apply(m, r.commands)).filter(p => p.level === 'error'), []);
+});
+
+// a route that steps back a few px against its own way round a turn: two stretches the opposite way round one shorter than a stub
+const backSteps = g => g.edges.filter(e => (e.pts || []).some((_, i, p) => { if (i + 3 >= p.length) return false;
+  const d = j => [Math.sign(p[j + 1][0] - p[j][0]), Math.sign(p[j + 1][1] - p[j][1])], a = d(i), c = d(i + 2);
+  return (a[0] || a[1]) && a[0] === -c[0] && a[1] === -c[1] && Math.abs(p[i + 2][0] - p[i + 1][0]) + Math.abs(p[i + 2][1] - p[i + 1][1]) < 8; })).map(e => `${e.id} ${JSON.stringify(e.pts)}`);
+
+test('audit 25: no routed line steps back against its own way near an end (the shipped container view\'s Order worker to Database notch)', () => {
+  const S = JSON.parse(readFileSync(new URL('c4-stress.json', import.meta.url)));
+  for (const [m, vid] of [[C4, 'c4-containers'], [S, 'all']]) for (const dir of ['right', 'down']) {
+    const x = structuredClone(m); x.views.find(v => v.id === vid).direction = dir;
+    assert.deepEqual(backSteps(layout(x, vid)), [], `${vid} ${dir}`);
+  }
+  // the fold changes the route only: Order worker still comes up into the Database's left side, and check() says nothing new
+  const e = layout(C4, 'c4-containers').edges.find(x => x.id === 'c4-worker-db'), db = layout(C4, 'c4-containers').byId['c4-db'];
+  assert.deepEqual(e.pts.at(-1), [db.x, e.pts.at(-1)[1]]);
+  assert.ok(!check(C4, 'c4-containers').some(p => /share a line/.test(p.message)));
+});
+
+test('audit 25: a container view laid out down runs no relationship through the boundary\'s title and sets no label on its border', () => {
+  const R = (id, f, t, l) => Rel(id, f, t, l, 'HTTPS');
+  const base = [El('sys', 'SoftwareSystem', 'Shop'), El('p', 'Person', 'Shopper'), El('ext', 'SoftwareSystem', 'Payments', { external: true })];
+  const view = ids => [{ id: 'v', diagram: 'c4.container', title: 'V', direction: 'down', subject: 'sys', nodeIds: ['sys', 'p', 'ext', ...ids] }];
+  const one = { schemaVersion: 2, nodes: [...base, El('c0', 'Container', 'Ship', { technology: 'PostgreSQL', shape: 'browser' }, 'sys'), El('c1', 'Container', 'x', { technology: 'React', shape: 'pipe' }, 'sys'),
+    El('c2', 'Container', 'Ledger', { technology: 'PostgreSQL', shape: 'cylinder' }, 'sys')],
+    edges: [R('r0', 'c0', 'p', 'Pay the bill now'), R('r1', 'ext', 'c2', 'Ship'), R('r2', 'c0', 'c2', 'Pay the bill now'), R('r3', 'c2', 'ext', 'Ship'), R('r4', 'c0', 'p', 'A much longer label that wraps around'), R('r5', 'c2', 'c1', 'Stock')], views: view(['c0', 'c1', 'c2']) };
+  const two = { schemaVersion: 2, nodes: [...base, ...[['c0', 'Order', 'browser'], ['c1', 'Customer account details', 'browser'], ['c2', 'Ledger', 'pipe'], ['c3', 'Pay the bill now', 'mobile'], ['c4', 'Order', 'cylinder']]
+    .map(([id, l, shape]) => El(id, 'Container', l, { technology: 'Python', shape }, 'sys'))],
+    edges: [R('r0', 'c4', 'ext', 'Ship'), R('r1', 'c2', 'c3', 'Order'), R('r2', 'c4', 'c3', 'Pay the bill now'), R('r3', 'c4', 'c0', 'A much longer label that wraps around'), R('r4', 'c2', 'p', 'Customer account details'),
+      R('r5', 'c3', 'c4', 'x'), R('r7', 'c3', 'p', 'Customer account details')], views: view(['c0', 'c1', 'c2', 'c3', 'c4']) };
+  for (const [k, m] of [['one', one], ['two', two]]) {
+    assert.deepEqual(check(m, 'v').map(p => p.message).filter(s => /header crossed|sits on the border/.test(s)), [], k);
+    assert.ok(layout(m, 'v').edges.every(e => e.pts && e.pts.length > 1 && (!e.label || e.lbl)), `${k}: every line drawn, with its label`);
   }
 });

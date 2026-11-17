@@ -277,7 +277,9 @@ function c4Zoom(model, view, ids) {
   if (!x) return null; if (x.opensView != null) return { error: `${c4Name(x)} opens "${x.opensView}" already: Enter opens it` };
   // one this view alone holds (view.nodes): no other view reaches it, so none zooms into it (audit 24)
   if (C4_OBJ(view) && C4_ARR(view.nodes).includes(x)) return { error: `${c4Name(x)} lives in this view only: no other view can show it` };
-  const sys = x.type === 'c4.SoftwareSystem', kids = I.kids(x.id, sys ? 'c4.Container' : 'c4.Component'), inside = new Set(kids);
+  // what this view alone holds is no other view's to show: never a child nor a far end of the new view, said (audit 25)
+  const own = new Set(C4_OBJ(view) ? C4_ARR(view.nodes).filter(y => C4_OBJ(y) && I.at.get(y.id) === y).map(y => y.id) : []);
+  const sys = x.type === 'c4.SoftwareSystem', kids = I.kids(x.id, sys ? 'c4.Container' : 'c4.Component').filter(y => !own.has(y)), inside = new Set(kids);
   // the far end of a relationship, at the new view's level: a person or a software system as it is, a container as it is (a
   // system's own are inside already), a component as its container, anything else not at all
   const level = id => { for (const y of [id, ...I.chain(id)]) { const t = (I.at.get(y) || {}).type;
@@ -285,10 +287,10 @@ function c4Zoom(model, view, ids) {
   const reach = []; I.rels.forEach(r => [[r.from, r.to], [r.to, r.from]].forEach(([a, b]) => { const up = [a, ...I.chain(a)].find(y => inside.has(y));
     const far = up && !inside.has(b) && !I.chain(b).some(y => inside.has(y)) ? level(b) : null; if (far && !reach.includes(far)) reach.push(far); }));
   // an element reached with its owner is left to it, whose boundary the view would not draw (c4-level): its lines lift onto it
-  const far = reach.filter(y => !I.chain(y).some(o => reach.includes(o)));
+  const far = reach.filter(y => !I.chain(y).some(o => reach.includes(o)) && !own.has(y)), left = reach.filter(y => own.has(y)).map(y => c4Name(I.at.get(y)));
   const used = c4Used(model), id = c4Free(used, `${x.id}-${sys ? 'containers' : 'components'}`);
   const v = { id, diagram: sys ? 'c4.container' : 'c4.component', title: `${c4Name(x)}: ${sys ? 'containers' : 'components'}`, parent: view.id, subject: x.id, nodeIds: [x.id, ...kids, ...far] };
-  return { commands: [{ op: 'addView', view: v }, { op: 'set', id: x.id, path: 'opensView', value: id }], say: `Made the view ${v.title}: Enter opens it` };
+  return { commands: [{ op: 'addView', view: v }, { op: 'set', id: x.id, path: 'opensView', value: id }], say: `Made the view ${v.title}${left.length ? `; ${left.join(', ')} ${left.length > 1 ? 'live' : 'lives'} in this view only and ${left.length > 1 ? 'stay' : 'stays'} out` : ''}: Enter opens it` };
 }
 // T: an element's C4 type, picked among the four (c4-owner and c4-level then say what no longer fits)
 function c4Retype(model, ids) {

@@ -4,6 +4,7 @@ import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
 import '../uml/class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from '../uml/flow.js'; // and SHAPE.diamond, SHAPE.initial's circle, read only
+import { snKindName } from '../uml/structure.js';
 
 /* ---------- the flowchart, flowchart (work package M2.3, notes/milestone-2.md §7.2) ----------
    Ten symbols: the decision is stage 4's diamond and the connector a circle over SHAPE.initial's outline, both read only;
@@ -25,7 +26,9 @@ const FC_LOOK = {
   'flow.Connector': ['connector', 'Connector'], 'uml.Comment': ['note', 'Comment'],
 };
 const FC_NODES = Object.keys(FC_LOOK).filter(t => t !== 'uml.Comment'); // what a flow may end on
-const fcLook = x => (Object.hasOwn(FC_LOOK, x.type) ? FC_LOOK[x.type] : ['process', String(x.type || 'Node').split('.').pop()]);
+// another kind in words, "Use case", as C4 and information flow say it (audit 25); "a"/"an" before a word
+const fcKind = t => (String(t ?? '').includes('.') ? snKindName(t) : String(t || 'Node')), fcA = w => (/^(?!us|uni)[aeiou]/i.test(w) ? 'an ' : 'a ') + w;
+const fcLook = x => (Object.hasOwn(FC_LOOK, x.type) ? FC_LOOK[x.type] : ['process', fcKind(x.type)]);
 
 /* ---- the shapes ---- */
 const arcIn = (r, u) => r - Math.sqrt(Math.max(0, r * r - Math.min(r, Math.abs(u)) ** 2)); // a circle's depth at u from its axis
@@ -155,7 +158,7 @@ function fcProblems(model, view) {
   // the model's flows (once an id), then those written inline in this view's edges
   [...[...I.E.values()].map(e => [e, I.path.get(e.id)]), ...typedLines({ views: model && model.views }, v => v === view).filter(([e]) => I.E.get(e.id) !== e)].forEach(([e, p]) => { const id = e.id;
     if (e.type !== 'flow.Flow' || !(shown.has(e.from) || shown.has(e.to))) return;
-    [e.from, e.to].forEach(end => { if (I.N.has(end) && !mine(end)) say('flow-ends', p, [id, end], `flow ${id} ends on ${q(end)}, a ${String(I.N.get(end).type).split('.').pop()}: a flow joins two flowchart nodes`, 'error'); }); });
+    [e.from, e.to].forEach(end => { if (I.N.has(end) && !mine(end)) say('flow-ends', p, [id, end], `flow ${id} ends on ${q(end)}, ${fcA(fcLook(I.N.get(end))[1].toLowerCase())}: a flow joins two flowchart nodes`, 'error'); }); });
   if (!view) return out;
   const vp = `views[${FC_ARR(model.views).indexOf(view)}]`;
   if (I.starts.length !== 1) say('start-end', vp, [view.id, ...I.starts], `view ${view.id} has ${fcPlural(I.starts.length, 'start')}${I.starts.length ? ` (${I.starts.map(q).join(', ')})` : ''}; it wants one`);
