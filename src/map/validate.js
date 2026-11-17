@@ -169,8 +169,13 @@ export function validate(model) {
     if (TYPED.across) arrOf(TYPED.across(m)).forEach(say);
   }
   // a value left out is said once, as left out: not again at its path as a missing end, type or name (audit 21: a line's
-  // end {"toString": 1} was also '"undefined" is neither a card nor a box')
-  return left.size ? out.filter((p, i) => i < read.paths.length || !left.has(p.path)) : out;
+  // end {"toString": 1} was also '"undefined" is neither a card nor a box'). A path in the copy, where a list's entry
+  // left out moved the ones after it up, is said as the model has it, so the next entry's problem is said, at its own
+  // place (audit 22), and only a value taken out of an object is compared
+  if (!left.size) return out;
+  const back = p => { const q = read.back(p.path), also = / \(also ([^()]*)\)$/.exec(p.message);
+    return q === p.path && !also ? p : { ...p, path: q, ...also && { message: p.message.slice(0, also.index) + ` (also ${read.back(also[1])})` } }; };
+  return out.map((p, i) => i < read.paths.length ? p : back(p)).filter((p, i) => i < read.paths.length || !left.has(p.path));
 }
 
 /* ================= rules (#70): what a model says must hold =================

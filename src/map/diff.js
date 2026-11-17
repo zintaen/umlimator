@@ -31,6 +31,33 @@ const linesOf = (m, v, ups) => { const all = Array.isArray(m.edges) ? m.edges.fi
 const boxOf = (v, id) => { const cs = arrOf(v.containers).filter(Boolean), by = new Map(cs.map(c => [c.id, c]));
   const depth = c => { let d = 0; for (const seen = new Set(); c && !seen.has(c); c = by.get(c.parent)) { seen.add(c); d++; } return d; };
   return cs.filter(c => arrOf(c.nodeIds).includes(id)).reduce((a, c) => !a || depth(c) > depth(a) ? c : a, null); };
+// Myers' diff of two lists of numbers ("An O(ND) Difference Algorithm", 1986), in linear space by its middle snake (4b):
+// pair(i, j) for each step of a longest common run of A and B, and true; false, pairing nothing, when it takes more than
+// max edits. Time (N + M) x the edits; a list of halves to do, not recursion (audit 22)
+const myers = (A, B, max, pair) => { const N = A.length, M = B.length, V = new Int32Array(2 * max + 3), o = max + 1; let ok = false;
+  for (let d = 0; d <= max && !ok; d++) for (let k = -d; k <= d; k += 2) { // first how many edits, with one row
+    let x = k === -d || (k !== d && V[o + k - 1] < V[o + k + 1]) ? V[o + k + 1] : V[o + k - 1] + 1, y = x - k;
+    while (x < N && y < M && A[x] === B[y]) { x++; y++; }
+    V[o + k] = x; if (x >= N && y >= M) { ok = true; break; } }
+  if (!ok) return false;
+  const F = new Int32Array(N + M + 5), R = new Int32Array(N + M + 5), todo = [[0, N, 0, M]];
+  while (todo.length) { let [a0, a1, b0, b1] = todo.pop();
+    while (a0 < a1 && b0 < b1 && A[a0] === B[b0]) pair(a0++, b0++);
+    while (a0 < a1 && b0 < b1 && A[a1 - 1] === B[b1 - 1]) pair(--a1, --b1);
+    if (a0 === a1 || b0 === b1) continue;
+    const n = a1 - a0, m = b1 - b0, dl = n - m, odd = dl & 1, h = (n + m + 1) >> 1, w = h + 1; let snake = null;
+    F[w + 1] = 0; R[w + 1] = 0; // F: the furthest x on each diagonal from the start; R: from the end, along the lists run back
+    for (let d = 0; d <= h && !snake; d++) {
+      for (let k = -d; k <= d; k += 2) { let x = k === -d || (k !== d && F[w + k - 1] < F[w + k + 1]) ? F[w + k + 1] : F[w + k - 1] + 1, y = x - k; const x0 = x, y0 = y;
+        while (x < n && y < m && A[a0 + x] === B[b0 + y]) { x++; y++; }
+        F[w + k] = x; if (odd && k - dl >= 1 - d && k - dl <= d - 1 && x + R[w + dl - k] >= n) { snake = [x0, y0, x, y]; break; } }
+      if (snake) break;
+      for (let k = -d; k <= d; k += 2) { let x = k === -d || (k !== d && R[w + k - 1] < R[w + k + 1]) ? R[w + k + 1] : R[w + k - 1] + 1, y = x - k; const x0 = x, y0 = y;
+        while (x < n && y < m && A[a1 - 1 - x] === B[b1 - 1 - y]) { x++; y++; }
+        R[w + k] = x; if (!odd && dl - k >= -d && dl - k <= d && x + F[w + dl - k] >= n) { snake = [n - x, m - y, n - x0, m - y0]; break; } } }
+    const [x, y, u, v] = snake; for (let i = x, j = y; i < u; i++, j++) pair(a0 + i, b0 + j);
+    todo.push([a0, a0 + x, b0, b0 + y], [a0 + u, a1, b0 + v, b1]); }
+  return true; };
 
 /** What changed from one model to the next, as one model to draw: `after`, with each card and line marked added, changed
  *  or removed (removed ones come back from `before`, in their views, boxes and places), a summary in words, and the
@@ -116,9 +143,12 @@ export function diff(before, after) {
       const K = keyed(E); return linesOf({ edges: E }, x).map(e => e.id != null ? ['=' + e.id, '=' + e.id] : [what(e), '=' + K.get(e)]); };
     // in the same order: the steps in both, paired along a longest common run of what they are, then the rest by what they are
     // and last by Ref name, run in the same order in both lists (a step can repeat, so a pairing, not a lookup)
-    // The common head and tail pair as they stand, so the table spans only the steps between them, and only up to LCS cells:
-    // past that the rest pair by what they are and by Ref name alone, in about linear time and memory (a trace's view of
-    // 20,000 steps, audit 21; a full table ran Node out of memory)
+    // The common head and tail pair as they stand, so the table spans only the steps between them, and only up to LCS cells
+    // (a trace's view of 20,000 steps, audit 21; a full table ran Node out of memory). Past that, Myers' diff in linear space
+    // pairs the same longest common run (audit 22: pairing by what they are alone read the first and last of 2,400 steps
+    // taken out as a reorder). A step left unpaired by a longest run whose kind the other list also has unpaired pairs
+    // across that run, so the steps are in a new order; so the run is looked for only up to the edits that leave none
+    // such, and when it needs more the answer is a reorder: time (N + M) x those edits, which the steps that changed bound
     const LCS = 4e6;
     const same = (p, q) => { let s = 0, e = 0; while (s < p.length && s < q.length && p[s][0] === q[s][0]) s++;
       if (s === p.length && s === q.length) return true;
@@ -132,6 +162,12 @@ export function diff(before, after) {
       if ((a - s + 1) * w <= LCS) { const T = new Int32Array((a - s + 1) * w), t = (i, j) => T[(i - s) * w + j - s];
         for (let i = a - 1; i >= s; i--) for (let j = b - 1; j >= s; j--) T[(i - s) * w + j - s] = p[i][0] === q[j][0] ? t(i + 1, j + 1) + 1 : Math.max(t(i + 1, j), t(i, j + 1));
         for (let i = s, j = s; i < a && j < b;) if (p[i][0] === q[j][0]) two(i++, j++); else if (t(i + 1, j) >= t(i, j + 1)) i++; else j++; }
+      else { const id = new Map(), num = x => id.get(x[0]) ?? id.set(x[0], id.size).get(x[0]), A0 = p.slice(s, a).map(num), B0 = q.slice(s, b).map(num), c = new Int32Array(2 * id.size);
+        A0.forEach(k => c[2 * k]++); B0.forEach(k => c[2 * k + 1]++);
+        let most = 0; for (let k = 0; k < id.size; k++) most += Math.min(c[2 * k], c[2 * k + 1]);
+        // only the steps of a kind both lists have can pair: the rest are left out of the run, which they cannot be in
+        const ia = [], ib = [], A = Int32Array.from(A0.filter((k, i) => c[2 * k + 1] && ia.push(s + i))), B = Int32Array.from(B0.filter((k, j) => c[2 * k] && ib.push(s + j)));
+        if (!myers(A, B, A.length + B.length - 2 * most, (i, j) => two(ia[i], ib[j]))) return false; }
       by(0); by(1); return pairs.sort((x, y) => x[0] - y[0]).every((x, k, l) => !k || l[k - 1][1] < x[1]); };
     const q0 = ord(o, s0, arr(A.edges)), q1 = ord(v, s1, E1), two = l => l.map(k => [k, k]);
     // a numbered-card view with no stepIds numbers its cards in nodeIds order (audit 19)
@@ -248,8 +284,9 @@ export function drift(model, observed, options = {}) {
   cards.forEach(n => [n.id, n.label].forEach(s => { if (s != null && !lower.has(String(s).toLowerCase())) lower.set(String(s).toLowerCase(), String(n.id)); }));
   const cardOf = s => { s = String(s); const id = match.has(s) ? match.get(s) : ids.has(s) ? s : lower.get(s.toLowerCase()); return ids.has(id) ? id : null; };
   const seen = new Map(), live = new Set(), unmatched = new Set(); let counted = false;
-  // an end is a service's name, text or a number: an entry with no end (missing, null, or one unreadable() left out) is
-  // no traffic, and names no service (audit 21: it was listed as a service named "undefined")
+  // an end is a service's name, text or a number: an end that is not (missing, null, or one unreadable() left out) names no
+  // service (audit 21: it was listed as a service named "undefined"), and its entry is no traffic; the entry's other end,
+  // a name with no card, is still listed in unmatched (audit 22: the docs said the whole entry was skipped)
   const end = x => typeof x === 'string' || typeof x === 'number' ? x : null;
   list.forEach(o => { if (!o || typeof o !== 'object') return;
     const f = end(o.from ?? o.parent), t = end(o.to ?? o.child), n = o.count ?? o.callCount, a = f == null ? null : cardOf(f), b = t == null ? null : cardOf(t);

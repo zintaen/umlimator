@@ -328,6 +328,21 @@ test('audit 21: diff() of a 20,000-step trace view pairs its steps in linear mem
   assert.deepEqual(run(x => { x.views[1].edges.splice(n / 2, 1); return x; }, 'a step out'), ['removes the line from svc0 to svc1 (op4)']);
 });
 
+test('audit 22: diff() past the table\'s cap pairs a long view\'s id-less steps along a longest common run: its first and last taken out is no reorder', () => {
+  const nodes = ['a', 'b', 'c'].map(id => ({ id, label: id.toUpperCase() })), cyc = [['a', 'b', 'ask'], ['b', 'c', 'look'], ['c', 'b', 'found'], ['b', 'a', 'answer']];
+  const view = n => ({ nodes, edges: [], views: [{ id: 'seq', render: 'sequence', nodeIds: ['a', 'b', 'c'], edges: Array.from({ length: n }, (_, i) => { const [from, to, label] = cyc[i % 4]; return { from, to, label }; }) }] });
+  const said = (n, f) => { const m = view(n), x = structuredClone(m); f(x.views[0].edges); return diff(m, x).summary; };
+  const cases = [['the ends out', E => { E.shift(); E.pop(); }, false], ['the ends and four in the middle out', E => { E.shift(); E.pop(); E.splice(E.length >> 1, 4); }, false],
+    ['one out first, one in last', E => { E.shift(); E.push({ from: 'c', to: 'a', label: 'late' }); }, false],
+    ['the first half relabelled', E => E.forEach((e, i) => { if (i < E.length / 2) e.label += '!'; }), false],
+    ['the ends out and one step moved to the middle', E => { E.shift(); E.pop(); E.splice(E.length >> 1, 0, ...E.splice(0, 1)); }, true],
+    ['the ends out and the rest reversed', E => { E.shift(); E.pop(); E.reverse(); }, true]];
+  for (const [what, f, moved] of cases) { const small = said(600, f); // under the cap: the table
+    assert.equal(small.includes('reorders the steps in the view seq'), moved, `600: ${what}`);
+    for (const n of [2500, 6000]) assert.deepEqual(said(n, f).filter(s => /reorders/.test(s)), moved ? ['reorders the steps in the view seq'] : [], `${n}: ${what}`); }
+  assert.deepEqual(said(2500, E => { E.shift(); E.pop(); }), ['removes the line from A to B (ask)', 'removes the line from B to A (answer)']);
+});
+
 test('audit 21: drift() reads match as a table by name (a service may be named toString), and an entry with no end names no service', () => {
   const model = { nodes: [{ id: 'api', label: 'API' }, { id: 'db', label: 'Database' }], edges: [{ id: 'e', from: 'api', to: 'db' }], views: [{ id: 'v', nodeIds: ['api', 'db'] }] };
   const seen = [{ from: 'checkout-svc', to: 'pg-main', count: 4 }];
@@ -357,4 +372,22 @@ test('audit 21: validate() says a value it leaves out once, at its path, and not
       const ps = validate(base).filter(p => !was.has(p.path + p.message) && p.path === q);
       assert.deepEqual(ps.map(p => p.message), ['an object with a "toString" key, which no text is read from: left out'], `${f} ${q}`); o[k] = v; }
   }
+});
+
+test('audit 22: validate() says a problem after a list entry it leaves out at that problem\'s own place, and does not drop it', async () => {
+  const T = '{"toString":1}', J = s => JSON.parse(s), said = m => validate(m).map(p => [p.path, p.message]), LEFT = 'an object with a "toString" key, which no text is read from: left out';
+  // a card with no id and a twice-used id after a left-out card; a line that is no object after a left-out line
+  assert.deepEqual(said(J(`{"nodes":[${T},{"label":"no id"},{"id":"b"},{"id":"b"}],"edges":[${T},7,{"from":"b","to":"zz"}],"views":[{"id":"v","nodeIds":["b"]}]}`)),
+    [['edges[0]', LEFT], ['nodes[0]', LEFT], ['nodes[1].id', 'a card needs an id'], ['nodes[3].id', 'card id "b" is used twice'], ['edges[1]', 'a line is an object with from and to'], ['edges[2].to', '"zz" is neither a card nor a box']]);
+  // two left out of one list, and one in a view after a left-out view: each index as the model has it
+  assert.deepEqual(said(J(`{"nodes":[{"id":"b"},${T},${T},{"id":"b"}],"views":[${T},{"id":"v","nodeIds":["b","q"]}]}`)),
+    [['nodes[1]', LEFT], ['nodes[2]', LEFT], ['views[0]', LEFT], ['nodes[3].id', 'card id "b" is used twice'], ['views[1].nodeIds[1]', '"q" is not a card']]);
+  // a typed model: a sequence's reply after a left-out step is said at its own place, and its id's other use names that place
+  const seq = bad => ({ schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Lifeline', label: 'a' }, { id: 'b', type: 'uml.Lifeline', label: 'b' }], edges: [],
+    views: [{ id: 'v', diagram: 'uml.sequence', nodeIds: ['a', 'b'], edges: [{ id: 'm1', type: 'uml.Message', from: 'a', to: 'b', label: 'go', props: { sort: 'call' } }, ...(bad ? [J(T)] : []),
+      { id: 'm2', type: 'uml.Message', from: 'a', to: 'b', label: 'back', props: { sort: 'reply', replyTo: 'm1' } }, { id: 'm2', type: 'uml.Message', from: 'b', to: 'a', label: 'again', props: { sort: 'reply', replyTo: 'm1' } }] }] });
+  const all = (await import('../lib/umlimator-all.js')).validate, typed = m => all(m).map(p => [p.path, p.message]);
+  const plain = typed(seq(false)), shifted = typed(seq(true)), up = p => p.replace(/edges\[(\d+)\]/g, (w, n) => `edges[${+n + 1}]`);
+  assert.ok(plain.some(([, s]) => /^reply-call: m2/.test(s)) && plain.some(([, s]) => /used twice \(also views\[0\]\.edges\[1\]\)/.test(s)), JSON.stringify(plain));
+  assert.deepEqual(shifted, [['views[0].edges[1]', LEFT], ...plain.map(([p, s]) => [up(p), up(s)])]);
 });

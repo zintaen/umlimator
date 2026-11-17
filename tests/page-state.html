@@ -270,6 +270,14 @@ try {
   check('a source with a bare % shows as written, and a source that is no text is left out: the panel shows the card (audit 8)',
     /Trip service/.test($('m-panel').textContent) && /src\/100%off\.ts:4-20/.test($('m-panel').textContent) && !/42/.test($('m-panel').querySelector('.source-list')?.textContent || ''), $('m-panel').textContent.slice(0, 200));
   pg.destroy(); pg = null;
+  /* ---------- audit 22: stories that is no list (text, a table with a length) draws the page with no Stories menu ---------- */
+  for (const stories of ['to do', { length: 1, 0: { id: 's', steps: [] } }, 7]) {
+    box.innerHTML = ''; let threw = null;
+    try { pg = mountPage(box, { ...structuredClone(BIKE), stories }, { instant: true, params: new URLSearchParams() }); } catch (e) { threw = String(e); }
+    const drawn = !threw && await until(() => pg.view && document.querySelector('#m-canvas .umlimator'));
+    check(`stories ${JSON.stringify(stories)}, no list: the page draws, with no Stories menu and the Lenses menu as ever (audit 22)`,
+      drawn && !$('m-stories') && !$('m-stories-pop') && !!$('m-lenses'), threw || [!!drawn, !!$('m-stories'), !!$('m-lenses')]);
+    if (pg) { pg.destroy(); pg = null; } }
 } catch (err) { out.fail.push('threw: ' + (err && err.stack || err)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

@@ -29,25 +29,32 @@ export function migrate(model) {
    unreadable(model): the paths of such objects, and the model without them (itself when it has none, else a copy).
    A map by id or name may have a key named toString: only what it holds is checked. So may a map one level further down,
    by name too: a stereotype's tagged values (tags.<stereotype>.<tag>) and a part's ports (present.<part>.ports.<port>)
-   (audit 20). Any value may be read this way: a host's spans or traffic too. A walk with a list, no recursion. */
+   (audit 20). Any value may be read this way: a host's spans or traffic too. A walk with a list, no recursion.
+   A list's entry left out moves the entries after it up one in the copy: back(path) names a path in the copy as the model
+   has it (audit 22: a problem with the next entry was said one entry too early, on the left-out one, and dropped). */
 const BY_ID = new Set(['layout', 'nodeOverrides', 'present', 'authors', 'icons', 'tags']);
 function unreadable(model) {
   const bad = x => x !== null && typeof x === 'object' && Object.hasOwn(x, 'toString') && typeof x.toString !== 'function';
   // role: what the object walked is. 'tags' (its values are maps by tag name), 'present' (by element id), 'part' (one
   // element's entry in present, whose ports is a map by port id)
+  const cut = new Map(); // a list's path -> the indices left out of it, as the model has them, rising
   const walk = (root, fix) => { const at = [], todo = [[root, '', null]], seen = new Set();
     while (todo.length) { const [o, p, role] = todo.pop(); if (seen.has(o)) continue; seen.add(o);
       const list = Array.isArray(o), keys = Object.keys(o);
       for (let i = keys.length - 1; i >= 0; i--) { const k = keys[i], x = o[k], q = list ? `${p}[${k}]` : p ? `${p}.${k}` : k;
         const map = !list && (BY_ID.has(k) || role === 'tags' || (role === 'part' && k === 'ports'));
-        if (bad(x) && !map) { at.push(q); if (fix) list ? o.splice(+k, 1) : delete o[k]; }
+        if (bad(x) && !map) { at.push(q); if (fix && list) { o.splice(+k, 1); cut.set(p, [+k, ...cut.get(p) || []]); } else if (fix) delete o[k]; }
         else if (x !== null && typeof x === 'object') todo.push([x, q, list ? null : role === 'present' ? 'part' : role ? null : k === 'tags' || k === 'present' ? k : null]); } }
     return at; };
-  if (!model || typeof model !== 'object') return { paths: [], model };
+  const same = path => path;
+  if (!model || typeof model !== 'object') return { paths: [], model, back: same };
   const paths = walk(model, false);
-  if (!paths.length) return { paths, model };
+  if (!paths.length) return { paths, model, back: same };
   const copy = structuredClone(model); walk(copy, true);
-  return { paths: paths.sort(), model: copy };
+  // each [n] in turn, under the path before it as the model has it: the n-th entry of that list the copy kept
+  const back = path => typeof path !== 'string' || !cut.size ? path : path.replace(/\[(\d+)\]/g, (w, n, i, s) => { const gone = cut.get(back(s.slice(0, i)));
+    if (!gone) return w; let j = +n; for (const g of gone) if (g <= j) j++; else break; return `[${j}]`; });
+  return { paths: paths.sort(), model: copy, back };
 }
 // a value as text, read as the model unreadable() gives back reads it: one it would leave out reads as no value
 // ("undefined"), so a raw model names a line as the drawn page names it (audit 21)

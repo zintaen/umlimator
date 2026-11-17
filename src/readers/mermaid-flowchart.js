@@ -405,6 +405,7 @@ function writeMermaidFlowchart(model, viewId) {
 
   const byId = new Map();
   for (const n of arr(m.nodes)) if (isObj(n) && !byId.has(n.id)) byId.set(n.id, n);
+  if (view) for (const n of arr(view.nodes)) if (isObj(n) && !byId.has(n.id)) byId.set(n.id, n); // a card the view alone holds (view.nodes), written as a model one (audit 22)
   const nodes = [], shown = new Set();
   for (const id of arr(view.nodeIds)) {
     const n = byId.get(id);
