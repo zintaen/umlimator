@@ -803,3 +803,11 @@ test('audit 27: check() says a line the picture leaves out: a message flow betwe
   assert.deepEqual(layout(m, 'v').edges.map(e => e.id).sort(), ['f1', 'f2'], 'neither drawn');
   assert.deepEqual(check(EX, VID).filter(p => /not drawn$/.test(p.message)), [], 'example 24 draws every line it shows');
 });
+
+// audit 27: a node with no type is said to have none, never 'of type undefined' (the untyped-node wording every typed view shares)
+test('audit 27: an untyped node on a BPMN view is said to have no type, never "undefined"', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'x', label: 'Plain' }], edges: [], views: [{ id: 'v', diagram: 'bpmn', title: 'T', nodeIds: ['x'] }] };
+  const said = validate(m).filter(p => (p.ids || []).includes('x')).map(p => p.message);
+  assert.ok(said.includes('x ("Plain") has no type, so it is no BPMN element umlimator draws: drawn as a task'), said.join(' | '));
+  for (const t of said) assert.doesNotMatch(t, /undefined/);
+});
