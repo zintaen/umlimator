@@ -209,3 +209,8 @@ test('counts over the limit: 10,000 tables, columns and refs read, the rest repo
     assert.ok(r.model.nodes.length <= N && r.model.edges.length <= N && r.report.length <= N + 1);
   });
 });
+test('audit 22: the backlog rows M2.11 and M2.12 say the fixture is an export(), not a captured Database', () => {
+  const rows = readFileSync(new URL('../docs/diagrams/notes/milestone-2.md', import.meta.url), 'utf8').split('\n').filter(l => /^\| M2\.1[12] /.test(l));
+  assert.equal(rows.length, 2);
+  for (const r of rows) { assert.doesNotMatch(r, /captured `Database`/, r.slice(0, 40)); assert.match(r, /`export\(\)`/, r.slice(0, 40)); }
+});

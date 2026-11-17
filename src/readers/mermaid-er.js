@@ -340,6 +340,7 @@ function writeMermaidEr(model, viewId) {
   if (views.length && !view) return '%% not written: the model, which has no er view\n';
   if (view && view.diagram !== 'er') return `%% not written: view ${flat(view.id)}, a ${flat(view.diagram)} view, not an er one\n`;
   const byId = new Map(arr(m.nodes).filter(isObj).map(n => [n.id, n]));
+  if (view) for (const n of arr(view.nodes)) if (isObj(n) && !byId.has(n.id)) byId.set(n.id, n); // a card the view alone holds (view.nodes), written as a model one (audit 22)
   const out = [], notWritten = [], skip = x => notWritten.push(`${flat(x.id)} (${flat(x.type)})`), lose = (id, what) => notWritten.push(`${flat(id)}: ${flat(what)}`);
   const once = (seen, id) => { if (!seen.has(id)) return seen.add(id); lose(id, 'listed twice in the view, written once'); return false; };
   const shownSet = new Set(), shown = (view ? arr(view.nodeIds) : [...byId.keys()]).filter(id => byId.has(id) && once(shownSet, id));

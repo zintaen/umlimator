@@ -475,3 +475,26 @@ test('audit 21: Delete on a topic in the view\'s own nodes deletes it (it lives 
   assert.ok(node(n2, t), 'the model topic stays in the model');
   assert.ok(!V(n2).nodeIds.includes(t) && !V(n2).nodeIds.includes('own-topic'));
 });
+
+test('audit 22: N under a view-own topic adds a topic of that view; Delete on a view-own topic deletes only what lives in the view, a model topic under it hidden and kept', () => {
+  const base = { schemaVersion: 2, nodes: [{ id: 'r', type: T, label: 'Root' }], views: [{ id: 'v1', diagram: 'mindmap', nodeIds: ['r', 'o'], nodes: [{ id: 'o', type: T, label: 'Own', parent: 'r' }] }] };
+  // N under the own topic: a topic of this view only, so no model topic has a parent other views lack
+  const added = run(base, mmAdd(base, base.views[0], MM_TYPE.elements[0], 'Budget', { sel: ['o'] }));
+  assert.deepEqual(added.nodes.map(n => n.id), ['r']);
+  assert.deepEqual(added.views[0].nodes.map(n => [n.id, n.parent]), [['o', 'r'], ['budget', 'o']]);
+  // a model topic under the own topic (as a host or an older release wrote it), shown here and in a second view, and one hidden here
+  const M = structuredClone(base); M.nodes.push({ id: 'm', type: T, label: 'Model', parent: 'o' }, { id: 'h', type: T, label: 'Hidden', parent: 'm' }, { id: 'n', type: T, label: 'Kept', parent: 'o' });
+  M.views[0].nodeIds.push('m', 'n'); M.views.push({ id: 'v2', diagram: 'mindmap', nodeIds: ['r', 'm', 'h'] });
+  const r = mmRemove(M, M.views[0], ['o'], false), m2 = apply(M, r.commands);
+  assert.deepEqual(m2.nodes.map(n => [n.id, n.parent]), [['r', undefined], ['m', 'r'], ['h', 'm'], ['n', 'r']], 'every model topic kept, moved up to the root');
+  assert.deepEqual(m2.views[0].nodeIds, ['r']); assert.deepEqual(m2.views[0].nodes, []);
+  assert.deepEqual(m2.views[1].nodeIds, ['r', 'm', 'h'], 'the other view loses nothing');
+  assert.match(r.say, /deleted 1 topic that lived in this view only, and hid 2 topics, which the outline's Show brings back/);
+  assert.ok(mmShow(m2, 'v1', 'm'), 'the outline\'s Show brings it back');
+  // all own, or all model: the messages as before
+  assert.match(mmRemove(added, added.views[0], ['o'], false).say, /^Deleted Own and its 1 subtopic: they lived in this view only/);
+  assert.match(mmRemove(M, M.views[0], ['m'], false).say, /^Hid Model: the outline's Show/);
+  // an own topic with no ancestor left: the model topic under it becomes a root
+  const top = { schemaVersion: 2, nodes: [{ id: 'm', type: T, label: 'Model', parent: 'o' }], views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['o', 'm'], nodes: [{ id: 'o', type: T, label: 'Own' }] }] };
+  assert.deepEqual(apply(top, mmRemove(top, top.views[0], ['o'], false).commands).nodes, [{ id: 'm', type: T, label: 'Model' }]);
+});

@@ -384,6 +384,7 @@ function msWrite(model, viewId) {
 
   // what is written: lifelines, occurrences (messages and uses) and fragments of the view
   const byId = new Map(arr(m.nodes).filter(isObj).map(n => [n.id, n]));
+  if (view) for (const n of arr(view.nodes)) if (isObj(n) && !byId.has(n.id)) byId.set(n.id, n); // a card the view alone holds (view.nodes), written as a model one (audit 22)
   const lifes = [];
   for (const id of arr(view.nodeIds)) { const n = byId.get(id); if (!n) continue; if (n.type === 'uml.Lifeline' && !badId(n.id)) lifes.push(n); else skip(n); }
   const isLife = new Set(lifes.map(n => n.id));

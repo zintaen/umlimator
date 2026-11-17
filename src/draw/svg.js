@@ -1,5 +1,5 @@
 import { TYPED } from '../core/registry.js';
-import { clauseFit, esc, fit, glyph, measureText, sansW, textW, wrap2 } from '../core/text.js';
+import { EDGE_BREAK, EDGE_LH, clauseFit, esc, fit, glyph, measureText, sansW, textW, wrap2 } from '../core/text.js';
 import { roundPath, trimLine } from './lines.js';
 import { SHAPE, cardLook, drawnPts, r2, sidePorts, tabLine } from './shapes.js';
 import { CHG } from '../layout/layered.js';
@@ -227,9 +227,11 @@ return I && I.src ? `<rect x="${x - M * 3 / 28}" y="${y - M * 3 / 28}" width="${
       const tx = L.text ? `<text x="${ax}" y="${L.y + 14}" ${an} class="e-label" data-t="el" data-o="${esc(e.from)}>${esc(e.to)}">${esc(L.text)}</text>` : '';
       const sb = L.sub ? `<text x="${ax}" y="${L.y + 26}" ${an} class="e-sub" data-t="el" data-o="${esc(e.from)}>${esc(e.to)}">${esc(L.sub)}</text>` : '';
       s += `<g class="e-lab${L.tag ? ' ctag' : ''}${e.wk ? ' w-' + e.wk : ''}" data-i="${i}"><rect x="${L.x}" y="${L.y}" width="${L.w}" height="${L.h}" rx="${Math.min(L.h / 2, 10)}" class="e-lbg"/>${st}${tx}${sb}</g>`;
-    } else { // a text the author broke, in a box its type made tall enough for its lines (the sequence type's), a line each (audit 22)
-      const ls = String(L.text ?? '').split(/\r\n?|[\n\u2028\u2029]/), many = ls.length > 1 && L.h >= 16 + (ls.length - 1) * 13;
-      s += `<g class="e-lab" data-i="${i}"><rect x="${L.x}" y="${L.y}" width="${L.w}" height="${L.h}" rx="5" class="e-lbg"/>${(many ? ls : [L.text]).map((t, k) => `<text x="${L.x + L.w / 2}" y="${L.y + 12.5 + k * 13}" text-anchor="middle" class="e-label" data-t="el" data-o="${esc(e.from)}>${esc(e.to)}">${esc(t)}</text>`).join('')}</g>`; }
+    } else
+    // a typed line's label: a line break starts a new line where the label placer sized the box for its lines (audit 22); a box
+    // of one line draws its text on one line, as SVG draws a break; the sequence and timing types size theirs 13 px a line, the placer 12
+    { const cx = L.x + L.w / 2, part = String(L.text ?? '').split(EDGE_BREAK), rows = L.h >= 16 + EDGE_LH * (part.length - 1) ? part : [part.join(' ')];
+      s += `<g class="e-lab" data-i="${i}"><rect x="${L.x}" y="${L.y}" width="${L.w}" height="${L.h}" rx="5" class="e-lbg"/><text x="${cx}" y="${L.y + 12.5}" text-anchor="middle" class="e-label" data-t="el" data-o="${esc(e.from)}>${esc(e.to)}">${rows.length < 2 ? esc(L.text) : rows.map((r, k) => `<tspan x="${cx}"${k ? ` dy="${EDGE_LH}"` : ''}>${esc(r)}</tspan>`).join('')}</text></g>`; }
   });
   return s + '</g></svg>';
 }

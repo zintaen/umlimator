@@ -224,6 +224,7 @@ function writeMermaidMindmap(model, viewId) {
   // the shown topics, their children in nodeIds order; the first with no shown parent is the root
   const byId = new Map(), shown = new Map(), kids = new Map(), roots = [];
   for (const n of arr(m.nodes)) if (isObj(n) && !byId.has(n.id)) byId.set(n.id, n);
+  if (view) for (const n of arr(view.nodes)) if (isObj(n) && !byId.has(n.id)) byId.set(n.id, n); // a card the view alone holds (view.nodes), written as a model one (audit 22)
   for (const id of arr(view.nodeIds)) {
     const n = byId.get(id);
     if (!n || shown.has(id)) continue;

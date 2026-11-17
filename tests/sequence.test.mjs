@@ -503,7 +503,7 @@ test('a line break in a name is drawn as a new line in every behavioural view (a
   for (const f of ['usecase', 'activity', 'state', 'communication', 'overview', 'timing']) await import(`../src/uml/${f}.js`);
   const { readMermaidState } = await import('../src/readers/mermaid-state.js'), { readMermaidSequence } = await import('../src/readers/mermaid-sequence.js');
   const NL = String.fromCharCode(10), BR = /[\r\n\u2028\u2029]/;
-  const texts = s => [...s.matchAll(/<text(?:[^>"]|"[^"]*")*>([^<]*)<\/text>/g)].map(x => x[1]);
+  const texts = s => [...s.matchAll(/<(text|tspan)(?:[^>"]|"[^"]*")*>([^<]*)<\/\1>/g)].map(x => x[2]); // a line is a text or a tspan
   const lines = (m, vid, ...want) => { const t = texts(svgOf(layout(m, vid)));
     assert.deepEqual(t.filter(x => BR.test(x)), [], `${vid}: no text holds a break`);
     want.forEach(w => assert.ok(t.includes(w), `${vid}: "${w}" on a line of its own (${t.join(' | ')})`)); };

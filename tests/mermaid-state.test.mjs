@@ -368,3 +368,52 @@ test('a blank %% id:, %% link-id:, %% start-id: or %% end-id: is no hint, and is
   assert.ok(!JSON.stringify(model).includes('"id":""'));
   assert.deepEqual(report.map(r => r.message), ['id', 'link-id', 'start-id', 'end-id'].map(k => `%% ${k}: holds no id: not read`));
 });
+
+test('audit 22: each Mermaid writer writes a card only its view holds (view.nodes), as a model one; junk there is passed over', async () => {
+  const { apply } = await import('../lib/umlimator-all.js');
+  const junk = [7, null, 'x', JSON.parse('{"toString":1}')];
+  const cases = [
+    ['mindmap', 'Mindmap', { nodes: [{ id: 'root', type: 'mindmap.Topic', label: 'Root' }, { id: 'leaf', type: 'mindmap.Topic', label: 'Leaf', parent: 'draft' }], views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['root', 'leaf'] }] },
+      { id: 'draft', type: 'mindmap.Topic', label: 'Draft', parent: 'root' }],
+    ['er', 'Er', { nodes: [{ id: 'A', type: 'er.Entity', label: 'A' }], views: [{ id: 'v', diagram: 'er', nodeIds: ['A'], edges: [] }] }, { id: 'Draft', type: 'er.Entity', label: 'Draft' }],
+    ['state', 'State', { nodes: [{ id: 'A', type: 'uml.State', label: 'A' }], views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['A'], edges: [] }] }, { id: 'Draft', type: 'uml.State', label: 'Draft' }],
+    ['class', 'Class', { nodes: [{ id: 'A', type: 'uml.Class', label: 'A' }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['A'] }] }, { id: 'Draft', type: 'uml.Class', label: 'Draft' }],
+    ['requirement', 'Requirement', { nodes: [{ id: 'r1', type: 'sysml.Requirement', label: 'R1', props: { reqId: '1', text: 't' } }], views: [{ id: 'v', diagram: 'sysml.requirement', nodeIds: ['r1'] }] },
+      { id: 'r2', type: 'sysml.Requirement', label: 'R2', props: { reqId: '2', text: 'u' } }],
+    ['sequence', 'Sequence', { nodes: [{ id: 'a', type: 'uml.Lifeline', label: 'a' }], views: [{ id: 'v', diagram: 'uml.sequence', nodeIds: ['a'], edges: [] }] }, { id: 'b', type: 'uml.Lifeline', label: 'b' }],
+    ['flowchart', 'Flowchart', { nodes: [{ id: 'a', type: 'flow.Process', label: 'a' }], views: [{ id: 'v', diagram: 'flowchart', nodeIds: ['a'] }] }, { id: 'b', type: 'flow.Process', label: 'b' }]];
+  for (const [f, T, base, own] of cases) {
+    const mod = await import(`../src/readers/mermaid-${f}.js`), r = apply({ schemaVersion: 2, root: 'v', edges: [], ...base }, [{ op: 'add', in: 'view', view: 'v', element: own }]), m = r.model ?? r;
+    assert.deepEqual(m.views[0].nodes.map(n => n.id), [own.id], `${f}: the card is the view's own`);
+    assert.deepEqual(validate(m).filter(p => p.level === 'error'), [], f);
+    const ids = x => [...x.nodes, ...x.views.flatMap(v => v.nodes || [])].map(n => n.id).sort();
+    const text = mod['writeMermaid' + T](m, 'v'), back = mod['readMermaid' + T](text);
+    assert.deepEqual(ids(back.model), ids(m), `${f}: read back\n${text}`);
+    assert.doesNotMatch(text, /not written/, f);
+    m.views[0].nodes.push(...junk, { ...base.nodes[0], label: 'a second' }); // no object, unreadable, and a model card's id: the model's is written
+    assert.equal(mod['writeMermaid' + T](m, 'v'), text, `${f}: junk in view.nodes`);
+  }
+});
+
+test('audit 22: the state writer writes the lines its view draws: none a list leaves out, and the list\'s own', () => {
+  const nodes = [{ id: 'A', type: 'uml.State', label: 'A' }, { id: 'B', type: 'uml.State', label: 'B' }], go = { id: 'go', type: 'uml.Transition', from: 'A', to: 'B', props: { trigger: 'go' } };
+  const back = { id: 'back', type: 'uml.Transition', from: 'B', to: 'A', props: { trigger: 'back' } };
+  const m = (edges, list) => ({ schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['A', 'B'], ...(list === undefined ? {} : { edges: list }) }] });
+  const lines = t => read(t).model.edges.map(e => [e.id, e.from, e.to, e.props.trigger]);
+  assert.deepEqual(lines(write(m([go, back]))), [['go', 'A', 'B', 'go'], ['back', 'B', 'A', 'back']], 'no list: the model\'s');
+  assert.deepEqual(lines(write(m([go, back], []))), [], 'an empty list: none');
+  assert.deepEqual(lines(write(m([go, back], ['back', 'nothing', 7, null]))), [['back', 'B', 'A', 'back']], 'a list: those it names');
+  assert.deepEqual(lines(write(m([], [go]))), [['go', 'A', 'B', 'go']], 'a line of the view\'s own');
+  assert.deepEqual(lines(write(m([go], ['go', { ...go, props: { trigger: 'twice' } }, back]))), [['go', 'A', 'B', 'go'], ['back', 'B', 'A', 'back']], 'an id listed twice: the first');
+  for (const x of [m([go], []), m([], [go]), m([go, back], ['back'])]) assert.deepEqual(validate(read(write(x)).model).filter(p => p.level === 'error'), []);
+});
+
+test('audit 22: a transition the reader names from its ends holds no "->", when an end\'s name starts with ">" or one ends with "-"', () => {
+  for (const [t, ids] of [['Idle --> >Busy', ['Idle-Busy']], ['[*] --> >Busy', ['start-Busy']], ['a- --> >b\n  a- --> >b', ['a--b', 'a--b-2']], ['a-- --> >>b', ['a---b']]]) {
+    const r = read(`stateDiagram-v2\n  ${t}\n`), es = r.model.edges.map(e => e.id);
+    assert.deepEqual(es, ids, t); assert.deepEqual(r.report, [], t);
+    assert.deepEqual(validate(r.model).filter(p => p.level === 'error'), [], t);
+    const again = write(r.model); ids.forEach(id => assert.ok(!again.includes(`%% id: ${id}\n`), `${t}: ${id} is the one the reader gives, so no hint\n${again}`));
+    assert.deepEqual(read(again).model.edges.map(e => e.id), ids, `${t}: round trip`);
+  }
+});

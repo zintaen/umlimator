@@ -83,7 +83,8 @@ test('audit 21: the guide\'s C4 row, the C4 conformance note and the schema name
   const note = read('../docs/conformance/c4.md').split('\n').find(l => l.startsWith('| Person, software system')).split(' | ')[2];
   const schema = JSON.parse(read('../lib/umlimator.schema.json'));
   let desc; JSON.stringify(schema, (k, v) => { if (k === 'shape' && v && typeof v.description === 'string' && v.description.startsWith('A C4 element')) desc = v.description; return v; });
-  for (const [where, text] of [['guide', guide], ['c4.md', note], ['schema', desc]]) {
+  const vocab = /`shape` \((.*?)\)\. Relationship:/.exec(read('../docs/diagrams/model.md').split('\n').find(l => l.startsWith('| 23 |')))?.[1]; // audit 22: the vocabulary row c4.md cites
+  for (const [where, text] of [['guide', guide], ['c4.md', note], ['schema', desc], ['model.md row 23', vocab]]) {
     assert.ok(text, where);
     const said = new Set(names(text));
     for (const s of C4_SHAPES) assert.ok(said.has(s), `${where} names ${s}: ${text}`);
