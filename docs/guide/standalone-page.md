@@ -34,9 +34,7 @@ A view, a selected card, a story step or a lens can be linked to. A selected lin
 
 ## Keyboard and screen readers
 
-Cards, then lines, are in the Tab order (a card's tabs and chips too, for a host that listens for click). Arrow keys
-move between cards, Enter opens a card's view, and Esc or Backspace goes back up. Selections are announced in the map's
-live region, and `describe(model, viewId)` gives a view in plain sentences for a text alternative.
+Cards, then lines, are in the Tab order (a card's tabs and chips too, for a host that listens for click). Arrow keys move between cards. Enter selects the focused card, and Enter on the selected card opens its view. Esc or Backspace clears the selection, and with nothing selected goes back up. Selections are announced in the map's live region, and `describe(model, viewId)` gives a view in plain sentences for a text alternative.
 
 ## Exports
 

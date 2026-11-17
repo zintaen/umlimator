@@ -1,6 +1,6 @@
 import { registerDiagramType, idTable } from '../core/registry.js';
 import { apply } from '../core/apply.js';
-import { esc, fit, textW } from '../core/text.js';
+import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { TR, layoutTimeRuler } from '../layout/timeruler.js';
 import { brLines } from '../typed/draw.js'; // a typed line's ends (TYPED.lines): a message's arrowheads
@@ -80,10 +80,10 @@ function tmInput(model, V, X = tmIndex(model, V)) {
     lanes: X.heads.map(n => { const vals = X.values(n.id);
       // a name the author broke (a Mermaid <br>): a line each, its room grown for them (audit 22)
       const ls = brLines(tmHead(n));
-      return { id: n.id, name: { w: Math.max(...ls.map(l => w(l, TM.name)), w(tmSt(n))), h: (tmSt(n) ? 2 * TM.lbl : TM.lbl) + (ls.length - 1) * TM.lbl }, form: vals ? 'values' : 'states', rows: vals ? [] : tmStates(n).map(s => ({ state: s, w: w(s) })),
+      return { id: n.id, name: { w: Math.max(widest(ls, l => w(l, TM.name)), w(tmSt(n))), h: (tmSt(n) ? 2 * TM.lbl : TM.lbl) + (ls.length - 1) * TM.lbl }, form: vals ? 'values' : 'states', rows: vals ? [] : tmStates(n).map(s => ({ state: s, w: w(s) })),
         changes: X.changes.filter(c => c.lifeline === n.id).map(c => ({ id: c.id, at: c.at, state: String(c.state ?? ''), w: w(c.state) })) }; }),
     messages: X.msgs.map(m => { const t = tmMsgText(m), p = tmProps(m);
-      return { id: m.id, from: m.from, to: m.to, sentAt: p.sentAt, receivedAt: p.receivedAt, ...(t ? { w: Math.max(...brLines(t).map(l => w(l))) + 12, h: TM.lbl + (brLines(t).length - 1) * 13 } : { w: 0, h: 0 }) }; }), // a line each, as svgOf draws a box tall enough (audit 22)
+      return { id: m.id, from: m.from, to: m.to, sentAt: p.sentAt, receivedAt: p.receivedAt, ...(t ? { w: widest(brLines(t), l => w(l)) + 12, h: TM.lbl + (brLines(t).length - 1) * 13 } : { w: 0, h: 0 }) }; }), // a line each, as svgOf draws a box tall enough (audit 22)
     constraints: X.shown.map(c => { const t = tmLabel(c); return { id: c.id, kind: TM_KIND[c.type] ?? c.type, from: c.from, to: c.to, ...(t ? { w: w(t) + 6, h: TM.mark } : { w: 0, h: 0 }) }; }),
     unit: X.unit,
   };

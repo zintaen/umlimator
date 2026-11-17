@@ -1,5 +1,5 @@
 import { registerDiagramType } from '../core/registry.js';
-import { esc, fit, textW } from '../core/text.js';
+import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import '../typed/draw.js'; // SHAPE.classifier, which the note's outline and ports take
 import { labelW } from '../layout/layered.js';
@@ -164,7 +164,7 @@ function noteLines(t) {
   return out.length ? out : [''];
 }
 SHAPE.note = {
-  size: n => { const ls = noteLines(n.label); return { w: Math.ceil(Math.max(60, ...ls.map(l => Math.min(NOTE.max, textW(l, NOTE.px)))) + 2 * NOTE.pad + NOTE.fold), h: ls.length * NOTE.lh + 2 * NOTE.pad }; },
+  size: n => { const ls = noteLines(n.label); return { w: Math.ceil(Math.max(60, widest(ls, l => Math.min(NOTE.max, textW(l, NOTE.px)))) + 2 * NOTE.pad + NOTE.fold), h: ls.length * NOTE.lh + 2 * NOTE.pad }; },
   out: SHAPE.classifier.out, face: n => [n.y, n.y + n.h], inset: () => 0, ports: SHAPE.classifier.ports,
   draw(n, c, f) {
     const { x, y, w, h } = n, k = NOTE.fold, ls = noteLines(n.label), max = w - 2 * NOTE.pad - k;

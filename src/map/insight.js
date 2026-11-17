@@ -25,7 +25,8 @@ const walkFrom = (edges, start, back) => { const seen = new Set([start]); // bre
 /** Every card and line on a path from one card to another, following lines forward: the cards both reachable from `from`
  *  and leading to `to`, and the lines between them. [] when no path joins them. */
 export function paths(model, viewId, from, to) {
-  const T = viewType(model, viewId); if (T && T.paths) return T.paths(unreadable(model).model, viewId, from, to); // a type's own walk (a sequence's, in time)
+  model = unreadable(model).model; // read as mapContext reads it: a host's getter that throws is no value (audit 25)
+  const T = viewType(model, viewId); if (T && T.paths) return T.paths(model, viewId, from, to); // a type's own walk (a sequence's, in time)
   const { ids, edges } = lineGraph(model, viewId);
   if (!ids.includes(from) || !ids.includes(to)) return [];
   const F = walkFrom(edges, from), B = walkFrom(edges, to, true), on = id => F.has(id) && B.has(id);
@@ -36,6 +37,7 @@ export function paths(model, viewId, from, to) {
 /** Everything a card's lines lead to (forward), or everything that leads to it (`backward`: for calls, who depends on it),
  *  each with its distance in lines; `depth` stops the walk that many lines out. The card itself is first, at 0. */
 export function reach(model, viewId, from, options = {}) {
+  model = unreadable(model).model; // as paths() (audit 25)
   const { ids, edges } = lineGraph(model, viewId), back = !!options.backward, depth = options.depth ?? Infinity;
   if (!ids.includes(from)) return [];
   const ends = e => back ? [e.to, e.from] : [e.from, e.to], dist = new Map([[from, 0]]);
@@ -60,8 +62,8 @@ function oneLine(model) {
 /** A view in plain sentences: its cards and their kinds, its boxes, what each card's lines do (in run order on a sequence
  *  view), and the cards with no line. The same model gives the same words: a text alternative, docs, or an AI's context. */
 export function describe(model, viewId) {
-  model = oneLine(model);
-  const T = viewType(model, viewId); if (T && T.describe) return T.describe(unreadable(model).model, viewId); // a type's own words (1.9), read as mapContext reads them (audit 19)
+  model = oneLine(unreadable(model).model); // as paths(): its view read once a host's getter is no value (audit 25)
+  const T = viewType(model, viewId); if (T && T.describe) return T.describe(model, viewId); // a type's own words (1.9), read as mapContext reads them (audit 19)
   const { ctx, v, ids, edges } = lineGraph(model, viewId), boxes = (v.containers || []).filter(c => c && c.id);
   const name = id => ctx.N[id] ? ctx.nodeIn(id, viewId).label || id : (boxes.find(c => c.id === id) || {}).label || id;
   const list = xs => xs.length < 3 ? xs.join(' and ') : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1];
@@ -107,6 +109,7 @@ const msText = x => x >= 1000 ? `${+(x / 1000).toFixed(x >= 1e4 ? 0 : 1)} s` : `
  *  comes back to a card. { refs, total }: its cards in order, then its lines, as Refs for highlight(); no refs and 0 when
  *  no line leads from `from` (to `to`). */
 export function critical(model, viewId, options = {}) {
+  model = unreadable(model).model; // as paths() (audit 25)
   const { ids, edges } = lineGraph(model, viewId), by = options.by === 'cost' ? 'cost' : 'latency', { from, to } = options, none = { refs: [], total: 0 };
   if ((from != null && !ids.includes(from)) || (to != null && !ids.includes(to))) return none;
   const w = e => typeof e[by] === 'number' && e[by] > 0 ? e[by] : 0, path = [], on = new Set();

@@ -1,5 +1,5 @@
 import { ownNodes, registerDiagramType, idTable } from '../core/registry.js';
-import { esc, fit, textW } from '../core/text.js';
+import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
@@ -39,7 +39,7 @@ function ucWrap(t, px, max, k) {
 // a use case's texts: its stereotypes, its name on at most three lines, then its extension points' heading and names
 function ucEllParts(n) {
   const st = UC_ARR(n.stereotypes).map(t => `«${t}»`), name = ucWrap(n.label, UC.px, UC.max, 3), eps = UC_ARR(n.points);
-  const w = Math.min(UC.max, Math.max(...st.map(t => textW(t, UC.st)), ...name.map(l => textW(l, UC.px)), ...(eps.length ? [textW('extension points', UC.st), ...eps.map(p => textW(p, UC.ep))] : [])));
+  const w = Math.min(UC.max, Math.max(widest(st, t => textW(t, UC.st)), widest(name, l => textW(l, UC.px)), ...(eps.length ? [textW('extension points', UC.st), widest(eps, p => textW(p, UC.ep))] : [])));
   const h = st.length * UC.sth + name.length * UC.lh + (eps.length ? UC.gap + UC.head + eps.length * UC.eph : 0);
   return { st, name, eps, w, h };
 }
@@ -70,7 +70,7 @@ SHAPE.ellipse = {
 // an actor: a stick figure 24 × 44, its stereotypes and name (two lines of 160 px at most) under it; the node as wide as the wider
 const UC_AC = { fw: 24, fh: 44, gap: 4 };
 const ucActorParts = n => { const st = UC_ARR(n.stereotypes).map(t => `«${t}»`), name = ucWrap(n.label, UC.px, UC.max, 2);
-  return { st, name, w: Math.min(UC.max, Math.max(UC_AC.fw, ...st.map(t => textW(t, UC.st)), ...name.map(l => textW(l, UC.px)))) }; };
+  return { st, name, w: Math.min(UC.max, Math.max(UC_AC.fw, widest(st, t => textW(t, UC.st)), widest(name, l => textW(l, UC.px)))) }; };
 SHAPE.actor = {
   size: n => { const p = ucActorParts(n); return { w: Math.ceil(p.w + 4), h: UC_AC.fh + UC_AC.gap + p.st.length * UC.sth + p.name.length * UC.lh }; },
   out: (n, d = 0) => `M${r2(n.x - d)} ${r2(n.y - d)}H${r2(n.x + n.w + d)}V${r2(n.y + n.h + d)}H${r2(n.x - d)}Z`, face: n => [n.y, n.y + UC_AC.fh],

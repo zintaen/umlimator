@@ -1,4 +1,4 @@
-import { esc, fit, textW, wrap2 } from '../core/text.js';
+import { esc, fit, textW, widest, wrap2 } from '../core/text.js';
 import { SHAPE, portsOn, r2 } from '../draw/shapes.js';
 import { printTransition, transitionText, trScan } from './transition.js';
 
@@ -55,7 +55,7 @@ SHAPE['flow-final'] = circle('flow-final', 22, 'Flow final', n => { const cx = n
 /* ---- the diamond: its text on at most two lines, the diamond twice the text's box, so the box fits inside it ---- */
 const diamondLines = n => { const t = String(n.label ?? '').trim(); return !t ? [] : /[\r\n\u2028\u2029]/.test(t) ? flowWrap(t, FL.px, FL.dmax, 2) : textW(t, FL.px) <= 80 ? [fit(t, FL.px, FL.dmax)] : wrap2(t, FL.px, FL.dmax) || [fit(t, FL.px, FL.dmax)]; };
 SHAPE.diamond = {
-  size(n) { const ls = diamondLines(n), tw = Math.max(0, ...ls.map(l => textW(l, FL.px)));
+  size(n) { const ls = diamondLines(n), tw = Math.max(0, widest(ls, l => textW(l, FL.px)));
     return ls.length ? { w: Math.max(28, Math.ceil(2 * tw + 12)), h: Math.max(28, Math.ceil(2 * ls.length * FL.lh + 4)) } : { w: 28, h: 28 }; },
   out(n, d = 0) { const cx = n.x + n.w / 2, cy = n.y + n.h / 2, a = n.w / 2 + d, b = n.h / 2 + d;
     return `M${r2(cx)} ${r2(cy - b)}L${r2(cx + a)} ${r2(cy)}L${r2(cx)} ${r2(cy + b)}L${r2(cx - a)} ${r2(cy)}Z`; },
@@ -78,7 +78,7 @@ SHAPE.bar = {
 
 /* ---- the rounded rectangle: stereotypes, then the name on up to three lines, centred ---- */
 const roundedParts = n => { const st = FL_ARR(n.stereotypes).filter(t => String(t ?? '').trim() !== '').map(t => fit(`«${t}»`, FL.st, FL.maxW - 2 * FL.padX)), ls = flowWrap(n.label, FL.name, FL.nmax, 3);
-  return { st, ls, w: Math.ceil(Math.min(FL.maxW, Math.max(FL.minW, ...st.map(t => textW(t, FL.st) + 2 * FL.padX), ...ls.map(l => textW(l, FL.name) + 2 * FL.padX)))),
+  return { st, ls, w: Math.ceil(Math.min(FL.maxW, Math.max(FL.minW, widest(st, t => textW(t, FL.st) + 2 * FL.padX), widest(ls, l => textW(l, FL.name) + 2 * FL.padX)))),
     h: Math.max(FL.minH, 2 * FL.padY + st.length * FL.sth + Math.max(1, ls.length) * FL.nlh) }; };
 SHAPE.rounded = {
   size: n => { const p = roundedParts(n); return { w: p.w, h: p.h }; },

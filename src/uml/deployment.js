@@ -1,5 +1,5 @@
 import { ownNodes, registerDiagramType } from '../core/registry.js';
-import { esc, fit, textW } from '../core/text.js';
+import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { brLines } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
@@ -32,7 +32,7 @@ const DP_KW = { __proto__: null, 'uml.Device': 'device', 'uml.ExecutionEnvironme
 const DP = { d: 10, head: 15, pad: 10, name: 12, nlh: 16, st: 11, sth: 14, minW: 120, maxW: 320, minH: 60 };
 // a name the author broke (a Mermaid <br>): a line each, 16 px apart, the cube as wide as the widest and taller by the rest (audit 23)
 const dpParts = n => { const st = [...(DP_KW[n.type] ? [DP_KW[n.type]] : []), ...DP_ARR(n.stereotypes)].map(t => `«${t}»`), name = brLines(n.label);
-  return { st, name, w: Math.ceil(Math.min(DP.maxW, Math.max(DP.minW, ...st.map(t => textW(t, DP.st) + 2 * DP.pad), ...name.map(l => textW(l, DP.name) + 2 * DP.pad))) + DP.d),
+  return { st, name, w: Math.ceil(Math.min(DP.maxW, Math.max(DP.minW, widest(st, t => textW(t, DP.st) + 2 * DP.pad), widest(name, l => textW(l, DP.name) + 2 * DP.pad))) + DP.d),
     h: Math.max(DP.minH, DP.d + 16 + st.length * DP.sth + name.length * DP.nlh) }; };
 const dpOut = (n, g = 0) => { const p = DP.d, x = n.x - g, y = n.y - g, w = n.w + 2 * g, h = n.h + 2 * g;
   return `M${r2(x)} ${r2(y + p)}L${r2(x + p)} ${r2(y)}H${r2(x + w)}V${r2(y + h - p)}L${r2(x + w - p)} ${r2(y + h)}H${r2(x)}Z`; };
