@@ -18,6 +18,11 @@ import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
 import '../src/dfd/dfd.js';
+import '../src/er/er.js';
+import '../src/flowchart/flowchart.js';
+import '../src/uml/information.js';
+import '../src/c4/c4.js';
+import '../src/c4/views.js';
 
 const DF = JSON.parse(readFileSync(new URL('../examples/bookshop-data-flow.json', import.meta.url)));
 const T = diagramOf({ diagram: 'dfd' }), L1 = 'dfd-level-1', L2 = 'dfd-level-2-take-order';
@@ -393,4 +398,26 @@ test('audit 25: D on a process with a flow to a store this view alone holds leav
     edges: [{ id: 'f', type: 'dfd.DataFlow', from: 'p', to: 'dt', label: 'cash' }], views: [{ id: 'v', diagram: 'dfd', nodeIds: ['p', 'dt'] }] };
   assert.match(describe(k, 'v'), /^Data type Money, 1 flow in, 0 out\.$/m);
   assert.equal(layout(k, 'v').byId.dt.aria, 'Data type Money, 1 flow in, 0 out');
+});
+
+// audit 26: a view whose edges list names a line of another family drew and named it as its own kind ("Comment link" in
+// ER and DFD, a data flow's arrow, "Flow", "Relationship"); listed, it is still drawn (#343), but plain, by its own kind
+test('audit 26: a listed line of another family is drawn plain and named by its own kind in ER, DFD, flowchart, information flow and C4 views', () => {
+  const cases = {
+    dfd: [{ id: 'a', type: 'dfd.ExternalEntity', label: 'A' }, { id: 'b', type: 'dfd.Process', label: 'B' }],
+    er: [{ id: 'a', type: 'er.Entity', label: 'A' }, { id: 'b', type: 'er.Entity', label: 'B' }],
+    flowchart: [{ id: 'a', type: 'flow.Process', label: 'A' }, { id: 'b', type: 'flow.Process', label: 'B' }],
+    'uml.information-flow': [{ id: 'a', type: 'uml.Class', label: 'A' }, { id: 'b', type: 'uml.Class', label: 'B' }],
+    'c4.landscape': [{ id: 'a', type: 'c4.Person', label: 'A', props: { description: 'd' } }, { id: 'b', type: 'c4.SoftwareSystem', label: 'B', props: { description: 'd' } }],
+    'c4.deployment': [{ id: 'a', type: 'c4.DeploymentNode', label: 'A', props: { description: 'd' } }, { id: 'b', type: 'c4.DeploymentNode', label: 'B', props: { description: 'd' } }],
+  };
+  for (const [d, nodes] of Object.entries(cases)) {
+    const m = { schemaVersion: 2, nodes, edges: [{ id: 'as', type: 'uml.Association', from: 'a', to: 'b', label: 'owns' }, { id: 'nt', from: 'b', to: 'a' }], views: [{ id: 'v', diagram: d, title: 'T', nodeIds: ['a', 'b'], edges: ['as', 'nt'] }] };
+    const g = layout(m, 'v'), e = g.edges.find(x => x.id === 'as'), u = g.edges.find(x => x.id === 'nt');
+    assert.match(e.aria, /^Association (owns )?from A to B(: owns)?$/, d);
+    // a line of no type is a plain "Line"; in a DFD a data flow, as audit 9 draws a line of no family
+    if (d === 'dfd') assert.deepEqual([u.aria, u.end], ['Data flow from B to A', { from: 'none', to: 'arrow' }]); else assert.match(u.aria, /^Line from B to A$/, d);
+    for (const x of d === 'dfd' ? [e] : [e, u]) assert.deepEqual([x.end.from, x.end.to, !!x.end.dashed], ['none', 'none', false], `${d} ${x.id}`);
+    assert.match(describe(m, 'v'), /Association (owns )?from A to B/, d);
+  }
 });

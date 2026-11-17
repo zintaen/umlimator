@@ -29,8 +29,8 @@ const C4_WORD = { __proto__: null, 'c4.Person': 'Person', 'c4.SoftwareSystem': '
   'c4.DeploymentNode': 'Deployment node', 'c4.ContainerInstance': 'Container instance', 'uml.Comment': 'Comment' };
 const C4_TAG = { __proto__: null, 'c4.Person': 'Person', 'c4.SoftwareSystem': 'Software System', 'c4.Container': 'Container', 'c4.Component': 'Component' };
 // a kind from another family in words, "Use case", "Data type", as the other views name it since audit 23 (audit 24); a type
-// of no family ("constructor") as written
-const c4Word = x => (Object.hasOwn(C4_WORD, x.type) ? C4_WORD[x.type] : String(x.type ?? '').includes('.') ? snKindName(x.type) : String(x.type ?? ''));
+// of no family ("constructor") as written; no type at all "Element", never a blank word and a "[]" tag (audit 26)
+const c4Word = x => (Object.hasOwn(C4_WORD, x.type) ? C4_WORD[x.type] : String(x.type ?? '').includes('.') ? snKindName(x.type) : String(x.type ?? '') || 'Element');
 const C4_STATIC = ['c4.Person', 'c4.SoftwareSystem', 'c4.Container', 'c4.Component'], C4_DEPLOY = ['c4.DeploymentNode', 'c4.ContainerInstance'];
 // the map's card shapes an element may name (S11): all but UML's node, which is the deployment view's
 const C4_SHAPES = ['box', 'person', 'robot', 'browser', 'window', 'terminal', 'mobile', 'cylinder', 'pipe', 'folder', 'document', 'hexagon'];
@@ -137,18 +137,21 @@ function c4LineName(e, pic) {
   if (e.of) { const said = e.of.map(r => `${nm(r.from)} to ${nm(r.to)}${C4_HAS(r.label) ? ', ' + r.label : ''}`);
     return `Implied relationship from ${nm(e.from)} to ${nm(e.to)}, standing for ${c4Plural(e.of.length, 'relationship')}: ${said.join('; ')}. Edit them where their own ends are shown`; }
   if (e.type === 'uml.CommentLink') return `Comment link from ${nm(e.from)} to ${nm(e.to)}`;
-  const said = c4LineLabel(e); return `Relationship from ${nm(e.from)} to ${nm(e.to)}${said ? ': ' + said : ''}`;
+  // a listed line of another kind by its own kind, "Association", never "Relationship" (audit 26)
+  const said = c4LineLabel(e); return `${e.type === 'c4.Relationship' ? 'Relationship' : e.type == null ? 'Line' : snKindName(e.type)} from ${nm(e.from)} to ${nm(e.to)}${said ? ': ' + said : ''}`;
 }
 
 /* ---- the key (§7.5): each element type and shape drawn, external, the relationship and the implied line ---- */
-const C4_LINE_LOOK = { rel: { from: 'none', to: 'open' }, implied: { from: 'none', to: 'open', dashed: true }, note: { from: 'none', to: 'none', dashed: true } };
+const C4_LINE_LOOK = { rel: { from: 'none', to: 'open' }, implied: { from: 'none', to: 'open', dashed: true }, note: { from: 'none', to: 'none', dashed: true }, other: { from: 'none', to: 'none' } };
+// a line's look: a listed line of another kind plain, never a relationship's arrow (audit 26)
+const c4LineLook = (e, L) => (e.type === 'uml.CommentLink' ? L.note : e.type === 'c4.Relationship' ? L.rel : L.other);
 function c4Legend(nodes, edges, says = 'uses, with its technology in brackets') {
   const els = [...new Map(nodes.filter(n => n.shape === 'c4').map(n => [`${n.type} ${n.sh} ${n.ext}`, n])).values()];
   const swatch = n => `<rect x="3" y="2" width="22" height="12" rx="3" fill="var(--um-${n.ext ? 'slate' : 'cyan'}-f)" stroke="var(--um-${n.ext ? 'slate' : 'cyan'})"/>`;
   const item = (name, says, svg) => `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true">${svg}</svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`;
   const line = dashed => `<g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round" fill="none"><path d="M2 8H25"${dashed ? ' stroke-dasharray="3 2"' : ''}/><path d="M17 4L26 8L17 12"/></g>`;
   return [...els.map(n => item(`${n.ext ? 'External ' + c4Word(n).toLowerCase() : c4Word(n)}${n.sh !== 'box' && !(n.sh === 'person' && n.type === 'c4.Person') ? ', ' + n.sh : ''}`,
-    n.ext ? 'outside the system, drawn grey' : `a ${c4Word(n).toLowerCase()}`, swatch(n))),
+    n.ext ? 'outside the system, drawn grey' : c4A(c4Word(n).toLowerCase()), swatch(n))), // "an actor" (audit 26)
   ...(edges.some(e => e.type === 'c4.Relationship' && !e.implied) ? [item('Relationship', says, line(false))] : []),
   ...(edges.some(e => e.implied) ? [item('Implied relationship', 'stands for relationships between what the two hold', line(true))] : []),
   ...(edges.some(e => e.type === 'uml.CommentLink') ? [item('Comment link', 'what a comment is about', C4_NOTE_LINE)] : [])]; // dashed, no head: never the implied line (audit 23)
@@ -164,7 +167,7 @@ function c4Geo({ model, view, pos, memo }) {
       aria: c4NodeName(x), col: P(id)[0], row: P(id)[1] };
     return { ...d, ...C4_EL.size(d) }; });
   const edges = [...own.map(e => { const note = e.type === 'uml.CommentLink', label = note ? '' : c4LineLabel(e);
-    return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: label || undefined, end: note ? C4_LINE_LOOK.note : C4_LINE_LOOK.rel, aria: c4LineName(e, pic), cut: 280 }; }),
+    return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: label || undefined, end: c4LineLook(e, C4_LINE_LOOK), aria: c4LineName(e, pic), cut: 280 }; }),
   ...implied.map(e => ({ id: e.id, _id: e.id, type: 'c4.Relationship', from: e.from, to: e.to, implied: e.of.map(r => r.id), end: C4_LINE_LOOK.implied, aria: c4LineName(e, pic), cut: 280,
     label: [e.of[0].label, e.of.length > 1 ? `[+${e.of.length - 1}]` : ''].filter(C4_HAS).join(' ') || undefined }))];
   const g = layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: view.direction === 'down' ? 'down' : 'right',
@@ -347,4 +350,4 @@ const C4_DEF = {
 };
 const C4_TYPES = Object.keys(C4_KIND).map(name => registerDiagramType(name, C4_DEF));
 
-export { C4_NOTE_LINE, C4_TYPES, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, C4_SHAPES, c4Index, c4Pic, c4Lift, c4Lines, c4Geo, c4Problems, c4Describe, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Zoom, c4Key, c4Add, c4Owners, c4Rename };
+export { c4LineLook, C4_NOTE_LINE, C4_TYPES, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, C4_SHAPES, c4Index, c4Pic, c4Lift, c4Lines, c4Geo, c4Problems, c4Describe, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Zoom, c4Key, c4Add, c4Owners, c4Rename };

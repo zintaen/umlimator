@@ -391,3 +391,15 @@ test('audit 23: a view\'s own connector (view.edges object) is drawn, named, des
   assert.ok(want.some(([r]) => r === 'connector-part'), 'the model line: said');
   assert.deepEqual(at(own), want.map(([r, p]) => [r, p.replace(k, `views[0].edges[${j}]`)]), 'the own line: said alike, at its own path');
 });
+
+// audit 26: F2 with only a port kind keyword ("«full»") named the port "«full»", drawn "«full» «full»"; it sets the kind
+// and keeps the name
+test('audit 26: F2 with only «full» or «proxy» on a port sets its kind and keeps its name', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/ebike-structure.json', import.meta.url), 'utf8')), v = m.views.find(x => x.diagram === 'sysml.internal-block'), D = diagramOf(v);
+  const p = layout(m, v.id).nodes.find(n => n.shape === 'port' && /charge$/.test(n.id));
+  for (const t of ['«full»', '«full» ', ' «full»']) assert.deepEqual(D.edits.rename(m, v.id, p.id, t), { commands: [{ op: 'set', id: 'battery.charge', path: 'props.kind', value: 'full' }] }, JSON.stringify(t));
+  const m2 = apply(m, D.edits.rename(m, v.id, p.id, '«full»').commands), q = layout(m2, v.id).nodes.find(n => n.id === p.id);
+  assert.equal(q.label, '«full» charge'); assert.match(q.aria, /^Full port charge:/);
+  assert.deepEqual(D.edits.rename(m2, v.id, p.id, '«full»'), { commands: [] }, 'the kind it has already: nothing');
+  assert.deepEqual(D.edits.rename(m, v.id, p.id, '«proxy» plug').commands.map(c => c.value), ['plug', 'proxy']);
+});

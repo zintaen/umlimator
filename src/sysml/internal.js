@@ -202,6 +202,8 @@ function SYS_IB_RENAME(model, view, id, text) {
   const c = [SYS_IB_INDEX(model, view).E.get(id)].find(e => e && e.type === 'sysml.Connector' && SYS_IB_IF(e)), t = String(text ?? '').trim();
   if (c) return !t ? { error: 'An item flow names its item: type a name' } : t === SYS_IB_IF(c).item ? [] : [{ op: 'set', id, path: 'props.itemFlow.item', value: t }];
   const k = /^\s*«(proxy|full)»/.exec(String(text)), x = SYS_IB_INDEX(model, view).el(String(id).split('->').pop());
+  // the keyword alone sets the kind and keeps the name, never names the port «full» (audit 26)
+  if (k && x && x.type === 'sysml.Port' && !String(text).slice(k[0].length).trim()) return { commands: SYS_IB_PROPS(x).kind === k[1] ? [] : [{ op: 'set', id: x.id, path: 'props.kind', value: k[1] }] };
   const hook = (m, v, ...a) => { const r = csRename(m, v, ...a); return k && x && x.type === 'sysml.Port' && SYS_IB_PROPS(x).kind !== k[1] ? SYS_IB_MAP(r, cs => [...cs, { op: 'set', id: x.id, path: 'props.kind', value: k[1] }]) : r; };
   return SYS_IB_ON(hook)(model, view, id, text);
 }

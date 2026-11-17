@@ -183,7 +183,8 @@ test('validators: the example breaks no rule; each rule fails on a model that br
   // a hidden topic's side, and a side on a topic of no view, say nothing; a hidden root's children are the view's root then
   const h = apply(EX(), { op: 'hide', id: 'mm-catalogue', view: VID }); assert.deepEqual(rules(h), []);
   const top = apply(EX(), { op: 'hide', id: 'mm-opening', view: VID });
-  assert.deepEqual(rules(top).map(r => r[1]), ['mindmap-root', 'mindmap-root', 'mindmap-root', 'mindmap-root', 'mindmap-root', 'side-first', 'side-first', 'side-first', 'side-first', 'side-first', 'side-first']);
+  // their sides are kept for the root's return, as a hidden topic's are, and say nothing (audit 26); a root of its own with a side still does
+  assert.deepEqual(rules(top).map(r => r[1]), ['mindmap-root', 'mindmap-root', 'mindmap-root', 'mindmap-root', 'mindmap-root']);
 });
 
 test('add (N, the palette): a child of the topic selected, after its parent\'s last shown descendant, its id from its words; the root when none is selected; a root when no topic is shown', () => {
@@ -518,4 +519,29 @@ test('audit 23: a model topic dropped on, or demoted into, a view-own topic is r
   const r = hook(m, 'mm-plan', 'spare', at('ideas')), a = apply(m, Array.isArray(r) ? r : r.commands);
   assert.equal(a.views[0].nodes.find(n => n.id === 'spare').parent, 'ideas');
   assert.deepEqual(validate(a).filter(p => p.level === 'error' || p.rule === 'mindmap-root'), []);
+});
+
+// audit 26: the outline's Show on a root whose first-level topics were shown before it dropped their sides (they swung
+// across), and a Show or a drop that takes topics off the first level left their sides (side-first warnings it brought)
+test('audit 26: Show keeps a first-level topic\'s side and clears one no longer first-level; a dropped root clears its first-level topics\' sides', () => {
+  const T = 'mindmap.Topic', sides = (m, v = 'v') => validate(m).filter(p => p.rule === 'side-first').map(p => p.message);
+  let m = { schemaVersion: 2, nodes: [{ id: 'r', type: T, label: 'Root' }, { id: 'a', type: T, label: 'A', parent: 'r' }, { id: 'b', type: T, label: 'B', parent: 'r' }, { id: 'a1', type: T, label: 'A1', parent: 'a' }],
+    edges: [], views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['r', 'a', 'a1', 'b'], present: { a: { side: 'left' } } }] };
+  const go = r => { m = apply(m, Array.isArray(r) ? r : r.commands); return sides(m); };
+  assert.deepEqual(go(mmRemove(m, 'v', ['a'], false)), []); assert.deepEqual(go(mmRemove(m, 'v', ['r'], false)), []);
+  assert.deepEqual(go(mmShow(m, 'v', 'a')), [], 'a, back as a root while r is hidden, keeps its side for r\'s return: no warning');
+  assert.deepEqual(go(mmShow(m, 'v', 'r')), []);
+  assert.equal(m.views[0].present.a.side, 'left');
+  assert.deepEqual(layout(m, 'v').nodes.map(n => `${n.id}:${n.depth}:${n.side}`), ['r:0:null', 'a:1:left', 'a1:2:left', 'b:1:right']);
+  // a true root shown with a side loses it; a topic shown at depth 2 loses its own
+  const lone = { schemaVersion: 2, nodes: [{ id: 'r', type: T, label: 'Root' }, { id: 'x', type: T, label: 'X', parent: 'r' }, { id: 'y', type: T, label: 'Y', parent: 'x' }],
+    edges: [], views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['x'], present: { r: { side: 'left' }, y: { side: 'right' } } }] };
+  for (const [id, shown] of [['r', ['x']], ['y', ['r', 'x']]]) { lone.views[0].nodeIds = shown; lone.views[0].present = { [id]: { side: 'left' } }; const r = mmShow(lone, 'v', id); assert.ok(r.commands.some(c => c.op === 'set' && String(c.path) === `present,${id},side` && c.value === undefined), id);
+    assert.deepEqual(sides(apply(lone, r.commands)), [], id); }
+  // a second root dropped on a topic of the first tree: its first-level topics' sides go, none pinned
+  const two = { schemaVersion: 2, nodes: [{ id: 'r', type: T, label: 'Root' }, { id: 'a', type: T, label: 'A', parent: 'r' }, { id: 'r2', type: T, label: 'Second' }, { id: 'b', type: T, label: 'B', parent: 'r2' }, { id: 'c', type: T, label: 'C', parent: 'r2' }],
+    edges: [], views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['r', 'a', 'r2', 'b', 'c'], present: { b: { side: 'left' } } }] };
+  for (const on of ['a', 'r']) { const g = layout(two, 'v'), A = g.byId[on], cmds = mmMoveTo(two, 'v', 'r2', { pt: [A.x + A.w / 4, A.y + A.h / 2], geo: g });
+    assert.ok(cmds.some(c => c.op === 'reparent'), on); assert.deepEqual(sides(apply(two, cmds)), [], `dropped on ${on}`);
+    assert.ok(!cmds.some(c => c.op === 'set' && Array.isArray(c.path) && ['b', 'c'].includes(c.path[1]) && c.value !== undefined), `no side pinned on r2's topics (${on})`); }
 });

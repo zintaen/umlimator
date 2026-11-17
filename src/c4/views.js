@@ -4,7 +4,7 @@ import { SHAPE, r2, sidePorts } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
 import { ownersOn, readingOrder } from '../uml/owners.js';
 import { brLines } from '../typed/draw.js';
-import { C4_NOTE_LINE, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Problems, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners, c4Rename } from './c4.js';
+import { c4LineLook, C4_NOTE_LINE, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Problems, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners, c4Rename } from './c4.js';
 
 /* ---------- C4's dynamic and deployment views, c4.dynamic and c4.deployment (work package M2.7, notes/milestone-2.md §7.5.2,
    §7.5.3, §5.1) ----------
@@ -60,7 +60,7 @@ const vLine = dashed => `<g stroke="var(--um-muted)" stroke-width="1.4" stroke-l
 const vLines = (edges, says = 'uses, with its technology in brackets') => [...(edges.some(e => e.type === 'c4.Relationship' && !e.implied) ? [vItem('Relationship', says, vLine(false))] : []),
   ...(edges.some(e => e.implied) ? [vItem('Implied relationship', 'stands for relationships between what the two hold', vLine(true))] : []),
   ...(edges.some(e => e.type === 'uml.CommentLink') ? [vItem('Comment link', 'what a comment is about', C4_NOTE_LINE)] : [])]; // as src/c4/c4.js keys it (audit 23)
-const V_LINE = { rel: { from: 'none', to: 'open' }, implied: { from: 'none', to: 'open', dashed: true }, note: { from: 'none', to: 'none', dashed: true } };
+const V_LINE = { rel: { from: 'none', to: 'open' }, implied: { from: 'none', to: 'open', dashed: true }, note: { from: 'none', to: 'none', dashed: true }, other: { from: 'none', to: 'none' } };
 // an element of a C4 view as src/c4/c4.js draws it (shape c4: its map shape and three lines), or a comment
 function vNode(id, x, P, more = {}) {
   if (x.type === 'uml.Comment') { const d = { id, label: vName(x), type: x.type, kind: 'file', shape: 'note', aria: c4NodeName(x), col: P(id)[0], row: P(id)[1] }; return { ...d, ...SHAPE.note.size(d) }; }
@@ -197,7 +197,7 @@ function depGeo({ model, view, pos, memo }) {
     const d = { ...base, label: vName(c), kind: ext ? 'external' : 'frontend', shape: 'c4', sh: dn ? 'node' : c4Shape(c), ext, tag: dn ? depTag(x) : c === x && x.type === 'c4.ContainerInstance' ? '[Container]' : c4TagOf(c), desc: V_P(dn ? x : c).description };
     return { ...d, ...SHAPE.c4.size(d) }; });
   const edges = [...own.map(e => { const note = e.type === 'uml.CommentLink', label = note ? '' : c4LineLabel(e);
-    return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: label || undefined, end: note ? V_LINE.note : V_LINE.rel, aria: c4LineName(e, pic), cut: 280 }; }),
+    return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: label || undefined, end: c4LineLook(e, V_LINE), aria: c4LineName(e, pic), cut: 280 }; }),
   ...implied.map(e => ({ id: e.id, _id: e.id, type: 'c4.Relationship', from: e.from, to: e.to, implied: e.of.map(r => r.id), end: V_LINE.implied, aria: c4LineName(e, pic), cut: 280,
     label: [e.of[0].label, e.of.length > 1 ? `[+${e.of.length - 1}]` : ''].filter(V_HAS).join(' ') || undefined }))];
   const g = layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: view.direction === 'down' ? 'down' : 'right',

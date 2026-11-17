@@ -218,3 +218,23 @@ test('audit 25: the keyboard guides say Enter selects a card, and Enter on the s
   const render = readFileSync(new URL('../src/canvas/render.js', import.meta.url), 'utf8');
   assert.match(render, /sel && sel\.type === 'node' && sel\.id === id && ctx\.opensOf\(id, cur\)/, 'the canvas opens only a selected card');
 });
+
+// audit 26: gcp.md said a product's full name falls back to the id with hyphens as spaces, but the cloud views read
+// icons/packs.json's names row first, with no pack fetched too ("Pub/Sub"), and split the id on underscores as well
+test('audit 26: each cloud conformance note gives the full-name rule as the cloud views draw it, names row first', async () => {
+  const doc = p => readFileSync(new URL(p, import.meta.url), 'utf8').replace(/\s+/g, ' ');
+  const packs = JSON.parse(readFileSync(new URL('../icons/packs.json', import.meta.url), 'utf8'));
+  const { layout } = await import('../lib/umlimator-all.js');
+  for (const fam of ['aws', 'gcp', 'azure']) {
+    const note = doc(`../docs/conformance/${fam}.md`), names = packs[fam].names || {};
+    assert.ok(!/hyphens as spaces/.test(note), `${fam}.md: the id is split on hyphens and underscores`);
+    assert.ok(/`names` entry[^|]{0,160}?else the id with hyphens and underscores as spaces/.test(note), `${fam}.md: the names row, then the id`);
+    for (const [id, name] of Object.entries(names)) {
+      assert.ok(note.includes(`"${name}"`), `${fam}.md names ${id}'s spelling "${name}"`);
+      // and the views draw it so, with no pack fetched
+      const T = { aws: ['aws.Service', 'aws'], gcp: ['gcp.Product', 'gcp'], azure: ['azure.Service', 'azure'] }[fam];
+      const m = { schemaVersion: 2, nodes: [{ id: 'x', type: T[0], label: 'X', props: { icon: id } }], edges: [], views: [{ id: 'v', diagram: T[1], nodeIds: ['x'] }] };
+      assert.equal(layout(m, 'v').byId.x.name, name, `${fam} ${id}`);
+    }
+  }
+});

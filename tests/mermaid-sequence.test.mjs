@@ -424,3 +424,9 @@ test('a blank %% id: or %% operand-id: is no hint: the element takes its derived
     assert.ok(report.some(r => r.status === 'skipped' && /^%% (id|operand-id): holds no id/.test(r.message)), text);
   }
 });
+
+// audit 26 (the C4 key's "a actor", its sibling here): an actor with no name was reported as "a actor with no name"
+test('audit 26: an actor or participant with no name is reported with the right article', () => {
+  const r = read('sequenceDiagram\n  actor \n  participant \n  A->>B: hi');
+  assert.deepEqual(r.report.filter(x => x.status === 'skipped').map(x => x.message), ['an actor with no name', 'a participant with no name']);
+});

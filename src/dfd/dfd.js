@@ -120,7 +120,10 @@ function dfdNodeName(I, id, lines) {
   const v = x.type === 'dfd.Process' && I.views.get(x.opensView);
   return `${DFD_WORD[x.type] || snKindName(x.type)} ${I.name(id)}${v ? `, opens level ${v.title || v.id}` : ''}, ${dfdPlural(ins, 'flow')} in, ${outs} out`;
 }
-const dfdLineName = (I, e) => `${e.type === 'dfd.DataFlow' ? 'Data flow' : 'Comment link'}${DFD_HAS(e.label) ? ' ' + e.label : ''} from ${I.name(e.from)} to ${I.name(e.to)}`;
+// a listed line of another family by its own kind, plain, "Association", never "Comment link" (audit 26); one of no family
+// (no type, "constructor") a data flow, as audit 9 draws it
+const dfdOther = e => typeof e.type === 'string' && e.type.includes('.') && !DFD_LINES.includes(e.type);
+const dfdLineName = (I, e) => `${dfdOther(e) ? snKindName(e.type) : e.type === 'uml.CommentLink' ? 'Comment link' : 'Data flow'}${DFD_HAS(e.label) ? ' ' + e.label : ''} from ${I.name(e.from)} to ${I.name(e.to)}`;
 // reading order: the processes by number, then the stores, the entities and the rest as the view lists them, then the lines
 function dfdOrder(I, ids, lines) {
   const rank = id => ['dfd.Process', 'dfd.DataStore', 'dfd.ExternalEntity'].indexOf(I.ty(id)) + 1 || 4, byNum = (a, b) => dfdNum(I.at.get(a)).localeCompare(dfdNum(I.at.get(b)), undefined, { numeric: true });
@@ -151,7 +154,7 @@ function dfdGeo({ model, view, pos, memo }) {
       aria: dfdNodeName(I, id, lines), saysOpens: !!(x.type === 'dfd.Process' && I.views.get(x.opensView)), col: P(id)[0], row: P(id)[1] };
     return { ...d, ...SHAPE[d.shape].size(d) }; });
   const edges = lines.map(e => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, ...(DFD_HAS(e.label) ? { label: String(e.label), cut: 280 } : {}),
-    end: DFD_END[e.type] || DFD_END['dfd.DataFlow'], aria: dfdLineName(I, e), ...(DFD_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }));
+    end: dfdOther(e) ? { from: 'none', to: 'none' } : DFD_END[e.type] || DFD_END['dfd.DataFlow'], aria: dfdLineName(I, e), ...(DFD_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }));
   const g = layoutTyped({ nodes, edges, direction: view.direction === 'down' ? 'down' : 'right', gap: 64, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo);
   return { ...g, legend: dfdLegend(I, ids, lines, skin), order: dfdOrder(I, ids, lines) }; // a new object: what layoutTyped returned is never edited (§2.6)
 }
