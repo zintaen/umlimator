@@ -10,7 +10,7 @@ import './class.js'; // SHAPE.note, a comment's
 import { snKindName } from './structure.js';
 import { frame } from './frame.js';
 import { FLOW_RULES, flowOf, flowProblems, flowLabel, flowRename, flowStereo, viewFlows } from './flow.js';
-import { copyOf } from '../core/model.js';
+import { copyOf, usedIds } from '../core/model.js';
 
 /* ---------- the activity diagram, uml.activity (work package 4.5, notes/stage-4.md §9) ----------
    Control nodes, actions and flows from src/uml/flow.js; the send and accept signals, the object node, the data store and
@@ -252,7 +252,7 @@ function actDescribe(model, viewId) {
 /* ---- editing (§9.4, §12.1): each hook returns commands, null to leave the gesture to the default, or { error } for the
    hint line, and never a transaction that breaks a rule (S5) ---- */
 function acFreshId(model, base) {
-  const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+  const used = new Set(); usedIds(model, used);
   const b = String(base).toLowerCase().replace(/->/g, '-').replace(/[^\p{L}\p{N}_$-]+/gu, '-').replace(/^-+|-+$/g, '') || 'node'; // ids never hold "->" (M2)
   let k = 1; while (used.has(k === 1 ? b : `${b}-${k}`)) k++;
   return k === 1 ? b : `${b}-${k}`;

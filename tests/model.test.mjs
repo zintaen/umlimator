@@ -424,3 +424,54 @@ test('audit 26: apply(), layout() and diff() never write into a host\'s model of
   const plain = { nodes: [new Node('a', 'A')], views: [{ id: 'v', nodeIds: ['a'] }] }, p2 = L.apply(plain, { op: 'set', id: 'a', path: 'label', value: 'Z' });
   assert.equal(plain.nodes[0].label, 'A'); assert.equal(p2.nodes[0].label, 'Z');
 });
+
+// a host's model built in code may hold what JSON cannot: an object that holds itself, a BigInt (audit 28)
+const hostile = m => { const n = m.nodes.find(x => x && typeof x === 'object'); n.props = { ...(n.props || {}), host: n, big: 10n }; return m; };
+const typedSources = async () => { const { readdirSync } = await import('node:fs');
+  for (const d of ['uml', 'er', 'flowchart', 'dfd', 'c4', 'sysml', 'bpmn', 'mindmap', 'cloud']) for (const f of readdirSync(new URL(`../src/${d}/`, import.meta.url)).sort()) await import(`../src/${d}/${f}`);
+  await import('../src/map/typed.js'); return import('../src/core/registry.js'); };
+
+test('audit 28: every type\'s edit hooks pick a fresh id on a model holding a cycle or a BigInt (one id walk, src/core/model.js usedIds)', async () => {
+  const { diagramOf } = await typedSources(), { readdirSync } = await import('node:fs');
+  const files = [...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).map(f => `../examples/${f}`),
+    ...readdirSync(new URL('./', import.meta.url)).filter(f => f.endsWith('-minimal.json')).map(f => `./${f}`)];
+  const bad = [], ran = new Set();
+  for (const f of files) { const base = read(f); if (base.schemaVersion !== 2) continue;
+    for (const v0 of base.views.filter(v => v && v.diagram && v.diagram !== 'map')) { const D = diagramOf(v0), E = D && D.edits; if (!E) continue;
+      const m = hostile(structuredClone(base)), v = m.views.find(x => x.id === v0.id), ids = (v.nodeIds || []).filter(id => typeof id === 'string');
+      const els = (D.elements || []).slice(0, 4), lines = (D.lines || []).slice(0, 4), a = ids[0], b = ids[1] ?? ids[0];
+      const calls = [...els.map(t => ['add', () => E.add(m, v, t, 'New', { sel: [a], t: 1, parent: a })]), ...lines.map(t => ['connect', () => E.connect(m, v, a, b, { t: 1 }, t)]),
+        ['member', () => E.member(m, v, a, null, 'spare : Real')], ['key D', () => E.key(m, v, [a], 'D')]];
+      for (const [k, call] of calls) { if (typeof E[k.split(' ')[0]] !== 'function') continue; ran.add(k);
+        try { call(); } catch (e) { if (/circular|BigInt/i.test(e.message)) bad.push(`${f} ${v.diagram} ${k}: ${e.message.split('\n')[0]}`); } } } }
+  assert.deepEqual(bad, []);
+  assert.deepEqual([...ran].sort(), ['add', 'connect', 'key D', 'member']); // each hook kind was reached
+  // the walk reads the ids JSON.stringify's replacer read, on every example
+  const { usedIds } = await import('../src/core/model.js');
+  for (const f of files) { const m = read(f), seen = new Set(); JSON.stringify(m, (k, x) => { if (k === 'id' && typeof x === 'string') seen.add(x); return x; });
+    assert.deepEqual([...usedIds(m)].sort(), [...seen].sort(), f); }
+});
+
+test('audit 28: validate(), apply() and references() read a host\'s member that holds its owner; a shared element is still read at each place', async () => {
+  const U = await import('../lib/umlimator-all.js');
+  const cls = () => ({ schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'A', members: [{ id: 'a1', type: 'uml.Property', label: 'x' }] }, { id: 'b', type: 'uml.Class', label: 'B', parent: 'a' }],
+    edges: [{ id: 'e', type: 'uml.Association', from: 'a', to: 'b' }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b'] }] });
+  for (const make of [m => { m.nodes[0].members[0].members = [m.nodes[0]]; }, m => { m.nodes[0].members.push(m.nodes[0]); }, m => { const x = { id: 'x', type: 'uml.Property', label: 'loop' }; x.members = [x]; m.nodes[1].members = [x]; }]) {
+    const m = cls(); make(m);
+    const ps = U.validate(m); assert.ok(ps.some(p => /used twice/.test(p.message)), JSON.stringify(ps));
+    assert.equal(U.apply(m, { op: 'set', id: 'b', path: 'label', value: 'Z' }).nodes[1].label, 'Z');
+    assert.deepEqual(U.references(m, 'a').map(r => r.path.join('.')).sort(), ['edges.0.from', 'nodes.1.parent', 'views.0.nodeIds.0']);
+    U.layout(m, 'v'); U.check(m, 'v'); U.describe(m, 'v'); }
+  // an element a host lists twice (no cycle) is read at both places, as before
+  const m = cls(), shared = { id: 'p', type: 'uml.Property', label: 'p', props: { type: 'b' } }; m.nodes[0].members.push(shared); m.nodes[1].members = [shared];
+  assert.ok(U.validate(m).some(p => p.message.includes('id "p" is used twice')));
+});
+
+test('audit 28: describe() names a card at the far end once, with how many lines say the same', () => {
+  const m = { nodes: [{ id: 'a', label: 'A', kind: 'service' }, { id: 'b', label: 'B', kind: 'service' }, { id: 'c', label: 'C', kind: 'service' }],
+    edges: [{ from: 'a', to: 'b' }, { from: 'a', to: 'b' }, { from: 'a', to: 'c' }, { from: 'a', to: 'b', label: 'x' }, { from: 'a', to: 'b', label: 'x' }, { from: 'a', to: 'b', label: 'y' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }] };
+  const d = describe(m, 'v');
+  assert.match(d, /^v: 3 cards and 6 lines\./);
+  assert.match(d, /\nA calls B \(2 lines\), C, B \("x", 2 lines\) and B \("y"\)\./, d);
+  m.edges = m.edges.slice(0, 1); assert.match(describe(m, 'v'), /\nA calls B\.\n/);
+});

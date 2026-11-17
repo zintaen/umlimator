@@ -7,6 +7,7 @@ import { brLines } from '../typed/draw.js';
 import { lineIn, lineItem } from './class.js'; // SHAPE.note, a comment's look too
 import { ownersOn, placeTabs, readingOrder } from './owners.js';
 import { snKindName } from './structure.js';
+import { usedIds } from '../core/model.js';
 
 /* ---------- the use case diagram, uml.use-case (work package 4.4, notes/stage-4.md §8) ----------
    Actors (a stick figure), use cases (an ellipse, its extension points in a compartment under the name) and subjects: a
@@ -291,7 +292,7 @@ const ucPointText = t => { const s = String(t ?? '').trim(); return s ? { type: 
 function ucConnect(model, view, from, to, at, line) {
   const ty = id => (UC_ARR(model.nodes).find(n => UC_OBJ(n) && n.id === id) || {}).type;
   if (!UC_OBJ(line) || line.type !== 'uml.Association' || ty(from) !== 'uml.UseCase' || ty(to) !== 'uml.Actor') return null;
-  const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+  const used = new Set(); usedIds(model, used);
   let k = 1; while (used.has('association' + k)) k++;
   return [{ op: 'add', element: { id: 'association' + k, type: 'uml.Association', from: to, to: from }, view: view.id }];
 }

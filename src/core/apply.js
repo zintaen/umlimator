@@ -45,8 +45,8 @@ const dig = (x, path) => path.split('.').reduce((o, k) => (isObj(o) ? o[k] : und
 /* Every element by id: { x, list, kind, owner, view } (owner: the element whose member it is; view: the view a line or
    fragment of its own lives in) */
 function index(m) {
-  const at = new Map();
-  const put = (x, list, kind, owner, view) => { if (!isObj(x) || typeof x.id !== 'string') return;
+  const at = new Map(), seen = new Set(); // seen: each element walked once, so a host's member that holds its owner ends (audit 28)
+  const put = (x, list, kind, owner, view) => { if (!isObj(x) || typeof x.id !== 'string' || seen.has(x)) return; seen.add(x);
     if (!at.has(x.id)) at.set(x.id, { x, list, kind, owner, view }); arr(x.members).forEach(y => put(y, x.members, 'member', x, view)); };
   arr(m.nodes).forEach(n => put(n, m.nodes, 'node'));
   arr(m.edges).forEach(e => put(e, m.edges, 'edge'));
@@ -61,14 +61,14 @@ function index(m) {
    only(viewIndex): look in those views and their story steps only (hide), else in all of the model; top: also in what
    is not a view's (its nodes and lines, lenses, rules), by default when only is not given. */
 function refs(m, ids, only, top = !only) {
-  const out = [], say = (path, kind) => out.push({ path, kind }), has = id => typeof id === 'string' && ids.has(id);
-  const element = (x, at, line) => { if (!isObj(x)) return; // line: x is a line, not a node or member that has a field named to
+  const out = [], say = (path, kind) => out.push({ path, kind }), has = id => typeof id === 'string' && ids.has(id), up = new Set();
+  const element = (x, at, line) => { if (!isObj(x) || up.has(x)) return; // line: x is a line, not a node or member that has a field named to; up: the elements x is a member of (a host's cycle ends: audit 28)
     if (has(x.parent)) say([...at, 'parent'], 'parent');
     if (line) ['from', 'to'].forEach(k => { if (has(x[k])) say([...at, k], 'end');
       if (has((((x.props || {}).ends || {})[k] || {}).part)) say([...at, 'props', 'ends', k, 'part'], 'part'); });
     Object.keys(propRefs(x.type)).forEach(p => { const v = dig(x, p), ks = p.split('.');
       if (has(v)) say([...at, ...ks], 'prop'); else arr(v).forEach((id, j) => { if (has(id)) say([...at, ...ks, j], 'prop'); }); });
-    arr(x.members).forEach((y, j) => element(y, [...at, 'members', j], false)); };
+    up.add(x); arr(x.members).forEach((y, j) => element(y, [...at, 'members', j], false)); up.delete(x); };
   if (top) { arr(m.nodes).forEach((n, i) => element(n, ['nodes', i], false)); arr(m.edges).forEach((e, i) => element(e, ['edges', i], true)); }
   const vids = new Set(), views = new Set(arr(m.views).map(v => isObj(v) && v.id));
   arr(m.views).forEach((v, i) => { if (!isObj(v) || (only && !only(i))) return; const at = ['views', i]; vids.add(v.id);

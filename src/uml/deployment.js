@@ -6,6 +6,7 @@ import { layoutTyped } from '../typed/layout.js';
 import { lineItem, lineRename } from './class.js'; // SHAPE.note, a comment's look too
 import { lineInside, ownersOn, readingOrder, viewLines } from './owners.js';
 import { SN_SAY, STRUCT_RULES, snKindName, snKindWord, structProblems } from './structure.js'; // SHAPE.artifact and SHAPE.component too
+import { usedIds } from '../core/model.js';
 
 /* ---------- the deployment diagram, uml.deployment (work package 5.5, notes/stage-5.md §10.3) ----------
    Nodes, devices and execution environments (UML's cube: a front face with a top and a right face 10 px deep), each a box
@@ -226,7 +227,7 @@ function dpConnect(model, view, from, to, at, line) {
   if (t === 'uml.Manifestation' && !flip && !DP_ARTIFACTS.includes(ty(from))) return { error: 'A manifestation runs from an artifact' }; // manifest-ends (audit 20)
   if (t === 'uml.CommunicationPath' && (!DP_TARGETS.includes(ty(from)) || !DP_TARGETS.includes(ty(to)) || from === to)) return { error: 'A communication path joins two nodes, devices or execution environments' };
   if (!flip) return null;
-  const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+  const used = new Set(); usedIds(model, used);
   const base = t === 'uml.Deployment' ? 'deployment' : 'manifestation'; let k = 1; while (used.has(base + k)) k++;
   return [{ op: 'add', element: { id: base + k, type: t, from: to, to: from }, view: view.id }];
 }

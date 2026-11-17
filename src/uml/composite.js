@@ -8,6 +8,7 @@ import { LINE_WORDS, legendOf, lineIn, lineLook, lineRename, memberEdit, multBou
 import './usecase.js'; // SHAPE.ellipse, a collaboration use's; SHAPE.subject, a class subject's frame
 import { SN_SAY, STRUCT_RULES, snKindName, portFit, portSides, portsDrawn, structProblems } from './structure.js';
 import { viewLines } from './owners.js';
+import { usedIds } from '../core/model.js';
 
 /* ---------- the composite structure diagram, uml.composite-structure (work package 5.6, notes/stage-5.md §6, §10.2) ----------
    The view's subject (a class, a component or a collaboration, listed in nodeIds) is a box holding its parts (its uml.Property
@@ -61,7 +62,7 @@ const csSets = (x, r, keepType) => [['label', x.label, r.label], ['props.valueTy
 const csIdOf = (o, r) => `${o ? o + '.' : ''}${String(r.label ?? r.valueType ?? (r.props || {}).valueType ?? 'part').toLowerCase()}`;
 // an id not yet in the model: base, else base-2, base-3, …
 function csFresh(model, base) {
-  const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+  const used = new Set(); usedIds(model, used);
   const b = String(base).replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '') || 'element'; let id = b, k = 1; while (used.has(id)) id = `${b}-${++k}`;
   return id;
 }

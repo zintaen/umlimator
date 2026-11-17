@@ -9,6 +9,7 @@ import './class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from './flow.js'; // SHAPE.initial, final, diamond and bar too
 import { ownersOn, readingOrder } from './owners.js';
 import { parseTransition, printTransition, transitionText } from './transition.js';
+import { usedIds } from '../core/model.js';
 import { snKindName } from './structure.js';
 
 /* ---------- the state machine diagram, uml.state-machine (work package 4.6, notes/stage-4.md §6, §10) ----------
@@ -348,7 +349,7 @@ function stDescribe(model, viewId) {
 }
 
 /* ---- editing (§10.3): each hook returns commands, { commands, say }, null for the default, or { error } ---- */
-const stFresh = (model, base) => { const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+const stFresh = (model, base) => { const used = new Set(); usedIds(model, used);
   let k = 1; while (used.has(base + k)) k++; return base + k; };
 // a hook's commands, or { error } when they bring an error the model did not have (notes/stage-3.md S5), as the activity's acGuard;
 // a vertex put directly in a state with regions (region-mixed) too: it would sit beside them in no region
@@ -481,6 +482,8 @@ const ST_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
 const ST_PARTS = [['trigger', 'Trigger'], ['guard', 'Guard'], ['effect', 'Effect']].map(([key, label]) => ({ key, label, kind: 'text' }));
 const ST_TYPE = registerDiagramType('uml.state-machine', {
   title: 'state machine diagram',
+  // the kinds of line it draws: any other a view lists is not drawn, which validate() says (src/core/model.js, audit 28)
+  drawsOnly: ST_LINES,
   elements: [{ type: 'uml.State', label: 'State' },
     ...[['initial', 'Initial'], ['finalState', 'Final state'], ['choice', 'Choice'], ['junction', 'Junction'], ['fork', 'Fork'], ['join', 'Join'], ['shallowHistory', 'Shallow history'], ['deepHistory', 'Deep history'], ['terminate', 'Terminate']]
       .map(([kind, label]) => (kind === 'finalState' ? { type: 'uml.FinalState', label, name: false } : { type: 'uml.Pseudostate', label, props: { kind }, name: false })),

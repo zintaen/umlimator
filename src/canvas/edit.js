@@ -1,7 +1,8 @@
 import { TYPED, diagramOf, heldBy } from '../core/registry.js';
-import { copyOf } from '../core/model.js';
+import { copyOf, usedIds } from '../core/model.js';
 import { esc } from '../core/text.js';
 import { arrOf, validate } from '../map/validate.js';
+import { jsonText } from '../map/diff.js';
 
 /* ---------- editing a typed view (work package 1.7) ----------
    In a schema version 2 model drawn with `editable`, a view whose `diagram` is set and is not 'map' is edited with
@@ -53,7 +54,7 @@ function typedEditor(api) {
   const lineTypes = () => entries('lines').length ? entries('lines') : [GENERIC_LINE];
   const emit = commands => { if (commands.length) api.emit(commands); return true; };
   const newId = base => { // the base and the first number free in the model: 'class1', 'line2'
-    const used = new Set(); JSON.stringify(model(), (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+    const used = new Set(); usedIds(model(), used);
     const b = String(base).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'el'; let k = 1; while (used.has(b + k)) k++; return b + k; };
   const typeOf = x => typeof x.type === 'string' && x.type ? x.type : null; // a model may hold anything in type
   const typed = (t, base) => { const ty = typeOf(t); return { id: newId(ty ? ty.split('.').pop() : base), ...(ty ? { type: ty } : {}) }; };
@@ -197,7 +198,7 @@ function typedEditor(api) {
     if (offer && x.parent != null && !offer.some(o => o.id === x.parent)) offer.push({ id: x.parent, label: (at.get(x.parent) || { x: {} }).x.label });
     if (offer) h += `<label>Owner<select data-f="owner" data-owner${can('move') ? '' : ' disabled'}>${offer.map(o => `<option value="${esc(o.id)}"${o.id === (x.parent ?? '') ? ' selected' : ''}>${esc(o.label ?? o.id)}</option>`).join('')}</select></label>`;
     const rest = own.length ? [] : Object.entries(P); // no schema: what it holds, to read
-    if (rest.length) h += '<dl>' + rest.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(typeof v === 'string' ? v : JSON.stringify(v))}</dd>`).join('') + '</dl>';
+    if (rest.length) h += '<dl>' + rest.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(typeof v === 'string' ? v : jsonText(v))}</dd>`).join('') + '</dl>';
     const M = def().member;
     if (e.kind === 'node' && !(M && M.holds && !M.holds(x))) { // a comment holds none
       const ms = arrOf(x.members).filter(m => isRec(m) && typeof m.id === 'string'), line = m => M ? M.print(m) : m.label ?? ''; // a type's member text: "+ total: Money [1]" (1.9)
