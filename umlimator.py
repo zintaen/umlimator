@@ -1276,9 +1276,9 @@ def apng(frames, delays, out):
     for k, (p, ms) in enumerate(zip(pngs, delays)):
         n = max(1, -(-int(ms) // 65535000))
         shown += [(k, p, int(ms) / n)] * n
-    def delay(ms):  # ms / 1000 in lowest terms when that fits, else in the finest unit that does
+    def delay(ms):  # in ms while that fits (as before), else ms / 1000 in lowest terms when that does, else the finest unit that does
         ms = round(ms)
-        g = math.gcd(ms, 1000)
+        g = 1 if ms <= 65535 else math.gcd(ms, 1000)
         if ms // g <= 65535:
             return ms // g, 1000 // g
         den = next(d for d in (100, 10, 1) if round(ms * d / 1000) <= 65535)
