@@ -621,3 +621,24 @@ test('a relation label ending in } reads back as written: the writer writes that
   assert.deepEqual(back.report, []);
   assert.deepEqual(back.model.edges.map(e => [e.from, e.to]), [['A', 'B']]);
 });
+
+test('audit 23: every Mermaid writer writes a title that is a number or true as quoted text, and a hostile value never throws', async () => {
+  const W = { class: ['uml.class', 'uml.Class'], sequence: ['uml.sequence', 'uml.Lifeline'], state: ['uml.state-machine', 'uml.State'], er: ['er', 'er.Entity'],
+    requirement: ['sysml.requirement', 'sysml.Requirement'], mindmap: ['mindmap', 'mindmap.Topic'], flowchart: ['flowchart', 'flow.Process'] };
+  for (const [f, [d, t]] of Object.entries(W)) {
+    const mod = await import(`../src/readers/mermaid-${f}.js`), [rd, wr] = ['read', 'write'].map(k => Object.values(mod).find(x => x.name.startsWith(k) || (k === 'write' && x.name === 'msWrite')));
+    const one = () => ({ schemaVersion: 2, root: 'v', nodes: [{ id: 'A', type: t, label: 'A' }], edges: [], views: [{ id: 'v', diagram: d, nodeIds: ['A'] }] });
+    // a number, a boolean and text YAML would read as a number or no title: quoted, and read back as that text
+    for (const [title, text] of [[12, '12'], [true, 'true'], ['1e3', '1e3'], ['null', 'null'], ['Orders', 'Orders']]) for (const where of ['model', 'view']) {
+      const m = one(); if (where === 'model') m.title = title; else m.views[0].title = title;
+      const out = wr(m), at = `${f}, ${JSON.stringify(title)} on the ${where}`;
+      assert.match(out, new RegExp(`^---\\ntitle: ${text === 'Orders' ? 'Orders' : `"${text}"`}\\n---\\n`), at);
+      assert.doesNotMatch(out, /not written: the model/, at);
+      assert.equal(rd(out).model.title, text, at);
+    }
+    // a JSON object holding a toString key, as the view's title, a card's label and the view asked for: no throw
+    const m = one(); m.views[0].title = JSON.parse('{"toString":1}'); m.nodes[0].label = JSON.parse('{"toString":1}'); m.title = 'T';
+    assert.match(wr(m), /^---\ntitle: T\n---\n/, f);
+    assert.match(wr(one(), JSON.parse('{"toString":1}')), /not written: view \[object Object\], which the model does not have/, f);
+  }
+});

@@ -1,3 +1,4 @@
+import { unreadable } from '../core/model.js';
 /* ---------- Mermaid requirementDiagram: a reader and a writer (notes/milestone-3.md §12, M3.6; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's requirement diagram page (docs/syntax/requirementDiagram.md, read 14 Nov 2026), as the
    other readers are against theirs. Internal: the CLI (`umlimator.py import`) imports this file through Node; a host gets it
@@ -298,8 +299,12 @@ function readMermaidRequirement(text) {
 }
 
 function writeMermaidRequirement(model, viewId) {
+  // the model as validate() reads it: a value String() throws on (JSON's {"toString":1}) left out (audit 23)
+  model = unreadable(model).model;
   const m = model && typeof model === 'object' ? model : {}, arr = x => (Array.isArray(x) ? x : []), isObj = x => !!x && typeof x === 'object';
-  const flat = s => String(s).replace(/\r\n|\r|\n/g, '\\n'), nl = s => /[\r\n]/.test(String(s)); // a comment is one line
+  // text of any value: an object whose toString is no function (JSON's {"toString":1}) gives its tag, not a throw (audit 23)
+  const txt = s => { try { return String(s); } catch { return Object.prototype.toString.call(s); } };
+  const flat = s => txt(s).replace(/\r\n|\r|\n/g, '\\n'), nl = s => /[\r\n]/.test(txt(s)); // a comment is one line
   const views = arr(m.views).filter(isObj);
   const view = viewId != null ? views.find(v => v.id === viewId) : views.find(v => v.diagram === MQ_DIAGRAM);
   // a model with views is written through its requirement view; one with none, whole
@@ -328,12 +333,13 @@ function writeMermaidRequirement(model, viewId) {
     lose(id, `${what} ${v}, which Mermaid's quotes cannot hold`);
     return null;
   };
-  const title = view && view.title != null && view.title !== '' ? view.title : m.title;
-  // as it is only when YAML reads it as text: a letter first, and not one of YAML's null or boolean words
-  const plain = t => /^\p{L}[\p{L}\p{N} _.,()-]*$/u.test(t) && !t.endsWith(' ') && !/^(null|true|false|yes|no|on|off|y|n)$/i.test(t);
-  if (m.title != null && m.title !== title) notWritten.push(`the model's title ${flat(m.title)}, read back as the view's`);
+  // the title as text (a number or true too, audit 23), as it is only when YAML reads it as text: a letter first, and
+  // not one of YAML's null or boolean words; a title that is no text is not written
+  const word = x => ['string', 'number', 'boolean'].includes(typeof x) ? String(x) : '', title = word(view && view.title) || word(m.title);
+  const yamlText = t => /^\p{L}[\p{L}\p{N} _.,()-]*$/u.test(t) && !t.endsWith(' ') && !/^(null|true|false|yes|no|on|off|y|n)$/i.test(t) ? t : JSON.stringify(t);
+  if (title) out.push('---', `title: ${yamlText(title)}`, '---');
+  if (m.title != null && word(m.title) !== title) notWritten.push(`the model's title ${flat(m.title)}, read back as the view's`);
   if (m.root != null && m.root !== (view ? view.id : MQ_VIEW)) notWritten.push(`the model's root ${flat(m.root)}, read back as the view's id`);
-  if (title != null && title !== '') out.push('---', `title: ${plain(title) ? title : JSON.stringify(String(title))}`, '---');
   if (view && view.id !== MQ_VIEW) { if (keeps(view.id)) out.push(`%% id: ${view.id}`); else lose(view.id, "the view's id, which the reader would not keep"); }
   out.push('requirementDiagram');
   if (view && view.direction != null) {
