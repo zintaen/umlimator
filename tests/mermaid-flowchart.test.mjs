@@ -374,3 +374,19 @@ test('audit 25: a block-scalar front-matter title, and a plain or quoted one ove
     }
   }
 });
+
+test('a flowchart whose indented text is over the reader\'s limit is written unindented and reads back; text over it even so says so (audit 26)', () => {
+  const big = n => {
+    const m = { schemaVersion: 2, root: 'flow', nodes: [], edges: [], views: [{ id: 'flow', diagram: 'flowchart', nodeIds: [] }] };
+    for (let i = 0; i < n; i++) {
+      const id = `step_${i}`;
+      m.nodes.push({ id, type: 'flow.Process', label: `Process the incoming order number ${i} carefully` }); m.views[0].nodeIds.push(id);
+      if (i) m.edges.push({ id: `step_${i - 1}-${id}`, type: 'flow.Flow', from: `step_${i - 1}`, to: id, label: 'then' });
+    }
+    return m;
+  };
+  const t = write(big(10500)), back = read(t);
+  assert.deepEqual([t.length <= 1 << 20, /over its limit/.test(t), back.model.nodes.length, back.model.edges.length], [true, false, 10500, 10499]);
+  const t2 = write(big(14000));
+  assert.match(t2.slice(t2.lastIndexOf('%%')), /^%% not written: text the reader reads back: this is \d+ characters, over its limit of 1048576\n$/);
+});

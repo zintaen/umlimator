@@ -459,7 +459,10 @@ function writeMermaidFlowchart(model, viewId) {
     for (const k of Object.keys(e)) if (!['id', 'type', 'from', 'to', 'label'].includes(k)) lose(e.id, k === 'props' || k === 'ext' ? `its ${k}` : `property ${k}`);
   }
   for (const x of notWritten) out.push(`  %% not written: ${x}`);
-  return out.join('\n') + '\n';
+  // unindented when indented text would be over the reader's own limit; text still over it cannot be read again, and
+  // says so in its last line, as the class, state and sequence writers do (audit 26)
+  const text = out.join('\n') + '\n', t = text.length > MF_LIMIT ? text.replace(/^[ \t]+/gm, '') : text;
+  return t.length > MF_LIMIT ? t + `%% not written: text the reader reads back: this is ${t.length} characters, over its limit of ${MF_LIMIT}\n` : t;
 }
 
 export { readMermaidFlowchart, writeMermaidFlowchart };
