@@ -1,4 +1,4 @@
-import { nameTable, unreadable } from '../core/model.js';
+import { copyOf, nameTable, unreadable } from '../core/model.js';
 import { diagramOf } from '../core/registry.js';
 import { edgeRefIds } from './api.js';
 import { mapContext } from './context.js';
@@ -146,7 +146,7 @@ export function whatIf(model, viewId, options = {}) {
 export function sequenceFromTrace(model, spans, options = {}) {
   // read as mapContext reads a model (audit 20); the match table by name, where a service may be named toString (audit 21)
   const match = options && options.match; [model, spans, options] = [model, [].concat(spans || []), { ...options, match: null }].map(x => unreadable(x).model);
-  const out = structuredClone(model || {}), id = String(options.view ?? 'trace'), views = arrOf(out.views);
+  const out = copyOf(model || {}), id = String(options.view ?? 'trace'), views = arrOf(out.views);
   const cards = [...arrOf(out.nodes), ...views.flatMap(v => arrOf(v && v.nodes))].filter(n => n && n.id != null);
   const list = [].concat(spans || []).filter(s => s && Number.isFinite(+s.start) && Number.isFinite(+s.end));
   const span = new Map(list.map(s => [String(s.id), s])), cardOf = cardMatcher(cards, match), hops = [], lost = new Set();

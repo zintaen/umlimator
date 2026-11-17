@@ -66,7 +66,7 @@ const PINNED = {
   'internal-block-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
   'internal-block-stress': { 'edge-cases': { right: [1, 0, 0], down: [2, 0, 0] }, 'ec-ports-only': { right: [0, 0, 0], down: [0, 0, 0] }, all: { right: [16, 0, 0], down: [32, 1, 0] } },
   'parametric-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
-  'parametric-stress': { 'edge-cases': { right: [1, 0, 0], down: [1, 0, 0] }, 'ec-constraint-block': { right: [0, 0, 0], down: [0, 1, 0] }, all: { right: [206, 26, 0], down: [202, 28, 0] } },
+  'parametric-stress': { 'edge-cases': { right: [1, 0, 0], down: [1, 0, 0] }, 'ec-constraint-block': { right: [0, 0, 0], down: [0, 1, 0] }, all: { right: [207, 23, 0], down: [206, 24, 0] } },
 };
 
 test('every view of the eight fixtures, right and down: a line through a node, an end off its node, a label over a node, a port off its owner\'s border and check()\'s findings, each only as pinned (the stated limits)', () => {

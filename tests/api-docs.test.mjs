@@ -95,3 +95,15 @@ test('audit 22: drift()\'s page says what an entry with one end that is no name 
   assert.match(page, /other end, when it is a name with no card, is still listed in `counts\.unmatched`/);
   assert.match(page, /\| `counts\.unmatched` \|[^\n]*the other end of its entry is still listed/);
 });
+
+test('audit 24: delete\'s rows say that a model element under a node one view alone holds is kept and lifted, as apply() does it', async () => {
+  const { apply } = await import('../lib/umlimator-all.js');
+  const m = { schemaVersion: 2, nodes: [{ id: 'M', type: 'uml.ActivityPartition', label: 'Shop' }, { id: 'x', type: 'uml.Action', label: 'Pack', parent: 'P' }], edges: [],
+    views: [{ id: 'v', diagram: 'uml.activity', nodeIds: ['M', 'P', 'x'], nodes: [{ id: 'P', type: 'uml.ActivityPartition', label: 'Floor', parent: 'M' }] }, { id: 'w', diagram: 'uml.activity', nodeIds: ['M', 'x'] }] };
+  assert.equal(apply(m, { op: 'delete', id: 'P' }).nodes.find(n => n.id === 'x').parent, 'M', 'kept, under its nearest owner left');
+  assert.throws(() => apply(m, [{ op: 'add', element: { id: 'y', type: 'uml.Action', label: 'Y' } }, { op: 'reparent', id: 'y', parent: 'P' }]), /lives in view "v" only/);
+  const row = (page, cell) => (page.split('\n').find(l => l.startsWith(cell)) || '');
+  assert.match(row(pages['apply-and-commands.md'], '| `delete` |'), /kept: it moves to its nearest owner left, else to none/);
+  assert.match(row(pages['apply-and-commands.md'], '| `reparent` |'), /under it throws, and `validate\(\)` warns/);
+  assert.match(row(read(join(root, 'docs/guide/editing.md')), '| `delete` (Shift + Delete) |'), /except a model element under a node only this view holds: it moves to its nearest owner left/);
+});

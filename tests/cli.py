@@ -36,7 +36,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1})
 
 
 def ok(name, cond, info=""):
@@ -203,6 +203,25 @@ if part("the summary's text and the icon cache"):
     ok("record · a step's duration the page only warns about is played as the page plays it, not a traceback (audit 4)",
        [u.step_ms(d) for d in (None, 1200, -500, "slow", 0, "nan", [1])] == [4000, 1200, 500, 4000, 4000, 4000, 4000])
 
+if part("animated PNG delays"):
+    # audit 24: a frame's delay was min(ms, 65535) over 1000, so a step over 65.5 s was cut to 65.535 s in the animated PNG
+    with tempfile.TemporaryDirectory() as tmp:
+        c = lambda t, d: len(d).to_bytes(4, "big") + t + d + zlib.crc32(t + d).to_bytes(4, "big")
+        one = b"\x89PNG\r\n\x1a\n" + c(b"IHDR", (1).to_bytes(4, "big") * 2 + bytes([8, 0, 0, 0, 0])) + c(b"IDAT", zlib.compress(b"\x00\x80")) + c(b"IEND", b"")
+        (Path(tmp) / "a.png").write_bytes(one)
+        ms = [u.step_ms(d) for d in (90000, 4000, 65535, 65536, 654321, 1e8)]
+        u.apng([Path(tmp) / "a.png"] * len(ms), ms, str(Path(tmp) / "out.png"))
+        b, i, fc = (Path(tmp) / "out.png").read_bytes(), 8, []
+        while i < len(b):
+            n = int.from_bytes(b[i:i + 4], "big")
+            if b[i + 4:i + 8] == b"fcTL":
+                fc.append(int.from_bytes(b[i + 28:i + 30], "big") * 1000 / int.from_bytes(b[i + 30:i + 32], "big"))
+            elif b[i + 4:i + 8] == b"acTL":
+                frames = int.from_bytes(b[i + 8:i + 12], "big")
+            i += 12 + n
+        ok("record · a step over 65.535 s lasts its duration in the animated PNG, one over 65535 s shown again to make it up (audit 24)",
+           fc[:5] == [90000, 4000, 65535, 65536, 654320] and sum(fc[5:]) == 1e8 and len(fc[5:]) == 2 and frames == len(fc) == 7, fc)
+
 bike = json.loads((ROOT / "examples" / "bike-share.json").read_text(encoding="utf-8"))
 SAID = ["renames Accounts to Accounts and sign-in", "adds Payments queue between Trip service and Payment provider",
         "removes Feature flags", "removes the line from Trip service to Payment provider (charges)",
@@ -242,6 +261,15 @@ with tempfile.TemporaryDirectory() as tmp:
            and all(isinstance(e, dict) and e.get("type") == "uml.Message" and "->" not in e["id"] for e in v.get("edges", [])), r)
         rv = cli("render", str(t / "traced-uml.json"), "--out", str(t / "traced-uml.html"))
         ok("trace --diagram uml.sequence · the model renders and its check is clean", rv is not None and not rv.get("problems") and not rv.get("errors"), rv)
+        # traced again into that view (audit 24): the UML sequence view it replaces takes its lifelines, those no view lists, with it
+        span = lambda svc, sid, par, name, a, b: {"resource": {"attributes": [{"key": "service.name", "value": {"stringValue": svc}}]}, "scopeSpans": [{"spans": [
+            {"traceId": "5b8aa5a2d2c872e8321cf37308d69df2", "spanId": sid, "parentSpanId": par, "name": name, "startTimeUnixNano": str(1762700000000000000 + a), "endTimeUnixNano": str(1762700000000000000 + b)}]}]}
+        (t / "small-trace.json").write_text(json.dumps({"resourceSpans": [span("rider-app", "a1", "", "tap End ride", 0, 212000000), span("trip-api", "b1", "a1", "POST /rides/{id}/end", 5000000, 200000000)]}))
+        lone = lambda m: sorted(n["id"] for n in m.get("nodes", []) if n.get("type") == "uml.Lifeline" and not any(n["id"] in (w.get("nodeIds") or []) for w in m.get("views", [])))
+        for extra, name in ((["--diagram", "uml.sequence"], "again-uml"), ([], "again")):
+            cli("trace", str(t / "traced-uml.json"), str(t / "small-trace.json"), "--view", "ride-end", "--match", str(tr / "match.json"), *extra, "--out", str(t / f"{name}.json"))
+            got = json.loads((t / f"{name}.json").read_text(encoding="utf-8")) if (t / f"{name}.json").is_file() else {"nodes": [{"id": "?", "type": "uml.Lifeline"}]}
+            ok(f"trace {' '.join(extra) or '(a numbered view)'} · traced again into a UML sequence view it made: no lifeline of the old view left on no view", lone(got) == [], lone(got))
         (t / "bare").mkdir(); (t / "bare" / "umlimator.py").write_bytes((ROOT / "umlimator.py").read_bytes())  # a copy with no src/
         r = subprocess.run([sys.executable, str(t / "bare" / "umlimator.py"), "trace", str(t / "before.json"), str(tr / "ride-end.json"), "--view", "ride-end",
                             "--diagram", "uml.sequence", "--out", str(t / "bare" / "out.json")], capture_output=True, text=True)
@@ -779,6 +807,24 @@ with tempfile.TemporaryDirectory() as tmp:
         ok("diff --base · two models whose stems differ only in case get pages whose names differ in more than case, each its own model's (audit 21)",
            len({str(o).casefold() for o in outs.values()}) == 2 and "NEW-ONE" in seen.get("docs/Map.json", "") and "NEW-TWO" not in seen.get("docs/Map.json", "")
            and "NEW-TWO" in seen.get("Docs-map.json", "") and "NEW-ONE" not in seen.get("Docs-map.json", ""), (outs, r.stderr[-300:]))
+        # audit 24: a model only moved (git mv) was said as every card removed from its old path and every card added at its new
+        g = t / "g24m"; (g / "docs").mkdir(parents=True)
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True)
+        nocr = lambda *x: subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                                          "sys.argv = ['umlimator.py', 'diff', *sys.argv[2:]]; u.main()", str(ROOT), *x], cwd=g, capture_output=True, text=True)
+        (g / "map.json").write_text(lab("old-one")); sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "one")
+        sh("mv", "map.json", "docs/map.json"); sh("commit", "-qm", "moved")
+        r = nocr("--base", "HEAD~1", "--out", "out")
+        md = (g / "out" / "summary.md").read_text(encoding="utf-8") if (g / "out" / "summary.md").is_file() else ""
+        ok("diff --base · a model only moved is no change: no entry, no page (audit 24)",
+           r.returncode == 0 and json.loads(r.stdout) == [] and "No map model changed." in md and not list((g / "out").glob("*.html")), (r.stdout, r.stderr[-300:], md))
+        sh("mv", "docs/map.json", "docs/sh`op.json"); (g / "docs" / "sh`op.json").write_text(lab("NEW-ONE"))
+        r = nocr("--base", "HEAD", "--out", "out2")
+        got = json.loads(r.stdout or "[]")
+        md = (g / "out2" / "summary.md").read_text(encoding="utf-8") if (g / "out2" / "summary.md").is_file() else ""
+        ok("diff --base · a model moved and edited is one entry, its edit only, naming where it moved from (audit 24)",
+           [(x["file"], x.get("movedFrom")) for x in got] == [("docs/sh`op.json", "docs/map.json")] and len(got[0]["summary"]) == 1 and "NEW-ONE" in got[0]["summary"][0]
+           and "**`docs/sh'op.json` (moved from `docs/map.json`)**" in md and "removes" not in md, (got, md, r.stderr[-300:]))
         # audit 21: --out in a folder that cannot be written, or under a path that is a file, ended in a traceback
         (t / "afile").write_text("x")
         ro = t / "ro21"; ro.mkdir(); ro.chmod(0o500)
@@ -1424,7 +1470,9 @@ if part("mcp"):
     said, err = tool("show_view", view="trips")
     ok("mcp · a page tool with no page connected says to open its URL", not err and said.startswith("No page is connected") and url and url.group(0) in said, said)
     web = lambda: http.client.HTTPConnection("127.0.0.1", int(url.group(1)), timeout=60)
-    c = web(); c.request("GET", "/events?page=t1"); stream = c.getresponse()  # a page, as the served script names itself
+    c = web(); c.request("GET", "/"); served = c.getresponse().read().decode()
+    token = re.search(r"TOKEN = '([^']+)'", served).group(1)  # this run's, in the page it serves: its requests carry it (audit 24)
+    c = web(); c.request("GET", f"/events?page=t1&token={token}"); stream = c.getresponse()  # a page, as the served script names itself
     sent = []
 
 
@@ -1435,7 +1483,7 @@ if part("mcp"):
             if line.startswith(b"data:"):
                 sent.append(json.loads(line[5:]))
                 a = web(); a.request("POST", "/state", json.dumps({"page": "t1", "model": sent[-1]["model"], "ack": sent[-1]["id"], "state": {"view": sent[-1]["want"]["view"]}}),
-                                     {"Content-Type": "application/json"}); a.getresponse().read()
+                                     {"Content-Type": "application/json", "X-Umlimator-Token": token}); a.getresponse().read()
 
 
     threading.Thread(target=acks, daemon=True).start()
@@ -1472,6 +1520,18 @@ if part("mcp"):
     said, err = tool("page_state")
     ok("mcp · another site's image, script, frame or post naming the server gets nothing and is no page; a link to the page, or its address typed, opens it (audit 22)",
        set(fetched.values()) == {403} and opened.status == 200 and typed.status == 200 and "x-site" not in said, (fetched, opened.status, typed.status, said))
+    # audit 24: a browser that sends no Fetch Metadata and no Origin (another site's <img src=".../events">) was counted as an
+    # open page; /events and /state need this run's token, which only the page the server serves holds
+    fetched = {}
+    for name, path, extra in [("no token", "/events?page=old-browser", {}), ("a wrong token", f"/events?page=old-browser&token={token[:-1]}x", {}),
+                              ("a token twice", f"/events?page=old-browser&token=x&token={token}", {}),
+                              ("a post with no token", "/state", {}), ("a post with a wrong token", "/state", {"X-Umlimator-Token": "x" + token[1:]})]:
+        c = web(); c.request("POST" if path == "/state" else "GET", path, json.dumps({"page": "old-browser"}) if path == "/state" else None,
+                             {"Content-Type": "application/json", "Referer": "https://evil.example/", **extra})
+        fetched[name] = c.getresponse().status; c.close()
+    said, err = tool("page_state")
+    ok("mcp · a request with no Fetch Metadata and no Origin, from another site, needs the run's token: without it, it gets nothing and is no page (audit 24)",
+       set(fetched.values()) == {403} and "old-browser" not in said and token not in said and len(token) >= 32, (fetched, said))
     mcp.stdin.close()
     ok("mcp · exits when its input closes", mcp.wait(timeout=30) == 0)
 

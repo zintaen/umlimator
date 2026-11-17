@@ -385,6 +385,53 @@ ok("import · a long description, label and view description are whole in the de
    and m["views"][0].get("caption") == long and un == [], (un, [len(card(m, "a").get("what", ""))]))
 m, un = imp.read("plantuml", f'Person(u, "U", "{long}")\nSystem(s, "S")\nRel(u, s, "uses", "", "{long}")', "x")
 ok("C4 · a long $descr is whole in the details panel, a card's and a line's (audit 21)", card(m, "u").get("what") == long and line(m, "u", "s").get("what") == long, un)
+# audit 24: Structurizr compares identifiers ignoring case (IdentifiersRegister); the importer matched them exactly, so a
+# relationship, an include and a view's scope written in another case were dropped
+DSL24 = """workspace {
+  model {
+    Customer = person "Customer"
+    shop = softwareSystem "Shop" {
+      webApp = container "Web app"
+      DB = container "Database"
+    }
+    other = softwareSystem "Other"
+    customer -> webapp "Uses"
+    webApp -> db "Reads"
+    SHOP.WEBAPP -> OTHER "Calls"
+  }
+  views {
+    container SHOP {
+      include *
+    }
+    systemLandscape {
+      include CUSTOMER Other
+      exclude other
+    }
+  }
+}"""
+m, un = imp.read("structurizr", DSL24, "x")
+ok("structurizr · identifiers match ignoring case in relationships, includes, excludes and a view's scope (audit 24)",
+   [(e["from"], e["to"]) for e in m["edges"]][:3] == [("Customer", "webApp"), ("webApp", "DB"), ("webApp", "other")] and un == []
+   and [(v["id"], v["nodeIds"]) for v in m["views"]] == [("shop-containers", ["Customer", "webApp", "DB", "other"]), ("landscape", ["Customer", "shop"])],
+   (m["edges"], m["views"], un))
+m, un = imp.read("structurizr", 'workspace {\nmodel {\na = person "A"\nA = person "B"\nb = person "C"\nA -> b\n}\n}', "x")
+ok("structurizr · one identifier written twice in two cases is said, and references name the first (audit 24)",
+   [(e["from"], e["to"]) for e in m["edges"]] == [("a", "b")] and un == [(4, "A: Structurizr reads identifiers ignoring case, so this is a again; references name a")], (m["edges"], un))
+# audit 24: the map importer read a front-matter title raw (YAML's '' and \" kept, a # comment in the title), as the
+# typed readers' mermaidTitle() does not; and it dropped the front matter's configuration and %%{init}%% without a word
+titles = [("'Bob''s shop'", "Bob's shop"), ('"The \\"returns\\" flow"', 'The "returns" flow'), ("Shop # the main flow", "Shop"),
+          ('"Shop" # the main flow', "Shop"), ("C# tips", "C# tips"), ("'Shop", "Shop"), ('"x"y"', "x")]
+got = [imp.read("mermaid", f"---\ntitle: {t}\n---\nflowchart LR\n  a --> b\n", "x")[0]["title"] for t, _ in titles]
+ok("mermaid · a front-matter title is read as YAML reads it, as the typed readers read it (audit 24)", got == [w for _, w in titles], got)
+m, un = imp.read("mermaid", '---\ntitle: "x"y"\n---\nflowchart LR\n  a --> b\n', "x")
+ok("mermaid · what follows a quoted title is said (audit 24)", un == [(2, "front matter title: y\", after the quoted title, is not read")], un)
+FM = '---\ntitle: Shop\ndisplayMode: compact\nconfig:\n  theme: dark\n---\n%%{init: {"theme": "forest"}}%%\n%%{\n  init: {}\n}%%\nflowchart LR\n  a --> b\n'
+want = [(3, "front matter displayMode: Mermaid's configuration is not read"), (4, "front matter config: Mermaid's configuration is not read"),
+        (7, "a %%{init}%% directive: Mermaid's configuration is not read"), (8, "a %%{init}%% directive: Mermaid's configuration is not read")]
+m, un = imp.read("mermaid", FM, "x")
+m2, un2 = imp.read("mermaid", FM.replace("flowchart LR\n  a --> b", 'C4Context\n  Person(a, "A")'), "x")
+ok("mermaid · front-matter configuration and %%{init}%% directives are said, in a flowchart and a C4 diagram (audit 24)",
+   un == want and un2 == want and m["title"] == m2["title"] == "Shop" and len(m["edges"]) == 1, (un, un2))
 
 with tempfile.TemporaryDirectory() as tmp:
     t = Path(tmp)

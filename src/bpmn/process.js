@@ -1,5 +1,5 @@
 import { apply } from '../core/apply.js';
-import { registerDiagramType } from '../core/registry.js';
+import { heldBy, registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { laneBands, laneOrder } from '../layout/lanes.js';
@@ -313,9 +313,12 @@ function bzProblems(model, view) {
   const seen = id => !view || shown.has(id) || (I.L.has(id) && shown.has(I.L.get(id).pool));
   const say = (level, rule, id, ids, msg, at = '') => out.push({ level, rule, path: (I.path.get(id) || '') + at, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const q = id => { const x = I.el(id); return x && BZ_HAS(x.label) ? `${id} ("${x.label}")` : String(id); }, ty = I.ty, flow = id => BZ_FLOW.includes(ty(id));
-  const seqs = [...I.E.values()].filter(e => e.type === BZ_SEQ), outs = id => seqs.filter(e => e.from === id), ins = id => seqs.filter(e => e.to === id);
+  // a line to what another view alone holds (view.nodes: a connect in that view) is that view's to judge, not this one's,
+  // which does not know its end (audit 24)
+  const H = heldBy(model), elsewhere = e => [e.from, e.to].some(x => !I.el(x) && H.has(x));
+  const seqs = [...I.E.values()].filter(e => e.type === BZ_SEQ && !elsewhere(e)), outs = id => seqs.filter(e => e.from === id), ins = id => seqs.filter(e => e.to === id);
   const msgDef = id => bzDef(I.el(id)) === 'message';
-  I.E.forEach((e, id) => { if (!BZ_LINES.includes(e.type) || !(seen(e.from) || seen(e.to))) return; const ids = [id, e.from, e.to];
+  I.E.forEach((e, id) => { if (!BZ_LINES.includes(e.type) || !(seen(e.from) || seen(e.to)) || elsewhere(e)) return; const ids = [id, e.from, e.to];
     if (e.type === BZ_SEQ) {
       if (!flow(e.from) || !flow(e.to)) say('error', 'sequence-ends', id, ids, `${id} joins ${q(e.from)} and ${q(e.to)}: a sequence flow joins activities, events and gateways`);
       else { if (I.level(e.from) !== I.level(e.to)) say('error', 'sequence-scope', id, ids, `${id} joins ${q(e.from)} and ${q(e.to)}, in ${I.poolOf(e.from) !== I.poolOf(e.to) ? 'different pools: use a message flow' : 'different sub-processes'}`);
@@ -599,8 +602,8 @@ const BZ_TYPE = registerDiagramType('bpmn', {
       // a pool's lanes in its row, each with its documentation (a lane has no row of its own)
       ...(x.type === BZ_POOL ? laneOrder(P.lanes).filter(l => P.I.poolOf(l.id) === id && l.id !== id).map(l => [bzLabel(P.I.el(l.id)), ...bzDocOf(P.I.el(l.id))].join(' — ')) : [])];
     return r.length ? r : null; },
-  // the PDF's lines table: a line's name, then its documentation
-  text: (model, view, id) => { const e = BZ_ARR(model && model.edges).find(x => BZ_OBJ(x) && x.id === id), d = e && bzProps(e).documentation;
+  // the PDF's lines table: a line's name, then its documentation; the view's own line too, which bzPic draws (audit 24)
+  text: (model, view, id) => { const e = bzIndex(model, view).E.get(id), d = e && bzProps(e).documentation;
     return BZ_HAS(d) ? [e.label, d].filter(BZ_HAS).map(t => String(t).trim()).join(' — ') : null; },
 });
 

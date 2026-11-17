@@ -9,7 +9,7 @@ import { edgeRefIds } from '../map/api.js';
 import { badgesOf, mapTabs, toneOf } from '../map/cards.js';
 import { warn } from '../core/warn.js';
 import { diagramOf, idTable } from '../core/registry.js';
-import { unreadable } from '../core/model.js';
+import { copyOf, unreadable } from '../core/model.js';
 import { mapContext } from '../map/context.js';
 import { canon } from '../map/diff.js';
 import { cardMatcher, msText } from '../map/insight.js';
@@ -670,7 +670,7 @@ export function render(container, model, options = {}) {
   const ownersOn = bs => new Map(bs.flatMap(b => [[b.id, b.parent ?? null], ...arrOf(b.nodeIds).map(id => [id, b.id])])); // id -> the box it is drawn in
   function withPlaces(m, use = null, prev = null) { // use: an edit the update applied, { view, hv: id -> its place, ex: a reordered group's places }; prev: the model before
     if (options.stableLayout === false) return m;
-    const out = structuredClone(m);
+    const out = copyOf(m);
     (out.views || []).forEach(v => {
       const bx = boxesIn(out, v), pv = viewIn(prev, v.id), A = ownersOn(boxesIn(prev, pv)), B = ownersOn(bx);
       const shown = new Set(arrOf(pv.nodeIds)), again = A.size + B.size > 0 && arrOf(v.nodeIds).some(id => shown.has(id) && (A.get(id) ?? null) !== (B.get(id) ?? null));
