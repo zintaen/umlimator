@@ -494,7 +494,8 @@ const CS_TYPE = registerDiagramType('uml.composite-structure', {
   describe: csDescribe,
   // the PDF's tables (§11): a part's and a collaboration use's kind and rows; null: as before
   word: (model, id) => { const P = csPic(model, {}), q = P.mem.get(id), x = q ? q.m : P.at.get(id); if (!x) return null;
-    return x.type === 'uml.Property' ? (q.owner.type === 'uml.Collaboration' ? 'Role' : 'Part') : x.type === 'uml.Port' ? 'Port' : x.type === 'uml.CollaborationUse' ? 'Collaboration use' : null; },
+    // a uml.Property kept as a node, not a member (audit 28): null, so the PDF says the type's word, "Property", as layout does
+    return x.type === 'uml.Property' ? (q ? (q.owner.type === 'uml.Collaboration' ? 'Role' : 'Part') : null) : x.type === 'uml.Port' ? 'Port' : x.type === 'uml.CollaborationUse' ? 'Collaboration use' : x.type == null ? snKindName(x.type) : null; }, // no type: "Element", as named (audit 28)
   rows: (model, view, id) => { const P = csPic(model, view), q = P.mem.get(id);
     // a part with its aggregation; a role has none (csNodeName, audit 10)
     const agg = m => (CS_PROPS(m).aggregation === 'shared' ? 'shared' : 'composite');

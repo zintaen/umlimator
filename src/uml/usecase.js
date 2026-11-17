@@ -202,7 +202,7 @@ function ucGeo({ model, view, pos: ranked, memo }) {
   const pic = ucPic(model, view), lines = ucLines(model, view, pic), pos = ucActorsFirst(ranked || {}, view, pic, lines), P = id => (Object.hasOwn(pos, id) ? pos[id] : [0, 0]);
   const nodes = pic.ids.filter(id => !pic.open.has(id)).map(id => { const n = pic.at.get(id), st = ucStereo(n);
     const shape = n.type === 'uml.Comment' ? { shape: 'note' } : n.type === 'uml.Package' ? { shape: 'package', stereotypes: st } : n.type === 'uml.Actor' ? { shape: 'actor', stereotypes: st }
-      : n.type === 'uml.UseCase' ? { shape: 'ellipse', stereotypes: st, points: ucPointsOf(n).map(ucName) } : { shape: 'classifier', stereotypes: st, compartments: [] }; // a closed subject, or another node
+      : n.type === 'uml.UseCase' ? { shape: 'ellipse', stereotypes: st, points: ucPointsOf(n).map(ucName) } : { shape: 'classifier', stereotypes: st, compartments: [], ariaOwn: ucNodeName(model, n, pic) }; // a closed subject, or another node: named as describe() names it (audit 28)
     const d = { id, label: ucName(n), type: n.type || 'uml.UseCase', kind: 'file', ...shape, aria: ucNodeName(model, n, pic), col: P(id)[0], row: P(id)[1] };
     return { ...d, ...SHAPE[d.shape].size(d) }; });
   const edges = lines.map(e => { const label = ucLineLabel(model, e);
@@ -331,6 +331,8 @@ const UC_TYPE = registerDiagramType('uml.use-case', {
   validate: ucProblems,
   rules: UC_RULES,
   describe: ucDescribe,
+  // the PDF's Kind of an element of no type: "Element", as its accessible name (audit 28); null: the type's word
+  word: (model, id) => { const x = UC_ARR(model && model.nodes).find(n => UC_OBJ(n) && n.id === id); return x && x.type == null ? snKindName(x.type) : null; },
   edits: { connect: ucConnect, remove: ucRemove, rename: ucRename },
 });
 

@@ -10,6 +10,7 @@ import { flowWrap } from './flow.js'; // SHAPE.initial, final, diamond and bar t
 import { ownersOn, readingOrder } from './owners.js';
 import { parseTransition, printTransition, transitionText } from './transition.js';
 import { usedIds } from '../core/model.js';
+import { snKindName } from './structure.js';
 
 /* ---------- the state machine diagram, uml.state-machine (work package 4.6, notes/stage-4.md §6, §10) ----------
    States (a rounded box, its name, then one compartment of rows: entry, do and exit, then each internal transition), a
@@ -118,7 +119,11 @@ function stIndex(model) {
 const stUp = (I, id) => { const r = I.M.get(id); return r ? r.owner.id : (I.N.get(id) || { x: {} }).x.parent; };
 const stWithin = (I, id, anc) => { for (let p = id, seen = new Set(); p != null && !seen.has(p); p = stUp(I, p)) { if (p === anc) return true; seen.add(p); } return false; };
 // the words of an element as its accessible name says them: "Initial pseudostate", "Final state", "Placed"
-const stWord = x => (x.type === 'uml.Pseudostate' ? (ST_OWN(ST_KIND_WORD, stKind(x)) || 'Pseudostate') + (ST_HAS(x.label) ? ' ' + x.label : '') : x.type === 'uml.FinalState' ? 'Final state' + (ST_HAS(x.label) ? ' ' + x.label : '') : stName(x));
+const stWord = x => (x.type === 'uml.Pseudostate' ? (ST_OWN(ST_KIND_WORD, stKind(x)) || 'Pseudostate') + (ST_HAS(x.label) ? ' ' + x.label : '') : x.type === 'uml.FinalState' ? 'Final state' + (ST_HAS(x.label) ? ' ' + x.label : '')
+  // a kind outside the state machine's (a class, an element of no type) in words, as the use case view names one: "Class Order",
+  // "Element Plain" (audit 28)
+  : ST_OWN_KINDS.includes(x.type) ? stName(x) : `${snKindName(x.type)} ${stName(x)}`);
+const ST_OWN_KINDS = ['uml.State', 'uml.Region', 'uml.Comment'];
 // a state's activities as its compartment and its name say them
 const stActs = x => ST_ACTS.filter(k => ST_HAS(ST_PROPS(x)[k])).map(k => [k, String(ST_PROPS(x)[k])]);
 const stRows = x => [...stActs(x).map(([k, t]) => `${k} / ${t}`), ...stMembers(x, 'uml.InternalTransition').map(stPartsText)];
@@ -214,7 +219,7 @@ function stGeo({ model, view, pos, memo }) {
       if (k === 'deepHistory') look.deep = true; }
     else if (x.type === 'uml.FinalState') look = { shape: 'final', label: '' };
     else if (x.type === 'uml.Comment') look = { shape: 'note', label: stName(x) };
-    else look = { shape: 'classifier', label: stName(x), stereotypes: st, compartments: [] };
+    else look = { shape: 'classifier', label: stName(x), stereotypes: st, compartments: [], ariaOwn: stNodeName(x, pic, I, false) }; // named as describe() names it, not by the type it is drawn as (audit 28)
     const d = { id, type: x.type || 'uml.State', kind: 'file', ...look, aria: stNodeName(x, pic, I, false), col: P(id)[0], row: P(id)[1] };
     return { ...d, ...SHAPE[d.shape].size(d) }; });
   const edges = lines.map(e => { const label = stLineLabel(e), T = e.type === 'uml.Transition';
@@ -477,6 +482,8 @@ const ST_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
 const ST_PARTS = [['trigger', 'Trigger'], ['guard', 'Guard'], ['effect', 'Effect']].map(([key, label]) => ({ key, label, kind: 'text' }));
 const ST_TYPE = registerDiagramType('uml.state-machine', {
   title: 'state machine diagram',
+  // the kinds of line it draws: any other a view lists is not drawn, which validate() says (src/core/model.js, audit 28)
+  drawsOnly: ST_LINES,
   elements: [{ type: 'uml.State', label: 'State' },
     ...[['initial', 'Initial'], ['finalState', 'Final state'], ['choice', 'Choice'], ['junction', 'Junction'], ['fork', 'Fork'], ['join', 'Join'], ['shallowHistory', 'Shallow history'], ['deepHistory', 'Deep history'], ['terminate', 'Terminate']]
       .map(([kind, label]) => (kind === 'finalState' ? { type: 'uml.FinalState', label, name: false } : { type: 'uml.Pseudostate', label, props: { kind }, name: false })),
@@ -502,7 +509,7 @@ const ST_TYPE = registerDiagramType('uml.state-machine', {
   // panel prints them (each internal transition's `trigger [guard] / effect`, each region); null: its members as before
   word: (model, id) => { const I = stIndex(model), x = (I.N.get(id) || {}).x; if (!x) return null;
     return x.type === 'uml.Pseudostate' ? ST_OWN(ST_KIND_WORD, stKind(x)) || 'Pseudostate' : x.type === 'uml.FinalState' ? 'Final state'
-      : x.type === 'uml.State' ? (I.subs(id).length || stMembers(x, 'uml.Region').length ? 'Composite state' : 'State') : null; },
+      : x.type === 'uml.State' ? (I.subs(id).length || stMembers(x, 'uml.Region').length ? 'Composite state' : 'State') : x.type == null ? snKindName(x.type) : null; }, // no type: "Element", as named (audit 28)
   rows: (model, view, id) => { const x = (stIndex(model).N.get(id) || {}).x;
     return x && x.type === 'uml.State' ? [...stActs(x).map(([k, t]) => `${k} / ${t}`), ...ST_ARR(x.members).filter(ST_OBJ).map(ST_MEMBER.print)] : null; },
   // member is not enumerable: Object.keys(edits) stays 4.6's four (tests/state.test.mjs), as notes/stage-5.md §12.1 (as built) says

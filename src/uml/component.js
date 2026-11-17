@@ -366,7 +366,7 @@ const CP_TYPE = registerDiagramType('uml.component', {
   describe: cpDescribe,
   edits: { connect: cpConnect, moveTo: cpMoveTo, add: cpAdd, member: cpMember, key: cpKey, remove: cpRemove, rename: cpRename },
   // the PDF's tables (§11): a component's ports, each with what it provides and requires; an interface's operations; what an artifact manifests
-  word: (model, id) => { const x = cpIndex(model).N.get(id); return x ? ({ __proto__: null, 'uml.Component': 'Component', 'uml.Interface': 'Interface', 'uml.Artifact': 'Artifact', 'uml.Package': 'Package', 'uml.Comment': 'Comment' }[x.type] || null) : null; },
+  word: (model, id) => { const x = cpIndex(model).N.get(id); return x ? ({ __proto__: null, 'uml.Component': 'Component', 'uml.Interface': 'Interface', 'uml.Artifact': 'Artifact', 'uml.Package': 'Package', 'uml.Comment': 'Comment' }[x.type] || (x.type == null ? snKindName(x.type) : null)) : null; }, // no type: "Element", as its accessible name (audit 28)
   // a connector's Lines row: its kind (delegation or assembly) and the ports it joins, as the picture and describe() give them (audit 18)
   text: (model, view, id) => { const pic = cpPic(model, view), l = pic.lines.find(y => y.e.id === id); return l && (l.kind === 'assembly' || l.kind === 'delegation') ? cpLineName(pic, l) : null; },
   rows: (model, view, id) => { const pic = cpPic(model, view), x = pic.I.N.get(id); if (!x) return null;

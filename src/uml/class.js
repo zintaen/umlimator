@@ -334,7 +334,8 @@ function classProblems(model, view) {
   // earlier own line's) takes is that one. That view's alone: validate() asks once a view (audit 23, as ucProblems since audit 20)
   const vi = UML_OBJ(view) ? UML_ARR(model && model.views).indexOf(view) : -1, taken = new Set(at.keys());
   if (vi >= 0) UML_ARR(view.edges).forEach((e, j) => { if (UML_OBJ(e) && typeof e.id === 'string' && !taken.has(e.id) && String(e.type || '').startsWith('uml.')) { taken.add(e.id); lines.push({ x: e, kind: 'edge', owner: null, path: `views[${vi}].edges[${j}]` }); } });
-  const typeOfId = id => (at.get(id) || { x: {} }).x.type, isCls = id => CLASSIFIERS.includes(typeOfId(id));
+  // a node with no type is drawn and named a class (typeWord), so the rules judge it as one (audit 28)
+  const typeOfId = id => { const r = at.get(id); return !r ? undefined : r.kind === 'node' && !r.x.type ? 'uml.Class' : r.x.type; }, isCls = id => CLASSIFIERS.includes(typeOfId(id));
   nodes.forEach(({ x, path }) => {
     const ms = UML_ARR(x.members).filter(UML_OBJ), seen = new Map();
     // member-names judges a classifier's or an instance's members, each with a name: a state's unnamed regions are not "named

@@ -209,11 +209,13 @@ function structProblems(model, view) {
   const out = [], at = new Map(), shown = new Set(SN_ARR(view && view.nodeIds)), seen = id => !view || shown.has(id);
   SN_ARR(model && model.nodes).forEach(n => { if (SN_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
   [...at.values()].forEach(n => SN_ARR(n.members).forEach(m => { if (SN_OBJ(m) && typeof m.id === 'string' && !at.has(m.id)) at.set(m.id, m); })); // a line may end on a port: named, not "nothing" (audit 17)
-  const nm = x => (x ? `${snWord(x.type)} ${x.id}${x.label != null && x.label !== '' ? ` ("${x.label}")` : ''}` : 'nothing');
+  const nm = x => (x ? `${snKindName(x.type).toLowerCase()} ${x.id}${x.label != null && x.label !== '' ? ` ("${x.label}")` : ''}` : 'nothing');
   const say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   SN_ARR(model && model.nodes).forEach((n, i) => { if (!SN_OBJ(n) || !seen(n.id)) return;
     if (n.type === 'uml.Port') say('error', 'port-owner', `nodes[${i}]`, [n.id], `${nm(n)} is a node; a port is a member of a component or a class`);
-    SN_ARR(n.members).forEach((m, j) => { if (SN_OBJ(m) && m.type === 'uml.Port' && n.type !== 'uml.Component' && n.type !== 'uml.Class')
+    // the component view draws an element of no type as a component, holding its ports (component.js cpGeo, audit 28)
+    const holds = n.type === 'uml.Component' || n.type === 'uml.Class' || n.type == null && view && view.diagram === 'uml.component';
+    SN_ARR(n.members).forEach((m, j) => { if (SN_OBJ(m) && m.type === 'uml.Port' && !holds)
       say('error', 'port-owner', `nodes[${i}].members[${j}]`, [m.id, n.id], `${nm(m)} is a member of ${nm(n)}; a port is a member of a component or a class`); }); });
   viewLines(model, view).forEach(([e, path]) => { if (!SN_OBJ(e) || e.type !== 'uml.Manifestation' || !(seen(e.from) || seen(e.to))) return;
     const f = at.get(e.from), t = at.get(e.to);
