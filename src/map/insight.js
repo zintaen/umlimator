@@ -71,13 +71,15 @@ export function describe(model, viewId) {
   // a line's kind as its colour says it: the one it names, else a hook's line guards and a board's is state (no guesses from words)
   const kind = e => WIRE_KINDS.includes(e.kind) ? e.kind : (ctx.N[e.from] || {}).kind === 'hook' ? 'guard' : [e.from, e.to].some(i => (ctx.N[i] || {}).kind === 'board') ? 'state' : 'calls';
   const VERB = { calls: 'calls', feeds: 'feeds', triggers: 'triggers', state: 'reads or writes', guard: 'guards' };
-  const what = e => { const t = [e.label && `"${e.label}"`, e.sublabel, v.render !== 'sequence' && e.step != null && `step ${e.step}`].filter(Boolean); return t.length ? ` (${t.join(', ')})` : ''; };
+  const what = (e, n = 1) => { const t = [e.label && `"${e.label}"`, e.sublabel, v.render !== 'sequence' && e.step != null && `step ${e.step}`, n > 1 && `${n} lines`].filter(Boolean); return t.length ? ` (${t.join(', ')})` : ''; };
+  // each card at the far end named once, with how many lines say the same (audit 28: "A calls B and B", as diff() said in audit 27)
+  const far = es => { const by = new Map(); es.forEach(e => { const k = e.to + '\0' + what(e), g = by.get(k); if (g) g.n++; else by.set(k, { e, n: 1 }); }); return [...by.values()].map(g => name(g.e.to) + what(g.e, g.n)); };
   const out = [`${v.title || v.id}: ${count(ids.length, 'card')} and ${count(edges.length, 'line')}.`];
   if (ids.length) out.push(`Cards: ${ids.map(id => `${name(id)} (${KIND[kindOf(ctx.nodeIn(id, viewId).kind, true)][1]})`).join(', ')}.`);
   boxes.forEach(c => { const ins = (c.nodeIds || []).filter(i => ids.includes(i)); if (ins.length) out.push(`${name(c.id)} holds ${list(ins.map(name))}.`); });
   if (v.render === 'sequence') edges.forEach((e, i) => out.push(`Step ${i + 1}: ${name(e.from)} ${VERB[kind(e)]} ${name(e.to)}${what(e)}.`));
   else [...ids, ...boxes.map(c => c.id)].forEach(id => { const outs = edges.filter(e => e.from === id); if (!outs.length) return;
-    out.push(`${name(id)} ${[...new Set(outs.map(kind))].map(k => `${VERB[k]} ${list(outs.filter(e => kind(e) === k).map(e => name(e.to) + what(e)))}`).join('; ')}.`); });
+    out.push(`${name(id)} ${[...new Set(outs.map(kind))].map(k => `${VERB[k]} ${list(far(outs.filter(e => kind(e) === k)))}`).join('; ')}.`); });
   const alone = ids.filter(id => !edges.some(e => e.from === id || e.to === id));
   if (alone.length) out.push(`Not connected here: ${list(alone.map(name))}.`);
   return out.join('\n');

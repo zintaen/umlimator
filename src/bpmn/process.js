@@ -1,5 +1,5 @@
 import { apply } from '../core/apply.js';
-import { copyOf } from '../core/model.js';
+import { copyOf, usedIds } from '../core/model.js';
 import { heldBy, registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -137,13 +137,17 @@ const bzLineName = (I, e) => `${BZ_LINE_WORD[e.type] || 'Line'} from ${I.called(
 // hollow triangle at its target; an association dotted, open arrowheads by its direction; a data association dotted
 const bzEnds = e => { if (e.type === BZ_MSG) return { from: 'circle', to: 'triangle', dashed: true };
   if (e.type === BZ_ASSOC) { const d = bzProps(e).direction; return { from: d === 'both' ? 'open' : 'none', to: d === 'one' || d === 'both' ? 'open' : 'none', dashed: 'dot' }; }
-  return e.type === BZ_DATA_ASSOC ? { from: 'none', to: 'open', dashed: 'dot' } : { from: 'none', to: 'arrow' }; };
+  // a listed line of another kind (a uml.Dependency): plain, never a sequence flow's filled arrow (audit 28)
+  return e.type === BZ_DATA_ASSOC ? { from: 'none', to: 'open', dashed: 'dot' } : e.type === BZ_SEQ ? { from: 'none', to: 'arrow' } : { from: 'none', to: 'none' }; };
 
 /* ---- the legend: each line kind drawn ---- */
 const BZ_KEYS = [[BZ_SEQ, '<path d="M2 8H17"/><path d="M17 4L26 8L17 12Z" fill="var(--um-muted)"/>', 'the order of steps in one pool'],
   [BZ_MSG, '<circle cx="5" cy="8" r="3" fill="var(--um-stage-bg)"/><path d="M8 8H16" stroke-dasharray="3 2"/><path d="M16 3L26 8L16 13Z" fill="var(--um-stage-bg)"/>', 'a message between pools'],
   [BZ_ASSOC, '<path d="M2 8H26" stroke-dasharray="1 2"/>', 'a note or link to an element'], [BZ_DATA_ASSOC, '<path d="M2 8H25" stroke-dasharray="1 2"/><path d="M17 4L26 8L17 12" fill="none"/>', 'data read or written']];
-const bzLegend = types => BZ_KEYS.filter(([t]) => types.has(t)).map(([t, svg, says]) => `<span class="lgi" title="${esc(BZ_LINE_WORD[t] + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round" fill="none">${svg}</g></svg><b>${esc(BZ_LINE_WORD[t])}</b><span>${esc(says)}</span></span>`);
+const bzLegend = types => [...BZ_KEYS.filter(([t]) => types.has(t)).map(([t, svg, says]) => `<span class="lgi" title="${esc(BZ_LINE_WORD[t] + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round" fill="none">${svg}</g></svg><b>${esc(BZ_LINE_WORD[t])}</b><span>${esc(says)}</span></span>`),
+  // a line of another kind, drawn plain (bzEnds): "Line" with that plain swatch, as the other typed views key it (audit 28)
+  ...([...types].some(t => !BZ_LINES.includes(t)) ? [`<span class="lgi" title="${esc('Line — ' + BZ_OTHER_SAYS)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round" fill="none"><path d="M2 8H26"/></g></svg><b>Line</b><span>${BZ_OTHER_SAYS}</span></span>`] : [])];
+const BZ_OTHER_SAYS = 'a kind of line this view does not draw as its own';
 
 /* ---- the view laid out: { model, view, pos, memo } (§5, §6, §7.2, §8) ---- */
 function bzGeo({ model, view, pos: pins, memo }) {
@@ -401,7 +405,7 @@ function bzDescribe(model, viewId) {
 /* ---- editing (§11): each hook returns commands, null to leave the gesture to the default, { error } for the hint line, or
    { commands, say }; none emits a transaction that brings an error the model did not have ---- */
 function bzFreshId(model, base) {
-  const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+  const used = new Set(); usedIds(model, used);
   const b = String(base).toLowerCase().replace(/->/g, '-').replace(/[^\p{L}\p{N}_$-]+/gu, '-').replace(/^-+|-+$/g, '') || 'element';
   let k = 1; while (used.has(k === 1 ? b : `${b}-${k}`)) k++;
   return k === 1 ? b : `${b}-${k}`;

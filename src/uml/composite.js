@@ -8,6 +8,7 @@ import { LINE_WORDS, legendOf, lineIn, lineLook, lineRename, memberEdit, multBou
 import './usecase.js'; // SHAPE.ellipse, a collaboration use's; SHAPE.subject, a class subject's frame
 import { SN_SAY, STRUCT_RULES, snKindName, portFit, portSides, portsDrawn, structProblems } from './structure.js';
 import { viewLines } from './owners.js';
+import { usedIds } from '../core/model.js';
 
 /* ---------- the composite structure diagram, uml.composite-structure (work package 5.6, notes/stage-5.md §6, §10.2) ----------
    The view's subject (a class, a component or a collaboration, listed in nodeIds) is a box holding its parts (its uml.Property
@@ -61,7 +62,7 @@ const csSets = (x, r, keepType) => [['label', x.label, r.label], ['props.valueTy
 const csIdOf = (o, r) => `${o ? o + '.' : ''}${String(r.label ?? r.valueType ?? (r.props || {}).valueType ?? 'part').toLowerCase()}`;
 // an id not yet in the model: base, else base-2, base-3, …
 function csFresh(model, base) {
-  const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+  const used = new Set(); usedIds(model, used);
   const b = String(base).replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '') || 'element'; let id = b, k = 1; while (used.has(id)) id = `${b}-${++k}`;
   return id;
 }
@@ -493,7 +494,8 @@ const CS_TYPE = registerDiagramType('uml.composite-structure', {
   describe: csDescribe,
   // the PDF's tables (§11): a part's and a collaboration use's kind and rows; null: as before
   word: (model, id) => { const P = csPic(model, {}), q = P.mem.get(id), x = q ? q.m : P.at.get(id); if (!x) return null;
-    return x.type === 'uml.Property' ? (q.owner.type === 'uml.Collaboration' ? 'Role' : 'Part') : x.type === 'uml.Port' ? 'Port' : x.type === 'uml.CollaborationUse' ? 'Collaboration use' : null; },
+    // a uml.Property kept as a node, not a member (audit 28): null, so the PDF says the type's word, "Property", as layout does
+    return x.type === 'uml.Property' ? (q ? (q.owner.type === 'uml.Collaboration' ? 'Role' : 'Part') : null) : x.type === 'uml.Port' ? 'Port' : x.type === 'uml.CollaborationUse' ? 'Collaboration use' : x.type == null ? snKindName(x.type) : null; }, // no type: "Element", as named (audit 28)
   rows: (model, view, id) => { const P = csPic(model, view), q = P.mem.get(id);
     // a part with its aggregation; a role has none (csNodeName, audit 10)
     const agg = m => (CS_PROPS(m).aggregation === 'shared' ? 'shared' : 'composite');

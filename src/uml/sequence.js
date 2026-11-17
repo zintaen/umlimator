@@ -6,7 +6,7 @@ import { layoutTimeAxis } from '../layout/timeaxis.js';
 import { brLines } from '../typed/draw.js';
 import { frame, tagSize, guardSize, useSize } from './frame.js';
 import { interactionWalk, activationBars, replyCallFor, INTERACTION_RULES, interactionProblems } from './interaction.js';
-import { copyOf } from '../core/model.js';
+import { copyOf, usedIds } from '../core/model.js';
 
 /* ---------- the sequence diagram, uml.sequence (work package 3.3, notes/stage-3.md §4 and §5) ----------
    The subset of notes/stage-3.md §4.1: lifelines (`represents`, «actor» as text), messages inline in the view's `edges`
@@ -225,7 +225,7 @@ function sqPaths(model, viewId, from, to) {
    commands of one transaction, null to leave the gesture to the canvas's default, or { error } for the hint line. A
    transaction that would add an error the model did not have is never returned: { error } names the rule (S5) ---- */
 function sqNewId(model, base, more = []) { // the base and the first number free in the model: 'm11', 'f3'
-  const used = new Set(more); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+  const used = new Set(more); usedIds(model, used);
   const b = String(base).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'el'; let k = 1; while (['', '.1', '.2'].some(x => used.has(b + k + x))) k++; return b + k; // a fragment's operands free too
 }
 const sqErr = message => ({ error: message });
@@ -421,6 +421,8 @@ function sqRename(model, V, id, text) {
 
 const SEQ_TYPE = registerDiagramType('uml.sequence', {
   title: 'sequence diagram',
+  // the kinds of line it draws: any other a view lists is not drawn, which validate() says (src/core/model.js, audit 28)
+  drawsOnly: ['uml.Message'],
   elements: [{ type: 'uml.Lifeline', label: 'Lifeline' }, { type: 'uml.InteractionUse', label: 'Interaction use' }],
   lines: [['Call', 'call'], ['Async', 'async'], ['Reply', 'reply'], ['Create', 'create'], ['Delete', 'delete']].map(([label, sort]) => ({ type: 'uml.Message', label, props: { sort } })),
   items: ['uml.InteractionUse'],

@@ -1,5 +1,5 @@
 import { apply } from '../core/apply.js';
-import { copyOf } from '../core/model.js';
+import { copyOf, usedIds } from '../core/model.js';
 import { ownNodes, registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -236,7 +236,7 @@ function commDescribe(model, viewId) {
    { error } for the hint line, and never a transaction that breaks a rule (S5) ---- */
 // an id no element of the model has: the base, else the base and the first number free ('m10', 'api-payments-2')
 function cmFreshId(model, base) {
-  const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+  const used = new Set(); usedIds(model, used);
   const b = String(base).replace(/->/g, '-') || 'el', next = k => (b === 'm' ? b + k : k === 1 ? b : `${b}-${k}`); // ids never hold "->" (M2)
   let k = 1; while (used.has(next(k))) k++;
   return next(k);
@@ -332,11 +332,16 @@ function commRemove(model, view, ids, fromModel) {
   const views = fromModel ? CM_ARR(model && model.views).filter(v => CM_OBJ(v) && v.diagram === 'uml.communication') : [view];
   // a line or lifeline in the view's own lists lives in this view only: hiding it is deleting it (audit 21), as the canvas's Delete does
   const own = new Map([...CM_ARR(view.nodes), ...CM_ARR(view.edges)].filter(x => CM_OBJ(x) && typeof x.id === 'string').map(x => [x.id, x])), el = id => I.E.get(id) || own.get(id);
+  const hid = new Set(), carried = (w, m) => { const L = cmIx(model, { ...w, edges: CM_ARR(w.edges).filter(x => !seen.has(idOf(x))) }); return L.messages.some(x => x.id === m.id) && !!L.carrierOf(m.from, m.to); };
   const go = id => { if (seen.has(id)) return; seen.add(id);
     out.push(fromModel || own.has(id) ? { op: 'delete', id } : { op: 'hide', id, view: view.id });
     if (el(id) && el(id).type === 'uml.Connector') views.forEach(v => { const on = cmIx(model, v).on.get(id); if (!on) return;
       const left = cmIx(model, { ...v, edges: CM_ARR(v.edges).filter(x => !seen.has(idOf(x))) });
-      on.forEach(m => { if (v === view && !fromModel || !left.carrierOf(m.from, m.to)) go(m.id); }); });
+      on.forEach(m => { if (!(v === view && !fromModel || !left.carrierOf(m.from, m.to))) return;
+        // Shift + Delete: a message another communication view lists and still carries on its own connector stays in the model,
+        // taken out of this view only (audit 28)
+        if (fromModel && views.some(w => w !== v && carried(w, m))) { const k = v.id + '\u0000' + m.id; if (!hid.has(k)) { hid.add(k); out.push({ op: 'hide', id: m.id, view: v.id }); } }
+        else go(m.id); }); });
     if (!fromModel) I.messages.filter(m => cmPropsOf(m).replyTo === id).forEach(m => go(m.id)); };
   CM_ARR(ids).forEach(id => { if (I.shown.has(id) || I.E.has(id) || own.has(id)) go(id); });
   return cmSaid(model, view, ids, fromModel, I, fromModel ? cmGuard(model, view, out, true) : out);
@@ -365,6 +370,8 @@ function cmSaid(model, view, ids, fromModel, I, r) {
 const CM_SORT = { key: 'sort', label: 'Sort', kind: 'enum', options: CM_SORTS };
 const COMM_TYPE = registerDiagramType('uml.communication', {
   title: 'communication diagram',
+  // the kinds of line it draws: any other a view lists is not drawn, which validate() says (src/core/model.js, audit 28)
+  drawsOnly: ['uml.Connector', 'uml.Message'],
   elements: [{ type: 'uml.Lifeline', label: 'Lifeline' }],
   lines: [{ type: 'uml.Connector', label: 'Connector' }, ...[['call', 'Call'], ['async', 'Async'], ['reply', 'Reply'], ['create', 'Create'], ['delete', 'Delete']]
     .map(([sort, label]) => ({ type: 'uml.Message', label, props: { sort } }))],

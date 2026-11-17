@@ -552,7 +552,7 @@ a model UML forbids is an error; one that is only unfinished is a warning.
 | `fork-join` (shared) | error, warning | Error: a fork has more than one incoming flow, a join more than one outgoing. Warning: a fork has fewer than two outgoing, a join fewer than two incoming |
 | `decision-merge` (shared) | error, warning | Error: a decision has more than one incoming flow (there are no decision input flows in the subset), a merge more than one outgoing. Warning: a decision has fewer than two outgoing, a merge fewer than two incoming. UML's combined decision/merge diamond and join/fork bar are two nodes in the model, so a single node used both ways is flagged on purpose |
 | `decision-guards` (shared) | warning | Each flow out of a decision has a guard, and at most one is `else` |
-| `object-flow` | warning | An object flow has an object node or a data store at one end at least; a control flow has none at either |
+| `object-flow` | warning | An object flow has an object node or a data store at one end at least, or reaches one through decisions, merges, forks and joins, which pass object tokens on (UML 2.5.1 15.3, 15.4.3.1; audit 28); a control flow has none at either |
 | `partition-owner` | error | A partition's owner is a partition or none; a node's owner is a partition or none |
 | `in-lane` | warning | On a view that shows a partition, every node is in one (L10) |
 | `calls-view` | warning | A call behaviour action's `opensView` names an activity view of the model |

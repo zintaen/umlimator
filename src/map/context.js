@@ -7,7 +7,7 @@ import { svgOf } from '../draw/svg.js';
 import { leaveIssues, routeAudit } from '../layout/audit.js';
 import { layoutGraph, pillW, pullSources, rowsFor, stepW, untangle } from '../layout/layered.js';
 import { WIRES, badgesOf, mapNodeW } from './cards.js';
-import { markOf } from './diff.js';
+import { jsonText, markOf } from './diff.js';
 import { plainViews } from './typed.js';
 import { arrOf, rules } from './validate.js';
 
@@ -552,11 +552,11 @@ function mapContext(model, opts = {}) {
     if (JSON.stringify(pos) !== start && scoreGeo(buildGeo(vid, JSON.parse(start))) <= scoreGeo(buildGeo(vid, pos))) pos = JSON.parse(start);
     return { pos, score: best, evals };
   }
-  // what a view's picture is drawn from: an update keeps the layout of every view whose key did not change
+  // what a view's picture is drawn from: an update keeps the layout of every view whose key did not change (jsonText: a host's cycle or BigInt in a card is no throw, audit 28)
   const viewKey = vid => {
     const v = V[vid], ids = (v.nodeIds || []).filter(i => N[i]), ns = ids.map(i => nodeIn(i, vid));
     const icons = [...new Set(ns.map(n => n.icon).filter(Boolean))].map(k => (D.icons || {})[k]), who = [...new Set(ns.map(n => n.author).filter(Boolean))].map(k => (D.authors || {})[k]);
-    return JSON.stringify([v, ns, viewEdges(v), ids.map(i => [kidCount(i, vid), opensOf(i, vid)]), icons, who, boxesOf(vid), v.diagram && v.diagram != 'map' && [D.nodes, D.edges, D.icons, views.map(w => [w.id, w.title, w.subject]), (V[v.parent] || {}).nodeIds]]); // a type's boxes lay it out; a typed view also draws what it does not list (a package's name, the title of a view it opens, a DFD parent's cards): the whole model
+    return jsonText([v, ns, viewEdges(v), ids.map(i => [kidCount(i, vid), opensOf(i, vid)]), icons, who, boxesOf(vid), v.diagram && v.diagram != 'map' && [D.nodes, D.edges, D.icons, views.map(w => [w.id, w.title, w.subject]), (V[v.parent] || {}).nodeIds]]); // a type's boxes lay it out; a typed view also draws what it does not list (a package's name, the title of a view it opens, a DFD parent's cards): the whole model
   };
   /* ---------- unfolding in place (#71): a stacked card opens into a box on the view it is on ----------
      The card becomes a box with its id and name, holding its inner view's own cards: those not on this view already (the

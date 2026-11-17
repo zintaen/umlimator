@@ -2,7 +2,7 @@ import { esc } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { ENDS } from '../typed/draw.js';
 import { frameTag } from '../uml/frame.js';
-import { LEGEND_ENDS } from '../uml/class.js';
+import { LEGEND_ENDS, legendOf } from '../uml/class.js';
 import { STY_FREE, UML_META_AS, styKey } from '../uml/stereotypes.js';
 import { csProblems } from '../uml/composite.js';
 import { idTable } from '../core/registry.js';
@@ -166,6 +166,9 @@ function SYS_CS_PROBLEMS(model, view) {
    its header the title. A subject holding no part is no box there (the layout makes no box round no card): its card, sized by
    the composite type for its ports, is taken out and the frame drawn at its bounds, its ports on the frame's border (§17).
    names(id), when given, an element's accessible name in SysML's words (the type's, §13) ---- */
+// the internal block and parametric legends' keys for a listed line of another kind (a dependency): each as the composite type
+// draws and keys it (class.js legendOf: "Dependency", "Line"), after the view's own connector or binding (audit 28)
+const SYS_OTHER_KEYS = edges => legendOf(edges.filter(e => e.type !== 'uml.Connector' && e.type !== 'uml.CommentLink'));
 function SYS_DRESS(g, model, view, names) {
   const h = SYS_HEAD(model, view), said = x => (names && names(x.id)) || x.aria, map = new Map(), sid = view.subject;
   const card = g.byId && Object.hasOwn(g.byId, sid) ? g.byId[sid] : null, frame = { shape: 'sysml-frame', title: h.title, label: h.title, aria: h.aria, ...(h.el ? { edit: SYS_EDIT(view, h) } : {}) };
@@ -175,4 +178,4 @@ function SYS_DRESS(g, model, view, names) {
     families: [...(card ? [{ id: sid, x: card.x, y: card.y, w: card.w, h: card.h, nodeIds: [], ...frame }] : []), ...SYS_ARR(g.families).map(f => (f.id === sid ? { ...f, ...frame } : f))] };
 }
 
-export { SYS_TABLE, SYS_KIND, SYS_HEAD, SYS_FRAME, SYS_FRAME_RENAME, SYS_FRAME_EMPTY, SYS_AS_UML, SYS_LINES, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS };
+export { SYS_TABLE, SYS_KIND, SYS_HEAD, SYS_FRAME, SYS_FRAME_RENAME, SYS_FRAME_EMPTY, SYS_AS_UML, SYS_LINES, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS, SYS_OTHER_KEYS };

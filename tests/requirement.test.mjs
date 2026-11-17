@@ -417,3 +417,19 @@ test('audit 27: a line break in a requirement\'s text breaks its row there', () 
   assert.deepEqual(layout(m, V).byId.n.compartments.find(c => c.name === 'requirement').members.map(r => r.label), ['id = "N-1"', 'text = "Assist.', 'Stop at 25."']);
   const long = rqWrap(`text = "${'word '.repeat(60).trim()}\nend"`); assert.equal(long.at(-1), 'end"', 'each part wrapped on its own');
 });
+
+test('audit 28: what is drawn on a requirement relationship after its keyword (its label, its «stereotypes») is in its accessible name and in describe()', () => {
+  for (const t of ['sysml.DeriveReqt', 'sysml.Satisfy', 'sysml.Verify', 'sysml.Refine', 'sysml.Trace', 'sysml.Copy']) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'sysml.Requirement', label: 'A', props: { reqId: '1', text: 't' } }, { id: 'b', type: 'sysml.Requirement', label: 'B', props: { reqId: '2', text: 't' } }],
+      edges: [{ id: 'd', type: t, from: 'a', to: 'b', label: 'because of law X', props: { stereotypes: ['legal'] } }], views: [{ id: 'v', diagram: 'sysml.requirement', nodeIds: ['a', 'b'] }] };
+    const e = layout(m, 'v').edges.find(x => x.id === 'd');
+    assert.ok(e.label.endsWith('«legal» because of law X'), e.label);
+    assert.ok(e.aria.endsWith(': «legal» because of law X'), e.aria);
+    const said = describe(m, 'v').split('\n');
+    assert.ok(said.some(l => l.startsWith('Requirement A') && l.includes('(«legal» because of law X)')), said.join(' | '));
+    assert.ok(said.some(l => l.startsWith('Requirement B') && l.includes('(«legal» because of law X)')), said.join(' | '));
+    // with nothing drawn after the keyword, nothing is added
+    const bare = structuredClone(m); delete bare.edges[0].label; delete bare.edges[0].props;
+    assert.doesNotMatch(layout(bare, 'v').edges[0].aria, /:/);
+  }
+});

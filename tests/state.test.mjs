@@ -625,6 +625,18 @@ test('audit 26: laid out down, a composite state holds a two-way pair\'s fanned 
 
 // audit 27: laid out right, a self-loop and a two-way pair with sentence-length labels out of the same state: the pair's
 // other line and its label left the outgoing line no clean track, and with reroute off it climbed through the loop
+test('audit 28: a kind outside the view\'s own, or no type, is named in words, alike in the drawn box, describe() and the PDF', () => {
+  for (const [d, t, own] of [['uml.state-machine', 'uml.State', 'State Idle'], ['uml.use-case', 'uml.UseCase', 'Use case Idle'], ['uml.activity', 'uml.Action', 'Action Idle']]) {
+    const m = { schemaVersion: 2, title: 'f', nodes: [{ id: 's', type: t, label: 'Idle' }, { id: 'plain', label: 'Plain' }, { id: 'db', type: 'uml.DataType', label: 'Money' }, { id: 'order', type: 'uml.Class', label: 'Order' }], edges: [],
+      views: [{ id: 'v', diagram: d, nodeIds: ['s', 'plain', 'db', 'order'] }] };
+    const c = mapContext(m), svg = c.buildView('v').markup, aria = id => (new RegExp(`data-id="${id}"[^>]*aria-label="([^"]*)"`).exec(svg) || [])[1];
+    assert.deepEqual(['s', 'plain', 'db', 'order'].map(aria), [own, 'Element Plain', 'Data type Money', 'Class Order'], `${d}: the drawn boxes`);
+    assert.deepEqual(describe(m, 'v').split('\n').slice(1).filter(l => !/^Lines?:|^$/.test(l)).slice(0, 4), [own, 'Element Plain', 'Data type Money', 'Class Order'].map(x => x + '.'), `${d}: describe()`);
+    const rows = tablesOf(c, c.V.v, c.buildGeo('v'))[0].rows.map(r => r.split('<td>').slice(1).map(x => x.replace(/<[^>]+>/g, '')));
+    assert.deepEqual(['Plain', 'Money', 'Order'].map(l => rows.find(r => r[0] === l)[1]), ['Element', 'Data type', 'Class'], `${d}: the PDF's Kind`);
+  }
+});
+
 test('audit 27: a self-loop beside a two-way pair laid out right (an ordinary Mermaid LR state diagram) crosses nothing', async () => {
   const { readMermaidState } = await import('../src/readers/mermaid-state.js');
   const src = ['stateDiagram-v2', 'direction LR', '[*] --> A', 'A --> B : go there now', 'B --> A : come back here', 'A --> A : self loop label'];
@@ -634,4 +646,24 @@ test('audit 27: a self-loop beside a two-way pair laid out right (an ordinary Me
     const g = layout(m, v), loop = g.edges.find(e => e.from === e.to), ab = g.edges.find(e => e.from !== e.to && e.label === 'go there now');
     assert.ok(loop && ab, d);
   }
+});
+
+test('audit 28: a line of another kind a view lists, which a state machine, requirement, sequence, timing, communication, mindmap or cloud view does not draw, is said by validate()', async () => {
+  for (const p of ['sysml/requirement.js', 'uml/sequence.js', 'uml/timing.js', 'uml/communication.js', 'mindmap/mindmap.js', 'cloud/cloud.js', 'uml/class.js']) await import(`../src/${p}`);
+  const kinds = { 'uml.state-machine': ['uml.State', 'a state machine diagram'], 'sysml.requirement': ['sysml.Requirement', 'a requirement diagram'], 'uml.sequence': ['uml.Lifeline', 'a sequence diagram'],
+    'uml.timing': ['uml.Lifeline', 'a timing diagram'], 'uml.communication': ['uml.Lifeline', 'a communication diagram'], mindmap: ['mindmap.Topic', 'a mindmap'], gcp: ['gcp.Product', 'a Google Cloud diagram'],
+    azure: ['azure.Service', 'an Azure diagram'], aws: ['aws.Service', 'an AWS diagram'] };
+  for (const [d, [t, said]] of Object.entries(kinds)) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'a', type: t, label: 'A', props: { text: 't', reqId: 'R1' } }, { id: 'b', type: t, label: 'B', props: { text: 't', reqId: 'R2' } }],
+      edges: [{ id: 'x', type: 'uml.Dependency', from: 'a', to: 'b', label: 'uses' }], views: [{ id: 'v', diagram: d, nodeIds: ['a', 'b'], edges: ['x', { id: 'y', from: 'a', to: 'b' }] }] };
+    assert.ok(!layout(m, 'v').edges.some(e => e.id === 'x' || e.id === 'y'), `${d}: not drawn`);
+    const ps = validate(m).filter(p => /not drawn$/.test(p.message) && /^views\[0\]\.edges\[/.test(p.path));
+    assert.deepEqual(ps.map(p => [p.level, p.path, p.message]), [['warning', 'views[0].edges[0]', `view "v" lists dependency "x", a line ${said} does not draw: not drawn`],
+      ['warning', 'views[0].edges[1]', `view "v" lists "y", a line with no type, which ${said} does not draw: not drawn`]], d);
+  }
+  // a kind the view draws is no problem; nor is a line of another kind in a view that draws it
+  const st = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.State', label: 'A' }, { id: 'b', type: 'uml.State', label: 'B' }, { id: 'c', type: 'uml.Class', label: 'C' }],
+    edges: [{ id: 't', type: 'uml.Transition', from: 'a', to: 'b' }, { id: 'x', type: 'uml.Dependency', from: 'a', to: 'c' }],
+    views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['a', 'b'], edges: ['t'] }, { id: 'w', diagram: 'uml.class', nodeIds: ['c', 'a'], edges: ['x'] }] };
+  assert.deepEqual(validate(st).filter(p => /not drawn$/.test(p.message)), []);
 });

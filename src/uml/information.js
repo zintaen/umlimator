@@ -1,11 +1,12 @@
 import { registerDiagramType } from '../core/registry.js';
 import { apply } from '../core/apply.js';
-import { esc, fit } from '../core/text.js';
+import { brLines, esc, fit } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
-import './class.js'; // SHAPE.classifier and SHAPE.note
+import { LINE_SAYS, legendItem } from './class.js'; // SHAPE.classifier and SHAPE.note too
 import { snKindName } from './structure.js'; // SHAPE.component too
 import './usecase.js'; // SHAPE.actor
+import { usedIds } from '../core/model.js';
 
 /* ---------- the information flow diagram, uml.information-flow (work package M2.5, notes/milestone-2.md §7.4) ----------
    Classes and interfaces (the class type's classifier, name only), components (src/uml/structure.js's look) and actors (the
@@ -36,7 +37,8 @@ const ifKindName = t => (Object.hasOwn(IF_WORD, t) ? ifWord(t) : snKindName(t));
 const IF_KEY = { 'uml.Class': null, 'uml.InformationItem': null, 'uml.PrimitiveType': 'primitive' };
 const ifKey = t => (Object.hasOwn(IF_KEY, t) ? IF_KEY[t] : String(t ?? '').split('.').pop().replace(/^./, c => c.toLowerCase()) || null);
 
-/* ---- the information item: the classifier, 32 px wider, its centred name kept 8 px clear of the triangle at its top right ---- */
+/* ---- the information item: the classifier, 32 px wider, its centred name kept 8 px clear of the triangle at its top right;
+   a name the author broke fitted a line at a time, as the classifier draws it (audit 28) ---- */
 const IF_IT = { pad: 8, name: 13, more: 32 };
 // the classifier's own markup, named by n.aria (A1) and by its shape
 const ifClassifier = (n, c, f, shape = 'classifier') => SHAPE.classifier.draw(n, c, f).replace(/data-shape="classifier" tabindex="-1" role="img" aria-label="[^"]*"/,
@@ -46,7 +48,7 @@ SHAPE['if-classifier'] = { ...SHAPE.classifier, draw: (n, c, f) => ifClassifier(
 SHAPE['information-item'] = { ...SHAPE.classifier,
   size: n => { const s = SHAPE.classifier.size(n); return { w: s.w + IF_IT.more, h: s.h }; },
   draw(n, c, f) { const x = n.x + n.w - 16, y = n.y + 6, tri = `<path d="M${r2(x)} ${r2(y)}L${r2(x + 10)} ${r2(y + 5)}L${r2(x)} ${r2(y + 10)}Z" class="if-icon" fill="${c}" stroke="${c}" stroke-linejoin="round"/>`;
-    return ifClassifier({ ...n, label: fit(String(n.label ?? ''), IF_IT.name, n.w - 2 * IF_IT.pad - IF_IT.more / 2 - 16) }, c, f, 'information-item').replace(/<\/g>$/, tri + '</g>'); },
+    return ifClassifier({ ...n, label: brLines(n.label).map(l => fit(l, IF_IT.name, n.w - 2 * IF_IT.pad - IF_IT.more / 2 - 16)).join('\n') }, c, f, 'information-item').replace(/<\/g>$/, tri + '</g>'); },
 };
 
 /* ---- the model read ---- */
@@ -85,8 +87,10 @@ function ifLineName(I, e) {
 
 /* ---- the legend. ponytail: copies class.js's legendItem, which it does not export ---- */
 const IF_SAYS = { 'uml.InformationFlow': ['Information flow', '«flow»: what travels from one end to the other'], 'uml.CommentLink': ['Comment link', 'what a comment is about'] };
-const ifLegend = edges => IF_LINES.filter(t => edges.some(e => e.type === t)).map(t => { const [name, says] = IF_SAYS[t], flow = t === 'uml.InformationFlow';
-  return `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round"><path d="M2 8H${flow ? 17 : 26}" stroke-dasharray="3 2"/>${flow ? '<path d="M17 4L26 8L17 12" fill="none"/>' : ''}</g></svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`; });
+// a listed line of another kind, drawn plain (ifGeo), keyed "Line" with that plain swatch, as the other typed views key it (audit 28)
+const ifLegend = edges => [...IF_LINES.filter(t => edges.some(e => e.type === t)).map(t => { const [name, says] = IF_SAYS[t], flow = t === 'uml.InformationFlow';
+  return `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round"><path d="M2 8H${flow ? 17 : 26}" stroke-dasharray="3 2"/>${flow ? '<path d="M17 4L26 8L17 12" fill="none"/>' : ''}</g></svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`; }),
+  ...(edges.some(e => !IF_LINES.includes(e.type)) ? [legendItem('none', false, 'Line', LINE_SAYS)] : [])];
 
 /* ---- the view laid out ----
    A flow back over two columns or more (a reply that closes a loop: an email to the shopper) leaves its source's bottom and
@@ -151,7 +155,7 @@ function ifConnect(model, view, from, to, at, line) {
   if (![from, to].every(id => IF_ENDS.includes((I.at.get(id) || {}).type))) return { error: 'An information flow joins two classes, interfaces, components or actors' };
   const own = ifOwn(model, I, view), all = ifConveyable(I), can = own.has(from) || own.has(to) ? all : all.filter(n => !own.has(n.id));
   if (!can.length) return { error: all.length ? `${ifName(all[0])} ${IF_OWN_SAY}` : 'Add an information item for the flow to convey first' };
-  const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+  const used = new Set(); usedIds(model, used);
   let k = 1; while (used.has('flow' + k)) k++;
   return { pick: can.map(ifName), then: i => [{ op: 'add', element: { id: 'flow' + k, type: 'uml.InformationFlow', from, to, props: { conveyed: [can[i].id] } }, view: view.id }] };
 }
@@ -215,7 +219,7 @@ const IF_TYPE = registerDiagramType('uml.information-flow', {
   describe: ifDescribe,
   edits: { connect: ifConnect, rename: ifRename, remove: ifRemove },
   // the PDF (§9): an element's kind; an information item's rows, and any conveyed element's, the flows that convey it; a flow's text, what it conveys
-  word: (model, id) => { const x = ifIndex(model).at.get(id); return x && Object.hasOwn(IF_WORD, x.type) ? IF_WORD[x.type] : null; },
+  word: (model, id) => { const x = ifIndex(model).at.get(id); return x && (Object.hasOwn(IF_WORD, x.type) || x.type == null) ? ifKindName(x.type) : null; }, // no type: "Element", as its name says (audit 28)
   rows: (model, view, id) => { const I = ifIndex(model), x = I.at.get(id); return x && (x.type === 'uml.InformationItem' || I.flowsOf(id).length) ? I.flowsOf(id).map(e => `${I.nm(e.from)} → ${I.nm(e.to)}`) : null; },
   text: (model, view, id) => { const I = ifIndex(model), e = I.E.find(x => x.id === id); return e && e.type === 'uml.InformationFlow' ? ifSays(I, e) : null; },
 });

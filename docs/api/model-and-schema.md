@@ -178,7 +178,7 @@ interface MapView {
 | `id`, `title` | The view's id and the title shown for it. |
 | `parent` | The view one level up; a view with none is a root. |
 | `nodeIds` | The cards it shows. |
-| `edges` | The lines it draws: model edge ids, or lines of its own. Without it, every model edge between two of its cards. |
+| `edges` | The lines it draws: model edge ids, or lines of its own. Without it, every model edge between two of its cards. A typed view draws its own kinds of line; most draw a listed line of another kind too, and a state machine, requirement, sequence, timing, communication, interaction overview, mindmap or cloud view leaves it out, which `validate()` warns of. |
 | `layout` | A `[col, row]` place per card id. |
 | `repair` | `false` turns off port repair for this map view. A typed view ignores it: its lines are never port-repaired. |
 | `containers` | Boxes: each with a label, the cards it holds, an optional parent box, badges on its border, and a `tone` that tints the region behind it. |

@@ -1,5 +1,5 @@
 import { registerDiagramType, idTable } from '../core/registry.js';
-import { copyOf } from '../core/model.js';
+import { copyOf, usedIds } from '../core/model.js';
 import { apply } from '../core/apply.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -235,7 +235,7 @@ function tmRows(model, view, id) {
    { commands, say }, null to leave the gesture to the canvas's default, or { error } for the hint line. A transaction that
    would add an error the model did not have, or a change on another's instant, is never returned: { error } names the rule ---- */
 function tmNewId(model, base) { // the base and the first number free in the model, time items and members included
-  const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+  const used = new Set(); usedIds(model, used);
   const b = String(base).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'el'; let k = 1; while (used.has(b + k)) k++; return b + k;
 }
 const tmErr = error => ({ error });
@@ -249,7 +249,7 @@ function tmGuard(model, V, commands) {
 }
 // a new time item, by set of the whole list (the core's add would put it in nodes or edges, §8.1), its id unused in the model
 function tmPut(model, V, list, item) {
-  const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+  const used = new Set(); usedIds(model, used);
   if (used.has(item.id)) return tmErr(`id ${item.id} is used already`);
   return { op: 'set', view: V.id, path: ['timeline', list], value: [...TM_ARR(TM_OBJ(V.timeline) && V.timeline[list]), item] };
 }
@@ -404,6 +404,8 @@ function tmKeyHook(model, view, ids, key) {
 const TM_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
 const TM_TYPE = registerDiagramType('uml.timing', {
   title: 'timing diagram',
+  // the kinds of line it draws: any other a view lists is not drawn, which validate() says (src/core/model.js, audit 28)
+  drawsOnly: ['uml.Message'],
   elements: [{ type: 'uml.Lifeline', label: 'Lifeline' }, { type: 'uml.StateInvariant', label: 'Change' }, { type: 'uml.TimeConstraint', label: 'Time constraint' }],
   lines: [...TM_SORTS.map(sort => ({ type: 'uml.Message', label: TM_WORDS[sort][0], props: { sort } })), { type: 'uml.DurationConstraint', label: 'Duration constraint' }],
   refs: { 'uml.Message': { 'props.replyTo': 'cascade' } },

@@ -7,6 +7,7 @@ import { brLines } from '../typed/draw.js';
 import { lineIn, lineItem } from './class.js'; // SHAPE.note, a comment's look too
 import { ownersOn, placeTabs, readingOrder } from './owners.js';
 import { snKindName } from './structure.js';
+import { usedIds } from '../core/model.js';
 
 /* ---------- the use case diagram, uml.use-case (work package 4.4, notes/stage-4.md §8) ----------
    Actors (a stick figure), use cases (an ellipse, its extension points in a compartment under the name) and subjects: a
@@ -201,7 +202,7 @@ function ucGeo({ model, view, pos: ranked, memo }) {
   const pic = ucPic(model, view), lines = ucLines(model, view, pic), pos = ucActorsFirst(ranked || {}, view, pic, lines), P = id => (Object.hasOwn(pos, id) ? pos[id] : [0, 0]);
   const nodes = pic.ids.filter(id => !pic.open.has(id)).map(id => { const n = pic.at.get(id), st = ucStereo(n);
     const shape = n.type === 'uml.Comment' ? { shape: 'note' } : n.type === 'uml.Package' ? { shape: 'package', stereotypes: st } : n.type === 'uml.Actor' ? { shape: 'actor', stereotypes: st }
-      : n.type === 'uml.UseCase' ? { shape: 'ellipse', stereotypes: st, points: ucPointsOf(n).map(ucName) } : { shape: 'classifier', stereotypes: st, compartments: [] }; // a closed subject, or another node
+      : n.type === 'uml.UseCase' ? { shape: 'ellipse', stereotypes: st, points: ucPointsOf(n).map(ucName) } : { shape: 'classifier', stereotypes: st, compartments: [], ariaOwn: ucNodeName(model, n, pic) }; // a closed subject, or another node: named as describe() names it (audit 28)
     const d = { id, label: ucName(n), type: n.type || 'uml.UseCase', kind: 'file', ...shape, aria: ucNodeName(model, n, pic), col: P(id)[0], row: P(id)[1] };
     return { ...d, ...SHAPE[d.shape].size(d) }; });
   const edges = lines.map(e => { const label = ucLineLabel(model, e);
@@ -291,7 +292,7 @@ const ucPointText = t => { const s = String(t ?? '').trim(); return s ? { type: 
 function ucConnect(model, view, from, to, at, line) {
   const ty = id => (UC_ARR(model.nodes).find(n => UC_OBJ(n) && n.id === id) || {}).type;
   if (!UC_OBJ(line) || line.type !== 'uml.Association' || ty(from) !== 'uml.UseCase' || ty(to) !== 'uml.Actor') return null;
-  const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
+  const used = new Set(); usedIds(model, used);
   let k = 1; while (used.has('association' + k)) k++;
   return [{ op: 'add', element: { id: 'association' + k, type: 'uml.Association', from: to, to: from }, view: view.id }];
 }
@@ -330,6 +331,8 @@ const UC_TYPE = registerDiagramType('uml.use-case', {
   validate: ucProblems,
   rules: UC_RULES,
   describe: ucDescribe,
+  // the PDF's Kind of an element of no type: "Element", as its accessible name (audit 28); null: the type's word
+  word: (model, id) => { const x = UC_ARR(model && model.nodes).find(n => UC_OBJ(n) && n.id === id); return x && x.type == null ? snKindName(x.type) : null; },
   edits: { connect: ucConnect, remove: ucRemove, rename: ucRename },
 });
 

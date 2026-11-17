@@ -463,6 +463,18 @@ try {
   check('the slot empty: the panel as before', same(fs(), ['label', 'p:owner', 'p:abstract', 'p:tier']), fs());
   h.destroy();
 
+  // ---- a host's model with a cycle and a BigInt in a card's props (audit 28): update() takes it, N adds with a fresh id, the panel reads it
+  { const loop = { n: 1 }; loop.self = loop;
+    const CYC = structuredClone(MODEL); node(CYC, 'd').props = { text: 'hi', loop, big: 10n }; node(CYC, 'b').members = [{ id: 'box1', label: 'taken' }];
+    let thrown = null, threw = []; const onErr = e => threw.push(e.message); window.addEventListener('error', onErr);
+    try { h = mount({ editable: true }, CYC); h.update({ ...CYC, title: 'again' }); h.update(CYC); } catch (e) { thrown = e.stack; }
+    check('a model with a cycle and a BigInt: render() and update() take it', !thrown, thrown);
+    key('n'); const r = pick('.um-rename'); if (r) { r.value = 'Crate'; key('Enter', {}, r); }
+    check('…N adds with the first id free (box1 is a member\'s), as one edit', !threw.length && !!last() && same(last().commands, [{ op: 'add', element: { id: 'box2', type: 'test.Box', label: 'Crate' }, view: 'v' }]), [threw, last()]);
+    card('d'); const dl = panel('.um-props dl');
+    check('…the panel reads the props: the cycle written [cycle], the BigInt 10n', !threw.length && !!dl && dl.textContent.includes('[cycle]') && dl.textContent.includes('10n'), [threw, dl && dl.textContent]);
+    window.removeEventListener('error', onErr); h.destroy(); }
+
   // ---- a large model: an editable update() costs about what a read-only one does (risks.md P1)
   const BIG = { schemaVersion: 2, nodes: Array.from({ length: 2000 }, (_, i) => ({ id: 'n' + i, type: 'Bad', label: 'Node ' + i })), edges: [],
     views: [{ id: 'v', diagram: 'test.box', nodeIds: Array.from({ length: 40 }, (_, i) => 'n' + i) }] };

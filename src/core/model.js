@@ -69,6 +69,18 @@ function copyOf(model, mark) {
     if (off) y.length -= off; }
   return out === NONE ? {} : out;
 }
+/* usedIds(model, into): every id the model holds, into a Set (a new one by default): each string under a key named id, in any
+   object or list, at any depth, as JSON.stringify's replacer read them before (a new element's id is the first one free). A walk
+   with a list and a seen set, no recursion, so a host's cycle or a BigInt, which JSON.stringify throws on, is read too (audit 28);
+   a value that throws when read (a getter, a Proxy) holds no id. */
+function usedIds(model, into = new Set()) {
+  const todo = [model], seen = new Set();
+  while (todo.length) { const o = todo.pop(); if (o === null || typeof o !== 'object' || seen.has(o)) continue; seen.add(o);
+    let keys; try { keys = Object.keys(o); } catch { continue; }
+    for (const k of keys) { let v; try { v = o[k]; } catch { continue; }
+      if (k === 'id' && typeof v === 'string') into.add(v); else if (v !== null && typeof v === 'object') todo.push(v); } }
+  return into;
+}
 function unreadable(model) {
   const bad = x => { try { return x !== null && typeof x === 'object' && Object.hasOwn(x, 'toString') && typeof x.toString !== 'function'; } catch { return true; } };
   // role: what the object walked is. 'tags' (its values are maps by tag name), 'present' (by element id), 'part' (one
@@ -112,7 +124,7 @@ function typedProblems(model) {
   const m = model && typeof model === 'object' ? model : {}, arr = x => (Array.isArray(x) ? x : []), isObj = x => x && typeof x === 'object';
   if (m.schemaVersion !== SCHEMA_VERSION) return out;
   const views = arr(m.views).filter(isObj), TYPE = /^[a-z0-9]+\.[A-Z][A-Za-z0-9]*$/;
-  const where = new Map(), kindOf = new Map(), ownerOf = new Map(), parents = []; // id -> its path, its kind, its owner; [element, path]
+  const where = new Map(), kindOf = new Map(), ownerOf = new Map(), parents = [], up = new Set(); // id -> its path, its kind, its owner; [element, path]; the elements whose members are being read
   const element = (x, at, kind, owner) => { // a node, typed edge, member, fragment or timeline item: one id space
     if (!isObj(x)) return err(at, 'an element is an object');
     if (typeof x.id !== 'string' || !x.id) return err(at + '.id', 'a typed element needs an id');
@@ -120,7 +132,8 @@ function typedProblems(model) {
     if (where.has(x.id)) err(at + '.id', `id "${x.id}" is used twice (also ${where.get(x.id)})`); else { where.set(x.id, at); kindOf.set(x.id, kind); }
     if (owner != null) ownerOf.set(x.id, owner);
     if (x.parent != null) parents.push([x, at]);
-    arr(x.members).forEach((y, j) => { element(y, `${at}.members[${j}]`, 'member', x.id); typeOf(y, `${at}.members[${j}]`, true); });
+    if (up.has(x)) return; up.add(x); // a host's member that holds its owner: said used twice, and not read again (audit 28)
+    arr(x.members).forEach((y, j) => { element(y, `${at}.members[${j}]`, 'member', x.id); typeOf(y, `${at}.members[${j}]`, true); }); up.delete(x);
   };
   const typeOf = (x, at, needed) => { if (!isObj(x)) return;
     if (x.type == null ? needed : typeof x.type !== 'string' || !TYPE.test(x.type)) warn(at + '.type', `type ${JSON.stringify(x.type)} is not <notation>.<Name> (uml.Class): drawn as a plain card`); };
@@ -157,7 +170,10 @@ function typedProblems(model) {
       const part = (((e.props || {}).ends || {})[k] || {}).part; if (part != null && !has(part)) err(`${at}.props.ends.${k}.part`, `part ${name(part)} is not an element`); });
   };
   arr(m.edges).forEach((e, i) => { if (typedEdge(e)) ends(e, `edges[${i}]`, boxes); });
-  const nodeIds = new Set(nodes.filter(isObj).map(n => n.id));
+  const nodeIds = new Set(nodes.filter(isObj).map(n => n.id)), modelEdge = new Map();
+  arr(m.edges).forEach(e => { if (typedEdge(e) && typeof e.id === 'string' && !modelEdge.has(e.id)) modelEdge.set(e.id, e); });
+  // a line's kind in words: 'uml.Dependency' "dependency", 'sysml.DeriveReqt' "derive reqt"
+  const lineWord = t => String(t).split('.').pop().replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
   views.forEach((v, i) => { if (!typedView(v)) return; const at = `views[${i}]`;
     if (typeof v.diagram !== 'string' || !/^[a-z0-9]+(\.[a-z0-9-]+)?$/.test(v.diagram)) warn(at + '.diagram', `diagram ${name(v.diagram)} is not <notation> or <notation>.<kind> (uml.class)`);
     if (v.direction != null && !['right', 'down'].includes(v.direction)) warn(at + '.direction', `direction ${name(v.direction)} is not right or down: drawn right`);
@@ -165,6 +181,13 @@ function typedProblems(model) {
     const mine = new Set(arr(v.containers).map(c => isObj(c) && c.id)), T = diagramOf(v); // an item (the type's items; else no ends) is no line
     const item = e => (T ? arr(T.items).includes(e.type) : e.from == null && e.to == null);
     arr(v.edges).forEach((e, j) => { if (typeof e === 'string') { if (kindOf.get(e) !== 'edge') err(`${at}.edges[${j}]`, `${name(e)} is not a typed edge`); } else if (isObj(e) && !item(e)) ends(e, `${at}.edges[${j}]`, mine); });
+    // a type that draws only its own kinds of line (T.drawsOnly: a state machine, a mindmap, a cloud diagram) leaves any other
+    // a view lists out of the picture: said, as the interaction overview says it (overview-kinds), never lost silently (audit 28)
+    if (T && Array.isArray(T.drawsOnly)) arr(v.edges).forEach((e, j) => { const x = typeof e === 'string' ? modelEdge.get(e) : e;
+      if (!isObj(x) || item(x) || T.drawsOnly.includes(x.type)) return; const what = String(T.title || T.name), a = /^[aeiou]/i.test(what) ? 'an' : 'a';
+      out.push({ level: 'warning', path: `${at}.edges[${j}]`, ids: typeof x.id === 'string' ? [x.id] : [], message: x.type == null || x.type === ''
+        ? `view ${name(v.id)} lists ${name(x.id)}, a line with no type, which ${a} ${what} does not draw: not drawn`
+        : `view ${name(v.id)} lists ${lineWord(x.type)} ${name(x.id)}, a line ${a} ${what} does not draw: not drawn` }); });
     if (v.subject != null && !has(v.subject)) err(at + '.subject', `subject ${name(v.subject)} is not an element`);
     ['layout', 'present'].forEach(k => Object.keys(isObj(v[k]) ? v[k] : {}).forEach(id => { if (!has(id)) warn(`${at}.${k}.${id}`, `${name(id)} is not an element: ignored`); })); });
   return out;
@@ -180,4 +203,4 @@ const listOf = (m, i) => (Array.isArray(m.views[i] && m.views[i].edges) ? i : -1
 const lineNames = m => { const out = new Map([[-1, namesOf(m && m.edges)]]);
   (Array.isArray(m && m.views) ? m.views : []).forEach((v, i) => { if (v && Array.isArray(v.edges)) out.set(i, namesOf(v.edges)); }); return out; };
 
-export { versionProblem, typedProblems, lineNames, namesOf, listOf, unreadable, copyOf, textOf, nameTable };
+export { versionProblem, typedProblems, lineNames, namesOf, listOf, unreadable, copyOf, textOf, nameTable, usedIds };

@@ -761,3 +761,12 @@ test('audit 26: a role binding the view holds as its own line is a row of its co
   const off = apply(CS, [{ op: 'set', view: vid, path: 'edges', value: CS.edges.filter(e => e.id !== b.id).map(e => e.id) }]);
   assert.deepEqual(T.rows(off, off.views.find(x => x.id === vid), 'order-events'), ['PublishSubscribe', 'publisher ← checkout']);
 });
+
+test('audit 28: a uml.Property kept as a node, not a member, prints in the PDF as a property; an element of no type as an element', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'S', type: 'uml.Class', label: 'Shop', members: [{ id: 'p1', type: 'uml.Property', label: 'cart', props: { valueType: 'Cart' } }] },
+    { id: 'loose', type: 'uml.Property', label: 'engine' }, { id: 'u', label: 'Thing' }], edges: [], views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 'S', nodeIds: ['S', 'loose', 'u'] }] };
+  assert.equal(layout(m, 'v').nodes.find(n => n.id === 'loose').aria, 'Property engine');
+  const c = mapContext(m), rows = tablesOf(c, c.V.v, c.buildGeo('v'))[0].rows.map(r => r.split('<td>').slice(1).map(x => x.replace(/<[^>]+>/g, '')));
+  const kind = label => rows.find(r => r[0] === label)[1];
+  assert.deepEqual([kind('engine'), kind('Thing'), kind('Shop')], ['Property', 'Element', 'Class'], 'as layout() and describe() name them');
+});

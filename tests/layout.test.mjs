@@ -673,3 +673,16 @@ test('audit 26: a card whose what or name runs to 40,000 characters is drawn in 
   for (const [k, m] of longCards(40000).entries()) { const t = performance.now(); mapContext(m, { measure }).buildView('v');
     const ms = performance.now() - t; assert.ok(ms < 1000, `#${k}: ${Math.round(ms)} ms`); }
 });
+
+test('audit 28: a line whose fromSide or toSide is named like an Object.prototype key is laid out as one with no side, as validate() says', () => {
+  const at = (k, side) => ({ nodes: [{ id: 'a', kind: 'service', label: 'A' }, { id: 'b', kind: 'service', label: 'B' }, { id: 'c', kind: 'service', label: 'C' }],
+    edges: [{ from: 'a', to: 'b', ...(side == null ? {} : { [k]: side }) }, { from: 'b', to: 'c', ...(side == null ? {} : { [k]: side }) }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }] });
+  const none = { from: layout(at('fromSide'), 'v').edges.map(e => e.pts), to: layout(at('toSide'), 'v').edges.map(e => e.pts) };
+  for (const side of ['__proto__', 'constructor', 'toString', 'valueOf', 'hasOwnProperty', 'isPrototypeOf', 'bogus']) for (const k of ['fromSide', 'toSide']) {
+    const m = at(k, side);
+    assert.match(validate(m).map(p => p.message).join(' | '), /is not left, right, top or bottom: ignored/, `${k} ${side}`);
+    assert.deepEqual(layout(m, 'v').edges.map(e => e.pts), none[k === 'fromSide' ? 'from' : 'to'], `${k} ${side}`);
+    assert.doesNotThrow(() => check(m, 'v'), `${k} ${side}`); }
+  // a real side still holds
+  assert.notDeepEqual(layout(at('toSide', 'top'), 'v').edges.map(e => e.pts), none.to);
+});

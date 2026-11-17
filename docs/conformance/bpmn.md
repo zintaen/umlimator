@@ -35,6 +35,7 @@ per line below, the line's name its key), drawn in Chrome by `tests/m4b.html`, a
 | DataObject | id, name | `bpmn.DataObject` | a page with its top right corner folded, square corners, its name outside |
 | TextAnnotation | id, text | `bpmn.TextAnnotation`, `label` | an open bracket with its text beside it |
 | association/dataAssociation | id, name, sourceRef, targetRef, associationDirection | `bpmn.Association` (`props.direction`), `bpmn.DataAssociation` | a dotted line, open arrowheads by direction; a data association's at its target |
+| (none: no BPMN element) | | a line of another kind the view lists (`uml.Dependency`) | a plain solid line with no arrowhead, never a sequence flow's look, keyed "Line" in the legend |
 | dataStoreReference | id, name, dataStoreRef | `bpmn.DataStoreReference`, `props.dataStoreRef` | the map's cylinder in the typed look, its name outside |
 | startEvent (None), endEvent (None) | id, name | `props.definition: "none"` | a 32 px circle, 1.5 px for a start, 3.5 px for an end |
 | messageStartEvent, messageEndEvent | id, name, messageEventDefinition | `props.definition: "message"` | the circle with an envelope, filled on the end event |
