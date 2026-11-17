@@ -1,4 +1,4 @@
-import { linesW, textW } from '../core/text.js';
+import { linesW } from '../core/text.js';
 import { hit } from './layered.js';
 
 // an issue's message, and what it is about (the cards, lines and boxes it names) when the caller keeps a list of that: check()
