@@ -112,7 +112,14 @@ function cvOverlaps(model, spans, match) {
 function sequenceFromSpans(model, spans, options = {}) {
   // read as sequenceFromTrace() reads them: no text String() throws on, and match a table by name (audit 21)
   const match = options && options.match; [model, spans, options] = [model, [].concat(spans || []), { ...options, match: null }].map(x => unreadable(x).model); options.match = match;
-  const id = String(options.view ?? 'trace'), m = sequenceFromTrace(migrate(model), spans, { ...options, view: id }), r = sequenceFromView(m, id, { ...options, view: id });
+  const id = String(options.view ?? 'trace'), M = migrate(model), was = CV_ARR(M.views).find(x => CV_OBJ(x) && x.id === id && x.diagram === 'uml.sequence');
+  const m = sequenceFromTrace(M, spans, { ...options, view: id }), r = sequenceFromView(m, id, { ...options, view: id });
+  // the UML sequence view replaced takes its lifelines and model messages and connectors with it, those no view of the result
+  // lists, as cvPlace says: sequenceFromTrace has put a map view in its place first, so cvPlace saw none of them (audit 25)
+  if (was) { const lists = key => new Set(CV_ARR(r.model.views).flatMap(x => (CV_OBJ(x) ? CV_ARR(x[key]) : [])));
+    const ns = lists('nodeIds'), es = lists('edges'), goneN = new Set(CV_ARR(was.nodeIds).filter(x => !ns.has(x))), goneE = new Set(CV_ARR(was.edges).filter(x => typeof x === 'string' && !es.has(x)));
+    r.model.nodes = CV_ARR(r.model.nodes).filter(x => !(CV_OBJ(x) && x.type === 'uml.Lifeline' && goneN.has(x.id)));
+    r.model.edges = CV_ARR(r.model.edges).filter(x => !(CV_OBJ(x) && ['uml.Message', 'uml.Connector'].includes(x.type) && goneE.has(x.id))); }
   const n = cvOverlaps(model, spans, options.match), v = r.model.views.find(x => x.id === id);
   if (n) v.caption = `${v.caption ? v.caption + ' ' : ''}${n} calls overlapped in the trace and are drawn one after another.`;
   return r;

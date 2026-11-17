@@ -324,10 +324,11 @@ function csProblems(model, view) {
       if (!(S && owner(e.from) === S && P.mem.get(e.from).m.type === 'uml.Property' && u && u.type === 'uml.CollaborationUse' && u.parent === S.id))
         return say(S || view.subject != null ? 'error' : 'warning', 'binding-ends', path, [e.id, e.from, e.to], `${e.id} runs from ${q(e.from)} to ${q(e.to)}: a role binding runs from a part of the subject to a collaboration use of it`);
       const C = csCollab(P, u);
-      if (C && !P.kids(C, 'uml.Property').some(m => m.label === e.label)) say('warning', 'binding-role', `${path}.label`, [e.id, C.id], `${e.id} binds ${JSON.stringify(e.label ?? null)}, not a role of ${q(C.id)}`);
+      if (C && !P.kids(C, 'uml.Property').some(m => m.label === e.label)) say('warning', 'binding-role', `${path}.label`, [e.id, C.id], !CS_HAS(e.label) ? `${e.id} binds no role: name one of ${q(C.id)}'s roles` : `${e.id} binds ${JSON.stringify(e.label)}, not a role of ${q(C.id)}`);
     } });
   P.uses.forEach(id => { const u = P.at.get(id); if (!csCollab(P, u)) say('warning', 'collaboration-named', `nodes[${nodeAt(id)}].props.collaboration`, [id],
-    `collaboration use ${q(id)} names ${JSON.stringify(CS_PROPS(u).collaboration ?? null)}, not a collaboration of the model`); });
+    !CS_HAS(CS_PROPS(u).collaboration) ? `collaboration use ${q(id)} names no collaboration` // said in words, not "names null" (audit 25)
+      : `collaboration use ${q(id)} names ${JSON.stringify(CS_PROPS(u).collaboration)}, not a collaboration of the model`); });
   return [...out, ...structProblems(model, view)];
 }
 

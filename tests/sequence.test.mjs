@@ -536,3 +536,19 @@ test('a line break in a name is drawn as a new line in every behavioural view (a
   ['Take', 'payment'].forEach(w => assert.ok(ta.includes(w), `the unfolded call: "${w}" on a line of its own`));
   assert.ok(ga.families.find(f => f.id === 'call-payment').head > 0, 'the unfolded call\'s header grown');
 });
+
+test('audit 25: Delete on a lifeline the view holds as its own says it is deleted, as it is; a model one is still removed from the view', () => {
+  const m = structuredClone(SEQ), v = V(m), T = diagramOf(v);
+  v.nodes = [m.nodes.splice(m.nodes.findIndex(n => n.id === 'lifeline-payments'), 1)[0]];
+  const r = T.edits.remove(m, v, ['lifeline-payments'], false);
+  assert.ok(r.commands.some(c => c.op === 'delete' && c.id === 'lifeline-payments'));
+  assert.equal(r.say, 'Deleted payments, and 3 messages with it');
+  assert.equal(T.edits.remove(m, v, ['receipt'], false).say, 'Removed receipt from the view, and 1 message with it', 'a model lifeline: as before');
+  const mixed = T.edits.remove(m, v, ['lifeline-payments', 'receipt'], false);
+  assert.equal(mixed.say, 'Deleted payments and removed receipt from the view, and 4 messages with them');
+  // two lifelines one fragment covers: its covers set once, without either (each set had put the other back: refused)
+  const two = T.edits.remove(SEQ, V(SEQ), ['lifeline-api', 'lifeline-payments'], false);
+  assert.ok(Array.isArray(two.commands), JSON.stringify(two));
+  assert.deepEqual(two.commands.filter(c => c.op === 'set'), [{ op: 'set', id: 'f3', path: 'props.covers', value: ['receipt'] }]);
+  assert.doesNotThrow(() => apply(m, mixed.commands)); assert.doesNotThrow(() => apply(SEQ, two.commands));
+});

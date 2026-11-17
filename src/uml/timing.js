@@ -373,15 +373,18 @@ function tmRemove(model, view, ids, fromModel) {
   const r = tmGuard(model, V, out); if (!Array.isArray(r) || !r.length) return r;
   // what goes, read off the model after: the core's cascade takes a call's reply and a change's constraints too
   const next = apply(model, r), Y = tmIndex(next, tmView(next, V.id)), left = new Set([...Y.changes, ...Y.msgs, ...Y.cons].map(x => x.id));
-  const lanes = new Set(gone.lane), theirs = new Set(X.msgs.filter(m => lanes.has(m.from) || lanes.has(m.to)).map(m => m.id)), n = theirs.size;
-  const k = X.changes.filter(c => lanes.has(c.lifeline) && left.has(c.id)).length;
-  const list = (skip = new Set()) => [[X.changes, 'change'], [X.msgs, 'message'], [X.cons, 'constraint']].map(([xs, w]) => [xs.filter(x => !left.has(x.id) && !skip.has(x.id)).length, w])
+  // each part said of its own lanes: a change by its lifeline, a message by its ends (a deleted lane's first); the rest with the hidden lanes, as before (audit 25)
+  const hidL = new Set(gone.hid), delL = new Set(gone.lane.filter(id => !hidL.has(id))), on = (S, m) => S.has(m.from) || S.has(m.to);
+  const list = (keep = () => true) => [[X.changes, 'change'], [X.msgs, 'message'], [X.cons, 'constraint']].map(([xs, w]) => [xs.filter(x => !left.has(x.id) && keep(x)).length, w])
     .filter(([c]) => c).map(([c, w]) => tmPlural(c, w)).join(', ').replace(/, ([^,]*)$/, ' and $1'); // "1 change, 2 messages and 1 constraint"
-  const who = gone.lane.map(X.name).join(', '), its = gone.lane.length === 1 ? 'its' : 'their', more = list(theirs), all = list();
+  const lane = id => (X.C.get(id) || {}).lifeline, mine = x => (X.C.get(x.id) === x ? delL.has(x.lifeline) : X.msgs.includes(x) ? on(delL, x) : delL.has(lane(x.from)) || delL.has(lane(x.to))); // a deleted lane's change, message or constraint
+  const theirs = new Set(X.msgs.filter(m => on(hidL, m) && !on(delL, m)).map(m => m.id)), n = theirs.size;
+  const k = X.changes.filter(c => hidL.has(c.lifeline) && left.has(c.id)).length, its = hidL.size === 1 ? 'its' : 'their';
+  const more = list(x => !theirs.has(x.id) && !mine(x)), all = list(), ours = list(mine);
   const hid = [n ? `deleted ${its} ${tmPlural(n, 'message')}${more ? `, and ${more}` : ''}` : more && `deleted ${more}`, k && `${its} ${k === 1 ? 'change stays' : 'changes stay'} in the timeline`].filter(Boolean); // only the clauses that hold (audit 5)
   // said as done: a lifeline the view holds as its own is deleted by Delete too, not hidden (audit 24)
-  const dels = gone.lane.filter(id => !gone.hid.includes(id)).map(X.name).join(', ');
-  const say = gone.lane.length ? (!gone.hid.length ? `Deleted ${who}${all ? ', ' + all : ''}` : [...(dels ? [`Deleted ${dels}`] : []), `Hid ${gone.hid.map(X.name).join(', ')}`, ...hid].join('; '))
+  const dels = gone.lane.filter(id => delL.has(id)).map(X.name).join(', ');
+  const say = gone.lane.length ? (!hidL.size ? `Deleted ${dels}${all ? ', ' + all : ''}` : [...(dels ? [`Deleted ${dels}${ours ? ', ' + ours : ''}`] : []), `Hid ${gone.hid.map(X.name).join(', ')}`, ...hid].join('; '))
     : `Deleted ${all}: a change, a message or a constraint is deleted, not hidden`;
   return { commands: r, say };
 }

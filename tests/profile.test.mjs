@@ -398,3 +398,17 @@ test('audit 20: the palette refuses a stereotype or an enumeration named as one 
     const c = T.edits.add(m, v, E(type), name, at); assert.ok(Array.isArray(c), `${type} ${JSON.stringify(name)}`);
     assert.deepEqual(validate(apply(m, c)).filter(p => p.level === 'error'), [], `${type} ${JSON.stringify(name)}`); }
 });
+
+test('audit 25: an extension and a profile application the view draws as its own lines mean what model lines do: no problem, the same names and rows', async () => {
+  const { readFileSync } = await import('node:fs');
+  const base = JSON.parse(readFileSync(new URL('./profile-minimal.json', import.meta.url)));
+  const own = structuredClone(base); own.views[0].edges = own.edges; own.edges = [];
+  const said = m => ({ problems: validate(m), describe: describe(m, 'v'), aria: layout(m, 'v').nodes.map(n => [n.id, n.aria]),
+    rows: m.nodes.map(n => [n.id, T.rows(m, m.views[0], n.id)]) });
+  assert.deepEqual(said(own), said(base));
+  assert.deepEqual(said(own).problems, []);
+  assert.ok(said(own).describe.includes('extended by «entity»') && said(own).describe.includes('table = orders'), said(own).describe);
+  // only the extension as the view's own: the stereotype still extends Class
+  const ext = structuredClone(base); ext.views[0].edges = [ext.edges.shift()];
+  assert.deepEqual(validate(ext), []);
+});

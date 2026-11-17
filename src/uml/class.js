@@ -281,7 +281,7 @@ function drawnLines(model, view, own) {
 /* the view's geometry, for a type's look: { model, view, pos (col, row by id, the layered layout's ranking or the view's
    pins), memo, direction }. A line that ends on a member is drawn to the member's owner; a line between two nodes the view
    does not both show is not drawn. An open package is a box (its id takes no slot), passed to layoutTyped as a container.
-   A look may also give node(d, n, model, pic), a node's drawing input before it is sized (the profile's tag compartments), and
+   A look may also give node(d, n, model, pic, view), a node's drawing input before it is sized (the profile's tag compartments), and
    dg, more of layoutTyped's input (repair, reroute: notes/stage-6.md §4.1), and box(b, model, pic), a box as drawn (its title
    and accessible name) */
 const typeGeo = look => ({ model, view, pos, memo }) => {
@@ -292,7 +292,7 @@ const typeGeo = look => ({ model, view, pos, memo }) => {
       : { shape: 'classifier', stereotypes: [...(UML_OWN(IMPLIED, n.type) ? [IMPLIED[n.type]] : look.kinds && kind ? [snKindWord(n.type)] : []), ...st], abstract: !!p.isAbstract, compartments: look.members ? compartmentsOf(n) : [],
         collapsed: UML_ARR(pr.collapsed), ...(Number.isFinite(pr.rows) ? { rows: pr.rows } : {}) };
     const d0 = { id, label: n.type === 'uml.Comment' ? nameOfEl(n) : pic.name(id), type: n.type || 'uml.Class', kind: 'file', ...shape, aria: nodeName(n, pic, look), col: (UML_OWN(pos, id) || [0, 0])[0], row: (UML_OWN(pos, id) || [0, 0])[1] };
-    const d = look.node ? look.node(d0, n, model, pic) : d0;
+    const d = look.node ? look.node(d0, n, model, pic, view) : d0;
     return { ...d, ...SHAPE[d.shape].size(d) }; });
   const edges = lines.filter(({ from, to }) => !holdsLine(pic, from, to))
     .map(({ e, from, to }) => ({ id: e.id, _id: e.id, type: e.type, from, to, label: lineLabel(e) || undefined, end: lineLook(e), aria: lineName(e, at, pic), ...(UML_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }));

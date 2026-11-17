@@ -349,8 +349,15 @@ function cmSaid(model, view, ids, fromModel, I, r) {
   const msgs = fromModel ? CM_ARR(model.edges).filter(e => CM_OBJ(e) && e.type === 'uml.Message') : I.messages;
   const took = msgs.filter(m => !left.has(m.id) && !CM_ARR(ids).includes(m.id)); if (!took.length) return r;
   const q = x => JSON.stringify(cmNameOf(x)), nm = id => cmNameOf(I.N.get(id) || { id });
-  const who = what.map(id => (I.shown.has(id) ? 'lifeline ' + q(I.N.get(id)) : `connector ${JSON.stringify(nm(I.E.get(id).from) + '–' + nm(I.E.get(id).to))}`)).join(', ');
-  return { commands: r, say: `${fromModel ? 'Deleted' : 'Hid'} ${who} and ${what.length === 1 ? 'its' : 'their'} ${cmPlural(took.length, 'message')}: ${took.map(q).join(', ')}` };
+  const who = xs => xs.map(id => (I.shown.has(id) ? 'lifeline ' + q(I.N.get(id)) : `connector ${JSON.stringify(nm(I.E.get(id).from) + '–' + nm(I.E.get(id).to))}`)).join(', ');
+  // said as done: what the view holds as its own is deleted by Delete too, not hidden (audit 25, as timing's audit 24); a message by what became of it
+  const nv = CM_ARR(next.views).find(v => CM_OBJ(v) && v.id === view.id) || {}, still = new Set([...CM_ARR(next.edges), ...CM_ARR(nv.edges)].filter(CM_OBJ).map(e => e.id));
+  const deleted = id => r.some(c => CM_OBJ(c) && c.op === 'delete' && c.id === id);
+  const part = (verb, xs, ms) => { const m = ms.length ? `${cmPlural(ms.length, 'message')}: ${ms.map(q).join(', ')}` : '';
+    return !xs.length ? (m ? [`${verb} ${m}`] : []) : [`${verb} ${who(xs)}${m ? ` and ${xs.length === 1 ? 'its' : 'their'} ${m}` : ''}`]; };
+  const gone = took.filter(m => !still.has(m.id)), kept = took.filter(m => still.has(m.id));
+  const said = [...part('Deleted', what.filter(deleted), gone), ...part('hid', what.filter(id => !deleted(id)), kept)].join('; ');
+  return { commands: r, say: said.charAt(0).toUpperCase() + said.slice(1) };
 }
 
 /* ---- the type ---- */
