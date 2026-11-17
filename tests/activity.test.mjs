@@ -524,3 +524,15 @@ test('audit 28: an object flow that reaches an object node through a decision, m
   const m = mk('uml.DecisionNode'); m.edges.find(e => e.id === 'f3').type = 'uml.ControlFlow'; m.edges.find(e => e.id === 'f3').from = 'take';
   assert.deepEqual(validate(m).filter(p => p.rule === 'object-flow').map(p => p.ids[0]), ['f3b', 'f4', 'f5']);
 });
+
+test('audit 28: a line of another kind the view lists is drawn with an open arrowhead and has its "Line" entry in the legend', () => {
+  const m = { schemaVersion: 2, title: 'o', nodes: ['a', 'b', 'c'].map(id => ({ id, type: 'uml.Action', label: id.toUpperCase() })),
+    edges: [{ id: 'own', type: 'uml.ControlFlow', from: 'a', to: 'b' }, { id: 'dep', type: 'uml.Dependency', from: 'b', to: 'c', label: 'needs' }],
+    views: [{ id: 'v', diagram: 'uml.activity', nodeIds: ['a', 'b', 'c'], edges: ['own', 'dep'] }] };
+  const names = g => (g.legend || []).map(x => (/<b>([^<]*)<\/b>/.exec(x) || [])[1]);
+  const g = mapContext(m).buildView('v').g;
+  assert.equal(g.edges.find(e => e._id === 'dep').aria, 'Line from B to C, named needs');
+  assert.deepEqual(names(g), ['Control flow', 'Line']);
+  const own = { ...m, views: [{ ...m.views[0], edges: ['own'] }] };
+  assert.deepEqual(names(mapContext(own).buildView('v').g), ['Control flow'], 'none listed: no entry');
+});
