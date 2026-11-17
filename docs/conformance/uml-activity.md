@@ -23,6 +23,7 @@ loads, draws it as plain cards with a warning. The vocabulary is `docs/diagrams/
 | 15.2 ControlFlow, ObjectFlow | `uml.ControlFlow`, `uml.ObjectFlow`; `label` the name, `props.guard` | a solid line with an open arrowhead, labelled `name [guard]` (`[else]` for else), cut at 280 px; the two kinds alike, told apart by the legend and the name |
 | 15.6 ActivityPartition | `uml.ActivityPartition`; a node's `parent` its partition, a partition's the partition it is nested in | lanes: bands across the flow, as long as the diagram, a 22 px header strip per level of nesting, divided 12 px off the router's lines |
 | 7.8 Comment | `uml.Comment`, `uml.CommentLink` | a note, a dashed line; a comment is in no lane |
+| A line of another kind the view lists | its own type (`uml.Dependency`) | a plain solid line with no arrowhead, never a flow's look, keyed "Line" in the legend and said by its kind in `describe()` |
 
 Rules, each `validate()` problem naming its `rule` and its elements (`notes/stage-4.md` §9.3); the first six are shared
 with the interaction overview diagram (`src/uml/flow.js`): `flow-ends`, `initial-flows`, `final-flows`, `fork-join`,

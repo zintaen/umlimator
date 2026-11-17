@@ -371,3 +371,13 @@ test('audit 25: a view whose parameter names move inside the frame keeps the lay
   for (const [m, vid, dir] of [[E, 'range-analysis'], [S, 'edge-cases', 'down'], [S, 'ec-constraint-block']]) { const got = margin(m, vid, dir);
     assert.ok(got.every(x => x >= Math.min(...ref)), `${vid} ${dir || ''}: ${got}`); }
 });
+
+test('audit 28: a listed line of another kind is keyed as it is drawn (a dependency, dashed with an open arrow), after the binding', () => {
+  const m = { schemaVersion: 2, nodes: ['a', 'b', 'c'].map(id => ({ id, type: 'sysml.ConstraintProperty', label: id.toUpperCase() })),
+    edges: [{ id: 'o', type: 'uml.Connector', from: 'a', to: 'b' }, { id: 'x', type: 'uml.Dependency', from: 'b', to: 'c', label: 'uses' }],
+    views: [{ id: 'v', diagram: 'sysml.parametric', nodeIds: ['a', 'b', 'c'], edges: ['o', 'x'] }] };
+  const g = layout(m, 'v');
+  assert.deepEqual(g.edges.find(e => e.id === 'x').end, { from: 'none', to: 'open', dashed: true });
+  assert.deepEqual(g.legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Binding', 'Dependency']);
+  assert.deepEqual(layout({ ...m, views: [{ ...m.views[0], edges: ['o'] }] }, 'v').legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Binding']);
+});

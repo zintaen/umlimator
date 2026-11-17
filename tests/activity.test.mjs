@@ -510,3 +510,18 @@ test('audit 25: Delete on a partition the view holds as its own keeps what it ho
   assert.deepEqual(both.model, ['M', 'file'], 'the model partition is hidden, not deleted'); assert.ok(!both.listed.includes('M') && both.nodes.some(([id]) => id === 'pack'));
   assert.equal(T.edits.remove(m, v, ['M'], false), null, 'a model partition alone: the canvas\'s hide');
 });
+
+test('audit 28: a listed line of another kind is drawn plain, never with a control flow\'s arrow, keyed "Line", and said by its kind, never as "then"', () => {
+  const m = { schemaVersion: 2, nodes: ['a', 'b', 'c'].map(id => ({ id, type: 'uml.Action', label: id.toUpperCase() })),
+    edges: [{ id: 'f', type: 'uml.ControlFlow', from: 'a', to: 'b' }, { id: 'x', type: 'uml.Dependency', from: 'b', to: 'c', label: 'uses' }],
+    views: [{ id: 'v', diagram: 'uml.activity', nodeIds: ['a', 'b', 'c'], edges: ['f', 'x'] }] };
+  const g = layout(m, 'v'), x = g.edges.find(e => e.id === 'x'), f = g.edges.find(e => e.id === 'f');
+  assert.deepEqual(x.end, { from: 'none', to: 'none' });
+  assert.notDeepEqual(x.end, f.end);
+  assert.equal(x.aria, 'Dependency from B to C, named uses');
+  assert.deepEqual(g.legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Control flow', 'Line']);
+  assert.match(g.legend[1], /<path d="M2 8H26"\/>/);
+  assert.deepEqual(describe(m, 'v').split('\n'), ['v: an activity diagram of 3 nodes, 1 flow, 0 partitions and 1 other line.', 'Action A; then B.', 'Action B; dependency to C (uses).', 'Action C.']);
+  const own = { ...m, views: [{ ...m.views[0], edges: ['f'] }] };
+  assert.deepEqual(layout(own, 'v').legend.length, 1); assert.match(describe(own, 'v'), /1 flow and 0 partitions\./);
+});

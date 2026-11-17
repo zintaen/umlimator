@@ -820,3 +820,16 @@ test('audit 27: an untyped node on a BPMN view is said to have no type, never "u
   assert.ok(said.includes('x ("Plain") has no type, so it is no BPMN element umlimator draws: drawn as a task'), said.join(' | '));
   for (const t of said) assert.doesNotMatch(t, /undefined/);
 });
+
+test('audit 28: a listed line of another kind is drawn plain, never with a sequence flow\'s filled arrow, and keyed "Line"', () => {
+  const m = { schemaVersion: 2, nodes: ['a', 'b', 'c'].map(id => ({ id, type: 'bpmn.Task', label: id.toUpperCase() })),
+    edges: [{ id: 'f', type: 'bpmn.SequenceFlow', from: 'a', to: 'b' }, { id: 'x', type: 'uml.Dependency', from: 'b', to: 'c', label: 'uses' }],
+    views: [{ id: 'v', diagram: 'bpmn', nodeIds: ['a', 'b', 'c'], edges: ['f', 'x'] }] };
+  const g = layout(m, 'v'), x = g.edges.find(e => e.id === 'x');
+  assert.deepEqual(x.end, { from: 'none', to: 'none' });
+  assert.deepEqual(g.edges.find(e => e.id === 'f').end, { from: 'none', to: 'arrow' });
+  const svg = svgOf(g), at = svg.indexOf('data-from="b" data-to="c"'), path = svg.slice(at, svg.indexOf('</g>', at));
+  assert.ok(at >= 0 && /class="edge"/.test(path), path); assert.doesNotMatch(path, /marker-end/, 'no arrowhead on it');
+  assert.deepEqual(g.legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Sequence flow', 'Line']);
+  assert.ok(!layout(EX, EX.views[0].id).legend.some(l => /<b>Line<\/b>/.test(l)), 'the example lists no other kind: no Line key');
+});
