@@ -224,7 +224,7 @@ const LINE_WORDS = { 'uml.Association': ['Association', 'a link between instance
 const LEGEND_ENDS = { // small copies of src/typed/draw.js's ends, pointing right with the tip at x 26
   none: '', open: '<path d="M17 4L26 8L17 12" fill="none"/>', triangle: '<path d="M16 3L26 8L16 13Z" fill="var(--um-panel)"/>',
   diamond: '<path d="M12 8L19 4L26 8L19 12Z" fill="var(--um-panel)"/>', 'filled-diamond': '<path d="M12 8L19 4L26 8L19 12Z" fill="var(--um-muted)"/>',
-  'filled-triangle': '<path d="M16 3L26 8L16 13Z" fill="var(--um-muted)"/>' };
+  'filled-triangle': '<path d="M16 3L26 8L16 13Z" fill="var(--um-muted)"/>', arrow: '<path d="M16 4L26 8L16 12Z" fill="var(--um-muted)"/>' };
 const legendItem = (end, dashed, name, says) => `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round"><path d="M2 8H${end === 'none' ? 26 : end.includes('diamond') ? 12 : 17}"${dashed ? ' stroke-dasharray="3 2"' : ''}/>${LEGEND_ENDS[end]}</g></svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`;
 // the legend of a view's lines (pieces.js shows it): each kind drawn, then the association's ends it shows
 function legendOf(edges) {
@@ -232,8 +232,11 @@ function legendOf(edges) {
   return [...Object.keys(LINE_WORDS).filter(t => types.has(t)).map(t => { const L = lineLook({ type: t }), [name, says] = LINE_WORDS[t];
     return legendItem(t === 'uml.Association' ? 'none' : L.to, !!L.dashed, name, says); }),
     ...[['filled-diamond', 'Composition', 'the whole owns its parts'], ['diamond', 'Aggregation', 'the whole holds its parts'], ['open', 'Navigable end', 'reachable from the other end']]
-      .filter(([k]) => ends.has(k)).map(([k, name, says]) => legendItem(k, false, name, says))];
+      .filter(([k]) => ends.has(k)).map(([k, name, says]) => legendItem(k, false, name, says)),
+    ...(edges.some(e => !UML_OWN(LINE_WORDS, e.type)) ? [lineItem()] : [])];
 }
+// a kind a view lists that it does not draw as its own: its plain arrow, "Line", in every structural view's legend (audit 27)
+const LINE_SAYS = 'a kind of line this view does not draw as its own', lineItem = () => legendItem('arrow', false, 'Line', LINE_SAYS);
 
 /* ---- the view laid out: the model's elements as layoutTyped's input ---- */
 // every element by id, with its owner for a member
@@ -421,4 +424,4 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   edits: { rename: lineRename(lineLabel) },
 });
 
-export { CLASSIFIERS, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, classProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
+export { CLASSIFIERS, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, classProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
