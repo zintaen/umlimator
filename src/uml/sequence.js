@@ -6,6 +6,7 @@ import { layoutTimeAxis } from '../layout/timeaxis.js';
 import { brLines } from '../typed/draw.js';
 import { frame, tagSize, guardSize, useSize } from './frame.js';
 import { interactionWalk, activationBars, replyCallFor, INTERACTION_RULES, interactionProblems } from './interaction.js';
+import { copyOf } from '../core/model.js';
 
 /* ---------- the sequence diagram, uml.sequence (work package 3.3, notes/stage-3.md §4 and §5) ----------
    The subset of notes/stage-3.md §4.1: lifelines (`represents`, «actor» as text), messages inline in the view's `edges`
@@ -265,7 +266,7 @@ function sqPut(V, id, R, at, el) {
    back along it (interaction.js's replyCallFor) */
 function sqConnect(model, view, from, to, at, line) {
   const V = sqView(model, view); if (!V) return null;
-  const ids = SQ_ARR(V.nodeIds), props = { ...(SQ_OBJ(line && line.props) ? structuredClone(line.props) : {}) };
+  const ids = SQ_ARR(V.nodeIds), props = { ...(SQ_OBJ(line && line.props) ? copyOf(line.props) : {}) };
   if (!ids.includes(from) || !ids.includes(to)) return sqErr(`a message joins two lifelines of view ${V.id}`);
   const sort = SQ_SORTS.includes(props.sort) ? props.sort : (props.sort = 'call');
   if (from === to && (sort === 'create' || sort === 'delete')) return sqErr(`a lifeline does not ${sort} itself`);

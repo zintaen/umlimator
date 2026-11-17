@@ -182,17 +182,17 @@ function run(m, c, gone) {
         o = o[k];
       }
       const last = keys[keys.length - 1], was = o[last];
-      if (c.value === undefined) delete o[last]; else putOwn(o, last, structuredClone(c.value)); // delete takes an own key only
+      if (c.value === undefined) delete o[last]; else putOwn(o, last, copyOf(c.value)); // delete takes an own key only
       if (c.view == null && keys.length === 1 && last === 'label' && was !== undefined) for (const [, r] of at)
         if (r.x !== o && r.x.label === was && Object.entries(propRefs(r.x.type)).some(([p, how]) => /\bnamed\b/.test(how) && dig(r.x, p) === c.id)) {
-          if (c.value === undefined) delete r.x.label; else r.x.label = structuredClone(c.value); }
+          if (c.value === undefined) delete r.x.label; else r.x.label = copyOf(c.value); }
       return;
     }
     case 'add': {
       if ('to' in c) throw new Error('add: the owner of a member is `owner`');
       if (c.in != null && c.in !== 'view' && c.in !== 'model') throw new Error(`add: in is 'view' or 'model', not ${JSON.stringify(c.in)}`);
       checkNew(c.element, at);
-      const x = structuredClone(c.element), owner = c.owner != null ? need(c.owner) : null;
+      const x = copyOf(c.element), owner = c.owner != null ? need(c.owner) : null;
       if (c.in === 'view') {
         if (c.view == null || owner) throw new Error('add: in \'view\' needs a view, and no owner');
         const v = viewOf(c.view), T = diagramOf(v) || {}, pal = arr(T.elements);
@@ -294,7 +294,7 @@ function run(m, c, gone) {
       const v = c.view, list = (m.views ||= []);
       if (!isObj(v) || typeof v.id !== 'string') throw new Error('addView: a view is an object with a string id');
       if (list.some(x => isObj(x) && x.id === v.id)) throw new Error(`addView: view "${v.id}" is there already`);
-      list.splice(place(list, c.index), 0, structuredClone(v));
+      list.splice(place(list, c.index), 0, copyOf(v));
       return;
     }
     default: throw new Error(`${JSON.stringify(c.op)} is not a command (set, add, move, hide, delete, reparent, addView)`);
