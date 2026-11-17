@@ -42,7 +42,8 @@ if not (home / "umlimator.py").is_file():
                 or git("checkout", "--quiet", "FETCH_HEAD")):
             sys.exit(f"umlimator {ref} could not be fetched (git says why, above): its first use needs the network, once; "
                      f"or set UMLIMATOR_CLI_CACHE to a folder holding a checkout of it in {ref}/ "
-                     f"(git clone https://github.com/zintaen/umlimator.git DIR/{ref}, then git -C DIR/{ref} checkout {sha or ref})")
+                     + (f"(git clone https://github.com/zintaen/umlimator.git DIR/{ref}, then git -C DIR/{ref} checkout {sha})" if ref == REF
+                        else f"(git clone --branch {ref} https://github.com/zintaen/umlimator.git DIR/{ref})"))
         if sha and (got := head(part)) != sha:
             sys.exit(f"umlimator {ref} is commit {got}, not the pinned {sha}: not running it")
         try:
