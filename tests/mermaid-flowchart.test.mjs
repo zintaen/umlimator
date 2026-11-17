@@ -173,9 +173,10 @@ print(json.dumps({"nodes": [n["id"] for n in m["nodes"]], "edges": [[e["id"], e[
   // the importer draws a line to a subgraph's box; the typed flowchart has no box, so the reader reports it (pinned above)
   assert.deepEqual(edges.filter(e => py.edges.some(p => p[0] === e[0])), py.edges.filter(([, a, b]) => !boxes.has(a) && !boxes.has(b)));
   assert.deepEqual(py.edges.filter(([, a, b]) => boxes.has(a) || boxes.has(b)), [['one-three', 'one', 'three'], ['three-c2', 'three', 'c2']]);
-  // what it reads besides: Mermaid's @{ } forms, an edge id, the second flow of o--o and x--x
-  assert.deepEqual(nodes.filter(id => !py.nodes.includes(id)), [...Array.from({ length: 18 }, (_, k) => `sh${k + 1}`), 'icon', 'img', 'K', 'L']);
-  assert.deepEqual(edges.filter(e => !py.edges.some(p => p[0] === e[0])), [['e1', 'K', 'L'], ['Q-P', 'Q', 'P'], ['S-R', 'S', 'R']]);
+  // what it reads besides: Mermaid's @{ } forms, the second flow of o--o and x--x; an edge id both read, as the line's id (audit 29)
+  assert.deepEqual(nodes.filter(id => !py.nodes.includes(id)), [...Array.from({ length: 18 }, (_, k) => `sh${k + 1}`), 'icon', 'img']);
+  assert.deepEqual(edges.filter(e => !py.edges.some(p => p[0] === e[0])), [['Q-P', 'Q', 'P'], ['S-R', 'S', 'R']]);
+  assert.deepEqual(py.edges.find(p => p[0] === 'e1'), ['e1', 'K', 'L']);
 });
 
 test('the same source read twice gives the same ids (R3); an inserted link renames only the later ones of its pair', () => {

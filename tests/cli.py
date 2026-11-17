@@ -36,7 +36,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4})
 
 
 def ok(name, cond, info=""):
@@ -1724,5 +1724,30 @@ if part("audit 27"):
         ok("mcp · diff of ~name for no such user, or of a name too long for the disk, is a tool error, never an Internal error (audit 27)",
            len(said) == 3 and all("error" not in x for x in said) and [x["result"]["isError"] for x in said] == [True, True, False]
            and "no such user" in said[0]["result"]["content"][0]["text"] and "Traceback" not in r.stderr, (said, r.stderr[-600:]))
+if part("audit 29"):
+    with tempfile.TemporaryDirectory() as tmp:
+        t = Path(tmp)
+        # audit 29: timelapse read git log's paths C-quoted ("s\306\241.json"), so a model whose name holds a non-ASCII
+        # letter, a quote, a backslash or a tab had no version; and it passed the model as a glob pathspec, so another
+        # file's history (mapv.json) was drawn as versions of map[v].json
+        mk = lambda x: json.dumps({"title": "m", "nodes": [{"id": "a", "label": x}], "views": [{"id": "v", "nodeIds": ["a"]}]})
+        names = ["sơ-đồ.json", 'q"b\\s\tt.json', "map[v].json", "m*p?.json", ":(icase)M.json"]
+        g = t / "g"; (g / "sub dir").mkdir(parents=True)
+        sh = lambda *x: subprocess.run(["git", "-C", str(g), "-c", "user.name=t", "-c", "user.email=t@t", *x], capture_output=True, text=True)
+        sh("init", "-q")
+        for k in (1, 2):
+            for n in names:
+                (g / "sub dir" / n).write_text(mk(f"{n} {k}"))
+            sh("add", "."); sh("commit", "-qm", f"version {k}")
+            for other in ("mapv.json", "mxpx.json", "m.json"):  # names each pattern takes in, each with commits of its own
+                (g / "sub dir" / other).write_text(mk(f"{other} {k}")); sh("add", "."); sh("commit", "-qm", f"another file {k}")
+        runs = [subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "timelapse", str(g / "sub dir" / n), "--out", str(t / f"tl{k}.html")],
+                               capture_output=True, text=True) for k, n in enumerate(names)]
+        read = lambda f: json.loads(m[1]) if f.is_file() and (m := re.search(r'<script id="versions" type="application/json">(.*?)</script>', f.read_text(encoding="utf-8"), re.S)) else {}
+        seen = [[v["model"]["nodes"][0]["label"] for v in read(t / f"tl{k}.html").get("versions", [])] for k in range(len(names))]
+        ok("timelapse · a model whose name holds a non-ASCII letter, a quote, a backslash, a tab, or a glob's * ? [ ] or :( has its own versions, no other file's (audit 29)",
+           [r.returncode for r in runs] == [0] * len(names) and seen == [[f"{n} 1", f"{n} 2"] for n in names]
+           and all([v[11:] for v in json.loads(r.stdout)["versions"]] == ["version 1", "version 2"] for r in runs),
+           [(r.returncode, r.stdout[-200:], r.stderr[-300:]) for r in runs])
 part.done()
 sys.exit(1 if failed else 0)

@@ -40,7 +40,11 @@ def accepted(pack, row):
     except (OSError, ValueError):
         return None
     # JSON that is no object (null, a list: a hand edit, a bad disk) is no yes, as a file cut short is not (audit 28)
-    return a if isinstance(a, dict) and (a.get("pack"), a.get("label"), a.get("terms_sha256")) == (pack, row["label"], row["terms"]["sha256"]) else None
+    if not (isinstance(a, dict) and (a.get("pack"), a.get("label"), a.get("terms_sha256")) == (pack, row["label"], row["terms"]["sha256"])):
+        return None
+    # how and when it was given, each a string or None: a hand edit's number or a field left out is not recorded, never a
+    # TypeError in pack list or a KeyError in pack fetch (audit 29)
+    return {**a, **{k: a[k] if isinstance(a.get(k), str) and a[k] else None for k in ("via", "date")}}
 
 
 def zips(pack, row):
@@ -284,7 +288,7 @@ def fetch(pack, accept=None):
             (d / t["member"]).write_bytes(pdf)
         (d / "accepted.json").write_text(json.dumps({"pack": pack, "label": row["label"], "terms_sha256": t["sha256"],
                                                      "via": via,
-                                                     "date": prior["date"] if prior else datetime.date.today().isoformat()}) + "\n")
+                                                     "date": (prior and prior["date"]) or datetime.date.today().isoformat()}) + "\n")
     finally:
         for tmp in tmps:
             tmp.unlink(missing_ok=True)

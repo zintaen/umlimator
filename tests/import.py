@@ -484,6 +484,28 @@ got = [list(imp.front_title(x, 0)) for x in fl]
 ok("mermaid · a front-matter title holding U+FEFF, U+001C to U+001F, U+0085 or a Unicode space is read as the typed readers read it (audit 28)",
    js.returncode == 0 and got == json.loads(js.stdout) and got[0] == ["Orders and returns", None, 1] and got[3] == ["Orders", None, 0]
    and imp.read("mermaid", "---\ntitle: Orders\n\ufeffand returns\n---\nflowchart LR\n  a --> b\n", "x")[0]["title"] == "Orders and returns", (got, js.stdout, js.stderr[-300:]))
+# audit 29: a digit in the comment after | or > was taken as the indentation indicator, and a non-ASCII digit there (U+0663,
+# which Python's \d matches and int() reads as 3) gave the two readers different titles; YAML takes the digit only right
+# after the indicator
+fl = [["title: > # folded, see note 2", "    Orders and", "    returns"], ["title: | # \u0663", "    a", "    b"], ["title: |2 # 4", "   x", "  y"],
+      ["title: >-3 # 1", "    x", "   y"], ["title: |+ # 9", "  kept"], ["title: >1", "  a", " b"]]
+js = subprocess.run(["node", "--input-type=module", "-e", "import { mermaidFrontTitle } from " + json.dumps((ROOT / "src" / "readers" / "mermaid-front.js").as_uri())
+                     + "; console.log(JSON.stringify(JSON.parse(process.argv[1]).map(x => { const r = mermaidFrontTitle(x, 0); return [r.title, r.rest, r.end]; })))",
+                     json.dumps(fl)], capture_output=True, text=True)
+got = [list(imp.front_title(x, 0)) for x in fl]
+ok("mermaid · a block-scalar title takes its indentation digit from the indicator, never from the comment after it, alike in both readers (audit 29)",
+   js.returncode == 0 and got == json.loads(js.stdout) and [g[0] for g in got] == ["Orders and returns", "a\nb", " x\ny", " x\ny", "kept", " a\nb"]
+   and imp.read("mermaid", "---\ntitle: > # see note 2\n    Orders and\n    returns\n---\nflowchart LR\n  a --> b\n", "x")[0]["title"] == "Orders and returns", (got, js.stdout, js.stderr[-300:]))
+# audit 29: a statement with an edge id (A e1@--> B), which Mermaid documents and the typed reader reads, was not imported,
+# its cards and link lost; the id names the line, a hostile one as a slug, one taken falls back to the line's own id
+chain = "O" + "".join(f"-->Q{k}" for k in range(500)) + " last@--> Z"
+m, un = imp.read("mermaid", 'flowchart LR\n  R e1@--> S\n  A --> B\n  C & D x@-.->|t| E\n  F e2@<--> G\n  L <b>@==> M e1@--> N\n'
+                 f'  I --> J["a@b"]\n  e1@{{ animate: true }}\n  {chain}\n', "x")
+ok("mermaid · a link with an edge id (A e1@--> B) is imported, its id naming the line; e1@{ ... } is still said (audit 29)",
+   [(e["id"], e["from"], e["to"]) for e in m["edges"][:10]] == [("e1", "R", "S"), ("A-B", "A", "B"), ("x", "C", "E"), ("D-E", "D", "E"), ("e2", "F", "G"), ("G-F", "G", "F"),
+                                                              ("b", "L", "M"), ("M-N", "M", "N"), ("I-J", "I", "J"), ("O-Q0", "O", "Q0")]
+   and (m["edges"][-1]["id"], m["edges"][-1]["from"], m["edges"][-1]["to"]) == ("last", "Q499", "Z") and len(m["edges"]) == 510
+   and un == [(8, "not imported: e1@{ animate: true }")] and card(m, "J")["label"] == "a@b", ([(e["id"], e["from"], e["to"]) for e in m["edges"]][:12], un))
 # audit 25: a Markdown string ("`**Bold**`") lost its backticks and kept its ** and _ as text, with no word, where the typed
 # reader says it is read as plain text: on a node, a line's label and a subgraph's title
 m, un = imp.read("mermaid", 'flowchart LR\n  A["`**Bold** and _it_`"] -->|"`*e*`"| B\n  B -- "`x`" --> C\n  subgraph s1 ["`**S**`"]\n  E\n  end\n'

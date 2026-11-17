@@ -235,6 +235,24 @@ a.write_text(json.dumps({**json.loads(a.read_text()), "via": None}))
 r = cli(d, "pack", "list")
 ok("list#2 · a recorded yes with no via is listed, not a crash", r.returncode == 0 and "gcp  Google Cloud  pin test-1  fetched, terms accepted (how not recorded)" in r.stdout, (r.stdout, r.stderr))
 
+# audit 29: an accepted.json naming this pack, pin and terms but edited by hand (a via that is no string, no date, a date that
+# is no string) ended pack list in a TypeError and pack fetch, after every download, in a KeyError: how and when are not recorded
+yes29 = a.read_text()
+for name, more in [("a via that is a number", {"via": 1}), ("a via that is a list", {"via": ["flag"]}), ("no date", {"date": None}), ("a date that is a number", {"date": 5})]:
+    a.write_text(json.dumps({k: v for k, v in {**json.loads(yes29), "via": "flag", **more}.items() if v is not None}))
+    r = cli(d, "pack", "list")
+    for z in (d / "cache/packs/gcp/test-1").glob("*.zip"):
+        z.unlink()
+    log.clear()
+    f = cli(d, "pack", "fetch", "gcp")
+    acc = json.loads(a.read_text()) if f.returncode == 0 else {}
+    how = "flag" if "via" not in more else "how not recorded"
+    ok(f"list#4 · an accepted.json with {name} is listed as accepted ({how}), and pack fetch downloads and records the yes again, no traceback (audit 29)",
+       r.returncode == 0 and f"gcp  Google Cloud  pin test-1  fetched, terms accepted ({how})" in r.stdout and f.returncode == 0 and log == ["/core.zip", "/category.zip"]
+       and isinstance(acc.get("date"), str) and acc.get("date") == (json.loads(yes29)["date"] if "date" not in more else acc.get("date")) and len(acc["date"]) == 10
+       and acc.get("via") == ("flag" if "via" not in more else None) and "Traceback" not in r.stderr + f.stderr, (r.stdout, r.stderr[-300:], f.stdout[-200:], f.stderr[-300:], acc))
+a.write_text(yes29)
+
 # ---------- what a render reads: the cache only, never a socket ----------
 PROBE = r"""
 import importlib.util, json, socket, sys
