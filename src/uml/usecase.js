@@ -152,7 +152,8 @@ function ucNodeName(model, n, pic) {
   const st = ucStereo(n), why = st.length ? ` (${st.join(', ')})` : '', up = n.parent != null && pic.at.get(n.parent), k = ucPointsOf(n).length;
   if (n.type === 'uml.UseCase') return `Use case ${ucName(n)}${why}${up ? `, in ${ucName(up)}` : ''}${k ? `, ${ucPlural(k, 'extension point')}` : ''}`;
   if (n.type === 'uml.Package') return `Package ${ucName(n)} (${[...st, 'closed'].join(', ')})`;
-  return `${n.type === 'uml.Actor' ? 'Actor' : n.type === 'uml.Subject' ? 'Subject' : String(n.type).split('.').pop()} ${ucName(n)}${why}`;
+  // a kind outside the view's own in words, "Data type Money", never its type's name (audit 23)
+  return `${n.type === 'uml.Actor' ? 'Actor' : n.type === 'uml.Subject' ? 'Subject' : String(n.type).split('.').pop().replace(/([a-z])([A-Z])/g, (_, a, b) => a + ' ' + b.toLowerCase())} ${ucName(n)}${why}`;
 }
 // "Extend from Redeem a voucher to Check out, at payment, when the shopper has a voucher code"
 function ucLineName(model, e, pic) {

@@ -90,11 +90,12 @@ SHAPE.state = {
       + `<path d="M${f.x} ${r2(f.y + 24 + hd)}H${f.x + f.w}" class="st-head" stroke="var(--um-muted)"/>`; },
 };
 // a region: no border (its box is there to select, drop into and outline), its name at its top left in 10 px, and the
-// dashed divider before it (f.div: [x1, y1, x2, y2]) when it is not its state's first
-SHAPE.region = {
+// dashed divider before it (f.div: [x1, y1, x2, y2]) when it is not its state's first; a name the author broke a line each,
+// 12 px apart, its room grown by its head (titleLh: src/uml/owners.js, audit 23)
+SHAPE.region = { titleLh: 12,
   frame: f => `<rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" stroke="transparent" style="fill-opacity:0"/>`
     + (f.div ? `<path d="M${r2(f.div[0])} ${r2(f.div[1])}L${r2(f.div[2])} ${r2(f.div[3])}" class="st-div" fill="none" stroke="var(--um-muted)" stroke-dasharray="6 4"/>` : '')
-    + (t => ST_HAS(t) ? `<text class="family-title" x="${r2(f.x + 8)}" y="${r2(f.y + 14)}" fill="var(--um-muted)" style="font:400 10px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(t, 10, f.w - 16))}</text>` : '')(f.rname ?? f.label), // rname: its «stereotypes» and name (stPic)
+    + (t => ST_HAS(t) ? brLines(t).map((l, i) => `<text class="family-title" x="${r2(f.x + 8)}" y="${r2(f.y + 14 + i * 12)}" fill="var(--um-muted)" style="font:400 10px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(l, 10, f.w - 16))}</text>`).join('') : '')(f.rname ?? f.label), // rname: its «stereotypes» and name (stPic)
 };
 for (const k of ['junction', 'history', 'terminate', 'state']) { const S = SHAPE[k]; S.face = n => [n.y, n.y + n.h]; S.ports = (n, side, j = 1) => portsOn(S, n, side, j); }
 

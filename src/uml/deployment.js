@@ -1,10 +1,11 @@
 import { registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
+import { brLines } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
 import { lineRename } from './class.js'; // SHAPE.note, a comment's look too
 import { lineInside, ownersOn, readingOrder } from './owners.js';
-import { SN_SAY, STRUCT_RULES, snKindWord, structProblems } from './structure.js'; // SHAPE.artifact and SHAPE.component too
+import { SN_SAY, STRUCT_RULES, snKindName, snKindWord, structProblems } from './structure.js'; // SHAPE.artifact and SHAPE.component too
 
 /* ---------- the deployment diagram, uml.deployment (work package 5.5, notes/stage-5.md §10.3) ----------
    Nodes, devices and execution environments (UML's cube: a front face with a top and a right face 10 px deep), each a box
@@ -24,14 +25,15 @@ const DP_TARGETS = ['uml.Node', 'uml.Device', 'uml.ExecutionEnvironment'], DP_AR
 const DP_LINES = ['uml.Deployment', 'uml.Manifestation', 'uml.CommunicationPath', 'uml.Dependency', 'uml.CommentLink'];
 const DP_WORD = { 'uml.Node': 'Node', 'uml.Device': 'Device', 'uml.ExecutionEnvironment': 'Execution environment', 'uml.Artifact': 'Artifact',
   'uml.DeploymentSpecification': 'Deployment specification', 'uml.Component': 'Component', 'uml.Comment': 'Comment' };
-const dpWord = x => (Object.hasOwn(DP_WORD, x.type) ? DP_WORD[x.type] : String(x.type ?? '').split('.').pop());
+const dpWord = x => (Object.hasOwn(DP_WORD, x.type) ? DP_WORD[x.type] : snKindName(x.type)); // a kind outside the view's own in words: "Use case" (audit 23)
 const DP_KW = { __proto__: null, 'uml.Device': 'device', 'uml.ExecutionEnvironment': 'executionEnvironment' };
 
 /* ---- the cube (§9.1): SHAPE.node's outline and inset, 10 px deep, in the typed look's paint; closed a node, open a frame ---- */
 const DP = { d: 10, head: 15, pad: 10, name: 12, nlh: 16, st: 11, sth: 14, minW: 120, maxW: 320, minH: 60 };
-const dpParts = n => { const st = [...(DP_KW[n.type] ? [DP_KW[n.type]] : []), ...DP_ARR(n.stereotypes)].map(t => `«${t}»`), name = String(n.label ?? '');
-  return { st, name, w: Math.ceil(Math.min(DP.maxW, Math.max(DP.minW, ...st.map(t => textW(t, DP.st) + 2 * DP.pad), textW(name, DP.name) + 2 * DP.pad)) + DP.d),
-    h: Math.max(DP.minH, DP.d + 16 + st.length * DP.sth + DP.nlh) }; };
+// a name the author broke (a Mermaid <br>): a line each, 16 px apart, the cube as wide as the widest and taller by the rest (audit 23)
+const dpParts = n => { const st = [...(DP_KW[n.type] ? [DP_KW[n.type]] : []), ...DP_ARR(n.stereotypes)].map(t => `«${t}»`), name = brLines(n.label);
+  return { st, name, w: Math.ceil(Math.min(DP.maxW, Math.max(DP.minW, ...st.map(t => textW(t, DP.st) + 2 * DP.pad), ...name.map(l => textW(l, DP.name) + 2 * DP.pad))) + DP.d),
+    h: Math.max(DP.minH, DP.d + 16 + st.length * DP.sth + name.length * DP.nlh) }; };
 const dpOut = (n, g = 0) => { const p = DP.d, x = n.x - g, y = n.y - g, w = n.w + 2 * g, h = n.h + 2 * g;
   return `M${r2(x)} ${r2(y + p)}L${r2(x + p)} ${r2(y)}H${r2(x + w)}V${r2(y + h - p)}L${r2(x + w - p)} ${r2(y + h)}H${r2(x)}Z`; };
 const dpText = (x, y, t, px, wt, fill, cls, more = '') => `<text x="${r2(x)}" y="${r2(y)}" text-anchor="middle" class="${cls}"${more} fill="${fill}" style="font:${wt} ${px}px var(--um-sans)">${esc(t)}</text>`;
@@ -41,9 +43,9 @@ SHAPE.cube = {
   inset(n, s, t) { const p = DP.d; return s === 'L' ? Math.max(0, n.y + p - t) : s === 'R' ? Math.max(0, t - n.y - n.h + p) : s === 'T' ? Math.max(0, n.x + p - t) : Math.max(0, t - n.x - n.w + p); },
   draw(n) {
     const { x, y, w, h } = n, p = DP.d, P = dpParts(n), cx = x + (w - p) / 2, max = w - p - 2 * DP.pad;
-    let ty = y + p + (h - p - P.st.length * DP.sth - DP.nlh) / 2;
+    let ty = y + p + (h - p - P.st.length * DP.sth - P.name.length * DP.nlh) / 2;
     const tx = P.st.map(t => { const s = dpText(cx, ty + 11, fit(t, DP.st, max), DP.st, 400, 'var(--um-muted)', 'c-st'); ty += DP.sth; return s; });
-    tx.push(dpText(cx, ty + 12, fit(P.name, DP.name, max), DP.name, 600, 'var(--um-text)', 'c-name', ` data-o="${esc(n.id)}"`));
+    P.name.forEach((l, i) => tx.push(dpText(cx, ty + 12 + i * DP.nlh, fit(l, DP.name, max), DP.name, 600, 'var(--um-text)', 'c-name', ` data-o="${esc(n.id)}"`)));
     return `<g class="node cube" data-id="${esc(n.id)}" data-shape="cube" tabindex="-1" role="img" aria-label="${esc(n.aria || `${dpWord(n)} ${n.label ?? ''}`)}">`
       + `<path d="${dpOut(n)}" class="n-mask"/><path d="${dpOut(n)}" class="n-body" fill="var(--um-stage-bg)" stroke="var(--um-muted)"/>`
       + `<path d="M${r2(x)} ${r2(y + p)}H${r2(x + w - p)}V${r2(y + h)}M${r2(x + w - p)} ${r2(y + p)}L${r2(x + w)} ${r2(y)}" class="n-det" fill="none" stroke="var(--um-muted)"/>`
@@ -51,8 +53,9 @@ SHAPE.cube = {
   },
   // open: the frame holds the cube as a closed one does (its pad is 10 px more, dpPic), the front face its rect, the top and
   // right faces inside the frame; the box's title at the top left of its header room: the keyword and stereotypes (f.kw) on
-  // a line above the name, as UML 2.5.1 draws them, in 24 px and the box's head more (dpPic); with neither, the name alone
-  frame: f => { const p = DP.d, { x, y, w, h } = f, line = (t, dy) => `<text class="family-title" x="${r2(x + 12)}" y="${r2(y + p + dy)}" fill="var(--um-text)" style="font:600 12px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(t, 12, w - p - 24))}</text>`;
+  // a line above the name, as UML 2.5.1 draws them, in 24 px and the box's head more (dpPic); with neither, the name alone. A name
+  // the author broke: a line each, 16 px apart, in the head dpPic grew for them (audit 23)
+  frame: f => { const p = DP.d, { x, y, w, h } = f, line = (t, dy) => brLines(t).map((l, i) => `<text class="family-title" x="${r2(x + 12)}" y="${r2(y + p + dy + i * DP.nlh)}" fill="var(--um-text)" style="font:600 12px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(l, 12, w - p - 24))}</text>`).join('');
     return `<rect class="family-box" x="${x}" y="${r2(y + p)}" width="${r2(w - p)}" height="${r2(h - p)}" stroke="var(--um-muted)"/>`
       + `<path d="M${r2(x)} ${r2(y + p)}L${r2(x + p)} ${r2(y)}H${r2(x + w)}V${r2(y + h - p)}L${r2(x + w - p)} ${r2(y + h)}M${r2(x + w - p)} ${r2(y + p)}L${r2(x + w)} ${r2(y)}" class="dp-face" fill="none" stroke="var(--um-muted)"/>`
       + (f.kw ? line(f.kw, 17) + line(f.name, 17 + DP.head) : line(f.title ?? f.label ?? f.id, 17)); },
@@ -75,7 +78,8 @@ function dpPic(model, view) {
   const pic = ownersOn(model, view, DP_LOOK), I = dpIndex(model);
   // a box with a keyword or stereotypes: they go on a line above its name (the frame's f.kw, f.name), in DP.head more header room
   const boxes = pic.boxes.map(b => { const x = pic.at.get(b.id), kw = [...(DP_KW[x.type] ? [DP_KW[x.type]] : []), ...dpStereo(x)].map(t => `«${t}»`).join(' ');
-    return { ...b, title: kw ? kw + ' ' + dpName(x) : dpName(x), ...(kw ? { kw, name: dpName(x), head: DP.head } : {}), aria: dpNodeName(x, pic, I), pad: 12 + DP.d }; });
+    const hd = (kw ? DP.head : 0) + (brLines(dpName(x)).length - 1) * DP.nlh;
+    return { ...b, title: kw ? kw + ' ' + dpName(x) : dpName(x), ...(kw ? { kw, name: dpName(x) } : {}), ...(hd ? { head: hd } : {}), aria: dpNodeName(x, pic, I), pad: 12 + DP.d }; });
   return { ...pic, I, boxes };
 }
 // the lines drawn: those the view lists, or with no list the model's of this type's kinds, between two elements it shows; a

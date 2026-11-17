@@ -470,3 +470,16 @@ test('audit 21: a view\'s own line (view.edges object) between a group and what 
     assert.match(D.edits.owner(m, v, kid.id, other.id).error, /A line cannot join/, fam);
   }
 });
+
+// audit 23: a line break the author typed (a Mermaid <br>) in a card's label or a group's title is a line each, as the UML and C4
+// boxes draw it: never one <text> holding the break, which SVG draws as a space; nothing is in the way
+test('a line break in a cloud card or group name is drawn as a new line (audit 23)', async () => {
+  const { svgOf } = await import('../src/draw/svg.js');
+  const NL = String.fromCharCode(10), br = x => { if (Array.isArray(x)) return x.forEach(br); if (x && typeof x === 'object') { if (typeof x.label === 'string' && x.label.includes(' ')) x.label = x.label.replace(' ', NL); Object.values(x).forEach(br); } };
+  for (const f of ['bookshop-aws', 'bookshop-azure', 'bookshop-gcp']) {
+    const m = JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url), 'utf8')), vid = m.views[0].id, before = check(m, vid).length; br(m.nodes);
+    const t = [...svgOf(layout(m, vid)).matchAll(/<text(?:[^>"]|"[^"]*")*>([^<]*)<\/text>/g)].map(x => x[1]);
+    assert.deepEqual(t.filter(x => /[\r\n]/.test(x)), [], `${f}: no text holds a break`);
+    assert.ok(check(m, vid).length <= before, `${f}: nothing more in the way`);
+  }
+});

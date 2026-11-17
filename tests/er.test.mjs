@@ -380,3 +380,47 @@ test('audit 19: a column is deleted from the panel\'s Members row, as er.md and 
   assert.ok(!/no canvas gesture[^.]*deleting a column/.test(doc) && doc.includes('A column is deleted with the ✕ on its Members row in the properties panel'), 'er.md');
   assert.ok(!ed.includes('| a column deleted, the notation switched |') && ed.includes('| | a column deleted | the ✕ on its Members row in the properties panel |'), 'editing.md');
 });
+
+// audit 23: a line break the author typed (a Mermaid <br>) in a table's name, a column's name, a C4 boundary's title or a
+// deployment node box's title is a line each, as the DFD, flowchart and C4 cards and the UML frames draw one; never one <text>
+// holding the break, which SVG draws as a space. The header grows for the lines; nothing is in the way
+test('a line break in a table, a column, a C4 boundary or a deployment node title is drawn as a new line (audit 23)', async () => {
+  await import('../src/c4/views.js');
+  const texts = s => [...s.matchAll(/<(text|tspan)(?:[^>"]|"[^"]*")*>([^<]*)<\/\1>/g)].map(x => x[2]);
+  const ms = {
+    er: [{ nodes: [{ id: 'a', type: 'er.Entity', label: 'Order\nline', members: [C('a.id', 'line\nnumber', { primaryKey: true, dataType: 'int' }), C('a.q', 'qty', { dataType: 'int' })] }], edges: [], views: [{ id: 'v', diagram: 'er', nodeIds: ['a'] }] },
+      ['Order', 'line', 'number', 'qty']],
+    boundary: [{ nodes: [{ id: 's', type: 'c4.SoftwareSystem', label: 'Online\nbookshop', props: { description: 'd' } }, { id: 'c', type: 'c4.Container', parent: 's', label: 'API', props: { technology: 'Go', description: 'd' } }], edges: [], views: [{ id: 'v', diagram: 'c4.container', subject: 's', title: 'T', nodeIds: ['s', 'c'] }] },
+      ['Online', 'bookshop [Software System]']],
+    node: [{ nodes: [{ id: 'n', type: 'c4.DeploymentNode', label: 'Web\nserver', props: { technology: 'Ubuntu' } }, { id: 's', type: 'c4.SoftwareSystem', label: 'S' }, { id: 'c', type: 'c4.Container', parent: 's', label: 'API', props: { technology: 'Go' } }, { id: 'i', type: 'c4.ContainerInstance', parent: 'n', props: { container: 'c' } }], edges: [], views: [{ id: 'v', diagram: 'c4.deployment', title: 'T', nodeIds: ['n', 'i'] }] },
+      ['Web', 'server', '[Deployment Node: Ubuntu]']],
+  };
+  for (const [k, [m, want]] of Object.entries(ms)) {
+    m.schemaVersion = 2; const g = layout(m, 'v'), t = texts(svgOf(g));
+    assert.deepEqual(t.filter(x => /[\r\n]/.test(x)), [], `${k}: no text holds a break`);
+    want.forEach(w => assert.ok(t.includes(w), `${k}: "${w}" on a line of its own (${t.join(' | ')})`));
+    assert.deepEqual(check(m, 'v').map(x => x.message), [], `${k}: nothing in the way`);
+    const one = JSON.parse(JSON.stringify(m).replaceAll('\\n', ' ')), g1 = layout(one, 'v'); // the same model without its breaks
+    if (k === 'er') assert.equal(g.byId.a.h, g1.byId.a.h + 16 + 15, 'the table: its header a line taller, the column\'s row a line taller');
+    else g.families.forEach(f => assert.equal(f.head, (g1.families.find(x => x.id === f.id).head || 0) + 16, `${k}: the box's header a line taller`));
+  }
+});
+
+// audit 23: a comment link's label the ER and information flow views draw is in its accessible name and describe(), as the
+// data flow type says it ("Comment link see runbook from Busy at noon to 1 Take"): what is drawn is said
+test('a comment link\'s drawn label is in its accessible name and describe(), in the ER and information flow views (audit 23)', async () => {
+  await import('../src/uml/information.js'); await import('../src/dfd/dfd.js');
+  const ms = {
+    er: [{ nodes: [{ id: 'a', type: 'er.Entity', label: 'Orders', members: [C('a.id', 'id', { primaryKey: true })] }, { id: 'n', type: 'uml.Comment', label: 'Archived nightly' }], edges: [{ id: 'cl', type: 'uml.CommentLink', from: 'n', to: 'a', label: 'see runbook' }], views: [{ id: 'v', diagram: 'er', nodeIds: ['a', 'n'] }] }, 'Comment link see runbook from Archived nightly to Orders'],
+    info: [{ nodes: [{ id: 'a', type: 'uml.Class', label: 'Shop' }, { id: 'n', type: 'uml.Comment', label: 'Busy at noon' }], edges: [{ id: 'cl', type: 'uml.CommentLink', from: 'n', to: 'a', label: 'see runbook' }], views: [{ id: 'v', diagram: 'uml.information-flow', nodeIds: ['a', 'n'] }] }, 'Comment link see runbook from Busy at noon to Shop'],
+    dfd: [{ nodes: [{ id: 'p', type: 'dfd.Process', label: 'Take', props: { number: '1' } }, { id: 'n', type: 'uml.Comment', label: 'Busy at noon' }], edges: [{ id: 'cl', type: 'uml.CommentLink', from: 'n', to: 'p', label: 'see runbook' }], views: [{ id: 'v', diagram: 'dfd', nodeIds: ['p', 'n'] }] }, 'Comment link see runbook from Busy at noon to 1 Take'],
+  };
+  for (const [k, [m, want]] of Object.entries(ms)) {
+    m.schemaVersion = 2; const g = layout(m, 'v');
+    assert.match(svgOf(g), /see runbook<\/text>/, `${k}: the label is drawn`);
+    assert.equal(g.edges.find(e => e.id === 'cl').aria, want, `${k}: its accessible name`);
+    assert.ok(describe(m, 'v').split('\n').includes(want + '.'), `${k}: describe()`);
+    const bare = structuredClone(m); delete bare.edges[0].label; // with none: as before
+    assert.equal(layout(bare, 'v').edges[0].aria, want.replace('see runbook ', ''), `${k}: a link with no label`);
+  }
+});

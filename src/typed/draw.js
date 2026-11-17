@@ -86,7 +86,7 @@ const endOf = (E, w) => hasKey(ENDS, E[w]) && ENDS[E[w]] ? E[w] : null;
 // the other side. A box that would meet a segment of its own line (7.5 px round it, so markers too), either end's node or
 // a box placed before it moves away from the line, 4 px at a time, on its side and then the other, at the end or centred
 // across it (a short end segment, a loop). pts: the line as drawn; e.s and e.t: its nodes. Layout (1.4) may take the boxes
-// as obstacles; it moves them apart where many lines meet (L5)
+// as obstacles; it moves them apart where many lines meet (L5). A role the author broke (a Mermaid <br>) is a line each, 12 px apart, its box as tall (audit 23)
 function endLabels(e, pts = e.pts, also = []) { // also: boxes to keep clear of too (other lines, their labels: svgOf)
   const T = e.end && e.end.labels, out = []; if (!T || !pts || pts.length < 2) return out;
   const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
@@ -95,7 +95,7 @@ function endLabels(e, pts = e.pts, also = []) { // also: boxes to keep clear of 
   [['from', pts[0], pts[1]], ['to', pts[pts.length - 1], pts[pts.length - 2]]].forEach(([end, p, q]) => {
     const at = T[end] || {}, flat = Math.abs(q[0] - p[0]) >= Math.abs(q[1] - p[1]), dir = Math.sign(flat ? q[0] - p[0] : q[1] - p[1]) || 1;
     [['role', at.role, -1], ['mult', at.mult, 1]].forEach(([kind, t, side]) => { if (t == null || t === '') return;
-      const w = r2(textW(t, 10) + 6), h = 14, along = (v, d, mid) => mid ? v - d / 2 : dir > 0 ? v + 4 : v - 4 - d, aside = (v, d, s, o) => s < 0 ? v - o - d : v + o;
+      const ls = brLines(t), w = r2(Math.max(...ls.map(l => textW(l, 10))) + 6), h = 14 + (ls.length - 1) * 12, along = (v, d, mid) => mid ? v - d / 2 : dir > 0 ? v + 4 : v - 4 - d, aside = (v, d, s, o) => s < 0 ? v - o - d : v + o;
       const box = (o, s, mid) => ({ end, kind, text: String(t), x: r2(flat ? along(p[0], w, mid) : aside(p[0], w, s, o)), y: r2(flat ? aside(p[1], h, s, o) : along(p[1], h, mid)), w, h });
       let b = null;
       for (let o = 8; !b && o <= 400; o += 4) for (const s of [side, -side]) for (const mid of [false, true]) { const c = box(o, s, mid); if (!b && ![...keep, ...out].some(k => meets(c, k))) b = c; }
@@ -123,7 +123,7 @@ TYPED.lines = ({ id, edges, drawn, lstyle, MC }) => {
     edge(e, i) { const E = e.end; if (!E) return null;
       const st = E.dashed ? { ...lstyle(e), dash: E.dashed === 'dot' ? '2 3' : '6 4' } : lstyle(e), cut = w => endOf(E, w) ? ENDS[endOf(E, w)][0] : 0, at = w => endOf(E, w) ? `url(#${id}-${endOf(E, w)}-${st.m})` : '';
       return { st, pts: trimLine(drawn[i], cut('from'), cut('to')), marks: `${at('to') ? `marker-end="${at('to')}"` : ''} ${at('from') ? `marker-start="${at('from')}"` : ''}` }; },
-    labels: i => edges[i].end ? endLabs(i).map(b => `<text x="${r2(b.x + b.w / 2)}" y="${r2(b.y + 10.5)}" text-anchor="middle" class="end-lab" data-i="${i}" data-end="${b.end}" data-box="${b.x} ${b.y} ${b.w} ${b.h}" fill="var(--um-muted)" style="font:500 10px var(--um-sans)">${esc(b.text)}</text>`).join('') : '',
+    labels: i => edges[i].end ? endLabs(i).map(b => brLines(b.text).map((l, k) => `<text x="${r2(b.x + b.w / 2)}" y="${r2(b.y + 10.5 + k * 12)}" text-anchor="middle" class="end-lab" data-i="${i}" data-end="${b.end}" data-box="${b.x} ${b.y} ${b.w} ${b.h}" fill="var(--um-muted)" style="font:500 10px var(--um-sans)">${esc(l)}</text>`).join('')).join('') : '',
   };
 };
 

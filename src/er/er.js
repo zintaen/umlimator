@@ -1,7 +1,7 @@
 import { registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
-import { ENDS } from '../typed/draw.js';
+import { ENDS, brLines } from '../typed/draw.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
 import { multBounds } from '../uml/class.js'; // SHAPE.note too, a comment's look
 
@@ -77,28 +77,30 @@ function printColumn(c, I = erIndex(ER_SEEN.get(c))) {
    UK, ? for a nullable column) in a left column, its name, its type in --um-muted; 120 to 320 px wide, every text cut with
    fit. present.<id>.rows and collapsed (the sections 'keys', 'columns') as the classifier's. Drawing input: label;
    sections [{ name, rows: [{ marks, name, type }] }]; dep: IDEF1X's dependent entity, drawn with rounded corners ---- */
-const ER = { pad: 8, head: 24, name: 13, px: 11, fpx: 9, rl: 15, gap: 4, empty: 10, sep: 8, minW: 120, maxW: 320, round: 8 };
+// a name the author broke (a Mermaid <br>): the table's a line each, its header 16 px taller for each past the first; a
+// column's a line each, its row 15 px taller for each (audit 23)
+const ER = { pad: 8, head: 24, name: 13, nlh: 16, px: 11, fpx: 9, rl: 15, gap: 4, empty: 10, sep: 8, minW: 120, maxW: 320, round: 8 };
 const ER_MARK = [['primaryKey', 'PK'], ['foreignKey', 'FK'], ['unique', 'UK'], ['nullable', '?']];
 function erParts(n) {
   const cap = Number.isFinite(n.rows) ? Math.max(0, Math.floor(n.rows)) : Infinity, hidden = new Set(ER_ARR(n.collapsed));
   const secs = ER_ARR(n.sections).filter(S => !hidden.has(S.name)).map(S => ({ name: S.name, rows: S.rows.slice(0, cap), more: Math.max(0, S.rows.length - cap) }));
-  const rows = secs.flatMap(S => S.rows), W = (k, px) => Math.max(0, ...rows.map(r => textW(r[k], px)));
+  const rows = secs.flatMap(S => S.rows), W = (k, px) => Math.max(0, ...rows.flatMap(r => brLines(r[k]).map(l => textW(l, px)))), name = brLines(n.label), head = ER.head + (name.length - 1) * ER.nlh;
   const fw = W('marks', ER.fpx), nw = W('name', ER.px), tw = W('type', ER.px), lead = fw ? fw + ER.sep : 0;
-  const w = Math.ceil(Math.min(ER.maxW, Math.max(ER.minW, 2 * ER.pad + lead + nw + (tw ? ER.sep + tw : 0), textW(n.label ?? '', ER.name) + 2 * ER.pad,
+  const w = Math.ceil(Math.min(ER.maxW, Math.max(ER.minW, 2 * ER.pad + lead + nw + (tw ? ER.sep + tw : 0), ...name.map(l => textW(l, ER.name) + 2 * ER.pad),
     ...secs.filter(S => S.more).map(S => 2 * ER.pad + lead + textW(`+${S.more} more`, ER.px)))));
-  const tall = S => { const k = S.rows.length + (S.more ? 1 : 0); return k ? 2 * ER.gap + k * ER.rl : ER.empty; };
-  return { secs, fw, nw, tw, lead, w, tall, h: ER.head + secs.reduce((a, S) => a + tall(S), 0) };
+  const lines = r => brLines(r.name).length, tall = S => { const k = S.rows.reduce((a, r) => a + lines(r), 0) + (S.more ? 1 : 0); return k ? 2 * ER.gap + k * ER.rl : ER.empty; };
+  return { secs, fw, nw, tw, lead, w, tall, lines, name, head, h: head + secs.reduce((a, S) => a + tall(S), 0) };
 }
 function erSvg(n, c, f) {
   const P = erParts(n), { x, y, w, h } = n, avail = w - 2 * ER.pad - P.lead, nx = x + ER.pad + P.lead, tx = nx + (P.tw ? Math.min(P.nw + ER.sep, Math.max(avail * 0.6, avail - P.tw)) : avail);
   const rx = n.dep ? ` rx="${ER.round}"` : '', box = `x="${x}" y="${y}" width="${w}" height="${h}"${rx}`;
   const txt = (X, Y, t, px, wt, fill, cls, max) => `<text x="${r2(X)}" y="${r2(Y)}" class="${cls}" fill="${fill}" style="font:${wt} ${px}px var(--um-sans)">${esc(fit(t, px, max))}</text>`;
   const out = [`<rect ${box} class="n-mask"/><rect ${box} class="n-body" fill="${f}" stroke="${c}"/>`,
-    `<g class="c-head" data-band="${r2(y)} ${r2(y + ER.head)}"><text x="${r2(x + w / 2)}" y="${r2(y + 16.5)}" text-anchor="middle" class="c-name" fill="var(--um-text)" style="font:600 ${ER.name}px var(--um-sans)" data-o="${esc(n.id)}">${esc(fit(n.label ?? '', ER.name, w - 2 * ER.pad))}</text></g>`];
-  let top = y + ER.head;
-  P.secs.forEach(S => { const at = j => top + ER.gap - 1 + j * ER.rl + 11.5;
+    `<g class="c-head" data-band="${r2(y)} ${r2(y + P.head)}">${P.name.map((l, i) => `<text x="${r2(x + w / 2)}" y="${r2(y + 16.5 + i * ER.nlh)}" text-anchor="middle" class="c-name" fill="var(--um-text)" style="font:600 ${ER.name}px var(--um-sans)" data-o="${esc(n.id)}">${esc(fit(l, ER.name, w - 2 * ER.pad))}</text>`).join('')}</g>`];
+  let top = y + P.head;
+  P.secs.forEach(S => { const from = S.rows.reduce((a, r) => [...a, a.at(-1) + P.lines(r)], [0]), at = j => top + ER.gap - 1 + from[j] * ER.rl + 11.5; // each row's first line
     const rows = S.rows.map((r, j) => (r.marks ? txt(x + ER.pad, at(j), r.marks, ER.fpx, 600, 'var(--um-muted)', 'er-mark', P.fw) : '')
-      + txt(nx, at(j), r.name, ER.px, 400, 'var(--um-text)', 'c-row', P.tw ? tx - nx - ER.sep : avail) + (r.type ? txt(tx, at(j), r.type, ER.px, 400, 'var(--um-muted)', 'er-type', x + w - ER.pad - tx) : ''));
+      + brLines(r.name).map((l, i) => txt(nx, at(j) + i * ER.rl, l, ER.px, 400, 'var(--um-text)', 'c-row', P.tw ? tx - nx - ER.sep : avail)).join('') + (r.type ? txt(tx, at(j), r.type, ER.px, 400, 'var(--um-muted)', 'er-type', x + w - ER.pad - tx) : ''));
     if (S.more) rows.push(txt(nx, at(S.rows.length), `+${S.more} more`, ER.px, 400, 'var(--um-muted)', 'c-more', avail));
     out.push(`<g class="c-comp" data-comp="${S.name}" data-band="${r2(top)} ${r2(top + P.tall(S))}"><path d="M${x} ${r2(top)}H${x + w}" class="n-det" stroke="${c}"/>${rows.join('')}</g>`);
     top += P.tall(S); });
@@ -151,7 +153,7 @@ const erFull = (n, I) => { const cs = erCols(n); return erNodeName(n) + (cs.leng
 // "Identifying relationship contains from order (exactly one) to order_line (one or more)"
 function erLineName(e, I) {
   const nm = id => (I.at.has(id) ? erName(I.at.get(id)) : String(id));
-  if (e.type !== 'er.Relationship') return `Comment link from ${nm(e.from)} to ${nm(e.to)}`;
+  if (e.type !== 'er.Relationship') return `Comment link ${ER_HAS(e.label) ? e.label + ' ' : ''}from ${nm(e.from)} to ${nm(e.to)}`; // its label as drawn, as the data flow type says it (audit 23)
   return `${erIdentifying(e) ? 'Identifying' : 'Non-identifying'} relationship ${ER_HAS(e.label) ? e.label + ' ' : ''}from ${nm(e.from)} (${erSay(erMult(e, 'from'))}) to ${nm(e.to)} (${erSay(erMult(e, 'to'))})`;
 }
 const erShown = (model, view) => { const I = erIndex(model); return { I, ids: [...new Set(ER_ARR(view.nodeIds))].filter(id => I.at.has(id)) }; };

@@ -1,6 +1,6 @@
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
-import '../typed/draw.js'; // SHAPE.classifier, whose ports the closed package takes
+import { brLines } from '../typed/draw.js'; // SHAPE.classifier, whose ports the closed package takes
 
 /* ---------- owners on the picture (work package 2.2, notes/stage-2.md §4 to §7) ----------
    What the class, package and object views share: which shown package is a box and what it holds (§4.1), the names drawn
@@ -11,6 +11,11 @@ const OWN_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), O
 const OWN_BOXES = ['uml.Package', 'uml.Profile']; // the node types that may be a box (§4.1, 1); a profile is a package (notes/stage-6.md §4.1)
 // the types of rows 1 to 3 whose owner is a package (rule owner-kinds); comments are not checked
 const OWNED = ['uml.Class', 'uml.Interface', 'uml.Enumeration', 'uml.DataType', 'uml.PrimitiveType', 'uml.Package', 'uml.InstanceSpecification'];
+// a box whose title the author broke (a Mermaid <br>): its header room grown by a line for each past the first, as tall as its
+// shape draws them (its titleLh: the package's, the component's, the boundary's), so the lines sit over what it holds; a shape
+// with none draws its title as it did (audit 23)
+function boxHead(b) { const { head, ...rest } = b, S = Object.hasOwn(SHAPE, b.shape) ? SHAPE[b.shape] : null, k = brLines(b.title ?? b.label ?? b.id).length;
+  return S && S.titleLh && k > 1 ? { ...rest, head: (k - 1) * S.titleLh } : S && S.titleLh ? rest : b; }
 const ownName = x => String(x.label ?? x.id), ownAt = (at, id) => at.get(id) || { id }; // an id the index lacks (a member's) by itself, not a throw (audit 17)
 const stereoOf = x => OWN_ARR(OWN_OBJ(x.props) ? x.props.stereotypes : null).filter(t => t != null && t !== '').map(String);
 
@@ -51,8 +56,8 @@ function ownersOn(model, view, look = {}) {
   const by = new Map(); all.forEach(id => { const o = owner(id); if (!by.has(o)) by.set(o, []); by.get(o).push(id); }); // grouped once: a view of 10,000 elements
   const holds = o => by.get(o) || [], open = new Set([...by.keys()].filter(x => x != null));
   const boxes = all.filter(id => open.has(id)).map(id => { const p = at.get(id), st = stereoOf(p), held = holds(id), o = owner(id), nm = name(id);
-    return { id, label: ownName(p), title: [...(p.type === 'uml.Profile' ? ['«profile»'] : []), ...st.map(t => `«${t}»`), nm].join(' '), nodeIds: held.filter(x => !open.has(x)), ...(o != null ? { parent: o } : {}), shape: shape(p),
-      aria: `${word(p)} ${nm}${st.length ? ` (${st.join(', ')})` : ''}, holding ${held.length} element${held.length === 1 ? '' : 's'}` }; });
+    return boxHead({ id, label: ownName(p), title: [...(p.type === 'uml.Profile' ? ['«profile»'] : []), ...st.map(t => `«${t}»`), nm].join(' '), nodeIds: held.filter(x => !open.has(x)), ...(o != null ? { parent: o } : {}), shape: shape(p),
+      aria: `${word(p)} ${nm}${st.length ? ` (${st.join(', ')})` : ''}, holding ${held.length} element${held.length === 1 ? '' : 's'}` }); });
   return { ids, owner, holds, boxes, name, full, open, chain, at };
 }
 
@@ -100,17 +105,18 @@ function ownerProblems(model, view, lines) {
 }
 
 /* ---- the package's shape (§5): SHAPE.package, closed as a node, open as a box's frame ---- */
-const PK = { pad: 12, gap: 10, name: 13, st: 11, sth: 14, nl: 18, tab: 8, minW: 96, maxW: 320 }, pkTabW = n => Math.min(48, Math.round(n.w * .4));
-const pkTexts = n => [...OWN_ARR(n.stereotypes).map(t => [`«${t}»`, PK.st]), [n.label ?? '', PK.name]];
+// a name the author broke (a Mermaid <br>): a line each, nlh apart closed, tl apart in an open box's tab, which grows for them (audit 23)
+const PK = { pad: 12, gap: 10, name: 13, st: 11, sth: 14, nl: 18, nlh: 16, tl: 13, tab: 8, minW: 96, maxW: 320 }, pkTabW = n => Math.min(48, Math.round(n.w * .4));
+const pkTexts = n => [...OWN_ARR(n.stereotypes).map(t => [`«${t}»`, PK.st]), ...brLines(n.label).map(l => [l, PK.name])];
 SHAPE.package = {
   // closed: a folder, its body the node's box and its empty tab above it (UML 2.5.1, 12.2.4), the stereotypes and the name
   // centred in the body; as wide as its widest text, within 96 and 320 px (a longer one is cut)
-  size: n => ({ w: Math.ceil(Math.min(PK.maxW, Math.max(PK.minW, ...pkTexts(n).map(([t, px]) => textW(t, px) + 2 * PK.pad)))), h: 2 * PK.gap + OWN_ARR(n.stereotypes).length * PK.sth + PK.nl }),
+  size: n => ({ w: Math.ceil(Math.min(PK.maxW, Math.max(PK.minW, ...pkTexts(n).map(([t, px]) => textW(t, px) + 2 * PK.pad)))), h: 2 * PK.gap + OWN_ARR(n.stereotypes).length * PK.sth + PK.nl + (brLines(n.label).length - 1) * PK.nlh }),
   out: SHAPE.classifier.out, face: n => [n.y, n.y + n.h], inset: () => 0, ports: SHAPE.classifier.ports,
   draw(n, c, f) {
     const { x, y, w, h } = n, tw = pkTabW(n), tabX = n.tabX ?? x, cx = r2(x + w / 2), st = OWN_ARR(n.stereotypes); let ty = y + PK.gap;
     const tx = st.map(t => { const s = `<text x="${cx}" y="${r2(ty + 11)}" text-anchor="middle" class="c-st" fill="var(--um-muted)" style="font:400 ${PK.st}px var(--um-sans)">${esc(fit(`«${t}»`, PK.st, w - 2 * PK.pad))}</text>`; ty += PK.sth; return s; });
-    tx.push(`<text x="${cx}" y="${r2(ty + 14)}" text-anchor="middle" class="c-name" fill="var(--um-text)" style="font:600 ${PK.name}px var(--um-sans)" data-o="${esc(n.id)}">${esc(fit(n.label ?? '', PK.name, w - 2 * PK.pad))}</text>`);
+    brLines(n.label).forEach((l, i) => tx.push(`<text x="${cx}" y="${r2(ty + 14 + i * PK.nlh)}" text-anchor="middle" class="c-name" fill="var(--um-text)" style="font:600 ${PK.name}px var(--um-sans)" data-o="${esc(n.id)}">${esc(fit(l, PK.name, w - 2 * PK.pad))}</text>`));
     return `<g class="node package" data-id="${esc(n.id)}" data-shape="package" tabindex="-1" role="img" aria-label="${esc(n.aria || 'Package ' + (n.label ?? ''))}">`
       + `<path d="M${tabX} ${y}V${y - PK.tab}H${r2(tabX + tw)}V${y}" class="n-det" fill="${f}" stroke="${c}"/><rect x="${x}" y="${y}" width="${w}" height="${h}" class="n-mask"/>`
       + `<rect x="${x}" y="${y}" width="${w}" height="${h}" class="n-body" fill="${f}" stroke="${c}"/><g class="c-head" data-band="${r2(y)} ${r2(y + h)}">${tx.join('')}</g></g>`;
@@ -119,10 +125,11 @@ SHAPE.package = {
   // holding the stereotypes and the name (the box's title, cut to its width). The border has class family-box, which the
   // canvas outlines on selection and under a drag; the title keeps class family-title, which the audit and the canvas read
   frame(f) {
-    const hd = Math.min(f.w - 16, textW(f.title, 11) + 16), tr = r2(f.x + 8 + hd);
-    return `<rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" stroke="var(--um-muted)"/><path d="M${f.x} ${r2(f.y + 24)}H${tr}V${f.y}" class="pk-tab" fill="none" stroke="var(--um-muted)" stroke-width="1.2"/>`
-      + `<text class="family-title" x="${r2(f.x + 12)}" y="${r2(f.y + 16)}" fill="var(--um-text)" style="font:600 11px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(f.title ?? f.label ?? f.id, 11, hd - 4))}</text>`;
+    const ls = brLines(f.title ?? f.label ?? f.id), hd = Math.min(f.w - 16, Math.max(...ls.map(l => textW(l, 11))) + 16), tr = r2(f.x + 8 + hd), more = (ls.length - 1) * PK.tl;
+    return `<rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" stroke="var(--um-muted)"/><path d="M${f.x} ${r2(f.y + 24 + more)}H${tr}V${f.y}" class="pk-tab" fill="none" stroke="var(--um-muted)" stroke-width="1.2"/>`
+      + ls.map((l, i) => `<text class="family-title" x="${r2(f.x + 12)}" y="${r2(f.y + 16 + i * PK.tl)}" fill="var(--um-text)" style="font:600 11px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(l, 11, hd - 4))}</text>`).join('');
   },
+  titleLh: PK.tl,
 };
 
 /* A closed package's tab sits above its box, where the router's ports do not know it is: laid out, the tab moves to where no
@@ -173,4 +180,4 @@ function withOwnNodes(def) {
   return out;
 }
 
-export { ownNodes, withOwnNodes, OWN_BOXES, OWNER_RULES, ownersOn, readingOrder, holdsLine, lineInside, ownerChoices, ownerProblems, placeTabs };
+export { boxHead, ownNodes, withOwnNodes, OWN_BOXES, OWNER_RULES, ownersOn, readingOrder, holdsLine, lineInside, ownerChoices, ownerProblems, placeTabs };

@@ -478,3 +478,19 @@ test('audit 18: the deployment view\'s describe() header counts a comment link o
   const head = describe(m, PV).split('\n')[0];
   assert.equal(head, before.replace(/(\d+) elements and (\d+) relationships\./, (_, n, r) => `${+n + 1} elements and ${r} relationships, and 1 comment link.`));
 });
+
+// audit 23: a comment link is drawn dashed with no head in every C4 view; the key names it, as the ER, flowchart and data flow
+// keys do, so it is never taken for the dashed implied relationship. A view with none keys none
+test('the static, dynamic and deployment keys name the comment link they draw (audit 23)', () => {
+  const N = [{ id: 'u', type: 'c4.Person', label: 'User', props: { description: 'd' } }, { id: 's', type: 'c4.SoftwareSystem', label: 'Shop', props: { description: 'd' } }, { id: 'n', type: 'uml.Comment', label: 'Busy at noon' },
+    { id: 'dn', type: 'c4.DeploymentNode', label: 'Server' }, { id: 'c', type: 'c4.Container', parent: 's', label: 'API', props: { technology: 'Go' } }, { id: 'i', type: 'c4.ContainerInstance', parent: 'dn', props: { container: 'c' } }];
+  const m = { schemaVersion: 2, nodes: N, edges: [Rel('r', 'u', 's', 'buys'), { id: 'cl', type: 'uml.CommentLink', from: 'n', to: 's' }, { id: 'cl2', type: 'uml.CommentLink', from: 'n', to: 'i' }],
+    views: [{ id: 'l', diagram: 'c4.landscape', title: 'L', nodeIds: ['u', 's', 'n'] }, { id: 'd', diagram: 'c4.dynamic', title: 'D', nodeIds: ['u', 's', 'n'], edges: ['r', 'cl'] },
+      { id: 'p', diagram: 'c4.deployment', title: 'P', nodeIds: ['dn', 'i', 'n'] }] };
+  for (const v of ['l', 'd', 'p']) { const g = layout(m, v);
+    assert.ok(g.edges.some(e => e.type === 'uml.CommentLink' && e.end.dashed), `${v}: a comment link is drawn dashed`);
+    assert.ok(names(g).includes('Comment link'), `${v}: the key names it (${names(g).join(' | ')})`);
+    const item = g.legend.find(l => l.includes('<b>Comment link</b>')); assert.match(item, /stroke-dasharray/); assert.doesNotMatch(item, /M17 4L26 8L17 12/, `${v}: no arrowhead`);
+    const bare = structuredClone(m); bare.edges = bare.edges.filter(e => e.type !== 'uml.CommentLink'); bare.views.forEach(x => { if (x.edges) x.edges = ['r']; });
+    assert.ok(!names(layout(bare, v)).includes('Comment link'), `${v}: none drawn, none keyed`); }
+});

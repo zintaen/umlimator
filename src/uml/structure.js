@@ -1,6 +1,6 @@
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
-import { endLabels } from '../typed/draw.js';
+import { brLines, endLabels } from '../typed/draw.js';
 import { idTable } from '../core/registry.js';
 import { OWNER_RULES } from './owners.js';
 
@@ -53,14 +53,15 @@ SHAPE.port = {
   size: () => ({ w: SN.port, h: SN.port }), out: snRect, inset: () => 0,
   draw(n) { const w = Math.max(24, n.w), h = Math.max(24, n.h), b = n.nameBox;
     return snNode(n, 'port', SN_SAY.port(n.label), snHit(n.x + n.w / 2 - w / 2, n.y + n.h / 2 - h / 2, w, h) + snBody(snRect(n))
-      + (b ? `<text x="${r2(b.x + b.w / 2)}" y="${r2(b.y + 10.5)}" text-anchor="middle" class="port-name" data-box="${r2(b.x)} ${r2(b.y)} ${r2(b.w)} ${r2(b.h)}" fill="${SN.line}" style="font:500 10px var(--um-sans)">${esc(b.text)}</text>` : '')); },
+      + (b ? brLines(b.text).map((l, i) => `<text x="${r2(b.x + b.w / 2)}" y="${r2(b.y + 10.5 + i * 12)}" text-anchor="middle" class="port-name" data-box="${r2(b.x)} ${r2(b.y)} ${r2(b.w)} ${r2(b.h)}" fill="${SN.line}" style="font:500 10px var(--um-sans)">${esc(l)}</text>`).join('') : '')); }, // a name the author broke: a line each (endLabels, audit 23)
 };
 
 /* ---- the component and the artifact: an icon's band at the top, then the keywords and stereotypes, then the name ---- */
 const snIconBand = 24;
-const snParts = (n, kw) => { const st = [...(kw ? [kw] : []), ...SN_ARR(n.stereotypes).filter(t => String(t ?? '').trim() !== '')].map(t => `«${t}»`), name = String(n.label ?? '');
-  return { st, name, w: Math.ceil(Math.min(SN.maxW, Math.max(SN.minW, ...st.map(t => textW(t, SN.st) + 2 * SN.pad), textW(name, SN.name) + 2 * SN.pad))),
-    h: Math.max(SN.minH, snIconBand + st.length * SN.sth + SN.nlh + 8) }; };
+// a name the author broke (a Mermaid <br>): a line each, 16 px apart, the card as wide as the widest and taller by the rest (audit 23)
+const snParts = (n, kw) => { const st = [...(kw ? [kw] : []), ...SN_ARR(n.stereotypes).filter(t => String(t ?? '').trim() !== '')].map(t => `«${t}»`), name = brLines(n.label);
+  return { st, name, w: Math.ceil(Math.min(SN.maxW, Math.max(SN.minW, ...st.map(t => textW(t, SN.st) + 2 * SN.pad), ...name.map(l => textW(l, SN.name) + 2 * SN.pad)))),
+    h: Math.max(SN.minH, snIconBand + st.length * SN.sth + name.length * SN.nlh + 8) }; };
 const snKeyword = n => (n.shape === 'artifact' ? (n.type === 'uml.DeploymentSpecification' ? 'deployment spec' : 'artifact') : n.keyword ? 'component' : null);
 // UML's component icon: a rectangle with two small tabs on its left; the document icon: a page with its corner folded
 const snCompIcon = (x, y) => `<path d="M${r2(x + 3)} ${r2(y)}H${r2(x + 16)}V${r2(y + 12)}H${r2(x + 3)}Z M${r2(x)} ${r2(y + 2)}H${r2(x + 6)}V${r2(y + 5)}H${r2(x)}Z M${r2(x)} ${r2(y + 7)}H${r2(x + 6)}V${r2(y + 10)}H${r2(x)}Z" class="n-det sn-icon" fill="${SN.bg}" stroke="${SN.line}"/>`;
@@ -70,19 +71,21 @@ function snClassifier(shape, said, icon) {
     size: n => { const p = snParts(n, snKeyword({ ...n, shape })); return { w: p.w, h: p.h }; },
     out: snRect, inset: () => 0,
     draw(n) { const p = snParts(n, snKeyword({ ...n, shape })), cx = n.x + n.w / 2, max = n.w - 2 * SN.pad;
-      let y = n.y + snIconBand + (n.h - snIconBand - p.st.length * SN.sth - SN.nlh - 8) / 2;
+      let y = n.y + snIconBand + (n.h - snIconBand - p.st.length * SN.sth - p.name.length * SN.nlh - 8) / 2;
       const tx = p.st.map(t => { const s = snText(cx, y + 11, fit(t, SN.st, max), SN.st, 400, SN.line, 'c-st'); y += SN.sth; return s; });
-      tx.push(snText(cx, y + 12, fit(p.name, SN.name, max), SN.name, 600, SN.ink, 'c-name').replace('<text ', () => `<text data-o="${esc(n.id)}" `));
+      p.name.forEach((l, i) => tx.push(snText(cx, y + 12 + i * SN.nlh, fit(l, SN.name, max), SN.name, 600, SN.ink, 'c-name').replace('<text ', () => `<text data-o="${esc(n.id)}" `)));
       return snNode(n, shape, said(n), snBody(snRect(n)) + icon(n.x + n.w - 22, n.y + 6) + tx.join('')); },
   };
   return S;
 }
 SHAPE.component = snClassifier('component', n => SN_SAY.component(n.label), snCompIcon);
 SHAPE.artifact = snClassifier('artifact', n => SN_SAY.artifact(n.label, { spec: n.type === 'uml.DeploymentSpecification' }), (x, y) => snDocIcon(x + 4, y - 1));
-// a component that holds something shown is a box: its border, its name at the top left of the 24 px header room, its icon at the top right
+// a component that holds something shown is a box: its border, its name at the top left of the 24 px header room, its icon at the top right;
+// a title the author broke a line each, 16 px apart, in the header room its head grew (titleLh: src/uml/owners.js, audit 23)
 SHAPE.component.frame = f => `<rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" stroke="${SN.line}"/>`
-  + `<text class="family-title" x="${r2(f.x + 12)}" y="${r2(f.y + 17)}" fill="${SN.ink}" style="font:600 12px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(f.title ?? f.label ?? f.id, 12, f.w - 44))}</text>`
+  + brLines(f.title ?? f.label ?? f.id).map((l, i) => `<text class="family-title" x="${r2(f.x + 12)}" y="${r2(f.y + 17 + i * SN.nlh)}" fill="${SN.ink}" style="font:600 12px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(l, 12, f.w - 44))}</text>`).join('')
   + snCompIcon(f.x + f.w - 26, f.y + 6);
+SHAPE.component.titleLh = SN.nlh;
 
 /* ---- the ball: the circle at the top, centred, its name under it; a line's end slides onto the circle ---- */
 const snBallName = n => fit([...SN_ARR(n.stereotypes).map(t => `«${t}»`), n.label].filter(t => t != null && t !== '').join(' '), SN.bpx, SN.bmax);
@@ -199,6 +202,8 @@ const STRUCT_RULES = {
 };
 const SN_ARTIFACTS = ['uml.Artifact', 'uml.DeploymentSpecification'];
 const snWord = t => String(t ?? '').split('.').pop().replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase(); // 'uml.ExecutionEnvironment': "execution environment"
+// the same, first letter up, where a kind outside a view's own starts its accessible name: "Use case Pay", never "UseCase Pay" (audit 23)
+const snKindName = t => snWord(t).replace(/^./, c => c.toUpperCase());
 function structProblems(model, view) {
   const out = [], at = new Map(), shown = new Set(SN_ARR(view && view.nodeIds)), seen = id => !view || shown.has(id);
   SN_ARR(model && model.nodes).forEach(n => { if (SN_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
@@ -217,4 +222,4 @@ function structProblems(model, view) {
   return out;
 }
 
-export { SN_ARTIFACTS, SN_SAY, snKindWord, portLen, portSides, portFit, portsDrawn, STRUCT_RULES, structProblems };
+export { SN_ARTIFACTS, SN_SAY, snKindWord, snKindName, portLen, portSides, portFit, portsDrawn, STRUCT_RULES, structProblems };

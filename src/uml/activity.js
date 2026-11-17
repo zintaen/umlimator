@@ -93,7 +93,9 @@ function actIndex(model, view) {
   const lines = list.filter(e => AC_OBJ(e) && typeof e.id === 'string' && on.has(e.from) && on.has(e.to));
   const n = new Map(), under = p => n.get(p) || 0; // the nodes under each lane, at any depth, counted in one pass
   drawn.forEach(id => { for (let l = laneOf(id); l != null; l = outer(l)) n.set(l, under(l) + 1); });
+  // an unfolded call's box: its title a line each where the author broke it (svgOf, 14 px apart), its header room grown for them (audit 23)
   return { N, E, path, ids, shown, parts, drawn, lines, up, laneOf, isPart, under, boxes: boxes.map(b => ({ id: b.id, label: acName(N.get(b.id)), title: acName(N.get(b.id)),
+      ...(brLines(acName(N.get(b.id))).length > 1 ? { head: (brLines(acName(N.get(b.id))).length - 1) * 14 } : {}),
       nodeIds: AC_ARR(b.nodeIds).filter(i => on.has(i)), ...(inBox.has(b.id) ? { parent: inBox.get(b.id) } : {}), aria: `Call behaviour ${acName(N.get(b.id))}, unfolded` })),
     // a name the author broke (a Mermaid <br>): its header strip as wide as its lines (laneBands, audit 22)
     lanes: parts.map((id, order) => { const k = brLines(acStLabel(N.get(id))).length; return { id, parent: outer(id), order, ...(k > 1 ? { head: AC_PH + (k - 1) * AC_PL } : {}) }; }) };

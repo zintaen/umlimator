@@ -675,3 +675,20 @@ test('a dependency in a composite view keeps its direction, a comment link has n
   assert.ok(msg.includes(`and ${nm(use)} lies in no structure of this view`), msg);
   assert.ok(!msg.includes('which lie in no structure'), msg);
 });
+
+// audit 23: a dependency or usage the view lists is drawn as the class view draws it (audit 22); its legend keys it as the class
+// view's does, and its accessible name and describe() name its kind as the PDF's Kind column does, never "Line"
+test('a dependency or usage in a composite view has its legend entry, and its accessible name names its kind (audit 23)', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'svc', type: 'uml.Class', label: 'OrderService', members: [P('svc.p', 'repo', { props: { valueType: 'Repo' } }), P('svc.q', 'db', { props: { valueType: 'Database' } })] },
+    { id: 'Repo', type: 'uml.Class', label: 'Repo' }, { id: 'Database', type: 'uml.Class', label: 'Database' }],
+  edges: [{ id: 'c', type: 'uml.Connector', from: 'svc.p', to: 'svc.q' }, { id: 'd', type: 'uml.Dependency', from: 'svc.p', to: 'svc.q', label: 'reads' }, { id: 'u', type: 'uml.Usage', from: 'svc.q', to: 'svc.p' }],
+  views: [{ id: 'w', diagram: 'uml.composite-structure', subject: 'svc', nodeIds: ['svc'], edges: ['c', 'd', 'u'] }] };
+  const g = layout(m, 'w'), keys = g.legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]);
+  assert.deepEqual(keys, ['Connector', 'Dependency', 'Usage']);
+  assert.equal(g.edges.find(e => e.id === 'd').aria, 'Dependency from repo to db: reads');
+  assert.equal(g.edges.find(e => e.id === 'u').aria, 'Usage from db to repo');
+  const said = describe(m, 'w').split('\n'); assert.ok(said.includes('Dependency from repo to db: reads.') && said.includes('Usage from db to repo.'), said.join('\n'));
+  // a kind the class view has no word for is still a plain "Line", keyed by none
+  const odd = structuredClone(m); odd.edges.push({ id: 'x', type: 'uml.Flow', from: 'svc.p', to: 'svc.q' }); odd.views[0].edges.push('x');
+  const go = layout(odd, 'w'); assert.equal(go.edges.find(e => e.id === 'x').aria, 'Line from repo to db'); assert.equal(go.legend.length, 3);
+});
