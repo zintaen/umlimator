@@ -1,4 +1,14 @@
 import { diagramOf } from './registry.js';
+// an object that holds itself (a host's cycle, which copyOf() keeps) is written "[cycle]" where it comes back on its own path (audit 27:
+// the sorted copy the replacer gives is new each time, so JSON.stringify's own check never fired and the stack overflowed)
+// big: a BigInt marked, so jsonText() writes it bare (2n), not as the text "2n"; a text that starts as the mark does gets one more (audit 29)
+const canon = (x, big) => { const path = [], of = new WeakMap(); // path: the objects above the value written, as the model has them
+  return JSON.stringify(x, function (k, v) { const h = of.get(this) || this, i = path.lastIndexOf(h); if (i < 0) path.push(h); else path.length = i + 1;
+    if (typeof v === 'bigint') return (big ? '\u0000' : '') + v + 'n'; if (big && typeof v === 'string' && v[0] === '\u0000') return '\u0000' + v; if (!v || typeof v !== 'object') return v; if (path.includes(v)) return '[cycle]'; // a BigInt, which JSON cannot write, as 10n (audit 28)
+    const y = Array.isArray(v) ? v : Object.fromEntries(Object.keys(v).sort().map(f => [f, v[f]])); of.set(y, v); return y; }); };
+// any value as text, to show or tell two apart: JSON, else (a host's cycle or BigInt, which JSON.stringify throws on) as canon() writes it (audit 28)
+const jsonText = x => { try { return JSON.stringify(x); } catch { return canon(x, true).replace(/"\\u0000(-?\d+n)"/g, '$1'); } };
+
 /* ---------- the model's version and the typed core (schema version 2: docs/diagrams/model.md) ----------
    A model with no schemaVersion is version 1, a map, and reads as it always has. Version 2 adds typed elements: each in
    one envelope ({ id, type, label, parent, props, members }), with nodes, edges, members, fragments and a timing view's
@@ -12,7 +22,7 @@ const SCHEMA_VERSION = 2;
 function versionProblem(model) {
   const v = model && typeof model === 'object' ? model.schemaVersion : undefined;
   if (v == null || v === 1 || v === SCHEMA_VERSION) return null;
-  if (!Number.isInteger(v) || v < 1) return { level: 'warning', message: `schemaVersion ${JSON.stringify(v)} is not a version (1 or 2): read as a map (1)` };
+  if (!Number.isInteger(v) || v < 1) return { level: 'warning', message: `schemaVersion ${jsonText(v)} is not a version (1 or 2): read as a map (1)` };
   return { level: 'error', message: `schemaVersion ${v} is newer than this release reads (${SCHEMA_VERSION}): upgrade umlimator to read it` };
 }
 
@@ -119,6 +129,13 @@ const nameTable = x => { const t = new Map(); if (x && typeof x === 'object' && 
 /* The typed core's structural problems, as validate() words them: { level, path, message }. Only for schema version 2;
    a version-1 model has nothing typed. Ids, references, ownership and typed views; what a type's own properties mean
    is the type's to check (a registered type, from 1.3). */
+// a label that is neither text nor a number (a list, an object, true) is drawn and announced as String() writes it, "[object Object]":
+// said by validate() for a card, a line, a member and every other element (audit 29). A number is drawn as written; null is no label
+function labelProblem(x, at) {
+  const l = x && typeof x === 'object' ? x.label : undefined; if (l == null || typeof l === 'string' || typeof l === 'number') return null;
+  let shown; try { shown = String(l); } catch { shown = ''; }
+  return { level: 'warning', path: at + '.label', message: `label ${jsonText(l)} is not text: drawn as ${jsonText(shown)}` };
+}
 function typedProblems(model) {
   const out = [], err = (path, message) => out.push({ level: 'error', path, message }), warn = (path, message) => out.push({ level: 'warning', path, message });
   const m = model && typeof model === 'object' ? model : {}, arr = x => (Array.isArray(x) ? x : []), isObj = x => x && typeof x === 'object';
@@ -131,20 +148,22 @@ function typedProblems(model) {
     if (x.id.includes('->')) err(at + '.id', `id "${x.id}" contains "->", which names lines by position`);
     if (where.has(x.id)) err(at + '.id', `id "${x.id}" is used twice (also ${where.get(x.id)})`); else { where.set(x.id, at); kindOf.set(x.id, kind); }
     if (owner != null) ownerOf.set(x.id, owner);
+    if (kind !== 'node') { const l = labelProblem(x, at); if (l) out.push(l); } // a node's is validate()'s card check, in a map too
     if (x.parent != null) parents.push([x, at]);
     if (up.has(x)) return; up.add(x); // a host's member that holds its owner: said used twice, and not read again (audit 28)
     arr(x.members).forEach((y, j) => { element(y, `${at}.members[${j}]`, 'member', x.id); typeOf(y, `${at}.members[${j}]`, true); }); up.delete(x);
   };
-  const typeOf = (x, at, needed) => { if (!isObj(x)) return;
-    if (x.type == null ? needed : typeof x.type !== 'string' || !TYPE.test(x.type)) warn(at + '.type', `type ${JSON.stringify(x.type)} is not <notation>.<Name> (uml.Class): drawn as a plain card`); };
+  // line: a line's type, which is drawn as a plain line, not a card (audit 29)
+  const typeOf = (x, at, needed, line) => { if (!isObj(x)) return;
+    if (x.type == null ? needed : typeof x.type !== 'string' || !TYPE.test(x.type)) warn(at + '.type', `type ${jsonText(x.type)} is not <notation>.<Name> (${line ? 'uml.Dependency' : 'uml.Class'}): drawn as a plain ${line ? 'line' : 'card'}`); };
   const nodes = arr(m.nodes);
   nodes.forEach((n, i) => { element(n, `nodes[${i}]`, 'node'); typeOf(n, `nodes[${i}]`, false); });
   const typedEdge = e => isObj(e) && e.type != null;
-  arr(m.edges).forEach((e, i) => { if (typedEdge(e)) { element(e, `edges[${i}]`, 'edge'); typeOf(e, `edges[${i}]`, true); } });
+  arr(m.edges).forEach((e, i) => { if (typedEdge(e)) { element(e, `edges[${i}]`, 'edge'); typeOf(e, `edges[${i}]`, true, true); } });
   const typedView = v => v.diagram != null && v.diagram !== 'map'; // a view with diagram 'map' is a map: the map's checks
   views.forEach((v, i) => { if (!typedView(v)) return;
     arr(v.nodes).forEach((n, j) => element(n, `views[${i}].nodes[${j}]`, 'node'));
-    arr(v.edges).forEach((e, j) => { if (isObj(e)) { element(e, `views[${i}].edges[${j}]`, 'edge'); typeOf(e, `views[${i}].edges[${j}]`, true); } });
+    arr(v.edges).forEach((e, j) => { if (isObj(e)) { element(e, `views[${i}].edges[${j}]`, 'edge'); typeOf(e, `views[${i}].edges[${j}]`, true, true); } });
     arr(v.fragments).forEach((f, j) => element(f, `views[${i}].fragments[${j}]`, 'fragment'));
     ['changes', 'constraints'].forEach(k => arr((v.timeline || {})[k]).forEach((c, j) => element(c, `views[${i}].timeline.${k}[${j}]`, 'time'))); });
   const has = id => where.has(id), name = id => JSON.stringify(id);
@@ -203,4 +222,4 @@ const listOf = (m, i) => (Array.isArray(m.views[i] && m.views[i].edges) ? i : -1
 const lineNames = m => { const out = new Map([[-1, namesOf(m && m.edges)]]);
   (Array.isArray(m && m.views) ? m.views : []).forEach((v, i) => { if (v && Array.isArray(v.edges)) out.set(i, namesOf(v.edges)); }); return out; };
 
-export { versionProblem, typedProblems, lineNames, namesOf, listOf, unreadable, copyOf, textOf, nameTable, usedIds };
+export { canon, jsonText, labelProblem, versionProblem, typedProblems, lineNames, namesOf, listOf, unreadable, copyOf, textOf, nameTable, usedIds };

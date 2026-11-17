@@ -5,7 +5,7 @@ import { layoutTyped, typedLines } from '../typed/layout.js';
 import '../uml/class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from '../uml/flow.js'; // and SHAPE.diamond, SHAPE.initial's circle, read only
 import { snKindName } from '../uml/structure.js';
-import { usedIds } from '../core/model.js';
+import { usedIds, jsonText } from '../core/model.js';
 
 /* ---------- the flowchart, flowchart (work package M2.3, notes/milestone-2.md §7.2) ----------
    Ten symbols: the decision is stage 4's diamond and the connector a circle over SHAPE.initial's outline, both read only;
@@ -187,7 +187,7 @@ function fcProblems(model, view) {
 
 /* ---- describe(): the view in sentences: each node in reading order (from the start, along its flows), then each line ---- */
 function fcDescribe(model, viewId) {
-  const v = FC_ARR(model && model.views).find(x => FC_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const v = FC_ARR(model && model.views).find(x => FC_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   // a comment link and a line of another kind counted as themselves, never left out (audits 27, 29), as C4 counts them
   const I = fcIndex(model, v), notes = I.lines.filter(e => e.type === 'uml.CommentLink').length, other = I.lines.filter(fcOther).length;
   const more = [...(notes ? [fcPlural(notes, 'comment link')] : []), ...(other ? [fcPlural(other, 'other line')] : [])];

@@ -6,7 +6,7 @@ import { layoutTimeAxis } from '../layout/timeaxis.js';
 import { brLines } from '../typed/draw.js';
 import { frame, tagSize, guardSize, useSize } from './frame.js';
 import { interactionWalk, activationBars, replyCallFor, INTERACTION_RULES, interactionProblems } from './interaction.js';
-import { copyOf, usedIds } from '../core/model.js';
+import { copyOf, usedIds, jsonText } from '../core/model.js';
 
 /* ---------- the sequence diagram, uml.sequence (work package 3.3, notes/stage-3.md §4 and §5) ----------
    The subset of notes/stage-3.md §4.1: lifelines (`represents`, «actor» as text), messages inline in the view's `edges`
@@ -153,9 +153,9 @@ function sqProblems(model, view) {
   const say = (rule, path, who, msg, level = 'error') => out.push({ level, rule, path, ids: who.filter(x => x != null), message: `${rule}: ${msg}` });
   const fPath = f => `${at}.fragments[${SQ_ARR(V.fragments).indexOf(f)}]`;
   // parent-operand: an occurrence's or a fragment's parent; a fragment inside itself
-  X.occ.forEach(o => { if (o.parent != null && !X.opOf.has(o.parent)) say('parent-operand', o.path + '.parent', [o.id], `${o.id}'s parent ${JSON.stringify(o.parent)} is not an operand of view ${V.id}`); });
+  X.occ.forEach(o => { if (o.parent != null && !X.opOf.has(o.parent)) say('parent-operand', o.path + '.parent', [o.id], `${o.id}'s parent ${jsonText(o.parent)} is not an operand of view ${V.id}`); });
   X.frags.forEach(f => { if (f.parent == null) return;
-    if (!X.opOf.has(f.parent)) return say('parent-operand', fPath(f) + '.parent', [f.id], `fragment ${f.id}'s parent ${JSON.stringify(f.parent)} is not an operand of view ${V.id}`);
+    if (!X.opOf.has(f.parent)) return say('parent-operand', fPath(f) + '.parent', [f.id], `fragment ${f.id}'s parent ${jsonText(f.parent)} is not an operand of view ${V.id}`);
     const seen = new Set(); for (let p = f.parent; p != null && X.opOf.has(p);) { const g = X.opOf.get(p); if (g === f) { say('parent-operand', fPath(f) + '.parent', [f.id, f.parent], `fragment ${f.id} lies inside itself (its parent ${f.parent})`); break; } if (seen.has(g)) break; seen.add(g); p = g.parent; } });
   // contiguous: each fragment's occurrences one run, operand by operand
   X.frags.forEach(f => { const os = X.block.get(f.id) || [], ops = SQ_ARR(f.members).map(m => SQ_OBJ(m) && m.id);
@@ -175,20 +175,20 @@ function sqProblems(model, view) {
   // operator, empty
   const holds = id => X.occ.some(o => o.chain.some(c => c.op === id));
   X.frags.forEach(f => { const op = sqProps(f).operator, ms = SQ_ARR(f.members).filter(SQ_OBJ);
-    if (!SQ_OPS.includes(op)) say('operator', fPath(f) + '.props.operator', [f.id], `fragment ${f.id} has ${op === undefined ? 'no operator' : `operator ${JSON.stringify(op)}`}, not one of ${SQ_OPS.join(', ')}: it is drawn by its name`, 'warning');
+    if (!SQ_OPS.includes(op)) say('operator', fPath(f) + '.props.operator', [f.id], `fragment ${f.id} has ${op === undefined ? 'no operator' : `operator ${jsonText(op)}`}, not one of ${SQ_OPS.join(', ')}: it is drawn by its name`, 'warning');
     else if (['opt', 'loop', 'break'].includes(op) && ms.length !== 1) say('operator', fPath(f) + '.members', [f.id], `fragment ${f.id} is ${op}, which has one operand, not ${ms.length}`, 'warning');
     if (!ms.length || !ms.some(m => holds(m.id))) say('empty', fPath(f), [f.id], `fragment ${f.id} holds nothing: it has no place in time and is drawn at the end of what holds it`, 'warning');
     else ms.forEach((m, j) => { if (!holds(m.id)) say('empty', `${fPath(f)}.members[${j}]`, [m.id, f.id], `operand ${m.id} of ${f.id} holds nothing`, 'warning'); }); });
   // view
   if (SQ_OBJ(V.layout) && Object.keys(V.layout).length) say('view', at + '.layout', Object.keys(V.layout), `view ${V.id} pins ${Object.keys(V.layout).join(', ')}: a sequence places its lifelines in nodeIds order, so pins mean nothing`, 'warning');
-  if (V.direction != null && V.direction !== 'down') say('view', at + '.direction', [], `view ${V.id} has direction ${JSON.stringify(V.direction)}: a sequence is drawn down`, 'warning');
+  if (V.direction != null && V.direction !== 'down') say('view', at + '.direction', [], `view ${V.id} has direction ${jsonText(V.direction)}: a sequence is drawn down`, 'warning');
   return out;
 }
 
 /* ---- describe(): the view in words, in time order, nested as it is drawn ---- */
 const SQ_VERB = { call: 'calls', async: 'sends to', reply: 'replies to', create: 'creates', delete: 'deletes' };
 function sqDescribe(model, viewId) {
-  const V = SQ_ARR(model && model.views).find(x => SQ_OBJ(x) && x.id === viewId); if (!V) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const V = SQ_ARR(model && model.views).find(x => SQ_OBJ(x) && x.id === viewId); if (!V) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const X = sqIndex(model, V), heads = sqHeads(model, V), H = new Map(heads.map(n => [n.id, n])), nm = id => (H.has(id) ? sqName(H.get(id)) : String(id));
   const ms = X.occ.filter(o => o.message), uses = X.occ.length - ms.length, n = new Map(ms.map((m, k) => [m.id, k + 1]));
   const count = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
@@ -200,7 +200,7 @@ function sqDescribe(model, viewId) {
     for (; k < c.length; k++) { const { f, op } = c[k], m = SQ_ARR(f.members).find(x => SQ_OBJ(x) && x.id === op) || {};
       out.push(`${'  '.repeat(k)}${sqOperator(f) || 'fragment'}${SQ_HAS(m.label) ? ` [${m.label}]` : ''}:`); open.push(c[k]); }
     const pad = '  '.repeat(c.length), t = sqMsgText(o.el) ? `: ${sqMsgText(o.el)}` : '';
-    if (!o.message) { const cs = SQ_ARR(sqProps(o.el).covers); out.push(`${pad}ref ${JSON.stringify(String(o.el.label ?? ''))}${cs.length ? ` over ${cs.map(nm).join(', ')}` : ''}.`); return; }
+    if (!o.message) { const cs = SQ_ARR(sqProps(o.el).covers); out.push(`${pad}ref ${jsonText(String(o.el.label ?? ''))}${cs.length ? ` over ${cs.map(nm).join(', ')}` : ''}.`); return; }
     const to = o.from === o.to ? 'itself' : nm(o.to), call = o.sort === 'reply' && n.has(o.replyTo) ? ` (answers ${n.get(o.replyTo)})` : '';
     out.push(`${pad}${n.get(o.id)}. ${nm(o.from)} ${SQ_VERB[o.sort]} ${to}${call}${t}.`); });
   return out.join('\n');
@@ -210,7 +210,7 @@ function sqDescribe(model, viewId) {
    before and sent from the lifeline it reached; a line is on one when `from` reaches its sender before it and its receiver
    reaches `to` after it. Self-messages are left out, as paths() leaves them ---- */
 function sqPaths(model, viewId, from, to) {
-  const V = SQ_ARR(model && model.views).find(x => SQ_OBJ(x) && x.id === viewId); if (!V) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const V = SQ_ARR(model && model.views).find(x => SQ_OBJ(x) && x.id === viewId); if (!V) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const ids = sqHeads(model, V).map(h => h.id), ms = sqIndex(model, V).occ.filter(o => o.message && o.from !== o.to);
   if (!ids.includes(from) || !ids.includes(to)) return [];
   if (from === to) return [{ type: 'node', id: from, view: viewId }]; // the card alone, as paths() on a map gives it
@@ -329,7 +329,7 @@ function sqMoveTo(model, view, id, at) {
    item of the run moves into its first operand */
 function sqWrap(model, view, ids, kind) {
   const V = sqView(model, view); if (!V) return null;
-  if (!SQ_OPS.includes(kind)) return sqErr(`a fragment's operator is one of ${SQ_OPS.join(', ')}, not ${JSON.stringify(kind)}`);
+  if (!SQ_OPS.includes(kind)) return sqErr(`a fragment's operator is one of ${SQ_OPS.join(', ')}, not ${jsonText(kind)}`);
   const X = sqIndex(model, V), sel = [...new Set(SQ_ARR(ids))]; if (!sel.length) return sqErr('select the messages to wrap first');
   const runs = sel.map(id => [id, sqRunOf(X, V, id)]), bad = runs.find(([, r]) => r.error); if (bad) return bad[1];
   const P = runs[0][1].parent; if (runs.some(([, r]) => r.parent !== P)) return sqErr('what is wrapped lies in one place: these lie in different operands');
@@ -415,7 +415,7 @@ function sqRename(model, V, id, text) {
     return t === String(o.el.label ?? '') ? [] : [{ op: 'set', id, path: 'label', value: t || undefined }]; }
   const f = X.F.get(id); if (!f) return null;
   const t = String(text ?? '').trim(); if (t === sqOperator(f)) return [];
-  if (!SQ_OPS.includes(t)) return sqErr(`a fragment's operator is one of ${SQ_OPS.join(', ')}, not ${JSON.stringify(t)}`);
+  if (!SQ_OPS.includes(t)) return sqErr(`a fragment's operator is one of ${SQ_OPS.join(', ')}, not ${jsonText(t)}`);
   return sqGuard(model, V, [{ op: 'set', id, path: 'props.operator', value: t }]);
 }
 

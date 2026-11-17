@@ -1222,7 +1222,8 @@ export function render(container, model, options = {}) {
     drawn: id => !!geo.byId[id] || geo.edges.some(x => edgeRefIds(x).includes(id)), rename: () => rename(sel), focus: () => focusMap() });
   const typed = () => !!tx && tx.on();
 
-  const inner = { ctx: () => ctx, geo: () => geo, geoOf: vid => pic(vid).g, cam: () => cam, svg: () => svg, stage, host, go, open, up, flash, setFlow, pause, key, startView, standalone, play,
+  // model: the host's, as given to render() or update(), which the page exports; ctx's D is the map's working copy (audit 29)
+  const inner = { ctx: () => ctx, model: () => current, geo: () => geo, geoOf: vid => pic(vid).g, cam: () => cam, svg: () => svg, stage, host, go, open, up, flash, setFlow, pause, key, startView, standalone, play,
     select, boxHere, busy: () => busy, flowing: () => stage.classList.contains('flowing'), view: () => cur, unfold: gesture, lens: setLens,
     highlight, overlay, focus: focusMap, editable: !!E }; // a story's pointer is the pieces' own, from the story event (0.14.0)
 

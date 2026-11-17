@@ -4,7 +4,7 @@ import { SHAPE, r2 } from '../draw/shapes.js';
 import { brLines } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
 import { boxHead, ownersOn, readingOrder } from '../uml/owners.js';
-import { usedIds } from '../core/model.js';
+import { usedIds, jsonText } from '../core/model.js';
 
 /* ---------- the cloud architecture family: aws, gcp and azure (work package 4a.6, notes/milestone-4a.md §5) ----------
    Groups (a project, a region, a VPC, a subnet…) as stage 2's boxes, nested by parent to any depth as the deployment type
@@ -197,7 +197,7 @@ function clProblems(F, model) {
   const q = id => JSON.stringify(I.at.has(id) ? clName(I.at.get(id)) : String(id)), given = clGiven(F, model), isG = id => (I.at.get(id) || {}).type === F.group;
   CL_ARR(model && model.nodes).forEach((n, i) => { if (!CL_OBJ(n) || I.at.get(n.id) !== n) return; const path = `nodes[${i}]`, up = n.parent != null && I.at.get(n.parent);
     if (n.type === F.group) { const k = clKindOf(F, n);
-      if (!k) say('error', 'group-kind', `${path}.props.${F.key}`, [n.id], (clProps(n)[F.key] == null ? `${q(n.id)} has no ${F.key}: give it one of ${Object.keys(F.kinds).join(', ')}` : `${q(n.id)}'s ${F.key} ${JSON.stringify(clProps(n)[F.key])} is none of ${Object.keys(F.kinds).join(', ')}`));
+      if (!k) say('error', 'group-kind', `${path}.props.${F.key}`, [n.id], (clProps(n)[F.key] == null ? `${q(n.id)} has no ${F.key}: give it one of ${Object.keys(F.kinds).join(', ')}` : `${q(n.id)}'s ${F.key} ${jsonText(clProps(n)[F.key])} is none of ${Object.keys(F.kinds).join(', ')}`));
       else if (up && k !== 'generic') { const pk = isG(up.id) ? clKindOf(F, up) : null;
         if (!isG(up.id)) say('warning', 'group-nesting', `${path}.parent`, [n.id, up.id], `${q(n.id)}, ${clA(F.kinds[k])} group, sits in ${q(up.id)}, which is no group`);
         else if (pk && pk !== 'generic' && !F.sits[k].includes(pk)) say('warning', 'group-nesting', `${path}.parent`, [n.id, up.id], `${q(n.id)}, ${clA(F.kinds[k])} group, sits in ${q(up.id)}, ${clA(F.kinds[pk])} group: ${F.sits[k].length ? `it sits in ${F.sits[k].map(x => F.kinds[x]).join(' or ')}` : 'it sits in no group'}`); } }
@@ -206,7 +206,7 @@ function clProblems(F, model) {
       if (clU(F, n)) return;
       const ic = clIcon(F, model, n);
       if (!ic) say('warning', 'icon-set', `${path}.props.icon`, [n.id], `${q(n.id)} names no icon: it is drawn with a glyph`);
-      else if (given && !ic.src) say('warning', 'icon-missing', `${path}.props.icon`, [n.id], `the ${F.pack} pack given has no icon ${JSON.stringify(ic.id)} for ${q(n.id)}: it is drawn with a glyph`); } });
+      else if (given && !ic.src) say('warning', 'icon-missing', `${path}.props.icon`, [n.id], `the ${F.pack} pack given has no icon ${jsonText(ic.id)} for ${q(n.id)}: it is drawn with a glyph`); } });
   [...Array.from(CL_ARR(model && model.edges), (e, i) => ({ e, path: `edges[${i}]` })), ...clOwnLines(F, model, I)].forEach(({ e, path }) => {
     if (!CL_OBJ(e) || e.type !== F.line[0] || !I.at.has(e.from) || !I.at.has(e.to) || !clInside(F, I, e.from, e.to)) return;
     say('error', 'line-inside', path, [e.id, e.from, e.to], `${e.id} joins ${q(e.from)} and ${q(e.to)}, ${e.from === e.to ? 'a group and itself' : 'a group and something inside it'}: it cannot be drawn`); });
@@ -215,7 +215,7 @@ function clProblems(F, model) {
 
 /* ---- describe(): the groups as an outline, each service with its full name, then the connections; Google's line last ---- */
 function clDescribe(F, model, viewId) {
-  const v = CL_ARR(model && model.views).find(x => CL_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const v = CL_ARR(model && model.views).find(x => CL_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const pic = clPic(F, model, v), I = clIndex(model), lines = clLinesOf(F, model, v, pic, I), box = new Map(pic.boxes.map(b => [b.id, b.aria]));
   const depth = id => { let d = 0; for (let o = pic.owner(id); o != null; o = pic.owner(o)) d++; return d; };
   // as layout() draws it: any card (not a group, not the user) whose icon the host gave

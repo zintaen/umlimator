@@ -6,7 +6,7 @@ import '../uml/class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from '../uml/flow.js';
 import '../uml/usecase.js'; // SHAPE.ellipse, Yourdon's process
 import { snKindName } from '../uml/structure.js';
-import { usedIds } from '../core/model.js';
+import { usedIds, jsonText } from '../core/model.js';
 
 /* ---------- the data flow diagram, dfd (work package M2.4, notes/milestone-2.md §4.3, §6.1, §6.4, §7.3) ----------
    Processes, data stores and external entities, joined by data flows; comments. Two skins on one geometry (§4.3): each
@@ -211,13 +211,13 @@ function dfdProblems(model) {
       miss.length ? `its flow${miss.length > 1 ? 's' : ''} ${miss.map(said).join(', ')} ${miss.length > 1 ? 'have' : 'has'} none at the level` : '',
       left.length ? `the level's flow${left.length > 1 ? 's' : ''} ${left.map(said).join(', ')} ${left.length > 1 ? 'are' : 'is'} not the process's` : ''].filter(Boolean).join('; ')}`); });
   DFD_ARR(model && model.views).forEach((v, i) => { if (DFD_OBJ(v) && v.diagram === 'dfd' && v.notation != null && v.notation !== 'yourdon' && v.notation !== 'gane-sarson')
-    say('warning', 'dfd-notation', `views[${i}].notation`, [v.id], `${JSON.stringify(String(v.id))} has notation ${JSON.stringify(String(v.notation))}, drawn as yourdon: write yourdon or gane-sarson`); });
+    say('warning', 'dfd-notation', `views[${i}].notation`, [v.id], `${jsonText(String(v.id))} has notation ${jsonText(String(v.notation))}, drawn as yourdon: write yourdon or gane-sarson`); });
   return out;
 }
 
 /* ---- describe(): the view in sentences, each element by its accessible name in reading order, then each line ---- */
 function dfdDescribe(model, viewId) {
-  const v = DFD_ARR(model && model.views).find(x => DFD_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const v = DFD_ARR(model && model.views).find(x => DFD_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const I = dfdIndex(model), ids = DFD_ARR(v.nodeIds).filter((id, k, a) => I.at.has(id) && a.indexOf(id) === k), lines = dfdLines(model, v), by = new Map(lines.map(e => [e.id, e])), up = I.parentOf(v.id);
   return [`${v.title || v.id}: a data flow diagram${up ? `, the level of ${I.q(up.id)},` : ''} of ${dfdPlural(ids.length, 'element')} and ${dfdPlural(lines.length, 'line')}.`,
     ...dfdOrder(I, ids, lines).map(id => (by.has(id) ? dfdLineName(I, by.get(id)) : dfdNodeName(I, id, lines)) + '.')].join('\n');

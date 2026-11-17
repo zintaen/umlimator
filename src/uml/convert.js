@@ -1,4 +1,4 @@
-import { copyOf, migrate, unreadable } from '../core/model.js';
+import { copyOf, migrate, unreadable, jsonText } from '../core/model.js';
 import { mapContext } from '../map/context.js';
 import { cardMatcher, sequenceFromTrace } from '../map/insight.js';
 import { interactionWalk } from './interaction.js';
@@ -26,20 +26,20 @@ const cvFresh = (used = []) => { const seen = new Set(used); return want => { le
 
 function cvSource(model, viewId) {
   const D = copyOf(migrate(model) || {}), v = CV_ARR(D.views).find(x => CV_OBJ(x) && x.id === viewId);
-  if (!v) throw new Error(`convert: the model has no view ${JSON.stringify(viewId)}`);
+  if (!v) throw new Error(`convert: the model has no view ${jsonText(viewId)}`);
   return { D, v };
 }
 
 // a numbered view's lines as calls of a sequence view `id`: { nodes (new lifelines), view, report }
 function cvNumbered(model, v, id, title) {
-  if (v.render !== 'sequence') throw new Error(`convert: view ${JSON.stringify(v.id)} is not a numbered view (render: "sequence")`);
+  if (v.render !== 'sequence') throw new Error(`convert: view ${jsonText(v.id)} is not a numbered view (render: "sequence")`);
   const ctx = mapContext(model), lines = ctx.viewEdges(ctx.V[v.id]), report = [], fresh = cvFresh();
   const cards = [...CV_ARR(v.nodeIds).filter(c => ctx.N[c]), ...lines.flatMap(e => [e.from, e.to])].filter((c, k, a) => a.indexOf(c) === k);
   const lifeOf = new Map(cards.map(c => [c, fresh(`${id}.${cvId(c)}`)])), life = c => lifeOf.get(c);
   const boxes = new Map(CV_ARR(v.containers).filter(CV_OBJ).map(b => [b.id, b]));
   const nodes = cards.map(c => ({ id: life(c), type: 'uml.Lifeline', label: String((ctx.N[c] || boxes.get(c) || {}).label ?? c) }));
   const edges = lines.map((e, i) => { const m = fresh(`${id}.m${i + 1}`), text = [e.label, e.sublabel].filter(x => x != null && x !== '').map(String);
-    if (e.step != null && String(e.step) !== String(i + 1)) report.push({ id: m, status: 'approximated', message: `line ${e._id} has step ${JSON.stringify(e.step)}; it is step ${i + 1} in the view's order` });
+    if (e.step != null && String(e.step) !== String(i + 1)) report.push({ id: m, status: 'approximated', message: `line ${e._id} has step ${jsonText(e.step)}; it is step ${i + 1} in the view's order` });
     return { id: m, type: 'uml.Message', from: life(e.from), to: life(e.to), ...(text.length ? { label: text.length > 1 ? `${text[0]} (${text[1]})` : text[0] } : {}), props: { sort: 'call' } }; });
   return { nodes, report, view: { id, diagram: 'uml.sequence', title: title || v.title || v.id, ...(v.caption ? { caption: v.caption } : {}),
     parent: v.parent ?? null, nodeIds: nodes.map(n => n.id), edges } };
@@ -51,7 +51,7 @@ function cvCommunication(model, v, id, options) {
   CV_ARR(v.fragments).filter(CV_OBJ).forEach(f => { const ops = CV_ARR(f.members).filter(CV_OBJ), op = CV_OBJ(f.props) ? f.props.operator : undefined;
     if (op !== 'alt') { ops.forEach(o => taken.add(o.id)); if (op === 'par') report.push({ id: f.id, status: 'approximated', message: `par ${f.id}'s operands are taken one after another` }); return; }
     const want = Object.hasOwn(picks, f.id) ? picks[f.id] : undefined; let pick = ops.find(o => o.id === want);
-    if (want != null && !pick) report.push({ id: f.id, status: 'approximated', message: `alt ${f.id} has no operand ${JSON.stringify(want)}: its first is taken` });
+    if (want != null && !pick) report.push({ id: f.id, status: 'approximated', message: `alt ${f.id} has no operand ${jsonText(want)}: its first is taken` });
     pick = pick || ops[0]; if (pick) { taken.add(pick.id); if (ops.length > 1 && pick.label != null && pick.label !== '') chosen.push([f, String(pick.label)]); } });
   const inside = o => { for (let p = o.parent, seen = new Set(); p != null; p = w.ops.has(p) ? w.ops.get(p).fragment.parent : null) { if (!taken.has(p) || seen.has(p)) return false; seen.add(p); } return true; };
   const kept = w.occ.filter(o => { if (o.message) return inside(o);

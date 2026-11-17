@@ -1,3 +1,4 @@
+import { jsonText } from '../core/model.js';
 /* ---------- interaction semantics, shared by uml.sequence and uml.communication (work package 3.1) ----------
    What a view's messages mean, with no layout and no DOM (notes/stage-3.md §3.2, §5.2, §6.3; model.md rows 11 and 12):
    the occurrences in time order with the operands they lie in, the activation bars by the five rules of
@@ -94,10 +95,10 @@ function interactionProblems(model, view) {
   const say = (rule, m, at, ids, msg, level = 'error') => out.push({ level, rule, path: m.path + at, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   ms.forEach(m => {
     const raw = IA_OBJ(m.el.props) ? m.el.props.sort : undefined, c = byId.get(m.replyTo);
-    if (!SORTS.includes(raw)) say('sort', m, '.props.sort', [m.id], `${nm(m)} has ${raw === undefined ? 'no sort' : `sort ${JSON.stringify(raw)}`}, not one of ${SORTS.join(', ')}: it is drawn as a call`, 'warning');
+    if (!SORTS.includes(raw)) say('sort', m, '.props.sort', [m.id], `${nm(m)} has ${raw === undefined ? 'no sort' : `sort ${jsonText(raw)}`}, not one of ${SORTS.join(', ')}: it is drawn as a call`, 'warning');
     if (m.sort === 'reply') {
       if (m.replyTo == null) say('reply-call', m, '.props', [m.id], `${nm(m)} names no call in replyTo`, 'warning');
-      else if (!c || c.r > m.r || c.sort !== 'call') say('reply-call', m, '.props.replyTo', [m.id, c && c.id], `${nm(m)} answers ${JSON.stringify(m.replyTo)}, which is not an earlier call of this view`);
+      else if (!c || c.r > m.r || c.sort !== 'call') say('reply-call', m, '.props.replyTo', [m.id, c && c.id], `${nm(m)} answers ${jsonText(m.replyTo)}, which is not an earlier call of this view`);
       else if (m.from !== c.to || m.to !== c.from) say('reply-call', m, '', [m.id, c.id], `${nm(m)} runs from ${m.from} to ${m.to}, not back along ${nm(c)} (${c.from} to ${c.to})`);
       if (c && c.sort === 'call' && c.r < m.r) { const was = replies.get(c.id) || [], e = was.find(o => !apartInAlt(w, o.parent, m.parent));
         if (e) say('reply-once', m, '.props.replyTo', [c.id, e.id, m.id], `${nm(e)} and ${nm(m)} both answer ${nm(c)}, and do not lie in different operands of one alt`);
