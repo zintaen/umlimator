@@ -7,7 +7,6 @@ import { laneBands, laneRows } from '../layout/lanes.js';
 import { layoutTyped } from '../typed/layout.js';
 import { brLines } from '../typed/draw.js';
 import './class.js'; // SHAPE.note, a comment's
-import { lineItem } from './class.js';
 import { snKindName } from './structure.js';
 import { frame } from './frame.js';
 import { FLOW_RULES, flowOf, flowProblems, flowLabel, flowRename, flowStereo, viewFlows } from './flow.js';
@@ -144,9 +143,7 @@ const AC_KEYS = [
   ['uml.DecisionNode', '<path d="M14 2L21 8L14 14L7 8Z"/>', 'Decision', 'takes the one exit whose guard holds'],
   ['uml.MergeNode', '<path d="M14 2L21 8L14 14L7 8Z"/>', 'Merge', 'goes on with whichever flow arrives'],
 ];
-// and "Line" for a line of another kind the view lists, drawn with an open arrowhead (class.js lineItem, audit 28)
-const acLegend = (types, lines) => [...AC_KEYS.filter(([t]) => types.has(t)).map(([t, svg, name, says]) => (AC_LINE_WORDS[t] ? acKey(svg, ...AC_LINE_WORDS[t]) : acKey(svg, name, says))),
-  ...(lines.some(e => !Object.hasOwn(AC_LINE_WORDS, e.type)) ? [lineItem()] : [])];
+const acLegend = types => AC_KEYS.filter(([t]) => types.has(t)).map(([t, svg, name, says]) => (AC_LINE_WORDS[t] ? acKey(svg, ...AC_LINE_WORDS[t]) : acKey(svg, name, says)));
 
 /* ---- the view laid out: { model, view, pos, memo } (§9.1, §5) ---- */
 function actGeo({ model, view, pos, memo }) {
@@ -194,7 +191,7 @@ function acFinish(model, g, I, down) {
   const types = new Set([...g.edges.map(e => e.type), ...I.drawn.map(id => I.N.get(id).type)]);
   return { ...g, nodes: [...order.filter(id => !I.isPart(id)), ...I.parts].map(id => byId[id]), byId, bounds, bands, partitions: heads.map(h => h.id), order: [...order, ...g.edges.map(e => e.id)],
     // the slots (src/typed/edit.js): one per node and one per partition's header, so the palette's add hears what is selected
-    slots: [...I.drawn.map(id => ({ after: id, parent: I.laneOf(id), ...mid(byId[id]) })), ...heads.map(h => ({ after: h.id, parent: h.id, ...mid(h) }))], legend: acLegend(types, g.edges) };
+    slots: [...I.drawn.map(id => ({ after: id, parent: I.laneOf(id), ...mid(byId[id]) })), ...heads.map(h => ({ after: h.id, parent: h.id, ...mid(h) }))], legend: acLegend(types) };
 }
 
 /* the bands (§5.3), under the lines: each band's outline and the line closing its header strip */

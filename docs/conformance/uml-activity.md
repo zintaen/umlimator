@@ -20,7 +20,7 @@ loads, draws it as plain cards with a warning. The vocabulary is `docs/diagrams/
 | 15.3 InitialNode, ActivityFinalNode, FlowFinalNode | `uml.InitialNode`, `uml.ActivityFinalNode`, `uml.FlowFinalNode` | a filled circle; a ring round a filled circle; a circle with an X |
 | 15.3 DecisionNode, MergeNode | `uml.DecisionNode`, `uml.MergeNode` | a diamond, which grows to hold a decision's question on at most two lines (a deviation, below) |
 | 15.3 ForkNode, JoinNode | `uml.ForkNode`, `uml.JoinNode` | a bar across the flow, as long as its busier side needs; lines enter and leave on its long sides |
-| 15.2 ControlFlow, ObjectFlow | `uml.ControlFlow`, `uml.ObjectFlow`; `label` the name, `props.guard` | a solid line with an open arrowhead, labelled `name [guard]` (`[else]` for else), cut at 280 px; the two kinds alike, told apart by the legend and the name; a line of another kind the view lists is drawn the same, named "Line" in its name and the legend |
+| 15.2 ControlFlow, ObjectFlow | `uml.ControlFlow`, `uml.ObjectFlow`; `label` the name, `props.guard` | a solid line with an open arrowhead, labelled `name [guard]` (`[else]` for else), cut at 280 px; the two kinds alike, told apart by the legend and the name |
 | 15.6 ActivityPartition | `uml.ActivityPartition`; a node's `parent` its partition, a partition's the partition it is nested in | lanes: bands across the flow, as long as the diagram, a 22 px header strip per level of nesting, divided 12 px off the router's lines |
 | 7.8 Comment | `uml.Comment`, `uml.CommentLink` | a note, a dashed line; a comment is in no lane |
 

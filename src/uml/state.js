@@ -258,7 +258,6 @@ const ST_RULES = {
   'internal-trigger': 'an internal transition has a trigger',
   'pseudo-kind': 'a pseudostate\'s kind is one of initial, choice, junction, fork, join, shallowHistory, deepHistory, terminate',
   'label-syntax': 'a transition\'s trigger, guard and effect print as text that reads back as them',
-  'line-kinds': 'a state machine draws transitions and comment links only; a line of another kind it lists is not drawn',
 };
 function stProblems(model, view) {
   const out = [], I = stIndex(ST_OBJ(model) ? model : {}), { N, M } = I, say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
@@ -275,12 +274,6 @@ function stProblems(model, view) {
   // own lines are never weighed together (audit 21)
   const tids = new Set(ts.map(([e]) => e.id)), vs = ST_ARR(model && model.views), vi = vs.indexOf(view);
   if (vi >= 0 && view.diagram === 'uml.state-machine') ST_ARR(view.edges).forEach((e, j) => { if (ST_OBJ(e) && e.type === 'uml.Transition' && !tids.has(e.id)) { tids.add(e.id); ts.push([e, `views[${vi}].edges[${j}]`]); } });
-  // a line of another kind a view lists is not drawn (stLines): said, as the interaction overview says one (audit 28); with no
-  // view, every state machine view's
-  const E = new Map(); ST_ARR(model && model.edges).forEach(e => { if (ST_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); });
-  (view ? (vi >= 0 ? [view] : []) : vs).forEach(w => { if (!ST_OBJ(w) || w.diagram !== 'uml.state-machine') return; const wi = vs.indexOf(w);
-    ST_ARR(w.edges).forEach((x, j) => { const e = typeof x === 'string' ? E.get(x) : x; if (!ST_OBJ(e) || typeof e.id !== 'string' || ST_LINES.includes(e.type)) return;
-      say('warning', 'line-kinds', `views[${wi}].edges[${j}]`, [e.id], `view ${w.id} shows ${snKindName(e.type).toLowerCase()} ${e.id}, a line a state machine does not draw: not drawn`); }); });
   const ins = new Map(), outs = new Map(), add = (m, id, x) => m.set(id, [...(m.get(id) || []), x]);
   ts.forEach(([e, path]) => { add(outs, e.from, [e, path]); add(ins, e.to, [e, path]);
     const bad = [e.from, e.to].filter(id => !vertex(id));

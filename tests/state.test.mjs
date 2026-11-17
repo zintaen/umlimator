@@ -55,7 +55,7 @@ test('the definition: uml.state-machine with its palette (kinds and name: false)
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners']) assert.equal(typeof T[k], 'function', k);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'moveTo', 'remove', 'rename']);
   assert.deepEqual(['uml.State', 'uml.Pseudostate', 'uml.FinalState'].map(t => T.member.holds({ type: t })), [true, false, false]);
-  assert.equal(Object.keys(T.rules).length, 19);
+  assert.equal(Object.keys(T.rules).length, 18);
 });
 
 test('the shapes: junction, history and terminate; a state\'s compartment, its rows cut by present.rows, hidden by collapsed, and the indicator', () => {
@@ -198,9 +198,8 @@ const BREAKS = {
   'internal-trigger': m => { delete node(m, 'placed').members[0].props.trigger; return ['placed', 'placed.address']; },
   'pseudo-kind': m => { node(m, 'erased').props.kind = 'stop'; return ['erased']; },
   'label-syntax': m => { m.edges.find(e => e.id === 't-picked').props.trigger = 'all [books'; return ['t-picked']; },
-  'line-kinds': m => { m.views[0].edges = [...(m.views[0].edges || []), { id: 'dep', type: 'uml.Dependency', from: m.views[0].nodeIds[0], to: m.views[0].nodeIds[1] }]; return ['dep']; },
 };
-const WARNS = ['choice-guards', 'composite-entry', 'region-mixed', 'region-cross', 'composite-inner', 'internal-trigger', 'pseudo-kind', 'label-syntax', 'line-kinds'];
+const WARNS = ['choice-guards', 'composite-entry', 'region-mixed', 'region-cross', 'composite-inner', 'internal-trigger', 'pseudo-kind', 'label-syntax'];
 test('validators: order-states.json (example 10) breaks no rule; each rule fails on a model that breaks it, naming its rule and its elements, at its level', () => {
   assert.deepEqual(T.validate(SM), []);
   assert.deepEqual(Object.keys(BREAKS).sort(), Object.keys(T.rules).sort());
@@ -647,15 +646,4 @@ test('audit 28: a kind outside the view\'s own, or no type, is named in words, a
     const rows = tablesOf(c, c.V.v, c.buildGeo('v'))[0].rows.map(r => r.split('<td>').slice(1).map(x => x.replace(/<[^>]+>/g, '')));
     assert.deepEqual(['Plain', 'Money', 'Order'].map(l => rows.find(r => r[0] === l)[1]), ['Element', 'Data type', 'Class'], `${d}: the PDF's Kind`);
   }
-});
-
-test('audit 28: a line of another kind the view lists is not drawn, and validate() says so (line-kinds)', () => {
-  const m = { schemaVersion: 2, title: 'o', nodes: ['a', 'b', 'c'].map(id => ({ id, type: 'uml.State', label: id.toUpperCase() })),
-    edges: [{ id: 'own', type: 'uml.Transition', from: 'a', to: 'b' }, { id: 'dep', type: 'uml.Dependency', from: 'b', to: 'c', label: 'needs' }],
-    views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['a', 'b', 'c'], edges: ['own', 'dep', { id: 'mine', type: 'uml.Usage', from: 'a', to: 'c' }] }] };
-  assert.deepEqual(layout(m, 'v').edges.map(e => e.id), ['own']);
-  assert.deepEqual(validate(m).map(p => [p.rule, p.level, p.path, p.message]), [
-    ['line-kinds', 'warning', 'views[0].edges[1]', 'line-kinds: view v shows dependency dep, a line a state machine does not draw: not drawn'],
-    ['line-kinds', 'warning', 'views[0].edges[2]', 'line-kinds: view v shows usage mine, a line a state machine does not draw: not drawn']]);
-  assert.deepEqual(validate({ ...m, views: [{ ...m.views[0], edges: ['own'] }] }), [], 'none listed: none said');
 });

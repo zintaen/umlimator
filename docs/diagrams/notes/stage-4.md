@@ -654,7 +654,6 @@ a model UML forbids is an error; one that is only unfinished is a warning.
 | `internal-trigger` | warning | An internal transition has a trigger |
 | `pseudo-kind` | warning | A pseudostate's `kind` is one of the eight |
 | `label-syntax` | warning | A transition's parts print and read back (§7.1) |
-| `line-kinds` | warning | A line of another kind than a transition or a comment link that a view lists is not drawn (audit 28) |
 
 ### 10.3 Editing
 
