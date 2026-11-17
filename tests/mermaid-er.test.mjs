@@ -355,3 +355,19 @@ test('an er view whose indented text is over the reader\'s limit is written unin
   assert.match(t2.slice(t2.lastIndexOf('%%')), /^%% not written: text the reader reads back: this is \d+ characters, over its limit of 1048576\n$/);
   assert.match(write(big(3, i => `t${i}`)), /\nerDiagram\n  direction LR\n  t0 \{\n    varchar column_0\n/); // a small view keeps its indent
 });
+
+test('a no-break or other Unicode space is whitespace, as in Mermaid\'s lexer: it never starts or joins a name (audit 28)', () => {
+  const N = '  ';
+  const r = read(`erDiagram\n${N}CUSTOMER ||--o{ ORDER : places\n    CUSTOMER ||--o{ INVOICE : gets\n${N}CUSTOMER {\n${N}${N}string name PK\n${N}}\n`);
+  assert.deepEqual([r.model.nodes.map(n => n.id).sort(), r.model.edges.map(e => [e.from, e.to]), r.model.nodes.find(n => n.id === 'CUSTOMER').members.map(c => c.label), r.report.filter(x => !ONCE.test(x.message))],
+    [['CUSTOMER', 'INVOICE', 'ORDER'], [['CUSTOMER', 'ORDER'], ['CUSTOMER', 'INVOICE']], ['name'], []]);
+  for (const sp of [' ', ' ', '　', ' ']) {
+    const one = read(`erDiagram\n${sp} CUSTOMER\n`);
+    assert.deepEqual([one.model.nodes.map(n => n.id), one.report], [['CUSTOMER'], []], JSON.stringify(sp));
+  }
+  // an id or label holding a Unicode space is written in quotes or with an id, and reads back
+  const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 'A B', type: 'er.Entity', label: 'A B' }, { id: 'C　', type: 'er.Entity', label: 'C　' }, { id: 'D', type: 'er.Entity', label: 'D' }],
+    edges: [], views: [{ id: 'v', diagram: 'er', nodeIds: ['A B', 'C　', 'D'] }] };
+  const t = write(m), back = read(t);
+  assert.deepEqual([back.model.nodes.map(n => [n.id, n.label]).sort(), back.report], [[['A B', 'A B'], ['C　', 'C　'], ['D', 'D']], []], t);
+});

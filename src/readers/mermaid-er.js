@@ -44,14 +44,14 @@ const ME_MULT = meTable({ '|o': '0..1', 'o|': '0..1', '||': '1', '}o': '0..*', '
 const ME_CARD = /(\|o|o\||\|\||\}o|o\{|\}\||\|\{)|(zero or (?:more|many|one)|one or (?:zero|more|many)|only one|many\([01]\)|many|one)(?!\w)|([01]\+)|(1)(?![\w.])|(u)(?=[.|-])/iy;
 const ME_REL = /(--|\.\.|\.-|-\.)|(optionally to|to)(?!\w)/iy;
 const ME_SYM = meTable({ 1: ['||', '||'], '0..1': ['|o', 'o|'], '0..*': ['}o', 'o{'], '1..*': ['}|', '|{'] }); // the writer's marker, left and right
-const ME_NAME = /(?:[^\x00-\x7F]|[\w.*-])+/y; // a name not in quotes (the lexer's UNICODE_TEXT)
+const ME_NAME = /(?:(?!\s)[^\x00-\x7F]|[\w.*-])+/y; // a name not in quotes (the lexer's UNICODE_TEXT; a Unicode space is whitespace, as \s+ in the lexer)
 const ME_WORD = /[*A-Za-z_\u00C0-\uFFFF][A-Za-z0-9\-_[\]().,\u00C0-\uFFFF*]*/y; // a column's type or name (ATTRIBUTE_WORD)
 const ME_KEY = /(?:PK|FK|UK)\b/iy;
 // a statement's first word that Mermaid's lexer takes as a keyword: the writer writes no name that starts with one
 const ME_KEYWORDS = new Set(['one', 'many', 'to', 'end', 'class', 'classdef', 'style', 'subgraph', 'erdiagram']);
 const ME_DIRECTION = /direction\s+(TB|BT|RL|LR)/gi; // the lexer takes any line holding this as a direction statement
 const meId = name => String(name).replace(/->+/g, '-'); // an id never holds "->" (model.md rule 5)
-const meSkip = (s, k) => { while (k < s.length && (s[k] === ' ' || s[k] === '\t')) k++; return k; };
+const meSkip = (s, k) => { while (k < s.length && /\s/.test(s[k])) k++; return k; }; // the lexer's \s+: a no-break space too
 const meAt = (re, s, k) => { re.lastIndex = k; const m = re.exec(s); return m; };
 const meShort = mermaidClip;
 
@@ -75,7 +75,7 @@ function meEncode(s) {
     .replace(/\n/g, '<br>').replace(/(direction)(\s+)(?=TB|BT|RL|LR)/gi, (_, d, w) => d + [...w].map(c => `#${c.codePointAt(0)};`).join(''));
 }
 // a name the writer writes as it is, or in quotes; else it needs an %% id:
-const meBare = id => /^[A-Za-z_\u0080-\uFFFF](?:[^\x00-\x7F]|[\w.*-])*$/.test(id) && !ME_KEYWORDS.has(/^\w*/.exec(id)[0].toLowerCase()) && !/^u[.-]/i.test(id);
+const meBare = id => /^(?!\s)[A-Za-z_\u0080-\uFFFF](?:(?!\s)[^\x00-\x7F]|[\w.*-])*$/.test(id) && !ME_KEYWORDS.has(/^\w*/.exec(id)[0].toLowerCase()) && !/^u[.-]/i.test(id);
 const meQuoted = id => /^[^"%\r\n\v\x08\\]+$/.test(id) && !/direction\s+(TB|BT|RL|LR)/i.test(id);
 
 // a name at k: "in quotes" (not empty), or the lexer's UNICODE_TEXT: { text, end }
