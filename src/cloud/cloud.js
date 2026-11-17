@@ -275,6 +275,8 @@ function clDef(pack, F) {
     elements: [...Object.entries(F.kinds).map(([k, label]) => ({ type: F.group, label, props: { [F.key]: k } })), ...Object.entries(F.items).map(([type, label]) => ({ type, label })),
       ...(F.user ? [{ type: F.user, label: 'User' }] : [])],
     lines: [{ type: F.line[0], label: F.line[1] }],
+    // the kinds of line it draws: any other a view lists is not drawn, which validate() says (src/core/model.js, audit 28)
+    drawsOnly: [F.line[0]],
     props: { [F.group]: [kindField], ...Object.fromEntries(Object.keys(F.items).map(t => [t, [iconField]])), ...(F.user ? { [F.user]: [] } : {}), [F.line[0]]: [] },
     layout: clGeo(F),
     draw: clDraw,

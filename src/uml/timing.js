@@ -404,6 +404,8 @@ function tmKeyHook(model, view, ids, key) {
 const TM_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
 const TM_TYPE = registerDiagramType('uml.timing', {
   title: 'timing diagram',
+  // the kinds of line it draws: any other a view lists is not drawn, which validate() says (src/core/model.js, audit 28)
+  drawsOnly: ['uml.Message'],
   elements: [{ type: 'uml.Lifeline', label: 'Lifeline' }, { type: 'uml.StateInvariant', label: 'Change' }, { type: 'uml.TimeConstraint', label: 'Time constraint' }],
   lines: [...TM_SORTS.map(sort => ({ type: 'uml.Message', label: TM_WORDS[sort][0], props: { sort } })), { type: 'uml.DurationConstraint', label: 'Duration constraint' }],
   refs: { 'uml.Message': { 'props.replyTo': 'cascade' } },

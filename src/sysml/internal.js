@@ -2,7 +2,7 @@ import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { r2 } from '../draw/shapes.js';
 import { csAdd, csConnect, csGeo, csMember, csMoveTo, csRemove, csRename } from '../uml/composite.js';
-import { SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS, SYS_LINES } from './sysml.js';
+import { SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS } from './sysml.js';
 
 /* ---------- SysML's internal block diagram, sysml.internal-block (work package M3.4, notes/milestone-3.md §8, §13) ----------
    The view's subject, a block, is drawn as the composite structure type draws a class (src/uml/composite.js), through M3.1's
@@ -131,7 +131,8 @@ function SYS_IB_GEO({ model, view, pos, memo }) {
     edges: d.edges.map(e => { const x = I.E.get(e.id), f = x && x.type === 'sysml.Connector' ? SYS_IB_IF(x) : null, s = f && SYS_IB_SPOT(e);
       return s ? { ...e, item: { ...s, u: f.direction === 'to-from' ? [-s.u[0], -s.u[1]] : s.u } } : e; }) };
   const now = new Map(out.nodes.map(n => [n.id, n])); out.byId = idTable(Object.fromEntries(Object.entries(d.byId).map(([k, n]) => [k, now.get(k) || n])));
-  out.legend = SYS_IB_LEGEND.filter(([, , on]) => on(out, I)).map(([w, says, , sw]) => `<span class="lgi" title="${esc(w + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true">${sw}</svg><b>${esc(w)}</b><span>${esc(says)}</span></span>`);
+  out.legend = [...SYS_IB_LEGEND.filter(([, , on]) => on(out, I)).map(([w, says, , sw]) => `<span class="lgi" title="${esc(w + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true">${sw}</svg><b>${esc(w)}</b><span>${esc(says)}</span></span>`),
+    ...SYS_OTHER_KEYS(out.edges)]; // a listed line of another kind, keyed as the composite type draws and keys it (audit 28)
   return out;
 }
 

@@ -850,6 +850,25 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const issuesOf = e => { const ps = routeAudit({ edges, families, byId }, '', new Set([e])); return [ps.filter(p => / share a line$/.test(p)).length, ps.length]; };
   const lastR = dg.quick ? [] : free.filter(e => e.how === 'fallback');
   lastR.forEach(e => { ripUp(e); e.pts = gridRoute(e, 2, 320) || gridRoute(e, 2, 0) || (dg.typed && through(e.pts, e) && gridRoute(e, 3, 0)) || e.pts; e.lbl = null; routed.push(e); placeLabel(e); });
+  // then each of them whose route runs round one of its own ends (the last resort may: audit 21), that end tried on each other
+  // side of its card, kept when the route there runs round neither end and has no more issues (audit 28: er-through2-min laid
+  // out down left its source's bottom and went left of it, over it and down its right side, and crossed a line anyway)
+  const roundOwn = (e, P) => [[e.s, e.fs, P[P.length - 1]], [e.t, e.ts, P[0]]].find(([n, side, far]) => n && !n.box && !behind(n, side, far) && P.some(p => behind(n, side, p)));
+  if (dg.typed) lastR.forEach(e => { const r = roundOwn(e, e.pts); if (!r || e.inner || e.fromPort != null || e.toPort != null || e.s === e.t) return;
+    const k = r[0] === e.s && r[1] === e.fs ? 'p1' : 'p2', fk = k === 'p1' ? 'fs' : 'ts', n = r[0], o = k === 'p1' ? e.t : e.s, k0 = issuesOf(e)[1];
+    const was = [e.p1, e.p2, e.fs, e.ts, e.pts, e.how]; let best = null; ripUp(e);
+    for (const side of ['R', 'L', 'B', 'T'].filter(sd => sd !== e[fk])) { const lr = side === 'L' || side === 'R';
+      const taken = edges.filter(x => x !== e && x.pts).flatMap(x => [[x.s, x.fs, x.p1], [x.t, x.ts, x.p2]]).filter(([m, sd]) => m === n && sd === side).map(([, , q]) => q[lr ? 1 : 0]);
+      const mid = lr ? n.y + n.h / 2 : n.x + n.w / 2, len = lr ? n.h : n.w, lo = mid - len * .42, hi = mid + len * .42, to = lr ? o.y + o.h / 2 : o.x + o.w / 2;
+      const vs = [0, -1, 1, -2, 2].map(j => mid + j * PORT).filter(v => v >= lo && v <= hi && taken.every(t => Math.abs(t - v) >= PORT)).sort((a, b) => Math.abs(a - to) - Math.abs(b - to));
+      for (const v of vs.slice(0, 1)) { if (tbBudget-- <= 0) break;
+        e[k] = lr ? [side === 'L' ? n.x : n.x + n.w, v] : [v, side === 'T' ? n.y : n.y + n.h]; e[fk] = side; restub(e);
+        const P = gridRoute(e, 2, 320) || gridRoute(e, 2, 0) || gridRoute(e, 3, 0);
+        if (P && !roundOwn(e, P) && !through(P, e)) { e.pts = P; e.lbl = null; routed.push(e); placeLabel(e); const k1 = issuesOf(e)[1];
+          if (k1 <= k0 && (!best || k1 < best[0] || (k1 === best[0] && lenOf(P) < lenOf(best[1])))) best = [k1, P, e[k], side]; ripUp(e); }
+        [e.p1, e.p2, e.fs, e.ts] = was; restub(e); } }
+    if (best) { e[k] = best[2]; e[fk] = best[3]; restub(e); e.pts = best[1]; e.how = 'grid'; } else { e.pts = was[4]; e.how = was[5]; }
+    e.lbl = null; routed.push(e); placeLabel(e); });
   // then each of them that runs along another line, its end moved (onTB), when that leaves it none and no more issues
   if (dg.typed) lastR.forEach(e => { const k0 = issuesOf(e); if (!k0[0]) return;
     const was = [e.p1, e.p2, e.fs, e.ts, e.pts, e.how]; ripUp(e);

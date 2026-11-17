@@ -2,7 +2,7 @@ import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { csAdd, csConnect, csGeo, csMember, csMoveTo, csRemove, csRename } from '../uml/composite.js';
-import { SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS, SYS_LINES } from './sysml.js';
+import { SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS } from './sysml.js';
 import { bdProblems } from './blocks.js';
 
 /* ---------- SysML's parametric diagram, sysml.parametric (work package M3.5, notes/milestone-3.md §9, §13) ----------
@@ -85,7 +85,8 @@ function SYS_PAR_GEO({ model, view, pos, memo }) {
     const x = SYS_PAR_EXPR(I.block(m.m)); return { ...n, shape: 'sysml-constraint', ...(x ? { expr: x } : {}) }; });
   const now = new Map(SYS_PAR_NAMES(d, nodes, I).map(n => [n.id, n]));
   return { ...d, nodes: [...now.values()], ...SYS_PAR_BOUNDS(d, now), byId: idTable(Object.fromEntries(Object.entries(d.byId).map(([k, n]) => [k, now.get(k) || n]))),
-    legend: SYS_PAR_LEGEND.filter(([, , on]) => on(d)).map(([w, says, , dash]) => `<span class="lgi" title="${esc(w + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><path d="M2 8H26" stroke="var(--um-muted)" stroke-width="1.4"${dash}/></svg><b>${esc(w)}</b><span>${esc(says)}</span></span>`) };
+    legend: [...SYS_PAR_LEGEND.filter(([, , on]) => on(d)).map(([w, says, , dash]) => `<span class="lgi" title="${esc(w + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><path d="M2 8H26" stroke="var(--um-muted)" stroke-width="1.4"${dash}/></svg><b>${esc(w)}</b><span>${esc(says)}</span></span>`),
+      ...SYS_OTHER_KEYS(d.edges)] }; // a listed line of another kind, keyed as the composite type draws and keys it (audit 28)
 }
 
 /* ---- a parameter's name the composite type placed outside the frame (it looks along its line's first stretch, up to 400 px

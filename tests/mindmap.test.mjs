@@ -57,7 +57,7 @@ test('the definition: the palette\'s Topic, no lines, a layout of its own with n
   assert.deepEqual(D.lines, []);
   assert.deepEqual([typeof D.layout.run, D.layout.pins, typeof D.draw, typeof D.describe, typeof D.rows, D.word(null, 'x')], ['function', false, 'function', 'function', 'function', 'Topic']);
   assert.deepEqual(Object.keys(D.edits), ['connect', 'moveTo', 'add', 'remove', 'rename']);
-  assert.deepEqual(Object.keys(D.rules), ['mindmap-root', 'topic-parent', 'side-first', 'mindmap-depth']);
+  assert.deepEqual(Object.keys(D.rules), ['mindmap-root', 'topic-parent', 'side-first', 'mindmap-depth', 'mindmap-kinds']);
 });
 
 test('the mindmap example lays out clean: 22 topics, the root at (0, 0), three branches right and three left as pinned, children in nodeIds order, a curve per topic, no problem', () => {
@@ -544,6 +544,17 @@ test('audit 26: Show keeps a first-level topic\'s side and clears one no longer 
   for (const on of ['a', 'r']) { const g = layout(two, 'v'), A = g.byId[on], cmds = mmMoveTo(two, 'v', 'r2', { pt: [A.x + A.w / 4, A.y + A.h / 2], geo: g });
     assert.ok(cmds.some(c => c.op === 'reparent'), on); assert.deepEqual(sides(apply(two, cmds)), [], `dropped on ${on}`);
     assert.ok(!cmds.some(c => c.op === 'set' && Array.isArray(c.path) && ['b', 'c'].includes(c.path[1]) && c.value !== undefined), `no side pinned on r2's topics (${on})`); }
+});
+
+test('audit 28: a node a mindmap view lists that is no topic (no type, a typo in its type) is not drawn, and validate() says so, each once', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'r', type: 'mindmap.Topic', label: 'Root' }, { id: 'a', type: 'mindmap.Topic', label: 'A', parent: 'r' },
+    { id: 'x', label: 'Untyped idea', parent: 'r' }, { id: 'y', type: 'mindmap.Topc', label: 'Typo idea', parent: 'r' }], edges: [], views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['r', 'a', 'x', 'y', 'x'] }] };
+  assert.deepEqual(layout(m, 'v').nodes.map(n => n.id), ['r', 'a']);
+  assert.deepEqual(validate(m).filter(p => p.rule === 'mindmap-kinds').map(p => [p.level, p.path, p.ids, p.message]), [
+    ['warning', 'views[0].nodeIds[2]', ['x'], 'mindmap-kinds: "x" ("Untyped idea") has no type, so it is no mindmap topic: not drawn'],
+    ['warning', 'views[0].nodeIds[3]', ['y'], 'mindmap-kinds: "y" ("Typo idea") is of type "mindmap.Topc", which is no mindmap topic: not drawn']]);
+  const ok = structuredClone(m); ok.views[0].nodeIds = ['r', 'a'];
+  assert.deepEqual(validate(ok).filter(p => p.rule === 'mindmap-kinds'), [], 'topics only: nothing said');
 });
 
 // audit 27: a topic's text split on \n only, so a lone carriage return or U+2028 drew as a space, though the Mermaid writer

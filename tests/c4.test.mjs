@@ -650,3 +650,16 @@ test('audit 27: an element with no type is keyed, in the PDF and the key, as its
   assert.ok(k.includes('Line a kind of line this view does not draw as its own'), k.join(' | '));
   assert.ok(!key(layout(C4, 'c4-containers')).some(s => /^Line /.test(s)), 'none where none is drawn');
 });
+
+test('audit 28: a listed line of another kind between two elements is no relationship: the implied relationship between them is still drawn and said', () => {
+  const m = structuredClone(C4); m.edges = m.edges.filter(e => e.id !== 'c4-bookshop-courier'); // the worker's line to the courier lifts to Bookshop -> Courier
+  const v = m.views.find(x => x.id === 'c4-context'), pair = () => layout(m, v.id).edges.filter(e => e.from === 'c4-bookshop' && e.to === 'c4-courier').map(e => (e.implied ? 'implied' : e.type));
+  assert.deepEqual(pair(), ['implied']);
+  m.edges.push({ id: 'dep', type: 'uml.Dependency', from: 'c4-bookshop', to: 'c4-courier', label: 'ships with' });
+  v.edges = [...m.edges.filter(e => e.type === 'c4.Relationship').map(e => e.id), 'dep'];
+  assert.deepEqual(pair().sort(), ['implied', 'uml.Dependency']);
+  assert.match(describe(m, v.id), /Implied relationship from Bookshop to Courier/);
+  // a listed relationship between the two still takes the implied line's place
+  m.edges.push({ id: 'rel', type: 'c4.Relationship', from: 'c4-bookshop', to: 'c4-courier', label: 'pays' }); v.edges.push('rel');
+  assert.deepEqual(pair().sort(), ['c4.Relationship', 'uml.Dependency']);
+});

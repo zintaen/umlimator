@@ -417,3 +417,14 @@ test('audit 27: F2 with «full» glued to the name or spaced twice sets the kind
   }
   assert.deepEqual(D.edits.rename(m, v.id, p.id, '«proxy»plug').commands.map(c => c.value), ['plug', 'proxy']);
 });
+
+test('audit 28: a listed line of another kind is keyed as it is drawn (a dependency, dashed with an open arrow), after the connector', () => {
+  const m = { schemaVersion: 2, nodes: ['a', 'b', 'c'].map(id => ({ id, type: 'sysml.PartProperty', label: id.toUpperCase() })),
+    edges: [{ id: 'o', type: 'uml.Connector', from: 'a', to: 'b' }, { id: 'x', type: 'uml.Dependency', from: 'b', to: 'c', label: 'uses' }],
+    views: [{ id: 'v', diagram: 'sysml.internal-block', nodeIds: ['a', 'b', 'c'], edges: ['o', 'x'] }] };
+  const g = layout(m, 'v');
+  assert.deepEqual(g.edges.find(e => e.id === 'x').end, { from: 'none', to: 'open', dashed: true });
+  assert.deepEqual(g.legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Connector', 'Dependency']);
+  assert.match(g.legend[1], /stroke-dasharray="3 2"/); assert.match(g.legend[1], /M17 4L26 8L17 12/);
+  assert.deepEqual(layout({ ...m, views: [{ ...m.views[0], edges: ['o'] }] }, 'v').legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Connector']);
+});
