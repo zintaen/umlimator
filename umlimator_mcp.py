@@ -310,7 +310,9 @@ def command(fold):
             told.wait(0.2)
         oks, errs = [p for p in answered if not p["ack"][1]], [p["ack"][1] for p in answered if p["ack"][1]]
         left = len(waiting)
-    said = f"The model no longer renders, so the page shows its last version that did: {broken}. " if broken else ""
+    # no version has rendered yet: the page is the waiting one, which says why, not a last version that did (audit 28)
+    said = "" if not broken else f"The model no longer renders, so the page shows its last version that did: {broken}. " if shown else (
+        f"The model does not render yet: {broken}. A page says why until a version renders. ")
     if oks:
         on = (oks[0].get("state") or {}).get("view")
         return said + f"Shown on {len(oks)} page{'' if len(oks) == 1 else 's'} at {URL}" + (f", on view {on}" if on else "") + (
