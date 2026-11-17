@@ -2,7 +2,7 @@ import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { r2 } from '../draw/shapes.js';
 import { csAdd, csConnect, csGeo, csMember, csMoveTo, csRemove, csRename } from '../uml/composite.js';
-import { SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS } from './sysml.js';
+import { SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS, SYS_LINES } from './sysml.js';
 
 /* ---------- SysML's internal block diagram, sysml.internal-block (work package M3.4, notes/milestone-3.md §8, §13) ----------
    The view's subject, a block, is drawn as the composite structure type draws a class (src/uml/composite.js), through M3.1's
@@ -26,7 +26,7 @@ function SYS_IB_INDEX(model, view) {
   const at = new Map(), mem = new Map();
   SYS_IB_ARR(model && model.nodes).forEach(n => { if (SYS_IB_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
   at.forEach(n => SYS_IB_ARR(n.members).forEach(m => { if (SYS_IB_OBJ(m) && typeof m.id === 'string' && !at.has(m.id) && !mem.has(m.id)) mem.set(m.id, { m, owner: n }); }));
-  const E = new Map(); SYS_IB_ARR(model && model.edges).forEach(e => { if (SYS_IB_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); });
+  const E = new Map(); SYS_LINES(model, view).forEach(([e]) => { if (SYS_IB_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); }); // the view's own lines too (audit 23)
   const S = view && at.has(view.subject) ? at.get(view.subject) : null;
   return { at, mem, E, S, el: id => at.get(id) || (mem.get(id) || {}).m || null };
 }
@@ -113,9 +113,11 @@ function SYS_IB_PROJ(model, view, I) {
   const P = SYS_AS_UML(model, view), es = SYS_IB_ARR(model.edges);
   const tilde = m => { const o = SYS_IB_OBJ(m) && m.type === 'uml.Port' ? I.mem.get(m.id) : null; return o && SYS_IB_TYPE(o.m).conj ? { ...m, props: { ...SYS_IB_PROPS(m), valueType: '~' + SYS_IB_TYPE(o.m).name } } : m; };
   const nodes = P.model.nodes.map(n => (SYS_IB_OBJ(n) && SYS_IB_ARR(n.members).some(m => tilde(m) !== m) ? { ...n, members: n.members.map(tilde) } : n));
-  const edges = P.model.edges.map((e, i) => { const x = es[i]; if (!SYS_IB_OBJ(e) || !SYS_IB_OBJ(x) || x.type !== 'sysml.Connector' || SYS_IB_IF(x) || e.label === x.label) return e;
-    const { label, ...rest } = e; return x.label === undefined ? rest : { ...rest, label: x.label }; });
-  return { model: { ...P.model, nodes, edges }, view: P.view };
+  const own = (e, x) => { if (!SYS_IB_OBJ(e) || !SYS_IB_OBJ(x) || x.type !== 'sysml.Connector' || SYS_IB_IF(x) || e.label === x.label) return e;
+    const { label, ...rest } = e; return x.label === undefined ? rest : { ...rest, label: x.label }; };
+  const edges = P.model.edges.map((e, i) => own(e, es[i])); // the view's own lines likewise (audit 23)
+  const V = Array.isArray(view.edges) ? { ...P.view, edges: P.view.edges.map((e, j) => own(e, view.edges[j])) } : P.view;
+  return { model: { ...P.model, nodes, edges, views: P.model.views.map(v => (v === P.view ? V : v)) }, view: V };
 }
 
 /* ---- the view laid out: the projection laid out by the composite type, dressed (src/sysml/sysml.js), then on a copy: each
@@ -153,8 +155,8 @@ function SYS_IB_PROBLEMS(model, view) {
   if (!S) return out;
   const part = (e, k) => { const p = (SYS_IB_PROPS(e).ends || {})[k]; return SYS_IB_OBJ(p) && p.part != null ? p.part : null; };
   const inS = id => id != null && (I.mem.get(id) || {}).owner === S;
-  SYS_IB_ARR(model.edges).forEach((e, i) => { if (!SYS_IB_OBJ(e) || e.type !== 'sysml.Connector' || !['from', 'to'].some(k => inS(part(e, k)) || inS(e[k]))) return;
-    const path = `edges[${i}]`, f = SYS_IB_PROPS(e).itemFlow;
+  SYS_LINES(model, view).forEach(([e, path]) => { if (!SYS_IB_OBJ(e) || e.type !== 'sysml.Connector' || !['from', 'to'].some(k => inS(part(e, k)) || inS(e[k]))) return;
+    const f = SYS_IB_PROPS(e).itemFlow;
     if (f !== undefined && !SYS_IB_IF(e)) say('warning', 'item-flow', path + '.props.itemFlow', [e.id], `${e.id}'s item flow ${JSON.stringify(f)} is not { item, direction }: its item is text and its direction from-to or to-from`);
     const ends = ['from', 'to'].map(k => ({ k, part: part(e, k), m: (I.mem.get(e[k]) || {}).m })).filter(x => x.m && x.m.type === 'sysml.Port');
     if (ends.length < 2) return;
@@ -197,7 +199,7 @@ const SYS_IB_ON = hook => (model, view, ...a) => { const I = SYS_IB_INDEX(model,
 // F2's text may start «proxy» or «full», as the projection names a port: it sets the port's kind
 function SYS_IB_RENAME(model, view, id, text) {
   // a connector with an item flow draws its item (§8.1): F2 renames the item, not a label never drawn
-  const c = SYS_IB_ARR(model.edges).find(e => SYS_IB_OBJ(e) && e.id === id && e.type === 'sysml.Connector' && SYS_IB_IF(e)), t = String(text ?? '').trim();
+  const c = [SYS_IB_INDEX(model, view).E.get(id)].find(e => e && e.type === 'sysml.Connector' && SYS_IB_IF(e)), t = String(text ?? '').trim();
   if (c) return !t ? { error: 'An item flow names its item: type a name' } : t === SYS_IB_IF(c).item ? [] : [{ op: 'set', id, path: 'props.itemFlow.item', value: t }];
   const k = /^\s*«(proxy|full)»/.exec(String(text)), x = SYS_IB_INDEX(model, view).el(String(id).split('->').pop());
   const hook = (m, v, ...a) => { const r = csRename(m, v, ...a); return k && x && x.type === 'sysml.Port' && SYS_IB_PROPS(x).kind !== k[1] ? SYS_IB_MAP(r, cs => [...cs, { op: 'set', id: x.id, path: 'props.kind', value: k[1] }]) : r; };
@@ -246,7 +248,7 @@ function SYS_IB_ROWS(model, view, id) {
 }
 // "DCPower, battery to dock": the item, then the parts (or ports) it flows from and to
 function SYS_IB_LINE_TEXT(model, view, id) {
-  const I = SYS_IB_INDEX(model, view), e = SYS_IB_ARR(model && model.edges).find(x => SYS_IB_OBJ(x) && x.id === id), f = e && e.type === 'sysml.Connector' ? SYS_IB_IF(e) : null; if (!f) return null;
+  const I = SYS_IB_INDEX(model, view), e = I.E.get(id), f = e && e.type === 'sysml.Connector' ? SYS_IB_IF(e) : null; if (!f) return null;
   const at = k => { const p = (SYS_IB_PROPS(e).ends || {})[k], x = I.el(SYS_IB_OBJ(p) && p.part != null ? p.part : e[k]); return x ? SYS_IB_NAME(x) : String(e[k]); }, [a, b] = f.direction === 'to-from' ? ['to', 'from'] : ['from', 'to'];
   return `${f.item}, ${at(a)} to ${at(b)}`;
 }

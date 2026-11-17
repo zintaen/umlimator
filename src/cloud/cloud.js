@@ -123,12 +123,13 @@ function clPic(F, model, view) {
   const pic = ownersOn(model, view, { boxTypes: [F.group], qualify: false, shape: () => 'cloud-group', word: x => clWord(F, x) });
   return { ...pic, boxes: pic.boxes.map(b => { const x = pic.at.get(b.id); return { ...b, title: `${clName(x)} [${clKindWord(F, x)}]`, dashed: CL_DASHED.includes(clKindOf(F, x)) }; }) };
 }
-// the lines drawn: those the view lists, or with no list the model's of the family's kind, between two elements it shows; one
-// between a group and what it holds, or from a group to itself, is left out (line-inside: the router refuses it)
+// the lines drawn: those of the family's kind the view lists, or with no list the model's of that kind, between two elements it
+// shows (a listed line of another kind is left out, as with no list: audit 23); one between a group and what it holds, or from a
+// group to itself, is left out (line-inside: the router refuses it)
 const clInside = (F, I, a, b) => (a === b && (I.at.get(a) || {}).type === F.group) || I.holds(a, b) || I.holds(b, a);
 function clLinesOf(F, model, view, pic, I) {
   const E = new Map(I.E.map(e => [e.id, e])), shown = new Set(pic.ids), list = Array.isArray(view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)))] : I.E.filter(e => e.type === F.line[0]);
-  return list.filter(e => CL_OBJ(e) && typeof e.id === 'string' && shown.has(e.from) && shown.has(e.to) && !clInside(F, I, e.from, e.to));
+  return list.filter(e => CL_OBJ(e) && typeof e.id === 'string' && e.type === F.line[0] && shown.has(e.from) && shown.has(e.to) && !clInside(F, I, e.from, e.to));
 }
 // accessible names (§5.2): "Product Shop API, Cloud Run"; "Path HTTPS from Shoppers to Load balancer"
 function clNodeName(F, D, n) {

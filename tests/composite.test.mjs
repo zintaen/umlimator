@@ -675,3 +675,15 @@ test('a dependency in a composite view keeps its direction, a comment link has n
   assert.ok(msg.includes(`and ${nm(use)} lies in no structure of this view`), msg);
   assert.ok(!msg.includes('which lie in no structure'), msg);
 });
+
+test('audit 23: a view\'s own connector (view.edges object) is checked as a model one, at its own path (a bad ends.part: connector-part)', () => {
+  const c = CS.edges.find(e => e.type === 'uml.Connector' && e.props && e.props.ends && e.props.ends.to), own = structuredClone(CS);
+  own.edges = own.edges.filter(e => e.id !== c.id); own.views[0].edges = CS.edges.map(e => (e.id === c.id ? structuredClone(c) : e.id));
+  assert.deepEqual(validate(own), validate(CS), 'a sound own connector: nothing said');
+  const j = own.views[0].edges.findIndex(x => typeof x === 'object');
+  own.views[0].edges[j].props.ends.to.part = 'nope'; const m = structuredClone(CS); m.edges.find(e => e.id === c.id).props.ends.to.part = 'nope';
+  const at = x => validate(x).filter(p => (p.ids || []).includes(c.id)).map(p => [p.rule, p.path]);
+  const want = at(m), k = `edges[${CS.edges.indexOf(c)}]`;
+  assert.ok(want.some(([r]) => r === 'connector-part'), 'the model line: said');
+  assert.deepEqual(at(own), want.map(([r, p]) => [r, p.replace(k, `views[0].edges[${j}]`)]), 'the own line: said alike, at its own path');
+});

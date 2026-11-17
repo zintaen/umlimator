@@ -348,7 +348,7 @@ test('T: an element\'s type picked among the four; add: a container in a contain
   assert.deepEqual(T.edits.add(C4, v, { type: 'c4.Container' }, 'Cache'), [{ op: 'add', element: { id: 'container1', type: 'c4.Container', label: 'Cache', parent: 'c4-bookshop' }, view: 'c4-containers' }]);
   assert.deepEqual(T.edits.add(C4, C4.views[V('c4-components')], { type: 'c4.Component' }, 'Search')[0].element.parent, 'c4-api');
   assert.equal(T.edits.add(C4, v, { type: 'c4.Person' }, 'Clerk'), null, 'the default add');
-  assert.equal(T.edits.add(C4, C4.views[V('c4-context')], { type: 'c4.Container' }, 'Cache'), null);
+  assert.deepEqual(T.edits.add(C4, C4.views[V('c4-context')], { type: 'c4.Container' }, 'Cache'), { error: 'This view shows people and software systems: a container is added on a container view' });
   const added = apply(C4, T.edits.add(C4, v, { type: 'c4.Container' }, 'Cache'));
   assert.ok(layout(added, 'c4-containers').families[0].nodeIds.includes('container1'));
   assert.deepEqual(T.owners(C4, C4.nodes.find(n => n.id === 'c4-api')).map(o => o.id), ['c4-bookshop', 'c4-payments', 'c4-mail', 'c4-courier']);
@@ -497,4 +497,25 @@ test('audit 18: describe()\'s header counts relationships, and a comment link on
   assert.ok(text.includes('Comment link from Prices in EUR to Bookshop.'), text.join('\n'));
   assert.equal(text[0], before.replace(/(\d+) elements and (\d+) relationships\./, (_, n, r) => `${+n + 1} elements and ${r} relationships, and 1 comment link.`));
   assert.match(text[0], new RegExp(` and ${rels} relationships, and 1 comment link\\.$`));
+});
+
+test('audit 23: N refuses an element the view\'s level does not show (a context or landscape view\'s container or component, a container view\'s component; a dynamic view\'s in tests/c4-views.test.mjs), not added owned by nothing', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 's', type: 'c4.SoftwareSystem', label: 'Shop', props: { description: 'd' } }], edges: [],
+    views: [{ id: 'ctx', diagram: 'c4.context', title: 'Context', subject: 's', nodeIds: ['s'] }, { id: 'land', diagram: 'c4.landscape', title: 'Landscape', nodeIds: ['s'] },
+      { id: 'cont', diagram: 'c4.container', title: 'Containers', subject: 's', nodeIds: ['s'] }] };
+  const add = (vid, type) => diagramOf(m.views.find(v => v.id === vid)).edits.add(m, m.views.find(v => v.id === vid), { type }, 'X');
+  const two = 'This view shows people and software systems: ';
+  for (const vid of ['ctx', 'land']) {
+    assert.deepEqual(add(vid, 'c4.Container'), { error: `${two}a container is added on a container view` }, vid);
+    assert.deepEqual(add(vid, 'c4.Component'), { error: `${two}a component is added on a component view` }, vid);
+    for (const t of ['c4.Person', 'c4.SoftwareSystem', 'uml.Comment']) assert.equal(add(vid, t), null, `${vid} ${t}: the default add`);
+  }
+  assert.deepEqual(add('cont', 'c4.Component'), { error: 'This view shows people, software systems and containers: a component is added on a component view' });
+  assert.equal(add('cont', 'c4.Container')[0].element.parent, 's', 'at its level: owned by the subject');
+  // what each add the hook lets through gives validates clean of c4-owner and c4-level
+  for (const vid of ['ctx', 'land', 'cont']) for (const { type } of diagramOf(m.views.find(v => v.id === vid)).elements) {
+    const r = add(vid, type); if (r && r.error) continue;
+    const out = apply(m, r || [{ op: 'add', element: { id: 'x1', type, label: 'X' }, view: vid }]);
+    assert.deepEqual(validate(out).filter(p => /^c4-(owner|level)$/.test(p.rule)).map(p => p.message), [], `${vid} ${type}`);
+  }
 });
