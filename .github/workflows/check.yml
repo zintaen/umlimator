@@ -290,7 +290,8 @@ jobs:
           UMLIMATOR_TEST_SHARD: ${{ matrix.shard }}/3
         run: python3 tests/embed.py
 
-  # The MCP server's page in headless Chrome; Python 3.9; the schema and the plugin (about 2 min)
+  # The MCP server's page in headless Chrome; Python 3.9; the schema and the plugin; the imported example, the icon packs,
+  # the release steps and the diff Action's dry run (about 2 min)
   browser:
     runs-on: ubuntu-latest
     steps:
@@ -349,50 +350,6 @@ jobs:
           print(f"map-repo's pinned CLI ({ref}) runs the engine with -I")
           PY
 
-  # The CLI's error cases (about 2.5 min)
-  outcomes:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
-      - name: When something goes wrong, the CLI says so and leaves the previous output (Chrome failing, --views, render, pdf, stills, diff --base, icons, mcp)
-        run: python3 tests/outcomes.py
-
-  # import, the icon packs, the release steps, and the diff Action's dry run (about 1.5 min)
-  import:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
-      - uses: actions/cache@v4  # npm's downloads of the pinned packages below, each checked against its integrity hash on install
-        with:
-          path: ~/.npm
-          key: npm-moddle-${{ env.MODDLE }}
-
-      - name: bpmn-moddle for the BPMN XML adapter's tests, in a scratch folder (an optional adapter's library, never a dependency of the module; each of its five packages pinned, notes/milestone-4b.md decision 24)
-        run: npm install --no-save --prefix "$RUNNER_TEMP/moddle" $MODDLE
-
-      - name: The CLI's import reads a sample of each format into a model that validates, renders and checks clean
-        env:
-          UMLIMATOR_BPMN_MODDLE: ${{ runner.temp }}/moddle  # the tests that need it fail without it in CI (CI=true)
-        run: python3 tests/import.py
-
       - name: The imported example is what import writes from its Structurizr source, so the two can't drift apart
         run: |
           python3 umlimator.py import examples/clinic.dsl --out /tmp/clinic.json
@@ -412,9 +369,43 @@ jobs:
           models: examples/*.json
           comment: false
 
-  # The upstream copies, the logos and the bench (about 3 min)
+  # The CLI's error cases, and import (about 2.5 min)
+  outcomes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: When something goes wrong, the CLI says so and leaves the previous output (Chrome failing, --views, render, pdf, stills, diff --base, icons, mcp)
+        run: python3 tests/outcomes.py
+
+      - uses: actions/cache@v4  # npm's downloads of the pinned packages below, each checked against its integrity hash on install
+        with:
+          path: ~/.npm
+          key: npm-moddle-${{ env.MODDLE }}
+
+      - name: bpmn-moddle for the BPMN XML adapter's tests, in a scratch folder (an optional adapter's library, never a dependency of the module; each of its five packages pinned, notes/milestone-4b.md decision 24)
+        run: npm install --no-save --prefix "$RUNNER_TEMP/moddle" $MODDLE
+
+      - name: The CLI's import reads a sample of each format into a model that validates, renders and checks clean
+        env:
+          UMLIMATOR_BPMN_MODDLE: ${{ runner.temp }}/moddle  # the tests that need it fail without it in CI (CI=true)
+        run: python3 tests/import.py
+
+  # The upstream copies and the logos; the bench, its models split over two jobs by their views (about 2 min each)
   bench:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v4
 
@@ -432,6 +423,7 @@ jobs:
           node-version: 24
 
       - name: The copied files are upstream's, unmodified (the template became lib/umlimator.js, umlimator's own)
+        if: matrix.shard == 1   # once
         run: |
           curl -fsSL "$SB/scripts/visual.py" -o engine/scripts/visual.py
           curl -fsSL "$SB/references/schema.md" -o engine/references/schema.md
@@ -440,6 +432,7 @@ jobs:
           git diff --exit-code engine/scripts engine/references tools
 
       - name: Upstream changed a copied file since its pin (a warning, time to sync)
+        if: matrix.shard == 1   # once
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -449,6 +442,7 @@ jobs:
           done
 
       - name: Every brand logo still downloads and matches its pinned sha256
+        if: matrix.shard == 1   # once
         run: |
           export UMLIMATOR_ICON_CACHE="$RUNNER_TEMP/icons-fresh"   # an empty cache, not the job's: every logo comes from its source
           python3 -I - <<'PY'
@@ -460,13 +454,30 @@ jobs:
           sys.exit(1 if bad else 0)
           PY
 
-      - name: The benchmark models lay out as recorded, the same on every run, and in time
+      - name: The benchmark models lay out as recorded, the same on every run, and in time (shard ${{ matrix.shard }} of 2 of the models)
         # m50's time is checked on a developer machine (about 1.6 s since 0.6.0, which lays a view
         # out again when some of its lines find no route); a CI runner takes about 3x as long and gets 5x headroom,
         # which the engine before patches 31-35 never met (m50 did not finish in 30 min: bench/results/2026-11-06-ab8daa1-m50.json).
         # b26 takes about 0.4 s here and took 0.78-1.36 s on a runner (1.36 s on 0.9.0, with its layout unchanged): 3 s keeps
         # a slow runner from failing a PR on time alone
-        run: python3 bench/bench.py --runs 2 --timeout 300 --check-determinism --expect bench/expected.json --max-ms m50=8000,b26=3000
+        # Each model goes to one shard, the most views first, from bench.py's own list (every bench/models/*.json and
+        # examples/bookshop.json), so a new model is benchmarked without a list to edit
+        run: |
+          models=$(python3 -I - ${{ matrix.shard }} 2 <<'PY'
+          import json, pathlib, sys
+          k, n = map(int, sys.argv[1:])
+          paths = sorted(pathlib.Path("bench/models").glob("*.json")) + [pathlib.Path("examples/bookshop.json")]
+          views = {p.stem: len(m["views"]) + len(m.get("benchViews", [])) for p in paths for m in [json.loads(p.read_text())]}
+          load, shard = [0] * n, {}
+          for x in sorted(views, key=lambda x: (-views[x], x)):
+              i = load.index(min(load)); load[i] += views[x]; shard[x] = i + 1
+          assert len(views) == len(paths) and sorted(shard) == sorted(views), "a model in no shard"
+          print(",".join(x for x in views if shard[x] == k))
+          PY
+          )
+          [ -n "$models" ] || { echo "::error::shard ${{ matrix.shard }} of the bench has no model"; exit 1; }
+          echo "models: $models"
+          python3 bench/bench.py --models "$models" --runs 2 --timeout 300 --check-determinism --expect bench/expected.json --max-ms m50=8000,b26=3000
 
   # the documentation site builds, with no dead links (VitePress, docs/; the site job publishes it from main) (under 1 min)
   docs:
@@ -487,7 +498,7 @@ jobs:
           node --test tests/site.test.mjs   # the node job runs it too, without the built site
 
   check:
-    needs: [build, node, timed, shards, examples, cli, embed, browser, outcomes, import, bench, docs]
+    needs: [build, node, timed, shards, examples, cli, embed, browser, outcomes, bench, docs]
     if: always()   # runs when one of them fails or is cancelled, to fail rather than be skipped (a skipped required check passes)
     runs-on: ubuntu-latest
     steps:
