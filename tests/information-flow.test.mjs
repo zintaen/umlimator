@@ -389,3 +389,14 @@ test('audit 21: docs/diagrams/model.md names each declared reference as the type
     assert.equal(said[1], propRefs(type)[prop], `${type} ${prop}`);
   }
 });
+
+test('audit 24: validate() names a kind in words with its article, as the view names it: "an actor", "a data type", "an enumeration", "(use case)"', () => {
+  const m = structuredClone(IF), actor = m.nodes.find(n => n.type === 'uml.Actor'), flow = m.edges.find(e => e.type === 'uml.InformationFlow');
+  m.nodes.push({ id: 'dt', type: 'uml.DataType', label: 'Money' }, { id: 'en', type: 'uml.Enumeration', label: 'Status' }, { id: 'ii', type: 'uml.InformationItem', label: 'Item' }, { id: 'uc', type: 'uml.UseCase', label: 'Pay' });
+  flow.props.conveyed = [...flow.props.conveyed, actor.id, 'dt', 'en', 'uc'];
+  m.edges.push({ id: 'f2', type: 'uml.InformationFlow', from: 'dt', to: 'uc', props: { conveyed: ['ii'] } }); m.views[0].nodeIds.push('dt', 'uc', 'ii');
+  const said = validate(m).filter(p => p.rule === 'conveyed-kind' || p.rule === 'flow-ends').map(p => p.message.replace(/: (it conveys|a flow joins).*$/, ''));
+  assert.deepEqual(said, [`conveyed-kind: ${flow.id} conveys "${actor.label}", an actor`, `conveyed-kind: ${flow.id} conveys "Money", a data type`,
+    `conveyed-kind: ${flow.id} conveys "Status", an enumeration`, `conveyed-kind: ${flow.id} conveys "Pay", a use case`, 'flow-ends: f2 runs from "Money" (data type) to "Pay" (use case)']);
+  assert.match(describe(m, m.views[0].id), /\nUse case Pay[.:,]/, 'the same words as the view\'s names');
+});

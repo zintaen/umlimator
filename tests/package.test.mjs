@@ -321,3 +321,12 @@ test("the PDF's Elements table lists no members for a classifier drawn by its na
   const c = mapContext(m), [els] = tablesOf(c, c.V.v, c.buildGeo('v'));
   assert.ok(!els.rows[0].includes('<p>'), els.rows[0]);
 });
+
+test('audit 24: a box whose name the author broke into lines is as wide as its widest line, not as the lines joined (package, component, deployment)', async () => {
+  await import('../src/uml/component.js'); await import('../src/uml/deployment.js');
+  const lines = ['Fulfilment and returns', 'Warehouse operations', 'Customer care desk', 'Billing and invoices'];
+  for (const [d, t, kid] of [['uml.package', 'uml.Package', 'uml.Class'], ['uml.component', 'uml.Component', 'uml.Component'], ['uml.deployment', 'uml.Node', 'uml.Artifact']]) {
+    const w = label => layout({ schemaVersion: 2, nodes: [{ id: 'P', type: t, label }, { id: 'A', type: kid, label: 'A', parent: 'P' }], views: [{ id: 'v', diagram: d, nodeIds: ['P', 'A'] }] }, 'v').families[0].w;
+    assert.equal(w(lines.join('\n')), w(lines[0]), `${d}: the broken name's box is sized by its widest line`);
+  }
+});

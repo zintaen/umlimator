@@ -734,3 +734,24 @@ test('audit 23: Delete on a view-own sub-process that holds a model task applies
   }
   assert.ok(!apply(m, diagramOf(m.views[0]).edits.remove(m, m.views[0], ['sub'], false).commands).views[0].nodeIds.includes('inner'), 'Delete: hidden from this view');
 });
+
+test('audit 24: a line to a task one view alone holds is judged by that view only: another BPMN view gives no false sequence-ends', () => {
+  const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 's', type: 'bpmn.StartEvent' }, { id: 't', type: 'bpmn.Task', label: 'Do' }, { id: 'e', type: 'bpmn.EndEvent' }],
+    edges: [{ id: 'f1', type: 'bpmn.SequenceFlow', from: 's', to: 't' }, { id: 'f2', type: 'bpmn.SequenceFlow', from: 't', to: 'e' }],
+    views: [{ id: 'v', diagram: 'bpmn', nodeIds: ['s', 't', 'e', 'own'], nodes: [{ id: 'own', type: 'bpmn.Task', label: 'Own task' }] }, { id: 'w', diagram: 'bpmn', nodeIds: ['s', 't', 'e'] }] };
+  const errs = x => validate(x).filter(p => p.level === 'error').map(p => p.message);
+  assert.deepEqual(errs(m), []);
+  const r = T.edits.connect(m, m.views[0], 't', 'own'), after = apply(m, r);
+  assert.deepEqual(errs(after), [], 'the gesture brings no error');
+  assert.ok(layout(after, 'v').edges.some(e => e.from === 't' && e.to === 'own'), 'drawn in the view that holds its end');
+  // a line whose end no view holds is still an error
+  const lost = structuredClone(after); lost.views[0].nodes = []; lost.views[0].nodeIds.pop();
+  assert.ok(errs(lost).some(x => /sequence-ends: t-own/.test(x)));
+});
+
+test('audit 24: the PDF\'s line text reads a view\'s own line as a model one: its documentation kept', () => {
+  const mk = own => { const f = { id: 'f2', type: 'bpmn.SequenceFlow', from: 't', to: 'e', label: 'done', props: { documentation: 'Only after the payment cleared' } };
+    return { schemaVersion: 2, root: 'v', nodes: [{ id: 's', type: 'bpmn.StartEvent' }, { id: 't', type: 'bpmn.Task', label: 'Pay' }, { id: 'e', type: 'bpmn.EndEvent' }],
+      edges: [{ id: 'f1', type: 'bpmn.SequenceFlow', from: 's', to: 't' }, ...(own ? [] : [f])], views: [{ id: 'v', diagram: 'bpmn', nodeIds: ['s', 't', 'e'], ...(own ? { edges: ['f1', f] } : {}) }] }; };
+  for (const own of [false, true]) { const m = mk(own); assert.equal(T.text(m, m.views[0], 'f2'), 'done — Only after the payment cleared', own ? 'own line' : 'model line'); }
+});
