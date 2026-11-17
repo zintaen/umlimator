@@ -189,7 +189,9 @@ function mmAdd(model, view, entry, label, at) {
   const X = mmIndex(model, V), text = String(label ?? '').trim(); if (!text) return mmErr('a topic needs its text: type it');
   const p = [...MM_ARR(MM_OBJ(at) && at.sel)].reverse().find(id => X.shown.has(id)) ?? X.roots[0] ?? X.ids[0] ?? null;
   const element = { id: mmNewId(model, text), type: MM_T, label: text, ...(p != null ? { parent: p } : {}) };
-  return [...(p != null ? mmPinsAt(model, X, V, at) : []), { op: 'add', element, view: V.id, ...(p != null ? { index: mmEnd(X, p) + 1 } : {}) }];
+  // under a topic that lives in this view only, a topic of this view only too: a model topic never has a parent other views lack (audit 22)
+  const here = p != null && MM_ARR(V.nodes).some(x => MM_OBJ(x) && x.id === p);
+  return [...(p != null ? mmPinsAt(model, X, V, at) : []), { op: 'add', element, view: V.id, ...(here ? { in: 'view' } : {}), ...(p != null ? { index: mmEnd(X, p) + 1 } : {}) }];
 }
 
 /* moveTo(model, view, id, at): Alt + arrows ({ by }) or a drop ({ pt }, the dropped topic's centre) */
@@ -255,10 +257,17 @@ function mmRemove(model, view, ids, fromModel) {
   // core hide drops present.<id>: a side set again, so Show brings the topic back on it (a hidden topic's side is ignored)
   const side = hide.filter(id => MM_OBJ(X.P[id]) && X.P[id].side !== undefined).map(id => mmSide(V, id, X.P[id].side));
   // a topic in the view's own nodes lives in this view only: hiding it is deleting it (audit 21), as the canvas's Delete does
-  const own = new Set(MM_ARR(V.nodes).filter(MM_OBJ).map(x => x.id));
-  return { commands: [...mmPinsAt(model, X, V, null, new Set(hide)), ...hide.filter(id => !own.has(id)).map(id => ({ op: 'hide', id, view: V.id })),
-    ...hide.filter(id => own.has(id)).map(id => ({ op: 'delete', id })), ...side.filter(c => !own.has(c.path[1]))], say: hide.every(id => own.has(id)) ? `${said(hide.length - top.filter(id => X.shown.has(id)).length, 'Deleted')}: ${hide.length === 1 ? 'it' : 'they'} lived in this view only; undo brings ${hide.length === 1 ? 'it' : 'them'} back`
-      : `${said(hide.length - top.filter(id => X.shown.has(id)).length, 'Hid')}: the outline's Show, or undo, brings ${hide.length === 1 ? 'it' : 'them'} back` };
+  const own = new Set(MM_ARR(V.nodes).filter(MM_OBJ).map(x => x.id)), dead = new Set(hide.filter(id => own.has(id)));
+  // apply()'s delete takes what is parented to it: a model topic under a deleted own topic, shown or not, first moves up to
+  // its nearest ancestor not deleted (none: a root), so Delete deletes only what lives in this view (audit 22)
+  const lift = id => { let p = X.parentOf(id); for (const seen = new Set(); p != null && dead.has(p) && !seen.has(p); p = X.parentOf(p)) seen.add(p); return p != null && dead.has(p) ? null : p; };
+  const keep = dead.size ? MM_ARR(model && model.nodes).filter(n => MM_OBJ(n) && typeof n.id === 'string' && !own.has(n.id) && X.topic(n.id) && dead.has(n.parent)).map(n => ({ op: 'reparent', id: n.id, parent: lift(n.id) })) : [];
+  const k = hide.length - top.filter(id => X.shown.has(id)).length, them = n => (n === 1 ? 'it' : 'them');
+  return { commands: [...mmPinsAt(model, X, V, null, new Set(hide)), ...keep, ...hide.filter(id => !own.has(id)).map(id => ({ op: 'hide', id, view: V.id })),
+    ...hide.filter(id => own.has(id)).map(id => ({ op: 'delete', id })), ...side.filter(c => !own.has(c.path[1]))],
+  say: dead.size === hide.length ? `${said(k, 'Deleted')}: ${hide.length === 1 ? 'it' : 'they'} lived in this view only; undo brings ${them(hide.length)} back`
+    : !dead.size ? `${said(k, 'Hid')}: the outline's Show, or undo, brings ${them(hide.length)} back`
+      : `${said(k, 'Removed')}: deleted ${mmPlural(dead.size, 'topic')} that lived in this view only, and hid ${mmPlural(hide.length - dead.size, 'topic')}, which the outline's Show brings back; undo brings all back` };
 }
 const mmAllKids = X => { const m = new Map(); X.N.forEach((n, id) => { const p = X.topic(id) && X.parentOf(id); if (p != null) (m.get(p) || m.set(p, []).get(p)).push(id); }); return m; };
 const mmUnder = (X, id, of) => { for (let p = X.parentOf(of), seen = new Set(); p != null && !seen.has(p); seen.add(p), p = X.parentOf(p)) if (p === id) return true; return false; };

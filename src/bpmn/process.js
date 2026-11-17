@@ -56,10 +56,13 @@ function bzIndex(model, view) {
   const N = new Map(), L = new Map(), E = new Map(), path = new Map();
   BZ_ARR(model && model.nodes).forEach((n, i) => { if (!BZ_OBJ(n) || typeof n.id !== 'string' || N.has(n.id)) return; N.set(n.id, n); path.set(n.id, `nodes[${i}]`);
     if (n.type === BZ_POOL) BZ_ARR(n.members).forEach((m, j) => { if (BZ_OBJ(m) && m.type === BZ_LANE && typeof m.id === 'string' && !L.has(m.id) && !N.has(m.id)) { L.set(m.id, { x: m, pool: n.id }); path.set(m.id, `nodes[${i}].members[${j}]`); } }); });
+  // with a view, its own nodes (view.nodes objects, as add ... in: 'view' makes them) after the model's: one a model id takes is that one (audit 22)
+  const vi = BZ_OBJ(view) ? BZ_ARR(model && model.views).indexOf(view) : -1, at = BZ_OBJ(view) ? (vi >= 0 ? `views[${vi}]` : `views[${BZ_ARR(model && model.views).findIndex(v => BZ_OBJ(v) && v.id === view.id)}]`) : '';
+  if (BZ_OBJ(view)) BZ_ARR(view.nodes).forEach((n, j) => { if (BZ_OBJ(n) && typeof n.id === 'string' && !N.has(n.id) && !L.has(n.id)) { N.set(n.id, n); path.set(n.id, `${at}.nodes[${j}]`); } });
   BZ_ARR(model && model.edges).forEach((e, i) => { if (BZ_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) { E.set(e.id, e); path.set(e.id, `edges[${i}]`); } });
   // with a view, its own lines too (view.edges objects), which bzPic draws as it draws the model's; one a model line's id
   // takes is that one. Per view, so two views' own lines never meet (audit 21, as stProblems and ucProblems since audit 20)
-  if (BZ_OBJ(view)) { const vi = BZ_ARR(model && model.views).indexOf(view), at = vi >= 0 ? `views[${vi}]` : `views[${BZ_ARR(model && model.views).findIndex(v => BZ_OBJ(v) && v.id === view.id)}]`;
+  if (BZ_OBJ(view)) {
     BZ_ARR(view.edges).forEach((e, j) => { if (BZ_OBJ(e) && typeof e.id === 'string' && BZ_LINES.includes(e.type) && !E.has(e.id)) { E.set(e.id, e); path.set(e.id, `${at}.edges[${j}]`); } }); }
   const el = id => N.get(id) || (L.get(id) || {}).x, ty = id => (el(id) || {}).type;
   // a lane's owner: its parent lane of the same pool, else its pool; a node's: its parent
@@ -78,7 +81,7 @@ function bzIndex(model, view) {
 /* ---- the view read: its pools and lanes (the bands), boundary events and their activities, expanded sub-processes (boxes),
    the items laid out, the lines and their ends, each item's lane ---- */
 function bzPic(model, view) {
-  const I = bzIndex(model), ids = [...new Set(BZ_ARR(view && view.nodeIds).filter(id => I.N.has(id)))], shown = new Set(ids);
+  const I = bzIndex(model, view), ids = [...new Set(BZ_ARR(view && view.nodeIds).filter(id => I.N.has(id)))], shown = new Set(ids);
   const pools = ids.filter(id => I.ty(id) === BZ_POOL), groups = ids.filter(id => I.ty(id) === BZ_GROUP);
   const lanes = pools.flatMap((p, k) => [{ id: p, order: k }, ...I.lanesOf(p).map((id, j) => ({ id, parent: I.up(id), order: j }))]), band = new Set(lanes.map(l => l.id));
   const be = new Map(); ids.forEach(id => { const h = bzProps(I.N.get(id)).attachedTo; if (I.ty(id) === BZ_BE && shown.has(h) && BZ_ACT.includes(I.ty(h))) be.set(id, h); });
@@ -397,7 +400,7 @@ function bzGuard(model, view, commands) {
 // connect (§7.1): the kind by the ends, no picker; a flow BPMN forbids refused with the rule's words
 function bzConnect(model, view, from, to) {
   if (!BZ_OBJ(view)) return null;
-  const I = bzIndex(model), a = I.ty(from), b = I.ty(to), w = id => bzWord(I.el(id)).toLowerCase(), add = type => bzGuard(model, view, [{ op: 'add', element: { id: bzFreshId(model, `${from}-${to}`), type, from, to }, view: view.id }]);
+  const I = bzIndex(model, view), a = I.ty(from), b = I.ty(to), w = id => bzWord(I.el(id)).toLowerCase(), add = type => bzGuard(model, view, [{ op: 'add', element: { id: bzFreshId(model, `${from}-${to}`), type, from, to }, view: view.id }]);
   // what the picture leaves out (§8.3) is refused, not drawn as nothing
   if (a === BZ_NOTE || b === BZ_NOTE) { const o = a === BZ_NOTE ? to : from;
     return from === to || I.L.has(o) || [BZ_POOL, BZ_GROUP].includes(I.ty(o)) ? { error: 'A text annotation is linked to an element in the flow: not a pool, a lane, a group or itself' } : add(BZ_ASSOC); }
@@ -472,7 +475,7 @@ function bzOwner(model, view, id, parent) {
 // (nested in the lane selected); a boundary event onto the activity selected; data in a pool, never a lane
 function bzAdd(model, view, entry, label, at) {
   if (!BZ_OBJ(view) || !BZ_OBJ(entry) || !String(entry.type).startsWith('bpmn.')) return null;
-  const I = bzIndex(model), sel = BZ_ARR(BZ_OBJ(at) ? at.sel : null), t = entry.type, name = BZ_HAS(label) ? String(label).trim() : '';
+  const I = bzIndex(model, view), sel = BZ_ARR(BZ_OBJ(at) ? at.sel : null), t = entry.type, name = BZ_HAS(label) ? String(label).trim() : '';
   const into = sel.map(id => (I.L.has(id) || I.ty(id) === BZ_POOL || (I.ty(id) === BZ_SUB && bzPic(model, view).open.has(id)) ? id : I.el(id) && BZ_FLOW.includes(I.ty(id)) ? I.el(id).parent : null)).find(p => p != null) ?? null;
   const el = { id: bzFreshId(model, name || entry.label || t.split('.').pop()), type: t, ...(name ? { label: name } : {}), ...(BZ_OBJ(entry.props) ? { props: structuredClone(entry.props) } : {}) };
   if (t === BZ_LANE) { const p = sel.map(id => (I.ty(id) === BZ_POOL ? id : I.L.has(id) ? I.L.get(id).pool : null)).find(Boolean);
@@ -493,13 +496,13 @@ function bzAdd(model, view, entry, label, at) {
 // its own owner (S12); Shift + Delete on a pool deletes what it owns with it, said with the count
 function bzRemove(model, view, ids, fromModel) {
   if (!BZ_OBJ(view)) return null;
-  const I = bzIndex(model), gone = new Set(ids.filter(id => I.L.has(id))), pools = ids.filter(id => I.ty(id) === BZ_POOL);
+  const I = bzIndex(model, view), gone = new Set(ids.filter(id => I.L.has(id))), pools = ids.filter(id => I.ty(id) === BZ_POOL);
   // Delete hides with an activity its boundary events, and with a sub-process what the view shows in it and on that, as X's
   // collapse does (audit 18): BPMN has no boundary event without its activity, nor a sub-process's node outside it
   const shown = BZ_ARR(view.nodeIds), hosts = fromModel ? [] : ids.filter(id => BZ_ACT.includes(I.ty(id))), under = (n, h) => n === h || I.chain(n).includes(h);
   const bes = shown.filter(n => !ids.includes(n) && I.N.has(n) && hosts.some(h => (n !== h && under(n, h)) || (I.ty(n) === BZ_BE && under(bzProps(I.el(n)).attachedTo, h))));
   if (!gone.size && !(fromModel && pools.length) && !bes.length) return null;
-  const cmds = [], rest = [...ids.filter(id => !gone.has(id)), ...bes], own = new Set(BZ_ARR(view.nodes).filter(BZ_OBJ).map(x => x.id));
+  const cmds = [], rest = [...ids.filter(id => !gone.has(id)), ...bes], own = new Set([...BZ_ARR(view.nodes), ...BZ_ARR(view.edges)].filter(BZ_OBJ).map(x => x.id));
   // a lane's new owner: the nearest lane above it not deleted, else its pool
   const keep = id => { let p = I.up(id); for (let k = 0; p != null && gone.has(p) && k < 64; k++) p = I.up(p); return p; };
   // the lanes nested under a deleted one move up: apply() cannot reparent a member, so each is deleted and added again
@@ -518,7 +521,10 @@ function bzRemove(model, view, ids, fromModel) {
   const kept = !fromModel && !Array.isArray(view.edges) && rest.some(id => !own.has(id) && I.E.has(id));
   // the view's subject is not hidden (apply() refuses it): skipped, said, as the canvas's Delete does (audit 18)
   const subj = !fromModel && rest.includes(view.subject) && !own.has(view.subject);
-  rest.forEach(id => { if (fromModel || own.has(id) || I.L.has(id)) cmds.push({ op: 'delete', id }); else if (!(kept && I.E.has(id)) && !(subj && id === view.subject)) cmds.push({ op: 'hide', id, view: view.id }); });
+  // a view-own line goes first, deleted: a hide or delete of a node after it takes the lines to that node out of the view (audit 22)
+  const ownLine = id => own.has(id) && I.E.has(id) && !I.N.has(id);
+  cmds.unshift(...rest.filter(ownLine).map(id => ({ op: 'delete', id })));
+  rest.forEach(id => { if (ownLine(id)) return; if (fromModel || own.has(id) || I.L.has(id)) cmds.push({ op: 'delete', id }); else if (!(kept && I.E.has(id)) && !(subj && id === view.subject)) cmds.push({ op: 'hide', id, view: view.id }); });
   const said = [...(gone.size ? [`Deleted ${gone.size === 1 ? 'lane ' + bzLabel(I.el([...gone][0])) : bzPlural(gone.size, 'lane')} from the model${fromModel ? '' : ': a lane is not hidden from a view'}, keeping what it held`] : []),
     ...(fromModel ? pools.map(p => `deleted pool ${bzLabel(I.el(p))} and the ${bzPlural(owned(p), 'element')} it holds`) : []),
     ...(bes.length ? [`hid ${bes.length === 1 && I.ty(bes[0]) === BZ_BE ? 'its boundary event ' + bzLabel(I.el(bes[0])) : `the ${bzPlural(bes.length, 'element')} shown in or on it`} with ${hosts.filter(h => bes.some(n => under(n, h) || under(bzProps(I.el(n)).attachedTo, h))).map(h => bzLabel(I.el(h))).join(', ')}`] : []),
@@ -529,7 +535,7 @@ function bzRemove(model, view, ids, fromModel) {
 // key (§11, decision 22): A on a boundary event, a picker of its pool's activities; X on a sub-process, expanded or collapsed in the view
 function bzKey(model, view, ids, key) {
   if (!BZ_OBJ(view)) return null;
-  const I = bzIndex(model), id = ids[ids.length - 1], x = I.el(id); if (!x) return null;
+  const I = bzIndex(model, view), id = ids[ids.length - 1], x = I.el(id); if (!x) return null;
   if ((key === 'a' || key === 'A') && x.type === BZ_BE) { const p = I.poolOf(id), to = n => [{ op: 'set', id, path: 'props.attachedTo', value: n.id }, ...bzOwnerTo(I, id, n.parent)];
     // its pool's activities it can move to with its lines: the event goes to the activity's owner, and bzGuard keeps those that bring no problem
     const acts = [...I.N.values()].filter(n => BZ_ACT.includes(n.type) && I.poolOf(n.id) === p && n.id !== bzProps(x).attachedTo && Array.isArray(bzGuard(model, view, to(n))));

@@ -116,3 +116,20 @@ test('audit 21: sequenceFromTrace() reads match as a table by name: a service na
   const odd = [{ id: '1', service: 'api', start: 0, end: 10 }, { id: '2', parent: '1', service: { a: 1 }, start: 1, end: 5 }, { id: '3', parent: '1', service: JSON.parse('{"toString":1}'), start: 1, end: 5 }];
   assert.equal(sequenceFromTrace(model, odd).views.at(-1).caption, 'From a trace: 0 calls between cards, in time order, each with its duration.');
 });
+
+test('audit 22: describe() says a label\'s line break as a space, one sentence per line, on every example view of every type', async () => {
+  const { describe: say } = await import('../lib/umlimator-all.js'), { readdirSync } = await import('node:fs');
+  // each label's first space a line break (BPMN's, a cloud's, a requirement's, C4's, DFD's, a flowchart's ...), \n, \r\n and U+2028
+  const broken = (x, br) => Array.isArray(x) ? x.map(y => broken(y, br)) : x && typeof x === 'object'
+    ? Object.fromEntries(Object.entries(x).map(([k, v]) => [k, (k === 'label' || k === 'title') && typeof v === 'string' ? v.replace(' ', br) : broken(v, br)])) : x;
+  let views = 0;
+  for (const f of readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json'))) {
+    const m = read(`../examples/${f}`); if (!Array.isArray(m.views)) continue;
+    for (const v of m.views) { const was = say(m, v.id); views++;
+      for (const br of ['\n', '\r\n', ' ', ' \n ']) assert.equal(say(broken(m, br), v.id), was, `${f} ${v.id} ${JSON.stringify(br)}`); }
+  }
+  assert.ok(views > 60, `${views} views`);
+  // an id that holds a line break still names its element
+  const m = { schemaVersion: 2, nodes: [{ id: 'a\nb', label: 'Two\nlines' }, { id: 'c', label: 'C' }], edges: [{ from: 'a\nb', to: 'c', label: 'x\ny' }], views: [{ id: 'v', nodeIds: ['a\nb', 'c'] }] };
+  assert.match(say(m, 'v'), /Two lines calls C \("x y"\)/);
+});

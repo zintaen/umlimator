@@ -236,7 +236,7 @@ function dfdKey(model, view, ids, key) {
   if (p.opensView != null) return { error: `${I.q(p.id)} opens "${p.opensView}" already: Enter opens it` };
   const used = dfdUsed(model), n = dfdNum(p), kn = dfdFreeNum(I, 'dfd.Process', n ? n + '.' : '');
   const flows = dfdLines(model, view).filter(e => e.type === 'dfd.DataFlow' && (e.from === p.id) !== (e.to === p.id));
-  const vid = dfdFree(new Set(DFD_ARR(model.views).filter(DFD_OBJ).map(v => v.id)), p.id + '-level'), kid = dfdFree(used, `${p.id}-${kn}`), title = `${n ? n + ' ' : ''}${p.label ?? p.id}`;
+  const vid = dfdFree(used, p.id + '-level'), kid = dfdFree(used, `${p.id}-${kn}`), title = `${n ? n + ' ' : ''}${p.label ?? p.id}`;
   return { commands: [
     { op: 'addView', view: { id: vid, diagram: 'dfd', title, parent: view.id, ...(view.notation != null ? { notation: view.notation } : {}), ...(view.direction != null ? { direction: view.direction } : {}),
       nodeIds: [...new Set(flows.map(e => (e.from === p.id ? e.to : e.from)))] } },

@@ -1,4 +1,4 @@
-import { fit, sansW, textW } from '../core/text.js';
+import { EDGE_BREAK, EDGE_LH, fit, sansW, textW } from '../core/text.js';
 import { behind, detour, onBorder, routeAudit } from './audit.js';
 import { edgeRefIds } from '../map/api.js';
 import { badgesOf, mapNodeW, mapTabs, toneOf } from '../map/cards.js';
@@ -20,7 +20,7 @@ const hit = (a, b, pad = 0) => a.x < b.x + b.w + pad && b.x < a.x + a.w + pad &&
 const OWN_ROUTE = Symbol('own route');
 // a typed view's labels placed only once routing was done, on a looser spot (layoutPass's last try): they ask for room as a lost one does
 const LOOSE = new WeakSet();
-const labelW = e => textW(fit((e.step != null ? e.step + ' · ' : '') + (e.label || ''), 10, e.cut || 150), 10) + 12;
+const labelW = e => Math.max(...String((e.step != null ? e.step + ' · ' : '') + (e.label || '')).split(EDGE_BREAK).map(r => textW(fit(r, 10, e.cut || 150), 10))) + 12; // its widest line
 
 /* Layered auto-layout for views that carry no col/row: longest-path layers (cycles broken by DFS),
    barycentre ordering sweeps, integer rows so row gaps stay free as routing channels. */
@@ -585,7 +585,9 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // border) or 2 (relaxed); a typed view's late tries (placeLabel) also 3 (relaxed, off box borders) and 4 (strict, beside the line)
   const subOf = (e, text) => map && text && e.sublabel ? fit(e.sublabel, 9.5, e.under ? 320 : 440) : ''; // a second, smaller line under the label (#44)
   const sizeOf = (e, text, sub = subOf(e, text)) => { const two = !!(text && sub), pill = map && e.step != null;
-    const w = map ? (text ? pillW(text, two && sub) : 0) + (pill ? stepW(e.step) + (text ? 4 : 6) : 0) : textW(text, 10) + 12, hgt = map ? (two ? 32 : 20) : 18;
+    // a typed view's label: one line per line break, as wide as its widest, 12 px a line more (audit 22)
+    const rows = map ? null : String(text ?? '').split(EDGE_BREAK);
+    const w = map ? (text ? pillW(text, two && sub) : 0) + (pill ? stepW(e.step) + (text ? 4 : 6) : 0) : Math.max(...rows.map(r => textW(r, 10))) + 12, hgt = map ? (two ? 32 : 20) : 18 + EDGE_LH * (rows.length - 1);
     return dg.turned ? { two, w: hgt, hgt: w } : { two, w, hgt }; }; // a view laid out down: turned, as its nodes are (stage 1 note §6)
   function* fits(e, text, pass) { const relax = pass === 2 || pass === 3, sub = subOf(e, text);
     const segs = segsOf(e.pts).map((s, i) => ({ a: s[0], b: s[1], i, l: Math.hypot(s[1][0] - s[0][0], s[1][1] - s[0][1]), h: s[0][1] === s[1][1] }));
@@ -619,7 +621,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const put = (e, s, full) => { placed.push(s.box); reserved.push(s.grow); e.lbl = { ...s.lbl, short: s.lbl.text !== full }; };
   const unput = e => { const L = e.lbl, same = m => r => r.x === L.x - m && r.y === L.y - m && r.w === L.w + 2 * m && r.h === L.h + 2 * m;
     const p = placed.findIndex(same(0)), q = reserved.findIndex(same(3)); if (p >= 0) placed.splice(p, 1); if (q >= 0) reserved.splice(q, 1); e.lbl = null; };
-  const fullOf = e => map ? fit(e.label || '', 10.5, e.under ? 320 : 440) : fit((e.step != null ? e.step + ' · ' : '') + (e.label || ''), 10, e.cut || 150);
+  const fullOf = e => map ? fit(e.label || '', 10.5, e.under ? 320 : 440) : String((e.step != null ? e.step + ' · ' : '') + (e.label || '')).split(EDGE_BREAK).map(r => fit(r, 10, e.cut || 150)).join('\n');
   function placeLabel(e, late) { // late: a line left with no spot, once every line is routed: a typed view's takes a map's fallbacks too
     if (!e.label && e.step == null) return;
     const full = fullOf(e);
