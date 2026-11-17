@@ -7,23 +7,27 @@ on:
   schedule:
     - cron: "0 6 * * 1"  # weekly: a logo source that changed shows up here, not in someone's picture
 
+# a new push to a pull request cancels that pull request's run still going; a push to main and the weekly run each get a
+# group of their own (the run's id), so they are never cancelled and never wait
+concurrency:
+  group: check-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   SB: https://raw.githubusercontent.com/EricTechPro/super-board/d0b7d5a/skills/visual  # pinned upstreams (THIRD_PARTY_NOTICES.md)
   SD: https://raw.githubusercontent.com/caru-ini/stack-diagram/30cbbb7/skills/stack-diagram/scripts
+  MODDLE: bpmn-moddle@10.3.1 moddle@8.2.1 moddle-xml@12.3.2 min-dash@5.1.0 saxen@11.2.0  # the BPMN XML adapter's library, each of its five packages pinned (notes/milestone-4b.md decision 24)
 
 jobs:
-  # The checks, in five jobs that run side by side; the job `check` below passes only when all five did, so branch
-  # protection's required check and the jobs that need it (site, release) are as they were.
-  # lib/ is what src/ builds; layout() in Node, the timed tests, and the examples render and check clean (about 4 min)
-  node:
+  # The checks, split into jobs that run side by side (the long scripts and suites in shards, each part in exactly one);
+  # the job `check` below passes only when every one of them did, so branch protection's required check and the jobs
+  # that need it (site, release) are as they were. Each job's comment gives its time on a runner, about.
+
+  # lib/ is what src/ builds, and each source imports what it uses (under 1 min)
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/cache@v4  # the logos this job's renders download, kept per job and per pin: a changed pin misses it, and icon_bytes checks a cached logo's sha256 on every read
-        with:
-          path: ~/.cache/umlimator/icons
-          key: icons-${{ github.job }}-${{ hashFiles('icons/manifest.json') }}
 
       - uses: actions/setup-python@v5
         with:
@@ -31,7 +35,12 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24  # --test-skip-pattern (22.1+) in the node --test steps; the runner's own Node is whatever its image ships
+          node-version: 24
+
+      - uses: actions/cache@v4  # npx's download of the pinned compiler: the same version's package, which npm checks against its integrity hash
+        with:
+          path: ~/.npm
+          key: npm-tsc-typescript@5.9.3
 
       - name: lib/umlimator.js is what src/ builds, and each source imports every name it uses from another (a compiler fetched for CI only, never in the module)
         run: |
@@ -51,21 +60,167 @@ jobs:
           sys.exit(1 if bad else 0)
           PY
 
+  # layout() in Node: the whole node --test suite but the timed tests, its files split in two by Node's own --test-shard
+  # (about 2 min each)
+  node:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24  # --test-skip-pattern (22.1+) in the node --test steps; the runner's own Node is whatever its image ships
+
+      - uses: actions/cache@v4  # npm's downloads of the pinned packages below, each checked against its integrity hash on install
+        with:
+          path: ~/.npm
+          key: npm-moddle-${{ env.MODDLE }}
+
       - name: bpmn-moddle for the BPMN XML adapter's tests, in a scratch folder (an optional adapter's library, never a dependency of the module; each of its five packages pinned, notes/milestone-4b.md decision 24)
-        run: npm install --no-save --prefix "$RUNNER_TEMP/moddle" bpmn-moddle@10.3.1 moddle@8.2.1 moddle-xml@12.3.2 min-dash@5.1.0 saxen@11.2.0
+        run: npm install --no-save --prefix "$RUNNER_TEMP/moddle" $MODDLE
 
-      - name: layout() draws the benchmark views as recorded, with no DOM (Node)
+      - name: A reporter that lists the test files a run loaded (the job shards compares the lists)
+        run: |
+          cat > "$RUNNER_TEMP/files.mjs" <<'JS'
+          import { relative } from "node:path";
+          export default async function* files(source) {
+            const seen = new Set();
+            for await (const e of source) if (e.data?.file) seen.add(relative(process.cwd(), e.data.file));
+            yield [...seen].sort().join("\n") + "\n";
+          }
+          JS
+
+      - name: layout() draws the benchmark views as recorded, with no DOM (Node; shard ${{ matrix.shard }} of 2 of the test files)
         env:
           UMLIMATOR_BPMN_MODDLE: ${{ runner.temp }}/moddle  # the tests that need it fail without it in CI (CI=true)
-        run: node --test --test-skip-pattern='\(timed\)'
+        run: |
+          node --test --test-shard=${{ matrix.shard }}/2 --test-skip-pattern='\(timed\)' \
+            --test-reporter=spec --test-reporter-destination=stdout --test-reporter="$RUNNER_TEMP/files.mjs" --test-reporter-destination="$RUNNER_TEMP/files.txt"
+          mkdir -p "$RUNNER_TEMP/list" && cp "$RUNNER_TEMP/files.txt" "$RUNNER_TEMP/list/node-${{ matrix.shard }}.txt"
 
-      # the tests whose titles end "(timed)" assert a CPU or wall time (P1, linear time): one file at a time, so the
-      # rest of the suite running beside them cannot push a 1 s ceiling over (the maintainer's decision of 13 Nov 2026)
-      - name: The timed tests hold their budgets, run one file at a time
-        if: ${{ !cancelled() }}   # still runs when the step above fails, so a failing test does not hide the budgets
+      - uses: actions/upload-artifact@v4
+        with:
+          name: files-node-${{ matrix.shard }}
+          path: ${{ runner.temp }}/list
+          retention-days: 1
+          overwrite: true   # a re-run of the job replaces its list
+
+  # the tests whose titles end "(timed)" assert a CPU or wall time (P1, linear time): one file at a time, so the rest of
+  # the suite running beside them cannot push a 1 s ceiling over (the maintainer's decision of 13 Nov 2026). Every test
+  # file goes to one of three jobs by Node's --test-shard, so a new timed test is in one without a list to edit; each job
+  # runs its files one at a time, alone on its runner (about 2 min each)
+  timed:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - uses: actions/cache@v4  # npm's downloads of the pinned packages below, each checked against its integrity hash on install
+        with:
+          path: ~/.npm
+          key: npm-moddle-${{ env.MODDLE }}
+
+      - name: bpmn-moddle for the BPMN XML adapter's tests, in a scratch folder (an optional adapter's library, never a dependency of the module; each of its five packages pinned, notes/milestone-4b.md decision 24)
+        run: npm install --no-save --prefix "$RUNNER_TEMP/moddle" $MODDLE
+
+      - name: A reporter that lists the test files a run loaded (the job shards compares the lists)
+        run: |
+          cat > "$RUNNER_TEMP/files.mjs" <<'JS'
+          import { relative } from "node:path";
+          export default async function* files(source) {
+            const seen = new Set();
+            for await (const e of source) if (e.data?.file) seen.add(relative(process.cwd(), e.data.file));
+            yield [...seen].sort().join("\n") + "\n";
+          }
+          JS
+
+      - name: The timed tests hold their budgets, run one file at a time (shard ${{ matrix.shard }} of 3 of the test files)
         env:
           UMLIMATOR_BPMN_MODDLE: ${{ runner.temp }}/moddle  # the tests that need it fail without it in CI (CI=true)
-        run: node --test --test-concurrency=1 --test-name-pattern='\(timed\)'
+        run: |
+          node --test --test-shard=${{ matrix.shard }}/3 --test-concurrency=1 --test-name-pattern='\(timed\)' \
+            --test-reporter=spec --test-reporter-destination=stdout --test-reporter="$RUNNER_TEMP/files.mjs" --test-reporter-destination="$RUNNER_TEMP/files.txt"
+          mkdir -p "$RUNNER_TEMP/list" && cp "$RUNNER_TEMP/files.txt" "$RUNNER_TEMP/list/timed-${{ matrix.shard }}.txt"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: files-timed-${{ matrix.shard }}
+          path: ${{ runner.temp }}/list
+          retention-days: 1
+          overwrite: true   # a re-run of the job replaces its list
+
+  # the shards above ran every test file, each once: the node shards' files are each in one of them, the timed shards'
+  # likewise, and the two splits hold the same files, every one that node --test finds (under 1 min)
+  shards:
+    needs: [node, timed]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: files-*
+          merge-multiple: true
+          path: lists
+
+      - name: Each test file ran in exactly one node shard and in exactly one timed shard, and both splits hold every file
+        run: |
+          python3 -I - <<'PY'
+          import collections, pathlib, sys
+          split = collections.defaultdict(list)
+          for f in sorted(pathlib.Path("lists").glob("*.txt")):
+              split[f.stem.rsplit("-", 1)[0]].append(set(f.read_text().split()))
+          bad = []
+          for name, n in (("node", 2), ("timed", 3)):
+              got = split.get(name, [])
+              twice = collections.Counter(x for s in got for x in s)
+              if len(got) != n:
+                  bad.append(f"{name}: {len(got)} of its {n} shards reported their files")
+              bad += [f"{name}: {x} ran in {k} shards" for x, k in twice.items() if k > 1]
+          a, b = set().union(*split.get("node", [set()])), set().union(*split.get("timed", [set()]))
+          bad += [f"only the node shards ran {x}" for x in sorted(a - b)] + [f"only the timed shards ran {x}" for x in sorted(b - a)]
+          if not a:
+              bad.append("no test file reported")
+          print("\n".join(bad) or f"{len(a)} test files, each in one node shard and one timed shard")
+          sys.exit(1 if bad else 0)
+          PY
+
+  # The example renders as committed; the others render and their layout checks are clean; examples/layout.mjs in Node
+  # (about 2.5 min)
+  examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4  # the logos this job's renders download, kept per job and per pin: a changed pin misses it, and icon_bytes checks a cached logo's sha256 on every read
+        with:
+          path: ~/.cache/umlimator/icons
+          key: icons-${{ github.job }}-${{ hashFiles('icons/manifest.json') }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
 
       - name: The example renders as committed and its layout check is clean
         run: |
@@ -87,7 +242,56 @@ jobs:
           done
           node examples/layout.mjs
 
-  # render() and the MCP server's page in headless Chrome; the schema and the plugin (about 4 min)
+  # The CLI's diff, drift, timelapse, mcp and pdf (tests/cli.py), its parts split over five jobs by UMLIMATOR_TEST_SHARD
+  # (tests/shards.py: each part in exactly one; unset, as on a developer's machine, every part runs) (about 2.5 min each)
+  cli:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: The CLI's diff, drift and timelapse write their pages, diff --base a pull request's summary, mcp answers an MCP client, and pdf an example's PDF (shard ${{ matrix.shard }} of 5 of its parts)
+        env:
+          UMLIMATOR_TEST_SHARD: ${{ matrix.shard }}/5
+        run: python3 tests/cli.py
+
+  # render() and the standalone page in headless Chrome (tests/embed.py), its pages split over three jobs as tests/cli.py's
+  # parts are (about 2 min each)
+  embed:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: render() embedded in a plain page reports its events and follows update() and destroy() (shard ${{ matrix.shard }} of 3 of its pages)
+        env:
+          UMLIMATOR_TEST_SHARD: ${{ matrix.shard }}/3
+        run: python3 tests/embed.py
+
+  # The MCP server's page in headless Chrome; Python 3.9; the schema and the plugin; the imported example, the icon packs,
+  # the release steps and the diff Action's dry run (about 2 min)
   browser:
     runs-on: ubuntu-latest
     steps:
@@ -102,10 +306,12 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24  # --test-skip-pattern (22.1+) in the node --test steps; the runner's own Node is whatever its image ships
+          node-version: 24
 
-      - name: render() embedded in a plain page reports its events and follows update() and destroy()
-        run: python3 tests/embed.py
+      - uses: actions/cache@v4  # only npm's content-addressed tarball store, each read checked against its integrity hash; npx's install tree (~/.npm/_npx) stays out, so ajv-cli 5 and its unpinned dependencies (ajv ^8 among them) resolve fresh on every run, as before
+        with:
+          path: ~/.npm/_cacache
+          key: npm-cacache-ajv-cli@5
 
       - name: The MCP server's page in headless Chrome says what it shows, and a tool says shown only once it did
         run: python3 tests/mcp.py
@@ -144,8 +350,27 @@ jobs:
           print(f"map-repo's pinned CLI ({ref}) runs the engine with -I")
           PY
 
-  # The CLI's diff, drift, timelapse, mcp and pdf, and the diff Action's dry run (about 4.5 min)
-  cli:
+      - name: The imported example is what import writes from its Structurizr source, so the two can't drift apart
+        run: |
+          python3 umlimator.py import examples/clinic.dsl --out /tmp/clinic.json
+          diff examples/clinic.json /tmp/clinic.json \
+            || { echo "::error::examples/clinic.json is not what import writes from examples/clinic.dsl: import it again and commit it"; exit 1; }
+
+      - name: umlimator.py pack fetches a synthetic icon pack only after its terms and a yes, by its pinned size and sha256, and a render never downloads one (no vendor contacted)
+        run: python3 tests/packs.py
+
+      - name: The diff Action's comment step, the release job's steps and map-repo's CLI, run against stand-ins for GitHub, git and npm
+        run: python3 tests/steps.py
+
+      - name: The diff Action pictures what a pull request changes in the example models (a dry run, without a comment)
+        if: github.event_name == 'pull_request'
+        uses: ./
+        with:
+          models: examples/*.json
+          comment: false
+
+  # The CLI's error cases, and import (about 2.5 min)
+  outcomes:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -156,27 +381,31 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24  # --test-skip-pattern (22.1+) in the node --test steps; the runner's own Node is whatever its image ships
+          node-version: 24
 
-      - name: The CLI's diff, drift and timelapse write their pages, diff --base a pull request's summary, mcp answers an MCP client, and pdf an example's PDF
-        run: python3 tests/cli.py
+      - name: When something goes wrong, the CLI says so and leaves the previous output (Chrome failing, --views, render, pdf, stills, diff --base, icons, mcp)
+        run: python3 tests/outcomes.py
 
-      - name: The imported example is what import writes from its Structurizr source, so the two can't drift apart
-        run: |
-          python3 umlimator.py import examples/clinic.dsl --out /tmp/clinic.json
-          diff examples/clinic.json /tmp/clinic.json \
-            || { echo "::error::examples/clinic.json is not what import writes from examples/clinic.dsl: import it again and commit it"; exit 1; }
-
-      - name: The diff Action pictures what a pull request changes in the example models (a dry run, without a comment)
-        if: github.event_name == 'pull_request'
-        uses: ./
+      - uses: actions/cache@v4  # npm's downloads of the pinned packages below, each checked against its integrity hash on install
         with:
-          models: examples/*.json
-          comment: false
+          path: ~/.npm
+          key: npm-moddle-${{ env.MODDLE }}
 
-  # The upstream copies, the CLI's error cases, import, the release steps, the logos and the bench (about 4.5 min)
+      - name: bpmn-moddle for the BPMN XML adapter's tests, in a scratch folder (an optional adapter's library, never a dependency of the module; each of its five packages pinned, notes/milestone-4b.md decision 24)
+        run: npm install --no-save --prefix "$RUNNER_TEMP/moddle" $MODDLE
+
+      - name: The CLI's import reads a sample of each format into a model that validates, renders and checks clean
+        env:
+          UMLIMATOR_BPMN_MODDLE: ${{ runner.temp }}/moddle  # the tests that need it fail without it in CI (CI=true)
+        run: python3 tests/import.py
+
+  # The upstream copies and the logos; the bench, its models split over two jobs by their views (about 2 min each)
   bench:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v4
 
@@ -191,9 +420,10 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24  # --test-skip-pattern (22.1+) in the node --test steps; the runner's own Node is whatever its image ships
+          node-version: 24
 
       - name: The copied files are upstream's, unmodified (the template became lib/umlimator.js, umlimator's own)
+        if: matrix.shard == 1   # once
         run: |
           curl -fsSL "$SB/scripts/visual.py" -o engine/scripts/visual.py
           curl -fsSL "$SB/references/schema.md" -o engine/references/schema.md
@@ -201,24 +431,8 @@ jobs:
           curl -fsSL "$SD/fetch_icons.py" -o tools/fetch_icons.py
           git diff --exit-code engine/scripts engine/references tools
 
-      - name: When something goes wrong, the CLI says so and leaves the previous output (Chrome failing, --views, render, pdf, stills, diff --base, icons, mcp)
-        run: python3 tests/outcomes.py
-
-      - name: bpmn-moddle for the BPMN XML adapter's tests, in a scratch folder (an optional adapter's library, never a dependency of the module; each of its five packages pinned, notes/milestone-4b.md decision 24)
-        run: npm install --no-save --prefix "$RUNNER_TEMP/moddle" bpmn-moddle@10.3.1 moddle@8.2.1 moddle-xml@12.3.2 min-dash@5.1.0 saxen@11.2.0
-
-      - name: The CLI's import reads a sample of each format into a model that validates, renders and checks clean
-        env:
-          UMLIMATOR_BPMN_MODDLE: ${{ runner.temp }}/moddle  # the tests that need it fail without it in CI (CI=true)
-        run: python3 tests/import.py
-
-      - name: umlimator.py pack fetches a synthetic icon pack only after its terms and a yes, by its pinned size and sha256, and a render never downloads one (no vendor contacted)
-        run: python3 tests/packs.py
-
-      - name: The diff Action's comment step, the release job's steps and map-repo's CLI, run against stand-ins for GitHub, git and npm
-        run: python3 tests/steps.py
-
       - name: Upstream changed a copied file since its pin (a warning, time to sync)
+        if: matrix.shard == 1   # once
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -228,6 +442,7 @@ jobs:
           done
 
       - name: Every brand logo still downloads and matches its pinned sha256
+        if: matrix.shard == 1   # once
         run: |
           export UMLIMATOR_ICON_CACHE="$RUNNER_TEMP/icons-fresh"   # an empty cache, not the job's: every logo comes from its source
           python3 -I - <<'PY'
@@ -239,15 +454,32 @@ jobs:
           sys.exit(1 if bad else 0)
           PY
 
-      - name: The benchmark models lay out as recorded, the same on every run, and in time
+      - name: The benchmark models lay out as recorded, the same on every run, and in time (shard ${{ matrix.shard }} of 2 of the models)
         # m50's time is checked on a developer machine (about 1.6 s since 0.6.0, which lays a view
         # out again when some of its lines find no route); a CI runner takes about 3x as long and gets 5x headroom,
         # which the engine before patches 31-35 never met (m50 did not finish in 30 min: bench/results/2026-11-06-ab8daa1-m50.json).
         # b26 takes about 0.4 s here and took 0.78-1.36 s on a runner (1.36 s on 0.9.0, with its layout unchanged): 3 s keeps
         # a slow runner from failing a PR on time alone
-        run: python3 bench/bench.py --runs 2 --timeout 300 --check-determinism --expect bench/expected.json --max-ms m50=8000,b26=3000
+        # Each model goes to one shard, the most views first, from bench.py's own list (every bench/models/*.json and
+        # examples/bookshop.json), so a new model is benchmarked without a list to edit
+        run: |
+          models=$(python3 -I - ${{ matrix.shard }} 2 <<'PY'
+          import json, pathlib, sys
+          k, n = map(int, sys.argv[1:])
+          paths = sorted(pathlib.Path("bench/models").glob("*.json")) + [pathlib.Path("examples/bookshop.json")]
+          views = {p.stem: len(m["views"]) + len(m.get("benchViews", [])) for p in paths for m in [json.loads(p.read_text())]}
+          load, shard = [0] * n, {}
+          for x in sorted(views, key=lambda x: (-views[x], x)):
+              i = load.index(min(load)); load[i] += views[x]; shard[x] = i + 1
+          assert len(views) == len(paths) and sorted(shard) == sorted(views), "a model in no shard"
+          print(",".join(x for x in views if shard[x] == k))
+          PY
+          )
+          [ -n "$models" ] || { echo "::error::shard ${{ matrix.shard }} of the bench has no model"; exit 1; }
+          echo "models: $models"
+          python3 bench/bench.py --models "$models" --runs 2 --timeout 300 --check-determinism --expect bench/expected.json --max-ms m50=8000,b26=3000
 
-  # the documentation site builds, with no dead links (VitePress, docs/; the site job publishes it from main)
+  # the documentation site builds, with no dead links (VitePress, docs/; the site job publishes it from main) (under 1 min)
   docs:
     runs-on: ubuntu-latest
     steps:
@@ -266,11 +498,11 @@ jobs:
           node --test tests/site.test.mjs   # the node job runs it too, without the built site
 
   check:
-    needs: [node, browser, cli, bench, docs]
+    needs: [build, node, timed, shards, examples, cli, embed, browser, outcomes, bench, docs]
     if: always()   # runs when one of them fails or is cancelled, to fail rather than be skipped (a skipped required check passes)
     runs-on: ubuntu-latest
     steps:
-      - name: Every check job succeeded
+      - name: Every check job succeeded (a matrix job only when each of its shards did)
         run: |
           for r in ${{ join(needs.*.result, ' ') }}; do [ "$r" = success ] || { echo "::error::a check job ended: $r"; exit 1; }; done
 
