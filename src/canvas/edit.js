@@ -1,4 +1,4 @@
-import { TYPED, diagramOf } from '../core/registry.js';
+import { TYPED, diagramOf, heldBy } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { arrOf, validate } from '../map/validate.js';
 
@@ -69,8 +69,10 @@ function typedEditor(api) {
   // into, from: the box under the drop, the box it was in; a box that is no element (a frame) is the view's subject
   // a re-own, by a drop or the Owner field: reparent, and the removal of a pin it had
   const reown = (id, parent) => { const L = view().layout; return [{ op: 'reparent', id, parent }, ...(isRec(L) && Object.hasOwn(L, id) ? [{ op: 'set', view: api.view(), path: ['layout', id], value: undefined }] : [])]; };
-  const drop = (n, hint, into = null, from = null) => into === from ? (hint.col !== n.col || hint.row !== n.row) && pin(n.id, hint.col, hint.row)
-    : can('move') && emit(reown(n.id, elementsOf(model()).has(into) ? into : view().subject ?? null));
+  // a model element never goes into a box one view alone holds (registry.js ownGuard, audit 23): said, nothing emitted
+  const drop = (n, hint, into = null, from = null) => { if (into === from) return (hint.col !== n.col || hint.row !== n.row) && pin(n.id, hint.col, hint.row);
+    const H = heldBy(model()), b = H.get(into); if (b && !H.has(n.id)) { api.status(`${b.label ?? b.id} lives in this view only: an element of the model cannot go under it`); return false; }
+    return can('move') && emit(reown(n.id, elementsOf(model()).has(into) ? into : view().subject ?? null)); };
   const picks = () => [...new Set(api.picked().flatMap(idsOf))];
   function remove(fromModel, ids = picks()) { // Delete: out of this view; Shift + Delete: out of the model (risks.md E5). One transaction for the selection (E2)
     if (!can('delete') || !ids.length) return false;
@@ -184,7 +186,7 @@ function typedEditor(api) {
       else if (f.kind === 'enum') h += `<label>${esc(name)}<select data-f="p:${esc(f.key)}"${key}${off}>${['', ...arrOf(f.options)].map(o => `<option value="${esc(o)}"${o === v ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select></label>`;
       else h += text('p:' + f.key, f.kind === 'list' ? arrOf(v).join(', ') : v ?? '', name, key + (f.kind === 'list' ? ' data-list' : '')); });
     // the Owner field (notes/stage-2.md §8): the owners the type offers, less the element and what it holds, and none
-    const O = def().owners, os = e.kind !== 'member' && typeof O === 'function' ? O(model(), x) : null, under = id => { for (let k = 0, p = id; p != null && k < 64; k++, p = (at.get(p) || { x: {} }).x.parent) if (p === x.id) return true; return false; };
+    const O = def().owners, os = e.kind !== 'member' && typeof O === 'function' ? O(model(), x, view()) : null, under = id => { for (let k = 0, p = id; p != null && k < 64; k++, p = (at.get(p) || { x: {} }).x.parent) if (p === x.id) return true; return false; };
     // its owner is offered too when the type does not offer it (a class in a class), so the field says it and "none" is a change
     const offer = Array.isArray(os) && [{ id: '', label: 'none' }, ...os.filter(o => isRec(o) && o.id != null && !under(o.id))];
     if (offer && x.parent != null && !offer.some(o => o.id === x.parent)) offer.push({ id: x.parent, label: (at.get(x.parent) || { x: {} }).x.label });

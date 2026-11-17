@@ -9,7 +9,6 @@ import { brLines } from '../typed/draw.js';
 import './class.js'; // SHAPE.note, a comment's
 import { frame } from './frame.js';
 import { FLOW_RULES, flowOf, flowProblems, flowLabel, flowRename, flowStereo, viewFlows } from './flow.js';
-import { withOwnNodes } from './owners.js'; // a view's own nodes read as the model's (audit 22)
 
 /* ---------- the activity diagram, uml.activity (work package 4.5, notes/stage-4.md §9) ----------
    Control nodes, actions and flows from src/uml/flow.js; the send and accept signals, the object node, the data store and
@@ -311,7 +310,7 @@ function actOwners(model, x) {
 
 /* ---- the type ---- */
 const AC_ST = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' }, AC_GUARD = { key: 'guard', label: 'Guard', kind: 'text' };
-const ACT_TYPE = registerDiagramType('uml.activity', withOwnNodes({
+const ACT_TYPE = registerDiagramType('uml.activity', {
   title: 'activity diagram',
   elements: [['Action', 'Action'], ['InitialNode', 'Initial', false], ['ActivityFinalNode', 'Activity final', false], ['FlowFinalNode', 'Flow final', false],
     ['DecisionNode', 'Decision'], ['MergeNode', 'Merge'], ['ForkNode', 'Fork', false], ['JoinNode', 'Join', false], ['CallBehaviorAction', 'Call behaviour', true, 'uml.activity'],
@@ -333,6 +332,6 @@ const ACT_TYPE = registerDiagramType('uml.activity', withOwnNodes({
   // the PDF's tables (§15): a node's kind, and its partition
   word: (model, id) => { const x = AC_ARR(model && model.nodes).find(n => AC_OBJ(n) && n.id === id); return x && Object.hasOwn(AC_LOOK, x.type) ? AC_LOOK[x.type][1] : null; },
   rows: (model, view, id) => { const I = actIndex(model, view), l = I.N.has(id) ? I.laneOf(id) : null; return l != null ? [`in ${acName(I.N.get(l))}`] : null; },
-}));
+});
 
 export { ACT_TYPE, ACT_RULES, AC_NODES, actGeo, actProblems, actDescribe, actConnect, actMoveTo, actAdd, actRemove, actRename, actOwners };

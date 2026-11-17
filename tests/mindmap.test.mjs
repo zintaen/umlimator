@@ -498,3 +498,24 @@ test('audit 22: N under a view-own topic adds a topic of that view; Delete on a 
   const top = { schemaVersion: 2, nodes: [{ id: 'm', type: T, label: 'Model', parent: 'o' }], views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['o', 'm'], nodes: [{ id: 'o', type: T, label: 'Own' }] }] };
   assert.deepEqual(apply(top, mmRemove(top, top.views[0], ['o'], false).commands).nodes, [{ id: 'm', type: T, label: 'Model' }]);
 });
+
+// audit 23: a model topic never goes under a topic one view alone holds: a drop on one, or Alt + → into one, is refused and
+// said, so no other view gets a topic-parent error or a second root; a view's own topic still moves under one
+test('audit 23: a model topic dropped on, or demoted into, a view-own topic is refused; a view-own topic moves there', () => {
+  const m0 = EX(); m0.views.push({ ...structuredClone(m0.views[0]), id: 'mm-plan-2', title: 'Second view' });
+  const m = apply(m0, [{ op: 'add', in: 'view', view: 'mm-plan', element: { id: 'ideas', type: 'mindmap.Topic', label: 'Ideas', parent: 'mm-opening' }, index: 1 },
+    { op: 'add', in: 'view', view: 'mm-plan', element: { id: 'spare', type: 'mindmap.Topic', label: 'Spare', parent: 'mm-opening' }, index: 2 }]);
+  assert.deepEqual(validate(m).filter(p => p.level === 'error'), []);
+  const V = m.views[0], hook = diagramOf(V).edits.moveTo, g = layout(m, 'mm-plan'), at = id => { const n = g.byId[id]; return { pt: [n.x + n.w / 2, n.y + n.h / 2], geo: g }; };
+  for (const f of [hook, mmMoveTo]) {
+    assert.match(f(m, 'mm-plan', 'mm-wholesalers', at('ideas')).error, /Ideas lives in this view only/, 'a drop');
+    const right = g.nodes.filter(n => n.depth === 1 && n.side === 'right').map(n => n.id), below = right.slice(right.indexOf('ideas') + 1).find(id => id !== 'spare'); // its sibling before is a view-own topic
+    assert.ok(MM_TYPE && below, 'a model topic below the own one');
+    const r = f(m, 'mm-plan', below, { by: [g.byId[below].side === 'right' ? 1 : -1, 0], geo: g });
+    assert.ok(r && r.error && /lives in this view only/.test(r.error), JSON.stringify(r));
+  }
+  // a view-own topic dropped on another: moved, no error
+  const r = hook(m, 'mm-plan', 'spare', at('ideas')), a = apply(m, Array.isArray(r) ? r : r.commands);
+  assert.equal(a.views[0].nodes.find(n => n.id === 'spare').parent, 'ideas');
+  assert.deepEqual(validate(a).filter(p => p.level === 'error' || p.rule === 'mindmap-root'), []);
+});

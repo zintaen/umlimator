@@ -717,3 +717,20 @@ test('audit 22: Delete with a view-own line selected beside an activity with a b
   // the line deleted, not hidden: its first command
   assert.deepEqual(bzRemove(M, M.views[0], ['task', 'own'], false).commands[0], { op: 'delete', id: 'own' });
 });
+
+// audit 23: Delete on a view-own expanded sub-process holding a model task deletes the sub-process and hides the task, which
+// stays in the model, under the sub-process's owner (apply() takes no model node with a view's own owner)
+test('audit 23: Delete on a view-own sub-process that holds a model task applies, and keeps the task in the model', () => {
+  const m0 = JSON.parse(readFileSync(new URL('./bpmn-minimal.json', import.meta.url), 'utf8')), vid = m0.views[0].id;
+  const m = apply(m0, [{ op: 'add', in: 'view', view: vid, element: { id: 'sub', type: 'bpmn.SubProcess', label: 'Check', parent: 'pool' } },
+    { op: 'add', in: 'view', view: vid, element: { id: 'own', type: 'bpmn.Task', label: 'Own work', parent: 'sub' } }]);
+  m.nodes.push({ id: 'inner', type: 'bpmn.Task', label: 'Inner work', parent: 'sub' }); m.views[0].nodeIds.push('inner'); // as a model saved before audit 23 holds it
+  for (const fromModel of [false, true]) {
+    const r = diagramOf(m.views[0]).edits.remove(m, m.views[0], ['sub'], fromModel), cmds = r == null ? [{ op: 'delete', id: 'sub' }] : Array.isArray(r) ? r : r.commands; // null: the canvas's own delete
+    const a = apply(m, cmds);
+    assert.ok(a.nodes.some(n => n.id === 'inner' && n.parent === 'pool'), `${fromModel}: the model task kept, in the pool`);
+    assert.ok(!(a.views[0].nodes || []).some(n => n.id === 'sub' || n.id === 'own'), `${fromModel}: the view's own sub-process and task gone`);
+    assert.deepEqual(validate(a).filter(p => p.level === 'error'), []);
+  }
+  assert.ok(!apply(m, diagramOf(m.views[0]).edits.remove(m, m.views[0], ['sub'], false).commands).views[0].nodeIds.includes('inner'), 'Delete: hidden from this view');
+});

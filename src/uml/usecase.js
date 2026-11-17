@@ -5,7 +5,7 @@ import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { brLines } from '../typed/draw.js';
 import { lineIn } from './class.js'; // SHAPE.note, a comment's look too
-import { ownersOn, placeTabs, readingOrder, withOwnNodes } from './owners.js';
+import { ownersOn, placeTabs, readingOrder } from './owners.js';
 
 /* ---------- the use case diagram, uml.use-case (work package 4.4, notes/stage-4.md §8) ----------
    Actors (a stick figure), use cases (an ellipse, its extension points in a compartment under the name) and subjects: a
@@ -308,7 +308,7 @@ function ucRemove(model, view, ids, fromModel) {
 }
 
 const UC_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
-const UC_TYPE = registerDiagramType('uml.use-case', withOwnNodes({
+const UC_TYPE = registerDiagramType('uml.use-case', {
   title: 'use case diagram',
   elements: [['Actor', 'Actor'], ['UseCase', 'Use case'], ['Subject', 'Subject'], ['Comment', 'Comment']].map(([t, label]) => ({ type: 'uml.' + t, label })),
   lines: [['Association', 'Association'], ['Include', 'Include'], ['Extend', 'Extend'], ['Generalization', 'Generalization'], ['CommentLink', 'Comment link']].map(([t, label]) => ({ type: 'uml.' + t, label })),
@@ -327,6 +327,6 @@ const UC_TYPE = registerDiagramType('uml.use-case', withOwnNodes({
   rules: UC_RULES,
   describe: ucDescribe,
   edits: { connect: ucConnect, remove: ucRemove, rename: ucRename },
-}));
+});
 
 export { UC_TYPE, UC_RULES, ucGeo, ucProblems, ucDescribe, ucConnect, ucRemove, ucRename };
