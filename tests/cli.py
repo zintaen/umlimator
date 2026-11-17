@@ -126,12 +126,20 @@ HOSTILE = ["see https://evil.example/x", "_https://evil.example/x", "login_https
            "wwww.evil.example", "WWW.EVIL.EXAMPLE", "HTTPS://EVIL.EXAMPLE", "ftp://evil.example", "a_ftp://evil.example", "mail me@evil.example",
            "user_me@evil.example", "mailto:me@evil.example", "x_mailto:me@evil.example", "xmpp:me@evil.example", "<https://evil.example>",
            "[x](https://evil.example)", "![x](https://evil.example/t.png)", "Order #42", "ping @ops", "GH-12"]
+GFM = Path(tempfile.gettempdir()) / "umlimator-tests-cmarkgfm-2025.10.22"  # GitHub's Markdown renderer, its wheel only, pinned
 try:
     import cmarkgfm
-except ImportError:  # CI installs it (check.yml); here it is said, and fails only on CI
-    cmarkgfm = None
-    print("skip umlimator.py diff · the summary in GitHub's Markdown: pip install cmarkgfm to run it")
-    failed |= bool(os.environ.get("CI"))
+except ImportError:
+    if not (GFM / "cmarkgfm").is_dir():
+        subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "--disable-pip-version-check", "--only-binary", ":all:",
+                        "--target", str(GFM), "cmarkgfm==2025.10.22"], capture_output=True)
+    sys.path.append(str(GFM))
+    try:
+        import cmarkgfm
+    except ImportError:  # no pip or no network here: said, and a failure on CI
+        cmarkgfm = None
+        print("skip umlimator.py diff · the summary in GitHub's Markdown: pip install cmarkgfm==2025.10.22 to run it")
+        failed |= bool(os.environ.get("CI"))
 if cmarkgfm:
     gfm = lambda md: cmarkgfm.github_flavored_markdown_to_html(md, options=cmarkgfm.cmark.Options.CMARK_OPT_UNSAFE)
     linked = [(x, gfm(f"- {u.flat(x)}")) for x in HOSTILE]
