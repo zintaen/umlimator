@@ -456,7 +456,10 @@ function writeMermaidEr(model, viewId) {
     out.push(...(hint ? [`  %% id: ${hint}`] : []), `  ${names.get(e.from)[0]} ${left}${p.identifying === true ? '--' : '..'}${right} ${names.get(e.to)[0]} : "${label}"`);
   }
   for (const x of notWritten) out.push(`  %% not written: ${x}`);
-  return out.join('\n') + '\n';
+  // unindented when indented text would be over the reader's own limit; text still over it cannot be read again, and
+  // says so in its last line, as the class, state and sequence writers do (audit 26)
+  const text = out.join('\n') + '\n', t = text.length > ME_LIMIT ? text.replace(/^[ \t]+/gm, '') : text;
+  return t.length > ME_LIMIT ? t + `%% not written: text the reader reads back: this is ${t.length} characters, over its limit of ${ME_LIMIT}\n` : t;
 }
 
 export { readMermaidEr, writeMermaidEr };

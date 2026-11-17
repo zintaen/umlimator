@@ -758,6 +758,19 @@ with tempfile.TemporaryDirectory() as tmp:
         r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", str(ROOT / name), "--out", str(t / "flag.json"), "--moddle", have],
                            capture_output=True, text=True, env=none, cwd=tmp)
         ok("bpmn · --moddle names bpmn-moddle's folder, before UMLIMATOR_BPMN_MODDLE", r.returncode == 0 and (t / "flag.json").is_file(), r.stderr)
+        # audit 26: a relative folder, in --moddle or UMLIMATOR_BPMN_MODDLE, is read against the working folder; Node's
+        # createRequire refused it, said as bpmn-moddle not found
+        os_ = __import__("os")
+        rel = Path(have).name  # run in the folder above it
+        said = [subprocess.run([sys.executable, str(ROOT / "umlimator.py"), cmd, *src, "--out", str(t / f"rel{i}.{ext}"), *flag], capture_output=True, text=True, env=env,
+                               cwd=Path(have).resolve().parent)
+                for i, (cmd, src, ext, flag, env) in enumerate([
+                    ("import", [str(ROOT / name)], "json", ["--moddle", rel], none),
+                    ("import", [str(ROOT / name)], "json", [], dict(os_.environ, UMLIMATOR_BPMN_MODDLE=rel)),
+                    ("export", [str(ROOT / "examples" / "bookshop-order-to-shipment.json")], "bpmn", ["--moddle", rel], none)])]
+        ok("bpmn · a relative --moddle or UMLIMATOR_BPMN_MODDLE is the working folder's, for import and export (audit 26)",
+           [r.returncode for r in said] == [0, 0, 0] and all((t / f"rel{i}.{e}").is_file() for i, e in enumerate(["json", "json", "bpmn"])),
+           (rel, [r.stderr[-300:] for r in said]))
         odd = t / "odd" / "node_modules" / "bpmn-moddle"
         odd.mkdir(parents=True)
         (odd / "package.json").write_text('{"name": "bpmn-moddle", "version": "0.0.1", "main": "index.js"}', encoding="utf-8")
@@ -796,6 +809,23 @@ with tempfile.TemporaryDirectory() as tmp:
         ok("bpmn · export writes an expanded sub-process at its frame, expanded",
            re.search(rf'bpmnElement="ec-sub" isExpanded="true">\s*<dc:Bounds x="{num(f["x"])}" y="{num(f["y"])}" width="{num(f["w"])}" height="{num(f["h"])}"', xml) is not None,
            r.stdout + r.stderr + json.dumps(f))
+
+# audit 26: a report line quotes the source, and a hostile file's escape sequences (a window title, a cleared screen, an
+# OSC 8 link, colours, a C1 CSI) reached the terminal raw; each control character is written as \xNN, from the map
+# importer (Python) and from a typed reader (Node), and in the file's own name
+with tempfile.TemporaryDirectory() as tmp:
+    t = Path(tmp)
+    hostile = {"esc.mmd": "flowchart TD\n  A --> B\n  zzz \x1b]0;PWNED\x07 \x1b[31mRED\x1b[0m \x9b2J\n",
+               "esc2.mmd": "classDiagram\n  class A\n  \x1b[2J\x1b]8;;http://evil/\x1b\\click\x1b]8;;\x1b\\ junk!!\n",
+               "x\x1b[2Jy.mmd": "flowchart TD\n  A --> B\n  zzz ???\n"}
+    said = []
+    for f, text in hostile.items():
+        (t / f).write_text(text, encoding="utf-8")
+        r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", f, "--out", "o.json"], capture_output=True, text=True, cwd=t)
+        said.append(r.stderr)
+    bad = [x for x in said if re.search("[\x00-\x08\x0b-\x1f\x7f-\x9f]", x)]
+    ok("a hostile file's escape sequences reach stderr as \\xNN, never raw, from the map importer, a typed reader and the file's name (audit 26)",
+       not bad and "zzz \\x1b]0\n" in said[0] and "PWNED\\x07 \\x1b[31mRED" in said[0] and "\\x9b2J" in said[0] and "\\x1b]8;;http://evil/" in said[1] and "x\\x1b[2Jy.mmd:3:" in said[2], said)
 
 # notes/milestone-2.md §8.5 (M2.12): an erDiagram, a flowchart given --typed, a Structurizr JSON workspace and a .dbml file
 # are read by the module's readers in Node (tests/mermaid-er, mermaid-flowchart, structurizr and dbml.test.mjs pin their

@@ -36,7 +36,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8})
 
 
 def ok(name, cond, info=""):
@@ -1587,5 +1587,60 @@ if part("mcp"):
         mcp.stdin.close(); mcp.wait(timeout=30); err = mcp.stderr.read()
         ok("mcp · highlight: a line whose props.ends is a string, a list, a number or holds odd parts is lit, never an internal error (audit 22)",
            all("result" in r and not r["result"].get("isError") for r in lit) and "Traceback" not in err, (lit, err[-500:]))
+if part("audit 26"):
+    with tempfile.TemporaryDirectory() as tmp:
+        t = Path(tmp)
+        two = {"title": "m", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "edges": [{"id": "ab", "from": "a", "to": "b"}],
+               "views": [{"id": "v", "nodeIds": ["a", "b"]}]}
+        # audit 26: the engine made its avatar cache in the home folder on every render, and a home it cannot write (a CI
+        # runner's, a container's) ended render in a traceback; a home that is a file fails the same way as root too
+        (t / "home").write_text("not a folder"); (t / "icons").mkdir()
+        (t / "m.json").write_text(json.dumps(two))
+        (t / "who.json").write_text(json.dumps(two | {"authors": {"someone": {"name": "Some One"}}}))
+        env = dict(os.environ, HOME=str(t / "home"), UMLIMATOR_ICON_CACHE=str(t / "icons"))
+        got = [subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", f"{m}.json", "--out", f"{m}.html", "--no-check"], cwd=t, env=env,
+                              capture_output=True, text=True) for m in ("m", "who")]
+        ok("render · a home folder it cannot write: a model with no authors renders, and one with authors renders with their initials, said in one line (audit 26)",
+           [r.returncode for r in got] == [0, 0] and (t / "m.html").is_file() and (t / "who.html").is_file() and "Traceback" not in got[0].stderr + got[1].stderr
+           and got[0].stderr == "" and "the page draws their initials" in got[1].stderr and json.loads(got[1].stdout).get("bytes"), [(r.stdout[-300:], r.stderr[-600:]) for r in got])
+        # audit 26: a model whose path, with / as -, was longer than a file name holds got no page and no stills, and the PR
+        # comment named the runner's absolute path in the error
+        g = t / "g26"; deep = Path(*[f"architecture-components-folder-{i}" for i in range(8)]) / "payments-service-model.json"
+        (g / deep).parent.mkdir(parents=True)
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
+        (g / "keep.json").write_text(json.dumps(two)); sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "one")
+        (g / deep).write_text(json.dumps(two))
+        r = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                            "sys.argv = ['umlimator.py', 'diff', *sys.argv[2:]]; u.main()", str(ROOT), "--base", "HEAD", "--out", "out"], cwd=g, capture_output=True, text=True)
+        got = json.loads(r.stdout or "[]")
+        pages = list((g / "out").glob("*.html")) if (g / "out").is_dir() else []
+        md = (g / "out" / "summary.md").read_text(encoding="utf-8") if (g / "out" / "summary.md").is_file() else ""
+        ok("diff --base · a model whose path is longer than a file name gets a page under a cut, hashed name, and no error (audit 26)",
+           len(str(deep).encode()) > 255 and [x["file"] for x in got] == [deep.as_posix()] and "error" not in got[0] and len(pages) == 1
+           and len(pages[0].name.encode()) < 255 and pages[0].name.startswith("architecture-components-folder-0-") and "cannot be diffed" not in md
+           and str(g) not in md, (got, [p.name for p in pages], md[-400:], r.stderr[-400:]))
+        # audit 26: the MCP diff tool read a path that is no file (a FIFO, a device) on the one thread that answers: a FIFO
+        # blocked it, and no later call was answered
+        if hasattr(os, "mkfifo"):
+            os.mkfifo(t / "fifo.json")
+            mcp = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(t / "m.json"), "--port", "0"], stdin=subprocess.PIPE,
+                                   stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+            stop = threading.Timer(30, mcp.kill); stop.daemon = True; stop.start()  # a server that stops answering fails here, never hangs the run
+            def rpc(n, method, params):
+                try:
+                    mcp.stdin.write(json.dumps({"jsonrpc": "2.0", "id": n, "method": method, "params": params}) + "\n"); mcp.stdin.flush()
+                    return json.loads(mcp.stdout.readline() or "{}")
+                except OSError:  # killed: it stopped answering
+                    return {}
+            rpc(1, "initialize", {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "tests/cli.py", "version": "0"}})
+            said = [rpc(2 + i, "tools/call", {"name": "diff", "arguments": {"other_model_path": p}}) for i, p in enumerate(["fifo.json", "/dev/zero", str(t)])]
+            after = rpc(5, "tools/call", {"name": "list_views", "arguments": {}})
+            stop.cancel()
+            with contextlib.suppress(OSError):
+                mcp.stdin.close()
+            mcp.wait(timeout=30)
+            ok("mcp · diff of a FIFO, a device or a folder is a tool error saying it is not a file, and the next call is answered (audit 26)",
+               all(x.get("result", {}).get("isError") and x["result"]["content"][0]["text"].endswith(": not a file") for x in said)
+               and after.get("id") == 5 and not after.get("result", {}).get("isError"), (said, after))
 part.done()
 sys.exit(1 if failed else 0)

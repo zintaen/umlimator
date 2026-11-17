@@ -338,3 +338,20 @@ test('a blank %% id: is no hint: the entity, column or relationship takes its de
     assert.ok(report.some(r => r.status === 'skipped' && /^%% id: holds no id/.test(r.message)), text);
   }
 });
+
+test('an er view whose indented text is over the reader\'s limit is written unindented and reads back; text over it even so says so (audit 26)', () => {
+  const big = (n, name) => {
+    const m = { schemaVersion: 2, root: 'schema', nodes: [], edges: [], views: [{ id: 'schema', diagram: 'er', nodeIds: [] }] };
+    for (let i = 0; i < n; i++) {
+      const id = name(i);
+      m.nodes.push({ id, type: 'er.Entity', label: id, members: Array.from({ length: 15 }, (_, c) => ({ id: `${id}.column_${c}`, type: 'er.Column', label: `column_${c}`, props: { dataType: 'varchar' } })) });
+      m.views[0].nodeIds.push(id);
+    }
+    return m;
+  };
+  const m = big(3300, i => `table_number_${i}`), t = write(m), back = read(t);
+  assert.deepEqual([t.length <= 1 << 20, /over its limit/.test(t), back.model.nodes.length, back.report], [true, false, 3300, []]);
+  const t2 = write(big(4500, i => `table_number_${i}`));
+  assert.match(t2.slice(t2.lastIndexOf('%%')), /^%% not written: text the reader reads back: this is \d+ characters, over its limit of 1048576\n$/);
+  assert.match(write(big(3, i => `t${i}`)), /\nerDiagram\n  direction LR\n  t0 \{\n    varchar column_0\n/); // a small view keeps its indent
+});

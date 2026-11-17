@@ -208,7 +208,10 @@ def call(name, a):
     if name == "diff":
         given = Path(a["other_model_path"]).expanduser()
         tried = list(dict.fromkeys([given] if given.is_absolute() else [MODEL.parent / given, Path.cwd() / given]))
-        other = next((p for p in tried if p.is_file()), tried[0])
+        other = next((p for p in tried if p.is_file()), None)
+        if other is None:  # a FIFO, /dev/stdin or /dev/zero, read on the one thread that answers, blocked every call after it (audit 26)
+            said = "no such file" if not any(p.exists() for p in tried) else "not a file"
+            raise Fail(f"cannot read {a['other_model_path']} (looked for {' and '.join(map(str, tried))}): {said}")
         try:
             before = cli.read_json(other)
         except SystemExit as e:

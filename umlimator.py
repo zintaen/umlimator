@@ -36,6 +36,27 @@ THEME = HERE / "lib" / "umlimator-theme.css"   # its default palette and fonts (
 PAGE = HERE / "engine" / "assets" / "template.html"  # the page around it; visual.py fills in the model
 
 
+CONTROLS = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f]")  # C0 and C1 controls, but tab and newline
+
+
+class Terminal:
+    """stderr with each control character written as \\xNN: every line the CLI says there (an importer's or a reader's
+    report, which quote the source; a file name; a child's own error) may hold a hostile file's text, and its escape
+    sequences would clear the reader's screen, retitle the window, draw a disguised link or set the clipboard (audit 26)."""
+    def __init__(self, to):
+        self.to = to
+
+    def write(self, s):
+        self.to.write(CONTROLS.sub(lambda c: f"\\x{ord(c[0]):02x}", s))
+        return len(s)
+
+    def flush(self):
+        self.to.flush()
+
+    def __getattr__(self, name):  # fileno, isatty, encoding: the stream's own
+        return getattr(self.to, name)
+
+
 def visual_cmd(tmp, *args):
     """The command that runs visual.py (unmodified, super-board's) on the page with lib/umlimator-all.js inlined: one
     self-contained HTML file, as before. visual.py writes pages from its TEMPLATE path, so it runs with TEMPLATE
@@ -48,9 +69,25 @@ def visual_cmd(tmp, *args):
            "v, u = load('visual', sys.argv[1]), load('umlimator', sys.argv[2]); v.TEMPLATE = pathlib.Path(sys.argv[3])\n"
            "check = v.validate_map; v.validate_map = lambda d: u.not_objects(d) or check(u.upstream_view(d))\n"
            "v.write_page = lambda out, data: u.write_page(v, out, data)\n"
+           "e = v.embed_avatars; v.embed_avatars = lambda d: u.avatars(e, d)\n"
            "sys.argv = [sys.argv[1]] + sys.argv[4:]; v.main()")
     # -I: no folder of the caller's on sys.path, so a base64.py where it runs (a mapped repository, a pull request) never loads
     return [sys.executable, "-I", "-c", run, str(VISUAL), str(Path(__file__).resolve()), str(page), *args]
+
+
+def avatars(embed, d):
+    """upstream's embed_avatars (`embed`), which makes its cache folder in the home folder on every render: only for a model
+    with an author whose picture is not inlined yet, and a cache it cannot make (a read-only home on a CI runner or in a
+    container) leaves the authors' initials, said in one line; it ended the render in a traceback (audit 26)."""
+    who = d.get("authors")
+    if not isinstance(who, dict) or all(not isinstance(x, dict) or str(x.get("avatar", "")).startswith("data:") for x in who.values()):
+        return 0
+    try:
+        return embed(d)
+    except OSError as e:
+        print(f"cannot keep the authors' pictures in {Path.home() / '.cache' / 'visual' / 'avatars'} ({e.strerror or e}): the page draws their initials",
+              file=sys.stderr)
+        return 0
 
 
 def script_json(x):
@@ -601,7 +638,9 @@ def bpmn(fn, a, *args):
     adapter = HERE / "src" / "readers" / "bpmn-xml.js"
     if not adapter.is_file():
         sys.exit(f"{a.cmd}: BPMN's adapter is src/readers/bpmn-xml.js, which this copy of umlimator does not have: use a full clone of the repository")
-    folder = a.moddle or os.environ.get("UMLIMATOR_BPMN_MODDLE") or os.getcwd()
+    # read against the working folder, as every path the CLI is given: Node's createRequire refuses a relative one, and its
+    # error was said as bpmn-moddle not found (audit 26)
+    folder = os.path.abspath(a.moddle or os.environ.get("UMLIMATOR_BPMN_MODDLE") or os.getcwd())
     code = ("import { createRequire } from 'node:module'; import { pathToFileURL } from 'node:url'; import path from 'node:path';"
             f"let f, B; try {{ f = createRequire(path.join({json.dumps(folder)}, 'x')).resolve('bpmn-moddle'); }} catch {{ process.exit(3); }}"
             "try { B = (await import(pathToFileURL(f))).BpmnModdle; } catch {} if (typeof B !== 'function') process.exit(4);"
@@ -646,11 +685,13 @@ def render(a, model, show=print):
         out = r.stdout + r.stderr
         if r.returncode not in (0, 2) or not page.is_file():
             sys.exit(out.strip()[-2000:] or f"the engine failed (exit status {r.returncode})")
-    i = out.find("{")
+    i = r.stdout.find("{")  # the engine's report; what it says on stderr (a cache it cannot keep) is passed on, never read as it
     try:
-        rep = json.loads(out[i:]) if i >= 0 else {}
+        rep = json.loads(r.stdout[i:]) if i >= 0 else {}
     except json.JSONDecodeError:
         rep = {}
+    if r.stderr.strip():
+        print(r.stderr.strip(), file=sys.stderr)
     chk = rep.get("check", {})
     if chk.get("errors"):  # a check that timed out or never reported is not a clean check
         sys.exit(f"{a.out} is written, but its check did not complete: " + "; ".join(chk["errors"]))
@@ -823,6 +864,9 @@ def diff_since(a):
         # a model in a dot folder (.github/maps/x.json): a page and stills folder named .github-maps-x would be hidden,
         # and the Action's artifact leaves hidden names out (audit 25); its dot written as still_names writes one
         stem = "%2E" + stem[1:] if stem.startswith(".") else stem
+        # a deep path: a file name holds 255 bytes, so a long stem is cut and hashed as still_names cuts a view id (audit 26)
+        if len(stem.encode()) > 200:
+            stem = stem.encode()[:180].decode(errors="ignore") + "-" + hashlib.sha256(name.encode()).hexdigest()[:8]
         # a/b-c.json and a-b/c.json; and docs/Map.json and Docs-map.json, one file on a disk that ignores case (macOS,
         # Windows), as still_names does for view ids (audit 21)
         if stem.casefold() in stems:
@@ -1492,6 +1536,8 @@ def cmd_mcp(a):
 
 
 def main():
+    if not isinstance(sys.stderr, Terminal):
+        sys.stderr = Terminal(sys.stderr)
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("render"); r.add_argument("model"); r.add_argument("--out", required=True)
