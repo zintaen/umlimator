@@ -500,3 +500,17 @@ test('audit 28: an element of no type, drawn as a component holding its port, ma
   const cs = { ...m, views: [{ id: 'v', diagram: 'uml.composite-structure', nodeIds: ['u'] }] };
   assert.ok(validate(cs).some(p => p.message === 'port-owner: port pt ("api") is a member of element u ("Billing"); a port is a member of a component or a class'));
 });
+
+test('audit 29: an element of no type, drawn as a component holding its ports, is one to the rules and to connect(): an assembly from its port is no error', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', label: 'A', members: [{ id: 'a.p', type: 'uml.Port', label: 'p' }] },
+    { id: 'b', type: 'uml.Component', label: 'B', members: [{ id: 'b.q', type: 'uml.Port', label: 'q' }] }, { id: 'i', type: 'uml.Interface', label: 'I' }],
+    edges: [{ id: 'c1', type: 'uml.Connector', from: 'a.p', to: 'b.q' }, { id: 'r1', type: 'uml.InterfaceRealization', from: 'a', to: 'i' }], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['a', 'b', 'i'] }] };
+  assert.deepEqual(validate(m).filter(p => p.level === 'error'), []);
+  const T = diagramOf(m.views[0]), r = T.edits.connect({ ...m, edges: [] }, m.views[0], 'a.p', 'b.q', {}, { type: 'uml.Connector' });
+  assert.ok(Array.isArray(r) && r[0].element.props.kind === 'assembly', JSON.stringify(r));
+  assert.equal(layout(m, 'v').nodes.find(n => n.id === 'a').aria, 'Element A, 1 port');
+  assert.deepEqual(T.rows(m, m.views[0], 'a'), ['p'], 'its ports, as a component\'s');
+  // type "" is no type: drawn as a component too (audit 29)
+  const e = structuredClone(m); e.nodes[0].type = '';
+  assert.equal(layout(e, 'v').nodes.find(n => n.id === 'a').shape, 'component');
+});

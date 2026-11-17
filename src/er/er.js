@@ -5,7 +5,7 @@ import { ENDS, brLines } from '../typed/draw.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
 import { multBounds } from '../uml/class.js'; // SHAPE.note too, a comment's look
 import { snKindName } from '../uml/structure.js';
-import { usedIds } from '../core/model.js';
+import { usedIds, jsonText } from '../core/model.js';
 
 /* ---------- the entity-relationship diagram, er (work package M2.2, notes/milestone-2.md §4, §7.1) ----------
    Entities (tables) with their columns as rows, the key columns first under a divider; relationships from the referenced
@@ -238,9 +238,9 @@ function erProblems(model) {
     if (!erCols(n).some(c => erProps(c).primaryKey === true)) say('warning', 'pk-exists', `nodes[${i}]`, [n.id], `${q(n.id)} has no primary key column`);
     ER_ARR(n.members).forEach((c, j) => { if (!ER_OBJ(c) || c.type !== 'er.Column') return;
       const path = `nodes[${i}].members[${j}]`, p = erProps(c), me = qc({ e: n, c }), was = seen.get(erName(c));
-      if (was) say('error', 'column-names', path, [n.id, was, c.id], `${q(n.id)} has two columns named ${JSON.stringify(erName(c))} (${was}, ${c.id})`); else seen.set(erName(c), c.id);
+      if (was) say('error', 'column-names', path, [n.id, was, c.id], `${q(n.id)} has two columns named ${jsonText(erName(c))} (${was}, ${c.id})`); else seen.set(erName(c), c.id);
       if (ER_HAS(p.references)) { const r = I.col.get(p.references);
-        if (!r) say('error', 'fk-target', `${path}.props.references`, [c.id], `${me} references ${JSON.stringify(String(p.references))}, which is no column of an entity`);
+        if (!r) say('error', 'fk-target', `${path}.props.references`, [c.id], `${me} references ${jsonText(String(p.references))}, which is no column of an entity`);
         else if (erProps(r.c).primaryKey !== true && erProps(r.c).unique !== true) say('warning', 'fk-target', `${path}.props.references`, [c.id, r.c.id], `${me} references ${qc(r)}, which is neither a key nor unique`); }
       if (ER_HAS(p.references) && p.foreignKey !== true) say('warning', 'fk-flag', path, [c.id], `${me} references a column but is not marked FK`);
       if (p.foreignKey === true && !ER_HAS(p.references)) say('warning', 'fk-flag', path, [c.id], `${me} is a foreign key that references no column`); }); });
@@ -248,8 +248,8 @@ function erProblems(model) {
   typedLines(model, v => v.diagram === 'er').forEach(([e, path]) => { if (!ER_OBJ(e) || e.type !== 'er.Relationship') return;
     const A = e.from, B = e.to, ent = id => erTable(I.at.get(id));
     ['from', 'to'].forEach(w => { const t = erMult(e, w), b = erBounds(t);
-      if (!b) say('error', 'relationship-ends', `${path}.props.ends.${w}.multiplicity`, [e.id], `the ${w} end of ${e.id} has ${ER_HAS(t) ? `multiplicity ${JSON.stringify(String(t))}, which is not readable` : 'no multiplicity'}`);
-      else if (!erForm(b)) say('warning', 'relationship-ends', `${path}.props.ends.${w}.multiplicity`, [e.id], `the ${w} end of ${e.id} has multiplicity ${JSON.stringify(String(t))}, none of 1, 0..1, 1..* and 0..*: drawn as the nearest, with its text`); });
+      if (!b) say('error', 'relationship-ends', `${path}.props.ends.${w}.multiplicity`, [e.id], `the ${w} end of ${e.id} has ${ER_HAS(t) ? `multiplicity ${jsonText(String(t))}, which is not readable` : 'no multiplicity'}`);
+      else if (!erForm(b)) say('warning', 'relationship-ends', `${path}.props.ends.${w}.multiplicity`, [e.id], `the ${w} end of ${e.id} has multiplicity ${jsonText(String(t))}, none of 1, 0..1, 1..* and 0..*: drawn as the nearest, with its text`); });
     if (!ent(A) || !ent(B)) { const not = [A, B].filter(id => I.at.has(id) && !ent(id)); // a missing end is the core's to say
       if (not.length) say('error', 'relationship-tables', path, [e.id, ...not], `${e.id} joins ${erAnd(not.map(q))}, which ${not.length === 1 ? 'is not a table' : 'are not tables'}`);
       return; }
@@ -257,20 +257,20 @@ function erProblems(model) {
     if (!fks.length) say('warning', 'relationship-fk', path, [e.id, A, B], `${e.id} runs from ${q(A)} to ${q(B)}, and no column of ${q(B)} references a column of ${q(A)}`);
     if (!erIdentifying(e)) return;
     const b = erBounds(erMult(e, 'from'));
-    if (b && (b.lower !== 1 || b.upper !== 1)) say('error', 'identifying-parent', `${path}.props.ends.from.multiplicity`, [e.id, A], `${e.id} is identifying, so its parent end at ${q(A)} is 1, not ${JSON.stringify(String(erMult(e, 'from')))}`);
+    if (b && (b.lower !== 1 || b.upper !== 1)) say('error', 'identifying-parent', `${path}.props.ends.from.multiplicity`, [e.id, A], `${e.id} is identifying, so its parent end at ${q(A)} is 1, not ${jsonText(String(erMult(e, 'from')))}`);
     // a column out of the key may be another relationship's of the pair, a non-identifying one: then one in the key will do.
     // ponytail: the model does not say which columns are which relationship's; a relationship naming its columns would
     const out2 = fks.filter(c => erProps(c).primaryKey !== true), shared = R.some(x => x !== e && x.from === A && x.to === B && !erIdentifying(x));
     if (out2.length && (!shared || out2.length === fks.length)) say('error', 'identifying-key', path, [e.id, B, ...out2.map(c => c.id)], `${e.id} is identifying, but ${erAnd(out2.map(erName))} of ${q(B)} ${out2.length === 1 ? 'is' : 'are'} not in its primary key`); });
   ER_ARR(model && model.views).forEach((v, i) => { if (ER_OBJ(v) && v.diagram === 'er' && v.notation != null && v.notation !== 'crowsfoot' && v.notation !== 'idef1x')
-    say('warning', 'notation', `views[${i}].notation`, [v.id], `${JSON.stringify(String(v.id))} has notation ${JSON.stringify(String(v.notation))}, drawn as crowsfoot: write crowsfoot or idef1x`); });
+    say('warning', 'notation', `views[${i}].notation`, [v.id], `${jsonText(String(v.id))} has notation ${jsonText(String(v.notation))}, drawn as crowsfoot: write crowsfoot or idef1x`); });
   return out;
 }
 
 /* ---- describe(): the view in sentences, each element by its accessible name and an entity's rows, in reading order, then
    each line ---- */
 function erDescribe(model, viewId) {
-  const v = ER_ARR(model && model.views).find(x => ER_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const v = ER_ARR(model && model.views).find(x => ER_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const { I, ids } = erShown(model, v), lines = erLines(v, I, ids), say = n => erFull(n, I);
   return [`${v.title || v.id}: an entity-relationship diagram of ${erPlural(ids.length, 'element')} and ${erPlural(lines.length, 'line')}.`,
     ...ids.map(id => say(I.at.get(id)) + '.'), ...lines.map(e => erLineName(e, I) + '.')].join('\n');

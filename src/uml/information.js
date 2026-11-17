@@ -6,7 +6,7 @@ import { layoutTyped, typedLines } from '../typed/layout.js';
 import { LINE_SAYS, legendItem } from './class.js'; // SHAPE.classifier and SHAPE.note too
 import { snKindName } from './structure.js'; // SHAPE.component too
 import './usecase.js'; // SHAPE.actor
-import { usedIds } from '../core/model.js';
+import { usedIds, jsonText } from '../core/model.js';
 
 /* ---------- the information flow diagram, uml.information-flow (work package M2.5, notes/milestone-2.md §7.4) ----------
    Classes and interfaces (the class type's classifier, name only), components (src/uml/structure.js's look) and actors (the
@@ -30,9 +30,8 @@ const IF_CONVEY = ['uml.InformationItem', 'uml.Class', 'uml.Interface', 'uml.Com
 const IF_LINES = ['uml.InformationFlow', 'uml.CommentLink'];
 const IF_WORD = { 'uml.Class': 'Class', 'uml.Interface': 'Interface', 'uml.Component': 'Component', 'uml.Actor': 'Actor', 'uml.InformationItem': 'Information item', 'uml.Comment': 'Comment',
   'uml.Signal': 'Signal' };
-const ifWord = t => (Object.hasOwn(IF_WORD, t) ? IF_WORD[t] : String(t ?? 'untyped').split('.').pop());
 // an accessible name's kind: another kind in words, "Data type Money", as the class view and the PDF say it (audit 23)
-const ifKindName = t => (Object.hasOwn(IF_WORD, t) ? ifWord(t) : snKindName(t)); // no type: "Element" (audit 27)
+const ifKindName = t => (Object.hasOwn(IF_WORD, t) ? IF_WORD[t] : snKindName(t)); // no type: "Element" (audit 27)
 // the keyword over a classifier's name: an interface's, a signal's, and any other kind a view shows its own («useCase»), so none passes for a class
 const IF_KEY = { 'uml.Class': null, 'uml.InformationItem': null, 'uml.PrimitiveType': 'primitive' };
 const ifKey = t => (Object.hasOwn(IF_KEY, t) ? IF_KEY[t] : String(t ?? '').split('.').pop().replace(/^./, c => c.toLowerCase()) || null);
@@ -120,13 +119,14 @@ const IF_RULES = {
 };
 function ifProblems(model) {
   const out = [], I = ifIndex(model), say = (rule, path, ids, msg) => out.push({ level: 'error', rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
-  const q = id => JSON.stringify(I.nm(id)), kind = id => (I.at.has(id) ? (String(I.at.get(id).type ?? '').includes('.') ? ifKindName : ifWord)(I.at.get(id).type).toLowerCase() : 'nothing'); // "an actor", "a data type", "a use case" (audit 24)
+  const q = id => JSON.stringify(I.nm(id)), kind = id => { if (!I.at.has(id)) return 'nothing'; const t = I.at.get(id).type; // "an actor", "a data type", "a use case" (audit 24); no type "an element", as named (audit 29)
+    return (typeof t === 'string' && t !== '' && !t.includes('.') && !Object.hasOwn(IF_WORD, t) ? t : ifKindName(t)).toLowerCase(); };
   const a = w => (/^(?!us|uni)[aeiou]/i.test(w) ? 'an ' : 'a ') + w;
   typedLines(model, v => v.diagram === 'uml.information-flow').forEach(([e, path]) => { if (!IF_OBJ(e) || e.type !== 'uml.InformationFlow') return; const c = I.conveyed(e);
     if (!c.length) say('conveyed-some', path, [e.id], `${e.id} conveys nothing: a flow conveys one element at least`);
     c.forEach((id, j) => { if (c.indexOf(id) < j) say('conveyed-once', `${path}.props.conveyed[${j}]`, [e.id, typeof id === 'string' ? id : null], `${e.id} conveys ${q(id)} twice: a flow conveys each element once`);
       else if (!I.at.has(id) || !IF_CONVEY.includes(I.at.get(id).type))
-      say('conveyed-kind', `${path}.props.conveyed[${j}]`, [e.id, typeof id === 'string' ? id : null], I.at.has(id) ? `${e.id} conveys ${q(id)}, ${a(kind(id))}: it conveys information items, classes, interfaces, components and signals` : `${e.id} conveys ${JSON.stringify(id)}, which the model does not hold`); });
+      say('conveyed-kind', `${path}.props.conveyed[${j}]`, [e.id, typeof id === 'string' ? id : null], I.at.has(id) ? `${e.id} conveys ${q(id)}, ${a(kind(id))}: it conveys information items, classes, interfaces, components and signals` : `${e.id} conveys ${jsonText(id)}, which the model does not hold`); });
     if (!IF_ENDS.includes((I.at.get(e.from) || {}).type) || !IF_ENDS.includes((I.at.get(e.to) || {}).type))
       say('flow-ends', path, [e.id, e.from, e.to], `${e.id} runs from ${q(e.from)} (${kind(e.from)}) to ${q(e.to)} (${kind(e.to)}): a flow joins two classes, interfaces, components or actors`); });
   return out;
@@ -134,7 +134,7 @@ function ifProblems(model) {
 
 /* ---- describe(): the view in sentences, each element by its accessible name in the view's order, then each line ---- */
 function ifDescribe(model, viewId) {
-  const v = IF_ARR(model && model.views).find(x => IF_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const v = IF_ARR(model && model.views).find(x => IF_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const I = ifIndex(model), ids = ifShown(I, v), lines = ifLines(I, v, new Set(ids));
   return [`${v.title || v.id}: an information flow diagram of ${ifPlural(ids.length, 'element')} and ${ifPlural(lines.length, 'line')}.`,
     ...ids.map(id => ifNodeName(I, I.at.get(id)) + '.'), ...lines.map(e => ifLineName(I, e) + '.')].join('\n');
@@ -219,7 +219,7 @@ const IF_TYPE = registerDiagramType('uml.information-flow', {
   describe: ifDescribe,
   edits: { connect: ifConnect, rename: ifRename, remove: ifRemove },
   // the PDF (§9): an element's kind; an information item's rows, and any conveyed element's, the flows that convey it; a flow's text, what it conveys
-  word: (model, id) => { const x = ifIndex(model).at.get(id); return x && (Object.hasOwn(IF_WORD, x.type) || x.type == null) ? ifKindName(x.type) : null; }, // no type: "Element", as its name says (audit 28)
+  word: (model, id) => { const x = ifIndex(model).at.get(id); return x && (Object.hasOwn(IF_WORD, x.type) || !x.type) ? ifKindName(x.type) : null; }, // no type (or ""): "Element", as its name says (audits 28, 29)
   rows: (model, view, id) => { const I = ifIndex(model), x = I.at.get(id); return x && (x.type === 'uml.InformationItem' || I.flowsOf(id).length) ? I.flowsOf(id).map(e => `${I.nm(e.from)} → ${I.nm(e.to)}`) : null; },
   text: (model, view, id) => { const I = ifIndex(model), e = I.E.find(x => x.id === id); return e && e.type === 'uml.InformationFlow' ? ifSays(I, e) : null; },
 });

@@ -47,7 +47,7 @@ test('the definition: uml.use-case is registered with its palette, its five line
   assert.deepEqual(T.refs, { 'uml.Extend': { 'props.extensionPoints': 'drop empties' } });
   assert.deepEqual(['uml.UseCase', 'uml.Actor', 'uml.Subject'].map(t => T.member.holds({ type: t })), [true, false, false]);
   assert.deepEqual(['Generalization', 'Extend', 'Include', 'Association'].map(t => T.rankFlip({ type: 'uml.' + t })), [true, true, false, false], 'the parent and the base first');
-  assert.deepEqual(Object.keys(T.rules).sort(), ['association-ends', 'extend-ends', 'extend-points', 'generalization-kinds', 'include-cycle', 'include-ends', 'named', 'point-names', 'use-case-owner']);
+  assert.deepEqual(Object.keys(T.rules).sort(), ['association-ends', 'extend-ends', 'extend-points', 'generalization-cycle', 'generalization-kinds', 'include-cycle', 'include-ends', 'named', 'point-names', 'use-case-owner']);
 });
 
 test('the shapes: an ellipse holds its text block at its corners; its inset puts a slid point on it; the actor\'s narrows to the figure\'s column', () => {
@@ -428,4 +428,15 @@ test('audit 24: Shift + Delete on an extension point of a use case the view hold
   const m = { schemaVersion: 2, nodes: [{ id: 'rv', type: 'uml.UseCase', label: 'Redeem a voucher' }], edges: [{ id: 'x', type: 'uml.Extend', from: 'rv', to: 'co', props: { extensionPoints: ['co.pay'] } }],
     views: [{ id: 'v', diagram: 'uml.use-case', nodeIds: ['rv', 'co'], nodes: [U] }] };
   assert.equal(diagramOf(m.views[0]).edits.remove(m, m.views[0], ['co.pay'], true).say, 'Deleted extension point "payment" and the extend from "Redeem a voucher", which named no other extension point');
+});
+
+test('audit 29: generalization-cycle: an actor or a use case that is its own ancestor is an error, said as the class view says it', () => {
+  const N = (id, type) => ({ id, type, label: id }), G = (id, from, to) => ({ id, type: 'uml.Generalization', from, to });
+  const m = { schemaVersion: 2, nodes: [N('a1', 'uml.Actor'), N('a2', 'uml.Actor'), N('a3', 'uml.Actor'), N('u1', 'uml.UseCase'), N('u2', 'uml.UseCase')],
+    edges: [G('g1', 'a1', 'a2'), G('g2', 'a2', 'a3'), G('g3', 'a3', 'a1'), G('g4', 'u1', 'u2'), G('g5', 'u2', 'u1')], views: [{ id: 'v', diagram: 'uml.use-case', nodeIds: ['a1', 'a2', 'a3', 'u1', 'u2'] }] };
+  assert.deepEqual(validate(m).map(p => [p.level, p.path, p.message]), [
+    ['error', 'edges[2]', 'generalization-cycle: "a1" → "a2" → "a3" → "a1" is its own ancestor (g3)'],
+    ['error', 'edges[4]', 'generalization-cycle: "u1" → "u2" → "u1" is its own ancestor (g5)']]);
+  // a chain with no cycle, and the bookshop's own generalizations, raise nothing
+  m.edges.splice(2, 1); m.edges.pop(); assert.deepEqual(validate(m), []);
 });

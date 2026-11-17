@@ -2,7 +2,7 @@ import { registerDiagramType } from '../core/registry.js';
 import { CLASS_DEF, RULES, classProblems, drawnLines, lineLabel, lineName, lineRename, parseMember, printMember, typeGeo } from '../uml/class.js';
 import { OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder } from '../uml/owners.js';
 import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_TABLE } from './sysml.js';
-import { usedIds } from '../core/model.js';
+import { usedIds, jsonText } from '../core/model.js';
 
 /* ---------- the block definition diagram, sysml.block-definition (work package M3.3, notes/milestone-3.md §7) ----------
    Blocks, interface blocks, constraint blocks and value types drawn by the classifier with «block», «interfaceBlock»,
@@ -104,7 +104,7 @@ function bdProblems(model, view) {
   const aIs = ts => { const w = is(ts); return `${/^[aeiou]/i.test(w) ? 'an' : 'a'} ${w}`; }; // "an enumeration", "a block"
   nodes.forEach((n, i) => { if (!BD_OBJ(n)) return; const seen = new Map();
     BD_ARR(n.members).forEach((m, j) => { if (!BD_OBJ(m)) return;
-      const path = `nodes[${i}].members[${j}]`, p = BD_PROPS(m), T = named(p.valueType), of = `${q(n)}.${String(m.label ?? m.id)}`, ids = [n.id, m.id], typed = `typed by ${JSON.stringify(String(p.valueType))}`;
+      const path = `nodes[${i}].members[${j}]`, p = BD_PROPS(m), T = named(p.valueType), of = `${q(n)}.${String(m.label ?? m.id)}`, ids = [n.id, m.id], typed = `typed by ${jsonText(String(p.valueType))}`;
       // member-names on a SysML classifier, as classProblems judges a uml one's (it walks uml.* nodes only): an operation by its parameters' types too
       const k = m.type === 'uml.Operation' ? `${m.label}(${BD_ARR(p.parameters).map(a => (BD_OBJ(a) ? a.valueType ?? '' : '')).join(',')})` : `${m.label}`;
       if (BD_CLS.includes(n.type) && BD_HAS(m.label)) { if (seen.has(k)) say('member-names', path, [n.id, seen.get(k), m.id], `${q(n)} has two members named "${m.label}" (${seen.get(k)}, ${m.id})`); else seen.set(k, m.id); }
@@ -112,9 +112,9 @@ function bdProblems(model, view) {
       if (m.type === 'sysml.ValueProperty' && T && !T.includes('sysml.ValueType') && !BD_PRIM.includes(String(p.valueType))) say('value-type', path, ids, `value ${of} is ${typed}, ${aIs(T)}, not a value type`, 'warning');
       // a type name that names nothing (its constraint block deleted, as a part's block may be): a warning (audit 18)
       if (m.type === 'sysml.ConstraintProperty' && !(T && T.includes('sysml.ConstraintBlock'))) say('constraint-type', path, ids, `constraint property ${of} is ${BD_HAS(p.valueType) ? `${typed}, ${T ? aIs(T) : 'which names nothing'}` : 'typed by nothing'}, not a constraint block`, BD_HAS(p.valueType) && !T ? 'warning' : 'error');
-      if (m.type === 'sysml.FlowProperty' && !['in', 'out', 'inout'].includes(p.direction)) say('flow-direction', path, ids, (p.direction == null ? `flow property ${of} has no direction: give it in, out or inout` : `flow property ${of} has direction ${JSON.stringify(p.direction)}, not in, out or inout`));
+      if (m.type === 'sysml.FlowProperty' && !['in', 'out', 'inout'].includes(p.direction)) say('flow-direction', path, ids, (p.direction == null ? `flow property ${of} has no direction: give it in, out or inout` : `flow property ${of} has direction ${jsonText(p.direction)}, not in, out or inout`));
       if (m.type === 'sysml.Port') { const ib = T && T.includes('sysml.InterfaceBlock');
-        if (BD_HAS(p.kind) && !Object.hasOwn(BD_KIND, p.kind)) say('port-kind', path, ids, `port ${of} has kind ${JSON.stringify(p.kind)}, not proxy or full`);
+        if (BD_HAS(p.kind) && !Object.hasOwn(BD_KIND, p.kind)) say('port-kind', path, ids, `port ${of} has kind ${jsonText(p.kind)}, not proxy or full`);
         else if (p.kind === 'proxy' && !ib) say('port-kind', path, ids, `proxy port ${of} is ${BD_HAS(p.valueType) ? typed + ', not an interface block' : 'typed by nothing: a proxy port is typed by an interface block'}`);
         else if (p.kind === 'full' && ib) say('port-kind', path, ids, `full port ${of} is ${typed}, an interface block`); }
       if ((String(m.type).startsWith('sysml.') || BD_CLS.includes(n.type)) && !bdHolds(n.type, m)) say('member-kinds', path, ids, `${BD_WORD(n.type).toLowerCase()} ${q(n)} holds ${bdMWord(m)} ${q(m)}, which it may not`); }); });
@@ -130,7 +130,7 @@ function bdProblems(model, view) {
     [['from', 'to'], ['to', 'from']].forEach(([w, f]) => { const whole = at.get(e[w]), far = at.get(e[f]), role = end(f).role;
       if (end(w).aggregation !== 'composite' || !whole || !BD_CLS.includes(whole.type)) return;
       const part = BD_HAS(role) ? BD_ARR(whole.members).find(m => BD_OBJ(m) && (m.type === 'sysml.PartProperty' || m.type === 'sysml.ConstraintProperty') && m.label === role) : null;
-      if (!part) return say('part-unlisted', `${path}.props.ends.${f}`, [e.id, whole.id], `${e.id}'s part end ${BD_HAS(role) ? `${JSON.stringify(role)} names no part of ${q(whole)}` : `has no role: it names no part of ${q(whole)}`}, so no internal block view of it shows the part`, 'warning');
+      if (!part) return say('part-unlisted', `${path}.props.ends.${f}`, [e.id, whole.id], `${e.id}'s part end ${BD_HAS(role) ? `${jsonText(role)} names no part of ${q(whole)}` : `has no role: it names no part of ${q(whole)}`}, so no internal block view of it shows the part`, 'warning');
       const pp = BD_PROPS(part), ty = far ? String(far.label ?? far.id) : null, pm = String(pp.multiplicity ?? '1'), em = String(end(f).multiplicity ?? '1');
       if ((ty != null && pp.valueType !== ty) || pm !== em) say('part-agrees', `${path}.props.ends.${f}`, [e.id, part.id],
         `${e.id}'s part end (${ty ?? '?'} [${em}]) and part ${q(whole)}.${role} (${pp.valueType ?? '?'} [${pm}]) differ`, 'warning'); }); });
@@ -144,7 +144,7 @@ function bdSaid(model, pic, id) {
   return x.type === 'uml.Comment' ? 'Comment: ' + String(x.label ?? x.id) : BD_CLS.includes(x.type) ? bdName(x, nm) : `${BD_WORD(x.type || 'uml.Class')} ${nm}${x.type === 'uml.Package' ? ' (closed)' : ''}`;
 }
 function bdDescribe(model, viewId) {
-  const view = BD_ARR(model && model.views).find(x => BD_OBJ(x) && x.id === viewId); if (!view) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const view = BD_ARR(model && model.views).find(x => BD_OBJ(x) && x.id === viewId); if (!view) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const { v, pic, frame } = bdPic(model, view), { at, lines: all } = drawnLines(model, v, null), lines = all.filter(({ from, to }) => !holdsLine(pic, from, to)), ids = readingOrder(pic);
   const pl = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
   return [`${view.title || view.id}: a block definition diagram of ${pl(ids.length, 'element')} and ${pl(lines.length, 'line')}.`, frame.aria + '.',

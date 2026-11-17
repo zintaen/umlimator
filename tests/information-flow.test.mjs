@@ -156,7 +156,7 @@ test('the PDF (§9, S17): each element\'s kind; an item\'s rows, the flows that 
   const cv = structuredClone(IF); flow(cv, 'api-email').props.conveyed.push('warehouse');
   assert.deepEqual(T.rows(cv, v, 'warehouse'), ['Shop API → Email service'], 'a conveyed component: the flows that convey it');
   assert.equal(T.text(IF, v, 'api-email'), 'Order, Receipt');
-  const ctx = mapContext(IF), [els, lines] = tablesOf(ctx, ctx.V[V], { nodes: [], edges: layout(IF, V).edges }), cells = r => [...r.matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1]);
+  const ctx = mapContext(IF), [els, lines] = tablesOf(ctx, ctx.V[V], layout(IF, V)), cells = r => [...r.matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1]);
   assert.deepEqual(lines.rows.map(r => cells(r)[1]), ['Order, Card details', 'Card details', 'Order', 'Order', 'Stock level', 'Stock level', 'Order, Receipt', 'Receipt']);
   assert.deepEqual(lines.rows.map(r => cells(r)[2]), Array(8).fill('Information flow'));
   assert.ok(els.rows.some(r => cells(r)[1] === 'Information item' && cells(r)[2] === '<p>Shopper → Storefront</p><p>Storefront → Payment provider</p>'), 'the item\'s rows');
@@ -456,7 +456,17 @@ test('audit 28: a listed line of another kind, drawn plain, is keyed "Line" with
   assert.deepEqual(g.legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Information flow', 'Line']);
   assert.match(g.legend[1], /<path d="M2 8H26"\/>/, 'a plain swatch, as the line is drawn');
   assert.equal(layout({ ...m, views: [{ ...m.views[0], edges: ['f'] }] }, 'v').legend.length, 1, 'no other kind: no Line key');
-  const ctx = mapContext(m), [els] = tablesOf(ctx, ctx.V.v, { nodes: [], edges: g.edges }), row = els.rows.map(r => [...r.matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1])).find(c => c[0] === '<b>Untyped</b>');
+  const ctx = mapContext(m), [els] = tablesOf(ctx, ctx.V.v, g), row = els.rows.map(r => [...r.matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1])).find(c => c[0] === '<b>Untyped</b>');
   assert.equal(row[1], 'Element');
   assert.match(g.nodes.find(n => n.id === 'u').aria, /^Element Untyped/);
+});
+
+test('audit 29: the rules call an element with no type "an element", as its accessible name and the PDF do, never "an untyped"', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', label: 'Shop' }, N('b', 'Actor', 'Shopper'), N('i', 'InformationItem', 'Order')], edges: [F('f', 'b', 'a', ['a'])],
+    views: [{ id: 'v', diagram: 'uml.information-flow', nodeIds: ['a', 'b', 'i'] }] };
+  assert.equal(layout(m, 'v').byId.a.aria, 'Element Shop, conveyed by 1 flow');
+  const said = validate(m).filter(p => p.rule).map(p => p.message);
+  assert.ok(said.includes('conveyed-kind: f conveys "Shop", an element: it conveys information items, classes, interfaces, components and signals'), said.join('\n'));
+  assert.ok(said.includes('flow-ends: f runs from "Shopper" (actor) to "Shop" (element): a flow joins two classes, interfaces, components or actors'), said.join('\n'));
+  assert.ok(!said.some(s => /untyped/.test(s)), said.join('\n'));
 });

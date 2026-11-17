@@ -9,7 +9,7 @@ import './class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from './flow.js'; // SHAPE.initial, final, diamond and bar too
 import { ownersOn, readingOrder } from './owners.js';
 import { parseTransition, printTransition, transitionText } from './transition.js';
-import { usedIds } from '../core/model.js';
+import { usedIds, jsonText } from '../core/model.js';
 import { snKindName } from './structure.js';
 
 /* ---------- the state machine diagram, uml.state-machine (work package 4.6, notes/stage-4.md §6, §10) ----------
@@ -300,7 +300,7 @@ function stProblems(model, view) {
         if (printTransition(ST_PROPS(m)) == null) say('warning', 'label-syntax', `${mp}.props`, [m.id], `internal transition ${m.id}'s parts do not read back as "${transitionText(ST_PROPS(m))}"`); }); }
     if (x.type !== 'uml.Pseudostate') return;
     const k = stKind(x), where = x.parent ?? null;
-    if (!k) say('warning', 'pseudo-kind', `${path}.props.kind`, [id], `${q(id)}'s kind is ${JSON.stringify(ST_PROPS(x).kind ?? null)}, not one of ${ST_KINDS.join(', ')}; drawn as a junction`);
+    if (!k) say('warning', 'pseudo-kind', `${path}.props.kind`, [id], `${q(id)}'s kind is ${jsonText(ST_PROPS(x).kind ?? null)}, not one of ${ST_KINDS.join(', ')}; drawn as a junction`);
     const guarded = es => es.filter(([e]) => has(e, 'trigger') || has(e, 'guard'));
     if (k === 'initial') { add(inits, where, id);
       if (i.length) say('error', 'initial-out', path, ids(i), `${q(id)} has ${stPlural(i.length, 'incoming transition')} (${list(i)}); it may have none`);
@@ -342,7 +342,7 @@ function stProblems(model, view) {
 /* ---- describe(): the view in sentences, starting at the top initial pseudostate, each element in reading order by its
    accessible name, then each transition ---- */
 function stDescribe(model, viewId) {
-  const v = ST_ARR(model && model.views).find(x => ST_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const v = ST_ARR(model && model.views).find(x => ST_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const pic = stPic(model, v), lines = stLines(model, v, pic), by = new Map(lines.map(e => [e.id, e])), box = new Map(pic.boxes.map(b => [b.id, b]));
   return [`${v.title || v.id}: a state machine diagram of ${stPlural(pic.ids.length, 'element')} and ${stPlural(lines.filter(e => e.type === 'uml.Transition').length, 'transition')}.`,
     ...stOrder(pic, lines).map(id => (by.has(id) ? stLineName(by.get(id), pic) : box.has(id) ? box.get(id).aria : stNodeName(pic.at.get(id), pic, pic.I, false)) + '.')].join('\n');
@@ -509,7 +509,7 @@ const ST_TYPE = registerDiagramType('uml.state-machine', {
   // panel prints them (each internal transition's `trigger [guard] / effect`, each region); null: its members as before
   word: (model, id) => { const I = stIndex(model), x = (I.N.get(id) || {}).x; if (!x) return null;
     return x.type === 'uml.Pseudostate' ? ST_OWN(ST_KIND_WORD, stKind(x)) || 'Pseudostate' : x.type === 'uml.FinalState' ? 'Final state'
-      : x.type === 'uml.State' ? (I.subs(id).length || stMembers(x, 'uml.Region').length ? 'Composite state' : 'State') : x.type == null ? snKindName(x.type) : null; }, // no type: "Element", as named (audit 28)
+      : x.type === 'uml.State' ? (I.subs(id).length || stMembers(x, 'uml.Region').length ? 'Composite state' : 'State') : !x.type ? snKindName(x.type) : null; }, // no type (or ""): "Element", as named (audits 28, 29)
   rows: (model, view, id) => { const x = (stIndex(model).N.get(id) || {}).x;
     return x && x.type === 'uml.State' ? [...stActs(x).map(([k, t]) => `${k} / ${t}`), ...ST_ARR(x.members).filter(ST_OBJ).map(ST_MEMBER.print)] : null; },
   // member is not enumerable: Object.keys(edits) stays 4.6's four (tests/state.test.mjs), as notes/stage-5.md §12.1 (as built) says

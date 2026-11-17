@@ -833,3 +833,18 @@ test('audit 28: a listed line of another kind is drawn plain, never with a seque
   assert.deepEqual(g.legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Sequence flow', 'Line']);
   assert.ok(!layout(EX, EX.views[0].id).legend.some(l => /<b>Line<\/b>/.test(l)), 'the example lists no other kind: no Line key');
 });
+
+// audit 29: a listed line of another kind that ends on a pool (or a lane) was dropped without a word: neither drawn, nor in
+// check() or describe(); now said as not drawn, as BPMN's own kinds are
+test('audit 29: a listed line of another kind the picture cannot draw is said as not drawn by check() and describe()', () => {
+  for (const to of ['bp-payment-provider', 'order-received']) {
+    const m = structuredClone(EX), v = V(m);
+    m.edges.push({ id: 'zz', type: 'uml.Dependency', from: 'place-order', to, label: 'ZLABEL' }); v.edges = m.edges.map(e => e.id);
+    const drawn = layout(m, VID).edges.some(e => e.id === 'zz'), name = `Line from Place order to ${to === 'order-received' ? 'Order received' : 'Payment provider'}, named ZLABEL`;
+    const said = check(m, VID).filter(p => /ZLABEL/.test(p.message)).map(p => p.message), d = describe(m, VID).split('\n');
+    assert.equal(drawn, to === 'order-received', to);
+    assert.deepEqual(said, drawn ? [] : [`view ${VID}: ${name}: not drawn`], to);
+    assert.match(d[0], /, 3 pools and 1 other line\.$/, to);
+    assert.ok(d.includes(`${name}${drawn ? '' : ', not drawn'}.`), d.join('\n'));
+  }
+});

@@ -1,5 +1,5 @@
 import { diagramOf, propRefs } from './registry.js';
-import { copyOf, lineNames, namesOf, listOf } from './model.js';
+import { copyOf, lineNames, namesOf, listOf, jsonText } from './model.js';
 /* ---------- commands: apply() and references() (work package 1.6) ----------
    apply(model, commands) runs a transaction, one command or a list run in order, on a copy of the model and returns the
    new model; the one given is never changed. A command that cannot run throws, and none of the transaction is applied.
@@ -148,7 +148,7 @@ function ownParent(at, op, id, parent, home) {
   const p = at.get(parent); if (!p || !p.view) return;
   let t = p; for (let n = 0; t && t.kind === 'member' && t.owner && n++ < at.size;) t = at.get(t.owner.id);
   if (!t || t.kind !== 'node' || p.view === home) return;
-  throw new Error(`${op}: ${JSON.stringify(parent)} lives in view ${JSON.stringify(p.view.id)} only: ${home ? `"${id}", an element of view ${JSON.stringify(home.id)},` : `"${id}", an element of the model,`} cannot go under it`);
+  throw new Error(`${op}: ${jsonText(parent)} lives in view ${jsonText(p.view.id)} only: ${home ? `"${id}", an element of view ${jsonText(home.id)},` : `"${id}", an element of the model,`} cannot go under it`);
 }
 
 function checkNew(x, at) { // an element to add: an object with a new id that is not positional, and its members alike
@@ -163,16 +163,16 @@ function checkNew(x, at) { // an element to add: an object with a new id that is
 
 function run(m, c, gone) {
   if (!isObj(c)) throw new TypeError('a command is an object with an op');
-  const at = index(m), need = id => { const e = at.get(id); if (!e) throw new Error(`${c.op}: ${JSON.stringify(id)} is not an element`); return e; };
-  const viewOf = id => { const v = arr(m.views).find(x => isObj(x) && x.id === id); if (!v) throw new Error(`${c.op}: ${JSON.stringify(id)} is not a view`); return v; };
+  const at = index(m), need = id => { const e = at.get(id); if (!e) throw new Error(`${c.op}: ${jsonText(id)} is not an element`); return e; };
+  const viewOf = id => { const v = arr(m.views).find(x => isObj(x) && x.id === id); if (!v) throw new Error(`${c.op}: ${jsonText(id)} is not a view`); return v; };
   const up = id => { const r = at.get(id); return r ? r.x.parent ?? (r.owner && r.owner.id) : undefined; }; // its owner: a parent, or the element it is a member of
   const inside = (id, of) => { for (let o = of, seen = new Set(); o != null && !seen.has(o); seen.add(o), o = up(o)) if (o === id) return true; return false; };
-  const place = (list, i) => { if (i == null) return list.length; if (!Number.isInteger(i)) throw new Error(`${c.op}: index ${JSON.stringify(i)} is not a whole number`); return Math.max(0, Math.min(list.length, i)); };
+  const place = (list, i) => { if (i == null) return list.length; if (!Number.isInteger(i)) throw new Error(`${c.op}: index ${jsonText(i)} is not a whole number`); return Math.max(0, Math.min(list.length, i)); };
   switch (c.op) {
     case 'set': {
       if (c.id != null && c.view != null) throw new Error('set: an element (id) or a view, not both');
       const keys = typeof c.path === 'string' ? c.path.split('.') : Array.isArray(c.path) && c.path.every(k => typeof k === 'string') ? c.path : null;
-      if (!keys || !keys.length || keys.some(k => k === '') || UNSAFE.has(keys[0])) throw new Error(`set: ${JSON.stringify(c.path)} is not a path of keys`);
+      if (!keys || !keys.length || keys.some(k => k === '') || UNSAFE.has(keys[0])) throw new Error(`set: ${jsonText(c.path)} is not a path of keys`);
       if (c.view == null && ['id', 'members', 'parent', 'from', 'to'].includes(keys[0])) throw new Error(`set: ${keys[0]} changes by its own command (add, move, delete, reparent), not set`);
       if (c.view != null && keys[0] === 'id') throw new Error('set: a view keeps its id');
       let o = c.view != null ? viewOf(c.view) : need(c.id).x;
@@ -190,7 +190,7 @@ function run(m, c, gone) {
     }
     case 'add': {
       if ('to' in c) throw new Error('add: the owner of a member is `owner`');
-      if (c.in != null && c.in !== 'view' && c.in !== 'model') throw new Error(`add: in is 'view' or 'model', not ${JSON.stringify(c.in)}`);
+      if (c.in != null && c.in !== 'view' && c.in !== 'model') throw new Error(`add: in is 'view' or 'model', not ${jsonText(c.in)}`);
       checkNew(c.element, at);
       const x = copyOf(c.element), owner = c.owner != null ? need(c.owner) : null;
       if (c.in === 'view') {
@@ -297,7 +297,7 @@ function run(m, c, gone) {
       list.splice(place(list, c.index), 0, copyOf(v));
       return;
     }
-    default: throw new Error(`${JSON.stringify(c.op)} is not a command (set, add, move, hide, delete, reparent, addView)`);
+    default: throw new Error(`${jsonText(c.op)} is not a command (set, add, move, hide, delete, reparent, addView)`);
   }
 }
 

@@ -1,3 +1,4 @@
+import { jsonText } from '../core/model.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { brLines } from '../typed/draw.js'; // SHAPE.classifier, whose ports the closed package takes
@@ -108,19 +109,21 @@ const OWNER_RULES = {
 };
 // the line-inside warning: line e, between box from and to, which it holds (or itself), is not drawn; q(id), an element's quoted name
 const lineInside = (view, vi, e, from, to, q) => ({ level: 'warning', rule: 'line-inside', path: `views[${vi}]`, ids: from === to ? [e.id, from] : [e.id, from, to],
-  message: `line-inside: ${e.id}, ${from === to ? `from ${q(from)} to itself, a box,` : `between ${q(from)} and ${q(to)}, which one holds,`} is not drawn in view ${JSON.stringify(view.id)}` });
+  message: `line-inside: ${e.id}, ${from === to ? `from ${q(from)} to itself, a box,` : `between ${q(from)} and ${q(to)}, which one holds,`} is not drawn in view ${jsonText(view.id)}` });
 // model: the owner-kinds rule; view (the type's view): line-inside and own-boxes for it, lines as `drawn(model, view)` gives
 // them ({ e, from, to }, the ends as nodes, before a line between a package and what it holds is left out)
 function ownerProblems(model, view, lines) {
   const out = [], say = (rule, path, ids, msg) => out.push({ level: 'warning', rule, path, ids, message: `${rule}: ${msg}` });
   const all = new Map(), put = (x, kind) => { if (OWN_OBJ(x) && typeof x.id === 'string' && !all.has(x.id)) { all.set(x.id, { x, kind }); OWN_ARR(x.members).forEach(m => put(m, 'member')); } };
   OWN_ARR(model.nodes).forEach(n => put(n, 'node')); const q = id => JSON.stringify(ownName((all.get(id) || { x: { id } }).x));
-  OWN_ARR(model.nodes).forEach((n, i) => { if (!OWN_OBJ(n) || !OWNED.includes(n.type) || n.parent == null || !all.has(n.parent)) return;
+  // and a node with no type the view shows, which it draws as a class or an instance (audit 29)
+  const inView = new Set(OWN_OBJ(view) ? OWN_ARR(view.nodeIds) : []);
+  OWN_ARR(model.nodes).forEach((n, i) => { if (!OWN_OBJ(n) || !(OWNED.includes(n.type) || !n.type && inView.has(n.id)) || n.parent == null || !all.has(n.parent)) return;
     const p = all.get(n.parent).x; if (!OWN_BOXES.includes(p.type)) say('owner-kinds', `nodes[${i}].parent`, [n.id, p.id], `${q(n.id)} is owned by ${q(p.id)}, a ${String(p.type).split('.').pop()}, not a package`); });
   if (!view) return out;
   const vi = OWN_ARR(model.views).indexOf(view), pic = ownersOn(model, view);
   lines.forEach(({ e, from, to }) => { if (holdsLine(pic, from, to)) out.push(lineInside(view, vi, e, from, to, q)); });
-  if (OWN_ARR(view.containers).length) say('own-boxes', `views[${vi}].containers`, [view.id], `view ${JSON.stringify(view.id)} draws its packages as boxes; its own containers are ignored`);
+  if (OWN_ARR(view.containers).length) say('own-boxes', `views[${vi}].containers`, [view.id], `view ${jsonText(view.id)} draws its packages as boxes; its own containers are ignored`);
   return out;
 }
 

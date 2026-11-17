@@ -475,3 +475,72 @@ test('audit 28: describe() names a card at the far end once, with how many lines
   assert.match(d, /\nA calls B \(2 lines\), C, B \("x", 2 lines\) and B \("y"\)\./, d);
   m.edges = m.edges.slice(0, 1); assert.match(describe(m, 'v'), /\nA calls B\.\n/);
 });
+
+// audit 29: a host's BigInt in a map line or view (a weight, a latency, a step, a pin, a gap, a box's tone) is said, not thrown on:
+// validate() writes it as 2n, and the map draws it as the warning says; audit 28 had made diff() and the view key read one
+test('audit 29: a BigInt in a line or a view: validate() warns of it, and layout(), check() and describe() draw it as the warning says', async () => {
+  const U = await import('../lib/umlimator-all.js');
+  const base = () => ({ nodes: [{ id: 'a', label: 'A', opensView: 'in', opensCount: 3n }, { id: 'b', label: 'B' }], edges: [{ id: 'ab', from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] });
+  const cases = [['weight 2n', m => { m.edges[0].weight = 2n; }, /weight 2n is not 1, 2 or 3: drawn as 1/], ['latency 5n', m => { m.edges[0].latency = 5n; }, /latency 5n is not a number/],
+    ['step 1n', m => { m.edges[0].step = 1n; }, /step 1n is not a number/], ['pin [1n, 0n]', m => { m.views[0].layout = { a: [1n, 0n] }; }, /place \[1n,0n\] is not two numbers/],
+    ['gap 4000n', m => { m.views[0].gap = 4000n; }, /gap 4000n is not a number/], ['tone 1n', m => { m.views[0].containers = [{ id: 'c', label: 'C', nodeIds: ['a'], tone: 1n }]; }, /tone 1n is not a palette name/],
+    ['schemaVersion 1n', m => { m.schemaVersion = 1n; }, /schemaVersion 1n is not a version/], ['a view line weight 3n', m => { m.views[0].edges = [{ from: 'a', to: 'b', weight: 3n }]; }, /weight 3n is not 1, 2 or 3/]];
+  for (const [name, f, said] of cases) { const m = base(); f(m);
+    const ps = U.validate(m); assert.ok(ps.some(p => said.test(p.message)), `${name}: ${JSON.stringify(ps.map(p => p.message))}`);
+    const g = U.layout(m, 'v'); U.check(m, 'v'); U.describe(m, 'v');
+    assert.ok(g.edges.every(e => e.weight === 1), `${name}: drawn as 1`);
+    assert.equal(g.nodes.find(n => n.id === 'a').kids, 3, `${name}: a BigInt opensCount is a count`); }
+  // a timing view's times: a change's at, a message's sentAt (sorted by, where a - b threw)
+  const T = read('../examples/bookshop-timing.json'), tv = T.views.find(v => v.timeline), msg = (tv.edges || T.edges).find(e => e && e.props && e.props.sentAt != null);
+  tv.timeline.changes[1].at = 5n; msg.props.sentAt = 100n;
+  assert.ok(U.validate(T).some(p => /time 5n is not a number/.test(p.message)), JSON.stringify(U.validate(T).map(p => p.message)));
+  U.layout(T, tv.id); U.describe(T, tv.id); U.check(T, tv.id);
+  // every example, each of its numbers in turn a BigInt (a stride of them, to keep the run short): nothing throws
+  const { readdirSync } = await import('node:fs'), bad = [];
+  for (const f of readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).sort()) { const m0 = read(`../examples/${f}`), spots = [];
+    const walk = (o, p) => { if (o && typeof o === 'object') for (const k of Object.keys(o)) { if (typeof o[k] === 'number') spots.push([...p, k]); else walk(o[k], [...p, k]); } }; walk(m0, []);
+    for (let i = 0; i < spots.length; i += Math.max(1, Math.ceil(spots.length / 12))) { const sp = spots[i], m = structuredClone(m0); let o = m; for (const k of sp.slice(0, -1)) o = o[k];
+      o[sp.at(-1)] = BigInt(Math.trunc(o[sp.at(-1)]));
+      for (const [n, g] of [['validate', () => U.validate(m)], ...m.views.filter(v => v && v.id).slice(0, 4).map(v => [`layout ${v.id}`, () => U.layout(m, v.id)])]) {
+        const warn = console.warn; console.warn = () => {}; try { g(); } catch (e) { bad.push(`${f} ${sp.join('.')}: ${n}() ${e.message}`); } finally { console.warn = warn; } } } }
+  assert.deepEqual(bad, []);
+});
+
+test('audit 29: a line id that is also a card id is an error (the docs give cards and lines one id space), in a map and in version 2', async () => {
+  const U = await import('../lib/umlimator-all.js'), said = m => U.validate(m).filter(p => /is also a card's id/.test(p.message)).map(p => [p.level, p.path]);
+  const map = { nodes: [{ id: 'api', label: 'API' }, { id: 'db', label: 'DB' }, { id: 'web', label: 'Web' }], edges: [{ id: 'api', from: 'web', to: 'db' }], views: [{ id: 'v', nodeIds: ['api', 'db', 'web'] }] };
+  assert.deepEqual(said(map), [['error', 'edges[0].id']]);
+  assert.deepEqual(said({ ...map, schemaVersion: 2 }), [['error', 'edges[0].id']]); // an untyped line in version 2: the map's check
+  const own = structuredClone(map); own.edges = []; own.views[0].edges = [{ id: 'db', from: 'web', to: 'api' }, 'nothing'];
+  assert.deepEqual(said(own), [['error', 'views[0].edges[0].id']]); // a view's own line too
+  const fine = structuredClone(map); fine.edges[0].id = 'reads'; assert.deepEqual(said(fine), []);
+  const hostile = structuredClone(map); hostile.nodes.push({ id: '__proto__', label: 'P' }, { id: 'constructor', label: 'C' }); hostile.edges.push({ id: '__proto__', from: 'web', to: 'db' }, { id: 'toString', from: 'web', to: 'db' }, { id: 7, from: 'web', to: 'db' });
+  assert.deepEqual(said(hostile), [['error', 'edges[0].id'], ['error', 'edges[1].id']]); // a name on Object.prototype is no card's unless a card has it
+});
+
+test('audit 29: a typed line with no type is said to be drawn as a plain line, a card with none as a plain card', async () => {
+  const U = await import('../lib/umlimator-all.js');
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'flow.Process', label: 'A' }, { id: 'b', type: 'flow.Process', label: 'B', members: [{ id: 'm1', label: 'x' }] }],
+    edges: [{ id: 'e', type: 'nope', from: 'a', to: 'b' }], views: [{ id: 'v', diagram: 'flowchart', nodeIds: ['a', 'b'], edges: ['e', { id: 'f', from: 'a', to: 'b' }] }] };
+  const at = p => (U.validate(m).find(x => x.path === p) || {}).message;
+  assert.equal(at('edges[0].type'), 'type "nope" is not <notation>.<Name> (uml.Dependency): drawn as a plain line');
+  assert.equal(at('views[0].edges[1].type'), 'type undefined is not <notation>.<Name> (uml.Dependency): drawn as a plain line');
+  assert.equal(at('nodes[1].members[0].type'), 'type undefined is not <notation>.<Name> (uml.Class): drawn as a plain card');
+  const g = U.layout(m, 'v'); assert.ok(g.edges.some(e => e.id === 'f' || (e.ids || []).includes('f')), 'the untyped line is drawn, as a line');
+});
+
+test('audit 29: a label that is not text (a list, an object, true) is warned of, with what it is drawn as, for a card, a line and a member', async () => {
+  const U = await import('../lib/umlimator-all.js');
+  for (const [label, shown] of [[{ x: 1 }, '[object Object]'], [['a', 'b'], 'a,b'], [true, 'true']]) {
+    const map = U.validate({ nodes: [{ id: 'a', label }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b', label }], views: [{ id: 'v', nodeIds: ['a', 'b'], nodes: [{ id: 'c', label }] }] })
+      .filter(p => p.path.endsWith('.label')).map(p => [p.path, p.message]);
+    const msg = `label ${JSON.stringify(label)} is not text: drawn as ${JSON.stringify(shown)}`;
+    assert.deepEqual(map, [['nodes[0].label', msg], ['views[0].nodes[0].label', msg], ['edges[0].label', msg]]);
+    const typed = U.validate({ schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'A', members: [{ id: 'm', type: 'uml.Property', label }] }, { id: 'b', type: 'uml.Class', label }],
+      edges: [{ id: 'e', type: 'uml.Association', from: 'a', to: 'b', label }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b'] }] }).filter(p => p.path.endsWith('.label')).map(p => p.path).sort();
+    assert.deepEqual(typed, ['edges[0].label', 'nodes[0].members[0].label', 'nodes[1].label']);
+    // and that is what the class view names it
+    const g = U.layout({ schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a'] }] }, 'v');
+    assert.ok(String(g.nodes[0].aria).includes(shown), g.nodes[0].aria); }
+  for (const label of ['A', 42, null, undefined, '']) assert.deepEqual(U.validate({ nodes: [{ id: 'a', label }], views: [{ id: 'v', nodeIds: ['a'] }] }).filter(p => p.path.endsWith('.label')), [], String(label));
+});

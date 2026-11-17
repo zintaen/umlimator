@@ -1,3 +1,4 @@
+import { jsonText } from '../core/model.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { brLines, endLabels } from '../typed/draw.js';
@@ -214,14 +215,14 @@ function structProblems(model, view) {
   SN_ARR(model && model.nodes).forEach((n, i) => { if (!SN_OBJ(n) || !seen(n.id)) return;
     if (n.type === 'uml.Port') say('error', 'port-owner', `nodes[${i}]`, [n.id], `${nm(n)} is a node; a port is a member of a component or a class`);
     // the component view draws an element of no type as a component, holding its ports (component.js cpGeo, audit 28)
-    const holds = n.type === 'uml.Component' || n.type === 'uml.Class' || n.type == null && view && view.diagram === 'uml.component';
+    const holds = n.type === 'uml.Component' || n.type === 'uml.Class' || !n.type && view && view.diagram === 'uml.component';
     SN_ARR(n.members).forEach((m, j) => { if (SN_OBJ(m) && m.type === 'uml.Port' && !holds)
       say('error', 'port-owner', `nodes[${i}].members[${j}]`, [m.id, n.id], `${nm(m)} is a member of ${nm(n)}; a port is a member of a component or a class`); }); });
   viewLines(model, view).forEach(([e, path]) => { if (!SN_OBJ(e) || e.type !== 'uml.Manifestation' || !(seen(e.from) || seen(e.to))) return;
     const f = at.get(e.from), t = at.get(e.to);
     if (!f || !SN_ARTIFACTS.includes(f.type)) say('error', 'manifest-ends', path, [e.id, e.from], `${e.id} runs from ${nm(f)}: a manifestation runs from an artifact`);
     if (!t || t.type !== 'uml.Component') say('warning', 'manifest-ends', path, [e.id, e.to], `${e.id} runs to ${nm(t)}: «manifest» is drawn to a component only`); });
-  if (view && SN_ARR(view.containers).length) say('warning', 'own-boxes', `views[${SN_ARR(model.views).indexOf(view)}].containers`, [view.id], `view ${JSON.stringify(view.id)} draws its own boxes; its hand-written containers are ignored`);
+  if (view && SN_ARR(view.containers).length) say('warning', 'own-boxes', `views[${SN_ARR(model.views).indexOf(view)}].containers`, [view.id], `view ${jsonText(view.id)} draws its own boxes; its hand-written containers are ignored`);
   return out;
 }
 

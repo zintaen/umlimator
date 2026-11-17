@@ -1,6 +1,6 @@
 import { TYPED, idTable, diagramOf } from '../core/registry.js';
 import { andList, arrOf, rules } from './validate.js';
-import { copyOf, nameTable, unreadable } from '../core/model.js';
+import { canon, copyOf, jsonText, nameTable, unreadable } from '../core/model.js';
 
 /* ---------- change: diff (#66) and drift (#68) ----------
    Each returns a model marked with what the map draws already, so a page the CLI writes, or a still, shows the marks
@@ -8,14 +8,6 @@ import { copyOf, nameTable, unreadable } from '../core/model.js';
    through), a line's style (added: green and flowing; removed: rose, dashed and faded; security: rose and dashed;
    faded: its own colour, faint and still) and edited (an amber dot on the line). */
 const plain = t => Object.fromEntries(Object.entries(t)); // an own-key table back to a plain object, for JSON and deepEqual
-// an object that holds itself (a host's cycle, which copyOf() keeps) is written "[cycle]" where it comes back on its own path (audit 27:
-// the sorted copy the replacer gives is new each time, so JSON.stringify's own check never fired and the stack overflowed)
-const canon = x => { const path = [], of = new WeakMap(); // path: the objects above the value written, as the model has them
-  return JSON.stringify(x, function (k, v) { const h = of.get(this) || this, i = path.lastIndexOf(h); if (i < 0) path.push(h); else path.length = i + 1;
-    if (typeof v === 'bigint') return v + 'n'; if (!v || typeof v !== 'object') return v; if (path.includes(v)) return '[cycle]'; // a BigInt, which JSON cannot write, as 10n (audit 28)
-    const y = Array.isArray(v) ? v : Object.fromEntries(Object.keys(v).sort().map(f => [f, v[f]])); of.set(y, v); return y; }); };
-// any value as text, to show or tell two apart: JSON, else (a host's cycle or BigInt, which JSON.stringify throws on) as canon() writes it (audit 28)
-const jsonText = x => { try { return JSON.stringify(x); } catch { return canon(x); } };
 // a line's identity in a list, as a Ref names it: its id, else "<from>-><to>#<n>"; "=<id>" for a view's reference to a model line
 const lineKeys = list => { const seen = {}; return list.map(e => typeof e === 'string' ? '=' + e : e && typeof e === 'object'
   ? (e.id != null ? String(e.id) : (k => `${k}#${seen[k] = (seen[k] ?? -1) + 1}`)(e.from + '->' + e.to)) : ''); };

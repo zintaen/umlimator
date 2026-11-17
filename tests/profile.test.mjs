@@ -451,3 +451,11 @@ test('audit 27: the PDF rows and describe() say what the profile view draws: a p
   assert.ok(describe(m, 'profile').split('\n').includes('Enumeration Kind: «coded»; RETAIL; TRADE.'));
   assert.equal(T.rows(m, V, 'sales'), null, 'a closed package with no stereotype keeps its own rows');
 });
+
+test('audit 29: another UML kind in a profile view is drawn with its kind\'s keyword, as it is named and as the class view draws it', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'c', type: 'uml.Component', label: 'Billing' }, { id: 'a', type: 'uml.Actor', label: 'Clerk' }, { id: 'k', type: 'uml.Class', label: 'Plain' }],
+    edges: [], views: [{ id: 'v', diagram: 'uml.profile', nodeIds: ['c', 'a', 'k'] }] };
+  const g = layout(m, 'v'), st = id => g.nodes.find(n => n.id === id).stereotypes;
+  assert.deepEqual([st('c'), st('a'), st('k')], [['component'], ['actor'], []]);
+  assert.match(svgOf(g), /«component»/);
+});

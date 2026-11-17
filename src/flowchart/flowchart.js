@@ -5,7 +5,7 @@ import { layoutTyped, typedLines } from '../typed/layout.js';
 import '../uml/class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from '../uml/flow.js'; // and SHAPE.diamond, SHAPE.initial's circle, read only
 import { snKindName } from '../uml/structure.js';
-import { usedIds } from '../core/model.js';
+import { usedIds, jsonText } from '../core/model.js';
 
 /* ---------- the flowchart, flowchart (work package M2.3, notes/milestone-2.md §7.2) ----------
    Ten symbols: the decision is stage 4's diamond and the connector a circle over SHAPE.initial's outline, both read only;
@@ -90,7 +90,11 @@ function fcIndex(model, view) {
   const ins = id => flows.filter(e => e.to === id), outs = id => flows.filter(e => e.from === id);
   const term = id => N.get(id).type === 'flow.Terminator', starts = ids.filter(id => term(id) && !ins(id).length), ends = ids.filter(id => term(id) && !outs(id).length);
   // reading order: from each start along its flows, depth first, a decision's exits in the model's order (one branch read to its end before the next)
-  const walk = [], seen = new Set(), visit = s => { const q = [s]; while (q.length) { const id = q.pop(); if (seen.has(id)) continue; seen.add(id); walk.push(id); outs(id).reverse().forEach(e => q.push(e.to)); } };
+  // a connector with no flow out carries on at each shown connector of its label (trimmed, any case) with no flow in: ISO 5807's
+  // on-page connector pair, "flows joined, or carried on elsewhere" as the key says (audit 29)
+  const pair = id => { const x = N.get(id); return x.type === 'flow.Connector' && FC_TXT(x.label) ? FC_TXT(x.label).toLowerCase() : ''; };
+  const next = id => (outs(id).length || !pair(id) ? outs(id).map(e => e.to) : ids.filter(o => o !== id && pair(o) === pair(id) && !ins(o).length));
+  const walk = [], seen = new Set(), visit = s => { const q = [s]; while (q.length) { const id = q.pop(); if (seen.has(id)) continue; seen.add(id); walk.push(id); next(id).reverse().forEach(to => q.push(to)); } };
   starts.forEach(visit); const reached = new Set(seen); ids.forEach(visit);
   return { N, E, path, ids, lines, flows, ins, outs, starts, ends, walk, reached };
 }
@@ -183,9 +187,11 @@ function fcProblems(model, view) {
 
 /* ---- describe(): the view in sentences: each node in reading order (from the start, along its flows), then each line ---- */
 function fcDescribe(model, viewId) {
-  const v = FC_ARR(model && model.views).find(x => FC_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
-  const I = fcIndex(model, v), other = I.lines.filter(fcOther).length; // a line of another kind counted as itself, never left out (audit 27)
-  return [`${v.title || v.id}: a flowchart of ${fcPlural(I.ids.length, 'node')}${other ? ', ' : ' and '}${fcPlural(I.flows.length, 'flow')}${other ? ` and ${fcPlural(other, 'other line')}` : ''}.`,
+  const v = FC_ARR(model && model.views).find(x => FC_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
+  // a comment link and a line of another kind counted as themselves, never left out (audits 27, 29), as C4 counts them
+  const I = fcIndex(model, v), notes = I.lines.filter(e => e.type === 'uml.CommentLink').length, other = I.lines.filter(fcOther).length;
+  const more = [...(notes ? [fcPlural(notes, 'comment link')] : []), ...(other ? [fcPlural(other, 'other line')] : [])];
+  return [`${v.title || v.id}: a flowchart of ${fcPlural(I.ids.length, 'node')}${more.length ? ', ' : ' and '}${fcPlural(I.flows.length, 'flow')}${more.length ? ` and ${more.join(' and ')}` : ''}.`,
     ...I.walk.map(id => fcNodeName(I, I.N.get(id)) + '.'), ...I.lines.map(e => fcLineName(I, e) + '.')].join('\n');
 }
 

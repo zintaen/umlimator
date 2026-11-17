@@ -1,5 +1,5 @@
 import { apply } from '../core/apply.js';
-import { copyOf, usedIds } from '../core/model.js';
+import { copyOf, usedIds, jsonText } from '../core/model.js';
 import { ownNodes, registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -221,7 +221,7 @@ function commProblems(model, view) {
 
 /* ---- describe(): the view in words, each lifeline with its links, then the messages by number ---- */
 function commDescribe(model, viewId) {
-  const v = CM_ARR(model && model.views).find(x => CM_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const v = CM_ARR(model && model.views).find(x => CM_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const I = commIndex(model, v), nums = messageNumbers(model, v), nm = id => cmNameOf(I.N.get(id) || { id });
   const drawn = I.messages.filter(m => I.carrierOf(m.from, m.to)).sort((a, b) => cmByNumber(nums.get(a.id), nums.get(b.id)));
   const out = [`${v.title || v.id}: a communication diagram of ${cmPlural(I.ids.length, 'lifeline')}, ${cmPlural(I.connectors.length, 'connector')} and ${cmPlural(drawn.length, 'message')}.`];
@@ -355,7 +355,7 @@ function cmSaid(model, view, ids, fromModel, I, r) {
   const msgs = fromModel ? CM_ARR(model.edges).filter(e => CM_OBJ(e) && e.type === 'uml.Message') : I.messages;
   const took = msgs.filter(m => !left.has(m.id) && !CM_ARR(ids).includes(m.id)); if (!took.length) return r;
   const q = x => JSON.stringify(cmNameOf(x)), nm = id => cmNameOf(I.N.get(id) || { id });
-  const who = xs => xs.map(id => (I.shown.has(id) ? 'lifeline ' + q(I.N.get(id)) : `connector ${JSON.stringify(nm(I.E.get(id).from) + '–' + nm(I.E.get(id).to))}`)).join(', ');
+  const who = xs => xs.map(id => (I.shown.has(id) ? 'lifeline ' + q(I.N.get(id)) : `connector ${jsonText(nm(I.E.get(id).from) + '–' + nm(I.E.get(id).to))}`)).join(', ');
   // said as done: what the view holds as its own is deleted by Delete too, not hidden (audit 25, as timing's audit 24); a message by what became of it
   const nv = CM_ARR(next.views).find(v => CM_OBJ(v) && v.id === view.id) || {}, still = new Set([...CM_ARR(next.edges), ...CM_ARR(nv.edges)].filter(CM_OBJ).map(e => e.id));
   const deleted = id => r.some(c => CM_OBJ(c) && c.op === 'delete' && c.id === id);

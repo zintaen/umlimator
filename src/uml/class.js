@@ -1,3 +1,4 @@
+import { jsonText } from '../core/model.js';
 import { registerDiagramType } from '../core/registry.js';
 import { brLines, esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -329,22 +330,25 @@ const RULES = {
 function classProblems(model, view) {
   const out = [], at = classIndex(UML_OBJ(model) ? model : {}), q = id => JSON.stringify(nameOfEl((at.get(id) || { x: { id } }).x));
   const say = (rule, path, ids, msg, level = 'error') => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` }); // a line with no end names what it has
-  const els = [...at.values()], nodes = els.filter(r => r.kind === 'node' && String(r.x.type || '').startsWith('uml.')), lines = els.filter(r => r.kind === 'edge' && String(r.x.type || '').startsWith('uml.'));
+  // a node with no type the view shows is drawn and named a class (typeWord), so every rule judges it as one (audits 28, 29):
+  // its members' names and kinds, its name among its owner's classifiers. One no class view shows (a map's) is not judged
+  const inView = new Set(UML_OBJ(view) ? UML_ARR(view.nodeIds) : []), tyOf = x => (!x.type && inView.has(x.id) ? 'uml.Class' : x.type);
+  const els = [...at.values()], nodes = els.filter(r => r.kind === 'node' && String(tyOf(r.x) || '').startsWith('uml.')), lines = els.filter(r => r.kind === 'edge' && String(r.x.type || '').startsWith('uml.'));
   // and the view's own lines (view.edges objects), which drawnLines draws, at their own paths; one a model element's id (or an
   // earlier own line's) takes is that one. That view's alone: validate() asks once a view (audit 23, as ucProblems since audit 20)
   const vi = UML_OBJ(view) ? UML_ARR(model && model.views).indexOf(view) : -1, taken = new Set(at.keys());
   if (vi >= 0) UML_ARR(view.edges).forEach((e, j) => { if (UML_OBJ(e) && typeof e.id === 'string' && !taken.has(e.id) && String(e.type || '').startsWith('uml.')) { taken.add(e.id); lines.push({ x: e, kind: 'edge', owner: null, path: `views[${vi}].edges[${j}]` }); } });
-  // a node with no type is drawn and named a class (typeWord), so the rules judge it as one (audit 28)
+  // and as a line's end (audit 28)
   const typeOfId = id => { const r = at.get(id); return !r ? undefined : r.kind === 'node' && !r.x.type ? 'uml.Class' : r.x.type; }, isCls = id => CLASSIFIERS.includes(typeOfId(id));
   nodes.forEach(({ x, path }) => {
-    const ms = UML_ARR(x.members).filter(UML_OBJ), seen = new Map();
+    const ms = UML_ARR(x.members).filter(UML_OBJ), seen = new Map(), ty = tyOf(x);
     // member-names judges a classifier's or an instance's members, each with a name: a state's unnamed regions are not "named
     // twice" (audit 11)
-    const named = CLASSIFIERS.includes(x.type) || x.type === 'uml.InstanceSpecification';
+    const named = CLASSIFIERS.includes(ty) || ty === 'uml.InstanceSpecification';
     ms.forEach((m, j) => { // an operation is told apart by its parameters' types too (overloading)
       const k = m.type === 'uml.Operation' ? `${m.label}(${UML_ARR((m.props || {}).parameters).map(a => UML_OBJ(a) ? a.valueType ?? '' : '').join(',')})` : `${m.label}`;
       if (named && UML_HAS(m.label)) { if (seen.has(k)) say('member-names', `${path}.members[${j}]`, [x.id, seen.get(k), m.id], `${q(x.id)} has two members named "${m.label}" (${seen.get(k)}, ${m.id})`); else seen.set(k, m.id); }
-      if (m.type === 'uml.EnumerationLiteral' && x.type !== 'uml.Enumeration') say('member-kinds', `${path}.members[${j}]`, [x.id, m.id], `literal "${m.label}" is in ${q(x.id)}, which is not an enumeration`);
+      if (m.type === 'uml.EnumerationLiteral' && ty !== 'uml.Enumeration') say('member-kinds', `${path}.members[${j}]`, [x.id, m.id], `literal "${m.label}" is in ${q(x.id)}, which is not an enumeration`);
       const mult = (m.props || {}).multiplicity; if (UML_HAS(mult)) multRule(String(mult), `${path}.members[${j}].props.multiplicity`, [m.id], `${q(x.id)}.${m.label}`); });
     if ((OWN_BOXES.includes(x.type) || x.type === 'uml.Comment' || x.type === 'uml.MetaclassReference') && ms.length) say('member-kinds', `${path}.members`, [x.id], `${q(x.id)} is a ${typeWord(x.type).toLowerCase()}, which has no members`);
   });
@@ -352,7 +356,7 @@ function classProblems(model, view) {
     if (!b) say('multiplicity', path, ids, `${what}: [${t}] is not a multiplicity (1, *, 0..1, 1..*)`);
     else if (b.lower > b.upper) say('multiplicity', path, ids, `${what}: [${t}] has its lower bound above its upper`);
     return b; }
-  const byOwner = new Map(); nodes.filter(r => CLASSIFIERS.includes(r.x.type)).forEach(({ x, path }) => { const k = (x.parent ?? '') + '\u0000' + nameOfEl(x), was = byOwner.get(k);
+  const byOwner = new Map(); nodes.filter(r => CLASSIFIERS.includes(tyOf(r.x))).forEach(({ x, path }) => { const k = (x.parent ?? '') + '\u0000' + nameOfEl(x), was = byOwner.get(k);
     if (was) say('classifier-names', path, [was, x.id], `${q(x.id)} is named twice in ${x.parent != null ? q(x.parent) : 'the model'} (${was}, ${x.id})`); else byOwner.set(k, x.id); });
   const parents = new Map();
   lines.forEach(({ x: e, path }) => {
@@ -390,7 +394,7 @@ const lineVerb = e => ({ __proto__: null, 'uml.Generalization': 'a kind of', 'um
   'uml.Usage': 'uses', 'uml.Realization': 'realizes', 'uml.Abstraction': 'abstracts', 'uml.Extension': 'extends',
   'uml.PackageImport': keyword(e) === '«access»' ? 'accesses' : 'imports' }[e.type] || null);
 const describeAs = look => (model, viewId) => {
-  const v = UML_ARR(model && model.views).find(x => UML_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const v = UML_ARR(model && model.views).find(x => UML_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const { at, pic, lines: all } = drawnLines(model, v, look.own), lines = all.filter(({ from, to }) => !holdsLine(pic, from, to));
   const nm = id => (at.get(id).x.type === 'uml.Comment' ? nameOfEl(at.get(id).x) : pic.name(id));
   const end = (e, w) => { const E = endsOf(e)[w] || {}, t = [E.role, E.multiplicity].filter(UML_HAS); return t.length ? ` (${t.join(', ')})` : ''; };
