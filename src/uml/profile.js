@@ -2,7 +2,7 @@ import { registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { CLASSIFIERS, CLASS_DEF, CLASS_LINES, CLASS_TYPE, RULES, multBounds, printMember, classProblems, drawnLines, lineLabel, lineName, lineRename, typeGeo } from './class.js';
-import { OWN_BOXES, OWNER_RULES, boxHead, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder, viewLines } from './owners.js';
+import { OWN_BOXES, OWNER_RULES, boxHead, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder, viewLines, modelLines } from './owners.js';
 import { STY_RULES, UML_META, appliedOf, metaKnown, styKey } from './stereotypes.js';
 
 /* ---------- the profile diagram, uml.profile (work package 6.3, notes/stage-6.md §4) ----------
@@ -20,13 +20,13 @@ const prWord = t => t === 'uml.MetaclassReference' ? 'Metaclass' : String(t || '
 const PR_DEFS = ['uml.Stereotype', 'uml.MetaclassReference', 'uml.Enumeration']; // what goes into a profile (§4.3)
 
 // the model read once per call: nodes by id, every member by id, lines by kind
-// view: its own lines too (view.edges objects, drawn as the model's are: viewLines), so an extension or an application it alone
-// draws means what a model one does in its rows and names (audit 25)
-function prIndex(model, view) {
+// every view's own lines too (view.edges objects: modelLines), so an extension or an application one view alone draws means
+// what a model one does in every profile view's rows and names, as in the stereotype compartments and validate() (styIndex),
+// audits 25 and 26
+function prIndex(model) {
   const at = new Map(), mem = new Map();
   PR_ARR(model && model.nodes).forEach(n => { if (PR_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) { at.set(n.id, n); PR_ARR(n.members).forEach(m => { if (PR_OBJ(m) && typeof m.id === 'string') mem.set(m.id, m); }); } });
-  const V = PR_OBJ(view) ? PR_ARR(model && model.views).find(x => x === view) || PR_ARR(model && model.views).find(x => PR_OBJ(x) && x.id === view.id) : null; // a copy (prGeo's) by its id
-  const E = viewLines(model, V).map(([e]) => e).filter(e => PR_OBJ(e) && typeof e.id === 'string'), of = t => E.filter(e => e.type === t);
+  const E = modelLines(model).filter(e => PR_OBJ(e) && typeof e.id === 'string'), of = t => E.filter(e => e.type === t);
   return { at, mem, E, of, ty: id => (at.get(id) || {}).type };
 }
 
@@ -67,7 +67,7 @@ SHAPE.profiled = { ...SHAPE.classifier, draw: (n, c, f) => SHAPE.classifier.draw
 const row = text => ({ type: 'uml.Property', label: text }); // a compartment row as the classifier prints it: its text alone
 function prNode(d, n, model, pic, view) {
   if (d.shape === 'note') return d;
-  const I = prIndex(model, view), aria = prAria(model, n, pic.name(n.id), I);
+  const I = prIndex(model), aria = prAria(model, n, pic.name(n.id), I);
   // a closed package: over its name the stereotypes it has, the required ones supplied too (prBox's); its tags in its accessible name
   if (d.shape === 'package') { const st = PR_ARR(d.stereotypes); return { ...d, aria, stereotypes: [...st, ...appliedOf(model, n.id).map(e => e.key).filter(k => !st.includes(k))] }; }
   if (d.shape !== 'classifier') return { ...d, aria };
@@ -104,7 +104,7 @@ const PR_RULES = {
   'metaclass-known': 'a metaclass reference names a UML metaclass',
 };
 function prProblems(model, view) {
-  const out = [], I = prIndex(model, view), q = id => JSON.stringify(I.at.has(id) ? prName(I.at.get(id)) : String(id)), say = (rule, path, ids, msg, level = 'error') => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
+  const out = [], I = prIndex(model), q = id => JSON.stringify(I.at.has(id) ? prName(I.at.get(id)) : String(id)), say = (rule, path, ids, msg, level = 'error') => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const seen = new Map(), names = (k, id, path, what) => { const was = seen.get(k); if (was) say('stereotype-names', path, [was, id], `${q(id)} and ${q(was)} are one name ${what} (${was}, ${id})`); else seen.set(k, id); };
   PR_ARR(model && model.nodes).forEach((n, i) => { if (!PR_OBJ(n) || I.at.get(n.id) !== n) return; const path = `nodes[${i}]`;
     if ((n.type === 'uml.Stereotype' || n.type === 'uml.MetaclassReference') && I.ty(n.parent) !== 'uml.Profile') say('profile-owns', path, [n.id, n.parent], `${prWord(n.type).toLowerCase()} ${q(n.id)} is owned by ${n.parent != null && I.at.has(n.parent) ? q(n.parent) + ', not a profile' : 'no profile'}`);
@@ -120,7 +120,7 @@ function prProblems(model, view) {
 /* ---- describe(): the view in sentences, each element by its accessible name in reading order, then each line ---- */
 function prDescribe(model, viewId) {
   const v = PR_ARR(model && model.views).find(x => PR_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
-  const { at, pic, lines: all } = drawnLines(model, v, PR_LINES), lines = all.filter(({ from, to }) => !holdsLine(pic, from, to)), I = prIndex(model, v), ids = readingOrder(pic);
+  const { at, pic, lines: all } = drawnLines(model, v, PR_LINES), lines = all.filter(({ from, to }) => !holdsLine(pic, from, to)), I = prIndex(model), ids = readingOrder(pic);
   const pl = (k, w) => `${k} ${k === 1 ? w : w + 's'}`, box = new Map(pic.boxes.map(b => [b.id, prBox(b, model, pic).aria]));
   const said = id => { const x = at.get(id).x; return box.get(id) ?? (x.type === 'uml.Comment' ? 'Comment: ' + prName(x) : prAria(model, x, pic.name(id), I)); };
   return [`${v.title || v.id}: a profile diagram of ${pl(ids.length, 'element')} and ${pl(lines.length, 'line')}.`, ...ids.map(id => said(id) + '.'), ...lines.map(({ e }) => lineName(e, at, pic) + '.')].join('\n');
@@ -187,7 +187,7 @@ const PR_TYPE = registerDiagramType('uml.profile', {
   // the PDF's tables (§9): a profile's, a stereotype's and a metaclass's kind; each element's stereotypes and tags
   word: (model, id) => { const x = prIndex(model).at.get(id);
     return !x ? null : x.type === 'uml.Stereotype' ? (PR_OBJ(x.props) && x.props.isAbstract === true ? 'Stereotype (abstract)' : 'Stereotype') : x.type === 'uml.MetaclassReference' ? 'Metaclass' : x.type === 'uml.Profile' ? 'Profile' : null; },
-  rows: (model, view, id) => { const I = prIndex(model, view), x = I.at.get(id); if (!x) return null; const r = prRows(model, x, I); return r.length || PR_DEFS.slice(0, 2).includes(x.type) ? r : null; },
+  rows: (model, view, id) => { const I = prIndex(model), x = I.at.get(id); if (!x) return null; const r = prRows(model, x, I); return r.length || PR_DEFS.slice(0, 2).includes(x.type) ? r : null; },
   edits: { add: prAdd, connect: prConnect, rename: lineRename(lineLabel) },
 });
 

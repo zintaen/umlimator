@@ -22,7 +22,7 @@ const TM = { name: 12, text: 10.5, lbl: 16, mark: 14 }; // a lane's name, a stat
 const TM_SORTS = ['call', 'async', 'reply'];
 // the sequence type's ends for these sorts (sequence.js's SQ_END): a call filled, async open, a reply dashed and open
 const TM_END = { call: { from: 'none', to: 'arrow' }, async: { from: 'none', to: 'open' }, reply: { from: 'none', to: 'open', dashed: true } };
-const TM_KIND = { 'uml.DurationConstraint': 'duration', 'uml.TimeConstraint': 'time' };
+const TM_KIND = { __proto__: null, 'uml.DurationConstraint': 'duration', 'uml.TimeConstraint': 'time' }; // no Object.prototype key is a kind (audit 26)
 const TM_RULER = '->ruler', tmRowId = (lane, state) => `${lane}->${state}`; // geometry ids: no element id holds '->' (model.md rule 5)
 
 const tmView = (model, view) => (TM_OBJ(view) ? view : TM_ARR(model && model.views).find(v => TM_OBJ(v) && v.id === view)) || null;
@@ -61,7 +61,7 @@ const tmMsgSaid = (X, m) => { const p = tmProps(m), t = tmMsgText(m), s = tmSort
 const tmConSaid = (X, c) => { const a = X.C.get(c.from), b = X.C.get(c.to), t = tmLabel(c);
   if (TM_KIND[c.type] === 'time') return `Time constraint${t ? ' ' + t : ''}${a ? ` on ${X.name(a.lifeline)} at ${X.t(a.at)}` : ''}`;
   const [p, q] = a && b && b.at < a.at ? [b, a] : [a, b];
-  return `Duration constraint${t ? ' ' + t : ''}${p && q ? ` on ${X.name(p.lifeline)}${q.lifeline !== p.lifeline ? ` and ${X.name(q.lifeline)}` : ''} from ${X.t(p.at)} to ${X.t(q.at)}` : ''}`; };
+  return `${TM_KIND[c.type] === 'duration' ? 'Duration constraint' : 'Constraint'}${t ? ' ' + t : ''}${p && q ? ` on ${X.name(p.lifeline)}${q.lifeline !== p.lifeline ? ` and ${X.name(q.lifeline)}` : ''} from ${X.t(p.at)} to ${X.t(q.at)}` : ''}`; };
 
 /* ---- F2's micro-syntax (§8.1): `text`, `text @ t`, `text @ t1 → t2` (or ->); times are numbers in the view's unit. A
    text whose part after its last @ is not one or two numbers is all text (an address with @ is a name) ---- */

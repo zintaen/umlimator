@@ -3,7 +3,7 @@ import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { RULES, classProblems, drawnLines, lineIn, printMember } from './class.js';
+import { RULES, classProblems, drawnLines, lineIn, lineVerb, printMember } from './class.js';
 import { OWN_BOXES, OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 
 /* ---------- the object diagram, uml.object (work package 2.3, notes/stage-2.md §9) ----------
@@ -72,8 +72,10 @@ const linkText = e => [obStereo(e).map(t => `«${t}»`).join(' '), OB_HAS(e.labe
 const roleOf = (e, w) => { const E = OB_PROPS(e).ends, r = OB_OBJ(E) && OB_OBJ(E[w]) ? E[w].role : null; return OB_HAS(r) ? String(r) : null; };
 
 /* ---- the view laid out (layoutTyped) ---- */
-const OB_LEGEND = [['uml.Link', false, 'Link', 'joins two instances, an instance of an association'], ['uml.CommentLink', true, 'Comment link', 'what a comment is about']];
-const obLegend = edges => OB_LEGEND.filter(([t]) => edges.some(e => e.type === t)).map(([, dashed, name, says]) => `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4"><path d="M2 8H26"${dashed ? ' stroke-dasharray="3 2"' : ''}/></g></svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`);
+// a kind the view lists that it does not draw as its own: its plain arrow, "Line", as the component view's legend has it (audit 26)
+const OB_LEGEND = [['uml.Link', false, 'Link', 'joins two instances, an instance of an association'], ['uml.CommentLink', true, 'Comment link', 'what a comment is about'],
+  [null, false, 'Line', 'a kind of line this view does not draw as its own']];
+const obLegend = edges => OB_LEGEND.filter(([t]) => edges.some(e => (t ? e.type === t : e.type !== 'uml.Link' && e.type !== 'uml.CommentLink'))).map(([, dashed, name, says]) => `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4"><path d="M2 8H26"${dashed ? ' stroke-dasharray="3 2"' : ''}/></g></svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`);
 function objectGeo({ model, view, pos, memo }) {
   const { at, pic, lines } = drawnLines(model, view, OBJECT_LINES), present = OB_OBJ(view.present) ? view.present : {}, head = id => (at.get(id).x.type === 'uml.InstanceSpecification' ? headOf(at.get(id).x, pic.name(id)) : pic.name(id));
   const nodes = pic.ids.filter(id => !pic.open.has(id)).map(id => { const n = at.get(id).x, pr = OB_OBJ(OB_OWN(present, id)) ? present[id] : {}, slots = slotsOf(n);
@@ -139,8 +141,11 @@ function objectDescribe(model, viewId) {
   readingOrder(pic).forEach(id => { const x = at.get(id).x, said = [], slots = x.type === 'uml.InstanceSpecification' ? slotsOf(x).map(printSlot) : [];
     lines.forEach(({ e, from: f, to: t }) => {
       if (e.type === 'uml.CommentLink') { const l = linkText(e); if (f === id) said.push(`about ${nm(t)}${l ? ` ("${l}")` : ''}`); return; } // its drawn text too, as the class view says it (audit 22)
-      if (f !== id && (t !== id || e.type !== 'uml.Link')) return; const far = f === id ? 'to' : 'from', r = roleOf(e, far), l = linkText(e);
-      said.push(`linked to ${nm(far === 'to' ? t : f)}${r ? ` (${r})` : ''}${l ? ` ("${l}")` : ''}`); });
+      if (f !== id && (t !== id || e.type !== 'uml.Link' && e.type !== 'uml.Association')) return; const far = f === id ? 'to' : 'from', r = roleOf(e, far), l = linkText(e);
+      // a link is "linked to"; a kind the view lists that it does not draw as its own (the outline's Show), by the class view's
+      // verb ("depends on", "a kind of"), else a line, as its accessible name says it (audit 26)
+      const verb = e.type === 'uml.Link' ? 'linked to' : e.type === 'uml.Association' ? 'associated with' : lineVerb(e) || 'a line to';
+      said.push(`${verb} ${nm(far === 'to' ? t : f)}${r ? ` (${r})` : ''}${l ? ` ("${l}")` : ''}`); });
     out.push(obNodeName(x, pic) + (slots.length ? ': ' + slots.join(', ') : '') + (said.length ? '; ' + said.join('; ') : '') + '.'); });
   return out.join('\n');
 }

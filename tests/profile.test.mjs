@@ -412,3 +412,21 @@ test('audit 25: an extension and a profile application the view draws as its own
   const ext = structuredClone(base); ext.views[0].edges = [ext.edges.shift()];
   assert.deepEqual(validate(ext), []);
 });
+
+test('audit 26: an extension or an application one profile view draws as its own line is said by every profile view\'s rows and names, as the compartments and validate() take it', async () => {
+  const { readFileSync } = await import('node:fs');
+  const m = JSON.parse(readFileSync(new URL('../examples/bookshop-profile.json', import.meta.url)));
+  const ext = m.edges.find(e => e.id === 'owned-extends-class'), app = m.edges.find(e => e.id === 'sales-applies-conventions');
+  m.edges = m.edges.filter(e => e !== ext && e !== app);
+  const A = m.views[0]; A.edges = [...m.edges.map(e => e.id), ext, app];
+  const B = { ...A, id: 'b', title: 'B' }; delete B.edges; m.views.push(B);
+  assert.deepEqual(validate(m), []);
+  const owned = m.nodes.find(n => n.type === 'uml.Stereotype' && n.label === 'owned').id, prof = app.to;
+  for (const v of [A, B]) {
+    const d = describe(m, v.id).split('\n');
+    assert.match(d.find(l => l.startsWith('Stereotype owned')), /extends Class \{required\}/, v.id);
+    assert.match(d.find(l => l.startsWith('Class Order')), /«owned» required/, `${v.id}: the compartment, as before`);
+    assert.ok(T.rows(m, v, owned).includes('extends Class {required}'), `${v.id}: the stereotype's row`);
+    assert.ok(T.rows(m, v, prof).some(r => /applied to sales/.test(r)), `${v.id}: the profile's row`);
+  }
+});

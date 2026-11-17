@@ -1,5 +1,5 @@
 import { registerDiagramType } from '../core/registry.js';
-import { esc, fit, textW, widest } from '../core/text.js';
+import { brLines, esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import '../typed/draw.js'; // SHAPE.classifier, which the note's outline and ports take
 import { labelW } from '../layout/layered.js';
@@ -154,14 +154,17 @@ function compartmentsOf(n) { // a class's attributes and operations; an enumerat
   return n.type === 'uml.Enumeration' ? [c('literals'), ...[c('attributes'), c('operations')].filter(x => x.members.length)] : [c('attributes'), c('operations')];
 }
 
-// a comment: a note with a folded corner, its text wrapped at 220 px
+// a comment: a note with a folded corner, its text wrapped at 220 px; a line break the author put in (a Mermaid <br>, F2's
+// Shift+Enter) starts a new line there, and an empty part is kept as an empty line, so a blank line between paragraphs stays
+// (audit 26)
 const NOTE = { pad: 8, px: 11, lh: 15, max: 220, fold: 10 };
 function noteLines(t) {
-  const out = []; let line = '';
-  String(t ?? '').split(/\s+/).filter(Boolean).forEach(w => { const next = line ? line + ' ' + w : w;
-    if (line && textW(next, NOTE.px) > NOTE.max) { out.push(line); line = w; } else line = next; });
-  if (line) out.push(line);
-  return out.length ? out : [''];
+  const out = [], parts = brLines(String(t ?? '').trim());
+  parts.forEach(part => { let line = '';
+    part.split(/\s+/).filter(Boolean).forEach(w => { const next = line ? line + ' ' + w : w;
+      if (line && textW(next, NOTE.px) > NOTE.max) { out.push(line); line = w; } else line = next; });
+    out.push(line); });
+  return out;
 }
 SHAPE.note = {
   size: n => { const ls = noteLines(n.label); return { w: Math.ceil(Math.max(60, widest(ls, l => Math.min(NOTE.max, textW(l, NOTE.px)))) + 2 * NOTE.pad + NOTE.fold), h: ls.length * NOTE.lh + 2 * NOTE.pad }; },
@@ -377,6 +380,11 @@ function classProblems(model, view) {
 
 /* ---- describe(): the view in words, per element, each box then what it holds: "Class Order (entity), 5 attributes, 3
    operations; associated with OrderLine (lines, 1..*)"; "Package sales, holding 4 elements; imports catalog" ---- */
+// the verb describe() says a line by, from its source end; null for a kind it has none for (the object view says that one a
+// line, audit 26)
+const lineVerb = e => ({ __proto__: null, 'uml.Generalization': 'a kind of', 'uml.InterfaceRealization': 'realizes', 'uml.Dependency': 'depends on', 'uml.PackageMerge': 'merges', 'uml.ProfileApplication': 'applies', 'uml.CommentLink': 'about',
+  'uml.Usage': 'uses', 'uml.Realization': 'realizes', 'uml.Abstraction': 'abstracts', 'uml.Extension': 'extends',
+  'uml.PackageImport': keyword(e) === '«access»' ? 'accesses' : 'imports' }[e.type] || null);
 const describeAs = look => (model, viewId) => {
   const v = UML_ARR(model && model.views).find(x => UML_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
   const { at, pic, lines: all } = drawnLines(model, v, look.own), lines = all.filter(({ from, to }) => !holdsLine(pic, from, to));
@@ -389,9 +397,7 @@ const describeAs = look => (model, viewId) => {
         const verb = agg === 'composite' ? 'composed of' : agg === 'shared' ? 'aggregates' : whole === 'composite' ? 'part of' : whole === 'shared' ? 'held by' : 'associated with';
         said.push(`${verb} ${nm(far === 'to' ? t : f)}${end(e, far)}${stereoText(e) ? ' ' + stereoText(e) : ''}${UML_HAS(e.label) ? ` ("${e.label}")` : ''}`); }
       else if (f !== id) return;
-      else { const verb = { __proto__: null, 'uml.Generalization': 'a kind of', 'uml.InterfaceRealization': 'realizes', 'uml.Dependency': 'depends on', 'uml.PackageMerge': 'merges', 'uml.ProfileApplication': 'applies', 'uml.CommentLink': 'about',
-        'uml.Usage': 'uses', 'uml.Realization': 'realizes', 'uml.Abstraction': 'abstracts', 'uml.Extension': 'extends',
-        'uml.PackageImport': keyword(e) === '«access»' ? 'accesses' : 'imports' }[e.type] || 'linked to'; // and the stereotypes and label the line draws (audit 5); any other kind it draws too (audit 6)
+      else { const verb = lineVerb(e) || 'linked to'; // and the stereotypes and label the line draws (audit 5); any other kind it draws too (audit 6)
         said.push(`${verb} ${nm(t)}${stereoText(e) ? ' ' + stereoText(e) : ''}${UML_HAS(e.label) ? ` ("${e.label}")` : ''}`); } });
     out.push(nodeName(at.get(id).x, pic, look) + (said.length ? '; ' + said.join('; ') : '') + '.'); });
   return out.join('\n');
@@ -415,4 +421,4 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   edits: { rename: lineRename(lineLabel) },
 });
 
-export { CLASSIFIERS, LINE_WORDS, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, classProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
+export { CLASSIFIERS, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, classProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
