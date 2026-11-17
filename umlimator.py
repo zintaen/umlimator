@@ -289,8 +289,10 @@ def make_folder(out):
 
 
 def write(path, text):
+    """text written as UTF-8 in place of path; a lone surrogate, which UTF-8 cannot hold, as U+FFFD (load_json has said
+    the model's; this is the backstop for any other, never a UnicodeEncodeError, audit 30)."""
     with replacing(path) as tmp:
-        tmp.write_text(text, encoding="utf-8")
+        tmp.write_text(re.sub("[\ud800-\udfff]", "\ufffd", text), encoding="utf-8")
 
 
 class ChromeError(Exception):
@@ -427,10 +429,54 @@ def cmd_pin_icons(a):
         dark.unlink()
 
 
+# in JSON text, a backslash escape (a surrogate pair's two escapes as one) or a raw surrogate code point (bytes decoded
+# with surrogatepass, as json.loads decodes them, give one)
+_ESCAPE = re.compile(r"\\u[dD][89abAB][0-9a-fA-F]{2}\\u[dD][c-fC-F][0-9a-fA-F]{2}|\\u[dD][89a-fA-F][0-9a-fA-F]{2}|\\[\s\S]|[\ud800-\udfff]")
+
+
+def _finite(s):
+    x = float(s)
+    if not math.isfinite(x):
+        raise ValueError(f"the number {s[:40]} is out of range")
+    return x
+
+
+def _whole(s):
+    x = int(s)
+    if abs(x) > sys.float_info.max:  # JavaScript reads it as Infinity
+        raise ValueError(f"the number {s[:40]}... is out of range")
+    return x
+
+
+def _no_constant(c):
+    raise ValueError(f"{c} is not a JSON number")
+
+
+def load_json(src, where=None):
+    """JSON text (str, or bytes as json.loads takes them) as every command reads it (audit 30). A number out of range
+    (1e400) and Python's NaN and Infinity raise ValueError: a page's data block, which JavaScript's JSON.parse reads,
+    could not hold them. A lone surrogate (\\ud800, which no UTF-8 file holds) is read as U+FFFD, said once on stderr
+    naming `where`, as import says it."""
+    if isinstance(src, (bytes, bytearray)):
+        src = src.decode(json.detect_encoding(src), "surrogatepass")
+    lone = []
+    def fix(e):
+        t = e[0]
+        if len(t) == 1 or (len(t) == 6 and t[1] in "uU"):
+            lone.append(t)
+            return "\\ufffd" if len(t) == 6 else "\ufffd"
+        return t
+    src = _ESCAPE.sub(fix, src)
+    m = json.loads(src, parse_float=_finite, parse_int=_whole, parse_constant=_no_constant)
+    if lone and where:
+        print(f"{where}: a lone surrogate code point (U+D800 to U+DFFF), which no UTF-8 file holds: read as U+FFFD", file=sys.stderr)
+    return m
+
+
 def read_json(path, model=True):
     """A JSON file as every command reads one: a BOM too; a model is an object. Else one line, exit 1."""
     try:
-        m = json.loads(Path(path).read_text(encoding="utf-8-sig"))
+        m = load_json(Path(path).read_text(encoding="utf-8-sig"), path)
     except OSError as e:
         sys.exit(f"cannot read {path} ({e.strerror or e})")
     except ValueError as e:
@@ -579,7 +625,7 @@ def temp_json(m, near, suffix):
             _temps.discard(tmp)  # logo and the git root are read from the model's own folder
             sys.exit(f"cannot write in {d}, the folder of {near} ({e.strerror or e}): the model is rendered from a copy beside it, so copy it to a folder you can write")
     with os.fdopen(fd, "w", encoding="utf-8") as f:
-        f.write(json.dumps(m, ensure_ascii=False))
+        f.write(re.sub("[\ud800-\udfff]", "\ufffd", json.dumps(m, ensure_ascii=False)))  # as write() does (audit 30)
     return str(tmp)
 
 
@@ -771,14 +817,14 @@ def diff_page(before, after, near, out, stills=None):
     return {"out": rep["out"], "summary": d["summary"], "views": d["views"], "stills": pngs, **({"stillsFailed": failed} if failed else {}), "model": m}
 
 
-def model_of(text):
+def model_of(text, where=None):
     """A file's bytes as (its map model, or None; why it is not JSON, or None). json.loads reads UTF-8 (a BOM too),
     UTF-16 and UTF-32; bytes that are none of them are not JSON (UnicodeDecodeError is a ValueError). JSON too deep for
     Python's parser is a RecursionError: said, not a traceback that ends the summary of every other file (audit 20)."""
     if text is None:
         return None, None
     try:
-        m = json.loads(text)
+        m = load_json(text, where)
     except (ValueError, RecursionError) as e:
         return None, e
     return (m if isinstance(m, dict) and isinstance(m.get("nodes"), list) and isinstance(m.get("views"), list) else None), None
@@ -806,19 +852,32 @@ def diff_since(a):
         changed = git("diff", "--name-status", "-z", "-M", a.base, "--", *(a.models or ["*.json"]), env=env)
         if changed.returncode and env:
             env, changed = None, git("diff", "--name-status", "-z", "-M", a.base, "--", *(a.models or ["*.json"]))
+        # git pairs a rename only when both paths are in the pathspec: a model moved into --models' folder from outside it
+        # read as one added (audit 30). The renames of a diff of every path pair those, each kept when its new path is one
+        # the pathspec takes in (a model moved out of the folder stays one removed from it)
+        every = git("diff", "--name-status", "-z", "-M", a.base, env=env) if a.models and changed.returncode == 0 else None
     if changed.returncode:
         sys.exit(changed.stderr.strip())
-    rows, moved = changed.stdout.split("\0"), {}  # moved: each new path, the old path its version at --base is read from
-    names, i = [], 0
-    while i + 1 < len(rows):
-        if rows[i][:1] in ("R", "C") and i + 2 < len(rows):
-            if rows[i][:1] == "R":
-                moved[rows[i + 2]] = rows[i + 1]
-            names.append(rows[i + 2])
-            i += 3
-        else:
-            names.append(rows[i + 1])
-            i += 2
+
+    def name_status(out):
+        """git diff --name-status -z's rows as (each path a row names, newest last; {new path: old} for each rename)."""
+        rows, moved, names, i = out.split("\0"), {}, [], 0
+        while i + 1 < len(rows):
+            if rows[i][:1] in ("R", "C") and i + 2 < len(rows):
+                if rows[i][:1] == "R":
+                    moved[rows[i + 2]] = rows[i + 1]
+                names.append(rows[i + 2])
+                i += 3
+            else:
+                names.append(rows[i + 1])
+                i += 2
+        return names, moved
+    names, moved = name_status(changed.stdout)  # moved: each new path, the old path its version at --base is read from
+    if every is not None and every.returncode == 0:
+        taken = set(names)
+        for new_path, old_path in name_status(every.stdout)[1].items():
+            if new_path in taken and new_path not in moved:
+                moved[new_path] = old_path
     out = Path(a.out)
     if out.exists() and not out.is_dir():
         sys.exit(f"diff --base: --out {out} is a file: name a folder for the pages and summary.md")
@@ -846,7 +905,7 @@ def diff_since(a):
             md += [f"**{fname}**: cannot be read: {why}", ""]
             continue
         texts = (old.stdout if old.returncode == 0 else None, (top / name).read_bytes() if (top / name).is_file() else None)
-        (before, e1), (after, e2) = model_of(texts[0]), model_of(texts[1])
+        (before, e1), (after, e2) = model_of(texts[0], f"{name} at {a.base}"), model_of(texts[1], name)
         # a model that no longer parses (a conflict marker, a cut) is a change to say, not a file to skip; other JSON that
         # does not parse (a tsconfig.json with comments) is not a model
         why = [f"{at} nests too deep to read" if isinstance(e, RecursionError) else f"{at} is not valid JSON ({e})"
@@ -1047,9 +1106,14 @@ def cmd_timelapse(a):
         path = raw.decode(errors="replace") if raw else a.model
         try:
             subject = subject if len(subject) <= 90 else subject[:89].rstrip() + "…"
-            m = json.loads(r.stdout)
+            m = load_json(r.stdout, f"{sha[:7]}: {path}")
             if not isinstance(m, dict):
                 raise ValueError
+            # a version render refuses is left out, as one that is not JSON is: the slider's words and picture would read
+            # it as a model (audit 30, the half of audit 20's fix not done)
+            if bad := not_objects(m) or ([] if "views" in m else ["no views: not a map model"]):
+                print(f"{sha[:7]}: {path} is not a model render reads ({'; '.join(bad)}); left out", file=sys.stderr)
+                continue
             own_media(m, Path(a.model).resolve().parent, f"{sha[:7]}: {path}")  # as render's page: nothing fetched from an address the model names (audit 19)
             versions.append({"label": f"{day} {subject}".strip(), "model": m})
         except (ValueError, RecursionError):  # not JSON, bytes in no encoding JSON has, too deep to read (audit 20), or no model
