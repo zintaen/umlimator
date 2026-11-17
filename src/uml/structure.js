@@ -1,4 +1,4 @@
-import { esc, fit, textW } from '../core/text.js';
+import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { brLines, endLabels } from '../typed/draw.js';
 import { idTable } from '../core/registry.js';
@@ -60,7 +60,7 @@ SHAPE.port = {
 const snIconBand = 24;
 // a name the author broke (a Mermaid <br>): a line each, 16 px apart, the card as wide as the widest and taller by the rest (audit 23)
 const snParts = (n, kw) => { const st = [...(kw ? [kw] : []), ...SN_ARR(n.stereotypes).filter(t => String(t ?? '').trim() !== '')].map(t => `«${t}»`), name = brLines(n.label);
-  return { st, name, w: Math.ceil(Math.min(SN.maxW, Math.max(SN.minW, ...st.map(t => textW(t, SN.st) + 2 * SN.pad), ...name.map(l => textW(l, SN.name) + 2 * SN.pad)))),
+  return { st, name, w: Math.ceil(Math.min(SN.maxW, Math.max(SN.minW, widest(st, t => textW(t, SN.st) + 2 * SN.pad), widest(name, l => textW(l, SN.name) + 2 * SN.pad)))),
     h: Math.max(SN.minH, snIconBand + st.length * SN.sth + name.length * SN.nlh + 8) }; };
 const snKeyword = n => (n.shape === 'artifact' ? (n.type === 'uml.DeploymentSpecification' ? 'deployment spec' : 'artifact') : n.keyword ? 'component' : null);
 // UML's component icon: a rectangle with two small tabs on its left; the document icon: a page with its corner folded

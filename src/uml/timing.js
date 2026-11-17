@@ -1,6 +1,6 @@
 import { registerDiagramType, idTable } from '../core/registry.js';
 import { apply } from '../core/apply.js';
-import { esc, fit, textW } from '../core/text.js';
+import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { TR, layoutTimeRuler } from '../layout/timeruler.js';
 import { brLines } from '../typed/draw.js'; // a typed line's ends (TYPED.lines): a message's arrowheads
@@ -80,10 +80,10 @@ function tmInput(model, V, X = tmIndex(model, V)) {
     lanes: X.heads.map(n => { const vals = X.values(n.id);
       // a name the author broke (a Mermaid <br>): a line each, its room grown for them (audit 22)
       const ls = brLines(tmHead(n));
-      return { id: n.id, name: { w: Math.max(...ls.map(l => w(l, TM.name)), w(tmSt(n))), h: (tmSt(n) ? 2 * TM.lbl : TM.lbl) + (ls.length - 1) * TM.lbl }, form: vals ? 'values' : 'states', rows: vals ? [] : tmStates(n).map(s => ({ state: s, w: w(s) })),
+      return { id: n.id, name: { w: Math.max(widest(ls, l => w(l, TM.name)), w(tmSt(n))), h: (tmSt(n) ? 2 * TM.lbl : TM.lbl) + (ls.length - 1) * TM.lbl }, form: vals ? 'values' : 'states', rows: vals ? [] : tmStates(n).map(s => ({ state: s, w: w(s) })),
         changes: X.changes.filter(c => c.lifeline === n.id).map(c => ({ id: c.id, at: c.at, state: String(c.state ?? ''), w: w(c.state) })) }; }),
     messages: X.msgs.map(m => { const t = tmMsgText(m), p = tmProps(m);
-      return { id: m.id, from: m.from, to: m.to, sentAt: p.sentAt, receivedAt: p.receivedAt, ...(t ? { w: Math.max(...brLines(t).map(l => w(l))) + 12, h: TM.lbl + (brLines(t).length - 1) * 13 } : { w: 0, h: 0 }) }; }), // a line each, as svgOf draws a box tall enough (audit 22)
+      return { id: m.id, from: m.from, to: m.to, sentAt: p.sentAt, receivedAt: p.receivedAt, ...(t ? { w: widest(brLines(t), l => w(l)) + 12, h: TM.lbl + (brLines(t).length - 1) * 13 } : { w: 0, h: 0 }) }; }), // a line each, as svgOf draws a box tall enough (audit 22)
     constraints: X.shown.map(c => { const t = tmLabel(c); return { id: c.id, kind: TM_KIND[c.type] ?? c.type, from: c.from, to: c.to, ...(t ? { w: w(t) + 6, h: TM.mark } : { w: 0, h: 0 }) }; }),
     unit: X.unit,
   };
@@ -373,15 +373,18 @@ function tmRemove(model, view, ids, fromModel) {
   const r = tmGuard(model, V, out); if (!Array.isArray(r) || !r.length) return r;
   // what goes, read off the model after: the core's cascade takes a call's reply and a change's constraints too
   const next = apply(model, r), Y = tmIndex(next, tmView(next, V.id)), left = new Set([...Y.changes, ...Y.msgs, ...Y.cons].map(x => x.id));
-  const lanes = new Set(gone.lane), theirs = new Set(X.msgs.filter(m => lanes.has(m.from) || lanes.has(m.to)).map(m => m.id)), n = theirs.size;
-  const k = X.changes.filter(c => lanes.has(c.lifeline) && left.has(c.id)).length;
-  const list = (skip = new Set()) => [[X.changes, 'change'], [X.msgs, 'message'], [X.cons, 'constraint']].map(([xs, w]) => [xs.filter(x => !left.has(x.id) && !skip.has(x.id)).length, w])
+  // each part said of its own lanes: a change by its lifeline, a message by its ends (a deleted lane's first); the rest with the hidden lanes, as before (audit 25)
+  const hidL = new Set(gone.hid), delL = new Set(gone.lane.filter(id => !hidL.has(id))), on = (S, m) => S.has(m.from) || S.has(m.to);
+  const list = (keep = () => true) => [[X.changes, 'change'], [X.msgs, 'message'], [X.cons, 'constraint']].map(([xs, w]) => [xs.filter(x => !left.has(x.id) && keep(x)).length, w])
     .filter(([c]) => c).map(([c, w]) => tmPlural(c, w)).join(', ').replace(/, ([^,]*)$/, ' and $1'); // "1 change, 2 messages and 1 constraint"
-  const who = gone.lane.map(X.name).join(', '), its = gone.lane.length === 1 ? 'its' : 'their', more = list(theirs), all = list();
+  const lane = id => (X.C.get(id) || {}).lifeline, mine = x => (X.C.get(x.id) === x ? delL.has(x.lifeline) : X.msgs.includes(x) ? on(delL, x) : delL.has(lane(x.from)) || delL.has(lane(x.to))); // a deleted lane's change, message or constraint
+  const theirs = new Set(X.msgs.filter(m => on(hidL, m) && !on(delL, m)).map(m => m.id)), n = theirs.size;
+  const k = X.changes.filter(c => hidL.has(c.lifeline) && left.has(c.id)).length, its = hidL.size === 1 ? 'its' : 'their';
+  const more = list(x => !theirs.has(x.id) && !mine(x)), all = list(), ours = list(mine);
   const hid = [n ? `deleted ${its} ${tmPlural(n, 'message')}${more ? `, and ${more}` : ''}` : more && `deleted ${more}`, k && `${its} ${k === 1 ? 'change stays' : 'changes stay'} in the timeline`].filter(Boolean); // only the clauses that hold (audit 5)
   // said as done: a lifeline the view holds as its own is deleted by Delete too, not hidden (audit 24)
-  const dels = gone.lane.filter(id => !gone.hid.includes(id)).map(X.name).join(', ');
-  const say = gone.lane.length ? (!gone.hid.length ? `Deleted ${who}${all ? ', ' + all : ''}` : [...(dels ? [`Deleted ${dels}`] : []), `Hid ${gone.hid.map(X.name).join(', ')}`, ...hid].join('; '))
+  const dels = gone.lane.filter(id => delL.has(id)).map(X.name).join(', ');
+  const say = gone.lane.length ? (!hidL.size ? `Deleted ${dels}${all ? ', ' + all : ''}` : [...(dels ? [`Deleted ${dels}${ours ? ', ' + ours : ''}`] : []), `Hid ${gone.hid.map(X.name).join(', ')}`, ...hid].join('; '))
     : `Deleted ${all}: a change, a message or a constraint is deleted, not hidden`;
   return { commands: r, say };
 }

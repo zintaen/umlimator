@@ -108,13 +108,17 @@ function SYS_PAR_NAMES(d, nodes, I) {
       if (SYS_PAR_IN(c, inner) && !keep.some(k => SYS_PAR_MEETS(c, k))) { out[i] = { ...n, nameBox: c }; break; } } });
   return out;
 }
-// the bounds again when a name moved: the composite type's, less nothing but what moved (the frame holds the rest)
+// the bounds again when a name moved: the composite type's, less nothing but what moved (the frame holds the rest). The
+// layout's margin stays (audit 25): the extent of all but the names, grown by the least margin the old bounds had round it
+// (a side where an old name stuck out had more), then each name where it is now
 function SYS_PAR_BOUNDS(d, now) {
   if (!d.bounds || SYS_PAR_ARR(d.nodes).every(n => now.get(n.id) === n || now.get(n.id).nameBox === n.nameBox)) return {};
-  const all = [...SYS_PAR_ARR(d.families), ...now.values(), ...[...now.values()].map(n => n.nameBox), ...SYS_PAR_ARR(d.edges).map(e => e.lbl)].filter(Boolean);
+  const all = [...SYS_PAR_ARR(d.families), ...now.values(), ...SYS_PAR_ARR(d.edges).map(e => e.lbl)].filter(Boolean);
   SYS_PAR_ARR(d.edges).forEach(e => SYS_PAR_ARR(e.pts).forEach(([x, y]) => all.push({ x, y, w: 0, h: 0 })));
-  const x = Math.min(...all.map(b => b.x)), y = Math.min(...all.map(b => b.y));
-  return { bounds: { ...d.bounds, x, y, w: Math.max(...all.map(b => b.x + b.w)) - x, h: Math.max(...all.map(b => b.y + b.h)) - y } };
+  const ext = bs => { const x = Math.min(...bs.map(b => b.x)), y = Math.min(...bs.map(b => b.y)); return { x, y, r: Math.max(...bs.map(b => b.x + b.w)), b: Math.max(...bs.map(b => b.y + b.h)) }; };
+  const E = ext(all), B = d.bounds, m = Math.max(0, Math.min(E.x - B.x, E.y - B.y, B.x + B.w - E.r, B.y + B.h - E.b));
+  const o = ext([{ x: E.x - m, y: E.y - m, w: E.r - E.x + 2 * m, h: E.b - E.y + 2 * m }, ...[...now.values()].map(n => n.nameBox).filter(Boolean)]);
+  return { bounds: { ...B, x: o.x, y: o.y, w: o.r - o.x, h: o.b - o.y } };
 }
 
 /* ---- validators (§9). Each problem: { level, rule, path, message, ids } ---- */

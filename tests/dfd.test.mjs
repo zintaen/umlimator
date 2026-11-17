@@ -372,3 +372,25 @@ test('validate: an inline line in dfd, er, flowchart and information flow views 
     assert.ok(got.every(p => p.path.startsWith('views[0].edges[0]')), `${diagram}: ${got.map(p => p.path)}`);
   }
 });
+
+test('audit 25: D on a process with a flow to a store this view alone holds leaves that store and its flow out of the level, said; describe() reads only what a view draws; another kind in words', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'p', type: 'dfd.Process', label: 'Sell', props: { number: '1' } }, { id: 'cust', type: 'dfd.ExternalEntity', label: 'Customer' }],
+    edges: [{ id: 'f1', type: 'dfd.DataFlow', from: 'cust', to: 'p', label: 'order' }, { id: 'f2', type: 'dfd.DataFlow', from: 'p', to: 'st', label: 'order rec' }],
+    views: [{ id: 'ctx', diagram: 'dfd', title: 'Context', nodeIds: ['p', 'cust', 'st'], nodes: [{ id: 'st', type: 'dfd.DataStore', label: 'Orders', props: { number: 'D1' } }] }] };
+  assert.deepEqual(validate(m).filter(p => p.level === 'error'), []);
+  const r = T.edits.key(m, m.views[0], ['p'], 'd'), m2 = apply(m, r.commands), lv = m2.views[1];
+  assert.equal(r.say, 'Made level 1 Sell with 1 flow; D1 Orders lives in this view only, so its flow stays out: Enter opens it');
+  assert.deepEqual(lv.nodeIds, ['cust', 'p-1.1']);
+  assert.deepEqual(validate(m2).filter(p => p.level === 'error'), [], 'no error after one gesture');
+  assert.ok(!m2.edges.some(e => e.to === 'st' && e.id !== 'f2'), 'the flow to the view\'s own store is not copied');
+  // a view listing an id that is no node: its line is not drawn, so describe() does not read it either
+  const bad = structuredClone(DF), v = bad.views.find(x => x.id === L1), e = bad.edges.find(x => v.nodeIds.includes(x.from) && v.nodeIds.includes(x.to));
+  bad.nodes = bad.nodes.filter(x => x.id !== e.to);
+  assert.equal(layout(bad, L1).edges.some(x => x.id === e.id), false);
+  assert.ok(!describe(bad, L1).includes(` to ${e.to}.`), 'describe() reads only what is drawn');
+  // a node of another kind in words, as C4 and information flow say it: "Data type Money", never "DataType Money"
+  const k = { schemaVersion: 2, nodes: [{ id: 'p', type: 'dfd.Process', label: 'Sell', props: { number: '1' } }, { id: 'dt', type: 'sysml.DataType', label: 'Money' }],
+    edges: [{ id: 'f', type: 'dfd.DataFlow', from: 'p', to: 'dt', label: 'cash' }], views: [{ id: 'v', diagram: 'dfd', nodeIds: ['p', 'dt'] }] };
+  assert.match(describe(k, 'v'), /^Data type Money, 1 flow in, 0 out\.$/m);
+  assert.equal(layout(k, 'v').byId.dt.aria, 'Data type Money, 1 flow in, 0 out');
+});

@@ -414,3 +414,12 @@ test('audit 24: Shift + Delete on a target counts what the view holds as its own
   o = apply(o, [{ op: 'add', in: 'view', view: 'v', element: { id: 'srv', type: 'uml.Node', label: 'Server' } }, { op: 'add', in: 'view', view: 'v', element: { id: 'a', type: 'uml.Artifact', label: 'a.jar', parent: 'srv' } }]);
   for (const fromModel of [true, false]) assert.deepEqual(T.edits.remove(o, o.views[0], ['srv'], fromModel), { commands: [{ op: 'delete', id: 'srv' }], say: 'Deleted node Server and the 1 element it held' }, String(fromModel));
 });
+
+test('audit 25: a «deploy» or «manifest» line the view draws as its own counts in names, describe() and rows, as a model line does', () => {
+  const nodes = [N('srv', 'Node', 'Server'), N('jar', 'Artifact', 'app.jar'), N('shop', 'Component', 'Shop')], lines = [L('d', 'Deployment', 'jar', 'srv'), L('mf', 'Manifestation', 'jar', 'shop')];
+  const inModel = model(nodes, lines), own = model(nodes, []); own.views[0].edges = structuredClone(lines);
+  const say = m => ({ describe: describe(m, 'v'), aria: layout(m, 'v').nodes.map(n => n.aria).sort(), rows: ['srv', 'jar'].map(id => T.rows(m, m.views[0], id)), problems: validate(m) });
+  assert.deepEqual(say(own), say(inModel));
+  assert.ok(say(own).describe.includes('Node Server, 1 artifact deployed.') && say(own).describe.includes('manifests Shop'), say(own).describe);
+  assert.deepEqual(say(own).rows, [['app.jar, by «deploy»'], ['manifests Shop']]);
+});

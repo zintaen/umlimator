@@ -343,3 +343,24 @@ test('audit 22: a line break in a flow\'s label draws a new line, in a box as ta
     assert.equal(now.filter(([, t]) => t.includes('<tspan')).length, 1, `${f}: one label in two tspans`);
   }
 });
+
+test('audit 25: a node of another kind is named in words with its article, in flow-ends, accessible names and describe(): "an actor", "Use case Pay"', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 's', type: 'flow.Terminator', label: 'Start' }, { id: 'act', type: 'uml.Actor', label: 'Clerk' }, { id: 'uc', type: 'uml.UseCase', label: 'Pay' }, { id: 'e', type: 'flow.Terminator', label: 'End' }],
+    edges: [{ id: 'f1', type: 'flow.Flow', from: 's', to: 'act' }, { id: 'f2', type: 'flow.Flow', from: 'uc', to: 'e' }], views: [{ id: 'v', diagram: 'flowchart', nodeIds: ['s', 'act', 'uc', 'e'] }] };
+  assert.deepEqual(validate(m).filter(p => p.rule === 'flow-ends').map(p => p.message), [
+    'flow-ends: flow f1 ends on act ("Clerk"), an actor: a flow joins two flowchart nodes', 'flow-ends: flow f2 ends on uc ("Pay"), a use case: a flow joins two flowchart nodes']);
+  const d = describe(m, 'v'), g = layout(m, 'v');
+  assert.match(d, /^Use case Pay\.$/m); assert.match(d, /^Actor Clerk\.$/m);
+  assert.match(g.byId.uc.aria, /^Use case Pay/);
+});
+
+test('audit 25: no routed line steps back a few px against its own way round a turn (flowchart-stress f6, f24, f42 right; f30, f48 down)', () => {
+  const S = JSON.parse(readFileSync(new URL('flowchart-stress.json', import.meta.url)));
+  for (const dir of ['right', 'down']) {
+    const m = structuredClone(S); m.views.find(v => v.id === 'all').direction = dir;
+    const bad = layout(m, 'all').edges.filter(e => (e.pts || []).some((_, i, p) => { if (i + 3 >= p.length) return false;
+      const d = j => [Math.sign(p[j + 1][0] - p[j][0]), Math.sign(p[j + 1][1] - p[j][1])], a = d(i), c = d(i + 2);
+      return (a[0] || a[1]) && a[0] === -c[0] && a[1] === -c[1] && Math.abs(p[i + 2][0] - p[i + 1][0]) + Math.abs(p[i + 2][1] - p[i + 1][1]) < 8; }));
+    assert.deepEqual(bad.map(e => e.id), [], dir);
+  }
+});

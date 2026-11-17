@@ -463,3 +463,14 @@ test('audit 24: Delete or Shift + Delete on a connector to a lifeline the view h
     assert.deepEqual(validate(apply(m, r.commands)).filter(p => p.level === 'error'), [], String(fromModel));
   }
 });
+
+test('audit 25: Delete on a lifeline the view holds as its own says it is deleted, as it is; a model one is still hidden', () => {
+  const m = structuredClone(EX), v = VIEW(m), T = diagramOf(v);
+  v.nodes = [m.nodes.splice(m.nodes.findIndex(n => n.id === 'receipt'), 1)[0]];
+  const r = T.edits.remove(m, v, ['receipt'], false);
+  assert.deepEqual(r.commands, [{ op: 'delete', id: 'receipt' }]);
+  assert.equal(r.say, 'Deleted lifeline "receipt" and its 1 message: "new(order)"');
+  const both = T.edits.remove(m, v, ['receipt', 'lifeline-shopper'], false);
+  assert.match(both.say, /^Deleted lifeline "receipt" and its 1 message: "new\(order\)"; hid lifeline "shopper" and its \d+ messages?: /, both.say);
+  assert.match(T.edits.remove(m, v, ['lifeline-shopper'], false).say, /^Hid lifeline "shopper" and its/, 'a model lifeline: as before');
+});

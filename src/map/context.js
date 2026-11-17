@@ -254,18 +254,20 @@ function mapContext(model, opts = {}) {
   function blockPos(vid, T) {
     const v = T ? flipView(vid, T.flip) : V[vid], boxes = T ? T.boxes : (v.containers || []).filter(c => c && c.id), ids = (v.nodeIds || []).filter(i => typeof i === 'string' && N[i] && !(T && boxes.some(b => b.id === i))), isId = new Set(ids), lp = loopsOf(v);
     const byBox = byId(boxes.map(b => [b.id, b])), known = x => ids.includes(x) || Object.hasOwn(byBox, x), fwd = lp.edges.filter((e, k) => !lp.back.has(k) && e.from !== e.to && known(e.from) && known(e.to)); // not a line to an id that is neither (M3.3)
-    const home = byId(ids.map(i => [i, (boxes.filter(b => (b.nodeIds || []).includes(i)).pop() || {}).id ?? null])); // the box a card is drawn in
-    const up = x => isId.has(x) ? home[x] : byBox[x] && byBox[byBox[x].parent] ? byBox[x].parent : null; // the box a card or box sits in
+    const home = byId(ids.map(i => [i, (boxes.filter(b => b.id !== i && (b.nodeIds || []).includes(i)).pop() || {}).id ?? null])); // the box a card is drawn in
+    const boxUp = x => byBox[x] && byBox[byBox[x].parent] ? byBox[x].parent : null, up = x => isId.has(x) ? home[x] : boxUp(x); // the box a box, or a card or box, sits in
     const kids = new Map(), tin = new Map(), tout = new Map(), dep = new Map([[null, 0]]), path = new Map(), st = [[null, 0]]; let t = 0;
-    boxes.forEach(b => { const p = up(b.id); kids.has(p) || kids.set(p, []); kids.get(p).push(b.id); });
+    boxes.forEach(b => { const p = boxUp(b.id); kids.has(p) || kids.set(p, []); kids.get(p).push(b.id); });
     // a walk of the box tree with a stack, not recursion, so boxes nest to any depth: each box's span (x holds y when x's span
     // holds y's), and the boxes inner first (tout's order), the order they are laid out in
     while (st.length) { const f = st[st.length - 1], c = (kids.get(f[0]) || [])[f[1]++];
       if (c === undefined) tout.set(st.pop()[0], t++); else if (!tin.has(c)) { tin.set(c, t++); dep.set(c, st.length); st.push([c, 0]); } }
     // x and its boxes from the top, once (a step per box at most, so a cycle, validate's error, ends); what in group g holds x
-    const anc = x => { if (!path.has(x)) { const a = []; for (let k = 0, y = x; y != null && k <= boxes.length; k++, y = up(y)) a.push(y); path.set(x, a.reverse()); } return path.get(x); };
-    const itemIn = (x, g) => { const v = anc(x)[dep.get(g)]; return v != null && up(v) === g ? v : undefined; };
-    const holds = (x, y) => x === y || (isId.has(y) ? holds(x, home[y]) : tin.get(x) < tin.get(y) && tout.get(y) < tout.get(x));
+    const anc = x => { if (!path.has(x)) { const a = []; for (let k = 0, y = x; y != null && k <= boxes.length; k++, y = k > 1 ? boxUp(y) : up(y)) a.push(y); path.set(x, a.reverse()); } return path.get(x); };
+    const itemIn = (x, g) => { const v = anc(x)[dep.get(g)]; return v != null && (v === x ? up(v) : boxUp(v)) === g ? v : undefined; };
+    // a box read as a box past the card it starts from: a box may share a card's id (validate's error), and holds(x, 'a') read
+    // the box 'a' as the card again, for ever; nor is a card in a box of its own id (audit 25)
+    const inBox = (x, y) => x === y || tin.get(x) < tin.get(y) && tout.get(y) < tout.get(x), holds = (x, y) => x === y || (isId.has(y) ? home[y] != null && inBox(x, home[y]) : inBox(x, y));
     const first = x => { const k = lp.edges.findIndex(e => holds(x, e.from) || holds(x, e.to)); return k < 0 ? Infinity : k; };
     const sink = x => ids.includes(x) && isState(x) && !fwd.some(e => e.from === x); // state that leads nowhere goes last
     const lined = x => lp.edges.some(e => e.from !== e.to && (holds(x, e.from) || holds(x, e.to)));

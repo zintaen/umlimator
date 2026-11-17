@@ -1,6 +1,6 @@
 import { apply } from '../core/apply.js';
-import { registerDiagramType } from '../core/registry.js';
-import { esc, fit, textW } from '../core/text.js';
+import { ownNodes, registerDiagramType } from '../core/registry.js';
+import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, portsOn, r2 } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
 import { brLines } from '../typed/draw.js';
@@ -61,7 +61,7 @@ function stParts(n) {
   const all = ST_ARR(n.acts), shown = ST_ARR(n.collapsed).includes('activities') ? null : all, cap = Number.isFinite(n.cap) ? Math.max(0, Math.floor(n.cap)) : Infinity;
   const rows = shown ? [...shown.slice(0, cap), ...(shown.length > cap ? [`+${shown.length - cap} more`] : [])] : [];
   const head = 2 * ST.padY + st.length * ST.sth + Math.max(1, ls.length) * ST.nlh, comp = rows.length ? 8 + rows.length * ST.rl : 0, dec = n.composite ? ST.dec : 0;
-  const w = Math.ceil(Math.min(ST.maxW, Math.max(ST.minW, ...st.map(t => textW(t, ST.st) + 2 * ST.padX), ...ls.map(l => textW(l, ST.name) + 2 * ST.padX), ...rows.map(r => textW(r, ST.row) + 2 * ST.padX))));
+  const w = Math.ceil(Math.min(ST.maxW, Math.max(ST.minW, widest(st, t => textW(t, ST.st) + 2 * ST.padX), widest(ls, l => textW(l, ST.name) + 2 * ST.padX), widest(rows, r => textW(r, ST.row) + 2 * ST.padX))));
   return { st, ls, rows, head, comp, dec, w, h: Math.max(ST.minH, head + comp + dec) };
 }
 const ST_TL = 16; // a composite state's title line, the second and after
@@ -436,7 +436,11 @@ function stOwners(model, x) {
 }
 // remove: a region deleted from the model (Shift + Delete on its box, the member list's ✕) says how many elements it held (§10.3)
 function stRemove(model, view, ids, fromModel) {
-  const I = stIndex(model), rs = fromModel ? ids.filter(id => I.M.has(id) && I.M.get(id).x.type === 'uml.Region') : [];
+  // the regions of the view's own states too (remove gets the model as it is: registry.js), audit 25. Delete deletes a selection
+  // the view holds as its own (the canvas's Delete), so it is said the same way; a selection with a model element in it is the canvas's
+  const own = new Set(), put = x => { if (ST_OBJ(x) && typeof x.id === 'string') { own.add(x.id); ST_ARR(x.members).forEach(put); } };
+  if (ST_OBJ(view)) [...ST_ARR(view.nodes), ...ST_ARR(view.edges)].forEach(put);
+  const I = stIndex(ST_OBJ(view) ? ownNodes(model, view).model : model), rs = fromModel || ids.every(id => own.has(id)) ? ids.filter(id => I.M.has(id) && I.M.get(id).x.type === 'uml.Region') : [];
   if (!rs.length) return null;
   const held = [...I.N.keys()].filter(n => rs.some(r => stWithin(I, n, r))).length, x = I.M.get(rs[0]).x;
   return { commands: ids.map(id => ({ op: 'delete', id })), say: `Deleted ${rs.length === 1 ? 'region ' + (ST_HAS(x.label) ? x.label : x.id) : stPlural(rs.length, 'region')} and the ${stPlural(held, 'element')} ${rs.length === 1 ? 'it' : 'they'} held` };

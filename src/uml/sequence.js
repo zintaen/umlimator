@@ -1,6 +1,6 @@
 import { registerDiagramType, idTable } from '../core/registry.js';
 import { apply } from '../core/apply.js';
-import { esc, textW } from '../core/text.js';
+import { esc, textW, widest } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { layoutTimeAxis } from '../layout/timeaxis.js';
 import { brLines } from '../typed/draw.js';
@@ -21,7 +21,7 @@ const SQ_HAS = x => x != null && x !== '';
 const SQ_SORTS = ['call', 'async', 'reply', 'create', 'delete'], SQ_OPS = ['alt', 'opt', 'loop', 'par', 'break'];
 const SQ_LABEL = { px: 10.5, pad: 12, h: 16, lh: 13 }; // a message's label as svgOf draws a typed line's: 10.5 px text on a backing
 // its box: a text the author broke (a Mermaid <br>) a line each, as svgOf draws a label box tall enough for them (audit 22)
-const sqLabelSize = t => { const ls = brLines(t); return { w: Math.ceil(Math.max(...ls.map(l => textW(l, SQ_LABEL.px))) + SQ_LABEL.pad), h: SQ_LABEL.h + (ls.length - 1) * SQ_LABEL.lh }; };
+const sqLabelSize = t => { const ls = brLines(t); return { w: Math.ceil(widest(ls, l => textW(l, SQ_LABEL.px)) + SQ_LABEL.pad), h: SQ_LABEL.h + (ls.length - 1) * SQ_LABEL.lh }; };
 // how each sort is drawn (src/typed/draw.js's ENDS): a call filled, async, reply and create open, reply and create dashed
 const SQ_END = { call: { from: 'none', to: 'arrow' }, async: { from: 'none', to: 'open' }, reply: { from: 'none', to: 'open', dashed: true },
   create: { from: 'none', to: 'open', dashed: true }, delete: { from: 'none', to: 'arrow' } };
@@ -373,9 +373,12 @@ function sqRemove(model, view, ids, fromModel) {
   const X = sqIndex(model, V), lifelines = SQ_ARR(V.nodeIds), out = [], sel = new Set(SQ_ARR(ids));
   // every operand of a fragment selected: the fragment goes instead (its content stays, as an unwrap)
   const whole = id => { const f = X.opOf.get(id); return f && SQ_ARR(f.members).filter(SQ_OBJ).every(m => sel.has(m.id)) ? f.id : id; };
+  // a fragment's covers lose every lifeline that goes, in one set: two lifelines of one fragment, or one hidden and one of the view's own
+  // deleted, set it once, not each the other's back (audit 25)
+  const going = new Set([...sel].filter(id => lifelines.includes(id))), covered = new Set();
   for (const id of new Set([...sel].map(whole))) {
     if (lifelines.includes(id) && !fromModel && !SQ_ARR(V.nodes).some(n => SQ_OBJ(n) && n.id === id)) { // one of the view's own goes by delete
-      X.occ.filter(o => !o.message && SQ_ARR(sqProps(o.el).covers).includes(id)).forEach(o => out.push({ op: 'set', id: o.id, path: 'props.covers', value: sqProps(o.el).covers.filter(x => x !== id) }));
+      X.occ.filter(o => !o.message && !covered.has(o.id) && SQ_ARR(sqProps(o.el).covers).includes(id)).forEach(o => { covered.add(o.id); out.push({ op: 'set', id: o.id, path: 'props.covers', value: sqProps(o.el).covers.filter(x => !going.has(x)) }); });
       out.push({ op: 'hide', id, view: V.id }); continue; }
     const f = X.opOf.get(id);
     if (f && SQ_ARR(f.members).filter(SQ_OBJ).length > 1) { const R = sqRunOf(X, V, f.id); if (R.error) return R;
@@ -387,7 +390,10 @@ function sqRemove(model, view, ids, fromModel) {
   const r = sqGuard(model, V, out), heads = sqHeads(model, V).filter(n => sel.has(n.id)), hs = new Set(heads.map(n => n.id));
   if (!Array.isArray(r) || !r.length || !heads.length) return r;
   const n = X.occ.filter(o => o.message && (hs.has(o.from) || hs.has(o.to))).length;
-  return { commands: r, say: `${fromModel ? 'Deleted' : 'Removed'} ${heads.map(sqName).join(', ')}${fromModel ? '' : ' from the view'}, and ${n ? `${n} ${n === 1 ? 'message' : 'messages'}` : 'no message'} with ${heads.length > 1 ? 'them' : 'it'}` };
+  // said as done: a lifeline the view holds as its own is deleted by Delete too, not removed from the view (audit 25, as timing's audit 24)
+  const own = id => SQ_ARR(V.nodes).some(x => SQ_OBJ(x) && x.id === id), dels = heads.filter(h => fromModel || own(h.id)), hid = heads.filter(h => !dels.includes(h));
+  const did = [dels.length && `Deleted ${dels.map(sqName).join(', ')}`, hid.length && `${dels.length ? 'removed' : 'Removed'} ${hid.map(sqName).join(', ')} from the view`].filter(Boolean).join(' and ');
+  return { commands: r, say: `${did}, and ${n ? `${n} ${n === 1 ? 'message' : 'messages'}` : 'no message'} with ${heads.length > 1 ? 'them' : 'it'}` };
 }
 
 /* operands are a fragment's members, edited in the properties panel's member list (src/canvas/edit.js): a guard as text */

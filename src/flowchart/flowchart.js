@@ -1,9 +1,10 @@
 import { registerDiagramType } from '../core/registry.js';
-import { esc, fit, textW } from '../core/text.js';
+import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
 import '../uml/class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from '../uml/flow.js'; // and SHAPE.diamond, SHAPE.initial's circle, read only
+import { snKindName } from '../uml/structure.js';
 
 /* ---------- the flowchart, flowchart (work package M2.3, notes/milestone-2.md §7.2) ----------
    Ten symbols: the decision is stage 4's diamond and the connector a circle over SHAPE.initial's outline, both read only;
@@ -25,7 +26,9 @@ const FC_LOOK = {
   'flow.Connector': ['connector', 'Connector'], 'uml.Comment': ['note', 'Comment'],
 };
 const FC_NODES = Object.keys(FC_LOOK).filter(t => t !== 'uml.Comment'); // what a flow may end on
-const fcLook = x => (Object.hasOwn(FC_LOOK, x.type) ? FC_LOOK[x.type] : ['process', String(x.type || 'Node').split('.').pop()]);
+// another kind in words, "Use case", as C4 and information flow say it (audit 25); "a"/"an" before a word
+const fcKind = t => (String(t ?? '').includes('.') ? snKindName(t) : String(t || 'Node')), fcA = w => (/^(?!us|uni)[aeiou]/i.test(w) ? 'an ' : 'a ') + w;
+const fcLook = x => (Object.hasOwn(FC_LOOK, x.type) ? FC_LOOK[x.type] : ['process', fcKind(x.type)]);
 
 /* ---- the shapes ---- */
 const arcIn = (r, u) => r - Math.sqrt(Math.max(0, r * r - Math.min(r, Math.abs(u)) ** 2)); // a circle's depth at u from its axis
@@ -63,7 +66,7 @@ for (const [shape, [pad, out, inset, det, face]] of Object.entries(FC_SHAPES)) {
   const word = Object.values(FC_LOOK).find(l => l[0] === shape)[1];
   const S = SHAPE[shape] = { out, inset, face: face || (n => [n.y, n.y + n.h]),
     size(n) { const ls = flowWrap(n.label, FC.px, FC.max, 3), h = Math.max(FC.minH, 2 * FC.padY + Math.max(1, ls.length) * FC.lh), [l, r, t, b] = pad(h);
-      return { w: Math.ceil(Math.max(FC.minW, ...ls.map(x => textW(x, FC.px) + 2 * FC.padX)) + l + r), h: Math.ceil(h + t + b) }; },
+      return { w: Math.ceil(Math.max(FC.minW, widest(ls, x => textW(x, FC.px) + 2 * FC.padX)) + l + r), h: Math.ceil(h + t + b) }; },
     draw(n) { const [l, r, t, b] = pad(n.h), w = n.w - l - r - 2 * FC.padX, ls = flowWrap(n.label, FC.px, FC.max, 3);
       const y0 = n.y + t + (n.h - t - b - ls.length * FC.lh) / 2, cx = n.x + l + (n.w - l - r) / 2;
       return fcG(n, shape, fcSaid(n, word), fcBody(out(n)) + (det ? det(n) : '') + ls.map((x, i) => fcText(cx, y0 + i * FC.lh + 12, fit(x, FC.px, w))).join('')); } };
@@ -155,7 +158,7 @@ function fcProblems(model, view) {
   // the model's flows (once an id), then those written inline in this view's edges
   [...[...I.E.values()].map(e => [e, I.path.get(e.id)]), ...typedLines({ views: model && model.views }, v => v === view).filter(([e]) => I.E.get(e.id) !== e)].forEach(([e, p]) => { const id = e.id;
     if (e.type !== 'flow.Flow' || !(shown.has(e.from) || shown.has(e.to))) return;
-    [e.from, e.to].forEach(end => { if (I.N.has(end) && !mine(end)) say('flow-ends', p, [id, end], `flow ${id} ends on ${q(end)}, a ${String(I.N.get(end).type).split('.').pop()}: a flow joins two flowchart nodes`, 'error'); }); });
+    [e.from, e.to].forEach(end => { if (I.N.has(end) && !mine(end)) say('flow-ends', p, [id, end], `flow ${id} ends on ${q(end)}, ${fcA(fcLook(I.N.get(end))[1].toLowerCase())}: a flow joins two flowchart nodes`, 'error'); }); });
   if (!view) return out;
   const vp = `views[${FC_ARR(model.views).indexOf(view)}]`;
   if (I.starts.length !== 1) say('start-end', vp, [view.id, ...I.starts], `view ${view.id} has ${fcPlural(I.starts.length, 'start')}${I.starts.length ? ` (${I.starts.map(q).join(', ')})` : ''}; it wants one`);

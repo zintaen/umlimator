@@ -100,7 +100,11 @@ function refs(m, ids, only, top = !only) {
 /* references(model, id): where the model names an element, other than the element itself: { path, kind }, path a list of
    keys from the model down (['views', 0, 'nodeIds', 2]). A host with a store of its own deletes what apply() would. */
 export function references(model, id) {
-  return refs(isObj(model) ? model : {}, new Set([id]));
+  const ids = new Set([id]);
+  if (!isObj(model)) return refs({}, ids);
+  // a host's getter or Proxy that throws: read again in a copy where each value that cannot be read is an empty object in
+  // its place, so every path still names the model's own place (audit 25: the host's error was thrown)
+  try { return refs(model, ids); } catch { return refs(copyOf(model, {}), ids); }
 }
 
 const get = (m, path) => path.reduce((o, k) => o[k], m);

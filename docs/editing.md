@@ -136,7 +136,7 @@ transaction of `set`, `add`, `move`, `hide`, `delete` and `reparent`, and `refer
 
 | Command | Takes away | Keeps |
 |---|---|---|
-| `hide` (Delete, from 1.7) | all one view says of the element: its place, pin, `present`, box, tour, the view's lines to it, the story steps on that view | the element, and every other view of it |
+| `hide` (Delete, from 1.7) | all one view says of the element: its place, pin, `present`, box, tour, the view's lines to it, the story steps on that view. An element only this view holds (its own node or line) is refused, since hiding it would delete it: Delete on one, or on a member of one, sends `delete` instead | the element, and every other view of it; not an element only this view holds |
 | `delete` (Shift + Delete, from 1.7) | the element, its members, what it owns, the lines to them, and every place that names them | nothing of it; undo brings all of it back |
 
 Undo is a snapshot of the model before (`history()`), so undo and redo give back byte-identical models. The canvas

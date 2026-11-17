@@ -1,10 +1,11 @@
 import { registerDiagramType } from '../core/registry.js';
-import { esc, fit, textW } from '../core/text.js';
+import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, portsOn, r2 } from '../draw/shapes.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
 import '../uml/class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from '../uml/flow.js';
 import '../uml/usecase.js'; // SHAPE.ellipse, Yourdon's process
+import { snKindName } from '../uml/structure.js';
 
 /* ---------- the data flow diagram, dfd (work package M2.4, notes/milestone-2.md §4.3, §6.1, §6.4, §7.3) ----------
    Processes, data stores and external entities, joined by data flows; comments. Two skins on one geometry (§4.3): each
@@ -27,7 +28,7 @@ const dfdSkin = view => (view && view.notation === 'gane-sarson' ? 'gane-sarson'
 /* ---- the shapes (§4.3): one size for both skins; each draws its number and name inside its box ---- */
 const DF = { px: 12, lh: 16, nmax: 160, num: 11, numh: 14, pad: 10, k: 1.42, band: 22, shadow: 4, minW: 96 };
 const dfdName = (t, k) => flowWrap(t, DF.px, DF.nmax, k);
-const dfdTextW = ls => Math.max(0, ...ls.map(l => textW(l, DF.px)));
+const dfdTextW = ls => Math.max(0, widest(ls, l => textW(l, DF.px)));
 const dfdText = (x, y, t, px, wt, fill, max, cls, anchor = 'middle', more = '') => `<text x="${r2(x)}" y="${r2(y)}" text-anchor="${anchor}" class="${cls}" fill="${fill}"${more} style="font:${wt} ${px}px var(--um-sans)">${esc(fit(t, px, max))}</text>`;
 const dfdNode = (n, kind, inner) => `<g class="node dfd-${kind}" data-id="${esc(n.id)}" data-shape="${n.shape}" tabindex="-1" role="img" aria-label="${esc(n.aria || n.label || '')}">${inner}</g>`;
 const dfdBody = (d, c, f) => `<path d="${d}" class="n-mask"/><path d="${d}" class="n-body" fill="${f}" stroke="${c}"/>`;
@@ -108,14 +109,16 @@ function dfdLines(model, view) {
   const shown = new Set(DFD_ARR(view.nodeIds)), listed = Array.isArray(view.edges), list = listed ? [...new Set(view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)))] : [...E.values()].filter(e => DFD_LINES.includes(e.type));
   const lv = !listed && view.parent !== view.id && DFD_ARR(model.nodes).some(x => DFD_OBJ(x) && x.type === 'dfd.Process' && x.opensView === view.id);
   const up = new Set(lv ? DFD_ARR((DFD_ARR(model.views).find(v => DFD_OBJ(v) && v.id === view.parent) || {}).nodeIds) : []);
-  return list.filter(e => DFD_OBJ(e) && typeof e.id === 'string' && shown.has(e.from) && shown.has(e.to) && !(up.has(e.from) && up.has(e.to)));
+  // and only between nodes the model holds: a view's id that is no node draws nothing, so describe() reads nothing (audit 25)
+  const at = new Set(DFD_ARR(model.nodes).filter(DFD_OBJ).map(x => x.id));
+  return list.filter(e => DFD_OBJ(e) && typeof e.id === 'string' && shown.has(e.from) && shown.has(e.to) && at.has(e.from) && at.has(e.to) && !(up.has(e.from) && up.has(e.to)));
 }
 // accessible names (A1): "Process 1 Take order, opens level 1 Take order, 2 flows in, 2 out"; a flow: "Data flow basket from Customer to 1 Take order"
 function dfdNodeName(I, id, lines) {
   const x = I.at.get(id); if (x.type === 'uml.Comment') return 'Comment: ' + String(x.label ?? id);
   const ins = lines.filter(e => e.type === 'dfd.DataFlow' && e.to === id && e.from !== id).length, outs = lines.filter(e => e.type === 'dfd.DataFlow' && e.from === id && e.to !== id).length;
   const v = x.type === 'dfd.Process' && I.views.get(x.opensView);
-  return `${DFD_WORD[x.type] || String(x.type).split('.').pop()} ${I.name(id)}${v ? `, opens level ${v.title || v.id}` : ''}, ${dfdPlural(ins, 'flow')} in, ${outs} out`;
+  return `${DFD_WORD[x.type] || snKindName(x.type)} ${I.name(id)}${v ? `, opens level ${v.title || v.id}` : ''}, ${dfdPlural(ins, 'flow')} in, ${outs} out`;
 }
 const dfdLineName = (I, e) => `${e.type === 'dfd.DataFlow' ? 'Data flow' : 'Comment link'}${DFD_HAS(e.label) ? ' ' + e.label : ''} from ${I.name(e.from)} to ${I.name(e.to)}`;
 // reading order: the processes by number, then the stores, the entities and the rest as the view lists them, then the lines
@@ -235,15 +238,19 @@ function dfdKey(model, view, ids, key) {
   const I = dfdIndex(model), p = ids.length === 1 && I.proc(ids[0]) ? I.at.get(ids[0]) : null; if (!p) return null;
   if (p.opensView != null) return { error: `${I.q(p.id)} opens "${p.opensView}" already: Enter opens it` };
   const used = dfdUsed(model), n = dfdNum(p), kn = dfdFreeNum(I, 'dfd.Process', n ? n + '.' : '');
-  const flows = dfdLines(model, view).filter(e => e.type === 'dfd.DataFlow' && (e.from === p.id) !== (e.to === p.id));
+  // a far end this view alone holds (view.nodes) no other view can show: it and its flow stay out, said (audit 25)
+  const own = new Set(DFD_ARR(view.nodes).filter(x => DFD_OBJ(x) && I.at.get(x.id) === x).map(x => x.id)), far = e => (e.from === p.id ? e.to : e.from);
+  const all = dfdLines(model, view).filter(e => e.type === 'dfd.DataFlow' && (e.from === p.id) !== (e.to === p.id)), flows = all.filter(e => !own.has(far(e)));
+  const out = [...new Set(all.filter(e => own.has(far(e))).map(far))].map(I.name);
   const vid = dfdFree(used, p.id + '-level'), kid = dfdFree(used, `${p.id}-${kn}`), title = `${n ? n + ' ' : ''}${p.label ?? p.id}`;
   return { commands: [
     { op: 'addView', view: { id: vid, diagram: 'dfd', title, parent: view.id, ...(view.notation != null ? { notation: view.notation } : {}), ...(view.direction != null ? { direction: view.direction } : {}),
-      nodeIds: [...new Set(flows.map(e => (e.from === p.id ? e.to : e.from)))] } },
+      nodeIds: [...new Set(flows.map(far))] } },
     { op: 'add', element: { id: kid, type: 'dfd.Process', ...(p.label != null ? { label: p.label } : {}), props: { number: kn } }, view: vid },
     ...flows.map(e => ({ op: 'add', element: { id: dfdFree(used, `${e.id}-${kn}`), type: 'dfd.DataFlow', from: e.from === p.id ? kid : e.from, to: e.to === p.id ? kid : e.to, ...(e.label != null ? { label: e.label } : {}) } })),
     { op: 'set', id: p.id, path: 'opensView', value: vid }],
-  say: `Made level ${title}, balanced with ${dfdPlural(flows.length, 'flow')}: Enter opens it` };
+  say: out.length ? `Made level ${title} with ${dfdPlural(flows.length, 'flow')}; ${out.join(', ')} ${out.length > 1 ? 'live' : 'lives'} in this view only, so ${out.length > 1 ? 'their flows stay' : 'its flow stays'} out: Enter opens it`
+    : `Made level ${title}, balanced with ${dfdPlural(flows.length, 'flow')}: Enter opens it` };
 }
 
 const DFD_NUMBER = { key: 'number', label: 'Number', kind: 'text' };
