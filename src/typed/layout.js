@@ -57,7 +57,9 @@ function layoutTyped(dg, memo) {
    one between (the two opposite stretches each shorter by the less of them), one of the two opposite ones onto the other's
    (the one between gone), or the stretch before or after them onto the one between (the stretch that steps back gone). A fold is kept when it moves neither end nor the way a line leaves or
    meets its card, leaves the first and last stretches a stub long (or as long as they were), takes the route through no card
-   it did not cross, takes no label off its line, and gives check() nothing new to say of that line; then the next */
+   it did not cross, takes no label off its line, and gives check() nothing new to say of that line; then the next. A forward
+   stair, two stretches the same way round one shorter than a stub, is folded the same way where it is the last turns before
+   an end (audit 26: the shipped container view's Order worker to Database, 10 px across and 7 px up into the card) */
 const UH_EQ = (p, q) => Math.abs(p[0] - q[0]) < 1e-6 && Math.abs(p[1] - q[1]) < 1e-6;
 const uhDir = (p, q) => [Math.sign(Math.round((q[0] - p[0]) * 1e6)), Math.sign(Math.round((q[1] - p[1]) * 1e6))];
 const uhLen = (p, q) => Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1]);
@@ -67,9 +69,9 @@ const uhTidy = pts => { const o = [];
     if (o.length >= 2) { const a = o[o.length - 2], b = o[o.length - 1]; if ((Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(b[0] - q[0]) < 1e-6) || (Math.abs(a[1] - b[1]) < 1e-6 && Math.abs(b[1] - q[1]) < 1e-6)) { o[o.length - 1] = q; continue; } }
     o.push(q); }
   return o; };
-// the stretches k between two opposite ones, k shorter than a stub
+// the stretches k between two opposite ones, k shorter than a stub; and between two the same way next to an end's stretch
 const uhAt = (p, stub) => { const o = []; for (let k = 1; k + 2 < p.length; k++) { const a = uhDir(p[k - 1], p[k]), c = uhDir(p[k + 1], p[k + 2]);
-  if ((a[0] || a[1]) && a[0] === -c[0] && a[1] === -c[1] && uhLen(p[k], p[k + 1]) < stub) o.push(k); } return o; };
+  if ((a[0] || a[1]) && uhLen(p[k], p[k + 1]) < stub && ((a[0] === -c[0] && a[1] === -c[1]) || (a[0] === c[0] && a[1] === c[1] && (k === 2 || k === p.length - 4)))) o.push(k); } return o; };
 // stretch k (points k and k + 1) moved onto the line through point q, along the other axis
 const uhMove = (p, k, q) => { const o = p.map(x => [...x]), ax = Math.abs(p[k][1] - p[k + 1][1]) < 1e-6 ? 1 : 0; o[k][ax] = q[ax]; o[k + 1][ax] = q[ax]; return o; };
 const uhIn = (a, b, r) => Math.max(a[0], b[0]) > r.x + 0.5 && Math.min(a[0], b[0]) < r.x + r.w - 0.5 && Math.max(a[1], b[1]) > r.y + 0.5 && Math.min(a[1], b[1]) < r.y + r.h - 0.5;

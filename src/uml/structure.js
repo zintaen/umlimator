@@ -202,8 +202,9 @@ const STRUCT_RULES = {
 };
 const SN_ARTIFACTS = ['uml.Artifact', 'uml.DeploymentSpecification'];
 const snWord = t => String(t ?? '').split('.').pop().replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase(); // 'uml.ExecutionEnvironment': "execution environment"
-// the same, first letter up, where a kind outside a view's own starts its accessible name: "Use case Pay", never "UseCase Pay" (audit 23)
-const snKindName = t => snWord(t).replace(/^./, c => c.toUpperCase());
+// the same, first letter up, where a kind outside a view's own starts its accessible name: "Use case Pay", never "UseCase Pay" (audit 23);
+// no type at all: "Element Shop", as a cloud view names an untyped card, never " Shop" (audit 26)
+const snKindName = t => snWord(t).replace(/^./, c => c.toUpperCase()) || 'Element';
 function structProblems(model, view) {
   const out = [], at = new Map(), shown = new Set(SN_ARR(view && view.nodeIds)), seen = id => !view || shown.has(id);
   SN_ARR(model && model.nodes).forEach(n => { if (SN_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });

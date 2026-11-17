@@ -20,6 +20,7 @@ import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
 import { tablesOf } from '../src/page/print.js';
 import '../src/uml/information.js';
+import '../src/er/er.js';
 
 const IF = JSON.parse(readFileSync(new URL('../examples/order-information-flow.json', import.meta.url)));
 const V = 'order-flows';
@@ -399,4 +400,32 @@ test('audit 24: validate() names a kind in words with its article, as the view n
   assert.deepEqual(said, [`conveyed-kind: ${flow.id} conveys "${actor.label}", an actor`, `conveyed-kind: ${flow.id} conveys "Money", a data type`,
     `conveyed-kind: ${flow.id} conveys "Status", an enumeration`, `conveyed-kind: ${flow.id} conveys "Pay", a use case`, 'flow-ends: f2 runs from "Money" (data type) to "Pay" (use case)']);
   assert.match(describe(m, m.views[0].id), /\nUse case Pay[.:,]/, 'the same words as the view\'s names');
+});
+
+// audit 26: a model flow made on view A could convey an item only view A holds (view.nodes), and a model table's column row
+// typed on view A could reference a column of a table only it holds: other views then named the item or column by its id
+test('audit 26: a model flow conveys no element only this view holds, nor does a model column reference one (ER)', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'shopper', type: 'uml.Actor', label: 'Shopper' }, { id: 'store', type: 'uml.Class', label: 'Storefront' }, { id: 'it0', type: 'uml.InformationItem', label: 'Card' }], edges: [],
+    views: [{ id: 'a', diagram: 'uml.information-flow', title: 'A', nodeIds: ['shopper', 'store', 'it0', 'it1'], nodes: [{ id: 'it1', type: 'uml.InformationItem', label: 'Order' }] },
+      { id: 'b', diagram: 'uml.information-flow', title: 'B', nodeIds: ['shopper', 'store'] }] };
+  const D = diagramOf(m.views[0]), r = D.edits.connect(m, m.views[0], 'shopper', 'store', null, { type: 'uml.InformationFlow' });
+  assert.deepEqual(r.pick, ['Card', 'Storefront'], 'the own item Order is not offered');
+  const m2 = apply(m, r.then(0));
+  assert.deepEqual(layout(m2, 'b').edges.map(e => e.aria), ['Information flow from Shopper to Storefront, conveys Card']);
+  assert.deepEqual(D.edits.rename(m2, 'a', 'flow1', 'Order'), { error: 'Order lives in this view only: a flow between model elements conveys a model element' });
+  assert.ok(Array.isArray(D.edits.rename(m2, 'a', 'flow1', 'Storefront')), 'a model element is still taken');
+  // with only an own item to convey, the picker says why
+  const m3 = structuredClone(m); m3.nodes = m3.nodes.filter(n => n.id !== 'it0'); m3.views[0].nodeIds = ['shopper', 'store', 'it1'];
+  const only = { ...m3, nodes: m3.nodes.map(n => (n.id === 'store' ? { ...n, type: 'uml.Actor' } : n)) };
+  assert.deepEqual(D.edits.connect(only, only.views[0], 'shopper', 'store', null, { type: 'uml.InformationFlow' }), { error: 'Order lives in this view only: a flow between model elements conveys a model element' });
+  // a flow from an own element may convey an own item: it is no model flow
+  const own = structuredClone(m); own.views[0].nodes.push({ id: 'kiosk', type: 'uml.Actor', label: 'Kiosk' }); own.views[0].nodeIds.push('kiosk');
+  assert.ok(D.edits.connect(own, own.views[0], 'kiosk', 'store', null, { type: 'uml.InformationFlow' }).pick.includes('Order'));
+  // ER: a model table's FK row naming a column of a table only this view holds is refused; one of an own table is taken
+  const er = { schemaVersion: 2, nodes: [{ id: 'order', type: 'er.Entity', label: 'order', members: [{ id: 'order.id', type: 'er.Column', label: 'id', props: { primaryKey: true } }] }], edges: [],
+    views: [{ id: 'a', diagram: 'er', title: 'A', nodeIds: ['order', 'cust'], nodes: [{ id: 'cust', type: 'er.Entity', label: 'customer', members: [{ id: 'cust.id', type: 'er.Column', label: 'id', props: { primaryKey: true } }] }] }] };
+  const E = diagramOf(er.views[0]);
+  assert.match(E.edits.member(er, er.views[0], 'order', null, 'customer_id int FK customer.id').error, /a column of a table this view alone holds/);
+  assert.equal(E.edits.member(er, 'a', 'cust', null, 'order_id int FK order.id')[0].element.props.references, 'order.id');
+  assert.equal(E.edits.member(er, er.views[0], 'order', null, 'parent_id int FK order.id')[0].element.props.references, 'order.id');
 });

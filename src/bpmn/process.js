@@ -342,7 +342,7 @@ function bzProblems(model, view) {
   const procs = new Map();
   I.N.forEach((x, id) => { if (!seen(id)) return; const t = x.type, p = bzProps(x);
     if (flow(id)) { const k = I.level(id); if (!procs.has(k)) procs.set(k, []); procs.get(k).push(id); }
-    if (BZ_EVENTS.includes(t) && !BZ_DEFS[t].includes(bzDef(x))) say('error', 'event-definition', id, [id], `${q(id)} is a ${bzWord({ type: t }).toLowerCase()} with definition "${bzDef(x)}": it takes ${BZ_DEFS[t].join(', ')}`, '.props.definition');
+    if (BZ_EVENTS.includes(t) && !BZ_DEFS[t].includes(bzDef(x))) say('error', 'event-definition', id, [id], `${q(id)} is ${bzA(bzWord({ type: t }).toLowerCase())} with definition "${bzDef(x)}": it takes ${BZ_DEFS[t].join(', ')}`, '.props.definition');
     if (Object.hasOwn(p, 'cancelActivity') && t !== BZ_BE) say('error', 'event-definition', id, [id], `${q(id)} has cancelActivity: only a boundary event has it`, '.props.cancelActivity');
     if (t === BZ_BE) { const h = p.attachedTo;
       if (!BZ_ACT.includes(ty(h))) say('error', 'boundary-host', id, [id, h], `${q(id)} is attached to ${h == null ? 'nothing' : q(h)}: a boundary event is attached to a task, sub-process or call activity`, '.props.attachedTo');
@@ -354,9 +354,11 @@ function bzProblems(model, view) {
     if (BZ_ACT.includes(t) && !ins(id).length) say('warning', 'flow-start', id, [id], `${q(id)} has no sequence flow in: it never starts`);
     const pa = x.parent;
     if (pa != null && (flow(id) || BZ_DATA.includes(t))) { const ok = BZ_DATA.includes(t) ? ty(pa) === BZ_POOL : I.L.has(pa) || ty(pa) === BZ_POOL || ty(pa) === BZ_SUB;
-      if (!ok) say('error', 'lane-owner', id, [id, pa], `${q(id)}'s parent ${q(pa)} is ${I.el(pa) ? `a ${bzWord(I.el(pa)).toLowerCase()}` : 'no element'}: ${BZ_DATA.includes(t) ? 'data sits in a pool or none' : 'a flow node sits in a lane, a pool or a sub-process'}`, '.parent'); }
+      if (!ok) say('error', 'lane-owner', id, [id, pa], `${q(id)}'s parent ${q(pa)} is ${I.el(pa) ? bzA(bzWord(I.el(pa)).toLowerCase()) : 'no element'}: ${BZ_DATA.includes(t) ? 'data sits in a pool or none' : 'a flow node sits in a lane, a pool or a sub-process'}`, '.parent'); }
     if (flow(id) && t !== BZ_BE) { const p0 = I.poolOf(id); if (p0 != null && I.level(id) === p0 && I.lanesOf(p0).length && I.laneIn(id) == null) say('warning', 'in-lane', id, [id, p0], `${q(id)} is in pool ${q(p0)}, which has lanes, but in none of them`); }
     bzRefs(x).forEach(r => { if (ty(r) !== BZ_GROUP) say('warning', 'group-ref', id, [id, r], `${q(id)} names ${q(r)} as its group, which is no group`, '.props.categoryValueRef'); });
+    // a lone id, not a list, is read as nothing: said, never dropped without a word (audit 26)
+    if (p.categoryValueRef != null && !Array.isArray(p.categoryValueRef)) say('warning', 'group-ref', id, [id], `${q(id)}'s categoryValueRef is ${JSON.stringify(p.categoryValueRef)}, not a list of group ids: it is ignored`, '.props.categoryValueRef');
     if ((t === BZ_SUB || t === 'bpmn.CallActivity') && (x.opensView != null || (t === BZ_SUB && view && !BZ_ARR(view.nodeIds).some(n => (I.N.get(n) || {}).parent === id) && [...I.N.values()].some(n => n.parent === id)))) {
       const v = BZ_ARR(model.views).find(w => BZ_OBJ(w) && w.id === x.opensView);
       if (!v || v.diagram !== 'bpmn' || (t === BZ_SUB && v.subject !== id)) say('warning', 'opens-view', id, [id], `${q(id)} ${x.opensView == null ? 'is collapsed and opens no view' : `opens ${JSON.stringify(x.opensView)}, ${!v ? 'no view of the model' : v.diagram !== 'bpmn' ? 'not a BPMN view' : 'whose subject is not it'}`}`, '.opensView'); } });

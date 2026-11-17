@@ -107,7 +107,8 @@ function fcNodeName(I, x) {
 }
 function fcLineName(I, e) {
   const t = FC_TXT(e.label), ends = `from ${fcCalled(I.N.get(e.from))} to ${fcCalled(I.N.get(e.to))}`;
-  return e.type === 'uml.CommentLink' ? `Comment link ${ends}` : `Flow ${ends}${t ? ': ' + t : ''}`;
+  // a listed line of another kind by its own kind, "Association", never "Flow" (audit 26)
+  return e.type === 'uml.CommentLink' ? `Comment link ${ends}` : `${e.type === 'flow.Flow' ? 'Flow' : e.type == null ? 'Line' : snKindName(e.type)} ${ends}${t ? ': ' + t : ''}`;
 }
 
 /* ---- the legend: each line kind and each symbol the view draws (1.9's legendItem form) ---- */
@@ -134,7 +135,7 @@ function fcGeo({ model, view, pos, memo }) {
   const nodes = I.ids.map(id => { const x = I.N.get(id), [shape] = fcLook(x), d = { id, label: fcName(x), type: x.type, kind: 'file', shape, aria: fcNodeName(I, x), col: at(id)[0], row: at(id)[1] };
     return { ...d, ...SHAPE[shape].size(d) }; });
   const edges = I.lines.map(e => { const note = e.type === 'uml.CommentLink', label = note ? '' : FC_TXT(e.label);
-    return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, ...(label ? { label, cut: 280 } : {}), end: note ? { from: 'none', to: 'none', dashed: true } : { from: 'none', to: 'arrow' },
+    return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, ...(label ? { label, cut: 280 } : {}), end: note ? { from: 'none', to: 'none', dashed: true } : e.type === 'flow.Flow' ? { from: 'none', to: 'arrow' } : { from: 'none', to: 'none' },
       aria: fcLineName(I, e), ...(FC_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }; });
   const g = layoutTyped({ nodes, edges, direction: down ? 'down' : 'right', gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo);
   const types = new Set([...I.lines.map(e => e.type), ...I.ids.map(id => I.N.get(id).type)]);

@@ -127,6 +127,9 @@ const MM_RULES = {
   'side-first': 'present.<id>.side is left or right, on a first-level topic; anywhere else it is ignored',
   'mindmap-depth': `a topic is at most ${MM_DEEP} levels below the root: a deeper topic is drawn, but a Mermaid write and read hangs it ${MM_DEEP} levels below the root`,
 };
+// a root shown while its parent topic is hidden: a side it has is kept for when the parent comes back, as a hidden topic's is
+// (mmRemove), so the outline's Show of the parent puts it back where it was (audit 26)
+const mmKept = (X, id) => X.depth.get(id) === 0 && X.parentOf(id) != null && !X.shown.has(X.parentOf(id));
 function mmProblems(model, view) {
   const out = [], V = mmView(model, view); if (!MM_OBJ(model) || !V) return out;
   const vi = MM_ARR(model.views).indexOf(V), at = `views[${vi}]`, X = mmIndex(model, V), q = id => `"${id}"`;
@@ -135,6 +138,7 @@ function mmProblems(model, view) {
     say('error', 'topic-parent', `nodes[${i}].parent`, [n.id], `topic ${q(n.id)}'s parent ${JSON.stringify(n.parent)} is not a topic`); });
   X.roots.slice(1).forEach(r => say('warning', 'mindmap-root', `${at}.nodeIds[${X.pos.get(r)}]`, [X.roots[0], r], `view ${V.id} shows a second root, ${q(r)}, besides ${q(X.roots[0])}: drawn as its own tree under the first`));
   Object.keys(X.P).forEach(id => { const s = MM_OBJ(X.P[id]) ? X.P[id].side : undefined; if (s === undefined || !X.shown.has(id)) return;
+    if (mmKept(X, id) && (s === 'left' || s === 'right')) return; // kept for its parent's return, as a hidden topic's (audit 26)
     if (s !== 'left' && s !== 'right') say('warning', 'side-first', `${at}.present.${id}.side`, [id], `${q(id)}'s side ${JSON.stringify(s)} is not left or right: ignored`);
     else if (X.depth.get(id) !== 1) say('warning', 'side-first', `${at}.present.${id}.side`, [id], `${q(id)} is not a first-level topic: its side is ignored, it follows its branch`); });
   const deep = X.ids.filter(id => X.depth.get(id) === MM_DEEP + 1);
@@ -224,13 +228,15 @@ function mmKeyMove(X, V, g, T, [dx, dy]) {
 }
 function mmDrop(X, V, g, T, [x, y]) {
   const id = T.id, hit = g.nodes.find(n => n.id !== id && x >= n.x && x <= n.x + n.w && y >= n.y && y <= n.y + n.h);
+  // a root dropped: its first-level topics go deeper, so their sides go and none is pinned (audit 26)
+  const deep = T.depth === 0 ? g.nodes.filter(n => n.depth === 1 && n.parent === id).map(n => n.id) : [], but = new Set([id, ...deep]), off = deep.flatMap(k => mmUnside(X, V, k));
   if (hit) {
     if (mmInside(X, id, hit.id)) return mmErr('A topic cannot go under one of its own subtopics');
     if (hit.root && T.depth === 1 && hit.id === T.parent) { const s = x < hit.x + hit.w / 2 ? 'left' : 'right'; // the root's other half: the other side
       return s === T.side ? [] : [...mmPins(X, V, g, id), mmSide(V, id, s)]; }
     if (hit.id === T.parent) return [];
-    const top = hit.root ? [...mmPins(X, V, g, id), mmSide(V, id, x < hit.x + hit.w / 2 ? 'left' : 'right')] : mmLeave(X, V, g, T);
-    return [...top, { op: 'reparent', id, parent: hit.id }, ...mmAfter(X, V, id, mmEnd(X, hit.id, id))];
+    const top = hit.root ? [...mmPins(X, V, g, but), mmSide(V, id, x < hit.x + hit.w / 2 ? 'left' : 'right')] : mmLeave(X, V, g, T);
+    return [...top, ...off, { op: 'reparent', id, parent: hit.id }, ...mmAfter(X, V, id, mmEnd(X, hit.id, id))];
   }
   // between two siblings drawn one above the other: the gap between their boxes, across both
   for (const P of g.nodes) { const kids = P.root ? ['right', 'left'].map(s => g.nodes.filter(n => n.parent === P.id && n.side === s)) : [MM_ARR(X.kids.get(P.id)).map(k => g.byId[k])];
@@ -238,8 +244,8 @@ function mmDrop(X, V, g, T, [x, y]) {
       if (y < a.y + a.h || y > b.y || x < Math.min(a.x, b.x) || x > Math.max(a.x + a.w, b.x + b.w)) continue;
       if (a.id === id || b.id === id) return [];
       if (mmInside(X, id, P.id)) return mmErr('A topic cannot go under one of its own subtopics');
-      const top = P.root ? [...mmPins(X, V, g, id), mmSide(V, id, a.side)] : mmLeave(X, V, g, T);
-      return [...top, ...(P.id !== T.parent ? [{ op: 'reparent', id, parent: P.id }] : []), ...mmBefore(X, V, id, X.pos.get(b.id))]; } }
+      const top = P.root ? [...mmPins(X, V, g, but), mmSide(V, id, a.side)] : mmLeave(X, V, g, T);
+      return [...top, ...off, ...(P.id !== T.parent ? [{ op: 'reparent', id, parent: P.id }] : []), ...mmBefore(X, V, id, X.pos.get(b.id))]; } }
   return mmErr('Drop a topic on another to move it under it, or between two topics to put it there');
 }
 
@@ -292,10 +298,12 @@ function mmShow(model, view, id) {
   for (const s = [id]; s.length;) { const k = s.pop(); if (seen.has(k)) continue; seen.add(k); add.push(k); const c = MM_ARR(all.get(k)).filter(c => !X.shown.has(c)); for (let i = c.length - 1; i >= 0; i--) s.push(c[i]); }
   const list = [...MM_ARR(V.nodeIds)], u = X.up(id), k = u == null ? list.length : mmEnd(X, u) + 1;
   list.splice(k, 0, ...add);
-  // a shown topic that hangs under id once id is back (shown on its own while id was hidden) is no first-level topic then:
-  // not pinned, and a side it has goes, so the show leaves no side-first warning (audit 14)
-  const under = X.ids.filter(t => X.shown.has(t) && mmUnder(X, id, t));
-  return { commands: [...mmPinsAt(model, X, V, null, new Set(under)), ...under.flatMap(t => mmUnside(X, V, t)), { op: 'set', view: V.id, path: 'nodeIds', value: list }], say: `Showed ${mmOne(X.N.get(id))}${add.length > 1 ? ` and ${mmPlural(add.length - 1, 'subtopic')} hidden with it` : ''}` };
+  // a shown topic that hangs under id once id is back (shown on its own while id was hidden) is not pinned; what is shown or
+  // moved and is no first-level topic then (id back as a root or deeper, a topic under it at depth 2 or more) loses a side
+  // it has, so the show leaves no side-first warning (audit 14); a first-level one keeps it (audit 26)
+  const under = X.ids.filter(t => X.shown.has(t) && mmUnder(X, id, t)), after = mmIndex(model, { ...V, nodeIds: list });
+  const off = [...add, ...under].filter(t => after.depth.get(t) !== 1 && !mmKept(after, t)).flatMap(t => mmUnside(X, V, t));
+  return { commands: [...mmPinsAt(model, X, V, null, new Set(under)), ...off, { op: 'set', view: V.id, path: 'nodeIds', value: list }], say: `Showed ${mmOne(X.N.get(id))}${add.length > 1 ? ` and ${mmPlural(add.length - 1, 'subtopic')} hidden with it` : ''}` };
 }
 
 /* ---- the type ---- */
