@@ -516,3 +516,12 @@ test('audit 25: a full name the id does not spell is the same with or without a 
   assert.match(describe(GCP, 'gcp-on-gcp'), /Product Order queue, Pub\/Sub, icon not available\./);
   assert.equal(layout(GCP, 'gcp-on-gcp').byId['gcp-queue'].aria, 'Product Order queue, Pub/Sub, icon not available');
 });
+
+// audit 26: a cloud card's name wrapped in two (wrap2) and cut (fit) measured text quadratic in its length; now in a few
+// measures of it, as a map card's (layout.test.mjs)
+test('audit 26: a cloud card whose name runs to 16,000 characters is drawn measuring it a few times, not once per word', () => {
+  let chars = 0; const measure = (s, px) => { chars += s.length; return s.length * px * .55; }, long = 'word '.repeat(3200).trim();
+  const m = { schemaVersion: 2, nodes: [{ id: 'p', type: 'gcp.Product', label: long, props: { icon: 'Cloud-DNS' } }, { id: 'q', type: 'gcp.Product', label: 'DNS' }], views: [{ id: 'v', diagram: 'gcp', nodeIds: ['p', 'q'] }] };
+  assert.match(mapContext(m, { measure }).buildView('v').markup, /word word/);
+  assert.ok(chars < 100 * 16000, `${chars} characters measured`);
+});

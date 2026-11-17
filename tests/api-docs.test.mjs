@@ -107,3 +107,13 @@ test('audit 24: delete\'s rows say that a model element under a node one view al
   assert.match(row(pages['apply-and-commands.md'], '| `reparent` |'), /under it throws, and `validate\(\)` warns/);
   assert.match(row(read(join(root, 'docs/guide/editing.md')), '| `delete` (Shift + Delete) |'), /except a model element under a node only this view holds: it moves to its nearest owner left/);
 });
+
+// audit 26: render.md said render() replaced the container's content and destroy() left it empty; render() appends the
+// map's element after what the container holds (mountPage(document.body) needs that) and destroy() removes that element
+// alone. tests/embed.html checks the behaviour in a browser
+test('render.md says render() appends the map\'s element and destroy() removes it alone', () => {
+  const r = pages['render.md'];
+  assert.doesNotMatch(r, /earlier content is replaced|leaves it empty|container is left empty|shadow root on the container/);
+  assert.match(r, /The map's element is appended after what it already holds/); assert.match(r, /`destroy\(\)` removes only the map's element/);
+  assert.match(r, /removes\s+the map's element \(whatever else the container holds stays\)/);
+});
