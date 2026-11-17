@@ -8,14 +8,14 @@ import { r2 } from '../draw/shapes.js';
 
    input = {
      lanes: [{ id, name: { w, h }, form: 'states' | 'values', rows: [{ state, w }],   lifelines, top to bottom; rows: the
-              changes: [{ id, at, state, w }] }],                                    states, top first (values: []); a
-                                                                                     change's w: its text's width
+              changes: [{ id, at, state, w, n }] }],                                 states, top first (values: []); a
+                                                                                     change's w: its text's width, n: its lines
      messages: [{ id, from, to, sentAt, receivedAt, w, h }],                          from, to: lane ids; w, h: the label
      constraints: [{ id, kind: 'duration' | 'time', from, to, w, h }],                from, to: change ids (time: from only)
      unit,                                                                            text or null
    }
    out = { lanes: [{ id, x, y, w, h, name: { x, y }, rows: [{ state, y }], strip: { y, h } }],
-           steps: [{ lane, pts }], bands: [{ lane, segs: [{ x0, x1, text, cut }] }], changes: [{ id, x, y, w, h }],
+           steps: [{ lane, pts }], bands: [{ lane, h, segs: [{ x0, x1, text, cut }] }], changes: [{ id, x, y, w, h }],
            lines: [{ id, pts, lbl }], marks: [{ id, kind, pts, lbl }],
            ruler: { y, x0, x1, ticks: [{ t, x, major, label }], unit }, slots: [{ index, x, y, parent, after, t }],
            scale: { t0, t1, k, step }, bounds, problems }
@@ -43,6 +43,7 @@ const TR = {
 
 const trArr = x => (Array.isArray(x) ? x : []);
 const trNum = x => (Number.isFinite(x) ? x : 0);
+const trLines = r => Math.max(1, Math.floor(trNum(r.n))); // n: a state's or a value's text's lines, 1 when not given
 const trTime = t => Number.isFinite(t) && Math.abs(t) <= 1e300; // past it the span, a step or t1 + a step is no number
 const trNice = x => Number(x.toPrecision(12));
 const trFmt = (t, s) => (Math.round(t / s) * s).toFixed(Math.max(0, -Math.floor(Math.log10(s) + 1e-9)));
@@ -86,14 +87,15 @@ function layoutTimeRuler(input = {}) {
 
   // ---- each lane's rows, height, and the strip its constraints need
   lanes.forEach(L => {
-    const lines = r => Math.max(1, Math.floor(trNum(r.n))); // n: the state's text's lines, 1 when not given
+    const lines = trLines;
     L.rows = L.form === 'values' ? [] : trArr(L.ln.rows).map(r => ({ state: r.state, w: trNum(r.w), n: lines(r) }));
     const listed = new Set(L.rows.map(r => r.state));
     L.cs.forEach(c => { if (L.form === 'states' && !listed.has(c.state)) { listed.add(c.state); L.rows.push({ state: c.state, w: trNum(c.w), n: lines(c) }); } });
     // each row's level, from the lane's top: its pitch's middle, a row of one line 24 px (TR.row) apart
     let at = 0; L.at = new Map(); L.rows.forEach(r => { const p = TR.row + (r.n - 1) * TR.rl; if (!L.at.has(r.state)) L.at.set(r.state, at + p / 2); at += p; });
     const nh = trNum((L.ln.name || {}).h) + 2 * TR.pad;
-    L.h = Math.max(nh, L.form === 'values' ? TR.band + 2 * TR.above : L.rows.length ? at : TR.row);
+    L.bh = TR.band + (Math.max(1, ...L.cs.map(lines)) - 1) * TR.rl; // a values band, grown a line for each its tallest value's text has more (audit 27)
+    L.h = Math.max(nh, L.form === 'values' ? L.bh + 2 * TR.above : L.rows.length ? at : TR.row);
     L.levels = []; L.lh = []; L.marks = []; });
   const states = Math.max(0, ...lanes.flatMap(L => L.rows.map(r => r.w)));
   const X0 = TR.edge + name + (states ? states + 2 * TR.pad : 0), xOf = t => X0 + (t - t0) * k, X1 = xOf(t1);
@@ -128,12 +130,12 @@ function layoutTimeRuler(input = {}) {
       if (L.form === 'values') { const x1 = n ? xOf(n.at) : X1, cut = x1 - x < vw(c) - 1e-6;
         if (cut) dense.add(c.id);
         segs.push({ x0: x, x1, text: x1 - x < TR.bare ? null : c.state ?? '', cut: cut || trNum(c.w) > TR.cut });
-        if (x1 - x >= TR.bare) { const tw = Math.min(TR.cut, trNum(c.w), x1 - x - TR.room); obst.push({ x: (x + x1 - tw) / 2, y: L.mid - 7, w: tw, h: 14 }); }
-        changes.push({ id: c.id, x: x - TR.hit / 2, y: L.mid - TR.band / 2, w: TR.hit, h: TR.band }); return; }
+        if (x1 - x >= TR.bare) { const tw = Math.min(TR.cut, trNum(c.w), x1 - x - TR.room), th = 14 + (trLines(c) - 1) * TR.rl; obst.push({ x: (x + x1 - tw) / 2, y: L.mid - th / 2, w: tw, h: th }); }
+        changes.push({ id: c.id, x: x - TR.hit / 2, y: L.mid - L.bh / 2, w: TR.hit, h: L.bh }); return; }
       if (i) pts.push([x, yp]); pts.push([x, yc]);
       const h = Math.max(TR.hit, Math.abs(yc - yp));
       changes.push({ id: c.id, x: x - TR.hit / 2, y: (yc + yp) / 2 - h / 2, w: TR.hit, h }); });
-    if (L.form === 'values') { if (segs.length) bands.push({ lane: L.ln.id, segs }); return; }
+    if (L.form === 'values') { if (segs.length) bands.push({ lane: L.ln.id, h: L.bh, segs }); return; }
     if (!cs.length) return;
     pts.push([X1, lvl(L, cs[cs.length - 1])]);
     steps.push({ lane: L.ln.id, pts });
@@ -182,7 +184,7 @@ function layoutTimeRuler(input = {}) {
   const bx0 = Math.min(0, ...xs.map(v => v - TR.edge)), by0 = Math.min(0, ...ys.map(v => v - TR.edge));
   return {
     lanes: outLanes, steps: steps.map(s => ({ lane: s.lane, pts: s.pts.map(p => p.map(r2)) })),
-    bands: bands.map(b => ({ lane: b.lane, segs: b.segs.map(s => ({ ...s, x0: r2(s.x0), x1: r2(s.x1) })) })),
+    bands: bands.map(b => ({ lane: b.lane, h: b.h, segs: b.segs.map(s => ({ ...s, x0: r2(s.x0), x1: r2(s.x1) })) })),
     changes: changes.map(c => ({ id: c.id, x: r2(c.x), y: r2(c.y), w: c.w, h: r2(c.h) })), lines, marks: outMarks,
     ruler: { y: r2(rulerY), x0: r2(X0), x1: r2(X1), ticks, unit }, slots, scale: { t0, t1: trNice(t1), k, step },
     bounds: { x: r2(bx0), y: r2(by0), w: r2(Math.max(...xs) + TR.edge - bx0), h: r2(Math.max(...ys) + TR.edge - by0) }, problems,
