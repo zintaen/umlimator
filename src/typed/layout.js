@@ -76,7 +76,10 @@ const uhAt = (p, stub) => { const o = []; for (let k = 1; k + 2 < p.length; k++)
 const uhMove = (p, k, q) => { const o = p.map(x => [...x]), ax = Math.abs(p[k][1] - p[k + 1][1]) < 1e-6 ? 1 : 0; o[k][ax] = q[ax]; o[k + 1][ax] = q[ax]; return o; };
 const uhIn = (a, b, r) => Math.max(a[0], b[0]) > r.x + 0.5 && Math.min(a[0], b[0]) < r.x + r.w - 0.5 && Math.max(a[1], b[1]) > r.y + 0.5 && Math.min(a[1], b[1]) < r.y + r.h - 0.5;
 // (each card grown by 7 px: a port drawn later on its border stands 6 px out of it, and a fold ran through one, audit 25)
-const uhCards = (g, p) => (g.nodes || []).filter(n => p.slice(1).some((b, i) => uhIn(p[i], b, { x: n.x - 7, y: n.y - 7, w: n.w + 14, h: n.h + 14 })));
+// and each port box a line ends in (e.fpb, e.tpb), grown by 2 px, so no fold runs through a port with lines either (audit 26)
+const uhGrow = (r, d) => ({ x: r.x - d, y: r.y - d, w: r.w + 2 * d, h: r.h + 2 * d });
+const uhCards = (g, p) => [...(g.nodes || []).map(n => [n, 7]), ...(g.edges || []).flatMap(e => [e.fpb, e.tpb]).filter(b => b && typeof b.x === 'number').map(b => [b, 2])]
+  .filter(([r, d]) => p.slice(1).some((b, i) => uhIn(p[i], b, uhGrow(r, d)))).map(([r]) => r);
 const uhNear = (p, L) => Math.min(...p.slice(1).map((b, i) => { const a = p[i], x = Math.max(Math.min(a[0], b[0]), Math.min(Math.max(a[0], b[0]), L.x + L.w / 2)), y = Math.max(Math.min(a[1], b[1]), Math.min(Math.max(a[1], b[1]), L.y + L.h / 2));
   return Math.max(0, Math.abs(x - L.x - L.w / 2) - L.w / 2) + Math.max(0, Math.abs(y - L.y - L.h / 2) - L.h / 2); }));
 function unhook(g, stub) {
