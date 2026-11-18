@@ -1,7 +1,7 @@
 import { TYPED } from '../core/registry.js';
 import { warn } from '../core/warn.js';
-import { NW, OWN_ROUTE, labelW, layoutGraph } from '../layout/layered.js';
-import { routeAudit } from '../layout/audit.js';
+import { NW, OWN_ROUTE, PLAIN, labelW, layoutGraph } from '../layout/layered.js';
+import { routeAudit, throughIssues } from '../layout/audit.js';
 
 /* A typed view's layout (work package 1.4): layoutGraph's plain layout with what a typed view needs, none of it on a map.
    The parts of layoutPass only a typed view takes are here too (TYPED, registry.js); only lib/umlimator-all.js holds this
@@ -12,7 +12,7 @@ import { routeAudit } from '../layout/audit.js';
 
 // what moves a typed view's geometry: every field of the view layoutGraph reads but VIEW_PAINT (a test holds the two lists to
 // layered.js), and these of a node and a line. Anything else (a colour, a `props` field) only repaints
-const VIEW_GEO = ['abs', 'authors', 'blocks', 'containers', 'direction', 'fan', 'flipped', 'gap', 'groups', 'hub', 'intake', 'labelGaps', 'laneGap', 'lanes', 'mainSteps', 'nodeH', 'noSwap', 'quick', 'repair', 'reroute', 'rgap', 'turned', 'typed'];
+const VIEW_GEO = ['abs', 'authors', 'blocks', 'containers', 'direction', 'fan', 'flipped', 'gap', 'groups', 'hub', 'intake', 'labelGaps', 'laneGap', 'lanes', 'mainSteps', 'nest', 'nodeH', 'noSwap', 'quick', 'repair', 'reroute', 'rgap', 'turned', 'typed'];
 const VIEW_PAINT = ['tour', 'subAndChips'], NODE_GEO = ['id', 'col', 'row', 'w', 'h', 'ax', 'ay'], EDGE_GEO = ['id', 'from', 'to', 'label', 'step', 'fromSide', 'toSide', 'back', 'fixed', 'sublabel', 'cut', 'fromPort', 'toPort', 'inner', 'portRank', 'portMin'];
 const geometryKey = dg => JSON.stringify([VIEW_GEO.map(k => dg[k]), (dg.nodes || []).map(n => NODE_GEO.map(k => n[k])), (dg.edges || []).map(e => EDGE_GEO.map(k => e[k]))]);
 
@@ -44,10 +44,15 @@ function repaint(g, was, dg) {
 function layoutTyped(dg, memo) {
   const key = memo && geometryKey(dg);
   if (memo && memo.key === key) { const g = repaint(memo.g, memo.dg, dg); memo.dg = dg; return g; }
-  const t = { ...dg, typed: true, noSwap: !!(memo && memo.noSwap) }, g = dg.direction === 'down'
-    ? transpose(layoutGraph({ ...t, turned: true, nodes: (dg.nodes || []).map(n => ({ ...n, w: n.h || dg.nodeH || 64, h: n.w || NW })) }, false))
-    : layoutGraph(t, false);
-  unhook(g, dg.mainSteps ? 12 : 18);
+  const t = { ...dg, typed: true, noSwap: !!(memo && memo.noSwap) }, lay = u => { const g = dg.direction === 'down'
+    ? transpose(layoutGraph({ ...u, turned: true, nodes: (dg.nodes || []).map(n => ({ ...n, w: n.h || dg.nodeH || 64, h: n.w || NW })) }, false))
+    : layoutGraph(u, false); unhook(g, dg.mainSteps ? 12 : 18); return g; };
+  // a layout that took audit 38's ways (nesting the lines between one pair, a box grown for them, a route that meets its end's
+  // stub from the side) and that check() still has more than crossings to say of: the view is laid out as before them too, and
+  // the one with fewer such issues kept (then fewer in all), so none is drawn worse than it was
+  let g = lay(t);
+  if (g.nested) { const said = h => { const is = [...routeAudit(h, ''), ...throughIssues(h, '')]; return [is.filter(s => !/ cross$/.test(s)).length, is.length]; }, a = said(g);
+    if (a[0] || a[1]) { const h = lay({ ...t, [PLAIN]: true }), b = said(h); if (b[0] < a[0] || (b[0] === a[0] && b[1] < a[1])) g = h; } }
   if (memo) Object.assign(memo, { key, g, dg, runs: (memo.runs || 0) + 1, rr: !!g.rr });
   return g;
 }
@@ -151,7 +156,12 @@ function placePorts(sides, turned) {
 function spreadPorts({ n, side, ends }, turned) {
   const v = side === 'L' || side === 'R', a0 = v ? n.y : n.x, len = v ? n.h : n.w, far = x => v ? x.other.y + x.other.h / 2 : x.other.x + x.other.w / 2;
   const per = (x, r) => Array.isArray(r) ? r[x.from ? 0 : 1] : r, least = x => { const m = per(x, x.e.portMin); return Number.isFinite(m) ? m : 0; };
-  const rank = x => per(x, x.e.portRank) ?? 1e9, byFar = (a, b) => far(a) - far(b), groups = [];
+  // ends whose far ends are level (two parts joined by several lines) tie on far and fall to portRank. Each side ordering by its
+  // own members' order draws an X wherever the two types list their ports in opposite orders, so of the two nodes the one whose
+  // id sorts later follows the other: its end ranks by the far port's rank, its own breaking ties, and the lines run parallel (audit 38)
+  const lead = x => !Array.isArray(x.e.portRank) || !x.other || x.other === n || !(String(x.other.id) < String(n.id)) ? null : x.e.portRank[x.from ? 1 : 0];
+  const rank = x => { const own = per(x, x.e.portRank), f = lead(x); return Number.isFinite(f) ? f + (Number.isFinite(own) ? own : 0) / 1e4 : own ?? 1e9; };
+  const byFar = (a, b) => far(a) - far(b), groups = [];
   ends.forEach(x => { const g = x.port != null && groups.find(o => o.port === x.port); if (g) g.ends.push(x); else groups.push({ port: x.port, ends: [x] }); });
   // three or more named lines inward from one port (a composite's delegations) sit 28 px apart, so each one's label keeps clear of
   // the next line: 10 px apart, the first one's label shut the second out of the gap between the parts, and it went round and crossed (audit 6)

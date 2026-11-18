@@ -90,12 +90,19 @@ function pieces(X, el, o) {
   /* the views list: readable columns; a declared order may include shortcuts to descendants */
   function tree() {
     const { views, V, kidsOf, chain } = X().ctx(), cur = X().view(), ch = chain(cur);
-    const C = X().ctx().geoCache || {}, count = x => elementCount(x, x.id === cur ? X().geo() : (C[x.id] || {}).g) ?? (x.nodeIds || []).length; // a typed view drawn: what it draws
+    // a typed view's count is what it draws, drawn yet or not (audit 38): one not laid out yet is counted just after, a slice
+    // at a time, its row left blank till then rather than showing a number that would change
+    const ctx = X().ctx(), count = x => viewCount(ctx, x, cur, X().geo(), true);
     const roots = views.filter(x => !x.parent), cols = roots.length > 1 ? [{ head: 'Map', items: roots, on: ch[0] }] : [];
     ch.forEach((id, i) => { const order = V[id].browserOrder || [], k = [...new Set([...order, ...kidsOf(id).map(v => v.id)])].map(id => V[id]).filter(Boolean); if (k.length) cols.push({ head: shortT(labelOr(V[id].title, id)), items: k, on: ch[i + 1] }); });
     o.frame.style.setProperty('--browser-width', Math.min(448, Math.max(1, cols.length) * 224) + 'px');
     el.tree.innerHTML = `<div class="miller">${cols.map(c => `<div class="mcol"><div class="mch" title="${esc(c.head)}">${esc(c.head)}</div>${c.items.map(x => { const n = kidsOf(x.id).length;
-      return `<button class="mit${x.id === cur ? ' on' : x.id === c.on ? ' path' : ''}" data-v="${esc(x.id)}" title="${esc(labelOr(x.title, x.id))}"${x.id === cur ? ' aria-current="page"' : ''}><span>${esc(shortT(labelOr(x.title, x.id)))}</span><em>${count(x)}${n ? ' ›' : ''}</em></button>`; }).join('')}</div>`).join('')}</div>`;
+      return `<button class="mit${x.id === cur ? ' on' : x.id === c.on ? ' path' : ''}" data-v="${esc(x.id)}" title="${esc(labelOr(x.title, x.id))}"${x.id === cur ? ' aria-current="page"' : ''}><span>${esc(shortT(labelOr(x.title, x.id)))}</span><em>${count(x) ?? ''}${n ? ' ›' : ''}</em></button>`; }).join('')}</div>`).join('')}</div>`;
+    const todo = cols.flatMap(c => c.items).filter(x => count(x) == null);
+    if (todo.length) idle(dl => { try { if (!X() || X().ctx() !== ctx || !el.tree.isConnected) return true; } catch (_) { return true; } // the model changed, or the page went: its next tree() counts
+      do { const x = todo.shift(), c = viewCount(ctx, x, cur, null);
+        el.tree.querySelectorAll('.mit').forEach(b => { if (b.dataset.v === x.id) { const em = b.querySelector('em'); if (em && !/\d/.test(em.textContent)) em.textContent = c + em.textContent; } }); } while (todo.length && dl.timeRemaining() > 2); // one a turn at least
+      return !todo.length; });
     const m = el.tree.firstChild, last = m.lastElementChild; m.style.scrollBehavior = 'auto'; m.scrollLeft = last ? Math.max(0, last.offsetLeft + last.offsetWidth - m.clientWidth) : 0; m.style.scrollBehavior = '';
   }
   const setTree = on => { o.frame.classList.toggle('tree-open', on); if (o.toggle) o.toggle.setAttribute('aria-expanded', on); };
@@ -318,10 +325,25 @@ function pieces(X, el, o) {
 // how many elements a typed view draws, as the page's view pill, its About box and the views list count them (audit 37): its
 // laid-out nodes that are model elements, less the pieces a type draws on or in another (a port, an operand, a fragment's
 // frame, a message's row; a timing view's rows, changes and ruler carry no type), and its boxes, once each. null for a map,
-// whose every laid-out node is a card
+// whose every laid-out node is a card. An element with no type that the view lists counts too (a flowchart's or C4 view's
+// untyped element, drawn by its default word: audit 38); a box that names no element does not (a SysML bdd or requirement
+// view's diagram frame, "<view>->frame": no element id holds "->")
 const PIECES = new Set(['port', 'operand', 'frame', 'use', 'message-row']);
-const elementCount = (v, g) => { if (!v || v.diagram == null || v.diagram === 'map' || !g) return null; const ids = new Set();
-  arrOf(g.nodes).forEach(n => { if (n && typeof n.type === 'string' && n.type && !PIECES.has(n.shape)) ids.add(n.id); });
-  arrOf(g.families).forEach(f => { if (f && f.id != null) ids.add(f.id); }); return ids.size; };
+const elementCount = (v, g) => { if (!v || v.diagram == null || v.diagram === 'map' || !g) return null; const ids = new Set(), listed = new Set(arrOf(v.nodeIds));
+  const isEl = id => !String(id).includes('->');
+  arrOf(g.nodes).forEach(n => { if (n && !PIECES.has(n.shape) && ((typeof n.type === 'string' && n.type) || (n.type == null && listed.has(n.id) && isEl(n.id)))) ids.add(n.id); });
+  arrOf(g.families).forEach(f => { if (f && f.id != null && isEl(f.id)) ids.add(f.id); }); return ids.size; };
+// a view's count before it is drawn too (audit 38), so the views list and the search palette say what the pill will: a typed
+// view not drawn yet laid out once for it (kept per context), a map's cards. cur and g: the view on screen and its picture
+// lazy: null for a typed view not laid out yet, instead of laying it out
+const counted = new WeakMap();
+const viewCount = (ctx, v, cur, g, lazy = false) => { if (!v) return 0; if (v.diagram == null || v.diagram === 'map') return arrOf(v.nodeIds).length;
+  const C = ctx.geoCache || {}, have = v.id === cur && g ? g : (C[v.id] || {}).g; if (have) return elementCount(v, have) ?? arrOf(v.nodeIds).length;
+  let m = counted.get(ctx); if (!m) counted.set(ctx, m = new Map());
+  if (!m.has(v.id)) { if (lazy) return null; let n; try { n = elementCount(v, ctx.buildGeo(v.id)); } catch { n = null; } m.set(v.id, n ?? arrOf(v.nodeIds).length); }
+  return m.get(v.id); };
+// run f(deadline) in slices of about 10 ms on timers, after the view on screen is drawn, until it returns true: no long task,
+// and done in a tab requestIdleCallback starves (a background or headless one)
+const idle = f => { const go = () => { const t = Date.now(); if (!f({ timeRemaining: () => Math.max(0, 10 - (Date.now() - t)) })) setTimeout(go, 0); }; setTimeout(go, 30); };
 
-export { shortT, hintHTML, hinter, legendItems, pieces, detailBullets, elementCount };
+export { shortT, hintHTML, hinter, legendItems, pieces, detailBullets, elementCount, viewCount };

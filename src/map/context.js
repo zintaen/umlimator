@@ -425,7 +425,10 @@ function mapContext(model, opts = {}) {
       // it, so a view that kept one is laid out once more without it, and that kept when it has fewer issues (audit 15).
       // ponytail: a layout more, so only up to 30 cards (as bestFlow); a larger view keeps the swap as the pass judged it
       if (memo.rr && (memo.rr = false, (g.nodes || []).length <= 30)) { const m2 = { noSwap: true }, g2 = L.run ? L.run(D, v, { measure: M, pos, memo: m2 }) : L({ model: D, view: v, pos, memo: m2 });
-        if (routeAudit(g2, '').length < routeAudit(g, '').length) { g = g2; Object.assign(memo, { key: m2.key, g: m2.g, dg: m2.dg }); } }
+        // a line on another or along a border counts before crossings (audit 38: the try without the swap, one shared line for
+        // four crossings, was kept)
+        const said = h => { const is = routeAudit(h, ''); return [g.nested || g2.nested ? is.filter(s => !/ cross$/.test(s)).length : 0, is.length]; }, a = said(g2), b = said(g);
+        if (a[0] < b[0] || (a[0] === b[0] && a[1] < b[1])) { g = g2; Object.assign(memo, { key: m2.key, g: m2.g, dg: m2.dg }); } }
       // an element that opens a view says which in its name, as a map card does, unless its type's name says so already
       // (saysOpens; a typed node draws no ⤢ mark: notes/stage-4.md)
       (g.nodes || []).forEach(n => { const o = N[n.id] && opensOf(n.id, vid); if (!o || n.saysOpens) return;

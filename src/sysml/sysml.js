@@ -173,10 +173,14 @@ function SYS_ROLES(model, m, owner, label) {
       out.push({ op: 'set', id: e.id, path: `props.ends.${f}.role`, value: label }); }); });
   return out;
 }
-// a member renamed to a name another member of its owner holds: refused, in member-names' words (audit 37)
-function SYS_CLASH(owner, m, label) {
-  if (!SYS_OBJ(owner) || !SYS_OBJ(m) || m.type === 'uml.Operation' || typeof label !== 'string' || label === '' || label === m.label) return null; // a name kept is no rename
-  const o = SYS_ARR(owner.members).find(x => SYS_OBJ(x) && x !== m && x.id !== m.id && x.type !== 'uml.Operation' && x.label === label);
+// a member renamed to a name another member of its owner holds: refused, in member-names' words (audit 37). Judged by
+// member-names' own key, of the member as edited (audit 38): its new type, label and parameters, an operation by its
+// parameters' types too ("ecoRange(Real)"), so an operation and a value may share a name and two values may not
+const SYS_KEY = (type, label, P) => (type === 'uml.Operation' ? `${label}(${SYS_ARR(SYS_OBJ(P) ? P.parameters : null).map(a => (SYS_OBJ(a) ? a.valueType ?? '' : '')).join(',')})` : `${label}`);
+function SYS_CLASH(owner, m, label, type = SYS_OBJ(m) ? m.type : undefined, props = SYS_OBJ(m) ? m.props : undefined) {
+  if (!SYS_OBJ(owner) || !SYS_OBJ(m) || typeof label !== 'string' || label === '') return null;
+  const k = SYS_KEY(type, label, props); if (m.label != null && m.label !== '' && k === SYS_KEY(m.type, m.label, m.props)) return null; // a key kept is no rename
+  const o = SYS_ARR(owner.members).find(x => SYS_OBJ(x) && x !== m && x.id !== m.id && x.label != null && x.label !== '' && SYS_KEY(x.type, x.label, x.props) === k);
   return o ? { error: `member-names: ${JSON.stringify(elName(owner))} has a member named ${JSON.stringify(label)} already (${o.id}): a block's members have different names` } : null;
 }
 /* the properties panel's field set (edits.field, src/typed/edit.js): a part's Name renames its part association's role, as F2

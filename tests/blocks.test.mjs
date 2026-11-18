@@ -573,3 +573,23 @@ test('the properties panel\'s Name field on a part renames its association\'s ro
     assert.deepEqual(set('battery', 'label', 'Pack').c, [{ op: 'set', id: 'battery', path: 'label', value: 'Pack' }], vid);
   }
 });
+
+// audit 38: SYS_CLASH judged a member row's edit by the member's old type and by its bare label: a value turned into an
+// operation named like a value was refused, an operation turned into a value named like a value let through
+test('a member row edit is refused exactly when member-names would say the edited member clashes, by its new kind (audit 38)', () => {
+  const m0 = apply(JSON.parse(readFileSync(new URL('../examples/ebike-atlas.json', import.meta.url), 'utf8')), [{ op: 'add', owner: 'ebike', element: { id: 'ebike.op1', type: 'uml.Operation', label: 'compute' } },
+    { op: 'add', owner: 'ebike', element: { id: 'ebike.op2', type: 'uml.Operation', label: 'charge', props: { parameters: [{ name: 'to', valueType: 'Real' }] } } }]);
+  const v = m0.views.find(x => x.diagram === 'sysml.block-definition'), clashes = m => validate(m).filter(p => p.rule === 'member-names' && p.ids.includes('ebike')).length, base = clashes(m0);
+  const texts = ['value ecoRange: Real', 'ecoRange(): Real', 'ecoRange(x: Real): Real', 'compute(): Real', 'compute(x: Real)', 'value compute: Real', 'charge(to: Real)', 'charge(to: Integer)', 'charge()', 'value charge: Real', 'part battery: Battery', 'value fresh: Real'];
+  let refused = 0, applied = 0;
+  for (const id of ['ebike.usableShare', 'ebike.ecoRange', 'ebike.op1', 'ebike.op2', 'ebike.battery']) for (const text of texts) {
+    const r = T.edits.member(m0, v, 'ebike', id, text);
+    if (r && r.commands) { applied++; assert.equal(clashes(apply(m0, r.commands)) > base, false, `${id} "${text}" was let through, and member-names then errors`); }
+    else if (r && r.error && /^member-names:/.test(r.error)) { refused++; // and it was right to refuse: the same edit forced through would clash
+      const m = structuredClone(m0), owner = m.nodes.find(n => n.id === 'ebike'), x = owner.members.find(y => y.id === id), p = bdParse(text, owner, m);
+      Object.assign(x, { type: p.type, label: p.label, props: p.props }); assert.ok(clashes(m) > base, `${id} "${text}" was refused, though member-names allows it`); } }
+  assert.ok(refused >= 5 && applied >= 10, `${refused} refused, ${applied} applied`);
+  // the two the audit found
+  assert.ok(T.edits.member(m0, v, 'ebike', 'ebike.usableShare', 'ecoRange(): Real').commands, 'an operation ecoRange() and a value ecoRange do not clash');
+  assert.match(T.edits.member(m0, v, 'ebike', 'ebike.op1', 'value ecoRange: Real').error, /^member-names: "EBike" has a member named "ecoRange" already \(ebike\.ecoRange\)/);
+});

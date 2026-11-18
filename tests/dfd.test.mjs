@@ -470,3 +470,35 @@ test('audit 29: a listed line of no type is a data flow throughout: the key, the
   assert.equal(validate(n).filter(p => p.rule === 'dfd-process-io').length, 1);
   assert.match(validate(n).find(p => p.rule === 'dfd-process-io').message, /no flow in and no flow out/);
 });
+
+test('audit 38: validate() says a story step names a line its DFD or C4 view does not draw by the type\'s own rule, as layout() draws it', () => {
+  const m = { schemaVersion: 2, title: 'T', root: 'top',
+    nodes: [{ id: 'p1', type: 'dfd.Process', label: 'Take order', props: { number: '1' }, opensView: 'lv' }, { id: 'p2', type: 'dfd.Process', label: 'Ship', props: { number: '2' } },
+      { id: 'st', type: 'dfd.DataStore', label: 'Orders', props: { number: 'D1' } }, { id: 'k', type: 'dfd.Process', label: 'Take order', props: { number: '1.1' } }],
+    edges: [{ id: 'a', type: 'dfd.DataFlow', from: 'p1', to: 'st', label: 'order' }, { id: 'b', type: 'dfd.DataFlow', from: 'st', to: 'p2', label: 'order' }, { id: 'a1', type: 'dfd.DataFlow', from: 'k', to: 'st', label: 'order' }],
+    views: [{ id: 'top', title: 'Top', diagram: 'dfd', nodeIds: ['p1', 'p2', 'st'] }, { id: 'lv', title: 'Level 1', diagram: 'dfd', parent: 'top', nodeIds: ['k', 'st', 'p2'] }],
+    stories: [{ id: 's', title: 'S', steps: [{ view: 'lv', select: 'b' }, { view: 'lv', select: 'a1' }, { view: 'top', select: 'b' }] }] };
+  assert.deepEqual(layout(m, 'lv').edges.map(e => e.id), ['a1'], 'the level leaves out its parent level\'s flow');
+  assert.deepEqual(validate(m).filter(p => p.path.startsWith('stories')).map(p => `${p.path}: ${p.message}`), ['stories[0].steps[0].select: "b" is no line of view "lv": the view does not draw it']);
+  // every line of every DFD and C4 view of the examples, and of the stress fixtures: a step that selects it is said not drawn
+  // exactly when layout() draws it neither as itself nor inside an implied line
+  for (const f of ['../examples/bookshop-atlas.json', '../examples/bookshop-c4.json', '../examples/bookshop-data-flow.json', './c4-stress.json', './dfd-stress.json']) {
+    const x = JSON.parse(readFileSync(new URL(f, import.meta.url), 'utf8'));
+    for (const v of x.views.filter(v => /^(dfd|c4\.)/.test(v.diagram || ''))) {
+      const g = layout(x, v.id), drew = new Set(g.edges.flatMap(e => [e.id, ...(e.implied || []), ...(e.of || []).map(r => (r && typeof r === 'object' ? r.id : r))]));
+      const ids = x.edges.map(e => e.id), y = { ...x, stories: [{ id: 's', title: 'S', steps: ids.map(id => ({ view: v.id, select: id })) }] };
+      const said = new Map(validate(y).filter(p => p.path.startsWith('stories[0]')).map(p => [ids[+/steps\[(\d+)\]/.exec(p.path)[1]], p.message]));
+      ids.forEach(id => { const not = /the view does not draw it$/.test(said.get(id) || '');
+        if (said.has(id) && !not) return; // said otherwise: an end the view does not show, or its edges list leaving it out
+        assert.equal(not, !drew.has(id), `${f} ${v.id} ${id}: ${said.get(id)}`); }); } }
+  // C4: a relationship to the subject the container view draws as a boundary
+  const c = JSON.parse(readFileSync(new URL('../examples/bookshop-c4.json', import.meta.url), 'utf8'));
+  c.stories = [{ id: 's', title: 'S', steps: [{ view: 'c4-containers', select: 'c4-shopper-bookshop', highlight: ['c4-shopper-bookshop'] }] }];
+  assert.deepEqual(validate(c).filter(p => p.path.startsWith('stories')).map(p => p.message), Array(2).fill('"c4-shopper-bookshop" is no line of view "c4-containers": the view does not draw it'));
+  // a hostile model: odd lines and steps are read without a throw
+  const h = structuredClone(m); h.edges.push(null, 7, { id: '__proto__', type: 'dfd.DataFlow', from: 'st', to: 'p2' }, { id: 'constructor', from: { x: 1 }, to: [] });
+  h.stories[0].steps.push({ view: 'lv', select: '__proto__' }, { view: 'lv', select: 'constructor', highlight: [null, 3, { type: 'edge', ids: ['b', 'toString'] }] });
+  const said = validate(h).filter(p => p.path.startsWith('stories')).map(p => p.message);
+  assert.ok(said.includes('"__proto__" is no line of view "lv": the view does not draw it'), said.join('\n'));
+  assert.ok(said.filter(s => s === '"b" is no line of view "lv": the view does not draw it').length === 2, said.join('\n'));
+});

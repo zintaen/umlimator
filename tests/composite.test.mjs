@@ -875,3 +875,16 @@ test('audit 36: the PDF names a port with no name, or a name "", by its id, as t
     assert.equal(T.member.print(api), 'port ');
   }
 });
+
+test('audit 38: lines between two parts, or two components, whose ports are listed in opposite orders do not cross (spreadPorts)', () => {
+  const ports = (o, ps) => ps.map(p => ({ id: o + '.' + p, type: 'uml.Port', label: p }));
+  const cs = (conns, dir) => ({ schemaVersion: 2, nodes: [
+    { id: 's', type: 'uml.Class', label: 'S', members: [{ id: 's.a', type: 'uml.Property', label: 'a', props: { valueType: 'A' } }, { id: 's.b', type: 'uml.Property', label: 'b', props: { valueType: 'B' } }] },
+    { id: 'A', type: 'uml.Class', label: 'A', members: ports('A', ['p1', 'p2', 'p3']) }, { id: 'B', type: 'uml.Class', label: 'B', members: ports('B', ['q1', 'q2', 'q3']) }],
+  edges: conns.map(([f, t], i) => ({ id: 'c' + i, type: 'uml.Connector', from: 'A.' + f, to: 'B.' + t, props: { ends: { from: { part: 's.a' }, to: { part: 's.b' } } } })),
+  views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 's', nodeIds: ['s'], direction: dir }] });
+  const cp = (conns, dir) => ({ schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.Component', label: 'A', members: ports('A', ['p1', 'p2', 'p3']) }, { id: 'B', type: 'uml.Component', label: 'B', members: ports('B', ['q1', 'q2', 'q3']) }],
+    edges: conns.map(([f, t], i) => ({ id: 'c' + i, type: 'uml.Connector', from: 'B.' + t, to: 'A.' + f })), views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['B', 'A'], direction: dir }] });
+  for (const mk of [cs, cp]) for (const dir of ['right', 'down']) for (const conns of [[['p1', 'q2'], ['p2', 'q1']], [['p1', 'q3'], ['p2', 'q2'], ['p3', 'q1']]])
+    assert.deepEqual(check(mk(conns, dir), 'v').map(p => p.message), [], `${mk === cs ? 'composite' : 'component'} ${dir} ${JSON.stringify(conns)}`);
+});

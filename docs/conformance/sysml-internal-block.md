@@ -58,8 +58,8 @@ Layout limits, measured on `examples/ebike-structure.json` and `tests/internal-b
 - The stress file's `edge-cases` view (item flows each way, a reference part, a value property, proxy, full and conjugated
   ports with flow arrows, two connectors on one port, a delegation to the frame's port, a part typed by no block, a
   connector through a part to a port its type lacks) crosses once right and twice down; `ec-ports-only` (a subject with
-  ports and no parts) is clean, a frame with its ports on it. The generated `all` (30 parts, 60 connectors) crosses 16
-  times right and 32 down, with one finding down (two lines sharing a track).
+  ports and no parts) is clean, a frame with its ports on it. The generated `all` (30 parts, 60 connectors) crosses 5
+  times right and 20 down, with one finding down (two lines sharing a track).
 
 ## Writers: what each shows of an internal block diagram
 

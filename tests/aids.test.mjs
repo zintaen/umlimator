@@ -105,3 +105,32 @@ test('audit 37: the gap defaults lib/umlimator.d.ts states are the ones layout()
   assert.equal(colGap(layout(m({ render: 'process', gap: Number(col) }), 'v')), Number(col), 'the stated default, set, widens a process view');
   assert.equal(Number(row), 44);
 });
+
+test('audit 38: a process view with containers: [] has no boxes, so it keeps the d.ts\'s 38 px between columns', () => {
+  const m = (v = {}) => ({ nodes: cards(['a', 'b', 'c', 'd']), edges: [{ from: 'a', to: 'b' }, { from: 'b', to: 'c' }, { from: 'c', to: 'd' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd'], ...v }] });
+  const gaps = g => { const ns = [...g.nodes].sort((p, q) => p.x - q.x); return ns.slice(1).map((n, i) => n.x - (ns[i].x + ns[i].w)); };
+  for (const v of [{ render: 'process' }, { mainSteps: ['a', 'b', 'c', 'd'] }]) {
+    assert.deepEqual(gaps(layout(m({ ...v, containers: [] }), 'v')), [38, 38, 38], JSON.stringify(v));
+    assert.deepEqual(gaps(layout(m({ ...v, containers: [] }), 'v')), gaps(layout(m(v), 'v')), 'an empty list draws as no list');
+  }
+  // a box held keeps the wider gap
+  assert.ok(gaps(layout(m({ render: 'process', containers: [{ id: 'x', label: 'X', nodeIds: ['a', 'b'] }] }), 'v')).some(x => x >= 66));
+});
+
+test('audit 38: the page\'s element count counts an untyped element a flowchart or C4 view draws, and not a SysML diagram frame', async () => {
+  const { elementCount } = await import('../src/canvas/pieces.js'), all = await import('../lib/umlimator-all.js');
+  const two = (diagram, a, extra = []) => { const nodes = [a, { id: 'u', label: 'Untyped' }, ...extra]; return { schemaVersion: 2, title: 'T', root: 'v', nodes, edges: [], views: [{ id: 'v', title: 'V', diagram, nodeIds: nodes.map(n => n.id) }] }; };
+  for (const [m, n] of [[two('flowchart', { id: 's', type: 'flow.Terminator', label: 'Start' }, [{ id: 'e', type: 'flow.Terminator', label: 'End' }]), 3], [two('flowchart', { id: 's', type: 'flow.Process', label: 'P' }), 2],
+    [two('c4.context', { id: 'x', type: 'c4.Person', label: 'Customer' }), 2], [two('c4.container', { id: 'x', type: 'c4.Person', label: 'Customer' }), 2],
+    [two('dfd', { id: 'x', type: 'dfd.ExternalEntity', label: 'Customer' }), 2], [two('er', { id: 'x', type: 'er.Entity', label: 'T' }), 2]]) {
+    const g = all.layout(m, 'v'); assert.equal(g.nodes.length, n, m.views[0].diagram);
+    assert.equal(elementCount(m.views[0], g), n, `${m.views[0].diagram}: every element drawn counted`); }
+  // a view's id with "->" in a node it lists is no element (model.js refuses such an id), so it is not counted as one
+  const hostile = two('flowchart', { id: 's', type: 'flow.Process', label: 'P' }); hostile.views[0].nodeIds.push('a->b');
+  assert.equal(elementCount(hostile.views[0], { nodes: [...all.layout(hostile, 'v').nodes, { id: 'a->b', shape: 'process' }], families: [{ id: 'v->frame' }] }), 2);
+  // a bdd or requirement view's frame names no element: its count is its describe()'s
+  for (const [f, vid, n] of [['ebike-atlas', 'blocks', 12], ['ebike-atlas', 'requirements', 16], ['ebike-blocks', 'blocks', 12], ['ebike-requirements', 'requirements', 16]]) {
+    const m = read(`../examples/${f}.json`), v = m.views.find(x => x.id === vid), g = all.layout(m, vid), said = /(\d+) elements? and/.exec(all.describe(m, vid));
+    assert.deepEqual(g.families.map(x => x.id), [`${vid}->frame`], `${f} ${vid}: its one box is the frame`);
+    assert.equal(Number(said && said[1]), n); assert.equal(elementCount(v, g), n, `${f} ${vid}: ${all.describe(m, vid).split('\n')[0]}`); }
+});

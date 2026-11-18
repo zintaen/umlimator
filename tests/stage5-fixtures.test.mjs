@@ -93,7 +93,7 @@ const PINNED = {
       down: [1,[],[]] },
     'all': {
       right: [19,[],[]],
-      down: [4,[],[]] } },
+      down: [3,[],[]] } }, // down: 3 since audit 38 (lines between two parts keep their ports' order)
 };
 
 test('every view of the six fixtures, right and down: line through a node, port line off its square, port off its owner\'s border, port name over a node or a line and check()\'s findings each only as pinned (the stated limits)', () => {

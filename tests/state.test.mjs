@@ -751,3 +751,60 @@ test('audit 37: a transition into a nested state enters the composite state belo
   m.nodes.shift(); m.views[0].nodeIds.shift();
   assert.deepEqual(notCross(m), []);
 });
+
+// audit 38: state machines the round-37 fuzzer and the lanes found. A spur: a run that goes back against the run two before it
+// across a step shorter than a stub (the line runs out, steps aside and runs back along itself)
+const spur = P => P.slice(3).some((d, i) => { const [a, b, c] = [P[i], P[i + 1], P[i + 2]], u = [Math.sign(b[0] - a[0]), Math.sign(b[1] - a[1])], w = [Math.sign(d[0] - c[0]), Math.sign(d[1] - c[1])];
+  return u[0] === -w[0] && u[1] === -w[1] && (u[0] || u[1]) && Math.abs(c[0] - b[0]) + Math.abs(c[1] - b[1]) < 18; });
+
+// the 32 px a box keeps right of a state's loop moved a two-level composite state so that its bottom border lay 3 px over the
+// row of S6 and S7; S6→S7, shut in by S7→S6, ran along the border into S7, as the router kept to coming into S7's stub head on
+test('audit 38: a transition from a state beside a two-level composite state keeps off the composite\'s border, laid out right', () => {
+  const m = st37([['s0', 'S0'], ['s1', 'S1'], ['s2', 'S2', 's1'], ['s3', 'S3'], ['s4', 'S4', 's2'], ['s5', 'S5', 's2'], ['s6', 'S6'], ['s7', 'S7']],
+    [['t0', 'init', 's0'], ['t1', 's0', 's6', 'e1'], ['t2', 's7', 's7'], ['t3', 's6', 's7', 'evt3 [x > 3] / act()'], ['t4', 's1', 's6', 'evt4 [x > 4] / act()'], ['t5', 's6', 's6', 'e5'], ['t6', 's4', 's6', 'e6'],
+      ['t7', 's3', 's7', 'evt7 [x > 7] / act()'], ['t8', 's6', 's1'], ['t9', 's3', 's3'], ['t10', 's0', 's0'], ['t11', 's5', 's7'], ['t12', 's7', 's6', 'e12'], ['t13', 's6', 's3', 'evt13 [x > 13] / act()']]);
+  assert.deepEqual(notCross(m), []);
+});
+
+// five or more transitions between a composite state (one to four states in it) or a plain state and the state beside it: two
+// shared a track up the gap, or crossed, and one ran out and stepped back along itself. Each now meets the composite level with
+// where it runs, and the lines between the pair nest
+test('audit 38: five to seven transitions between a composite or a plain state and the state beside it neither cross nor share a line, laid out right', () => {
+  for (const inner of [1, 2, 3, 4, 0]) for (const both of [false, true]) for (const k of [5, 6, 7]) {
+    const kids = Array.from({ length: inner || 3 }, (_, i) => ['c' + i, 'Inner ' + i, ...(inner ? ['w'] : [])]);
+    const m = st37([['w', 'Working'], ...kids, ['d', 'Done']], [['t0', 'init', 'w'],
+      ...Array.from({ length: k }, (_, i) => ['x' + i, both && i % 2 ? 'd' : 'w', both && i % 2 ? 'w' : 'd', i % 2 ? 'evt' + i + ' [x > 1] / act()' : 'ev' + i])]);
+    const what = `${inner ? inner + ' in the composite' : 'a plain state'}, ${k}${both ? ', both ways' : ''}`;
+    assert.deepEqual(check(m, 'v').map(p => p.message), [], what);
+    for (const e of layout(m, 'v').edges) assert.ok(!spur(e.pts), `${what}: ${e.id} ${JSON.stringify(e.pts)}`);
+  }
+});
+
+// laid out down, a composite state's ports on its top went right of its title, and its box was only as wide as the title: the
+// line out of the state inside it to the state above crossed the title
+test('audit 38: laid out down, a transition out of a composite state with a long name keeps off its name', () => {
+  const m = st37([['s0', 'S0'], ['s1', 'State with a longer name 1'], ['s2', 'S2'], ['s3', 'S3', 's1'], ['s4', 'S4']],
+    [['t0', 'init', 's0'], ['t1', 's1', 's1'], ['t2', 's3', 's1', 'evt2 [x > 2] / act()'], ['t3', 's0', 's0', 'evt3 [x > 3] / act()'], ['t4', 's3', 's4'], ['t5', 's2', 's3', 'e5'], ['t6', 's4', 's2', 'evt6 [x > 6] / act()'], ['t7', 's0', 's4']]);
+  m.views[0].direction = 'down';
+  assert.deepEqual(notCross(m), []);
+});
+
+// laid out down, S1→S0 and S1→S0 crossed; their ports swapped, and the one moved ran down the track of S3→S4, which has no end in
+// common with it: a swap that saves a crossing so is no gain
+test('audit 38: laid out down, transitions with no end in common keep off each other\'s track', () => {
+  const m = st37([['s0', 'S0'], ['s1', 'State with a longer name 1'], ['s2', 'S2'], ['s3', 'S3'], ['s4', 'State with a longer name 4'], ['s5', 'State with a longer name 5']],
+    [['t0', 'init', 's0'], ['t1', 's4', 's0', 'evt1 [x > 1] / act()'], ['t2', 's0', 's5', 'evt2 [x > 2] / act()'], ['t3', 's1', 's3', 'e3'], ['t4', 's3', 's4', 'e4'], ['t5', 's1', 's0', 'e5'], ['t6', 's2', 's2', 'e6'], ['t7', 's0', 's5', 'evt7 [x > 7] / act()'], ['t8', 's1', 's0', 'e8']]);
+  m.nodes.push({ id: 'fin', type: 'uml.FinalState' }); m.views[0].nodeIds.push('fin'); m.views[0].direction = 'down';
+  assert.deepEqual(notCross(m), []);
+});
+
+// laid out down, S2→final had no route and its last resort ran down past the final state's top, along the self-transition of the
+// state above it and back up into its top: the end goes to another side of the final state
+test('audit 38: laid out down, a last-resort transition into a final state keeps off the self-transition above it and runs no further than the final state', () => {
+  const m = st37([['s0', 'State with a longer name 0'], ['s1', 'S1'], ['s2', 'S2'], ['s3', 'S3']],
+    [['t0', 'init', 's0'], ['t1', 's2', 's0'], ['t2', 's2', 'fin'], ['t3', 's3', 's2'], ['t4', 's3', 's1'], ['t5', 's0', 'fin'], ['t6', 's0', 's0']]);
+  m.nodes.push({ id: 'fin', type: 'uml.FinalState' }); m.views[0].nodeIds.push('fin'); m.views[0].direction = 'down';
+  assert.deepEqual(notCross(m), []);
+  const g = layout(m, 'v'), fin = g.nodes.find(n => n.id === 'fin'), t2 = g.edges.find(e => e.id === 't2');
+  assert.ok(t2.pts.slice(1, -1).every(p => !(p[0] > fin.x - 18 && p[0] < fin.x + fin.w + 18 && p[1] > fin.y + 0.5 && p[1] < fin.y + fin.h + 18) || p === t2.pts.at(-2)), JSON.stringify(t2.pts));
+});

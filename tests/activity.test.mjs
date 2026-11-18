@@ -547,3 +547,24 @@ test('audit 33: an activity view titled "" is named by its id in a call behaviou
   const r = actAdd(m, V(m), { type: 'uml.CallBehaviorAction' }, 'Pay', {});
   assert.ok(r.pick.includes('take-payment') && !r.pick.includes(''), JSON.stringify(r.pick));
 });
+
+test('audit 38: an action or object node with no label is named as drawn, by its id, in its aria, its lines\' and describe(); a control node by its word', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'start', type: 'uml.InitialNode' }, { id: 'pack-order', type: 'uml.Action' }, { id: 'ship-order', type: 'uml.Action' }, { id: 'order-doc', type: 'uml.ObjectNode' },
+    { id: 'ask', type: 'uml.DecisionNode' }, { id: 'sub', type: 'uml.CallBehaviorAction' }, { id: 'named', type: 'uml.Action', label: 'Wrap' }, { id: 'end', type: 'uml.ActivityFinalNode' }],
+  edges: [['f1', 'start', 'pack-order'], ['f2', 'pack-order', 'order-doc', 'uml.ObjectFlow'], ['f3', 'order-doc', 'ship-order', 'uml.ObjectFlow'], ['f4', 'ship-order', 'ask'], ['f5', 'ask', 'sub'], ['f6', 'ask', 'named'], ['f7', 'sub', 'end'], ['f8', 'named', 'end']]
+    .map(([id, from, to, type]) => ({ id, type: type || 'uml.ControlFlow', from, to })),
+  views: [{ id: 'v', diagram: 'uml.activity', nodeIds: ['start', 'pack-order', 'ship-order', 'order-doc', 'ask', 'sub', 'named', 'end'] }] };
+  const g = layout(m, 'v'), node = id => g.nodes.find(n => n.id === id), line = id => g.edges.find(e => e.id === id);
+  for (const id of ['pack-order', 'ship-order', 'order-doc', 'sub']) assert.equal(node(id).label, id, 'drawn by its id');
+  assert.equal(node('pack-order').aria, 'Action pack-order'); assert.equal(node('ship-order').aria, 'Action ship-order');
+  assert.equal(node('order-doc').aria, 'Object node order-doc'); assert.match(node('sub').aria, /^Call behaviour action sub, /);
+  assert.notEqual(node('pack-order').aria, node('ship-order').aria, 'two unnamed actions told apart');
+  assert.equal(node('named').aria, 'Action Wrap'); assert.equal(node('start').aria, 'Initial node'); assert.equal(node('ask').aria, 'Decision, 2 exits');
+  assert.equal(line('f1').aria, 'Control flow from initial node to pack-order');
+  assert.equal(line('f2').aria, 'Object flow from pack-order to order-doc');
+  assert.equal(line('f5').aria, 'Control flow from decision to sub');
+  const d = describe(m, 'v');
+  assert.match(d, /^Action pack-order; then order-doc, an object flow\.$/m);
+  assert.match(d, /^Object node order-doc; then ship-order, an object flow\.$/m);
+  assert.match(d, /^Action ship-order; then decision\.$/m);
+});

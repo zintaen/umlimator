@@ -154,7 +154,7 @@ export function validate(model) {
   // stories (#69): each step's view, and the cards, lines and tour it names there
   if (m.stories != null && !Array.isArray(m.stories)) err('stories', 'stories is a list of stories');
   const modelLine = new Map(arr(m.edges).filter(e => e && typeof e === 'object' && typeof e.id === 'string').map(e => [e.id, e])), cardIds = new Set(arr(m.nodes).filter(n => n && typeof n === 'object').map(n => n.id));
-  const posLines = lineNames(m), sids = new Set(), lines = new Set([...lineIds, ...views.flatMap(v => arr(v.edges).filter(e => e && e.id != null).map(e => e.id))]);
+  const drewOf = new Map(), posLines = lineNames(m), sids = new Set(), lines = new Set([...lineIds, ...views.flatMap(v => arr(v.edges).filter(e => e && e.id != null).map(e => e.id))]);
   arr(m.stories).forEach((s, i) => {
     const at = `stories[${i}]`;
     if (s && typeof s === 'object') titled(s, at);
@@ -165,11 +165,15 @@ export function validate(model) {
       const p = `${at}.steps[${j}]`, v = views.find(x => x.id === (st && st.view));
       if (!v) return err(p + '.view', `"${st && st.view}" is not a view`);
       const mine = new Set(arr(v.nodeIds)), listed = Array.isArray(v.edges), boxes = new Set(arr(v.containers).map(c => c && c.id));
+      // the model lines a typed view draws, when its type says (its drawn hook): a DFD level leaves out its parent level's flows,
+      // a C4 view a relationship to a boundary it opens (audit 38). null: the type does not say, or could not read the model
+      const drawn = () => { if (!drewOf.has(v)) { const T = typedView(v) && diagramOf(v); let d = null; if (T && typeof T.drawn === 'function') try { d = new Set(arr(T.drawn(m, v))); } catch { d = null; } drewOf.set(v, d); } return drewOf.get(v); };
       const why = (x, seen) => { // why a model line x is no line of the view, or undefined
         if (typeof x !== 'string' || mine.has(x) || !modelLine.has(x) || seen.has(x) || arr(v.edges).some(e => e && e.id === x)) return undefined; seen.add(x);
         const l = modelLine.get(x), card = [l.from, l.to].find(k => cardIds.has(k) && !mine.has(k) && !boxes.has(k));
         if (card != null) return `its end "${card}" is not one of the view's cards`;
         if (listed && !v.edges.includes(x)) return 'the view\'s edges list leaves it out';
+        if (drawn() && !drawn().has(x)) return 'the view does not draw it';
         const line = [l.from, l.to].find(k => why(k, seen) != null);
         return line != null ? `its end "${line}" is no line of the view` : undefined; };
       const named = (x, q) => { // a card of the view or a line ("a->b#0" names a line with no id)
