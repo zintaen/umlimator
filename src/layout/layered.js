@@ -232,11 +232,14 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   familyDefs.forEach(f => { kids.has(f.parent) || kids.set(f.parent, []); kids.get(f.parent).push(f); });
   // a card in a box (a port: on its owner's border) is in what it lies within; a card in none is in none, though a deep box's padding covers it
   // a box whose title the author broke (its header room grown for the lines) holds only the cards it or a box in it holds:
-  // grown up over another box's card, it would otherwise take that card for its own and never move off it (audit 24)
+  // grown up over another box's card, it would otherwise take that card for its own and never move off it (audit 24). Nor
+  // does any box hold a card of a box it lies in (outer): grown wider than its cards for its title, it covered that card, and no
+  // rule between two boxes moves them apart (audit 41: a deployment node six deep over its parent's artifact)
   const boxesOf = new Map(), upOf = new Map(familyDefs.map(f => [f.id, f.parent])); // a card's boxes; a box's parent (a walk up, no recursion: boxes nest 3,000 deep)
   familyDefs.forEach(f => (f.nodeIds || []).forEach(id => { boxesOf.has(id) || boxesOf.set(id, []); boxesOf.get(id).push(f.id); }));
   const under = (f, id) => (boxesOf.get(id) || []).some(b => { for (let k = 0; b != null && k <= familyDefs.length; b = upOf.get(b), k++) if (b === f.id) return true; return false; });
-  const within = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h, owns = (f, n) => within(n, f) && (n.owner != null || held.has(n.id) && (!(f.head > 0 && brLines(f.title ?? f.label ?? f.id).length > 1) || under(f, n.id)));
+  const outer = (f, id) => (boxesOf.get(id) || []).some(b => { for (let k = 0, x = upOf.get(f.id); x != null && k <= familyDefs.length; x = upOf.get(x), k++) if (x === b) return true; return false; }); // a card of a box f lies in
+  const within = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h, owns = (f, n) => within(n, f) && (n.owner != null || under(f, n.id) || held.has(n.id) && !(f.head > 0 && brLines(f.title ?? f.label ?? f.id).length > 1) && !outer(f, n.id));
   // laid out down (TB): two or more labelled lines between one pair of a box's cards in neighbouring columns fan out across the
   // pair (TYPED.fan), each label across its own lane; the box holds those lanes and labels, so they keep inside it and off its
   // border. Narrower, the labels found no spot inside and each was set on the other line (audit 26: Mermaid's keyboard example)
