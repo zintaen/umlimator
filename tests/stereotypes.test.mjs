@@ -359,3 +359,14 @@ test('audit 31: stereotype-extends writes the element\'s kind in words with its 
     'stereotype-extends: «entity» on "Api" extends Class, which an interface is not',
     'stereotype-extends: «entity» on "Clerk" extends Class, which an actor is not']);
 });
+
+test('audit 43: a stereotype entry that is not text is said at its own path in every view, with a profile or without', () => {
+  for (const [d, type] of [['uml.class', 'uml.Class'], ['uml.component', 'uml.Component'], ['uml.deployment', 'uml.Node'], ['uml.package', 'uml.Class'], ['uml.object', 'uml.Class'], ['uml.use-case', 'uml.Actor']]) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'a', type, label: 'A', props: { stereotypes: ['entity', { z: 3 }, null, 2] }, members: [{ id: 'a.x', type: 'uml.Property', label: 'x', props: { stereotypes: [[1]] } }] }], edges: [], views: [{ id: 'v', diagram: d, nodeIds: ['a'] }] };
+    assert.deepEqual(validate(m).filter(p => / is not text/.test(p.message)).map(p => [p.path, p.message]),
+      [['nodes[0].props.stereotypes[1]', 'stereotypes[1] {"z":3} is not text: drawn as "[object Object]"'], ['nodes[0].members[0].props.stereotypes[0]', 'stereotypes[0] [1] is not text: drawn as "1"']], d);
+  }
+  const P = JSON.parse(readFileSync(new URL('../examples/bookshop-profile.json', import.meta.url))), order = P.nodes.findIndex(n => n.id === 'order' || n.label === 'Order');
+  P.nodes[order].props = { ...P.nodes[order].props, stereotypes: [{ a: 1 }] };
+  assert.ok(validate(P).some(p => p.path === `nodes[${order}].props.stereotypes[0]` && / is not text/.test(p.message)));
+});

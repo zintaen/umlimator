@@ -156,7 +156,7 @@ const SQ_RULES = {
 };
 function sqProblems(model, view) {
   const out = [], V = sqView(model, view); if (!SQ_OBJ(model) || !V) return out;
-  const vi = SQ_ARR(model.views).indexOf(V), at = `views[${vi}]`, X = sqIndex(model, V), ids = [...new Set(SQ_ARR(V.nodeIds))], col = new Map(ids.map((id, j) => [id, j]));
+  const vi = SQ_ARR(model.views).indexOf(V), at = `views[${vi}]`, X = sqIndex(model, V), ids = sqHeads(model, V).map(n => n.id), col = new Map(ids.map((id, j) => [id, j])); // the lifelines drawn, left to right: a nodeIds entry that is no element is none (audit 43)
   const say = (rule, path, who, msg, level = 'error') => out.push({ level, rule, path, ids: who.filter(x => x != null), message: `${rule}: ${msg}` });
   const fPath = f => `${at}.fragments[${SQ_ARR(V.fragments).indexOf(f)}]`;
   // parent-operand: an occurrence's or a fragment's parent; a fragment inside itself

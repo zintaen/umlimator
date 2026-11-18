@@ -675,3 +675,10 @@ test('audit 40: a member added or edited to a name another member of its class h
   // without its owner (a host calling member.edit as before) the edit is read as it was
   assert.ok(T.member.edit(mem('customer', 'customer.name'), 'email: Text').commands);
 });
+
+test('audit 43: validate() says an association end\'s role that is not text, at its own path, as a member\'s type', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'A' }, { id: 'b', type: 'uml.Class', label: 'B' }],
+    edges: [{ id: 'l', type: 'uml.Association', from: 'a', to: 'b', props: { ends: { from: { role: 'x' }, to: { role: { z: 3 } } } } }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b'] }] };
+  const p = validate(m).filter(x => / is not text/.test(x.message));
+  assert.deepEqual(p.map(x => [x.level, x.path, x.message]), [['warning', 'edges[0].props.ends.to.role', 'role {"z":3} is not text: drawn as "[object Object]"']]);
+});

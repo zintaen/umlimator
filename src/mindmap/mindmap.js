@@ -189,8 +189,9 @@ const mmPins = (X, V, g, but) => g.nodes.filter(n => n.depth === 1 && (but insta
 // the same for a gesture that has no picture at hand: laid out only when a first-level topic is left to pin
 const mmPinsAt = (model, X, V, at, but = new Set()) => (X.ids.some(id => X.depth.get(id) === 1 && !but.has(id) && !X.side(id)) ? mmPins(X, V, mmGeo(model, V, at), but) : []);
 const mmUnside = (X, V, id) => (MM_OBJ(X.P[id]) && X.P[id].side !== undefined ? [mmSide(V, id, undefined)] : []);
-// T goes under a topic other than the root: its side, if given, goes; a first-level T pins the other branches, as the demote does
-const mmLeave = (X, V, g, T) => [...(T.depth === 1 ? mmPins(X, V, g, T.id) : []), ...mmUnside(X, V, T.id)];
+// T goes under a topic other than the root: its side, if given, goes, and the first-level topics but T (and but, what goes deeper
+// with it) are pinned, as the demote does: a deeper T moved changes the bands' heights all the same (audit 43)
+const mmLeave = (X, V, g, T, but = T.id) => [...mmPins(X, V, g, but), ...mmUnside(X, V, T.id)];
 const mmInside = (X, id, of) => { for (let p = of; p != null; p = X.up(p)) if (p === id) return true; return false; }; // of is id or under it
 const mmGeo = (model, V, at) => (MM_OBJ(at && at.geo) && at.geo.mm ? at.geo : mmRun(model, V)); // the canvas's, as measured in the host's font
 
@@ -230,7 +231,7 @@ function mmKeyMove(X, V, g, T, [dx, dy]) {
   if (inward) { const P = T.parent, G = X.up(P), was = g.byId[P], ps = X.kids.get(G), nx = ps[ps.indexOf(P) + 1]; // promote: under its grandparent, after its old parent
     // and before the parent's next sibling, which a nodeIds not in pre-order lists before the parent's last subtopic (audit 11)
     const mv = nx != null ? mmBefore(X, V, id, Math.min(X.pos.get(nx), mmEnd(X, P, id) + 1)) : mmAfter(X, V, id, mmEnd(X, P, id));
-    return [...(was.depth === 1 ? [...mmPins(X, V, g, null), mmSide(V, id, was.side)] : []), { op: 'reparent', id, parent: G }, ...mv]; }
+    return [...mmPins(X, V, g, null), ...(was.depth === 1 ? [mmSide(V, id, was.side)] : []), { op: 'reparent', id, parent: G }, ...mv]; } // every promote pins (audit 43)
   const S = sibs[i - 1]; if (S == null) return mmErr(`No topic above ${name} to move it into`); // demote: into the sibling before it, last
   return [...mmLeave(X, V, g, T), { op: 'reparent', id, parent: S }, ...mmAfter(X, V, id, mmEnd(X, S, id))];
 }
@@ -243,7 +244,7 @@ function mmDrop(X, V, g, T, [x, y]) {
     if (hit.root && T.depth === 1 && hit.id === T.parent) { const s = x < hit.x + hit.w / 2 ? 'left' : 'right'; // the root's other half: the other side
       return s === T.side ? [] : [...mmPins(X, V, g, id), mmSide(V, id, s)]; }
     if (hit.id === T.parent) return [];
-    const top = hit.root ? [...mmPins(X, V, g, but), mmSide(V, id, x < hit.x + hit.w / 2 ? 'left' : 'right')] : mmLeave(X, V, g, T);
+    const top = hit.root ? [...mmPins(X, V, g, but), mmSide(V, id, x < hit.x + hit.w / 2 ? 'left' : 'right')] : mmLeave(X, V, g, T, but);
     return [...top, ...off, { op: 'reparent', id, parent: hit.id }, ...mmAfter(X, V, id, mmEnd(X, hit.id, id))];
   }
   // between two siblings drawn one above the other: the gap between their boxes, across both
@@ -252,7 +253,7 @@ function mmDrop(X, V, g, T, [x, y]) {
       if (y < a.y + a.h || y > b.y || x < Math.min(a.x, b.x) || x > Math.max(a.x + a.w, b.x + b.w)) continue;
       if (a.id === id || b.id === id) return [];
       if (mmInside(X, id, P.id)) return mmErr('A topic cannot go under one of its own subtopics');
-      const top = P.root ? [...mmPins(X, V, g, but), mmSide(V, id, a.side)] : mmLeave(X, V, g, T);
+      const top = P.root ? [...mmPins(X, V, g, but), mmSide(V, id, a.side)] : mmLeave(X, V, g, T, but);
       return [...top, ...off, ...(P.id !== T.parent ? [{ op: 'reparent', id, parent: P.id }] : []), ...mmBefore(X, V, id, X.pos.get(b.id))]; } }
   return mmErr('Drop a topic on another to move it under it, or between two topics to put it there');
 }

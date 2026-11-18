@@ -217,6 +217,8 @@ function typedProblems(model) {
     if (where.has(x.id)) err(at + '.id', `id "${x.id}" is used twice (also ${where.get(x.id)})`); else { where.set(x.id, at); kindOf.set(x.id, kind); }
     if (owner != null) ownerOf.set(x.id, owner);
     if (kind !== 'node') { const l = labelProblem(x, at); if (l) out.push(l); } // a node's is validate()'s card check, in a map too
+    // a stereotype entry that is not text, drawn «[object Object]» over its name in every view that keys it (audit 43)
+    const st = isObj(x.props) ? x.props.stereotypes : null; if (Array.isArray(st)) st.forEach((s, k) => { const l = labelProblem({ [`stereotypes[${k}]`]: s }, `${at}.props`, `stereotypes[${k}]`); if (l) out.push(l); });
     if (x.parent != null) parents.push([x, at]);
     if (up.has(x)) return; up.add(x); // a host's member that holds its owner: said used twice, and not read again (audit 28)
     todo.push(() => up.delete(x)); const ms = arr(x.members);

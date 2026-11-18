@@ -7,7 +7,7 @@ import { brLines } from '../typed/draw.js';
 import { closesCycle, lineIn, lineItem } from './class.js'; // SHAPE.note, a comment's look too
 import { ownersOn, placeTabs, readingOrder } from './owners.js';
 import { snKindName } from './structure.js';
-import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName, propTextProblems } from '../core/model.js';
 
 /* ---------- the use case diagram, uml.use-case (work package 4.4, notes/stage-4.md §8) ----------
    Actors (a stick figure), use cases (an ellipse, its extension points in a compartment under the name) and subjects: a
@@ -255,6 +255,7 @@ function ucProblems(model, view) {
     if ((e.type === 'uml.Include' || e.type === 'uml.Extend') && (!uc(e.from) || !uc(e.to) || e.from === e.to))
       say('error', e.type === 'uml.Include' ? 'include-ends' : 'extend-ends', path, ends, `${e.id} runs from ${q(e.from)} to ${q(e.to)}: from a use case to another use case`);
     if (e.type === 'uml.Include' && uc(e.from) && uc(e.to)) inc.set(e.from, [...(inc.get(e.from) || []), [e.to, path, e.id]]);
+    if (e.type === 'uml.Extend') out.push(...propTextProblems(e, path, ['condition'])); // drawn `[condition]` as text (audit 43)
     if (e.type === 'uml.Extend' && uc(e.to)) { const pts = UC_ARR(UC_PROPS(e).extensionPoints), mine = new Set(ucPointsOf(at.get(e.to)).map(m => m.id)), bad = pts.filter(p => !mine.has(p));
       if (!pts.length) say('error', 'extend-points', path, [e.id, e.to], `${e.id} names no extension point of ${q(e.to)}`);
       else if (bad.length) say('error', 'extend-points', `${path}.props.extensionPoints`, [e.id, e.to, ...bad.map(String)], `${e.id} names ${bad.map(p => JSON.stringify(String(p))).join(', ')}, not ${bad.length === 1 ? 'an extension point' : 'extension points'} of ${q(e.to)}`); }

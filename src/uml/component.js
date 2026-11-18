@@ -313,6 +313,8 @@ function cpAdd(model, view, entry, label, at) {
   const I = cpIndex(model), sel = CP_ARR(at && at.sel).map(id => (I.P.has(id) ? I.P.get(id).owner : id)).find(id => ['uml.Component', 'uml.Class'].includes(drawnKind(CP_TYPE, I.N.get(id)))); // an element of no type too: drawn as a component (audit 30)
   if (entry.type === 'uml.Port') { if (!sel) return { error: 'Select a component to add a port to' };
     const r = String(label ?? '').trim() ? cpPortText(label) : {}; if (r.error) return r; // `name : Type`, as the panel's row and F2 read it (audit 18)
+    // on a class, a name another member holds: refused in member-names' words, as the composite view refuses it (audit 43)
+    const no = memberClash(cpClashOwner(I.N.get(sel)), {}, { type: 'uml.Port', label: r.label }); if (no) return no;
     return [{ op: 'add', element: { id: cpNewId(model, 'port'), type: 'uml.Port', ...(r.label ? { label: r.label } : {}), ...(r.valueType ? { props: { valueType: r.valueType } } : {}) }, owner: sel }]; }
   if (entry.type !== 'uml.Interface') return null;
   const id = cpNewId(model, 'interface'), add = { op: 'add', element: { id, type: 'uml.Interface', ...(label ? { label } : {}) }, view: view.id };
@@ -329,8 +331,9 @@ function cpMember(model, view, owner, id, text) {
 // rename: F2 on a port reads `name` or `name : Type`, a name alone keeping its type (F2 opens on the name; audit 16); a line, its label
 const cpLineRename = lineRename((e, model, view) => cpLabel({ e, kind: cpKind(cpIndex(model), view, e) }));
 function cpRename(model, view, id, text) {
-  const q = cpIndex(model).P.get(id); if (!q) return cpLineRename(model, view, id, text);
+  const I = cpIndex(model), q = I.P.get(id); if (!q) return cpLineRename(model, view, id, text);
   const r = cpPortText(text); if (r.error) return r;
+  const no = memberClash(cpClashOwner(I.N.get(q.owner)), q.x, { type: 'uml.Port', label: r.label, props: q.x.props }); if (no) return no; // a class's port: as the composite view (audit 43)
   return [['label', q.x.label, r.label], ['props.valueType', cpProps(q.x).valueType, String(text).includes(':') ? r.valueType : cpProps(q.x).valueType]]
     .filter(([, a, b]) => (a ?? undefined) !== b).map(([path, , value]) => ({ op: 'set', id, path, value }));
 }

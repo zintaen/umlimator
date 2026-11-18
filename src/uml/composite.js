@@ -8,7 +8,7 @@ import { CLASSIFIERS, LINE_WORDS, legendOf, lineIn, lineLabel, lineLook, lineRen
 import './usecase.js'; // SHAPE.ellipse, a collaboration use's; SHAPE.subject, a class subject's frame
 import { SN_SAY, STRUCT_RULES, snKindName, snKindWord, portFit, portSides, portsDrawn, structProblems } from './structure.js';
 import { viewLines } from './owners.js';
-import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName, propTextProblems } from '../core/model.js';
 
 /* ---------- the composite structure diagram, uml.composite-structure (work package 5.6, notes/stage-5.md §6, §10.2) ----------
    The view's subject (a class, a component or a collaboration, listed in nodeIds) is a box holding its parts (its uml.Property
@@ -294,6 +294,13 @@ function csProblems(model, view) {
     `part ${q(m.id)} of ${q(S.id)} ${!CS_HAS(CS_PROPS(m).valueType) ? 'has no type' : `is typed ${jsonText(CS_PROPS(m).valueType)}, which names ${[...P.at.values()].some(n => CS_TYPED.includes(n.type) && elName(n) === CS_PROPS(m).valueType) ? 'more than one' : 'no'} class or component`}, so it shows only the ports its connectors reach through it`); });
   P.parts.forEach(m => { const t = CS_PROPS(m).multiplicity, b = CS_HAS(t) ? multBounds(t) : { lower: 0, upper: 0 };
     if (!b || b.lower > b.upper) say('warning', 'part-multiplicity', memPath(m.id) + '.props.multiplicity', [m.id], `part ${q(m.id)}'s multiplicity [${t}] ${b ? 'has its lower bound above its upper' : 'is not one (1, *, 0..1, 1..*)'}`); });
+  // and a collaboration's role's, drawn `r : Type [n]` as a part is (audit 43)
+  P.collabs.forEach(c => c.roles.forEach(m => { const t = CS_PROPS(m).multiplicity, b = CS_HAS(t) ? multBounds(String(t)) : { lower: 0, upper: 0 };
+    if (!b || b.lower > b.upper) say('warning', 'part-multiplicity', memPath(m.id) + '.props.multiplicity', [m.id], `role ${q(m.id)}'s multiplicity [${t}] ${b ? 'has its lower bound above its upper' : 'is not one (1, *, 0..1, 1..*)'}`); }));
+  // what the view draws as text that is not text, said at its own path as a label is (audit 43): a drawn port's type (the
+  // subject's, or a part's type's), a role's type, a collaboration use's collaboration
+  new Set([...P.sPorts, ...[...P.partPorts.values()].flat(), ...P.collabs.flatMap(c => c.roles)]).forEach(m => out.push(...propTextProblems(m, memPath(m.id), ['valueType'])));
+  P.ids.forEach(id => { const u = P.at.get(id); if (u.type === 'uml.CollaborationUse') out.push(...propTextProblems(u, `nodes[${nodeAt(id)}]`, ['collaboration'])); });
   // where an end lies: the subject's structure ('S'), a collaboration's (its id), or nowhere (null). A collaboration use is in
   // none: UML 2.5.1 §11.2, an end is a part or a port, and a use is neither (audit 21); a role binding's ends are checked apart
   const owner = id => (P.mem.get(id) || {}).owner, inS = id => S && (id === S.id || owner(id) === S);
