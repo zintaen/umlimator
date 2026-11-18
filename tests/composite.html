@@ -188,6 +188,22 @@ try {
   check('audit 13: a port\'s rows name a port on a part by its drawn name, in this view, and select it; that port lists the line to it',
     JSON.stringify(farRow) === JSON.stringify(['order-service.checkout->checkout-class.requests', 'requests of checkout', 'Select']) && got.includes('"order-service.checkout->checkout-class.requests"') && back.includes('api of OrderService'), [farRow, got, back]);
   h.destroy();
+  // audit 34: a part dragged in or out of its frame gave a reparent onto the owner it already has (the frame is the subject, the
+  // part its member), which apply() always refuses ("is a member of"): now its pin, on a composite, an internal block and a
+  // parametric view
+  for (const [file, vid] of [['composite-minimal.json', 'v'], ['../examples/order-service-structure.json', 'internals'], ['../examples/ebike-structure.json', 'inside-ebike'], ['../examples/ebike-range.json', 'range-analysis']]) {
+    const M = await (await fetch(file)).json(), V = M.views.find(v => v.id === vid), got = [];
+    let pinned = 0;
+    for (const [dx, dy] of [[30, 200], [260, 0], [-200, 60], [40, 40]]) {
+      const parts = (() => { mount(M, { view: vid, editable: true }); return all('.node').map(g => g.dataset.id).filter(id => id.startsWith(V.subject + '.') && !id.includes('->') && !pick(`.node[data-id="${CSS.escape(id)}"]`).classList.contains('port')); })();
+      for (const id of parts) {
+        const h = mount(M, { view: vid, editable: true }), a = centre(`.node[data-id="${CSS.escape(id)}"]`), to = [a[0] + dx, a[1] + dy];
+        ptr(pick(`.node[data-id="${CSS.escape(id)}"]`), 'pointerdown', a); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [a[0] + (to[0] - a[0]) * i / 4, a[1] + (to[1] - a[1]) * i / 4]); ptr(stage, 'pointerup', to);
+        for (const e of ed) { let why = null; try { const m = apply(M, e.commands); if (errors(m).length) why = errors(m); } catch (x) { why = x.message; }
+          if (why || e.commands.some(c => c.op === 'reparent')) got.push([id, e.commands, why]); else if (e.commands.some(c => c.op === 'set' && c.path[0] === 'layout' && c.path[1] === id)) pinned++; }
+        h.destroy(); } }
+    check(`audit 34: ${vid}: a part dragged in or out of its frame is pinned, never re-owned, and apply() takes it`, !got.length && pinned > 0, [got, pinned]);
+  }
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

@@ -76,7 +76,7 @@ TYPED.edit = (I, c) => {
   I.connect = (from, to, ev, at) => base.connect(from, to, ev, at !== undefined ? at : ev ? near(...world(ev)) : keyAt());
   I.drop = (n, hint, into, from) => { const h = hook('moveTo'), dflt = () => base.drop(n, hint, into, from), dy = hint.y - (n.y + n.h / 2);
     // no moveTo: a drop into another box is a new owner, which the owner hook guards as it guards the Owner field (cloud, audit 19)
-    const o = !h && into !== from && can('move') && hook('owner');
+    const o = !h && !c.stays(n.id, into, from) && can('move') && hook('owner'); // a drop that keeps the owner: the default's pin (audit 34)
     if (o) { const m = model(), v = view(); return ran(o(m, v, n.id, arrOf(m.nodes).some(x => isRec(x) && x.id === into) ? into : v.subject ?? null), dflt); }
     const g = api.geo(), col = arrOf((view() || {}).nodeIds).filter(id => id !== n.id && isRec(g.byId[id]) && g.byId[id].x + g.byId[id].w / 2 < hint.x).length;
     return h && can('move') ? ran(h(model(), view(), n.id, { ...near(hint.x, hint.y + Math.sign(dy) * n.h / 2), pt: [hint.x, hint.y], col, geo: g }), dflt) : dflt(); };

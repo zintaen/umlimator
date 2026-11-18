@@ -1,4 +1,4 @@
-import { jsonText } from '../core/model.js';
+import { jsonText, labelOr } from '../core/model.js';
 import { aKind, diagramOf } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -38,7 +38,7 @@ function modelLines(model) {
     if (OWN_OBJ(e) && typeof e.id === 'string' && !taken.has(e.id) && String(e.type || '').startsWith('uml.')) { taken.add(e.id); out.push(e); } }));
   return out;
 }
-const ownName = x => String(x.label ?? x.id), ownAt = (at, id) => at.get(id) || { id }; // an id the index lacks (a member's) by itself, not a throw (audit 17)
+const ownName = x => String(labelOr(x.label, x.id)), ownAt = (at, id) => at.get(id) || { id }; // an id the index lacks (a member's) by itself, not a throw (audit 17)
 const stereoOf = x => OWN_ARR(OWN_OBJ(x.props) ? x.props.stereotypes : null).filter(t => t != null && t !== '').map(String);
 
 // every node of a model by id (the first of an id), and the chain of its owners, nearest first. An ownership cycle (the

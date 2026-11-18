@@ -377,7 +377,7 @@ function mapContext(model, opts = {}) {
 
   function buildView(vid, opts = {}) { // a view's geometry and its picture
     const g = buildGeo(vid), v = V[vid], T = ownLayout(vid), L = T && T.draw && T.draw(g, { esc, r2, textW }); // its two layers only
-    return { g, markup: svgOf(g, { title: v.title, subject: subjectOf(v), icons: D.icons, broken: brokenIn(vid), ...opts, ...(L && { under: L.under, over: L.over }) }) };
+    return { g, markup: svgOf(g, { title: labelOr(v.title, vid), subject: subjectOf(v), icons: D.icons, broken: brokenIn(vid), ...opts, ...(L && { under: L.under, over: L.over }) }) };
   }
   // the rules a view's lines break (#70), by model edge id: svgOf draws such a line rose, with a mark that names them
   let ruled = null;
