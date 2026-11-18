@@ -685,6 +685,20 @@ test('audit 31: a label that is not text in nodeOverrides, on a box, or a view t
   assert.deepEqual(validate(fine), []);
 });
 
+// audit 39: a view's caption, description or note that is not text was drawn "[object Object]" in the About box, the PDF and a
+// walkthrough's note line, and validate() said nothing
+test('audit 39: a view caption, description or note that is not text is warned of; text or a number is not', () => {
+  const m = { root: 'v', nodes: [{ id: 'a', label: 'A' }], views: [{ id: 'v', nodeIds: ['a'], caption: { x: 5 }, description: ['<img src=https://e.example/t.png>'], note: { href: 'https://e.example/t.png' } }] };
+  assert.deepEqual(validate(m).map(p => [p.level, p.path, p.message]), [
+    ['warning', 'views[0].caption', 'caption {"x":5} is not text: drawn as "[object Object]"'],
+    ['warning', 'views[0].description', 'description ["<img src=https://e.example/t.png>"] is not text: drawn as "<img src=https://e.example/t.png>"'],
+    ['warning', 'views[0].note', 'note {"href":"https://e.example/t.png"} is not text: drawn as "[object Object]"']]);
+  const typed = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'A' }], views: [{ id: 'v', diagram: 'uml.class', caption: { x: 5 }, nodeIds: ['a'] }] };
+  assert.deepEqual(validate(typed).filter(p => p.path === 'views[0].caption').map(p => p.message), ['caption {"x":5} is not text: drawn as "[object Object]"']);
+  const fine = structuredClone(m); Object.assign(fine.views[0], { caption: 'Shop', description: 3, note: null });
+  assert.deepEqual(validate(fine), []);
+});
+
 // audit 31: a typed view that lists no lines draws only its type's own kinds between its cards, so a model line of no notation is
 // not drawn there; the warning said "drawn as a plain line" (an activity, a use case view). A view that lists it draws it plain
 test('audit 31: a line of no notation is said not drawn in a typed view that lists no lines, and drawn plain where one lists it', async () => {

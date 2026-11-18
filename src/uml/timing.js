@@ -55,8 +55,15 @@ function tmIndex(model, V) {
   const unit = TM_HAS(TL.unit) ? String(TL.unit) : null, t = x => `${x}${unit ? ' ' + unit : ''}`;
   const name = id => (N.has(id) ? tmName(N.get(id)) : String(id)), C = new Map(changes.map(c => [c.id, c]));
   const H = new Map(heads.map(n => [n.id, n])), hid = id => C.has(id) && !H.has(C.get(id).lifeline); // a change of a hidden lifeline
-  return { N, H, heads, changes, C, cons, shown: cons.filter(c => !hid(c.from) && !hid(c.to)), msgs, unit, t, name, values: id => TM_OBJ(P[id]) && P[id].as === 'values',
-    mine: id => changes.filter(c => c.lifeline === id).sort((a, b) => tmBy(a.at) - tmBy(b.at) || (a.id < b.id ? -1 : 1)) };
+  // drawn: the messages layoutTimeRuler draws, both ends lanes here and both times numbers within ±1e300 (audit 39): describe()
+  // and the PDF's rows say only these, never 'at undefined ms' for one the picture leaves out
+  const timed = tmNum, at = id => C.has(id) && tmNum(C.get(id).at);
+  const drawn = msgs.filter(m => H.has(m.from) && H.has(m.to) && timed(tmProps(m).sentAt) && timed(tmProps(m).receivedAt));
+  return { N, H, heads, changes, C, cons, shown: cons.filter(c => !hid(c.from) && !hid(c.to)), msgs, drawn, unit, t, name, values: id => TM_OBJ(P[id]) && P[id].as === 'values',
+    mine: id => changes.filter(c => c.lifeline === id).sort((a, b) => tmBy(a.at) - tmBy(b.at) || (a.id < b.id ? -1 : 1)),
+    // the same for the changes and constraints said: a change with no time, and a constraint on one, are not drawn
+    said: id => changes.filter(c => c.lifeline === id && timed(c.at)).sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1)),
+    marked: cons.filter(c => !hid(c.from) && !hid(c.to) && at(c.from) && (TM_KIND[c.type] === 'time' || at(c.to))) };
 }
 
 /* ---- names (§9): a change's, a message's, a constraint's, said the same in the picture, describe() and the PDF ---- */
@@ -187,7 +194,8 @@ const TM_RULES = {
   'constraint-order': 'a duration constraint\'s to is no earlier than its from',
   'timing-kinds': 'a timing view draws lifelines only: any other element it lists is not drawn',
 };
-const tmNum = x => typeof x === 'number' && Number.isFinite(x);
+// a time layoutTimeRuler draws: a number within ±1e300 (past it the span is no number); validate() says the rest (audit 39)
+const tmNum = x => typeof x === 'number' && Number.isFinite(x) && Math.abs(x) <= 1e300;
 // a time to sort by: a host's BigInt, which validate() reports as no number, sorts as one that is none (a - b throws on it: audit 29)
 const tmBy = x => typeof x === 'bigint' ? NaN : x;
 function tmProblems(model, view) {
@@ -226,21 +234,21 @@ function tmProblems(model, view) {
 /* ---- describe(): the view in words, lanes top to bottom, then messages in time order, then constraints ---- */
 function tmDescribe(model, viewId) {
   const V = TM_ARR(model && model.views).find(x => TM_OBJ(x) && x.id === viewId); if (!V) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
-  const X = tmIndex(model, V), shown = X.changes.filter(c => X.H.has(c.lifeline));
-  const out = [`${labelOr(V.title, V.id)}: a timing diagram of ${tmPlural(X.heads.length, 'lifeline')}, ${tmPlural(shown.length, 'change')}, ${tmPlural(X.msgs.length, 'message')} and ${tmPlural(X.shown.length, 'constraint')}${X.unit ? `, in ${X.unit}` : ''}.`];
-  X.heads.forEach(n => { const cs = X.mine(n.id); out.push(`${tmShown(n)}${X.values(n.id) ? ' (values)' : ''}: ${cs.length ? cs.map(c => `${c.state ?? ''} from ${X.t(c.at)}`).join('; ') : 'no change'}.`); });
-  [...X.msgs].sort((a, b) => tmBy(tmProps(a).sentAt) - tmBy(tmProps(b).sentAt)).forEach(m => out.push(tmMsgSaid(X, m) + '.'));
-  X.shown.forEach(c => out.push(tmConSaid(X, c) + '.'));
+  const X = tmIndex(model, V), shown = X.heads.flatMap(n => X.said(n.id));
+  const out = [`${labelOr(V.title, V.id)}: a timing diagram of ${tmPlural(X.heads.length, 'lifeline')}, ${tmPlural(shown.length, 'change')}, ${tmPlural(X.drawn.length, 'message')} and ${tmPlural(X.marked.length, 'constraint')}${X.unit ? `, in ${X.unit}` : ''}.`];
+  X.heads.forEach(n => { const cs = X.said(n.id); out.push(`${tmShown(n)}${X.values(n.id) ? ' (values)' : ''}: ${cs.length ? cs.map(c => `${c.state ?? ''} from ${X.t(c.at)}`).join('; ') : 'no change'}.`); });
+  [...X.drawn].sort((a, b) => tmBy(tmProps(a).sentAt) - tmBy(tmProps(b).sentAt)).forEach(m => out.push(tmMsgSaid(X, m) + '.'));
+  X.marked.forEach(c => out.push(tmConSaid(X, c) + '.'));
   return out.join('\n');
 }
 
 /* the PDF's rows (4.9, §9): a lifeline's changes in time order, the messages it sends, the constraints on its changes */
 function tmRows(model, view, id) {
   const V = tmView(model, view); if (!V) return null; const X = tmIndex(model, V); if (!X.H.has(id)) return null;
-  const mine = X.mine(id), ids = new Set(mine.map(c => c.id));
+  const mine = X.said(id), ids = new Set(mine.map(c => c.id));
   return [...mine.map(c => `${X.t(c.at)}: ${c.state ?? ''}`),
-    ...X.msgs.filter(m => m.from === id).map(m => { const p = tmProps(m); return `${tmMsgText(m) || tmSort(m)} to ${X.name(m.to)} at ${X.t(p.sentAt)} → ${X.t(p.receivedAt)}`; }),
-    ...X.shown.filter(c => ids.has(c.from) || ids.has(c.to)).map(c => tmConSaid(X, c))];
+    ...X.drawn.filter(m => m.from === id).map(m => { const p = tmProps(m); return `${tmMsgText(m) || tmSort(m)} to ${X.name(m.to)} at ${X.t(p.sentAt)} → ${X.t(p.receivedAt)}`; }),
+    ...X.marked.filter(c => ids.has(c.from) || ids.has(c.to)).map(c => tmConSaid(X, c))];
 }
 
 /* ---- the gesture hooks (§8.1). Each takes the model and the view (or its id) and returns the commands of one transaction,
