@@ -67,7 +67,8 @@ function SYS_HEAD(model, view) {
   const s = view.subject == null ? null : SYS_ARR(model && model.nodes).find(n => SYS_OBJ(n) && n.id === view.subject && Object.hasOwn(E, n.type));
   const el = s ? E[s.type] : 'Model', name = String(s ? s.label ?? s.id : (model && model.title) ?? ''), t = view.title == null || String(view.title) === name ? '' : String(view.title);
   return { el: s || null, title: [k, `[${el}]`, name, t && `[${t}]`].filter(Boolean).join(' '),
-    aria: `${word} of ${el.replace(/(.)([A-Z])/g, '$1 $2').toLowerCase()} ${name}${t ? ': ' + t : ''}`.replace(/ +/g, ' ').trim() };
+    // from its parts: no name (no subject, the model untitled) leaves no space before the colon (audit 33: "model : E-bike blocks")
+    aria: ([word, 'of', el.replace(/(.)([A-Z])/g, '$1 $2').toLowerCase(), name].map(x => x.trim()).filter(Boolean).join(' ') + (t ? ': ' + t : '')).replace(/ +/g, ' ').trim() };
 }
 // a req or bdd view's frame, a box of the layout holding nodeIds (§5.1): the subject's id when it names one (selecting the frame
 // selects the package), else `<view>->frame`, which no element has (the canvas maps it to the view's subject or none). Its

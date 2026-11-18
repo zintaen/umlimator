@@ -232,8 +232,8 @@ function cpProblems(model, view) {
   const out = [...structProblems(model, view)], I = cpIndex(model), say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const shown = new Set(CP_ARR(view && view.nodeIds)), seen = id => !view || shown.has(I.comp(id)), listed = view && Array.isArray(view.edges) ? new Set(view.edges.map(x => (CP_OBJ(x) ? x.id : x))) : null;
   const q = id => JSON.stringify(I.name(id)), comp = id => I.ty(id) === 'uml.Component', within = (a, b) => I.chain(I.comp(a)).includes(I.comp(b));
-  CP_ARR(model && model.nodes).forEach((n, i) => { if (!CP_OBJ(n) || n.type !== 'uml.Component' || !seen(n.id) || n.parent == null || !I.N.has(n.parent)) return;
-    // an owner of no type is drawn as a component, a box for this one (CP_BOX); the kind in words, "an artifact" (audit 31: "a undefined", "a Artifact")
+  CP_ARR(model && model.nodes).forEach((n, i) => { if (!CP_OBJ(n) || drawnKind(CP_TYPE, n) !== 'uml.Component' || !seen(n.id) || n.parent == null || !I.N.has(n.parent)) return;
+    // an element or owner of no type is drawn as a component (CP_BOX), so judged as one (audit 33); the kind in words, "an artifact" (audit 31: "a undefined", "a Artifact")
     const p = I.N.get(n.parent); if (!['uml.Component', 'uml.Package'].includes(drawnKind(CP_TYPE, p))) say('warning', 'component-owner', `nodes[${i}].parent`, [n.id, p.id], `${q(n.id)} is owned by ${q(p.id)}, ${aKind(CP_TYPE, p)}: a component's owner is a component or a package`); });
   viewLines(model, view).forEach(([e, path]) => { if (!CP_OBJ(e) || !(seen(e.from) || seen(e.to)) || (listed && !listed.has(e.id))) return;
     const ends = [e.id, e.from, e.to], from = I.P.has(e.from) ? 'port' : I.ty(e.from), kind = cpProps(e).kind === 'delegation' ? 'delegation' : 'assembly'; // drawn as an assembly without one (cpKind)

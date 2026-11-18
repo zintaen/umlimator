@@ -469,3 +469,19 @@ test('audit 28: a line the last resort routed round its own table (er-through2-m
   assert.deepEqual(round.filter(w => w === "left" || w === "above"), [], `r14 runs ${round.join(', ')} of its own source: ${JSON.stringify(e.pts)}`);
   assert.deepEqual(check(ER_WRAP, 'v').map(p => p.message), ['view v: edges customer→address and supplier→address cross'], 'one crossing at most, as before');
 });
+
+// audit 33: an entity sized to hold its widest column name cut it with an ellipsis all the same, the name's room (worked out
+// by subtraction) 1e-14 short of the name's width: bookshop-schema's customer_id, order_id, quantity, name, author_id
+test('audit 33: no column name or type is cut in an entity sized to hold it, under the estimate and under a measurer of float widths', async () => {
+  const { measured } = await import('../src/core/text.js');
+  const read = f => JSON.parse(readFileSync(new URL(f, import.meta.url), 'utf8'));
+  const cut = (m, v, measure = null) => [...measured(measure, () => svgOf(layout(m, v, { measure }))).matchAll(/class="(?:c-row|er-type)"[^>]*>([^<]*…)</g)].map(x => x[1]);
+  const widths = {}, M = (s, px) => { let w = 0; for (const ch of String(s)) w += (widths[ch] ??= 0.45 + ((ch.codePointAt(0) * 2654435761) % 1000) / 4000) * px; return w; };
+  for (const f of ['../examples/bookshop-schema.json', 'er-minimal.json', 'er-stress.json']) {
+    const m = read(f);
+    for (const v of m.views.filter(v => v.diagram === 'er')) {
+      assert.deepEqual(cut(m, v.id), [], `${f} ${v.id}, estimated`);
+      assert.deepEqual(cut(m, v.id, M), [], `${f} ${v.id}, measured`);
+    }
+  }
+});

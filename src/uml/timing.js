@@ -26,6 +26,12 @@ const TM_END = { call: { from: 'none', to: 'arrow' }, async: { from: 'none', to:
 const TM_KIND = { __proto__: null, 'uml.DurationConstraint': 'duration', 'uml.TimeConstraint': 'time' }; // no Object.prototype key is a kind (audit 26)
 const TM_RULER = '->ruler', tmRowId = (lane, state) => `${lane}->${state}`; // geometry ids: no element id holds '->' (model.md rule 5)
 
+// every change, message and constraint in the model, by kind, once each by id: the timing views' timelines, and the messages of its
+// edges and every view's. A lifeline's states and the core's cascade reach all of them, not one view's (audit 33)
+const tmEvery = model => { const vs = TM_ARR(model && model.views).filter(TM_OBJ), tl = vs.filter(v => v.diagram === 'uml.timing' && TM_OBJ(v.timeline)).map(v => v.timeline);
+  const one = xs => [...new Map(xs.filter(x => TM_OBJ(x) && typeof x.id === 'string').map(x => [x.id, x])).values()];
+  return { change: one(tl.flatMap(t => TM_ARR(t.changes))), constraint: one(tl.flatMap(t => TM_ARR(t.constraints))),
+    message: one([...TM_ARR(model && model.edges), ...vs.flatMap(v => TM_ARR(v.edges))]).filter(e => e.type === 'uml.Message') }; };
 const tmView = (model, view) => (TM_OBJ(view) ? view : TM_ARR(model && model.views).find(v => TM_OBJ(v) && v.id === view)) || null;
 const tmProps = x => (TM_OBJ(x && x.props) ? x.props : {});
 const tmName = n => String(n.label ?? n.id);
@@ -364,7 +370,8 @@ function tmRename(model, view, id, text) {
   if (lane && X.H.has(lane)) { const ss = tmStates(X.N.get(lane));
     if (!ss.includes(was)) return tmErr(`${was} is not one of ${X.name(lane)}'s listed states: add it to its states first`);
     if (!s) return tmErr('a state needs a name'); if (s !== was && ss.includes(s)) return tmErr(`${X.name(lane)} has a state ${s} already`);
-    return [{ op: 'set', id: lane, path: 'props.states', value: ss.map(x => (x === was ? s : x)) }, ...X.changes.filter(x => x.lifeline === lane && String(x.state) === was).map(x => ({ op: 'set', id: x.id, path: 'state', value: s }))]; }
+    // states are the lifeline's, in the model: its changes in that state are rewritten in every timing view, not this one only (audit 33)
+    return [{ op: 'set', id: lane, path: 'props.states', value: ss.map(x => (x === was ? s : x)) }, ...tmEvery(model).change.filter(x => x.lifeline === lane && String(x.state) === was).map(x => ({ op: 'set', id: x.id, path: 'state', value: s }))]; }
   return null;
 }
 
@@ -393,14 +400,17 @@ function tmRemove(model, view, ids, fromModel) {
   const next = apply(model, r), Y = tmIndex(next, tmView(next, V.id)), left = new Set([...Y.changes, ...Y.msgs, ...Y.cons].map(x => x.id));
   // each part said of its own lanes: a change by its lifeline, a message by its ends (a deleted lane's first); the rest with the hidden lanes, as before (audit 25)
   const hidL = new Set(gone.hid), delL = new Set(gone.lane.filter(id => !hidL.has(id))), on = (S, m) => S.has(m.from) || S.has(m.to);
-  const list = (keep = () => true) => [[X.changes, 'change'], [X.msgs, 'message'], [X.cons, 'constraint']].map(([xs, w]) => [xs.filter(x => !left.has(x.id) && !(gone.off.has(x.id) && kept.has(x.id)) && keep(x)).length, w])
+  // what a deleted lifeline took from every other view: its changes and their constraints in each timing view, its messages anywhere (the core's cascade, audit 33)
+  const here = new Set([...X.changes, ...X.msgs, ...X.cons].map(x => x.id)), was = tmEvery(model), now = tmEvery(next), still = new Set(Object.values(now).flat().map(x => x.id));
+  const away = Object.fromEntries(Object.entries(was).map(([w, xs]) => [w, xs.filter(x => !here.has(x.id) && !still.has(x.id)).length]));
+  const list = (keep = () => true, far = false) => [[X.changes, 'change'], [X.msgs, 'message'], [X.cons, 'constraint']].map(([xs, w]) => [xs.filter(x => !left.has(x.id) && !(gone.off.has(x.id) && kept.has(x.id)) && keep(x)).length + (far ? away[w] : 0), w])
     .filter(([c]) => c).map(([c, w]) => tmPlural(c, w)).join(', ').replace(/, ([^,]*)$/, ' and $1'); // "1 change, 2 messages and 1 constraint"
   const lane = id => (X.C.get(id) || {}).lifeline, mine = x => (X.C.get(x.id) === x ? delL.has(x.lifeline) : X.msgs.includes(x) ? on(delL, x) : delL.has(lane(x.from)) || delL.has(lane(x.to))); // a deleted lane's change, message or constraint
   const theirs = new Set(X.msgs.filter(m => on(hidL, m) && !on(delL, m)).map(m => m.id));
   // a model message the view lists by id only leaves the view: it stays in the model's edges, so it is not said deleted (audit 30)
   const kept = new Set(TM_ARR(next.edges).filter(TM_OBJ).map(e => e.id)), off = [...theirs].filter(id => !left.has(id) && kept.has(id)).length, n = theirs.size - off;
   const k = X.changes.filter(c => hidL.has(c.lifeline) && left.has(c.id)).length, its = hidL.size === 1 ? 'its' : 'their';
-  const more = list(x => !theirs.has(x.id) && !mine(x)), all = list(), ours = list(mine);
+  const more = list(x => !theirs.has(x.id) && !mine(x)), all = list(undefined, true), ours = list(mine, true);
   const hid = [n ? `deleted ${its} ${tmPlural(n, 'message')}${more ? `, and ${more}` : ''}` : more && `deleted ${more}`,
     off && `${n ? 'took' : `took ${its}`} ${tmPlural(off, 'message')} off the view (${off === 1 ? 'it stays' : 'they stay'} in the model)`,
     k && `${its} ${k === 1 ? 'change stays' : 'changes stay'} in the timeline`].filter(Boolean); // only the clauses that hold (audit 5)

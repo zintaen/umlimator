@@ -25,12 +25,12 @@ function printDoc(X, model, Q) {
   const shown = views.filter(want).map(v => [v, X.standalone(1, v.id)]).filter(([, s]) => s), on = new Set(shown.map(([v]) => v.id));
   const rs = shown.length ? arrOf(D.rules).filter(r => r && typeof r === 'object' && (r.from || r.to || r.noCycles)) : []; // as rules() reads them; none without a view, read as mapContext reads them (audit 20)
   const broken = rules(model).filter(b => on.has(b.view)); // judged in the views printed, as the document says
-  const [pw, ph] = Q.get('paper') === 'letter' ? [279.4, 215.9] : [297, 210], title = esc(D.title || 'Map'); // the paper across, in mm
+  const [pw, ph] = Q.get('paper') === 'letter' ? [279.4, 215.9] : [297, 210], title = esc(labelOr(D.title, 'Map')); // the paper across, in mm
   const count = (k, w, ws = w + 's') => `${k} ${k === 1 ? w : ws}`, T = v => esc(labelOr(v.title, v.id)), full = c => Object.assign(c, { full: true });
   const cards = v => arrOf(v.nodeIds).filter(i => N[i]), boxes = v => handBoxes(v).filter(c => c && c.id); // as rules() reads a view
   // each view's tables, made once: the cover counts the lines they list (a typed view's are those its type draws, audit 15)
   const made = new Map(shown.map(([v]) => [v, tablesOf(X.ctx(), v, geoCache[v.id].g)]));
-  document.title = D.title || 'Map'; document.body.removeAttribute('class');
+  document.title = String(labelOr(D.title, 'Map')); document.body.removeAttribute('class');
   document.body.innerHTML = `<style>@page { size: ${pw}mm ${ph}mm; margin: 11mm 13mm 9mm; background: var(--um-bg); }
     html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: var(--um-bg); } body { margin: 0; background-image: none; }
     #um-pdf { color: var(--um-text); font: 8.5pt/1.4 var(--um-sans); font-variant-numeric: tabular-nums; }
@@ -129,10 +129,10 @@ function printDoc(X, model, Q) {
     const where = r => { const named = [r.from, r.to].flatMap(s => boxesNamed(s, id => anyBox.has(id) && !N[id]));
       const vs = printed.filter(v => (!Array.isArray(r.views) || r.views.includes(v.id)) && (!named.length || boxes(v).some(c => named.includes(c.id))));
       return vs.length === printed.length ? 'every view printed' : vs.length ? vs.map(T).join(', ') : 'no view printed'; };
-    const said = (x, r) => x.message.slice(`view ${x.view}: `.length).replace(`, which breaks rule "${r.title || r.id}"`, '').replace(` breaks rule "${r.title || r.id}"`, '').replace(/^edge /, ''); // its message's words: A→B, or the boxes in a cycle
+    const said = (x, r) => x.message.slice(`view ${x.view}: `.length).replace(`, which breaks rule "${labelOr(r.title, r.id)}"`, '').replace(` breaks rule "${labelOr(r.title, r.id)}"`, '').replace(/^edge /, ''); // its message's words: A→B, or the boxes in a cycle
     const head = more => `<header>${more ? '<div class="h2">Rules <span class="up">(continued)</span></div>' : '<h2>Rules</h2>'}<span class="meta">${count(rs.length, 'rule')} · ${new Set(broken.map(x => x.rule)).size} broken</span></header>${more ? '' : '<p class="cap">Judged in the views printed here.</p>'}`;
     pour(paging(head, 1, cols(sheet(head(false), 'rules'), 1).map(full)), [{ cls: 'rules', head: '<th>Rule</th><th>Applies in</th><th>State</th><th>Lines that break it</th>', rows: rs.map(r => { const bs = broken.filter(x => x.rule === r.id);
-      return `<tr><td><b>${esc(r.title || r.id)}</b></td><td>${where(r)}</td><td class="${bs.length ? 'no' : 'ok'}">${bs.length ? 'broken' : 'holds'}</td><td>${bs.map(x => `<div>${T(V[x.view])}: ${esc(said(x, r))}</div>`).join('') || '<span class="up">none</span>'}</td></tr>`; }) }]);
+      return `<tr><td><b>${esc(labelOr(r.title, r.id))}</b></td><td>${where(r)}</td><td class="${bs.length ? 'no' : 'ok'}">${bs.length ? 'broken' : 'holds'}</td><td>${bs.map(x => `<div>${T(V[x.view])}: ${esc(said(x, r))}</div>`).join('') || '<span class="up">none</span>'}</td></tr>`; }) }]);
   }
   const all = [...doc.children]; // the pages, numbered, and the contents' page of each view
   all.forEach((p, i) => { p.querySelector('.pn').textContent = `page ${i + 1} of ${all.length}`; });

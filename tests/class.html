@@ -10,7 +10,7 @@
 <body style="margin:0">
 <div id="m" style="width:1200px;height:1100px"></div>
 <script type="module">
-import { render, apply, validate, describe } from '../lib/umlimator-all.js';
+import { render, apply, validate, describe, history } from '../lib/umlimator-all.js';
 const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -211,6 +211,38 @@ try {
   check('a selected card is pressed on its ring, never on the role=img card', !all('.node[role="img"][aria-pressed]').length && pick('.node-key[data-node="order"]').getAttribute('aria-pressed') === 'true',
     all('.node[aria-pressed]').map(g => g.dataset.id));
   h.destroy();
+
+  // ---- audit 33: a typed view's pin (a drag) is written to the model's layout by the host; an update back to the model before it
+  // (undo through history()) left the card at its drop and its neighbours where it pushed them. Now every card goes back to
+  // the first draw, redo gives the dragged picture, a pin the host refuses moves nothing, and a pin the host takes away with
+  // no undo lays its card out again
+  const slots = () => all('.node[data-id]:not(.um-pending)').map(g => { const b = g.getBBox(); return g.dataset.id + '@' + Math.round(b.x) + ',' + Math.round(b.y); }).join(' ');
+  const drag = (id, dx, dy) => { const g = pick(`.node[data-id="${CSS.escape(id)}"]`), r = g.getBoundingClientRect(), a = [r.x + r.width / 2, r.y + r.height / 2];
+    ptr(g, 'pointerdown', a); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [a[0] + dx * i / 4, a[1] + dy * i / 4]); ptr(stage, 'pointerup', [a[0] + dx, a[1] + dy]); };
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  for (const f of ['tests/class-minimal.json', 'examples/sales-classes.json', 'examples/order-states.json', 'examples/shopping-use-cases.json', 'examples/fulfil-activity.json', 'examples/bookshop-deployment.json']) {
+    const M0 = await (await fetch('../' + f)).json(), steps = history(M0); let pins = [], refuse = false;
+    el.innerHTML = '';
+    const hh = render(el, M0, { editable: true, on: { edit: e => { pins.push(e.commands); if (!refuse) hh.update(steps.push(apply(steps.model, e.commands))); else hh.update(steps.model); } } });
+    sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); await wait(50);
+    const s0 = slots(), id = all('.node[data-id]')[1].dataset.id;
+    drag(id, 30, 200); await wait(50);
+    const s1 = slots(), pin = pins.flat().find(c => c.op === 'set' && c.path[0] === 'layout');
+    hh.update(steps.undo()); await wait(50); const s2 = slots();
+    check(`audit 33 ${f}: a drag, then undo: every card where the first draw had it`, !!pin && s1 !== s0 && s2 === s0, [s0, s1, s2]);
+    hh.update(steps.redo()); await wait(50); const s3 = slots();
+    check(`audit 33 ${f}: …then redo: the dragged picture again`, s3 === s1, [s1, s3]);
+    hh.update(steps.undo()); await wait(50); refuse = true; drag(id, 30, 200); await wait(50);
+    check(`audit 33 ${f}: a pin the host refuses (its model unchanged) moves nothing`, slots() === s0, [s0, slots()]);
+    refuse = false; drag(id, 30, 200); await wait(50); const s4 = slots();
+    // the host takes the pin away and renames another card, no undo: the card the pin held is laid out again, not left at the drop
+    const other = M0.nodes.find(n => n && n.id !== id && n.label), M5 = structuredClone(steps.model), vid = hh.view, V5 = M5.views.find(v => v.id === vid);
+    delete V5.layout[id]; if (!Object.keys(V5.layout).length) delete V5.layout; M5.nodes.find(n => n.id === other.id).label = other.label + 'X';
+    hh.update(M5); await wait(50);
+    const at = (s, k) => (s.split(' ').find(x => x.startsWith(k + '@')) || '').split('@')[1];
+    check(`audit 33 ${f}: a pin taken away by the host: its card is laid out again, not kept at the drop`, s4 !== s0 && at(slots(), id) !== at(s4, id), [at(s4, id), at(slots(), id)]);
+    hh.destroy();
+  }
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

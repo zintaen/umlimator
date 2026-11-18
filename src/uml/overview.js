@@ -108,7 +108,7 @@ for (const k of ['ov-use', 'ov-inline']) { const S = SHAPE[k]; S.ports = (n, sid
 /* ---- names (A1, L13): "Decision Payment accepted?, 2 exits", "Interaction use Find a book, opens Find a book" ---- */
 function ovNodeName(model, I, x, ins, outs, sd) {
   const t = OV_HAS(x.label) ? String(x.label) : '', st = ovStereo(x), nm = `${ovWordOf(x.type)}${t ? ' ' + t : ''}${st.length ? ` (${st.join(', ')})` : ''}`;
-  const opens = () => { const v = I.V.get(x.opensView); return v && v.diagram === 'uml.sequence' ? `, opens ${v.title ?? v.id}` : ', opens no sequence view'; };
+  const opens = () => { const v = I.V.get(x.opensView); return v && v.diagram === 'uml.sequence' ? `, opens ${labelOr(v.title, v.id)}` : ', opens no sequence view'; };
   switch (x.type) {
     case 'uml.Comment': return 'Comment: ' + String(x.label ?? x.id);
     case 'uml.DecisionNode': return `${nm}, ${ovPlural(outs, 'exit')}`;
@@ -233,7 +233,7 @@ function ovAdd(model, view, entry, label, at) {
   if (entry.opens !== 'uml.sequence') return make(t);
   const vs = OV_ARR(model.views).filter(v => OV_OBJ(v) && v.diagram === 'uml.sequence');
   if (!vs.length) return { error: 'The model has no sequence view for it to open: add one first' };
-  return { pick: vs.map(v => String(v.title ?? v.id)), then: i => (vs[i] ? make(t || String(vs[i].title ?? vs[i].id), { opensView: vs[i].id }) : []) };
+  return { pick: vs.map(v => String(labelOr(v.title, v.id))), then: i => (vs[i] ? make(t || String(labelOr(vs[i].title, vs[i].id)), { opensView: vs[i].id }) : []) }; // a view titled "" by its id (audit 33)
 }
 /* rename(model, view, id, text): F2 on a control flow reads "name [guard]" (§7.2) and sets the parts that changed, an
    absent part cleared; a text the parser refuses is { error } (E3). Anything else: null, the default set label */
