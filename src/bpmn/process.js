@@ -1,5 +1,5 @@
 import { apply } from '../core/apply.js';
-import { copyOf, usedIds, jsonText } from '../core/model.js';
+import { copyOf, usedIds, jsonText, labelOr } from '../core/model.js';
 import { heldBy, registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -399,7 +399,7 @@ function bzDescribe(model, viewId) {
   // picture leaves it out (a pool's end: audit 29), as BPMN's own kinds are
   const other = P.foreign;
   // an element of no BPMN type is drawn as a task, so counted with the flow nodes it is listed among (audit 32)
-  const out = [`${v.title || v.id}: a BPMN diagram of ${bzPlural(drawn.filter(id => BZ_FLOW.includes(I.ty(id)) || !BZ_KINDS.includes(I.ty(id))).length, 'flow node')}, ${bzPlural(flows, 'flow')}${other.length ? ', ' : ' and '}${bzPlural(P.pools.length, 'pool')}${other.length ? ` and ${bzPlural(other.length, 'other line')}` : ''}.`];
+  const out = [`${labelOr(v.title, v.id)}: a BPMN diagram of ${bzPlural(drawn.filter(id => BZ_FLOW.includes(I.ty(id)) || !BZ_KINDS.includes(I.ty(id))).length, 'flow node')}, ${bzPlural(flows, 'flow')}${other.length ? ', ' : ' and '}${bzPlural(P.pools.length, 'pool')}${other.length ? ` and ${bzPlural(other.length, 'other line')}` : ''}.`];
   const word = { [BZ_SEQ]: 'then', [BZ_MSG]: 'message to', [BZ_DATA_ASSOC]: 'data to', [BZ_ASSOC]: 'about' };
   // each element with what leaves it, a pool's message flows too; a line the picture leaves out said as not drawn
   const say = id => { const said = from(id).map(e => `${word[e.type]} ${I.called(e.to)}${BZ_HAS(e.label) ? ` (${String(e.label).trim()})` : ''}${doc(e)}${drew.has(e.id) ? '' : ', not drawn'}`);

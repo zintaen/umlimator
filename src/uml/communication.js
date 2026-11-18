@@ -1,5 +1,5 @@
 import { apply } from '../core/apply.js';
-import { copyOf, usedIds, jsonText } from '../core/model.js';
+import { copyOf, usedIds, jsonText, labelOr } from '../core/model.js';
 import { ownNodes, registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -224,7 +224,7 @@ function commDescribe(model, viewId) {
   const v = CM_ARR(model && model.views).find(x => CM_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const I = commIndex(model, v), nums = messageNumbers(model, v), nm = id => cmNameOf(I.N.get(id) || { id });
   const drawn = I.messages.filter(m => I.carrierOf(m.from, m.to)).sort((a, b) => cmByNumber(nums.get(a.id), nums.get(b.id)));
-  const out = [`${v.title || v.id}: a communication diagram of ${cmPlural(I.ids.length, 'lifeline')}, ${cmPlural(I.connectors.length, 'connector')} and ${cmPlural(drawn.length, 'message')}.`];
+  const out = [`${labelOr(v.title, v.id)}: a communication diagram of ${cmPlural(I.ids.length, 'lifeline')}, ${cmPlural(I.connectors.length, 'connector')} and ${cmPlural(drawn.length, 'message')}.`];
   I.ids.forEach(id => { const n = I.N.get(id), st = cmStereoOf(n), links = [...new Set(I.connectors.filter(c => c.from === id || c.to === id).map(c => (c.from === c.to ? 'itself' : nm(c.from === id ? c.to : c.from))))];
     out.push(`Lifeline ${cmHeadText(n)}${st.length ? ` (${st.join(', ')})` : ''}${links.length ? '; linked to ' + links.join(', ') : '; linked to nothing'}.`); });
   drawn.forEach(m => { const s = cmSortOf(m), r = cmPropsOf(m).replyTo;

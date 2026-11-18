@@ -6,7 +6,7 @@ import { layoutTyped } from '../typed/layout.js';
 import { lineRename, memberEdit, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 import { SN_ARTIFACTS, SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, snKindName, snKindWord, structProblems } from './structure.js';
-import { usedIds, jsonText } from '../core/model.js';
+import { usedIds, jsonText, labelOr } from '../core/model.js';
 
 /* ---------- the component diagram, uml.component (work package 5.4, notes/stage-5.md §10.1) ----------
    Components (src/uml/structure.js's look), a component or package that holds something shown a box (src/uml/owners.js),
@@ -258,7 +258,7 @@ function cpProblems(model, view) {
 function cpDescribe(model, viewId) {
   const v = CP_ARR(model && model.views).find(x => CP_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const pic = cpPic(model, v), by = new Map(pic.lines.map(l => [l.e.id, l]));
-  return [`${v.title || v.id}: a component diagram of ${cpPlural(pic.ids.length, 'element')} and ${cpPlural(pic.lines.length, 'line')}.`,
+  return [`${labelOr(v.title, v.id)}: a component diagram of ${cpPlural(pic.ids.length, 'element')} and ${cpPlural(pic.lines.length, 'line')}.`,
     ...cpOrder(pic).map(id => (by.has(id) ? cpLineName(pic, by.get(id)) : cpNodeName(model, v, pic, id)) + '.')].join('\n');
 }
 

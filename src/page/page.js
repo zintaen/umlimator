@@ -5,6 +5,7 @@ import { mapContext } from '../map/context.js';
 import { KIND, kindOf } from '../map/kinds.js';
 import { arrOf } from '../map/validate.js';
 import { printDoc, wordOf } from './print.js';
+import { labelOr } from '../core/model.js';
 
 /* The model a page was given, as its file has it: less what render added, with what it replaced or dropped put back. A page render
    wrote since audit 31 records both in meta["umlimator:written"]: { added: [path, ...], was: [[path, value], ...] }, each path a list of
@@ -117,19 +118,19 @@ export function mountPage(container, model, options = {}) {
   function renderChrome() {
     const v = V[cur];
     $('m-crumbs').innerHTML = stack.map((id, i) => i === stack.length - 1
-      ? `<span class="crumb cur" aria-current="page">${esc(V[id].title || id)}</span>`
-      : `<button class="crumb" data-v="${esc(id)}">${esc(shortT(V[id].title || id))}</button><span class="crumb-sep">›</span>`).join('');
+      ? `<span class="crumb cur" aria-current="page">${esc(labelOr(V[id].title, id))}</span>`
+      : `<button class="crumb" data-v="${esc(id)}">${esc(shortT(labelOr(V[id].title, id)))}</button><span class="crumb-sep">›</span>`).join('');
     const parent = stack.length > 1 ? stack[stack.length - 2] : v.parent;
     renderPill(parent); pc.chrome();
-    document.title = `${v.title || v.id} · ${D.title || 'map'}`;
+    document.title = `${labelOr(v.title, v.id)} · ${D.title || 'map'}`;
   }
   function renderPill(parent) {
     const v = V[cur], mainSteps = v.mainSteps || v.render === 'process', seq = v.render === 'sequence', ve = viewEdges(v), L = planCache[cur] && planCache[cur].hub ? planCache[cur] : null;
     const depth = Math.max(...views.map(x => chain(x.id).length));
-    $('m-vpill').innerHTML = `<button class="pill" id="m-pillbtn" aria-expanded="false" aria-controls="m-vpop" title="About this view (i)"><b>${esc(shortT(v.title || v.id))}</b><span class="n">${mainSteps ? (v.stepIds || v.nodeIds || []).length + ' steps' : seq ? ve.length + ' steps' : geo.nodes.length + ' nodes'}</span><span class="kbd">i</span></button>
+    $('m-vpill').innerHTML = `<button class="pill" id="m-pillbtn" aria-expanded="false" aria-controls="m-vpop" title="About this view (i)"><b>${esc(shortT(labelOr(v.title, v.id)))}</b><span class="n">${mainSteps ? (v.stepIds || v.nodeIds || []).length + ' steps' : seq ? ve.length + ' steps' : geo.nodes.length + ' nodes'}</span><span class="kbd">i</span></button>
       ${mainSteps && (v.note || v.caption) ? `<p class="view-note">${inline(v.note || v.caption)}</p>` : ''}
-      <div class="vpop" id="m-vpop" hidden>${parent ? `<button class="back" data-v="${esc(parent)}">← ${esc(shortT(V[parent].title || parent))}</button>` : ''}
-        <h2>${esc(v.title || v.id)}</h2>${v.caption || v.description ? `<p>${inline(v.caption || v.description)}</p>` : ''}
+      <div class="vpop" id="m-vpop" hidden>${parent ? `<button class="back" data-v="${esc(parent)}">← ${esc(shortT(labelOr(V[parent].title, parent)))}</button>` : ''}
+        <h2>${esc(labelOr(v.title, v.id))}</h2>${v.caption || v.description ? `<p>${inline(v.caption || v.description)}</p>` : ''}
         ${L ? `<div class="vlanes">${L.lanes.map((l, i) => `${i ? '<i>→</i>' : ''}<span><em>${i + 1}</em>${esc(l.title)} <small>${l.ids.length}</small></span>`).join('')}</div>` : ''}
         ${seq ? `<ol>${ve.map(e => `<li title="${esc((N[e.from] || {}).label || e.from)} → ${esc((N[e.to] || {}).label || e.to)}">${esc(e.label || (N[e.to] || {}).label || e.to)}</li>`).join('')}</ol>` : ''}
         <div class="vm">${geo.nodes.length} nodes · ${geo.edges.length} wires${views.length > 1 ? ` · level ${chain(cur).length} of ${depth}` : ''}</div></div>`;
@@ -263,7 +264,7 @@ export function mountPage(container, model, options = {}) {
     rec.json = () => JSON.stringify(story());
     addEventListener('beforeunload', leaving);
     const draw = () => { $('m-rec-n').textContent = rec.steps.length === 1 ? '1 step' : rec.steps.length + ' steps'; box.querySelector('[data-r="save"]').disabled = !rec.steps.length; // nothing to save: a story needs steps
-      $('m-rec-list').innerHTML = rec.steps.map((s, i) => `<li><span>${esc(shortT((V[s.view] || {}).title || s.view))}${s.select ? ' · ' + esc(nodeIn(s.select, s.view).label || s.select) : ''}${s.camera ? ' · zoomed' : ''}</span>
+      $('m-rec-list').innerHTML = rec.steps.map((s, i) => `<li><span>${esc(shortT(labelOr((V[s.view] || {}).title, s.view)))}${s.select ? ' · ' + esc(nodeIn(s.select, s.view).label || s.select) : ''}${s.camera ? ' · zoomed' : ''}</span>
         <input type="text" data-i="${i}" aria-label="Caption of step ${i + 1}" placeholder="Caption" value="${esc(s.caption)}"><button type="button" data-del="${i}" aria-label="Remove step ${i + 1}">✕</button></li>`).join(''); };
     rec.take = force => { // the map as it is: its view, selected card and, once moved by hand, its camera
       const c = X.cam(), s = { view: cur, caption: '' }, last = rec.steps[rec.steps.length - 1];
@@ -316,8 +317,8 @@ export function mountPage(container, model, options = {}) {
       const grp = !qs ? 'Views' : h.t === 'n' ? 'Nodes' : 'Views';
       if (grp !== last) { html += `<div class="gt">${grp}</div>`; last = grp; }
       if (h.t === 'n') { const k = kindOf(h.n.kind, true), vs = viewsWith(h.n.id), here = drawnHere(h.n.id);
-        html += `<button class="fr${i === hi ? ' on' : ''}" role="option" id="m-o${i}" aria-selected="${i === hi}" data-i="${i}"><i style="background:var(--um-${KIND[k][0]})"></i><b>${mark(h.n.label || h.n.id, words)}</b><span>${esc(h.n.type ? wordOf(D, vs[0], h.n.id, h.n.type) : KIND[k][1])} · ${here ? 'this view' : esc(vs.map(v => shortT(v.title || v.id)).slice(0, 2).join(', ') || 'no view')}</span></button>`; }
-      else html += `<button class="fr${i === hi ? ' on' : ''}" role="option" id="m-o${i}" aria-selected="${i === hi}" data-i="${i}"><i style="background:var(--um-accent)"></i><b>${mark(h.v.title || h.v.id, words)}</b><span>${(h.v.nodeIds || []).length} nodes${h.v.id === cur ? ' · here' : ''}</span></button>`;
+        html += `<button class="fr${i === hi ? ' on' : ''}" role="option" id="m-o${i}" aria-selected="${i === hi}" data-i="${i}"><i style="background:var(--um-${KIND[k][0]})"></i><b>${mark(h.n.label || h.n.id, words)}</b><span>${esc(h.n.type ? wordOf(D, vs[0], h.n.id, h.n.type) : KIND[k][1])} · ${here ? 'this view' : esc(vs.map(v => shortT(labelOr(v.title, v.id))).slice(0, 2).join(', ') || 'no view')}</span></button>`; }
+      else html += `<button class="fr${i === hi ? ' on' : ''}" role="option" id="m-o${i}" aria-selected="${i === hi}" data-i="${i}"><i style="background:var(--um-accent)"></i><b>${mark(labelOr(h.v.title, h.v.id), words)}</b><span>${(h.v.nodeIds || []).length} nodes${h.v.id === cur ? ' · here' : ''}</span></button>`;
     });
     res.innerHTML = html;
     const on = res.querySelector('.fr.on'); on && on.scrollIntoView({ block: 'nearest' });

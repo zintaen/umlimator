@@ -327,6 +327,16 @@ try {
     const got = [await named('Bookshop: sales domain', 'domain'), await named('Shop', 'Main_View'), await named('a-x-b', 'x')];
     check('audit 31: Export ▸ Map model (JSON) is named by the model alone, whatever its title holds and its view is called; SVG by the model and the view',
       JSON.stringify(got) === JSON.stringify([['bookshop-sales-domain.json', 'bookshop-sales-domain-domain.svg'], ['shop.json', 'shop-Main-View.svg'], ['a-x-b.json', 'a-x-b-x.svg']]), got); }
+  /* ---------- audit 32: a view titled 0 (a number, drawn as written) was named by its id in the tab's title, the view pill, the
+     view's details and the breadcrumb, which read `v.title || v.id` ---------- */
+  { box.innerHTML = ''; const Z = { title: 'Zeros', nodes: [{ id: 'a', label: 'A' }], views: [{ id: 'top', title: 0, nodeIds: ['a'] }, { id: 'kid', parent: 'top', title: 0, nodeIds: ['a'] }] };
+    pg = mountPage(box, Z, { instant: true, params: new URLSearchParams() }); await until(() => pg.view && document.querySelector('#m-canvas .umlimator'));
+    const said = () => [document.title, ($('m-pillbtn') && $('m-pillbtn').querySelector('b') || {}).textContent, (document.querySelector('#m-vpop h2') || {}).textContent];
+    const top = said(); await pg.setView('kid'); await wait(30);
+    const kid = said(), crumb = [...document.querySelectorAll('#m-crumbs .crumb')].map(c => c.textContent);
+    check('audit 32: a view titled 0 is named 0 in the tab\'s title, the view pill, its details and the breadcrumb, never by its id',
+      JSON.stringify([top, kid, crumb]) === JSON.stringify([['0 · Zeros', '0', '0'], ['0 · Zeros', '0', '0'], ['0', '0']]), [top, kid, crumb]);
+    pg.destroy(); pg = null; }
   /* ---------- audit 29: a host's BigInt weight or latency on a line: the map draws (as 1), and update() takes it ---------- */
   { box.innerHTML = ''; const H = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ id: 'ab', from: 'a', to: 'b', weight: 2n, latency: 5n }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
     let threw = null; try { pg = mountPage(box, H, { instant: true, params: new URLSearchParams() }); } catch (e) { threw = String(e); }

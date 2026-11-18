@@ -2,7 +2,7 @@ import { aWord, kindWord, registerDiagramType } from '../core/registry.js';
 import { CLASS_DEF, RULES, classProblems, drawnLines, lineLabel, lineName, lineRename, parseMember, printMember, typeGeo } from '../uml/class.js';
 import { OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder } from '../uml/owners.js';
 import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_TABLE } from './sysml.js';
-import { usedIds, jsonText } from '../core/model.js';
+import { usedIds, jsonText, labelOr } from '../core/model.js';
 
 /* ---------- the block definition diagram, sysml.block-definition (work package M3.3, notes/milestone-3.md §7) ----------
    Blocks, interface blocks, constraint blocks and value types drawn by the classifier with «block», «interfaceBlock»,
@@ -149,7 +149,7 @@ function bdDescribe(model, viewId) {
   const view = BD_ARR(model && model.views).find(x => BD_OBJ(x) && x.id === viewId); if (!view) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const { v, pic, frame } = bdPic(model, view), { at, lines: all } = drawnLines(model, v, null), lines = all.filter(({ from, to }) => !holdsLine(pic, from, to)), ids = readingOrder(pic);
   const pl = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
-  return [`${view.title || view.id}: a block definition diagram of ${pl(ids.length, 'element')} and ${pl(lines.length, 'line')}.`, frame.aria + '.',
+  return [`${labelOr(view.title, view.id)}: a block definition diagram of ${pl(ids.length, 'element')} and ${pl(lines.length, 'line')}.`, frame.aria + '.',
     ...ids.map(id => bdSaid(model, pic, id) + '.'), ...lines.map(({ e }) => lineName(e, at, pic) + '.')].join('\n');
 }
 const bdNodeOf = (model, id) => BD_ARR(model && model.nodes).find(n => BD_OBJ(n) && n.id === id);

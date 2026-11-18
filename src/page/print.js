@@ -5,6 +5,7 @@ import { stepOrder } from '../layout/layered.js';
 import { edgeRefIds } from '../map/api.js';
 import { KIND, kindOf } from '../map/kinds.js';
 import { andList, arrOf, boxesNamed, handBoxes, rules } from '../map/validate.js';
+import { labelOr } from '../core/model.js';
 
 /* #pdf=1[&views=a,pic-*][&paper=letter] (umlimator.py pdf): the map as a document to hand in for a review, laid out here a
    page at a time, as Chrome's own page breaks can't be read back for the contents. Each sheet is one page: @page sets the
@@ -25,7 +26,7 @@ function printDoc(X, model, Q) {
   const rs = shown.length ? arrOf(D.rules).filter(r => r && typeof r === 'object' && (r.from || r.to || r.noCycles)) : []; // as rules() reads them; none without a view, read as mapContext reads them (audit 20)
   const broken = rules(model).filter(b => on.has(b.view)); // judged in the views printed, as the document says
   const [pw, ph] = Q.get('paper') === 'letter' ? [279.4, 215.9] : [297, 210], title = esc(D.title || 'Map'); // the paper across, in mm
-  const count = (k, w, ws = w + 's') => `${k} ${k === 1 ? w : ws}`, T = v => esc(v.title || v.id), full = c => Object.assign(c, { full: true });
+  const count = (k, w, ws = w + 's') => `${k} ${k === 1 ? w : ws}`, T = v => esc(labelOr(v.title, v.id)), full = c => Object.assign(c, { full: true });
   const cards = v => arrOf(v.nodeIds).filter(i => N[i]), boxes = v => handBoxes(v).filter(c => c && c.id); // as rules() reads a view
   // each view's tables, made once: the cover counts the lines they list (a typed view's are those its type draws, audit 15)
   const made = new Map(shown.map(([v]) => [v, tablesOf(X.ctx(), v, geoCache[v.id].g)]));

@@ -4,7 +4,7 @@ import { SHAPE, r2 } from '../draw/shapes.js';
 import { brLines } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
 import { boxHead, ownersOn, readingOrder } from '../uml/owners.js';
-import { usedIds, jsonText } from '../core/model.js';
+import { usedIds, jsonText, labelOr } from '../core/model.js';
 
 /* ---------- the cloud architecture family: aws, gcp and azure (work package 4a.6, notes/milestone-4a.md §5) ----------
    Groups (a project, a region, a VPC, a subnet…) as stage 2's boxes, nested by parent to any depth as the deployment type
@@ -220,7 +220,7 @@ function clDescribe(F, model, viewId) {
   const depth = id => { let d = 0; for (let o = pic.owner(id); o != null; o = pic.owner(o)) d++; return d; };
   // as layout() draws it: any card (not a group, not the user) whose icon the host gave
   const legal = !!F.legal && pic.ids.some(id => { const x = pic.at.get(id), ic = !pic.open.has(id) && x.type !== F.group && !clU(F, x) && clIcon(F, model, x); return ic && ic.src; });
-  return [`${v.title || v.id}: ${F.title} of ${clPlural(pic.ids.length, 'element')} and ${clPlural(lines.length, 'connection')}.`,
+  return [`${labelOr(v.title, v.id)}: ${F.title} of ${clPlural(pic.ids.length, 'element')} and ${clPlural(lines.length, 'connection')}.`,
     ...readingOrder(pic).map(id => '  '.repeat(depth(id)) + (box.get(id) ?? clNodeName(F, model, pic.at.get(id))) + '.'),
     ...lines.map(e => clLineName(F, e, I) + '.'), ...(legal ? [F.legal] : [])].join('\n');
 }

@@ -1,4 +1,4 @@
-import { jsonText } from '../core/model.js';
+import { jsonText, labelOr } from '../core/model.js';
 import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { r2 } from '../draw/shapes.js';
@@ -184,7 +184,7 @@ function SYS_IB_DESCRIBE(model, viewId) {
   const v = SYS_IB_ARR(model && model.views).find(x => SYS_IB_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const g = SYS_IB_GEO({ model, view: v, pos: SYS_IB_OBJ(v.layout) ? v.layout : {}, memo: {} }), lines = new Set(g.edges.map(e => e.id));
   const said = new Map([...SYS_IB_ARR(g.families), ...g.nodes, ...g.edges].map(x => [x.id, x.aria])), ids = SYS_IB_ARR(g.order).filter(id => said.has(id));
-  return [`${v.title || v.id}: an internal block diagram of ${SYS_IB_PLURAL(ids.filter(id => !lines.has(id)).length, 'element')} and ${SYS_IB_PLURAL(ids.filter(id => lines.has(id)).length, 'line')}.`,
+  return [`${labelOr(v.title, v.id)}: an internal block diagram of ${SYS_IB_PLURAL(ids.filter(id => !lines.has(id)).length, 'element')} and ${SYS_IB_PLURAL(ids.filter(id => lines.has(id)).length, 'line')}.`,
     ...ids.map(id => said.get(id) + '.')].join('\n');
 }
 

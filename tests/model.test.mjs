@@ -1,7 +1,7 @@
 // validate() and check(): a model's own problems, and the layout check's geometry, with no browser.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { validate, check, layout, rules, describe } from '../lib/umlimator.js';
 import { mapContext } from '../src/map/context.js';
 import { fit } from '../src/core/text.js';
@@ -702,4 +702,92 @@ test('audit 31: a line of no notation is said not drawn in a typed view that lis
   const bd = { schemaVersion: 2, nodes: [{ id: 'a', type: 'sysml.Block', label: 'A' }, { id: 'b', type: 'sysml.Block', label: 'B' }], edges: [{ id: 'zl', type: '', from: 'a', to: 'b' }], views: [{ id: 'v', diagram: 'sysml.block-definition', nodeIds: ['a', 'b'] }] };
   assert.ok(L.layout(bd, 'v').edges.some(e => e.id === 'zl' || (e.ids || []).includes('zl')));
   assert.equal(L.validate(bd).find(x => x.path === 'edges[0].type').message, 'type "" is not <notation>.<Name> (uml.Dependency): drawn as a plain line');
+});
+
+// audit 32: unreadable() ran a host's toString (String(), the string hint) but never its valueOf, which + and == run first (the
+// default hint): a value whose valueOf throws, its toString fine, threw out of the class writer's parameters and validate()'s parent
+test('audit 32: a value whose valueOf throws (its toString fine) is left out and said: no writer, validate(), describe() or diff() throws on it', async () => {
+  const L = await import('../lib/umlimator-all.js'), { writeMermaidClass } = await import('../src/readers/mermaid-class.js');
+  const HOST = { valueOf: () => ({ toString() { return 'text'; }, valueOf() { throw new Error('valueOf ran'); } }),
+    prim: () => ({ [Symbol.toPrimitive](hint) { if (hint === 'default') throw new Error('default ran'); return 'text'; } }) };
+  const writers = { 'mermaid-class': ['uml.class', 'uml.Class'], 'mermaid-er': ['er', 'er.Entity'], 'mermaid-flowchart': ['flowchart', 'flowchart.Process'], 'mermaid-mindmap': ['mindmap', 'mindmap.Topic'],
+    'mermaid-requirement': ['sysml.requirement', 'sysml.Requirement'], 'mermaid-sequence': ['uml.sequence', 'uml.Lifeline'], 'mermaid-state': ['uml.state-machine', 'uml.State'] };
+  for (const [hn, hv] of Object.entries(HOST)) {
+    for (const [file, [d, T]] of Object.entries(writers)) {
+      const W = await import(`../src/readers/${file}.js`), write = Object.values(W).find(x => typeof x === 'function' && /^write/.test(x.name));
+      for (const field of ['label', 'type', 'parent', 'props']) {
+        const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 'a', type: T, label: 'A' }, { id: 'b', type: T, label: 'B', parent: 'a' }], edges: [], views: [{ id: 'v', diagram: d, nodeIds: ['a', 'b'] }] };
+        m.nodes[1][field] = field === 'props' ? { note: hv(), stereotypes: hv(), text: hv() } : hv();
+        assert.equal(typeof write(m), 'string', `${hn} ${file} ${field}`);
+        const said = L.validate(m); assert.ok(Array.isArray(said), `${hn} ${file} ${field}`);
+        if (field !== 'props') assert.ok(said.some(p => p.path === `nodes[1].${field}` && /left out/.test(p.message)), `${hn} ${file} ${field}: ${JSON.stringify(said)}`);
+        assert.equal(typeof L.describe(m, 'v'), 'string', `${hn} ${file} ${field}`);
+        assert.ok(Array.isArray(L.diff(m, { ...m, nodes: [m.nodes[0], { id: 'b', type: T, label: 'B2' }] }).summary), `${hn} ${file} ${field}`);
+      }
+    }
+    // an operation's parameter: its name or direction left out of the written text, and said
+    for (const key of ['name', 'direction', 'valueType']) {
+      const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 'A', type: 'uml.Class', label: 'A', members: [{ id: 'A.op', type: 'uml.Operation', label: 'op', props: { parameters: [{ name: 'p', direction: 'in', valueType: 'int' }] } }] }],
+        edges: [], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['A'] }] };
+      m.nodes[0].members[0].props.parameters[0][key] = hv();
+      const text = writeMermaidClass(m); assert.ok(/op\(/.test(text) && !text.includes('text'), `${hn} ${key}: ${text}`);
+      assert.ok(L.validate(m).some(p => p.path === `nodes[0].members[0].props.parameters[0].${key}` && /left out/.test(p.message)), `${hn} ${key}`);
+    }
+    const map = { nodes: [{ id: 'a', label: hv() }, { id: 'b', label: 'B' }], edges: [{ id: 'e', from: 'a', to: 'b', label: hv() }], views: [{ id: 'v', nodeIds: ['a', 'b'], title: hv() }] };
+    assert.deepEqual(L.validate(map).filter(p => /left out/.test(p.message)).map(p => p.path), ['edges[0].label', 'nodes[0].label', 'views[0].title'], hn);
+    assert.deepEqual(L.diff(map, { ...map, nodes: [map.nodes[0], { id: 'b', label: 'B2' }] }).summary, ['renames B to B2'], hn);
+  }
+  // a Date, a Number object and a class's plain instance (their valueOf the host's own only in name) are read as before
+  const fine = { nodes: [{ id: 'a', label: 'A', when: new Date(0), n: Object(5) }, { id: 'b', label: 'B', source: ['x'] }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+  assert.ok(!L.validate(fine).some(p => /left out/.test(p.message)), JSON.stringify(L.validate(fine)));
+});
+
+// audit 32: typedProblems named a value it reports with a bare JSON.stringify, which throws on a host's BigInt: validate() threw on
+// one in a line's from or to, an element's parent, a view's nodeIds or its diagram, where any other value that is no id is reported
+test('audit 32: a BigInt in a line\'s ends, a parent, a view\'s nodeIds or diagram is reported by validate(), which never throws on it', async () => {
+  const L = await import('../lib/umlimator-all.js');
+  const base = () => ({ schemaVersion: 2, root: 'v', nodes: [{ id: 'a', type: 'flowchart.Process', label: 'A' }, { id: 'b', type: 'flowchart.Process', label: 'B' }],
+    edges: [{ id: 'e', type: 'flowchart.Flow', from: 'a', to: 'b' }], views: [{ id: 'v', diagram: 'flowchart', nodeIds: ['a', 'b'] }] });
+  for (const [path, set, message] of [['views[0].diagram', m => { m.views[0].diagram = 3n; }, 'diagram 3n is not <notation> or <notation>.<kind> (uml.class)'],
+    ['views[0].nodeIds[1]', m => { m.views[0].nodeIds[1] = 3n; }, '3n is not a node'], ['edges[0].from', m => { m.edges[0].from = 3n; }, '3n is not an element or a box'],
+    ['edges[0].to', m => { m.edges[0].to = 3n; }, '3n is not an element or a box'], ['nodes[1].parent', m => { m.nodes[1].parent = 3n; }, 'parent 3n is not an element'],
+    ['edges[0].props.ends.to.part', m => { m.edges[0].props = { ends: { to: { part: 3n } } }; }, 'part 3n is not an element']]) {
+    const m = base(); set(m); let said; assert.doesNotThrow(() => { said = L.validate(m); }, path);
+    assert.deepEqual(said.filter(p => p.path === path).map(p => p.message), [message], `${path}: ${JSON.stringify(said)}`);
+  }
+  // every typed example: a BigInt at each end of its first typed line and as its first element's parent
+  for (const f of readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json'))) {
+    const m = read(`../examples/${f}`); if (m.schemaVersion !== 2) continue;
+    const e = (m.edges || []).find(x => x && x.type != null), n = (m.nodes || [])[0];
+    if (e) { e.from = 1n; e.to = 2n; } if (n) n.parent = 4n;
+    let said; assert.doesNotThrow(() => { said = L.validate(m); }, f);
+    if (e) assert.ok(said.some(p => p.message === '1n is not an element or a box') && said.some(p => p.message === '2n is not an element or a box'), f);
+    if (n) assert.ok(said.some(p => p.path === 'nodes[0].parent' && p.message === 'parent 4n is not an element'), f);
+  }
+});
+
+// audit 32: a view titled 0 (a number: validate() takes it, drawn as written) was named by its id wherever `v.title || v.id` named it
+test('audit 32: a view titled 0 is named 0 by describe() and diff(), on a map and in every typed view, never by its id', async () => {
+  const L = await import('../lib/umlimator-all.js');
+  const m = () => ({ nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b' }], views: [{ id: 'overview', title: 0, nodeIds: ['a', 'b'] }] });
+  assert.deepEqual(L.validate(m()), []);
+  assert.equal(L.describe(m(), 'overview').split('\n')[0], '0: 2 cards and 1 line.');
+  const out = m(); out.views[0].nodeIds = ['a'];
+  assert.deepEqual(L.diff(m(), out).summary, ['takes B out of the view 0']);
+  const re = m(); re.views[0].title = 'Zero';
+  assert.deepEqual(L.diff(m(), re).summary, ['retitles the view 0 to Zero']);
+  assert.deepEqual(L.diff(re, m()).summary, ['retitles the view Zero to 0']);
+  const more = m(); more.views.push({ id: 'second', title: 0, nodeIds: ['a'] });
+  assert.deepEqual(L.diff(m(), more).summary, ['adds the view 0']); assert.deepEqual(L.diff(more, m()).summary, ['removes the view 0']);
+  // title "" (no title) is still named by its id, and a title "0" as written
+  const blank = m(); blank.views[0].title = ''; assert.equal(L.describe(blank, 'overview').split('\n')[0], 'overview: 2 cards and 1 line.');
+  // every typed view of every example: its describe() opens with its title, 0 too
+  for (const f of readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json'))) {
+    const x = read(`../examples/${f}`); if (x.schemaVersion !== 2) continue;
+    for (const v of x.views.filter(v => v.diagram != null && v.diagram !== 'map')) {
+      const y = structuredClone(x); y.views.find(w => w.id === v.id).title = 0;
+      const first = L.describe(y, v.id).split('\n')[0];
+      assert.ok(first.startsWith('0: '), `${f} ${v.id}: ${first}`);
+    }
+  }
 });
