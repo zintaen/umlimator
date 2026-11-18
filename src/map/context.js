@@ -254,10 +254,45 @@ function mapContext(model, opts = {}) {
     L = onGrid(vid, L);
     const bx = boxesOf(vid), ids = (V[vid].nodeIds || []).filter(i => N[i] && !bx.some(b => b.id === i)); // a box takes its place from what it holds
     if (ids.every(i => Array.isArray(L[i]))) return L;
-    const auto = autoPos(vid), out = O();
+    const auto = autoPos(vid), out = O(), taken = (c, r) => Object.values(out).some(([c2, r2]) => c2 === c && Math.abs(r2 - r) < 1);
     ids.forEach(i => { if (Array.isArray(L[i])) out[i] = L[i]; });
-    ids.forEach(i => { if (out[i]) return; let [c, r] = auto[i] || [0, 0]; while (Object.values(out).some(([c2, r2]) => c2 === c && Math.abs(r2 - r) < 1)) r++; out[i] = [c, r]; }); // auto rows may be half rows: a row apart
+    const boxes = bx.length ? bx : (V[vid].containers || []).filter(b => b && b.id != null), fit = boxes.length ? boxFit(boxes, ids, out) : null;
+    ids.forEach(i => { if (out[i]) return; let [c, r] = auto[i] || [0, 0]; while (taken(c, r)) r++; // auto rows may be half rows: a row apart
+      out[i] = fit && !fit.clean(i, c, r) ? fit.near(i, taken, c) || [c, r] : [c, r]; });
     return out;
+  }
+  /* a card with no pin in a pinned view with boxes (audit 41): its auto-layout slot is from another layout, and its box, drawn
+     round its cards, grew over cards it does not hold (bike-share's pricing with no pin; a card edit.html adds to a box). The slot
+     is kept when no box then lies over a card or box it does not hold; else the card goes in the first such slot by its box's
+     pinned cards: under them (nearest its auto-layout column first), in a gap among them, beside them, above them, further out a row at a time. Slots are grid cells: a
+     box's cells run from its cards' first column and row to their last; a card more than half a row (column) into them is in it,
+     as a half row on a typed view of tall rows lies past a box on the row before */
+  function boxFit(boxes, ids, out) {
+    const byB = O(); boxes.forEach(b => { byB[b.id] = b; });
+    const home = O(); boxes.forEach(b => arrOf(b.nodeIds).forEach(i => { if (b.id !== i) home[i] = b.id; })); // the box a card is drawn in (the last that lists it)
+    const up = x => { const a = []; for (let k = 0, y = x; y != null && Object.hasOwn(byB, y) && k <= boxes.length; y = byB[y].parent, k++) a.push(y); return a; };
+    const chain = O(), inC = O(); ids.forEach(i => { chain[i] = up(home[i]); inC[i] = new Set(chain[i]); }); const boxUp = O(); boxes.forEach(b => { boxUp[b.id] = new Set(up(b.id)); });
+    const rects = skip => { const R = O(); ids.forEach(j => { const p = out[j]; if (!p || j === skip) return;
+      chain[j].forEach(b => { const q = R[b]; R[b] = q ? { c0: Math.min(q.c0, p[0]), c1: Math.max(q.c1, p[0]), r0: Math.min(q.r0, p[1]), r1: Math.max(q.r1, p[1]) } : { c0: p[0], c1: p[0], r0: p[1], r1: p[1] }; }); }); return R; };
+    const over = (R, c, r) => !!R && c > R.c0 - .5 && c < R.c1 + .5 && r > R.r0 - .5 && r < R.r1 + .5, meet = (A, B) => !!A && !!B && A.c0 < B.c1 + .5 && B.c0 < A.c1 + .5 && A.r0 < B.r1 + .5 && B.r0 < A.r1 + .5;
+    // the faults card i at [c, r] adds: a box of its own grown over a card or box it does not hold, or i in another box's cells
+    const faults = (i, c, r) => { const R0 = rects(i), was = out[i]; out[i] = [c, r]; const R1 = rects(); if (was) out[i] = was; else delete out[i]; let k = 0;
+      boxes.forEach(b => { const R = R1[b.id]; if (!R) return;
+        if (!inC[i].has(b.id)) { if (over(R, c, r)) k++; return; }
+        ids.forEach(j => { const p = out[j]; if (j !== i && p && !inC[j].has(b.id) && over(R, p[0], p[1]) && !over(R0[b.id], p[0], p[1])) k++; });
+        boxes.forEach(o => { if (inC[i].has(o.id) || boxUp[o.id].has(b.id)) return; if (meet(R, R1[o.id]) && !meet(R0[b.id], R1[o.id])) k++; }); });
+      return k; };
+    const clean = (i, c, r) => !faults(i, c, r);
+    // ac: the card's auto-layout column; its box's columns are tried nearest to it first
+    const near = (i, taken, ac) => { const R = rects(i), b = chain[i].find(x => R[x]); if (b == null) return null; const B = R[b]; let tries = 0;
+      const ok = (c, r) => tries++ < 400 && !taken(c, r) && clean(i, c, r), span = (a, z) => Array.from({ length: Math.max(0, Math.round(z - a) + 1) }, (_, k) => a + k).sort((x, y) => Math.abs(x - ac) - Math.abs(y - ac));
+      for (const c of span(B.c0, B.c1)) if (ok(c, B.r1 + 1)) return [c, B.r1 + 1];
+      for (const r of span(B.r0, B.r1)) for (const c of span(B.c0, B.c1)) if (ok(c, r)) return [c, r];
+      for (let d = 1; d <= ids.length + 1 && tries < 400; d++) {
+        for (const r of span(B.r0, B.r1)) { if (ok(B.c1 + d, r)) return [B.c1 + d, r]; if (ok(B.c0 - d, r)) return [B.c0 - d, r]; }
+        for (const c of span(B.c0, B.c1)) { if (ok(c, B.r0 - d)) return [c, B.r0 - d]; if (ok(c, B.r1 + 1 + d)) return [c, B.r1 + 1 + d]; } }
+      return null; };
+    return { clean, near };
   }
   /* plain views: longest-path columns from the roots, state at the bottom of its column */
   /* views with containers: each container is a block in columns of its own, its cards in call order inside it; blocks (and

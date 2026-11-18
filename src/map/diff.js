@@ -1,6 +1,6 @@
 import { TYPED, idTable, diagramOf } from '../core/registry.js';
 import { andList, arrOf, rules } from './validate.js';
-import { canon, copyOf, jsonText, labelOr, nameTable, unreadable, elName } from '../core/model.js';
+import { canon, copyOf, jsonText, labelOr, nameTable, unreadable, elName, usedIds } from '../core/model.js';
 import { held } from '../core/warn.js';
 import { mapContext } from './context.js';
 
@@ -371,8 +371,11 @@ export function drift(model, observed, options = {}) {
     counts.unknown++; return e; };
   out.edges = arr(out.edges).map(judge);
   arr(out.views).forEach(v => { if (v && Array.isArray(v.edges)) v.edges = v.edges.map(judge); });
+  // a new line's id "drift:a->b", or "drift:a->b-2" and on where the model holds that id, or names "a->b" two ways (audit 41,
+  // as sequenceFromTrace(): the model came back failing validate() with a line id used twice)
+  const used = usedIds(out), free = x => { let k = x; for (let j = 2; used.has(k); j++) k = `${x}-${j}`; used.add(k); return k; };
   seen.forEach(({ a, b, n }, k) => { if (drawn.has(k)) return; counts.undrawn++;
-    const e = { id: `drift:${a}->${b}`, from: a, to: b, label: 'not drawn', ...(counted ? { sublabel: `${n.toLocaleString('en-US')} calls` } : {}), style: 'security', drift: 'undrawn' };
+    const e = { id: free(`drift:${a}->${b}`), from: a, to: b, label: 'not drawn', ...(counted ? { sublabel: `${n.toLocaleString('en-US')} calls` } : {}), style: 'security', drift: 'undrawn' };
     out.edges.push(e);
     arr(out.views).forEach(v => { if (v && Array.isArray(v.edges) && arr(v.nodeIds).includes(a) && arr(v.nodeIds).includes(b)) v.edges.push(e.id); }); });
   return { model: out, counts, views: arr(out.views).filter(v => v && linesOf(out, v).some(e => e.drift)).map(v => v.id) };
