@@ -6,6 +6,25 @@ import { KIND, kindOf } from '../map/kinds.js';
 import { arrOf } from '../map/validate.js';
 import { printDoc, wordOf } from './print.js';
 
+/* The model a page was given, as its file has it: less what render added (meta.added names each, as a path of keys: "source",
+   "meta.root", "views.0.layout" for a layout its search baked; audit 30: the file kept render's icons, source and avatarsEmbedded, and lost
+   the model's own meta). A page an older render wrote names none: its kind, avatarsEmbedded, icons and the meta keys render sets are taken
+   off. A model no render gave (a host's, no kind "map") is the model as it is. The page's model is never changed: each object on a path
+   is copied before a key of it goes, and only an own key is followed or taken off. */
+function asWritten(given) {
+  const isObj = x => x !== null && typeof x === 'object', own = (o, k) => isObj(o) && Object.hasOwn(o, k);
+  if (!isObj(given) || Array.isArray(given)) return given;
+  const meta = own(given, 'meta') && isObj(given.meta) ? given.meta : null, named = meta && Array.isArray(meta.added) ? meta.added.filter(k => typeof k === 'string') : null;
+  if (!named && given.kind !== 'map') return given;
+  const added = named || ['kind', 'avatarsEmbedded', 'icons', 'meta.generated', 'meta.project', 'meta.root', 'meta'];
+  const m = { ...given }, made = new Set([m]), copy = (o, k) => { const x = o[k]; if (made.has(x)) return x; const y = Array.isArray(x) ? [...x] : { ...x }; made.add(y); o[k] = y; return y; };
+  added.filter(k => k !== 'meta').forEach(path => { const ks = path.split('.'); let o = m;
+    for (const k of ks.slice(0, -1)) { if (!own(o, k) || !isObj(o[k])) return; o = copy(o, k); }
+    const last = ks[ks.length - 1]; if (own(o, last) && !Array.isArray(o)) delete o[last]; });
+  if (added.includes('meta') && isObj(m.meta) && !Object.keys(m.meta).length) delete m.meta; // render made it: none in the file
+  return m;
+}
+
 /* ================= the standalone viewer =================
    One-row top bar · column browser of views on the left · map on top · details strip below; built on render().
    It owns the page: the document title, the URL hash (#view=&node=), keyboard shortcuts and saved preferences. */
@@ -362,9 +381,9 @@ export function mountPage(container, model, options = {}) {
     else if (x === 'png') {
       pngOf(standalone(2)).then(bl => bl && download(stem + '.png', bl));
     } else if (x === 'link') { navigator.clipboard && navigator.clipboard.writeText(location.href).then(() => status('Link copied'), () => status(location.href)); }
-    // the model the page was given, less the page tool's meta and kind: not the map's working copy, whose lines carry an _id and
+    // the model the page was given, less what render added to it (asWritten): not the map's working copy, whose lines carry an _id and
     // whose views a parent rewritten to the view it names, which a file saved and opened again would keep (audit 29)
-    else if (x === 'json') { const { meta, kind, ...model } = X.model(); let text; try { text = JSON.stringify(model, null, 2); } catch { return status('This model cannot be written as JSON'); }
+    else if (x === 'json') { const model = asWritten(X.model()); let text; try { text = JSON.stringify(model, null, 2); } catch { return status('This model cannot be written as JSON'); }
       download(stem.split('-' + cur)[0] + '.json', new Blob([text], { type: 'application/json' })); }
     if (x !== 'link') status('Exported ' + x.toUpperCase());
   }
