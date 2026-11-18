@@ -3,6 +3,7 @@ import { copyOf, usedIds, jsonText, labelOr } from '../core/model.js';
 import { heldBy, registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
+import { routeAudit } from '../layout/audit.js';
 import { laneBands, laneOrder } from '../layout/lanes.js';
 import { layoutTyped } from '../typed/layout.js';
 import { cpPlace } from '../uml/component.js';
@@ -214,7 +215,19 @@ function bzGeo({ model, view, pos: pins, memo }) {
     else if (e.type === BZ_MSG && P.lanes.length && I.poolOf(l.f.at) !== I.poolOf(l.t.at)) { const dn = toward(l.f, l.t); if (!l.f.port) o.fromSide = dn ? 'top' : 'bottom'; if (!l.t.port) o.toSide = dn ? 'bottom' : 'top'; }
     return o; });
   const boxes = P.boxes.map(b => (grown.has(b.id) ? { ...b, pad: 28 } : b));
-  const g = layoutTyped({ nodes, edges, ...(boxes.length ? { containers: boxes } : {}), direction: down ? 'down' : 'right', gap: BZ.gap, rgap: BZ.rgap, repair: false, reroute: false }, memo);
+  const dg = { nodes, edges, ...(boxes.length ? { containers: boxes } : {}), direction: down ? 'down' : 'right', gap: BZ.gap, rgap: BZ.rgap, repair: false, reroute: false };
+  let g = layoutTyped(dg, memo);
+  // a loop back (a sequence flow to an earlier column: a rework loop) that crosses another line leaves its source and comes into
+  // its target over the top, or under the bottom, of the flow instead; the view is laid out so once more, on a memo of its own,
+  // and that kept when it has fewer issues (audit 38: Fix order back to Check order crossed the gateway's other exit, OK? to
+  // Pick). ponytail: two layouts more for each of the first two such lines, so only up to 30 nodes
+  const backs = lines.filter(l => l.e.type === BZ_SEQ && !l.f.port && !l.t.port && !l.anchor && l.f.at != null && l.t.at != null && colOf(l.f.at) > colOf(l.t.at)).map(l => l.e.id);
+  if (backs.length && nodes.length <= 30) { const refs = [], issues = routeAudit(g, '', null, refs);
+    const hot = [...new Set(refs.flatMap((r, k) => issues[k].endsWith(' cross') ? r.map(e => e && e.id).filter(id => backs.includes(id)) : []))].slice(0, 2);
+    if (hot.length) { let n = issues.length; const alt = memo ? (memo.bzBack ||= {}) : null;
+      hot.forEach(id => ['top', 'bottom'].forEach(w => { const sides = { fromSide: w, toSide: w }; // in the layout's own axes: laid out down, the left and right
+        const m = alt ? (alt[id + '|' + w] ||= {}) : null, h = layoutTyped({ ...dg, edges: edges.map(e => e.id === id ? { ...e, ...sides } : e) }, m), k = routeAudit(h, '').length;
+        if (k < n) { g = h; n = k; } })); } }
   return bzFinish(P, g, { runs, anchors, grown, side, down });
 }
 

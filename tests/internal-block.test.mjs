@@ -428,3 +428,14 @@ test('audit 28: a listed line of another kind is keyed as it is drawn (a depende
   assert.match(g.legend[1], /stroke-dasharray="3 2"/); assert.match(g.legend[1], /M17 4L26 8L17 12/);
   assert.deepEqual(layout({ ...m, views: [{ ...m.views[0], edges: ['o'] }] }, 'v').legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Connector']);
 });
+
+test('audit 38: connectors between two parts whose types list their ports in opposite orders run parallel, right and down', () => {
+  const mk = (conns, dir) => ({ schemaVersion: 2, nodes: [
+    { id: 'bike', type: 'sysml.Block', label: 'Bike', members: [{ id: 'bike.a', type: 'sysml.PartProperty', label: 'a', props: { valueType: 'A' } }, { id: 'bike.b', type: 'sysml.PartProperty', label: 'b', props: { valueType: 'B' } }] },
+    { id: 'A', type: 'sysml.Block', label: 'A', members: conns.map((_, i) => ({ id: 'A.p' + (i + 1), type: 'sysml.Port', label: 'p' + (i + 1) })) },
+    { id: 'B', type: 'sysml.Block', label: 'B', members: conns.map((_, i) => ({ id: 'B.q' + (i + 1), type: 'sysml.Port', label: 'q' + (i + 1) })) }],
+  edges: conns.map(([f, t], i) => ({ id: 'c' + i, type: 'sysml.Connector', from: 'A.' + f, to: 'B.' + t, props: { ends: { from: { part: 'bike.a' }, to: { part: 'bike.b' } } } })),
+  views: [{ id: 'v', diagram: 'sysml.internal-block', subject: 'bike', nodeIds: ['bike'], direction: dir }] });
+  for (const dir of ['right', 'down']) for (const conns of [[['p1', 'q2'], ['p2', 'q1']], [['p1', 'q3'], ['p2', 'q2'], ['p3', 'q1']], [['p1', 'q1'], ['p2', 'q2']], [['p1', 'q2'], ['p2', 'q3'], ['p3', 'q1']]])
+    assert.deepEqual(check(mk(conns, dir), 'v').map(p => p.message), [], `${dir} ${JSON.stringify(conns)}`);
+});
