@@ -19,7 +19,7 @@ const MM = { root: { px: 15, wt: 600, pad: 14, lh: 20 }, topic: { px: 13, wt: 50
 const MM_INK = ['public', 'lane', 'ext', 'verb', 'board', 'hook']; // the map's kind palette, cycled over first-level branches
 const MM_DEEP = 64; // levels below the root, as the Mermaid reader's MMR_DEEP: deeper is drawn, and warned (a Mermaid write and read hangs it at this one)
 const mmView = (model, view) => (MM_OBJ(view) ? view : MM_ARR(model && model.views).find(v => MM_OBJ(v) && v.id === view)) || null;
-const mmText = n => String(n.label ?? n.id);
+const mmText = n => String(labelOr(n.label, n.id)); // a label "" by its id, as a map's card (audit 34)
 const mmOne = n => mmText(n).replace(/\s+/g, ' ').trim(); // its text on one line, as describe() and the hint line say it
 const mmPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const mmErr = error => ({ error });

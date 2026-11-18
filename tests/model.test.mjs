@@ -831,3 +831,41 @@ test('audit 33: a rule titled 0 is named "0" in rules() and on the lines that br
     assert.deepEqual({ ...mapContext(h).brokenIn('v') }, { ab: [said] });
   }
 });
+
+// audit 34: the picture's accessible name was "Diagram" for a view titled 0, "" or none, where the breadcrumb, the page's
+// title and describe() name it "0" or by its id
+test('audit 34: the drawn SVG is named by the view\'s title, 0 too, else by its id', () => {
+  for (const [t, said] of [[0, '0'], ['', 'orders'], [undefined, 'orders'], ['Orders', 'Orders'], ['<b>"x"</b>', '&lt;b&gt;&quot;x&quot;&lt;/b&gt;']]) {
+    const m = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b' }], views: [{ id: 'orders', ...(t === undefined ? {} : { title: t }), nodeIds: ['a', 'b'] }] };
+    const s = mapContext(m).buildView('orders').markup;
+    assert.equal(/^<svg [^>]*aria-label="([^"]*)"/.exec(s)[1], said, String(t));
+  }
+});
+
+// audit 34: diff() named a rule, a story and a lens titled 0 by its id, where rules() and the page name it "0"
+test('audit 34: diff() names a rule, a story and a lens titled 0 as "0", one titled "" by its id', async () => {
+  const { diff } = await import('../lib/umlimator.js');
+  for (const [t, r, s, l] of [[0, '0', '0', '0'], ['', 'r1', 'tour', 'len'], [undefined, 'r1', 'tour', 'len'], ['Named', 'Named', 'Named', 'Named']]) {
+    const T = t === undefined ? {} : { title: t };
+    const base = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ id: 'e', from: 'a', to: 'b' }], views: [{ id: 'v', title: 'V', nodeIds: ['a', 'b'] }],
+      stories: [{ id: 'tour', ...T, steps: [{ view: 'v', caption: 'one' }] }], lenses: [{ id: 'len', ...T, pick: { id: 'a' } }], rules: [{ id: 'r1', ...T, from: { id: 'a' }, to: { id: 'b' } }] };
+    const after = structuredClone(base); after.stories[0].steps[0].caption = 'two'; after.lenses[0].pick = { id: 'b' }; after.rules[0].to = { id: 'a' };
+    assert.deepEqual(diff(base, after).summary, [`changes the rule ${r}`, `changes the story ${s}`, `changes the lens ${l}`], String(t));
+  }
+});
+
+// audit 34: a map, story, lens, rule or lane title that is not text was drawn "[object Object]" (the brand, the page's title,
+// the menus, a rule's mark) and validate() said nothing, as it says for a view's title since audit 31
+test('audit 34: validate() says a map, story, lens, rule or lane title that is not text', () => {
+  const m = { title: { en: 'Shop' }, nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ id: 'e', from: 'a', to: 'b' }],
+    views: [{ id: 'v', title: 'V', nodeIds: ['a', 'b'], lanes: [{ title: ['x'], nodeIds: ['a'] }, { label: true, nodeIds: ['b'] }, { title: 3, nodeIds: [] }] }],
+    stories: [{ id: 's', title: { en: 'Tour' }, steps: [{ view: 'v' }] }], lenses: [{ id: 'l', title: { toString() { return '<i>x</i>'; } }, pick: { id: 'a' } }],
+    rules: [{ id: 'r', title: { en: 'No calls' }, from: { id: 'a' }, to: { id: 'b' } }] };
+  const got = validate(m).filter(p => /title|label/.test(p.path)).map(p => `${p.level} ${p.path}: ${p.message}`).sort();
+  assert.deepEqual(got, [
+    'warning lenses[0].title: title {} is not text: drawn as "<i>x</i>"', 'warning rules[0].title: title {"en":"No calls"} is not text: drawn as "[object Object]"',
+    'warning stories[0].title: title {"en":"Tour"} is not text: drawn as "[object Object]"', 'warning title: title {"en":"Shop"} is not text: drawn as "[object Object]"',
+    'warning views[0].lanes[0].title: title ["x"] is not text: drawn as "x"', 'warning views[0].lanes[1].label: label true is not text: drawn as "true"']);
+  // text and numbers say nothing, nor do the examples
+  assert.deepEqual(validate({ ...m, title: 0, views: [{ id: 'v', title: 'V', nodeIds: ['a', 'b'], lanes: [{ title: 'L', nodeIds: ['a'] }] }], stories: [{ id: 's', title: 5, steps: [{ view: 'v' }] }], lenses: [{ id: 'l', title: 'x', pick: { id: 'a' } }], rules: [{ id: 'r', from: { id: 'a' }, to: { id: 'b' } }] }), []);
+});
