@@ -323,6 +323,10 @@ try {
   check('4.1 …by keyboard: set opensView, which apply() takes', same(last().commands, [{ op: 'set', id: 'o', path: 'opensView', value: 'sub2' }]) && apply(SHP, last().commands).nodes.find(n => n.id === 'o').opensView === 'sub2', last());
   k0 = ed.length; card('u'); key('v'); await Promise.resolve();
   check('4.1 V on a node whose entry opens nothing: no picker, nothing emitted', !pick('.um-pick') && ed.length === k0);
+  // a view titled "": listed by its id, as describe() names it (audit 33: an empty entry)
+  h.update(apply(SHP, [{ op: 'set', view: 'sub2', path: ['title'], value: '' }])); card('o'); key('v'); await Promise.resolve();
+  check('4.1 V: a view titled "" is listed by its id', same(all('.um-pick button').map(b => b.textContent), ['First sub', 'sub2']), all('.um-pick button').map(b => b.textContent));
+  key('Escape', {}, sr.activeElement); h.update(SHP);
   // places are kept (withPlaces) across an update that changes no box, a region's box included; a move to another region lays out again
   const at = id => pick(`.node[data-id="${id}"] .n-mask`).getAttribute('x') + ',' + pick(`.node[data-id="${id}"] .n-mask`).getAttribute('y');
   const famAt = id => ['x', 'y', 'width', 'height'].map(k => pick(`.family[data-family="${id}"] .family-box`).getAttribute(k)).join(), was = ['p', 'q', 'u'].map(at).join(' '), wasBox = famAt('S.r1');
