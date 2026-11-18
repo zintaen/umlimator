@@ -197,6 +197,21 @@ test('deleting lifeline-worker from the sequence view (Shift + Delete) takes its
   assert.ok(!n.nodes.some(x => x.id === 'lifeline-worker'));
 });
 
+test('audit 34: Shift + Delete of a lifeline every interaction view shows: each view\'s hint counts the messages and timing changes the cascade takes', () => {
+  const L = 'lifeline-payments', vs = M.views.filter(v => ['uml.sequence', 'uml.communication', 'uml.timing'].includes(v.diagram) && (v.nodeIds || []).includes(L));
+  assert.deepEqual(vs.map(v => v.id), ['checkout-sequence', 'checkout-communication', 'buy-checkout', 'one-charge']);
+  const every = x => ({ messages: new Set([...x.edges, ...x.views.flatMap(v => (v.edges || []).filter(e => e && typeof e === 'object'))].filter(e => e.type === 'uml.Message').map(e => e.id)).size,
+    changes: x.views.flatMap(v => (v.timeline || {}).changes || []).length });
+  const says = Object.fromEntries(vs.map(v => { const r = diagramOf(v).edits.remove(M, v, [L], true), a = every(M), b = every(apply(M, r.commands));
+    assert.deepEqual([a.messages - b.messages, a.changes - b.changes], [9, 4], v.id); return [v.id, r.say]; }));
+  assert.deepEqual(says, {
+    'checkout-sequence': 'Deleted payments, and 9 messages and 4 changes with it', 'buy-checkout': 'Deleted payments, and 9 messages and 4 changes with it',
+    'checkout-communication': 'Deleted lifeline "payments" and its 9 messages: "charge(total)", "paid", and 7 in other views, and 4 changes',
+    'one-charge': 'Deleted payments, 4 changes and 9 messages' });
+  // a change's constraints too: the worker's 4 changes hold the timing view's 2 constraints
+  assert.equal(sqRemove(M, M.views.find(v => v.id === 'queue-order'), ['lifeline-worker'], true).say, 'Deleted worker, and 3 messages, 4 changes and 2 constraints with it');
+});
+
 test('every view lays out in the atlas as in its own file: the same boxes, and lines through the same points', () => {
   for (const name of LINKS.sources) {
     const src = JSON.parse(readFileSync(new URL(`../examples/${name}.json`, import.meta.url), 'utf8'));
