@@ -328,7 +328,10 @@ function bzProblems(model, view) {
   // a line to what another view alone holds (view.nodes: a connect in that view) is that view's to judge, not this one's,
   // which does not know its end (audit 24)
   const H = heldBy(model), elsewhere = e => [e.from, e.to].some(x => !I.el(x) && H.has(x));
-  const seqs = [...I.E.values()].filter(e => e.type === BZ_SEQ && !elsewhere(e)), outs = id => seqs.filter(e => e.from === id), ins = id => seqs.filter(e => e.to === id);
+  const seqs = [...I.E.values()].filter(e => e.type === BZ_SEQ && !elsewhere(e)), seqIn = new Map(), seqOut = new Map();
+  // each node's flows in and out, gathered once in the model's order: a lookup per node, never a scan of every flow (audit 34)
+  seqs.forEach(e => { for (const [m, k] of [[seqOut, e.from], [seqIn, e.to]]) { const l = m.get(k); if (l) l.push(e); else m.set(k, [e]); } });
+  const outs = id => (seqOut.get(id) || []).slice(), ins = id => (seqIn.get(id) || []).slice();
   const msgDef = id => bzDef(I.el(id)) === 'message';
   I.E.forEach((e, id) => { if (!BZ_LINES.includes(e.type) || !(seen(e.from) || seen(e.to)) || elsewhere(e)) return; const ids = [id, e.from, e.to];
     if (e.type === BZ_SEQ) {

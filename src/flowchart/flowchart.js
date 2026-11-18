@@ -87,16 +87,21 @@ function fcIndex(model, view) {
   const ids = view ? [...new Set(FC_ARR(view.nodeIds).filter(id => N.has(id)))] : [...N.keys()].filter(id => Object.hasOwn(FC_LOOK, N.get(id).type)), on = new Set(ids);
   const list = view && Array.isArray(view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)))] : [...E.values()].filter(e => e.type === 'flow.Flow' || e.type === 'uml.CommentLink');
   const lines = list.filter(e => FC_OBJ(e) && typeof e.id === 'string' && on.has(e.from) && on.has(e.to)), flows = lines.filter(e => e.type === 'flow.Flow');
-  const ins = id => flows.filter(e => e.to === id), outs = id => flows.filter(e => e.from === id);
-  const term = id => N.get(id).type === 'flow.Terminator', starts = ids.filter(id => term(id) && !ins(id).length), ends = ids.filter(id => term(id) && !outs(id).length);
+  // each node's flows in and out, gathered once in the flows' order: a lookup per call, never a scan of every flow (audit 34)
+  const inBy = new Map(), outBy = new Map(), add = (m, k, e) => { const l = m.get(k); if (l) l.push(e); else m.set(k, [e]); };
+  flows.forEach(e => { add(inBy, e.to, e); add(outBy, e.from, e); });
+  const ins = id => (inBy.get(id) || []).slice(), outs = id => (outBy.get(id) || []).slice();
+  const term = id => N.get(id).type === 'flow.Terminator', starts = ids.filter(id => term(id) && !inBy.has(id)), ends = ids.filter(id => term(id) && !outBy.has(id));
   // reading order: from each start along its flows, depth first, a decision's exits in the model's order (one branch read to its end before the next)
   // a connector with no flow out carries on at each shown connector of its label (trimmed, any case) with no flow in: ISO 5807's
   // on-page connector pair, "flows joined, or carried on elsewhere" as the key says (audit 29)
   const pair = id => { const x = N.get(id); return x.type === 'flow.Connector' && FC_TXT(x.label) ? FC_TXT(x.label).toLowerCase() : ''; };
-  const next = id => (outs(id).length || !pair(id) ? outs(id).map(e => e.to) : ids.filter(o => o !== id && pair(o) === pair(id) && !ins(o).length));
+  // the shown connectors with no flow in, by label, in the view's order: read once, so a walk over many alike stays linear (audit 34)
+  const carry = new Map(); ids.forEach(o => { const k = pair(o); if (k && !inBy.has(o)) add(carry, k, o); });
+  const next = id => (outBy.has(id) || !pair(id) ? outs(id).map(e => e.to) : (carry.get(pair(id)) || []).filter(o => o !== id));
   const walk = [], seen = new Set(), visit = s => { const q = [s]; while (q.length) { const id = q.pop(); if (seen.has(id)) continue; seen.add(id); walk.push(id); next(id).reverse().forEach(to => q.push(to)); } };
   starts.forEach(visit); const reached = new Set(seen); ids.forEach(visit);
-  return { N, E, path, ids, lines, flows, ins, outs, starts, ends, walk, reached };
+  return { N, E, path, ids, lines, flows, ins, outs, starts, ends, walk, reached, isStart: new Set(starts), isEnd: new Set(ends) };
 }
 const fcName = x => String(x.label ?? x.id);
 const fcCalled = x => (x ? (FC_TXT(fcName(x)) || fcLook(x)[1].toLowerCase()) : '?');
@@ -107,7 +112,7 @@ function fcNodeName(I, x) {
   if (x.type === 'uml.Comment') return 'Comment: ' + fcName(x);
   const [, word] = fcLook(x), head = fcSaid({ label: fcName(x) }, word), o = I.outs(x.id);
   if (x.type === 'flow.Decision') return `${head}, ${o.length ? 'exits ' + o.map(e => `${FC_TXT(e.label) ? FC_TXT(e.label) + ' ' : ''}to ${fcCalled(I.N.get(e.to))}`).join(', ') : 'no exits'}`;
-  if (x.type === 'flow.Terminator') return `${head}, ${I.starts.includes(x.id) ? 'a start' : I.ends.includes(x.id) ? 'an end' : 'flows in and out'}`;
+  if (x.type === 'flow.Terminator') return `${head}, ${I.isStart.has(x.id) ? 'a start' : I.isEnd.has(x.id) ? 'an end' : 'flows in and out'}`;
   return head;
 }
 function fcLineName(I, e) {

@@ -907,3 +907,18 @@ test('an element drawn as a task for want of a BPMN type is refused by connect i
   assert.equal(describe(m, 'v').split('\n')[0], 'v: a BPMN diagram of 4 flow nodes, 3 flows and 1 pool.');
   assert.equal(describe(m, 'v').split('\n').filter(l => /^(Start event|Task|Taks|End event) /.test(l)).length, 4);
 });
+
+// audit 34 (the flowchart index's sibling): the process rules looked up each node's sequence flows by scanning every flow,
+// so a long process was judged in quadratic time; they are gathered once now
+test('audit 34: a process of 16000 tasks in a row is judged by bzProblems() in under 300 ms (timed)', () => {
+  const K = 16000, nodes = [{ id: 's', type: 'bpmn.StartEvent' }, ...Array.from({ length: K }, (_, i) => ({ id: `t${i}`, type: 'bpmn.Task', label: 'T' })), { id: 'e', type: 'bpmn.EndEvent' }];
+  const edges = Array.from({ length: K + 1 }, (_, i) => ({ id: `f${i}`, type: 'bpmn.SequenceFlow', from: i ? `t${i - 1}` : 's', to: i < K ? `t${i}` : 'e' }));
+  const m = { schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'bpmn', nodeIds: nodes.map(n => n.id) }] };
+  const t = performance.now(), found = bzProblems(m, m.views[0]), ms = performance.now() - t;
+  assert.deepEqual(found, []);
+  assert.ok(ms < 300, `bzProblems() ${Math.round(ms)} ms`);
+  // the lookups as before: a task with no flow in and a gateway with one in and one out are still said
+  m.edges.splice(5, 1); m.nodes.push({ id: 'g', type: 'bpmn.ExclusiveGateway' }); m.views[0].nodeIds.push('g');
+  m.edges.push({ id: 'g1', type: 'bpmn.SequenceFlow', from: 't3', to: 'g' }, { id: 'g2', type: 'bpmn.SequenceFlow', from: 'g', to: 't4' });
+  assert.deepEqual(bzProblems(m, m.views[0]).map(p => [p.rule, p.ids[0]]), [['flow-start', 't5'], ['gateway-flows', 'g']]);
+});

@@ -412,3 +412,25 @@ test('a reqId or text that is a number or true is written as its text and read b
   }
   assert.match(write(model({ reqId: 101, text: 42 }), 'v'), /\n {4}id: 101\n {4}text: "42"\n/);
 });
+
+// audit 34: the writer wrote a satisfy, verify, derive or copy, or a contains, whose ends its own reader refuses (§6.3's
+// errors), with no note; the reader dropped the line, so a write and read lost it silently. Each is now named, not written
+test('a relationship or a containment whose ends the reader refuses is named as not written, and every line written reads back (audit 34)', () => {
+  const R = (id, label) => ({ id, type: 'sysml.Requirement', label, props: { reqId: id, text: 't' } }), B = (id, label) => ({ id, type: 'sysml.Block', label });
+  const E = (id, type, from, to) => ({ id, type, from, to });
+  const model = { schemaVersion: 2, nodes: [B('frame', 'Frame'), B('fork', 'Fork'), R('r1', 'Weight'), R('r2', 'Mass'), { ...R('r3', 'Nested'), parent: 'frame' }, { ...B('tc', 'Probe'), type: 'sysml.TestCase', parent: 'r2' }],
+    edges: [E('e1', 'sysml.Satisfy', 'frame', 'fork'), E('e2', 'sysml.DeriveReqt', 'r1', 'frame'), E('e3', 'sysml.Copy', 'frame', 'r1'), E('e4', 'sysml.Verify', 'tc', 'fork'),
+      E('ok1', 'sysml.Satisfy', 'frame', 'r1'), E('ok2', 'sysml.DeriveReqt', 'r2', 'r1'), E('ok3', 'sysml.Trace', 'frame', 'fork')],
+    views: [{ id: 'v', diagram: 'sysml.requirement', nodeIds: ['frame', 'fork', 'r1', 'r2', 'r3', 'tc'] }] };
+  const t = write(model, 'v'), notes = t.split('\n').filter(l => l.includes('not written')).map(l => l.trim());
+  // a block may contain a requirement (r3), a requirement contains only requirements (tc)
+  assert.deepEqual(notes, ['%% not written: tc: parent r2: what a requirement contains is a requirement (requirement-nested)',
+    '%% not written: e1: a satisfy runs to a requirement (satisfy-ends)', '%% not written: e2: a deriveReqt runs from a requirement to a requirement (derive-ends)',
+    '%% not written: e3: a copy runs from a requirement to a requirement (copy-ends)', '%% not written: e4: a verify runs to a requirement (verify-ends)'], t);
+  const back = read(t);
+  assert.deepEqual(back.report.filter(r => r.kind === 'skipped'), [], t);
+  assert.deepEqual(back.model.edges.map(e => e.id).sort(), ['ok1', 'ok2', 'ok3']);
+  // the stress fixture's views: nothing written that the reader skips
+  const stress = json('requirement-stress.json');
+  for (const v of stress.views) { const w = write(stress, v.id); assert.deepEqual(read(w).report.filter(r => r.kind === 'skipped'), [], v.id); }
+});
