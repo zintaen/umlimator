@@ -52,8 +52,11 @@ function ovIndex(model, view) {
   const el = id => (N.get(id) || [])[0];
   return { N, V, ids, shown, lines, stray, el, flows: lines.filter(e => e.type === 'uml.ControlFlow') };
 }
+// a node's name as drawn: a control node or a comment its label only; a use, an inline interaction or another kind (drawn as an
+// action) by its id when it has no label, as the sequence and activity views draw it (elName; audit 37)
+const ovLabel = x => (FLOW_CONTROL.includes(x.type) || x.type === 'uml.Comment' ? (OV_HAS(x.label) ? String(x.label) : '') : elName(x));
 // a node in a sentence: its name, else its kind ("merge", "initial node")
-const ovNm = (I, id) => { const x = I.el(id); return x && OV_HAS(x.label) ? String(x.label) : x ? ovWordOf(x.type).toLowerCase() : String(id); };
+const ovNm = (I, id) => { const x = I.el(id); return x ? ovLabel(x) || ovWordOf(x.type).toLowerCase() : String(id); };
 
 /* ---- the inline interaction (S11): its sequence view, counted, and laid out by the sequence type's own sqRun when it is
    small enough; { view, heads, messages, small, run } (run null when it is drawn as its frame only, or when lay is false: a
@@ -107,7 +110,7 @@ for (const k of ['ov-use', 'ov-inline']) { const S = SHAPE[k]; S.ports = (n, sid
 
 /* ---- names (A1, L13): "Decision Payment accepted?, 2 exits", "Interaction use Find a book, opens Find a book" ---- */
 function ovNodeName(model, I, x, ins, outs, sd) {
-  const t = OV_HAS(x.label) ? String(x.label) : '', st = ovStereo(x), nm = `${ovWordOf(x.type)}${t ? ' ' + t : ''}${st.length ? ` (${st.join(', ')})` : ''}`;
+  const t = ovLabel(x), st = ovStereo(x), nm = `${ovWordOf(x.type)}${t ? ' ' + t : ''}${st.length ? ` (${st.join(', ')})` : ''}`;
   const opens = () => { const v = I.V.get(x.opensView); return v && v.diagram === 'uml.sequence' ? `, opens ${labelOr(v.title, v.id)}` : ', opens no sequence view'; };
   switch (x.type) {
     case 'uml.Comment': return 'Comment: ' + elName(x);
@@ -150,7 +153,7 @@ function ovGeo({ model, view, pos, memo }) {
   const ins = new Map(), outs = new Map(), bump = (m, id) => m.set(id, (m.get(id) || 0) + 1);
   I.flows.forEach(e => { bump(outs, e.from); bump(ins, e.to); });
   const bar = id => I.el(id).type === 'uml.ForkNode' || I.el(id).type === 'uml.JoinNode';
-  const nodes = I.ids.map(id => { const x = I.el(id), shape = ovOwn(OV_SHAPE, x.type) || 'rounded', d = { id, label: [...(['diamond', 'ov-use', 'ov-inline'].includes(shape) ? ovStereo(x).map(t => `«${t}»`) : []), ...(OV_HAS(x.label) ? [String(x.label)] : [])].join(' '), type: x.type, kind: 'file', shape, col: at(id)[0], row: at(id)[1] };
+  const nodes = I.ids.map(id => { const x = I.el(id), shape = ovOwn(OV_SHAPE, x.type) || 'rounded', d = { id, label: [...(['diamond', 'ov-use', 'ov-inline'].includes(shape) ? ovStereo(x).map(t => `«${t}»`) : []), ...(ovLabel(x) ? [ovLabel(x)] : [])].join(' '), type: x.type, kind: 'file', shape, col: at(id)[0], row: at(id)[1] };
     const sd = x.type === 'uml.Interaction' ? ovInline(model, I, x) : null;
     d.aria = ovNodeName(model, I, x, ins.get(id) || 0, outs.get(id) || 0, sd); d.saysOpens = x.type === 'uml.InteractionUse' || x.type === 'uml.Interaction' && !sd;
     if (shape === 'rounded') d.stereotypes = ovStereo(x);
