@@ -43,7 +43,7 @@ const BZ_OUT = ['bpmn-event', 'bpmn-gateway', 'bpmn-data', 'bpmn-store']; // the
 const BZ_PIN = { __proto__: null, left: 'L', right: 'R', top: 'T', bottom: 'B' }, BZ_NAME = { __proto__: null, L: 'left', R: 'right', T: 'top', B: 'bottom' }, BZ_TURN = { __proto__: null, L: 'T', T: 'L', R: 'B', B: 'R' };
 const BZ_V = { __proto__: null, L: [-1, 0], R: [1, 0], T: [0, -1], B: [0, 1] };
 const bzProps = x => (BZ_OBJ(x && x.props) ? x.props : {});
-const bzLabel = x => String((x && x.label) ?? (x && x.id) ?? '');
+const bzLabel = x => String((x ? labelOr(x.label, x.id) : null) ?? ''); // a pool, lane or group labelled "" by its id (audit 34)
 const bzPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const bzDef = x => (BZ_HAS(bzProps(x).definition) ? String(bzProps(x).definition) : 'none');
 const bzDocOf = x => (BZ_HAS(bzProps(x).documentation) ? [String(bzProps(x).documentation).trim()] : []);

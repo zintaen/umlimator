@@ -44,6 +44,10 @@ export function validate(model) {
   views.forEach((v, i) => arr(v.nodes).forEach((n, j) => card(n, `views[${i}].nodes[${j}]`)));
   views.forEach((v, i) => { if (typeof v.id !== 'string' || !v.id) err(`views[${i}].id`, 'a view needs an id'); else if (vids.has(v.id)) err(`views[${i}].id`, `view id "${v.id}" is used twice`); else vids.add(v.id);
     const t = labelProblem(v, `views[${i}]`, 'title'); if (t) out.push(t); }); // a title that is not text, as a card's label (audit 31)
+  // the map's, a story's, a lens's, a rule's and a lane's title are drawn too: the brand, the menus, a rule's mark (audit 34)
+  const titled = (x, at, key = 'title') => { const t = labelProblem(x, at, key); if (t) out.push(at ? t : { ...t, path: key }); };
+  titled(m, '');
+  views.forEach((v, i) => { if (Array.isArray(v.lanes)) v.lanes.forEach((l, j) => { if (l && typeof l === 'object') titled(l, `views[${i}].lanes[${j}]`, l.title == null || l.title === '' ? 'label' : 'title'); }); });
   if (m.root != null && !vids.has(m.root)) err('root', `root "${m.root}" is not a view`);
   const later = (x, at) => { if (x && x.opensView && !vids.has(x.opensView)) warn(at + '.opensView', `opens "${x.opensView}", a view the model does not have: fine if the host loads it when it is opened`); };
   arr(m.nodes).forEach((n, i) => later(n, `nodes[${i}]`));
@@ -130,6 +134,7 @@ export function validate(model) {
   arr(m.rules).forEach((r, i) => {
     const at = `rules[${i}]`;
     if (!r || typeof r !== 'object') return err(at, 'a rule is an object with an id');
+    titled(r, at);
     if (typeof r.id !== 'string' || !r.id) err(at + '.id', 'a rule needs an id'); else if (ruleIds.has(r.id)) err(at + '.id', `rule id "${r.id}" is used twice`); else ruleIds.add(r.id);
     if (!r.from && !r.to && !r.noCycles) err(at, 'a rule needs from, to or noCycles');
     pick(r.from, at + '.from'); pick(r.to, at + '.to');
@@ -141,6 +146,7 @@ export function validate(model) {
   arr(m.lenses).forEach((l, i) => {
     const at = `lenses[${i}]`;
     if (!l || typeof l !== 'object') return err(at, 'a lens is an object with an id');
+    titled(l, at);
     if (typeof l.id !== 'string' || !l.id) err(at + '.id', 'a lens needs an id'); else if (lensIds.has(l.id)) err(at + '.id', `lens id "${l.id}" is used twice`); else lensIds.add(l.id);
     pick(l.pick, at + '.pick', true);
     if (l.color != null && l.color !== 'owner') warn(at + '.color', `color ${jsonText(l.color)} is not "owner": ignored`);
@@ -150,6 +156,7 @@ export function validate(model) {
   const posLines = lineNames(m), sids = new Set(), lines = new Set([...lineIds, ...views.flatMap(v => arr(v.edges).filter(e => e && e.id != null).map(e => e.id))]);
   arr(m.stories).forEach((s, i) => {
     const at = `stories[${i}]`;
+    if (s && typeof s === 'object') titled(s, at);
     if (!s || typeof s.id !== 'string' || !s.id) return err(at + '.id', 'a story needs an id');
     if (sids.has(s.id)) err(at + '.id', `story id "${s.id}" is used twice`); sids.add(s.id);
     if (!arr(s.steps).length) err(at + '.steps', 'a story needs steps');

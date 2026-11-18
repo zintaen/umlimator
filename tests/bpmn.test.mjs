@@ -908,6 +908,19 @@ test('an element drawn as a task for want of a BPMN type is refused by connect i
   assert.equal(describe(m, 'v').split('\n').filter(l => /^(Start event|Task|Taks|End event) /.test(l)).length, 4);
 });
 
+// audit 34: a pool or lane labelled "" was named "Pool , 2 lanes", "Lane  of , 1 element" and "Start event Go, in "
+test('audit 34: a pool and a lane labelled "" are named by their ids, and what they hold is said in them', () => {
+  const m = { schemaVersion: 2, title: 'T', nodes: [
+    { id: 'Participant_1', type: 'bpmn.Participant', label: '', members: [{ id: 'Lane_1', type: 'bpmn.Lane', label: '' }, { id: 'Lane_2', type: 'bpmn.Lane', label: 'Sales' }] },
+    { id: 's', type: 'bpmn.StartEvent', label: 'Go', parent: 'Lane_1' }, { id: 't', type: 'bpmn.Task', label: 'Do', parent: 'Lane_2' }, { id: 'e', type: 'bpmn.EndEvent', label: 'Done', parent: 'Lane_2' }],
+    edges: [{ id: 'f1', type: 'bpmn.SequenceFlow', from: 's', to: 't' }, { id: 'f2', type: 'bpmn.SequenceFlow', from: 't', to: 'e' }],
+    views: [{ id: 'v', diagram: 'bpmn', nodeIds: ['Participant_1', 's', 't', 'e'] }] };
+  const by = Object.fromEntries(layout(m, 'v').nodes.map(n => [n.id, n.aria])), said = describe(m, 'v');
+  assert.equal(by.Participant_1, 'Pool Participant_1, 2 lanes, 3 elements'); assert.equal(by.Lane_1, 'Lane Lane_1 of Participant_1, 1 element');
+  assert.equal(by.s, 'Start event Go, in Lane_1');
+  assert.ok(!/ ,| of ,|in $/m.test(said), said);
+});
+
 // audit 34 (the flowchart index's sibling): the process rules looked up each node's sequence flows by scanning every flow,
 // so a long process was judged in quadratic time; they are gathered once now
 test('audit 34: a process of 16000 tasks in a row is judged by bzProblems() in under 300 ms (timed)', () => {

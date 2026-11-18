@@ -544,3 +544,12 @@ test('audit 33: Shift + Delete of a group with what it holds also selected count
   assert.equal(rm(['gcp-region', 'gcp-users']).say, 'Deleted Region europe-west1 and the 8 elements it held, and 1 other element');
   assert.equal(gone(['gcp-region', 'gcp-users']), 10);
 });
+
+// audit 34: an element or group labelled "" was named "Product , Cloud Run", "Zone , holding 1 element", "Path from  to DB"
+test('audit 34: a cloud element or group labelled "" is named by its id in its name, its box and describe()', () => {
+  const m = { schemaVersion: 2, title: 'T', nodes: [{ id: 'zone-a', type: 'gcp.Zone', label: '', props: { zoneType: 'zone' } }, { id: 'api', type: 'gcp.Product', label: '', parent: 'zone-a', props: { icon: 'Cloud-Run' } }, { id: 'db', type: 'gcp.Product', label: 'DB', props: { icon: 'Cloud-SQL' } }], edges: [{ id: 'e', type: 'gcp.Path', from: 'api', to: 'db' }], views: [{ id: 'v', diagram: 'gcp', nodeIds: ['zone-a', 'api', 'db'] }] };
+  const g = layout(m, 'v'), api = g.nodes.find(n => n.id === 'api'), zone = g.families.find(f => f.id === 'zone-a'), said = describe(m, 'v');
+  assert.match(api.aria, /^Product api, /); assert.equal(api.label, 'api');
+  assert.match(zone.aria, /^Zone zone-a, holding 1 element/); assert.equal(zone.title, 'zone-a [Zone]');
+  assert.match(said, /Path from api to DB/); assert.ok(!/ ,| {2}to /.test(said), said);
+});

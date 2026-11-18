@@ -227,14 +227,14 @@ export function diff(before, after) {
       said.push((keys.includes('label') ? `renames ${labelOr(o.label, o.id)} to ${labelOr(x.label, x.id)}` : `changes ${name(n.id)}`) + (rest.length ? ` (${rest.join(', ')})` : '')); } });
   lines.forEach(e => { const h = how.get(e), p = (e.props && e.props.ends) || {}; // an end on a part: the part counts as its card
     if (!h || h !== 'changed' && [e.from, e.to, (p.from || {}).part, (p.to || {}).part].some(id => id != null && cardHow.get(id) === h)) return;
-    const ends = e.from == null && e.to == null ? null : `${endName(e, 'from')} to ${endName(e, 'to')}`, lab = labelOr(e.label, null) != null ? ` (${e.label})` : '', it = ends ? 'the line from ' + ends : e.label ?? e.id; // an item with no ends (an interaction use) by its name
+    const ends = e.from == null && e.to == null ? null : `${endName(e, 'from')} to ${endName(e, 'to')}`, lab = labelOr(e.label, null) != null ? ` (${e.label})` : '', it = ends ? 'the line from ' + ends : labelOr(e.label, e.id); // an item with no ends (an interaction use) by its name
     if (h === 'added') said.push(ends ? `adds a line from ${ends}${lab}` : `adds ${it}`);
     if (h === 'removed') said.push(ends ? `removes ${it}${lab}` : `removes ${it}`);
     if (h === 'changed') { const [o, x] = was.get(e), t = TYPED.diff && TYPED.diff(o, x, name, [A, out]); if (t) return said.push(...t);
       said.push(`changes ${it} (${diffKeys([o, x]).map(k => k === 'label' ? `label ${o.label ?? '-'} → ${x.label ?? '-'}` : k).join(', ')})`); } });
   // the rules: each added, removed or changed said, and the views where what they find changes touched
   const R0 = arr(A.rules), R1 = arr(out.rules);
-  if (canon(R0) !== canon(R1)) { const rk = (r, i) => r && typeof r === 'object' && r.id != null ? String(r.id) : '#' + i, rn = r => String((r && (r.title || r.id)) ?? 'a rule');
+  if (canon(R0) !== canon(R1)) { const rk = (r, i) => r && typeof r === 'object' && r.id != null ? String(r.id) : '#' + i, rn = r => String(labelOr(r && typeof r === 'object' ? labelOr(r.title, r.id) : null, 'a rule')); // a title 0 by it (audit 34)
     const m0 = new Map(R0.map((r, i) => [rk(r, i), r])), m1 = new Map(R1.map((r, i) => [rk(r, i), r]));
     m1.forEach((r, k) => { if (!m0.has(k)) said.push(`adds the rule ${rn(r)}`); else if (canon(m0.get(k)) !== canon(r)) said.push(`changes the rule ${rn(r)}`); });
     m0.forEach((r, k) => { if (!m1.has(k)) said.push(`removes the rule ${rn(r)}`); });
@@ -243,7 +243,7 @@ export function diff(before, after) {
   // the stories and lenses, as the rules are, and the map's title and any other field of the model's own: none is drawn on a
   // view, but a change to one is a change (audit 31: diff --base said "No map model changed." for a story's caption)
   const listed = (k, word) => { const L0 = arr(A[k]), L1 = arr(out[k]); if (canon(L0) === canon(L1)) return;
-    const key = (x, i) => x && typeof x === 'object' && x.id != null ? String(x.id) : '#' + i, nm = x => String((x && typeof x === 'object' && (x.title || x.id)) ?? `a ${word}`);
+    const key = (x, i) => x && typeof x === 'object' && x.id != null ? String(x.id) : '#' + i, nm = x => String(labelOr(x && typeof x === 'object' ? labelOr(x.title, x.id) : null, `a ${word}`));
     const m0 = new Map(L0.map((x, i) => [key(x, i), x])), m1 = new Map(L1.map((x, i) => [key(x, i), x]));
     m1.forEach((x, k) => { if (!m0.has(k)) said.push(`adds the ${word} ${nm(x)}`); else if (canon(m0.get(k)) !== canon(x)) said.push(`changes the ${word} ${nm(x)}`); });
     m0.forEach((x, k) => { if (!m1.has(k)) said.push(`removes the ${word} ${nm(x)}`); }); };

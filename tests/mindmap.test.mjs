@@ -586,3 +586,15 @@ test('audit 33: a topic that opens a view titled "" keeps its mark and its note,
   assert.equal(a.opens, 'other'); assert.equal(a.aria, 'Topic Alpha, under Root, opens other');
   assert.ok(describe(m, 'mm').split('\n').includes('  Alpha (opens other)'), describe(m, 'mm'));
 });
+
+// audit 34: a topic labelled "" (the Mermaid reader's a[""]) was drawn empty and named "Topic , under Plan": by its id, as a map's card
+test('audit 34: a topic labelled "" is drawn and named by its id, never an empty name', () => {
+  const m = { schemaVersion: 2, title: 'T', nodes: [{ id: 'root', type: 'mindmap.Topic', label: 'Plan' }, { id: 'a', type: 'mindmap.Topic', label: '', parent: 'root' }, { id: 'a1', type: 'mindmap.Topic', label: 'Detail', parent: 'a' }, { id: 'z', type: 'mindmap.Topic', label: 0, parent: 'root' }], views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['root', 'a', 'a1', 'z'] }] };
+  const g = layout(m, 'v'), by = Object.fromEntries(g.nodes.map(n => [n.id, n]));
+  assert.equal(by.a.label, 'a'); assert.equal(by.a.aria, 'Topic a, under Plan, 1 subtopic'); assert.equal(by.a1.aria, 'Topic Detail, under a');
+  assert.equal(by.z.label, '0'); // a number is a label, 0 too
+  assert.ok(!/ ,|under $|^\s*$/m.test(describe(m, 'v')), describe(m, 'v'));
+  // hostile: markup in a label stays text in the picture
+  const h = structuredClone(m); h.nodes[1].label = '<img src=x onerror=alert(1)>';
+  assert.ok(!mapContext(h).buildView('v').markup.includes('<img'));
+});
