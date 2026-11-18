@@ -7,7 +7,7 @@ import { brLines } from '../typed/draw.js';
 import { lineIn, lineItem } from './class.js'; // SHAPE.note, a comment's look too
 import { ownersOn, placeTabs, readingOrder } from './owners.js';
 import { snKindName } from './structure.js';
-import { usedIds, jsonText, labelOr } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the use case diagram, uml.use-case (work package 4.4, notes/stage-4.md §8) ----------
    Actors (a stick figure), use cases (an ellipse, its extension points in a compartment under the name) and subjects: a
@@ -20,7 +20,7 @@ import { usedIds, jsonText, labelOr } from '../core/model.js';
 const UC_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), UC_ARR = x => (Array.isArray(x) ? x : []);
 const UC_HAS = x => x != null && x !== '';
 const UC_PROPS = x => (UC_OBJ(x && x.props) ? x.props : {});
-const ucName = x => String(x.label ?? x.id);
+const ucName = elName;
 const ucStereo = x => UC_ARR(UC_PROPS(x).stereotypes).filter(UC_HAS).map(String);
 const ucPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const UC_LINES = ['uml.Association', 'uml.Include', 'uml.Extend', 'uml.Generalization', 'uml.CommentLink'];

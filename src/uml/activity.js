@@ -10,7 +10,7 @@ import './class.js'; // SHAPE.note, a comment's
 import { snKindName } from './structure.js';
 import { frame } from './frame.js';
 import { FLOW_RULES, flowOf, flowProblems, flowLabel, flowRename, flowStereo, viewFlows } from './flow.js';
-import { copyOf, usedIds, jsonText, labelOr } from '../core/model.js';
+import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
 import { LINE_SAYS } from './class.js'; // the "Line" key's words, for a line of another kind (audit 28)
 
 /* ---------- the activity diagram, uml.activity (work package 4.5, notes/stage-4.md §9) ----------
@@ -104,7 +104,7 @@ function actIndex(model, view) {
     // a name the author broke (a Mermaid <br>): its header strip as wide as its lines (laneBands, audit 22)
     lanes: parts.map((id, order) => { const k = brLines(acStLabel(N.get(id))).length; return { id, parent: outer(id), order, ...(k > 1 ? { head: AC_PH + (k - 1) * AC_PL } : {}) }; }) };
 }
-const acName = x => String(x.label ?? x.id);
+const acName = elName;
 const acProps = x => (AC_OBJ(x && x.props) ? x.props : {});
 const acStereo = x => AC_ARR(acProps(x).stereotypes).filter(AC_HAS).map(String);
 // a diamond's or a partition's drawn name, its stereotypes first: their shapes draw no «…» row of their own (audit 16)

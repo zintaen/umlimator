@@ -1,4 +1,4 @@
-import { jsonText } from './model.js';
+import { jsonText, elName } from './model.js';
 /* ---------- diagram types (work package 1.3) ----------
    A typed view's `diagram` names its type; a view with none is a map, and the map registers itself as the default
    (src/map/typed.js). A type this release does not know is drawn as plain cards, with a warning. Internal until the
@@ -51,7 +51,7 @@ function ownGuard(model, r) {
       if (node()) { out.push({ ...c, in: 'view' }); hold(x); continue; }
       const { parent, ...y } = x; out.push({ ...c, element: y }); continue; }
     else if (R_OBJ(c) && c.op === 'reparent' && c.parent != null && held.has(c.parent) && !held.has(c.id)) {
-      const p = held.get(c.parent); return { error: `${String(p.label ?? p.id)} lives in this view only: an element of the model cannot go under it` }; }
+      const p = held.get(c.parent); return { error: `${elName(p)} lives in this view only: an element of the model cannot go under it` }; }
     out.push(c);
   }
   return Array.isArray(r) ? out : { ...r, commands: out };

@@ -6,7 +6,7 @@ import { layoutTyped } from '../typed/layout.js';
 import { lineRename, memberEdit, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 import { SN_ARTIFACTS, SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, snKindName, snKindWord, structProblems } from './structure.js';
-import { usedIds, jsonText, labelOr } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the component diagram, uml.component (work package 5.4, notes/stage-5.md §10.1) ----------
    Components (src/uml/structure.js's look), a component or package that holds something shown a box (src/uml/owners.js),
@@ -22,7 +22,7 @@ const CP_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), CP
 const CP_HAS = x => x != null && x !== '';
 const CP_OWN = (o, k) => (CP_OBJ(o) && Object.hasOwn(o, k) ? o[k] : undefined); // a model's id as a key: 'constructor' is not Object's
 const cpProps = x => (CP_OBJ(x && x.props) ? x.props : {});
-const cpName = x => String(x.label ?? x.id);
+const cpName = elName;
 const cpStereo = x => CP_ARR(cpProps(x).stereotypes).filter(CP_HAS).map(String);
 const cpPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const CP_LINES = ['uml.InterfaceRealization', 'uml.ComponentRealization', 'uml.Usage', 'uml.Connector', 'uml.Dependency', 'uml.Manifestation', 'uml.CommentLink'];

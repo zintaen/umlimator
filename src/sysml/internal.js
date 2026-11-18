@@ -1,4 +1,4 @@
-import { jsonText, labelOr } from '../core/model.js';
+import { jsonText, labelOr, elName } from '../core/model.js';
 import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { r2 } from '../draw/shapes.js';
@@ -17,7 +17,7 @@ import { SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_
 const SYS_IB_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), SYS_IB_ARR = x => (Array.isArray(x) ? x : []);
 const SYS_IB_PROPS = x => (SYS_IB_OBJ(x && x.props) ? x.props : {}), SYS_IB_HAS = x => x != null && x !== '';
 // a part, reference or value with no name is named as drawn, ': Battery [1]' (the composite type's csName, audit 17)
-const SYS_IB_NAME = x => (Object.hasOwn(SYS_IB_PROP, x.type) && !SYS_IB_HAS(x.label) ? SYS_IB_TEXT(x) : String(x.label ?? x.id));
+const SYS_IB_NAME = x => (Object.hasOwn(SYS_IB_PROP, x.type) && !SYS_IB_HAS(x.label) ? SYS_IB_TEXT(x) : elName(x));
 const SYS_IB_PLURAL = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const SYS_IB_PROP = { __proto__: null, 'sysml.PartProperty': 'Part', 'sysml.ReferenceProperty': 'Reference', 'sysml.ValueProperty': 'Value' };
 const SYS_IB_FLOWS = ['from-to', 'to-from'];
@@ -33,7 +33,7 @@ function SYS_IB_INDEX(model, view) {
 }
 // a port's type: its name, and whether ~ conjugates it (§8.2)
 const SYS_IB_TYPE = p => { const t = String(SYS_IB_PROPS(p).valueType ?? '').trim(), name = t.replace(/^~\s*/, ''); return { conj: t.startsWith('~') && name !== '', name }; }; // a lone ~ conjugates nothing
-const SYS_IB_IFACE = (I, name) => { const c = name ? [...I.at.values()].filter(n => n.type === 'sysml.InterfaceBlock' && (n.label ?? n.id) === name) : []; return c.length === 1 ? c[0] : null; };
+const SYS_IB_IFACE = (I, name) => { const c = name ? [...I.at.values()].filter(n => n.type === 'sysml.InterfaceBlock' && elName(n) === name) : []; return c.length === 1 ? c[0] : null; };
 // the way a port's items flow, seen from its owner: in, out or inout (both), from the flow properties of the interface block
 // that types it, turned round by ~; null when no interface block with flow properties types it
 function SYS_IB_FLOW(I, p) {
