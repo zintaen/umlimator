@@ -697,7 +697,7 @@ def views(m, els, lines, specs, find, implied, groups):
             elif kind == "element" and what == "tag":
                 hit = lambda c: not want.isdisjoint(etag(c))
             elif kind == "element":
-                held = {find(v) for v in q[4].split(",")}
+                held = {find(v.strip()) for v in q[4].split(",") if v.strip()}  # a, b as a,b, as type and tag read it (audit 36)
                 if None in held:
                     return None
                 hit = lambda c: els[c]["parent"] in held
@@ -718,9 +718,11 @@ def views(m, els, lines, specs, find, implied, groups):
             return "rels", {eid for p, q2, eid, _ in lines if under(x, p) and under(y, q2)}
         if (pre or post) and "->" not in core and (x := find(core)):
             out = {x}
+            # a line between two of x's own members is no coupling of x: Structurizr implies none between a parent and its
+            # child, so ->s on s's own container view drew web and api for web->api (audit 36)
             for a, b, _, _ in lines:
-                out |= {lift(b)} if post and x in up(a) else set()
-                out |= {lift(a)} if pre and x in up(b) else set()
+                out |= {lift(b)} if post and x in up(a) and x not in up(b) else set()
+                out |= {lift(a)} if pre and x in up(b) and x not in up(a) else set()
             return "els", out - {None}
         return None
     for s in specs:

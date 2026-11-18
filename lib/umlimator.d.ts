@@ -387,6 +387,10 @@ export interface MapEdge {
    *  Not drawn. */
   latency?: number;
   cost?: number;
+  /** The side of its card the line leaves from and the side it enters (a fix for a crossing or a detour); validate()
+   *  warns about any other value, which is ignored. */
+  fromSide?: 'top' | 'bottom' | 'left' | 'right';
+  toSide?: 'top' | 'bottom' | 'left' | 'right';
   [key: string]: unknown;
 }
 export interface MapView {
@@ -402,6 +406,8 @@ export interface MapView {
   /** Boxes: badges are tabs on the box's border; tone, a palette name as a badge's (--um-<tone>), tints the region behind the
    *  box (as deep as --um-tint makes the cards), with its border dashed and its title in the tone. */
   containers?: { id: string; label?: string; nodeIds?: string[]; parent?: string; badges?: Badge[]; tone?: string }[];
+  /** The space between columns and between rows, in px (default 66 and 44): more room when a line passes close to a card. */
+  gap?: number; rgap?: number;
   [key: string]: unknown;
 }
 

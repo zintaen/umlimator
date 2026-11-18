@@ -240,6 +240,23 @@ m, un = imp.read("structurizr", 'workspace {\n model {\n  u = person "User"\n  s
 ok("structurizr · views that include only expressions are the workspace's views, not the generated ones (audit 35)",
    [(v["id"], v["title"], v["nodeIds"]) for v in m["views"]] == [("s-containers", "Shop containers", ["web", "api", "db"]), ("Second", "Around the API", ["web", "api", "db"])] and un == [],
    (m["views"], un))
+# audit 36: ->x, x-> and ->x-> on x's own view counted a line between two of x's members (web -> api) as x's coupling, and
+# element.parent==a, b (a space after the comma) was not read, though element.type and element.tag strip each value
+ex = ('workspace {\n model {\n  u = person "User"\n  s = softwareSystem "Shop" {\n   web = container "Web"\n   api = container "API"\n   db = container "DB"\n  }\n'
+      '  t = softwareSystem "<img src=//e.example/t.png>"\n  u -> web "uses"\n  web -> api "calls"\n  api -> db "reads"\n  api -> t "sends"\n }\n views {\n'
+      '  container s "in" {\n   include ->s\n  }\n  container s "out" {\n   include s->\n  }\n  container s "both" {\n   include ->s->\n  }\n'
+      '  container s "notin" {\n   include *\n   exclude ->s\n  }\n  container s "around" {\n   include ->api->\n  }\n'
+      '  container s "tight" {\n   include *\n   exclude "element.parent==s,t"\n  }\n  container s "spaced" {\n   include *\n   exclude "element.parent==s, t"\n  }\n'
+      '  container s "trail" {\n   include *\n   exclude "element.parent== s ,  t ,"\n  }\n  container s "nothing" {\n   include *\n   exclude "element.parent==s, ../../etc/passwd"\n  }\n }\n}\n')
+m, un = imp.read("structurizr", ex, "x")
+got = {v["id"]: (v["nodeIds"], sorted((e["from"], e["to"]) for e in m["edges"] if e["id"] in v["edges"])) for v in m["views"]}
+ok("structurizr · ->x, x-> and ->x-> leave out lines between x's own members; element.parent==a, b reads as a,b (audit 36)",
+   got == {"in": (["u"], []), "out": (["t"], []), "both": (["u", "t"], []), "notin": (["web", "api", "db", "t"], [("api", "db"), ("api", "t"), ("web", "api")]),
+           "around": (["web", "api", "db", "t"], [("api", "db"), ("api", "t"), ("web", "api")]),
+           "tight": (["u", "t"], []), "spaced": (["u", "t"], []), "trail": (["u", "t"], []),
+           "nothing": (["u", "web", "api", "db", "t"], [("api", "db"), ("api", "t"), ("u", "web"), ("web", "api")])}
+   and [x[1] for x in un if "does not read" in x[1]] == ["exclude element.parent==s, ../../etc/passwd: an expression umlimator does not read"]
+   and not any("e.example" in str(n.get("icon") or "") for n in m["nodes"]), (got, un))
 # audit 33: a Mermaid C4Dynamic or C4Deployment is a C4 diagram umlimator does not read, and is said as one
 said = [imp.read("mermaid", f'{h}\n  title T\n  Container(c1, "A")\n  Container(c2, "B")\n  Rel(c1, c2, "Reads")\n', "x")[1] for h in ("C4Dynamic", "C4Deployment")]
 ok("mermaid · C4Dynamic and C4Deployment are named as Mermaid C4 diagrams that are not read, not as 'not a C4 diagram' (audit 33)",

@@ -224,12 +224,13 @@ def upstream_view(d):
     # schema version 2: a member (an attribute, a port) may be a line's end; upstream knows cards only, so each member is
     # listed as a card too (risks.md F3)
     members = []  # only in version 2: a version-1 model's own `members` field means nothing to the map
-    def walk(x):
-        for m in x.get("members") or []:
-            if isinstance(m, dict) and isinstance(m.get("id"), str):
-                members.append(m["id"]); walk(m)
-    for n in d.get("nodes", []) if d.get("schemaVersion") == 2 else []:
-        if isinstance(n, dict): walk(n)
+    # a stack, not recursion, in document order: members nested 1,000 deep ended render in a RecursionError (audit 36)
+    kids = lambda x: [m for m in x.get("members") or [] if isinstance(m, dict) and isinstance(m.get("id"), str)]
+    todo = [m for n in reversed(d.get("nodes", [])) if isinstance(n, dict) for m in reversed(kids(n))] if d.get("schemaVersion") == 2 else []
+    while todo:
+        m = todo.pop()
+        members.append(m["id"])
+        todo += reversed(kids(m))
     # and a sequence view's interaction uses (between its messages in `edges`, with no ends) are not lines: upstream would
     # call each "an unknown end" (F3), so the copy leaves them out; any other line with no ends is still reported
     for v in views if d.get("schemaVersion") == 2 else []:
@@ -991,10 +992,12 @@ def diff_since(a):
         texts = (old.stdout if old.returncode == 0 else None, (top / name).read_bytes() if (top / name).is_file() else None)
         (before, e1), (after, e2) = model_of(texts[0], f"{name} at {a.base}"), model_of(texts[1], name)
         # a model that no longer parses (a conflict marker, a cut) is a change to say, not a file to skip; other JSON that
-        # does not parse (a tsconfig.json with comments) is not a model
+        # does not parse (a tsconfig.json with comments) is not a model, and neither is a file not named .json (a guide in
+        # Markdown that names "nodes" and "views", under a folder pathspec: audit 36) unless its other version was a model
+        js = lambda x: x.lower().endswith(".json")
         why = [f"{at} nests too deep to read" if isinstance(e, RecursionError) else f"{at} is not valid JSON ({e})"
                for at, e, t, other in ((f"its version at {a.base}", e1, texts[0], after), ("it", e2, texts[1], before))
-               if e and (other or isinstance(e, RecursionError) or b'"nodes"' in t and b'"views"' in t)]
+               if e and (other or (js(name) or js(was)) and (isinstance(e, RecursionError) or b'"nodes"' in t and b'"views"' in t))]
         if not why and before and texts[1] is not None and after is None:  # a key mistyped: not a deletion (audit 10)
             why = ["it is no longer a map model (its nodes and views are not both lists)"]
         if not why:  # each version as render reads it, said under its own version (audit 11)
