@@ -502,8 +502,9 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     const any = allowCross >= 2; // the last resort: only cards and tags stand in the way; crossing or running along a line, or a label, costs
     // past it (3, a typed view's line that would else run through a card, audit 21): a loop's corners cost as a crossing, and the
     // line may run round its own end
-    const loose = allowCross === 3, hard = any && !loose && !soft && families.length;
-    const obs = [...nodeRects.map(r => ({ x: r.x - C, y: r.y - C, w: r.w + 2 * C, h: r.h + 2 * C })), ...tagRects, ...(loose ? [] : corners), ...(hard ? families.filter(f => (f.nodeIds || []).includes(e.s.id) !== (f.nodeIds || []).includes(e.t.id) && holds(boxEnd[f.id], e.s) !== holds(boxEnd[f.id], e.t)).map(headRect) : []), ...(any ? [] : reserved.map(r => ({ x: r.x - 3, y: r.y - 3, w: r.w + 6, h: r.h + 6 })))];
+    // the name strip of a box the line enters (one that holds one of its ends itself, and not the other), shut to the last resort
+    const loose = allowCross === 3, heads = any && !loose && !soft && families.length ? families.filter(f => (f.nodeIds || []).includes(e.s.id) !== (f.nodeIds || []).includes(e.t.id) && holds(boxEnd[f.id], e.s) !== holds(boxEnd[f.id], e.t)).map(headRect) : [], hard = heads.length > 0;
+    const obs = [...nodeRects.map(r => ({ x: r.x - C, y: r.y - C, w: r.w + 2 * C, h: r.h + 2 * C })), ...tagRects, ...(loose ? [] : corners), ...heads, ...(any ? [] : reserved.map(r => ({ x: r.x - 3, y: r.y - 3, w: r.w + 6, h: r.h + 6 })))];
     // a typed view's line out of a box to something outside it keeps out of that box once it has left it: the box's inside is
     // shut to it, as a card is, though its border makes no grid line (audit 27: a dependency out of an open package turned back
     // in, ran down inside it and crossed its border again)
