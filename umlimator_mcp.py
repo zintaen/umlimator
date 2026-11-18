@@ -123,6 +123,34 @@ def on(v, card):
     return card
 
 
+counted = [None, {}]  # the model's version last counted, and each typed view's element count in it
+
+
+def element_counts(m):
+    """Each typed view's element count, as the page's view pill, About box and views list count it (audit 37): the page's own
+    elementCount (src/canvas/pieces.js) over the module's layout() of the view, in one Node run per version of the model
+    (audit 38: list_views gave len(nodeIds), which leaves out regions, parts and lanes). A map view, a view whose layout
+    throws, or a copy without src/ or Node: none, and list_views counts its nodeIds."""
+    typed = [i for i, v in views(m).items() if m.get("schemaVersion") == 2 and v.get("diagram") not in (None, "map") and isinstance(i, str)]
+    pieces, node_bin = cli.HERE / "src" / "canvas" / "pieces.js", cli.shutil.which("node")
+    if not typed or not pieces.is_file() or not node_bin:
+        return {}
+    at = hashlib.sha256(json.dumps(m, sort_keys=True).encode()).hexdigest()
+    if counted[0] == at:
+        return counted[1]
+    code = (f"import {{ layout }} from {json.dumps(cli.LIB.as_uri())}; import {{ elementCount }} from {json.dumps(pieces.as_uri())};"
+            "let s = ''; for await (const c of process.stdin) s += c; const [m, ids] = JSON.parse(s), out = {};"
+            "for (const id of ids) { try { out[id] = elementCount(m.views.find(v => v && v.id === id), layout(m, id)); } catch { out[id] = null; } }"
+            "process.stdout.write(JSON.stringify(out));")
+    r = cli.run([node_bin, "--input-type=module", "-e", code], input=json.dumps([m, typed]))
+    try:
+        got = {k: v for k, v in json.loads(r.stdout).items() if isinstance(v, int)} if not r.returncode else {}
+    except ValueError:
+        got = {}
+    counted[:] = [at, got]
+    return got
+
+
 def every(m, key):
     """Every card ("nodes") or line ("edges") with an id: the model's own, and each view's."""
     return [x for x in [*(m.get(key) or []), *(x for v in views(m).values() for x in v.get(key) or [])] if isinstance(x, dict) and "id" in x]
@@ -190,7 +218,8 @@ def call(name, a):
             raise
         m = drawn[2]
     if name == "list_views":
-        return {"views": [{"id": i, "title": v.get("title"), "parent": v.get("parent"), "cards": len(v.get("nodeIds") or [])} for i, v in views(m).items()],
+        n = element_counts(m)  # a typed view: the elements it draws, as the page counts them (audit 38)
+        return {"views": [{"id": i, "title": v.get("title"), "parent": v.get("parent"), "cards": n.get(i, len(v.get("nodeIds") or []))} for i, v in views(m).items()],
                 "stories": [{"id": s.get("id"), "title": s.get("title"), "steps": len(s.get("steps") or [])} for s in m.get("stories") or [] if isinstance(s, dict)]}
     if name == "describe_view":
         v, label = view(m, a["view"]), {n["id"]: cli.label_of(n.get("label"), n["id"]) for n in every(m, "nodes")}  # 0 is a label (audit 34)
