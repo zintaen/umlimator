@@ -26,7 +26,7 @@ readers are the module's, in src/readers/).
 BPMN XML is read and written by the module's adapter in Node through bpmn-moddle, which umlimator never installs: `npm
 install bpmn-moddle@10.3.1` in the working folder, or name its folder with --moddle or UMLIMATOR_BPMN_MODDLE.
 """
-import argparse, atexit, base64, contextlib, hashlib, html, io, json, math, os, re, shutil, signal, struct, subprocess, sys, tempfile, urllib.parse, urllib.request, zipfile, zlib
+import argparse, atexit, base64, contextlib, hashlib, html, io, json, math, os, re, shutil, signal, struct, subprocess, sys, tempfile, unicodedata, urllib.parse, urllib.request, zipfile, zlib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -929,6 +929,20 @@ def model_of(text, where=None):
     return (m if isinstance(m, dict) and isinstance(m.get("nodes"), list) and isinstance(m.get("views"), list) else None), None
 
 
+def spelt(top, name):
+    """Whether each part of name, a path below top as git names it, is in its folder under that exact spelling."""
+    nfc = lambda x: unicodedata.normalize("NFC", x)  # a disk may store a name decomposed where git gives it composed
+    at = Path(top)
+    for part in Path(name).parts:
+        try:
+            if nfc(part) not in {nfc(x) for x in os.listdir(at)}:
+                return False
+        except OSError:
+            return False
+        at = at / part
+    return True
+
+
 def diff_since(a):
     git = lambda *x, env=None, put=None: subprocess.run(["git", *x], capture_output=True, text=True, env=env, input=put)
     # a new model not yet added to git is a working-tree change too, named from the top as diff's are (audit 10)
@@ -1011,7 +1025,9 @@ def diff_since(a):
             done.append({"file": name, "error": why})
             md += [f"**{fname}**: cannot be read: {why}", ""]
             continue
-        texts = (old.stdout if old.returncode == 0 else None, (top / name).read_bytes() if (top / name).is_file() else None)
+        # its version now: the file of that exact name, each folder and the file named in the case git gave, so on a disk
+        # that ignores case a model git says was deleted (Map.json) is not read from the one that replaced it (map.json, audit 41)
+        texts = (old.stdout if old.returncode == 0 else None, (top / name).read_bytes() if (top / name).is_file() and spelt(top, name) else None)
         (before, e1), (after, e2) = model_of(texts[0], f"{name} at {a.base}"), model_of(texts[1], name)
         # a model that no longer parses (a conflict marker, a cut) is a change to say, not a file to skip; other JSON that
         # does not parse (a tsconfig.json with comments) is not a model, and neither is a file not named .json (a guide in

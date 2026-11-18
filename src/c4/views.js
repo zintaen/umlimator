@@ -5,7 +5,7 @@ import { SHAPE, r2, sidePorts } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
 import { ownersOn, readingOrder } from '../uml/owners.js';
 import { brLines } from '../typed/draw.js';
-import { c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Problems, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners, c4Rename } from './c4.js';
+import { c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Keys, c4Problems, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners, c4Rename } from './c4.js';
 
 /* ---------- C4's dynamic and deployment views, c4.dynamic and c4.deployment (work package M2.7, notes/milestone-2.md §7.5.2,
    §7.5.3, §5.1) ----------
@@ -153,6 +153,7 @@ const DYN_DEF = { ...C4_DEF,
   title: 'C4 dynamic diagram',
   layout: dynGeo,
   drawn: (model, view) => { const { steps, notes } = dynDrawn(model, view); return [...steps.map(s => s.e.id), ...notes.map(e => e.id)]; }, // its steps and notes' links (audit 38)
+  drawnKeys: undefined, // diff() compares its drawn: a dynamic view draws no implied line
   validate: dynProblems,
   rules: V_RULES,
   describe: dynDescribe,
@@ -280,6 +281,7 @@ const DEP_DEF = {
   boxes: (model, view) => depPic(model, view).boxes,
   owners: depOwners,
   drawn: (model, view) => { const { own, implied } = c4Lines(model, view, depPic(model, view)); return [...own.map(e => e.id), ...implied.flatMap(l => l.of.map(r => r.id))]; }, // as C4_DEF's (audit 38)
+  drawnKeys: (model, view) => c4Keys(c4Lines(model, view, depPic(model, view))), // as C4_DEF's (audit 41)
   validate: depProblems,
   rules: DEP_RULES,
   describe: depDescribe,
