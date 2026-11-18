@@ -73,6 +73,9 @@ const mermaidClip = s => (s.length > 60 ? mermaidCut(s, 57) + '...' : s);
 // a reader's say(line, status, message) into report, which lists MERMAID_REPORT_MAX items, then counts the rest in one
 // last item, kept current as more come (audit 30): a report stays proportionate to the input, as DBML's and BPMN's do (R2)
 // mermaidSort(report) sorts the items by line, stable, the counting item kept last
+// a label that is a number or true is written as its text, as the model draws it (audit 30) and every writer writes it (audit 31);
+// any other value is returned as it is, for the writer to refuse
+const mermaidText = x => (typeof x === 'number' || typeof x === 'boolean' ? String(x) : x);
 const MERMAID_REPORT_MAX = 1000, MERMAID_TAILS = new WeakSet();
 function mermaidSort(report) {
   report.sort((a, b) => a.line - b.line); // stable: one line's items keep their order
@@ -89,4 +92,4 @@ function mermaidSay(report) {
   };
 }
 
-export { mermaidTitle, mermaidFrontTitle, mermaidCut, mermaidClip, mermaidSay, mermaidSort, MERMAID_REPORT_MAX };
+export { mermaidTitle, mermaidFrontTitle, mermaidCut, mermaidClip, mermaidSay, mermaidSort, mermaidText, MERMAID_REPORT_MAX };

@@ -287,12 +287,11 @@ The **sequence diagram** (`uml.sequence`, `examples/checkout-sequence.json`) is 
 | sort, replyTo, operator, covers, refersTo, represents | the properties panel | Enter | `set`; a fragment has no Name field, since its label is drawn nowhere |
 | unwrap a fragment | Delete on its frame | `Delete`, `Shift + Delete` | `delete`: what it held goes to the operand around it |
 | delete one operand | its member row's ✕ | | its occurrences move to just after the fragment, then `delete`; the last operand deletes the fragment |
-| delete a message or a use | | `Delete` or `Shift + Delete` (it lives in the view) | `delete`; a call's replies go with it |
+| delete a message or a use | | `Delete` or `Shift + Delete` (it lives in the view) | `delete`; a call's replies go with it. A model message the view lists by id: `Delete` is `hide`, out of this view only, its replies too; `Shift + Delete` is `delete` |
 | remove a lifeline from the view | Remove from view | `Delete` | `hide`, which takes the messages to and from it, and a `set` of each `covers` without it; the hint says how many messages go |
 | delete a lifeline | Delete from model | `Shift + Delete` | `delete`: its messages go, and `covers` drop it |
 
-A message cannot be hidden from its own view; the gesture is to delete it. `Alt + ↑ / ↓` skips a fragment that would
-hold only the moving run (it has no place in time); a drag to its slot still puts a message there.
+A message the view holds cannot be hidden from it; the gesture is to delete it. A model message the view lists by id leaves this view by Delete and stays in the model. `Alt + ↑ / ↓` skips a fragment that would hold only the moving run (it has no place in time); a drag to its slot still puts a message there.
 
 The **communication diagram** (`uml.communication`, `examples/checkout-communication.json`) is laid out by the layered
 layout, as a class diagram:
@@ -462,9 +461,7 @@ The **profile diagram** (`uml.profile`, `examples/bookshop-profile.json`):
 | rename | double-click once selected | `F2` | `set label`; a renamed or deleted stereotype does not rewrite the elements that name it: they are warned (`stereotype-unknown`) |
 | hide, delete | Remove from view, Delete from model | `Delete`, `Shift + Delete` | `hide`, `delete`; a stereotype's compartment or a tag row is not hidden on its own: the element's whole node is |
 
-The **timing diagram** (`uml.timing`, `examples/bookshop-timing.json`). Times snap to a minor tick (a fifth of the
-ruler's step) by pointer and Alt + arrows; F2's `@` sets them exactly. A change, a message and a constraint cannot be
-hidden: Delete deletes it, and the hint line says so first.
+The **timing diagram** (`uml.timing`, `examples/bookshop-timing.json`). Times snap to a minor tick (a fifth of the ruler's step) by pointer and Alt + arrows; F2's `@` sets them exactly. A change, a constraint and a message the view holds cannot be hidden: Delete deletes it, and the hint line says so first. A model message the view lists by id is taken out of this view by Delete, with its replies, and stays in the model and in every other view that lists it; Shift + Delete deletes it.
 
 | Edit | Pointer | Keyboard | Commands |
 |---|---|---|---|
@@ -492,7 +489,7 @@ Milestone 2 (`docs/diagrams/notes/milestone-2.md` §6, §7) adds one command and
 command is `addView { view, index? }`: a view added to `views`, refused when its id is taken; no command deletes a view.
 The key is `D`, on a selected element that opens no view: it makes that element's level, a new view holding its context,
 and sets the element's `opensView`, in one transaction (`addView`, `add`s and a `set`); Enter then opens it. On an
-element that opens a view already, `D` says so on the hint line and emits nothing. The rest is the typed canvas's
+element that opens a view already, `D` says so on the hint line and emits nothing. On an element that lives in this view only (the view's own `nodes`), it says so too and emits nothing, in C4 and in a data flow diagram alike, since no other view can show it. The rest is the typed canvas's
 gestures (1.7), with each type's hooks:
 
 | Type | Edit | Pointer | Keyboard | Commands |

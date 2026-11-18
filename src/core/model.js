@@ -1,16 +1,23 @@
 import { diagramOf, kindWord, untypedKind, untypedLine, aWord } from './registry.js';
 // an object that holds itself (a host's cycle, which copyOf() keeps) is written "[cycle]" where it comes back on its own path (audit 27:
 // the sorted copy the replacer gives is new each time, so JSON.stringify's own check never fired and the stack overflowed)
-// big: a BigInt marked, so jsonText() writes it bare (2n), not as the text "2n"; a text that starts as the mark does gets one more (audit 29)
-const canon = (x, big) => { const path = [], of = new WeakMap(); // path: the objects above the value written, as the model has them
+// a BigInt marked, so jsonText() writes it bare (2n), not as the text "2n"; a text that starts as the mark does gets one more (audit 29).
+// Always marked, so diff() never reads the text "2n" and the BigInt 2n as one value (audit 31: it compared unmarked); so is a number
+// JSON writes as null (NaN, Infinity, -Infinity), which jsonText() writes bare and diff() tells from null (audit 31)
+const canon = x => { const path = [], of = new WeakMap(); // path: the objects above the value written, as the model has them
   return JSON.stringify(x, function (k, v) { const h = of.get(this) || this, i = path.lastIndexOf(h); if (i < 0) path.push(h); else path.length = i + 1;
-    if (typeof v === 'bigint') return (big ? '\u0000' : '') + v + 'n'; if (big && typeof v === 'string' && v[0] === '\u0000') return '\u0000' + v; if (!v || typeof v !== 'object') return v; if (path.includes(v)) return '[cycle]'; // a BigInt, which JSON cannot write, as 10n (audit 28)
+    if (typeof v === 'bigint') return '\u0000' + v + 'n'; if (typeof v === 'number' && !Number.isFinite(v)) return '\u0000' + v; if (typeof v === 'string' && v[0] === '\u0000') return '\u0000' + v;
+    if (!v || typeof v !== 'object') return v; if (path.includes(v)) return '[cycle]'; // a BigInt, which JSON cannot write, as 10n (audit 28)
     const y = Array.isArray(v) ? v : Object.fromEntries(Object.keys(v).sort().map(f => [f, v[f]])); of.set(y, v); return y; }); };
 // any value as text, to show or tell two apart: JSON, else (a host's cycle or BigInt, which JSON.stringify throws on) as canon() writes it (audit 28),
 // each text value canon() marked read back: a BigInt's mark bare (2n), a text that starts with NUL with the one NUL it has (audit 30: it kept
-// the second). A key (a text followed by :) is never marked, so it is left as written
-const jsonText = x => { try { return JSON.stringify(x); } catch { return canon(x, true).replace(/"(?:[^"\\]|\\.)*"(:?)/g, (t, key) =>
-  key || !t.startsWith('"\\u0000') ? t : /^"\\u0000-?\d+n"$/.test(t) ? t.slice(7, -1) : '"' + t.slice(7)); } };
+// the second). A key (a text followed by :) is never marked, so it is left as written. A number JSON writes as null (NaN, Infinity) is
+// written bare too, as the host wrote it (audit 31: "time null is not a number"). A value that throws even so (a host's toJSON
+// that throws, which JSON.stringify runs again) is "[unreadable]", never an error out of a message (audit 31). The replacer runs only
+// when JSON wrote a null, so a whole model (render.js's same-model test) is written at JSON.stringify's own speed
+const FINITE = (k, v) => { if (typeof v === 'number' && !Number.isFinite(v)) throw v; return v; };
+const jsonText = x => { try { const s = JSON.stringify(x); return s === undefined || !s.includes('null') ? s : JSON.stringify(x, FINITE); } catch { try { return canon(x).replace(/"(?:[^"\\]|\\.)*"(:?)/g, (t, key) =>
+  key || !t.startsWith('"\\u0000') ? t : /^"\\u0000(?:-?\d+n|NaN|-?Infinity)"$/.test(t) ? t.slice(7, -1) : '"' + t.slice(7)); } catch { return '[unreadable]'; } } };
 
 /* ---------- the model's version and the typed core (schema version 2: docs/diagrams/model.md) ----------
    A model with no schemaVersion is version 1, a map, and reads as it always has. Version 2 adds typed elements: each in
@@ -94,6 +101,17 @@ function usedIds(model, into = new Set()) {
       if (k === 'id' && typeof v === 'string') into.add(v); else if (v !== null && typeof v === 'object') todo.push(v); } }
   return into;
 }
+// a value no text is read from though it has a toString: a Symbol (String() writes one, a template or + throws), an object whose
+// toString or toPrimitive throws, and one whose toJSON throws (JSON.stringify runs it: jsonText(), diff()'s canon). Each is left
+// out as unreadable() leaves out a toString that is no function (audit 31: validate(), describe(), diff() and the Mermaid writers
+// threw). Only a host's own conversion is run: Object's and Array's toString (which reads the entries, each checked) and Date's
+// toJSON are not
+const STOCK = new Set([Object.prototype.toString, Array.prototype.toString, Date.prototype.toJSON]);
+const noTextIn = x => { if (typeof x === 'symbol') return true; if (x === null || typeof x !== 'object') return false;
+  try { const t = x.toString, p = x[Symbol.toPrimitive], j = x.toJSON;
+    if (typeof j === 'function' && !STOCK.has(j)) j.call(x, '');
+    if (typeof p === 'function' || (typeof t === 'function' && !STOCK.has(t))) String(x); // no function: the copy is a plain object (bare)
+    return false; } catch { return true; } };
 function unreadable(model) {
   const bad = x => { try { return x !== null && typeof x === 'object' && Object.hasOwn(x, 'toString') && typeof x.toString !== 'function'; } catch { return true; } };
   // role: what the object walked is. 'tags' (its values are maps by tag name), 'present' (by element id), 'part' (one
@@ -101,7 +119,7 @@ function unreadable(model) {
   const cut = new Map(); // a list's path -> the indices left out of it, as the model has them, rising
   // an object whose keys or values cannot be read (a host's Proxy, a getter that throws) is left out as one with a toString
   // that is no function is, in a map by id too (audit 24)
-  const thrown = new Set(); // paths of values that threw when read
+  const thrown = new Set(), mute = new Set(); // paths of values that threw when read; of values no text is read from (noTextIn)
   // an object String() finds no toString in (one with no prototype: a host's table by name, a parsed query string) is read, not left
   // out: the copy is a plain object, whose toString is Object's (audit 30: validate() and the ER, requirement and state writers threw)
   let bare = false; const noText = o => { try { return typeof o.toString !== 'function' && typeof o[Symbol.toPrimitive] !== 'function'; } catch { return false; } };
@@ -112,22 +130,25 @@ function unreadable(model) {
       for (let i = keys.length - 1; i >= 0; i--) { const k = keys[i], q = list ? `${p}[${k}]` : p ? `${p}.${k}` : k; let x, gone = false;
         try { x = o[k]; } catch { gone = true; }
         const map = !list && (BY_ID.has(k) || role === 'tags' || (role === 'part' && k === 'ports'));
-        if (gone || x === GONE || bad(x) && !map) { at.push(q); if (gone && !fix) thrown.add(q); if (fix && list) { o.splice(+k, 1); cut.set(p, [+k, ...cut.get(p) || []]); } else if (fix) delete o[k]; }
+        // in the copy, what the model's walk found (a class's instance whose toString throws is a plain object there)
+        const odd = fix ? mute.has(q) : !gone && x !== GONE && !map && !bad(x) && noTextIn(x);
+        if (gone || x === GONE || bad(x) && !map || odd) { at.push(q); if (gone && !fix) thrown.add(q); if (odd && !fix) mute.add(q); if (fix && list) { o.splice(+k, 1); cut.set(p, [+k, ...cut.get(p) || []]); } else if (fix) delete o[k]; }
         else if (x !== null && typeof x === 'object') todo.push([x, q, list ? null : role === 'present' ? 'part' : role ? null : k === 'tags' || k === 'present' ? k : null]); } }
     return at; };
   const same = path => path;
-  if (!model || typeof model !== 'object') return { paths: [], model, back: same, thrown };
+  if (!model || typeof model !== 'object') return { paths: [], model, back: same, thrown, mute };
   const paths = walk(model, false);
-  if (!paths.length && !bare) return { paths, model, back: same, thrown };
+  if (!paths.length && !bare) return { paths, model, back: same, thrown, mute };
   const copy = copyOf(model, GONE); walk(copy, true);
   // each [n] in turn, under the path before it as the model has it: the n-th entry of that list the copy kept
   const back = path => typeof path !== 'string' || !cut.size ? path : path.replace(/\[(\d+)\]/g, (w, n, i, s) => { const gone = cut.get(back(s.slice(0, i)));
     if (!gone) return w; let j = +n; for (const g of gone) if (g <= j) j++; else break; return `[${j}]`; });
-  return { paths: paths.sort(), model: copy, back, thrown };
+  return { paths: paths.sort(), model: copy, back, thrown, mute };
 }
 // a value as text, read as the model unreadable() gives back reads it: one it would leave out reads as no value
-// ("undefined"), so a raw model names a line as the drawn page names it (audit 21)
-const textOf = x => x === null || typeof x !== 'object' ? String(x) : Object.hasOwn(x, 'toString') && typeof x.toString !== 'function' ? 'undefined' : String(unreadable(x).model);
+// ("undefined"), so a raw model names a line as the drawn page names it (audit 21); a Symbol, and a value whose own toString
+// throws, too (audit 31)
+const textOf = x => { try { return typeof x === 'symbol' ? 'undefined' : x === null || typeof x !== 'object' ? String(x) : Object.hasOwn(x, 'toString') && typeof x.toString !== 'function' ? 'undefined' : String(unreadable(x).model); } catch { return 'undefined'; } };
 // a table by name a host hands in (drift's and sequenceFromTrace's match): each own key, any name toString too, to text or a
 // number; any other value is no entry (audit 21)
 const nameTable = x => { const t = new Map(); if (x && typeof x === 'object' && !Array.isArray(x)) Object.keys(x).forEach(k => { const v = x[k]; if (typeof v === 'string' || typeof v === 'number') t.set(k, String(v)); }); return t; };
@@ -139,10 +160,12 @@ const nameTable = x => { const t = new Map(); if (x && typeof x === 'object' && 
 // said by validate() for a card, a line, a member and every other element (audit 29). A number is drawn as written; null is no label
 // what names an element: its label, else its id. A number is a label, 0 too (audit 30: `label || id` named a card labelled 0 by its id)
 const labelOr = (label, id) => label == null || label === '' ? id : label;
-function labelProblem(x, at) {
-  const l = x && typeof x === 'object' ? x.label : undefined; if (l == null || typeof l === 'string' || typeof l === 'number') return null;
+// key: the field read, a label by default; a view's title too (audit 31: a view's title, a box's label and a card's label in a
+// view's nodeOverrides were drawn as "[object Object]" and said nowhere)
+function labelProblem(x, at, key = 'label') {
+  const l = x && typeof x === 'object' ? x[key] : undefined; if (l == null || typeof l === 'string' || typeof l === 'number') return null;
   let shown; try { shown = String(l); } catch { shown = ''; }
-  return { level: 'warning', path: at + '.label', message: `label ${jsonText(l)} is not text: drawn as ${jsonText(shown)}` };
+  return { level: 'warning', path: `${at}.${key}`, message: `${key} ${jsonText(l)} is not text: drawn as ${jsonText(shown)}` };
 }
 function typedProblems(model) {
   const out = [], err = (path, message) => out.push({ level: 'error', path, message }), warn = (path, message) => out.push({ level: 'warning', path, message });
@@ -171,18 +194,24 @@ function typedProblems(model) {
   const shows = (v, i, x, what, at) => { const own = /^views\[(\d+)\]/.exec(at); if (own) return +own[1] === i;
     if (what === 'node') return arr(v.nodeIds).includes(x.id);
     return Array.isArray(v.edges) ? v.edges.includes(x.id) : arr(v.nodeIds).includes(x.from) && arr(v.nodeIds).includes(x.to); };
-  const drawnAs = (v, x, what) => { const T = typedView(v) ? diagramOf(v) : null, none = x.type == null || x.type === '', bare = !String(x.type ?? '').includes('.');
+  // at: the element's path. A typed view that lists no lines draws only its type's own kinds of line between its cards (each
+  // type's writer: a use case view its associations, includes and the like), so a model line of no notation is not drawn there
+  // (audit 31: it was said "drawn as a plain line"), unless its type draws every line (T.allLines: a block definition diagram)
+  const drawnAs = (v, x, what, at) => { const T = typedView(v) ? diagramOf(v) : null, none = x.type == null || x.type === '', bare = !String(x.type ?? '').includes('.');
     if (!T) return `drawn as a plain ${what === 'line' ? 'line' : 'card'}`;
+    if (what === 'line' && bare && !T.allLines && !Array.isArray(v.edges) && !/^views\[/.test(at)) return 'not drawn';
     if (what === 'line') { const w = bare ? untypedLine(T) : Array.isArray(T.drawsOnly) || T.untypedLine === null ? null : 'Line'; return w ? `drawn as ${w === 'Line' ? 'a plain line' : aWord(w.toLowerCase())}` : 'not drawn'; }
     if (!none) return null; const w = untypedKind(T); return w ? `drawn as ${aWord(w.toLowerCase())}` : 'not drawn'; };
   const typeOf = (x, at, needed, what = 'node') => { if (!isObj(x)) return;
     if (!(x.type == null ? needed : typeof x.type !== 'string' || !TYPE.test(x.type))) return;
     let said = what === 'member' ? 'not drawn' : null;
     if (!said) { const by = new Map(); let quiet = false;
-      VIEWS.forEach(([v, i]) => { if (!shows(v, i, x, what, at)) return; const p = drawnAs(v, x, what); if (p) by.set(p, [...by.get(p) || [], v.id]); else quiet = true; });
+      VIEWS.forEach(([v, i]) => { if (!shows(v, i, x, what, at)) return; const p = drawnAs(v, x, what, at); if (p) by.set(p, [...by.get(p) || [], v.id]); else quiet = true; });
       said = !by.size ? null // listed by no view, or by none that says how: drawn nowhere it can tell of
         : by.size === 1 && !quiet ? [...by.keys()][0] : [...by].map(([p, ids]) => `${p} in view ${ids.map(id => JSON.stringify(id)).join(', ')}`).join('; '); }
-    warn(at + '.type', `type ${jsonText(x.type)} is not <notation>.<Name> (${what === 'line' ? 'uml.Dependency' : what === 'member' ? 'uml.Property' : 'uml.Class'})${said ? ': ' + said : ''}`); };
+    // no type at all is said so, not as the value undefined (audit 31: "type undefined is not ...")
+    const eg = what === 'line' ? 'uml.Dependency' : what === 'member' ? 'uml.Property' : 'uml.Class';
+    warn(at + '.type', `${x.type == null ? `has no <notation>.<Name> type (${eg})` : `type ${jsonText(x.type)} is not <notation>.<Name> (${eg})`}${said ? ': ' + said : ''}`); };
   const nodes = arr(m.nodes);
   nodes.forEach((n, i) => { element(n, `nodes[${i}]`, 'node'); typeOf(n, `nodes[${i}]`, false); });
   const typedEdge = e => isObj(e) && e.type != null;

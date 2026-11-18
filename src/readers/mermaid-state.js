@@ -386,9 +386,15 @@ function writeMermaidState(model, viewId) {
   const isNode = new Set(nodes.map(n => n.id)), stateOf = new Map(nodes.filter(n => n.type === 'uml.State').map(n => [n.id, n]));
   const regionsOf = new Map(), regionAt = new Map(); // a state's regions; a region's id -> its state
   for (const st of stateOf.values()) {
-    const rs = arr(st.members).filter(x => isObj(x) && x.type === 'uml.Region');
-    for (const r of rs) if (!okId(r.id) || /\s/.test(r.id) || regionAt.has(r.id) || isNode.has(r.id)) { lose(st.id, `region ${r.id}, whose id the reader cannot carry`); } else regionAt.set(r.id, st);
-    regionsOf.set(st.id, rs.filter(r => regionAt.get(r.id) === st));
+    let rs = arr(st.members).filter(x => isObj(x) && x.type === 'uml.Region');
+    rs = rs.filter(r => { const bad = !str(r.id) || regionAt.has(r.id) || isNode.has(r.id); if (bad) lose(st.id, `region ${r.id}, whose id the reader cannot carry`); else regionAt.set(r.id, st); return !bad; });
+    // a %% region: hint (one region, an id not the reader's own <state>.r<k>, a label) is split at its first space, so only
+    // a region that needs one must have an id with no space; one the reader derives is written as a plain -- (audit 31).
+    // Each refusal moves the regions after it, so again until none is refused
+    for (let again = true; again;) { again = false;
+      rs = rs.filter((r, k) => { const hint = rs.length === 1 || r.id !== `${st.id}.r${k + 1}` || has(r.label); if (!hint || (okId(r.id) && !/\s/.test(r.id))) return true;
+        lose(st.id, `region ${r.id}, whose id the reader cannot carry`); regionAt.delete(r.id); again = true; return false; }); }
+    regionsOf.set(st.id, rs);
   }
   // each node's scope: '' the top, a state's id (no regions), or a region's id; a parent the view does not show is the top
   const keyOf = new Map();

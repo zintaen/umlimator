@@ -333,6 +333,15 @@ with tempfile.TemporaryDirectory() as tmp:
         git("checkout", "-q", "--", "docs/map.json")
         cli("diff", "--base", "HEAD", "--out", str(t / "pr2"), cwd=g)
         ok("diff --base · says so when no map changed", "No map model changed." in ((t / "pr2" / "summary.md").read_text(encoding="utf-8") if (t / "pr2" / "summary.md").is_file() else ""))
+        # audit 31: a change only to a story or the map's title was "No map model changed.", so the Action counted 0 and posted nothing
+        was = (g / "docs" / "map.json").read_text()
+        (g / "docs" / "map.json").write_text(json.dumps(json.loads(was) | {"title": "Bike share v2", "stories": [*json.loads(was).get("stories", []), {"id": "ride-31", "title": "A ride", "steps": [{"view": bike["views"][0]["id"], "caption": "start"}]}]}, indent=1))
+        r = cli("diff", "--base", "HEAD", "--out", str(t / "pr31"), cwd=g) or []
+        md = (t / "pr31" / "summary.md").read_text(encoding="utf-8") if (t / "pr31" / "summary.md").is_file() else ""
+        ok("diff --base · a pull request that only adds a story and retitles the map is a change, said in words (audit 31)",
+           [x.get("file") for x in r] == ["docs/map.json"] and "adds the story A ride" in r[0].get("summary", []) and any(x.startswith("retitles the map ") for x in r[0].get("summary", []))
+           and "No map model changed." not in md, (r, md[:300]))
+        (g / "docs" / "map.json").write_text(was)
         (t / "notes.txt").write_text("hi")
         r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "diff", "--base", "HEAD", "--out", str(t / "notes.txt")], capture_output=True, text=True, cwd=g)
         ok("diff --base · --out naming a file is said in one line, not a traceback (audit 14)", r.returncode == 1 and "is a file" in r.stderr and "Traceback" not in r.stderr

@@ -247,6 +247,8 @@ function dfdKey(model, view, ids, key) {
   if (key !== 'd' && key !== 'D') return null;
   const I = dfdIndex(model), p = ids.length === 1 && I.proc(ids[0]) ? I.at.get(ids[0]) : null; if (!p) return null;
   if (p.opensView != null) return { error: `${I.q(p.id)} opens "${p.opensView}" already: Enter opens it` };
+  // a process this view alone holds (view.nodes): no other view can show it, so no level can be its, as C4's D refuses (audit 31)
+  if (DFD_ARR(view && view.nodes).some(x => DFD_OBJ(x) && x.id === p.id)) return { error: `${I.q(p.id)} lives in this view only: no other view can show it` };
   const used = dfdUsed(model), n = dfdNum(p), kn = dfdFreeNum(I, 'dfd.Process', n ? n + '.' : '');
   // a far end this view alone holds (view.nodes) no other view can show: it and its flow stay out, said (audit 25)
   const own = new Set(DFD_ARR(view.nodes).filter(x => DFD_OBJ(x) && I.at.get(x.id) === x).map(x => x.id)), far = e => (e.from === p.id ? e.to : e.from);

@@ -1,5 +1,5 @@
 import { unreadable } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort, mermaidText } from './mermaid-front.js';
 /* ---------- Mermaid erDiagram: a reader and a writer (notes/milestone-2.md §8.1, M2.8; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's entity relationship page (docs/syntax/entityRelationshipDiagram.md, read 14 Nov 2026)
    and its lexer (packages/mermaid/src/diagrams/er/parser/erDiagram.jison), as the other readers are against theirs.
@@ -390,8 +390,9 @@ function writeMermaidEr(model, viewId) {
     const [name, hinted] = names.get(n.id);
     extra(n, ['id', 'type', 'label', 'members']);
     let alias = '';
-    if (typeof n.label === 'string' && n.label !== '') { if (hinted || n.label !== n.id) alias = `["${meEncode(n.label)}"]`; }
-    else lose(n.id, n.label === '' ? 'an empty label, read as its name' : n.label == null ? 'no label, read as its name' : `label ${n.label}, which is not text`);
+    const lab = mermaidText(n.label); // a number or true as its text (audit 31)
+    if (typeof lab === 'string' && lab !== '') { if (hinted || lab !== n.id) alias = `["${meEncode(lab)}"]`; }
+    else lose(n.id, lab === '' ? 'an empty label, read as its name' : lab == null ? 'no label, read as its name' : `label ${lab}, which is not text`);
     const rows = [], labels = new Set();
     for (const x of arr(n.members).filter(isObj)) {
       const p = isObj(x.props) ? x.props : {}, ext = isObj(x.ext) ? x.ext : {}, me = isObj(ext.mermaid) ? ext.mermaid : {};
@@ -451,8 +452,9 @@ function writeMermaidEr(model, viewId) {
     };
     const left = mark('from', 0), right = mark('to', 1);
     if (typeof p.identifying !== 'boolean') lose(e.id, `identifying ${p.identifying ?? 'unset'}, written as non-identifying`);
-    if (e.label === '' || (e.label != null && typeof e.label !== 'string')) lose(e.id, e.label === '' ? 'an empty label, read as none' : `label ${e.label}, which is not text`);
-    const label = typeof e.label === 'string' ? meEncode(e.label) : '';
+    const el = mermaidText(e.label);
+    if (el === '' || (el != null && typeof el !== 'string')) lose(e.id, el === '' ? 'an empty label, read as none' : `label ${el}, which is not text`);
+    const label = typeof el === 'string' ? meEncode(el) : '';
     out.push(...(hint ? [`  %% id: ${hint}`] : []), `  ${names.get(e.from)[0]} ${left}${p.identifying === true ? '--' : '..'}${right} ${names.get(e.to)[0]} : "${label}"`);
   }
   for (const x of notWritten) out.push(`  %% not written: ${x}`);

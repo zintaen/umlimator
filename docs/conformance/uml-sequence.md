@@ -40,8 +40,7 @@ refused, and may leave one.
   `ignore`, `consider`), drawn by name with a warning.
 - An actor drawn as a figure («actor» is text); parsed message signatures (a label is text); an interaction use that
   opens its view (stage 4); notes in a sequence view; message numbers (`autonumber`).
-- Hiding a message: a message lives in its view, so the gesture is to delete it (`docs/diagrams/risks.md` P12, definition
-  of done item 4).
+- Hiding a message the view holds: it lives in its view, so the gesture is to delete it (`docs/diagrams/risks.md` P12, definition of done item 4). A model message the view lists by id is taken out of the view by Delete, with its replies, and deleted by Shift + Delete.
 - `represents` is text, not a reference to a class (M8). Copy and paste (E7). XMI.
 - A lifeline created in one operand of an `alt` keeps its stem through the other operands (spike risk 4.5): accepted,
   as the stem has nowhere else to go; `tests/sequence-stress.json`'s `edge-cases` view draws it. A create of it in another

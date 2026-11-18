@@ -350,7 +350,7 @@ test('hostile files are read or refused in under a second each, and never throw 
   }
   const msgs = name => said[name].report.map(x => `${x.line} ${x.status}: ${x.message}`);
   assert.deepEqual(msgs('over-1-mib (made here)'), [` skipped: over ${1 << 20} characters: nothing read (R2)`]);
-  assert.deepEqual(msgs('entities.bpmn'), [' skipped: unparsable content ]>: not read', ' skipped: no diagram interchange: every element is in one view, process']);
+  assert.deepEqual(msgs('entities.bpmn'), [' skipped: unparsable content ]>: non-whitespace outside of root node: not read', ' skipped: no diagram interchange: every element is in one view, process']);
   assert.deepEqual(said['entities.bpmn'].model.nodes.map(n => n.label), ['&e;', 'Plain']); // never expanded
   assert.deepEqual(msgs('dangling.bpmn'), ['b skipped: unresolved reference <nowhere>: not read', 'f skipped: unresolved reference <nowhere>: not read',
     's skipped: unresolved reference <ghost>: not read', 'f skipped: SequenceFlow whose target is not read: kept under ext.bpmn, not read', R5.line + ' skipped: ' + R5.message]);
@@ -549,4 +549,18 @@ test('audit 27: the reader says a line the diagram keeps and does not draw', nee
   const one = pools.replace('<bpmn:participant id="b" name="Customer"/>', '<bpmn:participant id="b" name="Customer" processRef="pb"/>').replace('targetRef="b"', 'targetRef="t"')
     .replace('</bpmn:collaboration>', '</bpmn:collaboration><bpmn:process id="pb"><bpmn:task id="t"/></bpmn:process>');
   assert.deepEqual((await read(one, BpmnModdle())).report.filter(r => r.line), [], 'a message flow to a task is drawn: nothing said');
+});
+
+// audit 31: moddle drops a second element with an id the file already gave, and its warning names the id and the cause only
+// past its first line, which the report cut: said by that id, and a warning's cause kept
+test('audit 31: a second element with an id already given is said by that id; a moddle warning keeps its cause', needs, async () => {
+  const x = '<?xml version="1.0"?><bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" id="defs"><bpmn:process id="p">'
+    + '<bpmn:startEvent id="s"/><bpmn:task id="Task_1" name="Check order"/><bpmn:task id="Task_1" name="Ship order"/><bpmn:endEvent id="e"/>'
+    + '<bpmn:sequenceFlow id="f1" sourceRef="s" targetRef="Task_1"/><bpmn:sequenceFlow id="f2" sourceRef="Task_1" targetRef="e"/></bpmn:process></bpmn:definitions>';
+  const r = await read(x, BpmnModdle());
+  assert.deepEqual(r.model.nodes.map(n => n.label ?? n.id), ['s', 'Check order', 'e']);
+  assert.deepEqual(r.report[0], { line: 'Task_1', status: 'skipped', message: 'a second element with the id Task_1 (bpmn:task): not read' });
+  // a duplicate sequence flow too, by its own id and kind
+  const f = await read(x.replace('<bpmn:sequenceFlow id="f2"', '<bpmn:sequenceFlow id="f1"').replace('<bpmn:task id="Task_1" name="Ship order"/>', ''), BpmnModdle());
+  assert.deepEqual(f.report[0], { line: 'f1', status: 'skipped', message: 'a second element with the id f1 (bpmn:sequenceFlow): not read' });
 });
