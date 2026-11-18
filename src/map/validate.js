@@ -158,7 +158,7 @@ export function validate(model) {
   if (m.stories != null && !Array.isArray(m.stories)) err('stories', 'stories is a list of stories');
   const modelLine = new Map(arr(m.edges).filter(e => e && typeof e === 'object' && typeof e.id === 'string').map(e => [e.id, e])), cardIds = new Set(arr(m.nodes).filter(n => n && typeof n === 'object').map(n => n.id));
   // a line written in a view is that view's (audit 39: a step on another view named it, and selected nothing there)
-  const drewOf = new Map(), posLines = lineNames(m), sids = new Set(), inline = new Map();
+  const drewOf = new Map(), geoOf = new Map(), posLines = lineNames(m), sids = new Set(), inline = new Map();
   views.forEach(v => arr(v.edges).forEach(e => { if (e && e.id != null && !inline.has(e.id)) inline.set(e.id, v.id); }));
   let ctx; // the model laid out, for what a typed view draws when its type does not say (audit 39), made once and only if asked
   arr(m.stories).forEach((s, i) => {
@@ -179,6 +179,9 @@ export function validate(model) {
         if (T) try { d = new Set(typeof T.drawn === 'function' ? arr(T.drawn(m, v)) : (g => [...g.edges.flatMap(e => (e.all || [e]).map(x => x._id)),
           ...Object.keys(g.byId || {})])(held(() => (ctx ||= mapContext(m)).buildGeo(v.id))[0])); } catch { d = null; }
         drewOf.set(v, d); } return drewOf.get(v); };
+      // the ids of the lines a typed view's picture draws, an implied line's ("a->b") too; null: a model that could not be laid out
+      const lineIdsOf = () => { if (!geoOf.has(v)) { let d = null; try { d = new Set(held(() => (ctx ||= mapContext(m)).buildGeo(v.id))[0].edges.map(e => e._id)); } catch { d = null; }
+        geoOf.set(v, d); } return geoOf.get(v); };
       const why = (x, seen) => { // why a model line x is no line of the view, or undefined
         if (typeof x !== 'string' || mine.has(x) || !modelLine.has(x) || seen.has(x) || arr(v.edges).some(e => e && e.id === x)) return undefined; seen.add(x);
         const l = modelLine.get(x), card = [l.from, l.to].find(k => cardIds.has(k) && !mine.has(k) && !boxes.has(k));
@@ -187,13 +190,15 @@ export function validate(model) {
         if (drawn() && !drawn().has(x)) return 'the view does not draw it';
         const line = [l.from, l.to].find(k => why(k, seen) != null);
         return line != null ? `its end "${line}" is no line of the view` : undefined; };
+      // "a->b" with no "#n" names a typed view's implied line (C4), which it must draw (audit 41: one a direct line replaced, or
+      // one another view draws, selected nothing); a map's lines with no id are named "a->b#n" only
       const named = (x, q) => { // a card of the view or a line ("a->b#0" names a line with no id)
         // a model line to a card the view does not show is no line of it, as such a card is no card of it (audit 36); nor is one
         // its edges list leaves out, or one to a line it does not draw (audit 37)
         const off = why(x, new Set());
         if (off != null) err(q, `"${x}" is no line of view "${v.id}": ${off}`);
         else if (typeof x === 'string' && !mine.has(x) && !lineIds.has(x) && inline.has(x) && !arr(v.edges).some(e => e && e.id === x)) err(q, `"${x}" is no line of view "${v.id}": it is written in view "${inline.get(x)}"`);
-        else if (typeof x === 'string' && !mine.has(x) && !lineIds.has(x) && !inline.has(x)) { if (!x.includes('->')) err(q, `"${x}" is neither one of view "${v.id}"'s cards nor a line`); else if (/#\d+$/.test(x) && !posLines.get(listOf(m, m.views.indexOf(v))).has(x)) warn(q, `"${x}" names no line: the step shows nothing for it`); }
+        else if (typeof x === 'string' && !mine.has(x) && !lineIds.has(x) && !inline.has(x)) { if (!x.includes('->')) err(q, `"${x}" is neither one of view "${v.id}"'s cards nor a line`); else if (/#\d+$/.test(x) ? !posLines.get(listOf(m, m.views.indexOf(v))).has(x) : typedView(v) ? lineIdsOf() && !lineIdsOf().has(x) : true) warn(q, `"${x}" names no line: the step shows nothing for it`); }
         else if (x && typeof x === 'object') [x.type !== 'container' && x.id, x.node, ...arr(x.ids)].forEach(y => typeof y === 'string' && named(y, q)); }; // a Ref
       named(st.select, p + '.select');
       arr(st.highlight).forEach((x, k) => named(x, `${p}.highlight[${k}]`));

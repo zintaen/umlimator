@@ -88,6 +88,13 @@ function routeAudit(geo, where, only, refs) { // only: a set of edges; counts ju
   });
   (geo.blocks || []).forEach(b => geo.edges.forEach((o, j) => { if (segHit({ x: b.x + 1, y: b.y + 1, w: b.w - 2, h: b.h - 2 }, j)) say(`${where}: lane "${b.title || ''}": header crossed by edge ${name(o)}`, o); }));
   const families = geo.families || [], inside = (a,b) => b.x > a.x && b.y > a.y && b.x+b.w < a.x+a.w && b.y+b.h < a.y+a.h;
+  // a box over a card it does not hold, itself or through a box in it (audit 41: a pinned box grown round a card with no pin
+  // covered its neighbour, which then read as the box's own); a port by its owner, a frame that holds what it meets, a box's own card
+  const fam = Object.create(null), upTo = (f, id) => { for (let k = 0, x = id; x != null && k <= families.length; x = (fam[x] || {}).parent, k++) if (x === f.id) return true; return false; };
+  if (!only && families.length && geo.nodes) { families.forEach(f => { fam[f.id] = f; });
+    const homes = Object.create(null); families.forEach(f => (f.nodeIds || []).forEach(id => { (homes[id] ||= []).push(f.id); }));
+    families.forEach(f => geo.nodes.forEach(n => { if (n.id === f.id || n.holder || n.owner != null || !hit(f, n, -1) || (homes[n.id] || []).some(h => upTo(f, h))) return;
+      say(`${where}: family "${nm(f)}" lies over "${nm(n)}", which it does not hold`, f, n); })); }
   families.forEach(f => {
     const parent = families.find(p => p.id === f.parent);
     if (f.parent && (!parent || !inside(parent,f))) say(`${where}: family "${nm(f)}" sticks out of its parent`, f);

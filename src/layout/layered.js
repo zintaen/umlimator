@@ -368,8 +368,13 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const boxEnd = Object.fromEntries(families.map(f => [f.id, { id: f.id, label: f.label || f.id, box: true, x: f.x, y: f.y, w: f.w, h: f.h, hd: TB ? headOf(f) : 0,
     decoT: TB ? [] : [[f.x + 8, headOf(f)], ...(f.tabs || []).map(t => [t.x - 6, t.w + 12])], decoB: [] }]));
   const endOf = Object.assign(Object.create(null), boxEnd, byId), end = id => endOf[id], holds = (b, n) => b.box && n !== b && n.x >= b.x && n.y >= b.y && n.x + n.w <= b.x + b.w && n.y + n.h <= b.y + b.h;
+  // a line between a box and something inside it is no line: inside by what the box holds (its cards, its boxes and theirs), not by
+  // where it lies, as viewEdges decides it for a map; a box grown over a card it does not hold dropped that card's line to the box
+  // (audit 41: bike-share's system view, pricing with no pin). A port, on its owner's border, by where it lies, as before
+  const famIn = (b, x) => { for (let k = 0, y = upOf.get(x); y != null && k <= familyDefs.length; y = upOf.get(y), k++) if (y === b) return true; return false; };
+  const joins = (b, n) => b.box && n !== b && (n.box ? famIn(b.id, n.id) : n.owner != null ? holds(b, n) : under(b, n.id));
   const edges = (dg.edges || []).filter(e => { const s = end(e.from), t = end(e.to); if (!s || !t || (e.from === e.to && !loops[e.from])) return false;
-    if (!(LP && e[e.inner + 'Port'] != null) && (holds(s, t) || holds(t, s))) { warn(`no line for edge ${e.id ?? e.from + '->' + e.to}: it joins the box "${(holds(s, t) ? s : t).id}" and something inside it`); return false; }
+    if (!(LP && e[e.inner + 'Port'] != null) && (joins(s, t) || joins(t, s))) { warn(`no line for edge ${e.id ?? e.from + '->' + e.to}: it joins the box "${(joins(s, t) ? s : t).id}" and something inside it`); return false; }
     return true; }).map(e => ({ ...e, s: end(e.from), t: end(e.to) }));
   const segsOf = pts => pts.slice(0, -1).map((a, i) => [a, pts[i + 1]]);
   const segHitsRect = (a, b, r) => { const x1 = Math.min(a[0], b[0]), x2 = Math.max(a[0], b[0]), y1 = Math.min(a[1], b[1]), y2 = Math.max(a[1], b[1]); return x2 > r.x && x1 < r.x + r.w && y2 > r.y && y1 < r.y + r.h; };

@@ -149,3 +149,26 @@ test('audit 36: critical() follows a chain of thousands of cards: walked on a st
   assert.equal(critical(c, 'v').total, 15);
   assert.deepEqual(critical(c, 'v', { from: 'b', to: 'a' }).refs.filter(x => x.type === 'node').map(x => x.id), ['b', 'c', 'a']);
 });
+
+test('audit 41: sequenceFromTrace() and drift() name their new lines with ids the model does not hold, so what they return validates', async () => {
+  const { drift } = await import('../lib/umlimator.js');
+  const errs = m => validate(m).filter(p => p.level === 'error').map(p => p.path + ': ' + p.message);
+  const spans = [{ id: 'a', service: 'web', start: 0, end: 10 }, { id: 'b', parent: 'a', service: 'api', name: 'GET', start: 1, end: 9 }, { id: 'c', parent: 'b', service: 'db', name: 'q', start: 2, end: 5 }];
+  const base = (edges, more = []) => ({ version: 1, title: 't', nodes: [{ id: 'web', label: 'web' }, { id: 'api', label: 'api' }, { id: 'db', label: 'db' }, ...more], edges, views: [{ id: 'v', title: 'V', nodeIds: ['web', 'api', 'db'] }] });
+  // a line, a card and a nested id named as the trace's lines would be, and the ids after them taken too
+  for (const m of [base([{ id: 'trace-1', from: 'web', to: 'api' }]), base([{ id: 'trace-1', from: 'web', to: 'api' }, { id: 'trace-1-2', from: 'api', to: 'db' }]),
+    base([], [{ id: 'trace-2', label: 'x' }]), base([{ id: 'e', from: 'web', to: 'api', props: { id: 'trace-1' } }])]) {
+    assert.deepEqual(errs(m), [], JSON.stringify(m.edges));
+    const out = sequenceFromTrace(m, spans), lines = out.views.at(-1).edges.map(e => e.id);
+    assert.equal(new Set(lines).size, 2); assert.deepEqual(errs(out), [], lines.join(' '));
+  }
+  assert.deepEqual(sequenceFromTrace(base([{ id: 'trace-1', from: 'web', to: 'api' }]), spans).views.at(-1).edges.map(e => e.id), ['trace-1-2', 'trace-2']);
+  // the view it replaces gives its own lines' ids back: run twice, the ids are as the first time
+  const once = sequenceFromTrace(base([]), spans); assert.deepEqual(sequenceFromTrace(once, spans).views.at(-1).edges.map(e => e.id), ['trace-1', 'trace-2']);
+  // drift(): a model line already named "drift:a->b", and two pairs that both read "x->y->z"
+  const d = { version: 1, title: 't', nodes: ['a', 'b', 'c', 'x', 'y->z', 'x->y', 'z'].map(id => ({ id, label: id })), edges: [{ id: 'drift:a->b', from: 'b', to: 'c' }],
+    views: [{ id: 'v', title: 'V', nodeIds: ['a', 'b', 'c', 'x', 'y->z', 'x->y', 'z'], edges: ['drift:a->b'] }] };
+  assert.deepEqual(errs(d), []);
+  const got = drift(d, [{ from: 'a', to: 'b', count: 3 }, { from: 'x', to: 'y->z', count: 1 }, { from: 'x->y', to: 'z', count: 1 }]).model;
+  assert.deepEqual(errs(got), []); assert.deepEqual(got.edges.map(e => e.id), ['drift:a->b', 'drift:a->b-2', 'drift:x->y->z', 'drift:x->y->z-2']);
+});
