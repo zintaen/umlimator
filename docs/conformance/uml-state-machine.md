@@ -50,7 +50,7 @@ panel and `describe()`); a state with both regions and direct substates draws th
 Layout limits, measured on `examples/order-states.json` and `tests/state-stress.json`:
 
 - Port repair is off (`notes/stage-4.md` §17): two lines that cross next to a shared side keep their ports. Example 10
-  has two crossings laid out right and five laid out down; `tests/state-stress.json` none and one in its `edge-cases`
+  has one crossing laid out right (two before audit 36, when the payment region grew to hold its retry loop) and five laid out down; `tests/state-stress.json` none and one in its `edge-cases`
   view, and 19 and 26 in its `all` view (50 states, 60 transitions, composites three deep, two regions a level). Laid out
   down, the `edge-cases` view's fork into the Payment region runs along the border of both regions (L11). Laid out down,
   labels that found no spot were left off with nothing said: since audit 6 they are drawn on a looser spot, which

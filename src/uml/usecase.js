@@ -4,7 +4,7 @@ import { SHAPE, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { brLines } from '../typed/draw.js';
-import { lineIn, lineItem } from './class.js'; // SHAPE.note, a comment's look too
+import { closesCycle, lineIn, lineItem } from './class.js'; // SHAPE.note, a comment's look too
 import { ownersOn, placeTabs, readingOrder } from './owners.js';
 import { snKindName } from './structure.js';
 import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
@@ -293,9 +293,15 @@ function ucOwners(model, x) {
 }
 // an extension point is a member row, by its name
 const ucPointText = t => { const s = String(t ?? '').trim(); return s ? { type: 'uml.ExtensionPoint', label: s, props: {} } : { error: 'An extension point has a name' }; };
-// connect: an association drawn from a use case to an actor is added from the actor, so that actors are ranked first (§8.1)
+// connect: an association drawn from a use case to an actor is added from the actor, so that actors are ranked first (§8.1);
 function ucConnect(model, view, from, to, at, line) {
   const ty = id => (UC_ARR(model.nodes).find(n => UC_OBJ(n) && n.id === id) || {}).type;
+  // a generalization or an include that would close a cycle (generalization-cycle, include-cycle), an extend to its own use
+  // case (extend-ends) is refused, as validate() would flag it (audit 36)
+  if (UC_OBJ(line) && line.type === 'uml.Extend' && from === to) return { error: 'An extend runs from a use case to another use case' };
+  const loop = UC_OBJ(line) && (line.type === 'uml.Generalization' ? closesCycle(model, view, line.type, from, to)
+    : line.type === 'uml.Include' ? closesCycle(model, view, line.type, from, to, 'an include', 'include itself') : null);
+  if (loop) return loop;
   if (!UC_OBJ(line) || line.type !== 'uml.Association' || ty(from) !== 'uml.UseCase' || ty(to) !== 'uml.Actor') return null;
   const used = new Set(); usedIds(model, used);
   let k = 1; while (used.has('association' + k)) k++;

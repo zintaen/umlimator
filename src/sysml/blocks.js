@@ -1,7 +1,7 @@
 import { aWord, kindWord, registerDiagramType } from '../core/registry.js';
-import { CLASS_DEF, RULES, classProblems, drawnLines, lineLabel, lineName, lineRename, parseMember, printMember, typeGeo } from '../uml/class.js';
+import { CLASS_DEF, RULES, classProblems, closesCycle, drawnLines, lineLabel, lineName, lineRename, parseMember, printMember, typeGeo } from '../uml/class.js';
 import { OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder } from '../uml/owners.js';
-import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_TABLE } from './sysml.js';
+import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_PARTS, SYS_ROLES, SYS_TABLE } from './sysml.js';
 import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the block definition diagram, sysml.block-definition (work package M3.3, notes/milestone-3.md §7) ----------
@@ -188,11 +188,13 @@ function bdPrint(m) {
   return `${w} ${printMember({ type: 'uml.Property', label: m.label, props: p })}`;
 }
 const BD_SYNTAX = ['stereotypes', 'visibility', 'valueType', 'multiplicity', 'default', 'isStatic', 'isDerived', 'isAbstract', 'parameters', 'returnType', 'kind', 'direction'];
-// a member row edited: one transaction, its kind too when the keyword changed it; props the syntax does not write are kept
+// a member row edited: one transaction, its kind too when the keyword changed it; props the syntax does not write are kept. A
+// part renamed (still a part) renames the role of its part association too (SYS_ROLES, audit 36)
 function bdEdit(model, owner, m, text) {
   const r = bdParse(text, owner, model); if (r.error) return r;
   const keep = Object.fromEntries(Object.entries(BD_PROPS(m)).filter(([k]) => !BD_SYNTAX.includes(k)));
-  return { commands: [...(r.type !== m.type ? [{ op: 'set', id: m.id, path: 'type', value: r.type }] : []), { op: 'set', id: m.id, path: 'label', value: r.label }, { op: 'set', id: m.id, path: 'props', value: { ...keep, ...r.props } }] };
+  return { commands: [...(r.type !== m.type ? [{ op: 'set', id: m.id, path: 'type', value: r.type }] : []), { op: 'set', id: m.id, path: 'label', value: r.label }, { op: 'set', id: m.id, path: 'props', value: { ...keep, ...r.props } },
+    ...(model && SYS_PARTS.includes(r.type) ? SYS_ROLES(model, m, owner, r.label) : [])] };
 }
 const bdFresh = (model, base) => { const used = new Set(); usedIds(model, used);
   if (!used.has(base)) return base; let k = 2; while (used.has(base + k)) k++; return base + k; };
@@ -203,12 +205,13 @@ function bdMember(model, view, ownerId, id, text) {
   const r = bdParse(text, o, model); if (r.error) return r;
   return [{ op: 'add', element: { id: bdFresh(model, `${o.id}.${r.label}`), type: r.type, label: r.label, ...(Object.keys(r.props).length ? { props: r.props } : {}) }, owner: o.id }];
 }
-/* connect (§7.4): a generalization joins two of one kind (general-kinds), a comment link runs from a comment; a part association
+/* connect (§7.4): a generalization joins two of one kind (general-kinds) and closes no cycle (generalization-cycle), a comment link runs from a comment; a part association
    from a block adds the part property it draws (a constraint property, to a constraint block), named after the part's type,
    and the line naming it by its role (§7.2), one transaction; to anything else it is refused. Else the default */
 function bdConnect(model, view, from, to, at, line) {
   const a = bdNodeOf(model, from), b = bdNodeOf(model, to), t = BD_OBJ(line) ? line.type : null; if (!a || !b) return null;
   if (t === 'uml.Generalization' && (BD_CLS.includes(a.type) || BD_CLS.includes(b.type)) && a.type !== b.type) return { error: `A generalization joins two of one kind: ${bdKind(a)} and ${bdKind(b)} differ` };
+  if (t === 'uml.Generalization') return closesCycle(model, view, t, from, to); // generalization-cycle (audit 36)
   if (t === 'uml.CommentLink' && a.type !== 'uml.Comment') return { error: 'A comment link runs from a comment' };
   const E = BD_OBJ(BD_PROPS(line).ends) ? BD_PROPS(line).ends : {};
   if (t !== 'uml.Association' || !BD_OBJ(E.from) || E.from.aggregation !== 'composite' || !BD_CLS.includes(a.type)) return null;

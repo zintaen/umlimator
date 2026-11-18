@@ -91,14 +91,14 @@ test('every view lays out; check() finds only the crossings its own file keeps',
     assert.ok(g.nodes.length > 0 && g.edges.every(e => e.pts.length >= 2), v.id);
     found.push(...check(M, v.id).map(p => p.message));
   }
-  // fulfil-activity's 2 and order-states' 2, as the CI loop counts them on their own files' plain pass; bookshop-c4's 8
+  // fulfil-activity's 2 and order-states' 1 (2 before audit 36), as the CI loop counts them on their own files' plain pass; bookshop-c4's 8
   // and bookshop-data-flow's 1 (2 before audit 14's request/reply swap), as their own files' (0.24.0, repair and reroute off: notes/milestone-2.md §11); the Google
   // Cloud example's 1, the Azure example's 2 (1 before audit 27, when a line ran back through its own subnet box) and the AWS example's 2 (0.26.0, notes/milestone-4a.md §5.7); the BPMN example's 4 (5 before audit 14)
   assert.ok(found.every(p => / cross$/.test(p)), found.join('\n'));
   const own = name => { const src = JSON.parse(readFileSync(new URL(`../examples/${name}.json`, import.meta.url), 'utf8'));
     return src.views.flatMap(v => check(src, v.id).map(p => p.message)); };
   assert.deepEqual(found, ['fulfil-activity', 'order-states', ...M2, ...M4A, 'bookshop-order-to-shipment'].flatMap(own));
-  assert.deepEqual(found.map(p => p.split(':')[0]), ['view fulfil', 'view fulfil', 'view order-life', 'view order-life',
+  assert.deepEqual(found.map(p => p.split(':')[0]), ['view fulfil', 'view fulfil', 'view order-life',
     ...Array(3).fill('view c4-containers'), ...Array(2).fill('view c4-components'), ...Array(2).fill('view c4-placing-an-order'),
     'view c4-deployment', 'view dfd-level-1', 'view gcp-on-gcp', 'view az-on-azure', 'view az-on-azure', 'view aws-on-aws', 'view aws-on-aws', ...Array(4).fill('view order-to-shipment')]);
 });
