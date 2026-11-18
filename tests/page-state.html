@@ -429,6 +429,35 @@ try {
     box.innerHTML = ''; pg = mountAll(box, one, { instant: true, params: new URLSearchParams() }); await until(() => pg.view && $('m-vpill').querySelector('.n'));
     check('a view of one card says "1 node", not "1 nodes" (audit 38)', $('m-vpill').querySelector('.n').textContent === '1 node' && /^1 node · /.test($('m-vpop').querySelector('.vm').textContent)
       && await palRow('Just one') === '1 node · here' && await palRow('Two') === '2 nodes', [$('m-vpill').querySelector('.n').textContent, $('m-vpop').querySelector('.vm').textContent]);
+    pg.destroy(); pg = null;
+    /* ---------- audit 39: "1 step" and "1 wire"; a numbered view's views-list and search rows count its steps, as its pill;
+       the details panel's Open button counts the view it opens as that view's pill ---------- */
+    const steps = { nodes: [{ id: 'a', label: 'A', kind: 'backend' }, { id: 'b', label: 'B', kind: 'backend' }], edges: [],
+      views: [{ id: 'p', title: 'One step', render: 'process', nodeIds: ['a'] }, { id: 's', title: 'One line', render: 'sequence', nodeIds: ['a', 'b'], edges: [{ id: 'l', from: 'a', to: 'b', label: '<img src=x onerror=alert(1)>' }] }] };
+    box.innerHTML = ''; pg = mountAll(box, steps, { instant: true, params: new URLSearchParams() }); await until(() => pg.view && $('m-vpill').querySelector('.n'));
+    const said = {};
+    for (const [id, title] of [['p', 'One step'], ['s', 'One line']]) { await pg.setView(id); await until(() => pg.view === id && ($('m-vpill').querySelector('.n') || {}).textContent); await wait(30);
+      said[id] = { pill: $('m-vpill').querySelector('.n').textContent, about: $('m-vpop').querySelector('.vm').textContent, list: row(id), here: await palRow(title) }; }
+    check('a view of one step says "1 step" in its pill, views list and search, and one of one line "1 wire" in its About box (audit 39)',
+      said.p.pill === '1 step' && said.s.pill === '1 step' && parseInt(said.p.list) === 1 && parseInt(said.s.list) === 1 && said.p.here === '1 step · here' && said.s.here === '1 step · here'
+      && /^2 nodes · 1 wire\b/.test(said.s.about) && !document.querySelector('#m-vpop img'), said);
+    pg.destroy(); pg = null;
+    const A = await (await fetch('../examples/bookshop-atlas.json')).json(), api = A.views.find(v => v.id === 'api');
+    box.innerHTML = ''; pg = mountAll(box, A, { instant: true, params: new URLSearchParams() }); await until(() => pg.view && document.querySelector('#m-canvas .umlimator'));
+    await pg.setView('api'); await until(() => pg.view === 'api' && ($('m-vpill').querySelector('.n') || {}).textContent); await wait(30);
+    const apiSaid = { pill: $('m-vpill').querySelector('.n').textContent, list: row('api'), here: await palRow(api.title) };
+    check('a sequence map view\'s views-list and search rows count its steps, as its pill does (audit 39: 6 and "6 nodes" against "5 steps")',
+      apiSaid.pill === '5 steps' && parseInt(apiSaid.list) === 5 && apiSaid.here === '5 steps · here', apiSaid);
+    pg.destroy(); pg = null;
+    const S = await (await fetch('../examples/order-service-structure.json')).json(), inner = S.views[0].id;
+    S.nodes.push({ id: 'svc', label: 'Service', opensView: inner }, { id: 'db', label: 'DB', kind: 'db' }); S.views.push({ id: 'top', title: 'Top', nodeIds: ['svc', 'db'], edges: [] }); S.root = 'top';
+    box.innerHTML = ''; pg = mountAll(box, S, { instant: true, params: new URLSearchParams() }); await until(() => pg.view && document.querySelector('#m-canvas .umlimator'));
+    await pg.setView('top'); await until(() => pg.view === 'top'); pg.select({ type: 'node', id: 'svc' }); await until(() => document.querySelector('#m-panel .obtn[data-open] span'));
+    const button = document.querySelector('#m-panel .obtn[data-open] span').textContent;
+    await pg.setView(inner); await until(() => pg.view === inner && ($('m-vpill').querySelector('.n') || {}).textContent); await wait(30);
+    const pill = $('m-vpill').querySelector('.n').textContent;
+    check('the details panel\'s Open button says the count the opened view\'s pill says (audit 39: 3 nodes against 9; the card\'s stack count: tests/aids.test.mjs)',
+      parseInt(pill) > S.views[0].nodeIds.length && button === pill + ' · Enter', { button, pill });
     pg.destroy(); pg = null; }
 } catch (err) { out.fail.push('threw: ' + (err && err.stack || err)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
