@@ -72,7 +72,10 @@ function typedEditor(api) {
   // a re-own, by a drop or the Owner field: reparent, and the removal of a pin it had
   const reown = (id, parent) => { const L = view().layout; return [{ op: 'reparent', id, parent }, ...(isRec(L) && Object.hasOwn(L, id) ? [{ op: 'set', view: api.view(), path: ['layout', id], value: undefined }] : [])]; };
   // a model element never goes into a box one view alone holds (registry.js ownGuard, audit 23): said, nothing emitted
-  const drop = (n, hint, into = null, from = null) => { if (into === from) return (hint.col !== n.col || hint.row !== n.row) && pin(n.id, hint.col, hint.row);
+  // a drop that gives no new owner is a pin: in the box it was in, and a member's anywhere, which keeps its owner (a part dropped
+  // in or out of its frame, the view's subject: apply() refuses a reparent of a member, audit 34)
+  const stays = (id, into, from) => { if (into === from) return true; const e = elementsOf(model()).get(id); return !!e && e.kind === 'member'; };
+  const drop = (n, hint, into = null, from = null) => { if (stays(n.id, into, from)) return (hint.col !== n.col || hint.row !== n.row) && pin(n.id, hint.col, hint.row);
     // the new owner first, then the rule on it: out of every box, the view's subject may be one this view alone holds (audit 24)
     const to = elementsOf(model()).has(into) ? into : view().subject ?? null;
     const H = heldBy(model()), b = H.get(to); if (b && !H.has(n.id)) { api.status(`${b.label ?? b.id} lives in this view only: an element of the model cannot go under it`); return false; }
@@ -290,7 +293,7 @@ function typedEditor(api) {
     cancel: () => { const a = endLink(), b = closeMenu(false); return a || b; },
     linking: () => !!link || !!menu,
     width: () => panel ? panel.offsetWidth + 8 : 0 };
-  if (TYPED.edit) TYPED.edit(I, { api, model, view, def, hook, emit, typed, nodeTypes, picker, picks });
+  if (TYPED.edit) TYPED.edit(I, { api, model, view, def, hook, emit, typed, nodeTypes, picker, picks, stays });
   return I;
 }
 
