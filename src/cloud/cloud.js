@@ -25,7 +25,7 @@ const AWS_LEGAL = 'Amazon Web Services, AWS and the AWS service icons shown are 
 
 const CL_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), CL_ARR = x => (Array.isArray(x) ? x : []);
 const CL_HAS = x => x != null && x !== '';
-const clName = x => String(x.label ?? x.id);
+const clName = x => String(labelOr(x.label, x.id)); // a label "" by its id, as a map's card (audit 34)
 const clProps = x => (CL_OBJ(x.props) ? x.props : {});
 const clPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 

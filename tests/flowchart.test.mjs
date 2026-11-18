@@ -399,3 +399,19 @@ test('audit 29: describe() counts the comment links it draws and names, as C4 do
   m.views[0].edges = ['f1', 'f2', 'n', 'd'];
   assert.equal(describe(m, 'v').split('\n')[0], 'F: a flowchart of 4 nodes, 2 flows and 1 comment link and 1 other line.');
 });
+
+// audit 34: the view's index gathers each node's flows and each label's connectors once, so many connectors of one label read
+// in about linear time; it scanned every flow per lookup and every node per connector, and 2000 alike took 17 s per call
+test('audit 34: 2000 connectors of one label, each with a flow in, and 2000 more with none, validate() and describe() each under 1 s (timed)', () => {
+  const K = 2000, nodes = [N('s', 'Terminator', 'S'), N('e', 'Terminator', 'E')], edges = [];
+  for (let i = 0; i < K; i++) { nodes.push(N(`c${i}`, 'Connector', 'A')); edges.push(F(`f${i}`, 's', `c${i}`)); }
+  for (let i = 0; i < K; i++) { nodes.push(N(`d${i}`, 'Connector', ' a ')); edges.push(F(`g${i}`, `d${i}`, 'e')); }
+  const M = one(nodes, edges), at = f => { const t = performance.now(), r = f(); return [r, performance.now() - t]; };
+  const [found, tv] = at(() => validate(M)), [said, td] = at(() => describe(M, 'v'));
+  assert.ok(tv < 1000, `validate() ${Math.round(tv)} ms`); assert.ok(td < 1000, `describe() ${Math.round(td)} ms`);
+  // the pairs still join: every connector is reached from the one start, and the reading order goes S, c0, d0, E, then the rest
+  assert.deepEqual(found.filter(p => p.rule === 'reachable'), []);
+  const order = said.split('\n').slice(1, 2 * K + 3);
+  assert.deepEqual(order.slice(0, 4), ['Terminator S, a start.', 'Connector A.', 'Connector a.', 'Terminator E, an end.']);
+  assert.equal(order.length, 2 * K + 2);
+});

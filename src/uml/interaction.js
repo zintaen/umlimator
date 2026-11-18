@@ -116,4 +116,17 @@ function interactionProblems(model, view) {
   return out;
 }
 
-export { interactionWalk, activationBars, messageNumbers, replyCallFor, INTERACTION_RULES, interactionProblems };
+/* ---- what a delete takes from every view (audit 34): one count for the sequence, communication and timing hint lines ---- */
+// every change, message and constraint in the model, by kind, once each by id: the timing views' timelines, and the messages of its
+// edges and every view's. A lifeline's states and the core's cascade reach all of them, not one view's (audit 33)
+const interactionEvery = model => { const vs = IA_ARR(model && model.views).filter(IA_OBJ), tl = vs.filter(v => v.diagram === 'uml.timing' && IA_OBJ(v.timeline)).map(v => v.timeline);
+  const one = xs => [...new Map(xs.filter(x => IA_OBJ(x) && typeof x.id === 'string').map(x => [x.id, x])).values()];
+  return { change: one(tl.flatMap(t => IA_ARR(t.changes))), constraint: one(tl.flatMap(t => IA_ARR(t.constraints))),
+    message: one([...IA_ARR(model && model.edges), ...vs.flatMap(v => IA_ARR(v.edges))]).filter(e => e.type === 'uml.Message') }; };
+// what the commands took, read off the model after (next): each kind's elements the model held and holds no more, anywhere
+const interactionGone = (model, next) => { const was = interactionEvery(model), still = new Set(Object.values(interactionEvery(next)).flat().map(x => x.id));
+  return { change: was.change.filter(x => !still.has(x.id)), message: was.message.filter(x => !still.has(x.id)), constraint: was.constraint.filter(x => !still.has(x.id)) }; };
+// "4 changes and 1 constraint": the counts that are not 0, in that order (k: kind → count)
+const interactionCounts = (k, kinds = ['message', 'change', 'constraint']) => kinds.filter(w => k[w]).map(w => `${k[w]} ${k[w] === 1 ? w : w + 's'}`).join(', ').replace(/, ([^,]*)$/, ' and $1');
+
+export { interactionWalk, activationBars, messageNumbers, replyCallFor, INTERACTION_RULES, interactionProblems, interactionEvery, interactionGone, interactionCounts };

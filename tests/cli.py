@@ -568,6 +568,20 @@ with tempfile.TemporaryDirectory() as tmp:
         ok("render · a non-string title, view title, intake logo or member id, or authors that is no object, is refused in one line naming it; a null title renders (audit 18)",
            all(b.returncode == 1 and b.stderr.strip().endswith(f"b18{k}.json: {said[k]}") and "Traceback" not in b.stderr for k, b in bs.items() if k != "null")
            and bs["null"].returncode == 0 and "<title>Main view</title>" in (t / "b18null.html").read_text(), {k: b.stderr[-200:] for k, b in bs.items()})
+        # audit 34: a story's, lens's, rule's or lane's title that is an object or a list was drawn "[object Object]" in the menus and
+        # a rule's mark, and render said nothing: refused as a map title is; a number is drawn as written and renders
+        v0 = two["views"][0]
+        bad = {"story": {"stories": [{"id": "s", "title": {"en": "Tour"}, "steps": [{"view": v0["id"]}]}]}, "lens": {"lenses": [{"id": "l", "title": ["x"], "pick": {"id": "a"}}]},
+               "rule": {"rules": [{"id": "r", "title": {"toString": 1}, "from": {"id": "a"}, "to": {"id": "b"}}]},
+               "lane": {"views": [v0 | {"lanes": [{"title": {"en": "<img src=x onerror=alert(1)>"}, "nodeIds": []}]}]}}
+        said = {"story": "stories[0].title is not text", "lens": "lenses[0].title is not text", "rule": "rules[0].title is not text", "lane": "views[0].lanes[0].title is not text"}
+        for k, v in bad.items():
+            (t / f"b34{k}.json").write_text(json.dumps(two | v))
+        (t / "b34num.json").write_text(json.dumps(two | {"lenses": [{"id": "l", "title": 3, "pick": {"id": "a"}}], "stories": [{"id": "s", "title": "Tour", "steps": [{"view": v0["id"]}]}]}))
+        bs = {k: plain("render", str(t / f"b34{k}.json"), "--out", str(t / f"b34{k}.html"), "--no-check") for k in [*bad, "num"]}
+        ok("render · a story, lens, rule or lane title that is an object or a list is refused in one line naming it; a number renders (audit 34)",
+           all(b.returncode == 1 and b.stderr.strip().endswith(f"b34{k}.json: {said[k]}") and "Traceback" not in b.stderr and not (t / f"b34{k}.html").exists() for k, b in bs.items() if k != "num")
+           and bs["num"].returncode == 0, {k: b.stderr[-200:] for k, b in bs.items()})
         # audit 18: a card's icon or author that is no string names nothing in a still's key (it ended stills in a TypeError)
         for k, v in (("icon", ["server"]), ("author", {"x": 1})):
             (t / f"k18{k}.json").write_text(json.dumps(two | {"nodes": [two["nodes"][0] | {k: v}, two["nodes"][1]]}))

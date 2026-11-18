@@ -93,7 +93,7 @@ function mfCloseAt(s, p) {
   return q - p >= 3 ? q : -1;
 }
 // a link at i: { arrow, text, pipe, end }, or null. The importer's LINK, with its text's close found by one scan: the
-// first close after the text, and no | before it ([^|]+? then \s* then the close)
+// first close after the text and outside quotes, a | in the text kept (audit 34)
 function mfLink(s, i) {
   MF_PLAIN.lastIndex = i;
   let m = MF_PLAIN.exec(s), arrow, text, j;
@@ -102,9 +102,11 @@ function mfLink(s, i) {
     if (!(m = MF_OPEN.exec(s))) return null;
     const a = MF_OPEN.lastIndex, from = m.index + m[0].trimEnd().length; // the text starts at a; it may start in the spaces before
     let at = -1, end = -1;
-    for (let p = a + 1; p < s.length && s[p] !== '|';) {
-      end = mfCloseAt(s, p);
-      if (end >= 0) { at = p; break; }
+    // the text, Mermaid's edgeText, holds any character, | too, up to the first close outside quotes (audit 34); a quote
+    // with no partner is one character
+    for (let p = a; p < s.length;) {
+      if (s[p] === '"') { const q = s.indexOf('"', p + 1); p = q < 0 ? p + 1 : q + 1; continue; }
+      if (p > a && (end = mfCloseAt(s, p)) >= 0) { at = p; break; }
       const c = s[p];
       if (c === '-' || c === '=' || c === '.') while (s[p] === c) p++; else p++; // no close starts inside a run that fails
     }

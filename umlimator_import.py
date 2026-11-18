@@ -908,8 +908,10 @@ SHAPES = [("(((", ")))"), ("([", "])"), ("[[", "]]"), ("[(", ")]"), ("((", "))")
           ("[\\", "\\]"), ("[\\", "/]"), ("[", "]"), ("(", ")"), ("{", "}"), (">", "]")]
 NODE = re.compile(r"\s*([\w$]+(?:[.-][\w$]+)*)")
 LINK = re.compile(r"""\s*(?:(?P<plain>[<ox]?(?:-{2,}[->ox]|={2,}[=>ox]|-?\.+-[>ox]?|~{3,}))
-                     |(?P<open>[<ox]?(?:--|==|-\.))(?P<text>[^|]+?)(?P<close>-{2,}[->ox]|={2,}[=>ox]|(?<!\.)\.+-[>ox]?))
+                     |(?P<open>[<ox]?(?:--|==|-\.))(?P<text>(?:"[^"]*"|"(?![^"]*")|[^"])+?)(?P<close>-{2,}[->ox]|={2,}[=>ox]|(?<!\.)\.+-[>ox]?))
                      \s*(?:\|(?P<pipe>"[^"]*"|[^|]*)\|)?""", re.X)  # a quoted text may hold | (audit 20), as the typed reader's MF_PIPE
+# the dash form's text, Mermaid's edgeText, holds any character, | too, up to the first close outside quotes (audit 34); a
+# quote with no partner is one character, so each " reads one way and a link with no close fails in linear time
 WS, BREAK = re.compile(r"\s*"), re.compile(r'[\s"&|]')  # an edge id ends at a break (statement())
 FLOW_QUIET = re.compile(r"(classDef|class|style|linkStyle|click|direction|accTitle|accDescr)\b")
 

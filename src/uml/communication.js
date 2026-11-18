@@ -7,7 +7,7 @@ import { rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { brLines } from '../typed/draw.js';
 import './frame.js'; // SHAPE.lifeline, the head a lifeline is drawn with
-import { interactionWalk, messageNumbers, replyCallFor, INTERACTION_RULES, interactionProblems } from './interaction.js';
+import { interactionWalk, messageNumbers, replyCallFor, INTERACTION_RULES, interactionProblems, interactionGone, interactionCounts } from './interaction.js';
 
 /* ---------- the communication diagram, uml.communication (work package 3.5, notes/stage-3.md §6) ----------
    Lifelines joined by connectors; messages are model edges, and the view's `edges` lists the connectors, then the messages
@@ -351,18 +351,22 @@ function cmSaid(model, view, ids, fromModel, I, r) {
   const what = CM_ARR(ids).filter(id => I.shown.has(id) || I.E.has(id) && I.E.get(id).type === 'uml.Connector');
   if (!Array.isArray(r) || !what.length) return r;
   let next; try { next = apply(model, r); } catch { return r; }
-  const left = new Set(fromModel ? CM_ARR(next.edges).filter(CM_OBJ).map(e => e.id) : cmIx(next, CM_ARR(next.views).find(v => CM_OBJ(v) && v.id === view.id)).messages.map(m => m.id));
-  const msgs = fromModel ? CM_ARR(model.edges).filter(e => CM_OBJ(e) && e.type === 'uml.Message') : I.messages;
-  const took = msgs.filter(m => !left.has(m.id) && !CM_ARR(ids).includes(m.id)); if (!took.length) return r;
+  // Shift + Delete: what the core's cascade took from every view, a sequence view's own messages and a timing view's changes and
+  // their constraints too, counted as the sequence and timing hints count them (interaction.js, audit 34)
+  const G = fromModel ? interactionGone(model, next) : null, also = G ? interactionCounts({ change: G.change.length, constraint: G.constraint.length }) : '';
+  const left = new Set(fromModel ? [] : cmIx(next, CM_ARR(next.views).find(v => CM_OBJ(v) && v.id === view.id)).messages.map(m => m.id));
+  const took = (fromModel ? G.message : I.messages.filter(m => !left.has(m.id))).filter(m => !CM_ARR(ids).includes(m.id)); if (!took.length && !also) return r;
   const q = x => JSON.stringify(cmNameOf(x)), nm = id => cmNameOf(I.N.get(id) || { id });
   const who = xs => xs.map(id => (I.shown.has(id) ? 'lifeline ' + q(I.N.get(id)) : `connector ${jsonText(nm(I.E.get(id).from) + '–' + nm(I.E.get(id).to))}`)).join(', ');
   // said as done: what the view holds as its own is deleted by Delete too, not hidden (audit 25, as timing's audit 24); a message by what became of it
   const nv = CM_ARR(next.views).find(v => CM_OBJ(v) && v.id === view.id) || {}, still = new Set([...CM_ARR(next.edges), ...CM_ARR(nv.edges)].filter(CM_OBJ).map(e => e.id));
   const deleted = id => r.some(c => CM_OBJ(c) && c.op === 'delete' && c.id === id);
-  const part = (verb, xs, ms) => { const m = ms.length ? `${cmPlural(ms.length, 'message')}: ${ms.map(q).join(', ')}` : '';
+  // a message of the model or of this view is named; the ones other views held as their own (a sequence view's) are counted (audit 34)
+  const here = new Set([...I.messages, ...CM_ARR(model.edges)].filter(CM_OBJ).map(m => m.id)), named = ms => ms.filter(m => here.has(m.id)), far = ms => ms.length - named(ms).length;
+  const part = (verb, xs, ms) => { const m = !ms.length ? '' : `${cmPlural(ms.length, 'message')}${named(ms).length ? ': ' + named(ms).map(q).join(', ') : ''}${named(ms).length && far(ms) ? `, and ${far(ms)} in other views` : ''}`;
     return !xs.length ? (m ? [`${verb} ${m}`] : []) : [`${verb} ${who(xs)}${m ? ` and ${xs.length === 1 ? 'its' : 'their'} ${m}` : ''}`]; };
   const gone = took.filter(m => !still.has(m.id)), kept = took.filter(m => still.has(m.id));
-  const said = [...part('Deleted', what.filter(deleted), gone), ...part('hid', what.filter(id => !deleted(id)), kept)].join('; ');
+  const said = [...part('Deleted', what.filter(deleted), gone), ...part('hid', what.filter(id => !deleted(id)), kept)].join('; ') + (also ? `, and ${also}` : '');
   return { commands: r, say: said.charAt(0).toUpperCase() + said.slice(1) };
 }
 

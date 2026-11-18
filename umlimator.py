@@ -131,6 +131,12 @@ def not_objects(d):
             for i, x in enumerate(lst(d.get("stories"))) if not isinstance(x, dict) or x.get("steps") is not None and not isinstance(x["steps"], list)]
     # a story's id is a name the page and MCP's play_story and refit key on: a list there ended MCP in an internal error (audit 20)
     out += ids("stories", d.get("stories"), ("id",))
+    # a story's, lens's, rule's or lane's title is drawn as text (the menus, a rule's mark): an object or a list there was drawn
+    # "[object Object]", and render said nothing (audit 34); a number is drawn as written
+    shown = lambda x: x is None or isinstance(x, str) or isinstance(x, (int, float)) and not isinstance(x, bool)
+    out += [f"{k}[{j}].title is not text" for k in ("stories", "lenses", "rules") for j, x in enumerate(lst(d.get(k))) if isinstance(x, dict) and not shown(x.get("title"))]
+    out += [f"views[{i}].lanes[{j}].{k} is not text" for i, v in enumerate(lst(d.get("views"))) if isinstance(v, dict) for j, x in enumerate(lst(v.get("lanes")))
+            if isinstance(x, dict) for k in ("title", "label") if not shown(x.get(k))]
     out += ["meta is not an object"] if "meta" in d and not isinstance(d["meta"], dict) else []
     # upstream escapes the page's title and reads authors as an object: a number or a list there ended in a traceback (audit 18)
     out += ["title is not a string"] if not name(d.get("title")) else []

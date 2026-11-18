@@ -82,6 +82,16 @@ test('every view of the eight fixtures, right and down: a line through a node, a
   assert.deepEqual(other, ['view ec-constraint-block: family "par [ConstraintBlock] Top [A constraint block]": header crossed by edge Top→first : Half']);
 });
 
+// audit 34: each note states its generated view's counts as pinned above; the parametric note said 23 findings right after
+// audit 25 lowered the pin to 22
+test('each SysML conformance note states its generated `all` view\'s crossings, and the parametric note its findings, as pinned', () => {
+  for (const t of TYPES) {
+    const note = readFileSync(new URL(`../docs/conformance/sysml-${t}.md`, import.meta.url), 'utf8').replace(/\s+/g, ' '), { right, down } = PINNED[`${t}-stress`].all;
+    assert.match(note, new RegExp(`crosses ${right[0]} times right and ${down[0]} down`), t);
+    if (t === 'parametric') assert.match(note, new RegExp(`crosses ${right[0]} times right and ${down[0]} down, with ${right[1]} and ${down[1]} findings`), t);
+  }
+});
+
 test('the minimal fixtures: what §15.3 says each holds, and no problem', () => {
   for (const t of TYPES) assert.deepEqual(said(FIX[`${t}-minimal`]), [], t);
   const r = FIX['requirement-minimal'];
