@@ -706,3 +706,48 @@ test('a state with two, three or four self-transitions keeps its loops out of th
     }
   }
 });
+
+// audit 37: four state machines the round-36 fuzzer found, laid out right. Small models, so each finding is the one named
+const st37 = (nodes, edges) => {
+  const N = ([id, label, parent]) => ({ id, type: 'uml.State', label, ...(parent ? { parent } : {}) });
+  const ns = [{ id: 'init', type: 'uml.Pseudostate', props: { kind: 'initial' } }, ...nodes.map(N)], es = edges.map(([id, from, to, label]) => ({ id, type: 'uml.Transition', from, to, ...(label ? { label } : {}) }));
+  return { schemaVersion: 2, nodes: ns, edges: es, views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ns.map(n => n.id) }] };
+};
+const notCross = m => check(m, 'v').map(p => p.message).filter(p => !/ cross$/.test(p));
+
+// a line moved to the bottom of S0 (its right side held three) ran down onto the loop S2, below it, comes into its top by
+test('audit 37: a line out of the bottom of a state keeps off the self-transition of the state under it, laid out right', () => {
+  const m = st37([['s0', 'S0'], ['s2', 'S2'], ['s4', 'S4'], ['s6', 'S6'], ['s7', 'S7'], ['s8', 'S8'], ['s9', 'S9']],
+    [['t0', 'init', 's0'], ['t1', 's9', 's7'], ['t3', 's0', 's8'], ['t4', 's0', 's6'], ['t5', 's2', 's6'], ['t6', 's2', 's2'], ['t9', 's4', 's2'], ['t10', 's7', 's8']]);
+  m.nodes.push({ id: 'fin', type: 'uml.FinalState' }); m.views[0].nodeIds.push('fin');
+  m.edges.push({ id: 't2', type: 'uml.Transition', from: 's0', to: 'fin' }, { id: 't8', type: 'uml.Transition', from: 's2', to: 'fin' });
+  assert.deepEqual(notCross(m), []);
+});
+
+// S1 sat 8 px right of S4's loop: the port of S5→S1 on S1's left side lay level with the loop's first run, its stub ended on
+// it, and the line was routed over S1, down through its name strip and in at its left side
+test('audit 37: a composite state beside a state with a self-transition keeps a stub\'s room from the loop, laid out right', () => {
+  const m = st37([['s0', 'S0'], ['s1', 'S1'], ['s2', 'S2', 's1'], ['s4', 'S4'], ['s5', 'S5']],
+    [['t1', 's0', 's5', 'e1'], ['t3', 's5', 's1', 'e3'], ['t4', 's5', 's4', 'evt4 [x > 4] / act()'], ['t5', 's4', 's2', 'e5'], ['t8', 's4', 's4', 'e8']]);
+  assert.deepEqual(notCross(m), []);
+  const g = layout(m, 'v'), s1 = g.families.find(f => f.id === 's1'), loop = g.edges.find(e => e.id === 't8');
+  assert.ok(s1.x - Math.max(...loop.pts.map(p => p[0])) >= 32, `S1 at ${s1.x}, the loop to ${Math.max(...loop.pts.map(p => p[0]))}`);
+});
+
+// four transitions from a composite state to the state beside it: two went to its top, both up the one track by the box
+test('audit 37: four to seven transitions between a composite state and the state beside it each keep a track of their own, laid out right', () => {
+  for (const two of [false, true]) for (const k of [4, 5, 6, 7]) {
+    const m = st37([['a', 'Idle'], ['a1', 'Inner', 'a'], ['b', 'Busy']], [['t0', 'init', 'a'],
+      ...Array.from({ length: k }, (_, i) => ['p' + i, two && i % 2 ? 'b' : 'a', two && i % 2 ? 'a' : 'b', i % 2 ? 'evt' + i + ' [x > 1] / act()' : 'e' + i])]);
+    assert.deepEqual(notCross(m), [], `${k}${two ? ', both ways' : ''}`);
+  }
+});
+
+// a line into S3 crossed S2's left border inside its name strip: the room S5's loop takes moved the box down level with
+// S4's port, and the router's last resort ran through the title, which it held no worse than a crossing
+test('audit 37: a transition into a nested state enters the composite state below its name, laid out right', () => {
+  const m = st37([['s0', 'S0'], ['s1', 'S1'], ['s2', 'S2'], ['s3', 'S3', 's2'], ['s4', 'S4'], ['s5', 'State with a longer name 5', 's2']],
+    [['t1', 's3', 's5', 'e1'], ['t2', 's4', 's3', 'evt2 [x > 2] / act()'], ['t5', 's0', 's4', 'e5'], ['t6', 's2', 's4', 'evt6 [x > 6] / act()'], ['t7', 's5', 's5', 'e7'], ['t8', 's1', 's3', 'e8']]);
+  m.nodes.shift(); m.views[0].nodeIds.shift();
+  assert.deepEqual(notCross(m), []);
+});
