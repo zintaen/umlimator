@@ -1,4 +1,4 @@
-import { copyOf, nameTable, unreadable, jsonText, labelOr } from '../core/model.js';
+import { copyOf, nameTable, unreadable, jsonText, labelOr, usedIds } from '../core/model.js';
 import { diagramOf } from '../core/registry.js';
 import { edgeRefIds } from './api.js';
 import { mapContext } from './context.js';
@@ -163,7 +163,10 @@ export function sequenceFromTrace(model, spans, options = {}) {
     if (from && from !== to) hops.push([from, to, s]); }); // a root span, a caller with no card, or work inside one card: no step
   hops.sort((a, b) => +a[2].start - +b[2].start); // stable: calls that start together keep the trace's order
   const nodeIds = [...new Set(hops.flatMap(([a, b]) => [a, b]))], n = hops.length, took = s => msText(+s.end - +s.start);
-  const edges = hops.map(([from, to, s], i) => ({ id: `${id}-${i + 1}`, from, to, ...(s.name ? { label: String(s.name), sublabel: took(s) } : { label: took(s) }) }));
+  // each line "<view>-<n>", unless the model holds that id (a line, a card, a view): then "<view>-<n>-2" and on, the first free;
+  // the lines of the view it replaces go with it (audit 41: a model with a line "trace-1" came back failing validate())
+  const used = usedIds({ ...out, views: views.filter(v => !(v && String(v.id) === id)) }), free = b => { let k = b; for (let j = 2; used.has(k); j++) k = `${b}-${j}`; used.add(k); return k; };
+  const edges = hops.map(([from, to, s], i) => ({ id: free(`${id}-${i + 1}`), from, to, ...(s.name ? { label: String(s.name), sublabel: took(s) } : { label: took(s) }) }));
   // never under itself: the view it replaces and every view below that one are no home (a parent cycle), walked with a list
   const kids = new Map(), below = new Set([id]), todo = [id];
   views.forEach(v => { if (v && v.parent != null) { const p = String(v.parent); if (!kids.has(p)) kids.set(p, []); kids.get(p).push(String(v.id)); } });

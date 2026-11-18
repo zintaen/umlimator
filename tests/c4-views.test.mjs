@@ -597,3 +597,20 @@ test('audit 30: a dynamic view\'s describe() header counts the comment links it 
   m.views[0].edges = ['r1'];
   assert.equal(describe(m, 'dyn').split('\n')[0], 'Browsing: a C4 dynamic diagram of 3 elements and 1 step.', 'with none, as before');
 });
+
+test('audit 41: a story step selecting an implied line ("a->b") is checked against what the view draws: one a direct line replaced, or a mistyped one, names no line', () => {
+  const m = JSON.parse(readFileSync(new URL('./c4-stress.json', import.meta.url))), vid = 'ec-landscape', id = 'ec-user->ec-sys';
+  assert.ok(layout(m, vid).edges.some(e => e._id === id && e.implied), 'the view draws the implied line');
+  const steps = (mm, ...sel) => { const c = structuredClone(mm); c.stories = [{ id: 's', title: 'S', steps: sel.map(([view, select]) => ({ view, select })) }];
+    return validate(c).filter(p => p.path.startsWith('stories')).map(p => `${p.level} ${p.path}: ${p.message}`); };
+  assert.deepEqual(steps(m, [vid, id]), [], 'drawn: no problem');
+  const direct = structuredClone(m); direct.edges.push(Rel('direct', 'ec-user', 'ec-sys', 'Calls'));
+  assert.ok(!layout(direct, vid).edges.some(e => e._id === id), 'a direct relationship takes the implied line\'s place');
+  assert.deepEqual(steps(direct, [vid, id]), [`warning stories[0].steps[0].select: "${id}" names no line: the step shows nothing for it`]);
+  // hostile ids: a mistyped pair, an Object.prototype key, a highlight list; a map view of the same model names no line "a->b" either
+  assert.deepEqual(steps(m, [vid, 'nothing->nowhere'], [vid, '__proto__->constructor']), ['nothing->nowhere', '__proto__->constructor'].map((x, k) => `warning stories[0].steps[${k}].select: "${x}" names no line: the step shows nothing for it`));
+  const hl = structuredClone(m); hl.stories = [{ id: 's', title: 'S', steps: [{ view: vid, highlight: [id, 'ec-sys->ec-user'] }] }];
+  assert.deepEqual(validate(hl).filter(p => p.path.startsWith('stories')).map(p => p.path), ['stories[0].steps[0].highlight[1]']);
+  const map = { nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }], stories: [{ id: 's', title: 'S', steps: [{ view: 'v', select: 'a->b#0' }, { view: 'v', select: 'a->b' }] }] };
+  assert.deepEqual(validate(map).filter(p => p.path.startsWith('stories')).map(p => p.path), ['stories[0].steps[1].select']);
+});

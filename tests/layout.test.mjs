@@ -686,3 +686,55 @@ test('audit 28: a line whose fromSide or toSide is named like an Object.prototyp
   // a real side still holds
   assert.notDeepEqual(layout(at('toSide', 'top'), 'v').edges.map(e => e.pts), none.to);
 });
+
+// a box (family) over a card it does not hold, by the cards each box lists and the boxes in it
+const foreignUnder = (m, vid, g) => { const fs = g.families || [], out = [];
+  const holds = (b, id, k = 0) => k <= fs.length && ((b.nodeIds || []).includes(id) || fs.some(c => c.parent === b.id && holds(c, id, k + 1)));
+  fs.forEach(f => g.nodes.forEach(n => { if (n.id !== f.id && !holds(f, n.id) && n.x < f.x + f.w - 1 && f.x < n.x + n.w - 1 && n.y < f.y + f.h - 1 && f.y < n.y + n.h - 1) out.push(`${f.id} over ${n.id}`); }));
+  return out; };
+test('audit 41: a card with no pin in a pinned view goes by its box\'s pinned cards: no box grows over a card it does not hold, and no line to the box is dropped', async () => {
+  const U = await import('../lib/umlimator-all.js'), warns = [], keep = console.warn; console.warn = (...a) => warns.push(a.join(' '));
+  try {
+    // edit.html's own add-in-box: a new card in each box of each bookshop view, with no pin
+    const shop = read('../examples/bookshop.json');
+    for (const v0 of shop.views) for (const c of v0.containers || []) { const m = structuredClone(shop), v = m.views.find(x => x.id === v0.id);
+      m.nodes.push({ id: 'new-1', label: 'New card', kind: 'backend' }); v.nodeIds.push('new-1'); v.containers.find(x => x.id === c.id).nodeIds.push('new-1');
+      const g = U.layout(m, v.id); assert.deepEqual(foreignUnder(m, v.id, g), [], `${v.id}: new card in ${c.id}`);
+      assert.ok(!U.check(m, v.id).some(p => / lies over /.test(p.message)), `${v.id}: ${c.id}`); }
+    // each pin of each example view with boxes taken out in turn
+    for (const f of ['bike-share.json', 'bookshop.json', 'bookshop-atlas.json', 'states.json']) { const base = read('../examples/' + f);
+      for (const v of base.views) if (v && v.layout && (U.layout(base, v.id).families || []).length) for (const k of Object.keys(v.layout)) {
+        const m = structuredClone(base); delete m.views.find(x => x.id === v.id).layout[k]; warns.length = 0;
+        const g = U.layout(m, v.id); assert.deepEqual(foreignUnder(m, v.id, g), [], `${f} ${v.id} with no pin for ${k}`);
+        assert.ok(!warns.some(w => /something inside it/.test(w)), `${f} ${v.id} with no pin for ${k}: ${warns}`); } }
+    // bike-share's system view with pricing unpinned: the line from monitoring to box rides is drawn
+    const bike = read('../examples/bike-share.json'); delete bike.views.find(v => v.id === 'system').layout.pricing;
+    assert.ok(U.layout(bike, 'system').edges.some(e => (e.all || [e]).some(x => x._id === 's16')));
+    // hostile boxes: a parent cycle, a card listed by two boxes, a box that lists itself, pins that are no places: laid out, no throw, soon
+    const t0 = performance.now(), hm = { nodes: ['a', 'b', 'c', 'd', 'e'].map(id => ({ id, label: id, kind: 'service' })), edges: [{ from: 'a', to: 'b' }, { from: 'c', to: 'p' }],
+      views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd', 'e'], layout: { a: [0, 0], b: ['x', 1], c: [1e308, 0], d: null },
+        containers: [{ id: 'p', nodeIds: ['a', 'e', 'p'], parent: 'q' }, { id: 'q', nodeIds: ['a', 'b'], parent: 'p' }, { id: '__proto__', nodeIds: ['d'] }] }] };
+    assert.doesNotThrow(() => { U.layout(hm, 'v'); U.check(hm, 'v'); }); assert.ok(performance.now() - t0 < 5000);
+  } finally { console.warn = keep; }
+});
+test('audit 41: a box and something inside it is decided by what the box holds, not where it lies; check() says a box lies over a card it does not hold', async () => {
+  const { routeAudit } = await import('../src/layout/audit.js'), warns = [], keep = console.warn; console.warn = (...a) => warns.push(a.join(' '));
+  try {
+    // pinned so: box holds a and b, and c sits between them; the line from c to the box is drawn, and check() names the overlap
+    const m = { nodes: ['a', 'b', 'c', 'd'].map(id => ({ id, label: id.toUpperCase(), kind: 'service' })), edges: [{ id: 'c-box', from: 'c', to: 'box' }, { id: 'a-b', from: 'a', to: 'b' }, { id: 'd-c', from: 'd', to: 'c' }],
+      views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd'], containers: [{ id: 'box', label: 'Box', nodeIds: ['a', 'b'] }], layout: { a: [1, 0], c: [1, 1], b: [1, 2], d: [0, 1] } }] };
+    assert.ok(layout(m, 'v').edges.some(e => e._id === 'c-box'), warns.join(' '));
+    assert.ok(!warns.some(w => /something inside it/.test(w)));
+    assert.ok(check(m, 'v').some(p => p.message === 'view v: family "Box" lies over "C", which it does not hold'));
+    // a line from a box to its own card, or a box in it, is still no line
+    const own = structuredClone(m); own.edges.push({ id: 'box-a', from: 'box', to: 'a' }); own.views[0].containers.push({ id: 'in', label: 'In', nodeIds: [], parent: 'box' });
+    warns.length = 0; assert.ok(!layout(own, 'v').edges.some(e => e._id === 'box-a')); assert.ok(warns.some(w => /box-a: it joins the box "box"/.test(w)));
+    // routeAudit on its own: a family over a card it holds through a family in it, a port, a frame and its own card say nothing
+    const geo = cards => ({ edges: [], byId: {}, nodes: cards, families: [{ id: 'f', label: 'F', x: 0, y: 0, w: 400, h: 300, nodeIds: ['a', 'f'] }, { id: 'g', label: 'G', parent: 'f', x: 10, y: 150, w: 200, h: 100, nodeIds: ['b'] }] });
+    const card = (id, x, y, more) => ({ id, label: id, x, y, w: 80, h: 40, ...more });
+    assert.deepEqual(routeAudit(geo([card('a', 20, 40), card('b', 20, 180), card('f', 300, 40), card('p', 380, 40, { owner: 'a' }), card('h', 200, 40, { holder: true })]), 'v'), []);
+    assert.deepEqual(routeAudit(geo([card('a', 20, 40), card('c', 200, 40), card('d', 30, 200)]), 'v'), ['v: family "F" lies over "c", which it does not hold', 'v: family "F" lies over "d", which it does not hold', 'v: family "G" lies over "d", which it does not hold']);
+    // a parent cycle and an id from Object.prototype: no throw
+    assert.doesNotThrow(() => routeAudit({ edges: [], byId: {}, nodes: [card('x', 0, 0)], families: [{ id: 'constructor', parent: '__proto__', x: 0, y: 0, w: 99, h: 99 }, { id: '__proto__', parent: 'constructor', x: 0, y: 0, w: 99, h: 99 }] }, 'v'));
+  } finally { console.warn = keep; }
+});
