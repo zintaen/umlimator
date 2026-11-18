@@ -436,3 +436,13 @@ test('audit 42: validate() says a classifier compartment\'s type, return type or
   const off = structuredClone(m); off.views[0].nodeIds = ['o']; off.nodes[1].members[0].props.value = '4';
   assert.deepEqual(said(off), [], 'what the view does not show is not said');
 });
+
+test('audit 43: validate() says a drawn instance\'s classifier, a link\'s association and an end\'s role that are not text, at their own paths', () => {
+  const O = { z: 3 }, said = m => validate(m).filter(p => / is not text/.test(p.message)).map(p => p.path).sort();
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.InstanceSpecification', label: 'a', props: { classifier: O } }, { id: 'b', type: 'uml.InstanceSpecification', label: 'b', props: { classifier: 'B' } }],
+    edges: [{ id: 'l', type: 'uml.Link', from: 'a', to: 'b', props: { association: O, ends: { from: { role: 'x' }, to: { role: O } } } }], views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['a', 'b'] }] };
+  assert.deepEqual(said(m), ['edges[0].props.association', 'edges[0].props.ends.to.role', 'nodes[0].props.classifier']);
+  assert.match(validate(m).find(p => p.path === 'nodes[0].props.classifier').message, /^classifier \{"z":3\} is not text: drawn as "\[object Object\]"$/);
+  const ok = structuredClone(m); ok.nodes[0].props.classifier = 'A'; ok.edges[0].props = { association: 'owns', ends: { to: { role: 7 } } };
+  assert.deepEqual(said(ok), [], 'text and numbers are text');
+});

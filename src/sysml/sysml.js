@@ -232,7 +232,7 @@ function SYS_TEXT_PROBLEMS(model) {
   SYS_ARR(model && model.nodes).forEach((n, i) => { if (!SYS_OBJ(n) || typeof n.type !== 'string' || !n.type.startsWith('sysml.')) return; const at = `nodes[${i}]`;
     out.push(...propTextProblems(n, at, n.type === 'sysml.ConstraintBlock' ? ['constraint'] : n.type === 'sysml.ValueType' ? ['unit', 'quantityKind'] : []));
     // an operation's return type and parameters too, drawn in its row as the class view's are (audit 41)
-    SYS_ARR(n.members).forEach((m, j) => out.push(...propTextProblems(m, `${at}.members[${j}]`, ['valueType', 'multiplicity', 'default', 'returnType']),
+    SYS_ARR(n.members).forEach((m, j) => out.push(...propTextProblems(m, `${at}.members[${j}]`, ['valueType', 'multiplicity', 'default', 'returnType', 'direction']), // a flow property's direction too (audit 43)
       ...paramTextProblems(m, `${at}.members[${j}]`))); });
   return out;
 }

@@ -1,4 +1,4 @@
-import { jsonText, labelOr, elName, propTextProblems } from '../core/model.js';
+import { jsonText, labelOr, elName, labelProblem, propTextProblems } from '../core/model.js';
 import { aWord, kindWord, registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
@@ -119,8 +119,13 @@ function obTextProblems(model, view) {
   OB_ARR(model && model.nodes).forEach((n, i) => { if (!OB_OBJ(n) || !on.has(n.id) || done.has(n.id)) return; done.add(n.id);
     if (n.type === 'uml.Comment' || OWN_BOXES.includes(n.type)) return;
     const ms = OB_ARR(n.members), at = m => `nodes[${i}].members[${ms.indexOf(m)}]`;
-    if (isInstance(n)) slotsOf(n).forEach(m => out.push(...propTextProblems(m, at(m), ['value'])));
+    if (isInstance(n)) out.push(...propTextProblems(n, `nodes[${i}]`, ['classifier']), ...slotsOf(n).flatMap(m => propTextProblems(m, at(m), ['value']))); // its head, `name : Classifier` (audit 43)
     else classifierBoxes(n).flatMap(c => c.members).forEach(m => out.push(...propTextProblems(m, at(m), ['valueType', 'default', 'returnType']), ...paramTextProblems(m, at(m)))); });
+  // a drawn link's association and a drawn link's or association's end roles (audit 43)
+  const { pic: dp, lines } = drawnLines(model, view, OBJECT_LINES), drawn = new Set(lines.filter(({ from, to }) => !holdsLine(dp, from, to)).map(l => l.e));
+  viewLines(model, view).forEach(([e, path]) => { if (!drawn.has(e) || (e.type !== 'uml.Link' && e.type !== 'uml.Association')) return;
+    if (e.type === 'uml.Link') out.push(...propTextProblems(e, path, ['association']));
+    const E = OB_PROPS(e).ends; if (OB_OBJ(E)) ['from', 'to'].forEach(w => { const r = labelProblem(E[w], `${path}.props.ends.${w}`, 'role'); if (r) out.push(r); }); });
   return out;
 }
 function objectProblems(model, view) {
