@@ -669,3 +669,17 @@ test('audit 28: a line of another kind a view lists, which a state machine, requ
     views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['a', 'b'], edges: ['t'] }, { id: 'w', diagram: 'uml.class', nodeIds: ['c', 'a'], edges: ['x'] }] };
   assert.deepEqual(validate(st).filter(p => /not drawn$/.test(p.message)), []);
 });
+
+test('audit 31: a message names a region as region "Parcel", not its name and id quoted as one name; one of no name by its id', () => {
+  const m = structuredClone(SM), pick = m.nodes.find(n => /pick/.test(n.id)).id, cap = m.nodes.find(n => /captur/.test(n.id)).id;
+  m.edges.push({ id: 'bad', type: 'uml.Transition', from: pick, to: cap });
+  const ini = m.nodes.find(n => n.type === 'uml.Pseudostate' && n.props && n.props.kind === 'initial' && /parcel/.test(String(n.parent)));
+  m.nodes = m.nodes.filter(n => n !== ini); m.edges = m.edges.filter(e => e.from !== ini.id && e.to !== ini.id); m.views.forEach(v => { v.nodeIds = v.nodeIds.filter(i => i !== ini.id); });
+  const said = validate(m).map(p => p.message);
+  assert.ok(said.some(s => s.startsWith('composite-entry: ') && s.endsWith(', and region "Parcel" has no initial pseudostate')), JSON.stringify(said));
+  assert.ok(said.includes('region-cross: bad joins "Picking" in region "Parcel" and "Capturing payment" in region "Payment", two regions of "Fulfilling"'), JSON.stringify(said));
+  assert.ok(!said.some(s => /fulfilling\.p/.test(s)), 'no named region\'s id');
+  const u = structuredClone(m), f = u.nodes.find(n => n.id === 'fulfilling'); f.members.find(r => /parcel/.test(r.id)).label = undefined;
+  const r = f.members.find(x => /parcel/.test(x.id)).id;
+  assert.ok(validate(u).map(p => p.message).some(s => s.includes(`in region ${r} and`)), 'a region of no name by its id');
+});

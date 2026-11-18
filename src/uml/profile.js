@@ -32,11 +32,12 @@ function prIndex(model) {
 }
 
 // a stereotype as an element has it: «key», required, and its tags `name = value` (a default when unset; `?` for a value a
-// tag of lower bound 1 needs; an optional one unset is left out)
+// tag of lower bound 1 needs; an optional one unset is left out). A list or a map is written as jsonText() writes it, so a host's
+// BigInt or cycle in one reads 10n or [cycle] as validate() says it, not a throw (audit 31)
 function prTags(e) {
   return e.tags.flatMap(({ name, def, value }) => { const d = PR_OBJ(def.props) ? def.props : {}, need = (multBounds(d.multiplicity ?? '1') || { lower: 1 }).lower >= 1;
     const v = value != null && value !== '' ? value : d.default != null ? d.default : need ? '?' : null;
-    return v == null ? [] : [`${name} = ${typeof v === 'object' ? JSON.stringify(v) : v}`]; });
+    return v == null ? [] : [`${name} = ${typeof v === 'object' ? jsonText(v) : v}`]; });
 }
 const prSay = e => { const t = prTags(e); return `«${e.key}»${e.required ? ' required' : ''}${t.length ? ' ' + t.join(', ') : ''}`; };
 

@@ -25,13 +25,7 @@ The scale (`notes/stage-6.md` §6.3): one time base for every lane, from the ear
 derived, never stored; the narrowest that keeps consecutive changes on a lane 12 px apart and every value's text inside
 its segment, with a plot of 480 to 4,800 px; ticks a 1, 2 or 5 step at least 64 px apart.
 
-Rules (`notes/stage-6.md` §7.2): `change-lifeline`, `change-time` (a change's `at`, a message's times are numbers),
-`message-ends`, `message-times` (received no earlier than sent), `reply-call` and `constraint-ends` (errors);
-`change-state` (a state its lifeline does not list, drawn on an extra row), `change-instant` (two changes of one
-lifeline at one instant: the one whose id sorts last is drawn), `sort` and `constraint-order` (warnings). The layout's
-own problems: `timing-dense` (at the 4,800 px cap, what does not fit, named once), `timing-label` (a message label it
-could not place clear). A lifeline the view does not list keeps its changes, not drawn and not warned (a hidden one).
-Deleting a lifeline deletes its changes and their constraints, from every view (the core's cascade, 0.23.0).
+Rules (`notes/stage-6.md` §7.2): `change-lifeline`, `change-time` (a change's `at`, a message's times are numbers), `message-ends`, `message-times` (received no earlier than sent), `reply-call` and `constraint-ends` (errors); `change-state` (a state its lifeline does not list, drawn on an extra row), `change-instant` (two changes of one lifeline at one instant: the one whose id sorts last is drawn), `sort`, `constraint-order` and `timing-kinds` (an element the view lists that is no lifeline: no type, a comment, a class or a type of no notation, not drawn and named once) (warnings). The layout's own problems: `timing-dense` (at the 4,800 px cap, what does not fit, named once), `timing-label` (a message label it could not place clear). A lifeline the view does not list keeps its changes, not drawn and not warned (a hidden one). Deleting a lifeline deletes its changes and their constraints, from every view (the core's cascade, 0.23.0).
 
 **Departures from UML 2.5.1:** no `sd` frame round the view, as round a sequence view (the view's title names it);
 nothing is drawn before a lifeline's first change (UML leaves the state there undefined); times are numbers in one unit,

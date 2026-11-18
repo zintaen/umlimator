@@ -405,3 +405,14 @@ test('audit 23: a view\'s own line (view.edges object) is checked as a model one
     assert.equal(T.text(own, own.views[0], line.id), T.text(m, m.views[0], line.id));
   }
 });
+
+test('audit 31: an element of no type, drawn and named a class, is a class in the rules\' messages and the generalization refusal, never a missing word', () => {
+  for (const type of [undefined, '']) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'a', label: 'Loose', ...(type === undefined ? {} : { type }), members: [{ id: 'a.p', type: 'sysml.ConstraintParameter', label: 'p' }] }, { id: 'b', type: 'sysml.Block', label: 'Bike' }],
+      edges: [{ id: 'g', type: 'uml.Generalization', from: 'a', to: 'b' }], views: [{ id: 'v', diagram: 'sysml.block-definition', nodeIds: ['a', 'b'] }] };
+    const said = validate(m).map(p => p.message);
+    assert.ok(said.includes('member-kinds: class "Loose" holds parameter "p", which it may not'), JSON.stringify(said));
+    assert.ok(said.includes('general-kinds: class "Loose" specializes block "Bike" (g)'), JSON.stringify(said));
+    assert.deepEqual(diagramOf(m.views[0]).edits.connect(m, m.views[0], 'a', 'b', null, { type: 'uml.Generalization' }), { error: 'A generalization joins two of one kind: class and block differ' });
+  }
+});

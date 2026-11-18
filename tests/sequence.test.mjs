@@ -597,3 +597,20 @@ test('audit 31: a hole in a sequence view\'s edges is no step: the view, and an 
     }
   }
 });
+
+test('audit 31: Delete on a model message the view lists by id takes it out of this view only, with the replies it has; Shift + Delete and an inline message still delete', () => {
+  const mk = () => ({ schemaVersion: 2, nodes: [{ id: 'c', type: 'uml.Lifeline', label: 'client' }, { id: 's', type: 'uml.Lifeline', label: 'server' }],
+    edges: [M('m1', 'c', 's', 'call', { label: 'get' }), M('m2', 's', 'c', 'reply', { label: 'ok', props: { replyTo: 'm1' } })],
+    views: [{ id: 'a', diagram: 'uml.sequence', nodeIds: ['c', 's'], edges: ['m1', 'm2', M('m3', 'c', 's', 'async', { label: 'ping' })] },
+      { id: 'k', diagram: 'uml.communication', nodeIds: ['c', 's'], edges: [{ id: 'con', type: 'uml.Connector', from: 'c', to: 's' }, 'm1', 'm2'] }] });
+  const m = mk(), r = sqRemove(m, 'a', ['m1'], false);
+  assert.deepEqual(r.commands, [{ op: 'hide', id: 'm1', view: 'a' }, { op: 'hide', id: 'm2', view: 'a' }]);
+  assert.equal(r.say, 'Took get, ok off the view (they stay in the model)');
+  const n = apply(m, r.commands);
+  assert.deepEqual(n.edges.map(e => e.id), ['m1', 'm2'], 'the model keeps them');
+  assert.deepEqual(n.views[1].edges.slice(1), ['m1', 'm2'], 'and so does the other view');
+  assert.deepEqual(ids(n.views[0].edges), ['m3']);
+  assert.deepEqual(errors(n), []);
+  assert.deepEqual(sqRemove(mk(), 'a', ['m1'], true), [{ op: 'delete', id: 'm1' }], 'Shift + Delete deletes it from the model');
+  assert.deepEqual(sqRemove(mk(), 'a', ['m3'], false), [{ op: 'delete', id: 'm3' }], 'one the view holds lives there: hiding it is deleting it');
+});

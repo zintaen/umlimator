@@ -262,7 +262,11 @@ const ST_RULES = {
 };
 function stProblems(model, view) {
   const out = [], I = stIndex(ST_OBJ(model) ? model : {}), { N, M } = I, say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
-  const el = id => (N.get(id) || M.get(id) || {}).x, q = id => { const x = el(id); return x ? JSON.stringify(x.type === 'uml.State' ? stName(x) : `${stWord(x)} ${id}`.trim()) : JSON.stringify(String(id)); };
+  // an element as a message names it: a state by its name; a region as region "Parcel" (by its id with no name); a pseudostate or a
+  // final state of no name by its kind and id, "Initial pseudostate i"; anything else by its words. The id only where no name
+  // tells it apart (audit 31: "Parcel fulfilling.parcel", a named region's name and id quoted as one name)
+  const el = id => (N.get(id) || M.get(id) || {}).x, q = id => { const x = el(id); if (!x) return JSON.stringify(String(id)); if (x.type === 'uml.Region') return `region ${ST_HAS(x.label) ? JSON.stringify(String(x.label)) : x.id}`;
+    return JSON.stringify(x.type === 'uml.State' ? stName(x) : (x.type === 'uml.Pseudostate' || x.type === 'uml.FinalState') && !ST_HAS(x.label) ? `${stWord(x)} ${id}`.trim() : stWord(x)); };
   const ty = id => (el(id) || {}).type, vertex = id => N.has(id) && ST_VERTEX.includes(ty(id)), kind = id => (N.has(id) && ty(id) === 'uml.Pseudostate' ? stKind(el(id)) : null);
   // where an element sits, up through regions and states: [[state, region or null], …], nearest first
   const ups = id => { const out2 = [], seen = new Set(); let p = (el(id) || {}).parent;

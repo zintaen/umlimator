@@ -81,8 +81,8 @@ test('a stereotype on the wrong metaclass is warned on a SysML element, as on a 
   const m = profiled(); m.nodes.find(n => n.id === 'blk').props.stereotypes = ['prop']; m.nodes.find(n => n.id === 'blk').members[0].props.stereotypes = ['cls'];
   m.nodes.find(n => n.id === 'why').props.stereotypes.push('gizmo');
   assert.deepEqual(stereoProblems(m).map(p => p.message), [
-    'stereotype-extends: «prop» on "Blk" extends Property, which a Class is not',
-    'stereotype-extends: «cls» on "v" extends Class, which a Property is not',
+    'stereotype-extends: «prop» on "Blk" extends Property, which a class is not',
+    'stereotype-extends: «cls» on "v" extends Class, which a property is not',
     'stereotype-unknown: «gizmo» on "because" is no stereotype of P, applied here, and no standard one']);
 });
 test('a required extension of a profile in scope reaches a SysML element of its metaclass', () => {

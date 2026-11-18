@@ -377,7 +377,7 @@ function sqRemove(model, view, ids, fromModel) {
   const whole = id => { const f = X.opOf.get(id); return f && SQ_ARR(f.members).filter(SQ_OBJ).every(m => sel.has(m.id)) ? f.id : id; };
   // a fragment's covers lose every lifeline that goes, in one set: two lifelines of one fragment, or one hidden and one of the view's own
   // deleted, set it once, not each the other's back (audit 25)
-  const going = new Set([...sel].filter(id => lifelines.includes(id))), covered = new Set();
+  const going = new Set([...sel].filter(id => lifelines.includes(id))), covered = new Set(), off = [];
   for (const id of new Set([...sel].map(whole))) {
     if (lifelines.includes(id) && !fromModel && !SQ_ARR(V.nodes).some(n => SQ_OBJ(n) && n.id === id)) { // one of the view's own goes by delete
       X.occ.filter(o => !o.message && !covered.has(o.id) && SQ_ARR(sqProps(o.el).covers).includes(id)).forEach(o => { covered.add(o.id); out.push({ op: 'set', id: o.id, path: 'props.covers', value: sqProps(o.el).covers.filter(x => !going.has(x)) }); });
@@ -387,15 +387,23 @@ function sqRemove(model, view, ids, fromModel) {
       const mine = (X.block.get(f.id) || []).filter(o => o.chain.some(c => c.op === id)).map(o => o.id);
       if (mine.length && X.byId.get(mine[mine.length - 1]).i !== R.hi) mine.forEach(x => out.push({ op: 'move', id: x, view: V.id, index: R.hi }));
       out.push({ op: 'delete', id }); continue; }
+    // a model message the view lists by id leaves this view only, as Delete takes any element of the model out of a view; it stays in
+    // the model and in every other view that lists it. Shift + Delete deletes it; one the view holds lives there, so goes (audit 31)
+    if (!f && !fromModel && SQ_ARR(V.edges).includes(id)) { out.push({ op: 'hide', id, view: V.id }); off.push(id); continue; }
     out.push({ op: 'delete', id: f ? f.id : id });
   }
+  // a call taken off the view takes its replies with it, as its delete does (one the view lists by id leaves it, one it holds goes)
+  const offCalls = new Set(off); X.occ.forEach(o => { if (!o.message || sel.has(o.id) || !offCalls.has(sqProps(o.el).replyTo)) return;
+    if (SQ_ARR(V.edges).includes(o.id)) { out.push({ op: 'hide', id: o.id, view: V.id }); off.push(o.id); } else out.push({ op: 'delete', id: o.id }); });
   const r = sqGuard(model, V, out), heads = sqHeads(model, V).filter(n => sel.has(n.id)), hs = new Set(heads.map(n => n.id));
+  const took = off.length ? `ook ${off.map(id => sqName(X.byId.get(id) ? X.byId.get(id).el : { id })).join(', ')} off the view (${off.length === 1 ? 'it stays' : 'they stay'} in the model)` : '';
+  if (Array.isArray(r) && r.length && took && !heads.length) return { commands: r, say: 'T' + took };
   if (!Array.isArray(r) || !r.length || !heads.length) return r;
   const n = X.occ.filter(o => o.message && (hs.has(o.from) || hs.has(o.to))).length;
   // said as done: a lifeline the view holds as its own is deleted by Delete too, not removed from the view (audit 25, as timing's audit 24)
   const own = id => SQ_ARR(V.nodes).some(x => SQ_OBJ(x) && x.id === id), dels = heads.filter(h => fromModel || own(h.id)), hid = heads.filter(h => !dels.includes(h));
   const did = [dels.length && `Deleted ${dels.map(sqName).join(', ')}`, hid.length && `${dels.length ? 'removed' : 'Removed'} ${hid.map(sqName).join(', ')} from the view`].filter(Boolean).join(' and ');
-  return { commands: r, say: `${did}, and ${n ? `${n} ${n === 1 ? 'message' : 'messages'}` : 'no message'} with ${heads.length > 1 ? 'them' : 'it'}` };
+  return { commands: r, say: `${did}, and ${n ? `${n} ${n === 1 ? 'message' : 'messages'}` : 'no message'} with ${heads.length > 1 ? 'them' : 'it'}${took ? '; t' + took : ''}` };
 }
 
 /* operands are a fragment's members, edited in the properties panel's member list (src/canvas/edit.js): a guard as text */

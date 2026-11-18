@@ -459,3 +459,16 @@ test('audit 29: another UML kind in a profile view is drawn with its kind\'s key
   assert.deepEqual([st('c'), st('a'), st('k')], [['component'], ['actor'], []]);
   assert.match(svgOf(g), /«component»/);
 });
+
+test('audit 31: a tag value JSON cannot write (a BigInt inside, or a cycle) is drawn and said as jsonText() writes it, not a throw', () => {
+  const mk = v => ({ schemaVersion: 2, nodes: [N('p', 'Profile', 'Orm'), N('st', 'Stereotype', 'entity', 'p', { members: [N('st.t', 'Property', 'table', null, { props: { valueType: 'String' } })] }),
+    N('mc', 'MetaclassReference', 'Class', 'p'), N('pk', 'Package', 'shop'), N('o', 'Class', 'Order', 'pk', { props: { stereotypes: ['entity'], tags: { entity: { table: v } } } })],
+  edges: [L('x', 'Extension', 'st', 'mc'), L('ap', 'ProfileApplication', 'pk', 'p')], views: [{ id: 'v', diagram: 'uml.profile', nodeIds: ['p', 'st', 'mc', 'pk', 'o'] }] });
+  const cyc = { a: 1 }; cyc.self = cyc;
+  for (const [v, text] of [[{ n: 10n }, 'table = {"n":10n}'], [cyc, 'table = {"a":1,"self":"[cycle]"}'], [{ a: 1 }, 'table = {"a":1}']]) {
+    const m = mk(v);
+    assert.ok(layout(m, 'v').nodes.some(n => n.id === 'o'), text);
+    assert.ok(describe(m, 'v').split('\n').includes(`Class Order: «entity» ${text}.`), text);
+    assert.ok(T.rows(m, m.views[0], 'o').includes(`«entity» ${text}`), text);
+  }
+});
