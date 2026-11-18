@@ -1,5 +1,5 @@
 import { apply } from '../core/apply.js';
-import { copyOf, usedIds, jsonText, labelOr } from '../core/model.js';
+import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
 import { ownNodes, registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -38,7 +38,7 @@ function commIndex(model, view) {
   return { N, E, ids, shown, connectors, messages, on, carrierOf: (a, b) => carrier.get(pair(a, b)) || null };
 }
 
-const cmNameOf = x => String(x && x.label != null ? x.label : x ? x.id : '');
+const cmNameOf = x => (x ? elName(x) : '');
 const cmPropsOf = x => (CM_OBJ(x && x.props) ? x.props : {});
 const cmSortOf = m => (CM_SORTS.includes(cmPropsOf(m).sort) ? cmPropsOf(m).sort : 'call'); // any other is drawn as a call (the shared sort rule)
 const cmStereoOf = n => CM_ARR(cmPropsOf(n).stereotypes).filter(CM_HAS).map(String);
@@ -355,7 +355,11 @@ function cmSaid(model, view, ids, fromModel, I, r) {
   // their constraints too, counted as the sequence and timing hints count them (interaction.js, audit 34)
   const G = fromModel ? interactionGone(model, next) : null, also = G ? interactionCounts({ change: G.change.length, constraint: G.constraint.length }) : '';
   const left = new Set(fromModel ? [] : cmIx(next, CM_ARR(next.views).find(v => CM_OBJ(v) && v.id === view.id)).messages.map(m => m.id));
-  const took = (fromModel ? G.message : I.messages.filter(m => !left.has(m.id))).filter(m => !CM_ARR(ids).includes(m.id)); if (!took.length && !also) return r;
+  const took = (fromModel ? G.message : I.messages.filter(m => !left.has(m.id))).filter(m => !CM_ARR(ids).includes(m.id));
+  // the connectors a lifeline took with it (apply()'s cascade, or its hide), the selected ones named already (audit 35)
+  const leftC = new Set(fromModel ? [] : cmIx(next, CM_ARR(next.views).find(v => CM_OBJ(v) && v.id === view.id)).connectors.map(c => c.id));
+  const tookC = (fromModel ? G.connector : I.connectors.filter(c => !leftC.has(c.id))).filter(c => !CM_ARR(ids).includes(c.id));
+  if (!took.length && !tookC.length && !also) return r;
   const q = x => JSON.stringify(cmNameOf(x)), nm = id => cmNameOf(I.N.get(id) || { id });
   const who = xs => xs.map(id => (I.shown.has(id) ? 'lifeline ' + q(I.N.get(id)) : `connector ${jsonText(nm(I.E.get(id).from) + '–' + nm(I.E.get(id).to))}`)).join(', ');
   // said as done: what the view holds as its own is deleted by Delete too, not hidden (audit 25, as timing's audit 24); a message by what became of it
@@ -363,10 +367,15 @@ function cmSaid(model, view, ids, fromModel, I, r) {
   const deleted = id => r.some(c => CM_OBJ(c) && c.op === 'delete' && c.id === id);
   // a message of the model or of this view is named; the ones other views held as their own (a sequence view's) are counted (audit 34)
   const here = new Set([...I.messages, ...CM_ARR(model.edges)].filter(CM_OBJ).map(m => m.id)), named = ms => ms.filter(m => here.has(m.id)), far = ms => ms.length - named(ms).length;
-  const part = (verb, xs, ms) => { const m = !ms.length ? '' : `${cmPlural(ms.length, 'message')}${named(ms).length ? ': ' + named(ms).map(q).join(', ') : ''}${named(ms).length && far(ms) ? `, and ${far(ms)} in other views` : ''}`;
-    return !xs.length ? (m ? [`${verb} ${m}`] : []) : [`${verb} ${who(xs)}${m ? ` and ${xs.length === 1 ? 'its' : 'their'} ${m}` : ''}`]; };
-  const gone = took.filter(m => !still.has(m.id)), kept = took.filter(m => still.has(m.id));
-  const said = [...part('Deleted', what.filter(deleted), gone), ...part('hid', what.filter(id => !deleted(id)), kept)].join('; ') + (also ? `, and ${also}` : '');
+  // a connector named by its ends, as who() names one; one another view held as its own, counted
+  const cname = c => jsonText(nm(c.from) + '–' + nm(c.to));
+  const part = (verb, xs, ms, cs) => { const its = xs.length === 1 ? 'its' : 'their';
+    const m = !ms.length ? '' : `${cmPlural(ms.length, 'message')}${named(ms).length ? ': ' + named(ms).map(q).join(', ') : ''}${named(ms).length && far(ms) ? `, and ${far(ms)} in other views` : ''}`;
+    const c = !cs.length ? '' : `${cmPlural(cs.length, 'connector')}${named(cs).length ? ' (' + named(cs).map(cname).join(', ') + (far(cs) ? `, and ${far(cs)} in other views` : '') + ')' : ''}`;
+    if (!xs.length) return m || c ? [`${verb} ${[c, m].filter(Boolean).join(' and ')}`] : [];
+    return [`${verb} ${who(xs)}${c ? `, ${its} ${c}` : ''}${m ? ` and ${its} ${m}` : ''}`]; };
+  const gone = took.filter(m => !still.has(m.id)), kept = took.filter(m => still.has(m.id)), goneC = tookC.filter(c => !still.has(c.id)), keptC = tookC.filter(c => still.has(c.id));
+  const said = [...part('Deleted', what.filter(deleted), gone, goneC), ...part('hid', what.filter(id => !deleted(id)), kept, keptC)].join('; ') + (also ? `, and ${also}` : '');
   return { commands: r, say: said.charAt(0).toUpperCase() + said.slice(1) };
 }
 

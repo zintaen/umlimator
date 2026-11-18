@@ -205,9 +205,9 @@ test('audit 34: Shift + Delete of a lifeline every interaction view shows: each 
   const says = Object.fromEntries(vs.map(v => { const r = diagramOf(v).edits.remove(M, v, [L], true), a = every(M), b = every(apply(M, r.commands));
     assert.deepEqual([a.messages - b.messages, a.changes - b.changes], [9, 4], v.id); return [v.id, r.say]; }));
   assert.deepEqual(says, {
-    'checkout-sequence': 'Deleted payments, and 9 messages and 4 changes with it', 'buy-checkout': 'Deleted payments, and 9 messages and 4 changes with it',
-    'checkout-communication': 'Deleted lifeline "payments" and its 9 messages: "charge(total)", "paid", and 7 in other views, and 4 changes',
-    'one-charge': 'Deleted payments, 4 changes and 9 messages' });
+    'checkout-sequence': 'Deleted payments, and 9 messages, 1 connector and 4 changes with it', 'buy-checkout': 'Deleted payments, and 9 messages, 1 connector and 4 changes with it',
+    'checkout-communication': 'Deleted lifeline "payments", its 1 connector ("api–payments") and its 9 messages: "charge(total)", "paid", and 7 in other views, and 4 changes',
+    'one-charge': 'Deleted payments, 4 changes, 9 messages and 1 connector' });
   // a change's constraints too: the worker's 4 changes hold the timing view's 2 constraints
   assert.equal(sqRemove(M, M.views.find(v => v.id === 'queue-order'), ['lifeline-worker'], true).say, 'Deleted worker, and 3 messages, 4 changes and 2 constraints with it');
 });
@@ -338,4 +338,18 @@ test('audit 30: every classifier box the atlas draws has, as its SVG aria-label,
   const s = mapContext(o).buildView('v').markup;
   assert.equal(layout(o, 'v').nodes[0].aria, 'Instance specification o3 : Order');
   assert.match(s, /aria-label="Instance specification o3 : Order"/);
+});
+
+test('audit 35: Shift + Delete of a lifeline counts the connectors the cascade takes from every communication view; Delete in one says those it hid', () => {
+  const L = 'lifeline-api', cons = x => [...x.edges, ...x.views.flatMap(v => (v.edges || []).filter(e => e && typeof e === 'object'))].filter(e => e.type === 'uml.Connector').map(e => e.id);
+  const says = Object.fromEntries(['checkout-sequence', 'checkout-communication', 'buy-checkout'].map(id => { const v = M.views.find(x => x.id === id), r = diagramOf(v).edits.remove(M, v, [L], true);
+    const n = apply(M, r.commands); assert.deepEqual(cons(M).filter(c => !cons(n).includes(c)), ['storefront-api', 'api-self', 'api-payments', 'api-receipt'], id); return [id, r.say]; }));
+  assert.deepEqual(says, { 'checkout-sequence': 'Deleted api, and 24 messages and 4 connectors with it', 'buy-checkout': 'Deleted api, and 24 messages and 4 connectors with it',
+    'checkout-communication': 'Deleted lifeline "api", its 4 connectors ("storefront–api", "api–api", "api–payments", "api–receipt") and its 24 messages: "place(order)", "validate(order)", "charge(total)", "paid", "new(order)", "orderPlaced", "result", and 17 in other views' });
+  const cv = M.views.find(x => x.id === 'checkout-communication');
+  assert.equal(diagramOf(cv).edits.remove(M, cv, [L], false).say, 'Hid lifeline "api", its 4 connectors ("storefront–api", "api–api", "api–payments", "api–receipt") and its 7 messages: "place(order)", "validate(order)", "charge(total)", "paid", "new(order)", "orderPlaced", "result"');
+  // a connector selected with the lifeline is named once, as selected, not counted again among its connectors
+  assert.match(diagramOf(cv).edits.remove(M, cv, [L, 'api-self'], true).say, /^Deleted lifeline "api", connector "api–api", their 3 connectors \("storefront–api", "api–payments", "api–receipt"\) and their 24 messages/);
+  // a lifeline with no connector: no word of one
+  assert.doesNotMatch(sqRemove(M, M.views.find(v => v.id === 'queue-order'), ['lifeline-worker'], true).say, /connector/);
 });

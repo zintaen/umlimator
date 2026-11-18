@@ -935,3 +935,22 @@ test('audit 34: a process of 16000 tasks in a row is judged by bzProblems() in u
   m.edges.push({ id: 'g1', type: 'bpmn.SequenceFlow', from: 't3', to: 'g' }, { id: 'g2', type: 'bpmn.SequenceFlow', from: 'g', to: 't4' });
   assert.deepEqual(bzProblems(m, m.views[0]).map(p => [p.rule, p.ids[0]]), [['flow-start', 't5'], ['gateway-flows', 'g']]);
 });
+
+// audit 35: a message flow to or from a pool with no name was "Message flow from pool to Task", and describe() said "message to
+// pool", where the pool's card and the PDF's Lines rows name it by its id: two black-box pools could not be told apart
+test('audit 35: a line names an unnamed pool by its id, as the pool\'s card and the PDF do; an unnamed flow node keeps its kind word', () => {
+  const m = JSON.parse(readFileSync(new URL('./bpmn-minimal.json', import.meta.url), 'utf8'));
+  m.nodes.push({ id: 'customer', type: 'bpmn.Participant' }, { id: 'customer2', type: 'bpmn.Participant', label: '' });
+  m.edges.push({ id: 'm1', type: 'bpmn.MessageFlow', from: 'customer', to: 'task' }, { id: 'm2', type: 'bpmn.MessageFlow', from: 'end', to: 'customer2' });
+  m.views[0].nodeIds.push('customer', 'customer2');
+  const g = layout(m, 'v'), aria = id => (g.nodes.find(n => n.id === id) || g.edges.find(e => e.id === id)).aria, said = describe(m, 'v').split('\n');
+  assert.equal(aria('customer'), 'Pool customer, a black box'); assert.equal(aria('customer2'), 'Pool customer2, a black box');
+  assert.equal(aria('m1'), 'Message flow from customer to Task'); assert.equal(aria('m2'), 'Message flow from End to customer2');
+  assert.ok(said.includes('Pool customer, a black box; message to Task.'), said.join('\n'));
+  assert.ok(said.includes('End event End, in Pool; message to customer2.'), said.join('\n'));
+  const ctx = mapContext(m), rows = tablesOf(ctx, ctx.V.v, layout(m, 'v')).flatMap(t => t.rows).join('\n');
+  assert.match(rows, /customer → Task/); assert.match(rows, /End → customer2/);
+  // a flow node with no name is still said by its kind, as the picture draws it unnamed
+  delete m.nodes.find(n => n.id === 'end').label;
+  assert.equal(layout(m, 'v').edges.find(e => e.id === 'm2').aria, 'Message flow from end event to customer2');
+});

@@ -5,7 +5,7 @@ import { layoutTyped, typedLines } from '../typed/layout.js';
 import '../uml/class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from '../uml/flow.js'; // and SHAPE.diamond, SHAPE.initial's circle, read only
 import { snKindName, snLineName } from '../uml/structure.js';
-import { usedIds, jsonText, labelOr } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the flowchart, flowchart (work package M2.3, notes/milestone-2.md §7.2) ----------
    Ten symbols: the decision is stage 4's diamond and the connector a circle over SHAPE.initial's outline, both read only;
@@ -98,12 +98,20 @@ function fcIndex(model, view) {
   const pair = id => { const x = N.get(id); return x.type === 'flow.Connector' && FC_TXT(x.label) ? FC_TXT(x.label).toLowerCase() : ''; };
   // the shown connectors with no flow in, by label, in the view's order: read once, so a walk over many alike stays linear (audit 34)
   const carry = new Map(); ids.forEach(o => { const k = pair(o); if (k && !inBy.has(o)) add(carry, k, o); });
-  const next = id => (outBy.has(id) || !pair(id) ? outs(id).map(e => e.to) : (carry.get(pair(id)) || []).filter(o => o !== id));
-  const walk = [], seen = new Set(), visit = s => { const q = [s]; while (q.length) { const id = q.pop(); if (seen.has(id)) continue; seen.add(id); walk.push(id); next(id).reverse().forEach(to => q.push(to)); } };
+  // depth first, each node's next steps read one at a time from where it left off, never pushed whole on each visit: a label's
+  // carry group read from one place past its first unseen member, so a walk over many alike is linear, not N² pushes (audit 35)
+  const at = new Map(), walk = [], seen = new Set(), visit = s => {
+    if (seen.has(s)) return;
+    const st = [], enter = id => { seen.add(id); walk.push(id); const k = outBy.has(id) ? '' : pair(id); st.push(k ? { k, g: carry.get(k) || [] } : { o: outBy.get(id) || [], i: 0 }); };
+    enter(s);
+    while (st.length) { const f = st[st.length - 1]; let to;
+      if (f.k) { let j = at.get(f.k) || 0; while (j < f.g.length && seen.has(f.g[j])) j++; at.set(f.k, j); to = f.g[j]; }
+      else { while (f.i < f.o.length && seen.has(f.o[f.i].to)) f.i++; to = f.i < f.o.length ? f.o[f.i++].to : undefined; }
+      if (to === undefined) st.pop(); else enter(to); } };
   starts.forEach(visit); const reached = new Set(seen); ids.forEach(visit);
   return { N, E, path, ids, lines, flows, ins, outs, starts, ends, walk, reached, isStart: new Set(starts), isEnd: new Set(ends) };
 }
-const fcName = x => String(x.label ?? x.id);
+const fcName = elName;
 const fcCalled = x => (x ? (FC_TXT(fcName(x)) || fcLook(x)[1].toLowerCase()) : '?');
 const fcPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 

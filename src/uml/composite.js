@@ -8,7 +8,7 @@ import { LINE_WORDS, legendOf, lineIn, lineLabel, lineLook, lineRename, memberEd
 import './usecase.js'; // SHAPE.ellipse, a collaboration use's; SHAPE.subject, a class subject's frame
 import { SN_SAY, STRUCT_RULES, snKindName, snKindWord, portFit, portSides, portsDrawn, structProblems } from './structure.js';
 import { viewLines } from './owners.js';
-import { usedIds, jsonText, labelOr } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the composite structure diagram, uml.composite-structure (work package 5.6, notes/stage-5.md §6, §10.2) ----------
    The view's subject (a class, a component or a collaboration, listed in nodeIds) is a box holding its parts (its uml.Property
@@ -25,7 +25,7 @@ const CS_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), CS
 const CS_HAS = x => x != null && x !== '';
 const CS_PROPS = x => (CS_OBJ(x && x.props) ? x.props : {});
 // a part or role with no name is named as drawn, ': Engine [1]', by every port, line and binding that names it (audit 16)
-const csName = x => (x.type === 'uml.Property' && !CS_HAS(x.label) ? csPartSaid(x) : String(x.label ?? x.id)); // '' too, as csPartText (audit 17)
+const csName = x => (x.type === 'uml.Property' && !CS_HAS(x.label) ? csPartSaid(x) : elName(x)); // '' too, as csPartText (audit 17)
 const csPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const csStereo = x => CS_ARR(CS_PROPS(x).stereotypes).filter(CS_HAS).map(String);
 const CS_SUBJECTS = ['uml.Class', 'uml.Component', 'uml.Collaboration'], CS_TYPED = ['uml.Class', 'uml.Component']; // a subject; what owns ports and types parts
@@ -109,7 +109,7 @@ function csPic(model, view) {
   const rest = ids.filter(id => !boxed.has(id) && !uses.includes(id));
   const partOf = new Map([...parts.map(m => [m.id, S]), ...collabs.flatMap(c => c.roles.map(m => [m.id, c.x]))]); // a part or role: its structure
   const classes = [...at.values()].filter(n => CS_TYPED.includes(n.type));
-  const typeOf = p => { const vt = CS_PROPS(p).valueType, c = CS_HAS(vt) ? classes.filter(n => (n.label ?? n.id) === vt) : []; return c.length === 1 ? c[0] : null; };
+  const typeOf = p => { const vt = CS_PROPS(p).valueType, c = CS_HAS(vt) ? classes.filter(n => elName(n) === vt) : []; return c.length === 1 ? c[0] : null; };
   const el = id => at.get(id) || (mem.get(id) || {}).m || null;
   // a line's end as drawn: { node, port?, id (the model's) }; null where nothing drawn is it
   const end = (e, k) => { const x = e[k], p = (CS_PROPS(e).ends || {})[k], part = CS_OBJ(p) ? p.part : null;
@@ -278,7 +278,7 @@ const CS_RULES = {
   'collaboration-named': 'a collaboration use\'s collaboration names a collaboration of the model',
   ...STRUCT_RULES,
 };
-const csCollab = (P, u) => [...P.at.values()].find(n => n.type === 'uml.Collaboration' && CS_HAS(CS_PROPS(u).collaboration) && (n.label ?? n.id) === CS_PROPS(u).collaboration) || null;
+const csCollab = (P, u) => [...P.at.values()].find(n => n.type === 'uml.Collaboration' && CS_HAS(CS_PROPS(u).collaboration) && elName(n) === CS_PROPS(u).collaboration) || null;
 function csProblems(model, view) {
   const out = [], P = csPic(model, view || {}), vi = CS_ARR(model && model.views).indexOf(view), S = P.S, say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const q = id => JSON.stringify(P.el(id) ? csName(P.el(id)) : String(id));
@@ -289,7 +289,7 @@ function csProblems(model, view) {
   const nodeAt = id => CS_ARR(model.nodes).indexOf(P.at.get(id)), memPath = id => { const o = P.mem.get(id).owner; return `nodes[${nodeAt(o.id)}].members[${o.members.indexOf(P.mem.get(id).m)}]`; };
   if (S && S.type !== 'uml.Collaboration') P.parts.forEach(m => { if (!P.typeOf(m)) say('warning', 'part-type', memPath(m.id) + '.props.valueType', [m.id, S.id],
     // a part given no type (the panel's row "engine") said in words, not "typed null" (audit 24)
-    `part ${q(m.id)} of ${q(S.id)} ${!CS_HAS(CS_PROPS(m).valueType) ? 'has no type' : `is typed ${jsonText(CS_PROPS(m).valueType)}, which names ${[...P.at.values()].some(n => CS_TYPED.includes(n.type) && (n.label ?? n.id) === CS_PROPS(m).valueType) ? 'more than one' : 'no'} class or component`}, so it shows only the ports its connectors reach through it`); });
+    `part ${q(m.id)} of ${q(S.id)} ${!CS_HAS(CS_PROPS(m).valueType) ? 'has no type' : `is typed ${jsonText(CS_PROPS(m).valueType)}, which names ${[...P.at.values()].some(n => CS_TYPED.includes(n.type) && elName(n) === CS_PROPS(m).valueType) ? 'more than one' : 'no'} class or component`}, so it shows only the ports its connectors reach through it`); });
   P.parts.forEach(m => { const t = CS_PROPS(m).multiplicity, b = CS_HAS(t) ? multBounds(t) : { lower: 0, upper: 0 };
     if (!b || b.lower > b.upper) say('warning', 'part-multiplicity', memPath(m.id) + '.props.multiplicity', [m.id], `part ${q(m.id)}'s multiplicity [${t}] ${b ? 'has its lower bound above its upper' : 'is not one (1, *, 0..1, 1..*)'}`); });
   // where an end lies: the subject's structure ('S'), a collaboration's (its id), or nowhere (null). A collaboration use is in
@@ -421,10 +421,14 @@ function csRemove(model, view, ids, fromModel) {
   const own = id => CS_ARR(view.nodes).some(n => CS_OBJ(n) && n.id === id && !mine.has(id)) || CS_ARR(view.edges).some(x => CS_OBJ(x) && x.id === id);
   const out = [], hide = [], said = [], kept = [], del = id => { if (!out.some(c => c.op === 'delete' && c.id === id)) out.push({ op: 'delete', id }); };
   // the other elements deleted with the members, said as the deployment type says them; told, what a member's own words count (audit 34)
-  const more = new Set(), told = new Set();
+  // notLine, the lines of a view listing none, said kept after the members: one a member or a port takes is not (audit 35)
+  const more = new Set(), told = new Set(), notLine = [];
   ids.forEach(id => { const s = csSplit(id), x = P.mem.get(s ? s[1] : id);
     if (s && x && !fromModel) { const through = lines.filter(e => ['from', 'to'].some(k => e[k] === s[1] && CS_OBJ((CS_PROPS(e).ends || {})[k]) && CS_PROPS(e).ends[k].part === s[0]));
-      through.forEach(e => del(e.id)); said.push(`the ${csPlural(through.length, 'connector')} through ${csName(P.el(s[0]))} to its port ${csName(x.m)}; Shift + Delete deletes the port from ${csName(x.owner)}`); }
+      // a connector between two selected ports is counted once: the second port says it is the same one (audit 35)
+      const fresh = through.filter(e => !told.has(e.id)).length, was = through.length - fresh;
+      const what = !was ? `the ${csPlural(fresh, 'connector')}` : !fresh ? `the same ${through.length === 1 ? 'connector' : 'connectors'}` : `${csPlural(fresh, 'more connector')}`;
+      through.forEach(e => { del(e.id); told.add(e.id); }); said.push(`${what} through ${csName(P.el(s[0]))} to its port ${csName(x.m)}; Shift + Delete deletes the port from ${csName(x.owner)}`); }
     else if (x) { const its = lines.filter(e => (e.from === x.m.id || e.to === x.m.id || ['from', 'to'].some(k => CS_OBJ((CS_PROPS(e).ends || {})[k]) && CS_PROPS(e).ends[k].part === x.m.id))), n = its.length;
       its.forEach(e => told.add(e.id)); told.add(x.m.id);
       del(x.m.id); said.push(`${x.m.type === 'uml.Port' ? 'port' : x.owner.type === 'uml.Collaboration' ? 'role' : 'part'} ${csName(x.m)} of ${csName(x.owner)}${n ? ` and its ${csPlural(n, 'line')}` : ''}${fromModel ? '' : ' (a member is not hidden: it goes from the model)'}`); }
@@ -433,14 +437,17 @@ function csRemove(model, view, ids, fromModel) {
     else { const e = lines.find(x => x.id === id); // a node or a line selected with them: as the canvas does
       if (own(id)) { del(id); more.add(id); } // lives in this view only: hiding it is deleting it
       else if (csHolds(P.el(id), view.subject)) kept.push(`kept ${csName(P.el(id))}, ${id === view.subject ? '' : 'which holds '}the view's subject: change the view's subject, or Shift + Delete deletes it`); // apply() refuses its hide (audit 18)
-      else if (e && !Array.isArray(view.edges)) said.push(`not the line ${csName(e)}: this view shows every line between its cards, and Shift + Delete deletes it`);
+      else if (e && !Array.isArray(view.edges)) notLine.push(e);
       else if (e || P.at.has(id)) hide.push({ op: 'hide', id, view: view.id }); } });
+  notLine.filter(e => !told.has(e.id)).forEach(e => said.push(`not the line ${csName(e)}: this view shows every line between its cards, and Shift + Delete deletes it`));
   // hidden first: a line hidden after the part it ends at is deleted would be gone with it
-  if (!out.length && !hide.length) return { error: `Nothing to delete: ${said[0] || kept[0] || 'no connector'}` };
+  // a line a selected member or port takes with it is not hidden first, nor counted hidden (audit 35)
+  const hides = hide.filter(c => !told.has(c.id));
+  if (!out.length && !hides.length) return { error: `Nothing to delete: ${said[0] || kept[0] || 'no connector'}` };
   // a line a member's words count ("and its 1 line") is not counted again among the others; what was hidden, said too
-  const said2 = said.join('; '), n = [...more].filter(id => !told.has(id)).length, hid = new Set(hide.map(c => c.id)).size;
+  const said2 = said.join('; '), n = [...more].filter(id => !told.has(id)).length, hid = new Set(hides.map(c => c.id)).size;
   const head = `Deleted ${said2}${n ? `${said2 ? ', and ' : ''}${csPlural(n, said2 ? 'other element' : 'element')}` : ''}`;
-  return { commands: [...hide, ...out], say: [head, ...(hid ? [`hid ${csPlural(hid, 'element')}`] : []), ...kept].join('; ') };
+  return { commands: [...hides, ...out], say: [head, ...(hid ? [`hid ${csPlural(hid, 'element')}`] : []), ...kept].join('; ') };
 }
 // rename: F2 on a port on a part renames its class's port, for every part of that type (said), and on the subject's own
 // port, `name : Type` as well (audit 16); on a collaboration use, `name : Collaboration`; on a part or a role, its row
@@ -518,7 +525,7 @@ const CS_TYPE = registerDiagramType('uml.composite-structure', {
     if (u.type !== 'uml.CollaborationUse') return []; // any other element is drawn with no compartments: no members in the PDF (audit 29)
     return [...(CS_HAS(CS_PROPS(u).collaboration) ? [String(CS_PROPS(u).collaboration)] : []),
       // its bindings as the view draws and describe() says them (P.lines: a view's own line too, audit 26)
-      ...P.lines.filter(({ e }) => e.type === 'uml.RoleBinding' && e.to === id).map(({ e }) => `${e.label ?? '?'} ← ${csName(P.el(e.from) || { id: e.from })}`)]; },
+      ...P.lines.filter(({ e }) => e.type === 'uml.RoleBinding' && e.to === id).map(({ e }) => `${labelOr(e.label, '?')} ← ${csName(P.el(e.from) || { id: e.from })}`)]; },
   edits: { connect: csConnect, moveTo: csMoveTo, add: csAdd, remove: csRemove, rename: csRename, member: csMember },
 });
 

@@ -7,7 +7,7 @@ import { flowWrap } from '../uml/flow.js';
 import { boxHead, ownersOn, readingOrder } from '../uml/owners.js';
 import { brLines } from '../typed/draw.js';
 import { snKindName, snLineName } from '../uml/structure.js';
-import { usedIds, jsonText, labelOr } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- C4's elements and static views, c4.landscape, c4.context, c4.container, c4.component (work package M2.6,
    notes/milestone-2.md §5.1, §5.2, §6.1, §6.5, §7.5, §7.5.1) ----------
@@ -24,7 +24,7 @@ import { usedIds, jsonText, labelOr } from '../core/model.js';
 const C4_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), C4_ARR = x => (Array.isArray(x) ? x : []);
 const C4_HAS = x => x != null && String(x).trim() !== '';
 const C4_P = x => (C4_OBJ(x.props) ? x.props : {});
-const c4Name = x => String(x.label ?? x.id);
+const c4Name = elName;
 const c4Plural = countOf; // "2 people", "2 classes" (audit 32)
 const C4_WORD = { __proto__: null, 'c4.Person': 'Person', 'c4.SoftwareSystem': 'Software system', 'c4.Container': 'Container', 'c4.Component': 'Component',
   'c4.DeploymentNode': 'Deployment node', 'c4.ContainerInstance': 'Container instance', 'uml.Comment': 'Comment' };
@@ -244,8 +244,9 @@ function c4Problems(model, view) {
   if (!K) return out;
   // the view's rules (§5.1)
   const ids = C4_ARR(view.nodeIds), S = C4_SUBJECT[K], subj = view.subject != null ? I.at.get(view.subject) : null;
+  // none or not shown: a warning; one of the wrong kind, or naming no element: an error, as on a container or component view (audit 35)
   if (K === 'context' && !(subj && subj.type === S && ids.includes(view.subject)))
-    say('warning', 'c4-subject', `${at}.subject`, [view.subject], view.subject == null ? 'a context view names the software system it is about as its subject' : `${q(view.subject)} is ${!subj || subj.type !== S ? 'not a software system' : 'not shown'}: a context view shows its software system`);
+    say(view.subject == null || (subj && subj.type === S) ? 'warning' : 'error', 'c4-subject', `${at}.subject`, [view.subject], view.subject == null ? 'a context view names the software system it is about as its subject' : `${q(view.subject)} is ${!subj || subj.type !== S ? 'not a software system' : 'not shown'}: a context view shows its software system`);
   // none (its subject deleted, as composite structure's subject-shown, audit 18): a warning; one of the wrong kind: an error
   if ((K === 'container' || K === 'component') && !(subj && subj.type === S))
     say(view.subject == null ? 'warning' : 'error', 'c4-subject', `${at}.subject`, [view.subject], `${view.subject == null ? 'the view has no subject' : I.at.has(view.subject) ? `its subject ${q(view.subject)} is ${c4A(kind(view.subject))}` : `its subject ${q(view.subject)} names no element`}: a ${K} view zooms into ${c4A(C4_WORD[S].toLowerCase())}`);

@@ -6,7 +6,7 @@ import { layoutTyped } from '../typed/layout.js';
 import { drawnLines, legendItem, lineRename } from '../uml/class.js'; // and SHAPE.note, a comment's look
 import { holdsLine, ownersOn, placeTabs } from '../uml/owners.js';
 import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_HEAD, SYS_TABLE } from './sysml.js';
-import { usedIds, jsonText, labelOr } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the requirement diagram, sysml.requirement (work package M3.2, notes/milestone-3.md §6, §13) ----------
    Requirements, test cases, blocks, packages and comments in a SysML frame (§5): a requirement is the classifier with
@@ -32,7 +32,7 @@ const RQ_REL = {
 const RQ_LINES = [...Object.keys(RQ_REL), RQ_LINK];
 const RQ_WORD = { __proto__: null, [RQ]: 'Requirement', [RQ_TC]: 'Test case', 'sysml.Block': 'Block', [RQ_PKG]: 'Package', 'uml.Comment': 'Comment' };
 const RQ_RISK = ['low', 'medium', 'high'], RQ_METHOD = ['analysis', 'inspection', 'test', 'demonstration'];
-const rqName = x => String(x.label ?? x.id);
+const rqName = elName;
 const rqStereo = x => RQ_ARR(RQ_PROPS(x).stereotypes).filter(RQ_HAS).map(String);
 const rqPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 // a containment line's geometry id, <owner>-><child>: no element id holds '->' (model.md rule 5)

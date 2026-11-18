@@ -1,5 +1,5 @@
 import { registerDiagramType, idTable } from '../core/registry.js';
-import { copyOf, usedIds, jsonText, labelOr } from '../core/model.js';
+import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
 import { apply } from '../core/apply.js';
 import { interactionEvery } from './interaction.js';
 import { esc, fit, textW, widest } from '../core/text.js';
@@ -31,7 +31,7 @@ const TM_RULER = '->ruler', tmRowId = (lane, state) => `${lane}->${state}`; // g
 const tmEvery = interactionEvery;
 const tmView = (model, view) => (TM_OBJ(view) ? view : TM_ARR(model && model.views).find(v => TM_OBJ(v) && v.id === view)) || null;
 const tmProps = x => (TM_OBJ(x && x.props) ? x.props : {});
-const tmName = n => String(n.label ?? n.id);
+const tmName = elName;
 const tmHead = n => tmName(n) + (TM_HAS(tmProps(n).represents) ? ' : ' + tmProps(n).represents : ''); // "worker : OrderWorker"
 const tmStereo = n => TM_ARR(tmProps(n).stereotypes).filter(TM_HAS).map(String);
 const tmSt = n => tmStereo(n).map(t => `«${t}»`).join(' '), tmShown = n => [tmSt(n), tmHead(n)].filter(TM_HAS).join(' '); // its «stereotypes»: a line over its name, and first in describe() (audit 17); F2 edits tmHead
@@ -198,7 +198,7 @@ function tmProblems(model, view) {
   // a listed element that is no lifeline (no type, a comment, a class, a typo'd type): not drawn, so said, once each, where the view
   // first lists it, as the mindmap view says one (audit 31: it went without a word)
   TM_ARR(V.nodeIds).forEach((id, i) => { if (typeof id !== 'string' || !X.N.has(id) || X.N.get(id).type === 'uml.Lifeline' || TM_ARR(V.nodeIds).indexOf(id) !== i) return; const n = X.N.get(id), t = n.type;
-    say('timing-kinds', `${at}.nodeIds[${i}]`, [id], `${jsonText(id)} (${jsonText(String(n.label ?? n.id))}) ${t == null || t === '' ? 'has no type, so it is' : `is of type ${jsonText(t)}, which is`} no lifeline: not drawn`, 'warning'); });
+    say('timing-kinds', `${at}.nodeIds[${i}]`, [id], `${jsonText(id)} (${jsonText(elName(n))}) ${t == null || t === '' ? 'has no type, so it is' : `is of type ${jsonText(t)}, which is`} no lifeline: not drawn`, 'warning'); });
   const seen = new Map();
   X.changes.forEach(c => { const n = X.N.get(c.lifeline);
     if (!n || n.type !== 'uml.Lifeline') return say('change-lifeline', cPath(c) + '.lifeline', [c.id], `change ${c.id} names ${jsonText(c.lifeline)}, which is not a lifeline of the model`);
@@ -397,10 +397,11 @@ function tmRemove(model, view, ids, fromModel) {
   const next = apply(model, r), Y = tmIndex(next, tmView(next, V.id)), left = new Set([...Y.changes, ...Y.msgs, ...Y.cons].map(x => x.id));
   // each part said of its own lanes: a change by its lifeline, a message by its ends (a deleted lane's first); the rest with the hidden lanes, as before (audit 25)
   const hidL = new Set(gone.hid), delL = new Set(gone.lane.filter(id => !hidL.has(id))), on = (S, m) => S.has(m.from) || S.has(m.to);
-  // what a deleted lifeline took from every other view: its changes and their constraints in each timing view, its messages anywhere (the core's cascade, audit 33)
+  // what a deleted lifeline took from every other view: its changes and their constraints in each timing view, its messages anywhere (the core's cascade, audit 33),
+  // its connectors in every communication view (a timing view holds none, so they are counted with the far ones: audit 35)
   const here = new Set([...X.changes, ...X.msgs, ...X.cons].map(x => x.id)), was = tmEvery(model), now = tmEvery(next), still = new Set(Object.values(now).flat().map(x => x.id));
   const away = Object.fromEntries(Object.entries(was).map(([w, xs]) => [w, xs.filter(x => !here.has(x.id) && !still.has(x.id)).length]));
-  const list = (keep = () => true, far = false) => [[X.changes, 'change'], [X.msgs, 'message'], [X.cons, 'constraint']].map(([xs, w]) => [xs.filter(x => !left.has(x.id) && !(gone.off.has(x.id) && kept.has(x.id)) && keep(x)).length + (far ? away[w] : 0), w])
+  const list = (keep = () => true, far = false) => [[X.changes, 'change'], [X.msgs, 'message'], [[], 'connector'], [X.cons, 'constraint']].map(([xs, w]) => [xs.filter(x => !left.has(x.id) && !(gone.off.has(x.id) && kept.has(x.id)) && keep(x)).length + (far ? away[w] : 0), w])
     .filter(([c]) => c).map(([c, w]) => tmPlural(c, w)).join(', ').replace(/, ([^,]*)$/, ' and $1'); // "1 change, 2 messages and 1 constraint"
   const lane = id => (X.C.get(id) || {}).lifeline, mine = x => (X.C.get(x.id) === x ? delL.has(x.lifeline) : X.msgs.includes(x) ? on(delL, x) : delL.has(lane(x.from)) || delL.has(lane(x.to))); // a deleted lane's change, message or constraint
   const theirs = new Set(X.msgs.filter(m => on(hidL, m) && !on(delL, m)).map(m => m.id));

@@ -328,7 +328,9 @@ test('audit 2: an FK to a column whose id holds a space, and a column with no la
   const t = { schemaVersion: 2, nodes: [{ id: 't', type: 'er.Entity', label: 't', members: [{ id: 't.qty', type: 'er.Column', props: { dataType: 'integer', primaryKey: true } }] }], edges: [], views: [] };
   assert.equal(printColumn(t.nodes[0].members[0]), 't.qty integer PK');
   t.nodes[0].members[0].label = '';
-  assert.ok(erMember(t, null, 't', 't.qty', printColumn(t.nodes[0].members[0])).error, 'an empty name is reported, not replaced by the type');
+  // a column labelled "" prints as one with no label, by its id, as the table draws it (audit 35); an empty name typed is reported
+  assert.equal(printColumn(t.nodes[0].members[0]), 't.qty integer PK');
+  assert.ok(erMember(t, null, 't', 't.qty', '"" integer PK').error, 'an empty name is reported, not replaced by the type');
 });
 
 test('audit 4: an FK to a column whose id is a flag word prints it quoted, so the row saves back with its reference', () => {

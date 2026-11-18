@@ -9,7 +9,7 @@ import './class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from './flow.js'; // SHAPE.initial, final, diamond and bar too
 import { ownersOn, readingOrder } from './owners.js';
 import { parseTransition, printTransition, transitionText } from './transition.js';
-import { usedIds, jsonText, labelOr } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 import { snKindName } from './structure.js';
 
 /* ---------- the state machine diagram, uml.state-machine (work package 4.6, notes/stage-4.md §6, §10) ----------
@@ -25,7 +25,7 @@ const ST_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), ST
 const ST_HAS = x => x != null && String(x).trim() !== '';
 const ST_PROPS = x => (ST_OBJ(x && x.props) ? x.props : {});
 const ST_OWN = (o, k) => (o != null && Object.hasOwn(o, k) ? o[k] : undefined);
-const stName = x => String(x.label ?? x.id);
+const stName = elName;
 const stStereo = x => ST_ARR(ST_PROPS(x).stereotypes).filter(ST_HAS).map(String);
 const stPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const ST_VERTEX = ['uml.State', 'uml.Pseudostate', 'uml.FinalState'];
@@ -450,7 +450,7 @@ function stOwners(model, x) {
 function stRemove(model, view, ids, fromModel) {
   // the regions of the view's own states too (remove gets the model as it is: registry.js), audit 25. Delete deletes a selection
   // the view holds as its own (the canvas's Delete), so it is said the same way; a selection with a model element in it is the canvas's
-  const own = new Set(), put = x => { if (ST_OBJ(x) && typeof x.id === 'string') { own.add(x.id); ST_ARR(x.members).forEach(put); } };
+  const own = new Set(), put = x0 => { for (const s = [x0], seen = new Set(); s.length;) { const x = s.pop(); if (ST_OBJ(x) && typeof x.id === 'string' && !seen.has(x)) { seen.add(x); own.add(x.id); for (const y of ST_ARR(x.members)) s.push(y); } } }; // a stack: thousands deep (audit 35)
   if (ST_OBJ(view)) [...ST_ARR(view.nodes), ...ST_ARR(view.edges)].forEach(put);
   const I = stIndex(ST_OBJ(view) ? ownNodes(model, view).model : model), rs = fromModel || ids.every(id => own.has(id)) ? ids.filter(id => I.M.has(id) && I.M.get(id).x.type === 'uml.Region') : [];
   if (!rs.length) return fromModel || !ST_OBJ(view) ? null : stHide(model, view, ids, I, own);
