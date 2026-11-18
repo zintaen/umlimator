@@ -36,7 +36,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10})
 
 
 def ok(name, cond, info=""):
@@ -1910,5 +1910,50 @@ if part("audit 31"):
            r.returncode == 0 and d["authors"]["octocat"]["avatar"].startswith("data:image/png") and d["views"][0]["intake"][0]["logo"].startswith("data:image/svg+xml")
            and norm(back) == norm(want) and kept and far not in page and "authors.far.avatar" in r.stderr,
            (r.stderr[-300:], e.stderr[-300:], back and {k: back.get(k) for k in ("meta", "authors", "views")}))
+if part("audit 32"):
+    with tempfile.TemporaryDirectory() as tmp:
+        t = Path(tmp)
+        run = lambda *x, cwd=None, env=None: subprocess.run([sys.executable, str(ROOT / "umlimator.py"), *x], capture_output=True, text=True, cwd=cwd, env=env)
+        good = {"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "edges": [{"from": "a", "to": "b"}], "views": [{"id": "v", "nodeIds": ["a", "b"]}]}
+        # audit 32: a message of check --expand starts "view <id> with <card> unfolded: ", which kind_of split at its first ": ": an id
+        # or a card holding ": " left the kind's words behind, and a crossing read as other (counts and --ignore wrong)
+        msgs = ["view svc: core with db unfolded: edges A→B and C→D cross", "view api with svc: db unfolded: edges A→B and C→D cross",
+                "view api with db unfolded: edge A→B runs right-to-left", 'view api: label "x with y unfolded: z" lies on edge A→B', "view svc: core: edges A→B and C→D cross"]
+        want = ["crossings", "crossings", "rightToLeft", "labelOnLine", "crossings"]
+        ok("check --expand · a message's kind is read after \"view <id> with <card> unfolded: \", an id or a card holding \": \" too (audit 32)",
+           [u.kind_of(o, set(), ["api", "svc: core"]) for o in msgs] == want and [u.kind_of(o) for o in msgs[:4]] == want[:4],
+           ([u.kind_of(o, set(), ["api", "svc: core"]) for o in msgs], [u.kind_of(o) for o in msgs]))
+        # audit 32: an --out name the disk takes (250 bytes) could not be written: replacing()'s probe beside it is 10 bytes longer
+        (t / "g.json").write_text(json.dumps(good)); name = "m" * 245 + ".html"
+        r = run("render", str(t / "g.json"), "--out", str(t / name), "--no-check")
+        r2 = run("render", str(t / "g.json"), "--out", str(t / ("a." + "x" * 240)), "--no-check")
+        ok("render · an --out file name of 250 bytes, or with a 240-byte 'suffix', is written; no probe is left beside it (audit 32)",
+           r.returncode == 0 and (t / name).is_file() and r2.returncode == 0 and (t / ("a." + "x" * 240)).is_file()
+           and not [f for f in t.iterdir() if f.name.startswith(".")], (r.stderr[-300:], r2.stderr[-300:]))
+        # audit 32: a model's top-level files, hunks, areas, fileNotes and stats never reach the page, so a shared page carries no
+        # source hunks or paths (risks.md S1); the JSON export gives back the rest of the model as written. asWritten is page.js's own
+        eng = {**good, "files": ["SECRET-PATH"], "hunks": {"h": "SECRET-HUNK"}, "areas": [{"name": "a"}], "fileNotes": {"f": "SECRET-NOTE"}, "stats": {"keep": 1}, "custom": {"a": 1}}
+        (t / "eng.json").write_text(json.dumps(eng))
+        r = run("render", str(t / "eng.json"), "--out", str(t / "eng.html"), "--no-check")
+        js = ("import { readFileSync } from 'node:fs'; const src = readFileSync(process.argv[1], 'utf8');"
+              "const asWritten = new Function(src.slice(src.indexOf('function asWritten('), src.indexOf('/* ================= the standalone viewer')) + '; return asWritten;')();"
+              "process.stdout.write(JSON.stringify(asWritten(JSON.parse(readFileSync(0, 'utf8')))));")
+        data = u.DATA.search((t / "eng.html").read_text(encoding="utf-8")).group(1) if (t / "eng.html").is_file() else "{}"
+        e = subprocess.run(["node", "--input-type=module", "-e", js, str(ROOT / "src" / "page" / "page.js")], input=data, capture_output=True, text=True)
+        back = json.loads(e.stdout) if e.returncode == 0 else None
+        page = (t / "eng.html").read_text(encoding="utf-8") if (t / "eng.html").is_file() else ""
+        rest = {k: v for k, v in eng.items() if k not in u.ENGINE_ONLY}
+        ok("page export · a model's files, hunks, areas, fileNotes and stats never reach the page, and Map model (JSON) gives back the rest as written (audit 32)",
+           r.returncode == 0 and "SECRET" not in page and json.dumps(back, sort_keys=True) == json.dumps(rest, sort_keys=True), (r.stderr[-300:], e.stderr[-300:], back))
+        # audit 32: diff --base rendered a page for a model whose diff is empty (re-indented, keys reordered), and left it in --out
+        g = t / "re"; g.mkdir()
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
+        (g / "c.json").write_text(json.dumps(good)); (g / "d.json").write_text(json.dumps(good))
+        sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "base")
+        (g / "c.json").write_text(json.dumps(dict(reversed(list(good.items()))), indent=4)); (g / "d.json").write_text(json.dumps({**good, "title": "u"}))
+        r = run("diff", "--base", "HEAD", "--out", "out", cwd=g)
+        left = sorted(f.name for f in (g / "out").iterdir()) if (g / "out").is_dir() else []
+        ok("diff --base · a model only re-indented, its keys reordered, gets no page beside the one that changed (audit 32)",
+           r.returncode == 0 and [x["file"] for x in json.loads(r.stdout or "[]")] == ["d.json"] and "c.html" not in left and "d.html" in left, (r.stdout[-300:], r.stderr[-300:], left))
 part.done()
 sys.exit(1 if failed else 0)

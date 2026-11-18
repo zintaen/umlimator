@@ -256,7 +256,11 @@ def replacing(path):
     path = Path(path)
     if path.is_dir():  # before any work is written (render: before the engine runs), not an IsADirectoryError at the end
         sys.exit(f"--out {path} is a folder: name a file")
-    tmp = path.with_name(f".{path.stem}.{os.urandom(4).hex()}{path.suffix}")  # not mkstemp: the file takes the usual mode
+    stem = path.stem
+    if len(stem.encode()) > 180:  # a name the disk takes (255 bytes) is one the probe's, 10 bytes longer, overflows: cut as temp_json cuts (audit 32)
+        stem = stem.encode()[:180].decode(errors="ignore") + "-" + hashlib.sha256(stem.encode()).hexdigest()[:8]
+    suffix = path.suffix if len(path.suffix.encode()) <= 40 else ""  # a long "suffix" (a.<200 bytes>) is no extension: the probe's name stays short
+    tmp = path.with_name(f".{stem}.{os.urandom(4).hex()}{suffix}")  # not mkstemp: the file takes the usual mode
     try:  # a folder that cannot be written, or a path under a file: one line before any work, never a traceback (audit 21)
         path.parent.mkdir(parents=True, exist_ok=True)  # as render's --out: a folder that is not there yet is made
         os.close(os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600))
@@ -544,7 +548,8 @@ def written(orig, m):
     engine's own changes are known by their places: kind, title, source, avatarsEmbedded, meta.generated, meta.project
     and meta.root; each author's avatar it inlines; each intake logo it embeds; and each view's layout its search bakes
     over none. What own_media leaves out (an address an avatar, an example or the model's icons names, risks.md S2) is
-    never written into the page to put back: the export leaves it out too, as render said."""
+    never written into the page to put back: the export leaves it out too, as render said. Nor are a model's
+    ENGINE_ONLY keys (files, hunks, areas, fileNotes, stats): they can hold source hunks and paths (risks.md S1, audit 32)."""
     added, was, seen = [], [], set()
     d = lambda x: x if isinstance(x, dict) else {}
     lst = lambda x: x if isinstance(x, list) else []
@@ -563,6 +568,8 @@ def written(orig, m):
         note(path)
     if not isinstance(orig.get("meta"), dict):  # no meta in the file: render's whole
         note(["meta"])
+    # ENGINE_ONLY keys (files, hunks, areas, fileNotes, stats) are never written into the page to put back: they can hold a
+    # diff's hunks and file paths, which round 19 kept out of a page that gets shared. The export leaves them out too
     if "icons" in m:  # render's table from the manifest and packs; the model's own, which names addresses, is left out (own_media)
         note(["icons"], keep=False)
     for login, a in d(m.get("authors")).items():
@@ -863,8 +870,12 @@ def cmd_diff(a):
         print(f"diff: {no_pictures(r['stillsFailed'])}", file=sys.stderr)
 
 
-def diff_page(before, after, near, out, stills=None):
+def diff_page(before, after, near, out, stills=None, unchanged=True):
+    """The diff of two models as a page at `out` (and stills). unchanged=False: none for a diff of nothing, as diff --base
+    leaves a model re-indented or with its keys reordered out (audit 32: its page was written, and its render's time spent)."""
     d = js("diff", before, after)
+    if not d["summary"] and not unchanged:
+        return {"summary": [], "views": d["views"], "model": d["model"]}
     m = d["model"]
     m["title"] = f"{m.get('title') or Path(near).stem}: what changed"
     rep = render_model(m, near, out)
@@ -1009,7 +1020,7 @@ def diff_since(a):
             # the copy is written there only when its folder resolves inside the checkout and no folder on the way is a
             # symbolic link, so a deleted model never writes outside it (audit 19)
             near = top / name if after or inside(top / name, folder=True) else out / f"{stem}.json"
-            r = diff_page(before, after, near, out / f"{stem}.html", out / stem)
+            r = diff_page(before, after, near, out / f"{stem}.html", out / stem, unchanged=False)
         except (SystemExit, Exception) as e:  # the module failed on this model (js() ends the CLI), or an odd one: said for this file, and the rest go on
             why = str(e.code if isinstance(e, SystemExit) else e)
             done.append({"file": name, "error": why})
@@ -1239,12 +1250,25 @@ KINDS = {"rules": r'(?:edge .+|boxes .+ form a cycle, which) breaks rule ".*"$',
 def kind_of(o, rules=None, views=None):
     """A message's kind. `rules`: the broken rules the page lists apart, which are the rules; a page rendered before
     0.28.0's next release lists none, and its rules are found by their words. `views`: the page's view ids, so the
-    "view <id>: " a message starts with is taken off whole, though an id holds ": "; else up to its first ": "."""
-    at = next((len(f"view {v}: ") for v in sorted(views or [], key=len, reverse=True) if o.startswith(f"view {v}: ")), None)
-    rest = o[at:] if at is not None else o.split(": ", 1)[1] if o.startswith("view ") and ": " in o else o
+    "view <id>: " a message starts with is taken off whole, though an id holds ": "; else up to its first ": ". A message of
+    check --expand starts "view <id> with <card> unfolded: " (template.html), taken off whole too: split at its first ": ",
+    an id or a card holding ": " left the kind's words behind it, and a crossing read as other (audit 32)."""
+    def after(v):  # what follows the prefix of view id v, or None
+        if o.startswith(f"view {v}: "):
+            return o[len(f"view {v}: "):]
+        if o.startswith(f"view {v} with ") and " unfolded: " in o[len(f"view {v} with "):]:
+            return o[len(f"view {v} with "):].split(" unfolded: ", 1)[1]
+        return None
+    rest = next((r for v in sorted(views or [], key=len, reverse=True) if (r := after(v)) is not None), None)
+    if rest is not None:
+        rests = [rest]
+    else:  # no known id: the words after its first ": ", or after an unfolded card's prefix; the first a kind reads
+        u = re.match(r"view .+? with .+? unfolded: ", o, re.S)
+        rests = [o.split(": ", 1)[1]] if o.startswith("view ") and ": " in o else [o]
+        rests += [o[u.end():]] if u else []
     if rules is not None:
-        return "rules" if o in rules else next((k for k, t in KINDS.items() if k != "rules" and re.match(t, rest, re.S)), "other")
-    return next((k for k, t in KINDS.items() if re.match(t, rest, re.S)), "other")
+        return "rules" if o in rules else next((k for r in rests for k, t in KINDS.items() if k != "rules" and re.match(t, r, re.S)), "other")
+    return next((k for r in rests for k, t in KINDS.items() if re.match(t, r, re.S)), "other")
 
 
 def cmd_check(a):
