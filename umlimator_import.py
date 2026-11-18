@@ -2,7 +2,7 @@
 
   structurizr   Structurizr DSL: workspace, model, views; person, softwareSystem, container and component, nested;
                 -> relationships with description and technology; tags; groups as boxes, nested; systemLandscape,
-                systemContext, container and component views with include * (or ids) and exclude; element styles' shapes
+                systemContext, container and component views with include * (ids, expressions) and exclude; element styles' shapes
   plantuml      C4-PlantUML: Person, System, Container, Component (with Db, Queue and _Ext), Rel, Rel_*, BiRel, and
                 *_Boundary(alias, label) { ... } as boxes
   mermaid       flowchart and graph (nodes, labelled links, subgraphs as boxes), and C4Context, C4Container and
@@ -652,8 +652,81 @@ def views(m, els, lines, specs, find, implied, groups):
     # relationship with that description joins them (Structurizr's two strategies)
     key = lambda x, y, r: (x, y) if implied == "any" else (x, y, r["desc"])
     direct, made, placed, work = {key(a, b, r) for a, b, _, r in lines}, {}, [], 0
+
+    def joined(ts):  # a -> b written with spaces is one relationship expression, a->b, as Structurizr reads it
+        out, i = [], 0  # each: its parts, its line (joined once: a long chain is not copied at each arrow, R2)
+        while i < len(ts):
+            if ts[i][0] == "->" and out and i + 1 < len(ts):
+                out[-1][0].append(ts[i + 1][0])
+                i += 2
+            else:
+                out.append(([ts[i][0]], ts[i][1]))
+                i += 1
+        return [("->".join(p), no) for p, no in out]
+
+    def under(x, c):  # c is x or in it (an implied relationship runs from what holds its end)
+        return x is None or x in up(c)
+
+    # each element's and relationship's tags, lowercased once for the whole file: a tag expression then costs at most the
+    # smaller of its values and an element's tags per element, never a fresh set of every tag list per expression (R2)
+    etags, rtags = {}, {}
+    def etag(c):
+        if c not in etags:
+            etags[c] = frozenset(g.lower() for g in ["Element", TAG[els[c]["type"]], *els[c]["tags"]])
+        return etags[c]
+    def rtag(eid, r):
+        if eid not in rtags:
+            rtags[eid] = frozenset(g.lower() for g in ["Relationship", *r["tags"]])
+        return rtags[eid]
+
+    def expr(t, lift):
+        """What a Structurizr expression includes or excludes, as ("els", elements) or ("rels", relationships), where an
+        element's relationships are its own and its members' (the implied ones); None for an expression not read here:
+        element.type, element.tag and element.parent (== or !=, values with commas), ->x->, ->x and x-> (x and what it
+        relates to), a->b and *->* (those relationships), relationship==* and relationship.tag, and && and || of them."""
+        for op, join in (("||", set.union), ("&&", set.intersection)):
+            if op in t:
+                got = [expr(x.strip(), lift) for x in t.split(op)]
+                if None in got or len({g[0] for g in got}) > 1:
+                    return None
+                return got[0][0], join(*[g[1] for g in got])
+        if q := re.fullmatch(r"(element|relationship)\.(type|tag|parent)\s*(==|!=)\s*(\S.*)", t, re.I):
+            kind, what, want = q[1].lower(), q[2].lower(), {v.strip().lower().replace(" ", "") if q[2].lower() == "type" else v.strip().lower() for v in q[4].split(",") if v.strip()}
+            if kind == "element" and what == "type":
+                hit = lambda c: els[c]["type"] in want
+            elif kind == "element" and what == "tag":
+                hit = lambda c: not want.isdisjoint(etag(c))
+            elif kind == "element":
+                held = {find(v) for v in q[4].split(",")}
+                if None in held:
+                    return None
+                hit = lambda c: els[c]["parent"] in held
+            elif what == "tag":
+                return "rels", {eid for _, _, eid, r in lines if (not want.isdisjoint(rtag(eid, r))) == (q[3] == "==")}
+            else:
+                return None
+            return "els", {c for c in els if hit(c) == (q[3] == "==")}
+        if re.fullmatch(r"relationship\s*==\s*\*", t, re.I):
+            return "rels", {eid for _, _, eid, _ in lines}
+        pre, post = t.startswith("->"), t.endswith("->") and len(t) > 2
+        core = t[2 if pre else 0:len(t) - 2 if post else len(t)]
+        if "->" in core and not (pre or post):
+            a, b = (v.strip() for v in core.split("->", 1))
+            x, y = (None if v == "*" else find(v) for v in (a, b))
+            if "->" in b or (a != "*" and not x) or (b != "*" and not y):
+                return None
+            return "rels", {eid for p, q2, eid, _ in lines if under(x, p) and under(y, q2)}
+        if (pre or post) and "->" not in core and (x := find(core)):
+            out = {x}
+            for a, b, _, _ in lines:
+                out |= {lift(b)} if post and x in up(a) else set()
+                out |= {lift(a)} if pre and x in up(b) else set()
+            return "els", out - {None}
+        return None
     for s in specs:
-        work += len(els) + len(lines) + len(s["include"]) + len(s["exclude"])
+        incl, excl = joined(s["include"]), joined(s["exclude"])
+        # each expression walks every element or relationship once more (R2)
+        work += (1 + sum(1 + t.count("&&") + t.count("||") + t.count(",") for t, _ in incl + excl if t != "*" and not find(t))) * (len(els) + len(lines)) + len(incl) + len(excl)  # a value list costs per value
         if work > VIEW_WORK:  # hostile input (R2): views x elements is unbounded under the 1 MiB limit
             m.say(s["line"], f"over {VIEW_WORK} elements and relationships walked in all views: this view and the rest are left out")
             break
@@ -670,25 +743,51 @@ def views(m, els, lines, specs, find, implied, groups):
                   {c for c, e in els.items() if top(c) and c != system or e["parent"] in (system, scope) and c != scope}
         lift = lambda c: next((x for x in up(c) if x in allowed), None)
         inner = allowed if level == 0 else {scope} if level == 1 else {c for c in allowed if els[c]["parent"] == scope}
-        # an include list with no * shows what it names, as Structurizr draws it (a context view still shows its system), audit 34
-        shown = set() if level != 1 and s["include"] and all(t != "*" for t, _ in s["include"]) else set(inner)
-        if not s["include"] or any(t == "*" for t, _ in s["include"]):
+        # an include list with no * shows what it names, as Structurizr draws it (a context view still shows its system),
+        # audit 34; an expression names what it matches (audit 35); one not read here leaves the view as its scope shows it
+        star = not incl or any(t == "*" for t, _ in incl)
+        shown, hidden, unread = set() if level != 1 and not star else set(inner), set(), False
+        if star:
             for a, b, _, _ in lines:
                 shown |= {y for x, y in ((lift(a), lift(b)), (lift(b), lift(a))) if x in inner and y}
-        for t, no in s["include"]:
-            if find(t) and lift(find(t)) == find(t):
-                shown.add(find(t))
-            elif t != "*":
-                m.say(no, f"include {t}: {'not shown at this level' if find(t) else 'not an element (expressions are not read)'}")
-        for t, no in s["exclude"]:
+        for t, no in incl:
+            if t == "*":
+                continue
             if find(t):
-                shown.discard(find(t))
+                if lift(find(t)) == find(t):
+                    shown.add(find(t))
+                else:
+                    m.say(no, f"include {t}: not shown at this level")
+                continue
+            got = expr(t, lift)
+            if got is None and re.fullmatch(r"[\w.]+", t):  # an identifier that names no element: it adds nothing
+                m.say(no, f"include {clip(t, 80)}: not an element")
+                continue
+            if got is None:
+                unread = True
+                m.say(no, f"include {clip(t, 80)}: an expression umlimator does not read, so the view shows its scope's elements")
+                continue
+            if got[0] == "rels":  # a relationship brings its two ends, as near as this view draws them, when it draws both
+                pick = {e for a, b, eid, _ in lines if eid in got[1] and lift(a) and lift(b) for e in (lift(a), lift(b))}
             else:
-                m.say(no, f"exclude {t}: not an element (expressions are not read)")
+                pick = {c for c in got[1] if lift(c) == c}
+            if not pick - {None}:
+                m.say(no, f"include {clip(t, 80)}: matches nothing this view shows")
+            shown |= pick - {None}
+        if unread:
+            shown |= inner
+        for t, no in excl:
+            got = ("els", {find(t)}) if find(t) else expr(t, lift)
+            if got is None:
+                m.say(no, f"exclude {clip(t, 80)}: " + ("not an element" if re.fullmatch(r"[\w.]+", t) else "an expression umlimator does not read"))
+            elif got[0] == "rels":
+                hidden |= got[1]
+            else:
+                shown -= got[1]
         ids, drawn, seen = [c for c in els if c in shown], [], set()
         for a, b, eid, r in lines:
             x, y = lift(a), lift(b)
-            if x not in shown or y not in shown or x == y:
+            if x not in shown or y not in shown or x == y or eid in hidden:
                 continue
             if (x, y) == (a, b):
                 drawn.append(eid)
