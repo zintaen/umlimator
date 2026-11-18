@@ -869,3 +869,27 @@ test('audit 30: the PDF names an unnamed gateway by its kind, as its accessible 
   assert.ok(all.includes('Pick and pack → Parallel gateway |  | Sequence flow'), all.join('\n'));
   assert.ok(all.includes('Paid? → Exclusive gateway | no | Sequence flow'), 'a named gateway keeps its name; an unnamed one is named by its kind');
 });
+
+// audit 31: flow-start judged a pool's process by the flow nodes one view shows, so a view of one stretch of the pool said
+// the pool had no start or end event, though the model's process has both
+test('audit 31: a view showing part of a pool judges the pool\'s whole process: no false flow-start; a process the view shows none of is not judged', () => {
+  const m = structuredClone(EX);
+  m.views.push({ id: 'shipping', diagram: 'bpmn', title: 'Shipping only', nodeIds: ['bp-bookshop', 'courier-pickup', 'bp-ship', 'shipping-notice'] });
+  assert.deepEqual(validate(m).filter(p => p.rule === 'flow-start'), []);
+  assert.deepEqual(bzProblems(m, V(m, 'shipping')).filter(p => p.rule === 'flow-start'), []);
+  // the model's process missing its end event is still said, in the part view and with no view, at the pool
+  const n = structuredClone(m); n.nodes = n.nodes.filter(x => !['order-cancelled', 'order-shipped'].includes(x.id)); n.edges = n.edges.filter(e => !['order-cancelled', 'order-shipped'].includes(e.to));
+  for (const got of [bzProblems(n, V(n, 'shipping')), bzProblems(n)]) assert.deepEqual(got.filter(p => p.rule === 'flow-start').map(p => [p.path, p.message]), [['nodes[4]', 'flow-start: bp-bookshop ("Bookshop") has no end event']]);
+  // a view of the shopper's pool alone does not judge the bookshop's process
+  assert.deepEqual(bzProblems(n, { id: 'shop', diagram: 'bpmn', nodeIds: ['bp-shopper', 'basket-ready', 'place-order', 'order-placed'] }).filter(p => p.rule === 'flow-start'), []);
+});
+
+// audit 31: X on a collapsed sub-process listed a boundary event inside it twice: once as a child, once as its activity's event
+test('audit 31: X on a collapsed sub-process whose task has a boundary event lists that event once', () => {
+  const m = structuredClone(EX);
+  m.nodes.push({ id: 'pick-late', type: 'bpmn.BoundaryEvent', label: 'Too slow', parent: 'pick-pack', props: { definition: 'timer', attachedTo: 'pick-books' } });
+  const r = bzKey(m, V(m), ['pick-pack'], 'X'), ids = r[0].value;
+  assert.deepEqual(ids.filter((x, i) => ids.indexOf(x) !== i), []);
+  assert.deepEqual(ids.slice(ids.indexOf('pick-pack') + 1, ids.indexOf('pick-pack') + 6), ['picking-starts', 'pick-books', 'pack-parcel', 'parcel-packed', 'pick-late']);
+  assert.equal(new Set(ids).size, new Set([...V(m).nodeIds, 'picking-starts', 'pick-books', 'pack-parcel', 'parcel-packed', 'pick-late']).size);
+});

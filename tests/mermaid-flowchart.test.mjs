@@ -261,7 +261,7 @@ test('the writer names in comments what it cannot write, and the reader passes o
   assert.match(write({ schemaVersion: 2, title: 12, nodes: [], edges: [], views: [v] }), /^---\ntitle: "12"\n---\n%% id: v\nflowchart TD\n$/);
   const P = (id, more) => ({ id, type: 'flow.Process', label: id, ...more });
   const m = { schemaVersion: 2, nodes: [P('a', { props: { x: 1 } }), P('b', { parent: 'a' }), { id: 'k', type: 'uml.Class', label: 'K' }, { id: 'c', type: 'uml.Comment', label: 'note' },
-    { id: 'n', type: 'flow.Decision' }, P('w', { label: 7 })],
+    { id: 'n', type: 'flow.Decision' }, P('w', { label: { text: 7 } })], // an object, not text; a number is written as its text (audit 31)
   edges: [{ id: 't', type: 'flow.Flow', from: 'a', to: 'b', props: { weight: 2 } }, { id: 'u', type: 'flow.Flow', from: 'a', to: 'k' }, { id: 'l', type: 'uml.CommentLink', from: 'c', to: 'a' },
     { id: 'd', type: 'uml.Dependency', from: 'a', to: 'b' }, { id: 'q', type: 'flow.Flow', from: 'a', to: 'b', label: ['x'] }],
   views: [{ ...v, nodeIds: ['a', 'b', 'k', 'c', 'n', 'w'] }] };
@@ -390,4 +390,31 @@ test('a flowchart whose indented text is over the reader\'s limit is written uni
   assert.deepEqual([t.length <= 1 << 20, /over its limit/.test(t), back.model.nodes.length, back.model.edges.length], [true, false, 10500, 10499]);
   const t2 = write(big(14000));
   assert.match(t2.slice(t2.lastIndexOf('%%')), /^%% not written: text the reader reads back: this is \d+ characters, over its limit of 1048576\n$/);
+});
+
+// audit 31: the ER, flowchart, requirement and mindmap writers refused a number label as "not text", though the model draws
+// it as written (audit 30) and the class and state writers write it: every writer now writes a number or true as its text
+test('audit 31: every Mermaid writer writes a node or line label that is a number or true as its text, which reads back as that label', async () => {
+  const W = {};
+  for (const [f, n] of [['class', 'Class'], ['state', 'State'], ['er', 'Er'], ['flowchart', 'Flowchart'], ['requirement', 'Requirement'], ['mindmap', 'Mindmap']]) {
+    const R = await import(`../src/readers/mermaid-${f}.js`); W[f] = [R['writeMermaid' + n], R['readMermaid' + n]]; }
+  const two = (diagram, a, b, line) => ({ schemaVersion: 2, root: 'v', nodes: [a, b], edges: line ? [line] : [], views: [{ id: 'v', diagram, nodeIds: [a.id, b.id] }] });
+  for (const label of [2024, 0, 1.5, true]) {
+    const cases = {
+      class: two('uml.class', { id: 'A', type: 'uml.Class', label }, { id: 'B', type: 'uml.Class', label: 'B' }),
+      state: two('uml.state-machine', { id: 'A', type: 'uml.State', label }, { id: 'B', type: 'uml.State', label: 'B' }),
+      er: two('er', { id: 'A', type: 'er.Entity', label }, { id: 'B', type: 'er.Entity', label: 'B' }, { id: 'A-B', type: 'er.Relationship', from: 'A', to: 'B', label, props: { identifying: false, fromMultiplicity: '1', toMultiplicity: '0..*' } }),
+      flowchart: two('flowchart', { id: 'A', type: 'flow.Process', label }, { id: 'B', type: 'flow.Process', label: 'B' }, { id: 'A-B', type: 'flow.Flow', from: 'A', to: 'B', label }),
+      requirement: two('sysml.requirement', { id: 'A', type: 'sysml.Requirement', label, props: { text: 't' } }, { id: 'B', type: 'sysml.Block', label: 'B' }),
+      mindmap: { schemaVersion: 2, root: 'v', nodes: [{ id: 'A', type: 'mindmap.Topic', label }], edges: [], views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['A'] }] },
+    };
+    for (const [f, m] of Object.entries(cases)) {
+      const [write, readBack] = W[f], out = write(m), back = readBack(out).model;
+      assert.doesNotMatch(out, /not text/, `${f} ${label}: ${out}`);
+      assert.equal(back.nodes.find(x => x.id === 'A').label, String(label), `${f} ${label}: ${out}`);
+      if (m.edges.length) assert.equal(back.edges.find(x => x.id === 'A-B').label, String(label), `${f} ${label} line: ${out}`);
+    }
+  }
+  // another value is still refused, and said
+  assert.match(W.flowchart[0]({ schemaVersion: 2, root: 'v', nodes: [{ id: 'A', type: 'flow.Process', label: { a: 1 } }], edges: [], views: [{ id: 'v', diagram: 'flowchart', nodeIds: ['A'] }] }), /not written: A: its label, which is not text/);
 });

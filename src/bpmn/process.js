@@ -351,12 +351,14 @@ function bzProblems(model, view) {
   I.L.forEach(({ x, pool }, id) => { if (seen(id) && x.parent != null && !(I.L.has(x.parent) && I.L.get(x.parent).pool === pool && x.parent !== id))
     say('error', 'lane-owner', id, [id, x.parent], `lane ${q(id)}'s parent ${q(x.parent)} is not a lane of its pool`, '.parent'); });
   // the processes: each pool's flow, each sub-process's, and what is in no pool
-  const procs = new Map();
+  // built from every flow node of the model, not only those the view shows: a view of one stretch of a pool judges the pool's
+  // whole process, which has its start and end events though the view leaves them out (audit 31); judged where it shows one
+  const procs = new Map(), judged = new Set();
+  I.N.forEach((x, id) => { if (!flow(id)) return; const k = I.level(id); if (!procs.has(k)) procs.set(k, []); procs.get(k).push(id); if (seen(id)) judged.add(k); });
   I.N.forEach((x, id) => { if (!seen(id)) return; const t = x.type, p = bzProps(x);
     // a kind outside the subset (a typo, another notation's): drawn as a task, so said by its own name, as the typed core says a
     // malformed type (no rule: none of §4's is about it; audit 27)
     if (!BZ_KINDS.includes(t)) out.push({ level: 'warning', path: (I.path.get(id) || '') + '.type', ids: [id], message: t == null || t === '' ? `${q(id)} has no type, so it is no BPMN element umlimator draws: drawn as a task` : `${q(id)} is of type ${jsonText(t)}, which is no BPMN element umlimator draws: drawn as a task` }); // an untyped node has no type, never "undefined" (audit 27)
-    if (flow(id)) { const k = I.level(id); if (!procs.has(k)) procs.set(k, []); procs.get(k).push(id); }
     if (BZ_EVENTS.includes(t) && !BZ_DEFS[t].includes(bzDef(x))) say('error', 'event-definition', id, [id], `${q(id)} is ${bzA(bzWord({ type: t }).toLowerCase())} with definition "${bzDef(x)}": it takes ${BZ_DEFS[t].join(', ')}`, '.props.definition');
     if (Object.hasOwn(p, 'cancelActivity') && t !== BZ_BE) say('error', 'event-definition', id, [id], `${q(id)} has cancelActivity: only a boundary event has it`, '.props.cancelActivity');
     if (t === BZ_BE) { const h = p.attachedTo;
@@ -377,8 +379,9 @@ function bzProblems(model, view) {
     if ((t === BZ_SUB || t === 'bpmn.CallActivity') && (x.opensView != null || (t === BZ_SUB && view && !BZ_ARR(view.nodeIds).some(n => (I.N.get(n) || {}).parent === id) && [...I.N.values()].some(n => n.parent === id)))) {
       const v = BZ_ARR(model.views).find(w => BZ_OBJ(w) && w.id === x.opensView);
       if (!v || v.diagram !== 'bpmn' || (t === BZ_SUB && v.subject !== id)) say('warning', 'opens-view', id, [id], `${q(id)} ${x.opensView == null ? 'is collapsed and opens no view' : `opens ${jsonText(x.opensView)}, ${!v ? 'no view of the model' : v.diagram !== 'bpmn' ? 'not a BPMN view' : 'whose subject is not it'}`}`, '.opensView'); } });
-  procs.forEach((list, k) => { if (!list.some(id => ty(id) === 'bpmn.StartEvent')) say('warning', 'flow-start', k ?? list[0], [k, ...list.slice(0, 1)].filter(x => x != null), `${k == null ? 'the process in no pool' : q(k)} has no start event`);
-    if (!list.some(id => ty(id) === 'bpmn.EndEvent')) say('warning', 'flow-start', k ?? list[0], [k, ...list.slice(0, 1)].filter(x => x != null), `${k == null ? 'the process in no pool' : q(k)} has no end event`); });
+  procs.forEach((list, k) => { if (!judged.has(k)) return; const f = list.find(seen); // said at the first node the view shows
+    if (!list.some(id => ty(id) === 'bpmn.StartEvent')) say('warning', 'flow-start', k ?? f, [k, f].filter(x => x != null), `${k == null ? 'the process in no pool' : q(k)} has no start event`);
+    if (!list.some(id => ty(id) === 'bpmn.EndEvent')) say('warning', 'flow-start', k ?? f, [k, f].filter(x => x != null), `${k == null ? 'the process in no pool' : q(k)} has no end event`); });
   return out;
 }
 
@@ -568,7 +571,7 @@ function bzKey(model, view, ids, key) {
     if (shownIn.length) return [{ op: 'set', view: view.id, path: 'nodeIds', value: now.filter(n => !shownIn.includes(n)) }];
     const kids = [...I.N.values()].filter(n => n.parent === id).map(n => n.id), bes = [...I.N.values()].filter(n => n.type === BZ_BE && kids.includes(bzProps(n).attachedTo)).map(n => n.id);
     if (!kids.length) return { error: 'This sub-process holds nothing to show' };
-    const k = now.indexOf(id) + 1; return [{ op: 'set', view: view.id, path: 'nodeIds', value: [...now.slice(0, k), ...[...kids, ...bes].filter(n => !now.includes(n)), ...now.slice(k)] }]; }
+    const k = now.indexOf(id) + 1; return [{ op: 'set', view: view.id, path: 'nodeIds', value: [...now.slice(0, k), ...[...new Set([...kids, ...bes])].filter(n => !now.includes(n)), ...now.slice(k)] }]; }
   return null;
 }
 // the Owner field: a flow node's lanes, pools and sub-processes; data's pools. A lane's owner is not offered: a member moves by Delete;

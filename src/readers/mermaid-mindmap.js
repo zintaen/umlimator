@@ -1,5 +1,5 @@
 import { unreadable } from '../core/model.js';
-import { mermaidFrontTitle, mermaidCut, mermaidClip, mermaidSay, mermaidSort } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidCut, mermaidClip, mermaidSay, mermaidSort, mermaidText } from './mermaid-front.js';
 /* ---------- Mermaid mindmap: a reader and a writer (notes/milestone-4a.md §8, 4a.5; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's mindmap page (docs/syntax/mindmap.md) and its lexer and database
    (diagrams/mindmap/parser/mindmap.jison, mindmapDb.ts), read on Mermaid's repository 14 Nov 2026. Internal: the CLI
@@ -265,8 +265,8 @@ function writeMermaidMindmap(model, viewId) {
     if (!w) { for (const k of kids.get(n.id) || []) stack.push([k, d + 1, false]); continue; }
     const pad = '  '.repeat(Math.min(d, MMR_DEEP) + 1), mer = isObj(n.ext) && isObj(n.ext.mermaid) ? n.ext.mermaid : {};
     if (d > MMR_DEEP && !deep) { deep = true; lose(n.id, `deeper than ${MMR_DEEP} levels, so it and what lies below it are written at level ${MMR_DEEP}`); }
-    const label = str(n.label) ? n.label : '';
-    if (!str(n.label)) lose(n.id, has(n.label) ? 'its label, which is not text' : 'no label, read as an empty one');
+    const lab = mermaidText(n.label), label = str(lab) ? lab : ''; // a number or true as its text (audit 31)
+    if (!str(lab)) lose(n.id, has(lab) ? 'its label, which is not text' : 'no label, read as an empty one');
     const sh = MMR_OPEN.get(mer.shape), md = mer.markdown === true, side = Object.hasOwn(present, n.id) && isObj(present[n.id]) ? present[n.id].side : undefined;
     if (/\r/.test(label)) lose(n.id, 'a carriage return in its label, written as a line break');
     if (has(mer.shape) && !sh) lose(n.id, `shape ${mer.shape}, which Mermaid's mindmap does not have`);

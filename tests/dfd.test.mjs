@@ -400,6 +400,19 @@ test('audit 25: D on a process with a flow to a store this view alone holds leav
   assert.equal(layout(k, 'v').byId.dt.aria, 'Data type Money, 1 flow in, 0 out');
 });
 
+// audit 31: D on a process the view alone holds made a level no describe() or palette number could tie to its process
+test('audit 31: D on a process that lives in one view only refuses, as C4\'s D does; the same process in the model still makes its level', () => {
+  const own = { schemaVersion: 2, nodes: [{ id: 'c', type: 'dfd.ExternalEntity', label: 'Customer' }], edges: [],
+    views: [{ id: 'v', diagram: 'dfd', title: 'Ctx', nodes: [P('p', 'Take order', '1')], nodeIds: ['c', 'p'],
+      edges: [{ id: 'f1', type: 'dfd.DataFlow', from: 'c', to: 'p', label: 'order' }] }] };
+  for (const k of ['D', 'd']) assert.deepEqual(T.edits.key(own, own.views[0], ['p'], k), { error: 'process "1 Take order" lives in this view only: no other view can show it' });
+  const mod = structuredClone(own); mod.nodes.push(mod.views[0].nodes.pop()); delete mod.views[0].nodes;
+  const r = T.edits.key(mod, mod.views[0], ['p'], 'D'), m2 = apply(mod, r.commands);
+  assert.equal(r.say, 'Made level 1 Take order, balanced with 1 flow: Enter opens it');
+  assert.match(describe(m2, 'p-level').split('\n')[0], /, the level of process "1 Take order",/);
+  assert.equal(T.edits.add(m2, m2.views.find(v => v.id === 'p-level'), { type: 'dfd.Process' })[0].element.props.number, '1.2');
+});
+
 // audit 26: a view whose edges list names a line of another family drew and named it as its own kind ("Comment link" in
 // ER and DFD, a data flow's arrow, "Flow", "Relationship"); listed, it is still drawn (#343), but plain, by its own kind
 test('audit 26: a listed line of another family is drawn plain and named by its own kind in ER, DFD, flowchart, information flow and C4 views', () => {

@@ -1,5 +1,5 @@
 import { unreadable } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort, mermaidText } from './mermaid-front.js';
 /* ---------- Mermaid flowchart: a reader and a writer (notes/milestone-2.md §8, §8.2, M2.9; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's flowchart page (docs/syntax/flowchart.md) and its shapes' names and aliases
    (rendering-elements/shapes.ts), both read on Mermaid's repository 14 Nov 2026, and ported from the map
@@ -437,8 +437,9 @@ function writeMermaidFlowchart(model, viewId) {
   }
   for (const n of nodes) {
     const w = MF_WRITE[n.type], name = names.get(n.id);
-    if (!str(n.label)) lose(n.id, has(n.label) ? 'its label, which is not text' : 'no label, read as an empty one');
-    const label = enc(str(n.label) ? n.label : '');
+    const lab = mermaidText(n.label); // a number or true as its text (audit 31)
+    if (!str(lab)) lose(n.id, has(lab) ? 'its label, which is not text' : 'no label, read as an empty one');
+    const label = enc(str(lab) ? lab : '');
     out.push(...(name !== n.id ? [`  %% id: ${n.id}`] : []), `  ${name}${typeof w === 'string' ? `@{ shape: ${w}, label: ${label} }` : w[0] + label + w[1]}`);
     for (const k of Object.keys(n)) if (!['id', 'type', 'label'].includes(k)) lose(n.id, k === 'props' || k === 'ext' ? `its ${k}` : `property ${k}`);
   }
@@ -454,8 +455,9 @@ function writeMermaidFlowchart(model, viewId) {
     if (e.type !== 'flow.Flow' || !isNode.has(e.from) || !isNode.has(e.to) || !okId(e.id) || used.has(e.id)) { skip(e); continue; }
     const d = mfFree(used, next, mfId(`${e.from}-${e.to}`));
     used.add(e.id);
-    if (has(e.label) && !str(e.label)) lose(e.id, 'its label, which is not text');
-    out.push(...(d !== e.id ? [`  %% id: ${e.id}`] : []), `  ${names.get(e.from)} -->${str(e.label) ? `|${enc(e.label)}|` : ''} ${names.get(e.to)}`);
+    const el = mermaidText(e.label);
+    if (has(el) && !str(el)) lose(e.id, 'its label, which is not text');
+    out.push(...(d !== e.id ? [`  %% id: ${e.id}`] : []), `  ${names.get(e.from)} -->${str(el) ? `|${enc(el)}|` : ''} ${names.get(e.to)}`);
     for (const k of Object.keys(e)) if (!['id', 'type', 'from', 'to', 'label'].includes(k)) lose(e.id, k === 'props' || k === 'ext' ? `its ${k}` : `property ${k}`);
   }
   for (const x of notWritten) out.push(`  %% not written: ${x}`);
