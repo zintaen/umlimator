@@ -6,7 +6,7 @@ import '../uml/class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from '../uml/flow.js';
 import '../uml/usecase.js'; // SHAPE.ellipse, Yourdon's process
 import { snKindName } from '../uml/structure.js';
-import { usedIds, jsonText, labelOr } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the data flow diagram, dfd (work package M2.4, notes/milestone-2.md §4.3, §6.1, §6.4, §7.3) ----------
    Processes, data stores and external entities, joined by data flows; comments. Two skins on one geometry (§4.3): each
@@ -96,7 +96,7 @@ function dfdIndex(model) {
   const asFlow = new Set(); views.forEach(v => { if (v.diagram === 'dfd' && Array.isArray(v.edges)) dfdLines(model, v).forEach(e => { if (dfdFlow(e)) asFlow.add(e); }); });
   const flows = typedLines(model, v => v.diagram === 'dfd').filter(([e]) => DFD_OBJ(e) && (e.type === 'dfd.DataFlow' || asFlow.has(e)));
   const ty = id => (at.get(id) || {}).type, proc = id => ty(id) === 'dfd.Process';
-  const name = id => { const x = at.get(id); if (!x) return String(id); const k = dfdNum(x); return (k ? k + ' ' : '') + String(x.label ?? x.id); };
+  const name = id => { const x = at.get(id); if (!x) return String(id); const k = dfdNum(x); return (k ? k + ' ' : '') + elName(x); };
   const q = id => `${(DFD_WORD[ty(id)] || 'element').toLowerCase()} "${name(id)}"`;
   // a level: the view a process opens, its parent view, and its own processes, those it shows and its parent view does not
   const level = p => { const v = views.get((at.get(p) || {}).opensView), pv = v && views.get(v.parent), up = new Set(DFD_ARR(pv && pv.nodeIds));
@@ -118,7 +118,7 @@ function dfdLines(model, view) {
 }
 // accessible names (A1): "Process 1 Take order, opens level 1 Take order, 2 flows in, 2 out"; a flow: "Data flow basket from Customer to 1 Take order"
 function dfdNodeName(I, id, lines) {
-  const x = I.at.get(id); if (x.type === 'uml.Comment') return 'Comment: ' + String(x.label ?? id);
+  const x = I.at.get(id); if (x.type === 'uml.Comment') return 'Comment: ' + elName(x);
   const ins = lines.filter(e => dfdFlow(e) && e.to === id && e.from !== id).length, outs = lines.filter(e => dfdFlow(e) && e.from === id && e.to !== id).length;
   const v = x.type === 'dfd.Process' && I.views.get(x.opensView);
   return `${DFD_WORD[x.type] || snKindName(x.type)} ${I.name(id)}${v ? `, opens level ${labelOr(v.title, v.id)}` : ''}, ${dfdPlural(ins, 'flow')} in, ${outs} out`;
@@ -157,7 +157,7 @@ const DFD_END = { __proto__: null, 'dfd.DataFlow': { from: 'none', to: 'arrow' }
 function dfdGeo({ model, view, pos, memo }) {
   const I = dfdIndex(model), ids = DFD_ARR(view.nodeIds).filter((id, k, a) => I.at.has(id) && a.indexOf(id) === k), lines = dfdLines(model, view), skin = dfdSkin(view), P = id => (pos && Object.hasOwn(pos, id) ? pos[id] : [0, 0]);
   const nodes = ids.map(id => { const x = I.at.get(id), k = DFD_KIND[x.type];
-    const d = { id, label: String(x.label ?? id), type: x.type || 'dfd.Process', kind: 'file', ...(k ? { shape: `dfd-${k}-${skin}`, number: dfdNum(x) } : x.type === 'uml.Comment' ? { shape: 'note' } : { shape: 'classifier', compartments: [] }),
+    const d = { id, label: elName(x), type: x.type || 'dfd.Process', kind: 'file', ...(k ? { shape: `dfd-${k}-${skin}`, number: dfdNum(x) } : x.type === 'uml.Comment' ? { shape: 'note' } : { shape: 'classifier', compartments: [] }),
       aria: dfdNodeName(I, id, lines), saysOpens: !!(x.type === 'dfd.Process' && I.views.get(x.opensView)), col: P(id)[0], row: P(id)[1] };
     return { ...d, ...SHAPE[d.shape].size(d) }; });
   const edges = lines.map(e => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, ...(DFD_HAS(e.label) ? { label: String(e.label), cut: 280 } : {}),
@@ -186,7 +186,7 @@ function dfdProblems(model) {
     if (miss.length) say('warning', 'dfd-process-io', I.path.get(p.id), [p.id], `${I.q(p.id)} has no flow ${miss.join(' and no flow ')}`); });
   // numbers: none used twice among processes, nor among stores; a level's processes under their parent's
   for (const t of ['dfd.Process', 'dfd.DataStore']) { const by = new Map(); [...I.at.values()].filter(x => x.type === t && dfdNum(x)).forEach(x => by.set(dfdNum(x), [...(by.get(dfdNum(x)) || []), x.id]));
-    by.forEach((list, k) => { if (list.length > 1) say('warning', 'dfd-numbers', I.path.get(list[1]), list, `${list.length} ${t === 'dfd.Process' ? 'processes' : 'stores'} are numbered ${k}: ${list.map(id => JSON.stringify(String(I.at.get(id).label ?? id))).join(', ')}`); }); }
+    by.forEach((list, k) => { if (list.length > 1) say('warning', 'dfd-numbers', I.path.get(list[1]), list, `${list.length} ${t === 'dfd.Process' ? 'processes' : 'stores'} are numbered ${k}: ${list.map(id => JSON.stringify(elName(I.at.get(id)))).join(', ')}`); }); }
   procs.forEach(p => { const L = I.level(p.id), n = dfdNum(p); if (!L || L.v.diagram !== 'dfd' || !n || I.parentOf(L.v.id) !== p) return;
     L.kids.filter(id => !new RegExp(`^${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.\\d+$`).test(dfdNum(I.at.get(id)))).forEach(id =>
       say('warning', 'dfd-numbers', I.path.get(id), [id, p.id], `${I.q(id)}, on the level of ${I.q(p.id)}, is numbered ${dfdNum(I.at.get(id)) || 'nothing'}: its number is ${n}.1, ${n}.2, …`)); });
@@ -254,7 +254,7 @@ function dfdKey(model, view, ids, key) {
   const own = new Set(DFD_ARR(view.nodes).filter(x => DFD_OBJ(x) && I.at.get(x.id) === x).map(x => x.id)), far = e => (e.from === p.id ? e.to : e.from);
   const all = dfdLines(model, view).filter(e => dfdFlow(e) && (e.from === p.id) !== (e.to === p.id)), flows = all.filter(e => !own.has(far(e)));
   const out = [...new Set(all.filter(e => own.has(far(e))).map(far))].map(I.name);
-  const vid = dfdFree(used, p.id + '-level'), kid = dfdFree(used, `${p.id}-${kn}`), title = `${n ? n + ' ' : ''}${p.label ?? p.id}`;
+  const vid = dfdFree(used, p.id + '-level'), kid = dfdFree(used, `${p.id}-${kn}`), title = `${n ? n + ' ' : ''}${elName(p)}`;
   return { commands: [
     { op: 'addView', view: { id: vid, diagram: 'dfd', title, parent: view.id, ...(view.notation != null ? { notation: view.notation } : {}), ...(view.direction != null ? { direction: view.direction } : {}),
       nodeIds: [...new Set(flows.map(far))] } },

@@ -869,3 +869,47 @@ test('audit 34: validate() says a map, story, lens, rule or lane title that is n
   // text and numbers say nothing, nor do the examples
   assert.deepEqual(validate({ ...m, title: 0, views: [{ id: 'v', title: 'V', nodeIds: ['a', 'b'], lanes: [{ title: 'L', nodeIds: ['a'] }] }], stories: [{ id: 's', title: 5, steps: [{ view: 'v' }] }], lenses: [{ id: 'l', title: 'x', pick: { id: 'a' } }], rules: [{ id: 'r', from: { id: 'a' }, to: { id: 'b' } }] }), []);
 });
+
+// audit 35: members nested about 2,500 deep overflowed the stack in validate(), apply(), references(), layout(), describe()
+// and diff() (canon's JSON.stringify from 2,000): each walk of members is on a stack of its own now, and canon() writes a value
+// deeper than JSON.stringify takes with canonDeep, the same text (checked on every example and on hostile values)
+test('audit 35: members nested 4,000 deep are read by every core entry point', async () => {
+  const U = await import('../lib/umlimator-all.js'), D = 4000;
+  for (const diagram of ['uml.class', 'uml.composite-structure', 'uml.state-machine']) {
+    const A = { id: 'A', type: 'uml.Class', label: 'A' }; let o = A;
+    for (let i = 0; i < D; i++) { const y = { id: 'm' + i, type: 'uml.Property', label: 'p' + i }; o.members = [y]; o = y; }
+    o.members = [{ id: 'bad', type: 'uml.Property', label: { en: 'x' } }, { id: 'A', type: 'uml.Property' }]; // said at the bottom: a label not text, an id used twice
+    const m = { schemaVersion: 2, nodes: [A, { id: 'B', type: 'uml.Class', label: 'B' }], edges: [{ id: 'e', type: 'uml.Dependency', from: 'B', to: 'm' + (D - 1) }],
+      views: [{ id: 'v', diagram, subject: 'A', nodeIds: ['A', 'B'], layout: { ['m' + (D - 2)]: [1, 1] } }] };
+    const deep = `nodes[0]${'.members[0]'.repeat(D)}`, ps = U.validate(m).map(p => `${p.level} ${p.path}`);
+    assert.ok(ps.includes(`warning ${deep}.members[0].label`) && ps.includes(`error ${deep}.members[1].id`), diagram);
+    o.members.pop(); // the id used twice out: what follows reads one id space
+    U.check(m, 'v'); U.layout(m, 'v'); assert.equal(typeof U.describe(m, 'v'), 'string', diagram);
+    assert.deepEqual(U.references(m, 'm' + (D - 1)).map(r => r.path), [['edges', 0, 'to']]);
+    assert.deepEqual(U.references(m, 'bad'), []);
+    const set = U.apply(m, { op: 'set', id: 'm' + (D - 1), path: 'label', value: 'z' });
+    assert.deepEqual(U.diff(m, set).summary, ['changes A (members)'], diagram); // as at any depth
+    const gone = U.apply(m, { op: 'delete', id: 'm5' });
+    assert.deepEqual([gone.nodes[0].members[0].members[0].members[0].members[0].members[0].members, gone.edges], [[], []]);
+    assert.throws(() => U.apply(m, { op: 'move', id: 'm' + (D - 1), owner: 'm' + (D - 1) }), /would end up inside itself/);
+    const N = { id: 'N', type: 'uml.Class' }; let q = N; for (let i = 0; i < D; i++) { const y = { id: 'n' + i, type: 'uml.Property' }; q.members = [y]; q = y; }
+    assert.equal(U.apply(m, { op: 'add', element: N }).nodes.length, 3);
+    q.members = [{ id: 'm3', type: 'uml.Property' }]; assert.throws(() => U.apply(m, { op: 'add', element: N }), /^Error: add: id "m3" is used already$/);
+  }
+});
+
+test('audit 35: canonDeep writes what canon writes, on every example and hostile values', async () => {
+  const { canon, canonDeep } = await import('../src/core/model.js');
+  const files = ['../examples/', './', '../docs/diagrams/examples/'].flatMap(d => readdirSync(new URL(d, import.meta.url)).filter(f => f.endsWith('.json')).map(f => d + f));
+  let n = 0; for (const f of files) { let m; try { m = JSON.parse(readFileSync(new URL(f, import.meta.url))); } catch { continue; } assert.equal(canonDeep(m), canon(m), f); n++; }
+  assert.ok(n > 80, String(n));
+  const cyc = { a: 1 }; cyc.self = cyc; cyc.list = [cyc, { up: cyc }]; const arr = [1]; arr.push(arr);
+  for (const h of [undefined, null, 0, -0, NaN, Infinity, -Infinity, 1e21, 2n, '\u0000x', 'x\u0000', '\ud800', true, Symbol('s'), () => 1, [undefined, () => 1, Symbol('q'), , 3],
+    { b: 1, a: 2, 10: 'ten', 9: 'nine' }, new Date(0), new Map([[1, 2]]), Object(5), Object(2n), { toJSON(k) { return 'k=' + k; } }, { x: { toJSON(k) { return [k, 1n]; } } },
+    cyc, arr, [cyc, cyc], { u: undefined, f() {}, s: Symbol() }, Object.create(null, { a: { value: 1, enumerable: true } }), JSON.parse('{"__proto__": {"a": 1}}')])
+    assert.equal(canonDeep(h), canon(h));
+  const bad = { toJSON() { throw new TypeError('no'); } }; assert.throws(() => canonDeep(bad), TypeError); assert.throws(() => canon(bad), TypeError);
+  // deeper than JSON.stringify takes: written, and a cycle at the bottom said
+  let top = {}, o = top; for (let i = 0; i < 20000; i++) o = o.k = {}; o.back = top;
+  assert.ok(canon(top) === '{"k":'.repeat(20000) + '{"back":"[cycle]"}' + '}'.repeat(20000));
+});

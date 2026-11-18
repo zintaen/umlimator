@@ -1,5 +1,5 @@
 import { apply } from '../core/apply.js';
-import { copyOf, usedIds, jsonText, labelOr } from '../core/model.js';
+import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
 import { ownNodes, registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -38,7 +38,7 @@ function commIndex(model, view) {
   return { N, E, ids, shown, connectors, messages, on, carrierOf: (a, b) => carrier.get(pair(a, b)) || null };
 }
 
-const cmNameOf = x => String(x && x.label != null ? x.label : x ? x.id : '');
+const cmNameOf = x => (x ? elName(x) : '');
 const cmPropsOf = x => (CM_OBJ(x && x.props) ? x.props : {});
 const cmSortOf = m => (CM_SORTS.includes(cmPropsOf(m).sort) ? cmPropsOf(m).sort : 'call'); // any other is drawn as a call (the shared sort rule)
 const cmStereoOf = n => CM_ARR(cmPropsOf(n).stereotypes).filter(CM_HAS).map(String);

@@ -1,3 +1,4 @@
+import { elName, labelOr } from '../core/model.js';
 import { esc } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { ENDS } from '../typed/draw.js';
@@ -65,7 +66,7 @@ const SYS_EL = { 'sysml.requirement': SYS_PKG, 'sysml.block-definition': SYS_PKG
 function SYS_HEAD(model, view) {
   const [k, word] = SYS_KIND[view.diagram] || ['', 'Diagram'], E = SYS_EL[view.diagram] || {};
   const s = view.subject == null ? null : SYS_ARR(model && model.nodes).find(n => SYS_OBJ(n) && n.id === view.subject && Object.hasOwn(E, n.type));
-  const el = s ? E[s.type] : 'Model', name = String(s ? s.label ?? s.id : (model && model.title) ?? ''), t = view.title == null || String(view.title) === name ? '' : String(view.title);
+  const el = s ? E[s.type] : 'Model', name = s ? elName(s) : String((model && model.title) ?? ''), t = view.title == null || String(view.title) === name ? '' : String(view.title);
   return { el: s || null, title: [k, `[${el}]`, name, t && `[${t}]`].filter(Boolean).join(' '),
     // from its parts: no name (no subject, the model untitled) leaves no space before the colon (audit 33: "model : E-bike blocks")
     aria: ([word, 'of', el.replace(/(.)([A-Z])/g, '$1 $2').toLowerCase(), name].map(x => x.trim()).filter(Boolean).join(' ') + (t ? ': ' + t : '')).replace(/ +/g, ' ').trim() };
@@ -80,7 +81,7 @@ function SYS_FRAME(model, view, nodeIds) {
 }
 // what F2 on a frame edits, its field filled with it (src/canvas/render.js): the subject's name, else the view's title. The
 // header is label and title, drawn whole; F2 filled with it stored the whole header as the name or title (audit 20)
-const SYS_EDIT = (view, h) => (h.el ? String(h.el.label ?? h.el.id) : String(view.title ?? ''));
+const SYS_EDIT = (view, h) => (h.el ? elName(h.el) : String(view.title ?? ''));
 // F2 on a req or bdd frame that is no element (`<view>->frame`): the view's title (§5.1); else null (audit 19: bdd's too).
 // An emptied field removes the title (audit 21): SYS_FRAME_EMPTY is the rename hooks' rename.empty, so F2 passes '' on
 const SYS_FRAME_RENAME = (view, id, text) => (id === `${view.id}->frame` ? [{ op: 'set', view: view.id, path: 'title', value: String(text).trim() ? String(text) : undefined }] : null);
@@ -109,7 +110,7 @@ function SYS_AS_UML(model, view) {
     const y = { ...x, type: r.as }, p = SYS_PROPS(x);
     if (x.type === 'sysml.ReferenceProperty') y.props = { ...p, aggregation: 'shared' };
     if (x.type === 'sysml.Port') { if (typeof p.valueType === 'string' && p.valueType.startsWith('~')) y.props = { ...p, valueType: p.valueType.slice(1).trim() };
-      if (Object.hasOwn(SYS_KINDWORD, p.kind)) y.label = SYS_KINDWORD[p.kind] + (x.label ?? x.id ?? ''); } // with no label, the id, as the composite type names it
+      if (Object.hasOwn(SYS_KINDWORD, p.kind)) y.label = SYS_KINDWORD[p.kind] + String(labelOr(x.label, x.id) ?? ''); } // with no label, the id, as the composite type names it
     if (SYS_OBJ(p.itemFlow) && p.itemFlow.item != null && p.itemFlow.item !== '') y.label = String(p.itemFlow.item); // an item flow's label wins (§8.1)
     return y; };
   const nodes = SYS_ARR(model.nodes).map(n => { const y = as(n); return SYS_OBJ(n) && Array.isArray(n.members) ? { ...y, members: n.members.map(m => as(m, n.id !== sid || keep.has(m && m.type))) } : y; });
@@ -142,7 +143,7 @@ function SYS_BACK_ONE(c, model, view) {
   if (!SYS_OBJ(c)) return c;
   if (c.op === 'set' && String(c.path) === 'label') return { ...c, value: SYS_UNKIND(c.value) };
   const x = c.element; if (c.op !== 'add' || !SYS_OBJ(x)) return c;
-  const p = SYS_PROPS(x), named = t => SYS_ARR(model.nodes).some(n => SYS_OBJ(n) && n.type === t && (n.label ?? n.id) === p.valueType), owner = SYS_ARR(model.nodes).find(n => SYS_OBJ(n) && n.id === c.owner);
+  const p = SYS_PROPS(x), named = t => SYS_ARR(model.nodes).some(n => SYS_OBJ(n) && n.type === t && elName(n) === p.valueType), owner = SYS_ARR(model.nodes).find(n => SYS_OBJ(n) && n.id === c.owner);
   const type = x.type === 'uml.Connector' ? SYS_LINE[view.diagram] : x.type === 'uml.Port' ? (owner && owner.type === 'sysml.ConstraintBlock' ? 'sysml.ConstraintParameter' : 'sysml.Port')
     : x.type !== 'uml.Property' ? null : view.diagram === 'sysml.parametric' ? (named('sysml.ConstraintBlock') ? 'sysml.ConstraintProperty' : owner && owner.type === 'sysml.ConstraintBlock' ? 'sysml.ConstraintParameter' : 'sysml.ValueProperty') // a constraint block holds no value property (§7.3)
       : p.aggregation === 'shared' ? 'sysml.ReferenceProperty' : named('sysml.ValueType') || SYS_PRIM.includes(p.valueType) ? 'sysml.ValueProperty' : 'sysml.PartProperty';

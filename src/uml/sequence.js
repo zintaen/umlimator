@@ -6,7 +6,7 @@ import { layoutTimeAxis } from '../layout/timeaxis.js';
 import { brLines } from '../typed/draw.js';
 import { frame, tagSize, guardSize, useSize } from './frame.js';
 import { interactionWalk, activationBars, replyCallFor, INTERACTION_RULES, interactionProblems, interactionGone, interactionCounts } from './interaction.js';
-import { copyOf, usedIds, jsonText, labelOr } from '../core/model.js';
+import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the sequence diagram, uml.sequence (work package 3.3, notes/stage-3.md §4 and §5) ----------
    The subset of notes/stage-3.md §4.1: lifelines (`represents`, «actor» as text), messages inline in the view's `edges`
@@ -34,7 +34,7 @@ function sqHeads(model, view) {
   const at = new Map(); [...SQ_ARR(view.nodes), ...SQ_ARR(model.nodes)].forEach(n => { if (SQ_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
   return [...new Set(SQ_ARR(view.nodeIds))].filter(id => at.has(id)).map(id => at.get(id)); // listed twice: one head
 }
-const sqName = n => String(n.label ?? n.id);
+const sqName = elName;
 const sqHeadText = n => sqName(n) + (SQ_HAS(sqProps(n).represents) ? ' : ' + sqProps(n).represents : ''); // "api : ShopApi"
 const sqStereo = n => SQ_ARR(sqProps(n).stereotypes).filter(SQ_HAS).map(String);
 // a message's drawn text: its «stereotypes», then its label (audit 19); F2 takes the «…» off before it sets the label

@@ -6,7 +6,7 @@ import { layoutTyped } from '../typed/layout.js';
 import { lineItem, lineRename } from './class.js'; // SHAPE.note, a comment's look too
 import { lineInside, ownersOn, readingOrder, viewLines } from './owners.js';
 import { SN_SAY, STRUCT_RULES, snKindName, snKindWord, structProblems } from './structure.js'; // SHAPE.artifact and SHAPE.component too
-import { usedIds, jsonText, labelOr } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the deployment diagram, uml.deployment (work package 5.5, notes/stage-5.md §10.3) ----------
    Nodes, devices and execution environments (UML's cube: a front face with a top and a right face 10 px deep), each a box
@@ -19,7 +19,7 @@ import { usedIds, jsonText, labelOr } from '../core/model.js';
 
 const DP_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), DP_ARR = x => (Array.isArray(x) ? x : []);
 const DP_HAS = x => x != null && x !== '';
-const dpName = x => String(x.label ?? x.id);
+const dpName = elName;
 const dpStereo = x => DP_ARR(DP_OBJ(x.props) ? x.props.stereotypes : null).filter(DP_HAS).map(String);
 const dpPlural = countOf; // "2 classes", not "2 classs" (audit 32)
 const DP_TARGETS = ['uml.Node', 'uml.Device', 'uml.ExecutionEnvironment'], DP_ARTIFACTS = ['uml.Artifact', 'uml.DeploymentSpecification'];

@@ -77,7 +77,9 @@ function bzIndex(model, view) {
   const level = id => chain(id).find(p => ty(p) === BZ_SUB || ty(p) === BZ_POOL) ?? null;
   // an owner whose parents lead back to it (validate's "ends up inside itself"): never drawn open, so nothing nests in a loop
   const looped = id => up(chain(id).at(-1) ?? id) === id;
-  const called = id => { const x = el(id); return x ? (BZ_HAS(x.label) ? String(x.label) : bzWord(x).toLowerCase()) : String(id); };
+  // a line's end as its card names it: a pool, lane or group with no name by its id (bzLabel), a flow node by its kind (audit 35:
+  // a message flow to an unnamed pool was "from pool", where the pool's card and the PDF say its id)
+  const called = id => { const x = el(id); return x ? (BZ_HAS(x.label) ? String(x.label) : [BZ_POOL, BZ_LANE, BZ_GROUP].includes(x.type) ? bzLabel(x) : bzWord(x).toLowerCase()) : String(id); };
   return { N, L, E, path, el, ty, up, chain, poolOf, laneIn, level, looped, called, lanesOf: p => [...L].filter(([, v]) => v.pool === p).map(([id]) => id) };
 }
 

@@ -4,7 +4,7 @@ import { SHAPE } from '../draw/shapes.js';
 import { CLASSIFIERS, compartmentsOf, CLASS_DEF, CLASS_LINES, CLASS_TYPE, RULES, multBounds, printMember, classProblems, drawnLines, lineLabel, lineName, lineRename, typeGeo } from './class.js';
 import { OWN_BOXES, OWNER_RULES, boxHead, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder, viewLines, modelLines } from './owners.js';
 import { STY_RULES, UML_META, appliedOf, metaKnown, styKey } from './stereotypes.js';
-import { usedIds, jsonText, labelOr } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the profile diagram, uml.profile (work package 6.3, notes/stage-6.md §4) ----------
    A profile (a package with «profile») holding its stereotypes («stereotype», their tag definitions as attribute rows),
@@ -16,7 +16,7 @@ import { usedIds, jsonText, labelOr } from '../core/model.js';
    Instant {name = placed_at}`. Only lib/umlimator-all.js holds this file. */
 
 const PR_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), PR_ARR = x => (Array.isArray(x) ? x : []);
-const prName = x => String(x.label ?? x.id);
+const prName = elName;
 const prWord = t => t === 'uml.MetaclassReference' ? 'Metaclass' : kindWord(t || 'uml.Class'); // 'uml.DataType': "Data type"
 const PR_DEFS = ['uml.Stereotype', 'uml.MetaclassReference', 'uml.Enumeration']; // what goes into a profile (§4.3)
 
@@ -45,7 +45,7 @@ const prSay = e => { const t = prTags(e); return `«${e.key}»${e.required ? ' r
 // a member's text with its applied stereotypes left off, which are written beside it; a standard or unresolved one it keeps
 // (audit 17): appliedOf leaves those out
 const prBare = (model, m) => { const P = PR_OBJ(m.props) ? m.props : {}, A = appliedOf(model, m.id), k = s => styKey(String(s).split('::').pop());
-  const st = PR_ARR(P.stereotypes).filter(s => !A.some(e => e.key === s || k(e.stereotype.label ?? e.stereotype.id) === k(s)));
+  const st = PR_ARR(P.stereotypes).filter(s => !A.some(e => e.key === s || k(elName(e.stereotype)) === k(s)));
   return printMember({ ...m, props: { ...P, stereotypes: st.length ? st : undefined } }); };
 function prRows(model, x, I = prIndex(model)) {
   const nm = id => prName(I.at.get(id)), from = (t, id) => I.of(t).filter(e => e.from === id && I.at.has(e.to)), to = (t, id) => I.of(t).filter(e => e.to === id && I.at.has(e.from));

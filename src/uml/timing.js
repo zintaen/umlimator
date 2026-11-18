@@ -1,5 +1,5 @@
 import { registerDiagramType, idTable } from '../core/registry.js';
-import { copyOf, usedIds, jsonText, labelOr } from '../core/model.js';
+import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
 import { apply } from '../core/apply.js';
 import { interactionEvery } from './interaction.js';
 import { esc, fit, textW, widest } from '../core/text.js';
@@ -31,7 +31,7 @@ const TM_RULER = '->ruler', tmRowId = (lane, state) => `${lane}->${state}`; // g
 const tmEvery = interactionEvery;
 const tmView = (model, view) => (TM_OBJ(view) ? view : TM_ARR(model && model.views).find(v => TM_OBJ(v) && v.id === view)) || null;
 const tmProps = x => (TM_OBJ(x && x.props) ? x.props : {});
-const tmName = n => String(n.label ?? n.id);
+const tmName = elName;
 const tmHead = n => tmName(n) + (TM_HAS(tmProps(n).represents) ? ' : ' + tmProps(n).represents : ''); // "worker : OrderWorker"
 const tmStereo = n => TM_ARR(tmProps(n).stereotypes).filter(TM_HAS).map(String);
 const tmSt = n => tmStereo(n).map(t => `«${t}»`).join(' '), tmShown = n => [tmSt(n), tmHead(n)].filter(TM_HAS).join(' '); // its «stereotypes»: a line over its name, and first in describe() (audit 17); F2 edits tmHead
@@ -198,7 +198,7 @@ function tmProblems(model, view) {
   // a listed element that is no lifeline (no type, a comment, a class, a typo'd type): not drawn, so said, once each, where the view
   // first lists it, as the mindmap view says one (audit 31: it went without a word)
   TM_ARR(V.nodeIds).forEach((id, i) => { if (typeof id !== 'string' || !X.N.has(id) || X.N.get(id).type === 'uml.Lifeline' || TM_ARR(V.nodeIds).indexOf(id) !== i) return; const n = X.N.get(id), t = n.type;
-    say('timing-kinds', `${at}.nodeIds[${i}]`, [id], `${jsonText(id)} (${jsonText(String(n.label ?? n.id))}) ${t == null || t === '' ? 'has no type, so it is' : `is of type ${jsonText(t)}, which is`} no lifeline: not drawn`, 'warning'); });
+    say('timing-kinds', `${at}.nodeIds[${i}]`, [id], `${jsonText(id)} (${jsonText(elName(n))}) ${t == null || t === '' ? 'has no type, so it is' : `is of type ${jsonText(t)}, which is`} no lifeline: not drawn`, 'warning'); });
   const seen = new Map();
   X.changes.forEach(c => { const n = X.N.get(c.lifeline);
     if (!n || n.type !== 'uml.Lifeline') return say('change-lifeline', cPath(c) + '.lifeline', [c.id], `change ${c.id} names ${jsonText(c.lifeline)}, which is not a lifeline of the model`);
