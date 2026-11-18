@@ -406,7 +406,8 @@ export interface MapView {
   /** Boxes: badges are tabs on the box's border; tone, a palette name as a badge's (--um-<tone>), tints the region behind the
    *  box (as deep as --um-tint makes the cards), with its border dashed and its title in the tone. */
   containers?: { id: string; label?: string; nodeIds?: string[]; parent?: string; badges?: Badge[]; tone?: string }[];
-  /** The space between columns and between rows, in px (default 66 and 44): more room when a line passes close to a card. */
+  /** The space between columns and between rows, in px (default 66 and 44; a process view, render 'process' or mainSteps,
+   *  with no boxes: 38 between columns): more room when a line passes close to a card. */
   gap?: number; rgap?: number;
   [key: string]: unknown;
 }
