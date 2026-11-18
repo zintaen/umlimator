@@ -84,10 +84,12 @@ const PINNED = { // a pseudostate is named by its id (audit 5)
   // inside; now it keeps out of the box it ends on, into the left border from outside, and crosses prepaid's line there instead
   // audit 36: the payment region grows to hold the retry loop under its header (its top run ran through the header room), and
   // the extra room takes payment-outcome's line into Fulfilling off prepaid's
-  right: ['view order-life: edges payment-outcome→Cancelled and Capturing payment→Cancelled cross'],
-  // audit 26: the payment region holds the retry loop and its label (its label no longer on two lines), and one more crossing
-  down: ['view order-life: edges payment-outcome→Fulfilling and payment-outcome→Cancelled cross', 'view order-life: edges payment-outcome→Fulfilling and prepaid→Payment captured cross', 'view order-life: edges payment-outcome→Cancelled and prepaid→Payment captured cross', 'view order-life: edges payment-outcome→Cancelled and Payment captured→ready cross',
-    'view order-life: edges payment-outcome→Cancelled and Fulfilling→Cancelled cross', 'view order-life: edges Capturing payment→Cancelled and Capturing payment→Payment captured cross',
+  // audit 39: payment-outcome's line into Cancelled ran through Fulfilling, which holds neither end; routed again with the box
+  // shut to it, it goes round and crosses nothing
+  right: [],
+  // audit 26: the payment region holds the retry loop and its label (its label no longer on two lines), and one more crossing;
+  // audit 39: payment-outcome's line into Cancelled, routed again round Fulfilling, four fewer
+  down: ['view order-life: edges payment-outcome→Fulfilling and prepaid→Payment captured cross', 'view order-life: edges Capturing payment→Cancelled and Capturing payment→Payment captured cross',
     // a label that found no spot and was left off with nothing said: drawn now, on a looser spot (audit 6)
     'view order-life: label "cancel requested / refund the payment" lies on edge Capturing payment→Cancelled',
     'view order-life: label "cancel requested / refund the payment" lies on edge Payment captured→ready'],
@@ -807,4 +809,46 @@ test('audit 38: laid out down, a last-resort transition into a final state keeps
   assert.deepEqual(notCross(m), []);
   const g = layout(m, 'v'), fin = g.nodes.find(n => n.id === 'fin'), t2 = g.edges.find(e => e.id === 't2');
   assert.ok(t2.pts.slice(1, -1).every(p => !(p[0] > fin.x - 18 && p[0] < fin.x + fin.w + 18 && p[1] > fin.y + 0.5 && p[1] < fin.y + fin.h + 18) || p === t2.pts.at(-2)), JSON.stringify(t2.pts));
+});
+
+// audit 39: round 38's nesting of the lines between one pair, the layout as before it, and state machines its fuzzer found.
+// k transitions between Working (a composite of one state) and Done beside it; `both`: every other one back; `also`: more lines
+const pair39 = (k, { inner = true, both = false, also = [] } = {}) => st37([['w', 'Working'], ...(inner ? [['c0', 'Inner', 'w']] : []), ['d', 'Done'],
+  ...also.flatMap(([, f, t]) => [f, t]).filter(id => id === 'o').slice(0, 1).map(() => ['o', 'Other'])],
+[['t0', 'init', 'w'], ...also, ...Array.from({ length: k }, (_, i) => { const back = both && i % 2; return ['e' + i, back ? 'd' : 'w', back ? 'w' : 'd', i % 2 ? 'evt' + i + ' [x > 1] / act()' : 'ev' + i]; })]);
+
+// a third line into Done (from the initial state, from a state beside the pair, from the composite's own state) left the moved
+// lines all on one side of Done, and the composite's ports were never set level with them: 5 to 7 crossed 4 to 13 times
+test('audit 39: five to eight transitions between a composite state and the state beside it nest though another line ends at that state too, laid out right', () => {
+  for (const also of [[['t1', 'init', 'd']], [['t2', 'init', 'o'], ['t3', 'o', 'd']], [['t4', 'c0', 'd']]]) for (const both of [false, true]) for (const k of [5, 6, 7, 8]) {
+    const m = pair39(k, { both, also });
+    assert.deepEqual(check(m, 'v').map(p => p.message), [], `${also.map(a => a.slice(1).join('->')).join(', ')}: ${k}${both ? ', both ways' : ''}`);
+  }
+});
+
+// laid out down the composite's ports were never set by turns over and under Done, the lines Done's side could not hold all went
+// round one side of it, and the fan took the turn they needed: six to nine crossed once to four times; between two plain states
+// the lines into a card that only the other one feeds were routed first, so those one way took the inner tracks
+test('audit 39: six to nine transitions between a composite or a plain state and the state beside it nest laid out down, and between two plain states with others in the view', () => {
+  // (as the audit wrote them: Done listed before the composite's state, each transition named by its trigger, every third back)
+  const pair = (k, inner, extra, direction) => { const nodes = [{ id: 'init', type: 'uml.Pseudostate', props: { kind: 'initial' } }, { id: 'a', type: 'uml.State', label: 'Working' }, { id: 'b', type: 'uml.State', label: 'Done' },
+    ...(inner ? [{ id: 'in1', type: 'uml.State', label: 'Inner', parent: 'a' }] : []), ...Array.from({ length: extra }, (_, i) => ({ id: 'x' + i, type: 'uml.State', label: 'Idle ' + i }))];
+    const edges = [{ id: 't0', type: 'uml.Transition', from: 'init', to: 'a' }, ...Array.from({ length: k }, (_, i) => ({ id: 'e' + i, type: 'uml.Transition', from: i % 3 === 2 ? 'b' : 'a', to: i % 3 === 2 ? 'a' : 'b', props: { trigger: 'ev' + i } }))];
+    return { schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: nodes.map(n => n.id), direction }] }; };
+  for (const k of [5, 6, 7, 8, 9]) for (const [inner, extra, direction] of [[true, 0, 'down'], [true, 2, 'down'], [false, 0, 'down'], [false, 2, 'down'], [false, 0, 'right'], [false, 2, 'right']])
+    assert.deepEqual(check(pair(k, inner, extra, direction), 'v').map(p => p.message), [], `${direction}, ${inner ? 'composite' : 'plain'}, ${extra} more, ${k}`);
+});
+
+const F39 = JSON.parse(readFileSync(new URL('./state-fuzz39.json', import.meta.url), 'utf8'));
+// the layout as before round 38 was judged with its request/reply swap and lost to the nested one; buildGeo would have laid it
+// out again without the swap, with one crossing, after the choice was made. Now each is judged as it will be drawn
+test('audit 39: a state machine round 38 drew with two transitions between one pair crossing keeps the one crossing it had before', () => {
+  const m = F39['down-3-89'];
+  assert.deepEqual(check(m, 'v').map(p => p.message), ['view v: edges S4→S2 and S2→State with a longer name 3 cross']);
+});
+
+// fuzz state machines that drew a transition across a composite's title, two on one track or one along a box's border: each line
+// that does is routed again with every box that holds neither of its ends shut to it, from each side of each end
+test('audit 39: fuzz state machines draw no transition across a title, on another\'s track or along a border', () => {
+  for (const name of ['down-2-34', 'down-1-97', 'down-1-72', 'right-2-21', 'right-3-19', 'right-3-46']) assert.deepEqual(notCross(F39[name]), [], name);
 });
