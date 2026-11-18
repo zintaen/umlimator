@@ -5,7 +5,7 @@ import { stepOrder } from '../layout/layered.js';
 import { edgeRefIds } from '../map/api.js';
 import { KIND, kindOf } from '../map/kinds.js';
 import { andList, arrOf, boxesNamed, handBoxes, rules } from '../map/validate.js';
-import { labelOr } from '../core/model.js';
+import { labelOr, elName } from '../core/model.js';
 
 /* #pdf=1[&views=a,pic-*][&paper=letter] (umlimator.py pdf): the map as a document to hand in for a review, laid out here a
    page at a time, as Chrome's own page breaks can't be read back for the contents. Each sheet is one page: @page sets the
@@ -166,7 +166,7 @@ function tablesOf({ D, N, nodeIn, viewEdges }, v, g) {
   // drawn name, "usable : UsableEnergy", not its member id (audit 32)
   const name = (v, id) => esc(N[id] ? drawn(id) : (typed && at[id] && typeof at[id].label === 'string' && at[id].label) || (boxes(v).find(c => c.id === id) || {}).label || id);
   const held = boxes(v).map(c => [c, arrOf(c.nodeIds).filter(i => ids.includes(i))]).filter(([, ins]) => ins.length);
-  const T = diagramOf(v) || {}, asText = (T.member || {}).print || (m => m.label ?? m.id); // a member as its type writes it, else its name
+  const T = diagramOf(v) || {}, asText = (T.member || {}).print || elName; // a member as its type writes it, else its name ("" too: its id, audit 35)
   return Object.assign([
     { title: `${typed ? 'Elements' : 'Cards'} <span>${ids.length}</span>`, cls: 'cards', head: `<th>Card</th><th>Kind</th><th>${typed ? 'Members' : 'What it is'}</th>`, rows: ids.map(id => { const c = nodeIn(id, v.id), t = KIND[kindOf(c.kind, true)], d = at[id] || {}, sub = c.sublabel ?? c.sub, rs = typed && T.rows?.(D, v, id);
       return `<tr><td>${d.step ? `<i class="num">${esc(d.step)}</i>` : ''}<b>${esc(drawn(id))}</b>${d.kids || d.opens ? ' ⤢' : ''}${sub ? `<small>${esc(sub)}</small>` : ''}</td>`

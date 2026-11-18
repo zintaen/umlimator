@@ -9,7 +9,7 @@ import './class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from './flow.js'; // SHAPE.initial, final, diamond and bar too
 import { ownersOn, readingOrder } from './owners.js';
 import { parseTransition, printTransition, transitionText } from './transition.js';
-import { usedIds, jsonText, labelOr } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 import { snKindName } from './structure.js';
 
 /* ---------- the state machine diagram, uml.state-machine (work package 4.6, notes/stage-4.md §6, §10) ----------
@@ -25,7 +25,7 @@ const ST_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), ST
 const ST_HAS = x => x != null && String(x).trim() !== '';
 const ST_PROPS = x => (ST_OBJ(x && x.props) ? x.props : {});
 const ST_OWN = (o, k) => (o != null && Object.hasOwn(o, k) ? o[k] : undefined);
-const stName = x => String(x.label ?? x.id);
+const stName = elName;
 const stStereo = x => ST_ARR(ST_PROPS(x).stereotypes).filter(ST_HAS).map(String);
 const stPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const ST_VERTEX = ['uml.State', 'uml.Pseudostate', 'uml.FinalState'];

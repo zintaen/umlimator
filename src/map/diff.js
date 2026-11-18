@@ -1,6 +1,6 @@
 import { TYPED, idTable, diagramOf } from '../core/registry.js';
 import { andList, arrOf, rules } from './validate.js';
-import { canon, copyOf, jsonText, labelOr, nameTable, unreadable } from '../core/model.js';
+import { canon, copyOf, jsonText, labelOr, nameTable, unreadable, elName } from '../core/model.js';
 
 /* ---------- change: diff (#66) and drift (#68) ----------
    Each returns a model marked with what the map draws already, so a page the CLI writes, or a still, shows the marks
@@ -207,7 +207,7 @@ export function diff(before, after) {
   // that part ("charge of battery"); else a member by its own name
   const ups = id => { const s = []; for (let t = id, r; (r = have.get(t) || at0.get(t)) && typeof r[1] === 'string' && !s.includes(r[1]);) s.push(t = r[1]); return s; };
   const endName = (e, k) => { const id = e[k], r = have.get(id) || at0.get(id), part = (((e.props && e.props.ends) || {})[k] || {}).part, own = r && r[1];
-    if (!r || typeof own !== 'string') return name(id); const m = r[0], word = x => String(labelOr(x.label, x.id)), pr = part != null && (have.get(part) || at0.get(part));
+    if (!r || typeof own !== 'string') return name(id); const m = r[0], word = elName, pr = part != null && (have.get(part) || at0.get(part));
     return word(m) + (part != null && part !== id ? ' of ' + (pr ? word(pr[0]) : name(part)) : /\.Port$/.test(String(m.type)) ? ' of ' + name(own) : ''); };
   const cardHow = new Map([...cards.filter(n => how.has(n)).map(n => [n.id, how.get(n)]), ...[...lost.keys()].map(id => [id, 'removed'])]);
   const lines = [...new Set([...out.edges.filter(e => e && typeof e === 'object'), ...views.flatMap(v => arr(v && v.edges).filter(e => e && typeof e === 'object'))])]; // a view that dropped its list holds the model's lines themselves

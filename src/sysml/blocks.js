@@ -2,7 +2,7 @@ import { aWord, kindWord, registerDiagramType } from '../core/registry.js';
 import { CLASS_DEF, RULES, classProblems, drawnLines, lineLabel, lineName, lineRename, parseMember, printMember, typeGeo } from '../uml/class.js';
 import { OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder } from '../uml/owners.js';
 import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_TABLE } from './sysml.js';
-import { usedIds, jsonText, labelOr } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the block definition diagram, sysml.block-definition (work package M3.3, notes/milestone-3.md §7) ----------
    Blocks, interface blocks, constraint blocks and value types drawn by the classifier with «block», «interfaceBlock»,
@@ -95,18 +95,18 @@ const BD_MWORD = { __proto__: null, 'sysml.PartProperty': 'part', 'sysml.Referen
 const bdMWord = m => (m.type === 'sysml.Port' && Object.hasOwn(BD_KIND, BD_PROPS(m).kind) ? BD_PROPS(m).kind + ' port' : BD_MWORD[m.type] || BD_WORD(m.type).toLowerCase());
 // the types of the nodes a type name names by label (else id, as drawn), its ~ (conjugation) left off; none: undefined
 function bdLabels(model) {
-  const by = new Map(); BD_ARR(model && model.nodes).forEach(n => { if (BD_OBJ(n) && (n.label ?? n.id) != null) { const k = String(n.label ?? n.id); if (!by.has(k)) by.set(k, []); by.get(k).push(n.type); } });
+  const by = new Map(); BD_ARR(model && model.nodes).forEach(n => { if (BD_OBJ(n) && labelOr(n.label, n.id) != null) { const k = elName(n); if (!by.has(k)) by.set(k, []); by.get(k).push(n.type); } });
   return t => (BD_HAS(t) ? by.get(String(t).replace(/^~\s*/, '')) : undefined);
 }
 function bdProblems(model, view) {
   const out = [], nodes = BD_ARR(model && model.nodes), at = new Map(), named = bdLabels(model);
   nodes.forEach(n => { if (BD_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
-  const q = x => JSON.stringify(String(x.label ?? x.id)), say = (rule, path, ids, msg, level = 'error') => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
+  const q = x => JSON.stringify(elName(x)), say = (rule, path, ids, msg, level = 'error') => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const is = ts => (ts ? ts.map(t => BD_WORD(t).toLowerCase()).join(' and ') : 'nothing');
   const aIs = ts => aWord(is(ts)); // "an enumeration", "a block", "a use case" (audit 32: "an use case")
   nodes.forEach((n, i) => { if (!BD_OBJ(n)) return; const seen = new Map();
     BD_ARR(n.members).forEach((m, j) => { if (!BD_OBJ(m)) return;
-      const path = `nodes[${i}].members[${j}]`, p = BD_PROPS(m), T = named(p.valueType), of = `${q(n)}.${String(m.label ?? m.id)}`, ids = [n.id, m.id], typed = `typed by ${jsonText(String(p.valueType))}`;
+      const path = `nodes[${i}].members[${j}]`, p = BD_PROPS(m), T = named(p.valueType), of = `${q(n)}.${elName(m)}`, ids = [n.id, m.id], typed = `typed by ${jsonText(String(p.valueType))}`;
       // member-names on a SysML classifier, as classProblems judges a uml one's (it walks uml.* nodes only): an operation by its parameters' types too
       const k = m.type === 'uml.Operation' ? `${m.label}(${BD_ARR(p.parameters).map(a => (BD_OBJ(a) ? a.valueType ?? '' : '')).join(',')})` : `${m.label}`;
       if (BD_CLS.includes(n.type) && BD_HAS(m.label)) { if (seen.has(k)) say('member-names', path, [n.id, seen.get(k), m.id], `${q(n)} has two members named "${m.label}" (${seen.get(k)}, ${m.id})`); else seen.set(k, m.id); }
@@ -133,7 +133,7 @@ function bdProblems(model, view) {
       if (end(w).aggregation !== 'composite' || !whole || !BD_CLS.includes(whole.type)) return;
       const part = BD_HAS(role) ? BD_ARR(whole.members).find(m => BD_OBJ(m) && (m.type === 'sysml.PartProperty' || m.type === 'sysml.ConstraintProperty') && m.label === role) : null;
       if (!part) return say('part-unlisted', `${path}.props.ends.${f}`, [e.id, whole.id], `${e.id}'s part end ${BD_HAS(role) ? `${jsonText(role)} names no part of ${q(whole)}` : `has no role: it names no part of ${q(whole)}`}, so no internal block view of it shows the part`, 'warning');
-      const pp = BD_PROPS(part), ty = far ? String(far.label ?? far.id) : null, pm = String(pp.multiplicity ?? '1'), em = String(end(f).multiplicity ?? '1');
+      const pp = BD_PROPS(part), ty = far ? elName(far) : null, pm = String(pp.multiplicity ?? '1'), em = String(end(f).multiplicity ?? '1');
       if ((ty != null && pp.valueType !== ty) || pm !== em) say('part-agrees', `${path}.props.ends.${f}`, [e.id, part.id],
         `${e.id}'s part end (${ty ?? '?'} [${em}]) and part ${q(whole)}.${role} (${pp.valueType ?? '?'} [${pm}]) differ`, 'warning'); }); });
   return out;
@@ -143,7 +143,7 @@ function bdProblems(model, view) {
 function bdSaid(model, pic, id) {
   const b = pic.boxes.find(x => x.id === id); if (b) return b.aria;
   const x = pic.at.get(id), nm = pic.name(id);
-  return x.type === 'uml.Comment' ? 'Comment: ' + String(x.label ?? x.id) : BD_CLS.includes(x.type) ? bdName(x, nm) : `${BD_WORD(x.type || 'uml.Class')} ${nm}${x.type === 'uml.Package' ? ' (closed)' : ''}`;
+  return x.type === 'uml.Comment' ? 'Comment: ' + elName(x) : BD_CLS.includes(x.type) ? bdName(x, nm) : `${BD_WORD(x.type || 'uml.Class')} ${nm}${x.type === 'uml.Package' ? ' (closed)' : ''}`;
 }
 function bdDescribe(model, viewId) {
   const view = BD_ARR(model && model.views).find(x => BD_OBJ(x) && x.id === viewId); if (!view) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
@@ -177,7 +177,7 @@ function bdParse(text, owner, model) {
   const T = model ? bdLabels(model)(r.props.valueType) || [] : [];
   const type = k ? k.type : r.type === 'uml.Operation' ? r.type : T.includes('sysml.Block') ? 'sysml.PartProperty' : T.includes('sysml.ConstraintBlock') ? 'sysml.ConstraintProperty' : 'sysml.ValueProperty';
   const x = { type, label: r.label, props: { ...r.props, ...(k ? k.props : {}) } };
-  return owner && !bdHolds(owner.type, x) ? { error: `member-kinds: ${bdKind(owner)} ${String(owner.label ?? owner.id)} holds no ${bdMWord(x)}` } : x;
+  return owner && !bdHolds(owner.type, x) ? { error: `member-kinds: ${bdKind(owner)} ${elName(owner)} holds no ${bdMWord(x)}` } : x;
 }
 function bdPrint(m) {
   if (!BD_OBJ(m)) return ''; if (m.type === 'uml.Operation' || !String(m.type).startsWith('sysml.')) return printMember(m);
@@ -218,7 +218,7 @@ function bdConnect(model, view, from, to, at, line) {
   if (!bdHolds(a.type, { type: mt })) { const w = aWord(bdKind(a)); return { error: `${w[0].toUpperCase()}${w.slice(1)} holds no ${BD_MWORD[mt]}` }; }
   // the role: the type's name with what a member's name may not hold left out, its first letter lower case; one that would not
   // start with a letter, _ or $ (3D Printer) starts with part (audit 17), so its row reads back
-  const ty = String(b.label ?? b.id), kept = ty.replace(/[^\p{L}\p{M}\p{N}_$]/gu, ''), base = /^[\p{L}_$]/u.test(kept) ? kept[0].toLowerCase() + kept.slice(1) : 'part' + kept, taken = new Set(BD_ARR(a.members).map(m => BD_OBJ(m) && m.label));
+  const ty = elName(b), kept = ty.replace(/[^\p{L}\p{M}\p{N}_$]/gu, ''), base = /^[\p{L}_$]/u.test(kept) ? kept[0].toLowerCase() + kept.slice(1) : 'part' + kept, taken = new Set(BD_ARR(a.members).map(m => BD_OBJ(m) && m.label));
   let role = base, k = 2; while (taken.has(role)) role = base + k++;
   return [{ op: 'add', element: { id: bdFresh(model, `${a.id}.${role}`), type: mt, label: role, props: { valueType: ty, multiplicity: '1' } }, owner: a.id },
     { op: 'add', element: { id: bdFresh(model, 'association1'), type: 'uml.Association', from, to, props: { ends: { from: { aggregation: 'composite' }, to: { role, multiplicity: '1' } } } }, view: view.id }];

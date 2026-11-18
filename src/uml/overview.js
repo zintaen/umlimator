@@ -11,7 +11,7 @@ import { frLines, frameTag, tagSize, useSize } from './frame.js';
 import { interactionWalk } from './interaction.js';
 import { snKindName } from './structure.js';
 import { sqDraw, sqRun } from './sequence.js';
-import { usedIds, jsonText, labelOr } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the interaction overview diagram, uml.interaction-overview (work package 4.7, notes/stage-4.md §11) ----------
    Activity notation whose nodes are interactions: the control nodes of src/uml/flow.js (flow final included), interaction
@@ -110,7 +110,7 @@ function ovNodeName(model, I, x, ins, outs, sd) {
   const t = OV_HAS(x.label) ? String(x.label) : '', st = ovStereo(x), nm = `${ovWordOf(x.type)}${t ? ' ' + t : ''}${st.length ? ` (${st.join(', ')})` : ''}`;
   const opens = () => { const v = I.V.get(x.opensView); return v && v.diagram === 'uml.sequence' ? `, opens ${labelOr(v.title, v.id)}` : ', opens no sequence view'; };
   switch (x.type) {
-    case 'uml.Comment': return 'Comment: ' + String(x.label ?? x.id);
+    case 'uml.Comment': return 'Comment: ' + elName(x);
     case 'uml.DecisionNode': return `${nm}, ${ovPlural(outs, 'exit')}`;
     case 'uml.MergeNode': return `${nm}, ${ovPlural(ins, 'entry', 'entries')}`;
     case 'uml.ForkNode': return `${nm}, ${ovPlural(outs, 'branch', 'branches')}`;

@@ -8,7 +8,7 @@ import { LINE_WORDS, legendOf, lineIn, lineLabel, lineLook, lineRename, memberEd
 import './usecase.js'; // SHAPE.ellipse, a collaboration use's; SHAPE.subject, a class subject's frame
 import { SN_SAY, STRUCT_RULES, snKindName, snKindWord, portFit, portSides, portsDrawn, structProblems } from './structure.js';
 import { viewLines } from './owners.js';
-import { usedIds, jsonText, labelOr } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the composite structure diagram, uml.composite-structure (work package 5.6, notes/stage-5.md §6, §10.2) ----------
    The view's subject (a class, a component or a collaboration, listed in nodeIds) is a box holding its parts (its uml.Property
@@ -25,7 +25,7 @@ const CS_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), CS
 const CS_HAS = x => x != null && x !== '';
 const CS_PROPS = x => (CS_OBJ(x && x.props) ? x.props : {});
 // a part or role with no name is named as drawn, ': Engine [1]', by every port, line and binding that names it (audit 16)
-const csName = x => (x.type === 'uml.Property' && !CS_HAS(x.label) ? csPartSaid(x) : String(x.label ?? x.id)); // '' too, as csPartText (audit 17)
+const csName = x => (x.type === 'uml.Property' && !CS_HAS(x.label) ? csPartSaid(x) : elName(x)); // '' too, as csPartText (audit 17)
 const csPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const csStereo = x => CS_ARR(CS_PROPS(x).stereotypes).filter(CS_HAS).map(String);
 const CS_SUBJECTS = ['uml.Class', 'uml.Component', 'uml.Collaboration'], CS_TYPED = ['uml.Class', 'uml.Component']; // a subject; what owns ports and types parts
@@ -109,7 +109,7 @@ function csPic(model, view) {
   const rest = ids.filter(id => !boxed.has(id) && !uses.includes(id));
   const partOf = new Map([...parts.map(m => [m.id, S]), ...collabs.flatMap(c => c.roles.map(m => [m.id, c.x]))]); // a part or role: its structure
   const classes = [...at.values()].filter(n => CS_TYPED.includes(n.type));
-  const typeOf = p => { const vt = CS_PROPS(p).valueType, c = CS_HAS(vt) ? classes.filter(n => (n.label ?? n.id) === vt) : []; return c.length === 1 ? c[0] : null; };
+  const typeOf = p => { const vt = CS_PROPS(p).valueType, c = CS_HAS(vt) ? classes.filter(n => elName(n) === vt) : []; return c.length === 1 ? c[0] : null; };
   const el = id => at.get(id) || (mem.get(id) || {}).m || null;
   // a line's end as drawn: { node, port?, id (the model's) }; null where nothing drawn is it
   const end = (e, k) => { const x = e[k], p = (CS_PROPS(e).ends || {})[k], part = CS_OBJ(p) ? p.part : null;
@@ -278,7 +278,7 @@ const CS_RULES = {
   'collaboration-named': 'a collaboration use\'s collaboration names a collaboration of the model',
   ...STRUCT_RULES,
 };
-const csCollab = (P, u) => [...P.at.values()].find(n => n.type === 'uml.Collaboration' && CS_HAS(CS_PROPS(u).collaboration) && (n.label ?? n.id) === CS_PROPS(u).collaboration) || null;
+const csCollab = (P, u) => [...P.at.values()].find(n => n.type === 'uml.Collaboration' && CS_HAS(CS_PROPS(u).collaboration) && elName(n) === CS_PROPS(u).collaboration) || null;
 function csProblems(model, view) {
   const out = [], P = csPic(model, view || {}), vi = CS_ARR(model && model.views).indexOf(view), S = P.S, say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const q = id => JSON.stringify(P.el(id) ? csName(P.el(id)) : String(id));
@@ -289,7 +289,7 @@ function csProblems(model, view) {
   const nodeAt = id => CS_ARR(model.nodes).indexOf(P.at.get(id)), memPath = id => { const o = P.mem.get(id).owner; return `nodes[${nodeAt(o.id)}].members[${o.members.indexOf(P.mem.get(id).m)}]`; };
   if (S && S.type !== 'uml.Collaboration') P.parts.forEach(m => { if (!P.typeOf(m)) say('warning', 'part-type', memPath(m.id) + '.props.valueType', [m.id, S.id],
     // a part given no type (the panel's row "engine") said in words, not "typed null" (audit 24)
-    `part ${q(m.id)} of ${q(S.id)} ${!CS_HAS(CS_PROPS(m).valueType) ? 'has no type' : `is typed ${jsonText(CS_PROPS(m).valueType)}, which names ${[...P.at.values()].some(n => CS_TYPED.includes(n.type) && (n.label ?? n.id) === CS_PROPS(m).valueType) ? 'more than one' : 'no'} class or component`}, so it shows only the ports its connectors reach through it`); });
+    `part ${q(m.id)} of ${q(S.id)} ${!CS_HAS(CS_PROPS(m).valueType) ? 'has no type' : `is typed ${jsonText(CS_PROPS(m).valueType)}, which names ${[...P.at.values()].some(n => CS_TYPED.includes(n.type) && elName(n) === CS_PROPS(m).valueType) ? 'more than one' : 'no'} class or component`}, so it shows only the ports its connectors reach through it`); });
   P.parts.forEach(m => { const t = CS_PROPS(m).multiplicity, b = CS_HAS(t) ? multBounds(t) : { lower: 0, upper: 0 };
     if (!b || b.lower > b.upper) say('warning', 'part-multiplicity', memPath(m.id) + '.props.multiplicity', [m.id], `part ${q(m.id)}'s multiplicity [${t}] ${b ? 'has its lower bound above its upper' : 'is not one (1, *, 0..1, 1..*)'}`); });
   // where an end lies: the subject's structure ('S'), a collaboration's (its id), or nowhere (null). A collaboration use is in
@@ -518,7 +518,7 @@ const CS_TYPE = registerDiagramType('uml.composite-structure', {
     if (u.type !== 'uml.CollaborationUse') return []; // any other element is drawn with no compartments: no members in the PDF (audit 29)
     return [...(CS_HAS(CS_PROPS(u).collaboration) ? [String(CS_PROPS(u).collaboration)] : []),
       // its bindings as the view draws and describe() says them (P.lines: a view's own line too, audit 26)
-      ...P.lines.filter(({ e }) => e.type === 'uml.RoleBinding' && e.to === id).map(({ e }) => `${e.label ?? '?'} ← ${csName(P.el(e.from) || { id: e.from })}`)]; },
+      ...P.lines.filter(({ e }) => e.type === 'uml.RoleBinding' && e.to === id).map(({ e }) => `${labelOr(e.label, '?')} ← ${csName(P.el(e.from) || { id: e.from })}`)]; },
   edits: { connect: csConnect, moveTo: csMoveTo, add: csAdd, remove: csRemove, rename: csRename, member: csMember },
 });
 

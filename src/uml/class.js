@@ -1,4 +1,4 @@
-import { jsonText, labelOr } from '../core/model.js';
+import { jsonText, labelOr, elName } from '../core/model.js';
 import { kindWord, registerDiagramType } from '../core/registry.js';
 import { brLines, esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -250,7 +250,7 @@ function classIndex(model) {
   return at;
 }
 const typeWord = t => kindWord(t || 'uml.Class'); // 'uml.DataType': "Data type"; of no notation, as written (registry.js, audit 30)
-const nameOfEl = x => String(x.label ?? x.id);
+const nameOfEl = elName;
 const plural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 /* A type's look (notes/stage-2.md §10.2): the class, package and object views share classGeo's code. members: whether a
    classifier shows its compartments; kinds: whether another UML kind (a component, an actor, a node) shown here is drawn

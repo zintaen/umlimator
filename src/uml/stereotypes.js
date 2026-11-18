@@ -1,4 +1,4 @@
-import { jsonText } from '../core/model.js';
+import { jsonText, elName } from '../core/model.js';
 import { TYPED, aWord, diagramOf, drawnKind, kindWord } from '../core/registry.js';
 import { multBounds } from './class.js';
 
@@ -14,7 +14,7 @@ import { multBounds } from './class.js';
 
 const STY_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), STY_ARR = x => (Array.isArray(x) ? x : []);
 const styKey = s => s.charAt(0).toLowerCase() + s.slice(1); // names meet with the first letter in either case (§5.3): Entity is «entity»
-const styName = x => String(x.label ?? x.id), styQ = x => JSON.stringify(styName(x));
+const styName = elName, styQ = x => JSON.stringify(styName(x));
 
 /* UML 2.5.1's metaclasses (§5.4), each with its generals as OMG's UML.xmi (20161101) lists them: a row "A B: C D" says A and B specialize C, then D.
    A row for every uml.* type a registered type uses (tests/stereotypes.test.mjs holds it), and the abstract ones between */

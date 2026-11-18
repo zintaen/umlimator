@@ -5,7 +5,7 @@ import { ENDS, brLines } from '../typed/draw.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
 import { multBounds } from '../uml/class.js'; // SHAPE.note too, a comment's look
 import { snKindName, snLineName } from '../uml/structure.js';
-import { usedIds, jsonText, labelOr } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the entity-relationship diagram, er (work package M2.2, notes/milestone-2.md §4, §7.1) ----------
    Entities (tables) with their columns as rows, the key columns first under a divider; relationships from the referenced
@@ -16,7 +16,7 @@ import { usedIds, jsonText, labelOr } from '../core/model.js';
 
 const ER_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), ER_ARR = x => (Array.isArray(x) ? x : []);
 const ER_HAS = x => x != null && x !== '';
-const erName = x => String(x.label ?? x.id);
+const erName = elName;
 const erProps = x => (ER_OBJ(x.props) ? x.props : {});
 const erCols = n => ER_ARR(n.members).filter(c => ER_OBJ(c) && c.type === 'er.Column');
 const erPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;

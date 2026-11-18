@@ -185,6 +185,9 @@ const nameTable = x => { const t = new Map(); if (x && typeof x === 'object' && 
 // said by validate() for a card, a line, a member and every other element (audit 29). A number is drawn as written; null is no label
 // what names an element: its label, else its id. A number is a label, 0 too (audit 30: `label || id` named a card labelled 0 by its id)
 const labelOr = (label, id) => label == null || label === '' ? id : label;
+// what every typed view calls an element, in its picture, accessible names, describe(), PDF, hints and messages: its label,
+// else its id, so a label "" names it as no label does, as a map's card (audit 35: each type's own `label ?? id` kept "" blank)
+const elName = x => String(labelOr(x.label, x.id));
 // key: the field read, a label by default; a view's title too (audit 31: a view's title, a box's label and a card's label in a
 // view's nodeOverrides were drawn as "[object Object]" and said nowhere)
 function labelProblem(x, at, key = 'label') {
@@ -306,4 +309,4 @@ const listOf = (m, i) => (Array.isArray(m.views[i] && m.views[i].edges) ? i : -1
 const lineNames = m => { const out = new Map([[-1, namesOf(m && m.edges)]]);
   (Array.isArray(m && m.views) ? m.views : []).forEach((v, i) => { if (v && Array.isArray(v.edges)) out.set(i, namesOf(v.edges)); }); return out; };
 
-export { canon, canonDeep, jsonText, labelOr, labelProblem, versionProblem, typedProblems, lineNames, namesOf, listOf, unreadable, copyOf, textOf, nameTable, usedIds };
+export { canon, canonDeep, jsonText, labelOr, elName, labelProblem, versionProblem, typedProblems, lineNames, namesOf, listOf, unreadable, copyOf, textOf, nameTable, usedIds };
