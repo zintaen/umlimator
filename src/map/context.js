@@ -258,14 +258,17 @@ function mapContext(model, opts = {}) {
     ids.forEach(i => { if (Array.isArray(L[i])) out[i] = L[i]; });
     // a map's lines, which a card boxFit moves keeps left to right (a typed view's may be drawn turned or flipped)
     const lp = bx.length ? null : loopsOf(V[vid]), fwd = lp ? lp.edges.filter((e, k) => !lp.back.has(k) && e.from !== e.to) : [];
-    const boxes = bx.length ? bx : (V[vid].containers || []).filter(b => b && b.id != null), fit = boxes.length ? boxFit(boxes, ids, out, fwd) : null;
+    const boxes = bx.length ? bx : (V[vid].containers || []).filter(b => b && b.id != null), fit = boxes.length || fwd.length ? boxFit(boxes, ids, out, fwd) : null;
+    // the auto-layout slot is kept when it is clean and its lines run ahead; a clean slot whose lines run back gives way only to
+    // one whose lines run back less (audit 43: a card with its pin dropped went under the card that feeds it, a slot free beside)
     ids.forEach(i => { if (out[i]) return; let [c, r] = auto[i] || [0, 0]; while (taken(c, r)) r++; // auto rows may be half rows: a row apart
-      out[i] = fit && !fit.clean(i, c, r) ? fit.near(i, taken, c, r) || [c, r] : [c, r]; });
+      const k = fit && fit.clean(i, c, r) ? fit.cost(i)(c, r) : null;
+      out[i] = fit && k !== 0 ? fit.near(i, taken, c, r, k) || [c, r] : [c, r]; });
     return out;
   }
   /* a card with no pin in a pinned view with boxes (audit 41): its auto-layout slot is from another layout, and its box, drawn
      round its cards, grew over cards it does not hold (bike-share's pricing with no pin; a card edit.html adds to a box). The slot
-     is kept when no box then lies over a card or box it does not hold; else the card goes in the first such slot by its box's
+     is kept when no box then lies over a card or box it does not hold and its lines run ahead (audit 43; a view with no boxes too); else the card goes in the first such slot by its box's
      pinned cards: under them (nearest its auto-layout column first), in a gap among them, beside them, above them, further out a row at a time. Slots are grid cells: a
      box's cells run from its cards' first column and row to their last; a card more than half a row (column) into them is in it,
      as a half row on a typed view of tall rows lies past a box on the row before, and on a map the layout's box gap keeps a
@@ -289,16 +292,18 @@ function mapContext(model, opts = {}) {
         ids.forEach(j => { const p = out[j]; if (j !== i && p && !inC[j].has(b.id) && over(R, p[0], p[1]) && !over(R0[b.id], p[0], p[1])) k++; });
         boxes.forEach(o => { if (inC[i].has(o.id) || boxUp[o.id].has(b.id)) return; if (meet(R, R1[o.id]) && !meet(R0[b.id], R1[o.id])) k++; }); });
       return k; };
-    const clean = (i, c, r) => !faults(i, c, r);
+    const clean = (i, c, r) => !boxes.length || !faults(i, c, r);
     // ac, ar: the card's auto-layout slot; its box's columns are tried nearest to ac first
-    const near = (i, taken, ac, ar) => { const R = rects(i), b = chain[i].find(x => R[x]), B = b == null ? null : R[b];
-      const ln = fwd.filter(e => (e.from === i) !== (e.to === i) && out[e.from === i ? e.to : e.from]); // its lines to placed cards
-      // what a slot costs its lines: one running back or down its column, and one more for each card on the way down it
-      const cost = (c, r) => ln.reduce((k, e) => { const o = out[e.from === i ? e.to : e.from], back = e.from === i ? c >= o[0] : o[0] >= c;
-        return k + (back ? 1 + (o[0] === c ? ids.filter(j => j !== i && out[j] && out[j][0] === c && (out[j][1] - r) * (out[j][1] - o[1]) < 0).length : 0) : 0); }, 0);
+    // what a slot costs card i's lines to placed cards: one running back or down its column, and one more for each card on the way down it
+    const costOf = i => { const ln = fwd.filter(e => (e.from === i) !== (e.to === i) && out[e.from === i ? e.to : e.from]);
+      return (c, r) => ln.reduce((k, e) => { const o = out[e.from === i ? e.to : e.from], back = e.from === i ? c >= o[0] : o[0] >= c;
+        return k + (back ? 1 + (o[0] === c ? ids.filter(j => j !== i && out[j] && out[j][0] === c && (out[j][1] - r) * (out[j][1] - o[1]) < 0).length : 0) : 0); }, 0); };
+    // k0: the cost of the auto-layout slot when it is clean (null when it is not)
+    const near = (i, taken, ac, ar, k0 = null) => { const R = rects(i), b = chain[i].find(x => R[x]), B = b == null ? null : R[b], cost = costOf(i);
       // how far a slot is: the rows and columns it adds to its box's cells, or its distance from the auto-layout slot
       const far = (c, r) => B ? Math.max(0, B.c0 - c, c - B.c1) + Math.max(0, B.r0 - r, r - B.r1) : Math.max(Math.abs(c - ac), Math.abs(r - ar));
       let tries = 0, best = null, lim = Infinity;
+      if (k0 != null) { lim = far(ac, ar) + 1; best = { p: [ac, ar], t: 0, k: k0 }; }
       // a slot: null to go on; the slot to take: the first clean one whose lines all run ahead, else the clean one whose run back
       // least, once 40 more give none; a slot further out than the first clean one, and one more, is not taken for its lines
       // (audit 42: a box stretched four columns to keep one line ahead)
@@ -318,7 +323,7 @@ function mapContext(model, opts = {}) {
           for (const c of span(B.c0, B.c1)) { yield [c, B.r0 - d]; yield [c, B.r1 + 1 + d]; } } };
       for (const [c, r] of slots()) { const k = ok(c, r); if (k === false) return null; if (k) return k; }
       return best && best.p; };
-    return { clean, near };
+    return { clean, near, cost: costOf };
   }
   /* plain views: longest-path columns from the roots, state at the bottom of its column */
   /* views with containers: each container is a block in columns of its own, its cards in call order inside it; blocks (and
@@ -761,8 +766,16 @@ function mapContext(model, opts = {}) {
   withM(() => Object.entries(opts.expand || {}).forEach(([vid, ids]) => { let todo = V[vid] ? [...new Set([].concat(ids || []))] : [];
     for (let more = true; more && todo.length;) { more = false; todo = todo.filter(nid => { if (!unfold(vid, nid)) return true; (unfolded[vid] ||= []).push(nid); return !(more = true); }); } }))();
   const geoCache = O();
+  /* what a plain view's picture takes from the order of its cards, before routing (diff, audit 43): its grid slots, each way
+     bestFlow tries, by card; null where only laying it out tells (a type's own layout, a hub plan, a view with some cards pinned) */
+  function gridKey(vid) { const v = V[vid]; if (!v || ownLayout(vid) || (planCache[vid] || O()).hub) return null;
+    const ids = [...new Set((v.nodeIds || []).filter(i => N[i]))].sort(), key = l => JSON.stringify(l.map(p => ids.map(i => p[i] || null)));
+    if (v.layout) { const L = onGrid(vid, v.layout); return ids.every(i => Array.isArray(L[i])) ? key([L]) : null; }
+    if ((v.containers || []).length) return key([blockPos(vid)]);
+    const n = (v.nodeIds || []).length;
+    return key(n > 30 || n < 3 ? [flowPos(vid)] : [{}, { pull: true }, { packed: true }, { pull: true, packed: true }].map(o => flowPos(vid, o))); }
   return { D, views, nodes, N, V, rootId, nodeIn, childOf, opensOf, subjectOf, viewsWith, kidsOf, chain, viewEdges, isState, planOf: withM(planOf), planCache,
-    layoutCache, geoCache, memos, buildGeo: withM(buildGeo), buildView: withM(buildView), optimize: withM(optimize), flowPos, kidCount, viewKey, brokenIn, unfoldable, unfolded };
+    layoutCache, geoCache, memos, buildGeo: withM(buildGeo), buildView: withM(buildView), optimize: withM(optimize), flowPos, kidCount, viewKey, brokenIn, unfoldable, unfolded, gridKey: withM(gridKey) };
 }
 
 export { mapContext, boxHolds, elementCount };

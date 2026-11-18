@@ -33,6 +33,7 @@ const IF_WORD = { 'uml.Class': 'Class', 'uml.Interface': 'Interface', 'uml.Compo
 // an accessible name's kind: another kind in words, "Data type Money", as the class view and the PDF say it (audit 23)
 const ifKindName = t => (Object.hasOwn(IF_WORD, t) ? IF_WORD[t] : snKindName(t)); // no type: "Element" (audit 27)
 // the keyword over a classifier's name: an interface's, a signal's, and any other kind a view shows its own («useCase»), so none passes for a class
+// and an element of no type «element», as it is named and judged: not a class, so it does not pass for one (audit 43)
 const IF_KEY = { 'uml.Class': null, 'uml.InformationItem': null, 'uml.PrimitiveType': 'primitive' };
 const ifKey = t => (Object.hasOwn(IF_KEY, t) ? IF_KEY[t] : String(t ?? '').split('.').pop().replace(/^./, c => c.toLowerCase()) || null);
 
@@ -100,7 +101,7 @@ function ifGeo({ model, view, pos, memo }) {
   const I = ifIndex(model), ids = ifShown(I, view), lines = ifLines(I, view, new Set(ids)), P = id => (IF_OBJ(pos) && Object.hasOwn(pos, id) ? pos[id] : [0, 0]);
   const nodes = ids.map(id => { const n = I.at.get(id), st = ifStereo(n), pr = IF_OBJ(n.props) ? n.props : {};
     const look = n.type === 'uml.Comment' ? { shape: 'note' } : n.type === 'uml.Actor' ? { shape: 'actor', stereotypes: st } : n.type === 'uml.Component' ? { shape: 'component', stereotypes: st, keyword: !!pr.keyword }
-      : n.type === 'uml.InformationItem' ? { shape: 'information-item', stereotypes: st, compartments: [] } : { shape: 'if-classifier', stereotypes: [...[ifKey(n.type || 'uml.Class')].filter(Boolean), ...st], compartments: [] };
+      : n.type === 'uml.InformationItem' ? { shape: 'information-item', stereotypes: st, compartments: [] } : { shape: 'if-classifier', stereotypes: [...[IF_HAS(n.type) ? ifKey(n.type) : 'element'].filter(Boolean), ...st], compartments: [] };
     const d = { id, label: ifName(n), type: n.type || 'uml.Class', kind: 'file', ...look, aria: ifNodeName(I, n), col: P(id)[0], row: P(id)[1] };
     return { ...d, ...SHAPE[d.shape].size(d) }; });
   const edges = lines.map(e => { const flow = e.type === 'uml.InformationFlow', label = flow ? '«flow» ' + ifSays(I, e) : e.label;

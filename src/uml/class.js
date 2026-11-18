@@ -383,6 +383,7 @@ function classProblems(model, view) {
   lines.forEach(({ x: e, path }) => {
     const E = endsOf(e), ends = [e.from, e.to];
     if (e.type === 'uml.Association') ['from', 'to'].forEach(w => { const at2 = UML_OBJ(E[w]) ? E[w] : {}, who = e[w];
+      const role = labelProblem(at2, `${path}.props.ends.${w}`, 'role'); if (role) out.push(role); // drawn at its end as text (audit 43)
       const b = UML_HAS(at2.multiplicity) ? multRule(String(at2.multiplicity), `${path}.props.ends.${w}.multiplicity`, [e.id], `the ${w} end of ${lineName(e, at)}`) : null;
       if (at2.aggregation === 'composite') {
         if (typeOfId(who) === 'uml.Interface') say('interface-composite', `${path}.props.ends.${w}.aggregation`, [e.id, who], `interface ${q(who)} owns a part by composition (${e.id})`);

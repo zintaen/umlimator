@@ -216,7 +216,7 @@ function bzGeo({ model, view, pos: pins, memo }) {
     return o; });
   const boxes = P.boxes.map(b => (grown.has(b.id) ? { ...b, pad: 28 } : b));
   const dg = { nodes, edges, ...(boxes.length ? { containers: boxes } : {}), direction: down ? 'down' : 'right', gap: BZ.gap, rgap: BZ.rgap, repair: false, reroute: false };
-  let g = layoutTyped(dg, memo);
+  let g = layoutTyped(dg, memo), E = edges; // E: the lines g was laid out with
   // a loop back (a sequence flow to an earlier column: a rework loop) that crosses another line leaves its source and comes into
   // its target over the top, or under the bottom, of the flow instead; the view is laid out so once more, on a memo of its own,
   // and that kept when it has fewer issues (audit 38: Fix order back to Check order crossed the gateway's other exit, OK? to
@@ -226,8 +226,20 @@ function bzGeo({ model, view, pos: pins, memo }) {
     const hot = [...new Set(refs.flatMap((r, k) => issues[k].endsWith(' cross') ? r.map(e => e && e.id).filter(id => backs.includes(id)) : []))].slice(0, 2);
     if (hot.length) { let n = issues.length; const alt = memo ? (memo.bzBack ||= {}) : null;
       hot.forEach(id => ['top', 'bottom'].forEach(w => { const sides = { fromSide: w, toSide: w }; // in the layout's own axes: laid out down, the left and right
-        const m = alt ? (alt[id + '|' + w] ||= {}) : null, h = layoutTyped({ ...dg, edges: edges.map(e => e.id === id ? { ...e, ...sides } : e) }, m), k = routeAudit(h, '').length;
-        if (k < n) { g = h; n = k; } })); } }
+        const m = alt ? (alt[id + '|' + w] ||= {}) : null, es = edges.map(e => e.id === id ? { ...e, ...sides } : e), h = layoutTyped({ ...dg, edges: es }, m), k = routeAudit(h, '').length;
+        if (k < n) { g = h; n = k; E = es; } })); } }
+  // two lines on one run (audit 43: Alt + Left on Take payment's timer left the card note's association on the Charge request
+  // message flow under it): a line of such a pair that names no port, no pool and no side of its own leaves, then enters, on
+  // each other side in turn, and the layout with the fewest issues is kept, each issue that is not a crossing weighing two, and
+  // of two that weigh the same the one with the shorter lines.
+  // ponytail: up to two lines, eight layouts each, only up to 30 nodes and only when a run is shared
+  const weigh = is => is.reduce((a, t) => a + (t.endsWith(' cross') ? 1 : 2), 0), run = h => h.edges.reduce((a, e) => a + e.pts.slice(1).reduce((b, q, i) => b + Math.abs(q[0] - e.pts[i][0]) + Math.abs(q[1] - e.pts[i][1]), 0), 0);
+  if (nodes.length <= 30) { const refs = [], issues = routeAudit(g, '', null, refs), free = id => { const e = E.find(x => x.id === id); return e && !e.fromPort && !e.toPort && !e.fromSide && !e.toSide; };
+    const two = [...new Set(refs.flatMap((r, k) => / share a line$/.test(issues[k]) ? r.map(e => e && e.id).filter(free) : []))].slice(0, 2);
+    if (two.length) { let n = weigh(issues); const alt = memo ? (memo.bzShare ||= {}) : null, base = E;
+      two.forEach(id => ['fromSide', 'toSide'].forEach(k => ['top', 'bottom', 'left', 'right'].forEach(w => {
+        const m = alt ? (alt[`${id}|${k}|${w}`] ||= {}) : null, h = layoutTyped({ ...dg, edges: base.map(e => e.id === id ? { ...e, [k]: w } : e) }, m), c = weigh(routeAudit(h, ''));
+        if (c < n || c === n && run(h) < run(g)) { g = h; n = c; } }))); } }
   return bzFinish(P, g, { runs, anchors, grown, side, down });
 }
 

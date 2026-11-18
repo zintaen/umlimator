@@ -623,3 +623,19 @@ test('audit 42: validate() says an interface row\'s type, return type or paramet
   assert.deepEqual(said(one('uml.Component', [{ id: 'c.p', type: 'uml.Port', label: 'p', props: { valueType: { w: 1 } } }, op])), ['nodes[0].members[0].props.valueType'], 'a component draws its ports, not its operations');
   assert.deepEqual(said(one('uml.Interface', [{ ...op, props: { parameters: [{ name: 'x', valueType: 'T' }], returnType: 'R' } }])), []);
 });
+
+test('a class\'s port: F2 and the palette refuse a name another member of the class holds, as the composite view does; a component\'s are not judged (audit 43)', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'c', type: 'uml.Class', label: 'C', members: [{ id: 'c.p', type: 'uml.Port', label: 'p' }, { id: 'c.q', type: 'uml.Port', label: 'q' }, { id: 'c.n', type: 'uml.Property', label: 'n' }] },
+    { id: 'k', type: 'uml.Component', label: 'K', members: [{ id: 'k.p', type: 'uml.Port', label: 'p' }] }], edges: [], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['c', 'k'] }] };
+  const v = m.views[0], said = /^member-names: "C" has a member named "p" already \(c\.p\)/;
+  assert.match(T.edits.rename(m, v, 'c.q', 'p').error, said);
+  assert.match(T.edits.rename(m, v, 'c.q', 'p : Money').error, said);
+  assert.match(T.edits.add(m, v, { type: 'uml.Port' }, 'p', { sel: ['c'] }).error, said);
+  assert.match(T.edits.add(m, v, { type: 'uml.Port' }, 'p : T', { sel: ['c.q'] }).error, said); // a port selected: its owner
+  // its own name kept with a new type, a free name, and a component's port: allowed, as before
+  assert.deepEqual(T.edits.rename(m, v, 'c.p', 'p : Int'), [{ op: 'set', id: 'c.p', path: 'props.valueType', value: 'Int' }]);
+  assert.deepEqual(T.edits.rename(m, v, 'c.q', 'r'), [{ op: 'set', id: 'c.q', path: 'label', value: 'r' }]);
+  assert.ok(Array.isArray(T.edits.add(m, v, { type: 'uml.Port' }, 'r', { sel: ['c'] })));
+  assert.ok(Array.isArray(T.edits.add(m, v, { type: 'uml.Port' }, 'p', { sel: ['k'] })));
+  assert.ok(Array.isArray(T.edits.rename(m, v, 'k.p', 'q')));
+});

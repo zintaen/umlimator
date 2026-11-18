@@ -79,3 +79,43 @@ test('audit 36: a member the picture names by its id when it has no name, the PD
   }
   assert.ok(n > 5, `members checked: ${n}`);
 });
+
+test('audit 43: a typed view\'s panel text field that is not text is said at its own path, in every type: once, when a rule of its type says that path already', () => {
+  const O = { z: 3 }, said = m => validate(m).filter(p => / is not text/.test(p.message)).map(p => p.path).sort();
+  const one = (d, nodes, edges = [], more = {}) => ({ schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: d, nodeIds: nodes.map(n => n.id), ...more }] });
+  assert.deepEqual(said(one('c4.container', [{ id: 's', type: 'c4.Container', label: 'S', props: { description: O, technology: 'Go' } }, { id: 'p', type: 'c4.Person', label: 'P' }],
+    [{ id: 'r', type: 'c4.Relationship', from: 'p', to: 's', label: 'uses', props: { technology: [1] } }])), ['edges[0].props.technology', 'nodes[0].props.description']);
+  assert.deepEqual(said(one('dfd', [{ id: 'p', type: 'dfd.Process', label: 'P', props: { number: O } }, { id: 'q', type: 'dfd.Process', label: 'Q', props: { number: 2 } }])), ['nodes[0].props.number']);
+  assert.deepEqual(said(one('er', [{ id: 't', type: 'er.Entity', label: 'T', members: [{ id: 't.a', type: 'er.Column', label: 'a', props: { dataType: O } }] }])), ['nodes[0].members[0].props.dataType']);
+  assert.deepEqual(said(one('uml.state-machine', [{ id: 'a', type: 'uml.State', label: 'A', props: { entry: O } }, { id: 'b', type: 'uml.State', label: 'B' }],
+    [{ id: 't', type: 'uml.Transition', from: 'a', to: 'b', props: { guard: O, effect: 'go' } }])), ['edges[0].props.guard', 'nodes[0].props.entry']);
+  assert.deepEqual(said(one('uml.sequence', [{ id: 'a', type: 'uml.Lifeline', label: 'a', props: { represents: O } }])), ['nodes[0].props.represents']);
+  assert.deepEqual(said(one('uml.use-case', [{ id: 'a', type: 'uml.UseCase', label: 'A', members: [{ id: 'a.p', type: 'uml.ExtensionPoint', label: 'p' }] }, { id: 'b', type: 'uml.UseCase', label: 'B' }],
+    [{ id: 'x', type: 'uml.Extend', from: 'b', to: 'a', props: { extensionPoints: ['a.p'], condition: O } }])), ['edges[0].props.condition']);
+  // a line or card the view does not list: not said by the view (the class view's own rule still says an end's role)
+  assert.deepEqual(said(one('c4.container', [{ id: 's', type: 'c4.Container', label: 'S' }], [], { nodeIds: [] })), []);
+  const off = one('dfd', [{ id: 'p', type: 'dfd.Process', label: 'P' }]); off.nodes.push({ id: 'q', type: 'dfd.Process', label: 'Q', props: { number: O } });
+  assert.deepEqual(said(off), []);
+  // a multiplicity its type judges is said by that rule alone, not again as text
+  const ab = one('uml.class', [{ id: 'a', type: 'uml.Class', label: 'A' }, { id: 'b', type: 'uml.Class', label: 'B' }], [{ id: 'l', type: 'uml.Association', from: 'a', to: 'b', props: { ends: { to: { multiplicity: O } } } }]);
+  assert.deepEqual(validate(ab).filter(p => p.path === 'edges[0].props.ends.to.multiplicity').map(p => p.rule), ['multiplicity']);
+});
+
+test('audit 43: every example\'s panel text fields and stereotypes, each set to what is not text in turn, are said at their paths', () => {
+  const O = { z: 3 }, obj = x => x && typeof x === 'object' && !Array.isArray(x);
+  for (const f of readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json'))) {
+    const base = read(`../examples/${f}`); if (base.schemaVersion !== 2) continue;
+    const spots = new Map(); // one spot a kind and key: the sweep's time
+    const walk = (x, at) => { if (!obj(x)) return; if (obj(x.props)) Object.entries(x.props).forEach(([k, v]) => {
+        if (typeof v === 'string' && !spots.has(x.type + k)) spots.set(x.type + k, [at, k]);
+        if (k === 'stereotypes' && Array.isArray(v) && v.length && !spots.has(x.type + k)) spots.set(x.type + k, [at, 'stereotypes[0]']); });
+      (Array.isArray(x.members) ? x.members : []).forEach((m, j) => walk(m, `${at}.members[${j}]`)); };
+    base.nodes.forEach((n, i) => walk(n, `nodes[${i}]`)); (base.edges || []).forEach((e, i) => walk(e, `edges[${i}]`));
+    for (const [at, k] of spots.values()) {
+      const m = structuredClone(base), x = at.match(/\w+\[\d+\]/g).reduce((o, s) => { const [, a, i] = /(\w+)\[(\d+)\]/.exec(s); return o[a][+i]; }, m);
+      if (k === 'stereotypes[0]') x.props.stereotypes[0] = O; else x.props[k] = O;
+      const drawn = m.views.some(v => { try { return JSON.stringify(layout(m, v.id)).includes('[object Object]'); } catch { return false; } });
+      if (drawn) assert.ok(validate(m).some(p => p.path.startsWith(`${at}.props`)), `${f} ${at}.props.${k}: drawn as "[object Object]" and said nowhere`);
+    }
+  }
+});

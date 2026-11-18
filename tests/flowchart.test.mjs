@@ -448,3 +448,10 @@ test('audit 42: a node of no type (or "") is a flowchart node, as it is drawn an
   const c = one([N('s', 'Terminator', 'Start'), { id: 'n', type: 'uml.Comment', label: 'note' }], []);
   assert.match(T.edits.connect(c, c.views[0], 's', 'n', null, { type: 'flow.Flow' }).error, /^flow-ends: /);
 });
+
+test('audit 43: the legend keys the process rectangle a node of no type or of another kind is drawn as', () => {
+  const keys = x => layout(one([N('s', 'Terminator', 'Start'), x, N('e', 'Terminator', 'End')], [F('f1', 's', 'x'), F('f2', 'x', 'e')]), 'v').legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]);
+  for (const x of [{ id: 'x', label: 'Ship' }, { id: 'x', type: '', label: 'Ship' }, { id: 'x', type: 'uml.Class', label: 'Ship' }, N('x', 'Process', 'Ship')])
+    assert.deepEqual(keys(x), ['Flow', 'Terminator', 'Process'], JSON.stringify(x));
+  assert.deepEqual(keys(N('x', 'Decision', 'Ok?')), ['Flow', 'Terminator', 'Decision'], 'a symbol of its own: no Process key');
+});

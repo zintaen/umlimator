@@ -470,3 +470,14 @@ test('audit 29: the rules call an element with no type "an element", as its acce
   assert.ok(said.includes('flow-ends: f runs from "Shopper" (actor) to "Shop" (element): a flow joins two classes, interfaces, components or actors'), said.join('\n'));
   assert.ok(!said.some(s => /untyped/.test(s)), said.join('\n'));
 });
+
+test('audit 43: an element of no type, named "Element" and judged no class, is drawn under «element», not as a class', () => {
+  const mk = t => ({ schemaVersion: 2, nodes: [N('a', 'Class', 'Shop'), { id: 'b', ...(t ? { type: t } : {}), label: 'Bank' }, N('i', 'InformationItem', 'Payment')],
+    edges: [F('f', 'a', 'b', ['i'])], views: [{ id: 'v', diagram: 'uml.information-flow', nodeIds: ['a', 'b', 'i'] }] });
+  for (const t of [undefined, '']) {
+    const b = layout(mk(t), 'v').byId.b; assert.deepEqual(b.stereotypes, ['element'], JSON.stringify(t)); assert.match(b.aria, /^Element Bank/);
+    assert.match(svgOf(layout(mk(t), 'v')), /«element»/);
+  }
+  assert.deepEqual(layout(mk('uml.Class'), 'v').byId.b.stereotypes, [], 'a class: no keyword, as before');
+  assert.deepEqual(layout(mk('uml.Interface'), 'v').byId.b.stereotypes, ['interface']);
+});

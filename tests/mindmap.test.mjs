@@ -598,3 +598,20 @@ test('audit 34: a topic labelled "" is drawn and named by its id, never an empty
   const h = structuredClone(m); h.nodes[1].label = '<img src=x onerror=alert(1)>';
   assert.ok(!mapContext(h).buildView('v').markup.includes('<img'));
 });
+
+test('audit 43: a subtopic dropped on another branch, or moved by Alt + arrows, swings no first-level branch, the one dropped on among them', () => {
+  for (const keep of [false, true]) {
+    let m = EX(); if (!keep) delete V(m).present; // a Mermaid import's map: no side stored
+    if (keep) m = run(m, mmAdd(m, V(m), ENTRY, 'Marketing', { sel: [m.nodes.find(n => !n.parent).id] })); // one added since, with no side
+    const g = mmRun(m, V(m)), sides = x => Object.fromEntries(mmRun(x, V(x)).nodes.filter(n => n.depth === 1).map(n => [n.id, n.side]));
+    const before = sides(m), firsts = Object.keys(before), deep = g.nodes.filter(n => n.depth >= 2);
+    const same = (r, what, moved) => { const c = cmdsOf(r); if (!Array.isArray(c) || !c.length) return; const a = sides(apply(m, c));
+      for (const k of firsts) if (k !== moved) assert.equal(a[k], before[k], `${keep ? 'kept sides' : 'no sides'}: ${what} swung ${k}`); };
+    for (const T of deep) {
+      for (const k of firsts) { if (k === T.parent) continue; const t = g.byId[k]; same(mmMoveTo(m, V(m), T.id, { pt: [t.x + t.w / 2, t.y + t.h / 2] }), `${T.id} dropped on ${k}`); }
+      const out = T.side === 'right' ? 1 : -1;
+      same(mmMoveTo(m, V(m), T.id, { by: [out, 0] }), `Alt + ${out > 0 ? 'Right' : 'Left'} on ${T.id}`); // demote
+      same(mmMoveTo(m, V(m), T.id, { by: [-out, 0] }), `Alt + ${out > 0 ? 'Left' : 'Right'} on ${T.id}`, T.id); // promote
+    }
+  }
+});

@@ -963,3 +963,17 @@ test('audit 42: the properties panel\'s Name field on a part or port writing a n
   const k = structuredClone(m); k.nodes[0].type = 'uml.Component';
   assert.equal(T.edits.field(k, k.views[0], 'shop.a', 'label', 'b'), null);
 });
+
+test('audit 43: validate() says a drawn port\'s type, a role\'s type and multiplicity and a collaboration use\'s collaboration that are not text', () => {
+  const O = { z: 3 }, said = m => validate(m).filter(p => / is not text|role .*multiplicity/.test(p.message)).map(p => p.path).sort();
+  const m = { schemaVersion: 2, nodes: [
+    { id: 'c', type: 'uml.Class', label: 'C', members: [{ id: 'c.q', type: 'uml.Port', label: 'q', props: { valueType: O } }, { id: 'c.p', type: 'uml.Property', label: 'p', props: { valueType: 'W' } }] },
+    { id: 'w', type: 'uml.Class', label: 'W', members: [{ id: 'w.r', type: 'uml.Port', label: 'r', props: { valueType: O } }] },
+    { id: 'u', type: 'uml.CollaborationUse', label: 'u', parent: 'c', props: { collaboration: O } },
+    { id: 'k', type: 'uml.Collaboration', label: 'K', members: [{ id: 'k.r', type: 'uml.Property', label: 'r', props: { valueType: O, multiplicity: O } }] }], edges: [],
+    views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 'c', nodeIds: ['c', 'u', 'k'] }] };
+  assert.deepEqual(said(m), ['nodes[0].members[0].props.valueType', 'nodes[1].members[0].props.valueType', 'nodes[2].props.collaboration', 'nodes[3].members[0].props.multiplicity', 'nodes[3].members[0].props.valueType']);
+  assert.ok(validate(m).some(p => p.message === 'part-multiplicity: role "r"\'s multiplicity [[object Object]] is not one (1, *, 0..1, 1..*)'));
+  const bad = structuredClone(m); bad.nodes[3].members[0].props = { valueType: 'W', multiplicity: '3..1' };
+  assert.ok(validate(bad).some(p => p.message === 'part-multiplicity: role "r"\'s multiplicity [3..1] has its lower bound above its upper'));
+});

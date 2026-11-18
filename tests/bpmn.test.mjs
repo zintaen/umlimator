@@ -970,3 +970,15 @@ test('audit 38: a rework loop (check, gateway, fix, back to check) is laid out c
     for (const [x, y] of g.edges.find(e => e.id === 'f5').pts) assert.ok(x >= pool.x && x <= pool.x + pool.w && y >= pool.y && y <= pool.y + pool.h, `${at}: the loop stays in its pool`);
   }
 });
+
+test('audit 43: the example\'s timer moved to each side by Alt + arrows, laid out right or down, leaves no two lines on one run', () => {
+  const quiet = f => { const k = console.warn; console.warn = () => {}; try { return f(); } finally { console.warn = k; } };
+  const v = EX.views[0], by = { left: [-1, 0], right: [1, 0], top: [0, -1], bottom: [0, 1] };
+  for (const direction of ['right', 'down']) for (const s of Object.keys(by)) {
+    const m = structuredClone(EX); m.views[0].direction = direction;
+    const c = bzMoveTo(m, m.views[0], 'payment-timeout', { by: by[s] }), n = Array.isArray(c) && c.length ? apply(m, c) : m;
+    assert.equal(n.views[0].present?.['payment-timeout']?.side ?? s, s, `${direction} ${s}`);
+    const bad = quiet(() => check(n, v.id)).map(p => p.message).filter(t => / share a line| overlap/.test(t));
+    assert.deepEqual(bad, [], `${direction}, the timer on the ${s}`);
+  }
+});

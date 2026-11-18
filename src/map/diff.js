@@ -119,9 +119,18 @@ export function diff(before, after) {
   let c0; const geoOf = (c, id) => { try { const [g] = held(() => c().buildGeo(id)), at = l => arr(l).filter(x => x && typeof x === 'object');
     const set = l => l.map(x => canon(x)).sort(); // as a set: the lists' own order follows nodeIds, the picture need not
     return canon([set(at(g.nodes).map(n => [n.id, n.x, n.y, n.w, n.h])), set(at(g.edges).map(e => [e._id ?? e.id, e.pts ?? null])), ...['bands', 'lanes', 'groups'].map(k => set(at(g[k]).map(b => [b.id, b.x, b.y, b.w, b.h])))]); } catch { return null; } };
-  const reordered = (o, k1) => { const vi = arr(A.views).indexOf(o); if (vi < 0) return true; const q = [...k1], put = new Set(k1), seen = new Set();
-    const ids = arr(o.nodeIds).map(x => typeof x === 'string' && put.has(x) && !seen.has(x) && seen.add(x) ? q.shift() : x);
-    const g0 = geoOf(() => (c0 ||= held(() => mapContext(A))[0]), o.id), g1 = geoOf(() => held(() => mapContext({ ...A, views: arr(A.views).map((w, i) => i === vi ? { ...w, nodeIds: ids } : w) }))[0], o.id);
+  // audit 43: each view laid out twice, in a context of the whole model made for it, took a second a view. Now one context holds
+  // every view's new order; a plain view whose grid slots do not change (each card pinned, or ranked to the same slot) draws
+  // the same and is not laid out; the others are, once in each context
+  const keptOrder = (o, k1) => { const q = [...k1], put = new Set(k1), seen = new Set(); return arr(o.nodeIds).map(x => typeof x === 'string' && put.has(x) && !seen.has(x) && seen.add(x) ? q.shift() : x); };
+  const order1 = new Map(); arr(out.views).forEach(v => { const o = v && V0.get(v.id); if (!o) return;
+    const ks = new Set(arr(v.nodeIds).filter(x => typeof x === 'string')), ko = new Set(arr(o.nodeIds).filter(x => typeof x === 'string'));
+    const k0 = [...ko].filter(x => ks.has(x)), k1 = [...ks].filter(x => ko.has(x)); if (k0.some((x, i) => x !== k1[i])) order1.set(o, keptOrder(o, k1)); });
+  let c1; const ctx0 = () => (c0 ||= held(() => mapContext(A))[0]), ctx1 = () => (c1 ||= held(() => mapContext({ ...A, views: arr(A.views).map(w => order1.has(w) ? { ...w, nodeIds: order1.get(w) } : w) }))[0]);
+  const reordered = o => { if (!order1.has(o) || arr(A.views).indexOf(o) < 0) return true;
+    let a = null, b = null; try { a = held(() => ctx0().gridKey(o.id))[0]; b = a == null ? null : held(() => ctx1().gridKey(o.id))[0]; } catch { a = null; }
+    if (a != null && a === b) return false;
+    const g0 = geoOf(ctx0, o.id), g1 = geoOf(ctx1, o.id);
     return g0 == null || g1 == null || g0 !== g1; };
   const views = arr(out.views).map(v => {
     const o = v && V0.get(v.id); if (!v) return v;
@@ -185,7 +194,7 @@ export function diff(before, after) {
     // the old model with only that order changed differs from the old one's (a view whose cards are pinned draws the same)
     else if (!(numbered(v) && numbered(o))) { const ks = new Set(ids.filter(x => typeof x === 'string')), ko = new Set(oldIds.filter(x => typeof x === 'string'));
       const k0 = [...ko].filter(x => ks.has(x)), k1 = [...ks].filter(x => ko.has(x));
-      if (k0.some((x, i) => x !== k1[i]) && reordered(o, k1)) { const mv = movedIn(k0, k1), ovr = v.nodeOverrides && typeof v.nodeOverrides === 'object' ? v.nodeOverrides : {};
+      if (k0.some((x, i) => x !== k1[i]) && reordered(o)) { const mv = movedIn(k0, k1), ovr = v.nodeOverrides && typeof v.nodeOverrides === 'object' ? v.nodeOverrides : {};
         const cn = id => { const x = Object.hasOwn(ovr, id) ? ovr[id] : null; return String(labelOr(x && typeof x === 'object' && x.label != null ? x.label : (at.get(id) || {}).label, id)); };
         if (mv.length > 3) says(`reorders ${mv.length} cards`); else mv.forEach(([id, p]) => says(`moves ${cn(id)} ${p == null ? 'to the start' : 'after ' + cn(p)}`)); } }
     if (Array.isArray(v.edges)) { const back = new Map([...goneLines, ...hid.map(id => [id, line(line0.get(id), 'removed')])]);
@@ -306,7 +315,10 @@ export function diff(before, after) {
     for (const s = [n], seen = new Set(); s.length;) { const x = s.pop(); if (!x || typeof x !== 'object' || seen.has(x)) continue; seen.add(x); if (x.id != null && !topOf.has(x.id)) topOf.set(x.id, n.id); arr(x.members).forEach(y => s.push(y)); } });
   // an element named by its name (a part's valueType, an attribute's type), as it was or is: by the name before a rename too
   const named0 = new Map(); [...arr(A.nodes), ...arr(A.views).flatMap(v => arr(v && v.nodes)), ...elOf.values()].forEach(n => { if (n && typeof n === 'object' && typeof n.label === 'string' && topOf.has(n.id) && !named0.has(n.label)) named0.set(n.label, topOf.get(n.id)); });
-  const texts = x => { const l = []; for (const s = [x], seen = new Set(); s.length;) { const y = s.pop(); if (typeof y === 'string') l.push(y); else if (y && typeof y === 'object' && !seen.has(y)) { seen.add(y); Object.values(y).forEach(z => s.push(z)); } } return l; };
+  // the strings an element's fields hold, but for its own words (audit 43: a C4 container labelled Shop API read as naming the
+  // map card Shop API, and its views were listed with the card's change): a name, a caption, a description names nothing
+  const wordKeys = new Set(['label', 'sublabel', 'title', 'description', 'note', 'notes', 'doc', 'body', 'text', 'technology', 'caption', 'icon']);
+  const texts = x => { const l = []; for (const s = [x], seen = new Set(); s.length;) { const y = s.pop(); if (typeof y === 'string') l.push(y); else if (y && typeof y === 'object' && !seen.has(y)) { seen.add(y); Object.entries(y).forEach(([k, z]) => { if (Array.isArray(y) || !wordKeys.has(k)) s.push(z); }); } } return l; };
   const refs = v => { const ids = new Set(), vs = new Set(), name = s => topOf.has(s) ? topOf.get(s) : typeof s !== 'string' ? null : named0.get(s) ?? named0.get(s.split('::').pop());
     const up = (t, l) => { for (let k = 0; t != null && !ids.has(t) && k < 1e4; k++) { ids.add(t); l.push(t); const p = (elOf.get(t) || {}).parent; t = topOf.has(p) ? topOf.get(p) : null; } };
     let now = []; [...arr(v.nodeIds), ...arr(v.nodes).map(n => n && n.id)].forEach(id => topOf.has(id) && up(topOf.get(id), now));
