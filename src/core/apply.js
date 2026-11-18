@@ -18,7 +18,8 @@ import { copyOf, lineNames, namesOf, listOf, jsonText } from './model.js';
      move      { id, index, owner? }         a member to another place among its owner's members, or to a new owner
                { id, view, index }           an element or line to another place in a view's order (its nodeIds or edges)
      hide      { id, view }                  out of one view, with all the view says of it: its place, pin, present,
-                                             box, tour, the view's lines to it, the story steps on that view; the model
+                                             box, tour, the view's lines to it, the story steps on that view (on
+                                             the lines to it it draws no more too, audit 36); the model
                                              keeps it (risks.md E5). A line that lives only in that view goes with it
                                              (a later delete of it in the transaction is passed over, audit 32).
                                              The view's subject (or what owns it) is refused (audit 17)
@@ -246,6 +247,10 @@ function run(m, c, gone) {
       // a line the view holds goes for good: a later delete of it in this transaction finds it gone, as after a delete (audit 32)
       if (Array.isArray(v.edges)) v.edges = v.edges.filter(y => { const l = typeof y === 'string' ? (at.get(y) || {}).x : y, out = y === c.id || ends(l);
         if (out && isObj(l) && typeof l.id === 'string') { ids.add(l.id); if (l === y) gone.add(l.id); } return !out; }); // what names those lines in this view goes too
+      // and the model lines it drew to it, which it draws no more: what names them in this view (a story step's select or
+      // highlight) goes too, as the element's own. Lines to those lines as well, on a list (audit 36)
+      { const to = new Map(); arr(m.edges).forEach(l => { if (isObj(l) && typeof l.id === 'string') [l.from, l.to].forEach(k => { if (typeof k === 'string') (to.get(k) || to.set(k, []).get(k)).push(l.id); }); });
+        for (const q = [...ids]; q.length;) arr(to.get(q.pop())).forEach(k => { if (!ids.has(k)) { ids.add(k); q.push(k); } }); }
       // a prop names model elements, kept, but for an interaction use's covers: lifelines of its view (audit 14)
       clear(m, refs(m, ids, i => i === vi).filter(r => !['end', 'parent', 'part'].includes(r.kind) && (r.kind !== 'prop' || r.path[r.path.length - 2] === 'covers')));
       follow(m, names0, i => i === vi);

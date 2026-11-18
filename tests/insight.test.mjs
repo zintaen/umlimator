@@ -133,3 +133,19 @@ test('audit 22: describe() says a label\'s line break as a space, one sentence p
   const m = { schemaVersion: 2, nodes: [{ id: 'a\nb', label: 'Two\nlines' }, { id: 'c', label: 'C' }], edges: [{ from: 'a\nb', to: 'c', label: 'x\ny' }], views: [{ id: 'v', nodeIds: ['a\nb', 'c'] }] };
   assert.match(say(m, 'v'), /Two lines calls C \("x y"\)/);
 });
+
+test('audit 36: critical() follows a chain of thousands of cards: walked on a stack of its own, not by recursion', () => {
+  // 2,500 cards in one chain, latency 1 on each line: the recursion overflowed the call stack near 2,200
+  const k = 2500, ids = Array.from({ length: k }, (_, i) => 'n' + i);
+  const m = { schemaVersion: 2, nodes: ids.map(id => ({ id })), edges: ids.slice(1).map((id, i) => ({ id: 'e' + i, from: ids[i], to: id, latency: 1 })), views: [{ id: 'v', nodeIds: ids }] };
+  const r = critical(m, 'v', { from: 'n0' });
+  assert.equal(r.total, k - 1);
+  assert.deepEqual(r.refs.filter(x => x.type === 'node').map(x => x.id), ids);
+  assert.equal(r.refs.filter(x => x.type === 'edge').length, k - 1);
+  assert.equal(critical(m, 'v', { from: 'n0', to: 'n9' }).total, 9);
+  // the same path as before on a view that loops back: a card is never met twice
+  const c = { schemaVersion: 2, nodes: ['a', 'b', 'c', 'd'].map(id => ({ id })), edges: [{ from: 'a', to: 'b', latency: 2 }, { from: 'b', to: 'c', latency: 3 }, { from: 'c', to: 'a', latency: 9 }, { from: 'b', to: 'd', latency: 4 }, { from: 'c', to: 'd', latency: 1 }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd'] }] };
+  assert.equal(critical(c, 'v', { from: 'a' }).total, 6);
+  assert.equal(critical(c, 'v').total, 15);
+  assert.deepEqual(critical(c, 'v', { from: 'b', to: 'a' }).refs.filter(x => x.type === 'node').map(x => x.id), ['b', 'c', 'a']);
+});

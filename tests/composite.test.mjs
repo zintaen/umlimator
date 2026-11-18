@@ -843,3 +843,35 @@ test('audit 35: Delete on ports on parts counts a connector between two of them 
   r = T.edits.remove(L, L.views[0], [b, 'checkout-to-pricing'], false);
   assert.deepEqual(r.commands, [{ op: 'delete', id: 'checkout-to-pricing' }]); assert.doesNotMatch(r.say, /hid/);
 });
+
+test('audit 36: Delete beside a part ends on a host\'s member that holds itself and reads members thousands deep', () => {
+  const base = () => ({ schemaVersion: 2, nodes: [
+    { id: 'shop', type: 'uml.Component', label: 'Shop', members: [{ id: 'shop.a', type: 'uml.Property', label: 'a' }] },
+    { id: 'lib', type: 'uml.Class', label: 'Lib' }], edges: [],
+    views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 'shop', nodeIds: ['shop', 'lib'] }] });
+  const want = { commands: [{ op: 'hide', id: 'lib', view: 'v' }, { op: 'delete', id: 'shop.a' }], say: 'Deleted part a of Shop (a member is not hidden: it goes from the model); hid 1 element' };
+  assert.deepEqual(T.edits.remove(base(), base().views[0], ['shop.a', 'lib'], false), want);
+  // a member that holds itself (a host's object): the walk ends
+  const m1 = base(), x = { id: 'lib.inner', type: 'uml.Class', members: [] }; x.members.push(x); m1.nodes[1].members = [x];
+  assert.deepEqual(T.edits.remove(m1, m1.views[0], ['shop.a', 'lib'], false), want);
+  // members 20,000 deep, read from a file as validate, apply and layout read them (audit 35): no stack overflow
+  let d = '{"id":"d0","type":"uml.Class"}'; for (let i = 1; i < 20000; i++) d = `{"id":"d${i}","type":"uml.Class","members":[${d}]}`;
+  const m2 = base(); m2.nodes[1].members = [JSON.parse(d)];
+  assert.deepEqual(T.edits.remove(m2, m2.views[0], ['shop.a', 'lib'], false), want);
+  // and a selected member deep in a node beside the part is found there
+  const m3 = base(); m3.nodes[1].members = [{ id: 'lib.x', type: 'uml.Class', members: [{ id: 'lib.x.y', type: 'uml.Property', label: 'y' }] }];
+  assert.doesNotThrow(() => T.edits.remove(m3, m3.views[0], ['shop.a', 'lib.x.y'], false));
+});
+
+test('audit 36: the PDF names a port with no name, or a name "", by its id, as the picture, its accessible name and describe() do', () => {
+  for (const unnamed of [m => { m.label = ''; }, m => { delete m.label; }]) {
+    const m = JSON.parse(readFileSync(new URL('../examples/order-service-structure.json', import.meta.url), 'utf8')), v = m.views[0], api = m.nodes[0].members.find(x => x.id === 'order-service.api');
+    unnamed(api);
+    const ctx = mapContext(m), [els] = tablesOf(ctx, ctx.V[v.id], layout(m, v.id)), row = els.rows.find(r => r.includes('<b>OrderService</b>'));
+    assert.match(row, /<p>port order-service\.api<\/p><p>port payments<\/p>/);
+    assert.doesNotMatch(row, /<p>port <\/p>/);
+    assert.match(ctx.buildView(v.id).markup, /aria-label="Port order-service\.api of OrderService"/);
+    // F2 still opens on the port's own text, its name empty, not its id written in as a name
+    assert.equal(T.member.print(api), 'port ');
+  }
+});

@@ -512,3 +512,15 @@ test('audit 31: diff() says a change to the title, a story, a lens or another fi
   for (const [x, y] of [['2n', 2n], [null, NaN], ['\u00002n', 2n], [Infinity, null]]) assert.deepEqual(diff(m(x), m(y)).summary, ['changes A (what)', 'changes the line from A to A (weight)'], String(y));
   assert.deepEqual(diff(m(2n), m(2n)).summary, []);
 });
+
+test('audit 36: diff() names a box as the map draws it, by its label or else its id: a `title` it never draws is no rename', () => {
+  const base = () => ({ nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ id: 'ab', from: 'a', to: 'b' }],
+    views: [{ id: 'v', title: 'V', nodeIds: ['a', 'b'], containers: [{ id: 'box', title: 'Shop', nodeIds: ['a'] }, { id: 's', label: 'Shelf', title: 'Rack', nodeIds: ['b'] }] }] });
+  const t = f => { const b = base(); f(b.views[0]); return diff(base(), b).summary; };
+  // the map draws the boxes "box" and "Shelf" (svg.js: a box's label, else its id)
+  assert.match(svgOf(layout(base(), 'v'), {}), />box</);
+  assert.deepEqual(t(v => { v.containers[0].title = 'Store'; }), []);
+  assert.deepEqual(t(v => { v.containers[1].title = 'Store'; }), []);
+  assert.deepEqual(t(v => { v.containers[0].label = 'Crate'; }), ['renames the box box to Crate in the view V']);
+  assert.deepEqual(t(v => { v.containers[0].nodeIds = []; v.containers[1].nodeIds = ['a', 'b']; }), ['moves A out of box into Shelf in the view V']);
+});

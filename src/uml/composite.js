@@ -40,6 +40,8 @@ const csPartText = m => { const p = CS_PROPS(m); return `${m.label ?? ''}${CS_HA
 // as drawn and said: a part (or a collaboration use) with no name and no type by its id, as csName (audit 15)
 const csPartSaid = m => csPartText(m) || String(m.id);
 const csPortText = m => `${m.label ?? ''}${CS_HAS(CS_PROPS(m).valueType) ? ' : ' + CS_PROPS(m).valueType : ''}`;
+// a port as drawn and said, `port api : Api`: one with no name (or "") by its id, as csName; csPortText stays F2's edit text (audit 36)
+const csPortSaid = m => `port ${csPortText({ ...m, label: csName(m) })}`;
 function csParse(t) {
   // the name runs to the first lone ':' (a type may be ns::T), the multiplicity is a closing [...] that is one (T[], list[str] are types)
   const s = String(t ?? '').trim(), b = /\s*\[([^[\]]*)\]$/.exec(s), k = b && multBounds(b[1]) ? b[1].trim() : undefined, h = k ? s.slice(0, b.index) : s, m = /^((?:[^:]|::)*?)\s*(?::(?!:)\s*((?:[^:]|::)*))?$/s.exec(h);
@@ -413,7 +415,10 @@ function csAdd(model, view, entry, label, at) {
    Delete does, said. Delete on a port on a part deletes the connectors through that part to it; Shift + Delete, the port from
    its class (§6). Other ids as the default */
 // x is the element id, or holds it among its members, at any depth
-const csHolds = (x, id) => CS_OBJ(x) && id != null && (x.id === id || CS_ARR(x.members).some(m => csHolds(m, id)));
+// on a stack with a seen set, as heldBy: a host's member that holds itself, or members thousands deep, overflowed (audit 36)
+const csHolds = (x, id) => { if (id == null) return false;
+  for (const st = [x], seen = new Set(); st.length;) { const y = st.pop(); if (!CS_OBJ(y) || seen.has(y)) continue; seen.add(y); if (y.id === id) return true; for (const m of CS_ARR(y.members)) st.push(m); }
+  return false; };
 function csRemove(model, view, ids, fromModel) {
   // with the view's own nodes and lines, as csProblems weighs them (remove gets the model as it is: registry.js), audit 24
   const P = csPic(ownNodes(model, view).model, view); if (!CS_ARR(ids).some(id => csSplit(id) || P.mem.has(id))) return null;
@@ -521,7 +526,7 @@ const CS_TYPE = registerDiagramType('uml.composite-structure', {
     // of the Lines table, which lists a line drawn to a member's owner (audit 3), so not again here (audit 17)
     // Only the members its box draws: its parts and ports, a collaboration's roles; an operation or a literal is not drawn (audit 30)
     const c = P.collabs.find(y => y.x.id === id), drawn = new Set(id === P.sid && P.S ? [...P.parts, ...P.sPorts] : c ? c.roles : []);
-    if (id === P.sid && P.S || c) return CS_ARR(u.members).filter(m => drawn.has(m)).map(m => (m.type === 'uml.Property' ? csPartSaid(m) : CS_MEMBER.print(m)) + (m.type === 'uml.Property' && id === P.sid && u.type !== 'uml.Collaboration' ? `, ${agg(m)}` : ''));
+    if (id === P.sid && P.S || c) return CS_ARR(u.members).filter(m => drawn.has(m)).map(m => (m.type === 'uml.Property' ? csPartSaid(m) : m.type === 'uml.Port' ? csPortSaid(m) : CS_MEMBER.print(m)) + (m.type === 'uml.Property' && id === P.sid && u.type !== 'uml.Collaboration' ? `, ${agg(m)}` : ''));
     if (u.type !== 'uml.CollaborationUse') return []; // any other element is drawn with no compartments: no members in the PDF (audit 29)
     return [...(CS_HAS(CS_PROPS(u).collaboration) ? [String(CS_PROPS(u).collaboration)] : []),
       // its bindings as the view draws and describe() says them (P.lines: a view's own line too, audit 26)
