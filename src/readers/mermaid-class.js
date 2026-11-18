@@ -1,4 +1,4 @@
-import { unreadable } from '../core/model.js';
+import { unreadable, jsonText } from '../core/model.js';
 import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort, mermaidText } from './mermaid-front.js';
 /* ---------- Mermaid classDiagram: a reader and a writer (plan.md 1.10; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's class diagram page (docs/syntax/classDiagram.md, read 11 Nov 2026). Internal: the CLI
@@ -693,7 +693,7 @@ function writeMermaidClass(model, viewId) {
         const inner = (kids.get(n.id) || []).filter(k => !isPkg(k) || (full.has(k.id) && !dotted.has(k.id)));
         const as = dotted.has(n.id) ? String(n.id).slice(String(n.parent).length + 1) : n.id; // the name the reader gives its label
         if (!full.has(n.id)) continue;
-        if (!inner.length) { if (has(n.label) && n.label !== as) lose(n.id, `its label ${n.label}: it holds only namespaces, written by their dotted names`); continue; }
+        if (!inner.length) { if (has(n.label) && n.label !== as) lose(n.id, `its label ${typeof n.label === 'string' ? n.label : jsonText(n.label)}: it holds only namespaces, written by their dotted names`); continue; }
         out.push(`${pad}namespace ${dotted.has(n.id) ? n.id : name(n.id)}${labelled(n, as)} {`);
         st.push([`${pad}}`]);
         const in2 = pad.length < 64 ? pad + '  ' : pad; // indented 32 deep at most, so a deep model's text is not deep * deep long

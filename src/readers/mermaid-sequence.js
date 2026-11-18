@@ -1,4 +1,4 @@
-import { unreadable } from '../core/model.js';
+import { unreadable, jsonText } from '../core/model.js';
 import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort } from './mermaid-front.js';
 /* ---------- Mermaid sequenceDiagram: a reader and a writer (notes/stage-3.md §8, S10; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's sequence diagram page (docs/syntax/sequenceDiagram.md, read 12 Nov 2026), as the class
@@ -413,7 +413,7 @@ function msWrite(model, viewId) {
   for (const f of arr(view.fragments).filter(isObj)) {
     const ops = arr(f.members).filter(isObj), op = f.props?.operator;
     if (!MS_OPS.includes(op) || !ops.length || (ops.length > 1 && op !== 'alt' && op !== 'par') || badId(f.id) || ops.some(o => badId(o.id))) { skip(f); ops.forEach(skip); continue; }
-    if (has(f.label)) lose(f.id, `label ${f.label}`);
+    if (has(f.label)) lose(f.id, `label ${typeof f.label === 'string' ? f.label : jsonText(f.label)}`); // as validate() quotes it (audit 32)
     frags.push(f); ops.forEach((o, i) => opOf.set(o.id, { f, i }));
     extra(f, ['id', 'type', 'label', 'members', 'parent'], ['operator']); ops.forEach(o => extra(o, ['id', 'type', 'label']));
   }
