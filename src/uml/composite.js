@@ -421,10 +421,14 @@ function csRemove(model, view, ids, fromModel) {
   const own = id => CS_ARR(view.nodes).some(n => CS_OBJ(n) && n.id === id && !mine.has(id)) || CS_ARR(view.edges).some(x => CS_OBJ(x) && x.id === id);
   const out = [], hide = [], said = [], kept = [], del = id => { if (!out.some(c => c.op === 'delete' && c.id === id)) out.push({ op: 'delete', id }); };
   // the other elements deleted with the members, said as the deployment type says them; told, what a member's own words count (audit 34)
-  const more = new Set(), told = new Set();
+  // notLine, the lines of a view listing none, said kept after the members: one a member or a port takes is not (audit 35)
+  const more = new Set(), told = new Set(), notLine = [];
   ids.forEach(id => { const s = csSplit(id), x = P.mem.get(s ? s[1] : id);
     if (s && x && !fromModel) { const through = lines.filter(e => ['from', 'to'].some(k => e[k] === s[1] && CS_OBJ((CS_PROPS(e).ends || {})[k]) && CS_PROPS(e).ends[k].part === s[0]));
-      through.forEach(e => del(e.id)); said.push(`the ${csPlural(through.length, 'connector')} through ${csName(P.el(s[0]))} to its port ${csName(x.m)}; Shift + Delete deletes the port from ${csName(x.owner)}`); }
+      // a connector between two selected ports is counted once: the second port says it is the same one (audit 35)
+      const fresh = through.filter(e => !told.has(e.id)).length, was = through.length - fresh;
+      const what = !was ? `the ${csPlural(fresh, 'connector')}` : !fresh ? `the same ${through.length === 1 ? 'connector' : 'connectors'}` : `${csPlural(fresh, 'more connector')}`;
+      through.forEach(e => { del(e.id); told.add(e.id); }); said.push(`${what} through ${csName(P.el(s[0]))} to its port ${csName(x.m)}; Shift + Delete deletes the port from ${csName(x.owner)}`); }
     else if (x) { const its = lines.filter(e => (e.from === x.m.id || e.to === x.m.id || ['from', 'to'].some(k => CS_OBJ((CS_PROPS(e).ends || {})[k]) && CS_PROPS(e).ends[k].part === x.m.id))), n = its.length;
       its.forEach(e => told.add(e.id)); told.add(x.m.id);
       del(x.m.id); said.push(`${x.m.type === 'uml.Port' ? 'port' : x.owner.type === 'uml.Collaboration' ? 'role' : 'part'} ${csName(x.m)} of ${csName(x.owner)}${n ? ` and its ${csPlural(n, 'line')}` : ''}${fromModel ? '' : ' (a member is not hidden: it goes from the model)'}`); }
@@ -433,14 +437,17 @@ function csRemove(model, view, ids, fromModel) {
     else { const e = lines.find(x => x.id === id); // a node or a line selected with them: as the canvas does
       if (own(id)) { del(id); more.add(id); } // lives in this view only: hiding it is deleting it
       else if (csHolds(P.el(id), view.subject)) kept.push(`kept ${csName(P.el(id))}, ${id === view.subject ? '' : 'which holds '}the view's subject: change the view's subject, or Shift + Delete deletes it`); // apply() refuses its hide (audit 18)
-      else if (e && !Array.isArray(view.edges)) said.push(`not the line ${csName(e)}: this view shows every line between its cards, and Shift + Delete deletes it`);
+      else if (e && !Array.isArray(view.edges)) notLine.push(e);
       else if (e || P.at.has(id)) hide.push({ op: 'hide', id, view: view.id }); } });
+  notLine.filter(e => !told.has(e.id)).forEach(e => said.push(`not the line ${csName(e)}: this view shows every line between its cards, and Shift + Delete deletes it`));
   // hidden first: a line hidden after the part it ends at is deleted would be gone with it
-  if (!out.length && !hide.length) return { error: `Nothing to delete: ${said[0] || kept[0] || 'no connector'}` };
+  // a line a selected member or port takes with it is not hidden first, nor counted hidden (audit 35)
+  const hides = hide.filter(c => !told.has(c.id));
+  if (!out.length && !hides.length) return { error: `Nothing to delete: ${said[0] || kept[0] || 'no connector'}` };
   // a line a member's words count ("and its 1 line") is not counted again among the others; what was hidden, said too
-  const said2 = said.join('; '), n = [...more].filter(id => !told.has(id)).length, hid = new Set(hide.map(c => c.id)).size;
+  const said2 = said.join('; '), n = [...more].filter(id => !told.has(id)).length, hid = new Set(hides.map(c => c.id)).size;
   const head = `Deleted ${said2}${n ? `${said2 ? ', and ' : ''}${csPlural(n, said2 ? 'other element' : 'element')}` : ''}`;
-  return { commands: [...hide, ...out], say: [head, ...(hid ? [`hid ${csPlural(hid, 'element')}`] : []), ...kept].join('; ') };
+  return { commands: [...hides, ...out], say: [head, ...(hid ? [`hid ${csPlural(hid, 'element')}`] : []), ...kept].join('; ') };
 }
 // rename: F2 on a port on a part renames its class's port, for every part of that type (said), and on the subject's own
 // port, `name : Type` as well (audit 16); on a collaboration use, `name : Collaboration`; on a part or a role, its row

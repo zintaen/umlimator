@@ -406,9 +406,10 @@ function sqRemove(model, view, ids, fromModel) {
   // the messages counted: this view's on a lifeline that goes, and every other view's a deleted lifeline took (the core's cascade, audit 33)
   const ds = new Set(dels.map(h => h.id)), gone = new Set(X.occ.filter(o => o.message && (hs.has(o.from) || hs.has(o.to))).map(o => o.id));
   // and a timing view's changes of it and their constraints, as the timing and communication hints count them (audit 34)
-  const G = ds.size ? interactionGone(model, apply(model, r)) : { message: [], change: [], constraint: [] };
+  // and the connectors it took from every communication view (audit 35)
+  const G = ds.size ? interactionGone(model, apply(model, r)) : { message: [], connector: [], change: [], constraint: [] };
   G.message.forEach(e => { if (ds.has(e.from) || ds.has(e.to)) gone.add(e.id); });
-  const what = interactionCounts({ message: gone.size, change: G.change.length, constraint: G.constraint.length }) || 'no message';
+  const what = interactionCounts({ message: gone.size, connector: G.connector.length, change: G.change.length, constraint: G.constraint.length }) || 'no message';
   const did = [dels.length && `Deleted ${dels.map(sqName).join(', ')}`, hid.length && `${dels.length ? 'removed' : 'Removed'} ${hid.map(sqName).join(', ')} from the view`].filter(Boolean).join(' and ');
   return { commands: r, say: `${did}, and ${what} with ${heads.length > 1 ? 'them' : 'it'}${took ? '; t' + took : ''}` };
 }

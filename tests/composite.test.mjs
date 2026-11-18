@@ -294,7 +294,9 @@ test('remove: a part goes from the model with its connectors (refs cascade), sai
   assert.match(r.say, /; not the line publisher-to-subscriber: this view shows every line between its cards, and Shift \+ Delete deletes it$/);
   const listed = structuredClone(CS); listed.views[0].edges = listed.edges.map(e => e.id);
   r = T.edits.remove(listed, listed.views[0], ['order-service.pricing', 'checkout-to-pricing', 'publisher-to-subscriber'], false);
-  assert.deepEqual(r.commands, [{ op: 'hide', id: 'checkout-to-pricing', view: 'internals' }, { op: 'hide', id: 'publisher-to-subscriber', view: 'internals' }, { op: 'delete', id: 'order-service.pricing' }]);
+  // the part's line goes with it, counted in its words: not hidden first, nor counted hidden (audit 35)
+  assert.deepEqual(r.commands, [{ op: 'hide', id: 'publisher-to-subscriber', view: 'internals' }, { op: 'delete', id: 'order-service.pricing' }]);
+  assert.match(r.say, /its 1 line .*; hid 1 element$/);
   assert.deepEqual(run(listed, r).views[0].edges, listed.views[0].edges.filter(id => !['checkout-to-pricing', 'publisher-to-subscriber'].includes(id)));
   r = T.edits.remove(listed, listed.views[0], ['order-service.pricing->price-calculator.quotes', 'publisher-to-subscriber'], false);
   assert.deepEqual(r.commands, [{ op: 'hide', id: 'publisher-to-subscriber', view: 'internals' }, { op: 'delete', id: 'checkout-to-pricing' }], 'a port\'s connectors and the line');
@@ -816,3 +818,28 @@ test('audit 34: Shift + Delete of a part with other elements says them, and Dele
   assert.equal(T.edits.remove(m, v, ['order-service.pricing', line.id], true).say, 'Deleted part pricing of OrderService and its 1 line');
 });
 
+
+test('audit 35: Delete on ports on parts counts a connector between two of them once, and a selected line it deletes is not said kept', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/order-service-structure.json', import.meta.url), 'utf8')), v = m.views[0];
+  const a = 'order-service.pricing->price-calculator.quotes', b = 'order-service.checkout->checkout-class.quotes', c = 'order-service.checkout->checkout-class.requests';
+  let r = T.edits.remove(m, v, [a, b], false);
+  assert.deepEqual(r.commands, [{ op: 'delete', id: 'checkout-to-pricing' }]);
+  assert.equal(r.say, 'Deleted the 1 connector through pricing to its port quotes; Shift + Delete deletes the port from PriceCalculator; the same connector through checkout to its port quotes; Shift + Delete deletes the port from CheckoutFlow');
+  r = T.edits.remove(m, v, [a, b, c], false);
+  assert.deepEqual(r.commands.map(x => x.id), ['checkout-to-pricing', 'api-to-checkout']);
+  assert.match(r.say, /the same connector through checkout to its port quotes; .*; the 1 connector through checkout to its port requests;/);
+  // a line the port's connectors include, selected with it, in either order: deleted, not said kept (the view lists no lines)
+  for (const ids of [[b, 'checkout-to-pricing'], ['checkout-to-pricing', b]]) {
+    r = T.edits.remove(m, v, ids, false);
+    assert.deepEqual(r.commands, [{ op: 'delete', id: 'checkout-to-pricing' }], ids.join());
+    assert.equal(r.say, 'Deleted the 1 connector through checkout to its port quotes; Shift + Delete deletes the port from CheckoutFlow', ids.join());
+  }
+  // and a part's line selected with it, which the core's cascade takes: not said kept
+  assert.equal(T.edits.remove(m, v, ['order-service.pricing', 'checkout-to-pricing'], false).say, 'Deleted part pricing of OrderService and its 1 line (a member is not hidden: it goes from the model)');
+  // a line it does not take is still said kept
+  assert.match(T.edits.remove(m, v, [b, 'publisher-to-subscriber'], false).say, /; not the line publisher-to-subscriber: this view shows every line between its cards/);
+  // a view listing its lines: the port's line is deleted, not hidden as well
+  const L = structuredClone(m); L.views[0].edges = L.edges.map(e => e.id);
+  r = T.edits.remove(L, L.views[0], [b, 'checkout-to-pricing'], false);
+  assert.deepEqual(r.commands, [{ op: 'delete', id: 'checkout-to-pricing' }]); assert.doesNotMatch(r.say, /hid/);
+});
