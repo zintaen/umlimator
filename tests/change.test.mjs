@@ -491,3 +491,24 @@ test('audit 28: diff() reads a BigInt in a card and a list with a hole, as valid
   for (const key of ['nodes', 'edges']) { const h = structuredClone(bike); h[key] = [...h[key]]; h[key].length += 1; delete h[key][1]; // a hole, and one at the end
     assert.doesNotThrow(() => diff(h, bike), key); assert.doesNotThrow(() => diff(bike, h), key); assert.doesNotThrow(() => validate(h), key); }
 });
+
+// audit 31: diff() said nothing of a change to the map's title, a story or a lens, so diff --base wrote "No map model changed." and
+// the Action counted 0; and it compared values unmarked, so the text "2n" and the BigInt 2n (or NaN and null) read as one value
+test('audit 31: diff() says a change to the title, a story, a lens or another field of the model, and tells "2n" from 2n and NaN from null', () => {
+  const b = { title: 'Shop', root: 'main', nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ id: 'e', from: 'a', to: 'b' }], views: [{ id: 'main', title: 'Main', nodeIds: ['a', 'b'] }],
+    stories: [{ id: 's', title: 'Checkout', steps: [{ view: 'main', select: 'a', caption: 'one' }] }], lenses: [{ id: 'l', title: 'Team', pick: { owner: 'x' } }] };
+  const t = f => { const a = structuredClone(b); f(a); return diff(b, a).summary; };
+  assert.deepEqual(t(a => { a.title = 'Shop v2'; }), ['retitles the map Shop to Shop v2']);
+  assert.deepEqual(t(a => { delete a.title; }), ['takes the title Shop off the map']);
+  assert.deepEqual(t(a => { a.stories.push({ id: 's2', title: 'Refund', steps: [] }); }), ['adds the story Refund']);
+  assert.deepEqual(t(a => { a.stories[0].steps[0].caption = 'two'; }), ['changes the story Checkout']);
+  assert.deepEqual(t(a => { a.stories = []; }), ['removes the story Checkout']);
+  assert.deepEqual(t(a => { a.lenses[0].pick = { owner: 'y' }; }), ['changes the lens Team']);
+  assert.deepEqual(t(a => { delete a.lenses; }), ['removes the lens Team']);
+  assert.deepEqual(t(a => { a.root = 'other'; a.meta = { root: 'src' }; }), ['changes the model (root, meta)']);
+  assert.deepEqual(t(a => { a.title = 'Shop v2'; a.nodes[0].label = 'A2'; }), ['retitles the map Shop to Shop v2', 'renames A to A2']);
+  assert.deepEqual(t(() => {}), []);
+  const m = w => ({ root: 'v', nodes: [{ id: 'a', label: 'A', what: w }], edges: [{ id: 'e', from: 'a', to: 'a', weight: w }], views: [{ id: 'v', nodeIds: ['a'] }] });
+  for (const [x, y] of [['2n', 2n], [null, NaN], ['\u00002n', 2n], [Infinity, null]]) assert.deepEqual(diff(m(x), m(y)).summary, ['changes A (what)', 'changes the line from A to A (weight)'], String(y));
+  assert.deepEqual(diff(m(2n), m(2n)).summary, []);
+});

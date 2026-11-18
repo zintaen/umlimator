@@ -581,3 +581,19 @@ test('audit 25: Delete on a lifeline the view holds as its own says it is delete
   assert.deepEqual(two.commands.filter(c => c.op === 'set'), [{ op: 'set', id: 'f3', path: 'props.covers', value: ['receipt'] }]);
   assert.doesNotThrow(() => apply(m, mixed.commands)); assert.doesNotThrow(() => apply(SEQ, two.commands));
 });
+
+// audit 31: a hole in a sequence view's edges (a host's delete edges[i]) crashed layout(), check() and the PDF tables of the view, and of
+// an interaction overview that inlines it ("Cannot read properties of undefined (reading 'parent')"): it reads as undefined does
+test('audit 31: a hole in a sequence view\'s edges is no step: the view, and an overview inlining it, lay out and check', async () => {
+  const L = await import('../lib/umlimator-all.js');
+  for (const [f, k] of [['checkout-sequence', 7], ['checkout-sequence', 0], ['buy-book-overview', 1]]) {
+    const m = JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url))), seq = m.views.filter(v => v.diagram === 'uml.sequence');
+    seq.forEach(v => { delete v.edges[Math.min(k, v.edges.length - 1)]; });
+    const twin = structuredClone(m); seq.forEach((v, i) => { twin.views[m.views.indexOf(v)].edges[Math.min(k, v.edges.length - 1)] = undefined; });
+    for (const v of m.views) {
+      const g = L.layout(m, v.id); assert.ok(g.nodes.length, `${f} ${v.id}`);
+      assert.deepEqual(g.edges.map(e => e.id), L.layout(twin, v.id).edges.map(e => e.id), `${f} ${v.id}: a hole as undefined`);
+      assert.ok(Array.isArray(L.check(m, v.id)), `${f} ${v.id}`); assert.equal(typeof L.describe(m, v.id), 'string');
+    }
+  }
+});
