@@ -42,7 +42,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4})
 
 
 def ok(name, cond, info=""):
@@ -2237,5 +2237,33 @@ if part("audit 41"):
         ok("diff --base · a model git says was deleted is read as removed, not from a file of its name in another case; a decomposed name is still read (audit 41)",
            r.returncode == 0 and set(said) == {"Map.json", "map.json", "Café.json"} and "removes A" in old and not any("renames" in x for x in old)
            and "renames A to A3" in (said.get("Café.json") or []), (folds, said, r.stderr[-400:]))
+if part("audit 42"):
+    with tempfile.TemporaryDirectory() as tmp:
+        # audit 42: absence is git's word (a D row), not the disk's spelling. On a disk that ignores case, a model renamed in case
+        # with a plain mv (git still says M Map.json, the disk holds map.json) and a model in a folder git spells docs/ where the
+        # checkout made Docs/ (M docs/y.json) were read as removed: "removes A", "removes B", the whole map drawn deleted. Each is
+        # read as edited; a D row is still read as removed, and a hostile name (a pathspec's magic, a dot-dot) reads nothing else
+        g = Path(tmp) / "g42"; g.mkdir()
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
+        two42 = {"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "edges": [{"id": "e", "from": "a", "to": "b"}],
+                 "views": [{"id": "main", "nodeIds": ["a", "b"]}]}
+        ed = lambda lab: json.dumps(two42 | {"nodes": [{"id": "a", "label": lab}, two42["nodes"][1]]})
+        sh("init", "-q"); (g / "Map.json").write_text(json.dumps(two42)); (g / "Docs").mkdir(); (g / "Docs" / "a.json").write_text(json.dumps(two42))
+        (g / "gone.json").write_text(json.dumps(two42)); (g / ":(glob)*.json").write_text(json.dumps(two42)); sh("add", ".")
+        y = subprocess.run(["git", "hash-object", "-w", "--stdin"], cwd=g, input=json.dumps(two42), capture_output=True, text=True).stdout.strip()
+        sh("update-index", "--add", "--cacheinfo", f"100644,{y},docs/y.json"); sh("commit", "-qm", "one")
+        folds = (g / "MAP.JSON").exists()  # the disk ignores case: the case the bug lives in
+        if folds:
+            (g / "Map.json").rename(g / "map.json"); sh("checkout", "-q", "--", "docs/y.json")
+        (g / ("map.json" if folds else "Map.json")).write_text(ed("A2"))
+        (g / ("Docs" if folds else "docs") / "y.json").parent.mkdir(exist_ok=True); (g / ("Docs" if folds else "docs") / "y.json").write_text(ed("A3"))
+        (g / "gone.json").unlink(); (g / ":(glob)*.json").write_text(ed("A4"))
+        st = sh("status", "--short").stdout
+        r = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                            "sys.argv = ['umlimator.py', 'diff', '--base', 'HEAD', '--out', 'out']; u.main()", str(ROOT)], cwd=g, capture_output=True, text=True)
+        said = {x["file"]: x.get("summary") or x.get("error") for x in json.loads(r.stdout or "[]")}
+        ok("diff --base · a model git tracks as modified is read as edited when the disk spells its name or folder in another case; a D row is removed (audit 42)",
+           r.returncode == 0 and said.get("Map.json") == ["renames A to A2"] and said.get("docs/y.json") == ["renames A to A3"]
+           and said.get(":(glob)*.json") == ["renames A to A4"] and "removes A" in (said.get("gone.json") or []) and "Docs/a.json" not in said, (folds, st, said, r.stderr[-400:]))
 part.done()
 sys.exit(1 if failed else 0)

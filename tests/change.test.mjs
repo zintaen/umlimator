@@ -295,9 +295,12 @@ test('audit 19: diff() says a numbered-card view with no stepIds reordered, sinc
     const s0 = structuredClone(a); s0.views[0].stepIds = ['a', 'b', 'c']; const s1 = structuredClone(s0); s1.views[0].nodeIds = ['c', 'a', 'b'];
     assert.deepEqual(diff(s0, s1).summary, []);
   }
-  // a view that does not number its cards: nodeIds order is no step order
+  // a view that does not number its cards: nodeIds order is no step order. Its unpinned cards trade places, which is said as
+  // a move (audit 42); pinned, they draw the same and nothing is said
   const p = { nodes: [{ id: 'a' }, { id: 'b' }], edges: [], views: [{ id: 'v', nodeIds: ['a', 'b'] }] }, q = structuredClone(p); q.views[0].nodeIds = ['b', 'a'];
-  assert.deepEqual(diff(p, q).summary, []);
+  assert.deepEqual(diff(p, q).summary, ['moves b to the start in the view v']);
+  const pp = structuredClone(p); pp.views[0].layout = { a: [0, 0], b: [1, 0] }; const qq = structuredClone(pp); qq.views[0].nodeIds = ['b', 'a'];
+  assert.deepEqual([diff(pp, qq).summary, diff(pp, qq).views], [[], []]);
 });
 
 test('audit 19: a view\'s stepIds, tour or browserOrder that is no list is warned and drawn as absent', () => {
@@ -642,4 +645,78 @@ test('audit 41: diff() lists a typed view whose picture changes through a member
     assert.deepEqual(all.diff(h, h).views, []); assert.ok(Array.isArray(all.diff(mp, h).views)); }
   // no change, no view, for every example
   for (const f of ['bookshop-c4', 'bookshop-profile', 'bookshop-schema', 'bookshop-data-flow', 'bookshop-aws', 'bookshop-atlas']) assert.deepEqual(all.diff(read(f), read(f)).views, [], f);
+});
+
+test('audit 42: diff() keys a typed card\'s icon by its view\'s pack, not by the key\'s tail in any pack', async () => {
+  const all = await fromSrc(), read = f => JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url)));
+  const pic = (m, v) => svgOf(all.layout(m, v), { icons: m.icons }).replace(/\bg\d+-/g, 'g-'), png = 'data:image/svg+xml;base64,PHN2Zy8+';
+  for (const [f, pack, other] of [['bookshop-aws', 'aws', 'gcp'], ['bookshop-gcp', 'gcp', 'azure'], ['bookshop-azure', 'azure', 'aws']]) {
+    const m = read(f), icon = m.nodes.map(n => n.props && n.props.icon).find(x => typeof x === 'string');
+    // another pack's entry of the same icon name: no card of this view draws it, so no view is listed
+    const b = structuredClone(m); b.icons = { ...b.icons, [`${other}/${icon}`]: { src: png, name: icon } };
+    assert.deepEqual(all.diff(m, b).views, [], `${f}: ${other}/${icon}`); m.views.forEach(v => assert.equal(pic(m, v.id), pic(b, v.id)));
+    // the bare name and a key with the name as its tail in no pack: none
+    const c = structuredClone(m); c.icons = { ...c.icons, [icon]: { src: png }, [`x/${icon}`]: { src: png } }; assert.deepEqual(all.diff(m, c).views, [], `${f}: bare ${icon}`);
+    // its own pack's entry: each view whose picture changes, and only those
+    const d = structuredClone(m); d.icons = { ...d.icons, [`${pack}/${icon}`]: { src: png, name: icon } }; const dv = all.diff(m, d).views;
+    assert.ok(dv.length > 0, f); m.views.forEach(v => assert.equal(dv.includes(v.id), pic(m, v.id) !== pic(d, v.id), `${f} ${v.id}`)); }
+  // hostile: a props.icon of __proto__ or constructor, a view whose diagram is __proto__, an icons key that is no text; nothing throws
+  const h = read('bookshop-aws'); h.nodes.forEach((n, i) => { if (n.props && n.props.icon) n.props.icon = ['__proto__', 'constructor', '../x'][i % 3]; });
+  const h2 = structuredClone(h); h2.icons = JSON.parse('{"__proto__": {"src": "x"}, "aws/constructor": {"src": "data:image/png;base64,iVBORw0KGgo="}}'); h2.views.push({ id: 'p', diagram: '__proto__', nodeIds: h.nodes.map(n => n.id) });
+  assert.ok(Array.isArray(all.diff(h, h2).views)); assert.ok(all.diff(h, h2).views.includes(h.views[0].id));
+});
+
+test('audit 42: diff() says and lists a typed view whose picture changes with its nodeIds order: a sequence\'s lifelines, a timing view\'s lanes, an activity\'s partitions', async () => {
+  const all = await fromSrc(), { apply } = await import('../src/core/apply.js'), read = f => JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url)));
+  const pic = (m, v) => svgOf(all.layout(m, v), { icons: m.icons }).replace(/\bg\d+-/g, 'g-');
+  const moves = (m, v, id, index) => { const a = apply(m, [{ op: 'move', id, view: v.id, index }]), d = all.diff(m, a);
+    assert.notEqual(pic(m, v.id), pic(a, v.id), `${v.id}'s picture changes`); assert.deepEqual(d.views, [v.id]); assert.ok(d.summary.some(s => /^moves .* in the view /.test(s)), d.summary.join('; ')); return d; };
+  const sq = read('checkout-sequence'); moves(sq, sq.views[0], 'lifeline-shopper', 1);
+  const tm = read('bookshop-timing'); moves(tm, tm.views[0], 'lifeline-worker', 1);
+  const ac = read('fulfil-activity'), av = ac.views[0], parts = av.nodeIds.filter(id => (ac.nodes.find(n => n.id === id) || {}).type === 'uml.ActivityPartition');
+  moves(ac, av, parts[0], av.nodeIds.indexOf(parts[1]));
+  // and in every example: a swap of two neighbours in nodeIds is listed exactly when where the view draws its cards, lines and
+  // bands changes (a map view's cards come in another document order, drawn the same: not listed, as before)
+  const place = (m, v) => { const g = all.layout(m, v), at = l => (l || []).map(x => JSON.stringify([x.id, x.x, x.y, x.w, x.h, x.pts || x.d || null])).sort();
+    return JSON.stringify([at(g.nodes), at(g.edges), at(g.bands), at(g.lanes), at(g.groups)]); };
+  for (const f of ['bookshop-atlas', 'ebike-atlas', 'bookshop-aws', 'bookshop-c4', 'bike-share']) { const m = read(f);
+    for (const v of m.views) for (let i = 0; i + 1 < Math.min(arr(v.nodeIds).length, 4); i++) { const b = structuredClone(m), w = b.views.find(x => x.id === v.id);
+      [w.nodeIds[i], w.nodeIds[i + 1]] = [w.nodeIds[i + 1], w.nodeIds[i]]; assert.equal(all.diff(m, b).views.includes(v.id), place(m, v.id) !== place(b, v.id), `${f} ${v.id} ${i}`); } }
+  // many moved: one sentence; hostile ids (null, a number, __proto__, twice) and labels; a large view reversed stays quick
+  const big = { schemaVersion: 2, title: 't', nodes: Array.from({ length: 300 }, (_, i) => ({ id: 'l' + i, type: 'uml.Lifeline', label: i ? 'L' + i : '__proto__' })), edges: [],
+    views: [{ id: 's', diagram: 'uml.sequence', nodeIds: [...Array.from({ length: 300 }, (_, i) => 'l' + i), null, 7, '__proto__', 'l0'], nodeOverrides: JSON.parse('{"__proto__": {"label": 1}, "l1": "x"}') }] };
+  const rev = structuredClone(big); rev.views[0].nodeIds = [...rev.views[0].nodeIds.slice(0, 300).reverse(), 'l0', '__proto__', 7, null];
+  const t0 = Date.now(), d = all.diff(big, rev); assert.deepEqual(d.views, ['s']); assert.deepEqual(d.summary, ['reorders 299 cards in the view s']); assert.ok(Date.now() - t0 < 20000);
+  const two = structuredClone(big); [two.views[0].nodeIds[0], two.views[0].nodeIds[1]] = ['l1', 'l0'];
+  assert.deepEqual(all.diff(big, two).summary, ['moves L1 to the start in the view s']);
+  assert.deepEqual(all.diff(big, big).views, []);
+});
+const arr = x => (Array.isArray(x) ? x : []);
+
+test('audit 42: a story step may select a model line to a view\'s own node, which the C4 or DFD view draws (drawn and drawnKeys read the view\'s own nodes)', async () => {
+  const all = await fromSrc(), { validate: check } = await import('../src/map/validate.js'), { diagramOf } = await import('../src/core/registry.js');
+  const c4 = { schemaVersion: 2,
+    nodes: [{ id: 'p', type: 'c4.Person', label: 'Shopper', props: { description: 'd' } }, { id: 's', type: 'c4.SoftwareSystem', label: 'Shop', props: { description: 'd' } },
+      { id: 'a', type: 'c4.Container', label: 'Web', parent: 's', props: { description: 'd', technology: 'JS' } }],
+    edges: [{ id: 'r1', type: 'c4.Relationship', from: 'p', to: 'a', label: 'uses' }, { id: 'r2', type: 'c4.Relationship', from: 'a', to: 'x', label: 'calls' }],
+    views: [{ id: 'con', diagram: 'c4.container', title: 'Containers', subject: 's', nodeIds: ['s', 'p', 'a', 'x'],
+      nodes: [{ id: 'x', type: 'c4.Container', label: 'Sketch', parent: 's', props: { description: 'd', technology: 'Py' } }],
+      edges: ['r1', 'r2', { id: 'r3', type: 'c4.Relationship', from: 'x', to: 'p', label: 'emails' }] }],
+    stories: [{ id: 'st', title: 'S', steps: [{ view: 'con', select: 'r2' }, { view: 'con', select: 'r3' }] }] };
+  const dfd = { schemaVersion: 2,
+    nodes: [{ id: 'c', type: 'dfd.ExternalEntity', label: 'Customer' }, { id: 'p', type: 'dfd.Process', label: 'Take order', props: { number: '1' } }],
+    edges: [{ id: 'f1', type: 'dfd.DataFlow', from: 'c', to: 'p', label: 'order' }, { id: 'f2', type: 'dfd.DataFlow', from: 'p', to: 'd', label: 'order line' }],
+    views: [{ id: 'v', diagram: 'dfd', title: 'Level 1', nodeIds: ['c', 'p', 'd'], nodes: [{ id: 'd', type: 'dfd.DataStore', label: 'Scratch', props: { number: 'D1' } }] }],
+    stories: [{ id: 'st', title: 'S', steps: [{ view: 'v', select: 'f2' }] }] };
+  for (const [m, line] of [[c4, 'r2'], [dfd, 'f2']]) { const v = m.views[0];
+    assert.ok(all.layout(m, v.id).edges.some(e => e._id === line), `${line} is drawn`);
+    assert.ok(diagramOf(v).drawn(m, v).includes(line), `drawn says ${line}`);
+    assert.deepEqual(check(m).filter(p => /select/.test(p.path)), [], `${line}: a story step may select it`);
+    // the line's end moves to another of the view's own nodes: listed
+    const b = structuredClone(m); b.views[0].nodes.push({ ...b.views[0].nodes[0], id: 'y', label: 'Other' }); b.views[0].nodeIds.push('y'); b.edges.find(e => e.id === line).to = 'y';
+    assert.ok(all.diff(m, b).views.includes(v.id)); assert.deepEqual(all.diff(m, m).views, []); }
+  // hostile: a view's own node of id __proto__, a line to it, a story selecting a line no view draws: still said
+  const h = structuredClone(dfd); h.views[0].nodes.push({ id: '__proto__', type: 'dfd.DataStore', label: 'x', props: { number: 'D2' } }); h.views[0].nodeIds.push('__proto__');
+  h.edges.push({ id: 'f3', type: 'dfd.DataFlow', from: 'p', to: '__proto__', label: 'y' }); h.stories[0].steps.push({ view: 'v', select: 'f3' }, { view: 'v', select: 'nope' });
+  const said = check(h).filter(p => /select/.test(p.path)).map(p => p.message); assert.equal(said.length, 1); assert.match(said[0], /"nope"/);
 });
