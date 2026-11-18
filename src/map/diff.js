@@ -1,6 +1,8 @@
 import { TYPED, idTable, diagramOf } from '../core/registry.js';
 import { andList, arrOf, rules } from './validate.js';
 import { canon, copyOf, jsonText, labelOr, nameTable, unreadable, elName } from '../core/model.js';
+import { held } from '../core/warn.js';
+import { mapContext } from './context.js';
 
 /* ---------- change: diff (#66) and drift (#68) ----------
    Each returns a model marked with what the map draws already, so a page the CLI writes, or a still, shows the marks
@@ -290,11 +292,30 @@ export function diff(before, after) {
     for (let d = 0; d < 2 && now.length; d++) { const next = []; now.forEach(t => texts(elOf.get(t)).forEach(s => { const n = name(s); if (n != null) up(n, next); else if (vids.has(s)) vs.add(s); })); now = next; }
     return { ids, vs }; };
   const changed = new Set(views.filter(v => v && (touched.has(v.id) || arr(v.nodeIds).some(id => cardHow.has(id)) || linesOf(out, v, ups).some(e => how.has(e)))).map(v => v.id));
+  /* what a typed view draws from beyond its own elements and lines (audit 40): the relationships an implied C4 line stands for
+     (its type's drawn), a required stereotype's extension, the identifying relationship that makes a shown IDEF1X entity
+     dependent (its type's touches), each in the model before and after: listed when one of them is marked */
+  const lineHow = new Set(out.edges.filter(e => e && e.id != null && how.has(e)).map(e => String(e.id)));
+  if (out.schemaVersion === 2) views.forEach(v => { const T = v && !changed.has(v.id) && typedV(v) && diagramOf(v); if (!T || !T.drawn && !T.touches) return;
+    for (const [m, w] of [[out, v], [A, V0.get(v.id)]]) for (const f of [T.drawn, T.touches]) { if (!w || typeof f !== 'function' || changed.has(v.id)) continue;
+      try { if (arr(f(m, w)).some(id => cardHow.has(id) || lineHow.has(String(id)))) changed.add(v.id); } catch { /* a model the hook cannot read: as before */ } } });
   const typedRefs = out.schemaVersion === 2 ? views.filter(v => v && typedV(v) && !changed.has(v.id)).map(v => [v.id, refs(v)]) : [];
   // a view its elements open: its title is drawn in their names (", opens Checkout"), and an overview draws an interaction inline
   const titled = new Set(views.filter(v => v && V0.has(v.id) && String(labelOr(V0.get(v.id).title, v.id)) !== String(labelOr(v.title, v.id))).map(v => v.id));
   for (let more = true; more;) { more = false; typedRefs.forEach(([id, r]) => { const inl = (diagramOf(W.get(id)) || {}).inlines;
     if (!changed.has(id) && ([...r.ids].some(t => cardHow.has(t)) || [...r.vs].some(x => x !== id && (titled.has(x) || inl && changed.has(x))))) more = !!changed.add(id); }); }
+  // a map card's open pill counts what the view it opens draws (audit 40): a map view holding a card that opens a listed view
+  // is listed when that count changed, the two models laid out only when asked (a typed view draws no pill)
+  let cx; const ctx = i => (cx ||= [before, after].map(m => { try { return held(() => mapContext(m || {}))[0]; } catch { return null; } }))[i];
+  const kids = (i, id, vid) => { try { const c = ctx(i); return c ? c.kidCount(id, vid) : null; } catch { return null; } };
+  const opened = (i, id, vid) => { try { const c = ctx(i); return c ? c.childOf(id, vid) : null; } catch { return null; } };
+  // a card that may open a listed view, as childOf finds one (its view or opensView, a view of its id, a view whose node it is), before or after
+  const nodesOf = m => [...arr(m.nodes), ...arr(m.views).flatMap(w => arr(w && w.nodes))].filter(n => n && typeof n === 'object'), byNode = new Map();
+  [...nodesOf(A), ...nodesOf(out)].forEach(n => { const l = byNode.get(n.id) || byNode.set(n.id, []).get(n.id); l.push(n); });
+  const ofNode = new Set([...arr(A.views), ...views].filter(w => w && changed.has(w.id)).map(w => w.node));
+  const may = (id, v) => changed.has(id) || ofNode.has(id) || [...(byNode.get(id) || []), ...[v, V0.get(v.id)].map(w => w && w.nodeOverrides && typeof w.nodeOverrides === 'object' ? w.nodeOverrides[id] : null)]
+    .some(n => n && typeof n === 'object' && [n.view, n.opensView].some(o => typeof o === 'string' && changed.has(o)));
+  views.forEach(v => { if (v && !changed.has(v.id) && !(out.schemaVersion === 2 && typedV(v)) && arr(v.nodeIds).some(id => typeof id === 'string' && may(id, v) && [0, 1].some(i => changed.has(opened(i, id, v.id))) && kids(0, id, v.id) !== kids(1, id, v.id))) changed.add(v.id); });
   return { model: out, summary: said, views: views.filter(v => v && changed.has(v.id)).map(v => v.id) };
 }
 

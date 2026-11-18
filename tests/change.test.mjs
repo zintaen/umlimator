@@ -524,3 +524,65 @@ test('audit 36: diff() names a box as the map draws it, by its label or else its
   assert.deepEqual(t(v => { v.containers[0].label = 'Crate'; }), ['renames the box box to Crate in the view V']);
   assert.deepEqual(t(v => { v.containers[0].nodeIds = []; v.containers[1].nodeIds = ['a', 'b']; }), ['moves A out of box into Shelf in the view V']);
 });
+
+// the source modules, every diagram type's registered, so layout() and svgOf() draw each type as the page does (lib's own
+// layout() registers them in its own copy, which src's svgOf does not see)
+const fromSrc = async () => { const { readdirSync } = await import('node:fs');
+  for (const d of ['map', 'typed', 'uml', 'sysml', 'c4', 'er', 'dfd', 'flowchart', 'bpmn', 'cloud', 'mindmap'])
+    for (const f of readdirSync(new URL(`../src/${d}/`, import.meta.url)).filter(f => f.endsWith('.js')).sort()) await import(`../src/${d}/${f}`);
+  return { ...(await import('../src/map/diff.js')), ...(await import('../src/map/api.js')) }; };
+
+test('audit 40: diff() lists a typed view whose picture changes through what it does not draw itself: an implied C4 line, a required stereotype, an IDEF1X dependent entity', async () => {
+  const all = await fromSrc(), read = f => JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url)));
+  const pic = (m, v) => svgOf(all.layout(m, v)).replace(/\bg\d+-/g, 'g-');
+  // each listed exactly when its picture changes, for the views the edit is about
+  const sees = (b, a, ids) => { const d = all.diff(b, a); ids.forEach(id => { assert.ok(pic(b, id) !== pic(a, id), `${id}'s picture changes`); assert.ok(d.views.includes(id), `${id} is listed: ${d.views}`); }); return d; };
+  // C4: with no system-level relationship, the context view draws Bookshop -> Payment provider implied by the container's
+  const c4 = read('bookshop-c4'); c4.edges = c4.edges.filter(e => e.id !== 'c4-bookshop-payments');
+  const ed = f => { const a = structuredClone(c4); f(a); return a; };
+  sees(c4, ed(a => { a.edges.find(e => e.id === 'c4-api-payments').label = 'Totally new words'; }), ['c4-context']);
+  sees(c4, ed(a => { a.edges = a.edges.filter(e => !/payment/.test(e.id) || e.id === 'c4-checkout-payment-client'); }), ['c4-context']);
+  sees(c4, ed(a => { a.edges.push({ id: 'zz', type: 'c4.Relationship', from: 'c4-worker', to: 'c4-payments', label: 'Refunds' }); }), ['c4-context']);
+  // the system-level relationship kept: the implied line is not drawn, and the context view is not listed for the container's label
+  const kept = read('bookshop-c4'), k2 = structuredClone(kept); k2.edges.find(e => e.id === 'c4-api-payments').label = 'Totally new words';
+  assert.ok(!all.diff(kept, k2).views.includes('c4-context'));
+  // a profile view showing a class whose package applies a profile with a required extension: isRequired off drops «owned»
+  const pr = read('bookshop-profile'); pr.views.push({ id: 'orders', diagram: 'uml.profile', title: 'Orders', nodeIds: ['sales', 'order'] });
+  const pr2 = structuredClone(pr); pr2.edges.find(e => e.id === 'owned-extends-class').props.isRequired = false;
+  sees(pr, pr2, ['orders']); sees(pr2, pr, ['orders']);
+  // an IDEF1X view of the child alone: the relationship no longer identifying takes its dependent corners away
+  const er = read('bookshop-schema'), rel = er.edges.find(e => e.type === 'er.Relationship' && e.props && e.props.identifying);
+  er.views.push({ id: 'children', diagram: 'er', notation: 'idef1x', title: 'Children only', nodeIds: [rel.to] });
+  const er2 = structuredClone(er); er2.edges.find(e => e.id === rel.id).props.identifying = false;
+  sees(er, er2, ['children']);
+  // crow's foot draws no dependent corners: not listed
+  const cf = structuredClone(er), cf2 = structuredClone(er2); [cf, cf2].forEach(m => { m.views.at(-1).notation = 'crowsfoot'; });
+  assert.ok(!all.diff(cf, cf2).views.includes('children'));
+  // no change, no view, for every example; hostile: hooks given odd lines and ids throw nothing
+  for (const f of ['bookshop-c4', 'bookshop-profile', 'bookshop-schema', 'bookshop-atlas']) assert.deepEqual(all.diff(read(f), read(f)).views, [], f);
+  const h = structuredClone(pr2); h.edges.push(null, 7, { id: '__proto__', type: 'uml.Extension', from: 'owned', to: { x: 1 } }, { id: 'constructor', type: 'uml.Generalization', from: 'owned', to: 'owned' });
+  h.views.at(-1).nodeIds.push({ toString: 1 }, 'ghost', '__proto__');
+  assert.ok(all.diff(pr, h).views.includes('orders'));
+});
+
+test('audit 40: diff() lists a map view whose card opens a view whose drawn count changed, a map view or a typed one', async () => {
+  const all = await fromSrc();
+  const A = { title: 'm', nodes: [{ id: 'shop', label: 'Shop', view: 'inner' }, { id: 'db', label: 'DB' }, { id: 'a', label: 'A' }, { id: 'b', label: 'B' }],
+    edges: [{ from: 'shop', to: 'db' }, { from: 'a', to: 'b' }], views: [{ id: 'root', title: 'Root', nodeIds: ['shop', 'db'] }, { id: 'inner', title: 'Inner', nodeIds: ['a', 'b'] }] };
+  const B = structuredClone(A); B.nodes.push({ id: 'c', label: 'C' }); B.views[1].nodeIds.push('c');
+  assert.deepEqual(all.diff(A, B).views, ['root', 'inner']);
+  // a relabel inside leaves the count: only the inner view
+  const C = structuredClone(A); C.nodes[2].label = 'A2'; assert.deepEqual(all.diff(A, C).views, ['inner']);
+  // a view whose node is the card, and an override that opens it
+  const O = structuredClone(A); delete O.nodes[0].view; O.views[1].node = 'shop'; const O2 = structuredClone(O); O2.nodes.push({ id: 'c' }); O2.views[1].nodeIds.push('c');
+  assert.deepEqual(all.diff(O, O2).views, ['root', 'inner']);
+  // a typed child: the atlas's mail card opening the composite view, one part added there
+  const x = JSON.parse(readFileSync(new URL('../examples/bookshop-atlas.json', import.meta.url))); x.nodes.find(n => n.id === 'mail').opensView = 'internals';
+  const y = structuredClone(x); y.nodes.find(n => n.id === 'order-service').members.push({ id: 'order-service.audit', type: 'uml.Property', label: 'audit', props: { valueType: 'AuditLog', multiplicity: '1', aggregation: 'composite' } });
+  const d = all.diff(x, y), pic = (m, v) => svgOf(all.layout(m, v)).replace(/\bg\d+-/g, 'g-');
+  x.views.forEach(v => assert.equal(d.views.includes(v.id), pic(x, v.id) !== pic(y, v.id), v.id));
+  assert.ok(d.views.includes('overview'));
+  // hostile: a card that opens a view named for an Object.prototype key, or itself
+  const H = structuredClone(A); H.nodes[0].view = 'constructor'; H.nodes.push({ id: '__proto__', view: '__proto__' }); H.views[0].nodeIds.push('__proto__', null, 7);
+  const H2 = structuredClone(H); H2.views[1].nodeIds.push('db'); assert.deepEqual(all.diff(H, H2).views, ['inner']);
+});

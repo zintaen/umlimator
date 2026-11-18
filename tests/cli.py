@@ -35,14 +35,14 @@ TYPED_EXAMPLES = ("sales-classes", "order-objects", "bookshop-packages", "checko
                   "bookshop-azure", "bookshop-order-to-shipment")  # the typed examples the map-repo and schema version 2 loops below take, each a part
 SLOW = {"bookshop-c4": 18, "buy-book-overview": 16, "checkout-sequence": 14, "sales-classes": 13, "fulfil-activity": 12, "order-states": 10, "bookshop-gcp": 10}
 part = shards.Parts(__file__, {
-    "the summary's text and the icon cache": 3, "diff and drift": 13, "trace": 15, "timelapse": 10, "stills file names": 34,
+    "the summary's text and the icon cache": 3, "diff and drift": 13, "trace": 15, "timelapse": 10, "stills file names": 38,
     "odd input": "stills file names", "stills keys": "stills file names",  # they read the folder of pages the first writes
     "audits 8 to 18": 16, "audits 19 and 20": 28, "audits 19 to 21": 27, "audit 25 diff": 4, "diff Action 2.6": 6, "diff Action stage 4": 26,
     "diff Action stage 5": 10, "diff Action stage 6": 7, "diff Action package": 14, "diff Action milestone 2": 32, "diff Action milestone 3": 14,
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2})
 
 
 def ok(name, cond, info=""):
@@ -517,6 +517,26 @@ with tempfile.TemporaryDirectory() as tmp:
             keys.append(u.still_keys(t / "ver.html", [2.0, "light", False]))
         ok("stills · a view is drawn again when only the model's schemaVersion changes (audit 38)",
            all(keys[i][v] != keys[2][v] for i in (0, 1) for v in ("l1", "l2", "m")), keys)
+        # audit 40: a map card's pill counts what the typed view it opens draws, which a part added to a class there changes with
+        # that view's nodeIds as they were: the map view is drawn again. A map inner view's count is its cards: no redraw for an
+        # unrelated card's label
+        kidm = lambda parts, other: {"schemaVersion": 2, "title": "t", "root": "top",
+                                     "nodes": [{"id": "x", "label": "X", "opensView": "cs"}, {"id": "y", "label": "Y", "opensView": "in"}, {"id": "z", "label": other},
+                                               {"id": "svc", "type": "uml.Class", "label": "Svc", "members": [{"id": f"svc.p{k}", "type": "uml.Property", "label": f"p{k}",
+                                                "props": {"valueType": "Part", "aggregation": "composite"}} for k in range(parts)]}, {"id": "part", "type": "uml.Class", "label": "Part"}],
+                                     "views": [{"id": "top", "nodeIds": ["x", "y"]}, {"id": "in", "parent": "top", "nodeIds": ["z"]},
+                                               {"id": "cs", "parent": "top", "diagram": "uml.composite-structure", "subject": "svc", "nodeIds": ["svc"]}]}
+        keys = []
+        for parts, other in ((1, "Z"), (2, "Z"), (2, "Zed")):
+            (t / "kidt.json").write_text(json.dumps(kidm(parts, other))); cli("render", str(t / "kidt.json"), "--out", str(t / "kidt.html"), "--no-check")
+            keys.append(u.still_keys(t / "kidt.html", [2.0, "light", False]))
+        ok("stills · a map view is drawn again when the typed view one of its cards opens draws more, its nodeIds as they were (audit 40)",
+           keys[0]["top"] != keys[1]["top"] and keys[0]["in"] == keys[1]["in"], keys)
+        # hostile: a card opening a view named for an Object.prototype key, a typed view of no known type, a view that opens itself
+        (t / "kidh.json").write_text(json.dumps({"schemaVersion": 2, "title": "t", "nodes": [{"id": "x", "opensView": "constructor"}, {"id": "w", "opensView": "q"}, {"id": "q", "opensView": "q"}],
+                                                 "views": [{"id": "top", "nodeIds": ["x", "w", "q"]}, {"id": "q", "diagram": "toString", "nodeIds": ["q"]}]}))
+        cli("render", str(t / "kidh.json"), "--out", str(t / "kidh.html"), "--no-check")
+        ok("stills · a hostile card's inner view is keyed without an error (audit 40)", sorted(u.still_keys(t / "kidh.html", [2.0, "light", False])) == ["q", "top"])
     rides = str(ROOT / "examples" / "traces" / "ride-end.json")
     two = {"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "edges": [{"from": "a", "to": "b"}], "views": [{"id": "main", "nodeIds": ["a", "b"]}]}
     if part("audits 8 to 18"):
@@ -2165,5 +2185,33 @@ if part("audit 36"):
         ok("diff --base · a changed file not named .json under a folder pathspec is no model that cannot be read; a cut .JSON model still is (audit 36)",
            said is not None and [x["file"] for x in said] == ["docs/cut.JSON"] and "error" in said[0] and "model.md" not in md and "notes.txt" not in md
            and "e.example" not in md, (r.stderr[-400:], said, md))
+if part("audit 40"):
+    with tempfile.TemporaryDirectory() as tmp:
+        t = Path(tmp)
+        # audit 40: an author key too long for a file name ended upstream's avatar loop in an OSError, so every author after it
+        # lost a picture already cached, and render blamed the cache folder; a key holding ? or / fetched another github.com
+        # address, and two keys that differ only there shared one cached picture (x?y and x_y). A key that is no GitHub login
+        # gets no picture; the others theirs, in the model's order
+        cache = t / "home" / ".cache" / "visual" / "avatars"; cache.mkdir(parents=True)
+        png = b"\x89PNG\r\n\x1a\n" + b"\0" * 200
+        for f in ("octocat@96.png", "x_y@96.png", "a_b_c@96.png", "x-y@96.png"):
+            (cache / f).write_bytes(png)
+        who = {"q" * 300: {"name": "Long"}, "x?y": {"name": "Query"}, "a/b/c": {"name": "Path"}, "x-y": {"name": "Dash"}, "-x": {"name": "Lead"},
+               "__proto__": {"name": "Proto"}, "octocat": {"name": "Octo"}}
+        m = {"title": "m", "authors": who, "nodes": [{"id": "a", "label": "A", "author": "octocat"}], "views": [{"id": "v", "nodeIds": ["a"]}]}
+        (t / "av.json").write_text(json.dumps(m))
+        r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(t / "av.json"), "--out", str(t / "av.html"), "--no-check"],
+                           capture_output=True, text=True, env={**os.environ, "HOME": str(t / "home"), "UMLIMATOR_OFFLINE": "1"})
+        page = (t / "av.html").read_text(encoding="utf-8") if (t / "av.html").is_file() else ""
+        got = json.loads(u.DATA.search(page).group(1)).get("authors", {}) if page else {}
+        pic = {k: str((x or {}).get("avatar", "")).startswith("data:image/png") for k, x in got.items()}
+        ok("render · an author key that is no GitHub login gets no picture and stops no other author's; the cache folder is not blamed (audit 40)",
+           r.returncode == 0 and list(got) == list(who) and pic == {k: k in ("octocat", "x-y") for k in who} and "cannot keep" not in r.stderr,
+           (r.stderr[-400:], pic))
+        # a real cache failure is still said: a home that is a file
+        (t / "file-home").write_text("x")
+        r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(t / "av.json"), "--out", str(t / "av2.html"), "--no-check"],
+                           capture_output=True, text=True, env={**os.environ, "HOME": str(t / "file-home"), "UMLIMATOR_OFFLINE": "1"})
+        ok("render · a cache folder it cannot make is still said in one line (audit 40)", r.returncode == 0 and "cannot keep the authors' pictures" in r.stderr, r.stderr[-400:])
 part.done()
 sys.exit(1 if failed else 0)

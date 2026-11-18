@@ -204,6 +204,12 @@ const PR_TYPE = registerDiagramType('uml.profile', {
     add: (text, owner) => { const r = CLASS_TYPE.member.add(text, owner);
       return owner && owner.type === 'uml.Stereotype' && r.type === 'uml.Operation' ? { error: `"${String(text ?? '').trim()}" is not a tag: a stereotype's row is a tag, name: Type` } : r; } },
   validate: (model, view) => [...classProblems(model, view), ...prProblems(model, view), ...ownerProblems(model, view, drawnLines(model, view, PR_LINES).lines)],
+  // a shown element's stereotypes come from profiles its scope applies, a required one through an Extension and a
+  // ProfileApplication the view need not draw (audit 40): those stereotypes, their profiles and every line on either
+  touches: (model, view) => { const on = new Set(); (Array.isArray(view.nodeIds) ? view.nodeIds : []).forEach(id => { if (typeof id === 'string') appliedOf(model, id).forEach(e => [e.stereotype, e.profile].forEach(x => x && on.add(x.id))); });
+    const ls = (Array.isArray(model.edges) ? model.edges : []).filter(e => e && typeof e === 'object'); // and their generals, whose extensions they take
+    for (let more = true; more;) { more = false; ls.forEach(e => { if (e.type === 'uml.Generalization' && on.has(e.from) && typeof e.to === 'string' && !on.has(e.to)) more = !!on.add(e.to); }); }
+    return [...on, ...ls.filter(e => on.has(e.from) || on.has(e.to)).map(e => e.id)]; },
   rules: { ...RULES, ...OWNER_RULES, ...PR_RULES, ...STY_RULES },
   describe: prDescribe,
   // the PDF's tables (§9): a profile's, a stereotype's and a metaclass's kind; each element's stereotypes and tags
