@@ -1,10 +1,10 @@
-import { jsonText, labelOr, elName } from '../core/model.js';
+import { jsonText, labelOr, elName, propTextProblems } from '../core/model.js';
 import { aWord, kindWord, registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { RULES, classProblems, drawnLines, lineIn, lineItem, lineVerb, memberClash, printMember } from './class.js';
+import { RULES, classProblems, drawnLines, lineIn, lineItem, lineVerb, memberClash, paramTextProblems, printMember } from './class.js';
 import { OWN_BOXES, OWNER_RULES, holdsLine, modelLines, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 
 /* ---------- the object diagram, uml.object (work package 2.3, notes/stage-2.md §9) ----------
@@ -111,6 +111,18 @@ const OBJECT_RULES = {
   'link-ends': 'a link joins two instance specifications',
   'instance-of': 'an instance\'s slots name attributes of its classifier, when the classifier is in the model',
 };
+// what a classifier's compartments draw as text (its attributes' and operations' types, defaults, return types and parameters)
+// and an instance's slots' values, each said when it is not text, as the class view says it (audit 42)
+function obTextProblems(model, view) {
+  if (!OB_OBJ(view)) return [];
+  const pic = ownersOn(model, view), on = new Set(pic.ids.filter(id => !pic.open.has(id))), done = new Set(), out = [];
+  OB_ARR(model && model.nodes).forEach((n, i) => { if (!OB_OBJ(n) || !on.has(n.id) || done.has(n.id)) return; done.add(n.id);
+    if (n.type === 'uml.Comment' || OWN_BOXES.includes(n.type)) return;
+    const ms = OB_ARR(n.members), at = m => `nodes[${i}].members[${ms.indexOf(m)}]`;
+    if (isInstance(n)) slotsOf(n).forEach(m => out.push(...propTextProblems(m, at(m), ['value'])));
+    else classifierBoxes(n).flatMap(c => c.members).forEach(m => out.push(...propTextProblems(m, at(m), ['valueType', 'default', 'returnType']), ...paramTextProblems(m, at(m)))); });
+  return out;
+}
 function objectProblems(model, view) {
   const out = [], nodes = OB_ARR(model.nodes), say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const at = new Map(); nodes.forEach(n => { if (OB_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
@@ -198,7 +210,7 @@ const OBJECT_TYPE = registerDiagramType('uml.object', {
   owners: ownerChoices,
   // a slot is a member row, `feature = value` (§9.2); a comment and a package hold none
   member: { print: m => (m.type === 'uml.Slot' ? printSlot(m) : printMember(m)), edit: slotEdit, add: (text, owner) => { const r = parseSlot(text); return r.error ? r : memberClash(owner, {}, r, OB_SLOTS_ONCE) || r; }, holds: n => isInstance(n) }, // and an element of no UML kind, drawn as an instance (audit 29)
-  validate: (model, view) => [...classProblems(model, view).filter(p => p.rule === 'member-names'), ...objectProblems(model, view), ...ownerProblems(model, view, drawnLines(model, view, OBJECT_LINES).lines)],
+  validate: (model, view) => [...classProblems(model, view).filter(p => p.rule === 'member-names'), ...obTextProblems(model, view), ...objectProblems(model, view), ...ownerProblems(model, view, drawnLines(model, view, OBJECT_LINES).lines)],
   rules: { 'member-names': RULES['member-names'], ...OBJECT_RULES, ...OWNER_RULES }, // of the class rules, member-names only: two slots for one feature (§9.3)
   describe: objectDescribe,
   // the PDF's Kind: an element of no UML kind is drawn and named an instance specification (audit 28); null: the type's word

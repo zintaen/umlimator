@@ -501,6 +501,11 @@ const csClashing = hook => (model, view, ...a) => {
     if (no) return no; }
   return r;
 };
+// the Name field of a selected part, port or other member: refused as F2 refuses it (audit 42), as the profile view's prField does
+const csField = (model, view, id, path, value) => {
+  const q = String(path) === 'label' ? csPic(model, view).mem.get(id) : null;
+  return q ? csClash(q.owner, q.m, { type: q.m.type, label: value, props: q.m.props }) : null;
+};
 const CS_MEMBER = {
   print: m => (m.type === 'uml.Port' ? `port ${csPortText(m)}` : m.type === 'uml.Property' ? csPartText(m) : printMember(m)),
   add: (text, owner) => { const r = csRow(owner, text); return r.error ? r : csClash(owner, {}, r) || r; },
@@ -544,7 +549,7 @@ const CS_TYPE = registerDiagramType('uml.composite-structure', {
     return [...(CS_HAS(CS_PROPS(u).collaboration) ? [String(CS_PROPS(u).collaboration)] : []),
       // its bindings as the view draws and describe() says them (P.lines: a view's own line too, audit 26)
       ...P.lines.filter(({ e }) => e.type === 'uml.RoleBinding' && e.to === id).map(({ e }) => `${labelOr(e.label, '?')} ← ${csName(P.el(e.from) || { id: e.from })}`)]; },
-  edits: { connect: csConnect, moveTo: csMoveTo, add: csClashing(csAdd), remove: csRemove, rename: csClashing(csRename), member: csClashing(csMember) },
+  edits: { connect: csConnect, moveTo: csMoveTo, add: csClashing(csAdd), remove: csRemove, rename: csClashing(csRename), member: csClashing(csMember), field: csField },
 });
 
 export { CS_TYPE, CS_RULES, csGeo, csProblems, csDescribe, csConnect, csMoveTo, csAdd, csRemove, csRename, csMember, csParse, csRow };
