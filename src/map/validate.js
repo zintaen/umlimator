@@ -11,7 +11,8 @@ const WIRE_KINDS = ['calls', 'feeds', 'triggers', 'state', 'guard'], SIDES = ['l
 export function validate(model) {
   const out = [], err = (path, message) => out.push({ level: 'error', path, message }), warn = (path, message) => out.push({ level: 'warning', path, message });
   // an object with a toString key is no text (String() throws on it): said, and the rest checked without it (audit 19)
-  const read = unreadable(model), left = new Set(read.paths); model = read.model; read.paths.forEach(at => err(at, read.thrown.has(at) ? 'a value that throws when it is read (a getter, a Proxy): left out' : 'an object with a "toString" key, which no text is read from: left out'));
+  const read = unreadable(model), left = new Set(read.paths); model = read.model; read.paths.forEach(at => err(at, read.thrown.has(at) ? 'a value that throws when it is read (a getter, a Proxy): left out'
+    : read.mute.has(at) ? 'a value no text is read from (a Symbol, or a toString or toJSON that throws): left out' : 'an object with a "toString" key, which no text is read from: left out'));
   const arr = x => (Array.isArray(x) ? x : []), m = model && typeof model === 'object' ? model : {}, views = arr(m.views).filter(v => v && typeof v === 'object');
   const ver = versionProblem(m); if (ver) (ver.level === 'error' ? err : warn)('schemaVersion', ver.message); // a model this release cannot read is drawn wrongly: say so (F6)
   if (!Array.isArray(m.nodes)) err('nodes', 'the model needs a list of cards');
@@ -41,7 +42,8 @@ export function validate(model) {
   if (m.meta && m.meta.root != null && typeof m.meta.root !== 'string') warn('meta.root', 'meta.root is a path: drawn as written');
   arr(m.nodes).forEach((n, i) => card(n, `nodes[${i}]`));
   views.forEach((v, i) => arr(v.nodes).forEach((n, j) => card(n, `views[${i}].nodes[${j}]`)));
-  views.forEach((v, i) => { if (typeof v.id !== 'string' || !v.id) err(`views[${i}].id`, 'a view needs an id'); else if (vids.has(v.id)) err(`views[${i}].id`, `view id "${v.id}" is used twice`); else vids.add(v.id); });
+  views.forEach((v, i) => { if (typeof v.id !== 'string' || !v.id) err(`views[${i}].id`, 'a view needs an id'); else if (vids.has(v.id)) err(`views[${i}].id`, `view id "${v.id}" is used twice`); else vids.add(v.id);
+    const t = labelProblem(v, `views[${i}]`, 'title'); if (t) out.push(t); }); // a title that is not text, as a card's label (audit 31)
   if (m.root != null && !vids.has(m.root)) err('root', `root "${m.root}" is not a view`);
   const later = (x, at) => { if (x && x.opensView && !vids.has(x.opensView)) warn(at + '.opensView', `opens "${x.opensView}", a view the model does not have: fine if the host loads it when it is opened`); };
   arr(m.nodes).forEach((n, i) => later(n, `nodes[${i}]`));
@@ -80,14 +82,15 @@ export function validate(model) {
     const at = `views[${i}]`, mine = new Set(), boxes = Object.create(null), home = Object.create(null), full = new Set(); // no prototype: a box or card named toString is no box (M3, audit 8)
     if (v.parent != null && !vids.has(v.parent) && !ids.has(v.parent)) err(at + '.parent', `parent "${v.parent}" is not a view`);
     arr(v.nodeIds).forEach((id, j) => { if (!ids.has(id)) err(`${at}.nodeIds[${j}]`, `"${id}" is not a card`); else if (mine.has(id)) warn(`${at}.nodeIds[${j}]`, `"${id}" is listed twice: drawn twice`); mine.add(id); });
-    Object.entries(v.nodeOverrides || {}).forEach(([id, o]) => { if (!ids.has(id)) err(`${at}.nodeOverrides.${id}`, `"${id}" is not a card`); later(o, `${at}.nodeOverrides.${id}`); shapeIs(o, `${at}.nodeOverrides.${id}`); });
+    Object.entries(v.nodeOverrides || {}).forEach(([id, o]) => { if (!ids.has(id)) err(`${at}.nodeOverrides.${id}`, `"${id}" is not a card`); later(o, `${at}.nodeOverrides.${id}`); shapeIs(o, `${at}.nodeOverrides.${id}`);
+      const l = labelProblem(o, `${at}.nodeOverrides.${id}`); if (l) out.push(l); }); // its label is the card's here (audit 31)
     arr(v.nodes).forEach((n, j) => later(n, `${at}.nodes[${j}]`));
     ['stepIds', 'tour'].forEach(k => arr(v[k]).forEach((id, j) => { if (!mine.has(id)) err(`${at}.${k}[${j}]`, `"${id}" is not one of the view's cards`); }));
     arr(v.browserOrder).forEach((id, j) => { if (!vids.has(id)) err(`${at}.browserOrder[${j}]`, `"${id}" is not a view`); });
     arr(v.intake).forEach((s, j) => { if (!mine.has(s && s.to)) err(`${at}.intake[${j}].to`, `"${s && s.to}" is not one of the view's cards`); });
     arr(v.containers).forEach((c, j) => { if (!c || !c.id) err(`${at}.containers[${j}].id`, 'a box needs an id'); else if (Object.hasOwn(boxes, c.id)) err(`${at}.containers[${j}].id`, `box id "${c.id}" is used twice`); else if (mine.has(c.id)) err(`${at}.containers[${j}].id`, `box id "${c.id}" is one of the view's cards`); else boxes[c.id] = c; });
     const outer = b => { const a = new Set(); for (let p = b; boxes[p] && !a.has(p); p = boxes[p].parent) a.add(p); return a; }; // b and the boxes it sits in
-    arr(v.containers).forEach((c, j) => { if (!c) return; list(c, `${at}.containers[${j}]`, 'nodeIds', 1);
+    arr(v.containers).forEach((c, j) => { if (!c) return; list(c, `${at}.containers[${j}]`, 'nodeIds', 1); const l = labelProblem(c, `${at}.containers[${j}]`); if (l) out.push(l);
       arr(c.nodeIds).forEach((id, k) => { if (!mine.has(id)) return err(`${at}.containers[${j}].nodeIds[${k}]`, `"${id}" is not one of the view's cards`);
         const h = home[id]; if (h && !outer(c.id).has(h) && !outer(h).has(c.id)) warn(`${at}.containers[${j}].nodeIds[${k}]`, `"${id}" is in box "${h}" too, and neither box holds the other: they overlap`);
         if (!h || outer(c.id).has(h)) home[id] = c.id; for (let p = c.id; boxes[p] && !full.has(p); p = boxes[p].parent) full.add(p); });
