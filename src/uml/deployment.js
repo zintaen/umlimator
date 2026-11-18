@@ -110,7 +110,8 @@ function dpNodeName(n, pic, I) {
   if (n.type === 'uml.Component') return SN_SAY.component(dpName(n), { stereotypes: st });
   const out = [`${dpWord(n)} ${dpName(n)}${st.length ? ` (${st.join(', ')})` : ''}`];
   if (!DP_TARGETS.includes(n.type)) return out[0];
-  if (up && pic.open.has(up.id)) out.push(`in ${dpName(up)}`); // a box round it, not a card beside it (audit 32)
+  // the box drawn round it, not a card beside it (audit 32): the owner on the picture, through any the view does not show (audit 33)
+  const box = pic.owner(n.id); if (box != null && I.at.has(box)) out.push(`in ${dpName(I.at.get(box))}`);
   const k = new Map(); pic.holds(n.id).map(id => I.at.get(id)).filter(x => !DP_ARTIFACTS.includes(x.type)).forEach(x => { const w = dpWord(x).toLowerCase(); k.set(w, (k.get(w) || 0) + 1); });
   if (k.size) out.push('holding ' + [...k].map(([w, c]) => dpPlural(c, w)).join(', '));
   const d = I.deployed(n.id).length; if (d) out.push(`${dpPlural(d, 'artifact')} deployed`);
@@ -193,8 +194,11 @@ function dpProblems(model, view) {
       if (!DP_ARTIFACTS.includes(ty(e.from)) || !DP_TARGETS.includes(ty(e.to))) say('error', 'deploy-ends', path, ends, `${e.id} runs from ${q(e.from)} (${kind(e.from)}) to ${q(e.to)} (${kind(e.to)}): from an artifact or deployment specification to a node, device or execution environment`);
       else { const a = I.at.get(e.from); if (a.parent != null && DP_TARGETS.includes(ty(a.parent)) && a.parent !== e.to)
         say('warning', 'deployed-twice', path, [e.id, e.from, a.parent, e.to], `${q(e.from)} is nested in ${q(a.parent)} and deployed by ${e.id} to ${q(e.to)} as well`); } }
-    if (e.type === 'uml.CommunicationPath' && (!DP_TARGETS.includes(ty(e.from)) || !DP_TARGETS.includes(ty(e.to)) || e.from === e.to || I.holds(e.from, e.to) || I.holds(e.to, e.from)))
-      say('error', 'path-ends', path, ends, `${e.id} joins ${q(e.from)} (${kind(e.from)}) and ${q(e.to)} (${kind(e.to)}): a communication path joins two nodes, devices or execution environments`); });
+    if (e.type === 'uml.CommunicationPath') { const kinds = DP_TARGETS.includes(ty(e.from)) && DP_TARGETS.includes(ty(e.to)) && e.from !== e.to;
+      // two targets, one holding the other: the message says which, not only the kinds, which are allowed (audit 33)
+      const [a, b] = !kinds ? [] : I.holds(e.from, e.to) ? [e.from, e.to] : I.holds(e.to, e.from) ? [e.to, e.from] : [];
+      if (!kinds) say('error', 'path-ends', path, ends, `${e.id} joins ${q(e.from)} (${kind(e.from)}) and ${q(e.to)} (${kind(e.to)}): a communication path joins two nodes, devices or execution environments`);
+      else if (a != null) say('error', 'path-ends', path, ends, `${e.id} joins ${q(a)} and ${q(b)}, which it holds: a communication path joins two nodes, devices or execution environments, neither holding the other`); } });
   if (view) { const vi = DP_ARR(model.views).indexOf(view), pic = dpPic(model, view); // a deployment and a communication path: their own rules
     dpListed(view, pic).forEach(e => { if (!['uml.Deployment', 'uml.CommunicationPath'].includes(e.type) && dpInside(pic, e)) out.push(lineInside(view, vi, e, e.from, e.to, q)); }); }
   return [...out, ...structProblems(model, view).filter(p => p.rule === 'manifest-ends' || p.rule === 'own-boxes')];
@@ -236,12 +240,15 @@ function dpRemove(model, view, ids, fromModel) {
   // with the view's own elements (remove gets the model as it is: registry.js), and a target the view holds as its own, which
   // Delete deletes too (audit 24)
   const I = dpIndex(ownNodes(model, view).model), own = new Set(DP_ARR(DP_OBJ(view) ? view.nodes : null).filter(DP_OBJ).map(n => n.id));
-  const ts = ids.filter(id => (fromModel || own.has(id) && !DP_ARR(model.nodes).some(n => DP_OBJ(n) && n.id === id)) && DP_TARGETS.includes((I.at.get(id) || {}).type));
-  const under = id => { for (let p = (I.at.get(id) || {}).parent, seen = new Set(); p != null && !seen.has(p); p = (I.at.get(p) || {}).parent) { if (ts.includes(p)) return true; seen.add(p); } return false; };
-  const held = [...I.at.keys()].filter(id => !ids.includes(id) && under(id)).length;
+  const all = ids.filter(id => (fromModel || own.has(id) && !DP_ARR(model.nodes).some(n => DP_OBJ(n) && n.id === id)) && DP_TARGETS.includes((I.at.get(id) || {}).type));
+  const inside = (id, S) => { for (let p = (I.at.get(id) || {}).parent, seen = new Set(); p != null && !seen.has(p); p = (I.at.get(p) || {}).parent) { if (S.includes(p)) return true; seen.add(p); } return false; };
+  // a target under another selected one is held by it, and what either holds is counted, selected or not: it goes all the same (audit 33, as cloud's)
+  const ts = all.filter(id => !inside(id, all)), under = id => inside(id, ts);
+  const held = [...I.at.keys()].filter(under).length;
   if (!held) return null;
-  if (!fromModel && ids.some(id => !ts.includes(id))) return null; // hid with them: as the default
-  return { commands: ids.map(id => ({ op: 'delete', id })), say: `Deleted ${ts.length === 1 ? `${dpWord(I.at.get(ts[0])).toLowerCase()} ${dpName(I.at.get(ts[0]))}` : dpPlural(ts.length, 'target')} and the ${dpPlural(held, 'element')} ${ts.length === 1 ? 'it' : 'they'} held` };
+  if (!fromModel && ids.some(id => !all.includes(id))) return null; // hid with them: as the default
+  const more = new Set(ids.filter(id => !ts.includes(id) && !under(id))).size;
+  return { commands: ids.map(id => ({ op: 'delete', id })), say: `Deleted ${ts.length === 1 ? `${dpWord(I.at.get(ts[0])).toLowerCase()} ${dpName(I.at.get(ts[0]))}` : dpPlural(ts.length, 'target')} and the ${dpPlural(held, 'element')} ${ts.length === 1 ? 'it' : 'they'} held${more ? `, and ${dpPlural(more, 'other element')}` : ''}` };
 }
 
 /* ---- the type ---- */

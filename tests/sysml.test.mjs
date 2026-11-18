@@ -358,3 +358,17 @@ test('audit 21: F2 emptied on a bdd or req frame that is no element removes the 
     assert.equal(apply(m, R(m, v, frame, 'New')).views[0].title, 'New', 'a text sets it, as before');
   }
 });
+
+test('audit 33: a frame with no subject in an untitled model names "model" with no space before the colon', async () => {
+  const kinds = { 'sysml.requirement': 'Requirement diagram', 'sysml.block-definition': 'Block definition diagram', 'sysml.internal-block': 'Internal block diagram', 'sysml.parametric': 'Parametric diagram' };
+  for (const [diagram, word] of Object.entries(kinds)) {
+    for (const title of [undefined, null, '', '  ']) {
+      const m = { nodes: [], ...(title === undefined ? {} : { title }) };
+      assert.equal(SYS_HEAD(m, { id: 'v', diagram, title: 'E-bike blocks' }).aria, `${word} of model: E-bike blocks`, `${diagram} ${JSON.stringify(title)}`);
+      assert.equal(SYS_HEAD(m, { id: 'v', diagram }).aria, `${word} of model`, diagram);
+    }
+  }
+  const m = JSON.parse(readFileSync(new URL('../examples/ebike-blocks.json', import.meta.url))); delete m.title;
+  const v = m.views.find(x => x.diagram === 'sysml.block-definition' && x.subject == null), { describe } = await import('../src/map/insight.js');
+  assert.equal(describe(m, v.id).split('\n')[1], 'Block definition diagram of model: E-bike blocks.');
+});

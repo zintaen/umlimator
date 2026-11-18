@@ -137,7 +137,7 @@ export function render(container, model, options = {}) {
       geo = { nodes: [], edges: [], groups: [], lanes: [], families: [], byId: idTable(), stats: {}, bounds: { x: 0, y: 0, w: 400, h: 300 } };
       stage.insertAdjacentHTML('afterbegin', '<svg class="map-svg" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"></svg>');
       const p = v && v.parent;
-      stage.insertAdjacentHTML('beforeend', `<div class="empty-view"><div class="ico">◌</div><h2>Nothing here yet</h2><p>${v ? 'This view has no nodes yet.' : 'This map has no views yet.'}</p>${p ? `<button class="btn" data-v="${esc(p)}">← Back to ${esc(String(ctx.V[p].title || p).split(' · ')[0])}</button>` : ''}</div>`);
+      stage.insertAdjacentHTML('beforeend', `<div class="empty-view"><div class="ico">◌</div><h2>Nothing here yet</h2><p>${v ? 'This view has no nodes yet.' : 'This map has no views yet.'}</p>${p ? `<button class="btn" data-v="${esc(p)}">← Back to ${esc(String(labelOr(ctx.V[p].title, p)).split(' · ')[0])}</button>` : ''}</div>`);
     } else {
       const c = pic(vid);
       stage.insertAdjacentHTML('afterbegin', c.markup); geo = c.g;
@@ -509,6 +509,7 @@ export function render(container, model, options = {}) {
     const v = viewIn(m2, p.view), was = new Set(p.ids);
     if (p.op === 'add') return arrOf(v.nodeIds).find(id => !was.has(id) && labelIn(m2, v, id) === p.label) ?? null; // a new card with its name
     if (p.to !== undefined) return boxIdOf(m2, p.view, p.card) === p.to ? p.card : null; // into or out of a box
+    if (p.typed) return jsonText((v.layout || {})[p.card] ?? null) === jsonText(p.place) ? p.card : null; // a typed pin: the host wrote it (an unchanged model refused it)
     return json !== UNREAD && json === p.base || jsonText((v.layout || {})[p.card] ?? null) !== p.at ? p.card : null; // a place alone
   }
   const worldOf = e => { const r = stage.getBoundingClientRect(); return cam.toWorld(e.clientX - r.left, e.clientY - r.top); };
@@ -681,10 +682,12 @@ export function render(container, model, options = {}) {
       const { hv = {}, ex = {} } = use && use.view === v.id && !again ? use : {}, was = again ? null : placed[v.id] && O(placed[v.id]), H = O(hv), E = O(ex);
       if (!was && !Object.keys(hv).length && !Object.keys(ex).length) return;
       const ids = (v.nodeIds || []).filter(id => typeof id === 'string' && !bx.some(b => b.id === id)), mine = O(v.layout), L = O(), taken = new Set(), key = p => p[0] + ',' + p[1];
+      // a card the model before pinned, its pin gone in this one: the slot it kept is the pin's, so it is laid out again (audit 33)
+      const pins = O(pv.layout), unpinned = id => Array.isArray(pins[id]) && !Array.isArray(mine[id]) && was && Array.isArray(was[id]) && was[id][0] === pins[id][0] && was[id][1] === pins[id][1];
       const put = (id, p) => { let [c, r] = p; while (taken.has(key([c, r]))) r++; L[id] = [c, r]; taken.add(key([c, r])); };
       ids.forEach(id => { if (Array.isArray(mine[id])) { L[id] = mine[id]; taken.add(key(mine[id])); } });    // the host's own layout
       ids.forEach(id => { if (!L[id] && E[id]) put(id, E[id]); });                                               // a reordered column group
-      ids.filter(id => !L[id] && !H[id] && was && was[id]).sort((a, b) => was[a][0] - was[b][0] || was[a][1] - was[b][1]).forEach(id => put(id, was[id])); // everyone stays
+      ids.filter(id => !L[id] && !H[id] && was && was[id] && !unpinned(id)).sort((a, b) => was[a][0] - was[b][0] || was[a][1] - was[b][1]).forEach(id => put(id, was[id])); // everyone stays
       ids.forEach(id => { if (!L[id] && H[id]) put(id, H[id]); });                                              // a moved or added card: its drop, or the nearest free slot
       if (Object.keys(L).length) v.layout = L;
     });
@@ -987,7 +990,7 @@ export function render(container, model, options = {}) {
     if (was) { was.remove(); clear = null; }
     if (!L) { const had = lensId != null; lensId = null; layers.delete('lens'); if (had) emit('lens', { lens: null }); return; } // off, or the model no longer has it: the lens event says so
     if (!cur || !ctx.V[cur]) return;
-    const { layer, owners } = lensOf(ctx, cur, L), name = esc(L.title || L.id);
+    const { layer, owners } = lensOf(ctx, cur, L), name = esc(labelOr(L.title, L.id));
     layers.set('lens', layer);
     if (owners.length) { q('.mctl').insertAdjacentHTML('afterbegin', `<div class="um-lens" role="group" aria-label="${name}"><b>${name}</b>${owners.map(([o, t]) => `<span><i style="border-color:var(--um-${t})"></i>${esc(o)}</span>`).join('')}</div>`); clear = null; }
   }
@@ -1125,8 +1128,8 @@ export function render(container, model, options = {}) {
         ({ prev: () => stepStory(-1), next: () => stepStory(1), stop: () => stopStory(), play: () => s.auto ? s.ctl.pause() : s.ctl.resume() })[b.dataset.s](); });
     }
     const k = st.at, n = st.steps.length, b = s => bar.querySelector(`[data-s="${s}"]`);
-    bar.setAttribute('aria-label', 'Story: ' + (st.s.title || st.s.id));
-    bar.querySelector('.um-st').textContent = `${st.s.title || st.s.id} · ${k + 1} / ${n}`;
+    bar.setAttribute('aria-label', 'Story: ' + labelOr(st.s.title, st.s.id));
+    bar.querySelector('.um-st').textContent = `${labelOr(st.s.title, st.s.id)} · ${k + 1} / ${n}`;
     bar.querySelector('p').textContent = (st.steps[k] || {}).caption || '';
     if (k <= 0) b('prev').setAttribute('aria-disabled', 'true'); else b('prev').removeAttribute('aria-disabled'); // off, and focusable still: a focused ‹ keeps the focus
     b('play').textContent = st.auto ? '❚❚' : '▶'; b('play').setAttribute('aria-label', st.auto ? 'Pause' : 'Play'); b('play').title = st.auto ? 'Pause' : 'Play';
@@ -1219,9 +1222,15 @@ export function render(container, model, options = {}) {
   /* a typed view of a version 2 model (1.7): its gestures emit `edit`, a transaction of commands, and its panels show.
      Its hooks read the model as it is drawn, through unreadable(), once for each model: a value String() throws on is left
      out, as mapContext leaves it out (audit 21: F2 on one transition threw when another's trigger was {"toString": 1}) */
+  // a typed view's pin (a drag, Alt + arrows) is written to the view's layout by the host: it waits for the answer as a map's move
+  // does, so an update back to the model before it (undo) puts every card back where it was (audit 33: the card stayed at its drop)
+  const pinOf = cs => { const c = cs.length === 1 && cs[0], at = c && c.op === 'set' && Array.isArray(c.path) && c.path.length === 2 && c.path[0] === 'layout' && c.value;
+    if (!Array.isArray(at) || at.length !== 2 || !at.every(Number.isFinite) || typeof c.path[1] !== 'string' || (c.view ?? cur) !== cur) return null;
+    const v = viewIn(current, cur);
+    return { op: 'set', typed: true, view: cur, card: c.path[1], place: [at[0], at[1]], exact: null, label: '', ids: arrOf(v.nodeIds), to: undefined, base: modelText(current), at: jsonText((v.layout || {})[c.path[1]] ?? null) }; };
   let readFor, readAs; const drawnModel = () => { if (readFor !== current) { readFor = current; readAs = unreadable(current).model; } return readAs; };
   const tx = E && typedEditor({ root, stage, can, say, status, touch, nearest, nameOf, editor, picked,
-    emit: commands => emit('edit', { view: cur, commands }), view: () => cur, model: drawnModel, geo: () => geo, svg: () => svg, cam: () => cam, sel: () => sel,
+    emit: commands => { pending = pinOf(commands); emit('edit', { view: cur, commands }); }, view: () => cur, model: drawnModel, geo: () => geo, svg: () => svg, cam: () => cam, sel: () => sel,
     selectId: id => { const e = geo.byId[id] ? null : geo.edges.find(x => edgeRefIds(x).includes(id)); return select(e ? edgeRef(e) : idRef(id)); }, // a box: the outline's way to select one
     drawn: id => !!geo.byId[id] || geo.edges.some(x => edgeRefIds(x).includes(id)), rename: () => rename(sel), focus: () => focusMap() });
   const typed = () => !!tx && tx.on();

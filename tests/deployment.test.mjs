@@ -434,3 +434,37 @@ test('audit 32: a node holding two classes says "2 classes"; nest-kinds says "a 
   assert.ok(validate(m).some(p => p.message === 'nest-kinds: "Worker", a node, is owned by "Checkout", a use case: its owner is a node, a device or an execution environment'));
   assert.doesNotMatch(JSON.stringify(validate(m)), /an use case|classs/);
 });
+
+test('audit 33: a target drawn in a box through a node the view does not show is named "in" that box', () => {
+  const m = model([N('d', 'Device', 'Rack'), N('n', 'Node', 'Blade', 'd'), N('e', 'ExecutionEnvironment', 'JVM', 'n'), N('e2', 'ExecutionEnvironment', 'Python', 'd')], []);
+  m.views[0].nodeIds = ['d', 'e', 'e2'];
+  const said = describe(m, 'v').split('\n');
+  assert.ok(said.includes('Execution environment JVM, in Rack.'), said.join('\n'));
+  assert.ok(said.includes('Execution environment Python, in Rack.'));
+  const g = layout(m, 'v'), aria = id => (g.nodes.find(x => x.id === id) || {}).aria;
+  assert.equal(aria('e'), 'Execution environment JVM, in Rack');
+  // shown, the node is the box round it
+  m.views[0].nodeIds = ['d', 'n', 'e', 'e2'];
+  assert.ok(describe(m, 'v').split('\n').includes('Execution environment JVM, in Blade.'));
+  // none shown round it: no "in"
+  m.views[0].nodeIds = ['e'];
+  assert.ok(describe(m, 'v').split('\n').includes('Execution environment JVM.'));
+});
+
+test('audit 33: path-ends says which end holds the other when that is the cause, and the kinds when they are', () => {
+  const msg = (nodes, from, to) => validate(model(nodes, [L('p', 'CommunicationPath', from, to)])).filter(p => p.rule === 'path-ends').map(p => p.message);
+  const held = [N('s', 'Device', 'Server'), N('j', 'ExecutionEnvironment', 'JVM', 's')];
+  for (const [a, b] of [['s', 'j'], ['j', 's']])
+    assert.deepEqual(msg(held, a, b), ['path-ends: p joins "Server" and "JVM", which it holds: a communication path joins two nodes, devices or execution environments, neither holding the other'], a + b);
+  assert.deepEqual(msg([N('s', 'Device', 'Server'), N('a', 'Artifact', 'app.jar')], 's', 'a'), ['path-ends: p joins "Server" (device) and "app.jar" (artifact): a communication path joins two nodes, devices or execution environments']);
+  assert.deepEqual(msg([N('s', 'Device', 'Server'), N('t', 'Node', 'Other')], 's', 't'), []);
+});
+
+test('audit 33: Shift + Delete of a target with what it holds also selected counts all it held, and names what else goes', () => {
+  const v = DEP.views[0], rm = ids => T.edits.remove(DEP, v, ids, true);
+  for (const ids of [['app-server', 'jvm'], ['jvm', 'app-server'], ['app-server', 'shop-api-jar']])
+    assert.equal(rm(ids).say, 'Deleted device Application server and the 4 elements it held', ids.join('+'));
+  assert.equal(DEP.nodes.length - apply(DEP, rm(['app-server', 'jvm']).commands).nodes.length, 5);
+  assert.equal(rm(['app-server', 'shop-api']).say, 'Deleted device Application server and the 4 elements it held, and 1 other element');
+  assert.equal(rm(['app-server', 'database']).say, 'Deleted 2 targets and the 4 elements they held');
+});

@@ -1,6 +1,7 @@
 import { isRec } from '../canvas/edit.js';
 import { TYPED } from '../core/registry.js';
 import { arrOf } from '../map/validate.js';
+import { labelOr } from '../core/model.js';
 
 /* A type's editing hooks on the canvas (work package 3.4, notes/stage-3.md §5.1). Only lib/umlimator-all.js holds this file
    (risks.md C5): it fills TYPED.edit (registry.js), which typedEditor (src/canvas/edit.js) calls with its gestures, I, to take
@@ -93,7 +94,7 @@ TYPED.edit = (I, c) => {
   function opens(id) { const x = arrOf(model().nodes).find(n => isRec(n) && n.id === id), t = x && c.nodeTypes().find(e => e.type === x.type && typeof e.opens === 'string');
     if (!t) return false;
     const vs = arrOf(model().views).filter(v => isRec(v) && v.diagram === t.opens);
-    choose(vs.map(v => v.title ?? v.id), i => emit([{ op: 'set', id, path: 'opensView', value: vs[i].id }]), 'Opens view', id); return true; }
+    choose(vs.map(v => String(labelOr(v.title, v.id))), i => emit([{ op: 'set', id, path: 'opensView', value: vs[i].id }]), 'Opens view', id); return true; }
   // the hook is given a line's geometry ids too ('owner->child', a type's derived line, sysml-requirement.md); the core's delete only element ids
   I.owner = (id, parent) => { const h = hook('owner'), dflt = () => base.owner(id, parent); return h && can('move') ? ran(h(model(), view(), id, parent), dflt) : dflt(); };
   I.remove = (fromModel, ids) => { const h = hook('remove'), all = ids || [...new Set([...c.picks(), ...api.picked().flatMap(r => r && r.type === 'edge' ? arrOf(r.ids) : [])])], dflt = () => base.remove(fromModel, ids);

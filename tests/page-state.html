@@ -364,6 +364,40 @@ try {
     try { if (pg) pg.update({ ...H, edges: [{ ...H.edges[0], weight: 3n, step: 1n }] }); await wait(50); } catch (e) { threw = String(e); }
     check('a line whose weight and latency are BigInts: the page draws the map, and update() with one takes it (audit 29)', !threw && !!drawn, threw);
     if (pg) { pg.destroy(); pg = null; } }
+  /* ---------- audit 33: a numeric title 0 (validate() takes it) on the map, the root view, a story, a lens and a rule: the page,
+     the canvas and the PDF read "0", where they put "Map", "map" or the id ---------- */
+  { box.innerHTML = ''; history.replaceState(null, '', location.pathname);
+    const Z = structuredClone(BIKE); Z.title = 0; Z.views.find(v => v.id === 'context').title = 0; Z.stories[0].title = 0; Z.lenses[0].title = 0; Z.rules[0].title = 0;
+    Z.lenses[1].title = '<img src="https://example.invalid/t.png">'; Z.stories.push({ id: 'hostile', title: '<img src="https://example.invalid/s.png">', steps: [{ view: 'context' }] }); // markup in a title stays text
+    Z.views.push({ id: 'empty', parent: 'context', title: 'Empty', nodeIds: [] });
+    pg = mountPage(box, Z, { instant: true, params: new URLSearchParams() }); await until(() => pg.view && document.querySelector('#m-canvas .umlimator')); await wait(30);
+    const story = document.querySelector('#m-stories-pop [data-story="ride"]'), lens = document.querySelector('#m-lenses-pop [data-lens="teams"]');
+    check('audit 33: a map titled 0: the brand and the document title read 0', document.querySelector('h1.mbrand span').textContent === '0' && document.title === '0 · 0', [document.querySelector('h1.mbrand span').textContent, document.title]);
+    check('audit 33: a story and a lens titled 0: the Stories and Lenses menus read 0', story && story.textContent === '0' && lens && lens.textContent === '0', [story && story.textContent, lens && lens.textContent]);
+    check('audit 33: a lens or story title that is markup is shown as text in the menus, and fetches nothing', !document.querySelector('#m-stories-pop img, #m-lenses-pop img') && document.querySelector('#m-lenses-pop [data-lens="data"]').textContent.startsWith('<img'));
+    await pg.setView('system'); click(lens); await until(() => sr().querySelector('.um-lens b'));
+    const badge = $('m-lenses').textContent, legend = (sr().querySelector('.um-lens b') || {}).textContent;
+    check('audit 33: …the lens on: its badge, the status and the canvas\'s lens legend read 0', badge === '◎ 0' && hint() === 'Lens: 0' && legend === '0', [badge, hint(), legend]);
+    pg.lens(null); pg.select(null); pg.play('ride', { auto: false }); await until(() => bar());
+    const sb = sr().querySelector('.um-story');
+    check('audit 33: …the story played: its bar reads 0 and is named "Story: 0"', bar() === '0 · 1 / 5' && sb && sb.getAttribute('aria-label') === 'Story: 0', [bar(), sb && sb.getAttribute('aria-label')]);
+    key('Escape', document.body); await wait(30);
+    $('m-export').click(); document.querySelector('#m-export-pop [data-x="record"]').click(); await until(() => $('m-rec'));
+    check('audit 33: …the recorder\'s title starts from the map\'s title, 0', $('m-rec-title').value === '0: a walk-through', $('m-rec-title').value);
+    document.querySelector('#m-rec [data-r="close"]').click(); await wait(30);
+    await pg.setView('empty'); await until(() => sr().querySelector('.empty-view button'));
+    const backBtn = sr().querySelector('.empty-view button');
+    check('audit 33: an empty view under a view titled 0: its back button names the parent 0', backBtn && backBtn.textContent === '← Back to 0', backBtn && backBtn.textContent);
+    pg.destroy(); pg = null; box.innerHTML = '';
+    // the PDF document (#pdf=1), in a frame: its title and cover read 0, and the rule's row 0
+    Z.edges.push({ id: 'zbreak', from: Z.nodes.find(n => n.kind === 'frontend' || n.kind === 'web' || n.kind === 'mobile').id, to: Z.nodes.find(n => n.kind === 'database' || n.kind === 'db').id });
+    const lib0 = new URL('../lib/umlimator.js', location.href).href, f = document.createElement('iframe'); f.style.cssText = 'width:1200px;height:700px;border:0';
+    f.srcdoc = `<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="${new URL('../lib/umlimator-theme.css', location.href).href}"><main id="app"></main>`
+      + `<script type="module">import { mountPage } from '${lib0}'; window.h = mountPage(document.getElementById('app'), ${JSON.stringify(Z).replace(/</g, '\\u003c')}, { instant: true, params: new URLSearchParams('pdf=1') });<\/script>`;
+    document.body.appendChild(f); await until(() => f.contentDocument && f.contentDocument.title && !f.contentDocument.getElementById('app'), 8000);
+    const fd = f.contentDocument, ruleRow = [...fd.querySelectorAll('tr')].find(r => r.querySelector('td b') && /broken|holds/.test(r.textContent) && r.querySelector('td b').textContent === '0');
+    check('audit 33: the PDF of a map titled 0: its title reads 0, and a rule titled 0 is listed as 0', fd.title === '0' && !!ruleRow, [fd.title, [...fd.querySelectorAll('tr td b')].map(b => b.textContent).slice(-4)]);
+    f.remove(); }
 } catch (err) { out.fail.push('threw: ' + (err && err.stack || err)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

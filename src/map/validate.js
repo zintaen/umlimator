@@ -12,7 +12,7 @@ export function validate(model) {
   const out = [], err = (path, message) => out.push({ level: 'error', path, message }), warn = (path, message) => out.push({ level: 'warning', path, message });
   // an object with a toString key is no text (String() throws on it): said, and the rest checked without it (audit 19)
   const read = unreadable(model), left = new Set(read.paths); model = read.model; read.paths.forEach(at => err(at, read.thrown.has(at) ? 'a value that throws when it is read (a getter, a Proxy): left out'
-    : read.mute.has(at) ? 'a value no text is read from (a Symbol, or a toString or toJSON that throws): left out' : 'an object with a "toString" key, which no text is read from: left out'));
+    : read.mute.has(at) ? 'a value no text is read from (a Symbol, or a toString, valueOf, toJSON or Symbol.toPrimitive that throws): left out' : 'an object with a "toString" key, which no text is read from: left out'));
   const arr = x => (Array.isArray(x) ? x : []), m = model && typeof model === 'object' ? model : {}, views = arr(m.views).filter(v => v && typeof v === 'object');
   const ver = versionProblem(m); if (ver) (ver.level === 'error' ? err : warn)('schemaVersion', ver.message); // a model this release cannot read is drawn wrongly: say so (F6)
   if (!Array.isArray(m.nodes)) err('nodes', 'the model needs a list of cards');
@@ -250,7 +250,7 @@ export function rules(model) {
     list.forEach(r => {
       if (Array.isArray(r.views) && !r.views.includes(v.id)) return;
       if (named.get(r).length && !named.get(r).some(b => box[b])) return; // it names boxes, none of them this view's
-      const breaks = `breaks rule "${r.title || r.id}"`;
+      const breaks = `breaks rule "${labelOr(r.title, r.id)}"`;
       if (r.noCycles) (rings ||= cycles()).forEach(([ring, via]) => out.push({ rule: r.id, view: v.id,
         message: `view ${v.id}: boxes ${andList(ring.map(c => `"${box[c].label || c}"`))} form a cycle, which ${breaks}`,
         targets: [...ring.map(c => ({ type: 'container', id: c, view: v.id })), ...[...new Set(via.map(e => drawn.get(e)))].map(es => line(es[0]))] }));

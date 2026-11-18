@@ -112,7 +112,7 @@ const acStLabel = x => [...acStereo(x).map(t => `«${t}»`), acName(x)].join(' '
 const acPlural = (k, w, ws = w + 's') => `${k} ${k === 1 ? w : ws}`;
 // a node as a line's end names it: its label, else its word ("merge")
 const acCalled = x => (x ? (AC_HAS(x.label) ? String(x.label) : acLook(x)[1].toLowerCase()) : '?');
-const acViewName = (model, id) => { const v = AC_ARR(model && model.views).find(w => AC_OBJ(w) && w.id === id); return v ? String(v.title ?? v.id) : null; };
+const acViewName = (model, id) => { const v = AC_ARR(model && model.views).find(w => AC_OBJ(w) && w.id === id); return v ? String(labelOr(v.title, v.id)) : null; }; // a view titled "" by its id (audit 33)
 
 // accessible names (§14): "Action Take the next order from the queue, in Order worker"; "Decision All books in stock?, 2 exits"
 function acNodeName(model, I, x, lines) {
@@ -304,7 +304,7 @@ function actAdd(model, view, entry, label, at) {
   const make = opens => [{ op: 'add', element: { ...el, ...(opens != null ? { opensView: opens } : {}) }, view: view.id }];
   if (entry.type !== 'uml.CallBehaviorAction') return make();
   const vs = AC_ARR(model.views).filter(v => AC_OBJ(v) && v.diagram === 'uml.activity');
-  return { pick: vs.map(v => String(v.title ?? v.id)), then: i => make(vs[i].id) };
+  return { pick: vs.map(v => String(labelOr(v.title, v.id))), then: i => make(vs[i].id) };
 }
 // remove: Shift + Delete on a partition keeps what it holds, which goes to the partition's own owner (S10). Delete hides a
 // partition of the model; one the view holds as its own is deleted by Delete too, so it keeps what it holds as Shift + Delete does (audit 25)

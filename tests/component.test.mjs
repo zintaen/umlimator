@@ -573,3 +573,14 @@ test('audit 31: component-owner writes the owner\'s kind in words with its artic
     'component-owner: "Pay" is owned by "jar", an artifact: a component\'s owner is a component or a package',
     'component-owner: "D" is owned by "Api", an interface: a component\'s owner is a component or a package']);
 });
+
+test('audit 33: component-owner judges an element of no type, drawn as a component, as it judges a typed one', () => {
+  for (const type of [undefined, '', 'uml.Component']) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'i', type: 'uml.Interface', label: 'Orders' }, { id: 'c', ...(type === undefined ? {} : { type }), label: 'Shop', parent: 'i' }, { id: 'k', type: 'uml.Class', label: 'Plain', parent: 'i' }],
+      edges: [], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['i', 'c', 'k'] }] };
+    assert.deepEqual(validate(m).filter(p => p.rule === 'component-owner').map(p => p.message),
+      ['component-owner: "Shop" is owned by "Orders", an interface: a component\'s owner is a component or a package'], String(type));
+    m.nodes[0].type = 'uml.Package';
+    assert.deepEqual(validate(m).filter(p => p.rule === 'component-owner'), [], `${type} in a package`);
+  }
+});

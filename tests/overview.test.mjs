@@ -356,3 +356,12 @@ test('audit 30: an overview\'s view key changes with the messages, lifelines and
   for (const m of [renamed, added, fragged]) assert.notEqual(k(m), base);
   assert.equal(k(structuredClone(EX)), base); // and the same model keeps its key
 });
+
+test('audit 33: a sequence view titled "" is named by its id in an interaction use\'s name, describe() and the add picker', () => {
+  const m = structuredClone(EX); m.views.find(v => v.id === 'find-book').title = '';
+  assert.equal(layout(m, m.root).nodes.find(n => n.id === 'ref-find').aria, 'Interaction use Find a book, opens find-book');
+  assert.ok(describe(m, m.root).includes('opens find-book'));
+  const r = ovAdd(m, VIEW(m), { type: 'uml.InteractionUse', opens: 'uml.sequence' }, '', {});
+  assert.ok(r.pick.includes('find-book') && !r.pick.includes(''), JSON.stringify(r.pick));
+  assert.equal(r.then(r.pick.indexOf('find-book'))[0].element.label, 'find-book');
+});

@@ -368,7 +368,7 @@ test('audit 30: an element of no UML kind the object view shows is an instance t
   for (const type of ['uml.InstanceSpecification', undefined, '', 'acme.Thing']) {
     const m = { schemaVersion: 2, nodes: [{ id: 'o1', label: 'o1', ...(type === undefined ? {} : { type }), members: [{ id: 'p', type: 'uml.Property', label: 'secret', props: { valueType: 'int' } }, { id: 'n', label: 'nameless' }, { id: 's', type: 'uml.Slot', label: 'id', props: { value: '7' } }] }],
       edges: [], views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['o1'] }] }, q = JSON.stringify(type);
-    assert.deepEqual(validate(m).filter(p => p.rule === 'slot-kinds').map(p => p.message), ['slot-kinds: "o1" holds p, a Property: an instance holds slots only', 'slot-kinds: "o1" holds n, an element of no type: an instance holds slots only'], q);
+    assert.deepEqual(validate(m).filter(p => p.rule === 'slot-kinds').map(p => p.message), ['slot-kinds: "o1" holds p, a property: an instance holds slots only', 'slot-kinds: "o1" holds n, an element of no type: an instance holds slots only'], q);
     const ctx = mapContext(m), row = tablesOf(ctx, ctx.V.v, ctx.buildGeo('v'))[0].rows[0];
     assert.match(row, /<td>Instance specification<\/td><td><p>id = 7<\/p><\/td>/, q);
   }
@@ -394,4 +394,13 @@ test('audit 30: instance-of reads a generalization a class view draws as its own
   assert.deepEqual(validate(n), [], 'as with the same generalization a model line');
   const x = structuredClone(m); x.views[0].edges = [];
   assert.deepEqual(validate(x).map(p => p.rule), ['instance-of'], 'with none, warned');
+});
+
+test('audit 33: slot-kinds writes the member\'s kind in lower case with its article, mid-sentence', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'o', type: 'uml.InstanceSpecification', label: 'order1', members: [{ id: 'o.op', type: 'uml.Operation', label: 'pay' }, { id: 'o.p', type: 'uml.Port', label: 'api' },
+    { id: 'o.l', type: 'uml.EnumerationLiteral', label: 'RED' }, { id: 'o.s', type: 'uml.Slot', label: 'id', props: { value: '7' } }] }],
+    edges: [], views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['o'] }] };
+  assert.deepEqual(validate(m).filter(p => p.rule === 'slot-kinds').map(p => p.message), [
+    'slot-kinds: "order1" holds o.op, an operation: an instance holds slots only', 'slot-kinds: "order1" holds o.p, a port: an instance holds slots only',
+    'slot-kinds: "order1" holds o.l, an enumeration literal: an instance holds slots only']);
 });

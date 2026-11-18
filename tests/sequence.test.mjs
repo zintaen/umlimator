@@ -632,3 +632,17 @@ test('audit 32: Delete on a lifeline and a message on it works picked in either 
   // a listed message on a lifeline that stays is still said taken off
   assert.equal(sqRemove(m, 'v1', ['a', 'c9'], false).say, 'Removed a from the view, and 2 messages with it; took self() off the view (it stays in the model)');
 });
+
+test('audit 33: Shift + Delete on a lifeline shown in two sequence views counts the messages the cascade takes from both', () => {
+  const m = JSON.parse(JSON.stringify(SEQ));
+  m.views.push({ id: 'pay-again', diagram: 'uml.sequence', title: 'Pay again', parent: null, nodeIds: ['lifeline-api', 'lifeline-payments'],
+    edges: [M('p1', 'lifeline-api', 'lifeline-payments', 'call'), M('p2', 'lifeline-payments', 'lifeline-api', 'reply', { props: { replyTo: 'p1' } })] });
+  const msgs = x => x.views.flatMap(v => v.edges).filter(e => e && e.type === 'uml.Message').length;
+  const r = sqRemove(m, V(m), ['lifeline-payments'], true), n = apply(m, r.commands);
+  assert.equal(msgs(m) - msgs(n), 5);
+  assert.equal(r.say, 'Deleted payments, and 5 messages with it');
+  // Delete only takes it out of this view: the other view's messages stay, and are not counted
+  const h = sqRemove(m, V(m), ['lifeline-payments'], false);
+  assert.equal(apply(m, h.commands).views[1].edges.length, 2);
+  assert.match(h.say, /^Removed payments from the view, and 3 messages with it/);
+});
