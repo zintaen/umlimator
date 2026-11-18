@@ -141,14 +141,15 @@ function mcMult(type) {
 // where `name : Type` splits (audit 42)
 function mcColon(s) { const m = /(?<!:):(?!:)/.exec(s); return m ? m.index : -1; }
 
-// the first = outside <...> [...] (...) {...} and quotes that is not one of => == != (a function type, a comparison), or -1:
-// where a default value begins (audit 42)
+// the first = outside <...> [...] (...) {...} that is not one of => == != (a function type, a comparison), or -1: where a
+// default value begins (audit 42). A quote opens a string only in the default, after this =, so a Rust lifetime's ' in
+// the type (&'a str) is not one (audit 43)
+function mcIsEq(s, k) { return s[k] === '=' && s[k + 1] !== '>' && s[k + 1] !== '=' && s[k - 1] !== '=' && s[k - 1] !== '!'; }
 function mcEq(s) {
-  for (let k = 0, depth = 0, q = ''; k < s.length; k++) {
+  for (let k = 0, depth = 0; k < s.length; k++) {
     const c = s[k];
-    if (q) { if (c === q) q = ''; } else if (c === '"' || c === "'") q = c;
-    else if ('<[({'.includes(c)) depth++; else if ('>])}'.includes(c)) depth = Math.max(0, depth - 1);
-    else if (c === '=' && depth === 0 && s[k + 1] !== '>' && s[k + 1] !== '=' && s[k - 1] !== '=' && s[k - 1] !== '!') return k;
+    if ('<[({'.includes(c)) depth++; else if ('>])}'.includes(c)) depth = Math.max(0, depth - 1);
+    else if (depth === 0 && mcIsEq(s, k)) return k;
   }
   return -1;
 }
@@ -183,14 +184,17 @@ function mcMember(raw, inEnum) {
     ret = ret.trim();
     if (ret.startsWith(':')) ret = ret.slice(1).trim();
     const parameters = [], dropped = []; // dropped: a parameter's default, which the model has no place for, reported
-    let depth = 0, from = 0, q = '';
+    // a , in a quoted default does not split (audit 42); a quote counts only after the parameter's = and when it closes,
+    // so the ' of a lifetime in `x : &'a str, y : &'a str` joins nothing (audit 43)
+    let depth = 0, from = 0, q = '', inDefault = false;
     for (let k = 0; k <= inner.length; k++) {
       const c = inner[k];
-      if (q && k < inner.length) { if (c === q) q = ''; continue; } // a , in a quoted default does not split (audit 42)
-      if (c === '"' || c === "'") q = c;
+      if (q && k < inner.length) { if (c === q) q = ''; continue; }
+      if (inDefault && (c === '"' || c === "'") && inner.indexOf(c, k + 1) >= 0) q = c;
       else if (c && '<[('.includes(c)) depth++; else if (c && '>])'.includes(c)) depth = Math.max(0, depth - 1); // Dict[str, int], (a, b) => c
+      else if (c && depth === 0 && mcIsEq(inner, k)) inDefault = true;
       else if (k === inner.length || (c === ',' && depth === 0)) {
-        let p = inner.slice(from, k).trim(); from = k + 1;
+        let p = inner.slice(from, k).trim(); from = k + 1; inDefault = false;
         if (!p) continue;
         const sp = p.search(/\s/), first = sp < 0 ? '' : p.slice(0, sp), direction = ['in', 'out', 'inout', 'return'].includes(first) ? first : undefined;
         if (direction) p = p.slice(sp).trim();

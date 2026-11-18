@@ -738,3 +738,19 @@ test('a parameter\'s = default (int amount = 0, x : int = 5) is cut off before i
   const kept = m.filter(x => x.id !== 'Account.on'); // a function type in a parameter is not written (as before audit 42)
   assert.deepEqual(read(write(r.model)).model.nodes[0].members.filter(x => x.id !== 'Account.on'), kept);
 });
+
+test('a Rust lifetime\'s \' (&\'a str) is not a quote: parameters split, an attribute keeps its default, and write then read keeps both (audit 43)', () => {
+  const r = read('classDiagram\nclass Parser {\n  +longest(x : &\'a str, y : &\'a str) &\'a str\n  +NAME : &\'static str = "app"\n  +h(a : don\'t, b : int)\n  +g(x : &\'a str = "it\'s", y : int)\n  -c : char = \'q\'\n}\n');
+  const m = r.model.nodes[0].members;
+  assert.deepEqual(m.map(x => [x.id, x.props]), [
+    ['Parser.longest', { visibility: 'public', parameters: [{ name: 'x', valueType: "&'a str" }, { name: 'y', valueType: "&'a str" }], returnType: "&'a str" }],
+    ['Parser.NAME', { visibility: 'public', valueType: "&'static str", default: '"app"' }],
+    ['Parser.h', { visibility: 'public', parameters: [{ name: 'a', valueType: "don't" }, { name: 'b', valueType: 'int' }] }],
+    ['Parser.g', { visibility: 'public', parameters: [{ name: 'x', valueType: "&'a str" }, { name: 'y', valueType: 'int' }] }],
+    ['Parser.c', { visibility: 'private', valueType: 'char', default: "'q'" }]]);
+  assert.deepEqual(r.report.map(x => `${x.line} ${x.status}: ${x.message}`), [
+    "6 approximated: Parser.g: parameter x's default \"it's\" is not kept, as a parameter has no default in the model"]);
+  const text = write(r.model);
+  assert.doesNotMatch(text, /not written/);
+  assert.deepEqual(read(text).model.nodes[0].members, m);
+});
