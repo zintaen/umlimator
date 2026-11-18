@@ -298,7 +298,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     const fr = framesNow().map(f => ({ ...f, s: span(nodes.filter(n => owns(f, n))) })).filter(f => f.s);
     const cards = nodes.map(n => ({ x: n.x, y: n.y, w: n.w, h: n.h + (tagged(n) ? 14 : 0), s: span([n]), n }));
     const wantX = {}, wantY = {}, want = (o, k, v) => { if (v > 0) o[k] = Math.max(o[k] || 0, Math.ceil(v)); };
-    const at = v => map ? Math.floor(v) : v; // the room goes after that row; a typed view's: after a half row too, so a card on row .5 leaves a box on 1.5
+    const at = v => v; // the room goes after that row, a half row too: a card on row .5 leaves a box on 1.5 (a map floored it, audit 42: the room went after row 1, and a card on 1.5 moved down with the box on 2.5, 6 px into it)
     // a column's room goes after a whole column k (gap(k) reads no other), and moves a column c in (k, k + 1) by c - k of it
     // a box beside a card it has more lines to than the card's side holds: the extras go to the card's top (bottom), each up
     // (down) a track of its own between the box and the card, which 32 px holds one of (audit 37: laid out right, four

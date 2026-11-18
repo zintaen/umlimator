@@ -738,3 +738,42 @@ test('audit 41: a box and something inside it is decided by what the box holds, 
     assert.doesNotThrow(() => routeAudit({ edges: [], byId: {}, nodes: [card('x', 0, 0)], families: [{ id: 'constructor', parent: '__proto__', x: 0, y: 0, w: 99, h: 99 }, { id: '__proto__', parent: 'constructor', x: 0, y: 0, w: 99, h: 99 }] }, 'v'));
   } finally { console.warn = keep; }
 });
+test('audit 42: a box keeps clear of a card half a row from it, on an auto layout and a pinned one', () => {
+  const issues = (m, v = 'v') => check(m, v).map(p => p.message).filter(s => / lies over |families .* overlap/.test(s));
+  // no pins: the box's room went after the whole row, moving the card on the half row above with the box, and the box's top ran 6 px into it
+  const m = { nodes: [['n0', 'Card n0 xxxx', 'db'], ['n1', 'Card n1 ', 'db'], ['n2', 'Card n2 ', 'board'], ['n3', 'Card n3 xxx', 'queue'], ['n4', 'Card n4 x', 'board'], ['n5', 'Card n5 ', 'db'],
+    ['n6', 'Card n6 xxxxxxxxx', 'service'], ['n7', 'Card n7 xxxxxx', 'agent'], ['n8', 'Card n8 xxxxxxx', 'board'], ['n9', 'Card n9 xxxxx', 'agent'], ['n10', 'Card n10 xxxxxxxxxxxxx', 'service']].map(([id, label, kind]) => ({ id, label, kind })),
+    edges: [['n5', 'n3'], ['n7', 'n3'], ['n4', 'n9'], ['n2', 'n5'], ['n1', 'n2'], ['n10', 'n1'], ['n2', 'n8'], ['n5', 'n10'], ['n10', 'n9'], ['n7', 'n6'], ['n7', 'n3'], ['n7', 'n0']].map(([from, to], k) => ({ id: 'e' + k, from, to })),
+    views: [{ id: 'v', nodeIds: ['n0', 'n1', 'n2', 'n3', 'n4', 'n5', 'n6', 'n7', 'n8', 'n9', 'n10'], containers: [{ id: 'A', label: 'Box A wwwwwwwwwwwww', nodeIds: ['n1'] }, { id: 'B', label: 'Box B', nodeIds: ['n2', 'n8'] }] }] };
+  const g = layout(m, 'v'), A = g.families.find(f => f.id === 'A'), n4 = g.nodes.find(n => n.id === 'n4');
+  assert.ok(n4.y + n4.h + 32 <= A.y, `box A at ${A.y}, card n4 ends at ${n4.y + n4.h}`); assert.deepEqual(issues(m), []);
+  // pinned: box X's cards on row .5, box Y's on rows 1 and 1.5 (c with no pin goes beside d)
+  const h = { nodes: ['a', 'b', 'c', 'd'].map(id => ({ id, label: 'Card ' + id })), edges: [],
+    views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd'], containers: [{ id: 'bx', label: 'Box X', nodeIds: ['a', 'b'] }, { id: 'by', label: 'Box Y', nodeIds: ['c', 'd'] }], layout: { a: [0, 0.5], b: [2, 0.5], d: [3, 1] } }] };
+  assert.deepEqual(issues(h), []);
+});
+test('audit 42: a card with no pin in no box, or the first placed of its box, goes clear of the other boxes', () => {
+  const issues = (m, v, re = / lies over |families .* overlap/) => check(m, v).map(p => p.message).filter(s => re.test(s));
+  // bike-share's system view: a card in no box, with a line from Riders, as a host adds one
+  const bike = read('../examples/bike-share.json'), sys = bike.views.find(v => v.id === 'system');
+  bike.nodes.push({ id: 'free', label: 'Free card', kind: 'service' }); sys.nodeIds.push('free'); bike.edges.push({ id: 'fe', from: 'riders', to: 'free' });
+  assert.deepEqual(issues(bike, 'system'), []);
+  // monorepo's boxed view with one card dragged: packages/ui's charts is placed before any card of its box
+  const mono = read('../examples/monorepo.json'); mono.views.find(v => v.id === 'boxed').layout = { 'apps/web': [5, 1] };
+  assert.deepEqual(issues(mono, 'boxed'), []);
+  // a box in a box: outer's b and e, which is in no box, have no pin
+  const nested = { nodes: ['a', 'b', 'c', 'd', 'e'].map(id => ({ id, label: 'Card ' + id })), edges: [{ id: 'e1', from: 'a', to: 'c' }, { id: 'e2', from: 'b', to: 'e' }],
+    views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd', 'e'], containers: [{ id: 'outer', label: 'Outer', nodeIds: ['a', 'b'] }, { id: 'inner', label: 'Inner', parent: 'outer', nodeIds: ['c'] }], layout: { a: [0, 0], c: [2, 0] } }] };
+  assert.deepEqual(issues(nested, 'v'), []);
+});
+test('audit 42: a card boxFit moves keeps its lines left to right where a slot does', () => {
+  const issues = (m, v, re) => check(m, v).map(p => p.message).filter(s => re.test(s));
+  // bookshop's checkout with queue's pin taken out: queue goes left of the worker it feeds, not under it
+  const shop = read('../examples/bookshop.json'); delete shop.views.find(v => v.id === 'checkout').layout.queue;
+  const g = layout(shop, 'checkout'), at = id => g.nodes.find(n => n.id === id);
+  assert.ok(at('queue').x + at('queue').w < at('worker').x); assert.deepEqual(issues(shop, 'checkout', /right-to-left| lies over /), []);
+  // bike-share: a card added to box apps with a line from Rider app goes where that line takes no detour round Ops console
+  const b2 = read('../examples/bike-share.json'), s2 = b2.views.find(v => v.id === 'system');
+  b2.nodes.push({ id: 'new0', label: 'New card 0', kind: 'service' }); s2.nodeIds.push('new0'); s2.containers.find(c => c.id === 'apps').nodeIds.push('new0'); b2.edges.push({ id: 'ne0', from: 'rider-app', to: 'new0' });
+  assert.deepEqual(issues(b2, 'system', /detour| lies over /), []);
+});
