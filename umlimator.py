@@ -1252,9 +1252,9 @@ def cmd_timelapse(a):
 
 
 def above_0(s):
-    """--scale, a number above 0 (not nan)."""
-    if not float(s) > 0:
-        raise argparse.ArgumentTypeError(f"{s!r} is not a number above 0")
+    """--scale, a finite number above 0 (not nan, not inf: audit 37)."""
+    if not (math.isfinite(float(s)) and float(s) > 0):
+        raise argparse.ArgumentTypeError(f"{s!r} is not a finite number above 0")
     return float(s)
 
 

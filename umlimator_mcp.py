@@ -459,7 +459,7 @@ listen();
 """
 
 # The page while no version of the model has rendered: why, and it draws the map once one does.
-WAITING = """<!doctype html><meta charset="utf-8"><meta name="umlimator-map" content="__MAP__"><title>The map does not render yet</title>
+WAITING = """<!doctype html><html lang="en"><meta charset="utf-8"><meta name="umlimator-map" content="__MAP__"><title>The map does not render yet</title>
 <body style="font: 15px/1.5 system-ui, sans-serif; margin: 3em auto; max-width: 46em; padding: 0 1em">
 <h1 style="font-size: 1.3em">The model does not render yet</h1><pre style="white-space: pre-wrap">__WHY__</pre>
 <p>This page draws the map once a version of the model renders.</p>
@@ -609,12 +609,23 @@ class Page(http.server.BaseHTTPRequestHandler):
 JSON_TYPES = {"string": str, "boolean": bool, "integer": int, "array": list, "object": dict}
 
 
+def whole(v):
+    """A JSON number with no fraction (2 or 2.0: JSON Schema counts both as an integer, audit 37) as an int, else None."""
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, int):
+        return v
+    return int(v) if isinstance(v, float) and v.is_integer() else None
+
+
 def fits(v, s):
     """Whether an argument is of the type its inputSchema gives (the subset these tools use)."""
     if "anyOf" in s:
         return any(fits(v, x) for x in s["anyOf"])
     t = s.get("type")
-    if not isinstance(v, JSON_TYPES.get(t, object)) or t == "integer" and (isinstance(v, bool) or v < s.get("minimum", v)):
+    if t == "integer":
+        return (n := whole(v)) is not None and n >= s.get("minimum", n)
+    if not isinstance(v, JSON_TYPES.get(t, object)):
         return False
     return t != "array" or all(fits(x, s.get("items", {})) for x in v)
 
@@ -651,6 +662,7 @@ def result(method, p):
                 raise Fail(f"{t['name']}: no argument {', '.join(map(str, extra))}; its arguments: {', '.join(props) or 'none'}")
             if wrong := [f"{k} is not {json.dumps({x: y for x, y in props[k].items() if x != 'description'})}" for k in a if k in props and not fits(a[k], props[k])]:
                 raise Fail(f"{t['name']}: {'; '.join(wrong)}")
+            a = {k: whole(v) if props[k].get("type") == "integer" else v for k, v in a.items()}  # 2.0 reaches the tool as 2
             said = call(t["name"], a)
         except Fail as e:
             return {"content": [{"type": "text", "text": str(e)}], "isError": True}
