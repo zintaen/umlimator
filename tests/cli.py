@@ -36,7 +36,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4})
 
 
 def ok(name, cond, info=""):
@@ -1955,5 +1955,32 @@ if part("audit 32"):
         left = sorted(f.name for f in (g / "out").iterdir()) if (g / "out").is_dir() else []
         ok("diff --base · a model only re-indented, its keys reordered, gets no page beside the one that changed (audit 32)",
            r.returncode == 0 and [x["file"] for x in json.loads(r.stdout or "[]")] == ["d.json"] and "c.html" not in left and "d.html" in left, (r.stdout[-300:], r.stderr[-300:], left))
+if part("audit 33"):
+    with tempfile.TemporaryDirectory() as tmp:
+        t = Path(tmp)
+        run = lambda *x, cwd=None: subprocess.run([sys.executable, str(ROOT / "umlimator.py"), *x], capture_output=True, text=True, cwd=cwd)
+        # audit 33: a model's files, hunks, areas, fileNotes and stats reached the time-lapse page, which embeds every version whole:
+        # only page_model dropped them, and timelapse never calls it. One check over every command that writes a page from a model
+        good = {"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "edges": [{"from": "a", "to": "b"}], "views": [{"id": "v", "nodeIds": ["a", "b"]}]}
+        eng = {"files": ["secret/SECRET-PATH.py"], "hunks": {"h": "SECRET-HUNK password=hunter2"}, "areas": [{"name": "SECRET-AREA"}],
+               "fileNotes": {"f": "SECRET-NOTE"}, "stats": {"k": "SECRET-STATS"}}
+        g = t / "repo"; g.mkdir()
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
+        sh("init", "-q")
+        (g / "m.json").write_text(json.dumps({**good, **eng})); sh("add", "."); sh("commit", "-qm", "one")
+        (g / "m.json").write_text(json.dumps({**good, "title": "u", **eng})); sh("add", "."); sh("commit", "-qm", "two")
+        (g / "before.json").write_text(json.dumps({**good, "nodes": good["nodes"][:1], "edges": [], "views": [{"id": "v", "nodeIds": ["a"]}], **eng}))
+        (g / "seen.json").write_text(json.dumps([{"from": "b", "to": "a", "count": 3}]))
+        rs = {"render": run("render", "m.json", "--out", "render.html", "--no-check", cwd=g),
+              "diff": run("diff", "before.json", "m.json", "--out", "diff.html", cwd=g),
+              "drift": run("drift", "m.json", "seen.json", "--out", "drift.html", cwd=g),
+              "timelapse": run("timelapse", "m.json", "--out", "timelapse.html", cwd=g),
+              "mcp": subprocess.run([sys.executable, "-c", "import sys; from pathlib import Path; sys.path.insert(0, sys.argv[1]); import umlimator_mcp as s; "
+                                     "s.MODEL, s.MAPID = Path(sys.argv[2]), 'm'; s.page(); Path(sys.argv[3]).write_text(s.drawn[1] or '', encoding='utf-8')",
+                                     str(ROOT), str(g / "m.json"), str(g / "mcp.html")], capture_output=True, text=True)}
+        pages = {k: (g / f"{k}.html").read_text(encoding="utf-8") if (g / f"{k}.html").is_file() else "" for k in rs}
+        ok("render, diff, drift, timelapse and the MCP page · a model's files, hunks, areas, fileNotes and stats reach no page (audit 33)",
+           all(r.returncode == 0 for r in rs.values()) and all(p and "SECRET" not in p and "hunter2" not in p for p in pages.values()),
+           ({k: r.stderr[-300:] for k, r in rs.items() if r.returncode}, [k for k, p in pages.items() if not p or "SECRET" in p]))
 part.done()
 sys.exit(1 if failed else 0)

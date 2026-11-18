@@ -47,9 +47,8 @@ kubectl get deploy,sts,svc,ing -A -o json > cluster.json && python3 umlimator.py
 ## How import reads a file
 
 - It tells the format from the content, then the extension; `--format` decides.
-- Groups, boundaries, subgraphs, networks and namespaces become boxes. Structurizr's views stay views, a card opening
-  the view below it; [`examples/clinic.json`](../../examples/clinic.json) is
-  [`examples/clinic.dsl`](../../examples/clinic.dsl), imported.
+- In a map, groups, boundaries, subgraphs, networks and namespaces become boxes. Structurizr's views stay views, a card opening the view below it; [`examples/clinic.json`](../../examples/clinic.json) is [`examples/clinic.dsl`](../../examples/clinic.dsl), imported.
+- The typed Mermaid readers draw no boxes for groups: a class diagram's namespaces become packages, and a flowchart's subgraphs (with `--typed`) and an `erDiagram`'s are not read. The cards in them are, and each group left out is listed on stderr.
 - A Structurizr, C4-PlantUML or Mermaid C4 source's people are people (`person`, or `user` outside the system), and its
   phone apps phones. A Structurizr workspace's `styles` give its elements their shapes (`shape Person`, `Cylinder`,
   `WebBrowser`, ...), in Structurizr's own order; a shape the map has no counterpart for is listed in `notImported`.

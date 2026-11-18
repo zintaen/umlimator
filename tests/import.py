@@ -139,6 +139,31 @@ for flat in ("", " !identifiers flat\n"):  # a model with one api: its bare alia
     one = 'workspace {\n' + flat + ' model {\n  u = person "User"\n  s = softwareSystem "S" {\n   api = container "API"\n  }\n  u -> api "Uses"\n }\n}\n'
     m, un = imp.read("structurizr", one, "x")
     ok(f"structurizr · {'!identifiers flat: ' if flat else ''}a bare alias one element holds names it from outside its block (audit 32)", (line(m, "u", "api") or {}).get("label") == "Uses" and un == [], un)
+# audit 33: a default view's scope is its card, never read as an identifier: with no views block, two systems each holding an
+# api container with components drew only the second's component view (a bare api two elements share names neither)
+dv = ('workspace {\n !identifiers hierarchical\n model {\n  u = person "User"\n  a = softwareSystem "Shop" {\n   api = container "Shop API" {\n'
+      '    orders = component "Orders"\n    pay = component "Payments"\n    orders -> pay "charges"\n   }\n   db = container "Shop DB"\n   api -> db "reads"\n  }\n'
+      '  b = softwareSystem "Billing" {\n   api = container "Billing API" {\n    inv = component "Invoices"\n   }\n  }\n  u -> a.api "buys"\n  a.api -> b.api "bills"\n }\n}\n')
+m, un = imp.read("structurizr", dv, "x")
+vs = {v["id"]: v for v in m["views"]}
+ok("structurizr · no views block: both api containers' component views are drawn, each opened by its card (audit 33)",
+   list(vs) == ["landscape", "a-containers", "api-components", "b-containers", "b-api-components"] and un == []
+   and {"orders", "pay"} <= set(vs["api-components"]["nodeIds"]) and card(m, "api").get("opensView") == "api-components"
+   and card(m, "b-api").get("opensView") == "b-api-components", (list(vs), un))
+# audit 33: a container or component outside a software system (Structurizr refuses it) wrote a model with no views, which
+# render refuses; with a person beside it, the card and its line were in no view and nothing said so
+m, un = imp.read("structurizr", 'workspace {\n model {\n  api = container "api"\n  db = container "db"\n  api -> db "reads"\n }\n}\n', "x")
+m2, un2 = imp.read("structurizr", 'workspace {\n model {\n  u = person "U"\n  api = container "api" {\n   c = component "c"\n  }\n  w = component "w"\n  u -> api "uses"\n }\n}\n', "x")
+ok("structurizr · a container or component in no software system is said and not imported; no view is left with nothing said (audit 33)",
+   m["nodes"] == [] and (3, "container api is in no software system: not imported (nor what it holds)") in un and (4, "container db is in no software system: not imported (nor what it holds)") in un
+   and (None, "systemlandscape view: shows nothing, so it is left out") in un
+   and [n["id"] for n in m2["nodes"]] == ["u"] and [v["nodeIds"] for v in m2["views"]] == [["u"]] and (7, "component w is in no container: not imported (nor what it holds)") in un2
+   and (8, "u -> api: api is not an element") in un2, (un, un2))
+# audit 33: a Mermaid C4Dynamic or C4Deployment is a C4 diagram umlimator does not read, and is said as one
+said = [imp.read("mermaid", f'{h}\n  title T\n  Container(c1, "A")\n  Container(c2, "B")\n  Rel(c1, c2, "Reads")\n', "x")[1] for h in ("C4Dynamic", "C4Deployment")]
+ok("mermaid · C4Dynamic and C4Deployment are named as Mermaid C4 diagrams that are not read, not as 'not a C4 diagram' (audit 33)",
+   said == [[(1, f"{h}: a Mermaid C4 diagram umlimator does not read (C4Context, C4Container and C4Component are): nothing imported")] for h in ("C4Dynamic", "C4Deployment")]
+   and imp.detect("x.txt", "C4Dynamic\n") == "mermaid", said)
 m, un = imp.read("mermaid", 'flowchart LR\n  A:::warn --> B\n  D & F:::y --> E:::x\n  A -->|"yes | no"| C\n  A -->|plain| D\n', "x")
 ok("mermaid · a :::class is said, as the typed reader says it; a quoted pipe text may hold | (audit 20)",
    un == [(2, "A:::warn: a style class is not imported"), (3, "F:::y: a style class is not imported"), (3, "E:::x: a style class is not imported")]
@@ -261,9 +286,10 @@ ok("hostile · a line of 400000 ;\" pairs splits in linear time, and ; outside q
 t0 = time.time()
 ok("hostile · detect() reads 400000 unclosed /* and 1000000 blank lines in linear time",
    imp.detect("x", "/*" * 400000) is None and imp.detect("x", "\n" * 1000000 + "x") is None and time.time() - t0 < 1, time.time() - t0)
-m, un, dt = quick("structurizr", "workspace {\nmodel {\n" + 'abcdefghij = container "x" {\n' * 30000 + "}\n" * 30000 + "}\n}\n")
+# in a software system: a container outside one is not imported (audit 33)
+m, un, dt = quick("structurizr", "workspace {\nmodel {\ns = softwareSystem \"s\" {\n" + 'abcdefghij = container "x" {\n' * 30000 + "}\n" * 30001 + "}\n}\n")
 ok("hostile · 30000 nested DSL elements are read flat past 64 deep, short ids, in linear time",
-   len(m["nodes"]) == 30000 and max(len(n["id"]) for n in m["nodes"]) < 1000 and dt < 5
+   len(m["nodes"]) == 30001 and max(len(n["id"]) for n in m["nodes"]) < 1000 and dt < 5
    and (67, "x is nested over 64 deep: it and what it holds are read flat from there") in un, (dt, un[:2]))
 _, _, dt = quick("kubernetes", json.dumps({"kind": "Ingress", "metadata": {"name": "i"}, "spec": {"rules": [{"host": f"h{i}", "http": {"paths": [{"path": "/"}]}} for i in range(18000)]}}))
 ok("hostile · an Ingress of 18000 rules reads in linear time (its hosts counted once)", dt < 3, dt)
