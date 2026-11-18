@@ -26,7 +26,7 @@ readers are the module's, in src/readers/).
 BPMN XML is read and written by the module's adapter in Node through bpmn-moddle, which umlimator never installs: `npm
 install bpmn-moddle@10.3.1` in the working folder, or name its folder with --moddle or UMLIMATOR_BPMN_MODDLE.
 """
-import argparse, atexit, base64, contextlib, hashlib, html, io, json, math, os, re, shutil, signal, struct, subprocess, sys, tempfile, unicodedata, urllib.parse, urllib.request, zipfile, zlib
+import argparse, atexit, base64, contextlib, hashlib, html, io, json, math, os, re, shutil, signal, struct, subprocess, sys, tempfile, urllib.parse, urllib.request, zipfile, zlib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -929,20 +929,6 @@ def model_of(text, where=None):
     return (m if isinstance(m, dict) and isinstance(m.get("nodes"), list) and isinstance(m.get("views"), list) else None), None
 
 
-def spelt(top, name):
-    """Whether each part of name, a path below top as git names it, is in its folder under that exact spelling."""
-    nfc = lambda x: unicodedata.normalize("NFC", x)  # a disk may store a name decomposed where git gives it composed
-    at = Path(top)
-    for part in Path(name).parts:
-        try:
-            if nfc(part) not in {nfc(x) for x in os.listdir(at)}:
-                return False
-        except OSError:
-            return False
-        at = at / part
-    return True
-
-
 def diff_since(a):
     git = lambda *x, env=None, put=None: subprocess.run(["git", *x], capture_output=True, text=True, env=env, input=put)
     # a new model not yet added to git is a working-tree change too, named from the top as diff's are (audit 10)
@@ -973,8 +959,9 @@ def diff_since(a):
         sys.exit(changed.stderr.strip())
 
     def name_status(out):
-        """git diff --name-status -z's rows as (each path a row names, newest last; {new path: old} for each rename)."""
-        rows, moved, names, i = out.split("\0"), {}, [], 0
+        """git diff --name-status -z's rows as (each path a row names, newest last; {new path: old} for each rename; the
+        paths a D row names, deleted from the working tree)."""
+        rows, moved, names, gone, i = out.split("\0"), {}, [], set(), 0
         while i + 1 < len(rows):
             if rows[i][:1] in ("R", "C") and i + 2 < len(rows):
                 if rows[i][:1] == "R":
@@ -983,9 +970,11 @@ def diff_since(a):
                 i += 3
             else:
                 names.append(rows[i + 1])
+                if rows[i][:1] == "D":
+                    gone.add(rows[i + 1])
                 i += 2
-        return names, moved
-    names, moved = name_status(changed.stdout)  # moved: each new path, the old path its version at --base is read from
+        return names, moved, gone
+    names, moved, gone = name_status(changed.stdout)  # moved: each new path, the old path its version at --base is read from
     if every is not None and every.returncode == 0:
         # the whole diff's pairing wins over the pathspec's, which pairs only among the paths it takes in: a model moved in
         # and another moved out in one change read as one moved from the other (audit 31). A pair the whole diff does not
@@ -999,6 +988,7 @@ def diff_since(a):
             elif new_path in moved and paired.get(moved[new_path], new_path) != new_path:
                 del moved[new_path]
         names += sorted(olds - set(moved.values()))
+        gone |= olds - set(moved.values())  # a model moved out of the folder: gone from it
     out = Path(a.out)
     if out.exists() and not out.is_dir():
         sys.exit(f"diff --base: --out {out} is a file: name a folder for the pages and summary.md")
@@ -1009,6 +999,7 @@ def diff_since(a):
     # a path that is itself a symbolic link never counts, even one whose target is gone (a dangling link: written through)
     inside = lambda p, folder=False: not p.is_symlink() and (q := p.parent if folder else p).exists() and (q.is_dir() or not folder) and q.resolve().is_relative_to(top.resolve()) \
         and not any(x.is_symlink() for x in [q, *q.parents] if x.is_relative_to(top) and x != top)
+    untracked = set(new.stdout.split("\0")) - {""}  # a D row's path a new, untracked file holds again: read from the disk
     for name in dict.fromkeys(filter(None, names + ([] if env else new.stdout.split("\0")))):  # with the copy, diff named the new ones
         was = moved.get(name, name)
         # bytes: a file need not be UTF-8. cat-file, as git show reads a rev:path it cannot find as a pathspec, so a new
@@ -1025,9 +1016,11 @@ def diff_since(a):
             done.append({"file": name, "error": why})
             md += [f"**{fname}**: cannot be read: {why}", ""]
             continue
-        # its version now: the file of that exact name, each folder and the file named in the case git gave, so on a disk
-        # that ignores case a model git says was deleted (Map.json) is not read from the one that replaced it (map.json, audit 41)
-        texts = (old.stdout if old.returncode == 0 else None, (top / name).read_bytes() if (top / name).is_file() and spelt(top, name) else None)
+        # its version now: the file, unless git says it was deleted (a D row), so on a disk that ignores case a model git says
+        # was deleted (Map.json) is not read from the one that replaced it (map.json, audit 41). Absence is git's word, not the
+        # disk's spelling: a model git still tracks as modified (M Map.json) after a plain mv to map.json, or in a folder the
+        # checkout spells Docs/ where git says docs/, is read as edited (audit 42)
+        texts = (old.stdout if old.returncode == 0 else None, (top / name).read_bytes() if (top / name).is_file() and not (name in gone and name not in untracked) else None)
         (before, e1), (after, e2) = model_of(texts[0], f"{name} at {a.base}"), model_of(texts[1], name)
         # a model that no longer parses (a conflict marker, a cut) is a change to say, not a file to skip; other JSON that
         # does not parse (a tsconfig.json with comments) is not a model, and neither is a file not named .json (a guide in
