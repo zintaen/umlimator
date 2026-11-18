@@ -332,6 +332,7 @@ function writeMermaidRequirement(model, viewId) {
   // a field's value: bare when Mermaid's unquoted string reads it (a word character first), else in quotes; one holding a
   // quote or a line break, or empty (Mermaid's quotes hold no empty string), is not written
   const value = (id, what, v) => {
+    v = mermaidText(v); // a number or true as its text, as the view draws it (audit 33)
     if (v === '') { lose(id, `${what} "", which Mermaid cannot write empty`); return null; }
     if (typeof v === 'string' && !nl(v) && !v.includes('"')) return /^\w[\w./]*$/.test(v) ? v : `"${v}"`;
     lose(id, `${what} ${said(v)}, which Mermaid's quotes cannot hold`);
@@ -379,9 +380,10 @@ function writeMermaidRequirement(model, viewId) {
       for (const s of arr(p.stereotypes)) if (s !== kinds[0]) lose(n.id, `stereotype ${said(s)}`);
       if (p.stereotypes !== undefined && !Array.isArray(p.stereotypes)) lose(n.id, 'stereotypes, which are not a list');
       if (p.reqId !== undefined) { const v = value(n.id, 'reqId', p.reqId); if (v !== null) body.push(`id: ${v}`); }
-      if (typeof p.text === 'string') {
-        const clean = p.text.replace(/["\r\n]/g, '');
-        if (clean !== p.text || clean === '') head.push(`%% text: ${JSON.stringify(p.text)}`);
+      const text = mermaidText(p.text); // a number or true as its text, as the view draws it (audit 33)
+      if (typeof text === 'string') {
+        const clean = text.replace(/["\r\n]/g, '');
+        if (clean !== text || clean === '') head.push(`%% text: ${JSON.stringify(text)}`);
         if (clean !== '') body.push(`text: "${clean}"`); // Mermaid's quotes hold no empty string: %% text: carries it
       } else if (p.text !== undefined) lose(n.id, `text ${said(p.text)}, which is not text`);
       for (const [prop, key, words] of [['risk', 'risk', MQ_RISK], ['verifyMethod', 'verifymethod', MQ_METHOD]]) if (p[prop] !== undefined) {
