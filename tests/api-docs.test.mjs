@@ -155,3 +155,15 @@ test('the edges row of model-and-schema.md names every typed view that does not 
   assert.ok(left.includes('uml.state-machine') && left.length > 5, left.join(', '));
   assert.deepEqual(left.filter(d => !word[d] || !row.includes(word[d])), [], 'a view that leaves the line out, which the row does not name');
 });
+
+test('every model field the map-repo skill tells the agent to set is in one of the two references it names for every field (audit 36)', () => {
+  const skill = read(join(root, 'plugins/umlimator/skills/map-repo/SKILL.md'));
+  const schema = read(join(root, 'engine/references/schema.md')), types = read(join(root, 'lib/umlimator.d.ts'));
+  assert.match(skill, /Every field: `engine\/references\/schema\.md` \(Map model\) and `lib\/umlimator\.d\.ts`/);
+  const block = skill.match(/```jsonc\n([\s\S]*?)```/)[1];
+  const rows = skill.split('\n').filter(l => l.startsWith('| ')).map(l => l.split(' | ').slice(1).join(' | '));
+  const fields = new Set([...block.matchAll(/"(\w+)":/g), ...rows.flatMap(r => [...r.matchAll(/`"?([a-z]\w*)"?(?::[^`]*)?`/gi)])].map(m => m[1]));
+  for (const f of ['fromSide', 'toSide', 'gap', 'rgap', 'loop', 'layout']) assert.ok(fields.has(f), `the skill no longer names ${f}`);
+  const named = f => new RegExp(`\`${f}\\b|"${f}"`).test(schema) || new RegExp(`\\b${f}\\??:`).test(types);
+  assert.deepEqual([...fields].filter(f => !named(f)), [], 'fields the skill sets that neither schema.md nor lib/umlimator.d.ts names');
+});

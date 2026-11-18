@@ -36,7 +36,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3})
 
 
 def ok(name, cond, info=""):
@@ -2072,5 +2072,48 @@ if part("audit 35"):
     gone = u.sketch(u.js("diff", after, before)["model"])
     ok("diff --base · a removed line from a card to itself is sketched dashed (audit 35)",
        '  n0 -.->|"tick"| n0' in gone and "  linkStyle 0 stroke:#cf222e,stroke-width:2px" in gone, gone)
+if part("audit 36"):
+    with tempfile.TemporaryDirectory() as tmp:
+        t = Path(tmp)
+        run = lambda *x, cwd=None: subprocess.run([sys.executable, str(ROOT / "umlimator.py"), *x], capture_output=True, text=True, cwd=cwd)
+        # audit 36: upstream_view listed a schema version 2 model's members with a recursive walk, so members nested 1,000
+        # deep ended render (and diff, drift, the MCP page) in a RecursionError traceback; the core draws them since round 35
+        def deep(n, version):
+            m = {"id": f"m{n}", "label": "<img src=//e.example/t.png>"}
+            for i in range(n - 1, 0, -1):
+                m = {"id": f"m{i}", "label": f"m{i}", "members": [m, {"id": f"k{i}"}, 7, None]}
+            return {**({"schemaVersion": 2} if version == 2 else {}), "title": "deep", "nodes": [{"id": "a", "label": "A", "members": [m]}, {"id": "b", "label": "B"}],
+                    "edges": [{"from": "a", "to": "b"}, *([{"from": f"m{n}", "to": "b"}] if version == 2 else [])], "views": [{"id": "v", "title": "V", "nodeIds": ["a", "b"]}]}
+        rs = {}
+        for v in (1, 2):
+            (t / f"deep{v}.json").write_text(json.dumps(deep(2500, v)))
+            rs[v] = run("render", str(t / f"deep{v}.json"), "--out", str(t / f"deep{v}.html"), "--no-check")
+        page = (t / "deep2.html").read_text(encoding="utf-8") if (t / "deep2.html").is_file() else ""
+        ok("render · a schema version 2 model whose members nest 2,500 deep is drawn, as a version-1 one is, with no traceback (audit 36)",
+           all(r.returncode == 0 and "Traceback" not in r.stderr for r in rs.values()) and "m2500" in page and "<img src=//e.example" not in page,
+           {k: r.stderr[-400:] for k, r in rs.items()})
+        seen = [n["id"] for n in u.upstream_view({"schemaVersion": 2, "nodes": [{"id": "a", "members": [{"id": "a.1", "members": [{"id": "a.1.x"}]}, {"id": "a.2"}, "s", {"id": 3}]},
+                                                                         {"id": "b", "members": [{"id": "b.1"}]}], "views": []})["nodes"]]
+        ok("render · upstream's copy lists members in document order, at any depth, skipping ones with no string id (audit 36)",
+           seen == ["a", "b", "a.1", "a.1.x", "a.2", "b.1"], seen)
+        # audit 36: diff --base with a folder pathspec read a changed Markdown guide that names "nodes" and "views" as a model
+        # that no longer parses: the Action said a model was broken and commented on the pull request
+        g = t / "repo"; (g / "docs").mkdir(parents=True)
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
+        sh("init", "-q")
+        (g / "docs" / "map.json").write_text((ROOT / "examples" / "bookshop.json").read_text(encoding="utf-8"))
+        (g / "docs" / "model.md").write_text('# Model\n\nA model has `"nodes"` and `"views"`: <img src=//e.example/t.png>\n')
+        (g / "docs" / "notes.txt").write_text('{"nodes": [], "views": [')
+        (g / "docs" / "cut.JSON").write_text('{"nodes": [], "views": []}')
+        sh("add", "."); sh("commit", "-qm", "one")
+        (g / "docs" / "model.md").write_text('# Model\n\n`"nodes"`, `"edges"` and `"views"` <<<<<<< HEAD\n')
+        (g / "docs" / "notes.txt").write_text('{"nodes": [], "views": [], ')
+        (g / "docs" / "cut.JSON").write_text('<<<<<<< HEAD\n{"nodes": [], "views": []}')
+        r = run("diff", "--base", "HEAD", "--out", str(t / "pr"), "--models", "docs", cwd=g)
+        said = json.loads(r.stdout) if r.returncode == 0 else None
+        md = (t / "pr" / "summary.md").read_text(encoding="utf-8") if (t / "pr" / "summary.md").is_file() else ""
+        ok("diff --base · a changed file not named .json under a folder pathspec is no model that cannot be read; a cut .JSON model still is (audit 36)",
+           said is not None and [x["file"] for x in said] == ["docs/cut.JSON"] and "error" in said[0] and "model.md" not in md and "notes.txt" not in md
+           and "e.example" not in md, (r.stderr[-400:], said, md))
 part.done()
 sys.exit(1 if failed else 0)
