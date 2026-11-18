@@ -19,7 +19,7 @@ import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort, mermaidText } 
    writeMermaidRequirement(model, viewId?) -> text: one sysml.requirement view as Mermaid. What Mermaid cannot carry is kept
    in the comments above, and what the subset leaves out is named as `%% not written: <id> (<type>)` or `%% not written:
    <id>: <what>` (a comment and its link, a package, a parent that is not written, a relationship or a containment whose
-   ends the reader refuses, audit 34).
+   ends the reader refuses, audit 34, a containment that would close a cycle, audit 35).
 
    How the requirement diagram maps onto Mermaid's text, both ways (§12.1):
    - `requirement name { id: …, text: …, risk: …, verifymethod: … }` and its five other kinds a sysml.Requirement, a kind
@@ -408,11 +408,30 @@ function writeMermaidRequirement(model, viewId) {
   const def = id => ({ kind: byId.get(id).type === 'sysml.Requirement' ? 'requirement' : 'element' });
   const refused = (word, from, to) => { const rule = MQ_RULE.get(word); return rule && !rule[2](def(from), def(to)) ? `${rule[1]} (${rule[0]})` : ''; };
   // containment: each written element's parent, when it is written
+  const own = new Map();
   for (const n of nodes) if (n.parent != null) {
     const no = names.has(n.parent) && refused('contains', n.parent, n.id);
     if (no) lose(n.id, `parent ${said(n.parent)}: ${no}`);
-    else if (names.has(n.parent)) out.push(`  ${tok(n.parent)} - contains -> ${tok(n.id)}`);
+    else if (names.has(n.parent)) own.set(n.id, { n, k: own.size });
     else lose(n.id, `parent ${said(n.parent)}, which is not written`);
+  }
+  // a cycle of parents (one a parent of itself too) loses its last contains in the text, as the reader drops it: named, not
+  // written, so the text reads back with nothing skipped (audit 35); one colouring pass, linear, as the reader's
+  const colour = new Map(), cut = new Set();
+  for (const id of own.keys()) {
+    const path = [];
+    let x = id;
+    while (own.has(x) && !colour.has(x)) { colour.set(x, 1); path.push(x); x = own.get(x).n.parent; }
+    if (colour.get(x) === 1) {
+      let last = x;
+      for (let k = path.indexOf(x); k < path.length; k++) if (own.get(path[k]).k > own.get(last).k) last = path[k];
+      cut.add(last);
+    }
+    for (const p of path) colour.set(p, 2);
+  }
+  for (const [id, { n }] of own) {
+    if (cut.has(id)) lose(id, `parent ${said(n.parent)}: it would close a cycle of containment`);
+    else out.push(`  ${tok(n.parent)} - contains -> ${tok(id)}`);
   }
 
   const byEdge = new Map();

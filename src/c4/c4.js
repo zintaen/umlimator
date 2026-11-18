@@ -244,8 +244,9 @@ function c4Problems(model, view) {
   if (!K) return out;
   // the view's rules (§5.1)
   const ids = C4_ARR(view.nodeIds), S = C4_SUBJECT[K], subj = view.subject != null ? I.at.get(view.subject) : null;
+  // none or not shown: a warning; one of the wrong kind, or naming no element: an error, as on a container or component view (audit 35)
   if (K === 'context' && !(subj && subj.type === S && ids.includes(view.subject)))
-    say('warning', 'c4-subject', `${at}.subject`, [view.subject], view.subject == null ? 'a context view names the software system it is about as its subject' : `${q(view.subject)} is ${!subj || subj.type !== S ? 'not a software system' : 'not shown'}: a context view shows its software system`);
+    say(view.subject == null || (subj && subj.type === S) ? 'warning' : 'error', 'c4-subject', `${at}.subject`, [view.subject], view.subject == null ? 'a context view names the software system it is about as its subject' : `${q(view.subject)} is ${!subj || subj.type !== S ? 'not a software system' : 'not shown'}: a context view shows its software system`);
   // none (its subject deleted, as composite structure's subject-shown, audit 18): a warning; one of the wrong kind: an error
   if ((K === 'container' || K === 'component') && !(subj && subj.type === S))
     say(view.subject == null ? 'warning' : 'error', 'c4-subject', `${at}.subject`, [view.subject], `${view.subject == null ? 'the view has no subject' : I.at.has(view.subject) ? `its subject ${q(view.subject)} is ${c4A(kind(view.subject))}` : `its subject ${q(view.subject)} names no element`}: a ${K} view zooms into ${c4A(C4_WORD[S].toLowerCase())}`);

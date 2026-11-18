@@ -318,6 +318,16 @@ test('validators: 23-c4.json breaks no rule; each rule fails on a model that bre
   assert.deepEqual(ours(er), []);
 });
 
+test('c4-subject on a context view: none or not shown a warning; a subject of the wrong kind or naming no element an error, as on a container view (audit 35)', () => {
+  const lv = f => { const m = structuredClone(C4); f(m); return validate(m).filter(p => p.rule === 'c4-subject').map(p => [p.level, p.path]); };
+  const cx = `views[${V('c4-context')}].subject`, ct = `views[${V('c4-containers')}].subject`;
+  assert.deepEqual(lv(m => { m.views[V('c4-context')].subject = 'c4-shopper'; }), [['error', cx]], 'a person: the wrong kind');
+  assert.deepEqual(lv(m => { m.views[V('c4-context')].subject = 'c4-shopper'; m.views[V('c4-containers')].subject = 'c4-shopper'; }), [['error', cx], ['error', ct]], 'the same level on both views');
+  assert.deepEqual(lv(m => { m.views[V('c4-context')].subject = 'gone'; }), [['error', cx]], 'naming no element');
+  assert.deepEqual(lv(m => { delete m.views[V('c4-context')].subject; }), [['warning', cx]], 'none: still a warning');
+  assert.deepEqual(lv(m => { m.views[V('c4-context')].nodeIds = m.views[V('c4-context')].nodeIds.filter(id => id !== 'c4-bookshop'); }), [['warning', cx]], 'not shown: still a warning');
+});
+
 // ---- editing (§6.1, §7.5)
 test('D (§6.1): a software system that opens no view makes its container view, a container its component view: one transaction, laid out clean, undone byte-identical', () => {
   const m0 = structuredClone(C4); delete m0.nodes.find(n => n.id === 'c4-bookshop').opensView; delete m0.nodes.find(n => n.id === 'c4-api').opensView;

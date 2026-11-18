@@ -295,7 +295,7 @@ c4model.com's diagrams, checked by the C4 type's `validate(model, view)`. "Error
 | View | Its `subject` | May show | Rule, level |
 |---|---|---|---|
 | `c4.landscape` | none | people, software systems | `c4-level`, error for anything else |
-| `c4.context` | a software system | people, software systems | `c4-level`, error for a container, component, node or instance; `c4-subject`, warning when the subject is missing or not shown |
+| `c4.context` | a software system | people, software systems | `c4-level`, error for a container, component, node or instance; `c4-subject`, warning when the subject is missing or not shown, error when it is not a software system (audit 35) |
 | `c4.container` | a software system | the subject (its boundary), its containers, people, other software systems, other systems' containers | `c4-level`, error for a component, node or instance; `c4-subject`, error when the subject is not a software system, warning when there is none (audit 18) |
 | `c4.component` | a container | the subject (its boundary), its components, containers, people, software systems | `c4-level`, error for another container's component, a node or an instance; `c4-subject`, error when not a container, warning when there is none (audit 18) |
 | `c4.dynamic` | a software system, a container, or none | at the subject's level, as the container or component view; with none, as the context view | `c4-level` as for that level; `c4-steps`, error for a step whose relationship is not in the model, warning for a step whose ends are not shown |
