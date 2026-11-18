@@ -31,6 +31,14 @@ function packageProblems(model, view) {
   return out;
 }
 
+// connect: a package import or merge import-ends calls an error is refused, in its words, as the profile view's (audit 38)
+function packageConnect(model, view, from, to, at, line) {
+  const t = line && typeof line === 'object' ? line.type : null; if (t !== 'uml.PackageImport' && t !== 'uml.PackageMerge') return null;
+  const ty = new Map((Array.isArray(model && model.nodes) ? model.nodes : []).filter(n => n && typeof n === 'object' && typeof n.id === 'string').map(n => [n.id, n.type]));
+  const pk = id => OWN_BOXES.includes(ty.get(id)); // a profile is a package
+  return pk(from) && pk(to) && from !== to ? null : { error: `A package ${t === 'uml.PackageImport' ? 'import' : 'merge'} runs from a package to another package` };
+}
+
 const PACKAGE_TYPE = registerDiagramType('uml.package', {
   untyped: 'Class', untypedAs: 'uml.Class', // an element of no type (or ""): a class, as drawn, named, edited and judged (audit 30)
   title: 'package diagram',
@@ -47,7 +55,7 @@ const PACKAGE_TYPE = registerDiagramType('uml.package', {
   validate: (model, view) => [...classProblems(model, view), ...packageProblems(model, view), ...ownerProblems(model, view, drawnLines(model, view, PACKAGE_LINES).lines)],
   rules: { ...RULES, ...OWNER_RULES, ...PACKAGE_RULES },
   describe: describeAs(PACKAGE_LOOK),
-  edits: { rename: lineRename(lineLabel) },
+  edits: { connect: packageConnect, rename: lineRename(lineLabel) },
 });
 
 export { PACKAGE_TYPE, PACKAGE_RULES, packageProblems };

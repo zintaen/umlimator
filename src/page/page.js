@@ -1,4 +1,4 @@
-import { elementCount, hintHTML, hinter, pieces, shortT } from '../canvas/pieces.js';
+import { elementCount, viewCount, hintHTML, hinter, pieces, shortT } from '../canvas/pieces.js';
 import { pngOf, reducedMotion, render } from '../canvas/render.js';
 import { esc, inline } from '../core/text.js';
 import { mapContext } from '../map/context.js';
@@ -132,17 +132,18 @@ export function mountPage(container, model, options = {}) {
     renderPill(parent); pc.chrome();
     document.title = `${labelOr(v.title, v.id)} · ${labelOr(D.title, 'map')}`;
   }
+  const nodesWord = n => n === 1 ? '1 node' : n + ' nodes'; // "1 node", not "1 nodes" (audit 38)
   function renderPill(parent) {
     const v = V[cur], mainSteps = v.mainSteps || v.render === 'process', seq = v.render === 'sequence', ve = viewEdges(v), L = planCache[cur] && planCache[cur].hub ? planCache[cur] : null;
     const depth = Math.max(...views.map(x => chain(x.id).length));
     const nn = elementCount(v, geo) ?? geo.nodes.length; // a typed view: its elements, not its layout's pieces (audit 37)
-    $('m-vpill').innerHTML = `<button class="pill" id="m-pillbtn" aria-expanded="false" aria-controls="m-vpop" title="About this view (i)"><b>${esc(shortT(labelOr(v.title, v.id)))}</b><span class="n">${mainSteps ? (v.stepIds || v.nodeIds || []).length + ' steps' : seq ? ve.length + ' steps' : nn + ' nodes'}</span><span class="kbd">i</span></button>
+    $('m-vpill').innerHTML = `<button class="pill" id="m-pillbtn" aria-expanded="false" aria-controls="m-vpop" title="About this view (i)"><b>${esc(shortT(labelOr(v.title, v.id)))}</b><span class="n">${mainSteps ? (v.stepIds || v.nodeIds || []).length + ' steps' : seq ? ve.length + ' steps' : nodesWord(nn)}</span><span class="kbd">i</span></button>
       ${mainSteps && (v.note || v.caption) ? `<p class="view-note">${inline(v.note || v.caption)}</p>` : ''}
       <div class="vpop" id="m-vpop" hidden>${parent ? `<button class="back" data-v="${esc(parent)}">← ${esc(shortT(labelOr(V[parent].title, parent)))}</button>` : ''}
         <h2>${esc(labelOr(v.title, v.id))}</h2>${v.caption || v.description ? `<p>${inline(v.caption || v.description)}</p>` : ''}
         ${L ? `<div class="vlanes">${L.lanes.map((l, i) => `${i ? '<i>→</i>' : ''}<span><em>${i + 1}</em>${esc(l.title)} <small>${l.ids.length}</small></span>`).join('')}</div>` : ''}
         ${seq ? `<ol>${ve.map(e => `<li title="${esc((N[e.from] || {}).label || e.from)} → ${esc((N[e.to] || {}).label || e.to)}">${esc(e.label || (N[e.to] || {}).label || e.to)}</li>`).join('')}</ol>` : ''}
-        <div class="vm">${nn} nodes · ${geo.edges.length} wires${views.length > 1 ? ` · level ${chain(cur).length} of ${depth}` : ''}</div></div>`;
+        <div class="vm">${nodesWord(nn)} · ${geo.edges.length} wires${views.length > 1 ? ` · level ${chain(cur).length} of ${depth}` : ''}</div></div>`;
   }
   const togglePill = force => { const b = $('m-pillbtn'), p = $('m-vpop'); if (!b) return; const on = force != null ? force : p.hidden; p.hidden = !on; b.setAttribute('aria-expanded', on); };
   const setTree = pc.setTree;
@@ -327,7 +328,7 @@ export function mountPage(container, model, options = {}) {
       if (grp !== last) { html += `<div class="gt">${grp}</div>`; last = grp; }
       if (h.t === 'n') { const k = kindOf(h.n.kind, true), vs = viewsWith(h.n.id), here = drawnHere(h.n.id);
         html += `<button class="fr${i === hi ? ' on' : ''}" role="option" id="m-o${i}" aria-selected="${i === hi}" data-i="${i}"><i style="background:var(--um-${KIND[k][0]})"></i><b>${mark(h.n.label || h.n.id, words)}</b><span>${esc(h.n.type ? wordOf(D, vs[0], h.n.id, h.n.type) : KIND[k][1])} · ${here ? 'this view' : esc(vs.map(v => shortT(labelOr(v.title, v.id))).slice(0, 2).join(', ') || 'no view')}</span></button>`; }
-      else html += `<button class="fr${i === hi ? ' on' : ''}" role="option" id="m-o${i}" aria-selected="${i === hi}" data-i="${i}"><i style="background:var(--um-accent)"></i><b>${mark(labelOr(h.v.title, h.v.id), words)}</b><span>${(h.v.nodeIds || []).length} nodes${h.v.id === cur ? ' · here' : ''}</span></button>`;
+      else html += `<button class="fr${i === hi ? ' on' : ''}" role="option" id="m-o${i}" aria-selected="${i === hi}" data-i="${i}"><i style="background:var(--um-accent)"></i><b>${mark(labelOr(h.v.title, h.v.id), words)}</b><span>${nodesWord(viewCount(X.ctx(), h.v, cur, geo))}${h.v.id === cur ? ' · here' : ''}</span></button>`;
     });
     res.innerHTML = html;
     const on = res.querySelector('.fr.on'); on && on.scrollIntoView({ block: 'nearest' });

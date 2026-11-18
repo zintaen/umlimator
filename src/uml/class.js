@@ -402,8 +402,14 @@ function closesCycle(model, view, type, from, to, word = 'a generalization', sai
   const q = id => JSON.stringify(nameOfEl((at.get(id) || { x: { id } }).x));
   return { error: `${word[0].toUpperCase()}${word.slice(1)} may not close a cycle: ${[from, ...path].map(q).join(' → ')} would ${said}` };
 }
-// connect on a class view: a generalization that would close a cycle is refused (generalization-cycle); else the default
-const classConnect = (model, view, from, to, at, line) => (UML_OBJ(line) && line.type === 'uml.Generalization' ? closesCycle(model, view, line.type, from, to) : null);
+// connect on a class view: a generalization that would close a cycle is refused (generalization-cycle), and a realization
+// realization-target calls an error, in its words, as the component view's (audit 38); else the default
+function classConnect(model, view, from, to, at, line) {
+  const t = UML_OBJ(line) ? line.type : null;
+  if (t === 'uml.InterfaceRealization') { const I = classIndex(UML_OBJ(model) ? model : {}), ty = id => { const r = I.get(id); return !r ? undefined : r.kind === 'node' && !r.x.type ? 'uml.Class' : r.x.type; };
+    if (ty(to) !== 'uml.Interface' || !CLASSIFIERS.includes(ty(from)) || ty(from) === 'uml.Interface') return { error: 'A realization runs from a class, an enumeration or a data type to an interface' }; }
+  return t === 'uml.Generalization' ? closesCycle(model, view, t, from, to) : null;
+}
 
 /* ---- describe(): the view in words, per element, each box then what it holds: "Class Order (entity), 5 attributes, 3
    operations; associated with OrderLine (lines, 1..*)"; "Package sales, holding 4 elements; imports catalog" ---- */

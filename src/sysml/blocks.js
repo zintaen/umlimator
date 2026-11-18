@@ -192,7 +192,7 @@ const BD_SYNTAX = ['stereotypes', 'visibility', 'valueType', 'multiplicity', 'de
 // part renamed (still a part) renames the role of its part association too (SYS_ROLES, audit 36)
 function bdEdit(model, owner, m, text) {
   const r = bdParse(text, owner, model); if (r.error) return r;
-  const no = SYS_CLASH(owner, m, r.label); if (no) return no; // a name another member holds (audit 37)
+  const no = SYS_CLASH(owner, m, r.label, r.type, r.props); if (no) return no; // a name another member holds (audit 37), judged as edited (audit 38)
   const keep = Object.fromEntries(Object.entries(BD_PROPS(m)).filter(([k]) => !BD_SYNTAX.includes(k)));
   return { commands: [...(r.type !== m.type ? [{ op: 'set', id: m.id, path: 'type', value: r.type }] : []), { op: 'set', id: m.id, path: 'label', value: r.label }, { op: 'set', id: m.id, path: 'props', value: { ...keep, ...r.props } },
     ...(model && SYS_PARTS.includes(r.type) ? SYS_ROLES(model, m, owner, r.label) : [])] };
