@@ -396,7 +396,9 @@ function sqRemove(model, view, ids, fromModel) {
   const offCalls = new Set(off); X.occ.forEach(o => { if (!o.message || sel.has(o.id) || !offCalls.has(sqProps(o.el).replyTo)) return;
     if (SQ_ARR(V.edges).includes(o.id)) { out.push({ op: 'hide', id: o.id, view: V.id }); off.push(o.id); } else out.push({ op: 'delete', id: o.id }); });
   const r = sqGuard(model, V, out), heads = sqHeads(model, V).filter(n => sel.has(n.id)), hs = new Set(heads.map(n => n.id));
-  const took = off.length ? `ook ${off.map(id => sqName(X.byId.get(id) ? X.byId.get(id).el : { id })).join(', ')} off the view (${off.length === 1 ? 'it stays' : 'they stay'} in the model)` : '';
+  // a message on a lifeline that goes is counted with it, not said again as taken off (audit 32)
+  const offSaid = off.filter(id => { const o = X.byId.get(id); return !o || !(hs.has(o.from) || hs.has(o.to)); });
+  const took = offSaid.length ? `ook ${offSaid.map(id => sqName(X.byId.get(id) ? X.byId.get(id).el : { id })).join(', ')} off the view (${offSaid.length === 1 ? 'it stays' : 'they stay'} in the model)` : '';
   if (Array.isArray(r) && r.length && took && !heads.length) return { commands: r, say: 'T' + took };
   if (!Array.isArray(r) || !r.length || !heads.length) return r;
   const n = X.occ.filter(o => o.message && (hs.has(o.from) || hs.has(o.to))).length;

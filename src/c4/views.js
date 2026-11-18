@@ -1,4 +1,4 @@
-import { registerDiagramType, idTable } from '../core/registry.js';
+import { countOf, registerDiagramType, idTable } from '../core/registry.js';
 import { copyOf, usedIds, jsonText, labelOr } from '../core/model.js';
 import { esc, fit } from '../core/text.js';
 import { SHAPE, r2, sidePorts } from '../draw/shapes.js';
@@ -25,7 +25,7 @@ const V_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), V_A
 const V_HAS = x => x != null && String(x).trim() !== '';
 const V_P = x => (V_OBJ(x.props) ? x.props : {});
 const vName = x => String(x.label ?? x.id);
-const vPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
+const vPlural = countOf;
 const V_RULES = { ...C4_RULES,
   'c4-level': C4_RULES['c4-level'] + '; a dynamic view what its subject\'s level draws; a deployment view deployment nodes and container instances, with a subject only instances of its containers',
   'c4-subject': C4_RULES['c4-subject'] + '; a dynamic view zooms into a software system, a container or nothing; a deployment view into a software system or nothing',

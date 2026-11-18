@@ -368,8 +368,8 @@ function tmRename(model, view, id, text) {
   return null;
 }
 
-/* remove(model, view, ids, fromModel): a change, a message or a constraint cannot be hidden (S17): Delete deletes it, and says
-   so. Delete on a lifeline hides it (its changes stay in the timeline, not drawn; its messages go with it, said with their
+/* remove(model, view, ids, fromModel): a change, a constraint or a message the view holds cannot be hidden (S17): Delete deletes
+   it, and says so; a model message the view lists by id leaves this view only (audit 31). Delete on a lifeline hides it (its changes stay in the timeline, not drawn; its messages go with it, said with their
    count, decision 23); Shift + Delete deletes it, its changes and their constraints (the core's cascade). A state's row or
    the ruler is not deleted on its own */
 function tmRemove(model, view, ids, fromModel) {
@@ -393,7 +393,7 @@ function tmRemove(model, view, ids, fromModel) {
   const next = apply(model, r), Y = tmIndex(next, tmView(next, V.id)), left = new Set([...Y.changes, ...Y.msgs, ...Y.cons].map(x => x.id));
   // each part said of its own lanes: a change by its lifeline, a message by its ends (a deleted lane's first); the rest with the hidden lanes, as before (audit 25)
   const hidL = new Set(gone.hid), delL = new Set(gone.lane.filter(id => !hidL.has(id))), on = (S, m) => S.has(m.from) || S.has(m.to);
-  const list = (keep = () => true) => [[X.changes, 'change'], [X.msgs, 'message'], [X.cons, 'constraint']].map(([xs, w]) => [xs.filter(x => !left.has(x.id) && !gone.off.has(x.id) && keep(x)).length, w])
+  const list = (keep = () => true) => [[X.changes, 'change'], [X.msgs, 'message'], [X.cons, 'constraint']].map(([xs, w]) => [xs.filter(x => !left.has(x.id) && !(gone.off.has(x.id) && kept.has(x.id)) && keep(x)).length, w])
     .filter(([c]) => c).map(([c, w]) => tmPlural(c, w)).join(', ').replace(/, ([^,]*)$/, ' and $1'); // "1 change, 2 messages and 1 constraint"
   const lane = id => (X.C.get(id) || {}).lifeline, mine = x => (X.C.get(x.id) === x ? delL.has(x.lifeline) : X.msgs.includes(x) ? on(delL, x) : delL.has(lane(x.from)) || delL.has(lane(x.to))); // a deleted lane's change, message or constraint
   const theirs = new Set(X.msgs.filter(m => on(hidL, m) && !on(delL, m)).map(m => m.id));
@@ -408,7 +408,9 @@ function tmRemove(model, view, ids, fromModel) {
   const dels = gone.lane.filter(id => delL.has(id)).map(X.name).join(', ');
   const said = gone.lane.length ? (!hidL.size ? `Deleted ${dels}${all ? ', ' + all : ''}` : [...(dels ? [`Deleted ${dels}${ours ? ', ' + ours : ''}`] : []), `Hid ${gone.hid.map(X.name).join(', ')}`, ...hid].join('; '))
     : all ? `Deleted ${all}: a change, a message or a constraint is deleted, not hidden` : '';
-  const took = gone.off.size ? `took ${tmPlural(gone.off.size, 'message')} off the view (${gone.off.size === 1 ? 'it stays' : 'they stay'} in the model)` : '';
+  // a message on a hidden lifeline is said with it (its off clause above), not again; one a deleted lane took is said deleted (audit 32)
+  const offN = [...gone.off].filter(id => !theirs.has(id) && kept.has(id)).length;
+  const took = offN ? `took ${tmPlural(offN, 'message')} off the view (${offN === 1 ? 'it stays' : 'they stay'} in the model)` : '';
   const say = said && took ? `${said}; ${took}` : said || took.charAt(0).toUpperCase() + took.slice(1);
   return { commands: r, say };
 }

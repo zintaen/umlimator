@@ -1,5 +1,5 @@
 import { apply } from '../core/apply.js';
-import { ownNodes, registerDiagramType, idTable } from '../core/registry.js';
+import { aKind, ownNodes, registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
@@ -231,7 +231,7 @@ function actProblems(model, view) {
     if (e.type === 'uml.ObjectFlow' && !objs.length && !reaches(e)) say('object-flow', path, [id, e.from, e.to], `object flow ${id} joins ${q(e.from)} and ${q(e.to)}, neither an object node nor a data store`);
     if (e.type === 'uml.ControlFlow' && objs.length) say('object-flow', path, [id, ...objs], `control flow ${id} ends on ${objs.map(q).join(' and ')}: a flow to or from an object node is an object flow`); });
   I.N.forEach((x, id) => { if (!seen(id) || !(AC_NODES.includes(x.type) || x.type === 'uml.ActivityPartition') || x.parent == null || !I.N.has(x.parent)) return;
-    const p = I.N.get(x.parent); if (p.type !== 'uml.ActivityPartition') say('partition-owner', `${I.path.get(id)}.parent`, [id, p.id], `${q(id)} is owned by ${q(p.id)}, a ${String(p.type).split('.').pop()}, not a partition`, 'error'); });
+    const p = I.N.get(x.parent); if (p.type !== 'uml.ActivityPartition') say('partition-owner', `${I.path.get(id)}.parent`, [id, p.id], `${q(id)} is owned by ${q(p.id)}, ${aKind(ACT_TYPE, p)}, not a partition`, 'error'); });
   I.N.forEach((x, id) => { if (x.type !== 'uml.CallBehaviorAction' || !seen(id)) return;
     const v = AC_ARR(model.views).find(w => AC_OBJ(w) && w.id === x.opensView);
     if (!v || v.diagram !== 'uml.activity') say('calls-view', I.path.get(id), [id], `${q(id)} ${x.opensView == null ? 'opens no view' : `opens ${jsonText(x.opensView)}, which is ${v ? 'not an activity view' : 'no view of the model'}`}`); });
