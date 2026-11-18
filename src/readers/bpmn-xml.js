@@ -18,7 +18,9 @@
    timer's time. Anything else (an element, an event definition or a marker outside the subset, an extension) is
    reported `skipped` and kept under the model's `ext.bpmn.skipped` as moddle's JSON with its parent's id; a line to it
    is reported too. An attribute outside the subset (startQuantity, isForCompensation, isCollection, ...) set to other
-   than its default is reported once per file, by its name, and not kept; isExecutable, an engine's only, is passed over. Positions and sizes are not kept (R5): the report says so once per file.
+   than its default is reported once per file, by its name, and not kept; isExecutable, an engine's only, is passed over.
+   A process in no pool has no place in the model: its name, or an id the writer would not make again, is reported, and
+   a second such process is read into the first and reported (audit 32). Positions and sizes are not kept (R5): the report says so once per file.
 
    writeBpmnXml(model, viewId, geo, moddle) -> promise of { xml, report }: every `bpmn.*` element of the model in one
    definitions, a collaboration when it has a participant, a process per participant (its `processRef`, else
@@ -180,6 +182,13 @@ async function readBpmnXml(xml, moddle) {
       } else if (r.$type === 'bpmn:Process') queue.push([r, null]);
       else if (r.$type !== 'bpmn:DataStore' && r.$type !== 'bpmn:Category') skip(r, null);
     }
+    // a process with no pool: the model has no place for its id or name (the writer writes one process for what is in no pool,
+    // §12.3), so a name, or an id other than one the writer makes, is said; a second such process is read into the first, said
+    // too (audit 32: bpmn.io's Process_1 "Order handling" and two processes in no pool were read with nothing said)
+    const unpooled = queue.map(([c]) => c).filter(c => c.$type === 'bpmn:Process' && !owner.has(c));
+    unpooled.forEach((c, k) => { const id = idOf(c) || '', nm = bxStr(c.name) ? ` ("${c.name}")` : '', first = idOf(unpooled[0]) || '(no id)';
+      if (k) say(id, 'skipped', `process ${id || '(no id)'}${nm}, a second in no pool: read into one process with ${first}, its ${nm ? 'id and name' : 'id'} not kept`);
+      else if (nm || !/^process(-\d+)?$/.test(id)) say(id, 'skipped', `process ${id || '(no id)'}${nm}, in no pool: its elements are read in no pool, its ${nm ? 'id and name' : 'id'} not kept`); });
     // a process's lanes are its participant's members, nested by parent; a flow node is in the deepest lane naming it
     const laneOf = new Map(), depth = new Map();
     for (const [proc] of queue) {

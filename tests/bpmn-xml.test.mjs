@@ -198,7 +198,7 @@ test('tests/import/descriptive.bpmn: every row of Table 2.1 and the extras, read
 test('tests/import/weakened.bpmn: conditions, a default, send and receive tasks and a timer\'s time read as plain, each reported weakened and kept', needs, async () => {
   const { model, report } = await read(file('import/weakened.bpmn'), BpmnModdle());
   const w = (line, message) => ({ line, status: 'weakened', message: `${message}: kept under ext.bpmn, read as plain` });
-  assert.deepEqual(report, [w('wait-form', 'a receive task'), w('days', 'a gateway\'s default flow'), w('ask-manager', 'a send task'),
+  assert.deepEqual(report, [{ line: 'approve', status: 'skipped', message: 'process approve, in no pool: its elements are read in no pool, its id not kept' }, w('wait-form', 'a receive task'), w('days', 'a gateway\'s default flow'), w('ask-manager', 'a send task'),
     w('an-hour', 'a timer\'s timeDuration'), w('f-short', 'a condition'),
     { line: '', status: 'skipped', message: 'no diagram interchange: every element is in one view, process' }]);
   const node = id => model.nodes.find(n => n.id === id), edge = id => model.edges.find(e => e.id === id);
@@ -301,7 +301,7 @@ test('the reader says what it does not read: a host not read, a sub-process\'s l
       <task id="t"><ioSpecification id="io" /><property id="pr" /></task><task id="u" />
       <sequenceFlow id="f" sourceRef="t" targetRef="u" categoryValueRef="cv" /><group id="g" categoryValueRef="cv" />
       <subProcess id="sp"><laneSet id="ls"><lane id="l" /></laneSet></subProcess></process></definitions>`, BpmnModdle());
-  assert.deepEqual(report.map(x => `${x.line} ${x.status}: ${x.message}`), ['ah skipped: AdHocSubProcess outside the subset: kept under ext.bpmn, not read',
+  assert.deepEqual(report.map(x => `${x.line} ${x.status}: ${x.message}`), ['p skipped: process p, in no pool: its elements are read in no pool, its id not kept', 'ah skipped: AdHocSubProcess outside the subset: kept under ext.bpmn, not read',
     'io skipped: InputOutputSpecification outside the subset: kept under ext.bpmn, not read', 'pr skipped: Property outside the subset: kept under ext.bpmn, not read',
     'ls skipped: LaneSet of a sub-process: kept under ext.bpmn, not read', 'b skipped: its host ah is not read: attachedTo not read',
     'f skipped: its groups (categoryValueRef, which row 24 gives no line): kept under ext.bpmn, not read', ' skipped: no diagram interchange: every element is in one view, process']);
@@ -350,14 +350,14 @@ test('hostile files are read or refused in under a second each, and never throw 
   }
   const msgs = name => said[name].report.map(x => `${x.line} ${x.status}: ${x.message}`);
   assert.deepEqual(msgs('over-1-mib (made here)'), [` skipped: over ${1 << 20} characters: nothing read (R2)`]);
-  assert.deepEqual(msgs('entities.bpmn'), [' skipped: unparsable content ]>: non-whitespace outside of root node: not read', ' skipped: no diagram interchange: every element is in one view, process']);
+  assert.deepEqual(msgs('entities.bpmn'), [' skipped: unparsable content ]>: non-whitespace outside of root node: not read', 'p skipped: process p, in no pool: its elements are read in no pool, its id not kept', ' skipped: no diagram interchange: every element is in one view, process']);
   assert.deepEqual(said['entities.bpmn'].model.nodes.map(n => n.label), ['&e;', 'Plain']); // never expanded
   assert.deepEqual(msgs('dangling.bpmn'), ['b skipped: unresolved reference <nowhere>: not read', 'f skipped: unresolved reference <nowhere>: not read',
-    's skipped: unresolved reference <ghost>: not read', 'f skipped: SequenceFlow whose target is not read: kept under ext.bpmn, not read', R5.line + ' skipped: ' + R5.message]);
-  assert.deepEqual(msgs('no-di.bpmn'), [' skipped: no diagram interchange: every element is in one view, process']);
+    's skipped: unresolved reference <ghost>: not read', 'p skipped: process p, in no pool: its elements are read in no pool, its id not kept', 'f skipped: SequenceFlow whose target is not read: kept under ext.bpmn, not read', R5.line + ' skipped: ' + R5.message]);
+  assert.deepEqual(msgs('no-di.bpmn'), ['p skipped: process p, in no pool: its elements are read in no pool, its id not kept', ' skipped: no diagram interchange: every element is in one view, process']);
   assert.deepEqual(said['no-di.bpmn'].model.views, [{ id: 'process', diagram: 'bpmn', parent: null, nodeIds: ['s', 't', 'e'] }]);
   assert.deepEqual(msgs('unknown-namespace.bpmn'), [' skipped: unparsable content <x:settings> detected: not read', ' skipped: unparsable content <x:robot> detected: not read',
-    ' skipped: the attribute x:flavour: not read', 'p skipped: the attribute x:owner: not read', 't skipped: the attribute x:retries: not read',
+    ' skipped: the attribute x:flavour: not read', 'p skipped: process p, in no pool: its elements are read in no pool, its id not kept', 'p skipped: the attribute x:owner: not read', 't skipped: the attribute x:retries: not read',
     't skipped: ExtensionElements (an extension): kept under ext.bpmn, not read', ' skipped: no diagram interchange: every element is in one view, process']);
   const deep = said['10000-levels (made here)'];
   assert.ok(deep.model.nodes.length === 10000 || deep.report.some(x => /could not be read/.test(x.message)), deep.report.slice(0, 3));
@@ -426,7 +426,7 @@ test('a taskType or direction outside row 24 ("constructor" among them) is repor
   }
   const { model, report } = await read(`<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d"><process id="p"><dataObjectReference id="a" dataObjectRef="o"/>
     <dataObjectReference id="b" dataObjectRef="o"/><dataObject id="o"/><task id="t"><dataInputAssociation id="da"><sourceRef>a</sourceRef><sourceRef>b</sourceRef></dataInputAssociation></task></process></definitions>`, BpmnModdle());
-  assert.deepEqual([model.edges.map(e => `${e.from}-${e.to}`), report[0].message, model.ext.bpmn.skipped[0].parent], [['a-t'], 'its sources after the first (b): kept under ext.bpmn, not read', 't']);
+  assert.deepEqual([model.edges.map(e => `${e.from}-${e.to}`), report[1].message, model.ext.bpmn.skipped[0].parent], [['a-t'], 'its sources after the first (b): kept under ext.bpmn, not read', 't']);
   // audit 17: kept, with its references (moddle's non-enumerable properties) as ids
   assert.deepEqual(model.ext.bpmn.skipped[0].element, { $type: 'bpmn:DataInputAssociation', id: 'da', sourceRef: ['a', 'b'] });
 });
@@ -449,7 +449,7 @@ test('a BPMN attribute outside the subset, set off its default, is reported once
   const { report } = await read('<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d" targetNamespace="x"><process id="p" isExecutable="true">'
     + '<task id="t" startQuantity="3" isForCompensation="true"/><task id="u" isForCompensation="true" startQuantity="1"/><dataObject id="o" isCollection="true"/></process></definitions>', BpmnModdle());
   assert.deepEqual(report.filter(r => r.line !== '').map(r => `${r.line} ${r.message}`), [
-    't the attribute startQuantity="3": not read, here or elsewhere in the file', 't the attribute isForCompensation="true": not read, here or elsewhere in the file',
+    'p process p, in no pool: its elements are read in no pool, its id not kept', 't the attribute startQuantity="3": not read, here or elsewhere in the file', 't the attribute isForCompensation="true": not read, here or elsewhere in the file',
     'o the attribute isCollection="true": not read, here or elsewhere in the file']);
 });
 
@@ -545,7 +545,7 @@ test('audit 27: the reader says a line the diagram keeps and does not draw', nee
   const loop = '<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d"><bpmn:process id="p"><bpmn:startEvent id="s"/><bpmn:task id="call"/>'
     + '<bpmn:boundaryEvent id="retry" attachedToRef="call"><bpmn:timerEventDefinition/></bpmn:boundaryEvent><bpmn:endEvent id="e"/><bpmn:sequenceFlow id="f1" sourceRef="s" targetRef="call"/>'
     + '<bpmn:sequenceFlow id="f2" sourceRef="call" targetRef="e"/><bpmn:sequenceFlow id="f3" sourceRef="retry" targetRef="call"/></bpmn:process></bpmn:definitions>';
-  assert.deepEqual((await read(loop, BpmnModdle())).report.filter(r => r.line), [{ line: 'f3', status: 'weakened', message: 'a line from a boundary event to its own activity: kept, not drawn' }]);
+  assert.deepEqual((await read(loop, BpmnModdle())).report.filter(r => r.line), [{ line: 'p', status: 'skipped', message: 'process p, in no pool: its elements are read in no pool, its id not kept' }, { line: 'f3', status: 'weakened', message: 'a line from a boundary event to its own activity: kept, not drawn' }]);
   const one = pools.replace('<bpmn:participant id="b" name="Customer"/>', '<bpmn:participant id="b" name="Customer" processRef="pb"/>').replace('targetRef="b"', 'targetRef="t"')
     .replace('</bpmn:collaboration>', '</bpmn:collaboration><bpmn:process id="pb"><bpmn:task id="t"/></bpmn:process>');
   assert.deepEqual((await read(one, BpmnModdle())).report.filter(r => r.line), [], 'a message flow to a task is drawn: nothing said');
@@ -563,4 +563,19 @@ test('audit 31: a second element with an id already given is said by that id; a 
   // a duplicate sequence flow too, by its own id and kind
   const f = await read(x.replace('<bpmn:sequenceFlow id="f2"', '<bpmn:sequenceFlow id="f1"').replace('<bpmn:task id="Task_1" name="Ship order"/>', ''), BpmnModdle());
   assert.deepEqual(f.report[0], { line: 'f1', status: 'skipped', message: 'a second element with the id f1 (bpmn:sequenceFlow): not read' });
+});
+
+// audit 32: a process in no pool (bpmn.io starts every diagram with one, Process_1) lost its id and name, and two such
+// processes were read into one, each with nothing said; the model has no place for them (the writer writes one process for
+// what is in no pool, §12.3), so each is said
+test('audit 32: a process in no pool is said when its id or name is not kept, and a second one read into the first', needs, async () => {
+  const D = b => `<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" id="defs" targetNamespace="x">${b}</bpmn:definitions>`;
+  const one = await read(D('<bpmn:process id="Process_1" name="Order handling"><bpmn:startEvent id="s"/><bpmn:task id="t" name="Ship"/><bpmn:sequenceFlow id="f" sourceRef="s" targetRef="t"/></bpmn:process>'), BpmnModdle());
+  assert.deepEqual(one.report.filter(r => r.line), [{ line: 'Process_1', status: 'skipped', message: 'process Process_1 ("Order handling"), in no pool: its elements are read in no pool, its id and name not kept' }]);
+  const two = await read(D('<bpmn:process id="orders"><bpmn:callActivity id="o" calledElement="returns"/></bpmn:process><bpmn:process id="returns"><bpmn:task id="r"/></bpmn:process>'), BpmnModdle());
+  assert.deepEqual(two.report.filter(r => r.line).map(r => `${r.line} ${r.message}`), ['orders process orders, in no pool: its elements are read in no pool, its id not kept',
+    'returns process returns, a second in no pool: read into one process with orders, its id not kept']);
+  // the process the writer makes for what is in no pool reads back with nothing said
+  const back = await read((await write(one.model, one.model.views[0].id, null, BpmnModdle())).xml, BpmnModdle());
+  assert.deepEqual(back.report.filter(r => r.line), []);
 });
