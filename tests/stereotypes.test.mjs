@@ -333,3 +333,20 @@ test('audit 24: a class a view holds as its own, in a package applying a profile
     assert.deepEqual(validate(m).filter(p => (p.ids || []).includes('invoice')).map(p => p.message), [], own ? 'the view\'s own class' : 'a model class');
   }
 });
+
+test('audit 30: an element of no type a class or profile view draws as a class is of metaclass Class to the stereotype rules', async () => {
+  await import('../src/uml/profile.js'); await import('../src/uml/class.js'); const { describe } = await import('../src/map/insight.js');
+  const mk = (type, diagram = 'uml.profile') => ({ schemaVersion: 2,
+    nodes: [{ id: 'pf', type: 'uml.Profile', label: 'Persist' }, { id: 'ent', type: 'uml.Stereotype', label: 'entity', parent: 'pf' }, { id: 'mc', type: 'uml.MetaclassReference', label: 'Class', parent: 'pf' },
+      { id: 'st2', type: 'uml.Stereotype', label: 'column', parent: 'pf' }, { id: 'mp', type: 'uml.MetaclassReference', label: 'Property', parent: 'pf' },
+      { id: 'pk', type: 'uml.Package', label: 'shop' }, { id: 'ord', ...(type === undefined ? {} : { type }), label: 'Order', parent: 'pk', props: { stereotypes: ['column'] } }],
+    edges: [{ id: 'x1', type: 'uml.Extension', from: 'ent', to: 'mc', props: { isRequired: true } }, { id: 'x2', type: 'uml.Extension', from: 'st2', to: 'mp' }, { id: 'ap', type: 'uml.ProfileApplication', from: 'pk', to: 'pf' }],
+    views: [{ id: 'v', diagram, nodeIds: ['pk', 'ord'] }] });
+  const said = m => [describe(m, 'v').split('\n').find(l => /Order/.test(l)), validate(m).filter(p => p.rule === 'stereotype-extends').map(p => p.message)];
+  const want = said(mk('uml.Class'));
+  assert.deepEqual(want[1], ['stereotype-extends: «column» on "Order" extends Property, which a Class is not']);
+  for (const d of ['uml.profile', 'uml.class']) for (const type of [undefined, '']) assert.deepEqual(said(mk(type, d)), d === 'uml.profile' ? want : [said(mk('uml.Class', d))[0], want[1]], `${d} ${JSON.stringify(type)}`);
+  // a view that draws it as no UML kind (a use case view's "Element"): not judged, as before
+  await import('../src/uml/usecase.js');
+  assert.deepEqual(validate(mk(undefined, 'uml.use-case')).filter(p => p.rule === 'stereotype-extends'), []);
+});

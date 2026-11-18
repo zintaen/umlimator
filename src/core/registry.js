@@ -111,6 +111,21 @@ function withOwnNodes(def) {
    edges (a C4 dynamic view), so diff() says a reorder as it does a map's sequence. Audit 21's: unnamed, the element types
    whose label nothing draws nor says (a combined fragment, a transition): the properties panel offers them no Name field. */
 
+/* An element's kind in words, one rule for every type and the PDF (audit 30): a type's last part split at its capitals,
+   first letter up ('uml.DataType' "Data type"); a type of no notation, no dot, as written ("toString", "dataflow"), as audit 26
+   names one; no type, or "", is no word (''): the type's untypedKind names it. untypedKind(T): the kind a type draws and names
+   an element of no type (or "") as, its `untyped` field ("Task", "Lifeline"), "Element" by default, null for a type that does
+   not draw one. untypedLine(T): what it draws a line of no notation as (no type, "", or no dot), its `untypedLine` field
+   ("Data flow"), "Line" (a plain line) by default, null for none; a type with drawsOnly draws none */
+const kindWord = t => { const s = String(t ?? ''); if (!s.includes('.')) return s;
+  const w = s.split('.').pop().replace(/([a-z])([A-Z])/g, (_, a, b) => a + ' ' + b.toLowerCase()); return w.charAt(0).toUpperCase() + w.slice(1); };
+const untypedKind = T => (T && Object.hasOwn(T, 'untyped') ? T.untyped : 'Element');
+const untypedLine = T => (!T ? 'Line' : Array.isArray(T.drawsOnly) ? null : Object.hasOwn(T, 'untypedLine') ? T.untypedLine : 'Line');
+// the kind an element is drawn, edited and judged as in a view of type T (audit 30): its type's `untypedAs`, a type (an element of
+// no type, or "", drawn as a class: 'uml.Class') or a function of the element (the object view's instance of no UML kind), else its own type
+const drawnKind = (T, x) => { if (!x || typeof x !== 'object') return undefined; const a = T && T.untypedAs, k = typeof a === 'function' ? a(x) : x.type == null || x.type === '' ? a : null; return k || x.type; };
+const aWord = w => (/^(?!us|uni)[aeiou]/i.test(w) ? 'an ' : 'a ') + w;
+
 /* A view's type: the map for a view with no diagram, the registered type, or null for one this release does not draw */
 const diagramOf = view => TYPES.get(view && view.diagram != null ? view.diagram : 'map') || null;
 
@@ -128,4 +143,4 @@ const idTable = (o = {}) => Object.assign(Object.create(null), o);
 // a type is text: any other value (one with a toString key, which no key is read from) refers to nothing (audit 21)
 const propRefs = type => typeof type !== 'string' ? {} : Object.assign({}, ...[...TYPES.values()].map(T => T.refs && Object.hasOwn(T.refs, type) && T.refs[type]));
 
-export { registerDiagramType, diagramOf, propRefs, idTable, TYPED, ownNodes, heldBy, ownGuard };
+export { registerDiagramType, diagramOf, kindWord, untypedKind, untypedLine, aWord, drawnKind, propRefs, idTable, TYPED, ownNodes, heldBy, ownGuard };

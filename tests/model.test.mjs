@@ -518,14 +518,14 @@ test('audit 29: a line id that is also a card id is an error (the docs give card
   assert.deepEqual(said(hostile), [['error', 'edges[0].id'], ['error', 'edges[1].id']]); // a name on Object.prototype is no card's unless a card has it
 });
 
-test('audit 29: a typed line with no type is said to be drawn as a plain line, a card with none as a plain card', async () => {
+test('audit 29: a typed line with no type is said to be drawn as a plain line where its view draws one so; a member with none is said not drawn (audit 30)', async () => {
   const U = await import('../lib/umlimator-all.js');
   const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'flow.Process', label: 'A' }, { id: 'b', type: 'flow.Process', label: 'B', members: [{ id: 'm1', label: 'x' }] }],
     edges: [{ id: 'e', type: 'nope', from: 'a', to: 'b' }], views: [{ id: 'v', diagram: 'flowchart', nodeIds: ['a', 'b'], edges: ['e', { id: 'f', from: 'a', to: 'b' }] }] };
   const at = p => (U.validate(m).find(x => x.path === p) || {}).message;
   assert.equal(at('edges[0].type'), 'type "nope" is not <notation>.<Name> (uml.Dependency): drawn as a plain line');
   assert.equal(at('views[0].edges[1].type'), 'type undefined is not <notation>.<Name> (uml.Dependency): drawn as a plain line');
-  assert.equal(at('nodes[1].members[0].type'), 'type undefined is not <notation>.<Name> (uml.Class): drawn as a plain card');
+  assert.equal(at('nodes[1].members[0].type'), 'type undefined is not <notation>.<Name> (uml.Property): not drawn'); // a member of no type: no view draws it (audit 30)
   const g = U.layout(m, 'v'); assert.ok(g.edges.some(e => e.id === 'f' || (e.ids || []).includes('f')), 'the untyped line is drawn, as a line');
 });
 

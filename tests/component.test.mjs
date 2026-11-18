@@ -514,3 +514,19 @@ test('audit 29: an element of no type, drawn as a component holding its ports, i
   const e = structuredClone(m); e.nodes[0].type = '';
   assert.equal(layout(e, 'v').nodes.find(n => n.id === 'a').shape, 'component');
 });
+
+test('audit 30: an element of no type, which the component view draws as a component, is one to the manifest rule, the palette\'s Port, the member rows and member.holds', () => {
+  const T = diagramOf({ diagram: 'uml.component' });
+  for (const type of [undefined, '']) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'shop', label: 'Shop', ...(type === undefined ? {} : { type }), members: [{ id: 'p1', type: 'uml.Port', label: 'api' }] }, { id: 'jar', type: 'uml.Artifact', label: 'shop.jar' }],
+      edges: [{ id: 'mf', type: 'uml.Manifestation', from: 'jar', to: 'shop' }], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['shop', 'jar'] }] };
+    const v = m.views[0], q = JSON.stringify(type);
+    assert.deepEqual(validate(m).filter(p => p.rule === 'manifest-ends'), [], `${q}: a manifestation to it is drawn, so no warning`);
+    assert.deepEqual(T.edits.add(m, v, { type: 'uml.Port' }, 'web', { sel: ['shop'] }), [{ op: 'add', element: { id: 'port1', type: 'uml.Port', label: 'web' }, owner: 'shop' }], q);
+    assert.deepEqual(T.edits.member(m, v, 'shop', null, 'web'), [{ op: 'add', element: { id: 'port1', type: 'uml.Port', label: 'web' }, owner: 'shop' }], q);
+    assert.equal(T.member.holds(m.nodes[0]), true, q);
+  }
+  // a class is still no component to the manifest rule: drawn as a classifier
+  const c = { schemaVersion: 2, nodes: [{ id: 'k', type: 'uml.Class', label: 'K' }, { id: 'jar', type: 'uml.Artifact', label: 'j' }], edges: [{ id: 'mf', type: 'uml.Manifestation', from: 'jar', to: 'k' }], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['k', 'jar'] }] };
+  assert.equal(validate(c).filter(p => p.rule === 'manifest-ends').length, 1);
+});

@@ -1,4 +1,4 @@
-import { registerDiagramType } from '../core/registry.js';
+import { kindWord, registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { CLASSIFIERS, CLASS_DEF, CLASS_LINES, CLASS_TYPE, RULES, multBounds, printMember, classProblems, drawnLines, lineLabel, lineName, lineRename, typeGeo } from './class.js';
@@ -17,7 +17,7 @@ import { usedIds, jsonText } from '../core/model.js';
 
 const PR_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), PR_ARR = x => (Array.isArray(x) ? x : []);
 const prName = x => String(x.label ?? x.id);
-const prWord = t => t === 'uml.MetaclassReference' ? 'Metaclass' : String(t || 'uml.Class').split('.').pop().replace(/([a-z])([A-Z])/g, (_, a, b) => a + ' ' + b.toLowerCase()); // 'uml.DataType': "Data type"
+const prWord = t => t === 'uml.MetaclassReference' ? 'Metaclass' : kindWord(t || 'uml.Class'); // 'uml.DataType': "Data type"
 const PR_DEFS = ['uml.Stereotype', 'uml.MetaclassReference', 'uml.Enumeration']; // what goes into a profile (§4.3)
 
 // the model read once per call: nodes by id, every member by id, lines by kind
@@ -171,6 +171,7 @@ function prConnect(model, view, from, to, at, line) {
 /* ---- the type ---- */
 const PR_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
 const PR_TYPE = registerDiagramType('uml.profile', {
+  untyped: 'Class', untypedAs: 'uml.Class', // an element of no type (or ""): a class, as drawn, named, edited and judged (audit 30)
   title: 'profile diagram',
   elements: [['Profile', 'Profile'], ['Stereotype', 'Stereotype'], ['MetaclassReference', 'Metaclass'], ['Enumeration', 'Enumeration'], ['Package', 'Package'], ['Comment', 'Comment']].map(([t, label]) => ({ type: 'uml.' + t, label })),
   lines: [['Extension', 'Extension'], ['Generalization', 'Generalization'], ['ProfileApplication', 'Profile application'], ['CommentLink', 'Comment link']].map(([t, label]) => ({ type: 'uml.' + t, label })),

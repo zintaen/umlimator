@@ -265,6 +265,7 @@ function dfdKey(model, view, ids, key) {
 
 const DFD_NUMBER = { key: 'number', label: 'Number', kind: 'text' };
 const DFD_TYPE = registerDiagramType('dfd', {
+  untypedLine: 'Data flow', // a line of no notation is drawn, named and counted as a data flow (audits 9, 30)
   title: 'data flow diagram',
   elements: [['dfd.Process', 'Process', 'dfd'], ['dfd.DataStore', 'Data store'], ['dfd.ExternalEntity', 'External entity'], ['uml.Comment', 'Comment']].map(([type, label, opens]) => ({ type, label, ...(opens ? { opens } : {}) })),
   lines: [{ type: 'dfd.DataFlow', label: 'Data flow' }, { type: 'uml.CommentLink', label: 'Comment link' }],

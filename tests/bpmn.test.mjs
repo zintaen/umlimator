@@ -848,3 +848,12 @@ test('audit 29: a listed line of another kind the picture cannot draw is said as
     assert.ok(d.includes(`${name}${drawn ? '' : ', not drawn'}.`), d.join('\n'));
   }
 });
+
+test('audit 30: a line whose type is an Object.prototype name is named a line, never a function\'s source', () => {
+  for (const type of ['toString', 'constructor', 'valueOf']) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'bpmn.Task', label: 'A' }, { id: 'b', type: 'bpmn.Task', label: 'B' }], edges: [{ id: 'e', type, from: 'a', to: 'b', label: 'x' }],
+      views: [{ id: 'v', diagram: 'bpmn', nodeIds: ['a', 'b'], edges: ['e'] }] };
+    assert.equal(layout(m, 'v').edges.find(e => e.id === 'e').aria, 'Line from A to B, named x', type);
+    assert.doesNotMatch(describe(m, 'v'), /native code|function/, type);
+  }
+});
