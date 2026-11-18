@@ -277,3 +277,32 @@ test('audit 32: the design notes say Delete hides a model message the view lists
     for (const [, p, row] of doc(`../docs/conformance/${f}`).matchAll(/`(docs\/[^`]+\.md)` ([A-Z]\d+)\b/g))
       assert.match(doc(`../${p}`), new RegExp(`^\\| ${row} \\|`, 'm'), `${f}: ${p} ${row}`);
 });
+
+// audit 33: the editing guide said a deleted BPMN group leaves the categoryValueRef entries that named it; the code drops them, by refs
+test('audit 33: the editing guide says a deleted BPMN group is dropped from the categoryValueRef that named it, as the delete does', async () => {
+  await import('../src/map/typed.js'); await import('../src/bpmn/process.js');
+  const { apply } = await import('../src/core/apply.js');
+  const m = JSON.parse(readFileSync(new URL('../examples/bookshop-order-to-shipment.json', import.meta.url), 'utf8')), g = m.nodes.find(n => n.type === 'bpmn.Group');
+  const named = mm => mm.nodes.filter(n => (n.props?.categoryValueRef || []).includes(g.id)).map(n => n.id);
+  assert.ok(named(m).length >= 2, 'the example has members of the group');
+  assert.deepEqual(named(apply(m, [{ op: 'delete', id: g.id }])), []);
+  const row = readFileSync(new URL('../docs/editing.md', import.meta.url), 'utf8').match(/^\| delete \|[^\n]*categoryValueRef[^\n]*$/m)[0];
+  assert.doesNotMatch(row, /leaves the `categoryValueRef`/);
+  assert.match(row, /a deleted group's id is dropped from the `categoryValueRef` of each element that named it/);
+});
+
+// audit 33: two conformance notes still said a part in a PDF Lines row is named by its id, after audit 32 named it as drawn
+test('audit 33: the composite and internal block notes name a part in a Lines row as drawn, as print.js does', async () => {
+  await import('../src/map/typed.js'); await import('../src/uml/composite.js'); await import('../src/sysml/internal.js');
+  const { mapContext } = await import('../src/map/context.js'), { tablesOf } = await import('../src/page/print.js');
+  const doc = p => readFileSync(new URL(p, import.meta.url), 'utf8');
+  const lines = (f, d) => { const mm = JSON.parse(doc(`../examples/${f}`)), ctx = mapContext(mm), v = mm.views.find(x => x.diagram === d);
+    return tablesOf(ctx, ctx.V[v.id], ctx.buildGeo(v.id))[1].rows.map(r => r.replace(/<[^>]+>/g, ' ')).join('\n'); };
+  for (const [note, f, d, drawn, id] of [['uml-composite-structure.md', 'order-service-structure.json', 'uml.composite-structure', 'checkout : CheckoutFlow [1]', 'order-service.checkout'],
+    ['sysml-internal-block.md', 'ebike-structure.json', 'sysml.internal-block', 'battery : Battery [1]', 'ebike.battery']]) {
+    const said = doc(`../docs/conformance/${note}`), rows = lines(f, d);
+    assert.ok(rows.includes(drawn) && !rows.includes(id), `${f}: ${rows}`);
+    assert.doesNotMatch(said, /named by its id/, note);
+    assert.ok(said.includes(`named as drawn (\`${drawn}\`, since audit 32`), note);
+  }
+});

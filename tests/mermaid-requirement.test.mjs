@@ -344,7 +344,7 @@ test('malformed input is reported, never thrown, and what was read is written ba
 
 test('the writer names in comments what it cannot write, and the reader passes over them', () => {
   const m = { schemaVersion: 2, nodes: [
-    { id: 'r', type: 'sysml.Requirement', label: 'R', parent: 'pkg', props: { reqId: 'a"b', text: 7, risk: 'x\ny', stereotypes: ['designConstraint', 'functionalRequirement', 'other'], source: 'me' }, ext: { a: 1 } },
+    { id: 'r', type: 'sysml.Requirement', label: 'R', parent: 'pkg', props: { reqId: 'a"b', text: { n: 7 } /* an object; a number is written as its text (audit 33) */, risk: 'x\ny', stereotypes: ['designConstraint', 'functionalRequirement', 'other'], source: 'me' }, ext: { a: 1 } },
     { id: 'b', type: 'sysml.Block', label: 'B', props: { stereotypes: ['block'] }, ext: { mermaid: { type: 'test bench', docref: ' x ', other: 1 } } },
     { id: 't', type: 'sysml.TestCase', ext: { mermaid: { type: 'Block' } } }, { id: 'pkg', type: 'uml.Package', label: 'P' }, { id: 'n', type: 'uml.Comment', label: 'note' }],
   edges: [{ id: 'b-satisfies-r', type: 'sysml.Satisfy', from: 'b', to: 'r', label: 'why' }, { id: 'l', type: 'uml.CommentLink', from: 'n', to: 'r' }, { id: 'a->z', type: 'sysml.Trace', from: 'b', to: 'r' }],
@@ -353,7 +353,7 @@ test('the writer names in comments what it cannot write, and the reader passes o
   assert.deepEqual(text.split('\n').filter(l => l.includes('not written')).map(l => l.trim()), [
     '%% not written: r: listed twice in the view, written once', '%% not written: v: direction up: written as Mermaid\'s LR, as it is drawn', '%% not written: pkg (uml.Package)', '%% not written: n (uml.Comment)',
     '%% not written: r: property source', '%% not written: r: ext', '%% not written: r: stereotype functionalRequirement', '%% not written: r: stereotype other',
-    '%% not written: r: reqId a"b, which Mermaid\'s quotes cannot hold', '%% not written: r: text 7, which is not text', '%% not written: r: risk x\\ny, which is none of Mermaid\'s low, medium, high',
+    '%% not written: r: reqId a"b, which Mermaid\'s quotes cannot hold', '%% not written: r: text {"n":7}, which is not text', '%% not written: r: risk x\\ny, which is none of Mermaid\'s low, medium, high',
     '%% not written: b: property stereotypes', '%% not written: b: ext, but for ext.mermaid.type and docref', '%% not written: b: ext.mermaid.type test bench, which the reader would not read back as a block',
     '%% not written: b: ext.mermaid.docref  x', '%% not written: t: no label, read as its name', '%% not written: t: ext.mermaid.type Block, which the reader would not read back as a test case',
     '%% not written: r: parent pkg, which is not written', '%% not written: b-satisfies-r: label', '%% not written: l (uml.CommentLink)', '%% not written: a->z (sysml.Trace)']);
@@ -399,4 +399,16 @@ test('a value that is no text is named in a not-written note as JSON, not as [ob
   assert.deepEqual(notes({ reqId: '1', text: 't' }, ['x', 'y']), ['%% not written: r1: label ["x","y"], which is not text']);
   assert.deepEqual(notes({ reqId: '1', text: { b: 2 }, risk: ['High'], stereotypes: [{ c: 3 }] }, 'R'),
     ['%% not written: r1: stereotype {"c":3}', '%% not written: r1: text {"b":2}, which is not text', '%% not written: r1: risk ["High"], which is none of Mermaid\'s low, medium, high']);
+});
+
+// audit 33: a reqId or text that is a number (or true) is drawn as its text, id = "101", but the writer left both out, the
+// reqId with a note that Mermaid's quotes cannot hold it
+test('a reqId or text that is a number or true is written as its text and read back as it, as the view draws it (audit 33)', () => {
+  const model = props => ({ schemaVersion: 2, nodes: [{ id: 'r1', type: 'sysml.Requirement', label: 'Range', props }], edges: [], views: [{ id: 'v', diagram: 'sysml.requirement', nodeIds: ['r1'] }] });
+  for (const [props, want] of [[{ reqId: 101, text: 42 }, { reqId: '101', text: '42' }], [{ reqId: 1.5, text: true }, { reqId: '1.5', text: 'true' }], [{ reqId: -3, text: 0 }, { reqId: '-3', text: '0' }]]) {
+    const t = write(model(props), 'v');
+    assert.doesNotMatch(t, /not written/, t);
+    assert.deepEqual(read(t).model.nodes.find(n => n.id === 'r1').props, want, t);
+  }
+  assert.match(write(model({ reqId: 101, text: 42 }), 'v'), /\n {4}id: 101\n {4}text: "42"\n/);
 });

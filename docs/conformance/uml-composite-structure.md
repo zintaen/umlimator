@@ -86,7 +86,7 @@ pdf`. The PNG was looked at, the SVG read, the PDF's text read back (`tests/cli.
 | Text | Text, in the page's font family; not embedded unless `fontCSS` is given | Pixels | Selectable text |
 | Accessible names | Each part's, role's, port's and collaboration use's `aria-label` kept ("Port quotes of checkout"); the lines' `<title>` removed | None | None |
 | Theme | The page's | The page's | `--theme`, light by default |
-| Tables | None | None | "Elements": the subject with its ports, its parts (`name : Type [multiplicity]`, composite or shared); a collaboration use's collaboration and bindings (`publisher ← checkout`); an open collaboration's roles. "Lines" (since 0.30.0, `risks.md` R10) lists each connector and role binding, between the cards or parts its ends are drawn on, each once (audit 17). **Gap:** a part in a row of "Lines" is named by its id (`order-service.checkout`), not its drawn name |
+| Tables | None | None | "Elements": the subject with its ports, its parts (`name : Type [multiplicity]`, composite or shared); a collaboration use's collaboration and bindings (`publisher ← checkout`); an open collaboration's roles. "Lines" (since 0.30.0, `risks.md` R10) lists each connector and role binding, between the cards or parts its ends are drawn on, each once (audit 17). A part in a row of "Lines" is named as drawn (`checkout : CheckoutFlow [1]`, since audit 32; before that by its id, `order-service.checkout`) |
 
 ## Accessibility
 

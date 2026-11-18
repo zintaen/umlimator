@@ -37,8 +37,11 @@ function wrap2(s, px, max) { const w = String(s ?? '').split(' '), n = w.length;
   const c = lastOk(1, n - 1, i => A(i) < B(i)) + 1; let i = c > n - 1 ? n - 1 : c > 1 && m(c - 1) <= m(c) ? c - 1 : c;
   if (m(i) > max) i = Math.max(1, lastOk(2, n - 1, j => A(j) <= max)); // too wide all the same: as much on the first line as fits
   return [fit(w.slice(0, i).join(' '), px, max, true), fit(w.slice(i).join(' '), px, max, true)]; }
-function clauseFit(s, px, max) { s = String(s ?? ''); if (textW(s, px) <= max) return s; for (const sep of ['; ', ', ', ' (']) { const q = s.split(sep); let o = q[0]; if (textW(o, px) > max) continue; for (const x of q.slice(1)) { if (textW(o + sep + x, px) > max) break; o += sep + x; } return o; } return fit(s, px, max, true); }
-function fit(s, px, max, words) { s = String(s ?? ''); if (textW(s, px) <= max) return s; // words: cut between words where it can (a card's texts)
+// a text fits its room when its width is within a hair of it: a room worked out by subtraction (an ER row's, its entity sized
+// to hold the widest name) loses 1e-14 to floating point, and the name the box was made for must not be cut (audit 33)
+const fits = (s, px, max) => textW(s, px) <= max + 1e-6;
+function clauseFit(s, px, max) { s = String(s ?? ''); if (fits(s, px, max)) return s; for (const sep of ['; ', ', ', ' (']) { const q = s.split(sep); let o = q[0]; if (textW(o, px) > max) continue; for (const x of q.slice(1)) { if (textW(o + sep + x, px) > max) break; o += sep + x; } return o; } return fit(s, px, max, true); }
+function fit(s, px, max, words) { s = String(s ?? ''); if (fits(s, px, max)) return s; // words: cut between words where it can (a card's texts)
   let k; if (measureText) k = s.length <= 3 ? s.length : lastOk(4, s.length, j => textW(s.slice(0, j) + '…', px) <= max); // 3: none fits
   else k = Math.max(Math.floor(max / (px * 0.6)) - 1, 3);
   if (/[\uD800-\uDBFF]/.test(s[k - 1])) k--; // never half an emoji: a lone surrogate draws as a broken glyph
