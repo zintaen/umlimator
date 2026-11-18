@@ -34,6 +34,11 @@ function sqHeads(model, view) {
   const at = new Map(); [...SQ_ARR(view.nodes), ...SQ_ARR(model.nodes)].forEach(n => { if (SQ_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
   return [...new Set(SQ_ARR(view.nodeIds))].filter(id => at.has(id)).map(id => at.get(id)); // listed twice: one head
 }
+// a message drawn: both its ends lifelines of the view (H, by id), as sqInput's rows are drawn; one to a lifeline the view does
+// not list is not (message-ends says it). An interaction use is. The picture's names, describe(), an overview's inline count
+// and paths() count these alone (audits 40, 41)
+const sqDrawn = H => o => !o.message || (H.has(o.from) && H.has(o.to));
+function sqDrawnMessages(model, view) { const H = new Set(sqHeads(model, view).map(n => n.id)); return interactionWalk(model, view).occ.filter(o => o.message && sqDrawn(H)(o)); }
 const sqName = elName;
 const sqHeadText = n => sqName(n) + (SQ_HAS(sqProps(n).represents) ? ' : ' + sqProps(n).represents : ''); // "api : ShopApi"
 const sqStereo = n => SQ_ARR(sqProps(n).stereotypes).filter(SQ_HAS).map(String);
@@ -87,10 +92,11 @@ function sqInput(model, view, X = sqIndex(model, view)) {
    and problems from it; order (S13): heads left to right, then fragments, operands and occurrences in time order */
 function sqRun(model, view) {
   const X = sqIndex(model, view), inp = sqInput(model, view, X), o = layoutTimeAxis(inp), heads = sqHeads(model, view), H = new Map(heads.map(n => [n.id, n]));
-  const msgs = X.occ.filter(m => m.message), M = new Map(msgs.map(m => [m.i, m])), U = new Map(X.occ.filter(u => !u.message).map(u => [u.id, u])), nth = new Map(msgs.map((m, k) => [m, k + 1])); // by row: two messages of one id (the core reports it) each its own
+  // numbered among the messages drawn, as describe() and the PDF's Lines table number them (audit 41)
+  const drawn = sqDrawn(H), msgs = X.occ.filter(m => m.message && drawn(m)), M = new Map(msgs.map(m => [m.i, m])), U = new Map(X.occ.filter(u => !u.message).map(u => [u.id, u])), nth = new Map(msgs.map((m, k) => [m, k + 1])); // by row: two messages of one id (the core reports it) each its own
   const inWhat = parent => { const c = X.chain(parent)[0]; if (!c) return ''; const op = SQ_ARR(c.f.members).find(m => SQ_OBJ(m) && m.id === c.op) || {};
     return `, in ${sqOperator(c.f) || 'fragment'}${SQ_HAS(op.label) ? ', ' + op.label : ''}`; };
-  const direct = id => X.occ.filter(m => m.parent === id).length;
+  const direct = id => X.occ.filter(m => m.parent === id && drawn(m)).length; // what the operand draws (audit 41)
   const nodes = [
     ...o.heads.map((h, j) => { const n = H.get(h.id), st = sqStereo(n);
       return { ...h, shape: 'lifeline', type: 'uml.Lifeline', label: sqHeadText(n), stereotypes: st, k: 'file', stem: o.stems[j], aria: `Lifeline ${sqHeadText(n)}${st.length ? ` (${st.join(', ')})` : ''}` }; }),
@@ -193,17 +199,18 @@ function sqDescribe(model, viewId) {
   const X = sqIndex(model, V), heads = sqHeads(model, V), H = new Map(heads.map(n => [n.id, n])), nm = id => (H.has(id) ? sqName(H.get(id)) : String(id));
   // the messages drawn: both ends lifelines of the view, as sqInput's rows are drawn (a message to one the view does not list is
   // not, and message-ends says it), numbered as the PDF's Lines table numbers them; a use over the ones it lists (audit 40)
-  const drawn = o => !o.message || H.has(o.from) && H.has(o.to);
+  const drawn = sqDrawn(H);
   const ms = X.occ.filter(o => o.message && drawn(o)), uses = X.occ.filter(o => !o.message).length, n = new Map(ms.map((m, k) => [m.id, k + 1]));
   const count = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
   const out = [`${labelOr(V.title, V.id)}: a sequence diagram of ${count(heads.length, 'lifeline')}, ${count(ms.length, 'message')}${uses ? `, ${count(uses, 'interaction use')}` : ''} and ${count(X.frags.length, 'combined fragment')}.`];
   if (heads.length) out.push(`Lifelines, left to right: ${heads.map(h => sqHeadText(h) + (sqStereo(h).length ? ` (${sqStereo(h).join(', ')})` : '')).join('; ')}.`);
   let open = [];
-  X.occ.forEach(o => { const c = o.chain.slice().reverse(); let k = 0; while (k < open.length && k < c.length && open[k].op === c[k].op) k++;
+  // a fragment's or an operand's header written once something drawn under it is reached: one holding only a message the
+  // view does not draw is not said to hold it (audit 41)
+  X.occ.forEach(o => { if (!drawn(o)) return; const c = o.chain.slice().reverse(); let k = 0; while (k < open.length && k < c.length && open[k].op === c[k].op) k++;
     open = open.slice(0, k);
     for (; k < c.length; k++) { const { f, op } = c[k], m = SQ_ARR(f.members).find(x => SQ_OBJ(x) && x.id === op) || {};
       out.push(`${'  '.repeat(k)}${sqOperator(f) || 'fragment'}${SQ_HAS(m.label) ? ` [${m.label}]` : ''}:`); open.push(c[k]); }
-    if (!drawn(o)) return;
     const pad = '  '.repeat(c.length), t = sqMsgText(o.el) ? `: ${sqMsgText(o.el)}` : '';
     if (!o.message) { const cs = SQ_ARR(sqProps(o.el).covers).filter(id => H.has(id)); out.push(`${pad}ref ${jsonText(sqName(o.el))}${cs.length ? ` over ${cs.map(nm).join(', ')}` : ''}.`); return; }
     const to = o.from === o.to ? 'itself' : nm(o.to), call = o.sort === 'reply' && n.has(o.replyTo) ? ` (answers ${n.get(o.replyTo)})` : '';
@@ -216,7 +223,7 @@ function sqDescribe(model, viewId) {
    reaches `to` after it. Self-messages are left out, as paths() leaves them ---- */
 function sqPaths(model, viewId, from, to) {
   const V = SQ_ARR(model && model.views).find(x => SQ_OBJ(x) && x.id === viewId); if (!V) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
-  const ids = sqHeads(model, V).map(h => h.id), ms = sqIndex(model, V).occ.filter(o => o.message && o.from !== o.to);
+  const ids = sqHeads(model, V).map(h => h.id), ms = sqDrawnMessages(model, V).filter(o => o.from !== o.to); // drawn ones: none through a lifeline the view does not list (audit 41)
   if (!ids.includes(from) || !ids.includes(to)) return [];
   if (from === to) return [{ type: 'node', id: from, view: viewId }]; // the card alone, as paths() on a map gives it
   const got = new Map([[from, -1]]), left = new Map([[to, Infinity]]);
@@ -296,7 +303,10 @@ function sqMoveTo(model, view, id, at) {
   const V = sqView(model, view); if (!V || !SQ_OBJ(at)) return null;
   const by = Array.isArray(at.by) ? at.by : null, ids = SQ_ARR(V.nodeIds), pt = Array.isArray(at.pt) ? at.pt : null, slot0 = !!pt || Number.isFinite(at.y);
   const place = () => (!slot0 && Number.isInteger(at.index) ? at.index : null);
-  if (ids.includes(id)) { const i = ids.indexOf(id), j = by ? (by[1] ? null : i + Math.sign(by[0])) : pt ? (Number.isInteger(at.col) ? at.col : sqColAt(model, V, id, +pt[0])) : place();
+  // a key press steps past the next lifeline drawn, never an id in nodeIds that draws none (audit 41)
+  const step = () => { const hs = sqHeads(model, V).map(n => n.id), p = hs.indexOf(id), k = p < 0 ? null : hs[p + Math.sign(by[0])];
+    return p < 0 ? ids.indexOf(id) + Math.sign(by[0]) : k == null ? -1 : ids.indexOf(k); };
+  if (ids.includes(id)) { const i = ids.indexOf(id), j = by ? (by[1] ? null : step()) : pt ? (Number.isInteger(at.col) ? at.col : sqColAt(model, V, id, +pt[0])) : place();
     if (j == null) return null; if (j < 0 || j >= ids.length || j === i) return [];
     return sqGuard(model, V, [{ op: 'move', id, view: V.id, index: j }]); }
   const X = sqIndex(model, V);
@@ -470,4 +480,4 @@ const SEQ_TYPE = registerDiagramType('uml.sequence', {
   edits: { connect: sqConnect, moveTo: sqMoveTo, wrap: sqWrap, add: sqAdd, remove: sqRemove, rename: sqRename },
 });
 
-export { SEQ_TYPE, SQ_RULES, sqInput, sqRun, sqDraw, sqProblems, sqDescribe, sqPaths, sqConnect, sqMoveTo, sqWrap, sqAdd, sqRemove, sqRename };
+export { SEQ_TYPE, SQ_RULES, sqDrawnMessages, sqInput, sqRun, sqDraw, sqProblems, sqDescribe, sqPaths, sqConnect, sqMoveTo, sqWrap, sqAdd, sqRemove, sqRename };

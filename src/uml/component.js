@@ -3,7 +3,7 @@ import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { lineRename, memberEdit, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
+import { CLASSIFIERS, lineRename, memberClash, memberEdit, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 import { SN_ARTIFACTS, SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, snKindName, snKindWord, structProblems } from './structure.js';
 import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
@@ -357,6 +357,7 @@ function cpOwners(model, x) {
   return CP_ARR(model.nodes).filter(n => CP_OBJ(n) && kinds.includes(cpKindOf(n)) && n.id !== x.id && !I.chain(n.id).includes(x.id)).map(n => ({ id: n.id, label: cpName(n) }));
 }
 
+const cpClashOwner = o => (CP_OBJ(o) && CLASSIFIERS.includes(o.type) ? o : null); // the owners member-names judges (classProblems)
 const CP_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
 const CP_TYPE = registerDiagramType('uml.component', {
   untypedAs: 'uml.Component', // an element of no type (or ""): a component, as drawn, edited and judged (audits 28, 30)
@@ -373,7 +374,10 @@ const CP_TYPE = registerDiagramType('uml.component', {
   boxes: (model, view) => cpPic(model, view).boxes,
   owners: cpOwners,
   // a component's rows are its ports (edits.member reads them first); an interface's its operations, as the class type's
-  member: { print: m => (m.type === 'uml.Port' ? cpPortPrint(m) : printMember(m)), edit: (m, t) => (m.type === 'uml.Port' ? { error: 'A port is edited on its component' } : memberEdit(m, t)), add: t => parseMember(String(t ?? '').trim()),
+  // a row to a name another member of an interface holds: refused in member-names' words, as the class view refuses it (audit
+  // 41); a component is no classifier member-names judges, and its ports are cpMember's
+  member: { print: m => (m.type === 'uml.Port' ? cpPortPrint(m) : printMember(m)), edit: (m, t, owner) => (m.type === 'uml.Port' ? { error: 'A port is edited on its component' } : memberEdit(m, t, cpClashOwner(owner))),
+    add: (t, owner) => { const r = parseMember(String(t ?? '').trim()); return r.error ? r : memberClash(cpClashOwner(owner), {}, r) || r; },
     holds: n => ['uml.Component', 'uml.Interface'].includes(drawnKind(CP_TYPE, n)) }, // and one of no type, drawn as a component (audit 30)
   validate: cpProblems,
   rules: CP_RULES,

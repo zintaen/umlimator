@@ -1,4 +1,4 @@
-import { jsonText, labelOr, elName, propTextProblems } from '../core/model.js';
+import { jsonText, labelOr, elName, labelProblem, propTextProblems } from '../core/model.js';
 import { kindWord, registerDiagramType } from '../core/registry.js';
 import { brLines, esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -102,6 +102,10 @@ function parseMember(text, kind) {
   return { type: 'uml.Property', label, props };
 }
 
+// an operation's parameters, each drawn in its row as `direction name: Type` (printMember): each of those not text, said at its
+// own path as propTextProblems says a member's type (audit 41), here and by SysML's block rows
+const paramTextProblems = (m, at) => (UML_OBJ(m) && m.type === 'uml.Operation' && UML_OBJ(m.props) ? UML_ARR(m.props.parameters) : [])
+  .flatMap((a, k) => (UML_OBJ(a) ? ['direction', 'name', 'valueType'].map(key => labelProblem(a, `${at}.props.parameters[${k}]`, key)).filter(Boolean) : []));
 /* a member back in its text form: the inverse of parseMember */
 function printMember(m) {
   const p = UML_OBJ(m && m.props) ? m.props : {}, label = String((m && m.label) ?? ''), st = UML_ARR(p.stereotypes).filter(UML_HAS).map(t => `«${t}» `).join('');
@@ -365,7 +369,8 @@ function classProblems(model, view) {
       if (named && UML_HAS(m.label)) { if (seen.has(k)) say('member-names', `${path}.members[${j}]`, [x.id, seen.get(k), m.id], `${q(x.id)} has two members named "${m.label}" (${seen.get(k)}, ${m.id})`); else seen.set(k, m.id); }
       if (m.type === 'uml.EnumerationLiteral' && ty !== 'uml.Enumeration') say('member-kinds', `${path}.members[${j}]`, [x.id, m.id], `literal "${m.label}" is in ${q(x.id)}, which is not an enumeration`);
       const mult = (m.props || {}).multiplicity; if (UML_HAS(mult)) multRule(String(mult), `${path}.members[${j}].props.multiplicity`, [m.id], `${q(x.id)}.${m.label}`);
-      out.push(...propTextProblems(m, `${path}.members[${j}]`, ['valueType', 'default', 'returnType'])); }); // drawn in its row as text (audit 40)
+      out.push(...propTextProblems(m, `${path}.members[${j}]`, ['valueType', 'default', 'returnType'])); // drawn in its row as text (audit 40)
+      out.push(...paramTextProblems(m, `${path}.members[${j}]`)); }); // and an operation's parameters (audit 41)
     if ((OWN_BOXES.includes(x.type) || x.type === 'uml.Comment' || x.type === 'uml.MetaclassReference') && ms.length) say('member-kinds', `${path}.members`, [x.id], `${q(x.id)} is a ${typeWord(x.type).toLowerCase()}, which has no members`);
   });
   function multRule(t, path, ids, what) { const b = multBounds(t);
@@ -474,4 +479,4 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   edits: { connect: classConnect, rename: lineRename(lineLabel) },
 });
 
-export { CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, memberClash, classProblems, closesCycle, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
+export { CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, memberClash, paramTextProblems, classProblems, closesCycle, classDescribe, classGeo, typeGeo, describeAs, drawnLines };

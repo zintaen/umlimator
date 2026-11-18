@@ -8,9 +8,8 @@ import { brLines } from '../typed/draw.js';
 import './class.js'; // SHAPE.note, a comment
 import { FLOW_CONTROL, FLOW_RULES, flowOf, flowProblems, flowText, flowLabel, flowRename, flowStereo } from './flow.js';
 import { frLines, frameTag, tagSize, useSize } from './frame.js';
-import { interactionWalk } from './interaction.js';
 import { snKindName } from './structure.js';
-import { sqDraw, sqRun } from './sequence.js';
+import { sqDraw, sqDrawnMessages, sqRun } from './sequence.js';
 import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the interaction overview diagram, uml.interaction-overview (work package 4.7, notes/stage-4.md §11) ----------
@@ -65,7 +64,7 @@ function ovInline(model, I, n, lay = true) {
   const sv = I.V.get(n.opensView);
   if (!sv || sv.diagram !== 'uml.sequence') return null;
   const own = new Set(OV_ARR(sv.nodes).filter(OV_OBJ).map(x => x.id)), heads = new Set(OV_ARR(sv.nodeIds).filter(id => I.N.has(id) || own.has(id))).size; // listed twice: one head, as sqHeads draws
-  const messages = interactionWalk(model, sv).occ.filter(o => o.message).length;
+  const messages = sqDrawnMessages(model, sv).length; // the messages its sequence view draws, as its describe() counts them (audit 41)
   const small = heads <= OV_MAX.heads && messages <= OV_MAX.messages;
   return { view: sv, heads, messages, small, run: small && lay ? sqRun(model, sv) : null };
 }

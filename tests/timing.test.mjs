@@ -710,3 +710,20 @@ test('audit 40: change-time says a time past ±1e300 is past it and not drawn, a
     "change-time: message m-charge's sentAt and receivedAt are not both numbers"]);
   assert.match(TM_TYPE.rules['change-time'], /within ±1e300/);
 });
+
+test('audit 41: the PDF\'s rows keep a constraint on the earlier of two changes at one instant, which the ruler draws on the later; Alt+Up/Down steps past the next lane drawn', () => {
+  const T = diagramOf({ diagram: 'uml.timing' });
+  const m = { schemaVersion: 2, title: 't', nodes: [{ id: 'w', type: 'uml.Lifeline', label: 'worker', props: { states: ['Idle', 'Busy'] } }, { id: 'p', type: 'uml.Lifeline', label: 'payments', props: { states: ['Idle', 'Busy'] } }, { id: 'n', type: 'uml.Comment', label: 'note' }], edges: [],
+    views: [{ id: 'v', diagram: 'uml.timing', title: 'V', nodeIds: ['w', 'n', 'p'], edges: [],
+      timeline: { unit: 'ms', changes: [{ id: 'a', lifeline: 'w', at: 0, state: 'Idle' }, { id: 'b', lifeline: 'w', at: 100, state: 'Busy' }, { id: 'c', lifeline: 'w', at: 100, state: 'Idle' }],
+        constraints: [{ id: 'k', type: 'uml.TimeConstraint', from: 'b', label: '{t=100}' }] } }] };
+  assert.match(describe(m, 'v'), /Time constraint \{t=100\} on worker at 100 ms\./);
+  assert.deepEqual(T.rows(m, 'v', 'w'), ['0 ms: Idle', '100 ms: Idle', 'Time constraint {t=100} on worker at 100 ms']);
+  assert.deepEqual(T.rows(m, 'v', 'p'), [], 'not on another lane');
+  // the comment n draws no lane: worker steps past payments, not past n
+  const down = T.edits.moveTo(m, 'v', 'w', { by: [0, 1] });
+  assert.deepEqual(down, [{ op: 'move', id: 'w', view: 'v', index: 2 }]);
+  const after = apply(m, down); assert.deepEqual(layout(after, 'v').nodes.filter(x => x.type === 'uml.Lifeline').map(x => x.id), ['p', 'w']);
+  assert.deepEqual(T.edits.moveTo(m, 'v', 'p', { by: [0, -1] }), [{ op: 'move', id: 'p', view: 'v', index: 0 }]);
+  assert.deepEqual(T.edits.moveTo(m, 'v', 'p', { by: [0, 1] }), []); assert.deepEqual(T.edits.moveTo(m, 'v', 'w', { by: [0, -1] }), []);
+});

@@ -212,10 +212,15 @@ function SYS_IB_RENAME(model, view, id, text) {
 const SYS_IB_KIND = (r, f) => SYS_IB_MAP(r, cs => cs.map(c => (SYS_IB_OBJ(c) && c.op === 'add' && SYS_IB_OBJ(c.element) ? { ...c, element: f(c.element) } : c)));
 // the composite's refusal of a part's text ('A part is name : Type [multiplicity]') said of the entry or row being added: a
 // reference or a value is not called a part (audit 40), as the parametric view says a property (SYS_PAR_RESAY)
+// and 'This view has no subject to add a part to' (audit 41)
 const SYS_IB_SAYAS = (r, t) => (SYS_IB_OBJ(r) && typeof r.error === 'string' && (t === 'sysml.ReferenceProperty' || t === 'sysml.ValueProperty')
-  ? { ...r, error: r.error.replace(/^A part is /, t === 'sysml.ValueProperty' ? 'A value is ' : 'A reference is ') } : r);
+  ? { ...r, error: r.error.replace(/^A part is /, t === 'sysml.ValueProperty' ? 'A value is ' : 'A reference is ').replace(/ to add a part to$/, t === 'sysml.ValueProperty' ? ' to add a value to' : ' to add a reference to') } : r);
+// the composite's refusals of a port in SysML's words, as validate() says its problems (SYS_SAY): this view has blocks and
+// parts, no class or component (audit 41)
+const SYS_IB_SAY_ADD = [[/, a part, a class or a component /g, ' or a part '], [/class or component/g, 'block']];
+const SYS_IB_RESAY = r => (SYS_IB_OBJ(r) && typeof r.error === 'string' ? { ...r, error: SYS_IB_SAY_ADD.reduce((t, [re, w]) => t.replace(re, w), r.error) } : r);
 function SYS_IB_ADD(model, view, entry, label, at) {
-  const r = SYS_IB_ON(csAdd)(model, view, SYS_IB_ENTRY(entry), label, at), t = SYS_IB_OBJ(entry) ? entry.type : null;
+  const r = SYS_IB_RESAY(SYS_IB_ON(csAdd)(model, view, SYS_IB_ENTRY(entry), label, at)), t = SYS_IB_OBJ(entry) ? entry.type : null;
   return Object.hasOwn(SYS_IB_PROP, t) ? SYS_IB_SAYAS(SYS_IB_KIND(r, x => (Object.hasOwn(SYS_IB_PROP, x.type) ? { ...x, type: t } : x)), t) : r;
 }
 function SYS_IB_MEMBER(model, view, owner, id, text) {

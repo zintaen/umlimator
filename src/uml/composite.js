@@ -4,7 +4,7 @@ import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
 import { brLines } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
-import { LINE_WORDS, legendOf, lineIn, lineLabel, lineLook, lineRename, memberEdit, multBounds, printMember } from './class.js'; // a subject's other members, as the class type's; SHAPE.note, a comment's look
+import { CLASSIFIERS, LINE_WORDS, legendOf, lineIn, lineLabel, lineLook, lineRename, memberClash, memberEdit, multBounds, printMember } from './class.js'; // a subject's other members, as the class type's; SHAPE.note, a comment's look
 import './usecase.js'; // SHAPE.ellipse, a collaboration use's; SHAPE.subject, a class subject's frame
 import { SN_SAY, STRUCT_RULES, snKindName, snKindWord, portFit, portSides, portsDrawn, structProblems } from './structure.js';
 import { viewLines } from './owners.js';
@@ -488,10 +488,23 @@ function csMember(model, view, owner, id, text) {
   const r = csRow(o, text, was); if (r.error) return r;
   return was ? csSets(was, r) : [{ op: 'add', element: { id: csFresh(model, csIdOf(o.id, r)), ...r }, owner: o.id }];
 }
+/* a part, a port or a role added, or renamed, to a name another member of its class holds: refused in member-names' words, as
+   the class view refuses it (audit 41). A class only: a component or a collaboration is no classifier member-names judges.
+   csClashing wraps this type's own hooks, not the ones SysML's views call on their projection (SYS_BACK refuses those) */
+const csClash = (o, m, r) => (CS_OBJ(o) && CLASSIFIERS.includes(o.type) ? memberClash(o, m, r) : null);
+const csClashing = hook => (model, view, ...a) => {
+  const r = hook(model, view, ...a), cs = Array.isArray(r) ? r : CS_OBJ(r) && Array.isArray(r.commands) ? r.commands : null; if (!cs) return r;
+  const P = csPic(model, view);
+  for (const c of cs) { if (!CS_OBJ(c)) continue;
+    const q = c.op === 'set' && String(c.path) === 'label' ? P.mem.get(c.id) : null;
+    const no = c.op === 'add' && c.owner != null && CS_OBJ(c.element) ? csClash(P.el(c.owner), {}, c.element) : q ? csClash(q.owner, q.m, { type: q.m.type, label: c.value, props: q.m.props }) : null;
+    if (no) return no; }
+  return r;
+};
 const CS_MEMBER = {
   print: m => (m.type === 'uml.Port' ? `port ${csPortText(m)}` : m.type === 'uml.Property' ? csPartText(m) : printMember(m)),
-  add: (text, owner) => csRow(owner, text),
-  edit: (m, text) => { if (m.type !== 'uml.Port' && m.type !== 'uml.Property') return memberEdit(m, text); const r = csRow(null, text, m); return r.error ? r : { commands: csSets(m, r) }; },
+  add: (text, owner) => { const r = csRow(owner, text); return r.error ? r : csClash(owner, {}, r) || r; },
+  edit: (m, text, owner) => { if (m.type !== 'uml.Port' && m.type !== 'uml.Property') return memberEdit(m, text, owner); const r = csRow(null, text, m); return r.error ? r : csClash(owner, m, r) || { commands: csSets(m, r) }; },
   holds: n => CS_SUBJECTS.includes(n.type),
 };
 
@@ -531,7 +544,7 @@ const CS_TYPE = registerDiagramType('uml.composite-structure', {
     return [...(CS_HAS(CS_PROPS(u).collaboration) ? [String(CS_PROPS(u).collaboration)] : []),
       // its bindings as the view draws and describe() says them (P.lines: a view's own line too, audit 26)
       ...P.lines.filter(({ e }) => e.type === 'uml.RoleBinding' && e.to === id).map(({ e }) => `${labelOr(e.label, '?')} ← ${csName(P.el(e.from) || { id: e.from })}`)]; },
-  edits: { connect: csConnect, moveTo: csMoveTo, add: csAdd, remove: csRemove, rename: csRename, member: csMember },
+  edits: { connect: csConnect, moveTo: csMoveTo, add: csClashing(csAdd), remove: csRemove, rename: csClashing(csRename), member: csClashing(csMember) },
 });
 
 export { CS_TYPE, CS_RULES, csGeo, csProblems, csDescribe, csConnect, csMoveTo, csAdd, csRemove, csRename, csMember, csParse, csRow };
