@@ -398,6 +398,15 @@ try {
     const fd = f.contentDocument, ruleRow = [...fd.querySelectorAll('tr')].find(r => r.querySelector('td b') && /broken|holds/.test(r.textContent) && r.querySelector('td b').textContent === '0');
     check('audit 33: the PDF of a map titled 0: its title reads 0, and a rule titled 0 is listed as 0', fd.title === '0' && !!ruleRow, [fd.title, [...fd.querySelectorAll('tr td b')].map(b => b.textContent).slice(-4)]);
     f.remove(); }
+  { /* ---------- audit 37: the view pill, its About box and the views list count what a typed view draws, one number ---------- */
+    box.innerHTML = ''; pg = mountAll(box, await (await fetch('../examples/bookshop-atlas.json')).json(), { instant: true, params: new URLSearchParams() });
+    await until(() => pg.view && document.querySelector('#m-canvas .umlimator')); const got = {};
+    for (const [view, n] of [['one-charge', 2], ['checkout-sequence', 5], ['checkout-communication', 5], ['internals', 9], ['overview', 13]]) {
+      await pg.setView(view); await until(() => pg.view === view && ($('m-vpill').querySelector('.n') || {}).textContent); await wait(30);
+      got[view] = [$('m-vpill').querySelector('.n').textContent, $('m-vpop').querySelector('.vm').textContent.split(' · ')[0], (document.querySelector(`#m-tree .mit[data-v="${view}"] em`) || {}).textContent]; }
+    check('a typed view\'s pill, About box and views list say one count, of what it draws (2 lifelines on a timing view, not 19 layout pieces; a map\'s cards as before) (audit 37)',
+      Object.entries(got).every(([v, [a, b, c]]) => a === b && parseInt(a) === { 'one-charge': 2, 'checkout-sequence': 5, 'checkout-communication': 5, internals: 9, overview: 13 }[v] && parseInt(c) === parseInt(a)), got);
+    pg.destroy(); pg = null; }
 } catch (err) { out.fail.push('threw: ' + (err && err.stack || err)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

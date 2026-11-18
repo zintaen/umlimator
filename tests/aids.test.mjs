@@ -92,3 +92,16 @@ test('validate() warns of a card source that is not a path or a list of paths (a
   const said = validate({ nodes: [{ id: 'a', source: 42 }, { id: 'b', source: ['src/b.js', 7] }, { id: 'c', source: ['src/c.js'] }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }] });
   assert.deepEqual(said.filter(p => /source/.test(p.path)).map(p => p.path), ['nodes[0].source', 'nodes[1].source']);
 });
+
+test('audit 37: the gap defaults lib/umlimator.d.ts states are the ones layout() uses, a process view\'s 38 px too', () => {
+  const dts = readFileSync(new URL('../lib/umlimator.d.ts', import.meta.url), 'utf8'), doc = /\/\*\*((?:(?!\*\/)[\s\S])*?)\*\/\s*gap\?: number; rgap\?: number;/.exec(dts);
+  assert.ok(doc, 'the MapView gap comment'); const text = doc[1].replace(/\s*\*\s*/g, ' ');
+  const [, col, row] = /default (\d+) and (\d+)/.exec(text) || [], [, proc] = /with no boxes: (\d+) between columns/.exec(text) || [];
+  const m = (v = {}) => ({ nodes: cards(['a', 'b', 'c']), edges: [{ from: 'a', to: 'b' }, { from: 'b', to: 'c' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], ...v }] });
+  const colGap = g => g.nodes[1].x - (g.nodes[0].x + g.nodes[0].w);
+  assert.equal(colGap(layout(m(), 'v')), Number(col));
+  assert.equal(colGap(layout(m({ render: 'process' }), 'v')), Number(proc), text);
+  assert.equal(colGap(layout(m({ mainSteps: ['a', 'b', 'c'] }), 'v')), Number(proc), text);
+  assert.equal(colGap(layout(m({ render: 'process', gap: Number(col) }), 'v')), Number(col), 'the stated default, set, widens a process view');
+  assert.equal(Number(row), 44);
+});
