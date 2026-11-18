@@ -65,7 +65,7 @@ function sqInput(model, view, X = sqIndex(model, view)) {
     if (!o) return { id: SQ_OBJ(x) ? String(x.id) : String(x), kind: 'none', a: null, b: null, w: 0, h: 0, parent: null }; // the core reports it (src/core/model.js)
     if (!o.message) { const cs = SQ_ARR(sqProps(o.el).covers).filter(id => col.has(id)).sort((a, b) => col.get(a) - col.get(b)); // a use: over what it covers, else every lifeline
       const ends = cs.length ? [cs[0], cs[cs.length - 1]] : heads.length ? [heads[0].id, heads[heads.length - 1].id] : [null, null];
-      return { id: o.id, kind: 'span', a: ends[0], b: ends[1], parent: o.parent, ...useSize(String(o.el.label ?? '')) }; }
+      return { id: o.id, kind: 'span', a: ends[0], b: ends[1], parent: o.parent, ...useSize(sqName(o.el)) }; } // one with no name (or "") drawn by its id, as named (audit 36)
     const t = sqMsgText(o.el);
     return { id: o.id, kind: o.from === o.to ? 'self' : 'line', a: o.from, b: o.to, parent: o.parent, ...(t ? sqLabelSize(t) : { w: 0, h: 0 }) }; });
   // born: a lifeline's first create; again: each later one (create-once: in another operand of an alt), a head drawn at its
@@ -99,8 +99,8 @@ function sqRun(model, view) {
         ...fr.parts.map(p => { const m = ms.find(x => x.id === p.id) || {}, k = direct(p.id);
           return { ...p, shape: 'operand', type: 'uml.InteractionOperand', label: m.label, k: 'file', holder: true, aria: `Operand ${SQ_HAS(m.label) ? m.label + ' ' : ''}of ${op}, ${k} ${k === 1 ? 'occurrence' : 'occurrences'}` }; })]; }),
     ...o.spans.map(s => { const u = U.get(s.id), cs = SQ_ARR(sqProps(u.el).covers).filter(id => H.has(id)), all = heads.map(n => n.id), ids = cs.length ? all.filter(id => cs.includes(id)) : all;
-      return { ...s, shape: 'use', type: 'uml.InteractionUse', label: String(u.el.label ?? ''), k: 'file', holder: true,
-        aria: `Interaction use ${u.el.label ?? ''}${ids.length ? `, over ${sqName(H.get(ids[0]))}${ids.length > 1 ? ' to ' + sqName(H.get(ids[ids.length - 1])) : ''}` : ''}` }; }),
+      return { ...s, shape: 'use', type: 'uml.InteractionUse', label: sqName(u.el), k: 'file', holder: true,
+        aria: `Interaction use ${sqName(u.el)}${ids.length ? `, over ${sqName(H.get(ids[0]))}${ids.length > 1 ? ' to ' + sqName(H.get(ids[ids.length - 1])) : ''}` : ''}` }; }),
   ];
   const byId = idTable(Object.fromEntries(nodes.map(n => [n.id, n])));
   const edges = o.lines.map(l => { const m = M.get(l.ri), t = sqMsgText(m.el);
@@ -201,7 +201,7 @@ function sqDescribe(model, viewId) {
     for (; k < c.length; k++) { const { f, op } = c[k], m = SQ_ARR(f.members).find(x => SQ_OBJ(x) && x.id === op) || {};
       out.push(`${'  '.repeat(k)}${sqOperator(f) || 'fragment'}${SQ_HAS(m.label) ? ` [${m.label}]` : ''}:`); open.push(c[k]); }
     const pad = '  '.repeat(c.length), t = sqMsgText(o.el) ? `: ${sqMsgText(o.el)}` : '';
-    if (!o.message) { const cs = SQ_ARR(sqProps(o.el).covers); out.push(`${pad}ref ${jsonText(String(o.el.label ?? ''))}${cs.length ? ` over ${cs.map(nm).join(', ')}` : ''}.`); return; }
+    if (!o.message) { const cs = SQ_ARR(sqProps(o.el).covers); out.push(`${pad}ref ${jsonText(sqName(o.el))}${cs.length ? ` over ${cs.map(nm).join(', ')}` : ''}.`); return; }
     const to = o.from === o.to ? 'itself' : nm(o.to), call = o.sort === 'reply' && n.has(o.replyTo) ? ` (answers ${n.get(o.replyTo)})` : '';
     out.push(`${pad}${n.get(o.id)}. ${nm(o.from)} ${SQ_VERB[o.sort]} ${to}${call}${t}.`); });
   return out.join('\n');

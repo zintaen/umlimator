@@ -153,6 +153,7 @@ export function validate(model) {
   });
   // stories (#69): each step's view, and the cards, lines and tour it names there
   if (m.stories != null && !Array.isArray(m.stories)) err('stories', 'stories is a list of stories');
+  const modelLine = new Map(arr(m.edges).filter(e => e && typeof e === 'object' && typeof e.id === 'string').map(e => [e.id, e])), cardIds = new Set(arr(m.nodes).filter(n => n && typeof n === 'object').map(n => n.id));
   const posLines = lineNames(m), sids = new Set(), lines = new Set([...lineIds, ...views.flatMap(v => arr(v.edges).filter(e => e && e.id != null).map(e => e.id))]);
   arr(m.stories).forEach((s, i) => {
     const at = `stories[${i}]`;
@@ -164,7 +165,10 @@ export function validate(model) {
       const p = `${at}.steps[${j}]`, v = views.find(x => x.id === (st && st.view));
       if (!v) return err(p + '.view', `"${st && st.view}" is not a view`);
       const mine = new Set(arr(v.nodeIds)), named = (x, q) => { // a card of the view or a line ("a->b#0" names a line with no id)
-        if (typeof x === 'string' && !mine.has(x) && !lines.has(x)) { if (!x.includes('->')) err(q, `"${x}" is neither one of view "${v.id}"'s cards nor a line`); else if (/#\d+$/.test(x) && !posLines.get(listOf(m, m.views.indexOf(v))).has(x)) warn(q, `"${x}" names no line: the step shows nothing for it`); }
+        // a model line to a card the view does not show is no line of it, as such a card is no card of it (audit 36)
+        const off = typeof x !== 'string' || mine.has(x) || !modelLine.has(x) || arr(v.edges).some(e => e && e.id === x) ? undefined : [modelLine.get(x).from, modelLine.get(x).to].find(k => cardIds.has(k) && !mine.has(k) && !arr(v.containers).some(c => c && c.id === k));
+        if (off != null) err(q, `"${x}" is no line of view "${v.id}": its end "${off}" is not one of the view's cards`);
+        else if (typeof x === 'string' && !mine.has(x) && !lines.has(x)) { if (!x.includes('->')) err(q, `"${x}" is neither one of view "${v.id}"'s cards nor a line`); else if (/#\d+$/.test(x) && !posLines.get(listOf(m, m.views.indexOf(v))).has(x)) warn(q, `"${x}" names no line: the step shows nothing for it`); }
         else if (x && typeof x === 'object') [x.type !== 'container' && x.id, x.node, ...arr(x.ids)].forEach(y => typeof y === 'string' && named(y, q)); }; // a Ref
       named(st.select, p + '.select');
       arr(st.highlight).forEach((x, k) => named(x, `${p}.highlight[${k}]`));

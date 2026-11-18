@@ -248,7 +248,8 @@ function SYS_IB_ROWS(model, view, id) {
   if (x !== I.S) return null;
   // the subject: its parts, references, values and ports. Its connectors are rows of the Lines table, which lists a line drawn
   // to a member's owner, so not again here (audit 17)
-  return SYS_IB_ARR(x.members).filter(m => SYS_IB_OBJ(m) && (Object.hasOwn(SYS_IB_PROP, m.type) || m.type === 'sysml.Port')).map(m => SYS_IB_MEMBERS.print(m));
+  // a port with no name (or "") by its id, as drawn and said; print stays F2's edit text (audit 36)
+  return SYS_IB_ARR(x.members).filter(m => SYS_IB_OBJ(m) && (Object.hasOwn(SYS_IB_PROP, m.type) || m.type === 'sysml.Port')).map(m => SYS_IB_MEMBERS.print(m.type === 'sysml.Port' ? { ...m, label: elName(m) } : m));
 }
 // "DCPower, battery to dock": the item, then the parts (or ports) it flows from and to
 function SYS_IB_LINE_TEXT(model, view, id) {
