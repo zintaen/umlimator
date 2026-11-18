@@ -423,3 +423,16 @@ test('audit 40: a slot for a feature the instance has one for is refused, and a 
   assert.equal(C('ada', 'order-1042'), null); assert.equal(C('ada', 'u1'), null);
   assert.equal(C('c1', 'ada', 'uml.CommentLink'), null, 'another line: the default');
 });
+
+test('audit 42: validate() says a classifier compartment\'s type, return type or parameter, and a slot\'s value, that is not text, as the class view does', () => {
+  const op = { id: 'c.op', type: 'uml.Operation', label: 'go', props: { parameters: [{ name: { x: 1 }, valueType: 'T' }], returnType: { y: 2 } } };
+  const at = { id: 'c.at', type: 'uml.Property', label: 'size', props: { valueType: { z: 3 } } };
+  const said = m => validate(m).filter(p => / is not text/.test(p.message)).map(p => p.path).sort();
+  const m = { schemaVersion: 2, nodes: [{ id: 'c', type: 'uml.Class', label: 'C', members: [op, at, { id: 'c.p', type: 'uml.Port', label: 'p', props: { valueType: { w: 1 } } }] },
+    { id: 'o', type: 'uml.InstanceSpecification', label: 'o', props: { classifier: 'C' }, members: [{ id: 'o.s', type: 'uml.Slot', label: 'size', props: { value: { a: 1 } } }, { id: 'o.t', type: 'uml.Slot', label: 'n', props: { value: 3 } }] }],
+  edges: [], views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['c', 'o'] }] };
+  // a port is drawn in no compartment here, so it is not said
+  assert.deepEqual(said(m), ['nodes[0].members[0].props.parameters[0].name', 'nodes[0].members[0].props.returnType', 'nodes[0].members[1].props.valueType', 'nodes[1].members[0].props.value']);
+  const off = structuredClone(m); off.views[0].nodeIds = ['o']; off.nodes[1].members[0].props.value = '4';
+  assert.deepEqual(said(off), [], 'what the view does not show is not said');
+});
