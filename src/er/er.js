@@ -324,6 +324,8 @@ const ER_TYPE = registerDiagramType('er', {
   owners: model => (erIndex(model), null),
   member: { print: c => printColumn(c), holds: erTable }, // rows are read by edits.member, which has the model
   validate: erProblems,
+  // IDEF1X draws a shown entity dependent (rounded corners) by an identifying relationship whose parent it need not show (audit 40)
+  touches: (model, view) => view.notation !== 'idef1x' ? [] : (ids => erRels(model).filter(e => ids.has(e.to)).map(e => e.id))(new Set(erShown(model, view).ids)),
   rules: ER_RULES,
   describe: erDescribe,
   // the PDF's tables (§9): an entity's word and its columns as S9 prints them; a relationship's multiplicities
