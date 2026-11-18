@@ -418,3 +418,27 @@ test('audit 31: every Mermaid writer writes a node or line label that is a numbe
   // another value is still refused, and said
   assert.match(W.flowchart[0]({ schemaVersion: 2, root: 'v', nodes: [{ id: 'A', type: 'flow.Process', label: { a: 1 } }], edges: [], views: [{ id: 'v', diagram: 'flowchart', nodeIds: ['A'] }] }), /not written: A: its label, which is not text/);
 });
+
+// audit 34: the dash form's text (Mermaid's edgeText) stopped at a |, so both readers dropped `S -- yes|no --> T` whole, its
+// nodes too; the text now runs to the first close outside quotes, in this reader and in the map importer alike
+test('a | in the dash form\'s link text is text, bare or quoted, in this reader and the map importer alike (audit 34)', () => {
+  const src = ['flowchart LR', 'S -- yes|no --> T', 'U -- "a|b" --> V', 'A -- "x --> y" --> B', 'E -- open " quote --> F', 'G -- x --> H -- y|z --> I', 'J -->|"p|q"| K', 'L -- plain --> M'].join('\n');
+  const want = [['S', 'T', 'yes|no'], ['U', 'V', 'a|b'], ['A', 'B', 'x --> y'], ['E', 'F', 'open " quote'], ['G', 'H', 'x'], ['H', 'I', 'y|z'], ['J', 'K', 'p|q'], ['L', 'M', 'plain']];
+  const { model, report } = read(src);
+  assert.deepEqual(model.edges.map(e => [e.from, e.to, e.label]), want);
+  assert.deepEqual(report.filter(r => r.status === 'skipped'), []);
+  const root = fileURLToPath(new URL('../', import.meta.url));
+  const py = JSON.parse(execFileSync('python3', ['-I', '-c', `import json, sys
+sys.path.insert(0, ${JSON.stringify(root)})
+import umlimator_import as imp
+m, unread = imp.read("mermaid", sys.stdin.read(), "flowchart")
+print(json.dumps({"edges": [[e["from"], e["to"], e.get("label")] for e in m["edges"]], "unread": unread}))`], { input: src, encoding: 'utf8' }));
+  assert.deepEqual(py, { edges: want, unread: [] });
+  // a link with no close still fails in linear time, quotes and all
+  const long = 'flowchart LR\nA -- ' + '"q" | '.repeat(20000) + '"\n', t = performance.now();
+  read(long); execFileSync('python3', ['-I', '-c', `import sys
+sys.path.insert(0, ${JSON.stringify(root)})
+import umlimator_import as imp
+imp.read("mermaid", sys.stdin.read(), "flowchart")`], { input: long, encoding: 'utf8' });
+  assert.ok(performance.now() - t < 5000, `${Math.round(performance.now() - t)} ms`);
+});

@@ -18,7 +18,8 @@ import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort, mermaidText } 
 
    writeMermaidRequirement(model, viewId?) -> text: one sysml.requirement view as Mermaid. What Mermaid cannot carry is kept
    in the comments above, and what the subset leaves out is named as `%% not written: <id> (<type>)` or `%% not written:
-   <id>: <what>` (a comment and its link, a package, a parent that is not written).
+   <id>: <what>` (a comment and its link, a package, a parent that is not written, a relationship or a containment whose
+   ends the reader refuses, audit 34).
 
    How the requirement diagram maps onto Mermaid's text, both ways (§12.1):
    - `requirement name { id: …, text: …, risk: …, verifymethod: … }` and its five other kinds a sysml.Requirement, a kind
@@ -402,9 +403,15 @@ function writeMermaidRequirement(model, viewId) {
     }
     out.push(...head.map(l => '  ' + l), `  ${word} ${tok(n.id)} {`, ...body.map(l => '    ' + l), '  }');
   }
+  // a relationship the reader refuses for its ends (MQ_RULE, §6.3's errors) is named, not written as a line that reads back as
+  // nothing: each written element as the reader defines it, a requirement or an element (audit 34)
+  const def = id => ({ kind: byId.get(id).type === 'sysml.Requirement' ? 'requirement' : 'element' });
+  const refused = (word, from, to) => { const rule = MQ_RULE.get(word); return rule && !rule[2](def(from), def(to)) ? `${rule[1]} (${rule[0]})` : ''; };
   // containment: each written element's parent, when it is written
   for (const n of nodes) if (n.parent != null) {
-    if (names.has(n.parent)) out.push(`  ${tok(n.parent)} - contains -> ${tok(n.id)}`);
+    const no = names.has(n.parent) && refused('contains', n.parent, n.id);
+    if (no) lose(n.id, `parent ${said(n.parent)}: ${no}`);
+    else if (names.has(n.parent)) out.push(`  ${tok(n.parent)} - contains -> ${tok(n.id)}`);
     else lose(n.id, `parent ${said(n.parent)}, which is not written`);
   }
 
@@ -418,6 +425,8 @@ function writeMermaidRequirement(model, viewId) {
     if (listed && !once(seenEdges, e.id)) continue;
     const word = MQ_WORD.get(e.type);
     if (!word || !keeps(e.id) || !names.has(e.from) || !names.has(e.to)) { skip(e); continue; }
+    const no = refused(word, e.from, e.to);
+    if (no) { lose(e.id, no); continue; }
     extra(e, ['id', 'type', 'from', 'to']);
     if (e.id !== `${e.from}-${word}-${e.to}`) out.push(`  %% id: ${e.id}`);
     out.push(`  ${tok(e.from)} - ${word} -> ${tok(e.to)}`);
