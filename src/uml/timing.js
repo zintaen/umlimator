@@ -411,6 +411,7 @@ function tmKeyHook(model, view, ids, key) {
 /* ---- the type ---- */
 const TM_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
 const TM_TYPE = registerDiagramType('uml.timing', {
+  untyped: null, // an element of no type is no lifeline: not drawn (audit 30)
   title: 'timing diagram',
   // the kinds of line it draws: any other a view lists is not drawn, which validate() says (src/core/model.js, audit 28)
   drawsOnly: ['uml.Message'],

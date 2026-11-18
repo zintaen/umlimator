@@ -2,7 +2,7 @@ import { jsonText } from '../core/model.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { brLines, endLabels } from '../typed/draw.js';
-import { idTable } from '../core/registry.js';
+import { diagramOf, drawnKind, idTable, kindWord } from '../core/registry.js';
 import { OWNER_RULES, viewLines } from './owners.js';
 
 /* ---------- structure notation: what the component, deployment and composite structure types share (work package 5.3,
@@ -202,28 +202,31 @@ const STRUCT_RULES = {
   'manifest-ends': 'a manifestation runs from an artifact (an error), to a component (a warning)',
 };
 const SN_ARTIFACTS = ['uml.Artifact', 'uml.DeploymentSpecification'];
-const snWord = t => String(t ?? '').split('.').pop().replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase(); // 'uml.ExecutionEnvironment': "execution environment"
 // the same, first letter up, where a kind outside a view's own starts its accessible name: "Use case Pay", never "UseCase Pay" (audit 23);
 // no type at all: "Element Shop", as a cloud view names an untyped card, never " Shop" (audit 26)
-const snKindName = t => snWord(t).replace(/^./, c => c.toUpperCase()) || 'Element';
+// a type of no notation as written: one rule, registry.js kindWord's, for every type and the PDF (audit 30)
+const snKindName = t => kindWord(t) || 'Element';
+// a line's kind at the start of its accessible name: no type, or "", "Line", as the key says (audit 30)
+const snLineName = t => (t == null || t === '' ? 'Line' : snKindName(t));
 function structProblems(model, view) {
   const out = [], at = new Map(), shown = new Set(SN_ARR(view && view.nodeIds)), seen = id => !view || shown.has(id);
   SN_ARR(model && model.nodes).forEach(n => { if (SN_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
   [...at.values()].forEach(n => SN_ARR(n.members).forEach(m => { if (SN_OBJ(m) && typeof m.id === 'string' && !at.has(m.id)) at.set(m.id, m); })); // a line may end on a port: named, not "nothing" (audit 17)
+  const T = view ? diagramOf(view) : null, asKind = x => drawnKind(T, x); // the kind each element is drawn as in this view (registry.js, audit 30)
   const nm = x => (x ? `${snKindName(x.type).toLowerCase()} ${x.id}${x.label != null && x.label !== '' ? ` ("${x.label}")` : ''}` : 'nothing');
   const say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   SN_ARR(model && model.nodes).forEach((n, i) => { if (!SN_OBJ(n) || !seen(n.id)) return;
     if (n.type === 'uml.Port') say('error', 'port-owner', `nodes[${i}]`, [n.id], `${nm(n)} is a node; a port is a member of a component or a class`);
-    // the component view draws an element of no type as a component, holding its ports (component.js cpGeo, audit 28)
-    const holds = n.type === 'uml.Component' || n.type === 'uml.Class' || !n.type && view && view.diagram === 'uml.component';
+    // the component view draws an element of no type as a component, holding its ports (component.js cpGeo, audits 28, 30)
+    const holds = ['uml.Component', 'uml.Class'].includes(asKind(n));
     SN_ARR(n.members).forEach((m, j) => { if (SN_OBJ(m) && m.type === 'uml.Port' && !holds)
       say('error', 'port-owner', `nodes[${i}].members[${j}]`, [m.id, n.id], `${nm(m)} is a member of ${nm(n)}; a port is a member of a component or a class`); }); });
   viewLines(model, view).forEach(([e, path]) => { if (!SN_OBJ(e) || e.type !== 'uml.Manifestation' || !(seen(e.from) || seen(e.to))) return;
     const f = at.get(e.from), t = at.get(e.to);
     if (!f || !SN_ARTIFACTS.includes(f.type)) say('error', 'manifest-ends', path, [e.id, e.from], `${e.id} runs from ${nm(f)}: a manifestation runs from an artifact`);
-    if (!t || t.type !== 'uml.Component') say('warning', 'manifest-ends', path, [e.id, e.to], `${e.id} runs to ${nm(t)}: «manifest» is drawn to a component only`); });
+    if (!t || asKind(t) !== 'uml.Component') say('warning', 'manifest-ends', path, [e.id, e.to], `${e.id} runs to ${nm(t)}: «manifest» is drawn to a component only`); });
   if (view && SN_ARR(view.containers).length) say('warning', 'own-boxes', `views[${SN_ARR(model.views).indexOf(view)}].containers`, [view.id], `view ${jsonText(view.id)} draws its own boxes; its hand-written containers are ignored`);
   return out;
 }
 
-export { SN_ARTIFACTS, SN_SAY, snKindWord, snKindName, portLen, portSides, portFit, portsDrawn, STRUCT_RULES, structProblems };
+export { SN_ARTIFACTS, SN_SAY, snKindWord, snKindName, snLineName, portLen, portSides, portFit, portsDrawn, STRUCT_RULES, structProblems };

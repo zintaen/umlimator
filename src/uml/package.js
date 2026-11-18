@@ -31,6 +31,7 @@ function packageProblems(model, view) {
 }
 
 const PACKAGE_TYPE = registerDiagramType('uml.package', {
+  untyped: 'Class', untypedAs: 'uml.Class', // an element of no type (or ""): a class, as drawn, named, edited and judged (audit 30)
   title: 'package diagram',
   elements: [['Package', 'Package'], ['Class', 'Class'], ['Interface', 'Interface'], ['Enumeration', 'Enumeration'], ['DataType', 'Data type'], ['PrimitiveType', 'Primitive type'], ['Comment', 'Comment']]
     .map(([t, label]) => ({ type: 'uml.' + t, label })),

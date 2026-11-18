@@ -364,6 +364,23 @@ test('audit 29: an element of no UML kind is drawn, said and edited as an instan
     const ctx = mapContext(m); assert.match(tablesOf(ctx, ctx.V.v, ctx.buildGeo('v'))[0].rows[0], /order1 : Order/, d); }
 });
 
+test('audit 30: an element of no UML kind the object view shows is an instance to slot-kinds, and the PDF\'s Members list what its box draws', () => {
+  for (const type of ['uml.InstanceSpecification', undefined, '', 'acme.Thing']) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'o1', label: 'o1', ...(type === undefined ? {} : { type }), members: [{ id: 'p', type: 'uml.Property', label: 'secret', props: { valueType: 'int' } }, { id: 'n', label: 'nameless' }, { id: 's', type: 'uml.Slot', label: 'id', props: { value: '7' } }] }],
+      edges: [], views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['o1'] }] }, q = JSON.stringify(type);
+    assert.deepEqual(validate(m).filter(p => p.rule === 'slot-kinds').map(p => p.message), ['slot-kinds: "o1" holds p, a Property: an instance holds slots only', 'slot-kinds: "o1" holds n, an element of no type: an instance holds slots only'], q);
+    const ctx = mapContext(m), row = tablesOf(ctx, ctx.V.v, ctx.buildGeo('v'))[0].rows[0];
+    assert.match(row, /<td>Instance specification<\/td><td><p>id = 7<\/p><\/td>/, q);
+  }
+  // not shown by an object view: no instance there to judge (a class view's untyped class holds its attributes)
+  const elsewhere = { schemaVersion: 2, nodes: [{ id: 'c', label: 'C', members: [{ id: 'p', type: 'uml.Property', label: 'a' }] }, { id: 'o', type: 'uml.InstanceSpecification', label: 'o' }], edges: [],
+    views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['o'] }, { id: 'k', diagram: 'uml.class', nodeIds: ['c'] }] };
+  assert.deepEqual(validate(elsewhere).filter(p => p.rule === 'slot-kinds'), []);
+  // a classifier the view shows: its compartments' members, as drawn
+  const cls = { schemaVersion: 2, nodes: [{ id: 'k', type: 'uml.Class', label: 'K', members: [{ id: 'a', type: 'uml.Property', label: 'a' }, { id: 'pt', type: 'uml.Port', label: 'pt' }] }], edges: [], views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['k'] }] };
+  const cx = mapContext(cls); assert.match(tablesOf(cx, cx.V.v, cx.buildGeo('v'))[0].rows[0], /<td>Class<\/td><td><p>a<\/p><\/td>/);
+});
+
 test('audit 30: instance-of reads a generalization a class view draws as its own line: a slot may name an attribute of a general', () => {
   const m = { schemaVersion: 2,
     nodes: [{ id: 'base', type: 'uml.Class', label: 'Base', members: [{ id: 'bid', type: 'uml.Property', label: 'id' }] },

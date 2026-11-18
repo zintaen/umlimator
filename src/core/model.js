@@ -1,4 +1,4 @@
-import { diagramOf } from './registry.js';
+import { diagramOf, kindWord, untypedKind, untypedLine, aWord } from './registry.js';
 // an object that holds itself (a host's cycle, which copyOf() keeps) is written "[cycle]" where it comes back on its own path (audit 27:
 // the sorted copy the replacer gives is new each time, so JSON.stringify's own check never fired and the stack overflowed)
 // big: a BigInt marked, so jsonText() writes it bare (2n), not as the text "2n"; a text that starts as the mark does gets one more (audit 29)
@@ -151,19 +151,37 @@ function typedProblems(model) {
     if (kind !== 'node') { const l = labelProblem(x, at); if (l) out.push(l); } // a node's is validate()'s card check, in a map too
     if (x.parent != null) parents.push([x, at]);
     if (up.has(x)) return; up.add(x); // a host's member that holds its owner: said used twice, and not read again (audit 28)
-    arr(x.members).forEach((y, j) => { element(y, `${at}.members[${j}]`, 'member', x.id); typeOf(y, `${at}.members[${j}]`, true); }); up.delete(x);
+    arr(x.members).forEach((y, j) => { element(y, `${at}.members[${j}]`, 'member', x.id); typeOf(y, `${at}.members[${j}]`, true, 'member'); }); up.delete(x);
   };
-  // line: a line's type, which is drawn as a plain line, not a card (audit 29)
-  const typeOf = (x, at, needed, line) => { if (!isObj(x)) return;
-    if (x.type == null ? needed : typeof x.type !== 'string' || !TYPE.test(x.type)) warn(at + '.type', `type ${jsonText(x.type)} is not <notation>.<Name> (${line ? 'uml.Dependency' : 'uml.Class'}): drawn as a plain ${line ? 'line' : 'card'}`); };
+  /* what: 'node', 'line' or 'member'. The warning says what each view that lists the element does with it, as its type draws it
+     (audit 30): a member of no kind is drawn in no view; a card or line a map lists is drawn plain; a typed view draws an
+     element of no type (or "") as its type's untyped kind (registry.js untypedKind: "drawn as a task") and a line whose type
+     has no notation as its untypedLine ("drawn as a data flow"), or not at all. A card's other type no view knows is named as
+     written, which the warning does not guess at; nor does it for a card or line no view lists */
+  const typedView = v => v.diagram != null && v.diagram !== 'map'; // a view with diagram 'map' is a map: the map's checks
+  const VIEWS = arr(m.views).map((v, i) => [v, i]).filter(([v]) => isObj(v));
+  const shows = (v, i, x, what, at) => { const own = /^views\[(\d+)\]/.exec(at); if (own) return +own[1] === i;
+    if (what === 'node') return arr(v.nodeIds).includes(x.id);
+    return Array.isArray(v.edges) ? v.edges.includes(x.id) : arr(v.nodeIds).includes(x.from) && arr(v.nodeIds).includes(x.to); };
+  const drawnAs = (v, x, what) => { const T = typedView(v) ? diagramOf(v) : null, none = x.type == null || x.type === '', bare = !String(x.type ?? '').includes('.');
+    if (!T) return `drawn as a plain ${what === 'line' ? 'line' : 'card'}`;
+    if (what === 'line') { const w = bare ? untypedLine(T) : Array.isArray(T.drawsOnly) || T.untypedLine === null ? null : 'Line'; return w ? `drawn as ${w === 'Line' ? 'a plain line' : aWord(w.toLowerCase())}` : 'not drawn'; }
+    if (!none) return null; const w = untypedKind(T); return w ? `drawn as ${aWord(w.toLowerCase())}` : 'not drawn'; };
+  const typeOf = (x, at, needed, what = 'node') => { if (!isObj(x)) return;
+    if (!(x.type == null ? needed : typeof x.type !== 'string' || !TYPE.test(x.type))) return;
+    let said = what === 'member' ? 'not drawn' : null;
+    if (!said) { const by = new Map(); let quiet = false;
+      VIEWS.forEach(([v, i]) => { if (!shows(v, i, x, what, at)) return; const p = drawnAs(v, x, what); if (p) by.set(p, [...by.get(p) || [], v.id]); else quiet = true; });
+      said = !by.size ? null // listed by no view, or by none that says how: drawn nowhere it can tell of
+        : by.size === 1 && !quiet ? [...by.keys()][0] : [...by].map(([p, ids]) => `${p} in view ${ids.map(id => JSON.stringify(id)).join(', ')}`).join('; '); }
+    warn(at + '.type', `type ${jsonText(x.type)} is not <notation>.<Name> (${what === 'line' ? 'uml.Dependency' : what === 'member' ? 'uml.Property' : 'uml.Class'})${said ? ': ' + said : ''}`); };
   const nodes = arr(m.nodes);
   nodes.forEach((n, i) => { element(n, `nodes[${i}]`, 'node'); typeOf(n, `nodes[${i}]`, false); });
   const typedEdge = e => isObj(e) && e.type != null;
-  arr(m.edges).forEach((e, i) => { if (typedEdge(e)) { element(e, `edges[${i}]`, 'edge'); typeOf(e, `edges[${i}]`, true, true); } });
-  const typedView = v => v.diagram != null && v.diagram !== 'map'; // a view with diagram 'map' is a map: the map's checks
+  arr(m.edges).forEach((e, i) => { if (typedEdge(e)) { element(e, `edges[${i}]`, 'edge'); typeOf(e, `edges[${i}]`, true, 'line'); } });
   views.forEach((v, i) => { if (!typedView(v)) return;
     arr(v.nodes).forEach((n, j) => element(n, `views[${i}].nodes[${j}]`, 'node'));
-    arr(v.edges).forEach((e, j) => { if (isObj(e)) { element(e, `views[${i}].edges[${j}]`, 'edge'); typeOf(e, `views[${i}].edges[${j}]`, true, true); } });
+    arr(v.edges).forEach((e, j) => { if (isObj(e)) { element(e, `views[${i}].edges[${j}]`, 'edge'); typeOf(e, `views[${i}].edges[${j}]`, true, 'line'); } });
     arr(v.fragments).forEach((f, j) => element(f, `views[${i}].fragments[${j}]`, 'fragment'));
     ['changes', 'constraints'].forEach(k => arr((v.timeline || {})[k]).forEach((c, j) => element(c, `views[${i}].timeline.${k}[${j}]`, 'time'))); });
   const has = id => where.has(id), name = id => JSON.stringify(id);
@@ -192,7 +210,7 @@ function typedProblems(model) {
   const nodeIds = new Set(nodes.filter(isObj).map(n => n.id)), modelEdge = new Map();
   arr(m.edges).forEach(e => { if (typedEdge(e) && typeof e.id === 'string' && !modelEdge.has(e.id)) modelEdge.set(e.id, e); });
   // a line's kind in words: 'uml.Dependency' "dependency", 'sysml.DeriveReqt' "derive reqt"
-  const lineWord = t => String(t).split('.').pop().replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+  const lineWord = t => (String(t).includes('.') ? kindWord(t).toLowerCase() : String(t)); // of no notation: as written (audit 30)
   views.forEach((v, i) => { if (!typedView(v)) return; const at = `views[${i}]`;
     if (typeof v.diagram !== 'string' || !/^[a-z0-9]+(\.[a-z0-9-]+)?$/.test(v.diagram)) warn(at + '.diagram', `diagram ${name(v.diagram)} is not <notation> or <notation>.<kind> (uml.class)`);
     if (v.direction != null && !['right', 'down'].includes(v.direction)) warn(at + '.direction', `direction ${name(v.direction)} is not right or down: drawn right`);

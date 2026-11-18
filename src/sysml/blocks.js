@@ -1,4 +1,4 @@
-import { registerDiagramType } from '../core/registry.js';
+import { kindWord, registerDiagramType } from '../core/registry.js';
 import { CLASS_DEF, RULES, classProblems, drawnLines, lineLabel, lineName, lineRename, parseMember, printMember, typeGeo } from '../uml/class.js';
 import { OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder } from '../uml/owners.js';
 import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_TABLE } from './sysml.js';
@@ -16,7 +16,7 @@ import { usedIds, jsonText } from '../core/model.js';
 const BD_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), BD_ARR = x => (Array.isArray(x) ? x : []);
 const BD_HAS = x => x != null && x !== '', BD_PROPS = x => (BD_OBJ(x && x.props) ? x.props : {});
 const BD_CLS = ['sysml.Block', 'sysml.InterfaceBlock', 'sysml.ConstraintBlock', 'sysml.ValueType']; // the classifiers drawn here
-const BD_WORD = t => String(t).split('.').pop().replace(/([a-z])([A-Z])/g, (_, a, b) => a + ' ' + b.toLowerCase()); // 'sysml.InterfaceBlock': "Interface block"
+const BD_WORD = kindWord; // 'sysml.InterfaceBlock': "Interface block"; of no notation, as written (registry.js, audit 30)
 const BD_PRIM = ['Real', 'Integer', 'Boolean', 'String'];
 
 /* ---- the compartments (§7.1): [name, one, member type], each owner's own in its order, then any other it holds ---- */
@@ -225,6 +225,7 @@ function bdConnect(model, view, from, to, at, line) {
 const BD_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
 const BD_PROP_FIELDS = [{ key: 'multiplicity', label: 'Multiplicity', kind: 'text' }, BD_STEREO];
 const BD_TYPE = registerDiagramType('sysml.block-definition', {
+  untyped: 'Class', // an element of no type (or ""): a class, as named (audit 30)
   title: 'block definition diagram',
   elements: [['sysml.Block', 'Block'], ['sysml.InterfaceBlock', 'Interface block'], ['sysml.ConstraintBlock', 'Constraint block'], ['sysml.ValueType', 'Value type'], ['uml.Package', 'Package'], ['uml.Comment', 'Comment']]
     .map(([type, label]) => ({ type, label })),

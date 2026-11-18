@@ -659,7 +659,7 @@ test('audit 28: a line of another kind a view lists, which a state machine, requ
     const m = { schemaVersion: 2, nodes: [{ id: 'a', type: t, label: 'A', props: { text: 't', reqId: 'R1' } }, { id: 'b', type: t, label: 'B', props: { text: 't', reqId: 'R2' } }],
       edges: [{ id: 'x', type: 'uml.Dependency', from: 'a', to: 'b', label: 'uses' }], views: [{ id: 'v', diagram: d, nodeIds: ['a', 'b'], edges: ['x', { id: 'y', from: 'a', to: 'b' }] }] };
     assert.ok(!layout(m, 'v').edges.some(e => e.id === 'x' || e.id === 'y'), `${d}: not drawn`);
-    const ps = validate(m).filter(p => /not drawn$/.test(p.message) && /^views\[0\]\.edges\[/.test(p.path));
+    const ps = validate(m).filter(p => /not drawn$/.test(p.message) && /^views\[0\]\.edges\[\d+\]$/.test(p.path)); // the line's own; its type's says not drawn too (audit 30)
     assert.deepEqual(ps.map(p => [p.level, p.path, p.message]), [['warning', 'views[0].edges[0]', `view "v" lists dependency "x", a line ${said} does not draw: not drawn`],
       ['warning', 'views[0].edges[1]', `view "v" lists "y", a line with no type, which ${said} does not draw: not drawn`]], d);
   }

@@ -1,5 +1,5 @@
 import { jsonText } from '../core/model.js';
-import { registerDiagramType } from '../core/registry.js';
+import { kindWord, registerDiagramType } from '../core/registry.js';
 import { brLines, esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import '../typed/draw.js'; // SHAPE.classifier, which the note's outline and ports take
@@ -248,7 +248,7 @@ function classIndex(model) {
   UML_ARR(model.edges).forEach((e, i) => put(e, 'edge', null, `edges[${i}]`));
   return at;
 }
-const typeWord = t => String(t || 'uml.Class').split('.').pop().replace(/([a-z])([A-Z])/g, (_, a, b) => a + ' ' + b.toLowerCase()); // 'uml.DataType': "Data type"
+const typeWord = t => kindWord(t || 'uml.Class'); // 'uml.DataType': "Data type"; of no notation, as written (registry.js, audit 30)
 const nameOfEl = x => String(x.label ?? x.id);
 const plural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 /* A type's look (notes/stage-2.md §10.2): the class, package and object views share classGeo's code. members: whether a
@@ -414,6 +414,7 @@ const classDescribe = describeAs(CLASS_LOOK);
 
 /* ---- the type ---- */
 const CLASS_TYPE = registerDiagramType('uml.class', {
+  untyped: 'Class', untypedAs: 'uml.Class', // an element of no type (or ""): a class, as drawn, named, edited and judged (audit 30)
   ...CLASS_DEF,
   // the layered layout ranks the view's lines as maps are ranked, a generalization and a realization turned round so the
   // general one comes first: above its specializations in a view laid out down (risks.md L6)

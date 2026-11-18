@@ -1,4 +1,4 @@
-import { TYPED } from '../core/registry.js';
+import { TYPED, kindWord } from '../core/registry.js';
 import { brLines, esc, fit, textW, widest } from '../core/text.js';
 import { trimLine } from '../draw/lines.js';
 import { SHAPE, boxOut, drawnPts, portsOn, r2 } from '../draw/shapes.js';
@@ -36,7 +36,7 @@ function classParts(n) {
   const head = 2 * CL.gap + st.length * CL.st + CL.nl + (name.length - 1) * CL.nlh, tall = c => { const k = +c.title + c.rows.length + (c.more ? 1 : 0); return k ? 2 * CL.gap - 2 + k * CL.rl : CL.empty; };
   return { stereo, st, name, all, comps, head, tall, slant, size: { w, h: comps.reduce((a, c) => a + tall(c), head) } };
 }
-const words = t => String(t).split('.').pop().replace(/([a-z])([A-Z])/g, (_, a, b) => a + ' ' + b.toLowerCase()); // 'uml.DataType': "Data type"
+const words = kindWord; // 'uml.DataType': "Data type"; of no notation, as written (registry.js, audit 30)
 function classSvg(n, c, f) { // its outline, its head, then each compartment under a divider, every text cut to the box (fit)
   const { stereo, st, name: nm, all, comps, head, tall, slant } = classParts(n), { x, y, w, h } = n, max = w - 2 * CL.pad, cx = r2(x + w / 2);
   const font = (px, wt, it) => `style="font:${it ? 'italic ' : ''}${wt} ${px}px var(--um-sans)"`;

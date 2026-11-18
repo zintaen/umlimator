@@ -1,5 +1,5 @@
 import { legendItems } from '../canvas/pieces.js';
-import { diagramOf, idTable } from '../core/registry.js';
+import { diagramOf, idTable, kindWord, untypedKind, untypedLine } from '../core/registry.js';
 import { esc, md } from '../core/text.js';
 import { stepOrder } from '../layout/layered.js';
 import { edgeRefIds } from '../map/api.js';
@@ -139,9 +139,11 @@ function printDoc(X, model, Q) {
 }
 
 // a view's tables, out of printDoc for Node's tests
-const word = t => String(t || '').split('.').pop().replace(/([a-z])([A-Z])/g, (_, a, b) => a + ' ' + b.toLowerCase()); // 'uml.DataType': "Data type"
-// a typed element's word in view v: "Class", "Table"
-const wordOf = (D, v, id, t) => (diagramOf(v) || {}).word?.(D, id, v) ?? word(t || 'uml.Class');
+// a typed element's word in view v: "Class", "Table": its type's word hook, else one rule for every type (registry.js kindWord):
+// its type in words, a type of no notation as written, and no type (or "") the kind its view draws and names one as (audit 30)
+const wordOf = (D, v, id, t) => { const T = diagramOf(v) || {}; return T.word?.(D, id, v) ?? (t ? kindWord(t) : untypedKind(T) ?? ''); };
+// a typed line's word in view v: its type's, and a line of no notation the kind its view draws one as ("Line", "Data flow": audit 30)
+const lineWordOf = (T, t) => (!t ? untypedLine(T) ?? '' : !String(t).includes('.') && Object.hasOwn(T, 'untypedLine') && T.untypedLine ? T.untypedLine : kindWord(t));
 function tablesOf({ D, N, nodeIn, viewEdges }, v, g) {
   const typed = (v.diagram ?? 'map') !== 'map';
   const wk = new Map(g.edges.flatMap(d => edgeRefIds(d).map(id => [id, d.wk])));
@@ -153,7 +155,7 @@ function tablesOf({ D, N, nodeIn, viewEdges }, v, g) {
     const M = new Map(arrOf(D.edges).filter(Boolean).map(x => [x._id, x]));
     g.edges.forEach(d => edgeRefIds(d).forEach(id => { const e = M.get(id); if (e && !have.has(id)) { have.add(id); es.push({ ...e, from: d.from, to: d.to }); } }));
     // a line its type implies (C4's, from relationships between what the view's elements hold): one row, as drawn
-    g.edges.forEach(d => { if (Array.isArray(d.implied) && !have.has(d._id)) { have.add(d._id); es.push({ _id: d._id, from: d.from, to: d.to, label: d.label, type: 'Implied' + String(d.type).split('.').pop() }); } }); }
+    g.edges.forEach(d => { if (Array.isArray(d.implied) && !have.has(d._id)) { have.add(d._id); es.push({ _id: d._id, from: d.from, to: d.to, label: d.label, type: 'c4.Implied' + String(d.type).split('.').pop() }); } }); }
   // an open package's qualified name, its title less its «stereotypes» (owners.js); not a frame's title ("ibd [Block] EBike")
   const boxName = f => { const t = f && typeof f.title === 'string' ? f.title.replace(/^(«[^»]*» )+/, '') : ''; return t.endsWith('::' + f?.label) ? t : undefined; };
   // a typed view's drawn name: sales::Order; one it draws with no name (an unnamed BPMN gateway or event), its kind as the Kind
@@ -168,7 +170,7 @@ function tablesOf({ D, N, nodeIn, viewEdges }, v, g) {
         + (typed ? `<td>${esc(wordOf(D, v, id, c.type))}</td><td>${(Array.isArray(rs) ? rs : arrOf(c.members).filter(m => m && typeof m === 'object').map(m => asText(m))).map(r => `<p>${esc(r)}</p>`).join('')}</td></tr>`
           : `<td><i class="sw" style="border-color:var(--um-${t[0]});background:var(--um-${t[0]}-f)"></i>${t[1]}</td><td>${c.what ? md(c.what) : ''}</td></tr>`); }) },
     { title: `Lines <span>${es.length}</span>`, cls: 'lines', head: `${seq || stepped ? '<th class="n">#</th>' : ''}<th>From → to</th><th>Label</th><th>${typed ? 'Kind' : 'Technology'}</th>`, rows: (stepped && !seq ? [...es].sort((a, b) => stepOrder(a.step, b.step)) : es).map((e, i) => { const w = wk.get(e._id) || 'calls', t = typed && T.text?.(D, v, e._id); // a type's text for the line (S17), else its label
-      return `<tr>${seq ? `<td>${i + 1}</td>` : stepped ? `<td>${esc(e.step ?? '')}</td>` : ''}<td><i class="w" style="border-color:var(--um-w-${w})"></i>${name(v, e.from)} → ${name(v, e.to)}</td><td>${t || e.label ? esc(t || e.label) : typed ? '' : `<span class="up">${w}</span>`}</td><td>${esc(typed ? word(e.type) : e.sublabel || '')}</td></tr>`; }) },
+      return `<tr>${seq ? `<td>${i + 1}</td>` : stepped ? `<td>${esc(e.step ?? '')}</td>` : ''}<td><i class="w" style="border-color:var(--um-w-${w})"></i>${name(v, e.from)} → ${name(v, e.to)}</td><td>${t || e.label ? esc(t || e.label) : typed ? '' : `<span class="up">${w}</span>`}</td><td>${esc(typed ? lineWordOf(T, e.type) : e.sublabel || '')}</td></tr>`; }) },
     { title: `Boxes <span>${held.length}</span>`, cls: 'boxes', head: '<th>Box</th><th>Holds</th>', rows: held.map(([c, ins]) => `<tr><td><b>${esc(c.label || c.id)}</b></td><td>${andList(ins.map(i => name(v, i)))}</td></tr>`) },
   ], { lineIds: (mine => es.map(e => mine.has(e) ? v.id + '\0' + e._id : e._id))(new Set(arrOf(v.edges))) }); // the lines it lists, for the cover's count: a view's own line by its view too, as two lists name theirs alike (a->b#0)
 }

@@ -149,6 +149,7 @@ function dynRename(model, view, id, text) {
 // add: a container or component added at the view's level (its subject's, §5.1) is owned by the subject, as on that static view
 const dynAdd = (model, view, entry, label) => (V_OBJ(view) ? C4_DEF.edits.add(model, { ...view, diagram: dynLevel(model, view) }, entry, label) : null);
 const DYN_DEF = { ...C4_DEF,
+  untypedLine: null, // a line of no notation is no step: not drawn, said by c4-steps (audit 30)
   title: 'C4 dynamic diagram',
   layout: dynGeo,
   validate: dynProblems,
