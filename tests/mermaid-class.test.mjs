@@ -754,3 +754,19 @@ test('a Rust lifetime\'s \' (&\'a str) is not a quote: parameters split, an attr
   assert.doesNotMatch(text, /not written/);
   assert.deepEqual(read(text).model.nodes[0].members, m);
 });
+
+test('an element of no type (or "") in a class view is written as a class, with its lines, and said (audit 43)', () => {
+  for (const type of [undefined, '']) {
+    const t = type === undefined ? {} : { type };
+    const model = { schemaVersion: 2, nodes: [{ id: 'A', ...t, label: 'A', members: [{ id: 'A.x', type: 'uml.Property', label: 'x' }] }, { id: 'B', type: 'uml.Class', label: 'B' },
+      { id: 'P', type: 'uml.Package', label: 'P' }, { id: 'C', ...t, label: 'C', parent: 'P' }],
+      edges: [{ id: 'e', type: 'uml.Association', from: 'A', to: 'B' }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['A', 'B', 'P', 'C'] }] };
+    const text = write(model, 'v');
+    assert.match(text, /not written: A: no type, written as a class \(uml\.Class\)/);
+    assert.doesNotMatch(text, /not written: (A \(|C \(|e\b)/);
+    const back = read(text).model;
+    assert.deepEqual(back.nodes.map(n => [n.id, n.type, n.parent]), [['A', 'uml.Class', undefined], ['B', 'uml.Class', undefined], ['P', 'uml.Package', undefined], ['C', 'uml.Class', 'P']]);
+    assert.deepEqual(back.nodes[0].members.map(x => x.id), ['A.x']);
+    assert.deepEqual(back.edges.map(x => [x.id, x.from, x.to]), [['e', 'A', 'B']]);
+  }
+});

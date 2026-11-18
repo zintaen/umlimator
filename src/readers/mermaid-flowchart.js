@@ -425,7 +425,9 @@ function writeMermaidFlowchart(model, viewId) {
     const n = byId.get(id);
     if (!n || shown.has(id)) continue;
     shown.add(id);
-    if (okId(n.id) && MF_WRITE[n.type]) nodes.push(n); else skip(n);
+    // a node of no type (or ""), which the flowchart draws as a process (fcNode, audit 42), is written as one, and said (audit 43)
+    const untyped = n.type == null || n.type === '';
+    if (okId(n.id) && (untyped || MF_WRITE[n.type])) { nodes.push(n); if (untyped) lose(n.id, 'no type, written as a process (flow.Process)'); } else skip(n);
   }
   // names: an id Mermaid and the reader read as one name, else one made of it (and its id as a hint)
   const safe = id => MF_NAME.test(id) && !MF_WORDS.test(id);
@@ -438,7 +440,7 @@ function writeMermaidFlowchart(model, viewId) {
     taken.add(name); names.set(n.id, name);
   }
   for (const n of nodes) {
-    const w = MF_WRITE[n.type], name = names.get(n.id);
+    const w = MF_WRITE[n.type == null || n.type === '' ? 'flow.Process' : n.type], name = names.get(n.id);
     const lab = mermaidText(n.label); // a number or true as its text (audit 31)
     if (!str(lab)) lose(n.id, has(lab) ? 'its label, which is not text' : 'no label, read as an empty one');
     const label = enc(str(lab) ? lab : '');

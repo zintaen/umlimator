@@ -590,6 +590,8 @@ function writeMermaidClass(model, viewId) {
 
   // what is written, in the reader's order: namespaces and classes as a tree, then relations, then notes
   const shownSet = new Set(shown), isPkg = n => n.type === 'uml.Package';
+  // an element of no type (or ""), which the class view draws as a class (untypedAs, audit 30), is written as one (audit 43)
+  const untyped = n => n.type == null || n.type === '';
   const kids = new Map(), roots = [], notes = [], tree = [], boxes = [], splits = [];
   for (const id of shown) {
     const n = byId.get(id), up = shownSet.has(n.parent) ? byId.get(n.parent) : null;
@@ -598,7 +600,7 @@ function writeMermaidClass(model, viewId) {
     if (n.type === 'uml.Comment') {
       if (badId(n.id)) skip(n);
       else { notes.push(n); if (has(n.parent)) lose(n.id, hidden || `its parent ${n.parent}: a note is written outside namespaces`); }
-    } else if ((!isPkg(n) && !(n.type in KIND)) || badId(n.id) || String(n.id).includes('`')) skip(n); // a name is one line, in `...` at most
+    } else if ((!isPkg(n) && !(n.type in KIND) && !untyped(n)) || badId(n.id) || String(n.id).includes('`')) skip(n); // a name is one line, in `...` at most
     else if (up && isPkg(up)) { boxes.push(n); if (!kids.has(n.parent)) kids.set(n.parent, []); kids.get(n.parent).push(n); }
     else {
       // Mermaid splits a namespace's name at its dots, in backticks too, so one whose id is its hidden parent's dotted path
@@ -626,6 +628,7 @@ function writeMermaidClass(model, viewId) {
   for (const n of tree) if (!isPkg(n)) {
     const rows = [], np = isObj(n.props) ? n.props : {};
     if (!has(n.label)) lose(n.id, 'no label, read as its name');
+    if (untyped(n)) lose(n.id, 'no type, written as a class (uml.Class)');
     extra(n, ['id', 'type', 'label', 'members', 'parent'], ['isAbstract', 'stereotypes']);
     const anns = [...(KIND[n.type] ? [KIND[n.type]] : []), ...(np.isAbstract ? ['abstract'] : []), ...arr(np.stereotypes).filter(s => {
       const k = String(s).toLowerCase(), ok = !badId(s) && s !== '' && !String(s).includes('>>') && !String(s).endsWith('>') && k !== 'abstract' && !(k in MC_TYPES); // one the reader reads back as itself

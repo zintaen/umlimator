@@ -402,3 +402,19 @@ test('a column of no type is written as untyped with its keys, a number label an
   assert.deepEqual(t2.split('\n').filter(l => l.includes('not written')).map(l => l.trim()),
     ['%% not written: sales.o: name {"a":1}, which is not text', '%% not written: a: label {"b":2}, which is not text', '%% not written: r: label ["x"], which is not text'], t2);
 });
+
+test('a node of no type (or "") is written as an entity, with its relationships and references, and said (audit 43)', () => {
+  for (const type of [undefined, '']) {
+    const model = { schemaVersion: 2, nodes: [{ id: 'a', ...(type === undefined ? {} : { type }), label: 'A', members: [{ id: 'a.id', type: 'er.Column', label: 'id', props: { dataType: 'int', primaryKey: true } }] },
+      { id: 'b', type: 'er.Entity', label: 'B', members: [{ id: 'b.id', type: 'er.Column', label: 'id', props: { dataType: 'int', primaryKey: true } }, { id: 'b.a', type: 'er.Column', label: 'a_id', props: { dataType: 'int', foreignKey: true, references: 'a.id' } }] }],
+      edges: [{ id: 'r', type: 'er.Relationship', from: 'a', to: 'b', label: 'has', props: { identifying: false, ends: { from: { multiplicity: '1' }, to: { multiplicity: '0..*' } } } }], views: [{ id: 'v', diagram: 'er', nodeIds: ['a', 'b'] }] };
+    assert.deepEqual(validate(model).filter(p => p.level === 'error'), []);
+    const text = write(model, 'v');
+    assert.match(text, /not written: a: no type, written as an entity \(er\.Entity\)/);
+    assert.doesNotMatch(text, /not written: (a \(|r\b|b\.a)/);
+    const back = read(text).model;
+    assert.deepEqual(back.nodes.map(n => [n.id, n.type]), [['a', 'er.Entity'], ['b', 'er.Entity']]);
+    assert.deepEqual(back.edges.map(x => [x.id, x.from, x.to]), [['r', 'a', 'b']]);
+    assert.equal(back.nodes[1].members[1].props.references, 'a.id');
+  }
+});

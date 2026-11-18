@@ -375,8 +375,10 @@ function writeMermaidEr(model, viewId) {
 
   // entities: a name Mermaid writes as it is or in quotes is the id; another id is an %% id: over a name the writer makes
   const ents = shown.map(id => byId.get(id)).filter(n => {
-    const ok = n.type === 'er.Entity' && typeof n.id === 'string' && n.id !== '' && !nl(n.id) && meId(n.id) === n.id && (meBare(n.id) || meQuoted(n.id) || n.id.trim() === n.id);
-    if (!ok) skip(n);
+    // a node of no type (or ""), which the er view draws as a table (erTable, audit 30), is written as an entity (audit 43)
+    const untyped = n.type == null || n.type === '';
+    const ok = (untyped || n.type === 'er.Entity') && typeof n.id === 'string' && n.id !== '' && !nl(n.id) && meId(n.id) === n.id && (meBare(n.id) || meQuoted(n.id) || n.id.trim() === n.id);
+    if (!ok) skip(n); else if (untyped) lose(n.id, 'no type, written as an entity (er.Entity)');
     return ok;
   });
   const names = new Map(), taken = new Set(ents.filter(n => meBare(n.id) || meQuoted(n.id)).map(n => n.id)), made = new Map();
