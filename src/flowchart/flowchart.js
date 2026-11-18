@@ -27,6 +27,8 @@ const FC_LOOK = {
   'flow.Connector': ['connector', 'Connector'], 'uml.Comment': ['note', 'Comment'],
 };
 const FC_NODES = Object.keys(FC_LOOK).filter(t => t !== 'uml.Comment'); // what a flow may end on
+// a flowchart node: one of those, or an element of no type (or ""), drawn and named as a node (untyped: 'Node', audit 42)
+const fcNode = x => FC_OBJ(x) && (x.type == null || x.type === '' || FC_NODES.includes(x.type));
 // another kind in words, "Use case", as C4 and information flow say it (audit 25); "a"/"an" before a word
 const fcKind = t => (String(t ?? '').includes('.') ? snKindName(t) : String(t || 'Node')), fcA = w => (/^(?!us|uni)[aeiou]/i.test(w) ? 'an ' : 'a ') + w;
 const fcLook = x => (Object.hasOwn(FC_LOOK, x.type) ? FC_LOOK[x.type] : ['process', fcKind(x.type)]);
@@ -177,7 +179,7 @@ const FC_RULES = {
 function fcProblems(model, view) {
   const I = fcIndex(model, view), out = [], q = id => { const x = I.N.get(id); return x && FC_TXT(x.label) ? `${id} ("${FC_TXT(x.label)}")` : id; };
   const say = (rule, path, ids, msg, level = 'warning') => out.push({ level, rule, path, ids, message: `${rule}: ${msg}` });
-  const shown = new Set(I.ids), mine = id => I.N.has(id) && FC_NODES.includes(I.N.get(id).type), list = es => es.map(e => e.id).join(', ');
+  const shown = new Set(I.ids), mine = id => I.N.has(id) && fcNode(I.N.get(id)), list = es => es.map(e => e.id).join(', ');
   // the model's flows (once an id), then those written inline in this view's edges
   [...[...I.E.values()].map(e => [e, I.path.get(e.id)]), ...typedLines({ views: model && model.views }, v => v === view).filter(([e]) => I.E.get(e.id) !== e)].forEach(([e, p]) => { const id = e.id;
     if (e.type !== 'flow.Flow' || !(shown.has(e.from) || shown.has(e.to))) return;
@@ -215,7 +217,7 @@ const fcId = (model, base) => { const used = new Set(); usedIds(model, used);
 // yes then no, and an unlabelled first exit becomes yes
 function fcConnect(model, view, from, to, at, line) {
   if (!FC_OBJ(view) || !FC_OBJ(line) || line.type !== 'flow.Flow') return null;
-  const I = fcIndex(model, null), bad = [from, to].find(id => !I.N.has(id) || !FC_NODES.includes(I.N.get(id).type));
+  const I = fcIndex(model, null), bad = [from, to].find(id => !I.N.has(id) || !fcNode(I.N.get(id)));
   if (bad != null) return { error: `flow-ends: a flow joins two flowchart nodes, and ${fcCalled(I.N.get(bad))} is not one` };
   const o = fcIndex(model, view).outs(from); // the view's drawn flows, inline ones too
   if (I.N.get(from).type !== 'flow.Decision' || o.length !== 1) return null;
