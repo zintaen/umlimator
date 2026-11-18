@@ -75,7 +75,7 @@ function generate(seed) {
   const clean = o => Object.fromEntries(Object.entries(o).filter(([, x]) => x !== undefined));
   const nodes = [], edges = [], packages = [], classes = [], kinds = new Map();
   const NAMES = ['Order', 'card-payment', 'Line_2', 'Ünit', 'Book', 'Shelf', 'a', 'Z9', 'Money', 'Thing-one-two', 'Customer', 'Payment', 'Two words!'];
-  const TYPES = ['String', 'Integer', 'List<int>', 'Map<K, V>', 'List<List<Money>>', 'int[]', 'Instant'];
+  const TYPES = ['String', 'Integer', 'List<int>', 'Map<K, V>', 'List<List<Money>>', 'int[]', 'Instant', 'std::string', 'ns::Node'];
   const label = id => pick([id, id, 'Label with spaces', 'Quotes "and" <angles>', 'Two\nlines']);
   for (let k = 0, n = Math.floor(r() * 5); k < n; k++) { // nested up to four deep, some by a dotted id (Company.Engineering)
     const parent = maybe(0.6, packages.length ? pick(packages) : undefined), id = take(parent && r() < 0.4 ? `${parent}.${pick(['io', 'core'])}` : pick(['sales', 'core', 'core-io']), `pkg${k}`);
@@ -688,4 +688,53 @@ test('inheritance between an interface and what is not one is a realization or s
     assert.deepEqual(r.map(x => `${x.line} ${x.status}: ${x.message}`), report, text);
     assert.deepEqual(validate(model).filter(p => p.level === 'error'), [], text);
   }
+});
+
+test('a :: is part of a type in Mermaid\'s Type name form (-std::string owner), and hostile member text never throws (audit 42)', () => {
+  const r = read('classDiagram\nclass Person {\n  -std::string first\n  -std::string last\n  -data::Repo~K~ repo = none\n  +greet(std::string to, a::b::C c) d::E\n  -t : int = a == b\n}\n');
+  const m = r.model.nodes[0].members;
+  assert.deepEqual(m.map(x => [x.id, x.props]), [
+    ['Person.first', { visibility: 'private', valueType: 'std::string' }],
+    ['Person.last', { visibility: 'private', valueType: 'std::string' }],
+    ['Person.repo', { visibility: 'private', valueType: 'data::Repo<K>', default: 'none' }],
+    ['Person.greet', { visibility: 'public', parameters: [{ name: 'to', valueType: 'std::string' }, { name: 'c', valueType: 'a::b::C' }], returnType: 'd::E' }],
+    ['Person.t', { visibility: 'private', valueType: 'int', default: 'a == b' }]]);
+  assert.deepEqual(r.report, []);
+  assert.deepEqual(read(write(r.model)).model.nodes[0].members, m);
+  // a scoped type ending in *, which the writer writes in the Type name form, reads back as itself
+  const ptr = { schemaVersion: 2, nodes: [{ id: 'N', type: 'uml.Class', label: 'N', members: [{ id: 'N.next', type: 'uml.Property', label: 'next', props: { valueType: 'ns::Node*' } },
+    { id: 'N.prev', type: 'uml.Property', label: 'prev', props: { valueType: 'std::shared_ptr<ns::Node>*' } }] }] };
+  assert.match(write(ptr), /ns::Node\* next/);
+  assert.deepEqual(read(write(ptr)).model.nodes[0].members, ptr.nodes[0].members);
+  // hostile member text: colons, equals signs and quotes in any order never throw, every member read has a name, and the
+  // model is valid
+  const bits = [':', '::', ':::', '=', '==', '=>', '"', "'", '(', ')', ',', ' ', 'a', 'std', '<', '>', '~', '[', ']', '{', '$', '*', '-', '+'];
+  let seed = 42; const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+  for (let k = 0; k < 2000; k++) {
+    const line = Array.from({ length: 1 + Math.floor(rnd() * 12) }, () => bits[Math.floor(rnd() * bits.length)]).join('');
+    const out = read(`classDiagram\nclass Z {\n  ${line}\n}\n`);
+    for (const x of out.model.nodes.flatMap(n => n.members || [])) assert.ok(x.label, line);
+    assert.equal(typeof write(out.model), 'string', line);
+  }
+});
+
+test('a parameter\'s = default (int amount = 0, x : int = 5) is cut off before its name and type, and reported (audit 42)', () => {
+  const r = read('classDiagram\nclass Account {\n  +deposit(String currency, int amount = 0) bool\n  +f(x : int = 5, s : String = "a, b", c : char = \',\')\n  +g(int x = 5) void\n  +on(cb : (a: int) => void, n : int)\n  +o(= 5)\n}\n');
+  const m = r.model.nodes[0].members;
+  assert.deepEqual(m.map(x => [x.id, x.props]), [
+    ['Account.deposit', { visibility: 'public', parameters: [{ name: 'currency', valueType: 'String' }, { name: 'amount', valueType: 'int' }], returnType: 'bool' }],
+    ['Account.f', { visibility: 'public', parameters: [{ name: 'x', valueType: 'int' }, { name: 's', valueType: 'String' }, { name: 'c', valueType: 'char' }] }],
+    ['Account.g', { visibility: 'public', parameters: [{ name: 'x', valueType: 'int' }], returnType: 'void' }],
+    ['Account.on', { visibility: 'public', parameters: [{ name: 'cb', valueType: '(a: int) => void' }, { name: 'n', valueType: 'int' }] }],
+    ['Account.o', { visibility: 'public' }]]);
+  assert.deepEqual(r.report.map(x => `${x.line} ${x.status}: ${x.message}`), [
+    "3 approximated: Account.deposit: parameter amount's default 0 is not kept, as a parameter has no default in the model",
+    "4 approximated: Account.f: parameter x's default 5 is not kept, as a parameter has no default in the model",
+    "4 approximated: Account.f: parameter s's default \"a, b\" is not kept, as a parameter has no default in the model",
+    "4 approximated: Account.f: parameter c's default ',' is not kept, as a parameter has no default in the model",
+    "5 approximated: Account.g: parameter x's default 5 is not kept, as a parameter has no default in the model",
+    '7 skipped: Account.o: a parameter with no name, = 5, is not read']);
+  assert.deepEqual(validate(r.model).filter(p => p.level === 'error'), []);
+  const kept = m.filter(x => x.id !== 'Account.on'); // a function type in a parameter is not written (as before audit 42)
+  assert.deepEqual(read(write(r.model)).model.nodes[0].members.filter(x => x.id !== 'Account.on'), kept);
 });
