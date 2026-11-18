@@ -6,7 +6,7 @@ import { layoutTyped } from '../typed/layout.js';
 import { lineItem, lineRename } from './class.js'; // SHAPE.note, a comment's look too
 import { lineInside, ownersOn, readingOrder, viewLines } from './owners.js';
 import { SN_SAY, STRUCT_RULES, snKindName, snKindWord, structProblems } from './structure.js'; // SHAPE.artifact and SHAPE.component too
-import { usedIds, jsonText } from '../core/model.js';
+import { usedIds, jsonText, labelOr } from '../core/model.js';
 
 /* ---------- the deployment diagram, uml.deployment (work package 5.5, notes/stage-5.md §10.3) ----------
    Nodes, devices and execution environments (UML's cube: a front face with a top and a right face 10 px deep), each a box
@@ -204,7 +204,7 @@ function dpProblems(model, view) {
 function dpDescribe(model, viewId) {
   const v = DP_ARR(model && model.views).find(x => DP_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const pic = dpPic(model, v), lines = dpLines(model, v, pic), by = new Map(lines.map(e => [e.id, e]));
-  return [`${v.title || v.id}: a deployment diagram of ${dpPlural(pic.ids.length, 'element')} and ${dpPlural(lines.length, 'line')}.`,
+  return [`${labelOr(v.title, v.id)}: a deployment diagram of ${dpPlural(pic.ids.length, 'element')} and ${dpPlural(lines.length, 'line')}.`,
     ...[...readingOrder(pic), ...lines.map(e => e.id)].map(id => (by.has(id) ? dpLineName(by.get(id), pic) : dpNodeName(pic.at.get(id), pic, pic.I)) + '.')].join('\n');
 }
 

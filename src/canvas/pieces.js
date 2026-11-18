@@ -7,6 +7,7 @@ import { critical, msText, paths, reach, whatIf } from '../map/insight.js';
 import { KIND, SIGIL, kindOf } from '../map/kinds.js';
 import { arrOf } from '../map/validate.js';
 import { wordOf } from '../page/print.js';
+import { labelOr } from '../core/model.js';
 
 /* ================= the standalone page's pieces (#99): views list, legend, hint line, details panel =================
    mountPage draws all four in its page; render() draws those a host asks for (nav, legend, hints, details) around its
@@ -14,7 +15,7 @@ import { wordOf } from '../page/print.js';
    on it. X() is render()'s inner handle; el: the views list's, legend's and details panel's elements (null: not drawn);
    o.page: the standalone page, which keeps the reader's choices in localStorage; o.frame takes the class tree-open while
    the views list is open, and o.toggle says so; o.layer holds an example's lightbox; o.status(text, ms) says what happened. */
-const shortT = t => String(t || '').split(' · ')[0];
+const shortT = t => String(t ?? '').split(' · ')[0];
 const hintHTML = (keys, ctrl) => typeof matchMedia === 'function' && matchMedia('(hover: none)').matches ? '<span>pinch = zoom</span><span>drag = move</span><span>tap = details</span>'
   : `<span>${ctrl ? 'Ctrl + scroll' : 'scroll'} = zoom</span><span>drag = move</span><span>double-click ⤢ = open</span>${keys ? `<span>${keys} = search</span><span>? = keys</span>` : ''}`; // keys: the page's search key; ctrl: wheel 'ctrl'
 function hinter(el, html) { // messages are said in a live region of their own, apart from the key hints (issue 134)
@@ -90,10 +91,10 @@ function pieces(X, el, o) {
   function tree() {
     const { views, V, kidsOf, chain } = X().ctx(), cur = X().view(), ch = chain(cur);
     const roots = views.filter(x => !x.parent), cols = roots.length > 1 ? [{ head: 'Map', items: roots, on: ch[0] }] : [];
-    ch.forEach((id, i) => { const order = V[id].browserOrder || [], k = [...new Set([...order, ...kidsOf(id).map(v => v.id)])].map(id => V[id]).filter(Boolean); if (k.length) cols.push({ head: shortT(V[id].title || id), items: k, on: ch[i + 1] }); });
+    ch.forEach((id, i) => { const order = V[id].browserOrder || [], k = [...new Set([...order, ...kidsOf(id).map(v => v.id)])].map(id => V[id]).filter(Boolean); if (k.length) cols.push({ head: shortT(labelOr(V[id].title, id)), items: k, on: ch[i + 1] }); });
     o.frame.style.setProperty('--browser-width', Math.min(448, Math.max(1, cols.length) * 224) + 'px');
     el.tree.innerHTML = `<div class="miller">${cols.map(c => `<div class="mcol"><div class="mch" title="${esc(c.head)}">${esc(c.head)}</div>${c.items.map(x => { const n = kidsOf(x.id).length;
-      return `<button class="mit${x.id === cur ? ' on' : x.id === c.on ? ' path' : ''}" data-v="${esc(x.id)}" title="${esc(x.title || x.id)}"${x.id === cur ? ' aria-current="page"' : ''}><span>${esc(shortT(x.title || x.id))}</span><em>${(x.nodeIds || []).length}${n ? ' ›' : ''}</em></button>`; }).join('')}</div>`).join('')}</div>`;
+      return `<button class="mit${x.id === cur ? ' on' : x.id === c.on ? ' path' : ''}" data-v="${esc(x.id)}" title="${esc(labelOr(x.title, x.id))}"${x.id === cur ? ' aria-current="page"' : ''}><span>${esc(shortT(labelOr(x.title, x.id)))}</span><em>${(x.nodeIds || []).length}${n ? ' ›' : ''}</em></button>`; }).join('')}</div>`).join('')}</div>`;
     const m = el.tree.firstChild, last = m.lastElementChild; m.style.scrollBehavior = 'auto'; m.scrollLeft = last ? Math.max(0, last.offsetLeft + last.offsetWidth - m.clientWidth) : 0; m.style.scrollBehavior = '';
   }
   const setTree = on => { o.frame.classList.toggle('tree-open', on); if (o.toggle) o.toggle.setAttribute('aria-expanded', on); };
@@ -168,7 +169,7 @@ function pieces(X, el, o) {
       how: text('How it works', n.how, 'how'),
       examples: `<h3>Example</h3><ul class="exs">${exs.map((x, i) => `<li class="ex">${x.thumb ? `<button class="ex-thumb" data-ex="${i}" title="Open full size" aria-label="Open ${esc(x.title || 'example')} full size"><img src="${esc(x.thumb)}" alt="" loading="lazy"></button>` : ''}<b>${inline(x.title || '')}</b>${x.caption ? `<small>${inline(x.caption)}</small>` : ''}${safeUrl(x.href) ? `<a href="${esc(safeUrl(x.href))}" target="_blank" rel="noopener">Open live page ↗</a>` : ''}</li>`).join('')}</ul>`,
       links: `<div class="links"><div><h3>← Comes from</h3>${relRows(ups, 'up')}</div><div><h3>→ Leads to</h3>${relRows(downs, 'down')}</div>
-        <div><h3>Source files</h3>${srcHtml}${vIn.length ? `<h3 style="margin-top:10px">Also shown in</h3><ul class="pviews">${vIn.map(v => `<li><button class="pview" data-v="${esc(v.id)}" data-sel="${esc(nid)}">${esc(shortT(v.title || v.id))}</button></li>`).join('')}</ul>` : ''}</div></div>`,
+        <div><h3>Source files</h3>${srcHtml}${vIn.length ? `<h3 style="margin-top:10px">Also shown in</h3><ul class="pviews">${vIn.map(v => `<li><button class="pview" data-v="${esc(v.id)}" data-sel="${esc(nid)}">${esc(shortT(labelOr(v.title, v.id)))}</button></li>`).join('')}</ul>` : ''}</div></div>`,
     };
     const was = focused(), on = was && [...was.attributes].find(a => a.name.startsWith('data-')); // a panel drawn again keeps focus on the control it was on
     panel.innerHTML = `<div class="ph" style="--c:${c}">
@@ -176,7 +177,7 @@ function pieces(X, el, o) {
   return I && I.src ? `<span class="big logo${I.dark ? ' dark' : ''}" aria-hidden="true"><img src="${esc(I.src)}" width="22" height="22" alt=""></span>`
   : `<span class="big" style="background:${c}" aria-hidden="true"><svg viewBox="0 0 ${I && I.g ? 24 : 16} ${I && I.g ? 24 : 16}" width="20" height="20" fill="none" stroke="currentColor" stroke-width="${I && I.g ? 2 : 1.5}" stroke-linecap="round" stroke-linejoin="round">${I && I.g ? glyph(I.g) : SIGIL[k]}</svg></span>`; })()}
         <div class="pt"><h2>${esc(n.label || nid)}</h2><small><span>${esc(ty || KIND[k][1])}</span><span class="vis ${pub ? 'pub' : ext ? 'ext' : ''}">${ty ? '' : badgesOf(n).length ? badgesOf(n).map(b => esc(b.text.toUpperCase())).join(' · ') : pub ? 'PUBLIC' : ext ? 'EXTERNAL' : 'INTERNAL'}</span>${by}${n.origin ? `<span class="origin">${esc(n.origin)}</span>` : ''}</small></div>
-        <div class="acts">${V[child] || later ? `<button class="obtn" data-open="${esc(nid)}" style="--c:${c}">⤢ Open ${esc(shortT(V[child] ? V[child].title || child : child))} <span>${V[child] || count ? count + ' nodes · ' : ''}Enter</span></button>` : ''}${!X().editable && (unfoldable(nid, cur) || later) ? `<button class="obtn" data-unfold="${esc(nid)}" style="--c:${c}">⤡ Unfold here <span>E</span></button>` : ''}${litButtons()}<button class="ibtn x" data-close title="Close (Esc)" aria-label="Close details">×</button></div>
+        <div class="acts">${V[child] || later ? `<button class="obtn" data-open="${esc(nid)}" style="--c:${c}">⤢ Open ${esc(shortT(V[child] ? labelOr(V[child].title, child) : child))} <span>${V[child] || count ? count + ' nodes · ' : ''}Enter</span></button>` : ''}${!X().editable && (unfoldable(nid, cur) || later) ? `<button class="obtn" data-unfold="${esc(nid)}" style="--c:${c}">⤡ Unfold here <span>E</span></button>` : ''}${litButtons()}<button class="ibtn x" data-close title="Close (Esc)" aria-label="Close details">×</button></div>
       </div>
       <div class="ptabs"><div class="ptablist" role="tablist" aria-label="Details">${tabs.map(t => `<button class="ptab" role="tab" id="pt-${t[0]}" data-tab="${t[0]}" aria-selected="${t[0] === tab}" aria-controls="m-pbody">${t[1]}${t[2] != null ? `<em>${t[2]}</em>` : ''}</button>`).join('')}</div>
         <span class="pnav"><button class="ibtn sm" data-step="-1" title="Previous ([)" aria-label="Previous tab">‹</button><button class="ibtn sm" data-step="1" title="Next (])" aria-label="Next tab">›</button></span></div>

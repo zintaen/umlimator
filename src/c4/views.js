@@ -1,5 +1,5 @@
 import { registerDiagramType, idTable } from '../core/registry.js';
-import { copyOf, usedIds, jsonText } from '../core/model.js';
+import { copyOf, usedIds, jsonText, labelOr } from '../core/model.js';
 import { esc, fit } from '../core/text.js';
 import { SHAPE, r2, sidePorts } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
@@ -112,7 +112,7 @@ function dynDescribe(model, viewId) {
   const { steps, notes, pic } = dynDrawn(model, v), box = new Map(c4Pic(model, v).boxes.map(b => [b.id, b]));
   // the comment links it draws counted too, as the static views' and the flowchart's headers count theirs (audit 30)
   const lines = notes.length ? `, ${vPlural(steps.length, 'step')} and ${vPlural(notes.length, 'comment link')}` : ` and ${vPlural(steps.length, 'step')}`;
-  return [`${v.title || v.id}: a C4 dynamic diagram of ${vPlural(pic.ids.length, 'element')}${lines}.`,
+  return [`${labelOr(v.title, v.id)}: a C4 dynamic diagram of ${vPlural(pic.ids.length, 'element')}${lines}.`,
     ...readingOrder(pic).map(id => (box.has(id) ? box.get(id).aria : c4NodeName(pic.at.get(id)))), ...steps.map(({ e, k }) => dynName(e, k, pic)), ...notes.map(e => c4LineName(e, pic))].map(t => t.replace(/\.?$/, '.')).join('\n');
 }
 /* moveTo(model, view, id, at): a step one place earlier or later (Alt + arrows, { by }), or to { index } in view.edges. A
@@ -234,7 +234,7 @@ function depProblems(model, view) {
 function depDescribe(model, viewId) {
   const v = V_ARR(model && model.views).find(x => V_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const pic = depPic(model, v), { own, implied } = c4Lines(model, v, pic), box = new Map(pic.boxes.map(b => [b.id, b]));
-  return [`${v.title || v.id}: a C4 deployment diagram of ${vPlural(pic.ids.length, 'element')} and ${c4Count(own, implied)}.`,
+  return [`${labelOr(v.title, v.id)}: a C4 deployment diagram of ${vPlural(pic.ids.length, 'element')} and ${c4Count(own, implied)}.`,
     ...readingOrder(pic).map(id => (box.has(id) ? box.get(id).aria : depNodeName(pic.I, pic.at.get(id)))), ...[...own, ...implied].map(e => c4LineName(e, pic))].map(t => t.replace(/\.?$/, '.')).join('\n');
 }
 // the containers an instance may be of: on a view of a software system its own (c4-level), else every one

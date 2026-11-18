@@ -1,5 +1,5 @@
 import { TYPED, diagramOf, drawnKind, heldBy } from '../core/registry.js';
-import { copyOf, usedIds } from '../core/model.js';
+import { copyOf, usedIds, labelOr } from '../core/model.js';
 import { esc } from '../core/text.js';
 import { arrOf, validate } from '../map/validate.js';
 import { jsonText } from '../map/diff.js';
@@ -224,7 +224,7 @@ function typedEditor(api) {
       ...views.flatMap(w => [...arrOf(w.nodes).map(x => [x, false, w]), ...arrOf(w.edges).map(x => [x, true, w])])]
       .filter(([x, line, own]) => isRec(x) && typeof x.id === 'string' && (!orphans || !views.some(w => shows(w, x, line, own))));
     return `<h3>Elements</h3><label class="um-check"><input type="checkbox" data-f="orphans" data-orphans${orphans ? ' checked' : ''}>In no diagram</label><ul>` + rows.map(([x, line, own]) => { const n = esc(nameOf(x)), id = esc(x.id), ty = typeOf(x);
-      return `<li><button data-f="go:${id}" data-go="${id}">${n}${ty ? ` <small>${esc(ty.split('.').pop())}</small>` : ''}${own ? ` <small>only in ${esc(own.title || own.id)}</small>` : ''}</button>`
+      return `<li><button data-f="go:${id}" data-go="${id}">${n}${ty ? ` <small>${esc(ty.split('.').pop())}</small>` : ''}${own ? ` <small>only in ${esc(labelOr(own.title, own.id))}</small>` : ''}</button>`
         + (can('add') && !own && !shows(v, x, line) && (!line || Array.isArray(v.edges)) ? `<button data-f="show:${id}" data-show="${id}" aria-label="Show ${n} in this view">Show</button>` : '')
         + (can('delete') ? `<button data-f="x:${id}" data-del="${id}" aria-label="Delete ${n} from the model">✕</button>` : '') + '</li>'; }).join('') + '</ul>';
   }

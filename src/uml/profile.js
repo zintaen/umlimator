@@ -4,7 +4,7 @@ import { SHAPE } from '../draw/shapes.js';
 import { CLASSIFIERS, CLASS_DEF, CLASS_LINES, CLASS_TYPE, RULES, multBounds, printMember, classProblems, drawnLines, lineLabel, lineName, lineRename, typeGeo } from './class.js';
 import { OWN_BOXES, OWNER_RULES, boxHead, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder, viewLines, modelLines } from './owners.js';
 import { STY_RULES, UML_META, appliedOf, metaKnown, styKey } from './stereotypes.js';
-import { usedIds, jsonText } from '../core/model.js';
+import { usedIds, jsonText, labelOr } from '../core/model.js';
 
 /* ---------- the profile diagram, uml.profile (work package 6.3, notes/stage-6.md §4) ----------
    A profile (a package with «profile») holding its stereotypes («stereotype», their tag definitions as attribute rows),
@@ -129,7 +129,7 @@ function prDescribe(model, viewId) {
   const { at, pic, lines: all } = drawnLines(model, v, PR_LINES), lines = all.filter(({ from, to }) => !holdsLine(pic, from, to)), I = prIndex(model), ids = readingOrder(pic);
   const pl = (k, w) => `${k} ${k === 1 ? w : w + 's'}`, box = new Map(pic.boxes.map(b => [b.id, prBox(b, model, pic).aria]));
   const said = id => { const x = at.get(id).x; return box.get(id) ?? (x.type === 'uml.Comment' ? 'Comment: ' + prName(x) : prAria(model, x, pic.name(id), I)); };
-  return [`${v.title || v.id}: a profile diagram of ${pl(ids.length, 'element')} and ${pl(lines.length, 'line')}.`, ...ids.map(id => said(id) + '.'), ...lines.map(({ e }) => lineName(e, at, pic) + '.')].join('\n');
+  return [`${labelOr(v.title, v.id)}: a profile diagram of ${pl(ids.length, 'element')} and ${pl(lines.length, 'line')}.`, ...ids.map(id => said(id) + '.'), ...lines.map(({ e }) => lineName(e, at, pic) + '.')].join('\n');
 }
 
 /* ---- editing (§4.3) ---- */
