@@ -427,6 +427,10 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   validate: (model, view) => [...classProblems(model, view), ...ownerProblems(model, view, drawnLines(model, view, CLASS_LINES).lines)],
   rules: { ...RULES, ...OWNER_RULES },
   describe: classDescribe,
+  // the PDF's Members: what the box draws, its compartments' rows, so a port or a reception it does not draw is not listed as if
+  // it were (audit 31, as the object type's since audit 30); null (a comment, a package): its members
+  rows: (model, view, id) => { const x = UML_ARR(model && model.nodes).find(n => UML_OBJ(n) && n.id === id); if (!x || x.type === 'uml.Comment' || OWN_BOXES.includes(x.type)) return null;
+    return compartmentsOf(x).flatMap(c => c.members.map(printMember)); },
   edits: { rename: lineRename(lineLabel) },
 });
 

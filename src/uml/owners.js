@@ -1,4 +1,5 @@
 import { jsonText } from '../core/model.js';
+import { aKind, diagramOf } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { brLines } from '../typed/draw.js'; // SHAPE.classifier, whose ports the closed package takes
@@ -62,15 +63,16 @@ function ownIndex(model, members = []) {
    look (notes/stage-4.md §8.2, §6.1), each field optional: boxTypes, the node types that may be a box (OWN_BOXES); qualify
    false, names drawn without their owners; qualifyBy, the node types a name's owners may be, up to the first that is not; members, member types that are boxes too (a state's regions): one is shown when
    its node is and it holds something shown, and is a box when its node has two or more in the model (with one, what it
-   holds sits in the node's box); shape(x) and word(x), a box's shape and the word its accessible name starts with ('package', 'Package') */
+   holds sits in the node's box); shape(x) and word(x), a box's shape and the word its accessible name starts with ('package', 'Package');
+   kind(x), the type boxTypes and qualifyBy test x as, its own by default (the component view's element of no type: a component, audit 31) */
 function ownersOn(model, view, look = {}) {
-  const { boxTypes = OWN_BOXES, qualify = true, qualifyBy = null, members = [], shape = () => 'package', word = x => (x.type === 'uml.Profile' ? 'Profile' : 'Package') } = look;
+  const { boxTypes = OWN_BOXES, qualify = true, qualifyBy = null, members = [], shape = () => 'package', word = x => (x.type === 'uml.Profile' ? 'Profile' : 'Package'), kind = x => x.type } = look;
   const { at, chain, up, mems } = ownIndex(model, members), ids = [...new Set(OWN_ARR(OWN_OBJ(view) ? view.nodeIds : null))].filter(id => at.has(id) && !mems.has(id)), seen = new Set(ids);
   const live = new Set(ids.flatMap(id => chain(id).filter(p => mems.has(p) && seen.has(up.get(p))))), place = m => OWN_ARR(at.get(up.get(m)).members).indexOf(at.get(m)); // members holding something shown
   const many = m => OWN_ARR(at.get(up.get(m)).members).filter(x => OWN_OBJ(x) && members.includes(x.type)).length > 1; // §6.1, 2: two or more in the model
   const kept = [...live].filter(many).sort((a, b) => place(a) - place(b)), all = [...ids, ...kept], shown = new Set(all);
-  const ow = new Map(all.map(id => [id, chain(id).find(p => shown.has(p) && (mems.has(p) || boxTypes.includes(at.get(p).type))) ?? null])), owner = id => ow.get(id) ?? null;
-  const upTo = (id, stop, by) => { const c = chain(id), k = c.indexOf(stop), q = by ? c.findIndex(p => !by.includes((at.get(p) || {}).type)) : -1;
+  const ow = new Map(all.map(id => [id, chain(id).find(p => shown.has(p) && (mems.has(p) || boxTypes.includes(kind(at.get(p))))) ?? null])), owner = id => ow.get(id) ?? null;
+  const upTo = (id, stop, by) => { const c = chain(id), k = c.indexOf(stop), q = by ? c.findIndex(p => !by.includes(kind(at.get(p) || {}))) : -1;
     return [...c.slice(0, Math.min(k < 0 ? c.length : k, q < 0 ? c.length : q)).reverse(), id].map(x => ownName(ownAt(at, x))).join('::'); };
   const full = id => upTo(id, null), subject = OWN_OBJ(view) ? view.subject : null;
   const name = id => { const o = owner(id); return !qualify ? ownName(ownAt(at, id)) : upTo(id, o != null ? o : chain(id).includes(subject) ? subject : null, qualifyBy); };
@@ -119,7 +121,8 @@ function ownerProblems(model, view, lines) {
   // and a node with no type the view shows, which it draws as a class or an instance (audit 29)
   const inView = new Set(OWN_OBJ(view) ? OWN_ARR(view.nodeIds) : []);
   OWN_ARR(model.nodes).forEach((n, i) => { if (!OWN_OBJ(n) || !(OWNED.includes(n.type) || !n.type && inView.has(n.id)) || n.parent == null || !all.has(n.parent)) return;
-    const p = all.get(n.parent).x; if (!OWN_BOXES.includes(p.type)) say('owner-kinds', `nodes[${i}].parent`, [n.id, p.id], `${q(n.id)} is owned by ${q(p.id)}, a ${String(p.type).split('.').pop()}, not a package`); });
+    // the owner's kind as the view draws it, "a class", "an interface" (audit 31: "a undefined", "a Interface")
+    const p = all.get(n.parent).x; if (!OWN_BOXES.includes(p.type)) say('owner-kinds', `nodes[${i}].parent`, [n.id, p.id], `${q(n.id)} is owned by ${q(p.id)}, ${aKind(diagramOf(view), p)}, not a package`); });
   if (!view) return out;
   const vi = OWN_ARR(model.views).indexOf(view), pic = ownersOn(model, view);
   lines.forEach(({ e, from, to }) => { if (holdsLine(pic, from, to)) out.push(lineInside(view, vi, e, from, to, q)); });

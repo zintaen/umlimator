@@ -13,6 +13,7 @@ import { validate, rules } from '../src/map/validate.js';
 import { lensOf } from '../src/map/lens.js';
 import '../src/uml/package.js';
 import { describe } from '../src/map/insight.js';
+import { tablesOf } from '../src/page/print.js';
 import { multBounds, parseMember, printMember, memberEdit, classProblems } from '../src/uml/class.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
@@ -554,4 +555,26 @@ test('audit 29: a node with no type the view shows is judged a class by every cl
   // a map's untyped nodes beside a class view that does not show them: no class rule judges them
   const map = mk(); map.views[0].nodeIds = ['b', 'c'];
   assert.ok(!validate(map).some(p => p.ids.includes('a')), JSON.stringify(validate(map)));
+});
+
+test('audit 31: the PDF Members column lists what the class box draws, not a port or a reception it leaves out', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 's', type: 'uml.Class', label: 'Shop', members: [{ id: 's.n', type: 'uml.Property', label: 'name', props: { valueType: 'String' } },
+    { id: 's.pay', type: 'uml.Operation', label: 'pay' }, { id: 's.api', type: 'uml.Port', label: 'api', props: { valueType: 'Api' } }, { id: 's.r', type: 'uml.Reception', label: 'Paid' }] },
+  { id: 'u', label: 'Loose', members: [{ id: 'u.n', type: 'uml.Property', label: 'n' }, { id: 'u.p', type: 'uml.Port', label: 'p' }] }],
+  edges: [], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['s', 'u'] }] };
+  const ctx = mapContext(m), [els] = tablesOf(ctx, ctx.V.v, ctx.buildGeo('v')), row = id => els.rows.find(r => r.includes(`<b>${id}</b>`));
+  assert.match(row('Shop'), /<p>name: String<\/p><p>\+? ?pay\(\)<\/p><\/td>/);
+  assert.doesNotMatch(row('Shop'), /api|Paid/, 'the port and the reception the box does not draw are not listed');
+  assert.doesNotMatch(row('Loose'), /<p>p<\/p>/, 'nor on an element of no type, drawn as a class');
+  assert.deepEqual(diagramOf({ diagram: 'uml.class' }).rows(m, m.views[0], 's'), ['name: String', printMember(m.nodes[0].members[1])]);
+});
+
+test('audit 31: owner-kinds writes the owner\'s kind as the view draws it, with its article: "a class" (of no type), "an interface", never "a undefined"', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'o', label: 'Outer' }, { id: 'c', type: 'uml.Class', label: 'Inner', parent: 'o' }, { id: 'i', type: 'uml.Interface', label: 'Api' }, { id: 'd', type: 'uml.Class', label: 'D', parent: 'i' },
+    { id: 't', type: 'uml.DataType', label: 'Money' }, { id: 'e', type: 'uml.Class', label: 'E', parent: 't' }],
+  edges: [], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['o', 'c', 'i', 'd', 't', 'e'] }] };
+  assert.deepEqual(validate(m).filter(p => p.rule === 'owner-kinds').map(p => p.message), [
+    'owner-kinds: "Inner" is owned by "Outer", a class, not a package',
+    'owner-kinds: "D" is owned by "Api", an interface, not a package',
+    'owner-kinds: "E" is owned by "Money", a data type, not a package']);
 });

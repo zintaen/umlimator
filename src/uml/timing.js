@@ -182,6 +182,7 @@ const TM_RULES = {
   'reply-call': 'a reply names in replyTo a call of the view going the other way, sent no later',
   'constraint-ends': 'a duration constraint\'s from and to are changes of the view; a time constraint has a from and no to',
   'constraint-order': 'a duration constraint\'s to is no earlier than its from',
+  'timing-kinds': 'a timing view draws lifelines only: any other element it lists is not drawn',
 };
 const tmNum = x => typeof x === 'number' && Number.isFinite(x);
 // a time to sort by: a host's BigInt, which validate() reports as no number, sorts as one that is none (a - b throws on it: audit 29)
@@ -191,6 +192,10 @@ function tmProblems(model, view) {
   const vi = TM_ARR(model.views).indexOf(V), at = `views[${vi}]`, X = tmIndex(model, V), TL = TM_OBJ(V.timeline) ? V.timeline : {};
   const say = (rule, path, who, msg, level = 'error') => out.push({ level, rule, path, ids: who.filter(x => x != null), message: `${rule}: ${msg}` });
   const cPath = c => `${at}.timeline.changes[${TM_ARR(TL.changes).indexOf(c)}]`, kPath = c => `${at}.timeline.constraints[${TM_ARR(TL.constraints).indexOf(c)}]`, ePath = m => (TM_ARR(V.edges).includes(m) ? `${at}.edges[${TM_ARR(V.edges).indexOf(m)}]` : `edges[${TM_ARR(model.edges).indexOf(m)}]`); // a model message the view lists: at its own place
+  // a listed element that is no lifeline (no type, a comment, a class, a typo'd type): not drawn, so said, once each, where the view
+  // first lists it, as the mindmap view says one (audit 31: it went without a word)
+  TM_ARR(V.nodeIds).forEach((id, i) => { if (typeof id !== 'string' || !X.N.has(id) || X.N.get(id).type === 'uml.Lifeline' || TM_ARR(V.nodeIds).indexOf(id) !== i) return; const n = X.N.get(id), t = n.type;
+    say('timing-kinds', `${at}.nodeIds[${i}]`, [id], `${jsonText(id)} (${jsonText(String(n.label ?? n.id))}) ${t == null || t === '' ? 'has no type, so it is' : `is of type ${jsonText(t)}, which is`} no lifeline: not drawn`, 'warning'); });
   const seen = new Map();
   X.changes.forEach(c => { const n = X.N.get(c.lifeline);
     if (!n || n.type !== 'uml.Lifeline') return say('change-lifeline', cPath(c) + '.lifeline', [c.id], `change ${c.id} names ${jsonText(c.lifeline)}, which is not a lifeline of the model`);
@@ -369,20 +374,26 @@ function tmRename(model, view, id, text) {
    the ruler is not deleted on its own */
 function tmRemove(model, view, ids, fromModel) {
   const V = tmView(model, view); if (!V) return null;
-  const X = tmIndex(model, V), out = [], gone = { lane: [], hid: [] };
+  const X = tmIndex(model, V), out = [], gone = { lane: [], hid: [], off: new Set() };
   for (const id of new Set(TM_ARR(ids))) {
     if (id === TM_RULER || String(id).includes('->')) return tmErr('a state\'s row and the ruler go with their lifeline or view: rename a state with F2, or edit the lifeline\'s states');
     if (X.H.has(id)) { const del = fromModel || TM_ARR(V.nodes).some(n => TM_OBJ(n) && n.id === id); gone.lane.push(id); if (!del) gone.hid.push(id);
       out.push(del ? { op: 'delete', id } : { op: 'hide', id, view: V.id }); continue; }
+    // a model message the view lists by id leaves this view only, as Delete takes any element of the model out of a view; it stays in
+    // the model and every other view that lists it. Shift + Delete deletes it; one the view holds lives there, so goes (audit 31)
+    if (!fromModel && X.msgs.some(m => m.id === id) && TM_ARR(V.edges).includes(id)) { out.push({ op: 'hide', id, view: V.id }); gone.off.add(id); continue; }
     if (X.C.has(id) || X.msgs.some(m => m.id === id) || X.cons.some(c => c.id === id)) { out.push({ op: 'delete', id }); continue; }
     return null;
   }
+  // a call taken off the view takes its replies with it, as its delete does (one the view lists by id leaves it, one it holds goes)
+  const offCalls = new Set(gone.off); X.msgs.forEach(m => { if (TM_ARR(ids).includes(m.id) || !offCalls.has(tmProps(m).replyTo)) return;
+    if (TM_ARR(V.edges).includes(m.id)) { out.push({ op: 'hide', id: m.id, view: V.id }); gone.off.add(m.id); } else out.push({ op: 'delete', id: m.id }); });
   const r = tmGuard(model, V, out); if (!Array.isArray(r) || !r.length) return r;
   // what goes, read off the model after: the core's cascade takes a call's reply and a change's constraints too
   const next = apply(model, r), Y = tmIndex(next, tmView(next, V.id)), left = new Set([...Y.changes, ...Y.msgs, ...Y.cons].map(x => x.id));
   // each part said of its own lanes: a change by its lifeline, a message by its ends (a deleted lane's first); the rest with the hidden lanes, as before (audit 25)
   const hidL = new Set(gone.hid), delL = new Set(gone.lane.filter(id => !hidL.has(id))), on = (S, m) => S.has(m.from) || S.has(m.to);
-  const list = (keep = () => true) => [[X.changes, 'change'], [X.msgs, 'message'], [X.cons, 'constraint']].map(([xs, w]) => [xs.filter(x => !left.has(x.id) && keep(x)).length, w])
+  const list = (keep = () => true) => [[X.changes, 'change'], [X.msgs, 'message'], [X.cons, 'constraint']].map(([xs, w]) => [xs.filter(x => !left.has(x.id) && !gone.off.has(x.id) && keep(x)).length, w])
     .filter(([c]) => c).map(([c, w]) => tmPlural(c, w)).join(', ').replace(/, ([^,]*)$/, ' and $1'); // "1 change, 2 messages and 1 constraint"
   const lane = id => (X.C.get(id) || {}).lifeline, mine = x => (X.C.get(x.id) === x ? delL.has(x.lifeline) : X.msgs.includes(x) ? on(delL, x) : delL.has(lane(x.from)) || delL.has(lane(x.to))); // a deleted lane's change, message or constraint
   const theirs = new Set(X.msgs.filter(m => on(hidL, m) && !on(delL, m)).map(m => m.id));
@@ -395,8 +406,10 @@ function tmRemove(model, view, ids, fromModel) {
     k && `${its} ${k === 1 ? 'change stays' : 'changes stay'} in the timeline`].filter(Boolean); // only the clauses that hold (audit 5)
   // said as done: a lifeline the view holds as its own is deleted by Delete too, not hidden (audit 24)
   const dels = gone.lane.filter(id => delL.has(id)).map(X.name).join(', ');
-  const say = gone.lane.length ? (!hidL.size ? `Deleted ${dels}${all ? ', ' + all : ''}` : [...(dels ? [`Deleted ${dels}${ours ? ', ' + ours : ''}`] : []), `Hid ${gone.hid.map(X.name).join(', ')}`, ...hid].join('; '))
-    : `Deleted ${all}: a change, a message or a constraint is deleted, not hidden`;
+  const said = gone.lane.length ? (!hidL.size ? `Deleted ${dels}${all ? ', ' + all : ''}` : [...(dels ? [`Deleted ${dels}${ours ? ', ' + ours : ''}`] : []), `Hid ${gone.hid.map(X.name).join(', ')}`, ...hid].join('; '))
+    : all ? `Deleted ${all}: a change, a message or a constraint is deleted, not hidden` : '';
+  const took = gone.off.size ? `took ${tmPlural(gone.off.size, 'message')} off the view (${gone.off.size === 1 ? 'it stays' : 'they stay'} in the model)` : '';
+  const say = said && took ? `${said}; ${took}` : said || took.charAt(0).toUpperCase() + took.slice(1);
   return { commands: r, say };
 }
 
