@@ -161,7 +161,9 @@ function tablesOf({ D, N, nodeIn, viewEdges }, v, g) {
   // a typed view's drawn name: sales::Order; one it draws with no name (an unnamed BPMN gateway or event), its kind as the Kind
   // column says it, "Parallel gateway", as its accessible name and describe() do, never its id (audit 30)
   const drawn = id => (typed && (at[id]?.label ?? boxName((g.families || []).find(f => f.id === id)))) || nodeIn(id, v.id).label || (typed && at[id] && N[id] ? wordOf(D, v, id, nodeIn(id, v.id).type) : id);
-  const name = (v, id) => esc(N[id] ? drawn(id) : (boxes(v).find(c => c.id === id) || {}).label || id);
+  // an end that is no element but a box the layout draws (a parametric view's value or constraint property, a part): its
+  // drawn name, "usable : UsableEnergy", not its member id (audit 32)
+  const name = (v, id) => esc(N[id] ? drawn(id) : (typed && at[id] && typeof at[id].label === 'string' && at[id].label) || (boxes(v).find(c => c.id === id) || {}).label || id);
   const held = boxes(v).map(c => [c, arrOf(c.nodeIds).filter(i => ids.includes(i))]).filter(([, ins]) => ins.length);
   const T = diagramOf(v) || {}, asText = (T.member || {}).print || (m => m.label ?? m.id); // a member as its type writes it, else its name
   return Object.assign([
