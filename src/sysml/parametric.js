@@ -3,7 +3,7 @@ import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { csAdd, csConnect, csGeo, csMember, csMoveTo, csRemove, csRename } from '../uml/composite.js';
-import { SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS } from './sysml.js';
+import { SYS_AS_UML, SYS_BACK, SYS_FIELD, SYS_CS_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS } from './sysml.js';
 import { bdProblems } from './blocks.js';
 import { modelLines } from '../uml/owners.js';
 
@@ -254,8 +254,10 @@ function SYS_PAR_WORD(model, id) {
   const x = SYS_PAR_INDEX(model, null).el(id); if (!x) return null;
   return SYS_PAR_PROP[x.type] || SYS_PAR_SUBJ[x.type] || (x.type === 'sysml.ConstraintParameter' ? 'Parameter' : !x.type ? 'Element' : null); // no type: "Element", as named (audit 29)
 }
-// a member's row as drawn and said: one with no name (or "") by its id, as SYS_PAR_TEXT; print stays F2's edit text (audit 36)
-const SYS_PAR_SAID = m => SYS_PAR_MEMBERS.print({ ...m, label: elName(m) });
+// a member's row as drawn and said: one with no name (or "") by its id where SYS_PAR_TEXT names it so, a typed constraint or
+// value property as ": Type" (audit 37); print stays F2's edit text (audit 36)
+const SYS_PAR_SAID = m => (Object.hasOwn(SYS_PAR_PROP, m.type) && !SYS_PAR_HAS(m.label) && SYS_PAR_HAS(SYS_PAR_PROPS(m).valueType)
+  ? SYS_PAR_MEMBERS.print({ ...m, label: '' }).trim() : SYS_PAR_MEMBERS.print({ ...m, label: elName(m) }));
 function SYS_PAR_ROWS(model, view, id) {
   const I = SYS_PAR_INDEX(model, view), x = I.el(id); if (!x) return null;
   if (x.type === 'sysml.ConstraintProperty') { const e = SYS_PAR_EXPR(I.block(x)); return [SYS_PAR_TEXT(x), ...(e ? [e] : [])]; }
@@ -294,7 +296,7 @@ const SYS_PAR_TYPE = registerDiagramType('sysml.parametric', {
   word: SYS_PAR_WORD,
   rows: SYS_PAR_ROWS,
   text: SYS_PAR_LINE_TEXT,
-  edits: { connect: SYS_PAR_CONNECT, moveTo: SYS_PAR_ON(csMoveTo), add: SYS_PAR_ADD, remove: SYS_PAR_ON(csRemove), rename: SYS_PAR_RENAME, member: SYS_PAR_MEMBER },
+  edits: { connect: SYS_PAR_CONNECT, moveTo: SYS_PAR_ON(csMoveTo), add: SYS_PAR_ADD, remove: SYS_PAR_ON(csRemove), rename: SYS_PAR_RENAME, member: SYS_PAR_MEMBER, field: SYS_FIELD },
 });
 
 export { SYS_PAR_TYPE, SYS_PAR_GEO, SYS_PAR_PROBLEMS };

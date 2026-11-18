@@ -44,7 +44,7 @@ test('the definition: sysml.block-definition is registered with its palette, its
   assert.deepEqual(T.props['sysml.Port'][0], { key: 'kind', label: 'Kind', kind: 'enum', options: ['proxy', 'full'] });
   assert.deepEqual(T.props['sysml.FlowProperty'][0].options, ['in', 'out', 'inout']);
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows', 'text', 'rankFlip']) assert.equal(typeof T[k], 'function', k);
-  assert.deepEqual(Object.keys(T.edits), ['connect', 'member', 'rename']);
+  assert.deepEqual(Object.keys(T.edits), ['connect', 'member', 'field', 'rename']);
   assert.deepEqual(Object.keys(BD_RULES), ['part-type', 'value-type', 'constraint-type', 'flow-direction', 'port-kind', 'member-kinds', 'general-kinds', 'part-agrees', 'part-unlisted']);
   for (const r of [...Object.keys(BD_RULES), 'generalization-kinds', 'composite-multiplicity', 'owner-kinds', 'line-inside']) assert.ok(Object.hasOwn(T.rules, r), r);
   assert.ok(T.rankFlip({ type: 'uml.Generalization' }) && !T.rankFlip({ type: 'uml.Association' }));
@@ -502,4 +502,74 @@ test('connect refuses a generalization that closes a cycle or joins an element t
   gives(uc, uc.views[0], 'q', 'p', { type: 'uml.Include' }, 'An include may not close a cycle: "Quote" → "Pay" → "Quote" would include itself');
   gives(uc, uc.views[0], 'p', 'p', { type: 'uml.Include' }, 'An include may not close a cycle: "Pay" → "Pay" would include itself');
   assert.deepEqual(diagramOf(uc.views[0]).edits.connect(uc, uc.views[0], 'p', 'p', null, { type: 'uml.Extend' }), { error: 'An extend runs from a use case to another use case' });
+});
+
+// audit 37: SYS_ROLES picked the part associations to rename by their role text alone, so a part renamed to a name another part
+// held took that part's association with it, and renamed back took both; a name another member holds is now refused, and only a
+// role whose part end is the part's block (and no twin's) follows a rename
+test('a part renamed to another member\'s name is refused, and a rename renames only the role that names that part (audit 37)', () => {
+  const atlas = JSON.parse(readFileSync(new URL('../examples/ebike-atlas.json', import.meta.url))), view = id => atlas.views.find(v => v.id === id);
+  const said = m => validate(m).map(p => p.message).sort(), before = said(atlas);
+  const role = (m, id) => m.edges.find(e => e.id === id).props.ends.to.role;
+  const clash = /^member-names: "EBike" has a member named "motor" already \(ebike\.motor\)/;
+  for (const [what, r] of [
+    ['bdd member row', diagramOf(view('blocks')).edits.member(atlas, view('blocks'), 'ebike', 'ebike.battery', 'part motor: Battery [1]')],
+    ['ibd F2', diagramOf(view('inside-ebike')).edits.rename(atlas, view('inside-ebike'), 'ebike.battery', 'motor : Battery [1]')],
+    ['ibd member row', diagramOf(view('inside-ebike')).edits.member(atlas, view('inside-ebike'), 'ebike', 'ebike.battery', 'motor : Battery [1]')],
+    ['par F2, a constraint property', diagramOf(view('range-analysis')).edits.rename(atlas, view('range-analysis'), 'ebike.eco', 'motor : RangeEquation')],
+    ['the Name field, ibd', diagramOf(view('inside-ebike')).edits.field(atlas, view('inside-ebike'), 'ebike.battery', 'label', 'motor')],
+    ['the Name field, bdd', diagramOf(view('blocks')).edits.field(atlas, view('blocks'), 'ebike.battery', 'label', 'motor')],
+  ]) assert.match(String(r && r.error), clash, what);
+  // a name kept, or another member's of another kind of line (an operation's), is no clash
+  assert.ok(!diagramOf(view('blocks')).edits.member(atlas, view('blocks'), 'ebike', 'ebike.battery', 'part battery: Battery [2]').error);
+  // a model that holds two parts of one name already (a file written so): renaming one back renames its own association only,
+  // the one whose part end is its block
+  const twin = structuredClone(atlas); twin.nodes.find(n => n.id === 'ebike').members.find(x => x.id === 'ebike.battery').label = 'motor';
+  twin.edges.find(e => e.id === 'ebike-battery').props.ends.to.role = 'motor';
+  const back = diagramOf(view('blocks')).edits.member(twin, twin.views.find(v => v.id === 'blocks'), 'ebike', 'ebike.battery', 'part battery: Battery [1]');
+  assert.ok(!back.error, back.error);
+  const n = apply(twin, back.commands);
+  assert.equal(role(n, 'ebike-battery'), 'battery'); assert.equal(role(n, 'ebike-motor'), 'motor');
+  assert.deepEqual(said(n), before);
+  // a role that names the part but whose part end is another block is not the part's: kept
+  const far = structuredClone(atlas); far.edges.find(e => e.id === 'ebike-motor').props.ends.to.role = 'battery';
+  const r2 = diagramOf(far.views.find(v => v.id === 'blocks')).edits.member(far, far.views.find(v => v.id === 'blocks'), 'ebike', 'ebike.battery', 'part pack: Battery [1]');
+  const n2 = apply(far, r2.commands);
+  assert.equal(role(n2, 'ebike-battery'), 'pack'); assert.equal(role(n2, 'ebike-motor'), 'battery');
+  // two parts of one name and type: which one a role names is not known, so no role follows
+  const two = structuredClone(atlas), eb = two.nodes.find(n => n.id === 'ebike');
+  eb.members.push({ id: 'ebike.battery2', type: 'sysml.PartProperty', label: 'battery', props: { valueType: 'Battery' } });
+  const r3 = diagramOf(two.views.find(v => v.id === 'blocks')).edits.member(two, two.views.find(v => v.id === 'blocks'), 'ebike', 'ebike.battery2', 'part spare: Battery [1]');
+  assert.ok(!r3.commands.some(c => String(c.path).includes('role')), JSON.stringify(r3.commands));
+});
+
+// audit 37: the properties panel's Name field on a part and the Role field on its part association were a plain set, so the part
+// and its line drifted apart (part-unlisted); the panel now asks the type's edits.field, which SysML's views answer with SYS_ROLES
+test('the properties panel\'s Name field on a part renames its association\'s role, and the Role field renames the part (audit 37)', async () => {
+  await import('../src/typed/edit.js');
+  const { typedEditor } = await import('../src/canvas/edit.js');
+  const atlas = JSON.parse(readFileSync(new URL('../examples/ebike-atlas.json', import.meta.url)));
+  const said = m => validate(m).map(p => p.message).sort(), before = said(atlas), role = (m, id) => m.edges.find(e => e.id === id).props.ends.to.role;
+  const part = (m, id) => m.nodes.find(n => n.id === 'ebike').members.find(x => x.id === id).label;
+  for (const vid of ['inside-ebike', 'blocks', 'range-analysis']) {
+    const got = [], status = [];
+    const I = typedEditor({ root: { addEventListener() {} }, stage: { addEventListener() {} }, can: () => true, say() {}, status: s => status.push(s), emit: c => got.push(c), view: () => vid, model: () => atlas, picked: () => [], sel: () => null,
+      geo: () => ({ byId: {}, nodes: [] }), cam: () => null, focus() {}, touch() {} });
+    const set = (id, path, value) => { got.length = 0; const ok = I.field(id, path, value, () => { got.push([{ op: 'set', id, path, value }]); return true; }); return { ok, c: got.flat() }; };
+    // the Name field on a part: its role with it, one transaction
+    const a = set('ebike.battery', 'label', 'pack'), na = apply(atlas, a.c);
+    assert.equal(a.c.length, 2, `${vid}: ${JSON.stringify(a.c)}`); assert.equal(part(na, 'ebike.battery'), 'pack'); assert.equal(role(na, 'ebike-battery'), 'pack', vid);
+    assert.deepEqual(said(na), before, vid);
+    // the Role field on its part association: the part renamed with it
+    const b = set('ebike-battery', ['props', 'ends', 'to', 'role'], 'pack'), nb = apply(atlas, b.c);
+    assert.equal(part(nb, 'ebike.battery'), 'pack', vid); assert.equal(role(nb, 'ebike-battery'), 'pack', vid); assert.deepEqual(said(nb), before, vid);
+    // a name another member holds: refused, nothing emitted, said
+    const c = set('ebike.battery', 'label', 'motor');
+    assert.equal(c.ok, false, vid); assert.deepEqual(c.c, [], vid); assert.match(status.join(), /member-names/, vid);
+    const d = set('ebike-battery', ['props', 'ends', 'to', 'role'], 'motor');
+    assert.equal(d.ok, false, vid); assert.deepEqual(d.c, [], vid);
+    // another field, another element: the plain set, as before
+    assert.deepEqual(set('ebike-battery', ['props', 'ends', 'to', 'multiplicity'], '2').c, [{ op: 'set', id: 'ebike-battery', path: ['props', 'ends', 'to', 'multiplicity'], value: '2' }], vid);
+    assert.deepEqual(set('battery', 'label', 'Pack').c, [{ op: 'set', id: 'battery', path: 'label', value: 'Pack' }], vid);
+  }
 });

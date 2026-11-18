@@ -1,7 +1,7 @@
 import { aWord, kindWord, registerDiagramType } from '../core/registry.js';
 import { CLASS_DEF, RULES, classProblems, closesCycle, drawnLines, lineLabel, lineName, lineRename, parseMember, printMember, typeGeo } from '../uml/class.js';
 import { OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder } from '../uml/owners.js';
-import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_PARTS, SYS_ROLES, SYS_TABLE } from './sysml.js';
+import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_PARTS, SYS_ROLES, SYS_CLASH, SYS_FIELD, SYS_TABLE } from './sysml.js';
 import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the block definition diagram, sysml.block-definition (work package M3.3, notes/milestone-3.md §7) ----------
@@ -192,6 +192,7 @@ const BD_SYNTAX = ['stereotypes', 'visibility', 'valueType', 'multiplicity', 'de
 // part renamed (still a part) renames the role of its part association too (SYS_ROLES, audit 36)
 function bdEdit(model, owner, m, text) {
   const r = bdParse(text, owner, model); if (r.error) return r;
+  const no = SYS_CLASH(owner, m, r.label); if (no) return no; // a name another member holds (audit 37)
   const keep = Object.fromEntries(Object.entries(BD_PROPS(m)).filter(([k]) => !BD_SYNTAX.includes(k)));
   return { commands: [...(r.type !== m.type ? [{ op: 'set', id: m.id, path: 'type', value: r.type }] : []), { op: 'set', id: m.id, path: 'label', value: r.label }, { op: 'set', id: m.id, path: 'props', value: { ...keep, ...r.props } },
     ...(model && SYS_PARTS.includes(r.type) ? SYS_ROLES(model, m, owner, r.label) : [])] };
@@ -257,7 +258,7 @@ const BD_TYPE = registerDiagramType('sysml.block-definition', {
   word: (model, id) => { const x = bdNodeOf(model, id); return x && BD_CLS.includes(x.type) ? BD_WORD(x.type) : null; },
   rows: (model, view, id) => { const x = bdNodeOf(model, id); return x && BD_CLS.includes(x.type) ? bdRows(x) : null; },
   text: bdText,
-  edits: { connect: bdConnect, member: bdMember, rename: Object.assign((model, view, id, text) => SYS_FRAME_RENAME(view, id, text) ?? lineRename(lineLabel)(model, view, id, text), { empty: SYS_FRAME_EMPTY }) }, // F2 on a frame with no subject: the view's title (audit 19)
+  edits: { connect: bdConnect, member: bdMember, field: SYS_FIELD, rename: Object.assign((model, view, id, text) => SYS_FRAME_RENAME(view, id, text) ?? lineRename(lineLabel)(model, view, id, text), { empty: SYS_FRAME_EMPTY }) }, // F2 on a frame with no subject: the view's title (audit 19)
 });
 
 export { BD_TYPE, BD_RULES, bdGeo, bdProblems, bdDescribe, bdParse, bdPrint, bdConnect, bdMember };

@@ -32,6 +32,9 @@ import { labelOr } from '../core/model.js';
      New member field), owner the element selected, text trimmed, before the panel commits it (notes/stage-5.md §12.1, S13).
      Null: the type's member.add or member.edit, as before. An { error } also marks the row invalid; a row read by the hook
      is cleared (New member) or kept as typed, after a pick's choice. Not asked for an empty row (the panel's own).
+   - field(model, view, id, path, value): a field of the properties panel set (the Name field, path 'label'; a schema field,
+     its path), before the panel emits the set. Null: the set, as before (a SysML part's Name renames its association's role
+     too, audit 37). Not asked for a member row (member) or the Owner field (owner).
    - key(model, view, ids, key): a key (e.key) with no Alt, Ctrl or Meta on a selection (ids, as remove's), before the
      canvas's own (S11). Null: the canvas's. Asked only when the host lets the view be renamed (B on an interface sets present).
      It hears every such key first, Escape, Tab, Enter (a focused ring's, before the ring selects) and the arrows too, and
@@ -88,6 +91,8 @@ TYPED.edit = (I, c) => {
   const refId = ref => ref && (ref.type === 'edge' ? arrOf(ref.ids).find(x => !String(x).includes('->')) : ref.id);
   I.label = (ref, text) => { const h = hook('rename'), id = refId(ref), dflt = () => (text === '' ? true : base.label(ref, text)); // an empty text: the hook's alone (I.empty)
     return h && can('rename') && id != null ? ran(h(model(), view(), id, text), dflt) : dflt(); };
+  // a field of the properties panel set (Name, a schema field): the type's field hook may add to it or refuse it (audit 37)
+  I.field = (id, path, value, dflt) => { const h = hook('field'); return h && id != null ? ran(h(model(), view(), id, path, value), dflt) : dflt(); };
   // F2's field passes an empty text on only where the rename hook says it reads one (rename.empty: the timing ruler's unit, audit 18)
   I.empty = ref => { const h = hook('rename'), id = refId(ref); return !!(h && typeof h.empty === 'function' && can('rename') && id != null && h.empty(model(), view(), id)); };
   // V: the views a selected node may open, by its palette entry's opens; the one chosen is its opensView (notes/stage-4.md S18)
