@@ -117,6 +117,17 @@ test('audit 38: a process view with containers: [] has no boxes, so it keeps the
   assert.ok(gaps(layout(m({ render: 'process', containers: [{ id: 'x', label: 'X', nodeIds: ['a', 'b'] }] }), 'v')).some(x => x >= 66));
 });
 
+test('audit 39: a view with containers: [] keeps its hub (lanes) plan, as with no list; a box held, or a list that is no list, keeps the plain flow', () => {
+  const nodes = [{ id: 'h', label: 'Hub', kind: 'public' }, ...['a', 'b', 'c', 'd'].map(id => ({ id, label: id.toUpperCase(), kind: 'backend' }))];
+  const m = (v = {}) => ({ nodes, edges: ['a', 'b', 'c', 'd'].map(t => ({ from: 'h', to: t })), views: [{ id: 'v', nodeIds: nodes.map(n => n.id), ...v }] });
+  const at = g => g.nodes.map(n => [n.id, n.x, n.y, n.w]), none = layout(m(), 'v');
+  assert.ok((none.lanes || []).length >= 1, 'no list: a hub plan, with its lane');
+  assert.deepEqual(at(layout(m({ containers: [] }), 'v')), at(none), 'an empty list draws as no list');
+  assert.deepEqual(layout(m({ containers: [] }), 'v').lanes, none.lanes);
+  assert.ok(!(layout(m({ containers: [{ id: 'x', label: 'X', nodeIds: ['a', 'b'] }] }), 'v').lanes || []).length, 'a box held: the plain flow');
+  for (const odd of [{}, 'ab', 0, null]) assert.deepEqual(at(layout(m({ containers: odd }), 'v')), at(none), `containers ${JSON.stringify(odd)} holds no box`);
+});
+
 test('audit 38: the page\'s element count counts an untyped element a flowchart or C4 view draws, and not a SysML diagram frame', async () => {
   const { elementCount } = await import('../src/canvas/pieces.js'), all = await import('../lib/umlimator-all.js');
   const two = (diagram, a, extra = []) => { const nodes = [a, { id: 'u', label: 'Untyped' }, ...extra]; return { schemaVersion: 2, title: 'T', root: 'v', nodes, edges: [], views: [{ id: 'v', title: 'V', diagram, nodeIds: nodes.map(n => n.id) }] }; };
@@ -133,4 +144,18 @@ test('audit 38: the page\'s element count counts an untyped element a flowchart 
     const m = read(`../examples/${f}.json`), v = m.views.find(x => x.id === vid), g = all.layout(m, vid), said = /(\d+) elements? and/.exec(all.describe(m, vid));
     assert.deepEqual(g.families.map(x => x.id), [`${vid}->frame`], `${f} ${vid}: its one box is the frame`);
     assert.equal(Number(said && said[1]), n); assert.equal(elementCount(v, g), n, `${f} ${vid}: ${all.describe(m, vid).split('\n')[0]}`); }
+});
+
+test('audit 39: a card that opens a typed view counts what that view draws, as its pill does; one that cannot be laid out, its cards', async () => {
+  const { elementCount } = await import('../src/canvas/pieces.js'), all = await import('../lib/umlimator-all.js');
+  const m = read('../examples/order-service-structure.json'), inner = m.views[0].id;
+  m.nodes.push({ id: 'svc', label: 'Service', opensView: inner }, { id: 'db', label: 'DB', kind: 'db' });
+  m.views.push({ id: 'top', title: 'Top', nodeIds: ['svc', 'db'], edges: [] });
+  const drawn = elementCount(m.views[0], all.layout(m, inner)), card = all.layout(m, 'top').nodes.find(n => n.id === 'svc');
+  assert.ok(drawn > m.views[0].nodeIds.length, `the view draws more than it lists: ${drawn}`);
+  assert.equal(card.kids, drawn);
+  // hostile: a typed view its type cannot lay out still gives the card a count, and the map draws
+  const bad = structuredClone(m); bad.views[0].nodeIds = ['order-service', { toString: 1 }, null, '__proto__'];
+  const g = all.layout(bad, 'top'); assert.equal(g.nodes.find(n => n.id === 'svc').opens, true);
+  assert.ok(Number.isFinite(g.nodes.find(n => n.id === 'svc').kids));
 });

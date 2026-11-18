@@ -251,6 +251,7 @@ const OV_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
 const OVERVIEW_TYPE = registerDiagramType('uml.interaction-overview', {
   untypedLine: null, // a line of no notation is no control flow: not drawn, said by overview-kinds (audit 30)
   title: 'interaction overview diagram',
+  inlines: true, // an inline interaction draws the sequence view it opens: diff() lists this view when that one changes (audit 39)
   // control nodes but the decision (its question, S8) are added with no name prompt (§12.1); a use and an inline
   // interaction ask for the view they open, V changes it
   elements: [['InitialNode', 'Initial', { name: false }], ['ActivityFinalNode', 'Final', { name: false }], ['FlowFinalNode', 'Flow final', { name: false }], ['DecisionNode', 'Decision'],

@@ -6,6 +6,7 @@ import { WIRES, badgesOf } from '../map/cards.js';
 import { critical, msText, paths, reach, whatIf } from '../map/insight.js';
 import { KIND, SIGIL, kindOf } from '../map/kinds.js';
 import { arrOf } from '../map/validate.js';
+import { elementCount } from '../map/context.js';
 import { wordOf } from '../page/print.js';
 import { labelOr } from '../core/model.js';
 
@@ -161,7 +162,8 @@ function pieces(X, el, o) {
       return out;
     };
     const ups = collect('up'), downs = collect('down'), srcs = srcList(n);
-    const child = opensOf(nid, cur), later = !o.page && child && !V[child], count = V[child] ? (V[child].nodeIds || []).length : kidCount(nid, cur); // later: a view the host loads when asked (#47)
+    // the view it opens counted as that view's pill counts it (audit 39), or the count the host gives for one not loaded
+    const child = opensOf(nid, cur), later = !o.page && child && !V[child], count = V[child] ? countText(X().ctx(), V[child], cur, geo) : kidCount(nid, cur) ? nWord(kidCount(nid, cur), 'node') : ''; // later: a view the host loads when asked (#47)
     const vIn = viewsWith(nid).filter(v => v.id !== cur);
     const by = n.author ? `<span>·</span>${authorChip(n.author)}` : ext ? '<span class="origin">· author unknown</span>' : '';
     const exs = Array.isArray(n.examples) ? n.examples.filter(x => x && (x.thumb || x.href)) : [];
@@ -185,7 +187,7 @@ function pieces(X, el, o) {
   return I && I.src ? `<span class="big logo${I.dark ? ' dark' : ''}" aria-hidden="true"><img src="${esc(I.src)}" width="22" height="22" alt=""></span>`
   : `<span class="big" style="background:${c}" aria-hidden="true"><svg viewBox="0 0 ${I && I.g ? 24 : 16} ${I && I.g ? 24 : 16}" width="20" height="20" fill="none" stroke="currentColor" stroke-width="${I && I.g ? 2 : 1.5}" stroke-linecap="round" stroke-linejoin="round">${I && I.g ? glyph(I.g) : SIGIL[k]}</svg></span>`; })()}
         <div class="pt"><h2>${esc(n.label || nid)}</h2><small><span>${esc(ty || KIND[k][1])}</span><span class="vis ${pub ? 'pub' : ext ? 'ext' : ''}">${ty ? '' : badgesOf(n).length ? badgesOf(n).map(b => esc(b.text.toUpperCase())).join(' · ') : pub ? 'PUBLIC' : ext ? 'EXTERNAL' : 'INTERNAL'}</span>${by}${n.origin ? `<span class="origin">${esc(n.origin)}</span>` : ''}</small></div>
-        <div class="acts">${V[child] || later ? `<button class="obtn" data-open="${esc(nid)}" style="--c:${c}">⤢ Open ${esc(shortT(V[child] ? labelOr(V[child].title, child) : child))} <span>${V[child] || count ? count + ' nodes · ' : ''}Enter</span></button>` : ''}${!X().editable && (unfoldable(nid, cur) || later) ? `<button class="obtn" data-unfold="${esc(nid)}" style="--c:${c}">⤡ Unfold here <span>E</span></button>` : ''}${litButtons()}<button class="ibtn x" data-close title="Close (Esc)" aria-label="Close details">×</button></div>
+        <div class="acts">${V[child] || later ? `<button class="obtn" data-open="${esc(nid)}" style="--c:${c}">⤢ Open ${esc(shortT(V[child] ? labelOr(V[child].title, child) : child))} <span>${count ? count + ' · ' : ''}Enter</span></button>` : ''}${!X().editable && (unfoldable(nid, cur) || later) ? `<button class="obtn" data-unfold="${esc(nid)}" style="--c:${c}">⤡ Unfold here <span>E</span></button>` : ''}${litButtons()}<button class="ibtn x" data-close title="Close (Esc)" aria-label="Close details">×</button></div>
       </div>
       <div class="ptabs"><div class="ptablist" role="tablist" aria-label="Details">${tabs.map(t => `<button class="ptab" role="tab" id="pt-${t[0]}" data-tab="${t[0]}" aria-selected="${t[0] === tab}" aria-controls="m-pbody">${t[1]}${t[2] != null ? `<em>${t[2]}</em>` : ''}</button>`).join('')}</div>
         <span class="pnav"><button class="ibtn sm" data-step="-1" title="Previous ([)" aria-label="Previous tab">‹</button><button class="ibtn sm" data-step="1" title="Next (])" aria-label="Next tab">›</button></span></div>
@@ -322,22 +324,17 @@ function pieces(X, el, o) {
   };
 }
 
-// how many elements a typed view draws, as the page's view pill, its About box and the views list count them (audit 37): its
-// laid-out nodes that are model elements, less the pieces a type draws on or in another (a port, an operand, a fragment's
-// frame, a message's row; a timing view's rows, changes and ruler carry no type), and its boxes, once each. null for a map,
-// whose every laid-out node is a card. An element with no type that the view lists counts too (a flowchart's or C4 view's
-// untyped element, drawn by its default word: audit 38); a box that names no element does not (a SysML bdd or requirement
-// view's diagram frame, "<view>->frame": no element id holds "->")
-const PIECES = new Set(['port', 'operand', 'frame', 'use', 'message-row']);
-const elementCount = (v, g) => { if (!v || v.diagram == null || v.diagram === 'map' || !g) return null; const ids = new Set(), listed = new Set(arrOf(v.nodeIds));
-  const isEl = id => !String(id).includes('->');
-  arrOf(g.nodes).forEach(n => { if (n && !PIECES.has(n.shape) && ((typeof n.type === 'string' && n.type) || (n.type == null && listed.has(n.id) && isEl(n.id)))) ids.add(n.id); });
-  arrOf(g.families).forEach(f => { if (f && f.id != null && isEl(f.id)) ids.add(f.id); }); return ids.size; };
 // a view's count before it is drawn too (audit 38), so the views list and the search palette say what the pill will: a typed
 // view not drawn yet laid out once for it (kept per context), a map's cards. cur and g: the view on screen and its picture
 // lazy: null for a typed view not laid out yet, instead of laying it out
 const counted = new WeakMap();
-const viewCount = (ctx, v, cur, g, lazy = false) => { if (!v) return 0; if (v.diagram == null || v.diagram === 'map') return arrOf(v.nodeIds).length;
+// a numbered view counts its steps, as its pill says (audit 39: the pill said "5 steps", the views list and search 6): a process
+// or numbered-card view's cards in run order, a sequence view's lines; null for any other view
+const stepCount = (ctx, v) => v.mainSteps || v.render === 'process' ? arrOf(v.stepIds || v.nodeIds).length : v.render === 'sequence' ? arrOf(ctx.viewEdges(v)).length : null;
+const nWord = (n, w) => (n === 1 ? '1 ' + w : n + ' ' + w + 's'); // "1 node", "1 step", "1 wire" (audits 38, 39)
+// a view's count in words, as its pill gives it: "5 steps", "1 node"
+const countText = (ctx, v, cur, g) => nWord(viewCount(ctx, v, cur, g), stepCount(ctx, v) != null ? 'step' : 'node');
+const viewCount = (ctx, v, cur, g, lazy = false) => { if (!v) return 0; const s = stepCount(ctx, v); if (s != null) return s; if (v.diagram == null || v.diagram === 'map') return arrOf(v.nodeIds).length;
   const C = ctx.geoCache || {}, have = v.id === cur && g ? g : (C[v.id] || {}).g; if (have) return elementCount(v, have) ?? arrOf(v.nodeIds).length;
   let m = counted.get(ctx); if (!m) counted.set(ctx, m = new Map());
   if (!m.has(v.id)) { if (lazy) return null; let n; try { n = elementCount(v, ctx.buildGeo(v.id)); } catch { n = null; } m.set(v.id, n ?? arrOf(v.nodeIds).length); }
@@ -346,4 +343,4 @@ const viewCount = (ctx, v, cur, g, lazy = false) => { if (!v) return 0; if (v.di
 // and done in a tab requestIdleCallback starves (a background or headless one)
 const idle = f => { const go = () => { const t = Date.now(); if (!f({ timeRemaining: () => Math.max(0, 10 - (Date.now() - t)) })) setTimeout(go, 0); }; setTimeout(go, 30); };
 
-export { shortT, hintHTML, hinter, legendItems, pieces, detailBullets, elementCount, viewCount };
+export { shortT, hintHTML, hinter, legendItems, pieces, detailBullets, elementCount, viewCount, stepCount, nWord, countText };

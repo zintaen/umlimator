@@ -57,6 +57,18 @@ function boxHolds(v) {
   return (b, x) => (v.diagram == null || v.diagram === 'map') && !!by[b] && holds(b, x); // b is a box that holds x
 }
 
+// how many elements a typed view draws, as the page's view pill, its About box and the views list count them (audit 37): its
+// laid-out nodes that are model elements, less the pieces a type draws on or in another (a port, an operand, a fragment's
+// frame, a message's row; a timing view's rows, changes and ruler carry no type), and its boxes, once each. null for a map,
+// whose every laid-out node is a card. An element with no type that the view lists counts too (a flowchart's or C4 view's
+// untyped element, drawn by its default word: audit 38); a box that names no element does not (a SysML bdd or requirement
+// view's diagram frame, "<view>->frame": no element id holds "->")
+const PIECES = new Set(['port', 'operand', 'frame', 'use', 'message-row']);
+const elementCount = (v, g) => { if (!v || v.diagram == null || v.diagram === 'map' || !g) return null; const ids = new Set(), listed = new Set(arrOf(v.nodeIds));
+  const isEl = id => !String(id).includes('->');
+  arrOf(g.nodes).forEach(n => { if (n && !PIECES.has(n.shape) && ((typeof n.type === 'string' && n.type) || (n.type == null && listed.has(n.id) && isEl(n.id)))) ids.add(n.id); });
+  arrOf(g.families).forEach(f => { if (f && f.id != null && isEl(f.id)) ids.add(f.id); }); return ids.size; };
+
 /* The model's views and everything that lays one out. Works on its own copy of the model, needs no DOM. */
 function mapContext(model, opts = {}) {
   const D = copyOf(unreadable(migrate(model)).model || {}); // a newer schemaVersion throws: drawn wrongly otherwise (F6); no text String() throws on (audit 19)
@@ -212,7 +224,7 @@ function mapContext(model, opts = {}) {
     const steps = O(); if (v.render === 'sequence') lp.edges.forEach((e, i) => { (steps[e.to] ||= []).push(i + 1); });
     const flow = { flow: true, backKeys: lp.keys, steps, hub: null };
     // a type with its own layout has no hub plan: a typed view named as one of its cards is no drill-down into it (audit 24)
-    if (!hub || v.containers || v.mainSteps || v.render === 'process' || ownLayout(vid)) return (planCache[vid] = flow);
+    if (!hub || (Array.isArray(v.containers) && v.containers.length) || v.mainSteps || v.render === 'process' || ownLayout(vid)) return (planCache[vid] = flow);
     planCache[vid] = { ...hubPlan(v, hub, lp), hub, backKeys: lp.keys, steps };
     const was = opts.prev && opts.prev[vid]; // after an update: cards keep the lane, column and order they had
     if (was && was.hub === hub && was.lanes) return (planCache[vid] = keepHub(planCache[vid], was));
@@ -389,7 +401,10 @@ function mapContext(model, opts = {}) {
   };
   const layoutCache = O(); // M3
   // the cards a card opens: its inner view's, else the count the host gives for one it has not loaded (opensCount)
-  const kidCount = (nid, vid) => { const c = childOf(nid, vid), k = c && c !== vid ? (V[c].nodeIds || []).length : 0, n = Number(nodeIn(nid, vid).opensCount); // Number(), not +: a host's BigInt is a count too (audit 29)
+  // a typed view's count is what it draws, as its pill, the views list and the search palette say (audit 39: a card that opens it
+  // said 3, its pill 9): laid out once for it, which its first visit then takes (its memo); one that cannot be, its cards
+  const drawsN = c => { try { return elementCount(V[c], buildGeo(c)) ?? (V[c].nodeIds || []).length; } catch { return (V[c].nodeIds || []).length; } };
+  const kidN = O(), kidCount = (nid, vid) => { const c = childOf(nid, vid), k = c && c !== vid ? (ownLayout(c) ? (kidN[c] ??= drawsN(c)) : (V[c].nodeIds || []).length) : 0, n = Number(nodeIn(nid, vid).opensCount); // Number(), not +: a host's BigInt is a count too (audit 29)
     return k || (opensOf(nid, vid) && n > 0 ? Math.floor(n) : 0); };
   // a line's kind: the first one its edges name (#45); else a hook's line is a guard and a board's is state; else, only where
   // a legend says what the colours mean (the standalone page, or a view's kindsFromLabels), a guess from the label's words
@@ -689,4 +704,4 @@ function mapContext(model, opts = {}) {
     layoutCache, geoCache, memos, buildGeo: withM(buildGeo), buildView: withM(buildView), optimize: withM(optimize), flowPos, kidCount, viewKey, brokenIn, unfoldable, unfolded };
 }
 
-export { mapContext, boxHolds };
+export { mapContext, boxHolds, elementCount };

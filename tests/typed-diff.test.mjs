@@ -162,3 +162,37 @@ test('audit 35: diff() names what is labelled "" as it is drawn', () => {
   const L = { nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ id: 'e', from: 'a', to: 'b', label: '' }] }, L2 = structuredClone(L); L2.edges[0].label = 'calls';
   assert.deepEqual(core.diff(L, L2).summary, ['changes the line from a to b (label - → calls)']);
 });
+
+test('audit 39: views lists a typed view that draws a changed element it does not list', () => {
+  const at = load('examples/bookshop-atlas.json'), rn = (m, id, label) => all.apply(m, { op: 'set', id, path: 'label', value: label });
+  // a package's box over the classes a class view lists; a deployed container's name on its instance; an overview's inline lifelines
+  for (const [id, view] of [['payments-package', 'domain'], ['payments-package', 'payments-only'], ['c4-api', 'c4-deployment'], ['lifeline-worker', 'buy-book']]) {
+    const after = rn(at, id, 'Zq Renamed'), d = all.diff(at, after);
+    assert.ok(all.layout(after, view).nodes.concat(all.layout(after, view).families || []).some(n => JSON.stringify(n).includes('Zq Renamed')), `${view} draws ${id}`);
+    assert.ok(d.views.includes(view), `${id}: ${view} in ${JSON.stringify(d.views)}`); }
+  // a part's type named by its name, and that type's ports
+  const os = load('examples/order-service-structure.json');
+  assert.deepEqual(all.diff(os, rn(os, 'checkout-class.requests', 'inbox')).views, ['internals']);
+  // an element that only opens a view: its view's title is drawn in its name, the view's cards are not
+  const eb = load('examples/ebike-atlas.json');
+  assert.deepEqual(all.diff(eb, all.apply(eb, { op: 'delete', id: 'battery-dock-charge' })).views, ['inside-ebike']);
+  // a hostile model: an element that names itself, owners in a cycle, a tree 20,000 deep and ids such as __proto__ throw
+  // nothing and list only the views that draw the change
+  const deep = { id: 'd0', type: 'uml.Class', label: 'D' }; let x = deep; for (let i = 1; i < 20000; i++) { x.members = [{ id: 'd' + i, type: 'uml.Property', label: 'p', props: { valueType: 'toString' } }]; x = x.members[0]; }
+  const H = { schemaVersion: 2, nodes: [{ id: '__proto__', type: 'uml.Package', label: 'constructor', parent: 'q' }, { id: 'q', type: 'uml.Package', label: 'Q', parent: '__proto__' },
+    { id: 'c', type: 'uml.Class', label: 'C', parent: '__proto__', props: { self: 'c', v: 'cv' } }, deep],
+    edges: [], views: [{ id: 'cv', diagram: 'uml.class', nodeIds: ['c'] }, { id: 'dv', diagram: 'uml.class', nodeIds: ['d0'] }, { id: 'pv', diagram: 'uml.package', nodeIds: ['q'] }] };
+  const relabel = (i, label) => ({ ...H, nodes: H.nodes.map((n, j) => (j === i ? { ...n, label } : n)) });
+  assert.deepEqual(all.diff(H, relabel(1, 'Q2')).views, ['cv', 'pv']);
+  assert.deepEqual(all.diff(H, relabel(0, 'Z')).views, ['cv', 'pv']);
+  assert.deepEqual(all.diff(H, relabel(3, 'D2')).views, ['dv']);
+});
+
+test('audit 39: a schemaVersion change lists every typed view, which then draws as plain cards or as its type', () => {
+  const m = load('tests/state-minimal.json'), b = edit(m, x => { x.schemaVersion = 1; });
+  assert.notDeepEqual(all.layout(m, m.views[0].id).nodes.map(n => n.shape), all.layout(b, m.views[0].id).nodes.map(n => n.shape));
+  assert.deepEqual(all.diff(m, b).views, m.views.filter(v => v.diagram && v.diagram !== 'map').map(v => v.id));
+  assert.deepEqual(all.diff(b, m).views, m.views.filter(v => v.diagram && v.diagram !== 'map').map(v => v.id));
+  const map = { nodes: [{ id: 'a' }], views: [{ id: 'v', nodeIds: ['a'] }] };
+  assert.deepEqual(core.diff(map, { ...map, schemaVersion: 2 }).views, [], 'a map view draws the same at either version');
+});
