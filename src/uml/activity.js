@@ -312,7 +312,7 @@ function actRemove(model, view, ids, fromModel) {
   if (!AC_OBJ(view)) return null;
   // the view's own partitions and what they hold too (remove gets the model as it is: registry.js), audit 24
   const N = new Map(AC_ARR(ownNodes(model, view).model.nodes).filter(AC_OBJ).map(n => [n.id, n])), gone = new Set(AC_ARR(ids));
-  const own = new Set(), put = x => { if (AC_OBJ(x) && typeof x.id === 'string') { own.add(x.id); AC_ARR(x.members).forEach(put); } }; // as the canvas's Delete reads them
+  const own = new Set(), put = x0 => { for (const s = [x0], seen = new Set(); s.length;) { const x = s.pop(); if (AC_OBJ(x) && typeof x.id === 'string' && !seen.has(x)) { seen.add(x); own.add(x.id); for (const y of AC_ARR(x.members)) s.push(y); } } }; // as the canvas's Delete reads them
   [...AC_ARR(view.nodes), ...AC_ARR(view.edges)].forEach(put);
   const del = fromModel ? gone : new Set([...gone].filter(id => own.has(id))), parts = [...del].filter(id => (N.get(id) || {}).type === 'uml.ActivityPartition');
   if (!parts.length) return null;

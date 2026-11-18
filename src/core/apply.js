@@ -47,8 +47,10 @@ const dig = (x, path) => path.split('.').reduce((o, k) => (isObj(o) ? o[k] : und
    fragment of its own lives in) */
 function index(m) {
   const at = new Map(), seen = new Set(); // seen: each element walked once, so a host's member that holds its owner ends (audit 28)
-  const put = (x, list, kind, owner, view) => { if (!isObj(x) || typeof x.id !== 'string' || seen.has(x)) return; seen.add(x);
-    if (!at.has(x.id)) at.set(x.id, { x, list, kind, owner, view }); arr(x.members).forEach(y => put(y, x.members, 'member', x, view)); };
+  // members on a stack of its own, in the order a recursion took: thousands deep are read, never a stack overflow (audit 35)
+  const put = (x0, list0, kind0, owner0, view) => { for (const s = [[x0, list0, kind0, owner0]]; s.length;) { const [x, list, kind, owner] = s.pop();
+    if (!isObj(x) || typeof x.id !== 'string' || seen.has(x)) continue; seen.add(x);
+    if (!at.has(x.id)) at.set(x.id, { x, list, kind, owner, view }); const ms = arr(x.members); for (let j = ms.length - 1; j >= 0; j--) if (j in ms) s.push([ms[j], x.members, 'member', x]); } };
   arr(m.nodes).forEach(n => put(n, m.nodes, 'node'));
   arr(m.edges).forEach(e => put(e, m.edges, 'edge'));
   arr(m.views).forEach(v => { if (!isObj(v)) return; arr(v.nodes).forEach(n => put(n, v.nodes, 'node', undefined, v)); // a card of one view only
@@ -63,13 +65,18 @@ function index(m) {
    is not a view's (its nodes and lines, lenses, rules), by default when only is not given. */
 function refs(m, ids, only, top = !only) {
   const out = [], say = (path, kind) => out.push({ path, kind }), has = id => typeof id === 'string' && ids.has(id), up = new Set();
-  const element = (x, at, line) => { if (!isObj(x) || up.has(x)) return; // line: x is a line, not a node or member that has a field named to; up: the elements x is a member of (a host's cycle ends: audit 28)
-    if (has(x.parent)) say([...at, 'parent'], 'parent');
-    if (line) ['from', 'to'].forEach(k => { if (has(x[k])) say([...at, k], 'end');
-      if (has((((x.props || {}).ends || {})[k] || {}).part)) say([...at, 'props', 'ends', k, 'part'], 'part'); });
+  // a member's path is kept as a link to its owner's, { p, j }, and written out only when said; members on a stack of its own,
+  // in the order a recursion took: thousands deep are read, never a stack overflow (audit 35)
+  const keys = a => { const ks = []; for (; !Array.isArray(a); a = a.p) ks.push(a.j, 'members'); return [...a, ...ks.reverse()]; };
+  const element = (x0, at0, line0) => { const todo = [() => one(x0, at0, line0)]; while (todo.length) todo.pop()();
+  function one(x, a, line) { if (!isObj(x) || up.has(x)) return; // line: x is a line, not a node or member that has a field named to; up: the elements x is a member of (a host's cycle ends: audit 28)
+    let kp; const at = () => (kp ||= keys(a)); // written out when said only
+    if (has(x.parent)) say([...at(), 'parent'], 'parent');
+    if (line) ['from', 'to'].forEach(k => { if (has(x[k])) say([...at(), k], 'end');
+      if (has((((x.props || {}).ends || {})[k] || {}).part)) say([...at(), 'props', 'ends', k, 'part'], 'part'); });
     Object.keys(propRefs(x.type)).forEach(p => { const v = dig(x, p), ks = p.split('.');
-      if (has(v)) say([...at, ...ks], 'prop'); else arr(v).forEach((id, j) => { if (has(id)) say([...at, ...ks, j], 'prop'); }); });
-    up.add(x); arr(x.members).forEach((y, j) => element(y, [...at, 'members', j], false)); up.delete(x); };
+      if (has(v)) say([...at(), ...ks], 'prop'); else arr(v).forEach((id, j) => { if (has(id)) say([...at(), ...ks, j], 'prop'); }); });
+    up.add(x); todo.push(() => up.delete(x)); const ms = arr(x.members); for (let j = ms.length - 1; j >= 0; j--) if (j in ms) todo.push(() => one(ms[j], { p: a, j }, false)); } };
   if (top) { arr(m.nodes).forEach((n, i) => element(n, ['nodes', i], false)); arr(m.edges).forEach((e, i) => element(e, ['edges', i], true)); }
   const vids = new Set(), views = new Set(arr(m.views).map(v => isObj(v) && v.id));
   arr(m.views).forEach((v, i) => { if (!isObj(v) || (only && !only(i))) return; const at = ['views', i]; vids.add(v.id);
@@ -153,13 +160,13 @@ function ownParent(at, op, id, parent, home) {
 }
 
 function checkNew(x, at) { // an element to add: an object with a new id that is not positional, and its members alike
-  const seen = new Set(), walk = (y, what) => {
-    if (!isObj(y) || typeof y.id !== 'string' || !y.id) throw new Error(`add: ${what} needs an id`);
+  const seen = new Set(); // on a stack of its own, in the order a recursion took (audit 35)
+  for (const s = [[x, () => 'the element']]; s.length;) { const [y, what] = s.pop();
+    if (!isObj(y) || typeof y.id !== 'string' || !y.id) throw new Error(`add: ${what()} needs an id`);
     if (y.id.includes('->')) throw new Error(`add: id "${y.id}" contains "->"`);
     if (at.has(y.id) || seen.has(y.id)) throw new Error(`add: id "${y.id}" is used already`);
     seen.add(y.id); if (y.members != null && !Array.isArray(y.members)) throw new Error(`add: members of "${y.id}" is not a list`);
-    arr(y.members).forEach((z, j) => walk(z, `member ${j} of "${y.id}"`)); };
-  walk(x, 'the element');
+    const ms = arr(y.members); for (let j = ms.length - 1; j >= 0; j--) if (j in ms) s.push([ms[j], () => `member ${j} of "${y.id}"`]); }
 }
 
 function run(m, c, gone) {
@@ -222,6 +229,7 @@ function run(m, c, gone) {
       const to = c.owner != null ? need(c.owner) : { x: e.owner, kind: 'node' };
       if (to.kind !== 'node' && to.kind !== 'member' && to.kind !== 'fragment') throw new Error(`move: "${c.owner}" holds no members`);
       if (inside(c.id, to.x.id)) throw new Error(`move: "${c.id}" would end up inside itself`);
+      if (c.owner != null) ownParent(at, 'move', c.id, c.owner, e.view); // as reparent and add: a model member goes under no view's own node (audit 35)
       e.list.splice(e.list.indexOf(e.x), 1); const list = (to.x.members ||= []); list.splice(place(list, c.index), 0, e.x);
       return;
     }
@@ -231,7 +239,8 @@ function run(m, c, gone) {
       if (e.view) throw new Error(`hide: "${c.id}" lives only in view "${e.view.id}": delete it`);
       if (e.kind === 'edge' && !Array.isArray(v.edges)) throw new Error(`hide: view "${c.view}" shows every line between its cards; hide a card, or list its lines`);
       const names0 = lineNames(m);
-      const ids = new Set(), own = x => { ids.add(x.id); arr(x.members).forEach(y => isObj(y) && typeof y.id === 'string' && own(y)); }; own(e.x);
+      const ids = new Set(), own = x0 => { for (const s = [x0], seen = new Set(); s.length;) { const x = s.pop(); if (seen.has(x)) continue; seen.add(x); ids.add(x.id); // a stack: thousands deep (audit 35)
+        arr(x.members).forEach(y => isObj(y) && typeof y.id === 'string' && s.push(y)); } }; own(e.x);
       if (ids.has(v.subject)) throw new Error(`hide: "${v.subject}" is the subject of view "${c.view}": change the view's subject, or delete it from the model (no command deletes a view)`); // audit 17, 18
       const ends = l => isObj(l) && (ids.has(l.from) || ids.has(l.to)); // the view's lines to it, listed or its own, leave the view with it
       // a line the view holds goes for good: a later delete of it in this transaction finds it gone, as after a delete (audit 32)

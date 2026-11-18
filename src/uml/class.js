@@ -242,8 +242,9 @@ const LINE_SAYS = 'a kind of line this view does not draw as its own', lineItem 
 /* ---- the view laid out: the model's elements as layoutTyped's input ---- */
 // every element by id, with its owner for a member
 function classIndex(model) {
-  const at = new Map(), put = (x, kind, owner, path) => { if (!UML_OBJ(x) || typeof x.id !== 'string' || at.has(x.id)) return;
-    at.set(x.id, { x, kind, owner, path }); UML_ARR(x.members).forEach((y, j) => put(y, 'member', x, `${path}.members[${j}]`)); };
+  const at = new Map(), put = (x0, kind0, owner0, path0) => { for (const s = [[x0, kind0, owner0, path0]]; s.length;) { const [x, kind, owner, path] = s.pop(); // a stack: thousands deep (audit 35)
+    if (!UML_OBJ(x) || typeof x.id !== 'string' || at.has(x.id)) continue;
+    at.set(x.id, { x, kind, owner, path }); const ms = UML_ARR(x.members); for (let j = ms.length - 1; j >= 0; j--) if (j in ms) s.push([ms[j], 'member', x, `${path}.members[${j}]`]); } };
   UML_ARR(model.nodes).forEach((n, i) => put(n, 'node', null, `nodes[${i}]`));
   UML_ARR(model.edges).forEach((e, i) => put(e, 'edge', null, `edges[${i}]`));
   return at;
