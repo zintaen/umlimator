@@ -261,7 +261,10 @@ test('a pinned class in a box stays in it (a pin far outside its box is §4.3\'s
   // auto-layout place and payments grew over shared)
   m.views[0].layout = { payment: [3, 3] };
   assert.deepEqual(check(m, 'packages'), []); { const G = layout(m, 'packages'), f = id => G.families.find(x => x.id === id); assert.ok(!meets(f('payments-package'), f('shared'))); }
-  m.views[0].layout = { payment: [3, 3], payable: [1, 1] }; // both pinned there: payments grows over shared and its card, which the check reports
+  // both pinned there: Money, with no pin and the first card of shared placed, goes clear of payments (audit 42: it kept its
+  // auto-layout place inside payments' cells, and payments grew over shared)
+  m.views[0].layout = { payment: [3, 3], payable: [1, 1] }; assert.deepEqual(check(m, 'packages'), []);
+  m.views[0].layout = { payment: [3, 3], payable: [1, 1], money: [3, 1.5] }; // Money pinned there too: payments grows over shared and its card, which the check reports
   const said = check(m, 'packages').map(p => p.message);
   for (const s of ['view packages: families "payments" and "shared" overlap', 'view packages: family "payments" lies over "Money", which it does not hold']) assert.ok(said.includes(s), said.join(' | '));
   const memos = {}, run = x => mapContext(x, { memos }).buildGeo('packages');
