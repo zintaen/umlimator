@@ -3,7 +3,7 @@ import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { r2 } from '../draw/shapes.js';
 import { csAdd, csConnect, csGeo, csMember, csMoveTo, csRemove, csRename } from '../uml/composite.js';
-import { SYS_AS_UML, SYS_BACK, SYS_FIELD, SYS_CS_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS } from './sysml.js';
+import { SYS_AS_UML, SYS_BACK, SYS_FIELD, SYS_CS_PROBLEMS, SYS_TEXT_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS } from './sysml.js';
 
 /* ---------- SysML's internal block diagram, sysml.internal-block (work package M3.4, notes/milestone-3.md §8, §13) ----------
    The view's subject, a block, is drawn as the composite structure type draws a class (src/uml/composite.js), through M3.1's
@@ -210,9 +210,13 @@ function SYS_IB_RENAME(model, view, id, text) {
   return SYS_IB_ON(hook)(model, view, id, text);
 }
 const SYS_IB_KIND = (r, f) => SYS_IB_MAP(r, cs => cs.map(c => (SYS_IB_OBJ(c) && c.op === 'add' && SYS_IB_OBJ(c.element) ? { ...c, element: f(c.element) } : c)));
+// the composite's refusal of a part's text ('A part is name : Type [multiplicity]') said of the entry or row being added: a
+// reference or a value is not called a part (audit 40), as the parametric view says a property (SYS_PAR_RESAY)
+const SYS_IB_SAYAS = (r, t) => (SYS_IB_OBJ(r) && typeof r.error === 'string' && (t === 'sysml.ReferenceProperty' || t === 'sysml.ValueProperty')
+  ? { ...r, error: r.error.replace(/^A part is /, t === 'sysml.ValueProperty' ? 'A value is ' : 'A reference is ') } : r);
 function SYS_IB_ADD(model, view, entry, label, at) {
   const r = SYS_IB_ON(csAdd)(model, view, SYS_IB_ENTRY(entry), label, at), t = SYS_IB_OBJ(entry) ? entry.type : null;
-  return Object.hasOwn(SYS_IB_PROP, t) ? SYS_IB_KIND(r, x => (Object.hasOwn(SYS_IB_PROP, x.type) ? { ...x, type: t } : x)) : r;
+  return Object.hasOwn(SYS_IB_PROP, t) ? SYS_IB_SAYAS(SYS_IB_KIND(r, x => (Object.hasOwn(SYS_IB_PROP, x.type) ? { ...x, type: t } : x)), t) : r;
 }
 function SYS_IB_MEMBER(model, view, owner, id, text) {
   const k = /^(proxy|full)\s+(?=port\s)/i.exec(String(text)), ref = /^ref\s+/i.test(String(text)), t = String(text).replace(/^(proxy|full)\s+(?=port\s)/i, '').replace(/^ref\s+/i, '');
@@ -222,7 +226,7 @@ function SYS_IB_MEMBER(model, view, owner, id, text) {
   const want = (was && was.type === 'sysml.Port' ? /^port(\s|$)/i : /^port\s+[^\s:]/i).test(t) ? 'port' : ref ? 'ref' : 'part';
   if (was && want !== (was.type === 'sysml.Port' ? 'port' : was.type === 'sysml.ReferenceProperty' ? 'ref' : 'part'))
     return { error: `A row keeps its member's kind: delete ${SYS_IB_NAME(was)} and add a ${want} row` };
-  const r = SYS_IB_ON(csMember)(model, view, owner, id, t), kind = k ? k[1].toLowerCase() : undefined;
+  const r = SYS_IB_SAYAS(SYS_IB_ON(csMember)(model, view, owner, id, t), want === 'ref' ? 'sysml.ReferenceProperty' : was && was.type), kind = k ? k[1].toLowerCase() : undefined;
   if (id == null) return SYS_IB_KIND(r, x => (x.type === 'sysml.Port' && kind ? { ...x, props: { ...SYS_IB_PROPS(x), kind } } : ref && Object.hasOwn(SYS_IB_PROP, x.type) ? { ...x, type: 'sysml.ReferenceProperty' } : x));
   return was && was.type === 'sysml.Port' && SYS_IB_PROPS(was).kind !== kind ? SYS_IB_MAP(r, cs => [...cs, { op: 'set', id, path: 'props.kind', value: kind }]) : r;
 }
@@ -274,7 +278,7 @@ const SYS_IB_TYPE_DEF = registerDiagramType('sysml.internal-block', {
   layout: Object.assign(SYS_IB_GEO, { rank: false }), // the composite type ranks the parts itself: the host passes the pins alone
   draw: SYS_IB_DRAW,
   member: SYS_IB_MEMBERS,
-  validate: SYS_IB_PROBLEMS,
+  validate: (model, view) => [...SYS_IB_PROBLEMS(model, view), ...SYS_TEXT_PROBLEMS(model)], // and the props drawn as text (audit 40)
   rules: SYS_IB_RULES,
   describe: SYS_IB_DESCRIBE,
   word: SYS_IB_WORDS,

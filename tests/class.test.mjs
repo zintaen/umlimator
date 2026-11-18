@@ -653,3 +653,25 @@ test('audit 38: connect on a class or package view refuses a realization or a pa
   assert.equal(diagramOf(cv).edits.connect(m, cv, 'c', 'd', null, { type: 'uml.Association' }), null);
   assert.equal(diagramOf(m.views[1]).edits.connect(m, m.views[1], 'c', 'd', null, { type: 'uml.Dependency' }), null);
 });
+
+// audit 40: the panel's New member row and a member row's edit added, or renamed to, a name the class holds already, and
+// validate() then said member-names, an error; they are refused in member-names' words, as the SysML block rows refuse one
+test('audit 40: a member added or edited to a name another member of its class holds is refused; an overload, or the name it keeps, is not', () => {
+  const T = diagramOf({ diagram: 'uml.class' }), m = structuredClone(CLASS), n = id => m.nodes.find(x => x.id === id), mem = (o, id) => n(o).members.find(x => x.id === id);
+  const C = n('customer'), O = n('order'), errs = x => validate(x).filter(p => p.level === 'error').map(p => p.message);
+  assert.deepEqual(errs(m), []);
+  const no = /^member-names: "Customer" has a member named "email" already \(customer\.email\): a classifier's members have different names$/;
+  assert.match(T.member.add('email: Text', C).error, no);
+  assert.match(T.member.edit(mem('customer', 'customer.name'), '- email: Text', C).error, no);
+  assert.match(T.member.edit(mem('order', 'order.id'), 'total: Money', O).error, /"Order" has a member named "total" already \(order\.total\)/);
+  // what it lets through leaves validate() clean: an overload (other parameter types), a member keeping its name, a new name
+  const ok = [[T.member.add('add(book: Book): Order', O), 'order'], [T.member.add('phone: Text', C), 'customer']];
+  ok.forEach(([r]) => assert.equal(r.error, undefined, JSON.stringify(r)));
+  const m2 = apply(m, [...ok.map(([r, o], i) => ({ op: 'add', element: { id: 'k' + i, type: r.type, label: r.label, props: r.props }, owner: o })),
+    ...T.member.edit(mem('customer', 'customer.name'), '+ name: Text [1]', C).commands, ...T.member.edit(mem('order', 'order.add'), 'add(book: Book, quantity: Integer): Order', O).commands]);
+  assert.deepEqual(errs(m2), []);
+  // an operation renamed to an attribute's name is a clash only by member-names' key: name(params) for an operation
+  assert.equal(T.member.edit(mem('order', 'order.cancel'), 'total()', O).error, undefined);
+  // without its owner (a host calling member.edit as before) the edit is read as it was
+  assert.ok(T.member.edit(mem('customer', 'customer.name'), 'email: Text').commands);
+});

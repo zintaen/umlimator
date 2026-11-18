@@ -1,7 +1,7 @@
 import { aWord, kindWord, registerDiagramType } from '../core/registry.js';
 import { CLASS_DEF, RULES, classProblems, closesCycle, drawnLines, lineLabel, lineName, lineRename, parseMember, printMember, typeGeo } from '../uml/class.js';
 import { OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder } from '../uml/owners.js';
-import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_PARTS, SYS_ROLES, SYS_CLASH, SYS_FIELD, SYS_TABLE } from './sysml.js';
+import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_PARTS, SYS_ROLES, SYS_CLASH, SYS_FIELD, SYS_TABLE, SYS_TEXT_PROBLEMS } from './sysml.js';
 import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the block definition diagram, sysml.block-definition (work package M3.3, notes/milestone-3.md §7) ----------
@@ -253,7 +253,7 @@ const BD_TYPE = registerDiagramType('sysml.block-definition', {
   // a SysML classifier is owned by a package as a class is
   owners: (model, x) => ownerChoices(model, BD_OBJ(x) && BD_CLS.includes(x.type) ? { ...x, type: 'uml.Class' } : x),
   member: { print: bdPrint, add: (text, owner) => bdParse(text, owner, null), edit: (m, text) => bdEdit(null, null, m, text), holds: n => BD_CLS.includes(n.type) },
-  validate: (model, view) => [...classProblems(model, view), ...bdProblems(model, view), ...ownerProblems(model, view, drawnLines(model, view, null).lines)],
+  validate: (model, view) => [...classProblems(model, view), ...bdProblems(model, view), ...ownerProblems(model, view, drawnLines(model, view, null).lines), ...SYS_TEXT_PROBLEMS(model)],
   rules: { ...RULES, ...OWNER_RULES, ...BD_RULES, 'member-kinds': `${RULES['member-kinds']}; ${BD_RULES['member-kinds']}` },
   describe: bdDescribe,
   word: (model, id) => { const x = bdNodeOf(model, id); return x && BD_CLS.includes(x.type) ? BD_WORD(x.type) : null; },

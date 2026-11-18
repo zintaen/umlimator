@@ -184,6 +184,13 @@ try {
   check('a refused new member is marked invalid; a good one is added (any script) and clears the mark', refused && ed.length === n0 + 1 && ed[n0].commands[0].element.label === 'größe' && !nw().hasAttribute('aria-invalid'), [refused, ed.slice(n0)]);
   row('order.id').value = '- id UUID'; enter(row('order.id')); const was = row('order.id').getAttribute('aria-invalid'); key('Escape', {}, row('order.id'));
   check('Escape on a refused member row puts its text back and clears the mark', was === 'true' && row('order.id').value === row('order.id').dataset.was && !row('order.id').hasAttribute('aria-invalid'));
+  // audit 40: a row renamed, or a new member, to a name another member of the class holds: refused in member-names' words (tests/class.test.mjs),
+  // nothing emitted, the row marked; an overload (other parameter types) is added
+  const n1 = ed.length; row('order.id').value = '- total: Money'; enter(row('order.id')); const clash = row('order.id').getAttribute('aria-invalid') === 'true' && ed.length === n1;
+  key('Escape', {}, row('order.id'));
+  nw().value = 'total: Int'; enter(nw()); const clashNew = nw().getAttribute('aria-invalid') === 'true' && ed.length === n1;
+  nw().value = 'add(book: Book): Order'; enter(nw());
+  check('a member row or New member naming a member the class has is refused in member-names\' words; an overload is added', clash && clashNew && ed.length === n1 + 1 && ed[n1].commands[0].element.label === 'add', [clash, clashNew, ed.slice(n1)]);
   ed.length = n0;
   // a validator's problem shows in the problems list, naming its rule
   const bad = apply(m3, [{ op: 'set', id: 'order-lines', path: ['props', 'ends', 'from', 'multiplicity'], value: '0..*' }]);

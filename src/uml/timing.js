@@ -60,10 +60,12 @@ function tmIndex(model, V) {
   const timed = tmNum, at = id => C.has(id) && tmNum(C.get(id).at);
   const drawn = msgs.filter(m => H.has(m.from) && H.has(m.to) && timed(tmProps(m).sentAt) && timed(tmProps(m).receivedAt));
   return { N, H, heads, changes, C, cons, shown: cons.filter(c => !hid(c.from) && !hid(c.to)), msgs, drawn, unit, t, name, values: id => TM_OBJ(P[id]) && P[id].as === 'values',
-    mine: id => changes.filter(c => c.lifeline === id).sort((a, b) => tmBy(a.at) - tmBy(b.at) || (a.id < b.id ? -1 : 1)),
-    // the same for the changes and constraints said: a change with no time, and a constraint on one, are not drawn
-    said: id => changes.filter(c => c.lifeline === id && timed(c.at)).sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1)),
-    marked: cons.filter(c => !hid(c.from) && !hid(c.to) && at(c.from) && (TM_KIND[c.type] === 'time' || at(c.to))) };
+    // the same for the changes and constraints said: a change with no time, and a constraint on one, are not drawn; of two
+    // changes at one instant only the one whose id sorts last is (layoutTimeRuler, change-instant), and a constraint of a kind
+    // neither time nor duration is not (audit 40): describe(), the PDF's rows and the lane's name say these
+    said: id => { const all = changes.filter(c => c.lifeline === id && timed(c.at)).sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
+      return all.filter((c, i) => !(all[i + 1] && all[i + 1].at === c.at)); },
+    marked: cons.filter(c => TM_KIND[c.type] && !hid(c.from) && !hid(c.to) && at(c.from) && (TM_KIND[c.type] === 'time' || at(c.to))) };
 }
 
 /* ---- names (§9): a change's, a message's, a constraint's, said the same in the picture, describe() and the PDF ---- */
@@ -109,7 +111,7 @@ function tmInput(model, V, X = tmIndex(model, V)) {
 function tmRun(model, view) {
   const V = tmView(model, view), X = tmIndex(model, V), o = layoutTimeRuler(tmInput(model, V, X)), x0 = o.ruler.x0;
   const nodes = [], order = [];
-  o.lanes.forEach(l => { const n = X.N.get(l.id), vals = X.values(l.id), cs = X.mine(l.id);
+  o.lanes.forEach(l => { const n = X.N.get(l.id), vals = X.values(l.id), cs = X.said(l.id); // the changes drawn, as describe() counts them (audit 40)
     nodes.push({ id: l.id, shape: 'tm-lane', type: 'uml.Lifeline', label: tmHead(n), ...tmSt(n) ? { st: tmSt(n) } : {}, k: 'file', holder: true, x: l.x, y: l.y, w: l.w, h: l.h, nx: l.name.x, ny: l.name.y,
       aria: `${vals ? 'Value lifeline' : 'Lifeline'} ${tmHead(n)}${tmStereo(n).length ? ` (${tmStereo(n).join(', ')})` : ''}${vals ? '' : `, ${tmPlural(l.rows.length, 'state')}`}, ${tmPlural(cs.length, 'change')}` });
     order.push(l.id);
@@ -183,7 +185,7 @@ function tmLegend(X, o) {
 /* ---- validators (§7.2). Each problem: { level, rule, path, message, ids } ---- */
 const TM_RULES = {
   'change-lifeline': 'a change names a lifeline of the model',
-  'change-time': 'a change\'s at, and a message\'s sentAt and receivedAt, are numbers',
+  'change-time': 'a change\'s at, and a message\'s sentAt and receivedAt, are numbers within ±1e300 (past it one is not drawn)',
   'change-state': 'in the states form, a change\'s state is one of its lifeline\'s states (else it is drawn on an extra row)',
   'change-instant': 'one lifeline has one change at an instant (of two, the one whose id sorts last is drawn)',
   'message-ends': 'a message joins one or two lifelines of the view',
@@ -198,6 +200,9 @@ const TM_RULES = {
 const tmNum = x => typeof x === 'number' && Number.isFinite(x) && Math.abs(x) <= 1e300;
 // a time to sort by: a host's BigInt, which validate() reports as no number, sorts as one that is none (a - b throws on it: audit 29)
 const tmBy = x => typeof x === 'bigint' ? NaN : x;
+// why a time is refused, in change-time's words: a finite number past ±1e300 is a number the ruler cannot place (audit 40)
+const tmFar = x => typeof x === 'number' && Number.isFinite(x);
+const tmWhy = x => (tmFar(x) ? `is past ±1e300: not drawn` : 'is not a number');
 function tmProblems(model, view) {
   const out = [], V = tmView(model, view); if (!TM_OBJ(model) || !V) return out;
   const vi = TM_ARR(model.views).indexOf(V), at = `views[${vi}]`, X = tmIndex(model, V), TL = TM_OBJ(V.timeline) ? V.timeline : {};
@@ -210,7 +215,7 @@ function tmProblems(model, view) {
   const seen = new Map();
   X.changes.forEach(c => { const n = X.N.get(c.lifeline);
     if (!n || n.type !== 'uml.Lifeline') return say('change-lifeline', cPath(c) + '.lifeline', [c.id], `change ${c.id} names ${jsonText(c.lifeline)}, which is not a lifeline of the model`);
-    if (!tmNum(c.at)) return say('change-time', cPath(c) + '.at', [c.id], `change ${c.id}'s time ${jsonText(c.at)} is not a number`);
+    if (!tmNum(c.at)) return say('change-time', cPath(c) + '.at', [c.id], `change ${c.id}'s time ${jsonText(c.at)} ${tmWhy(c.at)}`);
     if (!X.H.has(c.lifeline)) return; // a hidden lifeline keeps its changes, not drawn and not warned (§7.2)
     if (!X.values(c.lifeline) && !tmStates(n).includes(String(c.state ?? ''))) say('change-state', cPath(c) + '.state', [c.id, c.lifeline], `change ${c.id}'s state ${jsonText(c.state)} is not one of ${tmName(n)}'s states: drawn on an extra row`, 'warning');
     const k = `${c.lifeline} ${c.at}`; if (!seen.has(k)) seen.set(k, [n]); seen.get(k).push(c); });
@@ -218,7 +223,7 @@ function tmProblems(model, view) {
     if (cs.length > 1) say('change-instant', cPath(cs[1]) + '.at', ids, `${tmName(n)} changes ${cs.length > 2 ? cs.length + ' times' : 'twice'} at ${X.t(cs[0].at)} (${ids.slice(0, -1).join(', ')} and ${ids.at(-1)}): only ${[...ids].sort().pop()} is drawn`, 'warning'); });
   X.msgs.forEach(m => { const p = tmProps(m), off = [m.from, m.to].filter(id => !X.H.has(id));
     if (off.length) say('message-ends', ePath(m), [m.id, ...off], `${m.id} runs from ${m.from} to ${m.to}, and ${[...new Set(off)].join(' and ')} ${new Set(off).size > 1 ? 'are not lifelines' : 'is not a lifeline'} of view ${V.id}`);
-    if (!tmNum(p.sentAt) || !tmNum(p.receivedAt)) say('change-time', ePath(m) + '.props', [m.id], `message ${m.id}'s sentAt and receivedAt are not both numbers`);
+    if (!tmNum(p.sentAt) || !tmNum(p.receivedAt)) say('change-time', ePath(m) + '.props', [m.id], tmFar(p.sentAt) && tmFar(p.receivedAt) ? `message ${m.id}'s sentAt ${jsonText(p.sentAt)} and receivedAt ${jsonText(p.receivedAt)} are not both within ±1e300: not drawn` : `message ${m.id}'s sentAt and receivedAt are not both numbers`);
     else if (p.receivedAt < p.sentAt) say('message-times', ePath(m) + '.props.receivedAt', [m.id], `${m.id} is received at ${X.t(p.receivedAt)}, before it is sent at ${X.t(p.sentAt)}`);
     if (!TM_SORTS.includes(p.sort)) say('sort', ePath(m) + '.props.sort', [m.id], `${m.id} has ${p.sort === undefined ? 'no sort' : `sort ${jsonText(p.sort)}`}, not one of ${TM_SORTS.join(', ')}: it is drawn as a call`, 'warning');
     else if (p.sort === 'reply') { const c = X.msgs.find(x => x.id === p.replyTo);

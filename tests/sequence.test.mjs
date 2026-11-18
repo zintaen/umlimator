@@ -646,3 +646,19 @@ test('audit 33: Shift + Delete on a lifeline shown in two sequence views counts 
   assert.equal(apply(m, h.commands).views[1].edges.length, 2);
   assert.match(h.say, /^Removed payments from the view, and 3 messages with it/);
 });
+
+// audit 40: with a lifeline taken out of nodeIds, describe() still said (and numbered) the messages to it, which the picture
+// does not draw, by the lifeline's raw id, and a use over it; it says what is drawn, numbered as drawn (as timing, audit 39)
+test('audit 40: describe() says only the messages drawn, numbered in order, and a use over the lifelines the view lists', () => {
+  const clean = describeView(SEQ, V(SEQ).id);
+  assert.match(clean, /a sequence diagram of 5 lifelines, 10 messages, 1 interaction use and 2 combined fragments\./);
+  const m = structuredClone(SEQ); V(m).nodeIds = V(m).nodeIds.filter(id => id !== 'lifeline-payments');
+  const d = describeView(m, V(m).id), g = layout(m, V(m).id), drawn = g.edges.length;
+  assert.equal(drawn, 7);
+  assert.match(d, /a sequence diagram of 4 lifelines, 7 messages, 1 interaction use and 2 combined fragments\./);
+  assert.doesNotMatch(d, /lifeline-payments|payments/);
+  assert.deepEqual([...d.matchAll(/^\s*(\d+)\. /gm)].map(x => Number(x[1])), [1, 2, 3, 4, 5, 6, 7], 'numbered 1 to 7, as drawn');
+  assert.match(d, /ref "Send receipt email" over api, receipt\./);
+  assert.match(d, /6\. api replies to storefront \(answers 2\): result\./);
+  assert.ok(errors(m).some(p => /message-ends/.test(p.message)), 'validate() still says it');
+});

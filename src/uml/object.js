@@ -4,7 +4,7 @@ import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { RULES, classProblems, drawnLines, lineIn, lineItem, lineVerb, printMember } from './class.js';
+import { RULES, classProblems, drawnLines, lineIn, lineItem, lineVerb, memberClash, printMember } from './class.js';
 import { OWN_BOXES, OWNER_RULES, holdsLine, modelLines, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 
 /* ---------- the object diagram, uml.object (work package 2.3, notes/stage-2.md §9) ----------
@@ -35,8 +35,11 @@ function parseSlot(text) {
 }
 const printSlot = m => String((m && m.label) ?? '') + (OB_HAS(OB_PROPS(m || {}).value) ? ' = ' + OB_PROPS(m).value : '');
 // a slot edited as text: one transaction; props the syntax does not write are kept
-function slotEdit(m, text) {
+const OB_SLOTS_ONCE = 'an instance has one slot for a feature';
+// owner: the instance, given by the panel; a feature another slot of it has is refused, in member-names' words (audit 40)
+function slotEdit(m, text, owner) {
   const r = parseSlot(text); if (r.error) return r;
+  const no = memberClash(owner, m, r, OB_SLOTS_ONCE); if (no) return no;
   const { value: _, ...keep } = OB_PROPS(m);
   return { commands: [{ op: 'set', id: m.id, path: 'label', value: r.label }, { op: 'set', id: m.id, path: 'props', value: { ...keep, ...r.props } }] };
 }
@@ -169,6 +172,16 @@ function obRename(model, view, id, text) {
   return t === String(x.label ?? '') ? [] : [{ op: 'set', id, path: 'label', value: t || undefined }];
 }
 
+/* connect: a link joins two instances (an element of no UML kind is one, as drawn and as link-ends judges it); else refused on
+   the hint line, in link-ends' words, as the class and package views refuse a line their rules call an error (audit 40). Null:
+   the default */
+function obConnect(model, view, from, to, at, line) {
+  if (!OB_OBJ(line) || line.type !== 'uml.Link') return null;
+  const by = new Map(); OB_ARR(model && model.nodes).forEach(n => { if (OB_OBJ(n) && typeof n.id === 'string' && !by.has(n.id)) by.set(n.id, n); });
+  const inst = id => by.has(id) && isInstance(by.get(id));
+  return inst(from) && inst(to) ? null : { error: 'A link joins two instance specifications' };
+}
+
 /* ---- the type ---- */
 const OB_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
 const obRole = w => ({ key: `ends.${w}.role`, path: ['ends', w, 'role'], label: `${w === 'from' ? 'From' : 'To'} role`, kind: 'text' });
@@ -184,7 +197,7 @@ const OBJECT_TYPE = registerDiagramType('uml.object', {
   boxes: (model, view) => ownersOn(model, view).boxes,
   owners: ownerChoices,
   // a slot is a member row, `feature = value` (§9.2); a comment and a package hold none
-  member: { print: m => (m.type === 'uml.Slot' ? printSlot(m) : printMember(m)), edit: slotEdit, add: parseSlot, holds: n => isInstance(n) }, // and an element of no UML kind, drawn as an instance (audit 29)
+  member: { print: m => (m.type === 'uml.Slot' ? printSlot(m) : printMember(m)), edit: slotEdit, add: (text, owner) => { const r = parseSlot(text); return r.error ? r : memberClash(owner, {}, r, OB_SLOTS_ONCE) || r; }, holds: n => isInstance(n) }, // and an element of no UML kind, drawn as an instance (audit 29)
   validate: (model, view) => [...classProblems(model, view).filter(p => p.rule === 'member-names'), ...objectProblems(model, view), ...ownerProblems(model, view, drawnLines(model, view, OBJECT_LINES).lines)],
   rules: { 'member-names': RULES['member-names'], ...OBJECT_RULES, ...OWNER_RULES }, // of the class rules, member-names only: two slots for one feature (§9.3)
   describe: objectDescribe,
@@ -195,7 +208,7 @@ const OBJECT_TYPE = registerDiagramType('uml.object', {
     return isInstance(x) ? slotsOf(x).map(printSlot) : classifierBoxes(x).flatMap(c => c.members.map(printMember)); },
   // a link's text as drawn, for the PDF's Lines table: its «stereotypes» and its name, else its association's (audit 21)
   text: (model, view, id) => { const e = lineIn(model, view, id); return e && e.type === 'uml.Link' ? linkText(e) || null : null; },
-  edits: { rename: obRename },
+  edits: { rename: obRename, connect: obConnect },
 });
 
-export { OBJECT_TYPE, OBJECT_RULES, obRename, parseSlot, printSlot, slotEdit, objectProblems, objectDescribe };
+export { OBJECT_TYPE, OBJECT_RULES, obRename, obConnect, parseSlot, printSlot, slotEdit, objectProblems, objectDescribe };

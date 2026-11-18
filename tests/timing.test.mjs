@@ -670,3 +670,43 @@ test('audit 39: describe() and the PDF\'s rows leave out a message, change or co
   // the clean model says every message, change and constraint
   assert.match(describe(EX(), 'charge'), /8 changes, 2 messages and 2 constraints[\s\S]*Call charge\(total\) from worker at 100 ms to payments at 140 ms\./);
 });
+
+// audit 40: of two changes at one instant layoutTimeRuler draws the one whose id sorts last, and a constraint of a kind neither
+// time nor duration it draws not at all; describe(), the PDF's rows and the lane's accessible name said every one, and the lane
+// counted changes with no number time (or past ±1e300) as well
+test('audit 40: describe(), the PDF\'s rows and the lane\'s name say the changes and constraints the picture draws, and only those', () => {
+  const TL = (changes, constraints = []) => ({ schemaVersion: 2, title: 't', root: 'v', edges: [],
+    nodes: [{ id: 'w', type: 'uml.Lifeline', label: 'worker', props: { states: ['Idle', 'Busy'] } }],
+    views: [{ id: 'v', diagram: 'uml.timing', title: 'V', nodeIds: ['w'], edges: [], timeline: { unit: 'ms', changes, constraints } }] });
+  const said = m => { const g = layout(m, 'v'), drawn = g.nodes.filter(n => n.shape === 'tm-change').map(n => n.id), marks = g.nodes.filter(n => n.shape === 'tm-mark').map(n => n.id);
+    return { drawn, marks, aria: g.nodes.find(n => n.id === 'w').aria, d: describe(m, 'v'), rows: TM_TYPE.rows(m, 'v', 'w') }; };
+  // two at one instant (b and c: only c drawn), one with no number time, a constraint of no timing kind
+  const a = said(TL([{ id: 'a', lifeline: 'w', at: 0, state: 'Idle' }, { id: 'b', lifeline: 'w', at: 100, state: 'Busy' }, { id: 'c', lifeline: 'w', at: 100, state: 'Idle' }, { id: 'd', lifeline: 'w', at: '5', state: 'Busy' }],
+    [{ id: 'k', type: 'uml.Bogus', from: 'a', to: 'b', label: '{x}' }]));
+  assert.deepEqual(a.drawn, ['a', 'c']); assert.deepEqual(a.marks, []);
+  assert.match(a.d, /a timing diagram of 1 lifeline, 2 changes, 0 messages and 0 constraints, in ms\.\nworker: Idle from 0 ms; Idle from 100 ms\.$/);
+  assert.deepEqual(a.rows, ['0 ms: Idle', '100 ms: Idle']);
+  assert.equal(a.aria, 'Lifeline worker, 2 states, 2 changes');
+  // times that are no number, or past ±1e300: the lane counts the one drawn, as describe() does
+  const b = said(TL([{ id: 'c1', lifeline: 'w', at: 0, state: 'Idle' }, { id: 'c2', lifeline: 'w', at: 'soon', state: 'Busy' }, { id: 'c3', lifeline: 'w', at: 1e301, state: 'Idle' }]));
+  assert.deepEqual(b.drawn, ['c1']); assert.equal(b.aria, 'Lifeline worker, 2 states, 1 change'); assert.match(b.d, /1 change,/);
+  // a duration constraint between two drawn changes, one on a change skipped at its instant (drawn at it): both still said
+  const c = said(TL([{ id: 'a', lifeline: 'w', at: 0, state: 'Idle' }, { id: 'b', lifeline: 'w', at: 100, state: 'Busy' }, { id: 'c', lifeline: 'w', at: 100, state: 'Idle' }],
+    [{ id: 'k1', type: 'uml.DurationConstraint', from: 'a', to: 'c', label: '{< 1 s}' }, { id: 'k2', type: 'uml.TimeConstraint', from: 'b', label: '{t}' }]));
+  assert.deepEqual(c.marks.sort(), ['k1', 'k2']); assert.match(c.d, /2 changes, 0 messages and 2 constraints/);
+  // the example: every change and constraint drawn, all said, the lane names as before
+  const e = layout(EX(), 'charge'), lanes = e.nodes.filter(n => n.shape === 'tm-lane');
+  lanes.forEach(l => assert.equal(Number(/(\d+) changes?$/.exec(l.aria)[1]), e.nodes.filter(n => n.shape === 'tm-change' && EX().views[0].timeline.changes.find(x => x.id === n.id).lifeline === l.id).length, l.aria));
+});
+
+// audit 40: change-time called a finite time past ±1e300 "not a number"; it says why the ruler leaves it out
+test('audit 40: change-time says a time past ±1e300 is past it and not drawn, and still says a value that is no number is not one', () => {
+  const m = EX(); ch(m, 'w-waiting').at = 1e301; msg(m, 'm-charge').props.receivedAt = -2e301;
+  const said = validate(m).filter(p => p.rule === 'change-time').map(p => p.message);
+  assert.deepEqual(said, ["change-time: change w-waiting's time 1e+301 is past ±1e300: not drawn",
+    "change-time: message m-charge's sentAt 100 and receivedAt -2e+301 are not both within ±1e300: not drawn"]);
+  const k = EX(); ch(k, 'w-waiting').at = 'soon'; msg(k, 'm-charge').props.receivedAt = 'later';
+  assert.deepEqual(validate(k).filter(p => p.rule === 'change-time').map(p => p.message), ["change-time: change w-waiting's time \"soon\" is not a number",
+    "change-time: message m-charge's sentAt and receivedAt are not both numbers"]);
+  assert.match(TM_TYPE.rules['change-time'], /within ±1e300/);
+});

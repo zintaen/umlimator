@@ -927,3 +927,24 @@ test('audit 35: canonDeep writes what canon writes, on every example and hostile
   let top = {}, o = top; for (let i = 0; i < 20000; i++) o = o.k = {}; o.back = top;
   assert.ok(canon(top) === '{"k":'.repeat(20000) + '{"back":"[cycle]"}' + '}'.repeat(20000));
 });
+
+// audit 40: a prop a typed view draws as text that is not text (a requirement's text, a constraint block's expression, a part's
+// multiplicity, a task's documentation) was drawn and printed as "[object Object]" and validate() said nothing; it is said as a
+// label that is not text is, a warning at its path, and a text or a number is not
+test('audit 40: validate() says a prop drawn as text that is not text, as a label, and nothing of one that is', async () => {
+  const L = await import('../lib/umlimator-all.js'), ex = f => JSON.parse(readFileSync(new URL('../examples/' + f, import.meta.url), 'utf8'));
+  const said = m => L.validate(m).filter(p => / is not text: drawn as /.test(p.message)).map(p => [p.level, p.path, p.message]);
+  const cases = [['ebike-requirements.json', m => m.nodes.find(n => n.type === 'sysml.Requirement'), 'text', { en: 'shall' }],
+    ['ebike-requirements.json', m => m.nodes.find(n => n.type === 'sysml.Requirement'), 'reqId', ['EB', 1]],
+    ['ebike-range.json', m => m.nodes.find(n => n.type === 'sysml.ConstraintBlock'), 'constraint', { expr: 'r = e / c' }],
+    ['ebike-structure.json', m => m.nodes.find(n => n.type === 'sysml.Block' && (n.members || []).length).members[0], 'multiplicity', { lower: 1 }],
+    ['bookshop-order-to-shipment.json', m => m.nodes.find(n => n.type === 'bpmn.Task'), 'documentation', { en: 'x' }],
+    ['sales-classes.json', m => m.nodes.find(n => n.id === 'customer').members[0], 'valueType', { name: 'Text' }]];
+  for (const [f, pick, key, value] of cases) {
+    const m = ex(f); assert.deepEqual(said(m), [], `${f} as shipped`);
+    const x = pick(m); x.props = { ...(x.props || {}), [key]: value };
+    const got = said(m); assert.equal(got.length, 1, `${f} ${key}: ${JSON.stringify(got)}`);
+    assert.equal(got[0][0], 'warning'); assert.match(got[0][1], new RegExp(`\\.props\\.${key}$`));
+    assert.equal(got[0][2], `${key} ${JSON.stringify(value)} is not text: drawn as ${JSON.stringify(String(value))}`);
+    x.props[key] = 7; assert.deepEqual(said(m), [], `${f} ${key}: a number is drawn as written`); }
+});

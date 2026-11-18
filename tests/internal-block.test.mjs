@@ -452,3 +452,20 @@ test('audit 39: two connectors from one port to two ports of one part run parall
   for (const dir of ['right', 'down']) for (const conns of [[['B.x', 'A.q'], ['B.x', 'A.p']], [['B.x', 'A.p'], ['B.x', 'A.q']], [['A.q', 'B.x'], ['A.p', 'B.x']], [['A.p', 'B.x'], ['A.q', 'B.x']]])
     assert.deepEqual(check(mk(conns, dir), 'v').map(p => p.message), [], `${dir} ${JSON.stringify(conns)}`);
 });
+
+// audit 40: an empty or nameless Reference or Value (palette entry or member row) was refused as 'A part is name : Type
+// [multiplicity]', the composite's words for a part; each is said of what is being added
+test('audit 40: the palette and the member rows refuse a nameless reference or value in its own words, a part in a part\'s', () => {
+  const m = structuredClone(M18), v = m.views[0], entry = l => T.elements.find(e => e.label === l);
+  for (const [l, w] of [['Part', 'part'], ['Reference', 'reference'], ['Value', 'value']]) for (const text of ['', '[2]', ': Real'])
+    if (text !== ': Real' || l !== 'Part') {
+      const r = T.edits.add(m, v, entry(l), text, { sel: [v.subject] });
+      if (text === ': Real') { assert.ok(!r || !r.error, `${l} ": Real" is a nameless typed one`); continue; }
+      assert.deepEqual(r, { error: `A ${w} is name : Type [multiplicity]` }, `${l} ${JSON.stringify(text)}`); }
+  // the member rows: a ref row with no name, a reference's row edited to no name, a value's
+  const k = apply(m, [{ op: 'add', element: { id: 'ebike.soc', type: 'sysml.ValueProperty', label: 'soc', props: { valueType: 'Real' } }, owner: 'ebike' }]);
+  assert.deepEqual(T.edits.member(k, v, 'ebike', null, 'ref [2]'), { error: 'A reference is name : Type [multiplicity]' });
+  assert.deepEqual(T.edits.member(k, v, 'ebike', 'ebike.dock', 'ref [2]'), { error: 'A reference is name : Type [multiplicity]' });
+  assert.deepEqual(T.edits.member(k, v, 'ebike', 'ebike.soc', '[2]'), { error: 'A value is name : Type [multiplicity]' });
+  assert.deepEqual(T.edits.member(k, v, 'ebike', null, '[2]'), { error: 'A part is name : Type [multiplicity]' });
+});

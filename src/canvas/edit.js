@@ -247,7 +247,8 @@ function typedEditor(api) {
     let value = t.type === 'checkbox' ? t.checked : t.value.trim();
     if (t.type !== 'checkbox') { if (t.value === d.was) return;
       if (value === '' && d.key == null) { t.value = d.was; return; } // an empty name does nothing, as on the map; an empty property is removed
-      if (d.m != null && M) { const m = (at.get(d.m) || {}).x, r = m && M.edit(m, value); if (!r || r.error) return bad(r ? r.error : 'not a member');
+      // a member row: given its owner, so a name another member holds is refused (audit 40)
+      if (d.m != null && M) { const e = at.get(d.m) || {}, m = e.x, r = m && M.edit(m, value, e.owner); if (!r || r.error) return bad(r ? r.error : 'not a member');
         t.removeAttribute('aria-invalid'); d.was = t.value; return emit(r.commands); }
       if (value === '') value = undefined; else if (d.list != null) value = value.split(',').map(x => x.trim()).filter(Boolean); }
     const path = d.path ? ['props', ...JSON.parse(d.path)] : d.key == null ? 'label' : d.key.includes('.') ? ['props', d.key] : 'props.' + d.key;

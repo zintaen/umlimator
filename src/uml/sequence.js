@@ -191,7 +191,10 @@ const SQ_VERB = { call: 'calls', async: 'sends to', reply: 'replies to', create:
 function sqDescribe(model, viewId) {
   const V = SQ_ARR(model && model.views).find(x => SQ_OBJ(x) && x.id === viewId); if (!V) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const X = sqIndex(model, V), heads = sqHeads(model, V), H = new Map(heads.map(n => [n.id, n])), nm = id => (H.has(id) ? sqName(H.get(id)) : String(id));
-  const ms = X.occ.filter(o => o.message), uses = X.occ.length - ms.length, n = new Map(ms.map((m, k) => [m.id, k + 1]));
+  // the messages drawn: both ends lifelines of the view, as sqInput's rows are drawn (a message to one the view does not list is
+  // not, and message-ends says it), numbered as the PDF's Lines table numbers them; a use over the ones it lists (audit 40)
+  const drawn = o => !o.message || H.has(o.from) && H.has(o.to);
+  const ms = X.occ.filter(o => o.message && drawn(o)), uses = X.occ.filter(o => !o.message).length, n = new Map(ms.map((m, k) => [m.id, k + 1]));
   const count = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
   const out = [`${labelOr(V.title, V.id)}: a sequence diagram of ${count(heads.length, 'lifeline')}, ${count(ms.length, 'message')}${uses ? `, ${count(uses, 'interaction use')}` : ''} and ${count(X.frags.length, 'combined fragment')}.`];
   if (heads.length) out.push(`Lifelines, left to right: ${heads.map(h => sqHeadText(h) + (sqStereo(h).length ? ` (${sqStereo(h).join(', ')})` : '')).join('; ')}.`);
@@ -200,8 +203,9 @@ function sqDescribe(model, viewId) {
     open = open.slice(0, k);
     for (; k < c.length; k++) { const { f, op } = c[k], m = SQ_ARR(f.members).find(x => SQ_OBJ(x) && x.id === op) || {};
       out.push(`${'  '.repeat(k)}${sqOperator(f) || 'fragment'}${SQ_HAS(m.label) ? ` [${m.label}]` : ''}:`); open.push(c[k]); }
+    if (!drawn(o)) return;
     const pad = '  '.repeat(c.length), t = sqMsgText(o.el) ? `: ${sqMsgText(o.el)}` : '';
-    if (!o.message) { const cs = SQ_ARR(sqProps(o.el).covers); out.push(`${pad}ref ${jsonText(sqName(o.el))}${cs.length ? ` over ${cs.map(nm).join(', ')}` : ''}.`); return; }
+    if (!o.message) { const cs = SQ_ARR(sqProps(o.el).covers).filter(id => H.has(id)); out.push(`${pad}ref ${jsonText(sqName(o.el))}${cs.length ? ` over ${cs.map(nm).join(', ')}` : ''}.`); return; }
     const to = o.from === o.to ? 'itself' : nm(o.to), call = o.sort === 'reply' && n.has(o.replyTo) ? ` (answers ${n.get(o.replyTo)})` : '';
     out.push(`${pad}${n.get(o.id)}. ${nm(o.from)} ${SQ_VERB[o.sort]} ${to}${call}${t}.`); });
   return out.join('\n');
