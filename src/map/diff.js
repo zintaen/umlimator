@@ -120,8 +120,8 @@ export function diff(before, after) {
     came.forEach(id => { if (at.get(id) && how.get(at.get(id)) !== 'added') { ov[id] = { ...ov[id], change: 'added' }; moved.push(['puts', id, v]); } });
     if (left.length || came.length) touched.add(v.id);
     // what only the view changes: its title, a box's name, a card's name here (nodeOverrides) or the box it sits in
-    const vn = v.title || v.id, says = t => { viewSaid.push(`${t} in the view ${vn}`); touched.add(v.id); }, bn = c => String(c.label ?? c.title ?? c.id);
-    if ((o.title || o.id) !== vn) { viewSaid.push(`retitles the view ${o.title || o.id} to ${vn}`); touched.add(v.id); }
+    const vn = labelOr(v.title, v.id), says = t => { viewSaid.push(`${t} in the view ${vn}`); touched.add(v.id); }, bn = c => String(c.label ?? c.title ?? c.id);
+    if (String(labelOr(o.title, o.id)) !== String(vn)) { viewSaid.push(`retitles the view ${labelOr(o.title, o.id)} to ${vn}`); touched.add(v.id); }
     // and what else it draws differently (audit 15): its caption, lanes and the like, a box's tone or badges, a card's pin
     const other = (x, y, skip) => [...new Set([...Object.keys(x), ...Object.keys(y)])].filter(k => !skip.includes(k) && canon(x[k]) !== canon(y[k]));
     const vk = other(o, v, ['id', 'title', 'nodeIds', 'nodes', 'edges', 'containers', 'nodeOverrides', 'layout', 'present', 'fragments']); // a card's pin and present: said with the card
@@ -212,8 +212,8 @@ export function diff(before, after) {
   const cardHow = new Map([...cards.filter(n => how.has(n)).map(n => [n.id, how.get(n)]), ...[...lost.keys()].map(id => [id, 'removed'])]);
   const lines = [...new Set([...out.edges.filter(e => e && typeof e === 'object'), ...views.flatMap(v => arr(v && v.edges).filter(e => e && typeof e === 'object'))])]; // a view that dropped its list holds the model's lines themselves
   const diffKeys = ([o, x]) => [...new Set([...Object.keys(o), ...Object.keys(x)])].filter(k => canon(o[k]) !== canon(x[k]));
-  views.forEach(v => { if (v && !V0.has(v.id)) said.push(`adds the view ${v.title || v.id}`); });
-  arr(A.views).forEach(o => { if (o && !V1.has(o.id)) said.push(`removes the view ${o.title || o.id}`); });
+  views.forEach(v => { if (v && !V0.has(v.id)) said.push(`adds the view ${labelOr(v.title, v.id)}`); });
+  arr(A.views).forEach(o => { if (o && !V1.has(o.id)) said.push(`removes the view ${labelOr(o.title, o.id)}`); });
   cards.forEach(n => { const h = how.get(n);
     if (h === 'added') { // each card at the far end named once, however many lines join them (audit 27: "to Queue and Queue")
       const far = (k, j) => [...new Set(lines.filter(e => e[k] === n.id && how.get(e) === 'added').map(e => name(e[j])))], ins = far('to', 'from'), outs = far('from', 'to');
@@ -253,7 +253,7 @@ export function diff(before, after) {
   const own = new Set(['nodes', 'edges', 'views', 'rules', 'stories', 'lenses', 'title']), B0 = before && typeof before === 'object' ? before : {}, B1 = after && typeof after === 'object' ? after : {};
   const rest = [...new Set([...Object.keys(B0), ...Object.keys(B1)])].filter(k => !own.has(k) && canon(B0[k]) !== canon(B1[k]));
   if (rest.length) said.push(`changes the model (${rest.join(', ')})`);
-  moved.forEach(([verb, id, v]) => said.push(`${verb} ${name(id)} ${verb === 'puts' ? 'in' : 'out of'} the view ${v.title || v.id}`));
+  moved.forEach(([verb, id, v]) => said.push(`${verb} ${name(id)} ${verb === 'puts' ? 'in' : 'out of'} the view ${labelOr(v.title, v.id)}`));
   said.push(...viewSaid);
   if (TYPED.order) TYPED.order(A, out, views, V0, said, touched, name);
 

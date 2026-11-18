@@ -9,7 +9,7 @@ import { edgeRefIds } from '../map/api.js';
 import { badgesOf, mapTabs, toneOf } from '../map/cards.js';
 import { warn } from '../core/warn.js';
 import { diagramOf, idTable } from '../core/registry.js';
-import { copyOf, unreadable } from '../core/model.js';
+import { copyOf, unreadable, labelOr } from '../core/model.js';
 import { mapContext } from '../map/context.js';
 import { canon, jsonText } from '../map/diff.js';
 import { cardMatcher, msText } from '../map/insight.js';
@@ -359,7 +359,7 @@ export function render(container, model, options = {}) {
       const ok = nav.to === cur, how = nav.how, shown = cur;
       answer(ok); nav = null; busy = false; stage.classList.remove('fading');
       if (left && cur) cam.animate(startView()); // left, and no other view drawn: the camera comes back
-      if (shown && shown !== start) { say('Showing ' + (ctx.V[shown].title || shown)); emit('viewchange', { view: shown, from: start }); }
+      if (shown && shown !== start) { say('Showing ' + labelOr(ctx.V[shown].title, shown)); emit('viewchange', { view: shown, from: start }); }
       if (ok && how.select && cur === shown) select(idRef(how.select), { reveal: true });
     } catch (err) { fail(err); } // a bug of ours or of a page hook: reported, and the map left usable below
     finally { if (nav === mine) { answer(false); nav = null; busy = false; stage.classList.remove('fading'); } touch(); }
@@ -496,16 +496,20 @@ export function render(container, model, options = {}) {
     // only the latest gesture waits for the host: an edit the host never answered leaves no trace
     const place = ev.hint && Number.isFinite(ev.hint.col) ? [ev.hint.col, ev.hint.row] : null, card = c.target && c.target.type === 'node' ? c.target.id : null, v = viewIn(current, cur);
     pending = (place || exact) && (card || (c.op === 'add' && c.kind === 'node')) ? { op: c.op, view: cur, card, place, exact, label: norm(c.label), ids: arrOf(v.nodeIds),
-      to: c.op === 'move' && (c.to ?? null) !== boxIdOf(current, cur, card) ? c.to ?? null : undefined, base: jsonText(current), at: jsonText((v.layout || {})[card] ?? null) } : null;
+      to: c.op === 'move' && (c.to ?? null) !== boxIdOf(current, cur, card) ? c.to ?? null : undefined, base: modelText(current), at: jsonText((v.layout || {})[card] ?? null) } : null;
     selectNew = c.op === 'add' && c.kind === 'node'; // the latest gesture's: an add the host never answered selects nothing later
     emit('change', ev);
     return ev;
   }
+  // a whole model as text, to tell two apart: as mapContext reads it (unreadable() leaves out a value that throws when read, a
+  // host's getter) when JSON cannot write it, never the one text "[unreadable]" for any two such models (audit 32: update() kept
+  // the old picture). UNREAD still, the model is no model it was before: never the same
+  const UNREAD = '[unreadable]', modelText = m => { const s = jsonText(m); return s === UNREAD ? jsonText(unreadable(m).model) : s; };
   function answered(p, m2, json) { // the update's model shows the edit: the card its places go to, else null
     const v = viewIn(m2, p.view), was = new Set(p.ids);
     if (p.op === 'add') return arrOf(v.nodeIds).find(id => !was.has(id) && labelIn(m2, v, id) === p.label) ?? null; // a new card with its name
     if (p.to !== undefined) return boxIdOf(m2, p.view, p.card) === p.to ? p.card : null; // into or out of a box
-    return json === p.base || jsonText((v.layout || {})[p.card] ?? null) !== p.at ? p.card : null; // a place alone
+    return json !== UNREAD && json === p.base || jsonText((v.layout || {})[p.card] ?? null) !== p.at ? p.card : null; // a place alone
   }
   const worldOf = e => { const r = stage.getBoundingClientRect(); return cam.toWorld(e.clientX - r.left, e.clientY - r.top); };
   const area = f => f.w * f.h;
@@ -814,10 +818,10 @@ export function render(container, model, options = {}) {
     if (dead) return;
     if (!model2 || typeof model2 !== 'object' || Array.isArray(model2)) throw new TypeError(`umlimator: update(model) takes a map model, an object with nodes and views; it got ${model2 === null ? 'null' : Array.isArray(model2) ? 'an array' : typeof model2}`);
     // an identical model: nothing to redraw, unless it answers an edit (one that changed only a place)
-    const json = jsonText(model2), same = json === jsonText(current), own = relayout || unfolding; // own: the map drawing its own model again, no answer to an edit
+    const json = modelText(model2), same = json !== UNREAD && json === modelText(current), own = relayout || unfolding; // own: the map drawing its own model again, no answer to an edit
     if (!own && !pending && same) return;
     // the model before or after a move an update applied (undo, redo): the cards go back where they were then
-    const back = !own && !same && [...moves].reverse().find(x => x.base === json || x.after === json);
+    const back = !own && !same && json !== UNREAD && [...moves].reverse().find(x => x.base === json || x.after === json);
     if (back) placed[back.view] = structuredClone(back.base === json ? back.before : back.then);
     // the edit waiting for this answer: its places if the model shows it, else none (it is dropped either way)
     const p = own ? null : pending, card = p && answered(p, model2, json);

@@ -11,7 +11,7 @@ import { frLines, frameTag, tagSize, useSize } from './frame.js';
 import { interactionWalk } from './interaction.js';
 import { snKindName } from './structure.js';
 import { sqDraw, sqRun } from './sequence.js';
-import { usedIds, jsonText } from '../core/model.js';
+import { usedIds, jsonText, labelOr } from '../core/model.js';
 
 /* ---------- the interaction overview diagram, uml.interaction-overview (work package 4.7, notes/stage-4.md §11) ----------
    Activity notation whose nodes are interactions: the control nodes of src/uml/flow.js (flow final included), interaction
@@ -209,7 +209,7 @@ function ovDescribe(model, viewId) {
   const visit = (...q) => { for (const id of q) if (!seen.has(id)) { seen.add(id); walk.push(id); q.push(...(out.get(id) || []).map(e => e.to)); } };
   visit(...I.ids.filter(id => I.el(id).type === 'uml.InitialNode')); I.ids.forEach(id => visit(id));
   const count = id => I.flows.filter(e => e.to === id).length;
-  const lines = [`${v.title || v.id}: an interaction overview diagram of ${ovPlural(I.ids.length, 'node')} and ${ovPlural(I.flows.length, 'flow')}.`];
+  const lines = [`${labelOr(v.title, v.id)}: an interaction overview diagram of ${ovPlural(I.ids.length, 'node')} and ${ovPlural(I.flows.length, 'flow')}.`];
   walk.forEach(id => { const x = I.el(id), next = (out.get(id) || []).map(e => { const t = flowText(e.label, OV_PROPS(e).guard); return `${ovNm(I, e.to)}${flowStereo(e).length ? ' ' + flowStereo(e).join(' ') : ''}${!t ? '' : OV_HAS(e.label) ? ' by ' + t : ' ' + t}`; }); // its «stereotypes» too (audit 17)
     lines.push(`${ovNodeName(model, I, x, count(id), (out.get(id) || []).length, x.type === 'uml.Interaction' ? ovInline(model, I, x, false) : null)}${next.length ? '; then ' + next.join(', ') : ''}.`); });
   I.lines.filter(e => e.type === 'uml.CommentLink').forEach(e => lines.push(ovFlowName(I, e) + '.'));
