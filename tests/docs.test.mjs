@@ -313,10 +313,23 @@ test('the state machine and component notes\' layout limits name what check() fi
   await import('../src/map/typed.js'); await import('../src/uml/state.js'); await import('../src/uml/component.js');
   const { check } = await import('../src/map/api.js');
   const doc = p => readFileSync(new URL(p, import.meta.url), 'utf8').replace(/\s+/g, ' '), json = p => JSON.parse(readFileSync(new URL(p, import.meta.url), 'utf8'));
-  const turned = (m, vid, direction) => ({ ...m, views: m.views.map(v => (v.id === vid ? { ...v, direction } : v)) }), words = ['none', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+  const turned = (m, vid, direction) => ({ ...m, views: m.views.map(v => (v.id === vid ? { ...v, direction } : v)) }), words = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
   const sm = json('../examples/order-states.json'), crossings = d => check(turned(sm, sm.views[0].id, d), sm.views[0].id).filter(p => / cross$/.test(p.message)).length;
   assert.match(doc('../docs/conformance/uml-state-machine.md'), new RegExp(`Example 10 has ${words[crossings('right')]} crossing laid out right \\([^)]*\\) and ${words[crossings('down')]} laid out down`));
   const found = check(turned(json('./component-stress.json'), 'all', 'down'), 'all').map(p => p.message).filter(p => !/ cross$/.test(p));
   assert.deepEqual(found.map(p => / share a line$/.test(p) ? 'share' : /: header crossed by edge /.test(p) ? 'header' : p).sort(), ['header', 'share']);
   assert.match(doc('../docs/conformance/uml-component.md'), /Laid out down: one pair of lines sharing a line and one line across a box's header/);
+});
+
+// audit 39: the note's count of labels drawn on a looser spot named one on a region's border in the stress file, which check()
+// has not named since audit 26 (the Payment region holds the retry loop's label, off its border); each count as check() gives it
+test('the state machine note\'s labels on a looser spot are the ones check() names, in example 10 and the stress file (audit 39)', async () => {
+  await import('../src/map/typed.js'); await import('../src/uml/state.js');
+  const { check } = await import('../src/map/api.js');
+  const doc = readFileSync(new URL('../docs/conformance/uml-state-machine.md', import.meta.url), 'utf8').replace(/\s+/g, ' '), json = p => JSON.parse(readFileSync(new URL(p, import.meta.url), 'utf8'));
+  const turned = (m, vid, direction) => ({ ...m, views: m.views.map(v => (v.id === vid ? { ...v, direction } : v)) }), words = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+  const said = (m, vid) => ['right', 'down'].flatMap(d => check(turned(m, vid, d), vid).map(p => p.message));
+  const ex = json('../examples/order-states.json'), st = json('./state-stress.json'), all = said(st, 'all'), both = [...all, ...said(st, 'edge-cases')];
+  const onLine = said(ex, ex.views[0].id).filter(p => / lies on edge /.test(p)).length, border = both.filter(p => /^view [^:]+: label .* sits on the border of /.test(p)).length;
+  assert.ok(doc.includes(`(example 10: ${words[onLine]} labels on lines; the stress file: ${border ? `${words[border]} on a region's border, ` : ''}${words[all.filter(p => / lies on edge /.test(p)).length]} on lines in \`all\`)`), 'the note counts what check() names');
 });

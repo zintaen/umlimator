@@ -50,10 +50,17 @@ function layoutTyped(dg, memo) {
   // a layout that took audit 38's ways (nesting the lines between one pair, a box grown for them, a route that meets its end's
   // stub from the side) and that check() still has more than crossings to say of: the view is laid out as before them too, and
   // the one with fewer such issues kept (then fewer in all), so none is drawn worse than it was
-  let g = lay(t);
-  if (g.nested) { const said = h => { const is = [...routeAudit(h, ''), ...throughIssues(h, '')]; return [is.filter(s => !/ cross$/.test(s)).length, is.length]; }, a = said(g);
-    if (a[0] || a[1]) { const h = lay({ ...t, [PLAIN]: true }), b = said(h); if (b[0] < a[0] || (b[0] === a[0] && b[1] < a[1])) g = h; } }
-  if (memo) Object.assign(memo, { key, g, dg, runs: (memo.runs || 0) + 1, rr: !!g.rr });
+  // Each is judged as buildGeo will draw it (context.js): one that kept the request/reply port swap, in a view of up to 30
+  // cards, laid out once more without it and the better of the two taken (audit 39: the layout as before, judged with its swap,
+  // lost to the nested one by two crossings, and without the swap it had one fewer than that)
+  let g = lay(t), tried = false;
+  if (g.nested) { const said = h => { const is = [...routeAudit(h, ''), ...throughIssues(h, '')]; return [is.filter(s => !/ cross$/.test(s)).length, is.length]; };
+    const less = (b, a) => b[0] < a[0] || (b[0] === a[0] && b[1] < a[1]), a0 = said(g);
+    // [layout, its score, laid out without the swap too]: buildGeo need not try that one again
+    const judged = (u, h = lay(u), b = said(h)) => { if (!memo || t.noSwap || !h.rr || (h.nodes || []).length > 30) return [h, b, false];
+      const h2 = lay({ ...u, noSwap: true }), b2 = said(h2); return less(b2, b) ? [h2, b2, true] : [h, b, true]; };
+    if (a0[0] || a0[1]) { const n = judged(t, g, a0), p = judged({ ...t, [PLAIN]: true }), w = less(p[1], n[1]) ? p : n; g = w[0]; tried = w[2]; } }
+  if (memo) Object.assign(memo, { key, g, dg, runs: (memo.runs || 0) + 1, rr: !!g.rr && !tried });
   return g;
 }
 
@@ -256,7 +263,7 @@ TYPED.rows = (dg, nodes, pitch, NH, RG) => {
 // A view laid out down (turned): the labels of lines between one pair are wider than the 16 px between the lines, so the
 // lines fan out in the gap between the pair's columns, each to a lane of its own that holds its label. Above the middle, the
 // outer line turns nearer each node, so none crosses another; a group the gap or another node leaves no room for goes to the router
-TYPED.fan = (free, { simplify, through, STUB, SEP, families = [], heads = [] }) => { const pairs = new Map(), lr = e => e.fs === 'R' ? [e.p1, e.p2] : [e.p2, e.p1];
+TYPED.fan = (free, { simplify, through, STUB, SEP, families = [], heads = [], nest = false }) => { const pairs = new Map(), lr = e => e.fs === 'R' ? [e.p1, e.p2] : [e.p2, e.p1]; let held = false;
   free.forEach(e => { const [l, r] = e.fs === 'R' ? [e.s, e.t] : [e.t, e.s], k = l.id + '\u0001' + r.id;
     if (/^(RL|LR)$/.test(e.fs + e.ts) && l.x + l.w < r.x) pairs.set(k, [...(pairs.get(k) || []), e]); });
   pairs.forEach(list => { if (list.length < 2 || !list.some(e => e.label || e.step != null)) return;
@@ -265,8 +272,17 @@ TYPED.fan = (free, { simplify, through, STUB, SEP, families = [], heads = [] }) 
     const mid = list.reduce((a, e) => a + lr(e)[0][1] + lr(e)[1][1], 0) / (2 * list.length), lanes = [];
     gaps.reduce((y, g, i) => (lanes[i] = y + g), mid - gaps.reduce((a, g) => a + g, 0) / 2);
     // each line's turn on each side: the k-th line turning towards its lane from the outside turns k SEP px past the stub
-    const turns = side => { const at = []; const up = list.map((e, i) => i).filter(i => lanes[i] < lr(list[i])[side][1]), down = list.map((e, i) => i).filter(i => lanes[i] >= lr(list[i])[side][1]).reverse();
-      [up, down].forEach(g => g.forEach((i, k) => { at[i] = lr(list[i])[side][0] + (side ? -1 : 1) * (STUB + k * SEP); })); return at; };
+    // (nest: a state machine's) lines of the pair the side could not hold leave the same side past the fanned ones and go round
+    // the far card: each takes a turn nearer that side than the fanned lines on its way (audit 39: laid out down, six to nine
+    // transitions between a composite state and the state below it, the moved one turned where the outer fanned line did and crossed it)
+    const ends = [list[0].fs === 'R' ? list[0].s : list[0].t, list[0].fs === 'R' ? list[0].t : list[0].s];
+    const round = side => { const n = ends[side], sd = side ? 'L' : 'R', ys = list.map(e => lr(e)[side][1]), o = [0, 0];
+      if (nest) free.forEach(e => { if (list.includes(e) || !((e.s === ends[0] && e.t === ends[1]) || (e.s === ends[1] && e.t === ends[0]))) return;
+        const p = e.s === n && e.fs === sd ? e.p1 : e.t === n && e.ts === sd ? e.p2 : null; if (!p) return;
+        if (p[1] < Math.min(...ys)) o[0]++; else if (p[1] > Math.max(...ys)) o[1]++; });
+      return o; };
+    let gave = false; const turns = side => { const at = [], o = round(side); if (o[0] || o[1]) gave = true; const up = list.map((e, i) => i).filter(i => lanes[i] < lr(list[i])[side][1]), down = list.map((e, i) => i).filter(i => lanes[i] >= lr(list[i])[side][1]).reverse();
+      [up, down].forEach((g, u) => g.forEach((i, k) => { at[i] = lr(list[i])[side][0] + (side ? -1 : 1) * (STUB + (k + o[u]) * SEP); })); return at; };
     const xl = turns(0), xr = turns(1);
     if (Math.min(...xr) - Math.max(...xl) < 18 + 16) return;
     const pts = list.map((e, i) => { const [a, b] = lr(e), P = simplify([a, [xl[i], a[1]], [xl[i], lanes[i]], [xr[i], lanes[i]], [xr[i], b[1]], b]); return e.fs === 'R' ? P : P.reverse(); });
@@ -278,7 +294,8 @@ TYPED.fan = (free, { simplify, through, STUB, SEP, families = [], heads = [] }) 
     if (list.some((e, i) => families.some(f => fanBox(pts[i], f, e)))) return;
     // nor through a box's title (audit 25: a line out of a boundary ran up through "Shop [Software System]")
     if (list.some((e, i) => heads.some(h => pts[i].slice(1).some((b, k) => uhIn(pts[i][k], b, h))))) return;
-    list.forEach((e, i) => { Object.assign(e, { [OWN_ROUTE]: 'fan', fixed: pts[i], pts: pts[i], stubs: [], how: 'fan' }); free.splice(free.indexOf(e), 1); }); }); };
+    if (gave) held = true; list.forEach((e, i) => { Object.assign(e, { [OWN_ROUTE]: 'fan', fixed: pts[i], pts: pts[i], stubs: [], how: 'fan' }); free.splice(free.indexOf(e), 1); }); });
+  return held; }; // (a turn held for a line round the far card: the layout took audit 38's ways, layoutTyped's PLAIN)
 
 // a fanned path's trouble with box f: a run along one of its borders, or a crossing of one where f holds neither end or both
 const fanIn = (f, n) => n.x >= f.x && n.y >= f.y && n.x + n.w <= f.x + f.w && n.y + n.h <= f.y + f.h;
