@@ -61,13 +61,39 @@ test('audit 39: a step on a line its typed view does not draw is said for every 
   for (const f of ['bookshop-atlas', 'ebike-atlas', 'bookshop-schema', 'bookshop-gcp', 'fulfil-activity']) {
     const x = JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url), 'utf8')), ids = x.edges.map(e => e.id).filter(id => typeof id === 'string');
     for (const v of x.views.filter(v => v.diagram && v.diagram !== 'map')) {
-      const drew = new Set(all.layout(x, v.id).edges.flatMap(e => (e.all || [e]).map(r => r._id))), y = { ...x, stories: [{ id: 's', title: 'S', steps: ids.map(id => ({ view: v.id, select: id })) }] };
+      const g = all.layout(x, v.id), drew = new Set([...g.edges.flatMap(e => (e.all || [e]).map(r => r._id)), ...Object.keys(g.byId)]), y = { ...x, stories: [{ id: 's', title: 'S', steps: ids.map(id => ({ view: v.id, select: id })) }] };
       const by = new Map(all.validate(y).filter(p => p.path.startsWith('stories[0]')).map(p => [ids[+/steps\[(\d+)\]/.exec(p.path)[1]], p.message]));
       ids.forEach(id => { if (drew.has(id)) assert.ok(!by.has(id), `${f} ${v.id} ${id} is drawn: ${by.get(id)}`); else if (v.nodeIds.includes(x.edges.find(e => e.id === id).from) && v.nodeIds.includes(x.edges.find(e => e.id === id).to)) assert.ok(by.has(id), `${f} ${v.id} ${id} is not drawn`); }); } }
   // hostile: a model whose view cannot be laid out, odd ids and steps throw nothing
   const h = two('uml.class', 'uml.Class', 'uml.Usage'); h.edges.push(null, 7, { id: '__proto__', type: 'uml.Usage', from: 'a', to: 'b' }, { id: 'constructor', from: { x: 1 }, to: [] });
   h.views[0].nodeIds.push({ toString: 1 }, 'ghost'); h.stories[0].steps.push({ view: 'v', select: '__proto__', highlight: [null, 3, 'constructor', { type: 'edge', ids: ['toString'] }] });
   assert.ok(said(h).includes(not('__proto__')), said(h).join('\n'));
+});
+
+test('audit 40: a step on a communication view\'s message is fine: the view draws it as a row the page selects by its id', async () => {
+  const all = await import('../lib/umlimator-all.js'), said = m => all.validate(m).filter(p => p.path.startsWith('stories'));
+  const read = f => JSON.parse(readFileSync(new URL(f, import.meta.url), 'utf8'));
+  const m = read('./communication-minimal.json'), v = m.views[0].id, msgs = m.edges.filter(e => all.layout(m, v).byId[e.id]).map(e => e.id);
+  assert.ok(msgs.length >= 2, 'the minimal model draws its messages as rows');
+  m.stories = [{ id: 's', title: 'Walk', steps: [{ view: v, select: msgs[0] }, { view: v, highlight: msgs.slice(1) }] }];
+  assert.deepEqual(said(m), []);
+  // every message of the shipped communication views, selected and highlighted
+  for (const f of ['../examples/checkout-communication.json', '../examples/bookshop-atlas.json', './communication-stress.json']) {
+    const x = read(f);
+    for (const cv of x.views.filter(w => w.diagram === 'uml.communication')) {
+      const g = all.layout(x, cv.id), ids = x.edges.map(e => e.id).filter(id => typeof id === 'string' && g.byId[id]);
+      assert.ok(ids.length, `${f} ${cv.id} draws messages`);
+      x.stories = [{ id: 's', title: 'S', steps: ids.map(id => ({ view: cv.id, select: id, highlight: [id] })) }];
+      assert.deepEqual(said(x), [], `${f} ${cv.id}`); } }
+  // hostile: a message id that names an Object.prototype key, and a line the view does not draw, still said
+  const h = read('./communication-minimal.json'), e0 = h.edges.find(e => all.layout(h, v).byId[e.id]);
+  h.edges.push({ id: 'toString', type: 'uml.Dependency', from: e0.from, to: e0.to });
+  h.stories = [{ id: 's', title: 'S', steps: [{ view: v, select: e0.id, highlight: ['toString', '__proto__', 'constructor'] }] }];
+  h.views[0].edges.push('toString'); // listed, but a dependency a communication view does not draw
+  const got = said(h);
+  assert.ok(!got.some(p => p.path.endsWith('.select')), JSON.stringify(got));
+  assert.ok(got.some(p => p.path.endsWith('highlight[0]') && /"toString" is no line of view "v": the view does not draw it/.test(p.message)), JSON.stringify(got));
+  assert.ok(got.every(p => p.level === 'error' && !/__proto__|constructor/.test(p.message) || /is neither one of view/.test(p.message) || /toString/.test(p.message)), JSON.stringify(got));
 });
 
 test('audit 39: a step names a line written in another view: no line of its own view, which does not draw it', async () => {

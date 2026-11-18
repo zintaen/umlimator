@@ -78,19 +78,31 @@ def visual_cmd(tmp, *args):
     return [sys.executable, "-I", "-c", run, str(VISUAL), str(Path(__file__).resolve()), str(page), *args]
 
 
+# a GitHub login: letters, digits and single hyphens inside, at most 39 (audit 40)
+LOGIN = re.compile(r"[A-Za-z0-9](?:-?[A-Za-z0-9]){0,38}")
+
+
 def avatars(embed, d):
     """upstream's embed_avatars (`embed`), which makes its cache folder in the home folder on every render: only for a model
     with an author whose picture is not inlined yet, and a cache it cannot make (a read-only home on a CI runner or in a
-    container) leaves the authors' initials, said in one line; it ended the render in a traceback (audit 26)."""
+    container) leaves the authors' initials, said in one line; it ended the render in a traceback (audit 26). An author whose
+    key is no GitHub login is given no picture, as if none were found (audit 40): a name too long for a file ended the call
+    for every author after it, and a '?', '/' or '#' fetched another address on github.com."""
     who = d.get("authors")
-    if not isinstance(who, dict) or all(not isinstance(x, dict) or str(x.get("avatar", "")).startswith("data:") for x in who.values()):
+    if not isinstance(who, dict):
         return 0
+    real = {k: x for k, x in who.items() if isinstance(k, str) and LOGIN.fullmatch(k)}
+    if all(not isinstance(x, dict) or str(x.get("avatar", "")).startswith("data:") for x in real.values()):
+        return 0
+    d["authors"] = real  # the same author objects, which embed fills in; then the whole table again, in its order
     try:
         return embed(d)
     except OSError as e:
         print(f"cannot keep the authors' pictures in {Path.home() / '.cache' / 'visual' / 'avatars'} ({e.strerror or e}): the page draws their initials",
               file=sys.stderr)
         return 0
+    finally:
+        d["authors"] = who
 
 
 def script_json(x):
@@ -1399,7 +1411,7 @@ def fragment(views):
 def still_keys(page, opts):
     """A key per view over everything its still is drawn from: the view, its cards, every line between them or ending
     on one of its boxes, the icons and authors they use, the model's rules (a line that breaks one is drawn rose), the
-    size of each card's inner view (the ⤢ pill), the model's schemaVersion (version 1 draws a typed view as a map), the
+    size of each card's inner view (the ⤢ pill: a typed one's from the whole model), the model's schemaVersion (version 1 draws a typed view as a map), the
     engine code and the export options. A view whose key is unchanged
     since its last export draws the same still."""
     data, t, m = page_data(page)
@@ -1428,6 +1440,13 @@ def still_keys(page, opts):
         o = n.get("view") or n.get("opensView")
         c = o if isinstance(o, str) and o in V else i if i in V else of_node.get(i)
         return c if c != v["id"] else None
+    typed_kid = lambda c: data.get("schemaVersion") == 2 and (V.get(c) or {}).get("diagram") not in (None, "map")
+    model = []
+
+    def whole():
+        if not model:
+            model.append(hashlib.sha256(json.dumps([data.get("nodes"), data.get("edges"), views], sort_keys=True).encode()).hexdigest())
+        return model[0]
     keys = {}
     for v in views:
         ids = set(v.get("nodeIds") or [])
@@ -1436,7 +1455,9 @@ def still_keys(page, opts):
         # a typed view draws from more than its cards: a part's ports are its type's, found by label anywhere in the model,
         # and a connector may end on one (audit 4): its key is the whole model's cards and lines
         lines = data.get("edges", []) if v.get("diagram") else [e for e in data.get("edges", []) if own(e.get("from")) in ends and own(e.get("to")) in ends]
-        kids = {i: len((V.get(inner(i, v)) or {}).get("nodeIds") or []) for i in sorted(ids)}
+        # a card's pill counts its inner view's cards, or what a typed inner view draws (audit 40: its elementCount over its layout,
+        # which any element or line of the model may change): that view and the whole model's cards, lines and views, hashed once
+        kids = {i: whole() if typed_kid(inner(i, v)) else len((V.get(inner(i, v)) or {}).get("nodeIds") or []) for i in sorted(ids)}
         cards = [n for n in nodes if n] + list((v.get("nodeOverrides") or {}).values())
         used, who = ({n.get(k) for n in cards if isinstance(n.get(k), str)} for k in ("icon", "author"))  # a list names none (audit 18)
         used |= {f"{p}/{i}" for p, i in map(packs().pick, cards) if isinstance(i, str)} | {f"{p}/" for p, _ in map(packs().pick, cards)}  # a pack's icon and its legal line

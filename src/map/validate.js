@@ -173,10 +173,11 @@ export function validate(model) {
       const mine = new Set(arr(v.nodeIds)), listed = Array.isArray(v.edges), boxes = new Set(arr(v.containers).map(c => c && c.id));
       // the model lines a typed view draws: its type's drawn hook says (a DFD level leaves out its parent level's flows, a C4 view a
       // relationship to a boundary it opens, audit 38), else its picture does, the lines a step can select there (audit 39: a class,
-      // ER, flowchart, BPMN, cloud or mindmap view draws only its own kinds). null: a map, or a model that could not be laid out
+      // ER, flowchart, BPMN, cloud or mindmap view draws only its own kinds), and the model lines it draws as a piece the page
+      // selects by id (audit 40: a communication view's messages are rows, not lines). null: a map, or a model that could not be laid out
       const drawn = () => { if (!drewOf.has(v)) { const T = typedView(v) && diagramOf(v); let d = null;
-        if (T) try { d = new Set(typeof T.drawn === 'function' ? arr(T.drawn(m, v))
-          : held(() => (ctx ||= mapContext(m)).buildGeo(v.id))[0].edges.flatMap(e => (e.all || [e]).map(x => x._id))); } catch { d = null; }
+        if (T) try { d = new Set(typeof T.drawn === 'function' ? arr(T.drawn(m, v)) : (g => [...g.edges.flatMap(e => (e.all || [e]).map(x => x._id)),
+          ...Object.keys(g.byId || {})])(held(() => (ctx ||= mapContext(m)).buildGeo(v.id))[0])); } catch { d = null; }
         drewOf.set(v, d); } return drewOf.get(v); };
       const why = (x, seen) => { // why a model line x is no line of the view, or undefined
         if (typeof x !== 'string' || mine.has(x) || !modelLine.has(x) || seen.has(x) || arr(v.edges).some(e => e && e.id === x)) return undefined; seen.add(x);

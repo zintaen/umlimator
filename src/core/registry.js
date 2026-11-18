@@ -72,7 +72,7 @@ function withOwnNodes(def) {
     return i >= 0 && i < o.at.length ? { ...p, path: `views[${o.at[i][0]}].nodes[${o.at[i][1]}]` + p.path.slice(r[0].length) } : p; }));
   if (typeof L === 'function') out.layout = ownWrap('layout', L, f => a => f({ ...a, model: M(a.model, a.view) }));
   else if (R_OBJ(L) && typeof L.run === 'function') out.layout = { ...L, run: ownWrap('run', L.run, f => (model, view, o) => f(M(model, view), view, o)) };
-  ['boxes', 'rows', 'text'].forEach(k => { if (typeof def[k] === 'function') out[k] = ownWrap('view', def[k], f => (model, view, ...rest) => f(M(model, view), view, ...rest)); });
+  ['boxes', 'rows', 'text', 'touches'].forEach(k => { if (typeof def[k] === 'function') out[k] = ownWrap('view', def[k], f => (model, view, ...rest) => f(M(model, view), view, ...rest)); });
   // with no view (the PDF's word, the Owner field asked by a host): every view's own nodes
   if (typeof def.word === 'function') out.word = ownWrap('word', def.word, f => (model, id, view) => f(view ? M(model, view) : all(model).model, id));
   // the Owner field: a view's own owners too, for what one view alone holds; never for a model element (ownGuard's rule)
@@ -113,7 +113,10 @@ function withOwnNodes(def) {
    Stage 5's: a line's fromPort, toPort, inner, portRank, a box's pad, round, head, a view's labelGaps (src/typed/layout.js);
    edits.member, edits.key (src/typed/edit.js). Audit 18's: steps true, a view whose lines are numbered by their order in its
    edges (a C4 dynamic view), so diff() says a reorder as it does a map's sequence. Audit 21's: unnamed, the element types
-   whose label nothing draws nor says (a combined fragment, a transition): the properties panel offers them no Name field. */
+   whose label nothing draws nor says (a combined fragment, a transition): the properties panel offers them no Name field.
+   Audit 40's: touches(model, view) -> ids, the elements and lines outside the view's own whose change changes its picture (a
+   required stereotype's extension, an identifying relationship that makes a shown entity dependent): diff() lists the view
+   when one of them, in the model before or after, is marked; with drawn (the model lines the view draws, an implied line's too). */
 
 /* An element's kind in words, one rule for every type and the PDF (audit 30): a type's last part split at its capitals,
    first letter up ('uml.DataType' "Data type"); a type of no notation, no dot, as written ("toString", "dataflow"), as audit 26
