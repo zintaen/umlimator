@@ -1,5 +1,5 @@
 import { esc, fit, measured, sansW, textW } from '../core/text.js';
-import { copyOf, migrate, unreadable } from '../core/model.js';
+import { copyOf, labelOr, migrate, unreadable } from '../core/model.js';
 import { diagramOf } from '../core/registry.js';
 import { held, warn } from '../core/warn.js';
 import { r2 } from '../draw/shapes.js';
@@ -68,8 +68,9 @@ function mapContext(model, opts = {}) {
   const objs = (o, k) => { if (o && Array.isArray(o[k])) o[k] = o[k].filter(x => x && typeof x === 'object'); };
   lists(D, ['nodes', 'edges', 'views']); ['nodes', 'edges', 'views'].forEach(k => objs(D, k)); D.views = D.views || [];
   D.views.forEach(v => ['nodes', 'containers'].forEach(k => objs(v, k)));
-  // a number is drawn as written (validate()'s label check): as text, so every later `label || id` reads 0 as a label, not as none (audit 30)
-  const written = x => { if (x && typeof x === 'object' && (typeof x.label === 'number' || typeof x.label === 'bigint')) x.label = String(x.label); };
+  // a number is drawn as written (validate()'s label check): as text, so every later `label || id` reads 0 as a label, not as none (audit 30);
+  // a boolean too, drawn "false": its card's tooltip and its lines' names said the id (audit 33)
+  const written = x => { if (x && typeof x === 'object' && (typeof x.label === 'number' || typeof x.label === 'bigint' || typeof x.label === 'boolean')) x.label = String(x.label); };
   [D.nodes, D.edges].forEach(l => Array.isArray(l) && l.forEach(written));
   D.views.forEach(v => { [v.nodes, v.edges, v.containers, v.lanes].forEach(l => Array.isArray(l) && l.forEach(written)); if (v.nodeOverrides && typeof v.nodeOverrides === 'object') Object.values(v.nodeOverrides).forEach(written); });
   edgeIds(D.edges); D.views.forEach(v => { if (Array.isArray(v.edges)) edgeIds(v.edges); });
@@ -128,7 +129,7 @@ function mapContext(model, opts = {}) {
     if (v.lanes === false) return null;
     const ids = (v.nodeIds || []).filter(i => N[i]), edges = viewEdges(v);
     if (Array.isArray(v.lanes)) {
-      const lanes = v.lanes.map(l => ({ title: l.title || l.label || '', ids: (l.nodeIds || []).filter(i => ids.includes(i) && i !== hub) })).filter(l => l.ids.length);
+      const lanes = v.lanes.map(l => ({ title: [labelOr(labelOr(l.title, l.label), '')].map(t => typeof t === 'number' ? String(t) : t)[0], ids: (l.nodeIds || []).filter(i => ids.includes(i) && i !== hub) })).filter(l => l.ids.length);
       return lanes.length ? { lanes, explicit: true } : null;
     }
     if (v.render !== 'sequence' || edges.length < 4) return null;
@@ -382,7 +383,7 @@ function mapContext(model, opts = {}) {
   let ruled = null;
   const brokenIn = vid => {
     if (!arrOf(D.rules).length) return null;
-    const by = O(), title = id => { const r = D.rules.find(x => x && x.id === id); return String((r && (r.title || r.id)) ?? id); };
+    const by = O(), title = id => { const r = D.rules.find(x => x && x.id === id); return String((r && labelOr(r.title, r.id)) ?? id); };
     (ruled ||= rules(D)).forEach(b => { if (b.view === vid) b.targets.forEach(t => { if (t.type === 'edge') t.ids.forEach(i => { const l = by[i] ||= []; if (!l.includes(title(b.rule))) l.push(title(b.rule)); }); }); });
     return Object.keys(by).length ? by : null;
   };

@@ -86,14 +86,14 @@ export function mountPage(container, model, options = {}) {
   app.innerHTML = `
     <header class="mbar">
       <button class="ibtn" id="m-outline" title="Views (O)" aria-label="Toggle the views list" aria-expanded="false">☰</button>
-      <h1 class="mbrand"><i></i><span>${esc(D.title || 'Map')}</span></h1>
+      <h1 class="mbrand"><i></i><span>${esc(labelOr(D.title, 'Map'))}</span></h1>
       <nav class="crumbs" id="m-crumbs" aria-label="Breadcrumb"></nav>
       <button class="findbtn" id="m-find" type="button" aria-label="Find a node or view, ${modK}" aria-keyshortcuts="${mac ? 'Meta' : 'Control'}+K"><span aria-hidden="true">⌕</span><span class="ft">Find a node or view…</span> <span class="kbd">${modK}</span></button>
       <button class="ibtn" id="m-theme" title="Light / dark" aria-label="Dark theme" aria-pressed="false">◐</button>${arrOf(D.stories).length ? `
       <div class="menu"><button class="ibtn txt" id="m-stories" aria-controls="m-stories-pop" aria-expanded="false" title="Stories: walk-throughs of this map">▶<span class="lbl"> Stories</span></button>
-        <div class="menu-pop" id="m-stories-pop" hidden>${arrOf(D.stories).map(s => `<button data-story="${esc(s && s.id)}">${esc((s && (s.title || s.id)) || '')}</button>`).join('')}</div></div>` : ''}${arrOf(D.lenses).some(l => l && l.id) ? `
+        <div class="menu-pop" id="m-stories-pop" hidden>${arrOf(D.stories).map(s => `<button data-story="${esc(s && s.id)}">${esc(s ? labelOr(labelOr(s.title, s.id), '') : '')}</button>`).join('')}</div></div>` : ''}${arrOf(D.lenses).some(l => l && l.id) ? `
       <div class="menu"><button class="ibtn txt" id="m-lenses" aria-controls="m-lenses-pop" aria-expanded="false" title="Lenses: ways to look at this map">◎<span class="lbl"> Lenses</span></button>
-        <div class="menu-pop" id="m-lenses-pop" hidden>${D.lenses.filter(l => l && l.id).map(l => `<button data-lens="${esc(l.id)}" aria-pressed="false">${esc(l.title || l.id)}</button>`).join('')}<hr><button data-lens="" aria-pressed="true">No lens</button></div></div>` : ''}
+        <div class="menu-pop" id="m-lenses-pop" hidden>${D.lenses.filter(l => l && l.id).map(l => `<button data-lens="${esc(l.id)}" aria-pressed="false">${esc(labelOr(l.title, l.id))}</button>`).join('')}<hr><button data-lens="" aria-pressed="true">No lens</button></div></div>` : ''}
       <div class="menu"><button class="pbtn" id="m-export" aria-controls="m-export-pop" aria-expanded="false">Export ▾</button>
         <div class="menu-pop" id="m-export-pop" hidden><button data-x="svg">SVG · this view</button><button data-x="png">PNG · this view (2×)</button><button data-x="link">Copy link to view</button><hr><button data-x="json">Map model (JSON)</button><button data-x="record">Record a story…</button></div></div>
       <button class="ibtn" id="m-pause" type="button" title="Pause" aria-label="Pause" aria-pressed="false">❚❚</button>
@@ -130,7 +130,7 @@ export function mountPage(container, model, options = {}) {
       : `<button class="crumb" data-v="${esc(id)}">${esc(shortT(labelOr(V[id].title, id)))}</button><span class="crumb-sep">›</span>`).join('');
     const parent = stack.length > 1 ? stack[stack.length - 2] : v.parent;
     renderPill(parent); pc.chrome();
-    document.title = `${labelOr(v.title, v.id)} · ${D.title || 'map'}`;
+    document.title = `${labelOr(v.title, v.id)} · ${labelOr(D.title, 'map')}`;
   }
   function renderPill(parent) {
     const v = V[cur], mainSteps = v.mainSteps || v.render === 'process', seq = v.render === 'sequence', ve = viewEdges(v), L = planCache[cur] && planCache[cur].hub ? planCache[cur] : null;
@@ -243,10 +243,10 @@ export function mountPage(container, model, options = {}) {
     if (!lensesPop) return;
     const L = arrOf(D.lenses).find(x => x && x.id === lensOn);
     lensesPop.querySelectorAll('[data-lens]').forEach(b => b.setAttribute('aria-pressed', b.dataset.lens === (lensOn || '')));
-    $('m-lenses').innerHTML = `◎<span class="lbl"> ${esc(L ? L.title || L.id : 'Lenses')}</span>`;
+    $('m-lenses').innerHTML = `◎<span class="lbl"> ${esc(L ? labelOr(L.title, L.id) : 'Lenses')}</span>`;
   }
   if (lensesPop) lensesPop.addEventListener('click', e => { const b = e.target.closest('[data-lens]'); if (!b) return; openMenu(null);
-    if (X.lens(b.dataset.lens || null)) { const L = arrOf(D.lenses).find(x => x && x.id === lensOn); status(L ? 'Lens: ' + (L.title || L.id) : 'No lens'); } });
+    if (X.lens(b.dataset.lens || null)) { const L = arrOf(D.lenses).find(x => x && x.id === lensOn); status(L ? 'Lens: ' + labelOr(L.title, L.id) : 'No lens'); } });
   // a story recorded from the page: each view and card the reader comes to is a step (Add step: as the camera is now too);
   // captions are typed in, and Save writes the story's JSON, for the model's `stories`. Not while a story is shown: its
   // steps are not the reader's. Esc closes it (when it is on top); Close, Esc and leaving the page ask first while it holds
@@ -262,7 +262,7 @@ export function mountPage(container, model, options = {}) {
     if (rec) return;
     stage.insertAdjacentHTML('beforeend', `<div class="m-rec" id="m-rec" role="region" aria-label="Recording a story">
       <div class="t"><b>● Recording a story</b><span id="m-rec-n"></span></div>
-      <input id="m-rec-title" type="text" aria-label="Story title" placeholder="Story title" value="${esc((D.title || 'Map') + ': a walk-through')}">
+      <input id="m-rec-title" type="text" aria-label="Story title" placeholder="Story title" value="${esc(labelOr(D.title, 'Map') + ': a walk-through')}">
       <ol id="m-rec-list"></ol>
       <div class="b"><button type="button" data-r="add">Add step</button><button type="button" data-r="save">Save JSON</button><button type="button" data-r="close">Close</button></div></div>`);
     const box = $('m-rec'), same = (a, b) => JSON.stringify([a.view, a.select, a.camera]) === JSON.stringify([b.view, b.select, b.camera]);

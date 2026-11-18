@@ -660,7 +660,7 @@ test('audit 31: a Symbol, or a value whose toString or toJSON throws, is left ou
     const map = { nodes: [{ id: 'a', label: hv() }, { id: 'b', label: 'B' }], edges: [{ id: 'e', from: 'a', to: 'b', label: hv() }], views: [{ id: 'v', nodeIds: ['a', 'b'], title: hv() }] };
     const said = L.validate(map);
     assert.deepEqual(said.filter(p => /left out/.test(p.message)).map(p => [p.path, p.message]), ['edges[0].label', 'nodes[0].label', 'views[0].title']
-      .map(p => [p, 'a value no text is read from (a Symbol, or a toString or toJSON that throws): left out']), hn);
+      .map(p => [p, 'a value no text is read from (a Symbol, or a toString, valueOf, toJSON or Symbol.toPrimitive that throws): left out']), hn);
     assert.ok(L.layout(map, 'v').nodes.some(n => n.id === 'a'), hn);
     assert.ok(L.describe(map, 'v').includes('Cards: a (Script), B (Script).'), hn);
     assert.deepEqual(L.diff(map, { ...map, nodes: [map.nodes[0], { id: 'b', label: 'B2' }] }).summary, ['renames B to B2'], hn);
@@ -789,5 +789,45 @@ test('audit 32: a view titled 0 is named 0 by describe() and diff(), on a map an
       const first = L.describe(y, v.id).split('\n')[0];
       assert.ok(first.startsWith('0: '), `${f} ${v.id}: ${first}`);
     }
+  }
+});
+
+// audit 33: audit 32 left out a value whose valueOf or Symbol.toPrimitive throws, but validate() still named only a toString or a
+// toJSON as the cause
+test('audit 33: a value left out for a throwing valueOf or Symbol.toPrimitive is said with that cause', async () => {
+  const L = await import('../lib/umlimator-all.js');
+  for (const [hn, hv] of [['valueOf', () => ({ toString() { return 'ok'; }, valueOf() { throw new Error('v'); } })],
+    ['toPrimitive', () => ({ [Symbol.toPrimitive]() { throw new Error('p'); } })], ['toString', () => ({ toString() { throw new Error('s'); } })],
+    ['toJSON', () => ({ toJSON() { throw new Error('j'); } })], ['Symbol', () => Symbol('s')]]) {
+    const said = L.validate({ nodes: [{ id: 'a', label: hv() }], views: [{ id: 'v', nodeIds: ['a'] }] }).find(p => p.path === 'nodes[0].label');
+    assert.equal(said && said.message, 'a value no text is read from (a Symbol, or a toString, valueOf, toJSON or Symbol.toPrimitive that throws): left out', hn);
+  }
+});
+
+// audit 33: a card labelled false is drawn "false" (validate() says so), but its tooltip and its lines' titles and names said its id
+test('audit 33: a card labelled false is named "false" in its tooltip and in its lines\' titles and accessible names', async () => {
+  const { layout } = await import('../lib/umlimator.js'), { svgOf } = await import('../src/draw/svg.js');
+  for (const [lab, word] of [[false, 'false'], [true, 'true'], [0, '0']]) {
+    const m = { nodes: [{ id: 'a', label: lab, kind: 'script' }, { id: 'b', label: 'B' }, { id: 'c', label: 'C' }], edges: [{ from: 'a', to: 'b' }, { from: 'c', to: 'a' }], views: [{ id: 'v', title: 'V', nodeIds: ['a', 'b', 'c'] }] };
+    const s = svgOf(layout(m, 'v')), titles = s.match(/<title>[^<]*<\/title>/g) || [], arias = s.match(/aria-label="[^"]*"/g) || [];
+    assert.ok(titles.some(t => t.startsWith(`<title>${word} · `)), `${word}: ${titles}`);
+    assert.ok(!titles.some(t => /<title>a · |\ba →|→ a\b/.test(t)) && !arias.some(t => /\bfrom a to\b|\bto a\b|"a \(/.test(t)), `${word}: ${titles} ${arias}`);
+    assert.ok(arias.some(t => t.includes(`from ${word} to B`)) && arias.some(t => t.includes(`from C to ${word}`)), `${word}: ${arias}`);
+  }
+});
+
+// audit 33: a rule titled 0 (validate() takes a number) was named by its id in rules()' message and in the mark on a line that breaks it
+test('audit 33: a rule titled 0 is named "0" in rules() and on the lines that break it', async () => {
+  const { rules, validate } = await import('../lib/umlimator.js'), { mapContext } = await import('../src/map/context.js');
+  const m = { nodes: [{ id: 'a', label: 'A', kind: 'web' }, { id: 'b', label: 'B', kind: 'db' }], edges: [{ id: 'ab', from: 'a', to: 'b' }],
+    views: [{ id: 'v', nodeIds: ['a', 'b'] }], rules: [{ id: 'r1', title: 0, from: { kind: 'frontend' }, to: { kind: 'database' } }, { id: 'r2', title: '', from: { kind: 'frontend' }, to: { kind: 'database' } }] };
+  assert.deepEqual(validate(m), []);
+  assert.deepEqual(rules(m).map(b => b.message), ['view v: edge A→B breaks rule "0"', 'view v: edge A→B breaks rule "r2"']);
+  assert.deepEqual({ ...mapContext(m).brokenIn('v') }, { ab: ['0', 'r2'] });
+  // hostile titles: one no text is read from is named by its id; markup stays text
+  for (const [t, said] of [[{ toString: 1 }, 'r1'], [Symbol('s'), 'r1'], [{ toString() { return 'x'; }, valueOf() { throw new Error('v'); } }, 'r1'], ['<img src=x onerror=alert(1)>', '<img src=x onerror=alert(1)>']]) {
+    const h = { ...m, rules: [{ ...m.rules[0], title: t }] };
+    assert.deepEqual(rules(h).map(b => b.message), [`view v: edge A→B breaks rule "${said}"`]);
+    assert.deepEqual({ ...mapContext(h).brokenIn('v') }, { ab: [said] });
   }
 });
