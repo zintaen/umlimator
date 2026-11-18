@@ -374,11 +374,12 @@ const CP_TYPE = registerDiagramType('uml.component', {
   text: (model, view, id) => { const pic = cpPic(model, view), l = pic.lines.find(y => y.e.id === id); return l && (l.kind === 'assembly' || l.kind === 'delegation') ? cpLineName(pic, l) : null; },
   rows: (model, view, id) => { const pic = cpPic(model, view), x = pic.I.N.get(id); if (!x) return null;
     // its connectors are rows of the Lines table, which lists a line drawn to a port's owner (audit 3), so not again here (audit 17)
-    if (x.type === 'uml.Component' || !x.type) return cpPortsOf(x).map(p => cpNodeName(model, view, pic, p.id, 1).slice(5)); // no type: drawn as a component, with its ports (audit 29)
+    const ports = () => cpPortsOf(x).filter(p => (pic.I.P.get(p.id) || {}).owner === id).map(p => cpNodeName(model, view, pic, p.id, 1).slice(5));
+    if (x.type === 'uml.Component' || !x.type) return ports(); // no type: drawn as a component, with its ports (audit 29)
     // an interface: the operations and attributes its box draws, none as a ball (audit 29)
     if (x.type === 'uml.Interface') return cpBall(pic.I, view, id) ? [] : CP_ARR(x.members).filter(m => CP_OBJ(m) && (m.type === 'uml.Operation' || m.type === 'uml.Property')).map(printMember);
     if (x.type === 'uml.Artifact') return pic.lines.filter(l => l.e.type === 'uml.Manifestation' && l.e.from === id).map(l => `manifests ${cpEnd(pic, l.e.to)}`);
-    return []; }, // any other kind is drawn with no compartments: the PDF prints what the view draws, nothing more (audit 29)
+    return ports(); }, // any other kind (a class) is drawn with no compartments but with its ports on its border: the PDF prints what the view draws, nothing more (audits 29, 30)
 });
 
 export { CP_TYPE, CP_RULES, cpGeo, cpProblems, cpDescribe, cpConnect, cpMoveTo, cpAdd, cpMember, cpKey, cpRemove, cpRank, cpPlace };

@@ -5,6 +5,7 @@ import { SHAPE, r2 } from '../draw/shapes.js';
 import { csAdd, csConnect, csGeo, csMember, csMoveTo, csRemove, csRename } from '../uml/composite.js';
 import { SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS } from './sysml.js';
 import { bdProblems } from './blocks.js';
+import { modelLines } from '../uml/owners.js';
 
 /* ---------- SysML's parametric diagram, sysml.parametric (work package M3.5, notes/milestone-3.md §9, §13) ----------
    The view's subject, a block or a constraint block, is drawn as the composite structure type draws a class
@@ -148,8 +149,10 @@ function SYS_PAR_PROBLEMS(model, view) {
   const ofS = id => id != null && I.owner(id) === S, kind = id => (I.el(id) || {}).type;
   // a binding's type: its end's valueType, when it names an element of the model by label (else id, as drawn)
   const named = new Map(); I.at.forEach(n => { const k = n.label ?? n.id; if (SYS_PAR_HAS(k) && !named.has(k)) named.set(k, n); });
+  // a generalization this view draws, or the model's, or one another view (a block definition view) draws as its own (audit 30)
+  const gens = [...I.E.values(), ...modelLines(model)].filter(e => SYS_PAR_OBJ(e) && e.type === 'uml.Generalization');
   const ups = n => { const seen = new Set(), go = [n]; while (go.length) { const x = go.pop(); if (seen.has(x)) continue; seen.add(x);
-    I.E.forEach(e => { if (e.type === 'uml.Generalization' && e.from === x.id && I.at.has(e.to)) go.push(I.at.get(e.to)); }); } return seen; };
+    gens.forEach(e => { if (e.type === 'uml.Generalization' && e.from === x.id && I.at.has(e.to)) go.push(I.at.get(e.to)); }); } return seen; };
   const bound = new Set();
   SYS_LINES(model, view).forEach(([e, path]) => { if (!SYS_PAR_OBJ(e) || e.type !== 'sysml.BindingConnector' || !['from', 'to'].some(k => ofS(SYS_PAR_PART(e, k) ?? e[k]))) return; // a binding is the view's whose end lies in the subject: through its property, else itself; its own too (audit 23)
     let ok = true;

@@ -385,10 +385,14 @@ function tmRemove(model, view, ids, fromModel) {
   const list = (keep = () => true) => [[X.changes, 'change'], [X.msgs, 'message'], [X.cons, 'constraint']].map(([xs, w]) => [xs.filter(x => !left.has(x.id) && keep(x)).length, w])
     .filter(([c]) => c).map(([c, w]) => tmPlural(c, w)).join(', ').replace(/, ([^,]*)$/, ' and $1'); // "1 change, 2 messages and 1 constraint"
   const lane = id => (X.C.get(id) || {}).lifeline, mine = x => (X.C.get(x.id) === x ? delL.has(x.lifeline) : X.msgs.includes(x) ? on(delL, x) : delL.has(lane(x.from)) || delL.has(lane(x.to))); // a deleted lane's change, message or constraint
-  const theirs = new Set(X.msgs.filter(m => on(hidL, m) && !on(delL, m)).map(m => m.id)), n = theirs.size;
+  const theirs = new Set(X.msgs.filter(m => on(hidL, m) && !on(delL, m)).map(m => m.id));
+  // a model message the view lists by id only leaves the view: it stays in the model's edges, so it is not said deleted (audit 30)
+  const kept = new Set(TM_ARR(next.edges).filter(TM_OBJ).map(e => e.id)), off = [...theirs].filter(id => !left.has(id) && kept.has(id)).length, n = theirs.size - off;
   const k = X.changes.filter(c => hidL.has(c.lifeline) && left.has(c.id)).length, its = hidL.size === 1 ? 'its' : 'their';
   const more = list(x => !theirs.has(x.id) && !mine(x)), all = list(), ours = list(mine);
-  const hid = [n ? `deleted ${its} ${tmPlural(n, 'message')}${more ? `, and ${more}` : ''}` : more && `deleted ${more}`, k && `${its} ${k === 1 ? 'change stays' : 'changes stay'} in the timeline`].filter(Boolean); // only the clauses that hold (audit 5)
+  const hid = [n ? `deleted ${its} ${tmPlural(n, 'message')}${more ? `, and ${more}` : ''}` : more && `deleted ${more}`,
+    off && `${n ? 'took' : `took ${its}`} ${tmPlural(off, 'message')} off the view (${off === 1 ? 'it stays' : 'they stay'} in the model)`,
+    k && `${its} ${k === 1 ? 'change stays' : 'changes stay'} in the timeline`].filter(Boolean); // only the clauses that hold (audit 5)
   // said as done: a lifeline the view holds as its own is deleted by Delete too, not hidden (audit 24)
   const dels = gone.lane.filter(id => delL.has(id)).map(X.name).join(', ');
   const say = gone.lane.length ? (!hidL.size ? `Deleted ${dels}${all ? ', ' + all : ''}` : [...(dels ? [`Deleted ${dels}${ours ? ', ' + ours : ''}`] : []), `Hid ${gone.hid.map(X.name).join(', ')}`, ...hid].join('; '))

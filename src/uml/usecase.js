@@ -258,8 +258,9 @@ function ucProblems(model, view) {
     if (e.type === 'uml.Extend' && uc(e.to)) { const pts = UC_ARR(UC_PROPS(e).extensionPoints), mine = new Set(ucPointsOf(at.get(e.to)).map(m => m.id)), bad = pts.filter(p => !mine.has(p));
       if (!pts.length) say('error', 'extend-points', path, [e.id, e.to], `${e.id} names no extension point of ${q(e.to)}`);
       else if (bad.length) say('error', 'extend-points', `${path}.props.extensionPoints`, [e.id, e.to, ...bad.map(String)], `${e.id} names ${bad.map(p => JSON.stringify(String(p))).join(', ')}, not ${bad.length === 1 ? 'an extension point' : 'extension points'} of ${q(e.to)}`); }
-    if (e.type === 'uml.Generalization' && (UC_KINDS.includes(ty(e.from)) || UC_KINDS.includes(ty(e.to))) && (ty(e.from) !== ty(e.to) || e.from === e.to))
+    if (e.type === 'uml.Generalization' && (UC_KINDS.includes(ty(e.from)) || UC_KINDS.includes(ty(e.to))) && ty(e.from) !== ty(e.to))
       say('error', 'generalization-kinds', path, ends, `${e.id} runs from ${q(e.from)} to ${q(e.to)}: a generalization joins two actors or two use cases`);
+    // a self-generalization is generalization-cycle's, as in the class view: its two ends are of one kind (audit 30)
     else if (e.type === 'uml.Generalization' && UC_KINDS.includes(ty(e.from))) gen.set(e.from, [...(gen.get(e.from) || []), [e.to, path, e.id]]); });
   // an include cycle, and a generalization cycle between actors or use cases (UML 2.5.1 forbids one for every classifier, as
   // the class view's rule says it, audit 29): each said once, at the line that closes it, naming every element on it

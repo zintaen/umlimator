@@ -380,3 +380,18 @@ test('audit 30: an element of no UML kind the object view shows is an instance t
   const cls = { schemaVersion: 2, nodes: [{ id: 'k', type: 'uml.Class', label: 'K', members: [{ id: 'a', type: 'uml.Property', label: 'a' }, { id: 'pt', type: 'uml.Port', label: 'pt' }] }], edges: [], views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['k'] }] };
   const cx = mapContext(cls); assert.match(tablesOf(cx, cx.V.v, cx.buildGeo('v'))[0].rows[0], /<td>Class<\/td><td><p>a<\/p><\/td>/);
 });
+
+test('audit 30: instance-of reads a generalization a class view draws as its own line: a slot may name an attribute of a general', () => {
+  const m = { schemaVersion: 2,
+    nodes: [{ id: 'base', type: 'uml.Class', label: 'Base', members: [{ id: 'bid', type: 'uml.Property', label: 'id' }] },
+      { id: 'ord', type: 'uml.Class', label: 'Order', members: [{ id: 'tot', type: 'uml.Property', label: 'total' }] },
+      { id: 'o1', type: 'uml.InstanceSpecification', label: 'o1', props: { classifier: 'Order' }, members: [{ id: 's1', type: 'uml.Slot', label: 'id', props: { value: '7' } }] }],
+    edges: [],
+    views: [{ id: 'classes', diagram: 'uml.class', nodeIds: ['base', 'ord'], edges: [{ id: 'g', type: 'uml.Generalization', from: 'ord', to: 'base' }] },
+      { id: 'objects', diagram: 'uml.object', nodeIds: ['o1'] }] };
+  assert.deepEqual(validate(m), []);
+  const n = structuredClone(m); n.edges.push(n.views[0].edges.pop());
+  assert.deepEqual(validate(n), [], 'as with the same generalization a model line');
+  const x = structuredClone(m); x.views[0].edges = [];
+  assert.deepEqual(validate(x).map(p => p.rule), ['instance-of'], 'with none, warned');
+});

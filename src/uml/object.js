@@ -5,7 +5,7 @@ import { SHAPE } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { RULES, classProblems, drawnLines, lineIn, lineItem, lineVerb, printMember } from './class.js';
-import { OWN_BOXES, OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
+import { OWN_BOXES, OWNER_RULES, holdsLine, modelLines, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 
 /* ---------- the object diagram, uml.object (work package 2.3, notes/stage-2.md §9) ----------
    Instance specifications drawn with the classifier shape, the head underlined, `name : Classifier` (or `: Classifier`
@@ -116,7 +116,8 @@ function objectProblems(model, view) {
   // the model's classifiers by name and by qualified name; a classifier's attributes, with its generals' (a cycle is walked once)
   const full = ownersOn(model, null).full, named = new Map(), add = (k, id) => named.set(k, [...(named.get(k) || []), id]);
   at.forEach(n => { if (OB_CLASSIFIERS.includes(n.type)) { add(String(n.label ?? n.id), n.id); const f = full(n.id); if (f !== String(n.label ?? n.id)) add(f, n.id); } });
-  const up = new Map(); OB_ARR(model.edges).forEach(e => { if (OB_OBJ(e) && e.type === 'uml.Generalization') up.set(e.from, [...(up.get(e.from) || []), e.to]); });
+  // a generalization a class view draws as its own line is one of the model all the same (owners.js modelLines, audit 30)
+  const up = new Map(); modelLines(model).forEach(e => { if (OB_OBJ(e) && e.type === 'uml.Generalization') up.set(e.from, [...(up.get(e.from) || []), e.to]); });
   const attrs = id => { const seen = new Set(), names = new Set(); // a stack, not recursion: a chain of any length
     for (const q = [id]; q.length;) { const c = q.pop(); if (seen.has(c) || !at.has(c)) continue; seen.add(c);
       OB_ARR(at.get(c).members).forEach(m => { if (OB_OBJ(m) && m.type === 'uml.Property') names.add(String(m.label)); }); q.push(...(up.get(c) || [])); }

@@ -442,12 +442,14 @@ test('the PDF\'s tables (§15, decision 18): each element\'s kind by word, a sta
   const ctx = mapContext(SM), [els] = tablesOf(ctx, ctx.V[V.id], ctx.buildGeo(V.id));
   const row = Object.fromEntries(els.rows.map(r => { const [n, k, m] = [...r.matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1]);
     return [n.replace(/<[^>]+>|\s*⤢/g, ''), [k, [...m.matchAll(/<p>(.*?)<\/p>/g)].map(x => x[1])]]; }));
-  assert.deepEqual(row.created, ['Initial pseudostate', []]);
-  assert.deepEqual(row['payment-outcome'], ['Choice', []]);
-  assert.deepEqual(row.prepaid, ['Fork', []]);
-  assert.deepEqual(row['delivery-history'], ['Shallow history', []]);
-  assert.deepEqual(row.erased, ['Terminate', []]);
-  assert.deepEqual(row.delivered, ['Final state', []]);
+  // a pseudostate or final state, drawn with no name, is named by its kind, as its accessible name, never by its id (audit 30)
+  assert.ok(!['created', 'payment-outcome', 'prepaid', 'delivery-history', 'erased', 'delivered'].some(id => row[id]), Object.keys(row).join(', '));
+  assert.deepEqual(row['Initial pseudostate'], ['Initial pseudostate', []]);
+  assert.deepEqual(row.Choice, ['Choice', []]);
+  assert.deepEqual(row.Fork, ['Fork', []]);
+  assert.deepEqual(row['Shallow history'], ['Shallow history', []]);
+  assert.deepEqual(row.Terminate, ['Terminate', []]);
+  assert.deepEqual(row['Final state'], ['Final state', []]);
   assert.deepEqual(row.Placed, ['State', ['entry / reserve the books', 'do / poll the payment provider', 'exit / log the payment result', 'address changed / update the delivery address']]);
   assert.deepEqual(row.Fulfilling, ['Composite state', ['region Parcel', 'region Payment']]);
   assert.deepEqual(row['In delivery'], ['Composite state', []]);

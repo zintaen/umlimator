@@ -440,3 +440,15 @@ test('audit 29: generalization-cycle: an actor or a use case that is its own anc
   // a chain with no cycle, and the bookshop's own generalizations, raise nothing
   m.edges.splice(2, 1); m.edges.pop(); assert.deepEqual(validate(m), []);
 });
+
+test('audit 30: a self-generalization of an actor or a use case is generalization-cycle\'s, as in the class view, not generalization-kinds\'', () => {
+  for (const t of ['uml.UseCase', 'uml.Actor']) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'u', type: t, label: 'U' }], edges: [{ id: 'g', type: 'uml.Generalization', from: 'u', to: 'u' }], views: [{ id: 'v', diagram: 'uml.use-case', nodeIds: ['u'] }] };
+    const cls = { ...m, nodes: [{ id: 'u', type: 'uml.Class', label: 'U' }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['u'] }] };
+    assert.deepEqual(validate(m).map(p => [p.level, p.rule, p.message]), [['error', 'generalization-cycle', 'generalization-cycle: "U" → "U" is its own ancestor (g)']], t);
+    assert.deepEqual(validate(m).map(p => p.message), validate(cls).map(p => p.message), 'said as the class view says it');
+  }
+  // an actor to a use case is still generalization-kinds'
+  const k = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Actor', label: 'A' }, { id: 'u', type: 'uml.UseCase', label: 'U' }], edges: [{ id: 'g', type: 'uml.Generalization', from: 'a', to: 'u' }], views: [{ id: 'v', diagram: 'uml.use-case', nodeIds: ['a', 'u'] }] };
+  assert.deepEqual(validate(k).map(p => p.rule), ['generalization-kinds']);
+});
