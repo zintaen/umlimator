@@ -152,6 +152,15 @@ try {
   if (nm) { nm.value = 'schema: String [0..1]'; key('Enter', {}, nm);
     const c = last().commands[0];
     check('New member: a tag definition added to the stereotype', last().commands.length === 1 && c.op === 'add' && c.owner === 'entity' && c.element.type === 'uml.Property' && c.element.label === 'schema' && same(c.element.props, { valueType: 'String', multiplicity: '0..1' }) && !errors(apply(m2, last().commands)).length, last()); }
+  // L on a line whose far end is a box (sales applies the profile, a box): no link from an id the picture holds no card for,
+  // and no arrow key then throws in nearest() (audit 37)
+  { const thrown = [], on = e => thrown.push(String(e.message)); window.addEventListener('error', on);
+    h = mount(BASE, { editable: true }); h.select({ type: 'edge', ids: ['sales-applies-conventions'], view: 'profile' }); key('l'); const said = hint();
+    key('ArrowRight'); key('ArrowDown'); key('Enter');
+    window.removeEventListener('error', on);
+    check('L on a line to a box: refused with a hint, and the arrows after it throw nothing', said === 'Pick a card to start the line from' && !thrown.length && h.state.gesture !== 'connecting', [said, thrown, h.state.gesture]);
+    h.select({ type: 'edge', ids: ['entity-extends-class'], view: 'profile' }); key('l');
+    check('L on a line to a card still starts from that card', hint().startsWith('Line from ') && h.state.gesture === 'connecting', hint()); key('Escape'); h.destroy(); }
   // hide, delete
   h = mount(BASE, { editable: true });
   click('.node[data-id="column"] .c-name'); key('Delete');

@@ -306,3 +306,17 @@ test('audit 33: the composite and internal block notes name a part in a Lines ro
     assert.ok(said.includes(`named as drawn (\`${drawn}\`, since audit 32`), note);
   }
 });
+
+// audit 37: the state machine note said five crossings laid out down from audit 26 on, and the component note a line along a
+// box's border from audit 21 on; each figure now as check() gives it
+test('the state machine and component notes\' layout limits name what check() finds laid out down (audit 37)', async () => {
+  await import('../src/map/typed.js'); await import('../src/uml/state.js'); await import('../src/uml/component.js');
+  const { check } = await import('../src/map/api.js');
+  const doc = p => readFileSync(new URL(p, import.meta.url), 'utf8').replace(/\s+/g, ' '), json = p => JSON.parse(readFileSync(new URL(p, import.meta.url), 'utf8'));
+  const turned = (m, vid, direction) => ({ ...m, views: m.views.map(v => (v.id === vid ? { ...v, direction } : v)) }), words = ['none', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+  const sm = json('../examples/order-states.json'), crossings = d => check(turned(sm, sm.views[0].id, d), sm.views[0].id).filter(p => / cross$/.test(p.message)).length;
+  assert.match(doc('../docs/conformance/uml-state-machine.md'), new RegExp(`Example 10 has ${words[crossings('right')]} crossing laid out right \\([^)]*\\) and ${words[crossings('down')]} laid out down`));
+  const found = check(turned(json('./component-stress.json'), 'all', 'down'), 'all').map(p => p.message).filter(p => !/ cross$/.test(p));
+  assert.deepEqual(found.map(p => / share a line$/.test(p) ? 'share' : /: header crossed by edge /.test(p) ? 'header' : p).sort(), ['header', 'share']);
+  assert.match(doc('../docs/conformance/uml-component.md'), /Laid out down: one pair of lines sharing a line and one line across a box's header/);
+});

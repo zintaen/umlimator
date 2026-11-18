@@ -142,7 +142,7 @@ function typedEditor(api) {
     const K = e.key;
     if (K === 'Escape') { endLink(); say('No line added'); return true; }
     if (K === 'Enter') { const { from, to } = link; if (!to || to === from && !I.self) { say('Pick another card first'); return true; } endLink(); I.connect(from, to); return true; }
-    if (K.startsWith('Arrow')) { const g = api.geo(), n = api.nearest(g.byId[link.to || link.from], K); if (n) { link.to = n.id; mark(); } return true; }
+    if (K.startsWith('Arrow')) { const g = api.geo(), at = link.to || link.from, n = Object.hasOwn(g.byId, at) && api.nearest(g.byId[at], K); if (n) { link.to = n.id; mark(); } return true; }
     if (K.length === 1 && !e.altKey) { const now = performance.now(); link.find = (now - link.t < 900 ? link.find : '') + K.toLowerCase(); link.t = now;
       const ns = api.geo().nodes.filter(n => String(api.nameOf(n.id)).toLowerCase().startsWith(link.find)), hit = ns.find(n => n.id !== link.from) || I.self && ns[0];
       if (hit) { link.to = hit.id; mark(); } return true; }
@@ -157,6 +157,8 @@ function typedEditor(api) {
     if ((K === 'n' || K === 'N') && can('add')) { I.addNode(0); return true; }
     const from = s && (s.type === 'node' ? s.id : s.type === 'edge' && hook('connect') && (api.geo().edges.find(x => idsOf(s).includes(x._id)) || {}).to);
     if ((K === 'l' || K === 'L') && can('add') && from) {
+      // a line's far end may be a box (a package, a component, a node box): no card the arrows can move from (audit 37)
+      if (!Object.hasOwn(api.geo().byId, from)) { say('Pick a card to start the line from'); return true; }
       link = { from, to: null, find: '', t: 0 }; api.touch();
       say(`Line from ${api.nameOf(from)}: arrows or type a name, Enter to choose, Escape to stop`); return true; }
     if (K === 'Delete' && s) { I.remove(e.shiftKey); return true; }

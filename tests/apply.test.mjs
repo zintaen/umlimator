@@ -488,9 +488,10 @@ test('audit 36: hide takes the steps on that view off the model lines to the ele
   assert.deepEqual(errors(left).map(p => p.path + ' ' + p.message), [
     'stories[0].steps[0].select "e" is no line of view "v": its end "b" is not one of the view\'s cards',
     'stories[0].steps[1].highlight[1] "e" is no line of view "v": its end "b" is not one of the view\'s cards',
+    'stories[0].steps[1].highlight[2] "about" is no line of view "v": its end "e" is no line of the view', // audit 37: a line to a line it does not draw
     'stories[0].steps[3].select "e" is no line of view "v": its end "b" is not one of the view\'s cards']);
   // a line the view lists of its own, and a line between two of its cards, are its lines
-  const own = structuredClone(left); own.views[0].edges = [{ id: 'e', type: 'uml.Association', from: 'a', to: 'n' }];
+  const own = structuredClone(left); own.views[0].edges = [{ id: 'e', type: 'uml.Association', from: 'a', to: 'n' }, 'about']; // a list names every line it draws (audit 37)
   assert.ok(!errors(own).some(p => p.path.startsWith('stories')), JSON.stringify(errors(own)));
 });
 
@@ -506,4 +507,54 @@ test('audit 36: a hostile model: hide and validate() read lines and steps that a
   assert.doesNotThrow(() => validate(r)); assert.doesNotThrow(() => validate(m));
   const left = structuredClone(m); left.views[0].nodeIds = ['a', 'constructor'];
   assert.ok(validate(left).some(p => p.path === 'stories[0].steps[1].select' && /no line of view "v": its end "b"/.test(p.message)));
+});
+
+test('audit 37: hide takes a view\'s own line to a line that leaves with the card, whatever order the view lists them in', () => {
+  const C = id => ({ id, type: 'uml.Class', label: id }), K = (id, to) => ({ id, type: 'uml.CommentLink', from: 'N', to });
+  const m = { schemaVersion: 2, nodes: [C('A'), C('B'), C('C')],
+    edges: [{ id: 'L1', type: 'uml.Association', from: 'A', to: 'B' }, { id: 'L2', type: 'uml.Association', from: 'B', to: 'C' }],
+    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['A', 'B', 'N', 'C'], nodes: [{ id: 'N', type: 'uml.Comment', label: 'note' }], edges: [K('n2', 'n1'), K('n1', 'L1'), K('n3', 'L2'), 'L1', 'L2'] }],
+    stories: [{ id: 's', title: 'S', steps: [{ view: 'v', highlight: ['n1', 'n2', 'n3', 'L2'], caption: 'c' }] }] };
+  assert.deepEqual(errors(m), []);
+  for (const flip of [false, true]) { const x = structuredClone(m); if (flip) x.views[0].edges.reverse();
+    const r = run(x, [{ op: 'hide', id: 'A', view: 'v' }]);
+    assert.deepEqual(r.views[0].edges.map(y => typeof y === 'string' ? y : y.id).sort(), ['L2', 'n3'], `listed ${flip ? 'last' : 'first'}: n1, to L1, and n2, to n1, go with L1`);
+    assert.deepEqual(r.stories[0].steps[0].highlight, ['n3', 'L2']);
+    assert.deepEqual(errors(r), []);
+    // a delete of one of them later in the transaction finds it gone (audit 32)
+    assert.doesNotThrow(() => run(x, [{ op: 'hide', id: 'A', view: 'v' }, { op: 'delete', id: 'n2' }])); }
+  // a map view (the audit's repro): the note line listed before the line it ends on goes with it
+  const mv = { version: 1, nodes: [{ id: 'A', label: 'A' }, { id: 'B', label: 'B' }, { id: 'N', label: 'note' }], edges: [{ id: 'L1', from: 'A', to: 'B' }],
+    views: [{ id: 'v', nodeIds: ['A', 'B', 'N'], edges: [{ id: 'n1', from: 'N', to: 'L1' }, 'L1'] }] };
+  for (const flip of [false, true]) { const x = structuredClone(mv); if (flip) x.views[0].edges.reverse();
+    const r = run(x, [{ op: 'hide', id: 'A', view: 'v' }]); assert.deepEqual(r.views[0].edges, []); assert.deepEqual(errors(r), []); }
+  // a typed class view: its own comment link to the association, listed first
+  const t = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'Order' }, { id: 'b', type: 'uml.Class', label: 'Line' }],
+    edges: [{ id: 'e', type: 'uml.Association', from: 'a', to: 'b' }],
+    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b', 'n'], nodes: [{ id: 'n', type: 'uml.Comment', label: 'note' }], edges: [{ id: 'about', type: 'uml.CommentLink', from: 'n', to: 'e' }, 'e'] }] };
+  assert.deepEqual(run(t, [{ op: 'hide', id: 'b', view: 'v' }]).views[0].edges, []);
+  // hostile: a view's own line with no id, ends that are no text, a ring of lines to lines, ids named for Object's keys
+  const h = { version: 1, nodes: [{ id: 'A', label: 'A' }, { id: 'B', label: 'B' }, { id: 'constructor', label: 'c' }],
+    edges: [{ id: '__proto__', from: 'A', to: 'B' }],
+    views: [{ id: 'v', nodeIds: ['A', 'B', 'constructor'], edges: [null, 7, { from: 'constructor', to: '__proto__' }, { id: 'r1', from: 'r2', to: '__proto__' }, { id: 'r2', from: 'r1', to: 'constructor' }, { id: 'x', from: {}, to: ['A'] }, '__proto__'] }] };
+  const hr = run(h, [{ op: 'hide', id: 'A', view: 'v' }]);
+  assert.deepEqual(hr.views[0].edges, [null, 7, { id: 'x', from: {}, to: ['A'] }]);
+});
+
+test('audit 37: validate() says a story step names a model line the view\'s edges list leaves out, or a line to a line it does not draw', () => {
+  const C = (id, label) => ({ id, type: 'uml.Class', label }), A = (id, from, to) => ({ id, type: 'uml.Association', from, to }), K = (id, to) => ({ id, type: 'uml.CommentLink', from: 'n', to });
+  const m = { schemaVersion: 2, nodes: [C('a', 'A'), C('b', 'B'), C('c', 'C'), { id: 'n', type: 'uml.Comment', label: 'note' }],
+    edges: [A('ab', 'a', 'b'), A('bc', 'b', 'c'), K('on-ab', 'ab'), K('on-bc', 'bc'), K('ring', 'ring')],
+    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b', 'c', 'n'], edges: ['bc', 'on-ab', 'on-bc'] }, { id: 'w', diagram: 'uml.class', nodeIds: ['a', 'b', 'n'] }],
+    stories: [{ id: 's', title: 'S', steps: [{ view: 'v', select: 'ab', caption: '1' }, { view: 'v', highlight: ['bc', 'on-ab', 'on-bc', 'ring'], caption: '2' },
+      { view: 'w', highlight: ['ab', 'on-ab', 'on-bc'], caption: '3' }, { view: 'v', select: { type: 'edge', ids: ['ab'], view: 'v' }, caption: '4' }] }] };
+  assert.deepEqual(errors(m).map(p => p.path + ' ' + p.message), [
+    'stories[0].steps[0].select "ab" is no line of view "v": the view\'s edges list leaves it out',
+    'stories[0].steps[1].highlight[1] "on-ab" is no line of view "v": its end "ab" is no line of the view',
+    'stories[0].steps[1].highlight[3] "ring" is no line of view "v": the view\'s edges list leaves it out',
+    'stories[0].steps[2].highlight[2] "on-bc" is no line of view "w": its end "bc" is no line of the view',
+    'stories[0].steps[3].select "ab" is no line of view "v": the view\'s edges list leaves it out']);
+  // a view's own line by that id, or the line listed, is its line
+  const own = structuredClone(m); own.views[0].edges.push('ab', 'ring'); own.views[1].nodeIds.push('c');
+  assert.deepEqual(errors(own), []);
 });

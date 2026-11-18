@@ -243,14 +243,15 @@ function run(m, c, gone) {
       const ids = new Set(), own = x0 => { for (const s = [x0], seen = new Set(); s.length;) { const x = s.pop(); if (seen.has(x)) continue; seen.add(x); ids.add(x.id); // a stack: thousands deep (audit 35)
         arr(x.members).forEach(y => isObj(y) && typeof y.id === 'string' && s.push(y)); } }; own(e.x);
       if (ids.has(v.subject)) throw new Error(`hide: "${v.subject}" is the subject of view "${c.view}": change the view's subject, or delete it from the model (no command deletes a view)`); // audit 17, 18
-      const ends = l => isObj(l) && (ids.has(l.from) || ids.has(l.to)); // the view's lines to it, listed or its own, leave the view with it
+      // the lines that go with it, worked out whole before the view's list is filtered, whatever order it lists them in (audit 37):
+      // the model lines to it, which the view draws no more, the view's own lines to it, and lines to those lines (audit 36).
+      // What names them in this view (a story step's select or highlight) goes too, as the element's own
+      { const to = new Map(); [...arr(m.edges), ...arr(v.edges)].forEach(l => { if (isObj(l) && typeof l.id === 'string') [l.from, l.to].forEach(k => { if (typeof k === 'string') (to.get(k) || to.set(k, []).get(k)).push(l.id); }); });
+        for (const q = [...ids]; q.length;) arr(to.get(q.pop())).forEach(k => { if (!ids.has(k)) { ids.add(k); q.push(k); } }); }
+      const ends = l => isObj(l) && (ids.has(l.from) || ids.has(l.to) || (typeof l.id === 'string' && ids.has(l.id)));
       // a line the view holds goes for good: a later delete of it in this transaction finds it gone, as after a delete (audit 32)
       if (Array.isArray(v.edges)) v.edges = v.edges.filter(y => { const l = typeof y === 'string' ? (at.get(y) || {}).x : y, out = y === c.id || ends(l);
-        if (out && isObj(l) && typeof l.id === 'string') { ids.add(l.id); if (l === y) gone.add(l.id); } return !out; }); // what names those lines in this view goes too
-      // and the model lines it drew to it, which it draws no more: what names them in this view (a story step's select or
-      // highlight) goes too, as the element's own. Lines to those lines as well, on a list (audit 36)
-      { const to = new Map(); arr(m.edges).forEach(l => { if (isObj(l) && typeof l.id === 'string') [l.from, l.to].forEach(k => { if (typeof k === 'string') (to.get(k) || to.set(k, []).get(k)).push(l.id); }); });
-        for (const q = [...ids]; q.length;) arr(to.get(q.pop())).forEach(k => { if (!ids.has(k)) { ids.add(k); q.push(k); } }); }
+        if (out && isObj(l) && typeof l.id === 'string') { ids.add(l.id); if (l === y) gone.add(l.id); } return !out; });
       // a prop names model elements, kept, but for an interaction use's covers: lifelines of its view (audit 14)
       clear(m, refs(m, ids, i => i === vi).filter(r => !['end', 'parent', 'part'].includes(r.kind) && (r.kind !== 'prop' || r.path[r.path.length - 2] === 'covers')));
       follow(m, names0, i => i === vi);

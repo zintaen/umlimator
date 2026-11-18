@@ -164,10 +164,19 @@ export function validate(model) {
     arr(s.steps).forEach((st, j) => {
       const p = `${at}.steps[${j}]`, v = views.find(x => x.id === (st && st.view));
       if (!v) return err(p + '.view', `"${st && st.view}" is not a view`);
-      const mine = new Set(arr(v.nodeIds)), named = (x, q) => { // a card of the view or a line ("a->b#0" names a line with no id)
-        // a model line to a card the view does not show is no line of it, as such a card is no card of it (audit 36)
-        const off = typeof x !== 'string' || mine.has(x) || !modelLine.has(x) || arr(v.edges).some(e => e && e.id === x) ? undefined : [modelLine.get(x).from, modelLine.get(x).to].find(k => cardIds.has(k) && !mine.has(k) && !arr(v.containers).some(c => c && c.id === k));
-        if (off != null) err(q, `"${x}" is no line of view "${v.id}": its end "${off}" is not one of the view's cards`);
+      const mine = new Set(arr(v.nodeIds)), listed = Array.isArray(v.edges), boxes = new Set(arr(v.containers).map(c => c && c.id));
+      const why = (x, seen) => { // why a model line x is no line of the view, or undefined
+        if (typeof x !== 'string' || mine.has(x) || !modelLine.has(x) || seen.has(x) || arr(v.edges).some(e => e && e.id === x)) return undefined; seen.add(x);
+        const l = modelLine.get(x), card = [l.from, l.to].find(k => cardIds.has(k) && !mine.has(k) && !boxes.has(k));
+        if (card != null) return `its end "${card}" is not one of the view's cards`;
+        if (listed && !v.edges.includes(x)) return 'the view\'s edges list leaves it out';
+        const line = [l.from, l.to].find(k => why(k, seen) != null);
+        return line != null ? `its end "${line}" is no line of the view` : undefined; };
+      const named = (x, q) => { // a card of the view or a line ("a->b#0" names a line with no id)
+        // a model line to a card the view does not show is no line of it, as such a card is no card of it (audit 36); nor is one
+        // its edges list leaves out, or one to a line it does not draw (audit 37)
+        const off = why(x, new Set());
+        if (off != null) err(q, `"${x}" is no line of view "${v.id}": ${off}`);
         else if (typeof x === 'string' && !mine.has(x) && !lines.has(x)) { if (!x.includes('->')) err(q, `"${x}" is neither one of view "${v.id}"'s cards nor a line`); else if (/#\d+$/.test(x) && !posLines.get(listOf(m, m.views.indexOf(v))).has(x)) warn(q, `"${x}" names no line: the step shows nothing for it`); }
         else if (x && typeof x === 'object') [x.type !== 'container' && x.id, x.node, ...arr(x.ids)].forEach(y => typeof y === 'string' && named(y, q)); }; // a Ref
       named(st.select, p + '.select');
