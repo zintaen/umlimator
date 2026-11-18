@@ -686,8 +686,8 @@ test('a dependency or usage in a composite view has its legend entry, and its ac
   const g = layout(m, 'w'), keys = g.legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]);
   assert.deepEqual(keys, ['Connector', 'Dependency', 'Usage']);
   assert.equal(g.edges.find(e => e.id === 'd').aria, 'Dependency from repo to db: reads');
-  assert.equal(g.edges.find(e => e.id === 'u').aria, 'Usage from db to repo');
-  const said = describe(m, 'w').split('\n'); assert.ok(said.includes('Dependency from repo to db: reads.') && said.includes('Usage from db to repo.'), said.join('\n'));
+  assert.equal(g.edges.find(e => e.id === 'u').aria, 'Usage from db to repo: «use»'); // its keyword, as its legend entry says (audit 34)
+  const said = describe(m, 'w').split('\n'); assert.ok(said.includes('Dependency from repo to db: reads.') && said.includes('Usage from db to repo: «use».'), said.join('\n'));
   // a kind the class view has no word for is still a plain "Line", keyed "Line" with its arrow as every structural view keys it (audit 27)
   const odd = structuredClone(m); odd.edges.push({ id: 'x', type: 'uml.Flow', from: 'svc.p', to: 'svc.q' }); odd.views[0].edges.push('x');
   const go = layout(odd, 'w'); assert.equal(go.edges.find(e => e.id === 'x').aria, 'Line from repo to db');
@@ -785,3 +785,34 @@ test('audit 30: the PDF\'s Members column of the subject and of an open collabor
   assert.deepEqual(T.rows(m, m.views[0], 'S'), ['engine : Engine, composite', 'port api']);
   assert.deepEqual(T.rows(m, m.views[0], 'col'), ['subject']);
 });
+
+test('audit 34: another UML kind the composite view shows is drawn with its kind\'s keyword, a package as a package; a usage, import, abstraction or required extension with its keyword', () => {
+  const kinds = ['Actor', 'Node', 'Interface', 'Enumeration', 'DataType', 'Artifact', 'UseCase', 'PrimitiveType', 'Class', 'Package'];
+  const m = { schemaVersion: 2, nodes: kinds.map(k => ({ id: k.toLowerCase(), type: 'uml.' + k, label: 'X' + k, props: { stereotypes: ['s'] } })),
+    edges: ['Usage', 'PackageImport', 'Abstraction', 'Extension'].map((k, i) => ({ id: 'e' + i, type: 'uml.' + k, from: 'class', to: kinds[i].toLowerCase(), ...(k === 'Extension' ? { props: { isRequired: true } } : {}) }))
+      .concat([{ id: 'e4', type: 'uml.PackageImport', from: 'class', to: 'package', label: 'x', props: { visibility: 'private', stereotypes: ['t'] } }]),
+    views: [{ id: 'v', diagram: 'uml.composite-structure', nodeIds: kinds.map(k => k.toLowerCase()), edges: ['e0', 'e1', 'e2', 'e3', 'e4'] }] };
+  const g = layout(m, 'v'), at = id => g.nodes.find(n => n.id === id);
+  assert.deepEqual(kinds.map(k => [at(k.toLowerCase()).shape, at(k.toLowerCase()).stereotypes]), [['classifier', ['actor', 's']], ['classifier', ['node', 's']], ['classifier', ['interface', 's']],
+    ['classifier', ['enumeration', 's']], ['classifier', ['dataType', 's']], ['classifier', ['artifact', 's']], ['classifier', ['useCase', 's']], ['classifier', ['primitive', 's']], ['classifier', ['s']], ['package', ['s']]]);
+  assert.match(svgOf(g), /«interface»/);
+  const ln = id => g.edges.find(e => e.id === id);
+  assert.deepEqual(['e0', 'e1', 'e2', 'e3', 'e4'].map(id => ln(id).label), ['«use»', '«import»', '«abstraction»', '{required}', '«access» «t» x']);
+  assert.equal(ln('e0').aria, 'Usage from XClass to XActor: «use»');
+  // F2 on such a line takes its keyword and stereotypes off what was typed, as the class view's does
+  assert.deepEqual(T.edits.rename(m, m.views[0], 'e4', '«access» «t» y'), [{ op: 'set', id: 'e4', path: 'label', value: 'y' }]);
+});
+
+test('audit 34: Shift + Delete of a part with other elements says them, and Delete says what it hid, as the deployment hook does', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/order-service-structure.json', import.meta.url), 'utf8')), v = m.views[0];
+  const r = T.edits.remove(m, v, ['order-service.pricing', 'order-events', 'publish-subscribe'], true);
+  assert.deepEqual(r.commands.map(c => c.id), ['order-service.pricing', 'order-events', 'publish-subscribe']);
+  assert.equal(r.say, 'Deleted part pricing of OrderService and its 1 line, and 2 other elements');
+  const h = T.edits.remove(m, v, ['order-service.pricing', 'order-events'], false);
+  assert.deepEqual(h.commands.map(c => c.op + ' ' + c.id), ['hide order-events', 'delete order-service.pricing']);
+  assert.equal(h.say, 'Deleted part pricing of OrderService and its 1 line (a member is not hidden: it goes from the model); hid 1 element');
+  // a line the part's words count already is not counted again
+  const line = m.edges.find(e => e.type === 'uml.Connector' && [e.from, e.to].includes('order-service.pricing') || ['from', 'to'].some(k => ((e.props || {}).ends || {})[k] && e.props.ends[k].part === 'order-service.pricing'));
+  assert.equal(T.edits.remove(m, v, ['order-service.pricing', line.id], true).say, 'Deleted part pricing of OrderService and its 1 line');
+});
+

@@ -584,3 +584,13 @@ test('audit 33: component-owner judges an element of no type, drawn as a compone
     assert.deepEqual(validate(m).filter(p => p.rule === 'component-owner'), [], `${type} in a package`);
   }
 });
+
+test('audit 34: Shift + Delete of a port with other elements says them, as the deployment hook does', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/bookshop-components.json', import.meta.url), 'utf8')), v = m.views[0];
+  const port = m.nodes.flatMap(n => (n.members || []).filter(x => x.type === 'uml.Port'))[0];
+  const r = T.edits.remove(m, v, [port.id, 'storefront-component', 'order-worker'], true);
+  assert.deepEqual(r.commands.map(c => c.op + ' ' + c.id), [`delete ${port.id}`, 'delete storefront-component', 'delete order-worker']);
+  assert.equal(r.say, `Deleted port ${port.label} from the model, and 2 other elements`);
+  assert.equal(T.edits.remove(m, v, [port.id, 'storefront-component'], false).say, `Deleted port ${port.label} from the model: a port is not hidden from a view; hid 1 element`);
+  assert.equal(T.edits.remove(m, v, [port.id], true).say, `Deleted port ${port.label} from the model`);
+});
