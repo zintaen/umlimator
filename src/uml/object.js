@@ -127,7 +127,7 @@ function objectProblems(model, view) {
     // an instance specification holds slots only; a slot is in one, or in an element of no UML kind, drawn as one with its slots (audit 28)
     // and one of no UML kind the view shows, as drawn: its slots only (audit 30)
     ms.forEach((m, j) => { if (!OB_OBJ(m)) return; const inst = n.type === 'uml.InstanceSpecification' || isInstance(n) && shown.has(n.id);
-      if (inst ? m.type !== 'uml.Slot' : m.type === 'uml.Slot' && !isInstance(n)) say('error', 'slot-kinds', `nodes[${i}].members[${j}]`, [n.id, m.id], inst ? `${q(n.id)} holds ${m.id}, ${aWord(kindWord(m.type) || 'element of no type')}: an instance holds slots only` : `slot "${m.label ?? m.id}" is in ${q(n.id)}, which is not an instance`); });
+      if (inst ? m.type !== 'uml.Slot' : m.type === 'uml.Slot' && !isInstance(n)) say('error', 'slot-kinds', `nodes[${i}].members[${j}]`, [n.id, m.id], inst ? `${q(n.id)} holds ${m.id}, ${aWord((kindWord(m.type) || 'element of no type').toLowerCase())}: an instance holds slots only` : `slot "${m.label ?? m.id}" is in ${q(n.id)}, which is not an instance`); });
     const c = OB_PROPS(n).classifier, hits = isInstance(n) && OB_HAS(c) ? [...new Set(named.get(String(c)) || [])] : [];
     if (hits.length !== 1) return; // no classifier, or one the model does not hold once: types are text (M8)
     const has = attrs(hits[0]);

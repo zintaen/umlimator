@@ -539,3 +539,11 @@ test('audit 28: a listed line of another kind is drawn plain, never with a contr
   const own = { ...m, views: [{ ...m.views[0], edges: ['f'] }] };
   assert.deepEqual(layout(own, 'v').legend.length, 1); assert.match(describe(own, 'v'), /1 flow and 0 partitions\./);
 });
+
+test('audit 33: an activity view titled "" is named by its id in a call behaviour action\'s name, describe() and the add picker', () => {
+  const m = structuredClone(EX); m.views.find(v => v.id === 'take-payment').title = '';
+  assert.equal(layout(m, m.root).nodes.find(n => n.id === 'call-payment').aria, 'Call behaviour action Take payment, opens take-payment, in Order worker');
+  assert.ok(describe(m, m.root).includes('opens take-payment'));
+  const r = actAdd(m, V(m), { type: 'uml.CallBehaviorAction' }, 'Pay', {});
+  assert.ok(r.pick.includes('take-payment') && !r.pick.includes(''), JSON.stringify(r.pick));
+});

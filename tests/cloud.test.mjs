@@ -535,3 +535,12 @@ test('audit 30: a label the author broke draws each of its lines, as docs/confor
     assert.match(d, /A label is wrapped to two lines of 180 px, the full name to two, then cut with an ellipsis\. A label or full name the author broke \(a Mermaid `<br>`, a newline\) keeps each of its lines/, f);
     assert.match(d, /two lines of 180 px, or one per line the author broke it into\)/, f); }
 });
+
+test('audit 33: Shift + Delete of a group with what it holds also selected counts all it held, and names what else goes', () => {
+  const v = GCP.views[0], rm = ids => T.gcp.edits.remove(GCP, v, ids, true);
+  const gone = ids => GCP.nodes.length - apply(GCP, rm(ids).commands).nodes.length;
+  for (const ids of [['gcp-region', 'gcp-api'], ['gcp-api', 'gcp-region'], ['gcp-region', 'gcp-network'], ['gcp-region', 'gcp-network', 'gcp-db']]) {
+    assert.equal(rm(ids).say, 'Deleted Region europe-west1 and the 8 elements it held', ids.join('+')); assert.equal(gone(ids), 9, ids.join('+')); }
+  assert.equal(rm(['gcp-region', 'gcp-users']).say, 'Deleted Region europe-west1 and the 8 elements it held, and 1 other element');
+  assert.equal(gone(['gcp-region', 'gcp-users']), 10);
+});

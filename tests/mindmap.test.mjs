@@ -578,3 +578,11 @@ test('audit 29: the PDF\'s Elements table lists the topics drawn, each once: a n
   const ex = EX(), ec = mapContext(ex);
   assert.equal(tablesOf(ec, ec.V[VID], ec.buildGeo(VID))[0].rows.length, ex.views[0].nodeIds.length, 'the example as before');
 });
+
+test('audit 33: a topic that opens a view titled "" keeps its mark and its note, named by the view\'s id', () => {
+  const m = { schemaVersion: 2, edges: [], nodes: [{ id: 'r', type: T, label: 'Root' }, { id: 'a', type: T, label: 'Alpha', parent: 'r', opensView: 'other' }],
+    views: [{ id: 'mm', diagram: 'mindmap', title: 'Plan', nodeIds: ['r', 'a'] }, { id: 'other', title: '', nodeIds: [] }] };
+  const a = layout(m, 'mm').nodes.find(n => n.id === 'a');
+  assert.equal(a.opens, 'other'); assert.equal(a.aria, 'Topic Alpha, under Root, opens other');
+  assert.ok(describe(m, 'mm').split('\n').includes('  Alpha (opens other)'), describe(m, 'mm'));
+});

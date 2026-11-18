@@ -615,3 +615,34 @@ test('audit 32: Delete on a lifeline and a message on it works picked in either 
   }
   assert.equal(tmRemove(m, 'v1', ['a', 'c9'], false).say, `${want}; took 1 message off the view (it stays in the model)`);
 });
+
+test('audit 33: F2 on a state\'s row rewrites the lifeline\'s changes in that state in every timing view, not only this one', () => {
+  const m = EX(), v2 = JSON.parse(JSON.stringify(V(m)));
+  Object.assign(v2, { id: 'again', title: 'Again', edges: [] }); v2.timeline.constraints = []; v2.timeline.changes = v2.timeline.changes.map(c => ({ ...c, id: c.id + '-2' }));
+  m.views.push(v2);
+  const n = run(m, tmRename(m, 'charge', tmRowId('worker', 'Idle'), 'Resting'));
+  assert.deepEqual(n.nodes[0].props.states, ['Resting', 'Waiting for payment', 'Recording payment']);
+  for (const v of n.views) assert.deepEqual(v.timeline.changes.filter(c => c.lifeline === 'worker').map(c => c.state), ['Resting', 'Waiting for payment', 'Recording payment', 'Resting'], v.id);
+  assert.deepEqual(validate(n).filter(p => p.rule === 'change-state'), [], 'no view draws an extra row');
+  assert.deepEqual(n.views[1].timeline.changes.filter(c => c.lifeline === 'payments').map(c => c.state), ['Idle', 'Authorising', 'Capturing', 'Idle'], 'another lifeline\'s Idle stays');
+});
+
+test('audit 33: Shift + Delete on a lifeline shown in two timing views counts what the cascade takes from both, and the sequence views\' messages', () => {
+  const m = EX(), v2 = JSON.parse(JSON.stringify(V(m)));
+  Object.assign(v2, { id: 'again', title: 'Again', edges: [] }); v2.timeline.changes = v2.timeline.changes.map(c => ({ ...c, id: c.id + '-2' }));
+  v2.timeline.constraints = [{ id: 'c2', type: 'uml.DurationConstraint', from: 'w-idle-2', to: 'w-waiting-2' }];
+  m.views.push(v2);
+  const count = x => [x.views.flatMap(v => v.timeline.changes).length, x.views.flatMap(v => v.timeline.constraints).length];
+  let r = tmRemove(m, 'charge', ['worker'], true), n = apply(m, r.commands);
+  assert.deepEqual([count(m)[0] - count(n)[0], count(m)[1] - count(n)[1]], [8, 3]);
+  assert.equal(r.say, 'Deleted worker, 8 changes, 2 messages and 3 constraints');
+  // a sequence view of the same lifelines: its messages on worker go too, and are counted
+  m.views.push({ id: 'seq', diagram: 'uml.sequence', parent: null, nodeIds: ['worker', 'payments'],
+    edges: [{ id: 's1', type: 'uml.Message', from: 'worker', to: 'payments', label: 'ping', props: { sort: 'async' } }] });
+  r = tmRemove(m, 'charge', ['worker'], true); n = apply(m, r.commands);
+  assert.deepEqual(n.views[2].edges, []);
+  assert.equal(r.say, 'Deleted worker, 8 changes, 3 messages and 3 constraints');
+  // Delete (hide) is this view's only: the other views keep the lifeline's changes, and the hint is unchanged
+  r = tmRemove(m, 'charge', ['worker'], false);
+  assert.equal(r.say, 'Hid worker; deleted its 2 messages; its changes stay in the timeline');
+});

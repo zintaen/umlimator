@@ -578,3 +578,10 @@ test('audit 31: owner-kinds writes the owner\'s kind as the view draws it, with 
     'owner-kinds: "D" is owned by "Api", an interface, not a package',
     'owner-kinds: "E" is owned by "Money", a data type, not a package']);
 });
+
+test('audit 33: an element that opens a view titled "" is named "opens" with the view\'s id (the map context\'s opensTo)', () => {
+  const m = { schemaVersion: 2, edges: [], nodes: [{ id: 'k', type: 'uml.Class', label: 'Order', opensView: 'other' }],
+    views: [{ id: 'cv', diagram: 'uml.class', nodeIds: ['k'] }, { id: 'other', title: '', nodeIds: [] }] };
+  const n = mapContext(m).buildGeo('cv').nodes.find(x => x.id === 'k');
+  assert.equal(n.opensTo, 'other'); assert.match(n.aria, /, opens other$/);
+});
