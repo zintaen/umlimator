@@ -95,6 +95,33 @@ function bxJson(el, depth = 0) {
   return out;
 }
 
+// numeric character references as XML 1.0 reads them (audit 43): moddle's sax decodes one with String.fromCharCode, so
+// one above U+FFFF (&#x1F4E6;) would be its low 16 bits. Each such reference outside CDATA, comments and processing
+// instructions is given to moddle as its character; one that names no character XML can hold (&#0;, &#xD800;,
+// &#x110000;) as U+FFFD, and said. A section never closed ends the scan, so the scan is linear in hostile text
+const BX_REF = /<!\[CDATA\[|<!--|<\?|&#(?:x([0-9a-fA-F]+)|([0-9]+));/g;
+function bxRefs(xml, say) {
+  if (!xml.includes('&#')) return xml;
+  const out = [], bad = new Set();
+  let at = 0, m;
+  BX_REF.lastIndex = 0;
+  while ((m = BX_REF.exec(xml))) {
+    if (m[1] === undefined && m[2] === undefined) { // a section: passed over whole, to its close
+      const close = m[0] === '<?' ? '?>' : m[0] === '<!--' ? '-->' : ']]>', e = xml.indexOf(close, BX_REF.lastIndex);
+      if (e < 0) break;
+      BX_REF.lastIndex = e + close.length;
+      continue;
+    }
+    const digits = (m[1] ?? m[2]).replace(/^0+(?=.)/, ''), v = digits.length > 8 ? Infinity : parseInt(digits, m[1] !== undefined ? 16 : 10);
+    const ok = v === 0x9 || v === 0xA || v === 0xD || (v >= 0x20 && v <= 0xD7FF) || (v >= 0xE000 && v <= 0xFFFD) || (v >= 0x10000 && v <= 0x10FFFF);
+    if (ok && v <= 0xFFFF) continue; // moddle reads it right
+    out.push(xml.slice(at, m.index), ok ? String.fromCodePoint(v) : '\uFFFD');
+    at = BX_REF.lastIndex;
+    if (!ok && !bad.has(m[0])) { bad.add(m[0]); say('', 'weakened', `the character reference ${m[0].length > 40 ? m[0].slice(0, 37) + '...' : m[0]} names no character XML can hold: read as U+FFFD`); }
+  }
+  return at ? out.join('') + xml.slice(at) : xml;
+}
+
 async function readBpmnXml(xml, moddle) {
   const report = [], nodes = [], edges = [], views = [], skipped = [], byId = new Map();
   let title = null, more = 0;
@@ -111,7 +138,7 @@ async function readBpmnXml(xml, moddle) {
     return result();
   }
   try {
-    const { rootElement: defs, warnings, elementsById } = await moddle.fromXML(xml);
+    const { rootElement: defs, warnings, elementsById } = await moddle.fromXML(bxRefs(xml, say));
     for (const w of warnings || []) { const dup = bxDup(w), tag = /^unparsable content <([^>\s]+)>/.exec(bxMsg(w));
       // a second element with an id the file already gave: moddle drops it, so it is said by that id (audit 31)
       if (dup != null) say(dup, 'skipped', `a second element with the id ${dup}${tag ? ` (${tag[1]})` : ''}: not read`);
