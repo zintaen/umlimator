@@ -36,7 +36,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14})
 
 
 def ok(name, cond, info=""):
@@ -1823,5 +1823,83 @@ if part("audit 30"):
         ok("diff --base --models · a model moved into the folder from outside it is a move: no change when only moved, else its edits, never every card added (audit 30)",
            r.returncode == 0 and got == [] and r2.returncode == 0 and [(x["file"], x.get("movedFrom")) for x in got2] == [("docs/x.json", "old/x.json")]
            and len(got2[0]["summary"]) == 1 and "NEW-ONE" in got2[0]["summary"][0], (got, got2, r.stderr[-300:], r2.stderr[-300:]))
+if part("audit 31"):
+    with tempfile.TemporaryDirectory() as tmp:
+        t = Path(tmp)
+        run = lambda *x, cwd=None, env=None: subprocess.run([sys.executable, str(ROOT / "umlimator.py"), *x], capture_output=True, text=True, cwd=cwd, env=env)
+        good = {"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "edges": [{"from": "a", "to": "b"}], "views": [{"id": "v", "nodeIds": ["a", "b"]}]}
+        # audit 31: a view whose id ends in * could not be chosen alone: pick() and the page both read its * as a prefix again
+        star = {**good, "views": [{"id": "api*", "title": "Star", "nodeIds": ["a"]}, {"id": "api-v2", "title": "Two", "nodeIds": ["b"]}, {"id": "apix", "nodeIds": ["a", "b"]}]}
+        (t / "star.json").write_text(json.dumps(star)); r0 = run("render", str(t / "star.json"), "--out", str(t / "star.html"), "--no-check")
+        r = run("check", str(t / "star.html"), "--views", "api*")
+        ok("check --views · a view whose id ends in * is that view alone, in pick() and on the page; a * that names no view is still a prefix (audit 31)",
+           r0.returncode == 0 and u.pick(t / "star.html", "api*") == ["api*"] and u.pick(t / "star.html", "api-*") == ["api-v2"]
+           and u.pick(t / "star.html", "apix,api*") == ["api*", "apix"] and u.pick(t / "star.html", "ap*") == ["api*", "api-v2", "apix"]
+           and r.returncode == 0 and json.loads(r.stdout)["checked"] == "1 views", (r0.stderr[-300:], r.stdout[-300:], r.stderr[-300:]))
+        # audit 31: a label-on-line message whose line ends on a card labelled "Red cross" ends in " cross", and was a crossing
+        msgs = ['view main: label "pays" lies on edge Shop→Red cross', 'view main: name tag "x" lies on edge A→Red cross',
+                'view main: edge Shop→Red cross runs right-to-left', 'view a: b: edges x→y and z→w cross', 'view a: b: label "q" lies on edge x→cross']
+        ok("check · a message is of its kind by the words after \"view <id>: \", never by a card label's last word (audit 31)",
+           [u.kind_of(o, set(), ["main", "a: b"]) for o in msgs] == ["labelOnLine", "labelOnLine", "rightToLeft", "crossings", "labelOnLine"]
+           and [u.kind_of(o) for o in msgs[:3]] == ["labelOnLine", "labelOnLine", "rightToLeft"], [u.kind_of(o, set(), ["main", "a: b"]) for o in msgs])
+        # audit 31: a model whose file name the disk takes (240 bytes) could not render: the copy beside it, 25 bytes longer, could
+        # not be written, and that was said as a folder render could not write in; and a model with no title took the copy's name
+        long = t / ("m" * 235 + ".json"); long.write_text(json.dumps({k: v for k, v in good.items() if k != "title"}))
+        r = run("render", str(long), "--out", str(t / "long.html"), "--no-check")
+        ok("render · a model whose file name is 240 bytes renders; with no title, the page is titled by the model file's name, never its copy's (audit 31)",
+           r.returncode == 0 and (t / "long.html").is_file() and u.page_data(t / "long.html")[0]["title"] == "m" * 235
+           and not [f for f in t.iterdir() if f.name.startswith(".")], r.stderr[-300:])
+        # audit 31: a model saved as UTF-16 (PowerShell 5's > and Out-File): the MCP page drew it, while render and the read tools refused it
+        (t / "u16.json").write_bytes(json.dumps(good).encode("utf-16"))
+        r = run("render", str(t / "u16.json"), "--out", str(t / "u16.html"), "--no-check")
+        ok("render · a model saved as UTF-16 with its BOM reads as every command reads it (read_json, as diff --base and the MCP page) (audit 31)",
+           r.returncode == 0 and u.page_data(t / "u16.html")[0]["nodes"] == good["nodes"] and u.read_json(t / "u16.json") == good, r.stderr[-300:])
+        # audit 31: diff --base --models kept git's pairing inside the pathspec: a model moved in read as moved from one moved out,
+        # which was never said
+        g = t / "mv"; (g / "docs").mkdir(parents=True); (g / "other").mkdir()
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
+        nocr = lambda *x: subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                                          "sys.argv = ['umlimator.py', 'diff', *sys.argv[2:]]; u.main()", str(ROOT), *x], cwd=g, capture_output=True, text=True)
+        three = {"title": "T", "nodes": [{"id": "a", "label": "Web"}, {"id": "b", "label": "API"}, {"id": "c", "label": "DB"}],
+                 "edges": [{"from": "a", "to": "b"}, {"from": "b", "to": "c"}], "views": [{"id": "main", "nodeIds": ["a", "b", "c"]}]}
+        (g / "other" / "x.json").write_text(json.dumps(three, indent=4)); (g / "docs" / "y.json").write_text(json.dumps({**three, "title": "U"}, indent=4))
+        sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "base")
+        sh("mv", "other/x.json", "docs/x.json"); (g / "docs" / "x.json").write_text((g / "docs" / "x.json").read_text().replace('"DB"', '"Store"'))
+        (g / "other2").mkdir(); sh("mv", "docs/y.json", "other2/y.json")
+        r = nocr("--base", "HEAD", "--models", "docs/*.json", "--out", "out")
+        got = {x["file"]: x for x in json.loads(r.stdout or "[]")}
+        md = (g / "out" / "summary.md").read_text() if (g / "out" / "summary.md").is_file() else ""
+        ok("diff --base --models · a model moved in and another moved out in one change: the one in is moved from its own old path, the one out is removed from the folder (audit 31)",
+           r.returncode == 0 and set(got) == {"docs/x.json", "docs/y.json"} and got["docs/x.json"].get("movedFrom") == "other/x.json"
+           and "moved from `other/x.json`" in md and "moved from `docs/y.json`" not in md and "renames DB to Store" in md and "**`docs/y.json`**" in md,
+           (r.stdout[-600:], r.stderr[-300:], md[:600]))
+        # audit 31: Export > Map model (JSON) of a page render wrote carried render's inlined avatar (a stranger's picture, for a
+        # login the model names), its embedded logo and a layout baked over a null one, and lost the model's own meta.generated and
+        # meta.added; an address own_media leaves out is not written into the page to be put back. asWritten is page.js's own
+        home = t / "home"; (home / ".cache" / "visual" / "avatars").mkdir(parents=True)
+        (home / ".cache" / "visual" / "avatars" / "octocat@96.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"\0" * 200)
+        (t / "logo.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg"><rect width="4" height="4"/></svg>')
+        far = "127.0.0.1:9/beacon-31.png"
+        mine = {"title": "Shop", "meta": {"generated": "by hand 2026-01-01", "added": ["mine"], "owner": "team-a", "umlimator:written": "its own"},
+                "authors": {"octocat": {"name": "Octo"}, "far": {"name": "F", "avatar": "http://" + far}, "a.b": {"avatar": None}},
+                "nodes": [{"id": "a", "label": "Web", "author": "octocat"}, {"id": "b", "label": "API", "author": "far"}], "edges": [{"from": "a", "to": "b", "label": "calls"}],
+                "views": [{"id": "main", "title": "Main", "nodeIds": ["a", "b"], "layout": None, "intake": [{"to": "a", "label": "Acme", "logo": "logo.svg"}]},
+                          {"id": "two", "parent": "a", "nodeIds": ["b"], "layout": {}}]}
+        (t / "mine.json").write_text(json.dumps(mine))
+        r = run("render", str(t / "mine.json"), "--out", str(t / "mine.html"), "--no-check", env={**os.environ, "HOME": str(home), "UMLIMATOR_OFFLINE": "1"})
+        page = (t / "mine.html").read_text(encoding="utf-8") if (t / "mine.html").is_file() else ""
+        js = ("import { readFileSync } from 'node:fs'; const src = readFileSync(process.argv[1], 'utf8');"
+              "const asWritten = new Function(src.slice(src.indexOf('function asWritten('), src.indexOf('/* ================= the standalone viewer')) + '; return asWritten;')();"
+              "const given = JSON.parse(readFileSync(0, 'utf8')), before = JSON.stringify(given); process.stdout.write(JSON.stringify([asWritten(given), JSON.stringify(given) === before]));")
+        data = u.DATA.search(page).group(1) if page else "{}"
+        e = subprocess.run(["node", "--input-type=module", "-e", js, str(ROOT / "src" / "page" / "page.js")], input=data, capture_output=True, text=True)
+        back, kept = json.loads(e.stdout) if e.returncode == 0 else (None, None)
+        d = json.loads(data)
+        norm = lambda x: json.dumps(x, sort_keys=True)
+        want = json.loads(json.dumps(mine)); del want["authors"]["far"]["avatar"]  # left out by render, and said
+        ok("page export · Map model (JSON) of a page render wrote is the file as written: no inlined avatar or embedded logo, a null layout null, the model's own meta kept; an address left out is not in the page (audit 31)",
+           r.returncode == 0 and d["authors"]["octocat"]["avatar"].startswith("data:image/png") and d["views"][0]["intake"][0]["logo"].startswith("data:image/svg+xml")
+           and norm(back) == norm(want) and kept and far not in page and "authors.far.avatar" in r.stderr,
+           (r.stderr[-300:], e.stderr[-300:], back and {k: back.get(k) for k in ("meta", "authors", "views")}))
 part.done()
 sys.exit(1 if failed else 0)

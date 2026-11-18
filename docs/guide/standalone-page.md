@@ -20,7 +20,7 @@ The same viewer is `mountPage(container, model)` in the module, built on `render
 | Budgets and what-if | ⏱ and ¤ light the slowest or costliest path from a card; ⊘ lights what loses its way if the card goes down |
 | Stories and lenses | the Stories and Lenses menus, when the model has any ([Stories, lenses and live data](./stories-lenses-live.md)) |
 | Light and dark | the ◐ toggle |
-| Export | SVG, PNG, and Record a story… |
+| Export | SVG · this view, PNG · this view (2×), Copy link to view, Map model (JSON), and Record a story… |
 
 ## Links
 
@@ -38,8 +38,9 @@ Cards, then lines, are in the Tab order (a card's tabs and chips too, for a host
 
 ## Exports
 
-- **SVG and PNG**: any view as a stand-alone file, from the page's Export menu, from `map.toSVG()` and `map.toPNG()`
-  in a host, or from `umlimator.py stills`.
+- **SVG and PNG**: any view as a stand-alone file, from the page's Export menu, from `map.toSVG()` and `map.toPNG()` in a host, or from `umlimator.py stills`.
+- **Map model (JSON)**: the whole model as its file has it, named after the model's title (`bookshop.json`). What render added to the page is taken off again (its icons table, the avatars it inlined, the layouts its search baked), and what it replaced is put back (an intake logo's path, the model's own `meta.generated`). What render leaves out of the page for privacy, such as an avatar or example image that names an address, is not in the export either.
+- **Copy link to view**: the page's address with the view, card, story step or lens it shows (see Links above).
 - **PDF**: the whole map as one document to hand in for a review: a cover with the contents, each view with its
   legend and tables of its cards, lines and boxes, then the rules (`umlimator.py pdf`; see [Command line](./cli.md#pdf)).
 - **Animated PNG**: a story, frame by frame (`umlimator.py record`).

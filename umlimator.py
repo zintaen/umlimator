@@ -476,7 +476,7 @@ def load_json(src, where=None):
 def read_json(path, model=True):
     """A JSON file as every command reads one: a BOM too; a model is an object. Else one line, exit 1."""
     try:
-        m = load_json(Path(path).read_text(encoding="utf-8-sig"), path)
+        m = load_json(Path(path).read_bytes(), path)  # UTF-8 (a BOM too), UTF-16 and UTF-32, as diff --base and the MCP page read it (audit 31)
     except OSError as e:
         sys.exit(f"cannot read {path} ({e.strerror or e})")
     except ValueError as e:
@@ -505,16 +505,12 @@ def page_model(model_path, out, source=None):
     m = read_json(model_path)
     if bad := not_objects(m):  # before the engine, whose loader reads a view as an object before it checks anything
         sys.exit(f"{source or model_path}: " + "; ".join(bad))
+    orig = json.loads(json.dumps(m))  # the model as written, which the page's Export > Map model (JSON) gives back (WRITTEN)
     if "title" in m and m["title"] is None:  # no title, as validate() reads it: the root view's, or the file's name (audit 18)
         del m["title"]
-    # what render adds that the model does not hold, for the page's Export > Map model (JSON) to take off again, so the file it
-    # gives back is the model as written (audit 30: it kept icons, source and avatarsEmbedded, and dropped the model's own meta).
-    # Always added: kind, avatarsEmbedded, icons (the model's own table is never kept: own_media) and meta.generated
-    meta = m.get("meta") if isinstance(m.get("meta"), dict) else None
-    added = ["kind", "avatarsEmbedded", "icons", "meta.generated", "meta.added"] + [k for k in ("title", "source") if k not in m]
-    added += ["meta"] if meta is None else []
-    added += [f"meta.{k}" for k in ("project", "root") if meta is None or k not in meta]
-    added += [f"views.{i}.layout" for i, v in enumerate(m.get("views") or []) if isinstance(v, dict) and "layout" not in v]  # one render's search bakes
+    vs = [v for v in m.get("views") or [] if isinstance(v, dict)]
+    if "title" not in m and not next((v for v in vs if not v.get("parent")), vs[0] if vs else {}).get("title"):  # as visual.py's load_map
+        m["title"] = Path(source or model_path).stem  # the model file's name, never the copy's the engine reads (.name.1a2b3c4d.icons, audit 31)
     own_media(m, Path(model_path).resolve().parent, source or model_path)
     for k in ENGINE_ONLY:  # upstream's explore and recap keys, which a map never draws: a shape it does not expect ended in a traceback (audit 19)
         m.pop(k, None)
@@ -531,8 +527,56 @@ def page_model(model_path, out, source=None):
     src = Path(source or model_path).resolve()
     m.setdefault("source", next((pre + src.relative_to(b).as_posix() for b, pre in ((base, ""), (Path.home().resolve(), "~/"))
                                  if src.is_relative_to(b)), src.name))
-    m.setdefault("meta", {})["added"] = added
+    m.setdefault("meta", {})[WRITTEN] = written(orig, m)
     return temp_json(m, model_path, ".icons.json")
+
+
+# render's record of what it changed in the model, for the page's Export > Map model (JSON) to undo (page.js asWritten), in a
+# key of meta's own: the model's own meta.added and meta.generated are its own (audit 31). A model that holds this key
+# itself gets it back like any other value render replaced
+WRITTEN = "umlimator:written"
+
+
+def written(orig, m):
+    """What render changes in the model `orig` on its way to the page: {"added": [path, ...], "was": [[path, value], ...]},
+    each path a list of keys (an index into a list as a number), so the page can give back the model as written: each
+    added key taken off, each replaced value put back (audit 30, 31). `m` is the model page_model hands the engine; the
+    engine's own changes are known by their places: kind, title, source, avatarsEmbedded, meta.generated, meta.project
+    and meta.root; each author's avatar it inlines; each intake logo it embeds; and each view's layout its search bakes
+    over none. What own_media leaves out (an address an avatar, an example or the model's icons names, risks.md S2) is
+    never written into the page to put back: the export leaves it out too, as render said."""
+    added, was, seen = [], [], set()
+    d = lambda x: x if isinstance(x, dict) else {}
+    lst = lambda x: x if isinstance(x, list) else []
+    def note(path, keep=True):
+        if (key := json.dumps(path)) in seen:
+            return
+        seen.add(key)
+        o = orig
+        for k in path[:-1]:
+            o = d(o).get(k) if isinstance(k, str) else lst(o)[k] if k < len(lst(o)) else None
+        if keep and isinstance(o, dict) and path[-1] in o:
+            was.append([path, o[path[-1]]])
+        else:
+            added.append(path)
+    for path in (["kind"], ["title"], ["source"], ["avatarsEmbedded"], ["meta", "generated"], ["meta", "project"], ["meta", "root"], ["meta", WRITTEN]):
+        note(path)
+    if not isinstance(orig.get("meta"), dict):  # no meta in the file: render's whole
+        note(["meta"])
+    if "icons" in m:  # render's table from the manifest and packs; the model's own, which names addresses, is left out (own_media)
+        note(["icons"], keep=False)
+    for login, a in d(m.get("authors")).items():
+        if isinstance(a, dict) and not str(a.get("avatar", "")).startswith("data:"):  # visual.py's embed_avatars fills it
+            note(["authors", login, "avatar"], keep=d(d(orig.get("authors")).get(login)).get("avatar") in (None, ""))
+    for i, v in enumerate(lst(m.get("views"))):
+        if isinstance(v, dict) and not v.get("layout"):  # one render's search bakes a layout over none (null, {}, absent)
+            note(["views", i, "layout"])
+        ov = lst(orig.get("views"))
+        given = lst(d(ov[i] if i < len(ov) else None).get("intake"))
+        for j, src in enumerate(lst(d(v).get("intake"))):  # own_logos embedded it: the path the file names comes back
+            if j < len(given) and "logo" in d(src) and d(given[j]).get("logo") != d(src)["logo"]:
+                note(["views", i, "intake", j, "logo"])
+    return {"added": added, "was": was}
 
 
 LOGO_MAX = 1 << 20  # bytes: an intake logo is a small mark
@@ -621,9 +665,11 @@ atexit.register(lambda: [p.unlink(missing_ok=True) for p in list(_temps)])
 def temp_json(m, near, suffix):
     """`m` written to a file of its own next to `near` (hidden), so parallel renders never share one. Its name is
     registered before the file exists, so a stop at any moment leaves nothing behind; the caller removes it (untemp)."""
-    d = Path(near).resolve().parent
+    d, stem = Path(near).resolve().parent, Path(near).stem
+    if len(stem.encode()) > 180:  # a name the disk takes (255 bytes) is one the copy's, 25 bytes longer, overflows (audit 31), cut as still_names does
+        stem = stem.encode()[:180].decode(errors="ignore") + "-" + hashlib.sha256(stem.encode()).hexdigest()[:8]
     while True:
-        tmp = d / f".{Path(near).stem}.{os.urandom(4).hex()}{suffix}"
+        tmp = d / f".{stem}.{os.urandom(4).hex()}{suffix}"
         _temps.add(tmp)
         try:
             fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -883,10 +929,18 @@ def diff_since(a):
         return names, moved
     names, moved = name_status(changed.stdout)  # moved: each new path, the old path its version at --base is read from
     if every is not None and every.returncode == 0:
-        taken = set(names)
-        for new_path, old_path in name_status(every.stdout)[1].items():
-            if new_path in taken and new_path not in moved:
-                moved[new_path] = old_path
+        # the whole diff's pairing wins over the pathspec's, which pairs only among the paths it takes in: a model moved in
+        # and another moved out in one change read as one moved from the other (audit 31). A pair the whole diff does not
+        # make, where it pairs the old path with another new one, is dropped, and the old path not paired any more is a
+        # model removed from the folder; with no pairing of either path in the whole diff, the pathspec's stands
+        whole = name_status(every.stdout)[1]
+        olds, paired = set(moved.values()), {old: new for new, old in whole.items()}
+        for new_path in set(names):
+            if new_path in whole:
+                moved[new_path] = whole[new_path]
+            elif new_path in moved and paired.get(moved[new_path], new_path) != new_path:
+                del moved[new_path]
+        names += sorted(olds - set(moved.values()))
     out = Path(a.out)
     if out.exists() and not out.is_dir():
         sys.exit(f"diff --base: --out {out} is a file: name a folder for the pages and summary.md")
@@ -1171,19 +1225,26 @@ def at_least_1(s):
 
 
 # The kinds of the layout check's messages, each by the words the check itself writes, rules first and each message of
-# one kind: a label or a rule title may hold another kind's words ("Apps never cross ..."), which must not move it
-KINDS = {"rules": r' breaks rule ".*"$', "crossings": r" cross$", "rightToLeft": r" runs right-to-left$", "detours": r" takes a detour \(\d+px for \d+px\)$",
-         "shortLine": r'" leaves its line \d+ px \(.*\)$', "roundEnd": r' runs round its own end ".*"$', "nearNode": r" passes within [\d.]+px of node ",
-         "onMark": r'" touches the mark on node "', "labelOnBorder": r'" sits on the border of family "', "labelNoRoom": r'(?:"| step \S+) has no room on edge ',
-         "labelOnLine": r'" lies on edge '}
+# one kind: a label or a rule title may hold another kind's words ("Apps never cross ..."), which must not move it. Each
+# is read from the start of what follows "view <id>: ", where its own words begin (audit 31: a card labelled "Red cross"
+# ended a label-on-line message in " cross", which read as a crossing)
+KINDS = {"rules": r'(?:edge .+|boxes .+ form a cycle, which) breaks rule ".*"$', "crossings": r"edges .+ and .+ cross$", "rightToLeft": r"edge .+ runs right-to-left$",
+         "detours": r"edge .+ takes a detour \(\d+px for \d+px\)$", "shortLine": r'label ".*" leaves its line \d+ px \(.*\)$',
+         "roundEnd": r'edge .+ runs round its own end ".*"$', "nearNode": r'edge .+ passes within [\d.]+px of node ".*"$',
+         "onMark": r'text ".*" touches the mark on node ".*"$', "labelOnBorder": r'label ".*" sits on the border of family ".*"$',
+         "labelNoRoom": r'(?:label ".*"|step .+) has no room on edge .+: (?:not drawn|only its step .+ shows)$',
+         "labelOnLine": r'(?:label|name tag) ".*" lies on edge .+$'}
 
 
-def kind_of(o, rules=None):
+def kind_of(o, rules=None, views=None):
     """A message's kind. `rules`: the broken rules the page lists apart, which are the rules; a page rendered before
-    0.28.0's next release lists none, and its rules are found by their words."""
+    0.28.0's next release lists none, and its rules are found by their words. `views`: the page's view ids, so the
+    "view <id>: " a message starts with is taken off whole, though an id holds ": "; else up to its first ": "."""
+    at = next((len(f"view {v}: ") for v in sorted(views or [], key=len, reverse=True) if o.startswith(f"view {v}: ")), None)
+    rest = o[at:] if at is not None else o.split(": ", 1)[1] if o.startswith("view ") and ": " in o else o
     if rules is not None:
-        return "rules" if o in rules else next((k for k, t in KINDS.items() if k != "rules" and re.search(t, o, re.S)), "other")
-    return next((k for k, t in KINDS.items() if re.search(t, o, re.S)), "other")
+        return "rules" if o in rules else next((k for k, t in KINDS.items() if k != "rules" and re.match(t, rest, re.S)), "other")
+    return next((k for k, t in KINDS.items() if re.match(t, rest, re.S)), "other")
 
 
 def cmd_check(a):
@@ -1207,7 +1268,7 @@ def cmd_check(a):
         sys.exit(f"check: no view was checked ({rep.get('checked') or 'the page did not say what it checked'})")
     ov = rep.get("overlaps", [])
     rules = set(rep["rules"]) if isinstance(rep.get("rules"), list) else None
-    of = [kind_of(o, rules) for o in ov]
+    of = [kind_of(o, rules, views_of(a.page)) for o in ov]
     counts = {k: of.count(k) for k in [*KINDS, "other"]}
     shown = [o for o, k in zip(ov, of) if k not in asked]
     print(json.dumps({"checked": rep.get("checked"), "counts": counts, "ignored": len(ov) - len(shown),
@@ -1241,7 +1302,8 @@ def pick(page, spec):
     there are, each quoted, so a comma in an id reads as the id's."""
     ids = views_of(page)
     want = [spec] if spec in ids else [w for w in (spec or "").split(",") if w]
-    hit = lambda w, i: i.startswith(w[:-1]) if w.endswith("*") else i == w
+    # a name that is a view's id is that view, though it end in * (audit 31: "api*" took api-v2 as well), as the page reads it
+    hit = lambda w, i: i == w or w.endswith("*") and w not in ids and i.startswith(w[:-1])
     if bad := [w for w in want if not any(hit(w, i) for i in ids)]:
         sys.exit(f"--views: no view {', '.join(map(repr, bad))} in {Path(page).name}; its views: {', '.join(map(repr, ids))}")
     return [i for i in ids if not want or any(hit(w, i) for w in want)]
@@ -1592,8 +1654,10 @@ def cmd_import(a):
     else:
         try:
             m, unread = imp.read(fmt, text, Path(a.file).stem)
-        except json.JSONDecodeError as e:
-            sys.exit(f"import: {a.file} is not {fmt} JSON ({e})")
+        except ValueError as e:  # JSON that does not parse, or a number JSON has not (1e400, NaN: imp.loads, audit 31)
+            if fmt not in ("compose", "kubernetes"):
+                raise
+            sys.exit(f"import: {a.file} is not {fmt} JSON ({e}): nothing written")
         except RecursionError:  # json.loads on a hostile nest (R2)
             sys.exit(f"import: {a.file} nests too deep to read: nothing written")
     for where, msg in unread:  # ponytail: JSON keeps no line numbers, so a JSON source's item is named by its path
