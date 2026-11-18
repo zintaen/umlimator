@@ -137,3 +137,28 @@ test('audit 18: a C4 dynamic view whose steps are reordered says so and names th
   const same = all.diff(c4, all.apply(c4, { op: 'set', view: v.id, path: 'title', value: 'Z' }));
   assert.ok(!same.summary.some(s => /reorders/.test(s)), 'no reorder said when the order stays');
 });
+
+// audit 35: diff() named a box, a card's name in a view, a member end and the map's title labelled "" by the empty string,
+// where the map draws them by their id (a box, a card whose override is "", a port) or as Map (the title): now by what is drawn
+test('audit 35: diff() names what is labelled "" as it is drawn', () => {
+  const a = { nodes: [{ id: 'x', label: 'X' }], views: [{ id: 'v', title: 'V', nodeIds: ['x'], containers: [{ id: 'shop', label: '', nodeIds: ['x'] }] }] };
+  const b = structuredClone(a); b.views[0].containers[0].label = 'Shop';
+  assert.deepEqual(core.diff(a, b).summary, ['renames the box shop to Shop in the view V']);
+  assert.deepEqual(core.diff(b, a).summary, ['renames the box Shop to shop in the view V']);
+  const t = structuredClone(a); t.views[0].containers[0] = { id: 'shop', title: '', nodeIds: ['x'] }; const t2 = structuredClone(t); t2.views[0].containers[0].nodeIds = [];
+  assert.deepEqual(core.diff(t, t2).summary, ['moves X out of shop in the view V']);
+  const c = structuredClone(a); c.views[0].nodeOverrides = { x: { label: '' } };
+  assert.deepEqual(core.diff(a, c).summary, ['renames X to x in the view V'], 'an override "" draws the card by its id');
+  const c2 = structuredClone(c); c2.views[0].layout = { x: [2, 0] };
+  assert.deepEqual(core.diff(c, c2).summary, ['moves x in the view V']);
+  const P = { schemaVersion: 2, nodes: [{ id: 'S', type: 'uml.Component', label: 'Shop', members: [{ id: 'p', type: 'uml.Port', label: '' }] }, { id: 'T', type: 'uml.Component', label: 'T' }],
+    edges: [], views: [{ id: 'cv', diagram: 'uml.component', nodeIds: ['S', 'T'] }] };
+  const P2 = structuredClone(P); P2.edges.push({ id: 'e', type: 'uml.Dependency', from: 'p', to: 'T' });
+  assert.deepEqual(all.diff(P, P2).summary, ['adds a line from p of Shop to T']);
+  for (const [t0, t1, want] of [['', 'Shop', ['titles the map Shop']], ['Shop', '', ['takes the title Shop off the map']], ['', undefined, []], [undefined, '', []], [0, '', ['takes the title 0 off the map']]]) {
+    const A = { nodes: [] }, B = { nodes: [] }; if (t0 !== undefined) A.title = t0; if (t1 !== undefined) B.title = t1;
+    assert.deepEqual(core.diff(A, B).summary, want, JSON.stringify([t0, t1])); }
+  // a line's label "" is no label, as drawn
+  const L = { nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ id: 'e', from: 'a', to: 'b', label: '' }] }, L2 = structuredClone(L); L2.edges[0].label = 'calls';
+  assert.deepEqual(core.diff(L, L2).summary, ['changes the line from a to b (label - → calls)']);
+});

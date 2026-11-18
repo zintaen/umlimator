@@ -81,7 +81,7 @@ type Command =
 | `set` with `view` | Sets a field of a view the same way (`['present', 'order.total', 'collapsed']`). |
 | `add` | Adds an element to the model: a node, a line (with `from` and `to`), or with `owner` a member of that element, at `index`. With `view`, the view shows it too. |
 | `add` with `in: 'view'` | Adds an element to the view's own list for its kind: a line or an inline item to `edges`, a node to `nodes`, else `fragments`. |
-| `move` | Moves an element to `index` among its owner's members, or within a view's list. |
+| `move` | Moves an element to `index` among its owner's members, to a new `owner`, or within a view's list. A model element's member never goes under a node one view alone holds: that `move` throws, as `reparent` does, and `validate()` warns of a model line that ends on what one view alone holds. |
 | `hide` | Takes an element out of one view, and everything the view says of it. Refused for the view's `subject` (or an element that holds it as a member), for an element that lives only in that view (its own node or line: use `delete`), and for a member (shown with its owner). |
 | `delete` | Deletes an element, its members, what it owns, the lines to them and every reference to them. A model element owned by something one view alone holds (a view's own node) is kept: it moves to its nearest owner left, else to none. |
 | `reparent` | Gives an element a new owner (`parent`), or none with `null`. A node one view alone holds owns only that view's own elements: `reparent`, or `add` with `parent`, of a model element (or another view's) under it throws, and `validate()` warns of a model saved with one. |
