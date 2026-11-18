@@ -38,7 +38,7 @@ Layout limits, measured on `examples/buy-book-overview.json` and `tests/overview
 
 - Port repair is off (`notes/stage-4.md` §17). The example has no crossing either way; `tests/overview-stress.json` has
   none and one in its `edge-cases` view, and none and three in its `all` view (40 nodes, 50 flows, 10 inline
-  interactions), where, laid out down, three guards `[in stock]` lie on the next decision's line. Pinned in
+  interactions). Laid out down, three guards `[in stock]` lay on the next decision's line till audit 32 placed again a label a later line runs across. Pinned in
   `tests/stage4-fixtures.test.mjs`.
 - The column gap is one for every column, twice the widest guard and 26 px: one long guard widens them all (the example
   laid out right is 3,503 px wide). A gap per column needs an option of the layout that does not exist yet; the
