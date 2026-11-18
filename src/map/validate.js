@@ -1,4 +1,4 @@
-import { jsonText, labelProblem, lineNames, listOf, typedProblems, unreadable, versionProblem } from '../core/model.js';
+import { jsonText, labelOr, labelProblem, lineNames, listOf, typedProblems, unreadable, versionProblem } from '../core/model.js';
 import { TYPED, diagramOf } from '../core/registry.js';
 import { SHAPE_NAMES, shapeOf } from '../draw/shapes.js';
 import { boxHolds, mapContext } from './context.js';
@@ -50,7 +50,7 @@ export function validate(model) {
   // only typed views hold, which keep their own notation (0.21.0)
   const typedOnly = id => { const vs = views.filter(v => arr(v.nodeIds).includes(id)); return vs.length && vs.every(v => typedView(v) && diagramOf(v)); };
   arr(m.nodes).forEach((n, i) => { if (!n || n.shape != null || !['user', 'users', 'usercheck'].includes(n.icon) || typedOnly(n.id)) return;
-    if (shapeOf({ ...n, k: kindOf(n.kind, true) }) === 'browser') warn(`nodes[${i}].kind`, `"${n.label || n.id}" has a person's icon, but a ${n.kind} card is drawn as a browser: kind "person" (or shape "person") draws a person`); });
+    if (shapeOf({ ...n, k: kindOf(n.kind, true) }) === 'browser') warn(`nodes[${i}].kind`, `"${labelOr(n.label, n.id)}" has a person's icon, but a ${n.kind} card is drawn as a browser: kind "person" (or shape "person") draws a person`); });
   const line = (e, at, ends) => {
     if (!e || typeof e !== 'object') return err(at, 'a line is an object with from and to');
     ['from', 'to'].forEach(k => { if (!ends.has(e[k])) err(`${at}.${k}`, `"${e[k]}" is neither a card nor a box`); });
@@ -65,10 +65,13 @@ export function validate(model) {
   };
   // a card's id is no line's (model-and-schema.md): apply(), references() and a lens read one id space, where the card wins (audit 29)
   const shared = (e, at) => { if (typeof e.id === 'string' && ids.has(e.id)) err(at + '.id', `line id "${e.id}" is also a card's id`); };
+  // a view's own line is in that id space too: an id another view's own line or a model line holds sends apply()'s set or delete, and
+  // references(), to the first of them, not the line selected (audit 30). lineAt: each line id -> where it is first
+  const lineAt = new Map(), ownLine = (e, at) => { if (e.id == null) return; if (lineAt.has(e.id)) err(at + '.id', `line id "${e.id}" is used twice (also ${lineAt.get(e.id)})`); else lineAt.set(e.id, at); };
   // a model line may end on any view's box (#28); a view's own line only on that view's boxes
   const anyBox = new Set(views.flatMap(v => arr(v.containers).map(c => c && c.id)));
   arr(m.edges).forEach((e, i) => { if (!(typed && e && e.type != null)) line(e, `edges[${i}]`, new Set([...ids, ...anyBox]));
-    if (e && e.id != null) { if (lineIds.has(e.id)) err(`edges[${i}].id`, `line id "${e.id}" is used twice`); lineIds.add(e.id); shared(e, `edges[${i}]`); } });
+    if (e && e.id != null) { if (lineIds.has(e.id)) err(`edges[${i}].id`, `line id "${e.id}" is used twice`); else lineAt.set(e.id, `edges[${i}]`); lineIds.add(e.id); shared(e, `edges[${i}]`); } });
   views.forEach((v, i) => { const lim = arr(v.nodeIds).length + 64; // a pin far off the grid, any view's: held there (context.js onGrid, layered.js)
     Object.entries(v.layout || {}).forEach(([id, p]) => { if (!Array.isArray(p) || typeof p[0] !== 'number' || typeof p[1] !== 'number') warn(`views[${i}].layout.${id}`, `"${id}"'s place ${jsonText(p)} is not two numbers: ignored`);
       else if (p.some(x => !(Math.abs(x) <= lim))) warn(`views[${i}].layout.${id}`, `"${id}"'s place ${jsonText(p)} is off the grid: held at ${lim} columns or rows out`); });
@@ -95,7 +98,7 @@ export function validate(model) {
     const ends = new Set([...ids, ...Object.keys(boxes)]);
     const listed = new Set(), byId = new Map(Array.from(arr(m.edges), e => [e && e.id, e])), here = x => mine.has(x) || !!boxes[x]; // audit 7: a listed line is drawn once, between this view's cards and boxes
     if (Array.isArray(v.edges)) v.edges.forEach((e, j) => { const p = `${at}.edges[${j}]`;
-      if (typeof e !== 'string') { line(e, p, ends); if (e && typeof e === 'object') shared(e, p); } else if (!lineIds.has(e)) return err(p, `"${e}" is not a line`); else if (listed.has(e)) return warn(p, `"${e}" is listed twice: drawn once`); else listed.add(e);
+      if (typeof e !== 'string') { line(e, p, ends); if (e && typeof e === 'object') { shared(e, p); ownLine(e, p); } } else if (!lineIds.has(e)) return err(p, `"${e}" is not a line`); else if (listed.has(e)) return warn(p, `"${e}" is listed twice: drawn once`); else listed.add(e);
       const l = typeof e === 'string' ? byId.get(e) : e, off = l && [l.from, l.to].find(x => (ids.has(x) || anyBox.has(x)) && !here(x)); // a card or any view's box (audit 8)
       if (off != null) warn(p, `${typeof e === 'string' ? `"${e}"` : 'the line'} ends on "${off}", which is not one of the view's cards or boxes: not drawn`); });
     // a line from a box to a card or box inside it has no line (audit 11): said, as a line to itself is
