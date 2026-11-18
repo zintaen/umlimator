@@ -17,6 +17,12 @@ failed = False
 sys.path.insert(0, str(ROOT))
 import umlimator as u
 
+
+def page_lang(page):
+    """The page's <html> tag says its language before anything else: WCAG 3.1.1 (audit 37)."""
+    m = re.search(r"<html\b[^>]*>|<meta\b", page)
+    return bool(m) and m.group(0) == '<html lang="en">'
+
 # CI runs this script as five jobs side by side (UMLIMATOR_TEST_SHARD=k/5): each part below, with about its seconds on a
 # runner, runs in exactly one of them, and unset (as here, on a developer's machine) every part runs, in order. A check
 # outside every part, or a part not declared here, fails the run (tests/shards.py)
@@ -241,6 +247,8 @@ with tempfile.TemporaryDirectory() as tmp:
         r = cli("drift", str(t / "before.json"), str(t / "seen.json"), "--match", str(t / "match.json"), "--out", str(t / "drift.html")) or {}
         ok("drift · counts the lines, and names the views that show drift", r.get("counts", {}).get("undrawn") == 1 and r.get("views") == ["system"], r)
         ok("drift · the page brings in the line nobody drew", '"drift": "undrawn"' in ((t / "drift.html").read_text(encoding="utf-8") if (t / "drift.html").is_file() else ""))
+        ok("diff and drift · each page declares its language, <html lang=\"en\">, before anything else (audit 37)",
+           all(page_lang((t / f).read_text(encoding="utf-8") if (t / f).is_file() else "") for f in ("diff.html", "drift.html")))
 
     if part("trace"):
         # trace (#96): the replay example's trace (OTLP JSON) kept as a numbered view: the one bike-share has, in its place
@@ -310,7 +318,7 @@ with tempfile.TemporaryDirectory() as tmp:
         # audit 16: the placeholders were filled one after another, so a model's text holding a later one had the module put in its data
         g2 = t / "repo-ph"; g2.mkdir()
         git2 = lambda *a: subprocess.run(["git", "-C", str(g2), "-c", "user.name=test", "-c", "user.email=test@example.invalid", *a], capture_output=True, text=True, check=True)
-        git2("init", "-q"); (g2 / "map.json").write_text(json.dumps(bike | {"title": "T /*__UMLIMATOR_THEME__*/", "description": "inlines /*__UMLIMATOR_LIB__*/ and /*__VERSIONS__*/"}))
+        git2("init", "-q"); (g2 / "map.json").write_text(json.dumps(bike | {"title": "T /*__UMLIMATOR_THEME__*/ <html lang=\"xx\"><meta charset=\"x\">", "description": "inlines /*__UMLIMATOR_LIB__*/ and /*__VERSIONS__*/"}))
         git2("add", "map.json"); git2("commit", "-q", "-m", "one")
         cli("timelapse", "map.json", "--out", str(t / "lapse-ph.html"), cwd=g2)
         lapse = (t / "lapse-ph.html").read_text(encoding="utf-8") if (t / "lapse-ph.html").is_file() else ""
@@ -318,6 +326,8 @@ with tempfile.TemporaryDirectory() as tmp:
         ok("timelapse · a model's text holding a placeholder is data: the versions read back as the model, the module is in the page (audit 16)",
            bool(data) and json.loads(data.group(1))["versions"][0]["model"]["description"] == "inlines /*__UMLIMATOR_LIB__*/ and /*__VERSIONS__*/"
            and "/*__UMLIMATOR_LIB__*/" not in lapse.replace(data.group(1), "") and "export function render" in lapse, lapse[:300])
+        ok("timelapse · the page declares its language, <html lang=\"en\">, before anything else, a model's own <html lang> in its title or not (audit 37)",
+           page_lang((t / "lapse.html").read_text(encoding="utf-8") if (t / "lapse.html").is_file() else "") and page_lang(lapse), lapse[:200])
 
         (g / "docs" / "map.json").write_text(json.dumps(edited(json.loads((g / "docs" / "map.json").read_text()))))
         (g / "notes.json").write_text('{"not": "a map"}'); git("add", "notes.json")
@@ -376,9 +386,9 @@ with tempfile.TemporaryDirectory() as tmp:
            and "Traceback" not in b.stderr for b in bad), [b.stderr[-200:] for b in bad])
         b = plain("record", str(t / "names" / "page.html"), "--story", "s", "--out", str(t / "x.png"), "--size", "800")
         ok("record · --size 800 is a usage error, not a traceback", b.returncode == 2 and "WxH" in b.stderr and "Traceback" not in b.stderr, b.stderr[-300:])
-        bad = [plain(*c, "--scale", x) for x in ("0", "-2", "nan") for c in (("stills", str(t / "names" / "page.html"), "--out", str(t / "x")),
+        bad = [plain(*c, f"--scale={x}") for x in ("0", "-2", "nan", "inf", "-inf", "1e999") for c in (("stills", str(t / "names" / "page.html"), "--out", str(t / "x")),
                                                                           ("record", str(t / "names" / "page.html"), "--story", "s", "--out", str(t / "x.png")))]
-        ok("stills and record · --scale 0, -2 or nan is a usage error at once, not 90 s a view waiting on Chrome (audit 4)",
+        ok("stills and record · --scale 0, -2, nan or inf (1e999 too) is a usage error at once, not 90 s a view waiting on Chrome (audit 4), nor a NaN-sized still (audit 37)",
            all(b.returncode == 2 and "above 0" in b.stderr for b in bad), [b.stderr[-200:] for b in bad])
         # a view id with a comma is one view to check and pdf --views, not two (audit 5)
         (t / "comma").mkdir(); (t / "comma" / "m.json").write_text(json.dumps({"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}],
@@ -1507,6 +1517,12 @@ if part("mcp"):
        and [r["ids"] for r in got if r["type"] == "edge"] == [["t1"], ["t4"], ["t5"], ["t11"]], said)
     said, err = tool("reach", view="trips", card="payments", backward=True, depth=2)
     ok("mcp · reach: what leads to Payment provider, two lines out", not err and [(r["id"], r["distance"]) for r in json.loads(said) if r["type"] == "node"] == [("payments", 0), ("fare", 1), ("lifecycle", 2)], said)
+    whole = tool("reach", view="trips", card="payments", backward=True, depth=2.0)
+    odd = [tool("reach", view="trips", card="payments", depth=x) for x in (2.5, 0.0, True, "2", float("inf"), float("nan"), -1e300)]
+    ok("mcp · an integer argument written 2.0 is the integer its JSON Schema says it is; 2.5, 0.0, true, \"2\", Infinity, NaN and -1e300 stay refused (audit 37)",
+       whole == (said, False) and all(e and "depth is not" in w for w, e in odd), (whole, odd))
+    import umlimator_mcp
+    ok("mcp · the page served while the model does not render declares its language, <html lang=\"en\"> (audit 37)", page_lang(umlimator_mcp.WAITING), umlimator_mcp.WAITING[:120])
     ok("mcp · broken_rules and validate: the bike share breaks none of its rules and has no problems", tool("broken_rules") == ("[]", False) and tool("validate") == ("[]", False))
     with tempfile.TemporaryDirectory() as tmp:
         (Path(tmp) / "other.json").write_text(json.dumps(edited(bike)))
