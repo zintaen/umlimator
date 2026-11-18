@@ -192,6 +192,44 @@ ok("structurizr · an include list with no * shows only what it names, at each l
    got == {"money": (["a", "b"], [("a", "b")]), "ctx": (["a", "b"], [("a", "b")]), "focus": (["api"], []), "ctl-components": (["u", "ctl"], [("u", "ctl")]),
            "all": (["u", "web", "api", "db"], [("api", "db"), ("u", "api"), ("u", "web"), ("web", "api")]),
            "every": (["u", "web", "ctl", "repo", "db"], [("ctl", "repo"), ("repo", "db"), ("u", "ctl"), ("u", "web"), ("web", "ctl")])} and un == [], (got, un))
+# audit 35: the audit 34 rule started a view with no * from nothing, so a view whose include list held only expressions
+# (element.type==Container, ->api->) showed nothing and was left out, and with every view left out the user's views gave way to
+# generated ones; an expression now includes what it matches, as Structurizr reads it, and one not read here leaves the view
+# as its scope shows it
+ex = ('workspace {\n model {\n  u = person "User"\n  a = softwareSystem "Shop" {\n   web = container "Web" "" "" "Front"\n   api = container "API" {\n'
+      '    ctl = component "Controller"\n    repo = component "Repository"\n   }\n   db = container "DB" "" "" "Store"\n  }\n  b = softwareSystem "Billing" "" "External"\n'
+      '  c = softwareSystem "Warehouse"\n  u -> web "browses"\n  u -> ctl "calls"\n  web -> ctl "calls"\n  ctl -> repo "reads"\n  repo -> db "reads" "" "Slow"\n  a -> b "bills"\n  a -> c "ships"\n }\n'
+      ' views {\n  container a "type" {\n   include element.type==Container\n  }\n  container a "both" {\n   include ->api->\n  }\n'
+      '  container a "out" {\n   include api->\n  }\n  container a "in" {\n   include ->api\n  }\n  container a "tag" {\n   include element.tag==Front,Store\n  }\n'
+      '  container a "parent" {\n   include element.parent==a\n   exclude element.tag==Store\n  }\n  container a "rel" {\n   include u -> api\n  }\n'
+      '  container a "relall" {\n   include relationship==*\n   exclude relationship.tag==Slow\n  }\n'
+      '  container a "and" {\n   include "element.type==Container && element.tag!=Front"\n  }\n  container a "unread" {\n   include element.properties[x]==y\n  }\n'
+      '  systemLandscape "land" {\n   include element.type==SoftwareSystem\n   exclude element.tag==External\n  }\n  systemLandscape "none" {\n   include element.type==Container\n  }\n'
+      '  component api "comp" {\n   include ->ctl->\n  }\n  container a "hostile" {\n   include "<img src=//e.example/t.png>" ../../etc/passwd "element.tag==<script>" ->db\n  }\n }\n}\n')
+m, un = imp.read("structurizr", ex, "x")
+got = {v["id"]: (v["nodeIds"], sorted((e["from"], e["to"]) for e in m["edges"] if e["id"] in v["edges"])) for v in m["views"]}
+ok("structurizr · an include list of expressions shows what they match: element.type, element.tag, element.parent, ->x->, a -> b, relationship, && (audit 35)",
+   got == {"type": (["web", "api", "db"], [("api", "db"), ("web", "api")]),
+           "both": (["u", "web", "api", "db"], [("api", "db"), ("u", "api"), ("u", "web"), ("web", "api")]),
+           "out": (["api", "db"], [("api", "db")]), "in": (["u", "web", "api"], [("u", "api"), ("u", "web"), ("web", "api")]),
+           "tag": (["web", "db"], []), "parent": (["web", "api"], [("web", "api")]), "rel": (["u", "api"], [("u", "api")]),
+           "relall": (["u", "web", "api", "db"], [("u", "api"), ("u", "web"), ("web", "api")]), "and": (["api", "db"], [("api", "db")]),
+           "unread": (["web", "api", "db"], [("api", "db"), ("web", "api")]), "land": (["a", "c"], [("a", "c")]),
+           "comp": (["u", "web", "ctl", "repo"], [("ctl", "repo"), ("u", "ctl"), ("u", "web"), ("web", "ctl")]),
+           "hostile": (["web", "api", "db"], [("api", "db"), ("web", "api")])}
+   and [x for x in un if x[0] != 18] == [(53, "include element.properties[x]==y: an expression umlimator does not read, so the view shows its scope's elements"),
+                                        (59, "systemlandscape view none: shows nothing, so it is left out"), (60, "include element.type==Container: matches nothing this view shows"),
+                                        (66, "include <img src=//e.example/t.png>: an expression umlimator does not read, so the view shows its scope's elements"),
+                                        (66, "include ../../etc/passwd: an expression umlimator does not read, so the view shows its scope's elements"),
+                                        (66, "include element.tag==<script>: matches nothing this view shows")]
+   and not any("e.example" in str(n.get("icon") or "") for n in m["nodes"]), (got, un))
+# a workspace whose only views are expressions keeps them: their keys and titles, not the generated set
+m, un = imp.read("structurizr", 'workspace {\n model {\n  u = person "User"\n  s = softwareSystem "Shop" {\n   web = container "Web"\n   api = container "API"\n   db = container "DB"\n  }\n'
+                 '  u -> web "uses"\n  web -> api "calls"\n  api -> db "reads"\n }\n views {\n  container s {\n   include element.type==Container\n  }\n'
+                 '  container s "Second" {\n   title "Around the API"\n   include ->api->\n  }\n }\n}\n', "x")
+ok("structurizr · views that include only expressions are the workspace's views, not the generated ones (audit 35)",
+   [(v["id"], v["title"], v["nodeIds"]) for v in m["views"]] == [("s-containers", "Shop containers", ["web", "api", "db"]), ("Second", "Around the API", ["web", "api", "db"])] and un == [],
+   (m["views"], un))
 # audit 33: a Mermaid C4Dynamic or C4Deployment is a C4 diagram umlimator does not read, and is said as one
 said = [imp.read("mermaid", f'{h}\n  title T\n  Container(c1, "A")\n  Container(c2, "B")\n  Rel(c1, c2, "Reads")\n', "x")[1] for h in ("C4Dynamic", "C4Deployment")]
 ok("mermaid · C4Dynamic and C4Deployment are named as Mermaid C4 diagrams that are not read, not as 'not a C4 diagram' (audit 33)",

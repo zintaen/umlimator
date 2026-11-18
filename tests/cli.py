@@ -36,7 +36,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2})
 
 
 def ok(name, cond, info=""):
@@ -2055,5 +2055,22 @@ if part("audit 34"):
            got == {"render": "Shop &lt;b&gt;&amp;amp;", "diff": "Shop &lt;b&gt;&amp;amp;: what changed", "drift": "Shop &lt;b&gt;&amp;amp;: drawn vs. seen",
                    "timelapse": "Shop &lt;b&gt;&amp;amp;", "bare": "bare: what changed"} and all(r.returncode == 0 for r in rs.values()),
            (got, {k: r.stderr[-300:] for k, r in rs.items() if r.returncode}))
+if part("audit 35"):
+    # audit 35: the round-34 rule for a line between two members of one card dropped every line from a card to itself, so a
+    # state's added self-transition (a recursive association, a reflexive call) left the sketch with no line and no mark
+    before = {"nodes": [{"id": "s", "label": "Idle", "kind": "state"}, {"id": "t", "label": "<b>Run</b>", "members": [{"id": "t.p"}, {"id": "t.q"}]}],
+              "edges": [{"id": "go", "from": "s", "to": "t", "label": "go"}], "views": [{"id": "v", "nodeIds": ["s", "t"]}]}
+    after = json.loads(json.dumps(before))
+    after["edges"] += [{"id": "tick", "from": "s", "to": "s", "label": "tick"}, {"id": "self", "from": "t", "to": "t", "label": "<img src=//e.example/x.png>"},
+                       {"id": "pq", "from": "t.p", "to": "t.q", "label": "inner"}]
+    d = u.js("diff", before, after)
+    sk = u.sketch(d["model"])
+    ok("diff --base · an added line from a card to itself is sketched and marked; one between two members of a card is still not (audit 35)",
+       sk[2:6] == ['  n0["Idle"]', '  n1["#lt;b#gt;Run#lt;/b#gt;"]', '  n0 -->|"tick"| n0', '  n1 -->|"#lt;img src=//e.example/x.png#gt;"| n1']
+       and "  linkStyle 0 stroke:#1a7f37,stroke-width:2px" in sk and "  linkStyle 1 stroke:#1a7f37,stroke-width:2px" in sk
+       and sum("-->" in x or "-.->" in x for x in sk) == 2 and not any("inner" in x for x in sk), (d["summary"], sk))
+    gone = u.sketch(u.js("diff", after, before)["model"])
+    ok("diff --base · a removed line from a card to itself is sketched dashed (audit 35)",
+       '  n0 -.->|"tick"| n0' in gone and "  linkStyle 0 stroke:#cf222e,stroke-width:2px" in gone, gone)
 part.done()
 sys.exit(1 if failed else 0)

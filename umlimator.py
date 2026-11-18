@@ -1115,12 +1115,15 @@ def sketch(m, most=60):
                 owner.setdefault(x["id"], i)
             todo += [(y, i) for y in lst(x.get("members"))]
     at = lambda r: r if isinstance(r, str) and r in cards else owner.get(r) if isinstance(r, str) else None
-    lines = [{**e, "from": at(e.get("from")), "to": at(e.get("to"))} for e in [*(m.get("edges") or []), *(e for v in views for e in v.get("edges") or [])]
-             if isinstance(e, dict) and at(e.get("from")) and at(e.get("to"))]
+    # lifted: an end was a member, drawn on its card; a line from a card to itself (a self-transition, a reflexive call) is not
+    lines = [{**e, "from": at(e.get("from")), "to": at(e.get("to")), "lifted": e.get("from") not in cards or e.get("to") not in cards}
+             for e in [*(m.get("edges") or []), *(e for v in views for e in v.get("edges") or [])] if isinstance(e, dict) and at(e.get("from")) and at(e.get("to"))]
     hot = {i for i, n in cards.items() if n.get("change") in MARKS}
     lines = [e for e in lines if e.get("change") in MARKS or e["from"] in hot or e["to"] in hot]  # marked lines, and the lines of marked cards
-    inside = {e["from"] for e in lines if e["from"] == e["to"]}  # a line between two members of one card: the card, with no line
-    lines = [e for e in lines if e["from"] != e["to"]]
+    # a line between two members of one card, or a member and its card: the card, with no line (audit 34); a card's own loop
+    # is drawn (audit 35)
+    inside = {e["from"] for e in lines if e["from"] == e["to"] and e["lifted"]}
+    lines = [e for e in lines if e["from"] != e["to"] or not e["lifted"]]
     near = hot | inside | {x for e in lines for x in (e["from"], e["to"])}
     if not near or len(near) > most:
         return [] if not near else [f"_{len(near)} cards changed or next to a change: too many to sketch; see the pictures._"]
