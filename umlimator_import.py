@@ -23,7 +23,7 @@ BPMN XML (.bpmn) is told here and read by the module's adapter, src/readers/bpmn
 read(fmt, text, name) returns (model, unread): unread lists what was not imported, each as (where, message), where
 being a line number, or an item's path in a JSON source.
 """
-import itertools, json, re
+import itertools, json, math, re, sys
 from pathlib import Path
 
 FORMATS = ["structurizr", "plantuml", "mermaid", "compose", "kubernetes"]
@@ -117,7 +117,17 @@ class Model:
     def line(self, a, b, label=None, sub=None, where=None, hint=None, **more):
         if a == b:
             return self.say(where, f"{a} -> {b}: a line from a card to itself is not drawn")
-        e = {"id": self.uniq(*([ident(hint)] if hint else []), f"{a}-{b}"), "from": a, "to": b, "label": clip(label, 28), "sublabel": clip(sub, 28), **more}
+        if hint:  # a source's own id for the line (Mermaid's A e1@--> B): as written, as the typed reader keeps it (audit 31: it was
+            t = re.sub(r"->+", "-", hint)  # slugged, e:1 as e-1, which then took the id another link names); an id holds no "->"
+            if t != hint:
+                self.say(where, f'the edge id {hint}: an id holds no "->", so it is {t}')
+            lid = self.uniq(t) if t not in self.ids else None
+            if lid is None:
+                lid = self.uniq(f"{a}-{b}")
+                self.say(where, f"the edge id {t} is taken, so {a} --> {b} is {lid}")
+        else:
+            lid = self.uniq(f"{a}-{b}")
+        e = {"id": lid, "from": a, "to": b, "label": clip(label, 28), "sublabel": clip(sub, 28), **more}
         if clip(label, 28) != whole(label):  # a label cut short is whole in the details panel
             e["what"] = whole(label) + (f"\n\n{e['what']}" if e.get("what") else "")
         self.edges.append({k: v for k, v in e.items() if v or k in ("id", "from", "to")})
@@ -351,12 +361,34 @@ def yaml_title(val):
     return title, utf16_clip(after) if after and not after.startswith("#") else None
 
 
+def _finite(s):
+    if not math.isfinite(x := float(s)):
+        raise ValueError(f"the number {s[:40]} is out of range")
+    return x
+
+
+def _whole(s):
+    if abs(x := int(s)) > sys.float_info.max:  # JavaScript reads it as Infinity
+        raise ValueError(f"the number {s[:40]}... is out of range")
+    return x
+
+
+def _no_constant(c):
+    raise ValueError(f"{c} is not a JSON number")
+
+
+def loads(text):
+    """JSON as umlimator.py's load_json reads it for every command: a number out of range (1e400) and Python's NaN and
+    Infinity raise ValueError, never reaching the model as the text "Infinity" (audit 31)."""
+    return json.loads(text, parse_float=_finite, parse_int=_whole, parse_constant=_no_constant)
+
+
 def read(fmt, text, name):
     if len(text) > LIMIT:  # hostile input (risks.md R2), as the module's readers refuse it
         m = Model(name)
         m.say(None, f"{len(text)} characters, over the limit of {LIMIT} (1 MiB) for {fmt}: nothing read")
     else:
-        m = compose(json.loads(text), name) if fmt == "compose" else kubernetes(json.loads(text), name) if fmt == "kubernetes" else \
+        m = compose(loads(text), name) if fmt == "compose" else kubernetes(loads(text), name) if fmt == "kubernetes" else \
             {"structurizr": structurizr, "plantuml": plantuml, "mermaid": mermaid}[fmt](text, name)
     return m.model(), sorted(m.unread, key=lambda u: [int(t) if t.isdigit() else t for t in re.split(r"(\d+)", str(u[0]))])
 
@@ -1029,7 +1061,8 @@ def many(x):
 def word(x):
     """A JSON string as itself, a number as JSON writes it; None for anything else (true, null, a list, an object), which
     the caller says is not imported, never writing Python's spelling of it into the model (audit 30)."""
-    return x if isinstance(x, str) else json.dumps(x) if isinstance(x, (int, float)) and not isinstance(x, bool) else None
+    ok = isinstance(x, (int, float)) and not isinstance(x, bool) and (not isinstance(x, float) or math.isfinite(x))  # inf and nan are no JSON number (audit 31)
+    return x if isinstance(x, str) else json.dumps(x) if ok else None
 
 
 def spell(x):

@@ -503,9 +503,10 @@ m, un = imp.read("mermaid", 'flowchart LR\n  R e1@--> S\n  A --> B\n  C & D x@-.
                  f'  I --> J["a@b"]\n  e1@{{ animate: true }}\n  {chain}\n', "x")
 ok("mermaid · a link with an edge id (A e1@--> B) is imported, its id naming the line; e1@{ ... } is still said (audit 29)",
    [(e["id"], e["from"], e["to"]) for e in m["edges"][:10]] == [("e1", "R", "S"), ("A-B", "A", "B"), ("x", "C", "E"), ("D-E", "D", "E"), ("e2", "F", "G"), ("G-F", "G", "F"),
-                                                              ("b", "L", "M"), ("M-N", "M", "N"), ("I-J", "I", "J"), ("O-Q0", "O", "Q0")]
+                                                              ("<b>", "L", "M"), ("M-N", "M", "N"), ("I-J", "I", "J"), ("O-Q0", "O", "Q0")]
    and (m["edges"][-1]["id"], m["edges"][-1]["from"], m["edges"][-1]["to"]) == ("last", "Q499", "Z") and len(m["edges"]) == 510
-   and un == [(8, "not imported: e1@{ animate: true }")] and card(m, "J")["label"] == "a@b", ([(e["id"], e["from"], e["to"]) for e in m["edges"]][:12], un))
+   and un == [(4, "the edge id x is taken, so D --> E is D-E"), (6, "the edge id e1 is taken, so M --> N is M-N"), (8, "not imported: e1@{ animate: true }")]
+   and card(m, "J")["label"] == "a@b", ([(e["id"], e["from"], e["to"]) for e in m["edges"]][:12], un))
 # audit 30: a JSON value of the wrong type (an image that is a list, a port that is true, a name that is an object) was
 # written into the model as Python spells it ("['nginx']", "True", "deploy-{'a': 1}"), with nothing said
 m, un = imp.read("compose", json.dumps({"name": {"n": 1}, "services": {
@@ -529,6 +530,35 @@ ok("kubernetes · a name, namespace, kind, image, type or port of the wrong JSON
    and [msg for _, msg in un] == ['Deployment {"a": 1}: its name is not text: not imported', "Service true: its name is not text: not imported",
                                   'Deployment 5: namespace ["n"] is not text: read as default', 'Deployment 5: image {"i": 1} is not text: not imported', "true z: not imported"]
    and not re.search(r"True|None|\{'|\['", json.dumps(m) + json.dumps(un)), (m["nodes"], un))
+# audit 31: an edge id was slugged (e:1 as e-1), and the slug took the id the next link names itself, which fell back to C-D
+# with nothing said; each id is now kept as written, as the typed reader keeps it, an id holding "->" and one taken said
+src = 'flowchart LR\n  A e:1@--> B\n  C e-1@--> D\n  E <b>@--> F\n  G e->1@--> H\n  I A-B@--> J\n  K --> L\n  M K-L@--> N\n'
+m, un = imp.read("mermaid", src, "x")
+js = subprocess.run(["node", "--input-type=module", "-e", "import { readMermaidFlowchart } from " + json.dumps((ROOT / "src" / "readers" / "mermaid-flowchart.js").as_uri())
+                     + "; console.log(JSON.stringify(readMermaidFlowchart(process.argv[1]).model.edges.map(e => [e.id, e.from, e.to])))", src], capture_output=True, text=True)
+got = [[e["id"], e["from"], e["to"]] for e in m["edges"]]
+ok("mermaid · an edge id is kept as written (e:1, <b>), never slugged onto the id another link names; one holding -> or taken is said, the ids the typed reader gives (audit 31)",
+   got == [["e:1", "A", "B"], ["e-1", "C", "D"], ["<b>", "E", "F"], ["G-H", "G", "H"], ["A-B", "I", "J"], ["K-L", "K", "L"], ["M-N", "M", "N"]]
+   and js.returncode == 0 and json.loads(js.stdout) == got
+   and un == [(5, 'the edge id e->1: an id holds no "->", so it is e-1'), (5, "the edge id e-1 is taken, so G --> H is G-H"), (8, "the edge id K-L is taken, so M --> N is M-N")],
+   (got, js.stdout, js.stderr[-300:], un))
+# audit 31: compose and Kubernetes JSON read 1e400 as inf and NaN and Infinity as numbers, and wrote "Infinity" and "NaN" into
+# the model, though every other command refuses them (load_json, audit 30)
+said = []
+for fmt, text in (("compose", '{"name": 1e400, "services": {"web": {"image": "n"}}}'), ("compose", '{"services": {"web": {"image": NaN}}}'),
+                  ("compose", '{"services": {"web": {"image": "n", "ports": [Infinity]}}}'), ("kubernetes", '{"kind": "Service", "metadata": {"name": -Infinity}}'),
+                  ("kubernetes", '{"kind": "Service", "metadata": {"name": "s"}, "spec": {"ports": [{"port": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000}]}}')):
+    try:
+        imp.read(fmt, text, "x")
+        said.append(None)
+    except ValueError as e:
+        said.append(str(e))
+(t31 := Path(tempfile.mkdtemp())).joinpath("c.json").write_text('{"services": {"web": {"image": "n", "ports": [1e400]}}}')
+r = run("import", str(t31 / "c.json"), "--out", str(t31 / "o.json"))
+ok("compose, kubernetes · 1e400, NaN, Infinity and an integer past a double are refused, as every command reads JSON, never written as text; import says it in one line (audit 31)",
+   all(said) and "out of range" in said[0] and "NaN is not a JSON number" in said[1] and "-Infinity is not a JSON number" in said[3]
+   and r.returncode == 1 and "is not compose JSON (the number 1e400 is out of range): nothing written" in r.stderr and not (t31 / "o.json").exists()
+   and imp.word(float("inf")) is None and imp.word(float("nan")) is None and imp.word(1.5) == "1.5", (said, r.stderr[-300:]))
 # audit 25: a Markdown string ("`**Bold**`") lost its backticks and kept its ** and _ as text, with no word, where the typed
 # reader says it is read as plain text: on a node, a line's label and a subgraph's title
 m, un = imp.read("mermaid", 'flowchart LR\n  A["`**Bold** and _it_`"] -->|"`*e*`"| B\n  B -- "`x`" --> C\n  subgraph s1 ["`**S**`"]\n  E\n  end\n'

@@ -299,7 +299,7 @@ try {
     const file = await (await fetch('../examples/bookshop.json')).json(), got = await exported(given), keys = o => o && Object.keys(o).sort().join();
     check('audit 30: Export ▸ Map model (JSON) of examples/bookshop.html is examples/bookshop.json: no icons, source, avatarsEmbedded or kind, and its meta {project} kept',
       !!got && JSON.stringify(got) === JSON.stringify(file), got && { keys: keys(got), meta: got.meta, added: given.meta && given.meta.added });
-    const old = structuredClone(given); delete old.meta.added; old.meta.owner = 'team-a'; const was = await exported(old);
+    const old = structuredClone(given); delete old.meta.added; delete old.meta['umlimator:written']; old.meta.owner = 'team-a'; const was = await exported(old);
     check('audit 30: a page an older render wrote (no meta.added) exports without render\'s keys, the model\'s other meta kept',
       !!was && keys(was) === keys({ ...file, source: 1 }) && JSON.stringify(was.meta) === JSON.stringify({ owner: 'team-a' }), was && { keys: keys(was), meta: was.meta });
     // a hostile meta.added: paths through a prototype, a list, what is no object, or no text take nothing off but own keys, and change neither
@@ -308,6 +308,25 @@ try {
       title: 'T', nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] }, before = JSON.stringify(H), hx = await exported(H);
     check('audit 30: a hostile meta.added takes off only own keys it names, and changes neither the page\'s model nor Object.prototype',
       !!hx && JSON.stringify(hx) === JSON.stringify({ kind: 'map', meta: { owner: 'o' }, title: 'T', nodes: H.nodes, views: H.views }) && JSON.stringify(H) === before && !('polluted' in {}) && !('polluted' in Object.prototype), hx); }
+  /* ---------- audit 31: a hostile meta["umlimator:written"] (render's record since audit 31): a path through __proto__ or constructor,
+     one that is no list of keys, a value put back out of a list's range, take nothing off and put nothing back but own keys ---------- */
+  { const H = { kind: 'map', meta: { owner: 'o', 'umlimator:written': { added: [['__proto__', 'polluted'], ['constructor', 'prototype', 'polluted'], 'title', [], [1.5], ['nodes', 0, 'label', 'x'], ['views', 0], ['views', 0, 'nodeIds', 0]],
+      was: [[['__proto__'], { polluted: 1 }], [['constructor', 'prototype', 'polluted'], 1], [['nodes', 5], 'x'], [['nodes', -1], 'x'], [['title'], 'Back'], 'bad', [['meta', 'owner']], [[], 1], [['views', 0, '__proto__'], { polluted: 1 }]] } },
+      title: 'T', nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] }, before = JSON.stringify(H), hx = await exported(H);
+    check('audit 31: a hostile meta["umlimator:written"] takes off and puts back only own keys it names, and changes neither the page\'s model nor Object.prototype',
+      !!hx && JSON.stringify(hx) === JSON.stringify({ ...H, title: 'Back' }) && JSON.stringify(H) === before && !('polluted' in {}) && !('polluted' in Object.prototype) && !('polluted' in hx.views[0]), hx); }
+  /* ---------- audit 31: the JSON export is named by the model alone: it cut the name at the first "-<view id>" (a title holding the
+     view's id), and never found an id with capitals or "_" in the slug, which then stayed in the name ---------- */
+  { const named = async (title, vid) => { box.innerHTML = ''; pg = mountPage(box, { title, nodes: [{ id: 'a', label: 'A' }], views: [{ id: vid, nodeIds: ['a'] }] }, { instant: true, params: new URLSearchParams() });
+      await until(() => pg.view && document.querySelector('#m-canvas .umlimator')); await wait(30);
+      const names = [], own = URL.createObjectURL, click = HTMLAnchorElement.prototype.click; URL.createObjectURL = b => own.call(URL, b);
+      HTMLAnchorElement.prototype.click = function () { names.push(this.download); };
+      try { for (const x of ['json', 'svg']) { document.querySelector(`#m-export-pop [data-x="${x}"]`).click(); await until(() => names.length, 2000); if (x === 'json') await wait(10); } }
+      finally { URL.createObjectURL = own; HTMLAnchorElement.prototype.click = click; }
+      pg.destroy(); pg = null; return names; };
+    const got = [await named('Bookshop: sales domain', 'domain'), await named('Shop', 'Main_View'), await named('a-x-b', 'x')];
+    check('audit 31: Export ▸ Map model (JSON) is named by the model alone, whatever its title holds and its view is called; SVG by the model and the view',
+      JSON.stringify(got) === JSON.stringify([['bookshop-sales-domain.json', 'bookshop-sales-domain-domain.svg'], ['shop.json', 'shop-Main-View.svg'], ['a-x-b.json', 'a-x-b-x.svg']]), got); }
   /* ---------- audit 29: a host's BigInt weight or latency on a line: the map draws (as 1), and update() takes it ---------- */
   { box.innerHTML = ''; const H = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ id: 'ab', from: 'a', to: 'b', weight: 2n, latency: 5n }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
     let threw = null; try { pg = mountPage(box, H, { instant: true, params: new URLSearchParams() }); } catch (e) { threw = String(e); }

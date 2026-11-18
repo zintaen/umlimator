@@ -75,6 +75,16 @@ test('the standalone-page guide claims for its links only what page.js writes to
   assert.match(guide, /A selected line or box is not kept in the link/);
 });
 
+// audit 31: the guide's Export row listed SVG, PNG and Record a story; the menu also has Copy link to view and Map model (JSON)
+test('audit 31: the standalone-page guide lists every entry of the page\'s Export menu, and says what Map model (JSON) gives back', () => {
+  const guide = readFileSync(new URL('../docs/guide/standalone-page.md', import.meta.url), 'utf8');
+  const menu = readFileSync(new URL('../src/page/page.js', import.meta.url), 'utf8').match(/id="m-export-pop"[^`]*?<\/div>/)[0];
+  const entries = [...menu.matchAll(/<button data-x="\w+">([^<]+)<\/button>/g)].map(m => m[1]), row = guide.match(/^\| Export \|(.*)\|$/m)[1];
+  assert.ok(entries.length >= 5, menu);
+  for (const e of entries) assert.ok(row.includes(e), `the Export row names ${e}`);
+  assert.match(guide, /- \*\*Map model \(JSON\)\*\*: the whole model as its file has it/);
+});
+
 test('conformance notes and the examples README agree with the code they describe (audit 9)', async () => {
   const { diagramOf } = await import('../src/core/registry.js');
   await import('../src/map/typed.js'); await import('../src/uml/state.js'); await import('../src/uml/object.js');

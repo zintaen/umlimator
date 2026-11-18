@@ -20,7 +20,7 @@ import { andList, arrOf, boxesNamed, handBoxes, rules } from '../map/validate.js
    - The rules, when the model has any: each holding or broken in the views printed, and what breaks it. */
 function printDoc(X, model, Q) {
   const { D, views, V, N, chain, viewEdges, geoCache } = X.ctx();
-  const only = (Q.get('views') || '').split(',').filter(Boolean).map(p => { try { return decodeURIComponent(p); } catch { return p; } }), want = v => !only.length || only.some(p => p.endsWith('*') ? v.id.startsWith(p.slice(0, -1)) : v.id === p);
+  const only = (Q.get('views') || '').split(',').filter(Boolean).map(p => { try { return decodeURIComponent(p); } catch { return p; } }), ids = new Set(views.map(v => v.id)), want = v => !only.length || only.some(p => v.id === p || (p.endsWith('*') && !ids.has(p) && v.id.startsWith(p.slice(0, -1))));
   const shown = views.filter(want).map(v => [v, X.standalone(1, v.id)]).filter(([, s]) => s), on = new Set(shown.map(([v]) => v.id));
   const rs = shown.length ? arrOf(D.rules).filter(r => r && typeof r === 'object' && (r.from || r.to || r.noCycles)) : []; // as rules() reads them; none without a view, read as mapContext reads them (audit 20)
   const broken = rules(model).filter(b => on.has(b.view)); // judged in the views printed, as the document says
