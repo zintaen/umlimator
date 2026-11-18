@@ -777,3 +777,15 @@ test('audit 42: a card boxFit moves keeps its lines left to right where a slot d
   b2.nodes.push({ id: 'new0', label: 'New card 0', kind: 'service' }); s2.nodeIds.push('new0'); s2.containers.find(c => c.id === 'apps').nodeIds.push('new0'); b2.edges.push({ id: 'ne0', from: 'rider-app', to: 'new0' });
   assert.deepEqual(issues(b2, 'system', /detour| lies over /), []);
 });
+test('audit 43: a card with no pin whose clean auto-layout slot runs its lines back goes where they run ahead, with or without boxes', () => {
+  const back = (m, v) => check(m, v).map(p => p.message).filter(s => /right-to-left/.test(s));
+  // each pin of bookshop's checkout (Orders box) and assistant's answer (no boxes) dropped in turn: no line runs back
+  for (const [f, vid] of [['bookshop', 'checkout'], ['assistant', 'answer']]) {
+    const m = read(`../examples/${f}.json`), pins = Object.keys(m.views.find(v => v.id === vid).layout);
+    for (const id of pins) { const b = structuredClone(m); delete b.views.find(v => v.id === vid).layout[id]; assert.deepEqual(back(b, vid), [], `${f} ${vid} without ${id}`); }
+  }
+  // hostile: a chain pinned right to left at every other card; the cards between still get a slot each, quickly
+  const N = 40, h = { nodes: Array.from({ length: N }, (_, i) => ({ id: 'n' + i, label: 'n' + i })), edges: Array.from({ length: N - 1 }, (_, i) => ({ id: 'e' + i, from: 'n' + i, to: 'n' + (i + 1) })),
+    views: [{ id: 'v', nodeIds: Array.from({ length: N }, (_, i) => 'n' + i), layout: Object.fromEntries(Array.from({ length: N / 2 }, (_, k) => ['n' + 2 * k, [N - 2 * k, 0]])) }] };
+  const g = layout(h, 'v'); assert.equal(new Set(g.nodes.map(n => n.x + ',' + n.y)).size, N);
+});
