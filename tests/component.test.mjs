@@ -612,3 +612,14 @@ test('audit 35: Delete on a port with a model line the view cannot hide says the
   const L = structuredClone(m); L.views[0].edges = L.edges.map(e => e.id);
   assert.equal(T.edits.remove(L, L.views[0], ['shop-api.orders', 'storefront-requires-orders'], false).say, 'Deleted port orders from the model: a port is not hidden from a view; hid 1 element');
 });
+
+test('audit 42: validate() says an interface row\'s type, return type or parameter, and a drawn port\'s type, that is not text, as the class view does; a ball draws no rows', () => {
+  const op = { id: 'c.op', type: 'uml.Operation', label: 'go', props: { parameters: [{ name: { x: 1 }, valueType: 'T' }], returnType: { y: 2 } } };
+  const at = { id: 'c.at', type: 'uml.Property', label: 'size', props: { valueType: { z: 3 } } };
+  const said = m => validate(m).filter(p => / is not text/.test(p.message)).map(p => p.path).sort();
+  const one = (type, members, more = {}) => ({ schemaVersion: 2, nodes: [{ id: 'c', type, label: 'C', members }], edges: [], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['c'], ...more }] });
+  assert.deepEqual(said(one('uml.Interface', [op, at])), ['nodes[0].members[0].props.parameters[0].name', 'nodes[0].members[0].props.returnType', 'nodes[0].members[1].props.valueType']);
+  assert.deepEqual(said(one('uml.Interface', [op, at], { present: { c: { as: 'ball' } } })), [], 'a ball draws no rows');
+  assert.deepEqual(said(one('uml.Component', [{ id: 'c.p', type: 'uml.Port', label: 'p', props: { valueType: { w: 1 } } }, op])), ['nodes[0].members[0].props.valueType'], 'a component draws its ports, not its operations');
+  assert.deepEqual(said(one('uml.Interface', [{ ...op, props: { parameters: [{ name: 'x', valueType: 'T' }], returnType: 'R' } }])), []);
+});

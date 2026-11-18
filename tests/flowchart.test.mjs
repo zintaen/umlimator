@@ -431,3 +431,20 @@ test('audit 35: 15000 connectors of one label with no flow in, one start into th
   assert.equal(order.length, K + 1); assert.equal(order[0], 'Terminator S, a start.'); assert.ok(order.slice(1).every(x => x === 'Connector A.'), order.find(x => x !== 'Connector A.'));
   assert.equal(L.nodes.length, K + 1);
 });
+
+test('audit 42: a node of no type (or "") is a flowchart node, as it is drawn and named ("Node"): flows to it are no error, connect allows one, and reachable counts it', () => {
+  for (const type of [undefined, '']) {
+    const x = { id: 'x', label: 'Check stock', ...(type === undefined ? {} : { type }) };
+    const m = one([N('s', 'Terminator', 'Start'), x, N('e', 'Terminator', 'End')], [F('f1', 's', 'x'), F('f2', 'x', 'e')]);
+    assert.deepEqual(validate(m).filter(p => p.rule), [], String(type)); // "" is warned of as a type, not as a flow's end
+    assert.match(describe(m, 'v'), /^Node Check stock\.$/m);
+    assert.equal(T.edits.connect(m, m.views[0], 'x', 'e', null, { type: 'flow.Flow' }), null, String(type));
+    assert.equal(T.edits.connect(m, m.views[0], 's', 'x', null, { type: 'flow.Flow' }), null, String(type));
+    // one reached from no start is warned of, as a typed node is
+    const u = one([N('s', 'Terminator', 'Start'), x, N('e', 'Terminator', 'End')], [F('f1', 's', 'e')]);
+    assert.deepEqual(validate(u).filter(p => p.rule).map(p => p.message), ['reachable: x ("Check stock") is reached from no start'], String(type));
+  }
+  // a comment still is not one
+  const c = one([N('s', 'Terminator', 'Start'), { id: 'n', type: 'uml.Comment', label: 'note' }], []);
+  assert.match(T.edits.connect(c, c.views[0], 's', 'n', null, { type: 'flow.Flow' }).error, /^flow-ends: /);
+});
