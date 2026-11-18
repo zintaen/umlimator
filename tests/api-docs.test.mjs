@@ -167,3 +167,18 @@ test('every model field the map-repo skill tells the agent to set is in one of t
   const named = f => new RegExp(`\`${f}\\b|"${f}"`).test(schema) || new RegExp(`\\b${f}\\??:`).test(types);
   assert.deepEqual([...fields].filter(f => !named(f)), [], 'fields the skill sets that neither schema.md nor lib/umlimator.d.ts names');
 });
+
+test('audit 43: risks.md M11 and C10 and the diff Action guide say a map view\'s reorder reads "moves", as diff() says it', async () => {
+  const { diff } = await import('../lib/umlimator.js');
+  const a = { nodes: ['a', 'b', 'c', 'd', 'e'].map(id => ({ id, label: id.toUpperCase() })), edges: [], views: [{ id: 'v', title: 'V', nodeIds: ['a', 'b', 'c', 'd', 'e'] }] };
+  const b = structuredClone(a); b.views[0].nodeIds = ['b', 'a', 'c', 'd', 'e'];
+  assert.deepEqual([diff(a, b).summary, diff(a, b).views], [['moves B to the start in the view V'], ['v']]);
+  const c = structuredClone(a); c.views[0].nodeIds = ['e', 'd', 'c', 'b', 'a'];
+  assert.match(diff(a, c).summary.join(), /^reorders \d+ cards in the view V$/);
+  const risks = read(join(root, 'docs/diagrams/risks.md')), guide = read(join(root, 'docs/guide/github-action.md'));
+  const row = id => risks.split('\n').find(l => l.startsWith(`| ${id} |`));
+  assert.doesNotMatch(row('M11'), /Maps are diffed as before/);
+  assert.match(row('M11'), /a map's included, reads "moves `X` after `Y`" \(or "to the start"\), or "reorders `N` cards"/);
+  assert.match(row('C10'), /a view's cards in a new order read "moves `X` after `Y`" or "reorders `N` cards" on a map too/);
+  assert.match(guide, /cards in a new order read "moves X after Y" or "moves X to the start", or "reorders N cards"/);
+});

@@ -720,3 +720,39 @@ test('audit 42: a story step may select a model line to a view\'s own node, whic
   h.edges.push({ id: 'f3', type: 'dfd.DataFlow', from: 'p', to: '__proto__', label: 'y' }); h.stories[0].steps.push({ view: 'v', select: 'f3' }, { view: 'v', select: 'nope' });
   const said = check(h).filter(p => /select/.test(p.path)).map(p => p.message); assert.equal(said.length, 1); assert.match(said[0], /"nope"/);
 });
+
+test('audit 43: diff() lists a typed view only for what its elements name, not for an element of its own that shares the changed card\'s label', async () => {
+  const { apply } = await import('../lib/umlimator.js');
+  const m = { schemaVersion: 2, nodes: [{ id: 'api', label: 'Shop API', kind: 'backend' }, { id: 'web', label: 'Web' }, { id: 'c', type: 'uml.Class', label: 'Shop API' }, { id: 'd', type: 'uml.Class', label: 'Book' }],
+    edges: [{ id: 'e1', from: 'web', to: 'api' }],
+    views: [{ id: 'map', title: 'Map', nodeIds: ['web', 'api'] }, { id: 'classes', diagram: 'uml.class', title: 'Classes', nodeIds: ['c', 'd'] }] };
+  assert.deepEqual(diff(m, apply(m, { op: 'set', id: 'api', path: 'sublabel', value: 'FastAPI' })).views, ['map']);
+  // a namesake's own description or caption names nothing either; a field that does name the card (a type) still lists the view
+  const n = structuredClone(m); n.nodes[3].props = { description: 'Shop API', note: 'Shop API' };
+  assert.deepEqual(diff(n, apply(n, { op: 'set', id: 'api', path: 'sublabel', value: 'FastAPI' })).views, ['map']);
+  const t = structuredClone(m); t.nodes[3].members = [{ id: 'd.api', type: 'uml.Property', label: 'api', props: { type: 'Shop API' } }];
+  assert.deepEqual(diff(t, apply(t, { op: 'set', id: 'api', path: 'sublabel', value: 'FastAPI' })).views, ['map', 'classes']);
+  // the Bookshop atlas: renaming the map card api lists the map views that draw it, not the C4, cloud or mindmap views whose own Shop API it is not
+  const atlas = JSON.parse(readFileSync(new URL('../examples/bookshop-atlas.json', import.meta.url)));
+  assert.deepEqual(diff(atlas, apply(atlas, { op: 'set', id: 'api', path: 'label', value: 'Renamed' })).views, ['overview', 'api', 'checkout']);
+  // hostile: labels that are prototype keys or another element's id resolve to nothing they do not name
+  const h = structuredClone(m); h.nodes[2].label = '__proto__'; h.nodes[3].label = 'api'; h.nodes[0].label = 'constructor';
+  assert.deepEqual(diff(h, apply(h, { op: 'set', id: 'api', path: 'sublabel', value: 'x' })).views, ['map']);
+});
+
+test('audit 43: diff() of many views whose cards trade places lays out only the views whose grid slots change (timed)', () => {
+  const V = 10, N = 30, nodes = [], edges = [], views = [];
+  for (let v = 0; v < V; v++) { const ids = [];
+    for (let i = 0; i < N; i++) { const id = `n${v}_${i}`; nodes.push({ id, label: id }); ids.push(id); if (i) edges.push({ id: `e${v}_${i}`, from: `n${v}_${Math.floor((i - 1) / 3)}`, to: id }); }
+    views.push({ id: `v${v}`, title: `v${v}`, nodeIds: ids }); }
+  const A = { title: 't', nodes, edges, views }, B = structuredClone(A); B.views.forEach(v => { const x = v.nodeIds; [x[1], x[2]] = [x[2], x[1]]; });
+  let t = performance.now(); const d = diff(A, B), ms = performance.now() - t; console.log(`# ${V} trees of ${N} cards, siblings swapped: ${Math.round(ms)} ms`);
+  assert.deepEqual([d.summary, d.views], [[], []]); assert.ok(ms < 1500, `${ms} ms`);
+  // all pinned: the same picture, said by its pins alone
+  const P = structuredClone(A); P.views.forEach(v => { v.layout = Object.fromEntries(v.nodeIds.map((id, i) => [id, [i % 6, Math.floor(i / 6)]])); });
+  const Q = structuredClone(P); Q.views.forEach(v => { v.nodeIds.reverse(); });
+  t = performance.now(); assert.deepEqual(diff(P, Q).summary, []); assert.ok(performance.now() - t < 1500);
+  // cards with no lines that trade slots are still said, the view laid out
+  const F = { nodes: ['a', 'b', 'c', 'd'].map(id => ({ id, label: id.toUpperCase() })), edges: [], views: [{ id: 'v', title: 'V', nodeIds: ['a', 'b', 'c', 'd'] }] }, G = structuredClone(F); G.views[0].nodeIds = ['b', 'a', 'c', 'd'];
+  assert.deepEqual([diff(F, G).summary, diff(F, G).views], [['moves B to the start in the view V'], ['v']]);
+});
