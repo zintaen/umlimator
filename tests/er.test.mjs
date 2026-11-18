@@ -487,3 +487,25 @@ test('audit 33: no column name or type is cut in an entity sized to hold it, und
     }
   }
 });
+
+// audit 36: erRef split table.column at the first dot only, so a table labelled with a dot (a schema's sales.order) could be
+// named only by its column's id, and printColumn printed that id
+test('FK table.column names a column whose table label holds a dot, bare or with the table in quotes; ambiguous splits fall back to the id (audit 36)', () => {
+  const m = { schemaVersion: 2, nodes: [
+    { id: 'so', type: 'er.Entity', label: 'sales.order', members: [C('so.id', 'id', { dataType: 'int', primaryKey: true })] },
+    { id: 'ln', type: 'er.Entity', label: 'line', members: [C('ln.id', 'id', { dataType: 'int', primaryKey: true }), C('ln.a.b', 'a.b', { dataType: 'int' })] },
+    { id: 'x', type: 'er.Entity', label: 'line.a', members: [C('x.b', 'b', { dataType: 'int' })] }],
+    edges: [], views: [{ id: 'v', diagram: 'er', nodeIds: ['so', 'ln', 'x'] }] };
+  const I = { col: new Map(m.nodes.flatMap(n => n.members.map(c => [c.id, { c, e: n }]))) };
+  for (const t of ['order_id int FK sales.order.id', 'order_id int FK "sales.order".id', 'order_id int FK "sales.order.id"', 'order_id int FK so.id'])
+    assert.deepEqual(parseColumn(t, I), { label: 'order_id', props: { dataType: 'int', foreignKey: true, references: 'so.id' } }, t);
+  const add = erMember(m, 'v', 'ln', null, 'order_id int FK sales.order.id');
+  assert.equal(add[0].element.props.references, 'so.id');
+  // the printed row names it by its labels, and reads back to the same id
+  assert.equal(printColumn({ ...add[0].element }, I), 'order_id int FK sales.order.id');
+  // line.a.b is line's a.b and line.a's b: two columns, so neither label pair is read; each id still is, and is printed
+  assert.deepEqual(parseColumn('y int FK line.a.b', I), { error: '"y int FK line.a.b" is not a column: FK line.a.b names no column (table.column)' });
+  assert.deepEqual(parseColumn('y int FK "line.a".b', I).props.references, 'x.b');
+  assert.deepEqual(parseColumn('y int FK x.b', I).props.references, 'x.b');
+  assert.equal(printColumn(C('y', 'y', { dataType: 'int', foreignKey: true, references: 'x.b' }), I), 'y int FK x.b');
+});

@@ -395,3 +395,25 @@ test('audit 30: binding-types reads a generalization a block definition view dra
   ok.views.push({ id: 'bdd', diagram: 'sysml.block-definition', nodeIds: ['distance', 'length'], edges: [{ id: 'g', type: 'uml.Generalization', from: 'length', to: 'distance' }] });
   assert.deepEqual(validate(ok).filter(p => p.rule === 'binding-types' && p.ids[0] === 'vv'), [], 'Length is a kind of Distance, in the block definition view');
 });
+
+// audit 36: SYS_PAR_NAME was elName, so a constraint or value property with no name was drawn ': RangeEq' / ': Real' but its
+// accessible name, describe(), its parameters' and bindings' names and the PDF called it by its id, as internal.js did before audit 17
+test('an unnamed constraint or value property is named as drawn, ": RangeEq", in its accessible name, describe(), its parameters, its bindings and the PDF (audit 36)', () => {
+  const base = JSON.parse(readFileSync(new URL('parametric-minimal.json', import.meta.url)));
+  for (const [what, cut] of [['no label', x => { delete x.label; }], ['an empty label', x => { x.label = ''; }]]) {
+    const m = structuredClone(base); cut(mem(m, 'bike.eq')); cut(mem(m, 'bike.energy'));
+    const g = layout(m, 'v'), aria = id => g.byId[id].aria, said = describe(m, 'v');
+    assert.equal(aria('bike.eq'), 'Constraint : RangeEq {r = e / 7}, in Bike, 2 parameters', what);
+    assert.equal(aria('bike.energy'), 'Value : Real, in Bike', what);
+    assert.ok(g.nodes.filter(n => n.shape === 'port' && n.owner === 'bike.eq').every(n => / of : RangeEq$/.test(n.aria)), what);
+    assert.equal(g.edges.find(e => e.id === 'bind-e').aria ?? g.byId['bind-e']?.aria, 'Binding from value : Real to parameter e of : RangeEq', what);
+    assert.ok(!/bike\.(eq|energy)/.test(said), `${what}: ${said}`);
+    const c = mapContext(m), [, lines] = tablesOf(c, c.V.v, c.buildGeo('v'));
+    assert.ok(lines.rows.some(r => r.includes('<td>: Real to e of : RangeEq</td>')), what);
+    // with neither name nor type, the id
+    const bare = structuredClone(m); delete mem(bare, 'bike.energy').props;
+    assert.equal(layout(bare, 'v').byId['bike.energy'].aria, 'Value bike.energy, in Bike', what);
+  }
+  // a named one keeps its name
+  assert.equal(layout(base, 'v').byId['bike.eq'].aria, 'Constraint eq: RangeEq {r = e / 7}, in Bike, 2 parameters');
+});

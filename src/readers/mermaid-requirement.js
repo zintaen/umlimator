@@ -248,8 +248,12 @@ function readMermaidRequirement(text) {
     }
   }
 
-  // relationships: both ends defined, and not breaking the type's errors; a contains is a parent, one per element
+  // relationships: both ends defined, and not breaking the type's errors; a contains is a parent, one per element. A contains
+  // that would close a cycle (its container's topmost owner is the element, which has none yet) is skipped as it is met, so a
+  // later contains of the same element is still read, and a report never names an owner the model drops (audit 36). The
+  // topmost owner by union-find (up links, halved as they are walked): near linear, with no recursion
   const edges0 = [];
+  const top = x => { while (x.up) { if (x.up.up) x.up = x.up.up; x = x.up; } return x; };
   for (const r of rels) {
     const says = `${r.from} - ${r.kind} -> ${r.to}`, a = defs.get(r.from), b = defs.get(r.to), rule = MQ_RULE.get(r.kind);
     if (!a || !b) { say(r.no, 'skipped', `${says}: ${!a ? r.from : r.to} is not defined`); continue; }
@@ -258,24 +262,9 @@ function readMermaidRequirement(text) {
     if (r.kind !== 'contains') { r.a = a; r.b = b; edges0.push(r); continue; }
     if (r.hint !== undefined) say(r.hintNo, 'skipped', `%% id: ${mqShort(r.hint)} is above a contains, which is a parent, not an element: not read`);
     if (b.owner) say(r.no, 'skipped', `${says}: ${r.to} is contained by ${b.owner.name} already, and an element has one owner`);
-    else { b.owner = a; b.ownNo = r.no; }
+    else if (top(a) === b) say(r.no, 'skipped', `${says}: it would close a cycle of containment`);
+    else { b.owner = a; b.up = a; }
   }
-  // a containment that closes a cycle: one colouring pass over the owner links (white, grey on the walk, black done), each
-  // cycle losing its last contains in the file: linear, with no recursion
-  const colour = new Map();
-  for (const r of list) {
-    const path = [];
-    let x = r;
-    while (x && !colour.has(x)) { colour.set(x, 1); path.push(x); x = x.owner; }
-    if (x && colour.get(x) === 1) {
-      let last = x;
-      for (let k = path.indexOf(x); k < path.length; k++) if (path[k].ownNo > last.ownNo) last = path[k];
-      say(last.ownNo, 'skipped', `${last.owner.name} - contains -> ${last.name}: it would close a cycle of containment`);
-      last.owner = null;
-    }
-    for (const p of path) colour.set(p, 2);
-  }
-
   // ids: the hints first, each one valid and free; then each definition's name, each relationship's ends and kind
   const used = new Set(), next = new Map();
   const hinted = (x, what) => {

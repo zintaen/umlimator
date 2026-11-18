@@ -133,11 +133,31 @@ const SYS_PRIM = ['Real', 'Integer', 'Boolean', 'String'];
 // the keyword with any spacing round it, as F2 reads it (SYS_IB_RENAME), never stored in the name (audit 27); alone it stays
 const SYS_UNKIND = v => (typeof v === 'string' ? v.replace(/^\s*«(proxy|full)»\s*(?=\S)/, '') : v);
 function SYS_BACK(r, model, view) {
-  if (Array.isArray(r)) return r.map(c => SYS_BACK_ONE(c, model, view));
+  if (Array.isArray(r)) return r.flatMap(c => { const b = SYS_BACK_ONE(c, model, view), m = SYS_OBJ(b) && b.op === 'set' && String(b.path) === 'label' ? SYS_MEMBER(model, b.id) : null;
+    return [b, ...(m ? SYS_ROLES(model, m.m, m.owner, b.value) : [])]; });
   if (!SYS_OBJ(r)) return r;
   if (Array.isArray(r.commands)) return { ...r, commands: SYS_BACK(r.commands, model, view) };
   if (typeof r.then === 'function') return { ...r, then: i => SYS_BACK(r.then(i), model, view) };
   return r;
+}
+// a member by id, the first of an id, and the node it is a member of
+function SYS_MEMBER(model, id) {
+  for (const n of SYS_ARR(model && model.nodes)) if (SYS_OBJ(n)) for (const m of SYS_ARR(n.members)) if (SYS_OBJ(m) && m.id === id) return { m, owner: n };
+  return null;
+}
+/* a part (or constraint) property renamed: each composite association whose whole is its owner and whose part end's role was its
+   name takes the new name, in the same transaction, as connect made the two together (part-unlisted reads the role as the
+   part's name, §7.2; audit 36). The model's lines and every view's own, each id's first as apply finds it */
+const SYS_PARTS = ['sysml.PartProperty', 'sysml.ConstraintProperty'];
+function SYS_ROLES(model, m, owner, label) {
+  if (!SYS_OBJ(m) || !SYS_OBJ(owner) || !SYS_PARTS.includes(m.type) || typeof m.label !== 'string' || m.label === '' || typeof label !== 'string' || label === '' || label === m.label) return [];
+  const seen = new Set(SYS_ARR(model.nodes).map(n => SYS_OBJ(n) && n.id)), out = [];
+  [...SYS_ARR(model.edges), ...SYS_ARR(model.views).flatMap(v => (SYS_OBJ(v) ? SYS_ARR(v.edges) : []))].forEach(e => {
+    if (!SYS_OBJ(e) || typeof e.id !== 'string' || seen.has(e.id)) return; seen.add(e.id);
+    const E = SYS_PROPS(e).ends; if (e.type !== 'uml.Association' || !SYS_OBJ(E)) return;
+    [['from', 'to'], ['to', 'from']].forEach(([w, f]) => { if (e[w] === owner.id && SYS_OBJ(E[w]) && E[w].aggregation === 'composite' && SYS_OBJ(E[f]) && E[f].role === m.label)
+      out.push({ op: 'set', id: e.id, path: `props.ends.${f}.role`, value: label }); }); });
+  return out;
 }
 function SYS_BACK_ONE(c, model, view) {
   if (!SYS_OBJ(c)) return c;
@@ -180,4 +200,4 @@ function SYS_DRESS(g, model, view, names) {
     families: [...(card ? [{ id: sid, x: card.x, y: card.y, w: card.w, h: card.h, nodeIds: [], ...frame }] : []), ...SYS_ARR(g.families).map(f => (f.id === sid ? { ...f, ...frame } : f))] };
 }
 
-export { SYS_TABLE, SYS_KIND, SYS_HEAD, SYS_FRAME, SYS_FRAME_RENAME, SYS_FRAME_EMPTY, SYS_AS_UML, SYS_LINES, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS, SYS_OTHER_KEYS };
+export { SYS_TABLE, SYS_KIND, SYS_HEAD, SYS_FRAME, SYS_FRAME_RENAME, SYS_FRAME_EMPTY, SYS_AS_UML, SYS_LINES, SYS_BACK, SYS_ROLES, SYS_PARTS, SYS_CS_PROBLEMS, SYS_DRESS, SYS_OTHER_KEYS };

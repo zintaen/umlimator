@@ -458,3 +458,18 @@ test('a containment that would close a cycle of parents is named as not written,
     assert.equal(write(back.model, back.model.views[0].id), write(read(write(back.model, back.model.views[0].id)).model, back.model.views[0].id), 'stable');
   }
 });
+
+// audit 36: a contains that closed a cycle was dropped only after every element had taken its first container, so a later
+// container of the same element was refused as "contained by <the dropped owner> already" and the element kept no parent
+test('a contains skipped for closing a cycle leaves its element free for a later container, and no report names an owner the model drops (audit 36)', () => {
+  const r = read('requirementDiagram\nrequirement a {\n}\nrequirement b {\n}\nrequirement c {\n}\na - contains -> b\nb - contains -> a\nc - contains -> a\n');
+  assert.deepEqual(lines(r), ['9 skipped: b - contains -> a: it would close a cycle of containment']);
+  assert.deepEqual(r.model.nodes.map(n => [n.id, n.parent ?? null]), [['a', 'c'], ['b', 'a'], ['c', null]]);
+  const self = read('requirementDiagram\nrequirement a {\n}\nrequirement b {\n}\nelement e {\n}\na - contains -> b\nb - contains -> a\na - contains -> a\ne - contains -> a\nb - contains -> b\n');
+  assert.deepEqual(lines(self), ['9 skipped: b - contains -> a: it would close a cycle of containment', '10 skipped: a - contains -> a: it would close a cycle of containment',
+    '12 skipped: b - contains -> b: b is contained by a already, and an element has one owner']);
+  assert.deepEqual(self.model.nodes.map(n => [n.id, n.parent ?? null]), [['a', 'e'], ['b', 'a'], ['e', null]]);
+  // every "contained by X already" names the parent the model keeps
+  for (const m of [r, self]) for (const x of m.report) { const k = /: (\S+) is contained by (\S+) already/.exec(x.message); if (k) assert.equal(m.model.nodes.find(n => n.id === k[1]).parent, k[2]); }
+  for (const m of [r.model, self.model]) { assert.deepEqual(core(m), []); assert.deepEqual(read(write(m, m.views[0].id)).report.filter(x => x.status === 'skipped'), []); }
+});

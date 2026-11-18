@@ -19,7 +19,9 @@ import { modelLines } from '../uml/owners.js';
 
 const SYS_PAR_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), SYS_PAR_ARR = x => (Array.isArray(x) ? x : []);
 const SYS_PAR_PROPS = x => (SYS_PAR_OBJ(x && x.props) ? x.props : {}), SYS_PAR_HAS = x => x != null && x !== '';
-const SYS_PAR_NAME = elName;
+// a constraint or value property with no name is named as drawn, ': RangeEq' (the composite type's csName), as the internal
+// block view names its parts (audit 17); with neither name nor type, its id (audit 36)
+const SYS_PAR_NAME = x => (Object.hasOwn(SYS_PAR_PROP, x.type) && !SYS_PAR_HAS(x.label) ? SYS_PAR_TEXT(x) : elName(x));
 const SYS_PAR_PLURAL = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const SYS_PAR_PROP = { __proto__: null, 'sysml.ConstraintProperty': 'Constraint', 'sysml.ValueProperty': 'Value' };
 const SYS_PAR_SUBJ = { __proto__: null, 'sysml.Block': 'Block', 'sysml.ConstraintBlock': 'Constraint block' };
@@ -52,7 +54,8 @@ SHAPE['sysml-constraint'] = { ...SHAPE.part,
 };
 
 /* ---- names (§13): the type's words for each property, parameter and binding; null leaves the composite type's ---- */
-const SYS_PAR_TEXT = m => { const p = SYS_PAR_PROPS(m); return `${elName(m)}${SYS_PAR_HAS(p.valueType) ? ': ' + p.valueType : ''}${SYS_PAR_HAS(p.multiplicity) ? ` [${p.multiplicity}]` : ''}`; };
+const SYS_PAR_TEXT = m => { const p = SYS_PAR_PROPS(m), t = SYS_PAR_HAS(p.valueType), anon = Object.hasOwn(SYS_PAR_PROP, m.type) && !SYS_PAR_HAS(m.label);
+  return `${anon ? (t ? '' : m.id) : elName(m)}${t ? ': ' + p.valueType : ''}${SYS_PAR_HAS(p.multiplicity) ? ` [${p.multiplicity}]` : ''}`; };
 const SYS_PAR_PARAM_SAY = (p, owner) => `Parameter ${SYS_PAR_TEXT(p)}${owner ? ' of ' + SYS_PAR_NAME(owner) : ''}`;
 // a binding's end: "value ecoRange", "parameter range of eco" (through a constraint property), "parameter range of RangeEquation"
 function SYS_PAR_END(I, e, k) {
@@ -251,15 +254,17 @@ function SYS_PAR_WORD(model, id) {
   const x = SYS_PAR_INDEX(model, null).el(id); if (!x) return null;
   return SYS_PAR_PROP[x.type] || SYS_PAR_SUBJ[x.type] || (x.type === 'sysml.ConstraintParameter' ? 'Parameter' : !x.type ? 'Element' : null); // no type: "Element", as named (audit 29)
 }
+// a member's row as drawn and said: one with no name (or "") by its id, as SYS_PAR_TEXT; print stays F2's edit text (audit 36)
+const SYS_PAR_SAID = m => SYS_PAR_MEMBERS.print({ ...m, label: elName(m) });
 function SYS_PAR_ROWS(model, view, id) {
   const I = SYS_PAR_INDEX(model, view), x = I.el(id); if (!x) return null;
   if (x.type === 'sysml.ConstraintProperty') { const e = SYS_PAR_EXPR(I.block(x)); return [SYS_PAR_TEXT(x), ...(e ? [e] : [])]; }
   if (x.type === 'sysml.ValueProperty') return [SYS_PAR_TEXT(x)];
   if (x.type === 'sysml.ConstraintParameter') return SYS_PAR_HAS(SYS_PAR_PROPS(x).valueType) ? [String(SYS_PAR_PROPS(x).valueType)] : [];
-  if (x.type === 'sysml.ConstraintBlock' && x !== I.S) { const e = SYS_PAR_EXPR(x); return [...(e ? [e] : []), ...I.params(x).map(SYS_PAR_MEMBERS.print)]; }
+  if (x.type === 'sysml.ConstraintBlock' && x !== I.S) { const e = SYS_PAR_EXPR(x); return [...(e ? [e] : []), ...I.params(x).map(SYS_PAR_SAID)]; }
   if (x !== I.S) return null;
   // the subject: what it shows. Its bindings are the Lines table's (print.js lists a line drawn to a member's owner), not listed again here
-  return SYS_PAR_ARR(x.members).filter(m => SYS_PAR_OBJ(m) && (Object.hasOwn(SYS_PAR_PROP, m.type) || m.type === 'sysml.ConstraintParameter')).map(SYS_PAR_MEMBERS.print);
+  return SYS_PAR_ARR(x.members).filter(m => SYS_PAR_OBJ(m) && (Object.hasOwn(SYS_PAR_PROP, m.type) || m.type === 'sysml.ConstraintParameter')).map(SYS_PAR_SAID);
 }
 // "ecoRange to range of eco"
 function SYS_PAR_LINE_TEXT(model, view, id) {

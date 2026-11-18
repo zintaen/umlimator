@@ -387,6 +387,24 @@ function classProblems(model, view) {
   return out;
 }
 
+/* ---- a line that would close a cycle (connect, audit 36): a generalization from `from` to `to` closes one when `from` is
+   `to` or an ancestor of it already, through the model's lines and the view's own (each id's first, as classProblems and
+   ucProblems weigh them). A walk on a stack from `to`, each element once. The words: { error } naming every element on the
+   cycle, as generalization-cycle says it ("EBike" → "RentalVehicle" → "EBike" is its own ancestor); null when none closes ---- */
+function closesCycle(model, view, type, from, to, word = 'a generalization', said = 'be its own ancestor') {
+  const at = classIndex(UML_OBJ(model) ? model : {}), next = new Map(), add = e => { if (UML_OBJ(e) && e.type === type) { if (!next.has(e.from)) next.set(e.from, []); next.get(e.from).push(e.to); } };
+  at.forEach(r => { if (r.kind === 'edge') add(r.x); });
+  const taken = new Set(at.keys()); if (UML_OBJ(view)) UML_ARR(view.edges).forEach(e => { if (UML_OBJ(e) && typeof e.id === 'string' && !taken.has(e.id)) { taken.add(e.id); add(e); } });
+  let path = from === to ? [to] : null;
+  for (const came = new Map([[to, null]]), stack = [to]; !path && stack.length;) { const x = stack.pop();
+    for (const y of next.get(x) || []) { if (came.has(y)) continue; came.set(y, x); if (y === from) { path = []; for (let z = y; z != null; z = came.get(z)) path.unshift(z); break; } stack.push(y); } }
+  if (!path) return null;
+  const q = id => JSON.stringify(nameOfEl((at.get(id) || { x: { id } }).x));
+  return { error: `${word[0].toUpperCase()}${word.slice(1)} may not close a cycle: ${[from, ...path].map(q).join(' → ')} would ${said}` };
+}
+// connect on a class view: a generalization that would close a cycle is refused (generalization-cycle); else the default
+const classConnect = (model, view, from, to, at, line) => (UML_OBJ(line) && line.type === 'uml.Generalization' ? closesCycle(model, view, line.type, from, to) : null);
+
 /* ---- describe(): the view in words, per element, each box then what it holds: "Class Order (entity), 5 attributes, 3
    operations; associated with OrderLine (lines, 1..*)"; "Package sales, holding 4 elements; imports catalog" ---- */
 // the verb describe() says a line by, from its source end; null for a kind it has none for (the object view says that one a
@@ -432,7 +450,7 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   // it were (audit 31, as the object type's since audit 30); null (a comment, a package): its members
   rows: (model, view, id) => { const x = UML_ARR(model && model.nodes).find(n => UML_OBJ(n) && n.id === id); if (!x || x.type === 'uml.Comment' || OWN_BOXES.includes(x.type)) return null;
     return compartmentsOf(x).flatMap(c => c.members.map(printMember)); },
-  edits: { rename: lineRename(lineLabel) },
+  edits: { connect: classConnect, rename: lineRename(lineLabel) },
 });
 
-export { CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, classProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
+export { CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, classProblems, closesCycle, classDescribe, classGeo, typeGeo, describeAs, drawnLines };

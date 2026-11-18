@@ -22,7 +22,9 @@ const files = [...readdirSync(new URL('../examples/', import.meta.url)).filter(f
   ...readdirSync(new URL('./', import.meta.url)).filter(f => f.endsWith('-minimal.json')).map(f => './' + f)];
 // every element's label, its members' and its lines' set to `val` (undefined: removed)
 const relabel = (m, val) => { const go = x => { if (x && typeof x === 'object' && x.id != null) { if (val === undefined) delete x.label; else x.label = val; } };
-  (m.nodes || []).forEach(n => { go(n); (n.members || []).forEach(go); }); (m.edges || []).forEach(go); return m; };
+  (m.nodes || []).forEach(n => { go(n); (n.members || []).forEach(go); }); (m.edges || []).forEach(go);
+  // and a view's own lines and items (a sequence's messages and interaction uses live there: audit 36)
+  (m.views || []).forEach(v => (Array.isArray(v.edges) ? v.edges : []).forEach(go)); return m; };
 // what a reader gets of each typed view; a marker's id counts up across renders, so it is left out
 const said = m => { const ctx = mapContext(m), out = { validate: validate(m).map(p => p.message) };
   (m.views || []).filter(v => v.diagram).forEach(v => { out[v.id] = { svg: ctx.buildView(v.id).markup.replace(/\bg\d+-/g, 'g-'), describe: describe(m, v.id), pdf: tablesOf(ctx, ctx.V[v.id], layout(m, v.id)) }; });
@@ -52,4 +54,28 @@ test('audit 35: in every typed view, an element labelled "" is drawn, named, des
   const names = new Set(), walk = u => readdirSync(u, { withFileTypes: true }).forEach(e => e.isDirectory() ? walk(new URL(e.name + '/', u)) : e.name.endsWith('.js') && [...readFileSync(new URL(e.name, u), 'utf8').matchAll(/registerDiagramType\('([^']+)'/g)].forEach(x => names.add(x[1])));
   walk(SRC); ['c4.context', 'c4.container', 'c4.component'].forEach(n => names.add(n)); names.delete('map');
   assert.deepEqual([...names].filter(n => !seen.has(n)), []);
+});
+
+// the text a picture draws, each <text> run's words (an attribute may hold '>': data-id="a->b")
+const drawnTexts = svg => [...svg.matchAll(/<text(?:\s+[\w:-]+="[^"]*")*\s*>([\s\S]*?)<\/text>/g)].map(x => x[1].replace(/<[^>]+>/g, '').replace(/&amp;/g, '&'));
+test('audit 36: a member the picture names by its id when it has no name, the PDF names by its id too', () => {
+  // every member labelled "": a member whose id the picture draws as a word of its text (a port, an extension point, a
+  // parameter) is in its owner's Members cell of the PDF, not "port " with nothing after it. Parts with a type and no name
+  // (": Battery [1]") and a state's regions are drawn with no name, and printed so: not ids in the picture, not checked. A
+  // profile's stereotype draws an attribute as a class does (": String"); the id it draws is a tagged value's, on another element
+  const sw = [...files, ...readdirSync(new URL('./', import.meta.url)).filter(f => /^(composite|internal-block|parametric|usecase)-stress\.json$/.test(f)).map(f => './' + f)];
+  let n = 0;
+  for (const f of sw) {
+    const m = read(f); if (!(m.views || []).some(v => v.diagram)) continue;
+    (m.nodes || []).forEach(x => (x.members || []).forEach(y => { if (y && typeof y === 'object' && y.id != null) y.label = ''; }));
+    const ctx = mapContext(m);
+    for (const v of (m.views || []).filter(v => v.diagram && v.diagram !== 'uml.profile')) {
+      const words = new Set(drawnTexts(ctx.buildView(v.id).markup).flatMap(t => t.split(/[\s:«»()]+/))), [els] = tablesOf(ctx, ctx.V[v.id], layout(m, v.id));
+      for (const id of v.nodeIds || []) { const x = (m.nodes || []).find(y => y.id === id), row = els.rows.find(r => r.includes(`<b>${id}</b>`) || x && typeof x.label === 'string' && r.includes(`<b>${x.label}</b>`));
+        if (!x || !row) continue;
+        for (const y of x.members || []) if (y && typeof y === 'object' && typeof y.id === 'string' && words.has(y.id)) { n++;
+          assert.ok(/<p>([^<]*)<\/p>/.test(row) && [...row.matchAll(/<p>([^<]*)<\/p>/g)].some(p => p[1].split(/[\s:,]+/).includes(y.id)), `${f}, view ${v.id}: ${y.id} of ${id} is drawn by its id, printed ${JSON.stringify(row.slice(0, 300))}`); } }
+    }
+  }
+  assert.ok(n > 5, `members checked: ${n}`);
 });

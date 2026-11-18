@@ -17,6 +17,11 @@ import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
+import { readFileSync } from 'node:fs';
+import '../src/sysml/internal.js';
+import '../src/sysml/parametric.js';
+import '../src/uml/profile.js';
+import '../src/uml/usecase.js';
 import { classProblems } from '../src/uml/class.js';
 import { BD_RULES, bdProblems, bdParse, bdPrint } from '../src/sysml/blocks.js';
 
@@ -432,4 +437,69 @@ test('a block definition view laid out down draws no label on another line (audi
     assert.deepEqual(check(m, 'v').map(p => p.message), [], `${d} ${direction}`);
     assert.ok(layout(m, 'v').edges.find(e => e.id === 'dep').lbl, `${d} ${direction}: the label is drawn`);
   }
+});
+
+// audit 36: connect makes a part and the part association naming it by its role together, and part-unlisted reads the role as
+// the part's name; a rename of the part (a member row, F2 in the internal block or parametric view) left the role on the old name
+test('a part or constraint property renamed renames the role of its part association in the same transaction, in every view that renames it (audit 36)', () => {
+  const atlas = JSON.parse(readFileSync(new URL('../examples/ebike-atlas.json', import.meta.url)));
+  // a constraint property's part association, a line of the blocks view's own
+  atlas.views.find(v => v.id === 'blocks').edges.push({ id: 'ebike-eco', type: 'uml.Association', from: 'ebike', to: 'range-equation', props: { ends: { from: { aggregation: 'composite' }, to: { role: 'eco', multiplicity: '1' } } } });
+  const said = m => validate(m).map(p => p.message).sort(), before = said(atlas), view = id => atlas.views.find(v => v.id === id);
+  const role = (m, id) => [...m.edges, ...m.views.flatMap(v => (v.edges || []).filter(e => typeof e === 'object'))].find(e => e.id === id).props.ends.to.role;
+  const run1 = r => apply(atlas, Array.isArray(r) ? r : r.commands);
+  for (const [what, r, line, name] of [
+    ['bdd member row', diagramOf(view('blocks')).edits.member(atlas, view('blocks'), 'ebike', 'ebike.battery', 'part pack: Battery [1]'), 'ebike-battery', 'pack'],
+    ['ibd F2', diagramOf(view('inside-ebike')).edits.rename(atlas, view('inside-ebike'), 'ebike.battery', 'pack : Battery [1]'), 'ebike-battery', 'pack'],
+    ['ibd member row', diagramOf(view('inside-ebike')).edits.member(atlas, view('inside-ebike'), 'ebike', 'ebike.motor', 'drive : Motor [1]'), 'ebike-motor', 'drive'],
+    ['bdd member row, a constraint property', diagramOf(view('blocks')).edits.member(atlas, view('blocks'), 'ebike', 'ebike.eco', 'constraint economy: RangeEquation [1]'), 'ebike-eco', 'economy'],
+    ['par F2, a constraint property', diagramOf(view('range-analysis')).edits.rename(atlas, view('range-analysis'), 'ebike.eco', 'economy : RangeEquation'), 'ebike-eco', 'economy'],
+  ]) {
+    assert.ok(!r.error, `${what}: ${r.error}`);
+    const n = run1(r);
+    assert.equal(role(n, line), name, what);
+    assert.deepEqual(said(n), before, what);
+  }
+  // a part made a value by its row is no part: its line keeps its role (part-unlisted then says so); an unchanged name adds nothing
+  const val = diagramOf(view('blocks')).edits.member(atlas, view('blocks'), 'ebike', 'ebike.controller', 'value ctl: Controller [1]');
+  assert.equal(role(run1(val), 'ebike-controller'), 'controller');
+  const same = diagramOf(view('blocks')).edits.member(atlas, view('blocks'), 'ebike', 'ebike.battery', 'part battery: Battery [1]');
+  assert.ok(!same.commands.some(c => c.path === 'props.ends.to.role'));
+  // one transaction: the name and the role, so one undo takes back both
+  const h = history(structuredClone(atlas)), r = diagramOf(view('blocks')).edits.member(atlas, view('blocks'), 'ebike', 'ebike.battery', 'part pack: Battery [1]');
+  h.push(apply(h.model, r.commands)); assert.equal(role(h.model, 'ebike-battery'), 'pack'); assert.equal(role(h.undo(), 'ebike-battery'), 'battery');
+});
+
+// audit 36: connect let a generalization close a cycle (or join a block to itself), which validate() then reports as
+// generalization-cycle; the class, profile and use case views' connect too (and an include cycle, an extend to itself)
+test('connect refuses a generalization that closes a cycle or joins an element to itself, in the block definition, class, profile and use case views (audit 36)', () => {
+  const ebike = JSON.parse(readFileSync(new URL('../examples/ebike-blocks.json', import.meta.url))), bv = ebike.views.find(v => v.diagram === 'sysml.block-definition');
+  const G = { type: 'uml.Generalization' }, errs = m => validate(m).filter(p => p.level === 'error').map(p => p.rule);
+  const gives = (m, v, from, to, line, error) => { const T = diagramOf(v), r = T.edits.connect(m, v, from, to, null, line);
+    assert.deepEqual(r, error ? { error } : null, `${v.diagram} ${from} → ${to}`);
+    // what the hook lets through, validate() takes; what it refuses, validate() flags
+    const n = apply(m, [{ op: 'add', element: { id: 'l-new', ...line, from, to }, view: v.id }]);
+    assert.equal(errs(n).some(k => /cycle|ends/.test(k)) && !errs(m).some(k => /cycle|ends/.test(k)), !!error, `${v.diagram} ${from} → ${to}: ${errs(n)}`); };
+  gives(ebike, bv, 'rental-vehicle', 'ebike', G, 'A generalization may not close a cycle: "RentalVehicle" → "EBike" → "RentalVehicle" would be its own ancestor');
+  gives(ebike, bv, 'ebike', 'ebike', G, 'A generalization may not close a cycle: "EBike" → "EBike" would be its own ancestor');
+  gives(ebike, bv, 'battery', 'rental-vehicle', G, null);
+  // a line of the view's own counts as the model's do
+  const own = structuredClone(ebike), ov = own.views.find(v => v.diagram === 'sysml.block-definition');
+  own.edges = own.edges.filter(e => e.type !== 'uml.Generalization'); ov.edges = [...(ov.edges || []).filter(e => typeof e !== 'string' || own.edges.some(x => x.id === e)), { id: 'g-own', type: 'uml.Generalization', from: 'ebike', to: 'rental-vehicle' }];
+  gives(own, ov, 'rental-vehicle', 'ebike', G, 'A generalization may not close a cycle: "RentalVehicle" → "EBike" → "RentalVehicle" would be its own ancestor');
+  // the class view: three deep
+  const C = (id, label, type = 'uml.Class') => ({ id, type, label }), cls = { schemaVersion: 2, nodes: [C('a', 'A'), C('b', 'B'), C('c', 'C')],
+    edges: [{ id: 'ab', type: 'uml.Generalization', from: 'a', to: 'b' }, { id: 'bc', type: 'uml.Generalization', from: 'b', to: 'c' }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b', 'c'] }] };
+  gives(cls, cls.views[0], 'c', 'a', G, 'A generalization may not close a cycle: "C" → "A" → "B" → "C" would be its own ancestor');
+  gives(cls, cls.views[0], 'a', 'c', G, null);
+  // the profile view: two stereotypes
+  const pro = { schemaVersion: 2, nodes: [C('s', 'S', 'uml.Stereotype'), C('t', 'T', 'uml.Stereotype')], edges: [{ id: 'st', type: 'uml.Generalization', from: 's', to: 't' }], views: [{ id: 'v', diagram: 'uml.profile', nodeIds: ['s', 't'] }] };
+  gives(pro, pro.views[0], 't', 's', G, 'A generalization may not close a cycle: "T" → "S" → "T" would be its own ancestor');
+  // the use case view: a generalization of actors, an include cycle, an extend to itself
+  const uc = { schemaVersion: 2, nodes: [C('x', 'X', 'uml.Actor'), C('y', 'Y', 'uml.Actor'), C('p', 'Pay', 'uml.UseCase'), C('q', 'Quote', 'uml.UseCase')],
+    edges: [{ id: 'xy', type: 'uml.Generalization', from: 'x', to: 'y' }, { id: 'pq', type: 'uml.Include', from: 'p', to: 'q' }], views: [{ id: 'v', diagram: 'uml.use-case', nodeIds: ['x', 'y', 'p', 'q'] }] };
+  gives(uc, uc.views[0], 'y', 'x', G, 'A generalization may not close a cycle: "Y" → "X" → "Y" would be its own ancestor');
+  gives(uc, uc.views[0], 'q', 'p', { type: 'uml.Include' }, 'An include may not close a cycle: "Quote" → "Pay" → "Quote" would include itself');
+  gives(uc, uc.views[0], 'p', 'p', { type: 'uml.Include' }, 'An include may not close a cycle: "Pay" → "Pay" would include itself');
+  assert.deepEqual(diagramOf(uc.views[0]).edits.connect(uc, uc.views[0], 'p', 'p', null, { type: 'uml.Extend' }), { error: 'An extend runs from a use case to another use case' });
 });
