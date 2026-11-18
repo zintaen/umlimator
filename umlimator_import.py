@@ -667,6 +667,18 @@ def views(m, els, lines, specs, find, implied, groups):
     def under(x, c):  # c is x or in it (an implied relationship runs from what holds its end)
         return x is None or x in up(c)
 
+    # each element's and relationship's tags, lowercased once for the whole file: a tag expression then costs at most the
+    # smaller of its values and an element's tags per element, never a fresh set of every tag list per expression (R2)
+    etags, rtags = {}, {}
+    def etag(c):
+        if c not in etags:
+            etags[c] = frozenset(g.lower() for g in ["Element", TAG[els[c]["type"]], *els[c]["tags"]])
+        return etags[c]
+    def rtag(eid, r):
+        if eid not in rtags:
+            rtags[eid] = frozenset(g.lower() for g in ["Relationship", *r["tags"]])
+        return rtags[eid]
+
     def expr(t, lift):
         """What a Structurizr expression includes or excludes, as ("els", elements) or ("rels", relationships), where an
         element's relationships are its own and its members' (the implied ones); None for an expression not read here:
@@ -683,14 +695,14 @@ def views(m, els, lines, specs, find, implied, groups):
             if kind == "element" and what == "type":
                 hit = lambda c: els[c]["type"] in want
             elif kind == "element" and what == "tag":
-                hit = lambda c: bool(want & {g.lower() for g in ["Element", TAG[els[c]["type"]], *els[c]["tags"]]})
+                hit = lambda c: not want.isdisjoint(etag(c))
             elif kind == "element":
                 held = {find(v) for v in q[4].split(",")}
                 if None in held:
                     return None
                 hit = lambda c: els[c]["parent"] in held
             elif what == "tag":
-                return "rels", {eid for _, _, eid, r in lines if bool(want & {g.lower() for g in ["Relationship", *r["tags"]]}) == (q[3] == "==")}
+                return "rels", {eid for _, _, eid, r in lines if (not want.isdisjoint(rtag(eid, r))) == (q[3] == "==")}
             else:
                 return None
             return "els", {c for c in els if hit(c) == (q[3] == "==")}
@@ -714,7 +726,7 @@ def views(m, els, lines, specs, find, implied, groups):
     for s in specs:
         incl, excl = joined(s["include"]), joined(s["exclude"])
         # each expression walks every element or relationship once more (R2)
-        work += (1 + sum(1 + t.count("&&") + t.count("||") for t, _ in incl + excl if t != "*" and not find(t))) * (len(els) + len(lines)) + len(incl) + len(excl)
+        work += (1 + sum(1 + t.count("&&") + t.count("||") + t.count(",") for t, _ in incl + excl if t != "*" and not find(t))) * (len(els) + len(lines)) + len(incl) + len(excl)  # a value list costs per value
         if work > VIEW_WORK:  # hostile input (R2): views x elements is unbounded under the 1 MiB limit
             m.say(s["line"], f"over {VIEW_WORK} elements and relationships walked in all views: this view and the rest are left out")
             break

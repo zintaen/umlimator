@@ -173,6 +173,16 @@ ok("structurizr · an element written in the wrong kind of element is said with 
               (12, "person p is in software system s, where a person cannot be: not imported (nor what it holds)"),
               (14, "softwareSystem t is in software system s, where a software system cannot be: not imported (nor what it holds)"),
               (20, "u -> c: c is not an element")], un)
+# hostile tags (security, R2): a few elements with very long tag lists and many views with tag expressions were judged by
+# lowering every element's tags again for each expression, which the work cap (counted in elements) did not see: 11.8 s at
+# 850 KB. Each element's tags are now lowered once, so a tag expression costs at most its values per element
+import time
+tags = ",".join(f"t{i}" for i in range(14000))
+dsl = ("workspace {\n model {\n" + "\n".join(f'  s{i} = softwareSystem "S{i}" "d" "{tags}"' for i in range(8))
+       + "\n }\n views {\n" + "\n".join(f"  systemLandscape v{i} {{\n   include element.tag==x\n  }}" for i in range(2500)) + "\n }\n}\n")
+t0 = time.perf_counter(); m, un = imp.read("structurizr", dsl, "hostile-tags"); took = time.perf_counter() - t0
+ok("structurizr · views of tag expressions over elements with very long tag lists take under 3 s (each element's tags lowered once; audit 35, security)",
+   took < 3 and len(dsl) < 1 << 20 and sum("element.tag==x: matches nothing" in t for _, t in un) == 2500, (round(took, 2), un[:3]))
 # hostile names: a refused element's name and its holder's are said as text, never read as a path or markup
 m, un = imp.read("structurizr", 'workspace {\n model {\n  s = softwareSystem "<img src=//e.example/t.png>" {\n   container "API" {\n    container "../../etc/passwd"\n   }\n  }\n }\n}\n', "x")
 ok("structurizr · a refused element with no alias is said by its name, and a holder with none by its own (audit 34)",
