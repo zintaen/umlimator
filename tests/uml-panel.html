@@ -5,7 +5,8 @@
      takes the extend naming no other point); F2 on a sequence fragment sets its operator; F2 emptied on the timing ruler
      removes the view's unit, while an emptied lifeline name stays nothing. Audit 21: no Name field on an element whose label
      nothing draws (a fragment, a transition, a communication connector), and F2 on an element with an empty name is
-     announced as a rename, not as naming a new card. -->
+     announced as a rename, not as naming a new card. Audit 30: an element of no type is offered the fields and Owner of the kind
+     its view draws it as. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
@@ -92,6 +93,16 @@ try {
   const nf = pick('.um-rename');
   check('audit 21: N\'s field still names the new card', !!nf && nf.getAttribute('aria-label') === 'Name of the new card', nf && nf.getAttribute('aria-label'));
   nf && key('Escape', {}, nf);
+  // ---- audit 30: an element of no type (or "") is offered the fields and Owner of the kind its view draws it as: a class view's
+  // class, an object view's instance (one of no UML kind too), a component view's component
+  for (const [diagram, type, want] of [['uml.class', undefined, ['isAbstract', 'stereotypes']], ['uml.class', '', ['isAbstract', 'stereotypes']], ['uml.package', undefined, ['isAbstract', 'stereotypes']],
+    ['uml.object', undefined, ['classifier', 'stereotypes']], ['uml.object', 'acme.Thing', ['classifier', 'stereotypes']], ['uml.component', undefined, ['stereotypes']], ['uml.component', '', ['stereotypes']]]) {
+    const um = { schemaVersion: 2, nodes: [{ id: 'p', type: 'uml.Package', label: 'pkg' }, { id: 'x', label: 'X', ...(type === undefined ? {} : { type }), props: { classifier: 'Order', stereotypes: ['s'] } }], edges: [],
+      views: [{ id: 'v', diagram, nodeIds: ['p', 'x'] }] };
+    await mount(um, 'v'); h.select({ type: 'node', id: 'x', view: 'v' }); await wait(10);
+    const keys = all('.um-editor .um-props [data-key]').map(x => x.dataset.key), own = all('.um-editor .um-props select[data-owner] option').map(o => o.value);
+    check(`audit 30: ${diagram}, type ${JSON.stringify(type)}: the fields of the kind drawn, and an Owner field offering the package`, same(keys, want) && same(own, ['', 'p']), { keys, own });
+  }
   h.destroy(); h = null;
 } catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);

@@ -770,3 +770,18 @@ test('audit 28: a uml.Property kept as a node, not a member, prints in the PDF a
   const kind = label => rows.find(r => r[0] === label)[1];
   assert.deepEqual([kind('engine'), kind('Thing'), kind('Shop')], ['Property', 'Element', 'Class'], 'as layout() and describe() name them');
 });
+
+test('audit 30: the PDF\'s Members column of the subject and of an open collaboration lists only what their boxes draw: no operation, no literal', () => {
+  const m = { schemaVersion: 2, nodes: [
+    { id: 'S', type: 'uml.Class', label: 'Car', members: [{ id: 'e', type: 'uml.Property', label: 'engine', props: { valueType: 'Engine' } }, { id: 'drv', type: 'uml.Operation', label: 'drive' }, { id: 'lit', type: 'uml.EnumerationLiteral', label: 'RED' }, { id: 'pt', type: 'uml.Port', label: 'api' }] },
+    { id: 'E', type: 'uml.Class', label: 'Engine' },
+    { id: 'col', type: 'uml.Collaboration', label: 'Observer', members: [{ id: 'r1', type: 'uml.Property', label: 'subject' }, { id: 'nt', type: 'uml.Operation', label: 'notify' }] }],
+  edges: [], views: [{ id: 'v', diagram: 'uml.composite-structure', nodeIds: ['S', 'E', 'col'], subject: 'S' }] };
+  const s = String(svgOf(mapContext(m).buildGeo('v')));
+  assert.ok(!/drive|RED|notify/.test(s), 'the picture draws none of them');
+  const c = mapContext(m), rows = tablesOf(c, c.V.v, c.buildGeo('v'))[0].rows.map(r => r.split('<td>').slice(1).map(x => x.replace(/<[^>]+>/g, '').trim()));
+  assert.deepEqual(rows.find(r => r[0] === 'Car'), ['Car', 'Class', 'engine : Engine, compositeport api']);
+  assert.deepEqual(rows.find(r => r[0] === 'Observer'), ['Observer', 'Collaboration', 'subject']);
+  assert.deepEqual(T.rows(m, m.views[0], 'S'), ['engine : Engine, composite', 'port api']);
+  assert.deepEqual(T.rows(m, m.views[0], 'col'), ['subject']);
+});

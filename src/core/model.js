@@ -1,4 +1,4 @@
-import { diagramOf } from './registry.js';
+import { diagramOf, kindWord, untypedKind, untypedLine, aWord } from './registry.js';
 // an object that holds itself (a host's cycle, which copyOf() keeps) is written "[cycle]" where it comes back on its own path (audit 27:
 // the sorted copy the replacer gives is new each time, so JSON.stringify's own check never fired and the stack overflowed)
 // big: a BigInt marked, so jsonText() writes it bare (2n), not as the text "2n"; a text that starts as the mark does gets one more (audit 29)
@@ -6,8 +6,11 @@ const canon = (x, big) => { const path = [], of = new WeakMap(); // path: the ob
   return JSON.stringify(x, function (k, v) { const h = of.get(this) || this, i = path.lastIndexOf(h); if (i < 0) path.push(h); else path.length = i + 1;
     if (typeof v === 'bigint') return (big ? '\u0000' : '') + v + 'n'; if (big && typeof v === 'string' && v[0] === '\u0000') return '\u0000' + v; if (!v || typeof v !== 'object') return v; if (path.includes(v)) return '[cycle]'; // a BigInt, which JSON cannot write, as 10n (audit 28)
     const y = Array.isArray(v) ? v : Object.fromEntries(Object.keys(v).sort().map(f => [f, v[f]])); of.set(y, v); return y; }); };
-// any value as text, to show or tell two apart: JSON, else (a host's cycle or BigInt, which JSON.stringify throws on) as canon() writes it (audit 28)
-const jsonText = x => { try { return JSON.stringify(x); } catch { return canon(x, true).replace(/"\\u0000(-?\d+n)"/g, '$1'); } };
+// any value as text, to show or tell two apart: JSON, else (a host's cycle or BigInt, which JSON.stringify throws on) as canon() writes it (audit 28),
+// each text value canon() marked read back: a BigInt's mark bare (2n), a text that starts with NUL with the one NUL it has (audit 30: it kept
+// the second). A key (a text followed by :) is never marked, so it is left as written
+const jsonText = x => { try { return JSON.stringify(x); } catch { return canon(x, true).replace(/"(?:[^"\\]|\\.)*"(:?)/g, (t, key) =>
+  key || !t.startsWith('"\\u0000') ? t : /^"\\u0000-?\d+n"$/.test(t) ? t.slice(7, -1) : '"' + t.slice(7)); } };
 
 /* ---------- the model's version and the typed core (schema version 2: docs/diagrams/model.md) ----------
    A model with no schemaVersion is version 1, a map, and reads as it always has. Version 2 adds typed elements: each in
@@ -99,8 +102,11 @@ function unreadable(model) {
   // an object whose keys or values cannot be read (a host's Proxy, a getter that throws) is left out as one with a toString
   // that is no function is, in a map by id too (audit 24)
   const thrown = new Set(); // paths of values that threw when read
+  // an object String() finds no toString in (one with no prototype: a host's table by name, a parsed query string) is read, not left
+  // out: the copy is a plain object, whose toString is Object's (audit 30: validate() and the ER, requirement and state writers threw)
+  let bare = false; const noText = o => { try { return typeof o.toString !== 'function' && typeof o[Symbol.toPrimitive] !== 'function'; } catch { return false; } };
   const walk = (root, fix) => { const at = [], todo = [[root, '', null]], seen = new Set();
-    while (todo.length) { const [o, p, role] = todo.pop(); if (seen.has(o)) continue; seen.add(o);
+    while (todo.length) { const [o, p, role] = todo.pop(); if (seen.has(o)) continue; seen.add(o); if (!fix && !bare && noText(o)) bare = true;
       // keys that cannot be read: said at the object's own path (the copy holds it as one more left-out value: copyOf)
       const list = Array.isArray(o); let keys; try { keys = Object.keys(o); } catch { at.push(p); if (!fix) thrown.add(p); continue; }
       for (let i = keys.length - 1; i >= 0; i--) { const k = keys[i], q = list ? `${p}[${k}]` : p ? `${p}.${k}` : k; let x, gone = false;
@@ -112,7 +118,7 @@ function unreadable(model) {
   const same = path => path;
   if (!model || typeof model !== 'object') return { paths: [], model, back: same, thrown };
   const paths = walk(model, false);
-  if (!paths.length) return { paths, model, back: same, thrown };
+  if (!paths.length && !bare) return { paths, model, back: same, thrown };
   const copy = copyOf(model, GONE); walk(copy, true);
   // each [n] in turn, under the path before it as the model has it: the n-th entry of that list the copy kept
   const back = path => typeof path !== 'string' || !cut.size ? path : path.replace(/\[(\d+)\]/g, (w, n, i, s) => { const gone = cut.get(back(s.slice(0, i)));
@@ -131,6 +137,8 @@ const nameTable = x => { const t = new Map(); if (x && typeof x === 'object' && 
    is the type's to check (a registered type, from 1.3). */
 // a label that is neither text nor a number (a list, an object, true) is drawn and announced as String() writes it, "[object Object]":
 // said by validate() for a card, a line, a member and every other element (audit 29). A number is drawn as written; null is no label
+// what names an element: its label, else its id. A number is a label, 0 too (audit 30: `label || id` named a card labelled 0 by its id)
+const labelOr = (label, id) => label == null || label === '' ? id : label;
 function labelProblem(x, at) {
   const l = x && typeof x === 'object' ? x.label : undefined; if (l == null || typeof l === 'string' || typeof l === 'number') return null;
   let shown; try { shown = String(l); } catch { shown = ''; }
@@ -151,19 +159,37 @@ function typedProblems(model) {
     if (kind !== 'node') { const l = labelProblem(x, at); if (l) out.push(l); } // a node's is validate()'s card check, in a map too
     if (x.parent != null) parents.push([x, at]);
     if (up.has(x)) return; up.add(x); // a host's member that holds its owner: said used twice, and not read again (audit 28)
-    arr(x.members).forEach((y, j) => { element(y, `${at}.members[${j}]`, 'member', x.id); typeOf(y, `${at}.members[${j}]`, true); }); up.delete(x);
+    arr(x.members).forEach((y, j) => { element(y, `${at}.members[${j}]`, 'member', x.id); typeOf(y, `${at}.members[${j}]`, true, 'member'); }); up.delete(x);
   };
-  // line: a line's type, which is drawn as a plain line, not a card (audit 29)
-  const typeOf = (x, at, needed, line) => { if (!isObj(x)) return;
-    if (x.type == null ? needed : typeof x.type !== 'string' || !TYPE.test(x.type)) warn(at + '.type', `type ${jsonText(x.type)} is not <notation>.<Name> (${line ? 'uml.Dependency' : 'uml.Class'}): drawn as a plain ${line ? 'line' : 'card'}`); };
+  /* what: 'node', 'line' or 'member'. The warning says what each view that lists the element does with it, as its type draws it
+     (audit 30): a member of no kind is drawn in no view; a card or line a map lists is drawn plain; a typed view draws an
+     element of no type (or "") as its type's untyped kind (registry.js untypedKind: "drawn as a task") and a line whose type
+     has no notation as its untypedLine ("drawn as a data flow"), or not at all. A card's other type no view knows is named as
+     written, which the warning does not guess at; nor does it for a card or line no view lists */
+  const typedView = v => v.diagram != null && v.diagram !== 'map'; // a view with diagram 'map' is a map: the map's checks
+  const VIEWS = arr(m.views).map((v, i) => [v, i]).filter(([v]) => isObj(v));
+  const shows = (v, i, x, what, at) => { const own = /^views\[(\d+)\]/.exec(at); if (own) return +own[1] === i;
+    if (what === 'node') return arr(v.nodeIds).includes(x.id);
+    return Array.isArray(v.edges) ? v.edges.includes(x.id) : arr(v.nodeIds).includes(x.from) && arr(v.nodeIds).includes(x.to); };
+  const drawnAs = (v, x, what) => { const T = typedView(v) ? diagramOf(v) : null, none = x.type == null || x.type === '', bare = !String(x.type ?? '').includes('.');
+    if (!T) return `drawn as a plain ${what === 'line' ? 'line' : 'card'}`;
+    if (what === 'line') { const w = bare ? untypedLine(T) : Array.isArray(T.drawsOnly) || T.untypedLine === null ? null : 'Line'; return w ? `drawn as ${w === 'Line' ? 'a plain line' : aWord(w.toLowerCase())}` : 'not drawn'; }
+    if (!none) return null; const w = untypedKind(T); return w ? `drawn as ${aWord(w.toLowerCase())}` : 'not drawn'; };
+  const typeOf = (x, at, needed, what = 'node') => { if (!isObj(x)) return;
+    if (!(x.type == null ? needed : typeof x.type !== 'string' || !TYPE.test(x.type))) return;
+    let said = what === 'member' ? 'not drawn' : null;
+    if (!said) { const by = new Map(); let quiet = false;
+      VIEWS.forEach(([v, i]) => { if (!shows(v, i, x, what, at)) return; const p = drawnAs(v, x, what); if (p) by.set(p, [...by.get(p) || [], v.id]); else quiet = true; });
+      said = !by.size ? null // listed by no view, or by none that says how: drawn nowhere it can tell of
+        : by.size === 1 && !quiet ? [...by.keys()][0] : [...by].map(([p, ids]) => `${p} in view ${ids.map(id => JSON.stringify(id)).join(', ')}`).join('; '); }
+    warn(at + '.type', `type ${jsonText(x.type)} is not <notation>.<Name> (${what === 'line' ? 'uml.Dependency' : what === 'member' ? 'uml.Property' : 'uml.Class'})${said ? ': ' + said : ''}`); };
   const nodes = arr(m.nodes);
   nodes.forEach((n, i) => { element(n, `nodes[${i}]`, 'node'); typeOf(n, `nodes[${i}]`, false); });
   const typedEdge = e => isObj(e) && e.type != null;
-  arr(m.edges).forEach((e, i) => { if (typedEdge(e)) { element(e, `edges[${i}]`, 'edge'); typeOf(e, `edges[${i}]`, true, true); } });
-  const typedView = v => v.diagram != null && v.diagram !== 'map'; // a view with diagram 'map' is a map: the map's checks
+  arr(m.edges).forEach((e, i) => { if (typedEdge(e)) { element(e, `edges[${i}]`, 'edge'); typeOf(e, `edges[${i}]`, true, 'line'); } });
   views.forEach((v, i) => { if (!typedView(v)) return;
     arr(v.nodes).forEach((n, j) => element(n, `views[${i}].nodes[${j}]`, 'node'));
-    arr(v.edges).forEach((e, j) => { if (isObj(e)) { element(e, `views[${i}].edges[${j}]`, 'edge'); typeOf(e, `views[${i}].edges[${j}]`, true, true); } });
+    arr(v.edges).forEach((e, j) => { if (isObj(e)) { element(e, `views[${i}].edges[${j}]`, 'edge'); typeOf(e, `views[${i}].edges[${j}]`, true, 'line'); } });
     arr(v.fragments).forEach((f, j) => element(f, `views[${i}].fragments[${j}]`, 'fragment'));
     ['changes', 'constraints'].forEach(k => arr((v.timeline || {})[k]).forEach((c, j) => element(c, `views[${i}].timeline.${k}[${j}]`, 'time'))); });
   const has = id => where.has(id), name = id => JSON.stringify(id);
@@ -192,7 +218,7 @@ function typedProblems(model) {
   const nodeIds = new Set(nodes.filter(isObj).map(n => n.id)), modelEdge = new Map();
   arr(m.edges).forEach(e => { if (typedEdge(e) && typeof e.id === 'string' && !modelEdge.has(e.id)) modelEdge.set(e.id, e); });
   // a line's kind in words: 'uml.Dependency' "dependency", 'sysml.DeriveReqt' "derive reqt"
-  const lineWord = t => String(t).split('.').pop().replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+  const lineWord = t => (String(t).includes('.') ? kindWord(t).toLowerCase() : String(t)); // of no notation: as written (audit 30)
   views.forEach((v, i) => { if (!typedView(v)) return; const at = `views[${i}]`;
     if (typeof v.diagram !== 'string' || !/^[a-z0-9]+(\.[a-z0-9-]+)?$/.test(v.diagram)) warn(at + '.diagram', `diagram ${name(v.diagram)} is not <notation> or <notation>.<kind> (uml.class)`);
     if (v.direction != null && !['right', 'down'].includes(v.direction)) warn(at + '.direction', `direction ${name(v.direction)} is not right or down: drawn right`);
@@ -222,4 +248,4 @@ const listOf = (m, i) => (Array.isArray(m.views[i] && m.views[i].edges) ? i : -1
 const lineNames = m => { const out = new Map([[-1, namesOf(m && m.edges)]]);
   (Array.isArray(m && m.views) ? m.views : []).forEach((v, i) => { if (v && Array.isArray(v.edges)) out.set(i, namesOf(v.edges)); }); return out; };
 
-export { canon, jsonText, labelProblem, versionProblem, typedProblems, lineNames, namesOf, listOf, unreadable, copyOf, textOf, nameTable, usedIds };
+export { canon, jsonText, labelOr, labelProblem, versionProblem, typedProblems, lineNames, namesOf, listOf, unreadable, copyOf, textOf, nameTable, usedIds };

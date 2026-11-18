@@ -110,7 +110,9 @@ function dynProblems(model, view) {
 function dynDescribe(model, viewId) {
   const v = V_ARR(model && model.views).find(x => V_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const { steps, notes, pic } = dynDrawn(model, v), box = new Map(c4Pic(model, v).boxes.map(b => [b.id, b]));
-  return [`${v.title || v.id}: a C4 dynamic diagram of ${vPlural(pic.ids.length, 'element')} and ${vPlural(steps.length, 'step')}.`,
+  // the comment links it draws counted too, as the static views' and the flowchart's headers count theirs (audit 30)
+  const lines = notes.length ? `, ${vPlural(steps.length, 'step')} and ${vPlural(notes.length, 'comment link')}` : ` and ${vPlural(steps.length, 'step')}`;
+  return [`${v.title || v.id}: a C4 dynamic diagram of ${vPlural(pic.ids.length, 'element')}${lines}.`,
     ...readingOrder(pic).map(id => (box.has(id) ? box.get(id).aria : c4NodeName(pic.at.get(id)))), ...steps.map(({ e, k }) => dynName(e, k, pic)), ...notes.map(e => c4LineName(e, pic))].map(t => t.replace(/\.?$/, '.')).join('\n');
 }
 /* moveTo(model, view, id, at): a step one place earlier or later (Alt + arrows, { by }), or to { index } in view.edges. A
@@ -147,6 +149,7 @@ function dynRename(model, view, id, text) {
 // add: a container or component added at the view's level (its subject's, §5.1) is owned by the subject, as on that static view
 const dynAdd = (model, view, entry, label) => (V_OBJ(view) ? C4_DEF.edits.add(model, { ...view, diagram: dynLevel(model, view) }, entry, label) : null);
 const DYN_DEF = { ...C4_DEF,
+  untypedLine: null, // a line of no notation is no step: not drawn, said by c4-steps (audit 30)
   title: 'C4 dynamic diagram',
   layout: dynGeo,
   validate: dynProblems,

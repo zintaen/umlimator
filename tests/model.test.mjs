@@ -518,14 +518,14 @@ test('audit 29: a line id that is also a card id is an error (the docs give card
   assert.deepEqual(said(hostile), [['error', 'edges[0].id'], ['error', 'edges[1].id']]); // a name on Object.prototype is no card's unless a card has it
 });
 
-test('audit 29: a typed line with no type is said to be drawn as a plain line, a card with none as a plain card', async () => {
+test('audit 29: a typed line with no type is said to be drawn as a plain line where its view draws one so; a member with none is said not drawn (audit 30)', async () => {
   const U = await import('../lib/umlimator-all.js');
   const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'flow.Process', label: 'A' }, { id: 'b', type: 'flow.Process', label: 'B', members: [{ id: 'm1', label: 'x' }] }],
     edges: [{ id: 'e', type: 'nope', from: 'a', to: 'b' }], views: [{ id: 'v', diagram: 'flowchart', nodeIds: ['a', 'b'], edges: ['e', { id: 'f', from: 'a', to: 'b' }] }] };
   const at = p => (U.validate(m).find(x => x.path === p) || {}).message;
   assert.equal(at('edges[0].type'), 'type "nope" is not <notation>.<Name> (uml.Dependency): drawn as a plain line');
   assert.equal(at('views[0].edges[1].type'), 'type undefined is not <notation>.<Name> (uml.Dependency): drawn as a plain line');
-  assert.equal(at('nodes[1].members[0].type'), 'type undefined is not <notation>.<Name> (uml.Class): drawn as a plain card');
+  assert.equal(at('nodes[1].members[0].type'), 'type undefined is not <notation>.<Name> (uml.Property): not drawn'); // a member of no type: no view draws it (audit 30)
   const g = U.layout(m, 'v'); assert.ok(g.edges.some(e => e.id === 'f' || (e.ids || []).includes('f')), 'the untyped line is drawn, as a line');
 });
 
@@ -543,4 +543,78 @@ test('audit 29: a label that is not text (a list, an object, true) is warned of,
     const g = U.layout({ schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a'] }] }, 'v');
     assert.ok(String(g.nodes[0].aria).includes(shown), g.nodes[0].aria); }
   for (const label of ['A', 42, null, undefined, '']) assert.deepEqual(U.validate({ nodes: [{ id: 'a', label }], views: [{ id: 'v', nodeIds: ['a'] }] }).filter(p => p.path.endsWith('.label')), [], String(label));
+});
+
+// audit 30: a view's own line is in the one id space apply(), references() and a lens read. Two views' own lines with one id, or a
+// view's own line with a model line's id, were said nothing of, and apply()'s set or delete by that id reached the first line only
+test('audit 30: a view\'s own line whose id another view\'s own line or a model line holds is an id used twice', () => {
+  const m = { nodes: [{ id: 'web' }, { id: 'api' }, { id: 'db' }], edges: [{ id: 'reads', from: 'api', to: 'db' }],
+    views: [{ id: 'shop', nodeIds: ['web', 'api'], edges: [{ id: 'calls', from: 'web', to: 'api', label: 'shop call' }] },
+      { id: 'admin', nodeIds: ['api', 'db'], edges: ['reads', { id: 'calls', from: 'db', to: 'api' }, { id: 'reads', from: 'api', to: 'db' }] }] };
+  assert.deepEqual(validate(m).map(p => [p.level, p.path, p.message]), [
+    ['error', 'views[1].edges[1].id', 'line id "calls" is used twice (also views[0].edges[0])'],
+    ['error', 'views[1].edges[2].id', 'line id "reads" is used twice (also edges[0])']]);
+  // the same view twice; a line id a hostile host made a number, or __proto__ (an id, never a key of the check's own table)
+  const twice = { nodes: [{ id: 'a' }, { id: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'], edges: [{ id: '__proto__', from: 'a', to: 'b' }, { id: '__proto__', from: 'b', to: 'a' }, { id: 7, from: 'a', to: 'b' }, { id: 7, from: 'b', to: 'a' }] }] };
+  assert.deepEqual(validate(twice).filter(p => p.level === 'error').map(p => p.path), ['views[0].edges[1].id', 'views[0].edges[3].id']);
+  // each own line with an id of its own, a view listing a model line by id, and lines with no id (named by position): nothing said
+  const fine = { nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ id: 'ab', from: 'a', to: 'b' }],
+    views: [{ id: 'v', nodeIds: ['a', 'b'], edges: ['ab', { id: 'ba', from: 'b', to: 'a' }, { from: 'a', to: 'b' }] }, { id: 'w', nodeIds: ['a', 'b'], edges: ['ab', { id: 'ba2', from: 'b', to: 'a' }, { from: 'a', to: 'b' }] }] };
+  assert.deepEqual(validate(fine), []);
+  // two model lines with one id: said once, as before
+  assert.deepEqual(validate({ nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ id: 'x', from: 'a', to: 'b' }, { id: 'x', from: 'b', to: 'a' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] }).map(p => p.message), ['line id "x" is used twice']);
+});
+
+// audit 30: a map card or line labelled 0, a number validate() accepts as drawn as written, was named by its id and its line label dropped
+test('audit 30: a map card or line labelled 0 is drawn, described and diffed as "0", not by its id', async () => {
+  const U = await import('../lib/umlimator-all.js');
+  const m = { nodes: [{ id: 'level-zero', label: 0 }, { id: 'one', label: 1 }], edges: [{ from: 'one', to: 'level-zero', label: 0 }, { from: 'level-zero', to: 'one', label: 1 }],
+    views: [{ id: 'v', nodeIds: ['level-zero', 'one'], nodeOverrides: { one: { label: 0 } } }, { id: 'w', nodeIds: ['level-zero', 'one'], edges: [{ id: 'own', from: 'one', to: 'level-zero', label: 0 }] }] };
+  assert.deepEqual(U.validate(m), []);
+  const g = U.layout(m, 'v');
+  assert.deepEqual(g.nodes.map(n => n.label), ['0', '0']);
+  assert.equal(g.edges.length, 1); assert.equal(g.edges[0].label, '0 / 1'); // the two-way line: both labels
+  const d = U.describe(m, 'v'); assert.ok(d.includes('Cards: 0 (Script), 0 (Script).') && !/level-zero/.test(d), d);
+  assert.deepEqual(U.layout(m, 'w').edges.map(e => e.label), ['0']);
+  const b = structuredClone(m); b.nodes[0].label = 'zero'; b.nodes.push({ id: 'n', label: 0 }); b.views[0].nodeIds.push('n'); b.edges.push({ from: 'n', to: 'one', label: 0 });
+  assert.deepEqual(U.diff(m, b).summary, ['renames 0 to zero', 'adds 0, to 1']);
+  // a label of '' or none is named by the id as before
+  assert.ok(U.describe({ nodes: [{ id: 'blank', label: '' }, { id: 'none' }], views: [{ id: 'v', nodeIds: ['blank', 'none'] }] }, 'v').includes('Cards: blank (Script), none (Script).'));
+});
+
+// audit 30: jsonText() marked a text that starts with NUL with one more NUL, apart from a BigInt's mark, and never took it off again
+test('audit 30: jsonText() writes a text that starts with NUL as it is, beside a BigInt or a cycle, and a key as it is', async () => {
+  const { jsonText } = await import('../src/core/model.js'), U = await import('../lib/umlimator-all.js');
+  const cyc = { a: '\u0000x' }; cyc.self = cyc;
+  for (const [v, want] of [[['\u0000a', 1n], '["\\u0000a",1n]'], [{ a: '\u0000x', b: 2n }, '{"a":"\\u0000x","b":2n}'], [cyc, '{"a":"\\u0000x","self":"[cycle]"}'],
+    [['\u00002n', 2n, '\u0000\u0000y'], '["\\u00002n",2n,"\\u0000\\u0000y"]'], [{ '\u00001n': 1n, 'k"\u0000\u0000': -3n }, '{"\\u00001n":1n,"k\\"\\u0000\\u0000":-3n}'],
+    [['a"\u0000\u0000b', 'x\\', 0n], '["a\\"\\u0000\\u0000b","x\\\\",0n]'], [{ a: '\u0000x' }, '{"a":"\\u0000x"}']]) assert.equal(jsonText(v), want);
+  assert.throws(() => U.apply({ nodes: [] }, { op: 'set', id: 'x', path: ['\u0000p', 2n] }), e => e.message === 'set: ["\\u0000p",2n] is not a path of keys');
+  assert.deepEqual(U.validate({ nodes: [{ id: 'a' }], views: [{ id: 'v', nodeIds: ['a'], gap: ['\u0000wide', 3n] }] }).map(p => p.message), ['gap ["\\u0000wide",3n] is not a number above 0: ignored']);
+});
+
+// audit 30: a label (or any value) that is an object with no prototype, a host's table by language, has no toString for String() to
+// call: validate() threw for an ER and a requirement model, and the ER, requirement and state writers threw
+test('audit 30: an object with no prototype is read as a plain object: validate(), the writers, layout() and apply() never throw on it', async () => {
+  const L = await import('../lib/umlimator-all.js');
+  const np = (o = { en: 'Order' }) => Object.assign(Object.create(null), o);
+  const writers = { 'mermaid-class': ['uml.class', 'uml.Class'], 'mermaid-er': ['er', 'er.Entity'], 'mermaid-flowchart': ['flowchart', 'flowchart.Process'], 'mermaid-mindmap': ['mindmap', 'mindmap.Topic'],
+    'mermaid-requirement': ['sysml.requirement', 'sysml.Requirement'], 'mermaid-sequence': ['uml.sequence', 'uml.Lifeline'], 'mermaid-state': ['uml.state-machine', 'uml.State'] };
+  for (const [file, [d, T]] of Object.entries(writers)) {
+    const W = await import(`../src/readers/${file}.js`), write = Object.values(W).find(x => typeof x === 'function' && /^write/.test(x.name));
+    const props = T === 'sysml.Requirement' ? np({ reqId: '1', text: 't' }) : np({ note: 'n' });
+    const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 'a', type: T, label: np(), props }, { id: 'b', type: T, label: 'B' }], edges: [], views: [{ id: 'v', diagram: d, nodeIds: ['a', 'b'] }] };
+    assert.equal(typeof write(m), 'string', file);
+    const said = L.validate(m);
+    assert.ok(said.some(p => p.path === 'nodes[0].label' && p.message === 'label {"en":"Order"} is not text: drawn as "[object Object]"'), `${file}: ${JSON.stringify(said)}`);
+    assert.ok(!said.some(p => /left out/.test(p.message)), `${file}: a table with no prototype is no value left out`);
+    assert.equal(typeof L.describe(m, 'v'), 'string', file);
+    assert.ok(L.layout(m, 'v').nodes.length >= 1, file);
+    const a = L.apply(m, { op: 'set', id: 'b', path: 'label', value: 'B2' }); assert.deepEqual({ ...a.nodes[0].props }, { ...props }, `${file}: its props kept`);
+  }
+  // a map card's label, a model with no prototype at all, and an inherited toString that is no function
+  const map = Object.assign(Object.create(null), { nodes: [{ id: 'a', label: np() }, { id: 'b', label: Object.create({ toString: 1 }) }], views: [np({ id: 'v', nodeIds: ['a', 'b'] })] });
+  assert.deepEqual(L.validate(map).map(p => p.path), ['nodes[0].label', 'nodes[1].label']);
+  assert.deepEqual(L.layout(map, 'v').nodes.map(n => String(n.label)), ['[object Object]', '[object Object]']);
+  assert.ok(L.describe(map, 'v').includes('Cards: [object Object] (Script), [object Object] (Script).'), L.describe(map, 'v'));
 });

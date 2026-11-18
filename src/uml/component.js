@@ -1,4 +1,4 @@
-import { ownNodes, registerDiagramType } from '../core/registry.js';
+import { drawnKind, ownNodes, registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
@@ -297,7 +297,7 @@ function cpMoveTo(model, view, id, at) {
 }
 // the palette: a port into the selected component; an interface as a ball or a rectangle, picked
 function cpAdd(model, view, entry, label, at) {
-  const I = cpIndex(model), sel = CP_ARR(at && at.sel).map(id => (I.P.has(id) ? I.P.get(id).owner : id)).find(id => ['uml.Component', 'uml.Class'].includes((I.N.get(id) || {}).type));
+  const I = cpIndex(model), sel = CP_ARR(at && at.sel).map(id => (I.P.has(id) ? I.P.get(id).owner : id)).find(id => ['uml.Component', 'uml.Class'].includes(drawnKind(CP_TYPE, I.N.get(id)))); // an element of no type too: drawn as a component (audit 30)
   if (entry.type === 'uml.Port') { if (!sel) return { error: 'Select a component to add a port to' };
     const r = String(label ?? '').trim() ? cpPortText(label) : {}; if (r.error) return r; // `name : Type`, as the panel's row and F2 read it (audit 18)
     return [{ op: 'add', element: { id: cpNewId(model, 'port'), type: 'uml.Port', ...(r.label ? { label: r.label } : {}), ...(r.valueType ? { props: { valueType: r.valueType } } : {}) }, owner: sel }]; }
@@ -307,7 +307,7 @@ function cpAdd(model, view, entry, label, at) {
 }
 // the panel's member rows on a component: a port, `name` or `name : Type` (§12.1). A class has no rows here (member.holds): its ports come from the palette
 function cpMember(model, view, owner, id, text) {
-  const I = cpIndex(model); if ((I.N.get(owner) || {}).type !== 'uml.Component') return null;
+  const I = cpIndex(model); if (drawnKind(CP_TYPE, I.N.get(owner)) !== 'uml.Component') return null; // and one of no type, drawn as one (audit 30)
   if (id != null && !I.P.has(id)) return null; // an operation or attribute row: member.edit's (memberEdit)
   const r = cpPortText(text); if (r.error) return r;
   if (id == null) return [{ op: 'add', element: { id: cpNewId(model, 'port'), type: 'uml.Port', label: r.label, ...(r.valueType ? { props: { valueType: r.valueType } } : {}) }, owner }];
@@ -348,6 +348,7 @@ function cpOwners(model, x) {
 
 const CP_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
 const CP_TYPE = registerDiagramType('uml.component', {
+  untypedAs: 'uml.Component', // an element of no type (or ""): a component, as drawn, edited and judged (audits 28, 30)
   title: 'component diagram',
   elements: [['Component', 'Component'], ['Interface', 'Interface'], ['Artifact', 'Artifact'], ['Package', 'Package'], ['Port', 'Port'], ['Comment', 'Comment']].map(([t, label]) => ({ type: 'uml.' + t, label })),
   lines: [['InterfaceRealization', 'Realization'], ['ComponentRealization', 'Component realization'], ['Usage', 'Usage'], ['Connector', 'Assembly', 'assembly'], ['Connector', 'Delegation', 'delegation'],
@@ -362,7 +363,7 @@ const CP_TYPE = registerDiagramType('uml.component', {
   owners: cpOwners,
   // a component's rows are its ports (edits.member reads them first); an interface's its operations, as the class type's
   member: { print: m => (m.type === 'uml.Port' ? cpPortPrint(m) : printMember(m)), edit: (m, t) => (m.type === 'uml.Port' ? { error: 'A port is edited on its component' } : memberEdit(m, t)), add: t => parseMember(String(t ?? '').trim()),
-    holds: n => n.type === 'uml.Component' || n.type === 'uml.Interface' },
+    holds: n => ['uml.Component', 'uml.Interface'].includes(drawnKind(CP_TYPE, n)) }, // and one of no type, drawn as a component (audit 30)
   validate: cpProblems,
   rules: CP_RULES,
   describe: cpDescribe,
@@ -373,11 +374,12 @@ const CP_TYPE = registerDiagramType('uml.component', {
   text: (model, view, id) => { const pic = cpPic(model, view), l = pic.lines.find(y => y.e.id === id); return l && (l.kind === 'assembly' || l.kind === 'delegation') ? cpLineName(pic, l) : null; },
   rows: (model, view, id) => { const pic = cpPic(model, view), x = pic.I.N.get(id); if (!x) return null;
     // its connectors are rows of the Lines table, which lists a line drawn to a port's owner (audit 3), so not again here (audit 17)
-    if (x.type === 'uml.Component' || !x.type) return cpPortsOf(x).map(p => cpNodeName(model, view, pic, p.id, 1).slice(5)); // no type: drawn as a component, with its ports (audit 29)
+    const ports = () => cpPortsOf(x).filter(p => (pic.I.P.get(p.id) || {}).owner === id).map(p => cpNodeName(model, view, pic, p.id, 1).slice(5));
+    if (x.type === 'uml.Component' || !x.type) return ports(); // no type: drawn as a component, with its ports (audit 29)
     // an interface: the operations and attributes its box draws, none as a ball (audit 29)
     if (x.type === 'uml.Interface') return cpBall(pic.I, view, id) ? [] : CP_ARR(x.members).filter(m => CP_OBJ(m) && (m.type === 'uml.Operation' || m.type === 'uml.Property')).map(printMember);
     if (x.type === 'uml.Artifact') return pic.lines.filter(l => l.e.type === 'uml.Manifestation' && l.e.from === id).map(l => `manifests ${cpEnd(pic, l.e.to)}`);
-    return []; }, // any other kind is drawn with no compartments: the PDF prints what the view draws, nothing more (audit 29)
+    return ports(); }, // any other kind (a class) is drawn with no compartments but with its ports on its border: the PDF prints what the view draws, nothing more (audits 29, 30)
 });
 
 export { CP_TYPE, CP_RULES, cpGeo, cpProblems, cpDescribe, cpConnect, cpMoveTo, cpAdd, cpMember, cpKey, cpRemove, cpRank, cpPlace };

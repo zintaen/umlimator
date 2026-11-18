@@ -442,12 +442,14 @@ test('the PDF\'s tables (§15, decision 18): each element\'s kind by word, a sta
   const ctx = mapContext(SM), [els] = tablesOf(ctx, ctx.V[V.id], ctx.buildGeo(V.id));
   const row = Object.fromEntries(els.rows.map(r => { const [n, k, m] = [...r.matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1]);
     return [n.replace(/<[^>]+>|\s*⤢/g, ''), [k, [...m.matchAll(/<p>(.*?)<\/p>/g)].map(x => x[1])]]; }));
-  assert.deepEqual(row.created, ['Initial pseudostate', []]);
-  assert.deepEqual(row['payment-outcome'], ['Choice', []]);
-  assert.deepEqual(row.prepaid, ['Fork', []]);
-  assert.deepEqual(row['delivery-history'], ['Shallow history', []]);
-  assert.deepEqual(row.erased, ['Terminate', []]);
-  assert.deepEqual(row.delivered, ['Final state', []]);
+  // a pseudostate or final state, drawn with no name, is named by its kind, as its accessible name, never by its id (audit 30)
+  assert.ok(!['created', 'payment-outcome', 'prepaid', 'delivery-history', 'erased', 'delivered'].some(id => row[id]), Object.keys(row).join(', '));
+  assert.deepEqual(row['Initial pseudostate'], ['Initial pseudostate', []]);
+  assert.deepEqual(row.Choice, ['Choice', []]);
+  assert.deepEqual(row.Fork, ['Fork', []]);
+  assert.deepEqual(row['Shallow history'], ['Shallow history', []]);
+  assert.deepEqual(row.Terminate, ['Terminate', []]);
+  assert.deepEqual(row['Final state'], ['Final state', []]);
   assert.deepEqual(row.Placed, ['State', ['entry / reserve the books', 'do / poll the payment provider', 'exit / log the payment result', 'address changed / update the delivery address']]);
   assert.deepEqual(row.Fulfilling, ['Composite state', ['region Parcel', 'region Payment']]);
   assert.deepEqual(row['In delivery'], ['Composite state', []]);
@@ -657,7 +659,7 @@ test('audit 28: a line of another kind a view lists, which a state machine, requ
     const m = { schemaVersion: 2, nodes: [{ id: 'a', type: t, label: 'A', props: { text: 't', reqId: 'R1' } }, { id: 'b', type: t, label: 'B', props: { text: 't', reqId: 'R2' } }],
       edges: [{ id: 'x', type: 'uml.Dependency', from: 'a', to: 'b', label: 'uses' }], views: [{ id: 'v', diagram: d, nodeIds: ['a', 'b'], edges: ['x', { id: 'y', from: 'a', to: 'b' }] }] };
     assert.ok(!layout(m, 'v').edges.some(e => e.id === 'x' || e.id === 'y'), `${d}: not drawn`);
-    const ps = validate(m).filter(p => /not drawn$/.test(p.message) && /^views\[0\]\.edges\[/.test(p.path));
+    const ps = validate(m).filter(p => /not drawn$/.test(p.message) && /^views\[0\]\.edges\[\d+\]$/.test(p.path)); // the line's own; its type's says not drawn too (audit 30)
     assert.deepEqual(ps.map(p => [p.level, p.path, p.message]), [['warning', 'views[0].edges[0]', `view "v" lists dependency "x", a line ${said} does not draw: not drawn`],
       ['warning', 'views[0].edges[1]', `view "v" lists "y", a line with no type, which ${said} does not draw: not drawn`]], d);
   }

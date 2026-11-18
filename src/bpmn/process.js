@@ -134,7 +134,7 @@ function bzNodeName(P, id) {
   return name + (lane != null ? `, in ${bzLabel(I.el(lane))}` : '');
 }
 const BZ_LINE_WORD = { [BZ_SEQ]: 'Sequence flow', [BZ_MSG]: 'Message flow', [BZ_ASSOC]: 'Association', [BZ_DATA_ASSOC]: 'Data association' };
-const bzLineName = (I, e) => `${BZ_LINE_WORD[e.type] || 'Line'} from ${I.called(e.from)} to ${I.called(e.to)}${BZ_HAS(e.label) ? `, named ${String(e.label).trim()}` : ''}`;
+const bzLineName = (I, e) => `${(Object.hasOwn(BZ_LINE_WORD, e.type) && BZ_LINE_WORD[e.type]) || 'Line'} from ${I.called(e.from)} to ${I.called(e.to)}${BZ_HAS(e.label) ? `, named ${String(e.label).trim()}` : ''}`;
 // each line kind's ends (§7.1): a sequence flow's filled arrow; a message flow dashed, an open circle at its source and a
 // hollow triangle at its target; an association dotted, open arrowheads by its direction; a data association dotted
 const bzEnds = e => { if (e.type === BZ_MSG) return { from: 'circle', to: 'triangle', dashed: true };
@@ -590,6 +590,7 @@ function bzOwners(model, x) {
 const BZ_DOC = { key: 'documentation', label: 'Documentation', kind: 'text' }, BZ_GROUPS = { key: 'categoryValueRef', label: 'Groups', kind: 'list' };
 const BZ_EV = t => [BZ_DOC, { key: 'definition', label: 'Definition', kind: 'enum', options: BZ_DEFS[t] }, BZ_GROUPS];
 const BZ_TYPE = registerDiagramType('bpmn', {
+  untyped: 'Task', // an element of no type (or ""): a task, as named and warned (audit 30)
   title: 'BPMN diagram',
   elements: [['Participant', 'Pool'], ['Lane', 'Lane'], ['Task', 'Task'], ['Task', 'User task', { taskType: 'user' }], ['Task', 'Service task', { taskType: 'service' }], ['SubProcess', 'Sub-process'],
     ['CallActivity', 'Call activity'], ['StartEvent', 'Start', { definition: 'none' }], ['StartEvent', 'Message start', { definition: 'message' }], ['StartEvent', 'Timer start', { definition: 'timer' }],

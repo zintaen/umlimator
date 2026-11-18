@@ -557,3 +557,16 @@ test('audit 29: a model message the view lists by id is drawn, said and printed,
   const r = tmRename(m, v, m.edges[0].id, 'pay @ 3 → 5'), next = apply(m, r);
   assert.equal(next.edges[0].label, 'pay'); assert.equal(next.edges[0].props.sentAt, 3);
 });
+
+test('audit 30: hiding a lifeline says a model message the view lists by id leaves the view, not that it is deleted', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Lifeline', label: 'A', props: { states: ['I'] } }, { id: 'b', type: 'uml.Lifeline', label: 'B', props: { states: ['I'] } }],
+    edges: [{ id: 'm1', type: 'uml.Message', from: 'a', to: 'b', label: 'go', props: { sort: 'call', sentAt: 10, receivedAt: 20 } }],
+    views: [{ id: 't', diagram: 'uml.timing', nodeIds: ['a', 'b'], edges: ['m1', { id: 'm2', type: 'uml.Message', from: 'b', to: 'a', label: 'back', props: { sort: 'asynch', sentAt: 30, receivedAt: 40 } }],
+      timeline: { changes: [{ id: 'c1', lifeline: 'a', at: 0, state: 'I' }, { id: 'c2', lifeline: 'b', at: 0, state: 'I' }] } }] };
+  const one = structuredClone(m); one.views[0].edges.pop();
+  const r = tmRemove(one, 't', ['b'], false), n = apply(one, r.commands);
+  assert.deepEqual([n.edges.map(e => e.id), n.views[0].edges], [['m1'], []], 'the message stays in the model');
+  assert.equal(r.say, 'Hid B; took its 1 message off the view (it stays in the model); its change stays in the timeline');
+  // a view's own message is deleted with it, the model's only leaves the view: each said as done
+  assert.equal(tmRemove(m, 't', ['b'], false).say, 'Hid B; deleted its 1 message; took 1 message off the view (it stays in the model); its change stays in the timeline');
+});

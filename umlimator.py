@@ -507,6 +507,14 @@ def page_model(model_path, out, source=None):
         sys.exit(f"{source or model_path}: " + "; ".join(bad))
     if "title" in m and m["title"] is None:  # no title, as validate() reads it: the root view's, or the file's name (audit 18)
         del m["title"]
+    # what render adds that the model does not hold, for the page's Export > Map model (JSON) to take off again, so the file it
+    # gives back is the model as written (audit 30: it kept icons, source and avatarsEmbedded, and dropped the model's own meta).
+    # Always added: kind, avatarsEmbedded, icons (the model's own table is never kept: own_media) and meta.generated
+    meta = m.get("meta") if isinstance(m.get("meta"), dict) else None
+    added = ["kind", "avatarsEmbedded", "icons", "meta.generated", "meta.added"] + [k for k in ("title", "source") if k not in m]
+    added += ["meta"] if meta is None else []
+    added += [f"meta.{k}" for k in ("project", "root") if meta is None or k not in meta]
+    added += [f"views.{i}.layout" for i, v in enumerate(m.get("views") or []) if isinstance(v, dict) and "layout" not in v]  # one render's search bakes
     own_media(m, Path(model_path).resolve().parent, source or model_path)
     for k in ENGINE_ONLY:  # upstream's explore and recap keys, which a map never draws: a shape it does not expect ended in a traceback (audit 19)
         m.pop(k, None)
@@ -523,6 +531,7 @@ def page_model(model_path, out, source=None):
     src = Path(source or model_path).resolve()
     m.setdefault("source", next((pre + src.relative_to(b).as_posix() for b, pre in ((base, ""), (Path.home().resolve(), "~/"))
                                  if src.is_relative_to(b)), src.name))
+    m.setdefault("meta", {})["added"] = added
     return temp_json(m, model_path, ".icons.json")
 
 

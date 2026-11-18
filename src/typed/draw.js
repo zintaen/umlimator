@@ -1,4 +1,4 @@
-import { TYPED } from '../core/registry.js';
+import { TYPED, kindWord } from '../core/registry.js';
 import { brLines, esc, fit, textW, widest } from '../core/text.js';
 import { trimLine } from '../draw/lines.js';
 import { SHAPE, boxOut, drawnPts, portsOn, r2 } from '../draw/shapes.js';
@@ -13,7 +13,8 @@ import { hasKey } from '../map/kinds.js';
 // ('attributes', 'operations', 'literals'), each member in the model's envelope ({ type, label, props }); collapsed
 // [compartment names], hidden with no divider; rows: at most that many rows in a compartment, then "+k more" (stage 1 note §5);
 // a compartment's title: true draws its name as its first row, centred and muted (SysML's named compartments, notes/milestone-3.md
-// §7.1); ariaOwn: the accessible name in full, in place of the one built here (§6.1). No UML type sets either
+// §7.1); ariaOwn: the accessible name in full, in place of the one built here (§6.1). No UML type sets either; aria, the
+// type's own accessible name, wins over the one built here too (audit 30)
 const CL = { pad: 8, name: 13, row: 11, st: 14, nl: 18, nlh: 16, rl: 15, gap: 5, empty: 10, minW: 96, maxW: 320 };
 const VIS = { public: '+', private: '-', protected: '#', package: '~' };
 // a member's row in UML's form, its «stereotypes» first: "+ total: Money [1]", "+ /count: Integer = 0", "+ place(at: Date): Order"; a literal's label
@@ -35,7 +36,7 @@ function classParts(n) {
   const head = 2 * CL.gap + st.length * CL.st + CL.nl + (name.length - 1) * CL.nlh, tall = c => { const k = +c.title + c.rows.length + (c.more ? 1 : 0); return k ? 2 * CL.gap - 2 + k * CL.rl : CL.empty; };
   return { stereo, st, name, all, comps, head, tall, slant, size: { w, h: comps.reduce((a, c) => a + tall(c), head) } };
 }
-const words = t => String(t).split('.').pop().replace(/([a-z])([A-Z])/g, (_, a, b) => a + ' ' + b.toLowerCase()); // 'uml.DataType': "Data type"
+const words = kindWord; // 'uml.DataType': "Data type"; of no notation, as written (registry.js, audit 30)
 function classSvg(n, c, f) { // its outline, its head, then each compartment under a divider, every text cut to the box (fit)
   const { stereo, st, name: nm, all, comps, head, tall, slant } = classParts(n), { x, y, w, h } = n, max = w - 2 * CL.pad, cx = r2(x + w / 2);
   const font = (px, wt, it) => `style="font:${it ? 'italic ' : ''}${wt} ${px}px var(--um-sans)"`;
@@ -55,7 +56,9 @@ function classSvg(n, c, f) { // its outline, its head, then each compartment und
     top += bh; });
   // its accessible name (A1): "Class Order (entity, abstract), 2 attributes, 1 operation", every member counted, shown or not
   const counts = all.map(C => `${C.members.length} ${C.members.length === 1 ? C.name.replace(/s$/, '') : C.name}`), why = [...stereo, ...(n.abstract ? ['abstract'] : [])];
-  const name = typeof n.ariaOwn === 'string' && n.ariaOwn ? n.ariaOwn : [`${words(n.type || 'uml.Class')} ${n.label ?? ''}${why.length ? ` (${why.join(', ')})` : ''}`, ...counts, ...(n.opensTo ? [`opens ${n.opensTo}`] : [])].join(', ');
+  // the name the type computed (n.aria: the one describe() and the outline give) wins over the one built here, which reads an
+  // implied keyword twice ("Interface Payable (interface)") and drops what only the type knows (an interface's providers) (audit 30)
+  const name = typeof n.ariaOwn === 'string' && n.ariaOwn ? n.ariaOwn : typeof n.aria === 'string' && n.aria ? n.aria : [`${words(n.type || 'uml.Class')} ${n.label ?? ''}${why.length ? ` (${why.join(', ')})` : ''}`, ...counts, ...(n.opensTo ? [`opens ${n.opensTo}`] : [])].join(', ');
   return `<g class="node classifier" data-id="${esc(n.id)}" data-shape="classifier" tabindex="-1" role="img" aria-label="${esc(name)}">${out.join('')}</g>`;
 }
 const CLASSIFIER = { // UML's class box (1.5): a rectangle, its name compartment, then one compartment per member kind (classParts)

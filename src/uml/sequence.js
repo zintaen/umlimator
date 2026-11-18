@@ -420,6 +420,7 @@ function sqRename(model, V, id, text) {
 }
 
 const SEQ_TYPE = registerDiagramType('uml.sequence', {
+  untyped: 'Lifeline', word: () => 'Lifeline', // every element it shows is a lifeline, as named, whatever its type (audit 30)
   title: 'sequence diagram',
   // the kinds of line it draws: any other a view lists is not drawn, which validate() says (src/core/model.js, audit 28)
   drawsOnly: ['uml.Message'],

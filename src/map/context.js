@@ -68,6 +68,10 @@ function mapContext(model, opts = {}) {
   const objs = (o, k) => { if (o && Array.isArray(o[k])) o[k] = o[k].filter(x => x && typeof x === 'object'); };
   lists(D, ['nodes', 'edges', 'views']); ['nodes', 'edges', 'views'].forEach(k => objs(D, k)); D.views = D.views || [];
   D.views.forEach(v => ['nodes', 'containers'].forEach(k => objs(v, k)));
+  // a number is drawn as written (validate()'s label check): as text, so every later `label || id` reads 0 as a label, not as none (audit 30)
+  const written = x => { if (x && typeof x === 'object' && (typeof x.label === 'number' || typeof x.label === 'bigint')) x.label = String(x.label); };
+  [D.nodes, D.edges].forEach(l => Array.isArray(l) && l.forEach(written));
+  D.views.forEach(v => { [v.nodes, v.edges, v.containers, v.lanes].forEach(l => Array.isArray(l) && l.forEach(written)); if (v.nodeOverrides && typeof v.nodeOverrides === 'object') Object.values(v.nodeOverrides).forEach(written); });
   edgeIds(D.edges); D.views.forEach(v => { if (Array.isArray(v.edges)) edgeIds(v.edges); });
   const views = D.views.filter(v => v.id);
   const nodes = [...(D.nodes || []), ...views.flatMap(v => v.nodes || [])];

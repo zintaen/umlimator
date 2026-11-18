@@ -381,3 +381,13 @@ test('audit 28: a listed line of another kind is keyed as it is drawn (a depende
   assert.deepEqual(g.legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Binding', 'Dependency']);
   assert.deepEqual(layout({ ...m, views: [{ ...m.views[0], edges: ['o'] }] }, 'v').legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Binding']);
 });
+
+test('audit 30: binding-types reads a generalization a block definition view draws as its own line, as one of the model', () => {
+  const ok = structuredClone(M19); ok.edges.push(bind('vv', 'ebike.ecoRange', 'ebike.boostRange'));
+  ok.nodes.push({ id: 'distance', type: 'sysml.ValueType', label: 'Distance' }, { id: 'length', type: 'sysml.ValueType', label: 'Length' });
+  mem(ok, 'ebike.boostRange').props.valueType = 'Length'; mem(ok, 'ebike.ecoRange').props.valueType = 'Distance';
+  const before = validate(ok).filter(p => p.rule === 'binding-types' && p.ids[0] === 'vv').length;
+  assert.equal(before, 1, 'Length and Distance unrelated: vv warned');
+  ok.views.push({ id: 'bdd', diagram: 'sysml.block-definition', nodeIds: ['distance', 'length'], edges: [{ id: 'g', type: 'uml.Generalization', from: 'length', to: 'distance' }] });
+  assert.deepEqual(validate(ok).filter(p => p.rule === 'binding-types' && p.ids[0] === 'vv'), [], 'Length is a kind of Distance, in the block definition view');
+});

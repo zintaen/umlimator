@@ -584,3 +584,16 @@ test('audit 27: c4-steps says each end a step lacks, joined by "and", as both ar
   assert.ok(layout(d, PV).legend.some(s => /<b>Line<\/b>/.test(s)), 'keyed');
   assert.ok(!layout(C4, PV).legend.some(s => /<b>Line<\/b>/.test(s)));
 });
+
+test('audit 30: a dynamic view\'s describe() header counts the comment links it draws, as the static views\' headers do', () => {
+  const P = (id, type, label, more = {}) => ({ id, type, label, props: { description: 'd', technology: 't' }, ...more });
+  const m = { schemaVersion: 2, nodes: [P('u', 'c4.Person', 'Shopper'), P('s', 'c4.SoftwareSystem', 'Shop'), P('w', 'c4.Container', 'Web', { parent: 's' }), { id: 'n', type: 'uml.Comment', label: 'Peak load at noon' }],
+    edges: [{ id: 'r1', type: 'c4.Relationship', from: 'u', to: 'w', label: 'Browses' }, { id: 'cl', type: 'uml.CommentLink', from: 'n', to: 'w' }],
+    views: [{ id: 'dyn', diagram: 'c4.dynamic', title: 'Browsing', subject: 's', nodeIds: ['u', 'w', 'n'], edges: ['r1', 'cl'] }] };
+  assert.deepEqual(layout(m, 'dyn').edges.map(e => e.id).sort(), ['cl', 'r1'], 'both drawn');
+  const d = describe(m, 'dyn').split('\n');
+  assert.equal(d[0], 'Browsing: a C4 dynamic diagram of 3 elements, 1 step and 1 comment link.');
+  assert.ok(d.includes('Comment link from Peak load at noon to Web.'), d.join('\n'));
+  m.views[0].edges = ['r1'];
+  assert.equal(describe(m, 'dyn').split('\n')[0], 'Browsing: a C4 dynamic diagram of 3 elements and 1 step.', 'with none, as before');
+});

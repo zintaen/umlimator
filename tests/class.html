@@ -71,7 +71,7 @@ try {
       && pick('.edge-g[data-from="order"][data-to="money"] path.edge').getAttribute('stroke-dasharray') === '6 4' && !pick('.edge-g[data-from="card-payment"] path.edge').getAttribute('stroke-dasharray'), [...kinds]);
     check(`${tag}: elements and lines have names a screen reader reads`,
       pick('.node[data-id="order"]').getAttribute('aria-label') === 'Class Order (entity), 5 attributes, 3 operations'
-      && pick('.node[data-id="status"]').getAttribute('aria-label') === 'Enumeration OrderStatus (enumeration), 4 literals'
+      && pick('.node[data-id="status"]').getAttribute('aria-label') === 'Enumeration OrderStatus, 4 literals'
       && pick('.node[data-id="note-total"]').getAttribute('aria-label').startsWith('Comment: total is the sum')
       && pick('.edge-g[data-from="order"][data-to="line"] title').textContent === 'Association from Order (1) to OrderLine (lines, 1..*)', pick('.edge-g[data-from="order"][data-to="line"] title').textContent);
     const legend = [...sr.querySelectorAll('.m-legend b')].map(b => b.textContent);

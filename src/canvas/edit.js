@@ -1,4 +1,4 @@
-import { TYPED, diagramOf, heldBy } from '../core/registry.js';
+import { TYPED, diagramOf, drawnKind, heldBy } from '../core/registry.js';
 import { copyOf, usedIds } from '../core/model.js';
 import { esc } from '../core/text.js';
 import { arrOf, validate } from '../map/validate.js';
@@ -178,7 +178,8 @@ function typedEditor(api) {
   function props() {
     const at = elementsOf(model()), id = selId(at), e = id && at.get(id);
     if (!e) return '<h3>Properties</h3><p class="um-note">Select a card or a line</p>';
-    const x = e.x, P = isRec(x.props) ? x.props : {}, F = a => arrOf(a).filter(f => isRec(f) && typeof f.key === 'string'), own = F(isRec(def().props) ? def().props[x.type] : null), schema = [...own, ...F(TYPED.fields && TYPED.fields(model(), x))];
+    // the fields and owners of the kind the view draws it as: an element of no type a class view draws as a class has a class's (audit 30)
+    const x = e.x, k = e.kind === 'node' ? drawnKind(def(), x) : x.type, P = isRec(x.props) ? x.props : {}, F = a => arrOf(a).filter(f => isRec(f) && typeof f.key === 'string'), own = F(isRec(def().props) && typeof k === 'string' && Object.hasOwn(def().props, k) ? def().props[k] : null), schema = [...own, ...F(TYPED.fields && TYPED.fields(model(), x))];
     const off = can('rename') ? '' : ' disabled'; // the editable flags: a field the host does not offer is shown, to read
     // a value of more than one line in a <textarea>, which keeps its breaks (an <input> drops them, and Enter then wrote the
     // lines joined, audit 20); the newline after its tag is the one the parser drops, so a value's own first one stays
@@ -192,7 +193,7 @@ function typedEditor(api) {
       else if (f.kind === 'enum') h += `<label>${esc(name)}<select data-f="p:${esc(f.key)}"${key}${off}>${['', ...arrOf(f.options)].map(o => `<option value="${esc(o)}"${o === v ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select></label>`;
       else h += text('p:' + f.key, f.kind === 'list' ? arrOf(v).join(', ') : v ?? '', name, key + (f.kind === 'list' ? ' data-list' : '')); });
     // the Owner field (notes/stage-2.md §8): the owners the type offers, less the element and what it holds, and none
-    const O = def().owners, os = e.kind !== 'member' && typeof O === 'function' ? O(model(), x, view()) : null, under = id => { for (let k = 0, p = id; p != null && k < 64; k++, p = (at.get(p) || { x: {} }).x.parent) if (p === x.id) return true; return false; };
+    const O = def().owners, os = e.kind !== 'member' && typeof O === 'function' ? O(model(), k === x.type ? x : { ...x, type: k }, view()) : null, under = id => { for (let k = 0, p = id; p != null && k < 64; k++, p = (at.get(p) || { x: {} }).x.parent) if (p === x.id) return true; return false; };
     // its owner is offered too when the type does not offer it (a class in a class), so the field says it and "none" is a change
     const offer = Array.isArray(os) && [{ id: '', label: 'none' }, ...os.filter(o => isRec(o) && o.id != null && !under(o.id))];
     if (offer && x.parent != null && !offer.some(o => o.id === x.parent)) offer.push({ id: x.parent, label: (at.get(x.parent) || { x: {} }).x.label });

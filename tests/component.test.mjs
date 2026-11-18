@@ -514,3 +514,32 @@ test('audit 29: an element of no type, drawn as a component holding its ports, i
   const e = structuredClone(m); e.nodes[0].type = '';
   assert.equal(layout(e, 'v').nodes.find(n => n.id === 'a').shape, 'component');
 });
+
+test('audit 30: an element of no type, which the component view draws as a component, is one to the manifest rule, the palette\'s Port, the member rows and member.holds', () => {
+  const T = diagramOf({ diagram: 'uml.component' });
+  for (const type of [undefined, '']) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'shop', label: 'Shop', ...(type === undefined ? {} : { type }), members: [{ id: 'p1', type: 'uml.Port', label: 'api' }] }, { id: 'jar', type: 'uml.Artifact', label: 'shop.jar' }],
+      edges: [{ id: 'mf', type: 'uml.Manifestation', from: 'jar', to: 'shop' }], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['shop', 'jar'] }] };
+    const v = m.views[0], q = JSON.stringify(type);
+    assert.deepEqual(validate(m).filter(p => p.rule === 'manifest-ends'), [], `${q}: a manifestation to it is drawn, so no warning`);
+    assert.deepEqual(T.edits.add(m, v, { type: 'uml.Port' }, 'web', { sel: ['shop'] }), [{ op: 'add', element: { id: 'port1', type: 'uml.Port', label: 'web' }, owner: 'shop' }], q);
+    assert.deepEqual(T.edits.member(m, v, 'shop', null, 'web'), [{ op: 'add', element: { id: 'port1', type: 'uml.Port', label: 'web' }, owner: 'shop' }], q);
+    assert.equal(T.member.holds(m.nodes[0]), true, q);
+  }
+  // a class is still no component to the manifest rule: drawn as a classifier
+  const c = { schemaVersion: 2, nodes: [{ id: 'k', type: 'uml.Class', label: 'K' }, { id: 'jar', type: 'uml.Artifact', label: 'j' }], edges: [{ id: 'mf', type: 'uml.Manifestation', from: 'jar', to: 'k' }], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['k', 'jar'] }] };
+  assert.equal(validate(c).filter(p => p.rule === 'manifest-ends').length, 1);
+});
+
+test('audit 30: the PDF\'s Members column of a class lists the ports the view draws on its border, as a component\'s does', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'c', type: 'uml.Class', label: 'Order', members: [{ id: 'p', type: 'uml.Port', label: 'api', props: { valueType: 'Rest' } }, { id: 'op', type: 'uml.Operation', label: 'pay' }] },
+    { id: 'k', type: 'uml.Component', label: 'Shop', members: [{ id: 'q', type: 'uml.Port', label: 'api', props: { valueType: 'Rest' } }] }, { id: 'i', type: 'uml.Interface', label: 'IPay' }],
+    edges: [{ id: 'r', type: 'uml.InterfaceRealization', from: 'p', to: 'i' }], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['c', 'k', 'i'] }] };
+  assert.equal(layout(m, 'v').byId.p.aria, 'Port api : Rest of Order, provides IPay', 'the view draws the class\'s port');
+  const c = mapContext(m), rows = tablesOf(c, c.V.v, c.buildGeo('v'))[0].rows.map(r => r.split('<td>').slice(1).map(x => x.replace(/<[^>]+>/g, '').trim()));
+  assert.deepEqual(rows.find(r => r[0] === 'Order'), ['Order', 'Class', 'api : Rest, provides IPay'], 'its port, not the operation the box does not draw');
+  assert.deepEqual(rows.find(r => r[0] === 'Shop'), ['Shop', 'Component', 'api : Rest']);
+  // a class with no ports: an empty cell, as before
+  const n = structuredClone(m); n.nodes[0].members = [n.nodes[0].members[1]]; n.edges = [];
+  assert.deepEqual(T.rows(n, n.views[0], 'c'), []);
+});

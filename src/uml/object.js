@@ -1,11 +1,11 @@
 import { jsonText } from '../core/model.js';
-import { registerDiagramType } from '../core/registry.js';
+import { aWord, kindWord, registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { RULES, classProblems, drawnLines, lineIn, lineItem, lineVerb, printMember } from './class.js';
-import { OWN_BOXES, OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
+import { OWN_BOXES, OWNER_RULES, holdsLine, modelLines, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 
 /* ---------- the object diagram, uml.object (work package 2.3, notes/stage-2.md §9) ----------
    Instance specifications drawn with the classifier shape, the head underlined, `name : Classifier` (or `: Classifier`
@@ -59,7 +59,7 @@ function classifierBoxes(n) {
   const c = name => ({ name, members: OB_ARR(n.members).filter(m => OB_OBJ(m) && m.type === OB_KINDS[name]) });
   return n.type === 'uml.Enumeration' ? [c('literals'), ...[c('attributes'), c('operations')].filter(x => x.members.length)] : [c('attributes'), c('operations')];
 }
-const obWord = t => String(t ?? '').split('.').pop().replace(/([a-z])([A-Z])/g, (_, a, b) => a + ' ' + b.toLowerCase());
+const obWord = kindWord; // one rule for every type (registry.js, audit 30)
 // an element's accessible name, as the classifier shape writes it: "Instance specification order1042 : Order, 2 slots"
 function obNodeName(n, pic) {
   if (n.type === 'uml.Comment') return 'Comment: ' + String(n.label ?? n.id);
@@ -111,11 +111,13 @@ const OBJECT_RULES = {
 function objectProblems(model, view) {
   const out = [], nodes = OB_ARR(model.nodes), say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const at = new Map(); nodes.forEach(n => { if (OB_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
+  const shown = new Set(OB_OBJ(view) ? OB_ARR(view.nodeIds) : []);
   const q = id => JSON.stringify(String((at.get(id) || {}).label ?? id)), isInst = id => at.has(id) && isInstance(at.get(id)); // as drawn: an element of no UML kind is an instance (audit 28)
   // the model's classifiers by name and by qualified name; a classifier's attributes, with its generals' (a cycle is walked once)
   const full = ownersOn(model, null).full, named = new Map(), add = (k, id) => named.set(k, [...(named.get(k) || []), id]);
   at.forEach(n => { if (OB_CLASSIFIERS.includes(n.type)) { add(String(n.label ?? n.id), n.id); const f = full(n.id); if (f !== String(n.label ?? n.id)) add(f, n.id); } });
-  const up = new Map(); OB_ARR(model.edges).forEach(e => { if (OB_OBJ(e) && e.type === 'uml.Generalization') up.set(e.from, [...(up.get(e.from) || []), e.to]); });
+  // a generalization a class view draws as its own line is one of the model all the same (owners.js modelLines, audit 30)
+  const up = new Map(); modelLines(model).forEach(e => { if (OB_OBJ(e) && e.type === 'uml.Generalization') up.set(e.from, [...(up.get(e.from) || []), e.to]); });
   const attrs = id => { const seen = new Set(), names = new Set(); // a stack, not recursion: a chain of any length
     for (const q = [id]; q.length;) { const c = q.pop(); if (seen.has(c) || !at.has(c)) continue; seen.add(c);
       OB_ARR(at.get(c).members).forEach(m => { if (OB_OBJ(m) && m.type === 'uml.Property') names.add(String(m.label)); }); q.push(...(up.get(c) || [])); }
@@ -123,8 +125,9 @@ function objectProblems(model, view) {
   nodes.forEach((n, i) => { if (!OB_OBJ(n)) return; const ms = OB_ARR(n.members);
     if (n.type === 'uml.Slot') say('error', 'slot-kinds', `nodes[${i}]`, [n.id], `slot ${q(n.id)} is a node: a slot belongs to an instance`);
     // an instance specification holds slots only; a slot is in one, or in an element of no UML kind, drawn as one with its slots (audit 28)
-    ms.forEach((m, j) => { if (!OB_OBJ(m)) return; const inst = n.type === 'uml.InstanceSpecification';
-      if (inst ? m.type !== 'uml.Slot' : m.type === 'uml.Slot' && !isInstance(n)) say('error', 'slot-kinds', `nodes[${i}].members[${j}]`, [n.id, m.id], inst ? `${q(n.id)} holds ${m.id}, a ${String(m.type).split('.').pop()}: an instance holds slots only` : `slot "${m.label ?? m.id}" is in ${q(n.id)}, which is not an instance`); });
+    // and one of no UML kind the view shows, as drawn: its slots only (audit 30)
+    ms.forEach((m, j) => { if (!OB_OBJ(m)) return; const inst = n.type === 'uml.InstanceSpecification' || isInstance(n) && shown.has(n.id);
+      if (inst ? m.type !== 'uml.Slot' : m.type === 'uml.Slot' && !isInstance(n)) say('error', 'slot-kinds', `nodes[${i}].members[${j}]`, [n.id, m.id], inst ? `${q(n.id)} holds ${m.id}, ${aWord(kindWord(m.type) || 'element of no type')}: an instance holds slots only` : `slot "${m.label ?? m.id}" is in ${q(n.id)}, which is not an instance`); });
     const c = OB_PROPS(n).classifier, hits = isInstance(n) && OB_HAS(c) ? [...new Set(named.get(String(c)) || [])] : [];
     if (hits.length !== 1) return; // no classifier, or one the model does not hold once: types are text (M8)
     const has = attrs(hits[0]);
@@ -170,6 +173,8 @@ function obRename(model, view, id, text) {
 const OB_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
 const obRole = w => ({ key: `ends.${w}.role`, path: ['ends', w, 'role'], label: `${w === 'from' ? 'From' : 'To'} role`, kind: 'text' });
 const OBJECT_TYPE = registerDiagramType('uml.object', {
+  untyped: 'Instance specification', // an element of no type (or ""): an instance, as named (audit 30)
+  untypedAs: x => (isInstance(x) ? 'uml.InstanceSpecification' : null), // and of no UML kind: edited as an instance, its Classifier field (audit 30)
   title: 'object diagram',
   elements: [{ type: 'uml.InstanceSpecification', label: 'Instance' }, { type: 'uml.Comment', label: 'Comment' }],
   lines: [{ type: 'uml.Link', label: 'Link' }, { type: 'uml.CommentLink', label: 'Comment link' }],
@@ -185,6 +190,9 @@ const OBJECT_TYPE = registerDiagramType('uml.object', {
   describe: objectDescribe,
   // the PDF's Kind: an element of no UML kind is drawn and named an instance specification (audit 28); null: the type's word
   word: (model, id) => { const x = OB_ARR(model && model.nodes).find(n => OB_OBJ(n) && n.id === id); return x && isInstance(x) ? 'Instance specification' : null; },
+  // the PDF's Members: what the box draws, an instance's slots, a classifier's compartments (audit 30); null: its members
+  rows: (model, view, id) => { const x = OB_ARR(model && model.nodes).find(n => OB_OBJ(n) && n.id === id); if (!x || x.type === 'uml.Comment' || OWN_BOXES.includes(x.type)) return null;
+    return isInstance(x) ? slotsOf(x).map(printSlot) : classifierBoxes(x).flatMap(c => c.members.map(printMember)); },
   // a link's text as drawn, for the PDF's Lines table: its «stereotypes» and its name, else its association's (audit 21)
   text: (model, view, id) => { const e = lineIn(model, view, id); return e && e.type === 'uml.Link' ? linkText(e) || null : null; },
   edits: { rename: obRename },
