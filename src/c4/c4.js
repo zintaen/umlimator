@@ -116,6 +116,9 @@ function c4Lines(model, view, pic) {
     implied.get(k).of.push(r); });
   return { own, implied: [...implied.values()] };
 }
+// the lines drawn as diff() compares them (audit 41): a relationship by its id, an implied line by its ends and what it stands for,
+// so a hidden element moved to another owner, which moves the implied line, lists the view
+const c4Keys = ({ own, implied }) => [...own.map(e => JSON.stringify(['own', e.id])), ...implied.map(l => JSON.stringify(['implied', l.from, l.to, l.of.map(r => r.id)]))];
 // rename: F2 on a relationship holds its text, "description [technology]": the technology when unchanged is not the description;
 // what is left is set as its label. Anything else: null, the canvas's own
 function c4Rename(model, view, id, text) {
@@ -357,6 +360,7 @@ const C4_DEF = {
   // the model lines the view draws (validate()'s stories read it, audit 38): its own, and those an implied line stands for; not
   // one to a boundary it opens, which no line ends on
   drawn: (model, view) => { const { own, implied } = c4Lines(model, view, c4Pic(model, view)); return [...own.map(e => e.id), ...implied.flatMap(l => l.of.map(r => r.id))]; },
+  drawnKeys: (model, view) => c4Keys(c4Lines(model, view, c4Pic(model, view))), // diff()'s: an implied line by its ends too (audit 41)
   validate: c4Problems,
   rules: C4_RULES,
   describe: c4Describe,
@@ -369,4 +373,4 @@ const C4_DEF = {
 };
 const C4_TYPES = Object.keys(C4_KIND).map(name => registerDiagramType(name, C4_DEF));
 
-export { c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, C4_TYPES, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, C4_SHAPES, c4Index, c4Pic, c4Lift, c4Lines, c4Geo, c4Problems, c4Describe, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Zoom, c4Key, c4Add, c4Owners, c4Rename };
+export { c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, C4_TYPES, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, C4_SHAPES, c4Index, c4Pic, c4Lift, c4Lines, c4Keys, c4Geo, c4Problems, c4Describe, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Zoom, c4Key, c4Add, c4Owners, c4Rename };
