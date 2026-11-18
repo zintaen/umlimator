@@ -82,7 +82,9 @@ test('the shapes: junction, history and terminate; a state\'s compartment, its r
 const PINNED = { // a pseudostate is named by its id (audit 5)
   // audit 27: payment-outcome's line into Fulfilling went in at its top, across the whole box and back to its left border from
   // inside; now it keeps out of the box it ends on, into the left border from outside, and crosses prepaid's line there instead
-  right: ['view order-life: edges payment-outcome→Fulfilling and prepaid→Picking cross', 'view order-life: edges payment-outcome→Cancelled and Capturing payment→Cancelled cross'],
+  // audit 36: the payment region grows to hold the retry loop under its header (its top run ran through the header room), and
+  // the extra room takes payment-outcome's line into Fulfilling off prepaid's
+  right: ['view order-life: edges payment-outcome→Cancelled and Capturing payment→Cancelled cross'],
   // audit 26: the payment region holds the retry loop and its label (its label no longer on two lines), and one more crossing
   down: ['view order-life: edges payment-outcome→Fulfilling and payment-outcome→Cancelled cross', 'view order-life: edges payment-outcome→Fulfilling and prepaid→Payment captured cross', 'view order-life: edges payment-outcome→Cancelled and prepaid→Payment captured cross', 'view order-life: edges payment-outcome→Cancelled and Payment captured→ready cross',
     'view order-life: edges payment-outcome→Cancelled and Fulfilling→Cancelled cross', 'view order-life: edges Capturing payment→Cancelled and Capturing payment→Payment captured cross',
@@ -682,4 +684,25 @@ test('audit 31: a message names a region as region "Parcel", not its name and id
   const u = structuredClone(m), f = u.nodes.find(n => n.id === 'fulfilling'); f.members.find(r => /parcel/.test(r.id)).label = undefined;
   const r = f.members.find(x => /parcel/.test(x.id)).id;
   assert.ok(validate(u).map(p => p.message).some(s => s.includes(`in region ${r} and`)), 'a region of no name by its id');
+});
+
+// audit 36: the 32 px a box keeps from a card outside it held one of the card's loops, not two: the second ran inside the
+// composite state above it, 2 px from its border. The box holding the card let a third run out through its right side
+test('a state with two, three or four self-transitions keeps its loops out of the composite state above it and inside the one that holds it, right and down (audit 36)', () => {
+  const N = (id, label, parent) => ({ id, type: 'uml.State', label, ...(parent ? { parent } : {}) }), Tr = (id, from, to, label) => ({ id, type: 'uml.Transition', from, to, ...(label ? { label } : {}) });
+  const inside = (p, b) => p[0] > b.x && p[0] < b.x + b.w && p[1] > b.y && p[1] < b.y + b.h;
+  for (const k of [1, 2, 3, 4]) for (const direction of ['right', 'down']) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'init', type: 'uml.Pseudostate', props: { kind: 'initial' } }, N('s1', 'Working'), N('s3', 'Idle', 's1'), N('s5', 'Busy', 's1'), N('s6', 'Inner', 's5'), N('s7', 'Done')],
+      edges: [Tr('t0', 'init', 's1'), ...['tick', 'retry', 'again', 'more'].slice(0, k).map((l, i) => Tr('l' + i, 's3', 's3', l)), Tr('t5', 's6', 's7', 'finish')],
+      views: [{ id: 'v', diagram: 'uml.state-machine', direction, nodeIds: ['init', 's1', 's3', 's5', 's6', 's7'] }] };
+    const what = `${k} loops, ${direction}`;
+    assert.deepEqual(check(m, 'v').map(p => p.message), [], what);
+    const g = layout(m, 'v'), busy = g.families.find(f => f.id === 's5'), working = g.families.find(f => f.id === 's1');
+    for (const e of g.edges.filter(x => x.from === 's3' && x.to === 's3')) {
+      // every corner and the middle of every run: clear of Busy by 8 px, and inside Working
+      const pts = e.pts.flatMap((p, j) => (j ? [p, [(p[0] + e.pts[j - 1][0]) / 2, (p[1] + e.pts[j - 1][1]) / 2]] : [p]));
+      assert.ok(pts.every(p => !inside(p, { x: busy.x - 8, y: busy.y - 8, w: busy.w + 16, h: busy.h + 16 })), `${what}: ${e.id} ${JSON.stringify(e.pts)} keeps off Busy ${JSON.stringify([busy.x, busy.y, busy.w, busy.h])}`);
+      assert.ok(pts.every(p => inside(p, working)), `${what}: ${e.id} stays in Working`);
+    }
+  }
 });

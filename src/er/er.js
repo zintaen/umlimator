@@ -48,11 +48,16 @@ function erTokens(s) { // split at spaces outside brackets and "quotes": "amount
   return depth || q ? null : out;
 }
 // a column named by table.column, its entity's label and its own, when exactly one column has them; else by its id. Labels
-// first: an id (`<entity id>.<label>`, erNewId) can read as another column's labels once a table is renamed
+// first: an id (`<entity id>.<label>`, erNewId) can read as another column's labels once a table is renamed. A label may hold
+// a dot (sales.order, a schema's table): the pair is matched whole, so any dot can be the split, and must still name one
+// column; or the table "in quotes", \" and \\ inside (audit 36). Each column's labels compared once: no split tried in turn
+const erUnq = s => { const u = /^"((?:[^"\\]|\\.)*)"$/.exec(s); return u ? u[1].replace(/\\(.)/g, '$1') : s; };
 function erRef(t, I, was) {
   if (t === was && I.col.has(t)) return t; // the id the row printed for its current target: kept, whatever labels it reads as
-  const k = t.indexOf('.'), hit = k > 0 ? [...I.col].filter(([, { c, e }]) => erName(e) === t.slice(0, k) && erName(c) === t.slice(k + 1)) : [];
-  return hit.length === 1 ? hit[0][0] : I.col.has(t) ? t : null;
+  const q = /^("(?:[^"\\]|\\.)*")\.(.+)$/.exec(t), qa = q && erUnq(q[1]), qb = q && erUnq(q[2]), hit = [];
+  I.col.forEach(({ c, e }, id) => { const a = erName(e), b = erName(c);
+    if (q ? a === qa && b === qb : a !== '' && t.length === a.length + 1 + b.length && t.startsWith(a) && t[a.length] === '.' && t.endsWith(b)) hit.push(id); });
+  return hit.length === 1 ? hit[0] : I.col.has(t) ? t : null;
 }
 // a row's name: its first word, or "in quotes" when it has a space, a quote or a bracket, \" and \\ inside (printColumn writes it so)
 function parseColumn(text, I, was) {
@@ -73,7 +78,7 @@ function parseColumn(text, I, was) {
 }
 function printColumn(c, I = erIndex(ER_SEEN.get(c))) {
   const p = erProps(c), r = ER_HAS(p.references) && I.col.get(p.references), pair = r && `${erName(r.e)}.${erName(r.c)}`;
-  const ref = r && !/[\s.]/.test(erName(r.e) + erName(r.c)) && erRef(pair, I) === p.references ? pair : p.references, q = x => (/^$|[\s"()[\]{}<>]/.test(x) || erFlag(x) ? `"${x.replace(/["\\]/g, '\\$&')}"` : x);
+  const ref = r && !/\s/.test(pair) && erRef(pair, I) === p.references ? pair : p.references, q = x => (/^$|[\s"()[\]{}<>]/.test(x) || erFlag(x) ? `"${x.replace(/["\\]/g, '\\$&')}"` : x);
   return [q(erName(c)), ER_HAS(p.dataType) && String(p.dataType), p.primaryKey === true && 'PK', (p.foreignKey === true || ER_HAS(ref)) && 'FK', ER_HAS(ref) && q(String(ref)), p.unique === true && 'UK', p.nullable === true && 'NULL'].filter(x => typeof x === 'string' && x !== '').join(' ');
 }
 

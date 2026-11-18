@@ -1,7 +1,7 @@
 import { kindWord, registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
-import { CLASSIFIERS, compartmentsOf, CLASS_DEF, CLASS_LINES, CLASS_TYPE, RULES, multBounds, printMember, classProblems, drawnLines, lineLabel, lineName, lineRename, typeGeo } from './class.js';
+import { CLASSIFIERS, closesCycle, compartmentsOf, CLASS_DEF, CLASS_LINES, CLASS_TYPE, RULES, multBounds, printMember, classProblems, drawnLines, lineLabel, lineName, lineRename, typeGeo } from './class.js';
 import { OWN_BOXES, OWNER_RULES, boxHead, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder, viewLines, modelLines } from './owners.js';
 import { STY_RULES, UML_META, appliedOf, metaKnown, styKey } from './stereotypes.js';
 import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
@@ -167,7 +167,7 @@ function prConnect(model, view, from, to, at, line) {
   if (t === 'uml.Extension' && (I.ty(from) !== 'uml.Stereotype' || I.ty(to) !== 'uml.MetaclassReference')) return { error: 'An extension runs from a stereotype to a metaclass' };
   if (t === 'uml.ProfileApplication' && (!OWN_BOXES.includes(I.ty(from)) || I.ty(to) !== 'uml.Profile' || from === to)) return { error: `A profile application runs from a package to a profile${from === to ? ' other than itself' : ''}` };
   if (t === 'uml.Generalization' && (I.ty(from) !== 'uml.Stereotype' || I.ty(to) !== 'uml.Stereotype')) return { error: 'A generalization here joins two stereotypes' };
-  return null;
+  return t === 'uml.Generalization' ? closesCycle(model, view, t, from, to) : null; // generalization-cycle (audit 36)
 }
 
 /* ---- the type ---- */
