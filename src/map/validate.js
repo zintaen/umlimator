@@ -1,5 +1,6 @@
 import { jsonText, labelOr, labelProblem, lineNames, listOf, typedProblems, unreadable, versionProblem } from '../core/model.js';
 import { TYPED, diagramOf } from '../core/registry.js';
+import { held } from '../core/warn.js';
 import { SHAPE_NAMES, shapeOf } from '../draw/shapes.js';
 import { boxHolds, mapContext } from './context.js';
 import { ALIAS, KIND, MAPK, hasKey, kindOf } from './kinds.js';
@@ -156,7 +157,10 @@ export function validate(model) {
   // stories (#69): each step's view, and the cards, lines and tour it names there
   if (m.stories != null && !Array.isArray(m.stories)) err('stories', 'stories is a list of stories');
   const modelLine = new Map(arr(m.edges).filter(e => e && typeof e === 'object' && typeof e.id === 'string').map(e => [e.id, e])), cardIds = new Set(arr(m.nodes).filter(n => n && typeof n === 'object').map(n => n.id));
-  const drewOf = new Map(), posLines = lineNames(m), sids = new Set(), lines = new Set([...lineIds, ...views.flatMap(v => arr(v.edges).filter(e => e && e.id != null).map(e => e.id))]);
+  // a line written in a view is that view's (audit 39: a step on another view named it, and selected nothing there)
+  const drewOf = new Map(), posLines = lineNames(m), sids = new Set(), inline = new Map();
+  views.forEach(v => arr(v.edges).forEach(e => { if (e && e.id != null && !inline.has(e.id)) inline.set(e.id, v.id); }));
+  let ctx; // the model laid out, for what a typed view draws when its type does not say (audit 39), made once and only if asked
   arr(m.stories).forEach((s, i) => {
     const at = `stories[${i}]`;
     if (s && typeof s === 'object') titled(s, at);
@@ -167,9 +171,13 @@ export function validate(model) {
       const p = `${at}.steps[${j}]`, v = views.find(x => x.id === (st && st.view));
       if (!v) return err(p + '.view', `"${st && st.view}" is not a view`);
       const mine = new Set(arr(v.nodeIds)), listed = Array.isArray(v.edges), boxes = new Set(arr(v.containers).map(c => c && c.id));
-      // the model lines a typed view draws, when its type says (its drawn hook): a DFD level leaves out its parent level's flows,
-      // a C4 view a relationship to a boundary it opens (audit 38). null: the type does not say, or could not read the model
-      const drawn = () => { if (!drewOf.has(v)) { const T = typedView(v) && diagramOf(v); let d = null; if (T && typeof T.drawn === 'function') try { d = new Set(arr(T.drawn(m, v))); } catch { d = null; } drewOf.set(v, d); } return drewOf.get(v); };
+      // the model lines a typed view draws: its type's drawn hook says (a DFD level leaves out its parent level's flows, a C4 view a
+      // relationship to a boundary it opens, audit 38), else its picture does, the lines a step can select there (audit 39: a class,
+      // ER, flowchart, BPMN, cloud or mindmap view draws only its own kinds). null: a map, or a model that could not be laid out
+      const drawn = () => { if (!drewOf.has(v)) { const T = typedView(v) && diagramOf(v); let d = null;
+        if (T) try { d = new Set(typeof T.drawn === 'function' ? arr(T.drawn(m, v))
+          : held(() => (ctx ||= mapContext(m)).buildGeo(v.id))[0].edges.flatMap(e => (e.all || [e]).map(x => x._id))); } catch { d = null; }
+        drewOf.set(v, d); } return drewOf.get(v); };
       const why = (x, seen) => { // why a model line x is no line of the view, or undefined
         if (typeof x !== 'string' || mine.has(x) || !modelLine.has(x) || seen.has(x) || arr(v.edges).some(e => e && e.id === x)) return undefined; seen.add(x);
         const l = modelLine.get(x), card = [l.from, l.to].find(k => cardIds.has(k) && !mine.has(k) && !boxes.has(k));
@@ -183,7 +191,8 @@ export function validate(model) {
         // its edges list leaves out, or one to a line it does not draw (audit 37)
         const off = why(x, new Set());
         if (off != null) err(q, `"${x}" is no line of view "${v.id}": ${off}`);
-        else if (typeof x === 'string' && !mine.has(x) && !lines.has(x)) { if (!x.includes('->')) err(q, `"${x}" is neither one of view "${v.id}"'s cards nor a line`); else if (/#\d+$/.test(x) && !posLines.get(listOf(m, m.views.indexOf(v))).has(x)) warn(q, `"${x}" names no line: the step shows nothing for it`); }
+        else if (typeof x === 'string' && !mine.has(x) && !lineIds.has(x) && inline.has(x) && !arr(v.edges).some(e => e && e.id === x)) err(q, `"${x}" is no line of view "${v.id}": it is written in view "${inline.get(x)}"`);
+        else if (typeof x === 'string' && !mine.has(x) && !lineIds.has(x) && !inline.has(x)) { if (!x.includes('->')) err(q, `"${x}" is neither one of view "${v.id}"'s cards nor a line`); else if (/#\d+$/.test(x) && !posLines.get(listOf(m, m.views.indexOf(v))).has(x)) warn(q, `"${x}" names no line: the step shows nothing for it`); }
         else if (x && typeof x === 'object') [x.type !== 'container' && x.id, x.node, ...arr(x.ids)].forEach(y => typeof y === 'string' && named(y, q)); }; // a Ref
       named(st.select, p + '.select');
       arr(st.highlight).forEach((x, k) => named(x, `${p}.highlight[${k}]`));

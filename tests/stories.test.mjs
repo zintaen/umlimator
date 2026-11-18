@@ -37,3 +37,51 @@ test('validate() names what a story gets wrong, step by step: missing views, car
   assert.match(validate(m)[3].message, /"a" is neither one of view "w"'s cards nor a line/);
   assert.deepEqual(validate({ ...m, stories: {} }).map(p => p.path), ['stories']);
 });
+
+test('audit 39: a step on a line its typed view does not draw is said for every type, as layout() draws it (not DFD and C4 alone)', async () => {
+  const all = await import('../lib/umlimator-all.js'), said = m => all.validate(m).filter(p => p.path.startsWith('stories')).map(p => p.message);
+  const two = (diagram, ty, lineTy, extra = {}) => ({ schemaVersion: 2, title: 'T', nodes: [{ id: 'a', type: ty, label: 'A', ...extra }, { id: 'b', type: ty, label: 'B', ...extra }],
+    edges: [{ id: 'u', type: lineTy, from: 'a', to: 'b' }, { id: 'n', from: 'b', to: 'a' }], views: [{ id: 'v', diagram, nodeIds: ['a', 'b'] }],
+    stories: [{ id: 's', title: 'S', steps: [{ view: 'v', select: 'u', highlight: ['n'] }] }] });
+  const not = id => `"${id}" is no line of view "v": the view does not draw it`;
+  for (const m of [two('uml.class', 'uml.Class', 'uml.Usage'), two('uml.package', 'uml.Package', 'uml.Association'), two('uml.object', 'uml.InstanceSpecification', 'uml.Dependency'),
+    two('uml.profile', 'uml.Stereotype', 'uml.Usage'), two('er', 'er.Entity', 'uml.Association'), two('flowchart', 'flow.Process', 'uml.Association'),
+    two('uml.information-flow', 'uml.Class', 'uml.Association'), two('mindmap', 'mindmap.Topic', 'uml.Dependency'), two('gcp', 'gcp.Product', 'uml.Dependency', { props: { icon: 'Cloud-Run' } })]) {
+    const g = all.layout(m, 'v'), drew = new Set(g.edges.flatMap(e => (e.all || [e]).map(x => x._id)));
+    assert.ok(!drew.has('u') && !drew.has('n'), `${m.views[0].diagram} draws neither`);
+    assert.deepEqual(said(m), [not('u'), not('n')], m.views[0].diagram); }
+  // a line the view does draw is fine: the type's own kind
+  for (const m of [two('uml.class', 'uml.Class', 'uml.Association'), two('er', 'er.Entity', 'er.Relationship'), two('sysml.block-definition', 'sysml.Block', 'uml.Dependency')]) {
+    m.stories[0].steps[0].highlight = []; assert.ok(all.layout(m, 'v').edges.some(e => e._id === 'u'), m.views[0].diagram); assert.deepEqual(said(m), [], m.views[0].diagram); }
+  const bz = { schemaVersion: 2, nodes: [{ id: 'pool', type: 'bpmn.Participant', label: 'P' }, { id: 's', type: 'bpmn.StartEvent', label: 'S', parent: 'pool' }, { id: 'a', type: 'bpmn.Task', label: 'A', parent: 'pool' }, { id: 'e', type: 'bpmn.EndEvent', label: 'E', parent: 'pool' }],
+    edges: [{ id: 'f1', type: 'bpmn.SequenceFlow', from: 's', to: 'a' }, { id: 'f2', type: 'bpmn.SequenceFlow', from: 'a', to: 'e' }, { id: 'u', type: 'uml.Dependency', from: 's', to: 'e' }],
+    views: [{ id: 'v', diagram: 'bpmn', nodeIds: ['pool', 's', 'a', 'e'] }], stories: [{ id: 's', title: 'S', steps: [{ view: 'v', select: 'f1', highlight: ['u'] }] }] };
+  assert.deepEqual(said(bz), [not('u')]);
+  // every line of every typed view of the examples: said not drawn exactly when layout() does not draw it (by its id, as a step selects it)
+  for (const f of ['bookshop-atlas', 'ebike-atlas', 'bookshop-schema', 'bookshop-gcp', 'fulfil-activity']) {
+    const x = JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url), 'utf8')), ids = x.edges.map(e => e.id).filter(id => typeof id === 'string');
+    for (const v of x.views.filter(v => v.diagram && v.diagram !== 'map')) {
+      const drew = new Set(all.layout(x, v.id).edges.flatMap(e => (e.all || [e]).map(r => r._id))), y = { ...x, stories: [{ id: 's', title: 'S', steps: ids.map(id => ({ view: v.id, select: id })) }] };
+      const by = new Map(all.validate(y).filter(p => p.path.startsWith('stories[0]')).map(p => [ids[+/steps\[(\d+)\]/.exec(p.path)[1]], p.message]));
+      ids.forEach(id => { if (drew.has(id)) assert.ok(!by.has(id), `${f} ${v.id} ${id} is drawn: ${by.get(id)}`); else if (v.nodeIds.includes(x.edges.find(e => e.id === id).from) && v.nodeIds.includes(x.edges.find(e => e.id === id).to)) assert.ok(by.has(id), `${f} ${v.id} ${id} is not drawn`); }); } }
+  // hostile: a model whose view cannot be laid out, odd ids and steps throw nothing
+  const h = two('uml.class', 'uml.Class', 'uml.Usage'); h.edges.push(null, 7, { id: '__proto__', type: 'uml.Usage', from: 'a', to: 'b' }, { id: 'constructor', from: { x: 1 }, to: [] });
+  h.views[0].nodeIds.push({ toString: 1 }, 'ghost'); h.stories[0].steps.push({ view: 'v', select: '__proto__', highlight: [null, 3, 'constructor', { type: 'edge', ids: ['toString'] }] });
+  assert.ok(said(h).includes(not('__proto__')), said(h).join('\n'));
+});
+
+test('audit 39: a step names a line written in another view: no line of its own view, which does not draw it', async () => {
+  const all = await import('../lib/umlimator-all.js');
+  for (const [diagram, ty] of [[null, null], ['er', 'er.Entity'], ['dfd', 'dfd.Process'], ['flowchart', 'flow.Process'], ['c4.container', 'c4.Container']]) {
+    const t = ty ? { type: ty } : {}, m = { schemaVersion: ty ? 2 : 1, nodes: [{ id: 'x', label: 'X', ...t }, { id: 'y', label: 'Y', ...t }], edges: [],
+      views: [{ id: 'a', ...(diagram && { diagram }), nodeIds: ['x', 'y'] }, { id: 'b', ...(diagram && { diagram }), nodeIds: ['x', 'y'], edges: [{ id: 'only-in-b', from: 'x', to: 'y', ...(ty && { type: { er: 'er.Relationship', dfd: 'dfd.DataFlow', flowchart: 'flow.Flow', 'c4.container': 'c4.Relationship' }[diagram] }) }] }],
+      stories: [{ id: 's', title: 'S', steps: [{ view: 'a', select: 'only-in-b' }, { view: 'b', select: 'only-in-b' }] }] };
+    assert.ok(!all.layout(m, 'a').edges.some(e => e._id === 'only-in-b') && all.layout(m, 'b').edges.some(e => e._id === 'only-in-b'), String(diagram));
+    assert.deepEqual(all.validate(m).filter(p => p.path.startsWith('stories')).map(p => `${p.path}: ${p.message}`),
+      ['stories[0].steps[0].select: "only-in-b" is no line of view "a": it is written in view "b"'], String(diagram)); }
+  // an id an inline line and a model line share stays the model's; an id written in no view or model is still an unknown one
+  const m = { nodes: [{ id: 'x' }, { id: 'y' }], edges: [{ id: 'e', from: 'x', to: 'y' }], views: [{ id: 'a', nodeIds: ['x', 'y'] }, { id: 'b', nodeIds: ['x', 'y'], edges: [{ id: '__proto__', from: 'x', to: 'y' }] }],
+    stories: [{ id: 's', title: 'S', steps: [{ view: 'a', select: 'e', highlight: ['__proto__', 'constructor', 'toString'] }] }] };
+  assert.deepEqual(validate(m).filter(p => p.path.startsWith('stories')).map(p => p.message), ['"__proto__" is no line of view "a": it is written in view "b"',
+    '"constructor" is neither one of view "a"\'s cards nor a line', '"toString" is neither one of view "a"\'s cards nor a line']);
+});

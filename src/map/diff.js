@@ -268,8 +268,34 @@ export function diff(before, after) {
       ownIn(y, have, up, i); if (v) back.push(y.parent); } }
 
   // the views that show a change: a card or line the diff marks, or a card it put in or took out
-  const changed = views.filter(v => v && (touched.has(v.id) || arr(v.nodeIds).some(id => cardHow.has(id)) || linesOf(out, v, ups).some(e => how.has(e)))).map(v => v.id);
-  return { model: out, summary: said, views: changed };
+  // a typed view of a model at another schemaVersion draws otherwise (version 1 draws it as a map, audit 39)
+  const typedV = v => v.diagram != null && v.diagram !== 'map';
+  if (canon(B0.schemaVersion) !== canon(B1.schemaVersion)) views.forEach(v => { if (v && typedV(v)) touched.add(v.id); });
+  /* a typed view draws more than it lists (audit 39): a package's box or name over its classes, a part's type and that type's
+     ports, a deployed container's name on its instance, the lifelines and messages of the interaction an overview draws
+     inline. So it shows a change to any element its own elements name (an id written anywhere in them: a member, a prop, a
+     type) or own (their owners, up the tree), and to a view they open. Conservative: a change to such an element that the view
+     does not draw lists it too */
+  const topOf = new Map(), elOf = new Map(), vids = new Set(views.filter(Boolean).map(v => v.id));
+  [...out.nodes, ...views.flatMap(v => arr(v && v.nodes))].forEach(n => { if (!n || typeof n !== 'object' || n.id == null || elOf.has(n.id)) return; elOf.set(n.id, n);
+    for (const s = [n], seen = new Set(); s.length;) { const x = s.pop(); if (!x || typeof x !== 'object' || seen.has(x)) continue; seen.add(x); if (x.id != null && !topOf.has(x.id)) topOf.set(x.id, n.id); arr(x.members).forEach(y => s.push(y)); } });
+  // an element named by its name (a part's valueType, an attribute's type), as it was or is: by the name before a rename too
+  const named0 = new Map(); [...arr(A.nodes), ...arr(A.views).flatMap(v => arr(v && v.nodes)), ...elOf.values()].forEach(n => { if (n && typeof n === 'object' && typeof n.label === 'string' && topOf.has(n.id) && !named0.has(n.label)) named0.set(n.label, topOf.get(n.id)); });
+  const texts = x => { const l = []; for (const s = [x], seen = new Set(); s.length;) { const y = s.pop(); if (typeof y === 'string') l.push(y); else if (y && typeof y === 'object' && !seen.has(y)) { seen.add(y); Object.values(y).forEach(z => s.push(z)); } } return l; };
+  const refs = v => { const ids = new Set(), vs = new Set(), name = s => topOf.has(s) ? topOf.get(s) : typeof s !== 'string' ? null : named0.get(s) ?? named0.get(s.split('::').pop());
+    const up = (t, l) => { for (let k = 0; t != null && !ids.has(t) && k < 1e4; k++) { ids.add(t); l.push(t); const p = (elOf.get(t) || {}).parent; t = topOf.has(p) ? topOf.get(p) : null; } };
+    let now = []; [...arr(v.nodeIds), ...arr(v.nodes).map(n => n && n.id)].forEach(id => topOf.has(id) && up(topOf.get(id), now));
+    linesOf(out, v, ups).forEach(e => [e.from, e.to, ...texts(e.props)].forEach(s => { const n = name(s); if (n != null) up(n, now); }));
+    // what its elements name, and what those name in turn (a part's type's port's type), each with its owners
+    for (let d = 0; d < 2 && now.length; d++) { const next = []; now.forEach(t => texts(elOf.get(t)).forEach(s => { const n = name(s); if (n != null) up(n, next); else if (vids.has(s)) vs.add(s); })); now = next; }
+    return { ids, vs }; };
+  const changed = new Set(views.filter(v => v && (touched.has(v.id) || arr(v.nodeIds).some(id => cardHow.has(id)) || linesOf(out, v, ups).some(e => how.has(e)))).map(v => v.id));
+  const typedRefs = out.schemaVersion === 2 ? views.filter(v => v && typedV(v) && !changed.has(v.id)).map(v => [v.id, refs(v)]) : [];
+  // a view its elements open: its title is drawn in their names (", opens Checkout"), and an overview draws an interaction inline
+  const titled = new Set(views.filter(v => v && V0.has(v.id) && String(labelOr(V0.get(v.id).title, v.id)) !== String(labelOr(v.title, v.id))).map(v => v.id));
+  for (let more = true; more;) { more = false; typedRefs.forEach(([id, r]) => { const inl = (diagramOf(W.get(id)) || {}).inlines;
+    if (!changed.has(id) && ([...r.ids].some(t => cardHow.has(t)) || [...r.vs].some(x => x !== id && (titled.has(x) || inl && changed.has(x))))) more = !!changed.add(id); }); }
+  return { model: out, summary: said, views: views.filter(v => v && changed.has(v.id)).map(v => v.id) };
 }
 
 /** The map against the traffic seen: a line that carries traffic but is not drawn comes in, dashed rose ("not drawn",
