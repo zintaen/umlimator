@@ -1,7 +1,7 @@
 import { TYPED } from '../core/registry.js';
 import { warn } from '../core/warn.js';
-import { NW, OWN_ROUTE, labelW, layoutGraph } from '../layout/layered.js';
-import { routeAudit } from '../layout/audit.js';
+import { NW, OWN_ROUTE, PLAIN, labelW, layoutGraph } from '../layout/layered.js';
+import { routeAudit, throughIssues } from '../layout/audit.js';
 
 /* A typed view's layout (work package 1.4): layoutGraph's plain layout with what a typed view needs, none of it on a map.
    The parts of layoutPass only a typed view takes are here too (TYPED, registry.js); only lib/umlimator-all.js holds this
@@ -12,7 +12,7 @@ import { routeAudit } from '../layout/audit.js';
 
 // what moves a typed view's geometry: every field of the view layoutGraph reads but VIEW_PAINT (a test holds the two lists to
 // layered.js), and these of a node and a line. Anything else (a colour, a `props` field) only repaints
-const VIEW_GEO = ['abs', 'authors', 'blocks', 'containers', 'direction', 'fan', 'flipped', 'gap', 'groups', 'hub', 'intake', 'labelGaps', 'laneGap', 'lanes', 'mainSteps', 'nodeH', 'noSwap', 'quick', 'repair', 'reroute', 'rgap', 'turned', 'typed'];
+const VIEW_GEO = ['abs', 'authors', 'blocks', 'containers', 'direction', 'fan', 'flipped', 'gap', 'groups', 'hub', 'intake', 'labelGaps', 'laneGap', 'lanes', 'mainSteps', 'nest', 'nodeH', 'noSwap', 'quick', 'repair', 'reroute', 'rgap', 'turned', 'typed'];
 const VIEW_PAINT = ['tour', 'subAndChips'], NODE_GEO = ['id', 'col', 'row', 'w', 'h', 'ax', 'ay'], EDGE_GEO = ['id', 'from', 'to', 'label', 'step', 'fromSide', 'toSide', 'back', 'fixed', 'sublabel', 'cut', 'fromPort', 'toPort', 'inner', 'portRank', 'portMin'];
 const geometryKey = dg => JSON.stringify([VIEW_GEO.map(k => dg[k]), (dg.nodes || []).map(n => NODE_GEO.map(k => n[k])), (dg.edges || []).map(e => EDGE_GEO.map(k => e[k]))]);
 
@@ -44,10 +44,15 @@ function repaint(g, was, dg) {
 function layoutTyped(dg, memo) {
   const key = memo && geometryKey(dg);
   if (memo && memo.key === key) { const g = repaint(memo.g, memo.dg, dg); memo.dg = dg; return g; }
-  const t = { ...dg, typed: true, noSwap: !!(memo && memo.noSwap) }, g = dg.direction === 'down'
-    ? transpose(layoutGraph({ ...t, turned: true, nodes: (dg.nodes || []).map(n => ({ ...n, w: n.h || dg.nodeH || 64, h: n.w || NW })) }, false))
-    : layoutGraph(t, false);
-  unhook(g, dg.mainSteps ? 12 : 18);
+  const t = { ...dg, typed: true, noSwap: !!(memo && memo.noSwap) }, lay = u => { const g = dg.direction === 'down'
+    ? transpose(layoutGraph({ ...u, turned: true, nodes: (dg.nodes || []).map(n => ({ ...n, w: n.h || dg.nodeH || 64, h: n.w || NW })) }, false))
+    : layoutGraph(u, false); unhook(g, dg.mainSteps ? 12 : 18); return g; };
+  // a layout that took audit 38's ways (nesting the lines between one pair, a box grown for them, a route that meets its end's
+  // stub from the side) and that check() still has more than crossings to say of: the view is laid out as before them too, and
+  // the one with fewer such issues kept (then fewer in all), so none is drawn worse than it was
+  let g = lay(t);
+  if (g.nested) { const said = h => { const is = [...routeAudit(h, ''), ...throughIssues(h, '')]; return [is.filter(s => !/ cross$/.test(s)).length, is.length]; }, a = said(g);
+    if (a[0] || a[1]) { const h = lay({ ...t, [PLAIN]: true }), b = said(h); if (b[0] < a[0] || (b[0] === a[0] && b[1] < a[1])) g = h; } }
   if (memo) Object.assign(memo, { key, g, dg, runs: (memo.runs || 0) + 1, rr: !!g.rr });
   return g;
 }
