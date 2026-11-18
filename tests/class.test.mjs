@@ -585,3 +585,23 @@ test('audit 33: an element that opens a view titled "" is named "opens" with the
   const n = mapContext(m).buildGeo('cv').nodes.find(x => x.id === 'k');
   assert.equal(n.opensTo, 'other'); assert.match(n.aria, /, opens other$/);
 });
+
+test('audit 38: connect on a class or package view refuses a realization or a package import or merge its own rule calls an error, and only those', () => {
+  const m = { schemaVersion: 2, title: 'T', nodes: [{ id: 'p', type: 'uml.Package', label: 'sales' }, { id: 'q', type: 'uml.Package', label: 'catalog' }, { id: 'f', type: 'uml.Profile', label: 'ext' },
+    { id: 'c', type: 'uml.Class', label: 'Order' }, { id: 'd', type: 'uml.Class', label: 'Line' }, { id: 'i', type: 'uml.Interface', label: 'Payable' }, { id: 'e', type: 'uml.Enumeration', label: 'State' },
+    { id: 'u', label: 'Untyped' }, { id: 'n', type: 'uml.Comment', label: 'note' }], edges: [],
+  views: [{ id: 'cv', diagram: 'uml.class', nodeIds: ['p', 'q', 'c', 'd', 'i', 'e', 'u', 'n'] }, { id: 'pv', diagram: 'uml.package', nodeIds: ['p', 'q', 'f', 'c', 'd', 'u'] }] };
+  const ids = ['p', 'q', 'f', 'c', 'd', 'i', 'e', 'u', 'n', 'gone'], said = new Set();
+  for (const [vid, types] of [['cv', ['uml.InterfaceRealization']], ['pv', ['uml.PackageImport', 'uml.PackageMerge']]]) for (const type of types) for (const from of ids) for (const to of ids) {
+    const v = m.views.find(x => x.id === vid), r = diagramOf(v).edits.connect(m, v, from, to, null, { type });
+    const m2 = structuredClone(m); m2.edges.push({ id: 'x', type, from, to });
+    const bad = validate(m2).some(p => p.level === 'error' && /^(realization-target|import-ends):/.test(p.message));
+    assert.equal(!!(r && r.error), bad, `${vid} ${type} ${from} -> ${to}: ${JSON.stringify(r)}`);
+    if (r && r.error) said.add(r.error); }
+  assert.deepEqual([...said].sort(), ['A package import runs from a package to another package', 'A package merge runs from a package to another package', 'A realization runs from a class, an enumeration or a data type to an interface']);
+  // the class view still refuses a generalization that closes a cycle, and leaves any other line to the default
+  const cv = m.views[0], loop = { ...m, edges: [{ id: 'g', type: 'uml.Generalization', from: 'c', to: 'd' }] };
+  assert.match(diagramOf(cv).edits.connect(loop, cv, 'd', 'c', null, { type: 'uml.Generalization' }).error, /may not close a cycle/);
+  assert.equal(diagramOf(cv).edits.connect(m, cv, 'c', 'd', null, { type: 'uml.Association' }), null);
+  assert.equal(diagramOf(m.views[1]).edits.connect(m, m.views[1], 'c', 'd', null, { type: 'uml.Dependency' }), null);
+});

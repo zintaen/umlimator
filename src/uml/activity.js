@@ -110,8 +110,11 @@ const acStereo = x => AC_ARR(acProps(x).stereotypes).filter(AC_HAS).map(String);
 // a diamond's or a partition's drawn name, its stereotypes first: their shapes draw no «…» row of their own (audit 16)
 const acStLabel = x => [...acStereo(x).map(t => `«${t}»`), acName(x)].join(' ');
 const acPlural = (k, w, ws = w + 's') => `${k} ${k === 1 ? w : ws}`;
-// a node as a line's end names it: its label, else its word ("merge")
-const acCalled = x => (x ? (AC_HAS(x.label) ? String(x.label) : acLook(x)[1].toLowerCase()) : '?');
+// a node with no label is named as drawn (audit 38): an action or object node by its id, as elName draws it; a control node
+// (a glyph, a fork or join bar, a decision or merge diamond) by its word
+const AC_GLYPHS = ['initial', 'final', 'flow-final', 'bar'], acById = x => !AC_HAS(x.label) && ![...AC_GLYPHS, 'diamond'].includes(acLook(x)[0]);
+// a node as a line's end names it: its label, else as drawn (an action's id), else its word ("merge")
+const acCalled = x => (x ? (AC_HAS(x.label) ? String(x.label) : acById(x) ? acName(x) : acLook(x)[1].toLowerCase()) : '?');
 const acViewName = (model, id) => { const v = AC_ARR(model && model.views).find(w => AC_OBJ(w) && w.id === id); return v ? String(labelOr(v.title, v.id)) : null; }; // a view titled "" by its id (audit 33)
 
 // accessible names (§14): "Action Take the next order from the queue, in Order worker"; "Decision All books in stock?, 2 exits"
@@ -119,7 +122,7 @@ function acNodeName(model, I, x, lines) {
   const [, word] = acLook(x), st = acStereo(x), lane = I.laneOf(x.id), outs = lines.filter(e => e.from === x.id && AC_FLOWS.includes(e.type)).length, ins = lines.filter(e => e.to === x.id && AC_FLOWS.includes(e.type)).length;
   if (x.type === 'uml.Comment') return 'Comment: ' + acName(x);
   if (x.type === 'uml.ActivityPartition') return `Partition ${acName(x)}${st.length ? ` (${st.join(', ')})` : ''}, ${acPlural(I.under(x.id), 'node')}`;
-  const named = !['initial', 'final', 'flow-final', 'bar'].includes(acLook(x)[0]) && AC_HAS(x.label) ? ' ' + String(x.label).trim() : '';
+  const named = !AC_GLYPHS.includes(acLook(x)[0]) && AC_HAS(x.label) ? ' ' + String(x.label).trim() : acById(x) ? ' ' + acName(x) : '';
   const count = { __proto__: null, 'uml.DecisionNode': acPlural(outs, 'exit'), 'uml.MergeNode': acPlural(ins, 'entry', 'entries'), 'uml.ForkNode': acPlural(outs, 'branch', 'branches'), 'uml.JoinNode': acPlural(ins, 'branch', 'branches') }[x.type];
   const opens = x.type === 'uml.CallBehaviorAction' ? `opens ${acViewName(model, x.opensView) ?? 'no view'}` : null;
   return [`${word}${named}${st.length ? ` (${st.join(', ')})` : ''}`, count, opens, lane != null ? `in ${acName(I.N.get(lane))}` : null].filter(Boolean).join(', ');

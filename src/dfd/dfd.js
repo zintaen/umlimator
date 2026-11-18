@@ -277,6 +277,8 @@ const DFD_TYPE = registerDiagramType('dfd', {
   rules: DFD_RULES,
   describe: dfdDescribe,
   edits: { add: dfdAdd, key: dfdKey },
+  // the model lines the view draws (validate()'s stories read it, audit 38): a level leaves out its parent level's flows
+  drawn: (model, view) => dfdLines(model, view).map(e => e.id),
   // the PDF's tables (§9): an element's kind; a process's number and the level it opens, a store's number
   word: (model, id) => { const x = dfdIndex(model).at.get(id); return x && (Object.hasOwn(DFD_WORD, x.type) || x.type == null) ? DFD_WORD[x.type] || snKindName(x.type) : null; }, // none: "Element", as named (audit 27)
   rows: (model, view, id) => { const I = dfdIndex(model), x = I.at.get(id); if (!x || !['dfd.Process', 'dfd.DataStore'].includes(x.type)) return null;

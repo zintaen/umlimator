@@ -315,7 +315,8 @@ test('audit 26: an activity node or a timing constraint whose type is an Object.
     for (const type of ['toString', 'constructor', '__proto__', 'valueOf']) {
       const a = ex('fulfil-activity'); a.nodes.find(n => n.id === 'stock-ready').type = type;
       const aria = svgOf(layout(a, 'fulfil')).match(/data-id="stock-ready"[^>]*aria-label="([^"]*)"/)[1];
-      assert.equal(aria, `${type}, in Warehouse`, `activity ${type}`);
+      assert.equal(aria, `${type} stock-ready, in Warehouse`, `activity ${type}`); // and by its id, as it is drawn (audit 38)
+      assert.match(svgOf(layout(a, 'fulfil')), /data-id="stock-ready"[^]*?>stock-ready</, 'drawn by its id');
       const t = ex('bookshop-timing'), c = t.views[0].timeline.constraints[0]; c.type = type;
       assert.ok(validate(t).some(p => p.rule === 'constraint-ends' && p.ids.includes(c.id)), `timing ${type}: an error, as "uml.Bogus" is`);
       assert.doesNotMatch(describe(t, t.views[0].id), /^Duration constraint \{<= 800 ms\}/m, `timing ${type}: not said a duration constraint`);

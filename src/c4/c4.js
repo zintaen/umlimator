@@ -354,6 +354,9 @@ const C4_DEF = {
   // which sees the line alone; a rankFlip(e, model) would lift it
   rankFlip: e => c4People.has(e.to) && !c4People.has(e.from),
   owners: c4Owners,
+  // the model lines the view draws (validate()'s stories read it, audit 38): its own, and those an implied line stands for; not
+  // one to a boundary it opens, which no line ends on
+  drawn: (model, view) => { const { own, implied } = c4Lines(model, view, c4Pic(model, view)); return [...own.map(e => e.id), ...implied.flatMap(l => l.of.map(r => r.id))]; },
   validate: c4Problems,
   rules: C4_RULES,
   describe: c4Describe,

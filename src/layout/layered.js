@@ -164,7 +164,7 @@ function layoutGraph(dg, map) {
 function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: px } } (lx, ly: a label's, past the boxes'); last: lay out with it, find no more
   const __ms = { t: performance.now() }, t0 = __ms.t;
   const px = x => typeof x === 'number' && x > 0 ? Math.min(x, 2000) : 0; // a gap that is no positive number is the default (audit 9)
-  const CG = px(dg.gap) || (map ? (dg.mainSteps && !dg.containers ? 38 : 66) : CG0), RG = px(dg.rgap) || (map ? 44 : RG0); // family borders also need clearance between columns
+  const CG = px(dg.gap) || (map ? (dg.mainSteps && !(Array.isArray(dg.containers) && dg.containers.length) ? 38 : 66) : CG0), RG = px(dg.rgap) || (map ? 44 : RG0); // family borders also need clearance between columns; containers: [] is no boxes (audit 38)
   const NH = dg.nodeH || 64, pitch = NH + RG;
   const C = map ? 16 : 12, STUB = dg.mainSteps ? C : C + 6, SEP = 10; // maps: 16 px clear of other nodes
   const lim = (dg.nodes || []).length + 64, cl = v => Math.max(-lim, Math.min(lim, v)); // a pin far off the grid (1e6, 1e308) is held at its edge: the column and row loops walk every index between

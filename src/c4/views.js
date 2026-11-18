@@ -152,6 +152,7 @@ const DYN_DEF = { ...C4_DEF,
   untypedLine: null, // a line of no notation is no step: not drawn, said by c4-steps (audit 30)
   title: 'C4 dynamic diagram',
   layout: dynGeo,
+  drawn: (model, view) => { const { steps, notes } = dynDrawn(model, view); return [...steps.map(s => s.e.id), ...notes.map(e => e.id)]; }, // its steps and notes' links (audit 38)
   validate: dynProblems,
   rules: V_RULES,
   describe: dynDescribe,
@@ -278,6 +279,7 @@ const DEP_DEF = {
   layout: depGeo,
   boxes: (model, view) => depPic(model, view).boxes,
   owners: depOwners,
+  drawn: (model, view) => { const { own, implied } = c4Lines(model, view, depPic(model, view)); return [...own.map(e => e.id), ...implied.flatMap(l => l.of.map(r => r.id))]; }, // as C4_DEF's (audit 38)
   validate: depProblems,
   rules: DEP_RULES,
   describe: depDescribe,
