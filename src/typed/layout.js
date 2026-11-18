@@ -151,7 +151,12 @@ function placePorts(sides, turned) {
 function spreadPorts({ n, side, ends }, turned) {
   const v = side === 'L' || side === 'R', a0 = v ? n.y : n.x, len = v ? n.h : n.w, far = x => v ? x.other.y + x.other.h / 2 : x.other.x + x.other.w / 2;
   const per = (x, r) => Array.isArray(r) ? r[x.from ? 0 : 1] : r, least = x => { const m = per(x, x.e.portMin); return Number.isFinite(m) ? m : 0; };
-  const rank = x => per(x, x.e.portRank) ?? 1e9, byFar = (a, b) => far(a) - far(b), groups = [];
+  // ends whose far ends are level (two parts joined by several lines) tie on far and fall to portRank. Each side ordering by its
+  // own members' order draws an X wherever the two types list their ports in opposite orders, so of the two nodes the one whose
+  // id sorts later follows the other: its end ranks by the far port's rank, its own breaking ties, and the lines run parallel (audit 38)
+  const lead = x => !Array.isArray(x.e.portRank) || !x.other || x.other === n || !(String(x.other.id) < String(n.id)) ? null : x.e.portRank[x.from ? 1 : 0];
+  const rank = x => { const own = per(x, x.e.portRank), f = lead(x); return Number.isFinite(f) ? f + (Number.isFinite(own) ? own : 0) / 1e4 : own ?? 1e9; };
+  const byFar = (a, b) => far(a) - far(b), groups = [];
   ends.forEach(x => { const g = x.port != null && groups.find(o => o.port === x.port); if (g) g.ends.push(x); else groups.push({ port: x.port, ends: [x] }); });
   // three or more named lines inward from one port (a composite's delegations) sit 28 px apart, so each one's label keeps clear of
   // the next line: 10 px apart, the first one's label shut the second out of the gap between the parts, and it went round and crossed (audit 6)
