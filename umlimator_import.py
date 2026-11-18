@@ -99,13 +99,25 @@ class Model:
     def say(self, where, msg):
         self.unread.append((where, msg))
 
-    def uniq(self, *hints):
-        """The first hint no card, line or view has yet, else the first one numbered."""
+    def uniq(self, *hints, where=None):
+        """The first hint no card, line or view has yet, else the first one numbered. An id holds no "->" (it names lines
+        by position): a hint with one has it as "-", said once (audit 38: a C4 alias, a compose service or a Kubernetes name)."""
+        said, hints = hints[0], [re.sub(r"->+", "-", h) if isinstance(h, str) else h for h in hints]
         got = next((h for h in hints if h not in self.ids), None)
         if got is None:  # ids are never freed, so the search goes on from where the last one for this hint stopped (linear)
             n = next(n for n in itertools.count(self.next.get(hints[0], 2)) if f"{hints[0]}-{n}" not in self.ids)
             got, self.next[hints[0]] = f"{hints[0]}-{n}", n + 1
         self.ids.add(got)
+        if hints[0] != said:
+            self.say(where, f'{said}: an id holds no "->", so it is {got}')
+        return got
+
+    def named(self, h, where):
+        """A source's own name for a card or box as its id: as written, unless it holds "->" or another name took the id
+        that gives, each said (audit 38)."""
+        got = self.uniq(h, where=where)
+        if got != h and "->" not in h:
+            self.say(where, f"{h}: the id is taken, so it is {got}")
         return got
 
     def card(self, cid, label, kind, sub=None, what=None, **more):
@@ -458,11 +470,15 @@ def structurizr(text, name):
                 m.say(no, f"workspace extends {' '.join(toks[2:3])}: the workspace it extends is not read")
             elif len(toks) > 1:
                 m.title = toks[1]
+            if len(toks) > 2 and toks[1:2] != ["extends"]:  # its description: said, not dropped (audit 38)
+                m.say(no, "the workspace's description is not imported")
             push = ("workspace", None)
         elif where == "workspace" and kw in ("model", "views"):
             push = (kw, None)
         elif where == "workspace" and kw in ("name", "description"):
             m.title = toks[1] if kw == "name" and len(toks) > 1 else m.title
+            if kw == "description":
+                m.say(no, "the workspace's description is not imported")
         elif where in ("workspace", "model") and kw == "!identifiers":
             pass  # flat and hierarchical identifiers both resolve
         elif where in ("workspace", "model") and kw == "!impliedrelationships":
@@ -849,7 +865,8 @@ BOXARGS = {"Boundary": "alias label type tags link descr"}
 READ = {"alias", "label", "descr", "techn", "tags", "from", "to"}  # tags: read only where c4guess reads them, else said
 REL = re.compile(r"(Bi)?Rel(_Back)?(_(U|Up|D|Down|L|Left|R|Right|Neighbor))?")
 BOUNDARY = re.compile(r"(Enterprise_|System_|Container_)?Boundary")
-QUIET = re.compile(r"Lay_\w+|LAYOUT_\w+|SHOW_\w+|HIDE_\w+|Update\w+|Add\w*Tag|AddProperty|SetPropertyHeader|WithoutPropertyHeader|SetSketchStyle")
+QUIET = re.compile(r"Lay_\w+|LAYOUT_\w+|SHOW_\w+|HIDE_\w+|Update\w+|Add\w*Tag|SetSketchStyle")
+PROPS = re.compile(r"AddProperty|SetPropertyHeader|WithoutPropertyHeader")  # an element's property table: data, so said (audit 38)
 TYPE = {"Person": "Person", "System": "Software system", "Container": "Container", "Component": "Component"}
 
 
@@ -880,7 +897,7 @@ def unread(names, pos, named, read=READ):
 
 def c4(lines, m):
     """Macro calls, one per line: elements, boundaries ({ ... } boxes), relationships. One view."""
-    boxes, stack, rels, bases, people, opened = [], [], [], set(), set(), []
+    boxes, stack, rels, bases, people, opened, named_as = [], [], [], set(), set(), [], {}  # named_as: each alias's id
     for no, s in lines:
         if s == "}":
             if stack:
@@ -898,10 +915,10 @@ def c4(lines, m):
         if c and (e := ELEMENT.fullmatch(name)):
             base, shape, ext = e.groups()
             a = {**dict(zip(ARGS[base].split(), pos)), **named}
-            if not a.get("alias") or a["alias"] in m.ids:
+            if not a.get("alias") or a["alias"] in named_as:
                 m.say(no, f"{name}({a.get('alias', '')}): {'its alias is used already' if a.get('alias') else 'no alias'}")
             else:
-                cid, kind = m.uniq(a["alias"]), "database" if shape == "Db" else "queue" if shape == "Queue" else ("user" if ext else "person") if base == "Person" \
+                cid, kind = named_as.setdefault(a["alias"], m.named(a["alias"], no)), "database" if shape == "Db" else "queue" if shape == "Queue" else ("user" if ext else "person") if base == "Person" \
                     else "external" if ext else "backend" if base == "System" else c4guess([a.get("tags"), a.get("techn"), a.get("label")])
                 m.card(cid, a.get("label"), kind, a.get("techn") or ("External " + TYPE[base].lower() if ext else TYPE[base]),
                        a.get("descr"), icon="user" if base == "Person" else None,
@@ -916,16 +933,18 @@ def c4(lines, m):
                     if b["id"] == box:
                         b["nodeIds"].append(cid)
         elif c and BOUNDARY.fullmatch(name):
-            if not pos or not pos[0] or pos[0] in m.ids:
+            if not pos or not pos[0] or pos[0] in named_as:
                 m.say(no, f"{name}({pos[0] if pos else ''}): {'its alias is used already' if pos and pos[0] else 'no alias'}")
             else:
-                alias = m.uniq(pos[0])
+                alias = named_as.setdefault(pos[0], m.named(pos[0], no))
                 boxes.append({"id": alias, "label": clip(named.get("label") or (pos + [""])[1] or alias, 40), "nodeIds": [], "parent": box, "line": no})
                 if left := unread(BOXARGS.get(name, "alias label tags link descr"), pos, named, {"alias", "label"}):
                     m.say(no, f"{name}({pos[0]}): {left}")
         elif c and (r := REL.fullmatch(name)):
             a = {**dict(zip(RELARGS.split(), pos)), **named}
             rels.append((no, a, r.group(1), r.group(2), name, unread(RELARGS, pos, named, READ - {"tags"})))  # a line's tags style nothing here
+        elif c and PROPS.fullmatch(name):
+            m.say(no, f"{name}({clip(c.group(2), 60)}): an element's properties are not imported")
         elif not (c and QUIET.fullmatch(name)):
             m.say(no, f"not imported: {clip(s, 80)}")
         elif named.get("shape"):  # ponytail: a tag's $shape (RoundedBoxShape, EightSidedShape) is said, not drawn
@@ -943,9 +962,10 @@ def c4(lines, m):
                         if not (a.get(e) or "").strip()), None):
             m.say(no, f"{said}: {gap}")
             continue
-        if bad := [v for v in (x, y) if v not in m.nodes and v not in ids]:
+        if bad := [v for v in (x, y) if named_as.get(v) not in m.nodes and named_as.get(v) not in ids]:
             m.say(no, f"{said}: {bad[0]} is not defined")
             continue
+        x, y = named_as[x], named_as[y]  # an alias's id: one with "->" has it as "-" (audit 38)
         if left:
             m.say(no, f"{said}: {left}")
         m.line(x, y, a.get("label"), a.get("techn"), where=no, what=a.get("descr"), loop=y in people)
@@ -999,6 +1019,9 @@ def mermaid(text, name):
     rest = re.sub(r"^\s*(TB|TD|BT|RL|LR)?\s*;?", "", lines[0][1][head.end():])
     body = ([(lines[0][0], rest)] if rest.strip() else []) + lines[1:]
     if head.group(1).startswith("C4"):
+        for no, s in body:  # said, as a flowchart's is (audit 38)
+            if q := re.match(r"acc(Title|Descr)\b", s):
+                m.say(no, f"{q[0]}: accessibility text is not imported")
         c4([(no, s) for no, s in body if not re.match(r"acc(Title|Descr)\b", s)], m)
     else:
         flowchart(body, m)
@@ -1213,7 +1236,7 @@ def spell(x):
 def compose(d, name):
     d = d if isinstance(d, dict) else {}  # not compose's object: nothing to import
     title = word(d.get("name"))
-    m, svcs, nets = Model(title or name), {}, {}
+    m, svcs, nets, cid = Model(title or name), {}, {}, {}  # cid: each service's card id
     if d.get("name") is not None and title is None:
         m.say("name", f"{spell(d.get('name'))} is not text: not imported")
     if not isinstance(d.get("services") or {}, dict):
@@ -1242,8 +1265,8 @@ def compose(d, name):
         ports = words([(p.get("published") or p.get("target")) if isinstance(p, dict) else p for p in many(c.get("ports"))], "ports", "a port")
         what = [f"Publishes {', '.join(ports)}." if ports else "", f"On networks {', '.join(nets[s])}." if len(nets[s]) > 1 else ""]
         image = (words([c.get("image")], "image", "an image's name") or [None])[0] if c.get("image") is not None else None
-        m.ids.add(s)
-        m.card(s, s, guess([image, s]), image or (f"build {Path(ctx).name or '.'}" if ctx else None), " ".join(what))
+        cid[s] = m.named(s, f"services.{s}")  # as written, unless it holds "->" (audit 38)
+        m.card(cid[s], s, guess([image, s]), image or (f"build {Path(ctx).name or '.'}" if ctx else None), " ".join(what))
     for s, c in svcs.items():
         deps = {}  # a link is a dependency too: one line per pair, the first word for it
         for t, label in [(t, "depends on") for t in many(c.get("depends_on"))] + [(t, "links") for t in many(c.get("links"))]:
@@ -1253,15 +1276,15 @@ def compose(d, name):
             deps.setdefault(word(t).split(":")[0] if label == "links" else word(t), label)
         for t, label in deps.items():
             if t in svcs:
-                m.line(s, t, where=f"services.{s}", what=label)  # every line is one: no label on each
+                m.line(cid[s], cid[t], where=f"services.{s}", what=label)  # every line is one: no label on each
             else:
                 m.say(f"services.{s}", f"{label} {t if t.strip() else repr(t)}, which is not a service here")
     used, alone = sorted({n for ns in nets.values() for n in ns}), {}
     for s in svcs:
         if len(nets[s]) == 1:
-            alone.setdefault(nets[s][0], []).append(s)
-    boxes = [{"id": m.uniq(f"network-{n}"), "label": n, "nodeIds": alone.get(n, [])} for n in used] if len(used) > 1 else []
-    m.view("services", list(svcs), [b for b in boxes if b["nodeIds"]])  # a service on several networks stays between their boxes
+            alone.setdefault(nets[s][0], []).append(cid[s])
+    boxes = [{"id": m.uniq(f"network-{n}", where=f"networks.{n}"), "label": n, "nodeIds": alone.get(n, [])} for n in used] if len(used) > 1 else []
+    m.view("services", [cid[s] for s in svcs], [b for b in boxes if b["nodeIds"]])  # a service on several networks stays between their boxes
     for k in d:
         if k not in ("name", "services", "networks"):
             m.say(k, "not imported")
@@ -1362,7 +1385,7 @@ def kubernetes(d, name):
         nm, ns, spec = word(md["name"]), word(md.get("namespace")) or "default", obj(o.get("spec"))
         if md.get("namespace") is not None and word(md.get("namespace")) is None:
             m.say(at(i), f"{kind} {nm}: namespace {spell(md.get('namespace'))} is not text: read as default")
-        cid = m.uniq(f"{SHORT[kind]}-{nm}", f"{SHORT[kind]}-{nm}-{ns}")
+        cid = m.uniq(f"{SHORT[kind]}-{nm}", f"{SHORT[kind]}-{nm}-{ns}", where=at(i))
         objs.append((i, kind, ns, nm, spec, cid))
         if kind == "Service":
             ext = spec.get("type") == "ExternalName"

@@ -325,6 +325,18 @@ test('a typed view\'s key changes with an element it draws but does not list: up
   assert.match(mapContext(after).buildView('domain').markup, /Renamed::Money/);
 });
 
+test('a typed view\'s key changes with the model\'s schemaVersion: update() redraws the class diagram a version-1 model drew as a map (audit 38)', () => {
+  // two classes and no package: nothing else in the key told the two versions apart
+  const bare = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'A' }, { id: 'b', type: 'uml.Class', label: 'B' }],
+    edges: [{ id: 'e', type: 'uml.Association', from: 'a', to: 'b' }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b'] }] };
+  for (const [m, id] of [[bare, 'v'], [CLASS, 'domain']]) {
+    const v1 = structuredClone(m); delete v1.schemaVersion;
+    const one = mapContext(v1), two = mapContext(m);
+    assert.notEqual(one.viewKey(id), two.viewKey(id), id);
+    assert.notEqual(one.buildView(id).markup, two.buildView(id).markup, 'version 1 draws the view as a map');
+  }
+});
+
 test('a class view with a box lays out a line to a listed id that is no element: the line is left out, as without the box (backlog M3.3)', () => {
   const C = id => ({ id, type: 'uml.Class', label: id.toUpperCase() });
   const m = { schemaVersion: 2, nodes: [{ id: 'p', type: 'uml.Package', label: 'p' }, { ...C('a'), parent: 'p' }, C('b')], edges: [{ id: 'e', type: 'uml.Dependency', from: 'a', to: 'ghost' }, { id: 'f', type: 'uml.Dependency', from: 'a', to: 'b' }],

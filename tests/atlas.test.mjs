@@ -42,6 +42,12 @@ import { apply } from '../src/core/apply.js';
 import { diagramOf } from '../src/core/registry.js';
 import { appliedOf } from '../src/uml/stereotypes.js';
 import { build } from '../tools/atlas.mjs';
+import { elementCount } from '../src/canvas/pieces.js';
+import { layout as layoutAll } from '../lib/umlimator-all.js';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const LINKS = JSON.parse(readFileSync(new URL('../tools/atlas-links.json', import.meta.url), 'utf8'));
 const { model: M, shared, text } = build();
@@ -352,4 +358,22 @@ test('audit 35: Shift + Delete of a lifeline counts the connectors the cascade t
   assert.match(diagramOf(cv).edits.remove(M, cv, [L, 'api-self'], true).say, /^Deleted lifeline "api", connector "api–api", their 3 connectors \("storefront–api", "api–payments", "api–receipt"\) and their 24 messages/);
   // a lifeline with no connector: no word of one
   assert.doesNotMatch(sqRemove(M, M.views.find(v => v.id === 'queue-order'), ['lifeline-worker'], true).say, /connector/);
+});
+
+test('MCP list_views counts a typed view\'s cards as the page does, the elements it draws, not its nodeIds (audit 38)', () => {
+  const listed = file => JSON.parse(JSON.parse(execFileSync('python3', [new URL('../umlimator.py', import.meta.url).pathname, 'mcp', file, '--port', '0'], {
+    input: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'list_views', arguments: {} } }) + '\n', encoding: 'utf8', timeout: 120000 }).split('\n')[0]).result.content[0].text).views;
+  const dir = mkdtempSync(join(tmpdir(), 'mcp-count-'));
+  // a version-1 model draws its typed views as maps: their cards are their nodeIds; a hostile view whose layout may throw falls back too
+  const v1 = JSON.parse(readFileSync(new URL('../examples/order-states.json', import.meta.url))); delete v1.schemaVersion;
+  const odd = { schemaVersion: 2, title: '<img src=//e.example/t.png>', nodes: [{ id: 'a', type: 'uml.Class', label: '../../etc/passwd' }],
+    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'gone'] }, { id: 'm', nodeIds: ['a'] }] };
+  writeFileSync(join(dir, 'v1.json'), JSON.stringify(v1)); writeFileSync(join(dir, 'odd.json'), JSON.stringify(odd));
+  let differs = 0;
+  for (const file of ['examples/bookshop-atlas.json', 'examples/ebike-atlas.json', join(dir, 'v1.json'), join(dir, 'odd.json')]) {
+    const path = file.startsWith('examples/') ? new URL('../' + file, import.meta.url).pathname : file, m = JSON.parse(readFileSync(path, 'utf8'));
+    const want = m.views.map(v => { const n = m.schemaVersion === 2 ? elementCount(v, layoutAll(m, v.id)) : null; differs += n != null && n !== v.nodeIds.length; return [v.id, n ?? v.nodeIds.length]; });
+    assert.deepEqual(listed(path).map(v => [v.id, v.cards]), want, file);
+  }
+  assert.ok(differs >= 5, `the atlases have typed views that draw more than they list (${differs})`);
 });

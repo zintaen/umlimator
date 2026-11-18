@@ -108,6 +108,8 @@ function generate(seed) {
       const ifaces = classes.filter(c => kinds.get(c) === 'uml.Interface'), others = classes.filter(c => kinds.get(c) !== 'uml.Interface');
       if (ifaces.length && others.length) { from = pick(others); to = pick(ifaces); } else type = 'uml.Dependency';
     }
+    // a generalization joins two of one kind: the reader makes any other a realization or skips it (audit 38)
+    if (type === 'uml.Generalization') to = pick(classes.filter(c => kinds.get(c) === kinds.get(from)));
     const end = () => clean({ role: maybe(0.4, pick(['lines', 'the owner'])), multiplicity: maybe(0.5, pick(['1', '0..1', '0..*', '1..*', '*', '2..5'])), aggregation: maybe(0.3, pick(['composite', 'shared'])), navigable: maybe(0.4, true) });
     const ends = type === 'uml.Association' ? clean({ from: end(), to: end() }) : {};
     Object.keys(ends).forEach(k2 => { if (!Object.keys(ends[k2]).length) delete ends[k2]; });
@@ -671,4 +673,19 @@ test('audit 30: every Mermaid reader lists 1,000 report items, then counts the r
   }
   const { readMermaidClass } = await import('../src/readers/mermaid-class.js');
   assert.equal(readMermaidClass('classDiagram\n' + Array(400000).fill('?').join('\n')).report.at(-1).message, '399000 more items like these: not listed');
+});
+
+test('inheritance between an interface and what is not one is a realization or skipped, never an invalid model (audit 38)', () => {
+  const cases = [
+    ['classDiagram\nclass Animal {\n  <<interface>>\n  +speak() void\n}\nAnimal <|-- Dog\n', [['uml.InterfaceRealization', 'Dog', 'Animal']], ['6 approximated: Animal <|-- Dog: Animal is an interface, so Dog realizes it']],
+    ['classDiagram\nclass Animal {\n  <<interface>>\n}\nBase <|-- Animal\n', [], ['5 skipped: Base <|-- Animal: interface Animal cannot specialize class Base']],
+    ['classDiagram\nC ..|> I\nD --|> I\n', [['uml.InterfaceRealization', 'C', 'I'], ['uml.InterfaceRealization', 'D', 'I']], ['2 approximated: C ..|> I: I is realized, so it is read as an interface', '3 approximated: D --|> I: I is an interface, so D realizes it']],
+    ['classDiagram\nclass E {\n  <<enumeration>>\n}\nE --|> K\nclass J {\n  <<interface>>\n}\nclass L {\n  <<interface>>\n}\nJ --|> L\n', [['uml.Generalization', 'J', 'L']], ['5 skipped: E --|> K: enumeration E cannot specialize class K']],
+  ];
+  for (const [text, edges, report] of cases) {
+    const { model, report: r } = read(text);
+    assert.deepEqual(model.edges.map(e => [e.type, e.from, e.to]), edges, text);
+    assert.deepEqual(r.map(x => `${x.line} ${x.status}: ${x.message}`), report, text);
+    assert.deepEqual(validate(model).filter(p => p.level === 'error'), [], text);
+  }
 });

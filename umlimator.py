@@ -174,6 +174,12 @@ def not_objects(d):
     text = lambda x: x is None or isinstance(x, (str, int, float))
     out += [f"{at}[{j}].label is not text" for at, xs in [("edges", d.get("edges")), *((f"views[{i}].edges", v.get("edges"))
             for i, v in enumerate(lst(d.get("views"))) if isinstance(v, dict))] for j, x in enumerate(lst(xs)) if isinstance(x, dict) and not text(x.get("label"))]
+    # a view's override of a card's label is the card's label there, and a box's label is drawn as one: an object in either was
+    # drawn "[object Object]", while the same label on a card was refused (audit 38)
+    out += [f"views[{i}].nodeOverrides.{k}.label is not text" for i, v in enumerate(lst(d.get("views"))) if isinstance(v, dict) and isinstance(v.get("nodeOverrides"), dict)
+            for k, x in v["nodeOverrides"].items() if isinstance(x, dict) and not text(x.get("label"))]
+    out += [f"views[{i}].containers[{j}].label is not text" for i, v in enumerate(lst(d.get("views"))) if isinstance(v, dict)
+            for j, c in enumerate(lst(v.get("containers"))) if isinstance(c, dict) and not text(c.get("label"))]
     # a card's members, and theirs, at any depth (a stack, not recursion: a deep model never ends in a RecursionError);
     # a view's own cards too, which MCP's refs walks (audit 9)
     todo = [(f"nodes[{i}]", n) for i, n in enumerate(lst(d.get("nodes"))) if isinstance(n, dict)]
@@ -1389,7 +1395,8 @@ def fragment(views):
 def still_keys(page, opts):
     """A key per view over everything its still is drawn from: the view, its cards, every line between them or ending
     on one of its boxes, the icons and authors they use, the model's rules (a line that breaks one is drawn rose), the
-    size of each card's inner view (the ⤢ pill), the engine code and the export options. A view whose key is unchanged
+    size of each card's inner view (the ⤢ pill), the model's schemaVersion (version 1 draws a typed view as a map), the
+    engine code and the export options. A view whose key is unchanged
     since its last export draws the same still."""
     data, t, m = page_data(page)
     engine = hashlib.sha256((t[:m.start()] + t[m.end():]).encode()).hexdigest()
@@ -1433,7 +1440,8 @@ def still_keys(page, opts):
         # sequence view an overview's inline interaction draws (audit 30), and a DFD level its parent's cards, as the page's viewKey
         typed = [views, (V.get(v.get("parent")) or {}).get("nodeIds")] if v.get("diagram") else None
         blob = json.dumps([v, data.get("nodes") if v.get("diagram") else nodes, typed, lines, kids, {k: icons[k] for k in sorted(used) if k in icons},
-                           {k: authors[k] for k in sorted(who) if k in authors}, data.get("rules"), engine, opts], sort_keys=True)
+                           {k: authors[k] for k in sorted(who) if k in authors}, data.get("rules"), engine, opts,
+                           data.get("schemaVersion")], sort_keys=True)  # version 1 draws a typed view as a map (audit 38)
         keys[v["id"]] = hashlib.sha256(blob.encode()).hexdigest()
     return keys
 

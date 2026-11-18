@@ -39,7 +39,7 @@ card = lambda m, cid: next((n for n in m["nodes"] if n["id"] == cid), {})
 
 # per sample: its format, the views, what stderr names (file:where), and what the model says
 EXPECT = {
-    "examples/clinic.dsl": ("structurizr", ["context", "containers", "api-components"], [":47:", ":75:"], lambda m: [
+    "examples/clinic.dsl": ("structurizr", ["context", "containers", "api-components"], [":5:", ":47:", ":75:"], lambda m: [
         ("views nest as the source's levels", [v.get("parent") for v in m["views"]] == [None, "context", "containers"]),
         ("a relationship to a container lifts to its system in the context view (an implied line)", line(m, "patient", "bookings", "context")),
         ("the container view boxes the system's containers", box(m, "containers", "bookings").get("nodeIds") == ["web", "desk", "api", "db", "jobs", "sender"]),
@@ -257,6 +257,39 @@ ok("structurizr · ->x, x-> and ->x-> leave out lines between x's own members; e
            "nothing": (["u", "web", "api", "db", "t"], [("api", "db"), ("api", "t"), ("u", "web"), ("web", "api")])}
    and [x[1] for x in un if "does not read" in x[1]] == ["exclude element.parent==s, ../../etc/passwd: an expression umlimator does not read"]
    and not any("e.example" in str(n.get("icon") or "") for n in m["nodes"]), (got, un))
+# audit 38: a name holding "->" was kept as a card or box id, which names lines by position, so validate() refused the model
+arrows = {
+    "compose": imp.read("compose", json.dumps({"services": {"web->api": {"image": "nginx", "depends_on": ["web-api", "db"], "networks": ["a->b"]}, "web-api": {},
+                                                            "db": {"image": "postgres", "networks": ["c"]}}}), "x"),
+    "kubernetes": imp.read("kubernetes", json.dumps([{"kind": "Deployment", "metadata": {"name": "a->b"}, "spec": {"template": {"metadata": {"labels": {"x": "1"}}}}},
+                                                     {"kind": "Service", "metadata": {"name": "s->>t"}, "spec": {"selector": {"x": "1"}}}]), "x"),
+    "plantuml": imp.read("plantuml", '@startuml\nPerson("u->v", "User")\nSystem(u-v, "Taken")\nSystem_Boundary("b->c", "B") {\nSystem(t, "T")\n}\n'
+                                     'Rel("u->v", t, "uses")\nRel(u-v, "b->c", "in")\nRel("x->y", t)\n@enduml\n', "x"),
+    "mermaid": imp.read("mermaid", 'C4Context\n  Person(u->v, "User")\n  System(s, "S")\n  Rel(u->v, s, "uses")\n', "x"),
+}
+got = {k: ([n["id"] for n in m["nodes"]], sorted((e["from"], e["to"]) for e in m["edges"]), [c["id"] for v in m["views"] for c in v.get("containers", [])], un)
+       for k, (m, un) in arrows.items()}
+ok('compose, kubernetes, C4-PlantUML, Mermaid C4 · a name with "->" is an id with "-", said, and its lines still join it (audit 38)',
+   got == {"compose": (["web-api", "web-api-2", "db"], [("web-api", "db"), ("web-api", "web-api-2")], ["network-a-b", "network-c", "network-default"],
+                       [("networks.a->b", 'network-a->b: an id holds no "->", so it is network-a-b'),
+                        ("services.web->api", 'web->api: an id holds no "->", so it is web-api'), ("services.web-api", "web-api: the id is taken, so it is web-api-2")]),
+           "kubernetes": (["deploy-a-b", "svc-s-t"], [("svc-s-t", "deploy-a-b")], [],
+                          [("[0]", 'deploy-a->b: an id holds no "->", so it is deploy-a-b'), ("[1]", 'svc-s->>t: an id holds no "->", so it is svc-s-t')]),
+           "plantuml": (["u-v", "u-v-2", "t"], [("u-v", "t"), ("u-v-2", "b-c")], ["b-c"],
+                        [(2, 'u->v: an id holds no "->", so it is u-v'), (3, "u-v: the id is taken, so it is u-v-2"), (4, 'b->c: an id holds no "->", so it is b-c'),
+                         (9, "Rel(x->y, t): x->y is not defined")]),
+           "mermaid": (["u-v", "s"], [("u-v", "s")], [], [(2, 'u->v: an id holds no "->", so it is u-v')])}
+   and all(not [p for p in u.js("validate", {**m, "schemaVersion": 2}) if p["level"] == "error"] for m, _ in arrows.values()), got)
+# audit 38: a C4-PlantUML property table, a Mermaid C4 diagram's accessibility text and a workspace's description were dropped unsaid
+said = [imp.read("plantuml", '@startuml\nSetPropertyHeader("Field", "Value")\nAddProperty("Owner", "Team Payments")\nWithoutPropertyHeader()\n'
+                             'Container(api, "API", "Java")\nAddElementTag("v1")\nLay_R(api, api)\n@enduml\n', "x")[1],
+        imp.read("mermaid", 'C4Context\n  accTitle: The shop\n  accDescr: How <img src=//e.example/x.png> shoppers reach it\n  Person(u, "User")\n', "x")[1],
+        imp.read("structurizr", 'workspace "Shop" "What the shop does" {\n  description "Longer"\n  model {\n    u = person "User"\n  }\n}\n', "x")[1]]
+ok("C4-PlantUML, Mermaid C4, Structurizr · property tables, accessibility text and a workspace's description are said, not dropped (audit 38)",
+   said == [[(2, 'SetPropertyHeader("Field", "Value"): an element\'s properties are not imported'),
+             (3, 'AddProperty("Owner", "Team Payments"): an element\'s properties are not imported'), (4, "WithoutPropertyHeader(): an element's properties are not imported")],
+            [(2, "accTitle: accessibility text is not imported"), (3, "accDescr: accessibility text is not imported")],
+            [(1, "the workspace's description is not imported"), (2, "the workspace's description is not imported")]], said)
 # audit 33: a Mermaid C4Dynamic or C4Deployment is a C4 diagram umlimator does not read, and is said as one
 said = [imp.read("mermaid", f'{h}\n  title T\n  Container(c1, "A")\n  Container(c2, "B")\n  Rel(c1, c2, "Reads")\n', "x")[1] for h in ("C4Dynamic", "C4Deployment")]
 ok("mermaid · C4Dynamic and C4Deployment are named as Mermaid C4 diagrams that are not read, not as 'not a C4 diagram' (audit 33)",
@@ -775,7 +808,7 @@ with tempfile.TemporaryDirectory() as tmp:
     r = run("import", str(t / "cut.dsl"), "--out", str(t / "a.json"))
     ok("a Structurizr file cut short names each block it leaves open, on stderr and in the JSON",
        ":5: never closed: workspace" in r.stderr and ":9: never closed: model {" in r.stderr
-       and [x["where"] for x in said(r).get("notImported", [])] == [5, 9] and said(r).get("unread") == 2, r.stdout + r.stderr)
+       and [x["where"] for x in said(r).get("notImported", [])] == [5, 5, 9] and said(r).get("unread") == 3, r.stdout + r.stderr)
     r = run("import", str(t / "open.dsl"), "--out", str(t / "b.json"))
     ok("a /* never closed says which lines it hid", f":30: /* is never closed, so lines 31 to {len(files['open.dsl'].splitlines())} are not read" in r.stderr, r.stderr)
     r = run("import", str(t / "cut.puml"), "--out", str(t / "c.json"))
@@ -818,7 +851,7 @@ ok("mermaid · a subgraph opened again, after or inside itself, is one box, with
 m, un = imp.read("mermaid", "flowchart LR\naccDescr {\nCheckout\nA --> Z\n}\nA --> B\n", "x")
 c4m, c4un = imp.read("mermaid", 'C4Context\naccDescr {\nPerson(x, "y")\n}\nPerson(a, "A")\n', "x")
 ok("mermaid · an accDescr { ... } block is passed over whole (flowchart, C4)", [n["id"] for n in m["nodes"]] == ["A", "B"]
-   and un == [(2, "accDescr: accessibility text is not imported")] and [n["id"] for n in c4m["nodes"]] == ["a"] and not c4un, (m, un, c4m, c4un))
+   and un == [(2, "accDescr: accessibility text is not imported")] and [n["id"] for n in c4m["nodes"]] == ["a"] and c4un == un, (m, un, c4m, c4un))
 m, un = imp.read("mermaid", 'flowchart LR\na("`The **cat**\n  in the hat`") -- "edge label" --> b{{"`The **dog** in the hog`"}}\n', "x")
 ok("mermaid · a quoted label over two lines is read", card(m, "a").get("label") == "The **cat** in the hat" and (line(m, "a", "b") or {}).get("label") == "edge label"
    and un == [(2, "a: a Markdown string is read as plain text"), (2, "b: a Markdown string is read as plain text")], (m, un))  # said since audit 25

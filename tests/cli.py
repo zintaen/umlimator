@@ -507,6 +507,16 @@ with tempfile.TemporaryDirectory() as tmp:
             keys.append(u.still_keys(t / "typed.html", [2.0, "light", False]))
         ok("stills · a DFD level is drawn again when its parent's cards change, and a typed view when another view is renamed (audit 8)",
            keys[0]["l2"] != keys[1]["l2"] and keys[1]["l1"] != keys[2]["l1"], keys)
+        # audit 38: a model given "schemaVersion": 2 draws its typed views as diagrams, not as plain cards; the key held no version,
+        # so stills kept the old picture. A map view's key changes too: a version-1 model draws every view as a map
+        keys = []
+        for ver in (None, 1, 2):
+            m = {**typed(["x", "y"], "Level 2"), "views": [*typed(["x", "y"], "Level 2")["views"], {"id": "m", "nodeIds": ["x"]}]}
+            m.pop("schemaVersion") if ver is None else m.update(schemaVersion=ver)
+            (t / "ver.json").write_text(json.dumps(m)); cli("render", str(t / "ver.json"), "--out", str(t / "ver.html"), "--no-check")
+            keys.append(u.still_keys(t / "ver.html", [2.0, "light", False]))
+        ok("stills · a view is drawn again when only the model's schemaVersion changes (audit 38)",
+           all(keys[i][v] != keys[2][v] for i in (0, 1) for v in ("l1", "l2", "m")), keys)
     rides = str(ROOT / "examples" / "traces" / "ride-end.json")
     two = {"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "edges": [{"from": "a", "to": "b"}], "views": [{"id": "main", "nodeIds": ["a", "b"]}]}
     if part("audits 8 to 18"):
@@ -591,6 +601,18 @@ with tempfile.TemporaryDirectory() as tmp:
         bs = {k: plain("render", str(t / f"b34{k}.json"), "--out", str(t / f"b34{k}.html"), "--no-check") for k in [*bad, "num"]}
         ok("render · a story, lens, rule or lane title that is an object or a list is refused in one line naming it; a number renders (audit 34)",
            all(b.returncode == 1 and b.stderr.strip().endswith(f"b34{k}.json: {said[k]}") and "Traceback" not in b.stderr and not (t / f"b34{k}.html").exists() for k, b in bs.items() if k != "num")
+           and bs["num"].returncode == 0, {k: b.stderr[-200:] for k, b in bs.items()})
+        # audit 38: a view's override of a card's label, or a box's label, that is an object was drawn "[object Object]" and render
+        # said nothing, while the same label on a card was refused; a number or a string renders
+        bad = {"ov": {"views": [v0 | {"nodeOverrides": {"a": {"label": {"x": 1}}}}]}, "ovlist": {"views": [v0 | {"nodeOverrides": {"b": {"label": ["<img src=//e.example/t.png>"]}}}]},
+               "box": {"views": [v0 | {"containers": [{"id": "g", "label": {"en": "Group"}, "nodeIds": ["a"]}]}]}}
+        said = {"ov": "views[0].nodeOverrides.a.label is not text", "ovlist": "views[0].nodeOverrides.b.label is not text", "box": "views[0].containers[0].label is not text"}
+        for k, v in bad.items():
+            (t / f"b38{k}.json").write_text(json.dumps(two | v))
+        (t / "b38num.json").write_text(json.dumps(two | {"views": [v0 | {"nodeOverrides": {"a": {"label": 3}, "b": {"label": "Bee"}}, "containers": [{"id": "g", "label": 7, "nodeIds": ["a"]}]}]}))
+        bs = {k: plain("render", str(t / f"b38{k}.json"), "--out", str(t / f"b38{k}.html"), "--no-check") for k in [*bad, "num"]}
+        ok("render · a view's label override or a box label that is an object or a list is refused in one line naming it; a number renders (audit 38)",
+           all(b.returncode == 1 and b.stderr.strip().endswith(f"b38{k}.json: {said[k]}") and "Traceback" not in b.stderr and not (t / f"b38{k}.html").exists() for k, b in bs.items() if k != "num")
            and bs["num"].returncode == 0, {k: b.stderr[-200:] for k, b in bs.items()})
         # audit 18: a card's icon or author that is no string names nothing in a still's key (it ended stills in a TypeError)
         for k, v in (("icon", ["server"]), ("author", {"x": 1})):
