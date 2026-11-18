@@ -169,7 +169,9 @@ const cmSwapEnds = (P, side) => { const v = side === 'T' || side === 'B' ? 0 : 1
 function cmFinish(g, I, stacks, nums, view) {
   const byId = Object.create(null), order = [...I.ids];
   g.nodes.forEach(n => { if (n.id[0] !== CM_STACK) byId[n.id] = { ...n }; });
-  const E = new Map(g.edges.map(e => [e.id, e])), edges = [], total = I.messages.filter(m => nums.has(m.id)).length, place = new Map(I.messages.map((m, k) => [m.id, k + 1]));
+  // the rows counted and placed among the messages drawn, in the view's order, as describe() counts them (audit 42; sequence, audit 41)
+  const rows = new Set([...stacks.values()].flatMap(S => S.ms.map(m => m.id))), drawn = I.messages.filter(m => rows.has(m.id));
+  const E = new Map(g.edges.map(e => [e.id, e])), edges = [], total = drawn.length, place = new Map(drawn.map((m, k) => [m.id, k + 1]));
   I.connectors.forEach(c => {
     const S = stacks.get(c.id);
     if (!S) { const e = E.get(c.id); if (e) edges.push({ ...e, s: byId[e.from], t: byId[e.to] }); return; }
@@ -289,7 +291,9 @@ function commConnect(model, view, from, to, at, line) {
 function commMoveTo(model, view, id, at) {
   if (!CM_OBJ(view)) return null;
   const I = commIndex(model, view), list = CM_ARR(view.edges), idOf = x => (typeof x === 'string' ? x : CM_OBJ(x) ? x.id : null);
-  const ms = list.map((x, i) => [idOf(x), i]).filter(([x]) => I.messages.some(m => m.id === x)), k = ms.findIndex(([x]) => x === id);
+  // the messages drawn (each on its connector's stack): a step lands on the next row, never on one the view does not draw (audit 42)
+  const drawn = new Set([...I.on.values()].flat().map(m => m.id));
+  const ms = list.map((x, i) => [idOf(x), i]).filter(([x]) => drawn.has(x)), k = ms.findIndex(([x]) => x === id);
   if (k < 0) return null;
   let to = k;
   if (CM_OBJ(at) && at.lifeline) return [];

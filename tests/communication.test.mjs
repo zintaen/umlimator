@@ -494,3 +494,20 @@ test('audit 28: Shift + Delete of a connector keeps in the model a message anoth
   const both = T.edits.remove(m, m.views[0], ['c1', 'c2'], true);
   assert.deepEqual(apply(m, both.commands || both).edges, []);
 });
+
+test('audit 42: the rows\' names count and place the messages drawn alone, as describe() does, and Alt+Up/Down steps over a message the view does not draw', () => {
+  const L = id => ({ id, type: 'uml.Lifeline', label: id.toUpperCase() }), msg = (id, from, to) => ({ id, type: 'uml.Message', from, to, label: id, props: { sort: 'async' } });
+  const con = (id, from, to) => ({ id, type: 'uml.Connector', from, to });
+  const m = { schemaVersion: 2, nodes: [L('a'), L('b'), L('c')], edges: [con('k1', 'a', 'b'), con('k2', 'a', 'c'), msg('m1', 'a', 'b'), msg('m2', 'a', 'c'), msg('m3', 'a', 'b')],
+    views: [{ id: 'v', diagram: 'uml.communication', title: 'V', nodeIds: ['a', 'b'], edges: ['k1', 'k2', 'm1', 'm2', 'm3'] }] }; // m2 runs to c, not shown
+  assert.deepEqual(rowsOf(layout(m, 'v')).map(n => n.aria), ['Message 1 of 2, 1: A to B, m1, async', 'Message 2 of 2, 3: A to B, m3, async']);
+  assert.match(describe(m, 'v'), /and 2 messages\.$/m);
+  const v = VIEW(m), down = commMoveTo(m, v, 'm1', { by: [0, 1] }), up = commMoveTo(m, v, 'm3', { by: [0, -1] });
+  assert.deepEqual(down, [{ op: 'move', id: 'm1', view: 'v', index: 4 }]);
+  assert.deepEqual(rowsOf(layout(apply(m, down).model ?? apply(m, down), 'v')).map(n => n.id), ['m3', 'm1'], 'the rows change places');
+  assert.deepEqual(up, [{ op: 'move', id: 'm3', view: 'v', index: 2 }]);
+  assert.deepEqual(commMoveTo(m, v, 'm3', { by: [0, 1] }), [], 'the last row drawn goes no further down');
+  // every row drawn: each example's names count every message, 1 of n to n of n
+  const g = layout(EX, VIEW(EX).id), rs = rowsOf(g);
+  assert.deepEqual(rs.map(n => n.aria.match(/^Message (\d+) of (\d+),/).slice(1).map(Number)).sort((a, b) => a[0] - b[0]), rs.map((_, k) => [k + 1, rs.length]));
+});

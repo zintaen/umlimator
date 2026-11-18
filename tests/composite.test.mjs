@@ -54,7 +54,7 @@ test('the definition: uml.composite-structure with its palette, three lines, §1
   assert.deepEqual(T.refs, { 'uml.Connector': { 'props.ends.from.part': 'cascade', 'props.ends.to.part': 'cascade' } });
   assert.equal(T.layout.rank, false, 'the type ranks its parts: the host passes the pins alone');
   for (const k of ['layout', 'validate', 'describe', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
-  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'member', 'moveTo', 'remove', 'rename']);
+  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'field', 'member', 'moveTo', 'remove', 'rename']);
   assert.deepEqual(['uml.Class', 'uml.Component', 'uml.Collaboration', 'uml.Interface'].map(t => T.member.holds({ type: t })), [true, true, true, false]);
   assert.deepEqual(Object.keys(T.rules), ['subject-shown', 'part-type', 'part-multiplicity', 'connector-part', 'connector-scope', 'connector-drawn', 'binding-ends', 'binding-role', 'collaboration-named', 'own-boxes', 'port-owner', 'manifest-ends']);
 });
@@ -940,4 +940,26 @@ test('audit 41: a part, port or member row added or renamed to a name another me
   assert.match(CP.member.edit(I.members[1], 'pay()', I).error, /^member-names: "Payments" has a member named "pay" already \(o1\)/);
   assert.equal(CP.member.add('pay(amount: Int)', I).label, 'pay', 'an overload is no clash');
   assert.ok(Array.isArray(CP.member.edit(I.members[1], 'refund(id: Int)', I).commands));
+});
+
+test('audit 42: the properties panel\'s Name field on a part or port writing a name another member of its class holds is refused in member-names\' words, as F2 is', async () => {
+  await import('../src/typed/edit.js');
+  const { typedEditor } = await import('../src/canvas/edit.js');
+  const m = { schemaVersion: 2, nodes: [{ id: 'shop', type: 'uml.Class', label: 'Shop', members: [P('shop.a', 'a', { props: { valueType: 'W' } }), P('shop.b', 'b', { props: { valueType: 'W' } }), port('shop.p')] },
+    { id: 'w', type: 'uml.Class', label: 'W' }], edges: [], views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 'shop', nodeIds: ['shop'] }] };
+  const got = [], status = [];
+  const I = typedEditor({ root: { addEventListener() {} }, stage: { addEventListener() {} }, can: () => true, say() {}, status: s => status.push(s), emit: c => got.push(c), view: () => 'v', model: () => m, picked: () => [], sel: () => null,
+    geo: () => ({ byId: {}, nodes: [] }), cam: () => null, focus() {}, touch() {} });
+  const set = (id, value) => { got.length = 0; status.length = 0; const ok = I.field(id, 'label', value, () => { got.push([{ op: 'set', id, path: 'label', value }]); return true; }); return { ok, c: got.flat(), status: [...status] }; };
+  for (const id of ['shop.a', 'shop.p']) {
+    const r = set(id, 'b');
+    assert.equal(r.ok, false, id); assert.deepEqual(r.c, [], id);
+    assert.match(r.status[0], /^member-names: "Shop" has a member named "b" already \(shop\.b\)/, id);
+    assert.equal(I.label({ type: 'node', id }, 'b'), false, `${id}: F2 says the same`);
+  }
+  // a new name, or a field other than the name, is the default set; a component's members are no classifier member-names judges
+  assert.deepEqual(set('shop.a', 'c').c, [{ op: 'set', id: 'shop.a', path: 'label', value: 'c' }]);
+  assert.equal(T.edits.field(m, m.views[0], 'shop.a', 'props.valueType', 'b'), null);
+  const k = structuredClone(m); k.nodes[0].type = 'uml.Component';
+  assert.equal(T.edits.field(k, k.views[0], 'shop.a', 'label', 'b'), null);
 });
