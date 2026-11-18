@@ -64,7 +64,7 @@ const PINNED = {
   'block-definition-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
   'block-definition-stress': { 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, all: { right: [54, 0, 0], down: [50, 0, 0] } },
   'internal-block-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
-  'internal-block-stress': { 'edge-cases': { right: [1, 0, 0], down: [2, 0, 0] }, 'ec-ports-only': { right: [0, 0, 0], down: [0, 0, 0] }, all: { right: [16, 0, 0], down: [32, 1, 0] } },
+  'internal-block-stress': { 'edge-cases': { right: [1, 0, 0], down: [2, 0, 0] }, 'ec-ports-only': { right: [0, 0, 0], down: [0, 0, 0] }, all: { right: [5, 0, 0], down: [20, 1, 0] } }, // fewer since audit 38: lines between two parts keep their ports' order
   'parametric-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
   'parametric-stress': { 'edge-cases': { right: [1, 0, 0], down: [1, 0, 0] }, 'ec-constraint-block': { right: [0, 0, 0], down: [0, 1, 0] }, all: { right: [207, 22, 0], down: [205, 24, 0] } },
 };

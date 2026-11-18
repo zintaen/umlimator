@@ -586,6 +586,42 @@ test('audit 33: an element that opens a view titled "" is named "opens" with the
   assert.equal(n.opensTo, 'other'); assert.match(n.aria, /, opens other$/);
 });
 
+// audit 38: an end label (role, multiplicity) is placed clear of its own line's name label and of every class drawn
+const endLabs = svg => [...svg.matchAll(/<text[^>]*class="end-lab"[^>]*data-box="([-\d. ]+)"[^>]*>([^<]*)</g)].map(x => { const [X, Y, W, H] = x[1].split(' ').map(Number); return { x: X, y: Y, w: W, h: H, t: x[2] }; });
+const overlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+const assoc = (id, from, to, ends, label) => ({ id, type: 'uml.Association', from, to, ...(label ? { label } : {}),
+  props: { ends: { from: { role: ends[0], multiplicity: ends[1] }, to: { role: ends[2], multiplicity: ends[3] } } } });
+
+test('audit 38: an association\'s role and multiplicity keep clear of its own name label', async () => {
+  const { svgOf } = await import('../src/draw/svg.js');
+  const m = { schemaVersion: 2, nodes: ['Customer', 'Order', 'Product'].map((l, i) => ({ id: 'c' + i, type: 'uml.Class', label: l })),
+    edges: [assoc('a0', 'c1', 'c2', ['items', '1', 'owner', '*'], 'owns'), assoc('a1', 'c0', 'c2', ['children', '1..*', 'owner', '*'])],
+    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['c0', 'c1', 'c2'], direction: 'right' }] };
+  for (const d of ['right', 'down']) {
+    m.views[0].direction = d;
+    const g = layout(m, 'v'), labs = endLabs(String(svgOf(g)));
+    assert.equal(labs.length, 8, d);
+    for (const e of g.edges.filter(x => x.lbl)) for (const b of labs) assert.ok(!overlap(b, e.lbl), `${d}: "${b.t}" at ${b.x},${b.y} over the label "${e.label}"`);
+  }
+  const g = layout(CLASS, 'domain'), labs = endLabs(String(svgOf(g)));
+  for (const e of g.edges.filter(x => x.lbl)) for (const b of labs) assert.ok(!overlap(b, e.lbl), `sales-classes: "${b.t}" over the label "${e.label}"`);
+});
+
+test('audit 38: an end label is never drawn over a class its line does not end on', async () => {
+  const { svgOf } = await import('../src/draw/svg.js');
+  const m = { schemaVersion: 2, nodes: [0, 1, 2, 3, 4].map(i => ({ id: 'c' + i, type: 'uml.Class', label: 'Class' + i,
+    members: i === 0 || i === 2 ? [{ id: `c${i}.a`, type: 'uml.Property', label: 'attr', props: { valueType: 'String' } }] : [] })),
+  edges: [assoc('a0', 'c3', 'c3', ['items', '1..*', 'items', '1..*']), assoc('a1', 'c3', 'c1', ['orders', '0..1', 'owner', '1..*'], 'owns'),
+    assoc('a2', 'c2', 'c4', ['children', '*', 'items', '*']), assoc('a3', 'c3', 'c1', ['buyer', '*', 'children', '*'])],
+  views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['c0', 'c1', 'c2', 'c3', 'c4'], direction: 'down' }] };
+  for (const d of ['down', 'right']) {
+    m.views[0].direction = d;
+    const g = layout(m, 'v'), labs = endLabs(String(svgOf(g)));
+    assert.equal(labs.length, 16, d);
+    for (const n of g.nodes) for (const b of labs) assert.ok(!overlap(b, n), `${d}: "${b.t}" at ${b.x},${b.y} over ${n.id}`);
+  }
+});
+
 test('audit 38: connect on a class or package view refuses a realization or a package import or merge its own rule calls an error, and only those', () => {
   const m = { schemaVersion: 2, title: 'T', nodes: [{ id: 'p', type: 'uml.Package', label: 'sales' }, { id: 'q', type: 'uml.Package', label: 'catalog' }, { id: 'f', type: 'uml.Profile', label: 'ext' },
     { id: 'c', type: 'uml.Class', label: 'Order' }, { id: 'd', type: 'uml.Class', label: 'Line' }, { id: 'i', type: 'uml.Interface', label: 'Payable' }, { id: 'e', type: 'uml.Enumeration', label: 'State' },

@@ -954,3 +954,19 @@ test('audit 35: a line names an unnamed pool by its id, as the pool\'s card and 
   delete m.nodes.find(n => n.id === 'end').label;
   assert.equal(layout(m, 'v').edges.find(e => e.id === 'm2').aria, 'Message flow from end event to customer2');
 });
+
+test('audit 38: a rework loop (check, gateway, fix, back to check) is laid out clean, with lanes and without, right and down, either order', () => {
+  const N = (id, type, label, parent) => ({ id, type, label, parent }), S = (id, from, to, label) => ({ id, type: 'bpmn.SequenceFlow', from, to, ...(label ? { label } : {}) });
+  const mk = (lanes, dir, order) => { const p = lanes ? ['l1', 'l1', 'l1', 'l2', 'l1', 'l2'] : Array(6).fill('pool');
+    return { schemaVersion: 2, nodes: [{ id: 'pool', type: 'bpmn.Participant', label: 'Shop', ...(lanes ? { members: [{ id: 'l1', type: 'bpmn.Lane', label: 'Sales' }, { id: 'l2', type: 'bpmn.Lane', label: 'Warehouse' }] } : {}) },
+      N('s', 'bpmn.StartEvent', 'Order in', p[0]), N('a', 'bpmn.Task', 'Check order', p[1]), N('g', 'bpmn.ExclusiveGateway', 'OK?', p[2]),
+      N('b', 'bpmn.Task', 'Pick', p[3]), N('c', 'bpmn.Task', 'Fix order', p[4]), N('e', 'bpmn.EndEvent', 'Shipped', p[5])],
+    edges: [S('f1', 's', 'a'), S('f2', 'a', 'g'), S('f3', 'g', 'b', 'yes'), S('f4', 'g', 'c', 'no'), S('f5', 'c', 'a'), S('f6', 'b', 'e')],
+    views: [{ id: 'v', diagram: 'bpmn', direction: dir, nodeIds: order }] }; };
+  for (const lanes of [false, true]) for (const dir of ['right', 'down']) for (const order of [['pool', 's', 'a', 'g', 'b', 'c', 'e'], ['pool', 's', 'a', 'g', 'c', 'b', 'e']]) {
+    const m = mk(lanes, dir, order), at = `${lanes ? 'lanes' : 'no lanes'} ${dir} ${order.join(',')}`;
+    assert.deepEqual(check(m, 'v').map(p => p.message), [], at);
+    const g = layout(m, 'v'), pool = g.bands.find(b => b.id === 'pool');
+    for (const [x, y] of g.edges.find(e => e.id === 'f5').pts) assert.ok(x >= pool.x && x <= pool.x + pool.w && y >= pool.y && y <= pool.y + pool.h, `${at}: the loop stays in its pool`);
+  }
+});

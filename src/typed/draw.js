@@ -110,14 +110,18 @@ function endLabels(e, pts = e.pts, also = []) { // also: boxes to keep clear of 
 // which a memo hands back (Q13), are never changed. Every typed shape with an inset gets the
 // copy, its ends rounded; where the inset is 0 (the classifier, a package, an object) the ends stay on the box
 const insetLook = n => { const S = n && hasKey(SHAPE, n.shape) ? SHAPE[n.shape] : null; return S && S.draw && S.inset ? { ...n, S } : null; };
-TYPED.lines = ({ id, edges, drawn, lstyle, MC }) => {
+TYPED.lines = ({ id, nodes = [], families = [], edges, drawn, lstyle, MC }) => {
   edges.forEach((e, i) => { if (e.pts) drawn[i] = drawnPts(e, insetLook); });
   const ends = [...new Set(edges.flatMap(e => e.end ? ['from', 'to'].map(w => endOf(e.end, w)).filter(Boolean).map(k => k + '-' + lstyle(e).m) : []))];
   const endMark = km => { const k = km.slice(0, km.lastIndexOf('-')), m = km.slice(k.length + 1), [L, H, p, fl] = ENDS[k];
     return `<marker id="${id}-${km}" markerWidth="${L}" markerHeight="${2 * H}" refX="${L}" refY="${H}" orient="auto-start-reverse" markerUnits="userSpaceOnUse" overflow="visible"><path d="${p}" fill="${fl === 'line' ? MC[m] : fl === 'hollow' ? 'var(--um-stage-bg)' : 'none'}" stroke="${MC[m]}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></marker>`; };
-  // a typed line's end labels keep clear of the other lines, their labels and the end labels placed before them (1.9, L5)
-  const segs = drawn.map(p => p.slice(1).map((q, k) => ({ x: Math.min(p[k][0], q[0]) - 3, y: Math.min(p[k][1], q[1]) - 3, w: Math.abs(q[0] - p[k][0]) + 6, h: Math.abs(q[1] - p[k][1]) + 6 }))), placed = [];
-  const endLabs = i => { const bs = endLabels(edges[i], drawn[i], [...placed, ...segs.flatMap((S, j) => j === i ? [] : [...S, ...(edges[j].lbl ? [edges[j].lbl] : [])])]); placed.push(...bs); return bs; };
+  // a typed line's end labels keep clear of the other lines, every line's label (its own too: audit 38), every node drawn
+  // and each box's header room (audit 38, as portsDrawn's port names) and the end labels placed before them (1.9, L5)
+  const segs = drawn.map(p => (p || []).slice(1).map((q, k) => ({ x: Math.min(p[k][0], q[0]) - 3, y: Math.min(p[k][1], q[1]) - 3, w: Math.abs(q[0] - p[k][0]) + 6, h: Math.abs(q[1] - p[k][1]) + 6 }))), placed = [];
+  const fin = b => b && Number.isFinite(b.x) && Number.isFinite(b.y) && Number.isFinite(b.w) && Number.isFinite(b.h);
+  const solid = [...(Array.isArray(nodes) ? nodes : []).filter(fin).map(n => ({ x: n.x - 2, y: n.y - 2, w: n.w + 4, h: n.h + 4 })),
+    ...(Array.isArray(families) ? families : []).filter(fin).map(f => ({ x: f.x - 2, y: f.y - 2, w: f.w + 4, h: 26 })), ...edges.map(e => e.lbl).filter(fin)];
+  const endLabs = i => { const bs = endLabels(edges[i], drawn[i], [...placed, ...solid, ...segs.flatMap((S, j) => j === i ? [] : S)]); placed.push(...bs); return bs; };
   return {
     defs: ends.map(endMark).join(''),
     edge(e, i) { const E = e.end; if (!E) return null;
