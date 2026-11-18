@@ -852,3 +852,11 @@ test('audit 39: a state machine round 38 drew with two transitions between one p
 test('audit 39: fuzz state machines draw no transition across a title, on another\'s track or along a border', () => {
   for (const name of ['down-2-34', 'down-1-97', 'down-1-72', 'right-2-21', 'right-3-19', 'right-3-46']) assert.deepEqual(notCross(F39[name]), [], name);
 });
+
+// round 39's turns (lines to a composite level with the card take its top and bottom by turns, though the card has other lines)
+// are judged: the view is laid out without them too, and the one check() has less to say of kept (audit 40: laid out right, the
+// turns of two transitions into a composite crossed the transitions between its state and the state beside it, twice; 0.41 drew
+// it with none)
+test('audit 40: a state machine whose turns into a composite would cross other transitions draws with no crossing', () => {
+  assert.deepEqual(check(F39['right-11-15'], 'v').map(p => p.message), []);
+});

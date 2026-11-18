@@ -1,6 +1,6 @@
 import { TYPED } from '../core/registry.js';
 import { warn } from '../core/warn.js';
-import { NW, OWN_ROUTE, PLAIN, labelW, layoutGraph } from '../layout/layered.js';
+import { NW, OWN_ROUTE, PLAIN, TURNS, labelW, layoutGraph } from '../layout/layered.js';
 import { leaveIssues, overlapIssues, routeAudit, throughIssues } from '../layout/audit.js';
 
 /* A typed view's layout (work package 1.4): layoutGraph's plain layout with what a typed view needs, none of it on a map.
@@ -56,7 +56,11 @@ function layoutTyped(dg, memo) {
   const said = h => { const is = [...routeAudit(h, ''), ...throughIssues(h, '')]; return [is.filter(s => !/ cross$/.test(s)).length, is.length]; };
   const less = (b, a) => b[0] < a[0] || (b[0] === a[0] && b[1] < a[1]);
   // [layout, laid out without the swap too]: buildGeo need not try that one again
+  // a layout whose lines to one card took its top and bottom by turns though the card has other lines (layoutPass, audit 39) is
+  // laid out without those turns too, and that one kept when check() has less to say of it (audit 40: laid out right, the turns
+  // of two lines into a composite crossed the lines between its state and the state beside it, twice)
   const best = u => { let g = lay(u), tried = false;
+    if (g.turns) { const v = { ...u, [TURNS]: true }, h = lay(v); if (less(said(h), said(g))) { g = h; u = v; } }
     if (g.nested) { const a0 = said(g);
       const judged = (v, h = lay(v), b = said(h)) => { if (!memo || v.noSwap || !h.rr || (h.nodes || []).length > 30) return [h, b, false];
         const h2 = lay({ ...v, noSwap: true }), b2 = said(h2); return less(b2, b) ? [h2, b2, true] : [h, b, true]; };
