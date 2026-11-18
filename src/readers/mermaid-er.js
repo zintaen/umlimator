@@ -1,4 +1,4 @@
-import { unreadable } from '../core/model.js';
+import { unreadable, jsonText } from '../core/model.js';
 import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort, mermaidText } from './mermaid-front.js';
 /* ---------- Mermaid erDiagram: a reader and a writer (notes/milestone-2.md §8.1, M2.8; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's entity relationship page (docs/syntax/entityRelationshipDiagram.md, read 14 Nov 2026)
@@ -20,7 +20,8 @@ import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort, mermaidText } 
    name is written as `entity`, `entity-2` ... under its `%% id:`), a column's `references` as `%% references:`; an element
    the subset leaves out as `%% not written: <id> (<type>)`, and a property Mermaid has no place for as
    `%% not written: <id>: <what>` (a multiplicity other than the four, written as the nearest; the notation idef1x, as
-   Mermaid draws crow's foot). A column is written only when the reader reads its row back as it is.
+   Mermaid draws crow's foot). A column is written only when the reader reads its row back as it is; one of no type (the
+   panel's row `id PK`) as of type `untyped`, named, since Mermaid's row needs a type; one left out says why (audit 32).
 
    How ER maps onto Mermaid's text, both ways:
    - `NAME`, `"a name"`, `NAME[Alias]`, `NAME["An alias"]` an entity, its label the alias, else its name; `NAME { ... }`
@@ -47,6 +48,7 @@ const ME_SYM = meTable({ 1: ['||', '||'], '0..1': ['|o', 'o|'], '0..*': ['}o', '
 const ME_NAME = /(?:(?!\s)[^\x00-\x7F]|[\w.*-])+/y; // a name not in quotes (the lexer's UNICODE_TEXT; a Unicode space is whitespace, as \s+ in the lexer)
 const ME_WORD = /[*A-Za-z_\u00C0-\uFFFF][A-Za-z0-9\-_[\]().,\u00C0-\uFFFF*]*/y; // a column's type or name (ATTRIBUTE_WORD)
 const ME_KEY = /(?:PK|FK|UK)\b/iy;
+const ME_UNTYPED = 'untyped'; // the type the writer writes for a column of none: Mermaid's row needs one (audit 32)
 // a statement's first word that Mermaid's lexer takes as a keyword: the writer writes no name that starts with one
 const ME_KEYWORDS = new Set(['one', 'many', 'to', 'end', 'class', 'classdef', 'style', 'subgraph', 'erdiagram']);
 const ME_DIRECTION = /direction\s+(TB|BT|RL|LR)/gi; // the lexer takes any line holding this as a direction statement
@@ -392,25 +394,34 @@ function writeMermaidEr(model, viewId) {
     let alias = '';
     const lab = mermaidText(n.label); // a number or true as its text (audit 31)
     if (typeof lab === 'string' && lab !== '') { if (hinted || lab !== n.id) alias = `["${meEncode(lab)}"]`; }
-    else lose(n.id, lab === '' ? 'an empty label, read as its name' : lab == null ? 'no label, read as its name' : `label ${lab}, which is not text`);
+    else lose(n.id, lab === '' ? 'an empty label, read as its name' : lab == null ? 'no label, read as its name' : `label ${jsonText(lab)}, which is not text`);
     const rows = [], labels = new Set();
     for (const x of arr(n.members).filter(isObj)) {
       const p = isObj(x.props) ? x.props : {}, ext = isObj(x.ext) ? x.ext : {}, me = isObj(ext.mermaid) ? ext.mermaid : {};
-      if (x.type !== 'er.Column' || !derives(x.id) || typeof x.label !== 'string' || !x.label || typeof p.dataType !== 'string' || !p.dataType || labels.has(x.label)) { skip(x); continue; }
+      // a column is left out only when the reader cannot read it back, and says why (audit 32)
+      const why = x.type !== 'er.Column' ? '' : !derives(x.id) ? 'an id the reader would not keep' : null;
+      if (why != null) { if (why) lose(x.id, why); else skip(x); continue; }
+      // the label as its text, a number too (audit 31, 32), as the view draws it
+      const cl = mermaidText(x.label);
+      if (typeof cl !== 'string' || !cl || labels.has(cl)) { lose(x.id, cl == null || cl === '' ? 'a column with no name' : typeof cl !== 'string' ? `name ${jsonText(cl)}, which is not text` : `name ${cl}, which another column of ${flat(n.id)} has`); continue; }
+      // a column of no type (the panel's row "id PK", whose type is optional) is written with a type Mermaid needs, named
+      const dt = mermaidText(p.dataType), typed = typeof dt === 'string' && dt !== '', type = typed ? dt : ME_UNTYPED;
       const comment = typeof me.comment === 'string' ? me.comment : undefined;
       const keys = [p.primaryKey === true && 'PK', p.foreignKey === true && 'FK', p.unique === true && 'UK'].filter(Boolean);
-      const want = JSON.stringify(Object.entries({ dataType: p.dataType, ...Object.fromEntries(['primaryKey', 'foreignKey', 'unique', 'nullable'].filter(f => p[f] === true).map(f => [f, true])) }).sort());
+      const want = JSON.stringify(Object.entries({ dataType: type, ...Object.fromEntries(['primaryKey', 'foreignKey', 'unique', 'nullable'].filter(f => p[f] === true).map(f => [f, true])) }).sort());
       // the type and the name as they are, else in backticks (and a ? apart, which a generic type's word would take in):
       // the first row the reader reads back as the column is written
       // (a row is one line: a type or name in backticks holding a line break would be read as two)
-      const row = [[0, 0, ''], [1, 0, ''], [0, 1, ''], [1, 1, ''], [0, 0, ' '], [0, 1, ' ']].map(([q, r, sp]) => `${q ? '`' + p.dataType + '`' : p.dataType}${p.nullable === true ? sp + '?' : ''} ${r ? '`' + x.label + '`' : x.label}${keys.length ? ' ' + keys.join(', ') : ''}${comment !== undefined ? ` "${meEncode(comment)}"` : ''}`).find(row => {
+      const row = [[0, 0, ''], [1, 0, ''], [0, 1, ''], [1, 1, ''], [0, 0, ' '], [0, 1, ' ']].map(([q, r, sp]) => `${q ? '`' + type + '`' : type}${p.nullable === true ? sp + '?' : ''} ${r ? '`' + cl + '`' : cl}${keys.length ? ' ' + keys.join(', ') : ''}${comment !== undefined ? ` "${meEncode(comment)}"` : ''}`).find(row => {
         if (nl(row)) return false;
         const r = meRow(row, 0), c = r.cols.length === 1 && r.bad === undefined && r.end === row.length ? meColumn(r.cols[0]) : null;
-        return c && c.label === x.label && c.comment === comment && JSON.stringify(Object.entries(c.props).sort()) === want;
+        return c && c.label === cl && c.comment === comment && JSON.stringify(Object.entries(c.props).sort()) === want;
       });
-      const hint = row ? idOf(x.id, `${n.id}.${x.label}`) : undefined;
-      if (hint === undefined) { skip(x); continue; }
-      labels.add(x.label);
+      if (!row) { lose(x.id, `a row Mermaid would not read back as the column (${flat(type)} ${flat(cl)})`); continue; }
+      const hint = idOf(x.id, `${n.id}.${cl}`);
+      if (hint === undefined) { lose(x.id, 'an id the reader would not keep'); continue; }
+      labels.add(cl);
+      if (!typed) lose(x.id, p.dataType == null || p.dataType === '' ? `no type, written as ${ME_UNTYPED}` : `type ${jsonText(p.dataType)}, which is not text, written as ${ME_UNTYPED}`);
       extra(x, ['id', 'type', 'label', 'ext'], ['dataType', 'primaryKey', 'foreignKey', 'unique', 'nullable', 'references']);
       for (const f of ['primaryKey', 'foreignKey', 'unique', 'nullable']) if (p[f] !== undefined && p[f] !== true) lose(x.id, `${f} ${p[f]}, read as absent`);
       if (Object.keys(ext).some(k => k !== 'mermaid') || Object.keys(me).some(k => k !== 'comment') || (me.comment !== undefined && comment === undefined)) lose(x.id, 'ext, but for ext.mermaid.comment');
@@ -442,7 +453,7 @@ function writeMermaidEr(model, viewId) {
     extra(e, ['id', 'type', 'from', 'to', 'label'], ['identifying', 'ends']);
     // each end's marker: one of the four, else the nearest by its bounds (0 or 1 below; 1 or many above), named
     const mark = (w, side) => {
-      const end = isObj(ends[w]) ? ends[w] : {}, mult = end.multiplicity;
+      const end = isObj(ends[w]) ? ends[w] : {}, mult = mermaidText(end.multiplicity); // the number 1 as '1', as the view reads it (audit 32)
       for (const k of Object.keys(end)) if (k !== 'multiplicity') lose(e.id, `${k} at its ${w} end`);
       if (typeof mult === 'string' && ME_SYM[mult]) return ME_SYM[mult][side];
       const b = /^\s*(\d+|\*)\s*(?:\.\.\s*(\d+|\*)\s*)?$/.exec(typeof mult === 'string' ? mult : ''), lo = b && (b[1] === '*' ? 0 : +b[1]), hi = b && (b[2] ?? b[1]);
@@ -453,7 +464,7 @@ function writeMermaidEr(model, viewId) {
     const left = mark('from', 0), right = mark('to', 1);
     if (typeof p.identifying !== 'boolean') lose(e.id, `identifying ${p.identifying ?? 'unset'}, written as non-identifying`);
     const el = mermaidText(e.label);
-    if (el === '' || (el != null && typeof el !== 'string')) lose(e.id, el === '' ? 'an empty label, read as none' : `label ${el}, which is not text`);
+    if (el === '' || (el != null && typeof el !== 'string')) lose(e.id, el === '' ? 'an empty label, read as none' : `label ${jsonText(el)}, which is not text`);
     const label = typeof el === 'string' ? meEncode(el) : '';
     out.push(...(hint ? [`  %% id: ${hint}`] : []), `  ${names.get(e.from)[0]} ${left}${p.identifying === true ? '--' : '..'}${right} ${names.get(e.to)[0]} : "${label}"`);
   }

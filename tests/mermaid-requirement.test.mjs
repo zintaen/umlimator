@@ -388,3 +388,15 @@ test('a view direction "constructor" is named not written and written LR, as it 
   const text = write({ schemaVersion: 2, nodes: [{ id: 'r', type: 'sysml.Requirement', label: 'R' }], views: [{ id: 'v', diagram: 'sysml.requirement', direction: 'constructor', nodeIds: ['r'] }] }, 'v');
   assert.deepEqual(text.split('\n').filter(l => /direction/.test(l)).map(l => l.trim()), ['direction LR', '%% not written: v: direction constructor: written as Mermaid\'s LR, as it is drawn']);
 });
+
+// audit 32: a label, text or other value that is no text was named in a note as JavaScript writes it, "[object Object]"
+// or "x,y"; each is now quoted as validate() quotes it
+test('a value that is no text is named in a not-written note as JSON, not as [object Object] (audit 32)', async () => {
+  const { writeMermaidRequirement } = await import('../src/readers/mermaid-requirement.js');
+  const notes = (props, label) => writeMermaidRequirement({ schemaVersion: 2, nodes: [{ id: 'r1', type: 'sysml.Requirement', label, props }],
+    views: [{ id: 'v', diagram: 'sysml.requirement', nodeIds: ['r1'] }] }, 'v').split('\n').filter(l => l.includes('not written')).map(l => l.trim());
+  assert.deepEqual(notes({ reqId: '1', text: 't' }, { a: 1 }), ['%% not written: r1: label {"a":1}, which is not text']);
+  assert.deepEqual(notes({ reqId: '1', text: 't' }, ['x', 'y']), ['%% not written: r1: label ["x","y"], which is not text']);
+  assert.deepEqual(notes({ reqId: '1', text: { b: 2 }, risk: ['High'], stereotypes: [{ c: 3 }] }, 'R'),
+    ['%% not written: r1: stereotype {"c":3}', '%% not written: r1: text {"b":2}, which is not text', '%% not written: r1: risk ["High"], which is none of Mermaid\'s low, medium, high']);
+});

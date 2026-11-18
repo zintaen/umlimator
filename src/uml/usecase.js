@@ -1,4 +1,4 @@
-import { ownNodes, registerDiagramType, idTable } from '../core/registry.js';
+import { aKind, ownNodes, registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
@@ -240,7 +240,7 @@ function ucProblems(model, view) {
   UC_ARR(model && model.nodes).forEach((n, i) => { if (!UC_OBJ(n) || !UC_KINDS.includes(n.type)) return;
     if (!UC_HAS(n.label) || !String(n.label).trim()) say('error', 'named', `nodes[${i}]`, [n.id], `${n.type === 'uml.Actor' ? 'actor' : 'use case'} ${n.id} has no name`);
     const p = n.parent != null && at.get(n.parent), ok = n.type === 'uml.UseCase' ? ['uml.Subject', 'uml.Package'] : ['uml.Package'];
-    if (p && !ok.includes(p.type)) say('warning', 'use-case-owner', `nodes[${i}].parent`, [n.id, p.id], `${q(n.id)} is owned by ${q(p.id)}, a ${String(p.type).split('.').pop()}: ${n.type === 'uml.UseCase' ? 'a use case\'s owner is a subject or a package' : 'an actor\'s owner is a package, or none'}`);
+    if (p && !ok.includes(p.type)) say('warning', 'use-case-owner', `nodes[${i}].parent`, [n.id, p.id], `${q(n.id)} is owned by ${q(p.id)}, ${aKind(UC_TYPE, p)}: ${n.type === 'uml.UseCase' ? 'a use case\'s owner is a subject or a package' : 'an actor\'s owner is a package, or none'}`);
     if (n.type !== 'uml.UseCase') return;
     const seen = new Map(); ucPointsOf(n).forEach(m => { const k = ucName(m), was = seen.get(k);
       if (was) say('warning', 'point-names', `nodes[${i}].members[${UC_ARR(n.members).indexOf(m)}]`, [n.id, was, m.id], `${q(n.id)} has two extension points named "${k}" (${was}, ${m.id})`); else seen.set(k, m.id); }); });

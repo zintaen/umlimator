@@ -19,7 +19,8 @@ import { copyOf, lineNames, namesOf, listOf, jsonText } from './model.js';
                { id, view, index }           an element or line to another place in a view's order (its nodeIds or edges)
      hide      { id, view }                  out of one view, with all the view says of it: its place, pin, present,
                                              box, tour, the view's lines to it, the story steps on that view; the model
-                                             keeps it (risks.md E5). A line that lives only in that view goes with it.
+                                             keeps it (risks.md E5). A line that lives only in that view goes with it
+                                             (a later delete of it in the transaction is passed over, audit 32).
                                              The view's subject (or what owns it) is refused (audit 17)
      delete    { id }                        out of the model, with its members, what it owns, the lines to them, and
                                              every place that names them (references()). One already gone in the same
@@ -233,8 +234,9 @@ function run(m, c, gone) {
       const ids = new Set(), own = x => { ids.add(x.id); arr(x.members).forEach(y => isObj(y) && typeof y.id === 'string' && own(y)); }; own(e.x);
       if (ids.has(v.subject)) throw new Error(`hide: "${v.subject}" is the subject of view "${c.view}": change the view's subject, or delete it from the model (no command deletes a view)`); // audit 17, 18
       const ends = l => isObj(l) && (ids.has(l.from) || ids.has(l.to)); // the view's lines to it, listed or its own, leave the view with it
+      // a line the view holds goes for good: a later delete of it in this transaction finds it gone, as after a delete (audit 32)
       if (Array.isArray(v.edges)) v.edges = v.edges.filter(y => { const l = typeof y === 'string' ? (at.get(y) || {}).x : y, out = y === c.id || ends(l);
-        if (out && isObj(l) && typeof l.id === 'string') ids.add(l.id); return !out; }); // what names those lines in this view goes too
+        if (out && isObj(l) && typeof l.id === 'string') { ids.add(l.id); if (l === y) gone.add(l.id); } return !out; }); // what names those lines in this view goes too
       // a prop names model elements, kept, but for an interaction use's covers: lifelines of its view (audit 14)
       clear(m, refs(m, ids, i => i === vi).filter(r => !['end', 'parent', 'part'].includes(r.kind) && (r.kind !== 'prop' || r.path[r.path.length - 2] === 'covers')));
       follow(m, names0, i => i === vi);

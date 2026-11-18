@@ -1,4 +1,4 @@
-import { unreadable } from '../core/model.js';
+import { unreadable, jsonText } from '../core/model.js';
 import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort, mermaidText } from './mermaid-front.js';
 /* ---------- Mermaid requirementDiagram: a reader and a writer (notes/milestone-3.md §12, M3.6; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's requirement diagram page (docs/syntax/requirementDiagram.md, read 14 Nov 2026), as the
@@ -318,6 +318,7 @@ function writeMermaidRequirement(model, viewId) {
   if (view) for (const n of arr(view.nodes)) if (isObj(n) && !byId.has(n.id)) byId.set(n.id, n); // a card the view alone holds (view.nodes), written as a model one (audit 22)
   const out = [], notWritten = [], skip = x => notWritten.push(`${flat(x.id)} (${flat(x.type)})`), lose = (id, what) => notWritten.push(`${flat(id)}: ${flat(what)}`);
   const once = (seen, id) => { if (!seen.has(id)) return seen.add(id); lose(id, 'listed twice in the view, written once'); return false; };
+  const said = v => (typeof v === 'string' ? v : jsonText(v)); // a value in a note: text as it is, else as validate() quotes it (audit 32)
   const seenNodes = new Set(), shown = (view ? arr(view.nodeIds) : [...byId.keys()]).filter(id => byId.has(id) && once(seenNodes, id));
   // an id the reader keeps as a hint: a string of one line, trimmed (as a hint is read), not empty, with no ->
   const keeps = id => typeof id === 'string' && id !== '' && !nl(id) && id.trim() === id && !id.includes('->');
@@ -333,7 +334,7 @@ function writeMermaidRequirement(model, viewId) {
   const value = (id, what, v) => {
     if (v === '') { lose(id, `${what} "", which Mermaid cannot write empty`); return null; }
     if (typeof v === 'string' && !nl(v) && !v.includes('"')) return /^\w[\w./]*$/.test(v) ? v : `"${v}"`;
-    lose(id, `${what} ${v}, which Mermaid's quotes cannot hold`);
+    lose(id, `${what} ${said(v)}, which Mermaid's quotes cannot hold`);
     return null;
   };
   // the title as text (a number or true too, audit 23), as it is only when YAML reads it as text: a letter first, and
@@ -366,7 +367,7 @@ function writeMermaidRequirement(model, viewId) {
     const name = names.get(n.id), p = isObj(n.props) ? n.props : {}, req = n.type === 'sysml.Requirement', head = [], body = [];
     if (n.id !== mqWant(name)) head.push(`%% id: ${n.id}`);
     const lab = mermaidText(n.label);
-    if (typeof lab !== 'string') lose(n.id, lab == null ? 'no label, read as its name' : `label ${lab}, which is not text`);
+    if (typeof lab !== 'string') lose(n.id, lab == null ? 'no label, read as its name' : `label ${said(lab)}, which is not text`);
     else if (lab !== name) head.push(`%% name: ${JSON.stringify(lab)}`);
     if (isObj(n.props) && !Object.keys(n.props).length) lose(n.id, 'props, which are empty');
     if (Array.isArray(p.stereotypes) && !p.stereotypes.length) lose(n.id, 'stereotypes, an empty list');
@@ -375,16 +376,16 @@ function writeMermaidRequirement(model, viewId) {
     if (req) {
       const kinds = arr(p.stereotypes).filter(s => MQ_KINDS.get(String(s).toLowerCase()) === s && s !== 'requirement');
       word = kinds[0] || 'requirement';
-      for (const s of arr(p.stereotypes)) if (s !== kinds[0]) lose(n.id, `stereotype ${s}`);
+      for (const s of arr(p.stereotypes)) if (s !== kinds[0]) lose(n.id, `stereotype ${said(s)}`);
       if (p.stereotypes !== undefined && !Array.isArray(p.stereotypes)) lose(n.id, 'stereotypes, which are not a list');
       if (p.reqId !== undefined) { const v = value(n.id, 'reqId', p.reqId); if (v !== null) body.push(`id: ${v}`); }
       if (typeof p.text === 'string') {
         const clean = p.text.replace(/["\r\n]/g, '');
         if (clean !== p.text || clean === '') head.push(`%% text: ${JSON.stringify(p.text)}`);
         if (clean !== '') body.push(`text: "${clean}"`); // Mermaid's quotes hold no empty string: %% text: carries it
-      } else if (p.text !== undefined) lose(n.id, `text ${p.text}, which is not text`);
+      } else if (p.text !== undefined) lose(n.id, `text ${said(p.text)}, which is not text`);
       for (const [prop, key, words] of [['risk', 'risk', MQ_RISK], ['verifyMethod', 'verifymethod', MQ_METHOD]]) if (p[prop] !== undefined) {
-        if (words.includes(p[prop])) body.push(`${key}: ${p[prop]}`); else lose(n.id, `${prop} ${p[prop]}, which is none of Mermaid's ${words.join(', ')}`);
+        if (words.includes(p[prop])) body.push(`${key}: ${p[prop]}`); else lose(n.id, `${prop} ${said(p[prop])}, which is none of Mermaid's ${words.join(', ')}`);
       }
     } else {
       // the type: ext.mermaid's when the reader reads it back as this element's kind, else Block or TestCase
@@ -392,17 +393,17 @@ function writeMermaidRequirement(model, viewId) {
       if (Object.keys(ext).some(k => k !== 'mermaid') || Object.keys(me).some(k => k !== 'type' && k !== 'docref')) lose(n.id, 'ext, but for ext.mermaid.type and docref');
       const kind = typeof t === 'string' && t.trim() === t && t !== '' && t.toLowerCase().startsWith('test') === test, fits = kind && t !== 'Block' && t !== 'TestCase';
       if (kind && !fits) lose(n.id, `ext.mermaid.type ${t}, which the reader reads back as none`);
-      else if (t !== undefined && !fits) lose(n.id, `ext.mermaid.type ${t}, which the reader would not read back as a ${test ? 'test case' : 'block'}`);
+      else if (t !== undefined && !fits) lose(n.id, `ext.mermaid.type ${said(t)}, which the reader would not read back as a ${test ? 'test case' : 'block'}`);
       const v = fits ? value(n.id, 'ext.mermaid.type', t) : null;
       body.push(`type: ${v ?? (test ? 'TestCase' : 'Block')}`);
-      if (me.docref !== undefined) { const d = typeof me.docref === 'string' && me.docref.trim() === me.docref ? value(n.id, 'ext.mermaid.docref', me.docref) : (lose(n.id, `ext.mermaid.docref ${me.docref}`), null); if (d !== null) body.push(`docref: ${d}`); }
+      if (me.docref !== undefined) { const d = typeof me.docref === 'string' && me.docref.trim() === me.docref ? value(n.id, 'ext.mermaid.docref', me.docref) : (lose(n.id, `ext.mermaid.docref ${said(me.docref)}`), null); if (d !== null) body.push(`docref: ${d}`); }
     }
     out.push(...head.map(l => '  ' + l), `  ${word} ${tok(n.id)} {`, ...body.map(l => '    ' + l), '  }');
   }
   // containment: each written element's parent, when it is written
   for (const n of nodes) if (n.parent != null) {
     if (names.has(n.parent)) out.push(`  ${tok(n.parent)} - contains -> ${tok(n.id)}`);
-    else lose(n.id, `parent ${n.parent}, which is not written`);
+    else lose(n.id, `parent ${said(n.parent)}, which is not written`);
   }
 
   const byEdge = new Map();

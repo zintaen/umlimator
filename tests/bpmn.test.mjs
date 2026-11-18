@@ -893,3 +893,17 @@ test('audit 31: X on a collapsed sub-process whose task has a boundary event lis
   assert.deepEqual(ids.slice(ids.indexOf('pick-pack') + 1, ids.indexOf('pick-pack') + 6), ['picking-starts', 'pick-books', 'pack-parcel', 'parcel-packed', 'pick-late']);
   assert.equal(new Set(ids).size, new Set([...V(m).nodeIds, 'picking-starts', 'pick-books', 'pack-parcel', 'parcel-packed', 'pick-late']).size);
 });
+
+// audit 32: an element of no type, or of a type outside BPMN's subset, is drawn as a task, yet connect refused it as "A task
+// joins no flow" (a real task joins one) and describe() counted it with no flow node it listed it among
+test('an element drawn as a task for want of a BPMN type is refused by connect in the validator\'s words and counted by describe (audit 32)', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'p', type: 'bpmn.Participant', label: 'Pool' }, { id: 's', type: 'bpmn.StartEvent', parent: 'p', label: 'Go', props: { definition: 'none' } },
+    { id: 'u', parent: 'p', label: 'Mystery' }, { id: 'x', type: 'bpmn.Taks', parent: 'p', label: 'Typo' }, { id: 'e', type: 'bpmn.EndEvent', parent: 'p', label: 'Stop', props: { definition: 'none' } }],
+  edges: [{ id: 'f1', type: 'bpmn.SequenceFlow', from: 's', to: 'u' }, { id: 'f2', type: 'bpmn.SequenceFlow', from: 'u', to: 'x' }, { id: 'f3', type: 'bpmn.SequenceFlow', from: 'x', to: 'e' }],
+  views: [{ id: 'v', diagram: 'bpmn', nodeIds: ['p', 's', 'u', 'x', 'e'] }] };
+  const v = m.views[0];
+  assert.deepEqual(T.edits.connect(m, v, 'u', 'e', null, null), { error: 'Mystery has no BPMN type: give it a BPMN type to join it' });
+  assert.deepEqual(T.edits.connect(m, v, 's', 'x', null, null), { error: 'Typo is of type "bpmn.Taks", which umlimator does not draw as BPMN: give it a BPMN type to join it' });
+  assert.equal(describe(m, 'v').split('\n')[0], 'v: a BPMN diagram of 4 flow nodes, 3 flows and 1 pool.');
+  assert.equal(describe(m, 'v').split('\n').filter(l => /^(Start event|Task|Taks|End event) /.test(l)).length, 4);
+});

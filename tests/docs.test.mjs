@@ -258,3 +258,22 @@ test('audit 26: each cloud conformance note gives the full-name rule as the clou
     }
   }
 });
+
+// audit 32: the design notes (stage 3's P12, stage 6's S17) still said a message cannot be hidden, after audit 31 made Delete
+// hide a model message a sequence or timing view lists by id; the sequence conformance note cited a P12 risks.md does not have
+test('audit 32: the design notes say Delete hides a model message the view lists by id, as sqRemove and tmRemove do; conformance citations name the file that holds the row', async () => {
+  const { sqRemove } = await import('../src/uml/sequence.js'), { tmRemove } = await import('../src/uml/timing.js');
+  const m = d => ({ schemaVersion: 2, root: 'v', nodes: [{ id: 'a', type: 'uml.Lifeline', label: 'a', props: { states: ['I'] } }, { id: 'b', type: 'uml.Lifeline', label: 'b', props: { states: ['I'] } }],
+    edges: [{ id: 'c1', type: 'uml.Message', from: 'a', to: 'b', label: 'go', props: { sort: 'async', sentAt: 1, receivedAt: 2 } }], views: [{ id: 'v', diagram: d, parent: null, nodeIds: ['a', 'b'], edges: ['c1'] }] });
+  for (const [d, rm] of [['uml.sequence', sqRemove], ['uml.timing', tmRemove]]) assert.deepEqual(rm(m(d), 'v', ['c1'], false).commands, [{ op: 'hide', id: 'c1', view: 'v' }], d);
+  const doc = p => readFileSync(new URL(p, import.meta.url), 'utf8');
+  const s3 = doc('../docs/diagrams/notes/stage-3.md'), s6 = doc('../docs/diagrams/notes/stage-6.md');
+  assert.match(s3, /\| Delete a message or use \|[^\n]*lists by id: Delete `hide`s it from this view/);
+  assert.match(s3, /the gesture is to delete it \(P12\)[^\n]*\n\nAmended in audit 31: this holds for a message the view holds\. A model message that the view lists by id is taken out of this view by Delete/);
+  assert.match(s6, /\| S17 \|[^\n]*Amended in audit 31: a model message the view lists by id is hidden from this view by Delete/);
+  assert.match(s6, /### 8\.3 Hiding \(S17\)[^#]*Amended in audit 31: option \(a\) holds for a change, a constraint and a message the view holds/);
+  // each `docs/...` P12-style citation in a conformance note names a file with that row
+  for (const f of readdirSync(new URL('../docs/conformance/', import.meta.url)).filter(f => f.endsWith('.md')))
+    for (const [, p, row] of doc(`../docs/conformance/${f}`).matchAll(/`(docs\/[^`]+\.md)` ([A-Z]\d+)\b/g))
+      assert.match(doc(`../${p}`), new RegExp(`^\\| ${row} \\|`, 'm'), `${f}: ${p} ${row}`);
+});

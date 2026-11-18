@@ -270,14 +270,18 @@ test('connect (§7.4): a part association adds the part property it draws, named
   const k = c('ebike', 'range-equation', 0); // to a constraint block: a constraint property (SysML's composition to a constraint block)
   assert.deepEqual(k[0].element, { id: 'ebike.rangeEquation', type: 'sysml.ConstraintProperty', label: 'rangeEquation', props: { valueType: 'RangeEquation', multiplicity: '1' } });
   assert.deepEqual(validate(apply(M17, k)), []);
-  assert.deepEqual(c('ebike', 'energy', 0), { error: 'A part association ends at a block or a constraint block, not value type' });
-  assert.deepEqual(c('ebike', 'charge-interface', 0), { error: 'A part association ends at a block or a constraint block, not interface block' });
+  assert.deepEqual(c('ebike', 'energy', 0), { error: 'A part association ends at a block or a constraint block, not a value type' });
+  assert.deepEqual(c('ebike', 'charge-interface', 0), { error: 'A part association ends at a block or a constraint block, not an interface block' });
   assert.deepEqual(c('energy', 'battery', 0), { error: 'A value type holds no part' });
   assert.equal(c('motor', 'battery', 1), null, 'a reference association: the default');
   assert.deepEqual(c('energy', 'battery', 2), { error: 'A generalization joins two of one kind: value type and block differ' });
   assert.equal(c('motor', 'rental-vehicle', 2), null); assert.equal(c('dock', 'charge-interface', 3), null);
   assert.deepEqual(c('dock', 'battery', 4), { error: 'A comment link runs from a comment' });
   assert.equal(c('nowhere', 'battery', 0), null);
+  // audit 32: "an" before a vowel, and an end of no type named as the view draws it, a class
+  const u = { ...M17, nodes: [...M17.nodes, { id: 'thing', label: 'Thing' }], views: [{ ...v, nodeIds: [...v.nodeIds, 'thing'] }] };
+  assert.deepEqual(T.edits.connect(u, u.views[0], 'charge-interface', 'battery', null, T.lines[0]), { error: 'An interface block holds no part' });
+  assert.deepEqual(T.edits.connect(u, u.views[0], 'ebike', 'thing', null, T.lines[0]), { error: 'A part association ends at a block or a constraint block, not a class' });
 });
 
 test('save and reopen (DoD 6): a 30-step session undoes and redoes to byte-identical models, and reopening its saved JSON midway ends where the session does', () => {
@@ -414,5 +418,18 @@ test('audit 31: an element of no type, drawn and named a class, is a class in th
     assert.ok(said.includes('member-kinds: class "Loose" holds parameter "p", which it may not'), JSON.stringify(said));
     assert.ok(said.includes('general-kinds: class "Loose" specializes block "Bike" (g)'), JSON.stringify(said));
     assert.deepEqual(diagramOf(m.views[0]).edits.connect(m, m.views[0], 'a', 'b', null, { type: 'uml.Generalization' }), { error: 'A generalization joins two of one kind: class and block differ' });
+  }
+});
+
+// audit 32: three blocks, one specializing the next, which depends on the third ("uses"), laid out down: the dependency's
+// label was placed before the generalization was routed across it, and stayed there; a label a later line runs across is
+// now placed again
+test('a block definition view laid out down draws no label on another line (audit 32)', () => {
+  for (const [d, t] of [['sysml.block-definition', 'sysml.Block'], ['uml.class', 'uml.Class']]) for (const direction of ['down', 'right']) {
+    const m = { schemaVersion: 2, nodes: [0, 1, 2].map(i => ({ id: 'b' + i, type: t, label: 'Block ' + i })),
+      edges: [{ id: 'dep', type: 'uml.Dependency', from: 'b1', to: 'b2', label: 'uses' }, { id: 'gen', type: 'uml.Generalization', from: 'b0', to: 'b1' }],
+      views: [{ id: 'v', diagram: d, direction, nodeIds: ['b0', 'b1', 'b2'] }] };
+    assert.deepEqual(check(m, 'v').map(p => p.message), [], `${d} ${direction}`);
+    assert.ok(layout(m, 'v').edges.find(e => e.id === 'dep').lbl, `${d} ${direction}: the label is drawn`);
   }
 });

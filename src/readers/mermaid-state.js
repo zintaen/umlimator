@@ -1,4 +1,4 @@
-import { unreadable } from '../core/model.js';
+import { unreadable, jsonText } from '../core/model.js';
 import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort } from './mermaid-front.js';
 import { parseTransition, printTransition, trScan } from '../uml/transition.js';
 /* ---------- Mermaid stateDiagram: a reader and a writer (notes/stage-4.md §13, S12, S22; risks.md R1 to R4, R7) ----------
@@ -500,7 +500,7 @@ function writeMermaidState(model, viewId) {
   const writeNode = (n, d) => {
     const name = names.get(n.id), heads = n.id !== name ? [`%% id: ${n.id}`] : [], kind = n.props?.kind;
     if (n.type === 'uml.Pseudostate' && MT_FORKS.includes(kind)) {
-      if (has(n.label)) lose(n.id, `label ${n.label}`);
+      if (has(n.label)) lose(n.id, `label ${typeof n.label === 'string' ? n.label : jsonText(n.label)}`); // as validate() quotes it (audit 32)
       put(d, ...heads, `state ${name} <<${kind}>>`);
     } else if (n.type !== 'uml.State') {
       const k = n.type === 'uml.FinalState' ? 'final' : kind;

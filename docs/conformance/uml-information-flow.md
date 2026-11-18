@@ -48,9 +48,9 @@ Layout limits, measured on `examples/order-information-flow.json` and `tests/inf
 - `tests/m2-fixtures.test.mjs` pins the stress file. Its `edge-cases` view crosses once laid out right and is clean
   down. One label there, the flow conveying a gone id (`ec-gone`, an error), found no room beside the class flow into
   the same box and was left off with nothing said; since audit 6 it takes a spot beside its line, right and down.
-  The generated `all` view (40 nodes, 60 flows, one to three items each) crosses 149 times right and 121 down, with two
-  labels on lines right and 42 findings down (labels on lines, lines sharing a line: labels left off before audit 6 are
-  drawn); no line runs through a node.
+  The generated `all` view (40 nodes, 60 flows, one to three items each) crosses 149 times right and 119 down, with one
+  label on a line right and 35 findings down (labels on lines, lines sharing a line: labels left off before audit 6 are
+  drawn; a label a later line ran across placed again since audit 32); no line runs through a node.
 - A six-item label is cut with an ellipsis at 280 px.
 
 ## Writers: what each shows of an information flow diagram

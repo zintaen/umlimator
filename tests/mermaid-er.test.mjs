@@ -88,7 +88,7 @@ test('the writer names what it cannot write as one line or once, and quotes a ti
   views: [{ id: 'er-diagram', diagram: 'er', title: 'null', nodeIds: ['A', 'B', 'A'], edges: ['r', 'r'] }] };
   const text = write(m), back = read(text);
   assert.match(text, /^---\ntitle: "null"\n---\n/);
-  for (const s of ['A.a (er.Column)', 'A.b\\nc (er.Column)', 'A: listed twice in the view, written once', 'r: listed twice in the view, written once'])
+  for (const s of ['A.a: a row Mermaid would not read back as the column (int\\nx a)', 'A.b\\nc: an id the reader would not keep', 'A: listed twice in the view, written once', 'r: listed twice in the view, written once'])
     assert.ok(text.includes(`%% not written: ${s}\n`), `${s}\n${text}`);
   assert.deepEqual(back.report.filter(x => !ONCE.test(x.message)), [], text);
   assert.equal(back.model.title, 'null');
@@ -283,16 +283,16 @@ test('the writer names in comments what it cannot write, and the reader passes o
   const text = write(m, 'v');
   assert.deepEqual(text.split('\n').filter(l => l.includes('not written')).map(l => l.trim()), [
     '%% not written: v: notation idef1x: Mermaid draws crow\'s foot', '%% not written: k (uml.Class)', '%% not written: n (uml.Comment)',
-    '%% not written: a: property x', '%% not written: a.id: property check', '%% not written: a.id: primaryKey false, read as absent', '%% not written: a.nt (er.Column)',
-    '%% not written: a.two (er.Column)', '%% not written: a.op (uml.Operation)', '%% not written: a.c: ext, but for ext.mermaid.comment',
-    '%% not written: a.c: references  padded , which the reader would not keep', '%% not written: a.t (er.Column)', '%% not written: b: no label, read as its name',
+    '%% not written: a: property x', '%% not written: a.id: property check', '%% not written: a.id: primaryKey false, read as absent', '%% not written: a.nt: no type, written as untyped',
+    '%% not written: a.two: name id, which another column of a has', '%% not written: a.op (uml.Operation)', '%% not written: a.c: ext, but for ext.mermaid.comment',
+    '%% not written: a.c: references  padded , which the reader would not keep', '%% not written: a.t: a row Mermaid would not read back as the column (p~q x~y)', '%% not written: b: no label, read as its name',
     '%% not written: e: an empty label, read as its name', '%% not written: r: property weight', '%% not written: r: role at its from end',
     '%% not written: r: multiplicity 2..5 at its from end, written as 1..*', '%% not written: r: multiplicity none at its to end, written as 1',
     '%% not written: r: identifying unset, written as non-identifying', '%% not written: r: an empty label, read as none', '%% not written: r2 (er.Relationship)', '%% not written: l (uml.CommentLink)']);
   assert.match(text, /\n {2}a \}\|\.\.\|\| b : ""\n/);
   const back = read(text);
   assert.deepEqual(back.report.filter(x => !ONCE.test(x.message)), []);
-  assert.deepEqual(back.model.nodes.map(n => [n.id, (n.members || []).map(c => c.id)]), [['a', ['a.id', 'a.c']], ['b', []], ['e', []]]);
+  assert.deepEqual(back.model.nodes.map(n => [n.id, (n.members || []).map(c => c.id)]), [['a', ['a.id', 'a.nt', 'a.c']], ['b', []], ['e', []]]);
   // an entity whose id Mermaid cannot write as a name is written as `entity` under its %% id:, with its label as the
   // alias; one that would start with a keyword of Mermaid's lexer, in quotes
   const odd = { schemaVersion: 2, nodes: [E('q"x'), E('entity'), E('one', { label: 'One' })], edges: [{ id: 'q"x-entity', type: 'er.Relationship', from: 'q"x', to: 'entity', props: { identifying: true, ends: { from: { multiplicity: '1' }, to: { multiplicity: '0..*' } } } }],
@@ -373,4 +373,32 @@ test('a no-break or other Unicode space is whitespace, as in Mermaid\'s lexer: i
     edges: [], views: [{ id: 'v', diagram: 'er', nodeIds: ['A B', 'C　', 'D'] }] };
   const t = write(m), back = read(t);
   assert.deepEqual([back.model.nodes.map(n => [n.id, n.label]).sort(), back.report], [[['A B', 'A B'], ['C　', 'C　'], ['D', 'D']], []], t);
+});
+
+// audit 32: a column made on the panel as "id PK" or "email UK" (a row's type is optional) was dropped whole, its key with
+// it, named only as "(er.Column)"; a column labelled with a number was dropped though the view draws it, and the number 1 as
+// a multiplicity was called lost though `||` reads back as it. Each is now written, and a column left out says why
+test('a column of no type is written as untyped with its keys, a number label and multiplicity as their text (audit 32)', async () => {
+  const { diagramOf } = await import('../src/core/registry.js');
+  const { apply } = await import('../src/core/apply.js');
+  await import('../src/er/er.js');
+  const T = diagramOf({ diagram: 'er' });
+  let m = { schemaVersion: 2, nodes: [{ id: 'customer', type: 'er.Entity', label: 'customer', members: [] }], edges: [], views: [{ id: 'v', diagram: 'er', nodeIds: ['customer'] }] };
+  for (const row of ['id PK', 'email UK', 'name text']) m = apply(m, T.edits.member(m, m.views[0], 'customer', null, row));
+  const text = write(m, 'v'), back = read(text).model.nodes[0].members.map(c => [c.label, c.props]);
+  assert.deepEqual(back, [['id', { dataType: 'untyped', primaryKey: true }], ['email', { dataType: 'untyped', unique: true }], ['name', { dataType: 'text' }]], text);
+  assert.deepEqual(text.split('\n').filter(l => l.includes('not written')).map(l => l.trim()),
+    ['%% not written: customer.id: no type, written as untyped', '%% not written: customer.email: no type, written as untyped'], text);
+  // a number as a column's name and as a multiplicity; a name that is no text, said as JSON
+  const n = { schemaVersion: 2, nodes: [
+    { id: 'sales', type: 'er.Entity', label: 2024, members: [{ id: 'sales.region', type: 'er.Column', label: 'region', props: { dataType: 'text', primaryKey: true } },
+      { id: 'sales.q1', type: 'er.Column', label: 1, props: { dataType: 'int' } }, { id: 'sales.o', type: 'er.Column', label: { a: 1 }, props: { dataType: 'int' } }] },
+    { id: 'a', type: 'er.Entity', label: { b: 2 }, members: [{ id: 'a.id', type: 'er.Column', label: 'id', props: { dataType: 'int', primaryKey: true } }] }],
+  edges: [{ id: 'r', type: 'er.Relationship', from: 'a', to: 'sales', label: ['x'], props: { identifying: false, ends: { from: { multiplicity: 1 }, to: { multiplicity: '0..*' } } } }],
+  views: [{ id: 'v', diagram: 'er', nodeIds: ['sales', 'a'] }] };
+  const t2 = write(n, 'v'), b2 = read(t2).model;
+  assert.deepEqual(b2.nodes.find(x => x.id === 'sales').members.map(c => [c.id, c.label]), [['sales.region', 'region'], ['sales.q1', '1']], t2);
+  assert.equal(b2.edges[0].props.ends.from.multiplicity, '1', t2);
+  assert.deepEqual(t2.split('\n').filter(l => l.includes('not written')).map(l => l.trim()),
+    ['%% not written: sales.o: name {"a":1}, which is not text', '%% not written: a: label {"b":2}, which is not text', '%% not written: r: label ["x"], which is not text'], t2);
 });
