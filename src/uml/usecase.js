@@ -344,6 +344,9 @@ const UC_TYPE = registerDiagramType('uml.use-case', {
   describe: ucDescribe,
   // the PDF's Kind of an element of no type: "Element", as its accessible name (audit 28); null: the type's word
   word: (model, id) => { const x = UC_ARR(model && model.nodes).find(n => UC_OBJ(n) && n.id === id); return x && !x.type ? snKindName(x.type) : null; }, // no type (or ""): "Element", as named (audit 29)
+  // the PDF's members: an extension point as drawn, one with no name (or "") by its id; member.print stays F2's edit text (audit 36)
+  rows: (model, view, id) => { const x = [...UC_ARR(model && model.nodes), ...UC_ARR(view && view.nodes)].find(n => UC_OBJ(n) && n.id === id);
+    return x && x.type === 'uml.UseCase' ? UC_ARR(x.members).filter(UC_OBJ).map(m => (m.type === 'uml.ExtensionPoint' ? ucName(m) : String(m.label ?? ''))) : null; },
   edits: { connect: ucConnect, remove: ucRemove, rename: ucRename },
 });
 

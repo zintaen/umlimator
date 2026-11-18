@@ -117,15 +117,18 @@ export function critical(model, viewId, options = {}) {
   const w = e => typeof e[by] === 'number' && e[by] > 0 ? e[by] : 0, path = [], on = new Set();
   let best = null;
   // ponytail: every path, depth first: exponential on a dense view with many ways between two cards; a longest-path pass
-  // over the lines in run order (few loop back) if a map's size makes the page wait
-  const walk = (u, sum) => { on.add(u);
-    edges.forEach(e => { if (e.from !== u || on.has(e.to)) return;
-      const s = sum + w(e); path.push(e);
-      if ((to == null ? ids.includes(e.to) : e.to === to) && (!best || s > best.total)) best = { total: s, lines: [...path] };
-      if (e.to !== to) walk(e.to, s);
-      path.pop(); });
-    on.delete(u); };
-  (from != null ? [from] : ids).forEach(id => walk(id, 0));
+  // over the lines in run order (few loop back) if a map's size makes the page wait. Walked on a stack of frames, not by
+  // recursion: a chain of thousands of cards overflowed the call stack (audit 36)
+  const outs = new Map(), at = new Set(ids);
+  edges.forEach(e => { if (!outs.has(e.from)) outs.set(e.from, []); outs.get(e.from).push(e); });
+  const walk = start => { const st = [{ u: start, sum: 0, i: 0 }]; on.add(start);
+    while (st.length) { const f = st[st.length - 1], out = outs.get(f.u) || [];
+      if (f.i >= out.length) { on.delete(f.u); st.pop(); if (st.length) path.pop(); continue; } // back to the card before, off the line that led here
+      const e = out[f.i++]; if (on.has(e.to)) continue;
+      const s = f.sum + w(e); path.push(e);
+      if ((to == null ? at.has(e.to) : e.to === to) && (!best || s > best.total)) best = { total: s, lines: [...path] };
+      if (e.to !== to) { on.add(e.to); st.push({ u: e.to, sum: s, i: 0 }); } else path.pop(); } };
+  (from != null ? [from] : ids).forEach(id => walk(id));
   if (!best) return none;
   const cards = [best.lines[0].from, ...best.lines.map(e => e.to)].filter(id => ids.includes(id));
   return { refs: [...cards.map(id => ({ type: 'node', id, view: viewId })), ...best.lines.map(e => ({ type: 'edge', ids: [e._id], view: viewId }))],

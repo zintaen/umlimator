@@ -120,7 +120,7 @@ export function diff(before, after) {
     came.forEach(id => { if (at.get(id) && how.get(at.get(id)) !== 'added') { ov[id] = { ...ov[id], change: 'added' }; moved.push(['puts', id, v]); } });
     if (left.length || came.length) touched.add(v.id);
     // what only the view changes: its title, a box's name, a card's name here (nodeOverrides) or the box it sits in
-    const vn = labelOr(v.title, v.id), says = t => { viewSaid.push(`${t} in the view ${vn}`); touched.add(v.id); }, bn = c => String(labelOr(c.label ?? c.title, c.id)); // a box labelled "" is drawn by its id (audit 35)
+    const vn = labelOr(v.title, v.id), says = t => { viewSaid.push(`${t} in the view ${vn}`); touched.add(v.id); }, bn = c => String(labelOr(c.label, c.id)); // a box labelled "" is drawn by its id (audit 35); by its label alone, as drawn: a box has no title (audit 36)
     if (String(labelOr(o.title, o.id)) !== String(vn)) { viewSaid.push(`retitles the view ${labelOr(o.title, o.id)} to ${vn}`); touched.add(v.id); }
     // and what else it draws differently (audit 15): its caption, lanes and the like, a box's tone or badges, a card's pin
     const other = (x, y, skip) => [...new Set([...Object.keys(x), ...Object.keys(y)])].filter(k => !skip.includes(k) && canon(x[k]) !== canon(y[k]));

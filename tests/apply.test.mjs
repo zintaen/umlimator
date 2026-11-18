@@ -471,3 +471,39 @@ test('audit 35: a model member is never moved under a node one view alone holds'
   assert.deepEqual(T.edits.member(m, m.views[0], 'b1', 'B'), [{ op: 'move', id: 'b1', owner: 'B' }], 'the view\'s own member stays its own');
   assert.deepEqual(T.edits.member(m, m.views[0], 'a1', 'C'), [{ op: 'move', id: 'a1', owner: 'C' }]);
 });
+
+test('audit 36: hide takes the steps on that view off the model lines to the element, which the view draws no more; validate() says a step naming such a line', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'A' }, { id: 'b', type: 'uml.Class', label: 'B' }, { id: 'n', type: 'uml.Comment', label: 'note' }],
+    edges: [{ id: 'e', type: 'uml.Association', from: 'a', to: 'b' }, { id: 'about', type: 'uml.CommentLink', from: 'n', to: 'e' }],
+    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b', 'n'] }, { id: 'w', diagram: 'uml.class', nodeIds: ['a', 'b'] }],
+    stories: [{ id: 's', title: 'S', steps: [{ view: 'v', select: 'e', caption: 'the line' }, { view: 'v', highlight: ['a', 'e', 'about'], caption: 'hl' },
+      { view: 'w', select: 'e', caption: 'in w' }, { view: 'v', select: { type: 'edge', ids: ['e'], view: 'v' }, caption: 'a Ref' }] }] };
+  assert.deepEqual(errors(m), []);
+  const r = apply(m, [{ op: 'hide', id: 'b', view: 'v' }]);
+  assert.deepEqual(r.stories[0].steps, [{ view: 'v', caption: 'the line' }, { view: 'v', highlight: ['a'], caption: 'hl' }, { view: 'w', select: 'e', caption: 'in w' }, { view: 'v', caption: 'a Ref' }]);
+  assert.deepEqual(r.edges, m.edges, 'the model keeps its lines');
+  assert.deepEqual(errors(r), []);
+  // the model before the fix's hide: a step selecting or highlighting a line to a card its view does not show
+  const left = structuredClone(m); left.views[0].nodeIds = ['a', 'n'];
+  assert.deepEqual(errors(left).map(p => p.path + ' ' + p.message), [
+    'stories[0].steps[0].select "e" is no line of view "v": its end "b" is not one of the view\'s cards',
+    'stories[0].steps[1].highlight[1] "e" is no line of view "v": its end "b" is not one of the view\'s cards',
+    'stories[0].steps[3].select "e" is no line of view "v": its end "b" is not one of the view\'s cards']);
+  // a line the view lists of its own, and a line between two of its cards, are its lines
+  const own = structuredClone(left); own.views[0].edges = [{ id: 'e', type: 'uml.Association', from: 'a', to: 'n' }];
+  assert.ok(!errors(own).some(p => p.path.startsWith('stories')), JSON.stringify(errors(own)));
+});
+
+test('audit 36: a hostile model: hide and validate() read lines and steps that are no objects, ends that are no ids and ids named for Object\'s keys', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'A' }, { id: 'b', type: 'uml.Class', label: 'B' }, { id: 'constructor', type: 'uml.Class' }],
+    edges: [null, 5, 'e', { id: 'x', type: 'uml.Association', from: {}, to: 'b' }, { id: '__proto__', type: 'uml.Association', from: 'a', to: 'b' },
+      { id: 'toString', type: 'uml.Association', from: 'constructor', to: '__proto__' }, { id: 'y', type: 'uml.Association', from: ['b'], to: 'a' }],
+    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b', 'constructor'] }],
+    stories: [{ id: 's', title: 'S', steps: [null, { view: 'v', select: '__proto__', highlight: ['toString', 'x', 'y', 'hasOwnProperty', 7, null], caption: 'c' }] }] };
+  const r = apply(m, [{ op: 'hide', id: 'b', view: 'v' }]);
+  assert.deepEqual(r.stories[0].steps[1], { view: 'v', highlight: ['y', 'hasOwnProperty', 7, null], caption: 'c' }); // '__proto__' to b, 'toString' to it, 'x' to b: gone
+  assert.equal(Object.getPrototypeOf(r.stories[0].steps[1]), Object.prototype);
+  assert.doesNotThrow(() => validate(r)); assert.doesNotThrow(() => validate(m));
+  const left = structuredClone(m); left.views[0].nodeIds = ['a', 'constructor'];
+  assert.ok(validate(left).some(p => p.path === 'stories[0].steps[1].select' && /no line of view "v": its end "b"/.test(p.message)));
+});
