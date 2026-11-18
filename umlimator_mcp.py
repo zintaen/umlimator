@@ -193,7 +193,7 @@ def call(name, a):
         return {"views": [{"id": i, "title": v.get("title"), "parent": v.get("parent"), "cards": len(v.get("nodeIds") or [])} for i, v in views(m).items()],
                 "stories": [{"id": s.get("id"), "title": s.get("title"), "steps": len(s.get("steps") or [])} for s in m.get("stories") or [] if isinstance(s, dict)]}
     if name == "describe_view":
-        v, label = view(m, a["view"]), {n["id"]: n.get("label") or n["id"] for n in every(m, "nodes")}
+        v, label = view(m, a["view"]), {n["id"]: cli.label_of(n.get("label"), n["id"]) for n in every(m, "nodes")}  # 0 is a label (audit 34)
         return node("describe", m, v["id"]) + "\nCard ids: " + ", ".join(f"{i} ({label.get(i, i)})" for i in v.get("nodeIds") or [])
     if name == "paths":
         v = view(m, a["view"])

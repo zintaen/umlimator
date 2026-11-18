@@ -159,6 +159,39 @@ ok("structurizr · a container or component in no software system is said and no
    and (None, "systemlandscape view: shows nothing, so it is left out") in un
    and [n["id"] for n in m2["nodes"]] == ["u"] and [v["nodeIds"] for v in m2["views"]] == [["u"]] and (7, "component w is in no container: not imported (nor what it holds)") in un2
    and (8, "u -> api: api is not an element") in un2, (un, un2))
+# audit 34: the audit 33 refusal checked only for no holder; a component in a system, a container in a container, a component
+# in a component, and a person or system in a system were read and drawn at the wrong level (Structurizr refuses each)
+wrong = ('workspace {\n model {\n  u = person "User"\n  s = softwareSystem "Shop" {\n   c = component "Lonely"\n   api = container "API" {\n'
+         '    inner = container "Inner"\n    comp = component "Comp" {\n     deep = component "Deep"\n    }\n   }\n   p = person "Clerk"\n'
+         '   group "g" {\n    t = softwareSystem "Inner" {\n     x = container "X"\n    }\n   }\n  }\n  u -> api "calls"\n  u -> c "uses"\n }\n}\n')
+m, un = imp.read("structurizr", wrong, "x")
+ok("structurizr · an element written in the wrong kind of element is said with its line and not imported, nor what it holds (audit 34)",
+   [n["id"] for n in m["nodes"]] == ["u", "s", "api", "comp"] and [v["id"] for v in m["views"]] == ["landscape", "s-containers", "api-components"]
+   and un == [(5, "component c is in software system s, where a component cannot be: not imported (nor what it holds)"),
+              (7, "container inner is in container s.api, where a container cannot be: not imported (nor what it holds)"),
+              (9, "component deep is in component s.api.comp, where a component cannot be: not imported (nor what it holds)"),
+              (12, "person p is in software system s, where a person cannot be: not imported (nor what it holds)"),
+              (14, "softwareSystem t is in software system s, where a software system cannot be: not imported (nor what it holds)"),
+              (20, "u -> c: c is not an element")], un)
+# hostile names: a refused element's name and its holder's are said as text, never read as a path or markup
+m, un = imp.read("structurizr", 'workspace {\n model {\n  s = softwareSystem "<img src=//e.example/t.png>" {\n   container "API" {\n    container "../../etc/passwd"\n   }\n  }\n }\n}\n', "x")
+ok("structurizr · a refused element with no alias is said by its name, and a holder with none by its own (audit 34)",
+   un == [(5, "container ../../etc/passwd is in container API, where a container cannot be: not imported (nor what it holds)")]
+   and [n["label"] for n in m["nodes"]] == ["<img src=//e.example/t.png>", "API"], (un, m["nodes"]))
+# audit 34: a view with an include list and no * showed every element of its level; Structurizr shows only what it includes
+# (a system context view, its system too)
+inc = ('workspace {\n model {\n  u = person "User"\n  a = softwareSystem "Shop" {\n   web = container "Web"\n   api = container "API" {\n'
+       '    ctl = component "Controller"\n    repo = component "Repository"\n   }\n   db = container "DB"\n  }\n  b = softwareSystem "Billing"\n'
+       '  c = softwareSystem "Warehouse"\n  u -> web "browses"\n  u -> ctl "calls"\n  web -> ctl "calls"\n  ctl -> repo "reads"\n  repo -> db "reads"\n  a -> b "bills"\n  a -> c "ships"\n }\n'
+       ' views {\n  systemLandscape "money" {\n   include a b\n  }\n  systemContext a "ctx" {\n   include b\n  }\n  container a "focus" {\n   include api\n  }\n'
+       '  component api "ctl" {\n   include u ctl\n  }\n  container a "all" {\n   include *\n  }\n  component api "every" {\n  }\n }\n}\n')
+m, un = imp.read("structurizr", inc, "x")
+vs = {v["id"]: v for v in m["views"]}
+got = {k: (v["nodeIds"], sorted((e["from"], e["to"]) for e in m["edges"] if e["id"] in v["edges"])) for k, v in vs.items()}
+ok("structurizr · an include list with no * shows only what it names, at each level; * and no include show the level (audit 34)",
+   got == {"money": (["a", "b"], [("a", "b")]), "ctx": (["a", "b"], [("a", "b")]), "focus": (["api"], []), "ctl-components": (["u", "ctl"], [("u", "ctl")]),
+           "all": (["u", "web", "api", "db"], [("api", "db"), ("u", "api"), ("u", "web"), ("web", "api")]),
+           "every": (["u", "web", "ctl", "repo", "db"], [("ctl", "repo"), ("repo", "db"), ("u", "ctl"), ("u", "web"), ("web", "ctl")])} and un == [], (got, un))
 # audit 33: a Mermaid C4Dynamic or C4Deployment is a C4 diagram umlimator does not read, and is said as one
 said = [imp.read("mermaid", f'{h}\n  title T\n  Container(c1, "A")\n  Container(c2, "B")\n  Rel(c1, c2, "Reads")\n', "x")[1] for h in ("C4Dynamic", "C4Deployment")]
 ok("mermaid · C4Dynamic and C4Deployment are named as Mermaid C4 diagrams that are not read, not as 'not a C4 diagram' (audit 33)",
@@ -286,11 +319,11 @@ ok("hostile · a line of 400000 ;\" pairs splits in linear time, and ; outside q
 t0 = time.time()
 ok("hostile · detect() reads 400000 unclosed /* and 1000000 blank lines in linear time",
    imp.detect("x", "/*" * 400000) is None and imp.detect("x", "\n" * 1000000 + "x") is None and time.time() - t0 < 1, time.time() - t0)
-# in a software system: a container outside one is not imported (audit 33)
+# in a software system: a container outside one is not imported (audit 33), nor one in a container (audit 34), nor what it holds
 m, un, dt = quick("structurizr", "workspace {\nmodel {\ns = softwareSystem \"s\" {\n" + 'abcdefghij = container "x" {\n' * 30000 + "}\n" * 30001 + "}\n}\n")
-ok("hostile · 30000 nested DSL elements are read flat past 64 deep, short ids, in linear time",
-   len(m["nodes"]) == 30001 and max(len(n["id"]) for n in m["nodes"]) < 1000 and dt < 5
-   and (67, "x is nested over 64 deep: it and what it holds are read flat from there") in un, (dt, un[:2]))
+ok("hostile · 30000 nested DSL containers: the one in the system is read, the one in it said, what that holds skipped, in linear time",
+   [n["id"] for n in m["nodes"]] == ["s", "abcdefghij"] and dt < 5
+   and un == [(5, "container abcdefghij is in container s.abcdefghij, where a container cannot be: not imported (nor what it holds)")], (dt, un[:2]))
 _, _, dt = quick("kubernetes", json.dumps({"kind": "Ingress", "metadata": {"name": "i"}, "spec": {"rules": [{"host": f"h{i}", "http": {"paths": [{"path": "/"}]}} for i in range(18000)]}}))
 ok("hostile · an Ingress of 18000 rules reads in linear time (its hosts counted once)", dt < 3, dt)
 m, _, dt = quick("kubernetes", json.dumps([{"kind": "Service", "metadata": {"name": f"s{i}"}, "spec": {"selector": {"app": f"a{i}"}}} for i in range(3000)]
@@ -462,7 +495,7 @@ DSL24 = """workspace {
 m, un = imp.read("structurizr", DSL24, "x")
 ok("structurizr · identifiers match ignoring case in relationships, includes, excludes and a view's scope (audit 24)",
    [(e["from"], e["to"]) for e in m["edges"]][:3] == [("Customer", "webApp"), ("webApp", "DB"), ("webApp", "other")] and un == []
-   and [(v["id"], v["nodeIds"]) for v in m["views"]] == [("shop-containers", ["Customer", "webApp", "DB", "other"]), ("landscape", ["Customer", "shop"])],
+   and [(v["id"], v["nodeIds"]) for v in m["views"]] == [("shop-containers", ["Customer", "webApp", "DB", "other"]), ("landscape", ["Customer"])],
    (m["edges"], m["views"], un))
 m, un = imp.read("structurizr", 'workspace {\nmodel {\na = person "A"\nA = person "B"\nb = person "C"\nA -> b\n}\n}', "x")
 ok("structurizr · one identifier written twice in two cases is said, and references name the first (audit 24)",
