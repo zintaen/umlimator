@@ -548,7 +548,8 @@ def written(orig, m):
     engine's own changes are known by their places: kind, title, source, avatarsEmbedded, meta.generated, meta.project
     and meta.root; each author's avatar it inlines; each intake logo it embeds; and each view's layout its search bakes
     over none. What own_media leaves out (an address an avatar, an example or the model's icons names, risks.md S2) is
-    never written into the page to put back: the export leaves it out too, as render said."""
+    never written into the page to put back: the export leaves it out too, as render said. Nor are a model's
+    ENGINE_ONLY keys (files, hunks, areas, fileNotes, stats): they can hold source hunks and paths (risks.md S1, audit 32)."""
     added, was, seen = [], [], set()
     d = lambda x: x if isinstance(x, dict) else {}
     lst = lambda x: x if isinstance(x, list) else []
@@ -567,9 +568,8 @@ def written(orig, m):
         note(path)
     if not isinstance(orig.get("meta"), dict):  # no meta in the file: render's whole
         note(["meta"])
-    for k in ENGINE_ONLY:  # upstream's keys page_model takes out for the engine: the file's own, put back (audit 32: lost on export)
-        if k in orig and k not in m:
-            note([k])
+    # ENGINE_ONLY keys (files, hunks, areas, fileNotes, stats) are never written into the page to put back: they can hold a
+    # diff's hunks and file paths, which round 19 kept out of a page that gets shared. The export leaves them out too
     if "icons" in m:  # render's table from the manifest and packs; the model's own, which names addresses, is left out (own_media)
         note(["icons"], keep=False)
     for login, a in d(m.get("authors")).items():

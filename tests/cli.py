@@ -1930,9 +1930,9 @@ if part("audit 32"):
         ok("render · an --out file name of 250 bytes, or with a 240-byte 'suffix', is written; no probe is left beside it (audit 32)",
            r.returncode == 0 and (t / name).is_file() and r2.returncode == 0 and (t / ("a." + "x" * 240)).is_file()
            and not [f for f in t.iterdir() if f.name.startswith(".")], (r.stderr[-300:], r2.stderr[-300:]))
-        # audit 32: Export > Map model (JSON) lost a model's top-level files, hunks, areas, fileNotes and stats, which render takes
-        # out for the engine: put back through meta["umlimator:written"].was. asWritten is page.js's own
-        eng = {**good, "files": ["x"], "hunks": {"h": 1}, "areas": [{"name": "a"}], "fileNotes": {"f": "n"}, "stats": {"keep": 1}, "custom": {"a": 1}}
+        # audit 32: a model's top-level files, hunks, areas, fileNotes and stats never reach the page, so a shared page carries no
+        # source hunks or paths (risks.md S1); the JSON export gives back the rest of the model as written. asWritten is page.js's own
+        eng = {**good, "files": ["SECRET-PATH"], "hunks": {"h": "SECRET-HUNK"}, "areas": [{"name": "a"}], "fileNotes": {"f": "SECRET-NOTE"}, "stats": {"keep": 1}, "custom": {"a": 1}}
         (t / "eng.json").write_text(json.dumps(eng))
         r = run("render", str(t / "eng.json"), "--out", str(t / "eng.html"), "--no-check")
         js = ("import { readFileSync } from 'node:fs'; const src = readFileSync(process.argv[1], 'utf8');"
@@ -1941,8 +1941,10 @@ if part("audit 32"):
         data = u.DATA.search((t / "eng.html").read_text(encoding="utf-8")).group(1) if (t / "eng.html").is_file() else "{}"
         e = subprocess.run(["node", "--input-type=module", "-e", js, str(ROOT / "src" / "page" / "page.js")], input=data, capture_output=True, text=True)
         back = json.loads(e.stdout) if e.returncode == 0 else None
-        ok("page export · Map model (JSON) gives back a model's top-level files, hunks, areas, fileNotes and stats, which render took out for the engine (audit 32)",
-           r.returncode == 0 and json.dumps(back, sort_keys=True) == json.dumps(eng, sort_keys=True), (r.stderr[-300:], e.stderr[-300:], back))
+        page = (t / "eng.html").read_text(encoding="utf-8") if (t / "eng.html").is_file() else ""
+        rest = {k: v for k, v in eng.items() if k not in u.ENGINE_ONLY}
+        ok("page export · a model's files, hunks, areas, fileNotes and stats never reach the page, and Map model (JSON) gives back the rest as written (audit 32)",
+           r.returncode == 0 and "SECRET" not in page and json.dumps(back, sort_keys=True) == json.dumps(rest, sort_keys=True), (r.stderr[-300:], e.stderr[-300:], back))
         # audit 32: diff --base rendered a page for a model whose diff is empty (re-indented, keys reordered), and left it in --out
         g = t / "re"; g.mkdir()
         sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
