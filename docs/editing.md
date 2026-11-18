@@ -492,7 +492,7 @@ Milestone 2 (`docs/diagrams/notes/milestone-2.md` §6, §7) adds one command and
 command is `addView { view, index? }`: a view added to `views`, refused when its id is taken; no command deletes a view.
 The key is `D`, on a selected element that opens no view: it makes that element's level, a new view holding its context,
 and sets the element's `opensView`, in one transaction (`addView`, `add`s and a `set`); Enter then opens it. On an
-element that opens a view already, `D` says so on the hint line and emits nothing. The rest is the typed canvas's
+element that opens a view already, `D` says so on the hint line and emits nothing. On an element that lives in this view only (the view's own `nodes`), it says so too and emits nothing, in C4 and in a data flow diagram alike, since no other view can show it. The rest is the typed canvas's
 gestures (1.7), with each type's hooks:
 
 | Type | Edit | Pointer | Keyboard | Commands |

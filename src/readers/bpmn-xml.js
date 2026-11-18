@@ -69,6 +69,11 @@ const BX_SIZE = { 'bpmn.Participant': [600, 200], 'bpmn.Lane': [570, 100], 'bpmn
 const bxEvent = t => (t || '').endsWith('Event');
 const bxStr = x => (typeof x === 'string' && x ? x : null);
 const bxMsg = e => { try { return String(e && e.message || e).split('\n')[0]; } catch { return 'an error'; } };
+// moddle's warning or error with its cause: the first line, and the "nested error:" line it ends with when that says more than
+// the first (audit 31: a duplicate id was said only as "unparsable content <bpmn:task> detected")
+const bxWhy = e => { const first = bxMsg(e); let why = null; try { const m = /\n\s*nested error: ([^\n]*)\s*$/.exec(String(e && e.message || e)); why = m && m[1].trim(); } catch { /* none */ }
+  const tag = why && /<[^>]*>/.exec(why); return why && !(tag && first.includes(tag[0])) ? `${first}: ${why}` : first; };
+const bxDup = e => { try { const m = /\n\s*nested error: duplicate ID <([^>\n]*)>\s*$/.exec(String(e && e.message || e)); return m ? m[1] : null; } catch { return null; } };
 
 // a moddle element as JSON: its own properties, a reference by its id (or a list of ids), a generic (foreign) element's
 // children and body; cut at BX_DEEP levels. moddle defines a reference as a non-enumerable own property and keeps a generic
@@ -105,7 +110,10 @@ async function readBpmnXml(xml, moddle) {
   }
   try {
     const { rootElement: defs, warnings, elementsById } = await moddle.fromXML(xml);
-    for (const w of warnings || []) say((w.element && w.element.id) || '', 'skipped', `${bxMsg(w)}: not read`);
+    for (const w of warnings || []) { const dup = bxDup(w), tag = /^unparsable content <([^>\s]+)>/.exec(bxMsg(w));
+      // a second element with an id the file already gave: moddle drops it, so it is said by that id (audit 31)
+      if (dup != null) say(dup, 'skipped', `a second element with the id ${dup}${tag ? ` (${tag[1]})` : ''}: not read`);
+      else say((w.element && w.element.id) || '', 'skipped', `${bxWhy(w)}: not read`); }
     if (!defs || defs.$type !== 'bpmn:Definitions') { say('', 'skipped', 'no BPMN definitions: nothing read'); return result(); }
     title = bxStr(defs.name);
     const ns = Object.keys(defs.$attrs || {}).find(k => k.startsWith('xmlns:') && defs.$attrs[k] === BX_NS), pre = ns ? ns.slice(6) + ':' : null;
@@ -320,7 +328,7 @@ async function readBpmnXml(xml, moddle) {
     for (const n of nodes) if (!shown.has(n.id)) views[0].nodeIds.push(n.id);
   } catch (e) { // moddle's parser or handlers, or a getter, threw (a RangeError at depth among them): nothing is kept
     nodes.length = edges.length = views.length = skipped.length = 0;
-    say('', 'skipped', `the file could not be read (${bxMsg(e)}): nothing read`);
+    say('', 'skipped', `the file could not be read (${bxWhy(e)}): nothing read`);
   }
   return result();
 }

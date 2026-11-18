@@ -1,5 +1,5 @@
 import { unreadable } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort, mermaidText } from './mermaid-front.js';
 /* ---------- Mermaid requirementDiagram: a reader and a writer (notes/milestone-3.md §12, M3.6; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's requirement diagram page (docs/syntax/requirementDiagram.md, read 14 Nov 2026), as the
    other readers are against theirs. Internal: the CLI (`umlimator.py import`) imports this file through Node; a host gets it
@@ -355,7 +355,8 @@ function writeMermaidRequirement(model, viewId) {
   const nodes = shown.map(id => byId.get(id)).filter(n => { const ok = MQ_SHOWN.includes(n.type) && keeps(n.id); if (!ok) skip(n); return ok; });
   const names = new Map(), taken = new Set(), made = new Map();
   for (const n of nodes) {
-    let name = (typeof n.label === 'string' ? n.label : n.id).replace(/["\r\n]/g, '') || 'element';
+    const lab = mermaidText(n.label); // a number or true as its text (audit 31)
+    let name = (typeof lab === 'string' ? lab : n.id).replace(/["\r\n]/g, '') || 'element';
     if (taken.has(name)) name = mqFree(taken, made, name);
     taken.add(name);
     names.set(n.id, name);
@@ -364,8 +365,9 @@ function writeMermaidRequirement(model, viewId) {
   for (const n of nodes) {
     const name = names.get(n.id), p = isObj(n.props) ? n.props : {}, req = n.type === 'sysml.Requirement', head = [], body = [];
     if (n.id !== mqWant(name)) head.push(`%% id: ${n.id}`);
-    if (typeof n.label !== 'string') lose(n.id, n.label == null ? 'no label, read as its name' : `label ${n.label}, which is not text`);
-    else if (n.label !== name) head.push(`%% name: ${JSON.stringify(n.label)}`);
+    const lab = mermaidText(n.label);
+    if (typeof lab !== 'string') lose(n.id, lab == null ? 'no label, read as its name' : `label ${lab}, which is not text`);
+    else if (lab !== name) head.push(`%% name: ${JSON.stringify(lab)}`);
     if (isObj(n.props) && !Object.keys(n.props).length) lose(n.id, 'props, which are empty');
     if (Array.isArray(p.stereotypes) && !p.stereotypes.length) lose(n.id, 'stereotypes, an empty list');
     extra(n, ['id', 'type', 'label', 'parent', ...(req ? [] : ['ext'])], req ? ['reqId', 'text', 'risk', 'verifyMethod', 'stereotypes'] : []);

@@ -417,3 +417,30 @@ test('audit 22: a transition the reader names from its ends holds no "->", when 
     assert.deepEqual(read(again).model.edges.map(e => e.id), ids, `${t}: round trip`);
   }
 });
+
+// audit 31: a region id with a space was refused even when the writer writes no %% region: hint for it (two or more
+// regions, each with the <state>.r<k> id the reader derives), so the composite and its concurrency were lost
+test('audit 31: a composite whose id has a space keeps its regions through write and read; a region that needs a hint and has a space is still refused', () => {
+  const t = 'stateDiagram-v2\n  %% id: Order placed\n  state "Active" as A_b {\n    x\n    --\n    y\n  }\n  [*] --> A_b\n';
+  const a = read(t); assert.deepEqual(a.report, []);
+  const w = write(a.model); assert.doesNotMatch(w, /not written/, w); assert.match(w, /state "Active" as Order_placed \{\n {4}x\n {4}--\n {4}y\n {2}\}/);
+  assert.deepEqual(read(w).model, a.model);
+  for (const id of ['A b', 'A : b', 'A b c']) {
+    const model = { schemaVersion: 2, root: 'sm', nodes: [
+      { id, type: 'uml.State', label: 'Active', members: [{ id: id + '.r1', type: 'uml.Region' }, { id: id + '.r2', type: 'uml.Region' }] },
+      { id: 'x', type: 'uml.State', label: 'x', parent: id + '.r1' }, { id: 'y', type: 'uml.State', label: 'y', parent: id + '.r2' }],
+      edges: [], views: [{ id: 'sm', diagram: 'uml.state-machine', nodeIds: [id, 'x', 'y'] }] };
+    const out = write(model), back = read(out).model.nodes;
+    assert.doesNotMatch(out, /not written/, out);
+    assert.deepEqual(back.find(n => n.id === id).members.map(r => r.id), [id + '.r1', id + '.r2'], out);
+    assert.deepEqual(['x', 'y'].map(k => back.find(n => n.id === k).parent), [id + '.r1', id + '.r2']);
+    // a label needs the hint, which the reader splits at its first space: that region is refused, the two others still written
+    const lab = structuredClone(model); lab.nodes[0].members.push({ id: id + '.r3', type: 'uml.Region', label: 'Pay' });
+    lab.nodes.push({ id: 'z', type: 'uml.State', label: 'z', parent: id + '.r3' }); lab.views[0].nodeIds.push('z');
+    const o2 = write(lab), b2 = read(o2).model.nodes; assert.match(o2, new RegExp(`not written: ${id}: region ${id}\\.r3, whose id the reader cannot carry`), o2);
+    assert.deepEqual(['x', 'y', 'z'].map(k => b2.find(n => n.id === k).parent), [id + '.r1', id + '.r2', undefined], o2);
+    // with one region left, it needs the hint too: refused, as before
+    const one = structuredClone(model); one.nodes[0].members.pop(); one.nodes = one.nodes.filter(n => n.id !== 'y'); one.views[0].nodeIds.pop();
+    assert.match(write(one), new RegExp(`not written: ${id}: region ${id}\\.r1, whose id the reader cannot carry`));
+  }
+});

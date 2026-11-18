@@ -1,5 +1,5 @@
 import { unreadable } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort, mermaidText } from './mermaid-front.js';
 /* ---------- Mermaid classDiagram: a reader and a writer (plan.md 1.10; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's class diagram page (docs/syntax/classDiagram.md, read 11 Nov 2026). Internal: the CLI
    (`umlimator.py import`) imports this file through Node; a host gets it once the registry is public.
@@ -601,7 +601,7 @@ function writeMermaidClass(model, viewId) {
       if (has(p.visibility)) { if (p.visibility in VIS) vis = VIS[p.visibility]; else lose(x.id, `visibility ${p.visibility}`); }
       // a label that is a number or true is written as its text, as the other writers write one (audit 30); another value
       // (an object) is not text a member line holds, so the member is not written and is said
-      const lab = typeof x.label === 'number' || typeof x.label === 'boolean' ? String(x.label) : x.label;
+      const lab = mermaidText(x.label);
       if (x.type === 'uml.EnumerationLiteral') text = typeof lab === 'string' ? lab : null;
       else if (x.type === 'uml.Operation') {
         const params = arr(p.parameters).filter(isObj).map(a => (has(a.direction) ? a.direction + ' ' : '') + (a.name ?? '') + (has(a.valueType) ? ' : ' + gen(a.valueType) : ''));
