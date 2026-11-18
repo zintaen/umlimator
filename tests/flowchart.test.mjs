@@ -415,3 +415,19 @@ test('audit 34: 2000 connectors of one label, each with a flow in, and 2000 more
   assert.deepEqual(order.slice(0, 4), ['Terminator S, a start.', 'Connector A.', 'Connector a.', 'Terminator E, an end.']);
   assert.equal(order.length, 2 * K + 2);
 });
+
+// audit 35: a connector that carries on read its whole label's group on each visit, pushing N ids per connector, so a model just
+// under 1 MiB of alike connectors with no flow in built a stack of about N² ids and threw RangeError; the walk now reads each
+// label's group from where it left off, past the members already read
+test('audit 35: 15000 connectors of one label with no flow in, one start into the first: validate(), describe() and layout() linear, in reading order (timed)', () => {
+  const K = 15000, nodes = [N('s', 'Terminator', 'S')];
+  for (let i = 0; i < K; i++) nodes.push(N(`c${i}`, 'Connector', 'A'));
+  const M = one(nodes, [F('f', 's', 'c0')]), at = f => { const t = performance.now(), r = f(); return [r, performance.now() - t]; };
+  assert.ok(JSON.stringify(M).length < 1 << 20, 'under 1 MiB');
+  const [found, tv] = at(() => validate(M)), [said, td] = at(() => describe(M, 'v')), [L, tl] = at(() => layout(M, 'v'));
+  assert.ok(tv < 1000, `validate() ${Math.round(tv)} ms`); assert.ok(td < 1000, `describe() ${Math.round(td)} ms`); assert.ok(tl < 3000, `layout() ${Math.round(tl)} ms`);
+  assert.deepEqual(found.filter(p => p.rule === 'reachable'), [], 'every connector carried on from c0');
+  const order = said.split('\n').slice(1, K + 2);
+  assert.equal(order.length, K + 1); assert.equal(order[0], 'Terminator S, a start.'); assert.ok(order.slice(1).every(x => x === 'Connector A.'), order.find(x => x !== 'Connector A.'));
+  assert.equal(L.nodes.length, K + 1);
+});

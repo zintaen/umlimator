@@ -428,9 +428,33 @@ test('a relationship or a containment whose ends the reader refuses is named as 
     '%% not written: e1: a satisfy runs to a requirement (satisfy-ends)', '%% not written: e2: a deriveReqt runs from a requirement to a requirement (derive-ends)',
     '%% not written: e3: a copy runs from a requirement to a requirement (copy-ends)', '%% not written: e4: a verify runs to a requirement (verify-ends)'], t);
   const back = read(t);
-  assert.deepEqual(back.report.filter(r => r.kind === 'skipped'), [], t);
+  assert.deepEqual(back.report.filter(r => r.status === 'skipped'), [], t);
   assert.deepEqual(back.model.edges.map(e => e.id).sort(), ['ok1', 'ok2', 'ok3']);
   // the stress fixture's views: nothing written that the reader skips
   const stress = json('requirement-stress.json');
-  for (const v of stress.views) { const w = write(stress, v.id); assert.deepEqual(read(w).report.filter(r => r.kind === 'skipped'), [], v.id); }
+  for (const v of stress.views) { const w = write(stress, v.id); assert.deepEqual(read(w).report.filter(r => r.status === 'skipped'), [], v.id); }
+});
+
+// audit 35: the writer wrote every contains of a cycle of parents (a requirement its own parent too), and its reader then
+// dropped the last one with "it would close a cycle of containment", so a write and read changed the model with no note
+test('a containment that would close a cycle of parents is named as not written, the last in the text as the reader drops it; the rest reads back (audit 35)', () => {
+  const R = (id, parent) => ({ id, type: 'sysml.Requirement', label: id.toUpperCase(), ...(parent ? { parent } : {}), props: { reqId: id, text: 't' } });
+  const B = (id, parent) => ({ id, type: 'sysml.Block', label: id.toUpperCase(), ...(parent ? { parent } : {}) });
+  const cases = [
+    [[R('a', 'b'), R('b', 'a')], ['b: parent a'], [['a', 'b'], ['b', undefined]]],
+    [[R('a', 'a')], ['a: parent a'], [['a', undefined]]],
+    [[R('a', 'c'), R('b', 'a'), R('c', 'b')], ['c: parent b'], [['a', 'c'], ['b', 'a'], ['c', undefined]]],
+    // two cycles, a tail into one, and a chain with none: each cycle loses one contains, nothing else
+    [[R('t', 'p'), R('p', 'q'), R('q', 'p'), B('x', 'y'), B('y', 'x'), R('z', 'x'), R('w'), R('u', 'w')], ['q: parent p', 'y: parent x'],
+      [['t', 'p'], ['p', 'q'], ['q', undefined], ['x', 'y'], ['y', undefined], ['z', 'x'], ['w', undefined], ['u', 'w']]],
+  ];
+  for (const [nodes, cut, parents] of cases) {
+    const m = { schemaVersion: 2, nodes, edges: [], views: [{ id: 'v', diagram: 'sysml.requirement', nodeIds: nodes.map(n => n.id) }] };
+    const t = write(m, 'v'), notes = t.split('\n').filter(l => l.includes('not written')).map(l => l.trim());
+    assert.deepEqual(notes, cut.map(c => `%% not written: ${c}: it would close a cycle of containment`), t);
+    const back = read(t);
+    assert.deepEqual(back.report.filter(r => r.status === 'skipped'), [], t);
+    assert.deepEqual(back.model.nodes.map(n => [n.id, n.parent]), parents, t);
+    assert.equal(write(back.model, back.model.views[0].id), write(read(write(back.model, back.model.views[0].id)).model, back.model.views[0].id), 'stable');
+  }
 });
