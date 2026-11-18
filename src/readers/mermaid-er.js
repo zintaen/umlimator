@@ -191,7 +191,8 @@ function readMermaidEr(text) {
   const statement = (s, k, no, dir) => {
     const st = meSkip(s, k);
     if (st >= s.length) return s.length;
-    const notRead = () => { say(no, 'skipped', `"${meShort(s.slice(st).trim())}" is not understood`); return s.length; };
+    // a line not understood adds nothing: no entity, and the %% id: hint over it is used up, not given to the next (audit 43)
+    const notRead = () => { say(no, 'skipped', `"${meShort(s.slice(st).trim())}" is not understood`); hint = {}; return s.length; };
     if (dir >= st) {
       const d = meAt(/direction\s+(TB|BT|RL|LR)/iy, s, dir)[1].toUpperCase();
       if (depth) say(no, 'skipped', `direction ${d} inside a subgraph is not kept: the view has one direction`);
@@ -219,21 +220,26 @@ function readMermaidEr(text) {
     if (!a) return notRead();
     let k2 = styled(s, meSkip(s, a.end), a.text, no);
     const card = meAt(ME_CARD, s, k2);
-    if (!card) { // an entity: its alias, its classes, its block
+    if (!card) { // an entity: its alias, its classes, its block; the whole line read before the entity is kept, so a line
+      // that is not understood (title Orders, A |-o{ B, A[a] extra) adds none (audit 43)
+      let alias;
+      if (s[k2] === '[') {
+        const q = meSkip(s, k2 + 1), n = s[q] === '"' ? meName(s, q) : null, e = n ? meSkip(s, n.end) : s.indexOf(']', q);
+        if (e < 0 || s[e] !== ']' || (!n && !s.slice(q, e).trim())) return notRead();
+        alias = meDecode(n ? n.text : s.slice(q, e).trim());
+        k2 = styled(s, meSkip(s, e + 1), a.text, no);
+      }
+      if (s[k2] !== '{' && k2 < s.length) return notRead();
       const rec = ent(a.text, no);
       rec.declared = true;
       if (hint.id !== undefined && rec.hint === undefined) { rec.hint = hint.id; rec.hintNo = no; }
       hint = {};
-      if (s[k2] === '[') {
-        const q = meSkip(s, k2 + 1), n = s[q] === '"' ? meName(s, q) : null, e = n ? meSkip(s, n.end) : s.indexOf(']', q);
-        if (e < 0 || s[e] !== ']' || (!n && !s.slice(q, e).trim())) return notRead();
-        const alias = meDecode(n ? n.text : s.slice(q, e).trim());
+      if (alias !== undefined) {
         if (rec.label === undefined) rec.label = alias;
         else if (rec.label !== alias) say(no, 'skipped', `${a.text}[${alias}]: ${a.text} has an alias already`);
-        k2 = styled(s, meSkip(s, e + 1), a.text, no);
       }
       if (s[k2] === '{') { block = rec; return k2 + 1; }
-      return k2 < s.length ? notRead() : s.length;
+      return s.length;
     }
     // a relationship: A card rel card B [: label]
     const end = m => k2 + m[0].length, mult = m => ME_MULT[m[0].toLowerCase()];

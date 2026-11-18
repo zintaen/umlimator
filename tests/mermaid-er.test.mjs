@@ -418,3 +418,16 @@ test('a node of no type (or "") is written as an entity, with its relationships 
     assert.equal(back.nodes[1].members[1].props.references, 'a.id');
   }
 });
+
+test('a line reported as not understood adds no entity, and uses up the %% id: hint over it (audit 43)', () => {
+  const junk = ['title Orders', 'CUSTOMER |-o{ ORDER : places', 'LINE-ITEM[Line item] extra', 'foo bar baz', 'X["a"', 'Y } z', 'Z :: w', 'P -> ', 'Q --> R junk', 'S[', 'T(', 'U --x', 'V <<x>> y', 'W : x : y', 'A[] b', 'A[x]]'];
+  for (const j of junk) {
+    const r = read(`erDiagram\n%% id: hinted\n${j}\nORDER ||--o{ ITEM : contains\nNEXT`);
+    assert.ok(r.report.some(x => x.line === 3 && x.status === 'skipped' && /not understood/.test(x.message)), j);
+    assert.deepEqual(r.model.nodes.map(n => n.id), ['ORDER', 'ITEM', 'NEXT'], j);
+    assert.equal(r.model.nodes.find(n => n.label === 'NEXT').id, 'NEXT', j);
+  }
+  // a good line keeps its entity, alias and hint as before
+  const ok = read('erDiagram\n%% id: li\nLINE-ITEM["Line item"]:::x {\n  int id PK\n}\nB[Bee]');
+  assert.deepEqual(ok.model.nodes.map(n => [n.id, n.label]), [['li', 'Line item'], ['B', 'Bee']]);
+});
