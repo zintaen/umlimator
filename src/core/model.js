@@ -273,11 +273,6 @@ function typedProblems(model) {
       const part = (((e.props || {}).ends || {})[k] || {}).part; if (part != null && !has(part)) err(`${at}.props.ends.${k}.part`, `part ${name(part)} is not an element`); });
   };
   arr(m.edges).forEach((e, i) => { if (typedEdge(e)) ends(e, `edges[${i}]`, boxes); });
-  // a line of the model to what one view alone holds (its own node, a member of one: a model member moved there before apply()
-  // refused that, audit 35) is drawn in no other view, and goes when that view's node goes
-  arr(m.edges).forEach((e, i) => { if (!typedEdge(e)) return; ['from', 'to'].forEach(k => { const part = (((e.props || {}).ends || {})[k] || {}).part;
-    [[e[k], k], [part, `props.ends.${k}.part`]].forEach(([id, p]) => { const h = id == null ? null : heldIn(where.get(id));
-      if (h != null) warn(`edges[${i}].${p}`, `${name(id)} lives in view ${name(views[h].id)} only: a line of the model cannot end on it`); }); }); });
   const nodeIds = new Set(nodes.filter(isObj).map(n => n.id)), modelEdge = new Map();
   arr(m.edges).forEach(e => { if (typedEdge(e) && typeof e.id === 'string' && !modelEdge.has(e.id)) modelEdge.set(e.id, e); });
   // a line's kind in words: 'uml.Dependency' "dependency", 'sysml.DeriveReqt' "derive reqt"

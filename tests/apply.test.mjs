@@ -449,7 +449,7 @@ test('audit 32: hide takes the view\'s own lines to what it hides for good, so a
 
 // audit 35: move { id, owner } put a model element's member under a node one view alone holds, which reparent and add refuse
 // (it left the other views that show its owner, and went with that node); the edit hooks' guard (registry.js ownGuard) refuses
-// it too, and validate() says a model line left ending on what one view alone holds
+// it too. validate() says nothing more: a model line to a view's own node is valid (audit 22), and a member is its owner's
 test('audit 35: a model member is never moved under a node one view alone holds', async () => {
   const { registerDiagramType } = await import('../src/core/registry.js');
   const base = () => ({ schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.Class', label: 'A', members: [{ id: 'a1', type: 'uml.Property', label: 'x' }, { id: 'a2', type: 'uml.Property', label: 'y' }] }, { id: 'C', type: 'uml.Class', label: '' }],
@@ -470,12 +470,4 @@ test('audit 35: a model member is never moved under a node one view alone holds'
   assert.deepEqual(T.edits.member(m, m.views[0], 'a1', 'B'), { error: 'B lives in this view only: an element of the model cannot go under it' });
   assert.deepEqual(T.edits.member(m, m.views[0], 'b1', 'B'), [{ op: 'move', id: 'b1', owner: 'B' }], 'the view\'s own member stays its own');
   assert.deepEqual(T.edits.member(m, m.views[0], 'a1', 'C'), [{ op: 'move', id: 'a1', owner: 'C' }]);
-  // validate(): a model line to what one view alone holds (as a model written by hand, or by apply() before this, has it)
-  const bad = base(); bad.views[0].nodes[0].members.push(bad.nodes[0].members.shift());
-  assert.deepEqual(validate(bad).filter(p => p.path.startsWith('edges[')).map(p => `${p.level} ${p.path}: ${p.message}`),
-    ['warning edges[0].to: "a1" lives in view "v" only: a line of the model cannot end on it']);
-  const part = base(); part.edges[0] = { id: 'e', type: 'uml.Connector', from: 'C', to: 'A', props: { ends: { to: { part: 'b1' } } } };
-  assert.deepEqual(validate(part).filter(p => p.path.startsWith('edges[')).map(p => `${p.level} ${p.path}: ${p.message}`),
-    ['warning edges[0].props.ends.to.part: "b1" lives in view "v" only: a line of the model cannot end on it']);
-  assert.deepEqual(validate(base()).filter(p => p.path.startsWith('edges[')), [], 'a model line between model elements says nothing');
 });
