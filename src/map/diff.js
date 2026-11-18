@@ -240,6 +240,19 @@ export function diff(before, after) {
     m0.forEach((r, k) => { if (!m1.has(k)) said.push(`removes the rule ${rn(r)}`); });
     const found = m => { const by = new Map(); rules(m).forEach(b => by.set(b.view, [...(by.get(b.view) || []), b.message].sort())); return by; }, f0 = found(A), f1 = found(out);
     views.forEach(v => { if (v && canon(f0.get(v.id) || []) !== canon(f1.get(v.id) || [])) touched.add(v.id); }); }
+  // the stories and lenses, as the rules are, and the map's title and any other field of the model's own: none is drawn on a
+  // view, but a change to one is a change (audit 31: diff --base said "No map model changed." for a story's caption)
+  const listed = (k, word) => { const L0 = arr(A[k]), L1 = arr(out[k]); if (canon(L0) === canon(L1)) return;
+    const key = (x, i) => x && typeof x === 'object' && x.id != null ? String(x.id) : '#' + i, nm = x => String((x && typeof x === 'object' && (x.title || x.id)) ?? `a ${word}`);
+    const m0 = new Map(L0.map((x, i) => [key(x, i), x])), m1 = new Map(L1.map((x, i) => [key(x, i), x]));
+    m1.forEach((x, k) => { if (!m0.has(k)) said.push(`adds the ${word} ${nm(x)}`); else if (canon(m0.get(k)) !== canon(x)) said.push(`changes the ${word} ${nm(x)}`); });
+    m0.forEach((x, k) => { if (!m1.has(k)) said.push(`removes the ${word} ${nm(x)}`); }); };
+  listed('stories', 'story'); listed('lenses', 'lens');
+  const T0 = (before || {}).title, T1 = (after || {}).title;
+  if (canon(T0) !== canon(T1)) said.unshift(T1 == null ? `takes the title ${String(T0)} off the map` : T0 == null ? `titles the map ${String(T1)}` : `retitles the map ${String(T0)} to ${String(T1)}`);
+  const own = new Set(['nodes', 'edges', 'views', 'rules', 'stories', 'lenses', 'title']), B0 = before && typeof before === 'object' ? before : {}, B1 = after && typeof after === 'object' ? after : {};
+  const rest = [...new Set([...Object.keys(B0), ...Object.keys(B1)])].filter(k => !own.has(k) && canon(B0[k]) !== canon(B1[k]));
+  if (rest.length) said.push(`changes the model (${rest.join(', ')})`);
   moved.forEach(([verb, id, v]) => said.push(`${verb} ${name(id)} ${verb === 'puts' ? 'in' : 'out of'} the view ${v.title || v.id}`));
   said.push(...viewSaid);
   if (TYPED.order) TYPED.order(A, out, views, V0, said, touched, name);

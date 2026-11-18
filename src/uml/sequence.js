@@ -59,7 +59,8 @@ function sqIndex(model, view) {
 
 /* ---- layout: the view as layoutTimeAxis's input (notes/stage-3.md §3.2), measured with textW in the host's measure ---- */
 function sqInput(model, view, X = sqIndex(model, view)) {
-  const heads = sqHeads(model, view), entries = SQ_ARR(view.edges), byI = new Map(X.occ.map(o => [o.i, o])), col = new Map(heads.map((h, j) => [h.id, j]));
+  // Array.from: a list's hole (a host's delete edges[i]) is a row of no occurrence, as undefined is; map() kept it a hole (audit 31)
+  const heads = sqHeads(model, view), entries = Array.from(SQ_ARR(view.edges)), byI = new Map(X.occ.map(o => [o.i, o])), col = new Map(heads.map((h, j) => [h.id, j]));
   const rows = entries.map((x, i) => { const o = byI.get(i);
     if (!o) return { id: SQ_OBJ(x) ? String(x.id) : String(x), kind: 'none', a: null, b: null, w: 0, h: 0, parent: null }; // the core reports it (src/core/model.js)
     if (!o.message) { const cs = SQ_ARR(sqProps(o.el).covers).filter(id => col.has(id)).sort((a, b) => col.get(a) - col.get(b)); // a use: over what it covers, else every lifeline

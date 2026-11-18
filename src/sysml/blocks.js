@@ -228,6 +228,7 @@ const BD_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
 const BD_PROP_FIELDS = [{ key: 'multiplicity', label: 'Multiplicity', kind: 'text' }, BD_STEREO];
 const BD_TYPE = registerDiagramType('sysml.block-definition', {
   untyped: 'Class', // an element of no type (or ""): a class, as named (audit 30)
+  allLines: true, // a view that lists no lines draws every model line between its blocks, of any kind (drawnLines with no own kinds: audit 31)
   title: 'block definition diagram',
   elements: [['sysml.Block', 'Block'], ['sysml.InterfaceBlock', 'Interface block'], ['sysml.ConstraintBlock', 'Constraint block'], ['sysml.ValueType', 'Value type'], ['uml.Package', 'Package'], ['uml.Comment', 'Comment']]
     .map(([type, label]) => ({ type, label })),
