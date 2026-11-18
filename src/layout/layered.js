@@ -20,6 +20,9 @@ const hit = (a, b, pad = 0) => a.x < b.x + b.w + pad && b.x < a.x + a.w + pad &&
 // a line whose route layoutPass draws itself in a typed view: 'loop' (a node to itself) or 'fan'. A symbol, so no field of a
 // model's line can set it
 const OWN_ROUTE = Symbol('own route');
+// a typed view laid out as before audit 38 (layoutTyped's try when the new one leaves check() something to say): a symbol, so
+// no field of a model's view can set it
+const PLAIN = Symbol('plain');
 // a typed view's labels placed only once routing was done, on a looser spot (layoutPass's last try): they ask for room as a lost one does
 const LOOSE = new WeakSet();
 const labelW = e => widest(String((e.step != null ? e.step + ' · ' : '') + (e.label || '')).split(EDGE_BREAK), r => textW(fit(r, 10, e.cut || 150), 10)) + 12; // its widest line
@@ -162,7 +165,7 @@ function layoutGraph(dg, map) {
   return best;
 }
 function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: px } } (lx, ly: a label's, past the boxes'); last: lay out with it, find no more
-  const __ms = { t: performance.now() }, t0 = __ms.t;
+  const __ms = { t: performance.now() }, t0 = __ms.t, NEST = !map && !!dg.typed && !!dg.nest && !dg[PLAIN]; let used = false; // NEST: audit 38's ways (PLAIN); used: one of them changed the layout
   const px = x => typeof x === 'number' && x > 0 ? Math.min(x, 2000) : 0; // a gap that is no positive number is the default (audit 9)
   const CG = px(dg.gap) || (map ? (dg.mainSteps && !dg.containers ? 38 : 66) : CG0), RG = px(dg.rgap) || (map ? 44 : RG0); // family borders also need clearance between columns
   const NH = dg.nodeH || 64, pitch = NH + RG;
@@ -251,11 +254,21 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const framesNow = () => { const cache = Object.create(null); // a box may be named 'constructor'
     const make = (f, children) => {
       const members = (f.nodeIds || []).map(id => byId[id]).filter(Boolean);
-      const rects = [...members.map(n => TB ? { x: n.x - 14, y: n.y - 36, w: n.w + 44, h: n.h + 72 } : {x:n.x - 36,y:n.y - 14,w:n.w + 72,h:n.h + 44 + (tagged(n) ? 14 : 0)}), ...(TB ? fanRoom(members) : []), ...(LP ? members.map(n => (TB ? loopRoom : loopSide)(n)).filter(Boolean) : []), ...children];
+      // laid out right, a typed box with more lines to a card outside it than the card's side holds reaches past the card's top
+      // and bottom by a port for each line that goes round, below its title: each line meets the box level with where it runs,
+      // none turning in the gap between them (audit 38: five transitions from a composite state of one state crossed)
+      const reach = NEST && !TB && !dg.abs ? nodes.flatMap(c => { if (held.has(c.id) && under(f, c.id)) return [];
+        const k = (dg.edges || []).filter(e => (e.from === f.id && e.to === c.id) || (e.to === f.id && e.from === c.id)).length, m = k - Math.max(1, Math.floor(c.h * 0.84 / 14));
+        return m >= 2 && members.length ? [{ x: members[0].x, y: c.y - STUB - 16 * Math.ceil(m / 2) - 4, w: 1, h: c.h + 2 * (STUB + 16 * Math.ceil(m / 2)) + 8 }] : []; }) : [];
+      if (reach.length) used = true;
+      const rects = [...reach, ...members.map(n => TB ? { x: n.x - 14, y: n.y - 36, w: n.w + 44, h: n.h + 72 } : {x:n.x - 36,y:n.y - 14,w:n.w + 72,h:n.h + 44 + (tagged(n) ? 14 : 0)}), ...(TB ? fanRoom(members) : []), ...(LP ? members.map(n => (TB ? loopRoom : loopSide)(n)).filter(Boolean) : []), ...children];
       if (!rects.length) return null;
       const p = 12, x = Math.min(...rects.map(r => r.x)) - p - (TB ? 24 : 0), y = Math.min(...rects.map(r => r.y)) - p - (TB ? 0 : 24);
       const b = {...f, x, y, w:Math.max(...rects.map(r => r.x+r.w)) + p - x, h:Math.max(...rects.map(r => r.y+r.h)) + p - y};
-      if (!map) b[TB ? 'h' : 'w'] = Math.max(b[TB ? 'h' : 'w'], headW(f) + 16);
+      // laid out down, its title runs along its top, and the ports there go right of it: the box holds a port's room for each
+      // line out of it, up to four (audit 38: as wide as its title, every line through its top met it at one point, or crossed the title)
+      const outs = NEST && TB ? Math.min(4, (dg.edges || []).filter(e => { const i = id => id === f.id || under(f, id); return i(e.from) !== i(e.to); }).length) : 0;
+      if (!map) { const k = TB ? 'h' : 'w', was = Math.max(b[k], headW(f) + 16); b[k] = Math.max(b[k], headW(f) + 16 + (outs ? 36 + 16 * outs : 0)); if (b[k] > was) used = true; }
       return cache[f.id] = dg.typed ? TYPED.frame(b, TB) : b;
     };
     // a box's frame holds its children's: a stack, not recursion, so boxes nest to any depth; a box already on it closes a parent cycle
@@ -407,13 +420,14 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       const mine = free.filter(e => (e.s === n && e.fs === side) || (e.t === n && e.ts === side));
       const over = mine.length - cap(n, side); if (over <= 0) return;
       const far = e => { const o = e.s === n ? e.t : e.s; return (o.y + o.h / 2) - (n.y + n.h / 2); };
-      // lines to a box level with the card take its top and bottom by turns: on one side, two of them leave the box's side one
+      // lines to a box level with the card (NEST: or to a card on its row) take its top and bottom by turns: on one side, two of them leave the box's side one
       // above the other and turn the same way, and the lower one's track ran up through the upper one's stub end (audit 37: laid
-      // out right, four transitions from a composite state to the state beside it, two of them on one track)
+      // out right, four transitions from a composite state to the state beside it, two of them on one track; audit 38: seven
+      // between two states, all moved went under the card, where the row below left one track)
       const oth = e => e.s === n ? e.t : e.s, level = o => !TB && o.box && o.y < n.y && o.y + o.h > n.y + n.h, turn = new Map();
       const moved = mine.sort((a, b) => Math.abs(far(b)) - Math.abs(far(a))).filter(e => !facesLoop(n, far(e) < 0 ? 'T' : 'B')).slice(0, over);
       moved.forEach(e => {
-        const o = oth(e), k = turn.get(o) || 0, two = !!level(o) && mine.every(d => oth(d) === o) && moved.length > 1; turn.set(o, k + 1);
+        const o = oth(e), k = turn.get(o) || 0, two = !!(level(o) || NEST && !TB && !o.box && Math.abs(far(e)) < 1) && mine.every(d => oth(d) === o) && moved.length > 1; turn.set(o, k + 1); if (two && !level(o)) used = true;
         const ns = (far(e) < 0) !== (two && k % 2 === 1) ? 'T' : 'B';
         if (e.s === n) e.fs = ns; else e.ts = ns;
       });
@@ -460,6 +474,38 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       portAt(it, side, p);
     });
   });
+  // a typed view's lines between one pair take their ports so that they nest (audit 38: laid out right, five transitions from a
+  // composite state to the state beside it, two of them crossed and one ran on another): walked round each end clockwise from
+  // the side away from the other, the lines meet one end in the order they meet the other in reverse, as strands between two
+  // discs do. Each line keeps its port on the pair's first end; the other end's ports go round among them
+  if (NEST && !dg.abs) { const pairsOf = new Map();
+    free.forEach(e => { if (e.s === e.t || e.inner || e.fromPort != null || e.toPort != null || !e.p1 || !e.p2) return; const k = e.s.id < e.t.id ? e.s.id + '\u0001' + e.t.id : e.t.id + '\u0001' + e.s.id; pairsOf.set(k, [...(pairsOf.get(k) || []), e]); });
+    const TAU = 2 * Math.PI, param = (m, o, p) => { const cx = m.x + m.w / 2, cy = m.y + m.h / 2, a = Math.atan2(p[1] - cy, p[0] - cx) - Math.atan2(cy - o.y - o.h / 2, cx - o.x - o.w / 2); return ((a % TAU) + TAU) % TAU; };
+    const at = (e, m) => e.s === m ? ['p1', 'fs'] : ['p2', 'ts'];
+    pairsOf.forEach(list => { if (list.length < 2) return; const n = list[0].s, o = list[0].t;
+      const byN = [...list].sort((a, b) => param(n, o, a[at(a, n)[0]]) - param(n, o, b[at(b, n)[0]]));
+      const O = list.map(e => { const [k, sk] = at(e, o); return [e[k], e[sk]]; }).sort((a, b) => param(o, n, b[0]) - param(o, n, a[0]));
+      byN.forEach((e, i) => { const [k, sk] = at(e, o); if (e[k] !== O[i][0]) used = true; [e[k], e[sk]] = O[i]; });
+      // a box beside a card, laid out right, with every line of the pair on its side that faces the card: each line meets the box
+      // level with where it runs, so none turns in the gap between them. One into the card's side runs straight; one into its
+      // top (bottom) runs over (under) the card and turns down (up) into it, the line into the port nearest the box lowest
+      // (highest), each a track apart. The gap held a track for each of them, and five crossed or ran on one another (audit 38)
+      const B = n.box ? n : o.box ? o : null, Cd = B === n ? o : n; if (!B || Cd.box || TB) return;
+      const bs = Cd.x > B.x + B.w ? 'R' : Cd.x + Cd.w < B.x ? 'L' : null; if (!bs || list.some(e => at(e, B)[1] && e[at(e, B)[1]] !== bs)) return;
+      const cs = bs === 'R' ? 'L' : 'R', near = p => Math.abs(p[0] - (bs === 'R' ? B.x + B.w : B.x)), ys = new Map();
+      list.filter(e => e[at(e, Cd)[1]] === cs).forEach(e => ys.set(e, e[at(e, Cd)[0]][1]));
+      for (const [side, sg] of [['T', -1], ['B', 1]]) list.filter(e => e[at(e, Cd)[1]] === side).sort((a, b) => near(a[at(a, Cd)[0]]) - near(b[at(b, Cd)[0]]))
+        .forEach((e, i) => ys.set(e, (side === 'T' ? Cd.y : Cd.y + Cd.h) + sg * (STUB + (i + 1) * 16)));
+      const lo = B.y + 40, hi = B.y + B.h - 16, mine = new Set(list);
+      // a box too short for them: the lines over (under) the card come down (up) to where it starts (ends), in turn
+      for (const [side, sg] of [['T', 1], ['B', -1]]) { const g = list.filter(e => e[at(e, Cd)[1]] === side), v = g.map(e => ys.get(e)), d = sg > 0 ? lo - Math.min(...v) : hi - Math.max(...v);
+        if (g.length && d * sg > 0) g.forEach(e => ys.set(e, ys.get(e) + d)); }
+      const others = (sides[B.id + '|' + bs] || []).filter(it => !mine.has(it.e)).map(it => (it.e.s === B ? it.e.p1 : it.e.p2)[1]);
+      const all = [...ys.values()].sort((a, b) => a - b);
+      if (ys.size !== list.length || all[0] < lo || all.at(-1) > hi || all.some((y, i) => i && y - all[i - 1] < PORT) || others.some(y => all.some(v => Math.abs(v - y) < PORT))) return;
+      list.forEach(e => { const k = at(e, B)[0]; if (e[k][1] !== ys.get(e)) used = true; e[k] = [e[k][0], ys.get(e)]; });
+    });
+  }
   edges.filter(e => e.under > 0).forEach(e => { const P = e.fixed; e.pts = e.fixed = [...P.slice(0, 4), [P[3][0], e.p2[1]], e.p2]; });
   const corners = LP ? LP.route() : []; // a loop's corners: obstacles to the other routes
   // and each box's title, which the router keeps clear of (audit 25: a fanned line ran up through a boundary's title)
@@ -601,6 +647,9 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     while (hn) {
       hpop(); const k = pk, cell = k >> 2, dir = k & 3, i = (cell / ny) | 0, j = cell - i * ny;
       if (pd > dist[k] + (hx[i] + hy[j])) continue;
+      // (NEST) head on only for up to two bends more than the cheapest way in: a route that kept to it at any cost ran along a
+      // box's border into its end (audit 38: laid out right, a transition past a two-level composite state, 3616 for 1950)
+      if (NEST && best >= 0 && pd > dist[best] + 2 * BEND) { used = true; break; }
       const d = dist[k];
       // in head-on if it can; else the cheapest way in, the first found (it kept the last, the dearest: a top-to-top line on
       // the top row ran past its card and back, #80)
@@ -775,7 +824,9 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // port repair: two routes that cross next to a shared node side swap ports, keep it if issues drop. On a map a detour
   // counts, as the layout check counts it: a swap that took u21's Web shop's two lines round the map to save one crossing
   // was kept (unfolding Catalog)
-  const issueCount = only => routeAudit({ edges }, '', only).length + (map ? (only ? [...only] : edges).filter(e => detour(e.pts)).length : 0);
+  // a typed view's line on another, or along a box's border, counts as more than a crossing: a swap that saves a crossing so is
+  // no gain (audit 38: laid out down, two transitions between one pair swapped ports, and one ran down another's track)
+  const issueCount = only => routeAudit({ edges }, '', only).reduce((k, s) => k + (!NEST || / cross$/.test(s) ? 1 : (used = true, 3)), 0) + (map ? (only ? [...only] : edges).filter(e => detour(e.pts)).length : 0);
   const endAt = (e, n, side) => (e.s === n && e.fs === side) ? 'p1' : (e.t === n && e.ts === side) ? 'p2' : null;
   let issues = issueCount();
   // a swap re-routes only the two swapped edges (ripped up, then routed after every other route), not the whole
@@ -888,7 +939,11 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // then each of them whose route runs round one of its own ends (the last resort may: audit 21), that end tried on each other
   // side of its card, kept when the route there runs round neither end and has no more issues (audit 28: er-through2-min laid
   // out down left its source's bottom and went left of it, over it and down its right side, and crossed a line anyway)
-  const roundOwn = (e, P) => [[e.s, e.fs, P[P.length - 1]], [e.t, e.ts, P[0]]].find(([n, side, far]) => n && !n.box && !behind(n, side, far) && P.some(p => behind(n, side, p)));
+  // or (NEST) one that passes the line of its end's side and comes back to it (audit 38: laid out down, a line into a final state
+  // ran down past its top, under the self-transition of the state above, and back up into it)
+  const past = (n, side, p) => side === 'T' ? p[1] > n.y + .5 : side === 'B' ? p[1] < n.y + n.h - .5 : side === 'L' ? p[0] > n.x + .5 : p[0] < n.x + n.w - .5;
+  const roundOwn = (e, P) => [[e.s, e.fs, P[P.length - 1]], [e.t, e.ts, P[0]]].find(([n, side, far]) => n && !n.box && !behind(n, side, far) && P.some(p => behind(n, side, p)))
+    || (NEST ? [[e.s, e.fs, P[P.length - 1], P.slice(2, -1)], [e.t, e.ts, P[0], P.slice(1, -2)]].find(([n, side, far, mid]) => n && !n.box && !past(n, side, far) && mid.some(p => past(n, side, p))) : undefined);
   if (dg.typed) lastR.forEach(e => { const r = roundOwn(e, e.pts); if (!r || e.inner || e.fromPort != null || e.toPort != null || e.s === e.t) return;
     const k = r[0] === e.s && r[1] === e.fs ? 'p1' : 'p2', fk = k === 'p1' ? 'fs' : 'ts', n = r[0], o = k === 'p1' ? e.t : e.s, k0 = issuesOf(e)[1];
     const was = [e.p1, e.p2, e.fs, e.ts, e.pts, e.how]; let best = null; ripUp(e);
@@ -960,7 +1015,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   intake.forEach(b => { xs.push(b.cx - b.r - 8 - textW(b.label || '', 10.5), b.cx + b.r); ys.push(b.cy - b.r, b.cy + b.r); });
   if (!xs.length) xs.push(0), ys.push(0); // a view with nothing in it: an empty stage
   const M = 36, minX = Math.min(...xs) - M, minY = Math.min(...ys) - M;
-  return { ms: __ms, ...(labelRoom ? { labelRoom } : {}), ...(rrSwap ? { rr: true } : {}), stats, nodes, edges, subAndChips: !!dg.subAndChips, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: Math.max(...xs) - minX + M, h: Math.max(...ys) - minY + M } };
+  return { ms: __ms, ...(used ? { nested: true } : {}), ...(labelRoom ? { labelRoom } : {}), ...(rrSwap ? { rr: true } : {}), stats, nodes, edges, subAndChips: !!dg.subAndChips, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: Math.max(...xs) - minX + M, h: Math.max(...ys) - minY + M } };
 }
 
-export { CHG, NW, OWN_ROUTE, labelW, pillW, stepW, stepOrder, hit, untangle, pullSources, rowsFor, layoutGraph };
+export { CHG, NW, OWN_ROUTE, PLAIN, labelW, pillW, stepW, stepOrder, hit, untangle, pullSources, rowsFor, layoutGraph };
