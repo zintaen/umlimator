@@ -6,7 +6,7 @@ import { layoutTyped } from '../typed/layout.js';
 import { drawnLines, legendItem, lineRename } from '../uml/class.js'; // and SHAPE.note, a comment's look
 import { holdsLine, ownersOn, placeTabs } from '../uml/owners.js';
 import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_HEAD, SYS_TABLE } from './sysml.js';
-import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName, propTextProblems } from '../core/model.js';
 
 /* ---------- the requirement diagram, sysml.requirement (work package M3.2, notes/milestone-3.md §6, §13) ----------
    Requirements, test cases, blocks, packages and comments in a SysML frame (§5): a requirement is the classifier with
@@ -207,6 +207,7 @@ function rqProblems(model, view) {
     if (RQ_ARR(x.members).length) say('error', 'requirement-members', `${path}.members`, [x.id], `${I.q(x.id)} has ${rqPlural(x.members.length, 'member')}: a requirement has none`);
     if (RQ_HAS(p.reqId)) { const k = String(p.reqId).trim(); if (ids.has(k)) say('warning', 'requirement-id', `${path}.props.reqId`, [ids.get(k), x.id], `${I.q(ids.get(k))} and ${I.q(x.id)} share the id ${k}`); else ids.set(k, x.id); }
     if (!RQ_HAS(p.text)) say('warning', 'requirement-text', path, [x.id], `${I.q(x.id)} has no text`);
+    out.push(...propTextProblems(x, path, ['reqId', 'text'])); // drawn, named and printed as text (audit 40)
     if (RQ_HAS(p.risk) && !RQ_RISK.includes(p.risk)) say('warning', 'risk-value', `${path}.props.risk`, [x.id], `${I.q(x.id)}'s risk is ${jsonText(p.risk)}, not low, medium or high`);
     if (RQ_HAS(p.verifyMethod) && !RQ_METHOD.includes(p.verifyMethod)) say('warning', 'verify-method', `${path}.props.verifyMethod`, [x.id], `${I.q(x.id)}'s verify method is ${jsonText(p.verifyMethod)}, not analysis, inspection, test or demonstration`); });
   const derives = new Map();

@@ -160,6 +160,20 @@ function prAdd(model, view, entry, label, at) {
   const near = Object.keys(UML_META).sort((a, b) => prDist(lo, a.toLowerCase()) - prDist(lo, b.toLowerCase()) || a.localeCompare(b)).slice(0, 6);
   return { pick: near, then: i => add(near[i]) };
 }
+// a stereotype or a classifier renamed (F2, the Name field) to a name a kin of it holds: refused in prAdd's words, as the add is
+// (stereotype-names, classifier-names), audit 40. Kin: the elements of its owner, itself left out. Null: no clash
+function prClash(model, id, label) {
+  const I = prIndex(model), x = I.at.get(id), nm = typeof label === 'string' ? label.trim() : ''; if (!x || !nm || !CLASSIFIERS.includes(x.type)) return null;
+  const p = x.parent ?? null, kin = PR_ARR(model.nodes).filter(n => PR_OBJ(n) && n !== x && I.at.get(n.id) === n && (n.parent ?? null) === p), pn = p != null && I.at.has(p) ? prName(I.at.get(p)) : 'The model';
+  if (x.type === 'uml.Stereotype' && I.ty(p) === 'uml.Profile' && styKey(prName(x)) !== styKey(nm) && kin.some(n => n.type === 'uml.Stereotype' && styKey(prName(n)) === styKey(nm)))
+    return { error: `${pn} has a stereotype ${styKey(nm)} already: names meet with the first letter in either case` };
+  if (prName(x) !== nm && kin.some(n => CLASSIFIERS.includes(n.type) && prName(n) === nm)) return { error: `${pn} has a classifier named ${nm} already` };
+  return null;
+}
+const prLineRename = lineRename(lineLabel);
+const prRename = (model, view, id, text) => prClash(model, id, text) ?? prLineRename(model, view, id, text);
+const prField = (model, view, id, path, value) => (String(path) === 'label' ? prClash(model, id, value) : null); // the Name field
+
 // connect: an extension from a stereotype to a metaclass, an application from a package to a profile, a generalization
 // between stereotypes; else said, the rule's words
 function prConnect(model, view, from, to, at, line) {
@@ -198,7 +212,7 @@ const PR_TYPE = registerDiagramType('uml.profile', {
   // an element drawn as a profiled classifier prints what it draws, nothing more (a class with no stereotype: no row, not its
   // members, which the view does not draw; audit 27); a comment and a closed package with none, their own rows
   rows: (model, view, id) => { const I = prIndex(model), x = I.at.get(id); if (!x) return null; const r = prRows(model, x, I); return r.length || !(x.type === 'uml.Comment' || OWN_BOXES.includes(x.type)) ? r : null; },
-  edits: { add: prAdd, connect: prConnect, rename: lineRename(lineLabel) },
+  edits: { add: prAdd, connect: prConnect, rename: prRename, field: prField },
 });
 
 export { PR_TYPE, PR_RULES, prGeo, prProblems, prDescribe, prAdd, prConnect, prRows };

@@ -195,6 +195,12 @@ function labelProblem(x, at, key = 'label') {
   let shown; try { shown = String(l); } catch { shown = ''; }
   return { level: 'warning', path: `${at}.${key}`, message: `${key} ${jsonText(l)} is not text: drawn as ${jsonText(shown)}` };
 }
+// the props a typed view draws as text (a requirement's text, a part's multiplicity, a task's documentation), each said as a
+// label is when it is not text: a warning at its own path, never a silent "[object Object]" (audit 40)
+function propTextProblems(x, at, keys) {
+  const P = x && typeof x === 'object' && x.props && typeof x.props === 'object' && !Array.isArray(x.props) ? x.props : null;
+  return P ? keys.flatMap(k => (Object.hasOwn(P, k) ? [labelProblem(P, `${at}.props`, k)] : []).filter(Boolean)) : [];
+}
 function typedProblems(model) {
   const out = [], err = (path, message) => out.push({ level: 'error', path, message }), warn = (path, message) => out.push({ level: 'warning', path, message });
   const m = model && typeof model === 'object' ? model : {}, arr = x => (Array.isArray(x) ? x : []), isObj = x => x && typeof x === 'object';
@@ -309,4 +315,4 @@ const listOf = (m, i) => (Array.isArray(m.views[i] && m.views[i].edges) ? i : -1
 const lineNames = m => { const out = new Map([[-1, namesOf(m && m.edges)]]);
   (Array.isArray(m && m.views) ? m.views : []).forEach((v, i) => { if (v && Array.isArray(v.edges)) out.set(i, namesOf(v.edges)); }); return out; };
 
-export { canon, canonDeep, jsonText, labelOr, elName, labelProblem, versionProblem, typedProblems, lineNames, namesOf, listOf, unreadable, copyOf, textOf, nameTable, usedIds };
+export { canon, canonDeep, jsonText, labelOr, elName, labelProblem, propTextProblems, versionProblem, typedProblems, lineNames, namesOf, listOf, unreadable, copyOf, textOf, nameTable, usedIds };

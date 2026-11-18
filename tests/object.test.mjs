@@ -404,3 +404,22 @@ test('audit 33: slot-kinds writes the member\'s kind in lower case with its arti
     'slot-kinds: "order1" holds o.op, an operation: an instance holds slots only', 'slot-kinds: "order1" holds o.p, a port: an instance holds slots only',
     'slot-kinds: "order1" holds o.l, an enumeration literal: an instance holds slots only']);
 });
+
+// audit 40: a slot added or edited to a feature the instance has a slot for already; a Link from an instance to a comment
+test('audit 40: a slot for a feature the instance has one for is refused, and a link joins two instances or is refused', () => {
+  const m = structuredClone(OBJ), v = m.views[0], ada = m.nodes.find(x => x.id === 'ada'), o = m.nodes.find(x => x.id === 'order-1042');
+  assert.match(T.member.add('email = 5', ada).error, /^member-names: "ada" has a member named "email" already \(ada\.email\)/);
+  assert.match(T.member.edit(o.members.find(x => x.id === 'order-1042.status'), 'total = 1', o).error, /^member-names: "order1042" has a member named "total" already \(order-1042\.total\): an instance has one slot for a feature$/);
+  assert.deepEqual(T.member.add('phone = 5', ada), { type: 'uml.Slot', label: 'phone', props: { value: '5' } });
+  assert.equal(T.member.edit(o.members.find(x => x.id === 'order-1042.status'), 'status = shipped', o).commands.length, 2, 'a slot keeping its feature');
+  // connect: a Link between two instances (one of no UML kind is one, as drawn) is the default's; to a comment or a class, refused
+  const k = apply(m, [{ op: 'add', element: { id: 'c1', type: 'uml.Comment', label: 'note' }, view: v.id }, { op: 'add', element: { id: 'k1', type: 'uml.Class', label: 'K' }, view: v.id },
+    { op: 'add', element: { id: 'u1', label: 'plain' }, view: v.id }]);
+  const C = (a, b, type = 'uml.Link') => T.edits.connect(k, v, a, b, null, { type });
+  for (const [a, b] of [['ada', 'c1'], ['c1', 'ada'], ['ada', 'k1'], ['ada', 'gone']]) {
+    assert.deepEqual(C(a, b), { error: 'A link joins two instance specifications' }, `${a} -> ${b}`);
+    assert.ok(validate(apply(k, [{ op: 'add', element: { id: 'x', type: 'uml.Link', from: a, to: b }, view: v.id }])).some(p => p.rule === 'link-ends'), 'link-ends says so');
+  }
+  assert.equal(C('ada', 'order-1042'), null); assert.equal(C('ada', 'u1'), null);
+  assert.equal(C('c1', 'ada', 'uml.CommentLink'), null, 'another line: the default');
+});

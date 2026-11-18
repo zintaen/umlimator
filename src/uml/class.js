@@ -1,4 +1,4 @@
-import { jsonText, labelOr, elName } from '../core/model.js';
+import { jsonText, labelOr, elName, propTextProblems } from '../core/model.js';
 import { kindWord, registerDiagramType } from '../core/registry.js';
 import { brLines, esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -113,9 +113,10 @@ function printMember(m) {
 
 /* a member edited as text: the commands that set it, one transaction; { error } when the text does not parse, and then
    nothing is applied (E3). Props the syntax does not write (stereotypes, a host's own) are kept */
-function memberEdit(m, text) {
+function memberEdit(m, text, owner) {
   const r = parseMember(text, m.type === 'uml.Property' || m.type === 'uml.Operation' || m.type === 'uml.EnumerationLiteral' ? m.type : undefined);
   if (r.error) return r;
+  const no = memberClash(owner, m, r); if (no) return no;
   const keep = Object.fromEntries(Object.entries(UML_OBJ(m.props) ? m.props : {}).filter(([k]) => !SYNTAX_KEYS.includes(k)));
   return { commands: [{ op: 'set', id: m.id, path: 'label', value: r.label }, { op: 'set', id: m.id, path: 'props', value: { ...keep, ...r.props } }] };
 }
@@ -124,7 +125,20 @@ function memberEdit(m, text) {
 function memberAdd(text, owner) {
   // a bare name after its «stereotypes», as printMember writes a literal (audit 17)
   const t = String(text ?? '').trim(), b = t.replace(/^(?:«[^«»]*»\s*)+/, ''), nm = MEMBER_NAME.exec(b);
-  return parseMember(t, owner && owner.type === 'uml.Enumeration' && nm && nm[0] === b ? 'uml.EnumerationLiteral' : undefined);
+  const r = parseMember(t, owner && owner.type === 'uml.Enumeration' && nm && nm[0] === b ? 'uml.EnumerationLiteral' : undefined);
+  return r.error ? r : memberClash(owner, {}, r) || r;
+}
+
+/* a member added, or edited, to a name another member of its owner holds: refused in member-names' words, before it is applied,
+   as the SysML block rows refuse one (SYS_CLASH, audits 37 to 39). Judged by member-names' own key (memberKey): an operation
+   by its parameters' types too, so an overload is no clash. m: the member as it was, {} for one being added; r: as parsed.
+   A key the edit keeps is no rename (a model that already holds two is validate()'s to say). Null: no clash (audit 40) */
+const memberKey = (type, label, P) => (type === 'uml.Operation' ? `${label}(${UML_ARR(UML_OBJ(P) ? P.parameters : null).map(a => (UML_OBJ(a) ? a.valueType ?? '' : '')).join(',')})` : `${label}`);
+function memberClash(owner, m, r, why = RULES['member-names']) {
+  if (!UML_OBJ(owner) || !UML_OBJ(m) || !UML_OBJ(r) || !UML_HAS(r.label)) return null;
+  const k = memberKey(r.type, r.label, r.props); if (UML_HAS(m.label) && k === memberKey(m.type, m.label, m.props)) return null;
+  const o = UML_ARR(owner.members).find(x => UML_OBJ(x) && x !== m && x.id !== m.id && UML_HAS(x.label) && memberKey(x.type, x.label, x.props) === k);
+  return o ? { error: `member-names: ${JSON.stringify(elName(owner))} has a member named ${JSON.stringify(String(r.label))} already (${o.id}): ${why}` } : null;
 }
 
 /* ---- the vocabulary (model.md, uml.class) ---- */
@@ -347,10 +361,11 @@ function classProblems(model, view) {
     // twice" (audit 11)
     const named = CLASSIFIERS.includes(ty) || ty === 'uml.InstanceSpecification';
     ms.forEach((m, j) => { // an operation is told apart by its parameters' types too (overloading)
-      const k = m.type === 'uml.Operation' ? `${m.label}(${UML_ARR((m.props || {}).parameters).map(a => UML_OBJ(a) ? a.valueType ?? '' : '').join(',')})` : `${m.label}`;
+      const k = memberKey(m.type, m.label, m.props);
       if (named && UML_HAS(m.label)) { if (seen.has(k)) say('member-names', `${path}.members[${j}]`, [x.id, seen.get(k), m.id], `${q(x.id)} has two members named "${m.label}" (${seen.get(k)}, ${m.id})`); else seen.set(k, m.id); }
       if (m.type === 'uml.EnumerationLiteral' && ty !== 'uml.Enumeration') say('member-kinds', `${path}.members[${j}]`, [x.id, m.id], `literal "${m.label}" is in ${q(x.id)}, which is not an enumeration`);
-      const mult = (m.props || {}).multiplicity; if (UML_HAS(mult)) multRule(String(mult), `${path}.members[${j}].props.multiplicity`, [m.id], `${q(x.id)}.${m.label}`); });
+      const mult = (m.props || {}).multiplicity; if (UML_HAS(mult)) multRule(String(mult), `${path}.members[${j}].props.multiplicity`, [m.id], `${q(x.id)}.${m.label}`);
+      out.push(...propTextProblems(m, `${path}.members[${j}]`, ['valueType', 'default', 'returnType'])); }); // drawn in its row as text (audit 40)
     if ((OWN_BOXES.includes(x.type) || x.type === 'uml.Comment' || x.type === 'uml.MetaclassReference') && ms.length) say('member-kinds', `${path}.members`, [x.id], `${q(x.id)} is a ${typeWord(x.type).toLowerCase()}, which has no members`);
   });
   function multRule(t, path, ids, what) { const b = multBounds(t);
@@ -459,4 +474,4 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   edits: { connect: classConnect, rename: lineRename(lineLabel) },
 });
 
-export { CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, classProblems, closesCycle, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
+export { CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, memberClash, classProblems, closesCycle, classDescribe, classGeo, typeGeo, describeAs, drawnLines };

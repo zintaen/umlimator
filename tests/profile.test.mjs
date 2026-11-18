@@ -60,7 +60,7 @@ test('the definition: uml.profile is registered with its palette, its four lines
   assert.deepEqual(T.props['uml.Stereotype'], [{ key: 'isAbstract', label: 'Abstract', kind: 'bool' }]);
   assert.deepEqual(T.props['uml.Profile'].map(f => f.key), ['stereotypes']);
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows', 'rankFlip']) assert.equal(typeof T[k], 'function', k);
-  assert.deepEqual(Object.keys(T.edits), ['add', 'connect', 'rename']);
+  assert.deepEqual(Object.keys(T.edits), ['add', 'connect', 'rename', 'field']); // field: the Name field's clash check (audit 40)
   for (const r of [...Object.keys(PR_RULES), ...Object.keys(STY_RULES), 'generalization-kinds', 'owner-kinds']) assert.ok(Object.hasOwn(T.rules, r), r);
   assert.deepEqual(Object.keys(PR_RULES), ['profile-owns', 'stereotype-names', 'extension-ends', 'application-ends', 'metaclass-known']);
   assert.ok(T.rankFlip({ type: 'uml.Extension' }) && T.rankFlip({ type: 'uml.Generalization' }) && !T.rankFlip({ type: 'uml.ProfileApplication' }));
@@ -484,4 +484,26 @@ test('audit 32: an enumeration\'s accessible name, describe() and PDF Members li
   assert.match(describe(m, 'v'), /Enumeration Shop: RED; name: String; run\(\)/);
   const ctx = mapContext(m), [els] = tablesOf(ctx, ctx.V.v, ctx.buildGeo('v')), row = els.rows.find(r => r.includes('<b>Shop</b>'));
   assert.match(row, /<p>RED<\/p><p>name: String<\/p><p>run\(\)<\/p><\/td>/); assert.doesNotMatch(row, /api|untyped/);
+});
+
+// audit 40: the palette refused a stereotype named as one its profile has (audit 20), but F2 and the Name field renamed one to
+// it, and validate() then said stereotype-names and classifier-names, errors; both are refused in the add's words now
+test('audit 40: F2 and the Name field refuse renaming a stereotype or a classifier to a name its owner has, as the add does', async () => {
+  const { readFileSync } = await import('node:fs');
+  const m = JSON.parse(readFileSync(new URL('../examples/bookshop-profile.json', import.meta.url))), v = m.views[0];
+  m.nodes.push(N('line', 'Class', 'Line', 'sales'));
+  const errs = x => validate(x).filter(p => p.level === 'error').map(p => p.message);
+  assert.deepEqual(errs(m), []);
+  const st = { error: 'BookshopConventions has a stereotype entity already: names meet with the first letter in either case' };
+  assert.deepEqual(T.edits.add(m, v, { type: 'uml.Stereotype' }, 'entity', { sel: ['entity'] }), st, 'the add, as before');
+  assert.deepEqual(T.edits.rename(m, v, 'aggregate-root', 'entity'), st);
+  assert.deepEqual(T.edits.rename(m, v, 'aggregate-root', 'Entity'), st, 'the first letter in either case');
+  assert.deepEqual(T.edits.field(m, v, 'aggregate-root', 'label', 'entity'), st);
+  assert.deepEqual(T.edits.rename(m, v, 'line', 'Order'), { error: 'sales has a classifier named Order already' });
+  assert.deepEqual(T.edits.field(m, v, 'line', 'label', 'Order'), { error: 'sales has a classifier named Order already' });
+  // let through, each leaving validate() clean: a new name, a stereotype's own name in the other case, another field
+  for (const [id, name] of [['aggregate-root', 'aggregate'], ['entity', 'Entity'], ['line', 'OrderLine'], ['conventions', 'Shop']]) {
+    assert.equal(T.edits.rename(m, v, id, name), null, `${id} -> ${name}`); assert.equal(T.edits.field(m, v, id, 'label', name), null);
+    assert.deepEqual(errs(apply(m, [{ op: 'set', id, path: 'label', value: name }])), [], `${id} -> ${name}`); }
+  assert.equal(T.edits.field(m, v, 'aggregate-root', 'props.isAbstract', true), null);
 });

@@ -1,5 +1,5 @@
 import { apply } from '../core/apply.js';
-import { copyOf, usedIds, jsonText, labelOr } from '../core/model.js';
+import { copyOf, usedIds, jsonText, labelOr, propTextProblems } from '../core/model.js';
 import { heldBy, registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -400,6 +400,8 @@ function bzProblems(model, view) {
   procs.forEach((list, k) => { if (!judged.has(k)) return; const f = list.find(seen); // said at the first node the view shows
     if (!list.some(id => ty(id) === 'bpmn.StartEvent')) say('warning', 'flow-start', k ?? f, [k, f].filter(x => x != null), `${k == null ? 'the process in no pool' : q(k)} has no start event`);
     if (!list.some(id => ty(id) === 'bpmn.EndEvent')) say('warning', 'flow-start', k ?? f, [k, f].filter(x => x != null), `${k == null ? 'the process in no pool' : q(k)} has no end event`); });
+  // an element's documentation, which describe() and the PDF's rows print, when it is not text (audit 40)
+  I.path.forEach((at, id) => { const x = I.N.get(id) || (I.L.get(id) || {}).x || I.E.get(id); if (BZ_OBJ(x) && typeof x.type === 'string' && x.type.startsWith('bpmn.')) out.push(...propTextProblems(x, at, ['documentation'])); });
   return out;
 }
 

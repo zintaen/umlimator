@@ -3,7 +3,7 @@ import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { csAdd, csConnect, csGeo, csMember, csMoveTo, csRemove, csRename } from '../uml/composite.js';
-import { SYS_AS_UML, SYS_BACK, SYS_FIELD, SYS_CS_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS } from './sysml.js';
+import { SYS_AS_UML, SYS_BACK, SYS_FIELD, SYS_CS_PROBLEMS, SYS_TEXT_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS } from './sysml.js';
 import { bdProblems } from './blocks.js';
 import { modelLines } from '../uml/owners.js';
 
@@ -290,7 +290,7 @@ const SYS_PAR_TYPE = registerDiagramType('sysml.parametric', {
   refs: { 'sysml.BindingConnector': { 'props.ends.from.part': 'cascade', 'props.ends.to.part': 'cascade' } }, // a deleted constraint property takes its bindings
   layout: Object.assign(SYS_PAR_GEO, { rank: false }), // the composite type ranks the properties itself: the host passes the pins alone
   member: SYS_PAR_MEMBERS,
-  validate: SYS_PAR_PROBLEMS,
+  validate: (model, view) => [...SYS_PAR_PROBLEMS(model, view), ...SYS_TEXT_PROBLEMS(model)], // and the props drawn as text (audit 40)
   rules: SYS_PAR_RULES,
   describe: SYS_PAR_DESCRIBE,
   word: SYS_PAR_WORD,

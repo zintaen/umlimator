@@ -1,4 +1,4 @@
-import { elName, labelOr } from '../core/model.js';
+import { elName, labelOr, propTextProblems } from '../core/model.js';
 import { esc } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { ENDS } from '../typed/draw.js';
@@ -225,6 +225,15 @@ function SYS_BACK_ONE(c, model, view) {
 const SYS_CS_KEEP = ['connector-part', 'connector-scope', 'connector-drawn', 'part-type'];
 const SYS_SAY = [[/, or one collaboration's roles/g, ''], [/class or component/g, 'block'], [/the box has no line/g, 'the frame has no line']];
 const SYS_SAY_PAR = [[/a connector joins/g, 'a binding joins'], [/ports and parts/g, 'parameters and properties'], [/not a part of the subject/g, 'not a constraint property of the subject'], [/not a port of/g, 'not a parameter of'], [/two ports of/g, 'two parameters of']];
+// the props SysML draws as text that are not text (audit 40): a constraint block's expression, a value type's unit and quantity
+// kind, each member's type, multiplicity and default (bdd's rows, ibd's and par's part names, the PDF's rows), said once a model
+function SYS_TEXT_PROBLEMS(model) {
+  const out = [];
+  SYS_ARR(model && model.nodes).forEach((n, i) => { if (!SYS_OBJ(n) || typeof n.type !== 'string' || !n.type.startsWith('sysml.')) return; const at = `nodes[${i}]`;
+    out.push(...propTextProblems(n, at, n.type === 'sysml.ConstraintBlock' ? ['constraint'] : n.type === 'sysml.ValueType' ? ['unit', 'quantityKind'] : []));
+    SYS_ARR(n.members).forEach((m, j) => out.push(...propTextProblems(m, `${at}.members[${j}]`, ['valueType', 'multiplicity', 'default']))); });
+  return out;
+}
 function SYS_CS_PROBLEMS(model, view) {
   const P = SYS_AS_UML(model, view), kind = new Map(SYS_ARR(model.nodes).flatMap(n => SYS_OBJ(n) ? SYS_ARR(n.members).filter(SYS_OBJ).map(m => [m.id, m.type]) : []));
   const say = [...SYS_SAY, ...(view.diagram === 'sysml.parametric' ? SYS_SAY_PAR : [])];
@@ -248,4 +257,4 @@ function SYS_DRESS(g, model, view, names) {
     families: [...(card ? [{ id: sid, x: card.x, y: card.y, w: card.w, h: card.h, nodeIds: [], ...frame }] : []), ...SYS_ARR(g.families).map(f => (f.id === sid ? { ...f, ...frame } : f))] };
 }
 
-export { SYS_TABLE, SYS_KIND, SYS_HEAD, SYS_FRAME, SYS_FRAME_RENAME, SYS_FRAME_EMPTY, SYS_AS_UML, SYS_LINES, SYS_BACK, SYS_ROLES, SYS_CLASH, SYS_FIELD, SYS_PARTS, SYS_CS_PROBLEMS, SYS_DRESS, SYS_OTHER_KEYS };
+export { SYS_TABLE, SYS_KIND, SYS_HEAD, SYS_FRAME, SYS_FRAME_RENAME, SYS_FRAME_EMPTY, SYS_AS_UML, SYS_LINES, SYS_BACK, SYS_ROLES, SYS_CLASH, SYS_FIELD, SYS_PARTS, SYS_CS_PROBLEMS, SYS_TEXT_PROBLEMS, SYS_DRESS, SYS_OTHER_KEYS };
