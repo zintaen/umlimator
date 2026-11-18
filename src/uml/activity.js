@@ -10,7 +10,7 @@ import './class.js'; // SHAPE.note, a comment's
 import { snKindName } from './structure.js';
 import { frame } from './frame.js';
 import { FLOW_RULES, flowOf, flowProblems, flowLabel, flowRename, flowStereo, viewFlows } from './flow.js';
-import { copyOf, usedIds, jsonText } from '../core/model.js';
+import { copyOf, usedIds, jsonText, labelOr } from '../core/model.js';
 import { LINE_SAYS } from './class.js'; // the "Line" key's words, for a line of another kind (audit 28)
 
 /* ---------- the activity diagram, uml.activity (work package 4.5, notes/stage-4.md §9) ----------
@@ -249,7 +249,7 @@ function actDescribe(model, viewId) {
   I.drawn.filter(id => I.N.get(id).type === 'uml.InitialNode').forEach(visit); I.drawn.forEach(visit);
   // a listed line of another kind: counted apart and said by its kind, never as a flow ("then"), as BPMN says one (audit 28)
   const other = I.lines.filter(acOther).length;
-  const out = [`${v.title || v.id}: an activity diagram of ${acPlural(I.drawn.length, 'node')}, ${acPlural(flows.length, 'flow')}${other ? ', ' : ' and '}${acPlural(I.parts.length, 'partition')}${other ? ` and ${acPlural(other, 'other line')}` : ''}.`];
+  const out = [`${labelOr(v.title, v.id)}: an activity diagram of ${acPlural(I.drawn.length, 'node')}, ${acPlural(flows.length, 'flow')}${other ? ', ' : ' and '}${acPlural(I.parts.length, 'partition')}${other ? ` and ${acPlural(other, 'other line')}` : ''}.`];
   I.parts.forEach(p => out.push(acNodeName(model, I, I.N.get(p), I.lines) + '.'));
   walk.forEach(id => { const x = I.N.get(id), said = I.lines.filter(e => e.from === id).map(e => { const g = AC_PART(acProps(e).guard), nm = AC_PART(e.label);
     return e.type === 'uml.CommentLink' ? `about ${acCalled(I.N.get(e.to))}` : acOther(e) ? `${acOtherWord(e).toLowerCase()} to ${acCalled(I.N.get(e.to))}${nm ? ` (${nm})` : ''}` : `then ${acCalled(I.N.get(e.to))}${flowStereo(e).length ? ' ' + flowStereo(e).join(' ') : ''}${nm ? ` (${nm})` : ''}${g ? ` [${g}]` : ''}${e.type === 'uml.ObjectFlow' ? ', an object flow' : ''}`; });

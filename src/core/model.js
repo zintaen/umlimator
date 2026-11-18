@@ -106,11 +106,14 @@ function usedIds(model, into = new Set()) {
 // out as unreadable() leaves out a toString that is no function (audit 31: validate(), describe(), diff() and the Mermaid writers
 // threw). Only a host's own conversion is run: Object's and Array's toString (which reads the entries, each checked) and Date's
 // toJSON are not
-const STOCK = new Set([Object.prototype.toString, Array.prototype.toString, Date.prototype.toJSON]);
+const STOCK = new Set([Object.prototype.toString, Array.prototype.toString, Date.prototype.toJSON, Object.prototype.valueOf]);
 const noTextIn = x => { if (typeof x === 'symbol') return true; if (x === null || typeof x !== 'object') return false;
-  try { const t = x.toString, p = x[Symbol.toPrimitive], j = x.toJSON;
+  try { const t = x.toString, p = x[Symbol.toPrimitive], j = x.toJSON, v = x.valueOf;
     if (typeof j === 'function' && !STOCK.has(j)) j.call(x, '');
     if (typeof p === 'function' || (typeof t === 'function' && !STOCK.has(t))) String(x); // no function: the copy is a plain object (bare)
+    // + and == read a value by its valueOf first (the default hint), String() by its toString: a host's own valueOf that
+    // throws, its toString fine, threw out of the class writer's parameters and validate()'s parent (audit 32)
+    if (typeof p === 'function' || typeof v === 'function' && !STOCK.has(v)) void ('' + x);
     return false; } catch { return true; } };
 function unreadable(model) {
   const bad = x => { try { return x !== null && typeof x === 'object' && Object.hasOwn(x, 'toString') && typeof x.toString !== 'function'; } catch { return true; } };
@@ -208,7 +211,7 @@ function typedProblems(model) {
     if (!said) { const by = new Map(); let quiet = false;
       VIEWS.forEach(([v, i]) => { if (!shows(v, i, x, what, at)) return; const p = drawnAs(v, x, what, at); if (p) by.set(p, [...by.get(p) || [], v.id]); else quiet = true; });
       said = !by.size ? null // listed by no view, or by none that says how: drawn nowhere it can tell of
-        : by.size === 1 && !quiet ? [...by.keys()][0] : [...by].map(([p, ids]) => `${p} in view ${ids.map(id => JSON.stringify(id)).join(', ')}`).join('; '); }
+        : by.size === 1 && !quiet ? [...by.keys()][0] : [...by].map(([p, ids]) => `${p} in view ${ids.map(id => jsonText(id)).join(', ')}`).join('; '); }
     // no type at all is said so, not as the value undefined (audit 31: "type undefined is not ...")
     const eg = what === 'line' ? 'uml.Dependency' : what === 'member' ? 'uml.Property' : 'uml.Class';
     warn(at + '.type', `${x.type == null ? `has no <notation>.<Name> type (${eg})` : `type ${jsonText(x.type)} is not <notation>.<Name> (${eg})`}${said ? ': ' + said : ''}`); };
@@ -221,7 +224,7 @@ function typedProblems(model) {
     arr(v.edges).forEach((e, j) => { if (isObj(e)) { element(e, `views[${i}].edges[${j}]`, 'edge'); typeOf(e, `views[${i}].edges[${j}]`, true, 'line'); } });
     arr(v.fragments).forEach((f, j) => element(f, `views[${i}].fragments[${j}]`, 'fragment'));
     ['changes', 'constraints'].forEach(k => arr((v.timeline || {})[k]).forEach((c, j) => element(c, `views[${i}].timeline.${k}[${j}]`, 'time'))); });
-  const has = id => where.has(id), name = id => JSON.stringify(id);
+  const has = id => where.has(id), name = id => jsonText(id); // a host's BigInt written 3n, never thrown on (audit 32)
   const boxes = new Set(views.flatMap(v => arr(v.containers).map(c => isObj(c) && c.id)));
   // ownership: a parent is a node, a member or a fragment, and nothing ends up inside itself, counting a member as
   // inside its owner (M7). Any element may have one: a node, a member, a message (its operand), a fragment

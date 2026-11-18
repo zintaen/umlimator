@@ -1,4 +1,4 @@
-import { jsonText } from '../core/model.js';
+import { jsonText, labelOr } from '../core/model.js';
 import { aWord, kindWord, registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
@@ -144,7 +144,7 @@ function objectDescribe(model, viewId) {
   const { at, pic, lines: all } = drawnLines(model, v, OBJECT_LINES), lines = all.filter(({ from, to }) => !holdsLine(pic, from, to));
   const nm = id => { const x = at.get(id).x; return x.type === 'uml.Comment' ? String(x.label ?? x.id) : isInstance(x) ? headOf(x, pic.name(id)) : pic.name(id); };
   const k = (n, w) => `${n} ${n === 1 ? w : w + 's'}`;
-  const out = [`${v.title || v.id}: an object diagram of ${k(pic.ids.length, 'element')} and ${k(lines.length, 'line')}.`];
+  const out = [`${labelOr(v.title, v.id)}: an object diagram of ${k(pic.ids.length, 'element')} and ${k(lines.length, 'line')}.`];
   readingOrder(pic).forEach(id => { const x = at.get(id).x, said = [], slots = isInstance(x) ? slotsOf(x).map(printSlot) : [];
     lines.forEach(({ e, from: f, to: t }) => {
       if (e.type === 'uml.CommentLink') { const l = linkText(e); if (f === id) said.push(`about ${nm(t)}${l ? ` ("${l}")` : ''}`); return; } // its drawn text too, as the class view says it (audit 22)

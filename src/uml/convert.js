@@ -1,4 +1,4 @@
-import { copyOf, migrate, unreadable, jsonText } from '../core/model.js';
+import { copyOf, migrate, unreadable, jsonText, labelOr } from '../core/model.js';
 import { mapContext } from '../map/context.js';
 import { cardMatcher, sequenceFromTrace } from '../map/insight.js';
 import { interactionWalk } from './interaction.js';
@@ -41,7 +41,7 @@ function cvNumbered(model, v, id, title) {
   const edges = lines.map((e, i) => { const m = fresh(`${id}.m${i + 1}`), text = [e.label, e.sublabel].filter(x => x != null && x !== '').map(String);
     if (e.step != null && String(e.step) !== String(i + 1)) report.push({ id: m, status: 'approximated', message: `line ${e._id} has step ${jsonText(e.step)}; it is step ${i + 1} in the view's order` });
     return { id: m, type: 'uml.Message', from: life(e.from), to: life(e.to), ...(text.length ? { label: text.length > 1 ? `${text[0]} (${text[1]})` : text[0] } : {}), props: { sort: 'call' } }; });
-  return { nodes, report, view: { id, diagram: 'uml.sequence', title: title || v.title || v.id, ...(v.caption ? { caption: v.caption } : {}),
+  return { nodes, report, view: { id, diagram: 'uml.sequence', title: title || labelOr(v.title, v.id), ...(v.caption ? { caption: v.caption } : {}),
     parent: v.parent ?? null, nodeIds: nodes.map(n => n.id), edges } };
 }
 
@@ -63,7 +63,7 @@ function cvCommunication(model, v, id, options) {
       report.push({ id: ids.get(o.id), status: 'approximated', message: `${o.id} answers ${o.replyTo}, which is not taken: it names no call` }); } }
     const k = [o.from, o.to].sort().join('\n'); if (!links.has(k)) links.set(k, { id: fresh(`${id}.${end(o.from)}-${end(o.to)}`), type: 'uml.Connector', from: o.from, to: o.to });
     return { ...el, id: ids.get(o.id), props }; });
-  const connectors = [...links.values()], title = options.title || [v.title || v.id, chosen.filter(([f]) => inside(f)).map(c => c[1]).join(', ')].filter(Boolean).join(': ');
+  const connectors = [...links.values()], title = options.title || [String(labelOr(v.title, v.id)), chosen.filter(([f]) => inside(f)).map(c => c[1]).join(', ')].filter(Boolean).join(': ');
   return { report, edges: [...connectors, ...messages], view: { id, diagram: 'uml.communication', title, ...(v.caption ? { caption: v.caption } : {}),
     parent: v.parent ?? null, nodeIds: [...CV_ARR(v.nodeIds)], edges: [...connectors, ...messages].map(e => e.id) } };
 }

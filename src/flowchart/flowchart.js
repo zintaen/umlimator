@@ -5,7 +5,7 @@ import { layoutTyped, typedLines } from '../typed/layout.js';
 import '../uml/class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from '../uml/flow.js'; // and SHAPE.diamond, SHAPE.initial's circle, read only
 import { snKindName, snLineName } from '../uml/structure.js';
-import { usedIds, jsonText } from '../core/model.js';
+import { usedIds, jsonText, labelOr } from '../core/model.js';
 
 /* ---------- the flowchart, flowchart (work package M2.3, notes/milestone-2.md §7.2) ----------
    Ten symbols: the decision is stage 4's diamond and the connector a circle over SHAPE.initial's outline, both read only;
@@ -191,7 +191,7 @@ function fcDescribe(model, viewId) {
   // a comment link and a line of another kind counted as themselves, never left out (audits 27, 29), as C4 counts them
   const I = fcIndex(model, v), notes = I.lines.filter(e => e.type === 'uml.CommentLink').length, other = I.lines.filter(fcOther).length;
   const more = [...(notes ? [fcPlural(notes, 'comment link')] : []), ...(other ? [fcPlural(other, 'other line')] : [])];
-  return [`${v.title || v.id}: a flowchart of ${fcPlural(I.ids.length, 'node')}${more.length ? ', ' : ' and '}${fcPlural(I.flows.length, 'flow')}${more.length ? ` and ${more.join(' and ')}` : ''}.`,
+  return [`${labelOr(v.title, v.id)}: a flowchart of ${fcPlural(I.ids.length, 'node')}${more.length ? ', ' : ' and '}${fcPlural(I.flows.length, 'flow')}${more.length ? ` and ${more.join(' and ')}` : ''}.`,
     ...I.walk.map(id => fcNodeName(I, I.N.get(id)) + '.'), ...I.lines.map(e => fcLineName(I, e) + '.')].join('\n');
 }
 

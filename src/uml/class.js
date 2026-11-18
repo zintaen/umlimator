@@ -1,4 +1,4 @@
-import { jsonText } from '../core/model.js';
+import { jsonText, labelOr } from '../core/model.js';
 import { kindWord, registerDiagramType } from '../core/registry.js';
 import { brLines, esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -398,7 +398,7 @@ const describeAs = look => (model, viewId) => {
   const { at, pic, lines: all } = drawnLines(model, v, look.own), lines = all.filter(({ from, to }) => !holdsLine(pic, from, to));
   const nm = id => (at.get(id).x.type === 'uml.Comment' ? nameOfEl(at.get(id).x) : pic.name(id));
   const end = (e, w) => { const E = endsOf(e)[w] || {}, t = [E.role, E.multiplicity].filter(UML_HAS); return t.length ? ` (${t.join(', ')})` : ''; };
-  const out = [`${v.title || v.id}: a ${look.word} of ${plural(pic.ids.length, 'element')} and ${plural(lines.length, 'line')}.`];
+  const out = [`${labelOr(v.title, v.id)}: a ${look.word} of ${plural(pic.ids.length, 'element')} and ${plural(lines.length, 'line')}.`];
   readingOrder(pic).forEach(id => { const said = [];
     lines.forEach(({ e, from: f, to: t }) => { const E = endsOf(e);
       if (e.type === 'uml.Association' && (f === id || t === id)) { const [me, far] = f === id ? ['from', 'to'] : ['to', 'from'], agg = (E[me] || {}).aggregation, whole = (E[far] || {}).aggregation;

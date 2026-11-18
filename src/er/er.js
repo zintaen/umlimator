@@ -5,7 +5,7 @@ import { ENDS, brLines } from '../typed/draw.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
 import { multBounds } from '../uml/class.js'; // SHAPE.note too, a comment's look
 import { snKindName, snLineName } from '../uml/structure.js';
-import { usedIds, jsonText } from '../core/model.js';
+import { usedIds, jsonText, labelOr } from '../core/model.js';
 
 /* ---------- the entity-relationship diagram, er (work package M2.2, notes/milestone-2.md §4, §7.1) ----------
    Entities (tables) with their columns as rows, the key columns first under a divider; relationships from the referenced
@@ -272,7 +272,7 @@ function erProblems(model) {
 function erDescribe(model, viewId) {
   const v = ER_ARR(model && model.views).find(x => ER_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const { I, ids } = erShown(model, v), lines = erLines(v, I, ids), say = n => erFull(n, I);
-  return [`${v.title || v.id}: an entity-relationship diagram of ${erPlural(ids.length, 'element')} and ${erPlural(lines.length, 'line')}.`,
+  return [`${labelOr(v.title, v.id)}: an entity-relationship diagram of ${erPlural(ids.length, 'element')} and ${erPlural(lines.length, 'line')}.`,
     ...ids.map(id => say(I.at.get(id)) + '.'), ...lines.map(e => erLineName(e, I) + '.')].join('\n');
 }
 

@@ -1,4 +1,4 @@
-import { copyOf, nameTable, unreadable, jsonText } from '../core/model.js';
+import { copyOf, nameTable, unreadable, jsonText, labelOr } from '../core/model.js';
 import { diagramOf } from '../core/registry.js';
 import { edgeRefIds } from './api.js';
 import { mapContext } from './context.js';
@@ -74,7 +74,7 @@ export function describe(model, viewId) {
   const what = (e, n = 1) => { const t = [e.label && `"${e.label}"`, e.sublabel, v.render !== 'sequence' && e.step != null && `step ${e.step}`, n > 1 && `${n} lines`].filter(Boolean); return t.length ? ` (${t.join(', ')})` : ''; };
   // each card at the far end named once, with how many lines say the same (audit 28: "A calls B and B", as diff() said in audit 27)
   const far = es => { const by = new Map(); es.forEach(e => { const k = e.to + '\0' + what(e), g = by.get(k); if (g) g.n++; else by.set(k, { e, n: 1 }); }); return [...by.values()].map(g => name(g.e.to) + what(g.e, g.n)); };
-  const out = [`${v.title || v.id}: ${count(ids.length, 'card')} and ${count(edges.length, 'line')}.`];
+  const out = [`${labelOr(v.title, v.id)}: ${count(ids.length, 'card')} and ${count(edges.length, 'line')}.`];
   if (ids.length) out.push(`Cards: ${ids.map(id => `${name(id)} (${KIND[kindOf(ctx.nodeIn(id, viewId).kind, true)][1]})`).join(', ')}.`);
   boxes.forEach(c => { const ins = (c.nodeIds || []).filter(i => ids.includes(i)); if (ins.length) out.push(`${name(c.id)} holds ${list(ins.map(name))}.`); });
   if (v.render === 'sequence') edges.forEach((e, i) => out.push(`Step ${i + 1}: ${name(e.from)} ${VERB[kind(e)]} ${name(e.to)}${what(e)}.`));

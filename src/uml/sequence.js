@@ -6,7 +6,7 @@ import { layoutTimeAxis } from '../layout/timeaxis.js';
 import { brLines } from '../typed/draw.js';
 import { frame, tagSize, guardSize, useSize } from './frame.js';
 import { interactionWalk, activationBars, replyCallFor, INTERACTION_RULES, interactionProblems } from './interaction.js';
-import { copyOf, usedIds, jsonText } from '../core/model.js';
+import { copyOf, usedIds, jsonText, labelOr } from '../core/model.js';
 
 /* ---------- the sequence diagram, uml.sequence (work package 3.3, notes/stage-3.md §4 and §5) ----------
    The subset of notes/stage-3.md §4.1: lifelines (`represents`, «actor» as text), messages inline in the view's `edges`
@@ -193,7 +193,7 @@ function sqDescribe(model, viewId) {
   const X = sqIndex(model, V), heads = sqHeads(model, V), H = new Map(heads.map(n => [n.id, n])), nm = id => (H.has(id) ? sqName(H.get(id)) : String(id));
   const ms = X.occ.filter(o => o.message), uses = X.occ.length - ms.length, n = new Map(ms.map((m, k) => [m.id, k + 1]));
   const count = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
-  const out = [`${V.title || V.id}: a sequence diagram of ${count(heads.length, 'lifeline')}, ${count(ms.length, 'message')}${uses ? `, ${count(uses, 'interaction use')}` : ''} and ${count(X.frags.length, 'combined fragment')}.`];
+  const out = [`${labelOr(V.title, V.id)}: a sequence diagram of ${count(heads.length, 'lifeline')}, ${count(ms.length, 'message')}${uses ? `, ${count(uses, 'interaction use')}` : ''} and ${count(X.frags.length, 'combined fragment')}.`];
   if (heads.length) out.push(`Lifelines, left to right: ${heads.map(h => sqHeadText(h) + (sqStereo(h).length ? ` (${sqStereo(h).join(', ')})` : '')).join('; ')}.`);
   let open = [];
   X.occ.forEach(o => { const c = o.chain.slice().reverse(); let k = 0; while (k < open.length && k < c.length && open[k].op === c[k].op) k++;

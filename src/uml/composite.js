@@ -8,7 +8,7 @@ import { LINE_WORDS, legendOf, lineIn, lineLook, lineRename, memberEdit, multBou
 import './usecase.js'; // SHAPE.ellipse, a collaboration use's; SHAPE.subject, a class subject's frame
 import { SN_SAY, STRUCT_RULES, snKindName, portFit, portSides, portsDrawn, structProblems } from './structure.js';
 import { viewLines } from './owners.js';
-import { usedIds, jsonText } from '../core/model.js';
+import { usedIds, jsonText, labelOr } from '../core/model.js';
 
 /* ---------- the composite structure diagram, uml.composite-structure (work package 5.6, notes/stage-5.md §6, §10.2) ----------
    The view's subject (a class, a component or a collaboration, listed in nodeIds) is a box holding its parts (its uml.Property
@@ -338,7 +338,7 @@ function csDescribe(model, viewId) {
   const v = CS_ARR(model && model.views).find(x => CS_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const P = csPic(model, v), by = new Map(P.lines.map(l => [l.e.id, l])), els = csOrder(P).filter(id => !by.has(id));
   const name = id => { const s = csSplit(id), q = P.mem.get(s ? s[1] : id); if (q && q.m.type === 'uml.Port') return SN_SAY.port(csName(q.m), csName(P.el(s ? s[0] : P.sid)), { valueType: CS_PROPS(q.m).valueType, stereotypes: csStereo(q.m) }); return csNodeName(P, id); };
-  return [`${v.title || v.id}: a composite structure diagram of ${csPlural(els.length, 'element')} and ${csPlural(P.lines.length, 'line')}.`,
+  return [`${labelOr(v.title, v.id)}: a composite structure diagram of ${csPlural(els.length, 'element')} and ${csPlural(P.lines.length, 'line')}.`,
     ...csOrder(P).map(id => (by.has(id) ? csLineName(P, by.get(id)) : name(id)) + '.')].join('\n');
 }
 

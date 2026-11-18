@@ -1,5 +1,5 @@
 import { registerDiagramType, idTable } from '../core/registry.js';
-import { copyOf, usedIds, jsonText } from '../core/model.js';
+import { copyOf, usedIds, jsonText, labelOr } from '../core/model.js';
 import { apply } from '../core/apply.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -224,7 +224,7 @@ function tmProblems(model, view) {
 function tmDescribe(model, viewId) {
   const V = TM_ARR(model && model.views).find(x => TM_OBJ(x) && x.id === viewId); if (!V) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const X = tmIndex(model, V), shown = X.changes.filter(c => X.H.has(c.lifeline));
-  const out = [`${V.title || V.id}: a timing diagram of ${tmPlural(X.heads.length, 'lifeline')}, ${tmPlural(shown.length, 'change')}, ${tmPlural(X.msgs.length, 'message')} and ${tmPlural(X.shown.length, 'constraint')}${X.unit ? `, in ${X.unit}` : ''}.`];
+  const out = [`${labelOr(V.title, V.id)}: a timing diagram of ${tmPlural(X.heads.length, 'lifeline')}, ${tmPlural(shown.length, 'change')}, ${tmPlural(X.msgs.length, 'message')} and ${tmPlural(X.shown.length, 'constraint')}${X.unit ? `, in ${X.unit}` : ''}.`];
   X.heads.forEach(n => { const cs = X.mine(n.id); out.push(`${tmShown(n)}${X.values(n.id) ? ' (values)' : ''}: ${cs.length ? cs.map(c => `${c.state ?? ''} from ${X.t(c.at)}`).join('; ') : 'no change'}.`); });
   [...X.msgs].sort((a, b) => tmBy(tmProps(a).sentAt) - tmBy(tmProps(b).sentAt)).forEach(m => out.push(tmMsgSaid(X, m) + '.'));
   X.shown.forEach(c => out.push(tmConSaid(X, c) + '.'));

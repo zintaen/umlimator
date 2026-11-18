@@ -9,7 +9,7 @@ import './class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from './flow.js'; // SHAPE.initial, final, diamond and bar too
 import { ownersOn, readingOrder } from './owners.js';
 import { parseTransition, printTransition, transitionText } from './transition.js';
-import { usedIds, jsonText } from '../core/model.js';
+import { usedIds, jsonText, labelOr } from '../core/model.js';
 import { snKindName } from './structure.js';
 
 /* ---------- the state machine diagram, uml.state-machine (work package 4.6, notes/stage-4.md §6, §10) ----------
@@ -348,7 +348,7 @@ function stProblems(model, view) {
 function stDescribe(model, viewId) {
   const v = ST_ARR(model && model.views).find(x => ST_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const pic = stPic(model, v), lines = stLines(model, v, pic), by = new Map(lines.map(e => [e.id, e])), box = new Map(pic.boxes.map(b => [b.id, b]));
-  return [`${v.title || v.id}: a state machine diagram of ${stPlural(pic.ids.length, 'element')} and ${stPlural(lines.filter(e => e.type === 'uml.Transition').length, 'transition')}.`,
+  return [`${labelOr(v.title, v.id)}: a state machine diagram of ${stPlural(pic.ids.length, 'element')} and ${stPlural(lines.filter(e => e.type === 'uml.Transition').length, 'transition')}.`,
     ...stOrder(pic, lines).map(id => (by.has(id) ? stLineName(by.get(id), pic) : box.has(id) ? box.get(id).aria : stNodeName(pic.at.get(id), pic, pic.I, false)) + '.')].join('\n');
 }
 
