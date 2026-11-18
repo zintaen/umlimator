@@ -26,7 +26,8 @@ import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort, mermaidText } 
      body, `Name : text`) that both starts with << and ends with >> is an annotation, and a `<<x>>` in front of any
      other is the member's stereotype (written back so);
    - attributes: `+name : Type[0..1] = default`, `/` for derived, a closing `$` for static; Mermaid's own `Type name`
-     is read too. Operations: `+name(p : T, out q : U) Return`, a closing `*` abstract, `$` static, or one right after
+     is read too (a :: is part of a type: `-std::string owner`). Operations: `+name(p : T, out q : U) Return` (a parameter's
+     `= default`, as `int amount = 0`, is cut off and reported, a parameter having none in the model), a closing `*` abstract, `$` static, or one right after
      the `)` (`draw()$ bool`). `List~int~` is List<int>. In an enumeration a bare name is a literal;
    - relations: `--` an association (`*`, `o` its aggregation, `<`, `>` its navigability, a quoted cardinality
      "role multiplicity" by each end), `--|>` a generalization, `..|>` an interface realization, `..>` a dependency,
@@ -136,10 +137,26 @@ function mcMult(type) {
   return mult ? [t.slice(0, lb).trim(), mult, mult === inner ? undefined : inner] : [t, undefined];
 }
 
+// the first : that is not one of a :: (C++'s std::string is a type, so `-std::string owner` is Mermaid's `Type name`), or -1:
+// where `name : Type` splits (audit 42)
+function mcColon(s) { const m = /(?<!:):(?!:)/.exec(s); return m ? m.index : -1; }
+
+// the first = outside <...> [...] (...) {...} and quotes that is not one of => == != (a function type, a comparison), or -1:
+// where a default value begins (audit 42)
+function mcEq(s) {
+  for (let k = 0, depth = 0, q = ''; k < s.length; k++) {
+    const c = s[k];
+    if (q) { if (c === q) q = ''; } else if (c === '"' || c === "'") q = c;
+    else if ('<[({'.includes(c)) depth++; else if ('>])}'.includes(c)) depth = Math.max(0, depth - 1);
+    else if (c === '=' && depth === 0 && s[k + 1] !== '>' && s[k + 1] !== '=' && s[k - 1] !== '=' && s[k - 1] !== '!') return k;
+  }
+  return -1;
+}
+
 // `name : Type` or Mermaid's `Type name` or `name`, generics already turned to <>: { name, valueType?, multiplicity? }
 function mcTyped(s, colonFirst) {
   let name, type = '';
-  const colon = colonFirst ? s.indexOf(':') : -1;
+  const colon = colonFirst ? mcColon(s) : -1;
   if (colon >= 0) { name = s.slice(0, colon).trim(); type = s.slice(colon + 1); }
   else { const sp = mcLastSpace(s.trim()); name = sp < 0 ? s.trim() : s.trim().slice(sp + 1); type = sp < 0 ? '' : s.trim().slice(0, sp); }
   const [valueType, multiplicity, written] = mcMult(type);
@@ -165,17 +182,23 @@ function mcMember(raw, inEnum) {
     if (mk == '$' || mk == '*') { mk == '$' ? isStatic = true : isAbstract = true; ret = ret.slice(1); } // Mermaid's marker right after )
     ret = ret.trim();
     if (ret.startsWith(':')) ret = ret.slice(1).trim();
-    const parameters = [];
-    let depth = 0, from = 0;
+    const parameters = [], dropped = []; // dropped: a parameter's default, which the model has no place for, reported
+    let depth = 0, from = 0, q = '';
     for (let k = 0; k <= inner.length; k++) {
       const c = inner[k];
-      if (c && '<[('.includes(c)) depth++; else if (c && '>])'.includes(c)) depth = Math.max(0, depth - 1); // Dict[str, int], (a, b) => c
+      if (q && k < inner.length) { if (c === q) q = ''; continue; } // a , in a quoted default does not split (audit 42)
+      if (c === '"' || c === "'") q = c;
+      else if (c && '<[('.includes(c)) depth++; else if (c && '>])'.includes(c)) depth = Math.max(0, depth - 1); // Dict[str, int], (a, b) => c
       else if (k === inner.length || (c === ',' && depth === 0)) {
         let p = inner.slice(from, k).trim(); from = k + 1;
         if (!p) continue;
         const sp = p.search(/\s/), first = sp < 0 ? '' : p.slice(0, sp), direction = ['in', 'out', 'inout', 'return'].includes(first) ? first : undefined;
         if (direction) p = p.slice(sp).trim();
+        // `int amount = 0` and `amount : int = 0`: the default is cut off before the name and type split (audit 42)
+        const eq = mcEq(p);
+        if (eq >= 0) { dropped.push(['', p.slice(eq + 1).trim()]); p = p.slice(0, eq).trim(); if (!p) continue; } // `= 5` names none
         const { name, valueType } = mcTyped(p, true);
+        if (eq >= 0) dropped[dropped.length - 1][0] = name;
         parameters.push({ name, ...(valueType ? { valueType } : {}), ...(direction ? { direction } : {}) });
       }
     }
@@ -183,12 +206,12 @@ function mcMember(raw, inEnum) {
     if (ret) props.returnType = ret;
     if (isStatic) props.isStatic = true;
     if (isAbstract) props.isAbstract = true;
-    return { type: 'uml.Operation', label: t.slice(0, open).trim(), props };
+    return { type: 'uml.Operation', label: t.slice(0, open).trim(), props, ...(dropped.length ? { paramDefaults: dropped } : {}) };
   }
   if (t.startsWith('/')) { props.isDerived = true; t = t.slice(1).trimStart(); }
-  const eq = t.indexOf('='), colon = t.indexOf(':');
+  const eq = mcEq(t), colon = mcColon(t);
   let head = t, def;
-  if (colon >= 0 && (eq < 0 || colon < eq)) { const r = t.slice(colon + 1), e = r.indexOf('='); head = t.slice(0, colon + 1) + (e < 0 ? r : r.slice(0, e)); def = e < 0 ? undefined : r.slice(e + 1).trim(); }
+  if (colon >= 0 && (eq < 0 || colon < eq)) { const r = t.slice(colon + 1), e = mcEq(r); head = t.slice(0, colon + 1) + (e < 0 ? r : r.slice(0, e)); def = e < 0 ? undefined : r.slice(e + 1).trim(); }
   else if (eq >= 0) { head = t.slice(0, eq); def = t.slice(eq + 1).trim(); }
   const { name, valueType, multiplicity, written } = mcTyped(head, true);
   Object.assign(props, valueType ? { valueType } : {}, multiplicity ? { multiplicity } : {}, def !== undefined ? { default: def } : {}, isStatic ? { isStatic: true } : {});
@@ -495,10 +518,12 @@ function readMermaidClass(text) {
   for (const rec of classes.values()) {
     const members = [], seen = new Set(); // a member's name, an operation's with its parameters' types (overloading)
     for (const r of rec.raw) {
-      const { abstractField, multWritten, ...x } = mcMember(r.text, rec.node.type === 'uml.Enumeration');
+      const { abstractField, multWritten, paramDefaults, ...x } = mcMember(r.text, rec.node.type === 'uml.Enumeration');
       if (!x.label) { say(r.line, 'skipped', `"${r.text.trim()}": a member with no name`); continue; }
       if (abstractField) say(r.line, 'approximated', `${rec.node.id}.${x.label}: an attribute is not abstract, so its * is not read`);
       if (multWritten) say(r.line, 'approximated', `${rec.node.id}.${x.label}: multiplicity [${multWritten}] is read as [${x.props.multiplicity}]`);
+      for (const [p, d] of paramDefaults || []) p ? say(r.line, 'approximated', `${rec.node.id}.${x.label}: parameter ${p}'s default ${d} is not kept, as a parameter has no default in the model`)
+        : say(r.line, 'skipped', `${rec.node.id}.${x.label}: a parameter with no name, = ${d}, is not read`);
       const key = x.type === 'uml.Operation' ? `${x.label}(${(x.props.parameters || []).map(a => a.valueType ?? '').join(',')})` : x.label;
       if (seen.has(key)) { say(r.line, 'skipped', `${rec.node.id}.${x.label}: ${rec.node.id} has a member ${key} already`); continue; }
       seen.add(key);
