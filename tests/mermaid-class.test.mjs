@@ -738,3 +738,35 @@ test('a parameter\'s = default (int amount = 0, x : int = 5) is cut off before i
   const kept = m.filter(x => x.id !== 'Account.on'); // a function type in a parameter is not written (as before audit 42)
   assert.deepEqual(read(write(r.model)).model.nodes[0].members.filter(x => x.id !== 'Account.on'), kept);
 });
+
+test('a Rust lifetime\'s \' (&\'a str) is not a quote: parameters split, an attribute keeps its default, and write then read keeps both (audit 43)', () => {
+  const r = read('classDiagram\nclass Parser {\n  +longest(x : &\'a str, y : &\'a str) &\'a str\n  +NAME : &\'static str = "app"\n  +h(a : don\'t, b : int)\n  +g(x : &\'a str = "it\'s", y : int)\n  -c : char = \'q\'\n}\n');
+  const m = r.model.nodes[0].members;
+  assert.deepEqual(m.map(x => [x.id, x.props]), [
+    ['Parser.longest', { visibility: 'public', parameters: [{ name: 'x', valueType: "&'a str" }, { name: 'y', valueType: "&'a str" }], returnType: "&'a str" }],
+    ['Parser.NAME', { visibility: 'public', valueType: "&'static str", default: '"app"' }],
+    ['Parser.h', { visibility: 'public', parameters: [{ name: 'a', valueType: "don't" }, { name: 'b', valueType: 'int' }] }],
+    ['Parser.g', { visibility: 'public', parameters: [{ name: 'x', valueType: "&'a str" }, { name: 'y', valueType: 'int' }] }],
+    ['Parser.c', { visibility: 'private', valueType: 'char', default: "'q'" }]]);
+  assert.deepEqual(r.report.map(x => `${x.line} ${x.status}: ${x.message}`), [
+    "6 approximated: Parser.g: parameter x's default \"it's\" is not kept, as a parameter has no default in the model"]);
+  const text = write(r.model);
+  assert.doesNotMatch(text, /not written/);
+  assert.deepEqual(read(text).model.nodes[0].members, m);
+});
+
+test('an element of no type (or "") in a class view is written as a class, with its lines, and said (audit 43)', () => {
+  for (const type of [undefined, '']) {
+    const t = type === undefined ? {} : { type };
+    const model = { schemaVersion: 2, nodes: [{ id: 'A', ...t, label: 'A', members: [{ id: 'A.x', type: 'uml.Property', label: 'x' }] }, { id: 'B', type: 'uml.Class', label: 'B' },
+      { id: 'P', type: 'uml.Package', label: 'P' }, { id: 'C', ...t, label: 'C', parent: 'P' }],
+      edges: [{ id: 'e', type: 'uml.Association', from: 'A', to: 'B' }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['A', 'B', 'P', 'C'] }] };
+    const text = write(model, 'v');
+    assert.match(text, /not written: A: no type, written as a class \(uml\.Class\)/);
+    assert.doesNotMatch(text, /not written: (A \(|C \(|e\b)/);
+    const back = read(text).model;
+    assert.deepEqual(back.nodes.map(n => [n.id, n.type, n.parent]), [['A', 'uml.Class', undefined], ['B', 'uml.Class', undefined], ['P', 'uml.Package', undefined], ['C', 'uml.Class', 'P']]);
+    assert.deepEqual(back.nodes[0].members.map(x => x.id), ['A.x']);
+    assert.deepEqual(back.edges.map(x => [x.id, x.from, x.to]), [['e', 'A', 'B']]);
+  }
+});

@@ -455,3 +455,18 @@ test('an unclosed link text of one repeated character is read in linear time, as
   assert.deepEqual(read('flowchart TD\nA -- text x --> B').model.edges.map(e => [e.from, e.to, e.label]), [['A', 'B', 'text x']]);
   assert.deepEqual(read('flowchart TD\nA == heavy ==> B\nC -. dotted .-> D').model.edges.map(e => [e.from, e.to, e.label]), [['A', 'B', 'heavy'], ['C', 'D', 'dotted']]);
 });
+
+test('a node of no type (or "") is written as a process, with its flows, and said (audit 43)', () => {
+  for (const type of [undefined, '']) {
+    const model = { schemaVersion: 2, nodes: [{ id: 's', type: 'flow.Terminator', label: 'Start' }, { id: 'x', ...(type === undefined ? {} : { type }), label: 'Check stock' }, { id: 'e', type: 'flow.Terminator', label: 'End' }],
+      edges: [{ id: 'f1', type: 'flow.Flow', from: 's', to: 'x' }, { id: 'f2', type: 'flow.Flow', from: 'x', to: 'e' }], views: [{ id: 'v', diagram: 'flowchart', nodeIds: ['s', 'x', 'e'] }] };
+    assert.deepEqual(validate(model).filter(p => p.level === 'error'), []);
+    const text = write(model, 'v');
+    assert.match(text, /^ {2}x\["Check stock"\]$/m);
+    assert.match(text, /not written: x: no type, written as a process \(flow\.Process\)/);
+    assert.doesNotMatch(text, /not written: (x \(|f1|f2)/);
+    const back = read(text).model;
+    assert.deepEqual(back.nodes.map(n => [n.id, n.type]), [['s', 'flow.Terminator'], ['x', 'flow.Process'], ['e', 'flow.Terminator']]);
+    assert.deepEqual(back.edges.map(x => [x.id, x.from, x.to]), [['f1', 's', 'x'], ['f2', 'x', 'e']]);
+  }
+});

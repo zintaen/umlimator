@@ -579,3 +579,17 @@ test('audit 32: a process in no pool is said when its id or name is not kept, an
   const back = await read((await write(one.model, one.model.views[0].id, null, BpmnModdle())).xml, BpmnModdle());
   assert.deepEqual(back.report.filter(r => r.line), []);
 });
+
+test('audit 43: a character reference above U+FFFF is read as its character, one XML cannot hold as U+FFFD and said; CDATA and comments are left', needs, async () => {
+  const xml = names => `<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d"><process id="p">${names.map((n, k) => `<task id="t${k}" name="${n}"/>`).join('')}</process></definitions>`;
+  const r = await read(xml(['Ship &#x1F4E6;', 'Ship &#128230;', 'Ship \u{1F4E6}', '&#x10000;&#x0001f4e6;&#65;&#x9;', '&#0;&#x110000;&#99999999999999999999;&#xD800;&#0;']), BpmnModdle());
+  assert.deepEqual(r.model.nodes.map(n => n.label), ['Ship \u{1F4E6}', 'Ship \u{1F4E6}', 'Ship \u{1F4E6}', '\u{10000}\u{1F4E6}A\t', '�'.repeat(5)]);
+  assert.deepEqual(r.report.filter(x => x.status === 'weakened').map(x => x.message), ['&#0;', '&#x110000;', '&#99999999999999999999;', '&#xD800;']
+    .map(ref => `the character reference ${ref} names no character XML can hold: read as U+FFFD`));
+  // a reference inside documentation's CDATA is text as written; an unclosed comment ends the scan, and nothing throws
+  const doc = await read('<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d"><process id="p"><task id="t" name="&#x1F4E6;"><documentation><![CDATA[&#x1F4E6;]]></documentation></task></process></definitions>', BpmnModdle());
+  assert.equal(doc.model.nodes[0].label, '\u{1F4E6}');
+  assert.equal(doc.model.nodes[0].props.documentation, '&#x1F4E6;');
+  for (const junk of ['<!--' + '&#x1F4E6;'.repeat(1000), '<![CDATA['.repeat(5000), '<?'.repeat(5000) + '&#1114112;', '&#' + '9'.repeat(5000) + ';'])
+    assert.ok(Array.isArray((await read(junk, BpmnModdle())).report), junk.slice(0, 20));
+});
