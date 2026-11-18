@@ -17,6 +17,8 @@ const BD_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), BD
 const BD_HAS = x => x != null && x !== '', BD_PROPS = x => (BD_OBJ(x && x.props) ? x.props : {});
 const BD_CLS = ['sysml.Block', 'sysml.InterfaceBlock', 'sysml.ConstraintBlock', 'sysml.ValueType']; // the classifiers drawn here
 const BD_WORD = kindWord; // 'sysml.InterfaceBlock': "Interface block"; of no notation, as written (registry.js, audit 30)
+// an element's kind in a message, lower case: of no type (or ""), "class", as the view draws and names it (untyped), not '' (audit 31)
+const bdKind = x => BD_WORD((x && x.type) || 'uml.Class').toLowerCase();
 const BD_PRIM = ['Real', 'Integer', 'Boolean', 'String'];
 
 /* ---- the compartments (§7.1): [name, one, member type], each owner's own in its order, then any other it holds ---- */
@@ -117,14 +119,14 @@ function bdProblems(model, view) {
         if (BD_HAS(p.kind) && !Object.hasOwn(BD_KIND, p.kind)) say('port-kind', path, ids, `port ${of} has kind ${jsonText(p.kind)}, not proxy or full`);
         else if (p.kind === 'proxy' && !ib) say('port-kind', path, ids, `proxy port ${of} is ${BD_HAS(p.valueType) ? typed + ', not an interface block' : 'typed by nothing: a proxy port is typed by an interface block'}`);
         else if (p.kind === 'full' && ib) say('port-kind', path, ids, `full port ${of} is ${typed}, an interface block`); }
-      if ((String(m.type).startsWith('sysml.') || BD_CLS.includes(n.type)) && !bdHolds(n.type, m)) say('member-kinds', path, ids, `${BD_WORD(n.type).toLowerCase()} ${q(n)} holds ${bdMWord(m)} ${q(m)}, which it may not`); }); });
+      if ((String(m.type).startsWith('sysml.') || BD_CLS.includes(n.type)) && !bdHolds(n.type, m)) say('member-kinds', path, ids, `${bdKind(n)} ${q(n)} holds ${bdMWord(m)} ${q(m)}, which it may not`); }); });
   // the model's lines, and the view's own (view.edges objects, drawn as the model's are) at their own paths; one a model line's
   // id (or an earlier own line's) takes is that one (audit 23)
   const lines = BD_ARR(model && model.edges).map((e, i) => [e, `edges[${i}]`]), taken = new Set(lines.filter(([e]) => BD_OBJ(e)).map(([e]) => e.id)), vi = BD_OBJ(view) ? BD_ARR(model && model.views).indexOf(view) : -1;
   if (vi >= 0) BD_ARR(view.edges).forEach((e, j) => { if (BD_OBJ(e) && typeof e.id === 'string' && !taken.has(e.id)) { taken.add(e.id); lines.push([e, `views[${vi}].edges[${j}]`]); } });
   lines.forEach(([e, path]) => { if (!BD_OBJ(e)) return; const a = at.get(e.from), b = at.get(e.to);
     if (e.type === 'uml.Generalization' && a && b && (BD_CLS.includes(a.type) || BD_CLS.includes(b.type)) && a.type !== b.type)
-      say('general-kinds', path, [e.id, a.id, b.id], `${BD_WORD(a.type).toLowerCase()} ${q(a)} specializes ${BD_WORD(b.type).toLowerCase()} ${q(b)} (${e.id})`);
+      say('general-kinds', path, [e.id, a.id, b.id], `${bdKind(a)} ${q(a)} specializes ${bdKind(b)} ${q(b)} (${e.id})`);
     if (e.type !== 'uml.Association') return;
     const E = BD_OBJ(BD_PROPS(e).ends) ? BD_PROPS(e).ends : {}, end = w => (BD_OBJ(E[w]) ? E[w] : {});
     [['from', 'to'], ['to', 'from']].forEach(([w, f]) => { const whole = at.get(e[w]), far = at.get(e[f]), role = end(f).role;
@@ -175,7 +177,7 @@ function bdParse(text, owner, model) {
   const T = model ? bdLabels(model)(r.props.valueType) || [] : [];
   const type = k ? k.type : r.type === 'uml.Operation' ? r.type : T.includes('sysml.Block') ? 'sysml.PartProperty' : T.includes('sysml.ConstraintBlock') ? 'sysml.ConstraintProperty' : 'sysml.ValueProperty';
   const x = { type, label: r.label, props: { ...r.props, ...(k ? k.props : {}) } };
-  return owner && !bdHolds(owner.type, x) ? { error: `member-kinds: ${BD_WORD(owner.type).toLowerCase()} ${String(owner.label ?? owner.id)} holds no ${bdMWord(x)}` } : x;
+  return owner && !bdHolds(owner.type, x) ? { error: `member-kinds: ${bdKind(owner)} ${String(owner.label ?? owner.id)} holds no ${bdMWord(x)}` } : x;
 }
 function bdPrint(m) {
   if (!BD_OBJ(m)) return ''; if (m.type === 'uml.Operation' || !String(m.type).startsWith('sysml.')) return printMember(m);
@@ -206,7 +208,7 @@ function bdMember(model, view, ownerId, id, text) {
    and the line naming it by its role (§7.2), one transaction; to anything else it is refused. Else the default */
 function bdConnect(model, view, from, to, at, line) {
   const a = bdNodeOf(model, from), b = bdNodeOf(model, to), t = BD_OBJ(line) ? line.type : null; if (!a || !b) return null;
-  if (t === 'uml.Generalization' && (BD_CLS.includes(a.type) || BD_CLS.includes(b.type)) && a.type !== b.type) return { error: `A generalization joins two of one kind: ${BD_WORD(a.type).toLowerCase()} and ${BD_WORD(b.type).toLowerCase()} differ` };
+  if (t === 'uml.Generalization' && (BD_CLS.includes(a.type) || BD_CLS.includes(b.type)) && a.type !== b.type) return { error: `A generalization joins two of one kind: ${bdKind(a)} and ${bdKind(b)} differ` };
   if (t === 'uml.CommentLink' && a.type !== 'uml.Comment') return { error: 'A comment link runs from a comment' };
   const E = BD_OBJ(BD_PROPS(line).ends) ? BD_PROPS(line).ends : {};
   if (t !== 'uml.Association' || !BD_OBJ(E.from) || E.from.aggregation !== 'composite' || !BD_CLS.includes(a.type)) return null;
@@ -226,6 +228,7 @@ const BD_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
 const BD_PROP_FIELDS = [{ key: 'multiplicity', label: 'Multiplicity', kind: 'text' }, BD_STEREO];
 const BD_TYPE = registerDiagramType('sysml.block-definition', {
   untyped: 'Class', // an element of no type (or ""): a class, as named (audit 30)
+  allLines: true, // a view that lists no lines draws every model line between its blocks, of any kind (drawnLines with no own kinds: audit 31)
   title: 'block definition diagram',
   elements: [['sysml.Block', 'Block'], ['sysml.InterfaceBlock', 'Interface block'], ['sysml.ConstraintBlock', 'Constraint block'], ['sysml.ValueType', 'Value type'], ['uml.Package', 'Package'], ['uml.Comment', 'Comment']]
     .map(([type, label]) => ({ type, label })),

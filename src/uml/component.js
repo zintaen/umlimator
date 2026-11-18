@@ -1,4 +1,4 @@
-import { drawnKind, ownNodes, registerDiagramType } from '../core/registry.js';
+import { aKind, drawnKind, ownNodes, registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
@@ -66,7 +66,10 @@ const CP_LOOK = {
 /* ---- the view read: its boxes, its lines, every element's words ---- */
 // a name is qualified by its components and packages only: an artifact nested in a node (deployed on it, as the
 // deployment view draws it) is not named by the node here (0.22.0, the Bookshop atlas); nor is a box's title (audit 5)
-const CP_BOX = { boxTypes: ['uml.Component', 'uml.Package'], qualifyBy: ['uml.Component', 'uml.Package'], shape: x => (x.type === 'uml.Component' ? 'component' : 'package'), word: x => (x.type === 'uml.Component' ? 'Component' : 'Package') };
+// an element of no type (or "") is a box as a component is, for the components it holds, as it is drawn and named one (audit 31)
+const cpKindOf = x => (x && (x.type == null || x.type === '') ? 'uml.Component' : (x || {}).type);
+const CP_BOX = { boxTypes: ['uml.Component', 'uml.Package'], qualifyBy: ['uml.Component', 'uml.Package'], kind: cpKindOf, shape: x => (cpKindOf(x) === 'uml.Component' ? 'component' : 'package'),
+  word: x => (x.type === 'uml.Component' ? 'Component' : cpKindOf(x) === 'uml.Component' ? snKindName(x.type) : 'Package') };
 const CP_WORD = { __proto__: null, 'uml.Component': 'component', 'uml.Interface': 'interface', 'uml.Artifact': 'artifact', 'uml.Package': 'package', 'uml.Comment': 'comment', 'uml.Port': 'port' };
 function cpPic(model, view) {
   const I = cpIndex(model), pic = ownersOn(model, view, CP_BOX), shown = new Set(pic.ids);
@@ -81,8 +84,9 @@ function cpPic(model, view) {
     if (inner && !(inner === 'from' ? f : t).port) return void inside.push({ e, from: f.at, to: t.at });
     if (f.at === t.at && (f.port || t.port)) return;
     lines.push({ e, f, t, inner, kind: cpKind(I, view, e) }); });
-  const boxes = pic.boxes.map(b => { const x = I.N.get(b.id); if (x.type !== 'uml.Component') return b;
-    return { ...b, aria: SN_SAY.component(pic.name(b.id), { stereotypes: cpStereo(x), ports: cpPortsOf(x).length, holds: pic.holds(b.id).map(id => CP_WORD[(I.N.get(id) || {}).type] || 'element') }) }; });
+  const boxes = pic.boxes.map(b => { const x = I.N.get(b.id); if (cpKindOf(x) !== 'uml.Component') return b;
+    const s = SN_SAY.component(pic.name(b.id), { stereotypes: cpStereo(x), ports: cpPortsOf(x).length, holds: pic.holds(b.id).map(id => CP_WORD[(I.N.get(id) || {}).type] || 'element') });
+    return { ...b, aria: x.type ? s : snKindName(x.type) + s.slice('Component'.length) }; }); // of no type: "Element Shop, 1 port, holding 1 component", as cpNodeName names it
   return { ...pic, boxes, I, lines, inside };
 }
 // a line's end as drawn: a port "orders of Shop API" (qualified, audit 12), any other end its drawn name. A line may end on a
@@ -101,7 +105,8 @@ function cpNodeName(model, view, pic, id, bare) { // bare: a port without " of <
   if (x.type === 'uml.Interface') return SN_SAY.iface(pic.name(id), { ball: cpBall(I, view, id), stereotypes: st, providers: owners('uml.InterfaceRealization'), requirers: owners('uml.Usage') });
   if (x.type === 'uml.Artifact') return SN_SAY.artifact(pic.name(id), { stereotypes: st, manifests: of('uml.Manifestation').filter(l => l.e.from === id).map(l => cpEnd(pic, l.e.to)) });
   if (x.type === 'uml.Comment') return 'Comment: ' + cpName(x);
-  return `${snKindName(x.type)} ${pic.name(id)}${st.length ? ` (${st.join(', ')})` : ''}`;
+  // another kind (a class) with the ports drawn on its border, "Class Shop, 1 port", as a component is named (audit 31)
+  return snKindName(x.type) + SN_SAY.component(pic.name(id), { stereotypes: st, ports: cpPortsOf(x).length }).slice('Component'.length);
 }
 const cpLabel = (l, said) => [CP_LOOK[l.kind][1], ...cpStereo(l.e).map(t => `«${t}»`), said ? null : l.e.label].filter(CP_HAS).join(' ');
 // "Delegation from orders of Shop API to orders of Checkout"
@@ -228,7 +233,8 @@ function cpProblems(model, view) {
   const shown = new Set(CP_ARR(view && view.nodeIds)), seen = id => !view || shown.has(I.comp(id)), listed = view && Array.isArray(view.edges) ? new Set(view.edges.map(x => (CP_OBJ(x) ? x.id : x))) : null;
   const q = id => JSON.stringify(I.name(id)), comp = id => I.ty(id) === 'uml.Component', within = (a, b) => I.chain(I.comp(a)).includes(I.comp(b));
   CP_ARR(model && model.nodes).forEach((n, i) => { if (!CP_OBJ(n) || n.type !== 'uml.Component' || !seen(n.id) || n.parent == null || !I.N.has(n.parent)) return;
-    const p = I.N.get(n.parent); if (!['uml.Component', 'uml.Package'].includes(p.type)) say('warning', 'component-owner', `nodes[${i}].parent`, [n.id, p.id], `${q(n.id)} is owned by ${q(p.id)}, a ${String(p.type).split('.').pop()}: a component's owner is a component or a package`); });
+    // an owner of no type is drawn as a component, a box for this one (CP_BOX); the kind in words, "an artifact" (audit 31: "a undefined", "a Artifact")
+    const p = I.N.get(n.parent); if (!['uml.Component', 'uml.Package'].includes(drawnKind(CP_TYPE, p))) say('warning', 'component-owner', `nodes[${i}].parent`, [n.id, p.id], `${q(n.id)} is owned by ${q(p.id)}, ${aKind(CP_TYPE, p)}: a component's owner is a component or a package`); });
   viewLines(model, view).forEach(([e, path]) => { if (!CP_OBJ(e) || !(seen(e.from) || seen(e.to)) || (listed && !listed.has(e.id))) return;
     const ends = [e.id, e.from, e.to], from = I.P.has(e.from) ? 'port' : I.ty(e.from), kind = cpProps(e).kind === 'delegation' ? 'delegation' : 'assembly'; // drawn as an assembly without one (cpKind)
     if (e.type === 'uml.InterfaceRealization' && (!['uml.Component', 'uml.Class', 'port'].includes(from) || I.P.has(e.to) || I.ty(e.to) !== 'uml.Interface'))
@@ -338,12 +344,13 @@ function cpRemove(model, view, ids, fromModel) {
   return { commands: [...ps, ...rest].map(id => (fromModel || own.has(id) || I.P.has(id) ? { op: 'delete', id } : { op: 'hide', id, view: view.id })),
     say: `Deleted ${ps.length === 1 ? 'port ' + cpName(I.P.get(ps[0]).x) : cpPlural(ps.length, 'port')} from the model${fromModel ? '' : ': a port is not hidden from a view'}${hid ? `; hid ${cpPlural(hid, 'element')}` : ''}` };
 }
-// the Owner field: a component's components and packages; an interface's, an artifact's or a comment's packages
+// the Owner field: a component's components and packages; an interface's, an artifact's or a comment's packages. An element of
+// no type is a component here, as drawn, owned and a box for one (audit 31)
 function cpOwners(model, x) {
-  if (!CP_OBJ(x) || x.from != null || !['uml.Component', 'uml.Interface', 'uml.Artifact', 'uml.Package', 'uml.Comment'].includes(x.type)) return null;
-  const kinds = x.type === 'uml.Component' ? ['uml.Component', 'uml.Package'] : ['uml.Package'];
+  if (!CP_OBJ(x) || x.from != null || !['uml.Component', 'uml.Interface', 'uml.Artifact', 'uml.Package', 'uml.Comment'].includes(cpKindOf(x))) return null;
+  const kinds = cpKindOf(x) === 'uml.Component' ? ['uml.Component', 'uml.Package'] : ['uml.Package'];
   const I = cpIndex(model); // not itself nor what it holds: apply() refuses a move inside itself
-  return CP_ARR(model.nodes).filter(n => CP_OBJ(n) && kinds.includes(n.type) && n.id !== x.id && !I.chain(n.id).includes(x.id)).map(n => ({ id: n.id, label: cpName(n) }));
+  return CP_ARR(model.nodes).filter(n => CP_OBJ(n) && kinds.includes(cpKindOf(n)) && n.id !== x.id && !I.chain(n.id).includes(x.id)).map(n => ({ id: n.id, label: cpName(n) }));
 }
 
 const CP_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };

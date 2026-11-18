@@ -524,8 +524,8 @@ test('audit 29: a typed line with no type is said to be drawn as a plain line wh
     edges: [{ id: 'e', type: 'nope', from: 'a', to: 'b' }], views: [{ id: 'v', diagram: 'flowchart', nodeIds: ['a', 'b'], edges: ['e', { id: 'f', from: 'a', to: 'b' }] }] };
   const at = p => (U.validate(m).find(x => x.path === p) || {}).message;
   assert.equal(at('edges[0].type'), 'type "nope" is not <notation>.<Name> (uml.Dependency): drawn as a plain line');
-  assert.equal(at('views[0].edges[1].type'), 'type undefined is not <notation>.<Name> (uml.Dependency): drawn as a plain line');
-  assert.equal(at('nodes[1].members[0].type'), 'type undefined is not <notation>.<Name> (uml.Property): not drawn'); // a member of no type: no view draws it (audit 30)
+  assert.equal(at('views[0].edges[1].type'), 'has no <notation>.<Name> type (uml.Dependency): drawn as a plain line'); // not "type undefined" (audit 31)
+  assert.equal(at('nodes[1].members[0].type'), 'has no <notation>.<Name> type (uml.Property): not drawn'); // a member of no type: no view draws it (audit 30)
   const g = U.layout(m, 'v'); assert.ok(g.edges.some(e => e.id === 'f' || (e.ids || []).includes('f')), 'the untyped line is drawn, as a line');
 });
 
@@ -617,4 +617,89 @@ test('audit 30: an object with no prototype is read as a plain object: validate(
   assert.deepEqual(L.validate(map).map(p => p.path), ['nodes[0].label', 'nodes[1].label']);
   assert.deepEqual(L.layout(map, 'v').nodes.map(n => String(n.label)), ['[object Object]', '[object Object]']);
   assert.ok(L.describe(map, 'v').includes('Cards: [object Object] (Script), [object Object] (Script).'), L.describe(map, 'v'));
+});
+
+// audit 31: jsonText() wrote NaN and Infinity as null ("change w1's time null is not a number"), and threw on a host's toJSON
+// that throws (JSON.stringify ran it again in the fallback): every message names the value the host wrote, and never throws
+test('audit 31: messages write NaN and Infinity as written, and a value whose toJSON throws as [unreadable]', async () => {
+  const { jsonText } = await import('../src/core/model.js');
+  assert.equal(jsonText(NaN), 'NaN'); assert.equal(jsonText(-Infinity), '-Infinity'); assert.equal(jsonText([NaN, 1n, null, 'NaN']), '[NaN,1n,null,"NaN"]');
+  assert.equal(jsonText({ a: Infinity }), '{"a":Infinity}'); assert.equal(jsonText('\u0000NaN'), '"\\u0000NaN"'); // a text that reads as the mark stays a text
+  assert.equal(jsonText({ a: null, b: 'null' }), '{"a":null,"b":"null"}'); assert.equal(jsonText(null), 'null');
+  assert.equal(jsonText({ toJSON() { throw new Error('tj'); } }), '[unreadable]');
+  const L = await import('../lib/umlimator-all.js');
+  const tm = at => ({ schemaVersion: 2, root: 'charge', nodes: [{ id: 'w', type: 'uml.Lifeline', label: 'worker', props: { states: ['Idle', 'Wait'] } }], edges: [],
+    views: [{ id: 'charge', diagram: 'uml.timing', title: 'One', nodeIds: ['w'], timeline: { unit: 'ms', changes: [{ id: 'w0', lifeline: 'w', at: 0, state: 'Idle' }, { id: 'w1', lifeline: 'w', at, state: 'Wait' }], constraints: [] } }] });
+  for (const [at, word] of [[NaN, 'NaN'], [Infinity, 'Infinity'], [-Infinity, '-Infinity']]) {
+    const said = L.validate(tm(at)).map(p => p.message).filter(s => /w1's time/.test(s));
+    assert.deepEqual(said, [`change-time: change w1's time ${word} is not a number`], word); }
+  assert.ok(L.validate({ schemaVersion: NaN, nodes: [], views: [{ id: 'v', nodeIds: [] }] }).some(p => p.message === 'schemaVersion NaN is not a version (1 or 2): read as a map (1)'));
+});
+
+// audit 31: a host's label (or type, parent, props) that is a Symbol, or whose toString or toJSON throws, made validate(), describe(),
+// diff() and the Mermaid writers throw: such a value is left out and said, as one whose toString is no function is
+test('audit 31: a Symbol, or a value whose toString or toJSON throws, is left out and said: nothing throws on it', async () => {
+  const L = await import('../lib/umlimator-all.js');
+  const HOST = { sym: () => Symbol('s'), throwStr: () => ({ toString() { throw new Error('ts'); } }), throwJSON: () => ({ toJSON() { throw new Error('tj'); } }),
+    throwPrim: () => ({ [Symbol.toPrimitive]() { throw new Error('tp'); } }), classy: () => new (class { toString() { throw new Error('tc'); } })() };
+  const writers = { 'mermaid-class': ['uml.class', 'uml.Class'], 'mermaid-er': ['er', 'er.Entity'], 'mermaid-flowchart': ['flowchart', 'flowchart.Process'], 'mermaid-mindmap': ['mindmap', 'mindmap.Topic'],
+    'mermaid-requirement': ['sysml.requirement', 'sysml.Requirement'], 'mermaid-sequence': ['uml.sequence', 'uml.Lifeline'], 'mermaid-state': ['uml.state-machine', 'uml.State'] };
+  for (const [hn, hv] of Object.entries(HOST)) {
+    for (const [file, [d, T]] of Object.entries(writers)) {
+      const W = await import(`../src/readers/${file}.js`), write = Object.values(W).find(x => typeof x === 'function' && /^write/.test(x.name));
+      for (const field of ['label', 'type', 'parent', 'props']) {
+        const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 'a', type: T, label: 'A' }, { id: 'b', type: T, label: 'B' }], edges: [], views: [{ id: 'v', diagram: d, nodeIds: ['a', 'b'] }] };
+        m.nodes[0][field] = field === 'props' ? { note: hv(), stereotypes: hv(), text: hv() } : hv();
+        assert.equal(typeof write(m), 'string', `${hn} ${file} ${field}`);
+        const said = L.validate(m); assert.ok(Array.isArray(said), `${hn} ${file} ${field}`);
+        if (field === 'label') assert.ok(said.some(p => p.path === 'nodes[0].label' && /left out/.test(p.message)), `${hn} ${file}: ${JSON.stringify(said)}`);
+        assert.equal(typeof L.describe(m, 'v'), 'string', `${hn} ${file} ${field}`);
+        assert.ok(Array.isArray(L.diff(m, { ...m, nodes: [m.nodes[0], { id: 'b', type: T, label: 'B2' }] }).summary), `${hn} ${file} ${field}`);
+      }
+    }
+    const map = { nodes: [{ id: 'a', label: hv() }, { id: 'b', label: 'B' }], edges: [{ id: 'e', from: 'a', to: 'b', label: hv() }], views: [{ id: 'v', nodeIds: ['a', 'b'], title: hv() }] };
+    const said = L.validate(map);
+    assert.deepEqual(said.filter(p => /left out/.test(p.message)).map(p => [p.path, p.message]), ['edges[0].label', 'nodes[0].label', 'views[0].title']
+      .map(p => [p, 'a value no text is read from (a Symbol, or a toString or toJSON that throws): left out']), hn);
+    assert.ok(L.layout(map, 'v').nodes.some(n => n.id === 'a'), hn);
+    assert.ok(L.describe(map, 'v').includes('Cards: a (Script), B (Script).'), hn);
+    assert.deepEqual(L.diff(map, { ...map, nodes: [map.nodes[0], { id: 'b', label: 'B2' }] }).summary, ['renames B to B2'], hn);
+  }
+  // Object's, Array's and Date's own conversions are no host's: a Date, a list and a class's plain instance are read as before
+  const fine = { nodes: [{ id: 'a', label: 'A', when: new Date(0) }, { id: 'b', label: 'B', source: ['x'] }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+  assert.ok(!L.validate(fine).some(p => /left out/.test(p.message)), JSON.stringify(L.validate(fine)));
+});
+
+// audit 31: validate() warned of a card's label that is not text, but not of one in a view's nodeOverrides, a box's label or a view's
+// title: each drawn and announced as "[object Object]" with nothing said
+test('audit 31: a label that is not text in nodeOverrides, on a box, or a view title that is not text, is warned of', () => {
+  const m = { root: 'v', nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ id: 'e', from: 'a', to: 'b' }],
+    views: [{ id: 'v', title: { t: 'Shop' }, nodeIds: ['a', 'b'], nodeOverrides: { a: { label: { name: 'Orders' } }, b: { label: 7 } }, containers: [{ id: 'k', label: ['Shop', 'Back office'], nodeIds: ['b'] }] }] };
+  assert.deepEqual(validate(m).map(p => [p.level, p.path, p.message]), [
+    ['warning', 'views[0].title', 'title {"t":"Shop"} is not text: drawn as "[object Object]"'],
+    ['warning', 'views[0].nodeOverrides.a.label', 'label {"name":"Orders"} is not text: drawn as "[object Object]"'],
+    ['warning', 'views[0].containers[0].label', 'label ["Shop","Back office"] is not text: drawn as "Shop,Back office"']]);
+  const typed = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'A' }], views: [{ id: 'v', diagram: 'uml.class', title: true, nodeIds: ['a'] }] };
+  assert.deepEqual(validate(typed).filter(p => p.path === 'views[0].title').map(p => p.message), ['title true is not text: drawn as "true"']);
+  const fine = structuredClone(m); fine.views[0].title = 'Shop'; fine.views[0].nodeOverrides.a.label = 'Orders'; fine.views[0].containers[0].label = 'Shop';
+  assert.deepEqual(validate(fine), []);
+});
+
+// audit 31: a typed view that lists no lines draws only its type's own kinds between its cards, so a model line of no notation is
+// not drawn there; the warning said "drawn as a plain line" (an activity, a use case view). A view that lists it draws it plain
+test('audit 31: a line of no notation is said not drawn in a typed view that lists no lines, and drawn plain where one lists it', async () => {
+  const L = await import('../lib/umlimator-all.js');
+  for (const [f, vid, a, b] of [['fulfil-activity', 'fulfil', 'take-order', 'check-stock'], ['shopping-use-cases', 'shopping', 'shopper', 'browse'], ['bookshop-components', 'components'], ['bookshop-data-flow', 'dfd-level-1']])
+    for (const type of ['', 'flow']) for (const listed of [false, true]) {
+      const m = read(`../examples/${f}.json`), v = m.views.find(x => x.id === vid), [p, q] = a ? [a, b] : v.nodeIds;
+      m.edges.push({ id: 'zl', type, from: p, to: q, label: 'odd line' });
+      if (listed) v.edges = [...m.edges.filter(e => v.nodeIds.includes(e.from) && v.nodeIds.includes(e.to)).map(e => e.id)]; else delete v.edges;
+      const drawn = L.layout(m, vid).edges.some(e => e.id === 'zl' || (e.ids || []).includes('zl'));
+      const said = L.validate(m).find(x => x.path === `edges[${m.edges.length - 1}].type`).message;
+      assert.equal(drawn, listed, `${f} ${JSON.stringify(type)} ${listed}`);
+      assert.equal(/: not drawn$/.test(said), !drawn, `${f} ${JSON.stringify(type)} listed ${listed}: ${said}`); }
+  // a block definition diagram draws every model line between its blocks, listed or not
+  const bd = { schemaVersion: 2, nodes: [{ id: 'a', type: 'sysml.Block', label: 'A' }, { id: 'b', type: 'sysml.Block', label: 'B' }], edges: [{ id: 'zl', type: '', from: 'a', to: 'b' }], views: [{ id: 'v', diagram: 'sysml.block-definition', nodeIds: ['a', 'b'] }] };
+  assert.ok(L.layout(bd, 'v').edges.some(e => e.id === 'zl' || (e.ids || []).includes('zl')));
+  assert.equal(L.validate(bd).find(x => x.path === 'edges[0].type').message, 'type "" is not <notation>.<Name> (uml.Dependency): drawn as a plain line');
 });

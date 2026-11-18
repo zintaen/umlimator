@@ -78,7 +78,7 @@ test('the definition: palette, lines with their sorts and the duration constrain
   assert.deepEqual(T.refs, { 'uml.Message': { 'props.replyTo': 'cascade' } });
   assert.deepEqual([typeof T.layout.run, T.layout.pins, typeof T.draw, typeof T.describe, typeof T.rows], ['function', false, 'function', 'function', 'function']);
   assert.deepEqual(Object.keys(T.edits), ['connect', 'moveTo', 'add', 'remove', 'rename', 'key']);
-  assert.deepEqual(Object.keys(T.rules), ['change-lifeline', 'change-time', 'change-state', 'change-instant', 'message-ends', 'message-times', 'sort', 'reply-call', 'constraint-ends', 'constraint-order']);
+  assert.deepEqual(Object.keys(T.rules), ['change-lifeline', 'change-time', 'change-state', 'change-instant', 'message-ends', 'message-times', 'sort', 'reply-call', 'constraint-ends', 'constraint-order', 'timing-kinds']);
 });
 
 test('14-timing.json (an inline copy) lays out clean: two lanes, their state rows, eight changes, two messages with their sorts\' ends, two constraints, the ruler; no problem', () => {
@@ -569,4 +569,32 @@ test('audit 30: hiding a lifeline says a model message the view lists by id leav
   assert.equal(r.say, 'Hid B; took its 1 message off the view (it stays in the model); its change stays in the timeline');
   // a view's own message is deleted with it, the model's only leaves the view: each said as done
   assert.equal(tmRemove(m, 't', ['b'], false).say, 'Hid B; deleted its 1 message; took 1 message off the view (it stays in the model); its change stays in the timeline');
+});
+
+test('audit 31: a listed element that is no lifeline (no type, a comment, a class, a typo\'d type) is not drawn, and timing-kinds says so once', () => {
+  for (const [odd, said] of [[{}, 'has no type, so it is'], [{ type: '' }, 'has no type, so it is'], [{ type: 'uml.Comment' }, 'is of type "uml.Comment", which is'], [{ type: 'uml.Class' }, 'is of type "uml.Class", which is'], [{ type: 'foo.Bar' }, 'is of type "foo.Bar", which is']]) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Lifeline', label: 'Alpha' }, { id: 'u', label: 'Odd', ...odd }], edges: [],
+      views: [{ id: 'v', title: 'V', diagram: 'uml.timing', nodeIds: ['a', 'u', 'u'] }] };
+    assert.ok(!layout(m, 'v').nodes.some(n => n.id === 'u'), JSON.stringify(odd));
+    assert.deepEqual(validate(m).filter(p => p.rule === 'timing-kinds').map(p => [p.level, p.path, p.message]), [['warning', 'views[0].nodeIds[1]', `timing-kinds: "u" ("Odd") ${said} no lifeline: not drawn`]], JSON.stringify(odd));
+  }
+  assert.deepEqual(validate(EX()).filter(p => p.rule === 'timing-kinds'), [], 'a view of lifelines says nothing');
+});
+
+test('audit 31: Delete on a model message the view lists by id takes it out of this view only, with its reply; Shift + Delete and an inline message still delete', () => {
+  const msg = (id, from, to, sort, sentAt, more = {}) => ({ id, type: 'uml.Message', from, to, label: id, props: { sort, sentAt, receivedAt: sentAt + 1, ...more } });
+  const mk = () => ({ schemaVersion: 2, nodes: [{ id: 'c', type: 'uml.Lifeline', label: 'client' }, { id: 's', type: 'uml.Lifeline', label: 'server' }],
+    edges: [msg('m1', 'c', 's', 'call', 1), msg('m2', 's', 'c', 'reply', 3, { replyTo: 'm1' })],
+    views: [{ id: 't', diagram: 'uml.timing', nodeIds: ['c', 's'], edges: ['m1', 'm2', msg('m3', 'c', 's', 'async', 5)], timeline: { unit: 'ms', changes: [], constraints: [] } },
+      { id: 'a', diagram: 'uml.sequence', nodeIds: ['c', 's'], edges: ['m1', 'm2'] }] });
+  const m = mk(), r = tmRemove(m, 't', ['m1'], false);
+  assert.deepEqual(r.commands, [{ op: 'hide', id: 'm1', view: 't' }, { op: 'hide', id: 'm2', view: 't' }]);
+  assert.equal(r.say, 'Took 2 messages off the view (they stay in the model)');
+  const n = apply(m, r.commands);
+  assert.deepEqual(n.edges.map(e => e.id), ['m1', 'm2']);
+  assert.deepEqual(n.views[1].edges, ['m1', 'm2'], 'the sequence view keeps them');
+  assert.deepEqual(validate(n).filter(p => p.level === 'error'), []);
+  assert.equal(tmRemove(mk(), 't', ['m1', 'm3'], false).say, 'Deleted 1 message: a change, a message or a constraint is deleted, not hidden; took 2 messages off the view (they stay in the model)');
+  assert.deepEqual(tmRemove(mk(), 't', ['m1'], true).commands, [{ op: 'delete', id: 'm1' }], 'Shift + Delete deletes it from the model');
+  assert.deepEqual(tmRemove(mk(), 't', ['m3'], false).commands, [{ op: 'delete', id: 'm3' }], 'one the view holds lives there: hiding it is deleting it');
 });

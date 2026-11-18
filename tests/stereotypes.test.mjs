@@ -125,8 +125,8 @@ test('metaclasses (§5.4): a stereotype on Classifier fits a component, a genera
   by(m, 'billing').props.stereotypes.push('sub', 'gz'); Object.assign(by(m, 'billing').props.tags, sub); // a Component is a Class
   m.nodes.find(n => n.id === 'blk').props = { stereotypes: ['column'] };
   assert.deepEqual(stereoProblems(m).map(p => p.message), [
-    'stereotype-extends: «gz» on "Billing" extends Gizmo, which a Component is not', // a name in no row fits only itself
-    'stereotype-extends: «sub» on "note" extends Class, which a CommentLink is not']);
+    'stereotype-extends: «gz» on "Billing" extends Gizmo, which a component is not', // a name in no row fits only itself
+    'stereotype-extends: «sub» on "note" extends Class, which a comment link is not']);
 });
 
 test('the metaclass table has a row or a stated mapping for every uml.* type every registered type uses, and its generals are rows too', async () => {
@@ -344,9 +344,18 @@ test('audit 30: an element of no type a class or profile view draws as a class i
     views: [{ id: 'v', diagram, nodeIds: ['pk', 'ord'] }] });
   const said = m => [describe(m, 'v').split('\n').find(l => /Order/.test(l)), validate(m).filter(p => p.rule === 'stereotype-extends').map(p => p.message)];
   const want = said(mk('uml.Class'));
-  assert.deepEqual(want[1], ['stereotype-extends: «column» on "Order" extends Property, which a Class is not']);
+  assert.deepEqual(want[1], ['stereotype-extends: «column» on "Order" extends Property, which a class is not']);
   for (const d of ['uml.profile', 'uml.class']) for (const type of [undefined, '']) assert.deepEqual(said(mk(type, d)), d === 'uml.profile' ? want : [said(mk('uml.Class', d))[0], want[1]], `${d} ${JSON.stringify(type)}`);
   // a view that draws it as no UML kind (a use case view's "Element"): not judged, as before
   await import('../src/uml/usecase.js');
   assert.deepEqual(validate(mk(undefined, 'uml.use-case')).filter(p => p.rule === 'stereotype-extends'), []);
+});
+
+test('audit 31: stereotype-extends writes the element\'s kind in words with its article: "which an interface is not"', () => {
+  const m = { schemaVersion: 2, nodes: [N('p', 'Profile', 'Orm'), N('st', 'Stereotype', 'entity', 'p'), N('mc', 'MetaclassReference', 'Class', 'p'), N('pk', 'Package', 'shop'),
+    N('i', 'Interface', 'Api', 'pk', { props: { stereotypes: ['entity'] } }), N('a', 'Actor', 'Clerk', 'pk', { props: { stereotypes: ['entity'] } })],
+  edges: [E('x', 'Extension', 'st', 'mc'), E('ap', 'ProfileApplication', 'pk', 'p')], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['pk', 'i', 'a'] }] };
+  assert.deepEqual(validate(m).filter(p => p.rule === 'stereotype-extends').map(p => p.message), [
+    'stereotype-extends: «entity» on "Api" extends Class, which an interface is not',
+    'stereotype-extends: «entity» on "Clerk" extends Class, which an actor is not']);
 });

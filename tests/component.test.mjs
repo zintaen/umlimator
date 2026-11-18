@@ -543,3 +543,33 @@ test('audit 30: the PDF\'s Members column of a class lists the ports the view dr
   const n = structuredClone(m); n.nodes[0].members = [n.nodes[0].members[1]]; n.edges = [];
   assert.deepEqual(T.rows(n, n.views[0], 'c'), []);
 });
+
+test('audit 31: an element of no type, drawn as a component, is a box for a component it owns, as a typed one is; the rule says nothing and the Owner field offers it', () => {
+  for (const type of [undefined, '', 'uml.Component']) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'u', label: 'Shop', ...(type === undefined ? {} : { type }), members: [{ id: 'u.p', type: 'uml.Port', label: 'api' }] }, { id: 'c', type: 'uml.Component', label: 'Cart', parent: 'u' }],
+      edges: [], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['u', 'c'] }] };
+    const g = layout(m, 'v'), word = type ? 'Component' : 'Element';
+    assert.deepEqual(g.families.map(f => f.id), ['u'], String(type));
+    assert.equal(g.families[0].shape, 'component', String(type));
+    assert.ok(describe(m, 'v').split('\n').includes(`${word} Shop, 1 port, holding 1 component.`), String(type));
+    assert.deepEqual(validate(m).filter(p => p.rule === 'component-owner'), [], String(type));
+    assert.ok(T.owners(m, m.nodes[1]).some(o => o.id === 'u'), String(type));
+  }
+});
+
+test('audit 31: a class in a component view is named with the ports drawn on its border, as a component is', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 's', type: 'uml.Class', label: 'Shop', members: [{ id: 's.p', type: 'uml.Port', label: 'api' }, { id: 's.q', type: 'uml.Port', label: 'admin' }] }, { id: 'k', type: 'uml.Class', label: 'Plain' }],
+    edges: [], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['s', 'k'] }] };
+  const g = layout(m, 'v');
+  assert.equal(g.nodes.find(n => n.id === 's').aria, 'Class Shop, 2 ports');
+  assert.equal(g.nodes.find(n => n.id === 'k').aria, 'Class Plain');
+  assert.ok(describe(m, 'v').split('\n').includes('Class Shop, 2 ports.'));
+});
+
+test('audit 31: component-owner writes the owner\'s kind in words with its article: "an artifact", never "a Artifact" or "a undefined"', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'j', type: 'uml.Artifact', label: 'jar' }, { id: 'c', type: 'uml.Component', label: 'Pay', parent: 'j' }, { id: 'i', type: 'uml.Interface', label: 'Api' }, { id: 'd', type: 'uml.Component', label: 'D', parent: 'i' }],
+    edges: [], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['j', 'c', 'i', 'd'] }] };
+  assert.deepEqual(validate(m).filter(p => p.rule === 'component-owner').map(p => p.message), [
+    'component-owner: "Pay" is owned by "jar", an artifact: a component\'s owner is a component or a package',
+    'component-owner: "D" is owned by "Api", an interface: a component\'s owner is a component or a package']);
+});

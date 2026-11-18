@@ -1,5 +1,5 @@
 import { jsonText } from '../core/model.js';
-import { TYPED, diagramOf, drawnKind } from '../core/registry.js';
+import { TYPED, aWord, diagramOf, drawnKind, kindWord } from '../core/registry.js';
 import { multBounds } from './class.js';
 
 /* ---------- stereotypes applied across the model (work package 6.2, notes/stage-6.md §5) ----------
@@ -231,7 +231,7 @@ function styResolve(I, r, say) {
       else return; }
     const twice = out.find(e => e.stereotype === hit.st); if (twice) return void again.set(s, twice.key);
     if (!scope.includes(hit.p.id)) return say(stySay('stereotype-applied', 'warning', at, [x.id, hit.p.id], `«${s}» is a stereotype of ${styName(hit.p)}, which is not applied to ${owner ? `${styName(owner)} or its owners` : `any owner of ${styQ(x)}`}`));
-    if (meta !== undefined && !(meta && styFits(I, hit.st, meta))) say(stySay('stereotype-extends', 'warning', at, [x.id, hit.st.id], `«${s}» on ${styQ(x)} extends ${[...new Set([hit.st, ...styGenerals(I, hit.st)].flatMap(t => STY_ARR(I.ext.get(t.id))))].join(', ') || 'no metaclass'}, which a ${meta || String(x.type).slice(4)} is not`));
+    if (meta !== undefined && !(meta && styFits(I, hit.st, meta))) say(stySay('stereotype-extends', 'warning', at, [x.id, hit.st.id], `«${s}» on ${styQ(x)} extends ${[...new Set([hit.st, ...styGenerals(I, hit.st)].flatMap(t => STY_ARR(I.ext.get(t.id))))].join(', ') || 'no metaclass'}, which ${aWord(kindWord('uml.' + (meta || String(x.type).split('.').pop())).toLowerCase())} is not`)); // "an interface" (audit 31: "a Interface")
     if (STY_OBJ(hit.st.props) && hit.st.props.isAbstract === true) say(stySay('stereotype-abstract', 'error', at, [x.id, hit.st.id], `«${s}» on ${styQ(x)} is abstract: apply one of its specializations`));
     out.push({ stereotype: hit.st, profile: hit.p, key: s, required: false }); });
   // required extensions of the profiles in scope, on an element of their metaclass: met by the stereotype or a specialization the
