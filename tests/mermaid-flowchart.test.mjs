@@ -442,3 +442,16 @@ import umlimator_import as imp
 imp.read("mermaid", sys.stdin.read(), "flowchart")`], { input: long, encoding: 'utf8' });
   assert.ok(performance.now() - t < 5000, `${Math.round(performance.now() - t)} ms`);
 });
+
+// audit 37: mfCloseAt ran over the whole run of one character before it said no close starts there, and the text scan moves on by
+// one character, so a long unclosed link text of one repeated character (x, [, ...) took time in the square of its length
+test('an unclosed link text of one repeated character is read in linear time, as before for each kind of character (audit 37)', () => {
+  for (const c of ['x', '[', '(', '{', '<', "'", 'o', '>', '|', '.', '-', '=']) {
+    const t = performance.now(), r = read('flowchart TD\nA -- ' + c.repeat(200000));
+    assert.ok(performance.now() - t < 1500, `${JSON.stringify(c)}: ${Math.round(performance.now() - t)} ms`);
+    assert.ok(r && typeof r === 'object', c);
+  }
+  // the closes the scan finds are as before
+  assert.deepEqual(read('flowchart TD\nA -- text x --> B').model.edges.map(e => [e.from, e.to, e.label]), [['A', 'B', 'text x']]);
+  assert.deepEqual(read('flowchart TD\nA == heavy ==> B\nC -. dotted .-> D').model.edges.map(e => [e.from, e.to, e.label]), [['A', 'B', 'heavy'], ['C', 'D', 'dotted']]);
+});

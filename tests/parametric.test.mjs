@@ -53,7 +53,7 @@ test('the definition: sysml.parametric with its palette, two lines, its properti
   assert.deepEqual(T.refs, { 'sysml.BindingConnector': { 'props.ends.from.part': 'cascade', 'props.ends.to.part': 'cascade' } });
   assert.equal(T.layout.rank, false);
   for (const k of ['layout', 'validate', 'describe', 'word', 'rows', 'text']) assert.equal(typeof T[k], 'function', k);
-  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'member', 'moveTo', 'remove', 'rename']);
+  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'field', 'member', 'moveTo', 'remove', 'rename']);
   assert.deepEqual(Object.keys(T.rules), ['subject-kind', 'binding-ends', 'binding-parameter', 'binding-types', 'parameter-bound', 'connector-drawn', 'value-type', 'constraint-type']);
   assert.deepEqual(['sysml.Block', 'sysml.ConstraintBlock', 'sysml.InterfaceBlock'].map(t => T.member.holds({ type: t })), [true, true, false]);
 });
@@ -416,4 +416,21 @@ test('an unnamed constraint or value property is named as drawn, ": RangeEq", in
   }
   // a named one keeps its name
   assert.equal(layout(base, 'v').byId['bike.eq'].aria, 'Constraint eq: RangeEq {r = e / 7}, in Bike, 2 parameters');
+});
+
+// audit 37: SYS_PAR_SAID named every unnamed member by its id, so the subject's PDF row listed 'bike.eq : RangeEq' where the
+// picture, its own row and every name say ': RangeEq'; the id stays for a property with neither name nor type, as SYS_PAR_TEXT
+test('the subject\'s row lists an unnamed typed property as drawn, ": RangeEq", in rows() and the PDF (audit 37)', () => {
+  const base = JSON.parse(readFileSync(new URL('parametric-minimal.json', import.meta.url)));
+  for (const [what, cut] of [['no label', x => { delete x.label; }], ['an empty label', x => { x.label = ''; }]]) {
+    const m = structuredClone(base); cut(mem(m, 'bike.eq')); cut(mem(m, 'bike.energy'));
+    const rows = T.rows(m, m.views[0], 'bike');
+    assert.deepEqual(rows, [': Real', 'range : Real', ': RangeEq'], what);
+    const c = mapContext(m), [cards] = tablesOf(c, c.V.v, c.buildGeo('v'));
+    assert.ok(cards.rows.some(r => r.includes('<p>: RangeEq</p>') && r.includes('<p>: Real</p>')) && !cards.rows.some(r => /bike\.(eq|energy) :/.test(r)), `${what}: ${cards.rows.join('\n')}`);
+    // with neither name nor type, the id
+    const bare = structuredClone(m); delete mem(bare, 'bike.energy').props;
+    assert.equal(T.rows(bare, bare.views[0], 'bike')[0], 'bike.energy', what);
+  }
+  assert.deepEqual(T.rows(base, base.views[0], 'bike'), ['energy : Real', 'range : Real', 'eq : RangeEq']);
 });

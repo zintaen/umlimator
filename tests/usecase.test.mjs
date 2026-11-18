@@ -466,3 +466,17 @@ test('audit 32: use-case-owner, partition-owner and transition-ends write the ki
     assert.equal(st.length, 1, String(t)); assert.match(st[0], new RegExp(`^transition-ends: t1 ends on "[^"]*X", ${w}: `), String(t));
   }
 });
+
+// audit 37: laid out down, the association routed last ran down through the extend's label, which found no other spot off
+// every line; a label left on a line now has the view laid out again with room for it, as one with no spot has
+test('audit 37: an extend\'s label with its point and condition keeps off the association laid out down', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'a0', type: 'uml.Actor', label: 'Customer service agent 0' }, { id: 'sys', type: 'uml.Subject', label: 'Online shop' },
+    { id: 'u0', type: 'uml.UseCase', label: 'Do a long use case number 0', parent: 'sys' },
+    { id: 'u1', type: 'uml.UseCase', label: 'Do a long use case number 1', parent: 'sys', members: [{ id: 'u1p', type: 'uml.ExtensionPoint', label: 'point 1' }] },
+    { id: 'u2', type: 'uml.UseCase', label: 'Do a long use case number 2', parent: 'sys' }],
+  edges: [{ id: 'e0', type: 'uml.Association', from: 'a0', to: 'u0' }, { id: 'e1', type: 'uml.Association', from: 'a0', to: 'u2' },
+    { id: 'e2', type: 'uml.Extend', from: 'u0', to: 'u1', props: { extensionPoints: ['u1p'], condition: 'x > 1' } }, { id: 'e3', type: 'uml.Include', from: 'u0', to: 'u2' }],
+  views: [{ id: 'v', diagram: 'uml.use-case', nodeIds: ['a0', 'sys', 'u0', 'u1', 'u2'], direction: 'down' }] };
+  assert.deepEqual(check(m, 'v').map(p => p.message).filter(p => !/ cross$/.test(p)), []);
+  assert.equal(layout(m, 'v').edges.find(e => e.id === 'e2').lbl.text, '«extend» (point 1) [x > 1]');
+});

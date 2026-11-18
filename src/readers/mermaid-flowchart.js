@@ -85,10 +85,10 @@ function mfText(raw, md) {
 // where a link's close (-->, ==>, .->, ---) ends when it starts at p, else -1: -{2,}[->ox], ={2,}[=>ox] or \.+-[>ox]?, greedy
 function mfCloseAt(s, p) {
   const c = s[p];
+  if (c !== '-' && c !== '=' && c !== '.') return -1; // before the run: a long run of any other character is not rescanned at each place (audit 37)
   let q = p;
   while (s[q] === c) q++;
   if (c === '.') return s[q] !== '-' ? -1 : q + 1 + (q + 1 < s.length && '>ox'.includes(s[q + 1]) ? 1 : 0);
-  if (c !== '-' && c !== '=') return -1;
   if (q - p >= 2 && q < s.length && '>ox'.includes(s[q])) return q + 1;
   return q - p >= 3 ? q : -1;
 }

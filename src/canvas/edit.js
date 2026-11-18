@@ -142,7 +142,7 @@ function typedEditor(api) {
     const K = e.key;
     if (K === 'Escape') { endLink(); say('No line added'); return true; }
     if (K === 'Enter') { const { from, to } = link; if (!to || to === from && !I.self) { say('Pick another card first'); return true; } endLink(); I.connect(from, to); return true; }
-    if (K.startsWith('Arrow')) { const g = api.geo(), n = api.nearest(g.byId[link.to || link.from], K); if (n) { link.to = n.id; mark(); } return true; }
+    if (K.startsWith('Arrow')) { const g = api.geo(), at = link.to || link.from, n = Object.hasOwn(g.byId, at) && api.nearest(g.byId[at], K); if (n) { link.to = n.id; mark(); } return true; }
     if (K.length === 1 && !e.altKey) { const now = performance.now(); link.find = (now - link.t < 900 ? link.find : '') + K.toLowerCase(); link.t = now;
       const ns = api.geo().nodes.filter(n => String(api.nameOf(n.id)).toLowerCase().startsWith(link.find)), hit = ns.find(n => n.id !== link.from) || I.self && ns[0];
       if (hit) { link.to = hit.id; mark(); } return true; }
@@ -157,6 +157,8 @@ function typedEditor(api) {
     if ((K === 'n' || K === 'N') && can('add')) { I.addNode(0); return true; }
     const from = s && (s.type === 'node' ? s.id : s.type === 'edge' && hook('connect') && (api.geo().edges.find(x => idsOf(s).includes(x._id)) || {}).to);
     if ((K === 'l' || K === 'L') && can('add') && from) {
+      // a line's far end may be a box (a package, a component, a node box): no card the arrows can move from (audit 37)
+      if (!Object.hasOwn(api.geo().byId, from)) { say('Pick a card to start the line from'); return true; }
       link = { from, to: null, find: '', t: 0 }; api.touch();
       say(`Line from ${api.nameOf(from)}: arrows or type a name, Enter to choose, Escape to stop`); return true; }
     if (K === 'Delete' && s) { I.remove(e.shiftKey); return true; }
@@ -247,9 +249,13 @@ function typedEditor(api) {
       if (value === '' && d.key == null) { t.value = d.was; return; } // an empty name does nothing, as on the map; an empty property is removed
       if (d.m != null && M) { const m = (at.get(d.m) || {}).x, r = m && M.edit(m, value); if (!r || r.error) return bad(r ? r.error : 'not a member');
         t.removeAttribute('aria-invalid'); d.was = t.value; return emit(r.commands); }
-      d.was = t.value; if (value === '') value = undefined; else if (d.list != null) value = value.split(',').map(x => x.trim()).filter(Boolean); }
+      if (value === '') value = undefined; else if (d.list != null) value = value.split(',').map(x => x.trim()).filter(Boolean); }
     const path = d.path ? ['props', ...JSON.parse(d.path)] : d.key == null ? 'label' : d.key.includes('.') ? ['props', d.key] : 'props.' + d.key;
-    emit([{ op: 'set', id: d.m ?? id, path, value }]);
+    const set = () => emit([{ op: 'set', id: d.m ?? id, path, value }]);
+    // the type's edits.field first (src/typed/edit.js); one it refuses marks the field, kept as typed, as a member row's (audit 37)
+    const ok = I.field ? I.field(d.m ?? id, path, value, set) : set();
+    if (t.type !== 'checkbox') { if (ok === false) t.setAttribute('aria-invalid', 'true'); else { t.removeAttribute('aria-invalid'); d.was = t.value; } }
+    return ok;
   }
   function moveMember(id, by) {
     const e = elementsOf(model()).get(id); if (!e || !e.owner || !can('reorder')) return;

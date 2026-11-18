@@ -52,7 +52,7 @@ test('the definition: sysml.internal-block with its palette, two lines, §8.5\'s
   assert.deepEqual(T.refs, { 'sysml.Connector': { 'props.ends.from.part': 'cascade', 'props.ends.to.part': 'cascade' } });
   assert.equal(T.layout.rank, false);
   for (const k of ['layout', 'draw', 'validate', 'describe', 'word', 'rows', 'text']) assert.equal(typeof T[k], 'function', k);
-  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'member', 'moveTo', 'remove', 'rename']);
+  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'field', 'member', 'moveTo', 'remove', 'rename']);
   assert.deepEqual(Object.keys(T.rules), ['subject-block', 'connector-part', 'connector-scope', 'connector-drawn', 'part-type', 'item-flow', 'port-compatible']);
   assert.deepEqual(['sysml.Block', 'sysml.InterfaceBlock', 'uml.Comment'].map(t => T.member.holds({ type: t })), [true, false, false]);
 });

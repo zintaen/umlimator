@@ -90,11 +90,12 @@ function pieces(X, el, o) {
   /* the views list: readable columns; a declared order may include shortcuts to descendants */
   function tree() {
     const { views, V, kidsOf, chain } = X().ctx(), cur = X().view(), ch = chain(cur);
+    const C = X().ctx().geoCache || {}, count = x => elementCount(x, x.id === cur ? X().geo() : (C[x.id] || {}).g) ?? (x.nodeIds || []).length; // a typed view drawn: what it draws
     const roots = views.filter(x => !x.parent), cols = roots.length > 1 ? [{ head: 'Map', items: roots, on: ch[0] }] : [];
     ch.forEach((id, i) => { const order = V[id].browserOrder || [], k = [...new Set([...order, ...kidsOf(id).map(v => v.id)])].map(id => V[id]).filter(Boolean); if (k.length) cols.push({ head: shortT(labelOr(V[id].title, id)), items: k, on: ch[i + 1] }); });
     o.frame.style.setProperty('--browser-width', Math.min(448, Math.max(1, cols.length) * 224) + 'px');
     el.tree.innerHTML = `<div class="miller">${cols.map(c => `<div class="mcol"><div class="mch" title="${esc(c.head)}">${esc(c.head)}</div>${c.items.map(x => { const n = kidsOf(x.id).length;
-      return `<button class="mit${x.id === cur ? ' on' : x.id === c.on ? ' path' : ''}" data-v="${esc(x.id)}" title="${esc(labelOr(x.title, x.id))}"${x.id === cur ? ' aria-current="page"' : ''}><span>${esc(shortT(labelOr(x.title, x.id)))}</span><em>${(x.nodeIds || []).length}${n ? ' ›' : ''}</em></button>`; }).join('')}</div>`).join('')}</div>`;
+      return `<button class="mit${x.id === cur ? ' on' : x.id === c.on ? ' path' : ''}" data-v="${esc(x.id)}" title="${esc(labelOr(x.title, x.id))}"${x.id === cur ? ' aria-current="page"' : ''}><span>${esc(shortT(labelOr(x.title, x.id)))}</span><em>${count(x)}${n ? ' ›' : ''}</em></button>`; }).join('')}</div>`).join('')}</div>`;
     const m = el.tree.firstChild, last = m.lastElementChild; m.style.scrollBehavior = 'auto'; m.scrollLeft = last ? Math.max(0, last.offsetLeft + last.offsetWidth - m.clientWidth) : 0; m.style.scrollBehavior = '';
   }
   const setTree = on => { o.frame.classList.toggle('tree-open', on); if (o.toggle) o.toggle.setAttribute('aria-expanded', on); };
@@ -314,4 +315,13 @@ function pieces(X, el, o) {
   };
 }
 
-export { shortT, hintHTML, hinter, legendItems, pieces, detailBullets };
+// how many elements a typed view draws, as the page's view pill, its About box and the views list count them (audit 37): its
+// laid-out nodes that are model elements, less the pieces a type draws on or in another (a port, an operand, a fragment's
+// frame, a message's row; a timing view's rows, changes and ruler carry no type), and its boxes, once each. null for a map,
+// whose every laid-out node is a card
+const PIECES = new Set(['port', 'operand', 'frame', 'use', 'message-row']);
+const elementCount = (v, g) => { if (!v || v.diagram == null || v.diagram === 'map' || !g) return null; const ids = new Set();
+  arrOf(g.nodes).forEach(n => { if (n && typeof n.type === 'string' && n.type && !PIECES.has(n.shape)) ids.add(n.id); });
+  arrOf(g.families).forEach(f => { if (f && f.id != null) ids.add(f.id); }); return ids.size; };
+
+export { shortT, hintHTML, hinter, legendItems, pieces, detailBullets, elementCount };

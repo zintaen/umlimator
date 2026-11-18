@@ -3,7 +3,7 @@ import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { r2 } from '../draw/shapes.js';
 import { csAdd, csConnect, csGeo, csMember, csMoveTo, csRemove, csRename } from '../uml/composite.js';
-import { SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS } from './sysml.js';
+import { SYS_AS_UML, SYS_BACK, SYS_FIELD, SYS_CS_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS } from './sysml.js';
 
 /* ---------- SysML's internal block diagram, sysml.internal-block (work package M3.4, notes/milestone-3.md §8, §13) ----------
    The view's subject, a block, is drawn as the composite structure type draws a class (src/uml/composite.js), through M3.1's
@@ -281,7 +281,7 @@ const SYS_IB_TYPE_DEF = registerDiagramType('sysml.internal-block', {
   rows: SYS_IB_ROWS,
   text: SYS_IB_LINE_TEXT,
   edits: { connect: (model, view, from, to, at, line) => SYS_IB_ON(csConnect)(model, view, from, to, at, SYS_IB_ENTRY(line)), moveTo: SYS_IB_ON(csMoveTo), add: SYS_IB_ADD,
-    remove: SYS_IB_ON(csRemove), rename: SYS_IB_RENAME, member: SYS_IB_MEMBER },
+    remove: SYS_IB_ON(csRemove), rename: SYS_IB_RENAME, member: SYS_IB_MEMBER, field: SYS_FIELD },
 });
 
 export { SYS_IB_TYPE_DEF, SYS_IB_GEO, SYS_IB_PROBLEMS, SYS_IB_FLOW, SYS_IB_SPOT };

@@ -365,3 +365,28 @@ test('audit 33: a sequence view titled "" is named by its id in an interaction u
   assert.ok(r.pick.includes('find-book') && !r.pick.includes(''), JSON.stringify(r.pick));
   assert.equal(r.then(r.pick.indexOf('find-book'))[0].element.label, 'find-book');
 });
+
+// audit 37: an interaction use or inline interaction with no name was drawn blank ('sd ', an empty ref) and named by its kind
+// alone, where the sequence and activity views draw one by its id (elName); a control node keeps its kind's word
+test('an interaction use or inline interaction with no name is drawn and named by its id, in its flows and describe() too (audit 37)', async () => {
+  const { svgOf } = await import('../src/draw/svg.js');
+  for (const [what, cut] of [['no label', x => { delete x.label; }], ['an empty label', x => { x.label = ''; }]]) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'start', type: 'uml.InitialNode' }, { id: 'ref-find', type: 'uml.InteractionUse', label: 'x', opensView: 'find' }, { id: 'sd-pay', type: 'uml.Interaction', label: 'x', opensView: 'find' },
+      { id: 'end', type: 'uml.ActivityFinalNode', label: '' }, { id: 'a', type: 'uml.Lifeline', label: 'shop' }, { id: 'b', type: 'uml.Lifeline', label: 'bank' }],
+    edges: [{ id: 'f1', type: 'uml.ControlFlow', from: 'start', to: 'ref-find' }, { id: 'f2', type: 'uml.ControlFlow', from: 'ref-find', to: 'sd-pay' }, { id: 'f3', type: 'uml.ControlFlow', from: 'sd-pay', to: 'end' }],
+    views: [{ id: 'ov', diagram: 'uml.interaction-overview', nodeIds: ['start', 'ref-find', 'sd-pay', 'end'] },
+      { id: 'find', diagram: 'uml.sequence', title: 'Find a book', nodeIds: ['a', 'b'], edges: [{ id: 'm1', type: 'uml.Message', from: 'a', to: 'b', label: 'search', props: { sort: 'call' } }] }] };
+    cut(m.nodes[1]); cut(m.nodes[2]);
+    const g = layout(m, 'ov'), by = id => g.nodes.find(n => n.id === id), said = describe(m, 'ov'), s = String(svgOf(g));
+    assert.equal(by('ref-find').label, 'ref-find', what); assert.equal(by('sd-pay').label, 'sd-pay', what);
+    assert.equal(by('ref-find').aria, 'Interaction use ref-find, opens Find a book', what);
+    assert.match(by('sd-pay').aria, /^Inline interaction sd-pay, /, what);
+    assert.match(s, />ref-find<\/text>/, what); assert.match(s, />sd sd-pay<\/text>/, what);
+    assert.deepEqual(g.edges.map(e => e.aria), ['Control flow from initial node to ref-find', 'Control flow from ref-find to sd-pay', 'Control flow from sd-pay to activity final'], what);
+    assert.match(said, /Initial node; then ref-find\./, what);
+    assert.equal(by('start').label, '', `${what}: a control node keeps no name`); assert.equal(by('end').label, '', what);
+  }
+  // a named one keeps its name, in the example as drawn
+  const named = EX.nodes.filter(x => ['uml.InteractionUse', 'uml.Interaction'].includes(x.type) && VIEW(EX).nodeIds.includes(x.id)), eg = layout(EX, VIEW(EX).id);
+  assert.ok(named.length && named.every(x => eg.nodes.find(n => n.id === x.id).label.endsWith(x.label)), JSON.stringify(named.map(x => x.id)));
+});

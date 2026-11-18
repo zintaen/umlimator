@@ -170,6 +170,18 @@ try {
   check('audit 13: a binding\'s row names the parameter of its constraint property and opens the parametric view with it selected',
     JSON.stringify(said) === JSON.stringify(['ebike.usable->usable-energy.capacity', 'range-analysis', 'capacity of usable']) && h.state.view === 'range-analysis' && JSON.stringify(h.state.selection).includes('"ebike.usable->usable-energy.capacity"'), [said, h.state.view, h.state.selection]);
   h.destroy();
+  // audit 37: the properties panel's Name field on a part renames its part association's role in the same transaction, as F2
+  // does; a name another member holds is refused and the field marked
+  h = mount(ATLAS, { editable: true }); h.select({ type: 'node', id: 'ebike.battery', view: VID }); await new Promise(r => setTimeout(r, 20));
+  const nf = pick('.um-editor [data-f="label"]'), n0 = ed.length;
+  if (nf) { nf.value = 'pack'; nf.dispatchEvent(new Event('change', { bubbles: true })); }
+  const fe = ed.length > n0 ? last() : null, fm = fe && apply(ATLAS, fe.commands);
+  check('audit 37: the Name field on a part: its name and its part association\'s role in one edit, no new problem',
+    !!fm && fe.commands.length === 2 && fm.edges.find(e => e.id === 'ebike-battery').props.ends.to.role === 'pack' && validate(fm).length === validate(ATLAS).length, [fe, fm && validate(fm).map(p => p.message)]);
+  const n1 = ed.length;
+  if (nf) { nf.value = 'motor'; nf.dispatchEvent(new Event('change', { bubbles: true })); }
+  check('audit 37: the Name field set to another member\'s name: refused, the field marked', ed.length === n1 && !!nf && nf.getAttribute('aria-invalid') === 'true', [ed.length - n1, nf && nf.outerHTML]);
+  h.destroy();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>
