@@ -239,6 +239,21 @@ test('§14\'s budgets on each stress view all: a full layout and its SVG under 1
   console.log(`# P1 target 100 ms (milestone 3's fixtures): ${out.join('; ')}`);
 });
 
+// the timed text edit above ran near CI's 1 s on the requirement view (996 to 1030 ms): some 270 route searches a layout, each
+// making its grid's arrays afresh (a distance and a heap of up to 256000 numbers among them) and leaving them to be collected.
+// The router keeps one set and clears it for each search; this counts the big number arrays a layout makes, with the router's
+// set already made by a first layout
+test('the requirement stress view all, laid out again after an edit, makes no route search\'s arrays afresh: its searches share one set', () => {
+  const M = FIX['requirement-stress'], edit = apply(M, [{ op: 'set', id: 'r12', path: 'props.text', value: 'The system shall '.repeat(9) }]);
+  quiet(() => mapContext(M).buildView('all').markup);
+  const Was = globalThis.Float64Array, made = [];
+  globalThis.Float64Array = class extends Was { constructor(...a) { super(...a); if (this.length >= 4096) made.push(this.length); } };
+  let markup;
+  try { [markup] = quiet(() => mapContext(edit).buildView('all').markup); } finally { globalThis.Float64Array = Was; }
+  assert.match(markup, /<svg/);
+  assert.ok(made.length <= 4, `${made.length} arrays of 4096 numbers or more: ${made.slice(0, 8).join(', ')}...`);
+});
+
 test('DoD 1: the registry holds the four types, and the JSON Schema and the types name their vocabulary', () => {
   const schema = readFileSync(new URL('../lib/umlimator.schema.json', import.meta.url), 'utf8'), dts = readFileSync(new URL('../lib/umlimator.d.ts', import.meta.url), 'utf8');
   const S = JSON.parse(schema).$defs, np = S.node.properties.props.anyOf[0].properties, ep = S.edge.properties.props.anyOf[0].properties;
