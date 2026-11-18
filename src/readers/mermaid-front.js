@@ -70,4 +70,23 @@ const mermaidCut = (s, n) => (s.length > n && /[\uD800-\uDBFF]/.test(s[n - 1]) ?
 // a report's quote of the source: up to 60, else its first 57 and ...
 const mermaidClip = s => (s.length > 60 ? mermaidCut(s, 57) + '...' : s);
 
-export { mermaidTitle, mermaidFrontTitle, mermaidCut, mermaidClip };
+// a reader's say(line, status, message) into report, which lists MERMAID_REPORT_MAX items, then counts the rest in one
+// last item, kept current as more come (audit 30): a report stays proportionate to the input, as DBML's and BPMN's do (R2)
+// mermaidSort(report) sorts the items by line, stable, the counting item kept last
+const MERMAID_REPORT_MAX = 1000, MERMAID_TAILS = new WeakSet();
+function mermaidSort(report) {
+  report.sort((a, b) => a.line - b.line); // stable: one line's items keep their order
+  const k = report.findIndex(x => MERMAID_TAILS.has(x));
+  if (k >= 0) report.push(report.splice(k, 1)[0]);
+  return report;
+}
+function mermaidSay(report) {
+  let tail = null, at = -1, more = 0;
+  return (line, status, message) => {
+    if (report.length < MERMAID_REPORT_MAX) { report.push({ line, status, message }); return; }
+    if (report[at] !== tail || !tail) { tail = { line: '', status: 'skipped', message: '' }; MERMAID_TAILS.add(tail); at = report.push(tail) - 1; more = 0; }
+    tail.message = `${++more} more items like these: not listed`;
+  };
+}
+
+export { mermaidTitle, mermaidFrontTitle, mermaidCut, mermaidClip, mermaidSay, mermaidSort, MERMAID_REPORT_MAX };

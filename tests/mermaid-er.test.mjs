@@ -230,7 +230,10 @@ test('text over the size limit is refused with a report; hostile input reads in 
     assert.ok(writeMs < 1000, `${what}: write ${writeMs} ms`);
     assert.deepEqual(core(r.model), [], what);
   }
-  assert.deepEqual(read(hostile[0][1]).report.at(-1), { line: 90002, status: 'approximated', message: '90000 subgraphs are never closed with end: read to the end' });
+  // the report lists 1,000 items, then counts the rest in one (audit 30)
+  const deepSaid = read(hostile[0][1]).report;
+  assert.equal(deepSaid.length, 1001);
+  assert.deepEqual(deepSaid.at(-1), { line: '', status: 'skipped', message: '89001 more items like these: not listed' });
   assert.equal(read(many).model.edges.length, 50000);
   assert.equal(read(hostile[2][1]).model.nodes[0].members.length, 1); // the one name once, the others reported
   const proto = read(hostile.at(-1)[1]).model;

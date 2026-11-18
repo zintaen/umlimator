@@ -1,5 +1,5 @@
 import { unreadable } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort } from './mermaid-front.js';
 /* ---------- Mermaid sequenceDiagram: a reader and a writer (notes/stage-3.md §8, S10; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's sequence diagram page (docs/syntax/sequenceDiagram.md, read 12 Nov 2026), as the class
    reader is against its class page. Internal: the CLI (`umlimator.py import`) imports this file through Node; a host
@@ -162,7 +162,7 @@ function msMatch(occ, fragments) {
 }
 
 function readMermaidSequence(text) {
-  const report = [], say = (line, status, message) => report.push({ line, status, message });
+  const report = [], say = mermaidSay(report);
   const empty = () => ({ model: { schemaVersion: 2, root: MS_VIEW, nodes: [], edges: [], views: [{ id: MS_VIEW, diagram: 'uml.sequence', nodeIds: [], edges: [] }] }, report });
   if (typeof text !== 'string') { say(1, 'skipped', 'the input is not text: nothing read'); return empty(); }
   if (text.length > MS_LIMIT) { say(1, 'skipped', `the input is ${text.length} characters, over the limit of ${MS_LIMIT}: nothing read`); return empty(); }
@@ -357,7 +357,7 @@ function readMermaidSequence(text) {
   });
 
   const view = { id: viewId || MS_VIEW, diagram: 'uml.sequence', ...(title ? { title } : {}), nodeIds: nodes.map(n => n.id), edges, ...(frags.length ? { fragments: frags } : {}) };
-  report.sort((a, b) => a.line - b.line); // stable: one line's items keep their order
+  mermaidSort(report); // by line, stable: one line's items keep their order
   return { model: { schemaVersion: 2, ...(title ? { title } : {}), root: view.id, nodes, edges: [], views: [view] }, report };
 }
 

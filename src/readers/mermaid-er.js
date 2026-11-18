@@ -1,5 +1,5 @@
 import { unreadable } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort } from './mermaid-front.js';
 /* ---------- Mermaid erDiagram: a reader and a writer (notes/milestone-2.md §8.1, M2.8; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's entity relationship page (docs/syntax/entityRelationshipDiagram.md, read 14 Nov 2026)
    and its lexer (packages/mermaid/src/diagrams/er/parser/erDiagram.jison), as the other readers are against theirs.
@@ -138,7 +138,7 @@ function meColumn(c) {
 }
 
 function readMermaidEr(text) {
-  const report = [], say = (line, status, message) => report.push({ line, status, message });
+  const report = [], say = mermaidSay(report);
   const empty = () => ({ model: { schemaVersion: 2, root: ME_VIEW, nodes: [], edges: [], views: [{ id: ME_VIEW, diagram: 'er', nodeIds: [] }] }, report });
   if (typeof text !== 'string') { say(1, 'skipped', 'the input is not text: nothing read'); return empty(); }
   if (text.length > ME_LIMIT) { say(1, 'skipped', `the input is ${text.length} characters, over the limit of ${ME_LIMIT}: nothing read`); return empty(); }
@@ -330,7 +330,7 @@ function readMermaidEr(text) {
   let vid = viewId || ME_VIEW;
   if (meId(vid) !== vid) { say(viewNo, 'approximated', `%% id: ${vid}: an id holds no "->", so the view is ${meId(vid)}`); vid = meId(vid); }
   const view = { id: vid, diagram: 'er', ...(title ? { title } : {}), ...(direction === 'down' ? { direction } : {}), nodeIds: nodes.map(n => n.id) };
-  report.sort((a, b) => a.line - b.line); // stable: one line's items keep their order
+  mermaidSort(report); // by line, stable: one line's items keep their order
   return { model: { schemaVersion: 2, ...(title ? { title } : {}), root: view.id, nodes, edges, views: [view] }, report };
 }
 

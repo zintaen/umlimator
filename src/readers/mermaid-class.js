@@ -1,5 +1,5 @@
 import { unreadable } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort } from './mermaid-front.js';
 /* ---------- Mermaid classDiagram: a reader and a writer (plan.md 1.10; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's class diagram page (docs/syntax/classDiagram.md, read 11 Nov 2026). Internal: the CLI
    (`umlimator.py import`) imports this file through Node; a host gets it once the registry is public.
@@ -221,7 +221,7 @@ function mcEnd(text, say) {
 }
 
 function readMermaidClass(text) {
-  const report = [], say = (line, status, message) => report.push({ line, status, message });
+  const report = [], say = mermaidSay(report);
   const empty = () => ({ model: { schemaVersion: 2, root: MC_VIEW, nodes: [], edges: [], views: [{ id: MC_VIEW, diagram: 'uml.class', nodeIds: [] }] }, report });
   if (typeof text !== 'string') { say(1, 'skipped', 'the input is not text: nothing read'); return empty(); }
   if (text.length > MC_LIMIT) { say(1, 'skipped', `the input is ${text.length} characters, over the limit of ${MC_LIMIT}: nothing read`); return empty(); }
@@ -509,7 +509,7 @@ function readMermaidClass(text) {
   });
 
   const nodes = order.map(x => x.node), view = { id: viewId || MC_VIEW, diagram: 'uml.class', ...(title ? { title } : {}), ...(direction === 'down' ? { direction } : {}), nodeIds: nodes.map(n => n.id) };
-  report.sort((a, b) => a.line - b.line); // stable: one line's items keep their order
+  mermaidSort(report); // by line, stable: one line's items keep their order
   return { model: { schemaVersion: 2, ...(title ? { title } : {}), root: view.id, nodes, edges: out, views: [view] }, report };
 }
 
@@ -599,7 +599,10 @@ function writeMermaidClass(model, viewId) {
       for (const t of [p.valueType, p.returnType, ...arr(p.parameters).filter(isObj).map(a => a.valueType)]) if (has(t) && String(t).trim() !== String(t)) lose(x.id, `type ${t}, read back trimmed`);
       let text, vis = '';
       if (has(p.visibility)) { if (p.visibility in VIS) vis = VIS[p.visibility]; else lose(x.id, `visibility ${p.visibility}`); }
-      if (x.type === 'uml.EnumerationLiteral') text = x.label;
+      // a label that is a number or true is written as its text, as the other writers write one (audit 30); another value
+      // (an object) is not text a member line holds, so the member is not written and is said
+      const lab = typeof x.label === 'number' || typeof x.label === 'boolean' ? String(x.label) : x.label;
+      if (x.type === 'uml.EnumerationLiteral') text = typeof lab === 'string' ? lab : null;
       else if (x.type === 'uml.Operation') {
         const params = arr(p.parameters).filter(isObj).map(a => (has(a.direction) ? a.direction + ' ' : '') + (a.name ?? '') + (has(a.valueType) ? ' : ' + gen(a.valueType) : ''));
         text = `${vis}${x.label}(${params.join(', ')})${has(p.returnType) ? ' ' + gen(p.returnType) : ''}${p.isAbstract ? '*' : ''}${p.isStatic ? '$' : ''}`;
@@ -617,7 +620,7 @@ function writeMermaidClass(model, viewId) {
       const bp = back ? back.props ?? {} : {}, same = (a, b) => (has(a) ? String(a).trim() : '') === (has(b) ? String(b).trim() : '');
       const drift = back && x.type !== 'uml.EnumerationLiteral' && (!!bp.isStatic !== !!p.isStatic || (x.type === 'uml.Property' ? back.abstractField || !same(bp.valueType, p.valueType)
         : !!bp.isAbstract !== !!p.isAbstract || !same(bp.returnType, p.returnType) || JSON.stringify(arr(bp.parameters).map(a => [a.name ?? '', a.valueType ?? ''])) !== JSON.stringify(arr(p.parameters).filter(isObj).map(a => [String(a.name ?? '').trim(), has(a.valueType) ? String(a.valueType).trim() : '']))));
-      if (!back || drift || back.type !== x.type || back.label !== x.label || badId(x.id) || nl(text) || /^(\}$|<<|%%)/.test(text.trim()) || (text.trim().endsWith('}') && !text.includes('{'))) { skip(x); continue; }
+      if (!back || drift || back.type !== x.type || back.label !== lab || badId(x.id) || nl(text) || /^(\}$|<<|%%)/.test(text.trim()) || (text.trim().endsWith('}') && !text.includes('{'))) { skip(x); continue; }
       // its stereotypes as <<x>> in front, which the reader takes off as them (audit 17); one it would not read back as itself is said
       const st = arr(p.stereotypes).filter(s => { const ok = typeof s === 'string' && s !== '' && s.trim() === s && !nl(s) && !s.includes('>>') && !s.endsWith('>') && !s.startsWith('<') && !text.trim().endsWith('>>');
         if (!ok) lose(x.id, `stereotype ${s}`); return ok; });

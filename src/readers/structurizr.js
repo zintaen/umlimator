@@ -8,7 +8,8 @@
    report of what was not read as written, each item { path, status, message }: `path` where in the workspace it is
    (`model.softwareSystems[0].containers[2]`), status `skipped` or `approximated` (R1). `workspace` is the parsed JSON, or
    its text (refused over SZ_LIMIT characters). It never throws, and reads at most SZ_MAX elements and SZ_MAX
-   relationships, deployment nodes SZ_DEEP deep (deeper read flat from there), whatever the input (R2). A parsed object
+   relationships, deployment nodes SZ_DEEP deep (deeper read flat from there), whatever the input (R2); its report lists
+   SZ_MAX_SAID items, then counts the rest in one. A parsed object
    may hold one list or string in many places, so every list entry and every character of text read is also counted, each
    time it is reached, against SZ_WORK and SZ_CHARS: the counts alone would not bound the work. Every table keyed
    by a name or an id is a Map, so `__proto__` and `constructor` are ordinary names, and the input's fields are read as
@@ -41,6 +42,7 @@
      of relationships is not read: the type draws a view's lines from the model. */
 const SZ_LIMIT = 1 << 20; // characters of JSON text; a parsed object is held to counts instead
 const SZ_MAX = 10000; // the most elements, and the most relationships, read (R2)
+const SZ_MAX_SAID = 1000; // the most report items listed; the rest are counted in one
 const SZ_DEEP = 64; // deployment nodes nested deeper are read flat from there (R2)
 const SZ_WORK = 500000; // the most list entries walked in all, a shared list counted each time it is reached (R2)
 const SZ_CHARS = 16 * SZ_LIMIT; // the most characters of text read in all, counted the same way (R2)
@@ -77,7 +79,13 @@ function readStructurizr(workspace) {
 }
 
 function szRead(workspace, report, recs, rels, views) {
-  const say = (path, status, message) => report.push({ path, status, message });
+  // the report lists SZ_MAX_SAID items, then counts the rest in one last item kept current (audit 30), as DBML's does (R2)
+  let tail = null, at = -1, more = 0;
+  const say = (path, status, message) => {
+    if (report.length < SZ_MAX_SAID) { report.push({ path, status, message }); return; }
+    if (report[at] !== tail || !tail) { tail = { path: '', status: 'skipped', message: '' }; at = report.push(tail) - 1; more = 0; }
+    tail.message = `${++more} more items like these: not listed`;
+  };
   const pending = [], bySid = new Map(), relBySid = new Map(), implied = new Map(), groups = new Set();
   let title;
   const done = () => {

@@ -36,7 +36,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12})
 
 
 def ok(name, cond, info=""):
@@ -1749,5 +1749,79 @@ if part("audit 29"):
            [r.returncode for r in runs] == [0] * len(names) and seen == [[f"{n} 1", f"{n} 2"] for n in names]
            and all([v[11:] for v in json.loads(r.stdout)["versions"]] == ["version 1", "version 2"] for r in runs),
            [(r.returncode, r.stdout[-200:], r.stderr[-300:]) for r in runs])
+if part("audit 30"):
+    with tempfile.TemporaryDirectory() as tmp:
+        t = Path(tmp)
+        # audit 30: an overview's inline interaction draws another view's lifelines and messages: a message renamed there, or a
+        # fragment added, draws the overview again (its key held only the other views' ids and titles)
+        ov = json.loads((ROOT / "examples" / "buy-book-overview.json").read_text(encoding="utf-8"))
+        keys = []
+        for step in range(3):
+            q = next(v for v in ov["views"] if v["id"] == "queue-order")
+            if step == 1:
+                q["edges"][0]["label"] = "putOnQueue(order)"
+            if step == 2:
+                q["fragments"] = [{"id": "f1", "operator": "opt", "guard": "x", "messages": ["queue-3"]}]
+            (t / "ov.json").write_text(json.dumps(ov)); cli("render", str(t / "ov.json"), "--out", str(t / "ov.html"), "--no-check")
+            keys.append(u.still_keys(t / "ov.html", [2.0, "light", False]).get("buy-book"))
+        ok("stills · an interaction overview is drawn again when a message or fragment of the sequence view its inline interaction draws changes (audit 30)",
+           None not in keys and len(set(keys)) == 3, keys)
+        run = lambda *x, cwd=None: subprocess.run([sys.executable, str(ROOT / "umlimator.py"), *x], capture_output=True, text=True, cwd=cwd)
+        good = {"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "edges": [{"from": "a", "to": "b"}], "views": [{"id": "v", "nodeIds": ["a", "b"]}]}
+        (t / "good.json").write_text(json.dumps(good))
+        # audit 30: a number JavaScript's JSON.parse cannot hold (1e400, valid JSON; NaN and Infinity, which Python's json
+        # reads) went into the page's data block as Infinity, so the page drew nothing, and diff ended in a Node stack trace
+        bad = {"big": '"x": 1e400', "nan": '"x": NaN', "inf": '"x": -Infinity', "int": '"x": 1' + "0" * 400}
+        for k, v in bad.items():
+            (t / f"{k}.json").write_text(json.dumps(good)[:-1] + ", " + v + "}")
+        runs = [run(c, str(t / f"{k}.json"), *extra) for k in bad for c, extra in (("render", ["--out", str(t / f"{k}.html"), "--no-check"]),
+                                                                                     ("diff", [str(t / "good.json"), "--out", str(t / f"{k}d.html")]))]
+        ok("render, diff · a number out of range (1e400, NaN, -Infinity, 10^400) is refused in one line naming the file, and no page is written (audit 30)",
+           all(r.returncode == 1 and "is not valid JSON (" in r.stderr and "Traceback" not in r.stderr and "SyntaxError" not in r.stderr for r in runs)
+           and not list(t.glob("big*.html")) and not list(t.glob("nan*.html")) and not list(t.glob("inf*.html")), [r.stderr[-200:] for r in runs])
+        # audit 30: a lone surrogate escape ("\ud800", valid JSON) ended render, diff and trace in a UnicodeEncodeError traceback
+        (t / "sur.json").write_text(json.dumps(good).replace('"A"', '"Al\\ud800pha \\udfff \\ud83d\\ude00"'))
+        svc = lambda name, span: {"resource": {"attributes": [{"key": "service.name", "value": {"stringValue": name}}]}, "scopeSpans": [{"spans": [span]}]}
+        tr = {"resourceSpans": [svc("a", {"traceId": "t", "spanId": "1", "name": "x\ud800", "startTimeUnixNano": "1", "endTimeUnixNano": "2"}),
+                                svc("b", {"traceId": "t", "spanId": "2", "parentSpanId": "1", "name": "y\ud800", "startTimeUnixNano": "1", "endTimeUnixNano": "2"})]}
+        (t / "tr.json").write_text(json.dumps(tr))  # json.dumps writes the lone surrogate as the escape \ud800
+        runs = [run("render", str(t / "sur.json"), "--out", str(t / "sur.html"), "--no-check"), run("diff", str(t / "good.json"), str(t / "sur.json"), "--out", str(t / "surd.html")),
+                run("trace", str(t / "good.json"), str(t / "tr.json"), "--view", "tv", "--out", str(t / "trout.json"))]
+        page = (t / "sur.html").read_text(encoding="utf-8") if (t / "sur.html").is_file() else ""
+        ok("render, diff, trace · a lone surrogate is read as U+FFFD and said in one line, never a traceback; a surrogate pair stays the letter it is (audit 30)",
+           [r.returncode for r in runs] == [0, 0, 0] and all("a lone surrogate code point" in r.stderr and "Traceback" not in r.stderr for r in runs)
+           and "Al\ufffdpha \ufffd \U0001F600" in json.loads(u.DATA.search(page).group(1))["nodes"][0]["label"] if page else False, [(r.returncode, r.stderr[-300:]) for r in runs])
+        # audit 30: timelapse embedded a past version render refuses, its words reading "adds the view undefined"; and a past
+        # version holding 1e400 or a lone surrogate
+        g = t / "tl"; g.mkdir()
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
+        sh("init", "-q")
+        for k, body in enumerate([json.dumps(good), '{"title":"A","nodes":[{"id":"a","label":"A"},"oops",null],"edges":"none","views":[{"id":"v","nodeIds":["a",3]},"v2"]}',
+                                  (t / "sur.json").read_text(), (t / "big.json").read_text(), '{"title": "t", "nodes": []}', json.dumps(good)]):
+            (g / "m.json").write_text(body); sh("add", "."); sh("commit", "-qm", f"v{k}")
+        r = run("timelapse", "m.json", "--out", str(t / "tl.html"), cwd=g)
+        page = (t / "tl.html").read_text(encoding="utf-8") if (t / "tl.html").is_file() else ""
+        vers = json.loads(m[1]) if (m := re.search(r'<script id="versions" type="application/json">(.*?)</script>', page, re.S)) else {}
+        ok("timelapse · a past version render refuses, or that holds a number out of range, is left out and said; a lone surrogate is read as U+FFFD (audit 30)",
+           r.returncode == 0 and [v["label"][11:] for v in vers.get("versions", [])] == ["v0", "v2", "v5"]
+           and "is not a model render reads (edges is not a list;" in r.stderr and "is not a JSON model there; left out" in r.stderr and "no views: not a map model" in r.stderr
+           and "a lone surrogate code point" in r.stderr and "Traceback" not in r.stderr and "\ufffd" in vers["versions"][1]["model"]["nodes"][0]["label"], (r.stdout[-300:], r.stderr[-600:]))
+        # audit 30: diff --base --models 'docs/*.json' read a model moved into docs/ from outside it as every card added: git
+        # pairs a rename only inside the pathspec
+        g = t / "mv"; (g / "old").mkdir(parents=True); (g / "docs").mkdir()
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
+        nocr = lambda *x: subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                                          "sys.argv = ['umlimator.py', 'diff', *sys.argv[2:]]; u.main()", str(ROOT), *x], cwd=g, capture_output=True, text=True)
+        (g / "old" / "x.json").write_text(json.dumps(good, indent=1)); (g / "old" / "y.json").write_text(json.dumps({**good, "title": "y"}, indent=1)); sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "one")
+        sh("mv", "old/x.json", "docs/x.json"); sh("commit", "-qm", "moved")
+        (g / "old" / "y.json").rename(g / "docs" / "y.json")  # a plain mv, not added: found through the index's copy
+        r = nocr("--base", "HEAD~1", "--models", "docs/*.json", "--out", "out")
+        got = json.loads(r.stdout or "null")
+        (g / "docs" / "x.json").write_text(json.dumps({**good, "nodes": [*good["nodes"], {"id": "c", "label": "NEW-ONE"}]}, indent=1))
+        r2 = nocr("--base", "HEAD~1", "--models", "docs/*.json", "--out", "out2")
+        got2 = json.loads(r2.stdout or "null")
+        ok("diff --base --models · a model moved into the folder from outside it is a move: no change when only moved, else its edits, never every card added (audit 30)",
+           r.returncode == 0 and got == [] and r2.returncode == 0 and [(x["file"], x.get("movedFrom")) for x in got2] == [("docs/x.json", "old/x.json")]
+           and len(got2[0]["summary"]) == 1 and "NEW-ONE" in got2[0]["summary"][0], (got, got2, r.stderr[-300:], r2.stderr[-300:]))
 part.done()
 sys.exit(1 if failed else 0)

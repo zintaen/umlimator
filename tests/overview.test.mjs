@@ -346,3 +346,13 @@ test('audit 19: the flow rules and F2 count a view\'s own flows (view.edges obje
   }
   assert.deepEqual(ovProblems(EX, EX.views[0]).filter(p => p.level === 'error'), []);
 });
+
+test('audit 30: an overview\'s view key changes with the messages, lifelines and fragments of the sequence view its inline interaction draws', () => {
+  const k = m => mapContext(m).viewKey('buy-book'), base = k(EX);
+  const renamed = structuredClone(EX), q = renamed.views.find(v => v.id === 'queue-order');
+  q.edges[0].label = 'putOnQueue(order)';
+  const added = structuredClone(EX); added.views.find(v => v.id === 'queue-order').edges.push({ ...q.edges[2], id: 'queue-4', label: 'a much longer new message' });
+  const fragged = structuredClone(EX); fragged.views.find(v => v.id === 'queue-order').fragments = [{ id: 'f1', operator: 'opt', guard: 'x', messages: ['queue-3'] }];
+  for (const m of [renamed, added, fragged]) assert.notEqual(k(m), base);
+  assert.equal(k(structuredClone(EX)), base); // and the same model keeps its key
+});

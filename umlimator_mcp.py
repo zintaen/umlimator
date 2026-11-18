@@ -488,7 +488,7 @@ def page():
         if v != tried:
             tried = v
             try:
-                m = json.loads(data)
+                m = cli.load_json(data, MODEL.name)  # as the CLI reads a model: a number out of range refused (audit 30)
                 with tempfile.TemporaryDirectory() as tmp:
                     out = Path(tmp) / "page.html"
                     cli.render_model(m, MODEL, out)  # drawn as the model's own file is: its copy sits next to it

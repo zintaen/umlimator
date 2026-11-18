@@ -1,5 +1,5 @@
 import { unreadable } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort } from './mermaid-front.js';
 /* ---------- Mermaid flowchart: a reader and a writer (notes/milestone-2.md §8, §8.2, M2.9; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's flowchart page (docs/syntax/flowchart.md) and its shapes' names and aliases
    (rendering-elements/shapes.ts), both read on Mermaid's repository 14 Nov 2026, and ported from the map
@@ -211,7 +211,7 @@ function mfSplit(line) {
 }
 
 function readMermaidFlowchart(text) {
-  const report = [], say = (line, status, message) => report.push({ line, status, message });
+  const report = [], say = mermaidSay(report);
   const empty = () => ({ model: { schemaVersion: 2, root: MF_VIEW, nodes: [], edges: [], views: [{ id: MF_VIEW, diagram: 'flowchart', direction: 'down', nodeIds: [] }] }, report });
   if (typeof text !== 'string') { say(1, 'skipped', 'the input is not text: nothing read'); return empty(); }
   if (text.length > MF_LIMIT) { say(1, 'skipped', `the input is ${text.length} characters, over the limit of ${MF_LIMIT}: nothing read`); return empty(); }
@@ -385,7 +385,7 @@ function readMermaidFlowchart(text) {
     edges.push(e);
   }
   const view = { id: viewId || MF_VIEW, diagram: 'flowchart', ...(title ? { title } : {}), direction, nodeIds: out.map(n => n.id) };
-  report.sort((a, b) => a.line - b.line); // stable: one line's items keep their order
+  mermaidSort(report); // by line, stable: one line's items keep their order
   return { model: { schemaVersion: 2, ...(title ? { title } : {}), root: view.id, nodes: out, edges, views: [view] }, report };
 }
 

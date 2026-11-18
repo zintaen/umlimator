@@ -560,7 +560,7 @@ function mapContext(model, opts = {}) {
   const viewKey = vid => {
     const v = V[vid], ids = (v.nodeIds || []).filter(i => N[i]), ns = ids.map(i => nodeIn(i, vid));
     const icons = [...new Set(ns.map(n => n.icon).filter(Boolean))].map(k => (D.icons || {})[k]), who = [...new Set(ns.map(n => n.author).filter(Boolean))].map(k => (D.authors || {})[k]);
-    return jsonText([v, ns, viewEdges(v), ids.map(i => [kidCount(i, vid), opensOf(i, vid)]), icons, who, boxesOf(vid), v.diagram && v.diagram != 'map' && [D.nodes, D.edges, D.icons, views.map(w => [w.id, w.title, w.subject]), (V[v.parent] || {}).nodeIds]]); // a type's boxes lay it out; a typed view also draws what it does not list (a package's name, the title of a view it opens, a DFD parent's cards): the whole model
+    return jsonText([v, ns, viewEdges(v), ids.map(i => [kidCount(i, vid), opensOf(i, vid)]), icons, who, boxesOf(vid), v.diagram && v.diagram != 'map' && [D.nodes, D.edges, D.icons, views, (V[v.parent] || {}).nodeIds]]); // a type's boxes lay it out; a typed view also draws what it does not list (a package's name, the title of a view it opens, a DFD parent's cards, the lifelines, messages and fragments of the sequence view an overview's inline interaction draws, audit 30): the whole model
   };
   /* ---------- unfolding in place (#71): a stacked card opens into a box on the view it is on ----------
      The card becomes a box with its id and name, holding its inner view's own cards: those not on this view already (the

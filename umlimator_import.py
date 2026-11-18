@@ -1026,9 +1026,27 @@ def many(x):
     return [x] if isinstance(x, (str, int, float)) and not isinstance(x, bool) else list(x) if isinstance(x, (list, dict)) else []
 
 
+def word(x):
+    """A JSON string as itself, a number as JSON writes it; None for anything else (true, null, a list, an object), which
+    the caller says is not imported, never writing Python's spelling of it into the model (audit 30)."""
+    return x if isinstance(x, str) else json.dumps(x) if isinstance(x, (int, float)) and not isinstance(x, bool) else None
+
+
+def spell(x):
+    """A JSON value quoted in a message as JSON spells it (true, null, {"a": 1}), cut to 60 characters."""
+    try:
+        t = x if isinstance(x, str) else json.dumps(x, ensure_ascii=False)
+    except (TypeError, ValueError):
+        t = type(x).__name__
+    return t if len(t) <= 60 else t[:57] + "..."
+
+
 def compose(d, name):
     d = d if isinstance(d, dict) else {}  # not compose's object: nothing to import
-    m, svcs, nets = Model(str(d.get("name") or name)), {}, {}
+    title = word(d.get("name"))
+    m, svcs, nets = Model(title or name), {}, {}
+    if d.get("name") is not None and title is None:
+        m.say("name", f"{spell(d.get('name'))} is not text: not imported")
     if not isinstance(d.get("services") or {}, dict):
         m.say("services", "not an object of services: not imported")
     for s, c in (d.get("services") if isinstance(d.get("services"), dict) else {}).items():
@@ -1039,17 +1057,31 @@ def compose(d, name):
         else:
             m.say(f"services.{s}", "not an object: not imported")
     for s, c in svcs.items():
+        # a value of the wrong JSON type (an image that is a list, a port that is true) is said, never written (audit 30)
+        def words(xs, field, what):
+            out = []
+            for x in xs:
+                if word(x) is None:
+                    m.say(f"services.{s}.{field}", f"{spell(x)} is not {what}: not imported")
+                else:
+                    out.append(word(x))
+            return out
         build = c.get("build")
         ctx = build.get("context") if isinstance(build, dict) else build
-        nets[s] = [str(n) for n in many(c.get("networks"))] or ([] if c.get("network_mode") else ["default"])
-        ports = [str(p.get("published") or p.get("target")) if isinstance(p, dict) else str(p) for p in many(c.get("ports")) if p is not None]
+        ctx = (words([ctx], "build", "a path") or [None])[0] if ctx else None
+        nets[s] = words(many(c.get("networks")), "networks", "a network's name") or ([] if c.get("network_mode") else ["default"])
+        ports = words([(p.get("published") or p.get("target")) if isinstance(p, dict) else p for p in many(c.get("ports"))], "ports", "a port")
         what = [f"Publishes {', '.join(ports)}." if ports else "", f"On networks {', '.join(nets[s])}." if len(nets[s]) > 1 else ""]
+        image = (words([c.get("image")], "image", "an image's name") or [None])[0] if c.get("image") is not None else None
         m.ids.add(s)
-        m.card(s, s, guess([c.get("image"), s]), c.get("image") or (f"build {Path(str(ctx)).name or '.'}" if ctx else None), " ".join(what))
+        m.card(s, s, guess([image, s]), image or (f"build {Path(ctx).name or '.'}" if ctx else None), " ".join(what))
     for s, c in svcs.items():
         deps = {}  # a link is a dependency too: one line per pair, the first word for it
-        for t, label in [(str(t), "depends on") for t in many(c.get("depends_on"))] + [(str(t).split(":")[0], "links") for t in many(c.get("links"))]:
-            deps.setdefault(t, label)
+        for t, label in [(t, "depends on") for t in many(c.get("depends_on"))] + [(t, "links") for t in many(c.get("links"))]:
+            if word(t) is None:
+                m.say(f"services.{s}", f"{label} {spell(t)}, which is not a service's name: not imported")
+                continue
+            deps.setdefault(word(t).split(":")[0] if label == "links" else word(t), label)
         for t, label in deps.items():
             if t in svcs:
                 m.line(s, t, where=f"services.{s}", what=label)  # every line is one: no label on each
@@ -1089,9 +1121,9 @@ def objs_in(x):
 
 def owner(md):
     """An object's owner, as (kind, name): its controller among its ownerReferences, else the first; None when none names both."""
-    refs = [r for r in objs_in(md.get("ownerReferences")) if isinstance(r.get("kind"), str) and r.get("name")]
+    refs = [r for r in objs_in(md.get("ownerReferences")) if isinstance(r.get("kind"), str) and word(r.get("name"))]
     r = next((r for r in refs if r.get("controller") is True), refs[0] if refs else None)
-    return (r["kind"], str(r["name"])) if r else None
+    return (r["kind"], word(r["name"])) if r and word(r["name"]) is not None else None
 
 
 def kubernetes(d, name):
@@ -1108,8 +1140,8 @@ def kubernetes(d, name):
     here = {}
     for o in items:
         md = obj(o.get("metadata")) if isinstance(o, dict) else {}
-        if isinstance(o, dict) and isinstance(o.get("kind"), str) and md.get("name"):
-            here[(str(md.get("namespace") or "default"), o["kind"], str(md["name"]))] = owner(md)
+        if isinstance(o, dict) and isinstance(o.get("kind"), str) and word(md.get("name")):
+            here[(word(md.get("namespace")) or "default", o["kind"], word(md["name"]))] = owner(md)
 
     led = {}  # (namespace, kind, name) -> where its chain ends: each chain walked once (linear)
 
@@ -1139,35 +1171,44 @@ def kubernetes(d, name):
             m.say(at(i), "not an object: not imported")
             continue
         kind, md = o.get("kind"), obj(o.get("metadata"))
+        # a kind or name of the wrong JSON type is quoted as JSON spells it, never as Python does (audit 30)
+        said = f"{kind if isinstance(kind, str) else spell(kind)} {word(md.get('name')) or spell(md.get('name', ''))}"
         kind = kind if isinstance(kind, str) else None
         if kind in ("Pod", "ReplicaSet", "ControllerRevision") and md.get("ownerReferences"):
-            ns, ref = str(md.get("namespace") or "default"), owner(md)
+            ns, ref = word(md.get("namespace")) or "default", owner(md)
             got, end, miss = drawn_as(ns, ref)
             by = f"{ref[0]} {ref[1]}" if ref else "an owner reference that names no kind and name"
             if end and not got:  # every owner is in the file, and the last is a kind not imported (a Job's CronJob, audit 22)
-                m.say(at(i), f"{kind} {md.get('name', '')}: owned by {by}" + (f" ({end[0]} {end[1]})" if end != ref else "") + ", which is not imported")
+                m.say(at(i), f"{said}: owned by {by}" + (f" ({end[0]} {end[1]})" if end != ref else "") + ", which is not imported")
             elif not got and miss and miss[0] not in ("Deployment", "StatefulSet", "DaemonSet", "ReplicaSet", "ControllerRevision"):
                 # the owner that is not in the file is a kind not imported either (a Job's CronJob): exporting it draws nothing (audit 23)
-                m.say(at(i), f"{kind} {md.get('name', '')}: owned by {by} (" + (f"{miss[0]} {miss[1]}, " if miss != ref else "") + "not in the file), which is not imported")
+                m.say(at(i), f"{said}: owned by {by} (" + (f"{miss[0]} {miss[1]}, " if miss != ref else "") + "not in the file), which is not imported")
             elif not got:  # its owner, or the owner's own, is not in the file
-                m.say(at(i), f"{kind} {md.get('name', '')}: owned by {by}, " + ("whose workload is not in the file" if ref and (ns, *ref) in here else "which is not in the file")
+                m.say(at(i), f"{said}: owned by {by}, " + ("whose workload is not in the file" if ref and (ns, *ref) in here else "which is not in the file")
                       + ": not imported (export its workload too, a Deployment, StatefulSet or DaemonSet)")
             continue  # drawn as the workload that owns it
-        if kind not in SHORT or not md.get("name"):
-            m.say(at(i), f"{kind} {md.get('name', '')}: not imported")
+        if kind not in SHORT or not word(md.get("name")):
+            m.say(at(i), f"{said}: not imported" if kind not in SHORT or md.get("name") is None else f"{said}: its name is not text: not imported")
             continue
-        nm, ns, spec = str(md["name"]), str(md.get("namespace") or "default"), obj(o.get("spec"))
+        nm, ns, spec = word(md["name"]), word(md.get("namespace")) or "default", obj(o.get("spec"))
+        if md.get("namespace") is not None and word(md.get("namespace")) is None:
+            m.say(at(i), f"{kind} {nm}: namespace {spell(md.get('namespace'))} is not text: read as default")
         cid = m.uniq(f"{SHORT[kind]}-{nm}", f"{SHORT[kind]}-{nm}-{ns}")
         objs.append((i, kind, ns, nm, spec, cid))
         if kind == "Service":
-            ext, ports = spec.get("type") == "ExternalName", ", ".join(f"{p.get('port')}→{p.get('targetPort') or p.get('port')}" for p in objs_in(spec.get("ports")))
-            m.card(cid, nm, "external" if ext else "cloud", f"Service · {spec.get('externalName') if ext else spec.get('type') or 'ClusterIP'}" + (f" · {ports}" if ports and not ext else ""))
+            ext = spec.get("type") == "ExternalName"
+            ports = ", ".join(f"{word(p.get('port'))}→{word(p.get('targetPort')) or word(p.get('port'))}" for p in objs_in(spec.get("ports")) if word(p.get("port")))
+            m.card(cid, nm, "external" if ext else "cloud", f"Service · {word(spec.get('externalName')) if ext else word(spec.get('type')) or 'ClusterIP'}" + (f" · {ports}" if ports and not ext else ""))
         elif kind == "Ingress":
-            hosts = [str(r["host"]) for r in objs_in(spec.get("rules")) if r.get("host")]
+            hosts = [word(r["host"]) for r in objs_in(spec.get("rules")) if word(r.get("host"))]
             m.card(cid, nm, "cloud", f"Ingress · {hosts[0]}" if hosts else "Ingress", f"Hosts: {', '.join(hosts)}." if len(hosts) > 1 else None)
         else:
             pod = obj(obj(spec.get("template")).get("spec"))
-            images = [str(c.get("image") or "") for c in objs_in(pod.get("containers"))]
+            cs = objs_in(pod.get("containers"))
+            for c in cs:  # an image of the wrong JSON type is said, not written (audit 30)
+                if c.get("image") is not None and word(c.get("image")) is None:
+                    m.say(at(i), f"{kind} {nm}: image {spell(c.get('image'))} is not text: not imported")
+            images = [word(c.get("image")) for c in cs if word(c.get("image"))]
             n = spec.get("replicas")  # a count, 0 too (scaled down: audit 23); one that is no whole number is not said
             what = " ".join(x for x in [f"{n} replica{'s' * (n != 1)}." if isinstance(n, int) and not isinstance(n, bool) else "", f"Images: {', '.join(images)}." if images else ""] if x)
             m.card(cid, nm, guess([*images, nm], "database" if kind == "StatefulSet" else "backend"), f"{kind} · {images[0].rsplit('/', 1)[-1]}" if images else kind, what)
@@ -1184,26 +1225,26 @@ def kubernetes(d, name):
                     m.line(cid, wid, what="selects its pods")
         elif kind == "Ingress":  # each path to its Service, labelled with the path (and the host, when there are several)
             rules = objs_in(spec.get("rules"))
-            hosts = len({str(x.get("host")) for x in rules}) > 1
-            routes = [((str(r.get("host") or "") if hosts else "") + str(p.get("path") or "/"), obj(p.get("backend")))
+            hosts = len({word(x.get("host")) for x in rules}) > 1
+            routes = [(((word(r.get("host")) or "") if hosts else "") + (word(p.get("path")) or "/"), obj(p.get("backend")))
                       for r in rules for p in objs_in(obj(r.get("http")).get("paths"))]
             for label, b in routes + ([("default", obj(spec["defaultBackend"]))] if spec.get("defaultBackend") else []):
                 to = obj(b.get("service")).get("name") or b.get("serviceName")  # networking.k8s.io/v1, or the older v1beta1
                 if isinstance(to, str) and (ns, to) in svc:
                     m.line(cid, svc[(ns, to)], label)
                 else:
-                    m.say(at(i), f"Ingress {nm} routes to Service {to}, which is not here")
+                    m.say(at(i), f"Ingress {nm} routes to Service {to if isinstance(to, str) else spell(to)}, which is not here")
         elif kind not in ("Service", "Ingress"):  # an env value that names a Service: its host, as name, name.namespace or name.namespace.svc...
             # ponytail: a value that is one host or URL; a list of hosts, envFrom and ConfigMaps are not read
             seen = set()
             for c in objs_in(obj(obj(spec.get("template")).get("spec")).get("containers")):
                 for env in objs_in(c.get("env")):
-                    h = HOST.fullmatch(str(env.get("value") or ""))
+                    h = HOST.fullmatch(word(env.get("value")) or "")
                     parts = re.sub(r"\.svc(\.cluster\.local)?$", "", h.group("host")).split(".") if h else []
                     to = svc.get((parts[1] if len(parts) == 2 else ns, parts[0])) if 0 < len(parts) <= 2 else None
                     if to and to not in seen:
                         seen.add(to)
-                        m.line(cid, to, env.get("name"))
+                        m.line(cid, to, word(env.get("name")))
     spaces = sorted({ns for _, _, ns, _, _, _ in objs})
     boxes = [{"id": m.uniq(f"namespace-{ns}"), "label": ns, "nodeIds": [c for _, _, n, _, _, c in objs if n == ns]} for ns in spaces] if len(spaces) > 1 else []
     m.view("cluster", [c for *_, c in objs], boxes)
