@@ -515,9 +515,7 @@ def page_model(model_path, out, source=None):
     vs = [v for v in m.get("views") or [] if isinstance(v, dict)]
     if "title" not in m and not next((v for v in vs if not v.get("parent")), vs[0] if vs else {}).get("title"):  # as visual.py's load_map
         m["title"] = Path(source or model_path).stem  # the model file's name, never the copy's the engine reads (.name.1a2b3c4d.icons, audit 31)
-    own_media(m, Path(model_path).resolve().parent, source or model_path)
-    for k in ENGINE_ONLY:  # upstream's explore and recap keys, which a map never draws: a shape it does not expect ended in a traceback (audit 19)
-        m.pop(k, None)
+    own_media(m, Path(model_path).resolve().parent, source or model_path)  # ENGINE_ONLY keys dropped there too
     # visual.py records the checkout's root relative to the page; for a page outside the checkout that path climbs
     # through the folders above it (a home folder, a user name) into a page that gets shared
     root = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip()
@@ -602,7 +600,13 @@ def own_media(m, folder, said):
     (risks.md S1, S2): intake logos embedded as own_logos does; an author's avatar kept only as a data: image (the engine
     inlines the author's GitHub picture in its place, or the page draws initials); an example's thumbnail or full image
     kept only as a path beside the page or a data: image; and the model's own icons table dropped (page_model builds the
-    table from the pinned manifest and fetched packs). Each dropped address is said in one line (audit 19)."""
+    table from the pinned manifest and fetched packs). Each dropped address is said in one line (audit 19). And the model's
+    ENGINE_ONLY keys (files, hunks, areas, fileNotes, stats), upstream's explore and recap keys, which a map never draws:
+    they can hold source hunks and paths (risks.md S1, audit 32), and a shape the engine does not expect ended in a
+    traceback (audit 19). Every page writer calls this one (render, diff, drift and MCP through page_model, and timelapse
+    on each version, which kept the keys while only page_model dropped them, audit 33)."""
+    for k in ENGINE_ONLY:
+        m.pop(k, None)
     own_logos(m, folder, said)
     if m.pop("icons", None):
         print(f"{said}: icons is built by render from the icon manifest and fetched packs; the model's own table is left out", file=sys.stderr)

@@ -35,7 +35,7 @@ VIEW_WORK = 500000  # a DSL's views: elements and relationships walked in all, e
 FLOWS = 100000  # a flowchart's links at most: a & b --> c & d is a product (the module's MF_FLOWS)
 EXT = {".dbml": "dbml", ".dsl": "structurizr", ".puml": "plantuml", ".plantuml": "plantuml", ".pu": "plantuml", ".iuml": "plantuml",
        ".mmd": "mermaid", ".mermaid": "mermaid", ".bpmn": "bpmn"}  # bpmn: XML the module's adapter reads (umlimator.py import)
-MERMAID = re.compile(r"(flowchart(?:-elk)?|graph|C4Context|C4Container|C4Component|classDiagram|sequenceDiagram|stateDiagram|erDiagram|requirementDiagram|mindmap)\b")
+MERMAID = re.compile(r"(flowchart(?:-elk)?|graph|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment|classDiagram|sequenceDiagram|stateDiagram|erDiagram|requirementDiagram|mindmap)\b")
 TYPED = ("classDiagram", "sequenceDiagram", "stateDiagram", "erDiagram", "requirementDiagram", "mindmap")  # the diagrams the module's readers read, in Node (src/readers/)
 
 # ponytail: a keyword guess over names, technologies, tags and images, the first match winning; a source's own type
@@ -475,7 +475,9 @@ def structurizr(text, name):
         elif where in ("model", "group", "el"):
             parent, grp = (None, None) if where == "model" else (at, None) if where == "el" else at  # a group's frame: (element, group)
             e, r = element(toks), relationship(toks, at if where == "el" else None)
-            if e:
+            if e and e[1] in ("container", "component") and parent is None:  # Structurizr refuses one outside a system: no view would show it (audit 33)
+                m.say(no, f"{e[1]} {e[0] or e[2]} is in no {'software system' if e[1] == 'container' else 'container'}: not imported (nor what it holds)")
+            elif e:
                 alias, typ, nm, desc, tech, tags = e
                 if depth.get(parent, 0) >= DEEP:  # beside its holder, said once
                     flat or m.say(no, f"{nm} is nested over {DEEP} deep: it and what it holds are read flat from there")
@@ -581,7 +583,7 @@ def structurizr(text, name):
     holders = {e["parent"] for e in els.values()}
     # no views to follow: the landscape, then a view per system with containers and per container with components
     default = [{"type": "systemlandscape", "scope": None, "include": [], "exclude": [], "line": None}] + [
-        {"type": "container" if e["type"] == "softwaresystem" else "component", "scope": c, "include": [], "exclude": [], "line": None}
+        {"type": "container" if e["type"] == "softwaresystem" else "component", "scope": c, "cid": c, "include": [], "exclude": [], "line": None}
         for c, e in els.items() if c in holders]
     views(m, els, lines, specs or default, find, implied, groups)
     if specs and not m.views and els:  # every view left out (a mistyped scope, say): the same, rather than a model with none (audit 19)
@@ -651,7 +653,9 @@ def views(m, els, lines, specs, find, implied, groups):
         if work > VIEW_WORK:  # hostile input (R2): views x elements is unbounded under the 1 MiB limit
             m.say(s["line"], f"over {VIEW_WORK} elements and relationships walked in all views: this view and the rest are left out")
             break
-        typ, scope = s["type"], find(s["scope"]) if s["scope"] else None
+        # a default view's scope is the card itself (cid), never read as an identifier: a bare alias two elements share
+        # (a.api, b.api) names neither, and the first one's component view was left out (audit 33)
+        typ, scope = s["type"], s["cid"] if "cid" in s else find(s["scope"]) if s["scope"] else None
         if typ != "systemlandscape" and not (scope and els[scope]["type"] == SCOPE[typ]):
             m.say(s["line"], f"{typ} view of {s['scope'] or '?'}: that is not a {C4TYPE[SCOPE[typ]].lower()}, so the view is left out")
             continue
@@ -688,7 +692,7 @@ def views(m, els, lines, specs, find, implied, groups):
                 drawn.append(made[k])
                 seen.add(k)
         if not ids:
-            m.say(s["line"], f"{typ} view {s.get('key') or ''}: shows nothing, so it is left out")
+            m.say(s["line"], f"{typ} view{' ' + s['key'] if s.get('key') else ''}: shows nothing, so it is left out")
             continue
         word = ["landscape", "context", "containers", "components"][level]
         hint = (ident(s["key"]), f"{ident(s['key'])}-{word}") if s.get("key") else f"{scope}-{word}" if scope else word
@@ -877,6 +881,9 @@ def mermaid(text, name):
     m = Model(title or name)
     lines = [(no, s) for no, s in mermaid_lines(body, said) if s]
     head = MERMAID.match(lines[0][1]) if lines else None
+    if head and head.group(1) in ("C4Dynamic", "C4Deployment"):  # a C4 diagram, but not one read: said as such (audit 33)
+        m.say(lines[0][0], f"{head.group(1)}: a Mermaid C4 diagram umlimator does not read (C4Context, C4Container and C4Component are): nothing imported")
+        return m
     if not head or head.group(1) in TYPED:
         m.say(lines[0][0] if lines else 1, f"{'an' if head.group(1)[0] == 'e' else 'a'} {head.group(1)} is read by the module's reader, in Node (umlimator.py import): nothing imported here"
               if head else "not a flowchart, graph or C4 diagram: nothing imported")
