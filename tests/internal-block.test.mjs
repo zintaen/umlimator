@@ -439,3 +439,16 @@ test('audit 38: connectors between two parts whose types list their ports in opp
   for (const dir of ['right', 'down']) for (const conns of [[['p1', 'q2'], ['p2', 'q1']], [['p1', 'q3'], ['p2', 'q2'], ['p3', 'q1']], [['p1', 'q1'], ['p2', 'q2']], [['p1', 'q2'], ['p2', 'q3'], ['p3', 'q1']]])
     assert.deepEqual(check(mk(conns, dir), 'v').map(p => p.message), [], `${dir} ${JSON.stringify(conns)}`);
 });
+
+test('audit 39: two connectors from one port to two ports of one part run parallel, whatever order the model lists them in', () => {
+  const P = (id, label) => ({ id, type: 'sysml.Port', label, props: { kind: 'proxy', valueType: 'Pow' } });
+  const mk = (conns, dir) => ({ schemaVersion: 2, nodes: [
+    { id: 'IF', type: 'sysml.InterfaceBlock', label: 'Pow' },
+    { id: 'A', type: 'sysml.Block', label: 'Source', members: [P('A.p', 'p'), P('A.q', 'q')] },
+    { id: 'B', type: 'sysml.Block', label: 'Sink', members: [P('B.x', '~x')] },
+    { id: 'S', type: 'sysml.Block', label: 'System', members: [{ id: 'S.a', type: 'sysml.PartProperty', label: 'a', props: { valueType: 'Source' } }, { id: 'S.b', type: 'sysml.PartProperty', label: 'b', props: { valueType: 'Sink' } }] }],
+  edges: conns.map(([f, t], i) => { const fa = f.startsWith('A'); return { id: 'c' + i, type: 'sysml.Connector', from: f, to: t, props: { ends: { from: { part: fa ? 'S.a' : 'S.b' }, to: { part: fa ? 'S.b' : 'S.a' } } } }; }),
+  views: [{ id: 'v', diagram: 'sysml.internal-block', subject: 'S', nodeIds: ['S'], direction: dir }] });
+  for (const dir of ['right', 'down']) for (const conns of [[['B.x', 'A.q'], ['B.x', 'A.p']], [['B.x', 'A.p'], ['B.x', 'A.q']], [['A.q', 'B.x'], ['A.p', 'B.x']], [['A.p', 'B.x'], ['A.q', 'B.x']]])
+    assert.deepEqual(check(mk(conns, dir), 'v').map(p => p.message), [], `${dir} ${JSON.stringify(conns)}`);
+});
