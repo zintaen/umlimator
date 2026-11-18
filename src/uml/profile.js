@@ -145,6 +145,8 @@ function prDist(a, b) {
 // add: a stereotype, a metaclass or an enumeration goes into the profile selected (or the one holding what is selected), else
 // the view's first; a metaclass not in the table offers the nearest names; anything else is the default
 function prAdd(model, view, entry, label, at) {
+  // a profile named as another is: refused, as its rename is (stereotype-names, audit 41); else the default adds it
+  if (entry.type === 'uml.Profile') { const nm = String(label ?? '').trim(); return nm ? prProfileClash(model, prIndex(model), {}, nm) : null; }
   if (!PR_DEFS.includes(entry.type)) return null;
   const I = prIndex(model), prof = id => (I.ty(id) === 'uml.Profile' ? id : I.ty((I.at.get(id) || {}).parent) === 'uml.Profile' ? I.at.get(id).parent : null);
   const p = PR_ARR(at && at.sel).map(prof).find(x => x) ?? PR_ARR(view.nodeIds).map(id => (I.ty(id) === 'uml.Profile' ? id : null)).find(x => x);
@@ -162,17 +164,23 @@ function prAdd(model, view, entry, label, at) {
 }
 // a stereotype or a classifier renamed (F2, the Name field) to a name a kin of it holds: refused in prAdd's words, as the add is
 // (stereotype-names, classifier-names), audit 40. Kin: the elements of its owner, itself left out. Null: no clash
-function prClash(model, id, label) {
-  const I = prIndex(model), x = I.at.get(id), nm = typeof label === 'string' ? label.trim() : ''; if (!x || !nm || !CLASSIFIERS.includes(x.type)) return null;
+// A profile renamed to another profile's name is refused too (stereotype-names); an element of no type the view shows is a
+// class, as classProblems judges it (classifier-names), both renamed and as a kin (audit 41)
+const prProfileClash = (model, I, x, nm) => (prName(x) !== nm && PR_ARR(model.nodes).some(n => PR_OBJ(n) && n !== x && I.at.get(n.id) === n && n.type === 'uml.Profile' && prName(n) === nm)
+  ? { error: `The model has a profile named ${nm} already` } : null);
+function prClash(model, view, id, label) {
+  const I = prIndex(model), x = I.at.get(id), nm = typeof label === 'string' ? label.trim() : ''; if (!x || !nm) return null;
+  if (x.type === 'uml.Profile') return prProfileClash(model, I, x, nm);
+  const shown = new Set(PR_ARR(view && view.nodeIds)), ty = n => (!n.type && shown.has(n.id) ? 'uml.Class' : n.type); if (!CLASSIFIERS.includes(ty(x))) return null;
   const p = x.parent ?? null, kin = PR_ARR(model.nodes).filter(n => PR_OBJ(n) && n !== x && I.at.get(n.id) === n && (n.parent ?? null) === p), pn = p != null && I.at.has(p) ? prName(I.at.get(p)) : 'The model';
   if (x.type === 'uml.Stereotype' && I.ty(p) === 'uml.Profile' && styKey(prName(x)) !== styKey(nm) && kin.some(n => n.type === 'uml.Stereotype' && styKey(prName(n)) === styKey(nm)))
     return { error: `${pn} has a stereotype ${styKey(nm)} already: names meet with the first letter in either case` };
-  if (prName(x) !== nm && kin.some(n => CLASSIFIERS.includes(n.type) && prName(n) === nm)) return { error: `${pn} has a classifier named ${nm} already` };
+  if (prName(x) !== nm && kin.some(n => CLASSIFIERS.includes(ty(n)) && prName(n) === nm)) return { error: `${pn} has a classifier named ${nm} already` };
   return null;
 }
 const prLineRename = lineRename(lineLabel);
-const prRename = (model, view, id, text) => prClash(model, id, text) ?? prLineRename(model, view, id, text);
-const prField = (model, view, id, path, value) => (String(path) === 'label' ? prClash(model, id, value) : null); // the Name field
+const prRename = (model, view, id, text) => prClash(model, view, id, text) ?? prLineRename(model, view, id, text);
+const prField = (model, view, id, path, value) => (String(path) === 'label' ? prClash(model, view, id, value) : null); // the Name field
 
 // connect: an extension from a stereotype to a metaclass, an application from a package to a profile, a generalization
 // between stereotypes; else said, the rule's words

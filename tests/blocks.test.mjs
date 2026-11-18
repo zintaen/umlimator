@@ -615,3 +615,16 @@ test('a member row added is refused exactly when member-names would say the new 
   const v = m0.views.find(x => x.diagram === 'sysml.internal-block');
   assert.equal(diagramOf(v).edits.member(m0, v, 'ebike', null, 'battery : Battery').error, 'member-names: "EBike" has a member named "battery" already (ebike.battery): a block\'s members have different names');
 });
+
+test('audit 41: validate() says an operation\'s parameter name, direction or type, and a block operation\'s return type, that is not text, at its own path, here and in the class view', () => {
+  const op = props => ({ id: 'k.f', type: 'uml.Operation', label: 'f', props });
+  const one = (type, diagram, props) => ({ schemaVersion: 2, title: 'c', nodes: [{ id: 'k', type, label: 'K', members: [op(props)] }], edges: [], views: [{ id: 'v', diagram, title: 'V', nodeIds: ['k'] }] });
+  const said = m => validate(m).map(p => `${p.path}: ${p.message}`);
+  for (const [type, diagram] of [['uml.Class', 'uml.class'], ['sysml.Block', 'sysml.block-definition']]) {
+    assert.deepEqual(said(one(type, diagram, { parameters: [{ name: 'x', valueType: { a: 1 } }] })), ['nodes[0].members[0].props.parameters[0].valueType: valueType {"a":1} is not text: drawn as "[object Object]"'], type);
+    assert.deepEqual(said(one(type, diagram, { parameters: [{ name: 'x', valueType: 'Int' }, { name: ['x', 'y'], valueType: 'Int' }] })), ['nodes[0].members[0].props.parameters[1].name: name ["x","y"] is not text: drawn as "x,y"'], type);
+    assert.deepEqual(said(one(type, diagram, { parameters: [{ direction: { in: 1 }, name: 'x' }] })).length, 1, type);
+    assert.deepEqual(said(one(type, diagram, { returnType: { a: 1 } })), ['nodes[0].members[0].props.returnType: returnType {"a":1} is not text: drawn as "[object Object]"'], type);
+    assert.deepEqual(said(one(type, diagram, { parameters: [{ direction: 'in', name: 'x', valueType: 'Int' }, 7, null], returnType: 'Real' })), [], `${type}: text, or no parameter at all, is said nothing`);
+  }
+});

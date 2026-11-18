@@ -250,10 +250,12 @@ function tmDescribe(model, viewId) {
 /* the PDF's rows (4.9, §9): a lifeline's changes in time order, the messages it sends, the constraints on its changes */
 function tmRows(model, view, id) {
   const V = tmView(model, view); if (!V) return null; const X = tmIndex(model, V); if (!X.H.has(id)) return null;
-  const mine = X.said(id), ids = new Set(mine.map(c => c.id));
+  // a constraint by the lane of a change it ends at, drawn or not: one on the earlier of two changes at one instant is drawn on
+  // the later, as the ruler and describe() put it (audit 41)
+  const mine = X.said(id), on = x => X.C.has(x) && X.C.get(x).lifeline === id;
   return [...mine.map(c => `${X.t(c.at)}: ${c.state ?? ''}`),
     ...X.drawn.filter(m => m.from === id).map(m => { const p = tmProps(m); return `${tmMsgText(m) || tmSort(m)} to ${X.name(m.to)} at ${X.t(p.sentAt)} → ${X.t(p.receivedAt)}`; }),
-    ...X.marked.filter(c => ids.has(c.from) || ids.has(c.to)).map(c => tmConSaid(X, c))];
+    ...X.marked.filter(c => on(c.from) || on(c.to)).map(c => tmConSaid(X, c))];
 }
 
 /* ---- the gesture hooks (§8.1). Each takes the model and the view (or its id) and returns the commands of one transaction,
@@ -343,8 +345,9 @@ function tmConnect(model, view, from, to, at, line) {
 function tmMoveTo(model, view, id, at) {
   const V = tmView(model, view); if (!V || !TM_OBJ(at)) return null;
   const X = tmIndex(model, V), by = Array.isArray(at.by) ? at.by : null, c = X.C.get(id), m = X.msgs.find(x => x.id === id);
-  if (X.H.has(id)) { if (!by || by[0] || !by[1]) return null; const ids = TM_ARR(V.nodeIds), i = ids.indexOf(id), j = i + Math.sign(by[1]);
-    return j < 0 || j >= ids.length ? [] : [{ op: 'move', id, view: V.id, index: j }]; }
+  // a lane steps past the next lane drawn, never an id in nodeIds that draws none (audit 41): moved to where that lane is
+  if (X.H.has(id)) { if (!by || by[0] || !by[1]) return null; const k = X.heads[X.heads.findIndex(n => n.id === id) + Math.sign(by[1])];
+    return k ? [{ op: 'move', id, view: V.id, index: TM_ARR(V.nodeIds).indexOf(k.id) }] : []; }
   if (c) {
     if (by && by[1] && !by[0]) { const n = X.N.get(c.lifeline); if (!n || X.values(c.lifeline)) return [];
       const ss = tmStates(n), i = ss.indexOf(String(c.state)), k = (i < 0 ? ss.length : i) + Math.sign(by[1]); // an unlisted state: the extra row below

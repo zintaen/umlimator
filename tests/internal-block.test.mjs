@@ -469,3 +469,17 @@ test('audit 40: the palette and the member rows refuse a nameless reference or v
   assert.deepEqual(T.edits.member(k, v, 'ebike', 'ebike.soc', '[2]'), { error: 'A value is name : Type [multiplicity]' });
   assert.deepEqual(T.edits.member(k, v, 'ebike', null, '[2]'), { error: 'A part is name : Type [multiplicity]' });
 });
+
+test('audit 41: Add refuses a port, a reference or a value in SysML\'s words: a block, the subject or a part, never a class, a component or a part for a reference', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/ebike-structure.json', import.meta.url))), v = m.views[0], S = node(m, v.subject), part = S.members.find(x => x.id === 'ebike.battery');
+  const m1 = structuredClone(m); delete mem(m1, part.id).props.valueType;
+  assert.deepEqual(T.edits.add(m1, m1.views[0], { type: 'sysml.Port' }, 'p', { sel: [part.id] }), { error: 'battery has no type: type it as a block to add a port to' });
+  const m2 = structuredClone(m); mem(m2, part.id).props.valueType = 'Nope';
+  assert.deepEqual(T.edits.add(m2, m2.views[0], { type: 'sysml.Port' }, 'p', { sel: [part.id] }), { error: 'battery\'s type, "Nope", names no one block to add a port to' });
+  assert.deepEqual(T.edits.add(m, v, { type: 'sysml.Port' }, 'p', { sel: [] }), { error: 'Select the subject or a part to add a port to' });
+  const m3 = structuredClone(m); m3.views[0].subject = 'no-such-block';
+  assert.deepEqual(T.edits.add(m3, m3.views[0], { type: 'sysml.ReferenceProperty' }, 'r', { sel: [] }), { error: 'This view has no subject to add a reference to' });
+  assert.deepEqual(T.edits.add(m3, m3.views[0], { type: 'sysml.ValueProperty' }, 'r', { sel: [] }), { error: 'This view has no subject to add a value to' });
+  assert.deepEqual(T.edits.add(m3, m3.views[0], { type: 'sysml.PartProperty' }, 'r', { sel: [] }), { error: 'This view has no subject to add a part to' });
+  assert.ok(Array.isArray(T.edits.add(m, v, { type: 'sysml.Port' }, 'p', { sel: [v.subject] })), 'a port on the subject still goes in');
+});

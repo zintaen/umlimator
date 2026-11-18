@@ -390,3 +390,18 @@ test('an interaction use or inline interaction with no name is drawn and named b
   const named = EX.nodes.filter(x => ['uml.InteractionUse', 'uml.Interaction'].includes(x.type) && VIEW(EX).nodeIds.includes(x.id)), eg = layout(EX, VIEW(EX).id);
   assert.ok(named.length && named.every(x => eg.nodes.find(n => n.id === x.id).label.endsWith(x.label)), JSON.stringify(named.map(x => x.id)));
 });
+
+test('audit 41: an inline interaction counts the messages its sequence view draws, as that view\'s describe() does, and is drawn inline up to 20 of them', () => {
+  const msg = (id, to) => ({ id, type: 'uml.Message', from: 'a', to, label: id, props: { sort: 'call' } });
+  const make = n => ({ schemaVersion: 2, title: 't', nodes: [...['a', 'b', 'c'].map(id => ({ id, type: 'uml.Lifeline', label: id.toUpperCase() })),
+    { id: 'i0', type: 'uml.InitialNode' }, { id: 'x', type: 'uml.Interaction', label: 'Pay', opensView: 'v' }, { id: 'f', type: 'uml.ActivityFinalNode' }],
+  edges: [{ id: 'c1', type: 'uml.ControlFlow', from: 'i0', to: 'x' }, { id: 'c2', type: 'uml.ControlFlow', from: 'x', to: 'f' }],
+  views: [{ id: 'o', diagram: 'uml.interaction-overview', title: 'O', nodeIds: ['i0', 'x', 'f'] },
+    { id: 'v', diagram: 'uml.sequence', title: 'V', nodeIds: ['a', 'b'], edges: [...Array.from({ length: n }, (_, k) => msg('m' + k, 'b')), msg('log', 'c')] }] });
+  const m = make(1);
+  assert.match(describe(m, 'v'), /2 lifelines, 1 message/);
+  assert.equal(layout(m, 'o').nodes.find(n => n.id === 'x').aria, 'Inline interaction Pay, 2 lifelines, 1 message, opens V');
+  assert.match(describe(m, 'o'), /Inline interaction Pay, 2 lifelines, 1 message;/);
+  const big = layout(make(20), 'o').nodes.find(n => n.id === 'x');
+  assert.match(big.aria, /20 messages/); assert.doesNotMatch(big.aria, /frame only/, '20 drawn messages and one undrawn: drawn inline');
+});

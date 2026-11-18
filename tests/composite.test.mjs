@@ -913,3 +913,31 @@ test('audit 39: a node\'s port lines follow where the far node put its ports, no
   const g = layout(cp('right'), 'v'), pts = id => g.edges.find(e => e.id === id).pts;
   assert.deepEqual([pts('c0').length, pts('c2').length], [2, 2], 'Comp3\'s two lines to Comp0 run straight'); // as 8774b14 drew them
 });
+
+test('audit 41: a part, port or member row added or renamed to a name another member of its class holds is refused in member-names\' words, here and in the component view', () => {
+  const C = { id: 'c', type: 'uml.Class', label: 'Car', members: [{ id: 'c.engine', type: 'uml.Property', label: 'engine', props: { valueType: 'Engine', aggregation: 'composite' } },
+    { id: 'c.wheel', type: 'uml.Property', label: 'wheel', props: { valueType: 'Wheel', aggregation: 'composite' } }, { id: 'c.go', type: 'uml.Operation', label: 'go' }] };
+  const m = { schemaVersion: 2, nodes: [C, { id: 'E', type: 'uml.Class', label: 'Engine' }, { id: 'W', type: 'uml.Class', label: 'Wheel' }], edges: [], views: [{ id: 'cs', diagram: 'uml.composite-structure', subject: 'c', nodeIds: ['c'] }] };
+  const v = m.views[0], said = /^member-names: "Car" has a member named "engine" already \(c\.engine\)/;
+  assert.match(T.edits.member(m, v, 'c', null, 'engine : Engine').error, said, 'a part added');
+  assert.match(T.edits.member(m, v, 'c', null, 'port engine : Api').error, said, 'a port added');
+  assert.match(T.edits.member(m, v, 'c', 'c.wheel', 'engine : Wheel').error, said, 'a part row edited');
+  assert.match(T.edits.rename(m, v, 'c.wheel', 'engine').error, said, 'F2');
+  assert.match(T.edits.add(m, v, { type: 'uml.Property' }, 'engine : Engine', { sel: [] }).error, said, 'the Part entry');
+  assert.match(T.member.edit(C.members[1], 'engine : Wheel', C).error, said, 'the panel row');
+  assert.match(T.member.add('engine : Engine', C).error, said, 'the panel\'s New member');
+  assert.ok(Array.isArray(T.member.edit(C.members[2], 'engine()', C).commands), 'an operation is told apart by its parameters: engine() is no clash with the part');
+  // what is no clash still goes through: a new name, the same name kept, a type changed
+  assert.ok(Array.isArray(T.edits.member(m, v, 'c', null, 'tyre : Wheel')));
+  assert.deepEqual(T.edits.rename(m, v, 'c.wheel', 'wheel : Wheel'), []);
+  assert.ok(Array.isArray(T.edits.rename(m, v, 'c.wheel', 'rim')));
+  // a component's or a collaboration's members: no classifier member-names judges, not refused here
+  const k = structuredClone(m); k.nodes[0].type = 'uml.Component';
+  assert.ok(Array.isArray(T.edits.rename(k, k.views[0], 'c.wheel', 'engine')));
+  // the component view: an interface's operations, as the class view's
+  const CP = diagramOf({ diagram: 'uml.component' }), I = { id: 'i', type: 'uml.Interface', label: 'Payments', members: [{ id: 'o1', type: 'uml.Operation', label: 'pay' }, { id: 'o2', type: 'uml.Operation', label: 'refund' }] };
+  assert.match(CP.member.add('pay()', I).error, /^member-names: "Payments" has a member named "pay" already \(o1\)/);
+  assert.match(CP.member.edit(I.members[1], 'pay()', I).error, /^member-names: "Payments" has a member named "pay" already \(o1\)/);
+  assert.equal(CP.member.add('pay(amount: Int)', I).label, 'pay', 'an overload is no clash');
+  assert.ok(Array.isArray(CP.member.edit(I.members[1], 'refund(id: Int)', I).commands));
+});

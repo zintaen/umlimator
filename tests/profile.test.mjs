@@ -507,3 +507,21 @@ test('audit 40: F2 and the Name field refuse renaming a stereotype or a classifi
     assert.deepEqual(errs(apply(m, [{ op: 'set', id, path: 'label', value: name }])), [], `${id} -> ${name}`); }
   assert.equal(T.edits.field(m, v, 'aggregate-root', 'props.isAbstract', true), null);
 });
+
+test('audit 41: F2, the Name field and Add refuse a profile named as another, and an element of no type renamed to a sibling classifier\'s name', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'P', type: 'uml.Profile', label: 'Audit' }, { id: 'Q', type: 'uml.Profile', label: 'Other' },
+    { id: 's2', type: 'uml.Stereotype', label: 'owned', parent: 'P' }, { id: 'mc', type: 'uml.MetaclassReference', label: 'Class', parent: 'P' },
+    { id: 'e1', type: 'uml.Enumeration', label: 'Level', parent: 'P' }, { id: 'u', label: 'Thing', parent: 'P' }],
+  edges: [], views: [{ id: 'v', diagram: 'uml.profile', nodeIds: ['P', 'Q', 's2', 'mc', 'e1', 'u'] }] };
+  const v = m.views[0], both = (id, s) => [T.edits.rename(m, v, id, s), T.edits.field(m, v, id, 'label', s)];
+  for (const r of both('Q', 'Audit')) assert.deepEqual(r, { error: 'The model has a profile named Audit already' });
+  for (const r of both('u', 'Level')) assert.deepEqual(r, { error: 'Audit has a classifier named Level already' });
+  for (const r of both('e1', 'Thing')) assert.deepEqual(r, { error: 'Audit has a classifier named Thing already' });
+  assert.deepEqual(T.edits.add(m, v, { type: 'uml.Profile' }, 'Audit', { sel: [] }), { error: 'The model has a profile named Audit already' });
+  // what validate() takes: a metaclass or a stereotype to a classifier's name, a profile renamed to its own name, a new name
+  for (const [id, s] of [['mc', 'Level'], ['s2', 'Class'], ['P', 'Audit'], ['Q', 'Billing'], ['u', 'Gadget']]) assert.equal(T.edits.field(m, v, id, 'label', s), null, `${id} -> ${s}`);
+  assert.equal(T.edits.add(m, v, { type: 'uml.Profile' }, 'Billing', { sel: [] }), null, 'a new name: the default adds it');
+  // an element of no type the view does not show is no class here
+  const h = structuredClone(m); h.views[0].nodeIds = h.views[0].nodeIds.filter(id => id !== 'u');
+  assert.equal(T.edits.field(h, h.views[0], 'e1', 'label', 'Thing'), null);
+});

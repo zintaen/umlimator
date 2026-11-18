@@ -662,3 +662,26 @@ test('audit 40: describe() says only the messages drawn, numbered in order, and 
   assert.match(d, /6\. api replies to storefront \(answers 2\): result\./);
   assert.ok(errors(m).some(p => /message-ends/.test(p.message)), 'validate() still says it');
 });
+
+test('audit 41: the picture\'s names and describe() count the messages drawn alone: an operand holding only a message to a lifeline the view does not list is not said to hold it', () => {
+  const m = { schemaVersion: 2, title: 't', nodes: ['a', 'b', 'c'].map(id => ({ id, type: 'uml.Lifeline', label: id.toUpperCase() })), edges: [],
+    views: [{ id: 'v', diagram: 'uml.sequence', title: 'V', nodeIds: ['a', 'gone', 'b'],
+      fragments: [{ id: 'f', type: 'uml.CombinedFragment', props: { operator: 'alt' }, members: [{ id: 'o1', label: 'ok' }, { id: 'o2', label: 'else' }] }],
+      edges: [{ id: 'm0', type: 'uml.Message', from: 'a', to: 'c', label: 'audit', props: { sort: 'async' } }, { id: 'm1', type: 'uml.Message', from: 'a', to: 'b', label: 'hi', props: { sort: 'call' } },
+        { id: 'm3', type: 'uml.Message', from: 'b', to: 'a', label: 'yo', parent: 'o1', props: { sort: 'async' } }, { id: 'm2', type: 'uml.Message', from: 'a', to: 'c', label: 'log', parent: 'o2', props: { sort: 'async' } }] }] };
+  const g = layout(m, 'v'), aria = id => [...g.nodes, ...g.edges].find(x => x.id === id).aria;
+  assert.equal(aria('m1'), 'Message 1 of 2: A to B, hi, call');
+  assert.equal(aria('m3'), 'Message 2 of 2: B to A, yo, async, in alt, ok');
+  assert.equal(aria('o1'), 'Operand ok of alt, 1 occurrence');
+  assert.equal(aria('o2'), 'Operand else of alt, 0 occurrences');
+  const d = describeView(m, 'v');
+  assert.match(d, /2 messages/); assert.doesNotMatch(d, /\[else\]/, 'no header with nothing drawn under it'); assert.match(d, /alt \[ok\]:\n {2}2\. B sends to A: yo\./);
+  // paths() goes through drawn messages only: none by way of C
+  const T = diagramOf({ diagram: 'uml.sequence' }), p = { ...m, views: [{ ...m.views[0], fragments: [], edges: [m.views[0].edges[0], { id: 'm4', type: 'uml.Message', from: 'c', to: 'b', label: 'x', props: { sort: 'call' } }] }] };
+  assert.deepEqual(T.paths(p, 'v', 'a', 'b'), []);
+  // Alt+Left/Right steps past the next lifeline drawn, not past an id in nodeIds that draws none
+  assert.deepEqual(sqMoveTo(m, 'v', 'a', { by: [1, 0] }), [{ op: 'move', id: 'a', view: 'v', index: 2 }]);
+  assert.deepEqual(sqMoveTo(m, 'v', 'b', { by: [-1, 0] }), [{ op: 'move', id: 'b', view: 'v', index: 0 }]);
+  assert.deepEqual(sqMoveTo(m, 'v', 'b', { by: [1, 0] }), []);
+  assert.ok(errors(m).some(p => /message-ends/.test(p.message)), 'validate() still says the undrawn ones');
+});
