@@ -3,10 +3,10 @@ import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { CLASSIFIERS, lineRename, memberClash, memberEdit, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
+import { CLASSIFIERS, lineRename, memberClash, memberEdit, paramTextProblems, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 import { SN_ARTIFACTS, SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, snKindName, snKindWord, structProblems } from './structure.js';
-import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName, propTextProblems } from '../core/model.js';
 
 /* ---------- the component diagram, uml.component (work package 5.4, notes/stage-5.md §10.1) ----------
    Components (src/uml/structure.js's look), a component or package that holds something shown a box (src/uml/owners.js),
@@ -247,8 +247,15 @@ function cpProblems(model, view) {
       say('error', 'assembly-ends', path, ends, `${e.id} joins ${q(e.from)} and ${q(e.to)}: an assembly joins two components or their ports, neither inside the other`);
     if (e.type === 'uml.ComponentRealization' && (I.P.has(e.from) || I.P.has(e.to) || !['uml.Class', 'uml.Component'].includes(I.ty(e.from)) || I.ty(e.to) !== 'uml.Component'))
       say('error', 'component-realization-ends', path, ends, `${e.id} runs from ${q(e.from)} to ${q(e.to)}: a component realization runs from a class or a component to a component`); });
-  if (view) { const vi = CP_ARR(model.views).indexOf(view);
-    cpPic(model, view).inside.forEach(({ e, from, to }) => { if (e.type !== 'uml.Connector') out.push(lineInside(view, vi, e, from, to, q)); });
+  if (view) { const vi = CP_ARR(model.views).indexOf(view), pic = cpPic(model, view), on = new Set(pic.ids), done = new Set();
+    // what the view draws as text, each said when it is not, as the class view says it (audit 42): a drawn port's type, and an
+    // interface box's operations and attributes (none as a ball), a type, a default, a return type and the parameters
+    CP_ARR(model.nodes).forEach((n, i) => { if (!CP_OBJ(n) || !on.has(n.id) || done.has(n.id)) return; done.add(n.id);
+      const box = n.type === 'uml.Interface' && !cpBall(I, view, n.id);
+      CP_ARR(n.members).forEach((m, j) => { if (!CP_OBJ(m)) return; const at = `nodes[${i}].members[${j}]`;
+        if (m.type === 'uml.Port' && (I.P.get(m.id) || {}).owner === n.id) out.push(...propTextProblems(m, at, ['valueType']));
+        else if (box && (m.type === 'uml.Operation' || m.type === 'uml.Property')) out.push(...propTextProblems(m, at, ['valueType', 'default', 'returnType']), ...paramTextProblems(m, at)); }); });
+    pic.inside.forEach(({ e, from, to }) => { if (e.type !== 'uml.Connector') out.push(lineInside(view, vi, e, from, to, q)); });
     Object.entries(CP_OBJ(view.present) ? view.present : {}).forEach(([id, p]) => { if (CP_OWN(p, 'as') === 'ball' && (I.N.get(id) || {}).type !== 'uml.Interface')
       say('warning', 'ball-interface', `views[${vi}].present`, [id], `${q(id)} is not an interface: view ${jsonText(view.id)} does not draw it as a ball`); }); }
   return out;
