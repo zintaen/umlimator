@@ -110,9 +110,9 @@ const acStereo = x => AC_ARR(acProps(x).stereotypes).filter(AC_HAS).map(String);
 // a diamond's or a partition's drawn name, its stereotypes first: their shapes draw no «…» row of their own (audit 16)
 const acStLabel = x => [...acStereo(x).map(t => `«${t}»`), acName(x)].join(' ');
 const acPlural = (k, w, ws = w + 's') => `${k} ${k === 1 ? w : ws}`;
-// a node with no label is named as drawn (audit 38): an action or object node by its id, as elName draws it; a control node
-// (a glyph, a fork or join bar, a decision or merge diamond) by its word
-const AC_GLYPHS = ['initial', 'final', 'flow-final', 'bar'], acById = x => !AC_HAS(x.label) && ![...AC_GLYPHS, 'diamond'].includes(acLook(x)[0]);
+// a node with no label is named as drawn (audit 38): an action or object node, or a decision or merge diamond, by its id, as
+// elName draws it ("Merge stock-ready, 2 entries": the diamond draws its id, audit 39); a glyph or a fork or join bar by its word
+const AC_GLYPHS = ['initial', 'final', 'flow-final', 'bar'], acById = x => !AC_HAS(x.label) && !AC_GLYPHS.includes(acLook(x)[0]);
 // a node as a line's end names it: its label, else as drawn (an action's id), else its word ("merge")
 const acCalled = x => (x ? (AC_HAS(x.label) ? String(x.label) : acById(x) ? acName(x) : acLook(x)[1].toLowerCase()) : '?');
 const acViewName = (model, id) => { const v = AC_ARR(model && model.views).find(w => AC_OBJ(w) && w.id === id); return v ? String(labelOr(v.title, v.id)) : null; }; // a view titled "" by its id (audit 33)

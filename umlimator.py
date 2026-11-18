@@ -180,6 +180,10 @@ def not_objects(d):
             for k, x in v["nodeOverrides"].items() if isinstance(x, dict) and not text(x.get("label"))]
     out += [f"views[{i}].containers[{j}].label is not text" for i, v in enumerate(lst(d.get("views"))) if isinstance(v, dict)
             for j, c in enumerate(lst(v.get("containers"))) if isinstance(c, dict) and not text(c.get("label"))]
+    # a view's caption, description and note are drawn as text too (the About box, the PDF's contents and page header, a
+    # walkthrough's note line): an object there was drawn "[object Object]" and render said nothing (audit 39)
+    out += [f"views[{i}].{k} is not text" for i, v in enumerate(lst(d.get("views"))) if isinstance(v, dict)
+            for k in ("caption", "description", "note") if not text(v.get(k))]
     # a card's members, and theirs, at any depth (a stack, not recursion: a deep model never ends in a RecursionError);
     # a view's own cards too, which MCP's refs walks (audit 9)
     todo = [(f"nodes[{i}]", n) for i, n in enumerate(lst(d.get("nodes"))) if isinstance(n, dict)]

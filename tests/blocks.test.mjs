@@ -246,7 +246,9 @@ test('member rows (§7.4): a keyword picks the kind, the type picks it with none
 test('the panel\'s member rows (edits.member): New member adds the kind read, a row edited sets its kind, name and props in one transaction; errors said, nothing applied', () => {
   const add = (owner, text) => T.edits.member(M17, M17.views[0], owner, null, text);
   assert.deepEqual(add('motor', 'value torque: Torque [1]'), [{ op: 'add', element: { id: 'motor.torque', type: 'sysml.ValueProperty', label: 'torque', props: { valueType: 'Torque', multiplicity: '1' } }, owner: 'motor' }]);
-  assert.deepEqual(add('ebike', 'battery: Battery')[0].element, { id: 'ebike.battery2', type: 'sysml.PartProperty', label: 'battery', props: { valueType: 'Battery' } }, 'the type picks part; a fresh id');
+  const M2 = { ...M17, nodes: [...M17.nodes, { id: 'ebike.spare', type: 'uml.Comment', label: 'x' }] }; // an id taken by an element that is no member of EBike
+  assert.deepEqual(T.edits.member(M2, M2.views[0], 'ebike', null, 'spare: Battery')[0].element, { id: 'ebike.spare2', type: 'sysml.PartProperty', label: 'spare', props: { valueType: 'Battery' } }, 'the type picks part; a fresh id');
+  assert.match(add('ebike', 'battery: Battery').error, /^member-names: "EBike" has a member named "battery" already/, 'a name EBike holds is refused (audit 39)');
   assert.deepEqual(add('range-equation', 'value v: Real'), { error: 'member-kinds: constraint block RangeEquation holds no value' });
   assert.equal(T.edits.member(M17, M17.views[0], 'nowhere', null, 'x'), null); assert.equal(T.edits.member({ ...M17, nodes: [...M17.nodes, { id: 'c', type: 'uml.Comment' }] }, M17.views[0], 'c', null, 'x'), null);
   const r = T.edits.member(M17, M17.views[0], 'ebike', 'ebike.dock', 'part dock: Dock [1]');
@@ -592,4 +594,24 @@ test('a member row edit is refused exactly when member-names would say the edite
   // the two the audit found
   assert.ok(T.edits.member(m0, v, 'ebike', 'ebike.usableShare', 'ecoRange(): Real').commands, 'an operation ecoRange() and a value ecoRange do not clash');
   assert.match(T.edits.member(m0, v, 'ebike', 'ebike.op1', 'value ecoRange: Real').error, /^member-names: "EBike" has a member named "ecoRange" already \(ebike\.ecoRange\)/);
+});
+
+// audit 39: a member row added (id null) with a name its owner holds already went through in all three SysML views, where the
+// same name given by a rename is refused; validate() then said member-names. An add is judged as the edit is
+test('a member row added is refused exactly when member-names would say the new member clashes, in the bdd, ibd and par (audit 39)', () => {
+  const m0 = apply(JSON.parse(readFileSync(new URL('../examples/ebike-atlas.json', import.meta.url), 'utf8')), [{ op: 'add', owner: 'ebike', element: { id: 'ebike.op1', type: 'uml.Operation', label: 'compute' } }]);
+  const clashes = m => validate(m).filter(p => p.rule === 'member-names').length, base = clashes(m0);
+  assert.equal(base, 0);
+  const rows = { 'sysml.block-definition': ['value battery : Real', 'part battery : Battery', 'value ecoRange : Real', 'compute(): Real', 'compute(x: Real)', 'value compute : Real', 'value fresh : Real', 'battery(): Real', '«x» value battery : Real', 'value " battery" : Real'],
+    'sysml.internal-block': ['battery : Battery', 'ecoRange : Real', 'port battery : Power', 'compute : Real', 'fresh : Battery', '«full» battery : Battery'],
+    'sysml.parametric': ['battery : Real', 'ecoRange : Real', 'fresh : Real', 'compute : Real'] };
+  let refused = 0, applied = 0;
+  for (const [diag, texts] of Object.entries(rows)) { const v = m0.views.find(x => x.diagram === diag), D = diagramOf(v), owner = diag === 'sysml.block-definition' ? 'ebike' : v.subject;
+    assert.equal(owner, 'ebike');
+    for (const text of texts) { const r = D.edits.member(m0, v, owner, null, text), cs = Array.isArray(r) ? r : r && r.commands;
+      if (cs) { applied++; assert.equal(clashes(apply(m0, cs)), base, `${diag} "${text}" was added, and member-names then errors`); }
+      else { assert.ok(r && r.error, `${diag} "${text}": ${JSON.stringify(r)}`); if (/^member-names:/.test(r.error)) refused++; } } }
+  assert.ok(refused >= 8 && applied >= 6, `${refused} refused, ${applied} applied`);
+  const v = m0.views.find(x => x.diagram === 'sysml.internal-block');
+  assert.equal(diagramOf(v).edits.member(m0, v, 'ebike', null, 'battery : Battery').error, 'member-names: "EBike" has a member named "battery" already (ebike.battery): a block\'s members have different names');
 });

@@ -93,7 +93,7 @@ try {
       const aria = id => pick(`.node[data-id="${id}"]`).getAttribute('aria-label');
       check(`${tag}: nodes, partitions and flows have names a screen reader reads`, aria('in-stock') === 'Decision All books in stock?, 2 exits, in Warehouse' && aria('lane-email') === 'Partition Email service, 2 nodes'
         && aria('call-payment') === 'Call behaviour action Take payment, opens Take payment, in Order worker' && aria('split') === 'Fork, 3 branches, in Order worker'
-        && pick('.edge-g[data-from="in-stock"][data-to="stock-ready"] title').textContent === 'Control flow from All books in stock? to merge, guard all books in stock', [aria('in-stock'), aria('call-payment')]);
+        && pick('.edge-g[data-from="in-stock"][data-to="stock-ready"] title').textContent === 'Control flow from All books in stock? to stock-ready, guard all books in stock', [aria('in-stock'), aria('call-payment')]);
       check(`${tag}: a guard is drawn [guard], a data store «datastore»`, all('.e-label').map(t => t.textContent).sort().join('|') === '[all books in stock]|[else]'
         && [...pick('.node[data-id="stock"]').querySelectorAll('text')].map(t => t.textContent).join(' ') === '«datastore» Stock levels', [all('.e-label').map(t => t.textContent), [...pick('.node[data-id="stock"]').querySelectorAll('text')].map(t => t.textContent)]);
       const legend = all('.m-legend b').map(b => b.textContent);
@@ -140,7 +140,7 @@ try {
   all('.um-pick button')[0].click();
   gives('…and sets the view it opens', [{ op: 'set', id: 'call-payment', path: 'opensView', value: 'fulfil' }]);
   // F2 on a flow, from its ring, through edits.rename: "name [guard]"
-  const FLOW = 'Control flow from All books in stock? to merge, guard all books in stock';
+  const FLOW = 'Control flow from All books in stock? to stock-ready, guard all books in stock';
   lineRing(FLOW).focus(); key('Enter', {}, sr.activeElement); key('F2');
   check('F2 on a flow: a field holding its drawn label', pick('.um-rename') && pick('.um-rename').value === '[all books in stock]', pick('.um-rename') && pick('.um-rename').value);
   pick('.um-rename').value = 'in stock [every book]'; key('Enter', {}, pick('.um-rename'));

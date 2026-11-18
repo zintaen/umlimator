@@ -43,7 +43,9 @@ export function validate(model) {
   arr(m.nodes).forEach((n, i) => card(n, `nodes[${i}]`));
   views.forEach((v, i) => arr(v.nodes).forEach((n, j) => card(n, `views[${i}].nodes[${j}]`)));
   views.forEach((v, i) => { if (typeof v.id !== 'string' || !v.id) err(`views[${i}].id`, 'a view needs an id'); else if (vids.has(v.id)) err(`views[${i}].id`, `view id "${v.id}" is used twice`); else vids.add(v.id);
-    const t = labelProblem(v, `views[${i}]`, 'title'); if (t) out.push(t); }); // a title that is not text, as a card's label (audit 31)
+    const t = labelProblem(v, `views[${i}]`, 'title'); if (t) out.push(t); // a title that is not text, as a card's label (audit 31)
+    // its caption, description and note are drawn too: the About box, the PDF's contents and page header, a walkthrough's note (audit 39)
+    ['caption', 'description', 'note'].forEach(k => { const c = labelProblem(v, `views[${i}]`, k); if (c) out.push(c); }); });
   // the map's, a story's, a lens's, a rule's and a lane's title are drawn too: the brand, the menus, a rule's mark (audit 34)
   const titled = (x, at, key = 'title') => { const t = labelProblem(x, at, key); if (t) out.push(at ? t : { ...t, path: key }); };
   titled(m, '');

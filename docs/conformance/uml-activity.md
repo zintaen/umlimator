@@ -63,7 +63,7 @@ its rendered page. Each file was opened and looked at.
 |---|---|---|---|
 | Lanes with their headers, every node's shape, the call action's rake | Yes | Yes | Yes, in vectors |
 | Flows, open arrowheads, guards | Yes. **Gap:** in Chrome's measure, example 9's `[else]` finds no room laid out down and is left to its line's name, which the still removes | Yes, the same | Yes, the same |
-| An unnamed merge or decision | **Gap:** drawn with its id inside the diamond ("stock-ready" in example 9), as the type draws it everywhere | The same | The same, and its row reads its id |
+| An unnamed merge or decision | **Gap:** drawn with its id inside the diamond ("stock-ready" in example 9), as the type draws it everywhere; its accessible name and `describe()` read the same id ("Merge stock-ready, 2 entries") | The same | The same, and its row reads its id |
 | The legend of line kinds and control glyphs | No: the legend is a piece of the page | No | Yes, under the picture |
 | Text | Text, in the page's font family; the font is not embedded unless `fontCSS` is given | Pixels | Selectable text |
 | Accessible names | Each node's and partition's `aria-label` kept; the flows' `<title>` removed, as for maps | None | None |
@@ -74,7 +74,7 @@ its rendered page. Each file was opened and looked at.
 
 Every piece has a name: "Action Take the next order from the queue, in Order worker", "Call behaviour action Take
 payment, opens Take payment, in Order worker", "Decision All books in stock?, 2 exits, in Warehouse", "Fork, 3
-branches, in Order worker", "Partition Warehouse, 10 nodes", "Control flow from All books in stock? to merge, guard
+branches, in Order worker", "Merge stock-ready, 2 entries, in Warehouse" (an unnamed decision or merge by the id its diamond draws), "Partition Warehouse, 10 nodes", "Control flow from All books in stock? to stock-ready, guard
 all books in stock". Tab reads each partition, then its nested partitions, then its nodes by column and row, then the
 nodes in no lane, then the flows. `describe()` starts at the initial node and follows each flow once. Text reads at
 4.5:1 and lines, outlines and dividers at 3:1 on the stage in both themes (`tests/activity.html`, `tests/stage4.html`).

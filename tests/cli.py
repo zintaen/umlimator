@@ -614,6 +614,18 @@ with tempfile.TemporaryDirectory() as tmp:
         ok("render · a view's label override or a box label that is an object or a list is refused in one line naming it; a number renders (audit 38)",
            all(b.returncode == 1 and b.stderr.strip().endswith(f"b38{k}.json: {said[k]}") and "Traceback" not in b.stderr and not (t / f"b38{k}.html").exists() for k, b in bs.items() if k != "num")
            and bs["num"].returncode == 0, {k: b.stderr[-200:] for k, b in bs.items()})
+        # audit 39: a view's caption, description or note that is an object or a list was drawn "[object Object]" in the About box,
+        # the PDF's contents and page header and a walkthrough's note line, and render said nothing; a number or a string renders
+        bad = {"cap": {"views": [v0 | {"caption": {"x": 5}}]}, "desc": {"views": [v0 | {"description": {"x": 5}}]},
+               "note": {"views": [v0 | {"note": ["<img src=https://e.example/t.png>"]}]}, "capurl": {"views": [v0 | {"caption": {"toString": "https://e.example/t.png"}}]}}
+        said = {"cap": "views[0].caption is not text", "desc": "views[0].description is not text", "note": "views[0].note is not text", "capurl": "views[0].caption is not text"}
+        for k, v in bad.items():
+            (t / f"b39{k}.json").write_text(json.dumps(two | v))
+        (t / "b39num.json").write_text(json.dumps(two | {"views": [v0 | {"caption": 3, "description": "A view", "note": None}]}))
+        bs = {k: plain("render", str(t / f"b39{k}.json"), "--out", str(t / f"b39{k}.html"), "--no-check") for k in [*bad, "num"]}
+        ok("render · a view's caption, description or note that is an object or a list is refused in one line naming it; a number renders (audit 39)",
+           all(b.returncode == 1 and b.stderr.strip().endswith(f"b39{k}.json: {said[k]}") and "Traceback" not in b.stderr and not (t / f"b39{k}.html").exists() for k, b in bs.items() if k != "num")
+           and bs["num"].returncode == 0 and "e.example" not in (t / "b39num.html").read_text(), {k: b.stderr[-200:] for k, b in bs.items()})
         # audit 18: a card's icon or author that is no string names nothing in a still's key (it ended stills in a TypeError)
         for k, v in (("icon", ["server"]), ("author", {"x": 1})):
             (t / f"k18{k}.json").write_text(json.dumps(two | {"nodes": [two["nodes"][0] | {k: v}, two["nodes"][1]]}))

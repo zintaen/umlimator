@@ -7,7 +7,8 @@
 // src/ to reach the internals; lib/umlimator-all.js holds the same code.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
+import { svgOf } from '../src/draw/svg.js';
 import { diagramOf } from '../src/core/registry.js';
 import { apply } from '../src/core/apply.js';
 import { history } from '../src/core/history.js';
@@ -120,8 +121,8 @@ test('example 9: it validates and lays out clean down and right: lanes as bands,
   const g = layout(EX, 'fulfil'), aria = id => g.byId[id].aria, line = id => g.edges.find(e => e.id === id);
   assert.deepEqual(['start', 'take-order', 'call-payment', 'in-stock', 'stock-ready', 'split', 'packed-and-paid', 'told', 'stock'].map(aria), ['Initial node, in Order worker',
     'Action Take the next order from the queue, in Order worker', 'Call behaviour action Take payment, opens Take payment, in Order worker', 'Decision All books in stock?, 2 exits, in Warehouse',
-    'Merge, 2 entries, in Warehouse', 'Fork, 3 branches, in Order worker', 'Join, 2 branches, in Warehouse', 'Flow final, in Email service', 'Data store Stock levels, in Warehouse']);
-  assert.equal(line('f-in-stock').aria, 'Control flow from All books in stock? to merge, guard all books in stock');
+    'Merge stock-ready, 2 entries, in Warehouse', 'Fork, 3 branches, in Order worker', 'Join, 2 branches, in Warehouse', 'Flow final, in Email service', 'Data store Stock levels, in Warehouse']);
+  assert.equal(line('f-in-stock').aria, 'Control flow from All books in stock? to stock-ready, guard all books in stock');
   assert.deepEqual([line('f-in-stock').label, line('f-short').label, line('f-start').label], ['[all books in stock]', '[else]', undefined]);
   assert.equal(line('f-order-out').aria, 'Object flow from Take the next order from the queue to Order');
   assert.deepEqual(g.byId.stock.stereotypes, ['datastore']);
@@ -131,7 +132,7 @@ test('example 9: it validates and lays out clean down and right: lanes as bands,
     'Fulfilling an order: an activity diagram of 17 nodes, 19 flows and 3 partitions.', 'Partition Order worker, 5 nodes.', 'Partition Warehouse, 10 nodes.', 'Partition Email service, 2 nodes.',
     'Initial node, in Order worker; then Take the next order from the queue.', 'Action Take the next order from the queue, in Order worker; then Order, an object flow.',
     'Object node Order, in Order worker; then Check the stock of each book, an object flow.'].join('\n'));
-  assert.match(describe(EX, 'fulfil'), /\nDecision All books in stock\?, 2 exits, in Warehouse; then merge \[all books in stock\]; then Restock request \[else\]\.\n/);
+  assert.match(describe(EX, 'fulfil'), /\nDecision All books in stock\?, 2 exits, in Warehouse; then stock-ready \[all books in stock\]; then Restock request \[else\]\.\n/);
   assert.equal(describe(EX, 'fulfil').split('\n').length, 4 + 17, 'each node once, from the initial node');
   assert.deepEqual([T.word(EX, 'in-stock'), T.rows(EX, V(EX), 'in-stock'), T.rows(EX, V(EX, 'take-payment'), 'charge')], ['Decision', ['in Warehouse'], null], 'the PDF\'s word and rows (§15)');
 });
@@ -548,7 +549,7 @@ test('audit 33: an activity view titled "" is named by its id in a call behaviou
   assert.ok(r.pick.includes('take-payment') && !r.pick.includes(''), JSON.stringify(r.pick));
 });
 
-test('audit 38: an action or object node with no label is named as drawn, by its id, in its aria, its lines\' and describe(); a control node by its word', () => {
+test('audit 38: an action or object node with no label is named as drawn, by its id, in its aria, its lines\' and describe(); a glyph by its word (a diamond by its id, audit 39)', () => {
   const m = { schemaVersion: 2, nodes: [{ id: 'start', type: 'uml.InitialNode' }, { id: 'pack-order', type: 'uml.Action' }, { id: 'ship-order', type: 'uml.Action' }, { id: 'order-doc', type: 'uml.ObjectNode' },
     { id: 'ask', type: 'uml.DecisionNode' }, { id: 'sub', type: 'uml.CallBehaviorAction' }, { id: 'named', type: 'uml.Action', label: 'Wrap' }, { id: 'end', type: 'uml.ActivityFinalNode' }],
   edges: [['f1', 'start', 'pack-order'], ['f2', 'pack-order', 'order-doc', 'uml.ObjectFlow'], ['f3', 'order-doc', 'ship-order', 'uml.ObjectFlow'], ['f4', 'ship-order', 'ask'], ['f5', 'ask', 'sub'], ['f6', 'ask', 'named'], ['f7', 'sub', 'end'], ['f8', 'named', 'end']]
@@ -559,12 +560,36 @@ test('audit 38: an action or object node with no label is named as drawn, by its
   assert.equal(node('pack-order').aria, 'Action pack-order'); assert.equal(node('ship-order').aria, 'Action ship-order');
   assert.equal(node('order-doc').aria, 'Object node order-doc'); assert.match(node('sub').aria, /^Call behaviour action sub, /);
   assert.notEqual(node('pack-order').aria, node('ship-order').aria, 'two unnamed actions told apart');
-  assert.equal(node('named').aria, 'Action Wrap'); assert.equal(node('start').aria, 'Initial node'); assert.equal(node('ask').aria, 'Decision, 2 exits');
+  assert.equal(node('named').aria, 'Action Wrap'); assert.equal(node('start').aria, 'Initial node'); assert.equal(node('ask').aria, 'Decision ask, 2 exits');
   assert.equal(line('f1').aria, 'Control flow from initial node to pack-order');
   assert.equal(line('f2').aria, 'Object flow from pack-order to order-doc');
-  assert.equal(line('f5').aria, 'Control flow from decision to sub');
+  assert.equal(line('f5').aria, 'Control flow from ask to sub');
   const d = describe(m, 'v');
   assert.match(d, /^Action pack-order; then order-doc, an object flow\.$/m);
   assert.match(d, /^Object node order-doc; then ship-order, an object flow\.$/m);
-  assert.match(d, /^Action ship-order; then decision\.$/m);
+  assert.match(d, /^Action ship-order; then ask\.$/m);
+});
+
+// audit 39: an unlabeled decision or merge draws its id in its diamond (acStLabel), but its accessible name, its lines' names and
+// describe() said only its word ("Merge, 2 entries", "then merge"): every word drawn on a node is in its accessible name (WCAG 2.5.3)
+test('audit 39: every word an activity node draws is in its accessible name, an unlabeled diamond\'s id too, in every example and odd models', () => {
+  const words = t => String(t ?? '').split(/[\s«»,()]+/).filter(Boolean);
+  const odd = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Action', label: 'Go' }, { id: 'm<img src=https://e.example/t.png>', type: 'uml.MergeNode' }, { id: 'd', type: 'uml.DecisionNode', label: '' },
+    { id: 'q', type: 'uml.DecisionNode', props: { stereotypes: ['weighted'] } }, { id: 'j', type: 'uml.JoinNode' }, { id: 'f', type: 'uml.ForkNode' }, { id: 'e', type: 'uml.ActivityFinalNode' }],
+  edges: [['a', 'd'], ['d', 'q'], ['d', 'm<img src=https://e.example/t.png>'], ['q', 'm<img src=https://e.example/t.png>'], ['m<img src=https://e.example/t.png>', 'f'], ['f', 'j'], ['f', 'j'], ['j', 'e']]
+    .map(([from, to], i) => ({ id: 'l' + i, type: 'uml.ControlFlow', from, to })),
+  views: [{ id: 'v', diagram: 'uml.activity', nodeIds: ['a', 'm<img src=https://e.example/t.png>', 'd', 'q', 'j', 'f', 'e'] }] };
+  const models = [['odd', odd], ...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).map(f => [f, JSON.parse(readFileSync(new URL('../examples/' + f, import.meta.url), 'utf8'))])];
+  let diamonds = 0;
+  for (const [name, m] of models) for (const v of (m.views || []).filter(v => v && v.diagram === 'uml.activity')) {
+    const g = layout(m, v.id), d = describe(m, v.id);
+    for (const n of g.nodes) { for (const w of words(n.label)) assert.ok(words(n.aria).includes(w), `${name} ${v.id} ${n.id}: draws "${w}", its name is "${n.aria}"`);
+      if (n.shape === 'diamond') { diamonds++; assert.ok(n.label, `${name} ${n.id}: a diamond draws a name`); assert.ok(d.includes(n.aria), `${name} ${n.id}: describe() says "${n.aria}"`); } }
+  }
+  assert.ok(diamonds >= 6, `${diamonds} diamonds`);
+  const g = layout(odd, 'v'), node = id => g.nodes.find(n => n.id === id), d = describe(odd, 'v');
+  assert.equal(node('d').aria, 'Decision d, 2 exits'); assert.equal(node('q').aria, 'Decision q (weighted), 1 exit'); assert.equal(node('q').label, '«weighted» q');
+  assert.equal(node('j').aria, 'Join, 2 branches'); assert.equal(node('f').aria, 'Fork, 2 branches');
+  assert.match(d, /^Decision d, 2 exits; then q; then m<img src=https:\/\/e\.example\/t\.png>\.$/m);
+  assert.ok(!/<img/.test(svgOf(g)), 'an id is drawn as text, never as markup');
 });

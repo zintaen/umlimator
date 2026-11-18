@@ -134,7 +134,10 @@ const SYS_PRIM = ['Real', 'Integer', 'Boolean', 'String'];
 const SYS_UNKIND = v => (typeof v === 'string' ? v.replace(/^\s*«(proxy|full)»\s*(?=\S)/, '') : v);
 function SYS_BACK(r, model, view) {
   if (Array.isArray(r)) { // a member renamed to a name another member of its owner holds: refused (SYS_CLASH, audit 37)
-    for (const c of r) { const b = SYS_OBJ(c) && c.op === 'set' && String(c.path) === 'label' ? SYS_MEMBER(model, c.id) : null, no = b && SYS_CLASH(b.owner, b.m, SYS_UNKIND(c.value)); if (no) return no; } }
+    for (const c of r) { const b = SYS_OBJ(c) && c.op === 'set' && String(c.path) === 'label' ? SYS_MEMBER(model, c.id) : null, no = b && SYS_CLASH(b.owner, b.m, SYS_UNKIND(c.value)); if (no) return no; }
+    // a member row added with a name its owner (a block) holds already: refused in the same words as the rename (audit 39)
+    for (const c of r) { if (!SYS_OBJ(c) || c.op !== 'add' || c.owner == null || !SYS_OBJ(c.element)) continue;
+      const o = SYS_NODE(model, c.owner), x = SYS_BACK_ONE(c, model, view).element, no = o && SYS_CLS.includes(o.type) && SYS_CLASH(o, {}, x.label, x.type, x.props); if (no) return no; } }
   if (Array.isArray(r)) return r.flatMap(c => { const b = SYS_BACK_ONE(c, model, view), m = SYS_OBJ(b) && b.op === 'set' && String(b.path) === 'label' ? SYS_MEMBER(model, b.id) : null;
     return [b, ...(m ? SYS_ROLES(model, m.m, m.owner, b.value) : [])]; });
   if (!SYS_OBJ(r)) return r;
@@ -177,6 +180,8 @@ function SYS_ROLES(model, m, owner, label) {
 // member-names' own key, of the member as edited (audit 38): its new type, label and parameters, an operation by its
 // parameters' types too ("ecoRange(Real)"), so an operation and a value may share a name and two values may not
 const SYS_KEY = (type, label, P) => (type === 'uml.Operation' ? `${label}(${SYS_ARR(SYS_OBJ(P) ? P.parameters : null).map(a => (SYS_OBJ(a) ? a.valueType ?? '' : '')).join(',')})` : `${label}`);
+const SYS_CLS = ['sysml.Block', 'sysml.InterfaceBlock', 'sysml.ConstraintBlock', 'sysml.ValueType']; // member-names' owners (blocks.js BD_CLS)
+// m: the member as it was, {} for one being added
 function SYS_CLASH(owner, m, label, type = SYS_OBJ(m) ? m.type : undefined, props = SYS_OBJ(m) ? m.props : undefined) {
   if (!SYS_OBJ(owner) || !SYS_OBJ(m) || typeof label !== 'string' || label === '') return null;
   const k = SYS_KEY(type, label, props); if (m.label != null && m.label !== '' && k === SYS_KEY(m.type, m.label, m.props)) return null; // a key kept is no rename

@@ -204,6 +204,7 @@ function bdMember(model, view, ownerId, id, text) {
   const o = bdNodeOf(model, ownerId); if (!o || !BD_CLS.includes(o.type)) return null;
   if (id != null) { const m = BD_ARR(o.members).find(x => BD_OBJ(x) && x.id === id); return m ? bdEdit(model, o, m, text) : null; }
   const r = bdParse(text, o, model); if (r.error) return r;
+  const no = SYS_CLASH(o, {}, r.label, r.type, r.props); if (no) return no; // a name another member holds, as an edit's (audit 39)
   return [{ op: 'add', element: { id: bdFresh(model, `${o.id}.${r.label}`), type: r.type, label: r.label, ...(Object.keys(r.props).length ? { props: r.props } : {}) }, owner: o.id }];
 }
 /* connect (§7.4): a generalization joins two of one kind (general-kinds) and closes no cycle (generalization-cycle), a comment link runs from a comment; a part association

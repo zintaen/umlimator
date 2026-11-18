@@ -646,3 +646,27 @@ test('audit 33: Shift + Delete on a lifeline shown in two timing views counts wh
   r = tmRemove(m, 'charge', ['worker'], false);
   assert.equal(r.say, 'Hid worker; deleted its 2 messages; its changes stay in the timeline');
 });
+
+test('audit 39: describe() and the PDF\'s rows leave out a message, change or constraint with no time, as the picture does, never "at undefined ms"', () => {
+  for (const props of [undefined, -1, {}, { sort: 'call' }, { sentAt: 100 }, { sentAt: 'x', receivedAt: 140 }, { sentAt: 100, receivedAt: Infinity }, { sentAt: 100, receivedAt: 1e301 }, { sentAt: { valueOf: 1 }, receivedAt: [140] }]) {
+    const m = EX(); if (props === undefined) delete msg(m, 'm-charge').props; else msg(m, 'm-charge').props = props;
+    const d = describe(m, 'charge'), svg = layout(m, 'charge').nodes.length >= 0 && mapContext(m).buildGeo('charge');
+    assert.doesNotMatch(d, /undefined|NaN|\[object/, JSON.stringify(props));
+    assert.doesNotMatch(d, /charge\(total\)/, `${JSON.stringify(props)}: describe() says a message the picture does not draw`);
+    assert.ok(!svg.edges.some(e => e.id === 'm-charge'), 'the picture leaves it out');
+    assert.match(d, /a timing diagram of 2 lifelines, 8 changes, 1 message and 2 constraints, in ms\./);
+    assert.deepEqual(TM_TYPE.rows(m, 'charge', 'worker').filter(r => /undefined|charge/.test(r)), []);
+    assert.ok(validate(m).some(p => p.rule === 'change-time'), 'validate() still reports it');
+  }
+  // a change with no time, and the constraint on it: neither drawn, neither said
+  const m = EX(); delete ch(m, 'w-waiting').at;
+  const d = describe(m, 'charge');
+  assert.doesNotMatch(d, /undefined/); assert.doesNotMatch(d, /Waiting for payment/); assert.doesNotMatch(d, /Duration constraint/);
+  assert.match(d, /7 changes, 2 messages and 1 constraint/);
+  assert.deepEqual(TM_TYPE.rows(m, 'charge', 'worker').filter(r => /undefined/.test(r)), []);
+  // a message to a lifeline the view does not show is not drawn either
+  const k = EX(); msg(k, 'm-charge').to = 'nobody';
+  assert.doesNotMatch(describe(k, 'charge'), /charge\(total\)/);
+  // the clean model says every message, change and constraint
+  assert.match(describe(EX(), 'charge'), /8 changes, 2 messages and 2 constraints[\s\S]*Call charge\(total\) from worker at 100 ms to payments at 140 ms\./);
+});
