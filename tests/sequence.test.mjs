@@ -685,3 +685,15 @@ test('audit 41: the picture\'s names and describe() count the messages drawn alo
   assert.deepEqual(sqMoveTo(m, 'v', 'b', { by: [1, 0] }), []);
   assert.ok(errors(m).some(p => /message-ends/.test(p.message)), 'validate() still says the undrawn ones');
 });
+
+test('audit 43: a nodeIds entry that is no element is no lifeline: covers judges the lifelines drawn, and a message to it is a message-ends error', () => {
+  const L = id => ({ id, type: 'uml.Lifeline', label: id });
+  const m = { schemaVersion: 2, nodes: [L('a'), L('b'), L('c')], edges: [],
+    views: [{ id: 'v', diagram: 'uml.sequence', nodeIds: ['a', 'ghost', 'b', 'c'], edges: [
+      { id: 'm1', type: 'uml.Message', from: 'a', to: 'b', label: 'hi', props: { sort: 'call' } },
+      { id: 'm2', type: 'uml.Message', from: 'b', to: 'ghost', label: 'lost', props: { sort: 'async' } },
+      { id: 'u1', type: 'uml.InteractionUse', label: 'Log', props: { covers: ['a', 'b'] } },
+      { id: 'u2', type: 'uml.InteractionUse', label: 'Gap', props: { covers: ['a', 'c'] } }] }] };
+  const p = validate(m).filter(x => x.rule === 'covers' || x.rule === 'message-ends').map(x => x.message);
+  assert.deepEqual(p, ['message-ends: m2 runs from b to ghost, and ghost is not a lifeline of view v', 'covers: u2 covers a, c, which are not next to each other in nodeIds']);
+});
