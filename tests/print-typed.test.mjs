@@ -140,3 +140,52 @@ test('audit 29: the PDF prints what the view draws: type "" is no type, its Kind
   assert.deepEqual(text(cv({})), ['Pay Interface pay()']);
   assert.deepEqual(text(cv({ present: { i: { as: 'ball' } } })), ['Pay Interface']);
 });
+
+
+// audit 30: one rule for an element or a line of no type, of type "", or of a type of no notation, in every type: what the
+// view draws and calls it (its accessible name) is what describe(), the PDF's Kind and validate()'s words say. Every type src/
+// registers, read from the sources so a new one is held to it too
+test('audit 30: in every type, an element or line of no type (or "", or of no notation) is drawn, named, described, printed and warned of alike', async () => {
+  const build = readFileSync(new URL('../tools/build.mjs', import.meta.url), 'utf8');
+  for (const f of [...build.matchAll(/'([a-z0-9]+\/[a-z0-9-]+)'/g)].map(m => m[1])) await import(`../src/${f}.js`);
+  const { diagramOf } = await import('../src/core/registry.js'), { validate } = await import('../src/map/validate.js'), { describe } = await import('../src/map/insight.js');
+  const src = p => readdirSync(new URL(`../src/${p}/`, import.meta.url)).map(f => readFileSync(new URL(`../src/${p}/${f}`, import.meta.url), 'utf8')).join('\n');
+  const { C4_TYPES } = await import('../src/c4/c4.js'), { C4_VIEW_TYPES } = await import('../src/c4/views.js');
+  const names = [...new Set([...readdirSync(new URL('../src/', import.meta.url)).flatMap(d => [...src(d).matchAll(/registerDiagramType\('([a-z0-9.-]+)'/g)].map(m => m[1])), ...[...C4_TYPES, ...C4_VIEW_TYPES].map(T => T.name)])]
+    .filter(d => d !== 'map' && diagramOf({ diagram: d }));
+  assert.ok(names.length >= 30, names.join());
+  const an = w => (/^[aeiou]/i.test(w) ? 'an ' : 'a ') + w, drawnAs = w => (w === 'Line' ? 'a plain line' : an(w.toLowerCase()));
+  const bad = [], warn = console.warn; console.warn = () => {};
+  try {
+    for (const d of names) {
+      const say = (what, ok, got) => { if (!ok) bad.push(`${d} ${what}: ${JSON.stringify(got)}`); }, seen = {};
+      for (const type of [undefined, '', 'fooBar']) {
+        const has = type === undefined ? {} : { type }, q = JSON.stringify(type);
+        const m = { schemaVersion: 2, nodes: [{ id: 'x', label: 'Thing', ...has, members: [{ id: 'mm', label: 'zork', ...has }] }, { id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [],
+          views: [{ id: 'v', diagram: d, title: 'V', nodeIds: ['x', 'a', 'b'], edges: [{ id: 'e', from: 'a', to: 'b', label: 'qux', ...has }] }] };
+        const g = layout(m, 'v'), n = g.nodes.find(y => y.id === 'x'), e = g.edges.find(y => y.id === 'e' || (y.ids || []).includes('e'));
+        const ps = validate(m), at = p => (ps.find(y => y.path === p) || {}).message, ctx = mapContext(m), [els, lines] = tablesOf(ctx, ctx.V.v, ctx.buildGeo('v'));
+        const row = els.rows.find(r => r.includes('<b>Thing</b>')), k = row && cells(row)[1], desc = describe(m, 'v'), lr = lines.rows[0], lk = lr && cells(lr).at(-1);
+        // the element: its kind as its name starts, in the PDF and describe(); "" as no type; validate() says what is drawn
+        const word = n && typeof n.aria === 'string' && n.aria.includes(' Thing') ? n.aria.slice(0, n.aria.indexOf(' Thing')) : null;
+        if (type !== 'fooBar') seen.node ??= n && n.aria; else say('node of no notation: its PDF Kind as named', !n || word === k, [n && n.aria, k]);
+        if (type === '') say('"" node: as no type', (n && n.aria) === seen.node, [n && n.aria, seen.node]);
+        if (type !== 'fooBar' && !n) { say(`${q} node not drawn: not printed nor described`, !row && !/Thing/.test(desc), desc);
+          if (type === '') say('"" node: warned not drawn', at('nodes[0].type') === 'type "" is not <notation>.<Name> (uml.Class): not drawn', at('nodes[0].type')); }
+        else if (type !== 'fooBar') { say(`${q} node: PDF Kind as named`, !!word && k === word, [n.aria, k]); say(`${q} node: described as named`, !!word && new RegExp(`\\b${word}`, 'i').test(desc) && /Thing/.test(desc), desc);
+          if (type === '') say('"" node: warned drawn as named', at('nodes[0].type') === `type "" is not <notation>.<Name> (uml.Class): drawn as ${an(String(word).toLowerCase())}`, at('nodes[0].type')); }
+        // the member: no view draws one of no kind, and validate() says so
+        if (type !== 'fooBar') { say(`${q} member not drawn`, !JSON.stringify(g).includes('zork'), 'zork'); say(`${q} member: warned not drawn`, at('nodes[0].members[0].type') === `type ${q} is not <notation>.<Name> (uml.Property): not drawn`, at('nodes[0].members[0].type')); }
+        // the line: its kind as its name starts ("Line", "Data flow"), in the PDF's Lines and validate()'s words; of no notation, as
+        // written, or "Line" where a view names every kind it does not know so (a class view, BPMN)
+        const lw = e && typeof e.aria === 'string' ? e.aria.slice(0, Math.min(...[' qux', ' from'].map(w => e.aria.indexOf(w)).filter(i => i > 0))) : null;
+        if (type !== 'fooBar') seen.line ??= e && e.aria;
+        if (type === '') say('"" line: as no type', (e && e.aria) === seen.line, [e && e.aria, seen.line]);
+        if (!e) say(`${q} line not drawn: warned so`, at('views[0].edges[0].type') === `type ${q} is not <notation>.<Name> (uml.Dependency): not drawn`, at('views[0].edges[0].type'));
+        else { say(`${q} line: PDF Kind as named`, lk === lw || type === 'fooBar' && lw === 'Line' && lk === 'fooBar', [e.aria, lk]);
+          say(`${q} line: warned drawn as named`, at('views[0].edges[0].type') === `type ${q} is not <notation>.<Name> (uml.Dependency): drawn as ${drawnAs(type === 'fooBar' && lw === 'fooBar' ? 'Line' : lw)}`, [at('views[0].edges[0].type'), e.aria]); }
+      }
+    }
+  } finally { console.warn = warn; }
+  assert.deepEqual(bad, []);
+});

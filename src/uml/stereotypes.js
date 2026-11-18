@@ -1,5 +1,5 @@
 import { jsonText } from '../core/model.js';
-import { TYPED } from '../core/registry.js';
+import { TYPED, diagramOf, drawnKind } from '../core/registry.js';
 import { multBounds } from './class.js';
 
 /* ---------- stereotypes applied across the model (work package 6.2, notes/stage-6.md §5) ----------
@@ -88,7 +88,8 @@ const UML_AS = { InternalTransition: 'Transition', Subject: 'Classifier', Link: 
 // another notation's types and their metaclasses, filled by the family that defines them (SysML's: src/sysml/sysml.js, notes/milestone-3.md §3.3)
 const UML_META_AS = Object.create(null);
 // a uml.* element's metaclass, null for none; a type of UML_META_AS, its metaclass there; undefined for any other (not checked, §5.4)
-const metaOf = x => typeof x.type !== 'string' ? undefined : !x.type.startsWith('uml.') ? UML_META_AS[x.type] : Object.hasOwn(UML_AS, x.type.slice(4)) ? UML_AS[x.type.slice(4)] : x.type.slice(4);
+// an element of no type (or "") a view draws as a UML kind (a class view's class: registry.js drawnKind) is of that kind's (audit 30)
+const metaOf = (x, I) => (x.type == null || x.type === '') && I && I.drawnAs.has(x.id) ? metaOf({ type: I.drawnAs.get(x.id) }) : typeof x.type !== 'string' || !x.type ? undefined : !x.type.startsWith('uml.') ? UML_META_AS[x.type] : Object.hasOwn(UML_AS, x.type.slice(4)) ? UML_AS[x.type.slice(4)] : x.type.slice(4);
 const META_UP = new Map();
 // a metaclass and every metaclass it specializes; a name in no row is only itself
 function metaUp(name) {
@@ -137,7 +138,10 @@ function styIndex(model) {
   // ownMerge reads it (registry.js): a class added { in: 'view' } in a package applying a profile has its stereotypes (audit 24)
   STY_ARR(model.views).forEach((v, k) => { if (STY_OBJ(v)) ['nodes', 'edges', 'fragments'].forEach(f => STY_ARR(v[f]).forEach((x, j) => put(x, `views[${k}].${f}[${j}]`, f === 'nodes' && STY_OBJ(x) ? x.parent : undefined, f === 'nodes'))); });
   const isT = (id, t) => (at.get(id) || {}).type === t, profiles = [...at.values()].filter(x => x.type === 'uml.Profile');
-  const I = { at, rec, els, profiles, byProfile: new Map(), byName: new Map(), byLabel: new Map(), enums: new Map(), applied: new Map(), gens: new Map(), ext: new Map(), req: new Map(), memo: new Map(), cache: new Map(), defsOf: new Map(), upOf: new Map(), probs: [] };
+  // what each view draws an element of no type as, the first view that draws it as a UML kind (audit 30)
+  const drawnAs = new Map(); STY_ARR(model.views).forEach(v => { if (!STY_OBJ(v) || v.diagram == null) return; const T = diagramOf(v);
+    STY_ARR(v.nodeIds).forEach(id => { const x = at.get(id); if (!x || x.type || drawnAs.has(id)) return; const k = drawnKind(T, x); if (typeof k === 'string' && k.startsWith('uml.')) drawnAs.set(id, k); }); });
+  const I = { drawnAs, at, rec, els, profiles, byProfile: new Map(), byName: new Map(), byLabel: new Map(), enums: new Map(), applied: new Map(), gens: new Map(), ext: new Map(), req: new Map(), memo: new Map(), cache: new Map(), defsOf: new Map(), upOf: new Map(), probs: [] };
   if (!profiles.length) return I;
   profiles.forEach(p => { I.byProfile.set(p.id, new Map()); I.enums.set(p.id, new Map()); if (!I.byLabel.has(styName(p))) I.byLabel.set(styName(p), []); I.byLabel.get(styName(p)).push(p); });
   [...at.values()].forEach(x => { if (!I.byProfile.has(x.parent) || up.get(x.id) !== x.parent) return; const k = styKey(styName(x));
@@ -210,7 +214,7 @@ function styTagFits(I, def, prof, v) {
 /* One element's stereotypes, resolved by §5.3, with the required ones its scope supplies (§5.5) and their tags (§5.6):
    [{ stereotype, profile, key, required, tags: [{ name, def, value }] }], key the name props.tags keys it by. say: problems */
 function styResolve(I, r, say) {
-  const { x, path } = r, P = STY_OBJ(x.props) ? x.props : {}, scope = I.scope(I.applied.has(x.id) && I.rec.get(x.id) === r ? x.id : r.own), meta = metaOf(x); // a package applying a profile is in its scope
+  const { x, path } = r, P = STY_OBJ(x.props) ? x.props : {}, scope = I.scope(I.applied.has(x.id) && I.rec.get(x.id) === r ? x.id : r.own), meta = metaOf(x, I); // a package applying a profile is in its scope
   const names = p => p.map(styName).join(' and '), owner = I.at.get(r.own), out = [], again = new Map();
   STY_ARR(P.stereotypes).forEach((s, k) => { if (typeof s !== 'string' || !s) return; const at = `${path}.props.stereotypes[${k}]`, q = s.indexOf('::');
     let hit = null;

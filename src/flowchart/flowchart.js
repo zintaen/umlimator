@@ -4,7 +4,7 @@ import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
 import '../uml/class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from '../uml/flow.js'; // and SHAPE.diamond, SHAPE.initial's circle, read only
-import { snKindName } from '../uml/structure.js';
+import { snKindName, snLineName } from '../uml/structure.js';
 import { usedIds, jsonText } from '../core/model.js';
 
 /* ---------- the flowchart, flowchart (work package M2.3, notes/milestone-2.md §7.2) ----------
@@ -113,7 +113,7 @@ function fcNodeName(I, x) {
 function fcLineName(I, e) {
   const t = FC_TXT(e.label), ends = `from ${fcCalled(I.N.get(e.from))} to ${fcCalled(I.N.get(e.to))}`;
   // a listed line of another kind by its own kind, "Association", never "Flow" (audit 26)
-  return e.type === 'uml.CommentLink' ? `Comment link ${ends}` : `${e.type === 'flow.Flow' ? 'Flow' : e.type == null ? 'Line' : snKindName(e.type)} ${ends}${t ? ': ' + t : ''}`;
+  return e.type === 'uml.CommentLink' ? `Comment link ${ends}` : `${e.type === 'flow.Flow' ? 'Flow' : snLineName(e.type)} ${ends}${t ? ': ' + t : ''}`;
 }
 
 /* ---- the legend: each line kind and each symbol the view draws (1.9's legendItem form) ---- */
@@ -218,6 +218,7 @@ function fcMoveTo(model, view, id) {
 
 /* ---- the type ---- */
 const FC_TYPE = registerDiagramType('flowchart', {
+  untyped: 'Node', // an element of no type (or ""): a node, as named (audit 30)
   title: 'flowchart',
   elements: [...FC_NODES, 'uml.Comment'].map(type => ({ type, label: FC_LOOK[type][1] })),
   lines: [{ type: 'flow.Flow', label: 'Flow' }, { type: 'uml.CommentLink', label: 'Comment link' }],

@@ -4,7 +4,7 @@ import { brLines, esc, fit } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
 import { LINE_SAYS, legendItem } from './class.js'; // SHAPE.classifier and SHAPE.note too
-import { snKindName } from './structure.js'; // SHAPE.component too
+import { snKindName, snLineName } from './structure.js'; // SHAPE.component too
 import './usecase.js'; // SHAPE.actor
 import { usedIds, jsonText } from '../core/model.js';
 
@@ -79,7 +79,7 @@ function ifNodeName(I, n) {
 function ifLineName(I, e) {
   const ends = `from ${I.nm(e.from)} to ${I.nm(e.to)}`;
   if (e.type === 'uml.CommentLink') return `Comment link ${IF_HAS(e.label) ? e.label + ' ' : ''}${ends}`; // its label as drawn (audit 23)
-  if (e.type !== 'uml.InformationFlow') return `${e.type == null ? 'Line' : snKindName(e.type)} ${IF_HAS(e.label) ? e.label + ' ' : ''}${ends}`; // a listed line of another kind by its kind, plain (audit 26)
+  if (e.type !== 'uml.InformationFlow') return `${snLineName(e.type)} ${IF_HAS(e.label) ? e.label + ' ' : ''}${ends}`; // a listed line of another kind by its kind, plain (audit 26)
   const c = I.conveyed(e).map(I.nm);
   return `Information flow${IF_HAS(e.label) ? ' ' + e.label : ''} ${ends}${c.length ? ', conveys ' + ifAnd(c) : ''}`;
 }

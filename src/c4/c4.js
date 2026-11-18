@@ -6,7 +6,7 @@ import '../uml/class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from '../uml/flow.js';
 import { boxHead, ownersOn, readingOrder } from '../uml/owners.js';
 import { brLines } from '../typed/draw.js';
-import { snKindName } from '../uml/structure.js';
+import { snKindName, snLineName } from '../uml/structure.js';
 import { usedIds, jsonText } from '../core/model.js';
 
 /* ---------- C4's elements and static views, c4.landscape, c4.context, c4.container, c4.component (work package M2.6,
@@ -140,7 +140,7 @@ function c4LineName(e, pic) {
     return `Implied relationship from ${nm(e.from)} to ${nm(e.to)}, standing for ${c4Plural(e.of.length, 'relationship')}: ${said.join('; ')}. Edit them where their own ends are shown`; }
   if (e.type === 'uml.CommentLink') return `Comment link from ${nm(e.from)} to ${nm(e.to)}`;
   // a listed line of another kind by its own kind, "Association", never "Relationship" (audit 26)
-  const said = c4LineLabel(e); return `${e.type === 'c4.Relationship' ? 'Relationship' : e.type == null ? 'Line' : snKindName(e.type)} from ${nm(e.from)} to ${nm(e.to)}${said ? ': ' + said : ''}`;
+  const said = c4LineLabel(e); return `${e.type === 'c4.Relationship' ? 'Relationship' : snLineName(e.type)} from ${nm(e.from)} to ${nm(e.to)}${said ? ': ' + said : ''}`;
 }
 
 /* ---- the key (§7.5): each element type and shape drawn, external, the relationship and the implied line ---- */

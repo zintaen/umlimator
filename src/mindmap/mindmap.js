@@ -316,6 +316,7 @@ function mmShow(model, view, id) {
 
 /* ---- the type ---- */
 const MM_TYPE = registerDiagramType('mindmap', {
+  untyped: null, // an element of no type is no topic: not drawn, said by mindmap-kinds (audit 30)
   title: 'mindmap',
   // the kinds of line it draws: any other a view lists is not drawn, which validate() says (src/core/model.js, audit 28)
   drawsOnly: [],

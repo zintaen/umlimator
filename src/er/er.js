@@ -4,7 +4,7 @@ import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { ENDS, brLines } from '../typed/draw.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
 import { multBounds } from '../uml/class.js'; // SHAPE.note too, a comment's look
-import { snKindName } from '../uml/structure.js';
+import { snKindName, snLineName } from '../uml/structure.js';
 import { usedIds, jsonText } from '../core/model.js';
 
 /* ---------- the entity-relationship diagram, er (work package M2.2, notes/milestone-2.md §4, §7.1) ----------
@@ -22,7 +22,7 @@ const erCols = n => ER_ARR(n.members).filter(c => ER_OBJ(c) && c.type === 'er.Co
 const erPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const erAnd = a => (a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a.at(-1));
 // a table: an entity, or a node with no type (drawn as one, as before), to the rules, the edits and the PDF as to the picture (audit 27)
-const erTable = n => ER_OBJ(n) && (n.type == null || n.type === 'er.Entity');
+const erTable = n => ER_OBJ(n) && (n.type == null || n.type === '' || n.type === 'er.Entity'); // no type, or "": a table (audit 30)
 
 // the model read once: nodes by id, every entity's columns by id ({ c, e }), the lines. Each column remembers the model it
 // was last read in, which print (the panel's rows, given a column alone) needs to name what it references
@@ -160,7 +160,7 @@ const erFull = (n, I) => { const cs = erTable(n) ? erCols(n) : []; return erNode
 function erLineName(e, I) {
   const nm = id => (I.at.has(id) ? erName(I.at.get(id)) : String(id));
   // its label as drawn, as the data flow type says it (audit 23); a listed line of another kind by its own kind, "Association owns" (audit 26)
-  if (e.type !== 'er.Relationship') return `${e.type == null ? 'Line' : snKindName(e.type)} ${ER_HAS(e.label) ? e.label + ' ' : ''}from ${nm(e.from)} to ${nm(e.to)}`;
+  if (e.type !== 'er.Relationship') return `${snLineName(e.type)} ${ER_HAS(e.label) ? e.label + ' ' : ''}from ${nm(e.from)} to ${nm(e.to)}`;
   return `${erIdentifying(e) ? 'Identifying' : 'Non-identifying'} relationship ${ER_HAS(e.label) ? e.label + ' ' : ''}from ${nm(e.from)} (${erSay(erMult(e, 'from'))}) to ${nm(e.to)} (${erSay(erMult(e, 'to'))})`;
 }
 const erShown = (model, view) => { const I = erIndex(model); return { I, ids: [...new Set(ER_ARR(view.nodeIds))].filter(id => I.at.has(id)) }; };
@@ -233,7 +233,7 @@ function erProblems(model) {
   const q = id => JSON.stringify(I.at.has(id) ? erName(I.at.get(id)) : String(id)), qc = r => JSON.stringify(`${erName(r.e)}.${erName(r.c)}`);
   // a node with no type is a table here when it holds a column or an er view shows it: one only other views show is theirs
   const onEr = new Set(ER_ARR(model && model.views).filter(v => ER_OBJ(v) && v.diagram === 'er').flatMap(v => ER_ARR(v.nodeIds)));
-  ER_ARR(model && model.nodes).forEach((n, i) => { if (!erTable(n) || I.at.get(n.id) !== n || (n.type == null && !erCols(n).length && !onEr.has(n.id))) return;
+  ER_ARR(model && model.nodes).forEach((n, i) => { if (!erTable(n) || I.at.get(n.id) !== n || (!n.type && !erCols(n).length && !onEr.has(n.id))) return;
     const seen = new Map();
     if (!erCols(n).some(c => erProps(c).primaryKey === true)) say('warning', 'pk-exists', `nodes[${i}]`, [n.id], `${q(n.id)} has no primary key column`);
     ER_ARR(n.members).forEach((c, j) => { if (!ER_OBJ(c) || c.type !== 'er.Column') return;
@@ -305,6 +305,7 @@ function erConnect(model, view, from, to, at, line) {
 /* ---- the type ---- */
 const erMultField = w => ({ key: `ends.${w}.multiplicity`, path: ['ends', w, 'multiplicity'], label: `${w === 'from' ? 'Parent' : 'Child'} multiplicity`, kind: 'text' });
 const ER_TYPE = registerDiagramType('er', {
+  untyped: 'Table', // an element of no type (or ""): a table, as named (audit 30)
   title: 'entity-relationship diagram',
   elements: [{ type: 'er.Entity', label: 'Table' }, { type: 'uml.Comment', label: 'Comment' }],
   lines: [{ type: 'er.Relationship', label: 'Relationship', props: { identifying: false, ends: { from: { multiplicity: '1' }, to: { multiplicity: '0..*' } } } }, { type: 'uml.CommentLink', label: 'Comment link' }],
