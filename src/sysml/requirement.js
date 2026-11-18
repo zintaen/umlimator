@@ -6,7 +6,7 @@ import { layoutTyped } from '../typed/layout.js';
 import { drawnLines, legendItem, lineRename } from '../uml/class.js'; // and SHAPE.note, a comment's look
 import { holdsLine, ownersOn, placeTabs } from '../uml/owners.js';
 import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_HEAD, SYS_TABLE } from './sysml.js';
-import { usedIds, jsonText } from '../core/model.js';
+import { usedIds, jsonText, labelOr } from '../core/model.js';
 
 /* ---------- the requirement diagram, sysml.requirement (work package M3.2, notes/milestone-3.md §6, §13) ----------
    Requirements, test cases, blocks, packages and comments in a SysML frame (§5): a requirement is the classifier with
@@ -236,7 +236,7 @@ function rqDescribe(model, viewId) {
   const I = rqIndex(model, v), { ids, pic } = rqBoxes(model, v), shown = new Set(ids), h = SYS_HEAD(model, v);
   const lines = rqLines(model, v, pic, shown).length;
   const owned = ids.filter(id => I.is(id, RQ) && I.is(I.at.get(id).parent, RQ) && shown.has(I.at.get(id).parent)).length;
-  return [`${v.title || v.id}: a requirement diagram (${h.title}) of ${rqPlural(ids.length, 'element')} and ${rqPlural(lines + owned, 'line')}.`,
+  return [`${labelOr(v.title, v.id)}: a requirement diagram (${h.title}) of ${rqPlural(ids.length, 'element')} and ${rqPlural(lines + owned, 'line')}.`,
     ...ids.map(id => { const s = rqSays(I, id); return rqAria(I.at.get(id)).replace(/\.$/, '') + (s.length ? '; ' + s.join('; ') : '') + '.'; })].join('\n');
 }
 

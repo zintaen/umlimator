@@ -3,7 +3,7 @@ import { brLines, esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { layoutTree } from '../layout/tree.js';
 import '../typed/edit.js'; // TYPED.edit, which the outline's Show on a topic wraps (mmShow)
-import { usedIds, jsonText } from '../core/model.js';
+import { usedIds, jsonText, labelOr } from '../core/model.js';
 
 /* ---------- the mindmap, mindmap (work package 4a.4, notes/milestone-4a.md §7) ----------
    Topics (mindmap.Topic) form a tree by parent; the view's nodeIds say which are shown and, among siblings, in what order.
@@ -158,7 +158,7 @@ function mmProblems(model, view) {
 function mmDescribe(model, viewId) {
   const V = MM_ARR(model && model.views).find(x => MM_OBJ(x) && x.id === viewId); if (!V) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const g = mmRun(model, V), trees = g.nodes.filter(n => n.root).length;
-  return [`${V.title || V.id}: a mindmap of ${mmPlural(g.nodes.length, 'topic')}${trees > 1 ? ` in ${trees} trees` : ''}.`,
+  return [`${labelOr(V.title, V.id)}: a mindmap of ${mmPlural(g.nodes.length, 'topic')}${trees > 1 ? ` in ${trees} trees` : ''}.`,
     ...g.order.map(id => { const n = g.byId[id]; return '  '.repeat(n.depth) + n.label.replace(/\s+/g, ' ').trim() + (n.opens ? ` (opens ${n.opens})` : ''); })].join('\n');
 }
 

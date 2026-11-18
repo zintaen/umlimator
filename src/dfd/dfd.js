@@ -6,7 +6,7 @@ import '../uml/class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from '../uml/flow.js';
 import '../uml/usecase.js'; // SHAPE.ellipse, Yourdon's process
 import { snKindName } from '../uml/structure.js';
-import { usedIds, jsonText } from '../core/model.js';
+import { usedIds, jsonText, labelOr } from '../core/model.js';
 
 /* ---------- the data flow diagram, dfd (work package M2.4, notes/milestone-2.md §4.3, §6.1, §6.4, §7.3) ----------
    Processes, data stores and external entities, joined by data flows; comments. Two skins on one geometry (§4.3): each
@@ -121,7 +121,7 @@ function dfdNodeName(I, id, lines) {
   const x = I.at.get(id); if (x.type === 'uml.Comment') return 'Comment: ' + String(x.label ?? id);
   const ins = lines.filter(e => dfdFlow(e) && e.to === id && e.from !== id).length, outs = lines.filter(e => dfdFlow(e) && e.from === id && e.to !== id).length;
   const v = x.type === 'dfd.Process' && I.views.get(x.opensView);
-  return `${DFD_WORD[x.type] || snKindName(x.type)} ${I.name(id)}${v ? `, opens level ${v.title || v.id}` : ''}, ${dfdPlural(ins, 'flow')} in, ${outs} out`;
+  return `${DFD_WORD[x.type] || snKindName(x.type)} ${I.name(id)}${v ? `, opens level ${labelOr(v.title, v.id)}` : ''}, ${dfdPlural(ins, 'flow')} in, ${outs} out`;
 }
 // a listed line of another family by its own kind, plain, "Association", never "Comment link" (audit 26); one of no family
 // (no type, "constructor") a data flow, as audit 9 draws it
@@ -204,7 +204,7 @@ function dfdProblems(model) {
     const inner = drawn(L.v).filter(e => { const o = kids.has(e.from) ? e.to : e.from; return kids.has(e.from) !== kids.has(e.to) && o !== p.id && (L.up.has(o) || I.ty(o) !== 'dfd.DataStore'); }).map(e => [e, key(e, kids.has(e.from) ? e.from : e.to)]);
     const left = [...inner], miss = outer.filter(([, k]) => { const i = left.findIndex(([, j]) => j.join('\u0001') === k.join('\u0001')); if (i < 0) return true; left.splice(i, 1); return false; });
     if (!miss.length && !left.length) return;
-    const said = ([e, [dir, o, l]]) => `"${l}" ${dir === 'in' ? 'in from' : 'out to'} ${I.q(o)} (${e.id})`, lv = `level "${L.v.title || L.v.id}"`;
+    const said = ([e, [dir, o, l]]) => `"${l}" ${dir === 'in' ? 'in from' : 'out to'} ${I.q(o)} (${e.id})`, lv = `level "${labelOr(L.v.title, L.v.id)}"`;
     // a warning, not an error (the maintainer's decision of 16 Nov 2026): a level out of balance is a modelling issue, and
     // normal partway through an edit, so a delete or hide on one level never leaves an error
     say('warning', 'dfd-balance', path, [p.id, ...miss.map(([e]) => e.id), ...left.map(([e]) => e.id)], `${I.q(p.id)} does not balance with ${lv}: ${[
@@ -219,7 +219,7 @@ function dfdProblems(model) {
 function dfdDescribe(model, viewId) {
   const v = DFD_ARR(model && model.views).find(x => DFD_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const I = dfdIndex(model), ids = DFD_ARR(v.nodeIds).filter((id, k, a) => I.at.has(id) && a.indexOf(id) === k), lines = dfdLines(model, v), by = new Map(lines.map(e => [e.id, e])), up = I.parentOf(v.id);
-  return [`${v.title || v.id}: a data flow diagram${up ? `, the level of ${I.q(up.id)},` : ''} of ${dfdPlural(ids.length, 'element')} and ${dfdPlural(lines.length, 'line')}.`,
+  return [`${labelOr(v.title, v.id)}: a data flow diagram${up ? `, the level of ${I.q(up.id)},` : ''} of ${dfdPlural(ids.length, 'element')} and ${dfdPlural(lines.length, 'line')}.`,
     ...dfdOrder(I, ids, lines).map(id => (by.has(id) ? dfdLineName(I, by.get(id)) : dfdNodeName(I, id, lines)) + '.')].join('\n');
 }
 
@@ -280,7 +280,7 @@ const DFD_TYPE = registerDiagramType('dfd', {
   // the PDF's tables (§9): an element's kind; a process's number and the level it opens, a store's number
   word: (model, id) => { const x = dfdIndex(model).at.get(id); return x && (Object.hasOwn(DFD_WORD, x.type) || x.type == null) ? DFD_WORD[x.type] || snKindName(x.type) : null; }, // none: "Element", as named (audit 27)
   rows: (model, view, id) => { const I = dfdIndex(model), x = I.at.get(id); if (!x || !['dfd.Process', 'dfd.DataStore'].includes(x.type)) return null;
-    const v = x.type === 'dfd.Process' && I.views.get(x.opensView); return [...(dfdNum(x) ? [`number ${dfdNum(x)}`] : []), ...(v ? [`opens level ${v.title || v.id}`] : [])]; },
+    const v = x.type === 'dfd.Process' && I.views.get(x.opensView); return [...(dfdNum(x) ? [`number ${dfdNum(x)}`] : []), ...(v ? [`opens level ${labelOr(v.title, v.id)}`] : [])]; },
 });
 
 export { DFD_TYPE, DFD_RULES, dfdGeo, dfdProblems, dfdDescribe, dfdAdd, dfdKey };

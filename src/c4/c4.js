@@ -7,7 +7,7 @@ import { flowWrap } from '../uml/flow.js';
 import { boxHead, ownersOn, readingOrder } from '../uml/owners.js';
 import { brLines } from '../typed/draw.js';
 import { snKindName, snLineName } from '../uml/structure.js';
-import { usedIds, jsonText } from '../core/model.js';
+import { usedIds, jsonText, labelOr } from '../core/model.js';
 
 /* ---------- C4's elements and static views, c4.landscape, c4.context, c4.container, c4.component (work package M2.6,
    notes/milestone-2.md §5.1, §5.2, §6.1, §6.5, §7.5, §7.5.1) ----------
@@ -234,7 +234,7 @@ function c4Problems(model, view) {
     // §6.5: a system's or container's opensView, when it names a C4 view, has that element as its subject
     const ov = (n.type === 'c4.SoftwareSystem' || n.type === 'c4.Container') && n.opensView != null && views.find(v => C4_OBJ(v) && v.id === n.opensView);
     if (ov && /^c4\./.test(String(ov.diagram)) && ov.subject !== n.id)
-      say('warning', 'c4-zoom', `nodes[${i}].opensView`, [n.id, ov.subject], `${q(n.id)} opens view ${jsonText(ov.title || ov.id)}, whose subject is ${ov.subject != null ? q(ov.subject) : 'none'}: it zooms into ${q(n.id)}`); });
+      say('warning', 'c4-zoom', `nodes[${i}].opensView`, [n.id, ov.subject], `${q(n.id)} opens view ${jsonText(labelOr(ov.title, ov.id))}, whose subject is ${ov.subject != null ? q(ov.subject) : 'none'}: it zooms into ${q(n.id)}`); });
   // a relationship by its path: the model's, else written inline in the view's edges (model.md)
   const vEdges = C4_OBJ(view) ? C4_ARR(view.edges) : [], pathOf = e => { const i = C4_ARR(model && model.edges).indexOf(e); return i >= 0 ? `edges[${i}]` : `${at}.edges[${vEdges.indexOf(e)}]`; };
   [...C4_ARR(model && model.edges), ...vEdges.filter(e => C4_OBJ(e) && !C4_ARR(model && model.edges).includes(e))].forEach(e => { if (!C4_OBJ(e) || e.type !== 'c4.Relationship') return;
@@ -281,7 +281,7 @@ function c4NoteBox(model, view, pic, say, q) {
 function c4Describe(model, viewId) {
   const v = C4_ARR(model && model.views).find(x => C4_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const pic = c4Pic(model, v), { own, implied } = c4Lines(model, v, pic), K = C4_KIND[v.diagram] || 'C4', box = new Map(pic.boxes.map(b => [b.id, b]));
-  return [`${v.title || v.id}: a C4 ${K === 'landscape' ? 'system landscape' : K === 'context' ? 'system context' : K} diagram of ${c4Plural(pic.ids.length, 'element')} and ${c4Count(own, implied)}.`,
+  return [`${labelOr(v.title, v.id)}: a C4 ${K === 'landscape' ? 'system landscape' : K === 'context' ? 'system context' : K} diagram of ${c4Plural(pic.ids.length, 'element')} and ${c4Count(own, implied)}.`,
     ...readingOrder(pic).map(id => (box.has(id) ? box.get(id).aria : c4NodeName(pic.at.get(id)))), ...[...own, ...implied].map(e => c4LineName(e, pic))].map(t => t.replace(/\.?$/, '.')).join('\n');
 }
 

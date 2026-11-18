@@ -6,7 +6,7 @@ import { layoutTyped, typedLines } from '../typed/layout.js';
 import { LINE_SAYS, legendItem } from './class.js'; // SHAPE.classifier and SHAPE.note too
 import { snKindName, snLineName } from './structure.js'; // SHAPE.component too
 import './usecase.js'; // SHAPE.actor
-import { usedIds, jsonText } from '../core/model.js';
+import { usedIds, jsonText, labelOr } from '../core/model.js';
 
 /* ---------- the information flow diagram, uml.information-flow (work package M2.5, notes/milestone-2.md §7.4) ----------
    Classes and interfaces (the class type's classifier, name only), components (src/uml/structure.js's look) and actors (the
@@ -136,7 +136,7 @@ function ifProblems(model) {
 function ifDescribe(model, viewId) {
   const v = IF_ARR(model && model.views).find(x => IF_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const I = ifIndex(model), ids = ifShown(I, v), lines = ifLines(I, v, new Set(ids));
-  return [`${v.title || v.id}: an information flow diagram of ${ifPlural(ids.length, 'element')} and ${ifPlural(lines.length, 'line')}.`,
+  return [`${labelOr(v.title, v.id)}: an information flow diagram of ${ifPlural(ids.length, 'element')} and ${ifPlural(lines.length, 'line')}.`,
     ...ids.map(id => ifNodeName(I, I.at.get(id)) + '.'), ...lines.map(e => ifLineName(I, e) + '.')].join('\n');
 }
 

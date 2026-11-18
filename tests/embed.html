@@ -81,6 +81,18 @@ try {
   check('destroy empties the container', el.childElementCount === 0);
   let threw = null; try { h.update(MODEL); h.select(null); h.destroy(); } catch (e) { threw = String(e); }
   check('a destroyed handle ignores later calls', threw === null, threw);
+  // audit 32: two models that each hold a value that throws when read (a host's getter, which the first render leaves out) were
+  // both written as the one text "[unreadable]", so update() took the new model for the old one and kept the old picture
+  {
+    const held = label => { const m = { nodes: [{ id: 'a', label }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b' }], views: [{ id: 'v', title: 'V', nodeIds: ['a', 'b'] }] };
+      Object.defineProperty(m, 'cache', { enumerable: true, get() { throw new Error('not loaded'); } }); return m; };
+    const elG = document.getElementById('b'), hG = render(elG, held('Old name')), srG = elG.querySelector('.umlimator').shadowRoot;
+    let threw = null; try { hG.update(held('New name')); } catch (e) { threw = String(e); }
+    const svgG = srG.querySelector('svg.map-svg'), drawn = svgG.textContent; hG.update(held('New name'));
+    check('audit 32: update() draws a new model that holds a getter that throws, as render() drew the first; the same model again is not redrawn',
+      !threw && drawn.includes('New name') && !drawn.includes('Old name') && srG.querySelector('svg.map-svg') === svgG, [threw, drawn]);
+    hG.destroy();
+  }
   // audit 26: render() appends the map's element after what the container holds, and destroy() removes that element alone
   // (docs/api/render.md says so; it said the content was replaced and the container left empty)
   const held = document.createElement('div'); held.style.cssText = 'width:400px;height:300px'; held.innerHTML = '<p id="ph">Loading the map...</p>'; document.body.append(held);
