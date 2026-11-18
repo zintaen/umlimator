@@ -1,6 +1,6 @@
 import { TYPED, idTable, diagramOf } from '../core/registry.js';
 import { andList, arrOf, rules } from './validate.js';
-import { canon, copyOf, jsonText, labelOr, nameTable, unreadable, elName } from '../core/model.js';
+import { canon, copyOf, jsonText, labelOr, nameTable, unreadable, elName, usedIds } from '../core/model.js';
 import { held } from '../core/warn.js';
 import { mapContext } from './context.js';
 
@@ -295,10 +295,27 @@ export function diff(before, after) {
   /* what a typed view draws from beyond its own elements and lines (audit 40): the relationships an implied C4 line stands for
      (its type's drawn), a required stereotype's extension, the identifying relationship that makes a shown IDEF1X entity
      dependent (its type's touches), each in the model before and after: listed when one of them is marked */
-  const lineHow = new Set(out.edges.filter(e => e && e.id != null && how.has(e)).map(e => String(e.id)));
+  // a line a view writes inline is one too (audit 41: an inline identifying relationship makes an IDEF1X entity of another view dependent)
+  const lineHow = new Set([...out.edges, ...views.flatMap(v => arr(v && v.edges))].filter(e => e && typeof e === 'object' && e.id != null && how.has(e)).map(e => String(e.id)));
+  // and the lines it draws, compared before and after (audit 41): a DFD level's flows change with its parent view's cards, a C4
+  // implied line moves with a hidden element moved to another owner (its type's drawnKeys: each line by its ends, else drawn)
+  const byId = m => new Map(arr(m.views).filter(w => w && typeof w === 'object').map(w => [w.id, w])), W0 = byId(B0), W1 = byId(B1);
+  const keysOf = (T, m, w) => { const f = typeof T.drawnKeys === 'function' ? T.drawnKeys : T.drawn; try { return canon([...new Set(arr(f(m, w)).map(x => String(x)))].sort()); } catch { return null; } };
   if (out.schemaVersion === 2) views.forEach(v => { const T = v && !changed.has(v.id) && typedV(v) && diagramOf(v); if (!T || !T.drawn && !T.touches) return;
     for (const [m, w] of [[out, v], [A, V0.get(v.id)]]) for (const f of [T.drawn, T.touches]) { if (!w || typeof f !== 'function' || changed.has(v.id)) continue;
-      try { if (arr(f(m, w)).some(id => cardHow.has(id) || lineHow.has(String(id)))) changed.add(v.id); } catch { /* a model the hook cannot read: as before */ } } });
+      try { if (arr(f(m, w)).some(id => cardHow.has(id) || lineHow.has(String(id)))) changed.add(v.id); } catch { /* a model the hook cannot read: as before */ } }
+    const w0 = W0.get(v.id), w1 = W1.get(v.id);
+    if (!changed.has(v.id) && T.drawn && w0 && w1 && B0.schemaVersion === 2) { const k0 = keysOf(T, B0, w0), k1 = keysOf(T, B1, w1); if (k0 != null && k1 != null && k0 !== k1) changed.add(v.id); } });
+  /* the icons table (audit 41): a view is listed when it shows a card whose icon's entry changed, came or went: a map card's
+     icon, or a typed card's props.icon (a cloud card's, keyed "<pack>/<icon>"), or one of their owners' (a group's) */
+  const icons = m => m.icons && typeof m.icons === 'object' && !Array.isArray(m.icons) ? m.icons : {}, ic0 = icons(B0), ic1 = icons(B1), own1 = (o, k) => Object.hasOwn(o, k) ? o[k] : undefined;
+  const iconK = new Set([...Object.keys(ic0), ...Object.keys(ic1)].filter(k => canon(own1(ic0, k)) !== canon(own1(ic1, k))));
+  if (iconK.size) { const at = new Map(); [...out.nodes, ...views.flatMap(v => arr(v && v.nodes))].forEach(n => { if (n && typeof n === 'object' && !at.has(n.id)) at.set(n.id, n); });
+    const pk = new Set([...iconK].map(k => k.slice(k.indexOf('/') + 1))), hit = n => n && typeof n === 'object' && (typeof n.icon === 'string' && iconK.has(n.icon)
+      || n.props && typeof n.props === 'object' && typeof n.props.icon === 'string' && (iconK.has(n.props.icon) || pk.has(n.props.icon)));
+    views.forEach(v => { if (!v || changed.has(v.id)) return; const ov = v.nodeOverrides && typeof v.nodeOverrides === 'object' ? v.nodeOverrides : {};
+      if ([...arr(v.nodeIds), ...arr(v.nodes).map(n => n && n.id)].some(id => { if (typeof id === 'string' && hit(own1(ov, id))) return true;
+        for (let t = id, k = 0, seen = new Set(); t != null && !seen.has(t) && k < 1e4; k++) { seen.add(t); const n = at.get(t); if (hit(n)) return true; t = n && n.parent; } return false; })) changed.add(v.id); }); }
   const typedRefs = out.schemaVersion === 2 ? views.filter(v => v && typedV(v) && !changed.has(v.id)).map(v => [v.id, refs(v)]) : [];
   // a view its elements open: its title is drawn in their names (", opens Checkout"), and an overview draws an interaction inline
   const titled = new Set(views.filter(v => v && V0.has(v.id) && String(labelOr(V0.get(v.id).title, v.id)) !== String(labelOr(v.title, v.id))).map(v => v.id));
@@ -354,8 +371,11 @@ export function drift(model, observed, options = {}) {
     counts.unknown++; return e; };
   out.edges = arr(out.edges).map(judge);
   arr(out.views).forEach(v => { if (v && Array.isArray(v.edges)) v.edges = v.edges.map(judge); });
+  // a new line's id "drift:a->b", or "drift:a->b-2" and on where the model holds that id, or names "a->b" two ways (audit 41,
+  // as sequenceFromTrace(): the model came back failing validate() with a line id used twice)
+  const used = usedIds(out), free = x => { let k = x; for (let j = 2; used.has(k); j++) k = `${x}-${j}`; used.add(k); return k; };
   seen.forEach(({ a, b, n }, k) => { if (drawn.has(k)) return; counts.undrawn++;
-    const e = { id: `drift:${a}->${b}`, from: a, to: b, label: 'not drawn', ...(counted ? { sublabel: `${n.toLocaleString('en-US')} calls` } : {}), style: 'security', drift: 'undrawn' };
+    const e = { id: free(`drift:${a}->${b}`), from: a, to: b, label: 'not drawn', ...(counted ? { sublabel: `${n.toLocaleString('en-US')} calls` } : {}), style: 'security', drift: 'undrawn' };
     out.edges.push(e);
     arr(out.views).forEach(v => { if (v && Array.isArray(v.edges) && arr(v.nodeIds).includes(a) && arr(v.nodeIds).includes(b)) v.edges.push(e.id); }); });
   return { model: out, counts, views: arr(out.views).filter(v => v && linesOf(out, v).some(e => e.drift)).map(v => v.id) };

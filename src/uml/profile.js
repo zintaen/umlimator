@@ -213,8 +213,11 @@ const PR_TYPE = registerDiagramType('uml.profile', {
       return owner && owner.type === 'uml.Stereotype' && r.type === 'uml.Operation' ? { error: `"${String(text ?? '').trim()}" is not a tag: a stereotype's row is a tag, name: Type` } : r; } },
   validate: (model, view) => [...classProblems(model, view), ...prProblems(model, view), ...ownerProblems(model, view, drawnLines(model, view, PR_LINES).lines)],
   // a shown element's stereotypes come from profiles its scope applies, a required one through an Extension and a
-  // ProfileApplication the view need not draw (audit 40): those stereotypes, their profiles and every line on either
-  touches: (model, view) => { const on = new Set(); (Array.isArray(view.nodeIds) ? view.nodeIds : []).forEach(id => { if (typeof id === 'string') appliedOf(model, id).forEach(e => [e.stereotype, e.profile].forEach(x => x && on.add(x.id))); });
+  // ProfileApplication the view need not draw (audit 40), and its members' too, each drawn as a row (audit 41: «audited» on an attribute)
+  touches: (model, view) => { const on = new Set(), ids = new Set(), at = new Map(); [...(Array.isArray(model.nodes) ? model.nodes : []), ...(Array.isArray(view.nodes) ? view.nodes : [])].forEach(n => { if (PR_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
+    (Array.isArray(view.nodeIds) ? view.nodeIds : []).forEach(id => { if (typeof id !== 'string') return; ids.add(id); // a shown element, and its members down the tree
+      for (const s = [at.get(id)], seen = new Set(); s.length;) { const x = s.pop(); if (!PR_OBJ(x) || seen.has(x)) continue; seen.add(x); (Array.isArray(x.members) ? x.members : []).forEach(m => { if (PR_OBJ(m)) { if (typeof m.id === 'string') ids.add(m.id); s.push(m); } }); } });
+    ids.forEach(id => appliedOf(model, id).forEach(e => [e.stereotype, e.profile].forEach(x => x && on.add(x.id))));
     const ls = (Array.isArray(model.edges) ? model.edges : []).filter(e => e && typeof e === 'object'); // and their generals, whose extensions they take
     for (let more = true; more;) { more = false; ls.forEach(e => { if (e.type === 'uml.Generalization' && on.has(e.from) && typeof e.to === 'string' && !on.has(e.to)) more = !!on.add(e.to); }); }
     return [...on, ...ls.filter(e => on.has(e.from) || on.has(e.to)).map(e => e.id)]; },

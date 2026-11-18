@@ -586,3 +586,60 @@ test('audit 40: diff() lists a map view whose card opens a view whose drawn coun
   const H = structuredClone(A); H.nodes[0].view = 'constructor'; H.nodes.push({ id: '__proto__', view: '__proto__' }); H.views[0].nodeIds.push('__proto__', null, 7);
   const H2 = structuredClone(H); H2.views[1].nodeIds.push('db'); assert.deepEqual(all.diff(H, H2).views, ['inner']);
 });
+
+test('audit 41: diff() lists a typed view whose picture changes through a member\'s stereotype, a moved hidden element, an inline relationship, its parent view or the icons table', async () => {
+  const all = await fromSrc(), read = f => JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url)));
+  const pic = (m, v) => svgOf(all.layout(m, v), { icons: m.icons }).replace(/\bg\d+-/g, 'g-');
+  const sees = (b, a, ids) => { const d = all.diff(b, a); ids.forEach(id => { assert.ok(pic(b, id) !== pic(a, id), `${id}'s picture changes`); assert.ok(d.views.includes(id), `${id} is listed: ${d.views}`); }); return d; };
+  // a required stereotype on Property: the class's attribute row prints its tag, in a view that shows only the package and the class
+  const pr = def => ({ schemaVersion: 2, title: 't', nodes: [
+    { id: 'P', type: 'uml.Profile', label: 'Audit' }, { id: 'mp', type: 'uml.MetaclassReference', label: 'Property', parent: 'P' },
+    { id: 'aud', type: 'uml.Stereotype', label: 'audited', parent: 'P', members: [{ id: 'aud.by', type: 'uml.Property', label: 'by', props: { valueType: 'String', default: def } }] },
+    { id: 'sales', type: 'uml.Package', label: 'sales' },
+    { id: 'order', type: 'uml.Class', label: 'Order', parent: 'sales', members: [{ id: 'order.total', type: 'uml.Property', label: 'total', props: { valueType: 'Money' } }, null, 7, { id: '__proto__', type: 'uml.Operation', label: 'go', members: [{ id: 'deep' }] }] }],
+    edges: [{ id: 'ext', type: 'uml.Extension', from: 'aud', to: 'mp', props: { isRequired: true } }, { id: 'app', type: 'uml.ProfileApplication', from: 'sales', to: 'P' }],
+    views: [{ id: 'pv', diagram: 'uml.profile', title: 'Sales', nodeIds: ['sales', 'order', 'ghost', '__proto__', null] }, { id: 'all', diagram: 'uml.profile', title: 'Defs', nodeIds: ['P', 'mp', 'aud'] }] });
+  sees(pr('alice'), pr('bob'), ['pv', 'all']);
+  assert.deepEqual(all.diff(pr('alice'), pr('alice')).views, []);
+  // C4: a hidden container moved to another system moves the landscape's implied line; an instance moved to another host the deployment view's
+  const c4 = { schemaVersion: 2, nodes: [{ id: 'shopper', type: 'c4.Person', label: 'Shopper' }, { id: 'a', type: 'c4.SoftwareSystem', label: 'System A' },
+    { id: 'b', type: 'c4.SoftwareSystem', label: 'System B' }, { id: 'c', type: 'c4.Container', label: 'Web app', parent: 'a' }, { id: 'k', type: 'c4.Component', label: 'Cart', parent: 'c' }],
+    edges: [{ id: 'r1', type: 'c4.Relationship', from: 'shopper', to: 'k', label: 'Uses' }], views: [{ id: 'land', diagram: 'c4.landscape', title: 'Landscape', nodeIds: ['shopper', 'a', 'b'] }] };
+  const c4b = structuredClone(c4); c4b.nodes.find(n => n.id === 'c').parent = 'b';
+  assert.deepEqual(sees(c4, c4b, ['land']).views, ['land']);
+  const c4c = structuredClone(c4); c4c.nodes.find(n => n.id === 'c').label = 'Web shop'; // a hidden element renamed: its line stays, not listed
+  assert.deepEqual(all.diff(c4, c4c).views, []);
+  const dep = { schemaVersion: 2, nodes: [{ id: 's', type: 'c4.SoftwareSystem', label: 'Shop' }, { id: 'api', type: 'c4.Container', label: 'API', parent: 's' }, { id: 'db', type: 'c4.Container', label: 'DB', parent: 's' },
+    { id: 'n1', type: 'c4.DeploymentNode', label: 'Web box' }, { id: 'n2', type: 'c4.DeploymentNode', label: 'Spare box' }, { id: 'n3', type: 'c4.DeploymentNode', label: 'DB box' },
+    { id: 'api-1', type: 'c4.ContainerInstance', label: 'API', parent: 'n1', props: { container: 'api' } }, { id: 'db-1', type: 'c4.ContainerInstance', label: 'DB', parent: 'n3', props: { container: 'db' } }],
+    edges: [{ id: 'r', type: 'c4.Relationship', from: 'api-1', to: 'db-1', label: 'Reads' }], views: [{ id: 'dep', diagram: 'c4.deployment', title: 'Deployment', nodeIds: ['n1', 'n2', 'n3'] }] };
+  const dep2 = structuredClone(dep); dep2.nodes.find(n => n.id === 'api-1').parent = 'n2';
+  sees(dep, dep2, ['dep']);
+  // ER: an identifying relationship written inline in another view; the IDEF1X view of the child alone loses its dependent corners
+  const col = (id, l, p) => ({ id, type: 'er.Column', label: l, props: p });
+  const er = { schemaVersion: 2, nodes: [{ id: 'order', type: 'er.Entity', label: 'order', members: [col('order.id', 'id', { dataType: 'int', primaryKey: true })] },
+    { id: 'line', type: 'er.Entity', label: 'order_line', members: [col('line.order', 'order_id', { dataType: 'int', primaryKey: true, foreignKey: true, references: 'order.id' })] }], edges: [],
+    views: [{ id: 'all', diagram: 'er', title: 'All', nodeIds: ['order', 'line'], edges: [{ id: 'contains', type: 'er.Relationship', from: 'order', to: 'line', props: { identifying: true } }, null, 'nope'] },
+      { id: 'lines', diagram: 'er', notation: 'idef1x', title: 'Lines only', nodeIds: ['line'] }] };
+  const er2 = structuredClone(er); er2.views[0].edges[0].props.identifying = false;
+  sees(er, er2, ['all', 'lines']);
+  // DFD: a level that also shows Orders draws the parent level's flow from Orders once level 1 no longer shows Orders
+  const { dfdKey } = await import('../src/dfd/dfd.js'), { apply } = await import('../src/core/apply.js');
+  let df = read('bookshop-data-flow'); df = apply(df, dfdKey(df, df.views[0], ['dfd-ship-order'], 'D').commands); const lv = df.views.at(-1); lv.nodeIds.push('dfd-orders');
+  const df2 = structuredClone(df); df2.views[0].nodeIds = df2.views[0].nodeIds.filter(x => x !== 'dfd-orders');
+  sees(df, df2, [df.views[0].id, lv.id]);
+  // the icons table: a cloud view drawing the icon, and a map view whose card's icon entry changed; a view drawing neither is not listed
+  const aws = read('bookshop-aws'), aws2 = structuredClone(aws); aws2.icons = { ...aws2.icons, 'aws/Amazon-CloudFront': { src: 'data:image/png;base64,iVBORw0KGgo=' } };
+  const d = sees(aws, aws2, aws.views.filter(v => pic(aws, v.id) !== pic(aws2, v.id)).map(v => v.id)); assert.ok(d.views.length > 0);
+  aws.views.forEach(v => assert.equal(d.views.includes(v.id), pic(aws, v.id) !== pic(aws2, v.id), v.id));
+  const mp = { title: 'm', icons: { db: { src: 'data:image/svg+xml;base64,PHN2Zy8+' } }, nodes: [{ id: 'a', label: 'A', icon: 'db' }, { id: 'b', label: 'B' }],
+    views: [{ id: 'one', nodeIds: ['a', 'b'] }, { id: 'two', nodeIds: ['b'] }] };
+  const mp2 = structuredClone(mp); mp2.icons.db = { src: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMSIvPg==' };
+  assert.deepEqual(sees(mp, mp2, ['one']).views, ['one']);
+  // hostile icons tables: an Object.prototype key, an array, text; nothing throws, and a no-op lists nothing
+  for (const ic of [{ __proto__: null, constructor: 1, toString: { src: 'x' } }, JSON.parse('{"__proto__": {"src": "x"}}'), [1, 2], 'icons', null]) {
+    const h = { ...structuredClone(mp), icons: ic }; h.nodes[0].icon = 'constructor'; h.nodes[1].props = { icon: '__proto__' };
+    assert.deepEqual(all.diff(h, h).views, []); assert.ok(Array.isArray(all.diff(mp, h).views)); }
+  // no change, no view, for every example
+  for (const f of ['bookshop-c4', 'bookshop-profile', 'bookshop-schema', 'bookshop-data-flow', 'bookshop-aws', 'bookshop-atlas']) assert.deepEqual(all.diff(read(f), read(f)).views, [], f);
+});

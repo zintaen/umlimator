@@ -42,7 +42,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3})
 
 
 def ok(name, cond, info=""):
@@ -2213,5 +2213,29 @@ if part("audit 40"):
         r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(t / "av.json"), "--out", str(t / "av2.html"), "--no-check"],
                            capture_output=True, text=True, env={**os.environ, "HOME": str(t / "file-home"), "UMLIMATOR_OFFLINE": "1"})
         ok("render · a cache folder it cannot make is still said in one line (audit 40)", r.returncode == 0 and "cannot keep the authors' pictures" in r.stderr, r.stderr[-400:])
+if part("audit 41"):
+    with tempfile.TemporaryDirectory() as tmp:
+        # audit 41: on a disk that ignores case, a model renamed only in case and edited enough that git pairs no rename (D Map.json,
+        # A map.json) had its deleted name read from the file that replaced it: "Map.json: renames A to A2", and map.json added
+        # too. Map.json is read as removed. A model whose name git gives composed and the disk may keep decomposed (Café) is
+        # still read as edited, not removed
+        import unicodedata
+        g = Path(tmp) / "g41"; g.mkdir()
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "-c", "core.precomposeunicode=true", *x], cwd=g, capture_output=True)
+        two41 = {"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "edges": [{"id": "e", "from": "a", "to": "b"}],
+                 "views": [{"id": "main", "nodeIds": ["a", "b"]}]}
+        cafe = unicodedata.normalize("NFD", "Café.json")
+        (g / "Map.json").write_text(json.dumps(two41)); (g / cafe).write_text(json.dumps(two41)); sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "one")
+        sh("mv", "Map.json", "map.json")
+        (g / "map.json").write_text(json.dumps(two41 | {"nodes": [{"id": "a", "label": "A2"}, two41["nodes"][1]]}))
+        (g / cafe).write_text(json.dumps(two41 | {"nodes": [{"id": "a", "label": "A3"}, two41["nodes"][1]]}))
+        r = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                            "sys.argv = ['umlimator.py', 'diff', '--base', 'HEAD', '--out', 'out']; u.main()", str(ROOT)], cwd=g, capture_output=True, text=True)
+        said = {unicodedata.normalize("NFC", x["file"]): x.get("summary") or x.get("error") for x in json.loads(r.stdout or "[]")}
+        folds = (g / "MAP.JSON").exists()  # the disk ignores case: the case the bug lives in
+        old = said.get("Map.json") or []
+        ok("diff --base · a model git says was deleted is read as removed, not from a file of its name in another case; a decomposed name is still read (audit 41)",
+           r.returncode == 0 and set(said) == {"Map.json", "map.json", "Café.json"} and "removes A" in old and not any("renames" in x for x in old)
+           and "renames A to A3" in (said.get("Café.json") or []), (folds, said, r.stderr[-400:]))
 part.done()
 sys.exit(1 if failed else 0)

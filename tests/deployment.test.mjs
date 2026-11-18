@@ -158,6 +158,8 @@ test('boxes six deep (§7, L8): each inside the one before, a path from the deep
     assert.deepEqual(check(m, 'v'), [], direction);
     for (let i = 2; i <= 6; i++) assert.ok(inside(fam[`d${i}`], fam[`d${i - 1}`]) && fam[`d${i}`].parent === `d${i - 1}`, `${direction}: level ${i}`);
     assert.ok(inside(g.byId.app, fam.d6) && g.byId.top.shape === 'cube' && !meets(g.byId.top, fam.d1));
+    // lib.jar is d3's: no box in d3 lies over it (audit 41: d4 to d6, wide for their titles, covered it and took it for their own)
+    assert.ok(inside(g.byId.lib, fam.d3) && ['d4', 'd5', 'd6'].every(d => !meets(g.byId.lib, fam[d])), `${direction}: lib.jar under no box of d3`);
     const e = g.edges.find(x => x.id === 'deep-to-top'); assert.ok(e && e.pts.length >= 2 && e.lbl, `${direction}: the path from the deepest box is drawn and labelled`);
     assert.equal(g.byId.d1, undefined, 'a box is no node');
     sizes[direction] = [Math.round(fam.d1.w), Math.round(fam.d1.h)];

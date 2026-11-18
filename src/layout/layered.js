@@ -232,11 +232,14 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   familyDefs.forEach(f => { kids.has(f.parent) || kids.set(f.parent, []); kids.get(f.parent).push(f); });
   // a card in a box (a port: on its owner's border) is in what it lies within; a card in none is in none, though a deep box's padding covers it
   // a box whose title the author broke (its header room grown for the lines) holds only the cards it or a box in it holds:
-  // grown up over another box's card, it would otherwise take that card for its own and never move off it (audit 24)
+  // grown up over another box's card, it would otherwise take that card for its own and never move off it (audit 24). Nor
+  // does any box hold a card of a box it lies in (outer): grown wider than its cards for its title, it covered that card, and no
+  // rule between two boxes moves them apart (audit 41: a deployment node six deep over its parent's artifact)
   const boxesOf = new Map(), upOf = new Map(familyDefs.map(f => [f.id, f.parent])); // a card's boxes; a box's parent (a walk up, no recursion: boxes nest 3,000 deep)
   familyDefs.forEach(f => (f.nodeIds || []).forEach(id => { boxesOf.has(id) || boxesOf.set(id, []); boxesOf.get(id).push(f.id); }));
   const under = (f, id) => (boxesOf.get(id) || []).some(b => { for (let k = 0; b != null && k <= familyDefs.length; b = upOf.get(b), k++) if (b === f.id) return true; return false; });
-  const within = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h, owns = (f, n) => within(n, f) && (n.owner != null || held.has(n.id) && (!(f.head > 0 && brLines(f.title ?? f.label ?? f.id).length > 1) || under(f, n.id)));
+  const outer = (f, id) => (boxesOf.get(id) || []).some(b => { for (let k = 0, x = upOf.get(f.id); x != null && k <= familyDefs.length; x = upOf.get(x), k++) if (x === b) return true; return false; }); // a card of a box f lies in
+  const within = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h, owns = (f, n) => within(n, f) && (n.owner != null || under(f, n.id) || held.has(n.id) && !(f.head > 0 && brLines(f.title ?? f.label ?? f.id).length > 1) && !outer(f, n.id));
   // laid out down (TB): two or more labelled lines between one pair of a box's cards in neighbouring columns fan out across the
   // pair (TYPED.fan), each label across its own lane; the box holds those lanes and labels, so they keep inside it and off its
   // border. Narrower, the labels found no spot inside and each was set on the other line (audit 26: Mermaid's keyboard example)
@@ -368,8 +371,13 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const boxEnd = Object.fromEntries(families.map(f => [f.id, { id: f.id, label: f.label || f.id, box: true, x: f.x, y: f.y, w: f.w, h: f.h, hd: TB ? headOf(f) : 0,
     decoT: TB ? [] : [[f.x + 8, headOf(f)], ...(f.tabs || []).map(t => [t.x - 6, t.w + 12])], decoB: [] }]));
   const endOf = Object.assign(Object.create(null), boxEnd, byId), end = id => endOf[id], holds = (b, n) => b.box && n !== b && n.x >= b.x && n.y >= b.y && n.x + n.w <= b.x + b.w && n.y + n.h <= b.y + b.h;
+  // a line between a box and something inside it is no line: inside by what the box holds (its cards, its boxes and theirs), not by
+  // where it lies, as viewEdges decides it for a map; a box grown over a card it does not hold dropped that card's line to the box
+  // (audit 41: bike-share's system view, pricing with no pin). A port, on its owner's border, by where it lies, as before
+  const famIn = (b, x) => { for (let k = 0, y = upOf.get(x); y != null && k <= familyDefs.length; y = upOf.get(y), k++) if (y === b) return true; return false; };
+  const joins = (b, n) => b.box && n !== b && (n.box ? famIn(b.id, n.id) : n.owner != null ? holds(b, n) : under(b, n.id));
   const edges = (dg.edges || []).filter(e => { const s = end(e.from), t = end(e.to); if (!s || !t || (e.from === e.to && !loops[e.from])) return false;
-    if (!(LP && e[e.inner + 'Port'] != null) && (holds(s, t) || holds(t, s))) { warn(`no line for edge ${e.id ?? e.from + '->' + e.to}: it joins the box "${(holds(s, t) ? s : t).id}" and something inside it`); return false; }
+    if (!(LP && e[e.inner + 'Port'] != null) && (joins(s, t) || joins(t, s))) { warn(`no line for edge ${e.id ?? e.from + '->' + e.to}: it joins the box "${(joins(s, t) ? s : t).id}" and something inside it`); return false; }
     return true; }).map(e => ({ ...e, s: end(e.from), t: end(e.to) }));
   const segsOf = pts => pts.slice(0, -1).map((a, i) => [a, pts[i + 1]]);
   const segHitsRect = (a, b, r) => { const x1 = Math.min(a[0], b[0]), x2 = Math.max(a[0], b[0]), y1 = Math.min(a[1], b[1]), y2 = Math.max(a[1], b[1]); return x2 > r.x && x1 < r.x + r.w && y2 > r.y && y1 < r.y + r.h; };

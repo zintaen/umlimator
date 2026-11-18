@@ -257,8 +257,13 @@ test('a pinned class in a box stays in it (a pin far outside its box is §4.3\'s
   const m = structuredClone(PKG); m.views[0].layout = { payment: [2, 4] }; // past CardPayment's box, in its own column
   const g = layout(m, 'packages'), F = Object.fromEntries(g.families.map(f => [f.id, f]));
   assert.ok(inside(g.byId.payment, F['payments-package']) && !inside(g.byId.payment, F.card)); assert.deepEqual(check(m, 'packages'), []);
-  m.views[0].layout = { payment: [3, 3] }; // in shared's column: payments grows over it
-  assert.deepEqual(check(m, 'packages').map(p => p.message), ['view packages: families "payments" and "shared" overlap']);
+  // in shared's column: payable, with no pin, goes by its pinned card, so payments keeps off shared (audit 41: it took its own
+  // auto-layout place and payments grew over shared)
+  m.views[0].layout = { payment: [3, 3] };
+  assert.deepEqual(check(m, 'packages'), []); { const G = layout(m, 'packages'), f = id => G.families.find(x => x.id === id); assert.ok(!meets(f('payments-package'), f('shared'))); }
+  m.views[0].layout = { payment: [3, 3], payable: [1, 1] }; // both pinned there: payments grows over shared and its card, which the check reports
+  const said = check(m, 'packages').map(p => p.message);
+  for (const s of ['view packages: families "payments" and "shared" overlap', 'view packages: family "payments" lies over "Money", which it does not hold']) assert.ok(said.includes(s), said.join(' | '));
   const memos = {}, run = x => mapContext(x, { memos }).buildGeo('packages');
   run(PKG); run(apply(PKG, [{ op: 'set', id: 'catalog-imports-shared', path: 'props.visibility', value: 'public' }])); // a prop that draws nothing new
   assert.equal(memos.packages.runs, 1);
