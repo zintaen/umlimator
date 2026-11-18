@@ -36,7 +36,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8})
 
 
 def ok(name, cond, info=""):
@@ -1996,5 +1996,64 @@ if part("audit 33"):
         ok("render, diff, drift, timelapse and the MCP page · a model's files, hunks, areas, fileNotes and stats reach no page (audit 33)",
            all(r.returncode == 0 for r in rs.values()) and all(p and "SECRET" not in p and "hunter2" not in p for p in pages.values()),
            ({k: r.stderr[-300:] for k, r in rs.items() if r.returncode}, [k for k, p in pages.items() if not p or "SECRET" in p]))
+if part("audit 34"):
+    with tempfile.TemporaryDirectory() as tmp:
+        t = Path(tmp)
+        run = lambda *x, cwd=None: subprocess.run([sys.executable, str(ROOT / "umlimator.py"), *x], capture_output=True, text=True, cwd=cwd)
+        # audit 34: the diff sketch kept only lines between cards, so a changed line whose ends are ports or parts (members) was
+        # left out, and with no other change the summary had no sketch; a member stands for its card, as the stills draw it
+        os_ = json.loads((ROOT / "examples" / "order-service-structure.json").read_text(encoding="utf-8"))
+        cut = json.loads(json.dumps(os_)); cut["edges"] = [e for e in cut["edges"] if e["id"] != "api-to-checkout"]
+        d = u.js("diff", os_, cut)
+        sk = u.sketch(d["model"])
+        ok("diff --base · a changed line between members (ports, parts) is sketched between the cards they are on (audit 34)",
+           d["summary"] == ["removes the line from api of OrderService to requests of checkout"]
+           and sk[2:5] == ['  n0["OrderService"]', '  n1["CheckoutFlow"]', "  n0 -.-> n1"] and "  linkStyle 0 stroke:#cf222e,stroke-width:2px" in sk, (d["summary"], sk))
+        inner = json.loads(json.dumps(os_)); inner["edges"] = [e for e in inner["edges"] if e["id"] != "checkout-to-orders"]
+        sk = u.sketch(u.js("diff", os_, inner)["model"])
+        ok("diff --base · a changed line between two members of one card sketches that card, with no line to itself (audit 34)",
+           sk[2:3] == ['  n0["OrderService"]'] and not any("-->" in x or "-.->" in x for x in sk), sk)
+        # hostile members: one whose id is a card's, a list, a number, a member with no id holding one; ends naming nothing or a list
+        loop = {"id": "x.loop"}; loop["members"] = [{"id": "a"}, ["x"], {"members": [{"id": "x.deep", "members": [{"id": "x.deeper"}]}]}]
+        odd = {"nodes": [{"id": "a", "label": "A"}, {"id": "x", "label": "X", "members": [loop, 7, None]}],
+               "edges": [{"from": "x.deeper", "to": "a", "change": "added", "label": "<img src=//e.example/t.png>"}, {"from": ["x"], "to": "a", "change": "added"},
+                         {"from": "nowhere", "to": "a", "change": "added"}], "views": [{"id": "v", "nodeIds": ["a", "x"]}]}
+        sk = "\n".join(u.sketch(odd))
+        ok("diff --base · the sketch reads members at any depth, never a card's id as a member, and skips ends that name nothing (audit 34)",
+           sk.split("\n")[2:5] == ['  n0["A"]', '  n1["X"]', '  n1 -->|"#lt;img src=//e.example/t.png#gt;"| n0'] and sk.count("-->") == 1, sk)
+        # audit 34: a label 0 (or false) is a label, as the module's labelOr reads it: the sketch and MCP's describe_view named the card by its id
+        zero = {"title": "T", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}, {"id": "n7", "label": 0}, {"id": "n8", "label": ""}, {"id": "n9", "label": 2.0}],
+                "edges": [{"id": "e1", "from": "a", "to": "n7", "label": 0}, {"id": "e2", "from": "a", "to": "n8", "label": ""}], "views": [{"id": "main", "title": "Main", "nodeIds": ["a", "b", "n7", "n8", "n9"]}]}
+        sk = "\n".join(u.sketch(u.js("diff", {**zero, "nodes": zero["nodes"][:2], "edges": [], "views": [{"id": "main", "title": "Main", "nodeIds": ["a", "b"]}]}, zero)["model"]))
+        ok("diff --base · a card and a line labelled 0 are sketched as 0, a label '' as the card's id (audit 34)",
+           '["0"]:::added' in sk and '-->|"0"|' in sk and '["n8"]:::added' in sk and '["2"]:::added' in sk and sk.count("-->|") == 1, sk)
+        (t / "zero.json").write_text(json.dumps(zero))
+        r = subprocess.run([sys.executable, "-c", "import sys, json; from pathlib import Path; sys.path.insert(0, sys.argv[1]); import umlimator_mcp as s; "
+                            "s.MODEL, s.MAPID = Path(sys.argv[2]), 'm'; print(json.dumps(s.call('describe_view', {'view': 'main'})))",
+                            str(ROOT), str(t / "zero.json")], capture_output=True, text=True)
+        said = json.loads(r.stdout or '""')
+        ok("mcp · describe_view lists a card labelled 0 as 0, as its sentences do; one labelled '' by its id (audit 34)",
+           isinstance(said, str) and said.endswith("\nCard ids: a (A), b (B), n7 (0), n8 (n8), n9 (2)") and 'calls 0 ("0")' in said, (said, r.stderr[-300:]))
+        # audit 34: diff, drift and timelapse titled a model with no title by its file name; render titles it by its root view's
+        # title (page_model, as visual.py's load_map). The root view: the first with no parent, else the first
+        g = t / "repo"; g.mkdir()
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
+        sh("init", "-q")
+        base = {"nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "edges": [{"id": "e1", "from": "a", "to": "b"}],
+                "views": [{"id": "sub", "title": "Inside", "parent": "main", "nodeIds": ["a"]}, {"id": "main", "title": "Shop <b>&amp;", "nodeIds": ["a", "b"]}]}
+        (g / "untitled.json").write_text(json.dumps(base)); sh("add", "."); sh("commit", "-qm", "one")
+        (g / "untitled.json").write_text(json.dumps({**base, "nodes": base["nodes"] + [{"id": "c", "label": "C"}],
+                                                      "views": [base["views"][0], {**base["views"][1], "nodeIds": ["a", "b", "c"]}]})); sh("add", "."); sh("commit", "-qm", "two")
+        (g / "before.json").write_text(json.dumps(base)); (g / "seen.json").write_text(json.dumps([{"from": "b", "to": "a", "count": 3}]))
+        (g / "bare.json").write_text(json.dumps({**base, "views": [{"id": "main", "nodeIds": ["a", "b"]}]}))
+        rs = {"render": run("render", "untitled.json", "--out", "render.html", "--no-check", cwd=g), "diff": run("diff", "before.json", "untitled.json", "--out", "diff.html", cwd=g),
+              "drift": run("drift", "untitled.json", "seen.json", "--out", "drift.html", cwd=g), "timelapse": run("timelapse", "untitled.json", "--out", "timelapse.html", cwd=g),
+              "bare": run("diff", "before.json", "bare.json", "--out", "bare.html", cwd=g)}
+        title = lambda k: (re.findall(r"<title>([^<]*)</title>", (g / f"{k}.html").read_text(encoding="utf-8")) or [None])[0] if (g / f"{k}.html").is_file() else None
+        got = {k: title(k) for k in rs}
+        ok("diff, drift and timelapse · a model with no title is titled by its root view's title, as render titles it, else by its file's name (audit 34)",
+           got == {"render": "Shop &lt;b&gt;&amp;amp;", "diff": "Shop &lt;b&gt;&amp;amp;: what changed", "drift": "Shop &lt;b&gt;&amp;amp;: drawn vs. seen",
+                   "timelapse": "Shop &lt;b&gt;&amp;amp;", "bare": "bare: what changed"} and all(r.returncode == 0 for r in rs.values()),
+           (got, {k: r.stderr[-300:] for k, r in rs.items() if r.returncode}))
 part.done()
 sys.exit(1 if failed else 0)

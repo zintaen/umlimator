@@ -887,7 +887,7 @@ def diff_page(before, after, near, out, stills=None, unchanged=True):
     if not d["summary"] and not unchanged:
         return {"summary": [], "views": d["views"], "model": d["model"]}
     m = d["model"]
-    m["title"] = f"{m.get('title') or Path(near).stem}: what changed"
+    m["title"] = f"{title_of(m, near)}: what changed"
     rep = render_model(m, near, out)
     pngs, failed = shots(out, stills, d["views"])
     return {"out": rep["out"], "summary": d["summary"], "views": d["views"], "stills": pngs, **({"stillsFailed": failed} if failed else {}), "model": m}
@@ -1079,27 +1079,58 @@ def flat(s, code=False):
     return re.sub(r"(#|\bGH-)(?=\d)", "\\1\u2060", s, flags=re.I)
 
 
+def label_of(x, i):
+    """What names an element, as the module's labelOr: its label, else its id. A number is a label, 0 too; only null and ''
+    are none (audit 34: `label or id` named a card labelled 0 by its id). Written as the page writes it (String())."""
+    if x is None or x == "":
+        return str(i)
+    if isinstance(x, bool):
+        return "true" if x else "false"
+    return str(int(x)) if isinstance(x, float) and x.is_integer() and abs(x) < 1e21 else str(x)
+
+
+def title_of(m, path):
+    """A map's title as render gives it (page_model, as visual.py's load_map): the model's, else its root view's (the first
+    view with no parent, else the first view), else the file's name (audit 34: diff, drift and timelapse gave the file's)."""
+    if m.get("title") is not None:
+        return str(m["title"])
+    vs = [v for v in m.get("views") or [] if isinstance(v, dict)]
+    return str(next((v for v in vs if not v.get("parent")), vs[0] if vs else {}).get("title") or Path(path).stem)
+
+
 MARKS = {"added": "#1a7f37", "changed": "#9a6700", "removed": "#cf222e"}
 
 
 def sketch(m, most=60):
     """The cards a diff marks, and the cards next to them, as a mermaid flowchart: GitHub draws it in a comment or a
     job summary, so the picture needs no hosting. The map's own pictures are the stills."""
+    lst = lambda x: x if isinstance(x, list) else []
     views = [v for v in m.get("views") or [] if isinstance(v, dict)]
     cards = {n["id"]: n for n in [*(m.get("nodes") or []), *(n for v in views for n in v.get("nodes") or [])] if isinstance(n, dict) and "id" in n}
-    lines = [e for e in [*(m.get("edges") or []), *(e for v in views for e in v.get("edges") or [])] if isinstance(e, dict) and e.get("from") in cards and e.get("to") in cards]
+    owner, todo = {}, [(x, i) for i, n in cards.items() for x in lst(n.get("members"))]
+    while todo:  # a member (a port, a part) at any depth stands for the card it is on, as the stills draw it (audit 34); a stack, not recursion
+        x, i = todo.pop()
+        if isinstance(x, dict):
+            if isinstance(x.get("id"), str) and x["id"] not in cards:
+                owner.setdefault(x["id"], i)
+            todo += [(y, i) for y in lst(x.get("members"))]
+    at = lambda r: r if isinstance(r, str) and r in cards else owner.get(r) if isinstance(r, str) else None
+    lines = [{**e, "from": at(e.get("from")), "to": at(e.get("to"))} for e in [*(m.get("edges") or []), *(e for v in views for e in v.get("edges") or [])]
+             if isinstance(e, dict) and at(e.get("from")) and at(e.get("to"))]
     hot = {i for i, n in cards.items() if n.get("change") in MARKS}
     lines = [e for e in lines if e.get("change") in MARKS or e["from"] in hot or e["to"] in hot]  # marked lines, and the lines of marked cards
-    near = hot | {x for e in lines for x in (e["from"], e["to"])}
+    inside = {e["from"] for e in lines if e["from"] == e["to"]}  # a line between two members of one card: the card, with no line
+    lines = [e for e in lines if e["from"] != e["to"]]
+    near = hot | inside | {x for e in lines for x in (e["from"], e["to"])}
     if not near or len(near) > most:
         return [] if not near else [f"_{len(near)} cards changed or next to a change: too many to sketch; see the pictures._"]
     key = {i: f"n{k}" for k, i in enumerate(i for i in cards if i in near)}
     q = lambda s: re.sub(r"[\r\n]+", " ", str(s)).replace("#", "#35;").replace('"', "#quot;").replace("`", "#96;").replace("<", "#lt;").replace(">", "#gt;")
     out = ["```mermaid", "flowchart LR"]
-    out += [f'  {key[i]}["{q(cards[i].get("label") or i)}"]' + (f":::{cards[i]['change']}" if cards[i].get("change") in MARKS else "") for i in key]
+    out += [f'  {key[i]}["{q(label_of(cards[i].get("label"), i))}"]' + (f":::{cards[i]['change']}" if cards[i].get("change") in MARKS else "") for i in key]
     style = []
     for k, e in enumerate(lines):
-        out.append(f'  {key[e["from"]]} {"-.->" if e.get("change") == "removed" else "-->"}' + (f'|"{q(e["label"])}"|' if e.get("label") else "") + f' {key[e["to"]]}')
+        out.append(f'  {key[e["from"]]} {"-.->" if e.get("change") == "removed" else "-->"}' + (f'|"{q(label_of(e["label"], ""))}"|' if label_of(e.get("label"), "") != "" else "") + f' {key[e["to"]]}')
         if e.get("change") in MARKS:
             style.append(f"  linkStyle {k} stroke:{MARKS[e['change']]},stroke-width:2px")
     out += style + [f"  classDef {c} stroke:{v},stroke-width:2px" + (",stroke-dasharray:4 3" if c == "removed" else "") for c, v in MARKS.items()]
@@ -1114,7 +1145,7 @@ def cmd_drift(a):
     if a.stills:
         stills_folder(a.stills, "--stills")  # before any work (audit 22)
     r = js("drift", m, seen, {"match": read_json(a.match, model=False) if a.match else {}})
-    r["model"]["title"] = f"{m.get('title') or Path(a.model).stem}: drawn vs. seen"
+    r["model"]["title"] = f"{title_of(m, a.model)}: drawn vs. seen"
     rep = render_model(r["model"], a.model, a.out)
     pngs, failed = shots(a.out, a.stills, r["views"])
     print(json.dumps({"out": rep["out"], "counts": r["counts"], "views": r["views"], "stills": pngs, **({"stillsFailed": failed} if failed else {})}, indent=1))
@@ -1204,7 +1235,7 @@ def cmd_timelapse(a):
             print(f"{sha[:7]}: {path} is not a JSON model there; left out", file=sys.stderr)
     if not versions:
         sys.exit(f"no versions of {a.model} in git history")
-    data = {"title": str(versions[-1]["model"].get("title") or Path(a.model).stem), "icons": {**icon_table(ms := [v["model"] for v in versions]), **packs().table(ms)}, "versions": versions}
+    data = {"title": title_of(versions[-1]["model"], a.model), "icons": {**icon_table(ms := [v["model"] for v in versions]), **packs().table(ms)}, "versions": versions}
     page = (HERE / "engine" / "assets" / "timelapse.html").read_text(encoding="utf-8")
     # each placeholder filled once, in one pass: a model's text holding a placeholder is data, never filled (audit 16)
     fill = {"__TITLE__": html.escape(data["title"]), "/*__UMLIMATOR_THEME__*/": THEME.read_text(encoding="utf-8"),

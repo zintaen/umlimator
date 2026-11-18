@@ -399,6 +399,7 @@ TOKEN = re.compile(r'"((?:[^"\\]|\\.)*)"|(\S+)')
 C4TYPE = {"person": "Person", "softwaresystem": "Software system", "container": "Container", "component": "Component"}
 LEVELS = ["systemlandscape", "systemcontext", "container", "component"]
 SCOPE = {"systemcontext": "softwaresystem", "container": "softwaresystem", "component": "container"}
+HOLDER = {"person": None, "softwaresystem": None, "container": "softwaresystem", "component": "container"}  # what each is written in
 TAG = {"person": "Person", "softwaresystem": "Software System", "container": "Container", "component": "Component"}  # built in
 # a Structurizr style's shape as one of the map's (0.15.0); Circle, Ellipse, Diamond, Bucket and Component have none
 # !impliedRelationships: Structurizr's strategy names, as umlimator draws them (None: no implied lines)
@@ -475,8 +476,11 @@ def structurizr(text, name):
         elif where in ("model", "group", "el"):
             parent, grp = (None, None) if where == "model" else (at, None) if where == "el" else at  # a group's frame: (element, group)
             e, r = element(toks), relationship(toks, at if where == "el" else None)
-            if e and e[1] in ("container", "component") and parent is None:  # Structurizr refuses one outside a system: no view would show it (audit 33)
-                m.say(no, f"{e[1]} {e[0] or e[2]} is in no {'software system' if e[1] == 'container' else 'container'}: not imported (nor what it holds)")
+            held = els[parent]["type"] if parent in els else None  # what it is written in: None in the model or a group there
+            if e and held != HOLDER[e[1]]:  # Structurizr refuses it: no view would show it, or one would at the wrong level (audits 33, 34)
+                m.say(no, f"{'softwareSystem' if e[1] == 'softwaresystem' else e[1]} {e[0] or e[2]} is " + (f"in no {C4TYPE[HOLDER[e[1]]].lower()}" if held is None and HOLDER[e[1]] else
+                      f"in {C4TYPE[held].lower()} {path.get(parent, els[parent]['name'])}, where a {C4TYPE[e[1]].lower()} cannot be")
+                      + ": not imported (nor what it holds)")
             elif e:
                 alias, typ, nm, desc, tech, tags = e
                 if depth.get(parent, 0) >= DEEP:  # beside its holder, said once
@@ -666,7 +670,8 @@ def views(m, els, lines, specs, find, implied, groups):
                   {c for c, e in els.items() if top(c) and c != system or e["parent"] in (system, scope) and c != scope}
         lift = lambda c: next((x for x in up(c) if x in allowed), None)
         inner = allowed if level == 0 else {scope} if level == 1 else {c for c in allowed if els[c]["parent"] == scope}
-        shown = set(inner)
+        # an include list with no * shows what it names, as Structurizr draws it (a context view still shows its system), audit 34
+        shown = set() if level != 1 and s["include"] and all(t != "*" for t, _ in s["include"]) else set(inner)
         if not s["include"] or any(t == "*" for t, _ in s["include"]):
             for a, b, _, _ in lines:
                 shown |= {y for x, y in ((lift(a), lift(b)), (lift(b), lift(a))) if x in inner and y}
