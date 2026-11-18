@@ -1,7 +1,7 @@
 import { kindWord, registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
-import { CLASSIFIERS, CLASS_DEF, CLASS_LINES, CLASS_TYPE, RULES, multBounds, printMember, classProblems, drawnLines, lineLabel, lineName, lineRename, typeGeo } from './class.js';
+import { CLASSIFIERS, compartmentsOf, CLASS_DEF, CLASS_LINES, CLASS_TYPE, RULES, multBounds, printMember, classProblems, drawnLines, lineLabel, lineName, lineRename, typeGeo } from './class.js';
 import { OWN_BOXES, OWNER_RULES, boxHead, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder, viewLines, modelLines } from './owners.js';
 import { STY_RULES, UML_META, appliedOf, metaKnown, styKey } from './stereotypes.js';
 import { usedIds, jsonText } from '../core/model.js';
@@ -55,9 +55,10 @@ function prRows(model, x, I = prIndex(model)) {
     ...from('uml.Generalization', x.id).map(e => `a kind of «${nm(e.to)}»`), ...PR_ARR(x.members).filter(m => PR_OBJ(m) && m.type === 'uml.Property').map(printMember)];
   if (x.type === 'uml.MetaclassReference') return to('uml.Extension', x.id).map(e => `extended by «${nm(e.from)}»`);
   // any other element: its stereotypes, then its members as prNode draws them: a stereotyped one with its stereotypes; an
-  // enumeration's others too, the literals it keeps drawn under its tag compartments (audit 27)
-  const keeps = x.type === 'uml.Enumeration', said = m => (appliedOf(model, m.id).length ? `${prBare(model, m)}: ${appliedOf(model, m.id).map(prSay).join('; ')}` : printMember(m));
-  return [...appliedOf(model, x.id).map(prSay), ...PR_ARR(x.members).filter(m => PR_OBJ(m) && (keeps || appliedOf(model, m.id).length)).map(said)];
+  // enumeration's compartments as drawn under its tag compartments, the literals first, no member it does not draw (audit 27, 32)
+  const said = m => (appliedOf(model, m.id).length ? `${prBare(model, m)}: ${appliedOf(model, m.id).map(prSay).join('; ')}` : printMember(m));
+  const ms = x.type === 'uml.Enumeration' ? compartmentsOf(x).flatMap(c => c.members) : PR_ARR(x.members).filter(m => PR_OBJ(m) && appliedOf(model, m.id).length);
+  return [...appliedOf(model, x.id).map(prSay), ...ms.map(said)];
 }
 // "Stereotype owned, extends Class {required}, team: String"; "Class Order: «entity» table = orders; «owned» required"
 function prAria(model, x, drawn, I) {

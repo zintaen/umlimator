@@ -125,6 +125,8 @@ const untypedLine = T => (!T ? 'Line' : Array.isArray(T.drawsOnly) ? null : Obje
 // no type, or "", drawn as a class: 'uml.Class') or a function of the element (the object view's instance of no UML kind), else its own type
 const drawnKind = (T, x) => { if (!x || typeof x !== 'object') return undefined; const a = T && T.untypedAs, k = typeof a === 'function' ? a(x) : x.type == null || x.type === '' ? a : null; return k || x.type; };
 const aWord = w => (/^(?!us|uni)[aeiou]/i.test(w) ? 'an ' : 'a ') + w;
+// a count of a kind word that varies (a kind outside the view's own): "2 classes", "2 activities", "2 people", never "2 classs" (audit 32)
+const countOf = (k, w) => `${k} ${k === 1 ? w : /person$/i.test(w) ? w.slice(0, -4) + 'ople' : /(s|x|z|ch|sh)$/i.test(w) ? w + 'es' : /[^aeiou]y$/i.test(w) ? w.slice(0, -1) + 'ies' : w + 's'}`;
 // x's kind in a message, as a view of type T draws it, with its article: "an interface", "a class" (of no type in a class view), "an
 // element" (of no type where T draws none, or with no T), never the type's tail behind a fixed "a" (audit 31: "a undefined", "a Interface")
 const aKind = (T, x) => aWord((kindWord(drawnKind(T, x)) || untypedKind(T) || 'Element').toLowerCase());
@@ -146,4 +148,4 @@ const idTable = (o = {}) => Object.assign(Object.create(null), o);
 // a type is text: any other value (one with a toString key, which no key is read from) refers to nothing (audit 21)
 const propRefs = type => typeof type !== 'string' ? {} : Object.assign({}, ...[...TYPES.values()].map(T => T.refs && Object.hasOwn(T.refs, type) && T.refs[type]));
 
-export { registerDiagramType, diagramOf, kindWord, untypedKind, untypedLine, aWord, aKind, drawnKind, propRefs, idTable, TYPED, ownNodes, heldBy, ownGuard };
+export { registerDiagramType, diagramOf, kindWord, untypedKind, untypedLine, aWord, aKind, countOf, drawnKind, propRefs, idTable, TYPED, ownNodes, heldBy, ownGuard };

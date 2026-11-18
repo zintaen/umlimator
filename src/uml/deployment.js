@@ -1,4 +1,4 @@
-import { ownNodes, registerDiagramType } from '../core/registry.js';
+import { aWord, countOf, ownNodes, registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { brLines } from '../typed/draw.js';
@@ -21,7 +21,7 @@ const DP_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), DP
 const DP_HAS = x => x != null && x !== '';
 const dpName = x => String(x.label ?? x.id);
 const dpStereo = x => DP_ARR(DP_OBJ(x.props) ? x.props.stereotypes : null).filter(DP_HAS).map(String);
-const dpPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
+const dpPlural = countOf; // "2 classes", not "2 classs" (audit 32)
 const DP_TARGETS = ['uml.Node', 'uml.Device', 'uml.ExecutionEnvironment'], DP_ARTIFACTS = ['uml.Artifact', 'uml.DeploymentSpecification'];
 const DP_LINES = ['uml.Deployment', 'uml.Manifestation', 'uml.CommunicationPath', 'uml.Dependency', 'uml.CommentLink'];
 const DP_WORD = { 'uml.Node': 'Node', 'uml.Device': 'Device', 'uml.ExecutionEnvironment': 'Execution environment', 'uml.Artifact': 'Artifact',
@@ -110,7 +110,7 @@ function dpNodeName(n, pic, I) {
   if (n.type === 'uml.Component') return SN_SAY.component(dpName(n), { stereotypes: st });
   const out = [`${dpWord(n)} ${dpName(n)}${st.length ? ` (${st.join(', ')})` : ''}`];
   if (!DP_TARGETS.includes(n.type)) return out[0];
-  if (up && pic.ids.includes(up.id)) out.push(`in ${dpName(up)}`);
+  if (up && pic.open.has(up.id)) out.push(`in ${dpName(up)}`); // a box round it, not a card beside it (audit 32)
   const k = new Map(); pic.holds(n.id).map(id => I.at.get(id)).filter(x => !DP_ARTIFACTS.includes(x.type)).forEach(x => { const w = dpWord(x).toLowerCase(); k.set(w, (k.get(w) || 0) + 1); });
   if (k.size) out.push('holding ' + [...k].map(([w, c]) => dpPlural(c, w)).join(', '));
   const d = I.deployed(n.id).length; if (d) out.push(`${dpPlural(d, 'artifact')} deployed`);
@@ -183,7 +183,7 @@ const DP_USUAL = { 'uml.ExecutionEnvironment': DP_TARGETS, 'uml.Device': ['uml.N
 function dpProblems(model, view) {
   const out = [], I = dpIndex(model), say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const ty = id => (I.at.get(id) || {}).type, q = id => JSON.stringify(I.at.has(id) ? dpName(I.at.get(id)) : String(id)), kind = id => (I.at.has(id) ? dpWord(I.at.get(id)).toLowerCase() : 'nothing');
-  const a = id => (/^[aeiou]/.test(kind(id)) ? 'an ' : 'a ') + kind(id);
+  const a = id => aWord(kind(id)); // "a use case" (audit 32)
   DP_ARR(model && model.nodes).forEach((n, i) => { if (!DP_OBJ(n) || !DP_TARGETS.includes(n.type) || n.parent == null || !I.at.has(n.parent)) return;
     const p = I.at.get(n.parent);
     if (!DP_TARGETS.includes(p.type)) say('error', 'nest-kinds', `nodes[${i}].parent`, [n.id, p.id], `${q(n.id)}, ${a(n.id)}, is owned by ${q(p.id)}, ${a(p.id)}: its owner is a node, a device or an execution environment`);

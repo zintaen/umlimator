@@ -452,3 +452,17 @@ test('audit 30: a self-generalization of an actor or a use case is generalizatio
   const k = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Actor', label: 'A' }, { id: 'u', type: 'uml.UseCase', label: 'U' }], edges: [{ id: 'g', type: 'uml.Generalization', from: 'a', to: 'u' }], views: [{ id: 'v', diagram: 'uml.use-case', nodeIds: ['a', 'u'] }] };
   assert.deepEqual(validate(k).map(p => p.rule), ['generalization-kinds']);
 });
+
+test('audit 32: use-case-owner, partition-owner and transition-ends write the kind with its article, as owner-kinds does: never "a undefined", "a Interface"', () => {
+  const mk = (d, nodes, edges = []) => ({ schemaVersion: 2, root: 'v', nodes, edges, views: [{ id: 'v', diagram: d, parent: null, nodeIds: nodes.map(n => n.id) }] });
+  const said = (m, rule) => validate(m).filter(p => p.rule === rule).map(p => p.message);
+  for (const [t, w] of [[undefined, 'an element'], ['', 'an element'], ['uml.Interface', 'an interface'], ['uml.Actor', 'an actor'], ['uml.UseCase', 'a use case']]) {
+    const x = t === undefined ? {} : { type: t };
+    if (t !== 'uml.UseCase') assert.deepEqual(said(mk('uml.use-case', [{ id: 'p', ...x, label: 'P' }, { id: 'u', type: 'uml.UseCase', label: 'Buy', parent: 'p' }]), 'use-case-owner'),
+      [`use-case-owner: "Buy" is owned by "P", ${w}: a use case's owner is a subject or a package`], String(t));
+    assert.deepEqual(said(mk('uml.activity', [{ id: 'p', ...x, label: 'P' }, { id: 'a', type: 'uml.Action', label: 'Pay', parent: 'p' }]), 'partition-owner'),
+      [`partition-owner: a ("Pay") is owned by p ("P"), ${w}, not a partition`], String(t));
+    const st = said(mk('uml.state-machine', [{ id: 's', type: 'uml.State', label: 'Idle' }, { id: 'x', ...x, label: 'X' }], [{ id: 't1', type: 'uml.Transition', from: 's', to: 'x' }]), 'transition-ends');
+    assert.equal(st.length, 1, String(t)); assert.match(st[0], new RegExp(`^transition-ends: t1 ends on "[^"]*X", ${w}: `), String(t));
+  }
+});

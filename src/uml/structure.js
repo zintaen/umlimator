@@ -2,7 +2,7 @@ import { jsonText } from '../core/model.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { brLines, endLabels } from '../typed/draw.js';
-import { diagramOf, drawnKind, idTable, kindWord } from '../core/registry.js';
+import { countOf, diagramOf, drawnKind, idTable, kindWord } from '../core/registry.js';
 import { OWNER_RULES, viewLines } from './owners.js';
 
 /* ---------- structure notation: what the component, deployment and composite structure types share (work package 5.3,
@@ -23,7 +23,7 @@ import { OWNER_RULES, viewLines } from './owners.js';
 
 const SN_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), SN_ARR = x => (Array.isArray(x) ? x : []);
 const SN = { line: 'var(--um-muted)', ink: 'var(--um-text)', bg: 'var(--um-stage-bg)', port: 12, ball: 16, pad: 10, name: 12, nlh: 16, st: 11, sth: 14, minW: 96, maxW: 320, minH: 48, bmax: 160, bpx: 11 };
-const snPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
+const snPlural = countOf; // a held kind's word varies (audit 32)
 const snNode = (n, shape, said, inner) => `<g class="node ${shape}" data-id="${esc(n.id)}" data-shape="${shape}" tabindex="-1" role="img" aria-label="${esc(n.aria || said)}">${inner}</g>`;
 const snText = (x, y, t, px, wt, fill, cls) => `<text x="${r2(x)}" y="${r2(y)}" text-anchor="middle" class="${cls}" fill="${fill}" style="font:${wt} ${px}px var(--um-sans)">${esc(t)}</text>`;
 const snBody = d => `<path d="${d}" class="n-mask"/><path d="${d}" class="n-body" fill="${SN.bg}" stroke="${SN.line}"/>`;

@@ -1,5 +1,5 @@
 import { apply } from '../core/apply.js';
-import { ownNodes, registerDiagramType } from '../core/registry.js';
+import { aKind, ownNodes, registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, portsOn, r2 } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
@@ -282,7 +282,7 @@ function stProblems(model, view) {
   const ins = new Map(), outs = new Map(), add = (m, id, x) => m.set(id, [...(m.get(id) || []), x]);
   ts.forEach(([e, path]) => { add(outs, e.from, [e, path]); add(ins, e.to, [e, path]);
     const bad = [e.from, e.to].filter(id => !vertex(id));
-    if (bad.length) say('error', 'transition-ends', path, [e.id, ...bad], `${e.id} ends on ${bad.map(id => `${q(id)}${el(id) ? `, a ${String(ty(id)).split('.').pop()}` : ', which is no element'}`).join(' and ')}: a transition joins states, pseudostates or final states`);
+    if (bad.length) say('error', 'transition-ends', path, [e.id, ...bad], `${e.id} ends on ${bad.map(id => `${q(id)}${el(id) ? `, ${aKind(ST_TYPE, el(id))}` : ', which is no element'}`).join(' and ')}: a transition joins states, pseudostates or final states`);
     if (printTransition(ST_PROPS(e)) == null) say('warning', 'label-syntax', `${path}.props`, [e.id], `${e.id}'s parts do not read back as "${transitionText(ST_PROPS(e))}": edit them in the properties panel`); });
   const has = (e, k) => ST_HAS(ST_PROPS(e)[k]), list = es => es.map(([e]) => e.id).join(', ');
   // nodes: owners, kinds, and the pseudostates' and final states' lines; a member's path by its place (one with no id is in no index)

@@ -1,4 +1,4 @@
-import { registerDiagramType, idTable } from '../core/registry.js';
+import { countOf, registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, portsOn, r2, sidePorts } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
@@ -25,7 +25,7 @@ const C4_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), C4
 const C4_HAS = x => x != null && String(x).trim() !== '';
 const C4_P = x => (C4_OBJ(x.props) ? x.props : {});
 const c4Name = x => String(x.label ?? x.id);
-const c4Plural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
+const c4Plural = countOf; // "2 people", "2 classes" (audit 32)
 const C4_WORD = { __proto__: null, 'c4.Person': 'Person', 'c4.SoftwareSystem': 'Software system', 'c4.Container': 'Container', 'c4.Component': 'Component',
   'c4.DeploymentNode': 'Deployment node', 'c4.ContainerInstance': 'Container instance', 'uml.Comment': 'Comment' };
 const C4_TAG = { __proto__: null, 'c4.Person': 'Person', 'c4.SoftwareSystem': 'Software System', 'c4.Container': 'Container', 'c4.Component': 'Component' };
