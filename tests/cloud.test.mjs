@@ -553,3 +553,16 @@ test('audit 34: a cloud element or group labelled "" is named by its id in its n
   assert.match(zone.aria, /^Zone zone-a, holding 1 element/); assert.equal(zone.title, 'zone-a [Zone]');
   assert.match(said, /Path from api to DB/); assert.ok(!/ ,| {2}to /.test(said), said);
 });
+
+test('audit 39: two paths into one group, one from outside and one from beside it, keep off each other, right and down', () => {
+  // laid out right, DB's path turned half way to the network, along the last run of the Shoppers' path into it, and they joined
+  const mk = dir => ({ schemaVersion: 2, nodes: [
+    { id: 'proj', type: 'gcp.Zone', label: 'Shop', props: { zoneType: 'project' } },
+    { id: 'net', type: 'gcp.Zone', label: 'Net', parent: 'proj', props: { zoneType: 'network' } },
+    { id: 'run', type: 'gcp.Product', label: 'API', parent: 'net', props: { icon: 'Cloud-Run' } },
+    { id: 'db', type: 'gcp.Product', label: 'DB', parent: 'proj', props: { icon: 'Cloud-SQL' } },
+    { id: 'u', type: 'gcp.User', label: 'Shoppers' }],
+  edges: [{ id: 'e1', type: 'gcp.Path', from: 'u', to: 'net', label: 'HTTPS' }, { id: 'e3', type: 'gcp.Path', from: 'db', to: 'net' }],
+  views: [{ id: 'v', diagram: 'gcp', nodeIds: ['proj', 'net', 'run', 'db', 'u'], direction: dir }] });
+  for (const dir of ['right', 'down']) { const m = mk(dir); assert.deepEqual(validate(m), []); assert.deepEqual(check(m, 'v').map(p => p.message), [], dir); }
+});

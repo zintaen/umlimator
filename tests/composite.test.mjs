@@ -19,6 +19,7 @@ import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
 import { tablesOf } from '../src/page/print.js';
 import { csParse, csRow } from '../src/uml/composite.js';
+import '../src/uml/component.js'; // the spreadPorts tests lay out component views too
 
 const CS = JSON.parse(readFileSync(new URL('../examples/order-service-structure.json', import.meta.url)));
 const T = diagramOf({ diagram: 'uml.composite-structure' }), V = CS.views[0];
@@ -887,4 +888,28 @@ test('audit 38: lines between two parts, or two components, whose ports are list
     edges: conns.map(([f, t], i) => ({ id: 'c' + i, type: 'uml.Connector', from: 'B.' + t, to: 'A.' + f })), views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['B', 'A'], direction: dir }] });
   for (const mk of [cs, cp]) for (const dir of ['right', 'down']) for (const conns of [[['p1', 'q2'], ['p2', 'q1']], [['p1', 'q3'], ['p2', 'q2'], ['p3', 'q1']]])
     assert.deepEqual(check(mk(conns, dir), 'v').map(p => p.message), [], `${mk === cs ? 'composite' : 'component'} ${dir} ${JSON.stringify(conns)}`);
+});
+
+test('audit 39: a node\'s port lines follow where the far node put its ports, not their rank, so they run parallel (spreadPorts)', () => {
+  // Comp0's p1 also has a line to Comp4 below, so Comp0 puts p2 above p1; Comp3, whose id sorts later, ranked its ends by p1
+  // before p2 (audit 38's way), and its two lines to Comp0 crossed
+  const port = (id, label) => ({ id, type: 'uml.Port', label });
+  const cp = dir => ({ schemaVersion: 2, title: 'F', nodes: [
+    { id: 'C0', type: 'uml.Component', label: 'Comp0', members: [port('C0p1', 'p1'), port('C0p2', 'p2')] },
+    { id: 'C3', type: 'uml.Component', label: 'Comp3', members: [port('C3p0', 'p0'), port('C3p1', 'p1')] },
+    { id: 'C4', type: 'uml.Component', label: 'Comp4', members: [port('C4p0', 'p0')] }],
+  edges: [{ id: 'c0', type: 'uml.Connector', from: 'C3p1', to: 'C0p1' }, { id: 'c2', type: 'uml.Connector', from: 'C3p0', to: 'C0p2' }, { id: 'c3', type: 'uml.Connector', from: 'C4p0', to: 'C0p1' }],
+  views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['C0', 'C3', 'C4'], direction: dir }] });
+  // a composite the round-39 fuzzer found: three parts of one type, two lines between part0 and part2, and two of the subject's ports
+  const cs = dir => ({ schemaVersion: 2, title: 'F', nodes: [
+    { id: 'S', type: 'uml.Class', label: 'Shop', members: [port('Sp0', 'sp0'), port('Sp1', 'sp1'), ...[0, 1, 2].map(i => ({ id: 'S.' + i, type: 'uml.Property', label: 'part' + i, props: { valueType: 'Type0' } }))] },
+    { id: 'T0', type: 'uml.Class', label: 'Type0', members: [port('T0p0', 'p0'), port('T0p1', 'p1')] }],
+  edges: [{ id: 'c0', type: 'uml.Connector', from: 'T0p1', to: 'T0p0', props: { ends: { from: { part: 'S.0' }, to: { part: 'S.2' } } } },
+    { id: 'c1', type: 'uml.Connector', from: 'T0p0', to: 'Sp0', props: { ends: { from: { part: 'S.1' } } } },
+    { id: 'c2', type: 'uml.Connector', from: 'T0p0', to: 'T0p1', props: { ends: { from: { part: 'S.0' }, to: { part: 'S.2' } } } },
+    { id: 'c3', type: 'uml.Connector', from: 'Sp1', to: 'T0p1', props: { ends: { to: { part: 'S.0' } } } }],
+  views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 'S', nodeIds: ['S'], direction: dir }] });
+  for (const mk of [cp, cs]) for (const dir of ['right', 'down']) assert.deepEqual(check(mk(dir), 'v').map(p => p.message), [], `${mk === cp ? 'component' : 'composite'} ${dir}`);
+  const g = layout(cp('right'), 'v'), pts = id => g.edges.find(e => e.id === id).pts;
+  assert.deepEqual([pts('c0').length, pts('c2').length], [2, 2], 'Comp3\'s two lines to Comp0 run straight'); // as 8774b14 drew them
 });
