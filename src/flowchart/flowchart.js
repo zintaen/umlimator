@@ -5,7 +5,7 @@ import { layoutTyped, typedLines } from '../typed/layout.js';
 import '../uml/class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from '../uml/flow.js'; // and SHAPE.diamond, SHAPE.initial's circle, read only
 import { snKindName, snLineName } from '../uml/structure.js';
-import { usedIds, jsonText, labelOr } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the flowchart, flowchart (work package M2.3, notes/milestone-2.md §7.2) ----------
    Ten symbols: the decision is stage 4's diamond and the connector a circle over SHAPE.initial's outline, both read only;
@@ -111,7 +111,7 @@ function fcIndex(model, view) {
   starts.forEach(visit); const reached = new Set(seen); ids.forEach(visit);
   return { N, E, path, ids, lines, flows, ins, outs, starts, ends, walk, reached, isStart: new Set(starts), isEnd: new Set(ends) };
 }
-const fcName = x => String(x.label ?? x.id);
+const fcName = elName;
 const fcCalled = x => (x ? (FC_TXT(fcName(x)) || fcLook(x)[1].toLowerCase()) : '?');
 const fcPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 

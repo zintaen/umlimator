@@ -7,7 +7,7 @@ import { flowWrap } from '../uml/flow.js';
 import { boxHead, ownersOn, readingOrder } from '../uml/owners.js';
 import { brLines } from '../typed/draw.js';
 import { snKindName, snLineName } from '../uml/structure.js';
-import { usedIds, jsonText, labelOr } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- C4's elements and static views, c4.landscape, c4.context, c4.container, c4.component (work package M2.6,
    notes/milestone-2.md §5.1, §5.2, §6.1, §6.5, §7.5, §7.5.1) ----------
@@ -24,7 +24,7 @@ import { usedIds, jsonText, labelOr } from '../core/model.js';
 const C4_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), C4_ARR = x => (Array.isArray(x) ? x : []);
 const C4_HAS = x => x != null && String(x).trim() !== '';
 const C4_P = x => (C4_OBJ(x.props) ? x.props : {});
-const c4Name = x => String(x.label ?? x.id);
+const c4Name = elName;
 const c4Plural = countOf; // "2 people", "2 classes" (audit 32)
 const C4_WORD = { __proto__: null, 'c4.Person': 'Person', 'c4.SoftwareSystem': 'Software system', 'c4.Container': 'Container', 'c4.Component': 'Component',
   'c4.DeploymentNode': 'Deployment node', 'c4.ContainerInstance': 'Container instance', 'uml.Comment': 'Comment' };

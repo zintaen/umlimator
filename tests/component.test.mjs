@@ -594,3 +594,21 @@ test('audit 34: Shift + Delete of a port with other elements says them, as the d
   assert.equal(T.edits.remove(m, v, [port.id, 'storefront-component'], false).say, `Deleted port ${port.label} from the model: a port is not hidden from a view; hid 1 element`);
   assert.equal(T.edits.remove(m, v, [port.id], true).say, `Deleted port ${port.label} from the model`);
 });
+
+test('audit 35: Delete on a port with a model line the view cannot hide says the line was kept, as the canvas\'s Delete does', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/bookshop-components.json', import.meta.url), 'utf8')), v = m.views[0];
+  assert.ok(!Array.isArray(v.edges), 'the view lists no lines');
+  let r = T.edits.remove(m, v, ['shop-api.orders', 'storefront-requires-orders'], false);
+  assert.deepEqual(r.commands, [{ op: 'delete', id: 'shop-api.orders' }]);
+  assert.equal(r.say, 'Deleted port orders from the model: a port is not hidden from a view; not the line storefront-requires-orders: this view shows every line between its cards, and Shift + Delete deletes it');
+  r = T.edits.remove(m, v, ['storefront-requires-orders', 'shop-api.orders', 'worker-needs-api'], false);
+  assert.match(r.say, /; not the lines storefront-requires-orders, worker-needs-api: this view shows every line between its cards, and Shift \+ Delete deletes them$/);
+  // a line at the deleted port goes with it (the core's cascade): not said kept
+  r = T.edits.remove(m, v, ['shop-api.orders', 'api-provides-orders'], false);
+  assert.ok(!apply(m, r.commands).edges.some(e => e.id === 'api-provides-orders'));
+  assert.equal(r.say, 'Deleted port orders from the model: a port is not hidden from a view');
+  // Shift + Delete, or a view listing its lines: unchanged
+  assert.equal(T.edits.remove(m, v, ['shop-api.orders', 'storefront-requires-orders'], true).say, 'Deleted port orders from the model, and 1 other element');
+  const L = structuredClone(m); L.views[0].edges = L.edges.map(e => e.id);
+  assert.equal(T.edits.remove(L, L.views[0], ['shop-api.orders', 'storefront-requires-orders'], false).say, 'Deleted port orders from the model: a port is not hidden from a view; hid 1 element');
+});

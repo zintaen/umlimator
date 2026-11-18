@@ -284,7 +284,7 @@ test('add: the palette\'s lifeline, last or at an index; remove: a connector tak
   assert.deepEqual(commRemove(EX, V, ['api-payments'], false), { commands: [{ op: 'hide', id: 'api-payments', view: 'checkout-communication' }, { op: 'hide', id: 'cm4', view: 'checkout-communication' }, { op: 'hide', id: 'cm5', view: 'checkout-communication' }],
     say: 'Hid connector "api–payments" and its 2 messages: "charge(total)", "paid"' });
   assert.equal(commRemove(EX, V, ['api-payments'], true).say, 'Deleted connector "api–payments" and its 2 messages: "charge(total)", "paid"');
-  assert.equal(commRemove(EX, V, ['lifeline-payments'], false).say, 'Hid lifeline "payments" and its 2 messages: "charge(total)", "paid"', 'a lifeline\'s messages, taken by apply(), said');
+  assert.equal(commRemove(EX, V, ['lifeline-payments'], false).say, 'Hid lifeline "payments", its 1 connector ("api–payments") and its 2 messages: "charge(total)", "paid"', 'a lifeline\'s messages, taken by apply(), said');
   m = run(EX, commRemove(EX, V, ['api-payments'], false).commands);
   assert.ok(m.edges.some(e => e.id === 'cm4'), 'hidden, still in the model');
   m = run(EX, commRemove(EX, V, ['api-payments'], true).commands);
@@ -472,10 +472,10 @@ test('audit 25: Delete on a lifeline the view holds as its own says it is delete
   v.nodes = [m.nodes.splice(m.nodes.findIndex(n => n.id === 'receipt'), 1)[0]];
   const r = T.edits.remove(m, v, ['receipt'], false);
   assert.deepEqual(r.commands, [{ op: 'delete', id: 'receipt' }]);
-  assert.equal(r.say, 'Deleted lifeline "receipt" and its 1 message: "new(order)"');
+  assert.equal(r.say, 'Deleted lifeline "receipt", its 1 connector ("api–receipt") and its 1 message: "new(order)"');
   const both = T.edits.remove(m, v, ['receipt', 'lifeline-shopper'], false);
-  assert.match(both.say, /^Deleted lifeline "receipt" and its 1 message: "new\(order\)"; hid lifeline "shopper" and its \d+ messages?: /, both.say);
-  assert.match(T.edits.remove(m, v, ['lifeline-shopper'], false).say, /^Hid lifeline "shopper" and its/, 'a model lifeline: as before');
+  assert.match(both.say, /^Deleted lifeline "receipt", its 1 connector \("api–receipt"\) and its 1 message: "new\(order\)"; hid lifeline "shopper", its 1 connector \("shopper–storefront"\) and its \d+ messages?: /, both.say);
+  assert.match(T.edits.remove(m, v, ['lifeline-shopper'], false).say, /^Hid lifeline "shopper", its/, 'a model lifeline: as before');
 });
 
 test('audit 28: Shift + Delete of a connector keeps in the model a message another view still carries on its own connector', () => {

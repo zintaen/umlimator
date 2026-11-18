@@ -6,7 +6,7 @@ import { layoutTyped, typedLines } from '../typed/layout.js';
 import { LINE_SAYS, legendItem } from './class.js'; // SHAPE.classifier and SHAPE.note too
 import { snKindName, snLineName } from './structure.js'; // SHAPE.component too
 import './usecase.js'; // SHAPE.actor
-import { usedIds, jsonText, labelOr } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the information flow diagram, uml.information-flow (work package M2.5, notes/milestone-2.md §7.4) ----------
    Classes and interfaces (the class type's classifier, name only), components (src/uml/structure.js's look) and actors (the
@@ -20,7 +20,7 @@ import { usedIds, jsonText, labelOr } from '../core/model.js';
 
 const IF_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), IF_ARR = x => (Array.isArray(x) ? x : []);
 const IF_HAS = x => x != null && x !== '';
-const ifName = x => String(x.label ?? x.id);
+const ifName = elName;
 const ifStereo = x => IF_ARR(IF_OBJ(x.props) ? x.props.stereotypes : null).filter(IF_HAS).map(String);
 const ifPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const ifAnd = a => (a.length < 2 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a.at(-1)}`);

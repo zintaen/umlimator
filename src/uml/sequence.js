@@ -6,7 +6,7 @@ import { layoutTimeAxis } from '../layout/timeaxis.js';
 import { brLines } from '../typed/draw.js';
 import { frame, tagSize, guardSize, useSize } from './frame.js';
 import { interactionWalk, activationBars, replyCallFor, INTERACTION_RULES, interactionProblems, interactionGone, interactionCounts } from './interaction.js';
-import { copyOf, usedIds, jsonText, labelOr } from '../core/model.js';
+import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the sequence diagram, uml.sequence (work package 3.3, notes/stage-3.md §4 and §5) ----------
    The subset of notes/stage-3.md §4.1: lifelines (`represents`, «actor» as text), messages inline in the view's `edges`
@@ -34,7 +34,7 @@ function sqHeads(model, view) {
   const at = new Map(); [...SQ_ARR(view.nodes), ...SQ_ARR(model.nodes)].forEach(n => { if (SQ_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
   return [...new Set(SQ_ARR(view.nodeIds))].filter(id => at.has(id)).map(id => at.get(id)); // listed twice: one head
 }
-const sqName = n => String(n.label ?? n.id);
+const sqName = elName;
 const sqHeadText = n => sqName(n) + (SQ_HAS(sqProps(n).represents) ? ' : ' + sqProps(n).represents : ''); // "api : ShopApi"
 const sqStereo = n => SQ_ARR(sqProps(n).stereotypes).filter(SQ_HAS).map(String);
 // a message's drawn text: its «stereotypes», then its label (audit 19); F2 takes the «…» off before it sets the label
@@ -406,9 +406,10 @@ function sqRemove(model, view, ids, fromModel) {
   // the messages counted: this view's on a lifeline that goes, and every other view's a deleted lifeline took (the core's cascade, audit 33)
   const ds = new Set(dels.map(h => h.id)), gone = new Set(X.occ.filter(o => o.message && (hs.has(o.from) || hs.has(o.to))).map(o => o.id));
   // and a timing view's changes of it and their constraints, as the timing and communication hints count them (audit 34)
-  const G = ds.size ? interactionGone(model, apply(model, r)) : { message: [], change: [], constraint: [] };
+  // and the connectors it took from every communication view (audit 35)
+  const G = ds.size ? interactionGone(model, apply(model, r)) : { message: [], connector: [], change: [], constraint: [] };
   G.message.forEach(e => { if (ds.has(e.from) || ds.has(e.to)) gone.add(e.id); });
-  const what = interactionCounts({ message: gone.size, change: G.change.length, constraint: G.constraint.length }) || 'no message';
+  const what = interactionCounts({ message: gone.size, connector: G.connector.length, change: G.change.length, constraint: G.constraint.length }) || 'no message';
   const did = [dels.length && `Deleted ${dels.map(sqName).join(', ')}`, hid.length && `${dels.length ? 'removed' : 'Removed'} ${hid.map(sqName).join(', ')} from the view`].filter(Boolean).join(' and ');
   return { commands: r, say: `${did}, and ${what} with ${heads.length > 1 ? 'them' : 'it'}${took ? '; t' + took : ''}` };
 }

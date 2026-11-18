@@ -1,4 +1,4 @@
-import { jsonText, labelOr } from '../core/model.js';
+import { jsonText, labelOr, elName } from '../core/model.js';
 import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -19,7 +19,7 @@ import { modelLines } from '../uml/owners.js';
 
 const SYS_PAR_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), SYS_PAR_ARR = x => (Array.isArray(x) ? x : []);
 const SYS_PAR_PROPS = x => (SYS_PAR_OBJ(x && x.props) ? x.props : {}), SYS_PAR_HAS = x => x != null && x !== '';
-const SYS_PAR_NAME = x => String(x.label ?? x.id);
+const SYS_PAR_NAME = elName;
 const SYS_PAR_PLURAL = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const SYS_PAR_PROP = { __proto__: null, 'sysml.ConstraintProperty': 'Constraint', 'sysml.ValueProperty': 'Value' };
 const SYS_PAR_SUBJ = { __proto__: null, 'sysml.Block': 'Block', 'sysml.ConstraintBlock': 'Constraint block' };
@@ -32,7 +32,7 @@ function SYS_PAR_INDEX(model, view) {
   const E = new Map(); SYS_LINES(model, view).forEach(([e]) => { if (SYS_PAR_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); }); // the view's own lines too (audit 23)
   const S = view && at.has(view.subject) ? at.get(view.subject) : null;
   // the constraint block a constraint property's type names (exactly one, by label, else id, as the composite type finds a part's type)
-  const block = m => { const t = SYS_PAR_PROPS(m).valueType, c = SYS_PAR_HAS(t) ? [...at.values()].filter(n => n.type === 'sysml.ConstraintBlock' && (n.label ?? n.id) === t) : []; return c.length === 1 ? c[0] : null; };
+  const block = m => { const t = SYS_PAR_PROPS(m).valueType, c = SYS_PAR_HAS(t) ? [...at.values()].filter(n => n.type === 'sysml.ConstraintBlock' && elName(n) === t) : []; return c.length === 1 ? c[0] : null; };
   const params = B => SYS_PAR_ARR(B && B.members).filter(m => SYS_PAR_OBJ(m) && m.type === 'sysml.ConstraintParameter');
   return { at, mem, E, S, block, params, el: id => at.get(id) || (mem.get(id) || {}).m || null, owner: id => (mem.get(id) || {}).owner || null };
 }
@@ -52,7 +52,7 @@ SHAPE['sysml-constraint'] = { ...SHAPE.part,
 };
 
 /* ---- names (§13): the type's words for each property, parameter and binding; null leaves the composite type's ---- */
-const SYS_PAR_TEXT = m => { const p = SYS_PAR_PROPS(m); return `${m.label ?? m.id}${SYS_PAR_HAS(p.valueType) ? ': ' + p.valueType : ''}${SYS_PAR_HAS(p.multiplicity) ? ` [${p.multiplicity}]` : ''}`; };
+const SYS_PAR_TEXT = m => { const p = SYS_PAR_PROPS(m); return `${elName(m)}${SYS_PAR_HAS(p.valueType) ? ': ' + p.valueType : ''}${SYS_PAR_HAS(p.multiplicity) ? ` [${p.multiplicity}]` : ''}`; };
 const SYS_PAR_PARAM_SAY = (p, owner) => `Parameter ${SYS_PAR_TEXT(p)}${owner ? ' of ' + SYS_PAR_NAME(owner) : ''}`;
 // a binding's end: "value ecoRange", "parameter range of eco" (through a constraint property), "parameter range of RangeEquation"
 function SYS_PAR_END(I, e, k) {
@@ -148,7 +148,7 @@ function SYS_PAR_PROBLEMS(model, view) {
   out.push(...bdProblems(model).filter(p => (p.rule === 'value-type' || p.rule === 'constraint-type') && p.ids[0] === S.id));
   const ofS = id => id != null && I.owner(id) === S, kind = id => (I.el(id) || {}).type;
   // a binding's type: its end's valueType, when it names an element of the model by label (else id, as drawn)
-  const named = new Map(); I.at.forEach(n => { const k = n.label ?? n.id; if (SYS_PAR_HAS(k) && !named.has(k)) named.set(k, n); });
+  const named = new Map(); I.at.forEach(n => { const k = elName(n); if (SYS_PAR_HAS(k) && !named.has(k)) named.set(k, n); });
   // a generalization this view draws, or the model's, or one another view (a block definition view) draws as its own (audit 30)
   const gens = [...I.E.values(), ...modelLines(model)].filter(e => SYS_PAR_OBJ(e) && e.type === 'uml.Generalization');
   const ups = n => { const seen = new Set(), go = [n]; while (go.length) { const x = go.pop(); if (seen.has(x)) continue; seen.add(x);
@@ -231,7 +231,7 @@ function SYS_PAR_KEEP(model, was, r) {
   const cs = Array.isArray(r) ? r : SYS_PAR_OBJ(r) && Array.isArray(r.commands) ? r.commands : [];
   const to = was && Object.hasOwn(SYS_PAR_PROP, was.type) && cs.find(c => SYS_PAR_OBJ(c) && c.op === 'set' && c.id === was.id && String(c.path) === 'props.valueType');
   if (!to) return r;
-  const cb = SYS_PAR_HAS(to.value) && SYS_PAR_ARR(model.nodes).some(n => SYS_PAR_OBJ(n) && n.type === 'sysml.ConstraintBlock' && (n.label ?? n.id) === to.value);
+  const cb = SYS_PAR_HAS(to.value) && SYS_PAR_ARR(model.nodes).some(n => SYS_PAR_OBJ(n) && n.type === 'sysml.ConstraintBlock' && elName(n) === to.value);
   if (cb === (was.type === 'sysml.ConstraintProperty')) return r;
   return { error: `A row keeps its member's kind: ${cb ? `value ${SYS_PAR_NAME(was)} is typed by no constraint block; delete it and add a constraint property row`
     : `constraint property ${SYS_PAR_NAME(was)} is typed by a constraint block; delete it and add a value row`}` };

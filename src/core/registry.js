@@ -1,4 +1,4 @@
-import { jsonText } from './model.js';
+import { jsonText, elName } from './model.js';
 /* ---------- diagram types (work package 1.3) ----------
    A typed view's `diagram` names its type; a view with none is a map, and the map registers itself as the default
    (src/map/typed.js). A type this release does not know is drawn as plain cards, with a warning. Internal until the
@@ -29,7 +29,9 @@ function ownMerge(model, views) {
 const ownNodes = (model, view) => ownMerge(model, [view]);
 // what one view alone holds: its own nodes (none a model element's id takes) and their members, at any depth, by id
 function heldBy(model) {
-  const mine = new Set(), out = new Map(), put = (x, s) => { if (!R_OBJ(x) || typeof x.id !== 'string' || s.has(x.id)) return; if (s === out) out.set(x.id, x); else s.add(x.id); R_ARR(x.members).forEach(y => put(y, s)); };
+  // members on a stack, in the order a recursion took: thousands deep are read, never a stack overflow (audit 35)
+  const mine = new Set(), out = new Map(), put = (x0, s) => { for (const q = [x0]; q.length;) { const x = q.pop(); if (!R_OBJ(x) || typeof x.id !== 'string' || s.has(x.id)) continue;
+    if (s === out) out.set(x.id, x); else s.add(x.id); const ms = R_ARR(x.members); for (let j = ms.length - 1; j >= 0; j--) if (j in ms) q.push(ms[j]); } };
   [...R_ARR(R_OBJ(model) ? model.nodes : null), ...R_ARR(R_OBJ(model) ? model.edges : null)].forEach(x => put(x, mine));
   R_ARR(R_OBJ(model) ? model.views : null).forEach(v => R_ARR(R_OBJ(v) ? v.nodes : null).forEach(n => { if (R_OBJ(n) && !mine.has(n.id)) put(n, out); }));
   return out;
@@ -40,7 +42,7 @@ function heldBy(model) {
 function ownGuard(model, r) {
   if (R_OBJ(r) && Array.isArray(r.pick) && typeof r.then === 'function') return { ...r, then: i => ownGuard(model, r.then(i)) };
   const list = Array.isArray(r) ? r : R_OBJ(r) && Array.isArray(r.commands) ? r.commands : null; if (!list) return r;
-  const held = heldBy(model), hold = x => { if (R_OBJ(x) && typeof x.id === 'string') { held.set(x.id, x); R_ARR(x.members).forEach(hold); } }, out = [];
+  const held = heldBy(model), hold = x0 => { for (const q = [x0], seen = new Set(); q.length;) { const x = q.pop(); if (!R_OBJ(x) || typeof x.id !== 'string' || seen.has(x)) continue; seen.add(x); held.set(x.id, x); for (const y of R_ARR(x.members)) q.push(y); } }, out = [];
   for (const c of list) {
     const x = R_OBJ(c) && c.op === 'add' && R_OBJ(c.element) ? c.element : null;
     // where add { in: 'view' } puts it (apply.js): a view's nodes, not its lines nor its fragments (a sequence's)
@@ -51,7 +53,9 @@ function ownGuard(model, r) {
       if (node()) { out.push({ ...c, in: 'view' }); hold(x); continue; }
       const { parent, ...y } = x; out.push({ ...c, element: y }); continue; }
     else if (R_OBJ(c) && c.op === 'reparent' && c.parent != null && held.has(c.parent) && !held.has(c.id)) {
-      const p = held.get(c.parent); return { error: `${String(p.label ?? p.id)} lives in this view only: an element of the model cannot go under it` }; }
+      const p = held.get(c.parent); return { error: `${elName(p)} lives in this view only: an element of the model cannot go under it` }; }
+    else if (R_OBJ(c) && c.op === 'move' && c.owner != null && held.has(c.owner) && !held.has(c.id)) { // a member moved to a new owner: the same rule (audit 35)
+      const p = held.get(c.owner); return { error: `${elName(p)} lives in this view only: an element of the model cannot go under it` }; }
     out.push(c);
   }
   return Array.isArray(r) ? out : { ...r, commands: out };
