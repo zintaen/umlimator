@@ -5,7 +5,7 @@ import { SHAPE } from '../draw/shapes.js';
 import { layoutTimeAxis } from '../layout/timeaxis.js';
 import { brLines } from '../typed/draw.js';
 import { frame, tagSize, guardSize, useSize } from './frame.js';
-import { interactionWalk, activationBars, replyCallFor, INTERACTION_RULES, interactionProblems } from './interaction.js';
+import { interactionWalk, activationBars, replyCallFor, INTERACTION_RULES, interactionProblems, interactionGone, interactionCounts } from './interaction.js';
 import { copyOf, usedIds, jsonText, labelOr } from '../core/model.js';
 
 /* ---------- the sequence diagram, uml.sequence (work package 3.3, notes/stage-3.md §4 and §5) ----------
@@ -18,9 +18,6 @@ import { copyOf, usedIds, jsonText, labelOr } from '../core/model.js';
    commands for apply(), null, or { error }. Ships in lib/umlimator-all.js only. */
 
 const SQ_ARR = x => (Array.isArray(x) ? x : []), SQ_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x);
-// every message in the model: its edges and each view's own, once each by id (a lifeline's delete takes them from every view)
-const sqMessages = model => [...new Map([...SQ_ARR(model && model.edges), ...SQ_ARR(model && model.views).filter(SQ_OBJ).flatMap(v => SQ_ARR(v.edges))]
-  .filter(e => SQ_OBJ(e) && typeof e.id === 'string' && e.type === 'uml.Message').map(e => [e.id, e])).values()];
 const SQ_HAS = x => x != null && x !== '';
 const SQ_SORTS = ['call', 'async', 'reply', 'create', 'delete'], SQ_OPS = ['alt', 'opt', 'loop', 'par', 'break'];
 const SQ_LABEL = { px: 10.5, pad: 12, h: 16, lh: 13 }; // a message's label as svgOf draws a typed line's: 10.5 px text on a backing
@@ -408,10 +405,12 @@ function sqRemove(model, view, ids, fromModel) {
   const own = id => SQ_ARR(V.nodes).some(x => SQ_OBJ(x) && x.id === id), dels = heads.filter(h => fromModel || own(h.id)), hid = heads.filter(h => !dels.includes(h));
   // the messages counted: this view's on a lifeline that goes, and every other view's a deleted lifeline took (the core's cascade, audit 33)
   const ds = new Set(dels.map(h => h.id)), gone = new Set(X.occ.filter(o => o.message && (hs.has(o.from) || hs.has(o.to))).map(o => o.id));
-  if (ds.size) { const left = new Set(sqMessages(apply(model, r)).map(e => e.id)); sqMessages(model).forEach(e => { if ((ds.has(e.from) || ds.has(e.to)) && !left.has(e.id)) gone.add(e.id); }); }
-  const n = gone.size;
+  // and a timing view's changes of it and their constraints, as the timing and communication hints count them (audit 34)
+  const G = ds.size ? interactionGone(model, apply(model, r)) : { message: [], change: [], constraint: [] };
+  G.message.forEach(e => { if (ds.has(e.from) || ds.has(e.to)) gone.add(e.id); });
+  const what = interactionCounts({ message: gone.size, change: G.change.length, constraint: G.constraint.length }) || 'no message';
   const did = [dels.length && `Deleted ${dels.map(sqName).join(', ')}`, hid.length && `${dels.length ? 'removed' : 'Removed'} ${hid.map(sqName).join(', ')} from the view`].filter(Boolean).join(' and ');
-  return { commands: r, say: `${did}, and ${n ? `${n} ${n === 1 ? 'message' : 'messages'}` : 'no message'} with ${heads.length > 1 ? 'them' : 'it'}${took ? '; t' + took : ''}` };
+  return { commands: r, say: `${did}, and ${what} with ${heads.length > 1 ? 'them' : 'it'}${took ? '; t' + took : ''}` };
 }
 
 /* operands are a fragment's members, edited in the properties panel's member list (src/canvas/edit.js): a guard as text */

@@ -4,9 +4,9 @@ import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
 import { brLines } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
-import { LINE_WORDS, legendOf, lineIn, lineLook, lineRename, memberEdit, multBounds, printMember } from './class.js'; // a subject's other members, as the class type's; SHAPE.note, a comment's look
+import { LINE_WORDS, legendOf, lineIn, lineLabel, lineLook, lineRename, memberEdit, multBounds, printMember } from './class.js'; // a subject's other members, as the class type's; SHAPE.note, a comment's look
 import './usecase.js'; // SHAPE.ellipse, a collaboration use's; SHAPE.subject, a class subject's frame
-import { SN_SAY, STRUCT_RULES, snKindName, portFit, portSides, portsDrawn, structProblems } from './structure.js';
+import { SN_SAY, STRUCT_RULES, snKindName, snKindWord, portFit, portSides, portsDrawn, structProblems } from './structure.js';
 import { viewLines } from './owners.js';
 import { usedIds, jsonText, labelOr } from '../core/model.js';
 
@@ -156,8 +156,9 @@ const CS_LINE_WORD = { __proto__: null, 'uml.Connector': 'Connector', 'uml.RoleB
 // a kind outside the view's own (a dependency, a usage the view lists) named as the class view and the PDF name it, "Line" only for one
 // the class view has no word for (audit 23)
 const csLineWord = t => CS_LINE_WORD[t] || (Object.hasOwn(LINE_WORDS, t) ? LINE_WORDS[t][0] : 'Line');
-// a line's drawn text: its «stereotypes», then its label (a comment link has none)
-const csLineText = e => (e.type === 'uml.CommentLink' ? '' : [...csStereo(e).map(t => `«${t}»`), e.label].filter(CS_HAS).join(' '));
+// a line's drawn text: its «stereotypes», then its label (a comment link has none); a kind outside the view's own as the class
+// view writes it, its keyword first («use», «import», «abstraction», {required}), as its legend entry promises (audit 34)
+const csLineText = e => (e.type === 'uml.CommentLink' ? '' : CS_LOOK[e.type] ? [...csStereo(e).map(t => `«${t}»`), e.label].filter(CS_HAS).join(' ') : lineLabel(e));
 const csLineName = (P, { e, f, t }) => e.type === 'uml.RoleBinding' ? `Role binding from ${csEndName(P, f)} to ${csEndName(P, t)}${csLineText(e) ? ', as ' + csLineText(e) : ''}`
   : `${csLineWord(e.type)} from ${csEndName(P, f)} to ${csEndName(P, t)}${csLineText(e) ? ': ' + csLineText(e) : ''}`;
 // the subject and its ports, each part and its ports, the collaboration uses, each open collaboration and its roles, the rest; then the lines
@@ -226,7 +227,9 @@ function csGeo({ model, view, pos: pins, memo }) {
   const nodes = Object.keys(pos).filter(id => !P.boxed.has(id)).map(id => { const x = P.el(id), st = csStereo(x), part = P.partOf.has(id);
     const shape = part ? { shape: 'part', label: csPartSaid(x), stereotypes: st, shared: CS_PROPS(x).aggregation === 'shared' } : x.type === 'uml.Comment' ? { shape: 'note' }
       : x.type === 'uml.CollaborationUse' ? { shape: 'collab-use', label: csUseText(x), stereotypes: st } : x.type === 'uml.Collaboration' ? { shape: 'collab-use', stereotypes: st }
-        : x.type === 'uml.Component' ? { shape: 'component', stereotypes: st } : { shape: 'classifier', stereotypes: st, compartments: [] };
+        : x.type === 'uml.Component' ? { shape: 'component', stereotypes: st } : x.type === 'uml.Package' ? { shape: 'package', stereotypes: st }
+          // another kind: a classifier with its kind's keyword (a class has none), as it is named and as the class view draws it (audit 34)
+          : { shape: 'classifier', stereotypes: [...(x.type !== 'uml.Class' && typeof x.type === 'string' && x.type.startsWith('uml.') ? [snKindWord(x.type)] : []), ...st], compartments: [] };
     const d = { id, label: csName(x), type: x.type, kind: 'file', ...shape, aria: csNodeName(P, id), col: pos[id][0], row: pos[id][1] }, s = SHAPE[d.shape].size(d), m = (Object.hasOwn(fit, id) && fit[id]) || { w: 0, h: 0 };
     return { ...d, w: Math.max(s.w, m.w), h: Math.max(s.h, m.h) }; });
   // each line: its ports, the side each leaves by (in the layout's own axes: a view laid out down is laid out turned), inner
@@ -417,21 +420,27 @@ function csRemove(model, view, ids, fromModel) {
   const lines = viewLines(model, view).map(([e]) => e).filter(CS_OBJ), mine = new Set(CS_ARR(model.nodes).filter(CS_OBJ).map(n => n.id));
   const own = id => CS_ARR(view.nodes).some(n => CS_OBJ(n) && n.id === id && !mine.has(id)) || CS_ARR(view.edges).some(x => CS_OBJ(x) && x.id === id);
   const out = [], hide = [], said = [], kept = [], del = id => { if (!out.some(c => c.op === 'delete' && c.id === id)) out.push({ op: 'delete', id }); };
+  // the other elements deleted with the members, said as the deployment type says them; told, what a member's own words count (audit 34)
+  const more = new Set(), told = new Set();
   ids.forEach(id => { const s = csSplit(id), x = P.mem.get(s ? s[1] : id);
     if (s && x && !fromModel) { const through = lines.filter(e => ['from', 'to'].some(k => e[k] === s[1] && CS_OBJ((CS_PROPS(e).ends || {})[k]) && CS_PROPS(e).ends[k].part === s[0]));
       through.forEach(e => del(e.id)); said.push(`the ${csPlural(through.length, 'connector')} through ${csName(P.el(s[0]))} to its port ${csName(x.m)}; Shift + Delete deletes the port from ${csName(x.owner)}`); }
-    else if (x) { const n = lines.filter(e => (e.from === x.m.id || e.to === x.m.id || ['from', 'to'].some(k => CS_OBJ((CS_PROPS(e).ends || {})[k]) && CS_PROPS(e).ends[k].part === x.m.id))).length;
+    else if (x) { const its = lines.filter(e => (e.from === x.m.id || e.to === x.m.id || ['from', 'to'].some(k => CS_OBJ((CS_PROPS(e).ends || {})[k]) && CS_PROPS(e).ends[k].part === x.m.id))), n = its.length;
+      its.forEach(e => told.add(e.id)); told.add(x.m.id);
       del(x.m.id); said.push(`${x.m.type === 'uml.Port' ? 'port' : x.owner.type === 'uml.Collaboration' ? 'role' : 'part'} ${csName(x.m)} of ${csName(x.owner)}${n ? ` and its ${csPlural(n, 'line')}` : ''}${fromModel ? '' : ' (a member is not hidden: it goes from the model)'}`); }
     else if (s) return;
-    else if (fromModel) del(id);
+    else if (fromModel) { del(id); more.add(id); }
     else { const e = lines.find(x => x.id === id); // a node or a line selected with them: as the canvas does
-      if (own(id)) del(id); // lives in this view only: hiding it is deleting it
+      if (own(id)) { del(id); more.add(id); } // lives in this view only: hiding it is deleting it
       else if (csHolds(P.el(id), view.subject)) kept.push(`kept ${csName(P.el(id))}, ${id === view.subject ? '' : 'which holds '}the view's subject: change the view's subject, or Shift + Delete deletes it`); // apply() refuses its hide (audit 18)
       else if (e && !Array.isArray(view.edges)) said.push(`not the line ${csName(e)}: this view shows every line between its cards, and Shift + Delete deletes it`);
       else if (e || P.at.has(id)) hide.push({ op: 'hide', id, view: view.id }); } });
   // hidden first: a line hidden after the part it ends at is deleted would be gone with it
   if (!out.length && !hide.length) return { error: `Nothing to delete: ${said[0] || kept[0] || 'no connector'}` };
-  return { commands: [...hide, ...out], say: ['Deleted ' + said.join('; '), ...kept].join('; ') };
+  // a line a member's words count ("and its 1 line") is not counted again among the others; what was hidden, said too
+  const said2 = said.join('; '), n = [...more].filter(id => !told.has(id)).length, hid = new Set(hide.map(c => c.id)).size;
+  const head = `Deleted ${said2}${n ? `${said2 ? ', and ' : ''}${csPlural(n, said2 ? 'other element' : 'element')}` : ''}`;
+  return { commands: [...hide, ...out], say: [head, ...(hid ? [`hid ${csPlural(hid, 'element')}`] : []), ...kept].join('; ') };
 }
 // rename: F2 on a port on a part renames its class's port, for every part of that type (said), and on the subject's own
 // port, `name : Type` as well (audit 16); on a collaboration use, `name : Collaboration`; on a part or a role, its row

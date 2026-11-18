@@ -1,6 +1,7 @@
 import { registerDiagramType, idTable } from '../core/registry.js';
 import { copyOf, usedIds, jsonText, labelOr } from '../core/model.js';
 import { apply } from '../core/apply.js';
+import { interactionEvery } from './interaction.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { TR, layoutTimeRuler } from '../layout/timeruler.js';
@@ -26,12 +27,8 @@ const TM_END = { call: { from: 'none', to: 'arrow' }, async: { from: 'none', to:
 const TM_KIND = { __proto__: null, 'uml.DurationConstraint': 'duration', 'uml.TimeConstraint': 'time' }; // no Object.prototype key is a kind (audit 26)
 const TM_RULER = '->ruler', tmRowId = (lane, state) => `${lane}->${state}`; // geometry ids: no element id holds '->' (model.md rule 5)
 
-// every change, message and constraint in the model, by kind, once each by id: the timing views' timelines, and the messages of its
-// edges and every view's. A lifeline's states and the core's cascade reach all of them, not one view's (audit 33)
-const tmEvery = model => { const vs = TM_ARR(model && model.views).filter(TM_OBJ), tl = vs.filter(v => v.diagram === 'uml.timing' && TM_OBJ(v.timeline)).map(v => v.timeline);
-  const one = xs => [...new Map(xs.filter(x => TM_OBJ(x) && typeof x.id === 'string').map(x => [x.id, x])).values()];
-  return { change: one(tl.flatMap(t => TM_ARR(t.changes))), constraint: one(tl.flatMap(t => TM_ARR(t.constraints))),
-    message: one([...TM_ARR(model && model.edges), ...vs.flatMap(v => TM_ARR(v.edges))]).filter(e => e.type === 'uml.Message') }; };
+// every change, message and constraint in the model, by kind (interaction.js, shared with the sequence and communication hints)
+const tmEvery = interactionEvery;
 const tmView = (model, view) => (TM_OBJ(view) ? view : TM_ARR(model && model.views).find(v => TM_OBJ(v) && v.id === view)) || null;
 const tmProps = x => (TM_OBJ(x && x.props) ? x.props : {});
 const tmName = n => String(n.label ?? n.id);
