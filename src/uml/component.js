@@ -338,12 +338,15 @@ function cpKey(model, view, ids, key) {
 function cpRemove(model, view, ids, fromModel) {
   // the ports of the view's own components too (remove gets the model as it is: registry.js), audit 24
   const I = cpIndex(ownNodes(model, view).model), ps = ids.filter(id => I.P.has(id)); if (!ps.length) return null;
-  const own = new Set([...CP_ARR(view.nodes), ...CP_ARR(view.edges)].filter(CP_OBJ).map(x => x.id)), lines = new Set(CP_ARR(model.edges).filter(CP_OBJ).map(e => e.id));
+  const own = new Set([...CP_ARR(view.nodes), ...CP_ARR(view.edges)].filter(CP_OBJ).map(x => x.id)), lines = new Map(CP_ARR(model.edges).filter(CP_OBJ).map(e => [e.id, e]));
   const rest = ids.filter(id => !I.P.has(id) && (fromModel || own.has(id) || !lines.has(id) || Array.isArray(view.edges))); // a line of a view listing none: not hidden, as the default
+  // and said so, as the default says it (audit 35); a line at a port or element deleted here goes with it, and is not said kept
+  const gone = new Set([...ps, ...rest.filter(id => own.has(id))]);
+  const kept = [...new Set(ids)].filter(id => !rest.includes(id) && !I.P.has(id) && !gone.has(lines.get(id).from) && !gone.has(lines.get(id).to)).map(id => cpName(lines.get(id)));
   // the rest deleted with the ports is said too, as the deployment type says it (audit 34)
   const hid = fromModel ? 0 : new Set(rest.filter(id => !own.has(id))).size, more = new Set(rest.filter(id => fromModel || own.has(id))).size;
   return { commands: [...ps, ...rest].map(id => (fromModel || own.has(id) || I.P.has(id) ? { op: 'delete', id } : { op: 'hide', id, view: view.id })),
-    say: `Deleted ${ps.length === 1 ? 'port ' + cpName(I.P.get(ps[0]).x) : cpPlural(ps.length, 'port')} from the model${fromModel ? '' : ': a port is not hidden from a view'}${more ? `, and ${cpPlural(more, 'other element')}` : ''}${hid ? `; hid ${cpPlural(hid, 'element')}` : ''}` };
+    say: `Deleted ${ps.length === 1 ? 'port ' + cpName(I.P.get(ps[0]).x) : cpPlural(ps.length, 'port')} from the model${fromModel ? '' : ': a port is not hidden from a view'}${more ? `, and ${cpPlural(more, 'other element')}` : ''}${hid ? `; hid ${cpPlural(hid, 'element')}` : ''}${kept.length ? `; not the ${kept.length === 1 ? 'line' : 'lines'} ${kept.join(', ')}: this view shows every line between its cards, and Shift + Delete deletes ${kept.length === 1 ? 'it' : 'them'}` : ''}` };
 }
 // the Owner field: a component's components and packages; an interface's, an artifact's or a comment's packages. An element of
 // no type is a component here, as drawn, owned and a box for one (audit 31)

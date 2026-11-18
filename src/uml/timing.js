@@ -397,10 +397,11 @@ function tmRemove(model, view, ids, fromModel) {
   const next = apply(model, r), Y = tmIndex(next, tmView(next, V.id)), left = new Set([...Y.changes, ...Y.msgs, ...Y.cons].map(x => x.id));
   // each part said of its own lanes: a change by its lifeline, a message by its ends (a deleted lane's first); the rest with the hidden lanes, as before (audit 25)
   const hidL = new Set(gone.hid), delL = new Set(gone.lane.filter(id => !hidL.has(id))), on = (S, m) => S.has(m.from) || S.has(m.to);
-  // what a deleted lifeline took from every other view: its changes and their constraints in each timing view, its messages anywhere (the core's cascade, audit 33)
+  // what a deleted lifeline took from every other view: its changes and their constraints in each timing view, its messages anywhere (the core's cascade, audit 33),
+  // its connectors in every communication view (a timing view holds none, so they are counted with the far ones: audit 35)
   const here = new Set([...X.changes, ...X.msgs, ...X.cons].map(x => x.id)), was = tmEvery(model), now = tmEvery(next), still = new Set(Object.values(now).flat().map(x => x.id));
   const away = Object.fromEntries(Object.entries(was).map(([w, xs]) => [w, xs.filter(x => !here.has(x.id) && !still.has(x.id)).length]));
-  const list = (keep = () => true, far = false) => [[X.changes, 'change'], [X.msgs, 'message'], [X.cons, 'constraint']].map(([xs, w]) => [xs.filter(x => !left.has(x.id) && !(gone.off.has(x.id) && kept.has(x.id)) && keep(x)).length + (far ? away[w] : 0), w])
+  const list = (keep = () => true, far = false) => [[X.changes, 'change'], [X.msgs, 'message'], [[], 'connector'], [X.cons, 'constraint']].map(([xs, w]) => [xs.filter(x => !left.has(x.id) && !(gone.off.has(x.id) && kept.has(x.id)) && keep(x)).length + (far ? away[w] : 0), w])
     .filter(([c]) => c).map(([c, w]) => tmPlural(c, w)).join(', ').replace(/, ([^,]*)$/, ' and $1'); // "1 change, 2 messages and 1 constraint"
   const lane = id => (X.C.get(id) || {}).lifeline, mine = x => (X.C.get(x.id) === x ? delL.has(x.lifeline) : X.msgs.includes(x) ? on(delL, x) : delL.has(lane(x.from)) || delL.has(lane(x.to))); // a deleted lane's change, message or constraint
   const theirs = new Set(X.msgs.filter(m => on(hidL, m) && !on(delL, m)).map(m => m.id));
