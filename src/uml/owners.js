@@ -116,7 +116,8 @@ const lineInside = (view, vi, e, from, to, q) => ({ level: 'warning', rule: 'lin
 // them ({ e, from, to }, the ends as nodes, before a line between a package and what it holds is left out)
 function ownerProblems(model, view, lines) {
   const out = [], say = (rule, path, ids, msg) => out.push({ level: 'warning', rule, path, ids, message: `${rule}: ${msg}` });
-  const all = new Map(), put = (x, kind) => { if (OWN_OBJ(x) && typeof x.id === 'string' && !all.has(x.id)) { all.set(x.id, { x, kind }); OWN_ARR(x.members).forEach(m => put(m, 'member')); } };
+  const all = new Map(), put = (x0, kind0) => { for (const s = [[x0, kind0]]; s.length;) { const [x, kind] = s.pop(); // a stack: thousands deep (audit 35)
+    if (OWN_OBJ(x) && typeof x.id === 'string' && !all.has(x.id)) { all.set(x.id, { x, kind }); const ms = OWN_ARR(x.members); for (let j = ms.length - 1; j >= 0; j--) if (j in ms) s.push([ms[j], 'member']); } } };
   OWN_ARR(model.nodes).forEach(n => put(n, 'node')); const q = id => JSON.stringify(ownName((all.get(id) || { x: { id } }).x));
   // and a node with no type the view shows, which it draws as a class or an instance (audit 29)
   const inView = new Set(OWN_OBJ(view) ? OWN_ARR(view.nodeIds) : []);

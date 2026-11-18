@@ -450,7 +450,7 @@ function stOwners(model, x) {
 function stRemove(model, view, ids, fromModel) {
   // the regions of the view's own states too (remove gets the model as it is: registry.js), audit 25. Delete deletes a selection
   // the view holds as its own (the canvas's Delete), so it is said the same way; a selection with a model element in it is the canvas's
-  const own = new Set(), put = x => { if (ST_OBJ(x) && typeof x.id === 'string') { own.add(x.id); ST_ARR(x.members).forEach(put); } };
+  const own = new Set(), put = x0 => { for (const s = [x0], seen = new Set(); s.length;) { const x = s.pop(); if (ST_OBJ(x) && typeof x.id === 'string' && !seen.has(x)) { seen.add(x); own.add(x.id); for (const y of ST_ARR(x.members)) s.push(y); } } }; // a stack: thousands deep (audit 35)
   if (ST_OBJ(view)) [...ST_ARR(view.nodes), ...ST_ARR(view.edges)].forEach(put);
   const I = stIndex(ST_OBJ(view) ? ownNodes(model, view).model : model), rs = fromModel || ids.every(id => own.has(id)) ? ids.filter(id => I.M.has(id) && I.M.get(id).x.type === 'uml.Region') : [];
   if (!rs.length) return fromModel || !ST_OBJ(view) ? null : stHide(model, view, ids, I, own);

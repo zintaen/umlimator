@@ -120,7 +120,7 @@ export function diff(before, after) {
     came.forEach(id => { if (at.get(id) && how.get(at.get(id)) !== 'added') { ov[id] = { ...ov[id], change: 'added' }; moved.push(['puts', id, v]); } });
     if (left.length || came.length) touched.add(v.id);
     // what only the view changes: its title, a box's name, a card's name here (nodeOverrides) or the box it sits in
-    const vn = labelOr(v.title, v.id), says = t => { viewSaid.push(`${t} in the view ${vn}`); touched.add(v.id); }, bn = c => String(c.label ?? c.title ?? c.id);
+    const vn = labelOr(v.title, v.id), says = t => { viewSaid.push(`${t} in the view ${vn}`); touched.add(v.id); }, bn = c => String(labelOr(c.label ?? c.title, c.id)); // a box labelled "" is drawn by its id (audit 35)
     if (String(labelOr(o.title, o.id)) !== String(vn)) { viewSaid.push(`retitles the view ${labelOr(o.title, o.id)} to ${vn}`); touched.add(v.id); }
     // and what else it draws differently (audit 15): its caption, lanes and the like, a box's tone or badges, a card's pin
     const other = (x, y, skip) => [...new Set([...Object.keys(x), ...Object.keys(y)])].filter(k => !skip.includes(k) && canon(x[k]) !== canon(y[k]));
@@ -133,13 +133,13 @@ export function diff(before, after) {
     const ob = new Map(arr(o.containers).filter(Boolean).map(c => [c.id, c]));
     arr(v.containers).forEach(c => { const b = c && ob.get(c.id); if (!b) return; if (bn(b) !== bn(c)) says(`renames the box ${bn(b)} to ${bn(c)}`);
       const bk = other(b, c, ['id', 'label', 'title', 'nodeIds']); if (bk.length) says(`changes the box ${bn(c)} (${bk.join(', ')})`); });
-    ids.filter(id => oldIds.includes(id)).forEach(id => { const a = (o.nodeOverrides || {})[id] || {}, b = (v.nodeOverrides || {})[id] || {}, base = labelOr((at.get(id) || {}).label, id);
+    ids.filter(id => oldIds.includes(id)).forEach(id => { const a = (o.nodeOverrides || {})[id] || {}, b = (v.nodeOverrides || {})[id] || {}, base = labelOr((at.get(id) || {}).label, id), cardName = l => (l == null ? base : labelOr(l, id)); // an override "" draws the card by its id (audit 35)
       const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(k => canon(a[k]) !== canon(b[k])), b0 = boxOf(o, id), b1 = boxOf(v, id);
       if (canon((o.present || {})[id]) !== canon((v.present || {})[id])) keys.push('present'); // its compartments shown (a typed view's present, by card)
       const rest = keys.filter(k => k !== 'label');
-      if (keys.length) says((keys.includes('label') ? `renames ${a.label ?? base} to ${b.label ?? base}` : `changes ${b.label ?? base}`) + (rest.length ? ` (${rest.join(', ')})` : ''));
-      if ((b0 && b0.id) !== (b1 && b1.id)) says(`moves ${b.label ?? base} ${b0 ? 'out of ' + bn(b0) : ''}${b0 && b1 ? ' ' : ''}${b1 ? 'into ' + bn(b1) : ''}`);
-      else if (canon((o.layout || {})[id]) !== canon((v.layout || {})[id])) says(`moves ${b.label ?? base}`);
+      if (keys.length) says((keys.includes('label') ? `renames ${cardName(a.label)} to ${cardName(b.label)}` : `changes ${cardName(b.label)}`) + (rest.length ? ` (${rest.join(', ')})` : ''));
+      if ((b0 && b0.id) !== (b1 && b1.id)) says(`moves ${cardName(b.label)} ${b0 ? 'out of ' + bn(b0) : ''}${b0 && b1 ? ' ' : ''}${b1 ? 'into ' + bn(b1) : ''}`);
+      else if (canon((o.layout || {})[id]) !== canon((v.layout || {})[id])) says(`moves ${cardName(b.label)}`);
       if ((keys.length || (b0 && b0.id) !== (b1 && b1.id)) && !how.has(at.get(id))) ov[id] = { ...ov[id], change: 'changed' }; });
     if (Object.keys(ov).length) w.nodeOverrides = plain(ov);
     if (left.length && Array.isArray(v.containers)) // a removed card stays in its box, and in its place on a view laid out by hand when that is free
@@ -207,7 +207,7 @@ export function diff(before, after) {
   // that part ("charge of battery"); else a member by its own name
   const ups = id => { const s = []; for (let t = id, r; (r = have.get(t) || at0.get(t)) && typeof r[1] === 'string' && !s.includes(r[1]);) s.push(t = r[1]); return s; };
   const endName = (e, k) => { const id = e[k], r = have.get(id) || at0.get(id), part = (((e.props && e.props.ends) || {})[k] || {}).part, own = r && r[1];
-    if (!r || typeof own !== 'string') return name(id); const m = r[0], word = x => String(x.label ?? x.id), pr = part != null && (have.get(part) || at0.get(part));
+    if (!r || typeof own !== 'string') return name(id); const m = r[0], word = x => String(labelOr(x.label, x.id)), pr = part != null && (have.get(part) || at0.get(part));
     return word(m) + (part != null && part !== id ? ' of ' + (pr ? word(pr[0]) : name(part)) : /\.Port$/.test(String(m.type)) ? ' of ' + name(own) : ''); };
   const cardHow = new Map([...cards.filter(n => how.has(n)).map(n => [n.id, how.get(n)]), ...[...lost.keys()].map(id => [id, 'removed'])]);
   const lines = [...new Set([...out.edges.filter(e => e && typeof e === 'object'), ...views.flatMap(v => arr(v && v.edges).filter(e => e && typeof e === 'object'))])]; // a view that dropped its list holds the model's lines themselves
@@ -231,7 +231,7 @@ export function diff(before, after) {
     if (h === 'added') said.push(ends ? `adds a line from ${ends}${lab}` : `adds ${it}`);
     if (h === 'removed') said.push(ends ? `removes ${it}${lab}` : `removes ${it}`);
     if (h === 'changed') { const [o, x] = was.get(e), t = TYPED.diff && TYPED.diff(o, x, name, [A, out]); if (t) return said.push(...t);
-      said.push(`changes ${it} (${diffKeys([o, x]).map(k => k === 'label' ? `label ${o.label ?? '-'} → ${x.label ?? '-'}` : k).join(', ')})`); } });
+      said.push(`changes ${it} (${diffKeys([o, x]).map(k => k === 'label' ? `label ${labelOr(o.label, '-')} → ${labelOr(x.label, '-')}` : k).join(', ')})`); } });
   // the rules: each added, removed or changed said, and the views where what they find changes touched
   const R0 = arr(A.rules), R1 = arr(out.rules);
   if (canon(R0) !== canon(R1)) { const rk = (r, i) => r && typeof r === 'object' && r.id != null ? String(r.id) : '#' + i, rn = r => String(labelOr(r && typeof r === 'object' ? labelOr(r.title, r.id) : null, 'a rule')); // a title 0 by it (audit 34)
@@ -248,7 +248,7 @@ export function diff(before, after) {
     m1.forEach((x, k) => { if (!m0.has(k)) said.push(`adds the ${word} ${nm(x)}`); else if (canon(m0.get(k)) !== canon(x)) said.push(`changes the ${word} ${nm(x)}`); });
     m0.forEach((x, k) => { if (!m1.has(k)) said.push(`removes the ${word} ${nm(x)}`); }); };
   listed('stories', 'story'); listed('lenses', 'lens');
-  const T0 = (before || {}).title, T1 = (after || {}).title;
+  const T0 = labelOr((before || {}).title, null), T1 = labelOr((after || {}).title, null); // a title "" is none: the page draws Map (audit 35)
   if (canon(T0) !== canon(T1)) said.unshift(T1 == null ? `takes the title ${String(T0)} off the map` : T0 == null ? `titles the map ${String(T1)}` : `retitles the map ${String(T0)} to ${String(T1)}`);
   const own = new Set(['nodes', 'edges', 'views', 'rules', 'stories', 'lenses', 'title']), B0 = before && typeof before === 'object' ? before : {}, B1 = after && typeof after === 'object' ? after : {};
   const rest = [...new Set([...Object.keys(B0), ...Object.keys(B1)])].filter(k => !own.has(k) && canon(B0[k]) !== canon(B1[k]));

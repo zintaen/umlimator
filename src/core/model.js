@@ -4,11 +4,33 @@ import { diagramOf, kindWord, untypedKind, untypedLine, aWord } from './registry
 // a BigInt marked, so jsonText() writes it bare (2n), not as the text "2n"; a text that starts as the mark does gets one more (audit 29).
 // Always marked, so diff() never reads the text "2n" and the BigInt 2n as one value (audit 31: it compared unmarked); so is a number
 // JSON writes as null (NaN, Infinity, -Infinity), which jsonText() writes bare and diff() tells from null (audit 31)
-const canon = x => { const path = [], of = new WeakMap(); // path: the objects above the value written, as the model has them
+// A value nested deeper than JSON.stringify's stack takes (members thousands deep) is written by canonDeep, the same text (audit 35)
+const canon = x => { try { return canonFast(x); } catch (e) { if (e instanceof RangeError) return canonDeep(x); throw e; } };
+const canonFast = x => { const path = [], of = new WeakMap(); // path: the objects above the value written, as the model has them
   return JSON.stringify(x, function (k, v) { const h = of.get(this) || this, i = path.lastIndexOf(h); if (i < 0) path.push(h); else path.length = i + 1;
     if (typeof v === 'bigint') return '\u0000' + v + 'n'; if (typeof v === 'number' && !Number.isFinite(v)) return '\u0000' + v; if (typeof v === 'string' && v[0] === '\u0000') return '\u0000' + v;
     if (!v || typeof v !== 'object') return v; if (path.includes(v)) return '[cycle]'; // a BigInt, which JSON cannot write, as 10n (audit 28)
     const y = Array.isArray(v) ? v : Object.fromEntries(Object.keys(v).sort().map(f => [f, v[f]])); of.set(y, v); return y; }); };
+/* canon() with no recursion: JSON.stringify's own steps (a toJSON run with its key, then canon's replacer, then the value
+   written; undefined, a function or a Symbol left out of an object and null in a list) on a stack of open objects and lists,
+   each with its parts written so far. above: the objects open, as the model has them (canon's path) */
+const canonDeep = x => {
+  const above = new Set(), q = JSON.stringify;
+  const one = (v, k) => { if (v !== null && (typeof v === 'object' || typeof v === 'bigint')) { const f = v.toJSON; if (typeof f === 'function') v = f.call(v, k); }
+    if (typeof v === 'bigint') v = '\u0000' + v + 'n'; else if (typeof v === 'number' && !Number.isFinite(v)) v = '\u0000' + v; else if (typeof v === 'string' && v[0] === '\u0000') v = '\u0000' + v;
+    else if (v && typeof v === 'object') { if (above.has(v)) v = '[cycle]';
+      else { const list = Array.isArray(v), y = list ? v : Object.fromEntries(Object.keys(v).sort().map(f => [f, v[f]])), keys = list ? null : Object.keys(y);
+        return { v, list, y, keys, n: list ? y.length : keys.length, i: 0, parts: [], k }; } }
+    return v === null ? 'null' : v === true ? 'true' : v === false ? 'false' : typeof v === 'string' ? q(v) : typeof v === 'number' ? String(v) : undefined; };
+  const put = (F, k, r) => { if (F.list) F.parts.push(r === undefined ? 'null' : r); else if (r !== undefined) F.parts.push(q(k) + ':' + r); };
+  const top = one(x, ''); if (typeof top !== 'object') return top;
+  const s = [top]; above.add(top.v);
+  for (;;) { const F = s[s.length - 1];
+    if (F.i < F.n) { const k = F.list ? String(F.i) : F.keys[F.i]; F.i++; const r = one(F.y[k], k);
+      if (r !== null && typeof r === 'object') { s.push(r); above.add(r.v); } else put(F, k, r); continue; }
+    s.pop(); above.delete(F.v); const t = F.list ? '[' + F.parts.join(',') + ']' : '{' + F.parts.join(',') + '}';
+    if (!s.length) return t; put(s[s.length - 1], F.k, t); }
+};
 // any value as text, to show or tell two apart: JSON, else (a host's cycle or BigInt, which JSON.stringify throws on) as canon() writes it (audit 28),
 // each text value canon() marked read back: a BigInt's mark bare (2n), a text that starts with NUL with the one NUL it has (audit 30: it kept
 // the second). A key (a text followed by :) is never marked, so it is left as written. A number JSON writes as null (NaN, Infinity) is
@@ -176,7 +198,10 @@ function typedProblems(model) {
   if (m.schemaVersion !== SCHEMA_VERSION) return out;
   const views = arr(m.views).filter(isObj), TYPE = /^[a-z0-9]+\.[A-Z][A-Za-z0-9]*$/;
   const where = new Map(), kindOf = new Map(), ownerOf = new Map(), parents = [], up = new Set(); // id -> its path, its kind, its owner; [element, path]; the elements whose members are being read
-  const element = (x, at, kind, owner) => { // a node, typed edge, member, fragment or timeline item: one id space
+  // on a stack of its own, each member's subtree then its type, in the order a recursion took: members nested thousands
+  // deep are read, never a stack overflow (audit 35)
+  const element = (x0, at0, kind0, owner0) => { const todo = [() => one(x0, at0, kind0, owner0)]; while (todo.length) todo.pop()();
+  function one(x, at, kind, owner) { // a node, typed edge, member, fragment or timeline item: one id space
     if (!isObj(x)) return err(at, 'an element is an object');
     if (typeof x.id !== 'string' || !x.id) return err(at + '.id', 'a typed element needs an id');
     if (x.id.includes('->')) err(at + '.id', `id "${x.id}" contains "->", which names lines by position`);
@@ -185,8 +210,9 @@ function typedProblems(model) {
     if (kind !== 'node') { const l = labelProblem(x, at); if (l) out.push(l); } // a node's is validate()'s card check, in a map too
     if (x.parent != null) parents.push([x, at]);
     if (up.has(x)) return; up.add(x); // a host's member that holds its owner: said used twice, and not read again (audit 28)
-    arr(x.members).forEach((y, j) => { element(y, `${at}.members[${j}]`, 'member', x.id); typeOf(y, `${at}.members[${j}]`, true, 'member'); }); up.delete(x);
-  };
+    todo.push(() => up.delete(x)); const ms = arr(x.members);
+    for (let j = ms.length - 1; j >= 0; j--) { if (!(j in ms)) continue; const y = ms[j]; todo.push(() => typeOf(y, `${at}.members[${j}]`, true, 'member'), () => one(y, `${at}.members[${j}]`, 'member', x.id)); }
+  } };
   /* what: 'node', 'line' or 'member'. The warning says what each view that lists the element does with it, as its type draws it
      (audit 30): a member of no kind is drawn in no view; a card or line a map lists is drawn plain; a typed view draws an
      element of no type (or "") as its type's untyped kind (registry.js untypedKind: "drawn as a task") and a line whose type
@@ -280,4 +306,4 @@ const listOf = (m, i) => (Array.isArray(m.views[i] && m.views[i].edges) ? i : -1
 const lineNames = m => { const out = new Map([[-1, namesOf(m && m.edges)]]);
   (Array.isArray(m && m.views) ? m.views : []).forEach((v, i) => { if (v && Array.isArray(v.edges)) out.set(i, namesOf(v.edges)); }); return out; };
 
-export { canon, jsonText, labelOr, labelProblem, versionProblem, typedProblems, lineNames, namesOf, listOf, unreadable, copyOf, textOf, nameTable, usedIds };
+export { canon, canonDeep, jsonText, labelOr, labelProblem, versionProblem, typedProblems, lineNames, namesOf, listOf, unreadable, copyOf, textOf, nameTable, usedIds };

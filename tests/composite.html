@@ -204,6 +204,31 @@ try {
         h.destroy(); } }
     check(`audit 34: ${vid}: a part dragged in or out of its frame is pinned, never re-owned, and apply() takes it`, !got.length && pinned > 0, [got, pinned]);
   }
+  // audit 35: that pin, applied by the host and given back through update(), was never drawn: the stable layout kept only the
+  // pins of the view's nodeIds, which a part is not. Now the part moves to its pin, as a fresh render() draws it, and undo
+  // (the model before, given back) puts it where it was; a second part dragged keeps the first one's pin
+  for (const [file, vid] of [['../examples/order-service-structure.json', 'internals'], ['../examples/ebike-structure.json', 'inside-ebike'], ['composite-minimal.json', 'v']]) {
+    const M = await (await fetch(file)).json(), V = M.views.find(v => v.id === vid);
+    const at = id => { const r = pick(`.node[data-id="${CSS.escape(id)}"] .n-mask`); return r && [+r.getAttribute('x'), +r.getAttribute('y')]; };
+    const drag = (id, dx, dy) => { const a = centre(`.node[data-id="${CSS.escape(id)}"]`), to = [a[0] + dx, a[1] + dy];
+      ptr(pick(`.node[data-id="${CSS.escape(id)}"]`), 'pointerdown', a); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [a[0] + (to[0] - a[0]) * i / 4, a[1] + (to[1] - a[1]) * i / 4]); ptr(stage, 'pointerup', to); };
+    let h = mount(M, { view: vid, editable: true });
+    const parts = all('.node').map(g => g.dataset.id).filter(id => id.startsWith(V.subject + '.') && !id.includes('->') && !pick(`.node[data-id="${CSS.escape(id)}"]`).classList.contains('port'));
+    const moved = [], bad = [];
+    for (const id of parts) for (const [dx, dy] of [[0, 260], [240, 0], [-220, 120]]) {
+      h.destroy(); h = mount(M, { view: vid, editable: true }); const was = at(id); drag(id, dx, dy);
+      const e = ed.find(x => x.commands.some(c => c.op === 'set' && c.path[0] === 'layout' && c.path[1] === id)); if (!e) continue;
+      const m1 = apply(M, e.commands); h.update(m1); const now = at(id);
+      const fresh = (() => { const k = document.createElement('div'); k.style.cssText = 'width:1400px;height:1000px'; document.body.append(k);
+        const f = render(k, m1, { view: vid }), r = k.querySelector('.umlimator').shadowRoot.querySelector(`.node[data-id="${CSS.escape(id)}"] .n-mask`), p = [+r.getAttribute('x'), +r.getAttribute('y')]; f.destroy(); k.remove(); return p; })();
+      if (same(now, was) && !same(fresh, was)) { bad.push([id, dx, dy, 'stayed', was, fresh]); continue; }
+      if (!same(now, fresh)) bad.push([id, dx, dy, 'not as drawn fresh', now, fresh]);
+      h.update(M); if (!same(at(id), was)) bad.push([id, dx, dy, 'undo', at(id), was]);
+      if (!same(now, was)) moved.push(id);
+    }
+    h.destroy();
+    check(`audit 35: ${vid}: a part's pin, applied and given back through update(), moves it where a fresh render() draws it, and undo puts it back`, !bad.length && moved.length > 0, [bad, moved]);
+  }
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

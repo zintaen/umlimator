@@ -685,6 +685,8 @@ export function render(container, model, options = {}) {
       // a card the model before pinned, its pin gone in this one: the slot it kept is the pin's, so it is laid out again (audit 33)
       const pins = O(pv.layout), unpinned = id => Array.isArray(pins[id]) && !Array.isArray(mine[id]) && was && Array.isArray(was[id]) && was[id][0] === pins[id][0] && was[id][1] === pins[id][1];
       const put = (id, p) => { let [c, r] = p; while (taken.has(key([c, r]))) r++; L[id] = [c, r]; taken.add(key([c, r])); };
+      // the host's pins of what the view draws as cards but does not list (a composite's parts): kept, as its own (audit 35)
+      Object.keys(mine).forEach(id => { if (!ids.includes(id)) L[id] = mine[id]; });
       ids.forEach(id => { if (Array.isArray(mine[id])) { L[id] = mine[id]; taken.add(key(mine[id])); } });    // the host's own layout
       ids.forEach(id => { if (!L[id] && E[id]) put(id, E[id]); });                                               // a reordered column group
       ids.filter(id => !L[id] && !H[id] && was && was[id] && !unpinned(id)).sort((a, b) => was[a][0] - was[b][0] || was[a][1] - was[b][1]).forEach(id => put(id, was[id])); // everyone stays

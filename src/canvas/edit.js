@@ -23,8 +23,8 @@ const isRec = x => x !== null && typeof x === 'object' && !Array.isArray(x);
 
 /* every element of a model by id: { x, kind, owner } (owner: the element a member belongs to) */
 function elementsOf(m) {
-  const at = new Map(), put = (x, kind, owner) => { if (!isRec(x) || typeof x.id !== 'string' || at.has(x.id)) return;
-    at.set(x.id, { x, kind, owner }); arrOf(x.members).forEach(y => put(y, 'member', x)); };
+  const at = new Map(), put = (x0, kind0) => { for (const s = [[x0, kind0]]; s.length;) { const [x, kind, owner] = s.pop(); if (!isRec(x) || typeof x.id !== 'string' || at.has(x.id)) continue; // a stack: thousands deep (audit 35)
+    at.set(x.id, { x, kind, owner }); const ms = arrOf(x.members); for (let j = ms.length - 1; j >= 0; j--) if (j in ms) s.push([ms[j], 'member', x]); } };
   arrOf(m && m.nodes).forEach(n => put(n, 'node')); arrOf(m && m.edges).forEach(e => put(e, 'edge'));
   arrOf(m && m.views).forEach(v => { if (isRec(v)) { [...arrOf(v.nodes), ...arrOf(TYPED.edit && v.fragments)].forEach(n => put(n, 'node')); arrOf(v.edges).forEach(e => put(e, 'edge')); } });
   return at;
@@ -78,14 +78,14 @@ function typedEditor(api) {
   const drop = (n, hint, into = null, from = null) => { if (stays(n.id, into, from)) return (hint.col !== n.col || hint.row !== n.row) && pin(n.id, hint.col, hint.row);
     // the new owner first, then the rule on it: out of every box, the view's subject may be one this view alone holds (audit 24)
     const to = elementsOf(model()).has(into) ? into : view().subject ?? null;
-    const H = heldBy(model()), b = H.get(to); if (b && !H.has(n.id)) { api.status(`${b.label ?? b.id} lives in this view only: an element of the model cannot go under it`); return false; }
+    const H = heldBy(model()), b = H.get(to); if (b && !H.has(n.id)) { api.status(`${labelOr(b.label, b.id)} lives in this view only: an element of the model cannot go under it`); return false; }
     return can('move') && emit(reown(n.id, to)); };
   const picks = () => [...new Set(api.picked().flatMap(idsOf))];
   function remove(fromModel, ids = picks()) { // Delete: out of this view; Shift + Delete: out of the model (risks.md E5). One transaction for the selection (E2)
     if (!can('delete') || !ids.length) return false;
     if (fromModel) return emit(ids.map(id => ({ op: 'delete', id })));
     // what this view holds as its own, and their members at any depth (a port of its own component: audit 24)
-    const v = view(), at = elementsOf(model()), own = new Set(), out = [], put = x => { if (isRec(x) && typeof x.id === 'string') { own.add(x.id); arrOf(x.members).forEach(put); } };
+    const v = view(), at = elementsOf(model()), own = new Set(), out = [], put = x0 => { for (const s = [x0], seen = new Set(); s.length;) { const x = s.pop(); if (!isRec(x) || typeof x.id !== 'string' || seen.has(x)) continue; seen.add(x); own.add(x.id); for (const y of arrOf(x.members)) s.push(y); } };
     [...arrOf(v.nodes), ...arrOf(v.edges), ...arrOf(TYPED.edit && v.fragments)].forEach(put);
     const holds = id => { for (let s = at.get(v.subject); s; s = s.owner && at.get(s.owner.id)) if (s.x.id === id) return true; return false; }; // the subject, or a member path to it (apply() refuses its hide)
     ids.forEach(id => { const e = at.get(id);
