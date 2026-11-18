@@ -614,3 +614,21 @@ test('audit 31: Delete on a model message the view lists by id takes it out of t
   assert.deepEqual(sqRemove(mk(), 'a', ['m1'], true), [{ op: 'delete', id: 'm1' }], 'Shift + Delete deletes it from the model');
   assert.deepEqual(sqRemove(mk(), 'a', ['m3'], false), [{ op: 'delete', id: 'm3' }], 'one the view holds lives there: hiding it is deleting it');
 });
+
+test('audit 32: Delete on a lifeline and a message on it works picked in either order, and a listed message on it is counted once', () => {
+  const v = SEQ.views[0], head = v.nodeIds[0], msg = v.edges.find(e => e.from === head || e.to === head).id;
+  const one = sqRemove(SEQ, v, [head, msg], false), two = sqRemove(SEQ, v, [msg, head], false);
+  assert.ok(Array.isArray(one.commands), JSON.stringify(one));
+  assert.deepEqual(apply(SEQ, one.commands), apply(SEQ, two.commands));
+  assert.equal(one.say, two.say);
+  const m = { schemaVersion: 2, root: 'v1', nodes: [{ id: 'a', type: 'uml.Lifeline', label: 'a' }, { id: 'b', type: 'uml.Lifeline', label: 'b' }],
+    edges: [{ id: 'c1', type: 'uml.Message', from: 'a', to: 'b', label: 'go()', props: { sort: 'call' } }, { id: 'c9', type: 'uml.Message', from: 'b', to: 'b', label: 'self()', props: { sort: 'async' } }],
+    views: [{ id: 'v1', diagram: 'uml.sequence', parent: null, nodeIds: ['a', 'b'], edges: ['c1', { id: 'c3', type: 'uml.Message', from: 'a', to: 'b', label: 'x()', props: { sort: 'async' } }, 'c9'] }] };
+  for (const sel of [['a', 'c1'], ['c1', 'a'], ['a', 'c3'], ['c3', 'a'], ['a']]) {
+    const r = sqRemove(m, 'v1', sel, false);
+    assert.equal(r.say, 'Removed a from the view, and 2 messages with it', sel.join('+'));
+    assert.deepEqual(apply(m, r.commands).views[0].edges, ['c9'], sel.join('+'));
+  }
+  // a listed message on a lifeline that stays is still said taken off
+  assert.equal(sqRemove(m, 'v1', ['a', 'c9'], false).say, 'Removed a from the view, and 2 messages with it; took self() off the view (it stays in the model)');
+});

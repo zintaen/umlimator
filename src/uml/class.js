@@ -434,4 +434,4 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   edits: { rename: lineRename(lineLabel) },
 });
 
-export { CLASSIFIERS, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, classProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
+export { CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, classProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };

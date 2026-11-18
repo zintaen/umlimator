@@ -257,11 +257,13 @@ The canvas stays generic. It finds the slot or the place, and emits what the typ
 | Rename a message, guard or lifeline | Double-click | F2 | `set label` |
 | Edit sort, replyTo, operator, covers, refersTo, represents | Properties panel | Properties panel | `set` |
 | Unwrap | Delete a fragment | Shift + Delete on its frame | `delete`. What it held goes to the operand around it |
-| Delete a message or use | | Delete or Shift + Delete; it lives in the view (P12) | `delete`. A call's replies go with it (`refs`) |
+| Delete a message or use | | Delete or Shift + Delete; one the view holds lives in it (P12) | `delete`. A call's replies go with it (`refs`). A model message the view lists by id: Delete `hide`s it from this view, with its replies, and Shift + Delete deletes it (audit 31) |
 | Remove a lifeline from the view | | Delete | `remove` emits `hide`, which also takes away every message to or from it, then a `set` that drops it from each `covers`. The hint says how many messages go |
 | Delete a lifeline | | Shift + Delete | `delete`. Its messages go, and `covers` drop it (E10) |
 
 A message cannot be hidden from its own view; the gesture is to delete it (P12). The conformance note says so under item 4 of the definition of done.
+
+Amended in audit 31: this holds for a message the view holds. A model message that the view lists by id is taken out of this view by Delete (`sqRemove` emits `hide`), with the replies to it, and stays in the model and in every other view that lists it; Shift + Delete deletes it. `docs/editing.md` and the conformance note describe the same split.
 
 ### 5.3 Refusing an edit (S5)
 

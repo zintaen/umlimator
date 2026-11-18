@@ -16,6 +16,7 @@ import { layout, check } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
+import { tablesOf } from '../src/page/print.js';
 import { svgOf } from '../src/draw/svg.js';
 import { classProblems } from '../src/uml/class.js';
 import { ownerChoices, ownerProblems } from '../src/uml/owners.js';
@@ -471,4 +472,16 @@ test('audit 31: a tag value JSON cannot write (a BigInt inside, or a cycle) is d
     assert.ok(describe(m, 'v').split('\n').includes(`Class Order: «entity» ${text}.`), text);
     assert.ok(T.rows(m, m.views[0], 'o').includes(`«entity» ${text}`), text);
   }
+});
+
+test('audit 32: an enumeration\'s accessible name, describe() and PDF Members list what its box draws, in drawn order: the literals first, no port or member of no type', () => {
+  const m = { schemaVersion: 2, title: 't', nodes: [{ id: 'k', type: 'uml.Enumeration', label: 'Shop', members: [{ id: 'k.a', type: 'uml.Property', label: 'name', props: { valueType: 'String' } },
+    { id: 'k.o', type: 'uml.Operation', label: 'run' }, { id: 'k.l', type: 'uml.EnumerationLiteral', label: 'RED' }, { id: 'k.p', type: 'uml.Port', label: 'api' }, { id: 'k.x', label: 'untyped' }] }],
+  edges: [], views: [{ id: 'v', diagram: 'uml.profile', nodeIds: ['k'] }] };
+  const n = layout(m, 'v').nodes.find(x => x.id === 'k'), drawn = n.compartments.flatMap(c => c.members.map(x => x.label));
+  assert.deepEqual(drawn, ['RED', 'name', 'run']);
+  assert.equal(n.aria, 'Enumeration Shop: RED; name: String; run()');
+  assert.match(describe(m, 'v'), /Enumeration Shop: RED; name: String; run\(\)/);
+  const ctx = mapContext(m), [els] = tablesOf(ctx, ctx.V.v, ctx.buildGeo('v')), row = els.rows.find(r => r.includes('<b>Shop</b>'));
+  assert.match(row, /<p>RED<\/p><p>name: String<\/p><p>run\(\)<\/p><\/td>/); assert.doesNotMatch(row, /api|untyped/);
 });

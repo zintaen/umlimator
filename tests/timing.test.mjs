@@ -598,3 +598,20 @@ test('audit 31: Delete on a model message the view lists by id takes it out of t
   assert.deepEqual(tmRemove(mk(), 't', ['m1'], true).commands, [{ op: 'delete', id: 'm1' }], 'Shift + Delete deletes it from the model');
   assert.deepEqual(tmRemove(mk(), 't', ['m3'], false).commands, [{ op: 'delete', id: 'm3' }], 'one the view holds lives there: hiding it is deleting it');
 });
+
+test('audit 32: Delete on a lifeline and a message on it works picked in either order, and a listed message on it is said once', () => {
+  const B = JSON.parse(readFileSync(new URL('../examples/bookshop-timing.json', import.meta.url))), v = B.views[0], head = v.nodeIds[0], msg = v.edges.find(e => e.from === head || e.to === head).id;
+  const one = tmRemove(B, v, [head, msg], false), two = tmRemove(B, v, [msg, head], false);
+  assert.ok(Array.isArray(one.commands), JSON.stringify(one));
+  assert.deepEqual(apply(B, one.commands), apply(B, two.commands)); assert.equal(one.say, two.say);
+  const m = { schemaVersion: 2, root: 'v1', nodes: [{ id: 'a', type: 'uml.Lifeline', label: 'a', props: { states: ['Idle'] } }, { id: 'b', type: 'uml.Lifeline', label: 'b', props: { states: ['Idle'] } }],
+    edges: [{ id: 'c1', type: 'uml.Message', from: 'a', to: 'b', label: 'go', props: { sort: 'async', sentAt: 10, receivedAt: 20 } }, { id: 'c9', type: 'uml.Message', from: 'b', to: 'b', label: 'me', props: { sort: 'async', sentAt: 70, receivedAt: 80 } }],
+    views: [{ id: 'v1', diagram: 'uml.timing', parent: null, nodeIds: ['a', 'b'], edges: ['c1', { id: 'c3', type: 'uml.Message', from: 'a', to: 'b', label: 'x', props: { sort: 'async', sentAt: 50, receivedAt: 60 } }, 'c9'],
+      timeline: { unit: 'ms', start: 0, end: 100, changes: [{ id: 'k1', lifeline: 'a', at: 0, state: 'Idle' }, { id: 'k2', lifeline: 'b', at: 0, state: 'Idle' }] } }] };
+  const want = 'Hid a; deleted its 1 message; took 1 message off the view (it stays in the model); its change stays in the timeline';
+  for (const sel of [['a', 'c1'], ['c1', 'a'], ['a', 'c3'], ['c3', 'a'], ['a']]) {
+    const r = tmRemove(m, 'v1', sel, false);
+    assert.equal(r.say, want, sel.join('+')); assert.deepEqual(apply(m, r.commands).views[0].edges, ['c9'], sel.join('+'));
+  }
+  assert.equal(tmRemove(m, 'v1', ['a', 'c9'], false).say, `${want}; took 1 message off the view (it stays in the model)`);
+});

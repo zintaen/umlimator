@@ -431,3 +431,18 @@ test('audit 27: a function in a command\'s value, a new element or view, or a pa
     ['bpmn', edit(ex('../examples/bookshop-order-to-shipment.json'), 'order-to-shipment', 'add', { type: 'bpmn.Task', label: 'Task', props: { hook } }, 'Gift wrap', { sel: [] })]])
     assert.ok(hooked(cmds), what);
 });
+
+test('audit 32: hide takes the view\'s own lines to what it hides for good, so a later delete of one in the same transaction is passed over', () => {
+  for (const [d, t, lt] of [['uml.activity', 'uml.Action', 'uml.ControlFlow'], ['uml.state-machine', 'uml.State', 'uml.Transition'], ['uml.use-case', 'uml.UseCase', 'uml.Include']]) {
+    const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 'a', type: t, label: 'A' }, { id: 'b', type: t, label: 'B' }], edges: [],
+      views: [{ id: 'v', diagram: d, parent: null, nodeIds: ['a', 'b'], edges: [{ id: 'e', type: lt, from: 'a', to: 'b' }] }] };
+    const hideFirst = apply(m, [{ op: 'hide', id: 'a', view: 'v' }, { op: 'delete', id: 'e' }]), deleteFirst = apply(m, [{ op: 'delete', id: 'e' }, { op: 'hide', id: 'a', view: 'v' }]);
+    assert.deepEqual(hideFirst, deleteFirst, d);
+    assert.deepEqual(hideFirst.views[0].edges, [], d); assert.deepEqual(hideFirst.views[0].nodeIds, ['b'], d);
+  }
+  // a model line the view lists by id stays in the model: a later delete of it still deletes it
+  const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 'a', type: 'uml.Action' }, { id: 'b', type: 'uml.Action' }], edges: [{ id: 'f', type: 'uml.ControlFlow', from: 'a', to: 'b' }],
+    views: [{ id: 'v', diagram: 'uml.activity', parent: null, nodeIds: ['a', 'b'], edges: ['f'] }] };
+  assert.deepEqual(apply(m, [{ op: 'hide', id: 'a', view: 'v' }, { op: 'delete', id: 'f' }]).edges, []);
+  assert.throws(() => apply(m, [{ op: 'delete', id: 'nope' }]), /"nope" is not an element/);
+});

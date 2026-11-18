@@ -423,3 +423,14 @@ test('audit 25: a «deploy» or «manifest» line the view draws as its own coun
   assert.ok(say(own).describe.includes('Node Server, 1 artifact deployed.') && say(own).describe.includes('manifests Shop'), say(own).describe);
   assert.deepEqual(say(own).rows, [['app.jar, by «deploy»'], ['manifests Shop']]);
 });
+
+test('audit 32: a node holding two classes says "2 classes"; nest-kinds says "a use case"; a node is said in its owner only when the owner is a box round it', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'srv', type: 'uml.Node', label: 'Server' }, { id: 'a', type: 'uml.Class', label: 'OrderService', parent: 'srv' }, { id: 'b', type: 'uml.Class', label: 'Billing', parent: 'srv' },
+    { id: 'uc', type: 'uml.UseCase', label: 'Checkout' }, { id: 'n2', type: 'uml.Node', label: 'Worker', parent: 'uc' }, { id: 'n3', type: 'uml.Node', label: 'Edge', parent: 'srv' }],
+  edges: [], views: [{ id: 'v', diagram: 'uml.deployment', nodeIds: ['srv', 'a', 'b', 'uc', 'n2', 'n3'] }] };
+  const g = layout(m, 'v'), text = describe(m, 'v');
+  assert.equal(g.families.find(f => f.id === 'srv').aria, 'Node Server, holding 2 classes, 1 node');
+  assert.match(text, /^Node Server, holding 2 classes, 1 node\.$/m); assert.match(text, /^Node Worker\.$/m); assert.match(text, /^Node Edge, in Server\.$/m);
+  assert.ok(validate(m).some(p => p.message === 'nest-kinds: "Worker", a node, is owned by "Checkout", a use case: its owner is a node, a device or an execution environment'));
+  assert.doesNotMatch(JSON.stringify(validate(m)), /an use case|classs/);
+});

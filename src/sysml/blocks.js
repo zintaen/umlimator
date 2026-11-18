@@ -1,4 +1,4 @@
-import { kindWord, registerDiagramType } from '../core/registry.js';
+import { aWord, kindWord, registerDiagramType } from '../core/registry.js';
 import { CLASS_DEF, RULES, classProblems, drawnLines, lineLabel, lineName, lineRename, parseMember, printMember, typeGeo } from '../uml/class.js';
 import { OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder } from '../uml/owners.js';
 import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_TABLE } from './sysml.js';
@@ -103,7 +103,7 @@ function bdProblems(model, view) {
   nodes.forEach(n => { if (BD_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
   const q = x => JSON.stringify(String(x.label ?? x.id)), say = (rule, path, ids, msg, level = 'error') => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const is = ts => (ts ? ts.map(t => BD_WORD(t).toLowerCase()).join(' and ') : 'nothing');
-  const aIs = ts => { const w = is(ts); return `${/^[aeiou]/i.test(w) ? 'an' : 'a'} ${w}`; }; // "an enumeration", "a block"
+  const aIs = ts => aWord(is(ts)); // "an enumeration", "a block", "a use case" (audit 32: "an use case")
   nodes.forEach((n, i) => { if (!BD_OBJ(n)) return; const seen = new Map();
     BD_ARR(n.members).forEach((m, j) => { if (!BD_OBJ(m)) return;
       const path = `nodes[${i}].members[${j}]`, p = BD_PROPS(m), T = named(p.valueType), of = `${q(n)}.${String(m.label ?? m.id)}`, ids = [n.id, m.id], typed = `typed by ${jsonText(String(p.valueType))}`;
