@@ -430,6 +430,7 @@ def structurizr(text, name):
     # ref: each identifier, lowered, as (its spelling, its element): Structurizr compares identifiers ignoring case
     # (IdentifiersRegister); fulls: the lowered full identifiers (an alias alone may name another, nested, element)
     els, ref, path, rels, specs, stack, groups, styles, depth, fulls = {}, {}, {}, [], [], [], [], [], {}, set()
+    bare = {}  # each alias, lowered: the full identifiers that end in it (two: a bare use is no one element's, audit 32)
     implied, comment, opened, flat = "any", 0, [], False  # comment: the line a /* ... */ opened on; opened: each open block's line and text
     for no, s in dsl_lines(text):
         if comment or s.startswith("/*"):
@@ -486,6 +487,7 @@ def structurizr(text, name):
                 if alias:
                     path[cid] = full
                     ref.setdefault(alias.lower(), (alias, cid))
+                    bare.setdefault(alias.lower(), []).append(full)
                     was = ref.get(full.lower())
                     if was and was[0] != full and full.lower() in fulls:  # one identifier twice, in two cases: Structurizr refuses it
                         m.say(no, f"{full}: Structurizr reads identifiers ignoring case, so this is {was[0]} again; references name {was[0]}")
@@ -493,8 +495,8 @@ def structurizr(text, name):
                         ref[full.lower()] = (full, cid)
                         fulls.add(full.lower())
                 push = ("el", cid)
-            elif r:
-                rels.append({**r, "line": no})
+            elif r:  # its identifiers are read from the element it is written in outwards, as Structurizr reads them (audit 32)
+                rels.append({**r, "line": no, "scope": parent})
                 push = ("rel", rels[-1])
             elif kw in ("group", "enterprise"):  # a box around its members, in the group around it, in the element it is in
                 groups.append({"label": (toks[1:2] or [kw])[0], "parent": grp, "owner": parent})
@@ -544,15 +546,33 @@ def structurizr(text, name):
         m.card(cid, e["name"], kind, e["tech"] or C4TYPE[e["type"]], e["desc"], icon="user" if e["type"] == "person" else None, shape=shape)
     for g in groups:  # after the cards, so a group's name never takes an element's alias
         g["id"] = m.uniq(ident(g["label"]), f"group-{ident(g['label'])}")
-    find = lambda t: isinstance(t, str) and ((ref.get(t.lower()) or ("", None))[1] or (t if t in els else None)) or None
+    def twice(t):  # the full identifiers a bare alias names when it names more than one element, else []
+        return bare.get(t.lower(), []) if isinstance(t, str) and t.lower() not in fulls and len(bare.get(t.lower(), [])) > 1 else []
+
+    def find(t, scope=None):
+        """The element identifier t names: written inside an element (scope), first as one nested in it or in what holds it
+        (hierarchical identifiers: api inside softwareSystem b is b.api), then as written. A bare alias two elements share
+        names neither: it was the first one's, and a line written inside b ran between a's cards (audit 32)."""
+        if not isinstance(t, str):
+            return None
+        s, seen = scope, set()
+        while s is not None and s not in seen:
+            seen.add(s)
+            if s in path and (hit := ref.get(f"{path[s]}.{t}".lower())):
+                return hit[1]
+            s = els[s]["parent"] if s in els else None
+        if twice(t):
+            return None
+        return (ref.get(t.lower()) or ("", None))[1] or (t if t in els else None)
     lines = []
     for r in rels:
         if r["src"] is None:  # this -> x with no element around it, in the model or a group there (audit 25)
             m.say(r["line"], f"this -> {r['dst']}: this names no element here")
             continue
-        a, b = find(r["src"]), find(r["dst"])
+        a, b = r["src"] if r.get("this") else find(r["src"], r["scope"]), find(r["dst"], r["scope"])
         if not (a and b):
-            m.say(r["line"], f"{r['src']} -> {r['dst']}: {r['src'] if not a else r['dst']} is not an element")
+            t = r["src"] if not a else r["dst"]
+            m.say(r["line"], f"{r['src']} -> {r['dst']}: " + (f"{t} names {clip(', '.join(twice(t)), 80)}: write the one it means" if twice(t) else f"{t} is not an element"))
             continue
         if r["tags"]:  # a relationship's tags style it in Structurizr; nothing here reads them, so they are said (audit 20)
             m.say(r["line"], f"{r['src']} -> {r['dst']}: tags {clip(', '.join(r['tags']), 60)} are not imported")
@@ -600,7 +620,8 @@ def relationship(toks, this):
         src, dst, a = (this if toks[0] == "this" else toks[0]), toks[2], toks[3:]
     else:
         return None
-    return {"src": src, "dst": dst, "desc": (a + [""])[0], "tech": (a + ["", ""])[1], "tags": [t.strip() for t in (a + ["", "", ""])[2].split(",") if t.strip()]}
+    return {"src": src, "dst": dst, "desc": (a + [""])[0], "tech": (a + ["", ""])[1], "tags": [t.strip() for t in (a + ["", "", ""])[2].split(",") if t.strip()],
+            "this": src is not None and src == this and (toks[:1] == ["->"] or toks[0] == "this")}
 
 
 def prop(x, kw, args):

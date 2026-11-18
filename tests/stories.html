@@ -203,6 +203,9 @@ try {
   const saved = JSON.parse(await blobs[blobs.length - 1].text());
   check('…Save writes the story: an id from its title, each step with its caption, view and selection', saved.id === 'my-walk' && saved.title === 'My walk' && saved.steps.length === 3
     && saved.steps[0].caption === 'Where it starts' && saved.steps[0].view === 'context' && saved.steps[1].view === 'trips' && saved.steps[2].select === 'fare' && !('caption' in saved.steps[1]), saved);
+  document.getElementById('m-rec-title').value = '書店の旅 (Hiệu sách)!'; document.querySelector('#m-rec [data-r="save"]').click();
+  const cjk = JSON.parse(await blobs[blobs.length - 1].text());
+  check('…a title in any script keeps its letters in the id, as the page\'s export names do (audit 32: it was "story")', cjk.id === '書店の旅-hiệu-sách', cjk.id);
   document.querySelector('#m-rec [data-r="close"]').click();
   check('…Close puts it away', !document.getElementById('m-rec'));
   URL.createObjectURL = own;

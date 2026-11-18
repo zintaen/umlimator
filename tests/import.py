@@ -123,6 +123,22 @@ m, un = imp.read("structurizr", 'workspace {\n model {\n  u = person "User"\n  s
                  '  s -> u "Tells" {\n   tags "Email"\n  }\n }\n}\n', "x")
 ok("structurizr · a relationship's tags, inline or in its block, are said, and the line drawn (audit 20)",
    un == [(5, "u -> s: tags Async, Critical are not imported"), (6, "s -> u: tags Email are not imported")] and line(m, "u", "s") and line(m, "s", "u"), un)
+# audit 32: two systems each holding api and db, and api -> db written inside each: the second was drawn between the first's
+# cards. A line inside a block reads its identifiers from that block outwards; a bare alias two elements share, written
+# outside them, names neither and is said; a full identifier and `this` still name their own
+hier = ('workspace {\n !identifiers hierarchical\n model {\n  u = person "User"\n  a = softwareSystem "Shop" {\n   db = container "Shop DB"\n   api = container "Shop API"\n'
+        '   api -> db "Reads"\n  }\n  b = softwareSystem "Billing" {\n   db = container "Billing DB"\n   api = container "Billing API" {\n    this -> db "Logs"\n   }\n'
+        '   group "Inner" {\n    api -> db "Writes"\n   }\n  }\n  u -> a.api "Buys"\n  a.api -> b.api "Charges"\n  u -> api "Odd"\n }\n views {\n'
+        '  container a "ShopC" {\n   include *\n  }\n  container b "BillC" {\n   include *\n  }\n }\n}\n')
+m, un = imp.read("structurizr", hier, "x")
+lbl = lambda a, b, v: sorted((e.get("label") or "") for e in m["edges"] if e["from"] == a and e["to"] == b and e["id"] in next(x for x in m["views"] if x["id"] == v).get("edges", []))
+ok("structurizr · api -> db inside system b is b's api and db, in a group and by this too; a bare api two systems hold names neither, and is said (audit 32)",
+   lbl("api", "db", "ShopC") == ["Reads"] and lbl("b-api", "b-db", "BillC") == ["Logs", "Writes"] and line(m, "u", "api") and (line(m, "u", "api") or {}).get("label") == "Buys"
+   and any("api names a.api, b.api" in w for _, w in un) and not any(e.get("label") == "Odd" for e in m["edges"]), (un, [(e["from"], e["to"], e.get("label")) for e in m["edges"]]))
+for flat in ("", " !identifiers flat\n"):  # a model with one api: its bare alias is its own, outside its block too, as before
+    one = 'workspace {\n' + flat + ' model {\n  u = person "User"\n  s = softwareSystem "S" {\n   api = container "API"\n  }\n  u -> api "Uses"\n }\n}\n'
+    m, un = imp.read("structurizr", one, "x")
+    ok(f"structurizr · {'!identifiers flat: ' if flat else ''}a bare alias one element holds names it from outside its block (audit 32)", (line(m, "u", "api") or {}).get("label") == "Uses" and un == [], un)
 m, un = imp.read("mermaid", 'flowchart LR\n  A:::warn --> B\n  D & F:::y --> E:::x\n  A -->|"yes | no"| C\n  A -->|plain| D\n', "x")
 ok("mermaid · a :::class is said, as the typed reader says it; a quoted pipe text may hold | (audit 20)",
    un == [(2, "A:::warn: a style class is not imported"), (3, "F:::y: a style class is not imported"), (3, "E:::x: a style class is not imported")]
