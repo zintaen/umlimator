@@ -272,6 +272,10 @@ test('the PDF (§13): words, rows, a binding\'s ends as its line text', () => {
   const lines = tables.find(t => t.cls === 'lines');
   assert.equal(lines.rows.filter(r => r.includes('ecoRange to range of eco')).length, 1, lines.rows.join('\n'));
   assert.equal(lines.rows.length, 8);
+  // each binding's ends as the picture names them, not by member id (audit 32)
+  const ends = lines.rows.map(r => r.replace(/<\/td>.*$/, '').replace(/<[^>]+>/g, ''));
+  assert.ok(ends.includes('batteryCapacity : Energy → usable : UsableEnergy'), ends.join('\n'));
+  assert.ok(!ends.some(r => /ebike\./.test(r)), ends.join('\n'));
   assert.ok(!cards.rows.some(r => /Binding from/.test(r)), cards.rows.join('\n'));
   // a constraint block as the subject: its nested binding is a Lines row too, and its rows hold none
   const nc = mapContext(NEST), nt = tablesOf(nc, nc.V.model, nc.buildGeo('model'));

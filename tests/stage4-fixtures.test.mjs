@@ -79,7 +79,7 @@ const PINNED = {
     all: { right: [19, []], down: [26, ['view all: label "evt [x > 0] / act" lies on edge State 40→State 2', 'view all: label "evt [x > 0] / act" lies on edge State 40→State 22', 'view all: label "evt [x > 0] / act" lies on edge State 42→State 10', 'view all: label "evt [x > 0] / act" lies on edge State 16→State 42', 'view all: label "evt [x > 0] / act" lies on edge State 42→State 30', 'view all: label "evt [x > 0] / act" lies on edge State 42→State 11']] } },
   'overview-minimal': { v: { right: [0, []], down: [0, []] } },
   'overview-stress': { 'edge-cases': { right: [0, []], down: [1, []] },
-    all: { right: [0, []], down: [3, ['view all: label "[in stock]" lies on edge Check 0?→Use 0', 'view all: label "[in stock]" lies on edge Check 1?→Use 1', 'view all: label "[in stock]" lies on edge Check 2?→Use 2']] } },
+    all: { right: [0, []], down: [3, []] } }, // three labels on lines till a label a later line runs across was placed again (audit 32)
 };
 
 test('every view of the eight fixtures lays out clean right and down: no line through a node or a header, every end on its outline, every node in its lane, check() finding only what is pinned', () => {

@@ -886,6 +886,15 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // one over a line but off box borders, then a map's looser ones; a map's (which had those) the two between. Drawn so, it still
   // asks for room below (it was left off with nothing said, audit 6). One left with none, check() names (leaveIssues). A
   // numbered view's comb places its own labels
+  // a typed view's label that a line routed after it, or moved later, runs across is taken off first, and placed again so (audit
+  // 32: a block definition view laid out down drew a dependency's label on the generalization, which check() names)
+  // with a typed view's late tries; where those find no spot off every line, or only its step, it stays where it was
+  const onLine = (e, L) => { const r = { x: L.x + 1, y: L.y + 1, w: L.w - 2, h: L.h - 2 }; return edges.some(o => o !== e && o.pts && segsOf(o.pts).some(([a, b]) => segHitsRect(a, b, r))); };
+  if (!map) edges.forEach(e => { const L = e.lbl; if (!L || e.fixed || !onLine(e, L)) return;
+    unput(e); placeLabel(e, true);
+    if (e.lbl && !(e.lbl.short && !L.short) && !onLine(e, e.lbl)) { LOOSE.add(e); return; }
+    if (e.lbl) unput(e);
+    placed.push({ x: L.x, y: L.y, w: L.w, h: L.h }); reserved.push({ x: L.x - 3, y: L.y - 3, w: L.w + 6, h: L.h + 6 }); e.lbl = L; });
   edges.forEach(e => { if ((e.label || e.step != null) && !e.lbl && e.pts && !(map && e.fixed)) { placeLabel(e, true); if (e.lbl) LOOSE.add(e); } });
   let labelRoom = null;
   const lost = e => !e.lbl || LOOSE.has(e); // a typed view's rows are of mixed height: only such a label widens a row gap, by its row's foot

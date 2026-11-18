@@ -58,20 +58,20 @@ function clean(m, vid) {
 // edge-cases views and the minimal ones are clean but for the crossings counted here. The generated views all crowd 60 to 70 lines with repair and reroute off (§11): there the information
 // flow view's labels lie on lines and, laid out down, C4's container view's lines share lines and its labels lie on lines (none runs
 // through a card since a C4 card's text tag stopped putting the router's grid out of order). Labels that found no spot and were
-// left off with nothing said are drawn since audit 6, and lie on lines there too (ER and C4 right), and C4's down crosses more. Each is stated in its type's conformance note.
+// left off with nothing said are drawn since audit 6, and lie on lines there too (ER and C4 right), and C4's down crosses more. A label a later line ran across is placed again since audit 32 (fewer findings down, C4's laid out with room for them crossing 5 more). Each is stated in its type's conformance note.
 const PINNED = {
   'er-minimal': { 'v': { right: [0, 0, 0], down: [0, 0, 0] } },
-  'er-stress': { 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'edge-cases-idef1x': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [17, 0, 0], down: [25, 2, 0] } },
+  'er-stress': { 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'edge-cases-idef1x': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [17, 0, 0], down: [18, 2, 0] } },
   'flowchart-minimal': { 'v': { right: [0, 0, 0], down: [0, 0, 0] } },
   'flowchart-stress': { 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [4, 0, 0], down: [4, 0, 0] } },
   'dfd-minimal': { 'v': { right: [0, 0, 0], down: [0, 0, 0] } },
   'dfd-stress': {
     'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-level-2': { right: [2, 0, 0], down: [1, 0, 0] }, 'ec-level-2-gs': { right: [2, 0, 0], down: [1, 0, 0] }, 'ec-level-3': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-pay-level': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [0, 0, 0], down: [0, 0, 0] } },
   'information-flow-minimal': { 'v': { right: [0, 0, 0], down: [0, 0, 0] } },
-  'information-flow-stress': { 'edge-cases': { right: [1, 0, 0], down: [0, 0, 0] }, 'all': { right: [149, 2, 0], down: [121, 42, 0] } },
+  'information-flow-stress': { 'edge-cases': { right: [1, 0, 0], down: [0, 0, 0] }, 'all': { right: [149, 1, 0], down: [119, 35, 0] } },
   'c4-minimal': { 'v': { right: [0, 0, 0], down: [0, 0, 0] } },
   'c4-stress': {
-    'ec-landscape': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-context': { right: [0, 0, 0], down: [0, 0, 0] }, 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-component': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-dynamic': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-deployment': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [133, 3, 0], down: [136, 26, 0] } },
+    'ec-landscape': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-context': { right: [0, 0, 0], down: [0, 0, 0] }, 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-component': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-dynamic': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-deployment': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [133, 3, 0], down: [141, 5, 0] } },
 };
 
 test('every view of the ten fixtures, right and down: a line through a node, an end off its node, a label over a node and check()\'s findings, each only as pinned (the stated limits)', () => {
@@ -85,7 +85,7 @@ test('every view of the ten fixtures, right and down: a line through a node, an 
   assert.deepEqual(counts, PINNED);
   // the information flow note states the generated view's crossings as counted here (audit 27: it said 122 down after audit 25 made it 121)
   const ifAll = counts['information-flow-stress'].all, ifNote = readFileSync(new URL('../docs/conformance/uml-information-flow.md', import.meta.url), 'utf8').replace(/\s+/g, ' ');
-  assert.match(ifNote, new RegExp(`crosses ${ifAll.right[0]} times right and ${ifAll.down[0]} down, with ${['', 'one', 'two', 'three'][ifAll.right[1]] || ifAll.right[1]} labels on lines right and ${ifAll.down[1]} findings down`));
+  assert.match(ifNote, new RegExp(`crosses ${ifAll.right[0]} times right and ${ifAll.down[0]} down, with ${['', 'one', 'two', 'three'][ifAll.right[1]] || ifAll.right[1]} labels? on (?:a line|lines) right and ${ifAll.down[1]} findings down`));
   // outside the generated views, no finding but crossings
   assert.deepEqual(other, []);
 });

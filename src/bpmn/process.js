@@ -398,7 +398,8 @@ function bzDescribe(model, viewId) {
   // a listed line of another kind, none of BPMN's: counted and said by its accessible name (audit 27), as not drawn where the
   // picture leaves it out (a pool's end: audit 29), as BPMN's own kinds are
   const other = P.foreign;
-  const out = [`${labelOr(v.title, v.id)}: a BPMN diagram of ${bzPlural(drawn.filter(id => BZ_FLOW.includes(I.ty(id))).length, 'flow node')}, ${bzPlural(flows, 'flow')}${other.length ? ', ' : ' and '}${bzPlural(P.pools.length, 'pool')}${other.length ? ` and ${bzPlural(other.length, 'other line')}` : ''}.`];
+  // an element of no BPMN type is drawn as a task, so counted with the flow nodes it is listed among (audit 32)
+  const out = [`${labelOr(v.title, v.id)}: a BPMN diagram of ${bzPlural(drawn.filter(id => BZ_FLOW.includes(I.ty(id)) || !BZ_KINDS.includes(I.ty(id))).length, 'flow node')}, ${bzPlural(flows, 'flow')}${other.length ? ', ' : ' and '}${bzPlural(P.pools.length, 'pool')}${other.length ? ` and ${bzPlural(other.length, 'other line')}` : ''}.`];
   const word = { [BZ_SEQ]: 'then', [BZ_MSG]: 'message to', [BZ_DATA_ASSOC]: 'data to', [BZ_ASSOC]: 'about' };
   // each element with what leaves it, a pool's message flows too; a line the picture leaves out said as not drawn
   const say = id => { const said = from(id).map(e => `${word[e.type]} ${I.called(e.to)}${BZ_HAS(e.label) ? ` (${String(e.label).trim()})` : ''}${doc(e)}${drew.has(e.id) ? '' : ', not drawn'}`);
@@ -437,6 +438,9 @@ function bzConnect(model, view, from, to) {
     if (bzTwoPools(I.poolOf(o === to ? from : to), I.poolOf(o))) return { error: 'Data stays in the pool of what it is associated with' }; // as a move refuses it (bzReown, audit 19) and data-ends says
     return add(BZ_DATA_ASSOC); }
   const pa = I.poolOf(from), pb = I.poolOf(to);
+  // an end of no BPMN type, drawn as a task, refused in the validator's words, not as "a task joins no flow" (audit 32)
+  const odd = [from, to].find(id => !BZ_KINDS.includes(I.ty(id)));
+  if (odd != null) { const t = I.ty(odd); return { error: `${I.called(odd)} ${t == null || t === '' ? 'has no BPMN type' : `is of type ${jsonText(t)}, which umlimator does not draw as BPMN`}: give it a BPMN type to join it` }; }
   if (![...BZ_FLOW, BZ_POOL].includes(a) || ![...BZ_FLOW, BZ_POOL].includes(b)) return { error: `${bzA(!BZ_FLOW.includes(a) && a !== BZ_POOL ? w(from) : w(to), true)} joins no flow` };
   if (a === BZ_POOL && b === BZ_POOL) return { error: 'A message flow between two pools is not drawn: join an activity or event of one of them' };
   if (a === BZ_BE && bzProps(I.el(from)).attachedTo === to) return { error: 'A flow from a boundary event back to its own activity is not drawn: lead it through another step' };

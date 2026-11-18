@@ -213,8 +213,9 @@ function bdConnect(model, view, from, to, at, line) {
   const E = BD_OBJ(BD_PROPS(line).ends) ? BD_PROPS(line).ends : {};
   if (t !== 'uml.Association' || !BD_OBJ(E.from) || E.from.aggregation !== 'composite' || !BD_CLS.includes(a.type)) return null;
   const cp = b.type === 'sysml.ConstraintBlock', mt = cp ? 'sysml.ConstraintProperty' : 'sysml.PartProperty';
-  if (!cp && b.type !== 'sysml.Block') return { error: `A part association ends at a block or a constraint block, not ${BD_WORD(b.type || 'uml.Element').toLowerCase()}` };
-  if (!bdHolds(a.type, { type: mt })) return { error: `A ${BD_WORD(a.type).toLowerCase()} holds no ${BD_MWORD[mt]}` };
+  // each end named as the view draws it (an element of no type: a class), with its article (audit 32)
+  if (!cp && b.type !== 'sysml.Block') return { error: `A part association ends at a block or a constraint block, not ${aWord(bdKind(b))}` };
+  if (!bdHolds(a.type, { type: mt })) { const w = aWord(bdKind(a)); return { error: `${w[0].toUpperCase()}${w.slice(1)} holds no ${BD_MWORD[mt]}` }; }
   // the role: the type's name with what a member's name may not hold left out, its first letter lower case; one that would not
   // start with a letter, _ or $ (3D Printer) starts with part (audit 17), so its row reads back
   const ty = String(b.label ?? b.id), kept = ty.replace(/[^\p{L}\p{M}\p{N}_$]/gu, ''), base = /^[\p{L}_$]/u.test(kept) ? kept[0].toLowerCase() + kept.slice(1) : 'part' + kept, taken = new Set(BD_ARR(a.members).map(m => BD_OBJ(m) && m.label));

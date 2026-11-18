@@ -86,7 +86,7 @@ const PINNED = {
   'mindmap-stress': { 'edge-cases': [0, 0, 0, 0], all: [0, 0, 0, 0] },
   'cloud-minimal': { gcp: { right: [0, 0, 0, 0], down: [0, 0, 0, 0] }, azure: { right: [0, 0, 0, 0], down: [0, 0, 0, 0] } },
   'cloud-stress': { 'edge-cases': { right: [0, 0, 0, 1], down: [0, 0, 0, 1] }, 'ec-no-product': { right: [0, 0, 0, 0], down: [0, 0, 0, 0] },
-    'az-edge-cases': { right: [0, 0, 0, 0], down: [0, 0, 0, 0] }, 'aws-edge-cases': { right: [0, 0, 0, 0], down: [0, 0, 0, 0] }, all: { right: [56, 0, 0, 0], down: [54, 1, 0, 0] } }, // three labels left off before audit 6: drawn, laid out with room for them
+    'az-edge-cases': { right: [0, 0, 0, 0], down: [0, 0, 0, 0] }, 'aws-edge-cases': { right: [0, 0, 0, 0], down: [0, 0, 0, 0] }, all: { right: [56, 0, 0, 0], down: [54, 0, 0, 0] } }, // three labels left off before audit 6: drawn, laid out with room for them; the one on a line placed again (audit 32)
   'bookshop-opening-plan': { 'mm-plan': [0, 0, 0, 0] },
   'bookshop-gcp': { 'gcp-on-gcp': { right: [1, 0, 0, 0], down: [1, 0, 0, 0] } },
   // audit 27: right, the subnet's line to Logs and alerts ran back through its own subnet box to dodge one crossing; it keeps out of it now
@@ -107,7 +107,7 @@ test('every view of the four fixtures and the three examples (cloud views right 
   }
   if (process.env.PIN) console.log(JSON.stringify(counts), other);
   assert.deepEqual(counts, PINNED);
-  assert.deepEqual(other, ['all: view all: label "HTTPS" lies on edge Service 52→Service 5']);
+  assert.deepEqual(other, []); // the label "HTTPS" lay on Service 52→Service 5 laid out down till audit 32 placed it again
 });
 
 test('the minimal fixtures: one topic; a gcp view of one project and one product, an azure view of one resource group and one service; no problem', () => {
