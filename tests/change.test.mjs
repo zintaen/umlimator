@@ -1266,3 +1266,22 @@ test('audit 47: hostile diffMarks: prototype keys, values that are no mark, a gh
     edges: [], views: [{ id: 'req', diagram: 'sysml.requirement', nodeIds: ['r1', 'r2'], diffMarks: { gone: [{ id: 'r1->r2', from: 'r2', to: 'r1' }, { id: 'r1->zz', from: 'zz', to: 'r1' }] } }] };
   assert.deepEqual(all.layout(rq, 'req').edges.map(e => [e.id, e.change]), [['r1->r2', 'removed']]);
 });
+
+test('audit 48: on the diff page a communication view numbers its live messages as the model after the change does, counts only them, and a removed one keeps its old number', async () => {
+  const all = await fromSrc(), a = read45('checkout-communication'), V = 'checkout-communication';
+  const rows = g => Object.fromEntries(g.nodes.filter(n => n.shape === 'message-row').map(n => [n.id, [n.num, n.aria]]));
+  for (const gone of ['cm3', 'cm5', 'cm8']) {
+    const b = structuredClone(a); b.views.forEach(v => { if (Array.isArray(v.edges)) v.edges = v.edges.filter(e => (typeof e === 'string' ? e : e.id) !== gone); }); b.edges = b.edges.filter(e => e.id !== gone);
+    const was = rows(all.layout(a, V)), now = rows(all.layout(b, V)), d = rows(all.layout(all.diff(a, b).model, V));
+    for (const [id, [num, aria]] of Object.entries(now)) assert.deepEqual(d[id], [num, aria], `${gone} removed: ${id}`);
+    assert.equal(d[gone][0], was[gone][0], `${gone}: its number as before`); assert.doesNotMatch(d[gone][1], / of \d+,/, `${gone}: not counted`); }
+});
+
+test('audit 48: a removed extend whose extension point went with it reads on the diff page as before, its point by name', async () => {
+  const all = await fromSrc(), a = read45('shopping-use-cases'), b = structuredClone(a), co = b.nodes.find(n => n.id === 'check-out');
+  co.members = co.members.filter(m => m.id !== 'checkout.extras'); b.edges = b.edges.filter(e => !(e.props && (e.props.extensionPoints || []).includes('checkout.extras')));
+  const ext = g => g.edges.filter(e => e.type === 'uml.Extend').map(e => [e.id, e.label ?? e.lbl?.text ?? null]);
+  const was = new Map(ext(all.layout(a, 'shopping'))), d = ext(all.layout(all.diff(a, b).model, 'shopping'));
+  assert.equal(d.length, was.size); d.forEach(([id, t]) => assert.equal(t, was.get(id), id));
+  assert.match(svgOf(all.layout(all.diff(a, b).model, 'shopping')), /«extend» \(extras\)/);
+});
