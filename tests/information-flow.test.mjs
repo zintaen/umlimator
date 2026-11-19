@@ -46,7 +46,7 @@ test('the definition: uml.information-flow is registered with its palette, its t
   for (const k of ['layout', 'validate', 'describe', 'word', 'rows', 'text']) assert.equal(typeof T[k], 'function', k);
   assert.equal(T.validate.length, 1, 'validate(model): run once, not once a view');
   assert.deepEqual(Object.keys(T.edits), ['connect', 'rename', 'remove']);
-  assert.deepEqual(Object.keys(T.rules), ['conveyed-some', 'conveyed-kind', 'conveyed-once', 'flow-ends']);
+  assert.deepEqual(Object.keys(T.rules), ['conveyed-some', 'conveyed-kind', 'conveyed-once', 'flow-ends', 'comment-link']);
 });
 
 test('the information item: the classifier 32 px wider, a filled triangle at its top right, its name kept clear of it and named by its accessible name', () => {
@@ -480,4 +480,17 @@ test('audit 43: an element of no type, named "Element" and judged no class, is d
   }
   assert.deepEqual(layout(mk('uml.Class'), 'v').byId.b.stereotypes, [], 'a class: no keyword, as before');
   assert.deepEqual(layout(mk('uml.Interface'), 'v').byId.b.stereotypes, ['interface']);
+});
+
+test('audit 50: validate() warns comment-link on a comment link with no comment at either end that an information flow view draws, as connect refuses it', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'A' }, { id: 'b', type: 'uml.Class', label: 'B' }, { id: 'n', type: 'uml.Comment', label: 'note' }],
+    edges: [{ id: 'cl', type: 'uml.CommentLink', from: 'a', to: 'b' }, { id: 'ok', type: 'uml.CommentLink', from: 'n', to: 'a' }], views: [{ id: 'v', diagram: 'uml.information-flow', nodeIds: ['a', 'b', 'n'] }] };
+  assert.deepEqual(T.edits.connect(m, m.views[0], 'a', 'b', {}, { type: 'uml.CommentLink' }), { error: 'A comment link runs from a comment' });
+  assert.deepEqual(validate(m).map(p => [p.level, p.rule, p.path, p.ids]), [['warning', 'comment-link', 'edges[0]', ['cl', 'a', 'b']]]);
+  assert.equal(validate(m)[0].message, 'comment-link: cl joins "A" and "B", neither a comment');
+  // one the view does not draw (an end not shown) is not this view's to judge; a view's own line is judged at its own path
+  const hid = structuredClone(m); hid.views[0].nodeIds = ['a', 'n']; assert.deepEqual(validate(hid), []);
+  const own = structuredClone(m); own.edges = []; own.views[0].edges = [{ id: 'cl', type: 'uml.CommentLink', from: 'b', to: 'a' }];
+  assert.deepEqual(validate(own).map(p => [p.rule, p.path]), [['comment-link', 'views[0].edges[0]']]);
+  assert.deepEqual(validate(IF).filter(p => p.rule === 'comment-link'), [], 'the example as before');
 });
