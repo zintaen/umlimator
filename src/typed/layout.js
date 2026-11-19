@@ -53,7 +53,9 @@ function layoutTyped(dg, memo) {
   // Each is judged as buildGeo will draw it (context.js): one that kept the request/reply port swap, in a view of up to 30
   // cards, laid out once more without it and the better of the two taken (audit 39: the layout as before, judged with its swap,
   // lost to the nested one by two crossings, and without the swap it had one fewer than that)
-  const said = h => { const is = [...routeAudit(h, ''), ...throughIssues(h, '')]; return [is.filter(s => !/ cross$/.test(s)).length, is.length]; };
+  // (each judged with its boxes as the type draws them, dg.drawn: a state's regions stretched across it, audit 44)
+  const seen = h => (typeof dg.drawn === 'function' && (h.families || []).length ? { ...h, families: dg.drawn(h.nodes, h.families) || h.families } : h);
+  const said = h0 => { const h = seen(h0), is = [...routeAudit(h, ''), ...throughIssues(h, '')]; return [is.filter(s => !/ cross$/.test(s)).length, is.length]; };
   const less = (b, a) => b[0] < a[0] || (b[0] === a[0] && b[1] < a[1]);
   // [layout, laid out without the swap too]: buildGeo need not try that one again
   // a layout whose lines to one card took its top and bottom by turns though the card has other lines (layoutPass, audit 39) is
@@ -70,7 +72,7 @@ function layoutTyped(dg, memo) {
   // too, as up to 0.41, and that one is kept unless following has no more crossings and no more other issues (check()'s), so
   // following them never draws a view worse
   let [g, tried] = best(t);
-  if (g.edges.some(e => e[FOLLOWED])) { const told = h => { const is = [...overlapIssues(h, ''), ...routeAudit(h, ''), ...throughIssues(h, ''), ...leaveIssues(h, '')], k = is.filter(s => / cross$/.test(s)).length; return [k, is.length - k]; };
+  if (g.edges.some(e => e[FOLLOWED])) { const told = h0 => { const h = seen(h0), is = [...overlapIssues(h, ''), ...routeAudit(h, ''), ...throughIssues(h, ''), ...leaveIssues(h, '')], k = is.filter(s => / cross$/.test(s)).length; return [k, is.length - k]; };
     const a = told(g); if (a[0] || a[1]) { const [h, ht] = best({ ...t, [PORTS_PLAIN]: true }), b = told(h); if (a[0] > b[0] || a[1] > b[1]) { g = h; tried = ht; } } }
   if (memo) Object.assign(memo, { key, g, dg, runs: (memo.runs || 0) + 1, rr: !!g.rr && !tried });
   return g;

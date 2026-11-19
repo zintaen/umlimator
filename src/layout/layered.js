@@ -1025,7 +1025,14 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // down, a transition from a state over a composite to the state under it, its way in shut by a loop, ran in through the
   // composite's title and out through its bottom; its way into the state's side was clear. (Each title as headRect has it:
   // routeAudit's strip lies along a box's top, and a turned view's title runs down its left)
-  const titles = e => families.filter(f => segsOf(e.pts).some(([a, b]) => segHitsRect(a, b, headRect(f)))).length;
+  // and each box as the type draws it (dg.drawn: state.js stretches a state's regions across it, so a region's title moves to the
+  // state's left; audit 44: laid out right, the initial transition ran through a composite whose region's title, drawn there,
+  // it crossed, while a route round the composite crossed one line), in the view's own axes
+  const drawnAs = (() => { if (!NEST || typeof dg.drawn !== 'function' || !families.length) return null;
+    const flip = r => (TB ? { ...r, x: r.y, y: r.x, w: r.h, h: r.w } : r), out = dg.drawn(nodes.map(flip), families.map(flip)) || [];
+    const by = new Map(families.map(f => [f.id, f])), m = new Map();
+    out.forEach(d => { const f = by.get(d.id), q = d && flip(d); if (f && q && (q.x !== f.x || q.y !== f.y || q.w !== f.w || q.h !== f.h)) m.set(f, { ...f, x: q.x, y: q.y, w: q.w, h: q.h }); }); return m.size ? m : null; })();
+  const titles = e => families.filter(f => segsOf(e.pts).some(([a, b]) => segHitsRect(a, b, headRect(f)) || (drawnAs && drawnAs.has(f) && segHitsRect(a, b, headRect(drawnAs.get(f)))))).length;
   const boxIn = e => families.filter(f => !holds(boxEnd[f.id], e.s) && !holds(boxEnd[f.id], e.t) && segsOf(e.pts).some(([a, b]) => segHitsRect(a, b, { x: f.x + 1, y: f.y + 1, w: f.w - 2, h: f.h - 2 }))).length;
   // [issues other than crossings, all, boxes run through] of the lines in `only` (all: the view's, once each)
   const boxSaid = only => { const ps = routeAudit({ edges, families, byId }, '', only).filter(p => !/ header crossed by /.test(p)), x = ps.filter(p => / cross$/.test(p)).length;

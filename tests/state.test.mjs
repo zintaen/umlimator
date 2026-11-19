@@ -860,3 +860,13 @@ test('audit 39: fuzz state machines draw no transition across a title, on anothe
 test('audit 40: a state machine whose turns into a composite would cross other transitions draws with no crossing', () => {
   assert.deepEqual(check(F39['right-11-15'], 'v').map(p => p.message), []);
 });
+
+// laid out right, the initial transition ran through a composite that holds neither of its ends and across its region's title:
+// the router judged the region where the layout put it, and state.js stretches regions across their state after the layout,
+// which moved the title onto the line. Each box is now judged as the type draws it (layoutTyped's drawn)
+test('audit 44: a transition past a composite with regions goes round it, clear of the title its region is drawn with', () => {
+  const m = F39['right-4-10'], g = layout(m, 'v'), e = g.edges.find(x => x.from === 'init'), s2 = g.families.find(f => f.id === 's2');
+  const inside = e.pts.slice(1).some(([x, y], i) => { const [px, py] = e.pts[i]; return Math.max(px, x) > s2.x && Math.min(px, x) < s2.x + s2.w && Math.max(py, y) > s2.y && Math.min(py, y) < s2.y + s2.h; });
+  assert.ok(!inside, `init→S0 keeps out of S2: ${JSON.stringify(e.pts)}`);
+  assert.deepEqual(notCross(m), []);
+});
