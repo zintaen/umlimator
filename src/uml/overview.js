@@ -2,7 +2,7 @@ import { apply } from '../core/apply.js';
 import { registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { trimLine } from '../draw/lines.js';
-import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
+import { SHAPE, boxOut, markShape, portsOn, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { brLines } from '../typed/draw.js';
@@ -95,12 +95,20 @@ function ovMessage(e, change) {
 // the sequence's picture inside the frame: sqDraw's layer (frames, stems, uses' boxes, bars, crosses), then each head, each
 // fragment's tag, each operand's guard and each use's name by frame.js's shapes, then the messages
 // a message the sequence view lists by id takes its model line's change, as the sequence view draws it (audit 46)
+// and each head, fragment, operand and use takes its change too, marked as the sequence view's shapes are (markShape): a lifeline
+// its view's override's or its model node's, a fragment its own, an operand its fragment's added or removed, a use its line's (audit 48)
 function ovInner(run, sv, model) {
   const E = new Map(); OV_ARR(model && model.edges).forEach(e => { if (OV_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); });
+  const word = x => (OV_OBJ(x) && typeof x.change === 'string' ? x.change.toLowerCase() : null);
   const ch = new Map(); OV_ARR(sv && sv.edges).forEach(x => { const e = typeof x === 'string' ? E.get(x) : x; if (OV_OBJ(e) && typeof e.change === 'string' && !ch.has(e.id)) ch.set(e.id, e.change); });
-  const by = s => run.nodes.filter(n => n.shape === s), C = 'var(--um-slate)', F = 'var(--um-slate-f)';
-  return ovQuiet(sqDraw(run, { esc, r2, textW }).under + by('lifeline').map(n => SHAPE.lifeline.draw(n, C, F)).join('')
-    + ['frame', 'operand', 'use'].map(s => by(s).map(n => SHAPE[s].draw(n, C, F)).join('')).join('') + run.edges.map(e => ovMessage(e, ch.get(e.id))).join(''));
+  const ov = OV_OBJ(sv && sv.nodeOverrides) ? sv.nodeOverrides : {}, N = new Map(OV_ARR(model && model.nodes).filter(n => OV_OBJ(n) && typeof n.id === 'string').map(n => [n.id, n]));
+  const own = new Map(); OV_ARR(sv && sv.fragments).forEach(f => { if (!OV_OBJ(f) || typeof f.id !== 'string') return; const c = word(f); if (!own.has(f.id)) own.set(f.id, c);
+    OV_ARR(f.members).forEach(m => { if (OV_OBJ(m) && typeof m.id === 'string' && !own.has(m.id)) own.set(m.id, word(m) || (c === 'added' || c === 'new' || c === 'removed' ? c : null)); }); });
+  const change = n => (n.shape === 'lifeline' ? word(Object.hasOwn(ov, n.id) ? ov[n.id] : null) || word(N.get(n.id)) : n.shape === 'use' ? (typeof ch.get(n.id) === 'string' ? ch.get(n.id).toLowerCase() : null) : own.get(n.id)) || null;
+  const draw = (s, n) => { const c = change(n), out = SHAPE[s].draw(n, 'var(--um-slate)', 'var(--um-slate-f)'); return c ? markShape({ ...n, change: c }, out) : out; };
+  const by = s => run.nodes.filter(n => n.shape === s);
+  return ovQuiet(sqDraw(run, { esc, r2, textW }).under + by('lifeline').map(n => draw('lifeline', n)).join('')
+    + ['frame', 'operand', 'use'].map(s => by(s).map(n => draw(s, n)).join('')).join('') + run.edges.map(e => ovMessage(e, ch.get(e.id))).join(''));
 }
 const ovTagOf = t => tagSize(`sd ${t}`).h; // the tag over an inline sequence: its name's lines
 SHAPE['ov-inline'] = { ...ovBox,
