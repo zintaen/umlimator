@@ -27,7 +27,7 @@ and the other functions that return a model return a new one.
 ```
 
 The full field list, with examples, is in [The model](../guide/model.md) and `engine/references/schema.md` (§ Map model);
-`examples/bookshop.json` uses most of it.
+`examples/umlimator-atlas.json`, umlimator's own model, uses much of it.
 
 ## MapModel
 

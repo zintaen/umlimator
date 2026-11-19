@@ -13,8 +13,7 @@ the Common Executable sub-class or of execution semantics (clause 13). The stand
 A view of a version-2 model (`"schemaVersion": 2`) whose `diagram` is `"bpmn"` is a BPMN diagram. It is drawn by
 `lib/umlimator-all.js` (`umlimator/all`), which the CLI's page inlines; `lib/umlimator.js`, what a map host loads, draws
 it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2, row 24, and the note's §3; the example
-is [`examples/bookshop-order-to-shipment.json`](../../examples/bookshop-order-to-shipment.json), which the Bookshop atlas
-opens from the use case "Track an order".
+is [`examples/bookshop-order-to-shipment.json`](../../examples/bookshop-order-to-shipment.json).
 
 ## Table 2.1, row by row
 

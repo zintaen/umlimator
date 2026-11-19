@@ -7,8 +7,7 @@ A view of a version-2 model whose `diagram` is `"sysml.internal-block"` is an in
 `lib/umlimator-all.js` (`umlimator/all`); `lib/umlimator.js` draws it as plain cards with a warning. The vocabulary is
 `docs/diagrams/model.md` §2, row 18; the example is [`examples/ebike-structure.json`](../../examples/ebike-structure.json),
 inside the e-bike: the battery, controller, motor, two lights and the dock it refers to, wired by connectors carrying DC
-power and phase current, opened from the block definition view's EBike (and from the parametric view's frame) in the
-e-bike atlas.
+power and phase current.
 
 ## The subset, and SysML v1.7's clauses
 
@@ -92,7 +91,7 @@ part added 45 ms: under the 100 ms target. `tests/internal-block.test.mjs` print
 
 `tests/internal-block.test.mjs`, `tests/internal-block.html` (on `tests/sysml-targets.json`'s 18, as M3.0 left it);
 `tests/internal-block-minimal.json`, `tests/internal-block-stress.json` with `tests/sysml-fixtures.test.mjs` and
-`tests/sysml.html`; `tests/sysml.test.mjs` (the projection); `tests/cli.py`; `tests/mcp.py`; `tests/ebike-atlas.test.mjs`.
+`tests/sysml.html`; `tests/sysml.test.mjs` (the projection); `tests/cli.py`; `tests/mcp.py`.
 
 **Gap:** the clause numbers inside clauses 8 and 9 were not quoted from SysML v1.7's PDF in this build (the file could not
 be read here).

@@ -6,7 +6,7 @@ and **edit** on the subset below. No interchange, and no solving: the equations 
 A view of a version-2 model whose `diagram` is `"sysml.parametric"` is a parametric diagram, drawn by
 `lib/umlimator-all.js` (`umlimator/all`); `lib/umlimator.js` draws it as plain cards with a warning. The vocabulary is
 `docs/diagrams/model.md` §2, row 19; the example is [`examples/ebike-range.json`](../../examples/ebike-range.json), the
-e-bike's range in eco and boost from its battery's usable energy, opened from the range requirement in the e-bike atlas.
+e-bike's range in eco and boost from its battery's usable energy.
 
 ## The subset, and SysML v1.7's clauses
 
@@ -94,7 +94,7 @@ Apple laptop (14 Nov 2026): a full layout and its SVG 101 ms; a binding added 80
 
 `tests/parametric.test.mjs`, `tests/parametric.html` (on `tests/sysml-targets.json`'s 19, as M3.0 left it);
 `tests/parametric-minimal.json`, `tests/parametric-stress.json` with `tests/sysml-fixtures.test.mjs` and `tests/sysml.html`;
-`tests/sysml.test.mjs`; `tests/cli.py`; `tests/mcp.py`; `tests/ebike-atlas.test.mjs`.
+`tests/sysml.test.mjs`; `tests/cli.py`; `tests/mcp.py`.
 
 **Gap:** the clause numbers inside clauses 8 and 10 were not quoted from SysML v1.7's PDF in this build (the file could not
 be read here).

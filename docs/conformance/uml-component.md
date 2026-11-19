@@ -122,4 +122,4 @@ example under three fonts, both themes and both directions, every gesture by poi
 within 1 px, every port on its owner's border, what `check()` finds pinned, P1); `tests/notation.html` (the socket, the
 stem, the delegation's arrow, the triangles, «use» and «manifest», each tip on what it points to); `tests/cli.py`
 (render, check, stills, pdf and its tables, the diff Action's step); `tests/mcp.py` (the MCP server's read tools, the
-page drawing the view, a highlight); `tests/atlas.test.mjs` (the view in the Bookshop atlas, laid out as in its file).
+page drawing the view, a highlight); `tests/atlas.test.mjs` (the view in an atlas, laid out as in its file).

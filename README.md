@@ -8,7 +8,7 @@
 Layered architecture maps and 28 diagram types you can click through, from one JSON model: an ES module, a CLI and a
 GitHub Action.
 
-[![The example model's overview: a made-up bookshop with logos, line icons and a numbered flow behind the API card](examples/stills/overview.png)](https://zintaen.github.io/umlimator/examples/bookshop.html)
+[![The Umlimator Atlas's overview: umlimator's parts (the model JSON, the CLI, the module, the page and the diff Action) and who uses each](examples/stills/umlimator-atlas-overview.png)](https://zintaen.github.io/umlimator/examples/umlimator-atlas.html)
 
 ## Install
 
@@ -39,7 +39,7 @@ const png = await map.toPNG({ view: 'api' }); // any view, without showing it
 Or with no script of your own, `<umlimator-map src="model.json"></umlimator-map>`, or from the command line:
 
 ```bash
-python3 umlimator.py render examples/bookshop.json --out page.html   # the interactive page, then its layout check
+python3 umlimator.py render examples/umlimator-atlas.json --out page.html   # the interactive page, then its layout check
 python3 umlimator.py stills page.html --out stills/                   # every view as SVG and PNG
 ```
 
