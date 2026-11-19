@@ -748,11 +748,72 @@ test('audit 43: diff() of many views whose cards trade places lays out only the 
   const A = { title: 't', nodes, edges, views }, B = structuredClone(A); B.views.forEach(v => { const x = v.nodeIds; [x[1], x[2]] = [x[2], x[1]]; });
   let t = performance.now(); const d = diff(A, B), ms = performance.now() - t; console.log(`# ${V} trees of ${N} cards, siblings swapped: ${Math.round(ms)} ms`);
   assert.deepEqual([d.summary, d.views], [[], []]); assert.ok(ms < 1500, `${ms} ms`);
-  // all pinned: the same picture, said by its pins alone
-  const P = structuredClone(A); P.views.forEach(v => { v.layout = Object.fromEntries(v.nodeIds.map((id, i) => [id, [i % 6, Math.floor(i / 6)]])); });
+  // all pinned, with no lines: the same picture, said by its pins alone (with lines, the view is laid out: audit 44)
+  const P = { ...structuredClone(A), edges: [] }; P.views.forEach(v => { v.layout = Object.fromEntries(v.nodeIds.map((id, i) => [id, [i % 6, Math.floor(i / 6)]])); });
   const Q = structuredClone(P); Q.views.forEach(v => { v.nodeIds.reverse(); });
   t = performance.now(); assert.deepEqual(diff(P, Q).summary, []); assert.ok(performance.now() - t < 1500);
   // cards with no lines that trade slots are still said, the view laid out
   const F = { nodes: ['a', 'b', 'c', 'd'].map(id => ({ id, label: id.toUpperCase() })), edges: [], views: [{ id: 'v', title: 'V', nodeIds: ['a', 'b', 'c', 'd'] }] }, G = structuredClone(F); G.views[0].nodeIds = ['b', 'a', 'c', 'd'];
   assert.deepEqual([diff(F, G).summary, diff(F, G).views], [['moves B to the start in the view V'], ['v']]);
+});
+
+test('audit 44: diff() says a fully pinned view whose reorder routes its lines another way, and lists it; one whose picture holds is not said', () => {
+  // twelve cards, each pinned, their order shuffled: no card moves, but lines e11 and e12 take other ports and tracks
+  const m = {"nodes":[{"id":"n0","label":"Card 0"},{"id":"n1","label":"Card 1"},{"id":"n2","label":"Card 2"},{"id":"n3","label":"Card 3"},{"id":"n4","label":"Card 4"},{"id":"n5","label":"Card 5"},{"id":"n6","label":"Card 6"},{"id":"n7","label":"Card 7"},{"id":"n8","label":"Card 8"},{"id":"n9","label":"Card 9"},{"id":"n10","label":"Card 10"},{"id":"n11","label":"Card 11"}],"edges":[{"id":"e1","from":"n7","to":"n2"},{"id":"e2","from":"n11","to":"n10","label":"calls"},{"id":"e3","from":"n2","to":"n1"},{"id":"e5","from":"n4","to":"n10"},{"id":"e6","from":"n2","to":"n3"},{"id":"e7","from":"n2","to":"n8"},{"id":"e8","from":"n5","to":"n7","label":"calls"},{"id":"e9","from":"n10","to":"n11"},{"id":"e10","from":"n1","to":"n5","label":"calls"},{"id":"e11","from":"n8","to":"n0","label":"calls"},{"id":"e12","from":"n0","to":"n2"},{"id":"e13","from":"n10","to":"n3","label":"calls"},{"id":"e14","from":"n4","to":"n3","label":"calls"},{"id":"e15","from":"n2","to":"n9"},{"id":"e16","from":"n7","to":"n6"},{"id":"e17","from":"n4","to":"n3","label":"calls"}],"views":[{"id":"v","label":"V","nodeIds":["n0","n1","n2","n3","n4","n5","n6","n7","n8","n9","n10","n11"],"layout":{"n0":[0,0],"n1":[0,3],"n2":[3,1],"n3":[0,1],"n4":[3,2],"n5":[1,2],"n6":[1,1],"n7":[2,2],"n8":[3,3],"n9":[1,3],"n10":[2,3],"n11":[3,0]}}]};
+  const b = structuredClone(m); b.views[0].nodeIds = ["n8","n6","n11","n0","n7","n4","n10","n3","n2","n5","n1","n9"];
+  const lines = g => JSON.stringify(Object.fromEntries(g.edges.map(e => [e._id ?? e.id, e.pts])));
+  assert.notEqual(lines(layout(m, 'v')), lines(layout(b, 'v')));
+  assert.deepEqual([diff(m, b).summary, diff(m, b).views], [['reorders 8 cards in the view v'], ['v']]);
+  // the same view with no lines: the pins say the whole picture, nothing is said
+  const m0 = { ...m, edges: [] }, b0 = { ...b, edges: [] }; assert.deepEqual([diff(m0, b0).summary, diff(m0, b0).views], [[], []]);
+  // pinned with one line whose reorder leaves its route alone: laid out, and still nothing said
+  const p = { nodes: ['a', 'b', 'c'].map(id => ({ id, label: id })), edges: [{ id: 'e', from: 'a', to: 'b' }], views: [{ id: 'v', title: 'V', nodeIds: ['a', 'b', 'c'], layout: { a: [0, 0], b: [1, 0], c: [2, 0] } }] };
+  const q = structuredClone(p); q.views[0].nodeIds = ['c', 'b', 'a']; assert.deepEqual(diff(p, q).summary, []);
+  // hostile: pins and ids that are prototype keys, a pin that is no pair, a line to a card that is not there
+  const h = structuredClone(m); h.nodes.push({ id: '__proto__', label: 'x' }); h.views[0].nodeIds.push('__proto__', 'constructor'); h.views[0].layout.__proto__ = 'x'; h.edges.push({ id: 'eh', from: 'n0', to: 'gone' });
+  const k = structuredClone(h); k.views[0].nodeIds.reverse(); assert.doesNotThrow(() => diff(h, k));
+});
+
+test('audit 44: a typed view draws diff()\'s marks as a map does: a removed element faded, dashed and struck through, an added or changed one tabbed, each said in its name', async () => {
+  const all = await fromSrc(), read = f => JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url)));
+  const tagOf = (s, id) => { const a = s.lastIndexOf('<g', s.indexOf(`data-id="${id}"`)); return s.slice(a, s.indexOf('>', a) + 1); };
+  const bodyOf = (s, id) => { const a = s.lastIndexOf('<g', s.indexOf(`data-id="${id}"`)); let d = 0, i = a; const re = /<g\b|<\/g>/g; re.lastIndex = a;
+    for (let m; (m = re.exec(s));) { d += m[0] === '</g>' ? -1 : 1; if (!d) { i = m.index + 4; break; } } return s.slice(a, i); };
+  const keyOf = (s, id) => (s.match(new RegExp(`data-node="${id}"[^>]*aria-label="([^"]*)"`)) || [])[1];
+  // the class example: OrderStatus removed with its lines, Customer renamed to Client, Coupon added
+  const a = read('sales-classes'), b = structuredClone(a);
+  b.nodes = b.nodes.filter(n => n.id !== 'status'); b.edges = b.edges.filter(e => e.from !== 'status' && e.to !== 'status');
+  b.views.forEach(v => { v.nodeIds = v.nodeIds.filter(i => i !== 'status'); }); b.nodes.find(n => n.id === 'customer').label = 'Client';
+  b.nodes.push({ id: 'coupon', type: 'uml.Class', label: 'Coupon', parent: 'sales' }); b.views[0].nodeIds.push('coupon');
+  const d = all.diff(a, b), s = svgOf(all.layout(d.model, b.views[0].id));
+  assert.deepEqual(d.summary, ['renames Customer to Client', 'adds Coupon', 'removes OrderStatus']);
+  assert.match(tagOf(s, 'status'), /aria-label="Enumeration OrderStatus, 4 literals, removed"/); assert.match(tagOf(s, 'status'), /opacity="\.6"/); assert.match(tagOf(s, 'status'), /stroke-dasharray="6 4"/);
+  const texts = bodyOf(s, 'status').match(/<text\b[^>]*>/g).filter(t => !/badge-tx/.test(t)); assert.ok(texts.length > 1 && texts.every(t => /line-through/.test(t)), 'every text of the removed class struck through');
+  assert.match(bodyOf(s, 'status'), />REMOVED<\/text>/); assert.match(bodyOf(s, 'coupon'), />NEW<\/text>/); assert.match(bodyOf(s, 'customer'), />CHANGED<\/text>/);
+  assert.match(tagOf(s, 'coupon'), /, new"/); assert.match(tagOf(s, 'customer'), /, changed"/); assert.doesNotMatch(tagOf(s, 'customer'), /opacity/);
+  assert.match(keyOf(s, 'coupon'), /, new$/); assert.match(keyOf(s, 'status'), /, removed$/);
+  // an element that did not change draws as before
+  assert.equal(bodyOf(s, 'order').replace(/\bg\d+-/g, 'g-'), bodyOf(svgOf(all.layout(b, b.views[0].id)), 'order').replace(/\bg\d+-/g, 'g-'));
+  // the ER example: payment removed, customer renamed; the flowchart: a step removed, one added
+  const er = read('bookshop-schema'), er2 = structuredClone(er); er2.nodes = er2.nodes.filter(n => n.id !== 'er-payment'); er2.edges = er2.edges.filter(e => e.from !== 'er-payment' && e.to !== 'er-payment');
+  er2.views[0].nodeIds = er2.views[0].nodeIds.filter(i => i !== 'er-payment'); er2.nodes.find(n => n.id === 'er-customer').label = 'client';
+  const se = svgOf(all.layout(all.diff(er, er2).model, 'er-schema'));
+  assert.match(tagOf(se, 'er-payment'), /, removed"[^>]*opacity="\.6"/); assert.match(tagOf(se, 'er-customer'), /, changed"/); assert.match(bodyOf(se, 'er-payment'), /line-through/);
+  const fc = read('returns-flowchart'), fc2 = structuredClone(fc); fc2.nodes = fc2.nodes.filter(n => n.id !== 'wait'); fc2.edges = fc2.edges.filter(e => e.from !== 'wait' && e.to !== 'wait');
+  fc2.views[0].nodeIds = fc2.views[0].nodeIds.filter(i => i !== 'wait'); fc2.nodes.push({ id: 'note-it', type: 'flow.Process', label: 'Log the return' }); fc2.views[0].nodeIds.push('note-it');
+  const sf = svgOf(all.layout(all.diff(fc, fc2).model, 'returns'));
+  assert.match(tagOf(sf, 'wait'), /, removed"/); assert.match(tagOf(sf, 'note-it'), /, new"/);
+  // the lines diff() marks on a typed view keep their marks: a removed one rose and dashed
+  assert.match(s, /stroke="var\(--um-rose\)"/);
+  // every typed example with every element marked in turn: each element's name says its mark, and no tag holds an attribute twice
+  for (const f of ['sales-classes', 'bookshop-schema', 'returns-flowchart', 'bookshop-c4', 'order-states', 'bookshop-data-flow', 'ebike-blocks', 'shopping-use-cases']) {
+    const m = read(f), x = structuredClone(m); x.nodes.forEach((n, i) => { n.change = ['added', 'changed', 'removed', 'planned'][i % 4]; });
+    for (const v of m.views.filter(v => v.diagram && v.diagram !== 'map')) { const g = all.layout(x, v.id), t = svgOf(g);
+      g.nodes.filter(n => n.change && t.includes(`data-id="${n.id}"`)).forEach(n => assert.match(tagOf(t, n.id), /, (new|changed|removed|planned)"/, `${f} ${v.id} ${n.id}`));
+      (t.match(/<(g|text|rect)\b[^>]*>/g) || []).forEach(tag => { const at = [...tag.matchAll(/\s([a-zA-Z:-]+)=/g)].map(y => y[1]); assert.equal(new Set(at).size, at.length, `${f}: ${tag}`); }); } }
+  // hostile: a change that is a prototype key, an object or a quote, and a label that closes the tag, mark nothing and break nothing
+  const h = structuredClone(b); h.nodes.find(n => n.id === 'order').change = '__proto__'; h.nodes.find(n => n.id === 'line').change = { toString: 'x' };
+  h.nodes.find(n => n.id === 'coupon').change = '" onload="x'; h.nodes.find(n => n.id === 'customer').label = '"><script>alert(1)</script>'; h.nodes.find(n => n.id === 'customer').change = 'removed';
+  const sh = svgOf(all.layout(h, h.views[0].id));
+  assert.doesNotMatch(sh, /<script|onload=/); ['order', 'line', 'coupon'].forEach(id => assert.doesNotMatch(tagOf(sh, id), /data-change/)); assert.match(tagOf(sh, 'customer'), /data-change="removed"/);
 });

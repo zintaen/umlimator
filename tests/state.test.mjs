@@ -860,3 +860,24 @@ test('audit 39: fuzz state machines draw no transition across a title, on anothe
 test('audit 40: a state machine whose turns into a composite would cross other transitions draws with no crossing', () => {
   assert.deepEqual(check(F39['right-11-15'], 'v').map(p => p.message), []);
 });
+
+// laid out right, the initial transition ran through a composite that holds neither of its ends and across its region's title:
+// the router judged the region where the layout put it, and state.js stretches regions across their state after the layout,
+// which moved the title onto the line. Each box is now judged as the type draws it (layoutTyped's drawn)
+test('audit 44: a transition past a composite with regions goes round it, clear of the title its region is drawn with', () => {
+  const m = F39['right-4-10'], g = layout(m, 'v'), e = g.edges.find(x => x.from === 'init'), s2 = g.families.find(f => f.id === 's2');
+  const inside = e.pts.slice(1).some(([x, y], i) => { const [px, py] = e.pts[i]; return Math.max(px, x) > s2.x && Math.min(px, x) < s2.x + s2.w && Math.max(py, y) > s2.y && Math.min(py, y) < s2.y + s2.h; });
+  assert.ok(!inside, `init→S0 keeps out of S2: ${JSON.stringify(e.pts)}`);
+  assert.deepEqual(notCross(m), []);
+});
+
+// laid out right, a flat state's self-transition and its transition to the state over its neighbour: the router found no way
+// between the loop and the row above, and the last resort's turn ran on the loop's top run, half a pixel off. The late
+// re-route now takes a line the last resort drew on a loop, as it took one drawn on a line into a box
+test('audit 44: a transition the last resort drew along a self-transition\'s top run is routed again, clear of it', () => {
+  const m = {"schemaVersion":2,"title":"g","root":"v","nodes":[{"id":"i","type":"uml.Pseudostate","props":{"kind":"initial"}},{"id":"s0","type":"uml.State","label":"State 0"},{"id":"s1","type":"uml.State","label":"State 1"},{"id":"s2","type":"uml.State","label":"State 2"},{"id":"s3","type":"uml.State","label":"State 3"},{"id":"s4","type":"uml.State","label":"State 4"},{"id":"s5","type":"uml.State","label":"State 5"}],"edges":[{"id":"t0","type":"uml.Transition","from":"i","to":"s0"},{"id":"t1","type":"uml.Transition","from":"s4","to":"s3","props":{"trigger":"ev0"}},{"id":"t2","type":"uml.Transition","from":"s2","to":"s0","props":{}},{"id":"t3","type":"uml.Transition","from":"s5","to":"s1","props":{}},{"id":"t4","type":"uml.Transition","from":"s4","to":"s1","props":{"trigger":"ev3"}},{"id":"t5","type":"uml.Transition","from":"s5","to":"s5","props":{}},{"id":"t6","type":"uml.Transition","from":"s1","to":"s1","props":{"trigger":"ev5"}},{"id":"t7","type":"uml.Transition","from":"s5","to":"s0","props":{"trigger":"ev6"}},{"id":"t8","type":"uml.Transition","from":"s5","to":"s4","props":{}}],"views":[{"id":"v","diagram":"uml.state-machine","title":"V","parent":null,"direction":"right","nodeIds":["i","s0","s1","s2","s3","s4","s5"]}]};
+  const g = layout(m, 'v'), loop = g.edges.find(e => e.id === 't5'), t7 = g.edges.find(e => e.id === 't7'), top = loop.pts[2][1];
+  const runs = t7.pts.slice(1).map((p, i) => [t7.pts[i], p]).filter(([a, b]) => a[1] === b[1] && Math.abs(a[1] - top) < 2 && Math.max(a[0], b[0]) > loop.pts[3][0] && Math.min(a[0], b[0]) < loop.pts[2][0]);
+  assert.deepEqual(runs, [], `t7 keeps off the loop's top run: ${JSON.stringify(t7.pts)}`);
+  assert.deepEqual(notCross(m), []);
+});

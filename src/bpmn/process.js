@@ -639,11 +639,11 @@ const BZ_TYPE = registerDiagramType('bpmn', {
     .map(([t, label, props]) => ({ type: 'bpmn.' + t, label, ...(props ? { props } : {}), ...(/Event$|Gateway$/.test(t) ? { name: false } : {}), ...(t === 'SubProcess' || t === 'CallActivity' ? { opens: 'bpmn' } : {}) })),
   // one entry, so the canvas opens no picker of kinds: connect picks the kind by the ends (§7.1, decision 8)
   lines: [{ type: BZ_SEQ, label: 'Flow (sequence, message, association or data association, by its ends)' }],
-  props: { [BZ_POOL]: [BZ_DOC, { key: 'processRef', label: 'Process', kind: 'text' }], [BZ_LANE]: [BZ_DOC],
+  props: { [BZ_POOL]: [BZ_DOC, { key: 'processRef', label: 'Process', kind: 'text', drawn: false }], [BZ_LANE]: [BZ_DOC],
     'bpmn.Task': [BZ_DOC, { key: 'taskType', label: 'Task type', kind: 'enum', options: ['none', 'user', 'service'] }, BZ_GROUPS], [BZ_SUB]: [BZ_DOC, BZ_GROUPS],
-    'bpmn.CallActivity': [BZ_DOC, { key: 'calledElement', label: 'Called element', kind: 'text' }, BZ_GROUPS],
+    'bpmn.CallActivity': [BZ_DOC, { key: 'calledElement', label: 'Called element', kind: 'text', drawn: false }, BZ_GROUPS],
     ...Object.fromEntries(BZ_EVENTS.map(t => [t, BZ_EV(t)])), [BZ_BE]: [...BZ_EV(BZ_BE), { key: 'cancelActivity', label: 'Interrupting', kind: 'bool' }],
-    ...Object.fromEntries(BZ_GATE.map(t => [t, [BZ_DOC, BZ_GROUPS]])), 'bpmn.DataObject': [BZ_DOC, BZ_GROUPS], 'bpmn.DataStoreReference': [BZ_DOC, { key: 'dataStoreRef', label: 'Data store', kind: 'text' }, BZ_GROUPS],
+    ...Object.fromEntries(BZ_GATE.map(t => [t, [BZ_DOC, BZ_GROUPS]])), 'bpmn.DataObject': [BZ_DOC, BZ_GROUPS], 'bpmn.DataStoreReference': [BZ_DOC, { key: 'dataStoreRef', label: 'Data store', kind: 'text', drawn: false }, BZ_GROUPS],
     [BZ_NOTE]: [BZ_DOC, BZ_GROUPS], [BZ_GROUP]: [BZ_DOC], [BZ_SEQ]: [BZ_DOC], [BZ_MSG]: [BZ_DOC], [BZ_ASSOC]: [BZ_DOC, { key: 'direction', label: 'Direction', kind: 'enum', options: ['none', 'one', 'both'] }], [BZ_DATA_ASSOC]: [BZ_DOC] },
   // an activity deleted takes its boundary events with it; a group deleted leaves the elements that named it
   refs: Object.fromEntries([...BZ_FLOW, ...BZ_DATA, BZ_NOTE].map(t => [t, { 'props.categoryValueRef': 'drop', ...(t === BZ_BE ? { 'props.attachedTo': 'cascade' } : {}) }])),
