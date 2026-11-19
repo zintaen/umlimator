@@ -1373,7 +1373,10 @@ test('audit 48: a removed extend whose extension point went with it reads on the
 
 test('audit 48: an interaction overview\'s inline interaction marks what the sequence view marks: an added fragment and its operand new, a lifeline taken out faded, dashed and struck', async () => {
   const all = await fromSrc(), a = read45('buy-book-overview'), marks = s => (s.match(/data-change="[^"]*"/g) || []).sort();
-  const inline = s => { const i = s.indexOf('<g class="node ov-inline"'); return s.slice(i, s.indexOf('<g class="node', i + 1)); };
+  // what the frame draws inside it: the frame's own tag is left out, as diff() marks the frame changed when a lifeline it reads is
+  // marked (the other audit 48 test above), apart from the marks its parts carry
+  const frame = s => { const i = s.indexOf('<g class="node ov-inline"'); return s.slice(i, s.indexOf('>', i) + 1); };
+  const inline = s => { const i = s.indexOf('<g class="node ov-inline"'); return s.slice(s.indexOf('>', i) + 1, s.indexOf('<g class="node', i + 1)); };
   const b = structuredClone(a), q = b.views.find(v => v.id === 'queue-order');
   q.fragments = [{ id: 'fopt', type: 'uml.CombinedFragment', props: { operator: 'opt' }, members: [{ id: 'fopt-1', type: 'uml.InteractionOperand', label: 'in stock' }] }]; q.edges[2].parent = 'fopt-1';
   const c = structuredClone(a), q2 = c.views.find(v => v.id === 'queue-order');
@@ -1383,6 +1386,7 @@ test('audit 48: an interaction overview\'s inline interaction marks what the seq
     assert.deepEqual(marks(sq), want); assert.deepEqual(marks(ov), want, 'the inline frame marks as the sequence view does'); }
   const ov = inline(svgOf(all.layout(all.diff(a, b).model, 'buy-book'))); assert.match(ov, />NEW<\/text>/);
   const gone = inline(svgOf(all.layout(all.diff(a, c).model, 'buy-book'))), head = gone.slice(gone.lastIndexOf('<g', gone.indexOf('data-change="removed"')));
+  assert.match(frame(svgOf(all.layout(all.diff(a, c).model, 'buy-book'))), /data-change="changed"/, 'the frame that read the lifeline is marked too');
   assert.match(head, /stroke-dasharray="6 4"/); assert.match(head, /text-decoration="line-through">worker : OrderWorker</); assert.match(head, />REMOVED<\/text>/);
   assert.doesNotMatch(inline(svgOf(all.layout(a, 'buy-book'))), /data-change/, 'no change: no mark');
 });
