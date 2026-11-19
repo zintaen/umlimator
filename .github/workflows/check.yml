@@ -222,22 +222,19 @@ jobs:
         with:
           node-version: 24
 
-      - name: The example renders as committed and its layout check is clean
+      - name: The integration fixture renders and its layout check is clean
         run: |
-          python3 umlimator.py render examples/bike-share.json --out examples/bike-share.html --no-check
-          t='s/"generated": "[^"]*"//'  # the render time is the only difference allowed
-          diff -q <(git show HEAD:examples/bike-share.html | sed "$t") <(sed "$t" examples/bike-share.html) \
-            || { echo "::error::examples/bike-share.html is stale: render it again and commit it"; exit 1; }
-          python3 umlimator.py check examples/bike-share.html --expand | tee /tmp/check.json   # every view, and with each stacked card unfolded in place, as the loop below checks the others
-          # its map views clean; its typed views (step 3 of the one-model plan) at most the crossings their Bookshop and e-bike files
-          # kept: at most 21 (Chrome finds 18, Node 17, since step 4's review took the C4 worker's line to the database out; a ceiling, as text widths differ between machines; tests/bike-share.test.mjs
-          # pins Node's count per view). A problem reads "view <id>: ..." or "view <id> with <card> unfolded: ...": the id stops at the colon or space
+          python3 umlimator.py render tests/fixtures/integration.json --out /tmp/integration.html --no-check
+          python3 umlimator.py check /tmp/integration.html --expand | tee /tmp/check.json   # every view, and with each stacked card unfolded in place, as the loop below checks the examples
+          # its map views clean; its typed views at most the crossings their one-type models kept: at most 21 (Chrome finds 18,
+          # Node 17; a ceiling, as text widths differ between machines; tests/integration.test.mjs pins Node's count per view).
+          # A problem reads "view <id>: ..." or "view <id> with <card> unfolded: ...": the id stops at the colon or space
           python3 -I -c "import json, re; s = open('/tmp/check.json').read(); d = json.loads(s[s.find('{'):]); p = d['problems']; maps = ('context', 'system', 'trips', 'fleet', 'ride-end', 'overview', 'api', 'checkout', 'dock-feed', 'demand', 'help'); assert not d['errors'] and all(q.endswith(' cross') and re.match(r'view ([^:\s]+)', q).group(1) not in maps for q in p) and len(p) <= 21, (p, d['errors'])"
 
       - name: The other examples render and their layout checks are clean, in the browser and in Node (the site shows them)
         run: |
           for m in examples/*.json; do
-            n=$(basename "$m" .json); [ "$n" = bike-share ] && continue   # checked above, with its committed page
+            n=$(basename "$m" .json)
             python3 umlimator.py render "$m" --out "/tmp/$n.html" --no-check
             x=0; case "$n" in fulfil-activity) x=4;; order-states) x=2;; bookshop-c4) x=8;; bookshop-data-flow) x=2;; bookshop-gcp) x=1;; bookshop-azure) x=2;; bookshop-order-to-shipment) x=5;; bookshop-aws) x=2;; esac   # at most the crossings port repair off leave (text widths differ between machines, so the count is a ceiling)s (notes/stage-4.md §17; notes/milestone-2.md §11; notes/milestone-4a.md §11), counted over both passes; pinned in tests/cli.py and the types' tests
             python3 umlimator.py check "/tmp/$n.html" --expand > "/tmp/$n.json"   # every view, and again with each stacked card unfolded in place (#71)
@@ -353,11 +350,11 @@ jobs:
           print(f"map-repo's pinned CLI ({ref}) runs the engine with -I")
           PY
 
-      - name: The imported example is what import writes from its Structurizr source, so the two can't drift apart
+      - name: The imported fixture is what import writes from its Structurizr source, so the two can't drift apart
         run: |
-          python3 umlimator.py import examples/bike-share.dsl --out /tmp/bike-share-c4.json
-          diff examples/bike-share-c4.json /tmp/bike-share-c4.json \
-            || { echo "::error::examples/bike-share-c4.json is not what import writes from examples/bike-share.dsl: import it again and commit it"; exit 1; }
+          python3 umlimator.py import tests/fixtures/integration.dsl --out /tmp/integration-c4.json
+          diff tests/fixtures/integration-c4.json /tmp/integration-c4.json \
+            || { echo "::error::tests/fixtures/integration-c4.json is not what import writes from tests/fixtures/integration.dsl: import it again and commit it"; exit 1; }
 
       - name: umlimator.py pack fetches a synthetic icon pack only after its terms and a yes, by its pinned size and sha256, and a render never downloads one (no vendor contacted)
         run: python3 tests/packs.py
@@ -463,14 +460,14 @@ jobs:
         # which the engine before patches 31-35 never met (m50 did not finish in 30 min: bench/results/2026-11-06-ab8daa1-m50.json).
         # b26 takes about 0.4 s here and took 0.78-1.36 s on a runner (1.36 s on 0.9.0, with its layout unchanged): 3 s keeps
         # a slow runner from failing a PR on time alone
-        # Each model goes to one shard, the most views first, from bench.py's own list (every bench/models/*.json and
-        # examples/bike-share.json, its map views only), so a new model is benchmarked without a list to edit
+        # Each model goes to one shard, the most views first, from bench.py's own list (every bench/models/*.json, its map
+        # views only), so a new model is benchmarked without a list to edit
         run: |
           models=$(python3 -I - ${{ matrix.shard }} 2 <<'PY'
           import importlib.util, json, pathlib, sys
           k, n = map(int, sys.argv[1:])
           s = importlib.util.spec_from_file_location("bench", "bench/bench.py"); b = importlib.util.module_from_spec(s); s.loader.exec_module(b)
-          paths = sorted(pathlib.Path("bench/models").glob("*.json")) + [pathlib.Path("examples/bike-share.json")]
+          paths = sorted(pathlib.Path("bench/models").glob("*.json"))
           views = {p.stem: len(b.bench_views(json.loads(p.read_text()))) for p in paths}  # bench.py's own list of the views it times
           load, shard = [0] * n, {}
           for x in sorted(views, key=lambda x: (-views[x], x)):
@@ -548,7 +545,7 @@ jobs:
           mkdir -p _site/examples
           cp -r lib icons _site/
           cp examples/*.json examples/*.html examples/*.js examples/*.mjs examples/README.md _site/examples/
-          cp -r examples/traces _site/examples/   # replay.html's trace, which bike-share keeps as a view too (#96)
+          cp -r examples/traces _site/examples/   # replay.html's trace (#96)
           for m in examples/*.json; do
             n=$(basename "$m" .json)
             python3 umlimator.py render "$m" --out "_site/examples/$n.html" --no-check

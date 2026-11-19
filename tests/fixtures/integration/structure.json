@@ -238,7 +238,7 @@
       "id": "components",
       "diagram": "uml.component",
       "parent": null,
-      "title": "Bike share components",
+      "title": "Moped share components",
       "present": { "i-rides": { "as": "ball" } },
       "nodeIds": [
         "app-component", "trips-api", "hire-component", "accounts-component", "payment-provider-component",

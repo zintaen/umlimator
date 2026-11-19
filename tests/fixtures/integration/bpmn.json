@@ -23,9 +23,9 @@
       "props": { "definition": "none" }
     },
     {
-      "id": "bp-bikeshare",
+      "id": "bp-mopedshare",
       "type": "bpmn.Participant",
-      "label": "Bike share",
+      "label": "Moped share",
       "members": [
         { "id": "bp-support", "type": "bpmn.Lane", "label": "Support" },
         { "id": "bp-workshop", "type": "bpmn.Lane", "label": "Workshop" }
@@ -39,18 +39,18 @@
       "props": { "definition": "message" }
     },
     {
-      "id": "bp-check-bike",
+      "id": "bp-check-moped",
       "type": "bpmn.Task",
-      "label": "Check the bike remotely",
+      "label": "Check the moped remotely",
       "parent": "bp-support",
       "props": { "taskType": "service" }
     },
     {
       "id": "check-timeout",
       "type": "bpmn.BoundaryEvent",
-      "label": "No answer from the bike in 2 minutes",
+      "label": "No answer from the moped in 2 minutes",
       "parent": "bp-support",
-      "props": { "attachedTo": "bp-check-bike", "cancelActivity": true, "definition": "timer" }
+      "props": { "attachedTo": "bp-check-moped", "cancelActivity": true, "definition": "timer" }
     },
     { "id": "fault-confirmed", "type": "bpmn.ExclusiveGateway", "label": "Fault confirmed?", "parent": "bp-support" },
     { "id": "no-fault", "type": "bpmn.ExclusiveGateway", "parent": "bp-support" },
@@ -59,7 +59,7 @@
       "type": "bpmn.Task",
       "label": "Close the report",
       "parent": "bp-support",
-      "props": { "taskType": "service", "documentation": "Nothing to repair: the bike reports no fault." }
+      "props": { "taskType": "service", "documentation": "Nothing to repair: the moped reports no fault." }
     },
     {
       "id": "report-closed",
@@ -79,9 +79,9 @@
     {
       "id": "collect",
       "type": "bpmn.SubProcess",
-      "label": "Collect the bike",
+      "label": "Collect the moped",
       "parent": "bp-workshop",
-      "opensView": "collect-bike"
+      "opensView": "collect-moped"
     },
     { "id": "bp-join", "type": "bpmn.ParallelGateway", "parent": "bp-workshop" },
     {
@@ -94,31 +94,31 @@
     {
       "id": "bp-to-workshop",
       "type": "bpmn.CallActivity",
-      "label": "Take the bike to the workshop",
+      "label": "Take the moped to the workshop",
       "parent": "bp-workshop",
-      "props": { "calledElement": "Move bike", "categoryValueRef": ["dispatch"] }
+      "props": { "calledElement": "Move moped", "categoryValueRef": ["dispatch"] }
     },
     {
       "id": "out-notice",
       "type": "bpmn.IntermediateThrowEvent",
-      "label": "Station told the bike is out",
+      "label": "Station told the moped is out",
       "parent": "bp-support",
       "props": { "definition": "message", "categoryValueRef": ["dispatch"] }
     },
     {
       "id": "in-workshop",
       "type": "bpmn.EndEvent",
-      "label": "Bike in the workshop",
+      "label": "Moped in the workshop",
       "parent": "bp-support",
       "props": { "definition": "none" }
     },
-    { "id": "bp-ebike", "type": "bpmn.Participant", "label": "E-bike" },
-    { "id": "bp-report", "type": "bpmn.DataObject", "label": "Fault report", "parent": "bp-bikeshare" },
-    { "id": "bp-fleet-store", "type": "bpmn.DataStoreReference", "label": "Fleet store", "parent": "bp-bikeshare" },
+    { "id": "bp-emoped", "type": "bpmn.Participant", "label": "E-moped" },
+    { "id": "bp-report", "type": "bpmn.DataObject", "label": "Fault report", "parent": "bp-mopedshare" },
+    { "id": "bp-fleet-store", "type": "bpmn.DataStoreReference", "label": "Fleet store", "parent": "bp-mopedshare" },
     {
       "id": "note-sim",
       "type": "bpmn.TextAnnotation",
-      "label": "The bike reports its own state; support never unlocks it remotely"
+      "label": "The moped reports its own state; support never unlocks it remotely"
     },
     { "id": "dispatch", "type": "bpmn.Group", "label": "Dispatch" },
     {
@@ -131,21 +131,21 @@
     {
       "id": "lock-out",
       "type": "bpmn.Task",
-      "label": "Lock the bike out of hire",
+      "label": "Lock the moped out of hire",
       "parent": "collect",
       "props": { "taskType": "user" }
     },
     {
       "id": "tag-and-load",
       "type": "bpmn.Task",
-      "label": "Tag and load the bike",
+      "label": "Tag and load the moped",
       "parent": "collect",
       "props": { "taskType": "none" }
     },
     {
-      "id": "bike-loaded",
+      "id": "moped-loaded",
       "type": "bpmn.EndEvent",
-      "label": "Bike loaded",
+      "label": "Moped loaded",
       "parent": "collect",
       "props": { "definition": "none" }
     }
@@ -153,8 +153,8 @@
   "edges": [
     { "id": "f-unlock", "type": "bpmn.SequenceFlow", "from": "fault-spotted", "to": "report-the-fault" },
     { "id": "f-placed", "type": "bpmn.SequenceFlow", "from": "report-the-fault", "to": "fault-reported" },
-    { "id": "f-received", "type": "bpmn.SequenceFlow", "from": "report-received", "to": "bp-check-bike" },
-    { "id": "bp-f-charged", "type": "bpmn.SequenceFlow", "from": "bp-check-bike", "to": "fault-confirmed" },
+    { "id": "f-received", "type": "bpmn.SequenceFlow", "from": "report-received", "to": "bp-check-moped" },
+    { "id": "bp-f-charged", "type": "bpmn.SequenceFlow", "from": "bp-check-moped", "to": "fault-confirmed" },
     { "id": "bp-f-paid", "type": "bpmn.SequenceFlow", "from": "fault-confirmed", "to": "fork", "label": "yes" },
     { "id": "bp-f-declined", "type": "bpmn.SequenceFlow", "from": "fault-confirmed", "to": "no-fault", "label": "no" },
     { "id": "f-timeout", "type": "bpmn.SequenceFlow", "from": "check-timeout", "to": "no-fault" },
@@ -170,7 +170,7 @@
     { "id": "f-shipped", "type": "bpmn.SequenceFlow", "from": "out-notice", "to": "in-workshop" },
     { "id": "f-pick", "type": "bpmn.SequenceFlow", "from": "collection-starts", "to": "lock-out" },
     { "id": "f-pack", "type": "bpmn.SequenceFlow", "from": "lock-out", "to": "tag-and-load" },
-    { "id": "bp-f-done", "type": "bpmn.SequenceFlow", "from": "tag-and-load", "to": "bike-loaded" },
+    { "id": "bp-f-done", "type": "bpmn.SequenceFlow", "from": "tag-and-load", "to": "moped-loaded" },
     {
       "id": "m-report",
       "type": "bpmn.MessageFlow",
@@ -181,44 +181,50 @@
     {
       "id": "bp-m-status",
       "type": "bpmn.MessageFlow",
-      "from": "bp-check-bike",
-      "to": "bp-ebike",
+      "from": "bp-check-moped",
+      "to": "bp-emoped",
       "label": "Status request"
     },
-    { "id": "m-status", "type": "bpmn.MessageFlow", "from": "bp-ebike", "to": "bp-check-bike", "label": "Bike status" },
+    {
+      "id": "m-status",
+      "type": "bpmn.MessageFlow",
+      "from": "bp-emoped",
+      "to": "bp-check-moped",
+      "label": "Moped status"
+    },
     {
       "id": "m-out-notice",
       "type": "bpmn.MessageFlow",
       "from": "out-notice",
       "to": "bp-rider",
-      "label": "Bike out notice"
+      "label": "Moped out notice"
     },
     { "id": "d-ride-out", "type": "bpmn.DataAssociation", "from": "report-received", "to": "bp-report" },
     { "id": "d-ride-in", "type": "bpmn.DataAssociation", "from": "bp-report", "to": "collect" },
     { "id": "d-stock-read", "type": "bpmn.DataAssociation", "from": "bp-fleet-store", "to": "collect" },
     { "id": "d-stock-write", "type": "bpmn.DataAssociation", "from": "collect", "to": "bp-fleet-store" },
-    { "id": "a-note-sim", "type": "bpmn.Association", "from": "note-sim", "to": "bp-check-bike" }
+    { "id": "a-note-sim", "type": "bpmn.Association", "from": "note-sim", "to": "bp-check-moped" }
   ],
   "views": [
     {
       "id": "repair-process",
       "diagram": "bpmn",
       "parent": null,
-      "title": "Repairing a reported bike",
+      "title": "Repairing a reported moped",
       "nodeIds": [
-        "bp-rider", "fault-spotted", "report-the-fault", "fault-reported", "bp-bikeshare", "report-received",
-        "bp-check-bike", "check-timeout", "fault-confirmed", "no-fault", "close-report", "report-closed", "fork",
-        "send-credit", "collect", "bp-join", "van-pickup", "bp-to-workshop", "out-notice", "in-workshop", "bp-ebike",
+        "bp-rider", "fault-spotted", "report-the-fault", "fault-reported", "bp-mopedshare", "report-received",
+        "bp-check-moped", "check-timeout", "fault-confirmed", "no-fault", "close-report", "report-closed", "fork",
+        "send-credit", "collect", "bp-join", "van-pickup", "bp-to-workshop", "out-notice", "in-workshop", "bp-emoped",
         "bp-report", "bp-fleet-store", "note-sim", "dispatch"
       ]
     },
     {
-      "id": "collect-bike",
+      "id": "collect-moped",
       "diagram": "bpmn",
       "parent": "repair-process",
-      "title": "Collect the bike",
+      "title": "Collect the moped",
       "subject": "collect",
-      "nodeIds": ["collection-starts", "lock-out", "tag-and-load", "bike-loaded"]
+      "nodeIds": ["collection-starts", "lock-out", "tag-and-load", "moped-loaded"]
     }
   ]
 }

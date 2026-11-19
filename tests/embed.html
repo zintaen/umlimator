@@ -9,7 +9,7 @@
 <div id="b" style="width:600px;height:400px"></div>
 <script type="module">
 import { render, layout } from '../lib/umlimator.js';
-const MODEL = await (await fetch('../examples/bike-share.json')).json(), THEME = await (await fetch('../lib/umlimator-theme.css')).text();
+const MODEL = await (await fetch('fixtures/integration.json')).json(), THEME = await (await fetch('../lib/umlimator-theme.css')).text();
 const loaded = performance.getEntriesByType('resource').length; // the module, the model and the theme; nothing after this
 const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };

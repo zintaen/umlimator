@@ -39,10 +39,10 @@
       "kind": "backend",
       "owner": "Fleet",
       "icon": "chart",
-      "sublabel": "no bike in two docks",
-      "what": "Drops a bike seen at two docks at once.",
+      "sublabel": "no moped in two docks",
+      "what": "Drops a moped seen at two docks at once.",
       "when": "Second.",
-      "how": "Against the bike's last ten events."
+      "how": "Against the moped's last ten events."
     },
     {
       "id": "dock-quarantine",
@@ -202,7 +202,7 @@
           "to": "dock-listener",
           "kind": "feeds",
           "weight": 3,
-          "what": "Bike states, as the docks report them."
+          "what": "Moped states, as the docks report them."
         },
         { "id": "dfk1", "from": "dock-checks", "to": "dock-quarantine", "label": "fails one", "kind": "feeds" },
         { "id": "dfk2", "from": "dock-quarantine", "to": "telemetry", "label": "again, hourly", "loop": true }
@@ -258,7 +258,7 @@
           "from": "forecast",
           "to": "planner",
           "kind": "feeds",
-          "what": "Hands over the bikes needed per dock."
+          "what": "Hands over the mopeds needed per dock."
         },
         { "id": "dm5", "from": "planner", "to": "ops-console", "label": "flags short docks", "kind": "triggers" }
       ],

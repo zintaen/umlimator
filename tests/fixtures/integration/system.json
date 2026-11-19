@@ -7,7 +7,7 @@
       "owner": "Apps",
       "icon": "window",
       "sublabel": "iOS, Android, web",
-      "what": "Find a bike, unlock it, pay.",
+      "what": "Find a moped, unlock it, pay.",
       "when": "Every ride.",
       "how": "Calls the Trip service and the map tiles."
     },
@@ -66,10 +66,10 @@
       "kind": "backend",
       "owner": "Fleet",
       "icon": "gauge",
-      "sublabel": "bikes, docks, vans",
+      "sublabel": "mopeds, docks, vans",
       "opensView": "fleet",
       "opensCount": 6,
-      "what": "Knows where every bike is.",
+      "what": "Knows where every moped is.",
       "when": "Every dock event.",
       "how": "Reads the telemetry stream and plans rebalancing. Its inner view loads when you open it."
     },
@@ -79,9 +79,9 @@
       "kind": "backend",
       "owner": "Fleet",
       "icon": "clock",
-      "sublabel": "e-bike charging slots",
+      "sublabel": "e-moped charging slots",
       "change": "planned",
-      "what": "Books charging slots for e-bikes.",
+      "what": "Books charging slots for e-mopeds.",
       "when": "Planned for next year.",
       "how": "Not built yet."
     },
@@ -104,7 +104,7 @@
       "icon": "queue",
       "sublabel": "Kafka",
       "badges": ["3 partitions"],
-      "what": "Dock and bike events.",
+      "what": "Dock and moped events.",
       "when": "Every few seconds per dock.",
       "how": "Partitioned by dock; kept seven days."
     },
@@ -128,7 +128,7 @@
       "sublabel": "400 docks",
       "what": "The docks on the street.",
       "when": "Always on.",
-      "how": "Report each bike and battery over MQTT; open on command."
+      "how": "Report each moped and battery over MQTT; open on command."
     },
     {
       "id": "monitoring",
@@ -169,7 +169,7 @@
     { "id": "s2", "from": "ops", "to": "ops-console", "label": "plans the day" },
     { "id": "s3", "from": "rider-app", "to": "trips", "label": "starts, ends rides", "sublabel": "REST", "weight": 3 },
     { "id": "s4", "from": "rider-app", "to": "accounts", "label": "signs in", "sublabel": "OIDC" },
-    { "id": "s6", "from": "ops-console", "to": "fleet", "label": "moves bikes", "sublabel": "REST", "toSide": "top" },
+    { "id": "s6", "from": "ops-console", "to": "fleet", "label": "moves mopeds", "sublabel": "REST", "toSide": "top" },
     {
       "id": "s7",
       "from": "trips",
@@ -190,7 +190,7 @@
       "sublabel": "MQTT",
       "weight": 3
     },
-    { "id": "s11", "from": "telemetry", "to": "fleet", "label": "bike states", "kind": "feeds", "weight": 3 },
+    { "id": "s11", "from": "telemetry", "to": "fleet", "label": "moped states", "kind": "feeds", "weight": 3 },
     {
       "id": "s12",
       "from": "fleet",

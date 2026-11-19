@@ -10,12 +10,12 @@
 <div id="page" style="width:1100px;height:700px"></div>
 <script type="module">
 import { render, mountPage, paths, reach } from '../lib/umlimator.js';
-const BIKE = await (await fetch('../examples/bike-share.json')).json();
+const FX = await (await fetch('fixtures/integration.json')).json();
 const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 const until = async (f, ms = 5000) => { const t = Date.now(); while (!f() && Date.now() - t < ms) await new Promise(r => setTimeout(r, 20)); return f(); };
 try {
-  const el = document.getElementById('a'), h = render(el, BIKE, { view: 'trips' }), sr = el.querySelector('.umlimator').shadowRoot;
+  const el = document.getElementById('a'), h = render(el, FX, { view: 'trips' }), sr = el.querySelector('.umlimator').shadowRoot;
   const line = (a, b) => sr.querySelector(`.edge-g[data-from="${a}"][data-to="${b}"]`), card = id => sr.querySelector(`.node[data-id="${id}"]`);
   const glow = (a, b) => line(a, b).querySelector('.um-glow'), text = s => [...sr.querySelectorAll('.um-marks text')].map(t => t.textContent).includes(s);
 
@@ -42,7 +42,7 @@ try {
 
   // marks survive update() and setView(); ids the view doesn't show are ignored; the files draw them, at rest
   h.overlay('traffic', { edges: { t6: { tone: 'rose', label: '120 ms' } }, nodes: { fare: { badge: 'hot' }, ghost: { tone: 'rose' } } });
-  const m2 = structuredClone(BIKE); m2.nodes.find(n => n.id === 'fare').label = 'Fares';
+  const m2 = structuredClone(FX); m2.nodes.find(n => n.id === 'fare').label = 'Fares';
   h.update(m2);
   check('marks survive an update() that redraws the view', !!glow('fare', 'pricing') && text('120 ms') && text('hot'));
   h.setView('system'); await until(() => h.view === 'system');
@@ -64,7 +64,7 @@ try {
     return { pills: pills.length, said: said.length, ok: pills.length + said.length === sr.querySelectorAll('.edge-g').length
       && !pills.some((p, k) => taken.some(o => meets(p, o)) || pills.some((q, j) => j !== k && meets(p, q)))
       && said.every(k => sr.querySelector(`.edge-g[data-i="${k.dataset.i}"] > title`).textContent.endsWith('\n' + long)) }; };
-  const c1 = crowd(h, sr, BIKE.edges.map(e => e.id));
+  const c1 = crowd(h, sr, FX.edges.map(e => e.id));
   check("on a crowded view a line's pill covers no card, line label or other pill, and one with no room is in the line's tooltip and accessible name instead",
     c1.ok && c1.pills > 0 && c1.said > 0, c1);
   const BOX = { nodes: [{ id: 'app', label: 'Rider app', kind: 'frontend' }, { id: 'api', label: 'Trip API', kind: 'backend' }], edges: [{ id: 'c', from: 'app', to: 'api', label: 'calls' }],
@@ -78,14 +78,14 @@ try {
     && ![...sr.querySelectorAll('.line-key, .edge-g > title')].some(x => (x.getAttribute('aria-label') || x.textContent).includes(long)));
 
   // highlight(): lit, the rest dimmed; distances fade; chips and badges light their cards
-  h.highlight(paths(BIKE, 'trips', 'rider-app', 'payments'));
+  h.highlight(paths(FX, 'trips', 'rider-app', 'payments'));
   check('highlight(paths(…)) lights the path and dims the rest', !card('fare').hasAttribute('opacity') && card('pricing').getAttribute('opacity') === '0.2'
     && !line('fare', 'payments').hasAttribute('opacity') && line('fare', 'pricing').getAttribute('opacity') === '0.2');
   h.select({ type: 'node', id: 'payments' });
   check("while a highlight is on, a selection doesn't dim the map its own way", getComputedStyle(card('pricing')).opacity === '0.2' && getComputedStyle(card('trip-api')).opacity === '1',
     [getComputedStyle(card('pricing')).opacity, getComputedStyle(card('trip-api')).opacity]);
   h.select(null);
-  h.highlight(reach(BIKE, 'trips', 'pricing', { backward: true }));
+  h.highlight(reach(FX, 'trips', 'pricing', { backward: true }));
   const op = id => +(card(id).getAttribute('opacity') ?? 1);
   check('highlight(reach(…)) fades each card with its distance', op('pricing') === 1 && op('fare') < 1 && op('rider-app') < op('fare') && op('rider-app') > 0.2 && op('unlock') === 0.2,
     ['pricing', 'fare', 'rider-app', 'unlock'].map(op));
@@ -109,7 +109,7 @@ try {
   h.destroy();
 
   // the standalone page: > and < light what a card leads to and what leads to it; P lights the paths between two cards
-  const pageEl = document.getElementById('page'), p = mountPage(pageEl, BIKE, { instant: true });
+  const pageEl = document.getElementById('page'), p = mountPage(pageEl, FX, { instant: true });
   await until(() => p.view === 'context' && document.querySelector('#m-canvas .umlimator'));
   p.setView('trips'); await until(() => p.view === 'trips');
   const psr = document.querySelector('#m-canvas .umlimator').shadowRoot, pcard = id => psr.querySelector(`.node[data-id="${id}"]`);

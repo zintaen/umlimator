@@ -385,7 +385,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const endOf = Object.assign(Object.create(null), boxEnd, byId), end = id => endOf[id], holds = (b, n) => b.box && n !== b && n.x >= b.x && n.y >= b.y && n.x + n.w <= b.x + b.w && n.y + n.h <= b.y + b.h;
   // a line between a box and something inside it is no line: inside by what the box holds (its cards, its boxes and theirs), not by
   // where it lies, as viewEdges decides it for a map; a box grown over a card it does not hold dropped that card's line to the box
-  // (audit 41: bike-share's system view, pricing with no pin). A port, on its owner's border, by where it lies, as before
+  // (audit 41: the integration fixture's system view, pricing with no pin). A port, on its owner's border, by where it lies, as before
   const famIn = (b, x) => { for (let k = 0, y = upOf.get(x); y != null && k <= familyDefs.length; y = upOf.get(y), k++) if (y === b) return true; return false; };
   const joins = (b, n) => b.box && n !== b && (n.box ? famIn(b.id, n.id) : n.owner != null ? holds(b, n) : under(b, n.id));
   const edges = (dg.edges || []).filter(e => { const s = end(e.from), t = end(e.to); if (!s || !t || (e.from === e.to && !loops[e.from])) return false;

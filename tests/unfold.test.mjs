@@ -10,19 +10,19 @@ const SHOP = read('../bench/models/u21.json'), PRINT = read('../bench/models/s16
 const lines = g => g.edges.map(e => `${e.from}>${e.to}`);
 const ids = g => g.edges.flatMap(e => e.ids);
 
-test('every card that unfolds in the examples unfolds with a clean layout check', () => {
+test('every card that unfolds in the integration fixture unfolds with a clean layout check', () => {
   let n = 0;
-  for (const f of ['bike-share']) {
-    const m = read(`../examples/${f}.json`);
-    // bike-share's typed views (step 3) are drawn by the full bundle, as the page draws them, where a card opening a view of
+  for (const f of ['integration']) {
+    const m = read(`./fixtures/${f}.json`);
+    // the fixture's typed views are drawn by the full bundle, as the page draws them, where a card opening a view of
     // another type opens it and never unfolds; every view
-    const { layout: L, check: C } = f === 'bike-share' ? all : { layout, check }, views = m.views;
+    const { layout: L, check: C } = f === 'integration' ? all : { layout, check }, views = m.views;
     for (const v of views) for (const card of L(m, v.id).nodes.filter(x => x.opens || x.kids)) {
       if (!L(m, v.id, { expand: [card.id] }).unfolded.length) continue;
       assert.deepEqual(C(m, v.id, { expand: [card.id] }).map(i => i.message), [], `${f} ${v.id} with ${card.id} unfolded`); n++;
     }
   }
-  // bike-share: context's bikeshare, system's trips and fleet, and fleet's dock-listener and forecast (demand, the numbered
+  // the fixture: context's mopedshare, system's trips and fleet, and fleet's dock-listener and forecast (demand, the numbered
   // inner view): five, all the model has. The rider shop's api never unfolds, as every card of its view is on overview
   // already. help has no opener on purpose: unfolded in place (tried from a Rider help card on system in step 4's review),
   // its Tone check and Redact, which only send, route over the help bot and cross or detour as the font's widths change
@@ -76,7 +76,7 @@ test('a card inside an unfolded box unfolds too, whatever order they are named i
 test('what does not unfold: a card on a numbered view, a view not loaded, a card with no cards of its own inside', () => {
   assert.deepEqual(layout(SHOP, 'shop', { expand: ['reports', 'buyers', 'nope'] }).unfolded, []);
   assert.deepEqual(layout(PRINT, 'job', { expand: ['pay'] }).unfolded, [], 'on a numbered view: its own steps would be numbered again');
-  const book = read('../examples/bike-share.json');
+  const book = read('./fixtures/integration.json');
   assert.deepEqual(layout(book, 'overview', { expand: ['api'] }).unfolded, [], 'every card of its numbered view is on the overview already');
   assert.equal(layout(SHOP, 'shop').unfolded, undefined, 'no expand, no unfolded');
 });
@@ -104,17 +104,17 @@ test("a numbered view drawn around the card brings its lanes as boxes, in order,
 });
 
 test('on a numbered card, a numbered view unfolds under its number: 4.1, 4.2; elsewhere it keeps 1, 2 (#82)', () => {
-  // bike-share's nightly forecast (demand, numbered) opened from step 4 of a five-step process laid over the model here
-  const bike = read('../examples/bike-share.json'), S = ['collect', 'check', 'store', 'forecast', 'plan'];
-  bike.nodes.push(...S.map(s => ({ id: `st-${s}`, label: s, kind: 'backend', ...(s === 'forecast' ? { opensView: 'demand' } : {}) })));
-  bike.edges.push(...S.slice(1).map((s, i) => ({ id: `st-p${i + 1}`, from: `st-${S[i]}`, to: `st-${s}`, kind: 'feeds' })));
-  bike.views.push({ id: 'stages', title: 'Stages', render: 'process', stepIds: S.map(s => `st-${s}`), nodeIds: S.map(s => `st-${s}`) });
-  const g = all.layout(bike, 'stages', { expand: ['st-forecast'] }), card = id => g.nodes.find(n => n.id === id), step = (a, b) => g.edges.find(e => e.from === a && e.to === b);
+  // the integration fixture's nightly forecast (demand, numbered) opened from step 4 of a five-step process laid over the model here
+  const fx = read('./fixtures/integration.json'), S = ['collect', 'check', 'store', 'forecast', 'plan'];
+  fx.nodes.push(...S.map(s => ({ id: `st-${s}`, label: s, kind: 'backend', ...(s === 'forecast' ? { opensView: 'demand' } : {}) })));
+  fx.edges.push(...S.slice(1).map((s, i) => ({ id: `st-p${i + 1}`, from: `st-${S[i]}`, to: `st-${s}`, kind: 'feeds' })));
+  fx.views.push({ id: 'stages', title: 'Stages', render: 'process', stepIds: S.map(s => `st-${s}`), nodeIds: S.map(s => `st-${s}`) });
+  const g = all.layout(fx, 'stages', { expand: ['st-forecast'] }), card = id => g.nodes.find(n => n.id === id), step = (a, b) => g.edges.find(e => e.from === a && e.to === b);
   assert.deepEqual(['warehouse', 'weather-feed', 'model-registry', 'planner'].map(i => step('forecast', i).step), ['4.1', '4.2', '4.3', '4.4'], 'the Forecast stage is step 4 of the process');
   const flags = step('planner', 'ops-console');
   assert.ok(flags.step === '4.5' && flags.lbl.step === '4.5' && flags.lbl.sw > 16, 'a longer number gets a wider mark on its line');
   assert.equal(card('st-plan').step, 5, "the process's own steps keep theirs");
-  assert.deepEqual(all.check(bike, 'stages', { expand: ['st-forecast'] }).map(i => i.message), []);
+  assert.deepEqual(all.check(fx, 'stages', { expand: ['st-forecast'] }).map(i => i.message), []);
   const m = { nodes: [{ id: 'a', label: 'Asker' }, { id: 'b', label: 'Builder', opensView: 'b' }, { id: 'b1', label: 'Planner' }, { id: 'b2', label: 'Runner', opensView: 'b2' }, { id: 'c1', label: 'Fetcher' }, { id: 'c2', label: 'Writer' }],
     views: [{ id: 'top', nodeIds: ['a', 'b'], edges: [{ from: 'a', to: 'b', label: 'asks' }] },
       { id: 'b', parent: 'top', render: 'sequence', nodeIds: ['b', 'b1', 'b2'], edges: [{ from: 'b', to: 'b1', label: 'plans' }, { from: 'b', to: 'b2', label: 'runs' }] },

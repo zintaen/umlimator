@@ -3,18 +3,18 @@
     { "id": "rider-actor", "type": "uml.Actor", "label": "Rider" },
     { "id": "member", "type": "uml.Actor", "label": "Pass holder" },
     { "id": "payment-provider", "type": "uml.Actor", "label": "Payment provider" },
-    { "id": "hire-system", "type": "uml.Subject", "label": "Bike share" },
+    { "id": "hire-system", "type": "uml.Subject", "label": "Moped share" },
     {
       "id": "browse",
       "type": "uml.UseCase",
-      "label": "Find a bike",
+      "label": "Find a moped",
       "parent": "hire-system",
-      "opensView": "locate-bike"
+      "opensView": "locate-moped"
     },
     {
       "id": "check-out",
       "type": "uml.UseCase",
-      "label": "Hire a bike",
+      "label": "Hire a moped",
       "parent": "hire-system",
       "opensView": "hire-overview",
       "members": [
@@ -43,11 +43,11 @@
     {
       "id": "check-charge",
       "type": "uml.Action",
-      "label": "Check the charge of each bike",
+      "label": "Check the charge of each moped",
       "parent": "lane-warehouse"
     },
     { "id": "battery-levels", "type": "uml.DataStoreNode", "label": "Battery levels", "parent": "lane-warehouse" },
-    { "id": "all-charged", "type": "uml.DecisionNode", "label": "All bikes charged?", "parent": "lane-warehouse" },
+    { "id": "all-charged", "type": "uml.DecisionNode", "label": "All mopeds charged?", "parent": "lane-warehouse" },
     { "id": "ask-batteries", "type": "uml.SendSignalAction", "label": "Battery request", "parent": "lane-warehouse" },
     {
       "id": "batteries-arrive",
@@ -64,14 +64,14 @@
       "parent": "lane-planner",
       "opensView": "swap-battery"
     },
-    { "id": "load-van", "type": "uml.Action", "label": "Load the bikes on the van", "parent": "lane-warehouse" },
+    { "id": "load-van", "type": "uml.Action", "label": "Load the mopeds on the van", "parent": "lane-warehouse" },
     { "id": "tell-crew", "type": "uml.Action", "label": "Text the crew \"van loaded\"", "parent": "lane-crew" },
     { "id": "told", "type": "uml.FlowFinalNode", "parent": "lane-crew" },
     { "id": "loaded-and-swapped", "type": "uml.JoinNode", "parent": "lane-warehouse" },
     {
-      "id": "drop-bikes",
+      "id": "drop-mopeds",
       "type": "uml.Action",
-      "label": "Dock the bikes at the station",
+      "label": "Dock the mopeds at the station",
       "parent": "lane-warehouse",
       "opensView": "dock-latch"
     },
@@ -85,7 +85,7 @@
       "id": "placed",
       "type": "uml.State",
       "label": "Booked",
-      "props": { "entry": "reserve the bike", "do": "poll the payment provider", "exit": "log the payment result" },
+      "props": { "entry": "reserve the moped", "do": "poll the payment provider", "exit": "log the payment result" },
       "members": [
         {
           "id": "placed.address",
@@ -101,7 +101,7 @@
       "type": "uml.State",
       "label": "Riding",
       "members": [
-        { "id": "fulfilling.parcel", "type": "uml.Region", "label": "Bike" },
+        { "id": "fulfilling.parcel", "type": "uml.Region", "label": "Moped" },
         { "id": "fulfilling.payment", "type": "uml.Region", "label": "Payment" }
       ]
     },
@@ -111,14 +111,14 @@
       "type": "uml.State",
       "label": "Unlocking",
       "parent": "fulfilling.parcel",
-      "props": { "do": "release the bike from its dock" }
+      "props": { "do": "release the moped from its dock" }
     },
     {
       "id": "packed",
       "type": "uml.State",
       "label": "Unlocked",
       "parent": "fulfilling.parcel",
-      "props": { "entry": "light the bike's ready lamp" }
+      "props": { "entry": "light the moped's ready lamp" }
     },
     {
       "id": "payment-start",
@@ -142,7 +142,7 @@
       "type": "uml.State",
       "label": "Heading to a dock",
       "parent": "delivery",
-      "props": { "do": "follow the bike's position" }
+      "props": { "do": "follow the moped's position" }
     },
     {
       "id": "out-for-delivery",
@@ -163,12 +163,17 @@
       "label": "Under review",
       "props": { "entry": "open a case with support", "exit": "close the case" }
     },
-    { "id": "cancelled", "type": "uml.State", "label": "Cancelled", "props": { "entry": "release the reserved bike" } },
+    {
+      "id": "cancelled",
+      "type": "uml.State",
+      "label": "Cancelled",
+      "props": { "entry": "release the reserved moped" }
+    },
     { "id": "erased", "type": "uml.Pseudostate", "props": { "kind": "terminate" } },
     { "id": "delivered", "type": "uml.FinalState" },
-    { "id": "bl-ebike", "type": "uml.State", "label": "E-bike" },
-    { "id": "bl-new", "type": "uml.Pseudostate", "parent": "bl-ebike", "props": { "kind": "initial" } },
-    { "id": "bl-in-service", "type": "uml.State", "label": "In service", "parent": "bl-ebike" },
+    { "id": "bl-emoped", "type": "uml.State", "label": "E-moped" },
+    { "id": "bl-new", "type": "uml.Pseudostate", "parent": "bl-emoped", "props": { "kind": "initial" } },
+    { "id": "bl-in-service", "type": "uml.State", "label": "In service", "parent": "bl-emoped" },
     { "id": "bl-service-start", "type": "uml.Pseudostate", "parent": "bl-in-service", "props": { "kind": "initial" } },
     {
       "id": "bl-docked",
@@ -201,18 +206,18 @@
       "id": "bl-in-repair",
       "type": "uml.State",
       "label": "In repair",
-      "parent": "bl-ebike",
-      "props": { "entry": "lock the bike out of hire", "exit": "log the repair" }
+      "parent": "bl-emoped",
+      "props": { "entry": "lock the moped out of hire", "exit": "log the repair" }
     },
-    { "id": "bl-fixable", "type": "uml.Pseudostate", "parent": "bl-ebike", "props": { "kind": "choice" } },
+    { "id": "bl-fixable", "type": "uml.Pseudostate", "parent": "bl-emoped", "props": { "kind": "choice" } },
     {
       "id": "bl-retired",
       "type": "uml.State",
       "label": "Retired",
-      "parent": "bl-ebike",
+      "parent": "bl-emoped",
       "props": { "entry": "strip it for spare parts" }
     },
-    { "id": "bl-scrapped", "type": "uml.FinalState", "parent": "bl-ebike" }
+    { "id": "bl-scrapped", "type": "uml.FinalState", "parent": "bl-emoped" }
   ],
   "edges": [
     { "id": "rider-browses", "type": "uml.Association", "from": "rider-actor", "to": "browse" },
@@ -245,7 +250,7 @@
       "type": "uml.ControlFlow",
       "from": "all-charged",
       "to": "charge-ready",
-      "props": { "guard": "all bikes charged" }
+      "props": { "guard": "all mopeds charged" }
     },
     {
       "id": "f-short",
@@ -264,8 +269,8 @@
     { "id": "f-stock-write", "type": "uml.ObjectFlow", "from": "load-van", "to": "battery-levels" },
     { "id": "f-paid", "type": "uml.ControlFlow", "from": "call-swap", "to": "loaded-and-swapped" },
     { "id": "f-packed", "type": "uml.ControlFlow", "from": "load-van", "to": "loaded-and-swapped" },
-    { "id": "f-ship", "type": "uml.ControlFlow", "from": "loaded-and-swapped", "to": "drop-bikes" },
-    { "id": "f-done", "type": "uml.ControlFlow", "from": "drop-bikes", "to": "done" },
+    { "id": "f-ship", "type": "uml.ControlFlow", "from": "loaded-and-swapped", "to": "drop-mopeds" },
+    { "id": "f-done", "type": "uml.ControlFlow", "from": "drop-mopeds", "to": "done" },
     { "id": "f-pay-start", "type": "uml.ControlFlow", "from": "swap-start", "to": "take-out-battery" },
     { "id": "f-charged", "type": "uml.ControlFlow", "from": "take-out-battery", "to": "fit-battery" },
     { "id": "f-recorded", "type": "uml.ControlFlow", "from": "fit-battery", "to": "swap-done" },
@@ -306,7 +311,7 @@
       "type": "uml.Transition",
       "from": "picking",
       "to": "packed",
-      "props": { "trigger": "bike released" }
+      "props": { "trigger": "moped released" }
     },
     { "id": "t-payment-start", "type": "uml.Transition", "from": "payment-start", "to": "capturing" },
     {
@@ -352,7 +357,7 @@
       "type": "uml.Transition",
       "from": "out-for-delivery",
       "to": "delivered",
-      "props": { "trigger": "bike docked", "effect": "email the receipt" }
+      "props": { "trigger": "moped docked", "effect": "email the receipt" }
     },
     {
       "id": "t-problem",
@@ -468,7 +473,7 @@
       "nodeIds": [
         "lane-planner", "lane-warehouse", "lane-crew", "start", "take-move", "move-object", "check-charge",
         "battery-levels", "all-charged", "ask-batteries", "batteries-arrive", "charge-ready", "split", "call-swap",
-        "load-van", "tell-crew", "told", "loaded-and-swapped", "drop-bikes", "done"
+        "load-van", "tell-crew", "told", "loaded-and-swapped", "drop-mopeds", "done"
       ]
     },
     {
@@ -491,12 +496,12 @@
       ]
     },
     {
-      "id": "bike-life",
+      "id": "moped-life",
       "diagram": "uml.state-machine",
       "parent": null,
-      "title": "A bike's life",
+      "title": "A moped's life",
       "nodeIds": [
-        "bl-ebike", "bl-new", "bl-in-service", "bl-service-start", "bl-docked", "bl-charging", "bl-in-use",
+        "bl-emoped", "bl-new", "bl-in-service", "bl-service-start", "bl-docked", "bl-charging", "bl-in-use",
         "bl-service-history", "bl-in-repair", "bl-fixable", "bl-retired", "bl-scrapped"
       ]
     }

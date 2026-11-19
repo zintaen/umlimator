@@ -267,8 +267,8 @@ test('audit 9: a card, line, box and view named constructor, toString, valueOf o
       out.push([v.id, r]); }
     return JSON.stringify(out); };
   try {
-    for (const file of readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json'))) {
-      const txt = readFileSync(new URL('../examples/' + file, import.meta.url), 'utf8'), m0 = JSON.parse(txt); if (!Array.isArray(m0.views) || !m0.views.length) continue;
+    for (const file of [...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).map(f => '../examples/' + f), './fixtures/integration.json']) {
+      const txt = readFileSync(new URL(file, import.meta.url), 'utf8'), m0 = JSON.parse(txt); if (!Array.isArray(m0.views) || !m0.views.length) continue;
       const v0 = m0.views[0], top = new Set((m0.nodes || []).map(n => n.id)), pinned = v0.layout || {};
       const ids = [(v0.nodeIds || []).find(id => top.has(id) && !Object.hasOwn(pinned, id)) ?? (v0.nodeIds || []).find(id => top.has(id)), // a card, unpinned if any
         (m0.edges || []).find(e => e && typeof e.id === 'string')?.id, m0.views.flatMap(w => w.containers || []).find(c => c && typeof c.id === 'string')?.id, v0.id];
@@ -346,8 +346,8 @@ test('audit 24: a sequence, timing or mindmap view named as a card with three li
     assert.deepEqual(L.validate(m).filter(p => p.level === 'error'), [], d);
     assert.equal(strip(g).length, strip(L.layout(mk(d, T, 'named'), 'named')).length, `${d}: drawn as under another name`);
   }
-  // a shipped view: the bike share's unlock sequence given the id of its lifeline with most messages out
-  const atlas = JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url))), v = atlas.views.find(x => x.id === 'unlock-sequence');
+  // a fixture's view: the integration fixture's unlock sequence given the id of its lifeline with most messages out
+  const atlas = JSON.parse(readFileSync(new URL('./fixtures/integration.json', import.meta.url))), v = atlas.views.find(x => x.id === 'unlock-sequence');
   const outs = new Map(); atlas.edges.forEach(e => v.nodeIds.includes(e.from) && outs.set(e.from, (outs.get(e.from) || 0) + 1));
   const top = [...outs].sort((a, b) => b[1] - a[1])[0][0]; atlas.views.forEach(x => { if (x.parent === v.id) x.parent = top; }); v.id = top;
   assert.ok(L.layout(atlas, top).nodes.length > 0, `unlock-sequence renamed ${top}`);

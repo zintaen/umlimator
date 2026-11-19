@@ -233,7 +233,7 @@ test('the classifier graphs\' edge cases (risks.md G1) lay out clean: 60 members
 
 // ---- review of 1.9: fixes, each with its regression
 test('a version-1 model is a map: a view that says diagram "uml.class" lays out and describes as it does without it (model.md rule 1)', () => {
-  const m = read('../examples/bike-share-c4.json'), d = structuredClone(m), vid = m.views[0].id;
+  const m = read('./fixtures/integration-c4.json'), d = structuredClone(m), vid = m.views[0].id;
   assert.equal(m.schemaVersion, undefined);
   d.views[0].diagram = 'uml.class';
   const flat = g => JSON.stringify(g, (k, v) => (k === 'all' || k === 'ms' ? undefined : v)); // not `all` (a merged line lists itself) or `ms` (timings)

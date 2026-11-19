@@ -1,5 +1,5 @@
 {
-  "title": "Bike share",
+  "title": "Moped share",
   "root": "context",
   "nodes": [
     {
@@ -7,7 +7,7 @@
       "label": "Rider",
       "kind": "person",
       "sublabel": "Person",
-      "what": "Finds and hires bikes, pays for rides and reports faults.",
+      "what": "Finds and hires mopeds, pays for rides and reports faults.",
       "icon": "user",
       "shape": "person"
     },
@@ -25,14 +25,14 @@
       "label": "Van service",
       "kind": "external",
       "sublabel": "Software system",
-      "what": "Collects faulty bikes and brings them back repaired."
+      "what": "Collects faulty mopeds and brings them back repaired."
     },
     {
-      "id": "bikeshare",
-      "label": "Bike share",
+      "id": "mopedshare",
+      "label": "Moped share",
       "kind": "backend",
       "sublabel": "Software system",
-      "what": "Hires e-bikes from city docks: finding, unlocking, pricing and paying for rides.",
+      "what": "Hires e-mopeds from city docks: finding, unlocking, pricing and paying for rides.",
       "opensView": "containers"
     },
     {
@@ -40,22 +40,22 @@
       "label": "Rider app",
       "kind": "frontend",
       "sublabel": "TypeScript, React",
-      "what": "The rider's app: a map of bikes, unlock and ride history, and the admin pages for staff."
+      "what": "The rider's app: a map of mopeds, unlock and ride history, and the admin pages for staff."
     },
     {
       "id": "api",
       "label": "Trip API",
       "kind": "backend",
       "sublabel": "Python, FastAPI",
-      "what": "Bikes, rides, pricing and accounts as a JSON API.",
+      "what": "Mopeds, rides, pricing and accounts as a JSON API.",
       "opensView": "api-components"
     },
     {
       "id": "finder",
-      "label": "Bike finder",
+      "label": "Moped finder",
       "kind": "backend",
       "sublabel": "FastAPI router",
-      "what": "Lists and searches free bikes and docks."
+      "what": "Lists and searches free mopeds and docks."
     },
     {
       "id": "hire",
@@ -92,14 +92,14 @@
       "label": "Ride worker",
       "kind": "backend",
       "sublabel": "Python",
-      "what": "Closes ended rides: books a van for a faulty bike and sends the receipt."
+      "what": "Closes ended rides: books a van for a faulty moped and sends the receipt."
     },
     {
       "id": "db",
       "label": "Database",
       "kind": "database",
       "sublabel": "PostgreSQL",
-      "what": "Bikes, docks, rides and accounts.",
+      "what": "Mopeds, docks, rides and accounts.",
       "shape": "cylinder"
     },
     {
@@ -158,7 +158,7 @@
       "id": "rider-app",
       "from": "rider",
       "to": "app",
-      "label": "Finds and unlocks a bike in",
+      "label": "Finds and unlocks a moped in",
       "sublabel": "HTTPS"
     },
     {
@@ -180,7 +180,7 @@
       "id": "app-finder",
       "from": "app",
       "to": "finder",
-      "label": "Finds bikes through",
+      "label": "Finds mopeds through",
       "sublabel": "JSON over HTTPS"
     },
     {
@@ -227,7 +227,7 @@
       "id": "finder-db",
       "from": "finder",
       "to": "db",
-      "label": "Reads bikes and docks from",
+      "label": "Reads mopeds and docks from",
       "sublabel": "SQL"
     },
     {
@@ -239,37 +239,37 @@
       "what": "Reads and writes accounts and sessions in"
     },
     {
-      "id": "bikeshare-van",
-      "from": "bikeshare",
+      "id": "mopedshare-van",
+      "from": "mopedshare",
       "to": "van",
       "label": "Books van pickups with",
       "sublabel": "HTTPS"
     },
     {
-      "id": "bikeshare-mail",
-      "from": "bikeshare",
+      "id": "mopedshare-mail",
+      "from": "mopedshare",
       "to": "mail",
       "label": "Sends receipts with",
       "sublabel": "HTTPS"
     },
     {
-      "id": "rider-bikeshare",
+      "id": "rider-mopedshare",
       "from": "rider",
-      "to": "bikeshare",
-      "label": "Finds and unlocks a bike in",
+      "to": "mopedshare",
+      "label": "Finds and unlocks a moped in",
       "sublabel": "HTTPS"
     },
     {
-      "id": "staff-bikeshare",
+      "id": "staff-mopedshare",
       "from": "staff",
-      "to": "bikeshare",
+      "to": "mopedshare",
       "label": "Edit the fleet and refund…",
       "sublabel": "HTTPS",
       "what": "Edit the fleet and refund rides in"
     },
     {
-      "id": "bikeshare-payments",
-      "from": "bikeshare",
+      "id": "mopedshare-payments",
+      "from": "mopedshare",
       "to": "payments",
       "label": "Starts a card payment with",
       "sublabel": "HTTPS"
@@ -306,12 +306,12 @@
   "views": [
     {
       "id": "context",
-      "title": "Bike share",
+      "title": "Moped share",
       "nodeIds": [
         "rider",
         "staff",
         "van",
-        "bikeshare",
+        "mopedshare",
         "payments",
         "mail"
       ],
@@ -324,20 +324,20 @@
           ]
         }
       ],
-      "caption": "Who hires bikes, who keeps them running, and what Bike share leans on.",
+      "caption": "Who hires mopeds, who keeps them running, and what Moped share leans on.",
       "edges": [
-        "bikeshare-van",
-        "bikeshare-mail",
+        "mopedshare-van",
+        "mopedshare-mail",
         "mail-rider",
-        "rider-bikeshare",
-        "staff-bikeshare",
-        "bikeshare-payments"
+        "rider-mopedshare",
+        "staff-mopedshare",
+        "mopedshare-payments"
       ],
       "parent": null
     },
     {
       "id": "containers",
-      "title": "Bike share containers",
+      "title": "Moped share containers",
       "nodeIds": [
         "rider",
         "staff",
@@ -352,8 +352,8 @@
       ],
       "containers": [
         {
-          "id": "bikeshare",
-          "label": "Bike share",
+          "id": "mopedshare",
+          "label": "Moped share",
           "nodeIds": [
             "app",
             "api",

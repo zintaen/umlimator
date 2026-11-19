@@ -14,9 +14,9 @@ const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const until = async (f, ms = 4000) => { const t = Date.now(); while (!f() && Date.now() - t < ms) await wait(20); return f(); };
-const BIKE = await (await fetch('../examples/bike-share.json')).json();
-// bike-share, with an example on Trip service (the Example tab, shown full size) and a story whose step selects by Ref
-const M = structuredClone(BIKE), thumb = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="20"><rect width="32" height="20" fill="#38bdf8"/></svg>');
+const FIX = await (await fetch('fixtures/integration.json')).json();
+// the integration fixture, with an example on Trip service (the Example tab, shown full size) and a story whose step selects by Ref
+const M = structuredClone(FIX), thumb = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="20"><rect width="32" height="20" fill="#38bdf8"/></svg>');
 M.nodes.find(n => n.id === 'trips').examples = [{ title: 'Trip screen', thumb }];
 M.stories.push({ id: 'refsel', title: 'A Ref', steps: [{ view: 'system', caption: 'Trip service, by a Ref', select: { type: 'node', id: 'trips', view: 'system' } }] });
 const $ = id => document.getElementById(id), box = $('page');
@@ -35,7 +35,7 @@ for (let i = 0; i < 6; i++) history.pushState(null, '', location.pathname + '#be
 try {
   /* ---------- the key router ---------- */
   await mount('#view=context');
-  pg.select({ type: 'node', id: 'bikeshare' }); await until(panel);
+  pg.select({ type: 'node', id: 'mopedshare' }); await until(panel);
   $('pt-what').focus(); let e = key('Enter');
   check('Enter on a details tab is the tab\'s: the map does not open the selected card\'s view, nor take the key', !e.defaultPrevented && pg.view === 'context', [e.defaultPrevented, pg.view]);
   e = key('Enter', document.querySelector('#m-panel [data-close]'));
@@ -142,9 +142,9 @@ try {
 
   // a move keeps the entry it leaves: a selection there stays in it (the select a move sends rewrote it)
   await mount('#view=context');
-  pg.select({ type: 'node', id: 'bikeshare' }); await until(() => link().node === 'bikeshare');
+  pg.select({ type: 'node', id: 'mopedshare' }); await until(() => link().node === 'mopedshare');
   await pg.setView('system');
-  check('Back after a move from a card comes back to that view and that card', await back(() => pg.view === 'context' && pg.selection && pg.selection.id === 'bikeshare') && link().node === 'bikeshare', [pg.view, location.hash]);
+  check('Back after a move from a card comes back to that view and that card', await back(() => pg.view === 'context' && pg.selection && pg.selection.id === 'mopedshare') && link().node === 'mopedshare', [pg.view, location.hash]);
 
   // stories in the history: each step's entry is its own view's, and Back and Forward show its step
   await mount('#view=context');
@@ -177,7 +177,7 @@ try {
   const nameless = ($('m-res').querySelector('.fr b') || {}).textContent; key('Escape', $('m-q')); found = await search('zeta-cardx');
   check('a card with no label is named by its id in a result, and in "Did you mean" (audit 15)', nameless === 'zeta-card' && /Did you mean zeta-card\?/.test(found), [nameless, found]);
   check('the page\'s title is its level-one heading (audit 15)', ($('page').querySelector('h1') || {}).textContent === M.title, ($('page').querySelector('h1') || {}).outerHTML);
-  pg.update(M); await until(() => pg.navigating === null); pg.select({ type: 'node', id: 'bikeshare' }); await until(() => panel() && $('m-panel').dataset.node === 'bikeshare');
+  pg.update(M); await until(() => pg.navigating === null); pg.select({ type: 'node', id: 'mopedshare' }); await until(() => panel() && $('m-panel').dataset.node === 'mopedshare');
   const lv = [...$('page').querySelectorAll('h1, h2, h3, h4, h5, h6')].map(h => +h.tagName[1]);
   check('under the title the headings go down one level at a time: the details panel\'s title an h2, its sections h3, the views list\'s an h2 (axe heading-order, audit 16)',
     lv[0] === 1 && lv.every((l, i) => !i || l <= lv[i - 1] + 1) && !!$('m-panel').querySelector('.pt h2') && !!$('m-panel').querySelector('.pbody h3'), lv);
@@ -226,11 +226,11 @@ try {
   wide.remove();
 
   /* ---------- one-shot modes: #still for a view the model lacks, and check's report ---------- */
-  const f1 = document.createElement('iframe'); f1.style.cssText = 'width:900px;height:600px;border:0'; f1.src = '../examples/bike-share.html#still=nope'; document.body.appendChild(f1);
+  const f1 = document.createElement('iframe'); f1.style.cssText = 'width:900px;height:600px;border:0'; f1.src = 'fixtures/integration.html#still=nope'; document.body.appendChild(f1);
   const still = await until(() => f1.contentDocument && f1.contentDocument.documentElement.getAttribute('data-still'), 6000);
   check('#still for a view the model lacks answers at once, with the reason (data-still), instead of waiting for ever', !!still && /no view "nope"/.test(JSON.parse(still).error), still);
   f1.remove();
-  const page = await (await fetch('../examples/bike-share.html')).text();
+  const page = await (await fetch('fixtures/integration.html')).text();
   const late = URL.createObjectURL(new Blob([page.replace('</body>', '<script type="module">Promise.reject(new Error("a late failure"))<\/script></body>')], { type: 'text/html' }));
   const f2 = document.createElement('iframe'); f2.style.cssText = 'width:900px;height:600px;border:0'; f2.src = late + '#check=1'; document.body.appendChild(f2);
   const rep = await until(() => f2.contentDocument && f2.contentDocument.getElementById('visual-check'), 8000) && JSON.parse(f2.contentDocument.getElementById('visual-check').textContent);
@@ -250,14 +250,14 @@ try {
   /* ---------- audit 9: a double-click whose second click lands on the page's legend; focus after a Find pick ---------- */
   await mount('#view=context');
   const mouse = (t, at, detail) => at.dispatchEvent(new MouseEvent(t, { bubbles: true, composed: true, cancelable: true, detail }));
-  mouse('click', card('bikeshare'), 1); mouse('click', $('m-legend'), 2); mouse('dblclick', $('m-legend'), 2);
+  mouse('click', card('mopedshare'), 1); mouse('click', $('m-legend'), 2); mouse('dblclick', $('m-legend'), 2);
   check('a double-click on an unselected card opens it though its second click lands on the legend the details panel moved there (audit 9)', await until(() => pg.view === 'system'), pg.view);
   key('/', document.body); await until(() => !$('m-pal').hidden); $('m-q').value = 'Trip service'; $('m-q').dispatchEvent(new Event('input')); key('Enter', $('m-q'));
   await until(() => pg.selection && pg.selection.id === 'trips'); await until(() => document.activeElement !== document.body, 1000);
   const onCard = sr().activeElement && sr().activeElement.closest('.node');
   check('a Find pick by Enter puts focus on the card it found, not on <body> (audit 9)', onCard && onCard.dataset.id === 'trips', [document.activeElement && document.activeElement.tagName, onCard && onCard.dataset.id]);
   /* ---------- audit 8: Find reaches an element drawn as a box; a bare % in a source URL ---------- */
-  box.innerHTML = ''; pg = mountAll(box, await (await fetch('../examples/bike-share.json')).json(), { instant: true, params: new URLSearchParams() });
+  box.innerHTML = ''; pg = mountAll(box, await (await fetch('fixtures/integration.json')).json(), { instant: true, params: new URLSearchParams() });
   await until(() => pg.view && document.querySelector('#m-canvas .umlimator')); await pg.setView('production'); await wait(30);
   key('/', document.body); await until(() => !$('m-pal').hidden); $('m-q').value = 'Java 21'; $('m-q').dispatchEvent(new Event('input'));
   const boxHit = ($('m-res').querySelector('.fr span') || {}).textContent || ''; key('Enter', $('m-q'));
@@ -273,7 +273,7 @@ try {
   /* ---------- audit 22: stories that is no list (text, a table with a length) draws the page with no Stories menu ---------- */
   for (const stories of ['to do', { length: 1, 0: { id: 's', steps: [] } }, 7]) {
     box.innerHTML = ''; let threw = null;
-    try { pg = mountPage(box, { ...structuredClone(BIKE), stories }, { instant: true, params: new URLSearchParams() }); } catch (e) { threw = String(e); }
+    try { pg = mountPage(box, { ...structuredClone(FIX), stories }, { instant: true, params: new URLSearchParams() }); } catch (e) { threw = String(e); }
     const drawn = !threw && await until(() => pg.view && document.querySelector('#m-canvas .umlimator'));
     check(`stories ${JSON.stringify(stories)}, no list: the page draws, with no Stories menu and the Lenses menu as ever (audit 22)`,
       drawn && !$('m-stories') && !$('m-stories-pop') && !!$('m-lenses'), threw || [!!drawn, !!$('m-stories'), !!$('m-lenses')]);
@@ -289,15 +289,15 @@ try {
   const ODD = { title: 'Shop', meta: { owner: 'team-a' }, root: 'top', nodes: [{ id: 'web', label: 'Web' }, { id: 'api', label: 'API' }, { id: 'db', label: 'DB' }, 'no card'],
     edges: [{ from: 'web', to: 'api' }, { from: 'api', to: 'db' }, { id: 'own', from: 'web', to: 'db' }],
     views: [{ id: 'top', nodeIds: ['web', 'api'], containers: 'none' }, { id: 'inside-api', parent: 'api', nodeIds: ['db'], edges: [{ from: 'db', to: 'db' }] }, { id: 'x', diagram: 'nosuch.kind', nodeIds: ['db'] }] };
-  for (const [name, model] of [['bike-share', BIKE], ['a model with id-less lines, a parent naming a card and fields that are no list', ODD]]) {
+  for (const [name, model] of [['the integration fixture', FIX], ['a model with id-less lines, a parent naming a card and fields that are no list', ODD]]) {
     const got = await exported(model);
     check(`Export ▸ Map model (JSON) of ${name} is the model given: no _id on a line, each view's parent as written, no list dropped (audit 29)`,
       !!got && JSON.stringify(got) === JSON.stringify(less(model)), got && { edges: got.edges && got.edges.slice(0, 2), views: got.views && got.views.map(v => [v.id, v.parent, v.containers]) }); }
   /* ---------- audit 30: the page render wrote exports the model file as written: none of render's icons, source, avatarsEmbedded,
      kind or meta keys (meta.added names them), and the model's own meta kept; a page an older render wrote loses render's keys too ---------- */
-  { const page = await (await fetch('../examples/bike-share.html')).text(), given = JSON.parse(new DOMParser().parseFromString(page, 'text/html').getElementById('visual-data').textContent);
-    const file = await (await fetch('../examples/bike-share.json')).json(), got = await exported(given), keys = o => o && Object.keys(o).sort().join();
-    check('audit 30: Export ▸ Map model (JSON) of examples/bike-share.html is examples/bike-share.json: no icons, source, avatarsEmbedded or kind, and its meta {project} kept',
+  { const page = await (await fetch('fixtures/integration.html')).text(), given = JSON.parse(new DOMParser().parseFromString(page, 'text/html').getElementById('visual-data').textContent);
+    const file = await (await fetch('fixtures/integration.json')).json(), got = await exported(given), keys = o => o && Object.keys(o).sort().join();
+    check('audit 30: Export ▸ Map model (JSON) of tests/fixtures/integration.html is tests/fixtures/integration.json: no icons, source, avatarsEmbedded or kind, and its meta {project} kept',
       !!got && JSON.stringify(got) === JSON.stringify(file), got && { keys: keys(got), meta: got.meta, added: given.meta && given.meta.added });
     const old = structuredClone(given); delete old.meta.added; delete old.meta['umlimator:written']; old.meta.owner = 'team-a'; const was = await exported(old);
     check('audit 30: a page an older render wrote (no meta.added) exports without render\'s keys, the model\'s other meta kept',
@@ -367,7 +367,7 @@ try {
   /* ---------- audit 33: a numeric title 0 (validate() takes it) on the map, the root view, a story, a lens and a rule: the page,
      the canvas and the PDF read "0", where they put "Map", "map" or the id ---------- */
   { box.innerHTML = ''; history.replaceState(null, '', location.pathname);
-    const Z = structuredClone(BIKE); Z.title = 0; Z.views.find(v => v.id === 'context').title = 0; Z.stories[0].title = 0; Z.lenses[0].title = 0; Z.rules[0].title = 0;
+    const Z = structuredClone(FIX); Z.title = 0; Z.views.find(v => v.id === 'context').title = 0; Z.stories[0].title = 0; Z.lenses[0].title = 0; Z.rules[0].title = 0;
     Z.lenses[1].title = '<img src="https://example.invalid/t.png">'; Z.stories.push({ id: 'hostile', title: '<img src="https://example.invalid/s.png">', steps: [{ view: 'context' }] }); // markup in a title stays text
     Z.views.push({ id: 'empty', parent: 'context', title: 'Empty', nodeIds: [] });
     pg = mountPage(box, Z, { instant: true, params: new URLSearchParams() }); await until(() => pg.view && document.querySelector('#m-canvas .umlimator')); await wait(30);
@@ -399,7 +399,7 @@ try {
     check('audit 33: the PDF of a map titled 0: its title reads 0, and a rule titled 0 is listed as 0', fd.title === '0' && !!ruleRow, [fd.title, [...fd.querySelectorAll('tr td b')].map(b => b.textContent).slice(-4)]);
     f.remove(); }
   { /* ---------- audit 37: the view pill, its About box and the views list count what a typed view draws, one number ---------- */
-    box.innerHTML = ''; pg = mountAll(box, await (await fetch('../examples/bike-share.json')).json(), { instant: true, params: new URLSearchParams() });
+    box.innerHTML = ''; pg = mountAll(box, await (await fetch('fixtures/integration.json')).json(), { instant: true, params: new URLSearchParams() });
     await until(() => pg.view && document.querySelector('#m-canvas .umlimator')); const got = {};
     for (const [view, n] of [['dock-latch', 2], ['unlock-sequence', 5], ['unlock-communication', 5], ['trip-internals', 9], ['overview', 13]]) {
       await pg.setView(view); await until(() => pg.view === view && ($('m-vpill').querySelector('.n') || {}).textContent); await wait(30);
@@ -411,8 +411,8 @@ try {
     const row = id => (document.querySelector(`#m-tree .mit[data-v="${id}"] em`) || {}).textContent || '';
     const palRow = async title => { key('/', document.body); await until(() => !$('m-pal').hidden); $('m-q').value = title; $('m-q').dispatchEvent(new Event('input'));
       const r = [...$('m-res').querySelectorAll('.fr')].find(b => b.querySelector('b').textContent === title), t = r ? r.querySelector('span').textContent : null; key('Escape', $('m-q')); return t; };
-    for (const [file, ids] of [['bike-share', ['trip-internals', 'ride-life', 'repair-process', 'domain', 'inside-ebike', 'range-analysis', 'blocks']]]) {
-      const A = await (await fetch(`../examples/${file}.json`)).json(), T = id => A.views.find(v => v.id === id).title, got = {};
+    for (const [file, ids] of [['fixtures/integration', ['trip-internals', 'ride-life', 'repair-process', 'domain', 'inside-emoped', 'range-analysis', 'blocks']]]) {
+      const A = await (await fetch(`${file}.json`)).json(), T = id => A.views.find(v => v.id === id).title, got = {};
       box.innerHTML = ''; pg = mountAll(box, A, { instant: true, params: new URLSearchParams() });
       await until(() => pg.view && document.querySelector('#m-canvas .umlimator')); const first = pg.view;
       await until(() => ids.every(id => /\d/.test(row(id))), 8000); // counted while the page is idle, never shown as another number first
@@ -422,7 +422,7 @@ try {
         Object.assign(got[id], { pill: $('m-vpill').querySelector('.n').textContent, after: row(id), here: await palRow(T(id)) }); }
       check(`${file}: a typed view's views-list row and search row say, before its first visit, the count its pill says after it (audit 38)`,
         Object.values(got).every(g => parseInt(g.list) === parseInt(g.pill) && g.palette === g.pill && parseInt(g.after) === parseInt(g.pill) && g.here === g.pill + ' · here'), got);
-      check('the e-bike\'s internal block view is 13 nodes everywhere, its bdd 12 (no frame counted) (audit 38)', got['inside-ebike'].pill === '13 nodes' && got.blocks.pill === '12 nodes', got);
+      check('the e-moped\'s internal block view is 13 nodes everywhere, its bdd 12 (no frame counted) (audit 38)', got['inside-emoped'].pill === '13 nodes' && got.blocks.pill === '12 nodes', got);
       pg.destroy(); pg = null; }
     // one element: "1 node", in the pill, its About box and the search palette
     const one = { nodes: [{ id: 'a', label: 'Alone', kind: 'backend' }, { id: 'b', label: 'B', kind: 'backend' }], edges: [], views: [{ id: 'v', title: 'Just one', nodeIds: ['a'] }, { id: 'w', title: 'Two', nodeIds: ['a', 'b'] }] };
@@ -442,7 +442,7 @@ try {
       said.p.pill === '1 step' && said.s.pill === '1 step' && parseInt(said.p.list) === 1 && parseInt(said.s.list) === 1 && said.p.here === '1 step · here' && said.s.here === '1 step · here'
       && /^2 nodes · 1 wire\b/.test(said.s.about) && !document.querySelector('#m-vpop img'), said);
     pg.destroy(); pg = null;
-    const A = await (await fetch('../examples/bike-share.json')).json(), api = A.views.find(v => v.id === 'api');
+    const A = await (await fetch('fixtures/integration.json')).json(), api = A.views.find(v => v.id === 'api');
     box.innerHTML = ''; pg = mountAll(box, A, { instant: true, params: new URLSearchParams() }); await until(() => pg.view && document.querySelector('#m-canvas .umlimator'));
     await pg.setView('api'); await until(() => pg.view === 'api' && ($('m-vpill').querySelector('.n') || {}).textContent); await wait(30);
     const apiSaid = { pill: $('m-vpill').querySelector('.n').textContent, list: row('api'), here: await palRow(api.title) };

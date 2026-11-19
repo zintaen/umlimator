@@ -19,7 +19,7 @@
       "owner": "Rides",
       "icon": "key",
       "sublabel": "opens a dock",
-      "what": "Releases a bike.",
+      "what": "Releases a moped.",
       "when": "When a ride starts.",
       "how": "Sends the dock an open command and waits for its reply."
     },
@@ -80,7 +80,7 @@
       "weight": 3,
       "latency": 120
     },
-    { "id": "t2", "from": "trip-api", "to": "unlock", "label": "unlock a bike", "latency": 15 },
+    { "id": "t2", "from": "trip-api", "to": "unlock", "label": "unlock a moped", "latency": 15 },
     {
       "id": "t3",
       "from": "unlock",

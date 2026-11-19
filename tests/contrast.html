@@ -26,7 +26,7 @@ const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.05
 const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
 const opacity = el => { let o = 1; for (let e = el; e && e.tagName !== 'svg'; e = e.parentNode) o *= +getComputedStyle(e).opacity; return o; };
 const paint = (el, prop) => { const c = rgba(getComputedStyle(el)[prop]); if (c) c[3] *= opacity(el); return c; };
-const EXAMPLE = await (await fetch('../examples/bike-share.json')).json(); // drawn on its rider shop's overview (its root is context)
+const EXAMPLE = await (await fetch('fixtures/integration.json')).json(); // drawn on its rider shop's overview (its root is context)
 const STATES = { nodes: [{ id: 'a', label: 'Planned service', sublabel: 'not built yet', change: 'planned' }, { id: 'b', label: 'Removed service', sublabel: 'going away', change: 'removed' },
   { id: 'c', label: 'Tones', sublabel: 'badge colours', badges: ['plain', { text: 'green', tone: 'green' }, { text: 'amber', tone: 'amber' }, { text: 'rose', tone: 'rose' }, { text: 'violet', tone: 'violet' }, { text: 'cyan', tone: 'cyan' }], edited: true },
   { id: 'd', label: 'Changed', change: 'modified', kind: 'database' }, { id: 'e', label: 'New', change: 'added', kind: 'external' }],
@@ -42,7 +42,7 @@ const TONED = { nodes: SORTS.map(k => ({ id: k, label: k, kind: k, sublabel: 'wh
   edges: [['frontend', 'backend'], ['backend', 'database'], ['backend', 'queue']].map(([from, to]) => ({ from, to, label: 'calls' })),
   views: [{ id: 'v', nodeIds: SORTS, containers: TONES.map((t, i) => ({ id: t, label: t + ' box', tone: t, nodeIds: SORTS.filter((_, j) => j % TONES.length === i) })) }] };
 // step numbers in their circles and pills (0.15.0): on a view's lines (a number, a sub-step, text), in a numbered view, and a
-// numbered view's swimlane numbers (the bike share's nightly forecast, demand)
+// numbered view's swimlane numbers (the integration fixture's nightly forecast, demand)
 const STEPS = { nodes: ['a', 'b', 'c', 'd'].map(id => ({ id, label: 'Part ' + id, kind: 'backend' })),
   edges: [{ from: 'a', to: 'b', label: 'asks', step: 1 }, { from: 'b', to: 'c', step: '2a' }, { from: 'c', to: 'd', label: 'pays', step: 3.1 }],
   views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd'] }, { id: 's', render: 'sequence', nodeIds: ['a', 'b', 'c', 'd'] }] };

@@ -6,7 +6,7 @@
       "kind": "person",
       "icon": "users",
       "sublabel": "unlock, ride, pay",
-      "what": "People who hire a bike from a dock.",
+      "what": "People who hire a moped from a dock.",
       "when": "Every ride.",
       "how": "They use the rider app on a phone."
     },
@@ -16,18 +16,18 @@
       "kind": "person",
       "icon": "usercheck",
       "sublabel": "rebalance, repair",
-      "what": "Staff who keep bikes where riders want them.",
+      "what": "Staff who keep mopeds where riders want them.",
       "when": "All day, in shifts.",
       "how": "They plan van routes in the ops console."
     },
     {
-      "id": "bikeshare",
-      "label": "Bike share",
+      "id": "mopedshare",
+      "label": "Moped share",
       "kind": "backend",
       "icon": "layers",
       "sublabel": "the whole system",
       "opensView": "system",
-      "what": "Everything the city's bike share runs on.",
+      "what": "Everything the city's moped share runs on.",
       "when": "Always on.",
       "how": "Apps, services and data on one platform. Double-click to go in."
     },
@@ -40,7 +40,7 @@
       "noSub": true,
       "what": "Takes card and wallet payments.",
       "when": "At the end of each ride.",
-      "how": "A REST API; the bike share never stores card numbers."
+      "how": "A REST API; the moped share never stores card numbers."
     },
     {
       "id": "maps",
@@ -64,13 +64,13 @@
     }
   ],
   "edges": [
-    { "id": "c1", "from": "riders", "to": "bikeshare", "label": "rides", "sublabel": "mobile app", "weight": 3 },
-    { "id": "c2", "from": "ops", "to": "bikeshare", "label": "manages the fleet", "sublabel": "web console" },
-    { "id": "c3", "from": "bikeshare", "to": "payments", "label": "charges rides", "sublabel": "REST", "weight": 2 },
-    { "id": "c4", "from": "bikeshare", "to": "maps", "label": "fetches tiles", "sublabel": "HTTPS" },
+    { "id": "c1", "from": "riders", "to": "mopedshare", "label": "rides", "sublabel": "mobile app", "weight": 3 },
+    { "id": "c2", "from": "ops", "to": "mopedshare", "label": "manages the fleet", "sublabel": "web console" },
+    { "id": "c3", "from": "mopedshare", "to": "payments", "label": "charges rides", "sublabel": "REST", "weight": 2 },
+    { "id": "c4", "from": "mopedshare", "to": "maps", "label": "fetches tiles", "sublabel": "HTTPS" },
     {
       "id": "c5",
-      "from": "bikeshare",
+      "from": "mopedshare",
       "to": "city",
       "label": "publishes trips",
       "kind": "feeds",
@@ -81,9 +81,9 @@
     {
       "id": "context",
       "parent": null,
-      "title": "Bike share",
-      "caption": "Who uses it and what it talks to. Double-click Bike share to go in.",
-      "nodeIds": ["riders", "ops", "bikeshare", "payments", "maps", "city"]
+      "title": "Moped share",
+      "caption": "Who uses it and what it talks to. Double-click Moped share to go in.",
+      "nodeIds": ["riders", "ops", "mopedshare", "payments", "maps", "city"]
     }
   ]
 }

@@ -1,0 +1,16 @@
+{ "resourceSpans": [
+  { "resource": {"attributes":[{"key":"service.name","value":{"stringValue":"github"}}]},
+    "scopeSpans": [{ "spans": [{"traceId":"7c41e0d9a3b2f58164e2c07a9d3b5f18","spanId":"a1","parentSpanId":"","name":"pull_request synchronize","startTimeUnixNano":"1762700000000000000","endTimeUnixNano":"1762700061000000000"}] }] },
+  { "resource": {"attributes":[{"key":"service.name","value":{"stringValue":"diff-action"}}]},
+    "scopeSpans": [{ "spans": [{"traceId":"7c41e0d9a3b2f58164e2c07a9d3b5f18","spanId":"b1","parentSpanId":"a1","name":"diff job","startTimeUnixNano":"1762700000800000000","endTimeUnixNano":"1762700060200000000"}] }] },
+  { "resource": {"attributes":[{"key":"service.name","value":{"stringValue":"umlimator.py"}}]},
+    "scopeSpans": [{ "spans": [{"traceId":"7c41e0d9a3b2f58164e2c07a9d3b5f18","spanId":"c1","parentSpanId":"b1","name":"diff --base origin/main","startTimeUnixNano":"1762700002000000000","endTimeUnixNano":"1762700052000000000"}] }] },
+  { "resource": {"attributes":[{"key":"service.name","value":{"stringValue":"git"}}]},
+    "scopeSpans": [{ "spans": [{"traceId":"7c41e0d9a3b2f58164e2c07a9d3b5f18","spanId":"d1","parentSpanId":"c1","name":"git show base models","startTimeUnixNano":"1762700002100000000","endTimeUnixNano":"1762700003400000000"}] }] },
+  { "resource": {"attributes":[{"key":"service.name","value":{"stringValue":"core-module"}}]},
+    "scopeSpans": [{ "spans": [{"traceId":"7c41e0d9a3b2f58164e2c07a9d3b5f18","spanId":"e1","parentSpanId":"c1","name":"diff(before, after)","startTimeUnixNano":"1762700003500000000","endTimeUnixNano":"1762700004300000000"}] }] },
+  { "resource": {"attributes":[{"key":"service.name","value":{"stringValue":"chrome"}}]},
+    "scopeSpans": [{ "spans": [{"traceId":"7c41e0d9a3b2f58164e2c07a9d3b5f18","spanId":"f1","parentSpanId":"c1","name":"stills of the changed views","startTimeUnixNano":"1762700004500000000","endTimeUnixNano":"1762700049000000000"}] }] },
+  { "resource": {"attributes":[{"key":"service.name","value":{"stringValue":"github"}}]},
+    "scopeSpans": [{ "spans": [{"traceId":"7c41e0d9a3b2f58164e2c07a9d3b5f18","spanId":"g1","parentSpanId":"b1","name":"POST comment","startTimeUnixNano":"1762700052500000000","endTimeUnixNano":"1762700053300000000"}] }] }
+] }

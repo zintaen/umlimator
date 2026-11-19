@@ -3,11 +3,11 @@
     {
       "id": "spec",
       "type": "sysml.Requirement",
-      "label": "E-bike specification",
+      "label": "E-moped specification",
       "opensView": "blocks",
       "props": {
         "reqId": "EB-1",
-        "text": "The e-bike shall serve as a shared city bike that riders hire from a dock and return to a dock."
+        "text": "The e-moped shall serve as a shared city moped that riders hire from a dock and return to a dock."
       }
     },
     {
@@ -24,7 +24,7 @@
       "parent": "assist",
       "props": {
         "reqId": "EB-1.1.1",
-        "text": "Assistance shall fall away progressively and stop when the bike reaches 25 km/h."
+        "text": "Assistance shall fall away progressively and stop when the moped reaches 25 km/h."
       }
     },
     {
@@ -42,7 +42,7 @@
       "parent": "spec",
       "props": {
         "reqId": "EB-1.3",
-        "text": "The e-bike shall lock into a dock when it is returned and shall charge while it is docked."
+        "text": "The e-moped shall lock into a dock when it is returned and shall charge while it is docked."
       }
     },
     {
@@ -50,7 +50,10 @@
       "type": "sysml.Requirement",
       "label": "Locking time",
       "parent": "docking",
-      "props": { "reqId": "EB-1.3.1", "text": "The dock shall lock the e-bike within 2 s of the bike being pushed in." }
+      "props": {
+        "reqId": "EB-1.3.1",
+        "text": "The dock shall lock the e-moped within 2 s of the moped being pushed in."
+      }
     },
     {
       "id": "capacity",
@@ -73,14 +76,14 @@
       "label": "Maximum assisted speed",
       "props": {
         "reqId": "REG-3",
-        "text": "Assistance shall fall away progressively and stop when the bike reaches 25 km/h."
+        "text": "Assistance shall fall away progressively and stop when the moped reaches 25 km/h."
       }
     },
     {
       "id": "availability",
       "type": "sysml.Requirement",
       "label": "All-day availability",
-      "props": { "reqId": "CITY-4", "text": "A bike shall last a full day of hires on one charge." }
+      "props": { "reqId": "CITY-4", "text": "A moped shall last a full day of hires on one charge." }
     },
     {
       "id": "battery",
@@ -144,97 +147,97 @@
     },
     { "id": "rental-vehicle", "type": "sysml.Block", "label": "RentalVehicle" },
     {
-      "id": "ebike",
+      "id": "emoped",
       "type": "sysml.Block",
-      "label": "EBike",
-      "opensView": "inside-ebike",
+      "label": "EMoped",
+      "opensView": "inside-emoped",
       "members": [
         {
-          "id": "ebike.battery",
+          "id": "emoped.battery",
           "type": "sysml.PartProperty",
           "label": "battery",
           "props": { "valueType": "Battery", "multiplicity": "1" }
         },
         {
-          "id": "ebike.controller",
+          "id": "emoped.controller",
           "type": "sysml.PartProperty",
           "label": "controller",
           "props": { "valueType": "Controller", "multiplicity": "1" }
         },
         {
-          "id": "ebike.motor",
+          "id": "emoped.motor",
           "type": "sysml.PartProperty",
           "label": "motor",
           "props": { "valueType": "Motor", "multiplicity": "1" }
         },
         {
-          "id": "ebike.frontLight",
+          "id": "emoped.frontLight",
           "type": "sysml.PartProperty",
           "label": "frontLight",
           "props": { "valueType": "Light", "multiplicity": "1" }
         },
         {
-          "id": "ebike.rearLight",
+          "id": "emoped.rearLight",
           "type": "sysml.PartProperty",
           "label": "rearLight",
           "props": { "valueType": "Light", "multiplicity": "1" }
         },
         {
-          "id": "ebike.dock",
+          "id": "emoped.dock",
           "type": "sysml.ReferenceProperty",
           "label": "dock",
           "props": { "valueType": "Dock", "multiplicity": "0..1" }
         },
         {
-          "id": "ebike.batteryCapacity",
+          "id": "emoped.batteryCapacity",
           "type": "sysml.ValueProperty",
           "label": "batteryCapacity",
           "props": { "valueType": "Energy" }
         },
         {
-          "id": "ebike.usableShare",
+          "id": "emoped.usableShare",
           "type": "sysml.ValueProperty",
           "label": "usableShare",
           "props": { "valueType": "Real" }
         },
         {
-          "id": "ebike.ecoConsumption",
+          "id": "emoped.ecoConsumption",
           "type": "sysml.ValueProperty",
           "label": "ecoConsumption",
           "props": { "valueType": "EnergyPerDistance" }
         },
         {
-          "id": "ebike.boostConsumption",
+          "id": "emoped.boostConsumption",
           "type": "sysml.ValueProperty",
           "label": "boostConsumption",
           "props": { "valueType": "EnergyPerDistance" }
         },
         {
-          "id": "ebike.ecoRange",
+          "id": "emoped.ecoRange",
           "type": "sysml.ValueProperty",
           "label": "ecoRange",
           "props": { "valueType": "Distance" }
         },
         {
-          "id": "ebike.boostRange",
+          "id": "emoped.boostRange",
           "type": "sysml.ValueProperty",
           "label": "boostRange",
           "props": { "valueType": "Distance" }
         },
         {
-          "id": "ebike.usable",
+          "id": "emoped.usable",
           "type": "sysml.ConstraintProperty",
           "label": "usable",
           "props": { "valueType": "UsableEnergy" }
         },
         {
-          "id": "ebike.eco",
+          "id": "emoped.eco",
           "type": "sysml.ConstraintProperty",
           "label": "eco",
           "props": { "valueType": "RangeEquation" }
         },
         {
-          "id": "ebike.boost",
+          "id": "emoped.boost",
           "type": "sysml.ConstraintProperty",
           "label": "boost",
           "props": { "valueType": "RangeEquation" }
@@ -357,9 +360,9 @@
     { "id": "rollers-verify-cut-off", "type": "sysml.Verify", "from": "roller-test", "to": "cut-off" },
     { "id": "why-500-link", "type": "uml.CommentLink", "from": "why-500", "to": "capacity" },
     {
-      "id": "ebike-battery",
+      "id": "emoped-battery",
       "type": "uml.Association",
-      "from": "ebike",
+      "from": "emoped",
       "to": "battery",
       "props": {
         "ends": {
@@ -369,9 +372,9 @@
       }
     },
     {
-      "id": "ebike-motor",
+      "id": "emoped-motor",
       "type": "uml.Association",
-      "from": "ebike",
+      "from": "emoped",
       "to": "motor",
       "props": {
         "ends": {
@@ -381,9 +384,9 @@
       }
     },
     {
-      "id": "ebike-controller",
+      "id": "emoped-controller",
       "type": "uml.Association",
-      "from": "ebike",
+      "from": "emoped",
       "to": "controller",
       "props": {
         "ends": {
@@ -392,7 +395,7 @@
         }
       }
     },
-    { "id": "ebike-is-rental-vehicle", "type": "uml.Generalization", "from": "ebike", "to": "rental-vehicle" },
+    { "id": "emoped-is-rental-vehicle", "type": "uml.Generalization", "from": "emoped", "to": "rental-vehicle" },
     {
       "id": "dock-uses-charge-interface",
       "type": "uml.Dependency",
@@ -406,7 +409,7 @@
       "from": "battery.charge",
       "to": "dock.charge",
       "props": {
-        "ends": { "from": { "part": "ebike.battery" }, "to": { "part": "ebike.dock" } },
+        "ends": { "from": { "part": "emoped.battery" }, "to": { "part": "emoped.dock" } },
         "itemFlow": { "item": "DCPower", "direction": "to-from" }
       }
     },
@@ -416,7 +419,7 @@
       "from": "battery.power",
       "to": "controller.supply",
       "props": {
-        "ends": { "from": { "part": "ebike.battery" }, "to": { "part": "ebike.controller" } },
+        "ends": { "from": { "part": "emoped.battery" }, "to": { "part": "emoped.controller" } },
         "itemFlow": { "item": "DCPower", "direction": "from-to" }
       }
     },
@@ -426,7 +429,7 @@
       "from": "controller.drive",
       "to": "motor.phases",
       "props": {
-        "ends": { "from": { "part": "ebike.controller" }, "to": { "part": "ebike.motor" } },
+        "ends": { "from": { "part": "emoped.controller" }, "to": { "part": "emoped.motor" } },
         "itemFlow": { "item": "PhaseCurrent", "direction": "from-to" }
       }
     },
@@ -435,77 +438,77 @@
       "type": "sysml.Connector",
       "from": "battery.bus",
       "to": "controller.bus",
-      "props": { "ends": { "from": { "part": "ebike.battery" }, "to": { "part": "ebike.controller" } } }
+      "props": { "ends": { "from": { "part": "emoped.battery" }, "to": { "part": "emoped.controller" } } }
     },
     {
       "id": "controller-front-light",
       "type": "sysml.Connector",
       "from": "controller.lights",
       "to": "light.power",
-      "props": { "ends": { "from": { "part": "ebike.controller" }, "to": { "part": "ebike.frontLight" } } }
+      "props": { "ends": { "from": { "part": "emoped.controller" }, "to": { "part": "emoped.frontLight" } } }
     },
     {
       "id": "controller-rear-light",
       "type": "sysml.Connector",
       "from": "controller.lights",
       "to": "light.power",
-      "props": { "ends": { "from": { "part": "ebike.controller" }, "to": { "part": "ebike.rearLight" } } }
+      "props": { "ends": { "from": { "part": "emoped.controller" }, "to": { "part": "emoped.rearLight" } } }
     },
     {
       "id": "bind-capacity",
       "type": "sysml.BindingConnector",
-      "from": "ebike.batteryCapacity",
+      "from": "emoped.batteryCapacity",
       "to": "usable-energy.capacity",
-      "props": { "ends": { "to": { "part": "ebike.usable" } } }
+      "props": { "ends": { "to": { "part": "emoped.usable" } } }
     },
     {
       "id": "bind-share",
       "type": "sysml.BindingConnector",
-      "from": "ebike.usableShare",
+      "from": "emoped.usableShare",
       "to": "usable-energy.share",
-      "props": { "ends": { "to": { "part": "ebike.usable" } } }
+      "props": { "ends": { "to": { "part": "emoped.usable" } } }
     },
     {
       "id": "bind-usable-eco",
       "type": "sysml.BindingConnector",
       "from": "usable-energy.usable",
       "to": "range-equation.energy",
-      "props": { "ends": { "from": { "part": "ebike.usable" }, "to": { "part": "ebike.eco" } } }
+      "props": { "ends": { "from": { "part": "emoped.usable" }, "to": { "part": "emoped.eco" } } }
     },
     {
       "id": "bind-usable-boost",
       "type": "sysml.BindingConnector",
       "from": "usable-energy.usable",
       "to": "range-equation.energy",
-      "props": { "ends": { "from": { "part": "ebike.usable" }, "to": { "part": "ebike.boost" } } }
+      "props": { "ends": { "from": { "part": "emoped.usable" }, "to": { "part": "emoped.boost" } } }
     },
     {
       "id": "bind-eco-consumption",
       "type": "sysml.BindingConnector",
-      "from": "ebike.ecoConsumption",
+      "from": "emoped.ecoConsumption",
       "to": "range-equation.consumption",
-      "props": { "ends": { "to": { "part": "ebike.eco" } } }
+      "props": { "ends": { "to": { "part": "emoped.eco" } } }
     },
     {
       "id": "bind-boost-consumption",
       "type": "sysml.BindingConnector",
-      "from": "ebike.boostConsumption",
+      "from": "emoped.boostConsumption",
       "to": "range-equation.consumption",
-      "props": { "ends": { "to": { "part": "ebike.boost" } } }
+      "props": { "ends": { "to": { "part": "emoped.boost" } } }
     },
     {
       "id": "bind-eco-range",
       "type": "sysml.BindingConnector",
-      "from": "ebike.ecoRange",
+      "from": "emoped.ecoRange",
       "to": "range-equation.range",
-      "props": { "ends": { "to": { "part": "ebike.eco" } } }
+      "props": { "ends": { "to": { "part": "emoped.eco" } } }
     },
     {
       "id": "bind-boost-range",
       "type": "sysml.BindingConnector",
-      "from": "ebike.boostRange",
+      "from": "emoped.boostRange",
       "to": "range-equation.range",
-      "props": { "ends": { "to": { "part": "ebike.boost" } } }
+      "props": { "ends": { "to": { "part": "emoped.boost" } } }
     }
   ],
   "views": [
@@ -513,7 +516,7 @@
       "id": "requirements",
       "diagram": "sysml.requirement",
       "parent": null,
-      "title": "E-bike requirements",
+      "title": "E-moped requirements",
       "direction": "down",
       "nodeIds": [
         "spec", "assist", "cut-off", "range", "docking", "lock-time", "capacity", "assist-curve", "legal-speed",
@@ -524,31 +527,31 @@
       "id": "blocks",
       "diagram": "sysml.block-definition",
       "parent": null,
-      "title": "E-bike blocks",
+      "title": "E-moped blocks",
       "direction": "down",
       "nodeIds": [
-        "rental-vehicle", "ebike", "battery", "motor", "controller", "light", "dock", "charge-interface",
+        "rental-vehicle", "emoped", "battery", "motor", "controller", "light", "dock", "charge-interface",
         "usable-energy", "range-equation", "voltage", "energy"
       ],
       "edges": [
-        "ebike-battery", "ebike-motor", "ebike-controller", "ebike-is-rental-vehicle", "dock-uses-charge-interface"
+        "emoped-battery", "emoped-motor", "emoped-controller", "emoped-is-rental-vehicle", "dock-uses-charge-interface"
       ]
     },
     {
-      "id": "inside-ebike",
+      "id": "inside-emoped",
       "diagram": "sysml.internal-block",
       "parent": null,
-      "title": "Inside the e-bike",
-      "subject": "ebike",
-      "nodeIds": ["ebike"]
+      "title": "Inside the e-moped",
+      "subject": "emoped",
+      "nodeIds": ["emoped"]
     },
     {
       "id": "range-analysis",
       "diagram": "sysml.parametric",
       "parent": null,
-      "title": "E-bike range",
-      "subject": "ebike",
-      "nodeIds": ["ebike"]
+      "title": "E-moped range",
+      "subject": "emoped",
+      "nodeIds": ["emoped"]
     }
   ]
 }

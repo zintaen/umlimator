@@ -162,7 +162,7 @@ test('delete takes out the element, its members, what it owns, the lines to them
     views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b', 'n'], edges: ['ab', 'link'] }, { id: 'inside', parent: 'a', nodeIds: ['b'] }] };
   const o = run(onLine, { op: 'delete', id: 'a' });
   assert.deepEqual([o.edges, o.views[0].edges, o.views[1].parent], [[], [], undefined]);
-  // a parent that is also a view's id names that view: deleting the card of that id keeps it (audit 10, bike-share's trips)
+  // a parent that is also a view's id names that view: deleting the card of that id keeps it (audit 10, the integration fixture's trips)
   const twin = { nodes: [{ id: 'trips' }, { id: 'b' }], views: [{ id: 'main', nodeIds: ['trips', 'b'] }, { id: 'trips', parent: 'main', nodeIds: ['b'] }, { id: 'end', parent: 'trips', nodeIds: ['b'] }] };
   assert.deepEqual(run(twin, { op: 'delete', id: 'trips' }).views.map(v => v.parent), [undefined, 'main', 'trips']);
   // a step's select and highlight as Refs: listed by references() and taken by delete; validate() checks them (audit 10)
@@ -180,7 +180,7 @@ test('delete takes out the element, its members, what it owns, the lines to them
 });
 
 test('delete and hide leave a model that validates, for every element in every view of every example and target example', () => {
-  const files = [...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).map(f => '../examples/' + f),
+  const files = ['./fixtures/integration.json', ...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).map(f => '../examples/' + f),
     ...readdirSync(new URL('../docs/diagrams/examples/', import.meta.url)).filter(f => /^\d\d-.*\.json$/.test(f)).map(f => '../docs/diagrams/examples/' + f)];
   let deleted = 0, hidden = 0;
   for (const f of files) {
@@ -395,8 +395,8 @@ test('audit 24: apply() refuses a model element, or another view\'s own one, und
   assert.deepEqual(L.validate(saved).filter(p => /lives in view/.test(p.message)).map(p => [p.level, p.path]), [['warning', 'nodes[0].parent'], ['warning', 'views[1].nodes[0].parent']]);
   // every example: a node of its own added to a typed view, then a model node the view draws put under it
   let n24 = 0;
-  for (const f of readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json'))) {
-    const x = read('../examples/' + f); if (x.schemaVersion !== 2) continue;
+  for (const f of ['../tests/fixtures/integration.json', ...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).map(f => '../examples/' + f)]) {
+    const x = read(f); if (x.schemaVersion !== 2) continue;
     assert.deepEqual(L.validate(x).filter(p => /lives in view/.test(p.message)), [], `${f} as shipped`);
     for (const v of x.views) { if (!v || v.diagram == null || v.diagram === 'map') continue;
       const n = (x.nodes || []).find(n => n && typeof n.id === 'string' && typeof n.type === 'string' && (v.nodeIds || []).includes(n.id)); if (!n) continue;

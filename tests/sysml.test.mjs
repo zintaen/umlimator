@@ -27,7 +27,7 @@ import '../src/sysml/parametric.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 const [M16, M17, M18, M19] = ['16-requirement', '17-block-definition', '18-internal-block', '19-parametric'].map(n => read('sysml-targets.json')[n]);
-// the four merged by id (notes/milestone-3.md 15.2), as tools/atlas.mjs merged them before the bike share model replaced the atlases: an
+// the four merged by id (notes/milestone-3.md 15.2), as tools/atlas.mjs merged them before the one model (now the integration fixture) replaced the atlases: an
 // element in two files is one, a field both set must agree (type, parent and ends always), a field one leaves out is the other's
 const isObj = x => x && typeof x === 'object' && !Array.isArray(x);
 const canon = x => JSON.stringify(x, (k, v) => (isObj(v) ? Object.fromEntries(Object.keys(v).sort().map(j => [j, v[j]])) : v));

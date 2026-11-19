@@ -16,11 +16,11 @@ const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const until = async (f, ms = 5000) => { const t = Date.now(); while (!f() && Date.now() - t < ms) await wait(20); return f(); };
-const BIKE = await (await fetch('../examples/bike-share.json')).json(), box = document.getElementById('page');
+const FX = await (await fetch('fixtures/integration.json')).json(), box = document.getElementById('page');
 const link = () => Object.fromEntries(new URLSearchParams(location.hash.slice(1)));
 let pg = null;
 const mount = async hash => { if (pg) pg.destroy(); box.innerHTML = ''; history.replaceState(null, '', location.pathname + hash);
-  pg = mountPage(box, BIKE, { params: new URLSearchParams() }); await until(() => pg.view && !pg.navigating); await document.fonts.ready; await wait(400); return pg; };
+  pg = mountPage(box, FX, { params: new URLSearchParams() }); await until(() => pg.view && !pg.navigating); await document.fonts.ready; await wait(400); return pg; };
 const settled = () => pg.navigating === null;
 const bar = () => { const s = document.querySelector('#m-canvas .umlimator'); return s && (s.shadowRoot.querySelector('.um-story .um-st') || {}).textContent || null; };
 for (let i = 0; i < 6; i++) history.pushState(null, '', location.pathname + '#before-' + i); // entries to come back to: Back never leaves this page
