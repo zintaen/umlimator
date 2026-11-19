@@ -3,7 +3,7 @@ import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { ENDS, brLines } from '../typed/draw.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
-import { multBounds } from '../uml/class.js'; // SHAPE.note too, a comment's look
+import { commentConnect, multBounds } from '../uml/class.js'; // SHAPE.note too, a comment's look
 import { snKindName, snLineName } from '../uml/structure.js';
 import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
@@ -302,6 +302,7 @@ function erMember(model, view, owner, id, text) {
 }
 // connect: a relationship joins two tables (the palette's entry gives it 1 to 0..*, non-identifying); else said
 function erConnect(model, view, from, to, at, line) {
+  if (ER_OBJ(line) && line.type === 'uml.CommentLink') return commentConnect(model, view, from, to, line); // from the comment (audit 46)
   if (!ER_OBJ(line) || line.type !== 'er.Relationship') return null;
   const I = erIndex(model), ent = id => erTable(I.at.get(id));
   return ent(from) && ent(to) ? null : { error: 'A relationship joins two tables' };

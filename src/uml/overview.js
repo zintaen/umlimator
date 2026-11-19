@@ -5,7 +5,7 @@ import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { brLines } from '../typed/draw.js';
-import './class.js'; // SHAPE.note, a comment
+import { commentConnect } from './class.js'; // SHAPE.note, a comment
 import { FLOW_CONTROL, FLOW_RULES, flowOf, flowProblems, flowText, flowLabel, flowRename, flowStereo } from './flow.js';
 import { frLines, frameTag, tagSize, useSize } from './frame.js';
 import { snKindName } from './structure.js';
@@ -270,7 +270,7 @@ const OVERVIEW_TYPE = registerDiagramType('uml.interaction-overview', {
   describe: ovDescribe,
   // the PDF's Kind of an element of no type: "Element", as its accessible name (audit 28); null: the type's word
   word: (model, id) => { const x = OV_ARR(model && model.nodes).find(n => OV_OBJ(n) && n.id === id); return x && !x.type ? ovWordOf(x.type) : null; }, // no type (or ""): "Element" (audit 29)
-  edits: { add: ovAdd, rename: ovRename },
+  edits: { add: ovAdd, rename: ovRename, connect: (model, view, from, to, at, line) => commentConnect(model, view, from, to, line) }, // a comment link (audit 46)
 });
 
 export { OVERVIEW_TYPE, OV_RULES, ovGeo, ovProblems, ovDescribe, ovAdd, ovRename };

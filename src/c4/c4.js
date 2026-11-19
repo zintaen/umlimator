@@ -2,7 +2,7 @@ import { countOf, registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, portsOn, r2, sidePorts } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
-import '../uml/class.js'; // SHAPE.note, a comment's look
+import { commentConnect } from '../uml/class.js'; // SHAPE.note, a comment's look too
 import { flowWrap } from '../uml/flow.js';
 import { boxHead, ownersOn, readingOrder } from '../uml/owners.js';
 import { brLines } from '../typed/draw.js';
@@ -344,6 +344,9 @@ function c4Owners(model, x) {
 let c4People = new Set();
 const C4_ELEMENT_PROPS = [{ key: 'description', label: 'Description', kind: 'text' }, { key: 'technology', label: 'Technology', kind: 'text' },
   { key: 'external', label: 'External', kind: 'bool' }, { key: 'shape', label: 'Shape', kind: 'enum', options: C4_SHAPES }];
+// connect: a comment link from the comment, refused with no comment at either end (commentConnect, src/uml/class.js, audit 46);
+// any other line, the default
+const c4Connect = (model, view, from, to, at, line) => commentConnect(model, view, from, to, line);
 const C4_DEF = {
   title: 'C4 diagram',
   elements: [...C4_STATIC.map(t => ({ type: t, label: C4_WORD[t] })), { type: 'uml.Comment', label: 'Comment' }],
@@ -369,7 +372,7 @@ const C4_DEF = {
   rows: (model, view, id) => { const x = c4Index(model).at.get(id); if (!x || !C4_STATIC.includes(x.type)) return null; const P = C4_P(x);
     return [...(C4_HAS(P.technology) ? [P.technology] : []), ...(C4_HAS(P.description) ? [P.description] : []), ...(c4Ext(x) ? ['external'] : [])]; },
   text: (model, view, id) => { const e = c4Index(model).rels.find(r => r.id === id) || (C4_OBJ(view) ? C4_ARR(view.edges) : []).find(r => C4_OBJ(r) && r.id === id && r.type === 'c4.Relationship'); return e ? c4LineLabel(e) || null : null; },
-  edits: { add: c4Add, key: c4Key, rename: c4Rename },
+  edits: { add: c4Add, key: c4Key, rename: c4Rename, connect: c4Connect },
 };
 const C4_TYPES = Object.keys(C4_KIND).map(name => registerDiagramType(name, C4_DEF));
 

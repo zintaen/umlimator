@@ -4,6 +4,7 @@ import { esc, fit } from '../core/text.js';
 import { SHAPE, r2, sidePorts } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
 import { ownersOn, readingOrder } from '../uml/owners.js';
+import { commentConnect } from '../uml/class.js';
 import { brLines } from '../typed/draw.js';
 import { c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Keys, c4Problems, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners, c4Rename } from './c4.js';
 
@@ -131,6 +132,8 @@ function dynMoveTo(model, view, id, at) {
 // as the add lists nothing on a view without its own list
 function dynConnect(model, view, from, to, at, line) {
   if (!V_OBJ(view)) return null;
+  // a comment link: refused with no comment at either end, and drawn to a comment, added from it, listed as any step (audit 46)
+  if (V_OBJ(line) && line.type === 'uml.CommentLink') { const c = commentConnect(model, view, from, to, line); if (c && !Array.isArray(c)) return c; if (c) return dynConnect(model, view, to, from, at, line) ?? c; }
   const t = V_OBJ(line) && line.type ? line.type : 'c4.Relationship', listed = V_ARR(view.edges);
   const r = t === 'c4.Relationship' && c4Index(model).rels.find(e => e.from === from && e.to === to && !listed.includes(e.id));
   if (r) return [{ op: 'set', view: view.id, path: 'edges', value: [...listed, r.id] }];
@@ -296,7 +299,7 @@ const DEP_DEF = {
     if (x.type !== 'c4.ContainerInstance') return C4_DEF.rows(model, view, id);
     const c = depOf(I, x); return [`Instance of ${c ? vName(c) : 'no container'}`, ...(c ? C4_DEF.rows(model, view, c.id) : [])]; },
   text: C4_DEF.text,
-  edits: { add: depAdd, key: depKey, rename: depRename },
+  edits: { add: depAdd, key: depKey, rename: depRename, connect: C4_DEF.edits.connect }, // a comment link (audit 46)
 };
 
 const C4_VIEW_TYPES = [registerDiagramType('c4.dynamic', DYN_DEF), registerDiagramType('c4.deployment', DEP_DEF)];

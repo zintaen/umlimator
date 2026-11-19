@@ -58,7 +58,7 @@ test('the definition: uml.interaction-overview is registered with its palette, l
   assert.deepEqual(T.props['uml.ControlFlow'].map(f => f.key), ['guard', 'stereotypes']);
   assert.ok(T.elements.every(e => ['uml.InitialNode', 'uml.ActivityFinalNode', 'uml.FlowFinalNode', 'uml.ForkNode', 'uml.JoinNode', 'uml.Comment'].includes(e.type) !== T.props[e.type].some(f => f.key === 'stereotypes')), 'stereotypes on every element but a glyph with no text (audit 16) and a comment, which draws none (audit 17)');
   assert.deepEqual(Object.keys(T.rules), [...Object.keys(FLOW_RULES), 'opens-sequence', 'overview-kinds', 'comment-link', 'inline-size']);
-  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'rename']);
+  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'rename']); // connect: a comment link (audit 46)
   for (const k of ['layout', 'validate', 'describe']) assert.equal(typeof T[k], 'function', k);
 });
 

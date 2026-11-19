@@ -595,3 +595,17 @@ test('audit 44: the example pages\' withIcons keeps a model\'s own glyphs, never
     const none = []; await pageIcons({ ...m, icons: undefined }, base, none); assert.deepEqual(none, []);
   } finally { globalThis.fetch = keep; }
 });
+
+// audit 46: Shift + Delete of a group counts a view's own group or service under it, which goes with it
+test('audit 46: Shift + Delete of a group counts what a view holds as its own under it', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'proj', type: 'gcp.Zone', label: 'shop', props: { zoneType: 'project' } }, { id: 'run', type: 'gcp.Product', label: 'API', parent: 'proj', props: { icon: 'Cloud-Run' } }],
+    edges: [], views: [{ id: 'v', diagram: 'gcp', nodeIds: ['proj', 'run', 'own-net'], nodes: [{ id: 'own-net', type: 'gcp.Zone', label: 'vpc', parent: 'proj', props: { zoneType: 'network' } }] }] };
+  const r = T.gcp.edits.remove(m, m.views[0], ['proj'], true);
+  assert.equal(r.say, 'Deleted Project shop and the 2 elements it held');
+  const after = apply(m, r.commands); assert.deepEqual([after.nodes.length, after.views[0].nodes.length], [0, 0]);
+  // a group holding only a view's own boxes: said too, not the default's silence
+  const o = structuredClone(m); o.nodes = o.nodes.filter(n => n.id !== 'run'); o.views[0].nodeIds = ['proj', 'own-net'];
+  assert.equal(T.gcp.edits.remove(o, o.views[0], ['proj'], true).say, 'Deleted Project shop and the 1 element it held');
+  // the view given by its id reads the same
+  assert.equal(T.gcp.edits.remove(m, 'v', ['proj'], true).say, 'Deleted Project shop and the 2 elements it held');
+});

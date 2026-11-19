@@ -697,3 +697,18 @@ test('audit 43: a nodeIds entry that is no element is no lifeline: covers judges
   const p = validate(m).filter(x => x.rule === 'covers' || x.rule === 'message-ends').map(x => x.message);
   assert.deepEqual(p, ['message-ends: m2 runs from b to ghost, and ghost is not a lifeline of view v', 'covers: u2 covers a, c, which are not next to each other in nodeIds']);
 });
+
+// audit 46: a fragment operator that is not text is said so, with what is drawn, not "drawn by its name"; one with no string
+// form draws no operator, and validate() does not throw
+test('audit 46: a fragment operator that is not text is said not text, with what the frame draws', () => {
+  const m = structuredClone(SEQ), f = V(m).fragments.find(x => x.id === 'f2'); f.props.operator = { kind: 'alt' };
+  const p = validate(m).filter(x => x.rule === 'operator').map(x => x.message);
+  assert.deepEqual(p, ['operator: fragment f2 has operator {"kind":"alt"}, which is not text: drawn as "[object Object]"']);
+  f.props.operator = ['loop'];
+  assert.deepEqual(validate(m).filter(x => x.rule === 'operator').map(x => x.message), ['operator: fragment f2 has operator ["loop"], which is not text: drawn as "loop"']);
+  f.props.operator = Object.create(null);
+  assert.equal(validate(m).filter(x => x.rule === 'operator').length, 1);
+  assert.doesNotThrow(() => layout(m, V(m).id));
+  f.props.operator = 'alt2';
+  assert.match(validate(m).find(x => x.rule === 'operator').message, /operator "alt2", not one of .*: it is drawn by its name$/);
+});

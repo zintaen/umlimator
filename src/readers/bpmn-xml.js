@@ -22,7 +22,8 @@
    than its default is reported once per file, by its name, and not kept; isExecutable, an engine's only, is passed over.
    A process in no pool has no place in the model: its name, its documentation, or an id the writer would not make again,
    is reported, and a second such process is read into the first and reported (audit 32); a pool's process's name and
-   documentation are reported too (audit 45). Positions and sizes are not kept (R5): the report says so once per file.
+   documentation are reported too (audit 45), and a collaboration's and a lane set's (audit 46). Positions and sizes are not
+   kept (R5): the report says so once per file.
 
    writeBpmnXml(model, viewId, geo, moddle) -> promise of { xml, report }: every `bpmn.*` element of the model in one
    definitions, a collaboration when it has a participant, a process per participant (its `processRef`, else
@@ -194,11 +195,16 @@ async function readBpmnXml(xml, moddle) {
     const pending = []; // [moddle element, model type, from element, to element, parent]
     const groups = [], tagged = [], hosts = []; // groups by their category value; elements naming category values; boundary events' hosts
 
+    // a process's (a collaboration's, a lane set's) name and documentation the model has no place for (audits 45 and 46)
+    const procLost = c => [bxStr(c.name) && 'name', (c.documentation || []).some(d => bxStr(d.text)) && 'documentation'].filter(Boolean);
+    const both = a => (a.length > 1 ? `${a.slice(0, -1).join(', ')} and ${a.at(-1)}` : a[0]);
     // participants, their message flows and artifacts
     const owner = new Map(), queue = [];
     for (const r of defs.rootElements || []) {
       if (r.$type === 'bpmn:Collaboration') {
         ext(r, null);
+        // its name and documentation: the model has no collaboration to hold them (the writer makes its own), said (audit 46)
+        if (procLost(r).length) say(idOf(r) || '', 'skipped', `collaboration ${idOf(r) || '(no id)'}${bxStr(r.name) ? ` ("${r.name}")` : ''}: its ${both(procLost(r))} not kept`);
         for (const p of r.participants || []) {
           const n = add(p, 'bpmn.Participant', null); if (!n) continue;
           tagged.push([p, n]);
@@ -222,12 +228,14 @@ async function readBpmnXml(xml, moddle) {
     // too (audit 32: bpmn.io's Process_1 "Order handling" and two processes in no pool were read with nothing said)
     // a process's name and documentation the model has no place for, in a pool or not (audit 45: a pool's process "Order
     // handling" and its documentation were read with nothing said, and a process in no pool said its name, not its documentation)
-    const procLost = c => [bxStr(c.name) && 'name', (c.documentation || []).some(d => bxStr(d.text)) && 'documentation'].filter(Boolean);
-    const both = a => (a.length > 1 ? `${a.slice(0, -1).join(', ')} and ${a.at(-1)}` : a[0]);
     const unpooled = queue.map(([c]) => c).filter(c => c.$type === 'bpmn:Process' && !owner.has(c));
-    unpooled.forEach((c, k) => { const id = idOf(c) || '', nm = bxStr(c.name) ? ` ("${c.name}")` : '', first = idOf(unpooled[0]) || '(no id)', lost = both(['id', ...procLost(c)]);
-      if (k) say(id, 'skipped', `process ${id || '(no id)'}${nm}, a second in no pool: read into one process with ${first}, its ${lost} not kept`);
-      else if (procLost(c).length || !/^process(-\d+)?$/.test(id)) say(id, 'skipped', `process ${id || '(no id)'}${nm}, in no pool: its elements are read in no pool, its ${lost} not kept`); });
+    // the first one's id is lost only where the writer would not make it again: it writes "process", else the next free id
+    // ("process-2" when the model reads an element or a view by that id), worked out once the whole file is read, its line put
+    // in its place (audit 46: "process" with a name was said to lose its id, and "process-3", written back "process", was not)
+    let firstLost = null;
+    unpooled.forEach((c, k) => { const id = idOf(c) || '', nm = bxStr(c.name) ? ` ("${c.name}")` : '', first = idOf(unpooled[0]) || '(no id)';
+      if (k) say(id, 'skipped', `process ${id || '(no id)'}${nm}, a second in no pool: read into one process with ${first}, its ${both(['id', ...procLost(c)])} not kept`);
+      else firstLost = { at: report.length, id, nm, lost: procLost(c) }; });
     for (const [c, n] of owner) { const lost = procLost(c), id = idOf(c) || '(no id)';
       if (lost.length) say(n.id, 'skipped', `process ${id}${bxStr(c.name) ? ` ("${c.name}")` : ''}, ${n.id}'s: its ${both(lost)} not kept`); }
     // a process's lanes are its participant's members, nested by parent; a flow node is in the deepest lane naming it
@@ -235,9 +243,13 @@ async function readBpmnXml(xml, moddle) {
     for (const [proc] of queue) {
       if (proc.$type !== 'bpmn:Process') continue;
       const pool = owner.get(proc), stack = (proc.laneSets || []).flatMap(s => (s.lanes || []).map(l => [l, null, 0])).reverse();
+      // a lane set's name and documentation, a child lane set's too: the model keeps lanes, not their sets (audit 46)
+      const setLost = (s, by) => { if (s && procLost(s).length) say(idOf(s) || '', 'skipped', `lane set ${idOf(s) || '(no id)'}${bxStr(s.name) ? ` ("${s.name}")` : ''}${by}: its ${both(procLost(s))} not kept`); };
+      (proc.laneSets || []).forEach(s => setLost(s, ''));
       while (stack.length) {
         const [l, up, d] = stack.pop();
         if (!pool) { skip(l, null, 'of a process with no pool'); continue; }
+        setLost(l.childLaneSet, ` in lane ${idOf(l) || '(no id)'}`);
         const id = idOf(l);
         if (!bxStr(id) || byId.has(id)) { skip(l, pool.id, id ? `has the id ${id}, taken` : 'has no id'); continue; }
         const doc = (l.documentation || []).map(x => x.text).filter(bxStr).join('\n');
@@ -381,6 +393,11 @@ async function readBpmnXml(xml, moddle) {
       if (nodes.length) say('', 'skipped', `no diagram interchange: every element is in one view, ${BX_VIEW}`);
     }
     for (const n of nodes) if (!shown.has(n.id)) views[0].nodeIds.push(n.id);
+    if (firstLost) { // the id the writer gives the process in no pool (writeBpmnXml's free('process')): taken by an id the model keeps?
+      const taken = id => nodes.some(n => n.id === id || (n.props && n.props.processRef === id) || bxList(n.members).some(m => m && m.id === id)) || edges.some(e => e.id === id) || views.some(v => v.id === id);
+      const { at, id, nm, lost } = firstLost, remade = (() => { let r = 'process', k = 1; while (taken(r)) r = `process-${++k}`; return r; })(), idLost = id !== remade;
+      if (idLost || lost.length) { const line = { line: id, status: 'skipped', message: `process ${id || '(no id)'}${nm}, in no pool: its elements are read in no pool, its ${both([...(idLost ? ['id'] : []), ...lost])} not kept` };
+        if (report.length < BX_MAX) report.splice(at, 0, line); else more++; } }
   } catch (e) { // moddle's parser or handlers, or a getter, threw (a RangeError at depth among them): nothing is kept
     nodes.length = edges.length = views.length = skipped.length = 0;
     say('', 'skipped', `the file could not be read (${bxWhy(e)}): nothing read`);

@@ -426,7 +426,8 @@ function closesCycle(model, view, type, from, to, word = 'a generalization', sai
 }
 // connect on a class view: a generalization that would close a cycle is refused (generalization-cycle), and a realization
 // realization-target calls an error, in its words, as the component view's (audit 38); else the default
-// a comment link (comment-link) on the class, package, profile, object, component, deployment and composite views: drawn from an element to a comment, added from the
+// a comment link (comment-link) on the class, package, profile, object, component, deployment and composite views (and every view
+// whose palette offers one, audit 46): drawn from an element to a comment, added from the
 // comment, as the deployment view turns a deploy drawn the wrong way round; with no comment at either end, refused in the rule's
 // words, as the block view's (audit 44). Null: not a comment link, or drawn from a comment
 function commentConnect(model, view, from, to, line) {
@@ -439,6 +440,11 @@ function commentConnect(model, view, from, to, line) {
   const used = new Set(); usedIds(model, used); let k = 1; while (used.has('commentlink' + k)) k++;
   return [{ op: 'add', element: { id: 'commentlink' + k, type: line.type, from: to, to: from }, view: view.id }];
 }
+// comment-link, on a view that refuses a comment link with no comment at either end (commentConnect) but has no class view's
+// rule on its lines: lines, [[line, path]]; ty(id), an end's type; q(id), its quoted name. A warning, as the interaction
+// overview's (the state machine and use case views, audit 46)
+const commentLinkProblems = (lines, ty, q) => lines.filter(([e]) => UML_OBJ(e) && e.type === 'uml.CommentLink' && ty(e.from) !== 'uml.Comment' && ty(e.to) !== 'uml.Comment')
+  .map(([e, path]) => ({ level: 'warning', rule: 'comment-link', path, ids: [e.id, e.from, e.to].filter(x => x != null), message: `comment-link: ${e.id} joins ${q(e.from)} and ${q(e.to)}, neither a comment` }));
 // connect on a class view: a generalization that would close a cycle is refused (generalization-cycle), and a realization
 // realization-target calls an error, in its words, as the component view's (audit 38); a generalization generalization-kinds
 // calls an error (two kinds, a package, a comment, a member; an end of another notation is that notation's) and a comment
@@ -499,4 +505,4 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   edits: { connect: classConnect, rename: lineRename(lineLabel), owner: defOwner },
 });
 
-export { CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, multProblem, parseMember, printMember, memberEdit, memberClash, paramTextProblems, classProblems, closesCycle, commentConnect, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
+export { CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, multProblem, parseMember, printMember, memberEdit, memberClash, paramTextProblems, classProblems, closesCycle, commentConnect, commentLinkProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
