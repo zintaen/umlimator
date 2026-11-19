@@ -1,0 +1,37 @@
+{
+  "views": [
+    {
+      "id": "ride-end",
+      "parent": "trips",
+      "title": "A ride ends, from its trace",
+      "caption": "From a trace: 8 calls between cards, in time order, each with its duration. No card for fraud-check.",
+      "render": "sequence",
+      "lanes": false,
+      "nodeIds": [
+        "rider-app", "trip-api", "lifecycle", "fare", "pricing", "payments", "trip-repo", "tripsdb", "trip-events"
+      ],
+      "edges": [
+        {
+          "id": "ride-end-1",
+          "from": "rider-app",
+          "to": "trip-api",
+          "label": "POST /rides/{id}/end",
+          "sublabel": "200 ms"
+        },
+        { "id": "ride-end-2", "from": "trip-api", "to": "lifecycle", "label": "close ride", "sublabel": "186 ms" },
+        { "id": "ride-end-3", "from": "lifecycle", "to": "fare", "label": "fare for ride", "sublabel": "98 ms" },
+        { "id": "ride-end-4", "from": "fare", "to": "pricing", "label": "GetPrice", "sublabel": "37 ms" },
+        { "id": "ride-end-5", "from": "fare", "to": "payments", "label": "POST /charges", "sublabel": "48 ms" },
+        { "id": "ride-end-6", "from": "lifecycle", "to": "trip-repo", "label": "save ride", "sublabel": "38 ms" },
+        { "id": "ride-end-7", "from": "trip-repo", "to": "tripsdb", "label": "UPDATE rides", "sublabel": "29 ms" },
+        {
+          "id": "ride-end-8",
+          "from": "lifecycle",
+          "to": "trip-events",
+          "label": "publish ride.ended",
+          "sublabel": "26 ms"
+        }
+      ]
+    }
+  ]
+}
