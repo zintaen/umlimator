@@ -2,9 +2,9 @@
 // parts. Diagrams has a group for every diagram type (the map and docs/types.md's 28), each showing every example and
 // view of that type; Atlas holds exactly one entry, the Umlimator Atlas (the maintainer's decision, 19 Nov 2026). Every
 // example model is reachable from the page, and every link and picture on it names a file the site serves, as the
-// site job builds it (.github/workflows/check.yml). The models that left the gallery (tools/gallery.json's retired list,
-// whose files stay until the bike share migration deletes them) are linked from nowhere in the gallery, the docs or the
-// README.
+// site job builds it (.github/workflows/check.yml). The models the gallery does not show (tools/gallery.json's retired
+// list: the bike share, the hidden test model, and its Structurizr import) are linked from nowhere in the gallery, the
+// docs or the README, and nor are the models the bike share replaced.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
@@ -92,7 +92,7 @@ function served() {
   const files = new Set(readdirSync(new URL('examples/', root)).filter(f => /\.(json|html|js|mjs)$/.test(f) || f === 'README.md'));
   readdirSync(new URL('examples/traces/', root)).forEach(f => files.add(`traces/${f}`));
   const views = {};
-  // the retired models too: the site renders them until the migration deletes them, and the host pages load them
+  // the retired models too: the site renders them, and the host pages load them
   for (const [dir, list, from] of [['', [...examples, ...RETIRED], 'examples'], ['samples/', samples, 'tests']]) for (const n of list) {
     const m = json(`${from}/${n}.json`); views[`${dir}${n}.html`] = m;
     if (dir) files.add(`${dir}${n}.json`);
@@ -133,18 +133,20 @@ test('the host pages fetch only models and traces the site serves', () => {
   assert.deepEqual(bad, []);
 });
 
-// the models that left the gallery on 19 Nov 2026 (the maintainer's decisions): their files stay in examples/ until the
-// bike share migration moves the tests and the bench off them and deletes them, but the gallery, the docs and the README
-// link none of them, and bike-share.json, the hidden test model, is never listed
+// the models that left the gallery on 19 Nov 2026 (the maintainer's decision) were deleted in step 4 of the bike share
+// migration; the gallery, the docs and the README link none of them, nor the bike share model, the hidden test model, nor
+// its Structurizr source and import
 test('the models that left the gallery are linked from nowhere in the gallery, the docs or the README', () => {
-  assert.deepEqual([...RETIRED].sort(), ['assistant', 'bike-share', 'bookshop', 'bookshop-atlas', 'clinic', 'ebike-atlas', 'states', 'weather']);
+  assert.deepEqual([...RETIRED].sort(), ['bike-share', 'bike-share-c4']);
+  const GONE = [...RETIRED, 'assistant', 'bookshop', 'bookshop-atlas', 'clinic', 'ebike-atlas', 'states', 'weather'];
+  for (const n of GONE.filter(n => !RETIRED.includes(n))) assert.ok(!existsSync(new URL(`examples/${n}.json`, root)), `examples/${n}.json is deleted`);
   const walk = dir => readdirSync(new URL(dir, root)).flatMap(f => { const p = `${dir}${f}`;
     if (f === 'node_modules' || f === 'dist' || f === 'cache') return [];
     return statSync(new URL(p, root)).isDirectory() ? walk(`${p}/`) : /\.(md|html|mts|js|mjs)$/.test(f) ? [p] : []; });
   // the site's pages: docs/ but the notes it leaves out (diagrams/, editing.md and module-api.md, the design record)
   const site = walk('docs/').filter(p => !/^docs\/(diagrams\/|editing\.md|module-api\.md)/.test(p));
   const pages = ['README.md', 'examples/index.html', ...site];
-  const gone = new RegExp(`(?:^|[/"'(])(?:${RETIRED.join('|')})\\.(?:json|html|pdf|dsl)\\b|stills/(?:${RETIRED.join('|')})/|tools/(?:atlas|ebike)-links\\.json|traces/(?:ride-end|match)\\.json`);
+  const gone = new RegExp(`(?:^|[/"'(])(?:${GONE.join('|')})\\.(?:json|html|pdf|dsl)\\b|stills/(?:${GONE.join('|')})/|tools/(?:atlas|ebike)-links\\.json|traces/(?:ride-end|match)\\.json`);
   const bad = [];
   for (const p of pages) {
     const s = read(p);

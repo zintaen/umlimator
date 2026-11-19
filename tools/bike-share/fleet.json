@@ -7,6 +7,7 @@
       "owner": "Fleet",
       "icon": "webhook",
       "sublabel": "reads dock events",
+      "opensView": "dock-feed",
       "what": "Keeps the fleet's state current.",
       "when": "Every dock event.",
       "how": "Consumes the telemetry stream."
@@ -30,6 +31,7 @@
       "owner": "Fleet",
       "icon": "sparkles",
       "sublabel": "bikes needed per dock",
+      "opensView": "demand",
       "what": "Predicts demand per dock, hourly.",
       "when": "Every hour.",
       "how": "A model trained on a year of trips."

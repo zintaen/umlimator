@@ -8,7 +8,7 @@ const args = process.argv.slice(2), at = args.findIndex(a => a === '--max' || a.
 const given = at < 0 ? '3' : args[at] === '--max' ? args.splice(at, 2)[1] : args.splice(at, 1)[0].slice(6), max = Number(given);
 // a limit that is no number (NaN) would let every layout pass: refused, so a CI step with a typo fails (audit 18)
 if (!/^\s*\d/.test(given ?? '') || !Number.isFinite(max) || max < 1) { console.error(`--max takes a number of at least 1, not ${given === undefined ? 'nothing' : JSON.stringify(given)}`); process.exit(2); }
-const files = args.length ? args : ['bookshop', 'bike-share', 'weather', 'assistant', 'clinic'].map(n => new URL(`${n}.json`, import.meta.url));
+const files = args.length ? args : ['bike-share', 'bike-share-c4', 'shapes', 'monorepo'].map(n => new URL(`${n}.json`, import.meta.url));
 const length = pts => pts.slice(1).reduce((a, p, i) => a + Math.abs(p[0] - pts[i][0]) + Math.abs(p[1] - pts[i][1]), 0);
 
 let worst = 0;

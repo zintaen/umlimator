@@ -140,7 +140,7 @@ test('audit 38: the page\'s element count counts an untyped element a flowchart 
   const hostile = two('flowchart', { id: 's', type: 'flow.Process', label: 'P' }); hostile.views[0].nodeIds.push('a->b');
   assert.equal(elementCount(hostile.views[0], { nodes: [...all.layout(hostile, 'v').nodes, { id: 'a->b', shape: 'process' }], families: [{ id: 'v->frame' }] }), 2);
   // a bdd or requirement view's frame names no element: its count is its describe()'s
-  for (const [f, vid, n] of [['ebike-atlas', 'blocks', 12], ['ebike-atlas', 'requirements', 16], ['ebike-blocks', 'blocks', 12], ['ebike-requirements', 'requirements', 16]]) {
+  for (const [f, vid, n] of [['bike-share', 'blocks', 12], ['bike-share', 'requirements', 16], ['ebike-blocks', 'blocks', 12], ['ebike-requirements', 'requirements', 16]]) {
     const m = read(`../examples/${f}.json`), v = m.views.find(x => x.id === vid), g = all.layout(m, vid), said = /(\d+) elements? and/.exec(all.describe(m, vid));
     assert.deepEqual(g.families.map(x => x.id), [`${vid}->frame`], `${f} ${vid}: its one box is the frame`);
     assert.equal(Number(said && said[1]), n); assert.equal(elementCount(v, g), n, `${f} ${vid}: ${all.describe(m, vid).split('\n')[0]}`); }

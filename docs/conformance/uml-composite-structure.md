@@ -113,5 +113,4 @@ example under three fonts, both themes and both directions, every gesture by poi
 `tests/composite-stress.json` with `tests/stage5-fixtures.test.mjs` and `tests/stage5.html` (`notes/stage-5.md` §13: two
 parts of one type each with its own connector, a shared part, an untyped part, a connector through the wrong part, an
 open collaboration, two collaboration uses, the subject's port with lines inside and out; P1); `tests/notation.html`
-(connectors and role bindings end in nothing, role bindings dashed); `tests/cli.py`; `tests/mcp.py`;
-`tests/atlas.test.mjs`.
+(connectors and role bindings end in nothing, role bindings dashed); `tests/cli.py`; `tests/mcp.py`.

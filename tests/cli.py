@@ -1241,11 +1241,12 @@ with tempfile.TemporaryDirectory() as tmp:
         cards = lambda n: f"{n} card" + ("" if n == 1 else "s")  # the e-bike's internal block and parametric views (step 3) list 1
         at = {v["id"]: next((i for i, p in enumerate(pages, 1) if p.startswith(flat(f"{path(v)} {cards(len(v['nodeIds']))}"))), None) for v in bike["views"]}
         at["rules"] = next((i for i, p in enumerate(pages, 1) if p.startswith("Rules")), None)
-        # the cover and its contents: the pages before the first view's (two since step 3 of the one-model plan, 49 views listed)
+        # the cover and its contents: the pages before the first view's (two since step 3 of the one-model plan; 52 views listed since step 4)
         cover = "".join(pages[:min([x for x in at.values() if x] or [2]) - 1])
         ok("pdf · the cover: the title, the date, the model's file, a summary line, and the contents, each view with the page its header starts",
-           # 49 views since step 3 of the one-model plan, its typed views among them (8, 45 cards and 67 lines before)
-           re.match(r"Bikeshare,anexample\d{4}-\d\d-\d\d·examples/bike-share\.json49views·381cards·398lines·2rulesContents", cover) and None not in at.values()
+           # 52 views since step 4 of the one-model plan (49, 381 cards and 398 lines in step 3; 8, 45 cards and 67 lines before): dock-feed,
+           # demand and help add 18 cards and 25 lines
+           re.match(r"Bikeshare,anexample\d{4}-\d\d-\d\d·examples/bike-share\.json52views·399cards·423lines·2rulesContents", cover) and None not in at.values()
            and all(flat(f"{v['title']}{v.get('caption', '')}{at[v['id']]}") in cover for v in bike["views"]) and f"Rules{at['rules']}Bikeshare" in cover, [cover[:500], at])
         seen = lambda a, b=None: "".join(pages[a - 1:b and b - 1]) if a else ""  # the pages from page a to the one before b
         ok("pdf · a view's page: its legend, then tables of its cards (name, sub-line, kind, what it is), lines (from → to, label, technology) and boxes",
@@ -1291,7 +1292,7 @@ with tempfile.TemporaryDirectory() as tmp:
         # types' tests and stated in their conformance notes; nothing else
         # at most these: text widths differ between machines (Linux CI counts fewer than a Mac), so the count is a ceiling
         # M2.14: the crossings repair and reroute off leave in the C4 and data flow examples (notes/milestone-2.md §11), as Chrome
-        # counts them (tests/atlas.test.mjs counts Node's); stated in docs/conformance/c4.md and dfd.md
+        # counts them (tests/bike-share.test.mjs counts Node's in the bike share's views); stated in docs/conformance/c4.md and dfd.md
         # 4a.7: the Google Cloud and Azure examples' one each, repair and reroute off (notes/milestone-4a.md §11), stated in
         # docs/conformance/gcp.md and azure.md; the Azure example's two since audit 27 (a line no longer runs back through its own box)
         # 4b.5: the BPMN example's, repair and reroute off (notes/milestone-4b.md §14), stated in docs/conformance/bpmn.md

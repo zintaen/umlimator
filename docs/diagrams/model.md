@@ -135,8 +135,8 @@ file is then updated with it.
 | 19 | `sysml.parametric` | `sysml.Block` or `sysml.ConstraintBlock` (the `subject`), `uml.Comment` | Its `sysml.ConstraintProperty` and `sysml.ValueProperty` members, drawn as boxes; `sysml.ConstraintParameter` (of the constraint blocks that type them; of the subject when it is a constraint block) | `sysml.BindingConnector`, `uml.CommentLink` | A binding to a parameter names the constraint property in `ends.<end>.part`. A constraint block subject shows its constraint properties and its own parameters only, the parameters on its frame (a constraint block holds no value property) |
 
 Rows 16 to 19 are SysML v1.7's, drawn from 0.25.0 ([`notes/milestone-3.md`](notes/milestone-3.md) §4; each view in a frame, §5); their examples are
-`examples/ebike-requirements.json`, `ebike-blocks.json`, `ebike-structure.json` and `ebike-range.json`, joined into
-`examples/ebike-atlas.json`.
+`examples/ebike-requirements.json`, `ebike-blocks.json`, `ebike-structure.json` and `ebike-range.json`, whose views
+`examples/bike-share.json` holds too (the e-bike atlas that joined them left with step 4 of the one-model plan).
 
 ### Other notations
 

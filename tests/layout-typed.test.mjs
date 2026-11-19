@@ -346,9 +346,9 @@ test('audit 24: a sequence, timing or mindmap view named as a card with three li
     assert.deepEqual(L.validate(m).filter(p => p.level === 'error'), [], d);
     assert.equal(strip(g).length, strip(L.layout(mk(d, T, 'named'), 'named')).length, `${d}: drawn as under another name`);
   }
-  // a shipped view: the atlas's checkout sequence given the id of its lifeline with most messages out
-  const atlas = JSON.parse(readFileSync(new URL('../examples/bookshop-atlas.json', import.meta.url))), v = atlas.views.find(x => x.id === 'checkout-sequence');
+  // a shipped view: the bike share's unlock sequence given the id of its lifeline with most messages out
+  const atlas = JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url))), v = atlas.views.find(x => x.id === 'unlock-sequence');
   const outs = new Map(); atlas.edges.forEach(e => v.nodeIds.includes(e.from) && outs.set(e.from, (outs.get(e.from) || 0) + 1));
   const top = [...outs].sort((a, b) => b[1] - a[1])[0][0]; atlas.views.forEach(x => { if (x.parent === v.id) x.parent = top; }); v.id = top;
-  assert.ok(L.layout(atlas, top).nodes.length > 0, `checkout-sequence renamed ${top}`);
+  assert.ok(L.layout(atlas, top).nodes.length > 0, `unlock-sequence renamed ${top}`);
 });

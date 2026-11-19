@@ -65,7 +65,7 @@ test('maps draw as now: the map\'s shapes are read only; C4 adds its own two (c4
   assert.deepEqual(SHAPE_NAMES, ['box', 'person', 'browser', 'mobile', 'cylinder', 'pipe', 'document', 'hexagon', 'robot', 'terminal', 'window', 'folder', 'node']);
   assert.deepEqual(C4_SHAPES, SHAPE_NAMES.filter(s => s !== 'node').sort((a, b) => C4_SHAPES.indexOf(a) - C4_SHAPES.indexOf(b)));
   for (const s of SHAPE_NAMES) assert.equal(SHAPE[s].draw, undefined, `${s} has no typed draw`);
-  const map = JSON.parse(readFileSync(new URL('../examples/bookshop.json', import.meta.url))), vid = map.views[0].id;
+  const map = JSON.parse(readFileSync(new URL('../examples/bike-share-c4.json', import.meta.url))), vid = map.views[0].id;
   assert.equal(svgOf(layout(map, vid)).includes('data-shape="c4"'), false);
 });
 

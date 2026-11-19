@@ -103,8 +103,7 @@ test('audit 43: a typed view\'s panel text field that is not text is said at its
 
 test('audit 43: every example\'s panel text fields and stereotypes, each set to what is not text in turn, are said at their paths', () => {
   const O = { z: 3 }, obj = x => x && typeof x === 'object' && !Array.isArray(x);
-  // not the two atlases: bike-share holds their views since step 3 of the one-model plan (step 4 deletes them)
-  for (const f of readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json') && !['bookshop-atlas.json', 'ebike-atlas.json'].includes(f))) {
+  for (const f of readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json'))) {
     const base = read(`../examples/${f}`); if (base.schemaVersion !== 2) continue;
     const spots = new Map(); // one spot a kind and key: the sweep's time
     const walk = (x, at) => { if (!obj(x)) return; if (obj(x.props)) Object.entries(x.props).forEach(([k, v]) => {

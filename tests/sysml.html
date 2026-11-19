@@ -6,8 +6,8 @@
      beside its square, aside), every node inside its box (the frame), every port centred on its owner's border, no line
      through a node but its own two ends, every line end within 1 px of its node's box, no line label over a node (these
      four not on the stress fixtures' all, whose crowding tests/sysml-fixtures.test.mjs pins), every node and line named,
-     texts at 4.5:1 and lines and outlines at 3:1. Then bike-share, which holds the e-bike atlas's views: each link of
-     tools/ebike-links.json, and the fleet map's battery monitor, selected in a view that draws it as a card and opened by
+     texts at 4.5:1 and lines and outlines at 3:1. Then bike-share, which holds the e-bike atlas's views: each link the
+     e-bike atlas had, and the fleet map's battery monitor, selected in a view that draws it as a card and opened by
      Enter, opens its view in the page. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
@@ -36,7 +36,10 @@ const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p
 const css = (x, k) => rgba(getComputedStyle(x)[k]);
 const FIX = {};
 for (const t of ['requirement', 'block-definition', 'internal-block', 'parametric']) for (const k of ['minimal', 'stress']) FIX[`${t}-${k}`] = await (await fetch(`${t}-${k}.json`)).json();
-const LINKS = await (await fetch('../tools/ebike-links.json')).json();
+// the four e-bike examples, and the links the e-bike atlas joined them by (tools/ebike-links.json until step 4 of the one-model plan)
+const LINKS = { sources: ['ebike-requirements', 'ebike-blocks', 'ebike-structure', 'ebike-range'],
+  links: [{ element: 'ebike-requirements/spec', opens: 'ebike-blocks/blocks' }, { element: 'ebike-requirements/range', opens: 'ebike-range/range-analysis' },
+    { element: 'ebike-blocks/ebike', opens: 'ebike-structure/inside-ebike' }] };
 for (const n of LINKS.sources) FIX[n] = await (await fetch(`../examples/${n}.json`)).json();
 
 // a port's (or parameter's) owner: a part, or the frame (the subject's family)

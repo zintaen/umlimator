@@ -74,5 +74,4 @@ Shift + Delete on a 20,000-topic chain. CI holds 1 s and prints each against the
 passing and failing, every gesture by pointer and key, a 30-step session); `tests/mindmap-minimal.json` and
 `tests/mindmap-stress.json` with `tests/m4a-fixtures.test.mjs` and `tests/m4a.html`; `tests/mermaid-mindmap.test.mjs`
 (the reader and writer, 500 generated round trips, the hostile files); `tests/import.py`; `tests/cli.py` (render, check,
-stills, pdf, import, the diff Action, map-repo's CLI); `tests/mcp.py`; `tests/notation.html` (the curves); `tests/atlas.test.mjs`
-(the opening plan, a root view of the atlas).
+stills, pdf, import, the diff Action, map-repo's CLI); `tests/mcp.py`; `tests/notation.html` (the curves).
