@@ -42,9 +42,17 @@ const csPartSaid = m => csPartText(m) || String(m.id);
 const csPortText = m => `${m.label ?? ''}${CS_HAS(CS_PROPS(m).valueType) ? ' : ' + CS_PROPS(m).valueType : ''}`;
 // a port as drawn and said, `port api : Api`: one with no name (or "") by its id, as csName; csPortText stays F2's edit text (audit 36)
 const csPortSaid = m => `port ${csPortText({ ...m, label: csName(m) })}`;
+// `name : Type` split at its first lone ':' (a type may be ns::T): [all, name, type], null when a second lone ':' follows
+function csNameType(h) {
+  const lone = (x, i = 0) => { for (; i < x.length; i++) if (x[i] === ':') { if (x[i + 1] === ':') i++; else return i; } return -1; };
+  const c = lone(h); if (c < 0) return [h, h.trimEnd(), undefined];
+  return lone(h, c + 1) >= 0 ? null : [h, h.slice(0, c).trimEnd(), h.slice(c + 1).trimStart()];
+}
 function csParse(t) {
   // the name runs to the first lone ':' (a type may be ns::T), the multiplicity is a closing [...] that is one (T[], list[str] are types)
-  const s = String(t ?? '').trim(), b = /\s*\[([^[\]]*)\]$/.exec(s), k = b && multBounds(b[1]) ? b[1].trim() : undefined, h = k ? s.slice(0, b.index) : s, m = /^((?:[^:]|::)*?)\s*(?::(?!:)\s*((?:[^:]|::)*))?$/s.exec(h);
+  // cut by index and trimmed, not by a lazy match before \s*, which took time in the square of a run of spaces (audit 50, as tmParse)
+  const s = String(t ?? '').trim(), o = s.endsWith(']') ? s.lastIndexOf('[') : -1, b = o >= 0 && !s.slice(o + 1, -1).includes(']') ? [s, s.slice(o + 1, -1)] : null;
+  const k = b && multBounds(b[1]) ? b[1].trim() : undefined, h = k ? s.slice(0, o).trimEnd() : s, m = csNameType(h);
   // no name before a type, ': Engine [1]', is an anonymous part (or role, or collaboration use), as drawn (audit 17)
   return m && (m[1] || m[2]) ? { label: m[1] || undefined, valueType: m[2] || undefined, multiplicity: k } : { error: 'A part is name : Type [multiplicity]' };
 }
@@ -130,9 +138,13 @@ function csPic(model, view) {
     const inner = boxed.has(f.node) && within(f.node, t.node) ? 'from' : boxed.has(t.node) && within(t.node, f.node) ? 'to' : null;
     if (inner && !(inner === 'from' ? f : t).port) return null;
     return { e, f, t, inner }; }).filter(Boolean);
-  // the ports drawn on each part: its type's, then those its connectors reach through it (§6)
+  // the ports drawn on each part: its type's, then those its connectors reach through it (§6), then on the diff page those it
+  // drew before and lost, retyped, which diff() marks removed in view.diffMarks.marks by <part>-><port> (audit 50: not drawn)
+  const dm = CS_OBJ(view && view.diffMarks) && CS_OBJ(view.diffMarks.marks) ? view.diffMarks.marks : null;
+  const lostPorts = dm ? Object.keys(dm).filter(k => dm[k] === 'removed').map(csSplit).filter(s => s && partOf.has(s[0]) && (mem.get(s[1]) || {}).m && mem.get(s[1]).m.type === 'uml.Port') : [];
   const partPorts = new Map([...partOf.keys()].map(p => { const T = typeOf(el(p)), own = T ? kids(T, 'uml.Port') : [], seen = new Set(own.map(m => m.id));
     lines.forEach(({ f, t }) => [f, t].forEach(x => { if (x.part === p && !seen.has(x.id)) { seen.add(x.id); own.push(mem.get(x.id).m); } }));
+    lostPorts.forEach(([q, id]) => { if (q === p && !seen.has(id)) { seen.add(id); own.push(mem.get(id).m); } });
     return [p, own]; }));
   return { at, mem, el, ids, S, sid, parts, sPorts, uses, collabs, boxed, rest, partOf, typeOf, lines, loops, partPorts, kids };
 }

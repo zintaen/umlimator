@@ -392,6 +392,13 @@ test('remove: a lane deleted by Delete or Shift + Delete, what it held and its n
   assert.deepEqual(['courier-pickup', 'bp-ship', 'shipping-notice'].map(id => noGroup.nodes.find(n => n.id === id).props.categoryValueRef), [[], [], []]);
   assert.deepEqual(errors(noGroup), []);
 });
+test('audit 50: the lane Delete hint counts only the flow nodes the view still shows, as many as the in-lane warnings after it', () => {
+  const said = (m, ids, fm) => { const v = m.views[0], r = bzRemove(m, v, ids, fm), n = apply(m, r.commands);
+    return [Number((/(\d+) flow nodes? now in no lane/.exec(r.say) || [0, 0])[1]), validate(n).filter(p => p.rule === 'in-lane' && p.ids[1] === 'bp-bookshop').length]; };
+  const hid = structuredClone(EX); hid.views[0].nodeIds = hid.views[0].nodeIds.filter(x => x !== 'bp-join');
+  for (const [m, ids, fm, k] of [[EX, ['bp-warehouse'], false, 4], [EX, ['bp-warehouse', 'pick-pack'], false, 3], [hid, ['bp-warehouse'], false, 3], [hid, ['bp-warehouse'], true, 3], [EX, ['bp-warehouse', 'pick-pack'], true, 3]])
+    assert.deepEqual(said(m, ids, fm), [k, k], `${ids} ${fm ? 'Shift + Delete' : 'Delete'}`);
+});
 test('key: A on a boundary event picks another activity of its pool; X expands or collapses a sub-process in the view (decision 22); other keys are the canvas\'s', () => {
   const r = bzKey(EX, V(EX), ['payment-timeout'], 'a');
   assert.deepEqual(r.pick, ['Cancel order', 'Email invoice', 'Pick and pack', 'Hand parcel to courier'], 'the activities of its pool its flow can follow it to: none in a sub-process');

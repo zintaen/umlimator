@@ -1086,7 +1086,7 @@ test('audit 46: a view diff() lists because its picture changed through what it 
   const a = { schemaVersion: 2, nodes: [{ id: 'P', type: 'c4.Person', label: 'Shopper' }, { id: 'S1', type: 'c4.SoftwareSystem', label: 'Shop' }, { id: 'S2', type: 'c4.SoftwareSystem', label: 'Billing' },
     { id: 'X', type: 'c4.Container', parent: 'S1', label: 'API' }], edges: [{ id: 'r1', type: 'c4.Relationship', from: 'P', to: 'X', label: 'uses' }], views: [{ id: 'ctx', diagram: 'c4.context', nodeIds: ['P', 'S1', 'S2'] }] };
   const b = structuredClone(a); b.nodes[3].parent = 'S2';
-  assert.equal(all.layout(all.diff(a, b).model, 'ctx').edges.find(e => e.to === 'S2').change, 'changed');
+  assert.equal(all.layout(all.diff(a, b).model, 'ctx').edges.find(e => e.to === 'S2').change, 'added'); // new to the picture (audit 50)
   const er = read45('bookshop-schema'); er.views.push({ id: 'lines', diagram: 'er', title: 'Lines', notation: 'idef1x', nodeIds: ['er-order_line'] });
   const er2 = structuredClone(er); er2.edges.filter(e => ['er-order-lines', 'er-book-lines'].includes(e.id)).forEach(e => { e.props.identifying = false; });
   assert.equal(all.layout(all.diff(er, er2).model, 'lines').nodes[0].change, 'changed'); assert.ok(!all.layout(er, 'lines').nodes[0].change);
@@ -1179,7 +1179,7 @@ test('audit 47: an element moved to another owner leaves the line its type deriv
   views: [{ id: 'ctx', diagram: 'c4.context', title: 'Context', nodeIds: ['S1', 'S2', 'X'] }] };
   const c4b = structuredClone(c4); c4b.nodes[3].parent = 'S2';
   const d = all.diff(c4, c4b), g = all.layout(d.model, 'ctx'), was = line(g, 'S1->X');
-  assert.deepEqual(d.views, ['ctx']); assert.equal(line(g, 'S2->X').change, 'changed', 'the new implied line: changed, as round 46 has it');
+  assert.deepEqual(d.views, ['ctx']); assert.equal(line(g, 'S2->X').change, 'added', 'the new implied line: added, new to the picture (audit 50)');
   assert.ok(was && was.change === 'removed', 'the old implied line comes back removed'); assert.match(svgOf(g), /Implied relationship from One to Ext, removed/);
   const rq = (id, label, parent) => ({ id, type: 'sysml.Requirement', label, ...(parent ? { parent } : {}), props: { id: id.toUpperCase(), text: label + ' text' } });
   const r0 = { schemaVersion: 2, nodes: [rq('r1', 'Range'), rq('r2', 'Battery life', 'r1'), rq('r3', 'Safety')], edges: [], views: [{ id: 'req', diagram: 'sysml.requirement', title: 'Reqs', nodeIds: ['r1', 'r2', 'r3'] }] };
@@ -1389,4 +1389,64 @@ test('audit 48: an interaction overview\'s inline interaction marks what the seq
   assert.match(frame(svgOf(all.layout(all.diff(a, c).model, 'buy-book'))), /data-change="changed"/, 'the frame that read the lifeline is marked too');
   assert.match(head, /stroke-dasharray="6 4"/); assert.match(head, /text-decoration="line-through">worker : OrderWorker</); assert.match(head, />REMOVED<\/text>/);
   assert.doesNotMatch(inline(svgOf(all.layout(a, 'buy-book'))), /data-change/, 'no change: no mark');
+});
+
+test('audit 50: a C4 implied line new to the picture is added, whatever it stands for (a container moved into a new system)', async () => {
+  const all = await fromSrc(), A = read45('bookshop-c4'); A.edges = A.edges.filter(e => e.id !== 'c4-bookshop-courier');
+  const B = structuredClone(A); B.nodes.push({ id: 'c4-fulfil', type: 'c4.SoftwareSystem', label: 'Fulfilment' });
+  B.nodes.find(n => n.id === 'c4-worker').parent = 'c4-fulfil'; B.views.find(v => v.id === 'c4-context').nodeIds.push('c4-fulfil');
+  const g = all.layout(all.diff(A, B).model, 'c4-context'), from = g.edges.filter(e => e.from === 'c4-fulfil');
+  assert.deepEqual(from.map(e => [e._id, e.change]), [['c4-fulfil->c4-bookshop', 'added'], ['c4-fulfil->c4-courier', 'added'], ['c4-fulfil->c4-mail', 'added']]);
+  assert.deepEqual(g.edges.filter(e => e.change === 'removed').map(e => e._id ?? e.id), ['c4-bookshop->c4-courier'], 'the old one back removed');
+  assert.doesNotMatch(svgOf(g), /edited-dot/, 'no edited dot on a new line');
+});
+
+test('audit 50: the C4 diff page draws a deleted container back with the implied line it drew, removed', async () => {
+  const all = await fromSrc(), El = (id, t, label, parent) => ({ id, type: 'c4.' + t, label, ...(parent ? { parent } : {}), props: { description: 'd' } });
+  const base = { schemaVersion: 2, nodes: [El('S', 'SoftwareSystem', 'Shop'), El('T', 'SoftwareSystem', 'Pay'), El('a', 'Container', 'Web', 'S'), El('b', 'Container', 'API', 'S'), El('c', 'Container', 'Gateway', 'T')],
+    edges: [{ id: 'r1', type: 'c4.Relationship', from: 'a', to: 'c', label: 'charges' }, { id: 'r2', type: 'c4.Relationship', from: 'a', to: 'b', label: 'calls' }],
+    views: [{ id: 'cv', diagram: 'c4.container', title: 'C', subject: 'S', nodeIds: ['a', 'b', 'T'] }] };
+  const after = { ...structuredClone(base), nodes: base.nodes.filter(n => n.id !== 'a'), edges: [], views: [{ ...base.views[0], nodeIds: ['b', 'T'] }] };
+  const g = all.layout(all.diff(base, after).model, 'cv');
+  assert.deepEqual(g.nodes.map(n => [n.id, n.change ?? null]).sort(), [['T', null], ['a', 'removed'], ['b', null]]);
+  assert.deepEqual(g.edges.map(e => [e._id ?? e.id, e.label, e.change]).sort(), [['a->T', 'charges', 'removed'], ['r2', 'calls', 'removed']]);
+  // and a container whose two systems' line goes with it, the other end a removed system: both back
+  const after2 = { ...structuredClone(base), nodes: base.nodes.filter(n => !['a', 'T', 'c'].includes(n.id)), edges: [], views: [{ ...base.views[0], nodeIds: ['b'] }] };
+  assert.deepEqual(all.layout(all.diff(base, after2).model, 'cv').edges.map(e => [e._id ?? e.id, e.change]).sort(), [['a->T', 'removed'], ['r2', 'removed']]);
+});
+
+test('audit 50: renaming a C4 element no view draws marks no line, as diff().views lists no view', async () => {
+  const all = await fromSrc(), El = (id, t, label, parent) => ({ id, type: 'c4.' + t, label, ...(parent ? { parent } : {}), props: {} });
+  const base = { schemaVersion: 2, nodes: [El('S', 'SoftwareSystem', 'Shop'), El('T', 'SoftwareSystem', 'Pay'), El('a', 'Container', 'Web', 'S'), El('c', 'Container', 'Gateway', 'T'), El('k', 'Component', 'K', 'a')],
+    edges: [{ id: 'r1', type: 'c4.Relationship', from: 'k', to: 'c', label: 'charges' }], views: [{ id: 'ctx', diagram: 'c4.context', title: 'Context', nodeIds: ['S', 'T'] }] };
+  const after = structuredClone(base); after.nodes[4].label = 'K2';
+  const d = all.diff(base, after), e = all.layout(d.model, 'ctx').edges[0];
+  assert.deepEqual([d.summary, d.views], [['renames K to K2'], []]);
+  assert.equal(e.change, undefined, 'the line looks as it did'); assert.match(e.aria, /K2 to Gateway/, 'its name says the new name');
+  // its label changed with the relationship's: listed, and marked
+  const b2 = structuredClone(base); b2.edges[0].label = 'bills'; const d2 = all.diff(base, b2);
+  assert.deepEqual([d2.views, all.layout(d2.model, 'ctx').edges[0].change], [['ctx'], 'changed']);
+});
+
+test('audit 50: the diff page draws the port a retyped part lost, removed, beside the ones it gained (composite structure, SysML internal block)', async () => {
+  const all = await fromSrc();
+  const A = read45('order-service-structure'); A.edges = A.edges.filter(e => e.id !== 'checkout-to-pricing');
+  const B = structuredClone(A); B.nodes.find(n => n.id === 'order-service').members.find(m => m.id === 'order-service.pricing').props.valueType = 'CheckoutFlow';
+  const g = all.layout(all.diff(A, B).model, 'internals'), on = g.nodes.filter(n => n.id.startsWith('order-service.pricing->')).map(n => [n.id, n.change]);
+  assert.deepEqual(on, [['order-service.pricing->checkout-class.requests', 'added'], ['order-service.pricing->checkout-class.quotes', 'added'], ['order-service.pricing->checkout-class.charges', 'added'], ['order-service.pricing->price-calculator.quotes', 'removed']]);
+  assert.match(svgOf(g), /data-id="order-service\.pricing-&gt;price-calculator\.quotes"[^>]*data-change="removed"|data-change="removed"[^>]*data-id="order-service\.pricing-&gt;price-calculator\.quotes"/, 'drawn removed');
+  assert.ok(!all.layout(B, 'internals').nodes.some(n => n.id === 'order-service.pricing->price-calculator.quotes'), 'the model after draws it no more');
+  const E = read45('ebike-structure'); E.edges = E.edges.filter(e => !JSON.stringify(e).includes('frontLight'));
+  const F = structuredClone(E); F.nodes.find(n => n.id === 'ebike').members.find(m => m.id === 'ebike.frontLight').props.valueType = 'Motor';
+  assert.deepEqual(all.layout(all.diff(E, F).model, 'inside-ebike').nodes.filter(n => n.id.startsWith('ebike.frontLight->')).map(n => [n.id, n.change]),
+    [['ebike.frontLight->motor.phases', 'added'], ['ebike.frontLight->light.power', 'removed']]);
+});
+
+test('audit 50: a message marked removed in another letter case is numbered as a removed one is', async () => {
+  const all = await fromSrc(), { messageNumbers } = await import('../src/uml/interaction.js'), a = read45('checkout-communication'), V = 'checkout-communication';
+  const mark = w => { const c = structuredClone(a); c.edges.find(e => e.id === 'cm1').change = w; return c; };
+  const nums = c => Object.fromEntries(messageNumbers(c, c.views.find(v => v.id === V)));
+  assert.deepEqual(nums(mark('Removed')), nums(mark('removed'))); assert.notDeepEqual(nums(mark('Removed')), nums(a));
+  const rows = c => all.layout(c, V).nodes.filter(n => n.shape === 'message-row').map(n => [n.id, n.num, n.aria]);
+  assert.deepEqual(rows(mark('REMOVED')), rows(mark('removed')), 'the rows drawn, counted and said alike');
 });

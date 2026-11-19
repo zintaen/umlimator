@@ -53,3 +53,16 @@ test("a weighted line's title and accessible name say its what, else its weight;
   assert.equal(title('c'), 'A → C\n60 imports'); assert.equal(name('c'), 'Line from A to C, 60 imports');
   assert.equal(title('d'), 'A → D\nweight 3 of 3'); assert.equal(name('d'), 'Line from A to D, weight 3 of 3');
 });
+
+test("audit 50: a line's flow stops where the arrowhead drawn begins: weight 1's at rest, a weighted line's heavier one on hover", () => {
+  const s = svgOf(layout(model, 'v')), end = d => d.trim().split(/[\s,A-Za-z]+/).filter(Boolean).map(Number).slice(-2);
+  const groups = [...s.matchAll(/<g class="edge-g[^"]*"[^>]*data-to="(\w)"[^>]*>[\s\S]*?<\/g>/g)].map(m => [m[1], m[0]]);
+  for (const [to, g] of groups) {
+    const e = end(/<path d="([^"]*)" class="edge[ "]/.exec(g)[1]), cut = c => { const p = end(new RegExp(`<path d="([^"]*)" class="${c}"`).exec(g)[1]); return Math.hypot(e[0] - p[0], e[1] - p[1]); };
+    assert.ok(Math.abs(cut('flowline') - 9) < .6, `to ${to}: at rest, trimmed for the normal arrowhead (${cut('flowline')})`);
+    const w = { b: 1, c: 2, d: 3 }[to];
+    if (w > 1) assert.ok(Math.abs(cut('flowline fl-hv') - 9 * (1 + (w - 1) * .35)) < .6, `to ${to}: the hover flow line, trimmed for the heavy arrowhead`);
+    else assert.doesNotMatch(g, /fl-hv/, 'weight 1: one flow line'); }
+  assert.match(STYLES, /svg \.fl-hv, svg \.edge-g:is\(\.wt-2, \.wt-3\):is\(\.hov, \.hot, \.key-on\) \.flowline:not\(\.fl-hv\)[^{]*\{ display: none; \}/, 'the hover one hidden at rest, the rest one in those states');
+  assert.match(STYLES, /\.edge-g:not\(\.faded\):is\(\.wt-2, \.wt-3\):is\(\.hov, \.hot, \.key-on\) \.fl-hv[^{]*\{ display: inline; \}/, 'and the hover one shown then');
+});

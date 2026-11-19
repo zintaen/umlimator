@@ -1004,3 +1004,13 @@ test('connect: a comment link drawn to a comment is added from it on the other U
   assert.equal(c('k', 'order-service.checkout'), null);
   assert.deepEqual(c('order-service.checkout', 'order-service.pricing'), { error: 'A comment link runs from a comment' });
 });
+
+test('audit 50: a part\'s text parses in linear time, a run of spaces too (as the timing view\'s F2), and as before', () => {
+  const sp = ' '.repeat(64000);
+  for (const s of ['a' + sp + 'x', 'a' + sp + ': T' + sp + 'x', 'a : T' + sp + '[1' + sp + 'x]', 'a' + sp + '[1]']) {
+    const t = performance.now(); csParse(s); assert.ok(performance.now() - t < 250, `${s.length} characters in ${performance.now() - t} ms`); }
+  assert.deepEqual(csParse('a' + sp + '[1]'), { label: 'a', valueType: undefined, multiplicity: '1' });
+  for (const [s, r] of [['engine : ns::Engine  [0..1]', { label: 'engine', valueType: 'ns::Engine', multiplicity: '0..1' }], [': Engine [1]', { label: undefined, valueType: 'Engine', multiplicity: '1' }],
+    ['a:::b', { label: 'a::', valueType: 'b', multiplicity: undefined }], ['list : T[]', { label: 'list', valueType: 'T[]', multiplicity: undefined }], ['a : b : c', { error: 'A part is name : Type [multiplicity]' }]])
+    assert.deepEqual(csParse(s), r, s);
+});

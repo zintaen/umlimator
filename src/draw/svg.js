@@ -111,13 +111,15 @@ function svgOf(geo, opts = {}) {
     return best && best[0] >= 8 ? best[1] : [(mid[0][0] + mid[1][0]) / 2, (mid[0][1] + mid[1][1]) / 2]; };
   edges.forEach((e, i) => {
     const E = T && T.edge(e, i), st = E ? E.st : lstyle(e), why = broke(e), d = roundPath(drawn[i]), mk = st.m, hk = st.m + (e.weight > 1 ? '-w' + e.weight : ''), ww = wtWord(e);
-    const tip = 9 * (e.weight > 1 ? 1 + (e.weight - 1) * .35 : 1), fd = roundPath(E ? E.pts : trimLine(drawn[i], e.both ? tip : 0, tip)); // an arrowhead's length (marker refX)
+    // the flow stops where the arrowhead begins (its length, marker refX): weight 1's at rest; a heavier line's heavier one, drawn
+    // on hover, selection and focus, a second flow line the styles swap in (audit 50: trimmed for it at rest, the pulses stopped short)
+    const tip = w => 9 * (w > 1 ? 1 + (w - 1) * .35 : 1), fl = w => roundPath(trimLine(drawn[i], e.both ? tip(w) : 0, tip(w))), fd = E ? roundPath(E.pts) : fl(1);
     const marks = E ? E.marks : `marker-end="url(#${id}-${mk})" ${e.both ? `marker-start="url(#${id}-${mk})"` : ''}`;
     if (tour && tour.legs[i]) { const [a, b] = tour.legs[i];
       s += `<path d="${d}" class="tour-glow" stroke="${st.c}" opacity="0">${tourAnim('0;0;.55;.55;0;0', [0, a, Math.min(a + .01, b), b, b + .03, 1])}</path>`; }
     s += `<g class="edge-g${st.cls || ''}${e.weight > 1 ? ' wt-' + e.weight : ''}"${e.weight > 1 && !E ? ` style="--um-mk: url(#${id}-${hk})${e.both ? `; --um-mk-s: url(#${id}-${hk})` : ''}"` : ''} data-from="${esc(e.from)}" data-to="${esc(e.to)}" data-i="${i}"><path d="${d}" class="halo"/><path d="${d}" class="hitline"/>
       <path d="${d}" class="edge${st.flow ? ' flow' : ''}" stroke="${st.c}" ${st.dash && !st.flow ? `stroke-dasharray="${st.dash}"` : ''} ${st.op ? `opacity="${st.op}"` : ''} ${marks}/>
-      <path d="${fd}" class="flowline" stroke="${st.c}"/>${(e.all || [e]).some(x => x.edited || (CHG[lc(x)] || [])[1] === 'CHANGED') && !e.strong ? (() => { const [x, y] = dotAt(e);
+      <path d="${fd}" class="flowline" stroke="${st.c}"/>${e.weight > 1 && !E ? `<path d="${fl(e.weight)}" class="flowline fl-hv" stroke="${st.c}"/>` : ''}${(e.all || [e]).some(x => x.edited || (CHG[lc(x)] || [])[1] === 'CHANGED') && !e.strong ? (() => { const [x, y] = dotAt(e);
         return `<circle cx="${x}" cy="${y}" r="4" class="edited-dot"><title>Edited</title></circle>`; })() : ''}${why.length ? ruleMark(e, why) : ''}
       <title>${!map && e.aria != null ? esc(e.aria + chWord(e)) : `${e.step != null ? 'Step ' + esc(e.step) + ': ' : ''}${esc(e.s.label || e.s.id)} ${e.both ? '⇄' : '→'} ${esc(e.t.label || e.t.id)}${e.label ? ': ' + esc(e.label) : ''}${esc(chWord(e))}`}${e.label && e.sublabel ? ' (' + esc(e.sublabel) + ')' : ''}${ww ? '\n' + esc(ww) : ''}${e.when ? '\n' + esc(e.when) : ''}${why.length ? '\nBreaks rule: ' + esc(why.join('; ')) : ''}</title></g>`;
   });

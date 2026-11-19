@@ -17,10 +17,9 @@ of Annex A's fourteen diagram types, and tools list it as a diagram kind.
 | its ends | `uml.Class`, `uml.Interface`, `uml.Component`, `uml.Actor` | the class, structure and use case types' looks, read only |
 | 7.8 Comment | `uml.Comment`, `uml.CommentLink` | a note, a dashed line |
 
-Rules (`src/uml/information.js`), all errors, run once on the model: `conveyed-some` (UML: `conveyed` is 1..*),
-`conveyed-kind` (UML 2.5.1's `convey_classifiers`: an information item, a class, an interface, a component or a signal of
-the model), `conveyed-once` (a set), `flow-ends` (two classes, interfaces, components or actors, never an information
-item or a comment). Deleting an element drops it from every `conveyed`, and a flow left conveying nothing goes with it,
+Rules (`src/uml/information.js`), run once on the model: `conveyed-some` (UML: `conveyed` is 1..*), `conveyed-kind` (UML 2.5.1's `convey_classifiers`: an information item, a class, an interface, a component or a signal of the model), `conveyed-once` (a set), `flow-ends` (two classes, interfaces, components or actors, never an information item or a comment) (errors); `comment-link` (a comment link an information flow view draws with no comment at either end, which connect refuses) (a warning).
+
+Deleting an element drops it from every `conveyed`, and a flow left conveying nothing goes with it,
 whatever view the delete is made on and also when the element goes with its owner (`apply()`'s cascade); Shift + Delete on
 this view says so.
 

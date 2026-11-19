@@ -453,7 +453,7 @@ export function diff(before, after) {
   if (out.schemaVersion === 2 && B0.schemaVersion === 2 && B1.schemaVersion === 2) {
     const GEO = new Set(['x', 'y', 'w', 'h', 'col', 'row', 'gx', 'gy', 'nx', 'ny', 'tx', 'tw', 'pts', 'p1', 'p2', 'stubs', 'lbl', 's', 't', 'fs', 'ts', 'stack', 'fromSide', 'toSide',
       'fixed', 'portRank', 'tpb', 'fpb', 'portMin', 'how', 'sort', 'cut', 'nameBox', 'points', 'ticks', 'busy', 'head', 'pad', 'depth', 'div', 'down', 'portTop', 'change', 'edited',
-      'reads', 'implied', 'ids', '_id']);
+      'reads', 'implied', 'ids', '_id', 'aria']); // and its accessible name, which names what it reads, drawn or not (audit 50)
     const sig = x => canon(Object.keys(x).filter(k => !GEO.has(k)).sort().map(k => [k, x[k]]));
     // a view's whole picture, but for the marks an author wrote (a typed view's own lines are drawn by their geometry, not their ends' objects)
     const picture = g => canon([g.legend ?? null, g.bounds ?? null, ...['nodes', 'families', 'edges', 'lanes', 'groups', 'bands'].map(k => arr(g[k]).map(x => x && typeof x === 'object'
@@ -488,10 +488,13 @@ export function diff(before, after) {
         if (same(x, y)) { if (hits(x.reads) || hits(x.implied)) marks[k] = 'none'; } else if (listed && !y && !Array.isArray(x.implied) && derivedL(x, k)) marks[k] = 'added';
         // an implied line that came, or stands for other relationships, with none of them marked (audit 48: one it stood for removed,
         // or a direct relationship removed between its ends): added, or changed. One drawn before too is changed, though every one
-        // it stands for now is new (audit 49: the only relationship behind it replaced by one of another label read as added)
-        else if (listed && Array.isArray(x.implied) && (y || !hits(x.implied) && !hits(x.reads))) marks[k] = y ? 'changed' : 'added'; });
+        // it stands for now is new (audit 49: the only relationship behind it replaced by one of another label read as added).
+        // One new to the picture is added, whatever it stands for (audit 50: from a container moved into a new system, read changed)
+        else if (listed && Array.isArray(x.implied)) marks[k] = y ? 'changed' : 'added'; });
       if (listed) { S0.forEach((y, id) => { const part = onPart(id); if (part != null && !S1.has(id) && S1.has(part)) marks[id] = 'removed'; });
-        L0.forEach((y, k) => { if (L1.has(k) || !derivedL(y, k) || !S1.has(y.from) || !S1.has(y.to)) return;
+        // between two shapes drawn after, or a removed element the view draws back (audit 50: a deleted container's implied line)
+        const end = id => S1.has(id) || cardHow.get(id) === 'removed' && arr(v.nodeIds).includes(id);
+        L0.forEach((y, k) => { if (L1.has(k) || !derivedL(y, k) || !end(y.from) || !end(y.to)) return;
           gone.push({ id: k, from: y.from, to: y.to, ...(typeof y.label === 'string' && y.label ? { label: y.label } : {}) }); }); }
       if (Object.keys(marks).length || gone.length) v.diffMarks = { ...(Object.keys(marks).length ? { marks: plain(marks) } : {}), ...(gone.length ? { gone } : {}) }; });
   }
