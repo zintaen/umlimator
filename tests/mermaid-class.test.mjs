@@ -109,7 +109,10 @@ function generate(seed) {
       if (ifaces.length && others.length) { from = pick(others); to = pick(ifaces); } else type = 'uml.Dependency';
     }
     // a generalization joins two of one kind: the reader makes any other a realization or skips it (audit 38)
-    if (type === 'uml.Generalization') to = pick(classes.filter(c => kinds.get(c) === kinds.get(from)));
+    // and closes no cycle: the reader skips the line that would (audit 44)
+    const up = c => edges.filter(e => e.type === 'uml.Generalization' && e.from === c).map(e => e.to);
+    const reaches = (a, b) => a === b || up(a).some(x => reaches(x, b));
+    if (type === 'uml.Generalization') { const ok = classes.filter(c => kinds.get(c) === kinds.get(from) && !reaches(c, from)); if (ok.length) to = pick(ok); else type = 'uml.Dependency'; }
     const end = () => clean({ role: maybe(0.4, pick(['lines', 'the owner'])), multiplicity: maybe(0.5, pick(['1', '0..1', '0..*', '1..*', '*', '2..5'])), aggregation: maybe(0.3, pick(['composite', 'shared'])), navigable: maybe(0.4, true) });
     const ends = type === 'uml.Association' ? clean({ from: end(), to: end() }) : {};
     Object.keys(ends).forEach(k2 => { if (!Object.keys(ends[k2]).length) delete ends[k2]; });
@@ -769,4 +772,32 @@ test('an element of no type (or "") in a class view is written as a class, with 
     assert.deepEqual(back.nodes[0].members.map(x => x.id), ['A.x']);
     assert.deepEqual(back.edges.map(x => [x.id, x.from, x.to]), [['e', 'A', 'B']]);
   }
+});
+
+// audit 44: a generalization cycle (A <|-- B with B <|-- A, or A <|-- A) was read into a model validate() rejects, with an
+// empty report: the line that closes it, in source order, is skipped and said; a diamond is no cycle; a hostile chain of
+// sixty thousand lines closed at its end is settled in one pass, never thrown, and what is read validates
+test('a generalization cycle is skipped at the line that closes it, never an invalid model (audit 44)', () => {
+  const errors = m => validate(m).filter(v => v.level === 'error').map(v => v.message);
+  const r = read('classDiagram\n  Shape <|-- Circle\n  Circle <|-- Shape\n  Node <|-- Node\n  class Node');
+  assert.deepEqual(r.report, [{ line: 3, status: 'skipped', message: 'Circle <|-- Shape: Shape would be its own ancestor, a generalization cycle UML refuses' },
+    { line: 4, status: 'skipped', message: 'Node <|-- Node: Node would specialize itself, a generalization cycle UML refuses' }]);
+  assert.deepEqual(r.model.edges.map(e => e.id), ['Circle-Shape']);
+  assert.deepEqual(errors(r.model), []);
+  const three = read('classDiagram\nA <|-- B\nB <|-- C\nC <|-- A\nA <|-- B');
+  assert.deepEqual(three.report.map(x => [x.line, x.status]), [[4, 'skipped']]);
+  assert.deepEqual(errors(three.model), []);
+  const diamond = read('classDiagram\nA <|-- B\nA <|-- C\nB <|-- D\nC <|-- D\nA <|-- D');
+  assert.deepEqual(diamond.report, []);
+  assert.equal(diamond.model.edges.length, 5);
+  // an interface specializing an interface closes one too; a realization is no generalization and closes none
+  const ifc = read('classDiagram\nclass I { <<interface>> }\nclass J { <<interface>> }\nI <|-- J\nJ <|-- I\nK ..|> I\nI ..|> K');
+  assert.ok(ifc.report.some(x => x.line === 5 && /its own ancestor/.test(x.message)), JSON.stringify(ifc.report));
+  assert.ok(!errors(ifc.model).some(e => e.startsWith('generalization-cycle')), errors(ifc.model).join('; '));
+  let s = 'classDiagram\n'; for (let i = 0; i < 60000; i++) s += `a${i}<|--a${i + 1}\n`; s += 'a60000<|--a0\na7<|--a7\n';
+  const t0 = Date.now(), big = read(s);
+  assert.ok(Date.now() - t0 < 5000, `${Date.now() - t0} ms`);
+  assert.equal(big.report.filter(x => /generalization cycle/.test(x.message)).length, 2);
+  assert.equal(big.model.edges.length, 60000);
+  assert.ok(!errors(big.model).some(e => e.startsWith('generalization-cycle')));
 });
