@@ -91,7 +91,9 @@ function objectGeo({ model, view, pos, memo }) {
       // memberText draws props.default after " = ": a slot passed as { label: feature, props: { default: value } } (§9.1)
       : { shape: 'classifier', underline: true, stereotypes: obStereo(n), compartments: slots.length ? [{ name: 'slots', members: slots.map(m => ({ id: m.id, type: 'uml.Slot', label: m.label, props: { default: OB_PROPS(m).value } })) }] : [],
         collapsed: OB_ARR(pr.collapsed), ...(Number.isFinite(pr.rows) ? { rows: pr.rows } : {}) };
-    const d = { id, label: n.type === 'uml.Comment' ? elName(n) : head(id), type: n.type || 'uml.InstanceSpecification', kind: 'file', ...shape, aria: obNodeName(n, pic), col: (OB_OWN(pos, id) || [0, 0])[0], row: (OB_OWN(pos, id) || [0, 0])[1] };
+    // the owners its drawn name is qualified through (audit 49: as the class view's cards, so a renamed package marks it)
+    const rd = n.type === 'uml.Comment' ? [] : pic.via(id);
+    const d = { id, label: n.type === 'uml.Comment' ? elName(n) : head(id), type: n.type || 'uml.InstanceSpecification', kind: 'file', ...shape, ...(rd.length ? { reads: rd } : {}), aria: obNodeName(n, pic), col: (OB_OWN(pos, id) || [0, 0])[0], row: (OB_OWN(pos, id) || [0, 0])[1] };
     return { ...d, ...SHAPE[d.shape].size(d) }; });
   const edges = lines.filter(({ from, to }) => !holdsLine(pic, from, to)).map(({ e, from, to }) => { const said = linkText(e), r = w => roleOf(e, w), end = w => (r(w) ? ` (${r(w)})` : '');
     // a kind the view lists that it does not draw (the outline's Show): an arrow named "Line", as the class view's (audit 14)

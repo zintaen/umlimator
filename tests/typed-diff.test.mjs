@@ -215,3 +215,43 @@ test('a BPMN task moved into another lane, or out of a lane removed, names the l
   const s = all.diff(bz, edit(bz, m => { const P = m.nodes.find(n => n.id === 'bp-bookshop'); P.members = P.members.filter(l => l.id !== 'bp-warehouse'); m.nodes.forEach(n => { if (n.parent === 'bp-warehouse') n.parent = 'bp-sales'; }); })).summary;
   assert.ok(s.length > 1 && s.slice(1).every(x => x.endsWith(' into Sales')) && !s.some(x => /bp-(sales|warehouse)/.test(x)), s.join('; '));
 });
+
+// audit 49: a member moved to another owner is said once, and a shape drawn for it in its old place comes back removed
+test('audit 49: a member moved between owners reads only "moves X out of A into B"; a moved port leaves a removed ghost', () => {
+  const cl = load('tests/class-minimal.json'), mv = all.diff(cl, edit(cl, m => { const x = m.nodes[0].members.shift(); m.nodes[1].members = [x]; }));
+  assert.deepEqual(mv.summary, ['moves total out of Order into OrderLine']);
+  const cs = edit(load('tests/composite-minimal.json'), m => { m.edges = []; m.nodes[0].members.push({ id: 's.out', type: 'uml.Port', label: 'out' }); });
+  for (const into of ['Engine', 'a class no view draws']) {
+    const after = edit(cs, m => { const p = m.nodes[0].members.splice(2, 1)[0];
+      if (into === 'Engine') m.nodes[1].members.push(p); else m.nodes.push({ id: 'Z', type: 'uml.Class', label: 'Zed', members: [p] }); });
+    const d = all.diff(cs, after), g = all.layout(d.model, 'v'), ghost = g.nodes.filter(n => n.change === 'removed');
+    assert.equal(d.summary.filter(s => /\(members\)/.test(s)).length, 0, d.summary.join('; '));
+    assert.deepEqual(ghost.map(n => [n.label, n.owner, n.shape]), [['out', 's', 'port']], into);
+    assert.notEqual(ghost[0].id, 's.out'); assert.deepEqual(all.validate(d.model), []);
+  }
+  // deleted, as before: the port itself comes back
+  assert.deepEqual(all.layout(all.diff(cs, edit(cs, m => { m.nodes[0].members.splice(2, 1); })).model, 'v').nodes.filter(n => n.change === 'removed').map(n => n.id), ['s.out']);
+});
+
+test('audit 49: the object view and an open package box mark a name qualified through a renamed undrawn package', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'p', type: 'uml.Package', label: 'sales' }, { id: 'q', type: 'uml.Package', label: 'orders', parent: 'p' },
+    { id: 'c', type: 'uml.Class', label: 'Order', parent: 'p' }, { id: 'o', type: 'uml.InstanceSpecification', label: 'o1', parent: 'p', props: { classifier: 'Order' } }, { id: 'k', type: 'uml.Class', label: 'Line', parent: 'q' }],
+  views: [{ id: 'ov', diagram: 'uml.object', nodeIds: ['c', 'o'] }, ...['uml.class', 'uml.package', 'uml.component', 'uml.profile', 'uml.object'].map((diagram, i) => ({ id: 'b' + i, diagram, nodeIds: ['q', 'k'] }))] };
+  const d = all.diff(m, edit(m, x => { x.nodes[0].label = 'shop'; })), at = (v, id) => [...all.layout(d.model, v).nodes, ...(all.layout(d.model, v).families || [])].find(n => n.id === id);
+  assert.deepEqual(d.summary, ['renames sales to shop']);
+  assert.deepEqual(['c', 'o'].map(id => [at('ov', id).label, at('ov', id).change]), [['shop::Order', 'changed'], ['shop::o1 : Order', 'changed']]);
+  for (const v of ['b0', 'b1', 'b2', 'b3', 'b4']) { assert.ok(d.views.includes(v), v); assert.equal(at(v, 'q').change, 'changed', v); assert.match(String(at(v, 'q').title), /shop::orders/, v); }
+  // a rename that leaves the drawn names as they were marks nothing on them
+  const e = all.diff(m, edit(m, x => { x.nodes[2].props = { isAbstract: false }; })), g = all.layout(e.model, 'b0');
+  assert.equal([...g.nodes, ...(g.families || [])].find(n => n.id === 'q').change, undefined);
+});
+
+test('audit 49: a C4 implied line drawn before and after reads changed when the only relationship behind it is replaced', () => {
+  const El = (id, t, label, parent) => ({ id, type: 'c4.' + t, label, ...(parent ? { parent } : {}), props: {} });
+  const base = () => ({ schemaVersion: 2, nodes: [El('S', 'SoftwareSystem', 'Shop'), El('T', 'SoftwareSystem', 'Pay'), El('a', 'Container', 'Web', 'S'), El('b', 'Container', 'API', 'S'), El('c', 'Container', 'Gateway', 'T')],
+    edges: [{ id: 'r1', type: 'c4.Relationship', from: 'b', to: 'c', label: 'charges' }], views: [{ id: 'ctx', diagram: 'c4.context', title: 'Context', nodeIds: ['S', 'T'] }] });
+  const marks = (b, f) => { const a = edit(b, f); return all.layout(all.diff(b, a).model, 'ctx').edges.map(e => [e._id ?? e.id, e.label, e.change]); };
+  assert.deepEqual(marks(base(), m => { m.edges = [{ id: 'r2', type: 'c4.Relationship', from: 'a', to: 'c', label: 'pays' }]; }), [['S->T', 'pays', 'changed']]);
+  assert.deepEqual(marks(base(), m => { m.edges = [{ id: 'r2', type: 'c4.Relationship', from: 'b', to: 'c', label: 'charges' }]; }), [['S->T', 'charges', undefined]]);
+  assert.deepEqual(marks(edit(base(), m => { m.edges = []; }), m => { m.edges = [{ id: 'r2', type: 'c4.Relationship', from: 'a', to: 'c', label: 'pays' }]; }), [['S->T', 'pays', 'added']]);
+});
