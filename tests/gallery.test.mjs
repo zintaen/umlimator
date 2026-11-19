@@ -236,3 +236,50 @@ test('the examples\' README links every example model, and the gallery and the m
     for (const t of new Set([...said, ...m.views.map(v => `"${v.diagram}"`)])) assert.ok(m4a.includes(t), `${n}: ${t}`);
   }
 });
+
+// audit 51: eleven feature rows linked examples/variants/*.json after #542 deleted the folder, and 'Not shown' named chips,
+// planned cards and nodeOverrides, which examples/types/map.json and the Bookshop Atlas set: every relative link of the
+// README opens a file, and each `key` or `key: value` 'Not shown' names is set by no example model
+test('the examples\' README links only files that exist, and \'Not shown\' names nothing an example model sets', () => {
+  const readme = read('examples/README.md');
+  const links = [...readme.matchAll(/\]\(([^)\s]+)\)/g)].map(m => m[1].split('#')[0]).filter(l => l && !/^[a-z]+:/i.test(l));
+  assert.ok(links.length > 20, links.length);
+  assert.deepEqual(links.filter(l => !existsSync(new URL(l, new URL('examples/', root)))), []);
+  const notShown = readme.split('\n').find(l => l.startsWith('Not shown')); assert.ok(notShown);
+  const models = [...readdirSync(new URL('examples/', root)).filter(f => f.endsWith('.json')).map(f => `examples/${f}`),
+    ...readdirSync(new URL('examples/types/', root)).filter(f => f.endsWith('.json')).map(f => `examples/types/${f}`)];
+  const sets = (m, key, value) => { let hit = false; JSON.parse(read(m), (k, v) => { if (k === key && (value === undefined || JSON.stringify(v) === value)) hit = true; return v; }); return hit; };
+  const said = [...notShown.matchAll(/`(\w+)(?:: ([^`]+))?`/g)].map(([, k, v]) => [k, v]).filter(([k]) => k !== 'nodes' && k !== 'lanes');
+  assert.ok(said.length > 8, said.length);
+  assert.deepEqual(said.flatMap(([k, v]) => models.filter(m => sets(m, k, v)).map(m => `${k}${v ? ': ' + v : ''} in ${m}`)), []);
+});
+
+// audit 51: docs/types.md said a type's "All examples" opens one page holding every example and variant of the type, a
+// card for each on its overview, the gallery before 20 Nov; the page tools/gallery.mjs writes is one live example, its
+// checklist and its alternatives, with no cards
+test('docs/types.md describes a type\'s page as tools/gallery.mjs writes it: one live example, its checklist and alternatives', () => {
+  const intro = read('docs/types.md').split('\n## ')[0].replace(/\s+/g, ' ');
+  assert.doesNotMatch(intro, /variant|a card for each|every example/);
+  assert.match(intro, /"All examples" opens its page in the \[examples\]\(\.\/examples\.md#diagrams\): one example, live, that shows everything the type draws, with a checklist of what to find in it and the settings that need a view of their own/);
+  for (const t of typePages) {
+    const page = written[`docs/gallery/${t}.md`]; assert.ok(page, t);
+    assert.equal((page.match(/<iframe /g) || []).length, 1, t); assert.match(page, /## What it shows \{#shows\}/, t);
+    assert.doesNotMatch(page, /class="(?:ex-card|card)"/, t);
+  }
+});
+
+// audit 51: the Umlimator Atlas's C4 context view hung under the overview with no card opening it, so the C4 views of
+// "views that open into each other" were reached from the views list only: in each atlas, every view is reached from the
+// root by opening cards, as the page's mapContext reads a card (opensView, view, its id, a view's node, nodeOverrides)
+test('in each atlas every view is reached from the root by opening cards', async () => {
+  await import('../src/map/typed.js');
+  const { mapContext } = await import('../src/map/context.js');
+  const bad = [];
+  for (const f of ['umlimator-atlas', 'bookshop-atlas']) {
+    const ctx = mapContext(json(`examples/${f}.json`)), seen = new Set([ctx.rootId]), todo = [ctx.rootId];
+    while (todo.length) { const vid = todo.pop();
+      for (const id of ctx.V[vid].nodeIds || []) { const o = ctx.opensOf(id, vid); if (o && ctx.V[o] && !seen.has(o)) { seen.add(o); todo.push(o); } } }
+    bad.push(...ctx.views.filter(v => !seen.has(v.id)).map(v => `${f}: ${v.id} under ${v.parent}`));
+  }
+  assert.deepEqual(bad, []);
+});

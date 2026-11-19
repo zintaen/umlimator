@@ -66,3 +66,24 @@ test("audit 50: a line's flow stops where the arrowhead drawn begins: weight 1's
   assert.match(STYLES, /svg \.fl-hv, svg \.edge-g:is\(\.wt-2, \.wt-3\):is\(\.hov, \.hot, \.key-on\) \.flowline:not\(\.fl-hv\)[^{]*\{ display: none; \}/, 'the hover one hidden at rest, the rest one in those states');
   assert.match(STYLES, /\.edge-g:not\(\.faded\):is\(\.wt-2, \.wt-3\):is\(\.hov, \.hot, \.key-on\) \.fl-hv[^{]*\{ display: inline; \}/, 'and the hover one shown then');
 });
+
+// audit 51: the d.ts, the JSON Schema, the map type's checklist (tools/types.json, and the docs page tools/gallery.mjs
+// writes from it), the examples' README and monorepo.py still said a weight is drawn as a width, as before 19 Nov; each
+// now says what the test above draws: one width at rest, its width on hover, selection and keyboard focus
+test('every description of a line\'s weight says it shows on hover, selection and focus, not as a width at rest', async () => {
+  const { readFileSync } = await import('node:fs');
+  const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
+  const schema = JSON.parse(read('lib/umlimator.schema.json'));
+  const descs = []; JSON.parse(JSON.stringify(schema), (k, v) => { if (v && typeof v === 'object' && v.weight && v.weight.description) descs.push(v.weight.description); return v; });
+  assert.ok(descs.length >= 1);
+  const dts = /\/\*\*((?:(?!\*\/)[\s\S])*)\*\/\s*weight\?:/.exec(read('lib/umlimator.d.ts'));
+  assert.ok(dts, 'the d.ts documents weight');
+  const map = JSON.parse(read('tools/types.json')).types.map, item = JSON.stringify(map).match(/"(Line weights[^"]*)"/);
+  assert.ok(item, 'the map checklist lists weights');
+  const said = { schema: descs.join(' '), dts: dts[1], checklist: item[1], page: read('docs/gallery/map.md').match(/<li>Line weights[^<]*<\/li>/)?.[0] ?? '',
+    readme: read('examples/README.md').match(/^\| \[`monorepo\.json`\][^\n]*/m)[0], monorepo: read('examples/monorepo.py').split('"""')[1] };
+  for (const [where, text] of Object.entries(said)) {
+    assert.doesNotMatch(text, /drawn as (its )?widths?|heavier|about 1\.8, 3\.2 and 4\.5 px/, where);
+    if (where !== 'monorepo') assert.match(text, /hover/, where);
+  }
+});

@@ -26,7 +26,7 @@ pageClass: gallery-page
 <li>Attributes with all four visibilities: + public, - private, # protected, ~ package</li>
 <li>A derived attribute (/total), a default (status = draft) and a multiplicity on a member (name: String [0..1])</li>
 <li>A static attribute and a static operation, underlined (placed, find)</li>
-<li>Operations with parameters, a return type, and parameter directions (in by, out was)</li>
+<li>Operations with parameters, a return type, and parameter directions (out was; in, the default, is not drawn)</li>
 <li>A class cut to 3 rows then &quot;+2 more&quot; (Customer, <code>present</code> <code>rows</code>)</li>
 <li>A compartment collapsed (Book's operations, <code>present</code> <code>collapsed</code>)</li>
 <li>An association with a label, role names, multiplicities and a navigable end (Customer places orders 0..*)</li>

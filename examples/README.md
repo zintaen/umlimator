@@ -14,7 +14,7 @@ Each map is a JSON model. CI turns it into a self-contained page (`python3 umlim
 | Model | Use case | What it shows |
 |---|---|---|
 | [`shapes.json`](shapes.json) | Card shapes, the one style maps draw | A card of each kind that has a shape: people, a browser app, a phone, a window (its own `shape`), a terminal, an agent, a database, a queue, a file, a module, hosts, a hook and an external system |
-| [`monorepo.json`](monorepo.json) | A map generated from a monorepo's dependency list | What [`monorepo.py`](monorepo.py) writes from a list of imports: a card per package, a line per import, heavier with more imports, a box per folder, nested as the folders are, and the same cards with no boxes |
+| [`monorepo.json`](monorepo.json) | A map generated from a monorepo's dependency list | What [`monorepo.py`](monorepo.py) writes from a list of imports: a card per package, a line per import, its weight by the count of imports (shown as its width on hover, selection and keyboard focus), a box per folder, nested as the folders are, and the same cards with no boxes |
 | [`umlimator-atlas.json`](umlimator-atlas.json) | The Umlimator Atlas: umlimator's own model, the gallery's first Atlas entry | A map of umlimator's parts and who uses each, its C4 context and containers, the module's layers (package), the typed families (component), the diff Action on a pull request (sequence) and umlimator's state machines, joined by cards that open them; two stories |
 | [`bookshop-atlas.json`](bookshop-atlas.json) | The Bookshop Atlas: an online bookshop as one model, the gallery's second Atlas entry | A map of the bookshop's systems opening into its C4 context, containers, components, dynamic and deployment views, the shoppers' use cases, buying a book (interaction overview and four sequences), components, the sales domain (class), an order's life (state machine) and a snapshot of one order (object), packages and the conventions profile, the order service's insides, the information flows, the database (ER), data flow at two levels, fulfilment and payment (activity) with one charge's timing, checkout as sequence and communication, order to shipment and pick and pack (BPMN), returns (flowchart), production (deployment), the opening plan (mindmap) and the bookshop on Google Cloud, Azure and AWS: one bookshop, the same names in every view |
 
@@ -121,26 +121,28 @@ The module embedded in a page, as an app would use it. Serve the repository over
 
 | Feature | Where |
 |---|---|
-| Views a card opens (`opensView`) | umlimator-atlas: from the overview to the module's layers, the typed families, the diff Action and the state machines, from the machines to each machine's states, and from the C4 context to the containers |
+| Views a card opens (`opensView`) | umlimator-atlas: from the overview to the C4 context (umlimator.py), the module's layers, the typed families, the diff Action and the state machines, from the machines to each machine's states, and from the C4 context to the containers |
 | A view the host loads when it's opened (`opensView` with `opensCount`) | umlimator-atlas: umlimator/all and Diff Action, in `embed.html` |
 | A stacked card unfolded in place (E, Alt + click, `map.expand()`) | umlimator-atlas: The module and umlimator/all in `overview`; numbered, with its run order: Navigation in `machines` |
-| Boxes (`containers`) and their tabs (`badges`) | umlimator-atlas `machines` and `story`; [`variants/map-boxes.json`](variants/map-boxes.json) |
-| A box's tone, a tinted region (`tone`) | [`variants/map-boxes.json`](variants/map-boxes.json) |
-| Nested boxes (`parent`) | [`variants/map-boxes.json`](variants/map-boxes.json), monorepo `boxed` |
+| Boxes (`containers`) and their tabs (`badges`) | umlimator-atlas `machines` and `story`; [`types/map.json`](types/map.json) `shop` (Platform and Data) |
+| A box's tone, a tinted region (`tone`) | [`types/map.json`](types/map.json) `shop` (Data, Support) |
+| Nested boxes (`parent`) | [`types/map.json`](types/map.json) `shop` (Data in Platform), monorepo `boxed` |
 | A line to or from a box | umlimator-atlas `machines` (The page to render()'s handle) and `story` (A story shown to Ended) |
-| Line kinds (`kind`: calls, feeds, triggers, state, guard) | [`variants/map-lines.json`](variants/map-lines.json) |
-| Line weights (`weight`) | umlimator-atlas `overview`, [`variants/map-lines.json`](variants/map-lines.json), `live.html` |
-| A line's second label (`sublabel`) | umlimator-atlas `overview` (in Node, headless, MCP), [`variants/map-lines.json`](variants/map-lines.json) |
+| Line kinds (`kind`: calls, feeds, triggers, state, guard) | [`types/map.json`](types/map.json) `shop` |
+| Line weights (`weight`), shown as widths on hover, selection and keyboard focus | umlimator-atlas `overview`, [`types/map.json`](types/map.json) `shop` (POST /orders 3, order 2), `live.html` |
+| A line's second label (`sublabel`) | umlimator-atlas `overview` (in Node, headless, MCP), [`types/map.json`](types/map.json) `shop` (POST /orders) |
 | The sides a line uses (`fromSide`, `toSide`) | umlimator-atlas `navigation` (a later request, back over the top) |
-| Tabs on cards (`badges`, with `tone`) | [`variants/map-badges.json`](variants/map-badges.json) (beta, on call, backed up), `live.html` |
+| Tabs on cards (`badges`, with `tone`) | [`types/map.json`](types/map.json) `shop` (public, on call, backed up), `live.html` |
 | Line icons (`icon`) | every model |
-| A card with its name only (`noSub`) | [`variants/map-badges.json`](variants/map-badges.json) (Baker's list) |
-| Edited marks (`edited`) | [`variants/map-badges.json`](variants/map-badges.json) (Orders API) |
+| A card with its name only (`noSub`) | [`types/map.json`](types/map.json) `shop` (Admin CLI) |
+| Edited marks (`edited`) | [`types/map.json`](types/map.json) `shop` (Shop API) |
+| Chips (`verbs`), planned and removed cards (`change`), brand logos (`icon`) | [`types/map.json`](types/map.json) `shop` (Shop API's checkout and refund; Gift cards; React, FastAPI and PostgreSQL) |
+| A card's setting in one view only (`nodeOverrides`) | bookshop-atlas `components` (Shop API opens `domain`) and `checkout-sequence` |
 | Cards with no lines in a row of their own | monorepo `plain` (tools/release, tools/codemods) |
 | Positions set by hand (`layout`) | umlimator-atlas `overview`, `machines`, `story` and `tour` |
 | Space between columns and rows (`gap`, `rgap`) | umlimator-atlas `machines`, `story` and `tour` |
 | Steps in run order (`render: "sequence"`) and a tour | umlimator-atlas `navigation`, `keys` and `mcp`; a tour in `tour` |
-| Steps on the lines of any view (`step`) | [`variants/map-lines.json`](variants/map-lines.json) |
+| Steps on the lines of any view (`step`) | [`types/map.json`](types/map.json) `shop`, and `shop-run` in run order |
 | `render()`, its events, `update()`, `setView()`, `focus()`, `toSVG()`, `toPNG()`, themes | `embed.html` |
 | Deeper tints (`--um-tint`) | `embed.html`, its host's palette |
 | The standalone page's pieces in `render()`: views list, details panel, legend, hint line (`nav`, `details`, `legend`, `hints`) | `embed.html` |
@@ -149,7 +151,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | A view in sentences (`describe()`), a tour along any path (`tour()`) | `ask.html` |
 | A trace replayed (`replay()`, `otlpSpans()`) | `replay.html` |
 | A trace kept as a numbered view (`sequenceFromTrace()`, `umlimator.py trace`): each call a step, its duration under its label | `python3 umlimator.py trace examples/umlimator-atlas.json examples/traces/pull-request.json --view diff-trace --match examples/traces/pull-request-match.json --out atlas.json` |
-| Lenses (`lenses`, `owner`, `map.lens()`), the page's Lenses menu and `#lens=<id>` | [`variants/map-boxes.json`](variants/map-boxes.json): Who owns what (cards ringed by owner, with a legend) and Where the takings go |
+| Lenses (`lenses`, `owner`, `map.lens()`), the page's Lenses menu and `#lens=<id>` | [`types/map.json`](types/map.json): Who owns what (cards ringed by owner, with a legend) and Where the money goes |
 | A story told step by step (`stories`, `play()`), its Stories menu and recording in the page, `umlimator.py record` | umlimator-atlas (`assistant` and `pull-request`), on the site; pictured under Maps |
 | Editing and undo (`editable`, `change`, `history()`) | `edit.html` |
 | A diagram type: a typed model in its own notation (`schemaVersion: 2`, a view's `diagram`), from `umlimator/all` | sales-classes (`uml.class`), order-objects (`uml.object`), bookshop-packages (`uml.package`), checkout-sequence (`uml.sequence`), checkout-communication (`uml.communication`), shopping-use-cases (`uml.use-case`), fulfil-activity (`uml.activity`), order-states (`uml.state-machine`), buy-book-overview (`uml.interaction-overview`), bookshop-components (`uml.component`), bookshop-deployment (`uml.deployment`), order-service-structure (`uml.composite-structure`) |
@@ -193,7 +195,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | A diagram you have already, as a model (`umlimator.py import`): Structurizr DSL, C4-PlantUML, Mermaid, compose or Kubernetes JSON | [`tests/import/`](../tests/import/) and, for Structurizr DSL, [`tests/fixtures/integration.dsl`](../tests/fixtures/integration.dsl): a sample of each format, which CI imports, renders and checks (`tests/import.py`) |
 | An AI assistant reading a map and driving its page (an MCP server: `umlimator.py mcp`) | any model: `python3 umlimator.py mcp examples/umlimator-atlas.json` |
 
-Not shown: `repair: false`, a switch for debugging the router; chips (`verbs`, `subAndChips`), skill-map kinds and kinds read from labels (`kindsFromLabels`), a process in steps (`render: "process"`, `stepIds`) and the view list's order (`browserOrder`); planned cards (`change: "planned"`), brand logos, swimlanes (`lanes`), cards only one view has (a view's `nodes`, `nodeOverrides`), two lines for A to B and B to A (`keepPairs`), a view's loop back (`loop: true`), budgets (`latency`, `cost`, `critical()`, `whatIf()`), rules on the map (`rules`, `rules()`) and Structurizr groups as boxes. [The model guide](../docs/guide/model.md) describes each.
+Not shown: `repair: false`, a switch for debugging the router; cards that show their sub-line and their chips (`subAndChips`), skill-map kinds and kinds read from labels (`kindsFromLabels`), a process in steps (`render: "process"`, `stepIds`) and the view list's order (`browserOrder`); swimlanes (`lanes`), cards only one view has (a view's `nodes`), two lines for A to B and B to A (`keepPairs`), a view's loop back (`loop: true`), budgets (`latency`, `cost`, `critical()`, `whatIf()`), rules on the map (`rules`, `rules()`) and Structurizr groups as boxes. [The model guide](../docs/guide/model.md) describes each.
 
 ## Diagram types to come
 

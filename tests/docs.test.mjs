@@ -360,3 +360,45 @@ test('audit 48: the CLI guide\'s example PDF page heading is a view path of the 
   const paths = atlas.views.map(v => ctx.chain(v.id).map(id => ctx.V[id].title).join(' › '));
   assert.ok(guide.includes('umlimator-atlas.pdf') && paths.includes(said), `${said} is none of: ${paths.join(' | ')}`);
 });
+
+// audit 51: the API page and the Action guide quoted "adds Readers between umlimator.py and The module", a sentence diff()
+// never writes for the Umlimator Atlas (Readers has no line to The module): each quoted "adds <card>..." is what diff()
+// says when that card, and its lines, are added to the atlas
+test('audit 51: the diff() summary the docs quote is what diff() says for the Umlimator Atlas', async () => {
+  const { diff } = await import('../lib/umlimator-all.js');
+  const after = JSON.parse(readFileSync(new URL('../examples/umlimator-atlas.json', import.meta.url), 'utf8'));
+  let n = 0;
+  for (const p of ['../docs/api/apply-and-commands.md', '../docs/guide/github-action.md']) {
+    for (const [, said, label] of readFileSync(new URL(p, import.meta.url), 'utf8').matchAll(/"(adds ([^",]+?)(?:,| between)[^"]*)"/g)) {
+      const card = after.nodes.find(x => x.label === label); assert.ok(card, `${p}: ${label}`);
+      const before = structuredClone(after);
+      before.nodes = before.nodes.filter(x => x.id !== card.id);
+      before.edges = before.edges.filter(e => e.from !== card.id && e.to !== card.id);
+      for (const v of before.views) if (v.nodeIds) v.nodeIds = v.nodeIds.filter(i => i !== card.id);
+      assert.ok(diff(before, after).summary.includes(said), `${p}: "${said}" not in ${JSON.stringify(diff(before, after).summary)}`); n++;
+    }
+  }
+  assert.equal(n, 2);
+});
+
+// audit 51: the class conformance note gave the drawn operation as `+ place(at: Date, in qty: Int): Order` and the class
+// type's checklist said "in by", but a class draws no `in` (UML's default direction): the note's example is the text the
+// class diagram draws for that operation, and the checklist names only directions the type's example draws
+test('audit 51: a parameter\'s direction is documented as the class diagram draws it', async () => {
+  await import('../src/map/typed.js'); await import('../src/uml/class.js');
+  const { layout } = await import('../src/map/api.js'), { svgOf } = await import('../src/draw/svg.js');
+  const texts = (m, v) => [...svgOf(layout(m, v), { title: '' }).matchAll(/<text[^>]*>([\s\S]*?)<\/text>/g)].map(x => x[1].replace(/<[^>]+>/g, ''));
+  const row = readFileSync(new URL('../docs/conformance/uml-class.md', import.meta.url), 'utf8').split('\n').find(l => l.startsWith('| 9.6 Operation, Parameter'));
+  const drawn = /`(\+ place\([^`]*)`/.exec(row)[1], out = /`(out was: Money)`/.exec(row)[1];
+  const m = { schemaVersion: 2, nodes: [{ id: 'o', type: 'uml.Class', label: 'Order', members: [
+    { id: 'o.place', type: 'uml.Operation', label: 'place', props: { visibility: 'public', returnType: 'Order', parameters: [{ name: 'at', valueType: 'Date' }, { name: 'qty', valueType: 'Int', direction: 'in' }] } },
+    { id: 'o.undo', type: 'uml.Operation', label: 'undo', props: { visibility: 'public', parameters: [{ name: 'was', valueType: 'Money', direction: 'out' }] } }] }],
+    edges: [], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['o'] }] };
+  const t = texts(m, 'v');
+  assert.ok(t.includes(drawn), `${drawn} not in ${JSON.stringify(t)}`); assert.ok(t.some(x => x.includes(out)), JSON.stringify(t));
+  const types = JSON.parse(readFileSync(new URL('../tools/types.json', import.meta.url), 'utf8')).types['uml-class'];
+  const item = JSON.stringify(types).match(/"(Operations with parameters[^"]*)"/)[1];
+  const ex = JSON.parse(readFileSync(new URL('../examples/types/uml-class.json', import.meta.url), 'utf8')), et = ex.views.flatMap(v => texts(ex, v.id)).join('\n');
+  for (const [, d, name] of item.matchAll(/\b(in|out|inout) (\w+)\b/g)) assert.match(et, new RegExp(`\\b${d} ${name}: `), `${item}: ${d} ${name} is not drawn`);
+  assert.match(item, /out was/);
+});
