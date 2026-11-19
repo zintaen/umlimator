@@ -199,7 +199,8 @@ const SYS_IB_MAP = (r, f) => (Array.isArray(r) ? f(r) : !SYS_IB_OBJ(r) ? r : Arr
 const SYS_IB_ON = hook => (model, view, ...a) => { const I = SYS_IB_INDEX(model, view), P = SYS_IB_PROJ(model, view, I);
   const r = SYS_IB_MAP(SYS_BACK(hook(P.model, P.view, ...a), model, view), cs => cs.filter(c => !(SYS_IB_OBJ(c) && c.op === 'set' && c.path === 'label' && I.el(c.id) && I.el(c.id).label === c.value)));
   return SYS_IB_OBJ(r) && Array.isArray(r.commands) && !r.commands.length ? { commands: [] } : r; }; // nothing changed: nothing said
-// F2's text may start «proxy» or «full», as the projection names a port: it sets the port's kind
+// F2's text may start «proxy» or «full», as the projection names a port: it sets the port's kind; one that would break port-kind is
+// refused, as the row and the field are (edits.rename wraps it in bdTypeGuard, audit 45)
 function SYS_IB_RENAME(model, view, id, text) {
   // a connector with an item flow draws its item (§8.1): F2 renames the item, not a label never drawn
   const c = [SYS_IB_INDEX(model, view).E.get(id)].find(e => e && e.type === 'sysml.Connector' && SYS_IB_IF(e)), t = String(text ?? '').trim();
@@ -293,7 +294,7 @@ const SYS_IB_TYPE_DEF = registerDiagramType('sysml.internal-block', {
   rows: SYS_IB_ROWS,
   text: SYS_IB_LINE_TEXT,
   edits: { connect: (model, view, from, to, at, line) => SYS_IB_ON(csConnect)(model, view, from, to, at, SYS_IB_ENTRY(line)), moveTo: SYS_IB_ON(csMoveTo), add: SYS_IB_ADD,
-    remove: SYS_IB_ON(csRemove), rename: SYS_IB_RENAME, member: SYS_IB_MEMBER, field: bdField },
+    remove: SYS_IB_ON(csRemove), rename: (model, view, id, text) => bdTypeGuard(model, SYS_IB_RENAME(model, view, id, text)), member: SYS_IB_MEMBER, field: bdField },
 });
 
 export { SYS_IB_TYPE_DEF, SYS_IB_GEO, SYS_IB_PROBLEMS, SYS_IB_FLOW, SYS_IB_SPOT };

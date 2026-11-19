@@ -17,7 +17,7 @@ import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
-import '../src/dfd/dfd.js';
+import { DFD_TYPE } from '../src/dfd/dfd.js';
 import '../src/er/er.js';
 import '../src/flowchart/flowchart.js';
 import '../src/uml/information.js';
@@ -520,4 +520,18 @@ test('a node of no DFD kind is headed by its keyword and keyed, and a comment is
   assert.deepEqual(keys(layout(m, 'v')), ['Process', 'Element', 'Comment']);
   m.views[0].nodeIds = ['p', 'c']; assert.deepEqual(keys(layout(m, 'v')), ['Process', 'Comment'], 'a comment alone: no Element');
   assert.deepEqual(keys(layout(DF, DF.views[0].id)), keys(layout(DF, DF.views[0].id)).filter(k => k !== 'Element' && k !== 'Comment'), 'the example: neither');
+});
+
+// audit 45: a node of a dfd kind the view does not know (the typo dfd.Entity) is named by the word its keyword gives, "Element",
+// in its accessible name, describe() and the PDF's kind, so a screen reader does not hear an external entity either
+test('a node of an unknown dfd kind is named Element, as it is keyed (audit 45)', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'p', type: 'dfd.Process', label: 'Take order' }, { id: 'e', type: 'dfd.Entity', label: 'Ent' }, { id: 'k', type: 'uml.Class', label: 'Klass' }, { id: 'x', label: 'Loose' }],
+    edges: [], views: [{ id: 'v', diagram: 'dfd', nodeIds: ['p', 'e', 'k', 'x'] }] };
+  const aria = id => layout(m, 'v').nodes.find(n => n.id === id).aria;
+  assert.equal(aria('e'), 'Element Ent, 0 flows in, 0 out');
+  assert.equal(aria('x'), 'Element Loose, 0 flows in, 0 out');
+  assert.equal(aria('k'), 'Class Klass, 0 flows in, 0 out', 'another notation\'s kind keeps its own name');
+  assert.ok(describe(m, 'v').includes('Element Ent, 0 flows in, 0 out.'), describe(m, 'v'));
+  assert.equal(DFD_TYPE.word(m, 'e'), 'Element');
+  assert.equal(DFD_TYPE.word(m, 'p'), 'Process');
 });
