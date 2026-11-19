@@ -231,7 +231,7 @@ function stGeo({ model, view, pos, memo }) {
   // Gaps of 48 and 40 px: the router's grid is the picture's area, and on 50 states three composites deep they route a fifth
   // faster than 64 and 56 (P1), with fewer crossings and every label drawn in 10-state-machine.json laid out right
   const g = layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: down ? 'down' : 'right',
-    gap: 48, rgap: 40, repair: false, reroute: false, nest: true }, memo);
+    gap: 48, rgap: 40, repair: false, reroute: false, nest: true, drawn: (ns, fs) => stRegions({ nodes: ns, families: fs }, pic) }, memo);
   const families = stRegions(g, pic);
   // a slot on each node and box: src/typed/edit.js hands the add hook its `at`, with the ids selected (sel), only where the
   // geometry has slots; the Region entry reads the state selected there. No default gesture of this type reads a slot
