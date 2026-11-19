@@ -302,3 +302,58 @@ test('audit 49: an internal block view marks the ports whose flow arrows an inte
   const doc = all.diff(m, edit(m, a => { const B = a.nodes.find(n => n.label === 'PowerIf'); B.props = { ...B.props, documentation: 'x' }; }));
   assert.deepEqual(ports(all.layout(doc.model, vid)).filter(n => n.change), []);
 });
+
+test('audit 51: a profile card whose stereotypes and tags come from an undrawn stereotype or Extension is marked when they change', () => {
+  const p = edit(load('examples/bookshop-profile.json'), m => m.views.push({ id: 'only', diagram: 'uml.profile', nodeIds: ['order'] }));
+  const st = m => m.nodes.find(n => n.id === 'owned');
+  const mark = (b, vid) => { const after = edit(p, b), d = all.diff(p, after), n = all.layout(d.model, vid).nodes.find(x => x.id === 'order');
+    return [all.describe(p, vid) !== all.describe(after, vid), d.views.includes(vid), n.change ?? null]; };
+  for (const vid of ['only', 'profile']) {
+    assert.deepEqual(mark(m => { delete m.edges.find(e => e.id === 'owned-extends-class').props.isRequired; }, vid), [true, true, 'changed'], vid); // «owned» goes
+    assert.deepEqual(mark(m => { st(m).label = 'team'; }, vid), [true, true, 'changed'], vid);
+    assert.deepEqual(mark(m => { st(m).members[0].label = 'squad'; }, vid), [true, true, 'changed'], vid);
+    assert.deepEqual(mark(m => { m.nodes.find(n => n.id === 'entity').members[0].label = 'tbl'; }, vid), [true, true, 'changed'], vid);
+    // deleted, it comes back removed: the card drew otherwise before, so it is marked by diff()
+    assert.deepEqual(mark(m => { m.edges = m.edges.filter(e => e.id !== 'owned-extends-class'); }, vid), [true, true, 'changed'], vid);
+    assert.deepEqual(mark(m => { m.nodes = m.nodes.filter(n => n.id !== 'conventions'); }, vid), [true, true, 'changed'], vid); }
+  // an undrawn Extension deleted that the card did not draw from: nothing on it
+  assert.deepEqual(mark(m => { m.edges = m.edges.filter(e => e.id !== 'entity-extends-class'); }, 'profile'), [true, true, null]);
+  // what the card draws as before marks nothing, and lists no view that shows only it
+  assert.deepEqual(mark(m => { m.edges.find(e => e.id === 'entity-extends-class').label = 'x'; }, 'only'), [false, false, null]);
+  assert.deepEqual(mark(m => { m.nodes.find(n => n.id === 'aggregate-root').members[0].label = 'ctx'; }, 'only'), [false, false, null]);
+});
+
+test('audit 51: an interaction overview\'s inline interaction marks a lifeline its sequence view holds as its own, added or removed', () => {
+  const ov = load('examples/types/uml-interaction-overview.json'), L = { id: 'audit-log', type: 'uml.Lifeline', label: 'audit' };
+  const withIt = own => edit(ov, m => { const q = m.views.find(v => v.id === 'queue-order'); if (own) q.nodes = [L]; else m.nodes.push(L); q.nodeIds.push(L.id); });
+  const head = d => { const mk = all.layout(d.model, 'buy-book').nodes.find(n => n.id === 'sd-queue').sd.markup;
+    const h = mk.split('<g class="lifeline"').slice(1).find(s => s.slice(0, 900).includes('>audit<')); return h && (/um-green|um-rose/.exec(h.slice(0, 900)) || ['none'])[0]; };
+  for (const own of [false, true]) assert.deepEqual([head(all.diff(ov, withIt(own))), head(all.diff(withIt(own), ov))], ['um-green', 'um-rose'], own ? 'view-own' : 'model');
+});
+
+test('audit 51: a sequence view on the diff page counts the live messages, as the model after the change does', () => {
+  const sq = load('examples/types/uml-sequence.json'), vid = sq.views[0].id, after = edit(sq, m => { m.views[0].edges = m.views[0].edges.filter(e => e.id !== 'm2'); });
+  const names = m => all.layout(m, vid).edges.filter(e => e.type === 'uml.Message').map(e => e.aria);
+  const page = names(all.diff(sq, after).model), alone = names(after);
+  assert.deepEqual(page.filter(a => /^Message \d/.test(a)), alone);
+  assert.deepEqual(page.filter(a => !/^Message \d/.test(a)), ['Message: storefront to api, place(order), call']); // the removed one: no place
+  // a message added is counted among the live ones
+  assert.deepEqual(names(all.diff(after, sq).model), names(sq));
+});
+
+test('audit 51: an undrawn relationship to an IDEF1X entity that comes or goes marks nothing on it, and lists no view', () => {
+  const ent = id => ({ id, type: 'er.Entity', label: id, props: { columns: [{ name: 'id', pk: true }] } });
+  const base = qid => ({ schemaVersion: 2, nodes: ['P', 'Q', 'C'].map(ent), edges: [{ id: 'pc', type: 'er.Relationship', from: 'P', to: 'C', props: { identifying: true } },
+    { id: 'qc', type: 'er.Relationship', from: 'Q', to: 'C', label: 'refers', props: { identifying: qid } }],
+    views: [{ id: 'all', diagram: 'er', nodeIds: ['P', 'Q', 'C'] }, { id: 'idef', diagram: 'er', notation: 'idef1x', nodeIds: ['P', 'C'] }] });
+  const run = (a, b) => { const d = all.diff(a, b), C = all.layout(d.model, 'idef').nodes.find(n => n.id === 'C'); return [d.views, C.change ?? null, !!C.dep]; };
+  const drop = (m, id) => edit(m, x => { x.edges = x.edges.filter(e => e.id !== id); });
+  for (const qid of [false, true]) {
+    assert.deepEqual(run(base(qid), drop(base(qid), 'qc')), [['all'], null, true], `removed, identifying ${qid}`);
+    assert.deepEqual(run(drop(base(qid), 'qc'), base(qid)), [['all'], null, true], `added, identifying ${qid}`); }
+  // the drawn identifying one removed: the child draws independent, marked changed; another identifying one left: as before
+  assert.deepEqual(run(base(false), drop(base(false), 'pc')), [['all', 'idef'], 'changed', false]);
+  assert.deepEqual(run(base(true), drop(base(true), 'pc')), [['all', 'idef'], null, true]);
+  // an undrawn identifying one removed, the only one: the child draws independent
+  assert.deepEqual(run(drop(base(true), 'pc'), drop(drop(base(true), 'pc'), 'qc')), [['all', 'idef'], 'changed', false]);
+});

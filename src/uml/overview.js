@@ -107,7 +107,9 @@ function ovInner(run, sv, model) {
   const E = new Map(); OV_ARR(model && model.edges).forEach(e => { if (OV_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); });
   const word = x => (OV_OBJ(x) && typeof x.change === 'string' ? x.change.toLowerCase() : null);
   const ch = new Map(); OV_ARR(sv && sv.edges).forEach(x => { const e = typeof x === 'string' ? E.get(x) : x; if (OV_OBJ(e) && typeof e.change === 'string' && !ch.has(e.id)) ch.set(e.id, e.change); });
-  const ov = OV_OBJ(sv && sv.nodeOverrides) ? sv.nodeOverrides : {}, N = new Map(OV_ARR(model && model.nodes).filter(n => OV_OBJ(n) && typeof n.id === 'string').map(n => [n.id, n]));
+  // a lifeline the sequence view holds as its own (view.nodes) too, one a model node's id takes being that node (audit 51)
+  const ov = OV_OBJ(sv && sv.nodeOverrides) ? sv.nodeOverrides : {}, N = new Map();
+  [...OV_ARR(model && model.nodes), ...OV_ARR(sv && sv.nodes)].forEach(n => { if (OV_OBJ(n) && typeof n.id === 'string' && !N.has(n.id)) N.set(n.id, n); });
   const own = new Map(); OV_ARR(sv && sv.fragments).forEach(f => { if (!OV_OBJ(f) || typeof f.id !== 'string') return; const c = word(f); if (!own.has(f.id)) own.set(f.id, c);
     OV_ARR(f.members).forEach(m => { if (OV_OBJ(m) && typeof m.id === 'string' && !own.has(m.id)) own.set(m.id, word(m) || (c === 'added' || c === 'new' || c === 'removed' ? c : null)); }); });
   const change = n => (n.shape === 'lifeline' ? word(Object.hasOwn(ov, n.id) ? ov[n.id] : null) || word(N.get(n.id)) : n.shape === 'use' ? (typeof ch.get(n.id) === 'string' ? ch.get(n.id).toLowerCase() : null) : own.get(n.id)) || null;

@@ -493,3 +493,12 @@ test('audit 47: Shift + Delete of a view\'s own node does not count the model ar
   assert.equal(r.say, 'Deleted node srv and the 1 element it held');
   assert.deepEqual(apply(k, r.commands).nodes.map(n => n.id), ['a1', 'a2']);
 });
+
+// audit 51: Shift + Delete of a model node counts another view's own artifacts under it too, which apply() deletes all the same (as cloud's)
+test('audit 51: Shift + Delete of a model node counts the artifacts another view holds as its own under it', () => {
+  const m = { schemaVersion: 2, nodes: [N('srv', 'Node', 'srv'), N('a1', 'Artifact', 'app.jar', 'srv')], edges: [],
+    views: [{ id: 'v', diagram: 'uml.deployment', nodeIds: ['srv', 'a1'] }, { id: 'v2', diagram: 'uml.deployment', nodeIds: ['srv', 'a2'], nodes: [N('a2', 'Artifact', 'b.jar', 'srv')] }] };
+  const r = T.edits.remove(m, m.views[0], ['srv'], true);
+  assert.equal(r.say, 'Deleted node srv and the 2 elements it held');
+  const after = apply(m, r.commands); assert.deepEqual([after.nodes.map(n => n.id), after.views[1].nodes], [[], []]);
+});

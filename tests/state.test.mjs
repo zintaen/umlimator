@@ -912,3 +912,12 @@ test('connect: a transition that brings an error (into an initial pseudostate, o
   for (const [f, t] of [['placed', 'erased'], ['picking', 'delivery-history']]) { const r = C(f, t);
     assert.deepEqual(r, [{ op: 'add', element: { id: 'transition1', type: 'uml.Transition', from: f, to: t }, view: V.id }]); assert.deepEqual(validate(apply(SM, r)).filter(p => p.level === 'error'), []); }
 });
+
+// audit 51: Shift + Delete of a model region counts another view's own states in it too, which apply() deletes all the same (as cloud's)
+test('audit 51: Shift + Delete of a model region counts the states another view holds as its own in it', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'S', type: 'uml.State', label: 'S', members: [{ id: 'R', type: 'uml.Region', label: 'r' }] }, { id: 'x', type: 'uml.State', label: 'X', parent: 'R' }], edges: [],
+    views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['S', 'x'] }, { id: 'v2', diagram: 'uml.state-machine', nodeIds: ['S', 'y'], nodes: [{ id: 'y', type: 'uml.State', label: 'Y', parent: 'R' }] }] };
+  const r = T.edits.remove(m, m.views[0], ['R'], true);
+  assert.equal(r.say, 'Deleted region r and the 2 elements it held');
+  const after = apply(m, r.commands); assert.deepEqual([after.nodes.map(n => n.id), after.views[1].nodes], [['S'], []]);
+});

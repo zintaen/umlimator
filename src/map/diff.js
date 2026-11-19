@@ -463,8 +463,10 @@ export function diff(before, after) {
       'reads', 'implied', 'ids', '_id', 'aria']); // and its accessible name, which names what it reads, drawn or not (audit 50)
     const sig = x => canon(Object.keys(x).filter(k => !GEO.has(k)).sort().map(k => [k, x[k]]));
     // a view's whole picture, but for the marks an author wrote (a typed view's own lines are drawn by their geometry, not their ends' objects)
+    // and the ids a shape reads or a line stands for, which are never drawn (audit 51: an undrawn relationship to an IDEF1X entity
+    // that came or went listed the view, its picture the same)
     const picture = g => canon([g.legend ?? null, g.bounds ?? null, ...['nodes', 'families', 'edges', 'lanes', 'groups', 'bands'].map(k => arr(g[k]).map(x => x && typeof x === 'object'
-      ? Object.keys(x).filter(q => !['change', 'edited', 's', 't'].includes(q)).sort().map(q => [q, x[q]]) : x))]);
+      ? Object.keys(x).filter(q => !['change', 'edited', 's', 't', 'reads', 'implied'].includes(q)).sort().map(q => [q, x[q]]) : x))]);
     const lay = (i, id) => { try { const c = ctx(i); return c ? held(() => c.buildGeo(id))[0] : null; } catch { return null; } };
     const shapes = g => new Map(['nodes', 'families'].flatMap(k => arr(g && g[k])).filter(x => x && typeof x.id === 'string').map(x => [x.id, x]));
     const linesG = g => new Map(arr(g && g.edges).filter(x => x && typeof (x._id ?? x.id) === 'string').map(x => [String(x._id ?? x.id), x]));
