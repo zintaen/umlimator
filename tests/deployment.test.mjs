@@ -470,3 +470,15 @@ test('audit 33: Shift + Delete of a target with what it holds also selected coun
   assert.equal(rm(['app-server', 'shop-api']).say, 'Deleted device Application server and the 4 elements it held, and 1 other element');
   assert.equal(rm(['app-server', 'database']).say, 'Deleted 2 targets and the 4 elements they held');
 });
+
+test('audit 44: laid out down, two communication paths into an execution environment whose title fills its top meet it apart, and check() says nothing', () => {
+  // the box's top span (past its title) had no room, so both lines took one point and ran on together into it
+  const m = { schemaVersion: 2, nodes: [{ id: 'srv', type: 'uml.Node', label: 'Server' }, { id: 'vm', type: 'uml.Node', label: 'VM', parent: 'srv' }, { id: 'jvm', type: 'uml.ExecutionEnvironment', label: 'JVM', parent: 'vm' },
+    { id: 'db', type: 'uml.ExecutionEnvironment', label: 'Database' }, { id: 'schema', type: 'uml.Artifact', label: 'schema.sql', parent: 'db' }, { id: 'cache', type: 'uml.ExecutionEnvironment', label: 'Cache' }],
+  edges: [{ id: 'p1', type: 'uml.CommunicationPath', from: 'srv', to: 'db', label: 'JDBC' }, { id: 'p2', type: 'uml.CommunicationPath', from: 'cache', to: 'db' }],
+  views: [{ id: 'v', diagram: 'uml.deployment', nodeIds: ['srv', 'vm', 'jvm', 'db', 'schema', 'cache'], direction: 'down' }] };
+  const g = layout(m, 'v'), db = g.families.find(f => f.id === 'db'), ends = ['p1', 'p2'].map(id => g.edges.find(e => e.id === id).pts.at(-1));
+  ends.forEach(p => assert.equal(p[1], db.y, 'each path ends on the box\'s top'));
+  assert.ok(Math.abs(ends[0][0] - ends[1][0]) >= 14, `the paths meet the box apart: ${JSON.stringify(ends)}`);
+  assert.deepEqual(check(m, 'v').map(x => x.message), []);
+});

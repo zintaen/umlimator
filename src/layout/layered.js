@@ -467,7 +467,12 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       const across = TB ? !vertical : vertical, a0 = vertical ? n.y : n.x, len = vertical ? n.h : n.w;
       const sp = across ? [a0 + 40, a0 + len - 16] : TB ? [side === 'L' ? n.y + n.hd + 16 : n.y, n.y + n.h] : sideSpan(n, side) || [n.x, n.x + n.w];
       let lo = across ? sp[0] : Math.max(sp[0], a0 + 20), hi = across ? sp[1] : Math.min(sp[1], a0 + len - 20); if (hi < lo) lo = hi = (lo + hi) / 2;
-      const ws = list.map(want), order = list.map((_, i) => i).sort((a, b) => ws[a] - ws[b]), gap = Math.min(vertical ? 16 : 26, (hi - lo) * 0.84 / list.length);
+      // a span too short for its lines (a title that fills the side, audit 44: laid out down, two paths into an execution
+      // environment's top met at one point) grows past the title, toward the side's far end, until its ports lie PORT apart
+      let gap = Math.min(vertical ? 16 : 26, (hi - lo) * 0.84 / list.length);
+      if (list.length > 1 && gap < PORT) { const need = (list.length - 1) * PORT, f0 = a0 + 20, f1 = a0 + len - 20;
+        lo = Math.max(Math.min(f0, lo), Math.min(lo, hi - need)); if (hi - lo < need) hi = Math.max(hi, Math.min(f1, lo + need)); gap = Math.min(PORT, (hi - lo) / (list.length - 1)); }
+      const ws = list.map(want), order = list.map((_, i) => i).sort((a, b) => ws[a] - ws[b]);
       const v = order.map(i => Math.min(hi, Math.max(lo, ws[i])));
       for (let k = 1; k < v.length; k++) v[k] = Math.max(v[k], v[k - 1] + gap);
       for (let k = v.length - 1; k >= 0; k--) v[k] = Math.min(v[k], k === v.length - 1 ? hi : v[k + 1] - gap);
