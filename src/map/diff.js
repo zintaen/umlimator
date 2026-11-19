@@ -141,6 +141,9 @@ export function diff(before, after) {
     const w = { ...v }, ids = arr(v.nodeIds), oldIds = arr(o.nodeIds);
     if (v.nodes || o.nodes) w.nodes = mark(arr(o.nodes), arr(v.nodes), card);
     const at = new Map([...out.nodes, ...arr(w.nodes)].filter(Boolean).map(n => [n.id, n]));
+    // a removed subject (apply()'s delete drops the view's subject with it) stays the view's subject, so its frame is drawn
+    // back with its parts, ports and connectors, removed with it (audit 51), not as a plain card
+    if (o.subject != null && v.subject == null && how.get(at.get(o.subject)) === 'removed') w.subject = o.subject;
     const left = oldIds.filter(id => !ids.includes(id)), came = ids.filter(id => !oldIds.includes(id)), ov = idTable(v.nodeOverrides); // ov['__proto__'] = ... is an own key
     w.nodeIds = [...ids, ...left];
     left.forEach(id => { if (how.get(at.get(id)) !== 'removed') { ov[id] = { ...(o.nodeOverrides || {})[id], change: 'removed' }; moved.push(['takes', id, v]); } });
@@ -198,7 +201,11 @@ export function diff(before, after) {
       if (k0.some((x, i) => x !== k1[i]) && reordered(o)) { const mv = movedIn(k0, k1), ovr = v.nodeOverrides && typeof v.nodeOverrides === 'object' ? v.nodeOverrides : {};
         const cn = id => { const x = Object.hasOwn(ovr, id) ? ovr[id] : null; return String(labelOr(x && typeof x === 'object' && x.label != null ? x.label : (at.get(id) || {}).label, id)); };
         if (mv.length > 3) says(`reorders ${mv.length} cards`); else mv.forEach(([id, p]) => says(`moves ${cn(id)} ${p == null ? 'to the start' : 'after ' + cn(p)}`)); } }
-    if (Array.isArray(v.edges)) { const back = new Map([...goneLines, ...hid.map(id => [id, line(line0.get(id), 'removed')])]);
+    if (Array.isArray(v.edges)) { const back = new Map([...goneLines, ...hid.map(id => [id, line(line0.get(id), 'removed')])]), now = new Set(v.edges);
+      // a model line the view listed to a card it no longer shows (hidden: the line stays in the model) goes with the card,
+      // back in its place, removed (audit 51: the card was drawn back, its line was not)
+      if (Array.isArray(o.edges)) o.edges.forEach(x => { const e = typeof x === 'string' && !now.has(x) && !back.has(x) && line0.get(x);
+        if (e && (left.includes(e.from) || left.includes(e.to))) back.set(x, line(e, 'removed')); });
       w.edges = mark(arr(o.edges), v.edges, line, lineKeys, back).map(e => typeof e === 'string' && put.includes(e) ? line(out.edges.find(x => x && String(x.id) === e), 'added') : e);
       hid.forEach(id => { if (!w.edges.includes(back.get(id))) w.edges.push(back.get(id)); }); } // hidden from a view that listed none: at the end
     else if (Array.isArray(o.edges)) { // a view that dropped its list: its lines listed (to the cards that left too), the ones it puts marked, and the old
