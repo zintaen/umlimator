@@ -266,7 +266,7 @@ try {
       !out.length && shown.a.join() === 'reconcile ledgers,hand off' && shown.b.join() === '+1', [out, shown]);
     h14.destroy(); el14.style.removeProperty('--um-sans');
   }
-  // a line's weight sets its width, and the arrowhead and hit line grow with it; its sublabel is a second line in its pill (#44)
+  // a line's weight sets its width on hover, selection and focus, and the arrowhead and hit line grow with it; its sublabel is a second line in its pill (#44)
   const WEIGHT = { root: 'v', nodes: [{ id: 'web', label: 'Web', kind: 'frontend' }, { id: 'api', label: 'API', kind: 'backend' }, { id: 'db', label: 'Store', kind: 'database' }],
     edges: [{ id: 'w1', from: 'web', to: 'api', label: 'calls · 2' }, { id: 'w3', from: 'api', to: 'db', label: 'reads, writes · 486', weight: 3, sublabel: 'dapper, ef' }], views: [{ id: 'v', nodeIds: ['web', 'api', 'db'] }] };
   {
@@ -274,12 +274,21 @@ try {
     const h8 = render(el8, WEIGHT), sr8 = el8.querySelector('.umlimator').shadowRoot, g8 = layout(WEIGHT, 'v');
     const lineOf = id => sr8.querySelector(`.edge-g[data-i="${g8.edges.findIndex(e => e.ids.includes(id))}"]`), px = (g, c) => parseFloat(getComputedStyle(g.querySelector(c)).strokeWidth);
     const [one, three] = [lineOf('w1'), lineOf('w3')], mk = g => sr8.querySelector((g.querySelector('.edge').getAttribute('marker-end') || '').replace(/^url\(|\)$/g, ''));
-    check('a line of weight 3 is drawn 2.5 times as wide as one of weight 1, its hit line and arrowhead larger too', px(one, '.edge') === 1.8 && px(three, '.edge') === 4.5 && px(three, '.hitline') > px(one, '.hitline') && +mk(three).getAttribute('markerWidth') > +mk(one).getAttribute('markerWidth'),
-      [px(one, '.edge'), px(three, '.edge'), px(one, '.hitline'), px(three, '.hitline'), mk(one) && mk(one).getAttribute('markerWidth'), mk(three) && mk(three).getAttribute('markerWidth')]);
+    // at rest it is drawn as a line of weight 1; hovered (a card's lines), its weight shows: 2.5 times as wide, its hit line and arrowhead larger too (19 Nov 2026)
+    const mkUse = g => (getComputedStyle(g.querySelector('.edge')).markerEnd.match(/#([^"')]+)/) || [])[1], mkw = g => { const m = mkUse(g) && sr8.getElementById(mkUse(g)); return m ? +m.getAttribute('markerWidth') : 0; };
+    [one, three].forEach(g => g.querySelectorAll('path').forEach(p => { p.style.transition = 'none'; }));
+    const rest = [px(one, '.edge'), px(three, '.edge'), px(one, '.hitline'), px(three, '.hitline'), mkw(one), mkw(three)];
+    check('at rest a line of weight 3 is drawn as one of weight 1: the same width, hit line and arrowhead', rest[0] === 1.8 && rest[1] === 1.8 && rest[2] === rest[3] && rest[4] === rest[5] && rest[4] > 0, rest);
+    [one, three].forEach(g => g.classList.add('hov'));
+    const hov = [px(one, '.edge'), px(three, '.edge'), px(one, '.hitline'), px(three, '.hitline'), mkw(one), mkw(three)];
+    check('hovered, a line of weight 3 is drawn 2.5 times as wide as one of weight 1, its hit line and arrowhead larger too', Math.abs(hov[1] / hov[0] - 2.5) < .01 && hov[3] > hov[2] && hov[5] > hov[4], hov);
+    [one, three].forEach(g => g.classList.remove('hov'));
+    const tt = three.querySelector(':scope > title').textContent, key = sr8.querySelector(`.line-key[data-i="${three.dataset.i}"]`).getAttribute('aria-label');
+    check('its title and accessible name say its weight, which a line of weight 1 does not', tt.endsWith('\nweight 3 of 3') && key.endsWith(', weight 3 of 3') && !/weight/.test(one.querySelector(':scope > title').textContent), [tt, key]);
     const lab = sr8.querySelector(`.e-lab[data-i="${three.dataset.i}"]`), box = lab.querySelector('rect').getBBox(), t1 = lab.querySelector('.e-label').getBBox(), t2 = lab.querySelector('.e-sub');
     const bb = b => b && [b.x, b.y, b.width, b.height].map(v => +v.toFixed(1)), t2b = t2 && t2.getBBox(), inside = b => b.x >= box.x && b.y >= box.y && b.x + b.width <= box.x + box.width && b.y + b.height <= box.y + box.height;
     check('its sublabel is a second, smaller line under the label, inside the pill', !!t2 && t2.textContent === 'dapper, ef' && t2b.y >= t1.y + t1.height - 1 && inside(t1) && inside(t2b) && parseFloat(getComputedStyle(t2).fontSize) < parseFloat(getComputedStyle(lab.querySelector('.e-label')).fontSize), [t2 && t2.textContent, bb(box), bb(t1), bb(t2b)]);
-    check('…and the file keeps the width and the sublabel', /stroke-width: 4.5px/.test(h8.toSVG()) && h8.toSVG().includes('dapper, ef'));
+    check('…and the file draws the rest width and keeps the sublabel', !/stroke-width: 4.5px/.test(h8.toSVG()) && /stroke-width: 1.8px/.test(h8.toSVG()) && h8.toSVG().includes('dapper, ef'));
     h8.destroy(); el8.style.removeProperty('--um-sans');
   }
   // a card that opens a view the host loads later: stacked, and every open gesture asks the host, without switching (#47)
