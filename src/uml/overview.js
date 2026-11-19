@@ -23,7 +23,7 @@ import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
    lib/umlimator-all.js only. */
 
 const OV_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), OV_ARR = x => (Array.isArray(x) ? x : []);
-const OV_HAS = x => x != null && x !== '';
+const OV_HAS = x => x != null && x !== '' && !(typeof x === 'string' && x.trim() === ''); // text of only spaces shows nothing, as "" (audit 52)
 const OV_PROPS = x => (OV_OBJ(x && x.props) ? x.props : {});
 const OV_ENDS = [...FLOW_CONTROL, 'uml.InteractionUse', 'uml.Interaction'], OV_NODES = [...OV_ENDS, 'uml.Comment']; // model.md row 13
 const OV_LINES = ['uml.ControlFlow', 'uml.CommentLink'];

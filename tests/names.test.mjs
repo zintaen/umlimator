@@ -163,3 +163,15 @@ test('audit 44: a panel field its type marks drawn: false (a reference) is never
   const m = read('../examples/checkout-sequence.json'), c = m.views[0].edges.findIndex(e => e && e.props && e.props.sort === 'call'); m.views[0].edges[c].props.replyTo = { id: 'x' };
   assert.deepEqual(validate(m).filter(p => p.path.endsWith('replyTo')).map(p => `${p.path} ${p.message}`), [`views[0].edges[${c}].props.replyTo replyTo {"id":"x"} is not text: not drawn, and the panel shows it as "[object Object]"`]);
 });
+
+test('audit 52: a label of only spaces or a line break names an element by its id, as a label "" does, in every behavioural view', () => {
+  const walk = (o, f) => { if (Array.isArray(o)) o.forEach(x => walk(x, f)); else if (o && typeof o === 'object') { f(o); Object.values(o).forEach(x => walk(x, f)); } };
+  const names = (t, blank) => { const m = read(`../examples/types/${t}.json`); walk(m, o => { if ('label' in o && o !== m && !Array.isArray(o.nodeIds)) o.label = blank; });
+    return m.views.flatMap(v => { const g = layout(m, v.id); return [...(g.nodes || []), ...(g.edges || [])].map(x => [x.id, x.aria, x.ariaOwn]); }); };
+  for (const t of ['uml-sequence', 'uml-timing', 'uml-communication', 'uml-state-machine', 'uml-use-case', 'uml-activity', 'uml-interaction-overview']) {
+    const none = names(t, '');
+    for (const blank of ['   ', '\n', ' \t ']) assert.deepEqual(names(t, blank), none, `${t} ${JSON.stringify(blank)}`); }
+  const m = read('../examples/types/uml-sequence.json'); m.nodes.find(n => n.id === 'api').label = '   ';
+  assert.match(layout(m, 'checkout').nodes.find(n => n.id === 'api').aria, /^Lifeline api : ShopApi/);
+  assert.equal(elName({ id: 'x', label: ' \n ' }), 'x'); assert.equal(elName({ id: 'x', label: ' a ' }), ' a '); assert.equal(elName({ id: 'x', label: 0 }), '0');
+});

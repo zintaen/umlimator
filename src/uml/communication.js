@@ -18,7 +18,7 @@ import { IA_GONE, interactionWalk, messageNumbers, replyCallFor, INTERACTION_RUL
    src/uml/interaction.js), its text and a small arrow toward its receiver. Ships in lib/umlimator-all.js only. */
 
 const CM_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), CM_ARR = x => (Array.isArray(x) ? x : []);
-const CM_HAS = x => x != null && x !== '';
+const CM_HAS = x => x != null && x !== '' && !(typeof x === 'string' && x.trim() === ''); // text of only spaces shows nothing, as "" (audit 52)
 const CM_SORTS = ['call', 'async', 'reply', 'create', 'delete'];
 const CM_ROW = { h: 16, px: 11, arrow: 16, pad: 5, max: 280, lh: 13 }; // a message row: its height, font, arrow's room, padding, widest stack, each line more
 const CM_STACK = '\u0000'; // a stack's id and its connector's halves': the connector's id after it, never a model id
