@@ -168,7 +168,7 @@ When the maintainer says 1.0.0 is ready (13 Nov 2026: not straight after 0.27.0)
 | `docs/diagrams/README.md` | The status table, in every pull request |
 | `docs/diagrams/model.md`, `risks.md` | What the stage's design note changed; risks closed or found |
 | Per type | A conformance note: subset, clauses, what is left out, the fidelity table |
-| `examples/` | Each type's small example (the reference: gallery, fixtures, conformance), and the Bookshop atlas: the release's Bookshop views joined to it by drill-down, checked against the small files (13 Nov 2026). SysML keeps its own domain, the e-bike: `examples/ebike-atlas.json` joins its four files by the same builder (`tools/atlas.mjs --links tools/ebike-links.json`), [`notes/milestone-3.md`](notes/milestone-3.md) §15 |
+| `examples/` | Each type's small example (the reference: gallery, fixtures, conformance), `examples/bike-share.json`, the one test and bench model (built by `tools/bike-share.mjs` from its part files), holding a view of each of the 28 types, with its Structurizr source `examples/bike-share.dsl` and that file's import `examples/bike-share-c4.json`, and the gallery's Umlimator Atlas. The Bookshop and e-bike atlases the bike share replaced were deleted in step 4 of the one-model plan, with `tools/atlas.mjs` (19 Nov 2026) |
 
 ## 8. Working rules
 

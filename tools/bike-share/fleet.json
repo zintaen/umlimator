@@ -96,7 +96,8 @@
     },
     { "id": "f7", "from": "planner", "to": "fleet-db", "label": "reads stock", "kind": "state" },
     { "id": "f8", "from": "ops-console", "to": "fleet-api", "label": "moves bikes", "sublabel": "REST" },
-    { "id": "f9", "from": "fleet-api", "to": "planner", "label": "today's plan" }
+    { "id": "f9", "from": "fleet-api", "to": "planner", "label": "today's plan" },
+    { "id": "f10", "from": "planner", "to": "fleet-api", "label": "the vans' routes" }
   ],
   "views": [
     {
@@ -108,7 +109,8 @@
         "telemetry", "dock-listener", "battery-service", "fleet-db", "warehouse", "forecast", "planner", "fleet-api",
         "ops-console"
       ],
-      "edges": ["f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9"]
+      "edges": ["f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10"],
+      "keepPairs": true
     }
   ]
 }
