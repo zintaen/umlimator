@@ -1,5 +1,5 @@
 import { apply } from '../core/apply.js';
-import { aKind, ownNodes, registerDiagramType } from '../core/registry.js';
+import { aKind, everyOwn, registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, portsOn, r2 } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
@@ -466,12 +466,14 @@ function stOwners(model, x) {
 function stRemove(model, view, ids, fromModel) {
   // the regions of the view's own states too (remove gets the model as it is: registry.js), audit 25. Delete deletes a selection
   // the view holds as its own (the canvas's Delete), so it is said the same way; a selection with a model element in it is the canvas's
-  const own = new Set(), put = x0 => { for (const s = [x0], seen = new Set(); s.length;) { const x = s.pop(); if (ST_OBJ(x) && typeof x.id === 'string' && !seen.has(x)) { seen.add(x); own.add(x.id); for (const y of ST_ARR(x.members)) s.push(y); } } }; // a stack: thousands deep (audit 35)
-  if (ST_OBJ(view)) [...ST_ARR(view.nodes), ...ST_ARR(view.edges)].forEach(put);
-  const I = stIndex(ST_OBJ(view) ? ownNodes(model, view).model : model), rs = fromModel || ids.every(id => own.has(id)) ? ids.filter(id => I.M.has(id) && I.M.get(id).x.type === 'uml.Region') : [];
+  const own = new Set(), put = (x0, to = own) => { for (const s = [x0], seen = new Set(); s.length;) { const x = s.pop(); if (ST_OBJ(x) && typeof x.id === 'string' && !seen.has(x)) { seen.add(x); to.add(x.id); for (const y of ST_ARR(x.members)) s.push(y); } } }; // a stack: thousands deep (audit 35)
+  if (ST_OBJ(view)) [...ST_ARR(view.nodes), ...ST_ARR(view.edges)].forEach(x => put(x));
+  // and every other view's own states: apply() deletes one under a model region in any view, so the hint counts it (audit 51, as cloud's)
+  const owns = new Set(own); ST_ARR(model && model.views).forEach(w => { if (ST_OBJ(w) && w !== view && !(ST_OBJ(view) && w.id === view.id)) [...ST_ARR(w.nodes), ...ST_ARR(w.edges)].forEach(x => put(x, owns)); });
+  const I = stIndex(ST_OBJ(view) ? everyOwn(model, view).model : model), rs = fromModel || ids.every(id => own.has(id)) ? ids.filter(id => I.M.has(id) && I.M.get(id).x.type === 'uml.Region') : [];
   if (!rs.length) return fromModel || !ST_OBJ(view) ? null : stHide(model, view, ids, I, own);
   // a model element under what the view alone holds is lifted out by apply(), not deleted: not counted (audit 47, as cloud's)
-  const goes = (n, r) => { for (let c = n, p = stUp(I, n), seen = new Set([n]); p != null && !seen.has(p); c = p, p = stUp(I, p)) { if (own.has(p) && !own.has(c)) return false; if (p === r) return true; seen.add(p); } return false; };
+  const goes = (n, r) => { for (let c = n, p = stUp(I, n), seen = new Set([n]); p != null && !seen.has(p); c = p, p = stUp(I, p)) { if (owns.has(p) && !owns.has(c)) return false; if (p === r) return true; seen.add(p); } return false; };
   const held = [...I.N.keys()].filter(n => rs.some(r => goes(n, r))).length, x = I.M.get(rs[0]).x;
   return { commands: ids.map(id => ({ op: 'delete', id })), say: `Deleted ${rs.length === 1 ? 'region ' + (ST_HAS(x.label) ? x.label : x.id) : stPlural(rs.length, 'region')} and the ${stPlural(held, 'element')} ${rs.length === 1 ? 'it' : 'they'} held` };
 }

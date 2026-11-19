@@ -1,4 +1,4 @@
-import { aWord, countOf, ownNodes, registerDiagramType } from '../core/registry.js';
+import { aWord, countOf, everyOwn, registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { brLines } from '../typed/draw.js';
@@ -240,10 +240,11 @@ function dpConnect(model, view, from, to, at, line) {
 function dpRemove(model, view, ids, fromModel) {
   // with the view's own elements (remove gets the model as it is: registry.js), and a target the view holds as its own, which
   // Delete deletes too (audit 24)
-  const I = dpIndex(ownNodes(model, view).model), own = new Set(DP_ARR(DP_OBJ(view) ? view.nodes : null).filter(DP_OBJ).map(n => n.id));
+  // and every other view's own elements: apply() deletes one under a model target in any view, so the hint counts it (audit 51, as cloud's)
+  const M = everyOwn(model, DP_OBJ(view) ? view : null), I = dpIndex(M.model), own = new Set(DP_ARR(DP_OBJ(view) ? view.nodes : null).filter(DP_OBJ).map(n => n.id)), owns = new Set(DP_ARR(M.model.nodes).slice(M.k).map(n => n.id));
   const all = ids.filter(id => (fromModel || own.has(id) && !DP_ARR(model.nodes).some(n => DP_OBJ(n) && n.id === id)) && DP_TARGETS.includes((I.at.get(id) || {}).type));
   // a model element under the view's own node is lifted out by apply(), not deleted: not held by it (audit 47, as cloud's)
-  const inside = (id, S) => { for (let c = id, p = (I.at.get(id) || {}).parent, seen = new Set(); p != null && !seen.has(p); c = p, p = (I.at.get(p) || {}).parent) { if (own.has(p) && !own.has(c)) return false; if (S.includes(p)) return true; seen.add(p); } return false; };
+  const inside = (id, S) => { for (let c = id, p = (I.at.get(id) || {}).parent, seen = new Set(); p != null && !seen.has(p); c = p, p = (I.at.get(p) || {}).parent) { if (owns.has(p) && !owns.has(c)) return false; if (S.includes(p)) return true; seen.add(p); } return false; };
   // a target under another selected one is held by it, and what either holds is counted, selected or not: it goes all the same (audit 33, as cloud's)
   const ts = all.filter(id => !inside(id, all)), under = id => inside(id, ts);
   const held = [...I.at.keys()].filter(under).length;

@@ -27,6 +27,9 @@ function ownMerge(model, views) {
   return { model: add.length ? { ...model, nodes: [...base, ...add] } : model, at, k: base.length };
 }
 const ownNodes = (model, view) => ownMerge(model, [view]);
+// the model with every view's own nodes, the view's first: what a Shift + Delete's hint counts, as apply() deletes one under a
+// model element in any view (audit 51)
+const everyOwn = (model, view) => ownMerge(model, [...(R_OBJ(view) ? [view] : []), ...R_ARR(R_OBJ(model) ? model.views : null).filter(w => R_OBJ(w) && w !== view && !(R_OBJ(view) && w.id === view.id))]);
 // what one view alone holds: its own nodes (none a model element's id takes) and their members, at any depth, by id
 function heldBy(model) {
   // members on a stack, in the order a recursion took: thousands deep are read, never a stack overflow (audit 35)
@@ -155,4 +158,4 @@ const idTable = (o = {}) => Object.assign(Object.create(null), o);
 // a type is text: any other value (one with a toString key, which no key is read from) refers to nothing (audit 21)
 const propRefs = type => typeof type !== 'string' ? {} : Object.assign({}, ...[...TYPES.values()].map(T => T.refs && Object.hasOwn(T.refs, type) && T.refs[type]));
 
-export { registerDiagramType, diagramOf, kindWord, untypedKind, untypedLine, aWord, aKind, countOf, drawnKind, propRefs, idTable, TYPED, ownNodes, heldBy, ownGuard };
+export { registerDiagramType, diagramOf, kindWord, untypedKind, untypedLine, aWord, aKind, countOf, drawnKind, propRefs, idTable, TYPED, ownNodes, everyOwn, heldBy, ownGuard };

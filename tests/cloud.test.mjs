@@ -624,3 +624,15 @@ test('audit 47: Shift + Delete of a view\'s own group does not count the model s
   // a model service selected with it goes by its own command: one other element
   assert.equal(T.gcp.edits.remove(k, k.views[0], ['own-net', 'db'], true).say, 'Deleted Network vpc and the 1 element it held, and 1 other element');
 });
+
+// audit 51: Shift + Delete of a model group counts another view's own elements under it too, which apply() deletes all the same;
+// a model service under one of them is lifted out there, not counted (audit 47's rule, in every view)
+test('audit 51: Shift + Delete of a model group counts the elements another view holds as its own under it', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'net', type: 'gcp.Zone', label: 'vpc', props: { zoneType: 'network' } }, { id: 'run', type: 'gcp.Product', label: 'API', parent: 'net', props: { icon: 'Cloud-Run' } },
+    { id: 'db', type: 'gcp.Product', label: 'DB', parent: 'z2', props: { icon: 'Cloud-SQL' } }], edges: [],
+    views: [{ id: 'v', diagram: 'gcp', nodeIds: ['net', 'run'] }, { id: 'v2', diagram: 'gcp', nodeIds: ['net', 'cache', 'z2', 'db'], nodes: [{ id: 'cache', type: 'gcp.Product', label: 'Cache', parent: 'net', props: { icon: 'Memorystore' } },
+      { id: 'z2', type: 'gcp.Zone', label: 'sub', parent: 'net', props: { zoneType: 'subnet' } }] }] };
+  const r = T.gcp.edits.remove(m, m.views[0], ['net'], true);
+  assert.equal(r.say, 'Deleted Network vpc and the 3 elements it held');
+  const after = apply(m, r.commands); assert.deepEqual([after.nodes.map(n => n.id), after.views[1].nodes.map(n => n.id)], [['db'], []]);
+});
