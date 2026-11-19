@@ -50,7 +50,8 @@ TYPED.order = (A, out, views, V0, said, touched, name) => {
     const F0 = new Map(UD_ARR(o.fragments).filter(UD_OBJ).map(f => [f.id, f])), F1 = new Map(UD_ARR(v.fragments).filter(UD_OBJ).map(f => [f.id, f]));
     const op = f => `the ${(f.props && f.props.operator) || 'combined'} fragment`;
     F1.forEach((f, id) => { const g = F0.get(id); if (g && canon(g) === canon(f)) return;
-      said.push(g ? `changes ${op(g)} (${[...new Set([...Object.keys(g), ...Object.keys(f)])].filter(k => canon(g[k]) !== canon(f[k])).join(', ')})` : `adds ${op(f)}`); touched.add(v.id); });
+      said.push(g ? `changes ${op(g)} (${[...new Set([...Object.keys(g), ...Object.keys(f)])].filter(k => canon(g[k]) !== canon(f[k])).join(', ')})` : `adds ${op(f)}`); touched.add(v.id);
+      if (f.change == null) f.change = g ? 'changed' : 'added'; }); // its frame drawn so, as a card is (audit 45)
     F0.forEach((f, id) => { if (!F1.has(id)) { said.push(`removes ${op(f)}`); touched.add(v.id); } });
   });
 };
