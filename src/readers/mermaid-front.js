@@ -67,6 +67,18 @@ function mermaidFrontTitle(lines, j) {
 // s cut to its first n UTF-16 units, one less where the cut would fall between the two halves of an astral letter, so
 // an id or a report never ends in a lone surrogate, which no UTF-8 file, SVG or XML holds
 const mermaidCut = (s, n) => (s.length > n && /[\uD800-\uDBFF]/.test(s[n - 1]) ? s.slice(0, n - 1) : s.slice(0, n));
+// the character a numeric entity code (#n;) names, above U+10FFFF as U+10FFFF; one that XML 1.0 cannot hold (#0;, a C0
+// control other than tab, line feed and carriage return, a lone surrogate, #65534; #65535;) as U+FFFD, and bad(code)
+// told, as the BPMN reader does: a raw one would make the model's SVG and XML exports not well-formed (audit 47)
+function mermaidChar(n, code, bad) {
+  const v = Math.min(n, 0x10ffff);
+  if (v === 9 || v === 10 || v === 13 || (v >= 0x20 && v <= 0xd7ff) || (v >= 0xe000 && v <= 0xfffd) || v >= 0x10000) return String.fromCodePoint(v);
+  bad?.(code);
+  return '\uFFFD';
+}
+// the report's message for such a code, said as approximated
+const mermaidBadChar = code => `${mermaidClip(code)} names no character SVG or XML can hold: read as U+FFFD`;
+
 // a report's quote of the source: up to 60, else its first 57 and ...
 const mermaidClip = s => (s.length > 60 ? mermaidCut(s, 57) + '...' : s);
 
@@ -92,4 +104,4 @@ function mermaidSay(report) {
   };
 }
 
-export { mermaidTitle, mermaidFrontTitle, mermaidCut, mermaidClip, mermaidSay, mermaidSort, mermaidText, MERMAID_REPORT_MAX };
+export { mermaidTitle, mermaidFrontTitle, mermaidCut, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText, MERMAID_REPORT_MAX };

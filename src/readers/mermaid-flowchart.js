@@ -1,5 +1,5 @@
 import { unreadable } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort, mermaidText } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText } from './mermaid-front.js';
 /* ---------- Mermaid flowchart: a reader and a writer (notes/milestone-2.md §8, §8.2, M2.9; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's flowchart page (docs/syntax/flowchart.md) and its shapes' names and aliases
    (rendering-elements/shapes.ts), both read on Mermaid's repository 14 Nov 2026, and ported from the map
@@ -72,14 +72,14 @@ function mfFree(used, next, base) { // the first of base, base-2, ... not in use
 }
 
 // text: quotes and a Markdown string's backticks taken off (as the importer's text()), Mermaid's <br> and entity codes read
-function mfText(raw, md) {
+function mfText(raw, md, bad) {
   let s = raw.trim();
   if (s.length > 1 && s[0] === '"' && s.at(-1) === '"') {
     s = s.slice(1, -1);
     if (s.length > 1 && s[0] === '`' && s.at(-1) === '`') { s = s.slice(1, -1); md?.(); }
   }
-  return s.replace(/<br\s?\/?>|\\n/gi, '\n').replace(/#(quot|lt|gt|amp|\d{1,6});/g, (_, e) =>
-    ({ quot: '"', lt: '<', gt: '>', amp: '&' })[e] ?? String.fromCodePoint(Math.min(Number(e), 0x10ffff)));
+  return s.replace(/<br\s?\/?>|\\n/gi, '\n').replace(/#(quot|lt|gt|amp|\d{1,6});/g, (all, e) =>
+    ({ quot: '"', lt: '<', gt: '>', amp: '&' })[e] ?? mermaidChar(Number(e), all, bad));
 }
 
 // where a link's close (-->, ==>, .->, ---) ends when it starts at p, else -1: -{2,}[->ox], ={2,}[=>ox] or \.+-[>ox]?, greedy
@@ -243,9 +243,10 @@ function readMermaidFlowchart(text) {
   let viewId, direction = 'down', started = false, hint = null, hintNo = 0, block = false, flows = 0, over = false, nsub = 0;
   const statement = (s, no) => {
     if (!s) return;
+    const bad = code => say(no, 'approximated', mermaidBadChar(code));
     const sg = /^subgraph(?:\s+(?:([^\s["]+)\s*\[([^\]]*)\]|"(.+)"|(\S+)$|(.+))|$)/.exec(s);
     if (sg) { // its id as the importer's ident(): the name when it is plain, else a slug of its title; a bare one Mermaid's subGraph<n>
-      const label = mfText(sg[2] ?? sg[3] ?? sg[4] ?? sg[5] ?? ''), raw = (sg[1] ?? sg[4] ?? label).trim();
+      const label = mfText(sg[2] ?? sg[3] ?? sg[4] ?? sg[5] ?? '', undefined, bad), raw = (sg[1] ?? sg[4] ?? label).trim();
       subs.push({ id: s === 'subgraph' ? `subGraph${nsub}` : /^[\p{L}\p{N}_.-]+$/u.test(raw) ? raw : raw.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'x', no });
       nsub++;
       say(no, 'skipped', `subgraph ${subs.at(-1).id}: the group is not read, the nodes in it are`);
@@ -280,11 +281,11 @@ function readMermaidFlowchart(text) {
       if (hint != null && !p.links.length && rec.hint === undefined) { rec.hint = hint; rec.hintNo = no; hint = null; }
       if (n.cls) say(no, 'skipped', `${n.id}:::${n.cls}: a style class is not read`);
       if (n.label !== undefined) {
-        rec.label = mfText(n.label, () => say(no, 'approximated', `${n.id}: a Markdown string is read as plain text`)); rec.type = n.type;
+        rec.label = mfText(n.label, () => say(no, 'approximated', `${n.id}: a Markdown string is read as plain text`), bad); rec.type = n.type;
         if (n.odd) say(no, 'approximated', `${n.id}: ${n.odd} is read as a process`);
       } else if (n.fields) {
         for (const [k, v] of n.fields) {
-          if (k === 'label') rec.label = mfText(v, () => say(no, 'approximated', `${n.id}: a Markdown string is read as plain text`));
+          if (k === 'label') rec.label = mfText(v, () => say(no, 'approximated', `${n.id}: a Markdown string is read as plain text`), bad);
           else if (k === 'shape') {
             const t = MF_SHAPES[v];
             rec.type = t || 'flow.Process';
@@ -298,7 +299,7 @@ function readMermaidFlowchart(text) {
       if (arrow.startsWith('~')) { say(no, 'skipped', `${p.groups[k].map(n => n.id).join(' & ')} ~~~ ${p.groups[k + 1].map(n => n.id).join(' & ')}: an invisible link is not read`); return; }
       if (lk.id) edgeIds.add(lk.id);
       const md = () => say(no, 'approximated', `${p.groups[k].map(n => n.id).join(' & ')} -> ${p.groups[k + 1].map(n => n.id).join(' & ')}: a Markdown string is read as plain text`); // audit 25
-      const label = lk.pipe !== undefined ? mfText(lk.pipe, md) : lk.text !== undefined ? mfText(lk.text, md) : undefined, head = arrow.at(-1), tail = arrow[0];
+      const label = lk.pipe !== undefined ? mfText(lk.pipe, md, bad) : lk.text !== undefined ? mfText(lk.text, md, bad) : undefined, head = arrow.at(-1), tail = arrow[0];
       const two = '<ox'.includes(tail), how = [...(arrow.includes('.') ? ['dotted'] : []), ...(arrow.includes('=') ? ['thick'] : []), ...('>ox'.includes(head) ? [] : ['no arrowhead']),
         ...(head === 'o' || tail === 'o' ? ['a circle end'] : []), ...(head === 'x' || tail === 'x' ? ['a cross end'] : []), ...(two ? ['an arrowhead at each end'] : [])];
       for (const a of p.groups[k]) for (const b of p.groups[k + 1]) {
