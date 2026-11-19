@@ -145,6 +145,7 @@ const SYS_IB_RULES = {
   'connector-scope': 'a connector joins the subject\'s ports and parts',
   'connector-drawn': 'a connector between two ports of the subject is not drawn: the frame has no line to itself',
   'part-type': 'a part or reference property\'s type names exactly one block of the model by label',
+  'present-values': 'a port\'s present side, present.<port>.side or present.<part>.ports.<port>.side, is left, right, top or bottom: any other value is ignored',
   'item-flow': 'an item flow\'s item is text and its direction from-to or to-from',
   'port-compatible': 'two parts\' proxy ports of one interface block are joined conjugate (one ~), unless every flow property is inout; a delegation joins ports of one type, conjugated alike, flowing the same way',
 };

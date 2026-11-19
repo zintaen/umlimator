@@ -232,6 +232,11 @@ export function diff(before, after) {
   at0.forEach(([x, up, i], id) => { if (typeof up !== 'string' || have.has(id) || !have.has(up)) return; lost.set(id, [x, top(up), up]);
     if (!need.has(id)) return; const o = have.get(up)[0], y = { ...copyOf(x), change: 'removed' };
     (o.members = [...arr(o.members)]).splice(Math.min(i, o.members.length), 0, y); ownIn(y, have, up, i); });
+  // a removed extend that names an extension point gone with it (a row of its use case, not put back): the point's name as it
+  // was, on the line (pointNames), so it reads as it did, "(extras)", not by the point's id (audit 48)
+  [...out.edges, ...views.flatMap(v => arr(v && v.edges))].forEach(e => { if (!e || how.get(e) !== 'removed' || !e.props || !Array.isArray(e.props.extensionPoints)) return;
+    const names = e.props.extensionPoints.filter(id => typeof id === 'string' && at0.has(id) && !have.has(id)).map(id => { const x = at0.get(id)[0]; return [id, x && typeof x === 'object' ? elName(x) : id]; });
+    if (names.length) e.pointNames = Object.fromEntries(names); });
   // a member new to an element that stayed (audit 46: an added part, port or lane drawn as live): marked added, and said
   // "adds X to Y"; what it holds is new with it. Only an element's (a card's) members: a fragment's operands are the sequence's
   const rooted = new Set(); [...out.nodes, ...views.flatMap(v => arr(v && v.nodes))].forEach(n => { for (const s = [n]; s.length;) { const x = s.pop();

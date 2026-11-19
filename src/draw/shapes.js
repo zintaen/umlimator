@@ -176,4 +176,17 @@ function drawnPts(e, look) {
   return pts;
 }
 
-export { r2, boxOut, portsOn, sidePorts, SHAPE, SHAPE_NAMES, shapeOf, cardLook, tabAfter, tabLine, drawnPts };
+// a typed shape's or box's change, as a card's: a NEW, CHANGED or PLANNED tab on its top; removed, its outlines faded, dashed and its
+// text struck through; its accessible name says it (audit 44: the diff page drew a removed class as live, an added one unmarked).
+// The fade is on its outlines, not its group, as a map card's is on its body: the page takes a drawn group's opacity off for its
+// highlights, and a vendor's icon is never faded (audit 45). svgOf marks each typed shape so, and the interaction overview each
+// shape of an inline interaction (audit 48)
+const FADE = /<(rect|path|circle|ellipse|line|polyline|polygon)\b((?:[^>"]|"[^"]*")*?)(\/?)>/g;
+function markShape(n, out) { const ch = CHG[typeof n.change === 'string' ? n.change.toLowerCase() : '']; if (!ch || typeof out !== 'string' || !/^\s*<g\b/.test(out)) return out;
+  const word = ch[1].toLowerCase(), gone = word === 'removed', dash = gone || word === 'planned', bw = ch[1].length * 6 + 12, bx = n.x + n.w - bw - 8;
+  let o = out.replace(/^(\s*<g\b[^>]*?)(\s*>)/, (_, a, b) => a.replace(/ aria-label="([^"]*)"/, (m, t) => ` aria-label="${t}, ${word}"`) + ` data-change="${word}"` + (dash ? ' stroke-dasharray="6 4"' : '') + b);
+  if (gone) o = o.replace(/<text\b([^>]*)>/g, (m, a) => / text-decoration="/.test(a) ? m.replace(/ text-decoration="([^"]*)"/, (x, v) => ` text-decoration="${v} line-through"`) : `<text${a} text-decoration="line-through">`)
+    .replace(FADE, (m, t, a, c) => / opacity="|\bn-logo\b/.test(a) ? m : `<${t}${a} opacity=".6"${c}>`);
+  return !(Number.isFinite(n.x) && Number.isFinite(n.y) && Number.isFinite(n.w)) ? o : o.replace(/<\/g>\s*$/, `<g class="change-tab" aria-hidden="true"><rect x="${r2(bx)}" y="${r2(n.y - 8)}" width="${bw}" height="16" rx="8" fill="var(--um-mask)" stroke="var(--um-${ch[0]})" stroke-dasharray="none"/><text x="${r2(bx + bw / 2)}" y="${r2(n.y + 3)}" text-anchor="middle" class="badge-tx" fill="var(--um-${ch[0]})" text-decoration="none">${ch[1]}</text></g></g>`); }
+
+export { markShape, r2, boxOut, portsOn, sidePorts, SHAPE, SHAPE_NAMES, shapeOf, cardLook, tabAfter, tabLine, drawnPts };

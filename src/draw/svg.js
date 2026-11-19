@@ -1,7 +1,7 @@
 import { TYPED } from '../core/registry.js';
 import { EDGE_BREAK, EDGE_LH, clauseFit, esc, fit, glyph, measureText, sansW, textW, wrap2 } from '../core/text.js';
 import { roundPath, trimLine } from './lines.js';
-import { SHAPE, cardLook, drawnPts, r2, sidePorts, tabLine } from './shapes.js';
+import { SHAPE, cardLook, drawnPts, markShape, r2, sidePorts, tabLine } from './shapes.js';
 import { CHG } from '../layout/layered.js';
 import { WIRES, badgesOf, mapTabs, toneOf } from '../map/cards.js';
 import { KIND, SIGIL, hasKey } from '../map/kinds.js';
@@ -42,17 +42,7 @@ function svgOf(geo, opts = {}) {
   let s = `<svg viewBox="${B.x} ${B.y} ${B.w} ${B.h}" data-w="${B.w}" data-h="${B.h}" role="group" aria-label="${esc(opts.title == null || opts.title === '' ? 'Diagram' : opts.title)}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
     <defs>${marker('d', LINE)}${marker('g', 'var(--um-green)')}${marker('r', 'var(--um-rose)')}${marker('v', 'var(--um-violet)')}${marker('h', 'var(--um-cyan)')}${map ? WIRES.map(w => marker(w[0], `var(--um-w-${w[0]})`)).join('') : ''}${heavy.map(m => { const [c, k] = m.split('-w'); return marker(m, MC[c], 1 + (k - 1) * .35); }).join('')}${T ? T.defs : ''}</defs>`;
   const chWord = x => { const c = CHG[lc(x)]; return c ? ', ' + c[1].toLowerCase() : ''; }; // a key and a line's title say its change (audits 44, 45)
-  // a typed shape's or box's change, as a card's: a NEW, CHANGED or PLANNED tab on its top; removed, its outlines faded, dashed and its
-  // text struck through; its accessible name says it (audit 44: the diff page drew a removed class as live, an added one unmarked).
-  // The fade is on its outlines, not its group, as a map card's is on its body: the page takes a drawn group's opacity off for its
-  // highlights, and a vendor's icon is never faded (audit 45)
-  const FADE = /<(rect|path|circle|ellipse|line|polyline|polygon)\b((?:[^>"]|"[^"]*")*?)(\/?)>/g;
-  const marked = (n, out) => { const ch = CHG[lc(n)]; if (!ch || typeof out !== 'string' || !/^\s*<g\b/.test(out)) return out;
-    const word = ch[1].toLowerCase(), gone = word === 'removed', dash = gone || word === 'planned', bw = ch[1].length * 6 + 12, bx = n.x + n.w - bw - 8;
-    let o = out.replace(/^(\s*<g\b[^>]*?)(\s*>)/, (_, a, b) => a.replace(/ aria-label="([^"]*)"/, (m, t) => ` aria-label="${t}, ${word}"`) + ` data-change="${word}"` + (dash ? ' stroke-dasharray="6 4"' : '') + b);
-    if (gone) o = o.replace(/<text\b([^>]*)>/g, (m, a) => / text-decoration="/.test(a) ? m.replace(/ text-decoration="([^"]*)"/, (x, v) => ` text-decoration="${v} line-through"`) : `<text${a} text-decoration="line-through">`)
-      .replace(FADE, (m, t, a, c) => / opacity="|\bn-logo\b/.test(a) ? m : `<${t}${a} opacity=".6"${c}>`);
-    return !(Number.isFinite(n.x) && Number.isFinite(n.y) && Number.isFinite(n.w)) ? o : o.replace(/<\/g>\s*$/, `<g class="change-tab" aria-hidden="true"><rect x="${r2(bx)}" y="${r2(n.y - 8)}" width="${bw}" height="16" rx="8" fill="var(--um-mask)" stroke="var(--um-${ch[0]})" stroke-dasharray="none"/><text x="${r2(bx + bw / 2)}" y="${r2(n.y + 3)}" text-anchor="middle" class="badge-tx" fill="var(--um-${ch[0]})" text-decoration="none">${ch[1]}</text></g></g>`); };
+  const marked = markShape; // a typed shape's or box's change (src/draw/shapes.js)
   // how many boxes a box sits in, each counted once: a container that names itself, or another in a cycle, as its parent
   // (validate()'s "ends up inside itself") draws, as BPMN draws an owner cycle (audit 48: the recursion overflowed the stack)
   const families = geo.families || [], familyDepth = f => { let d = 0; for (let p = f, seen = new Set([f]); p && p.parent != null && (p = families.find(q => q.id === p.parent)) && !seen.has(p); d++) seen.add(p); return d; };

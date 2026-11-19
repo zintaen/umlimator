@@ -1,5 +1,5 @@
 import { aWord, kindWord, registerDiagramType } from '../core/registry.js';
-import { CLASS_DEF, RULES, classProblems, closesCycle, drawnLines, lineLabel, lineName, lineRename, parseMember, printMember, typeGeo } from '../uml/class.js';
+import { CLASS_DEF, RULES, classProblems, closesCycle, commentConnect, drawnLines, lineLabel, lineName, lineRename, parseMember, printMember, typeGeo } from '../uml/class.js';
 import { OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder } from '../uml/owners.js';
 import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_PARTS, SYS_ROLES, SYS_CLASH, SYS_FIELD, SYS_TABLE, SYS_TEXT_PROBLEMS } from './sysml.js';
 import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
@@ -228,14 +228,14 @@ function bdMember(model, view, ownerId, id, text) {
   const no = SYS_CLASH(o, {}, r.label, r.type, r.props); if (no) return no; // a name another member holds, as an edit's (audit 39)
   return bdTypeGuard(model, [{ op: 'add', element: { id: bdFresh(model, `${o.id}.${r.label}`), type: r.type, label: r.label, ...(Object.keys(r.props).length ? { props: r.props } : {}) }, owner: o.id }]);
 }
-/* connect (§7.4): a generalization joins two of one kind (general-kinds) and closes no cycle (generalization-cycle), a comment link runs from a comment; a part association
+/* connect (§7.4): a generalization joins two of one kind (general-kinds) and closes no cycle (generalization-cycle), a comment link drawn to a comment is added from it (commentConnect); a part association
    from a block adds the part property it draws (a constraint property, to a constraint block), named after the part's type,
    and the line naming it by its role (§7.2), one transaction; to anything else it is refused. Else the default */
 function bdConnect(model, view, from, to, at, line) {
   const a = bdNodeOf(model, from), b = bdNodeOf(model, to), t = BD_OBJ(line) ? line.type : null; if (!a || !b) return null;
   if (t === 'uml.Generalization' && (BD_CLS.includes(a.type) || BD_CLS.includes(b.type)) && a.type !== b.type) return { error: `A generalization joins two of one kind: ${bdKind(a)} and ${bdKind(b)} differ` };
   if (t === 'uml.Generalization') return closesCycle(model, view, t, from, to); // generalization-cycle (audit 36)
-  if (t === 'uml.CommentLink' && a.type !== 'uml.Comment') return { error: 'A comment link runs from a comment' };
+  if (t === 'uml.CommentLink') return commentConnect(model, view, from, to, line); // drawn to a comment: added from it, as every view's (audit 48)
   const E = BD_OBJ(BD_PROPS(line).ends) ? BD_PROPS(line).ends : {};
   if (t !== 'uml.Association' || !BD_OBJ(E.from) || E.from.aggregation !== 'composite' || !BD_CLS.includes(a.type)) return null;
   const cp = b.type === 'sysml.ConstraintBlock', mt = cp ? 'sysml.ConstraintProperty' : 'sysml.PartProperty';

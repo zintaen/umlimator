@@ -1351,3 +1351,38 @@ test('audit 48: a line\'s edited dot is drawn clear of its own label, and of eve
     dots.forEach(p => assert.ok(g.edges.some(e => e.pts.slice(1).some((q, k) => near(p, e.pts[k], q))), `${v}: the dot at ${p} sits on a line`));
   }
 });
+
+test('audit 48: on the diff page a communication view numbers its live messages as the model after the change does, counts only them, and a removed one keeps its old number', async () => {
+  const all = await fromSrc(), a = read45('checkout-communication'), V = 'checkout-communication';
+  const rows = g => Object.fromEntries(g.nodes.filter(n => n.shape === 'message-row').map(n => [n.id, [n.num, n.aria]]));
+  for (const gone of ['cm3', 'cm5', 'cm8']) {
+    const b = structuredClone(a); b.views.forEach(v => { if (Array.isArray(v.edges)) v.edges = v.edges.filter(e => (typeof e === 'string' ? e : e.id) !== gone); }); b.edges = b.edges.filter(e => e.id !== gone);
+    const was = rows(all.layout(a, V)), now = rows(all.layout(b, V)), d = rows(all.layout(all.diff(a, b).model, V));
+    for (const [id, [num, aria]] of Object.entries(now)) assert.deepEqual(d[id], [num, aria], `${gone} removed: ${id}`);
+    assert.equal(d[gone][0], was[gone][0], `${gone}: its number as before`); assert.doesNotMatch(d[gone][1], / of \d+,/, `${gone}: not counted`); }
+});
+
+test('audit 48: a removed extend whose extension point went with it reads on the diff page as before, its point by name', async () => {
+  const all = await fromSrc(), a = read45('shopping-use-cases'), b = structuredClone(a), co = b.nodes.find(n => n.id === 'check-out');
+  co.members = co.members.filter(m => m.id !== 'checkout.extras'); b.edges = b.edges.filter(e => !(e.props && (e.props.extensionPoints || []).includes('checkout.extras')));
+  const ext = g => g.edges.filter(e => e.type === 'uml.Extend').map(e => [e.id, e.label ?? e.lbl?.text ?? null]);
+  const was = new Map(ext(all.layout(a, 'shopping'))), d = ext(all.layout(all.diff(a, b).model, 'shopping'));
+  assert.equal(d.length, was.size); d.forEach(([id, t]) => assert.equal(t, was.get(id), id));
+  assert.match(svgOf(all.layout(all.diff(a, b).model, 'shopping')), /«extend» \(extras\)/);
+});
+
+test('audit 48: an interaction overview\'s inline interaction marks what the sequence view marks: an added fragment and its operand new, a lifeline taken out faded, dashed and struck', async () => {
+  const all = await fromSrc(), a = read45('buy-book-overview'), marks = s => (s.match(/data-change="[^"]*"/g) || []).sort();
+  const inline = s => { const i = s.indexOf('<g class="node ov-inline"'); return s.slice(i, s.indexOf('<g class="node', i + 1)); };
+  const b = structuredClone(a), q = b.views.find(v => v.id === 'queue-order');
+  q.fragments = [{ id: 'fopt', type: 'uml.CombinedFragment', props: { operator: 'opt' }, members: [{ id: 'fopt-1', type: 'uml.InteractionOperand', label: 'in stock' }] }]; q.edges[2].parent = 'fopt-1';
+  const c = structuredClone(a), q2 = c.views.find(v => v.id === 'queue-order');
+  q2.nodeIds = q2.nodeIds.filter(x => x !== 'lifeline-worker'); q2.edges = q2.edges.filter(e => e.to !== 'lifeline-worker');
+  for (const [y, want] of [[b, ['data-change="new"', 'data-change="new"']], [c, ['data-change="removed"']]]) { const d = all.diff(a, y).model;
+    const sq = svgOf(all.layout(d, 'queue-order')), ov = inline(svgOf(all.layout(d, 'buy-book')));
+    assert.deepEqual(marks(sq), want); assert.deepEqual(marks(ov), want, 'the inline frame marks as the sequence view does'); }
+  const ov = inline(svgOf(all.layout(all.diff(a, b).model, 'buy-book'))); assert.match(ov, />NEW<\/text>/);
+  const gone = inline(svgOf(all.layout(all.diff(a, c).model, 'buy-book'))), head = gone.slice(gone.lastIndexOf('<g', gone.indexOf('data-change="removed"')));
+  assert.match(head, /stroke-dasharray="6 4"/); assert.match(head, /text-decoration="line-through">worker : OrderWorker</); assert.match(head, />REMOVED<\/text>/);
+  assert.doesNotMatch(inline(svgOf(all.layout(a, 'buy-book'))), /data-change/, 'no change: no mark');
+});
