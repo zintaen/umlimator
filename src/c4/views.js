@@ -271,11 +271,14 @@ function depOwners(model, x) {
   const I = c4Index(model); // not the node itself nor a node inside it (the core refuses a cycle)
   return V_ARR(model.nodes).filter(n => V_OBJ(n) && n.type === 'c4.DeploymentNode' && n.id !== x.id && !I.chain(n.id).includes(x.id)).map(n => ({ id: n.id, label: vName(n) }));
 }
+// some deployment view lists x and draws it as a leaf, where its description shows (depGeo's desc)
+const depLeaf = (model, x) => V_ARR(model && model.views).some(v => V_OBJ(v) && v.diagram === 'c4.deployment' && V_ARR(v.nodeIds).includes(x.id) && !depPic(model, v).open.has(x.id));
 const DEP_DEF = {
   title: 'C4 deployment diagram',
   elements: [{ type: 'c4.DeploymentNode', label: 'Deployment node' }, { type: 'c4.ContainerInstance', label: 'Container instance', name: false }, { type: 'uml.Comment', label: 'Comment' }],
   lines: C4_DEF.lines,
-  props: { 'c4.DeploymentNode': [{ key: 'description', label: 'Description', kind: 'text' }, { key: 'technology', label: 'Technology', kind: 'text' }],
+  // a node's description is drawn on it as a leaf, never on a box (depPic's open): said "drawn as" only when a view draws it so (audit 45)
+  props: { 'c4.DeploymentNode': [{ key: 'description', label: 'Description', kind: 'text', drawn: depLeaf }, { key: 'technology', label: 'Technology', kind: 'text' }],
     'c4.ContainerInstance': [{ key: 'container', label: 'Container (id; T picks it)', kind: 'text' }], 'c4.Relationship': C4_DEF.props['c4.Relationship'], 'uml.CommentLink': [] },
   layout: depGeo,
   boxes: (model, view) => depPic(model, view).boxes,
