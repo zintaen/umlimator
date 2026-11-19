@@ -741,6 +741,10 @@ export function render(container, model, options = {}) {
     if (key(e)) { e.preventDefault(); e.stopPropagation(); } });
   stage.addEventListener('pointerover', e => { const g = e.target.closest('.node'); if (!g) return; svg.querySelectorAll('.edge-g').forEach(x => x.classList.toggle('hov', x.dataset.from === g.dataset.id || x.dataset.to === g.dataset.id)); });
   stage.addEventListener('pointerout', e => { if (e.target.closest('.node')) svg.querySelectorAll('.edge-g.hov').forEach(x => x.classList.remove('hov')); });
+  // a line focused by key shows its weight as hover does (its key is outside the line's group, so the sheet cannot reach it)
+  const keyOn = e => { if (!svg) return; svg.querySelectorAll('.edge-g.key-on').forEach(x => x.classList.remove('key-on')); const k = e.type === 'focusin' && e.target.closest && e.target.closest('.line-key');
+    if (k) { const g = svg.querySelector(`.edge-g[data-i="${k.dataset.i}"]`); if (g) g.classList.add('key-on'); } };
+  stage.addEventListener('focusin', keyOn); stage.addEventListener('focusout', keyOn);
   const ctl = q('.ctl');
   if (ctl) ctl.addEventListener('click', e => { const z = e.target.closest('button')?.dataset.z; if (!z) return; readerMoved(); // a press by key too: a story playing waits
     if (z === 'in') cam.zoomAt(1.4, null, null, true); else if (z === 'out') cam.zoomAt(1 / 1.4, null, null, true); else if (z === 'fit') cam.fit(); else if (z === 'one') cam.actual(); else if (z === 'up') up(); else if (z === 'flow') setFlow(!stage.classList.contains('flowing')); else if (z === 'add') addAt(cam.s.cx, cam.s.cy); });
@@ -766,8 +770,8 @@ export function render(container, model, options = {}) {
     }
     if (off) { const mine = layers.get('lens'), L = mine && arrOf(ctx.D.lenses).find(x => x && x.id === lensId); // the host's marks, on another view too (#63), and the lens as it lights that view
       if (L) layers.set('lens', lensOf(ctx, vid, L).layer); drawMarks(s, g, vid); if (L) layers.set('lens', mine); }
-    const s0 = sel, flowing = stage.classList.contains('flowing'), hov = [...svg.querySelectorAll('.hov')];
-    sel = null; paint(); stage.classList.remove('flowing'); hov.forEach(x => x.classList.remove('hov')); stage.classList.add('um-still');
+    const s0 = sel, flowing = stage.classList.contains('flowing'), hov = [...svg.querySelectorAll('.hov')], kon = [...svg.querySelectorAll('.key-on')];
+    sel = null; paint(); stage.classList.remove('flowing'); hov.forEach(x => x.classList.remove('hov')); kon.forEach(x => x.classList.remove('key-on')); stage.classList.add('um-still');
     const clone = s.cloneNode(true), b = g.bounds;
     const src = s.querySelectorAll('*'), dst = clone.querySelectorAll('*');
     const props = ['fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'opacity', 'fill-opacity', 'stroke-opacity', 'font-family', 'font-size', 'font-weight', 'letter-spacing', 'visibility'];
@@ -776,7 +780,7 @@ export function render(container, model, options = {}) {
       [...d.attributes].forEach(a => { if (a.value.includes('var(')) d.setAttribute(a.name, unvar(a.value, cs)); });
       props.forEach(p => { const v = cs.getPropertyValue(p); if (v) d.style.setProperty(p, v); });
       if (cs.textTransform === 'uppercase' && !d.childElementCount) d.textContent = d.textContent.toUpperCase(); }); } // tab text, as drawn
-    finally { stage.classList.remove('um-still'); hov.forEach(x => x.classList.add('hov')); if (flowing) stage.classList.add('flowing'); sel = s0; paint(); if (off) off.remove(); }
+    finally { stage.classList.remove('um-still'); hov.forEach(x => x.classList.add('hov')); kon.forEach(x => x.classList.add('key-on')); if (flowing) stage.classList.add('flowing'); sel = s0; paint(); if (off) off.remove(); }
     clone.querySelectorAll('title, .flowline, .um-edit, .um-ghost, .um-link, .keys, .um-key, .um-trip').forEach(t => t.remove());
     clone.setAttribute('role', 'img'); clone.querySelectorAll('[tabindex], [aria-pressed]').forEach(t => ['tabindex', 'role', 'aria-pressed'].forEach(a => t.removeAttribute(a)));
     clone.setAttribute('viewBox', `${b.x} ${b.y} ${b.w} ${b.h}`); clone.setAttribute('width', b.w * scale); clone.setAttribute('height', b.h * scale);
@@ -806,7 +810,7 @@ export function render(container, model, options = {}) {
     const gone = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     gone.setAttribute('class', 'um-leaving'); gone.setAttribute('aria-hidden', 'true'); gone.style.pointerEvents = 'none';
     const leave = x => { const c = x.cloneNode(true);
-      [c, ...c.querySelectorAll('*')].forEach(y => { ['tabindex', 'role', 'data-id', 'data-i', 'data-from', 'data-to', 'data-o', 'data-t', 'data-chip', 'data-badge', 'data-edges'].forEach(a => y.removeAttribute(a)); y.classList.remove('node', 'edge-g', 'e-lab', 'sel', 'hot', 'hov'); }); // a port's data-edges named lines the new picture may lack
+      [c, ...c.querySelectorAll('*')].forEach(y => { ['tabindex', 'role', 'data-id', 'data-i', 'data-from', 'data-to', 'data-o', 'data-t', 'data-chip', 'data-badge', 'data-edges'].forEach(a => y.removeAttribute(a)); y.classList.remove('node', 'edge-g', 'e-lab', 'sel', 'hot', 'hov', 'key-on'); }); // a port's data-edges named lines the new picture may lack
       gone.appendChild(c); };
     oldGeo.nodes.forEach(n => { if (!now.has(n.id)) all(oldSvg, `.node[data-id="${CSS.escape(n.id)}"]`).forEach(leave); });
     lines.forEach(([, i], k) => { if (!kept.has(k)) all(oldSvg, `.edge-g[data-i="${i}"], .e-lab[data-i="${i}"]`).forEach(leave); });

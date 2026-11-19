@@ -33,8 +33,11 @@ const STYLES = `
   svg .e-lbg { fill: var(--um-bg-2); stroke: var(--um-border); }
   svg .g-label { font: 700 10px var(--um-mono); letter-spacing: .12em; text-transform: uppercase; }
   svg .badge-tx { font: 700 8.5px var(--um-mono); letter-spacing: .08em; }
-  /* a line's weight (#44) scales what is drawn for it: --um-ew is 1, 1.75 or 2.5 */
-  :host { --um-ew: 1; } svg .wt-2 { --um-ew: 1.75; } svg .wt-3 { --um-ew: 2.5; }
+  /* a line's weight (#44) scales what is drawn for it, on hover, selection and keyboard focus only: at rest every line has
+     weight 1's width and arrowhead; then --um-ew is 1.75 or 2.5 and the heavier arrowhead svgOf names (--um-mk) takes over */
+  :host { --um-ew: 1; } svg .edge-g.wt-2:is(.hov, .hot, .key-on), .stage:not(.um-still) svg .edge-g.wt-2:hover, svg .line-key.wt-2 { --um-ew: 1.75; }
+  svg .edge-g.wt-3:is(.hov, .hot, .key-on), .stage:not(.um-still) svg .edge-g.wt-3:hover, svg .line-key.wt-3 { --um-ew: 2.5; }
+  svg .edge-g:is(.wt-2, .wt-3):is(.hov, .hot, .key-on) .edge, .stage:not(.um-still) svg .edge-g:is(.wt-2, .wt-3):hover .edge { marker-end: var(--um-mk); marker-start: var(--um-mk-s, none); }
   svg .edge { fill: none; stroke-width: calc(1.6px * var(--um-ew, 1)); stroke-linecap: round; stroke-linejoin: round; transition: stroke-width .15s, opacity .2s; }
   svg .halo { fill: none; stroke: var(--um-bg-2); stroke-width: calc(6px + 1.8px * (var(--um-ew, 1) - 1)); }
   svg .hitline { fill: none; stroke: transparent; stroke-width: calc(12px + 1.8px * (var(--um-ew, 1) - 1)); }
