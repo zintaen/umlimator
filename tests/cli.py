@@ -42,7 +42,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4})
 
 
 def ok(name, cond, info=""):
@@ -2308,5 +2308,52 @@ if part("audit 44"):
         # --no-check: no counts claimed
         rend = cli("render", str(Path(tmp) / "cross.json"), "--out", str(page), "--no-check")
         ok("render --no-check · claims no counts (audit 44)", rend is not None and rend.get("counts") is None and rend.get("checked") is False, rend)
+if part("audit 45"):
+    # audit 45: shared lines, labels on nodes, text overflow, lanes and overlapping edge labels were other, and none could be ignored
+    ov = ['view a: edges A→B and C→D share a line', 'view a: edge label "x" covers node "Y"', 'view a: text "x" overlaps node "Y"',
+          'view a: text "Long" overflows node "Y"', 'view a: chip "c" overflows node "Y"', 'view a: text "t" overflows the shape of node "Y"',
+          'view a: family title "F" overflows its box', 'view a: lane "Ops": header covers node "Y"', 'view a: lanes "A" and "B" overlap',
+          'view a: lane "Ops": node "Y" sticks out', 'view a: lane "Ops": header crossed by edge A→B', 'view a: edge labels "p" and "q" overlap',
+          'view a: lane "edges A→B and C→D share a line": node "Y" sticks out']
+    want = ["sharedLines", "labelOnNode", "labelOnNode", "overflow", "overflow", "overflow", "overflow", "lanes", "lanes", "lanes", "lanes",
+            "labelsOverlap", "lanes"]
+    c = u.counts_of(ov, None, ["a"])
+    ok("check · shared lines, labels on nodes, overflowing text, lane problems and overlapping edge labels are each a kind, none other (audit 45)",
+       [u.kind_of(o, None, ["a"]) for o in ov] == want and c["other"] == 0 and c["sharedLines"] == 1 and c["labelOnNode"] == 2 and c["lanes"] == 5
+       and all(k in u.KINDS for k in want), ([u.kind_of(o, None, ["a"]) for o in ov], c))
+    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "check", str(ROOT / "no-such-page.html"), "--ignore", "sharedLines,lanes,overflow"],
+                       capture_output=True, text=True)
+    h = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "check", "--help"], capture_output=True, text=True).stdout
+    ok("check --ignore · the new kinds are known kinds, and its help names them (audit 45)",
+       r.returncode != 0 and "unknown kind" not in r.stderr and all(k in h for k in ("sharedLines", "labelOnNode", "overflow", "labelsOverlap", "lanes")),
+       (r.stderr[-300:], h[-400:]))
+    with tempfile.TemporaryDirectory() as tmp:
+        # audit 45: a pull request that links a model in from outside the checkout was dropped unsaid ("No map model changed."):
+        # a target outside is only searched for "nodes" and "views", never parsed or written; a device, a pipe, a dangling link,
+        # a link to a folder, a config and a model named other than .json are not said, and nothing hangs on them
+        g = Path(tmp) / "g45"; far = Path(tmp) / "g45-outside"; (g / "maps").mkdir(parents=True); far.mkdir()
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
+        sh("init", "-q"); sh("commit", "-q", "--allow-empty", "-m", "base")
+        (far / "shop.json").write_text(json.dumps({"title": "OUTSIDE-45 <img src=https://x.invalid/t.png>", "nodes": [{"id": "a", "label": "SECRET-45"}],
+                                                   "views": [{"id": "main", "nodeIds": ["a"]}]}))
+        (far / "big.json").write_bytes(b'{"title": "x", "nodes": [], "pad": "' + b"y" * (3 << 20) + b'", "views": []}')
+        (far / "cfg.json").write_text('{"extends": "OUTSIDE-45"}'); (far / "model.md").write_text('{"nodes": [], "views": []}')
+        os.mkfifo(far / "pipe")
+        (g / "maps" / "shop.json").symlink_to(Path("..") / ".." / "g45-outside" / "shop.json")  # relative, out of the checkout: said
+        (g / "big.json").symlink_to(far / "big.json")  # "views" 3 MiB in: said
+        (g / "eslint.json").symlink_to(far / "cfg.json")  # a config: not said
+        (g / "doc.md").symlink_to(far / "model.md")  # not .json: not said
+        (g / "zero.json").symlink_to("/dev/zero"); (g / "pipe.json").symlink_to(far / "pipe"); (g / "dir.json").symlink_to(far)
+        (g / "gone.json").symlink_to(far / "none.json")
+        sh("add", "-A"); sh("commit", "-qm", "pr")
+        r = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                            "sys.argv = ['umlimator.py', 'diff', '--base', 'HEAD~1', '--out', 'out']; u.main()", str(ROOT)], cwd=g, capture_output=True, text=True, timeout=120)
+        said = {x["file"]: x.get("error") for x in json.loads(r.stdout or "[]")}
+        md = (g / "out" / "summary.md").read_text() if (g / "out" / "summary.md").is_file() else ""
+        written = md + "".join(f.read_text(errors="replace") for f in (g / "out").rglob("*") if f.is_file())
+        ok("diff --base · a new symbolic link to a model outside the checkout is said, not read; other links out are not said, and none hangs (audit 45)",
+           r.returncode == 0 and sorted(said) == ["big.json", "maps/shop.json"] and all("symbolic link" in (w or "") for w in said.values())
+           and "No map model changed" not in md and "OUTSIDE-45" not in written and "SECRET-45" not in written and "x.invalid" not in written,
+           (said, md, r.stderr[-400:]))
 part.done()
 sys.exit(1 if failed else 0)
