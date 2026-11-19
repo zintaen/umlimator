@@ -1486,16 +1486,16 @@ test('audit 51: a card hidden from a view that lists its lines is drawn back wit
   assert.equal(drawn(read45('bookshop-deployment'), 'production', 'database')['app-to-database'], 'removed', 'a deployment view');
 });
 
-test('audit 51: a C4 dynamic view draws a step hidden, taken out of its list or put into it, numbered in place and marked', async () => {
+test('audit 51: a C4 dynamic view draws a step hidden, taken out of its list or put into it, in place and marked (audit 52: a removed one unnumbered)', async () => {
   const all = await fromSrc(), { apply } = await import('../src/core/apply.js'), B = read45('bookshop-c4'), V = 'c4-placing-an-order';
   const steps = x => all.layout(x, V).edges.slice(0, 3).map(e => [e.step, e._id ?? e.id, e.change ?? null]);
   const r = apply(B, [{ op: 'hide', id: 'c4-shopper-storefront', view: V }]), d = all.diff(B, r.model || r);
-  assert.deepEqual(steps(d.model)[0], [1, 'c4-shopper-storefront', 'removed'], 'a hidden step');
+  assert.deepEqual(steps(d.model)[0], [undefined, 'c4-shopper-storefront', 'removed'], 'a hidden step');
   const { validate: check } = await import('../src/map/validate.js');
   assert.ok(!check(d.model).some(p => p.rule === 'c4-steps'), 'the marked copy names the model relationship');
   const A = structuredClone(B), v = A.views.find(x => x.id === V); v.edges = v.edges.filter(x => x !== 'c4-storefront-api');
   assert.deepEqual(steps(all.diff(A, B).model)[1], [2, 'c4-storefront-api', 'added'], 'a step put into the list');
-  assert.deepEqual(steps(all.diff(B, A).model)[1], [2, 'c4-storefront-api', 'removed'], 'a step taken out of it');
+  assert.deepEqual(steps(all.diff(B, A).model)[1], [undefined, 'c4-storefront-api', 'removed'], 'a step taken out of it');
   assert.match(svgOf(all.layout(all.diff(B, A).model, V)), /Reads the catalogue/);
 });
 
@@ -1509,4 +1509,83 @@ test('audit 51: a deleted timing lifeline is drawn back with its state rows, cha
   // a change taken out of a lifeline that stays is not drawn back (it would change the lane's steps)
   const k = structuredClone(m); k.views[0].timeline.changes = k.views[0].timeline.changes.filter(c => c.id !== 'p-capturing');
   assert.ok(!all.layout(all.diff(m, k).model, 'one-charge').nodes.some(n => n.id === 'p-capturing'));
+});
+
+// audit 52
+const types52 = f => JSON.parse(readFileSync(new URL(`../examples/types/${f}.json`, import.meta.url)));
+test('audit 52: a deleted lifeline or timing lane is drawn back in its old place, and an interaction use covering it keeps its width', async () => {
+  const all = await fromSrc(), { apply } = await import('../src/core/apply.js');
+  const m = types52('uml-sequence'), V = m.views[0].id, d = all.diff(m, apply(m, { op: 'delete', id: 'storefront' }));
+  assert.deepEqual(d.model.views[0].nodeIds, m.views[0].nodeIds, 'storefront back between shopper and api');
+  const g = all.layout(d.model, V), at = id => g.nodes.find(n => n.id === id), u = at('u1');
+  assert.equal(at('storefront').change, 'removed');
+  assert.ok(at('storefront').x < at('api').x && at('shopper').x < at('storefront').x, 'in its place');
+  assert.ok(u.x + u.w < at('hold').x, `u1 covers storefront and api only: ${u.x}+${u.w} against hold at ${at('hold').x}`);
+  const t = types52('uml-timing'), T = t.views[0], lane = T.nodeIds[0], dt = all.diff(t, apply(t, { op: 'delete', id: lane })), gt = all.layout(dt.model, T.id);
+  assert.deepEqual(dt.model.views[0].nodeIds, T.nodeIds);
+  const y = id => gt.nodes.find(n => n.id === id).y; assert.ok(T.nodeIds.slice(1).every(id => y(lane) < y(id)), 'the removed lane stays at the top');
+  // a card taken out of a map view comes back in its place too, and a card that stays keeps its own
+  const p = { nodes: ['a', 'b', 'c', 'd'].map(id => ({ id })), views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd'] }] }, q = structuredClone(p);
+  q.views[0].nodeIds = ['d', 'a', 'c']; assert.deepEqual(all.diff(p, q).model.views[0].nodeIds, ['d', 'a', 'b', 'c']);
+  q.views[0].nodeIds = ['c', 'd']; assert.deepEqual(all.diff(p, q).model.views[0].nodeIds, ['a', 'b', 'c', 'd']);
+});
+
+test('audit 52: a card hidden from a view that lists no lines, and a removed view, bring their lines back removed', async () => {
+  const all = await fromSrc(), { apply } = await import('../src/core/apply.js');
+  const m = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }, { id: 'c', label: 'C' }], edges: [{ id: 'e1', from: 'a', to: 'b', label: 'x' }, { id: 'e2', from: 'b', to: 'c' }, { from: 'c', to: 'a' }],
+    views: [{ id: 'w', title: 'W', nodeIds: ['a', 'b', 'c'] }, { id: 'u', title: 'U', nodeIds: ['a', 'b', 'c'] }] };
+  const lines = (x, V) => Object.fromEntries(all.layout(x, V).edges.map(e => [e._id ?? e.id, e.change ?? null]));
+  const h = structuredClone(m); h.views[0].nodeIds = ['b', 'c'];
+  const d = all.diff(m, h); assert.deepEqual(d.summary, ['takes A out of the view W']);
+  assert.deepEqual(lines(d.model, 'w'), { e1: 'removed', e2: null, 'c->a#0': 'removed' });
+  assert.match(svgOf(all.layout(d.model, 'w')), /<title>A → B: x, removed<\/title>/);
+  const r = structuredClone(m); r.views = r.views.slice(0, 1); const dr = all.diff(m, r);
+  assert.deepEqual(lines(dr.model, 'u'), { e1: 'removed', e2: 'removed', 'c->a#0': 'removed' }, 'a removed view');
+  // a typed view: its type picks its lines, so they are marked in view.diffMarks
+  const s = read45('sales-classes'), dv = s.views.find(v => v.id === 'domain'), ds = all.diff(s, apply(s, { op: 'hide', id: 'customer', view: 'domain' }));
+  assert.ok(!Array.isArray(dv.edges)); assert.equal(lines(ds.model, 'domain')['customer-orders'], 'removed', 'a class view');
+  // a removed typed view: what it draws, its fragments and its timeline's changes, removed
+  for (const f of ['uml-timing', 'uml-communication', 'bpmn', 'uml-sequence']) { const x = types52(f), y = { ...structuredClone(x), views: [] }, dx = all.diff(x, y);
+    for (const v of x.views) { const g = all.layout(dx.model, v.id);
+      const live = [...g.nodes, ...(g.families || []), ...g.edges].filter(n => n.change !== 'removed').map(n => n._id ?? n.id);
+      assert.deepEqual(live, [], `${f} ${v.id}`); } }
+  const sq = types52('uml-sequence'), w0 = all.diff(sq, { ...sq, views: [] }).model.views[0];
+  assert.ok(w0.fragments.length && w0.fragments.every(f => f.change === 'removed'), 'a removed sequence view\'s fragments');
+  const tm = types52('uml-timing'), t0 = all.diff(tm, { ...tm, views: [] }).model.views[0];
+  assert.ok(t0.timeline.changes.every(c => c.change === 'removed'), 'a removed timing view\'s changes');
+});
+
+test('audit 52: a box removed from or added to a map view is said, and drawn marked', async () => {
+  const all = await fromSrc(), m = types52('map'), V = m.views[0];
+  const box = (f, ...want) => { const b = structuredClone(m); f(b.views[0]); const d = all.diff(m, b); want.forEach(w => assert.ok(d.summary.includes(`${w} in the view ${V.title}`), `${w}: ${d.summary}`)); return d; };
+  const gone = box(v => { v.containers = v.containers.filter(c => c.id !== 'support'); }, 'removes the box Support');
+  const g = all.layout(gone.model, V.id), sup = (g.families || []).find(f => f.id === 'support');
+  assert.equal(sup && sup.change, 'removed', 'drawn back, removed');
+  assert.match(svgOf(g), /data-family="support"[^>]*data-change="removed"/);
+  const came = box(v => { v.containers.push({ id: 'nb', label: 'New box', nodeIds: [v.nodeIds[0]] }); }, 'adds the box New box');
+  assert.equal(all.layout(came.model, V.id).families.find(f => f.id === 'nb').change, 'added');
+  assert.deepEqual(box(v => { v.containers[0].label = 'Platform 2'; }).summary, [`renames the box Shop platform to Platform 2 in the view ${V.title}`], 'a rename as before');
+  assert.doesNotMatch(svgOf(all.layout(m, V.id)), /data-family="[^"]*"[^>]*data-change/, 'a map box with no change: no mark');
+});
+
+test('audit 52: a C4 dynamic view on the diff page numbers its live steps only, as the model after does', async () => {
+  const all = await fromSrc();
+  const mk = (steps, rels = ['r1', 'r2', 'r3']) => ({ schemaVersion: 2, nodes: [{ id: 'S', type: 'c4.SoftwareSystem', label: 'Shop' },
+    { id: 'a', type: 'c4.Container', label: 'Web', parent: 'S' }, { id: 'b', type: 'c4.Container', label: 'Api', parent: 'S' }, { id: 'c', type: 'c4.Container', label: 'Db', parent: 'S' }],
+    edges: [{ id: 'r1', type: 'c4.Relationship', from: 'a', to: 'b', label: 'one' }, { id: 'r2', type: 'c4.Relationship', from: 'b', to: 'c', label: 'two' }, { id: 'r3', type: 'c4.Relationship', from: 'b', to: 'a', label: 'three' }].filter(e => rels.includes(e.id)),
+    views: [{ id: 'd', diagram: 'c4.dynamic', subject: 'S', nodeIds: ['a', 'b', 'c'], edges: steps }] });
+  const nums = x => (svgOf(all.layout(x, 'd')).match(/>(\d · )?[a-z]+<\/text>/g) || []).map(t => t.slice(1, -7));
+  const arias = x => (svgOf(all.layout(x, 'd')).match(/aria-label="Step[^"]*"/g) || []);
+  for (const [b, label] of [[mk(['r2', 'r3']), 'taken out of the view'], [mk(['r2', 'r3'], ['r2', 'r3']), 'its relationship deleted']]) {
+    const d = all.diff(mk(['r1', 'r2', 'r3']), b).model;
+    assert.deepEqual(nums(d), ['one', '1 · two', '2 · three'], label); assert.deepEqual(nums(b), ['1 · two', '2 · three']);
+    assert.deepEqual(arias(d), ['aria-label="Step: Relationship from Web to Api: one, removed"', 'aria-label="Step 1: Relationship from Api to Db: two"', 'aria-label="Step 2: Relationship from Api to Web: three"'], label); }
+  assert.deepEqual(nums(all.diff(mk(['r1', 'r3']), mk(['r1', 'r2', 'r3'])).model), ['1 · one', '2 · two', '3 · three'], 'a step put in is numbered');
+});
+
+test('audit 52: a moved requirement\'s old containment is drawn back when its old owner was taken out of the view', async () => {
+  const all = await fromSrc(), a = read45('ebike-requirements'), b = structuredClone(a);
+  b.views[0].nodeIds = b.views[0].nodeIds.filter(x => x !== 'spec'); b.nodes.find(n => n.id === 'range').parent = 'docking';
+  const g = all.layout(all.diff(a, b).model, a.views[0].id), ch = Object.fromEntries(g.edges.filter(e => e.type === 'containment').map(e => [`${e.from}->${e.to}`, e.change ?? null]));
+  assert.equal(ch['range->spec'], 'removed'); assert.equal(ch['range->docking'], 'added'); assert.equal(ch['docking->spec'], 'removed');
 });

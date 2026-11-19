@@ -39,13 +39,17 @@ const vUsed = model => { const used = new Set(V_ARR(model.views).filter(V_OBJ).m
 // a step or comment link the view lists: a model line by id, or diff()'s copy of one marked (a step put into the list, or
 // taken out of it or hidden, drawn back removed: audit 51), read as the model's line; its mark is the view's own (marks())
 const dynRef = (x, by) => typeof x === 'string' ? by.get(x) : V_OBJ(x) && typeof x.id === 'string' && typeof x.change === 'string' ? by.get(x.id) : undefined;
+// a step diff() draws back removed: its marked copy in the list, or a relationship the model after no longer holds
+const dynGone = (x, e) => [x, e].some(y => V_OBJ(y) && typeof y.change === 'string' && y.change.toLowerCase() === 'removed');
 // its steps drawn: [{ e, k, i }], each model relationship listed (the first time) between two elements the view shows (not a
-// boundary), numbered 1, 2, 3 among those drawn (S13), i its place in view.edges
+// boundary), numbered 1, 2, 3 among those drawn (S13), i its place in view.edges. On the diff page over the live ones only, as
+// the model after counts them: a removed step has no number (k null) and is said without a place (audit 52, as the sequence
+// and communication views)
 function dynSteps(model, view) {
   if (!V_OBJ(view)) return [];
   const pic = c4Pic(model, view), ends = new Set(pic.ids.filter(id => !pic.open.has(id))), rel = new Map(pic.I.rels.map(r => [r.id, r])), seen = new Set(), out = [];
-  V_ARR(view.edges).forEach((x, i) => { const e = dynRef(x, rel);
-    if (e && !seen.has(e.id) && ends.has(e.from) && ends.has(e.to)) out.push({ e, k: out.length + 1, i }); if (e) seen.add(e.id); });
+  let n = 0; V_ARR(view.edges).forEach((x, i) => { const e = dynRef(x, rel);
+    if (e && !seen.has(e.id) && ends.has(e.from) && ends.has(e.to)) out.push({ e, k: dynGone(x, e) ? null : ++n, i }); if (e) seen.add(e.id); });
   return out;
 }
 // the level a dynamic view draws at: as the static view its subject's type zooms to
@@ -58,7 +62,7 @@ function dynDrawn(model, view) {
   const notes = [...new Set(V_ARR(view.edges).map(x => dynRef(x, E)))].filter(e => e && e.type === 'uml.CommentLink' && ends.has(e.from) && ends.has(e.to));
   return { pic, steps, notes };
 }
-const dynName = (e, k, pic) => `Step ${k}: ${c4LineName(e, pic)}`;
+const dynName = (e, k, pic) => `Step${k == null ? '' : ' ' + k}: ${c4LineName(e, pic)}`;
 // the key's items: each element type, shape and tone drawn (as src/c4/c4.js keys them), the relationship and the implied line
 const vItem = (name, says, svg) => `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true">${svg}</svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`;
 const vSwatch = ext => `<rect x="3" y="2" width="22" height="12" rx="3" fill="var(--um-${ext ? 'slate' : 'cyan'}-f)" stroke="var(--um-${ext ? 'slate' : 'cyan'})"/>`;
@@ -78,7 +82,7 @@ function vNode(id, x, P, more = {}) {
 function dynGeo({ model, view, pos, memo }) {
   const { pic, steps, notes } = dynDrawn(model, view), P = id => (V_OBJ(pos) && Object.hasOwn(pos, id) ? pos[id] : [0, 0]);
   const nodes = pic.ids.filter(id => !pic.open.has(id)).map(id => vNode(id, pic.at.get(id), P));
-  const edges = [...steps.map(({ e, k }) => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, step: k, label: c4LineLabel(e) || undefined, end: V_LINE.rel, aria: dynName(e, k, pic), cut: 280 })),
+  const edges = [...steps.map(({ e, k }) => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, ...(k != null ? { step: k } : {}), label: c4LineLabel(e) || undefined, end: V_LINE.rel, aria: dynName(e, k, pic), cut: 280 })),
     ...notes.map(e => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, end: V_LINE.note, aria: c4LineName(e, pic), cut: 280 }))];
   const g = layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: view.direction === 'down' ? 'down' : 'right',
     gap: 48, rgap: 64, labelGaps: true, repair: false, reroute: false }, memo);
@@ -152,7 +156,7 @@ function dynConnect(model, view, from, to, at, line) {
 // ("3." or "3 ·"), are not the description; what is left is set as its label. Anything else: null, the canvas's own
 function dynRename(model, view, id, text) {
   const s = dynSteps(model, view).find(x => x.e.id === id); if (!s) return null;
-  return c4Rename(model, view, id, String(text).trim().replace(new RegExp(`^${s.k}\\s*(·|\\.(?!\\S))\\s*`), ''));
+  return c4Rename(model, view, id, s.k == null ? String(text).trim() : String(text).trim().replace(new RegExp(`^${s.k}\\s*(·|\\.(?!\\S))\\s*`), ''));
 }
 // add: a container or component added at the view's level (its subject's, §5.1) is owned by the subject, as on that static view
 const dynAdd = (model, view, entry, label) => (V_OBJ(view) ? C4_DEF.edits.add(model, { ...view, diagram: dynLevel(model, view) }, entry, label) : null);
@@ -166,7 +170,7 @@ const DYN_DEF = { ...C4_DEF,
   rules: V_RULES,
   describe: dynDescribe,
   // the PDF's lines table: a step's number before its text, as drawn
-  text: (model, view, id) => { const t = C4_DEF.text(model, view, id), s = dynSteps(model, view).find(x => x.e.id === id); return s ? [String(s.k), t].filter(V_HAS).join(' · ') : t; },
+  text: (model, view, id) => { const t = C4_DEF.text(model, view, id), s = dynSteps(model, view).find(x => x.e.id === id); return s && s.k != null ? [String(s.k), t].filter(V_HAS).join(' · ') : t; },
   edits: { ...C4_DEF.edits, add: dynAdd, connect: dynConnect, moveTo: dynMoveTo, rename: dynRename },
   steps: true, // its lines are numbered by their order in view.edges: diff() says a reorder (audit 18)
 };

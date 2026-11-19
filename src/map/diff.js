@@ -113,6 +113,9 @@ export function diff(before, after) {
   const line0 = new Map([...keyed(arr(A.edges))].filter(([e, k]) => e && typeof e === 'object' && k1.has(k)).map(([e, k]) => [k, e])); // model lines in both, by their Ref name (an id-less one by its ends)
   const V0 = new Map(arr(A.views).filter(Boolean).map(v => [v.id, v])), V1 = new Set(arr(out.views).filter(Boolean).map(v => v.id));
   const stepped = x => x.render === 'sequence' || (diagramOf(x) || {}).steps === true; // a view that numbers its lines by their order (a C4 dynamic view's steps, audit 18)
+  // a view its type lays out (version 2), which picks the lines it draws; version 1, or a map view, is drawn as a map
+  const typedL = x => out.schemaVersion === 2 && (T => !!(T && T.layout && (T.layout.run || typeof T.layout === 'function')))(diagramOf(x));
+  const hidIn = [], rmTyped = []; // typed views whose lines to a card they no longer show, or that went, are marked in view.diffMarks
   const moved = [], touched = new Set(), viewSaid = []; // cards put into or taken out of a view; views whose cards the diff marks there; what only a view changes
   // a view's picture, as its nodes, lines and bands are placed: the old model's, and the old model's with the view's kept cards
   // in their new order (audit 42); null where it cannot be laid out, which reads as changed
@@ -145,7 +148,11 @@ export function diff(before, after) {
     // back with its parts, ports and connectors, removed with it (audit 51), not as a plain card
     if (o.subject != null && v.subject == null && how.get(at.get(o.subject)) === 'removed') w.subject = o.subject;
     const left = oldIds.filter(id => !ids.includes(id)), came = ids.filter(id => !oldIds.includes(id)), ov = idTable(v.nodeOverrides); // ov['__proto__'] = ... is an own key
-    w.nodeIds = [...ids, ...left];
+    // each card that left back in its old place, after the nearest one before it that stayed (audit 52: at the end, a removed
+    // lifeline or timing lane was drawn at the far side, and an interaction use covering it spanned every lifeline between)
+    { const kept = new Set(ids), after = new Map(); let prev = null; // each that left, by the one that stayed before it (null: the start)
+      oldIds.forEach(id => { if (kept.has(id)) prev = id; else if (after.has(prev)) after.get(prev).push(id); else after.set(prev, [id]); });
+      const done = new Set(); w.nodeIds = [...(after.get(null) || []), ...ids.flatMap(id => done.has(id) || !after.has(id) ? [id] : (done.add(id), [id, ...after.get(id)]))]; }
     left.forEach(id => { if (how.get(at.get(id)) !== 'removed') { ov[id] = { ...(o.nodeOverrides || {})[id], change: 'removed' }; moved.push(['takes', id, v]); } });
     came.forEach(id => { if (at.get(id) && how.get(at.get(id)) !== 'added') { ov[id] = { ...ov[id], change: 'added' }; moved.push(['puts', id, v]); } });
     if (left.length || came.length) touched.add(v.id);
@@ -176,6 +183,16 @@ export function diff(before, after) {
       w.containers = v.containers.map(c => { const back = left.filter(id => c && arr(o.containers).some(b => b && b.id === c.id && arr(b.nodeIds).includes(id))); return back.length ? { ...c, nodeIds: [...arr(c.nodeIds), ...back] } : c; });
     if (left.length && v.layout && o.layout) { const L = idTable(v.layout), taken = new Set(Object.values(L).map(String));
       left.forEach(id => { const p = o.layout[id]; if (Array.isArray(p) && !taken.has(String(p))) { L[id] = p; taken.add(String(p)); } }); w.layout = plain(L); }
+    // a box the view gained is said and marked added; one it lost is said and comes back, removed, in its place, round the cards
+    // it held that no box holds now (audit 52: neither was said or drawn; an empty box is not drawn)
+    { const nb = new Set(arr(v.containers).filter(Boolean).map(c => c.id)), lost = arr(o.containers).filter(c => c && typeof c === 'object' && c.id != null && !nb.has(c.id));
+      const got = arr(v.containers).filter(c => c && typeof c === 'object' && c.id != null && !ob.has(c.id));
+      got.forEach(c => says(`adds the box ${bn(c)}`)); lost.forEach(c => says(`removes the box ${bn(c)}`));
+      if (got.length || lost.length) { const res = arr(w.containers || v.containers).map(c => c && typeof c === 'object' && c.id != null && !ob.has(c.id) ? { ...c, change: 'added' } : c);
+        const ghost = c => ({ ...c, change: 'removed', nodeIds: arr(c.nodeIds).filter(id => w.nodeIds.includes(id) && !boxOf(v, id)) });
+        let at = 0; arr(o.containers).forEach(c => { if (lost.includes(c)) res.splice(at++, 0, ghost(c)); else { const i = res.findIndex(x => x && c && x.id === c.id); if (i >= 0) at = i + 1; } });
+        const has = new Set(res.filter(Boolean).map(c => c.id));
+        w.containers = res.map(c => c && c.change === 'removed' && c.parent != null && !has.has(c.parent) ? (({ parent, ...r }) => r)(c) : c); } }
     // a model line the view hid or showed (its ends staying), and a sequence's steps in a new order: said, and marked in a list
     const shown = (m, x) => { const K = keyed(arr(m.edges));
       return linesOf(m, x).filter(e => line0.has(K.get(e)) && !left.includes(e.from) && !left.includes(e.to) && !came.includes(e.from) && !came.includes(e.to)).map(e => K.get(e)); };
@@ -213,6 +230,14 @@ export function diff(before, after) {
       const K = keyed(arr(out.edges)), all = linesOf(out, w), tag = all.map((e, i) => e.id != null ? String(e.id) : '\0' + i), by = new Map(tag.map((t, i) => [t, all[i]]));
       w.edges = mark(arr(o.edges), tag, line, lineKeys, goneLines).map(t => { const e = typeof t === 'string' && by.get(t);
         return !e ? t : put.includes(K.get(e)) ? line(e, 'added') : e.id != null ? t : e; }); }
+    // a line to a card the view no longer shows, in a view that lists none (it draws every line between its cards), goes with the
+    // card, removed (audit 52: drawn live; audit 51 did it for a view that lists its lines). A view drawn as a map gets its lines
+    // listed, as it draws them; a typed one, whose type picks the lines it draws, a mark by line in view.diffMarks (below)
+    const hidL = left.filter(id => how.get(at.get(id)) !== 'removed'), hidS = new Set(hidL), hidOn = e => e && typeof e === 'object' && !e.change && (hidS.has(e.from) || hidS.has(e.to));
+    if (hidL.length && !Array.isArray(v.edges)) { const byId = new Map(arr(out.edges).filter(e => e && typeof e === 'object' && e.id != null).map(e => [String(e.id), e]));
+      if (Array.isArray(w.edges)) w.edges = w.edges.map(x => { const e = typeof x === 'string' ? byId.get(x) : x; return hidOn(e) ? line(e, 'removed') : x; });
+      else if (typedL(v)) hidIn.push([w, hidL]);
+      else w.edges = linesOf(out, w).map(e => hidOn(e) ? line(e, 'removed') : typeof e.id === 'string' ? e.id : e); }
     return w;
   });
   arr(A.views).forEach(o => { if (!o || V1.has(o.id)) return; // a removed view comes back with everything in it removed
@@ -220,7 +245,16 @@ export function diff(before, after) {
     arr(o.nodeIds).forEach(id => { ov[id] = { ...ov[id], change: 'removed' }; });
     const w = { ...o, nodeOverrides: plain(ov) };
     if (o.nodes) w.nodes = o.nodes.map(n => { const y = card(n, 'removed'); how.set(y, 'removed'); return y; });
-    if (Array.isArray(o.edges)) w.edges = o.edges.map(e => e && typeof e === 'object' ? line(e, 'removed') : e);
+    // its lines too, its boxes, its fragments and its timeline's changes and constraints (audit 52: drawn live): a view drawn as a map gets
+    // its lines listed, each marked; a typed one keeps its list, and what its type draws for it is marked in view.diffMarks (below)
+    const byId = new Map(arr(A.edges).filter(e => e && typeof e === 'object' && e.id != null).map(e => [String(e.id), e])), once = new Set();
+    if (typedL(o)) { if (Array.isArray(o.edges)) w.edges = o.edges.map(e => e && typeof e === 'object' ? line(e, 'removed') : e); rmTyped.push(w); }
+    else w.edges = (Array.isArray(o.edges) ? o.edges : linesOf(A, o)).flatMap(e => { const x = typeof e === 'string' ? byId.get(e) : e;
+      if (!x || typeof x !== 'object') return [e]; if (typeof e === 'string') { if (once.has(e)) return []; once.add(e); } return [line(x, 'removed')]; });
+    const gone = l => Array.isArray(l) ? l.map(x => x && typeof x === 'object' && !Array.isArray(x) ? { ...x, change: 'removed' } : x) : l;
+    if (Array.isArray(o.fragments)) w.fragments = gone(o.fragments);
+    if (!typedL(o) && Array.isArray(o.containers)) w.containers = gone(o.containers); // a map's boxes
+    if (o.timeline && typeof o.timeline === 'object' && !Array.isArray(o.timeline)) w.timeline = { ...o.timeline, ...['changes', 'constraints'].reduce((t, k) => Array.isArray(o.timeline[k]) ? { ...t, [k]: gone(o.timeline[k]) } : t, {}) };
     touched.add(o.id); views.push(w); });
   out.views = views;
 
@@ -325,7 +359,7 @@ export function diff(before, after) {
   if (rest.length) said.push(`changes the model (${rest.join(', ')})`);
   moved.forEach(([verb, id, v]) => said.push(`${verb} ${name(id)} ${verb === 'puts' ? 'in' : 'out of'} the view ${labelOr(v.title, v.id)}`));
   said.push(...viewSaid);
-  if (TYPED.order) TYPED.order(A, out, views, V0, said, touched, name);
+  if (TYPED.order) TYPED.order(A, out, views.filter(v => !v || V1.has(v.id)), V0, said, touched, name); // a removed view's own lists went with it, said so already
 
   const W = new Map(views.filter(Boolean).map(v => [v.id, v]));
   const back = [...out.nodes, ...out.edges, ...views.flatMap(v => v ? [...arr(v.nodes), ...arr(v.edges)] : [])].filter(x => x && how.get(x) === 'removed').map(x => x.parent);
@@ -502,11 +536,22 @@ export function diff(before, after) {
         else if (listed && Array.isArray(x.implied)) marks[k] = y ? 'changed' : 'added'; });
       if (listed) { S0.forEach((y, id) => { const part = onPart(id); if (part != null && !S1.has(id) && S1.has(part)) marks[id] = 'removed'; });
         // between two shapes drawn after, or a removed element the view draws back (audit 50: a deleted container's implied line)
-        const end = id => S1.has(id) || cardHow.get(id) === 'removed' && arr(v.nodeIds).includes(id);
+        // or one taken out of the view, drawn back removed too (audit 52: a moved requirement's old containment went missing)
+        const ovr = v.nodeOverrides && typeof v.nodeOverrides === 'object' ? v.nodeOverrides : {}, out1 = id => Object.hasOwn(ovr, id) && ovr[id] && ovr[id].change === 'removed';
+        const end = id => S1.has(id) || (cardHow.get(id) === 'removed' || out1(id)) && arr(v.nodeIds).includes(id);
         L0.forEach((y, k) => { if (L1.has(k) || !derivedL(y, k) || !end(y.from) || !end(y.to)) return;
           gone.push({ id: k, from: y.from, to: y.to, ...(typeof y.label === 'string' && y.label ? { label: y.label } : {}) }); }); }
       if (Object.keys(marks).length || gone.length) v.diffMarks = { ...(Object.keys(marks).length ? { marks: plain(marks) } : {}), ...(gone.length ? { gone } : {}) }; });
   }
+  /* a typed view's lines to a card it no longer shows, and everything a removed typed view draws (as laid out in the model
+     before), removed (audit 52): view.diffMarks.marks, which marks() reads where the line or shape has no change of its own */
+  if (hidIn.length || rmTyped.length) { const gone = (v, ids) => { if (!ids.length) return; const dm = v.diffMarks && typeof v.diffMarks === 'object' ? v.diffMarks : {};
+      v.diffMarks = { ...dm, marks: plain({ ...(dm.marks || {}), ...Object.fromEntries(ids.map(k => [k, 'removed'])) }) }; };
+    hidIn.forEach(([v, L]) => { const S = new Set(L), on = id => id != null && (S.has(id) || ups(id).some(u => S.has(u)));
+      gone(v, out.edges.filter(e => e && typeof e === 'object' && typeof e.id === 'string' && how.get(e) !== 'removed'
+        && [e.from, e.to, ...['from', 'to'].map(k => (((e.props && e.props.ends) || {})[k] || {}).part)].some(on)).map(e => e.id)); });
+    rmTyped.forEach(v => { let g = null; try { g = held(() => ctx0().buildGeo(v.id))[0]; } catch { g = null; } if (!g) return;
+      gone(v, [...new Set([...arr(g.nodes), ...arr(g.families), ...arr(g.edges)].map(x => x && (x._id ?? x.id)).filter(k => typeof k === 'string'))]); }); }
   return { model: out, summary: said, views: views.filter(v => v && changed.has(v.id)).map(v => v.id) };
 }
 
