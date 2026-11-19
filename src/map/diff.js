@@ -1,4 +1,4 @@
-import { TYPED, idTable, diagramOf } from '../core/registry.js';
+import { TYPED, idTable, diagramOf, propRefs } from '../core/registry.js';
 import { andList, arrOf, rules } from './validate.js';
 import { canon, copyOf, jsonText, labelOr, nameTable, unreadable, elName, usedIds } from '../core/model.js';
 import { held } from '../core/warn.js';
@@ -327,6 +327,19 @@ export function diff(before, after) {
       const l = v ? (v.fragments = [...arr(v.fragments)]) : (o.members = [...arr(o.members)]); l.splice(Math.min(i, l.length), 0, y);
       ownIn(y, have, up, i); if (v) back.push(y.parent); } }
 
+  /* what the core's delete took out of others' lists (a type's refs, 'drop': a BPMN element's groups) comes back for an element
+     that comes back removed, where it stood, so the type draws it as it was (audit 49: a deleted group drawn round nothing, so
+     not drawn). After the summary: the element that named it changed, and is said and marked so */
+  { const walk = (l, f) => { for (const s = [...arr(l)]; s.length;) { const x = s.pop(); if (x && typeof x === 'object' && !Array.isArray(x)) { f(x); s.push(...arr(x.members)); } } };
+    const all1 = [out.nodes, out.edges, ...views.flatMap(v => v ? [v.nodes, v.edges, v.fragments] : [])], gone = new Set();
+    all1.forEach(l => walk(l, x => { if (x.change === 'removed' && x.id != null) gone.add(x.id); }));
+    if (gone.size) { const old = new Map(); [A.nodes, A.edges, ...arr(A.views).flatMap(v => v ? [v.nodes, v.edges, v.fragments] : [])].forEach(l => walk(l, x => { if (x.id != null && !old.has(x.id)) old.set(x.id, x); }));
+      all1.forEach(l => walk(l, y => { const o = y.change === 'removed' ? null : old.get(y.id), R = o && propRefs(y.type);
+        if (!R || !o.props || typeof o.props !== 'object' || !y.props || typeof y.props !== 'object') return;
+        Object.keys(R).forEach(path => { const k = /^props\.([^.]+)$/.exec(path); if (R[path] !== 'drop' || !k) return; const was0 = o.props[k[1]], now = y.props[k[1]];
+          if (!Array.isArray(was0) || (now != null && !Array.isArray(now))) return; const res = [...arr(now)];
+          was0.forEach((r, i) => { if (gone.has(r) && !res.includes(r)) res.splice(Math.min(i, res.length), 0, r); });
+          if (res.length !== arr(now).length) y.props = { ...y.props, [k[1]]: res }; }); })); } }
   // the views that show a change: a card or line the diff marks, or a card it put in or took out
   // a typed view of a model at another schemaVersion draws otherwise (version 1 draws it as a map, audit 39)
   const typedV = v => v.diagram != null && v.diagram !== 'map';

@@ -271,6 +271,10 @@ function classIndex(model) {
   UML_ARR(model.edges).forEach((e, i) => put(e, 'edge', null, `edges[${i}]`));
   return at;
 }
+// an interface realization's source (realization-target): a classifier but an interface, a component, or a port a component
+// or a class owns, as the component view's provided-ends takes one (audit 49: a class view in the model called an error)
+const realizer = (at, id) => { const r = at.get(id), t = !r ? undefined : r.kind === 'node' && !r.x.type ? 'uml.Class' : r.x.type;
+  return t === 'uml.Port' ? r.kind === 'member' && ['uml.Component', 'uml.Class', undefined].includes(r.owner.type) : t !== 'uml.Interface' && (t === 'uml.Component' || CLASSIFIERS.includes(t)); };
 const typeWord = t => kindWord(t || 'uml.Class'); // 'uml.DataType': "Data type"; of no notation, as written (registry.js, audit 30)
 const nameOfEl = elName;
 const plural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
@@ -345,7 +349,7 @@ const RULES = {
   multiplicity: 'a multiplicity is n, *, n..m or n..*, its lower bound not above its upper',
   'generalization-cycle': 'nothing is its own ancestor',
   'generalization-kinds': 'a generalization joins two classifiers of one kind (not a package, a comment or a member)',
-  'realization-target': 'an interface realization runs from a classifier to an interface',
+  'realization-target': 'an interface realization runs from a classifier (not an interface) or a port to an interface',
   'interface-composite': 'an interface owns no part by composition',
   'composite-multiplicity': 'a composite end\'s multiplicity is at most 1',
   'member-kinds': 'literals belong to enumerations; packages, profiles, metaclass references and comments have no members',
@@ -394,8 +398,8 @@ function classProblems(model, view) {
       // an end of another notation (a SysML block) is that notation's to judge (notes/milestone-3.md §7.3); one untyped or of no notation still is the class rule's
       if (at.has(e.from) && at.has(e.to) && ![e.from, e.to].some(id => /^(?!uml\.)[^.]+\./.test(String(typeOfId(id)))) && (!isCls(e.from) || !isCls(e.to) || typeOfId(e.from) !== typeOfId(e.to))) say('generalization-kinds', path, [e.id, ...ends], `${typeWord(typeOfId(e.from)).toLowerCase()} ${q(e.from)} specializes ${typeWord(typeOfId(e.to)).toLowerCase()} ${q(e.to)} (${e.id})`);
       if (!parents.has(e.from)) parents.set(e.from, []); parents.get(e.from).push([e.to, path, e.id]); }
-    if (e.type === 'uml.InterfaceRealization' && (typeOfId(e.to) !== 'uml.Interface' || !isCls(e.from) || typeOfId(e.from) === 'uml.Interface'))
-      say('realization-target', path, [e.id, ...ends], `${e.id} runs from ${q(e.from)} to ${q(e.to)}: from a class, enumeration or data type to an interface`);
+    if (e.type === 'uml.InterfaceRealization' && (typeOfId(e.to) !== 'uml.Interface' || !realizer(at, e.from)))
+      say('realization-target', path, [e.id, ...ends], `${e.id} runs from ${q(e.from)} to ${q(e.to)}: from a class, component, port, enumeration or data type to an interface`);
     if (e.type === 'uml.CommentLink' && typeOfId(e.from) !== 'uml.Comment') say('comment-link', path, [e.id, e.from], `${e.id} runs from ${q(e.from)}, which is not a comment`);
   });
   // a generalization cycle: said once, at the line that closes it, naming every element on it
@@ -452,7 +456,7 @@ const commentLinkProblems = (lines, ty, q) => lines.filter(([e]) => UML_OBJ(e) &
 // link drawn to a comment (commentConnect), audit 44; else the default
 function classConnect(model, view, from, to, at, line) {
   const t = UML_OBJ(line) ? line.type : null, I = classIndex(UML_OBJ(model) ? model : {}), ty = id => { const r = I.get(id); return !r ? undefined : r.kind === 'node' && !r.x.type ? 'uml.Class' : r.x.type; };
-  if (t === 'uml.InterfaceRealization' && (ty(to) !== 'uml.Interface' || !CLASSIFIERS.includes(ty(from)) || ty(from) === 'uml.Interface')) return { error: 'A realization runs from a class, an enumeration or a data type to an interface' };
+  if (t === 'uml.InterfaceRealization' && (ty(to) !== 'uml.Interface' || !realizer(I, from))) return { error: 'A realization runs from a class, a component, a port, an enumeration or a data type to an interface' };
   if (t === 'uml.Generalization' && I.has(from) && I.has(to) && ![from, to].some(id => /^(?!uml\.)[^.]+\./.test(String(ty(id)))) && (!CLASSIFIERS.includes(ty(from)) || !CLASSIFIERS.includes(ty(to)) || ty(from) !== ty(to)))
     return { error: `A generalization joins two classifiers of one kind, not ${aWord(typeWord(ty(from)).toLowerCase())} and ${aWord(typeWord(ty(to)).toLowerCase())}` };
   return t === 'uml.Generalization' ? closesCycle(model, view, t, from, to) : commentConnect(model, view, from, to, line);

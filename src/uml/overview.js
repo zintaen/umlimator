@@ -81,8 +81,13 @@ const ovQuiet = s => s.replace(/<(?:rect|path) [^>]*class="(?:ll-hit|f-hit)"[^>]
   .replace(/ (?:data-id|data-o|tabindex|role|aria-label)="[^"]*"/g, '').replace(/class="n-mask"/g, 'fill="var(--um-mask)" class="ov-mask"').replace(/class="n-body/g, 'stroke-width="1.5" class="ov-body');
 // a message as the sequence view draws it, by hand: its path (dashed for a reply or a create), its arrowhead, its label
 const OV_TIP = { arrow: [10, 4, true], open: [10, 5, false] };
-// added green, removed rose and dashed, as the sequence view draws diff()'s marks (audit 45: an inline message drawn as live)
-const OV_CH = { added: ['var(--um-green)', ''], new: ['var(--um-green)', ''], removed: ['var(--um-rose)', '5 5'] };
+// added green, removed rose and dashed, as the sequence view draws diff()'s marks (audit 45: an inline message drawn as live);
+// changed with the edited dot, off its label, as the sequence view draws a changed message (audit 49)
+const OV_CH = { added: ['var(--um-green)', ''], new: ['var(--um-green)', ''], removed: ['var(--um-rose)', '5 5'] }, OV_ED = ['changed', 'modified'];
+const ovDot = e => { const P = e.pts, l = e.lbl; let a = P[0], b = P[1]; for (let k = 2; k < P.length; k++) if (Math.hypot(P[k][0] - P[k - 1][0], P[k][1] - P[k - 1][1]) > Math.hypot(b[0] - a[0], b[1] - a[1])) [a, b] = [P[k - 1], P[k]];
+  const out = ([x, y]) => !l || !(x > l.x - 7 && x < l.x + l.w + 7 && y > l.y - 7 && y < l.y + l.h + 7);
+  const [x, y] = [.5, .25, .75, .15, .85].map(t => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]).find(out) || [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  return `<circle cx="${r2(x)}" cy="${r2(y)}" r="4" class="edited-dot"><title>Edited</title></circle>`; };
 function ovMessage(e, change) {
   const C = typeof change === 'string' && Object.hasOwn(OV_CH, change.toLowerCase()) && OV_CH[change.toLowerCase()], line = C ? C[0] : OV_SD.line;
   const T = OV_TIP[e.end && e.end.to] || OV_TIP.open, P = e.pts, [p, q] = P.slice(-2), L = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1, u = [(q[0] - p[0]) / L, (q[1] - p[1]) / L];
@@ -90,6 +95,7 @@ function ovMessage(e, change) {
   const tip = `M${r2(b[0] + s[0])} ${r2(b[1] + s[1])}L${r2(q[0])} ${r2(q[1])}L${r2(b[0] - s[0])} ${r2(b[1] - s[1])}${T[2] ? 'Z' : ''}`, l = e.lbl;
   return `<g class="ov-msg" data-sort="${esc(e.sort)}"><path d="M${pts.map(c => `${r2(c[0])} ${r2(c[1])}`).join('L')}" fill="none" stroke="${line}" stroke-width="1.4"${dash}/>`
     + `<path d="${tip}" fill="${T[2] ? line : 'none'}" stroke="${line}" stroke-width="1.4" stroke-linejoin="round"/>`
+    + (typeof change === 'string' && OV_ED.includes(change.toLowerCase()) && Array.isArray(e.pts) && e.pts.length > 1 ? ovDot(e) : '')
     + (l && OV_HAS(l.text) ? `<g class="ov-lab"><rect x="${r2(l.x)}" y="${r2(l.y)}" width="${r2(l.w)}" height="${r2(l.h)}" fill="${OV_SD.bg}"/>${brLines(l.text).map((t, i) => `<text x="${r2(l.x + l.w / 2)}" y="${r2(l.y + 12 + i * 13)}" text-anchor="middle" fill="var(--um-text)" style="font:500 10.5px var(--um-sans)">${esc(fit(t, 10.5, l.w))}</text>`).join('')}</g>` : '') + '</g>';
 }
 // the sequence's picture inside the frame: sqDraw's layer (frames, stems, uses' boxes, bars, crosses), then each head, each
@@ -174,8 +180,9 @@ function ovGeo({ model, view, pos, memo }) {
     if (shape === 'bar') Object.assign(d, { busy: Math.max(ins.get(id) || 0, outs.get(id) || 0), down });
     if (shape === 'ov-inline') { const b = sd && sd.run && sd.run.bounds, tw = tagSize(`sd ${d.label}`).w + 2 * OV_SD.pad;
       // drawn inline, it reads the lifelines and messages its interaction draws: what diff() marks it by (audit 48)
-      const rd = b ? [...new Set([...OV_ARR(sd.view.nodeIds), ...sqDrawnMessages(model, sd.view).map(o => o.id)].filter(x => typeof x === 'string'))] : [];
-      return { ...d, ...(b ? { w: Math.ceil(Math.max(b.w + 2 * OV_SD.pad, tw)), h: Math.ceil(ovTagOf(d.label) + b.h), sd: { bounds: b, markup: ovInner(sd.run, sd.view, model) }, ...(rd.length ? { reads: rd } : {}) } : useSize(d.label)) }; }
+      // and its fragments and operands, which marks() reads in that view (readsIn, audit 49)
+      const rd = b ? [...new Set([...OV_ARR(sd.view.nodeIds), ...sqDrawnMessages(model, sd.view).map(o => o.id), ...OV_ARR(sd.run.nodes).map(n => n && n.id)].filter(x => typeof x === 'string'))] : [];
+      return { ...d, ...(b ? { w: Math.ceil(Math.max(b.w + 2 * OV_SD.pad, tw)), h: Math.ceil(ovTagOf(d.label) + b.h), sd: { bounds: b, markup: ovInner(sd.run, sd.view, model) }, ...(rd.length ? { reads: rd, readsIn: sd.view.id } : {}) } : useSize(d.label)) }; }
     return { ...d, ...SHAPE[shape].size(d) }; });
   const edges = I.lines.map(e => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, aria: ovFlowName(I, e), ...(OV_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}),
     ...(e.type === 'uml.CommentLink' ? { end: { from: 'none', to: 'none', dashed: true } }

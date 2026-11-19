@@ -215,3 +215,50 @@ test('a BPMN task moved into another lane, or out of a lane removed, names the l
   const s = all.diff(bz, edit(bz, m => { const P = m.nodes.find(n => n.id === 'bp-bookshop'); P.members = P.members.filter(l => l.id !== 'bp-warehouse'); m.nodes.forEach(n => { if (n.parent === 'bp-warehouse') n.parent = 'bp-sales'; }); })).summary;
   assert.ok(s.length > 1 && s.slice(1).every(x => x.endsWith(' into Sales')) && !s.some(x => /bp-(sales|warehouse)/.test(x)), s.join('; '));
 });
+
+// audit 49: what a typed view draws through another view, or from what it does not list, marked on the diff page
+test('audit 49: an inline interaction is marked changed when its sequence view changes through its own messages, fragments or what it shows; a changed message inside it has the edited dot', () => {
+  const ov = load('examples/buy-book-overview.json'), sd = m => all.layout(m, 'buy-book').nodes.find(n => n.id === 'sd-queue');
+  const q = m => m.views.find(v => v.id === 'queue-order');
+  assert.equal(sd(all.diff(ov, ov).model).change, undefined);
+  for (const [what, f] of [['relabel', m => { q(m).edges[2].label = 'orderQueued'; }],
+    ['add', m => { q(m).edges.push({ id: 'queue-4', type: 'uml.Message', from: 'lifeline-worker', to: 'lifeline-queue', label: 'ack', props: { sort: 'async' } }); }],
+    ['fragment', m => { q(m).fragments = [{ id: 'fx', type: 'uml.CombinedFragment', props: { operator: 'opt' }, members: [{ id: 'fx-1', type: 'uml.InteractionOperand', label: 'ok' }] }]; }],
+    ['show', m => { q(m).nodeIds.push('lifeline-shopper'); }],
+    ['hide', m => { q(m).nodeIds = q(m).nodeIds.filter(id => id !== 'lifeline-api'); q(m).edges = q(m).edges.filter(e => e.from !== 'lifeline-api' && e.to !== 'lifeline-api'); }]]) {
+    const d = all.diff(ov, edit(ov, f)), n = sd(d.model);
+    assert.deepEqual([d.views.includes('buy-book'), n.change], [true, 'changed'], what);
+    if (what === 'relabel') assert.equal((n.sd.markup.match(/class="edited-dot"/g) || []).length, 1); }
+});
+
+test('audit 49: a timing view\'s constraints added, changed or removed are marked so, a removed one drawn back', () => {
+  const tm = load('examples/bookshop-timing.json'), cs = m => m.views[0].timeline.constraints;
+  const marked = b => { const d = all.diff(tm, edit(tm, b)); return all.layout(d.model, d.model.views[0].id).nodes.filter(n => n.change).map(n => [n.id, n.change]); };
+  assert.deepEqual(marked(() => {}), []);
+  assert.deepEqual(marked(m => { cs(m)[0].label = '{<= 500 ms}'; }), [['c-wait', 'changed']]);
+  assert.deepEqual(marked(m => { cs(m).splice(0, 1); }), [['c-wait', 'removed']]);
+  assert.deepEqual(marked(m => { cs(m).push({ id: 'c-new', type: 'uml.TimeConstraint', from: 'p-done', label: '{<= 2 s}' }); }), [['c-new', 'added']]);
+  const d = all.diff(tm, edit(tm, m => { cs(m).splice(0, 1); }));
+  assert.deepEqual([cs(d.model).map(c => c.id), cs(tm).length], [['c-wait', 'c-finished'], 2]);
+});
+
+test('audit 49: a BPMN group deleted from the model is drawn back, removed, round the elements that named it', () => {
+  const bz = load('examples/bookshop-order-to-shipment.json'), vid = bz.views[0].id, gid = 'dispatch';
+  const before = all.layout(bz, vid).nodes.find(n => n.id === gid), d = all.diff(bz, all.apply(bz, { op: 'delete', id: gid }));
+  const g = all.layout(d.model, vid).nodes.find(n => n.id === gid);
+  assert.ok(before && g, 'drawn');
+  assert.deepEqual([g.change, d.summary.includes('removes Dispatch')], ['removed', true]);
+  assert.deepEqual(bz.nodes.filter(n => ((n.props || {}).categoryValueRef || []).includes(gid)).map(n => n.id).sort(),
+    d.model.nodes.filter(n => ((n.props || {}).categoryValueRef || []).includes(gid)).map(n => n.id).sort());
+});
+
+test('audit 49: an internal block view marks the ports whose flow arrows an interface block\'s flow properties turned round', () => {
+  const m = load('tests/internal-block-stress.json'), vid = 'edge-cases', flip = x => edit(x, a => a.nodes.find(n => n.label === 'PowerIf').members.filter(y => y.type === 'sysml.FlowProperty')
+    .forEach(y => { y.props = { ...y.props, direction: y.props.direction === 'in' ? 'out' : 'in' }; }));
+  const ports = g => g.nodes.filter(n => n.shape === 'port'), g0 = all.layout(m, vid), d = all.diff(m, flip(m)), g1 = all.layout(d.model, vid);
+  const turned = ports(g1).filter(n => ports(g0).find(o => o.id === n.id).flow !== n.flow);
+  assert.ok(turned.length >= 6, turned.length);
+  assert.deepEqual(ports(g1).filter(n => n.change).map(n => n.id).sort(), turned.map(n => n.id).sort());
+  const doc = all.diff(m, edit(m, a => { const B = a.nodes.find(n => n.label === 'PowerIf'); B.props = { ...B.props, documentation: 'x' }; }));
+  assert.deepEqual(ports(all.layout(doc.model, vid)).filter(n => n.change), []);
+});
