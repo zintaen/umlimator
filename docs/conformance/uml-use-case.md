@@ -27,6 +27,8 @@ Rules, each `validate()` problem naming its `rule` and its elements (`notes/stag
 least), `generalization-kinds`, `include-cycle` (UML's `cannot_include_self`), `generalization-cycle` (no actor or use case is its own ancestor, as in the class view), `named` (UML's `must_have_name`)
 (errors); `use-case-owner`, `point-names`, `comment-link` (a comment link with no comment at either end) (warnings).
 
+Connect refuses a line that would bring one of these errors, in the rule's words (an include, extend or generalization from an actor, an association between two use cases), as the state machine and interaction overview views refuse theirs; `extend-points` is left out, since a new extend names its extension points in the properties panel after it is drawn.
+
 Deleting an extension point (Shift + Delete, or the member list's ✕) takes every extend left naming no other point of
 its use case, in the same transaction, and the hint line names them (`Deleted extension point "payment" and the extend
 from "Redeem voucher", which named no other extension point`); an extend naming another point keeps it, the point dropped from its list. So no

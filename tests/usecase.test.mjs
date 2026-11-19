@@ -481,3 +481,15 @@ test('audit 37: an extend\'s label with its point and condition keeps off the as
   assert.deepEqual(check(m, 'v').map(p => p.message).filter(p => !/ cross$/.test(p)), []);
   assert.equal(layout(m, 'v').edges.find(e => e.id === 'e2').lbl.text, '«extend» (point 1) [x > 1]');
 });
+
+test('audit 50: connect refuses a line validate() calls an error, in the rule\'s words (include-ends, extend-ends, association-ends, generalization-kinds); one it does not, the default', () => {
+  const v = UC.views[0], c = (f, t, type) => T.edits.connect(UC, v, f, t, null, { type: 'uml.' + type });
+  for (const [f, t, type, rule] of [['shopper', 'check-out', 'Include', 'include-ends'], ['check-out', 'shopper', 'Include', 'include-ends'], ['shopper', 'check-out', 'Extend', 'extend-ends'],
+    ['check-out', 'redeem-voucher', 'Association', 'association-ends'], ['shopper', 'check-out', 'Generalization', 'generalization-kinds'], ['check-out', 'shopper', 'Generalization', 'generalization-kinds']]) {
+    const r = c(f, t, type); assert.ok(r && typeof r.error === 'string' && r.error.startsWith(rule + ': the new line '), `${f} -> ${t} ${type}: ${JSON.stringify(r)}`);
+    // what it refuses is what validate() would flag on the canvas's own add
+    assert.ok(validate(apply(UC, { op: 'add', element: { id: 'x', type: 'uml.' + type, from: f, to: t }, view: v.id })).some(p => p.level === 'error' && p.rule === rule), rule); }
+  assert.equal(c('redeem-voucher', 'check-out', 'Extend'), null, 'an extend between two use cases: its extension points are picked after (extend-points is its own)');
+  assert.equal(c('track', 'sign-in', 'Include'), null); assert.equal(c('shopper', 'track', 'Association'), null);
+  assert.deepEqual(c('track', 'shopper', 'Association'), [{ op: 'add', element: { id: 'association1', type: 'uml.Association', from: 'shopper', to: 'track' }, view: 'shopping' }]);
+});

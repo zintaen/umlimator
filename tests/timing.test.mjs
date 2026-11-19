@@ -744,3 +744,15 @@ test('audit 45: a state, the unit or a change\'s state that is not text is said 
   assert.deepEqual(said(h), []);
   assert.deepEqual(said(EX()), []);
 });
+
+test('audit 50: F2 on a change or a message parses in linear time, a run of spaces too, and a text over 4096 characters is refused', () => {
+  const sp = ' '.repeat(64000);
+  for (const s of ['paid' + sp + 'x', 'paid' + sp + '@ 1' + sp + 'x', 'paid @ 1' + sp + '-> 2' + sp + 'x']) {
+    const t = performance.now(), r = tmParse(s); assert.ok(performance.now() - t < 250, `${s.length} characters in ${performance.now() - t} ms`); assert.deepEqual(r.times, []); }
+  assert.deepEqual(tmParse('paid' + ' '.repeat(5) + '@' + ' '.repeat(5) + '1' + ' '.repeat(5) + '->' + ' '.repeat(5) + '2'), { text: 'paid', times: [1, 2] });
+  const m = EX();
+  assert.deepEqual(tmRename(m, V(m), 'm-charge', 'charge' + ' '.repeat(5000) + '(total)'), { error: 'a message\'s text is over 4096 characters' });
+  assert.deepEqual(tmRename(m, V(m), 'w-waiting', 'Idle' + ' '.repeat(5000) + 'x'), { error: 'a change\'s text is over 4096 characters' });
+  assert.ok(Array.isArray(tmRename(m, V(m), 'm-charge', 'x'.repeat(4096))), 'at the cap: renamed');
+  assert.deepEqual(tmRename(m, V(m), 'c-wait', '{<= 800 ms}' + ' '.repeat(5000)), [{ op: 'set', id: 'c-wait', path: 'label', value: '{<= 800 ms}' }], 'a constraint\'s label is not capped');
+});
