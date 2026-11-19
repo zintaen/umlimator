@@ -1,0 +1,224 @@
+{
+  "nodes": [
+    { "id": "bp-rider", "type": "bpmn.Participant", "label": "Rider" },
+    {
+      "id": "fault-spotted",
+      "type": "bpmn.StartEvent",
+      "label": "Fault spotted",
+      "parent": "bp-rider",
+      "props": { "definition": "none" }
+    },
+    {
+      "id": "report-the-fault",
+      "type": "bpmn.Task",
+      "label": "Report the fault",
+      "parent": "bp-rider",
+      "props": { "taskType": "user" }
+    },
+    {
+      "id": "fault-reported",
+      "type": "bpmn.EndEvent",
+      "label": "Fault reported",
+      "parent": "bp-rider",
+      "props": { "definition": "none" }
+    },
+    {
+      "id": "bp-bikeshare",
+      "type": "bpmn.Participant",
+      "label": "Bike share",
+      "members": [
+        { "id": "bp-support", "type": "bpmn.Lane", "label": "Support" },
+        { "id": "bp-workshop", "type": "bpmn.Lane", "label": "Workshop" }
+      ]
+    },
+    {
+      "id": "report-received",
+      "type": "bpmn.StartEvent",
+      "label": "Report received",
+      "parent": "bp-support",
+      "props": { "definition": "message" }
+    },
+    {
+      "id": "bp-check-bike",
+      "type": "bpmn.Task",
+      "label": "Check the bike remotely",
+      "parent": "bp-support",
+      "props": { "taskType": "service" }
+    },
+    {
+      "id": "check-timeout",
+      "type": "bpmn.BoundaryEvent",
+      "label": "No answer from the bike in 2 minutes",
+      "parent": "bp-support",
+      "props": { "attachedTo": "bp-check-bike", "cancelActivity": true, "definition": "timer" }
+    },
+    { "id": "fault-confirmed", "type": "bpmn.ExclusiveGateway", "label": "Fault confirmed?", "parent": "bp-support" },
+    { "id": "no-fault", "type": "bpmn.ExclusiveGateway", "parent": "bp-support" },
+    {
+      "id": "close-report",
+      "type": "bpmn.Task",
+      "label": "Close the report",
+      "parent": "bp-support",
+      "props": { "taskType": "service", "documentation": "Nothing to repair: the bike reports no fault." }
+    },
+    {
+      "id": "report-closed",
+      "type": "bpmn.EndEvent",
+      "label": "Report closed",
+      "parent": "bp-support",
+      "props": { "definition": "terminate" }
+    },
+    { "id": "fork", "type": "bpmn.ParallelGateway", "parent": "bp-support" },
+    {
+      "id": "send-credit",
+      "type": "bpmn.Task",
+      "label": "Email the rider a ride credit",
+      "parent": "bp-support",
+      "props": { "taskType": "service", "documentation": "Sent to the address on the rider's account." }
+    },
+    {
+      "id": "collect",
+      "type": "bpmn.SubProcess",
+      "label": "Collect the bike",
+      "parent": "bp-workshop",
+      "opensView": "collect-bike"
+    },
+    { "id": "bp-join", "type": "bpmn.ParallelGateway", "parent": "bp-workshop" },
+    {
+      "id": "van-pickup",
+      "type": "bpmn.IntermediateCatchEvent",
+      "label": "Workshop van at 16:00",
+      "parent": "bp-workshop",
+      "props": { "definition": "timer", "categoryValueRef": ["dispatch"] }
+    },
+    {
+      "id": "bp-to-workshop",
+      "type": "bpmn.CallActivity",
+      "label": "Take the bike to the workshop",
+      "parent": "bp-workshop",
+      "props": { "calledElement": "Move bike", "categoryValueRef": ["dispatch"] }
+    },
+    {
+      "id": "out-notice",
+      "type": "bpmn.IntermediateThrowEvent",
+      "label": "Station told the bike is out",
+      "parent": "bp-support",
+      "props": { "definition": "message", "categoryValueRef": ["dispatch"] }
+    },
+    {
+      "id": "in-workshop",
+      "type": "bpmn.EndEvent",
+      "label": "Bike in the workshop",
+      "parent": "bp-support",
+      "props": { "definition": "none" }
+    },
+    { "id": "bp-ebike", "type": "bpmn.Participant", "label": "E-bike" },
+    { "id": "bp-report", "type": "bpmn.DataObject", "label": "Fault report", "parent": "bp-bikeshare" },
+    { "id": "bp-fleet-store", "type": "bpmn.DataStoreReference", "label": "Fleet store", "parent": "bp-bikeshare" },
+    {
+      "id": "note-sim",
+      "type": "bpmn.TextAnnotation",
+      "label": "The bike reports its own state; support never unlocks it remotely"
+    },
+    { "id": "dispatch", "type": "bpmn.Group", "label": "Dispatch" },
+    {
+      "id": "collection-starts",
+      "type": "bpmn.StartEvent",
+      "label": "Collection starts",
+      "parent": "collect",
+      "props": { "definition": "none" }
+    },
+    {
+      "id": "lock-out",
+      "type": "bpmn.Task",
+      "label": "Lock the bike out of hire",
+      "parent": "collect",
+      "props": { "taskType": "user" }
+    },
+    {
+      "id": "tag-and-load",
+      "type": "bpmn.Task",
+      "label": "Tag and load the bike",
+      "parent": "collect",
+      "props": { "taskType": "none" }
+    },
+    {
+      "id": "bike-loaded",
+      "type": "bpmn.EndEvent",
+      "label": "Bike loaded",
+      "parent": "collect",
+      "props": { "definition": "none" }
+    }
+  ],
+  "edges": [
+    { "id": "f-unlock", "type": "bpmn.SequenceFlow", "from": "fault-spotted", "to": "report-the-fault" },
+    { "id": "f-placed", "type": "bpmn.SequenceFlow", "from": "report-the-fault", "to": "fault-reported" },
+    { "id": "f-received", "type": "bpmn.SequenceFlow", "from": "report-received", "to": "bp-check-bike" },
+    { "id": "bp-f-charged", "type": "bpmn.SequenceFlow", "from": "bp-check-bike", "to": "fault-confirmed" },
+    { "id": "bp-f-paid", "type": "bpmn.SequenceFlow", "from": "fault-confirmed", "to": "fork", "label": "yes" },
+    { "id": "bp-f-declined", "type": "bpmn.SequenceFlow", "from": "fault-confirmed", "to": "no-fault", "label": "no" },
+    { "id": "f-timeout", "type": "bpmn.SequenceFlow", "from": "check-timeout", "to": "no-fault" },
+    { "id": "f-cancel", "type": "bpmn.SequenceFlow", "from": "no-fault", "to": "close-report" },
+    { "id": "f-cancelled", "type": "bpmn.SequenceFlow", "from": "close-report", "to": "report-closed" },
+    { "id": "bp-f-to-pick", "type": "bpmn.SequenceFlow", "from": "fork", "to": "collect" },
+    { "id": "f-to-invoice", "type": "bpmn.SequenceFlow", "from": "fork", "to": "send-credit" },
+    { "id": "bp-f-packed", "type": "bpmn.SequenceFlow", "from": "collect", "to": "bp-join" },
+    { "id": "f-invoiced", "type": "bpmn.SequenceFlow", "from": "send-credit", "to": "bp-join" },
+    { "id": "bp-f-wait", "type": "bpmn.SequenceFlow", "from": "bp-join", "to": "van-pickup" },
+    { "id": "f-pickup", "type": "bpmn.SequenceFlow", "from": "van-pickup", "to": "bp-to-workshop" },
+    { "id": "f-handed", "type": "bpmn.SequenceFlow", "from": "bp-to-workshop", "to": "out-notice" },
+    { "id": "f-shipped", "type": "bpmn.SequenceFlow", "from": "out-notice", "to": "in-workshop" },
+    { "id": "f-pick", "type": "bpmn.SequenceFlow", "from": "collection-starts", "to": "lock-out" },
+    { "id": "f-pack", "type": "bpmn.SequenceFlow", "from": "lock-out", "to": "tag-and-load" },
+    { "id": "bp-f-done", "type": "bpmn.SequenceFlow", "from": "tag-and-load", "to": "bike-loaded" },
+    {
+      "id": "m-report",
+      "type": "bpmn.MessageFlow",
+      "from": "report-the-fault",
+      "to": "report-received",
+      "label": "Fault report"
+    },
+    {
+      "id": "bp-m-status",
+      "type": "bpmn.MessageFlow",
+      "from": "bp-check-bike",
+      "to": "bp-ebike",
+      "label": "Status request"
+    },
+    { "id": "m-status", "type": "bpmn.MessageFlow", "from": "bp-ebike", "to": "bp-check-bike", "label": "Bike status" },
+    {
+      "id": "m-out-notice",
+      "type": "bpmn.MessageFlow",
+      "from": "out-notice",
+      "to": "bp-rider",
+      "label": "Bike out notice"
+    },
+    { "id": "d-ride-out", "type": "bpmn.DataAssociation", "from": "report-received", "to": "bp-report" },
+    { "id": "d-ride-in", "type": "bpmn.DataAssociation", "from": "bp-report", "to": "collect" },
+    { "id": "d-stock-read", "type": "bpmn.DataAssociation", "from": "bp-fleet-store", "to": "collect" },
+    { "id": "d-stock-write", "type": "bpmn.DataAssociation", "from": "collect", "to": "bp-fleet-store" },
+    { "id": "a-note-sim", "type": "bpmn.Association", "from": "note-sim", "to": "bp-check-bike" }
+  ],
+  "views": [
+    {
+      "id": "repair-process",
+      "diagram": "bpmn",
+      "parent": null,
+      "title": "Repairing a reported bike",
+      "nodeIds": [
+        "bp-rider", "fault-spotted", "report-the-fault", "fault-reported", "bp-bikeshare", "report-received",
+        "bp-check-bike", "check-timeout", "fault-confirmed", "no-fault", "close-report", "report-closed", "fork",
+        "send-credit", "collect", "bp-join", "van-pickup", "bp-to-workshop", "out-notice", "in-workshop", "bp-ebike",
+        "bp-report", "bp-fleet-store", "note-sim", "dispatch"
+      ]
+    },
+    {
+      "id": "collect-bike",
+      "diagram": "bpmn",
+      "parent": "repair-process",
+      "title": "Collect the bike",
+      "subject": "collect",
+      "nodeIds": ["collection-starts", "lock-out", "tag-and-load", "bike-loaded"]
+    }
+  ]
+}

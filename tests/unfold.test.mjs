@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { layout, check } from '../lib/umlimator.js';
+import * as all from '../lib/umlimator-all.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 const SHOP = read('../bench/models/u21.json'), PRINT = read('../bench/models/s16.json');
@@ -13,12 +14,16 @@ test('every card that unfolds in the examples unfolds with a clean layout check'
   let n = 0;
   for (const f of ['bike-share', 'weather', 'assistant']) {
     const m = read(`../examples/${f}.json`);
-    for (const v of m.views) for (const card of layout(m, v.id).nodes.filter(x => x.opens || x.kids)) {
-      if (!layout(m, v.id, { expand: [card.id] }).unfolded.length) continue;
-      assert.deepEqual(check(m, v.id, { expand: [card.id] }).map(i => i.message), [], `${f} ${v.id} with ${card.id} unfolded`); n++;
+    // bike-share's typed views (step 3) are drawn by the full bundle, as the page draws them, where a card opening a view of
+    // another type opens it and never unfolds; its map views, and one view of each type, each type's first
+    const { layout: L, check: C } = f === 'bike-share' ? all : { layout, check }, kinds = new Set();
+    const views = m.views.filter(v => !v.diagram || v.diagram === 'map' || (!kinds.has(v.diagram) && kinds.add(v.diagram)));
+    for (const v of views) for (const card of L(m, v.id).nodes.filter(x => x.opens || x.kids)) {
+      if (!L(m, v.id, { expand: [card.id] }).unfolded.length) continue;
+      assert.deepEqual(C(m, v.id, { expand: [card.id] }).map(i => i.message), [], `${f} ${v.id} with ${card.id} unfolded`); n++;
     }
   }
-  assert.ok(n >= 7, `unfolded ${n}`); // bike-share: bikeshare, trips, fleet; weather: the check stage, the checker, the forecast stage (numbered, #82); assistant: answer (numbered)
+  assert.ok(n >= 7, `unfolded ${n}`); // bike-share: bikeshare, trips, fleet, and rebalance's Swap battery; weather: the check stage, the checker, the forecast stage (numbered, #82); assistant: answer (numbered)
 });
 
 test("the card becomes a box of its inner view's own cards, in the box it was in; the inner view's boxes come along", () => {

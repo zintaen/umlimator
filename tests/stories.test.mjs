@@ -3,12 +3,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { validate } from '../lib/umlimator.js';
+// bike-share holds typed views since step 3 of the one-model plan: the full bundle validates them, as the page draws them
+import { validate as validateAll } from '../lib/umlimator-all.js';
 
 const bike = JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url)));
 
 test("bike-share's story is valid: steps on its views, naming their cards and lines", () => {
   assert.ok(bike.stories.length && bike.stories[0].steps.length === 5);
-  assert.deepEqual(validate(bike), []);
+  assert.deepEqual(validateAll(bike), []);
 });
 
 test('validate() names what a story gets wrong, step by step: missing views, cards and lines are errors; a camera or duration it cannot use, warnings', () => {
@@ -58,7 +60,7 @@ test('audit 39: a step on a line its typed view does not draw is said for every 
     views: [{ id: 'v', diagram: 'bpmn', nodeIds: ['pool', 's', 'a', 'e'] }], stories: [{ id: 's', title: 'S', steps: [{ view: 'v', select: 'f1', highlight: ['u'] }] }] };
   assert.deepEqual(said(bz), [not('u')]);
   // every line of every typed view of the examples: said not drawn exactly when layout() does not draw it (by its id, as a step selects it)
-  for (const f of ['bookshop-atlas', 'ebike-atlas', 'bookshop-schema', 'bookshop-gcp', 'fulfil-activity']) {
+  for (const f of ['bike-share', 'bookshop-schema', 'bookshop-gcp', 'fulfil-activity']) { // bike-share holds the atlases' typed views since step 3 of the one-model plan
     const x = JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url), 'utf8')), ids = x.edges.map(e => e.id).filter(id => typeof id === 'string');
     for (const v of x.views.filter(v => v.diagram && v.diagram !== 'map')) {
       const g = all.layout(x, v.id), drew = new Set([...g.edges.flatMap(e => (e.all || [e]).map(r => r._id)), ...Object.keys(g.byId)]), y = { ...x, stories: [{ id: 's', title: 'S', steps: ids.map(id => ({ view: v.id, select: id })) }] };
@@ -78,7 +80,7 @@ test('audit 40: a step on a communication view\'s message is fine: the view draw
   m.stories = [{ id: 's', title: 'Walk', steps: [{ view: v, select: msgs[0] }, { view: v, highlight: msgs.slice(1) }] }];
   assert.deepEqual(said(m), []);
   // every message of the shipped communication views, selected and highlighted
-  for (const f of ['../examples/checkout-communication.json', '../examples/bookshop-atlas.json', './communication-stress.json']) {
+  for (const f of ['../examples/checkout-communication.json', '../examples/bike-share.json', './communication-stress.json']) {
     const x = read(f);
     for (const cv of x.views.filter(w => w.diagram === 'uml.communication')) {
       const g = all.layout(x, cv.id), ids = x.edges.map(e => e.id).filter(id => typeof id === 'string' && g.byId[id]);

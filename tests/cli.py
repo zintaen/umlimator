@@ -1233,12 +1233,15 @@ with tempfile.TemporaryDirectory() as tmp:
            pages and r.get("pages") == len(pages) and all(p.endswith(flat(f"Bike share, an example page {i} of {len(pages)}")) for i, p in enumerate(pages, 1)), [r, [p[-40:] for p in pages]])
         V = {v["id"]: v for v in bike["views"]}
         path = lambda v: (path(V[v["parent"]]) + " › " if v.get("parent") else "") + v["title"]
-        at = {v["id"]: next((i for i, p in enumerate(pages, 1) if p.startswith(flat(f"{path(v)} {len(v['nodeIds'])} cards"))), None) for v in bike["views"]}
+        cards = lambda n: f"{n} card" + ("" if n == 1 else "s")  # the e-bike's internal block and parametric views (step 3) list 1
+        at = {v["id"]: next((i for i, p in enumerate(pages, 1) if p.startswith(flat(f"{path(v)} {cards(len(v['nodeIds']))}"))), None) for v in bike["views"]}
         at["rules"] = next((i for i, p in enumerate(pages, 1) if p.startswith("Rules")), None)
-        cover = pages[0] if pages else ""
+        # the cover and its contents: the pages before the first view's (two since step 3 of the one-model plan, 49 views listed)
+        cover = "".join(pages[:min([x for x in at.values() if x] or [2]) - 1])
         ok("pdf · the cover: the title, the date, the model's file, a summary line, and the contents, each view with the page its header starts",
-           re.match(r"Bikeshare,anexample\d{4}-\d\d-\d\d·examples/bike-share\.json8views·45cards·67lines·2rulesContents", cover) and None not in at.values()
-           and all(flat(f"{v['title']}{v['caption']}{at[v['id']]}") in cover for v in bike["views"]) and f"Rules{at['rules']}Bikeshare" in cover, [cover[:500], at])
+           # 49 views since step 3 of the one-model plan, its typed views among them (8, 45 cards and 67 lines before)
+           re.match(r"Bikeshare,anexample\d{4}-\d\d-\d\d·examples/bike-share\.json49views·381cards·398lines·2rulesContents", cover) and None not in at.values()
+           and all(flat(f"{v['title']}{v.get('caption', '')}{at[v['id']]}") in cover for v in bike["views"]) and f"Rules{at['rules']}Bikeshare" in cover, [cover[:500], at])
         seen = lambda a, b=None: "".join(pages[a - 1:b and b - 1]) if a else ""  # the pages from page a to the one before b
         ok("pdf · a view's page: its legend, then tables of its cards (name, sub-line, kind, what it is), lines (from → to, label, technology) and boxes",
            "Legend" in seen(at["system"], at["system"] and at["system"] + 1) and all(flat(s) in seen(at["system"], at["trips"]) for s in [

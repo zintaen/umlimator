@@ -228,8 +228,8 @@ test('the examples moved (§10.2): check.mjs\'s MOVED, clean, as the targets wer
   assert.deepEqual([FIX['bookshop-gcp'].iconPacks, FIX['bookshop-azure'].iconPacks], [{ gcp: packs.gcp.label }, { azure: packs.azure.label }]);
   assert.ok(targets().find(([x]) => x === '26-aws.json')[1].href.endsWith('/examples/bookshop-aws.json'), 'AWS moved (4a.8)');
   assert.equal(FIX['bookshop-opening-plan'].nodes.filter(n => n.opensView).length, 0, 'the standalone file opens nothing');
-  const atlas = read('../examples/bookshop-atlas.json');
-  assert.deepEqual(['mm-on-gcp', 'mm-on-azure', 'mm-on-aws'].map(id => atlas.nodes.find(n => n.id === id).opensView), ['gcp-on-gcp', 'az-on-azure', 'aws-on-aws']);
+  const atlas = read('../examples/bike-share.json'); // the Bookshop atlas's typed views, in bike-share since step 3 of the one-model plan
+  assert.deepEqual(['mm-on-gcp', 'mm-on-azure', 'mm-on-aws'].map(id => atlas.nodes.find(n => n.id === id).opensView), ['on-gcp', 'on-azure', 'on-aws']);
   assert.deepEqual(atlas.iconPacks, { gcp: packs.gcp.label, azure: packs.azure.label, aws: packs.aws.label });
 });
 

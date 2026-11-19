@@ -7,6 +7,7 @@
       "owner": "Rides",
       "icon": "server",
       "sublabel": "REST controllers",
+      "opensView": "unlock-sequence",
       "what": "The Trip service's endpoints.",
       "when": "Every app call.",
       "how": "Validates the token, then hands on."
@@ -29,6 +30,7 @@
       "owner": "Rides",
       "icon": "state",
       "sublabel": "started, paused, ended",
+      "opensView": "trip-internals",
       "what": "The state of each ride.",
       "when": "On every change.",
       "how": "A state machine; each change is saved and published."
@@ -40,6 +42,7 @@
       "owner": "Rides",
       "icon": "chart",
       "sublabel": "minutes, passes, caps",
+      "opensView": "domain",
       "what": "The price of a finished ride.",
       "when": "When a ride ends.",
       "how": "Asks Pricing for the rules, then charges the rider."

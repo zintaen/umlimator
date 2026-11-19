@@ -1,0 +1,264 @@
+{
+  "nodes": [
+    { "id": "app-component", "type": "uml.Component", "label": "Rider app" },
+    {
+      "id": "trips-api",
+      "type": "uml.Component",
+      "label": "Trip API",
+      "opensView": "trip-internals",
+      "members": [
+        { "id": "trips-api.rides", "type": "uml.Port", "label": "rides" },
+        { "id": "trips-api.payments", "type": "uml.Port", "label": "payments" }
+      ]
+    },
+    {
+      "id": "hire-component",
+      "type": "uml.Component",
+      "label": "Hire",
+      "parent": "trips-api",
+      "members": [
+        { "id": "hire-component.rides", "type": "uml.Port", "label": "rides" },
+        { "id": "hire-component.payments", "type": "uml.Port", "label": "payments" }
+      ]
+    },
+    { "id": "accounts-component", "type": "uml.Component", "label": "Accounts and sign-in" },
+    {
+      "id": "payment-provider-component",
+      "type": "uml.Component",
+      "label": "Payment provider",
+      "members": [{ "id": "payment-provider-component.charges", "type": "uml.Port", "label": "charges" }]
+    },
+    { "id": "ride-worker", "type": "uml.Component", "label": "Ride worker" },
+    { "id": "i-rides", "type": "uml.Interface", "label": "Rides" },
+    { "id": "i-sign-in", "type": "uml.Interface", "label": "SignIn" },
+    { "id": "trips-api-jar", "type": "uml.Artifact", "label": "trip-api.jar", "parent": "jvm" },
+    { "id": "app-server", "type": "uml.Device", "label": "Application server" },
+    {
+      "id": "jvm",
+      "type": "uml.ExecutionEnvironment",
+      "label": "Java 21 runtime",
+      "parent": "app-server",
+      "opensView": "components"
+    },
+    { "id": "rider-device", "type": "uml.Device", "label": "Rider's phone" },
+    { "id": "browser", "type": "uml.ExecutionEnvironment", "label": "Web browser", "parent": "rider-device" },
+    { "id": "app-bundle", "type": "uml.Artifact", "label": "rider-app.js", "parent": "browser" },
+    { "id": "edge-node", "type": "uml.Node", "label": "Edge proxy" },
+    { "id": "edge-routes", "type": "uml.Artifact", "label": "routes.conf" },
+    { "id": "ride-worker-jar", "type": "uml.Artifact", "label": "ride-worker.jar", "parent": "jvm" },
+    { "id": "trips-api-config", "type": "uml.DeploymentSpecification", "label": "trip-api.yaml", "parent": "jvm" },
+    { "id": "database", "type": "uml.Node", "label": "Database" },
+    { "id": "queue-node", "type": "uml.Node", "label": "Ride queue" },
+    {
+      "id": "ride-service",
+      "type": "uml.Class",
+      "label": "RideService",
+      "members": [
+        { "id": "ride-service.api", "type": "uml.Port", "label": "api" },
+        { "id": "ride-service.payments", "type": "uml.Port", "label": "payments" },
+        {
+          "id": "ride-service.hire",
+          "type": "uml.Property",
+          "label": "unlock",
+          "props": { "valueType": "UnlockFlow", "multiplicity": "1", "aggregation": "composite" }
+        },
+        {
+          "id": "ride-service.pricing",
+          "type": "uml.Property",
+          "label": "pricing",
+          "props": { "valueType": "PriceCalculator", "multiplicity": "1", "aggregation": "composite" }
+        },
+        {
+          "id": "ride-service.rides",
+          "type": "uml.Property",
+          "label": "rides",
+          "props": { "valueType": "RideRepository", "multiplicity": "1", "aggregation": "composite" }
+        },
+        {
+          "id": "ride-service.listeners",
+          "type": "uml.Property",
+          "label": "listeners",
+          "props": { "valueType": "RideListener", "multiplicity": "0..*", "aggregation": "shared" }
+        }
+      ]
+    },
+    {
+      "id": "hire-class",
+      "type": "uml.Class",
+      "label": "UnlockFlow",
+      "members": [
+        { "id": "hire-class.requests", "type": "uml.Port", "label": "requests" },
+        { "id": "hire-class.quotes", "type": "uml.Port", "label": "quotes" },
+        { "id": "hire-class.charges", "type": "uml.Port", "label": "charges" }
+      ]
+    },
+    {
+      "id": "price-calculator",
+      "type": "uml.Class",
+      "label": "PriceCalculator",
+      "members": [{ "id": "price-calculator.quotes", "type": "uml.Port", "label": "quotes" }]
+    },
+    {
+      "id": "ride-events",
+      "type": "uml.CollaborationUse",
+      "label": "rideEvents",
+      "parent": "ride-service",
+      "props": { "collaboration": "PublishSubscribe" }
+    },
+    {
+      "id": "publish-subscribe",
+      "type": "uml.Collaboration",
+      "label": "PublishSubscribe",
+      "members": [
+        {
+          "id": "publish-subscribe.publisher",
+          "type": "uml.Property",
+          "label": "publisher",
+          "props": { "valueType": "EventSource", "multiplicity": "1" }
+        },
+        {
+          "id": "publish-subscribe.subscriber",
+          "type": "uml.Property",
+          "label": "subscriber",
+          "props": { "valueType": "EventListener", "multiplicity": "0..*" }
+        }
+      ]
+    }
+  ],
+  "edges": [
+    { "id": "app-requires-rides", "type": "uml.Usage", "from": "app-component", "to": "i-rides" },
+    { "id": "app-requires-sign-in", "type": "uml.Usage", "from": "app-component", "to": "i-sign-in" },
+    { "id": "api-requires-sign-in", "type": "uml.Usage", "from": "trips-api", "to": "i-sign-in" },
+    {
+      "id": "rides-to-hire",
+      "type": "uml.Connector",
+      "from": "trips-api.rides",
+      "to": "hire-component.rides",
+      "props": { "kind": "delegation" }
+    },
+    {
+      "id": "hire-payments-out",
+      "type": "uml.Connector",
+      "from": "hire-component.payments",
+      "to": "trips-api.payments",
+      "props": { "kind": "delegation" }
+    },
+    {
+      "id": "api-to-provider",
+      "type": "uml.Connector",
+      "from": "trips-api.payments",
+      "to": "payment-provider-component.charges",
+      "props": { "kind": "assembly" }
+    },
+    { "id": "worker-needs-api", "type": "uml.Dependency", "from": "ride-worker", "to": "trips-api" },
+    { "id": "api-jar-manifests-api", "type": "uml.Manifestation", "from": "trips-api-jar", "to": "trips-api" },
+    { "id": "routes-on-edge", "type": "uml.Deployment", "from": "edge-routes", "to": "edge-node" },
+    {
+      "id": "worker-jar-manifests-worker",
+      "type": "uml.Manifestation",
+      "from": "ride-worker-jar",
+      "to": "ride-worker"
+    },
+    { "id": "config-for-api-jar", "type": "uml.Dependency", "from": "trips-api-config", "to": "trips-api-jar" },
+    {
+      "id": "device-to-edge",
+      "type": "uml.CommunicationPath",
+      "from": "rider-device",
+      "to": "edge-node",
+      "label": "HTTPS"
+    },
+    { "id": "edge-to-app", "type": "uml.CommunicationPath", "from": "edge-node", "to": "app-server", "label": "HTTP" },
+    {
+      "id": "app-to-database",
+      "type": "uml.CommunicationPath",
+      "from": "app-server",
+      "to": "database",
+      "label": "PostgreSQL wire protocol"
+    },
+    {
+      "id": "app-to-queue",
+      "type": "uml.CommunicationPath",
+      "from": "app-server",
+      "to": "queue-node",
+      "label": "AMQP"
+    },
+    {
+      "id": "api-to-hire",
+      "type": "uml.Connector",
+      "from": "ride-service.api",
+      "to": "hire-class.requests",
+      "props": { "ends": { "to": { "part": "ride-service.hire" } } }
+    },
+    {
+      "id": "hire-to-pricing",
+      "type": "uml.Connector",
+      "from": "hire-class.quotes",
+      "to": "price-calculator.quotes",
+      "props": { "ends": { "from": { "part": "ride-service.hire" }, "to": { "part": "ride-service.pricing" } } }
+    },
+    {
+      "id": "hire-to-payments",
+      "type": "uml.Connector",
+      "from": "hire-class.charges",
+      "to": "ride-service.payments",
+      "props": { "ends": { "from": { "part": "ride-service.hire" } } }
+    },
+    { "id": "hire-to-rides", "type": "uml.Connector", "from": "ride-service.hire", "to": "ride-service.rides" },
+    { "id": "hire-to-listeners", "type": "uml.Connector", "from": "ride-service.hire", "to": "ride-service.listeners" },
+    {
+      "id": "publisher-to-subscriber",
+      "type": "uml.Connector",
+      "from": "publish-subscribe.publisher",
+      "to": "publish-subscribe.subscriber"
+    },
+    {
+      "id": "hire-is-publisher",
+      "type": "uml.RoleBinding",
+      "from": "ride-service.hire",
+      "to": "ride-events",
+      "label": "publisher"
+    },
+    {
+      "id": "listeners-are-subscribers",
+      "type": "uml.RoleBinding",
+      "from": "ride-service.listeners",
+      "to": "ride-events",
+      "label": "subscriber"
+    }
+  ],
+  "views": [
+    {
+      "id": "components",
+      "diagram": "uml.component",
+      "parent": null,
+      "title": "Bike share components",
+      "present": { "i-rides": { "as": "ball" } },
+      "nodeIds": [
+        "app-component", "trips-api", "hire-component", "accounts-component", "payment-provider-component",
+        "ride-worker", "i-rides", "i-sign-in", "trips-api-jar"
+      ]
+    },
+    {
+      "id": "production",
+      "diagram": "uml.deployment",
+      "parent": null,
+      "title": "Production",
+      "nodeIds": [
+        "rider-device", "browser", "app-bundle", "edge-node", "edge-routes", "app-server", "jvm", "trips-api-jar",
+        "ride-worker-jar", "trips-api-config", "database", "queue-node", "trips-api", "ride-worker"
+      ],
+      "edges": [
+        "routes-on-edge", "api-jar-manifests-api", "worker-jar-manifests-worker", "config-for-api-jar",
+        "device-to-edge", "edge-to-app", "app-to-database", "app-to-queue"
+      ]
+    },
+    {
+      "id": "trip-internals",
+      "diagram": "uml.composite-structure",
+      "parent": null,
+      "title": "Inside RideService",
+      "subject": "ride-service",
+      "nodeIds": ["ride-service", "ride-events", "publish-subscribe"]
+    }
+  ]
+}

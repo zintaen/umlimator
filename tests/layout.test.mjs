@@ -702,8 +702,9 @@ test('audit 41: a card with no pin in a pinned view goes by its box\'s pinned ca
       const g = U.layout(m, v.id); assert.deepEqual(foreignUnder(m, v.id, g), [], `${v.id}: new card in ${c.id}`);
       assert.ok(!U.check(m, v.id).some(p => / lies over /.test(p.message)), `${v.id}: ${c.id}`); }
     // each pin of each example view with boxes taken out in turn
-    for (const f of ['bike-share.json', 'bookshop-atlas.json', 'states.json']) { const base = read('../examples/' + f);
-      for (const v of base.views) if (v && v.layout && (U.layout(base, v.id).families || []).length) for (const k of Object.keys(v.layout)) {
+    // (bike-share holds the Bookshop atlas's typed views since step 3 of the one-model plan: its map views and one view of each type)
+    for (const f of ['bike-share.json', 'states.json']) { const base = read('../examples/' + f), kinds = new Set();
+      for (const v of base.views.filter(v => !v.diagram || v.diagram === 'map' || (!kinds.has(v.diagram) && kinds.add(v.diagram)))) if (v && v.layout && (U.layout(base, v.id).families || []).length) for (const k of Object.keys(v.layout)) {
         const m = structuredClone(base); delete m.views.find(x => x.id === v.id).layout[k]; warns.length = 0;
         const g = U.layout(m, v.id); assert.deepEqual(foreignUnder(m, v.id, g), [], `${f} ${v.id} with no pin for ${k}`);
         assert.ok(!warns.some(w => /something inside it/.test(w)), `${f} ${v.id} with no pin for ${k}: ${warns}`); } }

@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { diff, drift, validate, layout } from '../lib/umlimator.js';
 import { svgOf } from '../src/draw/svg.js';
+// bike-share holds typed views since step 3 of the one-model plan: the full bundle validates them, as the page draws them
+import { validate as validateAll } from '../lib/umlimator-all.js';
 
 const bike = JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url)));
 // a made-up pull request on the bike share: a queue between Trips and Payments, a rename, a card gone, a line relabelled
@@ -35,7 +37,7 @@ test('diff() says what changed in words, marks it on the after model, and names 
   const sys = d.model.views.find(v => v.id === 'system'), was = bike.views.find(v => v.id === 'system');
   assert.ok(sys.nodeIds.includes('flags'), 'a removed card stays in its view');
   assert.deepEqual(sys.layout.flags, was.layout.flags, '…in its place');
-  assert.deepEqual(validate(d.model), []);
+  assert.deepEqual(validateAll(d.model), []);
   assert.deepEqual(next, (() => { const n = structuredClone(next); diff(bike, n); return n; })(), 'its inputs are left as they were');
 });
 
@@ -88,16 +90,16 @@ test('drift() brings in the lines traffic ran on but nobody drew, fades the draw
     { parent: 'ops-console', child: 'trips-db', callCount: 1500 },      // not drawn: comes in
     { parent: 'Fleet Service', child: 'charging', callCount: 0 },       // drawn (s17), by label in any case, but no calls: idle
     { parent: 'ops-console', child: 'fleet-service', callCount: 310 },  // drawn (s6): carried
-    { parent: 'cdn', child: 'rider-app', callCount: 40 },               // no card for cdn
+    { parent: 'tile-cache', child: 'rider-app', callCount: 40 },        // no card for tile-cache (cdn names the cloud views' CDN cards since step 3)
   ] };
   const r = drift(bike, seen, { match: { 'trip-service': 'trips', 'fleet-service': 'fleet', 'trips-db': 'tripsdb' } });
-  assert.deepEqual(r.counts, { carried: 2, undrawn: 1, idle: 3, unknown: 62, unmatched: ['cdn'] }); // 51 model lines (the rider shop's 11 among them), the 8 of the trace's view (#96) and the shop's 8 own (api 2, checkout 6)
+  assert.deepEqual(r.counts, { carried: 2, undrawn: 1, idle: 3, unknown: 394, unmatched: ['tile-cache'] }); // 51 map lines (the rider shop's 11 among them), the 8 of the trace's view (#96) and the shop's 8 own (api 2, checkout 6): 62; and, since step 3, the typed views' 306 model lines and 26 view-own lines
   const came = r.model.edges.filter(e => e.drift === 'undrawn'), idle = r.model.edges.filter(e => e.drift === 'idle').map(e => e.id);
   assert.deepEqual(came, [{ id: 'drift:ops-console->tripsdb', from: 'ops-console', to: 'tripsdb', label: 'not drawn', sublabel: '1,500 calls', style: 'security', drift: 'undrawn' }]);
   assert.deepEqual(idle, ['s8', 's12', 's17']); // trips→tripsdb and fleet→ops-console: both ends had traffic, these lines none
   assert.ok(r.model.edges.filter(e => e.drift === 'idle').every(e => e.style === 'faded'));
   assert.deepEqual(r.views, ['system']);
-  assert.deepEqual(validate(r.model), []);
+  assert.deepEqual(validateAll(r.model), []);
   assert.deepEqual(drift(bike, [{ from: 'trips', to: 'pricing' }]).counts.carried, 1, 'a plain list, without counts');
 });
 
@@ -562,7 +564,7 @@ test('audit 40: diff() lists a typed view whose picture changes through what it 
   const cf = structuredClone(er), cf2 = structuredClone(er2); [cf, cf2].forEach(m => { m.views.at(-1).notation = 'crowsfoot'; });
   assert.ok(!all.diff(cf, cf2).views.includes('children'));
   // no change, no view, for every example; hostile: hooks given odd lines and ids throw nothing
-  for (const f of ['bookshop-c4', 'bookshop-profile', 'bookshop-schema', 'bookshop-atlas']) assert.deepEqual(all.diff(read(f), read(f)).views, [], f);
+  for (const f of ['bookshop-c4', 'bookshop-profile', 'bookshop-schema', 'bike-share']) assert.deepEqual(all.diff(read(f), read(f)).views, [], f);
   const h = structuredClone(pr2); h.edges.push(null, 7, { id: '__proto__', type: 'uml.Extension', from: 'owned', to: { x: 1 } }, { id: 'constructor', type: 'uml.Generalization', from: 'owned', to: 'owned' });
   h.views.at(-1).nodeIds.push({ toString: 1 }, 'ghost', '__proto__');
   assert.ok(all.diff(pr, h).views.includes('orders'));
@@ -579,9 +581,9 @@ test('audit 40: diff() lists a map view whose card opens a view whose drawn coun
   // a view whose node is the card, and an override that opens it
   const O = structuredClone(A); delete O.nodes[0].view; O.views[1].node = 'shop'; const O2 = structuredClone(O); O2.nodes.push({ id: 'c' }); O2.views[1].nodeIds.push('c');
   assert.deepEqual(all.diff(O, O2).views, ['root', 'inner']);
-  // a typed child: the atlas's mail card opening the composite view, one part added there
-  const x = JSON.parse(readFileSync(new URL('../examples/bookshop-atlas.json', import.meta.url))); x.nodes.find(n => n.id === 'mail').opensView = 'internals';
-  const y = structuredClone(x); y.nodes.find(n => n.id === 'order-service').members.push({ id: 'order-service.audit', type: 'uml.Property', label: 'audit', props: { valueType: 'AuditLog', multiplicity: '1', aggregation: 'composite' } });
+  // a typed child: bike-share's rider shop mail card opening the composite view (the atlas's, since step 3 of the one-model plan), one part added there
+  const x = JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url))); x.nodes.find(n => n.id === 'mail').opensView = 'trip-internals';
+  const y = structuredClone(x); y.nodes.find(n => n.id === 'ride-service').members.push({ id: 'ride-service.audit', type: 'uml.Property', label: 'audit', props: { valueType: 'AuditLog', multiplicity: '1', aggregation: 'composite' } });
   const d = all.diff(x, y), pic = (m, v) => svgOf(all.layout(m, v)).replace(/\bg\d+-/g, 'g-');
   x.views.forEach(v => assert.equal(d.views.includes(v.id), pic(x, v.id) !== pic(y, v.id), v.id));
   assert.ok(d.views.includes('overview'));
@@ -644,7 +646,7 @@ test('audit 41: diff() lists a typed view whose picture changes through a member
     const h = { ...structuredClone(mp), icons: ic }; h.nodes[0].icon = 'constructor'; h.nodes[1].props = { icon: '__proto__' };
     assert.deepEqual(all.diff(h, h).views, []); assert.ok(Array.isArray(all.diff(mp, h).views)); }
   // no change, no view, for every example
-  for (const f of ['bookshop-c4', 'bookshop-profile', 'bookshop-schema', 'bookshop-data-flow', 'bookshop-aws', 'bookshop-atlas']) assert.deepEqual(all.diff(read(f), read(f)).views, [], f);
+  for (const f of ['bookshop-c4', 'bookshop-profile', 'bookshop-schema', 'bookshop-data-flow', 'bookshop-aws', 'bike-share']) assert.deepEqual(all.diff(read(f), read(f)).views, [], f);
 });
 
 test('audit 42: diff() keys a typed card\'s icon by its view\'s pack, not by the key\'s tail in any pack', async () => {
@@ -679,10 +681,11 @@ test('audit 42: diff() says and lists a typed view whose picture changes with it
   // bands changes (a map view's cards come in another document order, drawn the same: not listed, as before)
   const place = (m, v) => { const g = all.layout(m, v), at = l => (l || []).map(x => JSON.stringify([x.id, x.x, x.y, x.w, x.h, x.pts || x.d || null])).sort();
     return JSON.stringify([at(g.nodes), at(g.edges), at(g.bands), at(g.lanes), at(g.groups)]); };
-  // and bike-share as version 1 too, the case above on a map view of a version-1 model
-  for (const [f, m] of [...['bookshop-atlas', 'ebike-atlas', 'bookshop-aws', 'bookshop-c4', 'bike-share'].map(f => [f, read(f)]),
+  // and bike-share as version 1 too, the case above on a map view of a version-1 model; bike-share holds the atlases' typed
+  // views since step 3 of the one-model plan: its map views and one view of each type, the type's first, are swapped
+  for (const [f, m] of [...['bookshop-aws', 'bookshop-c4', 'bike-share'].map(f => [f, read(f)]),
     ['bike-share v1', (x => (delete x.schemaVersion, x))(read('bike-share'))]]) {
-    for (const v of m.views) for (let i = 0; i + 1 < Math.min(arr(v.nodeIds).length, 4); i++) { const b = structuredClone(m), w = b.views.find(x => x.id === v.id);
+    for (const v of f.startsWith('bike-share') ? oneOfEach(m) : m.views) for (let i = 0; i + 1 < Math.min(arr(v.nodeIds).length, 4); i++) { const b = structuredClone(m), w = b.views.find(x => x.id === v.id);
       [w.nodeIds[i], w.nodeIds[i + 1]] = [w.nodeIds[i + 1], w.nodeIds[i]]; assert.equal(all.diff(m, b).views.includes(v.id), place(m, v.id) !== place(b, v.id), `${f} ${v.id} ${i}`); } }
   // many moved: one sentence; hostile ids (null, a number, __proto__, twice) and labels; a large view reversed stays quick
   const big = { schemaVersion: 2, title: 't', nodes: Array.from({ length: 300 }, (_, i) => ({ id: 'l' + i, type: 'uml.Lifeline', label: i ? 'L' + i : '__proto__' })), edges: [],
@@ -694,6 +697,8 @@ test('audit 42: diff() says and lists a typed view whose picture changes with it
   assert.deepEqual(all.diff(big, big).views, []);
 });
 const arr = x => (Array.isArray(x) ? x : []);
+// a model's map views, and one view of each type, the type's first: what the loops over every view of bike-share read of it
+const oneOfEach = m => { const kinds = new Set(); return m.views.filter(v => !v.diagram || v.diagram === 'map' || (!kinds.has(v.diagram) && kinds.add(v.diagram))); };
 
 test('audit 42: a story step may select a model line to a view\'s own node, which the C4 or DFD view draws (drawn and drawnKeys read the view\'s own nodes)', async () => {
   const all = await fromSrc(), { validate: check } = await import('../src/map/validate.js'), { diagramOf } = await import('../src/core/registry.js');
@@ -734,9 +739,13 @@ test('audit 43: diff() lists a typed view only for what its elements name, not f
   assert.deepEqual(diff(n, apply(n, { op: 'set', id: 'api', path: 'sublabel', value: 'FastAPI' })).views, ['map']);
   const t = structuredClone(m); t.nodes[3].members = [{ id: 'd.api', type: 'uml.Property', label: 'api', props: { type: 'Shop API' } }];
   assert.deepEqual(diff(t, apply(t, { op: 'set', id: 'api', path: 'sublabel', value: 'FastAPI' })).views, ['map', 'classes']);
-  // the Bookshop atlas: renaming the map card api lists the map views that draw it, not the C4, cloud or mindmap views whose own Shop API it is not
-  const atlas = JSON.parse(readFileSync(new URL('../examples/bookshop-atlas.json', import.meta.url)));
+  // bike-share (the Bookshop atlas until step 3 of the one-model plan): renaming the rider shop's card api lists the map views
+  // that draw it; renaming the map card trip-api lists the map views that draw it, not the component, C4, cloud or sequence
+  // views whose own Trip API it is not
+  const atlas = JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url)));
   assert.deepEqual(diff(atlas, apply(atlas, { op: 'set', id: 'api', path: 'label', value: 'Renamed' })).views, ['overview', 'api', 'checkout']);
+  assert.ok(atlas.nodes.filter(n => n.label === 'Trip API' && n.type).length >= 5, 'the typed views\' namesakes');
+  assert.deepEqual(diff(atlas, apply(atlas, { op: 'set', id: 'trip-api', path: 'label', value: 'Renamed' })).views, ['trips', 'ride-end']);
   // hostile: labels that are prototype keys or another element's id resolve to nothing they do not name
   const h = structuredClone(m); h.nodes[2].label = '__proto__'; h.nodes[3].label = 'api'; h.nodes[0].label = 'constructor';
   assert.deepEqual(diff(h, apply(h, { op: 'set', id: 'api', path: 'sublabel', value: 'x' })).views, ['map']);
@@ -826,13 +835,14 @@ const tag45 = (s, at) => { const i = s.indexOf(at); if (i < 0) return null; cons
 const keyAt45 = (s, i) => (s.match(new RegExp(`class="um-key line-key[^"]*" data-i="${i}"[^>]*aria-label="([^"]*)"`)) || [])[1];
 
 test('audit 45: every typed view of the atlas draws each mark on what it draws: its shapes, its boxes, its own lines, its fragments and its implied lines, each said in its name and key', async () => {
-  const all = await fromSrc(), m = read45('bookshop-atlas'), W = ['added', 'changed', 'removed', 'planned'], WL = ['added', 'changed', 'removed'], word = { added: 'new', changed: 'changed', removed: 'removed', planned: 'planned' };
+  // bike-share holds the atlases' typed views since step 3 of the one-model plan: one view of each type, the type's first
+  const all = await fromSrc(), m = read45('bike-share'), W = ['added', 'changed', 'removed', 'planned'], WL = ['added', 'changed', 'removed'], word = { added: 'new', changed: 'changed', removed: 'removed', planned: 'planned' };
   const x = structuredClone(m); let k = 0;
   const deep = o => { const s = [o]; while (s.length) { const y = s.pop(); if (!y || typeof y !== 'object') continue; y.change = W[k++ % 4]; (y.members || []).forEach(z => s.push(z)); } };
   x.nodes.forEach(deep); x.edges.forEach(e => { e.change = WL[k++ % 3]; });
   x.views.forEach(v => { (v.fragments || []).forEach(deep); (v.edges || []).forEach(e => { if (e && typeof e === 'object') e.change = WL[k++ % 3]; }); });
   let boxes = 0, own = 0;
-  for (const v of x.views.filter(v => v.diagram && v.diagram !== 'map')) {
+  for (const v of oneOfEach(x).filter(v => v.diagram && v.diagram !== 'map')) {
     const g = all.layout(x, v.id), s = svgOf(g), at = `${v.diagram} ${v.id}`;
     for (const f of g.families || []) { if (!f.change) continue; boxes++; const t = tag45(s, `data-family="${f.id}"`);
       assert.ok(t, `${at}: box ${f.id} drawn`); assert.match(t, new RegExp(`data-change="${word[f.change]}"`), `${at}: ${f.id}`); if (/aria-label/.test(t)) assert.match(t, new RegExp(`, ${word[f.change]}"`), `${at}: ${f.id}`); }
@@ -843,7 +853,7 @@ test('audit 45: every typed view of the atlas draws each mark on what it draws: 
       if (Array.isArray(e.implied)) assert.ok(e.change, `${at}: implied ${id}`);
       const key = keyAt45(s, i); if (e.change && key != null) assert.ok(key.endsWith(', ' + word[e.change]), `${at}: ${id} ${key}`); });
     (s.match(/<(g|text|rect|path|circle|ellipse|line|polygon|polyline)\b[^>]*(data-change|opacity|line-through)[^>]*>/g) || []).forEach(tg => { ['opacity', 'data-change', 'stroke-dasharray', 'text-decoration', 'aria-label'].forEach(n => assert.ok(tg.split(` ${n}=`).length <= 2, `${at}: ${n} twice in ${tg}`)); }); }
-  assert.ok(boxes > 30 && own > 30, `boxes ${boxes}, own ${own}`);
+  assert.ok(boxes > 30 && own > 15, `boxes ${boxes}, own ${own}`); // own 18 over one view of each type (over 30 when the loop read every view of the atlas)
 });
 
 test('audit 45: a sequence\'s, a timing\'s and a class view\'s own lines carry diff()\'s marks: a removed message rose and dashed, an added one green, each said in its key and title; an inline interaction\'s messages too', async () => {
@@ -1013,7 +1023,7 @@ test('audit 46: a communication view\'s message rows carry diff()\'s marks: a re
 });
 
 test('audit 46: a dashed typed line diff() adds keeps its notation\'s dash (a dependency, an include, a message flow, a satisfy), green', async () => {
-  const all = await fromSrc(), m = read45('bookshop-atlas'), e2 = read45('ebike-atlas'); let n = 0;
+  const all = await fromSrc(), m = read45('bike-share'), e2 = m; let n = 0; // the atlases' typed views, in bike-share since step 3
   for (const [x, ty] of [[m, 'uml.Dependency'], [m, 'uml.Include'], [m, 'bpmn.MessageFlow'], [m, 'bpmn.Association'], [e2, 'sysml.Satisfy']]) {
     const e = x.edges.find(y => y.type === ty), v = x.views.find(w => w.diagram && w.diagram !== 'map' && all.layout(x, w.id).edges.some(l => (l._id ?? l.id) === e.id));
     const less = structuredClone(x); less.edges = less.edges.filter(y => y.id !== e.id);

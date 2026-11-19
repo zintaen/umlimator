@@ -10,7 +10,8 @@ const sig = g => JSON.stringify([g.nodes.map(n => [n.id, n.x, n.y, n.w, n.h]), g
 
 test('a shape lays nothing out: each view of the examples and the benchmark models is the same with every card a person, and with a stale shapes field', () => {
   const models = [...['bookshop', 'bike-share', 'weather', 'assistant', 'clinic', 'shapes'].map(f => read(`../examples/${f}.json`)), ...['b10', 'd24'].map(f => read(`../bench/models/${f}.json`))];
-  for (const m of models) for (const v of m.views) {
+  // map views: a typed view (bike-share's, since step 3 of the one-model plan) is drawn by its type, which no card shape reaches
+  for (const m of models) for (const v of m.views.filter(v => !v.diagram || v.diagram === 'map')) {
     const base = sig(layout(m, v.id));
     assert.equal(sig(layout({ ...m, nodes: m.nodes.map(n => ({ ...n, shape: 'person' })) }, v.id)), base, `${m.title} / ${v.id}, every card a person`);
     // the box/c4/uml choice is gone (0.21.0): a model that still has it lays out as one without it

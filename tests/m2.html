@@ -4,8 +4,9 @@
      both directions, both themes and three fonts: every node and line drawn, no two nodes overlapping, every text inside
      its node, every node inside its box, no line through a node but its own two ends, every line end within 1 px of its
      node's box, no line label over a node (these three not on c4-stress.json's all, whose crowding
-     tests/m2-fixtures.test.mjs pins), every node and line named, texts at 4.5:1 and lines and outlines at 3:1. Then the Bookshop atlas (M2.13): each link of
-     tools/atlas-links.json, selected in a view that draws it as a card and opened by Enter, opens its view in the page. -->
+     tests/m2-fixtures.test.mjs pins), every node and line named, texts at 4.5:1 and lines and outlines at 3:1. Then bike-share, which holds the
+     Bookshop atlas's typed views (M2.13) since step 3 of the one-model plan: each typed element that opens a view, selected in a
+     view that draws it as a card and opened by Enter, opens its view in the page. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
@@ -69,12 +70,12 @@ try {
     }
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
 
-  // ---- the Bookshop atlas: each link opens its view in the page
-  const ATLAS = await (await fetch('../examples/bookshop-atlas.json')).json(), LINKS = await (await fetch('../tools/atlas-links.json')).json();
-  const id = ref => ref.slice(ref.indexOf('/') + 1), boxes = [];
-  for (const l of LINKS.links) {
+  // ---- bike-share, which holds the Bookshop atlas's typed views since step 3 of the one-model plan: each typed element that
+  // opens a view opens it in the page
+  const ATLAS = await (await fetch('../examples/bike-share.json')).json(), boxes = [];
+  for (const l of ATLAS.nodes.filter(x => x.type && x.opensView)) {
     // the first view that draws it as a card (a box, which holds what it owns, opens nothing on Enter)
-    const n = id(l.element), to = id(l.opens), went = [];
+    const n = l.id, to = l.opensView, went = [];
     let h, g, on;
     for (const v of ATLAS.views.filter(v => v.nodeIds.includes(n))) {
       el.innerHTML = ''; h = render(el, ATLAS, { view: v.id, on: { viewchange: e => went.push(e.view) } }); sr = el.querySelector('.umlimator').shadowRoot;
@@ -83,13 +84,13 @@ try {
     if (g) { g.dispatchEvent(new PointerEvent('pointerdown', { ...at, button: 0, pointerId: 7, pointerType: 'mouse' })); g.dispatchEvent(new PointerEvent('pointerup', { ...at, button: 0, pointerId: 7, pointerType: 'mouse' }));
       g.dispatchEvent(new MouseEvent('click', at)); stage.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true, cancelable: true })); }
     await new Promise(res => setTimeout(res, 0));
-    if (!g) { boxes.push(l.element); continue; }
-    check(`the atlas: ${l.element}, selected in ${on.id} and opened by Enter, opens ${to}`, went.includes(to), went);
+    if (!g) { boxes.push(n); continue; }
+    check(`bike-share: ${n}, selected in ${on.id} and opened by Enter, opens ${to}`, went.includes(to), went);
     h.destroy();
   }
   // two links of stages 5 and 6 name an element every view draws as a box, which Enter does not open (a gap, stated in
   // docs/module-api.md's 0.24.0 section); no milestone 2 link does
-  check('the atlas: the links whose element is a box in every view are stage 5\'s and 6\'s two', JSON.stringify(boxes) === JSON.stringify(['bookshop-packages/sales', 'bookshop-deployment/jvm']), boxes);
+  check('bike-share: the links whose element is a box in every view are stage 5\'s and 6\'s two', JSON.stringify(boxes) === JSON.stringify(['rides-package', 'jvm']), boxes);
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

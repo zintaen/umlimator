@@ -1,0 +1,504 @@
+{
+  "nodes": [
+    {
+      "id": "c4-rider",
+      "type": "c4.Person",
+      "label": "Rider",
+      "opensView": "rider-uses",
+      "props": { "description": "Finds and hires bikes, pays for rides and reports faults." }
+    },
+    {
+      "id": "c4-staff",
+      "type": "c4.Person",
+      "label": "Operations staff",
+      "opensView": "triage",
+      "props": { "description": "Keep the fleet in service and refund rides." }
+    },
+    {
+      "id": "c4-bikeshare",
+      "type": "c4.SoftwareSystem",
+      "label": "Bike share",
+      "opensView": "c4-containers",
+      "props": { "description": "Hires e-bikes from city docks: finding, unlocking, pricing and paying for rides." }
+    },
+    {
+      "id": "c4-payments",
+      "type": "c4.SoftwareSystem",
+      "label": "Payment provider",
+      "props": { "description": "Takes card payments and makes refunds.", "external": true }
+    },
+    {
+      "id": "c4-mail",
+      "type": "c4.SoftwareSystem",
+      "label": "Email service",
+      "props": { "description": "Delivers the operator's emails.", "external": true }
+    },
+    {
+      "id": "c4-van",
+      "type": "c4.SoftwareSystem",
+      "label": "Van service",
+      "props": { "description": "Collects faulty bikes and brings them back repaired.", "external": true }
+    },
+    {
+      "id": "c4-app",
+      "type": "c4.Container",
+      "label": "Rider app",
+      "parent": "c4-bikeshare",
+      "opensView": "rider-data",
+      "props": {
+        "technology": "TypeScript, React",
+        "description": "The rider's app: a map of bikes, unlock and ride history, and the admin pages for staff."
+      }
+    },
+    {
+      "id": "c4-api",
+      "type": "c4.Container",
+      "label": "Trip API",
+      "parent": "c4-bikeshare",
+      "opensView": "c4-components",
+      "props": { "technology": "Python, FastAPI", "description": "Bikes, rides, pricing and accounts as a JSON API." }
+    },
+    {
+      "id": "c4-worker",
+      "type": "c4.Container",
+      "label": "Ride worker",
+      "parent": "c4-bikeshare",
+      "opensView": "log-ride",
+      "props": {
+        "technology": "Python",
+        "description": "Closes ended rides: books a van for a faulty bike and sends the receipt."
+      }
+    },
+    {
+      "id": "c4-db",
+      "type": "c4.Container",
+      "label": "Database",
+      "parent": "c4-bikeshare",
+      "opensView": "trips-schema",
+      "props": { "technology": "PostgreSQL", "description": "Bikes, docks, rides and accounts." }
+    },
+    {
+      "id": "c4-queue",
+      "type": "c4.Container",
+      "label": "Ride queue",
+      "parent": "c4-bikeshare",
+      "props": { "technology": "PostgreSQL table", "description": "Ended rides waiting to be closed, oldest first." }
+    },
+    {
+      "id": "c4-finder",
+      "type": "c4.Component",
+      "label": "Bike finder",
+      "parent": "c4-api",
+      "opensView": "packages",
+      "props": { "technology": "FastAPI router", "description": "Lists and searches free bikes and docks." }
+    },
+    {
+      "id": "c4-hire",
+      "type": "c4.Component",
+      "label": "Hire",
+      "parent": "c4-api",
+      "opensView": "unlock-communication",
+      "props": { "technology": "FastAPI router", "description": "Turns an unlock into a paid ride." }
+    },
+    {
+      "id": "c4-accounts",
+      "type": "c4.Component",
+      "label": "Accounts and sign-in",
+      "parent": "c4-api",
+      "props": {
+        "technology": "FastAPI router",
+        "description": "Signs riders and staff in; keeps hashed passwords and sessions."
+      }
+    },
+    {
+      "id": "c4-payment-client",
+      "type": "c4.Component",
+      "label": "Payment client",
+      "parent": "c4-api",
+      "props": { "technology": "Python, httpx", "description": "Starts card payments and reads their result." }
+    },
+    {
+      "id": "c4-ride-store",
+      "type": "c4.Component",
+      "label": "Ride store",
+      "parent": "c4-api",
+      "opensView": "dfd-0",
+      "props": { "technology": "SQLAlchemy", "description": "Saves rides and puts the ended ones on the ride queue." }
+    },
+    {
+      "id": "c4-device",
+      "type": "c4.DeploymentNode",
+      "label": "User's device",
+      "props": { "technology": "Laptop, tablet or phone", "description": "A rider's or a staff member's own device." }
+    },
+    {
+      "id": "c4-browser",
+      "type": "c4.DeploymentNode",
+      "label": "Web browser",
+      "parent": "c4-device",
+      "props": { "technology": "Chrome, Firefox, Safari or Edge" }
+    },
+    {
+      "id": "c4-app-1",
+      "type": "c4.ContainerInstance",
+      "label": "Rider app",
+      "parent": "c4-browser",
+      "props": { "container": "c4-app" }
+    },
+    {
+      "id": "c4-web-host",
+      "type": "c4.DeploymentNode",
+      "label": "Web server",
+      "props": { "technology": "Ubuntu 24.04 LTS", "description": "The web tier's server." }
+    },
+    {
+      "id": "c4-docker",
+      "type": "c4.DeploymentNode",
+      "label": "Docker Compose",
+      "parent": "c4-web-host",
+      "props": { "technology": "Docker Engine 27" }
+    },
+    {
+      "id": "c4-api-1",
+      "type": "c4.ContainerInstance",
+      "label": "Trip API",
+      "parent": "c4-docker",
+      "opensView": "production",
+      "props": { "container": "c4-api" }
+    },
+    {
+      "id": "c4-worker-1",
+      "type": "c4.ContainerInstance",
+      "label": "Ride worker",
+      "parent": "c4-docker",
+      "props": { "container": "c4-worker" }
+    },
+    {
+      "id": "c4-db-host",
+      "type": "c4.DeploymentNode",
+      "label": "Database server",
+      "props": { "technology": "Ubuntu 24.04 LTS", "description": "Backed up every night." }
+    },
+    {
+      "id": "c4-postgres",
+      "type": "c4.DeploymentNode",
+      "label": "PostgreSQL",
+      "parent": "c4-db-host",
+      "props": { "technology": "PostgreSQL 16" }
+    },
+    {
+      "id": "c4-db-1",
+      "type": "c4.ContainerInstance",
+      "label": "Database",
+      "parent": "c4-postgres",
+      "props": { "container": "c4-db" }
+    },
+    {
+      "id": "c4-queue-1",
+      "type": "c4.ContainerInstance",
+      "label": "Ride queue",
+      "parent": "c4-postgres",
+      "props": { "container": "c4-queue" }
+    }
+  ],
+  "edges": [
+    {
+      "id": "c4-rider-bikeshare",
+      "type": "c4.Relationship",
+      "from": "c4-rider",
+      "to": "c4-bikeshare",
+      "label": "Hires bikes with"
+    },
+    {
+      "id": "c4-staff-bikeshare",
+      "type": "c4.Relationship",
+      "from": "c4-staff",
+      "to": "c4-bikeshare",
+      "label": "Keep the fleet and refund rides with"
+    },
+    {
+      "id": "c4-bikeshare-payments",
+      "type": "c4.Relationship",
+      "from": "c4-bikeshare",
+      "to": "c4-payments",
+      "label": "Takes card payments with",
+      "props": { "technology": "HTTPS" }
+    },
+    {
+      "id": "c4-bikeshare-mail",
+      "type": "c4.Relationship",
+      "from": "c4-bikeshare",
+      "to": "c4-mail",
+      "label": "Sends ride receipts with",
+      "props": { "technology": "HTTPS" }
+    },
+    {
+      "id": "c4-bikeshare-van",
+      "type": "c4.Relationship",
+      "from": "c4-bikeshare",
+      "to": "c4-van",
+      "label": "Books van pickups with",
+      "props": { "technology": "HTTPS" }
+    },
+    {
+      "id": "c4-mail-rider",
+      "type": "c4.Relationship",
+      "from": "c4-mail",
+      "to": "c4-rider",
+      "label": "Delivers receipts to",
+      "props": { "technology": "Email" }
+    },
+    {
+      "id": "c4-rider-app",
+      "type": "c4.Relationship",
+      "from": "c4-rider",
+      "to": "c4-app",
+      "label": "Finds and unlocks a bike in",
+      "props": { "technology": "HTTPS" }
+    },
+    {
+      "id": "c4-staff-app",
+      "type": "c4.Relationship",
+      "from": "c4-staff",
+      "to": "c4-app",
+      "label": "Edit the fleet and refund rides in",
+      "props": { "technology": "HTTPS" }
+    },
+    {
+      "id": "c4-app-api",
+      "type": "c4.Relationship",
+      "from": "c4-app",
+      "to": "c4-api",
+      "label": "Finds bikes and starts rides through",
+      "props": { "technology": "JSON over HTTPS" }
+    },
+    {
+      "id": "c4-api-payments",
+      "type": "c4.Relationship",
+      "from": "c4-api",
+      "to": "c4-payments",
+      "label": "Charges cards with",
+      "props": { "technology": "HTTPS" }
+    },
+    {
+      "id": "c4-api-db",
+      "type": "c4.Relationship",
+      "from": "c4-api",
+      "to": "c4-db",
+      "label": "Reads and writes bikes, docks and rides in",
+      "props": { "technology": "SQL" }
+    },
+    {
+      "id": "c4-api-queue",
+      "type": "c4.Relationship",
+      "from": "c4-api",
+      "to": "c4-queue",
+      "label": "Puts ended rides on",
+      "props": { "technology": "SQL" }
+    },
+    {
+      "id": "c4-worker-queue",
+      "type": "c4.Relationship",
+      "from": "c4-worker",
+      "to": "c4-queue",
+      "label": "Claims ended rides from",
+      "props": { "technology": "SQL" }
+    },
+    {
+      "id": "c4-worker-van",
+      "type": "c4.Relationship",
+      "from": "c4-worker",
+      "to": "c4-van",
+      "label": "Books van pickups with",
+      "props": { "technology": "HTTPS" }
+    },
+    {
+      "id": "c4-worker-mail",
+      "type": "c4.Relationship",
+      "from": "c4-worker",
+      "to": "c4-mail",
+      "label": "Sends receipts with",
+      "props": { "technology": "HTTPS" }
+    },
+    {
+      "id": "c4-worker-db",
+      "type": "c4.Relationship",
+      "from": "c4-worker",
+      "to": "c4-db",
+      "label": "Marks rides as closed in",
+      "props": { "technology": "SQL" }
+    },
+    {
+      "id": "c4-app-finder",
+      "type": "c4.Relationship",
+      "from": "c4-app",
+      "to": "c4-finder",
+      "label": "Finds bikes through",
+      "props": { "technology": "JSON over HTTPS" }
+    },
+    {
+      "id": "c4-app-hire",
+      "type": "c4.Relationship",
+      "from": "c4-app",
+      "to": "c4-hire",
+      "label": "Starts rides through",
+      "props": { "technology": "JSON over HTTPS" }
+    },
+    {
+      "id": "c4-app-accounts",
+      "type": "c4.Relationship",
+      "from": "c4-app",
+      "to": "c4-accounts",
+      "label": "Signs in through",
+      "props": { "technology": "JSON over HTTPS" }
+    },
+    {
+      "id": "c4-hire-payment-client",
+      "type": "c4.Relationship",
+      "from": "c4-hire",
+      "to": "c4-payment-client",
+      "label": "Charges the card through"
+    },
+    {
+      "id": "c4-payment-client-payments",
+      "type": "c4.Relationship",
+      "from": "c4-payment-client",
+      "to": "c4-payments",
+      "label": "Starts a card payment with",
+      "props": { "technology": "HTTPS" }
+    },
+    {
+      "id": "c4-hire-ride-store",
+      "type": "c4.Relationship",
+      "from": "c4-hire",
+      "to": "c4-ride-store",
+      "label": "Saves the paid ride with"
+    },
+    {
+      "id": "c4-ride-store-db",
+      "type": "c4.Relationship",
+      "from": "c4-ride-store",
+      "to": "c4-db",
+      "label": "Reads and writes rides in",
+      "props": { "technology": "SQL" }
+    },
+    {
+      "id": "c4-ride-store-queue",
+      "type": "c4.Relationship",
+      "from": "c4-ride-store",
+      "to": "c4-queue",
+      "label": "Puts ended rides on",
+      "props": { "technology": "SQL" }
+    },
+    {
+      "id": "c4-finder-db",
+      "type": "c4.Relationship",
+      "from": "c4-finder",
+      "to": "c4-db",
+      "label": "Reads bikes and docks from",
+      "props": { "technology": "SQL" }
+    },
+    {
+      "id": "c4-accounts-db",
+      "type": "c4.Relationship",
+      "from": "c4-accounts",
+      "to": "c4-db",
+      "label": "Reads and writes accounts and sessions in",
+      "props": { "technology": "SQL" }
+    },
+    {
+      "id": "c4-app-1-api-1",
+      "type": "c4.Relationship",
+      "from": "c4-app-1",
+      "to": "c4-api-1",
+      "label": "Calls",
+      "props": { "technology": "JSON over HTTPS, port 443" }
+    },
+    {
+      "id": "c4-api-1-db-1",
+      "type": "c4.Relationship",
+      "from": "c4-api-1",
+      "to": "c4-db-1",
+      "label": "Reads from and writes to",
+      "props": { "technology": "SQL, port 5432, private network" }
+    },
+    {
+      "id": "c4-api-1-queue-1",
+      "type": "c4.Relationship",
+      "from": "c4-api-1",
+      "to": "c4-queue-1",
+      "label": "Puts ended rides on",
+      "props": { "technology": "SQL, port 5432, private network" }
+    },
+    {
+      "id": "c4-worker-1-queue-1",
+      "type": "c4.Relationship",
+      "from": "c4-worker-1",
+      "to": "c4-queue-1",
+      "label": "Claims ended rides from",
+      "props": { "technology": "SQL, port 5432, private network" }
+    },
+    {
+      "id": "c4-worker-1-db-1",
+      "type": "c4.Relationship",
+      "from": "c4-worker-1",
+      "to": "c4-db-1",
+      "label": "Marks rides as closed in",
+      "props": { "technology": "SQL, port 5432, private network" }
+    }
+  ],
+  "views": [
+    {
+      "id": "c4-context",
+      "diagram": "c4.context",
+      "parent": null,
+      "title": "Bike share: system context",
+      "subject": "c4-bikeshare",
+      "nodeIds": ["c4-rider", "c4-staff", "c4-bikeshare", "c4-payments", "c4-mail", "c4-van"]
+    },
+    {
+      "id": "c4-containers",
+      "diagram": "c4.container",
+      "parent": "c4-context",
+      "title": "Bike share: containers",
+      "subject": "c4-bikeshare",
+      "nodeIds": [
+        "c4-bikeshare", "c4-rider", "c4-staff", "c4-app", "c4-api", "c4-worker", "c4-db", "c4-queue", "c4-payments",
+        "c4-mail", "c4-van"
+      ]
+    },
+    {
+      "id": "c4-components",
+      "diagram": "c4.component",
+      "parent": "c4-containers",
+      "title": "Trip API: components",
+      "subject": "c4-api",
+      "nodeIds": [
+        "c4-api", "c4-app", "c4-finder", "c4-hire", "c4-accounts", "c4-payment-client", "c4-ride-store", "c4-db",
+        "c4-queue", "c4-payments"
+      ]
+    },
+    {
+      "id": "c4-end-ride",
+      "diagram": "c4.dynamic",
+      "parent": "c4-containers",
+      "title": "Ending a ride",
+      "subject": "c4-bikeshare",
+      "nodeIds": ["c4-rider", "c4-app", "c4-api", "c4-payments", "c4-db", "c4-queue", "c4-worker", "c4-van", "c4-mail"],
+      "edges": [
+        "c4-rider-app", "c4-app-api", "c4-api-payments", "c4-api-db", "c4-api-queue", "c4-worker-queue",
+        "c4-worker-van", "c4-worker-mail", "c4-mail-rider", "c4-worker-db"
+      ]
+    },
+    {
+      "id": "c4-deployment",
+      "diagram": "c4.deployment",
+      "parent": "c4-context",
+      "title": "Bike share: production deployment",
+      "nodeIds": [
+        "c4-device", "c4-browser", "c4-app-1", "c4-web-host", "c4-docker", "c4-api-1", "c4-worker-1", "c4-db-host",
+        "c4-postgres", "c4-db-1", "c4-queue-1"
+      ]
+    }
+  ]
+}

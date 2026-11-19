@@ -1,0 +1,560 @@
+{
+  "nodes": [
+    { "id": "mm-opening", "type": "mindmap.Topic", "label": "Opening a second city" },
+    { "id": "mm-fleet", "type": "mindmap.Topic", "label": "Fleet", "parent": "mm-opening" },
+    { "id": "mm-first-titles", "type": "mindmap.Topic", "label": "Order the first 500 e-bikes", "parent": "mm-fleet" },
+    {
+      "id": "mm-wholesalers",
+      "type": "mindmap.Topic",
+      "label": "Agree dock sites with the city",
+      "parent": "mm-fleet"
+    },
+    { "id": "mm-website", "type": "mindmap.Topic", "label": "Apps", "parent": "mm-opening" },
+    { "id": "mm-app", "type": "mindmap.Topic", "label": "Rider app", "parent": "mm-website" },
+    { "id": "mm-hire", "type": "mindmap.Topic", "label": "Unlock and pay", "parent": "mm-website" },
+    { "id": "mm-card-payments", "type": "mindmap.Topic", "label": "Card payments", "parent": "mm-hire" },
+    { "id": "mm-ride-emails", "type": "mindmap.Topic", "label": "Ride receipts", "parent": "mm-hire" },
+    { "id": "mm-launch", "type": "mindmap.Topic", "label": "Launch", "parent": "mm-opening" },
+    {
+      "id": "mm-newsletter",
+      "type": "mindmap.Topic",
+      "label": "Newsletter to the waiting list",
+      "parent": "mm-launch"
+    },
+    {
+      "id": "mm-opening-offer",
+      "type": "mindmap.Topic",
+      "label": "Free rides in the first week",
+      "parent": "mm-launch"
+    },
+    { "id": "mm-warehouse", "type": "mindmap.Topic", "label": "Depot", "parent": "mm-opening" },
+    {
+      "id": "mm-shelving",
+      "type": "mindmap.Topic",
+      "label": "Charging racks and a repair bench",
+      "parent": "mm-warehouse"
+    },
+    { "id": "mm-van", "type": "mindmap.Topic", "label": "Van contract", "parent": "mm-warehouse" },
+    { "id": "mm-legal", "type": "mindmap.Topic", "label": "Legal and money", "parent": "mm-opening" },
+    { "id": "mm-company", "type": "mindmap.Topic", "label": "Register the company", "parent": "mm-legal" },
+    { "id": "mm-bank", "type": "mindmap.Topic", "label": "Business bank account", "parent": "mm-legal" },
+    { "id": "mm-hosting", "type": "mindmap.Topic", "label": "Hosting for the tender", "parent": "mm-opening" },
+    {
+      "id": "mm-on-gcp",
+      "type": "mindmap.Topic",
+      "label": "On Google Cloud",
+      "parent": "mm-hosting",
+      "opensView": "on-gcp"
+    },
+    {
+      "id": "mm-on-azure",
+      "type": "mindmap.Topic",
+      "label": "On Azure",
+      "parent": "mm-hosting",
+      "opensView": "on-azure"
+    },
+    { "id": "mm-on-aws", "type": "mindmap.Topic", "label": "On AWS", "parent": "mm-hosting", "opensView": "on-aws" },
+    { "id": "gcp-users", "type": "gcp.User", "label": "Riders" },
+    { "id": "gcp-project", "type": "gcp.Zone", "label": "bikeshare-prod", "props": { "zoneType": "project" } },
+    {
+      "id": "gcp-dns",
+      "type": "gcp.Product",
+      "label": "DNS",
+      "parent": "gcp-project",
+      "props": { "icon": "Cloud-DNS" }
+    },
+    {
+      "id": "gcp-lb",
+      "type": "gcp.Product",
+      "label": "Load balancer",
+      "parent": "gcp-project",
+      "props": { "icon": "Cloud-Load-Balancing" }
+    },
+    {
+      "id": "gcp-cdn",
+      "type": "gcp.Product",
+      "label": "CDN",
+      "parent": "gcp-project",
+      "props": { "icon": "Cloud-CDN" }
+    },
+    {
+      "id": "gcp-assets",
+      "type": "gcp.Product",
+      "label": "Rider app files",
+      "parent": "gcp-project",
+      "props": { "icon": "Cloud-Storage" }
+    },
+    {
+      "id": "gcp-queue",
+      "type": "gcp.Product",
+      "label": "Ride queue",
+      "parent": "gcp-project",
+      "props": { "icon": "Pub-Sub" }
+    },
+    {
+      "id": "gcp-region",
+      "type": "gcp.Zone",
+      "label": "europe-west1",
+      "parent": "gcp-project",
+      "props": { "zoneType": "region" }
+    },
+    {
+      "id": "gcp-api",
+      "type": "gcp.Product",
+      "label": "Trip API",
+      "parent": "gcp-region",
+      "props": { "icon": "Cloud-Run" }
+    },
+    {
+      "id": "gcp-worker",
+      "type": "gcp.Product",
+      "label": "Ride worker",
+      "parent": "gcp-region",
+      "props": { "icon": "Cloud-Run" }
+    },
+    {
+      "id": "gcp-network",
+      "type": "gcp.Zone",
+      "label": "bikeshare-vpc",
+      "parent": "gcp-region",
+      "props": { "zoneType": "network" }
+    },
+    {
+      "id": "gcp-subnet",
+      "type": "gcp.Zone",
+      "label": "data subnet, 10.10.0.0/24",
+      "parent": "gcp-network",
+      "props": { "zoneType": "subnetwork" }
+    },
+    {
+      "id": "gcp-zone-b",
+      "type": "gcp.Zone",
+      "label": "europe-west1-b",
+      "parent": "gcp-subnet",
+      "props": { "zoneType": "zone" }
+    },
+    {
+      "id": "gcp-db",
+      "type": "gcp.Product",
+      "label": "Database, primary",
+      "parent": "gcp-zone-b",
+      "props": { "icon": "Cloud-SQL" }
+    },
+    {
+      "id": "gcp-zone-c",
+      "type": "gcp.Zone",
+      "label": "europe-west1-c",
+      "parent": "gcp-subnet",
+      "props": { "zoneType": "zone" }
+    },
+    {
+      "id": "gcp-db-standby",
+      "type": "gcp.Product",
+      "label": "Database, standby",
+      "parent": "gcp-zone-c",
+      "props": { "icon": "Cloud-SQL" }
+    },
+    {
+      "id": "az-subscription",
+      "type": "azure.Group",
+      "label": "Bike share production",
+      "props": { "groupType": "subscription" }
+    },
+    {
+      "id": "az-rg",
+      "type": "azure.Group",
+      "label": "rg-bikeshare-prod",
+      "parent": "az-subscription",
+      "props": { "groupType": "resource-group" }
+    },
+    {
+      "id": "az-front-door",
+      "type": "azure.Service",
+      "label": "CDN and routing",
+      "parent": "az-rg",
+      "props": { "icon": "Front-Door-and-CDN-Profiles" }
+    },
+    {
+      "id": "az-monitor",
+      "type": "azure.Service",
+      "label": "Logs and alerts",
+      "parent": "az-rg",
+      "props": { "icon": "Monitor" }
+    },
+    {
+      "id": "az-region",
+      "type": "azure.Group",
+      "label": "West Europe",
+      "parent": "az-rg",
+      "props": { "groupType": "region" }
+    },
+    {
+      "id": "az-assets",
+      "type": "azure.Service",
+      "label": "Rider app files",
+      "parent": "az-region",
+      "props": { "icon": "Storage-Accounts" }
+    },
+    {
+      "id": "az-queue",
+      "type": "azure.Service",
+      "label": "Ride queue",
+      "parent": "az-region",
+      "props": { "icon": "Service-Bus" }
+    },
+    {
+      "id": "az-vault",
+      "type": "azure.Service",
+      "label": "Secrets",
+      "parent": "az-region",
+      "props": { "icon": "Key-Vaults" }
+    },
+    {
+      "id": "az-vnet",
+      "type": "azure.Group",
+      "label": "vnet-bikeshare",
+      "parent": "az-region",
+      "props": { "groupType": "virtual-network" }
+    },
+    {
+      "id": "az-snet-apps",
+      "type": "azure.Group",
+      "label": "snet-apps",
+      "parent": "az-vnet",
+      "props": { "groupType": "subnet" }
+    },
+    {
+      "id": "az-api",
+      "type": "azure.Service",
+      "label": "Trip API",
+      "parent": "az-snet-apps",
+      "props": { "icon": "App-Services" }
+    },
+    {
+      "id": "az-worker",
+      "type": "azure.Service",
+      "label": "Ride worker",
+      "parent": "az-snet-apps",
+      "props": { "icon": "App-Services" }
+    },
+    {
+      "id": "az-snet-data",
+      "type": "azure.Group",
+      "label": "snet-data",
+      "parent": "az-vnet",
+      "props": { "groupType": "subnet" }
+    },
+    {
+      "id": "az-db",
+      "type": "azure.Service",
+      "label": "Database",
+      "parent": "az-snet-data",
+      "props": { "icon": "SQL-Database" }
+    },
+    { "id": "aws-users", "type": "aws.Resource", "label": "Riders", "props": { "icon": "Users" } },
+    { "id": "aws-cloud", "type": "aws.Group", "label": "AWS Cloud", "props": { "groupType": "cloud" } },
+    {
+      "id": "aws-dns",
+      "type": "aws.Service",
+      "label": "DNS",
+      "parent": "aws-cloud",
+      "props": { "icon": "Amazon-Route-53" }
+    },
+    {
+      "id": "aws-cdn",
+      "type": "aws.Service",
+      "label": "CDN",
+      "parent": "aws-cloud",
+      "props": { "icon": "Amazon-CloudFront" }
+    },
+    {
+      "id": "aws-region",
+      "type": "aws.Group",
+      "label": "Europe (Ireland)",
+      "parent": "aws-cloud",
+      "props": { "groupType": "region" }
+    },
+    {
+      "id": "aws-assets",
+      "type": "aws.Service",
+      "label": "Rider app files",
+      "parent": "aws-region",
+      "props": { "icon": "Amazon-Simple-Storage-Service" }
+    },
+    {
+      "id": "aws-queue",
+      "type": "aws.Service",
+      "label": "Ride queue",
+      "parent": "aws-region",
+      "props": { "icon": "Amazon-Simple-Queue-Service" }
+    },
+    {
+      "id": "aws-email",
+      "type": "aws.Service",
+      "label": "Ride receipts",
+      "parent": "aws-region",
+      "props": { "icon": "Amazon-Simple-Email-Service" }
+    },
+    {
+      "id": "aws-monitoring",
+      "type": "aws.Service",
+      "label": "Logs and alarms",
+      "parent": "aws-region",
+      "props": { "icon": "Amazon-CloudWatch" }
+    },
+    {
+      "id": "aws-vpc",
+      "type": "aws.Group",
+      "label": "Bike share VPC",
+      "parent": "aws-region",
+      "props": { "groupType": "vpc" }
+    },
+    {
+      "id": "aws-alb",
+      "type": "aws.Service",
+      "label": "Load balancer",
+      "parent": "aws-vpc",
+      "props": { "icon": "Elastic-Load-Balancing" }
+    },
+    {
+      "id": "aws-az-a",
+      "type": "aws.Group",
+      "label": "eu-west-1a",
+      "parent": "aws-vpc",
+      "props": { "groupType": "availability-zone" }
+    },
+    {
+      "id": "aws-public-a",
+      "type": "aws.Group",
+      "label": "Public subnet",
+      "parent": "aws-az-a",
+      "props": { "groupType": "public-subnet" }
+    },
+    {
+      "id": "aws-nat-a",
+      "type": "aws.Resource",
+      "label": "NAT gateway",
+      "parent": "aws-public-a",
+      "props": { "icon": "Amazon-VPC_NAT-Gateway" }
+    },
+    {
+      "id": "aws-private-a",
+      "type": "aws.Group",
+      "label": "Private subnet",
+      "parent": "aws-az-a",
+      "props": { "groupType": "private-subnet" }
+    },
+    {
+      "id": "aws-api-a",
+      "type": "aws.Service",
+      "label": "Trip API",
+      "parent": "aws-private-a",
+      "props": { "icon": "Amazon-Elastic-Container-Service" }
+    },
+    {
+      "id": "aws-db-sg",
+      "type": "aws.Group",
+      "label": "Database security group",
+      "parent": "aws-private-a",
+      "props": { "groupType": "security-group" }
+    },
+    {
+      "id": "aws-db",
+      "type": "aws.Service",
+      "label": "Database, primary",
+      "parent": "aws-db-sg",
+      "props": { "icon": "Amazon-RDS" }
+    },
+    {
+      "id": "aws-az-b",
+      "type": "aws.Group",
+      "label": "eu-west-1b",
+      "parent": "aws-vpc",
+      "props": { "groupType": "availability-zone" }
+    },
+    {
+      "id": "aws-public-b",
+      "type": "aws.Group",
+      "label": "Public subnet",
+      "parent": "aws-az-b",
+      "props": { "groupType": "public-subnet" }
+    },
+    {
+      "id": "aws-nat-b",
+      "type": "aws.Resource",
+      "label": "NAT gateway",
+      "parent": "aws-public-b",
+      "props": { "icon": "Amazon-VPC_NAT-Gateway" }
+    },
+    {
+      "id": "aws-private-b",
+      "type": "aws.Group",
+      "label": "Private subnet",
+      "parent": "aws-az-b",
+      "props": { "groupType": "private-subnet" }
+    },
+    {
+      "id": "aws-api-b",
+      "type": "aws.Service",
+      "label": "Trip API",
+      "parent": "aws-private-b",
+      "props": { "icon": "Amazon-Elastic-Container-Service" }
+    },
+    {
+      "id": "aws-worker",
+      "type": "aws.Service",
+      "label": "Ride worker",
+      "parent": "aws-private-b",
+      "props": { "icon": "Amazon-Elastic-Container-Service" }
+    },
+    {
+      "id": "aws-db-standby",
+      "type": "aws.Service",
+      "label": "Database, standby",
+      "parent": "aws-private-b",
+      "props": { "icon": "Amazon-RDS" }
+    }
+  ],
+  "edges": [
+    { "id": "gcp-users-dns", "type": "gcp.Path", "from": "gcp-users", "to": "gcp-dns", "label": "looks up" },
+    { "id": "gcp-users-lb", "type": "gcp.Path", "from": "gcp-users", "to": "gcp-lb", "label": "HTTPS" },
+    { "id": "gcp-lb-cdn", "type": "gcp.Path", "from": "gcp-lb", "to": "gcp-cdn", "label": "app" },
+    { "id": "gcp-cdn-assets", "type": "gcp.Path", "from": "gcp-cdn", "to": "gcp-assets", "label": "cache fill" },
+    { "id": "gcp-lb-api", "type": "gcp.Path", "from": "gcp-lb", "to": "gcp-api", "label": "/api" },
+    { "id": "gcp-api-db", "type": "gcp.Path", "from": "gcp-api", "to": "gcp-db", "label": "SQL" },
+    { "id": "gcp-api-queue", "type": "gcp.Path", "from": "gcp-api", "to": "gcp-queue", "label": "ended ride" },
+    { "id": "gcp-queue-worker", "type": "gcp.Path", "from": "gcp-queue", "to": "gcp-worker", "label": "pushes" },
+    { "id": "gcp-worker-db", "type": "gcp.Path", "from": "gcp-worker", "to": "gcp-db", "label": "SQL" },
+    { "id": "gcp-db-replica", "type": "gcp.Path", "from": "gcp-db", "to": "gcp-db-standby", "label": "replicates" },
+    {
+      "id": "az-front-door-assets",
+      "type": "azure.Connector",
+      "from": "az-front-door",
+      "to": "az-assets",
+      "label": "app"
+    },
+    { "id": "az-front-door-api", "type": "azure.Connector", "from": "az-front-door", "to": "az-api", "label": "/api" },
+    { "id": "az-api-db", "type": "azure.Connector", "from": "az-api", "to": "az-db", "label": "SQL" },
+    { "id": "az-api-queue", "type": "azure.Connector", "from": "az-api", "to": "az-queue", "label": "ended ride" },
+    { "id": "az-queue-worker", "type": "azure.Connector", "from": "az-queue", "to": "az-worker", "label": "next ride" },
+    { "id": "az-worker-db", "type": "azure.Connector", "from": "az-worker", "to": "az-db", "label": "SQL" },
+    { "id": "az-api-vault", "type": "azure.Connector", "from": "az-api", "to": "az-vault", "label": "secrets" },
+    { "id": "az-worker-vault", "type": "azure.Connector", "from": "az-worker", "to": "az-vault", "label": "secrets" },
+    {
+      "id": "az-apps-monitor",
+      "type": "azure.Connector",
+      "from": "az-snet-apps",
+      "to": "az-monitor",
+      "label": "logs, metrics"
+    },
+    { "id": "aws-users-dns", "type": "aws.Connection", "from": "aws-users", "to": "aws-dns", "label": "looks up" },
+    { "id": "aws-users-cdn", "type": "aws.Connection", "from": "aws-users", "to": "aws-cdn", "label": "HTTPS" },
+    { "id": "aws-cdn-assets", "type": "aws.Connection", "from": "aws-cdn", "to": "aws-assets", "label": "app" },
+    { "id": "aws-cdn-alb", "type": "aws.Connection", "from": "aws-cdn", "to": "aws-alb", "label": "/api" },
+    { "id": "aws-alb-api-a", "type": "aws.Connection", "from": "aws-alb", "to": "aws-api-a", "label": "HTTP" },
+    { "id": "aws-alb-api-b", "type": "aws.Connection", "from": "aws-alb", "to": "aws-api-b", "label": "HTTP" },
+    { "id": "aws-api-a-db", "type": "aws.Connection", "from": "aws-api-a", "to": "aws-db", "label": "SQL" },
+    { "id": "aws-api-b-db", "type": "aws.Connection", "from": "aws-api-b", "to": "aws-db", "label": "SQL" },
+    {
+      "id": "aws-db-replica",
+      "type": "aws.Connection",
+      "from": "aws-db",
+      "to": "aws-db-standby",
+      "label": "replicates"
+    },
+    {
+      "id": "aws-api-a-queue",
+      "type": "aws.Connection",
+      "from": "aws-api-a",
+      "to": "aws-queue",
+      "label": "ended ride"
+    },
+    {
+      "id": "aws-api-b-queue",
+      "type": "aws.Connection",
+      "from": "aws-api-b",
+      "to": "aws-queue",
+      "label": "ended ride"
+    },
+    { "id": "aws-worker-queue", "type": "aws.Connection", "from": "aws-worker", "to": "aws-queue", "label": "claims" },
+    { "id": "aws-worker-db", "type": "aws.Connection", "from": "aws-worker", "to": "aws-db", "label": "SQL" },
+    { "id": "aws-worker-email", "type": "aws.Connection", "from": "aws-worker", "to": "aws-email", "label": "receipt" },
+    {
+      "id": "aws-private-a-nat",
+      "type": "aws.Connection",
+      "from": "aws-private-a",
+      "to": "aws-nat-a",
+      "label": "outbound"
+    },
+    {
+      "id": "aws-private-b-nat",
+      "type": "aws.Connection",
+      "from": "aws-private-b",
+      "to": "aws-nat-b",
+      "label": "outbound"
+    },
+    {
+      "id": "aws-vpc-monitoring",
+      "type": "aws.Connection",
+      "from": "aws-vpc",
+      "to": "aws-monitoring",
+      "label": "logs, metrics"
+    }
+  ],
+  "views": [
+    {
+      "id": "new-city",
+      "diagram": "mindmap",
+      "parent": null,
+      "title": "Opening a second city",
+      "present": {
+        "mm-fleet": { "side": "right" },
+        "mm-website": { "side": "right" },
+        "mm-launch": { "side": "right" },
+        "mm-warehouse": { "side": "left" },
+        "mm-legal": { "side": "left" },
+        "mm-hosting": { "side": "left" }
+      },
+      "nodeIds": [
+        "mm-opening", "mm-fleet", "mm-first-titles", "mm-wholesalers", "mm-website", "mm-app", "mm-hire",
+        "mm-card-payments", "mm-ride-emails", "mm-launch", "mm-newsletter", "mm-opening-offer", "mm-warehouse",
+        "mm-shelving", "mm-van", "mm-legal", "mm-company", "mm-bank", "mm-hosting", "mm-on-gcp", "mm-on-azure",
+        "mm-on-aws"
+      ]
+    },
+    {
+      "id": "on-gcp",
+      "diagram": "gcp",
+      "parent": null,
+      "title": "Bike share on Google Cloud",
+      "caption": "Icons from a pack you fetch: umlimator.py pack fetch gcp, after Google's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.",
+      "nodeIds": [
+        "gcp-users", "gcp-project", "gcp-dns", "gcp-lb", "gcp-cdn", "gcp-assets", "gcp-queue", "gcp-region", "gcp-api",
+        "gcp-worker", "gcp-network", "gcp-subnet", "gcp-zone-b", "gcp-db", "gcp-zone-c", "gcp-db-standby"
+      ]
+    },
+    {
+      "id": "on-azure",
+      "diagram": "azure",
+      "parent": null,
+      "title": "Bike share on Azure",
+      "caption": "Icons from a pack you fetch: umlimator.py pack fetch azure, after Microsoft's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.",
+      "nodeIds": [
+        "az-subscription", "az-rg", "az-front-door", "az-monitor", "az-region", "az-assets", "az-queue", "az-vault",
+        "az-vnet", "az-snet-apps", "az-api", "az-worker", "az-snet-data", "az-db"
+      ]
+    },
+    {
+      "id": "on-aws",
+      "diagram": "aws",
+      "parent": null,
+      "title": "Bike share on AWS",
+      "nodeIds": [
+        "aws-users", "aws-cloud", "aws-dns", "aws-cdn", "aws-region", "aws-assets", "aws-queue", "aws-email",
+        "aws-monitoring", "aws-vpc", "aws-alb", "aws-az-a", "aws-public-a", "aws-nat-a", "aws-private-a", "aws-api-a",
+        "aws-db-sg", "aws-db", "aws-az-b", "aws-public-b", "aws-nat-b", "aws-private-b", "aws-api-b", "aws-worker",
+        "aws-db-standby"
+      ]
+    }
+  ]
+}
