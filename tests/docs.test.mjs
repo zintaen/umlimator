@@ -360,3 +360,38 @@ test('audit 48: the CLI guide\'s example PDF page heading is a view path of the 
   const paths = atlas.views.map(v => ctx.chain(v.id).map(id => ctx.V[id].title).join(' › '));
   assert.ok(guide.includes('umlimator-atlas.pdf') && paths.includes(said), `${said} is none of: ${paths.join(' | ')}`);
 });
+
+// audit 49: the CLI guide's first block renders the Umlimator Atlas to page.html, but its stills and check lines still named
+// the bookshop's views ('api', 'pic-*'), and both stopped with exit 1. Each --views on a page.html line goes through
+// umlimator.py's own pick() on the page that block's render line writes.
+test('audit 49: every --views in the CLI guide names views of the page its render line writes', async () => {
+  const { spawnSync } = await import('node:child_process'), { mkdtempSync, rmSync } = await import('node:fs'), { tmpdir } = await import('node:os'), { join } = await import('node:path');
+  const root = new URL('..', import.meta.url).pathname, guide = readFileSync(new URL('../docs/guide/cli.md', import.meta.url), 'utf8');
+  const cmds = [...guide.matchAll(/```bash\n([\s\S]*?)```/g)].flatMap(m => m[1].split('\n')).map(l => l.replace(/\s+#.*$/, '').trim()).filter(l => l.startsWith('python3 umlimator.py'));
+  const src = /^python3 umlimator\.py render (\S+) --out page\.html/.exec(cmds.find(l => / --out page\.html\b/.test(l)) || '');
+  assert.ok(src, 'a render line writes page.html');
+  const specs = cmds.filter(l => /\bpage\.html\b/.test(l) && / --views /.test(l)).map(l => /--views ('[^']*'|\S+)/.exec(l)[1].replace(/^'|'$/g, ''));
+  assert.ok(specs.length >= 2, `the guide's --views lines: ${specs}`);
+  const dir = mkdtempSync(join(tmpdir(), 'um-cli-')), page = join(dir, 'page.html');
+  try {
+    const r = spawnSync('python3', ['umlimator.py', 'render', src[1], '--out', page, '--no-check'], { cwd: root, encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr);
+    for (const spec of specs) {
+      const p = spawnSync('python3', ['-c', 'import sys; sys.path.insert(0, "."); import umlimator; print(umlimator.pick(sys.argv[1], sys.argv[2]))', page, spec], { cwd: root, encoding: 'utf8' });
+      assert.equal(p.status, 0, `--views ${spec}: ${p.stderr}`); }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+// audit 49: since #536 every map line is drawn at one width at rest (src/canvas/styles.js sets --um-ew by weight under
+// .hov, .hot and .key-on only), but the d.ts, the schema and the example cards still said a weight is drawn as a width
+test('audit 49: the types, the schema and the example texts say a line\'s weight shows on hover, selection and focus, not as its width at rest', () => {
+  const read = p => readFileSync(new URL(p, import.meta.url), 'utf8');
+  const dts = read('../lib/umlimator.d.ts'), mapEdge = dts.slice(dts.indexOf('export interface MapEdge'), dts.indexOf('export interface MapView'));
+  assert.match(mapEdge, /weight\?: 1 \| 2 \| 3;/); assert.match(mapEdge, /\n  what\?: string;/); assert.match(mapEdge, /\n  when\?: string;/);
+  const w = /How much the line stands for[\s\S]*?\*\//.exec(mapEdge)[0];
+  assert.doesNotMatch(w, /drawn as its width/); assert.match(w, /at one width at rest[\s\S]*on hover, selection and keyboard[\s\S]*focus/);
+  const schema = JSON.parse(read('../lib/umlimator.schema.json')).$defs.edge.properties.weight.description;
+  assert.doesNotMatch(schema, /drawn as its width/); assert.match(schema, /one width at rest; a line of weight 2 or 3 shows its width on hover, selection and keyboard focus/);
+  for (const p of ['../tools/types.json', '../examples/types/map.json', '../docs/gallery/map.md', '../examples/README.md', '../examples/monorepo.py', '../tools/bike-share/shop.json', '../examples/bike-share.json'])
+    assert.doesNotMatch(read(p), /heavier with more imports|weights 1 to 3 as widths|main path drawn heavier/, p);
+});

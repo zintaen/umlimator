@@ -25,7 +25,7 @@ pageClass: gallery-page
 <article class="ex-variant" id="view-monorepo-boxed">
 <h3><a href="/umlimator/examples/types/map.html#view=monorepo-boxed" target="_self">Packages, a box per folder</a></h3>
 <p class="ex-sub">a box per folder</p>
-<p>A map generated from a dependency list by <code>monorepo.py</code>: a card per package, a line per import, heavier with more imports, a box per folder, nested as the folders are.</p>
+<p>A map generated from a dependency list by <code>monorepo.py</code>: a card per package, a line per import, its weight (more imports) showing on hover, selection and focus and in its tooltip, a box per folder, nested as the folders are.</p>
 </article>
 <article class="ex-variant" id="view-monorepo-plain">
 <h3><a href="/umlimator/examples/types/map.html#view=monorepo-plain" target="_self">Packages, no boxes</a></h3>
@@ -35,7 +35,7 @@ pageClass: gallery-page
 <article class="ex-variant" id="view-lines-lines">
 <h3><a href="/umlimator/examples/types/map.html#view=lines-lines" target="_self">Line kinds, weights and steps</a></h3>
 <p class="ex-sub">line kinds, weights, steps</p>
-<p>A library's holds as lines of each kind, drawn in its colour: calls, feeds, triggers, state and guard; weights 1 to 3 as widths; numbered steps, 4a and 4b among them; and a line's sublabel under its label.</p>
+<p>A library's holds as lines of each kind, drawn in its colour: calls, feeds, triggers, state and guard; weights 1 to 3, each shown as a width on hover, selection and focus and in the line's tooltip; numbered steps, 4a and 4b among them; and a line's sublabel under its label.</p>
 </article>
 <article class="ex-variant" id="view-boxes-boxes">
 <h3><a href="/umlimator/examples/types/map.html#view=boxes-boxes" target="_self">Boxes, nested and tinted</a></h3>

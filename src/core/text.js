@@ -11,6 +11,10 @@ const inline = s => esc(s)
 const md = s => String(s ?? '').trim().split(/\n{2,}/).map(b => /^\s*[-*] /.test(b)
     ? '<ul>' + b.split(/\n/).map(l => '<li>' + inline(l.replace(/^\s*[-*] /, '')) + '</li>').join('') + '</ul>'
     : '<p>' + inline(b).replace(/\n/g, '<br>') + '</p>').join('');
+// a Markdown text (md()'s: `code`, **bold**, ==mark==, [links](https://…), - bullets, blank-line paragraphs) as plain words, its
+// first sentence only: what a tooltip and an accessible name say for it (audit 49: a weighted line read its markers aloud)
+const mdPlain = s => String(s ?? '').replace(/^\s*[-*] /gm, '').replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '$1').replace(/`([^`]+)`/g, '$1')
+  .replace(/\*\*([^*]+)\*\*/g, '$1').replace(/==([^=]+)==/g, '$1').replace(/\s+/g, ' ').trim().split(/(?<=\.)\s/)[0];
 const textW = (s, px) => measureText ? measureText(String(s ?? ''), px) : String(s ?? '').length * px * 0.6;
 // a text's lines where its author broke it (a Mermaid <br>, F2's Shift+Enter), one line where it has none: each drawn on its
 // own line, not as a space (audit 22, as flowWrap since audit 21); a broken text is as wide as its widest line (audit 24)
@@ -82,4 +86,4 @@ function glyph(g) {
 
 // a line break in a typed view's line label: each part its own line, EDGE_LH px below the one before (audit 22)
 const EDGE_BREAK = /\r\n?|[\n\u2028\u2029]/, EDGE_LH = 12;
-export { measureText, measured, esc, inline, md, textW, widest, brLines, linesW, sansW, hostMeasure, wrap2, clauseFit, fit, glyph, EDGE_BREAK, EDGE_LH };
+export { measureText, measured, esc, inline, md, mdPlain, textW, widest, brLines, linesW, sansW, hostMeasure, wrap2, clauseFit, fit, glyph, EDGE_BREAK, EDGE_LH };

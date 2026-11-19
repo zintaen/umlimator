@@ -1,5 +1,5 @@
 import { TYPED } from '../core/registry.js';
-import { EDGE_BREAK, EDGE_LH, clauseFit, esc, fit, glyph, measureText, sansW, textW, wrap2 } from '../core/text.js';
+import { EDGE_BREAK, EDGE_LH, clauseFit, esc, fit, glyph, mdPlain, measureText, sansW, textW, wrap2 } from '../core/text.js';
 import { roundPath, trimLine } from './lines.js';
 import { SHAPE, cardLook, drawnPts, markShape, r2, sidePorts, tabLine } from './shapes.js';
 import { CHG } from '../layout/layered.js';
@@ -42,8 +42,9 @@ function svgOf(geo, opts = {}) {
   let s = `<svg viewBox="${B.x} ${B.y} ${B.w} ${B.h}" data-w="${B.w}" data-h="${B.h}" role="group" aria-label="${esc(opts.title == null || opts.title === '' ? 'Diagram' : opts.title)}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
     <defs>${marker('d', LINE)}${marker('g', 'var(--um-green)')}${marker('r', 'var(--um-rose)')}${marker('v', 'var(--um-violet)')}${marker('h', 'var(--um-cyan)')}${map ? WIRES.map(w => marker(w[0], `var(--um-w-${w[0]})`)).join('') : ''}${heavy.map(m => { const [c, k] = m.split('-w'); return marker(m, MC[c], 1 + (k - 1) * .35); }).join('')}${T ? T.defs : ''}</defs>`;
   const chWord = x => { const c = CHG[lc(x)]; return c ? ', ' + c[1].toLowerCase() : ''; }; // a key and a line's title say its change (audits 44, 45)
-  // a map line's weight (2 or 3) shows as its width on hover, selection and focus only; its title and name say why: its what, else "weight 2 of 3"
-  const wtWord = e => { if (!map || !(e.weight > 1)) return ''; const w = [...new Set((e.all || [e]).map(x => x.what).filter(x => x != null && x !== '').map(String))].join(' / ');
+  // a map line's weight (2 or 3) shows as its width on hover, selection and focus only; its title and name say why: its what
+  // (Markdown for the details panel: as plain words, its first sentence, as a card's sub-line), else "weight 2 of 3"
+  const wtWord = e => { if (!map || !(e.weight > 1)) return ''; const w = [...new Set((e.all || [e]).map(x => x.what).filter(x => x != null && x !== '').map(mdPlain).filter(Boolean))].join(' / ');
     return w || `weight ${e.weight} of 3`; };
   const marked = markShape; // a typed shape's or box's change (src/draw/shapes.js)
   // how many boxes a box sits in, each counted once: a container that names itself, or another in a cycle, as its parent

@@ -18,7 +18,7 @@
    "label": "Packages, a box per folder",
    "kind": "file",
    "sublabel": "a box per folder",
-   "what": "A map generated from a dependency list by `monorepo.py`: a card per package, a line per import, heavier with more imports, a box per folder, nested as the folders are.",
+   "what": "A map generated from a dependency list by `monorepo.py`: a card per package, a line per import, its weight (more imports) showing on hover, selection and focus and in its tooltip, a box per folder, nested as the folders are.",
    "how": "From examples/monorepo.json.",
    "opensView": "monorepo-boxed"
   },
@@ -36,7 +36,7 @@
    "label": "Line kinds, weights and steps",
    "kind": "file",
    "sublabel": "line kinds, weights, steps",
-   "what": "A library's holds as lines of each kind, drawn in its colour: calls, feeds, triggers, state and guard; weights 1 to 3 as widths; numbered steps, 4a and 4b among them; and a line's sublabel under its label.",
+   "what": "A library's holds as lines of each kind, drawn in its colour: calls, feeds, triggers, state and guard; weights 1 to 3, each shown as a width on hover, selection and focus and in the line's tooltip; numbered steps, 4a and 4b among them; and a line's sublabel under its label.",
    "how": "From examples/variants/map-lines.json.",
    "opensView": "lines-lines"
   },

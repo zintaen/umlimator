@@ -17,7 +17,7 @@ A command that fails leaves its previous output as it was.
 ```bash
 python3 umlimator.py render examples/umlimator-atlas.json --out page.html   # the interactive page, then its layout check
 python3 umlimator.py stills page.html --out stills/                   # every view as SVG and PNG
-python3 umlimator.py stills page.html --out stills/ --views overview,api --scale 1.5 --theme light
+python3 umlimator.py stills page.html --out stills/ --views overview,layers --scale 1.5 --theme light
 python3 umlimator.py render examples/sales-classes.json --out classes.html   # a class diagram's page; stills, check and pdf take it too
 ```
 
@@ -30,7 +30,7 @@ python3 umlimator.py render examples/sales-classes.json --out classes.html   # a
 ## Checks
 
 ```bash
-python3 umlimator.py check page.html --views 'pic-*'   # the layout check on chosen views
+python3 umlimator.py check page.html --views 'co*'     # the layout check on chosen views
 python3 umlimator.py check page.html --expand          # also each view with each stacked card unfolded
 ```
 

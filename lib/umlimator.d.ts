@@ -361,10 +361,17 @@ export interface MapEdge {
   /** The line's kind (default calls). A line that stands for several edges (A→B and B→A, parallel edges) takes the first
    *  kind they name, in model order. Nothing is guessed from the label unless the view has `kindsFromLabels`. */
   kind?: WireKind;
-  /** How much the line stands for, drawn as its width: 1 (the default), 2 or 3 (about 1.8, 3.2 and 4.5 px), the arrowhead and
-   *  hit line growing with it. The host picks the bucket (say under 10, under 100, 100 or more relations); anything else is 1.
-   *  A line that stands for several edges takes the largest. */
+  /** How much the line stands for: 1 (the default), 2 or 3. Every line is drawn at one width at rest; a line of weight 2 or 3
+   *  grows to its width (about 3.2 and 4.5 px), with a larger arrowhead and hit line, on hover, selection and keyboard
+   *  focus, and its tooltip and accessible name say its `what` (as plain words, its first
+   *  sentence), else "weight 2 of 3". The host picks the bucket (say under 10, under 100, 100 or more relations); anything
+   *  else is 1. A line that stands for several edges takes the largest. */
   weight?: 1 | 2 | 3;
+  /** The details panel's text. Markdown: `code`, **bold**, [links](https://…), blank-line paragraphs, - bullets. A weighted
+   *  line's tooltip and accessible name say it as plain words, its first sentence only. */
+  what?: string;
+  /** When the line is used, in its tooltip. */
+  when?: string;
   /** Its place in the order things happen, drawn in a circle on the line before its label, as a numbered view draws its
    *  steps, in any view: 2, 2.1 for a step within step 2, or text of up to 3 characters such as "2a" (a pill for 2 or 3
    *  characters). The line's name and title say it as written ("Step 2a: …"); in order, 2 < 2a < 2b < 3. A numbered view

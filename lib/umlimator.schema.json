@@ -1067,7 +1067,7 @@
       2,
       3
      ],
-     "description": "How much the line stands for, drawn as its width (default 1)."
+     "description": "How much the line stands for (default 1). Every line is drawn at one width at rest; a line of weight 2 or 3 shows its width on hover, selection and keyboard focus, and its tooltip and accessible name say its what (as plain words, its first sentence), else \"weight 2 of 3\"."
     },
     "step": {
      "anyOf": [
