@@ -8,14 +8,14 @@
 <div id="app"></div>
 <script type="module">
 import { mountPage } from '../lib/umlimator.js';
-const BIKE = await (await fetch('../examples/bike-share.json')).json();
+const FX = await (await fetch('fixtures/integration.json')).json();
 const LONG = 'Prices a ride when it ends from the rules that Pricing sends back, charges the rider through the payment provider and keeps the receipt with the trip, so the rider app can show what it cost.';
-BIKE.nodes.find(n => n.id === 'trips').how = LONG; // one sentence, longer than a line of the details panel (its when is short)
+FX.nodes.find(n => n.id === 'trips').how = LONG; // one sentence, longer than a line of the details panel (its when is short)
 const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 try {
   location.hash = '#view=system';
-  const h = mountPage(document.getElementById('app'), BIKE, { instant: true });
+  const h = mountPage(document.getElementById('app'), FX, { instant: true });
   h.select({ type: 'node', id: 'trips' });
   const b = document.querySelector('#m-panel [data-unfold]');
   check("a stacked card that can unfold has an Unfold here button in its details", !!b);

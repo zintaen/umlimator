@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-<!-- Ask the map: questions about bike share's Trip service, each answered in words, with the cards and lines it is about lit
+<!-- Ask the map: questions about the Umlimator Atlas's overview (what umlimator is made of), each answered in words, with the cards and lines it is about lit
      (highlight(), from paths() and reach()) and a flow played as a tour (tour()). The answers here are written by hand;
      "What an AI model would get" below shows the text describe() gives a model to choose them itself (docs/module-api.md).
      Serve the repository over HTTP to open it: python3 -m http.server  then  http://localhost:8000/examples/ask.html -->
@@ -27,15 +27,15 @@
 </style>
 <header>
   <h1>Ask the map</h1>
-  <p>Bike share's Trip service. Each answer lights what it's about; a flow plays as a tour.</p>
+  <p>The Umlimator Atlas: what umlimator is made of. Each answer lights what it's about; a flow plays as a tour.</p>
 </header>
 <main>
   <div id="map"></div>
   <aside>
     <div id="questions" role="group" aria-label="Questions">
-      <button data-q="charge" aria-pressed="false">How does a ride get charged?</button>
-      <button data-q="pricing" aria-pressed="false">What stops if Pricing is down?</button>
-      <button data-q="lifecycle" aria-pressed="false">What does the trip lifecycle set off?</button>
+      <button data-q="review" aria-pressed="false">How does a pull request get its comment?</button>
+      <button data-q="module" aria-pressed="false">What stops if the module breaks?</button>
+      <button data-q="cli" aria-pressed="false">What does umlimator.py set off?</button>
       <button data-q="describe" aria-pressed="false">Describe this view</button>
     </div>
     <p id="answer" aria-live="polite"></p>
@@ -46,7 +46,7 @@
 import { render, describe, paths, reach } from '../lib/umlimator.js';
 import { withIcons } from './icons.js';
 
-const model = await withIcons(await (await fetch('bike-share.json')).json()), view = 'trips';
+const model = await withIcons(await (await fetch('umlimator-atlas.json')).json()), view = 'overview';
 const map = render(document.getElementById('map'), model, { view });
 const name = id => model.nodes.find(n => n.id === id).label;
 const list = xs => xs.length < 3 ? xs.join(' and ') : xs.slice(0, -1).join(', ') + ' and ' + xs.at(-1);
@@ -54,20 +54,20 @@ const around = refs => refs.filter(r => r.type === 'node' && r.distance > 0).map
 
 // each answer: its words, what it lights, and the tour it plays (a host with an AI model gets these from the model)
 const ANSWERS = {
-  charge() {
-    map.highlight([...paths(model, view, 'rider-app', 'payments'), ...paths(model, view, 'fare', 'pricing')]);
-    map.tour(['rider-app', 'trip-api', 'lifecycle', 'fare', 'payments']);
-    return 'The Rider app ends the ride through the Trip API. Trip lifecycle closes it and passes it to the Fare calculator, which gets the price from Pricing and charges the rider through the Payment provider.';
+  review() {
+    map.highlight([...paths(model, view, 'github', 'cli'), ...paths(model, view, 'cli', 'module')]);
+    map.tour(['github', 'action', 'cli', 'module']);
+    return 'GitHub tells the Diff Action about the pull request. The Action runs umlimator.py diff --base, which has the module diff each model that changed, and the Action posts what changed back on GitHub as a comment.';
   },
-  pricing() {
-    const refs = reach(model, view, 'pricing', { backward: true });
+  module() {
+    const refs = reach(model, view, 'module', { backward: true });
     map.highlight(refs); map.tour(null);
-    return `${list(around(refs))} call into Pricing, one through the next: each would stall. The nearer to Pricing, the brighter.`;
+    return `${list(around(refs))} reach the module, one through the next: each would stop drawing. The nearer to the module, the brighter.`;
   },
-  lifecycle() {
-    const refs = reach(model, view, 'lifecycle');
+  cli() {
+    const refs = reach(model, view, 'cli');
     map.highlight(refs); map.tour(null);
-    return `When a ride moves on, Trip lifecycle sets off ${list(around(refs))}.`;
+    return `When it runs, umlimator.py sets off ${list(around(refs))}.`;
   },
   describe() { map.highlight(null); map.tour(null); return describe(model, view); },
 };

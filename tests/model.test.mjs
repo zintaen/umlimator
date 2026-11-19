@@ -5,14 +5,16 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { validate, check, layout, rules, describe } from '../lib/umlimator.js';
 import { mapContext } from '../src/map/context.js';
 import { fit } from '../src/core/text.js';
-// bike-share holds typed views since step 3 of the one-model plan: the full bundle validates them, as the page draws them
+// the integration fixture holds typed views: the full bundle validates them, as the page draws them
 import { validate as validateAll } from '../lib/umlimator-all.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
+// every example, and the integration fixture and its Structurizr import (models of every type that the examples do not hold), as paths read() takes
+const modelFiles = () => [...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).map(f => `../examples/${f}`), './fixtures/integration.json', './fixtures/integration-c4.json'];
 
-test('validate() finds nothing wrong in the examples and the benchmark models', () => {
-  assert.deepEqual(validateAll(read('../examples/bike-share.json')), [], 'bike-share');
-  assert.deepEqual(validate(read('../examples/bike-share-c4.json')), [], 'bike-share-c4');
+test('validate() finds nothing wrong in the test fixtures and the benchmark models', () => {
+  assert.deepEqual(validateAll(read('./fixtures/integration.json')), [], 'integration');
+  assert.deepEqual(validate(read('./fixtures/integration-c4.json')), [], 'integration-c4');
   for (const f of ['b10', 'b26', 'b69', 'd24', 'm50']) assert.deepEqual(validate(read(`../bench/models/${f}.json`)), [], f);
 });
 
@@ -204,7 +206,7 @@ test('a card, box or view whose id is an Object.prototype name lays out, validat
 });
 
 test('the layout search render bakes stops on work, not on a clock: a slow machine bakes the same layout (audit 7)', () => {
-  const m = JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url))); // its rider shop's overview, which has no pins
+  const m = JSON.parse(readFileSync(new URL('./fixtures/integration.json', import.meta.url))); // its rider shop's overview, which has no pins
   const run = () => { const c = mapContext(m); c.planOf('overview'); return JSON.stringify(c.optimize('overview')); };
   const fast = run(), now = performance.now, t = now.call(performance);
   performance.now = () => t + (now.call(performance) - t) * 1000; // a machine 1000 times slower, as its clock sees it
@@ -248,9 +250,9 @@ test('audit 19: an object with a toString key ({"toString": 1}, valid JSON) is n
   for (const f of readdirSync(dir, { recursive: true }).filter(f => f.endsWith('.js') && !/^(page|canvas)[\\/]/.test(f))) await import(new URL(f.replaceAll('\\', '/'), dir));
   const { validate: v, layout: l, svgOf } = { ...(await import('../src/map/validate.js')), ...(await import('../src/map/api.js')), ...(await import('../src/draw/svg.js')) };
   const { describe: d } = await import('../src/map/insight.js'), bad = () => JSON.parse('{"toString":1}');
-  const files = readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')), thrown = [];
+  const files = modelFiles(), thrown = [];
   for (const f of files) {
-    const m = read(`../examples/${f}`); if (!Array.isArray(m.views)) continue;
+    const m = read(f); if (!Array.isArray(m.views)) continue;
     const said = [], todo = [...(m.nodes || []).map((x, i) => [x, `nodes[${i}]`]), ...(m.edges || []).map((x, i) => [x, `edges[${i}]`]),
       ...m.views.flatMap((w, i) => [...(w.nodes || []).map((x, j) => [x, `views[${i}].nodes[${j}]`]), ...(Array.isArray(w.edges) ? w.edges : []).map((x, j) => [x, `views[${i}].edges[${j}]`])])];
     while (todo.length) { const [x, at] = todo.pop(); if (!x || typeof x !== 'object') continue; x.label = bad(); said.push(at + '.label'); if (x.props) { x.props.guard = bad(); said.push(at + '.props.guard'); }
@@ -272,9 +274,9 @@ test('audit 20: every exported function reads a hostile model (an object with a 
   const U = await import('../lib/umlimator-all.js'), { readdirSync } = await import('node:fs');
   const browser = ['render', 'mountPage'], ran = new Set(); // render(): tests/stories.html plays a hostile story
   const call = (name, fn) => { ran.add(name); return fn(); };
-  const files = readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')), thrown = [];
+  const files = modelFiles(), thrown = [];
   for (const f of files) for (const bad of ['{"toString":1}', '{"valueOf":1}', '{"toString":1,"valueOf":1}', '[{"toString":1}]']) {
-    const plain = read(`../examples/${f}`); if (!Array.isArray(plain.views) || !plain.views.length) continue;
+    const plain = read(f); if (!Array.isArray(plain.views) || !plain.views.length) continue;
     const m = structuredClone(plain), B = () => JSON.parse(bad), v = m.views[0].id, nodes = m.nodes || [], a = nodes[0] && nodes[0].id, b = nodes[1] && nodes[1].id;
     [...nodes, ...(m.edges || [])].forEach((x, i) => { if (x && typeof x === 'object' && i % 2) x.label = B(); });
     if (nodes[2]) nodes[2].id = B(); // a card whose id is no text
@@ -436,7 +438,7 @@ const typedSources = async () => { const { readdirSync } = await import('node:fs
 
 test('audit 28: every type\'s edit hooks pick a fresh id on a model holding a cycle or a BigInt (one id walk, src/core/model.js usedIds)', async () => {
   const { diagramOf } = await typedSources(), { readdirSync } = await import('node:fs');
-  const files = [...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).map(f => `../examples/${f}`),
+  const files = [...modelFiles(),
     ...readdirSync(new URL('./', import.meta.url)).filter(f => f.endsWith('-minimal.json')).map(f => `./${f}`)];
   const bad = [], ran = new Set();
   for (const f of files) { const base = read(f); if (base.schemaVersion !== 2) continue;
@@ -500,7 +502,7 @@ test('audit 29: a BigInt in a line or a view: validate() warns of it, and layout
   U.layout(T, tv.id); U.describe(T, tv.id); U.check(T, tv.id);
   // every example, each of its numbers in turn a BigInt (a stride of them, to keep the run short): nothing throws
   const { readdirSync } = await import('node:fs'), bad = [];
-  for (const f of readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).sort()) { const m0 = read(`../examples/${f}`), spots = [];
+  for (const f of modelFiles().sort()) { const m0 = read(f), spots = [];
     const walk = (o, p) => { if (o && typeof o === 'object') for (const k of Object.keys(o)) { if (typeof o[k] === 'number') spots.push([...p, k]); else walk(o[k], [...p, k]); } }; walk(m0, []);
     for (let i = 0; i < spots.length; i += Math.max(1, Math.ceil(spots.length / 12))) { const sp = spots[i], m = structuredClone(m0); let o = m; for (const k of sp.slice(0, -1)) o = o[k];
       o[sp.at(-1)] = BigInt(Math.trunc(o[sp.at(-1)]));
@@ -773,8 +775,8 @@ test('audit 32: a BigInt in a line\'s ends, a parent, a view\'s nodeIds or diagr
     assert.deepEqual(said.filter(p => p.path === path).map(p => p.message), [message], `${path}: ${JSON.stringify(said)}`);
   }
   // every typed example: a BigInt at each end of its first typed line and as its first element's parent
-  for (const f of readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json'))) {
-    const m = read(`../examples/${f}`); if (m.schemaVersion !== 2) continue;
+  for (const f of modelFiles()) {
+    const m = read(f); if (m.schemaVersion !== 2) continue;
     const e = (m.edges || []).find(x => x && x.type != null), n = (m.nodes || [])[0];
     if (e) { e.from = 1n; e.to = 2n; } if (n) n.parent = 4n;
     let said; assert.doesNotThrow(() => { said = L.validate(m); }, f);
@@ -799,8 +801,8 @@ test('audit 32: a view titled 0 is named 0 by describe() and diff(), on a map an
   // title "" (no title) is still named by its id, and a title "0" as written
   const blank = m(); blank.views[0].title = ''; assert.equal(L.describe(blank, 'overview').split('\n')[0], 'overview: 2 cards and 1 line.');
   // every typed view of every example: its describe() opens with its title, 0 too
-  for (const f of readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json'))) {
-    const x = read(`../examples/${f}`); if (x.schemaVersion !== 2) continue;
+  for (const f of modelFiles()) {
+    const x = read(f); if (x.schemaVersion !== 2) continue;
     for (const v of x.views.filter(v => v.diagram != null && v.diagram !== 'map')) {
       const y = structuredClone(x); y.views.find(w => w.id === v.id).title = 0;
       const first = L.describe(y, v.id).split('\n')[0];
@@ -917,7 +919,7 @@ test('audit 35: members nested 4,000 deep are read by every core entry point', a
 
 test('audit 35: canonDeep writes what canon writes, on every example and hostile values', async () => {
   const { canon, canonDeep } = await import('../src/core/model.js');
-  const files = ['../examples/', './', '../docs/diagrams/examples/'].flatMap(d => readdirSync(new URL(d, import.meta.url)).filter(f => f.endsWith('.json')).map(f => d + f));
+  const files = ['../examples/', './', './fixtures/', '../docs/diagrams/examples/'].flatMap(d => readdirSync(new URL(d, import.meta.url)).filter(f => f.endsWith('.json')).map(f => d + f));
   let n = 0; for (const f of files) { let m; try { m = JSON.parse(readFileSync(new URL(f, import.meta.url))); } catch { continue; } assert.equal(canonDeep(m), canon(m), f); n++; }
   assert.ok(n > 80, String(n));
   const cyc = { a: 1 }; cyc.self = cyc; cyc.list = [cyc, { up: cyc }]; const arr = [1]; arr.push(arr);

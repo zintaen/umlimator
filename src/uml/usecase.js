@@ -1,3 +1,4 @@
+import { apply } from '../core/apply.js';
 import { aKind, ownNodes, registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -7,7 +8,7 @@ import { brLines } from '../typed/draw.js';
 import { closesCycle, commentConnect, commentLinkProblems, lineIn, lineItem } from './class.js'; // SHAPE.note, a comment's look too
 import { ownersOn, placeTabs, readingOrder } from './owners.js';
 import { snKindName } from './structure.js';
-import { usedIds, jsonText, labelOr, elName, propTextProblems } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName, propTextProblems, copyOf } from '../core/model.js';
 
 /* ---------- the use case diagram, uml.use-case (work package 4.4, notes/stage-4.md §8) ----------
    Actors (a stick figure), use cases (an ellipse, its extension points in a compartment under the name) and subjects: a
@@ -310,10 +311,19 @@ function ucConnect(model, view, from, to, at, line) {
   const loop = UC_OBJ(line) && (line.type === 'uml.Generalization' ? closesCycle(model, view, line.type, from, to)
     : line.type === 'uml.Include' ? closesCycle(model, view, line.type, from, to, 'an include', 'include itself') : null);
   if (loop) return loop;
-  if (!UC_OBJ(line) || line.type !== 'uml.Association' || ty(from) !== 'uml.UseCase' || ty(to) !== 'uml.Actor') return null;
+  if (!UC_OBJ(line) || typeof line.type !== 'string' || !UC_OBJ(view)) return null;
   const used = new Set(); usedIds(model, used);
-  let k = 1; while (used.has('association' + k)) k++;
-  return [{ op: 'add', element: { id: 'association' + k, type: 'uml.Association', from: to, to: from }, view: view.id }];
+  const fresh = b => { let k = 1; while (used.has(b + k)) k++; return b + k; }, flip = line.type === 'uml.Association' && ty(from) === 'uml.UseCase' && ty(to) === 'uml.Actor';
+  const commands = [{ op: 'add', element: { id: fresh(flip ? 'association' : line.type.split('.').pop().toLowerCase()), type: line.type, from: flip ? to : from, to: flip ? from : to,
+    ...(UC_OBJ(line.props) ? { props: copyOf(line.props) } : {}) }, view: view.id }];
+  // any other error the line brings (include-ends, extend-ends, association-ends, generalization-kinds) is refused with the
+  // rule's words, as the state machine's and the overview's connect refuse theirs (audit 50). extend-points is the new extend's
+  // own until its extension points are picked in the properties panel, so it is not one
+  const key = p => p.rule + ' ' + p.ids.join(' '), errs = m => ucProblems(m, UC_ARR(m.views).find(v => UC_OBJ(v) && v.id === view.id) || view).filter(p => p.level === 'error' && p.rule !== 'extend-points');
+  let now; try { now = apply(model, commands); } catch (e) { return { error: String(e.message) }; }
+  const was = new Set(errs(model).map(key)), bad = errs(now).find(p => !was.has(key(p)));
+  if (bad) return { error: flip ? bad.message : bad.message.replace(`: ${commands[0].element.id} `, ': the new line ') }; // not added: the canvas names its own
+  return flip ? commands : null; // null: the canvas's own add, its own id
 }
 
 /* remove: Shift + Delete on extension points (the member list's ✕) takes every extend left naming none of its use case's

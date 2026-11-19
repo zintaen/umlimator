@@ -1,11 +1,11 @@
-// The bike share model, examples/bike-share.json: the one test and bench model, built by tools/bike-share.mjs from its
-// part files in tools/bike-share/. The committed model is what the build writes, byte for byte, and so is each part
+// The integration fixture, tests/fixtures/integration.json (a moped share): the one integration test model, built by
+// tests/fixtures/integration.mjs from its part files in tests/fixtures/integration/. The committed model is what the build writes, byte for byte, and so is each part
 // file, so neither can drift from the other. The build stops on an id used twice, an unknown key, a view whose id is a
 // card's (but trips, fleet and the shop's api), a new view id starting with "f", and a new view that lists accounts, flags or payments.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { build, files, format, KEYS, INNER } from '../tools/bike-share.mjs';
+import { build, files, format, KEYS, INNER } from './fixtures/integration.mjs';
 import { validate, rules } from '../lib/umlimator-all.js';
 import { execFileSync } from 'node:child_process';
 import '../src/map/typed.js';
@@ -50,13 +50,13 @@ import { appliedOf } from '../src/uml/stereotypes.js';
 import { elementCount } from '../src/canvas/pieces.js';
 import { layout as layoutAll } from '../lib/umlimator-all.js';
 
-const read = name => JSON.parse(readFileSync(new URL(`../tools/bike-share/${name}.json`, import.meta.url), 'utf8'));
+const read = name => JSON.parse(readFileSync(new URL(`./fixtures/integration/${name}.json`, import.meta.url), 'utf8'));
 
-test('examples/bike-share.json is what tools/bike-share.mjs builds from its part files, byte for byte, and so is each part file', () => {
+test('tests/fixtures/integration.json is what tests/fixtures/integration.mjs builds from its part files, byte for byte, and so is each part file', () => {
   const all = files();
-  assert.deepEqual(all.filter(f => f.now !== f.text).map(f => f.path), [], 'run node tools/bike-share.mjs');
+  assert.deepEqual(all.filter(f => f.now !== f.text).map(f => f.path), [], 'run node tests/fixtures/integration.mjs');
   assert.equal(all[0].now, build().text);
-  assert.deepEqual(all.map(f => f.path).slice(0, 2), ['examples/bike-share.json', 'tools/bike-share/model.json']);
+  assert.deepEqual(all.map(f => f.path).slice(0, 2), ['tests/fixtures/integration.json', 'tests/fixtures/integration/model.json']);
 });
 
 test('the built model validates and keeps its rules; the fleet card is battery-service, and no card is named battery', () => {
@@ -65,8 +65,8 @@ test('the built model validates and keeps its rules; the fleet card is battery-s
   assert.deepEqual(rules(model), []);
   assert.deepEqual(model.views.slice(0, 5).map(v => v.id), ['context', 'system', 'trips', 'fleet', 'ride-end']);
   assert.ok(model.nodes.some(n => n.id === 'battery-service' && n.label === 'Battery monitor'));
-  // the id battery is the e-bike's SysML block (step 3), never a map card
-  assert.deepEqual(model.nodes.filter(n => n.id === 'battery').map(n => n.type), ['sysml.Block'], 'the id battery is the e-bike block\'s');
+  // the id battery is the e-moped's SysML block (step 3), never a map card
+  assert.deepEqual(model.nodes.filter(n => n.id === 'battery').map(n => n.type), ['sysml.Block'], 'the id battery is the e-moped block\'s');
 });
 
 test('the key order of every object of a known kind comes from the build, not from how a part file is written', () => {
@@ -110,13 +110,13 @@ test('the build stops on what would break a pin without an error', () => {
   assert.throws(() => build(head(x => { x.parts = []; })), /names no parts/);
 });
 
-// ---- the typed views (step 3 of the one-model plan): what tests/atlas.test.mjs and tests/ebike-atlas.test.mjs (gone in step 4) read of the
-// Bookshop and e-bike atlases, read of the bike share, which holds a view of each of the 28 types
-const M = JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url), 'utf8'));
+// ---- the typed views (step 3 of the one-model plan): what the Bookshop and SysML atlases' tests (gone in step 4) read of them,
+// read of the integration fixture, which holds a view of each of the 28 types
+const M = JSON.parse(readFileSync(new URL('./fixtures/integration.json', import.meta.url), 'utf8'));
 const MAPS = ['context', 'system', 'trips', 'fleet', 'ride-end', 'overview', 'api', 'checkout', 'dock-feed', 'demand', 'help'];
 const view = id => M.views.find(v => v.id === id);
 
-test('the bike share holds a view of each of the 28 types: the 14 UML diagrams and information flow, SysML\'s four, C4 (five of its levels), ER, data flow, flowchart, BPMN, the mindmap and the three clouds', () => {
+test('the integration fixture holds a view of each of the 28 types: the 14 UML diagrams and information flow, SysML\'s four, C4 (five of its levels), ER, data flow, flowchart, BPMN, the mindmap and the three clouds', () => {
   assert.deepEqual(M.views.filter(v => !v.diagram).map(v => v.id), MAPS);
   assert.deepEqual([...new Set(M.views.map(v => v.diagram).filter(Boolean))].sort(), ['aws', 'azure', 'bpmn', 'c4.component', 'c4.container', 'c4.context',
     'c4.deployment', 'c4.dynamic', 'dfd', 'er', 'flowchart', 'gcp', 'mindmap', 'sysml.block-definition', 'sysml.internal-block', 'sysml.parametric',
@@ -149,12 +149,12 @@ test('the model validates clean through every type\'s rules; the four problems t
     ['error', 'generalization-kinds', ['member-is-rider', 'member', 'rider-actor']],
     ['error', 'generalization-kinds', ['card-is-pay', 'pay-by-card', 'pay']],
     ['warning', 'part-type', ['ride-service.rides', 'ride-service']], ['warning', 'part-type', ['ride-service.listeners', 'ride-service']]]);
-  // one state machine's initial pseudostate at the model's top: the bike's life is drawn inside its E-bike state
+  // one state machine's initial pseudostate at the model's top: the moped's life is drawn inside its E-moped state
   const two = structuredClone(M); two.nodes.find(n => n.id === 'bl-new').parent = undefined;
   assert.deepEqual(validateAll(two).map(p => p.rule), ['initial-one']);
 });
 
-test('every view lays out; check() finds only the crossings of the typed views the Bookshop and e-bike files kept, and none on a map view', () => {
+test('every view lays out; check() finds only the crossings of the typed views the Bookshop and SysML files kept, and none on a map view', () => {
   const found = [];
   for (const v of M.views) {
     const g = layout(M, v.id);
@@ -165,9 +165,9 @@ test('every view lays out; check() finds only the crossings of the typed views t
   assert.deepEqual(found.map(p => p.split(':')[0]), PINNED_CROSS);
 });
 // rebalance's 2 and the C4, data flow, cloud and BPMN views' as their Bookshop files' (repair-process 5, 4 in the Bookshop's,
-// and hire-overview 1, none in the Bookshop's: the bike share's labels are other widths); counted in Node, where the CI loop's
+// and hire-overview 1, none in the Bookshop's: the fixture's labels are other widths); counted in Node, where the CI loop's
 // browser count may differ by a crossing or two (its ceiling is in .github/workflows/check.yml). Step 4's review took the
-// worker's line to the database out of the C4 views, as out of bike-share.dsl: c4-containers kept 1 of its 3, and
+// worker's line to the database out of the C4 views, as out of tests/fixtures/integration.dsl: c4-containers kept 1 of its 3, and
 // c4-end-ride's 2 and c4-deployment's 1 went with it
 const PINNED_CROSS = ['view hire-overview', ...Array(2).fill('view rebalance'), 'view c4-containers', ...Array(2).fill('view c4-components'), 'view dfd-0', ...Array(5).fill('view repair-process'), 'view on-gcp', ...Array(2).fill('view on-azure'),
   ...Array(2).fill('view on-aws')];
@@ -192,23 +192,20 @@ test('every drill-down opens a view of the model; from the map, the C4 context, 
   assert.deepEqual([...reach('overview')].sort(), ['api', 'checkout', 'overview']);
   assert.deepEqual([...new Set([...reach('context'), ...reach('c4-context'), ...reach('new-city'), ...reach('overview')])].sort(), M.views.map(v => v.id).sort());
   assert.ok(!opens.some(([, , o]) => ['new-city', 'c4-context', 'context'].includes(o)), 'nothing opens a root view: each is in the views list');
-  // the typed views hang off three of those roots, the map, the C4 context and the mindmap, and the examples' README says so,
-  // not that every one is joined to the map (audit 48)
+  // the typed views hang off three of those roots, the map, the C4 context and the mindmap, not all of them off the map (audit 48)
   const typedRoots = ['context', 'c4-context', 'new-city', 'overview'].filter(r => [...reach(r)].some(v => M.views.find(x => x.id === v).diagram));
   assert.deepEqual(typedRoots, ['context', 'c4-context', 'new-city']);
-  const row = readFileSync(new URL('../examples/README.md', import.meta.url), 'utf8').split('\n').find(l => l.startsWith('| [`bike-share.json`]'));
-  assert.match(row, /28 diagram types, reached by drill-down from the map, the C4 system context or the new city's mindmap, each a root in the views list \|$/);
   const step = (a, b) => assert.ok(next.get(a).has(b), `${a} opens ${b}`);
-  // the journeys: a ride's fare to the classes to a ride's state machine; a bike's object to its state machine; the fleet to
-  // the e-bike's blocks to inside the e-bike; the requirements to the range analysis; the fleet's planner to rebalancing (the
+  // the journeys: a ride's fare to the classes to a ride's state machine; a moped's object to its state machine; the fleet to
+  // the e-moped's blocks to inside the e-moped; the requirements to the range analysis; the fleet's planner to rebalancing (the
   // only way in to rebalance, swap-battery and dock-latch) to swapping a battery
-  step('trips', 'domain'); step('domain', 'ride-life'); step('domain', 'ride-snapshot'); step('ride-snapshot', 'bike-life');
-  step('fleet', 'blocks'); step('blocks', 'inside-ebike'); step('requirements', 'range-analysis'); step('requirements', 'blocks');
+  step('trips', 'domain'); step('domain', 'ride-life'); step('domain', 'ride-snapshot'); step('ride-snapshot', 'moped-life');
+  step('fleet', 'blocks'); step('blocks', 'inside-emoped'); step('requirements', 'range-analysis'); step('requirements', 'blocks');
   step('fleet', 'rebalance'); step('rebalance', 'swap-battery'); step('rebalance', 'dock-latch');
   // the fleet's dock listener and demand forecast open its two map views of step 4: the live dock feed and the nightly forecast
   step('fleet', 'dock-feed'); step('fleet', 'demand');
-  // the use cases to hiring a bike to its inner interactions; reporting a fault to the repair process to collecting the bike
-  step('rider-uses', 'hire-overview'); step('hire-overview', 'hire-unlock'); step('rider-uses', 'repair-process'); step('repair-process', 'collect-bike');
+  // the use cases to hiring a moped to its inner interactions; reporting a fault to the repair process to collecting the moped
+  step('rider-uses', 'hire-overview'); step('hire-overview', 'hire-unlock'); step('rider-uses', 'repair-process'); step('repair-process', 'collect-moped');
   // C4 down its levels, and out of them to the views each element's design is in
   step('c4-context', 'c4-containers'); step('c4-containers', 'c4-components'); step('c4-context', 'c4-deployment'); step('c4-deployment', 'production');
   step('production', 'components'); step('components', 'trip-internals'); step('c4-components', 'packages'); step('packages', 'privacy'); step('packages', 'requirements');
@@ -224,30 +221,49 @@ test('a typed view\'s key holds the titles of the views it opens: update() redra
   }
 });
 
-test('describe() and the PDF\'s tables read every view; the e-bike views read as their own files did', () => {
+test('describe() and the PDF\'s tables read every view; the SysML views\' titles and the internal block view\'s summary', () => {
   const ctx = mapContext(M);
   for (const v of M.views) { assert.ok(describe(M, v.id).length, v.id); assert.ok(tablesOf(ctx, ctx.V[v.id], ctx.buildGeo(v.id)).length, v.id); }
-  assert.match(describe(M, 'inside-ebike'), /^Inside the e-bike: an internal block diagram of 24 elements and 6 lines\./);
-  assert.deepEqual(['requirements', 'blocks', 'inside-ebike', 'range-analysis'].map(v => layout(M, v).families[0].title), ['req [Model] Bike share, an example [E-bike requirements]',
-    'bdd [Model] Bike share, an example [E-bike blocks]', 'ibd [Block] EBike [Inside the e-bike]', 'par [Block] EBike [E-bike range]']);
+  assert.match(describe(M, 'inside-emoped'), /^Inside the e-moped: an internal block diagram of 24 elements and 6 lines\./);
+  assert.deepEqual(['requirements', 'blocks', 'inside-emoped', 'range-analysis'].map(v => layout(M, v).families[0].title), ['req [Model] Moped share, an example [E-moped requirements]',
+    'bdd [Model] Moped share, an example [E-moped blocks]', 'ibd [Block] EMoped [Inside the e-moped]', 'par [Block] EMoped [E-moped range]']);
 });
 
-test('the four e-bike views: each lays out as in its own example file, and the files\' shared elements are one element here', () => {
-  const pic = (m, vid) => { const { ms, ...g } = layout(m, vid); return JSON.parse(JSON.stringify(g, (k, x) => k === 'opensTo' ? undefined : (k === 'aria' || k === 'ariaOwn') && typeof x === 'string' ? x.replace(/, opens [^,]*$/, '') : x)); };
-  for (const name of ['ebike-requirements', 'ebike-blocks', 'ebike-structure', 'ebike-range']) {
-    const src = JSON.parse(readFileSync(new URL(`../examples/${name}.json`, import.meta.url), 'utf8'));
-    for (const v of src.views) assert.deepEqual(pic({ ...M, title: src.title }, v.id), pic(src, v.id), `${name} view ${v.id}`);
+// a model cut from M holding one view and only its elements: the cards it lists and its subject, their children, the blocks
+// that type their members (every level down), and its lines (the ones it lists, or else every line between those elements)
+const cut = (m, vid) => {
+  const v = m.views.find(x => x.id === vid), byId = new Map(m.nodes.map(n => [n.id, n]));
+  const byLabel = new Map(m.nodes.filter(n => n.label).map(n => [n.label, n.id]));
+  const keep = new Set([...v.nodeIds, ...(v.subject ? [v.subject] : [])]);
+  for (let grew = true; grew;) {
+    grew = false; const add = id => { if (id && !keep.has(id)) { keep.add(id); grew = true; } };
+    for (const n of m.nodes) if (keep.has(n.parent)) add(n.id);
+    for (const id of [...keep]) for (const x of byId.get(id).members || []) add(byLabel.get(x.props?.valueType?.replace(/^~/, '')));
   }
-  // one range equation, of energy; EBike's part members drawn by the block view's composite associations, one type and multiplicity each
+  const owner = new Map(m.nodes.flatMap(n => [[n.id, n.id], ...(n.members || []).map(x => [x.id, n.id])]));
+  const edges = v.edges ? m.edges.filter(e => v.edges.includes(e.id)) : m.edges.filter(e => keep.has(owner.get(e.from)) && keep.has(owner.get(e.to)));
+  return { schemaVersion: m.schemaVersion, title: m.title, root: vid, nodes: m.nodes.filter(n => keep.has(n.id)), edges, views: [v] };
+};
+
+test('the four SysML views: each lays out in the whole model as in a model of that view alone, and their shared elements are one element here', () => {
+  const pic = (m, vid) => { const { ms, ...g } = layout(m, vid); return JSON.parse(JSON.stringify(g, (k, x) => k === 'opensTo' ? undefined : (k === 'aria' || k === 'ariaOwn') && typeof x === 'string' ? x.replace(/, opens [^,]*$/, '') : x)); };
+  const sysml = M.views.filter(v => v.diagram?.startsWith('sysml.')).map(v => v.id);
+  assert.deepEqual(sysml, ['requirements', 'blocks', 'inside-emoped', 'range-analysis']);
+  // what another view adds (its cards, lines, children) draws nothing here: none of them is in the cut
+  for (const vid of sysml) { const c = cut(M, vid); assert.ok(c.nodes.length < M.nodes.length / 4, vid); assert.deepEqual(pic(M, vid), pic(c, vid), `view ${vid}`); }
+  assert.deepEqual(cut(M, 'range-analysis').nodes.map(n => n.id), PINNED_RANGE_CUT);
+  // one range equation, of energy; EMoped's part members drawn by the block view's composite associations, one type and multiplicity each
   const eq = M.nodes.find(n => n.id === 'range-equation');
   assert.deepEqual([eq.props.constraint, eq.members.map(m => m.label)], ['range = energy / consumption', ['range', 'energy', 'consumption']]);
-  const ebike = M.nodes.find(n => n.id === 'ebike');
-  for (const e of M.edges.filter(e => e.type === 'uml.Association' && e.from === 'ebike')) { const p = ebike.members.find(m => m.label === e.props.ends.to.role);
+  const emoped = M.nodes.find(n => n.id === 'emoped');
+  for (const e of M.edges.filter(e => e.type === 'uml.Association' && e.from === 'emoped')) { const p = emoped.members.find(m => m.label === e.props.ends.to.role);
     assert.deepEqual([p.props.multiplicity, M.nodes.find(n => n.id === e.to).label], [e.props.ends.to.multiplicity, p.props.valueType], e.id); }
   // the SysML block battery keeps its id; the fleet map's card is battery-service
   assert.equal(M.nodes.find(n => n.id === 'battery').type, 'sysml.Block');
   assert.equal(M.nodes.find(n => n.id === 'battery-service').opensView, 'blocks');
 });
+// the parametric view's cut: its subject, the blocks typing the subject's parts and their ports, and the two constraint blocks
+const PINNED_RANGE_CUT = ['battery', 'controller', 'dock', 'emoped', 'motor', 'light', 'charge-interface', 'usable-energy', 'range-equation', 'voltage', 'energy'];
 
 test('the profile: personalData, required on Class, is supplied to exactly the classes of rides; startedAt\'s column stereotype and tags are the model\'s', () => {
   const all = M.nodes.flatMap(n => [n, ...(n.members || [])]);
@@ -279,9 +295,9 @@ test('Shift + Delete of a lifeline every interaction view shows: each view\'s hi
 });
 const PINNED_SAYS = {
   'unlock-sequence': 'Deleted dock, and 9 messages, 1 connector and 4 changes with it', 'hire-unlock': 'Deleted dock, and 9 messages, 1 connector and 4 changes with it',
-  'unlock-communication': 'Deleted lifeline "dock", its 1 connector ("api–dock") and its 9 messages: "release(bike)", "released", and 7 in other views, and 4 changes',
+  'unlock-communication': 'Deleted lifeline "dock", its 1 connector ("api–dock") and its 9 messages: "release(moped)", "released", and 7 in other views, and 4 changes',
   'dock-latch': 'Deleted dock, 4 changes, 9 messages and 1 connector' };
-const PINNED_HID = 'Hid lifeline "api", its 4 connectors ("app–api", "api–api", "api–dock", "api–ride") and its 7 messages: "start(ride)", "check(pass)", "release(bike)", "released", "new(ride)", "rideStarted", "result"';
+const PINNED_HID = 'Hid lifeline "api", its 4 connectors ("app–api", "api–api", "api–dock", "api–ride") and its 7 messages: "start(ride)", "check(pass)", "release(moped)", "released", "new(ride)", "rideStarted", "result"';
 
 test('each typed element that opens a view says so in its accessible name; every classifier box\'s SVG name is the one the type computes', () => {
   const was = console.warn; console.warn = () => {}; const silent = []; let n = 0;
@@ -301,7 +317,7 @@ test('each typed element that opens a view says so in its accessible name; every
 });
 
 test('MCP list_views counts a typed view\'s cards as the page does: the elements it draws, not its nodeIds', () => {
-  const listed = JSON.parse(JSON.parse(execFileSync('python3', [new URL('../umlimator.py', import.meta.url).pathname, 'mcp', new URL('../examples/bike-share.json', import.meta.url).pathname, '--port', '0'], {
+  const listed = JSON.parse(JSON.parse(execFileSync('python3', [new URL('../umlimator.py', import.meta.url).pathname, 'mcp', new URL('./fixtures/integration.json', import.meta.url).pathname, '--port', '0'], {
     input: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'list_views', arguments: {} } }) + '\n', encoding: 'utf8', timeout: 120000 }).split('\n')[0]).result.content[0].text).views;
   let differs = 0;
   const want = M.views.map(v => { const n = elementCount(v, layoutAll(M, v.id)); differs += n != null && n !== v.nodeIds.length; return [v.id, n ?? v.nodeIds.length]; });
@@ -309,11 +325,11 @@ test('MCP list_views counts a typed view\'s cards as the page does: the elements
   assert.ok(differs >= 5, `typed views that draw more than they list (${differs})`);
 });
 
-// the plan's sixth risk: the C4 views here and examples/bike-share.dsl, imported to examples/bike-share-c4.json, are two
+// the plan's sixth risk: the C4 views here and tests/fixtures/integration.dsl, imported to tests/fixtures/integration-c4.json, are two
 // sources of one picture. Each static view the import reads holds the cards of its view here, by id (here with "c4-" in
 // front) and by name: the subject a container or component view boxes is a box there, a card here
 test('the C4 views and the Structurizr import agree on their cards: the context, the containers and the trip API\'s components', () => {
-  const C4 = JSON.parse(readFileSync(new URL('../examples/bike-share-c4.json', import.meta.url), 'utf8'));
+  const C4 = JSON.parse(readFileSync(new URL('./fixtures/integration-c4.json', import.meta.url), 'utf8'));
   const label = (m, id) => m.nodes.find(n => n.id === id)?.label;
   for (const [here, there] of [['c4-context', 'context'], ['c4-containers', 'containers'], ['c4-components', 'api-components']]) {
     const v = M.views.find(x => x.id === here), w = C4.views.find(x => x.id === there);

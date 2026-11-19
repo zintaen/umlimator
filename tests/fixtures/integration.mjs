@@ -1,8 +1,11 @@
-// Builds examples/bike-share.json, the one test and bench model, from its part files in tools/bike-share/. No dependency.
-// `node tools/bike-share.mjs` writes the model; `node tools/bike-share.mjs --check` writes nothing and exits 1 when the
-// committed model, or a part file, is not what this would write. tests/bike-share.test.mjs runs the same check.
+// Builds tests/fixtures/integration.json, the integration test fixture (a made-up moped share holding a view of each of
+// the 28 types, for the cross-view features no one-type fixture covers), from its part files in
+// tests/fixtures/integration/. No dependency. `node tests/fixtures/integration.mjs` writes the model;
+// `node tests/fixtures/integration.mjs --check` writes nothing and exits 1 when the committed model, or a part file, is
+// not what this would write. tests/integration.test.mjs runs the same check. Tests read it; the showcase in examples/
+// never does.
 //
-// tools/bike-share/model.json holds the model's own fields (title, root, rules, lenses, stories, ...) and `parts`, the
+// tests/fixtures/integration/model.json holds the model's own fields (title, root, rules, lenses, stories, ...) and `parts`, the
 // part files in order. Each part file holds `nodes`, `edges` and `views`; the model lists every part's nodes, then every
 // part's edges, then every part's views, each in part order and in file order within a part.
 //
@@ -21,10 +24,10 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const PARTS = new URL('bike-share/', import.meta.url), OUT = new URL('../examples/bike-share.json', import.meta.url);
+const PARTS = new URL('integration/', import.meta.url), OUT = new URL('integration.json', import.meta.url);
 const WIDTH = 120;
 const isObj = x => x && typeof x === 'object' && !Array.isArray(x);
-const stop = msg => { throw new Error(`tools/bike-share.mjs: ${msg}`); };
+const stop = msg => { throw new Error(`tests/fixtures/integration.mjs: ${msg}`); };
 
 const NODE = ['id', 'type', 'label', 'parent', 'kind', 'owner', 'shape', 'icon', 'sublabel', 'sub', 'noSub', 'badge', 'badges', 'verbs',
   'edited', 'change', 'emphasis', 'opensView', 'opensCount', 'props', 'members', 'what', 'when', 'how', 'note', 'source', 'author',
@@ -106,9 +109,9 @@ const readPart = name => JSON.parse(readFileSync(new URL(`${name}.json`, PARTS),
 // the model from the part files; `load` reads one by name ('model' is the head)
 export function build(load = readPart) {
   const head = load('model'), { parts, ...own } = head;
-  if (!Array.isArray(parts) || !parts.length) stop('tools/bike-share/model.json names no parts');
-  for (const k of ['nodes', 'edges', 'views']) if (k in own) stop(`tools/bike-share/model.json holds ${k}: they belong in a part file`);
-  const model = { $schema: '../lib/umlimator.schema.json', ...own, nodes: [], edges: [], views: [] }, from = new Map();
+  if (!Array.isArray(parts) || !parts.length) stop('tests/fixtures/integration/model.json names no parts');
+  for (const k of ['nodes', 'edges', 'views']) if (k in own) stop(`tests/fixtures/integration/model.json holds ${k}: they belong in a part file`);
+  const model = { $schema: '../../lib/umlimator.schema.json', ...own, nodes: [], edges: [], views: [] }, from = new Map();
   const claim = (id, what, part) => {
     if (id == null) return;
     if (from.has(id)) stop(`${id} is ${from.get(id)} and ${what} in ${part}`);
@@ -150,25 +153,25 @@ export function build(load = readPart) {
 }
 
 // the head file's text: the model's own fields in KEYS.file's order, then parts
-const formatHead = ({ parts, ...own }) => print({ ...order(own, 'file', 'tools/bike-share/model.json'), parts }, '') + '\n';
+const formatHead = ({ parts, ...own }) => print({ ...order(own, 'file', 'tests/fixtures/integration/model.json'), parts }, '') + '\n';
 // every file this writes, with its text now and the text this would write: the model, the head, then each part
 export function files() {
   const { text, names } = build(), now = url => readFileSync(url, 'utf8'), at = name => new URL(`${name}.json`, PARTS);
-  return [{ path: 'examples/bike-share.json', url: OUT, now: now(OUT), text },
-    { path: 'tools/bike-share/model.json', url: at('model'), now: now(at('model')), text: formatHead(JSON.parse(now(at('model')))) },
-    ...names.map(name => ({ path: `tools/bike-share/${name}.json`, url: at(name), now: now(at(name)),
+  return [{ path: 'tests/fixtures/integration.json', url: OUT, now: now(OUT), text },
+    { path: 'tests/fixtures/integration/model.json', url: at('model'), now: now(at('model')), text: formatHead(JSON.parse(now(at('model')))) },
+    ...names.map(name => ({ path: `tests/fixtures/integration/${name}.json`, url: at(name), now: now(at(name)),
       text: format(JSON.parse(now(at(name))), 'part', `part ${name}`) }))];
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const stale = files().filter(f => f.now !== f.text);
   if (process.argv.includes('--check')) {
-    if (stale.length) { console.error(`not as tools/bike-share.mjs writes it: ${stale.map(f => f.path).join(', ')}; run node tools/bike-share.mjs`); process.exit(1); }
-    console.log('examples/bike-share.json and its part files are as tools/bike-share.mjs writes them');
+    if (stale.length) { console.error(`not as tests/fixtures/integration.mjs writes it: ${stale.map(f => f.path).join(', ')}; run node tests/fixtures/integration.mjs`); process.exit(1); }
+    console.log('tests/fixtures/integration.json and its part files are as tests/fixtures/integration.mjs writes them');
   } else {
     for (const f of stale) writeFileSync(f.url, f.text);
     const { model } = build();
-    console.log(`examples/bike-share.json: ${model.nodes.length} cards, ${model.edges.length} lines, ${model.views.length} views; `
+    console.log(`tests/fixtures/integration.json: ${model.nodes.length} cards, ${model.edges.length} lines, ${model.views.length} views; `
       + (stale.length ? `written: ${stale.map(f => f.path).join(', ')}` : 'nothing to write'));
   }
 }

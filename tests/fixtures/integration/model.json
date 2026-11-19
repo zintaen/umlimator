@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "title": "Bike share, an example",
+  "title": "Moped share, an example",
   "root": "context",
   "meta": { "project": "umlimator" },
   "iconPacks": { "gcp": "2026-11-14", "azure": "V25", "aws": "2026-07-31" },
@@ -29,8 +29,8 @@
       "steps": [
         {
           "view": "context",
-          "caption": "Riders hire bikes from Bike share, which charges each ride through a payment provider.",
-          "highlight": ["riders", "bikeshare", "payments"]
+          "caption": "Riders hire mopeds from Moped share, which charges each ride through a payment provider.",
+          "highlight": ["riders", "mopedshare", "payments"]
         },
         {
           "view": "system",
@@ -41,7 +41,7 @@
         },
         {
           "view": "trips",
-          "caption": "To unlock a bike, the trip API asks the unlock coordinator, which opens the dock.",
+          "caption": "To unlock a moped, the trip API asks the unlock coordinator, which opens the dock.",
           "highlight": ["rider-app", "trip-api", "unlock", "stations"],
           "tour": ["rider-app", "trip-api", "unlock", "stations"]
         },

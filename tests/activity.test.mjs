@@ -579,7 +579,8 @@ test('audit 39: every word an activity node draws is in its accessible name, an 
   edges: [['a', 'd'], ['d', 'q'], ['d', 'm<img src=https://e.example/t.png>'], ['q', 'm<img src=https://e.example/t.png>'], ['m<img src=https://e.example/t.png>', 'f'], ['f', 'j'], ['f', 'j'], ['j', 'e']]
     .map(([from, to], i) => ({ id: 'l' + i, type: 'uml.ControlFlow', from, to })),
   views: [{ id: 'v', diagram: 'uml.activity', nodeIds: ['a', 'm<img src=https://e.example/t.png>', 'd', 'q', 'j', 'f', 'e'] }] };
-  const models = [['odd', odd], ...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).map(f => [f, JSON.parse(readFileSync(new URL('../examples/' + f, import.meta.url), 'utf8'))])];
+  const models = [['odd', odd], ['integration.json', JSON.parse(readFileSync(new URL('./fixtures/integration.json', import.meta.url), 'utf8'))],
+    ...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).map(f => [f, JSON.parse(readFileSync(new URL('../examples/' + f, import.meta.url), 'utf8'))])];
   let diamonds = 0;
   for (const [name, m] of models) for (const v of (m.views || []).filter(v => v && v.diagram === 'uml.activity')) {
     const g = layout(m, v.id), d = describe(m, v.id);

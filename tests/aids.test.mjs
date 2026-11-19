@@ -66,14 +66,14 @@ test('a numbered line with no label gets room for its mark between neighbouring 
 });
 
 test('describe() says a line\'s step in any view, and a numbered view keeps its run order', () => {
-  const shop = read('../examples/bike-share.json'); // its rider shop's views
+  const shop = read('./fixtures/integration.json'); // its rider shop's views
   assert.match(describe(shop, 'checkout'), /\nStorefront calls Shop API \("checkout", JSON over HTTPS, step 2\)\.\n/);
   assert.match(describe(shop, 'api'), /\nStep 1: Shoppers calls Shop API \("checks out"\)\.\n/);
   assert.doesNotMatch(describe(shop, 'overview'), /step \d/);
 });
 
 test("the rider shop's checkout reads as the blend: six steps with their labels whole, two boxes with a tone, a clean check", () => {
-  const shop = read('../examples/bike-share.json'), g = layout(shop, 'checkout');
+  const shop = read('./fixtures/integration.json'), g = layout(shop, 'checkout');
   assert.deepEqual(g.edges.map(e => [e.lbl.step, e.lbl.text, e.weight]).sort((p, q) => p[0] - q[0]), [[1, 'browse, buy', 2], [2, 'checkout', 2], [3, 'charge the card', 1],
     [4, 'paid order', 2], [5, 'next order', 2], [6, 'confirmation', 2]]);
   assert.deepEqual(g.families.map(f => [f.id, f.tone]), [['web', 'cyan'], ['orders', 'orange']]);
@@ -140,8 +140,8 @@ test('audit 38: the page\'s element count counts an untyped element a flowchart 
   const hostile = two('flowchart', { id: 's', type: 'flow.Process', label: 'P' }); hostile.views[0].nodeIds.push('a->b');
   assert.equal(elementCount(hostile.views[0], { nodes: [...all.layout(hostile, 'v').nodes, { id: 'a->b', shape: 'process' }], families: [{ id: 'v->frame' }] }), 2);
   // a bdd or requirement view's frame names no element: its count is its describe()'s
-  for (const [f, vid, n] of [['bike-share', 'blocks', 12], ['bike-share', 'requirements', 16], ['ebike-blocks', 'blocks', 12], ['ebike-requirements', 'requirements', 16]]) {
-    const m = read(`../examples/${f}.json`), v = m.views.find(x => x.id === vid), g = all.layout(m, vid), said = /(\d+) elements? and/.exec(all.describe(m, vid));
+  for (const [f, vid, n] of [['./fixtures/integration.json', 'blocks', 12], ['./fixtures/integration.json', 'requirements', 16], ['../examples/ebike-blocks.json', 'blocks', 12], ['../examples/ebike-requirements.json', 'requirements', 16]]) {
+    const m = read(f), v = m.views.find(x => x.id === vid), g = all.layout(m, vid), said = /(\d+) elements? and/.exec(all.describe(m, vid));
     assert.deepEqual(g.families.map(x => x.id), [`${vid}->frame`], `${f} ${vid}: its one box is the frame`);
     assert.equal(Number(said && said[1]), n); assert.equal(elementCount(v, g), n, `${f} ${vid}: ${all.describe(m, vid).split('\n')[0]}`); }
 });

@@ -5,7 +5,7 @@
       "type": "c4.Person",
       "label": "Rider",
       "opensView": "rider-uses",
-      "props": { "description": "Finds and hires bikes, pays for rides and reports faults." }
+      "props": { "description": "Finds and hires mopeds, pays for rides and reports faults." }
     },
     {
       "id": "c4-staff",
@@ -15,11 +15,11 @@
       "props": { "description": "Keep the fleet in service and refund rides." }
     },
     {
-      "id": "c4-bikeshare",
+      "id": "c4-mopedshare",
       "type": "c4.SoftwareSystem",
-      "label": "Bike share",
+      "label": "Moped share",
       "opensView": "c4-containers",
-      "props": { "description": "Hires e-bikes from city docks: finding, unlocking, pricing and paying for rides." }
+      "props": { "description": "Hires e-mopeds from city docks: finding, unlocking, pricing and paying for rides." }
     },
     {
       "id": "c4-payments",
@@ -37,60 +37,60 @@
       "id": "c4-van",
       "type": "c4.SoftwareSystem",
       "label": "Van service",
-      "props": { "description": "Collects faulty bikes and brings them back repaired.", "external": true }
+      "props": { "description": "Collects faulty mopeds and brings them back repaired.", "external": true }
     },
     {
       "id": "c4-app",
       "type": "c4.Container",
       "label": "Rider app",
-      "parent": "c4-bikeshare",
+      "parent": "c4-mopedshare",
       "opensView": "rider-data",
       "props": {
         "technology": "TypeScript, React",
-        "description": "The rider's app: a map of bikes, unlock and ride history, and the admin pages for staff."
+        "description": "The rider's app: a map of mopeds, unlock and ride history, and the admin pages for staff."
       }
     },
     {
       "id": "c4-api",
       "type": "c4.Container",
       "label": "Trip API",
-      "parent": "c4-bikeshare",
+      "parent": "c4-mopedshare",
       "opensView": "c4-components",
-      "props": { "technology": "Python, FastAPI", "description": "Bikes, rides, pricing and accounts as a JSON API." }
+      "props": { "technology": "Python, FastAPI", "description": "Mopeds, rides, pricing and accounts as a JSON API." }
     },
     {
       "id": "c4-worker",
       "type": "c4.Container",
       "label": "Ride worker",
-      "parent": "c4-bikeshare",
+      "parent": "c4-mopedshare",
       "opensView": "log-ride",
       "props": {
         "technology": "Python",
-        "description": "Closes ended rides: books a van for a faulty bike and sends the receipt."
+        "description": "Closes ended rides: books a van for a faulty moped and sends the receipt."
       }
     },
     {
       "id": "c4-db",
       "type": "c4.Container",
       "label": "Database",
-      "parent": "c4-bikeshare",
+      "parent": "c4-mopedshare",
       "opensView": "trips-schema",
-      "props": { "technology": "PostgreSQL", "description": "Bikes, docks, rides and accounts." }
+      "props": { "technology": "PostgreSQL", "description": "Mopeds, docks, rides and accounts." }
     },
     {
       "id": "c4-queue",
       "type": "c4.Container",
       "label": "Ride queue",
-      "parent": "c4-bikeshare",
+      "parent": "c4-mopedshare",
       "props": { "technology": "PostgreSQL table", "description": "Ended rides waiting to be closed, oldest first." }
     },
     {
       "id": "c4-finder",
       "type": "c4.Component",
-      "label": "Bike finder",
+      "label": "Moped finder",
       "parent": "c4-api",
       "opensView": "packages",
-      "props": { "technology": "FastAPI router", "description": "Lists and searches free bikes and docks." }
+      "props": { "technology": "FastAPI router", "description": "Lists and searches free mopeds and docks." }
     },
     {
       "id": "c4-hire",
@@ -203,39 +203,39 @@
   ],
   "edges": [
     {
-      "id": "c4-rider-bikeshare",
+      "id": "c4-rider-mopedshare",
       "type": "c4.Relationship",
       "from": "c4-rider",
-      "to": "c4-bikeshare",
-      "label": "Hires bikes with"
+      "to": "c4-mopedshare",
+      "label": "Hires mopeds with"
     },
     {
-      "id": "c4-staff-bikeshare",
+      "id": "c4-staff-mopedshare",
       "type": "c4.Relationship",
       "from": "c4-staff",
-      "to": "c4-bikeshare",
+      "to": "c4-mopedshare",
       "label": "Keep the fleet and refund rides with"
     },
     {
-      "id": "c4-bikeshare-payments",
+      "id": "c4-mopedshare-payments",
       "type": "c4.Relationship",
-      "from": "c4-bikeshare",
+      "from": "c4-mopedshare",
       "to": "c4-payments",
       "label": "Takes card payments with",
       "props": { "technology": "HTTPS" }
     },
     {
-      "id": "c4-bikeshare-mail",
+      "id": "c4-mopedshare-mail",
       "type": "c4.Relationship",
-      "from": "c4-bikeshare",
+      "from": "c4-mopedshare",
       "to": "c4-mail",
       "label": "Sends ride receipts with",
       "props": { "technology": "HTTPS" }
     },
     {
-      "id": "c4-bikeshare-van",
+      "id": "c4-mopedshare-van",
       "type": "c4.Relationship",
-      "from": "c4-bikeshare",
+      "from": "c4-mopedshare",
       "to": "c4-van",
       "label": "Books van pickups with",
       "props": { "technology": "HTTPS" }
@@ -253,7 +253,7 @@
       "type": "c4.Relationship",
       "from": "c4-rider",
       "to": "c4-app",
-      "label": "Finds and unlocks a bike in",
+      "label": "Finds and unlocks a moped in",
       "props": { "technology": "HTTPS" }
     },
     {
@@ -269,7 +269,7 @@
       "type": "c4.Relationship",
       "from": "c4-app",
       "to": "c4-api",
-      "label": "Finds bikes and starts rides through",
+      "label": "Finds mopeds and starts rides through",
       "props": { "technology": "JSON over HTTPS" }
     },
     {
@@ -285,7 +285,7 @@
       "type": "c4.Relationship",
       "from": "c4-api",
       "to": "c4-db",
-      "label": "Reads and writes bikes, docks and rides in",
+      "label": "Reads and writes mopeds, docks and rides in",
       "props": { "technology": "SQL" }
     },
     {
@@ -325,7 +325,7 @@
       "type": "c4.Relationship",
       "from": "c4-app",
       "to": "c4-finder",
-      "label": "Finds bikes through",
+      "label": "Finds mopeds through",
       "props": { "technology": "JSON over HTTPS" }
     },
     {
@@ -387,7 +387,7 @@
       "type": "c4.Relationship",
       "from": "c4-finder",
       "to": "c4-db",
-      "label": "Reads bikes and docks from",
+      "label": "Reads mopeds and docks from",
       "props": { "technology": "SQL" }
     },
     {
@@ -436,18 +436,18 @@
       "id": "c4-context",
       "diagram": "c4.context",
       "parent": null,
-      "title": "Bike share: system context",
-      "subject": "c4-bikeshare",
-      "nodeIds": ["c4-rider", "c4-staff", "c4-bikeshare", "c4-payments", "c4-mail", "c4-van"]
+      "title": "Moped share: system context",
+      "subject": "c4-mopedshare",
+      "nodeIds": ["c4-rider", "c4-staff", "c4-mopedshare", "c4-payments", "c4-mail", "c4-van"]
     },
     {
       "id": "c4-containers",
       "diagram": "c4.container",
       "parent": "c4-context",
-      "title": "Bike share: containers",
-      "subject": "c4-bikeshare",
+      "title": "Moped share: containers",
+      "subject": "c4-mopedshare",
       "nodeIds": [
-        "c4-bikeshare", "c4-rider", "c4-staff", "c4-app", "c4-api", "c4-worker", "c4-db", "c4-queue", "c4-payments",
+        "c4-mopedshare", "c4-rider", "c4-staff", "c4-app", "c4-api", "c4-worker", "c4-db", "c4-queue", "c4-payments",
         "c4-mail", "c4-van"
       ]
     },
@@ -467,7 +467,7 @@
       "diagram": "c4.dynamic",
       "parent": "c4-containers",
       "title": "Ending a ride",
-      "subject": "c4-bikeshare",
+      "subject": "c4-mopedshare",
       "nodeIds": ["c4-rider", "c4-app", "c4-api", "c4-payments", "c4-db", "c4-queue", "c4-worker", "c4-van", "c4-mail"],
       "edges": [
         "c4-rider-app", "c4-app-api", "c4-api-payments", "c4-api-db", "c4-api-queue", "c4-worker-queue",
@@ -478,7 +478,7 @@
       "id": "c4-deployment",
       "diagram": "c4.deployment",
       "parent": "c4-context",
-      "title": "Bike share: production deployment",
+      "title": "Moped share: production deployment",
       "nodeIds": [
         "c4-device", "c4-browser", "c4-app-1", "c4-web-host", "c4-docker", "c4-api-1", "c4-worker-1", "c4-db-host",
         "c4-postgres", "c4-db-1", "c4-queue-1"

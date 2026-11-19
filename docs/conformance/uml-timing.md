@@ -86,6 +86,8 @@ reads at 4.5:1, lines at 3:1 in both themes (`tests/timing.html`, `tests/stage6.
 are typed exactly with F2's `@` (`docs/editing.md`). `L` then typing reaches a change by its id, not its state
 (decision 25, the maintainer's of 13 Nov 2026: no core bytes).
 
+F2 on a change or a message refuses a text over 4,096 characters, as a transition's F2 does, and reads its `@` in time linear in the text's length.
+
 ## Performance (P1)
 
 `tests/stage6-fixtures.test.mjs` on `tests/timing-stress.json`'s `all` view (12 lifelines, 400 changes, 100 messages, 40

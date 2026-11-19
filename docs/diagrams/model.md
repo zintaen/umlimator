@@ -136,7 +136,7 @@ file is then updated with it.
 
 Rows 16 to 19 are SysML v1.7's, drawn from 0.25.0 ([`notes/milestone-3.md`](notes/milestone-3.md) §4; each view in a frame, §5); their examples are
 `examples/ebike-requirements.json`, `ebike-blocks.json`, `ebike-structure.json` and `ebike-range.json`, whose views
-`examples/bike-share.json` holds too (the e-bike atlas that joined them left with step 4 of the one-model plan).
+the integration fixture `tests/fixtures/integration.json` holds too, as a moped (the e-bike atlas that joined them left with step 4 of the one-model plan).
 
 ### Other notations
 

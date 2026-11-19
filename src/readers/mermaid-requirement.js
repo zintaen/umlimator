@@ -336,12 +336,14 @@ function writeMermaidRequirement(model, viewId) {
       else lose(x.id, k);
     }
   };
-  // a field's value: bare when Mermaid's unquoted string reads it (a word character first), else in quotes; one holding a
-  // quote or a line break, or empty (Mermaid's quotes hold no empty string), is not written
+  // a field's value: bare when Mermaid's unquoted string reads it (a word character first), else in quotes, a line feed
+  // in it kept, as Mermaid's qString and the reader read a quoted value over lines (audit 50); one holding a quote, a
+  // carriage return (a line's \r the reader drops) or a line that starts %% (Mermaid takes it out as a comment before it
+  // reads the text), or empty (Mermaid's quotes hold no empty string), is not written
   const value = (id, what, v) => {
     v = mermaidText(v); // a number or true as its text, as the view draws it (audit 33)
     if (v === '') { lose(id, `${what} "", which Mermaid cannot write empty`); return null; }
-    if (typeof v === 'string' && !nl(v) && !v.includes('"')) return /^\w[\w./]*$/.test(v) ? v : `"${mqCode(v)}"`;
+    if (typeof v === 'string' && !/["\r]|\n\s*%%/.test(v)) return /^\w[\w./]*$/.test(v) ? v : `"${mqCode(v)}"`;
     lose(id, `${what} ${said(v)}, which Mermaid's quotes cannot hold`);
     return null;
   };

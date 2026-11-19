@@ -1,12 +1,12 @@
 <!doctype html>
 <!-- A page that umlimator.py render writes keeps its map's handle on window.umlimatorMap, for scripts and tests (the page
-     umlimator.py mcp serves drives it): examples/bike-share.html, in a frame. tests/embed.py opens this in headless Chrome
+     umlimator.py mcp serves drives it): tests/fixtures/integration.html (the integration fixture's page), in a frame. tests/embed.py opens this in headless Chrome
      and reads <pre id="result">. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <title>umlimator page handle test</title>
 <body>
-<iframe id="page" src="../examples/bike-share.html" style="width:1200px;height:800px;border:0"></iframe>
+<iframe id="page" src="fixtures/integration.html" style="width:1200px;height:800px;border:0"></iframe>
 <script type="module">
 const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };

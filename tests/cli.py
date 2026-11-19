@@ -39,7 +39,7 @@ part = shards.Parts(__file__, {
     "odd input": "stills file names", "stills keys": "stills file names",  # they read the folder of pages the first writes
     "audits 8 to 18": 16, "audits 19 and 20": 28, "audits 19 to 21": 27, "audit 25 diff": 4, "diff Action 2.6": 6, "diff Action stage 4": 26,
     "diff Action stage 5": 10, "diff Action stage 6": 7, "diff Action package": 14, "diff Action milestone 2": 32, "diff Action milestone 3": 14,
-    **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
+    **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf integration": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
     "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "bench views": 1})
@@ -98,7 +98,7 @@ def fills(data):
     return [tuple(map(float, c)) for c in re.findall(rb"([\d.]+) ([\d.]+) ([\d.]+) rg", stream(obj[re.search(rb"/Contents (\d+) 0 R", page).group(1)]))]
 
 
-def edited(m):  # a made-up pull request on the bike share: a queue between Trips and Payments, a rename, a card gone
+def edited(m):  # a made-up pull request on the integration fixture: a queue between Trips and Payments, a rename, a card gone
     m = json.loads(json.dumps(m))
     sys_ = next(v for v in m["views"] if v["id"] == "system")
     m["nodes"].append({"id": "pay-queue", "label": "Payments queue", "kind": "queue"})
@@ -228,13 +228,13 @@ if part("animated PNG delays"):
         ok("record · a step over 65.535 s lasts its duration in the animated PNG, one over 65535 s shown again to make it up (audit 24)",
            fc[:5] == [90000, 4000, 65535, 65536, 654320] and sum(fc[5:]) == 1e8 and len(fc[5:]) == 2 and frames == len(fc) == 7, fc)
 
-bike = json.loads((ROOT / "examples" / "bike-share.json").read_text(encoding="utf-8"))
+fixture = json.loads((ROOT / "tests" / "fixtures" / "integration.json").read_text(encoding="utf-8"))
 SAID = ["renames Accounts to Accounts and sign-in", "adds Payments queue between Trip service and Payment provider",
         "removes Feature flags", "removes the line from Trip service to Payment provider (charges)",
         "moves Payment provider in the view What runs"]  # its pin moved too (audit 15)
 with tempfile.TemporaryDirectory() as tmp:
     t = Path(tmp)
-    (t / "before.json").write_text(json.dumps(bike)); (t / "after.json").write_text(json.dumps(edited(bike)))
+    (t / "before.json").write_text(json.dumps(fixture)); (t / "after.json").write_text(json.dumps(edited(fixture)))
     if part("diff and drift"):
         r = cli("diff", str(t / "before.json"), str(t / "after.json"), "--out", str(t / "diff.html")) or {}
         ok("diff · says what changed, in words, and which views show it", r.get("summary") == SAID and r.get("views") == ["system"], r)
@@ -251,17 +251,17 @@ with tempfile.TemporaryDirectory() as tmp:
            all(page_lang((t / f).read_text(encoding="utf-8") if (t / f).is_file() else "") for f in ("diff.html", "drift.html")))
 
     if part("trace"):
-        # trace (#96): the replay example's trace (OTLP JSON) kept as a numbered view: the one bike-share has, in its place
-        tr, view = ROOT / "examples" / "traces", lambda m: next((v for v in m.get("views", []) if v.get("id") == "ride-end"), None)
+        # trace (#96): the integration fixture's trace (OTLP JSON) kept as a numbered view: the one the fixture has, in its place
+        tr, view = ROOT / "tests" / "fixtures" / "traces", lambda m: next((v for v in m.get("views", []) if v.get("id") == "ride-end"), None)
         r = cli("trace", str(t / "before.json"), str(tr / "ride-end.json"), "--view", "ride-end", "--match", str(tr / "match.json"),
                 "--title", "A ride ends, from its trace", "--out", str(t / "traced.json")) or {}
         got = json.loads((t / "traced.json").read_text(encoding="utf-8")) if (t / "traced.json").is_file() else {}
-        ok("trace · a trace becomes the numbered view bike-share keeps, which it replaces where it is", r.get("steps") == 8 and r.get("cards") == 9
-           and view(got) == view(bike) and [v["id"] for v in got.get("views", [])] == [v["id"] for v in bike["views"]], r)
+        ok("trace · a trace becomes the numbered view the integration fixture keeps, which it replaces where it is", r.get("steps") == 8 and r.get("cards") == 9
+           and view(got) == view(fixture) and [v["id"] for v in got.get("views", [])] == [v["id"] for v in fixture["views"]], r)
 
         # trace --diagram uml.sequence (3.8): the same trace as a UML sequence view, through the helper (notes/stage-3.md §7),
-        # on a version-1 copy of bike-share, so schemaVersion 2 below is the upgrade the helper makes, not what the file had
-        (t / "before-v1.json").write_text(json.dumps({k: v for k, v in bike.items() if k != "schemaVersion"}))
+        # on a version-1 copy of the integration fixture, so schemaVersion 2 below is the upgrade the helper makes, not what the file had
+        (t / "before-v1.json").write_text(json.dumps({k: v for k, v in fixture.items() if k != "schemaVersion"}))
         r = cli("trace", str(t / "before-v1.json"), str(tr / "ride-end.json"), "--view", "ride-end", "--match", str(tr / "match.json"),
                 "--diagram", "uml.sequence", "--out", str(t / "traced-uml.json")) or {}
         got = json.loads((t / "traced-uml.json").read_text(encoding="utf-8")) if (t / "traced-uml.json").is_file() else {}
@@ -270,9 +270,9 @@ with tempfile.TemporaryDirectory() as tmp:
            got.get("schemaVersion") == 2 and v.get("diagram") == "uml.sequence" and r.get("steps") == 8 and r.get("cards") == 9 and r.get("report") == []
            and all(isinstance(e, dict) and e.get("type") == "uml.Message" and "->" not in e["id"] for e in v.get("edges", [])), r)
         rv = cli("render", str(t / "traced-uml.json"), "--out", str(t / "traced-uml.html"))
-        # clean but for the crossings of bike-share's typed views (step 3 of the one-model plan): none on a map view, ride-end
+        # clean but for the crossings of the integration fixture's typed views (step 3 of the one-model plan): none on a map view, ride-end
         # (the traced view, a sequence now) among them, and at most CI's ceiling for the page (.github/workflows/check.yml)
-        maps = {w["id"] for w in bike["views"] if not w.get("diagram")}
+        maps = {w["id"] for w in fixture["views"] if not w.get("diagram")}
         ok("trace --diagram uml.sequence · the model renders and its check is clean", rv is not None and not rv.get("errors") and "ride-end" in maps
            and all(p.endswith(" cross") and re.match(r"view ([^:\s]+)", p).group(1) not in maps for p in rv.get("problems", []))
            and len(rv.get("problems", [])) <= 26, rv)
@@ -296,13 +296,13 @@ with tempfile.TemporaryDirectory() as tmp:
         g = t / "repo"; g.mkdir()
         git = lambda *a: subprocess.run(["git", "-C", str(g), "-c", "user.name=test", "-c", "user.email=test@example.invalid", *a], capture_output=True, text=True, check=True)
         git("init", "-q")
-        small = json.loads(json.dumps(bike)); small["nodes"] = [n for n in small["nodes"] if n["id"] != "charging"]
+        small = json.loads(json.dumps(fixture)); small["nodes"] = [n for n in small["nodes"] if n["id"] != "charging"]
         small["edges"] = [e for e in small["edges"] if "charging" not in (e["from"], e["to"])]
         for v in small["views"]:
             v["nodeIds"] = [i for i in v["nodeIds"] if i != "charging"]; (v.get("layout") or {}).pop("charging", None)
             for c in v.get("containers") or []:
                 c["nodeIds"] = [i for i in c.get("nodeIds", []) if i != "charging"]
-        for k, m in enumerate([small, bike, bike | {"title": "Bike share, renamed"}]):
+        for k, m in enumerate([small, fixture, fixture | {"title": "Moped share, renamed"}]):
             (g / "docs").mkdir(exist_ok=True); (g / "docs" / "map.json").write_text(json.dumps(m, indent=1))
             git("add", "docs/map.json"); git("commit", "-q", "-m", f"version {k + 1}")
         r = cli("timelapse", "docs/map.json", "--out", str(t / "lapse.html"), cwd=g) or {}
@@ -313,8 +313,8 @@ with tempfile.TemporaryDirectory() as tmp:
            [v["label"][11:] for v in data.get("versions", [])] == ["version 1", "version 2", "version 3"] and "export function render" in lapse and data.get("icons"), r)
         ok("timelapse · --limit 0 is refused (the latest 0 versions, not all of them)", cli("timelapse", "docs/map.json", "--limit", "0", "--out", str(t / "lapse0.html"), cwd=g) is None)
         # audit 13: a merged branch plays as its merge on the first-parent line, so the last version is HEAD's model
-        git("checkout", "-q", "-b", "feat"); (g / "docs" / "map.json").write_text(json.dumps(bike | {"title": "Bike share, renamed", "description": "feat"}, indent=1)); git("commit", "-qam", "feat")
-        git("checkout", "-q", "-"); git("checkout", "-q", "-b", "trunk"); (g / "docs" / "map.json").write_text(json.dumps(bike | {"title": "Bike share, trunk"}, indent=1)); git("commit", "-qam", "trunk")
+        git("checkout", "-q", "-b", "feat"); (g / "docs" / "map.json").write_text(json.dumps(fixture | {"title": "Moped share, renamed", "description": "feat"}, indent=1)); git("commit", "-qam", "feat")
+        git("checkout", "-q", "-"); git("checkout", "-q", "-b", "trunk"); (g / "docs" / "map.json").write_text(json.dumps(fixture | {"title": "Moped share, trunk"}, indent=1)); git("commit", "-qam", "trunk")
         git("merge", "-q", "-X", "theirs", "--no-edit", "feat")
         cli("timelapse", "docs/map.json", "--out", str(t / "lapse-m.html"), cwd=g)
         data = re.search(r'<script id="versions" type="application/json">(.*?)</script>', (t / "lapse-m.html").read_text(encoding="utf-8") if (t / "lapse-m.html").is_file() else "", re.S)
@@ -325,7 +325,7 @@ with tempfile.TemporaryDirectory() as tmp:
         # audit 16: the placeholders were filled one after another, so a model's text holding a later one had the module put in its data
         g2 = t / "repo-ph"; g2.mkdir()
         git2 = lambda *a: subprocess.run(["git", "-C", str(g2), "-c", "user.name=test", "-c", "user.email=test@example.invalid", *a], capture_output=True, text=True, check=True)
-        git2("init", "-q"); (g2 / "map.json").write_text(json.dumps(bike | {"title": "T /*__UMLIMATOR_THEME__*/ <html lang=\"xx\"><meta charset=\"x\">", "description": "inlines /*__UMLIMATOR_LIB__*/ and /*__VERSIONS__*/"}))
+        git2("init", "-q"); (g2 / "map.json").write_text(json.dumps(fixture | {"title": "T /*__UMLIMATOR_THEME__*/ <html lang=\"xx\"><meta charset=\"x\">", "description": "inlines /*__UMLIMATOR_LIB__*/ and /*__VERSIONS__*/"}))
         git2("add", "map.json"); git2("commit", "-q", "-m", "one")
         cli("timelapse", "map.json", "--out", str(t / "lapse-ph.html"), cwd=g2)
         lapse = (t / "lapse-ph.html").read_text(encoding="utf-8") if (t / "lapse-ph.html").is_file() else ""
@@ -352,7 +352,7 @@ with tempfile.TemporaryDirectory() as tmp:
         ok("diff --base · says so when no map changed", "No map model changed." in ((t / "pr2" / "summary.md").read_text(encoding="utf-8") if (t / "pr2" / "summary.md").is_file() else ""))
         # audit 31: a change only to a story or the map's title was "No map model changed.", so the Action counted 0 and posted nothing
         was = (g / "docs" / "map.json").read_text()
-        (g / "docs" / "map.json").write_text(json.dumps(json.loads(was) | {"title": "Bike share v2", "stories": [*json.loads(was).get("stories", []), {"id": "ride-31", "title": "A ride", "steps": [{"view": bike["views"][0]["id"], "caption": "start"}]}]}, indent=1))
+        (g / "docs" / "map.json").write_text(json.dumps(json.loads(was) | {"title": "Moped share v2", "stories": [*json.loads(was).get("stories", []), {"id": "ride-31", "title": "A ride", "steps": [{"view": fixture["views"][0]["id"], "caption": "start"}]}]}, indent=1))
         r = cli("diff", "--base", "HEAD", "--out", str(t / "pr31"), cwd=g) or []
         md = (t / "pr31" / "summary.md").read_text(encoding="utf-8") if (t / "pr31" / "summary.md").is_file() else ""
         ok("diff --base · a pull request that only adds a story and retitles the map is a change, said in words (audit 31)",
@@ -384,7 +384,7 @@ with tempfile.TemporaryDirectory() as tmp:
            len(pngs) == 3 and "Übersicht flow.png" in pngs and "API.png" in pngs and len({p.casefold() for p in pngs}) == 3
            and "0 still(s) exported, 3 unchanged" in again.stderr and "no longer has" not in again.stderr, (pngs, again.stderr[-300:]))
     plain = lambda *x: subprocess.run([sys.executable, str(ROOT / "umlimator.py"), *x], capture_output=True, text=True)
-    bike_m = str(ROOT / "examples" / "bike-share.json")
+    fixture_m = str(ROOT / "tests" / "fixtures" / "integration.json")
     if part("odd input"):
         # a file that is no page, a model that is no model, a --size that is no size: one line, no traceback (audit 2)
         bad = [plain(c, str(t / "names" / "m.json"), *extra) for c, extra in (("stills", ["--out", str(t / "x")]), ("check", []), ("pdf", ["--out", str(t / "x.pdf")]),
@@ -446,7 +446,7 @@ with tempfile.TemporaryDirectory() as tmp:
         ok("stills · a view id too long for a file name is cut and hashed", all(len(x.encode()) <= 200 for x in longs.values()) and len(set(longs.values())) == 2, longs)
 
         # audit 6: the CLI's odd input, each in one line
-        b = plain("trace", bike_m, str(ROOT / "examples" / "traces" / "ride-end.json"), "--view", "system", "--out", str(t / "hand.json"))
+        b = plain("trace", fixture_m, str(ROOT / "tests" / "fixtures" / "traces" / "ride-end.json"), "--view", "system", "--out", str(t / "hand.json"))
         ok("trace · a view a person made is never replaced: one line, nothing written", b.returncode == 1 and "no trace made" in b.stderr and not (t / "hand.json").exists(), b.stderr[-300:])
         (t / "outdir").mkdir()
         b, s = plain("render", str(n / "m.json"), "--out", str(t / "outdir"), "--no-check"), plain("stills", str(n / "page.html"), "--out", str(n / "m.json"))
@@ -454,13 +454,13 @@ with tempfile.TemporaryDirectory() as tmp:
            and s.returncode == 1 and "is a file" in s.stderr and "Traceback" not in b.stderr + s.stderr, (b.stderr[-300:], s.stderr[-300:]))
     if part("stills keys"):
         # audit 22: diff's or drift's --stills naming a file ended the command after the page was written, naming --out
-        runs = [plain("diff", bike_m, bike_m, "--out", str(n / "st.html"), "--stills", str(n / "m.json")),
-                plain("drift", bike_m, str(ROOT / "examples" / "traces" / "ride-end.json"), "--out", str(n / "st.html"), "--stills", str(n / "m.json"))]
+        runs = [plain("diff", fixture_m, fixture_m, "--out", str(n / "st.html"), "--stills", str(n / "m.json")),
+                plain("drift", fixture_m, str(ROOT / "tests" / "fixtures" / "traces" / "ride-end.json"), "--out", str(n / "st.html"), "--stills", str(n / "m.json"))]
         ok("diff, drift · --stills naming a file is refused in one line naming --stills, before the page is written (audit 22)",
            all(r.returncode == 1 and f"--stills {n / 'm.json'} is a file" in r.stderr and "--out" not in r.stderr for r in runs) and not (n / "st.html").exists(),
            [r.stderr[-300:] for r in runs])
         mj = (n / "m.json").read_text()
-        b, s = plain("render", str(n / "m.json"), "--out", str(n / "m.json"), "--no-check"), plain("diff", bike_m, str(n / "m.json"), "--out", str(n / "m.json"))
+        b, s = plain("render", str(n / "m.json"), "--out", str(n / "m.json"), "--no-check"), plain("diff", fixture_m, str(n / "m.json"), "--out", str(n / "m.json"))
         ok("render, diff · --out naming the input is refused in one line, and the model is kept (audit 12)",
            b.returncode == s.returncode == 1 and "is its input" in b.stderr + s.stderr and (n / "m.json").read_text() == mj, (b.stderr[-300:], s.stderr[-300:]))
         os.link(n / "m.json", n / "m-link.json")  # the same file by another name (as M.JSON is on a case-insensitive disk)
@@ -468,17 +468,17 @@ with tempfile.TemporaryDirectory() as tmp:
         ok("render · --out naming the input by another name (a hard link, or other case) is refused, and the model is kept (audit 13)",
            b.returncode == 1 and "is its input" in b.stderr and (n / "m.json").read_text() == mj, b.stderr[-300:])
         (t / "tr").mkdir(); tj, mt = t / "tr" / "t.json", t / "tr" / "match.json"
-        tj.write_text((ROOT / "examples" / "traces" / "ride-end.json").read_text()); mt.write_text((ROOT / "examples" / "traces" / "match.json").read_text())
+        tj.write_text((ROOT / "tests" / "fixtures" / "traces" / "ride-end.json").read_text()); mt.write_text((ROOT / "tests" / "fixtures" / "traces" / "match.json").read_text())
         tw, mw = tj.read_text(), mt.read_text()
-        runs = [plain("trace", bike_m, str(tj), "--view", "t", "--match", str(mt), "--out", str(x)) for x in (tj, mt)] + [plain("drift", bike_m, str(tj), "--match", str(mt), "--out", str(mt))]
+        runs = [plain("trace", fixture_m, str(tj), "--view", "t", "--match", str(mt), "--out", str(x)) for x in (tj, mt)] + [plain("drift", fixture_m, str(tj), "--match", str(mt), "--out", str(mt))]
         ok("trace, drift · --out naming the trace or the --match file is refused, and both are kept (audit 14)",
            all(r.returncode == 1 and "is its input" in r.stderr for r in runs) and tj.read_text() == tw and mt.read_text() == mw, [r.stderr[-200:] for r in runs])
-        b = plain("diff", str(ROOT / "examples" / "traces" / "ride-end.json"), bike_m, "--out", str(t / "tr" / "d.html"))
+        b = plain("diff", str(ROOT / "tests" / "fixtures" / "traces" / "ride-end.json"), fixture_m, "--out", str(t / "tr" / "d.html"))
         ok("diff · a JSON object that is no map model (a trace) is refused in one line (audit 14)", b.returncode == 1 and "ride-end.json: no views" in b.stderr and not (t / "tr" / "d.html").exists(), b.stderr[-300:])
         (t / "tr" / "bad.json").write_text('{"resourceSpans": [{"scopeSpans": [{"spans": [null]}]}]}')
-        b = plain("trace", bike_m, str(t / "tr" / "bad.json"), "--view", "t", "--out", str(t / "tr" / "o.json"))
+        b = plain("trace", fixture_m, str(t / "tr" / "bad.json"), "--view", "t", "--out", str(t / "tr" / "o.json"))
         ok("trace · a malformed OTLP file ends in its one line, not a Node stack trace (audit 14)", b.returncode == 1 and "no call in" in b.stderr and "TypeError" not in b.stderr, b.stderr[-300:])
-        b = plain("mcp", bike_m, "--port", "73910")
+        b = plain("mcp", fixture_m, "--port", "73910")
         ok("mcp · --port 73910 is a usage error, not a traceback", b.returncode == 2 and "not a port" in b.stderr and "Traceback" not in b.stderr, b.stderr[-300:])
         ro = t / "ro"; ro.mkdir(); (ro / "m.json").write_text((n / "m.json").read_text()); ro.chmod(0o555)
         if not os.access(ro, os.W_OK):  # root writes anyway
@@ -544,7 +544,7 @@ with tempfile.TemporaryDirectory() as tmp:
                                                  "views": [{"id": "top", "nodeIds": ["x", "w", "q"]}, {"id": "q", "diagram": "toString", "nodeIds": ["q"]}]}))
         cli("render", str(t / "kidh.json"), "--out", str(t / "kidh.html"), "--no-check")
         ok("stills · a hostile card's inner view is keyed without an error (audit 40)", sorted(u.still_keys(t / "kidh.html", [2.0, "light", False])) == ["q", "top"])
-    rides = str(ROOT / "examples" / "traces" / "ride-end.json")
+    rides = str(ROOT / "tests" / "fixtures" / "traces" / "ride-end.json")
     two = {"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "edges": [{"from": "a", "to": "b"}], "views": [{"id": "main", "nodeIds": ["a", "b"]}]}
     if part("audits 8 to 18"):
         # audit 8: a view's own card names an icon the model's cards do not: the page's icons table has it
@@ -777,7 +777,7 @@ with tempfile.TemporaryDirectory() as tmp:
         ok("diff --base · a removed model is drawn from its own folder: its intake logo is embedded and no message names a file beside --out; one whose folder is gone is drawn too (audit 19)",
            r.returncode == 0 and len(logo) == 1 and logo[0].startswith("data:image/svg+xml;base64,") and "out/docs-m.json" not in r.stderr and bool(pg[1])
            and not [p.name for p in (g / "docs").iterdir() if p.name.startswith(".")], [r.stderr[-500:], logo])
-        b = plain("trace", str(ROOT / "examples" / "bike-share.json"), rides, "--view", "", "--out", str(t / "t11.json"))
+        b = plain("trace", str(ROOT / "tests" / "fixtures" / "integration.json"), rides, "--view", "", "--out", str(t / "t11.json"))
         ok("trace · an empty --view is refused in one line, and nothing is written (audit 11)",
            b.returncode == 1 and "--view needs a view id" in b.stderr and not (t / "t11.json").exists(), b.stderr[-300:])
         # audit 11: diff --base reads each version as render does, and its "No picture" line is flat() as the views line is
@@ -884,8 +884,8 @@ with tempfile.TemporaryDirectory() as tmp:
            b.returncode == 1 and b.stderr.strip().endswith("sid20.json: stories[0].id is not a string") and not (t / "sid20.html").exists(), b.stderr[-300:])
         # audit 21: a trace view named as a card turned that card, on every other view, into a way into the trace (a card opens
         # the view of its id)
-        b = plain("trace", bike_m, rides, "--view", "pricing", "--match", str(ROOT / "examples" / "traces" / "match.json"), "--out", str(t / "tr21.json"))
-        c = plain("trace", bike_m, rides, "--view", "pricing-trace", "--match", str(ROOT / "examples" / "traces" / "match.json"), "--out", str(t / "tr21b.json"))
+        b = plain("trace", fixture_m, rides, "--view", "pricing", "--match", str(ROOT / "tests" / "fixtures" / "traces" / "match.json"), "--out", str(t / "tr21.json"))
+        c = plain("trace", fixture_m, rides, "--view", "pricing-trace", "--match", str(ROOT / "tests" / "fixtures" / "traces" / "match.json"), "--out", str(t / "tr21b.json"))
         ok("trace · a --view that is a card's id is refused in one line, nothing written; another id is written (audit 21)",
            b.returncode == 1 and "--view 'pricing' is a card's id" in b.stderr and not (t / "tr21.json").exists() and c.returncode == 0, (b.stderr[-300:], c.stderr[-300:]))
         # audit 21: two models whose stems differ only in case shared one page and stills folder on a disk that ignores case
@@ -924,7 +924,7 @@ with tempfile.TemporaryDirectory() as tmp:
         ro = t / "ro21"; ro.mkdir(); ro.chmod(0o500)
         runs = [plain("render", str(t / "vt20.json"), "--out", str(t / "afile" / "page.html"), "--no-check"),
                 plain("import", str(ROOT / "tests" / "import" / "kubernetes.json"), "--out", str(t / "afile" / "x.json")),
-                plain("trace", bike_m, rides, "--view", "t21", "--match", str(ROOT / "examples" / "traces" / "match.json"), "--out", str(t / "afile" / "t.json")),
+                plain("trace", fixture_m, rides, "--view", "t21", "--match", str(ROOT / "tests" / "fixtures" / "traces" / "match.json"), "--out", str(t / "afile" / "t.json")),
                 plain("stills", str(t / "vt20.html"), "--out", str(t / "afile" / "st")),
                 subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "diff", "--base", "HEAD", "--out", str(t / "afile" / "d")], capture_output=True, text=True, cwd=g)]
         if os.geteuid() != 0:  # root writes anywhere
@@ -1224,22 +1224,22 @@ with tempfile.TemporaryDirectory() as tmp:
             ok(f"map-repo's cli.py · its pinned commit is version {'.'.join(map(str, newest))}, the newest release up to package.json's (audit 23)",
                pinned.is_file() and ver(pinned) == newest and ref.startswith(".".join(map(str, newest))), (ref, pinned.is_file() and ver(pinned), newest))
 
-    # pdf (#93): the bike share as a document for a review; its words are text. A cover with the contents; each view from a
+    # pdf (#93): the integration fixture as a document for a review; its words are text. A cover with the contents; each view from a
     # page of its own, under its path, with its legend and tables of its cards, lines and boxes; the rules as a table. The
     # words are compared without spaces: a PDF's text keeps none where a line wraps or between two runs of text, and where
     # a line wraps depends on the fonts a system has
     flat = lambda s: re.sub(r"\s", "", s)
     read = lambda f: [flat(p) for p in pdf_text((t / f).read_bytes())] if (t / f).is_file() else []
-    if part("pdf bike share"):
-        cli("render", str(ROOT / "examples" / "bike-share.json"), "--out", str(t / "bike.html"), "--no-check")
-        r = cli("pdf", str(t / "bike.html"), "--out", str(t / "bike.pdf")) or {}
-        pages = read("bike.pdf")
+    if part("pdf integration"):
+        cli("render", str(ROOT / "tests" / "fixtures" / "integration.json"), "--out", str(t / "integration.html"), "--no-check")
+        r = cli("pdf", str(t / "integration.html"), "--out", str(t / "integration.pdf")) or {}
+        pages = read("integration.pdf")
         ok("pdf · every page ends in the title and page N of M, as many pages as it says",
-           pages and r.get("pages") == len(pages) and all(p.endswith(flat(f"Bike share, an example page {i} of {len(pages)}")) for i, p in enumerate(pages, 1)), [r, [p[-40:] for p in pages]])
-        V = {v["id"]: v for v in bike["views"]}
+           pages and r.get("pages") == len(pages) and all(p.endswith(flat(f"Moped share, an example page {i} of {len(pages)}")) for i, p in enumerate(pages, 1)), [r, [p[-40:] for p in pages]])
+        V = {v["id"]: v for v in fixture["views"]}
         path = lambda v: (path(V[v["parent"]]) + " › " if v.get("parent") else "") + v["title"]
-        cards = lambda n: f"{n} card" + ("" if n == 1 else "s")  # the e-bike's internal block and parametric views (step 3) list 1
-        at = {v["id"]: next((i for i, p in enumerate(pages, 1) if p.startswith(flat(f"{path(v)} {cards(len(v['nodeIds']))}"))), None) for v in bike["views"]}
+        cards = lambda n: f"{n} card" + ("" if n == 1 else "s")  # the e-moped's internal block and parametric views (step 3) list 1
+        at = {v["id"]: next((i for i, p in enumerate(pages, 1) if p.startswith(flat(f"{path(v)} {cards(len(v['nodeIds']))}"))), None) for v in fixture["views"]}
         at["rules"] = next((i for i, p in enumerate(pages, 1) if p.startswith("Rules")), None)
         # the cover and its contents: the pages before the first view's (two since step 3 of the one-model plan; 52 views listed since step 4)
         cover = "".join(pages[:min([x for x in at.values() if x] or [2]) - 1])
@@ -1247,8 +1247,8 @@ with tempfile.TemporaryDirectory() as tmp:
            # 52 views since step 4 of the one-model plan (49, 381 cards and 398 lines in step 3; 8, 45 cards and 67 lines before): dock-feed,
            # demand and help add 18 cards and 25 lines; step 4's review adds the fleet's f10 and takes the C4 worker's two lines
            # to the database out (423 lines to 422); audit 49 draws the two provided realizations on the components view (424)
-           re.match(r"Bikeshare,anexample\d{4}-\d\d-\d\d·examples/bike-share\.json52views·399cards·424lines·2rulesContents", cover) and None not in at.values()
-           and all(flat(f"{v['title']}{v.get('caption', '')}{at[v['id']]}") in cover for v in bike["views"]) and f"Rules{at['rules']}Bikeshare" in cover, [cover[:500], at])
+           re.match(r"Mopedshare,anexample\d{4}-\d\d-\d\d·tests/fixtures/integration\.json52views·399cards·424lines·2rulesContents", cover) and None not in at.values()
+           and all(flat(f"{v['title']}{v.get('caption', '')}{at[v['id']]}") in cover for v in fixture["views"]) and f"Rules{at['rules']}Mopedshare" in cover, [cover[:500], at])
         seen = lambda a, b=None: "".join(pages[a - 1:b and b - 1]) if a else ""  # the pages from page a to the one before b
         ok("pdf · a view's page: its legend, then tables of its cards (name, sub-line, kind, what it is), lines (from → to, label, technology) and boxes",
            "Legend" in seen(at["system"], at["system"] and at["system"] + 1) and all(flat(s) in seen(at["system"], at["trips"]) for s in [
@@ -1257,11 +1257,11 @@ with tempfile.TemporaryDirectory() as tmp:
            and flat("#From → toLabelTechnology1Rider app → Trip APIPOST /rides/{id}/end200 ms") in seen(at["ride-end"]), seen(at["system"], at["trips"])[:600])
         ok("pdf · the rules, as a table: each rule, the views it applies in, holds or broken, and what breaks it", flat(
            "RuleApplies inStateLines that break itApps never call a database directlyevery view printedholdsnoneOnly the ride services touch the trips storeWhat runsholdsnone") in pages[-1], pages[-1:])
-        r = cli("pdf", str(t / "bike.html"), "--out", str(t / "two.pdf"), "--views", "system,f*", "--theme", "dark") or {}
+        r = cli("pdf", str(t / "integration.html"), "--out", str(t / "two.pdf"), "--views", "system,f*", "--theme", "dark") or {}
         two = read("two.pdf")
         heads = {m.group(1) for p in two[1:-1] if (m := re.match(r"(.*?)(?:\(continued\))?\d+cards?", p))}
         ok("pdf --views · only the views named (a trailing * a prefix), then the rules", r.get("pages") == len(two) and "2views·" in two[0]
-           and heads == {flat("Bike share › What runs"), flat("Bike share › What runs › Fleet service")} and two[-1].startswith("Rules"), [r, [p[:40] for p in two]])
+           and heads == {flat("Moped share › What runs"), flat("Moped share › What runs › Fleet service")} and two[-1].startswith("Rules"), [r, [p[:40] for p in two]])
         dark = fills((t / "two.pdf").read_bytes()) if two else []
         ok("pdf --theme dark · its pages are dark to the edge", dark and max(dark[0]) < .15, dark[:3])
     # schema version 2 (1.8): typed models go through the upstream engine's check (a line may end on a member, F3), the
@@ -1293,7 +1293,7 @@ with tempfile.TemporaryDirectory() as tmp:
         # types' tests and stated in their conformance notes; nothing else
         # at most these: text widths differ between machines (Linux CI counts fewer than a Mac), so the count is a ceiling
         # M2.14: the crossings repair and reroute off leave in the C4 and data flow examples (notes/milestone-2.md §11), as Chrome
-        # counts them (tests/bike-share.test.mjs counts Node's in the bike share's views); stated in docs/conformance/c4.md and dfd.md
+        # counts them (tests/integration.test.mjs counts Node's in the integration fixture's views); stated in docs/conformance/c4.md and dfd.md
         # 4a.7: the Google Cloud and Azure examples' one each, repair and reroute off (notes/milestone-4a.md §11), stated in
         # docs/conformance/gcp.md and azure.md; the Azure example's two since audit 27 (a line no longer runs back through its own box)
         # 4b.5: the BPMN example's, repair and reroute off (notes/milestone-4b.md §14), stated in docs/conformance/bpmn.md
@@ -1526,8 +1526,8 @@ if part("four renders at once"):
     # four renders of one model at once (#105): each writes its own copy of the model, and every page records the model itself
     with tempfile.TemporaryDirectory() as tmp:
         t = Path(tmp)
-        (t / "bike-share.json").write_text((ROOT / "examples" / "bike-share.json").read_text(encoding="utf-8"), encoding="utf-8")
-        runs = [subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "render", "bike-share.json", "--out", f"p{i}.html", "--no-check"],
+        (t / "integration.json").write_text((ROOT / "tests" / "fixtures" / "integration.json").read_text(encoding="utf-8"), encoding="utf-8")
+        runs = [subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "render", "integration.json", "--out", f"p{i}.html", "--no-check"],
                                  cwd=t, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True) for i in range(4)]
         ends = [(p.wait(), p.stderr.read()[-300:]) for p in runs]
         ok("render · four renders of one model at once all finish", all(code == 0 for code, _ in ends), ends)
@@ -1535,13 +1535,13 @@ if part("four renders at once"):
            [p.name for p in t.iterdir()])
         pages = [re.sub(r'"generated": "[^"]*"', "", (t / f"p{i}.html").read_text(encoding="utf-8")) for i in range(4) if (t / f"p{i}.html").is_file()]
         ok("render · each page records the model itself as its source, and the four pages are the same",
-           len(pages) == 4 and '"source": "bike-share.json"' in pages[0] and len(set(pages)) == 1,
+           len(pages) == 4 and '"source": "integration.json"' in pages[0] and len(set(pages)) == 1,
            re.findall(r'"source": "[^"]*"', pages[0])[:1] if pages else "no pages")
 
 if part("mcp"):
-    # The MCP server (#91): JSON-RPC through its pipes, a call of each read tool on the bike share, and a page tool's command
+    # The MCP server (#91): JSON-RPC through its pipes, a call of each read tool on the integration fixture, and a page tool's command
     # on the served page's event stream
-    mcp = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(ROOT / "examples" / "bike-share.json"), "--port", "0"],
+    mcp = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(ROOT / "tests" / "fixtures" / "integration.json"), "--port", "0"],
                            stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
     stop = threading.Timer(300, mcp.kill); stop.daemon = True; stop.start()  # a server that stops answering fails here, not on CI's clock
     NEW = {"_meta": {"io.modelcontextprotocol/protocolVersion": "2026-07-28", "io.modelcontextprotocol/clientCapabilities": {}}}
@@ -1574,7 +1574,7 @@ if part("mcp"):
 
     said, err = tool("list_views")
     got = json.loads(said) if not err else {}
-    ok("mcp · list_views: the views and the stories", [v["id"] for v in got.get("views", [])] == [v["id"] for v in bike["views"]] and [s["id"] for s in got.get("stories", [])] == ["ride"], said)
+    ok("mcp · list_views: the views and the stories", [v["id"] for v in got.get("views", [])] == [v["id"] for v in fixture["views"]] and [s["id"] for s in got.get("stories", [])] == ["ride"], said)
     said, err = tool("describe_view", view="trips")
     ok("mcp · describe_view: the view in sentences, then its card ids", not err and said.startswith("Trip service: 12 cards") and "\nCard ids: rider-app (Rider app), " in said, said)
     said, err = tool("paths", view="trips", **{"from": "rider-app", "to": "payments"})
@@ -1589,9 +1589,9 @@ if part("mcp"):
        whole == (said, False) and all(e and "depth is not" in w for w, e in odd), (whole, odd))
     import umlimator_mcp
     ok("mcp · the page served while the model does not render declares its language, <html lang=\"en\"> (audit 37)", page_lang(umlimator_mcp.WAITING), umlimator_mcp.WAITING[:120])
-    ok("mcp · broken_rules and validate: the bike share breaks none of its rules and has no problems", tool("broken_rules") == ("[]", False) and tool("validate") == ("[]", False))
+    ok("mcp · broken_rules and validate: the integration fixture breaks none of its rules and has no problems", tool("broken_rules") == ("[]", False) and tool("validate") == ("[]", False))
     with tempfile.TemporaryDirectory() as tmp:
-        (Path(tmp) / "other.json").write_text(json.dumps(edited(bike)))
+        (Path(tmp) / "other.json").write_text(json.dumps(edited(fixture)))
         said, err = tool("diff", other_model_path=str(Path(tmp) / "other.json"))
     ok("mcp · diff: what changed from another model file to this one", not err and json.loads(said) == {"summary": ["renames Accounts and sign-in to Accounts", "adds Feature flags",
        "removes Payments queue", "adds a line from Trip service to Payment provider (charges)", "moves Payment provider in the view What runs"], "views": ["system"]}, said)
@@ -1599,14 +1599,14 @@ if part("mcp"):
         (Path(tmp) / "v5.json").write_text(json.dumps({"nodes": [{"id": "a"}], "views": [{"id": 5, "nodeIds": ["a"]}]}))
         said, err = tool("diff", other_model_path=str(Path(tmp) / "v5.json"))
     ok("mcp · diff: another model render refuses is a tool error naming it (audit 11)", err and said.endswith("v5.json: views[0].id is not a string"), said)
-    said, err = tool("diff", other_model_path=str(ROOT / "examples" / "traces" / "ride-end.json"))
+    said, err = tool("diff", other_model_path=str(ROOT / "tests" / "fixtures" / "traces" / "ride-end.json"))
     ok("mcp · diff: a JSON object that is no map model (a trace) is a tool error, not everything added (audit 14)", err and said.endswith("no views: not a map model"), said)
     said, err = tool("describe_view", view="nope")
     ok("mcp · a call that names what the model lacks is a tool error that says what it has", err and said.startswith("no view 'nope'; the views: context, system"), said)
     wrong = [tool("describe_view", view=["trips"]), tool("tour", cards=[{"id": "trips"}]), tool("diff", other_model_path=5)]
     ok("mcp · an argument of another type than its inputSchema's is a tool error that names it", all(e for _, e in wrong) and "view is not" in wrong[0][0], wrong)
     # audit 47: a tour the page cannot ride (cards no line joins in turn, one card, none) said "Shown" and drew nothing
-    rode = [tool("tour", cards=c, view="context") for c in (["riders", "bikeshare", "maps"], ["maps", "bikeshare", "riders"])]
+    rode = [tool("tour", cards=c, view="context") for c in (["riders", "mopedshare", "maps"], ["maps", "mopedshare", "riders"])]
     gaps = [tool("tour", cards=c, view="context") for c in (["riders", "maps"], ["riders"], [])]
     ok("mcp · tour: cards no line joins in turn, one card or none is a tool error naming the gap; a line either way rides (audit 47)",
        not any(e for _, e in rode) and all(e for _, e in gaps) and gaps[0][0].startswith("no line joins 'riders' and 'maps' on view 'context'")
@@ -2203,7 +2203,7 @@ if part("audit 36"):
         g = t / "repo"; (g / "docs").mkdir(parents=True)
         sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
         sh("init", "-q")
-        (g / "docs" / "map.json").write_text((ROOT / "examples" / "bike-share.json").read_text(encoding="utf-8"))
+        (g / "docs" / "map.json").write_text((ROOT / "tests" / "fixtures" / "integration.json").read_text(encoding="utf-8"))
         (g / "docs" / "model.md").write_text('# Model\n\nA model has `"nodes"` and `"views"`: <img src=//e.example/t.png>\n')
         (g / "docs" / "notes.txt").write_text('{"nodes": [], "views": [')
         (g / "docs" / "cut.JSON").write_text('{"nodes": [], "views": []}')
@@ -2399,7 +2399,7 @@ if part("audit 45"):
            and "No map model changed" not in md and "OUTSIDE-45" not in written and "SECRET-45" not in written and "x.invalid" not in written,
            (said, md, r.stderr[-400:]))
 if part("bench views"):
-    # bench.py times map views only (bike share step 0): a version-2 model's typed views are left out with their benchViews,
+    # bench.py times map views only (step 0 of the one-model plan): a version-2 model's typed views are left out with their benchViews,
     # a version-1 model's views are all timed whatever they say, and a benchViews entry naming no view stops the bench
     spec = importlib.util.spec_from_file_location("bench", ROOT / "bench" / "bench.py")
     bench = importlib.util.module_from_spec(spec); spec.loader.exec_module(bench)

@@ -4,7 +4,7 @@
      both directions, both themes and three fonts: every node and line drawn, no two nodes overlapping, every text inside
      its node, every node inside its box, no line through a node but its own two ends, every line end within 1 px of its
      node's box, no line label over a node (these three not on c4-stress.json's all, whose crowding
-     tests/m2-fixtures.test.mjs pins), every node and line named, texts at 4.5:1 and lines and outlines at 3:1. Then bike-share, which holds the
+     tests/m2-fixtures.test.mjs pins), every node and line named, texts at 4.5:1 and lines and outlines at 3:1. Then the integration fixture, which holds the
      Bookshop atlas's typed views (M2.13) since step 3 of the one-model plan: each typed element that opens a view, selected in a
      view that draws it as a card and opened by Enter, opens its view in the page. -->
 <meta charset="utf-8">
@@ -70,9 +70,9 @@ try {
     }
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
 
-  // ---- bike-share, which holds the Bookshop atlas's typed views since step 3 of the one-model plan: each typed element that
+  // ---- the integration fixture, which holds the Bookshop atlas's typed views since step 3 of the one-model plan: each typed element that
   // opens a view opens it in the page
-  const ATLAS = await (await fetch('../examples/bike-share.json')).json(), boxes = [];
+  const ATLAS = await (await fetch('fixtures/integration.json')).json(), boxes = [];
   // a typed element that opens a view, or a map card that opens a view of another type (the trips map's trip API, lifecycle
   // and fare, and the fleet map's battery monitor and rebalance planner)
   const across = [];
@@ -88,14 +88,14 @@ try {
       g.dispatchEvent(new MouseEvent('click', at)); stage.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true, cancelable: true })); }
     await new Promise(res => setTimeout(res, 0));
     if (!g) { boxes.push(n); continue; }
-    check(`bike-share: ${n}, selected in ${on.id} and opened by Enter, opens ${to}`, went.includes(to), went);
+    check(`integration fixture: ${n}, selected in ${on.id} and opened by Enter, opens ${to}`, went.includes(to), went);
     if (!l.type) across.push(`${n}>${to}`);
     h.destroy();
   }
-  check('bike-share: the map cards that open a typed view each opened it', JSON.stringify(across) === JSON.stringify(['trip-api>unlock-sequence', 'lifecycle>trip-internals', 'fare>domain', 'battery-service>blocks', 'planner>rebalance']), across);
+  check('integration fixture: the map cards that open a typed view each opened it', JSON.stringify(across) === JSON.stringify(['trip-api>unlock-sequence', 'lifecycle>trip-internals', 'fare>domain', 'battery-service>blocks', 'planner>rebalance']), across);
   // two typed elements that open a view are drawn as a box in every view that lists them (the rides package and the JVM
   // execution environment), and Enter does not open a box (a gap, stated in docs/module-api.md's 0.24.0 section)
-  check('bike-share: the elements that open a view and are a box in every view are the rides package and the JVM', JSON.stringify(boxes) === JSON.stringify(['rides-package', 'jvm']), boxes);
+  check('integration fixture: the elements that open a view and are a box in every view are the rides package and the JVM', JSON.stringify(boxes) === JSON.stringify(['rides-package', 'jvm']), boxes);
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

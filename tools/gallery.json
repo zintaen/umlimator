@@ -1,11 +1,8 @@
 {
  "about": "What tools/gallery.mjs writes into examples/index.html besides what it reads from docs/types.md, tools/types.json and the models: the map type's own name and description, each type card's picture alt text (the picture is the main view of its type page, examples/types/<type>.html), and the Atlas's entries. tests/gallery.test.mjs fails when the committed page is not what the tool writes.",
  "retired": {
-  "about": "Models of examples/ the gallery does not show: bike-share.json, the hidden test and bench model, and bike-share-c4.json, what umlimator.py import writes from its Structurizr source, examples/bike-share.dsl. The real-world models that left the gallery on 19 Nov 2026 (the maintainer's decision) were deleted when the bike share model took over their tests. No card, link or mention of these is on the gallery, the docs or the README; the site still renders them.",
-  "files": [
-   "bike-share",
-   "bike-share-c4"
-  ]
+  "about": "Models of examples/ the gallery does not show: none. The test models live in tests/fixtures/ and the bench's in bench/models/ (the maintainer's decision, 20 Nov 2026); the real-world models that left the gallery on 19 Nov 2026 were deleted.",
+  "files": []
  },
  "map": {
   "name": "Map",

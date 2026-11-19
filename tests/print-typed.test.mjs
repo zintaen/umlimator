@@ -11,7 +11,7 @@ import '../src/uml/class.js';
 import '../src/uml/object.js';
 import '../src/uml/package.js';
 import '../src/uml/deployment.js';
-// every other type too, for bike-share's typed views (step 3 of the one-model plan)
+// every other type too, for the integration fixture's typed views (step 3 of the one-model plan)
 import '../src/typed/layout.js';
 import '../src/typed/draw.js';
 import '../src/uml/sequence.js';
@@ -71,15 +71,17 @@ test('a type\'s word and rows: the element\'s kind and what is listed for it, es
 // What printDoc listed before 4.9, for the examples drawn today: pinned as one hash a file over its views' tables, those
 // of a typed view with their old heading, "Cards". A change to one of these examples or to the tables changes its hash.
 const PINNED = {
-  'bike-share.json': 'd0e3c4dde99bdc7b', 'bike-share-c4.json': '61b680937d248209', 'monorepo.json': '4e2638724ead87d6', 'shapes.json': '49fdf9fb182b383b',
+  'integration.json': '142ad1c885cce944', 'integration-c4.json': 'c7f6f8f4e268c695', 'monorepo.json': '4e2638724ead87d6', 'shapes.json': '49fdf9fb182b383b',
   'sales-classes.json': 'cea8962c5cc55d53', 'order-objects.json': '67b4d8e36a4b59c5', 'bookshop-packages.json': '61f60b0985090f3d', // 6.7: the profile's row and its application's
 }; // audit 1: a typed view's element by its drawn name (catalog::Book, ada : Customer), so sales-classes and order-objects changed
-// bike-share.json changed when the rider shop's three views (overview, api, checkout, from bookshop.json) joined it,
-// and again when its typed views joined it (step 3): the tables of all its 49 views, the trips map's fare, lifecycle and trip
-// API and the fleet map's battery monitor and rebalance planner now opening typed views; and again in step 4: the dock feed,
-// demand and rider help views joined it (52 views), and the fleet map's dock listener and demand forecast open two of them.
-// Step 4 also took out the files the model replaced (bookshop, clinic, weather, assistant, states) and pinned the clinic's
-// successor, bike-share-c4.json, the import of examples/bike-share.dsl
+// integration.json (tests/fixtures/, the integration fixture, a moped share) changed when the rider shop's three views
+// (overview, api, checkout, from bookshop.json) joined it, and again when its typed views joined it (step 3): the tables of
+// all its 49 views, the trips map's fare, lifecycle and trip API and the fleet map's battery monitor and rebalance planner now
+// opening typed views; and again in step 4: the dock feed, demand and rider help views joined it (52 views), and the fleet
+// map's dock listener and demand forecast open two of them. Step 4 also took out the files the model replaced (bookshop,
+// clinic, weather, assistant, states) and pinned the clinic's successor, integration-c4.json, the import of
+// tests/fixtures/integration.dsl. Both changed again when they left examples/ for tests/fixtures/ and their ids and labels
+// were renamed
 
 test('a typed view\'s tables name each element as drawn: two Order classes shown without their packages are sales::Order and wholesale::Order (audit 1)', () => {
   const m = read('../examples/bookshop-packages.json'), ids = m.nodes.filter(n => n.label === 'Order').map(n => n.id);
@@ -91,7 +93,7 @@ test('a typed view\'s tables name each element as drawn: two Order classes shown
 test('maps\' tables are unchanged; a class, object or package view\'s are unchanged but for the heading, "Elements", and drawn names', () => {
   const got = {};
   for (const f of Object.keys(PINNED)) {
-    const ctx = mapContext(read('../examples/' + f)), all = ctx.views.map(v => {
+    const ctx = mapContext(read((f.startsWith('integration') ? './fixtures/' : '../examples/') + f)), all = ctx.views.map(v => {
       const ts = tablesOf(ctx, v, ctx.buildGeo(v.id)), typed = (v.diagram ?? 'map') !== 'map';
       assert.match(ts[0].title, typed ? /^Elements / : /^Cards /, `${f} ${v.id}`);
       return ts.filter(t => t.rows.length).map(t => ({ ...t, title: t.title.replace(/^Elements /, 'Cards ') })); // as printDoc pours them

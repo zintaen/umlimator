@@ -41,7 +41,7 @@ try {
   const ew = g.contentWindow, ed = g.contentDocument;
   for (let i = 0; i < 100 && !(ew.map && ed.querySelector('.umlimator')); i++) await tick();
   const er = ed.querySelector('.umlimator').shadowRoot, label = 'Orders <v2> <img src=x onerror=window.pwned=1> & "co"';
-  ew.map.select({ type: 'node', id: 'api', view: ew.map.view }); ew.map.focus({ type: 'node', id: 'api', view: ew.map.view }); await tick();
+  ew.map.select({ type: 'node', id: 'module', view: ew.map.view }); ew.map.focus({ type: 'node', id: 'module', view: ew.map.view }); await tick();
   er.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true, composed: true })); await tick();
   const inp = er.activeElement; inp.value = label; inp.dispatchEvent(new Event('input', { bubbles: true }));
   inp.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true })); await tick(); await tick();

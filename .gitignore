@@ -17,3 +17,6 @@ examples/types/*.html
 /.claude/
 /k.json
 /k.out.json
+
+# the integration fixture's standalone page: tests/embed.py renders it from tests/fixtures/integration.json before the browser pages
+tests/fixtures/integration.html

@@ -2,7 +2,7 @@
   "nodes": [
     { "id": "mm-opening", "type": "mindmap.Topic", "label": "Opening a second city" },
     { "id": "mm-fleet", "type": "mindmap.Topic", "label": "Fleet", "parent": "mm-opening" },
-    { "id": "mm-first-titles", "type": "mindmap.Topic", "label": "Order the first 500 e-bikes", "parent": "mm-fleet" },
+    { "id": "mm-first-titles", "type": "mindmap.Topic", "label": "Order the first 500 e-mopeds", "parent": "mm-fleet" },
     {
       "id": "mm-wholesalers",
       "type": "mindmap.Topic",
@@ -55,7 +55,7 @@
     },
     { "id": "mm-on-aws", "type": "mindmap.Topic", "label": "On AWS", "parent": "mm-hosting", "opensView": "on-aws" },
     { "id": "gcp-users", "type": "gcp.User", "label": "Riders" },
-    { "id": "gcp-project", "type": "gcp.Zone", "label": "bikeshare-prod", "props": { "zoneType": "project" } },
+    { "id": "gcp-project", "type": "gcp.Zone", "label": "mopedshare-prod", "props": { "zoneType": "project" } },
     {
       "id": "gcp-dns",
       "type": "gcp.Product",
@@ -115,7 +115,7 @@
     {
       "id": "gcp-network",
       "type": "gcp.Zone",
-      "label": "bikeshare-vpc",
+      "label": "mopedshare-vpc",
       "parent": "gcp-region",
       "props": { "zoneType": "network" }
     },
@@ -157,13 +157,13 @@
     {
       "id": "az-subscription",
       "type": "azure.Group",
-      "label": "Bike share production",
+      "label": "Moped share production",
       "props": { "groupType": "subscription" }
     },
     {
       "id": "az-rg",
       "type": "azure.Group",
-      "label": "rg-bikeshare-prod",
+      "label": "rg-mopedshare-prod",
       "parent": "az-subscription",
       "props": { "groupType": "resource-group" }
     },
@@ -212,7 +212,7 @@
     {
       "id": "az-vnet",
       "type": "azure.Group",
-      "label": "vnet-bikeshare",
+      "label": "vnet-mopedshare",
       "parent": "az-region",
       "props": { "groupType": "virtual-network" }
     },
@@ -305,7 +305,7 @@
     {
       "id": "aws-vpc",
       "type": "aws.Group",
-      "label": "Bike share VPC",
+      "label": "Moped share VPC",
       "parent": "aws-region",
       "props": { "groupType": "vpc" }
     },
@@ -527,7 +527,7 @@
       "id": "on-gcp",
       "diagram": "gcp",
       "parent": null,
-      "title": "Bike share on Google Cloud",
+      "title": "Moped share on Google Cloud",
       "caption": "Icons from a pack you fetch: umlimator.py pack fetch gcp, after Google's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.",
       "nodeIds": [
         "gcp-users", "gcp-project", "gcp-dns", "gcp-lb", "gcp-cdn", "gcp-assets", "gcp-queue", "gcp-region", "gcp-api",
@@ -538,7 +538,7 @@
       "id": "on-azure",
       "diagram": "azure",
       "parent": null,
-      "title": "Bike share on Azure",
+      "title": "Moped share on Azure",
       "caption": "Icons from a pack you fetch: umlimator.py pack fetch azure, after Microsoft's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.",
       "nodeIds": [
         "az-subscription", "az-rg", "az-front-door", "az-monitor", "az-region", "az-assets", "az-queue", "az-vault",
@@ -549,7 +549,7 @@
       "id": "on-aws",
       "diagram": "aws",
       "parent": null,
-      "title": "Bike share on AWS",
+      "title": "Moped share on AWS",
       "nodeIds": [
         "aws-users", "aws-cloud", "aws-dns", "aws-cdn", "aws-region", "aws-assets", "aws-queue", "aws-email",
         "aws-monitoring", "aws-vpc", "aws-alb", "aws-az-a", "aws-public-a", "aws-nat-a", "aws-private-a", "aws-api-a",

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """umlimator.py import (#90) end to end. Each sample, one per format (Mermaid has two: a flowchart and a C4 diagram), in
-tests/import/, and the Structurizr one as examples/bike-share.dsl (the bike share model's C4 views, as a team keeps them
+tests/import/, and the Structurizr one as tests/fixtures/integration.dsl (the integration fixture's C4 views, as a team keeps them
 in Structurizr), becomes a model that the module's validate() passes, that renders, and whose layout check is clean (the
-bike share's container view keeps its crossings: two containers each with lines to the database and the ride queue); it has the cards, boxes, lines and views its source says; and
+moped share's container view keeps its crossings: two containers each with lines to the database and the ride queue); it has the cards, boxes, lines and views its source says; and
 what the sample holds that import does not read is listed on stderr with its line (in JSON, its path).
 
   python3 tests/import.py
@@ -39,20 +39,20 @@ box = lambda m, view, bid: next((c for v in m["views"] if v["id"] == view for c 
 card = lambda m, cid: next((n for n in m["nodes"] if n["id"] == cid), {})
 
 # per sample: its format, the views, what stderr names (file:where), and what the model says
-# the bike share's unread lines are the workspace's description, the deployment environment, the dynamic and deployment
+# the moped share's unread lines are the workspace's description, the deployment environment, the dynamic and deployment
 # views (which the importer does not read) and the theme. Its Ride queue, tagged Queue, reads as a database: its
 # technology, a PostgreSQL table, matches the database words first (the inline case beside the "tools" one below shows
 # that the tag alone makes a queue)
 EXPECT = {
-    "examples/bike-share.dsl": ("structurizr", ["context", "containers", "api-components"], [":5:", ":50:", ":84:", ":96:", ":108:"], lambda m: [
+    "tests/fixtures/integration.dsl": ("structurizr", ["context", "containers", "api-components"], [":5:", ":50:", ":84:", ":96:", ":108:"], lambda m: [
         ("views nest as the source's levels", [v.get("parent") for v in m["views"]] == [None, "context", "containers"]),
-        ("a relationship to a container lifts to its system in the context view (an implied line)", line(m, "rider", "bikeshare", "context")),
-        ("the container view boxes the system's containers", box(m, "containers", "bikeshare").get("nodeIds") == ["app", "api", "worker", "db", "queue"]),
+        ("a relationship to a container lifts to its system in the context view (an implied line)", line(m, "rider", "mopedshare", "context")),
+        ("the container view boxes the system's containers", box(m, "containers", "mopedshare").get("nodeIds") == ["app", "api", "worker", "db", "queue"]),
         ("a group is a box in each view that shows its members, and in no other",
          [box(m, v, "field-crews") for v in ("context", "containers", "api-components")]
          == [{"id": "field-crews", "label": "Field crews", "nodeIds": ["staff"]}] * 2 + [{}]),
         ("the system opens its container view, the container its component view",
-         (card(m, "bikeshare").get("opensView"), card(m, "api").get("opensView")) == ("containers", "api-components")),
+         (card(m, "mopedshare").get("opensView"), card(m, "api").get("opensView")) == ("containers", "api-components")),
         ("kinds: people, tags (Database, External), technology",
          [card(m, i)["kind"] for i in ("rider", "db", "queue", "payments", "app", "worker")] == ["person", "database", "database", "external", "frontend", "backend"]),
         ("no shapes field: maps draw in one style (0.21.0)", "shapes" not in m),
@@ -121,6 +121,12 @@ ok("a raw character XML cannot hold (a C0 control, U+FFFE) in a map's source is 
    and un2 == [(3, raw("\x01")), (5, raw("\x02"))]
    and not re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff￾￿]", json.dumps(m3, ensure_ascii=False))
    and un3 == [(None, raw("\x01")), (None, raw("\ud800"))], (m, un, m2, un2, m3, un3))
+m, un = imp.read("compose", '{"services": {"web\\u0001": {"image": "nginx"}, "web\\ufffd-2": {"image": "x"}, "web\\u0002": {"image": "redis"}, "db": {"image": "postgres"}}}', "x")
+m2, un2 = imp.read("kubernetes", '{"kind": "Service", "metadata": {"name": "a", "labels": {"k\\u0001": "1", "k\\u0002": "2"}}}', "x")
+ok("compose · two keys that differ only in a character XML cannot hold are kept apart, the later as the next free key-2, key-3 ..., said (audit 50)",
+   [(n["label"], n.get("sublabel")) for n in m["nodes"]] == [("web\ufffd", "nginx"), ("web\ufffd-2", "x"), ("web\ufffd-3", "redis"), ("db", "postgres")]
+   and un == [(None, raw("\x01")), (None, raw("\x02")), (None, "key web\ufffd: another key reads as the same text, so this one is read as web\ufffd-3")]
+   and (None, "key k\ufffd: another key reads as the same text, so this one is read as k\ufffd-2") in un2, (m, un, un2))
 ok("mermaid · front matter fences with spaces after them are front matter (audit 5)",
    imp.front("--- \ntitle: Shop\n---  \nflowchart LR\n")[0] == "Shop" and imp.mermaid_typed("--- \ntitle: t\n--- \nclassDiagram\n") == "classDiagram")
 m, un = imp.read("structurizr", 'workspace {\n  model {\n    u = person "User" \\\n      "A customer"\n    s = softwareSystem "Shop"\n    u -> s "Uses" \\\n      "HTTPS"\n  }\n}\n', "x")
@@ -829,8 +835,8 @@ with tempfile.TemporaryDirectory() as tmp:
         c = run("check", str(page)) if r.returncode == 0 else r
         rep = json.loads(c.stdout[c.stdout.find("{"):]) if c.returncode == 0 and "{" in c.stdout else {}
         ok(f"{name} · renders, and its layout check is clean", rep.get("checked") and not rep.get("problems") and not rep.get("errors"), rep or c.stderr[-1500:])
-    shutil.copy(ROOT / "examples" / "bike-share.dsl", t / "bike-share.txt")
-    r = run("import", str(t / "bike-share.txt"), "--out", str(t / "txt.json"))
+    shutil.copy(ROOT / "tests" / "fixtures" / "integration.dsl", t / "integration.txt")
+    r = run("import", str(t / "integration.txt"), "--out", str(t / "txt.json"))
     ok("knows a format by its content, whatever the extension", r.returncode == 0 and json.loads(r.stdout).get("format") == "structurizr", r.stderr)
     r = run("import", str(ROOT / "tests" / "import" / "compose.json"), "--format", "kubernetes", "--out", str(t / "k.json"))
     ok("--format decides, and a file with nothing to import is an error", r.returncode == 1 and "nothing to import" in r.stderr, r.stderr)
@@ -839,7 +845,7 @@ with tempfile.TemporaryDirectory() as tmp:
 # JSON's notImported (import-parsers #1 to #4, 0.14.0): it used to import as a smaller map with "unread": 0
 with tempfile.TemporaryDirectory() as tmp:
     t = Path(tmp)
-    dsl = (ROOT / "examples" / "bike-share.dsl").read_text(encoding="utf-8").splitlines(keepends=True)
+    dsl = (ROOT / "tests" / "fixtures" / "integration.dsl").read_text(encoding="utf-8").splitlines(keepends=True)
     puml = (ROOT / "tests" / "import" / "parcels.puml").read_text(encoding="utf-8").splitlines(keepends=True)
     files = {"cut.dsl": "".join(dsl[:36]), "open.dsl": "".join(dsl[:29] + ["/* TODO: check the receipt flow\n"] + dsl[29:]),
              "cut.puml": "".join(puml[:16]), "cut.json": "".join((ROOT / "tests" / "import" / "compose.json").read_text(encoding="utf-8").splitlines(keepends=True)[:70])}
@@ -1238,7 +1244,7 @@ with tempfile.TemporaryDirectory() as tmp:
     r = run("import", str(ROOT / "tests" / "import" / "meals.mmd"), "--typed", "--out", str(t / "y.json"))
     ok("--typed on a source with no typed reader (Mermaid's C4) says so, and writes nothing", r.returncode == 1 and "--typed reads a Mermaid flowchart" in r.stderr
        and not (t / "y.json").exists(), r.stderr)
-    r = run("import", str(ROOT / "examples" / "bike-share.dsl"), "--typed", "--out", str(t / "y.json"))
+    r = run("import", str(ROOT / "tests" / "fixtures" / "integration.dsl"), "--typed", "--out", str(t / "y.json"))
     ok("--typed on Structurizr DSL says so, and writes nothing", r.returncode == 1 and "is structurizr, which imports as a map" in r.stderr and not (t / "y.json").exists(), r.stderr)
 
     # a Structurizr JSON workspace: not recognised before 0.24.0, now the Structurizr reader's: typed C4
