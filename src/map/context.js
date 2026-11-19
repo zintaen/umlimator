@@ -767,10 +767,11 @@ function mapContext(model, opts = {}) {
     for (let more = true; more && todo.length;) { more = false; todo = todo.filter(nid => { if (!unfold(vid, nid)) return true; (unfolded[vid] ||= []).push(nid); return !(more = true); }); } }))();
   const geoCache = O();
   /* what a plain view's picture takes from the order of its cards, before routing (diff, audit 43): its grid slots, each way
-     bestFlow tries, by card; null where only laying it out tells (a type's own layout, a hub plan, a view with some cards pinned) */
+     bestFlow tries, by card; null where only laying it out tells (a type's own layout, a hub plan, a view with some cards pinned,
+     a fully pinned view with lines: it keeps its slots, but its ports and lines are routed in the order of its cards, audit 44) */
   function gridKey(vid) { const v = V[vid]; if (!v || ownLayout(vid) || (planCache[vid] || O()).hub) return null;
     const ids = [...new Set((v.nodeIds || []).filter(i => N[i]))].sort(), key = l => JSON.stringify(l.map(p => ids.map(i => p[i] || null)));
-    if (v.layout) { const L = onGrid(vid, v.layout); return ids.every(i => Array.isArray(L[i])) ? key([L]) : null; }
+    if (v.layout) { if (viewEdges(v).length) return null; const L = onGrid(vid, v.layout); return ids.every(i => Array.isArray(L[i])) ? key([L]) : null; }
     if ((v.containers || []).length) return key([blockPos(vid)]);
     const n = (v.nodeIds || []).length;
     return key(n > 30 || n < 3 ? [flowPos(vid)] : [{}, { pull: true }, { packed: true }, { pull: true, packed: true }].map(o => flowPos(vid, o))); }

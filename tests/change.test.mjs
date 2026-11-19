@@ -748,11 +748,28 @@ test('audit 43: diff() of many views whose cards trade places lays out only the 
   const A = { title: 't', nodes, edges, views }, B = structuredClone(A); B.views.forEach(v => { const x = v.nodeIds; [x[1], x[2]] = [x[2], x[1]]; });
   let t = performance.now(); const d = diff(A, B), ms = performance.now() - t; console.log(`# ${V} trees of ${N} cards, siblings swapped: ${Math.round(ms)} ms`);
   assert.deepEqual([d.summary, d.views], [[], []]); assert.ok(ms < 1500, `${ms} ms`);
-  // all pinned: the same picture, said by its pins alone
-  const P = structuredClone(A); P.views.forEach(v => { v.layout = Object.fromEntries(v.nodeIds.map((id, i) => [id, [i % 6, Math.floor(i / 6)]])); });
+  // all pinned, with no lines: the same picture, said by its pins alone (with lines, the view is laid out: audit 44)
+  const P = { ...structuredClone(A), edges: [] }; P.views.forEach(v => { v.layout = Object.fromEntries(v.nodeIds.map((id, i) => [id, [i % 6, Math.floor(i / 6)]])); });
   const Q = structuredClone(P); Q.views.forEach(v => { v.nodeIds.reverse(); });
   t = performance.now(); assert.deepEqual(diff(P, Q).summary, []); assert.ok(performance.now() - t < 1500);
   // cards with no lines that trade slots are still said, the view laid out
   const F = { nodes: ['a', 'b', 'c', 'd'].map(id => ({ id, label: id.toUpperCase() })), edges: [], views: [{ id: 'v', title: 'V', nodeIds: ['a', 'b', 'c', 'd'] }] }, G = structuredClone(F); G.views[0].nodeIds = ['b', 'a', 'c', 'd'];
   assert.deepEqual([diff(F, G).summary, diff(F, G).views], [['moves B to the start in the view V'], ['v']]);
+});
+
+test('audit 44: diff() says a fully pinned view whose reorder routes its lines another way, and lists it; one whose picture holds is not said', () => {
+  // twelve cards, each pinned, their order shuffled: no card moves, but lines e11 and e12 take other ports and tracks
+  const m = {"nodes":[{"id":"n0","label":"Card 0"},{"id":"n1","label":"Card 1"},{"id":"n2","label":"Card 2"},{"id":"n3","label":"Card 3"},{"id":"n4","label":"Card 4"},{"id":"n5","label":"Card 5"},{"id":"n6","label":"Card 6"},{"id":"n7","label":"Card 7"},{"id":"n8","label":"Card 8"},{"id":"n9","label":"Card 9"},{"id":"n10","label":"Card 10"},{"id":"n11","label":"Card 11"}],"edges":[{"id":"e1","from":"n7","to":"n2"},{"id":"e2","from":"n11","to":"n10","label":"calls"},{"id":"e3","from":"n2","to":"n1"},{"id":"e5","from":"n4","to":"n10"},{"id":"e6","from":"n2","to":"n3"},{"id":"e7","from":"n2","to":"n8"},{"id":"e8","from":"n5","to":"n7","label":"calls"},{"id":"e9","from":"n10","to":"n11"},{"id":"e10","from":"n1","to":"n5","label":"calls"},{"id":"e11","from":"n8","to":"n0","label":"calls"},{"id":"e12","from":"n0","to":"n2"},{"id":"e13","from":"n10","to":"n3","label":"calls"},{"id":"e14","from":"n4","to":"n3","label":"calls"},{"id":"e15","from":"n2","to":"n9"},{"id":"e16","from":"n7","to":"n6"},{"id":"e17","from":"n4","to":"n3","label":"calls"}],"views":[{"id":"v","label":"V","nodeIds":["n0","n1","n2","n3","n4","n5","n6","n7","n8","n9","n10","n11"],"layout":{"n0":[0,0],"n1":[0,3],"n2":[3,1],"n3":[0,1],"n4":[3,2],"n5":[1,2],"n6":[1,1],"n7":[2,2],"n8":[3,3],"n9":[1,3],"n10":[2,3],"n11":[3,0]}}]};
+  const b = structuredClone(m); b.views[0].nodeIds = ["n8","n6","n11","n0","n7","n4","n10","n3","n2","n5","n1","n9"];
+  const lines = g => JSON.stringify(Object.fromEntries(g.edges.map(e => [e._id ?? e.id, e.pts])));
+  assert.notEqual(lines(layout(m, 'v')), lines(layout(b, 'v')));
+  assert.deepEqual([diff(m, b).summary, diff(m, b).views], [['reorders 8 cards in the view v'], ['v']]);
+  // the same view with no lines: the pins say the whole picture, nothing is said
+  const m0 = { ...m, edges: [] }, b0 = { ...b, edges: [] }; assert.deepEqual([diff(m0, b0).summary, diff(m0, b0).views], [[], []]);
+  // pinned with one line whose reorder leaves its route alone: laid out, and still nothing said
+  const p = { nodes: ['a', 'b', 'c'].map(id => ({ id, label: id })), edges: [{ id: 'e', from: 'a', to: 'b' }], views: [{ id: 'v', title: 'V', nodeIds: ['a', 'b', 'c'], layout: { a: [0, 0], b: [1, 0], c: [2, 0] } }] };
+  const q = structuredClone(p); q.views[0].nodeIds = ['c', 'b', 'a']; assert.deepEqual(diff(p, q).summary, []);
+  // hostile: pins and ids that are prototype keys, a pin that is no pair, a line to a card that is not there
+  const h = structuredClone(m); h.nodes.push({ id: '__proto__', label: 'x' }); h.views[0].nodeIds.push('__proto__', 'constructor'); h.views[0].layout.__proto__ = 'x'; h.edges.push({ id: 'eh', from: 'n0', to: 'gone' });
+  const k = structuredClone(h); k.views[0].nodeIds.reverse(); assert.doesNotThrow(() => diff(h, k));
 });
