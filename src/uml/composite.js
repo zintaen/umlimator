@@ -6,7 +6,7 @@ import { brLines } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
 import { CLASSIFIERS, commentConnect, LINE_WORDS, legendOf, lineIn, lineLabel, lineLook, lineRename, memberClash, memberEdit, multBounds, printMember } from './class.js'; // a subject's other members, as the class type's; SHAPE.note, a comment's look
 import './usecase.js'; // SHAPE.ellipse, a collaboration use's; SHAPE.subject, a class subject's frame
-import { SN_SAY, STRUCT_RULES, sideProblem, snKindName, snKindWord, portFit, portSides, portsDrawn, structProblems } from './structure.js';
+import { SN_SAY, STRUCT_RULES, sideProblem, snKindName, snKindWord, portFit, portSides, portsDrawn, portRoom, structProblems } from './structure.js';
 import { viewLines } from './owners.js';
 import { usedIds, jsonText, labelOr, elName, propTextProblems } from '../core/model.js';
 
@@ -269,10 +269,14 @@ function csGeo({ model, view, pos: pins, memo }) {
     nodeIds: x === P.S ? blocks[0][0] : P.collabs.find(c => c.x === x).roles.map(m => m.id), shape: shape[x.type] || 'subject', aria: csNodeName(P, x.id),
     ...(x === P.S && portsWithLines ? { pad: 48 + (inLbl && inLbl + 24) } : {}), ...(x.type === 'uml.Collaboration' ? { round: true } : {}) }));
   // labelGaps (§8, decision 9): the role names on role bindings, which span the subject's columns, else find no spot
-  const g = layoutTyped({ nodes, edges, ...(containers.length ? { containers } : {}), direction: down ? 'down' : 'right', gap: 64, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo);
+  const run = ns => layoutTyped({ nodes: ns, edges, ...(containers.length ? { containers } : {}), direction: down ? 'down' : 'right', gap: 64, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo);
+  let g = run(nodes);
   const ports = [...P.sPorts.map(q => ({ q, id: q.id, owner: P.sid })), ...partPorts].map(p => ({ id: p.id, owner: p.owner, side: sides[p.id], label: csName(p.q), valueType: CS_PROPS(p.q).valueType, stereotypes: csStereo(p.q),
     aria: SN_SAY.port(csName(p.q), csName(P.el(p.owner)), { valueType: CS_PROPS(p.q).valueType, stereotypes: csStereo(p.q) }) }));
-  const out = portsDrawn(g, ports), byId = out.byId; // a copy: what layoutTyped returned is never edited (§2.4)
+  // a copy: what layoutTyped returned is never edited (§2.4); a part that could not hold a port with no line grows and is laid out
+  // once more (portRoom, audit 52, as the component view)
+  const over = []; let out = portsDrawn(g, ports, over); const grown = portRoom(nodes, over); if (grown) { g = run(grown); out = portsDrawn(g, ports); }
+  const byId = out.byId;
   // the slots (src/typed/edit.js): one at each node and box, so the palette's add hears what is selected (state.js's)
   const slots = [...out.nodes, ...CS_ARR(out.families)].map(n => ({ after: n.id, parent: null, x: n.x + n.w / 2, y: n.y + n.h / 2 }));
   // the legend: this view's kinds, then each kind drawn as the class view draws it (a dependency, a usage), keyed as its legend keys it (audit 23)

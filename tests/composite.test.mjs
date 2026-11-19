@@ -1014,3 +1014,14 @@ test('audit 50: a part\'s text parses in linear time, a run of spaces too (as th
     ['a:::b', { label: 'a::', valueType: 'b', multiplicity: undefined }], ['list : T[]', { label: 'list', valueType: 'T[]', multiplicity: undefined }], ['a : b : c', { error: 'A part is name : Type [multiplicity]' }]])
     assert.deepEqual(csParse(s), r, s);
 });
+
+test('audit 52: a part\'s port pinned to a side where a connector to the part\'s body ends is sized a slot of its own, clear of the next port', () => {
+  const m = { schemaVersion: 2, root: 'v', nodes: [
+    { id: 's', type: 'uml.Class', label: 'S', members: [{ id: 's.a', type: 'uml.Property', label: 'a', props: { valueType: 'A' } }, { id: 's.b', type: 'uml.Property', label: 'b', props: { valueType: 'B' } }] },
+    { id: 'A', type: 'uml.Class', label: 'A', members: [{ id: 'A.p0', type: 'uml.Port', label: 'admin' }, { id: 'A.p1', type: 'uml.Port', label: 'api' }] },
+    { id: 'B', type: 'uml.Class', label: 'B' }],
+    edges: [{ id: 'e0', type: 'uml.Connector', from: 's.b', to: 'A.p1', props: { ends: { to: { part: 's.a' } } } }, { id: 'e2', type: 'uml.Connector', from: 's.b', to: 's.a' }],
+    views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 's', nodeIds: ['s'], present: { 's.a': { ports: { 'A.p0': { side: 'left' } } } } }] };
+  assert.deepEqual(validate(m), []); assert.deepEqual(check(m, 'v'), []);
+  assert.equal(layout(m, 'v').byId['s.a'].h, 76);
+});
