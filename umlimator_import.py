@@ -33,6 +33,7 @@ LIMIT = 1 << 20  # bytes: a Structurizr JSON or .dbml file over it is refused be
 DEEP = 64  # elements nested deeper are read flat from there, so an id (the dotted path) stays short (the module's SZ_DEEP, R2)
 VIEW_WORK = 500000  # a DSL's views: elements and relationships walked in all, each view walking every one (the module's SZ_WORK)
 FLOWS = 100000  # a flowchart's links at most: a & b --> c & d is a product (the module's MF_FLOWS)
+SELECTS = 1000000  # a Kubernetes file's Service selectors: workloads checked in all, each Service checking those under a label (audit 45)
 EXT = {".dbml": "dbml", ".dsl": "structurizr", ".puml": "plantuml", ".plantuml": "plantuml", ".pu": "plantuml", ".iuml": "plantuml",
        ".mmd": "mermaid", ".mermaid": "mermaid", ".bpmn": "bpmn"}  # bpmn: XML the module's adapter reads (umlimator.py import)
 MERMAID = re.compile(r"(flowchart(?:-elk)?|graph|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment|classDiagram|sequenceDiagram|stateDiagram|erDiagram|requirementDiagram|mindmap)\b")
@@ -1410,10 +1411,22 @@ def kubernetes(d, name):
             labels = obj(obj(obj(s2.get("template")).get("metadata")).get("labels"))
             for kv in labels.items():
                 pods.setdefault((ns2, *map(str, kv)), []).append((labels, wid))
+    picked, work = 0, SELECTS  # Services by workloads is a product: lines at most FLOWS, checks at most SELECTS, each said once (audit 45)
     for i, kind, ns, nm, spec, cid in objs:
         if kind == "Service" and obj(spec.get("selector")):  # to each workload whose pods it selects (its ports are on its card)
-            for labels, wid in pods.get((ns, *map(str, next(iter(spec["selector"].items())))), []):
-                if spec["selector"].items() <= labels.items():
+            if picked > FLOWS or work < 0:
+                continue
+            sel = spec["selector"].items()  # the workloads under its rarest label: every one it selects is among them
+            for labels, wid in min((pods.get((ns, *map(str, kv)), []) for kv in sel), key=len):
+                work -= 1
+                if work < 0:
+                    m.say(at(i), f"over {SELECTS} workloads checked against Service selectors: the rest of their lines are not imported")
+                    break
+                if sel <= labels.items():
+                    picked += 1
+                    if picked > FLOWS:
+                        m.say(at(i), f"over {FLOWS} lines from Services to the workloads they select: the rest are not imported")
+                        break
                     m.line(cid, wid, what="selects its pods")
         elif kind == "Ingress":  # each path to its Service, labelled with the path (and the host, when there are several)
             rules = objs_in(spec.get("rules"))

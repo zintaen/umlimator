@@ -1004,14 +1004,19 @@ def diff_since(a):
         and not any(x.is_symlink() for x in [q, *q.parents] if x.is_relative_to(top) and x != top)
     def linked_model(p, old):
         """Whether a file diff --base does not read (a link, or one under a linked folder) could be a model: its version at
-        --base was one, or its target is a file inside the checkout that is one now. A target outside is never read."""
+        --base was one, or its target is a file inside the checkout that is one now, or it is a link out of the checkout named
+        .json. A target outside the checkout is never opened, not even to look at it: what is said of a link out must depend
+        only on what the pull request wrote, or a pull request could learn which files on the runner hold which words (the
+        security review of audit 45; a link out named .json was dropped unsaid, "No map model changed.", audit 45)."""
         if old.returncode == 0 and model_of(old.stdout)[0] is not None:
             return True
         try:
             q = p.resolve()
-            return q.is_file() and q.is_relative_to(top.resolve()) and model_of(q.read_bytes())[0] is not None
+            if q.is_relative_to(top.resolve()):
+                return q.is_file() and model_of(q.read_bytes())[0] is not None
         except (OSError, RuntimeError, ValueError):
             return False
+        return p.name.lower().endswith(".json")
     untracked = set(new.stdout.split("\0")) - {""}  # a D row's path a new, untracked file holds again: read from the disk
     for name in dict.fromkeys(filter(None, names + ([] if env else new.stdout.split("\0")))):  # with the copy, diff named the new ones
         was = moved.get(name, name)
@@ -1025,7 +1030,8 @@ def diff_since(a):
         # read: a pull request could point it at another checkout's file, whose labels and logos would go into the comment
         # and the page (audit 20, the security review)
         # Only a file that could be a model is said (audit 44: a shared tsconfig.json linked in was a map that cannot be read):
-        # one that was a model at --base, or a link whose target, inside the checkout, is one (reading it leaks nothing)
+        # one that was a model at --base, or a link whose target, inside the checkout, is one (reading it leaks nothing), or
+        # whose target outside holds "nodes" and "views" (only searched for them, audit 45)
         if ((top / name).is_symlink() or (top / name).is_file()) and not inside(top / name):  # a dangling link too
             if not linked_model(top / name, old):
                 continue
@@ -1339,7 +1345,13 @@ KINDS = {"rules": r'(?:edge .+|boxes .+ form a cycle, which) breaks rule ".*"$',
          "roundEnd": r'edge .+ runs round its own end ".*"$', "nearNode": r'edge .+ passes within [\d.]+px of node ".*"$',
          "onMark": r'text ".*" touches the mark on node ".*"$', "labelOnBorder": r'label ".*" sits on the border of family ".*"$',
          "labelNoRoom": r'(?:label ".*"|step .+) has no room on edge .+: (?:not drawn|only its step .+ shows)$',
-         "labelOnLine": r'(?:label|name tag) ".*" lies on edge .+$'}
+         "labelOnLine": r'(?:label|name tag) ".*" lies on edge .+$',
+         # audit 45: these were other, and render's counts (visual.py's until round 44) had sharedLines, labelOnNode and lanes
+         "sharedLines": r"edges .+ and .+ share a line$", "labelOnNode": r'(?:edge label ".*" covers|text ".*" overlaps) node ".*"$',
+         "overflow": r'(?:(?:text|chip) ".*" overflows (?:the shape of )?node ".*"|family title ".*" overflows its box)$',
+         "labelsOverlap": r'edge labels ".*" and ".*" overlap$',
+         "lanes": r'(?:lanes ".*" and ".*" overlap|lane ".*": (?:header covers node ".*"|header crossed by edge .+|node ".*" '
+                  r'(?:sticks out|of another lane sits in it|belongs to no lane but sits in it)))$'}
 
 
 def kind_of(o, rules=None, views=None):
@@ -1867,7 +1879,7 @@ def main():
     c = sub.add_parser("check"); c.add_argument("page"); c.add_argument("--views", help="a,b,pic-* (a trailing * is a prefix)")
     c.add_argument("--timeout", type=int, default=600)
     c.add_argument("--expand", action="store_true", help="also check each view with each stacked card unfolded in place, one at a time (#71)")
-    c.add_argument("--ignore", help="kinds left out of the report: right-to-left, crossings, labelOnLine, detours, nearNode, onMark, shortLine, roundEnd, labelOnBorder, labelNoRoom (comma list)")
+    c.add_argument("--ignore", help=f"kinds left out of the report: right-to-left, {', '.join(k for k in KINDS if k not in ('rules', 'rightToLeft'))} (comma list)")
     c.set_defaults(f=cmd_check)
     d = sub.add_parser("diff", help="what changed between two models, or in every model changed since a git ref (--base)")
     d.add_argument("files", nargs="*", metavar="BEFORE.json AFTER.json"); d.add_argument("--out", required=True, help="the page (with --base: a folder)")
