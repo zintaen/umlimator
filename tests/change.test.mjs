@@ -787,7 +787,7 @@ test('audit 44: a typed view draws diff()\'s marks as a map does: a removed elem
   b.nodes.push({ id: 'coupon', type: 'uml.Class', label: 'Coupon', parent: 'sales' }); b.views[0].nodeIds.push('coupon');
   const d = all.diff(a, b), s = svgOf(all.layout(d.model, b.views[0].id));
   assert.deepEqual(d.summary, ['renames Customer to Client', 'adds Coupon', 'removes OrderStatus']);
-  assert.match(tagOf(s, 'status'), /aria-label="Enumeration OrderStatus, 4 literals, removed"/); assert.match(tagOf(s, 'status'), /opacity="\.6"/); assert.match(tagOf(s, 'status'), /stroke-dasharray="6 4"/);
+  assert.match(tagOf(s, 'status'), /aria-label="Enumeration OrderStatus, 4 literals, removed"/); assert.doesNotMatch(tagOf(s, 'status'), /opacity/); assert.match(bodyOf(s, 'status'), /<(rect|path)\b[^>]*opacity="\.6"/); // its outlines faded, not its group (audit 45) assert.match(tagOf(s, 'status'), /stroke-dasharray="6 4"/);
   const texts = bodyOf(s, 'status').match(/<text\b[^>]*>/g).filter(t => !/badge-tx/.test(t)); assert.ok(texts.length > 1 && texts.every(t => /line-through/.test(t)), 'every text of the removed class struck through');
   assert.match(bodyOf(s, 'status'), />REMOVED<\/text>/); assert.match(bodyOf(s, 'coupon'), />NEW<\/text>/); assert.match(bodyOf(s, 'customer'), />CHANGED<\/text>/);
   assert.match(tagOf(s, 'coupon'), /, new"/); assert.match(tagOf(s, 'customer'), /, changed"/); assert.doesNotMatch(tagOf(s, 'customer'), /opacity/);
@@ -798,7 +798,7 @@ test('audit 44: a typed view draws diff()\'s marks as a map does: a removed elem
   const er = read('bookshop-schema'), er2 = structuredClone(er); er2.nodes = er2.nodes.filter(n => n.id !== 'er-payment'); er2.edges = er2.edges.filter(e => e.from !== 'er-payment' && e.to !== 'er-payment');
   er2.views[0].nodeIds = er2.views[0].nodeIds.filter(i => i !== 'er-payment'); er2.nodes.find(n => n.id === 'er-customer').label = 'client';
   const se = svgOf(all.layout(all.diff(er, er2).model, 'er-schema'));
-  assert.match(tagOf(se, 'er-payment'), /, removed"[^>]*opacity="\.6"/); assert.match(tagOf(se, 'er-customer'), /, changed"/); assert.match(bodyOf(se, 'er-payment'), /line-through/);
+  assert.match(tagOf(se, 'er-payment'), /, removed"/); assert.match(bodyOf(se, 'er-payment'), /<(rect|path)\b[^>]*opacity="\.6"/); assert.match(tagOf(se, 'er-customer'), /, changed"/); assert.match(bodyOf(se, 'er-payment'), /line-through/);
   const fc = read('returns-flowchart'), fc2 = structuredClone(fc); fc2.nodes = fc2.nodes.filter(n => n.id !== 'wait'); fc2.edges = fc2.edges.filter(e => e.from !== 'wait' && e.to !== 'wait');
   fc2.views[0].nodeIds = fc2.views[0].nodeIds.filter(i => i !== 'wait'); fc2.nodes.push({ id: 'note-it', type: 'flow.Process', label: 'Log the return' }); fc2.views[0].nodeIds.push('note-it');
   const sf = svgOf(all.layout(all.diff(fc, fc2).model, 'returns'));
@@ -816,4 +816,184 @@ test('audit 44: a typed view draws diff()\'s marks as a map does: a removed elem
   h.nodes.find(n => n.id === 'coupon').change = '" onload="x'; h.nodes.find(n => n.id === 'customer').label = '"><script>alert(1)</script>'; h.nodes.find(n => n.id === 'customer').change = 'removed';
   const sh = svgOf(all.layout(h, h.views[0].id));
   assert.doesNotMatch(sh, /<script|onload=/); ['order', 'line', 'coupon'].forEach(id => assert.doesNotMatch(tagOf(sh, id), /data-change/)); assert.match(tagOf(sh, 'customer'), /data-change="removed"/);
+});
+
+// audit 45: the marks diff() puts on what a typed view draws but the model does not hold as a card or a model line
+const read45 = f => JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url)));
+const tag45 = (s, at) => { const i = s.indexOf(at); if (i < 0) return null; const a = s.lastIndexOf('<g', i); return s.slice(a, s.indexOf('>', a) + 1); };
+const keyAt45 = (s, i) => (s.match(new RegExp(`class="um-key line-key[^"]*" data-i="${i}"[^>]*aria-label="([^"]*)"`)) || [])[1];
+
+test('audit 45: every typed view of the atlas draws each mark on what it draws: its shapes, its boxes, its own lines, its fragments and its implied lines, each said in its name and key', async () => {
+  const all = await fromSrc(), m = read45('bookshop-atlas'), W = ['added', 'changed', 'removed', 'planned'], WL = ['added', 'changed', 'removed'], word = { added: 'new', changed: 'changed', removed: 'removed', planned: 'planned' };
+  const x = structuredClone(m); let k = 0;
+  const deep = o => { const s = [o]; while (s.length) { const y = s.pop(); if (!y || typeof y !== 'object') continue; y.change = W[k++ % 4]; (y.members || []).forEach(z => s.push(z)); } };
+  x.nodes.forEach(deep); x.edges.forEach(e => { e.change = WL[k++ % 3]; });
+  x.views.forEach(v => { (v.fragments || []).forEach(deep); (v.edges || []).forEach(e => { if (e && typeof e === 'object') e.change = WL[k++ % 3]; }); });
+  let boxes = 0, own = 0;
+  for (const v of x.views.filter(v => v.diagram && v.diagram !== 'map')) {
+    const g = all.layout(x, v.id), s = svgOf(g), at = `${v.diagram} ${v.id}`;
+    for (const f of g.families || []) { if (!f.change) continue; boxes++; const t = tag45(s, `data-family="${f.id}"`);
+      assert.ok(t, `${at}: box ${f.id} drawn`); assert.match(t, new RegExp(`data-change="${word[f.change]}"`), `${at}: ${f.id}`); if (/aria-label/.test(t)) assert.match(t, new RegExp(`, ${word[f.change]}"`), `${at}: ${f.id}`); }
+    // what the view owns itself (a message, a fragment, an operand) is marked as the model has it
+    const mine = new Map([...(v.edges || []), ...(v.fragments || [])].flatMap(function f(y) { return y && typeof y === 'object' ? [[y.id, y.change], ...(y.members || []).flatMap(f)] : []; }));
+    g.nodes.filter(n => mine.has(n.id)).forEach(n => { own++; assert.equal(n.change, mine.get(n.id), `${at}: ${n.id}`); assert.match(tag45(s, `data-id="${n.id}"`), new RegExp(`, ${word[n.change]}"`), `${at}: ${n.id}`); });
+    g.edges.forEach((e, i) => { const id = e._id ?? e.id; if (mine.has(id)) { own++; assert.equal(e.change, mine.get(id), `${at}: ${id}`); }
+      if (Array.isArray(e.implied)) assert.ok(e.change, `${at}: implied ${id}`);
+      const key = keyAt45(s, i); if (e.change && key != null) assert.ok(key.endsWith(', ' + word[e.change]), `${at}: ${id} ${key}`); });
+    (s.match(/<(g|text|rect|path|circle|ellipse|line|polygon|polyline)\b[^>]*(data-change|opacity|line-through)[^>]*>/g) || []).forEach(tg => { ['opacity', 'data-change', 'stroke-dasharray', 'text-decoration', 'aria-label'].forEach(n => assert.ok(tg.split(` ${n}=`).length <= 2, `${at}: ${n} twice in ${tg}`)); }); }
+  assert.ok(boxes > 30 && own > 30, `boxes ${boxes}, own ${own}`);
+});
+
+test('audit 45: a sequence\'s, a timing\'s and a class view\'s own lines carry diff()\'s marks: a removed message rose and dashed, an added one green, each said in its key and title; an inline interaction\'s messages too', async () => {
+  const all = await fromSrc(), lineOf = (s, i) => (s.match(new RegExp(`<g class="edge-g[^"]*"[^>]*data-i="${i}">[\\s\\S]*?</g>`)) || [''])[0];
+  // the sequence: m2 removed, m1 relabelled, mx added
+  const a = read45('checkout-sequence'), b = structuredClone(a), E = b.views[0].edges;
+  E.splice(1, 1); E[0].label = 'checkout(cart)'; E.push({ id: 'mx', type: 'uml.Message', from: 'lifeline-api', to: 'lifeline-payments', label: 'audit()', props: { sort: 'call' } });
+  const g = all.layout(all.diff(a, b).model, 'checkout-sequence'), s = svgOf(g), at = id => g.edges.findIndex(e => e.id === id);
+  assert.deepEqual(['m1', 'm2', 'mx', 'm3'].map(id => g.edges[at(id)].change ?? null), ['changed', 'removed', 'added', null]);
+  assert.match(lineOf(s, at('m2')), /class="edge" stroke="var\(--um-rose\)" stroke-dasharray/); assert.match(lineOf(s, at('mx')), /class="edge[^"]*" stroke="var\(--um-green\)"/);
+  assert.match(lineOf(s, at('m1')), /class="edited-dot"/); assert.match(lineOf(s, at('m2')), /<title>Message 2 of 11: [^<]*, removed<\/title>/);
+  assert.match(keyAt45(s, at('m2')), /, removed$/); assert.match(keyAt45(s, at('mx')), /, new$/); assert.match(keyAt45(s, at('m1')), /, changed$/); assert.doesNotMatch(keyAt45(s, at('m3')), /, (new|changed|removed)$/);
+  // its fragments: one whose operator changed is CHANGED; one removed with its messages comes back REMOVED
+  const c = structuredClone(a); c.views[0].fragments.find(f => f.id === 'f2').props.operator = 'loop';
+  const sc = svgOf(all.layout(all.diff(a, c).model, 'checkout-sequence'));
+  assert.match(tag45(sc, 'data-id="f2"'), /aria-label="Combined fragment loop, 1 operand, changed" data-change="changed"/); assert.doesNotMatch(tag45(sc, 'data-id="f1"'), /data-change/);
+  const r = structuredClone(a), v = r.views[0], gone = new Set(v.fragments.find(f => f.id === 'f2').members.map(o => o.id));
+  v.fragments = v.fragments.filter(f => f.id !== 'f2'); v.edges = v.edges.filter(e => !gone.has(e.parent));
+  const sr = svgOf(all.layout(all.diff(a, r).model, 'checkout-sequence'));
+  assert.match(tag45(sr, 'data-id="f2"'), /, removed" data-change="removed" stroke-dasharray="6 4"/); assert.match(sr, /data-node="f2"[^>]*aria-label="[^"]*, removed"/);
+  // timing: an added message
+  const t0 = read45('bookshop-timing'), t1 = structuredClone(t0);
+  t1.views[0].edges.push({ id: 'm-poll', type: 'uml.Message', from: 'lifeline-worker', to: 'lifeline-payments', label: 'poll', props: { sort: 'async', sentAt: 400, receivedAt: 420 } });
+  const gt = all.layout(all.diff(t0, t1).model, 'one-charge'), st = svgOf(gt), it = gt.edges.findIndex(e => e.id === 'm-poll');
+  assert.equal(gt.edges[it].change, 'added'); assert.match(lineOf(st, it), /stroke="var\(--um-green\)"/); assert.match(keyAt45(st, it), /, new$/);
+  // a class view's own association, removed and added: the key says it, as a model line's does
+  const N = (id, l) => ({ id, type: 'uml.Class', label: l }), mk = own => ({ schemaVersion: 2, nodes: [N('a', 'A'), N('b', 'B')], edges: [], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b'], edges: own }] });
+  const l = [{ id: 'l', type: 'uml.Association', from: 'a', to: 'b' }];
+  assert.match(svgOf(all.layout(all.diff(mk(l), mk([])).model, 'v')), /aria-label="Association from A to B, removed"/);
+  assert.match(svgOf(all.layout(all.diff(mk([]), mk(l)).model, 'v')), /aria-label="Association from A to B, new"/);
+  // an inline interaction draws its sequence's removed message rose and dashed, an added one green
+  const o0 = read45('buy-book-overview'), o1 = structuredClone(o0), q = o1.views.find(w => w.id === 'queue-order');
+  q.edges = q.edges.slice(1); q.edges.push({ ...structuredClone(q.edges[0]), id: 'q-new', label: 'again' });
+  const so = svgOf(all.layout(all.diff(o0, o1).model, 'buy-book')), msgs = so.match(/<g class="ov-msg"[^>]*><path [^>]*>/g);
+  assert.equal(msgs.filter(x => /stroke="var\(--um-rose\)" stroke-width="1.4" stroke-dasharray="5 5"/.test(x)).length, 1); assert.equal(msgs.filter(x => /stroke="var\(--um-green\)"/.test(x)).length, 1);
+  assert.doesNotMatch(svgOf(all.layout(o0, 'buy-book')), /ov-msg"[^>]*><path [^>]*(um-rose|um-green)/);
+});
+
+test('audit 45: a line diff() marks changed on a typed view draws its edited dot, as a map\'s does, and its title says changed', async () => {
+  const all = await fromSrc();
+  for (const [f, v] of [['bookshop-schema', 'er-schema'], ['returns-flowchart', 'returns'], ['bookshop-data-flow', 'dfd-level-1'], ['order-information-flow', 'order-flows'], ['bookshop-c4', 'c4-context']]) {
+    const a = read45(f), b = structuredClone(a), e0 = b.edges.find(e => all.layout(a, v).edges.some(x => (x._id ?? x.id) === e.id));
+    if (e0.label) e0.label = String(e0.label) + ' (v2)'; else e0.props = { ...e0.props, conveyed: ['Refund'] };
+    const g = all.layout(all.diff(a, b).model, v), s = svgOf(g), i = g.edges.findIndex(x => (x._id ?? x.id) === e0.id), line = (s.match(new RegExp(`<g class="edge-g[^"]*"[^>]*data-i="${i}">[\\s\\S]*?</g>`)) || [''])[0];
+    assert.equal((s.match(/class="edited-dot"/g) || []).length, 1, f); assert.match(line, /class="edited-dot"/, f); assert.match(line, /, changed<\/title>/, f);
+    assert.equal((svgOf(all.layout(a, v)).match(/class="edited-dot"/g) || []).length, 0, f); }
+});
+
+test('audit 45: a C4 implied relationship drawn for one an edit added or removed is drawn added or removed, and says so', async () => {
+  const all = await fromSrc(), base = { schemaVersion: 2, nodes: [{ id: 'P', type: 'c4.Person', label: 'Shopper' }, { id: 'S', type: 'c4.SoftwareSystem', label: 'Shop' },
+    { id: 'web', type: 'c4.Container', label: 'Web', parent: 'S' }, { id: 'Pay', type: 'c4.SoftwareSystem', label: 'Pay', props: { external: true } }],
+  edges: [{ id: 'r0', type: 'c4.Relationship', from: 'P', to: 'S', label: 'visits' }], views: [{ id: 'ctx', diagram: 'c4.context', subject: 'S', nodeIds: ['P', 'S', 'Pay'] }] };
+  const rel = (id, label) => ({ id, type: 'c4.Relationship', from: 'web', to: 'Pay', label }), withRel = (...r) => { const m = structuredClone(base); m.edges.push(...r); return m; };
+  const drawn = (a, b) => { const g = all.layout(all.diff(a, b).model, 'ctx'), i = g.edges.findIndex(e => Array.isArray(e.implied)), s = svgOf(g); return [g.edges[i].change, keyAt45(s, i), s]; };
+  const [c1, k1, s1] = drawn(base, withRel(rel('r1', 'charges'))); assert.equal(c1, 'added'); assert.match(k1, /, new$/); assert.match(s1, /class="edge[^"]*" stroke="var\(--um-green\)"/);
+  const [c2, k2, s2] = drawn(withRel(rel('r1', 'charges')), base); assert.equal(c2, 'removed'); assert.match(k2, /, removed$/); assert.match(s2, /stroke="var\(--um-rose\)" stroke-dasharray/);
+  // standing for one that stayed and one that came: changed; for none that changed: unmarked
+  assert.equal(drawn(withRel(rel('r1', 'charges')), withRel(rel('r1', 'charges'), rel('r2', 'refunds')))[0], 'changed');
+  assert.equal(drawn(withRel(rel('r1', 'charges')), withRel(rel('r1', 'charges')))[0], undefined);
+});
+
+test('audit 45: a box a typed view draws for an element (a package, a component, a node, a boundary, a cloud group, a composite state and its regions) is marked as a shape is', async () => {
+  const all = await fromSrc();
+  const cases = [['bookshop-packages', 'shared'], ['bookshop-deployment', 'shopper-device'], ['bookshop-components', 'shop-api'], ['order-service-structure', 'order-service'], ['bookshop-gcp', 'gcp-project'], ['order-states', 'fulfilling'], ['sales-classes', 'sales'], ['bookshop-c4', 'c4-bookshop']];
+  for (const [f, id] of cases) { const a = read45(f), v = a.views.find(w => (w.diagram === 'c4.container') || f !== 'bookshop-c4').id, b = structuredClone(a); b.nodes.find(n => n.id === id).label = 'Zrenamed';
+    const s = svgOf(all.layout(all.diff(a, b).model, v)), t = tag45(s, `data-family="${id}"`);
+    assert.ok(t, `${f} ${id} drawn as a box`); assert.match(t, /, changed" data-change="changed"/, f); assert.doesNotMatch(t, /opacity/, f);
+    assert.match(s.slice(s.indexOf(`data-family="${id}"`)), /^[^]*?<g class="change-tab" aria-hidden="true">[^]*?>CHANGED<\/text>/, f);
+    assert.doesNotMatch(tag45(svgOf(all.layout(a, v)), `data-family="${id}"`), /data-change/, f); }
+  // removed with what it holds: faded outlines, its title struck through, a REMOVED tab; its regions too
+  const a = read45('order-states'), b = structuredClone(a), gone = new Set(['fulfilling', ...a.nodes.find(n => n.id === 'fulfilling').members.map(r => r.id)]);
+  b.nodes.forEach(n => { if (gone.has(n.parent)) gone.add(n.id); });
+  b.nodes = b.nodes.filter(n => !gone.has(n.id)); b.edges = b.edges.filter(e => !gone.has(e.from) && !gone.has(e.to)); b.views.forEach(v => { v.nodeIds = v.nodeIds.filter(i => !gone.has(i)); });
+  const g = all.layout(all.diff(a, b).model, 'order-life'), s = svgOf(g), boxes = (g.families || []).filter(f => f.change === 'removed');
+  assert.ok(boxes.length >= 2, 'the composite state and its regions'); boxes.forEach(f => { const at = s.indexOf(`data-family="${f.id}"`), body = s.slice(at, s.indexOf('class="change-tab"', at));
+    assert.match(tag45(s, `data-family="${f.id}"`), /data-change="removed" stroke-dasharray="6 4"/); assert.match(body, /class="family-box"[^>]*opacity="\.6"/); });
+  assert.match(s, /class="family-title"[^>]*text-decoration="line-through"/);
+  // a box of a SysML package, added
+  const p0 = read45('ebike-blocks'), p1 = structuredClone(p0), bdd = p1.views[0];
+  p1.nodes.push({ id: 'pkg-acc', type: 'uml.Package', label: 'Accessories' }, { id: 'rack', type: 'sysml.Block', label: 'Rack', parent: 'pkg-acc' }); bdd.nodeIds.push('pkg-acc', 'rack');
+  assert.match(tag45(svgOf(all.layout(all.diff(p0, p1).model, bdd.id)), 'data-family="pkg-acc"'), /, new" data-change="new"/);
+});
+
+test('audit 45: a removed shape fades its outlines, never its group (the page takes a group\'s opacity off) nor a vendor\'s icon', async () => {
+  const all = await fromSrc(), a = read45('bookshop-aws'), icon = a.nodes.find(n => n.id === 'aws-db').props.icon;
+  a.icons = { ['aws/' + icon]: { src: 'data:image/svg+xml;base64,' + Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><rect width="1" height="1"/></svg>').toString('base64'), name: 'Amazon RDS' } };
+  const b = structuredClone(a);
+  b.nodes = b.nodes.filter(n => n.id !== 'aws-db'); b.edges = b.edges.filter(e => e.from !== 'aws-db' && e.to !== 'aws-db'); b.views.forEach(v => { v.nodeIds = v.nodeIds.filter(i => i !== 'aws-db'); });
+  const s = svgOf(all.layout(all.diff(a, b).model, a.views[0].id)), i = s.indexOf('data-id="aws-db"'), card = s.slice(s.lastIndexOf('<g', i), s.indexOf('class="change-tab"', i));
+  assert.match(tag45(s, 'data-id="aws-db"'), /data-change="removed"/); assert.doesNotMatch(tag45(s, 'data-id="aws-db"'), /opacity/);
+  assert.match(card, /class="n-body"[^>]*opacity="\.6"/); assert.match(card, /<image class="cl-icon"/);
+  assert.doesNotMatch(card, /<image[^>]*opacity|class="n-logo[^"]*"[^>]*opacity/, 'the icon and its tile drawn as they are');
+  assert.ok([...card.matchAll(/<g\b[^>]*>/g)].every(m => !/ opacity=/.test(m[0])), 'no group around the icon faded');
+});
+
+test('audit 45: a map line diff() adds or removes says so in its key and title', async () => {
+  const all = await fromSrc();
+  const a = { title: 'm', nodes: [{ id: 'a', label: 'Shop' }, { id: 'b', label: 'DB' }, { id: 'c', label: 'Cache' }, { id: 'x', label: 'Old' }],
+    edges: [{ id: 'e1', from: 'a', to: 'b', label: 'reads' }, { id: 'e2', from: 'a', to: 'x' }], views: [{ id: 'v', title: 'V', nodeIds: ['a', 'b', 'c', 'x'] }] };
+  const b = structuredClone(a); b.edges = [b.edges[0], { id: 'e3', from: 'a', to: 'c', label: 'caches' }]; b.nodes = b.nodes.filter(n => n.id !== 'x'); b.views[0].nodeIds = ['a', 'b', 'c'];
+  const s = svgOf(all.layout(all.diff(a, b).model, 'v')), keys = [...s.matchAll(/class="um-key line-key[^"]*"[^>]*aria-label="([^"]*)"/g)].map(m => m[1]);
+  assert.deepEqual(keys.sort(), ['Line from Shop to Cache: caches, new', 'Line from Shop to DB: reads', 'Line from Shop to Old, removed']);
+  assert.match(s, /<title>Shop → Old, removed<\/title>/);
+});
+
+test('audit 45: a change in another case draws as its lower-case one; validate() says one the renderer has no mark for', async () => {
+  const all = await fromSrc();
+  // "Removed" draws as "removed" does: a map card faded and dashed, a map line rose, a typed line rose
+  const m = { title: 'm', nodes: [{ id: 'a', label: 'Shop', change: 'Removed' }, { id: 'b', label: 'DB', change: 'removed' }], edges: [{ id: 'e', from: 'a', to: 'b', change: 'Removed', kind: 'calls' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+  const sm = svgOf(all.layout(m, 'v')), body = id => (sm.match(new RegExp(`data-id="${id}"[\\s\\S]*?class="n-body"[^>]*>`)) || [''])[0].replace(/^[\s\S]*</, '<').replace(/ x="[^"]*"/, '');
+  assert.equal(body('a').replace(/ (x|y)="[^"]*"/g, ''), body('b').replace(/ (x|y)="[^"]*"/g, '')); assert.match(body('a'), /stroke-dasharray="6 4" opacity="\.6"/);
+  assert.match(sm, /class="edge[^"]*" stroke="var\(--um-rose\)"/);
+  const t = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'A' }, { id: 'b', type: 'uml.Class', label: 'B' }], edges: [{ id: 'l', type: 'uml.Association', from: 'a', to: 'b', change: 'REMOVED' }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b'] }] };
+  assert.match(svgOf(all.layout(t, 'v')), /class="edge[^"]*" stroke="var\(--um-rose\)"/);
+  // validate(): a change with no mark, a card's, a member's, a line's (a line is not planned), a view's own line's
+  const w = validate({ nodes: [{ id: 'a', change: 'bogus' }, { id: 'b', change: 'Removed', members: [{ id: 'm', change: 'nope' }] }], edges: [{ id: 'e', from: 'a', to: 'b', change: 'planned' }, { id: 'f', from: 'a', to: 'b', change: 'Added' }],
+    views: [{ id: 'v', nodeIds: ['a', 'b'], edges: [{ id: 'q', from: 'a', to: 'b', change: '__proto__' }] }] }).filter(p => /change$/.test(p.path)).map(p => p.path);
+  assert.deepEqual(w, ['nodes[0].change', 'nodes[1].members[0].change', 'edges[0].change', 'views[0].edges[0].change']);
+  assert.deepEqual(validate(all.diff(read45('checkout-sequence'), read45('sales-classes')).model).filter(p => /change$/.test(p.path)), [], 'what diff() writes is valid');
+});
+
+test('audit 45: hostile marks: a change on a box, a fragment or an own line that is a prototype key, an object or a quote marks nothing; a box\'s or a line\'s name that closes its tag stays text; nothing names a URL', async () => {
+  const all = await fromSrc(), a = read45('checkout-sequence'), b = structuredClone(a), v = b.views[0];
+  v.fragments[0].change = '__proto__'; v.fragments[1].change = { toString: 'removed' }; v.edges[0].change = '" onload="x'; v.edges[1].change = 'constructor';
+  v.edges[2].label = '"><image href="https://track.example/p.gif"/><script>x</script>'; v.edges[2].change = 'removed';
+  const s = svgOf(all.layout(b, 'checkout-sequence'));
+  assert.doesNotMatch(s, /<script|onload="|<image|href="http/); assert.equal((s.match(/data-change=/g) || []).length, 0, 'a message is marked by its line, not a data-change');
+  ['f1', 'f2'].forEach(id => assert.doesNotMatch(tag45(s, `data-id="${id}"`), /data-change/));
+  const p = read45('bookshop-packages'), q = structuredClone(p); q.nodes.find(n => n.id === 'shared').change = 'removed'; q.nodes.find(n => n.id === 'shared').label = '"><image href="https://track.example/p.gif"/>';
+  q.nodes.find(n => n.id === 'catalog').change = '__proto__';
+  const sp = svgOf(all.layout(q, q.views[0].id));
+  assert.doesNotMatch(sp, /<image|href="http/); assert.match(tag45(sp, 'data-family="shared"'), /data-change="removed"/); assert.doesNotMatch(tag45(sp, 'data-family="catalog"') || '', /data-change/);
+});
+
+// audit 45: bpMark wrote stroke-width="1.5" and then the gear's teeth's and the timer's hands' own, so those tags held
+// stroke-width twice (no well-formed XML; the page kept the first, so the teeth and hands drew at 1.5). Every view of every
+// example, and a hostile BPMN model, is drawn: no tag holds an attribute twice, and the teeth and hands carry 2.5 and 1.2
+test('audit 45: no tag of any example\'s views holds an attribute twice; a service task\'s gear teeth draw at 2.5, a timer\'s hands at 1.2', async () => {
+  const all = await fromSrc(), { readdirSync } = await import('node:fs');
+  const twice = t => (t.match(/<[a-zA-Z][\w:-]*\b[^>]*>/g) || []).filter(tag => { const at = [...tag.replace(/"[^"]*"/g, '""').matchAll(/\s([a-zA-Z_:][\w:.-]*)=/g)].map(y => y[1]); return new Set(at).size !== at.length; });
+  let views = 0;
+  for (const f of readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json'))) {
+    const m = JSON.parse(readFileSync(new URL(`../examples/${f}`, import.meta.url)));
+    for (const v of m.views || []) { assert.deepEqual(twice(svgOf(all.layout(m, v.id))), [], `${f} ${v.id}`); views++; } }
+  assert.ok(views > 40, `${views} views drawn`);
+  const bp = label => ({ schemaVersion: 2, nodes: [{ id: 's', type: 'bpmn.StartEvent', label, props: { definition: 'timer' } }, { id: 't', type: 'bpmn.Task', label, props: { taskType: 'service' } }, { id: 'e', type: 'bpmn.EndEvent' }],
+    edges: [{ id: 'f1', type: 'bpmn.SequenceFlow', from: 's', to: 't' }, { id: 'f2', type: 'bpmn.SequenceFlow', from: 't', to: 'e' }], views: [{ id: 'v', diagram: 'bpmn', nodeIds: ['s', 't', 'e'] }] });
+  for (const label of ['Charge', '" stroke-width="9', '"/><path stroke-width="9', 2024]) {
+    const t = svgOf(all.layout(bp(label), 'v'));
+    assert.deepEqual(twice(t), [], String(label)); assert.doesNotMatch(t, /stroke-width="9"/);
+    const marks = [...t.matchAll(/<path d="([^"]*)" class="bp-mark"[^>]*stroke-width="([\d.]+)"/g)];
+    assert.ok(marks.some(([, d, w]) => (d.match(/M/g) || []).length === 8 && w === '2.5'), 'the gear\'s eight teeth at 2.5');
+    assert.ok(marks.some(([, d, w]) => /v2M/.test(d) && w === '1.2'), 'the timer\'s ticks and hands at 1.2');
+  }
 });

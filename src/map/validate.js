@@ -246,6 +246,17 @@ export function validate(model) {
     // a panel's text field that is not text, unless a type's own rule says that path already (audit 43)
     const ruled = new Set(out.map(p => p.path)); views.filter(typedView).forEach(v => fieldTextProblems(m, v, diagramOf(v)).forEach(p => { if (!ruled.has(p.path)) say(p); }));
   }
+  // a change the renderer has no mark for draws unmarked, though a key may say it (audit 45: "bogus" passed, and a line's
+  // "planned" was said and not drawn). In any case, as the renderer reads it; a card's and a member's, a line's, each its own words
+  const CARD_CH = ['added', 'new', 'modified', 'changed', 'removed', 'planned'], LINE_CH = ['added', 'new', 'modified', 'changed', 'removed'];
+  const chIs = (x, at, ok, line) => { if (!x || typeof x !== 'object' || x.change == null) return;
+    if (!(typeof x.change === 'string' && ok.includes(x.change.toLowerCase()))) warn(at + '.change', `change ${jsonText(x.change)} is not ${line ? 'added, changed or removed' : 'added, changed, removed or planned'}: drawn unmarked`); };
+  const deep = (x, at) => { const s = [[x, at]], seen = new Set(); for (let k = 0; k < s.length; k++) { const [y, p] = s[k]; if (!y || typeof y !== 'object' || seen.has(y)) continue; seen.add(y); chIs(y, p, CARD_CH);
+    arr(y.members).forEach((z, j) => s.push([z, `${p}.members[${j}]`])); } };
+  arr(m.nodes).forEach((n, i) => deep(n, `nodes[${i}]`)); arr(m.edges).forEach((e, i) => chIs(e, `edges[${i}]`, LINE_CH, true));
+  views.forEach(v => { const i = arr(m.views).indexOf(v); arr(v.nodes).forEach((n, j) => deep(n, `views[${i}].nodes[${j}]`)); arr(v.fragments).forEach((f, j) => deep(f, `views[${i}].fragments[${j}]`));
+    arr(v.edges).forEach((e, j) => chIs(e, `views[${i}].edges[${j}]`, LINE_CH, true));
+    if (v.nodeOverrides && typeof v.nodeOverrides === 'object') Object.entries(v.nodeOverrides).forEach(([id, o]) => chIs(o, `views[${i}].nodeOverrides.${id}`, CARD_CH)); });
   // a value left out is said once, as left out: not again at its path as a missing end, type or name (audit 21: a line's
   // end {"toString": 1} was also '"undefined" is neither a card nor a box'). A path in the copy, where a list's entry
   // left out moved the ones after it up, is said as the model has it, so the next entry's problem is said, at its own

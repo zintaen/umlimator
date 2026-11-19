@@ -56,7 +56,8 @@ function bpmnName(n) {
 const bpNode = (n, shape, inner) => `<g class="node ${shape}" data-id="${esc(n.id)}" data-shape="${shape}" tabindex="-1" role="img" aria-label="${esc(n.aria || bpmnName({ ...n, shape }))}">${inner}</g>`;
 const bpBody = (d, more = '') => `<path d="${d}" class="n-mask"/><path d="${d}" class="n-body" fill="${BP.bg}" stroke="${BP.line}"${more}/>`;
 const bpText = (x, y, t, px, wt, anchor = 'middle') => `<text x="${r2(x)}" y="${r2(y)}" text-anchor="${anchor}" class="c-name" fill="${BP.ink}" style="font:${wt} ${px}px var(--um-sans)">${esc(t)}</text>`;
-const bpMark = (d, fill = 'none', more = '') => `<path d="${d}" class="bp-mark" fill="${fill}" stroke="${fill === BP.ink ? BP.ink : BP.line}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"${more}/>`;
+// sw: the line width, written once (a second stroke-width on one tag is not well-formed XML and the page kept the first, audit 45)
+const bpMark = (d, fill = 'none', more = '', sw = 1.5) => `<path d="${d}" class="bp-mark" fill="${fill}" stroke="${fill === BP.ink ? BP.ink : BP.line}" stroke-width="${sw}" stroke-linejoin="round" stroke-linecap="round"${more}/>`;
 const bpCircle = (cx, cy, r) => `M${r2(cx - r)} ${r2(cy)}A${r2(r)} ${r2(r)} 0 1 0 ${r2(cx + r)} ${r2(cy)}A${r2(r)} ${r2(r)} 0 1 0 ${r2(cx - r)} ${r2(cy)}Z`;
 
 /* ---- the activity: its name on up to three lines between its markers' rows ---- */
@@ -65,7 +66,7 @@ const bpTaskParts = n => { const t = bpType(n), mark = t === 'bpmn.Task' && ['us
   return { t, mark, plus, ls, top, bottom, w: Math.ceil(Math.min(BP.maxW, Math.max(BP.minW, widest(ls, l => textW(l, BP.name) + 2 * BP.pad)))), h: Math.max(BP.minH, top + bottom + Math.max(1, ls.length) * BP.nlh) }; };
 const bpUser = (x, y) => bpMark(`M${x} ${y + 14}V${y + 12}Q${x} ${y + 8} ${x + 7} ${y + 8}Q${x + 14} ${y + 8} ${x + 14} ${y + 12}V${y + 14}Z`, BP.bg) + bpMark(bpCircle(x + 7, y + 4, 3.5), BP.bg, ' data-mark="user"');
 const bpGear = (x, y) => { const cx = x + 7, cy = y + 7, teeth = Array.from({ length: 8 }, (_, i) => { const a = i * Math.PI / 4; return `M${r2(cx + 4.5 * Math.cos(a))} ${r2(cy + 4.5 * Math.sin(a))}L${r2(cx + 7 * Math.cos(a))} ${r2(cy + 7 * Math.sin(a))}`; }).join('');
-  return bpMark(teeth, 'none', ' stroke-width="2.5"') + bpMark(bpCircle(cx, cy, 4.5), BP.bg, ' data-mark="service"') + bpMark(bpCircle(cx, cy, 1.8)); };
+  return bpMark(teeth, 'none', '', 2.5) + bpMark(bpCircle(cx, cy, 4.5), BP.bg, ' data-mark="service"') + bpMark(bpCircle(cx, cy, 1.8)); };
 SHAPE['bpmn-task'] = {
   size: n => { const p = bpTaskParts(n); return { w: p.w, h: p.h }; },
   out: SHAPE.rounded.out, inset: SHAPE.rounded.inset,
@@ -88,7 +89,7 @@ SHAPE['bpmn-frame'] = {
 /* ---- events: the ring by kind, the marker by definition ---- */
 const bpEnvelope = (cx, cy, filled) => bpMark(`M${r2(cx - 8)} ${r2(cy - 5.5)}H${r2(cx + 8)}V${r2(cy + 5.5)}H${r2(cx - 8)}Z`, filled ? BP.ink : BP.bg, ' data-mark="message"')
   + `<path d="M${r2(cx - 8)} ${r2(cy - 5.5)}L${r2(cx)} ${r2(cy + .5)}L${r2(cx + 8)} ${r2(cy - 5.5)}" class="bp-mark" fill="none" stroke="${filled ? BP.bg : BP.line}" stroke-width="1.2" stroke-linejoin="round"/>`;
-const bpClock = (cx, cy) => bpMark(bpCircle(cx, cy, 7.5), BP.bg, ' data-mark="timer"') + bpMark(`M${r2(cx)} ${r2(cy - 7.5)}v2M${r2(cx + 7.5)} ${r2(cy)}h-2M${r2(cx)} ${r2(cy + 7.5)}v-2M${r2(cx - 7.5)} ${r2(cy)}h2M${r2(cx)} ${r2(cy - 4.5)}V${r2(cy)}L${r2(cx + 3.5)} ${r2(cy + 2)}`, 'none', ' stroke-width="1.2"');
+const bpClock = (cx, cy) => bpMark(bpCircle(cx, cy, 7.5), BP.bg, ' data-mark="timer"') + bpMark(`M${r2(cx)} ${r2(cy - 7.5)}v2M${r2(cx + 7.5)} ${r2(cy)}h-2M${r2(cx)} ${r2(cy + 7.5)}v-2M${r2(cx - 7.5)} ${r2(cy)}h2M${r2(cx)} ${r2(cy - 4.5)}V${r2(cy)}L${r2(cx + 3.5)} ${r2(cy + 2)}`, 'none', '', 1.2);
 SHAPE['bpmn-event'] = {
   size: () => ({ w: 32, h: 32 }), out: SHAPE.final.out, inset: SHAPE.final.inset,
   draw(n) { const t = bpType(n), d = bpDef(n), cx = n.x + n.w / 2, cy = n.y + n.h / 2, dash = t === 'bpmn.BoundaryEvent' && n.cancelActivity === false ? ' stroke-dasharray="4 3"' : '';
