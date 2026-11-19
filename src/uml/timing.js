@@ -5,6 +5,7 @@ import { interactionEvery } from './interaction.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { TR, layoutTimeRuler } from '../layout/timeruler.js';
+import { TR_MAX } from './transition.js';
 import { brLines } from '../typed/draw.js'; // a typed line's ends (TYPED.lines): a message's arrowheads
 
 /* ---------- the timing diagram, uml.timing (work package 6.5, notes/stage-6.md §7 and §8) ----------
@@ -80,9 +81,10 @@ const tmConSaid = (X, c) => { const a = X.C.get(c.from), b = X.C.get(c.to), t = 
 
 /* ---- F2's micro-syntax (§8.1): `text`, `text @ t`, `text @ t1 → t2` (or ->); times are numbers in the view's unit. A
    text whose part after its last @ is not one or two numbers is all text (an address with @ is a name) ---- */
+// cut at the last @ by index and trimmed, not by a lazy match before \s*@, which took time in the square of a run of spaces (audit 50)
 function tmParse(text) {
-  const s = String(text ?? '').trim(), m = /^([\s\S]*?)\s*@\s*([^@]*)$/.exec(s);
-  const ts = m ? m[2].split(/\s*(?:→|->)\s*/).map(x => x.trim()) : [];
+  const s = String(text ?? '').trim(), k = s.lastIndexOf('@'), m = k < 0 ? null : [s, s.slice(0, k), s.slice(k + 1)];
+  const ts = m ? m[2].split(/→|->/).map(x => x.trim()) : [];
   if (!m || ts.length > 2 || ts.some(x => !/^[-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?$/i.test(x) || !Number.isFinite(Number(x)))) return { text: s, times: [] };
   return { text: m[1].trim(), times: ts.map(Number) };
 }
@@ -373,6 +375,8 @@ function tmMoveTo(model, view, id, at) {
 function tmRename(model, view, id, text) {
   const V = tmView(model, view); if (!V) return null;
   const X = tmIndex(model, V), s = String(text ?? '').trim();
+  // a change's or a message's text is capped as a transition's is (TR_MAX), with its words (audit 50)
+  if (s.length > TR_MAX && (X.C.has(id) || X.msgs.some(x => x.id === id))) return tmErr(`${X.C.has(id) ? 'a change' : 'a message'}'s text is over ${TR_MAX} characters`);
   if (id === TM_RULER) return [{ op: 'set', view: V.id, path: ['timeline', 'unit'], value: s || undefined }];
   const c = X.C.get(id);
   if (c) { const r = tmParse(s); if (r.times.length > 1) return tmErr('a change has one time: state @ t'); if (!r.text) return tmErr('a change needs its state');

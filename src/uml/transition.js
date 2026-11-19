@@ -40,4 +40,4 @@ function printTransition(p) {
   return !r.error && ['trigger', 'guard', 'effect'].every(k => r[k] === trPart(p && p[k])) ? t : null;
 }
 
-export { trScan, parseTransition, printTransition, transitionText };
+export { TR_MAX, trScan, parseTransition, printTransition, transitionText };

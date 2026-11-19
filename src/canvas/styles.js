@@ -38,6 +38,9 @@ const STYLES = `
   :host { --um-ew: 1; } svg .edge-g.wt-2:is(.hov, .hot, .key-on), .stage:not(.um-still) svg .edge-g.wt-2:hover, svg .line-key.wt-2 { --um-ew: 1.75; }
   svg .edge-g.wt-3:is(.hov, .hot, .key-on), .stage:not(.um-still) svg .edge-g.wt-3:hover, svg .line-key.wt-3 { --um-ew: 2.5; }
   svg .edge-g:is(.wt-2, .wt-3):is(.hov, .hot, .key-on) .edge, .stage:not(.um-still) svg .edge-g:is(.wt-2, .wt-3):hover .edge { marker-end: var(--um-mk); marker-start: var(--um-mk-s, none); }
+  /* and the flow stops where that arrowhead begins: the flow line trimmed for it (fl-hv) in place of weight 1's */
+  svg .fl-hv, svg .edge-g:is(.wt-2, .wt-3):is(.hov, .hot, .key-on) .flowline:not(.fl-hv), .stage:not(.um-still) svg .edge-g:is(.wt-2, .wt-3):hover .flowline:not(.fl-hv) { display: none; }
+  svg .edge-g:not(.faded):is(.wt-2, .wt-3):is(.hov, .hot, .key-on) .fl-hv, .stage:not(.um-still) svg .edge-g:not(.faded):is(.wt-2, .wt-3):hover .fl-hv { display: inline; }
   svg .edge { fill: none; stroke-width: calc(1.6px * var(--um-ew, 1)); stroke-linecap: round; stroke-linejoin: round; transition: stroke-width .15s, opacity .2s; }
   svg .halo { fill: none; stroke: var(--um-bg-2); stroke-width: calc(6px + 1.8px * (var(--um-ew, 1) - 1)); }
   svg .hitline { fill: none; stroke: transparent; stroke-width: calc(12px + 1.8px * (var(--um-ew, 1) - 1)); }

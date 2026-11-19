@@ -121,6 +121,12 @@ ok("a raw character XML cannot hold (a C0 control, U+FFFE) in a map's source is 
    and un2 == [(3, raw("\x01")), (5, raw("\x02"))]
    and not re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff￾￿]", json.dumps(m3, ensure_ascii=False))
    and un3 == [(None, raw("\x01")), (None, raw("\ud800"))], (m, un, m2, un2, m3, un3))
+m, un = imp.read("compose", '{"services": {"web\\u0001": {"image": "nginx"}, "web\\ufffd-2": {"image": "x"}, "web\\u0002": {"image": "redis"}, "db": {"image": "postgres"}}}', "x")
+m2, un2 = imp.read("kubernetes", '{"kind": "Service", "metadata": {"name": "a", "labels": {"k\\u0001": "1", "k\\u0002": "2"}}}', "x")
+ok("compose · two keys that differ only in a character XML cannot hold are kept apart, the later as the next free key-2, key-3 ..., said (audit 50)",
+   [(n["label"], n.get("sublabel")) for n in m["nodes"]] == [("web\ufffd", "nginx"), ("web\ufffd-2", "x"), ("web\ufffd-3", "redis"), ("db", "postgres")]
+   and un == [(None, raw("\x01")), (None, raw("\x02")), (None, "key web\ufffd: another key reads as the same text, so this one is read as web\ufffd-3")]
+   and (None, "key k\ufffd: another key reads as the same text, so this one is read as k\ufffd-2") in un2, (m, un, un2))
 ok("mermaid · front matter fences with spaces after them are front matter (audit 5)",
    imp.front("--- \ntitle: Shop\n---  \nflowchart LR\n")[0] == "Shop" and imp.mermaid_typed("--- \ntitle: t\n--- \nclassDiagram\n") == "classDiagram")
 m, un = imp.read("structurizr", 'workspace {\n  model {\n    u = person "User" \\\n      "A customer"\n    s = softwareSystem "Shop"\n    u -> s "Uses" \\\n      "HTTPS"\n  }\n}\n', "x")

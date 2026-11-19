@@ -579,8 +579,11 @@ function bzRemove(model, view, ids, fromModel) {
     delete c.parent; if (p !== pool) c.parent = p; cmds.push({ op: 'add', element: c, owner: pool, index }); });
   held.forEach(n => { const p = gone.has(n.parent) ? keep(n.parent) : n.parent; if (p !== I.L.get(n.parent).pool) cmds.push({ op: 'reparent', id: n.id, parent: p }); });
   const owned = p => [...I.N.values()].filter(n => I.chain(n.id).includes(p)).length;
-  // the flow nodes a deleted lane held that land in a pool keeping other lanes: in none of them (in-lane), said (audit 48)
+  // the flow nodes a deleted lane held that land in a pool keeping other lanes: in none of them (in-lane), said (audit 48). Only
+  // those this view still shows after the gesture, as in-lane judges them and the user can drag them: not one hidden from it
+  // before, nor one this same Delete hides (audit 50)
   const loose = new Map(); held.forEach(n => { const pool = I.L.get(n.parent).pool, p = gone.has(n.parent) ? keep(n.parent) : n.parent;
+    if (!shown.includes(n.id) || !fromModel && rest.includes(n.id)) return;
     if (p === pool && !(fromModel && pools.includes(pool)) && BZ_FLOW.includes(I.ty(n.id)) && I.ty(n.id) !== BZ_BE && I.lanesOf(pool).some(l => !gone.has(l))) loose.set(pool, (loose.get(pool) || 0) + 1); });
   // a model line on a view with no edges list is not hidden (apply() refuses it): skipped, as the canvas's Delete does
   const kept = !fromModel && !Array.isArray(view.edges) && rest.some(id => !own.has(id) && I.E.has(id));

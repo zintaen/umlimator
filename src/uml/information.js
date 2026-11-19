@@ -3,7 +3,7 @@ import { apply } from '../core/apply.js';
 import { brLines, esc, fit } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
-import { LINE_SAYS, commentConnect, legendItem } from './class.js'; // SHAPE.classifier and SHAPE.note too
+import { LINE_SAYS, commentConnect, commentLinkProblems, legendItem } from './class.js'; // SHAPE.classifier and SHAPE.note too
 import { snKindName, snLineName } from './structure.js'; // SHAPE.component too
 import './usecase.js'; // SHAPE.actor
 import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
@@ -118,6 +118,7 @@ const IF_RULES = {
   'conveyed-kind': 'each element a flow conveys is an information item, a class, an interface, a component or a signal of the model',
   'conveyed-once': 'a flow conveys each element once (UML: conveyed is a set)',
   'flow-ends': 'an information flow joins two classes, interfaces, components or actors, never an information item or a comment',
+  'comment-link': 'a comment link has a comment at one end',
 };
 function ifProblems(model) {
   const out = [], I = ifIndex(model), say = (rule, path, ids, msg) => out.push({ level: 'error', rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
@@ -131,6 +132,10 @@ function ifProblems(model) {
       say('conveyed-kind', `${path}.props.conveyed[${j}]`, [e.id, typeof id === 'string' ? id : null], I.at.has(id) ? `${e.id} conveys ${q(id)}, ${a(kind(id))}: it conveys information items, classes, interfaces, components and signals` : `${e.id} conveys ${jsonText(id)}, which the model does not hold`); });
     if (!IF_ENDS.includes((I.at.get(e.from) || {}).type) || !IF_ENDS.includes((I.at.get(e.to) || {}).type))
       say('flow-ends', path, [e.id, e.from, e.to], `${e.id} runs from ${q(e.from)} (${kind(e.from)}) to ${q(e.to)} (${kind(e.to)}): a flow joins two classes, interfaces, components or actors`); });
+  // a comment link with no comment at either end, a warning, of the lines an information flow view draws (connect refuses one,
+  // audit 45): as the use case and state machine views warn (audit 50)
+  const drawn = new Set(IF_ARR(model && model.views).filter(v => IF_OBJ(v) && v.diagram === 'uml.information-flow').flatMap(v => ifLines(I, v, new Set(ifShown(I, v)))));
+  out.push(...commentLinkProblems(typedLines(model, v => v.diagram === 'uml.information-flow').filter(([e]) => drawn.has(e)), id => (I.at.get(id) || {}).type, q));
   return out;
 }
 
