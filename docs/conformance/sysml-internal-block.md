@@ -32,6 +32,7 @@ Rules (`src/sysml/internal.js`), each with a passing and a failing fixture in `t
 | `subject-block` | error (a warning for a view with no subject at all) | Annex A: an ibd's frame names a block |
 | `connector-part`, `connector-scope`, `connector-drawn` | as the composite type's, re-said | clause 8, connectors: each end a port of the part's type, reached through that part, in the subject |
 | `part-type` | warning | a part or reference property's type names one block of the model by label, or by id for a block with no label |
+| `present-values` | warning | a port's present side, as Alt + arrows write it (`present.<part>.ports.<port>.side`), other than left, right, top or bottom: ignored, as the composite type's (audit 48) |
 | `item-flow` | warning | clause 9, ItemFlow: an item, and a direction along the connector |
 | `port-compatible` | warning | clause 9: two parts' proxy ports of one interface block meet conjugate (one `~`), unless every flow property is `inout` (flow directions are then opposite either way); a delegation joins ports of one type, conjugated alike |
 

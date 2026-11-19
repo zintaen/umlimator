@@ -1,5 +1,5 @@
 import { unreadable } from '../core/model.js';
-import { mermaidFrontTitle, mermaidCut, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidCut, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText, mermaidScrub } from './mermaid-front.js';
 /* ---------- Mermaid mindmap: a reader and a writer (notes/milestone-4a.md §8, 4a.5; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's mindmap page (docs/syntax/mindmap.md) and its lexer and database
    (diagrams/mindmap/parser/mindmap.jison, mindmapDb.ts), read on Mermaid's repository 14 Nov 2026. Internal: the CLI
@@ -93,6 +93,7 @@ function readMermaidMindmap(text) {
 }
 
 function mmrRead(text, report, say, empty) {
+  text = mermaidScrub(text, say); // a raw character XML cannot hold as U+FFFD, said (audit 48)
   const lines = text.replace(/^﻿/, '').split('\n').map(l => l.replace(/\r$/, ''));
   let i = 0, title;
   // front matter: its title; Mermaid's configuration (config.layout among it) is not read

@@ -3,12 +3,7 @@
 Release 0.24.0 (milestone 2, `docs/diagrams/notes/milestone-2.md`). Support is claimed by level (decision D3): **render**
 and **edit** on the subset below. No interchange: Mermaid has no information flow notation, and there is no XMI.
 
-A view of a version-2 model (`"schemaVersion": 2`) whose `diagram` is `"uml.information-flow"` is an information flow
-diagram. It is drawn by `lib/umlimator-all.js` (`umlimator/all`), which the CLI's page inlines; `lib/umlimator.js`, what
-a map host loads, draws it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2, row 15; the
-example is [`examples/order-information-flow.json`](../../examples/order-information-flow.json), whose storefront, Shop
-API and payment provider are the component example's and whose shopper is the use case example's (in the Bookshop
-atlas, one element each).
+A view of a version-2 model (`"schemaVersion": 2`) whose `diagram` is `"uml.information-flow"` is an information flow diagram. It is drawn by `lib/umlimator-all.js` (`umlimator/all`), which the CLI's page inlines; `lib/umlimator.js`, what a map host loads, draws it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2, row 15; the example is [`examples/order-information-flow.json`](../../examples/order-information-flow.json), whose storefront, Shop API and payment provider are the component example's and whose shopper is the use case example's.
 
 ## The subset, and UML 2.5.1's clauses
 

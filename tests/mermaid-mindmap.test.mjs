@@ -195,20 +195,22 @@ test('hostile input (§8.2) reads in under a second and never throws; over 1 MiB
     'spaces 1,400 deep': ladder(' '), 'tabs 1,400 deep': ladder('\t'),
     '100,000 bare topics with one text': 'mindmap\n  root\n' + '    x\n'.repeat(100000),
     'a 64 KiB line of ( and )': 'mindmap\n  root\n    a' + '()'.repeat(32768), 'a 64 KiB line of (': 'mindmap\n  root\n    ' + '('.repeat(65536),
-    'a 64 KiB line of ) and (': 'mindmap\n  root\n    ' + ')('.repeat(32768), 'an unclosed Markdown string': 'mindmap\n  root\n    a["`' + 'x\n'.repeat(300000),
+    'a 64 KiB line of ) and (': 'mindmap\n  root\n    ' + ')('.repeat(32768), 'an unclosed Markdown string': 'mindmap\n  root\n    a["`' + 'x\n'.repeat(100000),
     'unclosed quotes': 'mindmap\n  root\n' + '    a["x]\n'.repeat(80000), 'entities': 'mindmap\n  root\n    a["' + '#nope;#35;'.repeat(50000) + '"]',
   };
   for (const f of ['directives', 'proto', 'unclosed', 'crlf']) hostile[`tests/import/hostile/mindmap-${f}.mmd`] = text(`import/hostile/mindmap-${f}.mmd`);
-  let worst = 0;
+  let worst = 0, worstWrite = 0;
   for (const [name, h] of Object.entries(hostile)) {
     assert.ok(h.length <= 1 << 20, `${name}: ${h.length}`);
     const [r, ms] = best(() => read(h));
     worst = Math.max(worst, ms);
     assert.ok(ms < 1000 && r.model.schemaVersion === 2 && r.model.nodes.length > 0, `${name}: read in ${ms} ms`);
     assert.ok(!r.report.some(x => /the reader failed/.test(x.message)), `${name}: the reader failed`);
-    assert.ok(best(() => write(r.model))[1] < 1000, `${name}: written slowly`);
+    const w = best(() => write(r.model))[1];
+    worstWrite = Math.max(worstWrite, w);
+    assert.ok(w < 1000, `${name}: written in ${w} ms`);
   }
-  console.log(`# hostile input: the slowest read ${worst.toFixed(0)} ms CPU, best of three (target and ceiling 1000 ms)`);
+  console.log(`# hostile input: the slowest read ${worst.toFixed(0)} ms and the slowest write ${worstWrite.toFixed(0)} ms CPU, best of three (target and ceiling 1000 ms)`);
   // read to 64 levels, deeper lines at 64, one report item; through tabs as through spaces
   for (const c of [' ', '\t']) {
     const r = read(ladder(c)), depth = new Map();
@@ -234,7 +236,9 @@ test('hostile input (§8.2) reads in under a second and never throws; over 1 MiB
   const md = read('mindmap\n  root\n    a["`open\n    b\n    c\n');
   assert.deepEqual([md.model.nodes.map(n => [n.id, n.parent ?? null]), lines(md)],
     [[['root', null], ['a-open', 'root'], ['b', 'root'], ['c', 'root']], ['3 approximated: a["`open: ["` is not closed by `"], read as text']]);
-  assert.equal(read(hostile['an unclosed Markdown string']).model.nodes.length, 300001);
+  // 100,000 lines, like the bare topics: enough to show the reader and the writer are linear, with room under the
+  // ceiling on a CI runner slower than a laptop (300,000 lines wrote in about half of it on a laptop; audit 48)
+  assert.equal(read(hostile['an unclosed Markdown string']).model.nodes.length, 100001);
   // a side on a topic whose id is __proto__ is kept and written back; a carriage return in a label is reported
   const side = read('mindmap\n  root\n    %% side: left\n    __proto__[x]\n');
   assert.deepEqual([Object.entries(side.model.views[0].present), side.report], [[['__proto__', { side: 'left' }]], []]);

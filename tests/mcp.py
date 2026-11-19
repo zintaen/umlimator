@@ -61,6 +61,24 @@ mcp.want["story"] = None
 deep = mcp.answer(b"[" * 100000 + b"]" * 100000)
 ok("audit 20 · refit() reads a story id that is not a string as no name; a line nested too deep is a parse error, not the server's end",
    said == {"n": 1, "story": "s"} and deep["error"]["code"] == -32700, (said, deep))
+# audit 48: cards that no one view shows (a->b on v1, b->c on v2) are refused as that, not blamed on a line missing from the
+# first view, where c is not even drawn (the tour check fell back to a view when none showed them all)
+with tempfile.TemporaryDirectory() as d48:
+    keep48 = (mcp.MODEL, mcp.page)
+    mcp.MODEL = Path(d48) / "split.json"
+    mcp.MODEL.write_text(json.dumps({"schemaVersion": 2, "nodes": [{"id": x, "label": x} for x in "abc"],
+                                     "edges": [{"id": "ab", "from": "a", "to": "b"}, {"id": "bc", "from": "b", "to": "c"}],
+                                     "views": [{"id": "v1", "nodeIds": ["a", "b"]}, {"id": "v2", "nodeIds": ["b", "c"]}]}), encoding="utf-8")
+    mcp.page = lambda: ("v", None)
+    said48 = []
+    for cards in (["a", "b", "c"], ["a", "c"]):
+        try:
+            said48.append(mcp.call("tour", {"cards": cards}))
+        except mcp.Fail as e:
+            said48.append(str(e))
+    mcp.MODEL, mcp.page = keep48
+ok("audit 48 · tour on cards split over two views says no view shows them all, and blames no line on a view",
+   all(x == "no view shows all these cards; describe_view lists a view's cards" for x in said48), said48)
 # view_for (audit 11): a line with no id, a box, a chip lands on the view that shows it, never on the first view (every card dimmed)
 m = {"nodes": [{"id": x} for x in "abcd"], "edges": [{"from": "c", "to": "d"}], "views": [{"id": "ctx", "nodeIds": ["a", "b"]},
      {"id": "inner", "nodeIds": ["c", "d"], "containers": [{"id": "box", "nodeIds": ["c", "d"]}]}]}

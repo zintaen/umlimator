@@ -108,8 +108,12 @@ function c4Lines(model, view, pic) {
   const own = (listed || pic.I.E.filter(e => e.type === 'c4.Relationship' || e.type === 'uml.CommentLink')).filter(e => typeof e.id === 'string' && ends.has(e.from) && ends.has(e.to));
   // a pair a relationship joins already, drawn or hidden by the view's list, takes no implied line; a listed line of another
   // kind (a uml.Dependency, a comment link) is no relationship, and leaves the implied line drawn (audit 28)
-  const joined = new Set([...own.filter(e => e.type === 'c4.Relationship'), ...pic.I.rels].filter(e => ends.has(e.from) && ends.has(e.to)).map(e => e.from + '\n' + e.to)), implied = new Map();
-  pic.I.rels.forEach(r => { if (ends.has(r.from) && ends.has(r.to)) return; // shown as itself, or hidden from the view: never lifted
+  // a relationship diff() brings back removed is gone from the model after: it joins no pair and is lifted into no implied line
+  // (audit 48: the diff page drew no implied line where the model after does, and a "[+1]" for a relationship that is gone); it
+  // still draws as its own ghost between two shown ends
+  const gone = e => typeof e.change === 'string' && e.change.toLowerCase() === 'removed', live = pic.I.rels.filter(e => !gone(e));
+  const joined = new Set([...own.filter(e => e.type === 'c4.Relationship' && !gone(e)), ...live].filter(e => ends.has(e.from) && ends.has(e.to)).map(e => e.from + '\n' + e.to)), implied = new Map();
+  live.forEach(r => { if (ends.has(r.from) && ends.has(r.to)) return; // shown as itself, or hidden from the view: never lifted
     const a = c4Lift(pic, r.from), b = c4Lift(pic, r.to), k = a + '\n' + b;
     if (a == null || b == null || a === b || joined.has(k)) return;
     if (!implied.has(k)) implied.set(k, { id: `${a}->${b}`, from: a, to: b, of: [], via: [] });

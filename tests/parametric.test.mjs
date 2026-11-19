@@ -54,7 +54,7 @@ test('the definition: sysml.parametric with its palette, two lines, its properti
   assert.equal(T.layout.rank, false);
   for (const k of ['layout', 'validate', 'describe', 'word', 'rows', 'text']) assert.equal(typeof T[k], 'function', k);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'field', 'member', 'moveTo', 'remove', 'rename']);
-  assert.deepEqual(Object.keys(T.rules), ['subject-kind', 'binding-ends', 'binding-parameter', 'binding-types', 'parameter-bound', 'connector-drawn', 'value-type', 'constraint-type']);
+  assert.deepEqual(Object.keys(T.rules), ['subject-kind', 'binding-ends', 'binding-parameter', 'binding-types', 'parameter-bound', 'connector-drawn', 'present-values', 'value-type', 'constraint-type']);
   assert.deepEqual(['sysml.Block', 'sysml.ConstraintBlock', 'sysml.InterfaceBlock'].map(t => T.member.holds({ type: t })), [true, true, false]);
 });
 
@@ -140,6 +140,11 @@ test('the layout is not edited after layoutTyped: drawn twice from one memo, the
 
 /* ---- validators (§9): each rule passes 19 (and the nested model) and fails on a model that breaks it, naming its rule and
    elements, at its level ---- */
+// a part's port side as Alt + arrows write it (present.<part>.ports.<port>.side), then misspelled: ignored, so said (audit 48)
+const misSide = m => { const v = m.views[0], g = layout(m, v.id);
+  for (const p of g.nodes.filter(n => n.shape === 'port' && String(n.id).includes('->'))) for (const by of [[-1, 0], [1, 0]]) { const r = T.edits.moveTo(m, v, p.id, { by, geo: g });
+    if (!Array.isArray(r)) continue; let o = v; const path = r[0].path; for (const k of path.slice(0, -1)) o = o[k] ??= {}; o[path.at(-1)] = 'Top'; return; }
+  throw new Error('no port to move'); };
 const RULE_CASES = {
   'subject-kind': [m => { m.views[0].subject = 'ebike.eco'; }, 'error'],
   'binding-ends': [m => { m.edges.find(e => e.id === 'bind-eco-range').props.ends.to.part = 'ebike.ecoRange'; }, 'error'],
@@ -148,6 +153,7 @@ const RULE_CASES = {
     m.edges.push(bind('mixed', 'ebike.batteryCapacity', 'range-equation.range', { to: { part: 'ebike.eco' } })); }, 'warning'],
   'parameter-bound': [m => { m.edges = m.edges.filter(e => e.id !== 'bind-eco-range'); }, 'warning'],
   'connector-drawn': [m => { m.views[0].subject = 'range-model'; m.views[0].nodeIds = ['range-model']; m.edges.push(bind('loop', 'range-model.capacity', 'range-model.range')); }, 'warning'],
+  'present-values': [misSide, 'warning'],
   // the block definition view's two, said with a parametric view only (audit 20)
   'value-type': [m => { mem(m, 'ebike.ecoRange').props.valueType = 'RangeEquation'; }, 'warning'],
   'constraint-type': [m => { delete mem(m, 'ebike.eco').props.valueType; }, 'error'],

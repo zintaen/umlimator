@@ -9,7 +9,7 @@ import { commentConnect, commentLinkProblems } from './class.js'; // SHAPE.note,
 import { flowWrap } from './flow.js'; // SHAPE.initial, final, diamond and bar too
 import { ownersOn, readingOrder } from './owners.js';
 import { parseTransition, printTransition, transitionText } from './transition.js';
-import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
+import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
 import { snKindName } from './structure.js';
 
 /* ---------- the state machine diagram, uml.state-machine (work package 4.6, notes/stage-4.md §6, §10) ----------
@@ -239,8 +239,14 @@ function stGeo({ model, view, pos, memo }) {
   return { ...g, families, slots, legend: stLegend(g.nodes, g.edges), order: stOrder(pic, lines) }; // a new object: what layoutTyped returned is never edited (§2.4)
 }
 
-// connect: a comment link through commentConnect (src/uml/class.js), as the activity view's (audit 46); any other line, the default
-const stConnect = (model, view, from, to, at, line) => commentConnect(model, view, from, to, line);
+// connect: a comment link through commentConnect (src/uml/class.js), as the activity view's (audit 46); a transition added
+// through stGuard, refused when it brings an error (into an initial pseudostate, out of a final state, onto a region), as the
+// activity's acGuard and the timing view's tmGuard refuse theirs (audit 48)
+function stConnect(model, view, from, to, at, line) {
+  if (!ST_OBJ(line) || line.type === 'uml.CommentLink') return commentConnect(model, view, from, to, line);
+  if (!ST_OBJ(view) || typeof line.type !== 'string') return null;
+  return stGuard(model, view, [{ op: 'add', element: { id: stFresh(model, 'transition'), type: line.type, from, to, ...(ST_OBJ(line.props) ? { props: copyOf(line.props) } : {}) }, view: view.id }]);
+}
 
 /* ---- validators (§10.2). Each problem: { level, rule, path, message, ids } ---- */
 const ST_RULES = {

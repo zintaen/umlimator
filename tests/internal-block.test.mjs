@@ -53,7 +53,7 @@ test('the definition: sysml.internal-block with its palette, two lines, §8.5\'s
   assert.equal(T.layout.rank, false);
   for (const k of ['layout', 'draw', 'validate', 'describe', 'word', 'rows', 'text']) assert.equal(typeof T[k], 'function', k);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'field', 'member', 'moveTo', 'remove', 'rename']);
-  assert.deepEqual(Object.keys(T.rules), ['subject-block', 'connector-part', 'connector-scope', 'connector-drawn', 'part-type', 'item-flow', 'port-compatible']);
+  assert.deepEqual(Object.keys(T.rules), ['subject-block', 'connector-part', 'connector-scope', 'connector-drawn', 'part-type', 'present-values', 'item-flow', 'port-compatible']);
   assert.deepEqual(['sysml.Block', 'sysml.InterfaceBlock', 'uml.Comment'].map(t => T.member.holds({ type: t })), [true, false, false]);
 });
 
@@ -147,12 +147,18 @@ test('the layout is not edited after layoutTyped: drawn twice from one memo, the
 
 /* ---- validators (§8.4): each rule passes RICH and fails on a model that breaks it, naming its rule and elements, at its level ---- */
 const conn = (id, from, to, ends, more = {}) => ({ id, type: 'sysml.Connector', from, to, props: { ...(ends ? { ends } : {}), ...more } });
+// a part's port side as Alt + arrows write it (present.<part>.ports.<port>.side), then misspelled: ignored, so said (audit 48)
+const misSide = m => { const v = m.views[0], g = layout(m, v.id);
+  for (const p of g.nodes.filter(n => n.shape === 'port' && String(n.id).includes('->'))) for (const by of [[-1, 0], [1, 0]]) { const r = T.edits.moveTo(m, v, p.id, { by, geo: g });
+    if (!Array.isArray(r)) continue; let o = v; const path = r[0].path; for (const k of path.slice(0, -1)) o = o[k] ??= {}; o[path.at(-1)] = 'Top'; return; }
+  throw new Error('no port to move'); };
 const RULE_CASES = {
   'subject-block': [m => { m.views[0].subject = 'battery'; }, 'error'],
   'connector-part': [m => { m.edges.find(e => e.id === 'battery-controller-bus').props.ends.from.part = 'ebike.motor'; }, 'error'],
   'connector-scope': [m => { m.edges.push(conn('bare', 'ebike', 'battery.bus', { to: { part: 'ebike.battery' } })); }, 'error'],
   'connector-drawn': [m => { node(m, 'ebike').members.push({ id: 'ebike.plug2', type: 'sysml.Port', label: 'plug2' }); m.edges.push(conn('loop', 'ebike.plug', 'ebike.plug2')); }, 'warning'],
   'part-type': [m => { mem(m, 'ebike.motor').props.valueType = 'Nothing'; }, 'warning'],
+  'present-values': [misSide, 'warning'],
   'item-flow': [m => { m.edges[0].props.itemFlow.direction = 'sideways'; }, 'warning'],
 };
 test('validators: each rule passes the rich example and fails on a model that breaks it, at its level', () => {
