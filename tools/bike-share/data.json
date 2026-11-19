@@ -1,0 +1,478 @@
+{
+  "nodes": [
+    {
+      "id": "er-rider",
+      "type": "er.Entity",
+      "label": "rider",
+      "members": [
+        {
+          "id": "er-rider.id",
+          "type": "er.Column",
+          "label": "id",
+          "props": { "dataType": "bigint", "primaryKey": true }
+        },
+        {
+          "id": "er-rider.email",
+          "type": "er.Column",
+          "label": "email",
+          "props": { "dataType": "varchar(255)", "unique": true }
+        },
+        {
+          "id": "er-rider.referred_by",
+          "type": "er.Column",
+          "label": "referred_by",
+          "props": { "dataType": "bigint", "foreignKey": true, "nullable": true, "references": "er-rider.id" }
+        }
+      ]
+    },
+    {
+      "id": "er-ride",
+      "type": "er.Entity",
+      "label": "ride",
+      "members": [
+        {
+          "id": "er-ride.id",
+          "type": "er.Column",
+          "label": "id",
+          "props": { "dataType": "bigint", "primaryKey": true }
+        },
+        {
+          "id": "er-ride.rider_id",
+          "type": "er.Column",
+          "label": "rider_id",
+          "props": { "dataType": "bigint", "foreignKey": true, "references": "er-rider.id" }
+        },
+        {
+          "id": "er-ride.started_at",
+          "type": "er.Column",
+          "label": "started_at",
+          "props": { "dataType": "timestamptz", "nullable": true }
+        }
+      ]
+    },
+    {
+      "id": "er-ride_leg",
+      "type": "er.Entity",
+      "label": "ride_leg",
+      "members": [
+        {
+          "id": "er-ride_leg.ride_id",
+          "type": "er.Column",
+          "label": "ride_id",
+          "props": { "dataType": "bigint", "primaryKey": true, "foreignKey": true, "references": "er-ride.id" }
+        },
+        {
+          "id": "er-ride_leg.leg_no",
+          "type": "er.Column",
+          "label": "leg_no",
+          "props": { "dataType": "integer", "primaryKey": true }
+        },
+        {
+          "id": "er-ride_leg.bike_id",
+          "type": "er.Column",
+          "label": "bike_id",
+          "props": { "dataType": "bigint", "foreignKey": true, "references": "er-bike.id" }
+        },
+        { "id": "er-ride_leg.minutes", "type": "er.Column", "label": "minutes", "props": { "dataType": "integer" } }
+      ]
+    },
+    {
+      "id": "er-bike",
+      "type": "er.Entity",
+      "label": "bike",
+      "members": [
+        {
+          "id": "er-bike.id",
+          "type": "er.Column",
+          "label": "id",
+          "props": { "dataType": "bigint", "primaryKey": true }
+        },
+        {
+          "id": "er-bike.serial",
+          "type": "er.Column",
+          "label": "serial",
+          "props": { "dataType": "char(13)", "unique": true }
+        },
+        { "id": "er-bike.model", "type": "er.Column", "label": "model", "props": { "dataType": "varchar(255)" } }
+      ]
+    },
+    {
+      "id": "er-station",
+      "type": "er.Entity",
+      "label": "station",
+      "members": [
+        {
+          "id": "er-station.id",
+          "type": "er.Column",
+          "label": "id",
+          "props": { "dataType": "bigint", "primaryKey": true }
+        },
+        { "id": "er-station.name", "type": "er.Column", "label": "name", "props": { "dataType": "varchar(120)" } }
+      ]
+    },
+    {
+      "id": "er-bike_station",
+      "type": "er.Entity",
+      "label": "bike_station",
+      "members": [
+        {
+          "id": "er-bike_station.bike_id",
+          "type": "er.Column",
+          "label": "bike_id",
+          "props": { "dataType": "bigint", "primaryKey": true, "foreignKey": true, "references": "er-bike.id" }
+        },
+        {
+          "id": "er-bike_station.station_id",
+          "type": "er.Column",
+          "label": "station_id",
+          "props": { "dataType": "bigint", "primaryKey": true, "foreignKey": true, "references": "er-station.id" }
+        }
+      ]
+    },
+    {
+      "id": "er-payment",
+      "type": "er.Entity",
+      "label": "payment",
+      "members": [
+        {
+          "id": "er-payment.id",
+          "type": "er.Column",
+          "label": "id",
+          "props": { "dataType": "bigint", "primaryKey": true }
+        },
+        {
+          "id": "er-payment.ride_id",
+          "type": "er.Column",
+          "label": "ride_id",
+          "props": { "dataType": "bigint", "foreignKey": true, "unique": true, "references": "er-ride.id" }
+        },
+        { "id": "er-payment.amount", "type": "er.Column", "label": "amount", "props": { "dataType": "numeric(10,2)" } }
+      ]
+    },
+    { "id": "dfd-rider", "type": "dfd.ExternalEntity", "label": "Rider" },
+    { "id": "dfd-provider", "type": "dfd.ExternalEntity", "label": "Payment provider" },
+    { "id": "dfd-van", "type": "dfd.ExternalEntity", "label": "Van service" },
+    {
+      "id": "dfd-take-ride",
+      "type": "dfd.Process",
+      "label": "Start ride",
+      "opensView": "dfd-1",
+      "props": { "number": "1" }
+    },
+    { "id": "dfd-take-payment", "type": "dfd.Process", "label": "Take payment", "props": { "number": "2" } },
+    { "id": "dfd-ship-ride", "type": "dfd.Process", "label": "Book a van", "props": { "number": "3" } },
+    { "id": "dfd-bikes", "type": "dfd.DataStore", "label": "Bikes", "props": { "number": "D1" } },
+    { "id": "dfd-rides", "type": "dfd.DataStore", "label": "Rides", "props": { "number": "D2" } },
+    { "id": "dfd-check-unlock", "type": "dfd.Process", "label": "Check the bike", "props": { "number": "1.1" } },
+    { "id": "dfd-total-ride", "type": "dfd.Process", "label": "Price the ride", "props": { "number": "1.2" } },
+    { "id": "dfd-record-ride", "type": "dfd.Process", "label": "Record the ride", "props": { "number": "1.3" } },
+    { "id": "depot", "type": "uml.Component", "label": "Depot" },
+    { "id": "email-service", "type": "uml.Component", "label": "Email service" },
+    { "id": "ride-info", "type": "uml.InformationItem", "label": "Ride" },
+    { "id": "card-details", "type": "uml.InformationItem", "label": "Card details" },
+    { "id": "receipt-info", "type": "uml.InformationItem", "label": "Receipt" },
+    { "id": "stock-info", "type": "uml.InformationItem", "label": "Bike state" },
+    { "id": "report-arrives", "type": "flow.Terminator", "label": "Fault report arrives" },
+    { "id": "read-report", "type": "flow.InputOutput", "label": "Read the report" },
+    { "id": "key-in", "type": "flow.ManualInput", "label": "Key in the bike number" },
+    { "id": "inspect", "type": "flow.Process", "label": "Inspect the bike" },
+    { "id": "safe", "type": "flow.Decision", "label": "Safe to ride?" },
+    { "id": "refund", "type": "flow.PredefinedProcess", "label": "Refund the rider's ride" },
+    { "id": "wait", "type": "flow.Delay", "label": "Wait for the bank to confirm" },
+    { "id": "redock", "type": "flow.Process", "label": "Put the bike back in a dock" },
+    { "id": "fleet-records", "type": "flow.Database", "label": "Fleet records" },
+    { "id": "workshop-ticket", "type": "flow.Document", "label": "Workshop ticket" },
+    { "id": "to-workshop", "type": "flow.Process", "label": "Send the bike to the workshop" },
+    { "id": "join", "type": "flow.Connector", "label": "A" },
+    { "id": "end", "type": "flow.Terminator", "label": "Report closed" }
+  ],
+  "edges": [
+    {
+      "id": "er-rider-rides",
+      "type": "er.Relationship",
+      "from": "er-rider",
+      "to": "er-ride",
+      "label": "takes",
+      "props": { "identifying": false, "ends": { "from": { "multiplicity": "1" }, "to": { "multiplicity": "0..*" } } }
+    },
+    {
+      "id": "er-ride-legs",
+      "type": "er.Relationship",
+      "from": "er-ride",
+      "to": "er-ride_leg",
+      "label": "contains",
+      "props": { "identifying": true, "ends": { "from": { "multiplicity": "1" }, "to": { "multiplicity": "1..*" } } }
+    },
+    {
+      "id": "er-bike-legs",
+      "type": "er.Relationship",
+      "from": "er-bike",
+      "to": "er-ride_leg",
+      "props": { "identifying": false, "ends": { "from": { "multiplicity": "1" }, "to": { "multiplicity": "0..*" } } }
+    },
+    {
+      "id": "er-bike-stations",
+      "type": "er.Relationship",
+      "from": "er-bike",
+      "to": "er-bike_station",
+      "props": { "identifying": true, "ends": { "from": { "multiplicity": "1" }, "to": { "multiplicity": "1..*" } } }
+    },
+    {
+      "id": "er-station-bikes",
+      "type": "er.Relationship",
+      "from": "er-station",
+      "to": "er-bike_station",
+      "props": { "identifying": true, "ends": { "from": { "multiplicity": "1" }, "to": { "multiplicity": "0..*" } } }
+    },
+    {
+      "id": "er-ride-payment",
+      "type": "er.Relationship",
+      "from": "er-ride",
+      "to": "er-payment",
+      "props": { "identifying": false, "ends": { "from": { "multiplicity": "1" }, "to": { "multiplicity": "0..1" } } }
+    },
+    {
+      "id": "er-rider-referrals",
+      "type": "er.Relationship",
+      "from": "er-rider",
+      "to": "er-rider",
+      "label": "referred",
+      "props": {
+        "identifying": false,
+        "ends": { "from": { "multiplicity": "0..1" }, "to": { "multiplicity": "0..*" } }
+      }
+    },
+    {
+      "id": "dfd-unlock",
+      "type": "dfd.DataFlow",
+      "from": "dfd-rider",
+      "to": "dfd-take-ride",
+      "label": "unlock request"
+    },
+    {
+      "id": "dfd-price-and-stock",
+      "type": "dfd.DataFlow",
+      "from": "dfd-bikes",
+      "to": "dfd-take-ride",
+      "label": "rate and bike state"
+    },
+    { "id": "dfd-new-ride", "type": "dfd.DataFlow", "from": "dfd-take-ride", "to": "dfd-rides", "label": "new ride" },
+    {
+      "id": "dfd-confirmation",
+      "type": "dfd.DataFlow",
+      "from": "dfd-take-ride",
+      "to": "dfd-rider",
+      "label": "ride confirmation"
+    },
+    {
+      "id": "dfd-amount-due",
+      "type": "dfd.DataFlow",
+      "from": "dfd-rides",
+      "to": "dfd-take-payment",
+      "label": "amount due"
+    },
+    {
+      "id": "dfd-charge-request",
+      "type": "dfd.DataFlow",
+      "from": "dfd-take-payment",
+      "to": "dfd-provider",
+      "label": "charge request"
+    },
+    {
+      "id": "dfd-charge-result",
+      "type": "dfd.DataFlow",
+      "from": "dfd-provider",
+      "to": "dfd-take-payment",
+      "label": "charge result"
+    },
+    {
+      "id": "dfd-paid-ride",
+      "type": "dfd.DataFlow",
+      "from": "dfd-take-payment",
+      "to": "dfd-ship-ride",
+      "label": "ended ride"
+    },
+    {
+      "id": "dfd-stock-change",
+      "type": "dfd.DataFlow",
+      "from": "dfd-ship-ride",
+      "to": "dfd-bikes",
+      "label": "bike state change"
+    },
+    {
+      "id": "dfd-shipping-label",
+      "type": "dfd.DataFlow",
+      "from": "dfd-ship-ride",
+      "to": "dfd-van",
+      "label": "pickup request"
+    },
+    {
+      "id": "dfd-shipping-notice",
+      "type": "dfd.DataFlow",
+      "from": "dfd-ship-ride",
+      "to": "dfd-rider",
+      "label": "pickup notice"
+    },
+    {
+      "id": "dfd-l2-unlock",
+      "type": "dfd.DataFlow",
+      "from": "dfd-rider",
+      "to": "dfd-check-unlock",
+      "label": "unlock request"
+    },
+    {
+      "id": "dfd-l2-price-and-stock",
+      "type": "dfd.DataFlow",
+      "from": "dfd-bikes",
+      "to": "dfd-check-unlock",
+      "label": "rate and bike state"
+    },
+    {
+      "id": "dfd-l2-checked-legs",
+      "type": "dfd.DataFlow",
+      "from": "dfd-check-unlock",
+      "to": "dfd-total-ride",
+      "label": "checked bike"
+    },
+    {
+      "id": "dfd-l2-totalled-ride",
+      "type": "dfd.DataFlow",
+      "from": "dfd-total-ride",
+      "to": "dfd-record-ride",
+      "label": "priced ride"
+    },
+    {
+      "id": "dfd-l2-new-ride",
+      "type": "dfd.DataFlow",
+      "from": "dfd-record-ride",
+      "to": "dfd-rides",
+      "label": "new ride"
+    },
+    {
+      "id": "dfd-l2-confirmation",
+      "type": "dfd.DataFlow",
+      "from": "dfd-record-ride",
+      "to": "dfd-rider",
+      "label": "ride confirmation"
+    },
+    {
+      "id": "flow-rider-app",
+      "type": "uml.InformationFlow",
+      "from": "rider-actor",
+      "to": "app-component",
+      "props": { "conveyed": ["ride-info", "card-details"] }
+    },
+    {
+      "id": "app-payments",
+      "type": "uml.InformationFlow",
+      "from": "app-component",
+      "to": "payment-provider-component",
+      "props": { "conveyed": ["card-details"] }
+    },
+    {
+      "id": "flow-app-api",
+      "type": "uml.InformationFlow",
+      "from": "app-component",
+      "to": "trips-api",
+      "props": { "conveyed": ["ride-info"] }
+    },
+    {
+      "id": "api-warehouse",
+      "type": "uml.InformationFlow",
+      "from": "trips-api",
+      "to": "depot",
+      "props": { "conveyed": ["ride-info"] }
+    },
+    {
+      "id": "warehouse-api",
+      "type": "uml.InformationFlow",
+      "from": "depot",
+      "to": "trips-api",
+      "props": { "conveyed": ["stock-info"] }
+    },
+    {
+      "id": "api-app",
+      "type": "uml.InformationFlow",
+      "from": "trips-api",
+      "to": "app-component",
+      "props": { "conveyed": ["stock-info"] }
+    },
+    {
+      "id": "api-email",
+      "type": "uml.InformationFlow",
+      "from": "trips-api",
+      "to": "email-service",
+      "props": { "conveyed": ["ride-info", "receipt-info"] }
+    },
+    {
+      "id": "email-rider",
+      "type": "uml.InformationFlow",
+      "from": "email-service",
+      "to": "rider-actor",
+      "props": { "conveyed": ["receipt-info"] }
+    },
+    { "id": "start-report", "type": "flow.Flow", "from": "report-arrives", "to": "read-report" },
+    { "id": "report-key-in", "type": "flow.Flow", "from": "read-report", "to": "key-in" },
+    { "id": "key-in-inspect", "type": "flow.Flow", "from": "key-in", "to": "inspect" },
+    { "id": "inspect-safe", "type": "flow.Flow", "from": "inspect", "to": "safe" },
+    { "id": "safe-yes", "type": "flow.Flow", "from": "safe", "to": "refund", "label": "yes" },
+    { "id": "safe-no", "type": "flow.Flow", "from": "safe", "to": "workshop-ticket", "label": "no" },
+    { "id": "refund-wait", "type": "flow.Flow", "from": "refund", "to": "wait" },
+    { "id": "wait-redock", "type": "flow.Flow", "from": "wait", "to": "redock" },
+    { "id": "redock-records", "type": "flow.Flow", "from": "redock", "to": "fleet-records" },
+    { "id": "records-join", "type": "flow.Flow", "from": "fleet-records", "to": "join" },
+    { "id": "ticket-to-workshop", "type": "flow.Flow", "from": "workshop-ticket", "to": "to-workshop" },
+    { "id": "workshop-join", "type": "flow.Flow", "from": "to-workshop", "to": "join" },
+    { "id": "join-end", "type": "flow.Flow", "from": "join", "to": "end" }
+  ],
+  "views": [
+    {
+      "id": "trips-schema",
+      "diagram": "er",
+      "parent": null,
+      "title": "Trips schema",
+      "notation": "crowsfoot",
+      "nodeIds": ["er-rider", "er-ride", "er-ride_leg", "er-bike", "er-station", "er-bike_station", "er-payment"]
+    },
+    {
+      "id": "dfd-0",
+      "diagram": "dfd",
+      "parent": null,
+      "title": "Bike share, level 0",
+      "notation": "yourdon",
+      "nodeIds": [
+        "dfd-rider", "dfd-provider", "dfd-van", "dfd-take-ride", "dfd-take-payment", "dfd-ship-ride", "dfd-bikes",
+        "dfd-rides"
+      ]
+    },
+    {
+      "id": "dfd-1",
+      "diagram": "dfd",
+      "parent": "dfd-0",
+      "title": "1 Start ride",
+      "notation": "yourdon",
+      "nodeIds": ["dfd-rider", "dfd-bikes", "dfd-rides", "dfd-check-unlock", "dfd-total-ride", "dfd-record-ride"]
+    },
+    {
+      "id": "rider-data",
+      "diagram": "uml.information-flow",
+      "parent": null,
+      "title": "What travels with a ride",
+      "nodeIds": [
+        "rider-actor", "app-component", "trips-api", "payment-provider-component", "depot", "email-service",
+        "ride-info", "card-details", "receipt-info", "stock-info"
+      ]
+    },
+    {
+      "id": "triage",
+      "diagram": "flowchart",
+      "parent": null,
+      "title": "Triaging a reported fault",
+      "direction": "down",
+      "nodeIds": [
+        "report-arrives", "read-report", "key-in", "inspect", "safe", "refund", "wait", "redock", "fleet-records",
+        "workshop-ticket", "to-workshop", "join", "end"
+      ]
+    }
+  ]
+}

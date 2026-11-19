@@ -270,7 +270,12 @@ with tempfile.TemporaryDirectory() as tmp:
            got.get("schemaVersion") == 2 and v.get("diagram") == "uml.sequence" and r.get("steps") == 8 and r.get("cards") == 9 and r.get("report") == []
            and all(isinstance(e, dict) and e.get("type") == "uml.Message" and "->" not in e["id"] for e in v.get("edges", [])), r)
         rv = cli("render", str(t / "traced-uml.json"), "--out", str(t / "traced-uml.html"))
-        ok("trace --diagram uml.sequence · the model renders and its check is clean", rv is not None and not rv.get("problems") and not rv.get("errors"), rv)
+        # clean but for the crossings of bike-share's typed views (step 3 of the one-model plan): none on a map view, ride-end
+        # (the traced view, a sequence now) among them, and at most CI's ceiling for the page (.github/workflows/check.yml)
+        maps = {w["id"] for w in bike["views"] if not w.get("diagram")}
+        ok("trace --diagram uml.sequence · the model renders and its check is clean", rv is not None and not rv.get("errors") and "ride-end" in maps
+           and all(p.endswith(" cross") and re.match(r"view ([^:\s]+)", p).group(1) not in maps for p in rv.get("problems", []))
+           and len(rv.get("problems", [])) <= 26, rv)
         # traced again into that view (audit 24): the UML sequence view it replaces takes its lifelines, those no view lists, with it
         span = lambda svc, sid, par, name, a, b: {"resource": {"attributes": [{"key": "service.name", "value": {"stringValue": svc}}]}, "scopeSpans": [{"spans": [
             {"traceId": "5b8aa5a2d2c872e8321cf37308d69df2", "spanId": sid, "parentSpanId": par, "name": name, "startTimeUnixNano": str(1762700000000000000 + a), "endTimeUnixNano": str(1762700000000000000 + b)}]}]}
@@ -1233,12 +1238,15 @@ with tempfile.TemporaryDirectory() as tmp:
            pages and r.get("pages") == len(pages) and all(p.endswith(flat(f"Bike share, an example page {i} of {len(pages)}")) for i, p in enumerate(pages, 1)), [r, [p[-40:] for p in pages]])
         V = {v["id"]: v for v in bike["views"]}
         path = lambda v: (path(V[v["parent"]]) + " › " if v.get("parent") else "") + v["title"]
-        at = {v["id"]: next((i for i, p in enumerate(pages, 1) if p.startswith(flat(f"{path(v)} {len(v['nodeIds'])} cards"))), None) for v in bike["views"]}
+        cards = lambda n: f"{n} card" + ("" if n == 1 else "s")  # the e-bike's internal block and parametric views (step 3) list 1
+        at = {v["id"]: next((i for i, p in enumerate(pages, 1) if p.startswith(flat(f"{path(v)} {cards(len(v['nodeIds']))}"))), None) for v in bike["views"]}
         at["rules"] = next((i for i, p in enumerate(pages, 1) if p.startswith("Rules")), None)
-        cover = pages[0] if pages else ""
+        # the cover and its contents: the pages before the first view's (two since step 3 of the one-model plan, 49 views listed)
+        cover = "".join(pages[:min([x for x in at.values() if x] or [2]) - 1])
         ok("pdf · the cover: the title, the date, the model's file, a summary line, and the contents, each view with the page its header starts",
-           re.match(r"Bikeshare,anexample\d{4}-\d\d-\d\d·examples/bike-share\.json8views·45cards·67lines·2rulesContents", cover) and None not in at.values()
-           and all(flat(f"{v['title']}{v['caption']}{at[v['id']]}") in cover for v in bike["views"]) and f"Rules{at['rules']}Bikeshare" in cover, [cover[:500], at])
+           # 49 views since step 3 of the one-model plan, its typed views among them (8, 45 cards and 67 lines before)
+           re.match(r"Bikeshare,anexample\d{4}-\d\d-\d\d·examples/bike-share\.json49views·381cards·398lines·2rulesContents", cover) and None not in at.values()
+           and all(flat(f"{v['title']}{v.get('caption', '')}{at[v['id']]}") in cover for v in bike["views"]) and f"Rules{at['rules']}Bikeshare" in cover, [cover[:500], at])
         seen = lambda a, b=None: "".join(pages[a - 1:b and b - 1]) if a else ""  # the pages from page a to the one before b
         ok("pdf · a view's page: its legend, then tables of its cards (name, sub-line, kind, what it is), lines (from → to, label, technology) and boxes",
            "Legend" in seen(at["system"], at["system"] and at["system"] + 1) and all(flat(s) in seen(at["system"], at["trips"]) for s in [

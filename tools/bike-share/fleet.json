@@ -18,6 +18,7 @@
       "owner": "Fleet",
       "icon": "gauge",
       "sublabel": "under 20% is low",
+      "opensView": "blocks",
       "what": "Finds e-bikes that need charging.",
       "when": "Every battery report.",
       "how": "Raises an alert in the ops console."
@@ -40,6 +41,7 @@
       "owner": "Fleet",
       "icon": "calendar",
       "sublabel": "van routes",
+      "opensView": "rebalance",
       "what": "Plans where the vans move bikes.",
       "when": "Each morning, and on request.",
       "how": "Matches the forecast against stock."

@@ -1,0 +1,555 @@
+{
+  "nodes": [
+    { "id": "rides-package", "type": "uml.Package", "label": "rides", "opensView": "domain" },
+    { "id": "shared", "type": "uml.Package", "label": "shared" },
+    { "id": "fleet-package", "type": "uml.Package", "label": "fleet" },
+    { "id": "payments-package", "type": "uml.Package", "label": "payments" },
+    { "id": "card", "type": "uml.Package", "label": "card", "parent": "payments-package" },
+    {
+      "id": "rider",
+      "type": "uml.Class",
+      "label": "Rider",
+      "parent": "rides-package",
+      "opensView": "ride-snapshot",
+      "members": [
+        {
+          "id": "rider.email",
+          "type": "uml.Property",
+          "label": "email",
+          "props": { "visibility": "private", "valueType": "String" }
+        },
+        {
+          "id": "rider.name",
+          "type": "uml.Property",
+          "label": "name",
+          "props": { "visibility": "private", "valueType": "String", "multiplicity": "0..1" }
+        }
+      ]
+    },
+    {
+      "id": "ride",
+      "type": "uml.Class",
+      "label": "Ride",
+      "parent": "rides-package",
+      "opensView": "ride-life",
+      "props": {
+        "stereotypes": ["entity"],
+        "tags": { "entity": { "table": "rides" }, "personalData": { "retention": "2 years" } }
+      },
+      "members": [
+        {
+          "id": "ride.id",
+          "type": "uml.Property",
+          "label": "id",
+          "props": { "visibility": "private", "valueType": "UUID" }
+        },
+        {
+          "id": "ride.startedAt",
+          "type": "uml.Property",
+          "label": "startedAt",
+          "props": {
+            "visibility": "private",
+            "valueType": "Instant",
+            "multiplicity": "0..1",
+            "stereotypes": ["column"],
+            "tags": { "column": { "name": "started_at", "indexed": "true" } }
+          }
+        },
+        {
+          "id": "ride.status",
+          "type": "uml.Property",
+          "label": "status",
+          "props": { "visibility": "private", "valueType": "RideStatus", "default": "booked" }
+        },
+        {
+          "id": "ride.total",
+          "type": "uml.Property",
+          "label": "total",
+          "props": { "visibility": "public", "valueType": "Money", "isDerived": true }
+        },
+        {
+          "id": "ride.count",
+          "type": "uml.Property",
+          "label": "count",
+          "props": { "visibility": "public", "valueType": "Integer", "isStatic": true }
+        },
+        {
+          "id": "ride.start",
+          "type": "uml.Operation",
+          "label": "start",
+          "props": { "visibility": "public", "returnType": "Receipt" }
+        },
+        {
+          "id": "ride.add",
+          "type": "uml.Operation",
+          "label": "add",
+          "props": {
+            "visibility": "public",
+            "parameters": [{ "name": "bike", "valueType": "Bike" }, { "name": "minutes", "valueType": "Integer" }]
+          }
+        },
+        { "id": "ride.cancel", "type": "uml.Operation", "label": "cancel", "props": { "visibility": "public" } }
+      ]
+    },
+    {
+      "id": "leg",
+      "type": "uml.Class",
+      "label": "RideLeg",
+      "parent": "rides-package",
+      "members": [
+        {
+          "id": "leg.minutes",
+          "type": "uml.Property",
+          "label": "minutes",
+          "props": { "visibility": "private", "valueType": "Integer", "default": "1" }
+        },
+        {
+          "id": "leg.ratePerMinute",
+          "type": "uml.Property",
+          "label": "ratePerMinute",
+          "props": { "visibility": "private", "valueType": "Money" }
+        }
+      ]
+    },
+    {
+      "id": "bike",
+      "type": "uml.Class",
+      "label": "Bike",
+      "parent": "fleet-package",
+      "opensView": "requirements",
+      "members": [
+        {
+          "id": "bike.serial",
+          "type": "uml.Property",
+          "label": "serial",
+          "props": { "visibility": "public", "valueType": "String" }
+        },
+        {
+          "id": "bike.model",
+          "type": "uml.Property",
+          "label": "model",
+          "props": { "visibility": "public", "valueType": "String" }
+        },
+        {
+          "id": "bike.rate",
+          "type": "uml.Property",
+          "label": "rate",
+          "props": { "visibility": "public", "valueType": "Money" }
+        }
+      ]
+    },
+    {
+      "id": "payable",
+      "type": "uml.Interface",
+      "label": "Payable",
+      "parent": "payments-package",
+      "members": [
+        {
+          "id": "payable.amountDue",
+          "type": "uml.Operation",
+          "label": "amountDue",
+          "props": { "visibility": "public", "returnType": "Money" }
+        }
+      ]
+    },
+    {
+      "id": "payment",
+      "type": "uml.Class",
+      "label": "Payment",
+      "parent": "payments-package",
+      "props": { "isAbstract": true },
+      "members": [
+        {
+          "id": "payment.amount",
+          "type": "uml.Property",
+          "label": "amount",
+          "props": { "visibility": "protected", "valueType": "Money" }
+        },
+        {
+          "id": "payment.settle",
+          "type": "uml.Operation",
+          "label": "settle",
+          "props": { "visibility": "public", "isAbstract": true }
+        }
+      ]
+    },
+    {
+      "id": "card-payment",
+      "type": "uml.Class",
+      "label": "CardPayment",
+      "parent": "card",
+      "members": [
+        {
+          "id": "card-payment.last4",
+          "type": "uml.Property",
+          "label": "last4",
+          "props": { "visibility": "private", "valueType": "String" }
+        },
+        { "id": "card-payment.settle", "type": "uml.Operation", "label": "settle", "props": { "visibility": "public" } }
+      ]
+    },
+    {
+      "id": "ride-status",
+      "type": "uml.Enumeration",
+      "label": "RideStatus",
+      "parent": "rides-package",
+      "members": [
+        { "id": "ride-status.booked", "type": "uml.EnumerationLiteral", "label": "booked" },
+        { "id": "ride-status.started", "type": "uml.EnumerationLiteral", "label": "started" },
+        { "id": "ride-status.ended", "type": "uml.EnumerationLiteral", "label": "ended" },
+        { "id": "ride-status.cancelled", "type": "uml.EnumerationLiteral", "label": "cancelled" }
+      ]
+    },
+    {
+      "id": "money",
+      "type": "uml.DataType",
+      "label": "Money",
+      "parent": "shared",
+      "members": [
+        {
+          "id": "money.amount",
+          "type": "uml.Property",
+          "label": "amount",
+          "props": { "visibility": "public", "valueType": "Decimal" }
+        },
+        {
+          "id": "money.currency",
+          "type": "uml.Property",
+          "label": "currency",
+          "props": { "visibility": "public", "valueType": "String" }
+        }
+      ]
+    },
+    {
+      "id": "note-total",
+      "type": "uml.Comment",
+      "label": "total is the sum of the legs' rate per minute times minutes"
+    },
+    { "id": "conventions", "type": "uml.Profile", "label": "BikeSharePrivacy", "opensView": "privacy" },
+    { "id": "mc-class", "type": "uml.MetaclassReference", "label": "Class", "parent": "conventions" },
+    { "id": "mc-property", "type": "uml.MetaclassReference", "label": "Property", "parent": "conventions" },
+    {
+      "id": "entity",
+      "type": "uml.Stereotype",
+      "label": "entity",
+      "parent": "conventions",
+      "members": [
+        { "id": "entity.table", "type": "uml.Property", "label": "table", "props": { "valueType": "String" } }
+      ]
+    },
+    {
+      "id": "aggregate-root",
+      "type": "uml.Stereotype",
+      "label": "aggregateRoot",
+      "parent": "conventions",
+      "members": [
+        {
+          "id": "aggregate-root.boundedContext",
+          "type": "uml.Property",
+          "label": "boundedContext",
+          "props": { "valueType": "String" }
+        }
+      ]
+    },
+    {
+      "id": "personal-data",
+      "type": "uml.Stereotype",
+      "label": "personalData",
+      "parent": "conventions",
+      "members": [
+        {
+          "id": "personal-data.retention",
+          "type": "uml.Property",
+          "label": "retention",
+          "props": { "valueType": "String", "multiplicity": "0..1" }
+        }
+      ]
+    },
+    {
+      "id": "column",
+      "type": "uml.Stereotype",
+      "label": "column",
+      "parent": "conventions",
+      "members": [
+        {
+          "id": "column.name",
+          "type": "uml.Property",
+          "label": "name",
+          "props": { "valueType": "String", "multiplicity": "0..1" }
+        },
+        {
+          "id": "column.indexed",
+          "type": "uml.Property",
+          "label": "indexed",
+          "props": { "valueType": "Boolean", "default": "false" }
+        }
+      ]
+    },
+    {
+      "id": "ada",
+      "type": "uml.InstanceSpecification",
+      "label": "ada",
+      "props": { "classifier": "Rider" },
+      "members": [{ "id": "ada.email", "type": "uml.Slot", "label": "email", "props": { "value": "ada@example.org" } }]
+    },
+    {
+      "id": "ride-1042",
+      "type": "uml.InstanceSpecification",
+      "label": "ride1042",
+      "opensView": "ride-life",
+      "props": { "classifier": "Ride" },
+      "members": [
+        { "id": "ride-1042.status", "type": "uml.Slot", "label": "status", "props": { "value": "started" } },
+        { "id": "ride-1042.total", "type": "uml.Slot", "label": "total", "props": { "value": "4.60 EUR" } }
+      ]
+    },
+    {
+      "id": "leg-1",
+      "type": "uml.InstanceSpecification",
+      "label": "leg1",
+      "props": { "classifier": "RideLeg" },
+      "members": [{ "id": "leg-1.minutes", "type": "uml.Slot", "label": "minutes", "props": { "value": "18" } }]
+    },
+    {
+      "id": "leg-2",
+      "type": "uml.InstanceSpecification",
+      "label": "leg2",
+      "props": { "classifier": "RideLeg" },
+      "members": [{ "id": "leg-2.minutes", "type": "uml.Slot", "label": "minutes", "props": { "value": "5" } }]
+    },
+    {
+      "id": "bike-0412",
+      "type": "uml.InstanceSpecification",
+      "label": "bike0412",
+      "opensView": "bike-life",
+      "props": { "classifier": "Bike" },
+      "members": [
+        { "id": "bike-0412.model", "type": "uml.Slot", "label": "model", "props": { "value": "Urban e-bike" } },
+        { "id": "bike-0412.rate", "type": "uml.Slot", "label": "rate", "props": { "value": "0.20 EUR" } }
+      ]
+    },
+    {
+      "id": "bike-0977",
+      "type": "uml.InstanceSpecification",
+      "label": "bike0977",
+      "props": { "classifier": "Bike" },
+      "members": [
+        { "id": "bike-0977.model", "type": "uml.Slot", "label": "model", "props": { "value": "Cargo e-bike" } },
+        { "id": "bike-0977.rate", "type": "uml.Slot", "label": "rate", "props": { "value": "0.30 EUR" } }
+      ]
+    },
+    {
+      "id": "card-1",
+      "type": "uml.InstanceSpecification",
+      "label": "card",
+      "props": { "classifier": "CardPayment" },
+      "members": [
+        { "id": "card.amount", "type": "uml.Slot", "label": "amount", "props": { "value": "4.60 EUR" } },
+        { "id": "card.last4", "type": "uml.Slot", "label": "last4", "props": { "value": "4242" } }
+      ]
+    },
+    { "id": "business", "type": "uml.Package", "label": "business" },
+    { "id": "business-ride", "type": "uml.Class", "label": "Ride", "parent": "business" },
+    { "id": "ride-repository", "type": "uml.Class", "label": "RideRepository", "parent": "rides-package" },
+    { "id": "ride-listener", "type": "uml.Class", "label": "RideListener", "parent": "rides-package" }
+  ],
+  "edges": [
+    {
+      "id": "rider-rides",
+      "type": "uml.Association",
+      "from": "rider",
+      "to": "ride",
+      "label": "takes",
+      "props": {
+        "ends": {
+          "from": { "multiplicity": "1" },
+          "to": { "role": "rides", "multiplicity": "0..*", "navigable": true }
+        }
+      }
+    },
+    {
+      "id": "ride-legs",
+      "type": "uml.Association",
+      "from": "ride",
+      "to": "leg",
+      "props": {
+        "ends": {
+          "from": { "aggregation": "composite", "multiplicity": "1" },
+          "to": { "role": "legs", "multiplicity": "1..*", "navigable": true }
+        }
+      }
+    },
+    {
+      "id": "leg-bike",
+      "type": "uml.Association",
+      "from": "leg",
+      "to": "bike",
+      "props": {
+        "ends": { "from": { "multiplicity": "0..*" }, "to": { "role": "bike", "multiplicity": "1", "navigable": true } }
+      }
+    },
+    {
+      "id": "ride-payment",
+      "type": "uml.Association",
+      "from": "ride",
+      "to": "payment",
+      "props": {
+        "ends": {
+          "from": { "aggregation": "shared", "multiplicity": "1" },
+          "to": { "role": "payments", "multiplicity": "0..*" }
+        }
+      }
+    },
+    { "id": "ride-payable", "type": "uml.InterfaceRealization", "from": "ride", "to": "payable" },
+    { "id": "card-is-payment", "type": "uml.Generalization", "from": "card-payment", "to": "payment" },
+    {
+      "id": "ride-uses-money",
+      "type": "uml.Dependency",
+      "from": "ride",
+      "to": "money",
+      "props": { "stereotypes": ["use"] }
+    },
+    { "id": "note-total-link", "type": "uml.CommentLink", "from": "note-total", "to": "ride" },
+    { "id": "entity-extends-class", "type": "uml.Extension", "from": "entity", "to": "mc-class" },
+    {
+      "id": "personal-data-extends-class",
+      "type": "uml.Extension",
+      "from": "personal-data",
+      "to": "mc-class",
+      "props": { "isRequired": true }
+    },
+    { "id": "column-extends-property", "type": "uml.Extension", "from": "column", "to": "mc-property" },
+    { "id": "root-is-entity", "type": "uml.Generalization", "from": "aggregate-root", "to": "entity" },
+    {
+      "id": "rides-applies-conventions",
+      "type": "uml.ProfileApplication",
+      "from": "rides-package",
+      "to": "conventions"
+    },
+    {
+      "id": "ada-starts-ride",
+      "type": "uml.Link",
+      "from": "ada",
+      "to": "ride-1042",
+      "label": "takes",
+      "props": { "ends": { "to": { "role": "rides" } } }
+    },
+    {
+      "id": "ride-has-leg-1",
+      "type": "uml.Link",
+      "from": "ride-1042",
+      "to": "leg-1",
+      "props": { "ends": { "to": { "role": "legs" } } }
+    },
+    {
+      "id": "ride-has-leg-2",
+      "type": "uml.Link",
+      "from": "ride-1042",
+      "to": "leg-2",
+      "props": { "ends": { "to": { "role": "legs" } } }
+    },
+    {
+      "id": "leg-1-is-for",
+      "type": "uml.Link",
+      "from": "leg-1",
+      "to": "bike-0412",
+      "props": { "ends": { "to": { "role": "bike" } } }
+    },
+    {
+      "id": "leg-2-is-for",
+      "type": "uml.Link",
+      "from": "leg-2",
+      "to": "bike-0977",
+      "props": { "ends": { "to": { "role": "bike" } } }
+    },
+    {
+      "id": "ride-paid-by-card",
+      "type": "uml.Link",
+      "from": "ride-1042",
+      "to": "card-1",
+      "props": { "ends": { "to": { "role": "payments" } } }
+    },
+    {
+      "id": "fleet-imports-shared",
+      "type": "uml.PackageImport",
+      "from": "fleet-package",
+      "to": "shared",
+      "props": { "visibility": "public" }
+    },
+    {
+      "id": "rides-imports-fleet",
+      "type": "uml.PackageImport",
+      "from": "rides-package",
+      "to": "fleet-package",
+      "props": { "visibility": "public" }
+    },
+    {
+      "id": "payments-accesses-shared",
+      "type": "uml.PackageImport",
+      "from": "payments-package",
+      "to": "shared",
+      "props": { "visibility": "private" }
+    },
+    { "id": "business-merges-rides", "type": "uml.PackageMerge", "from": "business", "to": "rides-package" },
+    { "id": "rides-needs-payments", "type": "uml.Dependency", "from": "rides-package", "to": "payments-package" }
+  ],
+  "views": [
+    {
+      "id": "domain",
+      "diagram": "uml.class",
+      "parent": null,
+      "title": "Ride domain",
+      "direction": "down",
+      "present": { "bike": { "collapsed": ["operations"] } },
+      "nodeIds": [
+        "rides-package", "rider", "ride", "leg", "bike", "payable", "payment", "card-payment", "ride-status", "money",
+        "note-total"
+      ],
+      "layout": { "ride": [1, 0] }
+    },
+    {
+      "id": "payments-only",
+      "diagram": "uml.class",
+      "parent": "domain",
+      "title": "Payments only",
+      "subject": "rides-package",
+      "direction": "down",
+      "present": { "ride": { "collapsed": ["attributes", "operations"] } },
+      "nodeIds": ["ride", "payable", "payment", "card-payment"]
+    },
+    {
+      "id": "privacy",
+      "diagram": "uml.profile",
+      "parent": null,
+      "title": "Bike share privacy profile",
+      "direction": "down",
+      "nodeIds": [
+        "conventions", "mc-class", "mc-property", "entity", "aggregate-root", "personal-data", "column",
+        "rides-package", "ride"
+      ]
+    },
+    {
+      "id": "ride-snapshot",
+      "diagram": "uml.object",
+      "parent": null,
+      "title": "Ride 1042, just started",
+      "direction": "down",
+      "nodeIds": ["ada", "ride-1042", "leg-1", "leg-2", "bike-0412", "bike-0977", "card-1"]
+    },
+    {
+      "id": "packages",
+      "diagram": "uml.package",
+      "parent": null,
+      "title": "Bike share packages",
+      "direction": "down",
+      "nodeIds": [
+        "shared", "money", "fleet-package", "bike", "rides-package", "rider", "ride", "leg", "ride-status",
+        "payments-package", "payable", "payment", "card", "card-payment", "business", "business-ride", "conventions"
+      ],
+      "edges": [
+        "fleet-imports-shared", "rides-imports-fleet", "rides-applies-conventions", "payments-accesses-shared",
+        "business-merges-rides", "rides-needs-payments"
+      ]
+    }
+  ]
+}

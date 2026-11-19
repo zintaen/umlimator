@@ -11,6 +11,32 @@ import '../src/uml/class.js';
 import '../src/uml/object.js';
 import '../src/uml/package.js';
 import '../src/uml/deployment.js';
+// every other type too, for bike-share's typed views (step 3 of the one-model plan)
+import '../src/typed/layout.js';
+import '../src/typed/draw.js';
+import '../src/uml/sequence.js';
+import '../src/uml/communication.js';
+import '../src/uml/usecase.js';
+import '../src/uml/activity.js';
+import '../src/uml/state.js';
+import '../src/uml/overview.js';
+import '../src/uml/component.js';
+import '../src/uml/composite.js';
+import '../src/uml/profile.js';
+import '../src/uml/timing.js';
+import '../src/uml/information.js';
+import '../src/er/er.js';
+import '../src/flowchart/flowchart.js';
+import '../src/dfd/dfd.js';
+import '../src/c4/c4.js';
+import '../src/c4/views.js';
+import '../src/mindmap/mindmap.js';
+import '../src/cloud/cloud.js';
+import '../src/bpmn/process.js';
+import '../src/sysml/requirement.js';
+import '../src/sysml/blocks.js';
+import '../src/sysml/internal.js';
+import '../src/sysml/parametric.js';
 import { layout } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
 import { tablesOf } from '../src/page/print.js';
@@ -45,10 +71,12 @@ test('a type\'s word and rows: the element\'s kind and what is listed for it, es
 // What printDoc listed before 4.9, for the examples drawn today: pinned as one hash a file over its views' tables, those
 // of a typed view with their old heading, "Cards". A change to one of these examples or to the tables changes its hash.
 const PINNED = {
-  'bookshop.json': 'ba6d7e080f9e1964', 'bike-share.json': '41b2b151123db854', 'clinic.json': 'a8cdb971d5d07425', 'monorepo.json': '4e2638724ead87d6', 'weather.json': 'c9ada5f273e01b0c', 'assistant.json': '9196bd5b01316ce2', 'shapes.json': '49fdf9fb182b383b', 'states.json': '5fe79fd4bd3d4b2f',
+  'bookshop.json': 'ba6d7e080f9e1964', 'bike-share.json': '4bbd7ada07adcdd6', 'clinic.json': 'a8cdb971d5d07425', 'monorepo.json': '4e2638724ead87d6', 'weather.json': 'c9ada5f273e01b0c', 'assistant.json': '9196bd5b01316ce2', 'shapes.json': '49fdf9fb182b383b', 'states.json': '5fe79fd4bd3d4b2f',
   'sales-classes.json': 'cea8962c5cc55d53', 'order-objects.json': '67b4d8e36a4b59c5', 'bookshop-packages.json': '61f60b0985090f3d', // 6.7: the profile's row and its application's
 }; // audit 1: a typed view's element by its drawn name (catalog::Book, ada : Customer), so sales-classes and order-objects changed
-// bike-share.json changed when the rider shop's three views (overview, api, checkout, from bookshop.json) joined it
+// bike-share.json changed when the rider shop's three views (overview, api, checkout, from bookshop.json) joined it,
+// and again when its typed views joined it (step 3): the tables of all its 49 views, the trips map's fare, lifecycle and trip
+// API and the fleet map's battery monitor and rebalance planner now opening typed views
 
 test('a typed view\'s tables name each element as drawn: two Order classes shown without their packages are sales::Order and wholesale::Order (audit 1)', () => {
   const m = read('../examples/bookshop-packages.json'), ids = m.nodes.filter(n => n.label === 'Order').map(n => n.id);

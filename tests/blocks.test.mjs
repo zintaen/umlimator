@@ -444,7 +444,7 @@ test('a block definition view laid out down draws no label on another line (audi
 // audit 36: connect makes a part and the part association naming it by its role together, and part-unlisted reads the role as
 // the part's name; a rename of the part (a member row, F2 in the internal block or parametric view) left the role on the old name
 test('a part or constraint property renamed renames the role of its part association in the same transaction, in every view that renames it (audit 36)', () => {
-  const atlas = JSON.parse(readFileSync(new URL('../examples/ebike-atlas.json', import.meta.url)));
+  const atlas = JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url))); // the e-bike atlas's views, in bike-share since step 3 of the one-model plan
   // a constraint property's part association, a line of the blocks view's own
   atlas.views.find(v => v.id === 'blocks').edges.push({ id: 'ebike-eco', type: 'uml.Association', from: 'ebike', to: 'range-equation', props: { ends: { from: { aggregation: 'composite' }, to: { role: 'eco', multiplicity: '1' } } } });
   const said = m => validate(m).map(p => p.message).sort(), before = said(atlas), view = id => atlas.views.find(v => v.id === id);
@@ -510,7 +510,7 @@ test('connect refuses a generalization that closes a cycle or joins an element t
 // held took that part's association with it, and renamed back took both; a name another member holds is now refused, and only a
 // role whose part end is the part's block (and no twin's) follows a rename
 test('a part renamed to another member\'s name is refused, and a rename renames only the role that names that part (audit 37)', () => {
-  const atlas = JSON.parse(readFileSync(new URL('../examples/ebike-atlas.json', import.meta.url))), view = id => atlas.views.find(v => v.id === id);
+  const atlas = JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url))), view = id => atlas.views.find(v => v.id === id); // the e-bike atlas's views, in bike-share since step 3
   const said = m => validate(m).map(p => p.message).sort(), before = said(atlas);
   const role = (m, id) => m.edges.find(e => e.id === id).props.ends.to.role;
   const clash = /^member-names: "EBike" has a member named "motor" already \(ebike\.motor\)/;
@@ -550,7 +550,7 @@ test('a part renamed to another member\'s name is refused, and a rename renames 
 test('the properties panel\'s Name field on a part renames its association\'s role, and the Role field renames the part (audit 37)', async () => {
   await import('../src/typed/edit.js');
   const { typedEditor } = await import('../src/canvas/edit.js');
-  const atlas = JSON.parse(readFileSync(new URL('../examples/ebike-atlas.json', import.meta.url)));
+  const atlas = JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url))); // the e-bike atlas's views, in bike-share since step 3 of the one-model plan
   const said = m => validate(m).map(p => p.message).sort(), before = said(atlas), role = (m, id) => m.edges.find(e => e.id === id).props.ends.to.role;
   const part = (m, id) => m.nodes.find(n => n.id === 'ebike').members.find(x => x.id === id).label;
   for (const vid of ['inside-ebike', 'blocks', 'range-analysis']) {
@@ -579,7 +579,7 @@ test('the properties panel\'s Name field on a part renames its association\'s ro
 // audit 38: SYS_CLASH judged a member row's edit by the member's old type and by its bare label: a value turned into an
 // operation named like a value was refused, an operation turned into a value named like a value let through
 test('a member row edit is refused exactly when member-names would say the edited member clashes, by its new kind (audit 38)', () => {
-  const m0 = apply(JSON.parse(readFileSync(new URL('../examples/ebike-atlas.json', import.meta.url), 'utf8')), [{ op: 'add', owner: 'ebike', element: { id: 'ebike.op1', type: 'uml.Operation', label: 'compute' } },
+  const m0 = apply(JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url), 'utf8')), [{ op: 'add', owner: 'ebike', element: { id: 'ebike.op1', type: 'uml.Operation', label: 'compute' } },
     { op: 'add', owner: 'ebike', element: { id: 'ebike.op2', type: 'uml.Operation', label: 'charge', props: { parameters: [{ name: 'to', valueType: 'Real' }] } } }]);
   const v = m0.views.find(x => x.diagram === 'sysml.block-definition'), clashes = m => validate(m).filter(p => p.rule === 'member-names' && p.ids.includes('ebike')).length, base = clashes(m0);
   const texts = ['value ecoRange: Real', 'ecoRange(): Real', 'ecoRange(x: Real): Real', 'compute(): Real', 'compute(x: Real)', 'value compute: Real', 'charge(to: Real)', 'charge(to: Integer)', 'charge()', 'value charge: Real', 'part battery: Battery', 'value fresh: Real'];
@@ -599,7 +599,7 @@ test('a member row edit is refused exactly when member-names would say the edite
 // audit 39: a member row added (id null) with a name its owner holds already went through in all three SysML views, where the
 // same name given by a rename is refused; validate() then said member-names. An add is judged as the edit is
 test('a member row added is refused exactly when member-names would say the new member clashes, in the bdd, ibd and par (audit 39)', () => {
-  const m0 = apply(JSON.parse(readFileSync(new URL('../examples/ebike-atlas.json', import.meta.url), 'utf8')), [{ op: 'add', owner: 'ebike', element: { id: 'ebike.op1', type: 'uml.Operation', label: 'compute' } }]);
+  const m0 = apply(JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url), 'utf8')), [{ op: 'add', owner: 'ebike', element: { id: 'ebike.op1', type: 'uml.Operation', label: 'compute' } }]);
   const clashes = m => validate(m).filter(p => p.rule === 'member-names').length, base = clashes(m0);
   assert.equal(base, 0);
   const rows = { 'sysml.block-definition': ['value battery : Real', 'part battery : Battery', 'value ecoRange : Real', 'compute(): Real', 'compute(x: Real)', 'value compute : Real', 'value fresh : Real', 'battery(): Real', '«x» value battery : Real', 'value " battery" : Real'],
@@ -662,7 +662,7 @@ test('a member typed so it breaks constraint-type or port-kind is refused, by ro
 // type that breaks port-kind; and a refusal says the form once, a port of no SysML kind told the kinds
 test('F2 on a port box that breaks port-kind is refused, and a refusal says its form once (audit 45)', () => {
   const errs = m => validate(m).filter(p => p.level === 'error').map(p => p.message);
-  const A = JSON.parse(readFileSync(new URL('../examples/ebike-atlas.json', import.meta.url), 'utf8')), IV = A.views.find(v => v.diagram === 'sysml.internal-block'), IT = diagramOf(IV);
+  const A = JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url), 'utf8')), IV = A.views.find(v => v.diagram === 'sysml.internal-block'), IT = diagramOf(IV);
   assert.deepEqual(errs(A), []);
   const box = 'ebike.battery->battery.charge', F = 'a proxy port is typed by an interface block, a full port by none';
   assert.equal(IT.edits.rename(A, IV, box, '«full»').error, `Full port "Battery".charge is typed by "ChargeInterface", an interface block: ${F}`);

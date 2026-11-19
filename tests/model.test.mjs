@@ -5,11 +5,14 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { validate, check, layout, rules, describe } from '../lib/umlimator.js';
 import { mapContext } from '../src/map/context.js';
 import { fit } from '../src/core/text.js';
+// bike-share holds typed views since step 3 of the one-model plan: the full bundle validates them, as the page draws them
+import { validate as validateAll } from '../lib/umlimator-all.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 
 test('validate() finds nothing wrong in the examples and the benchmark models', () => {
-  for (const f of ['bike-share', 'weather', 'assistant']) assert.deepEqual(validate(read(`../examples/${f}.json`)), [], f);
+  assert.deepEqual(validateAll(read('../examples/bike-share.json')), [], 'bike-share');
+  for (const f of ['weather', 'assistant']) assert.deepEqual(validate(read(`../examples/${f}.json`)), [], f);
   for (const f of ['b10', 'b26', 'b69', 'd24', 'm50']) assert.deepEqual(validate(read(`../bench/models/${f}.json`)), [], f);
 });
 

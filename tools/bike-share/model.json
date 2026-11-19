@@ -3,6 +3,7 @@
   "title": "Bike share, an example",
   "root": "context",
   "meta": { "project": "umlimator" },
+  "iconPacks": { "gcp": "2026-11-14", "azure": "V25", "aws": "2026-07-31" },
   "rules": [
     {
       "id": "apps-no-db",
@@ -61,5 +62,8 @@
       ]
     }
   ],
-  "parts": ["context", "system", "trips", "fleet", "ride-end", "shop"]
+  "parts": [
+    "context", "system", "trips", "fleet", "ride-end", "shop", "classes", "interactions", "behaviour", "structure",
+    "c4", "data", "bpmn", "cloud", "sysml"
+  ]
 }

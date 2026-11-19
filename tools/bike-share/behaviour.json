@@ -1,0 +1,504 @@
+{
+  "nodes": [
+    { "id": "rider-actor", "type": "uml.Actor", "label": "Rider" },
+    { "id": "member", "type": "uml.Actor", "label": "Pass holder" },
+    { "id": "payment-provider", "type": "uml.Actor", "label": "Payment provider" },
+    { "id": "hire-system", "type": "uml.Subject", "label": "Bike share" },
+    {
+      "id": "browse",
+      "type": "uml.UseCase",
+      "label": "Find a bike",
+      "parent": "hire-system",
+      "opensView": "locate-bike"
+    },
+    {
+      "id": "check-out",
+      "type": "uml.UseCase",
+      "label": "Hire a bike",
+      "parent": "hire-system",
+      "opensView": "hire-overview",
+      "members": [
+        { "id": "hire.payment", "type": "uml.ExtensionPoint", "label": "payment" },
+        { "id": "hire.extras", "type": "uml.ExtensionPoint", "label": "extras" }
+      ]
+    },
+    { "id": "pay", "type": "uml.UseCase", "label": "Pay for the ride", "parent": "hire-system" },
+    { "id": "pay-by-card", "type": "uml.UseCase", "label": "Pay by card", "parent": "hire-system" },
+    { "id": "redeem-credit", "type": "uml.UseCase", "label": "Redeem a ride credit", "parent": "hire-system" },
+    { "id": "child-seat", "type": "uml.UseCase", "label": "Reserve a child seat", "parent": "hire-system" },
+    { "id": "sign-in", "type": "uml.UseCase", "label": "Sign in", "parent": "hire-system" },
+    {
+      "id": "report-fault",
+      "type": "uml.UseCase",
+      "label": "Report a fault",
+      "parent": "hire-system",
+      "opensView": "repair-process"
+    },
+    { "id": "lane-planner", "type": "uml.ActivityPartition", "label": "Rebalance planner" },
+    { "id": "lane-warehouse", "type": "uml.ActivityPartition", "label": "Depot" },
+    { "id": "lane-crew", "type": "uml.ActivityPartition", "label": "Field crew" },
+    { "id": "start", "type": "uml.InitialNode", "parent": "lane-planner" },
+    { "id": "take-move", "type": "uml.Action", "label": "Take the next move from the plan", "parent": "lane-planner" },
+    { "id": "move-object", "type": "uml.ObjectNode", "label": "Move", "parent": "lane-planner" },
+    {
+      "id": "check-charge",
+      "type": "uml.Action",
+      "label": "Check the charge of each bike",
+      "parent": "lane-warehouse"
+    },
+    { "id": "battery-levels", "type": "uml.DataStoreNode", "label": "Battery levels", "parent": "lane-warehouse" },
+    { "id": "all-charged", "type": "uml.DecisionNode", "label": "All bikes charged?", "parent": "lane-warehouse" },
+    { "id": "ask-batteries", "type": "uml.SendSignalAction", "label": "Battery request", "parent": "lane-warehouse" },
+    {
+      "id": "batteries-arrive",
+      "type": "uml.AcceptEventAction",
+      "label": "Batteries delivered",
+      "parent": "lane-warehouse"
+    },
+    { "id": "charge-ready", "type": "uml.MergeNode", "parent": "lane-warehouse" },
+    { "id": "split", "type": "uml.ForkNode", "parent": "lane-planner" },
+    {
+      "id": "call-swap",
+      "type": "uml.CallBehaviorAction",
+      "label": "Swap battery",
+      "parent": "lane-planner",
+      "opensView": "swap-battery"
+    },
+    { "id": "load-van", "type": "uml.Action", "label": "Load the bikes on the van", "parent": "lane-warehouse" },
+    { "id": "tell-crew", "type": "uml.Action", "label": "Text the crew \"van loaded\"", "parent": "lane-crew" },
+    { "id": "told", "type": "uml.FlowFinalNode", "parent": "lane-crew" },
+    { "id": "loaded-and-swapped", "type": "uml.JoinNode", "parent": "lane-warehouse" },
+    {
+      "id": "drop-bikes",
+      "type": "uml.Action",
+      "label": "Dock the bikes at the station",
+      "parent": "lane-warehouse",
+      "opensView": "dock-latch"
+    },
+    { "id": "done", "type": "uml.ActivityFinalNode", "parent": "lane-warehouse" },
+    { "id": "swap-start", "type": "uml.InitialNode" },
+    { "id": "take-out-battery", "type": "uml.Action", "label": "Take out the flat battery" },
+    { "id": "fit-battery", "type": "uml.Action", "label": "Fit a charged battery and log it" },
+    { "id": "swap-done", "type": "uml.ActivityFinalNode" },
+    { "id": "created", "type": "uml.Pseudostate", "props": { "kind": "initial" } },
+    {
+      "id": "placed",
+      "type": "uml.State",
+      "label": "Booked",
+      "props": { "entry": "reserve the bike", "do": "poll the payment provider", "exit": "log the payment result" },
+      "members": [
+        {
+          "id": "placed.address",
+          "type": "uml.InternalTransition",
+          "props": { "trigger": "pickup station changed", "effect": "update the pickup station" }
+        }
+      ]
+    },
+    { "id": "payment-outcome", "type": "uml.Pseudostate", "props": { "kind": "choice" } },
+    { "id": "prepaid", "type": "uml.Pseudostate", "props": { "kind": "fork" } },
+    {
+      "id": "fulfilling",
+      "type": "uml.State",
+      "label": "Riding",
+      "members": [
+        { "id": "fulfilling.parcel", "type": "uml.Region", "label": "Bike" },
+        { "id": "fulfilling.payment", "type": "uml.Region", "label": "Payment" }
+      ]
+    },
+    { "id": "parcel-start", "type": "uml.Pseudostate", "parent": "fulfilling.parcel", "props": { "kind": "initial" } },
+    {
+      "id": "picking",
+      "type": "uml.State",
+      "label": "Unlocking",
+      "parent": "fulfilling.parcel",
+      "props": { "do": "release the bike from its dock" }
+    },
+    {
+      "id": "packed",
+      "type": "uml.State",
+      "label": "Unlocked",
+      "parent": "fulfilling.parcel",
+      "props": { "entry": "light the bike's ready lamp" }
+    },
+    {
+      "id": "payment-start",
+      "type": "uml.Pseudostate",
+      "parent": "fulfilling.payment",
+      "props": { "kind": "initial" }
+    },
+    {
+      "id": "capturing",
+      "type": "uml.State",
+      "label": "Holding a deposit",
+      "parent": "fulfilling.payment",
+      "props": { "entry": "ask the payment provider to hold a deposit" }
+    },
+    { "id": "captured", "type": "uml.State", "label": "Deposit held", "parent": "fulfilling.payment" },
+    { "id": "ready", "type": "uml.Pseudostate", "props": { "kind": "join" } },
+    { "id": "delivery", "type": "uml.State", "label": "Ending" },
+    { "id": "delivery-start", "type": "uml.Pseudostate", "parent": "delivery", "props": { "kind": "initial" } },
+    {
+      "id": "in-transit",
+      "type": "uml.State",
+      "label": "Heading to a dock",
+      "parent": "delivery",
+      "props": { "do": "follow the bike's position" }
+    },
+    {
+      "id": "out-for-delivery",
+      "type": "uml.State",
+      "label": "Docking",
+      "parent": "delivery",
+      "props": { "entry": "text the rider the nearest free dock" }
+    },
+    {
+      "id": "delivery-history",
+      "type": "uml.Pseudostate",
+      "parent": "delivery",
+      "props": { "kind": "shallowHistory" }
+    },
+    {
+      "id": "enquiry",
+      "type": "uml.State",
+      "label": "Under review",
+      "props": { "entry": "open a case with support", "exit": "close the case" }
+    },
+    { "id": "cancelled", "type": "uml.State", "label": "Cancelled", "props": { "entry": "release the reserved bike" } },
+    { "id": "erased", "type": "uml.Pseudostate", "props": { "kind": "terminate" } },
+    { "id": "delivered", "type": "uml.FinalState" },
+    { "id": "bl-ebike", "type": "uml.State", "label": "E-bike" },
+    { "id": "bl-new", "type": "uml.Pseudostate", "parent": "bl-ebike", "props": { "kind": "initial" } },
+    { "id": "bl-in-service", "type": "uml.State", "label": "In service", "parent": "bl-ebike" },
+    { "id": "bl-service-start", "type": "uml.Pseudostate", "parent": "bl-in-service", "props": { "kind": "initial" } },
+    {
+      "id": "bl-docked",
+      "type": "uml.State",
+      "label": "Docked",
+      "parent": "bl-in-service",
+      "props": { "do": "report the battery level" }
+    },
+    {
+      "id": "bl-charging",
+      "type": "uml.State",
+      "label": "Charging",
+      "parent": "bl-in-service",
+      "props": { "entry": "close the charge contacts", "exit": "open the charge contacts" }
+    },
+    {
+      "id": "bl-in-use",
+      "type": "uml.State",
+      "label": "In use",
+      "parent": "bl-in-service",
+      "props": { "entry": "start the ride clock", "do": "report the position" }
+    },
+    {
+      "id": "bl-service-history",
+      "type": "uml.Pseudostate",
+      "parent": "bl-in-service",
+      "props": { "kind": "shallowHistory" }
+    },
+    {
+      "id": "bl-in-repair",
+      "type": "uml.State",
+      "label": "In repair",
+      "parent": "bl-ebike",
+      "props": { "entry": "lock the bike out of hire", "exit": "log the repair" }
+    },
+    { "id": "bl-fixable", "type": "uml.Pseudostate", "parent": "bl-ebike", "props": { "kind": "choice" } },
+    {
+      "id": "bl-retired",
+      "type": "uml.State",
+      "label": "Retired",
+      "parent": "bl-ebike",
+      "props": { "entry": "strip it for spare parts" }
+    },
+    { "id": "bl-scrapped", "type": "uml.FinalState", "parent": "bl-ebike" }
+  ],
+  "edges": [
+    { "id": "rider-browses", "type": "uml.Association", "from": "rider-actor", "to": "browse" },
+    { "id": "rider-hires", "type": "uml.Association", "from": "rider-actor", "to": "check-out" },
+    { "id": "member-reports", "type": "uml.Association", "from": "member", "to": "report-fault" },
+    { "id": "provider-takes-card", "type": "uml.Association", "from": "payment-provider", "to": "pay-by-card" },
+    { "id": "hire-includes-pay", "type": "uml.Include", "from": "check-out", "to": "pay" },
+    { "id": "track-includes-sign-in", "type": "uml.Include", "from": "report-fault", "to": "sign-in" },
+    {
+      "id": "credit-extends-hire",
+      "type": "uml.Extend",
+      "from": "redeem-credit",
+      "to": "check-out",
+      "props": { "extensionPoints": ["hire.payment"], "condition": "the rider has a ride credit" }
+    },
+    {
+      "id": "child-seat-extends-hire",
+      "type": "uml.Extend",
+      "from": "child-seat",
+      "to": "check-out",
+      "props": { "extensionPoints": ["hire.extras"], "condition": "the rider asks for a child seat" }
+    },
+    { "id": "f-start", "type": "uml.ControlFlow", "from": "start", "to": "take-move" },
+    { "id": "f-ride-out", "type": "uml.ObjectFlow", "from": "take-move", "to": "move-object" },
+    { "id": "f-ride-in", "type": "uml.ObjectFlow", "from": "move-object", "to": "check-charge" },
+    { "id": "f-stock-read", "type": "uml.ObjectFlow", "from": "battery-levels", "to": "check-charge" },
+    { "id": "f-checked", "type": "uml.ControlFlow", "from": "check-charge", "to": "all-charged" },
+    {
+      "id": "f-in-stock",
+      "type": "uml.ControlFlow",
+      "from": "all-charged",
+      "to": "charge-ready",
+      "props": { "guard": "all bikes charged" }
+    },
+    {
+      "id": "f-short",
+      "type": "uml.ControlFlow",
+      "from": "all-charged",
+      "to": "ask-batteries",
+      "props": { "guard": "else" }
+    },
+    { "id": "f-wait", "type": "uml.ControlFlow", "from": "ask-batteries", "to": "batteries-arrive" },
+    { "id": "f-arrived", "type": "uml.ControlFlow", "from": "batteries-arrive", "to": "charge-ready" },
+    { "id": "f-ready", "type": "uml.ControlFlow", "from": "charge-ready", "to": "split" },
+    { "id": "f-to-pay", "type": "uml.ControlFlow", "from": "split", "to": "call-swap" },
+    { "id": "f-to-pick", "type": "uml.ControlFlow", "from": "split", "to": "load-van" },
+    { "id": "f-to-tell", "type": "uml.ControlFlow", "from": "split", "to": "tell-crew" },
+    { "id": "f-told", "type": "uml.ControlFlow", "from": "tell-crew", "to": "told" },
+    { "id": "f-stock-write", "type": "uml.ObjectFlow", "from": "load-van", "to": "battery-levels" },
+    { "id": "f-paid", "type": "uml.ControlFlow", "from": "call-swap", "to": "loaded-and-swapped" },
+    { "id": "f-packed", "type": "uml.ControlFlow", "from": "load-van", "to": "loaded-and-swapped" },
+    { "id": "f-ship", "type": "uml.ControlFlow", "from": "loaded-and-swapped", "to": "drop-bikes" },
+    { "id": "f-done", "type": "uml.ControlFlow", "from": "drop-bikes", "to": "done" },
+    { "id": "f-pay-start", "type": "uml.ControlFlow", "from": "swap-start", "to": "take-out-battery" },
+    { "id": "f-charged", "type": "uml.ControlFlow", "from": "take-out-battery", "to": "fit-battery" },
+    { "id": "f-recorded", "type": "uml.ControlFlow", "from": "fit-battery", "to": "swap-done" },
+    { "id": "t-created", "type": "uml.Transition", "from": "created", "to": "placed" },
+    {
+      "id": "t-payment-result",
+      "type": "uml.Transition",
+      "from": "placed",
+      "to": "payment-outcome",
+      "props": { "trigger": "payment result" }
+    },
+    {
+      "id": "t-authorised",
+      "type": "uml.Transition",
+      "from": "payment-outcome",
+      "to": "fulfilling",
+      "props": { "guard": "card authorised" }
+    },
+    {
+      "id": "t-prepaid",
+      "type": "uml.Transition",
+      "from": "payment-outcome",
+      "to": "prepaid",
+      "props": { "guard": "covered by a pass" }
+    },
+    {
+      "id": "t-declined",
+      "type": "uml.Transition",
+      "from": "payment-outcome",
+      "to": "cancelled",
+      "props": { "guard": "else", "effect": "email the rider" }
+    },
+    { "id": "t-prepaid-picking", "type": "uml.Transition", "from": "prepaid", "to": "picking" },
+    { "id": "t-prepaid-captured", "type": "uml.Transition", "from": "prepaid", "to": "captured" },
+    { "id": "t-parcel-start", "type": "uml.Transition", "from": "parcel-start", "to": "picking" },
+    {
+      "id": "t-picked",
+      "type": "uml.Transition",
+      "from": "picking",
+      "to": "packed",
+      "props": { "trigger": "bike released" }
+    },
+    { "id": "t-payment-start", "type": "uml.Transition", "from": "payment-start", "to": "capturing" },
+    {
+      "id": "t-capture-retry",
+      "type": "uml.Transition",
+      "from": "capturing",
+      "to": "capturing",
+      "props": { "trigger": "hold failed", "guard": "attempts < 3", "effect": "count the attempt" }
+    },
+    {
+      "id": "t-capture-given-up",
+      "type": "uml.Transition",
+      "from": "capturing",
+      "to": "cancelled",
+      "props": { "trigger": "hold failed", "guard": "attempts >= 3" }
+    },
+    {
+      "id": "t-captured",
+      "type": "uml.Transition",
+      "from": "capturing",
+      "to": "captured",
+      "props": { "trigger": "hold confirmed" }
+    },
+    { "id": "t-packed-ready", "type": "uml.Transition", "from": "packed", "to": "ready" },
+    { "id": "t-captured-ready", "type": "uml.Transition", "from": "captured", "to": "ready" },
+    {
+      "id": "t-handed-over",
+      "type": "uml.Transition",
+      "from": "ready",
+      "to": "delivery",
+      "props": { "effect": "start the ride clock" }
+    },
+    { "id": "t-delivery-start", "type": "uml.Transition", "from": "delivery-start", "to": "in-transit" },
+    {
+      "id": "t-at-depot",
+      "type": "uml.Transition",
+      "from": "in-transit",
+      "to": "out-for-delivery",
+      "props": { "trigger": "reached a station" }
+    },
+    {
+      "id": "t-delivered",
+      "type": "uml.Transition",
+      "from": "out-for-delivery",
+      "to": "delivered",
+      "props": { "trigger": "bike docked", "effect": "email the receipt" }
+    },
+    {
+      "id": "t-problem",
+      "type": "uml.Transition",
+      "from": "delivery",
+      "to": "enquiry",
+      "props": { "trigger": "problem reported" }
+    },
+    {
+      "id": "t-resolved",
+      "type": "uml.Transition",
+      "from": "enquiry",
+      "to": "delivery-history",
+      "props": { "trigger": "problem resolved" }
+    },
+    {
+      "id": "t-cancel",
+      "type": "uml.Transition",
+      "from": "fulfilling",
+      "to": "cancelled",
+      "props": { "trigger": "cancel requested", "effect": "refund the payment" }
+    },
+    {
+      "id": "t-erase",
+      "type": "uml.Transition",
+      "from": "cancelled",
+      "to": "erased",
+      "props": { "trigger": "after 30 days", "effect": "erase the rider's details" }
+    },
+    { "id": "t-bl-new", "type": "uml.Transition", "from": "bl-new", "to": "bl-in-service" },
+    { "id": "t-bl-service-start", "type": "uml.Transition", "from": "bl-service-start", "to": "bl-docked" },
+    {
+      "id": "t-bl-low",
+      "type": "uml.Transition",
+      "from": "bl-docked",
+      "to": "bl-charging",
+      "props": { "trigger": "battery low", "guard": "charge < 20%" }
+    },
+    {
+      "id": "t-bl-charged",
+      "type": "uml.Transition",
+      "from": "bl-charging",
+      "to": "bl-docked",
+      "props": { "trigger": "battery full" }
+    },
+    {
+      "id": "t-bl-unlocked",
+      "type": "uml.Transition",
+      "from": "bl-docked",
+      "to": "bl-in-use",
+      "props": { "trigger": "unlocked" }
+    },
+    {
+      "id": "t-bl-returned",
+      "type": "uml.Transition",
+      "from": "bl-in-use",
+      "to": "bl-docked",
+      "props": { "trigger": "docked", "effect": "end the ride" }
+    },
+    {
+      "id": "t-bl-fault",
+      "type": "uml.Transition",
+      "from": "bl-in-service",
+      "to": "bl-in-repair",
+      "props": { "trigger": "fault reported" }
+    },
+    {
+      "id": "t-bl-checked",
+      "type": "uml.Transition",
+      "from": "bl-in-repair",
+      "to": "bl-fixable",
+      "props": { "trigger": "inspected" }
+    },
+    {
+      "id": "t-bl-repaired",
+      "type": "uml.Transition",
+      "from": "bl-fixable",
+      "to": "bl-service-history",
+      "props": { "guard": "repaired" }
+    },
+    {
+      "id": "t-bl-beyond",
+      "type": "uml.Transition",
+      "from": "bl-fixable",
+      "to": "bl-retired",
+      "props": { "guard": "else" }
+    },
+    {
+      "id": "t-bl-scrapped",
+      "type": "uml.Transition",
+      "from": "bl-retired",
+      "to": "bl-scrapped",
+      "props": { "trigger": "parts taken" }
+    }
+  ],
+  "views": [
+    {
+      "id": "rider-uses",
+      "diagram": "uml.use-case",
+      "parent": null,
+      "title": "What riders do",
+      "nodeIds": [
+        "rider-actor", "member", "payment-provider", "hire-system", "browse", "check-out", "pay", "pay-by-card",
+        "redeem-credit", "child-seat", "sign-in", "report-fault"
+      ]
+    },
+    {
+      "id": "rebalance",
+      "diagram": "uml.activity",
+      "parent": null,
+      "title": "Rebalancing the stations",
+      "direction": "down",
+      "nodeIds": [
+        "lane-planner", "lane-warehouse", "lane-crew", "start", "take-move", "move-object", "check-charge",
+        "battery-levels", "all-charged", "ask-batteries", "batteries-arrive", "charge-ready", "split", "call-swap",
+        "load-van", "tell-crew", "told", "loaded-and-swapped", "drop-bikes", "done"
+      ]
+    },
+    {
+      "id": "swap-battery",
+      "diagram": "uml.activity",
+      "parent": "rebalance",
+      "title": "Swap battery",
+      "direction": "down",
+      "nodeIds": ["swap-start", "take-out-battery", "fit-battery", "swap-done"]
+    },
+    {
+      "id": "ride-life",
+      "diagram": "uml.state-machine",
+      "parent": null,
+      "title": "A ride's life",
+      "nodeIds": [
+        "created", "placed", "payment-outcome", "prepaid", "fulfilling", "parcel-start", "picking", "packed",
+        "payment-start", "capturing", "captured", "ready", "delivery", "delivery-start", "in-transit",
+        "out-for-delivery", "delivery-history", "enquiry", "cancelled", "erased", "delivered"
+      ]
+    },
+    {
+      "id": "bike-life",
+      "diagram": "uml.state-machine",
+      "parent": null,
+      "title": "A bike's life",
+      "nodeIds": [
+        "bl-ebike", "bl-new", "bl-in-service", "bl-service-start", "bl-docked", "bl-charging", "bl-in-use",
+        "bl-service-history", "bl-in-repair", "bl-fixable", "bl-retired", "bl-scrapped"
+      ]
+    }
+  ]
+}
