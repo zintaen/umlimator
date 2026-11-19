@@ -79,6 +79,26 @@ with tempfile.TemporaryDirectory() as d48:
     mcp.MODEL, mcp.page = keep48
 ok("audit 48 · tour on cards split over two views says no view shows them all, and blames no line on a view",
    all(x == "no view shows all these cards; describe_view lists a view's cards" for x in said48), said48)
+# audit 51: a tour with no view took the first view that shows its cards (containers, where shopper and bookshop share no
+# line) and refused it, though the context view draws the route shopper -> bookshop -> payments: it rides the first that does
+keep51 = (mcp.MODEL, mcp.page, dict(mcp.want))
+mcp.MODEL, mcp.page = ROOT / "examples" / "types" / "c4.json", (lambda: ("v", None))
+rode51 = []
+for current in (None, "containers"):
+    mcp.want.update(view=current, highlight=None, tour=None, story=None)
+    try:
+        mcp.call("tour", {"cards": ["shopper", "bookshop", "payments"]}); rode51.append(mcp.want["view"])
+    except mcp.Fail as e:
+        rode51.append(str(e))
+try:
+    mcp.call("tour", {"cards": ["shopper", "payments"]}); none51 = None
+except mcp.Fail as e:
+    none51 = str(e)
+mcp.MODEL, mcp.page = keep51[:2]
+mcp.want.clear(); mcp.want.update(keep51[2])
+ok("audit 51 · tour with no view rides the first view that shows its cards and draws a line between each and the next; none that does is said, naming each",
+   rode51 == ["context", "context"] and none51 and none51.startswith("no view that shows these cards draws a line between each and the next")
+   and "on view 'context' no line joins 'shopper' and 'payments'" in none51 and "on view 'containers'" in none51, (rode51, none51))
 # view_for (audit 11): a line with no id, a box, a chip lands on the view that shows it, never on the first view (every card dimmed)
 m = {"nodes": [{"id": x} for x in "abcd"], "edges": [{"from": "c", "to": "d"}], "views": [{"id": "ctx", "nodeIds": ["a", "b"]},
      {"id": "inner", "nodeIds": ["c", "d"], "containers": [{"id": "box", "nodeIds": ["c", "d"]}]}]}

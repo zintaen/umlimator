@@ -1232,7 +1232,10 @@ def flowchart(lines, m):
             if g:
                 raw = g.group(2) or (g.group(3) and f'"{g.group(3)}"') or g.group(4) or g.group(5)  # its quotes kept, so a Markdown string is seen
                 label, nsub = text(raw, bad_code(m, no)), nsub + 1
-                subs.append({"id": ident(g.group(1) or g.group(4) or label) if g.group(0) != "subgraph" else f"subGraph{nsub - 1}", "label": clip(label, 40), "seen": [], "line": no,
+                # Mermaid's subGraph<n> for a bare one, and for a title with no id of its own that holds whitespace, which
+                # flowDb.addSubGraph takes for no id (audit 51)
+                none = g.group(0) == "subgraph" or (not g.group(1) and re.search(JS_S, g.group(3) or g.group(5) or ""))
+                subs.append({"id": f"subGraph{nsub - 1}" if none else ident(g.group(1) or g.group(4) or label), "label": clip(label, 40), "seen": [], "line": no,
                              "parent": subs[-1]["id"] if subs else None})
                 if markdown(raw):
                     m.say(no, f"subgraph {subs[-1]['id']}: a Markdown string is read as plain text")

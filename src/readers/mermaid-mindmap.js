@@ -1,5 +1,5 @@
 import { unreadable } from '../core/model.js';
-import { mermaidFrontTitle, mermaidCut, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText, mermaidScrub } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidCut, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText, mermaidScrub, mermaidComment, mermaidUncomment, MERMAID_IN_STRING } from './mermaid-front.js';
 /* ---------- Mermaid mindmap: a reader and a writer (notes/milestone-4a.md §8, 4a.5; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's mindmap page (docs/syntax/mindmap.md) and its lexer and database
    (diagrams/mindmap/parser/mindmap.jison, mindmapDb.ts), read on Mermaid's repository 14 Nov 2026. Internal: the CLI
@@ -132,16 +132,27 @@ function mmrRead(text, report, say, empty) {
     i = j + 1;
   }
 
-  // for each stop set, the first line at or after each line that holds one of them, found once on first use (audit 49)
+  // for each stop set, the first line at or after each line that holds one of them, found once on first use (audit 49).
+  // A %% comment line inside a string is taken out by Mermaid before it reads (audit 51): its stops are no stops, and it
+  // is not part of the text; cut is the first such line a topic took, said once the topic is read
+  let cut = -1;
   const nextAt = new Map(), ahead = stops => {
     let a = nextAt.get(stops);
     if (!a) {
       a = new Int32Array(lines.length + 1).fill(-1);
-      for (let k = lines.length - 1; k >= 0; k--) a[k] = [...stops].some(ch => lines[k].includes(ch)) ? k : a[k + 1];
+      for (let k = lines.length - 1; k >= 0; k--) a[k] = !mermaidComment(lines[k]) && [...stops].some(ch => lines[k].includes(ch)) ? k : a[k + 1];
       nextAt.set(stops, a);
     }
     const m = a[i + 1];
-    return m < 0 ? null : { line: lines[m], take: () => { const p = lines.slice(i + 1, m + 1); i = m; return p; } };
+    return m < 0 ? null : { line: lines[m], take: () => { const u = mermaidUncomment(lines.slice(i + 1, m + 1)); if (u.cut >= 0 && cut < 0) cut = i + 1 + u.cut; i = m; return u.kept; } };
+  };
+  // the next line of a Markdown string, past %% comment lines and the blank lines before them, or null
+  const more = () => {
+    if (!(i + 1 < lines.length && i < dry)) return null;
+    let k = i + 1, last = -1;
+    for (; k < lines.length && (!lines[k].trim() || mermaidComment(lines[k])); k++) if (mermaidComment(lines[k])) { last = k; if (cut < 0) cut = k; }
+    if (last >= 0) i = last;
+    return i + 1 < lines.length && i < dry ? lines[++i].replace(/\r$/, '') : null;
   };
   const topics = [], stack = [], once = new Set(), hints = new Map();
   const first = (key, no, message) => { if (!once.has(key)) { once.add(key); say(no, 'approximated', message); } };
@@ -188,8 +199,10 @@ function mmrRead(text, report, say, empty) {
     }
     let ind = 0;
     while (/\s/.test(line[ind])) ind++;
-    const t = mmrTopic(line.slice(ind), () => (i + 1 < lines.length && i < dry ? lines[++i].replace(/\r$/, '') : null), ahead);
+    cut = -1;
+    const t = mmrTopic(line.slice(ind), more, ahead);
     if (t.rewind) { dry = no - 1; i = no - 1; } // unclosed: the one line read as text, the lines after it read as they are
+    else if (cut >= 0) say(cut + 1, 'approximated', MERMAID_IN_STRING);
     if (t.unclosed) say(no, 'approximated', `${mmrClip(t.text)}: ${t.unclosed}, read as text`);
     if (t.after) say(no, 'skipped', `${mmrClip(t.after)}: text after the topic is not read`);
     const bad = e => say(no, 'skipped', `${e}: an entity Mermaid does not know, kept as written`);

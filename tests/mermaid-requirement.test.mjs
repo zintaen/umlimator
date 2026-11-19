@@ -514,3 +514,9 @@ test('a field\'s value holding a line feed is written in quotes over its lines a
   // a carriage return (a line's \r the reader drops) or a line that starts %% (Mermaid takes it out as a comment): not written
   for (const reqId of ['a\r\nb', 'a\n%% c', 'a\n  %%c']) assert.match(write(model(reqId), 'v'), /not written: r1: reqId .*which Mermaid's quotes cannot hold/s, reqId);
 });
+
+test('a %% comment line inside a "string" over lines is taken out, as Mermaid\'s cleanupComments does before it parses, its quotes not counted, and said (audit 51)', () => {
+  const r = read('requirementDiagram\n  requirement r {\n    id: 1\n    text: "first\n    %% reviewer: "drop" this\n\n    %% two\n    second"\n  }\n');
+  assert.deepEqual(r.model.nodes[0].props, { reqId: '1', text: 'first\n    second' });
+  assert.deepEqual(r.report.map(x => [x.line, x.status, x.message]), [[5, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read']]);
+});

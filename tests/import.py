@@ -895,6 +895,12 @@ ok("mermaid · an inner box of a subgraph with no end is drawn at the top level"
 m, un = imp.read("mermaid", "flowchart LR\nsubgraph pay [Payments]\ncard\nend\nsubgraph pay [Again]\nfraud\nend\nsubgraph api\nsubgraph api\nh\nend\nr\nend\n", "x")
 ok("mermaid · a subgraph opened again, after or inside itself, is one box, with no parent of its own id",
    boxes_of(m) == [{"id": "pay", "label": "Payments", "nodeIds": ["card", "fraud"]}, {"id": "api", "label": "api", "nodeIds": ["h", "r"]}], (m, un))
+# audit 51: a subgraph titled with no id of its own whose title holds whitespace was named by a slug of it (order-flow),
+# where Mermaid gives it subGraph<n>: a node of that name was taken for the box, and its line drawn from the box
+m, un = imp.read("mermaid", 'flowchart LR\n  subgraph "Order flow"\n    pay\n  end\n  subgraph Ship it\n    box\n  end\n  order-flow --> ship\n  ship-it --> pay\n', "x")
+ok("mermaid · a subgraph title with whitespace and no id is Mermaid's subGraph<n>; a node named as its slug is a card with its line (audit 51)",
+   [n["id"] for n in m["nodes"]] == ["pay", "box", "order-flow", "ship", "ship-it"] and line(m, "order-flow", "ship") and line(m, "ship-it", "pay")
+   and boxes_of(m) == [{"id": "subGraph0", "label": "Order flow", "nodeIds": ["pay"]}, {"id": "subGraph1", "label": "Ship it", "nodeIds": ["box"]}] and not un, (m, un))
 m, un = imp.read("mermaid", "flowchart LR\naccDescr {\nCheckout\nA --> Z\n}\nA --> B\n", "x")
 c4m, c4un = imp.read("mermaid", 'C4Context\naccDescr {\nPerson(x, "y")\n}\nPerson(a, "A")\n', "x")
 ok("mermaid · an accDescr { ... } block is passed over whole (flowchart, C4)", [n["id"] for n in m["nodes"]] == ["A", "B"]
