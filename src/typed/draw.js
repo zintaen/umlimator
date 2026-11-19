@@ -125,7 +125,9 @@ TYPED.lines = ({ id, nodes = [], families = [], edges, drawn, lstyle, MC }) => {
   return {
     defs: ends.map(endMark).join(''),
     edge(e, i) { const E = e.end; if (!E) return null;
-      const st = E.dashed ? { ...lstyle(e), dash: E.dashed === 'dot' ? '2 3' : '6 4' } : lstyle(e), cut = w => endOf(E, w) ? ENDS[endOf(E, w)][0] : 0, at = w => endOf(E, w) ? `url(#${id}-${endOf(E, w)}-${st.m})` : '';
+      // a dashed notation keeps its dash when the line is added: a flowing line's own dash would draw a dependency as an
+      // association, a message flow as a sequence flow (audit 46)
+      const st = E.dashed ? { ...lstyle(e), dash: E.dashed === 'dot' ? '2 3' : '6 4', flow: false } : lstyle(e), cut = w => endOf(E, w) ? ENDS[endOf(E, w)][0] : 0, at = w => endOf(E, w) ? `url(#${id}-${endOf(E, w)}-${st.m})` : '';
       return { st, pts: trimLine(drawn[i], cut('from'), cut('to')), marks: `${at('to') ? `marker-end="${at('to')}"` : ''} ${at('from') ? `marker-start="${at('from')}"` : ''}` }; },
     labels: i => edges[i].end ? endLabs(i).map(b => brLines(b.text).map((l, k) => `<text x="${r2(b.x + b.w / 2)}" y="${r2(b.y + 10.5 + k * 12)}" text-anchor="middle" class="end-lab" data-i="${i}" data-end="${b.end}" data-box="${b.x} ${b.y} ${b.w} ${b.h}" fill="var(--um-muted)" style="font:500 10px var(--um-sans)">${esc(l)}</text>`).join('')).join('') : '',
   };

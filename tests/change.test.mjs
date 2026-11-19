@@ -997,3 +997,104 @@ test('audit 45: no tag of any example\'s views holds an attribute twice; a servi
     assert.ok(marks.some(([, d, w]) => /v2M/.test(d) && w === '1.2'), 'the timer\'s ticks and hands at 1.2');
   }
 });
+
+// audit 46: marks on what a type draws for a model line, a member, or from what it does not draw itself
+test('audit 46: a communication view\'s message rows carry diff()\'s marks: a removed message faded and struck, an added one new, a changed one changed, each said in its name', async () => {
+  const all = await fromSrc(), a = read45('checkout-communication'), b = structuredClone(a), E = b.views.find(v => v.id === 'checkout-communication').edges, ids = E.map(e => (typeof e === 'string' ? e : e.id));
+  const msgs = b.edges.filter(e => ids.includes(e.id) && e.type === 'uml.Message'), [c, r] = [msgs[1], msgs[msgs.length - 1]];
+  c.label = String(c.label) + ' (v2)'; b.edges = b.edges.filter(e => e.id !== r.id); b.views.forEach(v => { if (Array.isArray(v.edges)) v.edges = v.edges.filter(e => (typeof e === 'string' ? e : e.id) !== r.id); });
+  for (const [x, y, gone, word] of [[a, b, r.id, 'removed'], [b, a, r.id, 'new']]) {
+    const g = all.layout(all.diff(x, y).model, 'checkout-communication'), s = svgOf(g), t = tag45(s, `data-id="${gone}"`);
+    assert.ok(t, gone); assert.match(t, new RegExp(`, ${word}" data-change="${word}"`));
+    if (word === 'removed') { assert.match(t, /stroke-dasharray/); assert.match(tag45(s, `data-id="${c.id}"`), /, changed" data-change="changed"/); } }
+  assert.doesNotMatch(svgOf(all.layout(a, 'checkout-communication')), /data-change/);
+});
+
+test('audit 46: a dashed typed line diff() adds keeps its notation\'s dash (a dependency, an include, a message flow, a satisfy), green', async () => {
+  const all = await fromSrc(), m = read45('bookshop-atlas'), e2 = read45('ebike-atlas'); let n = 0;
+  for (const [x, ty] of [[m, 'uml.Dependency'], [m, 'uml.Include'], [m, 'bpmn.MessageFlow'], [m, 'bpmn.Association'], [e2, 'sysml.Satisfy']]) {
+    const e = x.edges.find(y => y.type === ty), v = x.views.find(w => w.diagram && w.diagram !== 'map' && all.layout(x, w.id).edges.some(l => (l._id ?? l.id) === e.id));
+    const less = structuredClone(x); less.edges = less.edges.filter(y => y.id !== e.id);
+    const at = (mm, id) => { const g = all.layout(mm, v.id), i = g.edges.findIndex(l => (l._id ?? l.id) === id); return (svgOf(g).match(new RegExp(`<g class="edge-g[^"]*"[^>]*data-i="${i}">[\\s\\S]*?class="edge[^"]*"[^>]*>`)) || [''])[0]; };
+    const plain = at(x, e.id).match(/stroke-dasharray="([^"]+)"/), added = at(all.diff(less, x).model, e.id);
+    assert.ok(plain, `${ty} dashed`); assert.match(added, /stroke="var\(--um-green\)"/, ty); assert.match(added, new RegExp(`stroke-dasharray="${plain[1]}"`), ty); n++; }
+  assert.equal(n, 5);
+});
+
+test('audit 46: diff() marks a member new to an element that stayed and says "adds X to Y"; one gone that a view drew as its own shape comes back removed (a part, a port, a lane)', async () => {
+  const all = await fromSrc(), eb = read45('ebike-structure'), e1 = structuredClone(eb);
+  e1.nodes.find(n => n.id === 'ebike').members.push({ id: 'ebike.battery2', type: 'uml.Property', label: 'battery2', props: { valueType: 'Battery', multiplicity: '1' } });
+  const keep = JSON.stringify(e1), d = all.diff(eb, e1); assert.equal(JSON.stringify(e1), keep, 'the after model is not changed');
+  assert.deepEqual(d.summary, ['adds battery2 to EBike']); assert.match(tag45(svgOf(all.layout(d.model, 'inside-ebike')), 'data-id="ebike.battery2"'), /, new" data-change="new"/);
+  const back = all.diff(e1, eb); assert.deepEqual(back.summary, ['removes battery2 from EBike']);
+  assert.match(tag45(svgOf(all.layout(back.model, 'inside-ebike')), 'data-id="ebike.battery2"'), /, removed" data-change="removed"/);
+  // a lane added to a pool, and one removed (its elements moved to the pool)
+  const bp = read45('bookshop-order-to-shipment'), pool = bp.nodes.find(n => n.type === 'bpmn.Participant' && (n.members || []).some(x => x.type === 'bpmn.Lane')), lane = pool.members.find(x => x.type === 'bpmn.Lane');
+  const add = structuredClone(bp); add.nodes.find(n => n.id === pool.id).members.push({ id: 'lane-new', type: 'bpmn.Lane', label: 'Returns desk' });
+  const rem = structuredClone(bp), p2 = rem.nodes.find(n => n.id === pool.id); p2.members = p2.members.filter(x => x.id !== lane.id); rem.nodes.forEach(n => { if (n.parent === lane.id) n.parent = pool.id; });
+  const v = bp.views[0].id, da = all.diff(bp, add), dr = all.diff(bp, rem);
+  assert.ok(da.summary.includes(`adds Returns desk to ${pool.label}`)); assert.match(tag45(svgOf(all.layout(da.model, v)), 'data-id="lane-new"'), /data-change="new"/);
+  assert.ok(dr.summary.includes(`removes ${lane.label} from ${pool.label}`)); assert.match(tag45(svgOf(all.layout(dr.model, v)), `data-id="${lane.id}"`), /data-change="removed"/);
+  // a component's new port: its owner is not said changed for it
+  const c0 = read45('bookshop-components'), c1 = structuredClone(c0); c1.nodes.find(n => n.id === 'order-worker').members = [{ id: 'order-worker.jobs', type: 'uml.Port', label: 'jobs' }];
+  const dc = all.diff(c0, c1); assert.deepEqual(dc.summary, ['adds jobs to Order worker']); assert.match(tag45(svgOf(all.layout(dc.model, 'components')), 'data-id="order-worker.jobs"'), /data-change="new"/);
+});
+
+test('audit 46: marks follow what a type derives: the ports drawn on a removed or added part, a SysML containment line to a removed requirement', async () => {
+  const all = await fromSrc(), os = read45('order-service-structure'), less = structuredClone(os), owner = less.nodes.find(n => (n.members || []).some(x => x.id === 'order-service.pricing'));
+  owner.members = owner.members.filter(x => x.id !== 'order-service.pricing'); less.edges = less.edges.filter(e => ![e.from, e.to, ((e.props || {}).ends || {}).from?.part, ((e.props || {}).ends || {}).to?.part].includes('order-service.pricing'));
+  for (const [x, y, word] of [[os, less, 'removed'], [less, os, 'new']]) {
+    const g = all.layout(all.diff(x, y).model, 'internals'), s = svgOf(g), ports = g.nodes.filter(n => n.id.startsWith('order-service.pricing->'));
+    assert.ok(ports.length, word); ports.forEach(p => assert.match(tag45(s, `data-id="${p.id.replace('>', '&gt;')}"`), new RegExp(`, ${word}" data-change="${word}"`))); }
+  const rq = read45('ebike-requirements'), v = rq.views[0].id, r1 = structuredClone(rq);
+  r1.nodes = r1.nodes.filter(n => n.id !== 'assist'); r1.views.forEach(w => { w.nodeIds = (w.nodeIds || []).filter(x => x !== 'assist'); }); r1.edges = r1.edges.filter(e => e.from !== 'assist' && e.to !== 'assist');
+  const g = all.layout(all.diff(rq, r1).model, v), s = svgOf(g), i = g.edges.findIndex(e => (e.from === 'assist' || e.to === 'assist') && /ontain/.test(e.aria || ''));
+  assert.ok(i >= 0); assert.equal(g.edges[i].change, 'removed'); assert.match(keyAt45(s, i), /, removed$/);
+  assert.ok(all.layout(rq, v).edges.every(e => !e.change));
+});
+
+test('audit 46: an overview\'s inline interaction colours a message its sequence view lists by id when diff() adds or removes it', async () => {
+  const all = await fromSrc(), m0 = read45('buy-book-overview'), sv = m0.views.find(v => v.id === 'queue-order');
+  m0.edges.push(...sv.edges); sv.edges = sv.edges.map(e => e.id);
+  const gone = sv.edges[sv.edges.length - 1], m1 = structuredClone(m0); m1.edges = m1.edges.filter(e => e.id !== gone); m1.views.find(v => v.id === 'queue-order').edges = sv.edges.filter(x => x !== gone);
+  const msgs = (a, b) => svgOf(all.layout(all.diff(a, b).model, 'buy-book')).match(/<g class="ov-msg"[^>]*><path [^>]*>/g);
+  assert.equal(msgs(m0, m1).filter(x => /stroke="var\(--um-rose\)"[^>]*stroke-dasharray/.test(x)).length, 1);
+  assert.equal(msgs(m1, m0).filter(x => /stroke="var\(--um-green\)"/.test(x)).length, 1);
+});
+
+test('audit 46: a view diff() lists because its picture changed through what it does not draw shows where: a container instance drawn from a changed container, an implied line through a moved container, an IDEF1X entity, an information flow', async () => {
+  const all = await fromSrc(), c4 = read45('bookshop-c4'), c4b = structuredClone(c4); c4b.nodes.find(n => n.id === 'c4-api').label = 'Shop API v2';
+  const dep = all.layout(all.diff(c4, c4b).model, 'c4-deployment'), inst = dep.nodes.find(n => n.label === 'Shop API v2');
+  assert.equal(inst.change, 'changed'); assert.match(tag45(svgOf(dep), `data-id="${inst.id}"`), /data-change="changed"/);
+  assert.ok(all.layout(c4, 'c4-deployment').nodes.every(n => !n.change));
+  const a = { schemaVersion: 2, nodes: [{ id: 'P', type: 'c4.Person', label: 'Shopper' }, { id: 'S1', type: 'c4.SoftwareSystem', label: 'Shop' }, { id: 'S2', type: 'c4.SoftwareSystem', label: 'Billing' },
+    { id: 'X', type: 'c4.Container', parent: 'S1', label: 'API' }], edges: [{ id: 'r1', type: 'c4.Relationship', from: 'P', to: 'X', label: 'uses' }], views: [{ id: 'ctx', diagram: 'c4.context', nodeIds: ['P', 'S1', 'S2'] }] };
+  const b = structuredClone(a); b.nodes[3].parent = 'S2';
+  assert.equal(all.layout(all.diff(a, b).model, 'ctx').edges.find(e => e.to === 'S2').change, 'changed');
+  const er = read45('bookshop-schema'); er.views.push({ id: 'lines', diagram: 'er', title: 'Lines', notation: 'idef1x', nodeIds: ['er-order_line'] });
+  const er2 = structuredClone(er); er2.edges.filter(e => ['er-order-lines', 'er-book-lines'].includes(e.id)).forEach(e => { e.props.identifying = false; });
+  assert.equal(all.layout(all.diff(er, er2).model, 'lines').nodes[0].change, 'changed'); assert.ok(!all.layout(er, 'lines').nodes[0].change);
+  const fl = read45('order-information-flow'), fl2 = structuredClone(fl), item = fl2.nodes.find(n => n.type === 'uml.InformationItem' && n.label === 'Card details'); item.label = 'Payment card';
+  const gf = all.layout(all.diff(fl, fl2).model, 'order-flows'), says = gf.edges.filter(e => /Payment card/.test(e.label || ''));
+  assert.ok(says.length); says.forEach(e => assert.equal(e.change, 'changed', e.id));
+});
+
+test('audit 46: a C4 implied line standing for planned relationships is not drawn changed', async () => {
+  const all = await fromSrc(), m = { schemaVersion: 2, nodes: [{ id: 'P', type: 'c4.Person', label: 'Shopper' }, { id: 'S', type: 'c4.SoftwareSystem', label: 'Shop' }, { id: 'web', type: 'c4.Container', label: 'Web', parent: 'S' }],
+    edges: [{ id: 'r1', type: 'c4.Relationship', from: 'P', to: 'web', label: 'uses', change: 'planned' }], views: [{ id: 'ctx', diagram: 'c4.context', subject: 'S', nodeIds: ['P', 'S'] }] };
+  const g = all.layout(m, 'ctx'), s = svgOf(g); assert.ok(g.edges.every(e => !e.change)); assert.doesNotMatch(s, /class="edited-dot"/);
+});
+
+test('audit 46: a removed mindmap topic\'s branch is drawn dashed and faded with it; hostile reads and ids mark nothing and fetch nothing', async () => {
+  const all = await fromSrc(), m = read45('bookshop-opening-plan'), v = m.views.find(w => w.diagram === 'mindmap').id, after = structuredClone(m);
+  const kids = new Set(['mm-legal']); for (let grew = true; grew;) { grew = false; after.nodes.forEach(n => { if (kids.has(n.parent) && !kids.has(n.id)) { kids.add(n.id); grew = true; } }); }
+  after.nodes = after.nodes.filter(n => !kids.has(n.id));
+  const { mapContext } = await import('../src/map/context.js'), mk = mapContext(all.diff(m, after).model).buildView(v).markup, br = mk.match(/<path class="mm-branch"[^>]*>/g);
+  assert.equal(br.filter(b => /data-change="removed" stroke-dasharray="6 4" opacity=".6"/.test(b)).length, kids.size);
+  assert.doesNotMatch(mapContext(m).buildView(v).markup, /mm-branch"[^>]*data-change/);
+  // hostile: ids with "->", prototype keys and a URL in a part's label and a port's id; nothing is marked that did not change, no URL is drawn as one
+  const os = read45('order-service-structure'), h = structuredClone(os), o = h.nodes.find(n => (n.members || []).some(x => x.id === 'order-service.pricing'));
+  o.members.push({ id: '__proto__', type: 'uml.Property', label: '"><image href="https://track.example/p.gif"/>', props: { valueType: 'constructor' } }, { id: 'x->__proto__', type: 'uml.Property', label: 'p', change: 'removed' });
+  const d = all.diff(os, h), s = svgOf(all.layout(d.model, 'internals'));
+  assert.doesNotMatch(s, /<image|href="http|<script/); assert.doesNotMatch(tag45(s, 'data-id="order-service.pricing"'), /data-change/);
+});

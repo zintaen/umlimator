@@ -207,10 +207,12 @@ function erSections(n) {
 const erRels = model => typedLines(model, v => v.diagram === 'er').map(([e]) => e).filter(e => ER_OBJ(e) && e.type === 'er.Relationship');
 const erDependent = (R, id) => R.some(e => e.to === id && erIdentifying(e));
 function erGeo({ model, view, pos, memo }) {
-  const { I, ids } = erShown(model, view), idef = view.notation === 'idef1x', lines = erLines(view, I, ids), P = id => erPick(pos, id) || [0, 0], R = idef ? erRels(model) : [];
+  const { I, ids } = erShown(model, view), idef = view.notation === 'idef1x', lines = erLines(view, I, ids), P = id => erPick(pos, id) || [0, 0], R = idef ? erRels(model) : [], drawnIds = new Set(lines.map(e => e.id));
   const nodes = ids.map(id => { const n = I.at.get(id), pr = ER_OBJ(erPick(view.present, id)) ? view.present[id] : {};
     const d = n.type === 'uml.Comment' ? { shape: 'note' } : !erTable(n) ? { shape: 'classifier', compartments: [] } : { shape: 'entity', sections: erSections(n), collapsed: ER_ARR(pr.collapsed), ...(Number.isFinite(pr.rows) ? { rows: pr.rows } : {}), ...(idef && erDependent(R, id) ? { dep: true } : {}) };
-    const x = { id, label: erName(n), type: n.type || 'er.Entity', kind: 'file', ...d, aria: erFull(n, I), col: P(id)[0], row: P(id)[1] };
+    // IDEF1X: it reads the relationships to it the view does not draw, which make it dependent or not (audit 46)
+    const rd = idef ? R.filter(e => e.to === id && typeof e.id === 'string' && !drawnIds.has(e.id)).map(e => e.id) : [];
+    const x = { id, label: erName(n), type: n.type || 'er.Entity', kind: 'file', ...d, ...(rd.length ? { reads: rd } : {}), aria: erFull(n, I), col: P(id)[0], row: P(id)[1] };
     return { ...x, ...SHAPE[x.shape].size(x) }; });
   const edges = lines.map(e => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: ER_HAS(e.label) ? String(e.label) : undefined, end: erLook(e, idef), aria: erLineName(e, I), cut: 280,
     ...(ER_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }));

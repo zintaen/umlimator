@@ -93,8 +93,10 @@ function ovMessage(e, change) {
 }
 // the sequence's picture inside the frame: sqDraw's layer (frames, stems, uses' boxes, bars, crosses), then each head, each
 // fragment's tag, each operand's guard and each use's name by frame.js's shapes, then the messages
-function ovInner(run, sv) {
-  const ch = new Map(OV_ARR(sv && sv.edges).filter(OV_OBJ).filter(e => typeof e.change === 'string').map(e => [e.id, e.change]));
+// a message the sequence view lists by id takes its model line's change, as the sequence view draws it (audit 46)
+function ovInner(run, sv, model) {
+  const E = new Map(); OV_ARR(model && model.edges).forEach(e => { if (OV_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); });
+  const ch = new Map(); OV_ARR(sv && sv.edges).forEach(x => { const e = typeof x === 'string' ? E.get(x) : x; if (OV_OBJ(e) && typeof e.change === 'string' && !ch.has(e.id)) ch.set(e.id, e.change); });
   const by = s => run.nodes.filter(n => n.shape === s), C = 'var(--um-slate)', F = 'var(--um-slate-f)';
   return ovQuiet(sqDraw(run, { esc, r2, textW }).under + by('lifeline').map(n => SHAPE.lifeline.draw(n, C, F)).join('')
     + ['frame', 'operand', 'use'].map(s => by(s).map(n => SHAPE[s].draw(n, C, F)).join('')).join('') + run.edges.map(e => ovMessage(e, ch.get(e.id))).join(''));
@@ -162,7 +164,7 @@ function ovGeo({ model, view, pos, memo }) {
     if (shape === 'rounded') d.stereotypes = ovStereo(x);
     if (shape === 'bar') Object.assign(d, { busy: Math.max(ins.get(id) || 0, outs.get(id) || 0), down });
     if (shape === 'ov-inline') { const b = sd && sd.run && sd.run.bounds, tw = tagSize(`sd ${d.label}`).w + 2 * OV_SD.pad;
-      return { ...d, ...(b ? { w: Math.ceil(Math.max(b.w + 2 * OV_SD.pad, tw)), h: Math.ceil(ovTagOf(d.label) + b.h), sd: { bounds: b, markup: ovInner(sd.run, sd.view) } } : useSize(d.label)) }; }
+      return { ...d, ...(b ? { w: Math.ceil(Math.max(b.w + 2 * OV_SD.pad, tw)), h: Math.ceil(ovTagOf(d.label) + b.h), sd: { bounds: b, markup: ovInner(sd.run, sd.view, model) } } : useSize(d.label)) }; }
     return { ...d, ...SHAPE[shape].size(d) }; });
   const edges = I.lines.map(e => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, aria: ovFlowName(I, e), ...(OV_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}),
     ...(e.type === 'uml.CommentLink' ? { end: { from: 'none', to: 'none', dashed: true } }

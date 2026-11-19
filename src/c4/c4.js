@@ -112,8 +112,10 @@ function c4Lines(model, view, pic) {
   pic.I.rels.forEach(r => { if (ends.has(r.from) && ends.has(r.to)) return; // shown as itself, or hidden from the view: never lifted
     const a = c4Lift(pic, r.from), b = c4Lift(pic, r.to), k = a + '\n' + b;
     if (a == null || b == null || a === b || joined.has(k)) return;
-    if (!implied.has(k)) implied.set(k, { id: `${a}->${b}`, from: a, to: b, of: [] });
-    implied.get(k).of.push(r); });
+    if (!implied.has(k)) implied.set(k, { id: `${a}->${b}`, from: a, to: b, of: [], via: [] });
+    // the hidden elements it is lifted through, whose change (a move to another owner) moves it (audit 46)
+    const L = implied.get(k), below = (id, top) => { const l = [id, ...pic.I.chain(id)]; return l.slice(0, Math.max(0, l.indexOf(top))); };
+    L.of.push(r); [...below(r.from, a), ...below(r.to, b)].forEach(x => { if (!L.via.includes(x)) L.via.push(x); }); });
   return { own, implied: [...implied.values()] };
 }
 // the lines drawn as diff() compares them (audit 41): a relationship by its id, an implied line by its ends and what it stands for,
@@ -186,7 +188,7 @@ function c4Geo({ model, view, pos, memo }) {
     return { ...d, ...C4_EL.size(d) }; });
   const edges = [...own.map(e => { const note = e.type === 'uml.CommentLink', label = note ? '' : c4LineLabel(e);
     return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: label || undefined, end: c4LineLook(e, C4_LINE_LOOK), aria: c4LineName(e, pic), cut: 280 }; }),
-  ...implied.map(e => ({ id: e.id, _id: e.id, type: 'c4.Relationship', from: e.from, to: e.to, implied: e.of.map(r => r.id), end: C4_LINE_LOOK.implied, aria: c4LineName(e, pic), cut: 280,
+  ...implied.map(e => ({ id: e.id, _id: e.id, type: 'c4.Relationship', from: e.from, to: e.to, implied: e.of.map(r => r.id), reads: e.via, end: C4_LINE_LOOK.implied, aria: c4LineName(e, pic), cut: 280,
     label: [e.of[0].label, e.of.length > 1 ? `[+${e.of.length - 1}]` : ''].filter(C4_HAS).join(' ') || undefined }))];
   const g = layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: view.direction === 'down' ? 'down' : 'right',
     gap: 48, rgap: 64, labelGaps: true, repair: false, reroute: false }, memo);

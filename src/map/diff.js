@@ -232,11 +232,17 @@ export function diff(before, after) {
   at0.forEach(([x, up, i], id) => { if (typeof up !== 'string' || have.has(id) || !have.has(up)) return; lost.set(id, [x, top(up), up]);
     if (!need.has(id)) return; const o = have.get(up)[0], y = { ...copyOf(x), change: 'removed' };
     (o.members = [...arr(o.members)]).splice(Math.min(i, o.members.length), 0, y); ownIn(y, have, up, i); });
-  const strip = x => { const y = copyOf(x), seen = new Set(); for (const s = [y]; s.length;) { const z = s.pop(); if (seen.has(z)) continue; seen.add(z); if (Array.isArray(z.members)) { z.members = z.members.filter(m => !(m && typeof m === 'object' && lost.has(m.id))); z.members.forEach(m => m && typeof m === 'object' && s.push(m)); } } return y; };
+  // a member new to an element that stayed (audit 46: an added part, port or lane drawn as live): marked added, and said
+  // "adds X to Y"; what it holds is new with it. Only an element's (a card's) members: a fragment's operands are the sequence's
+  const rooted = new Set(); [...out.nodes, ...views.flatMap(v => arr(v && v.nodes))].forEach(n => { for (const s = [n]; s.length;) { const x = s.pop();
+    if (!x || typeof x !== 'object' || x.id == null || rooted.has(x.id)) continue; rooted.add(x.id); arr(x.members).forEach(y => s.push(y)); } });
+  const gained = new Map(); have.forEach(([x, up], id) => { if (typeof up !== 'string' || at0.has(id) || !at0.has(up) || !rooted.has(id)) return;
+    gained.set(id, [x, top(up), up]); x.change = 'added'; });
+  const strip = x => { const y = copyOf(x), seen = new Set(); for (const s = [y]; s.length;) { const z = s.pop(); if (seen.has(z)) continue; seen.add(z); if (Array.isArray(z.members)) { const k = z.members.filter(m => !(m && typeof m === 'object' && (lost.has(m.id) || gained.has(m.id)))); if (!k.length) delete z.members; else z.members = k; arr(z.members).forEach(m => m && typeof m === 'object' && s.push(m)); } } return y; };
 
   // the summary: views, then cards, then lines, in model order; a line to a card that came or went goes with the card
   const cards = [...out.nodes, ...views.flatMap(v => arr(v && v.nodes))].filter(Boolean);
-  const named = new Map([...views.flatMap(v => arr(v && v.containers)), ...cards, ...[...lost.values()].map(([y]) => y), ...[...lost.values()].map(([, , u]) => (have.get(u) || [])[0])].filter(Boolean).map(n => [n.id, n]));
+  const named = new Map([...views.flatMap(v => arr(v && v.containers)), ...cards, ...[...lost.values(), ...gained.values()].map(([y]) => y), ...[...lost.values(), ...gained.values()].map(([, , u]) => (have.get(u) || [])[0])].filter(Boolean).map(n => [n.id, n]));
   const name = id => String(labelOr((named.get(id) || {}).label, id));
   // a line's end on a member, as describe() names it (audit 18): a port by its owner ("orders of Shop API"), an end through a part by
   // that part ("charge of battery"); else a member by its own name
@@ -256,7 +262,8 @@ export function diff(before, after) {
       said.push(`adds ${name(n.id)}` + (ins.length === 1 && outs.length === 1 && !both.length ? ` between ${ins[0]} and ${outs[0]}` : only(ins, 'from') + only(outs, 'to') + (both.length ? `, to and from ${andList(both)}` : ''))); }
     if (h === 'removed') said.push(`removes ${name(n.id)}`);
     lost.forEach(([y, t, u]) => { if (t === n.id) said.push(`removes ${name(y.id)} from ${name(u)}`); });
-    if (h === 'changed') { const [o, x] = lost.size ? was.get(n).map(strip) : was.get(n); if (canon(o) === canon(x)) return; const keys = diffKeys([o, x]), rest = keys.filter(k => k !== 'label'), p0 = o.parent ?? null, p1 = x.parent ?? null;
+    gained.forEach(([y, t, u]) => { if (t === n.id) said.push(`adds ${name(y.id)} to ${name(u)}`); });
+    if (h === 'changed') { const [o, x] = [...lost.values(), ...gained.values()].some(([, t]) => t === n.id) ? was.get(n).map(strip) : was.get(n); if (canon(o) === canon(x)) return; const keys = diffKeys([o, x]), rest = keys.filter(k => k !== 'label'), p0 = o.parent ?? null, p1 = x.parent ?? null;
       if (keys.join() === 'parent' && p0 !== p1 && A.schemaVersion === 2 && out.schemaVersion === 2) return said.push(`moves ${name(n.id)} ${p1 != null ? 'into ' + name(p1) : 'out of ' + name(p0)}`); // a re-own (schema version 2; absent or null is no owner)
       const t = TYPED.diff && TYPED.diff(o, x, name, [A, out]); if (t) return said.push(...t); // a typed element's own words (src/uml/diff.js)
       said.push((keys.includes('label') ? `renames ${labelOr(o.label, o.id)} to ${labelOr(x.label, x.id)}` : `changes ${name(n.id)}`) + (rest.length ? ` (${rest.join(', ')})` : '')); } });
@@ -372,6 +379,17 @@ export function diff(before, after) {
   const may = (id, v) => changed.has(id) || ofNode.has(id) || [...(byNode.get(id) || []), ...[v, V0.get(v.id)].map(w => w && w.nodeOverrides && typeof w.nodeOverrides === 'object' ? w.nodeOverrides[id] : null)]
     .some(n => n && typeof n === 'object' && [n.view, n.opensView].some(o => typeof o === 'string' && changed.has(o)));
   views.forEach(v => { if (v && !changed.has(v.id) && !(out.schemaVersion === 2 && typedV(v)) && arr(v.nodeIds).some(id => typeof id === 'string' && may(id, v) && [0, 1].some(i => changed.has(opened(i, id, v.id))) && kids(0, id, v.id) !== kids(1, id, v.id))) changed.add(v.id); });
+  /* a member gone from an element that stayed comes back, removed, in its place when a listed view drew it as its own shape
+     (audit 46: a part, port or lane with no line went from the picture): a box, a lane, a region, or a port drawn on a part
+     ("<part>-><port>"). A class's attribute or a state's internal transition is a row of its owner, drawn as it is: said, not
+     put back. Only the listed typed views are laid out, in the model before, and only when such a member went */
+  const back2 = [...lost].filter(([id]) => !need.has(id) && rooted.has(lost.get(id)[2]) && have.has(lost.get(id)[2]));
+  if (back2.length) { const drew = new Set();
+    for (const v of views) { if (!v || !changed.has(v.id) || !typedV(v) || !V0.has(v.id)) continue;
+      try { const [g] = held(() => ctx0().buildGeo(v.id)); ['nodes', 'families', 'lanes', 'groups', 'bands'].forEach(k => arr(g && g[k]).forEach(x => { if (!x || typeof x.id !== 'string') return;
+        drew.add(x.id); const j = x.id.lastIndexOf('->'); if (j >= 0) drew.add(x.id.slice(j + 2)); })); } catch { /* a view the old model cannot lay out: nothing to bring back from it */ } }
+    back2.forEach(([id, [x, , up]]) => { const [, , i] = at0.get(id), o = have.get(up)[0]; if (!drew.has(id) || arr(o.members).some(m => m && m.id === id)) return; const y = { ...copyOf(x), change: 'removed' };
+      (o.members = [...arr(o.members)]).splice(Math.min(i, o.members.length), 0, y); ownIn(y, have, up, i); }); }
   return { model: out, summary: said, views: views.filter(v => v && changed.has(v.id)).map(v => v.id) };
 }
 
