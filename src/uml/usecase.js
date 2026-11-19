@@ -275,7 +275,9 @@ function ucProblems(model, view) {
         else if (!state.has(p)) { state.set(p, 1); stack.push(p); at.push(0); } } };
     [...next.keys()].forEach(id => { if (!state.has(id)) walk(id); }); };
   cycles(inc, 'include-cycle', 'includes itself'); cycles(gen, 'generalization-cycle', 'is its own ancestor');
-  out.push(...commentLinkProblems(lines, ty, q)); // a comment link with no comment at either end (audit 46)
+  // a comment link with no comment at either end (audit 46), of the lines this view draws: one another view draws is that view's to judge (audit 47)
+  const drawn = UC_OBJ(view) ? new Set(ucLines(model, view, ucPic(model, view)).map(e => e.id)) : null;
+  out.push(...commentLinkProblems(drawn ? lines.filter(([e]) => drawn.has(e.id)) : lines, ty, q));
   return out;
 }
 

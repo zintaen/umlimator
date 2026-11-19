@@ -623,3 +623,27 @@ test('a stereotype or classifier moved into an owner that holds its name is refu
     assert.deepEqual(run('c3', 'app', how).cmds, [{ op: 'reparent', id: 'c3', parent: 'app' }], how); }
   assert.deepEqual(run('s1', 'app', 'owner').status, ['A stereotype is owned by a profile'], 'the kind is said first');
 });
+
+// audit 47: a moveTo hook's own reparent is asked of TYPED.owns too: a stereotype dropped into a composite state or a partition
+test('a stereotype dropped into a state or a partition by a moveTo hook is refused (audit 47)', async () => {
+  const { typedEditor } = await import('../src/canvas/edit.js'); await import('../src/typed/edit.js'); await import('../src/uml/state.js'); await import('../src/uml/activity.js');
+  const { layout } = await import('../src/map/api.js');
+  const cases = [
+    [{ schemaVersion: 2, nodes: [N('prof', 'Profile', 'Shop'), N('st', 'Stereotype', 'audited', 'prof'), N('S', 'State', 'Busy'), N('S2', 'State', 'Inner', 'S'), N('k', 'State', 'Idle')], edges: [],
+      views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['S', 'S2', 'st', 'prof', 'k'] }] }, 'S', 'k'],
+    [{ schemaVersion: 2, nodes: [N('prof', 'Profile', 'Shop'), N('st', 'Stereotype', 'audited', 'prof'), N('P1', 'ActivityPartition', 'Clerk'), N('P2', 'ActivityPartition', 'Store'),
+      N('a1', 'Action', 'Pick', 'P1'), N('a2', 'Action', 'Pack', 'P2'), N('a3', 'Action', 'Wrap', 'P1')], edges: [L('f', 'ControlFlow', 'a1', 'a2')],
+      views: [{ id: 'v', diagram: 'uml.activity', nodeIds: ['P1', 'P2', 'a1', 'a2', 'a3', 'prof', 'st'] }] }, 'P2', 'a3']];
+  for (const [m, into, other] of cases) {
+    const g = layout(m, 'v'), B = g.byId[into] || (g.families || []).find(f => f.id === into) || (g.bands || []).find(b => b.id === into), D = m.views[0].diagram;
+    const run = id => { const got = [], status = [];
+      const I = typedEditor({ root: { addEventListener() {} }, stage: { addEventListener() {} }, can: () => true, say() {}, status: x => status.push(x), emit: c => got.push(c), view: () => 'v', model: () => m, picked: () => [], sel: () => null,
+        geo: () => g, cam: () => null, focus() {}, touch() {} });
+      const n = g.byId[id]; I.drop(n, { x: B.x + B.w / 2, y: B.y + B.h / 2 }, into, m.nodes.find(x => x.id === id).parent ?? null);
+      return { cmds: got.flat(), status }; };
+    assert.ok(diagramOf({ diagram: D }).edits.moveTo, D);
+    assert.deepEqual(run('st'), { cmds: [], status: ['A stereotype is owned by a profile'] }, D);
+    // anything else the hook moves as before
+    assert.ok(run(other).cmds.some(c => c.op === 'reparent' && c.id === other && c.parent === into), D);
+  }
+});

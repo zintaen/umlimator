@@ -201,6 +201,11 @@ const STRUCT_RULES = {
   'port-owner': 'a port is a member of a component or a class',
   'manifest-ends': 'a manifestation runs from an artifact (an error), to a component (a warning)',
 };
+// present-values: a port's side as written, which portSides reads only as left, right, top or bottom (SN_PIN); any other value is
+// ignored, so said (audit 47, as the mindmap's side-first): the warning, or null
+const SN_PRESENT_RULE = 'a port\'s present side is left, right, top or bottom, and an interface\'s present as is ball: any other value is ignored';
+const sideProblem = (side, path, id, name) => (side == null || Object.hasOwn(SN_PIN, side) ? null
+  : { level: 'warning', rule: 'present-values', path, ids: [id], message: `present-values: ${name}'s side ${jsonText(side)} is not left, right, top or bottom: ignored` });
 const SN_ARTIFACTS = ['uml.Artifact', 'uml.DeploymentSpecification'];
 // the same, first letter up, where a kind outside a view's own starts its accessible name: "Use case Pay", never "UseCase Pay" (audit 23);
 // no type at all: "Element Shop", as a cloud view names an untyped card, never " Shop" (audit 26)
@@ -229,4 +234,4 @@ function structProblems(model, view) {
   return out;
 }
 
-export { SN_ARTIFACTS, SN_SAY, snKindWord, snKindName, snLineName, portLen, portSides, portFit, portsDrawn, STRUCT_RULES, structProblems };
+export { SN_PRESENT_RULE, sideProblem, SN_ARTIFACTS, SN_SAY, snKindWord, snKindName, snLineName, portLen, portSides, portFit, portsDrawn, STRUCT_RULES, structProblems };

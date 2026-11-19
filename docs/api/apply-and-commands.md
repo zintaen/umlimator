@@ -233,6 +233,8 @@ d.views;     // [ 'system' ]
 render(el, d.model, { view: d.views[0] });
 ```
 
+A member drawn as its own shape (a part, a port, a lane) that was renamed or retyped is marked changed and said by its name ("renames charge to inlet in Battery"). On a typed view, what the type draws that is no element or line of its own is marked from the view laid out before and after, and written to the view's `diffMarks`: the ports a retyped part gained or lost, a containment line that is new, a C4 implied line or a requirement's containment from an owner an element left (drawn back, removed), and no mark on a shape whose picture the change leaves as it was. A typed view is listed in `views` for what it draws from other elements only when its picture changed.
+
 `umlimator.py diff` and the GitHub Action draw the same result for a pull request.
 
 ## DiffResult

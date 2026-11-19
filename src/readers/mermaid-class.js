@@ -1,5 +1,5 @@
 import { unreadable, jsonText } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort, mermaidText } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText } from './mermaid-front.js';
 /* ---------- Mermaid classDiagram: a reader and a writer (plan.md 1.10; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's class diagram page (docs/syntax/classDiagram.md, read 11 Nov 2026). Internal: the CLI
    (`umlimator.py import`) imports this file through Node; a host gets it once the registry is public.
@@ -90,9 +90,9 @@ function mcGeneric(s) {
 }
 
 // text in a label, a note or a cardinality: Mermaid's line breaks and entity codes (#quot; #lt; #35;)
-function mcText(s) {
-  return s.replace(/<br\s?\/?>|\\n/gi, '\n').replace(/#(quot|lt|gt|amp|\d{1,6});/g, (_, e) =>
-    ({ quot: '"', lt: '<', gt: '>', amp: '&' })[e] ?? String.fromCodePoint(Math.min(Number(e), 0x10ffff)));
+function mcText(s, bad) {
+  return s.replace(/<br\s?\/?>|\\n/gi, '\n').replace(/#(quot|lt|gt|amp|\d{1,6});/g, (all, e) =>
+    ({ quot: '"', lt: '<', gt: '>', amp: '&' })[e] ?? mermaidChar(Number(e), all, bad));
 }
 
 // where whitespace ends
@@ -119,6 +119,8 @@ function mcNameG(s, k) {
 }
 
 // a "quoted" string at k: [text, after]
+// whether s holds a { outside double quotes
+function mcBrace(s) { for (let k = 0, q = false; k < s.length; k++) { if (s[k] === '"') q = !q; else if (s[k] === '{' && !q) return true; } return false; }
 function mcQuoted(s, k) { if (s[k] !== '"') return null; const e = s.indexOf('"', k + 1); return e < 0 ? null : [s.slice(k + 1, e), e + 1]; }
 
 // the last whitespace outside <...>, or -1: where `Type name` splits
@@ -242,7 +244,7 @@ function mcRelation(s) {
 
 // a cardinality's text as an end: "1", "0..*", "lines 1..*", "lines"; Mermaid's "many" and "n" are *
 function mcEnd(text, say) {
-  const t = mcText(text).trim(), sp = t.lastIndexOf(' '), last = sp < 0 ? t : t.slice(sp + 1), role = sp < 0 ? '' : t.slice(0, sp).trim();
+  const t = mcText(text, code => say('approximated', mermaidBadChar(code))).trim(), sp = t.lastIndexOf(' '), last = sp < 0 ? t : t.slice(sp + 1), role = sp < 0 ? '' : t.slice(0, sp).trim();
   const mult = mcBounds(last);
   if (mult && mult !== last) say('approximated', `cardinality "${last}" is read as the multiplicity ${mult}`);
   return mult ? { ...(role ? { role } : {}), multiplicity: mult } : t ? { role: t } : {};
@@ -331,7 +333,10 @@ function readMermaidClass(text) {
     const cut = s.search(/[\s{:("[<`]/), word = cut < 0 ? s : s.slice(0, cut);
     if (top && top.kind === 'class') { // a class body
       if (s === '}') stack.pop();
-      else member(top.rec, s, no);
+      else if (mcBrace(s)) { // a { outside quotes, which no member holds: the body was left open, so it is closed here and the line read again (audit 47)
+        stack.pop(); lines[i--] = s;
+        say(no, 'approximated', `class ${top.rec.name} is not closed before this line: closed here`);
+      } else member(top.rec, s, no);
     } else if (s === '}') {
       if (top) stack.pop(); else say(no, 'skipped', 'a } that closes nothing');
     } else if (word === 'direction') {
@@ -355,7 +360,7 @@ function readMermaidClass(text) {
           k = e < 0 ? s.length : e;
         } else if (s.startsWith('["', k)) {
           const q = mcQuoted(s, k + 1); if (!q || s[q[1]] !== ']') { rest = s.slice(k); break; }
-          rec.node.label = mcText(q[0]); k = q[1] + 1;
+          rec.node.label = mcText(q[0], code => say(no, 'approximated', mermaidBadChar(code))); k = q[1] + 1;
         } else if (s.startsWith('<<', k)) k = annotate(rec, s.slice(k)) + k;
         else if (s.startsWith(':::', k)) {
           const c = mcName(s, k + 3); say(no, 'skipped', `:::${c ? c[0] : ''} on class ${n[0]}: styling is not read`); k = c ? c[1] : k + 3;
@@ -374,7 +379,7 @@ function readMermaidClass(text) {
       const n = mcName(s, mcSkip(s, 9), true);
       if (!n) { say(no, 'skipped', 'a namespace with no name'); drop(no); continue; }
       let k = mcSkip(s, n[1]), label;
-      if (s.startsWith('["', k)) { const q = mcQuoted(s, k + 1); if (q && s[q[1]] === ']') { label = mcText(q[0]); k = mcSkip(s, q[1] + 1); } }
+      if (s.startsWith('["', k)) { const q = mcQuoted(s, k + 1); if (q && s[q[1]] === ']') { label = mcText(q[0], code => say(no, 'approximated', mermaidBadChar(code))); k = mcSkip(s, q[1] + 1); } }
       let segs = n[2] ? [n[0]] : n[0].split('.');
       if (segs.length > MC_DOTS) { say(no, 'approximated', `namespace ${n[0]}: over ${MC_DOTS} dotted parts, so read as one name`); segs = [n[0]]; }
       // a namespace is known by its parent and its name, as Mermaid's own qualified id (A inside P is P.A); its id is
@@ -402,7 +407,7 @@ function readMermaidClass(text) {
       if (!q) say(no, 'skipped', 'a note with no "text"');
       else {
         if (where()) say(no, 'approximated', `a note in namespace ${where().name} is read outside it`);
-        const rec = { kind: 'note', node: { type: 'uml.Comment', label: mcText(q[0]) }, target, hint: take('id'), linkHint: take('link'), no };
+        const rec = { kind: 'note', node: { type: 'uml.Comment', label: mcText(q[0], code => say(no, 'approximated', mermaidBadChar(code))) }, target, hint: take('id'), linkHint: take('link'), no };
         notes.push(rec); order.push(rec);
       }
     } else if (s.startsWith('<<')) {
@@ -478,15 +483,16 @@ function readMermaidClass(text) {
     }
     if (!e) continue;
     let label = r.label;
+    const bad = code => at('approximated', mermaidBadChar(code));
     const stereotypes = []; // taken before the text is decoded: an encoded #lt;#lt; or « is the label's own text
     for (;;) {
       label = label.trim();
       const [o, c] = label.startsWith('«') ? ['«', '»'] : label.startsWith('<<') ? ['<<', '>>'] : [];
       const end = o ? label.indexOf(c, o.length) : -1;
       if (end < 0) break;
-      stereotypes.push(mcText(label.slice(o.length, end)).trim()); label = label.slice(end + c.length);
+      stereotypes.push(mcText(label.slice(o.length, end), bad).trim()); label = label.slice(end + c.length);
     }
-    label = mcText(label);
+    label = mcText(label, bad);
     if (stereotypes.length) e.props = { ...e.props, stereotypes };
     if (label) e.label = label;
     edges.push({ e, hint: r.hint, at, no: r.no, what });

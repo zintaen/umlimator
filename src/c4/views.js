@@ -6,7 +6,7 @@ import { layoutTyped } from '../typed/layout.js';
 import { ownersOn, readingOrder } from '../uml/owners.js';
 import { commentConnect } from '../uml/class.js';
 import { brLines } from '../typed/draw.js';
-import { c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Keys, c4Problems, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners, c4Rename } from './c4.js';
+import { c4Gone, c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Keys, c4Problems, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners, c4Rename } from './c4.js';
 
 /* ---------- C4's dynamic and deployment views, c4.dynamic and c4.deployment (work package M2.7, notes/milestone-2.md §7.5.2,
    §7.5.3, §5.1) ----------
@@ -210,6 +210,7 @@ function depGeo({ model, view, pos, memo }) {
     return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: label || undefined, end: c4LineLook(e, V_LINE), aria: c4LineName(e, pic), cut: 280 }; }),
   ...implied.map(e => ({ id: e.id, _id: e.id, type: 'c4.Relationship', from: e.from, to: e.to, implied: e.of.map(r => r.id), reads: e.via, end: V_LINE.implied, aria: c4LineName(e, pic), cut: 280,
     label: [e.of[0].label, e.of.length > 1 ? `[+${e.of.length - 1}]` : ''].filter(V_HAS).join(' ') || undefined }))];
+  edges.push(...c4Gone(view, nodes, edges, pic, V_LINE)); // an implied line the model before a diff drew (audit 47)
   const g = layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: view.direction === 'down' ? 'down' : 'right',
     gap: 48, rgap: 64, labelGaps: true, repair: false, reroute: false }, memo);
   return { ...g, legend: depLegend(nodes, edges, pic.boxes), order: [...readingOrder(pic), ...edges.map(e => e.id)] };

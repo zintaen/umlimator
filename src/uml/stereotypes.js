@@ -15,6 +15,7 @@ import { multBounds } from './class.js';
 const STY_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), STY_ARR = x => (Array.isArray(x) ? x : []);
 const styKey = s => s.charAt(0).toLowerCase() + s.slice(1); // names meet with the first letter in either case (§5.3): Entity is «entity»
 const styName = elName, styQ = x => JSON.stringify(styName(x));
+const STY_MARKED = /^\s*(?:«|<<)|(?:»|>>)\s*$/; // a name stored with the marks it is drawn in (stereotype-text, audit 47)
 
 /* UML 2.5.1's metaclasses (§5.4), each with its generals as OMG's UML.xmi (20161101) lists them: a row "A B: C D" says A and B specialize C, then D.
    A row for every uml.* type a registered type uses (tests/stereotypes.test.mjs holds it), and the abstract ones between */
@@ -118,6 +119,7 @@ const STY_RULES = {
   'tag-defined': 'each tag is under a stereotype the element has, and that stereotype or a general defines it; a redefined tag keeps its type',
   'tag-value': 'a tag\'s value fits its type',
   'tag-required': 'a tag of lower bound 1 with no default has a value',
+  'stereotype-text': 'a stereotype is stored by its name, without the guillemets («») or << >> it is drawn in',
 };
 
 /* The model read once (§12): its elements with their paths and the id whose scope they take, profiles, stereotypes by name,
@@ -218,7 +220,7 @@ function styTagFits(I, def, prof, v) {
 function styResolve(I, r, say) {
   const { x, path } = r, P = STY_OBJ(x.props) ? x.props : {}, scope = I.scope(I.applied.has(x.id) && I.rec.get(x.id) === r ? x.id : r.own), meta = metaOf(x, I); // a package applying a profile is in its scope
   const names = p => p.map(styName).join(' and '), owner = I.at.get(r.own), out = [], again = new Map();
-  STY_ARR(P.stereotypes).forEach((s, k) => { if (typeof s !== 'string' || !s) return; const at = `${path}.props.stereotypes[${k}]`, q = s.indexOf('::');
+  STY_ARR(P.stereotypes).forEach((s, k) => { if (typeof s !== 'string' || !s || STY_MARKED.test(s)) return; const at = `${path}.props.stereotypes[${k}]`, q = s.indexOf('::');
     let hit = null;
     if (q > 0) { const ps = I.byLabel.get(s.slice(0, q)) || [], k2 = styKey(s.slice(q + 2)), has = p => I.byProfile.get(p.id).has(k2); // two of one label: the one applied here
       const p = ps.find(p => has(p) && scope.includes(p.id)) || ps.find(has) || ps[0], st = p && I.byProfile.get(p.id).get(k2);
@@ -262,13 +264,26 @@ function styResolve(I, r, say) {
 }
 
 // every element's problems (§5.3 to §5.6), and the profiles' redefined tags: [] at once for a model with no profile
+// stereotype-text: a stereotype stored with its own marks, «entity» or <<entity>>, is drawn doubled and is no profile's stereotype
+// of that name; said on every element, profile or none (audit 47): the model's nodes, lines and their members, and views' own
+function styText(model) {
+  const out = [], tops = [...STY_ARR(model.nodes).map((x, i) => [x, `nodes[${i}]`]), ...STY_ARR(model.edges).map((x, i) => [x, `edges[${i}]`]),
+    ...STY_ARR(model.views).flatMap((v, k) => (STY_OBJ(v) ? [...STY_ARR(v.nodes).map((x, i) => [x, `views[${k}].nodes[${i}]`]), ...STY_ARR(v.edges).map((x, i) => [x, `views[${k}].edges[${i}]`])] : []))];
+  for (const s = tops.reverse(), seen = new Set(); s.length;) { const [x, path] = s.pop(); if (!STY_OBJ(x) || seen.has(x)) continue; seen.add(x);
+    STY_ARR(STY_OBJ(x.props) ? x.props.stereotypes : null).forEach((t, j) => { if (typeof t !== 'string' || !STY_MARKED.test(t)) return;
+      const bare = t.trim().replace(/^(?:«|<<)\s*|\s*(?:»|>>)$/g, '');
+      out.push(stySay('stereotype-text', 'warning', `${path}.props.stereotypes[${j}]`, [x.id].filter(i => i != null), `${JSON.stringify(t)} on ${styQ(x)} holds the marks it is drawn in: store its name, ${JSON.stringify(bare)}`)); });
+    const ms = STY_ARR(x.members); for (let k = ms.length - 1; k >= 0; k--) s.push([ms[k], `${path}.members[${k}]`]); }
+  return out;
+}
 function stereoProblems(model) {
   const I = styIndex(STY_OBJ(model) ? model : {}); if (STY_OBJ(model)) STY_SEEN.set(model, I);
-  if (!I.profiles.length) return [];
+  const marked = STY_OBJ(model) ? styText(model) : [];
+  if (!I.profiles.length) return marked;
   const out = [];
   I.byProfile.forEach(sts => sts.forEach(st => styDefs(I, st)));
   I.els.forEach(r => { const e = styResolve(I, r, p => out.push(p)); if (!I.cache.has(r.x.id)) I.cache.set(r.x.id, e); });
-  return [...I.probs, ...out];
+  return [...marked, ...I.probs, ...out];
 }
 
 // the stereotypes an element has, stored and required, with their tags (§5.5, §5.6): what 6.3 draws and the PDF lists

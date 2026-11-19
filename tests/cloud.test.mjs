@@ -609,3 +609,18 @@ test('audit 46: Shift + Delete of a group counts what a view holds as its own un
   // the view given by its id reads the same
   assert.equal(T.gcp.edits.remove(m, 'v', ['proj'], true).say, 'Deleted Project shop and the 2 elements it held');
 });
+
+// audit 47: Shift + Delete of a view's own group counts only what apply() deletes: a model service under it is lifted out, not counted
+test('audit 47: Shift + Delete of a view\'s own group does not count the model services it lifts out', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'run', type: 'gcp.Product', label: 'API', parent: 'own-net', props: { icon: 'Cloud-Run' } }, { id: 'db', type: 'gcp.Product', label: 'DB', parent: 'own-net', props: { icon: 'Cloud-SQL' } }],
+    edges: [], views: [{ id: 'v', diagram: 'gcp', nodeIds: ['own-net', 'run', 'db'], nodes: [{ id: 'own-net', type: 'gcp.Zone', label: 'vpc', props: { zoneType: 'network' } }] }] };
+  // only model services under it: nothing it held goes, so the default says it
+  assert.equal(T.gcp.edits.remove(m, m.views[0], ['own-net'], true), null);
+  // one more of the view's own services under it: that one alone is counted, and only it goes
+  const k = structuredClone(m); k.views[0].nodes.push({ id: 'cache', type: 'gcp.Product', label: 'Cache', parent: 'own-net', props: { icon: 'Memorystore' } }); k.views[0].nodeIds.push('cache');
+  const r = T.gcp.edits.remove(k, k.views[0], ['own-net'], true);
+  assert.equal(r.say, 'Deleted Network vpc and the 1 element it held');
+  const after = apply(k, r.commands); assert.deepEqual([after.nodes.map(n => n.id), after.views[0].nodes.length], [['run', 'db'], 0]);
+  // a model service selected with it goes by its own command: one other element
+  assert.equal(T.gcp.edits.remove(k, k.views[0], ['own-net', 'db'], true).say, 'Deleted Network vpc and the 1 element it held, and 1 other element');
+});
