@@ -1004,30 +1004,19 @@ def diff_since(a):
         and not any(x.is_symlink() for x in [q, *q.parents] if x.is_relative_to(top) and x != top)
     def linked_model(p, old):
         """Whether a file diff --base does not read (a link, or one under a linked folder) could be a model: its version at
-        --base was one, or its target is a file inside the checkout that is one now, or a .json file outside that holds the
-        words "nodes" and "views". A target outside is never parsed and nothing of it is written: it is only searched for
-        those two words, as a file that is not JSON is (audit 45: a pull request that linked a model in from outside the
-        checkout was not said at all, and the summary said no map model changed)."""
+        --base was one, or its target is a file inside the checkout that is one now, or it is a link out of the checkout named
+        .json. A target outside the checkout is never opened, not even to look at it: what is said of a link out must depend
+        only on what the pull request wrote, or a pull request could learn which files on the runner hold which words (the
+        security review of audit 45; a link out named .json was dropped unsaid, "No map model changed.", audit 45)."""
         if old.returncode == 0 and model_of(old.stdout)[0] is not None:
             return True
         try:
             q = p.resolve()
-            if not q.is_file():  # a regular file only: never a device, a pipe or a folder (hostile links)
-                return False
             if q.is_relative_to(top.resolve()):
-                return model_of(q.read_bytes())[0] is not None
-            if not p.name.lower().endswith(".json"):
-                return False
-            with q.open("rb") as f:  # the two words, in at most 64 MiB, read a piece at a time
-                want, tail, n = {b'"nodes"', b'"views"'}, b"", 0
-                while want and n < 1 << 26 and (chunk := f.read(1 << 20)):
-                    n += len(chunk)
-                    seen = tail + chunk
-                    want = {w for w in want if w not in seen}
-                    tail = chunk[-8:]
-                return not want
+                return q.is_file() and model_of(q.read_bytes())[0] is not None
         except (OSError, RuntimeError, ValueError):
             return False
+        return p.name.lower().endswith(".json")
     untracked = set(new.stdout.split("\0")) - {""}  # a D row's path a new, untracked file holds again: read from the disk
     for name in dict.fromkeys(filter(None, names + ([] if env else new.stdout.split("\0")))):  # with the copy, diff named the new ones
         was = moved.get(name, name)

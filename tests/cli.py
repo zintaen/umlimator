@@ -2269,7 +2269,8 @@ if part("audit 44"):
     with tempfile.TemporaryDirectory() as tmp:
         # audit 44: the link check ran before the model check, so any changed .json that is a symbolic link (a monorepo's shared
         # tsconfig.json) was a map that "cannot be read", and the Action posted a Map changes comment. Only a file that could be a
-        # model is said: one that was a model at --base, or a link to a model inside the checkout; a target outside is never read
+        # model is said: one that was a model at --base, a link to a model inside the checkout, or a link out named .json (a
+        # target outside is never opened, so it is judged by its name alone: audit 45's security review)
         g = Path(tmp) / "g44"; far = Path(tmp) / "g44-outside"; (g / "shared").mkdir(parents=True); far.mkdir()
         sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
         m44 = {"title": "t", "nodes": [{"id": "a", "label": "A"}], "edges": [], "views": [{"id": "main", "nodeIds": ["a"]}]}
@@ -2277,8 +2278,8 @@ if part("audit 44"):
         (g / "was.json").write_text(json.dumps(m44)); sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "base")
         (far / "x.json").write_text('{"nodes": [], "views": [], "title": "OUTSIDE-44"}'); (far / "cfg.json").write_text('{"extends": "OUTSIDE-44"}')
         (g / "tsconfig.json").symlink_to("shared/tsconfig.json")  # a config linked in: not said
-        (g / "eslint.json").symlink_to(far / "cfg.json")  # a config out of the checkout, never a model here: not said, not read
-        (g / "dangling.json").symlink_to(far / "none.json")  # a dangling link that was never a model: not said
+        (g / "eslint.json").symlink_to(far / "cfg.json")  # a link out named .json: said by its name, never opened
+        (g / "dangling.json").symlink_to(far / "none.json")  # a dangling link out named .json: said the same way
         (g / "linked-map.json").symlink_to("shared/map.json")  # a link to a model inside the checkout: said, not read
         (g / "was.json").unlink(); (g / "was.json").symlink_to(far / "x.json")  # a model at --base, now a link out: said, not read
         (g / "__proto__.json").symlink_to("shared/tsconfig.json"); (g / "loop.json").symlink_to("loop.json")  # hostile names and a loop
@@ -2287,8 +2288,8 @@ if part("audit 44"):
                             "sys.argv = ['umlimator.py', 'diff', '--base', 'HEAD~1', '--out', 'out']; u.main()", str(ROOT)], cwd=g, capture_output=True, text=True)
         said = {x["file"]: x.get("error") for x in json.loads(r.stdout or "[]")}
         md = (g / "out" / "summary.md").read_text() if (g / "out" / "summary.md").is_file() else ""
-        ok("diff --base · a symbolic link that is no map model (a shared tsconfig.json) is not said; one to a model, or a model at --base, still is, never read (audit 44)",
-           r.returncode == 0 and sorted(said) == ["linked-map.json", "was.json"] and all("symbolic link" in (w or "") for w in said.values())
+        ok("diff --base · a symbolic link inside the checkout that is no map model (a shared tsconfig.json) is not said; one to a model, a model at --base, or a link out named .json is, never read (audits 44, 45)",
+           r.returncode == 0 and sorted(said) == ["dangling.json", "eslint.json", "linked-map.json", "was.json"] and all("symbolic link" in (w or "") for w in said.values())
            and "tsconfig" not in md and "OUTSIDE-44" not in md + "".join(f.read_text() for f in (g / "out").glob("*.html")), (said, md, r.stderr[-400:]))
         # audit 44: render printed the engine's counts, which call any problem holding " cross" a crossing: a broken rule titled
         # "... cross into ..." was a crossing, and rules had no key. render counts each problem as check does on the same page;
@@ -2329,8 +2330,10 @@ if part("audit 45"):
        (r.stderr[-300:], h[-400:]))
     with tempfile.TemporaryDirectory() as tmp:
         # audit 45: a pull request that links a model in from outside the checkout was dropped unsaid ("No map model changed."):
-        # a target outside is only searched for "nodes" and "views", never parsed or written; a device, a pipe, a dangling link,
-        # a link to a folder, a config and a model named other than .json are not said, and nothing hangs on them
+        # a link out of the checkout is judged by the name the pull request gave it, never by its target, which is never opened:
+        # a link out named .json is said (a model, a config, a device, a pipe, a folder, a dangling link alike), one named
+        # otherwise is not, and nothing hangs (a pipe opened would block). Opening the target to look for "nodes" and "views"
+        # would let a pull request learn which files on the runner hold those words (the security review)
         g = Path(tmp) / "g45"; far = Path(tmp) / "g45-outside"; (g / "maps").mkdir(parents=True); far.mkdir()
         sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
         sh("init", "-q"); sh("commit", "-q", "--allow-empty", "-m", "base")
@@ -2341,7 +2344,7 @@ if part("audit 45"):
         os.mkfifo(far / "pipe")
         (g / "maps" / "shop.json").symlink_to(Path("..") / ".." / "g45-outside" / "shop.json")  # relative, out of the checkout: said
         (g / "big.json").symlink_to(far / "big.json")  # "views" 3 MiB in: said
-        (g / "eslint.json").symlink_to(far / "cfg.json")  # a config: not said
+        (g / "eslint.json").symlink_to(far / "cfg.json")  # a config out: said by its name, never opened
         (g / "doc.md").symlink_to(far / "model.md")  # not .json: not said
         (g / "zero.json").symlink_to("/dev/zero"); (g / "pipe.json").symlink_to(far / "pipe"); (g / "dir.json").symlink_to(far)
         (g / "gone.json").symlink_to(far / "none.json")
@@ -2351,8 +2354,8 @@ if part("audit 45"):
         said = {x["file"]: x.get("error") for x in json.loads(r.stdout or "[]")}
         md = (g / "out" / "summary.md").read_text() if (g / "out" / "summary.md").is_file() else ""
         written = md + "".join(f.read_text(errors="replace") for f in (g / "out").rglob("*") if f.is_file())
-        ok("diff --base · a new symbolic link to a model outside the checkout is said, not read; other links out are not said, and none hangs (audit 45)",
-           r.returncode == 0 and sorted(said) == ["big.json", "maps/shop.json"] and all("symbolic link" in (w or "") for w in said.values())
+        ok("diff --base · a new symbolic link out of the checkout named .json is said and never opened; one named otherwise is not, and none hangs (audit 45)",
+           r.returncode == 0 and sorted(said) == ["big.json", "dir.json", "eslint.json", "gone.json", "maps/shop.json", "pipe.json", "zero.json"] and all("symbolic link" in (w or "") for w in said.values())
            and "No map model changed" not in md and "OUTSIDE-45" not in written and "SECRET-45" not in written and "x.invalid" not in written,
            (said, md, r.stderr[-400:]))
 part.done()
