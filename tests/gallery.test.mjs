@@ -236,3 +236,20 @@ test('the examples\' README links every example model, and the gallery and the m
     for (const t of new Set([...said, ...m.views.map(v => `"${v.diagram}"`)])) assert.ok(m4a.includes(t), `${n}: ${t}`);
   }
 });
+
+// audit 51: eleven feature rows linked examples/variants/*.json after #542 deleted the folder, and 'Not shown' named chips,
+// planned cards and nodeOverrides, which examples/types/map.json and the Bookshop Atlas set: every relative link of the
+// README opens a file, and each `key` or `key: value` 'Not shown' names is set by no example model
+test('the examples\' README links only files that exist, and \'Not shown\' names nothing an example model sets', () => {
+  const readme = read('examples/README.md');
+  const links = [...readme.matchAll(/\]\(([^)\s]+)\)/g)].map(m => m[1].split('#')[0]).filter(l => l && !/^[a-z]+:/i.test(l));
+  assert.ok(links.length > 20, links.length);
+  assert.deepEqual(links.filter(l => !existsSync(new URL(l, new URL('examples/', root)))), []);
+  const notShown = readme.split('\n').find(l => l.startsWith('Not shown')); assert.ok(notShown);
+  const models = [...readdirSync(new URL('examples/', root)).filter(f => f.endsWith('.json')).map(f => `examples/${f}`),
+    ...readdirSync(new URL('examples/types/', root)).filter(f => f.endsWith('.json')).map(f => `examples/types/${f}`)];
+  const sets = (m, key, value) => { let hit = false; JSON.parse(read(m), (k, v) => { if (k === key && (value === undefined || JSON.stringify(v) === value)) hit = true; return v; }); return hit; };
+  const said = [...notShown.matchAll(/`(\w+)(?:: ([^`]+))?`/g)].map(([, k, v]) => [k, v]).filter(([k]) => k !== 'nodes' && k !== 'lanes');
+  assert.ok(said.length > 8, said.length);
+  assert.deepEqual(said.flatMap(([k, v]) => models.filter(m => sets(m, k, v)).map(m => `${k}${v ? ': ' + v : ''} in ${m}`)), []);
+});
