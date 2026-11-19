@@ -78,7 +78,7 @@ The [getting started guide](https://zintaen.github.io/umlimator/guide/getting-st
 | [Guide](https://zintaen.github.io/umlimator/guide/getting-started.html) | the model, embedding, editing, the CLI, the Action, MCP, import and icons ([as Markdown](docs/guide/)) |
 | [API](https://zintaen.github.io/umlimator/api/) | every export, its options and events (`lib/umlimator.d.ts`) |
 | [Diagram types](https://zintaen.github.io/umlimator/types.html) | the 28 types, each with a live example and its conformance note |
-| [Examples](https://zintaen.github.io/umlimator/examples/index.html) | made-up systems, host pages for embedding, live updates and editing ([what each one shows](examples/README.md)) |
+| [Examples](https://zintaen.github.io/umlimator/examples.html) | made-up systems, host pages for embedding, live updates and editing ([what each one shows](examples/README.md)) |
 | [Playground](https://zintaen.github.io/umlimator/examples/playground.html) | try a model in the browser |
 | [Changelog](docs/module-api.md) | each release's changes, and the decisions behind the API |
 

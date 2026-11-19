@@ -696,7 +696,7 @@ table changes nothing there; the warning goes from a view as M3.2 to M3.5 each r
 | `a - contains -> b`, `b <- contains - a` | `b.parent = a` |
 | `copies`, `derives`, `satisfies`, `verifies`, `refines`, `traces` | `sysml.Copy`, `sysml.DeriveReqt`, `sysml.Satisfy`, `sysml.Verify`, `sysml.Refine`, `sysml.Trace`, from the arrow's tail to its head (Mermaid draws the arrowhead at the head, as SysML draws it at the supplier) |
 | `direction TB`, `LR` | the view's `direction`: `down`, `right`; `BT` and `RL` read as `down` and `right`, reported |
-| Quoted names and text, Markdown in them | kept as written, the quotes removed; Markdown reported once |
+| Quoted names and text, Markdown in them | kept as written, the quotes removed; Markdown reported once; entity codes (`#quot;` `#lt;` `#35;`) in a name or a field's value read as their characters, a code naming no character XML holds as U+FFFD and reported (audit 48); the writer writes a `#` that would read as a code as `#35;` |
 | `style`, `classDef`, `class`, `:::` | skipped, reported once per kind |
 | A relationship whose ends break one of §6.3's errors (the page's own `test_req <- copies - test_entity2`: an element copying a requirement breaks `copy-ends`) | skipped and reported, so the model it writes passes `check.mjs`; the construct file's report pins the page's example |
 

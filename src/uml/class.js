@@ -321,7 +321,8 @@ const typeGeo = look => ({ model, view, pos, memo }) => {
     const shape = n.type === 'uml.Comment' ? { shape: 'note' } : OWN_BOXES.includes(n.type) ? { shape: 'package', stereotypes: [...(UML_OWN(IMPLIED, n.type) ? [IMPLIED[n.type]] : []), ...st] }
       : { shape: 'classifier', stereotypes: [...(UML_OWN(IMPLIED, n.type) ? [IMPLIED[n.type]] : look.kinds && kind ? [snKindWord(n.type)] : []), ...st], abstract: !!p.isAbstract, compartments: look.members ? compartmentsOf(n) : [],
         collapsed: UML_ARR(pr.collapsed), ...(Number.isFinite(pr.rows) ? { rows: pr.rows } : {}) };
-    const d0 = { id, label: n.type === 'uml.Comment' ? nameOfEl(n) : pic.name(id), type: n.type || 'uml.Class', kind: 'file', ...shape, aria: nodeName(n, pic, look), col: (UML_OWN(pos, id) || [0, 0])[0], row: (UML_OWN(pos, id) || [0, 0])[1] };
+    const rd = n.type === 'uml.Comment' ? [] : pic.via(id); // the owners its name is written through: what diff() marks it by (audit 48)
+    const d0 = { id, label: n.type === 'uml.Comment' ? nameOfEl(n) : pic.name(id), type: n.type || 'uml.Class', kind: 'file', ...shape, ...(rd.length ? { reads: rd } : {}), aria: nodeName(n, pic, look), col: (UML_OWN(pos, id) || [0, 0])[0], row: (UML_OWN(pos, id) || [0, 0])[1] };
     const d = look.node ? look.node(d0, n, model, pic, view) : d0;
     return { ...d, ...SHAPE[d.shape].size(d) }; });
   const edges = lines.filter(({ from, to }) => !holdsLine(pic, from, to))

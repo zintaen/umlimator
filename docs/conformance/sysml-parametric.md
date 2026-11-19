@@ -32,6 +32,7 @@ Rules (`src/sysml/parametric.js`), each with a passing and a failing fixture in 
 | `binding-types` | warning | clause 8, BindingConnector: the two ends' types are the same or compatible |
 | `parameter-bound` | warning | each parameter of a constraint property shown has a binding (what is usual) |
 | `connector-drawn` | as the composite type's | a binding between two parameters of the subject is not drawn |
+| `present-values` | warning, as the composite type's | a parameter's present side, as Alt + arrows write it, other than left, right, top or bottom: ignored (audit 48) |
 | `value-type` | warning | the block definition view's rule on the subject's value properties: a type that names an element names a value type (audit 20) |
 | `constraint-type` | error, or warning for a type that names nothing | the block definition view's rule on the subject's constraint properties: typed by a constraint block (audit 20) |
 

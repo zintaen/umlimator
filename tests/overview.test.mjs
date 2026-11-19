@@ -405,3 +405,15 @@ test('audit 41: an inline interaction counts the messages its sequence view draw
   const big = layout(make(20), 'o').nodes.find(n => n.id === 'x');
   assert.match(big.aria, /20 messages/); assert.doesNotMatch(big.aria, /frame only/, '20 drawn messages and one undrawn: drawn inline');
 });
+
+test('connect: a control flow that brings an error is refused in its words, and a decision\'s second exit gets else, as the activity view adds one (audit 48)', () => {
+  const C = (m, from, to) => T().edits.connect(m, VIEW(m), from, to, null, T().lines[0]);
+  assert.deepEqual(C(EX, 'ref-find', 'buy-start'), { error: 'initial-flows: initial node buy-start has 1 incoming flow (ref-find-buy-start); it may have none' });
+  assert.match(C(EX, 'buy-done', 'ref-find').error, /^final-flows: /, 'out of a final node');
+  assert.deepEqual(C(EX, 'ref-receipt', 'buy-done'), [{ op: 'add', element: { id: 'ref-receipt-buy-done', type: 'uml.ControlFlow', from: 'ref-receipt', to: 'buy-done' }, view: 'buy-book' }], 'a flow the rules allow: added');
+  const d = plus([N('d', 'DecisionNode')], [F('d-1', 'ref-find', 'd'), F('d-2', 'd', 'ref-checkout', 'found')]);
+  const r = C(d, 'd', 'ref-receipt'); assert.equal(r[0].element.props.guard, 'else'); run(d, r);
+  const e = plus([N('d', 'DecisionNode')], [F('d-1', 'ref-find', 'd'), F('d-2', 'd', 'ref-checkout', 'else')]);
+  assert.equal(C(e, 'd', 'ref-receipt')[0].element.props, undefined, 'the first exit already else: no second');
+  assert.deepEqual(T().edits.connect(EX, VIEW(EX), 'ref-find', 'buy-start', null, T().lines[1]), { error: 'A comment link runs from a comment' }, 'a comment link: commentConnect');
+});

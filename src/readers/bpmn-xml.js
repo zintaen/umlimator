@@ -104,6 +104,18 @@ function bxJson(el, depth = 0) {
   return out;
 }
 
+// a character written as itself that XML 1.0 cannot hold (a C0 control but tab, line feed and carriage return, U+FFFE,
+// U+FFFF, a lone surrogate): bxLegal(s, bad) gives s with each as U+FFFD, bad(what) told once, naming the first, when s held
+// one, as the Mermaid readers' mermaidLegal (this file imports nothing, D8), a raw one would make the model's SVG and XML
+// exports not well-formed (audit 48). Linear
+const BX_RAW = /[\0-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]|\p{Cs}/u, BX_RAWS = /[\0-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]|\p{Cs}/gu;
+function bxLegal(s, bad) {
+  const m = BX_RAW.exec(s);
+  if (!m) return s;
+  bad(`the character U+${m[0].codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}, which SVG or XML cannot hold, is read as U+FFFD`);
+  return s.replace(BX_RAWS, '\uFFFD');
+}
+
 // numeric character references as XML 1.0 reads them (audit 43): moddle's sax decodes one with String.fromCharCode, so
 // one above U+FFFF (&#x1F4E6;) would be its low 16 bits. Each such reference outside CDATA, comments and processing
 // instructions is given to moddle as its character; one that names no character XML can hold (&#0;, &#xD800;,
@@ -147,7 +159,9 @@ async function readBpmnXml(xml, moddle) {
     return result();
   }
   try {
-    const { rootElement: defs, warnings, elementsById } = await moddle.fromXML(bxRefs(xml, say));
+    // a raw character XML cannot hold, which moddle's sax passes: as U+FFFD, said once, as a reference to one is (audit 48)
+    const legal = bxLegal(xml, message => say('', 'weakened', message));
+    const { rootElement: defs, warnings, elementsById } = await moddle.fromXML(bxRefs(legal, say));
     for (const w of warnings || []) { const dup = bxDup(w), tag = /^unparsable content <([^>\s]+)>/.exec(bxMsg(w));
       // a second element with an id the file already gave: moddle drops it, so it is said by that id (audit 31)
       if (dup != null) say(dup, 'skipped', `a second element with the id ${dup}${tag ? ` (${tag[1]})` : ''}: not read`);
@@ -388,13 +402,20 @@ async function readBpmnXml(xml, moddle) {
       v.parent = w ? w.id : null;
     }
     if (placed) say('', 'skipped', 'positions and sizes in the diagram interchange are not kept: umlimator lays each view out (R5)');
-    if (!views.length) {
-      views.push({ id: BX_VIEW, diagram: 'bpmn', parent: null, nodeIds: [] });
-      if (nodes.length) say('', 'skipped', `no diagram interchange: every element is in one view, ${BX_VIEW}`);
+    // the ids the model keeps, a pool's processRef among them, which the writer writes back as they are
+    const kept = new Set();
+    for (const n of nodes) { kept.add(n.id); if (n.props && typeof n.props.processRef === 'string') kept.add(n.props.processRef); for (const m of bxList(n.members)) if (m) kept.add(m.id); }
+    for (const e of edges) kept.add(e.id);
+    if (!views.length) { // its view: the next free of BX_VIEW, so it takes no id the writer must write back, a processRef "process"
+      // say, nor the id of the process in no pool, which the writer then gives back to it (audit 48)
+      let id = BX_VIEW;
+      for (let k = 2; kept.has(id) || (firstLost && firstLost.id === id); k++) id = `${BX_VIEW}-${k}`;
+      views.push({ id, diagram: 'bpmn', parent: null, nodeIds: [] });
+      if (nodes.length) say('', 'skipped', `no diagram interchange: every element is in one view, ${id}`);
     }
     for (const n of nodes) if (!shown.has(n.id)) views[0].nodeIds.push(n.id);
     if (firstLost) { // the id the writer gives the process in no pool (writeBpmnXml's free('process')): taken by an id the model keeps?
-      const taken = id => nodes.some(n => n.id === id || (n.props && n.props.processRef === id) || bxList(n.members).some(m => m && m.id === id)) || edges.some(e => e.id === id) || views.some(v => v.id === id);
+      const taken = id => kept.has(id) || views.some(v => v.id === id);
       const { at, id, nm, lost } = firstLost, remade = (() => { let r = 'process', k = 1; while (taken(r)) r = `process-${++k}`; return r; })(), idLost = id !== remade;
       if (idLost || lost.length) { const line = { line: id, status: 'skipped', message: `process ${id || '(no id)'}${nm}, in no pool: its elements are read in no pool, its ${both([...(idLost ? ['id'] : []), ...lost])} not kept` };
         if (report.length < BX_MAX) report.splice(at, 0, line); else more++; } }

@@ -194,6 +194,12 @@ test('every drill-down opens a view of the model; from the map, the C4 context, 
   assert.deepEqual([...reach('overview')].sort(), ['api', 'checkout', 'overview']);
   assert.deepEqual([...new Set([...reach('context'), ...reach('c4-context'), ...reach('new-city'), ...reach('overview')])].sort(), M.views.map(v => v.id).sort());
   assert.ok(!opens.some(([, , o]) => ['new-city', 'c4-context', 'context'].includes(o)), 'nothing opens a root view: each is in the views list');
+  // the typed views hang off three of those roots, the map, the C4 context and the mindmap, and the examples' README says so,
+  // not that every one is joined to the map (audit 48)
+  const typedRoots = ['context', 'c4-context', 'new-city', 'overview'].filter(r => [...reach(r)].some(v => M.views.find(x => x.id === v).diagram));
+  assert.deepEqual(typedRoots, ['context', 'c4-context', 'new-city']);
+  const row = readFileSync(new URL('../examples/README.md', import.meta.url), 'utf8').split('\n').find(l => l.startsWith('| [`bike-share.json`]'));
+  assert.match(row, /28 diagram types, reached by drill-down from the map, the C4 system context or the new city's mindmap, each a root in the views list \|$/);
   const step = (a, b) => assert.ok(next.get(a).has(b), `${a} opens ${b}`);
   // the journeys: a ride's fare to the classes to a ride's state machine; a bike's object to its state machine; the fleet to
   // the e-bike's blocks to inside the e-bike; the requirements to the range analysis; the fleet's planner to rebalancing (the

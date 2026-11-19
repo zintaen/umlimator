@@ -59,8 +59,21 @@ function barsOf(w) {
 const activationBars = (model, view) => barsOf(interactionWalk(model, view)).map(({ head, call, to, depth }) => ({ head, from: call, to, depth }));
 
 /* Message numbers (S8): a message's place among the messages sent in the activation it is sent from, replies included,
-   after that activation's call's number; 1, 2 … at the top level. Map: message id → '1.1.2' */
+   after that activation's call's number; 1, 2 … at the top level. Map: message id → '1.1.2'. On the diff page a message
+   diff() put back removed (change "removed") takes no place: the live ones are numbered as the model after the change numbers
+   them, and a removed one keeps the number it had among them all, as before (audit 48) */
+const IA_GONE = x => x !== null && typeof x === 'object' && x.change === 'removed';
 function messageNumbers(model, view) {
+  const E = Array.isArray(model && model.edges) ? model.edges : [], V = view && Array.isArray(view.edges) ? view.edges : null;
+  if (E.some(IA_GONE) || (V && V.some(IA_GONE))) {
+    const gone = new Set([...E, ...(V || [])].filter(IA_GONE).map(e => e.id)), live = e => !(IA_GONE(e) || (typeof e === 'string' && gone.has(e)));
+    const all = ianumber({ ...model, edges: E.filter(live) }, V ? { ...view, edges: V.filter(live) } : view), was = ianumber(model, view);
+    gone.forEach(id => { if (was.has(id) && !all.has(id)) all.set(id, was.get(id)); });
+    return all;
+  }
+  return ianumber(model, view);
+}
+function ianumber(model, view) {
   const w = interactionWalk(model, view), bars = barsOf(w), num = new Map(), count = new Map();
   w.occ.forEach(m => { if (!m.message) return;
     const act = bars.filter(x => x.head === m.from && x.call !== m.id && x.a <= m.r && m.r <= x.b).reduce((a, x) => (!a || x.a > a.a ? x : a), null);

@@ -1,5 +1,5 @@
 import { unreadable } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText, mermaidScrub } from './mermaid-front.js';
 /* ---------- Mermaid flowchart: a reader and a writer (notes/milestone-2.md §8, §8.2, M2.9; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's flowchart page (docs/syntax/flowchart.md) and its shapes' names and aliases
    (rendering-elements/shapes.ts), both read on Mermaid's repository 14 Nov 2026, and ported from the map
@@ -217,6 +217,7 @@ function readMermaidFlowchart(text) {
   const empty = () => ({ model: { schemaVersion: 2, root: MF_VIEW, nodes: [], edges: [], views: [{ id: MF_VIEW, diagram: 'flowchart', direction: 'down', nodeIds: [] }] }, report });
   if (typeof text !== 'string') { say(1, 'skipped', 'the input is not text: nothing read'); return empty(); }
   if (text.length > MF_LIMIT) { say(1, 'skipped', `the input is ${text.length} characters, over the limit of ${MF_LIMIT}: nothing read`); return empty(); }
+  text = mermaidScrub(text, say); // a raw character XML cannot hold as U+FFFD, said (audit 48)
   const lines = text.replace(/^﻿/, '').split('\n').map(l => l.replace(/\r$/, ''));
   let i = 0, title;
 

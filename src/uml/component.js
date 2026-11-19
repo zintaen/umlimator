@@ -188,7 +188,7 @@ function cpGeo({ model, view, pos: pins, memo }) {
       : n.type === 'uml.Interface' ? (cpBall(I, view, id) ? { shape: 'ball', stereotypes: st } : { shape: 'classifier', stereotypes: ['interface', ...st], compartments: ops.length ? [{ name: 'operations', members: ops }] : [] })
         : n.type === 'uml.Class' ? { shape: 'classifier', stereotypes: st } : !n.type || n.type === 'uml.Component' ? { shape: 'component', stereotypes: st, keyword: !!CP_OWN(pr, 'keyword') }
           : { shape: 'classifier', stereotypes: [snKindWord(n.type), ...st] }; // another kind: a classifier with its kind's keyword, as it is named (audit 15)
-    const d = { id, label: n.type === 'uml.Comment' ? cpName(n) : pic.name(id), type: n.type || 'uml.Component', kind: 'file', ...look, aria: cpNodeName(model, view, pic, id), col: (P(id) || [0, 0])[0], row: (P(id) || [0, 0])[1] };
+    const d = { id, label: n.type === 'uml.Comment' ? cpName(n) : pic.name(id), ...(n.type !== 'uml.Comment' && pic.via(id).length ? { reads: pic.via(id) } : {}), type: n.type || 'uml.Component', kind: 'file', ...look, aria: cpNodeName(model, view, pic, id), col: (P(id) || [0, 0])[0], row: (P(id) || [0, 0])[1] };
     // a ball is laid out as its circle, so the router ends its lines level with the circle's centre; its name hangs under it in
     // the row gap. ponytail: the layout keeps no room for the name, which a line passing under the ball may cross (§17)
     const s = SHAPE[d.shape].size(d), f = CP_OWN(fit, id); return { ...d, w: Math.max(s.w, f ? f.w : 0), h: d.shape === 'ball' ? 16 : Math.max(s.h, f ? f.h : 0) }; });

@@ -170,7 +170,8 @@ function cmFinish(g, I, stacks, nums, view) {
   const byId = Object.create(null), order = [...I.ids];
   g.nodes.forEach(n => { if (n.id[0] !== CM_STACK) byId[n.id] = { ...n }; });
   // the rows counted and placed among the messages drawn, in the view's order, as describe() counts them (audit 42; sequence, audit 41)
-  const rows = new Set([...stacks.values()].flatMap(S => S.ms.map(m => m.id))), drawn = I.messages.filter(m => rows.has(m.id));
+  // on the diff page over the live ones only, as the model after the change counts them; a removed one is said by its number (audit 48)
+  const rows = new Set([...stacks.values()].flatMap(S => S.ms.map(m => m.id))), drawn = I.messages.filter(m => rows.has(m.id) && m.change !== 'removed');
   const E = new Map(g.edges.map(e => [e.id, e])), edges = [], total = drawn.length, place = new Map(drawn.map((m, k) => [m.id, k + 1]));
   I.connectors.forEach(c => {
     const S = stacks.get(c.id);
@@ -191,7 +192,7 @@ function cmFinish(g, I, stacks, nums, view) {
     S.ms.forEach((m, k) => { const from = cmNameOf(I.N.get(m.from)), to = cmNameOf(I.N.get(m.to)), num = nums.get(m.id), sort = cmSortOf(m), rh = cmRowH(S.texts[k]);
       const row = { id: m.id, type: 'uml.Message', shape: 'message-row', kind: 'file', k: box.k, label: S.texts[k], num, sort, dir: m.from === S.s ? fwd : bwd,
         x: box.x, y: top, w: box.w, h: rh, col: box.col, row: box.row + k / S.ms.length,
-        aria: `Message ${place.get(m.id)} of ${total}, ${num}: ${from} to ${to}${cmMsgSay(m) ? ', ' + cmMsgSay(m) : ''}, ${sort}${sort === 'reply' && CM_HAS(cmPropsOf(m).replyTo) && nums.has(cmPropsOf(m).replyTo) ? ' to ' + nums.get(cmPropsOf(m).replyTo) : ''}` };
+        aria: `Message ${place.has(m.id) ? `${place.get(m.id)} of ${total}, ` : ''}${num}: ${from} to ${to}${cmMsgSay(m) ? ', ' + cmMsgSay(m) : ''}, ${sort}${sort === 'reply' && CM_HAS(cmPropsOf(m).replyTo) && nums.has(cmPropsOf(m).replyTo) ? ' to ' + nums.get(cmPropsOf(m).replyTo) : ''}` };
       top += rh; byId[row.id] = row; });
   });
   // reading order (S13): lifelines in the layout's order, left to right and top to bottom, then the message rows by number.

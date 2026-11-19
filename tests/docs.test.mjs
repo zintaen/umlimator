@@ -185,7 +185,7 @@ test('audit 15: a Google Cloud product the pin has no icon of draws its category
   assert.doesNotMatch(read('../docs/conformance/gcp.md'), /draw a glyph/);
   assert.match(read('../docs/conformance/gcp.md'), /draw their\s+category's icon/);
   assert.doesNotMatch(read('../examples/README.md'), /The site draws it with no icon pack|Glyphs and full names on the site/);
-  assert.doesNotMatch(read('../examples/index.html'), /a glyph where the pinned pack lacks one/);
+  assert.doesNotMatch(read('../docs/examples.md'), /a glyph where the pinned pack lacks one/);
 });
 
 test('audit 15: the API page states the typed views\' default direction as the schema does', () => {
@@ -348,4 +348,15 @@ test('audit 47: the 0.43.0 notes do not credit 0.43.0 with the later d.ts and sc
   assert.ok(diagramOf(m.views[0]).edits.connect(m, m.views[0], 'r1', 'r2', null, { type: 'uml.CommentLink' }).error);
   assert.doesNotMatch(s, /(?<!In 0\.43\.0 )the use case, state machine, interaction overview, ER, flowchart, DFD, SysML requirement and all six C4 views still add a comment link/i);
   assert.match(s, /since that release \(#519 to #521\) they refuse one/);
+});
+
+// audit 48: the CLI guide's PDF section heads a view page with an example path; it is one the Umlimator Atlas's PDF prints,
+// the titles of a view's chain (mapContext's chain(), which print.js heads each page with), not a title no view has
+test('audit 48: the CLI guide\'s example PDF page heading is a view path of the Umlimator Atlas it links', async () => {
+  const { mapContext } = await import('../src/map/context.js');
+  const guide = readFileSync(new URL('../docs/guide/cli.md', import.meta.url), 'utf8').replace(/\s+/g, ' ');
+  const said = guide.match(/under its path \("([^"]+)"\)/)[1];
+  const atlas = JSON.parse(readFileSync(new URL('../examples/umlimator-atlas.json', import.meta.url), 'utf8')), ctx = mapContext(atlas);
+  const paths = atlas.views.map(v => ctx.chain(v.id).map(id => ctx.V[id].title).join(' › '));
+  assert.ok(guide.includes('umlimator-atlas.pdf') && paths.includes(said), `${said} is none of: ${paths.join(' | ')}`);
 });

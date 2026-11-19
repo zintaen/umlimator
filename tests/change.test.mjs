@@ -1266,3 +1266,127 @@ test('audit 47: hostile diffMarks: prototype keys, values that are no mark, a gh
     edges: [], views: [{ id: 'req', diagram: 'sysml.requirement', nodeIds: ['r1', 'r2'], diffMarks: { gone: [{ id: 'r1->r2', from: 'r2', to: 'r1' }, { id: 'r1->zz', from: 'zz', to: 'r1' }] } }] };
   assert.deepEqual(all.layout(rq, 'req').edges.map(e => [e.id, e.change]), [['r1->r2', 'removed']]);
 });
+
+/* ---- audit 48: diff views and marks, a container cycle, the edited dot ---- */
+const pic48 = (all, m, v) => svgOf(all.layout(m, v)).replace(/\bg\d+/g, '');
+
+test('audit 48: a context-level relationship added or deleted lists the container view whose cards it moves; a relabel still does not', async () => {
+  const all = await fromSrc();
+  for (const [f, id] of [['bike-share', 'c4-rider-bikeshare'], ['bookshop-c4', 'c4-shopper-bookshop'], ['bookshop-c4', 'c4-bookshop-mail']]) {
+    const a = read45(f), b = structuredClone(a); b.edges = b.edges.filter(e => e.id !== id);
+    assert.notEqual(pic48(all, a, 'c4-containers'), pic48(all, b, 'c4-containers'), `${f}: the container view draws otherwise`);
+    for (const [x, y, w] of [[a, b, 'deleted'], [b, a, 'added']]) assert.deepEqual(all.diff(x, y).views, ['c4-context', 'c4-containers'], `${f} ${id} ${w}`);
+  }
+  const a = read45('bike-share'), rel = structuredClone(a); rel.edges.find(e => e.id === 'c4-rider-bikeshare').label = 'Rents bikes with';
+  assert.deepEqual(all.diff(a, rel).views, ['c4-context']);
+});
+
+test('audit 48: a view a card opens is listed when retitled, though a map card has the view\'s id', async () => {
+  const all = await fromSrc(), a = read45('umlimator-atlas'), b = structuredClone(a); b.views.find(v => v.id === 'mcp').title += ' X';
+  assert.ok(a.nodes.some(n => n.id === 'mcp'), 'the map card is named after the view');
+  assert.notEqual(pic48(all, a, 'containers'), pic48(all, b, 'containers'));
+  assert.deepEqual(all.diff(a, b).views, ['containers', 'mcp']);
+});
+
+test('audit 48: the diff page marks the shape drawn through a renamed element it does not draw: a class through its package, an overview\'s inline interaction, a constraint property through its block', async () => {
+  const all = await fromSrc();
+  for (const [f, id, v, want] of [['sales-classes', 'card', 'domain', ['card-payment']], ['bike-share', 'shared', 'domain', ['money']], ['bike-share', 'lifeline-queue', 'hire-overview', ['sd-queue']],
+    ['buy-book-overview', 'lifeline-api', 'buy-book', ['sd-queue']], ['bike-share', 'range-equation', 'range-analysis', ['ebike.eco', 'ebike.boost']]]) {
+    const a = read45(f), b = structuredClone(a), n = b.nodes.find(x => x.id === id); n.label = (n.label || id) + 'X';
+    const d = all.diff(a, b), g = all.layout(d.model, v);
+    assert.ok(d.views.includes(v), `${f}: ${v} listed`);
+    assert.deepEqual([...g.nodes, ...(g.families || [])].filter(x => x.change).map(x => [x.id, x.change]), want.map(x => [x, 'changed']), `${f}: ${id} renamed, ${v}`);
+    assert.match(svgOf(g), /CHANGED/);
+  }
+  // a change the shape does not draw marks nothing: a class's package given a description
+  const a = read45('sales-classes'), b = structuredClone(a); b.nodes.find(x => x.id === 'card').props = { ...(b.nodes.find(x => x.id === 'card').props || {}), documentation: 'cards' };
+  const g = all.layout(all.diff(a, b).model, 'domain'); assert.equal(g.nodes.find(x => x.id === 'card-payment').change, undefined);
+});
+
+test('audit 48: the diff page counts no relationship diff() brings back removed when it lifts C4 lines', async () => {
+  const all = await fromSrc(), lines = g => g.edges.map(e => [e._id ?? e.id, e.label, e.change ?? null]);
+  // a direct relationship removed: the implied line the model after draws in its place is drawn too, added
+  const a = read45('bookshop-c4'), b = structuredClone(a); b.edges = b.edges.filter(e => e.id !== 'c4-shopper-bookshop');
+  const after = lines(all.layout(b, 'c4-context')).filter(l => l[0].includes('shopper')), page = lines(all.layout(all.diff(a, b).model, 'c4-context')).filter(l => l[0].includes('shopper'));
+  assert.ok(after.some(l => l[0] === 'c4-shopper->c4-bookshop'));
+  assert.deepEqual(page.filter(l => l[2] !== 'removed'), after.map(l => (l[0] === 'c4-shopper->c4-bookshop' ? [l[0], l[1], 'added'] : l)), 'the lines the model after draws, the new implied one added');
+  assert.deepEqual(page.filter(l => l[2] === 'removed').map(l => l[0]), ['c4-shopper-bookshop'], 'and the removed relationship as a ghost');
+  // two lifted to one implied line, one removed: drawn as the model after draws it, marked changed
+  const m = { schemaVersion: 2, nodes: [{ id: 'P', type: 'c4.Person', label: 'Shopper' }, { id: 'S1', type: 'c4.SoftwareSystem', label: 'Shop' },
+    { id: 'X1', type: 'c4.Container', parent: 'S1', label: 'API' }, { id: 'X2', type: 'c4.Container', parent: 'S1', label: 'Web' }],
+  edges: [{ id: 'r1', type: 'c4.Relationship', from: 'P', to: 'X1', label: 'calls' }, { id: 'r2', type: 'c4.Relationship', from: 'P', to: 'X2', label: 'browses' }],
+  views: [{ id: 'ctx', diagram: 'c4.context', nodeIds: ['P', 'S1'] }] };
+  for (const [gone, kept] of [['r2', 'calls'], ['r1', 'browses']]) {
+    const m2 = structuredClone(m); m2.edges = m2.edges.filter(e => e.id !== gone);
+    const g = all.layout(all.diff(m, m2).model, 'ctx'), g2 = all.layout(m2, 'ctx');
+    assert.deepEqual(lines(g), [['P->S1', kept, 'changed']]); assert.equal(g.edges[0].aria, g2.edges[0].aria); assert.match(g.edges[0].aria, /standing for 1 relationship:/);
+  }
+  // both removed: the implied line comes back removed, as before
+  assert.deepEqual(lines(all.layout(all.diff(m, { ...m, edges: [] }).model, 'ctx')).map(l => [l[0], l[2]]), [['P->S1', 'removed']]);
+});
+
+test('audit 48: svgOf draws a map view whose container is its own parent, or in a cycle, with no stack overflow', () => {
+  const mk = cs => ({ title: 'm', nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }, { id: 'c', label: 'C' }], edges: [{ id: 'e', from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], containers: cs }] });
+  for (const cs of [[{ id: 'box', label: 'Box', parent: 'box', nodeIds: ['a'] }], [{ id: 'x', label: 'X', parent: 'y', nodeIds: ['a'] }, { id: 'y', label: 'Y', parent: 'x', nodeIds: ['b'] }],
+    [{ id: 'x', label: 'X', parent: 'y', nodeIds: ['a'] }, { id: 'y', label: 'Y', parent: 'z', nodeIds: ['b'] }, { id: 'z', label: 'Z', parent: 'y', nodeIds: ['c'] }]]) {
+    const m = mk(cs); assert.ok(validate(m).some(p => p.level === 'error' && /inside itself/.test(p.message)));
+    const s = svgOf(layout(m, 'v')); cs.forEach(c => assert.match(s, new RegExp(`data-family="${c.id}"`)));
+  }
+  // a nested box still draws as nested (a cyan border), the top one as before
+  const s = svgOf(layout(mk([{ id: 'x', label: 'X', nodeIds: ['a'] }, { id: 'y', label: 'Y', parent: 'x', nodeIds: ['b'] }]), 'v'));
+  assert.match(s, /data-family="x"[^>]*>(?:(?!data-family)[\s\S])*?stroke="var\(--um-border-2\)"/); assert.match(s, /data-family="y"[^>]*>(?:(?!data-family)[\s\S])*?stroke="var\(--um-cyan\)"/);
+});
+
+test('audit 48: a line\'s edited dot is drawn clear of its own label, and of every label: an edited line, a changed and a modified one', () => {
+  const m = { title: 'Line change', nodes: ['a', 'b', 'c', 'd', 'e'].map(id => ({ id, label: id.toUpperCase(), kind: 'service' })),
+    edges: [{ id: 'ab', from: 'a', to: 'b', label: 'changed', change: 'changed' }, { id: 'ac', from: 'a', to: 'c', label: 'modified', change: 'modified' },
+      { id: 'ad', from: 'a', to: 'd', label: 'plain' }, { id: 'ae', from: 'a', to: 'e', label: 'edited', edited: true }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd', 'e'] }] };
+  for (const [model, v, n] of [[m, 'v', 3], [bike, 'system', 1]]) {
+    const g = layout(model, v), s = svgOf(g), labs = g.edges.filter(e => e.lbl).map(e => e.lbl);
+    const dots = [...s.matchAll(/<circle cx="([-\d.]+)" cy="([-\d.]+)" r="4" class="edited-dot"><title>/g)].map(x => [+x[1], +x[2]]);
+    assert.equal(dots.length, n, v);
+    dots.forEach(([x, y]) => assert.ok(!labs.some(l => x + 5 > l.x && x - 5 < l.x + l.w && y + 5 > l.y && y - 5 < l.y + l.h), `${v}: the dot at ${x},${y} is under a label`));
+    // on a line: within a pixel of one of a line's segments
+    const near = ([x, y], [a, b], [c, d]) => { const l = (c - a) ** 2 + (d - b) ** 2, t = l ? Math.max(0, Math.min(1, ((x - a) * (c - a) + (y - b) * (d - b)) / l)) : 0; return Math.hypot(x - a - t * (c - a), y - b - t * (d - b)) < 1; };
+    dots.forEach(p => assert.ok(g.edges.some(e => e.pts.slice(1).some((q, k) => near(p, e.pts[k], q))), `${v}: the dot at ${p} sits on a line`));
+  }
+});
+
+test('audit 48: on the diff page a communication view numbers its live messages as the model after the change does, counts only them, and a removed one keeps its old number', async () => {
+  const all = await fromSrc(), a = read45('checkout-communication'), V = 'checkout-communication';
+  const rows = g => Object.fromEntries(g.nodes.filter(n => n.shape === 'message-row').map(n => [n.id, [n.num, n.aria]]));
+  for (const gone of ['cm3', 'cm5', 'cm8']) {
+    const b = structuredClone(a); b.views.forEach(v => { if (Array.isArray(v.edges)) v.edges = v.edges.filter(e => (typeof e === 'string' ? e : e.id) !== gone); }); b.edges = b.edges.filter(e => e.id !== gone);
+    const was = rows(all.layout(a, V)), now = rows(all.layout(b, V)), d = rows(all.layout(all.diff(a, b).model, V));
+    for (const [id, [num, aria]] of Object.entries(now)) assert.deepEqual(d[id], [num, aria], `${gone} removed: ${id}`);
+    assert.equal(d[gone][0], was[gone][0], `${gone}: its number as before`); assert.doesNotMatch(d[gone][1], / of \d+,/, `${gone}: not counted`); }
+});
+
+test('audit 48: a removed extend whose extension point went with it reads on the diff page as before, its point by name', async () => {
+  const all = await fromSrc(), a = read45('shopping-use-cases'), b = structuredClone(a), co = b.nodes.find(n => n.id === 'check-out');
+  co.members = co.members.filter(m => m.id !== 'checkout.extras'); b.edges = b.edges.filter(e => !(e.props && (e.props.extensionPoints || []).includes('checkout.extras')));
+  const ext = g => g.edges.filter(e => e.type === 'uml.Extend').map(e => [e.id, e.label ?? e.lbl?.text ?? null]);
+  const was = new Map(ext(all.layout(a, 'shopping'))), d = ext(all.layout(all.diff(a, b).model, 'shopping'));
+  assert.equal(d.length, was.size); d.forEach(([id, t]) => assert.equal(t, was.get(id), id));
+  assert.match(svgOf(all.layout(all.diff(a, b).model, 'shopping')), /«extend» \(extras\)/);
+});
+
+test('audit 48: an interaction overview\'s inline interaction marks what the sequence view marks: an added fragment and its operand new, a lifeline taken out faded, dashed and struck', async () => {
+  const all = await fromSrc(), a = read45('buy-book-overview'), marks = s => (s.match(/data-change="[^"]*"/g) || []).sort();
+  // what the frame draws inside it: the frame's own tag is left out, as diff() marks the frame changed when a lifeline it reads is
+  // marked (the other audit 48 test above), apart from the marks its parts carry
+  const frame = s => { const i = s.indexOf('<g class="node ov-inline"'); return s.slice(i, s.indexOf('>', i) + 1); };
+  const inline = s => { const i = s.indexOf('<g class="node ov-inline"'); return s.slice(s.indexOf('>', i) + 1, s.indexOf('<g class="node', i + 1)); };
+  const b = structuredClone(a), q = b.views.find(v => v.id === 'queue-order');
+  q.fragments = [{ id: 'fopt', type: 'uml.CombinedFragment', props: { operator: 'opt' }, members: [{ id: 'fopt-1', type: 'uml.InteractionOperand', label: 'in stock' }] }]; q.edges[2].parent = 'fopt-1';
+  const c = structuredClone(a), q2 = c.views.find(v => v.id === 'queue-order');
+  q2.nodeIds = q2.nodeIds.filter(x => x !== 'lifeline-worker'); q2.edges = q2.edges.filter(e => e.to !== 'lifeline-worker');
+  for (const [y, want] of [[b, ['data-change="new"', 'data-change="new"']], [c, ['data-change="removed"']]]) { const d = all.diff(a, y).model;
+    const sq = svgOf(all.layout(d, 'queue-order')), ov = inline(svgOf(all.layout(d, 'buy-book')));
+    assert.deepEqual(marks(sq), want); assert.deepEqual(marks(ov), want, 'the inline frame marks as the sequence view does'); }
+  const ov = inline(svgOf(all.layout(all.diff(a, b).model, 'buy-book'))); assert.match(ov, />NEW<\/text>/);
+  const gone = inline(svgOf(all.layout(all.diff(a, c).model, 'buy-book'))), head = gone.slice(gone.lastIndexOf('<g', gone.indexOf('data-change="removed"')));
+  assert.match(frame(svgOf(all.layout(all.diff(a, c).model, 'buy-book'))), /data-change="changed"/, 'the frame that read the lifeline is marked too');
+  assert.match(head, /stroke-dasharray="6 4"/); assert.match(head, /text-decoration="line-through">worker : OrderWorker</); assert.match(head, />REMOVED<\/text>/);
+  assert.doesNotMatch(inline(svgOf(all.layout(a, 'buy-book'))), /data-change/, 'no change: no mark');
+});

@@ -473,3 +473,16 @@ test('a contains skipped for closing a cycle leaves its element free for a later
   for (const m of [r, self]) for (const x of m.report) { const k = /: (\S+) is contained by (\S+) already/.exec(x.message); if (k) assert.equal(m.model.nodes.find(n => n.id === k[1]).parent, k[2]); }
   for (const m of [r.model, self.model]) { assert.deepEqual(core(m), []); assert.deepEqual(read(write(m, m.views[0].id)).report.filter(x => x.status === 'skipped'), []); }
 });
+
+test('entity codes (#lt; #quot; #35;) in names and field values read as their characters, a bad one as U+FFFD, said; the writer writes a # that would read as one as #35; (audit 48)', () => {
+  const r = read('requirementDiagram\n  requirement "brake #lt;2#gt;" {\n    id: "R#35;1"\n    text: "stop in #lt; 2 s, #quot;hard#quot; braking #amp; #1;"\n  }\n  element "pad #quot;A#quot;" {\n    type: Block\n  }\n  "pad #quot;A#quot;" - satisfies -> "brake #lt;2#gt;"\n');
+  assert.deepEqual(r.model.nodes.map(n => [n.label, n.props]), [['brake <2>', { reqId: 'R#1', text: 'stop in < 2 s, "hard" braking & \uFFFD' }], ['pad "A"', undefined]]);
+  assert.equal(r.model.edges.length, 1);
+  assert.deepEqual(r.report, [{ line: 4, status: 'approximated', message: '#1; names no character SVG or XML can hold: read as U+FFFD' }]);
+  // a label, id or text holding what reads as a code round-trips; #99999999; (over six digits) is no code
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'sysml.Requirement', label: 'x #lt; y #35; #99999999; z', props: { reqId: 'R #amp; 1', text: 'a #quot;b#quot; #1; c' } },
+    { id: 'b', type: 'sysml.Block', label: 'B#gt;' }], edges: [{ id: 'e', type: 'sysml.Satisfy', from: 'b', to: 'a' }], views: [{ id: 'requirements', diagram: 'sysml.requirement', nodeIds: ['a', 'b'] }] };
+  const t = write(m), back = read(t);
+  assert.match(t, /"x #35;lt; y #35;35; #99999999; z"/);
+  assert.deepEqual([back.model.nodes, back.model.edges, back.report], [m.nodes, m.edges, []]);
+});
