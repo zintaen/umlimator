@@ -151,7 +151,7 @@ function readMermaidState(text) {
     if (k == null) return;
     if (!Object.hasOwn(MT_KINDS, k)) return say(no, 'skipped', `%% kind: ${k}: not a kind of pseudostate`);
     rec.node = k === 'final' ? { type: 'uml.FinalState' } : { type: 'uml.Pseudostate', props: { kind: k } };
-    rec.symbol = MT_KINDS[k];
+    rec.symbol = MT_KINDS[k]; rec.kindNo = no;
   };
   const declare = (rec) => { if (hint.id != null && rec.hint === undefined) rec.hint = hint.id; };
   // [*] in the current scope: its initial pseudostate as a source, its final state as a target
@@ -278,12 +278,26 @@ function readMermaidState(text) {
   // only a state holds activities, internal transitions and a body: on a pseudostate or a final state they are reported,
   // and what its body holds is read into the scope around it
   const isState = rec => rec.node.type === 'uml.State', what = rec => (rec.node.type === 'uml.FinalState' ? 'a final state' : `${/^[aeiou]/.test(rec.node.props.kind) ? 'an' : 'a'} ${rec.node.props.kind} pseudostate`);
+  const real = s => { for (let n = 0; n < MT_WALK && s !== top && !isState(s.owner); n++) s = up(s); return s === top || isState(s.owner) ? s : top; }; // the scope a body of a non-state stands for
+  // a kind its scope cannot hold, from a %% kind: hint (by hand, or the text of a view that hides a composite but shows
+  // what it holds): a history at the top, or a second initial (after the scope's [*]) or history of one kind in a scope, is
+  // read as a state and said (history-owner, initial-one, history-one; audit 44). Again until none is left, as a state
+  // that held a body makes that body a scope of its own
+  for (let again = true; again;) { again = false;
+    const held = new Map(), hold = (s, k) => { const h = held.get(s) || new Set(); held.set(s, h); return !h.has(k) && !!h.add(k); };
+    for (const x of items) if (x.kind === 'start') hold(real(x.scope), 'initial');
+    for (const rec of order) { const k = rec.kindNo != null && rec.node.type === 'uml.Pseudostate' ? rec.node.props.kind : null;
+      if (k !== 'initial' && k !== 'shallowHistory' && k !== 'deepHistory') continue;
+      const s = real(rec.body || top), where = s === top ? 'at the top' : `in ${s.owner.name}`;
+      const why = k !== 'initial' && s === top ? 'a history at the top, and only a state or a region holds one' : hold(s, k) ? null : `a second ${k} pseudostate ${where}`;
+      if (!why) continue;
+      rec.node = { type: 'uml.State', label: rec.node.label ?? rec.symbol }; again = true;
+      say(rec.kindNo, 'approximated', `%% kind: ${k}: ${rec.name} would be ${why}: it is read as a state`); } }
   for (const rec of order) {
     if (isState(rec)) { for (const a of rec.acts) rec.node.props = { ...rec.node.props, [a.activity]: a.value }; continue; }
     for (const a of rec.acts) say(a.no, 'approximated', `${rec.name} : ${a.activity}: ${rec.name} is ${what(rec)}, which has no activity: not read`);
     if (rec.opened) say(rec.opened, 'approximated', `state ${rec.name} {: ${rec.name} is ${what(rec)}, which holds nothing: what its body holds is read into the scope around it`);
   }
-  const real = s => { for (let n = 0; n < MT_WALK && s !== top && !isState(s.owner); n++) s = up(s); return s === top || isState(s.owner) ? s : top; }; // the scope a body of a non-state stands for
 
   // ids: states by their names first; then, in the order they come, regions, [*], transitions, internal transitions, notes
   const used = new Set(), next = new Map();
@@ -443,6 +457,14 @@ function writeMermaidState(model, viewId) {
     if (!mine || others || scopeStar.has(key) || !mine.every(near)) continue;
     stars.set(n.id, pass); scopeStar.add(key);
   }
+  // a pseudostate the reader would read as a second initial, or history of its kind, in its scope, or a history at the
+  // top (where a view that hides a composite but shows what it holds puts them): written as a state, and said (audit 44)
+  const plain = new Map(), held = new Set([...scopeStar].filter(x => x.endsWith('\0start')).map(x => x.slice(0, -5) + 'initial'));
+  for (const n of nodes) { const k = n.type === 'uml.Pseudostate' && !stars.has(n.id) ? n.props.kind : null, key = `${keyOf.get(n.id)}\0${k}`;
+    if (k !== 'initial' && k !== 'shallowHistory' && k !== 'deepHistory') continue;
+    if (k !== 'initial' && keyOf.get(n.id) === '') plain.set(n.id, 'a history at the top, and only a state or a region holds one');
+    else if (held.has(key)) plain.set(n.id, `a second ${k} pseudostate ${keyOf.get(n.id) === '' ? 'at the top' : `in ${keyOf.get(n.id)}`}`);
+    else held.add(key); }
   // each transition where the reader finds its ends: [*] in its own scope; any other in the scope around both ends (and
   // around a state whose regions it crosses), so it names no state in a body that is not around it
   const transAt = new Map();
@@ -502,6 +524,9 @@ function writeMermaidState(model, viewId) {
     if (n.type === 'uml.Pseudostate' && MT_FORKS.includes(kind)) {
       if (has(n.label)) lose(n.id, `label ${typeof n.label === 'string' ? n.label : jsonText(n.label)}`); // as validate() quotes it (audit 32)
       put(d, ...heads, `state ${name} <<${kind}>>`);
+    } else if (plain.has(n.id)) {
+      lose(n.id, `it would be ${plain.get(n.id)}: written as a state`);
+      put(d, ...heads, `state "${enc(has(n.label) ? n.label : MT_KINDS[kind])}" as ${name}`);
     } else if (n.type !== 'uml.State') {
       const k = n.type === 'uml.FinalState' ? 'final' : kind;
       if (has(n.label) && n.label === MT_KINDS[k]) lose(n.id, `label ${n.label}, read as none`);
