@@ -518,6 +518,28 @@ function readMermaidClass(text) {
     if (b === 'uml.Interface') { e.type = 'uml.InterfaceRealization'; at('approximated', `${what}: ${e.to} is an interface, so ${e.from} realizes it`); }
     else { x.drop = true; at('skipped', `${what}: ${kindWord(a)} ${e.from} cannot specialize ${kindWord(b)} ${e.to}`); }
   }
+  // a generalization that closes a cycle makes a classifier its own ancestor, which UML refuses (generalization-cycle):
+  // skipped (audit 44). In source order, the line whose parent already reaches its child (or is it) closes the cycle;
+  // those walks share a budget, so a hostile chain of a hundred thousand lines is not walked once per line, and what is
+  // left past it is settled by one walk on a stack over the lines still kept, whose line back onto the walk is skipped
+  const ups = new Map(), gens = edges.filter(x => !x.drop && x.e.type === 'uml.Generalization');
+  const cycle = x => { x.drop = true; x.at('skipped', `${x.what}: ${x.e.from === x.e.to ? `${x.e.from} would specialize itself` : `${x.e.from} would be its own ancestor`}, a generalization cycle UML refuses`); };
+  let budget = 1 << 17, done = 0;
+  for (; done < gens.length && budget > 0; done++) { const x = gens[done], { from, to } = x.e;
+    let found = from === to;
+    for (const seen = new Set([to]), st = [to]; !found && st.length && budget > 0; budget--) for (const y of ups.get(st.pop()) || []) {
+      if (y === from) { found = true; break; } if (!seen.has(y)) { seen.add(y); st.push(y); } }
+    if (budget <= 0 && !found) break; // undecided: left to the walk below
+    if (found) cycle(x); else { if (!ups.has(from)) ups.set(from, []); ups.get(from).push(to); } }
+  if (done < gens.length) { const outs = new Map(), walked = new Map(); // 1 on the walk, 2 done
+    for (const x of gens) if (!x.drop) { if (!outs.has(x.e.from)) outs.set(x.e.from, []); outs.get(x.e.from).push(x); }
+    for (const start of outs.keys()) { if (walked.has(start)) continue;
+      const stack = [start], at = [0]; walked.set(start, 1);
+      while (stack.length) { const top = stack[stack.length - 1], ls = outs.get(top) || [];
+        if (at[at.length - 1] === ls.length) { stack.pop(); at.pop(); walked.set(top, 2); continue; }
+        const x = ls[at[at.length - 1]++], p = x.e.to;
+        if (walked.get(p) === 1) cycle(x);
+        else if (!walked.has(p)) { walked.set(p, 1); stack.push(p); at.push(0); } } } }
 
   for (const rec of classes.values()) {
     const members = [], seen = new Set(); // a member's name, an operation's with its parameters' types (overloading)
