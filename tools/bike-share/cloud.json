@@ -507,6 +507,7 @@
       "diagram": "mindmap",
       "parent": null,
       "title": "Opening a second city",
+      "caption": "Illustrative: a tender comparison for a second city, not a deployed system. Its hosting topics open the three cloud views.",
       "present": {
         "mm-fleet": { "side": "right" },
         "mm-website": { "side": "right" },

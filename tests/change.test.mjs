@@ -387,8 +387,11 @@ test('audit 21: validate() says a value it leaves out once, at its path, and not
   assert.deepEqual(validate(m), [{ level: 'error', path: 'edges[1].from', message: 'an object with a "toString" key, which no text is read from: left out' }]);
   m.edges[1].from = 'z'; assert.deepEqual(validate(m).map(p => p.message), ['"z" is neither a card nor a box'], 'an end that names nothing is still said');
   // a typed model: a member's type, a timing change's lifeline; every example, each text value in turn
+  // bike-share's map part only: its strings are the ones this bundle's validate reads, and the three typed files cover the
+  // typed strings (each string of the whole model, 49 views since step 3 of the one-model plan, cost the walk 20 s)
+  const mapPart = m => ({ ...m, views: m.views.filter(v => !v.diagram), nodes: m.nodes.filter(n => !n.type), edges: m.edges.filter(e => !e.type) });
   for (const f of ['bookshop-schema.json', 'bookshop-timing.json', 'order-states.json', 'bike-share.json']) {
-    const base = JSON.parse(readFileSync(new URL('../examples/' + f, import.meta.url))), was = new Set(validate(base).map(p => p.path + p.message));
+    const read = () => JSON.parse(readFileSync(new URL('../examples/' + f, import.meta.url))), base = f === 'bike-share.json' ? mapPart(read()) : read(), was = new Set(validate(base).map(p => p.path + p.message));
     const at = [], walk = (o, p) => Object.entries(o).forEach(([k, v]) => { const q = Array.isArray(o) ? `${p}[${k}]` : p ? `${p}.${k}` : k;
       if (typeof v === 'string') at.push([o, k, q]); else if (v && typeof v === 'object') walk(v, q); });
     walk(base, '');
@@ -682,10 +685,10 @@ test('audit 42: diff() says and lists a typed view whose picture changes with it
   const place = (m, v) => { const g = all.layout(m, v), at = l => (l || []).map(x => JSON.stringify([x.id, x.x, x.y, x.w, x.h, x.pts || x.d || null])).sort();
     return JSON.stringify([at(g.nodes), at(g.edges), at(g.bands), at(g.lanes), at(g.groups)]); };
   // and bike-share as version 1 too, the case above on a map view of a version-1 model; bike-share holds the atlases' typed
-  // views since step 3 of the one-model plan: its map views and one view of each type, the type's first, are swapped
+  // views since step 3 of the one-model plan, every one of them swapped
   for (const [f, m] of [...['bookshop-aws', 'bookshop-c4', 'bike-share'].map(f => [f, read(f)]),
     ['bike-share v1', (x => (delete x.schemaVersion, x))(read('bike-share'))]]) {
-    for (const v of f.startsWith('bike-share') ? oneOfEach(m) : m.views) for (let i = 0; i + 1 < Math.min(arr(v.nodeIds).length, 4); i++) { const b = structuredClone(m), w = b.views.find(x => x.id === v.id);
+    for (const v of m.views) for (let i = 0; i + 1 < Math.min(arr(v.nodeIds).length, 4); i++) { const b = structuredClone(m), w = b.views.find(x => x.id === v.id);
       [w.nodeIds[i], w.nodeIds[i + 1]] = [w.nodeIds[i + 1], w.nodeIds[i]]; assert.equal(all.diff(m, b).views.includes(v.id), place(m, v.id) !== place(b, v.id), `${f} ${v.id} ${i}`); } }
   // many moved: one sentence; hostile ids (null, a number, __proto__, twice) and labels; a large view reversed stays quick
   const big = { schemaVersion: 2, title: 't', nodes: Array.from({ length: 300 }, (_, i) => ({ id: 'l' + i, type: 'uml.Lifeline', label: i ? 'L' + i : '__proto__' })), edges: [],
@@ -697,8 +700,6 @@ test('audit 42: diff() says and lists a typed view whose picture changes with it
   assert.deepEqual(all.diff(big, big).views, []);
 });
 const arr = x => (Array.isArray(x) ? x : []);
-// a model's map views, and one view of each type, the type's first: what the loops over every view of bike-share read of it
-const oneOfEach = m => { const kinds = new Set(); return m.views.filter(v => !v.diagram || v.diagram === 'map' || (!kinds.has(v.diagram) && kinds.add(v.diagram))); };
 
 test('audit 42: a story step may select a model line to a view\'s own node, which the C4 or DFD view draws (drawn and drawnKeys read the view\'s own nodes)', async () => {
   const all = await fromSrc(), { validate: check } = await import('../src/map/validate.js'), { diagramOf } = await import('../src/core/registry.js');
@@ -835,14 +836,14 @@ const tag45 = (s, at) => { const i = s.indexOf(at); if (i < 0) return null; cons
 const keyAt45 = (s, i) => (s.match(new RegExp(`class="um-key line-key[^"]*" data-i="${i}"[^>]*aria-label="([^"]*)"`)) || [])[1];
 
 test('audit 45: every typed view of the atlas draws each mark on what it draws: its shapes, its boxes, its own lines, its fragments and its implied lines, each said in its name and key', async () => {
-  // bike-share holds the atlases' typed views since step 3 of the one-model plan: one view of each type, the type's first
+  // bike-share holds the atlases' typed views since step 3 of the one-model plan: every one of them
   const all = await fromSrc(), m = read45('bike-share'), W = ['added', 'changed', 'removed', 'planned'], WL = ['added', 'changed', 'removed'], word = { added: 'new', changed: 'changed', removed: 'removed', planned: 'planned' };
   const x = structuredClone(m); let k = 0;
   const deep = o => { const s = [o]; while (s.length) { const y = s.pop(); if (!y || typeof y !== 'object') continue; y.change = W[k++ % 4]; (y.members || []).forEach(z => s.push(z)); } };
   x.nodes.forEach(deep); x.edges.forEach(e => { e.change = WL[k++ % 3]; });
   x.views.forEach(v => { (v.fragments || []).forEach(deep); (v.edges || []).forEach(e => { if (e && typeof e === 'object') e.change = WL[k++ % 3]; }); });
   let boxes = 0, own = 0;
-  for (const v of oneOfEach(x).filter(v => v.diagram && v.diagram !== 'map')) {
+  for (const v of x.views.filter(v => v.diagram && v.diagram !== 'map')) {
     const g = all.layout(x, v.id), s = svgOf(g), at = `${v.diagram} ${v.id}`;
     for (const f of g.families || []) { if (!f.change) continue; boxes++; const t = tag45(s, `data-family="${f.id}"`);
       assert.ok(t, `${at}: box ${f.id} drawn`); assert.match(t, new RegExp(`data-change="${word[f.change]}"`), `${at}: ${f.id}`); if (/aria-label/.test(t)) assert.match(t, new RegExp(`, ${word[f.change]}"`), `${at}: ${f.id}`); }
@@ -853,7 +854,7 @@ test('audit 45: every typed view of the atlas draws each mark on what it draws: 
       if (Array.isArray(e.implied)) assert.ok(e.change, `${at}: implied ${id}`);
       const key = keyAt45(s, i); if (e.change && key != null) assert.ok(key.endsWith(', ' + word[e.change]), `${at}: ${id} ${key}`); });
     (s.match(/<(g|text|rect|path|circle|ellipse|line|polygon|polyline)\b[^>]*(data-change|opacity|line-through)[^>]*>/g) || []).forEach(tg => { ['opacity', 'data-change', 'stroke-dasharray', 'text-decoration', 'aria-label'].forEach(n => assert.ok(tg.split(` ${n}=`).length <= 2, `${at}: ${n} twice in ${tg}`)); }); }
-  assert.ok(boxes > 30 && own > 15, `boxes ${boxes}, own ${own}`); // own 18 over one view of each type (over 30 when the loop read every view of the atlas)
+  assert.ok(boxes > 30 && own > 30, `boxes ${boxes}, own ${own}`);
 });
 
 test('audit 45: a sequence\'s, a timing\'s and a class view\'s own lines carry diff()\'s marks: a removed message rose and dashed, an added one green, each said in its key and title; an inline interaction\'s messages too', async () => {

@@ -195,7 +195,8 @@ test('every drill-down opens a view of the model; from the map, the C4 context, 
   assert.ok(!opens.some(([, , o]) => ['new-city', 'c4-context', 'context'].includes(o)), 'nothing opens a root view: each is in the views list');
   const step = (a, b) => assert.ok(next.get(a).has(b), `${a} opens ${b}`);
   // the journeys: a ride's fare to the classes to a ride's state machine; a bike's object to its state machine; the fleet to
-  // the e-bike's blocks to inside the e-bike; the requirements to the range analysis; rebalancing to swapping a battery
+  // the e-bike's blocks to inside the e-bike; the requirements to the range analysis; the fleet's planner to rebalancing (the
+  // only way in to rebalance, swap-battery and dock-latch) to swapping a battery
   step('trips', 'domain'); step('domain', 'ride-life'); step('domain', 'ride-snapshot'); step('ride-snapshot', 'bike-life');
   step('fleet', 'blocks'); step('blocks', 'inside-ebike'); step('requirements', 'range-analysis'); step('requirements', 'blocks');
   step('fleet', 'rebalance'); step('rebalance', 'swap-battery'); step('rebalance', 'dock-latch');
@@ -206,6 +207,14 @@ test('every drill-down opens a view of the model; from the map, the C4 context, 
   step('production', 'components'); step('components', 'trip-internals'); step('c4-components', 'packages'); step('packages', 'privacy'); step('packages', 'requirements');
   step('c4-components', 'dfd-0'); step('dfd-0', 'dfd-1'); step('c4-containers', 'trips-schema'); step('c4-context', 'triage'); step('c4-containers', 'rider-data');
   step('c4-components', 'unlock-communication'); step('new-city', 'on-gcp'); step('new-city', 'on-azure'); step('new-city', 'on-aws');
+});
+
+test('a typed view\'s key holds the titles of the views it opens: update() redraws "opens <view>" after a rename (atlas.test\'s audit 2)', () => {
+  const R = structuredClone(M); R.views.forEach(v => { v.title = 'Renamed ' + (v.title ?? v.id); });
+  for (const vid of ['hire-overview', 'rebalance', 'dfd-0', 'new-city']) {
+    assert.notEqual(mapContext(M).viewKey(vid), mapContext(R).viewKey(vid), vid);
+    assert.match(mapContext(R).buildView(vid).markup, /Renamed/, vid);
+  }
 });
 
 test('describe() and the PDF\'s tables read every view; the e-bike views read as their own files did', () => {

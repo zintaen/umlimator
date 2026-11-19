@@ -71,12 +71,12 @@ test('a type\'s word and rows: the element\'s kind and what is listed for it, es
 // What printDoc listed before 4.9, for the examples drawn today: pinned as one hash a file over its views' tables, those
 // of a typed view with their old heading, "Cards". A change to one of these examples or to the tables changes its hash.
 const PINNED = {
-  'bookshop.json': 'ba6d7e080f9e1964', 'bike-share.json': 'e268385ca92b25e9', 'clinic.json': 'a8cdb971d5d07425', 'monorepo.json': '4e2638724ead87d6', 'weather.json': 'c9ada5f273e01b0c', 'assistant.json': '9196bd5b01316ce2', 'shapes.json': '49fdf9fb182b383b', 'states.json': '5fe79fd4bd3d4b2f',
+  'bookshop.json': 'ba6d7e080f9e1964', 'bike-share.json': '4bbd7ada07adcdd6', 'clinic.json': 'a8cdb971d5d07425', 'monorepo.json': '4e2638724ead87d6', 'weather.json': 'c9ada5f273e01b0c', 'assistant.json': '9196bd5b01316ce2', 'shapes.json': '49fdf9fb182b383b', 'states.json': '5fe79fd4bd3d4b2f',
   'sales-classes.json': 'cea8962c5cc55d53', 'order-objects.json': '67b4d8e36a4b59c5', 'bookshop-packages.json': '61f60b0985090f3d', // 6.7: the profile's row and its application's
 }; // audit 1: a typed view's element by its drawn name (catalog::Book, ada : Customer), so sales-classes and order-objects changed
 // bike-share.json changed when the rider shop's three views (overview, api, checkout, from bookshop.json) joined it,
-// and again when its typed views joined it (step 3): its map views' tables and those of one view of each type, the trips map's
-// fare, lifecycle and trip API and the fleet map's battery monitor and rebalance planner now opening typed views
+// and again when its typed views joined it (step 3): the tables of all its 49 views, the trips map's fare, lifecycle and trip
+// API and the fleet map's battery monitor and rebalance planner now opening typed views
 
 test('a typed view\'s tables name each element as drawn: two Order classes shown without their packages are sales::Order and wholesale::Order (audit 1)', () => {
   const m = read('../examples/bookshop-packages.json'), ids = m.nodes.filter(n => n.label === 'Order').map(n => n.id);
@@ -88,10 +88,7 @@ test('a typed view\'s tables name each element as drawn: two Order classes shown
 test('maps\' tables are unchanged; a class, object or package view\'s are unchanged but for the heading, "Elements", and drawn names', () => {
   const got = {};
   for (const f of Object.keys(PINNED)) {
-    // bike-share: its map views and one view of each type, the type's first (its 49 views, all of them, cost the loop a
-    // second for no table the others do not show)
-    const kinds = new Set(), one = v => f !== 'bike-share.json' || !v.diagram || v.diagram === 'map' || (!kinds.has(v.diagram) && kinds.add(v.diagram));
-    const ctx = mapContext(read('../examples/' + f)), all = ctx.views.filter(one).map(v => {
+    const ctx = mapContext(read('../examples/' + f)), all = ctx.views.map(v => {
       const ts = tablesOf(ctx, v, ctx.buildGeo(v.id)), typed = (v.diagram ?? 'map') !== 'map';
       assert.match(ts[0].title, typed ? /^Elements / : /^Cards /, `${f} ${v.id}`);
       return ts.filter(t => t.rows.length).map(t => ({ ...t, title: t.title.replace(/^Elements /, 'Cards ') })); // as printDoc pours them

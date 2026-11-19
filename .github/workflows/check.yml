@@ -230,8 +230,9 @@ jobs:
             || { echo "::error::examples/bike-share.html is stale: render it again and commit it"; exit 1; }
           python3 umlimator.py check examples/bike-share.html --expand | tee /tmp/check.json   # every view, and with each stacked card unfolded in place, as the loop below checks the others
           # its map views clean; its typed views (step 3 of the one-model plan) at most the crossings their Bookshop and e-bike files
-          # kept, 23 here (a ceiling: text widths differ between machines; tests/bike-share.test.mjs pins Node's count per view)
-          python3 -I -c "import json, re; s = open('/tmp/check.json').read(); d = json.loads(s[s.find('{'):]); p = d['problems']; maps = ('context', 'system', 'trips', 'fleet', 'ride-end', 'overview', 'api', 'checkout'); assert not d['errors'] and all(q.endswith(' cross') and re.match(r'view (\S+)', q).group(1) not in maps for q in p) and len(p) <= 26, (p, d['errors'])"
+          # kept: at most 26 (Chrome finds 23, Node 22; a ceiling, as text widths differ between machines; tests/bike-share.test.mjs
+          # pins Node's count per view). A problem reads "view <id>: ..." or "view <id> with <card> unfolded: ...": the id stops at the colon or space
+          python3 -I -c "import json, re; s = open('/tmp/check.json').read(); d = json.loads(s[s.find('{'):]); p = d['problems']; maps = ('context', 'system', 'trips', 'fleet', 'ride-end', 'overview', 'api', 'checkout'); assert not d['errors'] and all(q.endswith(' cross') and re.match(r'view ([^:\s]+)', q).group(1) not in maps for q in p) and len(p) <= 26, (p, d['errors'])"
 
       - name: The other examples render and their layout checks are clean, in the browser and in Node (the site shows them)
         run: |

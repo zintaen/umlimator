@@ -1,4 +1,4 @@
-// Every single delete over every example (the atlas among them) and every target (docs/diagrams/examples): Shift + Delete
+// Every single delete over every example (bike-share, which holds the atlases' views, among them) and every target (docs/diagrams/examples): Shift + Delete
 // on an element, through the remove hook of each view that draws it (the canvas's default, a bare delete, where a view's
 // type has none), and Delete (out of the view) in each view that draws it, through the canvas's own remove()
 // (src/canvas/edit.js), leaves no new validate() error with every type's rules loaded, as lib/umlimator-all.js loads them
@@ -21,7 +21,8 @@ for (const d of families) { const u = new URL(d + '/', src); for (const f of rea
 
 const arr = x => (Array.isArray(x) ? x : []), read = url => JSON.parse(readFileSync(url));
 const files = () => { const ex = new URL('../examples/', import.meta.url), seen = new Map();
-  readdirSync(ex).filter(f => f.endsWith('.json')).forEach(f => seen.set(new URL(f, ex).href, 'examples/' + f));
+  // not the two atlases: bike-share holds their views since step 3 of the one-model plan (step 4 deletes them)
+  readdirSync(ex).filter(f => f.endsWith('.json') && !['bookshop-atlas.json', 'ebike-atlas.json'].includes(f)).forEach(f => seen.set(new URL(f, ex).href, 'examples/' + f));
   targets().forEach(([f, url]) => { if (!seen.has(url.href)) seen.set(url.href, f); });
   return [...seen].map(([href, name]) => [name, read(new URL(href))]); };
 // the ids each view draws: its cards and their members, its own elements, its lines (listed, or every line between its cards)
@@ -53,7 +54,7 @@ function gesture(m, v, id, fromModel = true) {
 }
 const errors = m => validate(m).filter(p => p.level === 'error').map(p => p.message);
 
-test('no single delete or hide of any element of any example, target or the atlas leaves a new validate() error', () => {
+test('no single delete or hide of any element of any example or target leaves a new validate() error', () => {
   const bad = []; let n = 0;
   for (const [name, m] of files()) {
     const was = new Set(errors(m)), views = drawn(m), ids = new Set();

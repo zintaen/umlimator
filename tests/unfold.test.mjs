@@ -15,9 +15,8 @@ test('every card that unfolds in the examples unfolds with a clean layout check'
   for (const f of ['bike-share', 'weather', 'assistant']) {
     const m = read(`../examples/${f}.json`);
     // bike-share's typed views (step 3) are drawn by the full bundle, as the page draws them, where a card opening a view of
-    // another type opens it and never unfolds; its map views, and one view of each type, each type's first
-    const { layout: L, check: C } = f === 'bike-share' ? all : { layout, check }, kinds = new Set();
-    const views = m.views.filter(v => !v.diagram || v.diagram === 'map' || (!kinds.has(v.diagram) && kinds.add(v.diagram)));
+    // another type opens it and never unfolds; every view
+    const { layout: L, check: C } = f === 'bike-share' ? all : { layout, check }, views = m.views;
     for (const v of views) for (const card of L(m, v.id).nodes.filter(x => x.opens || x.kids)) {
       if (!L(m, v.id, { expand: [card.id] }).unfolded.length) continue;
       assert.deepEqual(C(m, v.id, { expand: [card.id] }).map(i => i.message), [], `${f} ${v.id} with ${card.id} unfolded`); n++;
