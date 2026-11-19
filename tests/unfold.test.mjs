@@ -22,9 +22,12 @@ test('every card that unfolds in the examples unfolds with a clean layout check'
       assert.deepEqual(C(m, v.id, { expand: [card.id] }).map(i => i.message), [], `${f} ${v.id} with ${card.id} unfolded`); n++;
     }
   }
-  // bike-share: context's bikeshare, system's trips, fleet and rider-help (help, a numbered view), and fleet's dock-listener
-  // and forecast (demand, numbered): six. The rider shop's api never unfolds: every card of its view is on overview already
-  assert.ok(n >= 6, `unfolded ${n}`);
+  // bike-share: context's bikeshare, system's trips and fleet, and fleet's dock-listener and forecast (demand, the numbered
+  // inner view): five, all the model has. The rider shop's api never unfolds, as every card of its view is on overview
+  // already. help has no opener on purpose: unfolded in place (tried from a Rider help card on system in step 4's review),
+  // its Tone check and Redact, which only send, route over the help bot and cross or detour as the font's widths change
+  // (CI's Chrome crossed where Node and a Mac did not), so it is reached through its parent link only
+  assert.ok(n >= 5, `unfolded ${n}`);
 });
 
 test("the card becomes a box of its inner view's own cards, in the box it was in; the inner view's boxes come along", () => {

@@ -83,4 +83,4 @@ about 120 ms on a lighter load), under CI's 1 s ceiling, which the test holds an
 `tests/information-flow.test.mjs` and `tests/information-flow.html` (the look, the rules each passing and failing, F2's
 reading, Shift + Delete, a 30-step session, every gesture by pointer and key); `tests/information-flow-minimal.json` and
 `tests/information-flow-stress.json` with `tests/m2-fixtures.test.mjs` and `tests/m2.html`; `tests/notation.html` (the
-dashed open arrow, «flow» by each flow); `tests/cli.py`; `tests/mcp.py`; `tests/bike-share.test.mjs` (the view in the bike share model, reached by drill-down).
+dashed open arrow, «flow» by each flow); `tests/cli.py`; `tests/mcp.py`.

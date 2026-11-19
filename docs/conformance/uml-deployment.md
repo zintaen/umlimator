@@ -89,4 +89,4 @@ cube and its faces, the example under three fonts, both themes and both directio
 six levels); `tests/deployment-minimal.json` and `tests/deployment-stress.json` with `tests/stage5-fixtures.test.mjs` and
 `tests/stage5.html` (`notes/stage-5.md` §13: every edge case, the six-level width pinned, P1); `tests/notation.html`
 («deploy» and «manifest»'s arrowheads on what they point to); `tests/cli.py` (render, check, stills, pdf and its tables,
-the diff Action's step); `tests/mcp.py`; `tests/bike-share.test.mjs` (the view in the bike share model, reached by drill-down).
+the diff Action's step); `tests/mcp.py`.

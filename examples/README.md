@@ -124,7 +124,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 |---|---|
 | Views a card opens (`opensView`) | bike-share: four levels of map, the rider shop's Shop API, and from the map to the typed views and between them |
 | A view the host loads when it's opened (`opensView` with `opensCount`) | bike-share: Trip service and Fleet service, in `embed.html` |
-| A stacked card unfolded in place (E, Alt + click, `map.expand()`) | bike-share: Trip service and Fleet service in `system`, Bike share in `context`, Dock listener in `fleet`; numbered, with its run order: Demand forecast in `fleet` (with its lanes) and Rider help in `system` |
+| A stacked card unfolded in place (E, Alt + click, `map.expand()`) | bike-share: Trip service and Fleet service in `system`, Bike share in `context`, Dock listener in `fleet`; numbered, with its run order: Demand forecast in `fleet` (with its lanes) |
 | Boxes (`containers`) and their tabs (`badges`) | bike-share `system` and `dock-feed` |
 | A box's tone, a tinted region (`tone`) | bike-share `checkout` |
 | Nested boxes (`parent`) | bike-share `dock-feed` |

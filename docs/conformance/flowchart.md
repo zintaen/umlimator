@@ -86,4 +86,4 @@ decision's label set, laid out and drawn, 31 to 63 ms (two runs). CI holds 1 s a
 moveTo, a 30-step session, every gesture by pointer and key); `tests/flowchart-minimal.json` and
 `tests/flowchart-stress.json` with `tests/m2-fixtures.test.mjs` and `tests/m2.html`; `tests/mermaid-flowchart.test.mjs`
 (the reader and writer, the construct file read as the Python importer reads it); `tests/import.py` (`--typed`);
-`tests/cli.py`; `tests/mcp.py`; `tests/bike-share.test.mjs` (the view in the bike share model, reached by drill-down).
+`tests/cli.py`; `tests/mcp.py`.

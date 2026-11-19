@@ -93,4 +93,4 @@ switch 10 to 16 ms, laying nothing out (two runs). CI holds 1 s and prints the f
 30-step session, every gesture by pointer and key); `tests/er-minimal.json` and `tests/er-stress.json` with
 `tests/m2-fixtures.test.mjs` and `tests/m2.html` (§10's cases, P1); `tests/notation.html` (crow's foot's four ends,
 IDEF1X's dot and diamond, by multiplicity, solid or dashed); `tests/mermaid-er.test.mjs`, `tests/dbml.test.mjs`;
-`tests/cli.py` (render, check, stills, pdf and its tables, the diff Action's step); `tests/mcp.py`; `tests/bike-share.test.mjs` (the view in the bike share model, reached by drill-down).
+`tests/cli.py` (render, check, stills, pdf and its tables, the diff Action's step); `tests/mcp.py`.

@@ -12,18 +12,6 @@
       "how": "Calls the Trip service and the map tiles."
     },
     {
-      "id": "rider-help",
-      "label": "Rider help",
-      "kind": "ai",
-      "owner": "Rides",
-      "icon": "bot",
-      "sublabel": "answers in the app",
-      "opensView": "help",
-      "what": "Answers riders' questions in the app.",
-      "when": "Whenever a rider asks.",
-      "how": "A help bot that cites the station guides and the refund policy; its steps are the help view."
-    },
-    {
       "id": "ops-console",
       "label": "Ops console",
       "kind": "frontend",
@@ -221,19 +209,17 @@
       "sublabel": "weekly CSV"
     },
     { "id": "s16", "from": "monitoring", "to": "rides", "label": "scrapes metrics", "kind": "state" },
-    { "id": "s17", "from": "fleet", "to": "charging", "label": "books slots" },
-    { "id": "s18", "from": "rider-app", "to": "rider-help", "label": "asks" }
+    { "id": "s17", "from": "fleet", "to": "charging", "label": "books slots" }
   ],
   "views": [
     {
       "id": "system",
       "parent": "context",
       "title": "What runs",
-      "caption": "The apps and the two teams' services. Trip service and Fleet service open their parts; Rider help opens its steps.",
+      "caption": "The apps and the two teams' services. Trip service and Fleet service open their parts.",
       "nodeIds": [
         "monitoring", "riders", "rider-app", "accounts", "pricing", "payments", "trips", "tripsdb", "ops",
-        "ops-console", "stations", "telemetry", "fleet", "charging", "warehouse", "city", "status", "flags",
-        "rider-help"
+        "ops-console", "stations", "telemetry", "fleet", "charging", "warehouse", "city", "status", "flags"
       ],
       "containers": [
         { "id": "apps", "label": "Apps", "nodeIds": ["rider-app", "ops-console"], "badges": ["iOS · Android · web"] },
@@ -268,8 +254,7 @@
         "warehouse": [2, 8],
         "city": [4, 8],
         "status": [0, 9],
-        "flags": [1, 9],
-        "rider-help": [2, 5]
+        "flags": [1, 9]
       }
     }
   ]

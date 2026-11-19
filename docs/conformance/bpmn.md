@@ -136,4 +136,4 @@ and `tests/bpmn-engine.html` (boundary events as ports, the bands, the circle en
 `tests/bpmn-minimal.json` and `tests/bpmn-stress.json` with `tests/m4b-fixtures.test.mjs` and `tests/m4b.html`;
 `tests/bpmn-xml.test.mjs` (the reader and writer, hostile files, the round trip of the example and 500 generated models);
 `tests/import.py` (`import` and `export`, the export's diagram interchange from the type's layout); `tests/cli.py`
-(render, check, stills, pdf, the diff Action); `tests/mcp.py`; `tests/bike-share.test.mjs` (the view in the bike share model, reached by drill-down).
+(render, check, stills, pdf, the diff Action); `tests/mcp.py`.
