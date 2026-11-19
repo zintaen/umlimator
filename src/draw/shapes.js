@@ -134,7 +134,7 @@ function cardLook(n, byKind, hint, ports) {
   tabs.forEach(t => { spans.push([tx, tx + t.w]); tx += t.w + 4; });
   L.tabEnd = tabs.length ? tx - 2 : 0;
   const right = []; if (hint) right.push([n.x + n.w - 44, n.x + n.w - 8]);
-  const ch = CHG[String(n.change || '').toLowerCase()]; if (ch) { const bw = ch[1].length * 6 + 12, bx = n.x + n.w - bw - 8 - (hint ? 40 : 0); right.push([bx, bx + bw]); }
+  const ch = typeof n.change === 'string' && CHG[n.change.toLowerCase()]; if (ch) { const bw = ch[1].length * 6 + 12, bx = n.x + n.w - bw - 8 - (hint ? 40 : 0); right.push([bx, bx + bw]); }
   L.chromeEnd = Math.min(n.x + n.w - 10, ...right.map(s => s[0] - 6));
   const half = (S.head || 0) + 4;
   if (S.head) { // a head in the middle, unless a tab or a badge is there: then in the widest gap they leave

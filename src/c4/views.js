@@ -203,11 +203,12 @@ function depGeo({ model, view, pos, memo }) {
     if (x.type === 'uml.Comment') { const d = { ...base, label: vName(x), kind: 'file', shape: 'note' }; return { ...d, ...SHAPE.note.size(d) }; }
     // an instance as its container; a deployment node holding nothing shown as the map's node; anything else (c4-level's error) as itself
     const c = x.type === 'c4.ContainerInstance' ? depOf(I, x) || x : x, dn = x.type === 'c4.DeploymentNode', ext = !dn && c4Ext(c);
-    const d = { ...base, label: vName(c), kind: ext ? 'external' : 'frontend', shape: 'c4', sh: dn ? 'node' : c4Shape(c), ext, tag: dn ? depTag(x) : c === x && x.type === 'c4.ContainerInstance' ? '[Container]' : c4TagOf(c), desc: V_P(dn ? x : c).description };
+    // an instance reads its container: drawn as it, it shows the container's change on the diff page (audit 46)
+    const d = { ...base, ...(c !== x ? { reads: [c.id] } : {}), label: vName(c), kind: ext ? 'external' : 'frontend', shape: 'c4', sh: dn ? 'node' : c4Shape(c), ext, tag: dn ? depTag(x) : c === x && x.type === 'c4.ContainerInstance' ? '[Container]' : c4TagOf(c), desc: V_P(dn ? x : c).description };
     return { ...d, ...SHAPE.c4.size(d) }; });
   const edges = [...own.map(e => { const note = e.type === 'uml.CommentLink', label = note ? '' : c4LineLabel(e);
     return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: label || undefined, end: c4LineLook(e, V_LINE), aria: c4LineName(e, pic), cut: 280 }; }),
-  ...implied.map(e => ({ id: e.id, _id: e.id, type: 'c4.Relationship', from: e.from, to: e.to, implied: e.of.map(r => r.id), end: V_LINE.implied, aria: c4LineName(e, pic), cut: 280,
+  ...implied.map(e => ({ id: e.id, _id: e.id, type: 'c4.Relationship', from: e.from, to: e.to, implied: e.of.map(r => r.id), reads: e.via, end: V_LINE.implied, aria: c4LineName(e, pic), cut: 280,
     label: [e.of[0].label, e.of.length > 1 ? `[+${e.of.length - 1}]` : ''].filter(V_HAS).join(' ') || undefined }))];
   const g = layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: view.direction === 'down' ? 'down' : 'right',
     gap: 48, rgap: 64, labelGaps: true, repair: false, reroute: false }, memo);
@@ -274,8 +275,11 @@ function depOwners(model, x) {
   const I = c4Index(model); // not the node itself nor a node inside it (the core refuses a cycle)
   return V_ARR(model.nodes).filter(n => V_OBJ(n) && n.type === 'c4.DeploymentNode' && n.id !== x.id && !I.chain(n.id).includes(x.id)).map(n => ({ id: n.id, label: vName(n) }));
 }
-// some deployment view lists x and draws it as a leaf, where its description shows (depGeo's desc)
-const depLeaf = (model, x) => V_ARR(model && model.views).some(v => V_OBJ(v) && v.diagram === 'c4.deployment' && V_ARR(v.nodeIds).includes(x.id) && !depPic(model, v).open.has(x.id));
+// some deployment view lists x and draws it as a leaf, where its description shows (depGeo's desc); memo: validate()'s, so
+// each view's ids and depPic are worked out once a run, not once a node (audit 46)
+const depLeaf = (model, x, memo = new Map()) => V_ARR(model && model.views).some(v => { if (!V_OBJ(v) || v.diagram !== 'c4.deployment') return false;
+  if (!memo.has(v)) memo.set(v, { ids: new Set(V_ARR(v.nodeIds)), pic: null }); const s = memo.get(v);
+  return s.ids.has(x.id) && !(s.pic || (s.pic = depPic(model, v))).open.has(x.id); });
 const DEP_DEF = {
   title: 'C4 deployment diagram',
   elements: [{ type: 'c4.DeploymentNode', label: 'Deployment node' }, { type: 'c4.ContainerInstance', label: 'Container instance', name: false }, { type: 'uml.Comment', label: 'Comment' }],

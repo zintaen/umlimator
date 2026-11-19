@@ -2322,12 +2322,20 @@ if part("audit 45"):
     ok("check · shared lines, labels on nodes, overflowing text, lane problems and overlapping edge labels are each a kind, none other (audit 45)",
        [u.kind_of(o, None, ["a"]) for o in ov] == want and c["other"] == 0 and c["sharedLines"] == 1 and c["labelOnNode"] == 2 and c["lanes"] == 5
        and all(k in u.KINDS for k in want), ([u.kind_of(o, None, ["a"]) for o in ov], c))
-    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "check", str(ROOT / "no-such-page.html"), "--ignore", "sharedLines,lanes,overflow"],
-                       capture_output=True, text=True)
+    # audit 46: on a page that does not exist main() exits before --ignore is read, so the check ran on a real page: --ignore is
+    # read before Chrome is looked for, and with no Chrome the run stops there; a bogus kind shows it reaches the validation
+    with tempfile.TemporaryDirectory() as tmp:
+        (Path(tmp) / "m.json").write_text(json.dumps({"title": "t", "nodes": [{"id": "a", "label": "A"}], "views": [{"id": "v", "nodeIds": ["a"]}]}))
+        rend = cli("render", str(Path(tmp) / "m.json"), "--out", str(Path(tmp) / "p.html"), "--no-check")
+        ign = lambda kinds: subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                                            "sys.argv = ['umlimator.py', 'check', sys.argv[2], '--ignore', sys.argv[3]]; u.main()", str(ROOT), str(Path(tmp) / "p.html"), kinds],
+                                           capture_output=True, text=True)
+        r, bad = ign("sharedLines,labelOnNode,overflow,labelsOverlap,lanes,right-to-left"), ign("lanes,bogusKind")
     h = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "check", "--help"], capture_output=True, text=True).stdout
-    ok("check --ignore · the new kinds are known kinds, and its help names them (audit 45)",
-       r.returncode != 0 and "unknown kind" not in r.stderr and all(k in h for k in ("sharedLines", "labelOnNode", "overflow", "labelsOverlap", "lanes")),
-       (r.stderr[-300:], h[-400:]))
+    ok("check --ignore · the new kinds are known kinds, and its help names them (audit 45, on a page that exists: audit 46)",
+       rend is not None and r.returncode != 0 and "unknown kind" not in r.stderr and "Chrom" in r.stderr
+       and bad.returncode != 0 and "--ignore: unknown kind bogusKind" in bad.stderr
+       and all(k in h for k in ("sharedLines", "labelOnNode", "overflow", "labelsOverlap", "lanes")), (r.stderr[-300:], bad.stderr[-300:], h[-400:]))
     with tempfile.TemporaryDirectory() as tmp:
         # audit 45: a pull request that links a model in from outside the checkout was dropped unsaid ("No map model changed."):
         # a link out of the checkout is judged by the name the pull request gave it, never by its target, which is never opened:

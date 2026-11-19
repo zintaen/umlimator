@@ -628,3 +628,22 @@ test('audit 45: a deployment node\'s description that is not text is said drawn 
   assert.ok(svgOf(layout(leaf, 'l')).includes('[object Object]'));
   assert.deepEqual(said(leaf), ['description {"note":"big VM"} is not text: drawn as "[object Object]"'], 'a leaf in one view: drawn there');
 });
+
+// audit 46: depLeaf (the description's drawn hook) ran a depPic per deployment view for every shown node, text or not, so
+// validate() went quadratic (1000 nodes in 4 views: 8 ms without descriptions, 3.3 s with them). It is asked only of a value
+// that is not text now, and works each view out once a validate() run
+test('audit 46: validate() asks the deployment description\'s drawn hook only of a value that is not text, and keeps its wording', () => {
+  const field = DEP.props['c4.DeploymentNode'].find(f => f.key === 'description'), real = field.drawn; let calls = 0;
+  field.drawn = (...a) => { calls++; return real(...a); };
+  try {
+    const mk = (N, V, desc) => { const nodes = []; for (let i = 0; i < N; i++) nodes.push({ id: 'n' + i, type: 'c4.DeploymentNode', label: 'Node ' + i, ...(i % 10 ? { parent: 'n' + (i - i % 10) } : {}), props: { technology: 'linux', description: desc(i) } });
+      return { schemaVersion: 2, nodes, edges: [], views: Array.from({ length: V }, (_, k) => ({ id: 'd' + k, diagram: 'c4.deployment', title: 'Deploy', nodeIds: nodes.map(n => n.id) })) }; };
+    validate(mk(400, 3, () => 'a server')); assert.equal(calls, 0, 'a text description never needs the drawn question');
+    // hostile values: a list, an object that closes a tag, a URL; a box (n0, n10, ...) is "not drawn", a leaf "drawn as"
+    calls = 0; const m = mk(60, 3, i => (i % 3 === 0 ? ['x'] : i % 3 === 1 ? { a: '"><image href="https://track.example/p.gif"/>' } : 'https://track.example/ok'));
+    const said = validate(m).filter(p => /props\.description$/.test(p.path));
+    assert.equal(said.length, 40); assert.equal(calls, 40 * 3, 'once a value that is not text, a view that lists it');
+    said.forEach(p => { const i = +/nodes\[(\d+)\]/.exec(p.path)[1]; assert.match(p.message, i % 10 ? /: drawn as / : /: not drawn, and the panel shows it as /, p.path); });
+    assert.ok(!svgOf(layout(m, 'd0')).includes('track.example/p.gif"/>'), 'the hostile text stays text');
+  } finally { field.drawn = real; }
+});
