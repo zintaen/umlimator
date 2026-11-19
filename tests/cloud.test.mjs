@@ -566,3 +566,32 @@ test('audit 39: two paths into one group, one from outside and one from beside i
   views: [{ id: 'v', diagram: 'gcp', nodeIds: ['proj', 'net', 'run', 'db', 'u'], direction: dir }] });
   for (const dir of ['right', 'down']) { const m = mk(dir); assert.deepEqual(validate(m), []); assert.deepEqual(check(m, 'v').map(p => p.message), [], dir); }
 });
+
+test('audit 44: the example pages\' withIcons keeps a model\'s own glyphs, never loads its images, and says what it left out', async () => {
+  const keep = globalThis.fetch, asked = [];
+  globalThis.fetch = async u => { asked.push(String(u)); const t = readFileSync(new URL(u)); return { json: async () => JSON.parse(t), text: async () => String(t) }; };
+  try {
+    const { withIcons: pageIcons } = await import('../examples/icons.js');
+    const base = new URL('../icons/', import.meta.url), PIN = '<circle cx="12" cy="12" r="9"/>';
+    const m = { schemaVersion: 1, nodes: [{ id: 'a', label: 'A', icon: 'pin' }, { id: 'b', label: 'B', icon: 'database' }, { id: 'c', label: 'C', icon: 'logo' }, { id: 'd', label: 'D', icon: 'both' }],
+      edges: [], views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd', 'e'], nodes: [{ id: 'e', label: 'E', icon: 'server' }] }],
+      icons: { pin: { g: PIN, name: 'Pin' }, logo: { src: 'https://zq.invalid/logo.svg' }, both: { g: '<path d="M0 0L24 24" onload="x()"/>', src: 'https://zq.invalid/both.svg' },
+        database: { g: '<rect width="1" height="1"/>' }, ['__proto__']: { g: PIN }, bad: 'x', none: {} } };
+    const said = [], out = await pageIcons(structuredClone(m), base, said);
+    // the model's own glyphs kept, a Lucide name drawn from the repository's file, a view's own card's icon fetched too
+    assert.equal(out.icons.pin.g, PIN); assert.equal(out.icons.pin.name, 'Pin');
+    assert.ok(Object.hasOwn(out.icons, '__proto__') && Object.getPrototypeOf(out.icons) === Object.prototype);
+    assert.notEqual(out.icons.database.g, m.icons.database.g); assert.ok(out.icons.server && out.icons.server.g.includes('<'));
+    // no image kept, no address asked for but the repository's own icons
+    assert.ok(!JSON.stringify(out.icons).includes('zq.invalid') && !Object.hasOwn(out.icons, 'logo') && out.icons.both.src === undefined);
+    assert.ok(asked.every(u => u.startsWith(base.href)), asked.join(' '));
+    assert.deepEqual(said.map(p => `${p.level} ${p.path}`), ['warning icons.logo', 'warning icons.both.src', 'warning icons.bad', 'warning icons.none']);
+    // drawn: the pin glyph on its card, the image nowhere, the glyph's handler dropped
+    const { markup } = mapContext(out).buildView('v');
+    assert.ok(markup.includes(PIN) && !/zq\.invalid|onload/.test(markup));
+    // a table that is no table is said once and left out; a model with none says nothing
+    const odd = []; assert.deepEqual(Object.keys((await pageIcons({ ...m, icons: ['x'] }, base, odd)).icons).sort(), ['database', 'server']);
+    assert.deepEqual(odd.map(p => p.path), ['icons']);
+    const none = []; await pageIcons({ ...m, icons: undefined }, base, none); assert.deepEqual(none, []);
+  } finally { globalThis.fetch = keep; }
+});

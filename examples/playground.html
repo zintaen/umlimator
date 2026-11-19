@@ -76,7 +76,8 @@ async function run() {
   if (problems.some(p => p.level === 'error')) return show();   // the last good map stays
   model = m;
   try {
-    const drawn = await withIcons(m);
+    const left = [], drawn = await withIcons(m, undefined, left); // what of the model's own icons the page leaves out, said (audit 44)
+    problems.push(...left);
     if (!map) map = render($('map'), drawn, { stableLayout: false, on: { viewchange: () => { views(); show(); } } });
     else { map.update(drawn); if (!m.views.some(v => v.id === map.view)) await map.setView(m.root || m.views[0].id); }
     window.map = map;   // for the console, and for tests/embed.py

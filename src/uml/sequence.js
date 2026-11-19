@@ -462,8 +462,8 @@ const SEQ_TYPE = registerDiagramType('uml.sequence', {
   refs: { 'uml.Message': { 'props.replyTo': 'cascade' }, 'uml.InteractionUse': { 'props.covers': 'drop' } },
   props: {
     'uml.Lifeline': [{ key: 'represents', label: 'Represents', kind: 'text' }, { key: 'stereotypes', label: 'Stereotypes', kind: 'list' }],
-    'uml.Message': [{ key: 'sort', label: 'Sort', kind: 'enum', options: SQ_SORTS }, { key: 'replyTo', label: 'Reply to', kind: 'text' }, { key: 'stereotypes', label: 'Stereotypes', kind: 'list' }],
-    'uml.InteractionUse': [{ key: 'refersTo', label: 'Refers to', kind: 'text' }, { key: 'covers', label: 'Covers', kind: 'list' }],
+    'uml.Message': [{ key: 'sort', label: 'Sort', kind: 'enum', options: SQ_SORTS }, { key: 'replyTo', label: 'Reply to', kind: 'text', drawn: false }, { key: 'stereotypes', label: 'Stereotypes', kind: 'list' }],
+    'uml.InteractionUse': [{ key: 'refersTo', label: 'Refers to', kind: 'text', drawn: false }, { key: 'covers', label: 'Covers', kind: 'list' }],
     'uml.CombinedFragment': [{ key: 'operator', label: 'Operator', kind: 'enum', options: SQ_OPS }],
   },
   layout: { run: sqRun, pins: false },

@@ -459,7 +459,7 @@ const TM_TYPE = registerDiagramType('uml.timing', {
   refs: { 'uml.Message': { 'props.replyTo': 'cascade' } },
   props: {
     'uml.Lifeline': [{ key: 'represents', label: 'Represents', kind: 'text' }, { key: 'states', label: 'States', kind: 'list' }, TM_STEREO],
-    'uml.Message': [{ key: 'sort', label: 'Sort', kind: 'enum', options: TM_SORTS }, { key: 'replyTo', label: 'Reply to', kind: 'text' }, TM_STEREO],
+    'uml.Message': [{ key: 'sort', label: 'Sort', kind: 'enum', options: TM_SORTS }, { key: 'replyTo', label: 'Reply to', kind: 'text', drawn: false }, TM_STEREO],
   },
   layout: { run: tmRun, pins: false },
   draw: tmDraw,

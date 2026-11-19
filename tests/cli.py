@@ -42,7 +42,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 14})
 
 
 def ok(name, cond, info=""):
@@ -2265,5 +2265,25 @@ if part("audit 42"):
         ok("diff --base · a model git tracks as modified is read as edited when the disk spells its name or folder in another case; a D row is removed (audit 42)",
            r.returncode == 0 and said.get("Map.json") == ["renames A to A2"] and said.get("docs/y.json") == ["renames A to A3"]
            and said.get(":(glob)*.json") == ["renames A to A4"] and "removes A" in (said.get("gone.json") or []) and "Docs/a.json" not in said, (folds, st, said, r.stderr[-400:]))
+if part("audit 44"):
+    with tempfile.TemporaryDirectory() as tmp:
+        # audit 44: render printed the engine's counts, which call any problem holding " cross" a crossing: a broken rule titled
+        # "... cross into ..." was a crossing, and rules had no key. render counts each problem as check does on the same page;
+        # a hostile view id and card label (": ", "cross", a rule's words) change nothing
+        for vid, lab in (("v", "Web"), ("a: b cross", 'Web breaks rule "x" cross')):
+            m = {"title": "Cross words", "nodes": [{"id": "web", "label": lab, "kind": "frontend"}, {"id": "db", "label": "Orders DB", "kind": "database"}],
+                 "edges": [{"from": "web", "to": "db", "label": "reads across"}],
+                 "rules": [{"id": "r1", "title": "Apps never cross into a database", "from": {"kind": "frontend"}, "to": {"kind": "database"}}],
+                 "views": [{"id": vid, "title": "V", "nodeIds": ["web", "db"]}]}
+            (Path(tmp) / "cross.json").write_text(json.dumps(m)); page = Path(tmp) / "cross.html"
+            rend = cli("render", str(Path(tmp) / "cross.json"), "--out", str(page))
+            r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "check", str(page)], capture_output=True, text=True)
+            i = r.stdout.find("{"); chk = json.loads(r.stdout[i:]) if i >= 0 else {}
+            ok(f"render · its counts are check's on the same page: a broken rule under rules, never crossings (audit 44, view {vid!r})",
+               rend is not None and r.returncode == 1 and (rend.get("counts") or {}).get("rules") == 1 and rend["counts"].get("crossings") == 0
+               and rend["counts"] == chk.get("counts"), (rend, chk, r.stderr[-300:]))
+        # --no-check: no counts claimed
+        rend = cli("render", str(Path(tmp) / "cross.json"), "--out", str(page), "--no-check")
+        ok("render --no-check · claims no counts (audit 44)", rend is not None and rend.get("counts") is None and rend.get("checked") is False, rend)
 part.done()
 sys.exit(1 if failed else 0)
