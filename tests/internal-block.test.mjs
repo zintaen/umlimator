@@ -247,7 +247,8 @@ test('a port\'s ~ and kind by F2 and its row, both ways; nothing changed says no
   assert.deepEqual(T.edits.rename(RICH, V, P, 'charge : ChargeInterface').commands, set('props.valueType', 'ChargeInterface'), 'F2 takes the ~ off');
   assert.deepEqual(T.edits.rename(RICH, V, P, 'charge : ~ChargeInterface'), { commands: [] }, 'its own type: nothing set, nothing said');
   assert.deepEqual(T.edits.rename(RICH, V, P, 'charge'), { commands: [] });
-  assert.deepEqual(T.edits.rename(RICH, V, P, '«full» charge').commands, set('props.kind', 'full'), '«full» in F2: the kind');
+  // a port typed by an interface block may not be full: F2 is refused, as the row is (audit 45)
+  assert.match(T.edits.rename(RICH, V, P, '«full» charge').error, /^Full port "Dock"\.charge is typed by "~ChargeInterface", an interface block: /, '«full» in F2 on an interface block\'s port');
   assert.deepEqual(T.edits.member(RICH, V, 'dock', 'dock.charge', 'proxy port charge : ChargeInterface'), set('props.valueType', 'ChargeInterface'), 'the row takes the ~ off');
   const off = run(RICH, T.edits.member(RICH, V, 'dock', 'dock.charge', 'proxy port charge : ChargeInterface'));
   assert.deepEqual(T.edits.member(off, off.views[0], 'dock', 'dock.charge', 'proxy port charge : ~ChargeInterface'), set('props.valueType', '~ChargeInterface'), 'and puts it back');
@@ -396,19 +397,25 @@ test('audit 23: a view\'s own connector (view.edges object) is drawn, named, des
 // audit 26: F2 with only a port kind keyword ("«full»") named the port "«full»", drawn "«full» «full»"; it sets the kind
 // and keeps the name
 test('audit 26: F2 with only «full» or «proxy» on a port sets its kind and keeps its name', () => {
+  // «full» on the port typed by a block, so it breaks no port-kind (one typed by an interface block is refused, audit 45);
+  // «proxy» on the example's, typed by an interface block
   const m = JSON.parse(readFileSync(new URL('../examples/ebike-structure.json', import.meta.url), 'utf8')), v = m.views.find(x => x.diagram === 'sysml.internal-block'), D = diagramOf(v);
+  const m0 = structuredClone(m); m.nodes.find(n => n.id === 'battery').members.find(x => x.id === 'battery.charge').props.valueType = 'Battery';
   const p = layout(m, v.id).nodes.find(n => n.shape === 'port' && /charge$/.test(n.id));
   for (const t of ['«full»', '«full» ', ' «full»']) assert.deepEqual(D.edits.rename(m, v.id, p.id, t), { commands: [{ op: 'set', id: 'battery.charge', path: 'props.kind', value: 'full' }] }, JSON.stringify(t));
   const m2 = apply(m, D.edits.rename(m, v.id, p.id, '«full»').commands), q = layout(m2, v.id).nodes.find(n => n.id === p.id);
   assert.equal(q.label, '«full» charge'); assert.match(q.aria, /^Full port charge:/);
   assert.deepEqual(D.edits.rename(m2, v.id, p.id, '«full»'), { commands: [] }, 'the kind it has already: nothing');
-  assert.deepEqual(D.edits.rename(m, v.id, p.id, '«proxy» plug').commands.map(c => c.value), ['plug', 'proxy']);
+  assert.deepEqual(D.edits.rename(m0, v.id, p.id, '«proxy» plug').commands.map(c => c.value), ['plug', 'proxy']);
 });
 
 // audit 27: F2 with the keyword glued to the name ("«full»charge") or two spaces after it stored the keyword, or a leading
 // space, in the port's name; F2 reads the keyword with any spacing, so the name loses it the same way
 test('audit 27: F2 with «full» glued to the name or spaced twice sets the kind and stores the bare name', () => {
+  // «full» on the port typed by a block, so it breaks no port-kind (one typed by an interface block is refused, audit 45);
+  // «proxy» on the example's, typed by an interface block
   const m = JSON.parse(readFileSync(new URL('../examples/ebike-structure.json', import.meta.url), 'utf8')), v = m.views.find(x => x.diagram === 'sysml.internal-block'), D = diagramOf(v);
+  const m0 = structuredClone(m); m.nodes.find(n => n.id === 'battery').members.find(x => x.id === 'battery.charge').props.valueType = 'Battery';
   const p = layout(m, v.id).nodes.find(n => n.shape === 'port' && /charge$/.test(n.id));
   for (const t of ['«full»charge', '«full»  charge', ' «full»\tcharge', '«full» charge']) {
     const cs = D.edits.rename(m, v.id, p.id, t).commands;
@@ -416,7 +423,7 @@ test('audit 27: F2 with «full» glued to the name or spaced twice sets the kind
     assert.ok(!cs.some(c => c.path === 'label'), `${JSON.stringify(t)}: the name, charge, kept (${JSON.stringify(cs)})`);
     assert.equal(layout(apply(m, cs), v.id).nodes.find(n => n.id === p.id).label, '«full» charge', JSON.stringify(t));
   }
-  assert.deepEqual(D.edits.rename(m, v.id, p.id, '«proxy»plug').commands.map(c => c.value), ['plug', 'proxy']);
+  assert.deepEqual(D.edits.rename(m0, v.id, p.id, '«proxy»plug').commands.map(c => c.value), ['plug', 'proxy']);
 });
 
 test('audit 28: a listed line of another kind is keyed as it is drawn (a dependency, dashed with an open arrow), after the connector', () => {

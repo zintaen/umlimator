@@ -11,7 +11,9 @@ const WIRE_KINDS = ['calls', 'feeds', 'triggers', 'state', 'guard'], SIDES = ['l
    drawn "[object Object]", said as a label is, at its own path (audit 43: the structural views' instance classifier, link
    association, end role, collaboration use, port and role types were drawn so with no warning, and every other type's fields).
    A field its type marks drawn: false (a reference: a reply's call, a use's interaction, a call activity's element) is never
-   drawn, so its warning says the panel alone shows it (audit 44: each was said "drawn as" what no picture held) */
+   drawn, so its warning says the panel alone shows it (audit 44: each was said "drawn as" what no picture held); drawn: a
+   function (model, element) says whether some view draws it, as a C4 deployment node's description is on a leaf, never on a box
+   (audit 45) */
 const NOT_DRAWN = 'not drawn, and the panel shows it as';
 function fieldTextProblems(m, v, T) {
   const F = T && T.props && typeof T.props === 'object' ? T.props : null; if (!F) return [];
@@ -19,7 +21,7 @@ function fieldTextProblems(m, v, T) {
   const check = (x, at, kind) => { if (!obj(x.props) || typeof kind !== 'string' || !Object.hasOwn(F, kind)) return;
     arr(F[kind]).forEach(f => { if (!obj(f) || f.kind !== 'text' || typeof f.key !== 'string') return; const path = Array.isArray(f.path) ? f.path.map(String) : [f.key];
       let o = x.props; for (const k of path.slice(0, -1)) o = obj(o) && Object.hasOwn(o, k) ? o[k] : undefined;
-      const p = obj(o) && Object.hasOwn(o, path[path.length - 1]) ? labelProblem(o, `${at}.props${path.slice(0, -1).map(k => '.' + k).join('')}`, path[path.length - 1], f.drawn === false ? NOT_DRAWN : undefined) : null; if (p) out.push(p); }); };
+      const p = obj(o) && Object.hasOwn(o, path[path.length - 1]) ? labelProblem(o, `${at}.props${path.slice(0, -1).map(k => '.' + k).join('')}`, path[path.length - 1], f.drawn === false || (typeof f.drawn === 'function' && !f.drawn(m, x)) ? NOT_DRAWN : undefined) : null; if (p) out.push(p); }); };
   const nodes = new Map(); [...arr(m.nodes).map((n, i) => [n, `nodes[${i}]`]), ...arr(v.nodes).map((n, j) => [n, `views[${vi}].nodes[${j}]`])].forEach(([n, at]) => { if (obj(n) && typeof n.id === 'string' && !nodes.has(n.id)) nodes.set(n.id, [n, at]); });
   shown.forEach(id => { if (!nodes.has(id)) return; const [n, at] = nodes.get(id); check(n, at, drawnKind(T, n));
     arr(n.members).forEach((x, j) => { if (obj(x)) { check(x, `${at}.members[${j}]`, x.type); mems.add(x.id); } }); });
@@ -244,6 +246,17 @@ export function validate(model) {
     // a panel's text field that is not text, unless a type's own rule says that path already (audit 43)
     const ruled = new Set(out.map(p => p.path)); views.filter(typedView).forEach(v => fieldTextProblems(m, v, diagramOf(v)).forEach(p => { if (!ruled.has(p.path)) say(p); }));
   }
+  // a change the renderer has no mark for draws unmarked, though a key may say it (audit 45: "bogus" passed, and a line's
+  // "planned" was said and not drawn). In any case, as the renderer reads it; a card's and a member's, a line's, each its own words
+  const CARD_CH = ['added', 'new', 'modified', 'changed', 'removed', 'planned'], LINE_CH = ['added', 'new', 'modified', 'changed', 'removed'];
+  const chIs = (x, at, ok, line) => { if (!x || typeof x !== 'object' || x.change == null) return;
+    if (!(typeof x.change === 'string' && ok.includes(x.change.toLowerCase()))) warn(at + '.change', `change ${jsonText(x.change)} is not ${line ? 'added, changed or removed' : 'added, changed, removed or planned'}: drawn unmarked`); };
+  const deep = (x, at) => { const s = [[x, at]], seen = new Set(); for (let k = 0; k < s.length; k++) { const [y, p] = s[k]; if (!y || typeof y !== 'object' || seen.has(y)) continue; seen.add(y); chIs(y, p, CARD_CH);
+    arr(y.members).forEach((z, j) => s.push([z, `${p}.members[${j}]`])); } };
+  arr(m.nodes).forEach((n, i) => deep(n, `nodes[${i}]`)); arr(m.edges).forEach((e, i) => chIs(e, `edges[${i}]`, LINE_CH, true));
+  views.forEach(v => { const i = arr(m.views).indexOf(v); arr(v.nodes).forEach((n, j) => deep(n, `views[${i}].nodes[${j}]`)); arr(v.fragments).forEach((f, j) => deep(f, `views[${i}].fragments[${j}]`));
+    arr(v.edges).forEach((e, j) => chIs(e, `views[${i}].edges[${j}]`, LINE_CH, true));
+    if (v.nodeOverrides && typeof v.nodeOverrides === 'object') Object.entries(v.nodeOverrides).forEach(([id, o]) => chIs(o, `views[${i}].nodeOverrides.${id}`, CARD_CH)); });
   // a value left out is said once, as left out: not again at its path as a missing end, type or name (audit 21: a line's
   // end {"toString": 1} was also '"undefined" is neither a card nor a box'). A path in the copy, where a list's entry
   // left out moved the ones after it up, is said as the model has it, so the next entry's problem is said, at its own

@@ -80,20 +80,24 @@ const ovQuiet = s => s.replace(/<(?:rect|path) [^>]*class="(?:ll-hit|f-hit)"[^>]
   .replace(/ (?:data-id|data-o|tabindex|role|aria-label)="[^"]*"/g, '').replace(/class="n-mask"/g, 'fill="var(--um-mask)" class="ov-mask"').replace(/class="n-body/g, 'stroke-width="1.5" class="ov-body');
 // a message as the sequence view draws it, by hand: its path (dashed for a reply or a create), its arrowhead, its label
 const OV_TIP = { arrow: [10, 4, true], open: [10, 5, false] };
-function ovMessage(e) {
+// added green, removed rose and dashed, as the sequence view draws diff()'s marks (audit 45: an inline message drawn as live)
+const OV_CH = { added: ['var(--um-green)', ''], new: ['var(--um-green)', ''], removed: ['var(--um-rose)', '5 5'] };
+function ovMessage(e, change) {
+  const C = OV_CH[String(change || '').toLowerCase()], line = C ? C[0] : OV_SD.line;
   const T = OV_TIP[e.end && e.end.to] || OV_TIP.open, P = e.pts, [p, q] = P.slice(-2), L = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1, u = [(q[0] - p[0]) / L, (q[1] - p[1]) / L];
-  const b = [q[0] - u[0] * T[0], q[1] - u[1] * T[0]], s = [-u[1] * T[1], u[0] * T[1]], pts = T[2] ? trimLine(P, 0, T[0]) : P, dash = e.end && e.end.dashed ? ' stroke-dasharray="6 4"' : '';
+  const b = [q[0] - u[0] * T[0], q[1] - u[1] * T[0]], s = [-u[1] * T[1], u[0] * T[1]], pts = T[2] ? trimLine(P, 0, T[0]) : P, dash = C && C[1] ? ` stroke-dasharray="${C[1]}"` : e.end && e.end.dashed ? ' stroke-dasharray="6 4"' : '';
   const tip = `M${r2(b[0] + s[0])} ${r2(b[1] + s[1])}L${r2(q[0])} ${r2(q[1])}L${r2(b[0] - s[0])} ${r2(b[1] - s[1])}${T[2] ? 'Z' : ''}`, l = e.lbl;
-  return `<g class="ov-msg" data-sort="${esc(e.sort)}"><path d="M${pts.map(c => `${r2(c[0])} ${r2(c[1])}`).join('L')}" fill="none" stroke="${OV_SD.line}" stroke-width="1.4"${dash}/>`
-    + `<path d="${tip}" fill="${T[2] ? OV_SD.line : 'none'}" stroke="${OV_SD.line}" stroke-width="1.4" stroke-linejoin="round"/>`
+  return `<g class="ov-msg" data-sort="${esc(e.sort)}"><path d="M${pts.map(c => `${r2(c[0])} ${r2(c[1])}`).join('L')}" fill="none" stroke="${line}" stroke-width="1.4"${dash}/>`
+    + `<path d="${tip}" fill="${T[2] ? line : 'none'}" stroke="${line}" stroke-width="1.4" stroke-linejoin="round"/>`
     + (l && OV_HAS(l.text) ? `<g class="ov-lab"><rect x="${r2(l.x)}" y="${r2(l.y)}" width="${r2(l.w)}" height="${r2(l.h)}" fill="${OV_SD.bg}"/>${brLines(l.text).map((t, i) => `<text x="${r2(l.x + l.w / 2)}" y="${r2(l.y + 12 + i * 13)}" text-anchor="middle" fill="var(--um-text)" style="font:500 10.5px var(--um-sans)">${esc(fit(t, 10.5, l.w))}</text>`).join('')}</g>` : '') + '</g>';
 }
 // the sequence's picture inside the frame: sqDraw's layer (frames, stems, uses' boxes, bars, crosses), then each head, each
 // fragment's tag, each operand's guard and each use's name by frame.js's shapes, then the messages
-function ovInner(run) {
+function ovInner(run, sv) {
+  const ch = new Map(OV_ARR(sv && sv.edges).filter(OV_OBJ).filter(e => typeof e.change === 'string').map(e => [e.id, e.change]));
   const by = s => run.nodes.filter(n => n.shape === s), C = 'var(--um-slate)', F = 'var(--um-slate-f)';
   return ovQuiet(sqDraw(run, { esc, r2, textW }).under + by('lifeline').map(n => SHAPE.lifeline.draw(n, C, F)).join('')
-    + ['frame', 'operand', 'use'].map(s => by(s).map(n => SHAPE[s].draw(n, C, F)).join('')).join('') + run.edges.map(ovMessage).join(''));
+    + ['frame', 'operand', 'use'].map(s => by(s).map(n => SHAPE[s].draw(n, C, F)).join('')).join('') + run.edges.map(e => ovMessage(e, ch.get(e.id))).join(''));
 }
 const ovTagOf = t => tagSize(`sd ${t}`).h; // the tag over an inline sequence: its name's lines
 SHAPE['ov-inline'] = { ...ovBox,
@@ -158,7 +162,7 @@ function ovGeo({ model, view, pos, memo }) {
     if (shape === 'rounded') d.stereotypes = ovStereo(x);
     if (shape === 'bar') Object.assign(d, { busy: Math.max(ins.get(id) || 0, outs.get(id) || 0), down });
     if (shape === 'ov-inline') { const b = sd && sd.run && sd.run.bounds, tw = tagSize(`sd ${d.label}`).w + 2 * OV_SD.pad;
-      return { ...d, ...(b ? { w: Math.ceil(Math.max(b.w + 2 * OV_SD.pad, tw)), h: Math.ceil(ovTagOf(d.label) + b.h), sd: { bounds: b, markup: ovInner(sd.run) } } : useSize(d.label)) }; }
+      return { ...d, ...(b ? { w: Math.ceil(Math.max(b.w + 2 * OV_SD.pad, tw)), h: Math.ceil(ovTagOf(d.label) + b.h), sd: { bounds: b, markup: ovInner(sd.run, sd.view) } } : useSize(d.label)) }; }
     return { ...d, ...SHAPE[shape].size(d) }; });
   const edges = I.lines.map(e => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, aria: ovFlowName(I, e), ...(OV_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}),
     ...(e.type === 'uml.CommentLink' ? { end: { from: 'none', to: 'none', dashed: true } }

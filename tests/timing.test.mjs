@@ -727,3 +727,20 @@ test('audit 41: the PDF\'s rows keep a constraint on the earlier of two changes 
   assert.deepEqual(T.edits.moveTo(m, 'v', 'p', { by: [0, -1] }), [{ op: 'move', id: 'p', view: 'v', index: 0 }]);
   assert.deepEqual(T.edits.moveTo(m, 'v', 'p', { by: [0, 1] }), []); assert.deepEqual(T.edits.moveTo(m, 'v', 'w', { by: [0, -1] }), []);
 });
+
+// audit 45: a lane's state, the timeline's unit or a change's state that is not text is drawn "[object Object]": said as a label
+// is, at its own path, and a change's not as an unlisted state; a number is drawn as written, said nothing
+test('audit 45: a state, the unit or a change\'s state that is not text is said as a label is', () => {
+  const said = m => validate(m).filter(p => p.level === 'warning').map(p => `${p.path}: ${p.message}`);
+  const a = EX(); a.nodes[0].props.states.push({ name: 'Refunding' }, 7);
+  assert.deepEqual(said(a), ['nodes[0].props.states[3]: states[3] {"name":"Refunding"} is not text: drawn as "[object Object]"']);
+  const u = EX(); TL(u).unit = { u: 'ms' };
+  assert.deepEqual(said(u), ['views[0].timeline.unit: unit {"u":"ms"} is not text: drawn as "[object Object]"']);
+  const c = EX(); ch(c, 'w-waiting').state = { s: 'Waiting' };
+  assert.deepEqual(said(c), ['views[0].timeline.changes[1].state: state {"s":"Waiting"} is not text: drawn as "[object Object]"']);
+  // the values form draws no state rows: its states list is not said; a hidden lifeline's states neither
+  const v = EX(); v.nodes[0].props.states.push({ name: 'Refunding' }); V(v).present = { worker: { as: 'values' } }; assert.deepEqual(said(v), []);
+  const h = EX(); h.nodes[0].props.states.push({ name: 'Refunding' }); V(h).nodeIds = ['payments']; TL(h).changes = TL(h).changes.filter(x => x.lifeline === 'payments'); TL(h).constraints = []; V(h).edges = [];
+  assert.deepEqual(said(h), []);
+  assert.deepEqual(said(EX()), []);
+});

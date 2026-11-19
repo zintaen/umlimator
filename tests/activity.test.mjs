@@ -268,7 +268,7 @@ test('connect: a flow of the kind picked; a decision\'s second exit gets else; a
   assert.match(actConnect(EX, V(EX), 'take-order', 'start', null, CF).error, /^initial-flows: /);
   assert.match(actConnect(EX, V(EX), 'take-order', 'lane-email', null, CF).error, /^flow-ends: /);
   assert.match(actConnect(EX, V(EX), 'done', 'ship', null, CF).error, /^final-flows: /);
-  assert.equal(actConnect(EX, V(EX), 'start', 'ship', null, { type: 'uml.CommentLink' }), null, 'a comment link is the default\'s');
+  assert.deepEqual(actConnect(EX, V(EX), 'start', 'ship', null, { type: 'uml.CommentLink' }), { error: 'A comment link runs from a comment' }, 'a comment link with no comment: refused (audit 45)');
   assert.equal(actConnect(apply(EX, { op: 'add', element: F('start-pick', 'start', 'pick') }), V(EX), 'pick', 'ship', null, CF)[0].element.id, 'pick-ship');
 });
 test('add: a node in the partition selected, or in the lane of the node selected; control nodes with no label; a call behaviour action asks which activity view it opens', () => {

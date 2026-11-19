@@ -446,3 +446,25 @@ test('audit 43: validate() says a drawn instance\'s classifier, a link\'s associ
   const ok = structuredClone(m); ok.nodes[0].props.classifier = 'A'; ok.edges[0].props = { association: 'owns', ends: { to: { role: 7 } } };
   assert.deepEqual(said(ok), [], 'text and numbers are text');
 });
+
+// audit 45: a classifier drawn beside instances (object view) or an interface drawn as a box (component view) draws an
+// attribute's multiplicity, `[lots]`: judged as the class view judges it (multiplicity), its words and its path
+test('a drawn classifier\'s attribute multiplicity is judged as the class view judges it, on the object and component views (audit 45)', async () => {
+  await import('../src/uml/component.js');
+  for (const [d, t] of [['uml.object', 'uml.Class'], ['uml.component', 'uml.Interface']]) {
+    const m = mult => ({ schemaVersion: 2, nodes: [{ id: 'i', type: t, label: 'Api', members: [{ id: 'pr', type: 'uml.Property', label: 'size', props: { valueType: 'Int', ...(mult !== undefined ? { multiplicity: mult } : {}) } }] }], edges: [], views: [{ id: 'v', diagram: d, nodeIds: ['i'] }] });
+    const said = mult => validate(m(mult)).filter(p => p.rule === 'multiplicity').map(p => `${p.level} ${p.path} ${p.message}`);
+    assert.deepEqual(said({ lo: 1 }), ['error nodes[0].members[0].props.multiplicity multiplicity: "Api".size: [[object Object]] is not a multiplicity (1, *, 0..1, 1..*)'], d);
+    assert.deepEqual(said('lots'), ['error nodes[0].members[0].props.multiplicity multiplicity: "Api".size: [lots] is not a multiplicity (1, *, 0..1, 1..*)'], d);
+    assert.deepEqual(said('5..2'), ['error nodes[0].members[0].props.multiplicity multiplicity: "Api".size: [5..2] has its lower bound above its upper'], d);
+    for (const ok of ['1', '0..*', '*', undefined, '']) assert.deepEqual(said(ok), [], `${d} ${ok}`);
+    assert.ok(Object.hasOwn(diagramOf({ diagram: d }).rules, 'multiplicity'), d);
+    // with a class view of it too, said once
+    const both = m('lots'); both.views.push({ id: 'c', diagram: 'uml.class', nodeIds: ['i'] });
+    assert.equal(validate(both).filter(p => p.rule === 'multiplicity').length, 1, d);
+  }
+  // an interface drawn as a ball draws no rows: nothing said
+  const ball = { schemaVersion: 2, nodes: [{ id: 'c', type: 'uml.Component', label: 'C' }, { id: 'i', type: 'uml.Interface', label: 'Api', members: [{ id: 'pr', type: 'uml.Property', label: 'size', props: { multiplicity: 'lots' } }] }],
+    edges: [{ id: 'r', type: 'uml.InterfaceRealization', from: 'c', to: 'i' }], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['c', 'i'], present: { i: { as: 'ball' } } }] };
+  assert.deepEqual(validate(ball).filter(p => p.rule === 'multiplicity'), []);
+});

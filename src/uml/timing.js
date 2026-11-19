@@ -1,5 +1,5 @@
 import { registerDiagramType, idTable } from '../core/registry.js';
-import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
+import { copyOf, usedIds, jsonText, labelOr, elName, labelProblem } from '../core/model.js';
 import { apply } from '../core/apply.js';
 import { interactionEvery } from './interaction.js';
 import { esc, fit, textW, widest } from '../core/text.js';
@@ -212,12 +212,18 @@ function tmProblems(model, view) {
   // first lists it, as the mindmap view says one (audit 31: it went without a word)
   TM_ARR(V.nodeIds).forEach((id, i) => { if (typeof id !== 'string' || !X.N.has(id) || X.N.get(id).type === 'uml.Lifeline' || TM_ARR(V.nodeIds).indexOf(id) !== i) return; const n = X.N.get(id), t = n.type;
     say('timing-kinds', `${at}.nodeIds[${i}]`, [id], `${jsonText(id)} (${jsonText(elName(n))}) ${t == null || t === '' ? 'has no type, so it is' : `is of type ${jsonText(t)}, which is`} no lifeline: not drawn`, 'warning'); });
+  // a value drawn as text that is not text: a lane's state (a row in the states form), the timeline's unit (the ruler and every
+  // time), a change's state, said as a label is, never "[object Object]" in silence or as an unlisted state (audit 45)
+  const nPath = n => (TM_ARR(V.nodes).includes(n) ? `${at}.nodes[${TM_ARR(V.nodes).indexOf(n)}]` : `nodes[${TM_ARR(model.nodes).indexOf(n)}]`), text = p => { if (p) out.push(p); };
+  X.heads.forEach(n => { if (!X.values(n.id)) TM_ARR(tmProps(n).states).forEach((s, k) => text(labelProblem({ [`states[${k}]`]: s }, `${nPath(n)}.props`, `states[${k}]`))); });
+  if (TM_HAS(TL.unit)) text(labelProblem(TL, `${at}.timeline`, 'unit'));
   const seen = new Map();
   X.changes.forEach(c => { const n = X.N.get(c.lifeline);
     if (!n || n.type !== 'uml.Lifeline') return say('change-lifeline', cPath(c) + '.lifeline', [c.id], `change ${c.id} names ${jsonText(c.lifeline)}, which is not a lifeline of the model`);
     if (!tmNum(c.at)) return say('change-time', cPath(c) + '.at', [c.id], `change ${c.id}'s time ${jsonText(c.at)} ${tmWhy(c.at)}`);
     if (!X.H.has(c.lifeline)) return; // a hidden lifeline keeps its changes, not drawn and not warned (§7.2)
-    if (!X.values(c.lifeline) && !tmStates(n).includes(String(c.state ?? ''))) say('change-state', cPath(c) + '.state', [c.id, c.lifeline], `change ${c.id}'s state ${jsonText(c.state)} is not one of ${tmName(n)}'s states: drawn on an extra row`, 'warning');
+    const odd = labelProblem(c, cPath(c), 'state'); if (odd) text(odd);
+    else if (!X.values(c.lifeline) && !tmStates(n).includes(String(c.state ?? ''))) say('change-state', cPath(c) + '.state', [c.id, c.lifeline], `change ${c.id}'s state ${jsonText(c.state)} is not one of ${tmName(n)}'s states: drawn on an extra row`, 'warning');
     const k = `${c.lifeline} ${c.at}`; if (!seen.has(k)) seen.set(k, [n]); seen.get(k).push(c); });
   seen.forEach(([n, ...cs]) => { const ids = cs.map(c => c.id); // one warning an instant, naming all its changes and the one drawn
     if (cs.length > 1) say('change-instant', cPath(cs[1]) + '.at', ids, `${tmName(n)} changes ${cs.length > 2 ? cs.length + ' times' : 'twice'} at ${X.t(cs[0].at)} (${ids.slice(0, -1).join(', ')} and ${ids.at(-1)}): only ${[...ids].sort().pop()} is drawn`, 'warning'); });

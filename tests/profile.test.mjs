@@ -565,3 +565,25 @@ test('connect: a comment link drawn to a comment is added from it, and a general
   assert.deepEqual(g('k', 'a'), { error: 'A generalization joins two classifiers of one kind, not a comment and a class' });
   for (const [f, t] of [['a', 'a2'], ['u', 'a'], ['a', 'blk']]) { assert.equal(g(f, t), null, `${f} to ${t}`); } // an untyped one is a class; another notation's end is its own
 });
+
+// audit 45: a stereotype or a classifier moved (a drop, the Owner field) into an owner whose kin holds its name is refused in the
+// words an add or a rename takes (stereotype-names, classifier-names); a move that clashes with nothing is the default
+test('a stereotype or classifier moved into an owner that holds its name is refused, the drop and the Owner field alike (audit 45)', async () => {
+  const { typedEditor } = await import('../src/canvas/edit.js'); await import('../src/typed/edit.js');
+  const m = { schemaVersion: 2, nodes: [N('p1', 'Profile', 'One'), N('s1', 'Stereotype', 'Entity', 'p1'), N('p2', 'Profile', 'Two'), N('s2', 'Stereotype', 'entity', 'p2'), N('s3', 'Stereotype', 'Audit', 'p1'),
+    N('app', 'Package', 'App'), N('c1', 'Class', 'Order', 'app'), N('c2', 'Class', 'Order'), N('c3', 'Class', 'Line')],
+    edges: [], views: [{ id: 'v', diagram: 'uml.profile', nodeIds: ['p1', 's1', 'p2', 's2', 's3', 'app', 'c1', 'c2', 'c3'] }] };
+  const run = (id, into, how) => { const got = [], status = [];
+    const I = typedEditor({ root: { addEventListener() {} }, stage: { addEventListener() {} }, can: () => true, say() {}, status: s => status.push(s), emit: c => got.push(c), view: () => 'v', model: () => m, picked: () => [], sel: () => null,
+      geo: () => ({ byId: {}, nodes: [] }), cam: () => null, focus() {}, touch() {} });
+    if (how === 'drop') I.drop({ id, x: 0, y: 0, w: 100, h: 40, col: 0, row: 0 }, { x: 500, y: 500, col: 3, row: 3 }, into, m.nodes.find(n => n.id === id).parent ?? null); else I.owner(id, into);
+    return { cmds: got.flat(), status }; };
+  for (const how of ['drop', 'owner']) {
+    assert.deepEqual(run('s1', 'p2', how), { cmds: [], status: ['Two has a stereotype entity already: names meet with the first letter in either case'] }, how);
+    assert.deepEqual(run('c1', null, how), { cmds: [], status: ['The model has a classifier named Order already'] }, how);
+    assert.deepEqual(run('c2', 'app', how), { cmds: [], status: ['App has a classifier named Order already'] }, how);
+    const ok = run('s3', 'p2', how); assert.deepEqual(ok.cmds, [{ op: 'reparent', id: 's3', parent: 'p2' }], how);
+    assert.deepEqual(validate(apply(m, ok.cmds)).filter(p => /names/.test(p.message)), [], how);
+    assert.deepEqual(run('c3', 'app', how).cmds, [{ op: 'reparent', id: 'c3', parent: 'app' }], how); }
+  assert.deepEqual(run('s1', 'app', 'owner').status, ['A stereotype is owned by a profile'], 'the kind is said first');
+});

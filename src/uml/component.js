@@ -3,7 +3,7 @@ import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { CLASSIFIERS, lineRename, memberClash, memberEdit, paramTextProblems, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
+import { CLASSIFIERS, RULES, commentConnect, lineRename, multProblem, memberClash, memberEdit, paramTextProblems, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 import { SN_ARTIFACTS, SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, snKindName, snKindWord, structProblems } from './structure.js';
 import { usedIds, jsonText, labelOr, elName, propTextProblems } from '../core/model.js';
@@ -226,6 +226,7 @@ const CP_RULES = {
   'assembly-ends': 'an assembly joins two components or their ports, neither inside the other',
   'component-realization-ends': 'a component realization runs from a class or a component to a component',
   'component-owner': 'a component\'s owner is a component or a package',
+  multiplicity: RULES.multiplicity, // an interface box's attribute's, as the class view's (audit 45)
   'line-inside': 'a line between a box and something it holds, with no port at the box\'s end, is not drawn (a connector: delegation-ends, assembly-ends)',
 };
 function cpProblems(model, view) {
@@ -254,7 +255,9 @@ function cpProblems(model, view) {
       const box = n.type === 'uml.Interface' && !cpBall(I, view, n.id);
       CP_ARR(n.members).forEach((m, j) => { if (!CP_OBJ(m)) return; const at = `nodes[${i}].members[${j}]`;
         if (m.type === 'uml.Port' && (I.P.get(m.id) || {}).owner === n.id) out.push(...propTextProblems(m, at, ['valueType']));
-        else if (box && (m.type === 'uml.Operation' || m.type === 'uml.Property')) out.push(...propTextProblems(m, at, ['valueType', 'default', 'returnType']), ...paramTextProblems(m, at)); }); });
+        else if (box && (m.type === 'uml.Operation' || m.type === 'uml.Property')) { out.push(...propTextProblems(m, at, ['valueType', 'default', 'returnType']), ...paramTextProblems(m, at));
+          // and the multiplicity it draws, `[1..*]`, judged as the class view judges it (audit 45)
+          const t = CP_OBJ(m.props) ? m.props.multiplicity : null, p = CP_HAS(t) && multProblem(String(t), `${at}.props.multiplicity`, [m.id], `${q(n.id)}.${m.label}`); if (p) out.push(p); } }); });
     pic.inside.forEach(({ e, from, to }) => { if (e.type !== 'uml.Connector') out.push(lineInside(view, vi, e, from, to, q)); });
     Object.entries(CP_OBJ(view.present) ? view.present : {}).forEach(([id, p]) => { if (CP_OWN(p, 'as') === 'ball' && (I.N.get(id) || {}).type !== 'uml.Interface')
       say('warning', 'ball-interface', `views[${vi}].present`, [id], `${q(id)} is not an interface: view ${jsonText(view.id)} does not draw it as a ball`); }); }
@@ -278,6 +281,7 @@ const cpPortPrint = m => `${m.label ?? ''}${CP_HAS(cpProps(m).valueType) ? ' : '
 // connect: a connector between a port (or component) and one inside its owner is a delegation, else an assembly
 function cpConnect(model, view, from, to, at, line) {
   if (!CP_OBJ(line)) return null;
+  if (line.type === 'uml.CommentLink') return commentConnect(model, view, from, to, line); // from the comment (audit 45)
   const I = cpIndex(model), within = (a, b) => I.chain(I.comp(a)).includes(I.comp(b)), t = line.type, port = id => I.P.has(id);
   // a realization, a component realization or a manifestation the rules call an error is refused, said in the rule's words; a
   // manifestation drawn from the component to its artifact is added from the artifact, as the deployment view's (audit 20)

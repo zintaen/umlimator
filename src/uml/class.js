@@ -38,6 +38,10 @@ function multBounds(t) {
   return m[2] == null ? (m[1] === '*' ? { lower: 0, upper: Infinity } : { lower: +m[1], upper: +m[1] }) : { lower: +m[1], upper: n(m[2]) };
 }
 
+// the multiplicity rule's problem for text t drawn as [t] (what: whose, `"Order".lines`), or null: a malformed multiplicity or one
+// whose lower bound is above its upper, an error, as the class view and every view drawing a classifier's rows say it (audit 45)
+function multProblem(t, path, ids, what) { const b = multBounds(t), say = msg => ({ level: 'error', rule: 'multiplicity', path, ids: ids.filter(x => x != null), message: `multiplicity: ${what}: [${t}] ${msg}` });
+  return !b ? say('is not a multiplicity (1, *, 0..1, 1..*)') : b.lower > b.upper ? say('has its lower bound above its upper') : null; }
 // s split at each `sep` outside brackets of any kind: "a: Map<K, V>, b" → ["a: Map<K, V>", " b"]
 function splitTop(s, sep) {
   const out = []; let depth = 0, from = 0;
@@ -373,10 +377,7 @@ function classProblems(model, view) {
       out.push(...paramTextProblems(m, `${path}.members[${j}]`)); }); // and an operation's parameters (audit 41)
     if ((OWN_BOXES.includes(x.type) || x.type === 'uml.Comment' || x.type === 'uml.MetaclassReference') && ms.length) say('member-kinds', `${path}.members`, [x.id], `${q(x.id)} is a ${typeWord(x.type).toLowerCase()}, which has no members`);
   });
-  function multRule(t, path, ids, what) { const b = multBounds(t);
-    if (!b) say('multiplicity', path, ids, `${what}: [${t}] is not a multiplicity (1, *, 0..1, 1..*)`);
-    else if (b.lower > b.upper) say('multiplicity', path, ids, `${what}: [${t}] has its lower bound above its upper`);
-    return b; }
+  function multRule(t, path, ids, what) { const p = multProblem(t, path, ids, what); if (p) out.push(p); return multBounds(t); }
   const byOwner = new Map(); nodes.filter(r => CLASSIFIERS.includes(tyOf(r.x))).forEach(({ x, path }) => { const k = (x.parent ?? '') + '\u0000' + nameOfEl(x), was = byOwner.get(k);
     if (was) say('classifier-names', path, [was, x.id], `${q(x.id)} is named twice in ${x.parent != null ? q(x.parent) : 'the model'} (${was}, ${x.id})`); else byOwner.set(k, x.id); });
   const parents = new Map();
@@ -425,12 +426,14 @@ function closesCycle(model, view, type, from, to, word = 'a generalization', sai
 }
 // connect on a class view: a generalization that would close a cycle is refused (generalization-cycle), and a realization
 // realization-target calls an error, in its words, as the component view's (audit 38); else the default
-// a comment link (comment-link) on the class, package and profile views: drawn from an element to a comment, added from the
+// a comment link (comment-link) on the class, package, profile, object, component, deployment and composite views: drawn from an element to a comment, added from the
 // comment, as the deployment view turns a deploy drawn the wrong way round; with no comment at either end, refused in the rule's
 // words, as the block view's (audit 44). Null: not a comment link, or drawn from a comment
 function commentConnect(model, view, from, to, line) {
   if (!UML_OBJ(line) || line.type !== 'uml.CommentLink') return null;
-  const I = classIndex(UML_OBJ(model) ? model : {}), isNote = id => { const r = I.get(id); return !!r && r.x.type === 'uml.Comment'; };
+  // a comment the model holds, or the view's own (view.nodes), as the object, component, deployment and composite views draw one (audit 45)
+  const I = classIndex(UML_OBJ(model) ? model : {}), own = UML_ARR(UML_OBJ(view) && view.nodes);
+  const isNote = id => { const r = I.get(id), x = r ? r.x : own.find(n => UML_OBJ(n) && n.id === id); return !!x && x.type === 'uml.Comment'; };
   if (isNote(from)) return null;
   if (!isNote(to)) return { error: 'A comment link runs from a comment' };
   const used = new Set(); usedIds(model, used); let k = 1; while (used.has('commentlink' + k)) k++;
@@ -496,4 +499,4 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   edits: { connect: classConnect, rename: lineRename(lineLabel), owner: defOwner },
 });
 
-export { CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, memberClash, paramTextProblems, classProblems, closesCycle, commentConnect, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
+export { CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, multProblem, parseMember, printMember, memberEdit, memberClash, paramTextProblems, classProblems, closesCycle, commentConnect, classDescribe, classGeo, typeGeo, describeAs, drawnLines };

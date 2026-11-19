@@ -614,3 +614,17 @@ test('audit 41: a story step selecting an implied line ("a->b") is checked again
   const map = { nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }], stories: [{ id: 's', title: 'S', steps: [{ view: 'v', select: 'a->b#0' }, { view: 'v', select: 'a->b' }] }] };
   assert.deepEqual(validate(map).filter(p => p.path.startsWith('stories')).map(p => p.path), ['stories[0].steps[1].select']);
 });
+
+// audit 45: a deployment node's description is drawn on it as a leaf, never on a box: one that is not text is said "drawn as" only
+// when some view draws the node as a leaf, else "not drawn"
+test('audit 45: a deployment node\'s description that is not text is said drawn only where a view draws the node as a leaf', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'S', type: 'c4.SoftwareSystem', label: 'S' }, { id: 'c', type: 'c4.Container', label: 'C', parent: 'S', props: { description: 'd', technology: 't' } },
+    { id: 'dn', type: 'c4.DeploymentNode', label: 'Host', props: { description: { note: 'big VM' }, technology: 'Ubuntu' } }, { id: 'ci', type: 'c4.ContainerInstance', parent: 'dn', props: { container: 'c' } }],
+  edges: [], views: [{ id: 'd', diagram: 'c4.deployment', title: 'Box', nodeIds: ['dn', 'ci'] }] };
+  const said = x => validate(x).filter(p => p.path === 'nodes[2].props.description').map(p => p.message);
+  assert.ok(!svgOf(layout(m, 'd')).includes('[object Object]'));
+  assert.deepEqual(said(m), ['description {"note":"big VM"} is not text: not drawn, and the panel shows it as "[object Object]"'], 'a box only');
+  const leaf = structuredClone(m); leaf.views.push({ id: 'l', diagram: 'c4.deployment', title: 'Leaf', nodeIds: ['dn'] });
+  assert.ok(svgOf(layout(leaf, 'l')).includes('[object Object]'));
+  assert.deepEqual(said(leaf), ['description {"note":"big VM"} is not text: drawn as "[object Object]"'], 'a leaf in one view: drawn there');
+});

@@ -3,7 +3,7 @@ import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { brLines } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
-import { lineItem, lineRename } from './class.js'; // SHAPE.note, a comment's look too
+import { commentConnect, lineItem, lineRename } from './class.js'; // SHAPE.note, a comment's look too
 import { lineInside, ownersOn, readingOrder, viewLines } from './owners.js';
 import { SN_SAY, STRUCT_RULES, snKindName, snKindWord, structProblems } from './structure.js'; // SHAPE.artifact and SHAPE.component too
 import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
@@ -226,6 +226,7 @@ function dpConnect(model, view, from, to, at, line) {
   const I = dpIndex(model), ty = id => (I.at.get(id) || {}).type, t = DP_OBJ(line) ? line.type : null;
   if (I.holds(from, to) || I.holds(to, from)) { const [o, x] = I.holds(from, to) ? [from, to] : [to, from], nm = id => dpName(I.at.get(id));
     return { error: t === 'uml.Deployment' && DP_ARTIFACTS.includes(ty(x)) ? `${nm(x)} is already deployed on ${nm(o)} by nesting` : `A ${(DP_LINE_WORD[t] || 'line').toLowerCase()} cannot join a node and what it holds` }; }
+  if (t === 'uml.CommentLink') return commentConnect(model, view, from, to, line); // from the comment (audit 45)
   const flip = (t === 'uml.Deployment' && DP_TARGETS.includes(ty(from)) && DP_ARTIFACTS.includes(ty(to))) || (t === 'uml.Manifestation' && ty(from) === 'uml.Component' && DP_ARTIFACTS.includes(ty(to)));
   if (t === 'uml.Deployment' && !flip && !(DP_ARTIFACTS.includes(ty(from)) && DP_TARGETS.includes(ty(to)))) return { error: 'A deployment runs from an artifact to a node, a device or an execution environment' };
   if (t === 'uml.Manifestation' && !flip && !DP_ARTIFACTS.includes(ty(from))) return { error: 'A manifestation runs from an artifact' }; // manifest-ends (audit 20)

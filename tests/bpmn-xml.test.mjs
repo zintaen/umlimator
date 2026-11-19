@@ -15,6 +15,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { readBpmnXml as read, writeBpmnXml as write } from '../src/readers/bpmn-xml.js';
+import { validate } from '../lib/umlimator-all.js';
 
 const folder = process.env.UMLIMATOR_BPMN_MODDLE || process.cwd();
 let BpmnModdle = null, why = '';
@@ -100,7 +101,11 @@ function generated(seed) {
   const line = (type, from, to, props = {}) => { const e = { id: id(), type, from: from.id, to: to.id, ...(type.endsWith('Flow') ? named() : {}) };
     props = { ...props, ...doc() }; if (Object.keys(props).length) e.props = props; edges.push(e); };
   for (let c = Math.floor(rnd() * 12); c > 0 && flow.length; c--) line('bpmn.SequenceFlow', pick(flow), pick(flow));
-  for (let c = Math.floor(rnd() * 4); c > 0 && pools.length; c--) line('bpmn.MessageFlow', pick([...flow, ...pools]), pick([...flow, ...pools]));
+  // a none end or throw event a message flow leaves, or a none start event one arrives at, is a message one: the reader
+  // reads it so and says it (audit 44)
+  const msgEnd = (x, kinds) => { if (kinds.includes(x.type) && (x.props?.definition ?? 'none') === 'none') x.props = { ...x.props, definition: 'message' }; return x; };
+  for (let c = Math.floor(rnd() * 4); c > 0 && pools.length; c--) { const a = pick([...flow, ...pools]), b = pick([...flow, ...pools]);
+    line('bpmn.MessageFlow', msgEnd(a, ['bpmn.EndEvent', 'bpmn.IntermediateThrowEvent']), msgEnd(b, ['bpmn.StartEvent'])); }
   for (const n of notes) if (some(.7)) line('bpmn.Association', n, pick([...flow, ...data, ...notes]), some(.5) ? { direction: pick(['one', 'both']) } : {});
   const into = flow.filter(n => ['bpmn.Task', 'bpmn.SubProcess', 'bpmn.CallActivity', 'bpmn.EndEvent', 'bpmn.IntermediateThrowEvent'].includes(n.type));
   const outOf = flow.filter(n => ['bpmn.Task', 'bpmn.SubProcess', 'bpmn.CallActivity', 'bpmn.StartEvent', 'bpmn.IntermediateCatchEvent', 'bpmn.BoundaryEvent'].includes(n.type));
@@ -606,4 +611,90 @@ test('audit 43: a character reference above U+FFFF is read as its character, one
   assert.equal(doc.model.nodes[0].props.documentation, '&#x1F4E6;');
   for (const junk of ['<!--' + '&#x1F4E6;'.repeat(1000), '<![CDATA['.repeat(5000), '<?'.repeat(5000) + '&#1114112;', '&#' + '9'.repeat(5000) + ';'])
     assert.ok(Array.isArray((await read(junk, BpmnModdle())).report), junk.slice(0, 20));
+});
+
+test('audit 45: a text annotation, and every other label, that is a number or true is written as its text; the export is not lost', needs, async () => {
+  const L = (k, v) => ({ schemaVersion: 2, nodes: [{ id: 'p', type: 'bpmn.Participant', label: k === 'pool' ? v : 'Shop', members: [{ id: 'l', type: 'bpmn.Lane', label: k === 'lane' ? v : 'Desk' }] },
+    { id: 's', type: 'bpmn.StartEvent', label: k === 'event' ? v : 'Go', parent: 'l' }, { id: 't', type: 'bpmn.Task', label: k === 'task' ? v : 'Pack', parent: 'l' },
+    { id: 'a', type: 'bpmn.TextAnnotation', label: k === 'note' ? v : 'Note', parent: 'p' }, { id: 'g', type: 'bpmn.Group', label: k === 'group' ? v : 'Grp' }],
+    edges: [{ id: 'f', type: 'bpmn.SequenceFlow', from: 's', to: 't', label: k === 'flow' ? v : 'go' }, { id: 'x', type: 'bpmn.Association', from: 'a', to: 't' }],
+    views: [{ id: 'v', diagram: 'bpmn', title: k === 'view' ? v : 'V', nodeIds: ['p', 's', 't', 'a', 'g'] }] });
+  for (const v of [48, 0, -1.5, true, false]) for (const k of ['note', 'pool', 'lane', 'event', 'task', 'group', 'flow', 'view']) {
+    const w = await write(L(k, v), 'v', null, BpmnModdle());
+    assert.ok(w.xml.length > 500, `${k} ${v}: ${JSON.stringify(w.report)}`); assert.deepEqual(w.report, [], `${k} ${v}`);
+    const back = (await read(w.xml, BpmnModdle())).model, all = [...back.nodes, ...back.nodes.flatMap(n => n.members || []), ...back.edges];
+    assert.ok([...all.map(n => n.label), ...back.views.map(x => x.title)].includes(String(v)), `${k} ${v} read back as its text`);
+  }
+  // hostile: a label whose toString throws, and one that would close the element, write the rest; the second is escaped
+  const bad = await write(L('note', { toString() { throw new Error('no'); } }), 'v', null, BpmnModdle());
+  assert.ok(bad.xml.includes('name="Pack"'), JSON.stringify(bad.report));
+  const tag = await write(L('note', '</bpmn:text><bpmn:task id="evil"/>'), 'v', null, BpmnModdle());
+  assert.doesNotMatch(tag.xml, /<bpmn:task id="evil"/); assert.match(tag.xml, /&lt;\/bpmn:text>|&lt;\/bpmn:text&gt;/);
+});
+
+test('audit 45: a model title that is a number or true is written as its text; one that is not text is said', needs, async () => {
+  const m = title => ({ ...example, title });
+  for (const t of [2024, 0, true]) { const w = await write(m(t), example.root, null, BpmnModdle());
+    assert.deepEqual(w.report, []); assert.equal((await read(w.xml, BpmnModdle())).model.title, String(t)); }
+  for (const t of [{ x: 1 }, ['a'], { toString() { throw new Error('no'); } }]) { const w = await write(m(t), example.root, null, BpmnModdle());
+    assert.ok(w.xml.length > 500); assert.deepEqual(w.report, [{ line: '', status: 'skipped', message: 'the model title, which is not text: not written' }]); }
+  assert.deepEqual((await write(m('Orders'), example.root, null, BpmnModdle())).report, []);
+});
+
+test('audit 45: a pool\'s process name and documentation are said when not kept; a process in no pool says its documentation too', needs, async () => {
+  const D = b => `<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" id="defs" targetNamespace="x">${b}</bpmn:definitions>`;
+  const pooled = (attrs, inner = '') => D(`<bpmn:collaboration id="c"><bpmn:participant id="Shop" name="Shop" processRef="Process_1"/></bpmn:collaboration><bpmn:process id="Process_1"${attrs}>${inner}<bpmn:startEvent id="s"/><bpmn:task id="t" name="Pack"/><bpmn:sequenceFlow id="f" sourceRef="s" targetRef="t"/></bpmn:process>`);
+  const said = async x => (await read(x, BpmnModdle())).report.filter(r => r.line).map(r => `${r.line} ${r.message}`);
+  assert.deepEqual(await said(pooled(' name="Order handling"', '<bpmn:documentation>How orders are handled</bpmn:documentation>')), ['Shop process Process_1 ("Order handling"), Shop\'s: its name and documentation not kept']);
+  assert.deepEqual(await said(pooled(' name="Order handling"')), ['Shop process Process_1 ("Order handling"), Shop\'s: its name not kept']);
+  assert.deepEqual(await said(pooled('', '<bpmn:documentation>How</bpmn:documentation>')), ['Shop process Process_1, Shop\'s: its documentation not kept']);
+  assert.deepEqual(await said(pooled('', '<bpmn:documentation></bpmn:documentation>')), [], 'an empty documentation is nothing lost');
+  assert.deepEqual(await said(pooled('')), []);
+  // hostile: a name that is markup is said as text, the model holds no trace of it
+  const h = await read(pooled(' name="&lt;img src=x onerror=alert(1)&gt;"'), BpmnModdle());
+  assert.deepEqual(h.report.filter(r => r.line).map(r => r.message), ['process Process_1 ("<img src=x onerror=alert(1)>"), Shop\'s: its name not kept']);
+  assert.doesNotMatch(JSON.stringify(h.model), /onerror/);
+  // a process in no pool: its documentation said with its id and name
+  assert.deepEqual(await said(D('<bpmn:process id="Process_1" name="Order handling"><bpmn:documentation>How</bpmn:documentation><bpmn:task id="t"/></bpmn:process>')),
+    ['Process_1 process Process_1 ("Order handling"), in no pool: its elements are read in no pool, its id, name and documentation not kept']);
+  assert.deepEqual(await said(D('<bpmn:process id="process"><bpmn:documentation>How</bpmn:documentation><bpmn:task id="t"/></bpmn:process>')),
+    ['process process process, in no pool: its elements are read in no pool, its id and documentation not kept']);
+  // the example read back from its own export still says nothing of its processes
+  const back = await read((await write(example, example.root, null, BpmnModdle())).xml, BpmnModdle());
+  assert.deepEqual(back.report.filter(r => /process/.test(r.message) && r.line), []);
+});
+
+// audit 44: bpmn-js lets a user draw a message flow into a none start event or out of a none end or throw event, and the
+// reader kept the event none, so validate() gave message-ends errors and the report said nothing: the event is read as a
+// message one and said; an event with another definition, or a message one, is left as it is
+test('audit 44: a none event a message flow leaves or arrives at is read as a message event and said', needs, async () => {
+  const D = (ev, flows) => '<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d"><bpmn:collaboration id="c">'
+    + '<bpmn:participant id="shop" name="Shop" processRef="ps"/><bpmn:participant id="cust" name="Customer" processRef="pc"/>' + flows + '</bpmn:collaboration>'
+    + '<bpmn:process id="pc"><bpmn:startEvent id="cs"/><bpmn:task id="send" name="Place order"/><bpmn:endEvent id="ce"/><bpmn:sequenceFlow id="c1" sourceRef="cs" targetRef="send"/><bpmn:sequenceFlow id="c2" sourceRef="send" targetRef="ce"/></bpmn:process>'
+    + `<bpmn:process id="ps">${ev}<bpmn:task id="t" name="Pack"/><bpmn:sequenceFlow id="s1" sourceRef="got" targetRef="t"/><bpmn:sequenceFlow id="s2" sourceRef="t" targetRef="sent"/></bpmn:process></bpmn:definitions>`;
+  const none = '<bpmn:startEvent id="got" name="Order received"/><bpmn:endEvent id="sent" name="Confirmed"/>';
+  const flows = '<bpmn:messageFlow id="m1" sourceRef="send" targetRef="got"/><bpmn:messageFlow id="m2" sourceRef="sent" targetRef="send"/>';
+  const errors = m => validate(m).filter(v => v.level === 'error').map(v => v.message);
+  const r = await read(D(none, flows), BpmnModdle());
+  assert.deepEqual(errors(r.model), []);
+  assert.deepEqual(r.report.filter(x => x.line), [{ line: 'got', status: 'weakened', message: 'a none start event the message flow m1 arrives at: read as a message start event' },
+    { line: 'sent', status: 'weakened', message: 'a none end event the message flow m2 leaves: read as a message end event' }]);
+  assert.deepEqual(['got', 'sent'].map(id => r.model.nodes.find(n => n.id === id).props), [{ definition: 'message' }, { definition: 'message' }]);
+  // an intermediate throw event, and a none start event two message flows arrive at, said once
+  const thr = await read(D('<bpmn:startEvent id="got"/><bpmn:intermediateThrowEvent id="sent"/>', flows + '<bpmn:messageFlow id="m3" sourceRef="ce" targetRef="got"/>').replace('<bpmn:endEvent id="ce"/>', '<bpmn:endEvent id="ce"><bpmn:messageEventDefinition/></bpmn:endEvent>'), BpmnModdle());
+  assert.deepEqual(thr.report.filter(x => x.line).map(x => `${x.line} ${x.message}`), ['got a none start event the message flow m1 arrives at: read as a message start event',
+    'sent a none intermediate throw event the message flow m2 leaves: read as a message intermediate throw event']);
+  assert.ok(!errors(thr.model).some(e => e.startsWith('message-ends')), errors(thr.model).join('; '));
+  // a message event, or one with no message flow, is read as written and nothing said; a timer start a flow arrives at
+  // is left for validate() to name
+  const msg = await read(D('<bpmn:startEvent id="got"><bpmn:messageEventDefinition/></bpmn:startEvent><bpmn:endEvent id="sent"><bpmn:messageEventDefinition/></bpmn:endEvent>', flows), BpmnModdle());
+  assert.deepEqual(msg.report.filter(x => x.line), []);
+  assert.deepEqual((await read(D(none, ''), BpmnModdle())).model.nodes.filter(n => n.props && n.props.definition === 'message'), []);
+  const timer = await read(D('<bpmn:startEvent id="got"><bpmn:timerEventDefinition/></bpmn:startEvent><bpmn:endEvent id="sent"/>', '<bpmn:messageFlow id="m1" sourceRef="send" targetRef="got"/>'), BpmnModdle());
+  assert.equal(timer.model.nodes.find(n => n.id === 'got').props.definition, 'timer');
+  assert.deepEqual(errors(timer.model).map(e => e.split(':')[0]), ['message-ends']);
+  // what it reads writes and reads back as it is, with nothing more said
+  const back = await read((await write(r.model, r.model.views[0].id, null, BpmnModdle())).xml, BpmnModdle());
+  assert.deepEqual(back.report.filter(x => x.line), []);
+  assert.deepEqual(canon(back.model), canon(r.model));
 });
