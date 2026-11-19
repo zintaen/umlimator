@@ -975,3 +975,25 @@ test('audit 45: hostile marks: a change on a box, a fragment or an own line that
   const sp = svgOf(all.layout(q, q.views[0].id));
   assert.doesNotMatch(sp, /<image|href="http/); assert.match(tag45(sp, 'data-family="shared"'), /data-change="removed"/); assert.doesNotMatch(tag45(sp, 'data-family="catalog"') || '', /data-change/);
 });
+
+// audit 45: bpMark wrote stroke-width="1.5" and then the gear's teeth's and the timer's hands' own, so those tags held
+// stroke-width twice (no well-formed XML; the page kept the first, so the teeth and hands drew at 1.5). Every view of every
+// example, and a hostile BPMN model, is drawn: no tag holds an attribute twice, and the teeth and hands carry 2.5 and 1.2
+test('audit 45: no tag of any example\'s views holds an attribute twice; a service task\'s gear teeth draw at 2.5, a timer\'s hands at 1.2', async () => {
+  const all = await fromSrc(), { readdirSync } = await import('node:fs');
+  const twice = t => (t.match(/<[a-zA-Z][\w:-]*\b[^>]*>/g) || []).filter(tag => { const at = [...tag.replace(/"[^"]*"/g, '""').matchAll(/\s([a-zA-Z_:][\w:.-]*)=/g)].map(y => y[1]); return new Set(at).size !== at.length; });
+  let views = 0;
+  for (const f of readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json'))) {
+    const m = JSON.parse(readFileSync(new URL(`../examples/${f}`, import.meta.url)));
+    for (const v of m.views || []) { assert.deepEqual(twice(svgOf(all.layout(m, v.id))), [], `${f} ${v.id}`); views++; } }
+  assert.ok(views > 40, `${views} views drawn`);
+  const bp = label => ({ schemaVersion: 2, nodes: [{ id: 's', type: 'bpmn.StartEvent', label, props: { definition: 'timer' } }, { id: 't', type: 'bpmn.Task', label, props: { taskType: 'service' } }, { id: 'e', type: 'bpmn.EndEvent' }],
+    edges: [{ id: 'f1', type: 'bpmn.SequenceFlow', from: 's', to: 't' }, { id: 'f2', type: 'bpmn.SequenceFlow', from: 't', to: 'e' }], views: [{ id: 'v', diagram: 'bpmn', nodeIds: ['s', 't', 'e'] }] });
+  for (const label of ['Charge', '" stroke-width="9', '"/><path stroke-width="9', 2024]) {
+    const t = svgOf(all.layout(bp(label), 'v'));
+    assert.deepEqual(twice(t), [], String(label)); assert.doesNotMatch(t, /stroke-width="9"/);
+    const marks = [...t.matchAll(/<path d="([^"]*)" class="bp-mark"[^>]*stroke-width="([\d.]+)"/g)];
+    assert.ok(marks.some(([, d, w]) => (d.match(/M/g) || []).length === 8 && w === '2.5'), 'the gear\'s eight teeth at 2.5');
+    assert.ok(marks.some(([, d, w]) => /v2M/.test(d) && w === '1.2'), 'the timer\'s ticks and hands at 1.2');
+  }
+});

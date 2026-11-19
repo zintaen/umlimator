@@ -20,8 +20,9 @@
    a marker outside the subset, an extension) is reported `skipped` and kept under the model's `ext.bpmn.skipped` as
    moddle's JSON with its parent's id; a line to it is reported too. An attribute outside the subset (startQuantity, isForCompensation, isCollection, ...) set to other
    than its default is reported once per file, by its name, and not kept; isExecutable, an engine's only, is passed over.
-   A process in no pool has no place in the model: its name, or an id the writer would not make again, is reported, and
-   a second such process is read into the first and reported (audit 32). Positions and sizes are not kept (R5): the report says so once per file.
+   A process in no pool has no place in the model: its name, its documentation, or an id the writer would not make again,
+   is reported, and a second such process is read into the first and reported (audit 32); a pool's process's name and
+   documentation are reported too (audit 45). Positions and sizes are not kept (R5): the report says so once per file.
 
    writeBpmnXml(model, viewId, geo, moddle) -> promise of { xml, report }: every `bpmn.*` element of the model in one
    definitions, a collaboration when it has a participant, a process per participant (its `processRef`, else
@@ -73,6 +74,10 @@ const bxEvent = t => (t || '').endsWith('Event');
 const bxStr = x => (typeof x === 'string' && x ? x : null);
 // a value set but not text (a number, a list, an object): no attribute takes it, so the writer says it left it out (audit 44)
 const bxOdd = x => x != null && typeof x !== 'string';
+// a label, a view's title or the model's title as the writer gives it to moddle: text as it is, any other value as the picture
+// draws it (String(), as labelOr's callers do; validate() warns of one that is not a number). moddle escapes a body's text
+// with String.prototype.search, so a number or true as an annotation's text threw and the whole export was lost (audit 45)
+const bxText = x => { if (x == null || typeof x === 'string') return x ?? undefined; try { return String(x); } catch { return ''; } };
 const bxMsg = e => { try { return String(e && e.message || e).split('\n')[0]; } catch { return 'an error'; } };
 // moddle's warning or error with its cause: the first line, and the "nested error:" line it ends with when that says more than
 // the first (audit 31: a duplicate id was said only as "unparsable content <bpmn:task> detected")
@@ -215,10 +220,16 @@ async function readBpmnXml(xml, moddle) {
     // a process with no pool: the model has no place for its id or name (the writer writes one process for what is in no pool,
     // §12.3), so a name, or an id other than one the writer makes, is said; a second such process is read into the first, said
     // too (audit 32: bpmn.io's Process_1 "Order handling" and two processes in no pool were read with nothing said)
+    // a process's name and documentation the model has no place for, in a pool or not (audit 45: a pool's process "Order
+    // handling" and its documentation were read with nothing said, and a process in no pool said its name, not its documentation)
+    const procLost = c => [bxStr(c.name) && 'name', (c.documentation || []).some(d => bxStr(d.text)) && 'documentation'].filter(Boolean);
+    const both = a => (a.length > 1 ? `${a.slice(0, -1).join(', ')} and ${a.at(-1)}` : a[0]);
     const unpooled = queue.map(([c]) => c).filter(c => c.$type === 'bpmn:Process' && !owner.has(c));
-    unpooled.forEach((c, k) => { const id = idOf(c) || '', nm = bxStr(c.name) ? ` ("${c.name}")` : '', first = idOf(unpooled[0]) || '(no id)';
-      if (k) say(id, 'skipped', `process ${id || '(no id)'}${nm}, a second in no pool: read into one process with ${first}, its ${nm ? 'id and name' : 'id'} not kept`);
-      else if (nm || !/^process(-\d+)?$/.test(id)) say(id, 'skipped', `process ${id || '(no id)'}${nm}, in no pool: its elements are read in no pool, its ${nm ? 'id and name' : 'id'} not kept`); });
+    unpooled.forEach((c, k) => { const id = idOf(c) || '', nm = bxStr(c.name) ? ` ("${c.name}")` : '', first = idOf(unpooled[0]) || '(no id)', lost = both(['id', ...procLost(c)]);
+      if (k) say(id, 'skipped', `process ${id || '(no id)'}${nm}, a second in no pool: read into one process with ${first}, its ${lost} not kept`);
+      else if (procLost(c).length || !/^process(-\d+)?$/.test(id)) say(id, 'skipped', `process ${id || '(no id)'}${nm}, in no pool: its elements are read in no pool, its ${lost} not kept`); });
+    for (const [c, n] of owner) { const lost = procLost(c), id = idOf(c) || '(no id)';
+      if (lost.length) say(n.id, 'skipped', `process ${id}${bxStr(c.name) ? ` ("${c.name}")` : ''}, ${n.id}'s: its ${both(lost)} not kept`); }
     // a process's lanes are its participant's members, nested by parent; a flow node is in the deepest lane naming it
     const laneOf = new Map(), depth = new Map();
     for (const [proc] of queue) {
@@ -449,15 +460,15 @@ async function writeBpmnXml(model, viewId, geo, moddle) {
       if (t === 'bpmn.Task') {
         const tt = pr.taskType ?? 'none', ok = Object.hasOwn(BX_TASK_OUT, tt); // own keys only: "constructor" is no task type
         if (!ok) say(n.id, `props.taskType ${tt}`);
-        els.set(n, mk(ok ? BX_TASK_OUT[tt] : 'bpmn:Task', n, { name: n.label }));
+        els.set(n, mk(ok ? BX_TASK_OUT[tt] : 'bpmn:Task', n, { name: bxText(n.label) }));
       }
-      else if (t === 'bpmn.DataObject') els.set(n, mk('bpmn:DataObjectReference', n, { name: n.label }));
-      else if (t === 'bpmn.TextAnnotation') els.set(n, mk('bpmn:TextAnnotation', n, { text: n.label }));
+      else if (t === 'bpmn.DataObject') els.set(n, mk('bpmn:DataObjectReference', n, { name: bxText(n.label) }));
+      else if (t === 'bpmn.TextAnnotation') els.set(n, mk('bpmn:TextAnnotation', n, { text: bxText(n.label) }));
       else if (t === 'bpmn.Group') {
-        const el = mk('bpmn:Group', n), value = M('bpmn:CategoryValue', { id: free(`${el.id}-value`), value: n.label });
+        const el = mk('bpmn:Group', n), value = M('bpmn:CategoryValue', { id: free(`${el.id}-value`), value: bxText(n.label) });
         roots.push(M('bpmn:Category', { id: free(`${el.id}-category`), categoryValue: [value] })); el.categoryValueRef = value; els.set(n, el);
       } else if (BX_SAME.has(k)) {
-        const el = mk(`bpmn:${k}`, n, { name: n.label, ...(k === 'SubProcess' ? { flowElements: [], artifacts: [] } : {}) });
+        const el = mk(`bpmn:${k}`, n, { name: bxText(n.label), ...(k === 'SubProcess' ? { flowElements: [], artifacts: [] } : {}) });
         if (k in BX_DEFS) {
           const def = pr.definition || 'none';
           if (!BX_DEFS[k].includes(def)) say(n.id, `the definition ${def}, which a ${k} may not take`);
@@ -474,7 +485,7 @@ async function writeBpmnXml(model, viewId, geo, moddle) {
         els.set(n, el);
       } else say(n.id, `${t}, outside the subset`);
     }
-    for (const [m] of members) els.set(m, mk('bpmn:Lane', m, { name: m.label, flowNodeRef: [] }));
+    for (const [m] of members) els.set(m, mk('bpmn:Lane', m, { name: bxText(m.label), flowNodeRef: [] }));
     const el = id => els.get(byId.get(id) || (laneOf.get(id) || [])[0]);
     const ring = new Set(); // lanes whose parents lead round to them, or are no lane of their pool: written at the top of their pool
     for (const [m, p] of members) {
@@ -516,10 +527,10 @@ async function writeBpmnXml(model, viewId, geo, moddle) {
       const a = byId.get(e.from), b = byId.get(e.to), A = a && els.get(a), B = b && els.get(b), pr = e.props || {};
       if (!A || !B) { say(e.id, `${e.type} whose ${A ? 'target' : 'source'} is not written`); continue; }
       let x = null;
-      if (e.type === 'bpmn.SequenceFlow') { x = mk('bpmn:SequenceFlow', e, { name: e.label, sourceRef: A, targetRef: B }); (holder(a) || proc(null)).flowElements.push(x); }
+      if (e.type === 'bpmn.SequenceFlow') { x = mk('bpmn:SequenceFlow', e, { name: bxText(e.label), sourceRef: A, targetRef: B }); (holder(a) || proc(null)).flowElements.push(x); }
       else if (e.type === 'bpmn.MessageFlow') {
         if (!collab) { say(e.id, 'a message flow in a model with no participant'); continue; }
-        collab.messageFlows.push(x = mk('bpmn:MessageFlow', e, { name: e.label, sourceRef: A, targetRef: B }));
+        collab.messageFlows.push(x = mk('bpmn:MessageFlow', e, { name: bxText(e.label), sourceRef: A, targetRef: B }));
       } else if (e.type === 'bpmn.Association') {
         const dir = pr.direction ?? 'none';
         if (!Object.hasOwn(BX_DIR_OUT, dir)) say(e.id, `props.direction ${dir}`);
@@ -579,13 +590,16 @@ async function writeBpmnXml(model, viewId, geo, moddle) {
         const pts = g && Array.isArray(g.pts) && g.pts.length > 1 ? g.pts : [[a.x + a.w / 2, a.y + a.h / 2], [b.x + b.w / 2, b.y + b.h / 2]];
         planeElement.push(M('bpmndi:BPMNEdge', { id: free(`${x.id}_di`), bpmnElement: x, waypoint: pts.map(([px, py]) => M('dc:Point', { x: px, y: py })) }));
       }
-      const subject = v.subject && byId.get(v.subject), d = M('bpmndi:BPMNDiagram', { id: xid.get(v), name: v.title });
+      const subject = v.subject && byId.get(v.subject), d = M('bpmndi:BPMNDiagram', { id: xid.get(v), name: bxText(v.title) });
       if (d.id !== v.id) d.$attrs['umlimator:id'] = String(v.id);
       d.plane = M('bpmndi:BPMNPlane', { id: free(`${d.id}-plane`), bpmnElement: (subject && els.get(subject)) || collab || proc(null), planeElement });
       return d;
     });
     if (collab) roots.unshift(collab);
-    const defs = M('bpmn:Definitions', { id: free('definitions'), name: model && bxStr(model.title), targetNamespace: BX_NS, exporter: 'umlimator', rootElements: roots, diagrams });
+    // the model's title: a number or true written as its text, as a view's title is; any other value that is not text said (audit 45)
+    const title = model && model.title, named = typeof title === 'number' || typeof title === 'boolean' ? String(title) : bxStr(title);
+    if (bxOdd(title) && named == null) say('', 'the model title, which is not text');
+    const defs = M('bpmn:Definitions', { id: free('definitions'), name: named, targetNamespace: BX_NS, exporter: 'umlimator', rootElements: roots, diagrams });
     defs.$attrs['xmlns:umlimator'] = BX_NS;
     // indented only when shallow: moddle indents each level, so a model nested thousands deep would be depth * depth long
     const level = new Map(); // an element -> how deep it sits, by its parents (sub-processes, lanes), each walked once
