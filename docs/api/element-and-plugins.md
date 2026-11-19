@@ -13,8 +13,8 @@ drawn, and stay where scripts don't run.
 <link rel="stylesheet" href="node_modules/umlimator/lib/umlimator-theme.css">
 <script type="module" src="node_modules/umlimator/lib/umlimator-element.js"></script>
 
-<umlimator-map src="bookshop.json" view="api" minimap height="520">
-  <img src="stills/api.png" alt="An order, step by step">
+<umlimator-map src="umlimator-atlas.json" view="overview" minimap height="520">
+  <img src="stills/overview.png" alt="umlimator's parts and who uses each">
 </umlimator-map>
 ```
 
@@ -104,8 +104,8 @@ The default export is a markdown-it plugin: each fenced block whose info string 
 
 ````markdown
 ```umlimator
-src: /maps/bookshop.json
-view: api
+src: /maps/umlimator-atlas.json
+view: overview
 ```
 ````
 

@@ -26,7 +26,7 @@ another view, which is how a map gets its layers.
 A view may also have `containers` (boxes), a `layout` (`[col, row]` per card), `render: "sequence"` for a numbered
 run-order view and a `tour`, a dot that rides a path. [Views and layers](./views-and-layers.md) covers them. The full
 map schema is [`engine/references/schema.md`](../../engine/references/schema.md) (§ Map model);
-[`examples/bookshop.json`](../../examples/bookshop.json) uses most of it.
+[`examples/umlimator-atlas.json`](../../examples/umlimator-atlas.json), umlimator's own model, uses much of it.
 
 ## Schema and validation
 

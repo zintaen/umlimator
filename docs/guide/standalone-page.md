@@ -4,7 +4,7 @@
 fetched. It opens from disk in any browser, works offline, and can be attached to an issue or hosted as it is.
 
 ```bash
-python3 umlimator.py render examples/bookshop.json --out page.html   # the interactive page, then its layout check
+python3 umlimator.py render examples/umlimator-atlas.json --out page.html   # the interactive page, then its layout check
 ```
 
 The same viewer is `mountPage(container, model)` in the module, built on `render()` through the public API.
@@ -39,7 +39,7 @@ Cards, then lines, are in the Tab order (a card's tabs and chips too, for a host
 ## Exports
 
 - **SVG and PNG**: any view as a stand-alone file, from the page's Export menu, from `map.toSVG()` and `map.toPNG()` in a host, or from `umlimator.py stills`.
-- **Map model (JSON)**: the whole model as its file has it, named after the model's title in its own letters, any script, with each run of other characters one `-` (the bookshop example, titled "Bookshop, an example", gives `bookshop-an-example.json`; a title with no letters or digits gives `map.json`). SVG and PNG add the view's id the same way (`bookshop-an-example-overview.svg`). What render added to the page is taken off again (its icons table, the avatars it inlined, the layouts its search baked), and what it replaced is put back (an intake logo's path, the model's own `meta.generated`). What render leaves out of the page for privacy, such as an avatar or example image that names an address, is not in the export either.
+- **Map model (JSON)**: the whole model as its file has it, named after the model's title in its own letters, any script, with each run of other characters one `-` (the Umlimator Atlas, titled "Umlimator Atlas", gives `umlimator-atlas.json`; a title with no letters or digits gives `map.json`). SVG and PNG add the view's id the same way (`umlimator-atlas-overview.svg`). What render added to the page is taken off again (its icons table, the avatars it inlined, the layouts its search baked), and what it replaced is put back (an intake logo's path, the model's own `meta.generated`). What render leaves out of the page for privacy, such as an avatar or example image that names an address, is not in the export either.
 - **Copy link to view**: the page's address with the view, card, story step or lens it shows (see Links above).
 - **PDF**: the whole map as one document to hand in for a review: a cover with the contents, each view with its
   legend and tables of its cards, lines and boxes, then the rules (`umlimator.py pdf`; see [Command line](./cli.md#pdf)).

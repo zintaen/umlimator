@@ -48,11 +48,12 @@ features:
 
 ## A live map
 
-This is the bookshop example, drawn on this page by `<umlimator-map>`. Click a card to select it, and open a stacked
-card to go one level down. [Open it full size](/examples/bookshop.html), or browse [all the examples](/examples/index.html).
+This is the Umlimator Atlas, umlimator's own model, drawn on this page by `<umlimator-map>`. Click a card to select
+it, and open a stacked card to go one level down. [Open it full size](/examples/umlimator-atlas.html), or browse the
+examples: [every diagram type](/examples/index.html#diagrams) and [the Atlas](/examples/index.html#atlas).
 
 ```umlimator
-src: /umlimator/examples/bookshop.json
+src: /umlimator/examples/umlimator-atlas.json
 minimap: true
 wheel: ctrl
 height: 520

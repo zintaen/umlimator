@@ -94,4 +94,4 @@ switch 10 to 16 ms, laying nothing out (two runs). CI holds 1 s and prints the f
 `tests/m2-fixtures.test.mjs` and `tests/m2.html` (§10's cases, P1); `tests/notation.html` (crow's foot's four ends,
 IDEF1X's dot and diamond, by multiplicity, solid or dashed); `tests/mermaid-er.test.mjs`, `tests/dbml.test.mjs`;
 `tests/cli.py` (render, check, stills, pdf and its tables, the diff Action's step); `tests/mcp.py`;
-`tests/atlas.test.mjs` (the schema in the Bookshop atlas, opened from the C4 container view's database).
+`tests/atlas.test.mjs` (the schema in an atlas, opened from the C4 container view's database).
