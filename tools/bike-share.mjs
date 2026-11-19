@@ -33,7 +33,7 @@ const EDGE = ['id', 'type', 'from', 'to', 'parent', 'label', 'kind', 'sublabel',
   'fromSide', 'toSide', 'loop', 'latency', 'cost', 'props', 'what', 'when'];
 // each kind's keys in the order they are written; null: a map whose keys are ids or data, written in the part's order
 export const KEYS = {
-  file: ['$schema', 'schemaVersion', 'title', 'root', 'sourcesBase', 'authors', 'icons', 'iconPacks', 'nodes', 'edges', 'views',
+  file: ['$schema', 'schemaVersion', 'title', 'root', 'meta', 'sourcesBase', 'authors', 'icons', 'iconPacks', 'nodes', 'edges', 'views',
     'rules', 'lenses', 'stories'],
   node: NODE, edge: EDGE,
   view: ['id', 'diagram', 'parent', 'title', 'caption', 'note', 'subject', 'direction', 'notation', 'render', 'lanes', 'present',

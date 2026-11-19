@@ -120,7 +120,7 @@ with tempfile.TemporaryDirectory() as tmp:
     # ---------- views ----------
     r = cli("check", page, "--views", "sytem")
     ok("page-hook-protocol#1 · check --views that names no view fails, before Chrome starts, and lists the views",
-       r.returncode == 1 and "no view 'sytem'" in r.stderr and "its views: 'context', 'system', 'trips', 'fleet', 'ride-end'" in r.stderr and not r.stdout.strip(), r.stdout + r.stderr)
+       r.returncode == 1 and "no view 'sytem'" in r.stderr and "its views: 'context', 'system', 'trips', 'fleet', 'ride-end', 'overview', 'api', 'checkout'\n" in r.stderr + "\n" and not r.stdout.strip(), r.stdout + r.stderr)
     r = cli("stills", odd, "--out", t / "odd", "--views", "plain,R&D,a+b")
     ok("page-hook-protocol#2 · views whose ids hold & and + are stilled", r.returncode == 0 and made(r) == ["plain", "R&D", "a+b"], r.stdout + r.stderr)
     r = cli("check", odd, "--views", "R&D")

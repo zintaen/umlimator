@@ -1,5 +1,5 @@
 // The helpers (work package 3.7, notes/stage-3.md §7), in Node on the sources: example 11 with { f1: 'f1-paid' } gives
-// example 12 except for ids; a numbered view (examples/bookshop.json's, one with no edges list) and a trace give views
+// example 12 except for ids; a numbered view (examples/bike-share.json's api, the rider shop's, one with no edges list) and a trace give views
 // that validate with no error; no derived id contains "->"; a second run replaces the view; the reports.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

@@ -76,7 +76,7 @@ try {
   const m4 = structuredClone(m3); m4.views = m4.views.filter(v => v.id !== 'api');
   h.update(m4);
   check('updating away a view that is not shown keeps the current one', h.view === 'overview', h.view);
-  h.update(m3); await h.setView('api'); h.update(m4); // the view shown taken away: the root (bookshop.json's root was overview, which hid the difference)
+  h.update(m3); await h.setView('api'); h.update(m4); // the view shown taken away: the map goes to the root, context
   check('…and updating away the view shown goes to the root', h.view === 'context', h.view);
 
   h.destroy();

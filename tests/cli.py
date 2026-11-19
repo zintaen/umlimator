@@ -2173,7 +2173,7 @@ if part("audit 36"):
         g = t / "repo"; (g / "docs").mkdir(parents=True)
         sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
         sh("init", "-q")
-        (g / "docs" / "map.json").write_text((ROOT / "examples" / "bookshop.json").read_text(encoding="utf-8"))
+        (g / "docs" / "map.json").write_text((ROOT / "examples" / "bike-share.json").read_text(encoding="utf-8"))
         (g / "docs" / "model.md").write_text('# Model\n\nA model has `"nodes"` and `"views"`: <img src=//e.example/t.png>\n')
         (g / "docs" / "notes.txt").write_text('{"nodes": [], "views": [')
         (g / "docs" / "cut.JSON").write_text('{"nodes": [], "views": []}')

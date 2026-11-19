@@ -3,6 +3,7 @@
   "schemaVersion": 2,
   "title": "Bike share, an example",
   "root": "context",
+  "meta": { "project": "umlimator" },
   "nodes": [
     {
       "id": "riders",

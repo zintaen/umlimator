@@ -297,11 +297,11 @@ try {
      kind or meta keys (meta.added names them), and the model's own meta kept; a page an older render wrote loses render's keys too ---------- */
   { const page = await (await fetch('../examples/bike-share.html')).text(), given = JSON.parse(new DOMParser().parseFromString(page, 'text/html').getElementById('visual-data').textContent);
     const file = await (await fetch('../examples/bike-share.json')).json(), got = await exported(given), keys = o => o && Object.keys(o).sort().join();
-    check('audit 30: Export ▸ Map model (JSON) of examples/bike-share.html is examples/bike-share.json: no icons, source, avatarsEmbedded, kind or meta (the file has none)',
+    check('audit 30: Export ▸ Map model (JSON) of examples/bike-share.html is examples/bike-share.json: no icons, source, avatarsEmbedded or kind, and its meta {project} kept',
       !!got && JSON.stringify(got) === JSON.stringify(file), got && { keys: keys(got), meta: got.meta, added: given.meta && given.meta.added });
     const old = structuredClone(given); delete old.meta.added; delete old.meta['umlimator:written']; old.meta.owner = 'team-a'; const was = await exported(old);
     check('audit 30: a page an older render wrote (no meta.added) exports without render\'s keys, the model\'s other meta kept',
-      !!was && keys(was) === keys({ ...file, source: 1, meta: 1 }) && JSON.stringify(was.meta) === JSON.stringify({ owner: 'team-a' }), was && { keys: keys(was), meta: was.meta });
+      !!was && keys(was) === keys({ ...file, source: 1 }) && JSON.stringify(was.meta) === JSON.stringify({ owner: 'team-a' }), was && { keys: keys(was), meta: was.meta });
     // a hostile meta.added: paths through a prototype, a list, what is no object, or no text take nothing off but own keys, and change neither
     // the model the page was given nor Object.prototype
     const H = { kind: 'map', meta: { added: ['__proto__.polluted', 'constructor.prototype.polluted', 'nodes.__proto__', 'nodes.0.label.x', 'views.0', 'title.length', 'nope.x', 7, null, 'meta.added'], owner: 'o' },
