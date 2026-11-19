@@ -40,7 +40,7 @@ test('the definition: uml.component is registered with its palette, its eight li
   assert.equal(T.layout.rank, false, 'the type ranks the view: the host passes the pins');
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'key', 'member', 'moveTo', 'remove', 'rename']);
-  assert.deepEqual(Object.keys(T.rules).sort(), ['assembly-ends', 'ball-interface', 'component-owner', 'component-realization-ends', 'delegation-ends', 'line-inside', 'manifest-ends', 'multiplicity', 'own-boxes', 'port-owner', 'provided-ends', 'required-ends'].sort());
+  assert.deepEqual(Object.keys(T.rules).sort(), ['assembly-ends', 'ball-interface', 'component-owner', 'component-realization-ends', 'delegation-ends', 'line-inside', 'manifest-ends', 'multiplicity', 'own-boxes', 'port-owner', 'present-values', 'provided-ends', 'required-ends'].sort());
   assert.deepEqual(['uml.Component', 'uml.Interface', 'uml.Artifact'].map(t => T.member.holds({ type: t })), [true, true, false]);
 });
 
@@ -150,6 +150,7 @@ const BREAKS = {
   'provided-ends': m => { m.edges.push(E('bad', 'InterfaceRealization', 'shop-api-jar', 'i-orders')); return ['bad', 'shop-api-jar', 'i-orders']; },
   'required-ends': m => { m.edges.push(E('bad', 'Usage', 'storefront-component', 'accounts-component')); return ['bad', 'storefront-component', 'accounts-component']; },
   'ball-interface': m => { m.views[0].present['storefront-component'] = { as: 'ball' }; return ['storefront-component']; },
+  'present-values': m => { m.views[0].present['shop-api.orders'] = { side: 'Left' }; return ['shop-api.orders']; }, // audit 47
   'delegation-ends': m => { m.edges.push(E('bad', 'Connector', 'storefront-component', 'accounts-component', { kind: 'delegation' })); return ['bad', 'storefront-component', 'accounts-component']; },
   'assembly-ends': m => { m.edges.push(E('bad', 'Connector', 'shop-api.orders', 'checkout-component.orders', { kind: 'assembly' })); return ['bad', 'shop-api.orders', 'checkout-component.orders']; },
   'manifest-ends': m => { m.edges.push(E('bad', 'Manifestation', 'storefront-component', 'accounts-component')); return ['bad', 'storefront-component']; },
@@ -159,7 +160,7 @@ const BREAKS = {
 test('validators: 05-component.json breaks no rule; each rule fails on a model that breaks it, naming its rule and its elements, at its level', () => {
   assert.deepEqual(T.validate(CM, CM.views[0]), []);
   for (const [rule, broke] of Object.entries(BREAKS)) {
-    const m = structuredClone(CM), ids = broke(m), got = T.validate(m, m.views[0]).filter(p => p.rule === rule && p.level === (['required-ends', 'ball-interface', 'component-owner'].includes(rule) ? 'warning' : 'error'));
+    const m = structuredClone(CM), ids = broke(m), got = T.validate(m, m.views[0]).filter(p => p.rule === rule && p.level === (['required-ends', 'ball-interface', 'component-owner', 'present-values'].includes(rule) ? 'warning' : 'error'));
     assert.equal(got.length, 1, `${rule}: ${JSON.stringify(T.validate(m, m.views[0]))}`);
     assert.match(got[0].message, new RegExp('^' + rule + ': '));
     assert.deepEqual([...got[0].ids].sort(), [...ids].sort(), rule);

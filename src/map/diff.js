@@ -251,7 +251,7 @@ export function diff(before, after) {
   // the summary: views, then cards, then lines, in model order; a line to a card that came or went goes with the card
   const cards = [...out.nodes, ...views.flatMap(v => arr(v && v.nodes))].filter(Boolean);
   const named = new Map([...views.flatMap(v => arr(v && v.containers)), ...cards, ...[...lost.values(), ...gained.values(), ...edited.values()].map(([y]) => y), ...[...lost.values(), ...gained.values(), ...edited.values()].map(([, , u]) => (have.get(u) || [])[0])].filter(Boolean).map(n => [n.id, n]));
-  const name = id => String(labelOr((named.get(id) || {}).label, id));
+  const name = id => String(labelOr((named.get(id) || (have.get(id) || at0.get(id) || [])[0] || {}).label, id)); // a member that stayed (a lane in its pool, audit 47) by its label too
   // a line's end on a member, as describe() names it (audit 18): a port by its owner ("orders of Shop API"), an end through a part by
   // that part ("charge of battery"); else a member by its own name
   const ups = id => { const s = []; for (let t = id, r; (r = have.get(t) || at0.get(t)) && typeof r[1] === 'string' && !s.includes(r[1]);) s.push(t = r[1]); return s; };

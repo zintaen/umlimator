@@ -204,3 +204,14 @@ test('audit 39: a schemaVersion change lists every typed view, which then draws 
   const map = { nodes: [{ id: 'a' }], views: [{ id: 'v', nodeIds: ['a'] }] };
   assert.deepEqual(core.diff(map, { ...map, schemaVersion: 2 }).views, [], 'a map view draws the same at either version');
 });
+
+// audit 47: a flow node moved between lanes names the lane by its label, as a move into the pool or a package does
+test('a BPMN task moved into another lane, or out of a lane removed, names the lane by its label', () => {
+  const bz = load('examples/bookshop-order-to-shipment.json'), t = bz.nodes.find(n => n.type === 'bpmn.Task' && n.parent === 'bp-sales');
+  assert.deepEqual(all.diff(bz, edit(bz, m => { m.nodes.find(n => n.id === t.id).parent = 'bp-warehouse'; })).summary, [`moves ${t.label} into Warehouse`]);
+  assert.deepEqual(all.diff(bz, edit(bz, m => { m.nodes.find(n => n.id === t.id).parent = 'bp-bookshop'; })).summary, [`moves ${t.label} into Bookshop`]);
+  const pool = bz.nodes.find(n => n.id === 'bp-bookshop'), lanes = pool.members.map(l => l.label);
+  assert.ok(lanes.includes('Sales') && lanes.includes('Warehouse'));
+  const s = all.diff(bz, edit(bz, m => { const P = m.nodes.find(n => n.id === 'bp-bookshop'); P.members = P.members.filter(l => l.id !== 'bp-warehouse'); m.nodes.forEach(n => { if (n.parent === 'bp-warehouse') n.parent = 'bp-sales'; }); })).summary;
+  assert.ok(s.length > 1 && s.slice(1).every(x => x.endsWith(' into Sales')) && !s.some(x => /bp-(sales|warehouse)/.test(x)), s.join('; '));
+});

@@ -27,7 +27,7 @@ open collaboration shown, and the end a port of its type), `connector-scope` (a 
 `binding-ends` (a warning for a view with no subject) (errors); `part-type` (a part's type names exactly one class or component),
 `part-multiplicity` (a part's multiplicity is one, as `1`, `*`, `0..1`, `1..*`), `binding-role`,
 `collaboration-named`, `connector-drawn` (a connector between two ports of the subject, or of one part, or of a subject drawn with no box, is
-not drawn), `own-boxes` (the view draws its own boxes: its hand-written containers are ignored) (warnings); and the
+not drawn), `present-values` (a port's present side other than left, right, top or bottom, as written: ignored), `own-boxes` (the view draws its own boxes: its hand-written containers are ignored) (warnings); and the
 shared `port-owner` and `manifest-ends`. Deleting a part deletes the connectors through it (the type's `refs` cascade).
 `subject-shown` is a warning for a view with no subject at all, as deleting its subject (Shift + Delete) leaves it: the
 view draws its other cards (collaborations, comments) and no structure until a subject is set; a subject set to
