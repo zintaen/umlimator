@@ -14,14 +14,14 @@ This page takes you from nothing to a map in a page.
 npm install umlimator
 ```
 
-Or from GitHub, at a tag or any commit: `"umlimator": "github:zintaen/umlimator#v0.42.0"`. npm 12 refuses git
+Or from GitHub, at a tag or any commit: `"umlimator": "github:zintaen/umlimator#v0.43.0"`. npm 12 refuses git
 dependencies unless the project opts in, so that also needs `allow-git=root` in the `.npmrc` next to `package.json`.
 
 Without a bundler, load the module from a CDN, pinned to a version:
 
 ```html
 <script type="module">
-  import { render } from 'https://cdn.jsdelivr.net/npm/umlimator@0.42.0/lib/umlimator.js';
+  import { render } from 'https://cdn.jsdelivr.net/npm/umlimator@0.43.0/lib/umlimator.js';
 </script>
 ```
 
@@ -29,7 +29,7 @@ The CLI is `umlimator.py` in the repository. It needs Python 3.9+ (standard libr
 pictures and checks, and Node 18+ for `diff`, `drift`, `trace` and `mcp` ([Command line](./cli.md)):
 
 ```bash
-git clone --depth 1 --branch v0.42.0 https://github.com/zintaen/umlimator.git
+git clone --depth 1 --branch v0.43.0 https://github.com/zintaen/umlimator.git
 python3 umlimator/umlimator.py render model.json --out page.html
 ```
 
