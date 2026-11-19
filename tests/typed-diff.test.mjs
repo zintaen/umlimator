@@ -357,3 +357,13 @@ test('audit 51: an undrawn relationship to an IDEF1X entity that comes or goes m
   // an undrawn identifying one removed, the only one: the child draws independent
   assert.deepEqual(run(drop(base(true), 'pc'), drop(drop(base(true), 'pc'), 'qc')), [['all', 'idef'], 'changed', false]);
 });
+
+test('audit 52: an extension point renamed marks the extend that draws its name changed (its edited dot, ", changed"); a change it does not draw marks nothing', () => {
+  const base = load('examples/types/uml-use-case.json'), point = m => m.nodes.find(n => n.id === 'check-out').members.find(x => x.id === 'check-out.payment');
+  const after = structuredClone(base); point(after).label = 'pay step';
+  const d = all.diff(base, after), e = all.layout(d.model, 'shopping').edges.find(x => x.id === 'voucher-extends-checkout');
+  assert.equal(e.change, 'changed'); assert.match(e.label, /\(pay step\)/);
+  // a use case's other change, which the extend does not draw, leaves it unmarked
+  const other = structuredClone(base); other.nodes.find(n => n.id === 'check-out').props = { ...(other.nodes.find(n => n.id === 'check-out').props || {}), documentation: 'new words' };
+  assert.equal(all.layout(all.diff(base, other).model, 'shopping').edges.find(x => x.id === 'voucher-extends-checkout').change ?? null, null);
+});

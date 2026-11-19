@@ -20,7 +20,7 @@ import { brLines } from '../typed/draw.js'; // a typed line's ends (TYPED.lines)
    of §8, which write a time item by `set` of the view's timeline path. Ships in lib/umlimator-all.js only. */
 
 const TM_ARR = x => (Array.isArray(x) ? x : []), TM_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x);
-const TM_HAS = x => x != null && x !== '';
+const TM_HAS = x => x != null && x !== '' && !(typeof x === 'string' && x.trim() === ''); // text of only spaces shows nothing, as "" (audit 52)
 const TM = { name: 12, text: 10.5, lbl: 16, mark: 14 }; // a lane's name, a state's or a value's text; a message's label's and a constraint's height
 const TM_SORTS = ['call', 'async', 'reply'];
 // the sequence type's ends for these sorts (sequence.js's SQ_END): a call filled, async open, a reply dashed and open
@@ -197,6 +197,7 @@ const TM_RULES = {
   'constraint-ends': 'a duration constraint\'s from and to are changes of the view; a time constraint has a from and no to',
   'constraint-order': 'a duration constraint\'s to is no earlier than its from',
   'timing-kinds': 'a timing view draws lifelines only: any other element it lists is not drawn',
+  view: 'a timing view has no layout pins and is drawn left to right',
 };
 // a time layoutTimeRuler draws: a number within ±1e300 (past it the span is no number); validate() says the rest (audit 39)
 const tmNum = x => typeof x === 'number' && Number.isFinite(x) && Math.abs(x) <= 1e300;
@@ -241,6 +242,10 @@ function tmProblems(model, view) {
   X.cons.forEach(c => { const kind = TM_KIND[c.type], a = X.C.get(c.from), b = X.C.get(c.to);
     if (!kind || (kind === 'time' ? !a || c.to != null : !a || !b)) return say('constraint-ends', kPath(c), [c.id], kind === 'time' ? `time constraint ${c.id} needs a change of the view in from, and no to` : kind ? `duration constraint ${c.id} needs two changes of the view in from and to` : `${c.id} is a ${jsonText(c.type)}, not a duration or time constraint`);
     if (kind === 'duration' && tmNum(a.at) && tmNum(b.at) && b.at < a.at) say('constraint-order', kPath(c) + '.to', [c.id, c.from, c.to], `${c.id} runs from ${X.t(a.at)} back to ${X.t(b.at)}`, 'warning'); });
+  // view: the lanes go in nodeIds order and time runs left to right, so pins and another direction change nothing: said, as a
+  // sequence view says them (audit 52: a timing view took both without a word)
+  if (TM_OBJ(V.layout) && Object.keys(V.layout).length) say('view', at + '.layout', Object.keys(V.layout), `view ${V.id} pins ${Object.keys(V.layout).join(', ')}: a timing diagram places its lifelines in nodeIds order, so pins mean nothing`, 'warning');
+  if (V.direction != null && V.direction !== 'right') say('view', at + '.direction', [], `view ${V.id} has direction ${jsonText(V.direction)}: a timing diagram is drawn left to right`, 'warning');
   return out;
 }
 
@@ -471,7 +476,7 @@ const TM_TYPE = registerDiagramType('uml.timing', {
     'uml.Lifeline': [{ key: 'represents', label: 'Represents', kind: 'text' }, { key: 'states', label: 'States', kind: 'list' }, TM_STEREO],
     'uml.Message': [{ key: 'sort', label: 'Sort', kind: 'enum', options: TM_SORTS }, { key: 'replyTo', label: 'Reply to', kind: 'text', drawn: false }, TM_STEREO],
   },
-  layout: { run: tmRun, pins: false },
+  layout: { run: tmRun, pins: false, direction: 'right' },
   draw: tmDraw,
   member: { holds: () => false }, // nothing here draws members: the panel offers no Members rows (audit 18)
   validate: tmProblems,

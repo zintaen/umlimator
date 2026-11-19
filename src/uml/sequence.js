@@ -18,7 +18,7 @@ import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
    commands for apply(), null, or { error }. Ships in lib/umlimator-all.js only. */
 
 const SQ_ARR = x => (Array.isArray(x) ? x : []), SQ_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x);
-const SQ_HAS = x => x != null && x !== '';
+const SQ_HAS = x => x != null && x !== '' && !(typeof x === 'string' && x.trim() === ''); // text of only spaces shows nothing, as "" (audit 52)
 const SQ_SORTS = ['call', 'async', 'reply', 'create', 'delete'], SQ_OPS = ['alt', 'opt', 'loop', 'par', 'break'];
 const SQ_LABEL = { px: 10.5, pad: 12, h: 16, lh: 13 }; // a message's label as svgOf draws a typed line's: 10.5 px text on a backing
 // its box: a text the author broke (a Mermaid <br>) a line each, as svgOf draws a label box tall enough for them (audit 22)
@@ -471,7 +471,7 @@ const SEQ_TYPE = registerDiagramType('uml.sequence', {
     'uml.InteractionUse': [{ key: 'refersTo', label: 'Refers to', kind: 'text', drawn: false }, { key: 'covers', label: 'Covers', kind: 'list' }],
     'uml.CombinedFragment': [{ key: 'operator', label: 'Operator', kind: 'enum', options: SQ_OPS }],
   },
-  layout: { run: sqRun, pins: false },
+  layout: { run: sqRun, pins: false, direction: 'down' },
   // a fragment draws its operator, never its label: no Name field (audit 21; F2 sets the operator, audit 18)
   unnamed: ['uml.CombinedFragment'],
   draw: sqDraw,

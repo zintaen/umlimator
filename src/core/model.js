@@ -183,8 +183,9 @@ const nameTable = x => { const t = new Map(); if (x && typeof x === 'object' && 
    is the type's to check (a registered type, from 1.3). */
 // a label that is neither text nor a number (a list, an object, true) is drawn and announced as String() writes it, "[object Object]":
 // said by validate() for a card, a line, a member and every other element (audit 29). A number is drawn as written; null is no label
-// what names an element: its label, else its id. A number is a label, 0 too (audit 30: `label || id` named a card labelled 0 by its id)
-const labelOr = (label, id) => label == null || label === '' ? id : label;
+// what names an element: its label, else its id. A number is a label, 0 too (audit 30: `label || id` named a card labelled 0 by its id).
+// Text of only spaces or line breaks shows nothing, so it names as "" does (audit 52: a lifeline labelled "   " was "Lifeline     : T")
+const labelOr = (label, id) => label == null || (typeof label === 'string' && label.trim() === '') ? id : label;
 // what every typed view calls an element, in its picture, accessible names, describe(), PDF, hints and messages: its label,
 // else its id, so a label "" names it as no label does, as a map's card (audit 35: each type's own `label ?? id` kept "" blank)
 const elName = x => String(labelOr(x.label, x.id));
@@ -291,7 +292,10 @@ function typedProblems(model) {
   const lineWord = t => (String(t).includes('.') ? kindWord(t).toLowerCase() : String(t)); // of no notation: as written (audit 30)
   views.forEach((v, i) => { if (!typedView(v)) return; const at = `views[${i}]`;
     if (typeof v.diagram !== 'string' || !/^[a-z0-9]+(\.[a-z0-9-]+)?$/.test(v.diagram)) warn(at + '.diagram', `diagram ${name(v.diagram)} is not <notation> or <notation>.<kind> (uml.class)`);
-    if (v.direction != null && !['right', 'down'].includes(v.direction)) warn(at + '.direction', `direction ${name(v.direction)} is not right or down: drawn right`);
+    // a type that draws every view one way (layout.direction: a sequence down, a timing diagram right) says a direction itself, in
+    // its own words; the core's "drawn right" would be false for it (audit 52)
+    const fixed = T0 => T0 && T0.layout && typeof T0.layout === 'object' && typeof T0.layout.direction === 'string';
+    if (v.direction != null && !['right', 'down'].includes(v.direction) && !fixed(diagramOf(v))) warn(at + '.direction', `direction ${name(v.direction)} is not right or down: drawn right`);
     arr(v.nodeIds).forEach((id, j) => { if (!nodeIds.has(id) && !arr(v.nodes).some(n => isObj(n) && n.id === id)) err(`${at}.nodeIds[${j}]`, `${name(id)} is not a node`); });
     const mine = new Set(arr(v.containers).map(c => isObj(c) && c.id)), T = diagramOf(v); // an item (the type's items; else no ends) is no line
     const item = e => (T ? arr(T.items).includes(e.type) : e.from == null && e.to == null);

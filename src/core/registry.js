@@ -110,6 +110,7 @@ function withOwnNodes(def) {
      holds are left out; its owner is added when not offered).
      None, or not a list: no Owner field.
    - layout.pins false: pos is {}, no ranking; layout.rank false: pos is the view's pins alone, no ranking (risks.md P1).
+     layout.direction 'down' or 'right': the type draws every view that way and warns of another direction itself (audit 52).
      reroute is no registry field: reroute: false goes in the dg the type's own layout passes to layoutTyped (src/typed/layout.js).
    Stage 4's (notes/stage-4.md §12.1, §15): edits.rename(model, view, id, text); a hook's { pick, then }; name: false and
    opens on a palette entry; a line's cut, its label's width (150); rows(model, view, id) and word(model, id), the PDF's.

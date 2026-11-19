@@ -19,7 +19,7 @@ import { usedIds, jsonText, labelOr, elName, propTextProblems, copyOf } from '..
    lib/umlimator-all.js only. */
 
 const UC_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), UC_ARR = x => (Array.isArray(x) ? x : []);
-const UC_HAS = x => x != null && x !== '';
+const UC_HAS = x => x != null && x !== '' && !(typeof x === 'string' && x.trim() === ''); // text of only spaces shows nothing, as "" (audit 52)
 const UC_PROPS = x => (UC_OBJ(x && x.props) ? x.props : {});
 const ucName = elName;
 const ucStereo = x => UC_ARR(UC_PROPS(x).stereotypes).filter(UC_HAS).map(String);
@@ -121,6 +121,7 @@ function ucExtendParts(model, e) {
   if (UC_OBJ(e.pointNames)) Object.entries(e.pointNames).forEach(([id, w]) => { if (!by.has(id) && typeof w === 'string') by.set(id, w); });
   return { points: UC_ARR(UC_PROPS(e).extensionPoints).map(id => by.get(id) ?? String(id)), cond: UC_HAS(UC_PROPS(e).condition) ? String(UC_PROPS(e).condition) : null };
 }
+const ucReads = e => [...new Set(UC_ARR(UC_PROPS(e).extensionPoints).filter(id => typeof id === 'string'))];
 function ucLineLabel(model, e) {
   const x = e.type === 'uml.Extend' ? ucExtendParts(model, e) : null;
   return [UC_KEYWORD[e.type], ...ucStereo(e).map(t => `«${t}»`), e.label, x && x.points.length ? `(${x.points.join(', ')})` : '', x && x.cond ? `[${x.cond}]` : ''].filter(UC_HAS).join(' ');
@@ -210,7 +211,8 @@ function ucGeo({ model, view, pos: ranked, memo }) {
     return { ...d, ...SHAPE[d.shape].size(d) }; });
   const edges = lines.map(e => { const label = ucLineLabel(model, e);
     return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: label || undefined, end: ucLookOf(e), aria: ucLineName(model, e, pic),
-      ...(e.type === 'uml.Extend' ? { cut: 280 } : {}), ...(UC_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }; });
+      // an extend draws its points' names, so it reads them: a renamed point marks it changed on the diff page (audit 52)
+      ...(e.type === 'uml.Extend' ? { cut: 280, ...(ucReads(e).length ? { reads: ucReads(e) } : {}) } : {}), ...(UC_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }; });
   // as the class view (class.js typeGeo): laid out right with boxes, the columns spread by the widest label
   const down = view.direction === 'down', wide = !down && pic.boxes.length ? Math.max(0, ...edges.filter(e => e.label).map(labelW)) : 0;
   const g = placeTabs(layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: down ? 'down' : 'right',

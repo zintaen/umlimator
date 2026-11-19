@@ -640,3 +640,17 @@ test('a class\'s port: F2 and the palette refuse a name another member of the cl
   assert.ok(Array.isArray(T.edits.add(m, v, { type: 'uml.Port' }, 'p', { sel: ['k'] })));
   assert.ok(Array.isArray(T.edits.rename(m, v, 'k.p', 'q')));
 });
+
+test('audit 52: a port pinned to a side where a line to its component\'s body ends is sized a slot of its own, clear of the next port', () => {
+  const m = { schemaVersion: 2, root: 'v', nodes: [
+    { id: 'n1', type: 'uml.Component', label: 'Orders', members: [{ id: 'n1.p0', type: 'uml.Port', label: 'admin' }, { id: 'n1.p1', type: 'uml.Port', label: 'api' }] },
+    { id: 'n2', type: 'uml.Component', label: 'Web' }],
+    edges: [{ id: 'e0', type: 'uml.Connector', from: 'n2', to: 'n1.p1', props: { kind: 'assembly' } }, { id: 'e2', type: 'uml.Connector', from: 'n2', to: 'n1', props: { kind: 'assembly' } }],
+    views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['n1', 'n2'], present: { 'n1.p0': { side: 'left' } } }] };
+  for (const direction of [undefined, 'down']) { const c = structuredClone(m); if (direction) c.views[0].direction = direction;
+    assert.deepEqual(validate(c), []); assert.deepEqual(check(c, 'v'), [], direction || 'right');
+    const g = layout(c, 'v'), ports = g.nodes.filter(n => n.shape === 'port');
+    assert.equal(ports.length, 2); }
+  // a slot longer (56 + 20 px) for the port it held; with no line to the body, nothing grows: as big as its two ports need
+  assert.equal(layout(m, 'v').byId.n1.h, 76); const c = structuredClone(m); c.edges.pop(); assert.equal(layout(c, 'v').byId.n1.h, 56);
+});

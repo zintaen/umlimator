@@ -78,7 +78,7 @@ test('the definition: palette, lines with their sorts and the duration constrain
   assert.deepEqual(T.refs, { 'uml.Message': { 'props.replyTo': 'cascade' } });
   assert.deepEqual([typeof T.layout.run, T.layout.pins, typeof T.draw, typeof T.describe, typeof T.rows], ['function', false, 'function', 'function', 'function']);
   assert.deepEqual(Object.keys(T.edits), ['connect', 'moveTo', 'add', 'remove', 'rename', 'key']);
-  assert.deepEqual(Object.keys(T.rules), ['change-lifeline', 'change-time', 'change-state', 'change-instant', 'message-ends', 'message-times', 'sort', 'reply-call', 'constraint-ends', 'constraint-order', 'timing-kinds']);
+  assert.deepEqual(Object.keys(T.rules), ['change-lifeline', 'change-time', 'change-state', 'change-instant', 'message-ends', 'message-times', 'sort', 'reply-call', 'constraint-ends', 'constraint-order', 'timing-kinds', 'view']);
 });
 
 test('14-timing.json (an inline copy) lays out clean: two lanes, their state rows, eight changes, two messages with their sorts\' ends, two constraints, the ruler; no problem', () => {
@@ -755,4 +755,18 @@ test('audit 50: F2 on a change or a message parses in linear time, a run of spac
   assert.deepEqual(tmRename(m, V(m), 'w-waiting', 'Idle' + ' '.repeat(5000) + 'x'), { error: 'a change\'s text is over 4096 characters' });
   assert.ok(Array.isArray(tmRename(m, V(m), 'm-charge', 'x'.repeat(4096))), 'at the cap: renamed');
   assert.deepEqual(tmRename(m, V(m), 'c-wait', '{<= 800 ms}' + ' '.repeat(5000)), [{ op: 'set', id: 'c-wait', path: 'label', value: '{<= 800 ms}' }], 'a constraint\'s label is not capped');
+});
+
+test('audit 52: a timing view says layout pins and a direction other than right, which change nothing, as a sequence view says its own; the core says no "drawn right" for either', () => {
+  const tm = JSON.parse(readFileSync(new URL('../examples/types/uml-timing.json', import.meta.url))), sq = JSON.parse(readFileSync(new URL('../examples/types/uml-sequence.json', import.meta.url)));
+  const said = (m, f) => { const c = structuredClone(m); f(c.views[0]); return validate(c).filter(p => /direction|pins/.test(p.message)).map(p => p.message); };
+  const v = tm.views[0].id, lane = tm.views[0].nodeIds[0];
+  assert.deepEqual(said(tm, () => {}), []); assert.deepEqual(said(tm, w => { w.direction = 'right'; }), []);
+  for (const d of ['down', 'up', 'left']) assert.deepEqual(said(tm, w => { w.direction = d; }), [`view: view ${v} has direction "${d}": a timing diagram is drawn left to right`], d);
+  assert.deepEqual(said(tm, w => { w.layout = { [lane]: [3, 2] }; }), [`view: view ${v} pins ${lane}: a timing diagram places its lifelines in nodeIds order, so pins mean nothing`]);
+  for (const d of ['up', 'left', 'right']) assert.deepEqual(said(sq, w => { w.direction = d; }), [`view: view ${sq.views[0].id} has direction "${d}": a sequence is drawn down`], d);
+  // a type that has a direction keeps the core's word
+  const cl = JSON.parse(readFileSync(new URL('../examples/types/uml-class.json', import.meta.url))); cl.views[0].direction = 'up';
+  assert.ok(validate(cl).some(p => p.message === 'direction "up" is not right or down: drawn right'));
+  assert.equal(TM_TYPE.rules.view, 'a timing view has no layout pins and is drawn left to right');
 });
