@@ -1019,7 +1019,8 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     e.lbl = null; routed.push(e); placeLabel(e); });
   // (NEST) then each line that crosses a box's title, runs along a box's border, runs through a box that holds neither of its
   // ends (drawn so it seems to enter the box and leave it, and a region's title, which state.js draws later, may lie on its
-  // way) or runs along a line the last resort drew into a box: the line routed again with every box that holds neither end
+  // way) or runs along a line the last resort drew into a box or along a loop (audit 44: laid out right, the last resort's turn
+  // ran on a state's self-transition's top run, half a pixel off, where no grid track lay between the loop and the row above): the line routed again with every box that holds neither end
   // shut to it, from its own sides and with each end on each other side of its card, and the best kept by check()'s rule (a
   // title crossed or a border or line run along before crossings, then all issues, then boxes run through). Audit 39: laid out
   // down, a transition from a state over a composite to the state under it, its way in shut by a loop, ran in through the
@@ -1044,7 +1045,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // bestFlow): the stress file's 50 states laid out in twice the time
   let boxBudget = 12;
   if (NEST) { const r0 = [], is0 = routeAudit({ edges, families, byId }, '', null, r0), bad = new Set();
-    is0.forEach((p, k) => { if (/ along the border of /.test(p)) bad.add(r0[k][0]); else if (/ share a line$/.test(p) && r0[k].some(x => lastR.includes(x) && (x.s.box || x.t.box))) r0[k].forEach(x => bad.add(x)); });
+    is0.forEach((p, k) => { if (/ along the border of /.test(p)) bad.add(r0[k][0]); else if (/ share a line$/.test(p) && r0[k].some(x => lastR.includes(x) && (x.s.box || x.t.box || r0[k].some(y => y.s === y.t)))) r0[k].forEach(x => bad.add(x)); });
     const todo = free.filter(e => !e.fixed && !e.inner && e.fromPort == null && e.toPort == null && e.s !== e.t && e.pts && (bad.has(e) || titles(e) || (nodes.length <= 30 && boxIn(e))));
     const v0 = todo.length ? boxSaid() : null, snap = todo.length ? edges.map(e => [e, e.p1, e.p2, e.fs, e.ts, e.pts, e.how, e.lbl, e.stubs]) : null, snapR = todo.length ? [routed.slice(), reserved.slice(), placed.slice()] : null, used0 = used;
     todo.forEach(e => { const k0 = boxSaid(new Set([e])), was = [e.p1, e.p2, e.fs, e.ts, e.pts, e.how, e.lbl]; let best = null; ripUp(e);
