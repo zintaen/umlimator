@@ -119,3 +119,47 @@ test('audit 43: every example\'s panel text fields and stereotypes, each set to 
     }
   }
 });
+
+test('audit 44: a panel field its type marks drawn: false (a reference) is never drawn, and validate() says so, never "drawn as"', async () => {
+  const { diagramOf, drawnKind } = await import('../src/core/registry.js');
+  const obj = x => x && typeof x === 'object' && !Array.isArray(x), arr = x => (Array.isArray(x) ? x : []);
+  // hostile values: each is no text, and none may reach the picture or its accessible names, nor be said as drawn
+  const odd = [['zq-probe'], { zq: 'probe' }, [['zq-probe', '<script>x</script>']], [{ href: 'https://zq.invalid/' }], true];
+  const declared = new Set(), tried = new Map();
+  for (const f of files) {
+    const base = read(f); if (base.schemaVersion !== 2) continue;
+    // a sequence with no interaction use gets one, so its refersTo is swept too
+    base.views.forEach(v => { if (v.diagram === 'uml.sequence' && Array.isArray(v.edges) && !v.edges.some(e => e && e.type === 'uml.InteractionUse'))
+      v.edges.push({ id: 'zq-use', type: 'uml.InteractionUse', label: 'Pay', props: { refersTo: 'pay', covers: v.nodeIds.slice(0, 1) } }); });
+    base.views.forEach((v, vi) => {
+      const T = diagramOf(v); if (!v.diagram || !T || !obj(T.props)) return;
+      Object.entries(T.props).forEach(([kind, fs]) => arr(fs).forEach(fl => { if (obj(fl) && fl.drawn === false) declared.add(`${v.diagram} ${kind}.${fl.key}`); }));
+      // what the view shows: its cards, and its lines (its own, or those it names, or else the model's between its cards)
+      const on = new Set(arr(v.nodeIds)), listed = Array.isArray(v.edges) ? new Set(v.edges.filter(e => typeof e === 'string')) : null;
+      const spots = [...arr(base.nodes).map((n, i) => [n, `nodes[${i}]`]).filter(([n]) => obj(n) && on.has(n.id)),
+        ...arr(base.edges).map((e, i) => [e, `edges[${i}]`]).filter(([e]) => obj(e) && (listed ? listed.has(e.id) : on.has(e.from) && on.has(e.to))),
+        ...(Array.isArray(v.edges) ? v.edges.map((e, j) => [e, `views[${vi}].edges[${j}]`]) : [])].filter(([x]) => obj(x));
+      for (const [x, at] of spots) {
+        const kind = drawnKind(T, x), fs = typeof kind === 'string' && Object.hasOwn(T.props, kind) ? arr(T.props[kind]) : [];
+        for (const fl of fs.filter(fl => obj(fl) && fl.drawn === false)) {
+          const key = `${v.diagram} ${kind}.${fl.key}`; if ((tried.get(key) || 0) >= 2) continue; tried.set(key, (tried.get(key) || 0) + 1); // two of each: the sweep's time
+          for (const val of odd) {
+            const m = structuredClone(base), y = at.match(/\w+\[\d+\]/g).reduce((o, s) => { const [, a, i] = /(\w+)\[(\d+)\]/.exec(s); return o[a][+i]; }, m);
+            y.props = obj(y.props) ? y.props : {}; y.props[fl.key] = val;
+            const said = validate(m).filter(p => p.path === `${at}.props.${fl.key}`).map(p => p.message);
+            assert.ok(said.length && said.every(s => !/drawn as/.test(s)), `${f} ${at}.props.${fl.key} = ${JSON.stringify(val)}: ${JSON.stringify(said)}`);
+            const ctx = mapContext(m), pic = ctx.buildView(v.id).markup + JSON.stringify(layout(m, v.id));
+            assert.ok(!/zq-probe|zq\.invalid|probe"|\[object Object\]/.test(pic), `${f} ${at}.props.${fl.key} = ${JSON.stringify(val)} is drawn`);
+          }
+        }
+      }
+    });
+  }
+  // every field marked so is swept on some example; the references the audit found said "drawn as" are among them
+  assert.deepEqual([...declared].filter(k => !tried.has(k)), []);
+  for (const k of ['uml.sequence uml.Message.replyTo', 'uml.sequence uml.InteractionUse.refersTo', 'uml.communication uml.Message.replyTo', 'uml.timing uml.Message.replyTo',
+    'bpmn bpmn.Participant.processRef', 'bpmn bpmn.CallActivity.calledElement', 'bpmn bpmn.DataStoreReference.dataStoreRef']) assert.ok(tried.has(k), `${k} is not swept`);
+  // the audit's own case: a call (not a reply) whose replyTo is no text
+  const m = read('../examples/checkout-sequence.json'), c = m.views[0].edges.findIndex(e => e && e.props && e.props.sort === 'call'); m.views[0].edges[c].props.replyTo = { id: 'x' };
+  assert.deepEqual(validate(m).filter(p => p.path.endsWith('replyTo')).map(p => `${p.path} ${p.message}`), [`views[0].edges[${c}].props.replyTo replyTo {"id":"x"} is not text: not drawn, and the panel shows it as "[object Object]"`]);
+});

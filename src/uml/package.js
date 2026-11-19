@@ -1,7 +1,7 @@
 import { elName } from '../core/model.js';
 import { registerDiagramType } from '../core/registry.js';
-import { CLASS_DEF, RULES, classProblems, describeAs, drawnLines, lineLabel, lineRename, typeGeo } from './class.js';
-import { OWNER_RULES, OWN_BOXES, ownerChoices, ownerProblems, ownersOn, viewLines } from './owners.js';
+import { CLASS_DEF, RULES, classProblems, commentConnect, describeAs, drawnLines, lineLabel, lineRename, typeGeo } from './class.js';
+import { OWNER_RULES, OWN_BOXES, defOwner, ownerChoices, ownerProblems, ownersOn, viewLines } from './owners.js';
 
 /* ---------- the package diagram, uml.package (work package 2.2, notes/stage-2.md §10.2, §10.3) ----------
    Packages and the classifiers of the class diagram, drawn by the class view's code with their names only: a package holding
@@ -33,7 +33,7 @@ function packageProblems(model, view) {
 
 // connect: a package import or merge import-ends calls an error is refused, in its words, as the profile view's (audit 38)
 function packageConnect(model, view, from, to, at, line) {
-  const t = line && typeof line === 'object' ? line.type : null; if (t !== 'uml.PackageImport' && t !== 'uml.PackageMerge') return null;
+  const t = line && typeof line === 'object' ? line.type : null; if (t !== 'uml.PackageImport' && t !== 'uml.PackageMerge') return commentConnect(model, view, from, to, line); // audit 44
   const ty = new Map((Array.isArray(model && model.nodes) ? model.nodes : []).filter(n => n && typeof n === 'object' && typeof n.id === 'string').map(n => [n.id, n.type]));
   const pk = id => OWN_BOXES.includes(ty.get(id)); // a profile is a package
   return pk(from) && pk(to) && from !== to ? null : { error: `A package ${t === 'uml.PackageImport' ? 'import' : 'merge'} runs from a package to another package` };
@@ -55,7 +55,7 @@ const PACKAGE_TYPE = registerDiagramType('uml.package', {
   validate: (model, view) => [...classProblems(model, view), ...packageProblems(model, view), ...ownerProblems(model, view, drawnLines(model, view, PACKAGE_LINES).lines)],
   rules: { ...RULES, ...OWNER_RULES, ...PACKAGE_RULES },
   describe: describeAs(PACKAGE_LOOK),
-  edits: { connect: packageConnect, rename: lineRename(lineLabel) },
+  edits: { connect: packageConnect, rename: lineRename(lineLabel), owner: defOwner },
 });
 
 export { PACKAGE_TYPE, PACKAGE_RULES, packageProblems };

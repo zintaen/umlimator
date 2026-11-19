@@ -502,3 +502,22 @@ test('audit 38: validate() says a story step names a line its DFD or C4 view doe
   assert.ok(said.includes('"__proto__" is no line of view "lv": the view does not draw it'), said.join('\n'));
   assert.ok(said.filter(s => s === '"b" is no line of view "lv": the view does not draw it').length === 2, said.join('\n'));
 });
+
+// audit 44: a node of no DFD kind (none, a typo such as dfd.Entity, another notation's) is drawn with its keyword, so it is not
+// read as a Yourdon external entity, and keyed "Element"; a comment, drawn as a note, keyed "Comment", as the flowchart keys it
+test('a node of no DFD kind is headed by its keyword and keyed, and a comment is keyed (audit 44)', () => {
+  const keys = g => g.legend.map(x => x.match(/<b>(.*?)<\/b>/)[1]);
+  for (const [t, word] of [[undefined, 'element'], ['dfd.Entity', 'element'], ['uml.Class', 'class'], ['', 'element']]) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'c', type: 'dfd.ExternalEntity', label: 'Customer' }, { id: 'p', type: 'dfd.Process', label: 'Take order', props: { number: '1' } }, { id: 'b', ...(t !== undefined ? { type: t } : {}), label: 'Bank' }],
+      edges: [{ id: 'e1', type: 'dfd.DataFlow', from: 'c', to: 'p', label: 'order' }, { id: 'e2', type: 'dfd.DataFlow', from: 'p', to: 'b', label: 'payment' }], views: [{ id: 'v', diagram: 'dfd', nodeIds: ['c', 'p', 'b'] }] };
+    for (const notation of ['yourdon', 'gane-sarson']) { m.views[0].notation = notation;
+      const g = layout(m, 'v'), b = g.nodes.find(n => n.id === 'b'), s = svgOf(g), at = s.indexOf('data-id="b"');
+      assert.deepEqual(b.stereotypes, [word], `${t} in ${notation}`);
+      assert.ok(s.slice(at, s.indexOf('</g>', at)).includes(`«${word}»`), 'its keyword drawn');
+      assert.deepEqual(keys(g), ['Process', 'External entity', 'Element', 'Data flow']); }
+  }
+  const m = { schemaVersion: 2, nodes: [{ id: 'p', type: 'dfd.Process', label: 'Take order' }, { id: 'x', label: 'Loose element' }, { id: 'c', type: 'uml.Comment', label: 'A note' }], edges: [], views: [{ id: 'v', diagram: 'dfd', nodeIds: ['p', 'x', 'c'] }] };
+  assert.deepEqual(keys(layout(m, 'v')), ['Process', 'Element', 'Comment']);
+  m.views[0].nodeIds = ['p', 'c']; assert.deepEqual(keys(layout(m, 'v')), ['Process', 'Comment'], 'a comment alone: no Element');
+  assert.deepEqual(keys(layout(DF, DF.views[0].id)), keys(layout(DF, DF.views[0].id)).filter(k => k !== 'Element' && k !== 'Comment'), 'the example: neither');
+});

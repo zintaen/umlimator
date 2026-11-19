@@ -395,7 +395,7 @@ const COMM_TYPE = registerDiagramType('uml.communication', {
     .map(([sort, label]) => ({ type: 'uml.Message', label, props: { sort } }))],
   props: {
     'uml.Lifeline': [{ key: 'represents', label: 'Represents', kind: 'text' }, { key: 'stereotypes', label: 'Stereotypes', kind: 'list' }],
-    'uml.Message': [CM_SORT, { key: 'replyTo', label: 'Reply to', kind: 'text' }, { key: 'stereotypes', label: 'Stereotypes', kind: 'list' }],
+    'uml.Message': [CM_SORT, { key: 'replyTo', label: 'Reply to', kind: 'text', drawn: false }, { key: 'stereotypes', label: 'Stereotypes', kind: 'list' }],
     'uml.Connector': [],
   },
   // a connector is drawn with no text (its messages are): no Name field (audit 21)

@@ -235,7 +235,8 @@ test('remove, rename, moveTo and member rows on the projection: SysML\'s types b
   assert.deepEqual(T.edits.member(RICH, V, 'ebike', null, 'proxy port aux : ChargeInterface'), [{ op: 'add', element: { id: 'ebike.aux', type: 'sysml.Port', label: 'aux', props: { valueType: 'ChargeInterface', kind: 'proxy' } }, owner: 'ebike' }]);
   assert.equal(T.edits.member(RICH, V, 'ebike', null, 'ref home : Dock')[0].element.type, 'sysml.ReferenceProperty');
   assert.equal(T.edits.member(RICH, V, 'ebike', null, 'mass : Real')[0].element.type, 'sysml.ValueProperty');
-  assert.deepEqual(T.edits.member(RICH, V, 'ebike', 'ebike.plug', 'full port plug : ChargeInterface'), [{ op: 'set', id: 'ebike.plug', path: 'props.kind', value: 'full' }]);
+  // a full port typed by an interface block breaks port-kind: refused (audit 44)
+  assert.match(T.edits.member(RICH, V, 'ebike', 'ebike.plug', 'full port plug : ChargeInterface').error, /^Full port "EBike"\.plug is typed by "ChargeInterface", an interface block: /);
   assert.deepEqual(T.edits.member(RICH, V, 'ebike', 'ebike.plug', 'port plug : ChargeInterface'), [{ op: 'set', id: 'ebike.plug', path: 'props.kind', value: undefined }]);
   assert.deepEqual(node(RICH, 'ebike').members.map(T.member.print).slice(-2), ['ref dock : Dock [0..1]', 'proxy port plug : ChargeInterface']);
   assert.equal(T.member.print(mem(RICH, 'dock.charge')), 'proxy port charge : ~ChargeInterface');

@@ -1,6 +1,6 @@
 import { TYPED } from '../core/registry.js';
 import { warn } from '../core/warn.js';
-import { NW, OWN_ROUTE, PLAIN, TURNS, labelW, layoutGraph } from '../layout/layered.js';
+import { NW, OWN_ROUTE, PLAIN, SPAN, TURNS, labelW, layoutGraph } from '../layout/layered.js';
 import { leaveIssues, overlapIssues, routeAudit, throughIssues } from '../layout/audit.js';
 
 /* A typed view's layout (work package 1.4): layoutGraph's plain layout with what a typed view needs, none of it on a map.
@@ -12,7 +12,7 @@ import { leaveIssues, overlapIssues, routeAudit, throughIssues } from '../layout
 
 // what moves a typed view's geometry: every field of the view layoutGraph reads but VIEW_PAINT (a test holds the two lists to
 // layered.js), and these of a node and a line. Anything else (a colour, a `props` field) only repaints
-const VIEW_GEO = ['abs', 'authors', 'blocks', 'containers', 'direction', 'fan', 'flipped', 'gap', 'groups', 'hub', 'intake', 'labelGaps', 'laneGap', 'lanes', 'mainSteps', 'nest', 'nodeH', 'noSwap', 'quick', 'repair', 'reroute', 'rgap', 'turned', 'typed'];
+const VIEW_GEO = ['abs', 'authors', 'blocks', 'containers', 'direction', 'drawn', 'fan', 'flipped', 'gap', 'groups', 'hub', 'intake', 'labelGaps', 'laneGap', 'lanes', 'mainSteps', 'nest', 'nodeH', 'noSwap', 'quick', 'repair', 'reroute', 'rgap', 'turned', 'typed'];
 const VIEW_PAINT = ['tour', 'subAndChips'], NODE_GEO = ['id', 'col', 'row', 'w', 'h', 'ax', 'ay'], EDGE_GEO = ['id', 'from', 'to', 'label', 'step', 'fromSide', 'toSide', 'back', 'fixed', 'sublabel', 'cut', 'fromPort', 'toPort', 'inner', 'portRank', 'portMin'];
 const geometryKey = dg => JSON.stringify([VIEW_GEO.map(k => dg[k]), (dg.nodes || []).map(n => NODE_GEO.map(k => n[k])), (dg.edges || []).map(e => EDGE_GEO.map(k => e[k]))]);
 
@@ -53,13 +53,18 @@ function layoutTyped(dg, memo) {
   // Each is judged as buildGeo will draw it (context.js): one that kept the request/reply port swap, in a view of up to 30
   // cards, laid out once more without it and the better of the two taken (audit 39: the layout as before, judged with its swap,
   // lost to the nested one by two crossings, and without the swap it had one fewer than that)
-  const said = h => { const is = [...routeAudit(h, ''), ...throughIssues(h, '')]; return [is.filter(s => !/ cross$/.test(s)).length, is.length]; };
+  // (each judged with its boxes as the type draws them, dg.drawn: a state's regions stretched across it, audit 44)
+  const seen = h => (typeof dg.drawn === 'function' && (h.families || []).length ? { ...h, families: dg.drawn(h.nodes, h.families) || h.families } : h);
+  const said = h0 => { const h = seen(h0), is = [...routeAudit(h, ''), ...throughIssues(h, '')]; return [is.filter(s => !/ cross$/.test(s)).length, is.length]; };
   const less = (b, a) => b[0] < a[0] || (b[0] === a[0] && b[1] < a[1]);
   // [layout, laid out without the swap too]: buildGeo need not try that one again
   // a layout whose lines to one card took its top and bottom by turns though the card has other lines (layoutPass, audit 39) is
   // laid out without those turns too, and that one kept when check() has less to say of it (audit 40: laid out right, the turns
   // of two lines into a composite crossed the lines between its state and the state beside it, twice)
+  // a layout with a box side grown over its title (layoutPass, audit 44) is laid out without that too, and kept only when check()
+  // has less to say of it
   const best = u => { let g = lay(u), tried = false;
+    if (g.grew) { const v = { ...u, [SPAN]: true }, h = lay(v); if (!less(said(g), said(h))) { g = h; u = v; } }
     if (g.turns) { const v = { ...u, [TURNS]: true }, h = lay(v); if (less(said(h), said(g))) { g = h; u = v; } }
     if (g.nested) { const a0 = said(g);
       const judged = (v, h = lay(v), b = said(h)) => { if (!memo || v.noSwap || !h.rr || (h.nodes || []).length > 30) return [h, b, false];
@@ -70,7 +75,7 @@ function layoutTyped(dg, memo) {
   // too, as up to 0.41, and that one is kept unless following has no more crossings and no more other issues (check()'s), so
   // following them never draws a view worse
   let [g, tried] = best(t);
-  if (g.edges.some(e => e[FOLLOWED])) { const told = h => { const is = [...overlapIssues(h, ''), ...routeAudit(h, ''), ...throughIssues(h, ''), ...leaveIssues(h, '')], k = is.filter(s => / cross$/.test(s)).length; return [k, is.length - k]; };
+  if (g.edges.some(e => e[FOLLOWED])) { const told = h0 => { const h = seen(h0), is = [...overlapIssues(h, ''), ...routeAudit(h, ''), ...throughIssues(h, ''), ...leaveIssues(h, '')], k = is.filter(s => / cross$/.test(s)).length; return [k, is.length - k]; };
     const a = told(g); if (a[0] || a[1]) { const [h, ht] = best({ ...t, [PORTS_PLAIN]: true }), b = told(h); if (a[0] > b[0] || a[1] > b[1]) { g = h; tried = ht; } } }
   if (memo) Object.assign(memo, { key, g, dg, runs: (memo.runs || 0) + 1, rr: !!g.rr && !tried });
   return g;

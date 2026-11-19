@@ -1,11 +1,11 @@
-import { jsonText, labelOr, elName, labelProblem, propTextProblems } from '../core/model.js';
-import { kindWord, registerDiagramType } from '../core/registry.js';
+import { jsonText, labelOr, elName, labelProblem, propTextProblems, usedIds } from '../core/model.js';
+import { aWord, kindWord, registerDiagramType } from '../core/registry.js';
 import { brLines, esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import '../typed/draw.js'; // SHAPE.classifier, which the note's outline and ports take
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { OWN_BOXES, OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder } from './owners.js';
+import { OWN_BOXES, OWNER_RULES, defOwner, holdsLine, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder } from './owners.js';
 import { snKindWord } from './structure.js';
 
 /* ---------- the class diagram, uml.class (work package 1.9) ----------
@@ -425,11 +425,27 @@ function closesCycle(model, view, type, from, to, word = 'a generalization', sai
 }
 // connect on a class view: a generalization that would close a cycle is refused (generalization-cycle), and a realization
 // realization-target calls an error, in its words, as the component view's (audit 38); else the default
+// a comment link (comment-link) on the class, package and profile views: drawn from an element to a comment, added from the
+// comment, as the deployment view turns a deploy drawn the wrong way round; with no comment at either end, refused in the rule's
+// words, as the block view's (audit 44). Null: not a comment link, or drawn from a comment
+function commentConnect(model, view, from, to, line) {
+  if (!UML_OBJ(line) || line.type !== 'uml.CommentLink') return null;
+  const I = classIndex(UML_OBJ(model) ? model : {}), isNote = id => { const r = I.get(id); return !!r && r.x.type === 'uml.Comment'; };
+  if (isNote(from)) return null;
+  if (!isNote(to)) return { error: 'A comment link runs from a comment' };
+  const used = new Set(); usedIds(model, used); let k = 1; while (used.has('commentlink' + k)) k++;
+  return [{ op: 'add', element: { id: 'commentlink' + k, type: line.type, from: to, to: from }, view: view.id }];
+}
+// connect on a class view: a generalization that would close a cycle is refused (generalization-cycle), and a realization
+// realization-target calls an error, in its words, as the component view's (audit 38); a generalization generalization-kinds
+// calls an error (two kinds, a package, a comment, a member; an end of another notation is that notation's) and a comment
+// link drawn to a comment (commentConnect), audit 44; else the default
 function classConnect(model, view, from, to, at, line) {
-  const t = UML_OBJ(line) ? line.type : null;
-  if (t === 'uml.InterfaceRealization') { const I = classIndex(UML_OBJ(model) ? model : {}), ty = id => { const r = I.get(id); return !r ? undefined : r.kind === 'node' && !r.x.type ? 'uml.Class' : r.x.type; };
-    if (ty(to) !== 'uml.Interface' || !CLASSIFIERS.includes(ty(from)) || ty(from) === 'uml.Interface') return { error: 'A realization runs from a class, an enumeration or a data type to an interface' }; }
-  return t === 'uml.Generalization' ? closesCycle(model, view, t, from, to) : null;
+  const t = UML_OBJ(line) ? line.type : null, I = classIndex(UML_OBJ(model) ? model : {}), ty = id => { const r = I.get(id); return !r ? undefined : r.kind === 'node' && !r.x.type ? 'uml.Class' : r.x.type; };
+  if (t === 'uml.InterfaceRealization' && (ty(to) !== 'uml.Interface' || !CLASSIFIERS.includes(ty(from)) || ty(from) === 'uml.Interface')) return { error: 'A realization runs from a class, an enumeration or a data type to an interface' };
+  if (t === 'uml.Generalization' && I.has(from) && I.has(to) && ![from, to].some(id => /^(?!uml\.)[^.]+\./.test(String(ty(id)))) && (!CLASSIFIERS.includes(ty(from)) || !CLASSIFIERS.includes(ty(to)) || ty(from) !== ty(to)))
+    return { error: `A generalization joins two classifiers of one kind, not ${aWord(typeWord(ty(from)).toLowerCase())} and ${aWord(typeWord(ty(to)).toLowerCase())}` };
+  return t === 'uml.Generalization' ? closesCycle(model, view, t, from, to) : commentConnect(model, view, from, to, line);
 }
 
 /* ---- describe(): the view in words, per element, each box then what it holds: "Class Order (entity), 5 attributes, 3
@@ -477,7 +493,7 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   // it were (audit 31, as the object type's since audit 30); null (a comment, a package): its members
   rows: (model, view, id) => { const x = UML_ARR(model && model.nodes).find(n => UML_OBJ(n) && n.id === id); if (!x || x.type === 'uml.Comment' || OWN_BOXES.includes(x.type)) return null;
     return compartmentsOf(x).flatMap(c => c.members.map(printMember)); },
-  edits: { connect: classConnect, rename: lineRename(lineLabel) },
+  edits: { connect: classConnect, rename: lineRename(lineLabel), owner: defOwner },
 });
 
-export { CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, memberClash, paramTextProblems, classProblems, closesCycle, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
+export { CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, memberClash, paramTextProblems, classProblems, closesCycle, commentConnect, classDescribe, classGeo, typeGeo, describeAs, drawnLines };

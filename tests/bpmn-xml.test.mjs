@@ -264,6 +264,20 @@ test('the writer reports what it does not write: other diagrams, ext.bpmn, a lin
   assert.match(xml, /<bpmn:startEvent id="s" \/>/);
 });
 
+test('audit 44: a call activity\'s calledElement, a data store\'s dataStoreRef or a documentation that is not text is reported as not written, never dropped without a word', needs, async () => {
+  for (const odd of [{ name: 'Pick and pack' }, ['Orders', '<x/>'], 7, true, { href: 'https://zq.invalid/' }]) {
+    const m = structuredClone(example), node = id => m.nodes.find(n => n.id === id);
+    node('bp-ship').props.calledElement = odd; node('bp-stock').props = { dataStoreRef: odd }; node('bp-bookshop').props = { documentation: odd };
+    const [w] = await roundTrip(m);
+    assert.deepEqual(w.report.map(x => `${x.line}: ${x.message}`), ['bp-bookshop: props.documentation, which is not text: not written',
+      'bp-ship: props.calledElement, which is not text: not written', 'bp-stock: props.dataStoreRef, which is not text: not written'], JSON.stringify(odd));
+    assert.doesNotMatch(w.xml, /calledElement=|dataStoreRef=|zq\.invalid|\[object Object\]/);
+  }
+  // text is written as before, and an empty one is none
+  const m = structuredClone(example); m.nodes.find(n => n.id === 'bp-stock').props = { dataStoreRef: 'Orders' }; m.nodes.find(n => n.id === 'bp-ship').props.calledElement = '';
+  const [w] = await roundTrip(m); assert.deepEqual(w.report, []); assert.match(w.xml, /dataStoreRef="/); assert.doesNotMatch(w.xml, /calledElement=/);
+});
+
 test('the writer reports what a reader would read back otherwise, and writes a cycle of lanes at the top (§12.5)', needs, async () => {
   const pool = (id, props, members) => ({ id, type: 'bpmn.Participant', ...(props ? { props } : {}), ...(members ? { members } : {}) });
   const task = (id, more = {}) => ({ id, type: 'bpmn.Task', props: { taskType: 'none' }, ...more });

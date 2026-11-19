@@ -541,9 +541,9 @@ with no subject) reparents the card to the view's subject, or to none; Delete on
 | | a port's kind and `~` | | `F2`: `«proxy» charge : ~ChargeInterface` | `set props.kind`, `set props.valueType` |
 | | an item flow | the properties panel | | `set props.itemFlow.item`, `set props.itemFlow.direction` |
 | | a part deleted | | `Shift + Delete` | `delete`, its connectors with it (the type's `refs`) |
-| Parametric (`sysml.parametric`) | a constraint or value property | the palette | `N` | `add`; a member row `name : Type` (a constraint or value property) or `param name : Type` (a parameter, on a constraint block only) |
+| Parametric (`sysml.parametric`) | a constraint or value property | the palette | `N` | `add`; a member row `name : Type` (a constraint or value property) or `param name : Type` (a parameter, on a constraint block only); the palette's constraint property is named `name : ConstraintBlock`, and one typed by nothing or by a block is refused (`constraint-type`) |
 | | a binding | a drag from a value to a parameter's square | `L`, the parameter, Enter | `add` of a `sysml.BindingConnector` with `ends.to.part`; one drawn from a parameter runs from the value; one to a constraint property's box is refused |
-| | a constraint property's type | the properties panel | | `set props.valueType` |
+| | a constraint property's type | the properties panel | | `set props.valueType`; a type that is a block, or none, is refused (`constraint-type`), as a member row, in any SysML view, that would break `constraint-type` or `port-kind` is |
 
 ## Milestone 4a's gestures: the mindmap, Google Cloud, Azure and AWS (0.26.0; AWS 4a.8)
 

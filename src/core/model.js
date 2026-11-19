@@ -190,10 +190,11 @@ const labelOr = (label, id) => label == null || label === '' ? id : label;
 const elName = x => String(labelOr(x.label, x.id));
 // key: the field read, a label by default; a view's title too (audit 31: a view's title, a box's label and a card's label in a
 // view's nodeOverrides were drawn as "[object Object]" and said nowhere)
-function labelProblem(x, at, key = 'label') {
+// as: what happens to its text, "drawn as" by default; a panel field the picture never draws says so (audit 44)
+function labelProblem(x, at, key = 'label', as = 'drawn as') {
   const l = x && typeof x === 'object' ? x[key] : undefined; if (l == null || typeof l === 'string' || typeof l === 'number') return null;
   let shown; try { shown = String(l); } catch { shown = ''; }
-  return { level: 'warning', path: `${at}.${key}`, message: `${key} ${jsonText(l)} is not text: drawn as ${jsonText(shown)}` };
+  return { level: 'warning', path: `${at}.${key}`, message: `${key} ${jsonText(l)} is not text: ${as} ${jsonText(shown)}` };
 }
 // the props a typed view draws as text (a requirement's text, a part's multiplicity, a task's documentation), each said as a
 // label is when it is not text: a warning at its own path, never a silent "[object Object]" (audit 40)

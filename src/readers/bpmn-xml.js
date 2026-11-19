@@ -71,6 +71,8 @@ const BX_SIZE = { 'bpmn.Participant': [600, 200], 'bpmn.Lane': [570, 100], 'bpmn
   'bpmn.DataObject': [36, 50], 'bpmn.DataStoreReference': [50, 50], 'bpmn.ExclusiveGateway': [50, 50], 'bpmn.ParallelGateway': [50, 50] };
 const bxEvent = t => (t || '').endsWith('Event');
 const bxStr = x => (typeof x === 'string' && x ? x : null);
+// a value set but not text (a number, a list, an object): no attribute takes it, so the writer says it left it out (audit 44)
+const bxOdd = x => x != null && typeof x !== 'string';
 const bxMsg = e => { try { return String(e && e.message || e).split('\n')[0]; } catch { return 'an error'; } };
 // moddle's warning or error with its cause: the first line, and the "nested error:" line it ends with when that says more than
 // the first (audit 31: a duplicate id was said only as "unparsable content <bpmn:task> detected")
@@ -407,6 +409,7 @@ async function writeBpmnXml(model, viewId, geo, moddle) {
       if (el.id !== x.id) el.$attrs['umlimator:id'] = String(x.id);
       if (el.id !== x.id && !String(x.id).trim()) say(x.id, 'a blank id, which a reader reads as none');
       if (bxStr(doc)) el.documentation = [M('bpmn:Documentation', { text: doc })];
+      if (bxOdd(doc)) say(x.id, 'props.documentation, which is not text'); // dropped: said, as every other loss (audit 44)
       for (const k of Object.keys(x)) if (!BX_FIELDS.has(k)) say(x.id, k);
       for (const k of Object.keys(x.props || {})) if (!bxProp(x.type, k)) say(x.id, `props.${k}`);
       for (const k of Object.keys(typeof x.ext === 'object' && x.ext || {})) say(x.id, `what it keeps under ext.${k}`);
@@ -462,6 +465,8 @@ async function writeBpmnXml(model, viewId, geo, moddle) {
           if (k === 'BoundaryEvent' && pr.cancelActivity === false) el.cancelActivity = false;
         }
         if (k === 'CallActivity' && bxStr(pr.calledElement)) el.calledElement = pr.calledElement;
+        if (k === 'CallActivity' && bxOdd(pr.calledElement)) say(n.id, 'props.calledElement, which is not text');
+        if (k === 'DataStoreReference' && bxOdd(pr.dataStoreRef)) say(n.id, 'props.dataStoreRef, which is not text');
         if (k === 'DataStoreReference' && bxStr(pr.dataStoreRef)) {
           if (!stores.has(pr.dataStoreRef)) { stores.set(pr.dataStoreRef, M('bpmn:DataStore', { id: free(`${el.id}-store`), name: pr.dataStoreRef })); roots.push(stores.get(pr.dataStoreRef)); }
           el.dataStoreRef = stores.get(pr.dataStoreRef);

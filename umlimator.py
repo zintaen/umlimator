@@ -841,7 +841,10 @@ def render(a, model, show=print):
         sys.exit(f"{a.out} is written, but its check did not complete: " + "; ".join(chk["errors"]))
     if chk.get("skipped"):  # no Chrome: the engine drew no check, so none is claimed (audit 10)
         print(f"{a.out} is written, but its layout check was skipped: {chk['skipped']}", file=sys.stderr)
-    said = {"out": str(Path(a.out).resolve()), "bytes": rep.get("bytes"), "checked": not (a.no_check or chk.get("skipped")), "counts": chk.get("counts"),
+    # the counts check gives the same page, each problem by kind_of: the engine's own call any message holding " cross" a
+    # crossing, a broken rule among them, and have no key for rules (audit 44)
+    counts = counts_of(chk.get("overlaps", []), None, views_of(a.out)) if isinstance(chk.get("counts"), dict) else chk.get("counts")
+    said = {"out": str(Path(a.out).resolve()), "bytes": rep.get("bytes"), "checked": not (a.no_check or chk.get("skipped")), "counts": counts,
             "problems": chk.get("overlaps", []), "errors": chk.get("errors", []), **({"skipped": chk["skipped"]} if chk.get("skipped") else {})}
     show(json.dumps(said, indent=1))
     return said
@@ -999,6 +1002,16 @@ def diff_since(a):
     # a path that is itself a symbolic link never counts, even one whose target is gone (a dangling link: written through)
     inside = lambda p, folder=False: not p.is_symlink() and (q := p.parent if folder else p).exists() and (q.is_dir() or not folder) and q.resolve().is_relative_to(top.resolve()) \
         and not any(x.is_symlink() for x in [q, *q.parents] if x.is_relative_to(top) and x != top)
+    def linked_model(p, old):
+        """Whether a file diff --base does not read (a link, or one under a linked folder) could be a model: its version at
+        --base was one, or its target is a file inside the checkout that is one now. A target outside is never read."""
+        if old.returncode == 0 and model_of(old.stdout)[0] is not None:
+            return True
+        try:
+            q = p.resolve()
+            return q.is_file() and q.is_relative_to(top.resolve()) and model_of(q.read_bytes())[0] is not None
+        except (OSError, RuntimeError, ValueError):
+            return False
     untracked = set(new.stdout.split("\0")) - {""}  # a D row's path a new, untracked file holds again: read from the disk
     for name in dict.fromkeys(filter(None, names + ([] if env else new.stdout.split("\0")))):  # with the copy, diff named the new ones
         was = moved.get(name, name)
@@ -1011,7 +1024,11 @@ def diff_since(a):
         # a model file that is a symbolic link, or sits in a folder that is one, or resolves outside the checkout, is not
         # read: a pull request could point it at another checkout's file, whose labels and logos would go into the comment
         # and the page (audit 20, the security review)
+        # Only a file that could be a model is said (audit 44: a shared tsconfig.json linked in was a map that cannot be read):
+        # one that was a model at --base, or a link whose target, inside the checkout, is one (reading it leaks nothing)
         if ((top / name).is_symlink() or (top / name).is_file()) and not inside(top / name):  # a dangling link too
+            if not linked_model(top / name, old):
+                continue
             why = "it is a symbolic link, or resolves outside the checkout: not read"
             done.append({"file": name, "error": why})
             md += [f"**{fname}**: cannot be read: {why}", ""]
@@ -1349,6 +1366,12 @@ def kind_of(o, rules=None, views=None):
     return next((k for r in rests for k, t in KINDS.items() if re.match(t, r, re.S)), "other")
 
 
+def counts_of(ov, rules=None, views=None):
+    """How many of the problems `ov` are of each kind, as kind_of reads them: render's and check's counts agree."""
+    of = [kind_of(o, rules, views) for o in ov]
+    return {k: of.count(k) for k in [*KINDS, "other"]}
+
+
 def cmd_check(a):
     """The page's own layout check, limited to --views (a trailing * is a prefix) and with a longer wait than
     visual.py check, which gives up after 45 s on a large model. A check of no view fails: it would pass by checking
@@ -1371,7 +1394,7 @@ def cmd_check(a):
     ov = rep.get("overlaps", [])
     rules = set(rep["rules"]) if isinstance(rep.get("rules"), list) else None
     of = [kind_of(o, rules, views_of(a.page)) for o in ov]
-    counts = {k: of.count(k) for k in [*KINDS, "other"]}
+    counts = counts_of(ov, rules, views_of(a.page))
     shown = [o for o, k in zip(ov, of) if k not in asked]
     print(json.dumps({"checked": rep.get("checked"), "counts": counts, "ignored": len(ov) - len(shown),
                       "problems": shown, "errors": rep.get("errors", [])}, indent=1))
