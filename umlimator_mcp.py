@@ -271,6 +271,7 @@ def call(name, a):
         if bad := [c for c in cards if c not in onview]:
             raise Fail(f"no card {', '.join(map(repr, bad))}" + (f" on view {asked!r}" if asked else " in the model"))
         at = asked or view_for(m, [{"type": "node", "id": c} for c in cards], want["view"])
+        rides(m, cards, at or want["view"] or next(iter(views(m)), None))  # a tour with no line to ride drew nothing, yet said "Shown" (audit 47)
         def fold(w, n):
             w.update(view=at or w["view"], tour={"n": n, "cards": cards}, story=None)
     elif name == "play_story":
@@ -283,6 +284,20 @@ def call(name, a):
         def fold(w, n):
             w.update(highlight=None, tour=None, story=None)
     return command(fold)
+
+
+def rides(m, cards, at):
+    """A tour's dot rides a line the view draws between each card and the next, either way, as the page's tour() does
+    (reach() walks the view's lines as drawn, a port's between the cards it is on). Fewer than two cards, or two in turn
+    that no line joins, is a tour the page would not ride, or would skip, so the tool says why and draws nothing."""
+    if len(cards) < 2:
+        raise Fail(f"a tour rides the lines between cards in turn, so it needs two cards or more (it was given {len(cards)})")
+    if at is None:
+        raise Fail("no view shows all these cards; describe_view lists a view's cards")
+    near = {c: {r.get("id") for r in node("reach", m, at, c, {"depth": 1}) if r.get("type") == "node"} for c in dict.fromkeys(cards)}
+    if gap := next(((a, b) for a, b in zip(cards, cards[1:]) if b not in near[a] and a not in near[b]), None):
+        raise Fail(f"no line joins {gap[0]!r} and {gap[1]!r} on view {at!r}, so a tour cannot ride from one to the other; "
+                   "paths() gives a route of lines between two cards")
 
 
 def end(e, k):
@@ -457,7 +472,8 @@ async function show(c) {
   lit();
   if (want.tour && want.tour.n !== tour.n) { // each tour starts once. Its dot leaves the map when it ends: at its end, cut short or replaced
     const t = tour = { n: want.tour.n, on: true }, ends = map.tour(want.tour.cards);
-    if (map.state.tour) ends.then(() => { t.on = false; }); } // a path lit at rest (reduced motion) stays until a story's step or end takes it
+    if (map.state.tour) ends.then(() => { t.on = false; }); // a path lit at rest (reduced motion) stays until a story's step or end takes it
+    else if (!map.state.overlays.includes('tour')) { t.on = false; throw new Error('no line joins these cards on this view, so no tour rides'); } } // nothing drawn: not "shown" (audit 47)
   if (want.story && want.story.n !== (story && story.n)) {
     const told = map.play(want.story.story);
     if (!told) throw new Error(`the page has no story ${want.story.story}`);

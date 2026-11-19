@@ -1604,6 +1604,26 @@ if part("mcp"):
     ok("mcp · a call that names what the model lacks is a tool error that says what it has", err and said.startswith("no view 'nope'; the views: context, system"), said)
     wrong = [tool("describe_view", view=["trips"]), tool("tour", cards=[{"id": "trips"}]), tool("diff", other_model_path=5)]
     ok("mcp · an argument of another type than its inputSchema's is a tool error that names it", all(e for _, e in wrong) and "view is not" in wrong[0][0], wrong)
+    # audit 47: a tour the page cannot ride (cards no line joins in turn, one card, none) said "Shown" and drew nothing
+    rode = [tool("tour", cards=c, view="context") for c in (["riders", "bikeshare", "maps"], ["maps", "bikeshare", "riders"])]
+    gaps = [tool("tour", cards=c, view="context") for c in (["riders", "maps"], ["riders"], [])]
+    ok("mcp · tour: cards no line joins in turn, one card or none is a tool error naming the gap; a line either way rides (audit 47)",
+       not any(e for _, e in rode) and all(e for _, e in gaps) and gaps[0][0].startswith("no line joins 'riders' and 'maps' on view 'context'")
+       and "paths()" in gaps[0][0] and all("two cards or more" in s for s, _ in gaps[1:]), [rode, gaps])
+    hostile = {"nodes": [{"id": i} for i in ("<img src=https://example.invalid/t.png>", "a'); fetch('//example.invalid", "x")],
+               "edges": [{"from": "<img src=https://example.invalid/t.png>", "to": "a'); fetch('//example.invalid"}],
+               "views": [{"id": "</script>", "nodeIds": ["<img src=https://example.invalid/t.png>", "a'); fetch('//example.invalid", "x"]}]}
+    try:
+        umlimator_mcp.rides(hostile, ["a'); fetch('//example.invalid", "<img src=https://example.invalid/t.png>"], "</script>"); joined = True
+    except umlimator_mcp.Fail:
+        joined = False
+    try:
+        umlimator_mcp.rides(hostile, ["<img src=https://example.invalid/t.png>", "x"], "</script>"); apart = None
+    except umlimator_mcp.Fail as e:
+        apart = str(e)
+    ok("mcp · tour: on a model of hostile ids, a line between two cards rides and a gap is named, as text (audit 47)",
+       joined and apart == "no line joins '<img src=https://example.invalid/t.png>' and 'x' on view '</script>', so a tour cannot ride from one to the other; "
+       "paths() gives a route of lines between two cards", apart)
     said, err = tool("reach", view="system", card="payments", direction="backward")
     ok("mcp · an argument its inputSchema does not name is a tool error that names it and the tool's own (audit 8)",
        err and said.startswith("reach: no argument direction; its arguments: view, card") and "backward" in said, said)

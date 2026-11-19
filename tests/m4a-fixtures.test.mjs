@@ -11,7 +11,8 @@
 // Chrome under three fonts and both themes.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { posix } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { diagramOf } from '../src/core/registry.js';
@@ -268,4 +269,20 @@ test('no committed file under examples/ or docs/ holds a vendor icon (§2.5, §1
   const manifest = read('../icons/manifest.json'), listed = new Set(Object.values(manifest).flatMap(e => (e && typeof e === 'object' && e.source === 'lucide' ? [e.file, ...Object.values(e).filter(x => typeof x === 'string')] : [])));
   const svgs = readdirSync(new URL('../icons/', import.meta.url)).filter(f => f.endsWith('.svg'));
   assert.deepEqual(svgs.filter(f => ![...listed].some(x => x === f || x.endsWith('/' + f) || x === f.replace(/\.svg$/, ''))), [], 'an SVG in icons/ not in the manifest\'s Lucide rows (§2.5)');
+});
+
+// audit 47: a branch merge committed stage6-files, a symbolic link to a worktree in a maintainer's home folder. Every clone,
+// the diff Action's checkout and the map-repo skill's pinned fetch got it, dangling, with that user name and folder layout
+// (on Windows, a text file holding the path). A tracked link must name a file of the repository, by a relative path
+test('no tracked symbolic link points outside the repository, or at nothing (audit 47)', () => {
+  const root = fileURLToPath(new URL('../', import.meta.url));
+  const links = execFileSync('git', ['ls-files', '-s', '-z'], { cwd: root, encoding: 'utf8' }).split('\0').filter(l => l.startsWith('120000 '));
+  const bad = links.flatMap(l => {
+    const [, sha] = l.split(/\s+/), path = l.slice(l.indexOf('\t') + 1);
+    const to = execFileSync('git', ['cat-file', 'blob', sha], { cwd: root, encoding: 'utf8' }); // the link's target, as git holds it (the same on Windows)
+    const at = posix.normalize(posix.join(posix.dirname(path), to));
+    return posix.isAbsolute(to) || /^[A-Za-z]:|^\\/.test(to) || at === '..' || at.startsWith('../') || !existsSync(new URL(at, new URL('../', import.meta.url)))
+      ? [`${path} -> ${to}`] : [];
+  });
+  assert.deepEqual(bad, []);
 });
