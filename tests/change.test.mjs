@@ -869,7 +869,7 @@ test('audit 45: a sequence\'s, a timing\'s and a class view\'s own lines carry d
   assert.deepEqual(['m1', 'm2', 'mx', 'm3'].map(id => g.edges[at(id)].change ?? null), ['changed', 'removed', 'added', null]);
   // audit 47: rose and faded with its notation's stroke, a call's solid one (dashed, it read as a reply)
   assert.match(lineOf(s, at('m2')), /class="edge" stroke="var\(--um-rose\)"  opacity="0\.7"/); assert.doesNotMatch(lineOf(s, at('m2')), /stroke-dasharray/); assert.match(lineOf(s, at('mx')), /class="edge[^"]*" stroke="var\(--um-green\)"/);
-  assert.match(lineOf(s, at('m1')), /class="edited-dot"/); assert.match(lineOf(s, at('m2')), /<title>Message 2 of 11: [^<]*, removed<\/title>/);
+  assert.match(lineOf(s, at('m1')), /class="edited-dot"/); assert.match(lineOf(s, at('m2')), /<title>Message: [^<]*, removed<\/title>/); // no place among the live ones (audit 51)
   assert.match(keyAt45(s, at('m2')), /, removed$/); assert.match(keyAt45(s, at('mx')), /, new$/); assert.match(keyAt45(s, at('m1')), /, changed$/); assert.doesNotMatch(keyAt45(s, at('m3')), /, (new|changed|removed)$/);
   // its fragments: one whose operator changed is CHANGED; one removed with its messages comes back REMOVED
   const c = structuredClone(a); c.views[0].fragments.find(f => f.id === 'f2').props.operator = 'loop';

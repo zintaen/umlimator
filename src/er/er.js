@@ -214,8 +214,10 @@ function erGeo({ model, view, pos, memo }) {
   const nodes = ids.map(id => { const n = I.at.get(id), pr = ER_OBJ(erPick(view.present, id)) ? view.present[id] : {};
     const d = n.type === 'uml.Comment' ? { shape: 'note' } : !erTable(n) ? { shape: 'classifier', compartments: [] } : { shape: 'entity', sections: erSections(n), collapsed: ER_ARR(pr.collapsed), ...(Number.isFinite(pr.rows) ? { rows: pr.rows } : {}), ...(idef && erDependent(R, id) ? { dep: true } : {}) };
     // IDEF1X: it reads the relationships to it, which make it dependent or not (audit 46), the ones the view draws too (audit 47:
-    // one removed is drawn back, and the entity it made dependent draws independent): diff() marks it only when it draws otherwise
-    const rd = idef ? R.filter(e => e.to === id && typeof e.id === 'string').map(e => e.id) : [];
+    // one removed is drawn back, and the entity it made dependent draws independent): diff() marks it only when it draws otherwise.
+    // One diff() brought back removed is read only when it was identifying and the entity is dependent no more (audit 51: an
+    // undrawn non-identifying one removed marked the child changed, though it draws as before)
+    const rd = idef ? R.filter(e => e.to === id && typeof e.id === 'string' && (!erGone(e) || erIdentifying(e) && !erDependent(R, id))).map(e => e.id) : [];
     const x = { id, label: erName(n), type: n.type || 'er.Entity', kind: 'file', ...d, ...(rd.length ? { reads: rd } : {}), aria: erFull(n, I), col: P(id)[0], row: P(id)[1] };
     return { ...x, ...SHAPE[x.shape].size(x) }; });
   const edges = lines.map(e => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: ER_HAS(e.label) ? String(e.label) : undefined, end: erLook(e, idef), aria: erLineName(e, I), cut: 280,
