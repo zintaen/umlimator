@@ -307,7 +307,7 @@ function readMermaidClass(text) {
     rec.raw.push({ text: t, line: no, hint: take('id'), st: st.filter(Boolean) });
   };
 
-  const over = mermaidOver(lines);
+  const over = mermaidOver(lines, say);
   for (; i < lines.length; i++) {
     const no = i + 1;
     let s = lines[i].trim();
@@ -732,9 +732,19 @@ function writeMermaidClass(model, viewId) {
         if (dia && end.navigable) lose(e.id, `navigable at the ${w} end, which has a ${end.aggregation} diamond`);
         return dia || (end.navigable ? nav : '');
       };
-      const card = end => { const t = [end.role, end.multiplicity].filter(has).join(' '); return t ? ` "${enc(t)}"` : ''; };
+      // an end's role and multiplicity as one cardinality, which the reader splits at its last word: a multiplicity it
+      // would not read as one, or a role it would read back as another (its last word a number, many or n), is not
+      // written and is said (audit 51)
+      const card = (end, w) => {
+        let role = has(end.role) ? String(end.role) : null, mult = has(end.multiplicity) ? String(end.multiplicity) : null;
+        const back = () => mcEnd(enc([role, mult].filter(x => x != null).join(' ')), () => {});
+        if (mult != null && !back().multiplicity) { lose(e.id, `multiplicity ${mult} at the ${w} end, which Mermaid's cardinality does not read as one`); mult = null; }
+        if (role != null && back().role !== role) { lose(e.id, `role ${role} at the ${w} end, which Mermaid's cardinality reads as another role or a multiplicity`); role = null; }
+        const t = [role, mult].filter(x => x != null).join(' ');
+        return t ? ` "${enc(t)}"` : '';
+      };
       const f = isObj(ends.from) ? ends.from : {}, t = isObj(ends.to) ? ends.to : {};
-      arrow = mark(f, '<', 'from') + '--' + mark(t, '>', 'to'); c1 = card(f); c2 = card(t);
+      arrow = mark(f, '<', 'from') + '--' + mark(t, '>', 'to'); c1 = card(f, 'from'); c2 = card(t, 'to');
     }
     relations.push([idOf(e.id, `${e.from}-${e.to}`), `${name(e.from)}${c1} ${arrow}${c2} ${name(e.to)}${label ? ' : ' + label : ''}`]);
   }

@@ -119,7 +119,7 @@ function generate(seed) {
     const up = c => edges.filter(e => e.type === 'uml.Generalization' && e.from === c).map(e => e.to);
     const reaches = (a, b) => a === b || up(a).some(x => reaches(x, b));
     if (type === 'uml.Generalization') { const ok = classes.filter(c => kinds.get(c) === kinds.get(from) && !reaches(c, from)); if (ok.length) to = pick(ok); else type = 'uml.Dependency'; }
-    const end = () => clean({ role: maybe(0.4, pick(['lines', 'the owner'])), multiplicity: maybe(0.5, pick(['1', '0..1', '0..*', '1..*', '*', '2..5'])), aggregation: maybe(0.3, pick(['composite', 'shared'])), navigable: maybe(0.4, true) });
+    const end = () => clean({ role: maybe(0.4, pick(['lines', 'the owner', 'phase 2', 'top 10', 'many', 'n'])), multiplicity: maybe(0.5, pick(['1', '0..1', '0..*', '1..*', '*', '2..5'])), aggregation: maybe(0.3, pick(['composite', 'shared'])), navigable: maybe(0.4, true) });
     const ends = type === 'uml.Association' ? clean({ from: end(), to: end() }) : {};
     Object.keys(ends).forEach(k2 => { if (!Object.keys(ends[k2]).length) delete ends[k2]; });
     const props = clean({ ends: Object.keys(ends).length ? ends : undefined, stereotypes: maybe(0.2, ['use']) });
@@ -135,7 +135,7 @@ function generate(seed) {
 }
 
 test('read(write(model)) equals the model, less the owners the view does not show, for 500 generated models in the subset', () => {
-  let both = 0, hidden = 0, nested = 0, empty = 0, dots = 0, implied = 0, splits = 0;
+  let roles = 0, both = 0, hidden = 0, nested = 0, empty = 0, dots = 0, implied = 0, splits = 0;
   for (let seed = 1; seed <= 500; seed++) {
     const m = generate(seed), { text, back } = roundTrip(m), want = project(m, m.views[0].id), shown = new Set(m.views[0].nodeIds);
     // a hidden owner is left out, and the text names it on each element it held
@@ -158,10 +158,19 @@ test('read(write(model)) equals the model, less the owners the view does not sho
       delete end.navigable; both++;
       assert.ok(text.includes(`%% not written: ${e.id}: navigable at the ${w} end, which has a ${end.aggregation} diamond\n`), `seed ${seed}\n${text}`);
     }
+    // a role alone whose last word reads as a multiplicity (phase 2, top 10, many, n) would come back as another role and
+    // a multiplicity: it is not written, and the text says so (audit 51)
+    for (const e of want.edges) for (const [w, end] of Object.entries(e.props?.ends ?? {})) if (['phase 2', 'top 10', 'many', 'n'].includes(end.role) && end.multiplicity == null) {
+      roles++; assert.ok(text.includes(`%% not written: ${e.id}: role ${end.role} at the ${w} end, which Mermaid's cardinality reads as another role or a multiplicity\n`), `seed ${seed}\n${text}`);
+      delete end.role; if (!Object.keys(end).length) delete e.props.ends[w];
+      if (!Object.keys(e.props.ends).length) delete e.props.ends;
+      if (!Object.keys(e.props).length) delete e.props;
+    }
     assert.deepEqual(back.report, [], `seed ${seed}\n${text}`);
     assert.deepEqual(canon(back.model), canon(want), `seed ${seed}\n${text}`);
   }
   assert.ok(both > 0, 'the generator makes an end both navigable and with a diamond');
+  assert.ok(roles > 10, `the generator makes a role alone that reads as a multiplicity (${roles})`);
   assert.ok(hidden > 100 && nested > 20 && empty > 20 && dots > 10 && implied > 0 && splits > 5, `the generator hides owners (${hidden}), nests a class two shown packages deep (${nested}), leaves packages empty (${empty}), writes dotted ids (${dots}), namespaces only they imply (${implied}) and a hidden owner's dotted path (${splits})`);
 });
 
@@ -907,4 +916,11 @@ test('a "string" left open before any label\'s : (a class\'s or namespace\'s ["l
   assert.deepEqual(r.report, []);
   // no closing quote after it: the line read as before
   assert.deepEqual(read('classDiagram\nclass A["never closed\nclass B\n').report.map(x => [x.line, x.message]), [[2, 'class A: "["never closed" is not read']]);
+});
+
+test('a %% comment line inside a "string" over lines (a note, a cardinality) is taken out, as Mermaid\'s cleanupComments does before it parses, its quotes not counted, and said (audit 51)', () => {
+  const r = read('classDiagram\n  note "first\n  %% a " quote\n  second"\n  A "role\n  %% x\n  1" --> B\n');
+  assert.deepEqual(r.model.nodes.map(n => n.label), ['first\n  second', 'A', 'B']);
+  assert.deepEqual(r.model.edges.map(e => e.props.ends.from), [{ role: 'role', multiplicity: '1' }]);
+  assert.deepEqual(r.report.map(x => [x.line, x.status, x.message]), [[3, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read'], [6, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read']]);
 });
