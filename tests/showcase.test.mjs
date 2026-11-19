@@ -30,11 +30,12 @@ test('every showcase model validates with no error, and each of its views lays o
 // No test pins showcase content but these: this smoke test, the gallery, types and docs tests (they check what the pages
 // show), and the README test. The files in LEGACY read examples/ models from before the decision; each moves to a model
 // of its own in tests/fixtures/ and leaves the list, which only shrinks: a file not listed may not start reading examples/.
+// tests/class-editor.html joined it in audit 51: it read examples/ through host pages from before, unseen by the guard.
 const ALLOWED = ['tests/showcase.test.mjs', 'tests/gallery.test.mjs', 'tests/types.test.mjs', 'tests/docs.test.mjs',
   'tests/api-docs.test.mjs', 'tests/site.test.mjs', 'tests/readme.test.mjs'];
 const LEGACY = ['tests/activity.html', 'tests/activity.test.mjs', 'tests/aids.test.mjs', 'tests/apply.test.mjs',
   'tests/blocks.test.mjs', 'tests/bpmn-xml.test.mjs', 'tests/bpmn.html', 'tests/bpmn.test.mjs', 'tests/c4-views.html',
-  'tests/c4-views.test.mjs', 'tests/c4.html', 'tests/c4.test.mjs', 'tests/change.html', 'tests/change.test.mjs',
+  'tests/c4-views.test.mjs', 'tests/c4.html', 'tests/c4.test.mjs', 'tests/change.html', 'tests/class-editor.html', 'tests/change.test.mjs',
   'tests/class.html', 'tests/class.test.mjs', 'tests/cli.py', 'tests/cloud.html', 'tests/cloud.test.mjs',
   'tests/communication.html', 'tests/communication.test.mjs', 'tests/component.html', 'tests/component.test.mjs',
   'tests/composite.html', 'tests/composite.test.mjs', 'tests/contrast.html', 'tests/convert.test.mjs',
@@ -60,10 +61,18 @@ const LEGACY = ['tests/activity.html', 'tests/activity.test.mjs', 'tests/aids.te
 // a path to a model under examples/ (not docs/diagrams/examples/), a template or a listing of the folder
 const READS = /(?<!diagrams\/)(?<![\w-])examples\/(?:types\/|variants\/)?(?:[\w.-]+\.json|\$\{|['"`])|\/ ?"examples"|join\([^)]*'examples'|URL\('\.\.\/examples\/'/;
 
+// a test that loads an examples/ host page reads the models that page fetches (audit 51: tests/class-editor.html framed
+// examples/class-editor.html and edit.html, pinning sales-classes.json and umlimator-atlas.json, unseen by READS)
+const HOSTS = /(?<!diagrams\/)(?<![\w-])examples\/([\w-]+\.html)/g;
+const loadsHost = t => [...t.matchAll(HOSTS)].some(([, page]) => existsSync(new URL(`examples/${page}`, root)) && /\bfetch\(/.test(readFileSync(new URL(`examples/${page}`, root), 'utf8')));
+const readsShowcase = t => READS.test(t) || loadsHost(t);
+
 test('no test but the allowed ones reads the showcase models, and the legacy list only shrinks', () => {
   const tracked = execFileSync('git', ['ls-files', 'tests'], { cwd: root, encoding: 'utf8' }).split('\n')
     .filter(f => /\.(mjs|js|py|html|json|mmd|dsl|txt)$/.test(f) && !f.startsWith('tests/fixtures/'));
-  const readers = tracked.filter(f => READS.test(readFileSync(new URL(f, root), 'utf8')));
+  const readers = tracked.filter(f => readsShowcase(readFileSync(new URL(f, root), 'utf8')));
+  // the guard sees a test that reads a showcase model through a host page
+  assert.ok(readsShowcase("frame.src = '../examples/class-editor.html';") && !readsShowcase("'../docs/diagrams/examples/x.html'"));
   assert.deepEqual(readers.filter(f => !ALLOWED.includes(f) && !LEGACY.includes(f)), [],
     'a test pins its own model in tests/fixtures/, never one of examples/');
   assert.deepEqual(LEGACY.filter(f => !readers.includes(f)), [], 'reads examples/ no more: take it off LEGACY');
