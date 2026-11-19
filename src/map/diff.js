@@ -232,6 +232,11 @@ export function diff(before, after) {
   at0.forEach(([x, up, i], id) => { if (typeof up !== 'string' || have.has(id) || !have.has(up)) return; lost.set(id, [x, top(up), up]);
     if (!need.has(id)) return; const o = have.get(up)[0], y = { ...copyOf(x), change: 'removed' };
     (o.members = [...arr(o.members)]).splice(Math.min(i, o.members.length), 0, y); ownIn(y, have, up, i); });
+  // a removed extend that names an extension point gone with it (a row of its use case, not put back): the point's name as it
+  // was, on the line (pointNames), so it reads as it did, "(extras)", not by the point's id (audit 48)
+  [...out.edges, ...views.flatMap(v => arr(v && v.edges))].forEach(e => { if (!e || how.get(e) !== 'removed' || !e.props || !Array.isArray(e.props.extensionPoints)) return;
+    const names = e.props.extensionPoints.filter(id => typeof id === 'string' && at0.has(id) && !have.has(id)).map(id => { const x = at0.get(id)[0]; return [id, x && typeof x === 'object' ? elName(x) : id]; });
+    if (names.length) e.pointNames = Object.fromEntries(names); });
   // a member new to an element that stayed (audit 46: an added part, port or lane drawn as live): marked added, and said
   // "adds X to Y"; what it holds is new with it. Only an element's (a card's) members: a fragment's operands are the sequence's
   const rooted = new Set(); [...out.nodes, ...views.flatMap(v => arr(v && v.nodes))].forEach(n => { for (const s = [n]; s.length;) { const x = s.pop();
@@ -344,14 +349,17 @@ export function diff(before, after) {
     const up = (t, l) => { for (let k = 0; t != null && !ids.has(t) && k < 1e4; k++) { ids.add(t); l.push(t); const p = (elOf.get(t) || {}).parent; t = topOf.has(p) ? topOf.get(p) : null; } };
     let now = []; [...arr(v.nodeIds), ...arr(v.nodes).map(n => n && n.id)].forEach(id => topOf.has(id) && up(topOf.get(id), now));
     linesOf(out, v, ups).forEach(e => [e.from, e.to, ...texts(e.props)].forEach(s => { const n = name(s); if (n != null) up(n, now); }));
-    // what its elements name, and what those name in turn (a part's type's port's type), each with its owners
-    for (let d = 0; d < 2 && now.length; d++) { const next = []; now.forEach(t => texts(elOf.get(t)).forEach(s => { const n = name(s); if (n != null) up(n, next); else if (vids.has(s)) vs.add(s); })); now = next; }
+    // what its elements name, and what those name in turn (a part's type's port's type), each with its owners; a view too when
+    // an element has the view's id (audit 48: a map card named after the view it opens hid a retitle of that view)
+    for (let d = 0; d < 2 && now.length; d++) { const next = []; now.forEach(t => texts(elOf.get(t)).forEach(s => { const n = name(s); if (n != null) up(n, next); if (vids.has(s)) vs.add(s); })); now = next; }
     return { ids, vs }; };
   // a typed view whose type says which lines it draws (drawn) shows a line's change only through what it draws (audit 47: a
   // context-level line between a container view's subject, drawn as its boundary, and a person was counted as drawn there)
   const ownLines = v => !(typedV(v) && out.schemaVersion === 2 && typeof (diagramOf(v) || {}).drawn === 'function');
   const changed = new Set(views.filter(v => v && (touched.has(v.id) || arr(v.nodeIds).some(id => cardHow.has(id)) || ownLines(v) && linesOf(out, v, ups).some(e => how.has(e)))).map(v => v.id));
   const sure = new Set(changed); // listed by what it lists itself; the rest below by what it draws from others, and a typed one of those only when its picture changed
+  // a line that came or went still counts (audit 48: auto placement reads every line among the view's cards, so they move), when the picture changed
+  views.forEach(v => { if (v && !changed.has(v.id) && !ownLines(v) && linesOf(out, v, ups).some(e => how.has(e) && how.get(e) !== 'changed')) changed.add(v.id); });
   /* what a typed view draws from beyond its own elements and lines (audit 40): the relationships an implied C4 line stands for
      (its type's drawn), a required stereotype's extension, the identifying relationship that makes a shown IDEF1X entity
      dependent (its type's touches), each in the model before and after: listed when one of them is marked */
@@ -445,9 +453,15 @@ export function diff(before, after) {
       const same = (x, y) => y && sig(x) === sig(y);
       S1.forEach((x, id) => { const y = S0.get(id), part = onPart(id);
         if (hits(x.reads) && same(x, y)) marks[id] = 'none';
-        else if (listed && part != null && !y && S0.has(part)) marks[id] = 'added'; });
+        else if (listed && part != null && !y && S0.has(part)) marks[id] = 'added';
+        // one that read a marked element before and draws otherwise now, reading it no more (audit 48: a constraint property whose
+        // block was renamed names no block, and draws no expression)
+        else if (listed && y && !hits(x.reads) && hits(y.reads) && !same(x, y)) marks[id] = 'changed'; });
       L1.forEach((x, k) => { if (!derivedL(x, k) && !Array.isArray(x.reads)) return; const y = L0.get(k);
-        if (same(x, y)) { if (hits(x.reads) || hits(x.implied)) marks[k] = 'none'; } else if (listed && !y && !Array.isArray(x.implied) && derivedL(x, k)) marks[k] = 'added'; });
+        if (same(x, y)) { if (hits(x.reads) || hits(x.implied)) marks[k] = 'none'; } else if (listed && !y && !Array.isArray(x.implied) && derivedL(x, k)) marks[k] = 'added';
+        // an implied line that came, or stands for other relationships, with none of them marked (audit 48: one it stood for removed,
+        // or a direct relationship removed between its ends): added, or changed
+        else if (listed && Array.isArray(x.implied) && !hits(x.implied) && !hits(x.reads)) marks[k] = y ? 'changed' : 'added'; });
       if (listed) { S0.forEach((y, id) => { const part = onPart(id); if (part != null && !S1.has(id) && S1.has(part)) marks[id] = 'removed'; });
         L0.forEach((y, k) => { if (L1.has(k) || !derivedL(y, k) || !S1.has(y.from) || !S1.has(y.to)) return;
           gone.push({ id: k, from: y.from, to: y.to, ...(typeof y.label === 'string' && y.label ? { label: y.label } : {}) }); }); }

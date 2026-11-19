@@ -271,7 +271,7 @@ def call(name, a):
         if bad := [c for c in cards if c not in onview]:
             raise Fail(f"no card {', '.join(map(repr, bad))}" + (f" on view {asked!r}" if asked else " in the model"))
         at = asked or view_for(m, [{"type": "node", "id": c} for c in cards], want["view"])
-        rides(m, cards, at or want["view"] or next(iter(views(m)), None))  # a tour with no line to ride drew nothing, yet said "Shown" (audit 47)
+        rides(m, cards, at)  # a tour with no line to ride drew nothing, yet said "Shown" (audit 47); no view shows them all: said as that (audit 48)
         def fold(w, n):
             w.update(view=at or w["view"], tour={"n": n, "cards": cards}, story=None)
     elif name == "play_story":

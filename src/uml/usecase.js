@@ -113,9 +113,11 @@ function ucLines(model, view, pic) {
     && ![[e.from, e.to], [e.to, e.from]].some(([b, x]) => pic.open.has(b) && (b === x || pic.chain(x).includes(b))));
 }
 const UC_KEYWORD = { __proto__: null, 'uml.Include': '«include»', 'uml.Extend': '«extend»' };
-// an extend's points by name and its condition: "(payment) [the shopper has a voucher code]"
+// an extend's points by name and its condition: "(payment) [the shopper has a voucher code]"; on the diff page a removed
+// extend whose point went with it names it as it was (pointNames, src/map/diff.js; audit 48)
 function ucExtendParts(model, e) {
   const to = UC_ARR(model.nodes).find(n => UC_OBJ(n) && n.id === e.to), by = new Map(ucPointsOf(to || {}).map(m => [m.id, ucName(m)]));
+  if (UC_OBJ(e.pointNames)) Object.entries(e.pointNames).forEach(([id, w]) => { if (!by.has(id) && typeof w === 'string') by.set(id, w); });
   return { points: UC_ARR(UC_PROPS(e).extensionPoints).map(id => by.get(id) ?? String(id)), cond: UC_HAS(UC_PROPS(e).condition) ? String(UC_PROPS(e).condition) : null };
 }
 function ucLineLabel(model, e) {

@@ -79,6 +79,25 @@ function mermaidChar(n, code, bad) {
 // the report's message for such a code, said as approximated
 const mermaidBadChar = code => `${mermaidClip(code)} names no character SVG or XML can hold: read as U+FFFD`;
 
+// a character written as itself that XML 1.0 cannot hold (a C0 control other than tab, line feed and carriage return,
+// U+FFFE, U+FFFF, a lone surrogate): mermaidLegal(s, bad) gives s with each as U+FFFD, and bad(what) told once, naming the
+// first, when s held one. The entity codes' rule (mermaidChar) for the raw spelling, which reached the model unsaid: every
+// reader (the seven Mermaid ones, Structurizr's, DBML's, BPMN's) passes its text through it (audit 48). Linear
+const MERMAID_RAW = /[\0-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]|\p{Cs}/u, MERMAID_RAWS = /[\0-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]|\p{Cs}/gu;
+function mermaidLegal(s, bad) {
+  const m = MERMAID_RAW.exec(s);
+  if (!m) return s;
+  bad?.(`the character U+${m[0].codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}`);
+  return s.replace(MERMAID_RAWS, '\uFFFD');
+}
+// the report's message for such a character, said as approximated
+const mermaidRawChar = what => `${what}, which SVG or XML cannot hold, is read as U+FFFD`;
+// a Mermaid reader's whole text through mermaidLegal, each line that held one said once by say(line, ...)
+function mermaidScrub(text, say) {
+  if (!MERMAID_RAW.test(text)) return text;
+  return text.split('\n').map((l, k) => mermaidLegal(l, what => say(k + 1, 'approximated', mermaidRawChar(what)))).join('\n');
+}
+
 // a report's quote of the source: up to 60, else its first 57 and ...
 const mermaidClip = s => (s.length > 60 ? mermaidCut(s, 57) + '...' : s);
 
@@ -104,4 +123,4 @@ function mermaidSay(report) {
   };
 }
 
-export { mermaidTitle, mermaidFrontTitle, mermaidCut, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText, MERMAID_REPORT_MAX };
+export { mermaidTitle, mermaidFrontTitle, mermaidCut, mermaidClip, mermaidChar, mermaidBadChar, mermaidLegal, mermaidRawChar, mermaidScrub, mermaidSay, mermaidSort, mermaidText, MERMAID_REPORT_MAX };

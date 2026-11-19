@@ -904,3 +904,11 @@ test('audit 47: a class view\'s comment link is not warned again by use case and
   const k = structuredClone(m); k.edges.push({ id: 'c2', type: 'uml.CommentLink', from: 'A', to: 'U' }, { id: 'c3', type: 'uml.CommentLink', from: 'S', to: 'S2' }); k.views[2].nodeIds.push('S2');
   assert.deepEqual(validate(k).filter(p => p.rule === 'comment-link' && p.level === 'warning').map(p => p.ids[0]).sort(), ['c2', 'c3']);
 });
+
+test('connect: a transition that brings an error (into an initial pseudostate, out of a final state or a terminate, onto a region) is refused in its words; any other added (audit 48)', () => {
+  const C = (from, to) => T.edits.connect(SM, V, from, to, null, T.lines[0]);
+  assert.deepEqual(C('placed', 'created'), { error: 'initial-out: "Initial pseudostate created" has 1 incoming transition (transition1); it may have none' });
+  for (const [f, t, rule] of [['delivered', 'placed', 'final-out'], ['erased', 'placed', 'final-out'], ['placed', 'fulfilling.parcel', 'transition-ends']]) assert.match(C(f, t).error, new RegExp(`^${rule}: `), `${f} -> ${t}`);
+  for (const [f, t] of [['placed', 'erased'], ['picking', 'delivery-history']]) { const r = C(f, t);
+    assert.deepEqual(r, [{ op: 'add', element: { id: 'transition1', type: 'uml.Transition', from: f, to: t }, view: V.id }]); assert.deepEqual(validate(apply(SM, r)).filter(p => p.level === 'error'), []); }
+});

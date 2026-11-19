@@ -1050,15 +1050,33 @@ def markdown(s):
     return len(s) > 3 and s[0] == s[-1] == '"' and s[1] == s[-2] == "`"
 
 
-def text(s):
+def char(e, bad=None):
+    """The character an entity code (#n;) names, as the module's mermaidChar: above U+10FFFF as U+10FFFF; one XML 1.0 cannot
+    hold (#0;, a C0 control but tab, line feed and carriage return, a lone surrogate, U+FFFE, U+FFFF) as U+FFFD, and
+    bad(code) told, as a raw one would make the model's SVG and XML exports not well-formed (audit 48)."""
+    v = min(int(e[1]), 0x10FFFF)
+    if v in (9, 10, 13) or 0x20 <= v <= 0xD7FF or 0xE000 <= v <= 0xFFFD or v >= 0x10000:
+        return chr(v)
+    if bad:
+        bad(e[0])
+    return "\ufffd"
+
+
+def text(s, bad=None):
     """A flowchart label: quotes and a Markdown string's backticks taken off, Mermaid's entity codes read (as the module's
-    mfText); markdown() says which labels lose their Markdown, for the caller to say (audit 25)."""
+    mfText), a code naming no character XML holds as U+FFFD, bad(code) told; markdown() says which labels lose their
+    Markdown, for the caller to say (audit 25)."""
     s = (s or "").strip()
     s = s[2:-2] if markdown(s) else s[1:-1] if len(s) > 1 and s[0] == s[-1] == '"' else s
-    return re.sub(r"#(quot|lt|gt|amp|\d{1,6});", lambda e: ENTITY.get(e[1]) or chr(min(int(e[1]), 0x10FFFF)), s)
+    return re.sub(r"#(quot|lt|gt|amp|\d{1,6});", lambda e: ENTITY.get(e[1]) or char(e, bad), s)
 
 
-def fnode(s, i, find=None):
+def bad_code(m, no):
+    """bad for text(): a code naming no character XML holds, said at line no, as the module's mermaidBadChar."""
+    return lambda code: m.say(no, f"{clip(code, 60)} names no character SVG or XML can hold: read as U+FFFD")
+
+
+def fnode(s, i, find=None, bad=None):
     """A node at i: (id, label, shape, end), or None; find(c, frm) is s.find with the statement's misses remembered."""
     find = find or s.find
     n = NODE.match(s, i)
@@ -1071,7 +1089,7 @@ def fnode(s, i, find=None):
             # of the closers this opener takes ([/ takes /] and \]), the nearest: [/a\] --> B[\b/] is two trapezoids
             k, c = min(((k, c) for p, c in SHAPES if p == o and (k := find(c, j)) > 0), default=(-1, ""))
             if j and k > 0:  # j is 0 when a quote opens and never closes: find no ] behind it
-                i, label, shape, md = k + len(c), text(s[i + len(o):k]), o, markdown(s[i + len(o):k])
+                i, label, shape, md = k + len(c), text(s[i + len(o):k], bad), o, markdown(s[i + len(o):k])
                 break
     else:
         label = shape = md = None
@@ -1079,7 +1097,7 @@ def fnode(s, i, find=None):
     return nid, label, shape, cls.end() if cls else i, cls and cls[1], md
 
 
-def statement(s):
+def statement(s, bad=None):
     """Node groups (a & b) joined by links, each link (its match, its edge id or None), or None."""
     groups, links, i, miss, at, brk = [], [], 0, {}, -1, -1
 
@@ -1093,7 +1111,7 @@ def statement(s):
 
     while True:
         grp = []
-        while (n := fnode(s, i, find)):
+        while (n := fnode(s, i, find, bad)):
             grp.append((*n[:3], n[4], n[5]))
             i = n[3]
             amp = re.compile(r"\s*&").match(s, i)
@@ -1135,7 +1153,7 @@ def flowchart(lines, m):
             g = re.match(r'subgraph(?:\s+(?:([^\s\["]+)\s*\[([^\]]*)\]|"(.+)"|(\S+)$|(.+))|$)', s)
             if g:
                 raw = g.group(2) or (g.group(3) and f'"{g.group(3)}"') or g.group(4) or g.group(5)  # its quotes kept, so a Markdown string is seen
-                label, nsub = text(raw), nsub + 1
+                label, nsub = text(raw, bad_code(m, no)), nsub + 1
                 subs.append({"id": ident(g.group(1) or g.group(4) or label) if g.group(0) != "subgraph" else f"subGraph{nsub - 1}", "label": clip(label, 40), "seen": [], "line": no,
                              "parent": subs[-1]["id"] if subs else None})
                 if markdown(raw):
@@ -1150,7 +1168,7 @@ def flowchart(lines, m):
                 pass
             elif q := FLOW_QUIET.match(s):
                 m.say(no, f"{q[1]}: accessibility text is not imported" if q[1].startswith("acc") else f"not imported: {clip(s, 80)}")
-            elif p := statement(s):
+            elif p := statement(s, bad_code(m, no)):
                 groups, joins = p
                 for nid, label, shape, cls, md in (n for grp in groups for n in grp):
                     if cls:  # said, as the typed reader says it (audit 20)
@@ -1206,9 +1224,10 @@ def flowchart(lines, m):
             m.say(no, f"{a} -> {b}: {bad[0]} is a subgraph that is not drawn")
             continue
         style = {"style": "async"} if "." in arrow else {"weight": 2} if "=" in arrow else {}
-        m.line(a, b, text(lk["pipe"] or lk["text"]), where=no, hint=eid, **style)  # the edge id names its first line
+        label = text(lk["pipe"] or lk["text"], bad_code(m, no))
+        m.line(a, b, label, where=no, hint=eid, **style)  # the edge id names its first line
         if arrow[0] == "<":
-            m.line(b, a, text(lk["pipe"] or lk["text"]), where=no, **style)
+            m.line(b, a, label, where=no, **style)
 
 
 # ---------- docker compose ----------

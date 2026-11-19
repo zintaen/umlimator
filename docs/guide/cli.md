@@ -42,14 +42,7 @@ python3 umlimator.py check page.html --expand          # also each view with eac
 python3 umlimator.py pdf page.html --out map.pdf   # every view in one PDF: a cover, each view with its tables, the rules
 ```
 
-`pdf` prints the map through Chrome's own print, as a document to hand in for a review
-([the Umlimator Atlas's](https://zintaen.github.io/umlimator/examples/umlimator-atlas.pdf), as CI builds it). A cover has the title,
-the date, the model's file, a summary line and the contents with each view's page. Each view starts a page of its own,
-under its path ("Umlimator › The module's layers"): its picture in vectors, as large as the page allows, the legend of what it
-draws, and tables of its cards, lines and boxes, which go on over the next pages with their header row when they are
-long. The rules follow as a table, when the model has any, each holding or broken in the views printed. Every page ends
-in the title and "page N of M". It takes `--views` and `--theme`, as `stills` does, and `--paper a4|letter` (A4 is the
-default; both across).
+`pdf` prints the map through Chrome's own print, as a document to hand in for a review ([the Umlimator Atlas's](https://zintaen.github.io/umlimator/examples/umlimator-atlas.pdf), as CI builds it). A cover has the title, the date, the model's file, a summary line and the contents with each view's page. Each view starts a page of its own, under its path ("Umlimator › The module's packages, in build order"): its picture in vectors, as large as the page allows, the legend of what it draws, and tables of its cards, lines and boxes, which go on over the next pages with their header row when they are long. The rules follow as a table, when the model has any, each holding or broken in the views printed. Every page ends in the title and "page N of M". It takes `--views` and `--theme`, as `stills` does, and `--paper a4|letter` (A4 is the default; both across).
 
 ## Record
 

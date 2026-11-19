@@ -1,5 +1,5 @@
 import { unreadable, jsonText } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidScrub } from './mermaid-front.js';
 /* ---------- Mermaid sequenceDiagram: a reader and a writer (notes/stage-3.md §8, S10; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's sequence diagram page (docs/syntax/sequenceDiagram.md, read 12 Nov 2026), as the class
    reader is against its class page. Internal: the CLI (`umlimator.py import`) imports this file through Node; a host
@@ -166,6 +166,7 @@ function readMermaidSequence(text) {
   const empty = () => ({ model: { schemaVersion: 2, root: MS_VIEW, nodes: [], edges: [], views: [{ id: MS_VIEW, diagram: 'uml.sequence', nodeIds: [], edges: [] }] }, report });
   if (typeof text !== 'string') { say(1, 'skipped', 'the input is not text: nothing read'); return empty(); }
   if (text.length > MS_LIMIT) { say(1, 'skipped', `the input is ${text.length} characters, over the limit of ${MS_LIMIT}: nothing read`); return empty(); }
+  text = mermaidScrub(text, say); // a raw character XML cannot hold as U+FFFD, said (audit 48)
   const lines = text.split('\n').map(l => l.replace(/\r$/, ''));
   let i = 0, title;
 

@@ -195,7 +195,8 @@ test('the models that left the gallery are linked from nowhere in the gallery, t
   }
   assert.deepEqual(bad, []);
   // and no word of them on the gallery or the site's pages: the atlases, the bike share, the weather stations, the helpdesk
-  const words = /Bookshop atlas|e-bike atlas|bike[- ]share|weather station|helpdesk|clinic booking|Bookshop, an example|bookshop-an-example|\bride-end\b|Trip service|ebike-atlas\.test/i;
+  // \s+ between words, so a phrase a docs page wraps across two lines is caught (audit 48)
+  const words = /Bookshop\s+atlas|e-bike\s+atlas|bike[-\s]share|weather\s+station|helpdesk|clinic\s+booking|Bookshop,\s+an\s+example|bookshop-an-example|\bride-end\b|Trip\s+service|ebike-atlas\.test/i;
   assert.deepEqual(pages.filter(p => words.test(read(p))), []);
   assert.doesNotMatch(html, /(?<![\w-])(?:bike-share|states\.json)/);
 });
