@@ -495,11 +495,18 @@ function mapContext(model, opts = {}) {
   const condTag = l => { const m = /^(?:routes|on-ramp:?)\s+(\S+)$/i.exec(String(l || '').trim()); return m ? m[1] : null; }; // "routes bug" → a "bug" tag
   // quick: a candidate the layout searches below score and may drop, laid out once, as it was before 0.6.0 (no room for lines
   // with no route, no way round the cards for them, no warning)
+  // a typed element's or line's change (diff's added, changed or removed; an author's planned), the view's own over the model's,
+  // on what its type drew for it, which a type builds from the model and leaves out (audit 44: a removed class drawn as live)
+  const CHANGES = ['added', 'new', 'changed', 'modified', 'removed', 'planned'], chOf = x => x && typeof x.change === 'string' && CHANGES.includes(x.change.toLowerCase()) ? x.change : null;
+  function marks(g, vid) { const ev = O(); (D.edges || []).forEach(e => { if (e && typeof e.id === 'string' && chOf(e)) ev[e.id] ??= e.change; });
+    (g.nodes || []).forEach(n => { if (!n || typeof n.id !== 'string' || !N[n.id]) return; const c = chOf(nodeIn(n.id, vid)); if (c) n.change = c; else delete n.change; });
+    (g.edges || []).forEach(e => { const k = e && (e._id ?? e.id); if (typeof k !== 'string') return; if (ev[k]) e.change = ev[k]; else delete e.change; });
+    return g; }
   function buildGeo(vid, override, repair = (V[vid] || {}).repair !== false, quick = false) { // a view's repair: false turns port repair off
     const v = V[vid], ids = (v.nodeIds || []).filter(i => N[i]), T = ownLayout(vid);
     if (T) { // the type's layout (registry.js), in the host's measure (R2)
       const L = T.layout, memo = memos[vid] ||= {}, k = !override && L.key ? L.key(D, v) : null;
-      if (k != null && memo.runKey === k) return memo.runGeo;
+      if (k != null && memo.runKey === k) return marks(memo.runGeo, vid);
       const pos = override || (L.pins === false ? {} : L.rank === false ? onGrid(vid, v.layout || {}) : v.layout ? fillLayout(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid))); // pins: false, no ranking either (notes/stage-3.md Q9)
       let g = L.run ? L.run(D, v, { measure: M, pos, memo }) : L({ model: D, view: v, pos, memo });
       // the request/reply port swap (layered.js) is judged inside a pass; the later passes and the type's own steps can undo
@@ -515,7 +522,7 @@ function mapContext(model, opts = {}) {
       (g.nodes || []).forEach(n => { const o = N[n.id] && opensOf(n.id, vid); if (!o || n.saysOpens) return;
         n.opensTo = String(labelOr((V[o] || {}).title, o)); const t = `, opens ${n.opensTo}`; if (n.aria) n.aria += t; if (typeof n.ariaOwn === 'string' && n.ariaOwn) n.ariaOwn += t; });
       if (k != null) Object.assign(memo, { runKey: k, runGeo: g });
-      return g;
+      return marks(g, vid);
     }
     const edges = viewEdges(v, true).map(e => ({ ...e }));
     if (v.render === 'sequence') edges.forEach((e, i) => { e.step = i + 1; });
@@ -767,10 +774,11 @@ function mapContext(model, opts = {}) {
     for (let more = true; more && todo.length;) { more = false; todo = todo.filter(nid => { if (!unfold(vid, nid)) return true; (unfolded[vid] ||= []).push(nid); return !(more = true); }); } }))();
   const geoCache = O();
   /* what a plain view's picture takes from the order of its cards, before routing (diff, audit 43): its grid slots, each way
-     bestFlow tries, by card; null where only laying it out tells (a type's own layout, a hub plan, a view with some cards pinned) */
+     bestFlow tries, by card; null where only laying it out tells (a type's own layout, a hub plan, a view with some cards pinned,
+     a fully pinned view with lines: it keeps its slots, but its ports and lines are routed in the order of its cards, audit 44) */
   function gridKey(vid) { const v = V[vid]; if (!v || ownLayout(vid) || (planCache[vid] || O()).hub) return null;
     const ids = [...new Set((v.nodeIds || []).filter(i => N[i]))].sort(), key = l => JSON.stringify(l.map(p => ids.map(i => p[i] || null)));
-    if (v.layout) { const L = onGrid(vid, v.layout); return ids.every(i => Array.isArray(L[i])) ? key([L]) : null; }
+    if (v.layout) { if (viewEdges(v).length) return null; const L = onGrid(vid, v.layout); return ids.every(i => Array.isArray(L[i])) ? key([L]) : null; }
     if ((v.containers || []).length) return key([blockPos(vid)]);
     const n = (v.nodeIds || []).length;
     return key(n > 30 || n < 3 ? [flowPos(vid)] : [{}, { pull: true }, { packed: true }, { pull: true, packed: true }].map(o => flowPos(vid, o))); }

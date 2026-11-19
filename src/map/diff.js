@@ -120,8 +120,9 @@ export function diff(before, after) {
     const set = l => l.map(x => canon(x)).sort(); // as a set: the lists' own order follows nodeIds, the picture need not
     return canon([set(at(g.nodes).map(n => [n.id, n.x, n.y, n.w, n.h])), set(at(g.edges).map(e => [e._id ?? e.id, e.pts ?? null])), ...['bands', 'lanes', 'groups'].map(k => set(at(g[k]).map(b => [b.id, b.x, b.y, b.w, b.h])))]); } catch { return null; } };
   // audit 43: each view laid out twice, in a context of the whole model made for it, took a second a view. Now one context holds
-  // every view's new order; a plain view whose grid slots do not change (each card pinned, or ranked to the same slot) draws
-  // the same and is not laid out; the others are, once in each context
+  // every view's new order; a plain view whose grid slots do not change (each card ranked to the same slot, or pinned with no
+  // lines) draws the same and is not laid out (a pinned one with lines is: they are routed in its cards' order, audit 44); the
+  // others are, once in each context
   const keptOrder = (o, k1) => { const q = [...k1], put = new Set(k1), seen = new Set(); return arr(o.nodeIds).map(x => typeof x === 'string' && put.has(x) && !seen.has(x) && seen.add(x) ? q.shift() : x); };
   const order1 = new Map(); arr(out.views).forEach(v => { const o = v && V0.get(v.id); if (!o) return;
     const ks = new Set(arr(v.nodeIds).filter(x => typeof x === 'string')), ko = new Set(arr(o.nodeIds).filter(x => typeof x === 'string'));

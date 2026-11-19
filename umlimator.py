@@ -1002,6 +1002,16 @@ def diff_since(a):
     # a path that is itself a symbolic link never counts, even one whose target is gone (a dangling link: written through)
     inside = lambda p, folder=False: not p.is_symlink() and (q := p.parent if folder else p).exists() and (q.is_dir() or not folder) and q.resolve().is_relative_to(top.resolve()) \
         and not any(x.is_symlink() for x in [q, *q.parents] if x.is_relative_to(top) and x != top)
+    def linked_model(p, old):
+        """Whether a file diff --base does not read (a link, or one under a linked folder) could be a model: its version at
+        --base was one, or its target is a file inside the checkout that is one now. A target outside is never read."""
+        if old.returncode == 0 and model_of(old.stdout)[0] is not None:
+            return True
+        try:
+            q = p.resolve()
+            return q.is_file() and q.is_relative_to(top.resolve()) and model_of(q.read_bytes())[0] is not None
+        except (OSError, RuntimeError, ValueError):
+            return False
     untracked = set(new.stdout.split("\0")) - {""}  # a D row's path a new, untracked file holds again: read from the disk
     for name in dict.fromkeys(filter(None, names + ([] if env else new.stdout.split("\0")))):  # with the copy, diff named the new ones
         was = moved.get(name, name)
@@ -1014,7 +1024,11 @@ def diff_since(a):
         # a model file that is a symbolic link, or sits in a folder that is one, or resolves outside the checkout, is not
         # read: a pull request could point it at another checkout's file, whose labels and logos would go into the comment
         # and the page (audit 20, the security review)
+        # Only a file that could be a model is said (audit 44: a shared tsconfig.json linked in was a map that cannot be read):
+        # one that was a model at --base, or a link whose target, inside the checkout, is one (reading it leaks nothing)
         if ((top / name).is_symlink() or (top / name).is_file()) and not inside(top / name):  # a dangling link too
+            if not linked_model(top / name, old):
+                continue
             why = "it is a symbolic link, or resolves outside the checkout: not read"
             done.append({"file": name, "error": why})
             md += [f"**{fname}**: cannot be read: {why}", ""]

@@ -42,7 +42,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 14})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18})
 
 
 def ok(name, cond, info=""):
@@ -2267,6 +2267,29 @@ if part("audit 42"):
            and said.get(":(glob)*.json") == ["renames A to A4"] and "removes A" in (said.get("gone.json") or []) and "Docs/a.json" not in said, (folds, st, said, r.stderr[-400:]))
 if part("audit 44"):
     with tempfile.TemporaryDirectory() as tmp:
+        # audit 44: the link check ran before the model check, so any changed .json that is a symbolic link (a monorepo's shared
+        # tsconfig.json) was a map that "cannot be read", and the Action posted a Map changes comment. Only a file that could be a
+        # model is said: one that was a model at --base, or a link to a model inside the checkout; a target outside is never read
+        g = Path(tmp) / "g44"; far = Path(tmp) / "g44-outside"; (g / "shared").mkdir(parents=True); far.mkdir()
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
+        m44 = {"title": "t", "nodes": [{"id": "a", "label": "A"}], "edges": [], "views": [{"id": "main", "nodeIds": ["a"]}]}
+        (g / "shared" / "tsconfig.json").write_text('{"compilerOptions": {}}'); (g / "shared" / "map.json").write_text(json.dumps(m44))
+        (g / "was.json").write_text(json.dumps(m44)); sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "base")
+        (far / "x.json").write_text('{"nodes": [], "views": [], "title": "OUTSIDE-44"}'); (far / "cfg.json").write_text('{"extends": "OUTSIDE-44"}')
+        (g / "tsconfig.json").symlink_to("shared/tsconfig.json")  # a config linked in: not said
+        (g / "eslint.json").symlink_to(far / "cfg.json")  # a config out of the checkout, never a model here: not said, not read
+        (g / "dangling.json").symlink_to(far / "none.json")  # a dangling link that was never a model: not said
+        (g / "linked-map.json").symlink_to("shared/map.json")  # a link to a model inside the checkout: said, not read
+        (g / "was.json").unlink(); (g / "was.json").symlink_to(far / "x.json")  # a model at --base, now a link out: said, not read
+        (g / "__proto__.json").symlink_to("shared/tsconfig.json"); (g / "loop.json").symlink_to("loop.json")  # hostile names and a loop
+        sh("add", "-A"); sh("commit", "-qm", "pr")
+        r = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                            "sys.argv = ['umlimator.py', 'diff', '--base', 'HEAD~1', '--out', 'out']; u.main()", str(ROOT)], cwd=g, capture_output=True, text=True)
+        said = {x["file"]: x.get("error") for x in json.loads(r.stdout or "[]")}
+        md = (g / "out" / "summary.md").read_text() if (g / "out" / "summary.md").is_file() else ""
+        ok("diff --base · a symbolic link that is no map model (a shared tsconfig.json) is not said; one to a model, or a model at --base, still is, never read (audit 44)",
+           r.returncode == 0 and sorted(said) == ["linked-map.json", "was.json"] and all("symbolic link" in (w or "") for w in said.values())
+           and "tsconfig" not in md and "OUTSIDE-44" not in md + "".join(f.read_text() for f in (g / "out").glob("*.html")), (said, md, r.stderr[-400:]))
         # audit 44: render printed the engine's counts, which call any problem holding " cross" a crossing: a broken rule titled
         # "... cross into ..." was a crossing, and rules had no key. render counts each problem as check does on the same page;
         # a hostile view id and card label (": ", "cross", a rule's words) change nothing
