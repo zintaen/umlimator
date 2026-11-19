@@ -19,7 +19,7 @@ it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2
 | 10.2 Enumeration, EnumerationLiteral | `uml.Enumeration`, members `uml.EnumerationLiteral` | «enumeration», its literals in the first compartment |
 | 10.2 DataType, PrimitiveType | `uml.DataType`, `uml.PrimitiveType` | «dataType», «primitive» |
 | 9.5 Property (attribute) | member `uml.Property`: `visibility`, `valueType`, `multiplicity`, `default`, `isStatic`, `isDerived` | one row of UML text: `+ /total: Money [1] = 0`; static underlined |
-| 9.6 Operation, Parameter | member `uml.Operation`: `visibility`, `parameters` (`name`, `valueType`, `direction`), `returnType`, `isStatic`, `isAbstract` | `+ place(at: Date, in qty: Int): Order`; abstract in italics, static underlined |
+| 9.6 Operation, Parameter | member `uml.Operation`: `visibility`, `parameters` (`name`, `valueType`, `direction`), `returnType`, `isStatic`, `isAbstract` | `+ place(at: Date, qty: Int): Order`, an `in` direction (UML's default) left out and any other written before the name (`out was: Money`); abstract in italics, static underlined |
 | 7.4 visibility | `public`, `private`, `protected`, `package` | `+`, `-`, `#`, `~` |
 | 7.5 Multiplicity | `1`, `*`, `n..m`, `n..*`, kept as written | `[0..1]` on a member, by the end on an association |
 | 11.5 Association, AggregationKind, navigability | `uml.Association`, `props.ends.from` / `.to`: `role`, `multiplicity`, `aggregation` (`none`, `shared`, `composite`), `navigable` | a solid line; a hollow or filled diamond; an open arrowhead at a navigable end; role and multiplicity by each end |
