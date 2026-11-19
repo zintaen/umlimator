@@ -38,7 +38,7 @@ fixture in `tests/blocks.test.mjs`:
 | `value-type` | warning | clause 8: a value property is typed by a value type (`Real`, `Integer`, `Boolean`, `String` fine) |
 | `constraint-type` | error; a warning when the type names nothing, as after its constraint block is deleted | clause 10: a constraint property is typed by a constraint block |
 | `flow-direction` | error | clause 9, FlowProperty: its direction is in, out or inout |
-| `port-kind` | error | clause 9's constraints on ProxyPort and FullPort: a proxy port is typed by an interface block, a full port is not. Settled as an error, as the note recommends ("(confirm)": both constraints are SysML's, on the stereotypes) |
+| `port-kind` | error; a warning when a proxy port's type names nothing, as after its interface block is deleted | clause 9's constraints on ProxyPort and FullPort: a proxy port is typed by an interface block, a full port is not. Settled as an error, as the note recommends ("(confirm)": both constraints are SysML's, on the stereotypes) |
 | `member-kinds` | error | clause 10: a constraint block owns only parameters and constraint properties; clause 9: an interface block owns no part, and only flow properties, proxy ports and operations here; a value type only values and operations (clause 8: a data type) |
 | `general-kinds` | error | a generalization joins two elements of one SysML kind |
 | `part-agrees`, `part-unlisted` | warning | the subset's: a part stored twice agrees with itself |
@@ -105,7 +105,4 @@ block renamed 68 ms: under the 100 ms target.
 with `tests/sysml-fixtures.test.mjs` and `tests/sysml.html`; `tests/sysml.test.mjs` (the class rule on SysML
 generalizations); `tests/cli.py`; `tests/mcp.py`.
 
-**Gaps:** clause numbers inside clauses 8 to 10 were not quoted from SysML v1.7's PDF in this build (the file could not be
-read here); whether SysML lets an interface block hold value and reference properties is not settled; the type draws
-every model line between its blocks unless the view lists its `edges`; deleting a constraint block leaves the constraint
-properties it typed failing `constraint-type` (an error on a type naming nothing), `risks.md` M15.
+**Gaps:** clause numbers inside clauses 8 to 10 were not quoted from SysML v1.7's PDF in this build (the file could not be read here); whether SysML lets an interface block hold value and reference properties is not settled; the type draws every model line between its blocks unless the view lists its `edges`; deleting a constraint block leaves the constraint properties it typed with a `constraint-type` warning, and deleting an interface block leaves the proxy ports it typed with a `port-kind` warning (a type naming nothing), `risks.md` M15.

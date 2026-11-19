@@ -1,4 +1,4 @@
-import { ownNodes, registerDiagramType } from '../core/registry.js';
+import { everyOwn, registerDiagramType } from '../core/registry.js';
 import { brLines, fit, textW } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { labelW, rowsFor, untangle } from '../layout/layered.js';
@@ -286,8 +286,9 @@ rqRename.empty = SYS_FRAME_EMPTY; // an emptied F2 on the frame removes the view
 // core's delete would take it along). Anything else, and Delete on a card, the canvas's
 function rqRemove(model, view, ids, fromModel) {
   // the core hands remove the model as it is (registry.js): the view's own requirements read here too, so what one holds
-  // goes to its owner and its containment line is cut, as a model one's (audit 24)
-  const V = RQ_OBJ(view) ? view : RQ_ARR(model && model.views).find(v => RQ_OBJ(v) && v.id === view), I = rqIndex(V ? ownNodes(model, V).model : model, V), cut = [], rest = [];
+  // goes to its owner and its containment line is cut, as a model one's (audit 24); every other view's own too, which apply()
+  // deletes under a model requirement in any view, so each is kept and counted (audit 52, as clRemove)
+  const V = RQ_OBJ(view) ? view : RQ_ARR(model && model.views).find(v => RQ_OBJ(v) && v.id === view), I = rqIndex(everyOwn(model, V).model, V), cut = [], rest = [];
   ids.forEach(id => { const k = String(id).indexOf('->'), o = String(id).slice(0, k), c = String(id).slice(k + 2);
     if (k > 0 && I.is(c, RQ) && I.at.get(c).parent === o) cut.push([c, o]); else rest.push(id); });
   if (!ids.length || (rest.length && !fromModel) || (!cut.length && !rest.some(id => I.is(id, RQ) || I.is(id, RQ_PKG)))) return null;

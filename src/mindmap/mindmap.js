@@ -1,4 +1,4 @@
-import { TYPED, registerDiagramType, idTable, ownGuard } from '../core/registry.js';
+import { TYPED, registerDiagramType, idTable, ownGuard, everyOwn } from '../core/registry.js';
 import { brLines, esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { layoutTree } from '../layout/tree.js';
@@ -269,8 +269,9 @@ function mmRemove(model, view, ids, fromModel) {
   const X = mmIndex(model, V), mine = [...new Set(MM_ARR(ids))]; if (!mine.length || mine.some(id => !X.topic(id))) return null;
   const top = mine.filter(id => !mine.some(o => o !== id && (fromModel ? mmUnder(X, o, id) : mmInside(X, o, id)))); // one under another goes with it
   const said = (k, verb) => `${verb} ${top.map(id => mmOne(X.N.get(id))).join(', ')}${k ? ` and ${top.length === 1 ? 'its' : 'their'} ${mmPlural(k, 'subtopic')}` : ''}`;
-  if (fromModel) { const all = mmAllKids(X), gone = new Set(), own = new Set(MM_ARR(V.nodes).filter(MM_OBJ).map(x => x.id));
-    // a model topic under one this view alone holds is not taken with it: apply() lifts it (audit 23)
+  // every view's own topics too: apply() deletes another view's own topic under a model topic, so the hint counts it (audit 52, as clRemove)
+  if (fromModel) { const M = everyOwn(model, V), all = mmAllKids(mmIndex(M.model, V)), gone = new Set(), own = new Set(MM_ARR(M.model.nodes).slice(M.k).filter(MM_OBJ).map(x => x.id));
+    // a model topic under one a view alone holds is not taken with it: apply() lifts it (audit 23)
     top.forEach(r => { for (const s = [r]; s.length;) { const k = s.pop(); if (gone.has(k)) continue; gone.add(k); MM_ARR(all.get(k)).forEach(c => (!own.has(k) || own.has(c)) && s.push(c)); } });
     return { commands: [...mmPinsAt(model, X, V, null, gone), ...top.map(id => ({ op: 'delete', id }))], say: said(gone.size - top.length, 'Deleted') }; }
   const hide = []; top.filter(id => X.shown.has(id)).forEach(r => { for (const s = [r]; s.length;) { const k = s.pop(); hide.push(k); s.push(...X.kids.get(k)); } });

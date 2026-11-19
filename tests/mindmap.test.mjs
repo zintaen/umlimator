@@ -632,3 +632,12 @@ test('a topic renamed, by F2 or the Name field, leaves every first-level topic o
   assert.equal(MM_TYPE.edits.field(M, V(M), 'mm-launch', 'props.note', 'x'), null, 'another field: the default');
   assert.deepEqual(mmRename(EX(), V(EX()), 'mm-launch', 'Launch day').length, 1, 'sides stored: nothing to pin');
 });
+
+// audit 52: Shift + Delete of a model topic counts the subtopics another view holds as its own under it, which apply() deletes
+// all the same (as cloud's clRemove, audit 51); a model topic under one a view alone holds is lifted, not counted
+test('audit 52: Shift + Delete of a model topic counts another view\'s own subtopics under it', () => {
+  const T = 'mindmap.Topic', m = { schemaVersion: 2, nodes: [{ id: 'r', type: T, label: 'Root' }, { id: 'a', type: T, label: 'A', parent: 'r' }], edges: [],
+    views: [{ id: 'v1', diagram: 'mindmap', nodeIds: ['r', 'a'] }, { id: 'v2', diagram: 'mindmap', nodeIds: ['r', 'a', 'b', 'c'], nodes: [{ id: 'b', type: T, label: 'B', parent: 'a' }, { id: 'c', type: T, label: 'C', parent: 'b' }] }] };
+  for (const v of m.views) { const r = mmRemove(m, v, ['a'], true), n = apply(m, r.commands);
+    assert.equal(r.say, 'Deleted A and its 2 subtopics', v.id); assert.deepEqual(n.views[1].nodes, [], v.id); }
+});

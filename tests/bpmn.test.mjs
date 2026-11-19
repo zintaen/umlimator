@@ -991,3 +991,20 @@ test('audit 43: the example\'s timer moved to each side by Alt + arrows, laid ou
     assert.deepEqual(bad, [], `${direction}, the timer on the ${s}`);
   }
 });
+
+// audit 52: Delete of a lane keeps what it held whichever view makes it: another view's own flow node in the lane (or in a
+// nested lane moved up) is moved too, which apply()'s delete would take otherwise; Shift + Delete of a pool counts it
+test('audit 52: Delete of a lane keeps a flow node another view holds as its own in it; a pool\'s Shift + Delete counts it', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'pool', type: 'bpmn.Participant', label: 'Shop', members: [{ id: 'l1', type: 'bpmn.Lane', label: 'Sales' }, { id: 'l1a', type: 'bpmn.Lane', label: 'Sub', parent: 'l1' }, { id: 'l2', type: 'bpmn.Lane', label: 'Stock' }] },
+    { id: 's', type: 'bpmn.StartEvent', label: 'Start', parent: 'l1' }, { id: 't', type: 'bpmn.Task', label: 'Sell', parent: 'l1a' }], edges: [],
+    views: [{ id: 'v1', diagram: 'bpmn', nodeIds: ['pool', 's', 't'] }, { id: 'v2', diagram: 'bpmn', nodeIds: ['pool', 's', 't', 'own', 'own2'],
+      nodes: [{ id: 'own', type: 'bpmn.Task', label: 'Own', parent: 'l1' }, { id: 'own2', type: 'bpmn.Task', label: 'Own two', parent: 'l1a' }] }] };
+  assert.deepEqual(validate(m).filter(p => p.level === 'error'), []);
+  for (const vid of ['v1', 'v2']) { const v = m.views.find(x => x.id === vid), r = bzRemove(m, v, ['l1'], false), n = apply(m, r.commands), w = n.views[1];
+    assert.deepEqual(w.nodes.map(x => [x.id, x.parent]), [['own', 'pool'], ['own2', 'l1a']], vid);
+    assert.match(r.say, /keeping what it held/, vid); }
+  // the hint counts in-lane only what this view shows: v1 shows s alone of what lands in the pool
+  assert.match(bzRemove(m, m.views[0], ['l1'], false).say, /; 1 flow node now in no lane of Shop/);
+  // Shift + Delete of the pool: s, t and v2's own two go
+  assert.match(bzRemove(m, m.views[0], ['pool'], true).say, /deleted pool Shop and the 4 elements it holds/i);
+});

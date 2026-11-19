@@ -679,3 +679,19 @@ test('F2 on a port box that breaks port-kind is refused, and a refusal says its 
   assert.equal(BT.edits.field(BL, BV, 'battery.charge', 'props.kind', 'sideways').error, 'Port "Battery".charge has kind "sideways", not proxy or full: a port\'s kind is proxy, full or none');
   assert.equal(BT.edits.member(BL, BV, 'ebike', null, 'constraint city').error, 'Constraint property "EBike".city is typed by nothing, not a constraint block: a constraint property is name : ConstraintBlock');
 });
+
+// audit 52: a proxy port typed by a name that names nothing (its interface block deleted, or not made yet) is a port-kind
+// warning saying so, as constraint-type's is (audit 18): the row is let through, and Shift + Delete of the interface block
+// leaves no error
+test('audit 52: a proxy port whose interface block is deleted or not made yet is a port-kind warning that says the name names nothing', () => {
+  const M = JSON.parse(readFileSync(new URL('../examples/types/sysml-block-definition.json', import.meta.url), 'utf8')), V = M.views[0], T = diagramOf(V);
+  const errs = m => validate(m).filter(p => p.level === 'error').map(p => p.message);
+  assert.deepEqual(errs(M), []);
+  const gone = apply(M, [{ op: 'delete', id: 'charge-interface' }]), ps = validate(gone).filter(p => p.rule === 'port-kind');
+  assert.ok(ps.length >= 2); assert.deepEqual(errs(gone), []);
+  ps.forEach(p => { assert.equal(p.level, 'warning'); assert.match(p.message, /is typed by "~?ChargeInterface", which names nothing, not an interface block$/); });
+  const own = M.nodes.find(n => n.type === 'sysml.Block').id, r = T.edits.member(M, V, own, null, 'proxy port p : NotMadeYet');
+  assert.ok(Array.isArray(r) || (r && Array.isArray(r.commands)), JSON.stringify(r)); assert.deepEqual(errs(apply(M, r.commands || r)), []);
+  // a proxy port typed by a block that is there: still an error, still refused
+  assert.match(T.edits.member(M, V, own, null, `proxy port p : ${M.nodes.find(n => n.type === 'sysml.Block').label}`).error, /not an interface block: /);
+});

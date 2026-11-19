@@ -1,6 +1,6 @@
 import { apply } from '../core/apply.js';
 import { copyOf, usedIds, jsonText, labelOr, propTextProblems } from '../core/model.js';
-import { heldBy, registerDiagramType } from '../core/registry.js';
+import { everyOwn, heldBy, registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { routeAudit } from '../layout/audit.js';
@@ -570,7 +570,9 @@ function bzRemove(model, view, ids, fromModel) {
   // the lanes nested under a deleted one move up: apply() cannot reparent a member, so each is deleted and added again
   const moved = [...I.L.keys()].filter(id => !gone.has(id) && I.chain(id).some(p => gone.has(p))), shift = new Set([...gone, ...moved]);
   // a node selected with its lane is kept for a hide too (audit 12): only Delete from the model lets the lane take it
-  const held = [...I.N.values()].filter(n => shift.has(n.parent) && !(fromModel && rest.includes(n.id)));
+  // and every other view's own node in one: apply()'s delete takes it in any view, so each is moved too (audit 52, as clRemove)
+  const M = everyOwn(model, view), other = BZ_ARR(M.model.nodes).slice(M.k).filter(n => !I.N.has(n.id) && !I.L.has(n.id));
+  const held = [...I.N.values(), ...other].filter(n => shift.has(n.parent) && !(fromModel && rest.includes(n.id)));
   held.forEach(n => cmds.push({ op: 'reparent', id: n.id, parent: I.L.get(n.parent).pool }));
   [...gone, ...moved].forEach(id => cmds.push({ op: 'delete', id }));
   // each added again where the outermost deleted lane above it was among its pool's members, so the lanes keep their order
@@ -578,7 +580,9 @@ function bzRemove(model, view, ids, fromModel) {
   moved.map(id => [after(I.L.get(id).pool).indexOf(id), id]).sort((a, b) => a[0] - b[0]).forEach(([index, id]) => { const { x, pool } = I.L.get(id), p = keep(id), c = copyOf(x);
     delete c.parent; if (p !== pool) c.parent = p; cmds.push({ op: 'add', element: c, owner: pool, index }); });
   held.forEach(n => { const p = gone.has(n.parent) ? keep(n.parent) : n.parent; if (p !== I.L.get(n.parent).pool) cmds.push({ op: 'reparent', id: n.id, parent: p }); });
-  const owned = p => [...I.N.values()].filter(n => I.chain(n.id).includes(p)).length;
+  // what a deleted pool takes as apply() deletes: every view's own node in it too, not a model node under a view's own one (lifted)
+  const J = bzIndex(M.model, null), mine = new Set(BZ_ARR(M.model.nodes).slice(M.k).map(n => n.id));
+  const owned = p => [...J.N.keys()].filter(id => { for (let c = id, ps = J.chain(id), i = 0; i < ps.length; c = ps[i++]) { if (mine.has(ps[i]) && !mine.has(c)) return false; if (ps[i] === p) return true; } return false; }).length;
   // the flow nodes a deleted lane held that land in a pool keeping other lanes: in none of them (in-lane), said (audit 48). Only
   // those this view still shows after the gesture, as in-lane judges them and the user can drag them: not one hidden from it
   // before, nor one this same Delete hides (audit 50)
