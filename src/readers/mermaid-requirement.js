@@ -1,5 +1,5 @@
 import { unreadable, jsonText } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText, mermaidScrub } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText, mermaidScrub, mermaidOver, mermaidOpen } from './mermaid-front.js';
 /* ---------- Mermaid requirementDiagram: a reader and a writer (notes/milestone-3.md §12, M3.6; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's requirement diagram page (docs/syntax/requirementDiagram.md, read 14 Nov 2026), as the
    other readers are against theirs. Internal: the CLI (`umlimator.py import`) imports this file through Node; a host gets it
@@ -208,8 +208,10 @@ function readMermaidRequirement(text) {
     leftover(h, ['id']);
   };
 
+  const over = mermaidOver(lines);
   for (; i < lines.length; i++) {
-    const no = i + 1, t = lines[i].trim();
+    const no = i + 1;
+    let t = lines[i].trim();
     if (!t) continue;
     if (acc) { if (t.includes('}')) acc = false; continue; }
     if (t.startsWith('%%')) {
@@ -226,6 +228,9 @@ function readMermaidRequirement(text) {
       if (!/^﻿?requirementDiagram$/i.test(t)) { say(no, 'skipped', 'not a Mermaid requirementDiagram: nothing read'); return empty(); }
       started = true; viewHint = h; leftover(h, ['id']); continue;
     }
+    // a "string" left open (a name, or a field's quoted value) goes on over the lines to its closing quote, as Mermaid's
+    // qString (audit 49)
+    if (block ? /^[^:]*:\s*"/.test(t) && mermaidOpen(t) : mermaidOpen(t)) { const o = over(i, t); if (o) ({ s: t, i } = o); }
     if (block) { leftover(h, []); field(t, no); } else statement(t, no, h);
   }
   if (!started) { say(1, 'skipped', 'not a Mermaid requirementDiagram: nothing read'); return empty(); }

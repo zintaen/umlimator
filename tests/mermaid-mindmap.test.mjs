@@ -299,3 +299,18 @@ test('audit 24: an id derived from a topic, and a report quoting the source, are
     assert.ok(report.length && report.every(r => r.message.isWellFormed() && r.message.includes('x'.repeat(56) + '...')), `${kind}: ${JSON.stringify(report)}`);
   }
 });
+
+test('a shape\'s "string" and bare text run over line breaks to the closer, as Mermaid\'s lexer reads them; a stop that is not the closer is read as before (audit 49)', () => {
+  const tree = r => r.model.nodes.map(n => [n.id, n.label, n.parent ?? null]);
+  const r = read('mindmap\n  root\n    a["first\nsecond"]\n    b\n    c[x\ny]\n    d\n    e((round\n      text))\n    f{{six\nsides}} tail\n');
+  assert.deepEqual(tree(r), [['root', 'root', null], ['a', 'first\nsecond', 'root'], ['b', 'b', 'root'], ['c', 'x\ny', 'root'], ['d', 'd', 'root'],
+    ['e', 'round\n      text', 'root'], ['f', 'six\nsides', 'root']]);
+  assert.deepEqual(lines(r), ['9 approximated: a circle (( )) is kept, drawn as a rounded box', '11 skipped: tail: text after the topic is not read',
+    '11 approximated: a hexagon {{ }} is kept, drawn as a rounded box']);
+  // read back as written: the line break is <br>
+  assert.deepEqual(tree(read(write(r.model))), tree(r));
+  // Mermaid refuses these: a ( before the ], a quote closed before something other than ], no closer at all; each read on its line, as before
+  assert.deepEqual(tree(read('mindmap\n  root\n    c[x (z\ny]\n')), [['root', 'root', null], ['c-x-z', 'c[x (z', 'root'], ['y', 'y]', null]]);
+  assert.deepEqual(tree(read('mindmap\n  root\n    c["x]\n    d["y"]\n')), [['root', 'root', null], ['c', '"x', 'root'], ['d', 'y', 'root']]);
+  assert.deepEqual(tree(read('mindmap\n  root\n    c[x\n    d\n')), [['root', 'root', null], ['c-x', 'c[x', 'root'], ['d', 'd', 'root']]);
+});

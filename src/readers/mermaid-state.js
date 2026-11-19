@@ -1,5 +1,5 @@
 import { unreadable, jsonText } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidScrub } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidScrub, mermaidOver, mermaidOpen } from './mermaid-front.js';
 import { parseTransition, printTransition, trScan } from '../uml/transition.js';
 /* ---------- Mermaid stateDiagram: a reader and a writer (notes/stage-4.md §13, S12, S22; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's state diagram page (docs/syntax/stateDiagram.md, read 13 Nov 2026) and its lexer, as
@@ -162,6 +162,7 @@ function readMermaidState(text) {
     return s[key];
   };
 
+  const over = mermaidOver(lines);
   for (; i < lines.length; i++) {
     const no = i + 1;
     let s = lines[i].trim();
@@ -196,6 +197,9 @@ function readMermaidState(text) {
       if (viewId != null && mtId(viewId) !== viewId) { say(no, 'approximated', `%% id: ${viewId}: an id holds no "->", so the view is ${mtId(viewId)}`); viewId = mtId(viewId); }
       continue;
     }
+    // state "description" as name: a description left open goes on over the lines to its closing quote, as Mermaid's
+    // string token; a state's : text and a note's never do (audit 49)
+    if (/^state\s+"/i.test(s) && mermaidOpen(s)) { const o = over(i, s); if (o) ({ s, i } = o); }
     const word = mtWord(s), rest = s.slice(word.length).trim(), arrow = s.indexOf('-->'), colon = textColon(s);
     if (s.startsWith('}')) {
       const o = stack.pop();
