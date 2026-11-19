@@ -127,6 +127,16 @@ ok("compose · two keys that differ only in a character XML cannot hold are kept
    [(n["label"], n.get("sublabel")) for n in m["nodes"]] == [("web\ufffd", "nginx"), ("web\ufffd-2", "x"), ("web\ufffd-3", "redis"), ("db", "postgres")]
    and un == [(None, raw("\x01")), (None, raw("\x02")), (None, "key web\ufffd: another key reads as the same text, so this one is read as web\ufffd-3")]
    and (None, "key k\ufffd: another key reads as the same text, so this one is read as k\ufffd-2") in un2, (m, un, un2))
+m, un = imp.read("compose", '{"services": {"web\\u0001": {"image": "x", "depends_on": ["web\\u0002"]}, "web\\u0002": {"image": "y", "depends_on": {"web\\u0001": {"condition": "service_started"}}}, "db": {"image": "z", "depends_on": ["web\\u0002"]}}}', "x")
+k8s = {"kind": "List", "items": [
+    {"kind": "Service", "metadata": {"name": "s"}, "spec": {"selector": {"k\u0002": "b"}}},
+    {"kind": "Deployment", "metadata": {"name": "d"}, "spec": {"template": {"metadata": {"labels": {"k\u0001": "a", "k\u0002": "b"}}}}}]}
+m2, un2 = imp.read("kubernetes", json.dumps(k8s), "x")
+m3, un3 = imp.read("kubernetes", json.dumps({"kind": "List", "items": k8s["items"][::-1]}), "x")  # the selector read first, then
+ok("compose, kubernetes · a reference to a key kept apart (depends_on as a list or a map, a selector before the labels it picks) follows the name that key is read as, not the first key's (audit 52)",
+   sorted((e["from"], e["to"]) for e in m["edges"]) == [("db", "web\ufffd-2"), ("web\ufffd", "web\ufffd-2"), ("web\ufffd-2", "web\ufffd")]
+   and not any("itself" in x for _, x in un)
+   and all([(card(x, e["from"]).get("label"), card(x, e["to"]).get("label")) for e in x["edges"]] == [("s", "d")] for x in (m2, m3)), (m, un, m2, un2, m3, un3))
 ok("mermaid · front matter fences with spaces after them are front matter (audit 5)",
    imp.front("--- \ntitle: Shop\n---  \nflowchart LR\n")[0] == "Shop" and imp.mermaid_typed("--- \ntitle: t\n--- \nclassDiagram\n") == "classDiagram")
 m, un = imp.read("structurizr", 'workspace {\n  model {\n    u = person "User" \\\n      "A customer"\n    s = softwareSystem "Shop"\n    u -> s "Uses" \\\n      "HTTPS"\n  }\n}\n', "x")

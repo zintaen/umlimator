@@ -25,7 +25,7 @@ Any MCP client that starts a stdio server works the same way. The server needs N
 | `diff(other_model_path)` | what changed from another model file to this one, in words, and the views that show it (`diff()`) |
 | `show_view(view)` | shows a view on the page |
 | `highlight(refs, view?)` | lights cards and lines (their ids, or the Refs `paths` and `reach` give) and dims the rest |
-| `tour(cards, view?)` | a dot rides the lines through these cards, so each card must share a line with the next on the view; with no view, it rides the first view that shows the cards and draws those lines |
+| `tour(cards, view?)` | a dot rides the lines through these cards, so each card must share a line with the next on the view and be drawn there as a card, not as a box that holds cards; with no view, it rides the view shown now if it shows the cards and draws those lines, else the first view that does |
 | `play_story(id)`, `clear()` | plays one of the model's stories; takes the assistant's highlight, tour and story off |
 | `page_state()` | what each open page shows (its map's `state`: view, selection, layers, story, camera), and whether the model renders |
 

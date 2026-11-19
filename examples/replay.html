@@ -28,7 +28,7 @@
 </header>
 <main><div id="map"></div></main>
 <script type="module">
-import { render, otlpSpans } from '../lib/umlimator.js';
+import { render, otlpSpans } from '../lib/umlimator-all.js';
 import { withIcons } from './icons.js';
 
 const model = await withIcons(await (await fetch('umlimator-atlas.json')).json());

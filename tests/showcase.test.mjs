@@ -58,8 +58,10 @@ const LEGACY = ['tests/activity.html', 'tests/activity.test.mjs', 'tests/aids.te
   'tests/transition.test.mjs', 'tests/typed-diff.test.mjs', 'tests/uml-panel.html', 'tests/unfold.test.mjs',
   'tests/usecase.html', 'tests/usecase.test.mjs'];
 
-// a path to a model under examples/ (not docs/diagrams/examples/), a template or a listing of the folder
-const READS = /(?<!diagrams\/)(?<![\w-])examples\/(?:types\/|variants\/)?(?:[\w.-]+\.json|\$\{|['"`])|\/ ?"examples"|join\([^)]*'examples'|URL\('\.\.\/examples\/'/;
+// a path to a model under examples/ (not docs/diagrams/examples/), a template or a listing of the folder: a path segment
+// "examples" in either quote after a / (pathlib) or in a join(), or a call given the folder (readdirSync('examples')).
+// A quoted "examples" elsewhere (data-tab="examples") is no path (audit 52)
+const READS = /(?<!diagrams\/)(?<![\w-])examples\/(?:types\/|variants\/)?(?:[\w.-]+\.json|\$\{|['"`])|\/ ?['"]examples['"]|join\([^)]*['"]examples['"]|\(\s*['"`](?:\.{1,2}\/)?examples\/?['"`]|URL\('\.\.\/examples\/'/;
 
 // a test that loads an examples/ host page reads the models that page fetches (audit 51: tests/class-editor.html framed
 // examples/class-editor.html and edit.html, pinning sales-classes.json and umlimator-atlas.json, unseen by READS)
@@ -73,6 +75,10 @@ test('no test but the allowed ones reads the showcase models, and the legacy lis
   const readers = tracked.filter(f => readsShowcase(readFileSync(new URL(f, root), 'utf8')));
   // the guard sees a test that reads a showcase model through a host page
   assert.ok(readsShowcase("frame.src = '../examples/class-editor.html';") && !readsShowcase("'../docs/diagrams/examples/x.html'"));
+  // ordinary path forms in either quote, and a listing of the folder; a quoted "examples" that is no path is not one (audit 52)
+  for (const t of [`ROOT / 'examples' / 'shapes.json'`, `os.path.join(ROOT, "examples", "shapes.json")`, `path.join(root, "examples", "shapes.json")`,
+    `readdirSync('examples')`, `readdirSync("./examples/")`, `ROOT / "examples" / "types"`, `join(root, 'examples')`]) assert.ok(readsShowcase(t), t);
+  for (const t of [`<button data-tab="examples">`, `tab: 'examples'`, `'../docs/diagrams/examples/x.json'`]) assert.ok(!readsShowcase(t), t);
   assert.deepEqual(readers.filter(f => !ALLOWED.includes(f) && !LEGACY.includes(f)), [],
     'a test pins its own model in tests/fixtures/, never one of examples/');
   assert.deepEqual(LEGACY.filter(f => !readers.includes(f)), [], 'reads examples/ no more: take it off LEGACY');

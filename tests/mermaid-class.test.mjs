@@ -924,3 +924,23 @@ test('a %% comment line inside a "string" over lines (a note, a cardinality) is 
   assert.deepEqual(r.model.edges.map(e => e.props.ends.from), [{ role: 'role', multiplicity: '1' }]);
   assert.deepEqual(r.report.map(x => [x.line, x.status, x.message]), [[3, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read'], [6, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read']]);
 });
+
+test('an end\'s multiplicity written with spaces (0 .. 1) is written without them, so it reads back as itself and no role appears; one that is still no multiplicity is not written and said, and the role is checked alone (audit 52)', () => {
+  const cases = [
+    [{ multiplicity: '0 .. 1' }, { multiplicity: '0..1' }, []],
+    [{ role: 'items', multiplicity: '1 .. *' }, { role: 'items', multiplicity: '1..*' }, []],
+    [{ multiplicity: ' 0..* ' }, { multiplicity: '0..*' }, []],
+    [{ role: 'items', multiplicity: 'some' }, { role: 'items' }, ['multiplicity some at the to end']],
+    [{ multiplicity: '0 .. 1 x' }, {}, ['multiplicity 0 .. 1 x at the to end']],
+    [{ role: 'phase', multiplicity: '2 ..' }, { role: 'phase' }, ['multiplicity 2 .. at the to end']],
+  ];
+  for (const [end, got, said] of cases) {
+    const m = { nodes: [{ id: 'A', type: 'uml.Class', label: 'A' }, { id: 'B', type: 'uml.Class', label: 'B' }],
+      edges: [{ id: 'A-B', type: 'uml.Association', from: 'A', to: 'B', props: { ends: { to: end } } }],
+      views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['A', 'B'] }] };
+    assert.deepEqual(validate(m), [], JSON.stringify(end));
+    const text = write(m, 'v'), back = read(text).model.edges[0];
+    assert.deepEqual(back.props?.ends?.to ?? {}, got, `${JSON.stringify(end)}\n${text}`);
+    assert.deepEqual([...text.matchAll(/%% not written: A-B: (multiplicity .*? end)/g)].map(x => x[1]), said, text);
+  }
+});

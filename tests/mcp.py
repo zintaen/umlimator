@@ -99,6 +99,36 @@ mcp.want.clear(); mcp.want.update(keep51[2])
 ok("audit 51 · tour with no view rides the first view that shows its cards and draws a line between each and the next; none that does is said, naming each",
    rode51 == ["context", "context"] and none51 and none51.startswith("no view that shows these cards draws a line between each and the next")
    and "on view 'context' no line joins 'shopper' and 'payments'" in none51 and "on view 'containers'" in none51, (rode51, none51))
+# audit 52: the tour check took reach()'s lines, so a card the view draws as a box (a package holding cards) passed, though
+# the page's tour() rides only cards the laid-out view draws, and threw "no line joins these cards"; [a, a] passed with no
+# self-line, as reach() lists the card itself. And the description named the first view, where the view shown now wins
+keep52 = (mcp.MODEL, mcp.page, dict(mcp.want))
+mcp.page = lambda: ("v", None)
+said52 = []
+with tempfile.TemporaryDirectory() as d52:
+    # two packages that hold classes, drawn as boxes on a package view, and a line between them; a second view draws it too
+    pk = {"schemaVersion": 2, "nodes": [{"id": "catalog", "type": "uml.Package", "label": "catalog"}, {"id": "book", "type": "uml.Class", "label": "Book", "parent": "catalog"},
+                                        {"id": "shared", "type": "uml.Package", "label": "shared"}, {"id": "money", "type": "uml.DataType", "label": "Money", "parent": "shared"}],
+          "edges": [{"id": "imports", "type": "uml.PackageImport", "from": "catalog", "to": "shared"}],
+          "views": [{"id": "packages", "diagram": "uml.package", "nodeIds": ["catalog", "book", "shared", "money"]},
+                    {"id": "packages-2", "diagram": "uml.package", "nodeIds": ["catalog", "book", "shared", "money"]}]}
+    for model, cards, kw in ((pk, ["catalog", "shared"], {"view": "packages"}), (pk, ["catalog", "shared"], {}),
+                             ({"nodes": [{"id": "a"}, {"id": "b"}], "edges": [{"id": "ab", "from": "a", "to": "b"}], "views": [{"id": "v", "nodeIds": ["a", "b"]}]}, ["a", "a"], {})):
+        (Path(d52) / "m.json").write_text(json.dumps(model), encoding="utf-8")
+        mcp.MODEL = Path(d52) / "m.json"
+        mcp.want.update(view=None, highlight=None, tour=None, story=None)
+        try:
+            mcp.call("tour", {"cards": cards, **kw}); said52.append(None)
+        except mcp.Fail as e:
+            said52.append(str(e))
+mcp.MODEL, mcp.page = keep52[:2]
+mcp.want.clear(); mcp.want.update(keep52[2])
+desc52 = mcp.TOOL["tour"]["description"]
+ok("audit 52 · tour refuses a card the view draws as a box, and a card that follows itself with no line to itself, as the page's tour() rides neither; its description names the view shown now first",
+   said52[0] == "view 'packages' draws 'catalog' as a box that holds cards, and a tour stops only at cards; paths() gives a route of lines between two cards"
+   and said52[1] and "view 'packages' draws 'catalog' as a box" in said52[1] and "view 'packages-2' draws 'catalog' as a box" in said52[1]
+   and said52[2] == "'a' follows itself, and no line on view 'v' joins it to itself; paths() gives a route of lines between two cards"
+   and "the view shown now if it shows the cards and draws those lines, else the first view that does" in desc52, (said52, desc52))
 # view_for (audit 11): a line with no id, a box, a chip lands on the view that shows it, never on the first view (every card dimmed)
 m = {"nodes": [{"id": x} for x in "abcd"], "edges": [{"from": "c", "to": "d"}], "views": [{"id": "ctx", "nodeIds": ["a", "b"]},
      {"id": "inner", "nodeIds": ["c", "d"], "containers": [{"id": "box", "nodeIds": ["c", "d"]}]}]}
@@ -149,8 +179,15 @@ class Chrome:
                 return m.get("result", {})
 
     def open(self, url):
+        """A tab on url, with motion as a reader's who has not asked for less: the host's own setting (a Mac with Reduce
+        motion on) would make every tour a path lit at rest, which the reduced-motion checks ask for themselves (#132)."""
         tid = self.call("Target.createTarget", {"url": url})["targetId"]
-        return tid, self.call("Target.attachToTarget", {"targetId": tid, "flatten": True})["sessionId"]
+        sid = self.call("Target.attachToTarget", {"targetId": tid, "flatten": True})["sessionId"]
+        self.motion(sid)
+        return tid, sid
+
+    def motion(self, sid, reduce=False):
+        self.call("Emulation.setEmulatedMedia", {"features": [{"name": "prefers-reduced-motion", "value": "reduce" if reduce else "no-preference"}]}, sid)
 
     def eval(self, sid, expr):
         r = self.call("Runtime.evaluate", {"expression": expr, "returnByValue": True, "awaitPromise": True}, sid)
@@ -317,7 +354,7 @@ try:
     chrome.eval(sid, "window.umlimatorMap.play(null), true")
     # …and under reduced motion, where a tour is a path lit at rest: a story's step takes the assistant's off and keeps its
     # own through the assistant's next command, and clear() takes the assistant's own off
-    chrome.call("Emulation.setEmulatedMedia", {"features": [{"name": "prefers-reduced-motion", "value": "reduce"}]}, sid)
+    chrome.motion(sid, reduce=True)
     lit = "window.umlimatorMap.state.overlays.includes('tour')"
     tool("tour", cards=["rider-app", "trip-api", "lifecycle"])
     mine = chrome.eval(sid, lit)
@@ -329,7 +366,7 @@ try:
     tool("tour", cards=["rider-app", "trip-api", "lifecycle"])
     tool("clear")
     cleared = not chrome.eval(sid, lit)
-    chrome.call("Emulation.setEmulatedMedia", {"features": []}, sid)
+    chrome.motion(sid)
     ok("#132 · …under reduced motion too: the story's path lit at rest stays through the assistant's next command, and clear() takes the assistant's own off",
        mine and theirs and kept and cleared, (mine, theirs, kept, cleared))
 

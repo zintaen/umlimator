@@ -26,7 +26,7 @@
 <p id="said" aria-live="polite"></p>
 </main>
 <script type="module">
-import { render, diff } from '../lib/umlimator.js';
+import { render, diff } from '../lib/umlimator-all.js';
 import { withIcons } from './icons.js';
 
 const full = await withIcons(await (await fetch('umlimator-atlas.json')).json());

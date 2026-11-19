@@ -114,7 +114,7 @@ subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(ROOT /
                 "--out", str(ROOT / "tests" / "fixtures" / "integration.html"), "--no-check"], check=True, capture_output=True)
 
 
-def dom(path, done, wait=60, motion=False):
+def dom(path, done, wait=60, motion=False, extra=()):
     # reduced motion: navigation without animation frames, which headless virtual time does not run. Chrome reads the
     # page once its virtual time is up, which on a busy machine can be before the page has drawn what a check reads (the
     # standalone page draws on an animation frame, in real time), or Chrome may give back nothing at all (a rare headless
@@ -126,7 +126,7 @@ def dom(path, done, wait=60, motion=False):
     end = time.monotonic() + wait
     while True:
         t = visual.chrome(binary, "--window-size=1200,1200", f"--virtual-time-budget={120000 if motion else 30000}", *([] if motion else ["--force-prefers-reduced-motion"]),
-                          "--dump-dom", base + path, done=done, timeout=90)
+                          *extra, "--dump-dom", base + path, done=done, timeout=90)
         if done(t) or time.monotonic() > end:
             return t
 
@@ -164,9 +164,16 @@ for page, motion in PAGES:
 for page, what in DEMOS:
     if not part(page):
         continue
-    demo = dom(page, lambda t: 'class="umlimator"' in t)
+    # the page's console, in Chrome's log: a demo of a version 2 model on the core module drew its typed views as plain
+    # cards, each said in a warning, and the playground opened on them (audit 52)
+    with tempfile.TemporaryDirectory() as logs:
+        log = Path(logs) / "console.log"
+        demo = dom(page, lambda t: 'class="umlimator"' in t, extra=("--enable-logging", f"--log-file={log}"))
+        said = [x for x in (log.read_text(encoding="utf-8", errors="replace") if log.exists() else "").splitlines() if "is not drawn by this release" in x]
     print(("ok  " if 'class="umlimator"' in demo else "FAIL"), f"{page} · {what} draws its map")
     failed |= 'class="umlimator"' not in demo
+    print(("ok  " if not said else "FAIL"), f"{page} · {what} draws every view of its model in its own notation: no view is drawn as plain cards", "" if not said else said[:2])
+    failed |= bool(said)
 if part("examples/element.html"):
     demo = dom("examples/element.html", lambda t: "Drawn: " in t)  # the map is in the element's shadow root: the page says when it is drawn
     print(("ok  " if "Drawn: " in demo else "FAIL"), "examples/element.html · the element page draws its map")
