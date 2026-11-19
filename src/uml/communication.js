@@ -7,7 +7,7 @@ import { rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { brLines } from '../typed/draw.js';
 import './frame.js'; // SHAPE.lifeline, the head a lifeline is drawn with
-import { interactionWalk, messageNumbers, replyCallFor, INTERACTION_RULES, interactionProblems, interactionGone, interactionCounts } from './interaction.js';
+import { IA_GONE, interactionWalk, messageNumbers, replyCallFor, INTERACTION_RULES, interactionProblems, interactionGone, interactionCounts } from './interaction.js';
 
 /* ---------- the communication diagram, uml.communication (work package 3.5, notes/stage-3.md §6) ----------
    Lifelines joined by connectors; messages are model edges, and the view's `edges` lists the connectors, then the messages
@@ -171,7 +171,7 @@ function cmFinish(g, I, stacks, nums, view) {
   g.nodes.forEach(n => { if (n.id[0] !== CM_STACK) byId[n.id] = { ...n }; });
   // the rows counted and placed among the messages drawn, in the view's order, as describe() counts them (audit 42; sequence, audit 41)
   // on the diff page over the live ones only, as the model after the change counts them; a removed one is said by its number (audit 48)
-  const rows = new Set([...stacks.values()].flatMap(S => S.ms.map(m => m.id))), drawn = I.messages.filter(m => rows.has(m.id) && m.change !== 'removed');
+  const rows = new Set([...stacks.values()].flatMap(S => S.ms.map(m => m.id))), drawn = I.messages.filter(m => rows.has(m.id) && !IA_GONE(m));
   const E = new Map(g.edges.map(e => [e.id, e])), edges = [], total = drawn.length, place = new Map(drawn.map((m, k) => [m.id, k + 1]));
   I.connectors.forEach(c => {
     const S = stacks.get(c.id);

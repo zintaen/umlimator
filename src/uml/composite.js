@@ -130,9 +130,13 @@ function csPic(model, view) {
     const inner = boxed.has(f.node) && within(f.node, t.node) ? 'from' : boxed.has(t.node) && within(t.node, f.node) ? 'to' : null;
     if (inner && !(inner === 'from' ? f : t).port) return null;
     return { e, f, t, inner }; }).filter(Boolean);
-  // the ports drawn on each part: its type's, then those its connectors reach through it (§6)
+  // the ports drawn on each part: its type's, then those its connectors reach through it (§6), then on the diff page those it
+  // drew before and lost, retyped, which diff() marks removed in view.diffMarks.marks by <part>-><port> (audit 50: not drawn)
+  const dm = CS_OBJ(view && view.diffMarks) && CS_OBJ(view.diffMarks.marks) ? view.diffMarks.marks : null;
+  const lostPorts = dm ? Object.keys(dm).filter(k => dm[k] === 'removed').map(csSplit).filter(s => s && partOf.has(s[0]) && (mem.get(s[1]) || {}).m && mem.get(s[1]).m.type === 'uml.Port') : [];
   const partPorts = new Map([...partOf.keys()].map(p => { const T = typeOf(el(p)), own = T ? kids(T, 'uml.Port') : [], seen = new Set(own.map(m => m.id));
     lines.forEach(({ f, t }) => [f, t].forEach(x => { if (x.part === p && !seen.has(x.id)) { seen.add(x.id); own.push(mem.get(x.id).m); } }));
+    lostPorts.forEach(([q, id]) => { if (q === p && !seen.has(id)) { seen.add(id); own.push(mem.get(id).m); } });
     return [p, own]; }));
   return { at, mem, el, ids, S, sid, parts, sPorts, uses, collabs, boxed, rest, partOf, typeOf, lines, loops, partPorts, kids };
 }

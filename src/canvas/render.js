@@ -938,11 +938,11 @@ export function render(container, model, options = {}) {
       ...(f.tabs || []).map(t => ({ x: t.x, y: f.y - 8, w: t.w, h: 16 }))]); // and its tabs
     const pills = [], free = r => !g.nodes.some(n => hit(r, n, 8) || (n.tag && hit(r, n.tag, 2))) && !heads.some(h => hit(r, h, 2)) && !g.edges.some(o => o.lbl && hit(r, o.lbl, 2)) && !pills.some(p => hit(r, p, 2));
     g.edges.forEach((e, i) => { const m = markOf2(L => strongest(edgeRefIds(e).map(x => own(L.edges, x)))), eg = s.querySelector(`.edge-g[data-i="${i}"]`); if (!m || !eg) return;
-      const path = eg.querySelector('.edge'), flow = eg.querySelector('.flowline');
+      const path = eg.querySelector('.edge'), flows = eg.querySelectorAll('.flowline'); // a heavy line's two (svgOf)
       if (m.level < 1) [eg, s.querySelector(`.e-lab[data-i="${i}"]`)].forEach(x => x && x.setAttribute('opacity', m.level));
       if (m.tone || m.pulse) path.insertAdjacentHTML('beforebegin', `<path d="${path.getAttribute('d')}" class="um-glow${m.pulse ? ' um-pulse' : ''}" stroke="${tone(m.tone)}"/>`);
       if (m.dash) path.setAttribute('style', 'stroke-dasharray: 7 5');
-      if (m.speed != null && flow) flow.setAttribute('style', +m.speed > 0 ? `animation-duration: ${(2.4 / m.speed).toFixed(2)}s` : 'animation: none; opacity: 0');
+      if (m.speed != null) flows.forEach(flow => flow.setAttribute('style', +m.speed > 0 ? `animation-duration: ${(2.4 / m.speed).toFixed(2)}s` : 'animation: none; opacity: 0'));
       if (m.label == null || m.label === '') return;
       // the pill takes the first place that covers no card, box title or tab, line label or pill before it (#81): under the
       // line's own label (else on its longest run), then a few places along the line. The view is not laid out again for

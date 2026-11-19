@@ -61,8 +61,9 @@ const activationBars = (model, view) => barsOf(interactionWalk(model, view)).map
 /* Message numbers (S8): a message's place among the messages sent in the activation it is sent from, replies included,
    after that activation's call's number; 1, 2 … at the top level. Map: message id → '1.1.2'. On the diff page a message
    diff() put back removed (change "removed") takes no place: the live ones are numbered as the model after the change numbers
-   them, and a removed one keeps the number it had among them all, as before (audit 48) */
-const IA_GONE = x => x !== null && typeof x === 'object' && x.change === 'removed';
+   them, and a removed one keeps the number it had among them all, as before (audit 48). "removed" in any letter case, as it is
+   drawn (audit 50: "Removed" drawn removed and numbered live) */
+const IA_GONE = x => x !== null && typeof x === 'object' && typeof x.change === 'string' && x.change.toLowerCase() === 'removed';
 function messageNumbers(model, view) {
   const E = Array.isArray(model && model.edges) ? model.edges : [], V = view && Array.isArray(view.edges) ? view.edges : null;
   if (E.some(IA_GONE) || (V && V.some(IA_GONE))) {
@@ -144,4 +145,4 @@ const interactionGone = (model, next) => { const was = interactionEvery(model), 
 // "4 changes and 1 constraint": the counts that are not 0, in that order (k: kind → count)
 const interactionCounts = (k, kinds = ['message', 'connector', 'change', 'constraint']) => kinds.filter(w => k[w]).map(w => `${k[w]} ${k[w] === 1 ? w : w + 's'}`).join(', ').replace(/, ([^,]*)$/, ' and $1');
 
-export { interactionWalk, activationBars, messageNumbers, replyCallFor, INTERACTION_RULES, interactionProblems, interactionEvery, interactionGone, interactionCounts };
+export { IA_GONE, interactionWalk, activationBars, messageNumbers, replyCallFor, INTERACTION_RULES, interactionProblems, interactionEvery, interactionGone, interactionCounts };
