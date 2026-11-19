@@ -246,7 +246,7 @@ interface DiffResult { model: MapModel; summary: string[]; views: string[] }
 | Field | What it is |
 |---|---|
 | `model` | `after` with the change marks: a card's `change` (a NEW or CHANGED tab; REMOVED is faded, dashed and struck through), a line's `style` (`added` or `removed`) or `edited`, and `nodeOverrides` for a card put into or taken out of one view. The marks are the model's own fields, so a page or still the CLI makes shows them. |
-| `summary` | What changed, in words and in model order ("adds Readers between umlimator.py and The module"). |
+| `summary` | What changed, in words and in model order ("adds Readers, from umlimator.py"). |
 | `views` | The views that show a change. |
 
 ## drift

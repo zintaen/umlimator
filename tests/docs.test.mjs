@@ -360,3 +360,23 @@ test('audit 48: the CLI guide\'s example PDF page heading is a view path of the 
   const paths = atlas.views.map(v => ctx.chain(v.id).map(id => ctx.V[id].title).join(' › '));
   assert.ok(guide.includes('umlimator-atlas.pdf') && paths.includes(said), `${said} is none of: ${paths.join(' | ')}`);
 });
+
+// audit 51: the API page and the Action guide quoted "adds Readers between umlimator.py and The module", a sentence diff()
+// never writes for the Umlimator Atlas (Readers has no line to The module): each quoted "adds <card>..." is what diff()
+// says when that card, and its lines, are added to the atlas
+test('audit 51: the diff() summary the docs quote is what diff() says for the Umlimator Atlas', async () => {
+  const { diff } = await import('../lib/umlimator-all.js');
+  const after = JSON.parse(readFileSync(new URL('../examples/umlimator-atlas.json', import.meta.url), 'utf8'));
+  let n = 0;
+  for (const p of ['../docs/api/apply-and-commands.md', '../docs/guide/github-action.md']) {
+    for (const [, said, label] of readFileSync(new URL(p, import.meta.url), 'utf8').matchAll(/"(adds ([^",]+?)(?:,| between)[^"]*)"/g)) {
+      const card = after.nodes.find(x => x.label === label); assert.ok(card, `${p}: ${label}`);
+      const before = structuredClone(after);
+      before.nodes = before.nodes.filter(x => x.id !== card.id);
+      before.edges = before.edges.filter(e => e.from !== card.id && e.to !== card.id);
+      for (const v of before.views) if (v.nodeIds) v.nodeIds = v.nodeIds.filter(i => i !== card.id);
+      assert.ok(diff(before, after).summary.includes(said), `${p}: "${said}" not in ${JSON.stringify(diff(before, after).summary)}`); n++;
+    }
+  }
+  assert.equal(n, 2);
+});
