@@ -1,0 +1,34 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Library: nested packages",
+ "root": "nested",
+ "nodes": [
+  { "id": "library", "type": "uml.Package", "label": "library" },
+  { "id": "lending", "type": "uml.Package", "label": "lending", "parent": "library" },
+  { "id": "loan", "type": "uml.Class", "label": "Loan", "parent": "lending" },
+  { "id": "holds", "type": "uml.Package", "label": "holds", "parent": "lending" },
+  { "id": "hold", "type": "uml.Class", "label": "Hold", "parent": "holds" },
+  { "id": "hold-state", "type": "uml.Enumeration", "label": "HoldState", "parent": "holds" },
+  { "id": "catalogue", "type": "uml.Package", "label": "catalogue", "parent": "library" },
+  { "id": "title", "type": "uml.Class", "label": "Title", "parent": "catalogue" },
+  { "id": "copy", "type": "uml.Class", "label": "Copy", "parent": "catalogue" },
+  { "id": "notices", "type": "uml.Package", "label": "notices" },
+  { "id": "notifier", "type": "uml.Interface", "label": "Notifier", "parent": "notices" }
+ ],
+ "edges": [
+  { "id": "lending-imports-catalogue", "type": "uml.PackageImport", "from": "lending", "to": "catalogue", "props": { "visibility": "public" } },
+  { "id": "holds-imports-notices", "type": "uml.PackageImport", "from": "holds", "to": "notices", "props": { "visibility": "public" } },
+  { "id": "loan-needs-copy", "type": "uml.Dependency", "from": "loan", "to": "copy", "props": { "stereotypes": ["use"] } },
+  { "id": "hold-needs-title", "type": "uml.Dependency", "from": "hold", "to": "title", "props": { "stereotypes": ["use"] } },
+  { "id": "hold-calls-notifier", "type": "uml.Dependency", "from": "hold", "to": "notifier", "props": { "stereotypes": ["call"] } }
+ ],
+ "views": [
+  { "id": "nested", "diagram": "uml.package", "title": "Library packages, three deep", "parent": null, "direction": "down",
+   "nodeIds": ["library", "lending", "loan", "holds", "hold", "hold-state", "catalogue", "title", "copy", "notices", "notifier"],
+   "edges": ["lending-imports-catalogue", "hold-needs-title", "hold-calls-notifier"] },
+  { "id": "qualified", "diagram": "uml.package", "title": "Library classes by qualified name", "parent": null, "subject": "library",
+   "nodeIds": ["loan", "hold", "title", "copy", "notifier"],
+   "edges": ["loan-needs-copy", "hold-needs-title", "hold-calls-notifier"] }
+ ]
+}

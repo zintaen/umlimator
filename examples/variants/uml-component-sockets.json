@@ -1,0 +1,40 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Cinema booking",
+ "root": "sockets",
+ "nodes": [
+  { "id": "kiosk", "type": "uml.Component", "label": "Ticket kiosk", "members": [
+   { "id": "kiosk.seats", "type": "uml.Port", "label": "seats", "props": { "valueType": "SeatPicker" } }
+  ] },
+  { "id": "booking", "type": "uml.Component", "label": "Booking", "members": [
+   { "id": "booking.seats", "type": "uml.Port", "label": "seats", "props": { "valueType": "SeatPicker" } },
+   { "id": "booking.pay", "type": "uml.Port", "label": "pay", "props": { "valueType": "Payment" } }
+  ] },
+  { "id": "seat-map", "type": "uml.Component", "label": "Seat map", "parent": "booking", "members": [
+   { "id": "seat-map.in", "type": "uml.Port", "label": "in" }
+  ] },
+  { "id": "basket", "type": "uml.Component", "label": "Basket", "parent": "booking", "members": [
+   { "id": "basket.out", "type": "uml.Port", "label": "out" }
+  ] },
+  { "id": "till", "type": "uml.Component", "label": "Card till" },
+  { "id": "screens", "type": "uml.Component", "label": "Screen schedule" },
+  { "id": "i-pay", "type": "uml.Interface", "label": "Payment" },
+  { "id": "i-shows", "type": "uml.Interface", "label": "Showtimes" }
+ ],
+ "edges": [
+  { "id": "kiosk-booking", "type": "uml.Connector", "from": "kiosk.seats", "to": "booking.seats", "props": { "kind": "assembly" } },
+  { "id": "seats-in", "type": "uml.Connector", "from": "booking.seats", "to": "seat-map.in", "props": { "kind": "delegation" } },
+  { "id": "seat-basket", "type": "uml.Connector", "from": "seat-map", "to": "basket", "props": { "kind": "assembly" } },
+  { "id": "basket-pay", "type": "uml.Connector", "from": "basket.out", "to": "booking.pay", "props": { "kind": "delegation" } },
+  { "id": "booking-needs-pay", "type": "uml.Usage", "from": "booking.pay", "to": "i-pay" },
+  { "id": "till-pay", "type": "uml.InterfaceRealization", "from": "till", "to": "i-pay" },
+  { "id": "screens-shows", "type": "uml.InterfaceRealization", "from": "screens", "to": "i-shows" },
+  { "id": "kiosk-shows", "type": "uml.Usage", "from": "kiosk", "to": "i-shows" }
+ ],
+ "views": [
+  { "id": "sockets", "diagram": "uml.component", "title": "Balls and sockets, laid out down", "parent": null, "direction": "down",
+   "nodeIds": ["kiosk", "booking", "seat-map", "basket", "till", "screens", "i-pay", "i-shows"],
+   "present": { "i-pay": { "as": "ball" }, "i-shows": { "as": "ball" } } }
+ ]
+}

@@ -1,0 +1,32 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Library: lending use cases",
+ "root": "lending",
+ "nodes": [
+  { "id": "borrower", "type": "uml.Actor", "label": "Borrower" },
+  { "id": "member", "type": "uml.Actor", "label": "Library member" },
+  { "id": "child", "type": "uml.Actor", "label": "Junior member" },
+  { "id": "librarian", "type": "uml.Actor", "label": "Librarian" },
+  { "id": "borrow", "type": "uml.UseCase", "label": "Borrow a book" },
+  { "id": "check-card", "type": "uml.UseCase", "label": "Check the library card" },
+  { "id": "pay-fine", "type": "uml.UseCase", "label": "Pay a fine" },
+  { "id": "pay-cash", "type": "uml.UseCase", "label": "Pay a fine in cash" },
+  { "id": "pay-online", "type": "uml.UseCase", "label": "Pay a fine online" },
+  { "id": "waive", "type": "uml.UseCase", "label": "Waive a fine" }
+ ],
+ "edges": [
+  { "id": "member-is-borrower", "type": "uml.Generalization", "from": "member", "to": "borrower" },
+  { "id": "child-is-member", "type": "uml.Generalization", "from": "child", "to": "member" },
+  { "id": "borrower-borrows", "type": "uml.Association", "from": "borrower", "to": "borrow" },
+  { "id": "borrower-pays", "type": "uml.Association", "from": "borrower", "to": "pay-fine" },
+  { "id": "librarian-waives", "type": "uml.Association", "from": "librarian", "to": "waive" },
+  { "id": "borrow-checks-card", "type": "uml.Include", "from": "borrow", "to": "check-card" },
+  { "id": "cash-is-pay", "type": "uml.Generalization", "from": "pay-cash", "to": "pay-fine" },
+  { "id": "online-is-pay", "type": "uml.Generalization", "from": "pay-online", "to": "pay-fine" }
+ ],
+ "views": [
+  { "id": "lending", "diagram": "uml.use-case", "title": "Lending, with no subject box", "parent": null,
+   "nodeIds": ["borrower", "member", "child", "librarian", "borrow", "check-card", "pay-fine", "pay-cash", "pay-online", "waive"] }
+ ]
+}

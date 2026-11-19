@@ -1,0 +1,890 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Parametric diagram examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-ebike-range-range-analysis",
+   "label": "E-bike range",
+   "kind": "file",
+   "sublabel": "constraints and bindings",
+   "what": "Constraint properties with their expressions, parameters on their borders, binding connectors to the block's value properties.",
+   "how": "From examples/ebike-range.json.",
+   "opensView": "ebike-range-range-analysis"
+  },
+  {
+   "id": "card-constraint-block-frame",
+   "label": "A constraint block as the frame",
+   "kind": "file",
+   "sublabel": "a constraint block as the frame",
+   "what": "A constraint block as the subject: its own parameters on the frame, bound to the parameters of three constraint properties whose expressions add a thinking distance to a braking distance.",
+   "how": "From examples/variants/sysml-parametric-constraint-block.json.",
+   "opensView": "constraint-block-frame"
+  },
+  {
+   "id": "card-down-power-down",
+   "label": "A power budget, laid out down",
+   "kind": "file",
+   "sublabel": "a power budget, laid out down",
+   "what": "A block's value properties bound through two chained constraint properties, a charging load and the supply headroom, with `direction: \"down\"`.",
+   "how": "From examples/variants/sysml-parametric-down.json.",
+   "opensView": "down-power-down"
+  },
+  {
+   "id": "ebike-range-ebike",
+   "type": "sysml.Block",
+   "label": "EBike",
+   "members": [
+    {
+     "id": "ebike-range-ebike.battery",
+     "type": "sysml.PartProperty",
+     "label": "battery",
+     "props": {
+      "valueType": "Battery",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.controller",
+     "type": "sysml.PartProperty",
+     "label": "controller",
+     "props": {
+      "valueType": "Controller",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.motor",
+     "type": "sysml.PartProperty",
+     "label": "motor",
+     "props": {
+      "valueType": "Motor",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.frontLight",
+     "type": "sysml.PartProperty",
+     "label": "frontLight",
+     "props": {
+      "valueType": "Light",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.rearLight",
+     "type": "sysml.PartProperty",
+     "label": "rearLight",
+     "props": {
+      "valueType": "Light",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.dock",
+     "type": "sysml.ReferenceProperty",
+     "label": "dock",
+     "props": {
+      "valueType": "Dock",
+      "multiplicity": "0..1"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.batteryCapacity",
+     "type": "sysml.ValueProperty",
+     "label": "batteryCapacity",
+     "props": {
+      "valueType": "Energy"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.usableShare",
+     "type": "sysml.ValueProperty",
+     "label": "usableShare",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.ecoConsumption",
+     "type": "sysml.ValueProperty",
+     "label": "ecoConsumption",
+     "props": {
+      "valueType": "EnergyPerDistance"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.boostConsumption",
+     "type": "sysml.ValueProperty",
+     "label": "boostConsumption",
+     "props": {
+      "valueType": "EnergyPerDistance"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.ecoRange",
+     "type": "sysml.ValueProperty",
+     "label": "ecoRange",
+     "props": {
+      "valueType": "Distance"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.boostRange",
+     "type": "sysml.ValueProperty",
+     "label": "boostRange",
+     "props": {
+      "valueType": "Distance"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.usable",
+     "type": "sysml.ConstraintProperty",
+     "label": "usable",
+     "props": {
+      "valueType": "UsableEnergy"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.eco",
+     "type": "sysml.ConstraintProperty",
+     "label": "eco",
+     "props": {
+      "valueType": "RangeEquation"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.boost",
+     "type": "sysml.ConstraintProperty",
+     "label": "boost",
+     "props": {
+      "valueType": "RangeEquation"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ebike-range-usable-energy",
+   "type": "sysml.ConstraintBlock",
+   "label": "UsableEnergy",
+   "props": {
+    "constraint": "usable = capacity * share"
+   },
+   "members": [
+    {
+     "id": "ebike-range-usable-energy.usable",
+     "type": "sysml.ConstraintParameter",
+     "label": "usable",
+     "props": {
+      "valueType": "Energy"
+     }
+    },
+    {
+     "id": "ebike-range-usable-energy.capacity",
+     "type": "sysml.ConstraintParameter",
+     "label": "capacity",
+     "props": {
+      "valueType": "Energy"
+     }
+    },
+    {
+     "id": "ebike-range-usable-energy.share",
+     "type": "sysml.ConstraintParameter",
+     "label": "share",
+     "props": {
+      "valueType": "Real"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ebike-range-range-equation",
+   "type": "sysml.ConstraintBlock",
+   "label": "RangeEquation",
+   "props": {
+    "constraint": "range = energy / consumption"
+   },
+   "members": [
+    {
+     "id": "ebike-range-range-equation.range",
+     "type": "sysml.ConstraintParameter",
+     "label": "range",
+     "props": {
+      "valueType": "Distance"
+     }
+    },
+    {
+     "id": "ebike-range-range-equation.energy",
+     "type": "sysml.ConstraintParameter",
+     "label": "energy",
+     "props": {
+      "valueType": "Energy"
+     }
+    },
+    {
+     "id": "ebike-range-range-equation.consumption",
+     "type": "sysml.ConstraintParameter",
+     "label": "consumption",
+     "props": {
+      "valueType": "EnergyPerDistance"
+     }
+    }
+   ]
+  },
+  {
+   "id": "constraint-block-stopping",
+   "type": "sysml.ConstraintBlock",
+   "label": "StoppingDistance",
+   "props": {
+    "constraint": "total = speed * reaction + speed * speed / (2 * decel)"
+   },
+   "members": [
+    {
+     "id": "constraint-block-stopping.total",
+     "type": "sysml.ConstraintParameter",
+     "label": "total",
+     "props": {
+      "valueType": "Distance"
+     }
+    },
+    {
+     "id": "constraint-block-stopping.speed",
+     "type": "sysml.ConstraintParameter",
+     "label": "speed",
+     "props": {
+      "valueType": "Speed"
+     }
+    },
+    {
+     "id": "constraint-block-stopping.reaction",
+     "type": "sysml.ConstraintParameter",
+     "label": "reaction",
+     "props": {
+      "valueType": "Time"
+     }
+    },
+    {
+     "id": "constraint-block-stopping.decel",
+     "type": "sysml.ConstraintParameter",
+     "label": "decel",
+     "props": {
+      "valueType": "Acceleration"
+     }
+    },
+    {
+     "id": "constraint-block-stopping.thinking",
+     "type": "sysml.ConstraintProperty",
+     "label": "thinking",
+     "props": {
+      "valueType": "Travel"
+     }
+    },
+    {
+     "id": "constraint-block-stopping.braking",
+     "type": "sysml.ConstraintProperty",
+     "label": "braking",
+     "props": {
+      "valueType": "Braking"
+     }
+    },
+    {
+     "id": "constraint-block-stopping.sum",
+     "type": "sysml.ConstraintProperty",
+     "label": "sum",
+     "props": {
+      "valueType": "Sum"
+     }
+    }
+   ]
+  },
+  {
+   "id": "constraint-block-travel",
+   "type": "sysml.ConstraintBlock",
+   "label": "Travel",
+   "props": {
+    "constraint": "d = v * t"
+   },
+   "members": [
+    {
+     "id": "constraint-block-travel.d",
+     "type": "sysml.ConstraintParameter",
+     "label": "d",
+     "props": {
+      "valueType": "Distance"
+     }
+    },
+    {
+     "id": "constraint-block-travel.v",
+     "type": "sysml.ConstraintParameter",
+     "label": "v",
+     "props": {
+      "valueType": "Speed"
+     }
+    },
+    {
+     "id": "constraint-block-travel.t",
+     "type": "sysml.ConstraintParameter",
+     "label": "t",
+     "props": {
+      "valueType": "Time"
+     }
+    }
+   ]
+  },
+  {
+   "id": "constraint-block-braking",
+   "type": "sysml.ConstraintBlock",
+   "label": "Braking",
+   "props": {
+    "constraint": "d = v * v / (2 * a)"
+   },
+   "members": [
+    {
+     "id": "constraint-block-braking.d",
+     "type": "sysml.ConstraintParameter",
+     "label": "d",
+     "props": {
+      "valueType": "Distance"
+     }
+    },
+    {
+     "id": "constraint-block-braking.v",
+     "type": "sysml.ConstraintParameter",
+     "label": "v",
+     "props": {
+      "valueType": "Speed"
+     }
+    },
+    {
+     "id": "constraint-block-braking.a",
+     "type": "sysml.ConstraintParameter",
+     "label": "a",
+     "props": {
+      "valueType": "Acceleration"
+     }
+    }
+   ]
+  },
+  {
+   "id": "constraint-block-sum",
+   "type": "sysml.ConstraintBlock",
+   "label": "Sum",
+   "props": {
+    "constraint": "total = a + b"
+   },
+   "members": [
+    {
+     "id": "constraint-block-sum.total",
+     "type": "sysml.ConstraintParameter",
+     "label": "total",
+     "props": {
+      "valueType": "Distance"
+     }
+    },
+    {
+     "id": "constraint-block-sum.a",
+     "type": "sysml.ConstraintParameter",
+     "label": "a",
+     "props": {
+      "valueType": "Distance"
+     }
+    },
+    {
+     "id": "constraint-block-sum.b",
+     "type": "sysml.ConstraintParameter",
+     "label": "b",
+     "props": {
+      "valueType": "Distance"
+     }
+    }
+   ]
+  },
+  {
+   "id": "down-station",
+   "type": "sysml.Block",
+   "label": "DockStation",
+   "members": [
+    {
+     "id": "down-station.docks",
+     "type": "sysml.ValueProperty",
+     "label": "dockCount",
+     "props": {
+      "valueType": "Integer"
+     }
+    },
+    {
+     "id": "down-station.rate",
+     "type": "sysml.ValueProperty",
+     "label": "chargeRate",
+     "props": {
+      "valueType": "Power"
+     }
+    },
+    {
+     "id": "down-station.kiosk",
+     "type": "sysml.ValueProperty",
+     "label": "kioskDraw",
+     "props": {
+      "valueType": "Power"
+     }
+    },
+    {
+     "id": "down-station.supply",
+     "type": "sysml.ValueProperty",
+     "label": "supply",
+     "props": {
+      "valueType": "Power"
+     }
+    },
+    {
+     "id": "down-station.margin",
+     "type": "sysml.ValueProperty",
+     "label": "margin",
+     "props": {
+      "valueType": "Power"
+     }
+    },
+    {
+     "id": "down-station.charging",
+     "type": "sysml.ConstraintProperty",
+     "label": "charging",
+     "props": {
+      "valueType": "ChargeLoad"
+     }
+    },
+    {
+     "id": "down-station.headroom",
+     "type": "sysml.ConstraintProperty",
+     "label": "headroom",
+     "props": {
+      "valueType": "Headroom"
+     }
+    }
+   ]
+  },
+  {
+   "id": "down-charge-load",
+   "type": "sysml.ConstraintBlock",
+   "label": "ChargeLoad",
+   "props": {
+    "constraint": "load = n * rate"
+   },
+   "members": [
+    {
+     "id": "down-charge-load.load",
+     "type": "sysml.ConstraintParameter",
+     "label": "load",
+     "props": {
+      "valueType": "Power"
+     }
+    },
+    {
+     "id": "down-charge-load.n",
+     "type": "sysml.ConstraintParameter",
+     "label": "n",
+     "props": {
+      "valueType": "Integer"
+     }
+    },
+    {
+     "id": "down-charge-load.rate",
+     "type": "sysml.ConstraintParameter",
+     "label": "rate",
+     "props": {
+      "valueType": "Power"
+     }
+    }
+   ]
+  },
+  {
+   "id": "down-headroom",
+   "type": "sysml.ConstraintBlock",
+   "label": "Headroom",
+   "props": {
+    "constraint": "margin = supply - load - other"
+   },
+   "members": [
+    {
+     "id": "down-headroom.margin",
+     "type": "sysml.ConstraintParameter",
+     "label": "margin",
+     "props": {
+      "valueType": "Power"
+     }
+    },
+    {
+     "id": "down-headroom.supply",
+     "type": "sysml.ConstraintParameter",
+     "label": "supply",
+     "props": {
+      "valueType": "Power"
+     }
+    },
+    {
+     "id": "down-headroom.load",
+     "type": "sysml.ConstraintParameter",
+     "label": "load",
+     "props": {
+      "valueType": "Power"
+     }
+    },
+    {
+     "id": "down-headroom.other",
+     "type": "sysml.ConstraintParameter",
+     "label": "other",
+     "props": {
+      "valueType": "Power"
+     }
+    }
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "id": "ebike-range-bind-capacity",
+   "type": "sysml.BindingConnector",
+   "from": "ebike-range-ebike.batteryCapacity",
+   "to": "ebike-range-usable-energy.capacity",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "ebike-range-ebike.usable"
+     }
+    }
+   }
+  },
+  {
+   "id": "ebike-range-bind-share",
+   "type": "sysml.BindingConnector",
+   "from": "ebike-range-ebike.usableShare",
+   "to": "ebike-range-usable-energy.share",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "ebike-range-ebike.usable"
+     }
+    }
+   }
+  },
+  {
+   "id": "ebike-range-bind-usable-eco",
+   "type": "sysml.BindingConnector",
+   "from": "ebike-range-usable-energy.usable",
+   "to": "ebike-range-range-equation.energy",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "ebike-range-ebike.usable"
+     },
+     "to": {
+      "part": "ebike-range-ebike.eco"
+     }
+    }
+   }
+  },
+  {
+   "id": "ebike-range-bind-usable-boost",
+   "type": "sysml.BindingConnector",
+   "from": "ebike-range-usable-energy.usable",
+   "to": "ebike-range-range-equation.energy",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "ebike-range-ebike.usable"
+     },
+     "to": {
+      "part": "ebike-range-ebike.boost"
+     }
+    }
+   }
+  },
+  {
+   "id": "ebike-range-bind-eco-consumption",
+   "type": "sysml.BindingConnector",
+   "from": "ebike-range-ebike.ecoConsumption",
+   "to": "ebike-range-range-equation.consumption",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "ebike-range-ebike.eco"
+     }
+    }
+   }
+  },
+  {
+   "id": "ebike-range-bind-boost-consumption",
+   "type": "sysml.BindingConnector",
+   "from": "ebike-range-ebike.boostConsumption",
+   "to": "ebike-range-range-equation.consumption",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "ebike-range-ebike.boost"
+     }
+    }
+   }
+  },
+  {
+   "id": "ebike-range-bind-eco-range",
+   "type": "sysml.BindingConnector",
+   "from": "ebike-range-ebike.ecoRange",
+   "to": "ebike-range-range-equation.range",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "ebike-range-ebike.eco"
+     }
+    }
+   }
+  },
+  {
+   "id": "ebike-range-bind-boost-range",
+   "type": "sysml.BindingConnector",
+   "from": "ebike-range-ebike.boostRange",
+   "to": "ebike-range-range-equation.range",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "ebike-range-ebike.boost"
+     }
+    }
+   }
+  },
+  {
+   "id": "constraint-block-b-speed-t",
+   "type": "sysml.BindingConnector",
+   "from": "constraint-block-stopping.speed",
+   "to": "constraint-block-travel.v",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "constraint-block-stopping.thinking"
+     }
+    }
+   }
+  },
+  {
+   "id": "constraint-block-b-reaction",
+   "type": "sysml.BindingConnector",
+   "from": "constraint-block-stopping.reaction",
+   "to": "constraint-block-travel.t",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "constraint-block-stopping.thinking"
+     }
+    }
+   }
+  },
+  {
+   "id": "constraint-block-b-speed-b",
+   "type": "sysml.BindingConnector",
+   "from": "constraint-block-stopping.speed",
+   "to": "constraint-block-braking.v",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "constraint-block-stopping.braking"
+     }
+    }
+   }
+  },
+  {
+   "id": "constraint-block-b-decel",
+   "type": "sysml.BindingConnector",
+   "from": "constraint-block-stopping.decel",
+   "to": "constraint-block-braking.a",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "constraint-block-stopping.braking"
+     }
+    }
+   }
+  },
+  {
+   "id": "constraint-block-b-thinking",
+   "type": "sysml.BindingConnector",
+   "from": "constraint-block-travel.d",
+   "to": "constraint-block-sum.a",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "constraint-block-stopping.thinking"
+     },
+     "to": {
+      "part": "constraint-block-stopping.sum"
+     }
+    }
+   }
+  },
+  {
+   "id": "constraint-block-b-braking",
+   "type": "sysml.BindingConnector",
+   "from": "constraint-block-braking.d",
+   "to": "constraint-block-sum.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "constraint-block-stopping.braking"
+     },
+     "to": {
+      "part": "constraint-block-stopping.sum"
+     }
+    }
+   }
+  },
+  {
+   "id": "constraint-block-b-total",
+   "type": "sysml.BindingConnector",
+   "from": "constraint-block-stopping.total",
+   "to": "constraint-block-sum.total",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "constraint-block-stopping.sum"
+     }
+    }
+   }
+  },
+  {
+   "id": "down-b-n",
+   "type": "sysml.BindingConnector",
+   "from": "down-station.docks",
+   "to": "down-charge-load.n",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "down-station.charging"
+     }
+    }
+   }
+  },
+  {
+   "id": "down-b-rate",
+   "type": "sysml.BindingConnector",
+   "from": "down-station.rate",
+   "to": "down-charge-load.rate",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "down-station.charging"
+     }
+    }
+   }
+  },
+  {
+   "id": "down-b-load",
+   "type": "sysml.BindingConnector",
+   "from": "down-charge-load.load",
+   "to": "down-headroom.load",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "down-station.charging"
+     },
+     "to": {
+      "part": "down-station.headroom"
+     }
+    }
+   }
+  },
+  {
+   "id": "down-b-other",
+   "type": "sysml.BindingConnector",
+   "from": "down-station.kiosk",
+   "to": "down-headroom.other",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "down-station.headroom"
+     }
+    }
+   }
+  },
+  {
+   "id": "down-b-supply",
+   "type": "sysml.BindingConnector",
+   "from": "down-station.supply",
+   "to": "down-headroom.supply",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "down-station.headroom"
+     }
+    }
+   }
+  },
+  {
+   "id": "down-b-margin",
+   "type": "sysml.BindingConnector",
+   "from": "down-station.margin",
+   "to": "down-headroom.margin",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "down-station.headroom"
+     }
+    }
+   }
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Parametric diagram examples",
+   "nodeIds": [
+    "card-ebike-range-range-analysis",
+    "card-constraint-block-frame",
+    "card-down-power-down"
+   ],
+   "layout": {
+    "card-ebike-range-range-analysis": [
+     0,
+     0
+    ],
+    "card-constraint-block-frame": [
+     1,
+     0
+    ],
+    "card-down-power-down": [
+     0,
+     1
+    ]
+   }
+  },
+  {
+   "id": "ebike-range-range-analysis",
+   "diagram": "sysml.parametric",
+   "title": "E-bike range",
+   "parent": "overview",
+   "subject": "ebike-range-ebike",
+   "nodeIds": [
+    "ebike-range-ebike"
+   ]
+  },
+  {
+   "id": "constraint-block-frame",
+   "diagram": "sysml.parametric",
+   "title": "A constraint block as the frame",
+   "parent": "overview",
+   "subject": "constraint-block-stopping",
+   "nodeIds": [
+    "constraint-block-stopping"
+   ]
+  },
+  {
+   "id": "down-power-down",
+   "diagram": "sysml.parametric",
+   "title": "A power budget, laid out down",
+   "parent": "overview",
+   "subject": "down-station",
+   "direction": "down",
+   "nodeIds": [
+    "down-station"
+   ]
+  }
+ ]
+}

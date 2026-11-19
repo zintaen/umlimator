@@ -1,0 +1,52 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Library: returning a book",
+ "root": "return-book",
+ "nodes": [
+  { "id": "ret-start", "type": "uml.InitialNode" },
+  { "id": "sd-scan", "type": "uml.Interaction", "label": "Scan the book", "opensView": "scan" },
+  { "id": "overdue", "type": "uml.DecisionNode", "label": "Overdue?" },
+  { "id": "ref-fine", "type": "uml.InteractionUse", "label": "Charge the fine", "opensView": "fine" },
+  { "id": "settled", "type": "uml.MergeNode" },
+  { "id": "sd-receipt", "type": "uml.Interaction", "label": "Print the receipt", "opensView": "receipt" },
+  { "id": "ret-done", "type": "uml.ActivityFinalNode" },
+  { "id": "ll-member", "type": "uml.Lifeline", "label": "member", "props": { "represents": "Member", "stereotypes": ["actor"] } },
+  { "id": "ll-kiosk", "type": "uml.Lifeline", "label": "kiosk", "props": { "represents": "ReturnKiosk" } },
+  { "id": "ll-loans", "type": "uml.Lifeline", "label": "loans", "props": { "represents": "LoanService" } },
+  { "id": "ll-fines", "type": "uml.Lifeline", "label": "fines", "props": { "represents": "FineLedger" } },
+  { "id": "ll-printer", "type": "uml.Lifeline", "label": "printer", "props": { "represents": "SlipPrinter" } }
+ ],
+ "edges": [
+  { "id": "r-start", "type": "uml.ControlFlow", "from": "ret-start", "to": "sd-scan" },
+  { "id": "r-scanned", "type": "uml.ControlFlow", "from": "sd-scan", "to": "overdue" },
+  { "id": "r-late", "type": "uml.ControlFlow", "from": "overdue", "to": "ref-fine", "props": { "guard": "overdue" } },
+  { "id": "r-on-time", "type": "uml.ControlFlow", "from": "overdue", "to": "settled", "props": { "guard": "else" } },
+  { "id": "r-fined", "type": "uml.ControlFlow", "from": "ref-fine", "to": "settled" },
+  { "id": "r-print", "type": "uml.ControlFlow", "from": "settled", "to": "sd-receipt" },
+  { "id": "r-done", "type": "uml.ControlFlow", "from": "sd-receipt", "to": "ret-done" }
+ ],
+ "views": [
+  { "id": "return-book", "diagram": "uml.interaction-overview", "title": "Returning a book: inline interactions", "parent": null, "direction": "down",
+   "nodeIds": ["ret-start", "sd-scan", "overdue", "ref-fine", "settled", "sd-receipt", "ret-done"] },
+  { "id": "scan", "diagram": "uml.sequence", "title": "Scan the book", "parent": "return-book",
+   "nodeIds": ["ll-member", "ll-kiosk", "ll-loans"],
+   "edges": [
+    { "id": "sc-1", "type": "uml.Message", "from": "ll-member", "to": "ll-kiosk", "label": "scan(copy)", "props": { "sort": "call" } },
+    { "id": "sc-2", "type": "uml.Message", "from": "ll-kiosk", "to": "ll-loans", "label": "close(loan)", "props": { "sort": "call" } },
+    { "id": "sc-3", "type": "uml.Message", "from": "ll-loans", "to": "ll-kiosk", "label": "days late", "props": { "sort": "reply", "replyTo": "sc-2" } }
+   ] },
+  { "id": "fine", "diagram": "uml.sequence", "title": "Charge the fine", "parent": "return-book",
+   "nodeIds": ["ll-kiosk", "ll-fines"],
+   "edges": [
+    { "id": "fi-1", "type": "uml.Message", "from": "ll-kiosk", "to": "ll-fines", "label": "charge(member, amount)", "props": { "sort": "call" } },
+    { "id": "fi-2", "type": "uml.Message", "from": "ll-fines", "to": "ll-kiosk", "label": "charged", "props": { "sort": "reply", "replyTo": "fi-1" } }
+   ] },
+  { "id": "receipt", "diagram": "uml.sequence", "title": "Print the receipt", "parent": "return-book",
+   "nodeIds": ["ll-kiosk", "ll-printer", "ll-member"],
+   "edges": [
+    { "id": "pr-1", "type": "uml.Message", "from": "ll-kiosk", "to": "ll-printer", "label": "print(slip)", "props": { "sort": "async" } },
+    { "id": "pr-2", "type": "uml.Message", "from": "ll-printer", "to": "ll-member", "label": "return slip", "props": { "sort": "async" } }
+   ] }
+ ]
+}

@@ -1,0 +1,34 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Cycle hire: unlocking a bike",
+ "root": "unlock",
+ "nodes": [
+  { "id": "scan", "type": "flow.Terminator", "label": "Rider scans the dock" },
+  { "id": "read-code", "type": "flow.InputOutput", "label": "Read the bike number" },
+  { "id": "account", "type": "flow.Decision", "label": "Account status?" },
+  { "id": "new-card", "type": "flow.ManualInput", "label": "Enter a new card" },
+  { "id": "release", "type": "flow.PredefinedProcess", "label": "Release the latch" },
+  { "id": "latch-wait", "type": "flow.Delay", "label": "Wait for the latch" },
+  { "id": "ride-log", "type": "flow.Database", "label": "Ride log" },
+  { "id": "ride-starts", "type": "flow.Terminator", "label": "Ride starts" },
+  { "id": "notice", "type": "flow.Document", "label": "Refusal notice" },
+  { "id": "refused", "type": "flow.Terminator", "label": "Unlock refused" }
+ ],
+ "edges": [
+  { "id": "scan-read", "type": "flow.Flow", "from": "scan", "to": "read-code" },
+  { "id": "read-account", "type": "flow.Flow", "from": "read-code", "to": "account" },
+  { "id": "account-good", "type": "flow.Flow", "from": "account", "to": "release", "label": "good" },
+  { "id": "account-expired", "type": "flow.Flow", "from": "account", "to": "new-card", "label": "card expired" },
+  { "id": "account-blocked", "type": "flow.Flow", "from": "account", "to": "notice", "label": "blocked" },
+  { "id": "new-card-back", "type": "flow.Flow", "from": "new-card", "to": "account", "label": "check again" },
+  { "id": "release-wait", "type": "flow.Flow", "from": "release", "to": "latch-wait" },
+  { "id": "wait-log", "type": "flow.Flow", "from": "latch-wait", "to": "ride-log" },
+  { "id": "log-starts", "type": "flow.Flow", "from": "ride-log", "to": "ride-starts" },
+  { "id": "notice-refused", "type": "flow.Flow", "from": "notice", "to": "refused" }
+ ],
+ "views": [
+  { "id": "unlock", "diagram": "flowchart", "title": "Unlocking a bike, laid out right", "parent": null, "direction": "right",
+   "nodeIds": ["scan", "read-code", "account", "new-card", "release", "latch-wait", "ride-log", "ride-starts", "notice", "refused"] }
+ ]
+}

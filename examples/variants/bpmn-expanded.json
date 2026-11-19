@@ -1,0 +1,40 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "BPMN: holding a library book",
+ "root": "hold",
+ "nodes": [
+  {"id": "library", "type": "bpmn.Participant", "label": "Library", "members": [{"id": "desk", "type": "bpmn.Lane", "label": "Front desk"}, {"id": "back", "type": "bpmn.Lane", "label": "Back office"}, {"id": "shelving", "type": "bpmn.Lane", "label": "Shelving", "parent": "back"}, {"id": "transfers", "type": "bpmn.Lane", "label": "Transfers", "parent": "back"}]},
+  {"id": "hold-placed", "type": "bpmn.StartEvent", "label": "Hold placed", "parent": "desk", "props": {"definition": "message"}},
+  {"id": "find", "type": "bpmn.SubProcess", "label": "Find a copy", "parent": "shelving"},
+  {"id": "find-start", "type": "bpmn.StartEvent", "parent": "find", "props": {"definition": "none"}},
+  {"id": "search", "type": "bpmn.Task", "label": "Search the shelves", "parent": "find", "props": {"taskType": "user"}},
+  {"id": "found", "type": "bpmn.ExclusiveGateway", "label": "Found?", "parent": "find"},
+  {"id": "request", "type": "bpmn.Task", "label": "Request from another branch", "parent": "find", "props": {"taskType": "service"}},
+  {"id": "found-merge", "type": "bpmn.ExclusiveGateway", "parent": "find"},
+  {"id": "find-end", "type": "bpmn.EndEvent", "parent": "find", "props": {"definition": "none"}},
+  {"id": "copy-ready", "type": "bpmn.IntermediateThrowEvent", "label": "Copy on the hold shelf", "parent": "transfers", "props": {"definition": "none"}},
+  {"id": "wait", "type": "bpmn.Task", "label": "Wait for the member", "parent": "desk", "props": {"taskType": "user"}},
+  {"id": "remind", "type": "bpmn.BoundaryEvent", "label": "Every 3 days", "parent": "desk", "props": {"attachedTo": "wait", "cancelActivity": false, "definition": "timer"}},
+  {"id": "send-reminder", "type": "bpmn.Task", "label": "Send a reminder", "parent": "desk", "props": {"taskType": "service"}},
+  {"id": "reminded", "type": "bpmn.EndEvent", "label": "Reminded", "parent": "desk", "props": {"definition": "message"}},
+  {"id": "collected", "type": "bpmn.EndEvent", "label": "Book collected", "parent": "desk", "props": {"definition": "none"}}
+ ],
+ "edges": [
+  {"id": "s1", "type": "bpmn.SequenceFlow", "from": "hold-placed", "to": "find"},
+  {"id": "s2", "type": "bpmn.SequenceFlow", "from": "find-start", "to": "search"},
+  {"id": "s3", "type": "bpmn.SequenceFlow", "from": "search", "to": "found"},
+  {"id": "s4", "type": "bpmn.SequenceFlow", "from": "found", "to": "found-merge", "label": "yes"},
+  {"id": "s5", "type": "bpmn.SequenceFlow", "from": "found", "to": "request", "label": "no"},
+  {"id": "s6", "type": "bpmn.SequenceFlow", "from": "request", "to": "found-merge"},
+  {"id": "s7", "type": "bpmn.SequenceFlow", "from": "found-merge", "to": "find-end"},
+  {"id": "s8", "type": "bpmn.SequenceFlow", "from": "find", "to": "copy-ready"},
+  {"id": "s9", "type": "bpmn.SequenceFlow", "from": "copy-ready", "to": "wait"},
+  {"id": "s10", "type": "bpmn.SequenceFlow", "from": "wait", "to": "collected"},
+  {"id": "s11", "type": "bpmn.SequenceFlow", "from": "remind", "to": "send-reminder"},
+  {"id": "s12", "type": "bpmn.SequenceFlow", "from": "send-reminder", "to": "reminded"}
+ ],
+ "views": [
+  {"id": "hold", "diagram": "bpmn", "title": "Nested lanes, an expanded sub-process", "parent": null, "nodeIds": ["library", "hold-placed", "find", "find-start", "search", "found", "request", "found-merge", "find-end", "copy-ready", "wait", "collected", "remind", "send-reminder", "reminded"]}
+ ]
+}

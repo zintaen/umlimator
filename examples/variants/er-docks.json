@@ -1,0 +1,54 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Cycle hire: hire schema",
+ "root": "idef1x",
+ "nodes": [
+  { "id": "station", "type": "er.Entity", "label": "station", "members": [
+   { "id": "station.id", "type": "er.Column", "label": "id", "props": { "dataType": "integer", "primaryKey": true } },
+   { "id": "station.name", "type": "er.Column", "label": "name", "props": { "dataType": "varchar(80)", "unique": true } },
+   { "id": "station.district", "type": "er.Column", "label": "district", "props": { "dataType": "varchar(40)" } }
+  ] },
+  { "id": "dock", "type": "er.Entity", "label": "dock", "members": [
+   { "id": "dock.station_id", "type": "er.Column", "label": "station_id", "props": { "dataType": "integer", "primaryKey": true, "foreignKey": true, "references": "station.id" } },
+   { "id": "dock.bay_no", "type": "er.Column", "label": "bay_no", "props": { "dataType": "smallint", "primaryKey": true } },
+   { "id": "dock.bike_id", "type": "er.Column", "label": "bike_id", "props": { "dataType": "integer", "foreignKey": true, "nullable": true, "unique": true, "references": "bike.id" } }
+  ] },
+  { "id": "bike", "type": "er.Entity", "label": "bike", "members": [
+   { "id": "bike.id", "type": "er.Column", "label": "id", "props": { "dataType": "integer", "primaryKey": true } },
+   { "id": "bike.frame_no", "type": "er.Column", "label": "frame_no", "props": { "dataType": "char(12)", "unique": true } },
+   { "id": "bike.electric", "type": "er.Column", "label": "electric", "props": { "dataType": "boolean" } }
+  ] },
+  { "id": "rider", "type": "er.Entity", "label": "rider", "members": [
+   { "id": "rider.id", "type": "er.Column", "label": "id", "props": { "dataType": "bigint", "primaryKey": true } },
+   { "id": "rider.phone", "type": "er.Column", "label": "phone", "props": { "dataType": "varchar(20)", "unique": true } }
+  ] },
+  { "id": "hire", "type": "er.Entity", "label": "hire", "members": [
+   { "id": "hire.id", "type": "er.Column", "label": "id", "props": { "dataType": "bigint", "primaryKey": true } },
+   { "id": "hire.rider_id", "type": "er.Column", "label": "rider_id", "props": { "dataType": "bigint", "foreignKey": true, "references": "rider.id" } },
+   { "id": "hire.bike_id", "type": "er.Column", "label": "bike_id", "props": { "dataType": "integer", "foreignKey": true, "references": "bike.id" } },
+   { "id": "hire.started_at", "type": "er.Column", "label": "started_at", "props": { "dataType": "timestamptz" } },
+   { "id": "hire.ended_at", "type": "er.Column", "label": "ended_at", "props": { "dataType": "timestamptz", "nullable": true } }
+  ] },
+  { "id": "hire_point", "type": "er.Entity", "label": "hire_point", "members": [
+   { "id": "hire_point.hire_id", "type": "er.Column", "label": "hire_id", "props": { "dataType": "bigint", "primaryKey": true, "foreignKey": true, "references": "hire.id" } },
+   { "id": "hire_point.seq", "type": "er.Column", "label": "seq", "props": { "dataType": "integer", "primaryKey": true } },
+   { "id": "hire_point.lat_lon", "type": "er.Column", "label": "lat_lon", "props": { "dataType": "point" } }
+  ] },
+  { "id": "note-points", "type": "uml.Comment", "label": "a point every 30 s while the bike moves" }
+ ],
+ "edges": [
+  { "id": "station-docks", "type": "er.Relationship", "from": "station", "to": "dock", "label": "has", "props": { "identifying": true, "ends": { "from": { "multiplicity": "1" }, "to": { "multiplicity": "1..*" } } } },
+  { "id": "bike-dock", "type": "er.Relationship", "from": "bike", "to": "dock", "label": "parked in", "props": { "identifying": false, "ends": { "from": { "multiplicity": "0..1" }, "to": { "multiplicity": "0..1" } } } },
+  { "id": "rider-hires", "type": "er.Relationship", "from": "rider", "to": "hire", "label": "takes", "props": { "identifying": false, "ends": { "from": { "multiplicity": "1" }, "to": { "multiplicity": "0..*" } } } },
+  { "id": "bike-hires", "type": "er.Relationship", "from": "bike", "to": "hire", "props": { "identifying": false, "ends": { "from": { "multiplicity": "1" }, "to": { "multiplicity": "0..*" } } } },
+  { "id": "hire-points", "type": "er.Relationship", "from": "hire", "to": "hire_point", "label": "tracks", "props": { "identifying": true, "ends": { "from": { "multiplicity": "1" }, "to": { "multiplicity": "0..*" } } } },
+  { "id": "note-points-link", "type": "uml.CommentLink", "from": "note-points", "to": "hire_point" }
+ ],
+ "views": [
+  { "id": "idef1x", "diagram": "er", "title": "Hire schema in IDEF1X", "parent": null, "notation": "idef1x",
+   "nodeIds": ["station", "dock", "bike", "rider", "hire", "hire_point", "note-points"] },
+  { "id": "crowsfoot-down", "diagram": "er", "title": "Hire schema in crow's foot, laid out down", "parent": null, "notation": "crowsfoot", "direction": "down",
+   "nodeIds": ["station", "dock", "bike", "rider", "hire", "hire_point", "note-points"] }
+ ]
+}

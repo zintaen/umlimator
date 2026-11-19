@@ -1,0 +1,28 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "City libraries: system landscape",
+ "root": "landscape",
+ "nodes": [
+  { "id": "member", "type": "c4.Person", "label": "Library member", "props": { "description": "Borrows books, reserves copies and pays fines." } },
+  { "id": "librarian", "type": "c4.Person", "label": "Librarian", "props": { "description": "Lends and returns copies at the desk." } },
+  { "id": "catalogue", "type": "c4.SoftwareSystem", "label": "Catalogue", "props": { "description": "Every title and copy across the city's branches." } },
+  { "id": "lending", "type": "c4.SoftwareSystem", "label": "Lending", "props": { "description": "Loans, renewals, holds and fines." } },
+  { "id": "events", "type": "c4.SoftwareSystem", "label": "Events booking", "props": { "description": "Readings, clubs and children's sessions." } },
+  { "id": "council-id", "type": "c4.SoftwareSystem", "label": "Council sign-in", "props": { "description": "The city's single sign-in for residents.", "external": true } },
+  { "id": "payments", "type": "c4.SoftwareSystem", "label": "Card payments", "props": { "description": "Takes fine and booking payments.", "external": true } }
+ ],
+ "edges": [
+  { "id": "member-lending", "type": "c4.Relationship", "from": "member", "to": "lending", "label": "Renews and reserves with" },
+  { "id": "member-events", "type": "c4.Relationship", "from": "member", "to": "events", "label": "Books sessions with" },
+  { "id": "librarian-lending", "type": "c4.Relationship", "from": "librarian", "to": "lending", "label": "Lends copies with" },
+  { "id": "lending-catalogue", "type": "c4.Relationship", "from": "lending", "to": "catalogue", "label": "Looks up copies in", "props": { "technology": "HTTPS" } },
+  { "id": "lending-id", "type": "c4.Relationship", "from": "lending", "to": "council-id", "label": "Signs members in with", "props": { "technology": "OpenID Connect" } },
+  { "id": "events-id", "type": "c4.Relationship", "from": "events", "to": "council-id", "label": "Signs members in with", "props": { "technology": "OpenID Connect" } },
+  { "id": "lending-payments", "type": "c4.Relationship", "from": "lending", "to": "payments", "label": "Takes fines with", "props": { "technology": "HTTPS" } }
+ ],
+ "views": [
+  { "id": "landscape", "diagram": "c4.landscape", "title": "City libraries: system landscape", "parent": null,
+   "nodeIds": ["member", "librarian", "catalogue", "lending", "events", "council-id", "payments"] }
+ ]
+}

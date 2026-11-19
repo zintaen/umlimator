@@ -1,0 +1,21 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Composite structure: a loan collaboration",
+ "root": "roles",
+ "nodes": [
+  {"id": "loan", "type": "uml.Collaboration", "label": "BookLoan", "members": [{"id": "loan.member", "type": "uml.Property", "label": "borrower", "props": {"valueType": "Member", "multiplicity": "1"}}, {"id": "loan.copy", "type": "uml.Property", "label": "item", "props": {"valueType": "Copy", "multiplicity": "1..*"}}, {"id": "loan.desk", "type": "uml.Property", "label": "lender", "props": {"valueType": "Desk", "multiplicity": "1"}}, {"id": "loan.ledger", "type": "uml.Property", "label": "record", "props": {"valueType": "LoanLedger", "multiplicity": "1"}}]},
+  {"id": "member", "type": "uml.Class", "label": "Member"},
+  {"id": "copy", "type": "uml.Class", "label": "Copy"},
+  {"id": "desk", "type": "uml.Class", "label": "Desk"},
+  {"id": "ledger", "type": "uml.Class", "label": "LoanLedger"}
+ ],
+ "edges": [
+  {"id": "borrows", "type": "uml.Connector", "from": "loan.member", "to": "loan.desk"},
+  {"id": "lends", "type": "uml.Connector", "from": "loan.desk", "to": "loan.copy"},
+  {"id": "records", "type": "uml.Connector", "from": "loan.desk", "to": "loan.ledger"}
+ ],
+ "views": [
+  {"id": "roles", "diagram": "uml.composite-structure", "title": "A collaboration as the subject", "parent": null, "subject": "loan", "nodeIds": ["loan"]}
+ ]
+}

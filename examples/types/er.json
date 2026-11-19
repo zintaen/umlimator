@@ -1,0 +1,1098 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Entity-relationship diagram examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-bookshop-schema-er-schema",
+   "label": "Bookshop schema",
+   "kind": "file",
+   "sublabel": "keys, crow's foot, junction table",
+   "what": "Tables and their columns as rows, related in crow's foot or IDEF1X on one geometry: a composite key, a junction table, a nullable foreign key, a self-reference.",
+   "how": "From examples/bookshop-schema.json.",
+   "opensView": "bookshop-schema-er-schema"
+  },
+  {
+   "id": "card-docks-idef1x",
+   "label": "Hire schema in IDEF1X",
+   "kind": "file",
+   "sublabel": "IDEF1X, dependent entities",
+   "what": "A cycle hire schema in IDEF1X: identifying relationships make dock and hire_point dependent entities with rounded corners, a dot and P or Z at each child, a diamond at an optional parent.",
+   "how": "From examples/variants/er-docks.json.",
+   "opensView": "docks-idef1x"
+  },
+  {
+   "id": "card-docks-crowsfoot-down",
+   "label": "Hire schema in crow's foot, laid out down",
+   "kind": "file",
+   "sublabel": "crow's foot, laid out down",
+   "what": "The same schema in crow's foot laid out down, showing all four end forms (exactly one, zero or one, one or more, zero or more) and a note on a table.",
+   "how": "From examples/variants/er-docks.json.",
+   "opensView": "docks-crowsfoot-down"
+  },
+  {
+   "id": "card-rows-rows",
+   "label": "Rows capped and sections hidden",
+   "kind": "file",
+   "sublabel": "rows capped, a section hidden",
+   "what": "A library catalogue where the title table is cut to 4 rows then \"+n more\" and the copy table shows its key only, its other columns collapsed; nullable and unique columns marked.",
+   "how": "From examples/variants/er-rows.json.",
+   "opensView": "rows-rows"
+  },
+  {
+   "id": "bookshop-schema-er-customer",
+   "type": "er.Entity",
+   "label": "customer",
+   "members": [
+    {
+     "id": "bookshop-schema-er-customer.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "bookshop-schema-er-customer.email",
+     "type": "er.Column",
+     "label": "email",
+     "props": {
+      "dataType": "varchar(255)",
+      "unique": true
+     }
+    },
+    {
+     "id": "bookshop-schema-er-customer.referred_by",
+     "type": "er.Column",
+     "label": "referred_by",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "nullable": true,
+      "references": "bookshop-schema-er-customer.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "bookshop-schema-er-order",
+   "type": "er.Entity",
+   "label": "order",
+   "members": [
+    {
+     "id": "bookshop-schema-er-order.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "bookshop-schema-er-order.customer_id",
+     "type": "er.Column",
+     "label": "customer_id",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "bookshop-schema-er-customer.id"
+     }
+    },
+    {
+     "id": "bookshop-schema-er-order.placed_at",
+     "type": "er.Column",
+     "label": "placed_at",
+     "props": {
+      "dataType": "timestamptz",
+      "nullable": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "bookshop-schema-er-order_line",
+   "type": "er.Entity",
+   "label": "order_line",
+   "members": [
+    {
+     "id": "bookshop-schema-er-order_line.order_id",
+     "type": "er.Column",
+     "label": "order_id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true,
+      "foreignKey": true,
+      "references": "bookshop-schema-er-order.id"
+     }
+    },
+    {
+     "id": "bookshop-schema-er-order_line.line_no",
+     "type": "er.Column",
+     "label": "line_no",
+     "props": {
+      "dataType": "integer",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "bookshop-schema-er-order_line.book_id",
+     "type": "er.Column",
+     "label": "book_id",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "bookshop-schema-er-book.id"
+     }
+    },
+    {
+     "id": "bookshop-schema-er-order_line.quantity",
+     "type": "er.Column",
+     "label": "quantity",
+     "props": {
+      "dataType": "integer"
+     }
+    }
+   ]
+  },
+  {
+   "id": "bookshop-schema-er-book",
+   "type": "er.Entity",
+   "label": "book",
+   "members": [
+    {
+     "id": "bookshop-schema-er-book.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "bookshop-schema-er-book.isbn",
+     "type": "er.Column",
+     "label": "isbn",
+     "props": {
+      "dataType": "char(13)",
+      "unique": true
+     }
+    },
+    {
+     "id": "bookshop-schema-er-book.title",
+     "type": "er.Column",
+     "label": "title",
+     "props": {
+      "dataType": "varchar(255)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "bookshop-schema-er-author",
+   "type": "er.Entity",
+   "label": "author",
+   "members": [
+    {
+     "id": "bookshop-schema-er-author.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "bookshop-schema-er-author.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(120)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "bookshop-schema-er-book_author",
+   "type": "er.Entity",
+   "label": "book_author",
+   "members": [
+    {
+     "id": "bookshop-schema-er-book_author.book_id",
+     "type": "er.Column",
+     "label": "book_id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true,
+      "foreignKey": true,
+      "references": "bookshop-schema-er-book.id"
+     }
+    },
+    {
+     "id": "bookshop-schema-er-book_author.author_id",
+     "type": "er.Column",
+     "label": "author_id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true,
+      "foreignKey": true,
+      "references": "bookshop-schema-er-author.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "bookshop-schema-er-payment",
+   "type": "er.Entity",
+   "label": "payment",
+   "members": [
+    {
+     "id": "bookshop-schema-er-payment.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "bookshop-schema-er-payment.order_id",
+     "type": "er.Column",
+     "label": "order_id",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "unique": true,
+      "references": "bookshop-schema-er-order.id"
+     }
+    },
+    {
+     "id": "bookshop-schema-er-payment.amount",
+     "type": "er.Column",
+     "label": "amount",
+     "props": {
+      "dataType": "numeric(10,2)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "docks-station",
+   "type": "er.Entity",
+   "label": "station",
+   "members": [
+    {
+     "id": "docks-station.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "integer",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "docks-station.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)",
+      "unique": true
+     }
+    },
+    {
+     "id": "docks-station.district",
+     "type": "er.Column",
+     "label": "district",
+     "props": {
+      "dataType": "varchar(40)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "docks-dock",
+   "type": "er.Entity",
+   "label": "dock",
+   "members": [
+    {
+     "id": "docks-dock.station_id",
+     "type": "er.Column",
+     "label": "station_id",
+     "props": {
+      "dataType": "integer",
+      "primaryKey": true,
+      "foreignKey": true,
+      "references": "docks-station.id"
+     }
+    },
+    {
+     "id": "docks-dock.bay_no",
+     "type": "er.Column",
+     "label": "bay_no",
+     "props": {
+      "dataType": "smallint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "docks-dock.bike_id",
+     "type": "er.Column",
+     "label": "bike_id",
+     "props": {
+      "dataType": "integer",
+      "foreignKey": true,
+      "nullable": true,
+      "unique": true,
+      "references": "docks-bike.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "docks-bike",
+   "type": "er.Entity",
+   "label": "bike",
+   "members": [
+    {
+     "id": "docks-bike.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "integer",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "docks-bike.frame_no",
+     "type": "er.Column",
+     "label": "frame_no",
+     "props": {
+      "dataType": "char(12)",
+      "unique": true
+     }
+    },
+    {
+     "id": "docks-bike.electric",
+     "type": "er.Column",
+     "label": "electric",
+     "props": {
+      "dataType": "boolean"
+     }
+    }
+   ]
+  },
+  {
+   "id": "docks-rider",
+   "type": "er.Entity",
+   "label": "rider",
+   "members": [
+    {
+     "id": "docks-rider.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "docks-rider.phone",
+     "type": "er.Column",
+     "label": "phone",
+     "props": {
+      "dataType": "varchar(20)",
+      "unique": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "docks-hire",
+   "type": "er.Entity",
+   "label": "hire",
+   "members": [
+    {
+     "id": "docks-hire.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "docks-hire.rider_id",
+     "type": "er.Column",
+     "label": "rider_id",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "docks-rider.id"
+     }
+    },
+    {
+     "id": "docks-hire.bike_id",
+     "type": "er.Column",
+     "label": "bike_id",
+     "props": {
+      "dataType": "integer",
+      "foreignKey": true,
+      "references": "docks-bike.id"
+     }
+    },
+    {
+     "id": "docks-hire.started_at",
+     "type": "er.Column",
+     "label": "started_at",
+     "props": {
+      "dataType": "timestamptz"
+     }
+    },
+    {
+     "id": "docks-hire.ended_at",
+     "type": "er.Column",
+     "label": "ended_at",
+     "props": {
+      "dataType": "timestamptz",
+      "nullable": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "docks-hire_point",
+   "type": "er.Entity",
+   "label": "hire_point",
+   "members": [
+    {
+     "id": "docks-hire_point.hire_id",
+     "type": "er.Column",
+     "label": "hire_id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true,
+      "foreignKey": true,
+      "references": "docks-hire.id"
+     }
+    },
+    {
+     "id": "docks-hire_point.seq",
+     "type": "er.Column",
+     "label": "seq",
+     "props": {
+      "dataType": "integer",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "docks-hire_point.lat_lon",
+     "type": "er.Column",
+     "label": "lat_lon",
+     "props": {
+      "dataType": "point"
+     }
+    }
+   ]
+  },
+  {
+   "id": "docks-note-points",
+   "type": "uml.Comment",
+   "label": "a point every 30 s while the bike moves"
+  },
+  {
+   "id": "rows-title",
+   "type": "er.Entity",
+   "label": "title",
+   "members": [
+    {
+     "id": "rows-title.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "rows-title.isbn",
+     "type": "er.Column",
+     "label": "isbn",
+     "props": {
+      "dataType": "char(13)",
+      "unique": true
+     }
+    },
+    {
+     "id": "rows-title.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(255)"
+     }
+    },
+    {
+     "id": "rows-title.subtitle",
+     "type": "er.Column",
+     "label": "subtitle",
+     "props": {
+      "dataType": "varchar(255)",
+      "nullable": true
+     }
+    },
+    {
+     "id": "rows-title.publisher",
+     "type": "er.Column",
+     "label": "publisher",
+     "props": {
+      "dataType": "varchar(120)"
+     }
+    },
+    {
+     "id": "rows-title.year",
+     "type": "er.Column",
+     "label": "year",
+     "props": {
+      "dataType": "smallint"
+     }
+    },
+    {
+     "id": "rows-title.pages",
+     "type": "er.Column",
+     "label": "pages",
+     "props": {
+      "dataType": "integer",
+      "nullable": true
+     }
+    },
+    {
+     "id": "rows-title.language",
+     "type": "er.Column",
+     "label": "language",
+     "props": {
+      "dataType": "char(2)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "rows-copy",
+   "type": "er.Entity",
+   "label": "copy",
+   "members": [
+    {
+     "id": "rows-copy.barcode",
+     "type": "er.Column",
+     "label": "barcode",
+     "props": {
+      "dataType": "char(10)",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "rows-copy.title_id",
+     "type": "er.Column",
+     "label": "title_id",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "rows-title.id"
+     }
+    },
+    {
+     "id": "rows-copy.shelf",
+     "type": "er.Column",
+     "label": "shelf",
+     "props": {
+      "dataType": "varchar(12)"
+     }
+    },
+    {
+     "id": "rows-copy.acquired",
+     "type": "er.Column",
+     "label": "acquired",
+     "props": {
+      "dataType": "date"
+     }
+    },
+    {
+     "id": "rows-copy.condition",
+     "type": "er.Column",
+     "label": "condition",
+     "props": {
+      "dataType": "varchar(20)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "rows-member",
+   "type": "er.Entity",
+   "label": "member",
+   "members": [
+    {
+     "id": "rows-member.card_no",
+     "type": "er.Column",
+     "label": "card_no",
+     "props": {
+      "dataType": "char(8)",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "rows-member.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(120)"
+     }
+    },
+    {
+     "id": "rows-member.email",
+     "type": "er.Column",
+     "label": "email",
+     "props": {
+      "dataType": "varchar(255)",
+      "unique": true,
+      "nullable": true
+     }
+    },
+    {
+     "id": "rows-member.joined",
+     "type": "er.Column",
+     "label": "joined",
+     "props": {
+      "dataType": "date"
+     }
+    }
+   ]
+  },
+  {
+   "id": "rows-loan",
+   "type": "er.Entity",
+   "label": "loan",
+   "members": [
+    {
+     "id": "rows-loan.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "rows-loan.barcode",
+     "type": "er.Column",
+     "label": "barcode",
+     "props": {
+      "dataType": "char(10)",
+      "foreignKey": true,
+      "references": "rows-copy.barcode"
+     }
+    },
+    {
+     "id": "rows-loan.card_no",
+     "type": "er.Column",
+     "label": "card_no",
+     "props": {
+      "dataType": "char(8)",
+      "foreignKey": true,
+      "references": "rows-member.card_no"
+     }
+    },
+    {
+     "id": "rows-loan.due",
+     "type": "er.Column",
+     "label": "due",
+     "props": {
+      "dataType": "date"
+     }
+    },
+    {
+     "id": "rows-loan.returned",
+     "type": "er.Column",
+     "label": "returned",
+     "props": {
+      "dataType": "date",
+      "nullable": true
+     }
+    }
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "id": "bookshop-schema-er-customer-orders",
+   "type": "er.Relationship",
+   "from": "bookshop-schema-er-customer",
+   "to": "bookshop-schema-er-order",
+   "label": "places",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "bookshop-schema-er-order-lines",
+   "type": "er.Relationship",
+   "from": "bookshop-schema-er-order",
+   "to": "bookshop-schema-er-order_line",
+   "label": "contains",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "bookshop-schema-er-book-lines",
+   "type": "er.Relationship",
+   "from": "bookshop-schema-er-book",
+   "to": "bookshop-schema-er-order_line",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "bookshop-schema-er-book-authors",
+   "type": "er.Relationship",
+   "from": "bookshop-schema-er-book",
+   "to": "bookshop-schema-er-book_author",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "bookshop-schema-er-author-books",
+   "type": "er.Relationship",
+   "from": "bookshop-schema-er-author",
+   "to": "bookshop-schema-er-book_author",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "bookshop-schema-er-order-payment",
+   "type": "er.Relationship",
+   "from": "bookshop-schema-er-order",
+   "to": "bookshop-schema-er-payment",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..1"
+     }
+    }
+   }
+  },
+  {
+   "id": "bookshop-schema-er-customer-referrals",
+   "type": "er.Relationship",
+   "from": "bookshop-schema-er-customer",
+   "to": "bookshop-schema-er-customer",
+   "label": "referred",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "0..1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "docks-station-docks",
+   "type": "er.Relationship",
+   "from": "docks-station",
+   "to": "docks-dock",
+   "label": "has",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "docks-bike-dock",
+   "type": "er.Relationship",
+   "from": "docks-bike",
+   "to": "docks-dock",
+   "label": "parked in",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "0..1"
+     },
+     "to": {
+      "multiplicity": "0..1"
+     }
+    }
+   }
+  },
+  {
+   "id": "docks-rider-hires",
+   "type": "er.Relationship",
+   "from": "docks-rider",
+   "to": "docks-hire",
+   "label": "takes",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "docks-bike-hires",
+   "type": "er.Relationship",
+   "from": "docks-bike",
+   "to": "docks-hire",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "docks-hire-points",
+   "type": "er.Relationship",
+   "from": "docks-hire",
+   "to": "docks-hire_point",
+   "label": "tracks",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "docks-note-points-link",
+   "type": "uml.CommentLink",
+   "from": "docks-note-points",
+   "to": "docks-hire_point"
+  },
+  {
+   "id": "rows-title-copies",
+   "type": "er.Relationship",
+   "from": "rows-title",
+   "to": "rows-copy",
+   "label": "held as",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "rows-copy-loans",
+   "type": "er.Relationship",
+   "from": "rows-copy",
+   "to": "rows-loan",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "rows-member-loans",
+   "type": "er.Relationship",
+   "from": "rows-member",
+   "to": "rows-loan",
+   "label": "borrows",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Entity-relationship diagram examples",
+   "nodeIds": [
+    "card-bookshop-schema-er-schema",
+    "card-docks-idef1x",
+    "card-docks-crowsfoot-down",
+    "card-rows-rows"
+   ],
+   "layout": {
+    "card-bookshop-schema-er-schema": [
+     0,
+     0
+    ],
+    "card-docks-idef1x": [
+     1,
+     0
+    ],
+    "card-docks-crowsfoot-down": [
+     0,
+     1
+    ],
+    "card-rows-rows": [
+     1,
+     1
+    ]
+   }
+  },
+  {
+   "id": "bookshop-schema-er-schema",
+   "diagram": "er",
+   "title": "Bookshop schema",
+   "parent": "overview",
+   "notation": "crowsfoot",
+   "nodeIds": [
+    "bookshop-schema-er-customer",
+    "bookshop-schema-er-order",
+    "bookshop-schema-er-order_line",
+    "bookshop-schema-er-book",
+    "bookshop-schema-er-author",
+    "bookshop-schema-er-book_author",
+    "bookshop-schema-er-payment"
+   ]
+  },
+  {
+   "id": "docks-idef1x",
+   "diagram": "er",
+   "title": "Hire schema in IDEF1X",
+   "parent": "overview",
+   "notation": "idef1x",
+   "nodeIds": [
+    "docks-station",
+    "docks-dock",
+    "docks-bike",
+    "docks-rider",
+    "docks-hire",
+    "docks-hire_point",
+    "docks-note-points"
+   ]
+  },
+  {
+   "id": "docks-crowsfoot-down",
+   "diagram": "er",
+   "title": "Hire schema in crow's foot, laid out down",
+   "parent": "overview",
+   "notation": "crowsfoot",
+   "direction": "down",
+   "nodeIds": [
+    "docks-station",
+    "docks-dock",
+    "docks-bike",
+    "docks-rider",
+    "docks-hire",
+    "docks-hire_point",
+    "docks-note-points"
+   ]
+  },
+  {
+   "id": "rows-rows",
+   "diagram": "er",
+   "title": "Rows capped and sections hidden",
+   "parent": "overview",
+   "nodeIds": [
+    "rows-title",
+    "rows-copy",
+    "rows-member",
+    "rows-loan"
+   ],
+   "present": {
+    "rows-title": {
+     "rows": 4
+    },
+    "rows-copy": {
+     "collapsed": [
+      "columns"
+     ]
+    }
+   }
+  }
+ ]
+}

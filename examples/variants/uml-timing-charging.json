@@ -1,0 +1,195 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Timing: charging an e-bike",
+ "root": "charging",
+ "nodes": [
+  {
+   "id": "dock",
+   "type": "uml.Lifeline",
+   "label": "dock",
+   "props": {
+    "represents": "ChargingDock",
+    "states": [
+     "Idle",
+     "Charging",
+     "Topping up",
+     "Full"
+    ]
+   }
+  },
+  {
+   "id": "battery",
+   "type": "uml.Lifeline",
+   "label": "battery",
+   "props": {
+    "represents": "Battery"
+   }
+  },
+  {
+   "id": "ops",
+   "type": "uml.Lifeline",
+   "label": "ops",
+   "props": {
+    "represents": "FleetService",
+    "states": [
+     "Unaware",
+     "Bike unavailable",
+     "Bike available"
+    ]
+   }
+  }
+ ],
+ "edges": [],
+ "views": [
+  {
+   "id": "charging",
+   "diagram": "uml.timing",
+   "title": "Minutes, calls and overlapping constraints",
+   "parent": null,
+   "nodeIds": [
+    "dock",
+    "ops",
+    "battery"
+   ],
+   "present": {
+    "battery": {
+     "as": "values"
+    }
+   },
+   "edges": [
+    {
+     "id": "m-docked",
+     "type": "uml.Message",
+     "from": "dock",
+     "to": "ops",
+     "label": "docked(low)",
+     "props": {
+      "sort": "call",
+      "sentAt": 10,
+      "receivedAt": 16
+     }
+    },
+    {
+     "id": "m-ack",
+     "type": "uml.Message",
+     "from": "ops",
+     "to": "dock",
+     "label": "hold",
+     "props": {
+      "sort": "reply",
+      "replyTo": "m-docked",
+      "sentAt": 22,
+      "receivedAt": 28
+     }
+    },
+    {
+     "id": "m-full",
+     "type": "uml.Message",
+     "from": "dock",
+     "to": "ops",
+     "label": "charged",
+     "props": {
+      "sort": "async",
+      "sentAt": 95,
+      "receivedAt": 96
+     }
+    }
+   ],
+   "timeline": {
+    "unit": "min",
+    "changes": [
+     {
+      "id": "d0",
+      "lifeline": "dock",
+      "at": 0,
+      "state": "Idle"
+     },
+     {
+      "id": "d1",
+      "lifeline": "dock",
+      "at": 28,
+      "state": "Charging"
+     },
+     {
+      "id": "d2",
+      "lifeline": "dock",
+      "at": 60,
+      "state": "Topping up"
+     },
+     {
+      "id": "d3",
+      "lifeline": "dock",
+      "at": 95,
+      "state": "Full"
+     },
+     {
+      "id": "b0",
+      "lifeline": "battery",
+      "at": 0,
+      "state": "15 %"
+     },
+     {
+      "id": "b1",
+      "lifeline": "battery",
+      "at": 30,
+      "state": "50 %"
+     },
+     {
+      "id": "b2",
+      "lifeline": "battery",
+      "at": 60,
+      "state": "80 %"
+     },
+     {
+      "id": "b3",
+      "lifeline": "battery",
+      "at": 95,
+      "state": "100 %"
+     },
+     {
+      "id": "o-start",
+      "lifeline": "ops",
+      "at": 0,
+      "state": "Unaware"
+     },
+     {
+      "id": "o0",
+      "lifeline": "ops",
+      "at": 16,
+      "state": "Bike unavailable"
+     },
+     {
+      "id": "o1",
+      "lifeline": "ops",
+      "at": 96,
+      "state": "Bike available"
+     }
+    ],
+    "constraints": [
+     {
+      "id": "c-fast",
+      "type": "uml.DurationConstraint",
+      "from": "d1",
+      "to": "d2",
+      "label": "{<= 60 min}"
+     },
+     {
+      "id": "c-all",
+      "type": "uml.DurationConstraint",
+      "from": "d1",
+      "to": "d3",
+      "label": "{<= 120 min}"
+     },
+     {
+      "id": "c-out",
+      "type": "uml.DurationConstraint",
+      "from": "o0",
+      "to": "o1",
+      "label": "{<= 2 h}"
+     }
+    ]
+   }
+  }
+ ]
+}

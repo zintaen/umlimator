@@ -1,0 +1,36 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Library services",
+ "root": "packages",
+ "nodes": [
+  { "id": "lending", "type": "uml.Package", "label": "Lending" },
+  { "id": "loans", "type": "uml.Component", "label": "Loans", "parent": "lending" },
+  { "id": "holds", "type": "uml.Component", "label": "Holds", "parent": "lending" },
+  { "id": "members-pkg", "type": "uml.Package", "label": "Members" },
+  { "id": "cards", "type": "uml.Component", "label": "Library cards", "parent": "members-pkg" },
+  { "id": "i-catalogue", "type": "uml.Interface", "label": "CatalogueSearch", "members": [
+   { "id": "i-catalogue.find", "type": "uml.Operation", "label": "find", "props": { "visibility": "public", "returnType": "Title[*]" } },
+   { "id": "i-catalogue.copies", "type": "uml.Operation", "label": "copiesOf", "props": { "visibility": "public", "returnType": "Copy[*]" } }
+  ] },
+  { "id": "catalogue", "type": "uml.Component", "label": "Catalogue" },
+  { "id": "loan-rules", "type": "uml.Class", "label": "LoanRules" },
+  { "id": "fines", "type": "uml.Class", "label": "FineCalculator" },
+  { "id": "loans-war", "type": "uml.Artifact", "label": "loans.war" },
+  { "id": "note", "type": "uml.Comment", "label": "a search covers the copies of every branch" }
+ ],
+ "edges": [
+  { "id": "catalogue-provides", "type": "uml.InterfaceRealization", "from": "catalogue", "to": "i-catalogue" },
+  { "id": "loans-uses", "type": "uml.Usage", "from": "loans", "to": "i-catalogue" },
+  { "id": "loans-holds", "type": "uml.Dependency", "from": "loans", "to": "holds" },
+  { "id": "rules-realize", "type": "uml.ComponentRealization", "from": "loan-rules", "to": "loans" },
+  { "id": "fines-realize", "type": "uml.ComponentRealization", "from": "fines", "to": "loans" },
+  { "id": "loans-cards", "type": "uml.Dependency", "from": "loans", "to": "cards", "props": { "stereotypes": ["call"] } },
+  { "id": "war-manifests", "type": "uml.Manifestation", "from": "loans-war", "to": "loans" },
+  { "id": "note-link", "type": "uml.CommentLink", "from": "note", "to": "catalogue" }
+ ],
+ "views": [
+  { "id": "packages", "diagram": "uml.component", "title": "Packages, realizations, an interface box", "parent": null,
+   "nodeIds": ["lending", "loans", "holds", "members-pkg", "cards", "i-catalogue", "catalogue", "loan-rules", "fines", "loans-war", "note"] }
+ ]
+}

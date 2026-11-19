@@ -1,0 +1,28 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "A library's holds, line by line",
+ "root": "lines",
+ "nodes": [
+  { "id": "member", "label": "Member", "kind": "person", "sublabel": "places a hold", "what": "A library member who wants a copy that is out." },
+  { "id": "site", "label": "Library site", "kind": "frontend", "sublabel": "catalogue, holds", "what": "The catalogue in the browser." },
+  { "id": "holds", "label": "Holds service", "kind": "backend", "sublabel": "queues the holds", "what": "Keeps each title's queue of holds." },
+  { "id": "loans", "label": "Loans", "kind": "database", "sublabel": "PostgreSQL", "what": "Every loan and hold." },
+  { "id": "returns", "label": "Return events", "kind": "queue", "sublabel": "a copy came back", "what": "A message each time a copy is returned." },
+  { "id": "notifier", "label": "Notifier", "kind": "backend", "sublabel": "email and text", "what": "Tells the member the copy is waiting." },
+  { "id": "sms", "label": "Text gateway", "kind": "external", "sublabel": "texts the member", "what": "Sends the text that the copy is waiting." },
+  { "id": "shelf-check", "label": "Shelf check", "kind": "hook", "sublabel": "every night", "what": "Expires holds not collected in a week." }
+ ],
+ "edges": [
+  { "id": "place", "from": "member", "to": "site", "label": "place a hold", "step": 1 },
+  { "id": "request", "from": "site", "to": "holds", "label": "POST /holds", "sublabel": "JSON", "step": 2, "weight": 3 },
+  { "id": "store", "from": "holds", "to": "loans", "label": "write the hold", "kind": "feeds", "step": 3, "weight": 2 },
+  { "id": "returned", "from": "returns", "to": "holds", "label": "copy back", "kind": "triggers", "step": "4a" },
+  { "id": "ready", "from": "holds", "to": "notifier", "label": "on hold shelf", "kind": "state", "step": "4b" },
+  { "id": "tell", "from": "notifier", "to": "sms", "label": "come and collect", "step": 5 },
+  { "id": "expire", "from": "shelf-check", "to": "loans", "label": "if not collected", "kind": "guard", "weight": 1 }
+ ],
+ "views": [
+  { "id": "lines", "title": "Line kinds, weights and steps", "parent": null, "nodeIds": ["member", "site", "holds", "loans", "returns", "notifier", "sms", "shelf-check"] }
+ ]
+}

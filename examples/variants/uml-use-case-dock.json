@@ -1,0 +1,35 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Cycle hire: at the dock and in the app",
+ "root": "dock",
+ "nodes": [
+  { "id": "rider", "type": "uml.Actor", "label": "Rider" },
+  { "id": "bank", "type": "uml.Actor", "label": "Card bank", "props": { "stereotypes": ["system"] } },
+  { "id": "kiosk", "type": "uml.Subject", "label": "Dock kiosk" },
+  { "id": "unlock", "type": "uml.UseCase", "label": "Unlock a bike", "parent": "kiosk" },
+  { "id": "return", "type": "uml.UseCase", "label": "Return a bike", "parent": "kiosk",
+   "members": [ { "id": "return.locked", "type": "uml.ExtensionPoint", "label": "after locking" } ] },
+  { "id": "close-ride", "type": "uml.UseCase", "label": "Close the ride", "parent": "kiosk" },
+  { "id": "report", "type": "uml.UseCase", "label": "Report a fault", "parent": "kiosk" },
+  { "id": "app", "type": "uml.Subject", "label": "Rider app" },
+  { "id": "find-dock", "type": "uml.UseCase", "label": "Find a dock with space", "parent": "app" },
+  { "id": "day-pass", "type": "uml.UseCase", "label": "Buy a day pass", "parent": "app" },
+  { "id": "unlock-note", "type": "uml.Comment", "label": "A day pass or a card on file unlocks" }
+ ],
+ "edges": [
+  { "id": "rider-unlocks", "type": "uml.Association", "from": "rider", "to": "unlock" },
+  { "id": "rider-returns", "type": "uml.Association", "from": "rider", "to": "return" },
+  { "id": "rider-finds", "type": "uml.Association", "from": "rider", "to": "find-dock" },
+  { "id": "rider-buys", "type": "uml.Association", "from": "rider", "to": "day-pass" },
+  { "id": "bank-charges", "type": "uml.Association", "from": "bank", "to": "day-pass" },
+  { "id": "return-closes", "type": "uml.Include", "from": "return", "to": "close-ride" },
+  { "id": "report-extends-return", "type": "uml.Extend", "from": "report", "to": "return",
+   "props": { "extensionPoints": ["return.locked"], "condition": "the bike is damaged" } },
+  { "id": "unlock-note-link", "type": "uml.CommentLink", "from": "unlock-note", "to": "unlock" }
+ ],
+ "views": [
+  { "id": "dock", "diagram": "uml.use-case", "title": "Two subjects, laid out down", "parent": null, "direction": "down",
+   "nodeIds": ["rider", "bank", "kiosk", "unlock", "return", "close-ride", "report", "app", "find-dock", "day-pass", "unlock-note"] }
+ ]
+}

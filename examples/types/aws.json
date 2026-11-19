@@ -1,0 +1,763 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "AWS diagram examples",
+ "root": "overview",
+ "iconPacks": {
+  "aws": "2026-07-31"
+ },
+ "nodes": [
+  {
+   "id": "card-bookshop-aws-aws-on-aws",
+   "label": "Bookshop on AWS",
+   "kind": "file",
+   "sublabel": "accounts, VPCs, subnets, services",
+   "what": "Accounts, regions, VPCs, availability zones, subnets and security groups as nested boxes, each service or resource a card with its icon and full service name. On this site the icons are the vendor's own, fetched with AWS's terms accepted; in a copy of this repository the diagram draws glyphs until you fetch them with `umlimator.py pack fetch aws`. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.",
+   "how": "From examples/bookshop-aws.json.",
+   "opensView": "bookshop-aws-aws-on-aws"
+  },
+  {
+   "id": "card-serverless-serverless",
+   "label": "Serverless, no VPC",
+   "kind": "file",
+   "sublabel": "serverless, a generic group",
+   "what": "A cycle hire API with no VPC: a region holding managed services, a generic group of functions that a line leaves from its border, and riders on a mobile client.",
+   "how": "From examples/variants/aws-serverless.json.",
+   "opensView": "serverless-serverless"
+  },
+  {
+   "id": "card-accounts-accounts",
+   "label": "Two accounts",
+   "kind": "file",
+   "sublabel": "two accounts, a security group",
+   "what": "A library's production account and its log archive account side by side in one cloud, a VPC, a private subnet and a security group nested in turn, and a line from the VPC's border to a bucket in the other account.",
+   "how": "From examples/variants/aws-accounts.json.",
+   "opensView": "accounts-accounts"
+  },
+  {
+   "id": "bookshop-aws-aws-users",
+   "type": "aws.Resource",
+   "label": "Shoppers",
+   "props": {
+    "icon": "Users"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-cloud",
+   "type": "aws.Group",
+   "label": "AWS Cloud",
+   "props": {
+    "groupType": "cloud"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-dns",
+   "type": "aws.Service",
+   "label": "DNS",
+   "parent": "bookshop-aws-aws-cloud",
+   "props": {
+    "icon": "Amazon-Route-53"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-cdn",
+   "type": "aws.Service",
+   "label": "CDN",
+   "parent": "bookshop-aws-aws-cloud",
+   "props": {
+    "icon": "Amazon-CloudFront"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-region",
+   "type": "aws.Group",
+   "label": "Europe (Ireland)",
+   "parent": "bookshop-aws-aws-cloud",
+   "props": {
+    "groupType": "region"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-assets",
+   "type": "aws.Service",
+   "label": "Storefront files",
+   "parent": "bookshop-aws-aws-region",
+   "props": {
+    "icon": "Amazon-Simple-Storage-Service"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-queue",
+   "type": "aws.Service",
+   "label": "Order queue",
+   "parent": "bookshop-aws-aws-region",
+   "props": {
+    "icon": "Amazon-Simple-Queue-Service"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-email",
+   "type": "aws.Service",
+   "label": "Order emails",
+   "parent": "bookshop-aws-aws-region",
+   "props": {
+    "icon": "Amazon-Simple-Email-Service"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-monitoring",
+   "type": "aws.Service",
+   "label": "Logs and alarms",
+   "parent": "bookshop-aws-aws-region",
+   "props": {
+    "icon": "Amazon-CloudWatch"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-vpc",
+   "type": "aws.Group",
+   "label": "Bookshop VPC",
+   "parent": "bookshop-aws-aws-region",
+   "props": {
+    "groupType": "vpc"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-alb",
+   "type": "aws.Service",
+   "label": "Load balancer",
+   "parent": "bookshop-aws-aws-vpc",
+   "props": {
+    "icon": "Elastic-Load-Balancing"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-az-a",
+   "type": "aws.Group",
+   "label": "eu-west-1a",
+   "parent": "bookshop-aws-aws-vpc",
+   "props": {
+    "groupType": "availability-zone"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-public-a",
+   "type": "aws.Group",
+   "label": "Public subnet",
+   "parent": "bookshop-aws-aws-az-a",
+   "props": {
+    "groupType": "public-subnet"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-nat-a",
+   "type": "aws.Resource",
+   "label": "NAT gateway",
+   "parent": "bookshop-aws-aws-public-a",
+   "props": {
+    "icon": "Amazon-VPC_NAT-Gateway"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-private-a",
+   "type": "aws.Group",
+   "label": "Private subnet",
+   "parent": "bookshop-aws-aws-az-a",
+   "props": {
+    "groupType": "private-subnet"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-api-a",
+   "type": "aws.Service",
+   "label": "Shop API",
+   "parent": "bookshop-aws-aws-private-a",
+   "props": {
+    "icon": "Amazon-Elastic-Container-Service"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-db-sg",
+   "type": "aws.Group",
+   "label": "Database security group",
+   "parent": "bookshop-aws-aws-private-a",
+   "props": {
+    "groupType": "security-group"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-db",
+   "type": "aws.Service",
+   "label": "Database, primary",
+   "parent": "bookshop-aws-aws-db-sg",
+   "props": {
+    "icon": "Amazon-RDS"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-az-b",
+   "type": "aws.Group",
+   "label": "eu-west-1b",
+   "parent": "bookshop-aws-aws-vpc",
+   "props": {
+    "groupType": "availability-zone"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-public-b",
+   "type": "aws.Group",
+   "label": "Public subnet",
+   "parent": "bookshop-aws-aws-az-b",
+   "props": {
+    "groupType": "public-subnet"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-nat-b",
+   "type": "aws.Resource",
+   "label": "NAT gateway",
+   "parent": "bookshop-aws-aws-public-b",
+   "props": {
+    "icon": "Amazon-VPC_NAT-Gateway"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-private-b",
+   "type": "aws.Group",
+   "label": "Private subnet",
+   "parent": "bookshop-aws-aws-az-b",
+   "props": {
+    "groupType": "private-subnet"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-api-b",
+   "type": "aws.Service",
+   "label": "Shop API",
+   "parent": "bookshop-aws-aws-private-b",
+   "props": {
+    "icon": "Amazon-Elastic-Container-Service"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-worker",
+   "type": "aws.Service",
+   "label": "Order worker",
+   "parent": "bookshop-aws-aws-private-b",
+   "props": {
+    "icon": "Amazon-Elastic-Container-Service"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-db-standby",
+   "type": "aws.Service",
+   "label": "Database, standby",
+   "parent": "bookshop-aws-aws-private-b",
+   "props": {
+    "icon": "Amazon-RDS"
+   }
+  },
+  {
+   "id": "serverless-riders",
+   "type": "aws.Resource",
+   "label": "Riders",
+   "props": {
+    "icon": "Mobile-client"
+   }
+  },
+  {
+   "id": "serverless-aws-cloud",
+   "type": "aws.Group",
+   "label": "AWS Cloud",
+   "props": {
+    "groupType": "cloud"
+   }
+  },
+  {
+   "id": "serverless-main-region",
+   "type": "aws.Group",
+   "label": "Europe (Paris)",
+   "parent": "serverless-aws-cloud",
+   "props": {
+    "groupType": "region"
+   }
+  },
+  {
+   "id": "serverless-sign-in",
+   "type": "aws.Service",
+   "label": "Rider sign-in",
+   "parent": "serverless-main-region",
+   "props": {
+    "icon": "Amazon-Cognito"
+   }
+  },
+  {
+   "id": "serverless-api",
+   "type": "aws.Service",
+   "label": "Hire API",
+   "parent": "serverless-main-region",
+   "props": {
+    "icon": "Amazon-API-Gateway"
+   }
+  },
+  {
+   "id": "serverless-fns",
+   "type": "aws.Group",
+   "label": "Hire functions",
+   "parent": "serverless-main-region",
+   "props": {
+    "groupType": "generic"
+   }
+  },
+  {
+   "id": "serverless-start-fn",
+   "type": "aws.Service",
+   "label": "Start a hire",
+   "parent": "serverless-fns",
+   "props": {
+    "icon": "AWS-Lambda"
+   }
+  },
+  {
+   "id": "serverless-end-fn",
+   "type": "aws.Service",
+   "label": "End a hire",
+   "parent": "serverless-fns",
+   "props": {
+    "icon": "AWS-Lambda"
+   }
+  },
+  {
+   "id": "serverless-hires",
+   "type": "aws.Service",
+   "label": "Hires table",
+   "parent": "serverless-main-region",
+   "props": {
+    "icon": "Amazon-DynamoDB"
+   }
+  },
+  {
+   "id": "serverless-events",
+   "type": "aws.Service",
+   "label": "Dock events",
+   "parent": "serverless-main-region",
+   "props": {
+    "icon": "Amazon-EventBridge"
+   }
+  },
+  {
+   "id": "serverless-texts",
+   "type": "aws.Service",
+   "label": "Receipt texts",
+   "parent": "serverless-main-region",
+   "props": {
+    "icon": "Amazon-Simple-Notification-Service"
+   }
+  },
+  {
+   "id": "accounts-staff",
+   "type": "aws.Resource",
+   "label": "Library staff",
+   "props": {
+    "icon": "Users"
+   }
+  },
+  {
+   "id": "accounts-aws-cloud",
+   "type": "aws.Group",
+   "label": "AWS Cloud",
+   "props": {
+    "groupType": "cloud"
+   }
+  },
+  {
+   "id": "accounts-prod",
+   "type": "aws.Group",
+   "label": "Catalogue production",
+   "parent": "accounts-aws-cloud",
+   "props": {
+    "groupType": "account"
+   }
+  },
+  {
+   "id": "accounts-prod-region",
+   "type": "aws.Group",
+   "label": "Canada (Central)",
+   "parent": "accounts-prod",
+   "props": {
+    "groupType": "region"
+   }
+  },
+  {
+   "id": "accounts-catalogue-vpc",
+   "type": "aws.Group",
+   "label": "Catalogue VPC",
+   "parent": "accounts-prod-region",
+   "props": {
+    "groupType": "vpc"
+   }
+  },
+  {
+   "id": "accounts-subnet",
+   "type": "aws.Group",
+   "label": "Private subnet",
+   "parent": "accounts-catalogue-vpc",
+   "props": {
+    "groupType": "private-subnet"
+   }
+  },
+  {
+   "id": "accounts-app-sg",
+   "type": "aws.Group",
+   "label": "App security group",
+   "parent": "accounts-subnet",
+   "props": {
+    "groupType": "security-group"
+   }
+  },
+  {
+   "id": "accounts-app",
+   "type": "aws.Service",
+   "label": "Catalogue app",
+   "parent": "accounts-app-sg",
+   "props": {
+    "icon": "Amazon-EC2"
+   }
+  },
+  {
+   "id": "accounts-db",
+   "type": "aws.Service",
+   "label": "Catalogue database",
+   "parent": "accounts-subnet",
+   "props": {
+    "icon": "Amazon-RDS"
+   }
+  },
+  {
+   "id": "accounts-logs",
+   "type": "aws.Group",
+   "label": "Log archive",
+   "parent": "accounts-aws-cloud",
+   "props": {
+    "groupType": "account"
+   }
+  },
+  {
+   "id": "accounts-logs-region",
+   "type": "aws.Group",
+   "label": "Canada (Central)",
+   "parent": "accounts-logs",
+   "props": {
+    "groupType": "region"
+   }
+  },
+  {
+   "id": "accounts-bucket",
+   "type": "aws.Service",
+   "label": "Audit log bucket",
+   "parent": "accounts-logs-region",
+   "props": {
+    "icon": "Amazon-Simple-Storage-Service"
+   }
+  },
+  {
+   "id": "accounts-query",
+   "type": "aws.Service",
+   "label": "Log queries",
+   "parent": "accounts-logs-region",
+   "props": {
+    "icon": "Amazon-Athena"
+   }
+  }
+ ],
+ "edges": [
+  {
+   "id": "bookshop-aws-aws-users-dns",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-users",
+   "to": "bookshop-aws-aws-dns",
+   "label": "looks up"
+  },
+  {
+   "id": "bookshop-aws-aws-users-cdn",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-users",
+   "to": "bookshop-aws-aws-cdn",
+   "label": "HTTPS"
+  },
+  {
+   "id": "bookshop-aws-aws-cdn-assets",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-cdn",
+   "to": "bookshop-aws-aws-assets",
+   "label": "storefront"
+  },
+  {
+   "id": "bookshop-aws-aws-cdn-alb",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-cdn",
+   "to": "bookshop-aws-aws-alb",
+   "label": "/api"
+  },
+  {
+   "id": "bookshop-aws-aws-alb-api-a",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-alb",
+   "to": "bookshop-aws-aws-api-a",
+   "label": "HTTP"
+  },
+  {
+   "id": "bookshop-aws-aws-alb-api-b",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-alb",
+   "to": "bookshop-aws-aws-api-b",
+   "label": "HTTP"
+  },
+  {
+   "id": "bookshop-aws-aws-api-a-db",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-api-a",
+   "to": "bookshop-aws-aws-db",
+   "label": "SQL"
+  },
+  {
+   "id": "bookshop-aws-aws-api-b-db",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-api-b",
+   "to": "bookshop-aws-aws-db",
+   "label": "SQL"
+  },
+  {
+   "id": "bookshop-aws-aws-db-replica",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-db",
+   "to": "bookshop-aws-aws-db-standby",
+   "label": "replicates"
+  },
+  {
+   "id": "bookshop-aws-aws-api-a-queue",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-api-a",
+   "to": "bookshop-aws-aws-queue",
+   "label": "paid order"
+  },
+  {
+   "id": "bookshop-aws-aws-api-b-queue",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-api-b",
+   "to": "bookshop-aws-aws-queue",
+   "label": "paid order"
+  },
+  {
+   "id": "bookshop-aws-aws-worker-queue",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-worker",
+   "to": "bookshop-aws-aws-queue",
+   "label": "claims"
+  },
+  {
+   "id": "bookshop-aws-aws-worker-db",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-worker",
+   "to": "bookshop-aws-aws-db",
+   "label": "SQL"
+  },
+  {
+   "id": "bookshop-aws-aws-worker-email",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-worker",
+   "to": "bookshop-aws-aws-email",
+   "label": "confirmation"
+  },
+  {
+   "id": "bookshop-aws-aws-private-a-nat",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-private-a",
+   "to": "bookshop-aws-aws-nat-a",
+   "label": "outbound"
+  },
+  {
+   "id": "bookshop-aws-aws-private-b-nat",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-private-b",
+   "to": "bookshop-aws-aws-nat-b",
+   "label": "outbound"
+  },
+  {
+   "id": "bookshop-aws-aws-vpc-monitoring",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-vpc",
+   "to": "bookshop-aws-aws-monitoring",
+   "label": "logs, metrics"
+  },
+  {
+   "id": "serverless-riders-sign-in",
+   "type": "aws.Connection",
+   "from": "serverless-riders",
+   "to": "serverless-sign-in",
+   "label": "sign in"
+  },
+  {
+   "id": "serverless-riders-api",
+   "type": "aws.Connection",
+   "from": "serverless-riders",
+   "to": "serverless-api",
+   "label": "HTTPS"
+  },
+  {
+   "id": "serverless-api-start",
+   "type": "aws.Connection",
+   "from": "serverless-api",
+   "to": "serverless-start-fn",
+   "label": "POST /hires"
+  },
+  {
+   "id": "serverless-fns-hires",
+   "type": "aws.Connection",
+   "from": "serverless-fns",
+   "to": "serverless-hires",
+   "label": "read, write"
+  },
+  {
+   "id": "serverless-events-end",
+   "type": "aws.Connection",
+   "from": "serverless-events",
+   "to": "serverless-end-fn",
+   "label": "bike docked"
+  },
+  {
+   "id": "serverless-end-texts",
+   "type": "aws.Connection",
+   "from": "serverless-end-fn",
+   "to": "serverless-texts",
+   "label": "fare"
+  },
+  {
+   "id": "accounts-staff-app",
+   "type": "aws.Connection",
+   "from": "accounts-staff",
+   "to": "accounts-app",
+   "label": "HTTPS"
+  },
+  {
+   "id": "accounts-app-db",
+   "type": "aws.Connection",
+   "from": "accounts-app",
+   "to": "accounts-db",
+   "label": "SQL"
+  },
+  {
+   "id": "accounts-vpc-bucket",
+   "type": "aws.Connection",
+   "from": "accounts-catalogue-vpc",
+   "to": "accounts-bucket",
+   "label": "flow logs"
+  },
+  {
+   "id": "accounts-bucket-query",
+   "type": "aws.Connection",
+   "from": "accounts-bucket",
+   "to": "accounts-query",
+   "label": "log files"
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "AWS diagram examples",
+   "nodeIds": [
+    "card-bookshop-aws-aws-on-aws",
+    "card-serverless-serverless",
+    "card-accounts-accounts"
+   ],
+   "layout": {
+    "card-bookshop-aws-aws-on-aws": [
+     0,
+     0
+    ],
+    "card-serverless-serverless": [
+     1,
+     0
+    ],
+    "card-accounts-accounts": [
+     0,
+     1
+    ]
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-on-aws",
+   "diagram": "aws",
+   "title": "Bookshop on AWS",
+   "parent": "overview",
+   "nodeIds": [
+    "bookshop-aws-aws-users",
+    "bookshop-aws-aws-cloud",
+    "bookshop-aws-aws-dns",
+    "bookshop-aws-aws-cdn",
+    "bookshop-aws-aws-region",
+    "bookshop-aws-aws-assets",
+    "bookshop-aws-aws-queue",
+    "bookshop-aws-aws-email",
+    "bookshop-aws-aws-monitoring",
+    "bookshop-aws-aws-vpc",
+    "bookshop-aws-aws-alb",
+    "bookshop-aws-aws-az-a",
+    "bookshop-aws-aws-public-a",
+    "bookshop-aws-aws-nat-a",
+    "bookshop-aws-aws-private-a",
+    "bookshop-aws-aws-api-a",
+    "bookshop-aws-aws-db-sg",
+    "bookshop-aws-aws-db",
+    "bookshop-aws-aws-az-b",
+    "bookshop-aws-aws-public-b",
+    "bookshop-aws-aws-nat-b",
+    "bookshop-aws-aws-private-b",
+    "bookshop-aws-aws-api-b",
+    "bookshop-aws-aws-worker",
+    "bookshop-aws-aws-db-standby"
+   ]
+  },
+  {
+   "id": "serverless-serverless",
+   "diagram": "aws",
+   "title": "Serverless, no VPC",
+   "parent": "overview",
+   "nodeIds": [
+    "serverless-riders",
+    "serverless-aws-cloud",
+    "serverless-main-region",
+    "serverless-sign-in",
+    "serverless-api",
+    "serverless-fns",
+    "serverless-start-fn",
+    "serverless-end-fn",
+    "serverless-hires",
+    "serverless-events",
+    "serverless-texts"
+   ]
+  },
+  {
+   "id": "accounts-accounts",
+   "diagram": "aws",
+   "title": "Two accounts",
+   "parent": "overview",
+   "nodeIds": [
+    "accounts-staff",
+    "accounts-aws-cloud",
+    "accounts-prod",
+    "accounts-prod-region",
+    "accounts-catalogue-vpc",
+    "accounts-subnet",
+    "accounts-app-sg",
+    "accounts-app",
+    "accounts-db",
+    "accounts-logs",
+    "accounts-logs-region",
+    "accounts-bucket",
+    "accounts-query"
+   ]
+  }
+ ]
+}

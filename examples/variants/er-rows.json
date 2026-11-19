@@ -1,0 +1,48 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Library: catalogue schema",
+ "root": "rows",
+ "nodes": [
+  { "id": "title", "type": "er.Entity", "label": "title", "members": [
+   { "id": "title.id", "type": "er.Column", "label": "id", "props": { "dataType": "bigint", "primaryKey": true } },
+   { "id": "title.isbn", "type": "er.Column", "label": "isbn", "props": { "dataType": "char(13)", "unique": true } },
+   { "id": "title.name", "type": "er.Column", "label": "name", "props": { "dataType": "varchar(255)" } },
+   { "id": "title.subtitle", "type": "er.Column", "label": "subtitle", "props": { "dataType": "varchar(255)", "nullable": true } },
+   { "id": "title.publisher", "type": "er.Column", "label": "publisher", "props": { "dataType": "varchar(120)" } },
+   { "id": "title.year", "type": "er.Column", "label": "year", "props": { "dataType": "smallint" } },
+   { "id": "title.pages", "type": "er.Column", "label": "pages", "props": { "dataType": "integer", "nullable": true } },
+   { "id": "title.language", "type": "er.Column", "label": "language", "props": { "dataType": "char(2)" } }
+  ] },
+  { "id": "copy", "type": "er.Entity", "label": "copy", "members": [
+   { "id": "copy.barcode", "type": "er.Column", "label": "barcode", "props": { "dataType": "char(10)", "primaryKey": true } },
+   { "id": "copy.title_id", "type": "er.Column", "label": "title_id", "props": { "dataType": "bigint", "foreignKey": true, "references": "title.id" } },
+   { "id": "copy.shelf", "type": "er.Column", "label": "shelf", "props": { "dataType": "varchar(12)" } },
+   { "id": "copy.acquired", "type": "er.Column", "label": "acquired", "props": { "dataType": "date" } },
+   { "id": "copy.condition", "type": "er.Column", "label": "condition", "props": { "dataType": "varchar(20)" } }
+  ] },
+  { "id": "member", "type": "er.Entity", "label": "member", "members": [
+   { "id": "member.card_no", "type": "er.Column", "label": "card_no", "props": { "dataType": "char(8)", "primaryKey": true } },
+   { "id": "member.name", "type": "er.Column", "label": "name", "props": { "dataType": "varchar(120)" } },
+   { "id": "member.email", "type": "er.Column", "label": "email", "props": { "dataType": "varchar(255)", "unique": true, "nullable": true } },
+   { "id": "member.joined", "type": "er.Column", "label": "joined", "props": { "dataType": "date" } }
+  ] },
+  { "id": "loan", "type": "er.Entity", "label": "loan", "members": [
+   { "id": "loan.id", "type": "er.Column", "label": "id", "props": { "dataType": "bigint", "primaryKey": true } },
+   { "id": "loan.barcode", "type": "er.Column", "label": "barcode", "props": { "dataType": "char(10)", "foreignKey": true, "references": "copy.barcode" } },
+   { "id": "loan.card_no", "type": "er.Column", "label": "card_no", "props": { "dataType": "char(8)", "foreignKey": true, "references": "member.card_no" } },
+   { "id": "loan.due", "type": "er.Column", "label": "due", "props": { "dataType": "date" } },
+   { "id": "loan.returned", "type": "er.Column", "label": "returned", "props": { "dataType": "date", "nullable": true } }
+  ] }
+ ],
+ "edges": [
+  { "id": "title-copies", "type": "er.Relationship", "from": "title", "to": "copy", "label": "held as", "props": { "identifying": false, "ends": { "from": { "multiplicity": "1" }, "to": { "multiplicity": "1..*" } } } },
+  { "id": "copy-loans", "type": "er.Relationship", "from": "copy", "to": "loan", "props": { "identifying": false, "ends": { "from": { "multiplicity": "1" }, "to": { "multiplicity": "0..*" } } } },
+  { "id": "member-loans", "type": "er.Relationship", "from": "member", "to": "loan", "label": "borrows", "props": { "identifying": false, "ends": { "from": { "multiplicity": "1" }, "to": { "multiplicity": "0..*" } } } }
+ ],
+ "views": [
+  { "id": "rows", "diagram": "er", "title": "Rows capped and sections hidden", "parent": null,
+   "nodeIds": ["title", "copy", "member", "loan"],
+   "present": { "title": { "rows": 4 }, "copy": { "collapsed": ["columns"] } } }
+ ]
+}

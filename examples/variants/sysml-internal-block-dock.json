@@ -1,0 +1,66 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Cycle hire: inside a dock station",
+ "root": "inside-station",
+ "nodes": [
+  { "id": "station", "type": "sysml.Block", "label": "DockStation", "members": [
+   { "id": "station.charger", "type": "sysml.PartProperty", "label": "charger", "props": { "valueType": "Charger", "multiplicity": "1" } },
+   { "id": "station.latch", "type": "sysml.PartProperty", "label": "latch", "props": { "valueType": "Latch", "multiplicity": "12" } },
+   { "id": "station.reader", "type": "sysml.PartProperty", "label": "reader", "props": { "valueType": "CardReader", "multiplicity": "1" } },
+   { "id": "station.backend", "type": "sysml.ReferenceProperty", "label": "backend", "props": { "valueType": "FleetServer", "multiplicity": "1" } },
+   { "id": "station.slots", "type": "sysml.ValueProperty", "label": "slots", "props": { "valueType": "Integer" } },
+   { "id": "station.mains", "type": "sysml.Port", "label": "mains", "props": { "kind": "proxy", "valueType": "MainsIf" } },
+   { "id": "station.uplink", "type": "sysml.Port", "label": "uplink", "props": { "kind": "full", "valueType": "Modem" } }
+  ] },
+  { "id": "charger", "type": "sysml.Block", "label": "Charger", "members": [
+   { "id": "charger.breaker", "type": "sysml.PartProperty", "label": "breaker", "props": { "valueType": "Breaker", "multiplicity": "1" } },
+   { "id": "charger.rectifier", "type": "sysml.PartProperty", "label": "rectifier", "props": { "valueType": "Rectifier", "multiplicity": "1" } },
+   { "id": "charger.ac", "type": "sysml.Port", "label": "ac", "props": { "kind": "proxy", "valueType": "MainsIf" } },
+   { "id": "charger.out", "type": "sysml.Port", "label": "out", "props": { "kind": "proxy", "valueType": "DcIf" } }
+  ] },
+  { "id": "latch", "type": "sysml.Block", "label": "Latch", "members": [
+   { "id": "latch.power", "type": "sysml.Port", "label": "power", "props": { "kind": "proxy", "valueType": "~DcIf" } },
+   { "id": "latch.signal", "type": "sysml.Port", "label": "signal" }
+  ] },
+  { "id": "reader", "type": "sysml.Block", "label": "CardReader", "members": [
+   { "id": "reader.net", "type": "sysml.Port", "label": "net", "props": { "kind": "proxy", "valueType": "DataIf" } },
+   { "id": "reader.unlock", "type": "sysml.Port", "label": "unlock" }
+  ] },
+  { "id": "server", "type": "sysml.Block", "label": "FleetServer", "members": [
+   { "id": "server.api", "type": "sysml.Port", "label": "api", "props": { "kind": "proxy", "valueType": "~DataIf" } }
+  ] },
+  { "id": "modem", "type": "sysml.Block", "label": "Modem" },
+  { "id": "breaker", "type": "sysml.Block", "label": "Breaker", "members": [
+   { "id": "breaker.line", "type": "sysml.Port", "label": "line", "props": { "kind": "proxy", "valueType": "MainsIf" } },
+   { "id": "breaker.load", "type": "sysml.Port", "label": "load" }
+  ] },
+  { "id": "rectifier", "type": "sysml.Block", "label": "Rectifier", "members": [
+   { "id": "rectifier.in", "type": "sysml.Port", "label": "in" },
+   { "id": "rectifier.out", "type": "sysml.Port", "label": "out", "props": { "kind": "proxy", "valueType": "DcIf" } }
+  ] },
+  { "id": "mains-if", "type": "sysml.InterfaceBlock", "label": "MainsIf", "members": [
+   { "id": "mains-if.ac", "type": "sysml.FlowProperty", "label": "ac", "props": { "valueType": "ACPower", "direction": "in" } }
+  ] },
+  { "id": "dc-if", "type": "sysml.InterfaceBlock", "label": "DcIf", "members": [
+   { "id": "dc-if.dc", "type": "sysml.FlowProperty", "label": "dc", "props": { "valueType": "DCPower", "direction": "out" } }
+  ] },
+  { "id": "data-if", "type": "sysml.InterfaceBlock", "label": "DataIf", "members": [
+   { "id": "data-if.request", "type": "sysml.FlowProperty", "label": "request", "props": { "valueType": "RideRequest", "direction": "out" } },
+   { "id": "data-if.grant", "type": "sysml.FlowProperty", "label": "grant", "props": { "valueType": "Grant", "direction": "in" } }
+  ] }
+ ],
+ "edges": [
+  { "id": "mains-to-charger", "type": "sysml.Connector", "from": "station.mains", "to": "charger.ac", "props": { "ends": { "to": { "part": "station.charger" } }, "itemFlow": { "item": "ACPower", "direction": "from-to" } } },
+  { "id": "charger-to-latch", "type": "sysml.Connector", "from": "charger.out", "to": "latch.power", "props": { "ends": { "from": { "part": "station.charger" }, "to": { "part": "station.latch" } }, "itemFlow": { "item": "DCPower", "direction": "from-to" } } },
+  { "id": "reader-to-backend", "type": "sysml.Connector", "from": "reader.net", "to": "server.api", "props": { "ends": { "from": { "part": "station.reader" }, "to": { "part": "station.backend" } }, "itemFlow": { "item": "RideRequest", "direction": "from-to" } } },
+  { "id": "reader-to-latch", "type": "sysml.Connector", "from": "reader.unlock", "to": "latch.signal", "props": { "ends": { "from": { "part": "station.reader" }, "to": { "part": "station.latch" } }, "itemFlow": { "item": "UnlockCommand", "direction": "from-to" } } },
+  { "id": "ac-to-breaker", "type": "sysml.Connector", "from": "charger.ac", "to": "breaker.line", "props": { "ends": { "to": { "part": "charger.breaker" } } } },
+  { "id": "breaker-to-rectifier", "type": "sysml.Connector", "from": "breaker.load", "to": "rectifier.in", "props": { "ends": { "from": { "part": "charger.breaker" }, "to": { "part": "charger.rectifier" } }, "itemFlow": { "item": "ACPower", "direction": "from-to" } } },
+  { "id": "rectifier-to-out", "type": "sysml.Connector", "from": "rectifier.out", "to": "charger.out", "props": { "ends": { "from": { "part": "charger.rectifier" } } } }
+ ],
+ "views": [
+  { "id": "inside-station", "diagram": "sysml.internal-block", "title": "Inside the dock station", "parent": null, "subject": "station", "nodeIds": ["station"] },
+  { "id": "inside-charger", "diagram": "sysml.internal-block", "title": "Inside the charger", "parent": null, "subject": "charger", "nodeIds": ["charger"] }
+ ]
+}

@@ -3,6 +3,10 @@
 Every example below is live at **[zintaen.github.io/umlimator](https://zintaen.github.io/umlimator/)**, built from `main`.
 The systems are made up, except the Umlimator Atlas: umlimator's own model.
 
+## Type pages
+
+Each diagram type, and the map, has one page holding every example and variant of that type: [`types/<type>.json`](types/), which CI renders to `types/<type>.html`. Its root view, `overview`, has a card per variant, and each card opens that variant's view. [`../tools/types.mjs`](../tools/types.mjs) builds each from [`../tools/types.json`](../tools/types.json), which lists a type's sources in card order with each card's text: the examples below, and the variant files in [`variants/`](variants/), each named `<type>-<name>.json` and holding a small model with views of that type. A source is copied whole, its ids prefixed with its name (`sales-classes-`) or a variant's `<name>` (`members-`), so that sources never clash. Run `node tools/types.mjs` for every type, or `node tools/types.mjs uml-class` for one; `tests/types.test.mjs` fails when a committed model is not what it writes.
+
 ## Maps
 
 Each map is a JSON model. CI turns it into a self-contained page (`python3 umlimator.py render`) and checks its layout.

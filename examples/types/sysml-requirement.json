@@ -1,0 +1,527 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Requirement diagram examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-ebike-requirements-requirements",
+   "label": "E-bike requirements",
+   "kind": "file",
+   "sublabel": "containment, derive, satisfy, verify",
+   "what": "Requirements with their id and text in a frame with SysML's header; containment drawn with a crosshair; derive, satisfy, verify, refine, trace and copy, each checked as SysML says.",
+   "how": "From examples/ebike-requirements.json.",
+   "opensView": "ebike-requirements-requirements"
+  },
+  {
+   "id": "card-kinds-kinds",
+   "label": "Requirement kinds",
+   "kind": "file",
+   "sublabel": "kinds, risk, verify method",
+   "what": "A dock station's requirements in a package the frame names as its subject: the five requirement kinds over their names, each with its risk and verify method rows, and a `<<problem>>` note.",
+   "how": "From examples/variants/sysml-requirement-kinds.json.",
+   "opensView": "kinds-kinds"
+  },
+  {
+   "id": "card-trace-trace",
+   "label": "Derived, satisfied and verified",
+   "kind": "file",
+   "sublabel": "satisfy, verify, refine, rows",
+   "what": "Library self-checkout: requirements derived from one whose long text is cut to 3 rows then \"+n more\", blocks that satisfy them, test cases that verify them and a block that refines one.",
+   "how": "From examples/variants/sysml-requirement-trace.json.",
+   "opensView": "trace-trace"
+  },
+  {
+   "id": "ebike-requirements-spec",
+   "type": "sysml.Requirement",
+   "label": "E-bike specification",
+   "props": {
+    "reqId": "EB-1",
+    "text": "The e-bike shall serve as a shared city bike that riders hire from a dock and return to a dock."
+   }
+  },
+  {
+   "id": "ebike-requirements-assist",
+   "type": "sysml.Requirement",
+   "label": "Pedal assistance",
+   "parent": "ebike-requirements-spec",
+   "props": {
+    "reqId": "EB-1.1",
+    "text": "The motor shall assist the rider only while the rider is pedalling."
+   }
+  },
+  {
+   "id": "ebike-requirements-cut-off",
+   "type": "sysml.Requirement",
+   "label": "Assistance cut-off",
+   "parent": "ebike-requirements-assist",
+   "props": {
+    "reqId": "EB-1.1.1",
+    "text": "Assistance shall fall away progressively and stop when the bike reaches 25 km/h."
+   }
+  },
+  {
+   "id": "ebike-requirements-range",
+   "type": "sysml.Requirement",
+   "label": "Range",
+   "parent": "ebike-requirements-spec",
+   "props": {
+    "reqId": "EB-1.2",
+    "text": "A full charge shall give at least 60 km of assisted riding."
+   }
+  },
+  {
+   "id": "ebike-requirements-docking",
+   "type": "sysml.Requirement",
+   "label": "Docking",
+   "parent": "ebike-requirements-spec",
+   "props": {
+    "reqId": "EB-1.3",
+    "text": "The e-bike shall lock into a dock when it is returned and shall charge while it is docked."
+   }
+  },
+  {
+   "id": "ebike-requirements-lock-time",
+   "type": "sysml.Requirement",
+   "label": "Locking time",
+   "parent": "ebike-requirements-docking",
+   "props": {
+    "reqId": "EB-1.3.1",
+    "text": "The dock shall lock the e-bike within 2 s of the bike being pushed in."
+   }
+  },
+  {
+   "id": "ebike-requirements-capacity",
+   "type": "sysml.Requirement",
+   "label": "Battery capacity",
+   "props": {
+    "reqId": "BAT-1",
+    "text": "The battery shall store at least 500 Wh."
+   }
+  },
+  {
+   "id": "ebike-requirements-assist-curve",
+   "type": "sysml.Requirement",
+   "label": "Assistance curve",
+   "props": {
+    "reqId": "CTL-1",
+    "text": "Assistance shall follow pedal torque and shall not exceed 250 W of continuous power."
+   }
+  },
+  {
+   "id": "ebike-requirements-legal-speed",
+   "type": "sysml.Requirement",
+   "label": "Maximum assisted speed",
+   "props": {
+    "reqId": "REG-3",
+    "text": "Assistance shall fall away progressively and stop when the bike reaches 25 km/h."
+   }
+  },
+  {
+   "id": "ebike-requirements-availability",
+   "type": "sysml.Requirement",
+   "label": "All-day availability",
+   "props": {
+    "reqId": "CITY-4",
+    "text": "A bike shall last a full day of hires on one charge."
+   }
+  },
+  {
+   "id": "ebike-requirements-battery",
+   "type": "sysml.Block",
+   "label": "Battery"
+  },
+  {
+   "id": "ebike-requirements-controller",
+   "type": "sysml.Block",
+   "label": "Controller"
+  },
+  {
+   "id": "ebike-requirements-dock",
+   "type": "sysml.Block",
+   "label": "Dock"
+  },
+  {
+   "id": "ebike-requirements-range-ride",
+   "type": "sysml.TestCase",
+   "label": "Range ride on the test circuit"
+  },
+  {
+   "id": "ebike-requirements-roller-test",
+   "type": "sysml.TestCase",
+   "label": "Cut-off speed on the rollers"
+  },
+  {
+   "id": "ebike-requirements-why-500",
+   "type": "uml.Comment",
+   "label": "60 km at 7 Wh/km takes 420 Wh; 500 Wh keeps 15 % in reserve",
+   "props": {
+    "stereotypes": [
+     "rationale"
+    ]
+   }
+  },
+  {
+   "id": "kinds-dock-pkg",
+   "type": "uml.Package",
+   "label": "Dock station"
+  },
+  {
+   "id": "kinds-release",
+   "type": "sysml.Requirement",
+   "label": "Release a bike",
+   "parent": "kinds-dock-pkg",
+   "props": {
+    "reqId": "DK-1",
+    "text": "The dock shall release a bike when the hire service asks it to.",
+    "stereotypes": [
+     "functionalRequirement"
+    ],
+    "risk": "high",
+    "verifyMethod": "test"
+   }
+  },
+  {
+   "id": "kinds-release-time",
+   "type": "sysml.Requirement",
+   "label": "Release time",
+   "parent": "kinds-dock-pkg",
+   "props": {
+    "reqId": "DK-2",
+    "text": "The lock shall open within 1 s of the request.",
+    "stereotypes": [
+     "performanceRequirement"
+    ],
+    "risk": "medium",
+    "verifyMethod": "test"
+   }
+  },
+  {
+   "id": "kinds-link",
+   "type": "sysml.Requirement",
+   "label": "Network link",
+   "parent": "kinds-dock-pkg",
+   "props": {
+    "reqId": "DK-3",
+    "text": "The dock shall talk to the hire service over MQTT on the city's LTE network.",
+    "stereotypes": [
+     "interfaceRequirement"
+    ],
+    "risk": "low",
+    "verifyMethod": "inspection"
+   }
+  },
+  {
+   "id": "kinds-footprint",
+   "type": "sysml.Requirement",
+   "label": "Footprint",
+   "parent": "kinds-dock-pkg",
+   "props": {
+    "reqId": "DK-4",
+    "text": "A bay shall take no more than 0.8 m of kerb.",
+    "stereotypes": [
+     "physicalRequirement"
+    ],
+    "risk": "low",
+    "verifyMethod": "inspection"
+   }
+  },
+  {
+   "id": "kinds-power",
+   "type": "sysml.Requirement",
+   "label": "Mains power only",
+   "parent": "kinds-dock-pkg",
+   "props": {
+    "reqId": "DK-5",
+    "text": "The dock shall run from street-light mains, with no battery of its own.",
+    "stereotypes": [
+     "designConstraint"
+    ],
+    "risk": "medium",
+    "verifyMethod": "analysis"
+   }
+  },
+  {
+   "id": "kinds-outage",
+   "type": "uml.Comment",
+   "label": "street lights are off by day in some districts",
+   "props": {
+    "stereotypes": [
+     "problem"
+    ]
+   }
+  },
+  {
+   "id": "trace-checkout",
+   "type": "sysml.Requirement",
+   "label": "Self-checkout",
+   "props": {
+    "reqId": "LIB-1",
+    "text": "A member shall borrow a book at a kiosk without staff help, by scanning their card and then each book, and shall leave with a printed or e-mailed slip listing what was borrowed and when it is due back."
+   }
+  },
+  {
+   "id": "trace-scan-speed",
+   "type": "sysml.Requirement",
+   "label": "Scan speed",
+   "props": {
+    "reqId": "LIB-1.1",
+    "text": "A kiosk shall read a book's RFID tag within 0.5 s of the book being placed on the pad."
+   }
+  },
+  {
+   "id": "trace-alarm-off",
+   "type": "sysml.Requirement",
+   "label": "Security tag off",
+   "props": {
+    "reqId": "LIB-1.2",
+    "text": "Borrowing a book shall switch its security tag off, so the gate does not sound."
+   }
+  },
+  {
+   "id": "trace-accessible",
+   "type": "sysml.Requirement",
+   "label": "Reachable from a wheelchair",
+   "props": {
+    "reqId": "LIB-2",
+    "text": "The kiosk's screen and pad shall sit between 0.7 m and 1.1 m from the floor."
+   }
+  },
+  {
+   "id": "trace-kiosk",
+   "type": "sysml.Block",
+   "label": "Kiosk"
+  },
+  {
+   "id": "trace-reader",
+   "type": "sysml.Block",
+   "label": "RFID reader"
+  },
+  {
+   "id": "trace-pad-test",
+   "type": "sysml.TestCase",
+   "label": "Hundred-book pad test"
+  },
+  {
+   "id": "trace-gate-test",
+   "type": "sysml.TestCase",
+   "label": "Walk through the gate"
+  },
+  {
+   "id": "trace-kiosk-spec",
+   "type": "sysml.Block",
+   "label": "Kiosk drawing set"
+  }
+ ],
+ "edges": [
+  {
+   "id": "ebike-requirements-capacity-from-range",
+   "type": "sysml.DeriveReqt",
+   "from": "ebike-requirements-capacity",
+   "to": "ebike-requirements-range"
+  },
+  {
+   "id": "ebike-requirements-curve-refines-assist",
+   "type": "sysml.Refine",
+   "from": "ebike-requirements-assist-curve",
+   "to": "ebike-requirements-assist"
+  },
+  {
+   "id": "ebike-requirements-range-traces-availability",
+   "type": "sysml.Trace",
+   "from": "ebike-requirements-range",
+   "to": "ebike-requirements-availability"
+  },
+  {
+   "id": "ebike-requirements-cut-off-copies-legal-speed",
+   "type": "sysml.Copy",
+   "from": "ebike-requirements-cut-off",
+   "to": "ebike-requirements-legal-speed"
+  },
+  {
+   "id": "ebike-requirements-battery-satisfies-capacity",
+   "type": "sysml.Satisfy",
+   "from": "ebike-requirements-battery",
+   "to": "ebike-requirements-capacity"
+  },
+  {
+   "id": "ebike-requirements-controller-satisfies-cut-off",
+   "type": "sysml.Satisfy",
+   "from": "ebike-requirements-controller",
+   "to": "ebike-requirements-cut-off"
+  },
+  {
+   "id": "ebike-requirements-dock-satisfies-lock-time",
+   "type": "sysml.Satisfy",
+   "from": "ebike-requirements-dock",
+   "to": "ebike-requirements-lock-time"
+  },
+  {
+   "id": "ebike-requirements-ride-verifies-range",
+   "type": "sysml.Verify",
+   "from": "ebike-requirements-range-ride",
+   "to": "ebike-requirements-range"
+  },
+  {
+   "id": "ebike-requirements-rollers-verify-cut-off",
+   "type": "sysml.Verify",
+   "from": "ebike-requirements-roller-test",
+   "to": "ebike-requirements-cut-off"
+  },
+  {
+   "id": "ebike-requirements-why-500-link",
+   "type": "uml.CommentLink",
+   "from": "ebike-requirements-why-500",
+   "to": "ebike-requirements-capacity"
+  },
+  {
+   "id": "kinds-time-from-release",
+   "type": "sysml.DeriveReqt",
+   "from": "kinds-release-time",
+   "to": "kinds-release"
+  },
+  {
+   "id": "kinds-outage-link",
+   "type": "uml.CommentLink",
+   "from": "kinds-outage",
+   "to": "kinds-power"
+  },
+  {
+   "id": "trace-speed-from-checkout",
+   "type": "sysml.DeriveReqt",
+   "from": "trace-scan-speed",
+   "to": "trace-checkout"
+  },
+  {
+   "id": "trace-alarm-from-checkout",
+   "type": "sysml.DeriveReqt",
+   "from": "trace-alarm-off",
+   "to": "trace-checkout"
+  },
+  {
+   "id": "trace-reader-satisfies-speed",
+   "type": "sysml.Satisfy",
+   "from": "trace-reader",
+   "to": "trace-scan-speed"
+  },
+  {
+   "id": "trace-kiosk-satisfies-alarm",
+   "type": "sysml.Satisfy",
+   "from": "trace-kiosk",
+   "to": "trace-alarm-off"
+  },
+  {
+   "id": "trace-kiosk-satisfies-access",
+   "type": "sysml.Satisfy",
+   "from": "trace-kiosk",
+   "to": "trace-accessible"
+  },
+  {
+   "id": "trace-pad-verifies-speed",
+   "type": "sysml.Verify",
+   "from": "trace-pad-test",
+   "to": "trace-scan-speed"
+  },
+  {
+   "id": "trace-gate-verifies-alarm",
+   "type": "sysml.Verify",
+   "from": "trace-gate-test",
+   "to": "trace-alarm-off"
+  },
+  {
+   "id": "trace-drawings-refine-access",
+   "type": "sysml.Refine",
+   "from": "trace-kiosk-spec",
+   "to": "trace-accessible"
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Requirement diagram examples",
+   "nodeIds": [
+    "card-ebike-requirements-requirements",
+    "card-kinds-kinds",
+    "card-trace-trace"
+   ],
+   "layout": {
+    "card-ebike-requirements-requirements": [
+     0,
+     0
+    ],
+    "card-kinds-kinds": [
+     1,
+     0
+    ],
+    "card-trace-trace": [
+     0,
+     1
+    ]
+   }
+  },
+  {
+   "id": "ebike-requirements-requirements",
+   "diagram": "sysml.requirement",
+   "title": "E-bike requirements",
+   "parent": "overview",
+   "direction": "down",
+   "nodeIds": [
+    "ebike-requirements-spec",
+    "ebike-requirements-assist",
+    "ebike-requirements-cut-off",
+    "ebike-requirements-range",
+    "ebike-requirements-docking",
+    "ebike-requirements-lock-time",
+    "ebike-requirements-capacity",
+    "ebike-requirements-assist-curve",
+    "ebike-requirements-legal-speed",
+    "ebike-requirements-availability",
+    "ebike-requirements-battery",
+    "ebike-requirements-controller",
+    "ebike-requirements-dock",
+    "ebike-requirements-range-ride",
+    "ebike-requirements-roller-test",
+    "ebike-requirements-why-500"
+   ]
+  },
+  {
+   "id": "kinds-kinds",
+   "diagram": "sysml.requirement",
+   "title": "Requirement kinds",
+   "parent": "overview",
+   "subject": "kinds-dock-pkg",
+   "nodeIds": [
+    "kinds-dock-pkg",
+    "kinds-release",
+    "kinds-release-time",
+    "kinds-link",
+    "kinds-footprint",
+    "kinds-power",
+    "kinds-outage"
+   ]
+  },
+  {
+   "id": "trace-trace",
+   "diagram": "sysml.requirement",
+   "title": "Derived, satisfied and verified",
+   "parent": "overview",
+   "nodeIds": [
+    "trace-checkout",
+    "trace-scan-speed",
+    "trace-alarm-off",
+    "trace-accessible",
+    "trace-kiosk",
+    "trace-reader",
+    "trace-pad-test",
+    "trace-gate-test",
+    "trace-kiosk-spec"
+   ],
+   "present": {
+    "trace-checkout": {
+     "rows": 3
+    }
+   }
+  }
+ ]
+}

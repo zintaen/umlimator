@@ -1,0 +1,40 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Cycle hire: classes beside their instances",
+ "root": "beside",
+ "nodes": [
+  { "id": "Dock", "type": "uml.Class", "label": "Dock", "members": [
+   { "id": "Dock.code", "type": "uml.Property", "label": "code", "props": { "visibility": "public", "valueType": "String" } },
+   { "id": "Dock.slots", "type": "uml.Property", "label": "slots", "props": { "visibility": "public", "valueType": "Integer" } }
+  ] },
+  { "id": "Bike", "type": "uml.Class", "label": "Bike", "members": [
+   { "id": "Bike.serial", "type": "uml.Property", "label": "serial", "props": { "visibility": "public", "valueType": "String" } },
+   { "id": "Bike.charge", "type": "uml.Property", "label": "charge", "props": { "visibility": "public", "valueType": "Integer" } }
+  ] },
+  { "id": "riverside", "type": "uml.InstanceSpecification", "label": "riverside", "props": { "classifier": "Dock" },
+   "members": [
+    { "id": "riverside.code", "type": "uml.Slot", "label": "code", "props": { "value": "RV-01" } },
+    { "id": "riverside.slots", "type": "uml.Slot", "label": "slots", "props": { "value": "12" } }
+   ] },
+  { "id": "market", "type": "uml.InstanceSpecification", "label": "market", "props": { "classifier": "Dock" },
+   "members": [
+    { "id": "market.code", "type": "uml.Slot", "label": "code", "props": { "value": "MK-04" } }
+   ] },
+  { "id": "bike-88", "type": "uml.InstanceSpecification", "label": "bike88", "props": { "classifier": "Bike" },
+   "members": [
+    { "id": "bike-88.serial", "type": "uml.Slot", "label": "serial", "props": { "value": "EB-0088" } },
+    { "id": "bike-88.charge", "type": "uml.Slot", "label": "charge", "props": { "value": "64" } }
+   ] }
+ ],
+ "edges": [
+  { "id": "bike-home", "type": "uml.Link", "from": "bike-88", "to": "riverside", "label": "home", "props": { "ends": { "to": { "role": "home" } } } },
+  { "id": "bike-at", "type": "uml.Link", "from": "bike-88", "to": "riverside", "label": "parked at", "props": { "ends": { "to": { "role": "dock" } } } },
+  { "id": "dock-next", "type": "uml.Link", "from": "riverside", "to": "market", "props": { "association": "Neighbour", "ends": { "to": { "role": "next" } } } },
+  { "id": "market-self", "type": "uml.Link", "from": "market", "to": "market", "label": "rebalances" }
+ ],
+ "views": [
+  { "id": "beside", "diagram": "uml.object", "title": "Two classes beside their instances", "parent": null,
+   "nodeIds": ["Dock", "Bike", "riverside", "market", "bike-88"] }
+ ]
+}

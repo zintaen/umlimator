@@ -1,0 +1,526 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Flowchart examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-returns-flowchart-returns",
+   "label": "Handling a returned book",
+   "kind": "file",
+   "sublabel": "ten symbols, laid out down",
+   "what": "Ten symbols, laid out down: terminators, processes, a decision with labelled exits, input/output, a predefined process, a document, a database, manual input, a delay and a connector.",
+   "how": "From examples/returns-flowchart.json.",
+   "opensView": "returns-flowchart-returns"
+  },
+  {
+   "id": "card-right-unlock",
+   "label": "Unlocking a bike, laid out right",
+   "kind": "file",
+   "sublabel": "laid out right, three exits, a loop",
+   "what": "Laid out right: a decision with three labelled exits, one of which loops back to it through a manual input, a delay, a database, a document and two end terminators.",
+   "how": "From examples/variants/flowchart-right.json.",
+   "opensView": "right-unlock"
+  },
+  {
+   "id": "card-connectors-renew",
+   "label": "Renewing a loan: a connector pair",
+   "kind": "file",
+   "sublabel": "an on-page connector pair, a note",
+   "what": "Two connectors labelled B: the flow goes into one and carries on from the other, so the chart breaks without a long line; two decisions, a manual input and a note on the connector.",
+   "how": "From examples/variants/flowchart-connectors.json.",
+   "opensView": "connectors-renew"
+  },
+  {
+   "id": "returns-flowchart-return-arrives",
+   "type": "flow.Terminator",
+   "label": "Returned parcel arrives"
+  },
+  {
+   "id": "returns-flowchart-slip",
+   "type": "flow.InputOutput",
+   "label": "Read the returns slip"
+  },
+  {
+   "id": "returns-flowchart-key-in",
+   "type": "flow.ManualInput",
+   "label": "Key in the order number"
+  },
+  {
+   "id": "returns-flowchart-inspect",
+   "type": "flow.Process",
+   "label": "Inspect the book"
+  },
+  {
+   "id": "returns-flowchart-resaleable",
+   "type": "flow.Decision",
+   "label": "Fit for resale?"
+  },
+  {
+   "id": "returns-flowchart-refund",
+   "type": "flow.PredefinedProcess",
+   "label": "Refund the payment"
+  },
+  {
+   "id": "returns-flowchart-wait",
+   "type": "flow.Delay",
+   "label": "Wait for the bank to confirm"
+  },
+  {
+   "id": "returns-flowchart-restock",
+   "type": "flow.Process",
+   "label": "Put the book back on the shelf"
+  },
+  {
+   "id": "returns-flowchart-stock-records",
+   "type": "flow.Database",
+   "label": "Stock records"
+  },
+  {
+   "id": "returns-flowchart-letter",
+   "type": "flow.Document",
+   "label": "Rejection letter"
+  },
+  {
+   "id": "returns-flowchart-post-back",
+   "type": "flow.Process",
+   "label": "Post the book back"
+  },
+  {
+   "id": "returns-flowchart-join",
+   "type": "flow.Connector",
+   "label": "A"
+  },
+  {
+   "id": "returns-flowchart-end",
+   "type": "flow.Terminator",
+   "label": "Return closed"
+  },
+  {
+   "id": "right-scan",
+   "type": "flow.Terminator",
+   "label": "Rider scans the dock"
+  },
+  {
+   "id": "right-read-code",
+   "type": "flow.InputOutput",
+   "label": "Read the bike number"
+  },
+  {
+   "id": "right-account",
+   "type": "flow.Decision",
+   "label": "Account status?"
+  },
+  {
+   "id": "right-new-card",
+   "type": "flow.ManualInput",
+   "label": "Enter a new card"
+  },
+  {
+   "id": "right-release",
+   "type": "flow.PredefinedProcess",
+   "label": "Release the latch"
+  },
+  {
+   "id": "right-latch-wait",
+   "type": "flow.Delay",
+   "label": "Wait for the latch"
+  },
+  {
+   "id": "right-ride-log",
+   "type": "flow.Database",
+   "label": "Ride log"
+  },
+  {
+   "id": "right-ride-starts",
+   "type": "flow.Terminator",
+   "label": "Ride starts"
+  },
+  {
+   "id": "right-notice",
+   "type": "flow.Document",
+   "label": "Refusal notice"
+  },
+  {
+   "id": "right-refused",
+   "type": "flow.Terminator",
+   "label": "Unlock refused"
+  },
+  {
+   "id": "connectors-asks",
+   "type": "flow.Terminator",
+   "label": "Member asks to renew"
+  },
+  {
+   "id": "connectors-find-loan",
+   "type": "flow.Process",
+   "label": "Find the loan"
+  },
+  {
+   "id": "connectors-reserved",
+   "type": "flow.Decision",
+   "label": "Reserved by another member?"
+  },
+  {
+   "id": "connectors-fines",
+   "type": "flow.Decision",
+   "label": "Fines over the limit?"
+  },
+  {
+   "id": "connectors-pay-fines",
+   "type": "flow.ManualInput",
+   "label": "Take the fine payment"
+  },
+  {
+   "id": "connectors-to-b",
+   "type": "flow.Connector",
+   "label": "B"
+  },
+  {
+   "id": "connectors-from-b",
+   "type": "flow.Connector",
+   "label": "B"
+  },
+  {
+   "id": "connectors-extend",
+   "type": "flow.Process",
+   "label": "Extend the due date by three weeks"
+  },
+  {
+   "id": "connectors-slip",
+   "type": "flow.Document",
+   "label": "New date slip"
+  },
+  {
+   "id": "connectors-renewed",
+   "type": "flow.Terminator",
+   "label": "Loan renewed"
+  },
+  {
+   "id": "connectors-say-no",
+   "type": "flow.Process",
+   "label": "Tell the member to return it"
+  },
+  {
+   "id": "connectors-not-renewed",
+   "type": "flow.Terminator",
+   "label": "Loan not renewed"
+  },
+  {
+   "id": "connectors-why-b",
+   "type": "uml.Comment",
+   "label": "The two B circles are one point: the flow carries on from B's other circle"
+  }
+ ],
+ "edges": [
+  {
+   "id": "returns-flowchart-start-slip",
+   "type": "flow.Flow",
+   "from": "returns-flowchart-return-arrives",
+   "to": "returns-flowchart-slip"
+  },
+  {
+   "id": "returns-flowchart-slip-key-in",
+   "type": "flow.Flow",
+   "from": "returns-flowchart-slip",
+   "to": "returns-flowchart-key-in"
+  },
+  {
+   "id": "returns-flowchart-key-in-inspect",
+   "type": "flow.Flow",
+   "from": "returns-flowchart-key-in",
+   "to": "returns-flowchart-inspect"
+  },
+  {
+   "id": "returns-flowchart-inspect-resaleable",
+   "type": "flow.Flow",
+   "from": "returns-flowchart-inspect",
+   "to": "returns-flowchart-resaleable"
+  },
+  {
+   "id": "returns-flowchart-resaleable-yes",
+   "type": "flow.Flow",
+   "from": "returns-flowchart-resaleable",
+   "to": "returns-flowchart-refund",
+   "label": "yes"
+  },
+  {
+   "id": "returns-flowchart-resaleable-no",
+   "type": "flow.Flow",
+   "from": "returns-flowchart-resaleable",
+   "to": "returns-flowchart-letter",
+   "label": "no"
+  },
+  {
+   "id": "returns-flowchart-refund-wait",
+   "type": "flow.Flow",
+   "from": "returns-flowchart-refund",
+   "to": "returns-flowchart-wait"
+  },
+  {
+   "id": "returns-flowchart-wait-restock",
+   "type": "flow.Flow",
+   "from": "returns-flowchart-wait",
+   "to": "returns-flowchart-restock"
+  },
+  {
+   "id": "returns-flowchart-restock-stock",
+   "type": "flow.Flow",
+   "from": "returns-flowchart-restock",
+   "to": "returns-flowchart-stock-records"
+  },
+  {
+   "id": "returns-flowchart-stock-join",
+   "type": "flow.Flow",
+   "from": "returns-flowchart-stock-records",
+   "to": "returns-flowchart-join"
+  },
+  {
+   "id": "returns-flowchart-letter-post-back",
+   "type": "flow.Flow",
+   "from": "returns-flowchart-letter",
+   "to": "returns-flowchart-post-back"
+  },
+  {
+   "id": "returns-flowchart-post-back-join",
+   "type": "flow.Flow",
+   "from": "returns-flowchart-post-back",
+   "to": "returns-flowchart-join"
+  },
+  {
+   "id": "returns-flowchart-join-end",
+   "type": "flow.Flow",
+   "from": "returns-flowchart-join",
+   "to": "returns-flowchart-end"
+  },
+  {
+   "id": "right-scan-read",
+   "type": "flow.Flow",
+   "from": "right-scan",
+   "to": "right-read-code"
+  },
+  {
+   "id": "right-read-account",
+   "type": "flow.Flow",
+   "from": "right-read-code",
+   "to": "right-account"
+  },
+  {
+   "id": "right-account-good",
+   "type": "flow.Flow",
+   "from": "right-account",
+   "to": "right-release",
+   "label": "good"
+  },
+  {
+   "id": "right-account-expired",
+   "type": "flow.Flow",
+   "from": "right-account",
+   "to": "right-new-card",
+   "label": "card expired"
+  },
+  {
+   "id": "right-account-blocked",
+   "type": "flow.Flow",
+   "from": "right-account",
+   "to": "right-notice",
+   "label": "blocked"
+  },
+  {
+   "id": "right-new-card-back",
+   "type": "flow.Flow",
+   "from": "right-new-card",
+   "to": "right-account",
+   "label": "check again"
+  },
+  {
+   "id": "right-release-wait",
+   "type": "flow.Flow",
+   "from": "right-release",
+   "to": "right-latch-wait"
+  },
+  {
+   "id": "right-wait-log",
+   "type": "flow.Flow",
+   "from": "right-latch-wait",
+   "to": "right-ride-log"
+  },
+  {
+   "id": "right-log-starts",
+   "type": "flow.Flow",
+   "from": "right-ride-log",
+   "to": "right-ride-starts"
+  },
+  {
+   "id": "right-notice-refused",
+   "type": "flow.Flow",
+   "from": "right-notice",
+   "to": "right-refused"
+  },
+  {
+   "id": "connectors-asks-find",
+   "type": "flow.Flow",
+   "from": "connectors-asks",
+   "to": "connectors-find-loan"
+  },
+  {
+   "id": "connectors-find-reserved",
+   "type": "flow.Flow",
+   "from": "connectors-find-loan",
+   "to": "connectors-reserved"
+  },
+  {
+   "id": "connectors-reserved-yes",
+   "type": "flow.Flow",
+   "from": "connectors-reserved",
+   "to": "connectors-say-no",
+   "label": "yes"
+  },
+  {
+   "id": "connectors-reserved-no",
+   "type": "flow.Flow",
+   "from": "connectors-reserved",
+   "to": "connectors-fines",
+   "label": "no"
+  },
+  {
+   "id": "connectors-fines-yes",
+   "type": "flow.Flow",
+   "from": "connectors-fines",
+   "to": "connectors-pay-fines",
+   "label": "yes"
+  },
+  {
+   "id": "connectors-fines-no",
+   "type": "flow.Flow",
+   "from": "connectors-fines",
+   "to": "connectors-to-b",
+   "label": "no"
+  },
+  {
+   "id": "connectors-paid-b",
+   "type": "flow.Flow",
+   "from": "connectors-pay-fines",
+   "to": "connectors-to-b"
+  },
+  {
+   "id": "connectors-b-extend",
+   "type": "flow.Flow",
+   "from": "connectors-from-b",
+   "to": "connectors-extend"
+  },
+  {
+   "id": "connectors-extend-slip",
+   "type": "flow.Flow",
+   "from": "connectors-extend",
+   "to": "connectors-slip"
+  },
+  {
+   "id": "connectors-slip-renewed",
+   "type": "flow.Flow",
+   "from": "connectors-slip",
+   "to": "connectors-renewed"
+  },
+  {
+   "id": "connectors-no-end",
+   "type": "flow.Flow",
+   "from": "connectors-say-no",
+   "to": "connectors-not-renewed"
+  },
+  {
+   "id": "connectors-why-b-link",
+   "type": "uml.CommentLink",
+   "from": "connectors-why-b",
+   "to": "connectors-to-b"
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Flowchart examples",
+   "nodeIds": [
+    "card-returns-flowchart-returns",
+    "card-right-unlock",
+    "card-connectors-renew"
+   ],
+   "layout": {
+    "card-returns-flowchart-returns": [
+     0,
+     0
+    ],
+    "card-right-unlock": [
+     1,
+     0
+    ],
+    "card-connectors-renew": [
+     0,
+     1
+    ]
+   }
+  },
+  {
+   "id": "returns-flowchart-returns",
+   "diagram": "flowchart",
+   "title": "Handling a returned book",
+   "parent": "overview",
+   "direction": "down",
+   "nodeIds": [
+    "returns-flowchart-return-arrives",
+    "returns-flowchart-slip",
+    "returns-flowchart-key-in",
+    "returns-flowchart-inspect",
+    "returns-flowchart-resaleable",
+    "returns-flowchart-refund",
+    "returns-flowchart-wait",
+    "returns-flowchart-restock",
+    "returns-flowchart-stock-records",
+    "returns-flowchart-letter",
+    "returns-flowchart-post-back",
+    "returns-flowchart-join",
+    "returns-flowchart-end"
+   ]
+  },
+  {
+   "id": "right-unlock",
+   "diagram": "flowchart",
+   "title": "Unlocking a bike, laid out right",
+   "parent": "overview",
+   "direction": "right",
+   "nodeIds": [
+    "right-scan",
+    "right-read-code",
+    "right-account",
+    "right-new-card",
+    "right-release",
+    "right-latch-wait",
+    "right-ride-log",
+    "right-ride-starts",
+    "right-notice",
+    "right-refused"
+   ]
+  },
+  {
+   "id": "connectors-renew",
+   "diagram": "flowchart",
+   "title": "Renewing a loan: a connector pair",
+   "parent": "overview",
+   "direction": "down",
+   "nodeIds": [
+    "connectors-asks",
+    "connectors-find-loan",
+    "connectors-reserved",
+    "connectors-fines",
+    "connectors-pay-fines",
+    "connectors-to-b",
+    "connectors-from-b",
+    "connectors-extend",
+    "connectors-slip",
+    "connectors-renewed",
+    "connectors-say-no",
+    "connectors-not-renewed",
+    "connectors-why-b"
+   ]
+  }
+ ]
+}

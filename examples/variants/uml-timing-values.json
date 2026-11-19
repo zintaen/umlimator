@@ -1,0 +1,39 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Timing: unlocking a bike",
+ "root": "unlock",
+ "nodes": [
+  { "id": "app", "type": "uml.Lifeline", "label": "app", "props": { "represents": "RiderApp", "states": ["Idle", "Waiting", "Riding"] } },
+  { "id": "lock", "type": "uml.Lifeline", "label": "lock", "props": { "represents": "DockLock", "states": ["Locked", "Releasing", "Open"] } },
+  { "id": "led", "type": "uml.Lifeline", "label": "light", "props": { "represents": "DockLight" } }
+ ],
+ "edges": [],
+ "views": [
+  { "id": "unlock", "diagram": "uml.timing", "title": "States and a value lifeline", "parent": null,
+   "nodeIds": ["app", "lock", "led"],
+   "present": { "led": { "as": "values" } },
+   "edges": [
+    { "id": "m-unlock", "type": "uml.Message", "from": "app", "to": "lock", "label": "unlock(bike 42)", "props": { "sort": "async", "sentAt": 1, "receivedAt": 2 } },
+    { "id": "m-open", "type": "uml.Message", "from": "lock", "to": "app", "label": "released", "props": { "sort": "async", "stereotypes": ["signal"], "sentAt": 5, "receivedAt": 6 } }
+   ],
+   "timeline": { "unit": "s",
+    "changes": [
+     { "id": "a0", "lifeline": "app", "at": 0, "state": "Idle" },
+     { "id": "a1", "lifeline": "app", "at": 1, "state": "Waiting" },
+     { "id": "a2", "lifeline": "app", "at": 6, "state": "Riding" },
+     { "id": "l0", "lifeline": "lock", "at": 0, "state": "Locked" },
+     { "id": "l1", "lifeline": "lock", "at": 2, "state": "Releasing" },
+     { "id": "l2", "lifeline": "lock", "at": 5, "state": "Open" },
+     { "id": "l3", "lifeline": "lock", "at": 9, "state": "Locked" },
+     { "id": "g0", "lifeline": "led", "at": 0, "state": "green" },
+     { "id": "g1", "lifeline": "led", "at": 2, "state": "blinking blue" },
+     { "id": "g2", "lifeline": "led", "at": 5, "state": "off" },
+     { "id": "g3", "lifeline": "led", "at": 9, "state": "red" }
+    ],
+    "constraints": [
+     { "id": "c-release", "type": "uml.DurationConstraint", "from": "a1", "to": "l2", "label": "{<= 5 s}" },
+     { "id": "c-relock", "type": "uml.TimeConstraint", "from": "l3", "label": "{t = 9 s}" }
+    ] } }
+ ]
+}

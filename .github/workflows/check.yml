@@ -558,15 +558,15 @@ jobs:
               python3 umlimator.py record "_site/examples/$n.html" --story "$s" --out "_site/examples/stills/$n/story-$s.png"   # each story, recorded
             done
           done
-          # each type's minimal and stress test models, which the gallery's Diagrams part shows with the examples (tools/gallery.mjs)
-          mkdir -p _site/examples/samples
-          for m in tests/*-minimal.json tests/*-stress.json; do
+          # each diagram type's page (tools/types.mjs): one multi-view model holding every example and variant of the
+          # type, its overview a card per variant; the gallery's Diagrams part has a card for each
+          mkdir -p _site/examples/types
+          cp examples/types/*.json _site/examples/types/
+          for m in examples/types/*.json; do
             n=$(basename "$m" .json)
-            cp "$m" _site/examples/samples/
-            python3 umlimator.py render "$m" --out "_site/examples/samples/$n.html" --no-check
-            # at scale 1: the gallery shows them as thumbnails, and a stress view at scale 2 runs to tens of megapixels
-            python3 umlimator.py stills "_site/examples/samples/$n.html" --out "_site/examples/samples/stills/$n" --scale 1 || echo "::warning::samples/$n: no stills"
-            python3 umlimator.py pdf "_site/examples/samples/$n.html" --out "_site/examples/samples/$n.pdf" || echo "::warning::samples/$n: no PDF"
+            python3 umlimator.py render "$m" --out "_site/examples/types/$n.html" --no-check
+            python3 umlimator.py stills "_site/examples/types/$n.html" --out "_site/examples/types/stills/$n"
+            python3 umlimator.py pdf "_site/examples/types/$n.html" --out "_site/examples/types/$n.pdf"
           done
 
       # the documentation site (VitePress, docs/) at the root, around the examples: the gallery stays at /examples/

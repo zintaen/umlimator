@@ -1,0 +1,64 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Cycle hire: renting a bike",
+ "root": "rent",
+ "nodes": [
+  { "id": "rent-start", "type": "uml.InitialNode" },
+  { "id": "ref-sign-in", "type": "uml.InteractionUse", "label": "Sign in", "opensView": "sign-in" },
+  { "id": "ref-unlock", "type": "uml.InteractionUse", "label": "Unlock a bike", "opensView": "unlock" },
+  { "id": "released", "type": "uml.DecisionNode", "label": "Bike released?" },
+  { "id": "ref-ride", "type": "uml.InteractionUse", "label": "Ride and return", "opensView": "ride" },
+  { "id": "rent-done", "type": "uml.ActivityFinalNode" },
+  { "id": "ref-report", "type": "uml.InteractionUse", "label": "Report the dock", "opensView": "report" },
+  { "id": "report-done", "type": "uml.FlowFinalNode" },
+  { "id": "stuck-note", "type": "uml.Comment", "label": "A stuck bike ends only this branch: the rider may try another dock" },
+  { "id": "ll-rider", "type": "uml.Lifeline", "label": "rider", "props": { "represents": "Rider", "stereotypes": ["actor"] } },
+  { "id": "ll-app", "type": "uml.Lifeline", "label": "app", "props": { "represents": "RiderApp" } },
+  { "id": "ll-accounts", "type": "uml.Lifeline", "label": "accounts", "props": { "represents": "AccountService" } },
+  { "id": "ll-dock", "type": "uml.Lifeline", "label": "dock", "props": { "represents": "Dock" } },
+  { "id": "ll-billing", "type": "uml.Lifeline", "label": "billing", "props": { "represents": "Billing" } },
+  { "id": "ll-ops", "type": "uml.Lifeline", "label": "ops", "props": { "represents": "FleetOps" } }
+ ],
+ "edges": [
+  { "id": "f-start", "type": "uml.ControlFlow", "from": "rent-start", "to": "ref-sign-in" },
+  { "id": "f-signed", "type": "uml.ControlFlow", "from": "ref-sign-in", "to": "ref-unlock", "label": "signed in" },
+  { "id": "f-unlocked", "type": "uml.ControlFlow", "from": "ref-unlock", "to": "released" },
+  { "id": "f-yes", "type": "uml.ControlFlow", "from": "released", "to": "ref-ride", "props": { "guard": "released" } },
+  { "id": "f-no", "type": "uml.ControlFlow", "from": "released", "to": "ref-report", "props": { "guard": "else" } },
+  { "id": "f-ride-done", "type": "uml.ControlFlow", "from": "ref-ride", "to": "rent-done", "label": "ride closed" },
+  { "id": "f-report-done", "type": "uml.ControlFlow", "from": "ref-report", "to": "report-done" },
+  { "id": "stuck-note-link", "type": "uml.CommentLink", "from": "stuck-note", "to": "report-done" }
+ ],
+ "views": [
+  { "id": "rent", "diagram": "uml.interaction-overview", "title": "Renting a bike, laid out right", "parent": null,
+   "nodeIds": ["rent-start", "ref-sign-in", "ref-unlock", "released", "ref-ride", "rent-done", "ref-report", "report-done", "stuck-note"] },
+  { "id": "sign-in", "diagram": "uml.sequence", "title": "Sign in", "parent": "rent",
+   "nodeIds": ["ll-rider", "ll-app", "ll-accounts"],
+   "edges": [
+    { "id": "si-1", "type": "uml.Message", "from": "ll-rider", "to": "ll-app", "label": "open app", "props": { "sort": "call" } },
+    { "id": "si-2", "type": "uml.Message", "from": "ll-app", "to": "ll-accounts", "label": "signIn(token)", "props": { "sort": "call" } },
+    { "id": "si-3", "type": "uml.Message", "from": "ll-accounts", "to": "ll-app", "label": "session", "props": { "sort": "reply", "replyTo": "si-2" } },
+    { "id": "si-4", "type": "uml.Message", "from": "ll-app", "to": "ll-rider", "label": "map of docks", "props": { "sort": "reply", "replyTo": "si-1" } }
+   ] },
+  { "id": "unlock", "diagram": "uml.sequence", "title": "Unlock a bike", "parent": "rent",
+   "nodeIds": ["ll-rider", "ll-app", "ll-dock"],
+   "edges": [
+    { "id": "un-1", "type": "uml.Message", "from": "ll-rider", "to": "ll-app", "label": "scan(bike)", "props": { "sort": "call" } },
+    { "id": "un-2", "type": "uml.Message", "from": "ll-app", "to": "ll-dock", "label": "release(bike)", "props": { "sort": "call" } },
+    { "id": "un-3", "type": "uml.Message", "from": "ll-dock", "to": "ll-app", "label": "released or stuck", "props": { "sort": "reply", "replyTo": "un-2" } },
+    { "id": "un-4", "type": "uml.Message", "from": "ll-app", "to": "ll-rider", "label": "result", "props": { "sort": "reply", "replyTo": "un-1" } }
+   ] },
+  { "id": "ride", "diagram": "uml.sequence", "title": "Ride and return", "parent": "rent",
+   "nodeIds": ["ll-dock", "ll-billing", "ll-app"],
+   "edges": [
+    { "id": "ri-1", "type": "uml.Message", "from": "ll-dock", "to": "ll-billing", "label": "rideEnded(minutes)", "props": { "sort": "async" } },
+    { "id": "ri-2", "type": "uml.Message", "from": "ll-billing", "to": "ll-app", "label": "fare", "props": { "sort": "async" } }
+   ] },
+  { "id": "report", "diagram": "uml.sequence", "title": "Report the dock", "parent": "rent",
+   "nodeIds": ["ll-app", "ll-ops"],
+   "edges": [
+    { "id": "rp-1", "type": "uml.Message", "from": "ll-app", "to": "ll-ops", "label": "dockFault(dock)", "props": { "sort": "async" } }
+   ] }
+ ]
+}

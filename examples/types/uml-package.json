@@ -1,0 +1,544 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Package diagram examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-bookshop-packages-packages",
+   "label": "Bookshop packages",
+   "kind": "file",
+   "sublabel": "nesting, import, access, merge",
+   "what": "Packages as boxes holding what they own, a package inside a package, two classes named Order in two packages, `<<import>>`, `<<access>>`, `<<merge>>` and a dependency between them, and a profile applied by `<<apply>>`.",
+   "how": "From examples/bookshop-packages.json.",
+   "opensView": "bookshop-packages-packages"
+  },
+  {
+   "id": "card-closed-closed",
+   "label": "Cycle hire packages, closed",
+   "kind": "file",
+   "sublabel": "closed folders, stereotypes, a note",
+   "what": "Five packages with none of their contents in the view, so each is drawn as a closed folder with its name in the body; `<<subsystem>>` and `<<library>>` stereotypes, a public import, a private import drawn as `<<access>>`, a `<<use>>` dependency and a note on one package.",
+   "how": "From examples/variants/uml-package-closed.json.",
+   "opensView": "closed-closed"
+  },
+  {
+   "id": "card-nested-nested",
+   "label": "Library packages, three deep",
+   "kind": "file",
+   "sublabel": "three levels deep, laid out down",
+   "what": "A package inside a package inside a package, each box holding its classes, an enumeration and an interface; an import from lending to catalogue, and `<<use>>` and `<<call>>` dependencies that cross the box borders.",
+   "how": "From examples/variants/uml-package-nested.json.",
+   "opensView": "nested-nested"
+  },
+  {
+   "id": "card-nested-qualified",
+   "label": "Library classes by qualified name",
+   "kind": "file",
+   "sublabel": "qualified names from a subject",
+   "what": "The same classes with no package drawn: the view's `subject` is the library package, so each class is named by the packages between it and the subject, such as lending::holds::Hold.",
+   "how": "From examples/variants/uml-package-nested.json.",
+   "opensView": "nested-qualified"
+  },
+  {
+   "id": "bookshop-packages-shared",
+   "type": "uml.Package",
+   "label": "shared"
+  },
+  {
+   "id": "bookshop-packages-money",
+   "type": "uml.DataType",
+   "label": "Money",
+   "parent": "bookshop-packages-shared"
+  },
+  {
+   "id": "bookshop-packages-catalog",
+   "type": "uml.Package",
+   "label": "catalog"
+  },
+  {
+   "id": "bookshop-packages-book",
+   "type": "uml.Class",
+   "label": "Book",
+   "parent": "bookshop-packages-catalog"
+  },
+  {
+   "id": "bookshop-packages-sales",
+   "type": "uml.Package",
+   "label": "sales"
+  },
+  {
+   "id": "bookshop-packages-customer",
+   "type": "uml.Class",
+   "label": "Customer",
+   "parent": "bookshop-packages-sales"
+  },
+  {
+   "id": "bookshop-packages-order",
+   "type": "uml.Class",
+   "label": "Order",
+   "parent": "bookshop-packages-sales",
+   "props": {
+    "stereotypes": [
+     "entity"
+    ]
+   }
+  },
+  {
+   "id": "bookshop-packages-line",
+   "type": "uml.Class",
+   "label": "OrderLine",
+   "parent": "bookshop-packages-sales"
+  },
+  {
+   "id": "bookshop-packages-status",
+   "type": "uml.Enumeration",
+   "label": "OrderStatus",
+   "parent": "bookshop-packages-sales"
+  },
+  {
+   "id": "bookshop-packages-payments-package",
+   "type": "uml.Package",
+   "label": "payments"
+  },
+  {
+   "id": "bookshop-packages-payable",
+   "type": "uml.Interface",
+   "label": "Payable",
+   "parent": "bookshop-packages-payments-package"
+  },
+  {
+   "id": "bookshop-packages-payment",
+   "type": "uml.Class",
+   "label": "Payment",
+   "parent": "bookshop-packages-payments-package"
+  },
+  {
+   "id": "bookshop-packages-card",
+   "type": "uml.Package",
+   "label": "card",
+   "parent": "bookshop-packages-payments-package"
+  },
+  {
+   "id": "bookshop-packages-card-payment",
+   "type": "uml.Class",
+   "label": "CardPayment",
+   "parent": "bookshop-packages-card"
+  },
+  {
+   "id": "bookshop-packages-wholesale",
+   "type": "uml.Package",
+   "label": "wholesale"
+  },
+  {
+   "id": "bookshop-packages-wholesale-order",
+   "type": "uml.Class",
+   "label": "Order",
+   "parent": "bookshop-packages-wholesale"
+  },
+  {
+   "id": "bookshop-packages-conventions",
+   "type": "uml.Profile",
+   "label": "BookshopConventions"
+  },
+  {
+   "id": "closed-rides",
+   "type": "uml.Package",
+   "label": "rides"
+  },
+  {
+   "id": "closed-ride",
+   "type": "uml.Class",
+   "label": "Ride",
+   "parent": "closed-rides"
+  },
+  {
+   "id": "closed-fleet",
+   "type": "uml.Package",
+   "label": "fleet"
+  },
+  {
+   "id": "closed-bike",
+   "type": "uml.Class",
+   "label": "Bike",
+   "parent": "closed-fleet"
+  },
+  {
+   "id": "closed-dock",
+   "type": "uml.Class",
+   "label": "Dock",
+   "parent": "closed-fleet"
+  },
+  {
+   "id": "closed-accounts",
+   "type": "uml.Package",
+   "label": "accounts"
+  },
+  {
+   "id": "closed-rider",
+   "type": "uml.Class",
+   "label": "Rider",
+   "parent": "closed-accounts"
+  },
+  {
+   "id": "closed-billing",
+   "type": "uml.Package",
+   "label": "billing",
+   "props": {
+    "stereotypes": [
+     "subsystem"
+    ]
+   }
+  },
+  {
+   "id": "closed-invoice",
+   "type": "uml.Class",
+   "label": "Invoice",
+   "parent": "closed-billing"
+  },
+  {
+   "id": "closed-maps",
+   "type": "uml.Package",
+   "label": "maps",
+   "props": {
+    "stereotypes": [
+     "library"
+    ]
+   }
+  },
+  {
+   "id": "closed-why-access",
+   "type": "uml.Comment",
+   "label": "billing reads rides privately: its own importers do not see Ride"
+  },
+  {
+   "id": "nested-library",
+   "type": "uml.Package",
+   "label": "library"
+  },
+  {
+   "id": "nested-lending",
+   "type": "uml.Package",
+   "label": "lending",
+   "parent": "nested-library"
+  },
+  {
+   "id": "nested-loan",
+   "type": "uml.Class",
+   "label": "Loan",
+   "parent": "nested-lending"
+  },
+  {
+   "id": "nested-holds",
+   "type": "uml.Package",
+   "label": "holds",
+   "parent": "nested-lending"
+  },
+  {
+   "id": "nested-hold",
+   "type": "uml.Class",
+   "label": "Hold",
+   "parent": "nested-holds"
+  },
+  {
+   "id": "nested-hold-state",
+   "type": "uml.Enumeration",
+   "label": "HoldState",
+   "parent": "nested-holds"
+  },
+  {
+   "id": "nested-catalogue",
+   "type": "uml.Package",
+   "label": "catalogue",
+   "parent": "nested-library"
+  },
+  {
+   "id": "nested-title",
+   "type": "uml.Class",
+   "label": "Title",
+   "parent": "nested-catalogue"
+  },
+  {
+   "id": "nested-copy",
+   "type": "uml.Class",
+   "label": "Copy",
+   "parent": "nested-catalogue"
+  },
+  {
+   "id": "nested-notices",
+   "type": "uml.Package",
+   "label": "notices"
+  },
+  {
+   "id": "nested-notifier",
+   "type": "uml.Interface",
+   "label": "Notifier",
+   "parent": "nested-notices"
+  }
+ ],
+ "edges": [
+  {
+   "id": "bookshop-packages-catalog-imports-shared",
+   "type": "uml.PackageImport",
+   "from": "bookshop-packages-catalog",
+   "to": "bookshop-packages-shared",
+   "props": {
+    "visibility": "public"
+   }
+  },
+  {
+   "id": "bookshop-packages-sales-imports-catalog",
+   "type": "uml.PackageImport",
+   "from": "bookshop-packages-sales",
+   "to": "bookshop-packages-catalog",
+   "props": {
+    "visibility": "public"
+   }
+  },
+  {
+   "id": "bookshop-packages-payments-accesses-shared",
+   "type": "uml.PackageImport",
+   "from": "bookshop-packages-payments-package",
+   "to": "bookshop-packages-shared",
+   "props": {
+    "visibility": "private"
+   }
+  },
+  {
+   "id": "bookshop-packages-wholesale-merges-sales",
+   "type": "uml.PackageMerge",
+   "from": "bookshop-packages-wholesale",
+   "to": "bookshop-packages-sales"
+  },
+  {
+   "id": "bookshop-packages-sales-needs-payments",
+   "type": "uml.Dependency",
+   "from": "bookshop-packages-sales",
+   "to": "bookshop-packages-payments-package"
+  },
+  {
+   "id": "bookshop-packages-sales-applies-conventions",
+   "type": "uml.ProfileApplication",
+   "from": "bookshop-packages-sales",
+   "to": "bookshop-packages-conventions"
+  },
+  {
+   "id": "closed-rides-imports-fleet",
+   "type": "uml.PackageImport",
+   "from": "closed-rides",
+   "to": "closed-fleet",
+   "props": {
+    "visibility": "public"
+   }
+  },
+  {
+   "id": "closed-rides-imports-accounts",
+   "type": "uml.PackageImport",
+   "from": "closed-rides",
+   "to": "closed-accounts",
+   "props": {
+    "visibility": "public"
+   }
+  },
+  {
+   "id": "closed-billing-accesses-rides",
+   "type": "uml.PackageImport",
+   "from": "closed-billing",
+   "to": "closed-rides",
+   "props": {
+    "visibility": "private"
+   }
+  },
+  {
+   "id": "closed-fleet-uses-maps",
+   "type": "uml.Dependency",
+   "from": "closed-fleet",
+   "to": "closed-maps",
+   "props": {
+    "stereotypes": [
+     "use"
+    ]
+   }
+  },
+  {
+   "id": "closed-why-access-link",
+   "type": "uml.CommentLink",
+   "from": "closed-why-access",
+   "to": "closed-billing"
+  },
+  {
+   "id": "nested-lending-imports-catalogue",
+   "type": "uml.PackageImport",
+   "from": "nested-lending",
+   "to": "nested-catalogue",
+   "props": {
+    "visibility": "public"
+   }
+  },
+  {
+   "id": "nested-holds-imports-notices",
+   "type": "uml.PackageImport",
+   "from": "nested-holds",
+   "to": "nested-notices",
+   "props": {
+    "visibility": "public"
+   }
+  },
+  {
+   "id": "nested-loan-needs-copy",
+   "type": "uml.Dependency",
+   "from": "nested-loan",
+   "to": "nested-copy",
+   "props": {
+    "stereotypes": [
+     "use"
+    ]
+   }
+  },
+  {
+   "id": "nested-hold-needs-title",
+   "type": "uml.Dependency",
+   "from": "nested-hold",
+   "to": "nested-title",
+   "props": {
+    "stereotypes": [
+     "use"
+    ]
+   }
+  },
+  {
+   "id": "nested-hold-calls-notifier",
+   "type": "uml.Dependency",
+   "from": "nested-hold",
+   "to": "nested-notifier",
+   "props": {
+    "stereotypes": [
+     "call"
+    ]
+   }
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Package diagram examples",
+   "nodeIds": [
+    "card-bookshop-packages-packages",
+    "card-closed-closed",
+    "card-nested-nested",
+    "card-nested-qualified"
+   ],
+   "layout": {
+    "card-bookshop-packages-packages": [
+     0,
+     0
+    ],
+    "card-closed-closed": [
+     1,
+     0
+    ],
+    "card-nested-nested": [
+     0,
+     1
+    ],
+    "card-nested-qualified": [
+     1,
+     1
+    ]
+   }
+  },
+  {
+   "id": "bookshop-packages-packages",
+   "diagram": "uml.package",
+   "title": "Bookshop packages",
+   "parent": "overview",
+   "direction": "down",
+   "nodeIds": [
+    "bookshop-packages-shared",
+    "bookshop-packages-money",
+    "bookshop-packages-catalog",
+    "bookshop-packages-book",
+    "bookshop-packages-sales",
+    "bookshop-packages-customer",
+    "bookshop-packages-order",
+    "bookshop-packages-line",
+    "bookshop-packages-status",
+    "bookshop-packages-payments-package",
+    "bookshop-packages-payable",
+    "bookshop-packages-payment",
+    "bookshop-packages-card",
+    "bookshop-packages-card-payment",
+    "bookshop-packages-wholesale",
+    "bookshop-packages-wholesale-order",
+    "bookshop-packages-conventions"
+   ],
+   "edges": [
+    "bookshop-packages-catalog-imports-shared",
+    "bookshop-packages-sales-imports-catalog",
+    "bookshop-packages-sales-applies-conventions",
+    "bookshop-packages-payments-accesses-shared",
+    "bookshop-packages-wholesale-merges-sales",
+    "bookshop-packages-sales-needs-payments"
+   ]
+  },
+  {
+   "id": "closed-closed",
+   "diagram": "uml.package",
+   "title": "Cycle hire packages, closed",
+   "parent": "overview",
+   "nodeIds": [
+    "closed-rides",
+    "closed-fleet",
+    "closed-accounts",
+    "closed-billing",
+    "closed-maps",
+    "closed-why-access"
+   ]
+  },
+  {
+   "id": "nested-nested",
+   "diagram": "uml.package",
+   "title": "Library packages, three deep",
+   "parent": "overview",
+   "direction": "down",
+   "nodeIds": [
+    "nested-library",
+    "nested-lending",
+    "nested-loan",
+    "nested-holds",
+    "nested-hold",
+    "nested-hold-state",
+    "nested-catalogue",
+    "nested-title",
+    "nested-copy",
+    "nested-notices",
+    "nested-notifier"
+   ],
+   "edges": [
+    "nested-lending-imports-catalogue",
+    "nested-hold-needs-title",
+    "nested-hold-calls-notifier"
+   ]
+  },
+  {
+   "id": "nested-qualified",
+   "diagram": "uml.package",
+   "title": "Library classes by qualified name",
+   "parent": "overview",
+   "subject": "nested-library",
+   "nodeIds": [
+    "nested-loan",
+    "nested-hold",
+    "nested-title",
+    "nested-copy",
+    "nested-notifier"
+   ],
+   "edges": [
+    "nested-loan-needs-copy",
+    "nested-hold-needs-title",
+    "nested-hold-calls-notifier"
+   ]
+  }
+ ]
+}

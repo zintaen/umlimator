@@ -1,0 +1,706 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Activity diagram examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-fulfil-activity-fulfil",
+   "label": "Fulfilling an order",
+   "kind": "file",
+   "sublabel": "lanes, decisions, forks, objects",
+   "what": "Actions, object nodes and a data store, send and accept actions, decisions, merges, forks and joins, in lanes; a call behaviour action opens the activity it calls.",
+   "how": "From examples/fulfil-activity.json.",
+   "opensView": "fulfil-activity-fulfil"
+  },
+  {
+   "id": "card-fulfil-activity-take-payment",
+   "label": "Take payment",
+   "kind": "file",
+   "sublabel": "the activity a call opens",
+   "what": "The activity the call behaviour action Take payment calls: its own actions and flows, opened from the fulfilling activity.",
+   "how": "From examples/fulfil-activity.json.",
+   "opensView": "fulfil-activity-take-payment"
+  },
+  {
+   "id": "card-loop-return-right",
+   "label": "A retry loop, laid out right",
+   "kind": "file",
+   "sublabel": "a loop, laid out right, no lanes",
+   "what": "An activity with no lanes laid out right: a retry loop through a named merge, two decisions with `[yes]` and `[else]` guards, a send signal action, a flow final and an activity final, and a comment on a decision.",
+   "how": "From examples/variants/uml-activity-loop.json.",
+   "opensView": "loop-return-right"
+  },
+  {
+   "id": "card-lanes-rebalance",
+   "label": "Nested lanes, laid out right",
+   "kind": "file",
+   "sublabel": "nested lanes, object flows",
+   "what": "Partitions nested in a partition (Operations holds the control room and the van crew), laid out right: a data store and an object node on object flows, then a send signal action that an accept event action in another lane takes up.",
+   "how": "From examples/variants/uml-activity-lanes.json.",
+   "opensView": "lanes-rebalance"
+  },
+  {
+   "id": "fulfil-activity-lane-worker",
+   "type": "uml.ActivityPartition",
+   "label": "Order worker"
+  },
+  {
+   "id": "fulfil-activity-lane-warehouse",
+   "type": "uml.ActivityPartition",
+   "label": "Warehouse"
+  },
+  {
+   "id": "fulfil-activity-lane-email",
+   "type": "uml.ActivityPartition",
+   "label": "Email service"
+  },
+  {
+   "id": "fulfil-activity-start",
+   "type": "uml.InitialNode",
+   "parent": "fulfil-activity-lane-worker"
+  },
+  {
+   "id": "fulfil-activity-take-order",
+   "type": "uml.Action",
+   "label": "Take the next order from the queue",
+   "parent": "fulfil-activity-lane-worker"
+  },
+  {
+   "id": "fulfil-activity-order-object",
+   "type": "uml.ObjectNode",
+   "label": "Order",
+   "parent": "fulfil-activity-lane-worker"
+  },
+  {
+   "id": "fulfil-activity-check-stock",
+   "type": "uml.Action",
+   "label": "Check the stock of each book",
+   "parent": "fulfil-activity-lane-warehouse"
+  },
+  {
+   "id": "fulfil-activity-stock",
+   "type": "uml.DataStoreNode",
+   "label": "Stock levels",
+   "parent": "fulfil-activity-lane-warehouse"
+  },
+  {
+   "id": "fulfil-activity-in-stock",
+   "type": "uml.DecisionNode",
+   "label": "All books in stock?",
+   "parent": "fulfil-activity-lane-warehouse"
+  },
+  {
+   "id": "fulfil-activity-ask-restock",
+   "type": "uml.SendSignalAction",
+   "label": "Restock request",
+   "parent": "fulfil-activity-lane-warehouse"
+  },
+  {
+   "id": "fulfil-activity-books-arrive",
+   "type": "uml.AcceptEventAction",
+   "label": "Books delivered",
+   "parent": "fulfil-activity-lane-warehouse"
+  },
+  {
+   "id": "fulfil-activity-stock-ready",
+   "type": "uml.MergeNode",
+   "parent": "fulfil-activity-lane-warehouse"
+  },
+  {
+   "id": "fulfil-activity-split",
+   "type": "uml.ForkNode",
+   "parent": "fulfil-activity-lane-worker"
+  },
+  {
+   "id": "fulfil-activity-call-payment",
+   "type": "uml.CallBehaviorAction",
+   "label": "Take payment",
+   "parent": "fulfil-activity-lane-worker",
+   "opensView": "fulfil-activity-take-payment"
+  },
+  {
+   "id": "fulfil-activity-pick",
+   "type": "uml.Action",
+   "label": "Pick and pack the books",
+   "parent": "fulfil-activity-lane-warehouse"
+  },
+  {
+   "id": "fulfil-activity-tell-shopper",
+   "type": "uml.Action",
+   "label": "Email \"your order is being packed\"",
+   "parent": "fulfil-activity-lane-email"
+  },
+  {
+   "id": "fulfil-activity-told",
+   "type": "uml.FlowFinalNode",
+   "parent": "fulfil-activity-lane-email"
+  },
+  {
+   "id": "fulfil-activity-packed-and-paid",
+   "type": "uml.JoinNode",
+   "parent": "fulfil-activity-lane-warehouse"
+  },
+  {
+   "id": "fulfil-activity-ship",
+   "type": "uml.Action",
+   "label": "Hand the parcel to the carrier",
+   "parent": "fulfil-activity-lane-warehouse"
+  },
+  {
+   "id": "fulfil-activity-done",
+   "type": "uml.ActivityFinalNode",
+   "parent": "fulfil-activity-lane-warehouse"
+  },
+  {
+   "id": "fulfil-activity-pay-start",
+   "type": "uml.InitialNode"
+  },
+  {
+   "id": "fulfil-activity-charge",
+   "type": "uml.Action",
+   "label": "Charge the shopper's card"
+  },
+  {
+   "id": "fulfil-activity-record",
+   "type": "uml.Action",
+   "label": "Record the payment on the order"
+  },
+  {
+   "id": "fulfil-activity-pay-done",
+   "type": "uml.ActivityFinalNode"
+  },
+  {
+   "id": "loop-start",
+   "type": "uml.InitialNode"
+  },
+  {
+   "id": "loop-dock",
+   "type": "uml.Action",
+   "label": "Push the bike into a dock"
+  },
+  {
+   "id": "loop-try-lock",
+   "type": "uml.MergeNode",
+   "label": "try lock"
+  },
+  {
+   "id": "loop-lock",
+   "type": "uml.Action",
+   "label": "Engage the dock lock"
+  },
+  {
+   "id": "loop-locked",
+   "type": "uml.DecisionNode",
+   "label": "Locked?"
+  },
+  {
+   "id": "loop-tries",
+   "type": "uml.DecisionNode",
+   "label": "Tries left?"
+  },
+  {
+   "id": "loop-beep",
+   "type": "uml.Action",
+   "label": "Beep and ask to re-seat"
+  },
+  {
+   "id": "loop-fault",
+   "type": "uml.SendSignalAction",
+   "label": "Dock fault"
+  },
+  {
+   "id": "loop-gave-up",
+   "type": "uml.FlowFinalNode"
+  },
+  {
+   "id": "loop-end-trip",
+   "type": "uml.Action",
+   "label": "End the trip and price it"
+  },
+  {
+   "id": "loop-done",
+   "type": "uml.ActivityFinalNode"
+  },
+  {
+   "id": "loop-note",
+   "type": "uml.Comment",
+   "label": "three tries, then the rider is told to use another dock"
+  },
+  {
+   "id": "lanes-ops",
+   "type": "uml.ActivityPartition",
+   "label": "Operations"
+  },
+  {
+   "id": "lanes-control",
+   "type": "uml.ActivityPartition",
+   "label": "Control room",
+   "parent": "lanes-ops"
+  },
+  {
+   "id": "lanes-van",
+   "type": "uml.ActivityPartition",
+   "label": "Van crew",
+   "parent": "lanes-ops"
+  },
+  {
+   "id": "lanes-station",
+   "type": "uml.ActivityPartition",
+   "label": "Station"
+  },
+  {
+   "id": "lanes-start",
+   "type": "uml.InitialNode",
+   "parent": "lanes-control"
+  },
+  {
+   "id": "lanes-find",
+   "type": "uml.Action",
+   "label": "Find full and empty stations",
+   "parent": "lanes-control"
+  },
+  {
+   "id": "lanes-levels",
+   "type": "uml.DataStoreNode",
+   "label": "Dock levels",
+   "parent": "lanes-control"
+  },
+  {
+   "id": "lanes-plan",
+   "type": "uml.ObjectNode",
+   "label": "Move plan",
+   "parent": "lanes-control"
+  },
+  {
+   "id": "lanes-send",
+   "type": "uml.SendSignalAction",
+   "label": "Job sent",
+   "parent": "lanes-control"
+  },
+  {
+   "id": "lanes-accept",
+   "type": "uml.AcceptEventAction",
+   "label": "Job received",
+   "parent": "lanes-van"
+  },
+  {
+   "id": "lanes-load",
+   "type": "uml.Action",
+   "label": "Load bikes at the full station",
+   "parent": "lanes-van"
+  },
+  {
+   "id": "lanes-unload",
+   "type": "uml.Action",
+   "label": "Unload at the empty station",
+   "parent": "lanes-van"
+  },
+  {
+   "id": "lanes-report",
+   "type": "uml.Action",
+   "label": "Report the new dock levels",
+   "parent": "lanes-station"
+  },
+  {
+   "id": "lanes-done",
+   "type": "uml.ActivityFinalNode",
+   "parent": "lanes-station"
+  }
+ ],
+ "edges": [
+  {
+   "id": "fulfil-activity-f-start",
+   "type": "uml.ControlFlow",
+   "from": "fulfil-activity-start",
+   "to": "fulfil-activity-take-order"
+  },
+  {
+   "id": "fulfil-activity-f-order-out",
+   "type": "uml.ObjectFlow",
+   "from": "fulfil-activity-take-order",
+   "to": "fulfil-activity-order-object"
+  },
+  {
+   "id": "fulfil-activity-f-order-in",
+   "type": "uml.ObjectFlow",
+   "from": "fulfil-activity-order-object",
+   "to": "fulfil-activity-check-stock"
+  },
+  {
+   "id": "fulfil-activity-f-stock-read",
+   "type": "uml.ObjectFlow",
+   "from": "fulfil-activity-stock",
+   "to": "fulfil-activity-check-stock"
+  },
+  {
+   "id": "fulfil-activity-f-checked",
+   "type": "uml.ControlFlow",
+   "from": "fulfil-activity-check-stock",
+   "to": "fulfil-activity-in-stock"
+  },
+  {
+   "id": "fulfil-activity-f-in-stock",
+   "type": "uml.ControlFlow",
+   "from": "fulfil-activity-in-stock",
+   "to": "fulfil-activity-stock-ready",
+   "props": {
+    "guard": "all books in stock"
+   }
+  },
+  {
+   "id": "fulfil-activity-f-short",
+   "type": "uml.ControlFlow",
+   "from": "fulfil-activity-in-stock",
+   "to": "fulfil-activity-ask-restock",
+   "props": {
+    "guard": "else"
+   }
+  },
+  {
+   "id": "fulfil-activity-f-wait",
+   "type": "uml.ControlFlow",
+   "from": "fulfil-activity-ask-restock",
+   "to": "fulfil-activity-books-arrive"
+  },
+  {
+   "id": "fulfil-activity-f-arrived",
+   "type": "uml.ControlFlow",
+   "from": "fulfil-activity-books-arrive",
+   "to": "fulfil-activity-stock-ready"
+  },
+  {
+   "id": "fulfil-activity-f-ready",
+   "type": "uml.ControlFlow",
+   "from": "fulfil-activity-stock-ready",
+   "to": "fulfil-activity-split"
+  },
+  {
+   "id": "fulfil-activity-f-to-pay",
+   "type": "uml.ControlFlow",
+   "from": "fulfil-activity-split",
+   "to": "fulfil-activity-call-payment"
+  },
+  {
+   "id": "fulfil-activity-f-to-pick",
+   "type": "uml.ControlFlow",
+   "from": "fulfil-activity-split",
+   "to": "fulfil-activity-pick"
+  },
+  {
+   "id": "fulfil-activity-f-to-tell",
+   "type": "uml.ControlFlow",
+   "from": "fulfil-activity-split",
+   "to": "fulfil-activity-tell-shopper"
+  },
+  {
+   "id": "fulfil-activity-f-told",
+   "type": "uml.ControlFlow",
+   "from": "fulfil-activity-tell-shopper",
+   "to": "fulfil-activity-told"
+  },
+  {
+   "id": "fulfil-activity-f-stock-write",
+   "type": "uml.ObjectFlow",
+   "from": "fulfil-activity-pick",
+   "to": "fulfil-activity-stock"
+  },
+  {
+   "id": "fulfil-activity-f-paid",
+   "type": "uml.ControlFlow",
+   "from": "fulfil-activity-call-payment",
+   "to": "fulfil-activity-packed-and-paid"
+  },
+  {
+   "id": "fulfil-activity-f-packed",
+   "type": "uml.ControlFlow",
+   "from": "fulfil-activity-pick",
+   "to": "fulfil-activity-packed-and-paid"
+  },
+  {
+   "id": "fulfil-activity-f-ship",
+   "type": "uml.ControlFlow",
+   "from": "fulfil-activity-packed-and-paid",
+   "to": "fulfil-activity-ship"
+  },
+  {
+   "id": "fulfil-activity-f-done",
+   "type": "uml.ControlFlow",
+   "from": "fulfil-activity-ship",
+   "to": "fulfil-activity-done"
+  },
+  {
+   "id": "fulfil-activity-f-pay-start",
+   "type": "uml.ControlFlow",
+   "from": "fulfil-activity-pay-start",
+   "to": "fulfil-activity-charge"
+  },
+  {
+   "id": "fulfil-activity-f-charged",
+   "type": "uml.ControlFlow",
+   "from": "fulfil-activity-charge",
+   "to": "fulfil-activity-record"
+  },
+  {
+   "id": "fulfil-activity-f-recorded",
+   "type": "uml.ControlFlow",
+   "from": "fulfil-activity-record",
+   "to": "fulfil-activity-pay-done"
+  },
+  {
+   "id": "loop-f1",
+   "type": "uml.ControlFlow",
+   "from": "loop-start",
+   "to": "loop-dock"
+  },
+  {
+   "id": "loop-f2",
+   "type": "uml.ControlFlow",
+   "from": "loop-dock",
+   "to": "loop-try-lock"
+  },
+  {
+   "id": "loop-f3",
+   "type": "uml.ControlFlow",
+   "from": "loop-try-lock",
+   "to": "loop-lock"
+  },
+  {
+   "id": "loop-f4",
+   "type": "uml.ControlFlow",
+   "from": "loop-lock",
+   "to": "loop-locked"
+  },
+  {
+   "id": "loop-f5",
+   "type": "uml.ControlFlow",
+   "from": "loop-locked",
+   "to": "loop-end-trip",
+   "props": {
+    "guard": "yes"
+   }
+  },
+  {
+   "id": "loop-f6",
+   "type": "uml.ControlFlow",
+   "from": "loop-locked",
+   "to": "loop-beep",
+   "props": {
+    "guard": "else"
+   }
+  },
+  {
+   "id": "loop-f7",
+   "type": "uml.ControlFlow",
+   "from": "loop-beep",
+   "to": "loop-tries"
+  },
+  {
+   "id": "loop-f8",
+   "type": "uml.ControlFlow",
+   "from": "loop-tries",
+   "to": "loop-try-lock",
+   "props": {
+    "guard": "yes"
+   }
+  },
+  {
+   "id": "loop-f9",
+   "type": "uml.ControlFlow",
+   "from": "loop-tries",
+   "to": "loop-fault",
+   "props": {
+    "guard": "else"
+   }
+  },
+  {
+   "id": "loop-f10",
+   "type": "uml.ControlFlow",
+   "from": "loop-fault",
+   "to": "loop-gave-up"
+  },
+  {
+   "id": "loop-f11",
+   "type": "uml.ControlFlow",
+   "from": "loop-end-trip",
+   "to": "loop-done"
+  },
+  {
+   "id": "loop-n1",
+   "type": "uml.CommentLink",
+   "from": "loop-note",
+   "to": "loop-tries"
+  },
+  {
+   "id": "lanes-f1",
+   "type": "uml.ControlFlow",
+   "from": "lanes-start",
+   "to": "lanes-find"
+  },
+  {
+   "id": "lanes-o1",
+   "type": "uml.ObjectFlow",
+   "from": "lanes-levels",
+   "to": "lanes-find"
+  },
+  {
+   "id": "lanes-o2",
+   "type": "uml.ObjectFlow",
+   "from": "lanes-find",
+   "to": "lanes-plan"
+  },
+  {
+   "id": "lanes-o3",
+   "type": "uml.ObjectFlow",
+   "from": "lanes-plan",
+   "to": "lanes-send"
+  },
+  {
+   "id": "lanes-f2",
+   "type": "uml.ControlFlow",
+   "from": "lanes-send",
+   "to": "lanes-accept"
+  },
+  {
+   "id": "lanes-f3",
+   "type": "uml.ControlFlow",
+   "from": "lanes-accept",
+   "to": "lanes-load"
+  },
+  {
+   "id": "lanes-f4",
+   "type": "uml.ControlFlow",
+   "from": "lanes-load",
+   "to": "lanes-unload"
+  },
+  {
+   "id": "lanes-f5",
+   "type": "uml.ControlFlow",
+   "from": "lanes-unload",
+   "to": "lanes-report"
+  },
+  {
+   "id": "lanes-f6",
+   "type": "uml.ControlFlow",
+   "from": "lanes-report",
+   "to": "lanes-done"
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Activity diagram examples",
+   "nodeIds": [
+    "card-fulfil-activity-fulfil",
+    "card-fulfil-activity-take-payment",
+    "card-loop-return-right",
+    "card-lanes-rebalance"
+   ],
+   "layout": {
+    "card-fulfil-activity-fulfil": [
+     0,
+     0
+    ],
+    "card-fulfil-activity-take-payment": [
+     1,
+     0
+    ],
+    "card-loop-return-right": [
+     0,
+     1
+    ],
+    "card-lanes-rebalance": [
+     1,
+     1
+    ]
+   }
+  },
+  {
+   "id": "fulfil-activity-fulfil",
+   "diagram": "uml.activity",
+   "title": "Fulfilling an order",
+   "parent": "overview",
+   "direction": "down",
+   "nodeIds": [
+    "fulfil-activity-lane-worker",
+    "fulfil-activity-lane-warehouse",
+    "fulfil-activity-lane-email",
+    "fulfil-activity-start",
+    "fulfil-activity-take-order",
+    "fulfil-activity-order-object",
+    "fulfil-activity-check-stock",
+    "fulfil-activity-stock",
+    "fulfil-activity-in-stock",
+    "fulfil-activity-ask-restock",
+    "fulfil-activity-books-arrive",
+    "fulfil-activity-stock-ready",
+    "fulfil-activity-split",
+    "fulfil-activity-call-payment",
+    "fulfil-activity-pick",
+    "fulfil-activity-tell-shopper",
+    "fulfil-activity-told",
+    "fulfil-activity-packed-and-paid",
+    "fulfil-activity-ship",
+    "fulfil-activity-done"
+   ]
+  },
+  {
+   "id": "fulfil-activity-take-payment",
+   "diagram": "uml.activity",
+   "title": "Take payment",
+   "parent": "fulfil-activity-fulfil",
+   "direction": "down",
+   "nodeIds": [
+    "fulfil-activity-pay-start",
+    "fulfil-activity-charge",
+    "fulfil-activity-record",
+    "fulfil-activity-pay-done"
+   ]
+  },
+  {
+   "id": "loop-return-right",
+   "diagram": "uml.activity",
+   "title": "A retry loop, laid out right",
+   "parent": "overview",
+   "direction": "right",
+   "nodeIds": [
+    "loop-start",
+    "loop-dock",
+    "loop-try-lock",
+    "loop-lock",
+    "loop-locked",
+    "loop-tries",
+    "loop-beep",
+    "loop-fault",
+    "loop-gave-up",
+    "loop-end-trip",
+    "loop-done",
+    "loop-note"
+   ]
+  },
+  {
+   "id": "lanes-rebalance",
+   "diagram": "uml.activity",
+   "title": "Nested lanes, laid out right",
+   "parent": "overview",
+   "direction": "right",
+   "nodeIds": [
+    "lanes-ops",
+    "lanes-control",
+    "lanes-van",
+    "lanes-station",
+    "lanes-start",
+    "lanes-find",
+    "lanes-levels",
+    "lanes-plan",
+    "lanes-send",
+    "lanes-accept",
+    "lanes-load",
+    "lanes-unload",
+    "lanes-report",
+    "lanes-done"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,40 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Library: two profiles on one package",
+ "root": "two-profiles",
+ "nodes": [
+  { "id": "storage", "type": "uml.Profile", "label": "Storage" },
+  { "id": "st-class", "type": "uml.MetaclassReference", "label": "Class", "parent": "storage" },
+  { "id": "st-record", "type": "uml.Stereotype", "label": "record", "parent": "storage",
+   "members": [
+    { "id": "st-record.table", "type": "uml.Property", "label": "table", "props": { "valueType": "String" } }
+   ] },
+  { "id": "audit", "type": "uml.Profile", "label": "Audit" },
+  { "id": "au-class", "type": "uml.MetaclassReference", "label": "Class", "parent": "audit" },
+  { "id": "au-package", "type": "uml.MetaclassReference", "label": "Package", "parent": "audit" },
+  { "id": "au-record", "type": "uml.Stereotype", "label": "record", "parent": "audit",
+   "members": [
+    { "id": "au-record.keepYears", "type": "uml.Property", "label": "keepYears", "props": { "valueType": "Integer" } }
+   ] },
+  { "id": "au-owner", "type": "uml.Stereotype", "label": "owner", "parent": "audit",
+   "members": [
+    { "id": "au-owner.team", "type": "uml.Property", "label": "team", "props": { "valueType": "String", "multiplicity": "0..1" } }
+   ] },
+  { "id": "catalogue", "type": "uml.Package", "label": "catalogue" },
+  { "id": "holds", "type": "uml.Package", "label": "holds", "parent": "catalogue", "props": { "tags": { "owner": { "team": "circulation" } } } },
+  { "id": "title", "type": "uml.Class", "label": "Title", "parent": "catalogue",
+   "props": { "stereotypes": ["Storage::record", "Audit::record"], "tags": { "Storage::record": { "table": "titles" }, "Audit::record": { "keepYears": "7" } } } }
+ ],
+ "edges": [
+  { "id": "st-record-ext", "type": "uml.Extension", "from": "st-record", "to": "st-class" },
+  { "id": "au-record-ext", "type": "uml.Extension", "from": "au-record", "to": "au-class" },
+  { "id": "au-owner-ext", "type": "uml.Extension", "from": "au-owner", "to": "au-package", "props": { "isRequired": true } },
+  { "id": "applies-storage", "type": "uml.ProfileApplication", "from": "catalogue", "to": "storage" },
+  { "id": "applies-audit", "type": "uml.ProfileApplication", "from": "catalogue", "to": "audit" }
+ ],
+ "views": [
+  { "id": "two-profiles", "diagram": "uml.profile", "title": "Two profiles, one name, qualified", "parent": null, "direction": "down",
+   "nodeIds": ["storage", "st-class", "st-record", "audit", "au-class", "au-package", "au-record", "au-owner", "catalogue", "holds", "title"] }
+ ]
+}

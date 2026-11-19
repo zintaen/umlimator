@@ -1,0 +1,41 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Cycle hire: fleet vehicles and their values",
+ "root": "fleet",
+ "nodes": [
+  { "id": "vehicle", "type": "sysml.Block", "label": "FleetVehicle",
+   "members": [
+    { "id": "vehicle.mass", "type": "sysml.ValueProperty", "label": "mass", "props": { "valueType": "Mass" } },
+    { "id": "vehicle.maxSpeed", "type": "sysml.ValueProperty", "label": "maxSpeed", "props": { "valueType": "Speed", "default": "25" } },
+    { "id": "vehicle.home", "type": "sysml.ReferenceProperty", "label": "home", "props": { "valueType": "Station", "multiplicity": "0..1" } }
+   ] },
+  { "id": "bike", "type": "sysml.Block", "label": "PedalBike",
+   "members": [
+    { "id": "bike.gears", "type": "sysml.ValueProperty", "label": "gears", "props": { "valueType": "Integer", "default": "7" } }
+   ] },
+  { "id": "scooter", "type": "sysml.Block", "label": "Scooter",
+   "members": [
+    { "id": "scooter.wheels", "type": "sysml.PartProperty", "label": "wheels", "props": { "valueType": "Wheel", "multiplicity": "2" } },
+    { "id": "scooter.tyrePressure", "type": "sysml.ValueProperty", "label": "tyrePressure", "props": { "valueType": "Pressure", "multiplicity": "2" } }
+   ] },
+  { "id": "wheel", "type": "sysml.Block", "label": "Wheel" },
+  { "id": "station", "type": "sysml.Block", "label": "Station" },
+  { "id": "mass", "type": "sysml.ValueType", "label": "Mass", "props": { "unit": "kg", "quantityKind": "mass" } },
+  { "id": "speed", "type": "sysml.ValueType", "label": "Speed", "props": { "unit": "km/h", "quantityKind": "speed" } },
+  { "id": "pressure", "type": "sysml.ValueType", "label": "Pressure", "props": { "unit": "kPa", "quantityKind": "pressure" } },
+  { "id": "tyre-pressure", "type": "sysml.ValueType", "label": "TyrePressure", "props": { "unit": "kPa" } }
+ ],
+ "edges": [
+  { "id": "bike-is-vehicle", "type": "uml.Generalization", "from": "bike", "to": "vehicle" },
+  { "id": "scooter-is-vehicle", "type": "uml.Generalization", "from": "scooter", "to": "vehicle" },
+  { "id": "scooter-wheels", "type": "uml.Association", "from": "scooter", "to": "wheel", "props": { "ends": { "from": { "aggregation": "composite", "multiplicity": "1" }, "to": { "role": "wheels", "multiplicity": "2" } } } },
+  { "id": "vehicle-home", "type": "uml.Association", "from": "vehicle", "to": "station", "props": { "ends": { "from": { "multiplicity": "*" }, "to": { "role": "home", "multiplicity": "0..1", "navigable": true } } } },
+  { "id": "tyre-is-pressure", "type": "uml.Generalization", "from": "tyre-pressure", "to": "pressure" }
+ ],
+ "views": [
+  { "id": "fleet", "diagram": "sysml.block-definition", "title": "A block hierarchy and value types", "parent": null, "direction": "down",
+   "nodeIds": ["vehicle", "bike", "scooter", "wheel", "station", "mass", "speed", "pressure", "tyre-pressure"],
+   "edges": ["bike-is-vehicle", "scooter-is-vehicle", "scooter-wheels", "vehicle-home", "tyre-is-pressure"] }
+ ]
+}

@@ -1,0 +1,697 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Object diagram examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-order-objects-snapshot",
+   "label": "Order 1042, just placed",
+   "kind": "file",
+   "sublabel": "instances, slots and links",
+   "what": "Instances of the bookshop's classes, each head `name : Classifier` underlined, slots as `feature = value`, and links with a name or roles by their ends.",
+   "how": "From examples/order-objects.json.",
+   "opensView": "order-objects-snapshot"
+  },
+  {
+   "id": "card-package-branch",
+   "label": "A loan inside the lending package",
+   "kind": "file",
+   "sublabel": "a package box, stereotypes, a note",
+   "what": "Library loan instances held in a package drawn as a box, two of them with an <<entity>> stereotype, an anonymous instance shown as `: Copy`, an instance with no classifier, a slot with no value, a link named by its association, and a note on the anonymous copy.",
+   "how": "From examples/variants/uml-object-package.json.",
+   "opensView": "package-branch"
+  },
+  {
+   "id": "card-package-unboxed",
+   "label": "The same loan, names qualified",
+   "kind": "file",
+   "sublabel": "owner hidden, names qualified, down",
+   "what": "The same instances without their package, so each is named `lending::loan7 : Loan`, laid out down.",
+   "how": "From examples/variants/uml-object-package.json.",
+   "opensView": "package-unboxed"
+  },
+  {
+   "id": "card-classes-beside",
+   "label": "Two classes beside their instances",
+   "kind": "file",
+   "sublabel": "classes, two links, a loop",
+   "what": "Cycle hire docks and a bike drawn beside the Dock and Bike classes their slots are checked against, two links between one pair each on its own line, and a link from an instance to itself drawn as a loop.",
+   "how": "From examples/variants/uml-object-classes.json.",
+   "opensView": "classes-beside"
+  },
+  {
+   "id": "order-objects-ada",
+   "type": "uml.InstanceSpecification",
+   "label": "ada",
+   "props": {
+    "classifier": "Customer"
+   },
+   "members": [
+    {
+     "id": "order-objects-ada.email",
+     "type": "uml.Slot",
+     "label": "email",
+     "props": {
+      "value": "ada@example.org"
+     }
+    }
+   ]
+  },
+  {
+   "id": "order-objects-order-1042",
+   "type": "uml.InstanceSpecification",
+   "label": "order1042",
+   "props": {
+    "classifier": "Order"
+   },
+   "members": [
+    {
+     "id": "order-objects-order-1042.status",
+     "type": "uml.Slot",
+     "label": "status",
+     "props": {
+      "value": "placed"
+     }
+    },
+    {
+     "id": "order-objects-order-1042.total",
+     "type": "uml.Slot",
+     "label": "total",
+     "props": {
+      "value": "34.00 EUR"
+     }
+    }
+   ]
+  },
+  {
+   "id": "order-objects-line-1",
+   "type": "uml.InstanceSpecification",
+   "label": "line1",
+   "props": {
+    "classifier": "OrderLine"
+   },
+   "members": [
+    {
+     "id": "order-objects-line-1.quantity",
+     "type": "uml.Slot",
+     "label": "quantity",
+     "props": {
+      "value": "2"
+     }
+    }
+   ]
+  },
+  {
+   "id": "order-objects-line-2",
+   "type": "uml.InstanceSpecification",
+   "label": "line2",
+   "props": {
+    "classifier": "OrderLine"
+   },
+   "members": [
+    {
+     "id": "order-objects-line-2.quantity",
+     "type": "uml.Slot",
+     "label": "quantity",
+     "props": {
+      "value": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "order-objects-middlemarch",
+   "type": "uml.InstanceSpecification",
+   "label": "middlemarch",
+   "props": {
+    "classifier": "Book"
+   },
+   "members": [
+    {
+     "id": "order-objects-middlemarch.title",
+     "type": "uml.Slot",
+     "label": "title",
+     "props": {
+      "value": "Middlemarch"
+     }
+    },
+    {
+     "id": "order-objects-middlemarch.price",
+     "type": "uml.Slot",
+     "label": "price",
+     "props": {
+      "value": "12.50 EUR"
+     }
+    }
+   ]
+  },
+  {
+   "id": "order-objects-frankenstein",
+   "type": "uml.InstanceSpecification",
+   "label": "frankenstein",
+   "props": {
+    "classifier": "Book"
+   },
+   "members": [
+    {
+     "id": "order-objects-frankenstein.title",
+     "type": "uml.Slot",
+     "label": "title",
+     "props": {
+      "value": "Frankenstein"
+     }
+    },
+    {
+     "id": "order-objects-frankenstein.price",
+     "type": "uml.Slot",
+     "label": "price",
+     "props": {
+      "value": "9.00 EUR"
+     }
+    }
+   ]
+  },
+  {
+   "id": "order-objects-card-1",
+   "type": "uml.InstanceSpecification",
+   "label": "card",
+   "props": {
+    "classifier": "CardPayment"
+   },
+   "members": [
+    {
+     "id": "order-objects-card.amount",
+     "type": "uml.Slot",
+     "label": "amount",
+     "props": {
+      "value": "34.00 EUR"
+     }
+    },
+    {
+     "id": "order-objects-card.last4",
+     "type": "uml.Slot",
+     "label": "last4",
+     "props": {
+      "value": "4242"
+     }
+    }
+   ]
+  },
+  {
+   "id": "package-lending",
+   "type": "uml.Package",
+   "label": "lending"
+  },
+  {
+   "id": "package-maya",
+   "type": "uml.InstanceSpecification",
+   "label": "maya",
+   "parent": "package-lending",
+   "props": {
+    "classifier": "Member",
+    "stereotypes": [
+     "entity"
+    ]
+   },
+   "members": [
+    {
+     "id": "package-maya.card",
+     "type": "uml.Slot",
+     "label": "cardNo",
+     "props": {
+      "value": "L-20417"
+     }
+    },
+    {
+     "id": "package-maya.status",
+     "type": "uml.Slot",
+     "label": "status",
+     "props": {
+      "value": "active"
+     }
+    }
+   ]
+  },
+  {
+   "id": "package-loan-7",
+   "type": "uml.InstanceSpecification",
+   "label": "loan7",
+   "parent": "package-lending",
+   "props": {
+    "classifier": "Loan",
+    "stereotypes": [
+     "entity"
+    ]
+   },
+   "members": [
+    {
+     "id": "package-loan-7.due",
+     "type": "uml.Slot",
+     "label": "due",
+     "props": {
+      "value": "2026-12-03"
+     }
+    },
+    {
+     "id": "package-loan-7.renewed",
+     "type": "uml.Slot",
+     "label": "renewals",
+     "props": {
+      "value": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "package-copy",
+   "type": "uml.InstanceSpecification",
+   "parent": "package-lending",
+   "props": {
+    "classifier": "Copy"
+   },
+   "members": [
+    {
+     "id": "package-copy.barcode",
+     "type": "uml.Slot",
+     "label": "barcode",
+     "props": {
+      "value": "0031-778"
+     }
+    },
+    {
+     "id": "package-copy.shelf",
+     "type": "uml.Slot",
+     "label": "shelf"
+    }
+   ]
+  },
+  {
+   "id": "package-desk",
+   "type": "uml.InstanceSpecification",
+   "label": "frontDesk",
+   "members": [
+    {
+     "id": "package-desk.opens",
+     "type": "uml.Slot",
+     "label": "opens",
+     "props": {
+      "value": "09:00"
+     }
+    }
+   ]
+  },
+  {
+   "id": "package-note-copy",
+   "type": "uml.Comment",
+   "parent": "package-lending",
+   "label": "an anonymous copy: only its barcode matters"
+  },
+  {
+   "id": "classes-Dock",
+   "type": "uml.Class",
+   "label": "Dock",
+   "members": [
+    {
+     "id": "classes-Dock.code",
+     "type": "uml.Property",
+     "label": "code",
+     "props": {
+      "visibility": "public",
+      "valueType": "String"
+     }
+    },
+    {
+     "id": "classes-Dock.slots",
+     "type": "uml.Property",
+     "label": "slots",
+     "props": {
+      "visibility": "public",
+      "valueType": "Integer"
+     }
+    }
+   ]
+  },
+  {
+   "id": "classes-Bike",
+   "type": "uml.Class",
+   "label": "Bike",
+   "members": [
+    {
+     "id": "classes-Bike.serial",
+     "type": "uml.Property",
+     "label": "serial",
+     "props": {
+      "visibility": "public",
+      "valueType": "String"
+     }
+    },
+    {
+     "id": "classes-Bike.charge",
+     "type": "uml.Property",
+     "label": "charge",
+     "props": {
+      "visibility": "public",
+      "valueType": "Integer"
+     }
+    }
+   ]
+  },
+  {
+   "id": "classes-riverside",
+   "type": "uml.InstanceSpecification",
+   "label": "riverside",
+   "props": {
+    "classifier": "Dock"
+   },
+   "members": [
+    {
+     "id": "classes-riverside.code",
+     "type": "uml.Slot",
+     "label": "code",
+     "props": {
+      "value": "RV-01"
+     }
+    },
+    {
+     "id": "classes-riverside.slots",
+     "type": "uml.Slot",
+     "label": "slots",
+     "props": {
+      "value": "12"
+     }
+    }
+   ]
+  },
+  {
+   "id": "classes-market",
+   "type": "uml.InstanceSpecification",
+   "label": "market",
+   "props": {
+    "classifier": "Dock"
+   },
+   "members": [
+    {
+     "id": "classes-market.code",
+     "type": "uml.Slot",
+     "label": "code",
+     "props": {
+      "value": "MK-04"
+     }
+    }
+   ]
+  },
+  {
+   "id": "classes-bike-88",
+   "type": "uml.InstanceSpecification",
+   "label": "bike88",
+   "props": {
+    "classifier": "Bike"
+   },
+   "members": [
+    {
+     "id": "classes-bike-88.serial",
+     "type": "uml.Slot",
+     "label": "serial",
+     "props": {
+      "value": "EB-0088"
+     }
+    },
+    {
+     "id": "classes-bike-88.charge",
+     "type": "uml.Slot",
+     "label": "charge",
+     "props": {
+      "value": "64"
+     }
+    }
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "id": "order-objects-ada-places-order",
+   "type": "uml.Link",
+   "from": "order-objects-ada",
+   "to": "order-objects-order-1042",
+   "label": "places",
+   "props": {
+    "ends": {
+     "to": {
+      "role": "orders"
+     }
+    }
+   }
+  },
+  {
+   "id": "order-objects-order-has-line-1",
+   "type": "uml.Link",
+   "from": "order-objects-order-1042",
+   "to": "order-objects-line-1",
+   "props": {
+    "ends": {
+     "to": {
+      "role": "lines"
+     }
+    }
+   }
+  },
+  {
+   "id": "order-objects-order-has-line-2",
+   "type": "uml.Link",
+   "from": "order-objects-order-1042",
+   "to": "order-objects-line-2",
+   "props": {
+    "ends": {
+     "to": {
+      "role": "lines"
+     }
+    }
+   }
+  },
+  {
+   "id": "order-objects-line-1-is-for",
+   "type": "uml.Link",
+   "from": "order-objects-line-1",
+   "to": "order-objects-middlemarch",
+   "props": {
+    "ends": {
+     "to": {
+      "role": "book"
+     }
+    }
+   }
+  },
+  {
+   "id": "order-objects-line-2-is-for",
+   "type": "uml.Link",
+   "from": "order-objects-line-2",
+   "to": "order-objects-frankenstein",
+   "props": {
+    "ends": {
+     "to": {
+      "role": "book"
+     }
+    }
+   }
+  },
+  {
+   "id": "order-objects-order-paid-by-card",
+   "type": "uml.Link",
+   "from": "order-objects-order-1042",
+   "to": "order-objects-card-1",
+   "props": {
+    "ends": {
+     "to": {
+      "role": "payments"
+     }
+    }
+   }
+  },
+  {
+   "id": "package-maya-borrows",
+   "type": "uml.Link",
+   "from": "package-maya",
+   "to": "package-loan-7",
+   "label": "borrows",
+   "props": {
+    "ends": {
+     "from": {
+      "role": "borrower"
+     },
+     "to": {
+      "role": "loans"
+     }
+    }
+   }
+  },
+  {
+   "id": "package-loan-copy",
+   "type": "uml.Link",
+   "from": "package-loan-7",
+   "to": "package-copy",
+   "props": {
+    "association": "LoanOfCopy",
+    "ends": {
+     "to": {
+      "role": "item"
+     }
+    }
+   }
+  },
+  {
+   "id": "package-desk-loan",
+   "type": "uml.Link",
+   "from": "package-desk",
+   "to": "package-loan-7",
+   "label": "issued",
+   "props": {
+    "stereotypes": [
+     "audit"
+    ]
+   }
+  },
+  {
+   "id": "package-note-copy-link",
+   "type": "uml.CommentLink",
+   "from": "package-note-copy",
+   "to": "package-copy"
+  },
+  {
+   "id": "classes-bike-home",
+   "type": "uml.Link",
+   "from": "classes-bike-88",
+   "to": "classes-riverside",
+   "label": "home",
+   "props": {
+    "ends": {
+     "to": {
+      "role": "home"
+     }
+    }
+   }
+  },
+  {
+   "id": "classes-bike-at",
+   "type": "uml.Link",
+   "from": "classes-bike-88",
+   "to": "classes-riverside",
+   "label": "parked at",
+   "props": {
+    "ends": {
+     "to": {
+      "role": "dock"
+     }
+    }
+   }
+  },
+  {
+   "id": "classes-dock-next",
+   "type": "uml.Link",
+   "from": "classes-riverside",
+   "to": "classes-market",
+   "props": {
+    "association": "Neighbour",
+    "ends": {
+     "to": {
+      "role": "next"
+     }
+    }
+   }
+  },
+  {
+   "id": "classes-market-self",
+   "type": "uml.Link",
+   "from": "classes-market",
+   "to": "classes-market",
+   "label": "rebalances"
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Object diagram examples",
+   "nodeIds": [
+    "card-order-objects-snapshot",
+    "card-package-branch",
+    "card-package-unboxed",
+    "card-classes-beside"
+   ],
+   "layout": {
+    "card-order-objects-snapshot": [
+     0,
+     0
+    ],
+    "card-package-branch": [
+     1,
+     0
+    ],
+    "card-package-unboxed": [
+     0,
+     1
+    ],
+    "card-classes-beside": [
+     1,
+     1
+    ]
+   }
+  },
+  {
+   "id": "order-objects-snapshot",
+   "diagram": "uml.object",
+   "title": "Order 1042, just placed",
+   "parent": "overview",
+   "direction": "down",
+   "nodeIds": [
+    "order-objects-ada",
+    "order-objects-order-1042",
+    "order-objects-line-1",
+    "order-objects-line-2",
+    "order-objects-middlemarch",
+    "order-objects-frankenstein",
+    "order-objects-card-1"
+   ]
+  },
+  {
+   "id": "package-branch",
+   "diagram": "uml.object",
+   "title": "A loan inside the lending package",
+   "parent": "overview",
+   "nodeIds": [
+    "package-lending",
+    "package-maya",
+    "package-loan-7",
+    "package-copy",
+    "package-desk",
+    "package-note-copy"
+   ]
+  },
+  {
+   "id": "package-unboxed",
+   "diagram": "uml.object",
+   "title": "The same loan, names qualified",
+   "parent": "overview",
+   "direction": "down",
+   "nodeIds": [
+    "package-maya",
+    "package-loan-7",
+    "package-copy",
+    "package-desk"
+   ]
+  },
+  {
+   "id": "classes-beside",
+   "diagram": "uml.object",
+   "title": "Two classes beside their instances",
+   "parent": "overview",
+   "nodeIds": [
+    "classes-Dock",
+    "classes-Bike",
+    "classes-riverside",
+    "classes-market",
+    "classes-bike-88"
+   ]
+  }
+ ]
+}

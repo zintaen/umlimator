@@ -1,0 +1,885 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Internal block diagram examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-ebike-structure-inside-ebike",
+   "label": "Inside the e-bike",
+   "kind": "file",
+   "sublabel": "parts, ports, item flows",
+   "what": "A block's parts, references and values inside its frame; proxy and full ports with flow arrows and conjugation; connectors with item flows.",
+   "how": "From examples/ebike-structure.json.",
+   "opensView": "ebike-structure-inside-ebike"
+  },
+  {
+   "id": "card-dock-inside-station",
+   "label": "Inside the dock station",
+   "kind": "file",
+   "sublabel": "frame ports, delegation, a full port",
+   "what": "A dock station's parts, a reference and a value; a proxy port on the frame delegating to the charger's port, a full port on the frame, conjugated proxy ports meeting, and item flows on four connectors.",
+   "how": "From examples/variants/sysml-internal-block-dock.json.",
+   "opensView": "dock-inside-station"
+  },
+  {
+   "id": "card-dock-inside-charger",
+   "label": "Inside the charger",
+   "kind": "file",
+   "sublabel": "a part's own block, two delegations",
+   "what": "The charger, a part of the dock, as the subject of its own diagram: its two frame ports delegate in to the breaker and out from the rectifier, with alternating current flowing between them.",
+   "how": "From examples/variants/sysml-internal-block-dock.json.",
+   "opensView": "dock-inside-charger"
+  },
+  {
+   "id": "ebike-structure-ebike",
+   "type": "sysml.Block",
+   "label": "EBike",
+   "members": [
+    {
+     "id": "ebike-structure-ebike.battery",
+     "type": "sysml.PartProperty",
+     "label": "battery",
+     "props": {
+      "valueType": "Battery",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "ebike-structure-ebike.controller",
+     "type": "sysml.PartProperty",
+     "label": "controller",
+     "props": {
+      "valueType": "Controller",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "ebike-structure-ebike.motor",
+     "type": "sysml.PartProperty",
+     "label": "motor",
+     "props": {
+      "valueType": "Motor",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "ebike-structure-ebike.frontLight",
+     "type": "sysml.PartProperty",
+     "label": "frontLight",
+     "props": {
+      "valueType": "Light",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "ebike-structure-ebike.rearLight",
+     "type": "sysml.PartProperty",
+     "label": "rearLight",
+     "props": {
+      "valueType": "Light",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "ebike-structure-ebike.dock",
+     "type": "sysml.ReferenceProperty",
+     "label": "dock",
+     "props": {
+      "valueType": "Dock",
+      "multiplicity": "0..1"
+     }
+    },
+    {
+     "id": "ebike-structure-ebike.batteryCapacity",
+     "type": "sysml.ValueProperty",
+     "label": "batteryCapacity",
+     "props": {
+      "valueType": "Energy"
+     }
+    },
+    {
+     "id": "ebike-structure-ebike.usableShare",
+     "type": "sysml.ValueProperty",
+     "label": "usableShare",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ebike-structure-ebike.ecoConsumption",
+     "type": "sysml.ValueProperty",
+     "label": "ecoConsumption",
+     "props": {
+      "valueType": "EnergyPerDistance"
+     }
+    },
+    {
+     "id": "ebike-structure-ebike.boostConsumption",
+     "type": "sysml.ValueProperty",
+     "label": "boostConsumption",
+     "props": {
+      "valueType": "EnergyPerDistance"
+     }
+    },
+    {
+     "id": "ebike-structure-ebike.ecoRange",
+     "type": "sysml.ValueProperty",
+     "label": "ecoRange",
+     "props": {
+      "valueType": "Distance"
+     }
+    },
+    {
+     "id": "ebike-structure-ebike.boostRange",
+     "type": "sysml.ValueProperty",
+     "label": "boostRange",
+     "props": {
+      "valueType": "Distance"
+     }
+    },
+    {
+     "id": "ebike-structure-ebike.usable",
+     "type": "sysml.ConstraintProperty",
+     "label": "usable",
+     "props": {
+      "valueType": "UsableEnergy"
+     }
+    },
+    {
+     "id": "ebike-structure-ebike.eco",
+     "type": "sysml.ConstraintProperty",
+     "label": "eco",
+     "props": {
+      "valueType": "RangeEquation"
+     }
+    },
+    {
+     "id": "ebike-structure-ebike.boost",
+     "type": "sysml.ConstraintProperty",
+     "label": "boost",
+     "props": {
+      "valueType": "RangeEquation"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ebike-structure-battery",
+   "type": "sysml.Block",
+   "label": "Battery",
+   "members": [
+    {
+     "id": "ebike-structure-battery.capacity",
+     "type": "sysml.ValueProperty",
+     "label": "capacity",
+     "props": {
+      "valueType": "Energy"
+     }
+    },
+    {
+     "id": "ebike-structure-battery.cellVoltage",
+     "type": "sysml.ValueProperty",
+     "label": "cellVoltage",
+     "props": {
+      "valueType": "Voltage",
+      "multiplicity": "10"
+     }
+    },
+    {
+     "id": "ebike-structure-battery.charge",
+     "type": "sysml.Port",
+     "label": "charge",
+     "props": {
+      "valueType": "ChargeInterface"
+     }
+    },
+    {
+     "id": "ebike-structure-battery.power",
+     "type": "sysml.Port",
+     "label": "power"
+    },
+    {
+     "id": "ebike-structure-battery.bus",
+     "type": "sysml.Port",
+     "label": "bus"
+    }
+   ]
+  },
+  {
+   "id": "ebike-structure-controller",
+   "type": "sysml.Block",
+   "label": "Controller",
+   "members": [
+    {
+     "id": "ebike-structure-controller.setAssistLevel",
+     "type": "uml.Operation",
+     "label": "setAssistLevel",
+     "props": {
+      "parameters": [
+       {
+        "name": "level",
+        "valueType": "Integer"
+       }
+      ]
+     }
+    },
+    {
+     "id": "ebike-structure-controller.supply",
+     "type": "sysml.Port",
+     "label": "supply"
+    },
+    {
+     "id": "ebike-structure-controller.drive",
+     "type": "sysml.Port",
+     "label": "drive"
+    },
+    {
+     "id": "ebike-structure-controller.lights",
+     "type": "sysml.Port",
+     "label": "lights"
+    },
+    {
+     "id": "ebike-structure-controller.bus",
+     "type": "sysml.Port",
+     "label": "bus"
+    }
+   ]
+  },
+  {
+   "id": "ebike-structure-motor",
+   "type": "sysml.Block",
+   "label": "Motor",
+   "members": [
+    {
+     "id": "ebike-structure-motor.ratedPower",
+     "type": "sysml.ValueProperty",
+     "label": "ratedPower",
+     "props": {
+      "valueType": "Power"
+     }
+    },
+    {
+     "id": "ebike-structure-motor.phases",
+     "type": "sysml.Port",
+     "label": "phases"
+    }
+   ]
+  },
+  {
+   "id": "ebike-structure-light",
+   "type": "sysml.Block",
+   "label": "Light",
+   "members": [
+    {
+     "id": "ebike-structure-light.power",
+     "type": "sysml.Port",
+     "label": "power"
+    }
+   ]
+  },
+  {
+   "id": "ebike-structure-dock",
+   "type": "sysml.Block",
+   "label": "Dock",
+   "members": [
+    {
+     "id": "ebike-structure-dock.charge",
+     "type": "sysml.Port",
+     "label": "charge",
+     "props": {
+      "valueType": "~ChargeInterface"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ebike-structure-charge-interface",
+   "type": "sysml.InterfaceBlock",
+   "label": "ChargeInterface",
+   "members": [
+    {
+     "id": "ebike-structure-charge-interface.dc",
+     "type": "sysml.FlowProperty",
+     "label": "dc",
+     "props": {
+      "valueType": "DCPower",
+      "direction": "in"
+     }
+    },
+    {
+     "id": "ebike-structure-charge-interface.stateOfCharge",
+     "type": "sysml.FlowProperty",
+     "label": "stateOfCharge",
+     "props": {
+      "valueType": "Percent",
+      "direction": "out"
+     }
+    }
+   ]
+  },
+  {
+   "id": "dock-station",
+   "type": "sysml.Block",
+   "label": "DockStation",
+   "members": [
+    {
+     "id": "dock-station.charger",
+     "type": "sysml.PartProperty",
+     "label": "charger",
+     "props": {
+      "valueType": "Charger",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "dock-station.latch",
+     "type": "sysml.PartProperty",
+     "label": "latch",
+     "props": {
+      "valueType": "Latch",
+      "multiplicity": "12"
+     }
+    },
+    {
+     "id": "dock-station.reader",
+     "type": "sysml.PartProperty",
+     "label": "reader",
+     "props": {
+      "valueType": "CardReader",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "dock-station.backend",
+     "type": "sysml.ReferenceProperty",
+     "label": "backend",
+     "props": {
+      "valueType": "FleetServer",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "dock-station.slots",
+     "type": "sysml.ValueProperty",
+     "label": "slots",
+     "props": {
+      "valueType": "Integer"
+     }
+    },
+    {
+     "id": "dock-station.mains",
+     "type": "sysml.Port",
+     "label": "mains",
+     "props": {
+      "kind": "proxy",
+      "valueType": "MainsIf"
+     }
+    },
+    {
+     "id": "dock-station.uplink",
+     "type": "sysml.Port",
+     "label": "uplink",
+     "props": {
+      "kind": "full",
+      "valueType": "Modem"
+     }
+    }
+   ]
+  },
+  {
+   "id": "dock-charger",
+   "type": "sysml.Block",
+   "label": "Charger",
+   "members": [
+    {
+     "id": "dock-charger.breaker",
+     "type": "sysml.PartProperty",
+     "label": "breaker",
+     "props": {
+      "valueType": "Breaker",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "dock-charger.rectifier",
+     "type": "sysml.PartProperty",
+     "label": "rectifier",
+     "props": {
+      "valueType": "Rectifier",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "dock-charger.ac",
+     "type": "sysml.Port",
+     "label": "ac",
+     "props": {
+      "kind": "proxy",
+      "valueType": "MainsIf"
+     }
+    },
+    {
+     "id": "dock-charger.out",
+     "type": "sysml.Port",
+     "label": "out",
+     "props": {
+      "kind": "proxy",
+      "valueType": "DcIf"
+     }
+    }
+   ]
+  },
+  {
+   "id": "dock-latch",
+   "type": "sysml.Block",
+   "label": "Latch",
+   "members": [
+    {
+     "id": "dock-latch.power",
+     "type": "sysml.Port",
+     "label": "power",
+     "props": {
+      "kind": "proxy",
+      "valueType": "~DcIf"
+     }
+    },
+    {
+     "id": "dock-latch.signal",
+     "type": "sysml.Port",
+     "label": "signal"
+    }
+   ]
+  },
+  {
+   "id": "dock-reader",
+   "type": "sysml.Block",
+   "label": "CardReader",
+   "members": [
+    {
+     "id": "dock-reader.net",
+     "type": "sysml.Port",
+     "label": "net",
+     "props": {
+      "kind": "proxy",
+      "valueType": "DataIf"
+     }
+    },
+    {
+     "id": "dock-reader.unlock",
+     "type": "sysml.Port",
+     "label": "unlock"
+    }
+   ]
+  },
+  {
+   "id": "dock-server",
+   "type": "sysml.Block",
+   "label": "FleetServer",
+   "members": [
+    {
+     "id": "dock-server.api",
+     "type": "sysml.Port",
+     "label": "api",
+     "props": {
+      "kind": "proxy",
+      "valueType": "~DataIf"
+     }
+    }
+   ]
+  },
+  {
+   "id": "dock-modem",
+   "type": "sysml.Block",
+   "label": "Modem"
+  },
+  {
+   "id": "dock-breaker",
+   "type": "sysml.Block",
+   "label": "Breaker",
+   "members": [
+    {
+     "id": "dock-breaker.line",
+     "type": "sysml.Port",
+     "label": "line",
+     "props": {
+      "kind": "proxy",
+      "valueType": "MainsIf"
+     }
+    },
+    {
+     "id": "dock-breaker.load",
+     "type": "sysml.Port",
+     "label": "load"
+    }
+   ]
+  },
+  {
+   "id": "dock-rectifier",
+   "type": "sysml.Block",
+   "label": "Rectifier",
+   "members": [
+    {
+     "id": "dock-rectifier.in",
+     "type": "sysml.Port",
+     "label": "in"
+    },
+    {
+     "id": "dock-rectifier.out",
+     "type": "sysml.Port",
+     "label": "out",
+     "props": {
+      "kind": "proxy",
+      "valueType": "DcIf"
+     }
+    }
+   ]
+  },
+  {
+   "id": "dock-mains-if",
+   "type": "sysml.InterfaceBlock",
+   "label": "MainsIf",
+   "members": [
+    {
+     "id": "dock-mains-if.ac",
+     "type": "sysml.FlowProperty",
+     "label": "ac",
+     "props": {
+      "valueType": "ACPower",
+      "direction": "in"
+     }
+    }
+   ]
+  },
+  {
+   "id": "dock-dc-if",
+   "type": "sysml.InterfaceBlock",
+   "label": "DcIf",
+   "members": [
+    {
+     "id": "dock-dc-if.dc",
+     "type": "sysml.FlowProperty",
+     "label": "dc",
+     "props": {
+      "valueType": "DCPower",
+      "direction": "out"
+     }
+    }
+   ]
+  },
+  {
+   "id": "dock-data-if",
+   "type": "sysml.InterfaceBlock",
+   "label": "DataIf",
+   "members": [
+    {
+     "id": "dock-data-if.request",
+     "type": "sysml.FlowProperty",
+     "label": "request",
+     "props": {
+      "valueType": "RideRequest",
+      "direction": "out"
+     }
+    },
+    {
+     "id": "dock-data-if.grant",
+     "type": "sysml.FlowProperty",
+     "label": "grant",
+     "props": {
+      "valueType": "Grant",
+      "direction": "in"
+     }
+    }
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "id": "ebike-structure-battery-dock-charge",
+   "type": "sysml.Connector",
+   "from": "ebike-structure-battery.charge",
+   "to": "ebike-structure-dock.charge",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "ebike-structure-ebike.battery"
+     },
+     "to": {
+      "part": "ebike-structure-ebike.dock"
+     }
+    },
+    "itemFlow": {
+     "item": "DCPower",
+     "direction": "to-from"
+    }
+   }
+  },
+  {
+   "id": "ebike-structure-battery-feeds-controller",
+   "type": "sysml.Connector",
+   "from": "ebike-structure-battery.power",
+   "to": "ebike-structure-controller.supply",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "ebike-structure-ebike.battery"
+     },
+     "to": {
+      "part": "ebike-structure-ebike.controller"
+     }
+    },
+    "itemFlow": {
+     "item": "DCPower",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "ebike-structure-controller-drives-motor",
+   "type": "sysml.Connector",
+   "from": "ebike-structure-controller.drive",
+   "to": "ebike-structure-motor.phases",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "ebike-structure-ebike.controller"
+     },
+     "to": {
+      "part": "ebike-structure-ebike.motor"
+     }
+    },
+    "itemFlow": {
+     "item": "PhaseCurrent",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "ebike-structure-battery-controller-bus",
+   "type": "sysml.Connector",
+   "from": "ebike-structure-battery.bus",
+   "to": "ebike-structure-controller.bus",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "ebike-structure-ebike.battery"
+     },
+     "to": {
+      "part": "ebike-structure-ebike.controller"
+     }
+    }
+   }
+  },
+  {
+   "id": "ebike-structure-controller-front-light",
+   "type": "sysml.Connector",
+   "from": "ebike-structure-controller.lights",
+   "to": "ebike-structure-light.power",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "ebike-structure-ebike.controller"
+     },
+     "to": {
+      "part": "ebike-structure-ebike.frontLight"
+     }
+    }
+   }
+  },
+  {
+   "id": "ebike-structure-controller-rear-light",
+   "type": "sysml.Connector",
+   "from": "ebike-structure-controller.lights",
+   "to": "ebike-structure-light.power",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "ebike-structure-ebike.controller"
+     },
+     "to": {
+      "part": "ebike-structure-ebike.rearLight"
+     }
+    }
+   }
+  },
+  {
+   "id": "dock-mains-to-charger",
+   "type": "sysml.Connector",
+   "from": "dock-station.mains",
+   "to": "dock-charger.ac",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "dock-station.charger"
+     }
+    },
+    "itemFlow": {
+     "item": "ACPower",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "dock-charger-to-latch",
+   "type": "sysml.Connector",
+   "from": "dock-charger.out",
+   "to": "dock-latch.power",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "dock-station.charger"
+     },
+     "to": {
+      "part": "dock-station.latch"
+     }
+    },
+    "itemFlow": {
+     "item": "DCPower",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "dock-reader-to-backend",
+   "type": "sysml.Connector",
+   "from": "dock-reader.net",
+   "to": "dock-server.api",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "dock-station.reader"
+     },
+     "to": {
+      "part": "dock-station.backend"
+     }
+    },
+    "itemFlow": {
+     "item": "RideRequest",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "dock-reader-to-latch",
+   "type": "sysml.Connector",
+   "from": "dock-reader.unlock",
+   "to": "dock-latch.signal",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "dock-station.reader"
+     },
+     "to": {
+      "part": "dock-station.latch"
+     }
+    },
+    "itemFlow": {
+     "item": "UnlockCommand",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "dock-ac-to-breaker",
+   "type": "sysml.Connector",
+   "from": "dock-charger.ac",
+   "to": "dock-breaker.line",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "dock-charger.breaker"
+     }
+    }
+   }
+  },
+  {
+   "id": "dock-breaker-to-rectifier",
+   "type": "sysml.Connector",
+   "from": "dock-breaker.load",
+   "to": "dock-rectifier.in",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "dock-charger.breaker"
+     },
+     "to": {
+      "part": "dock-charger.rectifier"
+     }
+    },
+    "itemFlow": {
+     "item": "ACPower",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "dock-rectifier-to-out",
+   "type": "sysml.Connector",
+   "from": "dock-rectifier.out",
+   "to": "dock-charger.out",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "dock-charger.rectifier"
+     }
+    }
+   }
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Internal block diagram examples",
+   "nodeIds": [
+    "card-ebike-structure-inside-ebike",
+    "card-dock-inside-station",
+    "card-dock-inside-charger"
+   ],
+   "layout": {
+    "card-ebike-structure-inside-ebike": [
+     0,
+     0
+    ],
+    "card-dock-inside-station": [
+     1,
+     0
+    ],
+    "card-dock-inside-charger": [
+     0,
+     1
+    ]
+   }
+  },
+  {
+   "id": "ebike-structure-inside-ebike",
+   "diagram": "sysml.internal-block",
+   "title": "Inside the e-bike",
+   "parent": "overview",
+   "subject": "ebike-structure-ebike",
+   "nodeIds": [
+    "ebike-structure-ebike"
+   ]
+  },
+  {
+   "id": "dock-inside-station",
+   "diagram": "sysml.internal-block",
+   "title": "Inside the dock station",
+   "parent": "overview",
+   "subject": "dock-station",
+   "nodeIds": [
+    "dock-station"
+   ]
+  },
+  {
+   "id": "dock-inside-charger",
+   "diagram": "sysml.internal-block",
+   "title": "Inside the charger",
+   "parent": "overview",
+   "subject": "dock-charger",
+   "nodeIds": [
+    "dock-charger"
+   ]
+  }
+ ]
+}
