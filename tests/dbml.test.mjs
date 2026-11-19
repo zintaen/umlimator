@@ -214,3 +214,14 @@ test('audit 22: the backlog rows M2.11 and M2.12 say the fixture is an export(),
   assert.equal(rows.length, 2);
   for (const r of rows) { assert.doesNotMatch(r, /captured `Database`/, r.slice(0, 40)); assert.match(r, /`export\(\)`/, r.slice(0, 40)); }
 });
+
+test('a raw character XML cannot hold in a table, column or type name is read as U+FFFD and said; refs still find it (audit 48)', () => {
+  const r = read({ schemas: [{ name: 'public', tables: [{ name: 't\u0001', fields: [{ name: 'id', type: { type_name: 'int' }, pk: true }] },
+    { name: 'u', fields: [{ name: 'c\ud800', type: { type_name: 'int\u0002' }, not_null: true }] }],
+  refs: [{ name: 'r', endpoints: [{ tableName: 'u', fieldNames: ['c\ud800'], relation: '*' }, { tableName: 't\u0001', fieldNames: ['id'], relation: '1' }] }] }] });
+  assert.deepEqual(r.model.nodes.map(n => [n.id, n.label, n.members.map(c => [c.id, c.label, c.props.dataType])]),
+    [['t\uFFFD', 't\uFFFD', [['t\uFFFD.id', 'id', 'int']]], ['u', 'u', [['u.c\uFFFD', 'c\uFFFD', 'int\uFFFD']]]]);
+  assert.equal(r.model.edges.length, 1);
+  const say = (line, c) => ({ line, status: 'approximated', message: `the character U+${c}, which SVG or XML cannot hold, is read as U+FFFD` });
+  assert.deepEqual(r.report.filter(x => x.message.includes('U+FFFD')), [say('schemas[0].tables[0]', '0001'), say('schemas[0].tables[1].fields[0]', '0002'), say('schemas[0].tables[1].fields[0]', 'D800')]);
+});

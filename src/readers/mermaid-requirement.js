@@ -1,5 +1,5 @@
 import { unreadable, jsonText } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort, mermaidText } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText, mermaidScrub } from './mermaid-front.js';
 /* ---------- Mermaid requirementDiagram: a reader and a writer (notes/milestone-3.md §12, M3.6; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's requirement diagram page (docs/syntax/requirementDiagram.md, read 14 Nov 2026), as the
    other readers are against theirs. Internal: the CLI (`umlimator.py import`) imports this file through Node; a host gets it
@@ -32,7 +32,10 @@ import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort, mermaidText } 
      when their ends break the requirement type's errors (notes/milestone-3.md §6.3), so an import passes check.mjs but for
      one: a copy between requirements whose texts differ is read as written, reported, and left to check's copy-text error;
    - `direction TB` down, `LR` right (none: unset, Mermaid's TB); BT and RL approximated; styling skipped, once per kind;
-     quoted names and text kept as written, Markdown and all (reported once). */
+     quoted names and text kept as written, Markdown and all (reported once), but for Mermaid's entity codes (#quot; #lt;
+     #gt; #amp; #35;), which a name or a field's value reads as their characters, as Mermaid draws them and the other
+     Mermaid readers read them (audit 48); a code naming a character XML cannot hold is U+FFFD, said. The writer writes a #
+     that would read as a code as #35;. */
 const MQ_LIMIT = 1 << 20; // characters; a requirement diagram a person writes is a few kilobytes
 const MQ_VIEW = 'requirements'; // the view's id when the source does not name it
 const MQ_DIAGRAM = 'sysml.requirement';
@@ -54,6 +57,11 @@ const MQ_RULE = new Map([['derives', ['derive-ends', 'a deriveReqt runs from a r
 const mqSkip = (s, k) => { while (k < s.length && (s[k] === ' ' || s[k] === '\t')) k++; return k; };
 const mqShort = mermaidClip;
 const mqMarkdown = s => /\*\*|__|`|(?:^|\s)[*_]\S/.test(s); // emphasis or code: reported once, kept as written
+// Mermaid's entity codes in a name or a field's value as their characters; a code naming none XML holds as U+FFFD, bad(code) told
+const MQ_CODE = /#(quot|lt|gt|amp|\d{1,6});/g;
+const mqText = (s, bad) => s.replace(MQ_CODE, (all, e) => ({ quot: '"', lt: '<', gt: '>', amp: '&' })[e] ?? mermaidChar(Number(e), all, bad));
+// a # the reader would read as the start of a code, written as #35; (audit 48)
+const mqCode = s => s.replace(/#(?=(?:quot|lt|gt|amp|\d{1,6});)/g, '#35;');
 // the id a name gives: the name when it is one, else a slug of it
 const mqWant = name => (/^[\p{L}\p{N}_.-]+$/u.test(name) ? name : name.replace(/[^\p{L}\p{N}_.-]+/gu, '-').replace(/^-+|-+$/g, '') || 'element');
 // a name Mermaid reads bare: a word of letters, digits, _ and ., not one of its grammar's
@@ -67,13 +75,14 @@ function mqFree(used, next, base) {
   return id;
 }
 
-// a name at k: "in quotes" (not empty), or bare up to one of { < > - = or ::: (Mermaid's unqString), trimmed: { text, end, quoted }
-function mqName(s, k) {
-  if (s[k] === '"') { const e = s.indexOf('"', k + 1); return e > k + 1 ? { text: s.slice(k + 1, e), end: e + 1, quoted: true } : null; }
+// a name at k: "in quotes" (not empty), or bare up to one of { < > - = or ::: (Mermaid's unqString), trimmed: { text, end,
+// quoted }, its text through decode (its entity codes read) when one is given
+function mqName(s, k, decode = x => x) {
+  if (s[k] === '"') { const e = s.indexOf('"', k + 1); return e > k + 1 ? { text: decode(s.slice(k + 1, e)), end: e + 1, quoted: true } : null; }
   let e = k;
   while (e < s.length && !'{<>-='.includes(s[e]) && !(s[e] === ':' && s.startsWith(':::', e))) e++;
   const t = s.slice(k, e).trim();
-  return t ? { text: t, end: e } : null;
+  return t ? { text: decode(t), end: e } : null;
 }
 
 function readMermaidRequirement(text) {
@@ -81,6 +90,7 @@ function readMermaidRequirement(text) {
   const empty = () => ({ model: { schemaVersion: 2, root: MQ_VIEW, nodes: [], edges: [], views: [{ id: MQ_VIEW, diagram: MQ_DIAGRAM, nodeIds: [] }] }, report });
   if (typeof text !== 'string') { say(1, 'skipped', 'the input is not text: nothing read'); return empty(); }
   if (text.length > MQ_LIMIT) { say(1, 'skipped', `the input is ${text.length} characters, over the limit of ${MQ_LIMIT}: nothing read`); return empty(); }
+  text = mermaidScrub(text, say); // a raw character XML cannot hold as U+FFFD, said (audit 48)
   const lines = text.split('\n').map(l => l.replace(/\r$/, ''));
   let i = 0, title;
 
@@ -118,6 +128,7 @@ function readMermaidRequirement(text) {
     say(no, 'skipped', `%% ${what}: ${mqShort(raw)} is not a JSON string: ${what === 'text' ? "the field's own text" : 'the name'} is kept`);
   };
   const notRead = (t, no) => say(no, 'skipped', `"${mqShort(t)}" is not understood`);
+  const decode = (s, no) => mqText(s, code => say(no, 'approximated', mermaidBadChar(code)));
 
   // a line in a definition's block: a field, or its }
   const field = (t, no) => {
@@ -127,6 +138,7 @@ function readMermaidRequirement(text) {
     if (!MQ_FIELDS[block.kind].includes(key)) { say(no, 'skipped', `"${mqShort(t)}" in ${block.name}'s block is not a field of ${block.kind === 'element' ? 'an element' : 'a requirement'}`); return; }
     let v = t.slice(c + 1).trim();
     if (v.length > 1 && v[0] === '"' && v.endsWith('"')) { v = v.slice(1, -1); markdown(v, no); }
+    v = decode(v, no);
     if (block.f.has(key)) say(no, 'approximated', `${block.name}'s ${key} is given twice: the last is kept`);
     block.f.set(key, [v, no]);
   };
@@ -159,7 +171,7 @@ function readMermaidRequirement(text) {
       return mqSkip(t, e);
     };
     if (word && t.endsWith('{') && /\s/.test(after || '')) { // a definition: kind name [:::class] {
-      const n = mqName(t, mqSkip(t, word[0].length)), kind = w === 'element' ? 'element' : MQ_KINDS.has(w) ? 'requirement' : null;
+      const n = mqName(t, mqSkip(t, word[0].length), s => decode(s, no)), kind = w === 'element' ? 'element' : MQ_KINDS.has(w) ? 'requirement' : null;
       block = { skip: true, no, name: n ? n.text : t };
       if (!n || style(mqSkip(t, n.end), n.text) !== t.length - 1) { notRead(t, no); return leftover(h, []); }
       if (!kind) { say(no, 'skipped', `${word[0]} ${n.text}: ${word[0]} is no kind of Mermaid's requirement diagram: its block is not read`); return leftover(h, []); }
@@ -174,7 +186,7 @@ function readMermaidRequirement(text) {
       return;
     }
     // a relationship, a - kind -> b or b <- kind - a; or a name and its classes
-    const a = mqName(t, 0);
+    const a = mqName(t, 0, s => decode(s, no));
     if (!a) { notRead(t, no); return leftover(h, []); }
     let k = mqSkip(t, a.end);
     if (t.startsWith(':::', k)) { if (style(k, a.text) !== t.length) notRead(t, no); return leftover(h, []); }
@@ -186,7 +198,7 @@ function readMermaidRequirement(text) {
     const rw = kw.exec(t);
     if (rw) k = mqSkip(t, k + rw[0].length);
     const arrow = back ? '-' : '->';
-    const b = rw && t.startsWith(arrow, k) ? mqName(t, mqSkip(t, k + arrow.length)) : null;
+    const b = rw && t.startsWith(arrow, k) ? mqName(t, mqSkip(t, k + arrow.length), s => decode(s, no)) : null;
     if (!b || mqSkip(t, b.end) !== t.length) { notRead(t, no); return leftover(h, []); }
     const kind = rw[0].toLowerCase();
     if (!MQ_TYPE.has(kind)) { say(no, 'skipped', `${rw[0]}: no relationship of Mermaid's requirement diagram is called that`); return leftover(h, []); }
@@ -324,7 +336,7 @@ function writeMermaidRequirement(model, viewId) {
   const value = (id, what, v) => {
     v = mermaidText(v); // a number or true as its text, as the view draws it (audit 33)
     if (v === '') { lose(id, `${what} "", which Mermaid cannot write empty`); return null; }
-    if (typeof v === 'string' && !nl(v) && !v.includes('"')) return /^\w[\w./]*$/.test(v) ? v : `"${v}"`;
+    if (typeof v === 'string' && !nl(v) && !v.includes('"')) return /^\w[\w./]*$/.test(v) ? v : `"${mqCode(v)}"`;
     lose(id, `${what} ${said(v)}, which Mermaid's quotes cannot hold`);
     return null;
   };
@@ -353,7 +365,7 @@ function writeMermaidRequirement(model, viewId) {
     taken.add(name);
     names.set(n.id, name);
   }
-  const tok = id => { const name = names.get(id); return mqBare(name) ? name : `"${name}"`; };
+  const tok = id => { const name = names.get(id); return mqBare(name) ? name : `"${mqCode(name)}"`; };
   for (const n of nodes) {
     const name = names.get(n.id), p = isObj(n.props) ? n.props : {}, req = n.type === 'sysml.Requirement', head = [], body = [];
     if (n.id !== mqWant(name)) head.push(`%% id: ${n.id}`);
@@ -374,7 +386,7 @@ function writeMermaidRequirement(model, viewId) {
       if (typeof text === 'string') {
         const clean = text.replace(/["\r\n]/g, '');
         if (clean !== text || clean === '') head.push(`%% text: ${JSON.stringify(text)}`);
-        if (clean !== '') body.push(`text: "${clean}"`); // Mermaid's quotes hold no empty string: %% text: carries it
+        if (clean !== '') body.push(`text: "${mqCode(clean)}"`); // Mermaid's quotes hold no empty string: %% text: carries it
       } else if (p.text !== undefined) lose(n.id, `text ${said(p.text)}, which is not text`);
       for (const [prop, key, words] of [['risk', 'risk', MQ_RISK], ['verifyMethod', 'verifymethod', MQ_METHOD]]) if (p[prop] !== undefined) {
         if (words.includes(p[prop])) body.push(`${key}: ${p[prop]}`); else lose(n.id, `${prop} ${said(p[prop])}, which is none of Mermaid's ${words.join(', ')}`);

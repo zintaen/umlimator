@@ -1,3 +1,4 @@
+import { mermaidLegal, mermaidRawChar } from './mermaid-front.js';
 /* ---------- Structurizr JSON: a reader (notes/milestone-2.md §8.3, M2.10; risks.md R1 to R3) ----------
    Written against Structurizr's workspace JSON (the workspace's published schema, structurizr/json), as the Structurizr
    CLI's `export -f json` writes it. Internal: the CLI (`umlimator.py import`) imports this file through Node; a host gets
@@ -100,11 +101,11 @@ function szRead(workspace, report, recs, rels, views) {
   // what is walked, counted against SZ_WORK and SZ_CHARS; past either, nothing more is read (reported once)
   let work = SZ_WORK, chars = SZ_CHARS, spent = false;
   const over = path => { if (!spent) { spent = true; say(path, 'skipped', `over ${SZ_WORK} list entries or ${SZ_CHARS} characters read in all, a shared one counted each time: this and the rest are not read`); } };
-  const str = (v, path) => { // text within the budget, else undefined
+  const str = (v, path) => { // text within the budget, else undefined; a character XML cannot hold as U+FFFD, said (audit 48)
     if (typeof v !== 'string') return;
     if (v.length > chars) { chars = 0; over(path); return; }
     chars -= v.length;
-    return v;
+    return mermaidLegal(v, what => say(path, 'approximated', mermaidRawChar(what)));
   };
   // a field of the wrong kind is reported and read as absent
   const list = (o, k, path) => {

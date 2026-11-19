@@ -38,6 +38,18 @@ const DB_SCHEMA = 'public'; // @dbml/core's default schema
 const dbObj = x => x !== null && typeof x === 'object' && !Array.isArray(x);
 const dbName = x => (typeof x === 'string' && x ? x : null);
 
+// a character written as itself that XML 1.0 cannot hold (a C0 control but tab, line feed and carriage return, U+FFFE,
+// U+FFFF, a lone surrogate): dbLegal(s, bad) gives s with each as U+FFFD, bad(what) told once, naming the first, when s held
+// one, as the Mermaid readers' mermaidLegal (this file imports nothing, D8), a raw one would make the model's SVG and XML
+// exports not well-formed (audit 48). Linear
+const DB_RAW = /[\0-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]|\p{Cs}/u, DB_RAWS = /[\0-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]|\p{Cs}/gu;
+function dbLegal(s, bad) {
+  const m = DB_RAW.exec(s);
+  if (!m) return s;
+  bad(`the character U+${m[0].codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}, which SVG or XML cannot hold, is read as U+FFFD`);
+  return s.replace(DB_RAWS, '\uFFFD');
+}
+
 function readDbml(database) {
   const report = [], nodes = [], edges = [], used = new Set(), next = new Map();
   let title = null, more = 0;
@@ -53,6 +65,9 @@ function readDbml(database) {
     next.set(base, k); used.add(id);
     return id;
   };
+  // a name or type as the model keeps it: a character XML cannot hold as U+FFFD, said (audit 48); the source's own text
+  // stays the key refs and indexes look it up by
+  const legal = (v, at) => v && dbLegal(v, message => say(at, 'approximated', message));
   const named = () => { // columns after every table (names first, R3)
     for (const n of nodes) for (const c of n.members) if (!c.id) c.id = free(`${n.id}.${c.label}`);
   };
@@ -61,7 +76,7 @@ function readDbml(database) {
       say('', 'skipped', 'not a parsed DBML Database (parse the text with @dbml/core first): nothing read');
       return { model: model(), report };
     }
-    title = dbName(database.name); // a project's name: a Database has it, its export() does not
+    title = legal(dbName(database.name), 'name'); // a project's name: a Database has it, its export() does not
     // `schema.table` and an alias -> { node, cols: Map name -> column }
     const tables = new Map(), aliases = new Map(), refs = [], notNull = new Set();
     const count = { tables: 0, columns: 0, refs: 0, names: 0 };
@@ -118,7 +133,7 @@ function readDbml(database) {
         if (Array.isArray(t.partials) && t.partials.length) {
           say(at, 'approximated', `table ${name}: its partials' fields are read as its own`);
         }
-        const node = { id: free(name), type: 'er.Entity', label: name, members: [] };
+        const label = legal(name, at), node = { id: free(label), type: 'er.Entity', label, members: [] };
         const cols = new Map(), rec = { node, cols };
         tables.set(key, rec);
         if (dbName(t.alias) && !aliases.has(t.alias)) aliases.set(t.alias, rec);
@@ -133,14 +148,14 @@ function readDbml(database) {
           if (cols.has(fname)) {
             return say(fat, 'skipped', `${name}.${fname} is named twice: the second is not read`);
           }
-          const type = dbObj(f.type) ? dbName(f.type.type_name) : null, props = {};
+          const type = dbObj(f.type) ? legal(dbName(f.type.type_name), fat) : null, props = {};
           if (type) props.dataType = type;
           else say(fat, 'approximated', `${name}.${fname}: its type is not text, so it has none`);
           if (f.pk === true) props.primaryKey = true;
           if (f.unique === true) props.unique = true;
           extra(f, fat, `${name}.${fname}`, [['note', 'its note is'], ['dbdefault', 'its default is'],
             ['increment', 'its increment is'], ['checks', 'its checks are'], ['checkIds', 'its checks are']]);
-          const col = { id: '', type: 'er.Column', label: fname, props }; // its id by named()
+          const col = { id: '', type: 'er.Column', label: legal(fname, fat), props }; // its id by named()
           if (f.not_null === true) notNull.add(col);
           cols.set(fname, col); node.members.push(col);
         });
