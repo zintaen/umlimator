@@ -5,7 +5,8 @@ On first use this fetches one pinned commit of https://github.com/zintaen/umlima
 CLI, the module, the page template, the icon manifest and line icons) into ~/.cache/umlimator/cli/<name>, checks that it
 is the commit pinned (and, on every run, that the cache holds that commit), and from then on runs
 `python3 umlimator.py ...` from there. The pin is a release's commit, or main's when the release lags behind a security
-fix the pages it writes need (audit 23: v0.42.0 has neither the own_logos nor the own_media guard of risks.md S1, S2). The CLI itself downloads a brand logo only when a model's card
+fix the pages it writes need (audit 23: v0.42.0 had neither the own_logos nor the own_media guard of risks.md S1, S2;
+v0.43.0 has both, so the pin is its release commit again). The CLI itself downloads a brand logo only when a model's card
 names one (into ~/.cache/umlimator/icons).
 
   python3 cli.py render map.json --out map.html     the page, then its layout check
@@ -22,7 +23,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-REF, SHA = "0.42.0-847d167", "847d167beea0ab6d1a3ecbabdf8bf700fa264519"   # the version and commit this skill runs
+REF, SHA = "0.43.0-c04bd48", "c04bd48b0f243298d8d88f66bf6dcf4146a4dc5e"   # the version and commit this skill runs (v0.43.0)
 ref = os.environ.get("UMLIMATOR_REF", REF)
 sha = os.environ.get("UMLIMATOR_SHA", SHA if ref == REF else "")
 cache = Path(os.environ.get("UMLIMATOR_CLI_CACHE") or Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "umlimator" / "cli")
