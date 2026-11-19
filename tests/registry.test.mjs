@@ -129,7 +129,7 @@ test('3.4: a class view\'s lines have key rings after its classes, each named by
     assert.deepEqual(rings.map(r => [+r[1], r[2]]), g.edges.map((e, i) => [i, esc(e.aria)]), v.id);
     assert.ok(markup.indexOf('<g class="nodes">') < markup.indexOf('<g class="keys">'), v.id);
   }
-  const map = read('../examples/bookshop.json'), { markup } = mapContext(map, {}).buildView(map.views[0].id);
+  const map = read('../examples/bike-share.json'), { markup } = mapContext(map, {}).buildView('overview'); // the rider shop
   assert.match(markup, /aria-label="Line from [^"]+ to [^"]+"/);
 });
 

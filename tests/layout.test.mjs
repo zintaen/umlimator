@@ -27,7 +27,7 @@ test('the module built from src/ exports what 0.16.0 exported, and migrate() fro
 });
 
 test('layout() draws every benchmark view exactly as the browser did (bench/expected.json)', () => {
-  const models = { ...Object.fromEntries(readdirSync(new URL('../bench/models/', import.meta.url)).map(f => [f.replace('.json', ''), read('../bench/models/' + f)])), bookshop: read('../examples/bookshop.json') };
+  const models = { ...Object.fromEntries(readdirSync(new URL('../bench/models/', import.meta.url)).map(f => [f.replace('.json', ''), read('../bench/models/' + f)])), 'bike-share': read('../examples/bike-share.json') };
   let n = 0;
   for (const [name, m] of Object.entries(models)) for (const v of m.views) {
     const want = expected[`${name}/${v.id}`];
@@ -68,7 +68,7 @@ test("a map's repair: false keeps its lines' ports (no request/reply swap)", () 
 });
 
 test('an unknown view is an error', () => {
-  assert.throws(() => layout(read('../examples/bookshop.json'), 'nope'), /no view "nope"/);
+  assert.throws(() => layout(read('../examples/bike-share.json'), 'nope'), /no view "nope"/);
 });
 
 test('the module bakes in no colour: every colour is a --um-* variable (lib/umlimator-theme.css has the defaults)', () => {
@@ -371,7 +371,7 @@ test('auto-layout puts a card level with the card its line comes from, so the li
 });
 
 test('auto-layout puts a card no line comes into just before its callee when that routes better, not in the first column (0.11.0)', () => {
-  const g = layout(read('../examples/bookshop.json'), 'overview'), at = id => g.nodes.find(n => n.id === id);
+  const g = layout(read('../examples/bike-share.json'), 'overview'), at = id => g.nodes.find(n => n.id === id);
   assert.equal(at('grafana').col, at('api').col - 1, 'Dashboards, which only reads Shop API\'s metrics, sits in the column before it');
 });
 
@@ -695,14 +695,14 @@ const foreignUnder = (m, vid, g) => { const fs = g.families || [], out = [];
 test('audit 41: a card with no pin in a pinned view goes by its box\'s pinned cards: no box grows over a card it does not hold, and no line to the box is dropped', async () => {
   const U = await import('../lib/umlimator-all.js'), warns = [], keep = console.warn; console.warn = (...a) => warns.push(a.join(' '));
   try {
-    // edit.html's own add-in-box: a new card in each box of each bookshop view, with no pin
-    const shop = read('../examples/bookshop.json');
+    // edit.html's own add-in-box: a new card in each box of each bike-share view (the rider shop's checkout among them), with no pin
+    const shop = read('../examples/bike-share.json');
     for (const v0 of shop.views) for (const c of v0.containers || []) { const m = structuredClone(shop), v = m.views.find(x => x.id === v0.id);
       m.nodes.push({ id: 'new-1', label: 'New card', kind: 'backend' }); v.nodeIds.push('new-1'); v.containers.find(x => x.id === c.id).nodeIds.push('new-1');
       const g = U.layout(m, v.id); assert.deepEqual(foreignUnder(m, v.id, g), [], `${v.id}: new card in ${c.id}`);
       assert.ok(!U.check(m, v.id).some(p => / lies over /.test(p.message)), `${v.id}: ${c.id}`); }
     // each pin of each example view with boxes taken out in turn
-    for (const f of ['bike-share.json', 'bookshop.json', 'bookshop-atlas.json', 'states.json']) { const base = read('../examples/' + f);
+    for (const f of ['bike-share.json', 'bookshop-atlas.json', 'states.json']) { const base = read('../examples/' + f);
       for (const v of base.views) if (v && v.layout && (U.layout(base, v.id).families || []).length) for (const k of Object.keys(v.layout)) {
         const m = structuredClone(base); delete m.views.find(x => x.id === v.id).layout[k]; warns.length = 0;
         const g = U.layout(m, v.id); assert.deepEqual(foreignUnder(m, v.id, g), [], `${f} ${v.id} with no pin for ${k}`);
@@ -768,8 +768,8 @@ test('audit 42: a card with no pin in no box, or the first placed of its box, go
 });
 test('audit 42: a card boxFit moves keeps its lines left to right where a slot does', () => {
   const issues = (m, v, re) => check(m, v).map(p => p.message).filter(s => re.test(s));
-  // bookshop's checkout with queue's pin taken out: queue goes left of the worker it feeds, not under it
-  const shop = read('../examples/bookshop.json'); delete shop.views.find(v => v.id === 'checkout').layout.queue;
+  // the rider shop's checkout with queue's pin taken out: queue goes left of the worker it feeds, not under it
+  const shop = read('../examples/bike-share.json'); delete shop.views.find(v => v.id === 'checkout').layout.queue;
   const g = layout(shop, 'checkout'), at = id => g.nodes.find(n => n.id === id);
   assert.ok(at('queue').x + at('queue').w < at('worker').x); assert.deepEqual(issues(shop, 'checkout', /right-to-left| lies over /), []);
   // bike-share: a card added to box apps with a line from Rider app goes where that line takes no detour round Ops console
@@ -779,8 +779,8 @@ test('audit 42: a card boxFit moves keeps its lines left to right where a slot d
 });
 test('audit 43: a card with no pin whose clean auto-layout slot runs its lines back goes where they run ahead, with or without boxes', () => {
   const back = (m, v) => check(m, v).map(p => p.message).filter(s => /right-to-left/.test(s));
-  // each pin of bookshop's checkout (Orders box) and assistant's answer (no boxes) dropped in turn: no line runs back
-  for (const [f, vid] of [['bookshop', 'checkout'], ['assistant', 'answer']]) {
+  // each pin of the rider shop's checkout (Orders box) and assistant's answer (no boxes) dropped in turn: no line runs back
+  for (const [f, vid] of [['bike-share', 'checkout'], ['assistant', 'answer']]) {
     const m = read(`../examples/${f}.json`), pins = Object.keys(m.views.find(v => v.id === vid).layout);
     for (const id of pins) { const b = structuredClone(m); delete b.views.find(v => v.id === vid).layout[id]; assert.deepEqual(back(b, vid), [], `${f} ${vid} without ${id}`); }
   }

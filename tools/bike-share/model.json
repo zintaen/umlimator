@@ -60,5 +60,5 @@
       ]
     }
   ],
-  "parts": ["context", "system", "trips", "fleet", "ride-end"]
+  "parts": ["context", "system", "trips", "fleet", "ride-end", "shop"]
 }

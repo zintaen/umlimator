@@ -45,9 +45,10 @@ test('a type\'s word and rows: the element\'s kind and what is listed for it, es
 // What printDoc listed before 4.9, for the examples drawn today: pinned as one hash a file over its views' tables, those
 // of a typed view with their old heading, "Cards". A change to one of these examples or to the tables changes its hash.
 const PINNED = {
-  'bookshop.json': 'ba6d7e080f9e1964', 'bike-share.json': '40954b2d102fae0b', 'clinic.json': 'a8cdb971d5d07425', 'monorepo.json': '4e2638724ead87d6', 'weather.json': 'c9ada5f273e01b0c', 'assistant.json': '9196bd5b01316ce2', 'shapes.json': '49fdf9fb182b383b', 'states.json': '5fe79fd4bd3d4b2f',
+  'bookshop.json': 'ba6d7e080f9e1964', 'bike-share.json': '41b2b151123db854', 'clinic.json': 'a8cdb971d5d07425', 'monorepo.json': '4e2638724ead87d6', 'weather.json': 'c9ada5f273e01b0c', 'assistant.json': '9196bd5b01316ce2', 'shapes.json': '49fdf9fb182b383b', 'states.json': '5fe79fd4bd3d4b2f',
   'sales-classes.json': 'cea8962c5cc55d53', 'order-objects.json': '67b4d8e36a4b59c5', 'bookshop-packages.json': '61f60b0985090f3d', // 6.7: the profile's row and its application's
 }; // audit 1: a typed view's element by its drawn name (catalog::Book, ada : Customer), so sales-classes and order-objects changed
+// bike-share.json changed when the rider shop's three views (overview, api, checkout, from bookshop.json) joined it
 
 test('a typed view\'s tables name each element as drawn: two Order classes shown without their packages are sales::Order and wholesale::Order (audit 1)', () => {
   const m = read('../examples/bookshop-packages.json'), ids = m.nodes.filter(n => n.label === 'Order').map(n => n.id);

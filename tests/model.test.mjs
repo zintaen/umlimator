@@ -9,7 +9,7 @@ import { fit } from '../src/core/text.js';
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 
 test('validate() finds nothing wrong in the examples and the benchmark models', () => {
-  for (const f of ['bookshop', 'bike-share', 'weather', 'assistant']) assert.deepEqual(validate(read(`../examples/${f}.json`)), [], f);
+  for (const f of ['bike-share', 'weather', 'assistant']) assert.deepEqual(validate(read(`../examples/${f}.json`)), [], f);
   for (const f of ['b10', 'b26', 'b69', 'd24', 'm50']) assert.deepEqual(validate(read(`../bench/models/${f}.json`)), [], f);
 });
 
@@ -201,7 +201,7 @@ test('a card, box or view whose id is an Object.prototype name lays out, validat
 });
 
 test('the layout search render bakes stops on work, not on a clock: a slow machine bakes the same layout (audit 7)', () => {
-  const m = JSON.parse(readFileSync(new URL('../examples/bookshop.json', import.meta.url)));
+  const m = JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url))); // its rider shop's overview, which has no pins
   const run = () => { const c = mapContext(m); c.planOf('overview'); return JSON.stringify(c.optimize('overview')); };
   const fast = run(), now = performance.now, t = now.call(performance);
   performance.now = () => t + (now.call(performance) - t) * 1000; // a machine 1000 times slower, as its clock sees it

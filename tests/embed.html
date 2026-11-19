@@ -9,7 +9,7 @@
 <div id="b" style="width:600px;height:400px"></div>
 <script type="module">
 import { render, layout } from '../lib/umlimator.js';
-const MODEL = await (await fetch('../examples/bookshop.json')).json(), THEME = await (await fetch('../lib/umlimator-theme.css')).text();
+const MODEL = await (await fetch('../examples/bike-share.json')).json(), THEME = await (await fetch('../lib/umlimator-theme.css')).text();
 const loaded = performance.getEntriesByType('resource').length; // the module, the model and the theme; nothing after this
 const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
@@ -21,9 +21,9 @@ const before = new Set(Object.keys(window));
 let file = '';
 try {
   const el = document.getElementById('a'), ev = [];
-  const h = render(el, MODEL, { on: { select: e => ev.push(['select', e.target]), click: e => ev.push(['click', e.target]), open: e => ev.push(['open', e.target, e.view]), viewchange: e => ev.push(['viewchange', e]) } });
+  const h = render(el, MODEL, { view: 'overview', on: { select: e => ev.push(['select', e.target]), click: e => ev.push(['click', e.target]), open: e => ev.push(['open', e.target, e.view]), viewchange: e => ev.push(['viewchange', e]) } });
   const sr = el.querySelector('.umlimator').shadowRoot, fire = (s, type = 'click') => sr.querySelector(s).dispatchEvent(new MouseEvent(type, { bubbles: true, composed: true }));
-  check('starts on the root view', h.view === 'overview', h.view);
+  check('starts on the view it is given (the rider shop; the root is context)', h.view === 'overview', h.view);
   check('draws inside a shadow root, every card of the view', sr.querySelectorAll('.node').length === 13);
   check('adds no globals', [...Object.keys(window)].every(k => before.has(k)), [...Object.keys(window)].filter(k => !before.has(k)));
 
@@ -74,8 +74,10 @@ try {
   h.update(m3);
   check('a selected card that is gone clears the selection', h.selection === null && ev[ev.length - 1][0] === 'select' && ev[ev.length - 1][1] === null);
   const m4 = structuredClone(m3); m4.views = m4.views.filter(v => v.id !== 'api');
-  h.setView('api'); h.update(m4);
-  check('updating away a view that is not shown keeps the current one', h.view === 'overview');
+  h.update(m4);
+  check('updating away a view that is not shown keeps the current one', h.view === 'overview', h.view);
+  h.update(m3); await h.setView('api'); h.update(m4); // the view shown taken away: the root (bookshop.json's root was overview, which hid the difference)
+  check('…and updating away the view shown goes to the root', h.view === 'context', h.view);
 
   h.destroy();
   check('destroy empties the container', el.childElementCount === 0);

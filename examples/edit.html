@@ -29,7 +29,7 @@
 <script type="module">
 import { render, history } from '../lib/umlimator.js';
 
-let model = await (await fetch('bookshop.json')).json();
+let model = await (await fetch('bike-share.json')).json();
 let n = 0;
 const where = (view, id) => (model.views.find(v => v.id === view).containers || []).find(c => (c.nodeIds || []).includes(id));
 // the host's own rules: how each change maps onto its data

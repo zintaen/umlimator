@@ -66,14 +66,14 @@ test('a numbered line with no label gets room for its mark between neighbouring 
 });
 
 test('describe() says a line\'s step in any view, and a numbered view keeps its run order', () => {
-  const shop = read('../examples/bookshop.json');
+  const shop = read('../examples/bike-share.json'); // its rider shop's views
   assert.match(describe(shop, 'checkout'), /\nStorefront calls Shop API \("checkout", JSON over HTTPS, step 2\)\.\n/);
   assert.match(describe(shop, 'api'), /\nStep 1: Shoppers calls Shop API \("checks out"\)\.\n/);
   assert.doesNotMatch(describe(shop, 'overview'), /step \d/);
 });
 
-test("the bookshop's checkout reads as the blend: six steps with their labels whole, two boxes with a tone, a clean check", () => {
-  const shop = read('../examples/bookshop.json'), g = layout(shop, 'checkout');
+test("the rider shop's checkout reads as the blend: six steps with their labels whole, two boxes with a tone, a clean check", () => {
+  const shop = read('../examples/bike-share.json'), g = layout(shop, 'checkout');
   assert.deepEqual(g.edges.map(e => [e.lbl.step, e.lbl.text, e.weight]).sort((p, q) => p[0] - q[0]), [[1, 'browse, buy', 2], [2, 'checkout', 2], [3, 'charge the card', 1],
     [4, 'paid order', 2], [5, 'next order', 2], [6, 'confirmation', 2]]);
   assert.deepEqual(g.families.map(f => [f.id, f.tone]), [['web', 'cyan'], ['orders', 'orange']]);

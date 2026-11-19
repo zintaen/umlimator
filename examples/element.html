@@ -22,16 +22,16 @@
 </style>
 <main>
   <h1>&lt;umlimator-map&gt;</h1>
-  <p>A map from HTML alone: <code>&lt;umlimator-map src="bookshop.json"&gt;</code> loads the model and draws it. Its
+  <p>A map from HTML alone: <code>&lt;umlimator-map src="bike-share.json" view="overview"&gt;</code> loads the model and draws that view of it, here the bike share's rider shop. Its
     still shows until then, and stays where scripts don't run. Each control below sets an attribute, and the map follows.</p>
   <div class="bar">
-    <label>view <select id="view"><option value="">the root</option><option value="api">api</option></select></label>
+    <label>view <select id="view"><option value="overview">overview</option><option value="api">api</option><option value="">the root</option></select></label>
     <label><input type="checkbox" id="minimap"> minimap</label>
     <label><input type="checkbox" id="controls" checked> controls</label>
     <label>theme <select id="theme"><option value="">the page's</option><option>light</option><option>dark</option></select></label>
   </div>
-  <umlimator-map id="shop" src="bookshop.json" height="520">
-    <img src="stills/bookshop/overview.png" alt="Bookshop: a storefront, an API, its stores and the services around them">
+  <umlimator-map id="shop" src="bike-share.json" view="overview" height="520">
+    <img src="stills/bike-share/overview.png" alt="The rider shop: a storefront, an API, its stores and the services around them">
   </umlimator-map>
   <p id="said" aria-live="polite"></p>
 
@@ -52,7 +52,7 @@
     for Docusaurus. A block names a model's <code>src</code>, or holds the model in JSON; on MkDocs, or any site that
     allows HTML, write the element itself. The guide's Embedding page (docs/guide/embedding.md) has each setup.</p>
   <pre>```umlimator
-src: /maps/bookshop.json
+src: /maps/bike-share.json
 view: api
 ```</pre>
 </main>
