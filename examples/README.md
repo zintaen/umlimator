@@ -1,7 +1,7 @@
 # Examples
 
 Every example below is live at **[zintaen.github.io/umlimator](https://zintaen.github.io/umlimator/)**, built from `main`.
-The systems are made up, except the last map's: umlimator's own state machines.
+The systems are made up, except the last map's: umlimator's own model, the Umlimator Atlas.
 
 ## Maps
 
@@ -17,6 +17,7 @@ Each map is a JSON model. CI turns it into a self-contained page (`python3 umlim
 | [`clinic.json`](clinic.json) | A Structurizr workspace, imported | What `umlimator.py import` writes from [`clinic.dsl`](clinic.dsl), as it is: the workspace's three views, its system and API as boxes, a group as a box, the lines Structurizr implies, a line to a person as the loop back |
 | [`monorepo.json`](monorepo.json) | A map generated from a monorepo's dependency list | What [`monorepo.py`](monorepo.py) writes from a list of imports: a card per package, a line per import, heavier with more imports, a box per folder, nested as the folders are, and the same cards with no boxes |
 | [`states.json`](states.json) | State machines: umlimator's own, drawn with umlimator | How navigation, stories, tours, the page and the MCP page relate, then a view per machine: states as cards, transitions as lines labelled with what moves them, composite states as boxes, the machines that run in order numbered, loops back, a tour, and a story along a typical path. The [State chapter](../docs/module-api.md#state) has the tables |
+| [`umlimator-atlas.json`](umlimator-atlas.json) | The Umlimator Atlas: umlimator's own model, the gallery's one Atlas entry | A map of umlimator's parts and who uses each, its C4 context and containers, the module's layers (package), the typed families (component), the diff Action on a pull request (sequence) and umlimator's state machines, joined by cards that open them; two stories |
 
 [![Bike share: the boxed view](https://zintaen.github.io/umlimator/examples/stills/bike-share/system.png)](https://zintaen.github.io/umlimator/examples/bike-share.html)
 

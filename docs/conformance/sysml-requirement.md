@@ -6,9 +6,7 @@ and **edit** on the subset below, and **interchange** with Mermaid's `requiremen
 A view of a version-2 model (`"schemaVersion": 2`) whose `diagram` is `"sysml.requirement"` is a requirement diagram. It is
 drawn by `lib/umlimator-all.js` (`umlimator/all`), which the CLI's page inlines; `lib/umlimator.js`, what a map host
 loads, draws it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2, row 16; the example is
-[`examples/ebike-requirements.json`](../../examples/ebike-requirements.json), the e-bike atlas's root
-([`examples/ebike-atlas.json`](../../examples/ebike-atlas.json)), whose specification opens the block definition view
-and whose range requirement opens the parametric view that checks it.
+[`examples/ebike-requirements.json`](../../examples/ebike-requirements.json).
 
 ## The subset, and SysML v1.7's clauses
 

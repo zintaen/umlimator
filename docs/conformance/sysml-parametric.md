@@ -6,7 +6,7 @@ and **edit** on the subset below. No interchange, and no solving: the equations 
 A view of a version-2 model whose `diagram` is `"sysml.parametric"` is a parametric diagram, drawn by
 `lib/umlimator-all.js` (`umlimator/all`); `lib/umlimator.js` draws it as plain cards with a warning. The vocabulary is
 `docs/diagrams/model.md` §2, row 19; the example is [`examples/ebike-range.json`](../../examples/ebike-range.json), the
-e-bike's range in eco and boost from its battery's usable energy, opened from the range requirement in the e-bike atlas.
+e-bike's range in eco and boost from its battery's usable energy.
 
 ## The subset, and SysML v1.7's clauses
 

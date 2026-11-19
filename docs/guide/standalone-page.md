@@ -4,7 +4,7 @@
 fetched. It opens from disk in any browser, works offline, and can be attached to an issue or hosted as it is.
 
 ```bash
-python3 umlimator.py render examples/bookshop.json --out page.html   # the interactive page, then its layout check
+python3 umlimator.py render examples/umlimator-atlas.json --out page.html   # the interactive page, then its layout check
 ```
 
 The same viewer is `mountPage(container, model)` in the module, built on `render()` through the public API.

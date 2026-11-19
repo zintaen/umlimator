@@ -7,8 +7,7 @@ A view of a version-2 model whose `diagram` is `"sysml.internal-block"` is an in
 `lib/umlimator-all.js` (`umlimator/all`); `lib/umlimator.js` draws it as plain cards with a warning. The vocabulary is
 `docs/diagrams/model.md` §2, row 18; the example is [`examples/ebike-structure.json`](../../examples/ebike-structure.json),
 inside the e-bike: the battery, controller, motor, two lights and the dock it refers to, wired by connectors carrying DC
-power and phase current, opened from the block definition view's EBike (and from the parametric view's frame) in the
-e-bike atlas.
+power and phase current.
 
 ## The subset, and SysML v1.7's clauses
 

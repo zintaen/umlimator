@@ -15,7 +15,7 @@ A command that fails leaves its previous output as it was.
 ## Pages and pictures
 
 ```bash
-python3 umlimator.py render examples/bookshop.json --out page.html   # the interactive page, then its layout check
+python3 umlimator.py render examples/umlimator-atlas.json --out page.html   # the interactive page, then its layout check
 python3 umlimator.py stills page.html --out stills/                   # every view as SVG and PNG
 python3 umlimator.py stills page.html --out stills/ --views overview,api --scale 1.5 --theme light
 python3 umlimator.py render examples/sales-classes.json --out classes.html   # a class diagram's page; stills, check and pdf take it too
@@ -43,9 +43,9 @@ python3 umlimator.py pdf page.html --out map.pdf   # every view in one PDF: a co
 ```
 
 `pdf` prints the map through Chrome's own print, as a document to hand in for a review
-([bike-share's](https://zintaen.github.io/umlimator/examples/bike-share.pdf), as CI builds it). A cover has the title,
+([the Umlimator Atlas's](https://zintaen.github.io/umlimator/examples/umlimator-atlas.pdf), as CI builds it). A cover has the title,
 the date, the model's file, a summary line and the contents with each view's page. Each view starts a page of its own,
-under its path ("Bike share › What runs"): its picture in vectors, as large as the page allows, the legend of what it
+under its path ("Umlimator › The module's layers"): its picture in vectors, as large as the page allows, the legend of what it
 draws, and tables of its cards, lines and boxes, which go on over the next pages with their header row when they are
 long. The rules follow as a table, when the model has any, each holding or broken in the views printed. Every page ends
 in the title and "page N of M". It takes `--views` and `--theme`, as `stills` does, and `--paper a4|letter` (A4 is the
@@ -54,7 +54,7 @@ default; both across).
 ## Record
 
 ```bash
-python3 umlimator.py record bike-share.html --story ride --out ride.png   # bike-share's story as an animated PNG, its tours riding
+python3 umlimator.py record page.html --story pull-request --out pr.png   # the atlas's story as an animated PNG, its tours riding
 ```
 
 `record` writes an animated PNG, which browsers and GitHub show as it is. It takes `--size`, `--scale` and `--theme`.

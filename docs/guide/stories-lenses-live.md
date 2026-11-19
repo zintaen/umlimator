@@ -2,7 +2,8 @@
 
 A map is more useful when it can be read in more than one way. Stories walk a reader through it step by step, lenses
 show it by team or by data flow, and live data puts traffic, errors and traces over it, all without laying the view
-out again. [`examples/bike-share.json`](../../examples/bike-share.json) uses each of them.
+out again. [`examples/umlimator-atlas.json`](../../examples/umlimator-atlas.json) has two stories: a pull request
+from push to comment, and an assistant showing a reader the map.
 
 ## Stories
 

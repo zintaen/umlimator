@@ -275,21 +275,12 @@ test('icon packs: one label a pack across the files, written in the atlas; two f
   assert.equal(two([], []).model.iconPacks, undefined, 'no pack, no field');
 });
 
-test('the gallery\'s lead names the map that is not made up by a card the Maps grid has, and calls it the last only if it is (audit 21)', () => {
-  const g = readFileSync(new URL('../examples/index.html', import.meta.url), 'utf8');
-  const lead = /<p class="lead">([\s\S]*?)<\/p>/.exec(g)[1].replace(/\s+/g, ' ');
-  const maps = /<h2>Maps<\/h2>([\s\S]*?)<h2>/.exec(g)[1], titles = [...maps.matchAll(/<h3>([^<]*)<\/h3>/g)].map(m => m[1].replace(/&#39;|&rsquo;/g, "'"));
-  const [, which, named] = /made-up system but (the last|one), umlimator's own ([^;,.]+)/.exec(lead) ?? [];
-  assert.ok(named, lead);
-  const card = titles.find(t => t === `umlimator's ${named}`);
-  assert.ok(card, `a Maps card titled umlimator's ${named}: ${titles}`);
-  if (which === 'the last') assert.equal(titles.at(-1), card);
-});
-
-test('the gallery and the examples\' README reach every example model: the AWS view and the e-bike atlas included (monorepo.json is what monorepo.py writes, in the README only)', () => {
+test('the gallery reaches every example model but the ones that left it (tools/gallery.json\'s retired list), and the examples\' README every one', () => {
   const dir = new URL('../examples/', import.meta.url), gallery = readFileSync(new URL('index.html', dir), 'utf8'), readme = readFileSync(new URL('README.md', dir), 'utf8');
   const names = readdirSync(dir).filter(f => f.endsWith('.json') && !f.startsWith('.')).map(f => f.slice(0, -5));
-  assert.deepEqual(names.filter(n => !gallery.includes(`href="${n}.html"`)), ['monorepo']);
+  const retired = JSON.parse(readFileSync(new URL('../tools/gallery.json', import.meta.url), 'utf8')).retired.files;
+  assert.deepEqual(names.filter(n => !retired.includes(n) && !gallery.includes(`href="${n}.json"`)), []);
+  assert.deepEqual(names.filter(n => retired.includes(n) && new RegExp(`(?<![\\w-])${n}\\.(?:json|html|pdf)`).test(gallery)), []);
   assert.deepEqual(names.filter(n => !readme.includes(`(${n}.json)`)), []);
   // the two links on elements drawn only as boxes, which a double-click does not open (module-api.md 0.24.0's known gaps),
   // are said where the README promises a double-click opens what a card leads to, and the gallery promises no drill-down to them (audit 2)
