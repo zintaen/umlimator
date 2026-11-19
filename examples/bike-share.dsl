@@ -31,18 +31,17 @@ workspace "Bike share" "Hires e-bikes from city docks." {
         mail = softwareSystem "Email service" "Delivers the operator's emails." "External"
 
         bikeshare.worker -> bikeshare.queue "Claims ended rides from" "SQL"
-        bikeshare.worker -> bikeshare.db "Marks rides as closed in" "SQL"
         bikeshare.worker -> van "Books van pickups with" "HTTPS"
         bikeshare.worker -> mail "Sends receipts with" "HTTPS"
         mail -> rider "Delivers receipts to" "Email"
         rider -> bikeshare.app "Finds and unlocks a bike in" "HTTPS"
         staff -> bikeshare.app "Edit the fleet and refund rides in" "HTTPS"
+        bikeshare.app -> bikeshare.api.accounts "Signs in through" "JSON over HTTPS"
         bikeshare.app -> bikeshare.api.finder "Finds bikes through" "JSON over HTTPS"
         bikeshare.app -> bikeshare.api.hire "Starts rides through" "JSON over HTTPS"
-        bikeshare.app -> bikeshare.api.accounts "Signs in through" "JSON over HTTPS"
+        bikeshare.api.hire -> bikeshare.api.ride-store "Saves the paid ride with"
         bikeshare.api.hire -> bikeshare.api.payment-client "Charges the card through"
         bikeshare.api.payment-client -> payments "Starts a card payment with" "HTTPS"
-        bikeshare.api.hire -> bikeshare.api.ride-store "Saves the paid ride with"
         bikeshare.api.ride-store -> bikeshare.db "Reads and writes rides in" "SQL"
         bikeshare.api.ride-store -> bikeshare.queue "Puts ended rides on" "SQL"
         bikeshare.api.finder -> bikeshare.db "Reads bikes and docks from" "SQL"
@@ -92,7 +91,6 @@ workspace "Bike share" "Hires e-bikes from city docks." {
             bikeshare.worker -> van "Books a pickup for a faulty bike with"
             bikeshare.worker -> mail "Sends the receipt with"
             mail -> rider "Delivers the receipt to"
-            bikeshare.worker -> bikeshare.db "Marks the ride as closed in"
             autolayout lr
         }
         deployment * production "production" "Bike share in production." {

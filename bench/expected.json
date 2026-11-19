@@ -63,7 +63,7 @@
   },
   "bike-share/fleet": {
    "hashes": [
-    "c06910c9"
+    "acf50d53"
    ]
   },
   "bike-share/help": {
@@ -83,7 +83,7 @@
   },
   "bike-share/system": {
    "hashes": [
-    "9f816b1a"
+    "1e32a879"
    ]
   },
   "bike-share/trips": {

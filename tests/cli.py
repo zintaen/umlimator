@@ -1245,8 +1245,9 @@ with tempfile.TemporaryDirectory() as tmp:
         cover = "".join(pages[:min([x for x in at.values() if x] or [2]) - 1])
         ok("pdf · the cover: the title, the date, the model's file, a summary line, and the contents, each view with the page its header starts",
            # 52 views since step 4 of the one-model plan (49, 381 cards and 398 lines in step 3; 8, 45 cards and 67 lines before): dock-feed,
-           # demand and help add 18 cards and 25 lines
-           re.match(r"Bikeshare,anexample\d{4}-\d\d-\d\d·examples/bike-share\.json52views·399cards·423lines·2rulesContents", cover) and None not in at.values()
+           # demand and help add 18 cards and 25 lines; step 4's review adds the Rider help card (400 cards) and two map lines and
+           # takes the C4 worker's two lines to the database out (423 lines still)
+           re.match(r"Bikeshare,anexample\d{4}-\d\d-\d\d·examples/bike-share\.json52views·400cards·423lines·2rulesContents", cover) and None not in at.values()
            and all(flat(f"{v['title']}{v.get('caption', '')}{at[v['id']]}") in cover for v in bike["views"]) and f"Rules{at['rules']}Bikeshare" in cover, [cover[:500], at])
         seen = lambda a, b=None: "".join(pages[a - 1:b and b - 1]) if a else ""  # the pages from page a to the one before b
         ok("pdf · a view's page: its legend, then tables of its cards (name, sub-line, kind, what it is), lines (from → to, label, technology) and boxes",

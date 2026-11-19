@@ -94,4 +94,4 @@ printed and recorded in the pull request (4a.6 recorded 259 to 299 ms on CI's ru
 failing, every gesture by pointer and key, a 30-step session); `tests/cloud-minimal.json` and `tests/cloud-stress.json` with
 `tests/m4a-fixtures.test.mjs` and `tests/m4a.html`; `tests/packs.py` (the packs, on a synthetic pack: no vendor icon is
 committed or fetched by CI); `tests/cli.py` (render, check, stills, pdf, the diff Action, map-repo's CLI); `tests/mcp.py`;
-`tests/notation.html` (the open arrow, groups dashed by kind).
+`tests/notation.html` (the open arrow, groups dashed by kind); `tests/bike-share.test.mjs` (the view in the bike share model, reached by drill-down).

@@ -133,13 +133,6 @@
       "sublabel": "SQL"
     },
     {
-      "id": "worker-db",
-      "from": "worker",
-      "to": "db",
-      "label": "Marks rides as closed in",
-      "sublabel": "SQL"
-    },
-    {
       "id": "worker-van",
       "from": "worker",
       "to": "van",
@@ -177,6 +170,13 @@
       "what": "Edit the fleet and refund rides in"
     },
     {
+      "id": "app-accounts",
+      "from": "app",
+      "to": "accounts",
+      "label": "Signs in through",
+      "sublabel": "JSON over HTTPS"
+    },
+    {
       "id": "app-finder",
       "from": "app",
       "to": "finder",
@@ -191,11 +191,10 @@
       "sublabel": "JSON over HTTPS"
     },
     {
-      "id": "app-accounts",
-      "from": "app",
-      "to": "accounts",
-      "label": "Signs in through",
-      "sublabel": "JSON over HTTPS"
+      "id": "hire-ride-store",
+      "from": "hire",
+      "to": "ride-store",
+      "label": "Saves the paid ride with"
     },
     {
       "id": "hire-payment-client",
@@ -209,12 +208,6 @@
       "to": "payments",
       "label": "Starts a card payment with",
       "sublabel": "HTTPS"
-    },
-    {
-      "id": "hire-ride-store",
-      "from": "hire",
-      "to": "ride-store",
-      "label": "Saves the paid ride with"
     },
     {
       "id": "ride-store-db",
@@ -285,7 +278,7 @@
       "id": "app-api",
       "from": "app",
       "to": "api",
-      "label": "Finds bikes through",
+      "label": "Signs in through",
       "sublabel": "JSON over HTTPS"
     },
     {
@@ -380,7 +373,6 @@
       "caption": "The rider app, the trip API, the ride worker, and where rides wait.",
       "edges": [
         "worker-queue",
-        "worker-db",
         "worker-van",
         "worker-mail",
         "mail-rider",
@@ -422,12 +414,12 @@
       ],
       "caption": "Inside the trip API.",
       "edges": [
+        "app-accounts",
         "app-finder",
         "app-hire",
-        "app-accounts",
+        "hire-ride-store",
         "hire-payment-client",
         "payment-client-payments",
-        "hire-ride-store",
         "ride-store-db",
         "ride-store-queue",
         "finder-db",

@@ -22,7 +22,9 @@ test('every card that unfolds in the examples unfolds with a clean layout check'
       assert.deepEqual(C(m, v.id, { expand: [card.id] }).map(i => i.message), [], `${f} ${v.id} with ${card.id} unfolded`); n++;
     }
   }
-  assert.ok(n >= 5, `unfolded ${n}`); // bike-share: bikeshare, trips, fleet, and the fleet's dock listener and demand forecast (numbered); weather's three and assistant's one left with their files (step 4 of the one-model plan)
+  // bike-share: context's bikeshare, system's trips, fleet and rider-help (help, a numbered view), and fleet's dock-listener
+  // and forecast (demand, numbered): six. The rider shop's api never unfolds: every card of its view is on overview already
+  assert.ok(n >= 6, `unfolded ${n}`);
 });
 
 test("the card becomes a box of its inner view's own cards, in the box it was in; the inner view's boxes come along", () => {
