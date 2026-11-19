@@ -3,7 +3,7 @@ import { brLines, fit, textW } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { labelW, rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { drawnLines, legendItem, lineRename } from '../uml/class.js'; // and SHAPE.note, a comment's look
+import { commentConnect, drawnLines, legendItem, lineRename } from '../uml/class.js'; // and SHAPE.note, a comment's look
 import { holdsLine, ownersOn, placeTabs } from '../uml/owners.js';
 import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_HEAD, SYS_TABLE } from './sysml.js';
 import { usedIds, jsonText, labelOr, elName, propTextProblems } from '../core/model.js';
@@ -255,6 +255,7 @@ function rqAdd(model, view, entry, label, at) {
 // words; a copy takes its supplier's text in the same transaction; anything else the canvas's
 function rqConnect(model, view, from, to, at, line) {
   const I = rqIndex(model, view), t = RQ_OBJ(line) ? line.type : null;
+  if (t === RQ_LINK) return commentConnect(model, view, from, to, line); // from the comment (audit 46)
   if (t === 'containment') { if (!I.is(from, RQ) || !(I.is(to, RQ) || I.is(to, RQ_PKG))) return { error: 'Containment runs from a requirement to the requirement or package that holds it' };
     for (let p = to, k = 0; p != null && k < 1e4; p = (I.at.get(p) || {}).parent, k++) if (p === from) return { error: `${rqName(I.at.get(to))} is inside ${rqName(I.at.get(from))}: it cannot hold it` };
     return [{ op: 'reparent', id: from, parent: to }]; }

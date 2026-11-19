@@ -205,7 +205,7 @@ test('the PDF\'s lines table: a decision\'s exit with no label says so (S17); ev
 test('connect: a flow between two flowchart nodes is the default; one to a comment is refused; a decision\'s second exit answers its first', () => {
   const v = EX.views[0], FLOW = { type: 'flow.Flow' };
   assert.equal(T.edits.connect(EX, v, 'inspect', 'wait', null, FLOW), null);
-  assert.equal(T.edits.connect(EX, v, 'inspect', 'wait', null, { type: 'uml.CommentLink' }), null);
+  assert.deepEqual(T.edits.connect(EX, v, 'inspect', 'wait', null, { type: 'uml.CommentLink' }), { error: 'A comment link runs from a comment' }); // no comment at either end (audit 46)
   const c = structuredClone(EX); c.nodes.push({ id: 'n1', type: 'uml.Comment', label: 'x' });
   assert.match(T.edits.connect(c, v, 'n1', 'inspect', null, FLOW).error, /^flow-ends: /);
   assert.equal(T.edits.connect(EX, v, 'resaleable', 'wait', null, FLOW), null, 'a third exit: the default');

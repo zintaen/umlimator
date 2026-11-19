@@ -2,7 +2,7 @@ import { registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, portsOn, r2 } from '../draw/shapes.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
-import '../uml/class.js'; // SHAPE.note, a comment's look
+import { commentConnect } from '../uml/class.js'; // SHAPE.note, a comment's look too
 import { flowWrap } from '../uml/flow.js';
 import '../uml/usecase.js'; // SHAPE.ellipse, Yourdon's process
 import { snKindName } from '../uml/structure.js';
@@ -286,7 +286,7 @@ const DFD_TYPE = registerDiagramType('dfd', {
   validate: dfdProblems,
   rules: DFD_RULES,
   describe: dfdDescribe,
-  edits: { add: dfdAdd, key: dfdKey },
+  edits: { add: dfdAdd, key: dfdKey, connect: (model, view, from, to, at, line) => commentConnect(model, view, from, to, line) }, // a comment link (audit 46)
   // the model lines the view draws (validate()'s stories read it, audit 38): a level leaves out its parent level's flows
   drawn: (model, view) => dfdLines(model, view).map(e => e.id),
   // the PDF's tables (§9): an element's kind; a process's number and the level it opens, a store's number

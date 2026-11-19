@@ -47,7 +47,7 @@ test('the definition: uml.use-case is registered with its palette, its five line
   assert.deepEqual(T.refs, { 'uml.Extend': { 'props.extensionPoints': 'drop empties' } });
   assert.deepEqual(['uml.UseCase', 'uml.Actor', 'uml.Subject'].map(t => T.member.holds({ type: t })), [true, false, false]);
   assert.deepEqual(['Generalization', 'Extend', 'Include', 'Association'].map(t => T.rankFlip({ type: 'uml.' + t })), [true, true, false, false], 'the parent and the base first');
-  assert.deepEqual(Object.keys(T.rules).sort(), ['association-ends', 'extend-ends', 'extend-points', 'generalization-cycle', 'generalization-kinds', 'include-cycle', 'include-ends', 'named', 'point-names', 'use-case-owner']);
+  assert.deepEqual(Object.keys(T.rules).sort(), ['association-ends', 'comment-link', 'extend-ends', 'extend-points', 'generalization-cycle', 'generalization-kinds', 'include-cycle', 'include-ends', 'named', 'point-names', 'use-case-owner']);
 });
 
 test('the shapes: an ellipse holds its text block at its corners; its inset puts a slid point on it; the actor\'s narrows to the figure\'s column', () => {
@@ -173,6 +173,7 @@ const BREAKS = {
   'include-cycle': m => { m.edges.push(L('back', 'Include', 'pay', 'check-out')); return ['check-out', 'pay', 'back']; },
   named: m => { m.nodes.find(n => n.id === 'sign-in').label = ' '; return ['sign-in']; },
   'point-names': m => { m.nodes.find(n => n.id === 'check-out').members[1].label = 'payment'; return ['check-out', 'checkout.payment', 'checkout.extras']; },
+  'comment-link': m => { m.edges.push(L('cl', 'CommentLink', 'browse', 'pay')); return ['cl', 'browse', 'pay']; }, // audit 46
 };
 test('validators: shopping-use-cases.json (example 8) breaks no rule; each rule fails on a model that breaks it, naming its rule and its elements, at its level', () => {
   assert.deepEqual(T.validate(UC), []);
@@ -181,7 +182,7 @@ test('validators: shopping-use-cases.json (example 8) breaks no rule; each rule 
     assert.deepEqual(got.map(p => p.rule), [rule], `${rule}: ${JSON.stringify(got)}`);
     const [p] = got;
     assert.match(p.message, new RegExp('^' + rule + ': '));
-    assert.equal(p.level, ['use-case-owner', 'point-names'].includes(rule) ? 'warning' : 'error', rule);
+    assert.equal(p.level, ['use-case-owner', 'point-names', 'comment-link'].includes(rule) ? 'warning' : 'error', rule);
     assert.deepEqual([...p.ids].sort(), [...ids].sort(), rule);
     assert.ok(validate(m).some(q => q.rule === rule && q.path === p.path), `${rule}: in validate()`);
   }

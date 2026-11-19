@@ -25,7 +25,7 @@ loads, draws it as plain cards with a warning. The vocabulary is `docs/diagrams/
 Rules, each `validate()` problem naming its `rule` and its elements (`notes/stage-4.md` §8.3): `association-ends`,
 `include-ends`, `extend-ends`, `extend-points` (an extend names an extension point of the use case it extends, one at
 least), `generalization-kinds`, `include-cycle` (UML's `cannot_include_self`), `generalization-cycle` (no actor or use case is its own ancestor, as in the class view), `named` (UML's `must_have_name`)
-(errors); `use-case-owner`, `point-names` (warnings).
+(errors); `use-case-owner`, `point-names`, `comment-link` (a comment link with no comment at either end) (warnings).
 
 Deleting an extension point (Shift + Delete, or the member list's ✕) takes every extend left naming no other point of
 its use case, in the same transaction, and the hint line names them (`Deleted extension point "payment" and the extend

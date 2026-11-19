@@ -1,4 +1,4 @@
-import { registerDiagramType } from '../core/registry.js';
+import { ownNodes, registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW, widest, wrap2 } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { brLines } from '../typed/draw.js';
@@ -257,7 +257,9 @@ function clAdd(F, model, view, entry, label, at) {
 // remove: a group deleted from the model takes what it holds with it (apply()); the hint line counts what goes. Delete hides it,
 // its contents then drawn in the next shown group (ownersOn): the default
 function clRemove(F, model, view, ids, fromModel) {
-  const I = clIndex(model), all = fromModel ? ids.filter(id => (I.at.get(id) || {}).type === F.group) : [];
+  // the view's own nodes too: the core passes the model as it is, and a view's own group or service under the group goes with it (audit 46)
+  const V = CL_OBJ(view) ? view : CL_ARR(model && model.views).find(v => CL_OBJ(v) && v.id === view);
+  const I = clIndex(V ? ownNodes(model, V).model : model), all = fromModel ? ids.filter(id => (I.at.get(id) || {}).type === F.group) : [];
   // a group under another selected one is held by it, and what either holds is counted, selected or not: it goes all the same (audit 33)
   const gs = all.filter(id => !I.chain(id).some(p => all.includes(p))), under = id => I.chain(id).some(p => gs.includes(p));
   const held = gs.length ? [...I.at.keys()].filter(under).length : 0;
