@@ -54,13 +54,15 @@ function generate(seed) {
   const NAMES = ['idle', 'Two words', 'start', 'end', 'a-b', 'x.y', 'Ünit', 'note', 'state', 'a_b', 'idle.r1', 'S_x', 'click', 'default', '__proto__', 'constructor', '9lives'];
   const parts = () => clean({ trigger: maybe(0.6, pick(r, TRIGGERS)), guard: maybe(0.4, pick(r, GUARDS)), effect: maybe(0.5, pick(r, EFFECTS)) });
   const scope = (parent, depth) => { // a scope's states and pseudostates, some of them composite
-    const here = [];
+    // one initial and one history of each kind, and no history at the top, which UML refuses and the reader reads as a
+    // state (audit 44): another is a junction
+    const here = [], once = new Set(), fit = k => { if (!['initial', 'shallowHistory', 'deepHistory'].includes(k)) return k; if (once.has(k) || (!parent && k !== 'initial')) return 'junction'; once.add(k); return k; };
     for (let k = 0, n = 1 + Math.floor(r() * (depth ? 3 : 5)); k < n; k++) {
       const x = r(), base = parent ? `${parent}.` : '';
-      if (x < 0.15) here.push(clean({ id: take(pick(r, ['start', `${base}start`, 'init']), `I${used.size}`), type: 'uml.Pseudostate', parent, props: { kind: 'initial' } }));
+      if (x < 0.15) here.push(clean({ id: take(pick(r, ['start', `${base}start`, 'init']), `I${used.size}`), type: 'uml.Pseudostate', parent, props: { kind: fit('initial') } }));
       else if (x < 0.27) here.push(clean({ id: take(pick(r, ['end', `${base}end`, 'done']), `F${used.size}`), type: 'uml.FinalState', parent }));
       else if (x < 0.4) {
-        const kind = pick(r, ['fork', 'join', 'choice', 'junction', 'shallowHistory', 'deepHistory', 'terminate']);
+        const kind = fit(pick(r, ['fork', 'join', 'choice', 'junction', 'shallowHistory', 'deepHistory', 'terminate']));
         here.push(clean({ id: take(pick(r, [kind, 'p', 'h-1']), `P${used.size}`), type: 'uml.Pseudostate', parent, label: ['fork', 'join', 'choice'].includes(kind) ? undefined : maybe(0.2, 'shown'), props: { kind } }));
       } else {
         const id = take(pick(r, NAMES), `S${used.size}`), props = clean(Object.fromEntries(['entry', 'do', 'exit'].map(a => [a, maybe(0.2, pick(r, TEXT.filter(t => t.trim() === t)))])));
@@ -126,6 +128,7 @@ test('a file with every construct on Mermaid\'s state page gives the pinned repo
     '105 skipped: class Still, Moving movement: styles are not read',
     '114 approximated: Placed : entry: a second entry replaces the first',
     '117 approximated: Paid --> Placed: its text is not trigger [guard] / effect: the ( it opens is not closed: it is kept as its trigger',
+    '119 approximated: %% kind: shallowHistory: hist would be a history at the top, and only a state or a region holds one: it is read as a state',
     '127 skipped: hide empty description: not read',
     '128 skipped: scale 350 width: not read',
     '139 approximated: %% id: s1 is taken, so s1 --> s1 is s1-s1',
@@ -140,8 +143,8 @@ test('a file with every construct on Mermaid\'s state page gives the pinned repo
   assert.equal(model.title, "Every construct on Mermaid's state diagram page");
   assert.equal(v.direction, undefined); // direction RL, read as LR, is the last
   // no core error (one with no rule: a dangling end, a cycle of owners, ...). The state type's UML rules (4.6) may name
-  // what Mermaid's own examples do and UML does not allow (a fork into plain states, a history at the top): the reader
-  // keeps what the source says, and validate() says so
+  // what Mermaid's own examples do and UML does not allow (a fork into plain states): the reader keeps what the source
+  // says, and validate() says so
   const core = m => validate(m).filter(p => p.level === 'error' && !p.rule);
   assert.deepEqual(core(model), []);
   // states: a name, a description as the label, a text after a colon as a description comment
@@ -172,8 +175,9 @@ test('a file with every construct on Mermaid\'s state page gives the pinned repo
   assert.deepEqual(node('Placed').members, [{ id: 'Placed.t1', type: 'uml.InternalTransition', props: { trigger: 'address changed', guard: 'not shipped', effect: 'update the address' } }]);
   assert.deepEqual(edge('t-pay').props, { trigger: 'payment', guard: 'ok', effect: 'send the receipt' });
   assert.deepEqual(edge('Paid-Placed'), { id: 'Paid-Placed', type: 'uml.Transition', from: 'Paid', to: 'Placed', props: { trigger: 'refund (pending' }, ext: { mermaid: { label: 'refund (pending' } } });
-  // the hints: a kind, an id, a region's id and name (with one region the hint makes it one)
-  assert.deepEqual(node('hist'), { id: 'hist', type: 'uml.Pseudostate', props: { kind: 'shallowHistory' } });
+  // the hints: a kind (a history at the top, which UML refuses, read as a state: audit 44), an id, a region's id and name
+  // (with one region the hint makes it one)
+  assert.deepEqual(node('hist'), { id: 'hist', type: 'uml.State', label: 'H' });
   assert.deepEqual(node('s-long'), { id: 's-long', type: 'uml.State', label: 'Long name', members: [{ id: 'Long.left', type: 'uml.Region', label: 'Left side' }, { id: 's-long.r2', type: 'uml.Region' }] });
   assert.deepEqual(['l1', 'Long.left.end', 'l2'].map(id => node(id).parent), ['Long.left', 'Long.left', 's-long.r2']);
   assert.deepEqual([edge('s1-s1').from, edge('has-arrow').from], ['s1', 's2']);
@@ -443,4 +447,47 @@ test('audit 31: a composite whose id has a space keeps its regions through write
     const one = structuredClone(model); one.nodes[0].members.pop(); one.nodes = one.nodes.filter(n => n.id !== 'y'); one.views[0].nodeIds.pop();
     assert.match(write(one), new RegExp(`not written: ${id}: region ${id}\\.r1, whose id the reader cannot carry`));
   }
+});
+
+// audit 44: a %% kind: hint the scope cannot hold (a history at the top, a second initial or history of one kind) was read
+// as that pseudostate, and the writer's text for a view that hides a composite but shows its initial put a second initial
+// at the top: both read into models validate() rejects, unreported. The reader reads such a hint as a state and says it;
+// the writer writes such a pseudostate as a state and says it
+test('a kind its scope cannot hold is read, and written, as a state and said, never an invalid model (audit 44)', () => {
+  const errors = m => validate(m).filter(v => v.level === 'error').map(v => v.message);
+  const said = r => r.report.map(x => `${x.line} ${x.status}: ${x.message}`);
+  const top = read('stateDiagram-v2\n%% kind: shallowHistory\nstate H\n[*] --> a\n');
+  assert.deepEqual(said(top), ['3 approximated: %% kind: shallowHistory: H would be a history at the top, and only a state or a region holds one: it is read as a state']);
+  assert.deepEqual(top.model.nodes.find(n => n.id === 'H'), { id: 'H', type: 'uml.State', label: 'H' });
+  assert.deepEqual(errors(top.model), []);
+  const two = read('stateDiagram-v2\n[*] --> a\n%% kind: initial\nstate "●" as b\nb --> a\nstate c {\n  %% kind: deepHistory\n  state h1\n  %% kind: deepHistory\n  state "again" as h2\n  %% kind: shallowHistory\n  state h3\n  [*] --> x\n  %% kind: initial\n  state i\n}\n');
+  assert.deepEqual(said(two), ['4 approximated: %% kind: initial: b would be a second initial pseudostate at the top: it is read as a state',
+    '10 approximated: %% kind: deepHistory: h2 would be a second deepHistory pseudostate in c: it is read as a state',
+    '15 approximated: %% kind: initial: i would be a second initial pseudostate in c: it is read as a state']);
+  assert.deepEqual(['b', 'h1', 'h2', 'h3', 'i'].map(id => { const n = two.model.nodes.find(x => x.id === id); return [n.type, n.label ?? n.props.kind]; }),
+    [['uml.State', '●'], ['uml.Pseudostate', 'deepHistory'], ['uml.State', 'again'], ['uml.Pseudostate', 'shallowHistory'], ['uml.State', '●']]);
+  assert.deepEqual(errors(two.model).filter(e => /^(initial-one|history-one|history-owner)/.test(e)), []);
+  // a history whose state body a pseudostate held: read as a state too, then what that body held is its own scope
+  const nest = read('stateDiagram-v2\n%% kind: shallowHistory\nstate H {\n  [*] --> x\n  %% kind: initial\n  state i\n}\n');
+  assert.deepEqual(nest.report.map(x => x.line), [3, 6]);
+  assert.deepEqual(errors(nest.model).filter(e => /^(initial-one|history-one|history-owner)/.test(e)), []);
+  // the writer: a view that shows a composite's initial and a history but not the composite puts them at the top
+  const m = { schemaVersion: 2, root: 'v', nodes: [
+    { id: 'start', type: 'uml.Pseudostate', props: { kind: 'initial' } }, { id: 'a', type: 'uml.State', label: 'A' },
+    { id: 'c', type: 'uml.State', label: 'C' }, { id: 'c.start', type: 'uml.Pseudostate', parent: 'c', props: { kind: 'initial' } }, { id: 'c.x', type: 'uml.State', parent: 'c', label: 'X' },
+    { id: 'c.h', type: 'uml.Pseudostate', parent: 'c', props: { kind: 'deepHistory' } }],
+    edges: [{ id: 't1', type: 'uml.Transition', from: 'start', to: 'a' }, { id: 't2', type: 'uml.Transition', from: 'c.start', to: 'c.x' }, { id: 't3', type: 'uml.Transition', from: 'a', to: 'c' }],
+    views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['start', 'a', 'c.start', 'c.x', 'c.h'] }] };
+  assert.deepEqual(errors(m), []);
+  const text = write(m, 'v'), back = read(text);
+  assert.match(text, /%% not written: c\.start: it would be a second initial pseudostate at the top: written as a state\n/);
+  assert.match(text, /%% not written: c\.h: it would be a history at the top, and only a state or a region holds one: written as a state\n/);
+  assert.doesNotMatch(text, /%% kind:/);
+  assert.deepEqual(back.report, []);
+  assert.deepEqual(errors(back.model), []);
+  assert.deepEqual(['c.start', 'c.h'].map(id => back.model.nodes.find(n => n.id === id)), [{ id: 'c.start', type: 'uml.State', label: '●' }, { id: 'c.h', type: 'uml.State', label: 'H*' }]);
+  // hostile: a thousand hints at the top, never thrown, never an invalid model
+  const many = read('stateDiagram-v2\n' + Array.from({ length: 1000 }, (_, k) => `%% kind: ${['initial', 'shallowHistory', 'deepHistory'][k % 3]}\nstate s${k}\n`).join(''));
+  assert.equal(many.report.length, 999);
+  assert.deepEqual(errors(many.model).filter(e => /^(initial-one|history-one|history-owner)/.test(e)), []);
 });

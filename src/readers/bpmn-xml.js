@@ -15,12 +15,14 @@
    (with their data object) and data store references, text annotations, groups (a category value names its group in
    `categoryValueRef`), documentation, sequence and message flows, associations and data associations. Weakened, kept
    under the element's `ext.bpmn`: a sequence flow's condition, a gateway's default, a send or receive task's kind, a
-   timer's time. Anything else (an element, an event definition or a marker outside the subset, an extension) is
-   reported `skipped` and kept under the model's `ext.bpmn.skipped` as moddle's JSON with its parent's id; a line to it
-   is reported too. An attribute outside the subset (startQuantity, isForCompensation, isCollection, ...) set to other
+   timer's time. A none end or throw event a message flow leaves, or a none start event one arrives at (bpmn-js draws
+   them), is read as a message event and reported weakened (audit 44). Anything else (an element, an event definition or
+   a marker outside the subset, an extension) is reported `skipped` and kept under the model's `ext.bpmn.skipped` as
+   moddle's JSON with its parent's id; a line to it is reported too. An attribute outside the subset (startQuantity, isForCompensation, isCollection, ...) set to other
    than its default is reported once per file, by its name, and not kept; isExecutable, an engine's only, is passed over.
-   A process in no pool has no place in the model: its name, or an id the writer would not make again, is reported, and
-   a second such process is read into the first and reported (audit 32). Positions and sizes are not kept (R5): the report says so once per file.
+   A process in no pool has no place in the model: its name, its documentation, or an id the writer would not make again,
+   is reported, and a second such process is read into the first and reported (audit 32); a pool's process's name and
+   documentation are reported too (audit 45). Positions and sizes are not kept (R5): the report says so once per file.
 
    writeBpmnXml(model, viewId, geo, moddle) -> promise of { xml, report }: every `bpmn.*` element of the model in one
    definitions, a collaboration when it has a participant, a process per participant (its `processRef`, else
@@ -339,6 +341,11 @@ async function readBpmnXml(xml, moddle) {
       const on = x => (x.type === 'bpmn.BoundaryEvent' && x.props && x.props.attachedTo) || null; // a boundary event's activity
       if (type === 'bpmn.MessageFlow' && from.type === 'bpmn.Participant' && to.type === 'bpmn.Participant') say(id, 'weakened', 'a message flow between two pools: kept, not drawn (it needs an activity or event at one end)');
       else if ((on(from) || on(to)) && (on(from) || from.id) === (on(to) || to.id)) say(id, 'weakened', 'a line from a boundary event to its own activity: kept, not drawn');
+      // a message flow out of a none end or throw event, or into a none start event, as bpmn-js lets a user draw: the
+      // event read as a message one, which the flow makes it, and said (message-ends, audit 44)
+      if (type === 'bpmn.MessageFlow') for (const [x, kinds, how] of [[from, ['bpmn.EndEvent', 'bpmn.IntermediateThrowEvent'], 'leaves'], [to, ['bpmn.StartEvent'], 'arrives at']])
+        if (kinds.includes(x.type) && x.props && x.props.definition === 'none') { const w = x.type === 'bpmn.StartEvent' ? 'start' : x.type === 'bpmn.EndEvent' ? 'end' : 'intermediate throw';
+          x.props.definition = 'message'; say(x.id, 'weakened', `a none ${w} event the message flow ${id} ${how}: read as a message ${w} event`); }
       if ((el.categoryValueRef || []).length) {
         (e.ext ??= { bpmn: {} }).bpmn.categoryValueRef = el.categoryValueRef.map(v => v.id);
         say(id, 'skipped', 'its groups (categoryValueRef, which row 24 gives no line): kept under ext.bpmn, not read');
