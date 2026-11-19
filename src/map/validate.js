@@ -9,14 +9,17 @@ const WIRE_KINDS = ['calls', 'feeds', 'triggers', 'state', 'guard'], SIDES = ['l
 /* A typed view's panel text fields (its type's props: a C4 element's description, a guard, a lifeline's represents, a column's
    type) on the elements it lists, its nodes, their members and its lines, each drawn or said as text: one that is not text is
    drawn "[object Object]", said as a label is, at its own path (audit 43: the structural views' instance classifier, link
-   association, end role, collaboration use, port and role types were drawn so with no warning, and every other type's fields) */
+   association, end role, collaboration use, port and role types were drawn so with no warning, and every other type's fields).
+   A field its type marks drawn: false (a reference: a reply's call, a use's interaction, a call activity's element) is never
+   drawn, so its warning says the panel alone shows it (audit 44: each was said "drawn as" what no picture held) */
+const NOT_DRAWN = 'not drawn, and the panel shows it as';
 function fieldTextProblems(m, v, T) {
   const F = T && T.props && typeof T.props === 'object' ? T.props : null; if (!F) return [];
   const arr = x => (Array.isArray(x) ? x : []), obj = x => x && typeof x === 'object' && !Array.isArray(x), out = [], vi = arr(m.views).indexOf(v), shown = new Set(arr(v.nodeIds)), mems = new Set();
   const check = (x, at, kind) => { if (!obj(x.props) || typeof kind !== 'string' || !Object.hasOwn(F, kind)) return;
     arr(F[kind]).forEach(f => { if (!obj(f) || f.kind !== 'text' || typeof f.key !== 'string') return; const path = Array.isArray(f.path) ? f.path.map(String) : [f.key];
       let o = x.props; for (const k of path.slice(0, -1)) o = obj(o) && Object.hasOwn(o, k) ? o[k] : undefined;
-      const p = obj(o) && Object.hasOwn(o, path[path.length - 1]) ? labelProblem(o, `${at}.props${path.slice(0, -1).map(k => '.' + k).join('')}`, path[path.length - 1]) : null; if (p) out.push(p); }); };
+      const p = obj(o) && Object.hasOwn(o, path[path.length - 1]) ? labelProblem(o, `${at}.props${path.slice(0, -1).map(k => '.' + k).join('')}`, path[path.length - 1], f.drawn === false ? NOT_DRAWN : undefined) : null; if (p) out.push(p); }); };
   const nodes = new Map(); [...arr(m.nodes).map((n, i) => [n, `nodes[${i}]`]), ...arr(v.nodes).map((n, j) => [n, `views[${vi}].nodes[${j}]`])].forEach(([n, at]) => { if (obj(n) && typeof n.id === 'string' && !nodes.has(n.id)) nodes.set(n.id, [n, at]); });
   shown.forEach(id => { if (!nodes.has(id)) return; const [n, at] = nodes.get(id); check(n, at, drawnKind(T, n));
     arr(n.members).forEach((x, j) => { if (obj(x)) { check(x, `${at}.members[${j}]`, x.type); mems.add(x.id); } }); });

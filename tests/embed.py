@@ -88,6 +88,7 @@ class Quiet(http.server.SimpleHTTPRequestHandler):
         # Headless virtual time does not stand still for real work (decoding an image, encoding a PNG): with nothing
         # else scheduled it runs out and Chrome saves the page early. A pending request does hold it, so a test page
         # keeps /__hold open around such work and ends it with /__release.
+        asked.append(self.path)  # what pages ask for: a page must never load an address a model names (audit 44)
         if self.path in ("/__hold", "/__release"):
             if self.path == "/__hold":
                 released.clear(); released.wait(20)
@@ -95,6 +96,9 @@ class Quiet(http.server.SimpleHTTPRequestHandler):
                 released.set()
             self.send_response(204); self.end_headers(); return
         super().do_GET()
+
+
+asked = []
 
 
 class Server(http.server.ThreadingHTTPServer):
@@ -137,7 +141,8 @@ SLOW = {"tests/m2.html": 46, "tests/sysml.html": 31, "tests/embed.html": 29, "te
         "tests/package-object.html": 10, "tests/m4b.html": 8, "tests/class.html": 7, "tests/stage6.html": 6, "tests/notation.html": 6,
         "tests/unfold.html": 5}  # their seconds on a runner; the rest about 3
 part = shards.Parts(__file__, {**{page: SLOW.get(page, 3) for page, _ in PAGES}, **{page: 3 for page, _ in DEMOS}, "examples/element.html": 3,
-                              "examples/notations.html": 3, "the standalone page's legend": 3, "keepPairs": 4, "rules": 3, "label kinds": 3, "record": 16})
+                              "examples/notations.html": 3, "the standalone page's legend": 3, "keepPairs": 4, "rules": 3, "label kinds": 3, "record": 16,
+                              "the playground's own icons": 3})
 for page, motion in PAGES:
     if not part(page):
         continue
@@ -166,6 +171,23 @@ if part("examples/notations.html"):
     demo = dom("examples/notations.html", lambda t: "Drawn: 2 maps" in t)  # two elements, light and dark: the page says when both have drawn
     print(("ok  " if "Drawn: 2 maps" in demo else "FAIL"), "examples/notations.html · the card shapes gallery draws its two maps")
     failed |= "Drawn: 2 maps" not in demo
+if part("the playground's own icons"):
+    # audit 44: the playground replaced a model's own icons table with the Lucide icons it fetched, so a card's own glyph was
+    # drawn without it and the problems said nothing. A shared link's model keeps its glyphs; an image it names (here one on
+    # this very server, so a load would show) is never loaded and is said in the problems
+    import zlib as _z, base64 as _b
+    own = {"nodes": [{"id": "a", "label": "Own glyph", "icon": "pin"}, {"id": "b", "label": "Logo", "icon": "logo"}], "edges": [],
+           "views": [{"id": "v", "title": "V", "nodeIds": ["a", "b"]}],
+           "icons": {"pin": {"g": '<circle cx="12" cy="12" r="9.25"/>'}, "logo": {"src": base + "__model-logo.svg"}}}
+    c = _z.compressobj(9, _z.DEFLATED, -15); packed = _b.urlsafe_b64encode(c.compress(json.dumps(own).encode()) + c.flush()).decode().rstrip("=")
+    asked.clear()
+    # (the map is in a shadow root, which a dumped page leaves out: tests/cloud.test.mjs draws the glyph withIcons keeps)
+    pg = dom("examples/playground.html#m=" + packed, lambda t: "icons.logo" in t)
+    said = "".join(re.findall(r'<section id="problems".*?</section>', pg, re.S))
+    pg_ok = "icons.logo" in said and "never loads" in said and not any("__model-logo" in a for a in asked)
+    print(("ok  " if pg_ok else "FAIL"), "examples/playground.html · a shared model's image icon is never loaded and is said in the problems",
+          "" if pg_ok else (said, [a for a in asked if "model" in a]))
+    failed |= not pg_ok
 # the standalone page (mountPage) shows a legend, so it still names line kinds from label words: "reads metrics" is state
 
 
