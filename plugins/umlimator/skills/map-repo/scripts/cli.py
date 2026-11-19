@@ -23,7 +23,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-REF, SHA = "0.43.0-c04bd48", "c04bd48b0f243298d8d88f66bf6dcf4146a4dc5e"   # the version and commit this skill runs (v0.43.0)
+REF, SHA = "0.44.0-679af7d", "679af7da5a82f5f1ba169bea847e270686792c83"   # the version and commit this skill runs (v0.44.0)
 ref = os.environ.get("UMLIMATOR_REF", REF)
 sha = os.environ.get("UMLIMATOR_SHA", SHA if ref == REF else "")
 cache = Path(os.environ.get("UMLIMATOR_CLI_CACHE") or Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "umlimator" / "cli")
