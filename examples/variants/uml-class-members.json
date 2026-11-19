@@ -1,0 +1,49 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Class members",
+ "root": "members",
+ "nodes": [
+  { "id": "product", "type": "uml.Class", "label": "Product", "props": { "isAbstract": true }, "members": [
+   { "id": "product.sku", "type": "uml.Property", "label": "sku", "props": { "visibility": "public", "valueType": "Sku" } },
+   { "id": "product.price", "type": "uml.Property", "label": "price", "props": { "visibility": "protected", "valueType": "Money" } },
+   { "id": "product.made", "type": "uml.Property", "label": "made", "props": { "visibility": "public", "valueType": "Integer", "isStatic": true, "default": "0" } },
+   { "id": "product.shipWeight", "type": "uml.Operation", "label": "shipWeight", "props": { "visibility": "public", "isAbstract": true, "returnType": "Grams" } }
+  ] },
+  { "id": "book", "type": "uml.Class", "label": "Book", "members": [
+   { "id": "book.title", "type": "uml.Property", "label": "title", "props": { "visibility": "private", "valueType": "String" } },
+   { "id": "book.authors", "type": "uml.Property", "label": "authors", "props": { "visibility": "private", "valueType": "String", "multiplicity": "1..*" } },
+   { "id": "book.edition", "type": "uml.Property", "label": "edition", "props": { "visibility": "package", "valueType": "Integer", "default": "1" } },
+   { "id": "book.salePrice", "type": "uml.Property", "label": "salePrice", "props": { "visibility": "public", "valueType": "Money", "isDerived": true } },
+   { "id": "book.reprice", "type": "uml.Operation", "label": "reprice", "props": { "visibility": "public", "parameters": [{ "name": "by", "valueType": "Percent", "direction": "in" }, { "name": "was", "valueType": "Money", "direction": "out" }], "returnType": "Money" } },
+   { "id": "book.find", "type": "uml.Operation", "label": "find", "props": { "visibility": "public", "isStatic": true, "parameters": [{ "name": "sku", "valueType": "Sku" }], "returnType": "Book" } },
+   { "id": "book.shipWeight", "type": "uml.Operation", "label": "shipWeight", "props": { "visibility": "public", "returnType": "Grams" } },
+   { "id": "book.audit", "type": "uml.Operation", "label": "audit", "props": { "visibility": "private" } }
+  ] },
+  { "id": "shelf", "type": "uml.Class", "label": "Shelf", "members": [
+   { "id": "shelf.code", "type": "uml.Property", "label": "code", "props": { "visibility": "public", "valueType": "String" } },
+   { "id": "shelf.aisle", "type": "uml.Property", "label": "aisle", "props": { "visibility": "public", "valueType": "Integer" } },
+   { "id": "shelf.bay", "type": "uml.Property", "label": "bay", "props": { "visibility": "public", "valueType": "Integer" } },
+   { "id": "shelf.level", "type": "uml.Property", "label": "level", "props": { "visibility": "public", "valueType": "Integer" } },
+   { "id": "shelf.width", "type": "uml.Property", "label": "width", "props": { "visibility": "public", "valueType": "Integer" } },
+   { "id": "shelf.genre", "type": "uml.Property", "label": "genre", "props": { "visibility": "public", "valueType": "String" } },
+   { "id": "shelf.restock", "type": "uml.Operation", "label": "restock", "props": { "visibility": "public" } }
+  ] },
+  { "id": "sku", "type": "uml.PrimitiveType", "label": "Sku" },
+  { "id": "money", "type": "uml.DataType", "label": "Money", "members": [
+   { "id": "money.amount", "type": "uml.Property", "label": "amount", "props": { "visibility": "public", "valueType": "Decimal" } },
+   { "id": "money.currency", "type": "uml.Property", "label": "currency", "props": { "visibility": "public", "valueType": "String" } }
+  ] }
+ ],
+ "edges": [
+  { "id": "book-is-product", "type": "uml.Generalization", "from": "book", "to": "product" },
+  { "id": "shelf-books", "type": "uml.Association", "from": "shelf", "to": "book", "label": "holds", "props": { "ends": { "from": { "multiplicity": "0..1" }, "to": { "role": "books", "multiplicity": "*", "navigable": true } } } },
+  { "id": "product-sku", "type": "uml.Dependency", "from": "product", "to": "sku", "props": { "stereotypes": ["use"] } },
+  { "id": "product-money", "type": "uml.Dependency", "from": "product", "to": "money", "props": { "stereotypes": ["use"] } }
+ ],
+ "views": [
+  { "id": "members", "diagram": "uml.class", "title": "Member notation", "parent": null,
+   "nodeIds": ["product", "book", "shelf", "sku", "money"],
+   "present": { "shelf": { "rows": 3 } } }
+ ]
+}

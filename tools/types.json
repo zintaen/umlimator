@@ -1,0 +1,508 @@
+{
+ "about": "What tools/types.mjs builds each type's page from (examples/types/<type>.json and .html): for each type (the map and docs/types.md's 28), its page's title and its variants, in card order. A variant source is an example of examples/ (\"sales-classes\" is examples/sales-classes.json) or a variant file (\"variants/uml-class-down\" is examples/variants/uml-class-down.json, named <type>-<name>); each of its views of the type gets a card on the page's overview: its sub (a short line on the card) and its text (what the view shows, in the card's details). Plain keyboard characters; `code` in backticks.",
+ "types": {
+  "map": {
+   "title": "Map examples",
+   "variants": [
+    {
+     "file": "shapes",
+     "views": {
+      "shapes": {
+       "sub": "every card shape",
+       "text": "A card of each kind that has a shape, in the one style maps draw: people, a browser app, a phone, a window (a card's own `shape`), a terminal, an agent, a database, a queue, a file, a module, hosts, a hook and an external system."
+      }
+     }
+    },
+    {
+     "file": "monorepo",
+     "views": {
+      "boxed": {
+       "sub": "a box per folder",
+       "text": "A map generated from a dependency list by `monorepo.py`: a card per package, a line per import, heavier with more imports, a box per folder, nested as the folders are."
+      },
+      "plain": {
+       "sub": "the same cards, no boxes",
+       "text": "The same packages and imports as the boxed view, with no boxes: the layout without folders."
+      }
+     }
+    }
+   ]
+  },
+  "uml-class": {
+   "title": "Class diagram examples",
+   "variants": [
+    {
+     "file": "sales-classes",
+     "views": {
+      "domain": {
+       "sub": "compartments, packages, every line",
+       "text": "Compartments of attributes and operations, an interface, an enumeration and a data type, composition and aggregation, generalization, realization, a `<<use>>` dependency and a note, each end with its role and multiplicity."
+      },
+      "payments-only": {
+       "sub": "a subject, collapsed compartments",
+       "text": "Four classes of the sales domain named plainly from the view's `subject`, Order with its compartments collapsed, laid out down."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-class-members",
+     "views": {
+      "members": {
+       "sub": "visibility, static, derived, rows",
+       "text": "Every member notation: the four visibilities (+ - # ~), a static attribute and operation underlined, a derived attribute, defaults and multiplicities, parameters with their direction, an abstract class and operation in italics, a primitive type and a data type, and a class cut to 3 rows then \"+k more\"."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-class-lines",
+     "views": {
+      "lines": {
+       "sub": "associations, usage, abstraction",
+       "text": "Every kind of line a class view draws: an association navigable both ways, roles and multiplicities, composite and shared aggregation, an interface realization, a usage, an abstraction, a plain dependency with a name and a comment link, listed in the view's `edges`."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-class-hierarchy",
+     "views": {
+      "right": {
+       "sub": "abstract class, interfaces, an enumeration",
+       "text": "An abstract class with four specializations and two interfaces, laid out right (the default direction): generalizations and realizations as hollow triangles, an enumeration used by an interface."
+      },
+      "down": {
+       "sub": "direction down, pinned layout",
+       "text": "The same hierarchy with `direction: \"down\"`: the general class above its specializations, the interfaces beside it and each class's place pinned in `layout`."
+      }
+     }
+    }
+   ]
+  },
+  "uml-object": {
+   "title": "Object diagram examples",
+   "variants": [
+    {
+     "file": "order-objects",
+     "views": {
+      "snapshot": {
+       "sub": "instances, slots and links",
+       "text": "Instances of the bookshop's classes, each head `name : Classifier` underlined, slots as `feature = value`, and links with a name or roles by their ends."
+      }
+     }
+    }
+   ]
+  },
+  "uml-package": {
+   "title": "Package diagram examples",
+   "variants": [
+    {
+     "file": "bookshop-packages",
+     "views": {
+      "packages": {
+       "sub": "nesting, import, access, merge",
+       "text": "Packages as boxes holding what they own, a package inside a package, two classes named Order in two packages, `<<import>>`, `<<access>>`, `<<merge>>` and a dependency between them, and a profile applied by `<<apply>>`."
+      }
+     }
+    }
+   ]
+  },
+  "uml-composite-structure": {
+   "title": "Composite structure diagram examples",
+   "variants": [
+    {
+     "file": "order-service-structure",
+     "views": {
+      "internals": {
+       "sub": "parts, ports, collaborations",
+       "text": "A class's parts and ports, a part showing its type's ports, connectors through parts, open collaborations and collaboration uses with their role bindings."
+      }
+     }
+    }
+   ]
+  },
+  "uml-component": {
+   "title": "Component diagram examples",
+   "variants": [
+    {
+     "file": "bookshop-components",
+     "views": {
+      "components": {
+       "sub": "ports, ball and socket, artifacts",
+       "text": "Components nested in components, ports on their borders, delegations inward, assembly connectors, provided and required interfaces as a ball and socket, artifacts and their manifestations."
+      }
+     }
+    }
+   ]
+  },
+  "uml-deployment": {
+   "title": "Deployment diagram examples",
+   "variants": [
+    {
+     "file": "bookshop-deployment",
+     "views": {
+      "production": {
+       "sub": "nodes, devices, artifacts",
+       "text": "Nodes, devices and execution environments as cubes, nested; artifacts deployed by nesting or by a `<<deploy>>` line; deployment specifications and communication paths."
+      }
+     }
+    }
+   ]
+  },
+  "uml-profile": {
+   "title": "Profile diagram examples",
+   "variants": [
+    {
+     "file": "bookshop-profile",
+     "views": {
+      "profile": {
+       "sub": "stereotypes, extensions, tags",
+       "text": "Stereotypes with tag definitions extending metaclasses, a required extension, a profile applied to a package, and an element's tags in a compartment per stereotype; stereotypes applied anywhere in the model are checked against it."
+      }
+     }
+    }
+   ]
+  },
+  "uml-use-case": {
+   "title": "Use case diagram examples",
+   "variants": [
+    {
+     "file": "shopping-use-cases",
+     "views": {
+      "shopping": {
+       "sub": "actors, subject, include, extend",
+       "text": "Actors as stick figures, use cases as ellipses with their extension points, the subject as a box holding them, and include, extend and generalization between them."
+      }
+     }
+    }
+   ]
+  },
+  "uml-activity": {
+   "title": "Activity diagram examples",
+   "variants": [
+    {
+     "file": "fulfil-activity",
+     "views": {
+      "fulfil": {
+       "sub": "lanes, decisions, forks, objects",
+       "text": "Actions, object nodes and a data store, send and accept actions, decisions, merges, forks and joins, in lanes; a call behaviour action opens the activity it calls."
+      },
+      "take-payment": {
+       "sub": "the activity a call opens",
+       "text": "The activity the call behaviour action Take payment calls: its own actions and flows, opened from the fulfilling activity."
+      }
+     }
+    }
+   ]
+  },
+  "uml-state-machine": {
+   "title": "State machine diagram examples",
+   "variants": [
+    {
+     "file": "order-states",
+     "views": {
+      "order-life": {
+       "sub": "regions, history, choice",
+       "text": "States with their activities, composite states as boxes with orthogonal regions, a choice, a fork and a join, a shallow history and a terminate, and transitions written `trigger [guard] / effect`."
+      }
+     }
+    }
+   ]
+  },
+  "uml-sequence": {
+   "title": "Sequence diagram examples",
+   "variants": [
+    {
+     "file": "checkout-sequence",
+     "views": {
+      "checkout-sequence": {
+       "sub": "fragments, activations, a create",
+       "text": "Lifelines on a time axis, calls, a self-call, async messages, replies and a create, activation bars derived from the messages, `alt` and `opt` frames with their guards, and an interaction use."
+      }
+     }
+    },
+    {
+     "file": "buy-book-overview",
+     "views": {
+      "find-book": {
+       "sub": "from an interaction use",
+       "text": "The sequence view the interaction overview's use Find a book opens: a short exchange between lifelines."
+      },
+      "buy-checkout": {
+       "sub": "from an interaction use",
+       "text": "The sequence view the interaction overview's use Check out opens."
+      },
+      "email-receipt": {
+       "sub": "from an interaction use",
+       "text": "The sequence view the interaction overview's use Email the receipt opens."
+      },
+      "queue-order": {
+       "sub": "from an inline interaction",
+       "text": "The sequence view the interaction overview's inline interaction Queue the order shows."
+      }
+     }
+    }
+   ]
+  },
+  "uml-communication": {
+   "title": "Communication diagram examples",
+   "variants": [
+    {
+     "file": "checkout-communication",
+     "views": {
+      "checkout-communication": {
+       "sub": "numbered messages on links",
+       "text": "The checkout's paid branch as lifelines joined by connectors, each link's messages a stack of numbered rows with an arrow toward the receiver."
+      }
+     }
+    }
+   ]
+  },
+  "uml-interaction-overview": {
+   "title": "Interaction overview diagram examples",
+   "variants": [
+    {
+     "file": "buy-book-overview",
+     "views": {
+      "buy-book": {
+       "sub": "uses, inline interaction, loops",
+       "text": "Interaction uses and an inline interaction drawn with its sequence diagram inside, joined by the activity's control nodes and flows; each use, and the inline interaction, opens its sequence view."
+      }
+     }
+    }
+   ]
+  },
+  "uml-timing": {
+   "title": "Timing diagram examples",
+   "variants": [
+    {
+     "file": "bookshop-timing",
+     "views": {
+      "one-charge": {
+       "sub": "states, values, constraints",
+       "text": "Lifelines on one linear time ruler, each a step line through its states or a band of values, messages at their times, duration and time constraints."
+      }
+     }
+    }
+   ]
+  },
+  "uml-information-flow": {
+   "title": "Information flow diagram examples",
+   "variants": [
+    {
+     "file": "order-information-flow",
+     "views": {
+      "order-flows": {
+       "sub": "items and flow lines",
+       "text": "Information items, and dashed `<<flow>>` lines between classifiers and actors, each saying what it conveys."
+      }
+     }
+    }
+   ]
+  },
+  "sysml-requirement": {
+   "title": "Requirement diagram examples",
+   "variants": [
+    {
+     "file": "ebike-requirements",
+     "views": {
+      "requirements": {
+       "sub": "containment, derive, satisfy, verify",
+       "text": "Requirements with their id and text in a frame with SysML's header; containment drawn with a crosshair; derive, satisfy, verify, refine, trace and copy, each checked as SysML says."
+      }
+     }
+    }
+   ]
+  },
+  "sysml-block-definition": {
+   "title": "Block definition diagram examples",
+   "variants": [
+    {
+     "file": "ebike-blocks",
+     "views": {
+      "blocks": {
+       "sub": "blocks, value types, compartments",
+       "text": "Blocks, interface blocks, constraint blocks and value types with SysML's named compartments; composition, generalization and dependency."
+      }
+     }
+    }
+   ]
+  },
+  "sysml-internal-block": {
+   "title": "Internal block diagram examples",
+   "variants": [
+    {
+     "file": "ebike-structure",
+     "views": {
+      "inside-ebike": {
+       "sub": "parts, ports, item flows",
+       "text": "A block's parts, references and values inside its frame; proxy and full ports with flow arrows and conjugation; connectors with item flows."
+      }
+     }
+    }
+   ]
+  },
+  "sysml-parametric": {
+   "title": "Parametric diagram examples",
+   "variants": [
+    {
+     "file": "ebike-range",
+     "views": {
+      "range-analysis": {
+       "sub": "constraints and bindings",
+       "text": "Constraint properties with their expressions, parameters on their borders, binding connectors to the block's value properties."
+      }
+     }
+    }
+   ]
+  },
+  "c4": {
+   "title": "C4 diagram examples",
+   "variants": [
+    {
+     "file": "bookshop-c4",
+     "views": {
+      "c4-context": {
+       "sub": "system context",
+       "text": "The bookshop as a system among its people and external systems, on the map's card shapes."
+      },
+      "c4-containers": {
+       "sub": "containers in a boundary",
+       "text": "The bookshop's containers inside its dashed boundary, each with its technology; implied relationships drawn where a view hides an end."
+      },
+      "c4-components": {
+       "sub": "components of one container",
+       "text": "The Shop API's components inside its boundary, with the containers and systems they talk to."
+      },
+      "c4-placing-an-order": {
+       "sub": "a dynamic view, numbered",
+       "text": "A dynamic view: placing an order as numbered steps between the containers."
+      },
+      "c4-deployment": {
+       "sub": "deployment nodes, instances",
+       "text": "Deployment nodes nested as boxes, holding the container instances that run in production."
+      }
+     }
+    }
+   ]
+  },
+  "er": {
+   "title": "Entity-relationship diagram examples",
+   "variants": [
+    {
+     "file": "bookshop-schema",
+     "views": {
+      "er-schema": {
+       "sub": "keys, crow's foot, junction table",
+       "text": "Tables and their columns as rows, related in crow's foot or IDEF1X on one geometry: a composite key, a junction table, a nullable foreign key, a self-reference."
+      }
+     }
+    }
+   ]
+  },
+  "dfd": {
+   "title": "Data flow diagram examples",
+   "variants": [
+    {
+     "file": "bookshop-data-flow",
+     "views": {
+      "dfd-level-1": {
+       "sub": "processes, stores, entities",
+       "text": "Level 1 in Yourdon notation: numbered processes, data stores and external entities joined by labelled data flows; a process opens its level."
+      },
+      "dfd-level-2-take-order": {
+       "sub": "a level, checked for balance",
+       "text": "Level 2 of process 1, Take order: its own processes and stores, checked for balance against the flows of its parent process."
+      }
+     }
+    }
+   ]
+  },
+  "flowchart": {
+   "title": "Flowchart examples",
+   "variants": [
+    {
+     "file": "returns-flowchart",
+     "views": {
+      "returns": {
+       "sub": "ten symbols, laid out down",
+       "text": "Ten symbols, laid out down: terminators, processes, a decision with labelled exits, input/output, a predefined process, a document, a database, manual input, a delay and a connector."
+      }
+     }
+    }
+   ]
+  },
+  "bpmn": {
+   "title": "BPMN diagram examples",
+   "variants": [
+    {
+     "file": "bookshop-order-to-shipment",
+     "views": {
+      "order-to-shipment": {
+       "sub": "pools, lanes, events, gateways",
+       "text": "BPMN 2.0.2's Descriptive elements: pools and lanes, tasks, a collapsed sub-process that opens its own view, events with their markers, gateways, boundary events on an activity's border, message flows between pools, data, an annotation and a group."
+      },
+      "pick-and-pack": {
+       "sub": "a collapsed sub-process, opened",
+       "text": "The collapsed sub-process Pick and pack, opened as its own view: its tasks and events between its start and end."
+      }
+     }
+    }
+   ]
+  },
+  "mindmap": {
+   "title": "Mindmap examples",
+   "variants": [
+    {
+     "file": "bookshop-opening-plan",
+     "views": {
+      "mm-plan": {
+       "sub": "branches left and right",
+       "text": "A tree of topics laid out left and right of its root, branches as curves in the map's kind colours, edited by N, F2, Alt + arrows and drops; Mermaid mindmaps imported."
+      }
+     }
+    }
+   ]
+  },
+  "aws": {
+   "title": "AWS diagram examples",
+   "variants": [
+    {
+     "file": "bookshop-aws",
+     "views": {
+      "aws-on-aws": {
+       "sub": "accounts, VPCs, subnets, services",
+       "text": "Accounts, regions, VPCs, availability zones, subnets and security groups as nested boxes, each service or resource a card with its icon and full service name. On this site the icons are the vendor's own, fetched with AWS's terms accepted; in a copy of this repository the diagram draws glyphs until you fetch them with `umlimator.py pack fetch aws`. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft."
+      }
+     }
+    }
+   ]
+  },
+  "gcp": {
+   "title": "Google Cloud diagram examples",
+   "variants": [
+    {
+     "file": "bookshop-gcp",
+     "views": {
+      "gcp-on-gcp": {
+       "sub": "projects, regions, zones, products",
+       "text": "Groups nested as boxes titled with their kind, each product a card with its icon and full service name, lines to a group's border. On this site the icons are the vendor's own, fetched with Google's terms accepted; in a copy of this repository the diagram draws glyphs until you fetch them with `umlimator.py pack fetch gcp`. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft."
+      }
+     }
+    }
+   ]
+  },
+  "azure": {
+   "title": "Azure diagram examples",
+   "variants": [
+    {
+     "file": "bookshop-azure",
+     "views": {
+      "az-on-azure": {
+       "sub": "subscriptions, groups, networks",
+       "text": "Subscriptions, resource groups, regions, virtual networks and subnets as nested boxes, each service a card with its icon and full service name. On this site the icons are the vendor's own, fetched with Microsoft's terms accepted; in a copy of this repository the diagram draws glyphs until you fetch them with `umlimator.py pack fetch azure`. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft."
+      }
+     }
+    }
+   ]
+  }
+ }
+}

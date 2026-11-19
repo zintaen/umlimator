@@ -1,0 +1,421 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Interaction overview diagram examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-buy-book-overview-buy-book",
+   "label": "Buying a book",
+   "kind": "file",
+   "sublabel": "uses, inline interaction, loops",
+   "what": "Interaction uses and an inline interaction drawn with its sequence diagram inside, joined by the activity's control nodes and flows; each use, and the inline interaction, opens its sequence view.",
+   "how": "From examples/buy-book-overview.json.",
+   "opensView": "buy-book-overview-buy-book"
+  },
+  {
+   "id": "buy-book-overview-buy-start",
+   "type": "uml.InitialNode"
+  },
+  {
+   "id": "buy-book-overview-ref-find",
+   "type": "uml.InteractionUse",
+   "label": "Find a book",
+   "opensView": "buy-book-overview-find-book"
+  },
+  {
+   "id": "buy-book-overview-try-payment",
+   "type": "uml.MergeNode"
+  },
+  {
+   "id": "buy-book-overview-ref-checkout",
+   "type": "uml.InteractionUse",
+   "label": "Check out",
+   "opensView": "buy-book-overview-buy-checkout"
+  },
+  {
+   "id": "buy-book-overview-payment-ok",
+   "type": "uml.DecisionNode",
+   "label": "Payment accepted?"
+  },
+  {
+   "id": "buy-book-overview-buy-split",
+   "type": "uml.ForkNode"
+  },
+  {
+   "id": "buy-book-overview-ref-receipt",
+   "type": "uml.InteractionUse",
+   "label": "Email the receipt",
+   "opensView": "buy-book-overview-email-receipt"
+  },
+  {
+   "id": "buy-book-overview-sd-queue",
+   "type": "uml.Interaction",
+   "label": "Queue the order",
+   "opensView": "buy-book-overview-queue-order"
+  },
+  {
+   "id": "buy-book-overview-both-done",
+   "type": "uml.JoinNode"
+  },
+  {
+   "id": "buy-book-overview-buy-done",
+   "type": "uml.ActivityFinalNode"
+  },
+  {
+   "id": "buy-book-overview-lifeline-shopper",
+   "type": "uml.Lifeline",
+   "label": "shopper",
+   "props": {
+    "represents": "Shopper",
+    "stereotypes": [
+     "actor"
+    ]
+   }
+  },
+  {
+   "id": "buy-book-overview-lifeline-storefront",
+   "type": "uml.Lifeline",
+   "label": "storefront",
+   "props": {
+    "represents": "Storefront"
+   }
+  },
+  {
+   "id": "buy-book-overview-lifeline-api",
+   "type": "uml.Lifeline",
+   "label": "api",
+   "props": {
+    "represents": "ShopApi"
+   }
+  },
+  {
+   "id": "buy-book-overview-lifeline-payments",
+   "type": "uml.Lifeline",
+   "label": "payments",
+   "props": {
+    "represents": "PaymentProvider"
+   }
+  },
+  {
+   "id": "buy-book-overview-email",
+   "type": "uml.Lifeline",
+   "label": "email",
+   "props": {
+    "represents": "EmailService"
+   }
+  },
+  {
+   "id": "buy-book-overview-lifeline-queue",
+   "type": "uml.Lifeline",
+   "label": "queue",
+   "props": {
+    "represents": "OrderQueue"
+   }
+  },
+  {
+   "id": "buy-book-overview-lifeline-worker",
+   "type": "uml.Lifeline",
+   "label": "worker",
+   "props": {
+    "represents": "OrderWorker"
+   }
+  }
+ ],
+ "edges": [
+  {
+   "id": "buy-book-overview-f-buy-start",
+   "type": "uml.ControlFlow",
+   "from": "buy-book-overview-buy-start",
+   "to": "buy-book-overview-ref-find"
+  },
+  {
+   "id": "buy-book-overview-f-found",
+   "type": "uml.ControlFlow",
+   "from": "buy-book-overview-ref-find",
+   "to": "buy-book-overview-try-payment"
+  },
+  {
+   "id": "buy-book-overview-f-pay",
+   "type": "uml.ControlFlow",
+   "from": "buy-book-overview-try-payment",
+   "to": "buy-book-overview-ref-checkout"
+  },
+  {
+   "id": "buy-book-overview-f-result",
+   "type": "uml.ControlFlow",
+   "from": "buy-book-overview-ref-checkout",
+   "to": "buy-book-overview-payment-ok"
+  },
+  {
+   "id": "buy-book-overview-f-accepted",
+   "type": "uml.ControlFlow",
+   "from": "buy-book-overview-payment-ok",
+   "to": "buy-book-overview-buy-split",
+   "props": {
+    "guard": "payment accepted"
+   }
+  },
+  {
+   "id": "buy-book-overview-f-declined",
+   "type": "uml.ControlFlow",
+   "from": "buy-book-overview-payment-ok",
+   "to": "buy-book-overview-try-payment",
+   "props": {
+    "guard": "else"
+   }
+  },
+  {
+   "id": "buy-book-overview-f-to-receipt",
+   "type": "uml.ControlFlow",
+   "from": "buy-book-overview-buy-split",
+   "to": "buy-book-overview-ref-receipt"
+  },
+  {
+   "id": "buy-book-overview-f-to-queue",
+   "type": "uml.ControlFlow",
+   "from": "buy-book-overview-buy-split",
+   "to": "buy-book-overview-sd-queue"
+  },
+  {
+   "id": "buy-book-overview-f-receipt-sent",
+   "type": "uml.ControlFlow",
+   "from": "buy-book-overview-ref-receipt",
+   "to": "buy-book-overview-both-done"
+  },
+  {
+   "id": "buy-book-overview-f-queued",
+   "type": "uml.ControlFlow",
+   "from": "buy-book-overview-sd-queue",
+   "to": "buy-book-overview-both-done"
+  },
+  {
+   "id": "buy-book-overview-f-buy-done",
+   "type": "uml.ControlFlow",
+   "from": "buy-book-overview-both-done",
+   "to": "buy-book-overview-buy-done"
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Interaction overview diagram examples",
+   "nodeIds": [
+    "card-buy-book-overview-buy-book"
+   ],
+   "layout": {
+    "card-buy-book-overview-buy-book": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "buy-book-overview-buy-book",
+   "diagram": "uml.interaction-overview",
+   "title": "Buying a book",
+   "parent": "overview",
+   "direction": "down",
+   "nodeIds": [
+    "buy-book-overview-buy-start",
+    "buy-book-overview-ref-find",
+    "buy-book-overview-try-payment",
+    "buy-book-overview-ref-checkout",
+    "buy-book-overview-payment-ok",
+    "buy-book-overview-buy-split",
+    "buy-book-overview-ref-receipt",
+    "buy-book-overview-sd-queue",
+    "buy-book-overview-both-done",
+    "buy-book-overview-buy-done"
+   ]
+  },
+  {
+   "id": "buy-book-overview-find-book",
+   "diagram": "uml.sequence",
+   "title": "Find a book",
+   "parent": "buy-book-overview-buy-book",
+   "nodeIds": [
+    "buy-book-overview-lifeline-shopper",
+    "buy-book-overview-lifeline-storefront",
+    "buy-book-overview-lifeline-api"
+   ],
+   "edges": [
+    {
+     "id": "buy-book-overview-find-1",
+     "type": "uml.Message",
+     "from": "buy-book-overview-lifeline-shopper",
+     "to": "buy-book-overview-lifeline-storefront",
+     "label": "search(title)",
+     "props": {
+      "sort": "call"
+     }
+    },
+    {
+     "id": "buy-book-overview-find-2",
+     "type": "uml.Message",
+     "from": "buy-book-overview-lifeline-storefront",
+     "to": "buy-book-overview-lifeline-api",
+     "label": "findBooks(title)",
+     "props": {
+      "sort": "call"
+     }
+    },
+    {
+     "id": "buy-book-overview-find-3",
+     "type": "uml.Message",
+     "from": "buy-book-overview-lifeline-api",
+     "to": "buy-book-overview-lifeline-storefront",
+     "label": "books",
+     "props": {
+      "sort": "reply",
+      "replyTo": "buy-book-overview-find-2"
+     }
+    },
+    {
+     "id": "buy-book-overview-find-4",
+     "type": "uml.Message",
+     "from": "buy-book-overview-lifeline-storefront",
+     "to": "buy-book-overview-lifeline-shopper",
+     "label": "results page",
+     "props": {
+      "sort": "reply",
+      "replyTo": "buy-book-overview-find-1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "buy-book-overview-buy-checkout",
+   "diagram": "uml.sequence",
+   "title": "Check out",
+   "parent": "buy-book-overview-buy-book",
+   "nodeIds": [
+    "buy-book-overview-lifeline-storefront",
+    "buy-book-overview-lifeline-api",
+    "buy-book-overview-lifeline-payments"
+   ],
+   "edges": [
+    {
+     "id": "buy-book-overview-pay-1",
+     "type": "uml.Message",
+     "from": "buy-book-overview-lifeline-storefront",
+     "to": "buy-book-overview-lifeline-api",
+     "label": "place(order)",
+     "props": {
+      "sort": "call"
+     }
+    },
+    {
+     "id": "buy-book-overview-pay-2",
+     "type": "uml.Message",
+     "from": "buy-book-overview-lifeline-api",
+     "to": "buy-book-overview-lifeline-payments",
+     "label": "charge(total)",
+     "props": {
+      "sort": "call"
+     }
+    },
+    {
+     "id": "buy-book-overview-pay-3",
+     "type": "uml.Message",
+     "from": "buy-book-overview-lifeline-payments",
+     "to": "buy-book-overview-lifeline-api",
+     "label": "accepted or declined",
+     "props": {
+      "sort": "reply",
+      "replyTo": "buy-book-overview-pay-2"
+     }
+    },
+    {
+     "id": "buy-book-overview-pay-4",
+     "type": "uml.Message",
+     "from": "buy-book-overview-lifeline-api",
+     "to": "buy-book-overview-lifeline-storefront",
+     "label": "result",
+     "props": {
+      "sort": "reply",
+      "replyTo": "buy-book-overview-pay-1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "buy-book-overview-email-receipt",
+   "diagram": "uml.sequence",
+   "title": "Email the receipt",
+   "parent": "buy-book-overview-buy-book",
+   "nodeIds": [
+    "buy-book-overview-lifeline-api",
+    "buy-book-overview-email",
+    "buy-book-overview-lifeline-shopper"
+   ],
+   "edges": [
+    {
+     "id": "buy-book-overview-mail-1",
+     "type": "uml.Message",
+     "from": "buy-book-overview-lifeline-api",
+     "to": "buy-book-overview-email",
+     "label": "send(receipt)",
+     "props": {
+      "sort": "async"
+     }
+    },
+    {
+     "id": "buy-book-overview-mail-2",
+     "type": "uml.Message",
+     "from": "buy-book-overview-email",
+     "to": "buy-book-overview-lifeline-shopper",
+     "label": "receipt email",
+     "props": {
+      "sort": "async"
+     }
+    }
+   ]
+  },
+  {
+   "id": "buy-book-overview-queue-order",
+   "diagram": "uml.sequence",
+   "title": "Queue the order",
+   "parent": "buy-book-overview-buy-book",
+   "nodeIds": [
+    "buy-book-overview-lifeline-api",
+    "buy-book-overview-lifeline-queue",
+    "buy-book-overview-lifeline-worker"
+   ],
+   "edges": [
+    {
+     "id": "buy-book-overview-queue-1",
+     "type": "uml.Message",
+     "from": "buy-book-overview-lifeline-api",
+     "to": "buy-book-overview-lifeline-queue",
+     "label": "enqueue(order)",
+     "props": {
+      "sort": "call"
+     }
+    },
+    {
+     "id": "buy-book-overview-queue-2",
+     "type": "uml.Message",
+     "from": "buy-book-overview-lifeline-queue",
+     "to": "buy-book-overview-lifeline-api",
+     "label": "queued",
+     "props": {
+      "sort": "reply",
+      "replyTo": "buy-book-overview-queue-1"
+     }
+    },
+    {
+     "id": "buy-book-overview-queue-3",
+     "type": "uml.Message",
+     "from": "buy-book-overview-lifeline-queue",
+     "to": "buy-book-overview-lifeline-worker",
+     "label": "orderPlaced",
+     "props": {
+      "sort": "async"
+     }
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,165 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Timing diagram examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-bookshop-timing-one-charge",
+   "label": "One charge",
+   "kind": "file",
+   "sublabel": "states, values, constraints",
+   "what": "Lifelines on one linear time ruler, each a step line through its states or a band of values, messages at their times, duration and time constraints.",
+   "how": "From examples/bookshop-timing.json.",
+   "opensView": "bookshop-timing-one-charge"
+  },
+  {
+   "id": "bookshop-timing-lifeline-worker",
+   "type": "uml.Lifeline",
+   "label": "worker",
+   "props": {
+    "represents": "OrderWorker",
+    "states": [
+     "Idle",
+     "Waiting for payment",
+     "Recording payment"
+    ]
+   }
+  },
+  {
+   "id": "bookshop-timing-lifeline-payments",
+   "type": "uml.Lifeline",
+   "label": "payments",
+   "props": {
+    "represents": "PaymentProvider",
+    "states": [
+     "Idle",
+     "Authorising",
+     "Capturing"
+    ]
+   }
+  }
+ ],
+ "edges": [],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Timing diagram examples",
+   "nodeIds": [
+    "card-bookshop-timing-one-charge"
+   ],
+   "layout": {
+    "card-bookshop-timing-one-charge": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "bookshop-timing-one-charge",
+   "diagram": "uml.timing",
+   "title": "One charge",
+   "parent": "overview",
+   "nodeIds": [
+    "bookshop-timing-lifeline-worker",
+    "bookshop-timing-lifeline-payments"
+   ],
+   "edges": [
+    {
+     "id": "bookshop-timing-m-charge",
+     "type": "uml.Message",
+     "from": "bookshop-timing-lifeline-worker",
+     "to": "bookshop-timing-lifeline-payments",
+     "label": "charge(total)",
+     "props": {
+      "sort": "call",
+      "sentAt": 100,
+      "receivedAt": 140
+     }
+    },
+    {
+     "id": "bookshop-timing-m-paid",
+     "type": "uml.Message",
+     "from": "bookshop-timing-lifeline-payments",
+     "to": "bookshop-timing-lifeline-worker",
+     "label": "paid",
+     "props": {
+      "sort": "reply",
+      "replyTo": "bookshop-timing-m-charge",
+      "sentAt": 720,
+      "receivedAt": 760
+     }
+    }
+   ],
+   "timeline": {
+    "unit": "ms",
+    "changes": [
+     {
+      "id": "bookshop-timing-w-idle",
+      "lifeline": "bookshop-timing-lifeline-worker",
+      "at": 0,
+      "state": "Idle"
+     },
+     {
+      "id": "bookshop-timing-w-waiting",
+      "lifeline": "bookshop-timing-lifeline-worker",
+      "at": 100,
+      "state": "Waiting for payment"
+     },
+     {
+      "id": "bookshop-timing-w-recording",
+      "lifeline": "bookshop-timing-lifeline-worker",
+      "at": 760,
+      "state": "Recording payment"
+     },
+     {
+      "id": "bookshop-timing-w-done",
+      "lifeline": "bookshop-timing-lifeline-worker",
+      "at": 900,
+      "state": "Idle"
+     },
+     {
+      "id": "bookshop-timing-p-idle",
+      "lifeline": "bookshop-timing-lifeline-payments",
+      "at": 0,
+      "state": "Idle"
+     },
+     {
+      "id": "bookshop-timing-p-authorising",
+      "lifeline": "bookshop-timing-lifeline-payments",
+      "at": 140,
+      "state": "Authorising"
+     },
+     {
+      "id": "bookshop-timing-p-capturing",
+      "lifeline": "bookshop-timing-lifeline-payments",
+      "at": 480,
+      "state": "Capturing"
+     },
+     {
+      "id": "bookshop-timing-p-done",
+      "lifeline": "bookshop-timing-lifeline-payments",
+      "at": 720,
+      "state": "Idle"
+     }
+    ],
+    "constraints": [
+     {
+      "id": "bookshop-timing-c-wait",
+      "type": "uml.DurationConstraint",
+      "from": "bookshop-timing-w-waiting",
+      "to": "bookshop-timing-w-recording",
+      "label": "{<= 800 ms}"
+     },
+     {
+      "id": "bookshop-timing-c-finished",
+      "type": "uml.TimeConstraint",
+      "from": "bookshop-timing-w-done",
+      "label": "{<= 1000 ms}"
+     }
+    ]
+   }
+  }
+ ]
+}

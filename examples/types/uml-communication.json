@@ -1,0 +1,230 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Communication diagram examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-checkout-communication-checkout-communication",
+   "label": "Checkout: payment accepted",
+   "kind": "file",
+   "sublabel": "numbered messages on links",
+   "what": "The checkout's paid branch as lifelines joined by connectors, each link's messages a stack of numbered rows with an arrow toward the receiver.",
+   "how": "From examples/checkout-communication.json.",
+   "opensView": "checkout-communication-checkout-communication"
+  },
+  {
+   "id": "checkout-communication-lifeline-shopper",
+   "type": "uml.Lifeline",
+   "label": "shopper",
+   "props": {
+    "represents": "Shopper",
+    "stereotypes": [
+     "actor"
+    ]
+   }
+  },
+  {
+   "id": "checkout-communication-lifeline-storefront",
+   "type": "uml.Lifeline",
+   "label": "storefront",
+   "props": {
+    "represents": "Storefront"
+   }
+  },
+  {
+   "id": "checkout-communication-lifeline-api",
+   "type": "uml.Lifeline",
+   "label": "api",
+   "props": {
+    "represents": "ShopApi"
+   }
+  },
+  {
+   "id": "checkout-communication-lifeline-payments",
+   "type": "uml.Lifeline",
+   "label": "payments",
+   "props": {
+    "represents": "PaymentProvider"
+   }
+  },
+  {
+   "id": "checkout-communication-receipt",
+   "type": "uml.Lifeline",
+   "label": "receipt",
+   "props": {
+    "represents": "Receipt"
+   }
+  }
+ ],
+ "edges": [
+  {
+   "id": "checkout-communication-shopper-storefront",
+   "type": "uml.Connector",
+   "from": "checkout-communication-lifeline-shopper",
+   "to": "checkout-communication-lifeline-storefront"
+  },
+  {
+   "id": "checkout-communication-storefront-api",
+   "type": "uml.Connector",
+   "from": "checkout-communication-lifeline-storefront",
+   "to": "checkout-communication-lifeline-api"
+  },
+  {
+   "id": "checkout-communication-api-self",
+   "type": "uml.Connector",
+   "from": "checkout-communication-lifeline-api",
+   "to": "checkout-communication-lifeline-api"
+  },
+  {
+   "id": "checkout-communication-api-payments",
+   "type": "uml.Connector",
+   "from": "checkout-communication-lifeline-api",
+   "to": "checkout-communication-lifeline-payments"
+  },
+  {
+   "id": "checkout-communication-api-receipt",
+   "type": "uml.Connector",
+   "from": "checkout-communication-lifeline-api",
+   "to": "checkout-communication-receipt"
+  },
+  {
+   "id": "checkout-communication-cm1",
+   "type": "uml.Message",
+   "from": "checkout-communication-lifeline-shopper",
+   "to": "checkout-communication-lifeline-storefront",
+   "label": "checkout()",
+   "props": {
+    "sort": "call"
+   }
+  },
+  {
+   "id": "checkout-communication-cm2",
+   "type": "uml.Message",
+   "from": "checkout-communication-lifeline-storefront",
+   "to": "checkout-communication-lifeline-api",
+   "label": "place(order)",
+   "props": {
+    "sort": "call"
+   }
+  },
+  {
+   "id": "checkout-communication-cm3",
+   "type": "uml.Message",
+   "from": "checkout-communication-lifeline-api",
+   "to": "checkout-communication-lifeline-api",
+   "label": "validate(order)",
+   "props": {
+    "sort": "call"
+   }
+  },
+  {
+   "id": "checkout-communication-cm4",
+   "type": "uml.Message",
+   "from": "checkout-communication-lifeline-api",
+   "to": "checkout-communication-lifeline-payments",
+   "label": "charge(total)",
+   "props": {
+    "sort": "call"
+   }
+  },
+  {
+   "id": "checkout-communication-cm5",
+   "type": "uml.Message",
+   "from": "checkout-communication-lifeline-payments",
+   "to": "checkout-communication-lifeline-api",
+   "label": "paid",
+   "props": {
+    "sort": "reply",
+    "replyTo": "checkout-communication-cm4"
+   }
+  },
+  {
+   "id": "checkout-communication-cm6",
+   "type": "uml.Message",
+   "from": "checkout-communication-lifeline-api",
+   "to": "checkout-communication-receipt",
+   "label": "new(order)",
+   "props": {
+    "sort": "create"
+   }
+  },
+  {
+   "id": "checkout-communication-cm7",
+   "type": "uml.Message",
+   "from": "checkout-communication-lifeline-api",
+   "to": "checkout-communication-lifeline-storefront",
+   "label": "orderPlaced",
+   "props": {
+    "sort": "async"
+   }
+  },
+  {
+   "id": "checkout-communication-cm8",
+   "type": "uml.Message",
+   "from": "checkout-communication-lifeline-api",
+   "to": "checkout-communication-lifeline-storefront",
+   "label": "result",
+   "props": {
+    "sort": "reply",
+    "replyTo": "checkout-communication-cm2"
+   }
+  },
+  {
+   "id": "checkout-communication-cm9",
+   "type": "uml.Message",
+   "from": "checkout-communication-lifeline-storefront",
+   "to": "checkout-communication-lifeline-shopper",
+   "label": "confirmation page",
+   "props": {
+    "sort": "reply",
+    "replyTo": "checkout-communication-cm1"
+   }
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Communication diagram examples",
+   "nodeIds": [
+    "card-checkout-communication-checkout-communication"
+   ],
+   "layout": {
+    "card-checkout-communication-checkout-communication": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "checkout-communication-checkout-communication",
+   "diagram": "uml.communication",
+   "title": "Checkout: payment accepted",
+   "parent": "overview",
+   "nodeIds": [
+    "checkout-communication-lifeline-shopper",
+    "checkout-communication-lifeline-storefront",
+    "checkout-communication-lifeline-api",
+    "checkout-communication-lifeline-payments",
+    "checkout-communication-receipt"
+   ],
+   "edges": [
+    "checkout-communication-shopper-storefront",
+    "checkout-communication-storefront-api",
+    "checkout-communication-api-self",
+    "checkout-communication-api-payments",
+    "checkout-communication-api-receipt",
+    "checkout-communication-cm1",
+    "checkout-communication-cm2",
+    "checkout-communication-cm3",
+    "checkout-communication-cm4",
+    "checkout-communication-cm5",
+    "checkout-communication-cm6",
+    "checkout-communication-cm7",
+    "checkout-communication-cm8",
+    "checkout-communication-cm9"
+   ]
+  }
+ ]
+}

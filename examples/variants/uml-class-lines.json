@@ -1,0 +1,39 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Class lines",
+ "root": "lines",
+ "nodes": [
+  { "id": "shop", "type": "uml.Class", "label": "Shop" },
+  { "id": "member", "type": "uml.Class", "label": "Member" },
+  { "id": "basket", "type": "uml.Class", "label": "Basket" },
+  { "id": "item", "type": "uml.Class", "label": "BasketItem" },
+  { "id": "wishlist", "type": "uml.Class", "label": "Wishlist" },
+  { "id": "title", "type": "uml.Class", "label": "Title" },
+  { "id": "pricing", "type": "uml.Interface", "label": "Pricing", "members": [
+   { "id": "pricing.quote", "type": "uml.Operation", "label": "quote", "props": { "visibility": "public", "returnType": "Money" } }
+  ] },
+  { "id": "list-pricing", "type": "uml.Class", "label": "ListPricing" },
+  { "id": "logger", "type": "uml.Class", "label": "AuditLog" },
+  { "id": "price-model", "type": "uml.Class", "label": "PriceModel" },
+  { "id": "note-basket", "type": "uml.Comment", "label": "a basket lives until checkout or 30 days" }
+ ],
+ "edges": [
+  { "id": "shop-members", "type": "uml.Association", "from": "shop", "to": "member", "label": "serves", "props": { "ends": { "from": { "role": "shops", "multiplicity": "1..*", "navigable": true }, "to": { "role": "members", "multiplicity": "*", "navigable": true } } } },
+  { "id": "member-basket", "type": "uml.Association", "from": "member", "to": "basket", "props": { "ends": { "from": { "multiplicity": "1" }, "to": { "role": "basket", "multiplicity": "0..1", "navigable": true } } } },
+  { "id": "basket-items", "type": "uml.Association", "from": "basket", "to": "item", "props": { "ends": { "from": { "aggregation": "composite", "multiplicity": "1" }, "to": { "role": "items", "multiplicity": "*", "navigable": true } } } },
+  { "id": "wishlist-titles", "type": "uml.Association", "from": "wishlist", "to": "title", "props": { "ends": { "from": { "aggregation": "shared", "multiplicity": "*" }, "to": { "role": "titles", "multiplicity": "*" } } } },
+  { "id": "member-wishlist", "type": "uml.Association", "from": "member", "to": "wishlist", "props": { "ends": { "from": { "multiplicity": "1" }, "to": { "multiplicity": "*", "navigable": true } } } },
+  { "id": "list-realizes", "type": "uml.InterfaceRealization", "from": "list-pricing", "to": "pricing" },
+  { "id": "basket-pricing", "type": "uml.Usage", "from": "basket", "to": "pricing" },
+  { "id": "shop-log", "type": "uml.Dependency", "from": "shop", "to": "logger", "label": "writes to" },
+  { "id": "pricing-model", "type": "uml.Abstraction", "from": "list-pricing", "to": "price-model" },
+  { "id": "item-title", "type": "uml.Association", "from": "item", "to": "title", "props": { "ends": { "from": { "multiplicity": "*" }, "to": { "multiplicity": "1", "navigable": true } } } },
+  { "id": "note-basket-link", "type": "uml.CommentLink", "from": "note-basket", "to": "basket" }
+ ],
+ "views": [
+  { "id": "lines", "diagram": "uml.class", "title": "Every kind of line", "parent": null,
+   "nodeIds": ["shop", "member", "basket", "item", "wishlist", "title", "pricing", "list-pricing", "logger", "price-model", "note-basket"],
+   "edges": ["shop-members", "member-basket", "basket-items", "wishlist-titles", "member-wishlist", "list-realizes", "basket-pricing", "shop-log", "pricing-model", "item-title", "note-basket-link"] }
+ ]
+}

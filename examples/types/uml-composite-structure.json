@@ -1,0 +1,246 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Composite structure diagram examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-order-service-structure-internals",
+   "label": "Inside OrderService",
+   "kind": "file",
+   "sublabel": "parts, ports, collaborations",
+   "what": "A class's parts and ports, a part showing its type's ports, connectors through parts, open collaborations and collaboration uses with their role bindings.",
+   "how": "From examples/order-service-structure.json.",
+   "opensView": "order-service-structure-internals"
+  },
+  {
+   "id": "order-service-structure-order-service",
+   "type": "uml.Class",
+   "label": "OrderService",
+   "members": [
+    {
+     "id": "order-service-structure-order-service.api",
+     "type": "uml.Port",
+     "label": "api"
+    },
+    {
+     "id": "order-service-structure-order-service.payments",
+     "type": "uml.Port",
+     "label": "payments"
+    },
+    {
+     "id": "order-service-structure-order-service.checkout",
+     "type": "uml.Property",
+     "label": "checkout",
+     "props": {
+      "valueType": "CheckoutFlow",
+      "multiplicity": "1",
+      "aggregation": "composite"
+     }
+    },
+    {
+     "id": "order-service-structure-order-service.pricing",
+     "type": "uml.Property",
+     "label": "pricing",
+     "props": {
+      "valueType": "PriceCalculator",
+      "multiplicity": "1",
+      "aggregation": "composite"
+     }
+    },
+    {
+     "id": "order-service-structure-order-service.orders",
+     "type": "uml.Property",
+     "label": "orders",
+     "props": {
+      "valueType": "OrderRepository",
+      "multiplicity": "1",
+      "aggregation": "composite"
+     }
+    },
+    {
+     "id": "order-service-structure-order-service.listeners",
+     "type": "uml.Property",
+     "label": "listeners",
+     "props": {
+      "valueType": "OrderListener",
+      "multiplicity": "0..*",
+      "aggregation": "shared"
+     }
+    }
+   ]
+  },
+  {
+   "id": "order-service-structure-checkout-class",
+   "type": "uml.Class",
+   "label": "CheckoutFlow",
+   "members": [
+    {
+     "id": "order-service-structure-checkout-class.requests",
+     "type": "uml.Port",
+     "label": "requests"
+    },
+    {
+     "id": "order-service-structure-checkout-class.quotes",
+     "type": "uml.Port",
+     "label": "quotes"
+    },
+    {
+     "id": "order-service-structure-checkout-class.charges",
+     "type": "uml.Port",
+     "label": "charges"
+    }
+   ]
+  },
+  {
+   "id": "order-service-structure-price-calculator",
+   "type": "uml.Class",
+   "label": "PriceCalculator",
+   "members": [
+    {
+     "id": "order-service-structure-price-calculator.quotes",
+     "type": "uml.Port",
+     "label": "quotes"
+    }
+   ]
+  },
+  {
+   "id": "order-service-structure-order-events",
+   "type": "uml.CollaborationUse",
+   "label": "orderEvents",
+   "parent": "order-service-structure-order-service",
+   "props": {
+    "collaboration": "PublishSubscribe"
+   }
+  },
+  {
+   "id": "order-service-structure-publish-subscribe",
+   "type": "uml.Collaboration",
+   "label": "PublishSubscribe",
+   "members": [
+    {
+     "id": "order-service-structure-publish-subscribe.publisher",
+     "type": "uml.Property",
+     "label": "publisher",
+     "props": {
+      "valueType": "EventSource",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "order-service-structure-publish-subscribe.subscriber",
+     "type": "uml.Property",
+     "label": "subscriber",
+     "props": {
+      "valueType": "EventListener",
+      "multiplicity": "0..*"
+     }
+    }
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "id": "order-service-structure-api-to-checkout",
+   "type": "uml.Connector",
+   "from": "order-service-structure-order-service.api",
+   "to": "order-service-structure-checkout-class.requests",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "order-service-structure-order-service.checkout"
+     }
+    }
+   }
+  },
+  {
+   "id": "order-service-structure-checkout-to-pricing",
+   "type": "uml.Connector",
+   "from": "order-service-structure-checkout-class.quotes",
+   "to": "order-service-structure-price-calculator.quotes",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "order-service-structure-order-service.checkout"
+     },
+     "to": {
+      "part": "order-service-structure-order-service.pricing"
+     }
+    }
+   }
+  },
+  {
+   "id": "order-service-structure-checkout-to-payments",
+   "type": "uml.Connector",
+   "from": "order-service-structure-checkout-class.charges",
+   "to": "order-service-structure-order-service.payments",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "order-service-structure-order-service.checkout"
+     }
+    }
+   }
+  },
+  {
+   "id": "order-service-structure-checkout-to-orders",
+   "type": "uml.Connector",
+   "from": "order-service-structure-order-service.checkout",
+   "to": "order-service-structure-order-service.orders"
+  },
+  {
+   "id": "order-service-structure-checkout-to-listeners",
+   "type": "uml.Connector",
+   "from": "order-service-structure-order-service.checkout",
+   "to": "order-service-structure-order-service.listeners"
+  },
+  {
+   "id": "order-service-structure-publisher-to-subscriber",
+   "type": "uml.Connector",
+   "from": "order-service-structure-publish-subscribe.publisher",
+   "to": "order-service-structure-publish-subscribe.subscriber"
+  },
+  {
+   "id": "order-service-structure-checkout-is-publisher",
+   "type": "uml.RoleBinding",
+   "from": "order-service-structure-order-service.checkout",
+   "to": "order-service-structure-order-events",
+   "label": "publisher"
+  },
+  {
+   "id": "order-service-structure-listeners-are-subscribers",
+   "type": "uml.RoleBinding",
+   "from": "order-service-structure-order-service.listeners",
+   "to": "order-service-structure-order-events",
+   "label": "subscriber"
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Composite structure diagram examples",
+   "nodeIds": [
+    "card-order-service-structure-internals"
+   ],
+   "layout": {
+    "card-order-service-structure-internals": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "order-service-structure-internals",
+   "diagram": "uml.composite-structure",
+   "title": "Inside OrderService",
+   "parent": "overview",
+   "subject": "order-service-structure-order-service",
+   "nodeIds": [
+    "order-service-structure-order-service",
+    "order-service-structure-order-events",
+    "order-service-structure-publish-subscribe"
+   ]
+  }
+ ]
+}

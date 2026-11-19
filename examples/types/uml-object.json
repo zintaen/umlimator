@@ -1,0 +1,288 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Object diagram examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-order-objects-snapshot",
+   "label": "Order 1042, just placed",
+   "kind": "file",
+   "sublabel": "instances, slots and links",
+   "what": "Instances of the bookshop's classes, each head `name : Classifier` underlined, slots as `feature = value`, and links with a name or roles by their ends.",
+   "how": "From examples/order-objects.json.",
+   "opensView": "order-objects-snapshot"
+  },
+  {
+   "id": "order-objects-ada",
+   "type": "uml.InstanceSpecification",
+   "label": "ada",
+   "props": {
+    "classifier": "Customer"
+   },
+   "members": [
+    {
+     "id": "order-objects-ada.email",
+     "type": "uml.Slot",
+     "label": "email",
+     "props": {
+      "value": "ada@example.org"
+     }
+    }
+   ]
+  },
+  {
+   "id": "order-objects-order-1042",
+   "type": "uml.InstanceSpecification",
+   "label": "order1042",
+   "props": {
+    "classifier": "Order"
+   },
+   "members": [
+    {
+     "id": "order-objects-order-1042.status",
+     "type": "uml.Slot",
+     "label": "status",
+     "props": {
+      "value": "placed"
+     }
+    },
+    {
+     "id": "order-objects-order-1042.total",
+     "type": "uml.Slot",
+     "label": "total",
+     "props": {
+      "value": "34.00 EUR"
+     }
+    }
+   ]
+  },
+  {
+   "id": "order-objects-line-1",
+   "type": "uml.InstanceSpecification",
+   "label": "line1",
+   "props": {
+    "classifier": "OrderLine"
+   },
+   "members": [
+    {
+     "id": "order-objects-line-1.quantity",
+     "type": "uml.Slot",
+     "label": "quantity",
+     "props": {
+      "value": "2"
+     }
+    }
+   ]
+  },
+  {
+   "id": "order-objects-line-2",
+   "type": "uml.InstanceSpecification",
+   "label": "line2",
+   "props": {
+    "classifier": "OrderLine"
+   },
+   "members": [
+    {
+     "id": "order-objects-line-2.quantity",
+     "type": "uml.Slot",
+     "label": "quantity",
+     "props": {
+      "value": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "order-objects-middlemarch",
+   "type": "uml.InstanceSpecification",
+   "label": "middlemarch",
+   "props": {
+    "classifier": "Book"
+   },
+   "members": [
+    {
+     "id": "order-objects-middlemarch.title",
+     "type": "uml.Slot",
+     "label": "title",
+     "props": {
+      "value": "Middlemarch"
+     }
+    },
+    {
+     "id": "order-objects-middlemarch.price",
+     "type": "uml.Slot",
+     "label": "price",
+     "props": {
+      "value": "12.50 EUR"
+     }
+    }
+   ]
+  },
+  {
+   "id": "order-objects-frankenstein",
+   "type": "uml.InstanceSpecification",
+   "label": "frankenstein",
+   "props": {
+    "classifier": "Book"
+   },
+   "members": [
+    {
+     "id": "order-objects-frankenstein.title",
+     "type": "uml.Slot",
+     "label": "title",
+     "props": {
+      "value": "Frankenstein"
+     }
+    },
+    {
+     "id": "order-objects-frankenstein.price",
+     "type": "uml.Slot",
+     "label": "price",
+     "props": {
+      "value": "9.00 EUR"
+     }
+    }
+   ]
+  },
+  {
+   "id": "order-objects-card-1",
+   "type": "uml.InstanceSpecification",
+   "label": "card",
+   "props": {
+    "classifier": "CardPayment"
+   },
+   "members": [
+    {
+     "id": "order-objects-card.amount",
+     "type": "uml.Slot",
+     "label": "amount",
+     "props": {
+      "value": "34.00 EUR"
+     }
+    },
+    {
+     "id": "order-objects-card.last4",
+     "type": "uml.Slot",
+     "label": "last4",
+     "props": {
+      "value": "4242"
+     }
+    }
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "id": "order-objects-ada-places-order",
+   "type": "uml.Link",
+   "from": "order-objects-ada",
+   "to": "order-objects-order-1042",
+   "label": "places",
+   "props": {
+    "ends": {
+     "to": {
+      "role": "orders"
+     }
+    }
+   }
+  },
+  {
+   "id": "order-objects-order-has-line-1",
+   "type": "uml.Link",
+   "from": "order-objects-order-1042",
+   "to": "order-objects-line-1",
+   "props": {
+    "ends": {
+     "to": {
+      "role": "lines"
+     }
+    }
+   }
+  },
+  {
+   "id": "order-objects-order-has-line-2",
+   "type": "uml.Link",
+   "from": "order-objects-order-1042",
+   "to": "order-objects-line-2",
+   "props": {
+    "ends": {
+     "to": {
+      "role": "lines"
+     }
+    }
+   }
+  },
+  {
+   "id": "order-objects-line-1-is-for",
+   "type": "uml.Link",
+   "from": "order-objects-line-1",
+   "to": "order-objects-middlemarch",
+   "props": {
+    "ends": {
+     "to": {
+      "role": "book"
+     }
+    }
+   }
+  },
+  {
+   "id": "order-objects-line-2-is-for",
+   "type": "uml.Link",
+   "from": "order-objects-line-2",
+   "to": "order-objects-frankenstein",
+   "props": {
+    "ends": {
+     "to": {
+      "role": "book"
+     }
+    }
+   }
+  },
+  {
+   "id": "order-objects-order-paid-by-card",
+   "type": "uml.Link",
+   "from": "order-objects-order-1042",
+   "to": "order-objects-card-1",
+   "props": {
+    "ends": {
+     "to": {
+      "role": "payments"
+     }
+    }
+   }
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Object diagram examples",
+   "nodeIds": [
+    "card-order-objects-snapshot"
+   ],
+   "layout": {
+    "card-order-objects-snapshot": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "order-objects-snapshot",
+   "diagram": "uml.object",
+   "title": "Order 1042, just placed",
+   "parent": "overview",
+   "direction": "down",
+   "nodeIds": [
+    "order-objects-ada",
+    "order-objects-order-1042",
+    "order-objects-line-1",
+    "order-objects-line-2",
+    "order-objects-middlemarch",
+    "order-objects-frankenstein",
+    "order-objects-card-1"
+   ]
+  }
+ ]
+}

@@ -10,3 +10,5 @@ __pycache__/
 node_modules/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+# the type pages tools/types.mjs renders (each the whole module): CI's site job builds them
+examples/types/*.html

@@ -105,7 +105,10 @@ export const sidebar = {
     { text: 'Guide', items: [{ text: 'Overview', link: '/guide/' }, ...guide.map(([text, s]) => ({ text, link: `/guide/${s}` }))] },
     { text: 'Reference', items: [{ text: 'API', link: '/api/' }, { text: 'Diagram types', link: '/types' }, { text: 'Changelog', link: '/changelog' }] },
   ],
-  '/api/': [{ text: 'API', items: api.map(([text, s]) => ({ text, link: s === 'index' ? '/api/' : `/api/${s}` })) }],
+  '/api/': [
+    { text: 'API', items: api.map(([text, s]) => ({ text, link: s === 'index' ? '/api/' : `/api/${s}` })) },
+    { text: 'Reference', items: [{ text: 'Diagram types', link: '/types' }, { text: 'Changelog', link: '/changelog' }] },
+  ],
   '/conformance/': [
     { text: 'Diagram types', items: [{ text: 'All 28 types', link: '/types' }] },
     { text: 'Conformance notes', items: conformance.map(s => ({ text: label(s), link: `/conformance/${s}` })) },
@@ -150,12 +153,7 @@ export default defineConfig({
     nav: [
       { text: 'Guide', link: '/guide/getting-started', activeMatch: '^/guide/' },
       { text: 'API', link: '/api/', activeMatch: '^/api/' },
-      { text: 'Diagram types', link: '/types', activeMatch: '^/(types|conformance/)' },
-      { text: 'Examples', items: [
-        { text: 'Diagrams', link: '/examples/index.html#diagrams', target: '_self' },
-        { text: 'Atlas', link: '/examples/index.html#atlas', target: '_self' },
-        { text: 'In an app', link: '/examples/index.html#apps', target: '_self' },
-      ] },
+      { text: 'Examples', link: '/examples/index.html', target: '_self', activeMatch: '^/examples/' },
       { text: `v${version}`, items: [
         { text: 'Changelog', link: '/changelog' },
         { text: 'npm', link: 'https://www.npmjs.com/package/umlimator' },

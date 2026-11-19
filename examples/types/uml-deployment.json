@@ -1,0 +1,195 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Deployment diagram examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-bookshop-deployment-production",
+   "label": "Production",
+   "kind": "file",
+   "sublabel": "nodes, devices, artifacts",
+   "what": "Nodes, devices and execution environments as cubes, nested; artifacts deployed by nesting or by a `<<deploy>>` line; deployment specifications and communication paths.",
+   "how": "From examples/bookshop-deployment.json.",
+   "opensView": "bookshop-deployment-production"
+  },
+  {
+   "id": "bookshop-deployment-shopper-device",
+   "type": "uml.Device",
+   "label": "Shopper's device"
+  },
+  {
+   "id": "bookshop-deployment-browser",
+   "type": "uml.ExecutionEnvironment",
+   "label": "Web browser",
+   "parent": "bookshop-deployment-shopper-device"
+  },
+  {
+   "id": "bookshop-deployment-storefront-bundle",
+   "type": "uml.Artifact",
+   "label": "storefront.js",
+   "parent": "bookshop-deployment-browser"
+  },
+  {
+   "id": "bookshop-deployment-edge-node",
+   "type": "uml.Node",
+   "label": "Edge proxy"
+  },
+  {
+   "id": "bookshop-deployment-edge-routes",
+   "type": "uml.Artifact",
+   "label": "routes.conf"
+  },
+  {
+   "id": "bookshop-deployment-app-server",
+   "type": "uml.Device",
+   "label": "Application server"
+  },
+  {
+   "id": "bookshop-deployment-jvm",
+   "type": "uml.ExecutionEnvironment",
+   "label": "Java 21 runtime",
+   "parent": "bookshop-deployment-app-server"
+  },
+  {
+   "id": "bookshop-deployment-shop-api-jar",
+   "type": "uml.Artifact",
+   "label": "shop-api.jar",
+   "parent": "bookshop-deployment-jvm"
+  },
+  {
+   "id": "bookshop-deployment-order-worker-jar",
+   "type": "uml.Artifact",
+   "label": "order-worker.jar",
+   "parent": "bookshop-deployment-jvm"
+  },
+  {
+   "id": "bookshop-deployment-shop-api-config",
+   "type": "uml.DeploymentSpecification",
+   "label": "shop-api.yaml",
+   "parent": "bookshop-deployment-jvm"
+  },
+  {
+   "id": "bookshop-deployment-database",
+   "type": "uml.Node",
+   "label": "Database"
+  },
+  {
+   "id": "bookshop-deployment-queue-node",
+   "type": "uml.Node",
+   "label": "Order queue"
+  },
+  {
+   "id": "bookshop-deployment-shop-api",
+   "type": "uml.Component",
+   "label": "Shop API"
+  },
+  {
+   "id": "bookshop-deployment-order-worker",
+   "type": "uml.Component",
+   "label": "Order worker"
+  }
+ ],
+ "edges": [
+  {
+   "id": "bookshop-deployment-routes-on-edge",
+   "type": "uml.Deployment",
+   "from": "bookshop-deployment-edge-routes",
+   "to": "bookshop-deployment-edge-node"
+  },
+  {
+   "id": "bookshop-deployment-api-jar-manifests-api",
+   "type": "uml.Manifestation",
+   "from": "bookshop-deployment-shop-api-jar",
+   "to": "bookshop-deployment-shop-api"
+  },
+  {
+   "id": "bookshop-deployment-worker-jar-manifests-worker",
+   "type": "uml.Manifestation",
+   "from": "bookshop-deployment-order-worker-jar",
+   "to": "bookshop-deployment-order-worker"
+  },
+  {
+   "id": "bookshop-deployment-config-for-api-jar",
+   "type": "uml.Dependency",
+   "from": "bookshop-deployment-shop-api-config",
+   "to": "bookshop-deployment-shop-api-jar"
+  },
+  {
+   "id": "bookshop-deployment-device-to-edge",
+   "type": "uml.CommunicationPath",
+   "from": "bookshop-deployment-shopper-device",
+   "to": "bookshop-deployment-edge-node",
+   "label": "HTTPS"
+  },
+  {
+   "id": "bookshop-deployment-edge-to-app",
+   "type": "uml.CommunicationPath",
+   "from": "bookshop-deployment-edge-node",
+   "to": "bookshop-deployment-app-server",
+   "label": "HTTP"
+  },
+  {
+   "id": "bookshop-deployment-app-to-database",
+   "type": "uml.CommunicationPath",
+   "from": "bookshop-deployment-app-server",
+   "to": "bookshop-deployment-database",
+   "label": "PostgreSQL wire protocol"
+  },
+  {
+   "id": "bookshop-deployment-app-to-queue",
+   "type": "uml.CommunicationPath",
+   "from": "bookshop-deployment-app-server",
+   "to": "bookshop-deployment-queue-node",
+   "label": "AMQP"
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Deployment diagram examples",
+   "nodeIds": [
+    "card-bookshop-deployment-production"
+   ],
+   "layout": {
+    "card-bookshop-deployment-production": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "bookshop-deployment-production",
+   "diagram": "uml.deployment",
+   "title": "Production",
+   "parent": "overview",
+   "nodeIds": [
+    "bookshop-deployment-shopper-device",
+    "bookshop-deployment-browser",
+    "bookshop-deployment-storefront-bundle",
+    "bookshop-deployment-edge-node",
+    "bookshop-deployment-edge-routes",
+    "bookshop-deployment-app-server",
+    "bookshop-deployment-jvm",
+    "bookshop-deployment-shop-api-jar",
+    "bookshop-deployment-order-worker-jar",
+    "bookshop-deployment-shop-api-config",
+    "bookshop-deployment-database",
+    "bookshop-deployment-queue-node",
+    "bookshop-deployment-shop-api",
+    "bookshop-deployment-order-worker"
+   ],
+   "edges": [
+    "bookshop-deployment-routes-on-edge",
+    "bookshop-deployment-api-jar-manifests-api",
+    "bookshop-deployment-worker-jar-manifests-worker",
+    "bookshop-deployment-config-for-api-jar",
+    "bookshop-deployment-device-to-edge",
+    "bookshop-deployment-edge-to-app",
+    "bookshop-deployment-app-to-database",
+    "bookshop-deployment-app-to-queue"
+   ]
+  }
+ ]
+}

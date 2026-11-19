@@ -1,0 +1,215 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Component diagram examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-bookshop-components-components",
+   "label": "Bookshop components",
+   "kind": "file",
+   "sublabel": "ports, ball and socket, artifacts",
+   "what": "Components nested in components, ports on their borders, delegations inward, assembly connectors, provided and required interfaces as a ball and socket, artifacts and their manifestations.",
+   "how": "From examples/bookshop-components.json.",
+   "opensView": "bookshop-components-components"
+  },
+  {
+   "id": "bookshop-components-storefront-component",
+   "type": "uml.Component",
+   "label": "Storefront"
+  },
+  {
+   "id": "bookshop-components-shop-api",
+   "type": "uml.Component",
+   "label": "Shop API",
+   "members": [
+    {
+     "id": "bookshop-components-shop-api.orders",
+     "type": "uml.Port",
+     "label": "orders"
+    },
+    {
+     "id": "bookshop-components-shop-api.payments",
+     "type": "uml.Port",
+     "label": "payments"
+    }
+   ]
+  },
+  {
+   "id": "bookshop-components-checkout-component",
+   "type": "uml.Component",
+   "label": "Checkout",
+   "parent": "bookshop-components-shop-api",
+   "members": [
+    {
+     "id": "bookshop-components-checkout-component.orders",
+     "type": "uml.Port",
+     "label": "orders"
+    },
+    {
+     "id": "bookshop-components-checkout-component.payments",
+     "type": "uml.Port",
+     "label": "payments"
+    }
+   ]
+  },
+  {
+   "id": "bookshop-components-accounts-component",
+   "type": "uml.Component",
+   "label": "Accounts and sign-in"
+  },
+  {
+   "id": "bookshop-components-payment-provider-component",
+   "type": "uml.Component",
+   "label": "Payment provider",
+   "members": [
+    {
+     "id": "bookshop-components-payment-provider-component.charges",
+     "type": "uml.Port",
+     "label": "charges"
+    }
+   ]
+  },
+  {
+   "id": "bookshop-components-order-worker",
+   "type": "uml.Component",
+   "label": "Order worker"
+  },
+  {
+   "id": "bookshop-components-i-orders",
+   "type": "uml.Interface",
+   "label": "Orders"
+  },
+  {
+   "id": "bookshop-components-i-sign-in",
+   "type": "uml.Interface",
+   "label": "SignIn"
+  },
+  {
+   "id": "bookshop-components-shop-api-jar",
+   "type": "uml.Artifact",
+   "label": "shop-api.jar",
+   "parent": "bookshop-components-jvm"
+  },
+  {
+   "id": "bookshop-components-app-server",
+   "type": "uml.Device",
+   "label": "Application server"
+  },
+  {
+   "id": "bookshop-components-jvm",
+   "type": "uml.ExecutionEnvironment",
+   "label": "Java 21 runtime",
+   "parent": "bookshop-components-app-server"
+  }
+ ],
+ "edges": [
+  {
+   "id": "bookshop-components-api-provides-orders",
+   "type": "uml.InterfaceRealization",
+   "from": "bookshop-components-shop-api.orders",
+   "to": "bookshop-components-i-orders"
+  },
+  {
+   "id": "bookshop-components-storefront-requires-orders",
+   "type": "uml.Usage",
+   "from": "bookshop-components-storefront-component",
+   "to": "bookshop-components-i-orders"
+  },
+  {
+   "id": "bookshop-components-accounts-provides-sign-in",
+   "type": "uml.InterfaceRealization",
+   "from": "bookshop-components-accounts-component",
+   "to": "bookshop-components-i-sign-in"
+  },
+  {
+   "id": "bookshop-components-storefront-requires-sign-in",
+   "type": "uml.Usage",
+   "from": "bookshop-components-storefront-component",
+   "to": "bookshop-components-i-sign-in"
+  },
+  {
+   "id": "bookshop-components-api-requires-sign-in",
+   "type": "uml.Usage",
+   "from": "bookshop-components-shop-api",
+   "to": "bookshop-components-i-sign-in"
+  },
+  {
+   "id": "bookshop-components-orders-to-checkout",
+   "type": "uml.Connector",
+   "from": "bookshop-components-shop-api.orders",
+   "to": "bookshop-components-checkout-component.orders",
+   "props": {
+    "kind": "delegation"
+   }
+  },
+  {
+   "id": "bookshop-components-checkout-payments-out",
+   "type": "uml.Connector",
+   "from": "bookshop-components-checkout-component.payments",
+   "to": "bookshop-components-shop-api.payments",
+   "props": {
+    "kind": "delegation"
+   }
+  },
+  {
+   "id": "bookshop-components-api-to-provider",
+   "type": "uml.Connector",
+   "from": "bookshop-components-shop-api.payments",
+   "to": "bookshop-components-payment-provider-component.charges",
+   "props": {
+    "kind": "assembly"
+   }
+  },
+  {
+   "id": "bookshop-components-worker-needs-api",
+   "type": "uml.Dependency",
+   "from": "bookshop-components-order-worker",
+   "to": "bookshop-components-shop-api"
+  },
+  {
+   "id": "bookshop-components-api-jar-manifests-api",
+   "type": "uml.Manifestation",
+   "from": "bookshop-components-shop-api-jar",
+   "to": "bookshop-components-shop-api"
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Component diagram examples",
+   "nodeIds": [
+    "card-bookshop-components-components"
+   ],
+   "layout": {
+    "card-bookshop-components-components": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "bookshop-components-components",
+   "diagram": "uml.component",
+   "title": "Bookshop components",
+   "parent": "overview",
+   "nodeIds": [
+    "bookshop-components-storefront-component",
+    "bookshop-components-shop-api",
+    "bookshop-components-checkout-component",
+    "bookshop-components-accounts-component",
+    "bookshop-components-payment-provider-component",
+    "bookshop-components-order-worker",
+    "bookshop-components-i-orders",
+    "bookshop-components-i-sign-in",
+    "bookshop-components-shop-api-jar"
+   ],
+   "present": {
+    "bookshop-components-i-orders": {
+     "as": "ball"
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,356 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Parametric diagram examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-ebike-range-range-analysis",
+   "label": "E-bike range",
+   "kind": "file",
+   "sublabel": "constraints and bindings",
+   "what": "Constraint properties with their expressions, parameters on their borders, binding connectors to the block's value properties.",
+   "how": "From examples/ebike-range.json.",
+   "opensView": "ebike-range-range-analysis"
+  },
+  {
+   "id": "ebike-range-ebike",
+   "type": "sysml.Block",
+   "label": "EBike",
+   "members": [
+    {
+     "id": "ebike-range-ebike.battery",
+     "type": "sysml.PartProperty",
+     "label": "battery",
+     "props": {
+      "valueType": "Battery",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.controller",
+     "type": "sysml.PartProperty",
+     "label": "controller",
+     "props": {
+      "valueType": "Controller",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.motor",
+     "type": "sysml.PartProperty",
+     "label": "motor",
+     "props": {
+      "valueType": "Motor",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.frontLight",
+     "type": "sysml.PartProperty",
+     "label": "frontLight",
+     "props": {
+      "valueType": "Light",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.rearLight",
+     "type": "sysml.PartProperty",
+     "label": "rearLight",
+     "props": {
+      "valueType": "Light",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.dock",
+     "type": "sysml.ReferenceProperty",
+     "label": "dock",
+     "props": {
+      "valueType": "Dock",
+      "multiplicity": "0..1"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.batteryCapacity",
+     "type": "sysml.ValueProperty",
+     "label": "batteryCapacity",
+     "props": {
+      "valueType": "Energy"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.usableShare",
+     "type": "sysml.ValueProperty",
+     "label": "usableShare",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.ecoConsumption",
+     "type": "sysml.ValueProperty",
+     "label": "ecoConsumption",
+     "props": {
+      "valueType": "EnergyPerDistance"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.boostConsumption",
+     "type": "sysml.ValueProperty",
+     "label": "boostConsumption",
+     "props": {
+      "valueType": "EnergyPerDistance"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.ecoRange",
+     "type": "sysml.ValueProperty",
+     "label": "ecoRange",
+     "props": {
+      "valueType": "Distance"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.boostRange",
+     "type": "sysml.ValueProperty",
+     "label": "boostRange",
+     "props": {
+      "valueType": "Distance"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.usable",
+     "type": "sysml.ConstraintProperty",
+     "label": "usable",
+     "props": {
+      "valueType": "UsableEnergy"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.eco",
+     "type": "sysml.ConstraintProperty",
+     "label": "eco",
+     "props": {
+      "valueType": "RangeEquation"
+     }
+    },
+    {
+     "id": "ebike-range-ebike.boost",
+     "type": "sysml.ConstraintProperty",
+     "label": "boost",
+     "props": {
+      "valueType": "RangeEquation"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ebike-range-usable-energy",
+   "type": "sysml.ConstraintBlock",
+   "label": "UsableEnergy",
+   "props": {
+    "constraint": "usable = capacity * share"
+   },
+   "members": [
+    {
+     "id": "ebike-range-usable-energy.usable",
+     "type": "sysml.ConstraintParameter",
+     "label": "usable",
+     "props": {
+      "valueType": "Energy"
+     }
+    },
+    {
+     "id": "ebike-range-usable-energy.capacity",
+     "type": "sysml.ConstraintParameter",
+     "label": "capacity",
+     "props": {
+      "valueType": "Energy"
+     }
+    },
+    {
+     "id": "ebike-range-usable-energy.share",
+     "type": "sysml.ConstraintParameter",
+     "label": "share",
+     "props": {
+      "valueType": "Real"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ebike-range-range-equation",
+   "type": "sysml.ConstraintBlock",
+   "label": "RangeEquation",
+   "props": {
+    "constraint": "range = energy / consumption"
+   },
+   "members": [
+    {
+     "id": "ebike-range-range-equation.range",
+     "type": "sysml.ConstraintParameter",
+     "label": "range",
+     "props": {
+      "valueType": "Distance"
+     }
+    },
+    {
+     "id": "ebike-range-range-equation.energy",
+     "type": "sysml.ConstraintParameter",
+     "label": "energy",
+     "props": {
+      "valueType": "Energy"
+     }
+    },
+    {
+     "id": "ebike-range-range-equation.consumption",
+     "type": "sysml.ConstraintParameter",
+     "label": "consumption",
+     "props": {
+      "valueType": "EnergyPerDistance"
+     }
+    }
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "id": "ebike-range-bind-capacity",
+   "type": "sysml.BindingConnector",
+   "from": "ebike-range-ebike.batteryCapacity",
+   "to": "ebike-range-usable-energy.capacity",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "ebike-range-ebike.usable"
+     }
+    }
+   }
+  },
+  {
+   "id": "ebike-range-bind-share",
+   "type": "sysml.BindingConnector",
+   "from": "ebike-range-ebike.usableShare",
+   "to": "ebike-range-usable-energy.share",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "ebike-range-ebike.usable"
+     }
+    }
+   }
+  },
+  {
+   "id": "ebike-range-bind-usable-eco",
+   "type": "sysml.BindingConnector",
+   "from": "ebike-range-usable-energy.usable",
+   "to": "ebike-range-range-equation.energy",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "ebike-range-ebike.usable"
+     },
+     "to": {
+      "part": "ebike-range-ebike.eco"
+     }
+    }
+   }
+  },
+  {
+   "id": "ebike-range-bind-usable-boost",
+   "type": "sysml.BindingConnector",
+   "from": "ebike-range-usable-energy.usable",
+   "to": "ebike-range-range-equation.energy",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "ebike-range-ebike.usable"
+     },
+     "to": {
+      "part": "ebike-range-ebike.boost"
+     }
+    }
+   }
+  },
+  {
+   "id": "ebike-range-bind-eco-consumption",
+   "type": "sysml.BindingConnector",
+   "from": "ebike-range-ebike.ecoConsumption",
+   "to": "ebike-range-range-equation.consumption",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "ebike-range-ebike.eco"
+     }
+    }
+   }
+  },
+  {
+   "id": "ebike-range-bind-boost-consumption",
+   "type": "sysml.BindingConnector",
+   "from": "ebike-range-ebike.boostConsumption",
+   "to": "ebike-range-range-equation.consumption",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "ebike-range-ebike.boost"
+     }
+    }
+   }
+  },
+  {
+   "id": "ebike-range-bind-eco-range",
+   "type": "sysml.BindingConnector",
+   "from": "ebike-range-ebike.ecoRange",
+   "to": "ebike-range-range-equation.range",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "ebike-range-ebike.eco"
+     }
+    }
+   }
+  },
+  {
+   "id": "ebike-range-bind-boost-range",
+   "type": "sysml.BindingConnector",
+   "from": "ebike-range-ebike.boostRange",
+   "to": "ebike-range-range-equation.range",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "ebike-range-ebike.boost"
+     }
+    }
+   }
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Parametric diagram examples",
+   "nodeIds": [
+    "card-ebike-range-range-analysis"
+   ],
+   "layout": {
+    "card-ebike-range-range-analysis": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "ebike-range-range-analysis",
+   "diagram": "sysml.parametric",
+   "title": "E-bike range",
+   "parent": "overview",
+   "subject": "ebike-range-ebike",
+   "nodeIds": [
+    "ebike-range-ebike"
+   ]
+  }
+ ]
+}

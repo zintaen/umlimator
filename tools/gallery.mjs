@@ -1,21 +1,21 @@
-// Writes examples/index.html, the examples' gallery (the site's /umlimator/examples/), in two parts:
-//   Diagrams: a group per diagram type, the map first, then the 28 in docs/types.md's order, each holding every example
-//     and view of that type the repository has: the examples in examples/, the Umlimator Atlas's views of that type, and
-//     the type's minimal and stress test models (tests/<type>-minimal.json and -stress.json, which the site job renders
-//     into examples/samples/);
-//   Atlas: real-world use cases, each a multi-view model of a real system. For now one: the Umlimator Atlas.
-// Each card says which aspects of the notation it shows (tools/gallery.json, by file and type) and links its page, its
-// PDF and its model, as the site job builds them (.github/workflows/check.yml). No dependency.
+// Writes examples/index.html, the examples' page (the site's /umlimator/examples/), in three parts:
+//   Diagrams: one card per diagram type, the map first, then the 28 in docs/types.md's order under its families. Each
+//     card opens the type's own page, examples/types/<type>.html (tools/types.mjs), one multi-view page whose overview
+//     has a card per example and variant of the type, and lists those views;
+//   Atlas: real-world use cases, each a multi-view model of a real system. For now one: the Umlimator Atlas;
+//   In an app: the module inside host pages.
+// The site job (.github/workflows/check.yml) builds each page's HTML, PDF and pictures. No dependency.
 // `node tools/gallery.mjs` writes the page; tests/gallery.test.mjs fails when the committed page is not what this writes,
-// when an example has no card text, and when a link or picture names a file the site does not serve.
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+// and when a link or picture names a file the site does not serve.
+import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { spec as typeSpec, build as buildType } from './types.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 const read = p => readFileSync(new URL(p, ROOT), 'utf8'), json = p => JSON.parse(read(p));
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const unesc = s => s.replace(/&(lt|gt|quot|amp);/g, (_, e) => ({ lt: '<', gt: '>', quot: '"', amp: '&' })[e]);
-const REPO = 'https://github.com/zintaen/umlimator/blob/main/';
+const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const stop = msg => { throw new Error(`tools/gallery.mjs: ${msg}`); };
 
 // a view's diagram type as the gallery groups it: C4's six view kinds are one type, a map view (no diagram) is the map
@@ -29,84 +29,41 @@ export function types() {
   }
   return out;
 }
-const conformance = id => `docs/conformance/${id}.md`;
-const views = (m, g) => (m.views || []).filter(v => groupOf(v) === g);
-const firstOf = (m, g) => { const vs = views(m, g); return vs.find(v => v.id === m.root) || vs[0]; };
 
+// each type with its page's cards, in order: [{ family, id, name, text, covers, alt, title, cards: [{ view, title }] }]
 export function inventory() {
-  const G = json('tools/gallery.json');
-  const files = readdirSync(new URL('examples/', ROOT)).filter(f => f.endsWith('.json')).map(f => f.slice(0, -5));
-  for (const n of G.retired.files) if (G.examples[n] || n === G.atlas.file) stop(`examples/${n}.json is retired: it has no card`);
-  const atlasName = G.atlas.file, typed = files.filter(n => n !== atlasName && !G.retired.files.includes(n));
-  const known = Object.keys(G.examples), order = [...known, ...typed.filter(n => !known.includes(n)).sort()];
-  for (const n of typed) if (!G.examples[n]) stop(`examples/${n}.json has no card in tools/gallery.json: give it its text and alt`);
-  for (const n of known) if (!typed.includes(n)) stop(`tools/gallery.json has a card for examples/${n}.json, which is not there`);
-  const models = Object.fromEntries(order.map(n => [n, json(`examples/${n}.json`)]));
-  const atlas = json(`examples/${atlasName}.json`);
-  const samples = readdirSync(new URL('tests/', ROOT)).filter(f => /^[a-z0-9-]+-(minimal|stress)\.json$/.test(f)).sort()
-    .map(f => ({ name: f.slice(0, -5), kind: f.endsWith('-minimal.json') ? 'minimal' : 'stress', model: json(`tests/${f}`) }));
+  const G = json('tools/gallery.json'), S = typeSpec();
   const T = [{ family: 'Maps', id: 'map', name: G.map.name, text: G.map.text, covers: G.map.covers },
-    ...types().map(t => ({ ...t, covers: conformance(t.id) }))];
-  const known2 = new Set(T.map(t => t.id));
-  for (const [n, m] of Object.entries(models)) for (const v of m.views || []) if (!known2.has(groupOf(v))) stop(`examples/${n}.json view ${v.id}: no type ${groupOf(v)} in docs/types.md`);
-  return T.map(t => ({ ...t,
-    examples: order.filter(n => views(models[n], t.id).length).map(n => {
-      const m = models[n], c = { ...G.examples[n], ...((G.examples[n].types || {})[(firstOf(m, t.id) || {}).diagram] || {}) }, vs = views(m, t.id), first = firstOf(m, t.id);
-      return { file: n, title: m.title, text: c.text, alt: c.alt, links: c.links || [], views: vs, still: first.id, rootIs: first.id === m.root };
-    }),
-    atlas: views(atlas, t.id).map(v => ({ view: v.id, title: v.title, text: G.atlas.views[v.id] || stop(`tools/gallery.json has no text for the atlas's view ${v.id}`) })),
-    // a test model's thumbnail is a view other than its stress view 'all' when it has one: 'all' is too big to read small
-    samples: samples.filter(s => views(s.model, t.id).length).map(s => { const vs = views(s.model, t.id);
-      return { ...s, views: vs, still: (vs.find(v => v.id !== 'all') || firstOf(s.model, t.id)).id }; }),
-  }));
+    ...types().map(t => ({ ...t, covers: `docs/conformance/${t.id}.md` }))];
+  return T.map(t => {
+    const s = S.types[t.id] || stop(`tools/types.json has no type ${t.id}`), m = buildType(t.id);
+    const cards = m.views.find(v => v.id === 'overview').nodeIds.map(id => { const c = m.nodes.find(n => n.id === id);
+      return { view: c.opensView, title: m.views.find(v => v.id === c.opensView).title || c.label }; });
+    return { ...t, title: s.title, alt: G.alts[t.id] || stop(`tools/gallery.json has no alt for the ${t.id} card`), cards };
+  });
 }
 
 // each link carries its card's name, hidden but read out, so that a links list tells the many Open, PDF and Model apart
 const links = (xs, name) => `<span class="links">${xs.map(([t, h]) => `<a href="${esc(h)}">${esc(t)}<span class="vh"> (${esc(name)})</span></a>`).join('')}</span>`;
-// a view as a reader knows it: its title, or for the test models' untitled views what their ids stand for
-const viewName = v => v.title || ({ v: 'Minimal', all: 'All', 'edge-cases': 'Edge cases' })[v.id] || v.id;
-const viewList = (page, vs) => vs.length < 2 ? '' : `<p class="views">Views: ${vs.map(v => `<a href="${esc(page)}#view=${esc(v.id)}">${esc(viewName(v))}</a>`).join(', ')}</p>`;
-const card = ({ img, alt, title, text, list = '', ls }) => `      <article class="card"><img src="${esc(img)}" alt="${esc(alt)}" loading="lazy" width="640" height="320">
+const viewList = (page, vs) => `<p class="views">Examples: ${vs.map(v => `<a href="${esc(page)}#view=${esc(v.view)}">${esc(v.title)}</a>`).join(', ')}</p>`;
+const card = ({ id, img, alt, title, text, list = '', ls }) => `      <article class="card"${id ? ` id="${id}"` : ''}><img src="${esc(img)}" alt="${esc(alt)}" loading="lazy" width="640" height="320">
         <div><h4>${title}</h4><p>${text}</p>${list}
           ${links(ls, unesc(title.replace(/<[^>]+>/g, '')))}</div></article>`;
-const count = n => n === 1 ? 'one view' : `${n} views`;
-const sampleText = s => {
-  if (s.kind === 'minimal') return s.views.length === 1 ? 'A test model: the smallest view of this type the tests draw.'
-    : `A test model: the smallest views of this type the tests draw (${s.views.length} views).`;
-  // a stress model's views: its edge cases, its stress view 'all', the views that one opens, and any other
-  const all = s.views.find(v => v.id === 'all'), edge = s.views.filter(v => v.id.startsWith('ec-') || v.id.includes('edge-cases'));
-  const opened = s.views.filter(v => v !== all && !edge.includes(v) && v.parent === 'all'), rest = s.views.filter(v => v !== all && !edge.includes(v) && !opened.includes(v));
-  const parts = [edge.length && `its edge cases (${count(edge.length)})`,
-    all && (all.title && all.title !== 'All' ? `the stress view "${all.title}"` : 'a stress view of every element'),
-    opened.length && `the ${opened.length === 1 ? 'view' : `${opened.length} views`} the stress view opens`,
-    rest.length && (rest.length === 1 ? `the view "${viewName(rest[0])}"` : `${rest.length} more views`)].filter(Boolean);
-  return `A test model: what the tests hold the type to, ${parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts[0]}.`;
-};
 
 export function page() {
   const G = json('tools/gallery.json'), A = G.atlas, inv = inventory(), atlas = json(`examples/${A.file}.json`);
   const families = [...new Set(inv.map(t => t.family))];
   const nav = families.map(f => `      <li><b>${esc(f)}</b> ${inv.filter(t => t.family === f).map(t => `<a href="#type-${t.id}">${esc(t.name)}</a>`).join(' ')}</li>`).join('\n');
-  const groups = inv.map(t => {
-    const cards = [
-      ...t.examples.map(e => card({ img: `stills/${e.file}/${e.still}.png`, alt: e.alt, title: esc(e.title), text: e.text,
-        list: viewList(`${e.file}.html`, e.views),
-        ls: [['Open', e.rootIs ? `${e.file}.html` : `${e.file}.html#view=${e.still}`], ...e.links, ['PDF', `${e.file}.pdf`], ['Model', `${e.file}.json`]] })),
-      ...t.atlas.map(a => card({ img: `stills/${A.file}/${a.view}.png`, alt: `The Umlimator Atlas, ${a.title}: ${a.text.replace(/<[^>]+>/g, '')}`, title: `Umlimator Atlas: ${esc(a.title)}`, text: a.text,
-        ls: [['Open', `${A.file}.html#view=${a.view}`], ['PDF', `${A.file}.pdf`], ['Model', `${A.file}.json`]] })),
-      ...t.samples.map(s => card({ img: `samples/stills/${s.name}/${s.still}.png`, alt: `${t.name}, ${s.kind} test model: the view "${viewName(s.views.find(v => v.id === s.still))}"`,
-        title: esc(`${t.name}: ${s.kind} test model`),
-        text: sampleText(s), list: viewList(`samples/${s.name}.html`, s.views),
-        ls: [['Open', `samples/${s.name}.html#view=${s.still}`], ['PDF', `samples/${s.name}.pdf`], ['Model', `samples/${s.name}.json`]] })),
-    ];
-    return `    <section class="type" id="type-${t.id}" aria-labelledby="type-${t.id}-h">
-      <h3 id="type-${t.id}-h">${esc(t.name)}</h3>
-      <p>${esc(t.text)} <a href="${REPO}${t.covers}">${t.id === 'map' ? 'The model guide' : 'What it covers'}</a></p>
+  // a family's cards under its heading; a card's picture is the first example on its type's page
+  const groups = families.map(f => `    <section class="family" aria-labelledby="family-${slug(f)}-h">
+      <h3 id="family-${slug(f)}-h">${esc(f)}</h3>
       <div class="grid">
-${cards.join('\n')}
+${inv.filter(t => t.family === f).map(t => card({ id: `type-${t.id}`, img: `types/stills/${t.id}/${t.cards[0].view}.png`, alt: t.alt, title: esc(t.name),
+    text: `${esc(t.text)} ${t.cards.length === 1 ? 'One example' : `${t.cards.length} examples`}.`,
+    list: viewList(`types/${t.id}.html`, t.cards),
+    ls: [['Open', `types/${t.id}.html`], [t.id === 'map' ? 'The model guide' : 'Conformance', `../${t.covers.slice(5).replace(/\.md$/, '.html')}`], ['PDF', `types/${t.id}.pdf`], ['Model', `types/${t.id}.json`]] })).join('\n')}
       </div>
-    </section>`;
-  }).join('\n');
+    </section>`).join('\n');
   const byType = [...new Set(atlas.views.map(groupOf))].map(g => { const t = inv.find(x => x.id === g);
     return `${esc(t.name)} (${atlas.views.filter(v => groupOf(v) === g).map(v => `<a href="${A.file}.html#view=${esc(v.id)}">${esc(v.title)}</a>`).join(', ')})`; });
   const atlasCard = `      <article class="card wide"><img src="stills/${A.file}/${atlas.root}.png" alt="${esc(A.alt)}" loading="lazy" width="640" height="320">
@@ -120,7 +77,7 @@ ${cards.join('\n')}
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>umlimator examples</title>
-<meta name="description" content="Every diagram type umlimator draws, each with all its examples, and the Atlas: umlimator's own model in many views.">
+<meta name="description" content="Every diagram type umlimator draws, each on one page with all its examples, and the Atlas: umlimator's own model in many views.">
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
 <style>
   html { scroll-behavior: smooth; scroll-padding-top: 56px; } @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
@@ -135,7 +92,7 @@ ${cards.join('\n')}
     background: var(--um-bg); border-bottom: 1px solid var(--um-border); font-weight: 600; }
   .types { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
   .types li { display: flex; flex-wrap: wrap; gap: 2px 12px; } .types b { color: var(--um-muted); font-weight: 600; min-width: 11em; }
-  section.type { margin-top: 32px; } section.type > p { margin: 0 0 12px; color: var(--um-muted); max-width: 760px; }
+  section.family { margin-top: 28px; } section.family > h3 { margin: 0 0 12px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 16px; }
   .card { border: 1px solid var(--um-border); border-radius: 10px; background: var(--um-panel); overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
   .card.wide { grid-column: 1 / -1; }
@@ -155,16 +112,17 @@ ${cards.join('\n')}
 </style>
 <main>
   <h1>umlimator examples</h1>
-  <p class="lead">Diagrams shows every type umlimator draws, with each of its examples and its smallest and stress test
-    models. Atlas shows a real system, umlimator itself, modelled in many views that open into each other. In an app, at
-    the end, shows the module inside host pages. Open any card to pan, zoom, select and go into the cards that stack.
+  <p class="lead">Diagrams has a card for every type umlimator draws. Each opens one page holding every example and
+    variant of that type: its overview has a card per example, and each card opens it. Atlas shows a real system,
+    umlimator itself, modelled in many views that open into each other. In an app, at the end, shows the module inside
+    host pages. On any page you can pan, zoom, select and go into the cards that stack.
     Source: <a href="https://github.com/zintaen/umlimator">the repository</a>.</p>
   <nav class="jump" aria-label="Sections"><a href="#diagrams">Diagrams</a><a href="#atlas">Atlas</a><a href="#apps">In an app</a></nav>
 
   <section id="diagrams" aria-labelledby="diagrams-h">
     <h2 id="diagrams-h">Diagrams</h2>
-    <p>One group per diagram type: the map, then the 28 types in the order of the <a href="../types.html">Diagram types</a>
-      page. Each card is an example of the type, a view of the Umlimator Atlas, or one of the type's test models.</p>
+    <p>The map, then the 28 types in the order of the <a href="../types.html">Diagram types</a> page. Each card opens
+      the type's page; its list goes straight to one example.</p>
     <nav aria-label="Diagram types"><ul class="types">
 ${nav}
     </ul></nav>

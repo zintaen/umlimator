@@ -1,0 +1,413 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "AWS diagram examples",
+ "root": "overview",
+ "iconPacks": {
+  "aws": "2026-07-31"
+ },
+ "nodes": [
+  {
+   "id": "card-bookshop-aws-aws-on-aws",
+   "label": "Bookshop on AWS",
+   "kind": "file",
+   "sublabel": "accounts, VPCs, subnets, services",
+   "what": "Accounts, regions, VPCs, availability zones, subnets and security groups as nested boxes, each service or resource a card with its icon and full service name. On this site the icons are the vendor's own, fetched with AWS's terms accepted; in a copy of this repository the diagram draws glyphs until you fetch them with `umlimator.py pack fetch aws`. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.",
+   "how": "From examples/bookshop-aws.json.",
+   "opensView": "bookshop-aws-aws-on-aws"
+  },
+  {
+   "id": "bookshop-aws-aws-users",
+   "type": "aws.Resource",
+   "label": "Shoppers",
+   "props": {
+    "icon": "Users"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-cloud",
+   "type": "aws.Group",
+   "label": "AWS Cloud",
+   "props": {
+    "groupType": "cloud"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-dns",
+   "type": "aws.Service",
+   "label": "DNS",
+   "parent": "bookshop-aws-aws-cloud",
+   "props": {
+    "icon": "Amazon-Route-53"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-cdn",
+   "type": "aws.Service",
+   "label": "CDN",
+   "parent": "bookshop-aws-aws-cloud",
+   "props": {
+    "icon": "Amazon-CloudFront"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-region",
+   "type": "aws.Group",
+   "label": "Europe (Ireland)",
+   "parent": "bookshop-aws-aws-cloud",
+   "props": {
+    "groupType": "region"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-assets",
+   "type": "aws.Service",
+   "label": "Storefront files",
+   "parent": "bookshop-aws-aws-region",
+   "props": {
+    "icon": "Amazon-Simple-Storage-Service"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-queue",
+   "type": "aws.Service",
+   "label": "Order queue",
+   "parent": "bookshop-aws-aws-region",
+   "props": {
+    "icon": "Amazon-Simple-Queue-Service"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-email",
+   "type": "aws.Service",
+   "label": "Order emails",
+   "parent": "bookshop-aws-aws-region",
+   "props": {
+    "icon": "Amazon-Simple-Email-Service"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-monitoring",
+   "type": "aws.Service",
+   "label": "Logs and alarms",
+   "parent": "bookshop-aws-aws-region",
+   "props": {
+    "icon": "Amazon-CloudWatch"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-vpc",
+   "type": "aws.Group",
+   "label": "Bookshop VPC",
+   "parent": "bookshop-aws-aws-region",
+   "props": {
+    "groupType": "vpc"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-alb",
+   "type": "aws.Service",
+   "label": "Load balancer",
+   "parent": "bookshop-aws-aws-vpc",
+   "props": {
+    "icon": "Elastic-Load-Balancing"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-az-a",
+   "type": "aws.Group",
+   "label": "eu-west-1a",
+   "parent": "bookshop-aws-aws-vpc",
+   "props": {
+    "groupType": "availability-zone"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-public-a",
+   "type": "aws.Group",
+   "label": "Public subnet",
+   "parent": "bookshop-aws-aws-az-a",
+   "props": {
+    "groupType": "public-subnet"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-nat-a",
+   "type": "aws.Resource",
+   "label": "NAT gateway",
+   "parent": "bookshop-aws-aws-public-a",
+   "props": {
+    "icon": "Amazon-VPC_NAT-Gateway"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-private-a",
+   "type": "aws.Group",
+   "label": "Private subnet",
+   "parent": "bookshop-aws-aws-az-a",
+   "props": {
+    "groupType": "private-subnet"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-api-a",
+   "type": "aws.Service",
+   "label": "Shop API",
+   "parent": "bookshop-aws-aws-private-a",
+   "props": {
+    "icon": "Amazon-Elastic-Container-Service"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-db-sg",
+   "type": "aws.Group",
+   "label": "Database security group",
+   "parent": "bookshop-aws-aws-private-a",
+   "props": {
+    "groupType": "security-group"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-db",
+   "type": "aws.Service",
+   "label": "Database, primary",
+   "parent": "bookshop-aws-aws-db-sg",
+   "props": {
+    "icon": "Amazon-RDS"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-az-b",
+   "type": "aws.Group",
+   "label": "eu-west-1b",
+   "parent": "bookshop-aws-aws-vpc",
+   "props": {
+    "groupType": "availability-zone"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-public-b",
+   "type": "aws.Group",
+   "label": "Public subnet",
+   "parent": "bookshop-aws-aws-az-b",
+   "props": {
+    "groupType": "public-subnet"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-nat-b",
+   "type": "aws.Resource",
+   "label": "NAT gateway",
+   "parent": "bookshop-aws-aws-public-b",
+   "props": {
+    "icon": "Amazon-VPC_NAT-Gateway"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-private-b",
+   "type": "aws.Group",
+   "label": "Private subnet",
+   "parent": "bookshop-aws-aws-az-b",
+   "props": {
+    "groupType": "private-subnet"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-api-b",
+   "type": "aws.Service",
+   "label": "Shop API",
+   "parent": "bookshop-aws-aws-private-b",
+   "props": {
+    "icon": "Amazon-Elastic-Container-Service"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-worker",
+   "type": "aws.Service",
+   "label": "Order worker",
+   "parent": "bookshop-aws-aws-private-b",
+   "props": {
+    "icon": "Amazon-Elastic-Container-Service"
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-db-standby",
+   "type": "aws.Service",
+   "label": "Database, standby",
+   "parent": "bookshop-aws-aws-private-b",
+   "props": {
+    "icon": "Amazon-RDS"
+   }
+  }
+ ],
+ "edges": [
+  {
+   "id": "bookshop-aws-aws-users-dns",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-users",
+   "to": "bookshop-aws-aws-dns",
+   "label": "looks up"
+  },
+  {
+   "id": "bookshop-aws-aws-users-cdn",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-users",
+   "to": "bookshop-aws-aws-cdn",
+   "label": "HTTPS"
+  },
+  {
+   "id": "bookshop-aws-aws-cdn-assets",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-cdn",
+   "to": "bookshop-aws-aws-assets",
+   "label": "storefront"
+  },
+  {
+   "id": "bookshop-aws-aws-cdn-alb",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-cdn",
+   "to": "bookshop-aws-aws-alb",
+   "label": "/api"
+  },
+  {
+   "id": "bookshop-aws-aws-alb-api-a",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-alb",
+   "to": "bookshop-aws-aws-api-a",
+   "label": "HTTP"
+  },
+  {
+   "id": "bookshop-aws-aws-alb-api-b",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-alb",
+   "to": "bookshop-aws-aws-api-b",
+   "label": "HTTP"
+  },
+  {
+   "id": "bookshop-aws-aws-api-a-db",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-api-a",
+   "to": "bookshop-aws-aws-db",
+   "label": "SQL"
+  },
+  {
+   "id": "bookshop-aws-aws-api-b-db",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-api-b",
+   "to": "bookshop-aws-aws-db",
+   "label": "SQL"
+  },
+  {
+   "id": "bookshop-aws-aws-db-replica",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-db",
+   "to": "bookshop-aws-aws-db-standby",
+   "label": "replicates"
+  },
+  {
+   "id": "bookshop-aws-aws-api-a-queue",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-api-a",
+   "to": "bookshop-aws-aws-queue",
+   "label": "paid order"
+  },
+  {
+   "id": "bookshop-aws-aws-api-b-queue",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-api-b",
+   "to": "bookshop-aws-aws-queue",
+   "label": "paid order"
+  },
+  {
+   "id": "bookshop-aws-aws-worker-queue",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-worker",
+   "to": "bookshop-aws-aws-queue",
+   "label": "claims"
+  },
+  {
+   "id": "bookshop-aws-aws-worker-db",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-worker",
+   "to": "bookshop-aws-aws-db",
+   "label": "SQL"
+  },
+  {
+   "id": "bookshop-aws-aws-worker-email",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-worker",
+   "to": "bookshop-aws-aws-email",
+   "label": "confirmation"
+  },
+  {
+   "id": "bookshop-aws-aws-private-a-nat",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-private-a",
+   "to": "bookshop-aws-aws-nat-a",
+   "label": "outbound"
+  },
+  {
+   "id": "bookshop-aws-aws-private-b-nat",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-private-b",
+   "to": "bookshop-aws-aws-nat-b",
+   "label": "outbound"
+  },
+  {
+   "id": "bookshop-aws-aws-vpc-monitoring",
+   "type": "aws.Connection",
+   "from": "bookshop-aws-aws-vpc",
+   "to": "bookshop-aws-aws-monitoring",
+   "label": "logs, metrics"
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "AWS diagram examples",
+   "nodeIds": [
+    "card-bookshop-aws-aws-on-aws"
+   ],
+   "layout": {
+    "card-bookshop-aws-aws-on-aws": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "bookshop-aws-aws-on-aws",
+   "diagram": "aws",
+   "title": "Bookshop on AWS",
+   "parent": "overview",
+   "nodeIds": [
+    "bookshop-aws-aws-users",
+    "bookshop-aws-aws-cloud",
+    "bookshop-aws-aws-dns",
+    "bookshop-aws-aws-cdn",
+    "bookshop-aws-aws-region",
+    "bookshop-aws-aws-assets",
+    "bookshop-aws-aws-queue",
+    "bookshop-aws-aws-email",
+    "bookshop-aws-aws-monitoring",
+    "bookshop-aws-aws-vpc",
+    "bookshop-aws-aws-alb",
+    "bookshop-aws-aws-az-a",
+    "bookshop-aws-aws-public-a",
+    "bookshop-aws-aws-nat-a",
+    "bookshop-aws-aws-private-a",
+    "bookshop-aws-aws-api-a",
+    "bookshop-aws-aws-db-sg",
+    "bookshop-aws-aws-db",
+    "bookshop-aws-aws-az-b",
+    "bookshop-aws-aws-public-b",
+    "bookshop-aws-aws-nat-b",
+    "bookshop-aws-aws-private-b",
+    "bookshop-aws-aws-api-b",
+    "bookshop-aws-aws-worker",
+    "bookshop-aws-aws-db-standby"
+   ]
+  }
+ ]
+}

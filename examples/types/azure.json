@@ -1,0 +1,249 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Azure diagram examples",
+ "root": "overview",
+ "iconPacks": {
+  "azure": "V25"
+ },
+ "nodes": [
+  {
+   "id": "card-bookshop-azure-az-on-azure",
+   "label": "Bookshop on Azure",
+   "kind": "file",
+   "sublabel": "subscriptions, groups, networks",
+   "what": "Subscriptions, resource groups, regions, virtual networks and subnets as nested boxes, each service a card with its icon and full service name. On this site the icons are the vendor's own, fetched with Microsoft's terms accepted; in a copy of this repository the diagram draws glyphs until you fetch them with `umlimator.py pack fetch azure`. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.",
+   "how": "From examples/bookshop-azure.json.",
+   "opensView": "bookshop-azure-az-on-azure"
+  },
+  {
+   "id": "bookshop-azure-az-subscription",
+   "type": "azure.Group",
+   "label": "Bookshop production",
+   "props": {
+    "groupType": "subscription"
+   }
+  },
+  {
+   "id": "bookshop-azure-az-rg",
+   "type": "azure.Group",
+   "label": "rg-bookshop-prod",
+   "parent": "bookshop-azure-az-subscription",
+   "props": {
+    "groupType": "resource-group"
+   }
+  },
+  {
+   "id": "bookshop-azure-az-front-door",
+   "type": "azure.Service",
+   "label": "CDN and routing",
+   "parent": "bookshop-azure-az-rg",
+   "props": {
+    "icon": "Front-Door-and-CDN-Profiles"
+   }
+  },
+  {
+   "id": "bookshop-azure-az-monitor",
+   "type": "azure.Service",
+   "label": "Logs and alerts",
+   "parent": "bookshop-azure-az-rg",
+   "props": {
+    "icon": "Monitor"
+   }
+  },
+  {
+   "id": "bookshop-azure-az-region",
+   "type": "azure.Group",
+   "label": "West Europe",
+   "parent": "bookshop-azure-az-rg",
+   "props": {
+    "groupType": "region"
+   }
+  },
+  {
+   "id": "bookshop-azure-az-assets",
+   "type": "azure.Service",
+   "label": "Storefront files",
+   "parent": "bookshop-azure-az-region",
+   "props": {
+    "icon": "Storage-Accounts"
+   }
+  },
+  {
+   "id": "bookshop-azure-az-queue",
+   "type": "azure.Service",
+   "label": "Order queue",
+   "parent": "bookshop-azure-az-region",
+   "props": {
+    "icon": "Service-Bus"
+   }
+  },
+  {
+   "id": "bookshop-azure-az-vault",
+   "type": "azure.Service",
+   "label": "Secrets",
+   "parent": "bookshop-azure-az-region",
+   "props": {
+    "icon": "Key-Vaults"
+   }
+  },
+  {
+   "id": "bookshop-azure-az-vnet",
+   "type": "azure.Group",
+   "label": "vnet-bookshop",
+   "parent": "bookshop-azure-az-region",
+   "props": {
+    "groupType": "virtual-network"
+   }
+  },
+  {
+   "id": "bookshop-azure-az-snet-apps",
+   "type": "azure.Group",
+   "label": "snet-apps",
+   "parent": "bookshop-azure-az-vnet",
+   "props": {
+    "groupType": "subnet"
+   }
+  },
+  {
+   "id": "bookshop-azure-az-api",
+   "type": "azure.Service",
+   "label": "Shop API",
+   "parent": "bookshop-azure-az-snet-apps",
+   "props": {
+    "icon": "App-Services"
+   }
+  },
+  {
+   "id": "bookshop-azure-az-worker",
+   "type": "azure.Service",
+   "label": "Order worker",
+   "parent": "bookshop-azure-az-snet-apps",
+   "props": {
+    "icon": "App-Services"
+   }
+  },
+  {
+   "id": "bookshop-azure-az-snet-data",
+   "type": "azure.Group",
+   "label": "snet-data",
+   "parent": "bookshop-azure-az-vnet",
+   "props": {
+    "groupType": "subnet"
+   }
+  },
+  {
+   "id": "bookshop-azure-az-db",
+   "type": "azure.Service",
+   "label": "Database",
+   "parent": "bookshop-azure-az-snet-data",
+   "props": {
+    "icon": "SQL-Database"
+   }
+  }
+ ],
+ "edges": [
+  {
+   "id": "bookshop-azure-az-front-door-assets",
+   "type": "azure.Connector",
+   "from": "bookshop-azure-az-front-door",
+   "to": "bookshop-azure-az-assets",
+   "label": "storefront"
+  },
+  {
+   "id": "bookshop-azure-az-front-door-api",
+   "type": "azure.Connector",
+   "from": "bookshop-azure-az-front-door",
+   "to": "bookshop-azure-az-api",
+   "label": "/api"
+  },
+  {
+   "id": "bookshop-azure-az-api-db",
+   "type": "azure.Connector",
+   "from": "bookshop-azure-az-api",
+   "to": "bookshop-azure-az-db",
+   "label": "SQL"
+  },
+  {
+   "id": "bookshop-azure-az-api-queue",
+   "type": "azure.Connector",
+   "from": "bookshop-azure-az-api",
+   "to": "bookshop-azure-az-queue",
+   "label": "paid order"
+  },
+  {
+   "id": "bookshop-azure-az-queue-worker",
+   "type": "azure.Connector",
+   "from": "bookshop-azure-az-queue",
+   "to": "bookshop-azure-az-worker",
+   "label": "next order"
+  },
+  {
+   "id": "bookshop-azure-az-worker-db",
+   "type": "azure.Connector",
+   "from": "bookshop-azure-az-worker",
+   "to": "bookshop-azure-az-db",
+   "label": "SQL"
+  },
+  {
+   "id": "bookshop-azure-az-api-vault",
+   "type": "azure.Connector",
+   "from": "bookshop-azure-az-api",
+   "to": "bookshop-azure-az-vault",
+   "label": "secrets"
+  },
+  {
+   "id": "bookshop-azure-az-worker-vault",
+   "type": "azure.Connector",
+   "from": "bookshop-azure-az-worker",
+   "to": "bookshop-azure-az-vault",
+   "label": "secrets"
+  },
+  {
+   "id": "bookshop-azure-az-apps-monitor",
+   "type": "azure.Connector",
+   "from": "bookshop-azure-az-snet-apps",
+   "to": "bookshop-azure-az-monitor",
+   "label": "logs, metrics"
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Azure diagram examples",
+   "nodeIds": [
+    "card-bookshop-azure-az-on-azure"
+   ],
+   "layout": {
+    "card-bookshop-azure-az-on-azure": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "bookshop-azure-az-on-azure",
+   "diagram": "azure",
+   "title": "Bookshop on Azure",
+   "caption": "Icons from a pack you fetch: umlimator.py pack fetch azure, after Microsoft's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.",
+   "parent": "overview",
+   "nodeIds": [
+    "bookshop-azure-az-subscription",
+    "bookshop-azure-az-rg",
+    "bookshop-azure-az-front-door",
+    "bookshop-azure-az-monitor",
+    "bookshop-azure-az-region",
+    "bookshop-azure-az-assets",
+    "bookshop-azure-az-queue",
+    "bookshop-azure-az-vault",
+    "bookshop-azure-az-vnet",
+    "bookshop-azure-az-snet-apps",
+    "bookshop-azure-az-api",
+    "bookshop-azure-az-worker",
+    "bookshop-azure-az-snet-data",
+    "bookshop-azure-az-db"
+   ]
+  }
+ ]
+}

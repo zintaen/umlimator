@@ -1,0 +1,410 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Entity-relationship diagram examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-bookshop-schema-er-schema",
+   "label": "Bookshop schema",
+   "kind": "file",
+   "sublabel": "keys, crow's foot, junction table",
+   "what": "Tables and their columns as rows, related in crow's foot or IDEF1X on one geometry: a composite key, a junction table, a nullable foreign key, a self-reference.",
+   "how": "From examples/bookshop-schema.json.",
+   "opensView": "bookshop-schema-er-schema"
+  },
+  {
+   "id": "bookshop-schema-er-customer",
+   "type": "er.Entity",
+   "label": "customer",
+   "members": [
+    {
+     "id": "bookshop-schema-er-customer.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "bookshop-schema-er-customer.email",
+     "type": "er.Column",
+     "label": "email",
+     "props": {
+      "dataType": "varchar(255)",
+      "unique": true
+     }
+    },
+    {
+     "id": "bookshop-schema-er-customer.referred_by",
+     "type": "er.Column",
+     "label": "referred_by",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "nullable": true,
+      "references": "bookshop-schema-er-customer.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "bookshop-schema-er-order",
+   "type": "er.Entity",
+   "label": "order",
+   "members": [
+    {
+     "id": "bookshop-schema-er-order.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "bookshop-schema-er-order.customer_id",
+     "type": "er.Column",
+     "label": "customer_id",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "bookshop-schema-er-customer.id"
+     }
+    },
+    {
+     "id": "bookshop-schema-er-order.placed_at",
+     "type": "er.Column",
+     "label": "placed_at",
+     "props": {
+      "dataType": "timestamptz",
+      "nullable": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "bookshop-schema-er-order_line",
+   "type": "er.Entity",
+   "label": "order_line",
+   "members": [
+    {
+     "id": "bookshop-schema-er-order_line.order_id",
+     "type": "er.Column",
+     "label": "order_id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true,
+      "foreignKey": true,
+      "references": "bookshop-schema-er-order.id"
+     }
+    },
+    {
+     "id": "bookshop-schema-er-order_line.line_no",
+     "type": "er.Column",
+     "label": "line_no",
+     "props": {
+      "dataType": "integer",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "bookshop-schema-er-order_line.book_id",
+     "type": "er.Column",
+     "label": "book_id",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "bookshop-schema-er-book.id"
+     }
+    },
+    {
+     "id": "bookshop-schema-er-order_line.quantity",
+     "type": "er.Column",
+     "label": "quantity",
+     "props": {
+      "dataType": "integer"
+     }
+    }
+   ]
+  },
+  {
+   "id": "bookshop-schema-er-book",
+   "type": "er.Entity",
+   "label": "book",
+   "members": [
+    {
+     "id": "bookshop-schema-er-book.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "bookshop-schema-er-book.isbn",
+     "type": "er.Column",
+     "label": "isbn",
+     "props": {
+      "dataType": "char(13)",
+      "unique": true
+     }
+    },
+    {
+     "id": "bookshop-schema-er-book.title",
+     "type": "er.Column",
+     "label": "title",
+     "props": {
+      "dataType": "varchar(255)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "bookshop-schema-er-author",
+   "type": "er.Entity",
+   "label": "author",
+   "members": [
+    {
+     "id": "bookshop-schema-er-author.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "bookshop-schema-er-author.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(120)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "bookshop-schema-er-book_author",
+   "type": "er.Entity",
+   "label": "book_author",
+   "members": [
+    {
+     "id": "bookshop-schema-er-book_author.book_id",
+     "type": "er.Column",
+     "label": "book_id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true,
+      "foreignKey": true,
+      "references": "bookshop-schema-er-book.id"
+     }
+    },
+    {
+     "id": "bookshop-schema-er-book_author.author_id",
+     "type": "er.Column",
+     "label": "author_id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true,
+      "foreignKey": true,
+      "references": "bookshop-schema-er-author.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "bookshop-schema-er-payment",
+   "type": "er.Entity",
+   "label": "payment",
+   "members": [
+    {
+     "id": "bookshop-schema-er-payment.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "bookshop-schema-er-payment.order_id",
+     "type": "er.Column",
+     "label": "order_id",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "unique": true,
+      "references": "bookshop-schema-er-order.id"
+     }
+    },
+    {
+     "id": "bookshop-schema-er-payment.amount",
+     "type": "er.Column",
+     "label": "amount",
+     "props": {
+      "dataType": "numeric(10,2)"
+     }
+    }
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "id": "bookshop-schema-er-customer-orders",
+   "type": "er.Relationship",
+   "from": "bookshop-schema-er-customer",
+   "to": "bookshop-schema-er-order",
+   "label": "places",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "bookshop-schema-er-order-lines",
+   "type": "er.Relationship",
+   "from": "bookshop-schema-er-order",
+   "to": "bookshop-schema-er-order_line",
+   "label": "contains",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "bookshop-schema-er-book-lines",
+   "type": "er.Relationship",
+   "from": "bookshop-schema-er-book",
+   "to": "bookshop-schema-er-order_line",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "bookshop-schema-er-book-authors",
+   "type": "er.Relationship",
+   "from": "bookshop-schema-er-book",
+   "to": "bookshop-schema-er-book_author",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "bookshop-schema-er-author-books",
+   "type": "er.Relationship",
+   "from": "bookshop-schema-er-author",
+   "to": "bookshop-schema-er-book_author",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "bookshop-schema-er-order-payment",
+   "type": "er.Relationship",
+   "from": "bookshop-schema-er-order",
+   "to": "bookshop-schema-er-payment",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..1"
+     }
+    }
+   }
+  },
+  {
+   "id": "bookshop-schema-er-customer-referrals",
+   "type": "er.Relationship",
+   "from": "bookshop-schema-er-customer",
+   "to": "bookshop-schema-er-customer",
+   "label": "referred",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "0..1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Entity-relationship diagram examples",
+   "nodeIds": [
+    "card-bookshop-schema-er-schema"
+   ],
+   "layout": {
+    "card-bookshop-schema-er-schema": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "bookshop-schema-er-schema",
+   "diagram": "er",
+   "title": "Bookshop schema",
+   "parent": "overview",
+   "notation": "crowsfoot",
+   "nodeIds": [
+    "bookshop-schema-er-customer",
+    "bookshop-schema-er-order",
+    "bookshop-schema-er-order_line",
+    "bookshop-schema-er-book",
+    "bookshop-schema-er-author",
+    "bookshop-schema-er-book_author",
+    "bookshop-schema-er-payment"
+   ]
+  }
+ ]
+}

@@ -1,10 +1,11 @@
-// The examples' gallery (examples/index.html, the site's /umlimator/examples/): written by tools/gallery.mjs, in two
-// parts. Diagrams has a group for every diagram type (the map and docs/types.md's 28), each showing every example and
-// view of that type; Atlas holds exactly one entry, the Umlimator Atlas (the maintainer's decision, 19 Nov 2026). Every
-// example model is reachable from the page, and every link and picture on it names a file the site serves, as the
-// site job builds it (.github/workflows/check.yml). The models the gallery does not show (tools/gallery.json's retired
-// list: the bike share, the hidden test model, and its Structurizr import) are linked from nowhere in the gallery, the
-// docs or the README, and nor are the models the bike share replaced.
+// The examples' page (examples/index.html, the site's /umlimator/examples/): written by tools/gallery.mjs, in three
+// parts. Diagrams has one card for every diagram type (the map and docs/types.md's 28), each opening the type's own page
+// (examples/types/<type>.html, tools/types.mjs; tests/types.test.mjs checks those) and listing its examples; Atlas holds
+// exactly one entry, the Umlimator Atlas (the maintainer's decision, 19 Nov 2026); In an app lists the host pages. Every
+// link and picture on it names a file the site serves, as the site job builds it (.github/workflows/check.yml). The
+// models the gallery does not show (tools/gallery.json's retired list: the bike share, the hidden test model, and its
+// Structurizr import) are linked from nowhere in the gallery, the docs or the README, and nor are the models the bike
+// share replaced.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
@@ -14,7 +15,7 @@ const root = new URL('../', import.meta.url), read = p => readFileSync(new URL(p
 const html = read('examples/index.html');
 const RETIRED = json('tools/gallery.json').retired.files;
 const examples = readdirSync(new URL('examples/', root)).filter(f => f.endsWith('.json')).map(f => f.slice(0, -5)).filter(n => !RETIRED.includes(n)).sort();
-const samples = readdirSync(new URL('tests/', root)).filter(f => /^[a-z0-9-]+-(minimal|stress)\.json$/.test(f)).map(f => f.slice(0, -5)).sort();
+const typePages = readdirSync(new URL('examples/types/', root)).filter(f => f.endsWith('.json')).map(f => f.slice(0, -5)).sort();
 // a section by its id, to its closing tag at its own indent: the page's parts (Diagrams, Atlas) and each type's group
 const section = id => {
   const m = new RegExp(`\\n( *)<section[^>]* id="${id}"`).exec(html); assert.ok(m, `a section ${id}`);
@@ -27,35 +28,22 @@ test('the committed gallery is what tools/gallery.mjs writes', () => {
   assert.equal(html, page(), 'examples/index.html is stale: run node tools/gallery.mjs and commit it');
 });
 
-test('Diagrams has a group for the map and each of docs/types.md\'s 28 types, in its order, each with an example', () => {
+test('Diagrams has a card for the map and each of docs/types.md\'s 28 types, in its order, each opening its type page', () => {
   const T = types();
   assert.equal(T.length, 28);
-  const want = ['map', ...T.map(t => t.id)], got = [...section('diagrams').matchAll(/<section class="type" id="type-([\w-]+)"/g)].map(m => m[1]);
+  const want = ['map', ...T.map(t => t.id)], D = section('diagrams'), got = [...D.matchAll(/<article class="card" id="type-([\w-]+)"/g)].map(m => m[1]);
   assert.deepEqual(got, want);
-  for (const t of inventory()) assert.ok(t.examples.length + t.atlas.length > 0, `${t.id} has an example`);
-  // the type list at the top of Diagrams goes to each group
-  const nav = section('diagrams').slice(0, section('diagrams').indexOf('</nav>'));
+  assert.deepEqual(typePages, [...want].sort(), 'examples/types/ holds a model for each type, and no other');
+  // the type list at the top of Diagrams goes to each card
+  const nav = D.slice(0, D.indexOf('</nav>'));
   assert.deepEqual(attrs(nav, 'href').filter(h => h.startsWith('#type-')).map(h => h.slice(6)), want);
-});
-
-test('every example model, every view of it and every test model of a type is on the page', () => {
-  const D = section('diagrams');
-  for (const n of examples) {
-    const m = json(`examples/${n}.json`);
-    assert.ok(attrs(html, 'href').includes(`${n}.json`), `examples/${n}.json is linked`);
-    for (const v of m.views) {
-      const g = section(`type-${groupOf(v)}`);
-      const shown = [`${n}.html#view=${v.id}`, `stills/${n}/${v.id}.png`].some(x => [...attrs(g, 'href'), ...attrs(g, 'src')].includes(x))
-        || (v.id === m.root && attrs(g, 'href').includes(`${n}.html`) && attrs(g, 'src').includes(`stills/${n}/${v.id}.png`));
-      assert.ok(shown, `${n}'s view ${v.id} is in the ${groupOf(v)} group`);
-    }
+  for (const t of inventory()) {
+    const c = D.slice(D.indexOf(`id="type-${t.id}"`), D.indexOf('</article>', D.indexOf(`id="type-${t.id}"`)));
+    assert.ok(attrs(c, 'href').includes(`types/${t.id}.html`), `${t.id}: opens its page`);
+    assert.ok(t.cards.length > 0, `${t.id} has an example`);
+    // every example and variant on the type page's overview is listed on its card
+    assert.deepEqual(attrs(c, 'href').filter(h => h.startsWith(`types/${t.id}.html#view=`)).map(h => h.split('=')[1]), t.cards.map(x => x.view), t.id);
   }
-  for (const n of samples) {
-    const m = json(`tests/${n}.json`);
-    for (const v of m.views) assert.ok([...attrs(section(`type-${groupOf(v)}`), 'href'), ...attrs(section(`type-${groupOf(v)}`), 'src')]
-      .some(x => x === `samples/${n}.html#view=${v.id}`), `tests/${n}.json's view ${v.id} is in the ${groupOf(v)} group`);
-  }
-  assert.ok(D.includes('umlimator-atlas.html#view=diff-run'), 'the atlas\'s views are in their types\' groups');
 });
 
 test('Atlas holds exactly one entry, the Umlimator Atlas, and its state machines are views of it', () => {
@@ -88,12 +76,12 @@ function served() {
   assert.match(site, /cp examples\/\*\.json examples\/\*\.html examples\/\*\.js examples\/\*\.mjs examples\/README\.md _site\/examples\//);
   assert.match(site, /cp -r examples\/traces _site\/examples\//);
   assert.match(site, /for m in examples\/\*\.json; do[\s\S]*render "\$m" --out "_site\/examples\/\$n\.html"[\s\S]*stills "_site\/examples\/\$n\.html" --out "_site\/examples\/stills\/\$n"[\s\S]*pdf "_site\/examples\/\$n\.html" --out "_site\/examples\/\$n\.pdf"/);
-  assert.match(site, /for m in tests\/\*-minimal\.json tests\/\*-stress\.json; do[\s\S]*cp "\$m" _site\/examples\/samples\/[\s\S]*render "\$m" --out "_site\/examples\/samples\/\$n\.html"[\s\S]*stills "_site\/examples\/samples\/\$n\.html" --out "_site\/examples\/samples\/stills\/\$n"[\s\S]*pdf "_site\/examples\/samples\/\$n\.html" --out "_site\/examples\/samples\/\$n\.pdf"/);
+  assert.match(site, /cp examples\/types\/\*\.json _site\/examples\/types\/\n\s*for m in examples\/types\/\*\.json; do[\s\S]*render "\$m" --out "_site\/examples\/types\/\$n\.html"[\s\S]*stills "_site\/examples\/types\/\$n\.html" --out "_site\/examples\/types\/stills\/\$n"[\s\S]*pdf "_site\/examples\/types\/\$n\.html" --out "_site\/examples\/types\/\$n\.pdf"/);
   const files = new Set(readdirSync(new URL('examples/', root)).filter(f => /\.(json|html|js|mjs)$/.test(f) || f === 'README.md'));
   readdirSync(new URL('examples/traces/', root)).forEach(f => files.add(`traces/${f}`));
   const views = {};
   // the retired models too: the site renders them, and the host pages load them
-  for (const [dir, list, from] of [['', [...examples, ...RETIRED], 'examples'], ['samples/', samples, 'tests']]) for (const n of list) {
+  for (const [dir, list, from] of [['', [...examples, ...RETIRED], 'examples'], ['types/', typePages, 'examples/types']]) for (const n of list) {
     const m = json(`${from}/${n}.json`); views[`${dir}${n}.html`] = m;
     if (dir) files.add(`${dir}${n}.json`);
     files.add(`${dir}${n}.html`); files.add(`${dir}${n}.pdf`);

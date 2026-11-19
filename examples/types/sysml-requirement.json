@@ -1,0 +1,250 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Requirement diagram examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-ebike-requirements-requirements",
+   "label": "E-bike requirements",
+   "kind": "file",
+   "sublabel": "containment, derive, satisfy, verify",
+   "what": "Requirements with their id and text in a frame with SysML's header; containment drawn with a crosshair; derive, satisfy, verify, refine, trace and copy, each checked as SysML says.",
+   "how": "From examples/ebike-requirements.json.",
+   "opensView": "ebike-requirements-requirements"
+  },
+  {
+   "id": "ebike-requirements-spec",
+   "type": "sysml.Requirement",
+   "label": "E-bike specification",
+   "props": {
+    "reqId": "EB-1",
+    "text": "The e-bike shall serve as a shared city bike that riders hire from a dock and return to a dock."
+   }
+  },
+  {
+   "id": "ebike-requirements-assist",
+   "type": "sysml.Requirement",
+   "label": "Pedal assistance",
+   "parent": "ebike-requirements-spec",
+   "props": {
+    "reqId": "EB-1.1",
+    "text": "The motor shall assist the rider only while the rider is pedalling."
+   }
+  },
+  {
+   "id": "ebike-requirements-cut-off",
+   "type": "sysml.Requirement",
+   "label": "Assistance cut-off",
+   "parent": "ebike-requirements-assist",
+   "props": {
+    "reqId": "EB-1.1.1",
+    "text": "Assistance shall fall away progressively and stop when the bike reaches 25 km/h."
+   }
+  },
+  {
+   "id": "ebike-requirements-range",
+   "type": "sysml.Requirement",
+   "label": "Range",
+   "parent": "ebike-requirements-spec",
+   "props": {
+    "reqId": "EB-1.2",
+    "text": "A full charge shall give at least 60 km of assisted riding."
+   }
+  },
+  {
+   "id": "ebike-requirements-docking",
+   "type": "sysml.Requirement",
+   "label": "Docking",
+   "parent": "ebike-requirements-spec",
+   "props": {
+    "reqId": "EB-1.3",
+    "text": "The e-bike shall lock into a dock when it is returned and shall charge while it is docked."
+   }
+  },
+  {
+   "id": "ebike-requirements-lock-time",
+   "type": "sysml.Requirement",
+   "label": "Locking time",
+   "parent": "ebike-requirements-docking",
+   "props": {
+    "reqId": "EB-1.3.1",
+    "text": "The dock shall lock the e-bike within 2 s of the bike being pushed in."
+   }
+  },
+  {
+   "id": "ebike-requirements-capacity",
+   "type": "sysml.Requirement",
+   "label": "Battery capacity",
+   "props": {
+    "reqId": "BAT-1",
+    "text": "The battery shall store at least 500 Wh."
+   }
+  },
+  {
+   "id": "ebike-requirements-assist-curve",
+   "type": "sysml.Requirement",
+   "label": "Assistance curve",
+   "props": {
+    "reqId": "CTL-1",
+    "text": "Assistance shall follow pedal torque and shall not exceed 250 W of continuous power."
+   }
+  },
+  {
+   "id": "ebike-requirements-legal-speed",
+   "type": "sysml.Requirement",
+   "label": "Maximum assisted speed",
+   "props": {
+    "reqId": "REG-3",
+    "text": "Assistance shall fall away progressively and stop when the bike reaches 25 km/h."
+   }
+  },
+  {
+   "id": "ebike-requirements-availability",
+   "type": "sysml.Requirement",
+   "label": "All-day availability",
+   "props": {
+    "reqId": "CITY-4",
+    "text": "A bike shall last a full day of hires on one charge."
+   }
+  },
+  {
+   "id": "ebike-requirements-battery",
+   "type": "sysml.Block",
+   "label": "Battery"
+  },
+  {
+   "id": "ebike-requirements-controller",
+   "type": "sysml.Block",
+   "label": "Controller"
+  },
+  {
+   "id": "ebike-requirements-dock",
+   "type": "sysml.Block",
+   "label": "Dock"
+  },
+  {
+   "id": "ebike-requirements-range-ride",
+   "type": "sysml.TestCase",
+   "label": "Range ride on the test circuit"
+  },
+  {
+   "id": "ebike-requirements-roller-test",
+   "type": "sysml.TestCase",
+   "label": "Cut-off speed on the rollers"
+  },
+  {
+   "id": "ebike-requirements-why-500",
+   "type": "uml.Comment",
+   "label": "60 km at 7 Wh/km takes 420 Wh; 500 Wh keeps 15 % in reserve",
+   "props": {
+    "stereotypes": [
+     "rationale"
+    ]
+   }
+  }
+ ],
+ "edges": [
+  {
+   "id": "ebike-requirements-capacity-from-range",
+   "type": "sysml.DeriveReqt",
+   "from": "ebike-requirements-capacity",
+   "to": "ebike-requirements-range"
+  },
+  {
+   "id": "ebike-requirements-curve-refines-assist",
+   "type": "sysml.Refine",
+   "from": "ebike-requirements-assist-curve",
+   "to": "ebike-requirements-assist"
+  },
+  {
+   "id": "ebike-requirements-range-traces-availability",
+   "type": "sysml.Trace",
+   "from": "ebike-requirements-range",
+   "to": "ebike-requirements-availability"
+  },
+  {
+   "id": "ebike-requirements-cut-off-copies-legal-speed",
+   "type": "sysml.Copy",
+   "from": "ebike-requirements-cut-off",
+   "to": "ebike-requirements-legal-speed"
+  },
+  {
+   "id": "ebike-requirements-battery-satisfies-capacity",
+   "type": "sysml.Satisfy",
+   "from": "ebike-requirements-battery",
+   "to": "ebike-requirements-capacity"
+  },
+  {
+   "id": "ebike-requirements-controller-satisfies-cut-off",
+   "type": "sysml.Satisfy",
+   "from": "ebike-requirements-controller",
+   "to": "ebike-requirements-cut-off"
+  },
+  {
+   "id": "ebike-requirements-dock-satisfies-lock-time",
+   "type": "sysml.Satisfy",
+   "from": "ebike-requirements-dock",
+   "to": "ebike-requirements-lock-time"
+  },
+  {
+   "id": "ebike-requirements-ride-verifies-range",
+   "type": "sysml.Verify",
+   "from": "ebike-requirements-range-ride",
+   "to": "ebike-requirements-range"
+  },
+  {
+   "id": "ebike-requirements-rollers-verify-cut-off",
+   "type": "sysml.Verify",
+   "from": "ebike-requirements-roller-test",
+   "to": "ebike-requirements-cut-off"
+  },
+  {
+   "id": "ebike-requirements-why-500-link",
+   "type": "uml.CommentLink",
+   "from": "ebike-requirements-why-500",
+   "to": "ebike-requirements-capacity"
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Requirement diagram examples",
+   "nodeIds": [
+    "card-ebike-requirements-requirements"
+   ],
+   "layout": {
+    "card-ebike-requirements-requirements": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "ebike-requirements-requirements",
+   "diagram": "sysml.requirement",
+   "title": "E-bike requirements",
+   "parent": "overview",
+   "direction": "down",
+   "nodeIds": [
+    "ebike-requirements-spec",
+    "ebike-requirements-assist",
+    "ebike-requirements-cut-off",
+    "ebike-requirements-range",
+    "ebike-requirements-docking",
+    "ebike-requirements-lock-time",
+    "ebike-requirements-capacity",
+    "ebike-requirements-assist-curve",
+    "ebike-requirements-legal-speed",
+    "ebike-requirements-availability",
+    "ebike-requirements-battery",
+    "ebike-requirements-controller",
+    "ebike-requirements-dock",
+    "ebike-requirements-range-ride",
+    "ebike-requirements-roller-test",
+    "ebike-requirements-why-500"
+   ]
+  }
+ ]
+}

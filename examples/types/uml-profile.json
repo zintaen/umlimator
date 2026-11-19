@@ -1,0 +1,223 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Profile diagram examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-bookshop-profile-profile",
+   "label": "Bookshop conventions profile",
+   "kind": "file",
+   "sublabel": "stereotypes, extensions, tags",
+   "what": "Stereotypes with tag definitions extending metaclasses, a required extension, a profile applied to a package, and an element's tags in a compartment per stereotype; stereotypes applied anywhere in the model are checked against it.",
+   "how": "From examples/bookshop-profile.json.",
+   "opensView": "bookshop-profile-profile"
+  },
+  {
+   "id": "bookshop-profile-conventions",
+   "type": "uml.Profile",
+   "label": "BookshopConventions"
+  },
+  {
+   "id": "bookshop-profile-mc-class",
+   "type": "uml.MetaclassReference",
+   "label": "Class",
+   "parent": "bookshop-profile-conventions"
+  },
+  {
+   "id": "bookshop-profile-mc-property",
+   "type": "uml.MetaclassReference",
+   "label": "Property",
+   "parent": "bookshop-profile-conventions"
+  },
+  {
+   "id": "bookshop-profile-entity",
+   "type": "uml.Stereotype",
+   "label": "entity",
+   "parent": "bookshop-profile-conventions",
+   "members": [
+    {
+     "id": "bookshop-profile-entity.table",
+     "type": "uml.Property",
+     "label": "table",
+     "props": {
+      "valueType": "String"
+     }
+    }
+   ]
+  },
+  {
+   "id": "bookshop-profile-aggregate-root",
+   "type": "uml.Stereotype",
+   "label": "aggregateRoot",
+   "parent": "bookshop-profile-conventions",
+   "members": [
+    {
+     "id": "bookshop-profile-aggregate-root.boundedContext",
+     "type": "uml.Property",
+     "label": "boundedContext",
+     "props": {
+      "valueType": "String"
+     }
+    }
+   ]
+  },
+  {
+   "id": "bookshop-profile-owned",
+   "type": "uml.Stereotype",
+   "label": "owned",
+   "parent": "bookshop-profile-conventions",
+   "members": [
+    {
+     "id": "bookshop-profile-owned.team",
+     "type": "uml.Property",
+     "label": "team",
+     "props": {
+      "valueType": "String",
+      "multiplicity": "0..1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "bookshop-profile-column",
+   "type": "uml.Stereotype",
+   "label": "column",
+   "parent": "bookshop-profile-conventions",
+   "members": [
+    {
+     "id": "bookshop-profile-column.name",
+     "type": "uml.Property",
+     "label": "name",
+     "props": {
+      "valueType": "String",
+      "multiplicity": "0..1"
+     }
+    },
+    {
+     "id": "bookshop-profile-column.indexed",
+     "type": "uml.Property",
+     "label": "indexed",
+     "props": {
+      "valueType": "Boolean",
+      "default": "false"
+     }
+    }
+   ]
+  },
+  {
+   "id": "bookshop-profile-sales",
+   "type": "uml.Package",
+   "label": "sales"
+  },
+  {
+   "id": "bookshop-profile-order",
+   "type": "uml.Class",
+   "label": "Order",
+   "parent": "bookshop-profile-sales",
+   "props": {
+    "stereotypes": [
+     "entity"
+    ],
+    "tags": {
+     "entity": {
+      "table": "orders"
+     },
+     "owned": {
+      "team": "checkout"
+     }
+    }
+   },
+   "members": [
+    {
+     "id": "bookshop-profile-order.placedAt",
+     "type": "uml.Property",
+     "label": "placedAt",
+     "props": {
+      "visibility": "private",
+      "valueType": "Instant",
+      "multiplicity": "0..1",
+      "stereotypes": [
+       "column"
+      ],
+      "tags": {
+       "column": {
+        "name": "placed_at",
+        "indexed": "true"
+       }
+      }
+     }
+    }
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "id": "bookshop-profile-entity-extends-class",
+   "type": "uml.Extension",
+   "from": "bookshop-profile-entity",
+   "to": "bookshop-profile-mc-class"
+  },
+  {
+   "id": "bookshop-profile-owned-extends-class",
+   "type": "uml.Extension",
+   "from": "bookshop-profile-owned",
+   "to": "bookshop-profile-mc-class",
+   "props": {
+    "isRequired": true
+   }
+  },
+  {
+   "id": "bookshop-profile-column-extends-property",
+   "type": "uml.Extension",
+   "from": "bookshop-profile-column",
+   "to": "bookshop-profile-mc-property"
+  },
+  {
+   "id": "bookshop-profile-root-is-entity",
+   "type": "uml.Generalization",
+   "from": "bookshop-profile-aggregate-root",
+   "to": "bookshop-profile-entity"
+  },
+  {
+   "id": "bookshop-profile-sales-applies-conventions",
+   "type": "uml.ProfileApplication",
+   "from": "bookshop-profile-sales",
+   "to": "bookshop-profile-conventions"
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Profile diagram examples",
+   "nodeIds": [
+    "card-bookshop-profile-profile"
+   ],
+   "layout": {
+    "card-bookshop-profile-profile": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "bookshop-profile-profile",
+   "diagram": "uml.profile",
+   "title": "Bookshop conventions profile",
+   "parent": "overview",
+   "direction": "down",
+   "nodeIds": [
+    "bookshop-profile-conventions",
+    "bookshop-profile-mc-class",
+    "bookshop-profile-mc-property",
+    "bookshop-profile-entity",
+    "bookshop-profile-aggregate-root",
+    "bookshop-profile-owned",
+    "bookshop-profile-column",
+    "bookshop-profile-sales",
+    "bookshop-profile-order"
+   ]
+  }
+ ]
+}

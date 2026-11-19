@@ -1,0 +1,599 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Map examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-shapes-shapes",
+   "label": "Card shapes",
+   "kind": "file",
+   "sublabel": "every card shape",
+   "what": "A card of each kind that has a shape, in the one style maps draw: people, a browser app, a phone, a window (a card's own `shape`), a terminal, an agent, a database, a queue, a file, a module, hosts, a hook and an external system.",
+   "how": "From examples/shapes.json.",
+   "opensView": "shapes-shapes"
+  },
+  {
+   "id": "card-monorepo-boxed",
+   "label": "Packages, a box per folder",
+   "kind": "file",
+   "sublabel": "a box per folder",
+   "what": "A map generated from a dependency list by `monorepo.py`: a card per package, a line per import, heavier with more imports, a box per folder, nested as the folders are.",
+   "how": "From examples/monorepo.json.",
+   "opensView": "monorepo-boxed"
+  },
+  {
+   "id": "card-monorepo-plain",
+   "label": "Packages, no boxes",
+   "kind": "file",
+   "sublabel": "the same cards, no boxes",
+   "what": "The same packages and imports as the boxed view, with no boxes: the layout without folders.",
+   "how": "From examples/monorepo.json.",
+   "opensView": "monorepo-plain"
+  },
+  {
+   "id": "shapes-shoppers",
+   "label": "Shoppers",
+   "kind": "person",
+   "sublabel": "browse and buy",
+   "what": "The people who use the shop: a `person` card is drawn as a person."
+  },
+  {
+   "id": "shapes-staff",
+   "label": "Support staff",
+   "kind": "user",
+   "sublabel": "answer tickets",
+   "what": "People outside the system: a `user` card is external, and drawn as a person."
+  },
+  {
+   "id": "shapes-storefront",
+   "label": "Storefront",
+   "kind": "frontend",
+   "sublabel": "React single-page app",
+   "what": "A `frontend` card: a browser app, its title bar and address field over the card."
+  },
+  {
+   "id": "shapes-app",
+   "label": "Shop app",
+   "kind": "mobile",
+   "sublabel": "iOS and Android",
+   "what": "A `mobile` card: a phone on its side."
+  },
+  {
+   "id": "shapes-desk",
+   "label": "Back office",
+   "kind": "frontend",
+   "shape": "window",
+   "sublabel": "desktop, staff only",
+   "what": "Its own `shape`, a window: a card's `shape` wins over its kind."
+  },
+  {
+   "id": "shapes-api",
+   "label": "Shop API",
+   "kind": "backend",
+   "sublabel": "FastAPI",
+   "what": "A `backend` card: no shape says more, so it is a rounded box with its kind's mark."
+  },
+  {
+   "id": "shapes-cli",
+   "label": "Admin CLI",
+   "kind": "cli",
+   "sublabel": "python3",
+   "what": "A `cli` card: a terminal."
+  },
+  {
+   "id": "shapes-agent",
+   "label": "Support agent",
+   "kind": "agent",
+   "sublabel": "drafts replies",
+   "what": "An `agent` card: a robot (UML's non-human actor)."
+  },
+  {
+   "id": "shapes-orders",
+   "label": "Orders",
+   "kind": "database",
+   "sublabel": "PostgreSQL",
+   "what": "A `database` card: a cylinder."
+  },
+  {
+   "id": "shapes-queue",
+   "label": "Order queue",
+   "kind": "queue",
+   "sublabel": "RabbitMQ",
+   "what": "A `queue` card: a pipe, open where the work leaves."
+  },
+  {
+   "id": "shapes-policies",
+   "label": "policies.md",
+   "kind": "file",
+   "sublabel": "refunds, warranty",
+   "what": "A `file` card: a page with its corner folded (UML's artifact)."
+  },
+  {
+   "id": "shapes-pricing",
+   "label": "Pricing",
+   "kind": "module",
+   "sublabel": "rules, discounts",
+   "what": "A `module` (or `package`) card: a folder (UML's package)."
+  },
+  {
+   "id": "shapes-hosts",
+   "label": "Hosts",
+   "kind": "cloud",
+   "sublabel": "two servers",
+   "what": "A `cloud` card: a box seen in perspective (UML's node)."
+  },
+  {
+   "id": "shapes-fraud",
+   "label": "Fraud check",
+   "kind": "hook",
+   "sublabel": "fires on its own",
+   "what": "A hook: a hexagon."
+  },
+  {
+   "id": "shapes-payments",
+   "label": "Payments",
+   "kind": "external",
+   "sublabel": "cards, refunds",
+   "what": "Outside the system: an `external` card is dashed."
+  },
+  {
+   "id": "monorepo-apps/web",
+   "label": "web",
+   "kind": "frontend",
+   "icon": "window",
+   "sublabel": "apps/web",
+   "what": "The apps/web package."
+  },
+  {
+   "id": "monorepo-apps/admin",
+   "label": "admin",
+   "kind": "frontend",
+   "icon": "window",
+   "sublabel": "apps/admin",
+   "what": "The apps/admin package."
+  },
+  {
+   "id": "monorepo-apps/mobile",
+   "label": "mobile",
+   "kind": "frontend",
+   "icon": "window",
+   "sublabel": "apps/mobile",
+   "what": "The apps/mobile package."
+  },
+  {
+   "id": "monorepo-services/api",
+   "label": "api",
+   "kind": "backend",
+   "icon": "server",
+   "sublabel": "services/api",
+   "what": "The services/api package."
+  },
+  {
+   "id": "monorepo-services/worker",
+   "label": "worker",
+   "kind": "backend",
+   "icon": "server",
+   "sublabel": "services/worker",
+   "what": "The services/worker package."
+  },
+  {
+   "id": "monorepo-packages/ui/charts",
+   "label": "charts",
+   "kind": "frontend",
+   "icon": "package",
+   "sublabel": "packages/ui/charts",
+   "what": "The packages/ui/charts package."
+  },
+  {
+   "id": "monorepo-packages/ui/kit",
+   "label": "kit",
+   "kind": "frontend",
+   "icon": "package",
+   "sublabel": "packages/ui/kit",
+   "what": "The packages/ui/kit package."
+  },
+  {
+   "id": "monorepo-packages/ui/tokens",
+   "label": "tokens",
+   "kind": "frontend",
+   "icon": "package",
+   "sublabel": "packages/ui/tokens",
+   "what": "The packages/ui/tokens package."
+  },
+  {
+   "id": "monorepo-packages/shared/api-client",
+   "label": "api-client",
+   "kind": "file",
+   "icon": "package",
+   "sublabel": "packages/shared/api-client",
+   "what": "The packages/shared/api-client package."
+  },
+  {
+   "id": "monorepo-packages/shared/schemas",
+   "label": "schemas",
+   "kind": "file",
+   "icon": "package",
+   "sublabel": "packages/shared/schemas",
+   "what": "The packages/shared/schemas package."
+  },
+  {
+   "id": "monorepo-packages/server/auth",
+   "label": "auth",
+   "kind": "backend",
+   "icon": "package",
+   "sublabel": "packages/server/auth",
+   "what": "The packages/server/auth package."
+  },
+  {
+   "id": "monorepo-packages/server/db",
+   "label": "db",
+   "kind": "backend",
+   "icon": "package",
+   "sublabel": "packages/server/db",
+   "what": "The packages/server/db package."
+  },
+  {
+   "id": "monorepo-packages/server/mailer",
+   "label": "mailer",
+   "kind": "backend",
+   "icon": "package",
+   "sublabel": "packages/server/mailer",
+   "what": "The packages/server/mailer package."
+  },
+  {
+   "id": "monorepo-tools/release",
+   "label": "release",
+   "kind": "file",
+   "icon": "wrench",
+   "sublabel": "tools/release",
+   "what": "The tools/release package."
+  },
+  {
+   "id": "monorepo-tools/codemods",
+   "label": "codemods",
+   "kind": "file",
+   "icon": "wrench",
+   "sublabel": "tools/codemods",
+   "what": "The tools/codemods package."
+  }
+ ],
+ "edges": [
+  {
+   "id": "shapes-browse",
+   "from": "shapes-shoppers",
+   "to": "shapes-storefront",
+   "label": "browse, buy"
+  },
+  {
+   "id": "shapes-go",
+   "from": "shapes-shoppers",
+   "to": "shapes-app",
+   "label": "on the go"
+  },
+  {
+   "id": "shapes-answer",
+   "from": "shapes-staff",
+   "to": "shapes-desk",
+   "label": "answer"
+  },
+  {
+   "id": "shapes-checkout",
+   "from": "shapes-storefront",
+   "to": "shapes-api",
+   "label": "checkout"
+  },
+  {
+   "id": "shapes-order",
+   "from": "shapes-app",
+   "to": "shapes-api",
+   "label": "order"
+  },
+  {
+   "id": "shapes-manage",
+   "from": "shapes-desk",
+   "to": "shapes-api",
+   "label": "manage"
+  },
+  {
+   "id": "shapes-jobs",
+   "from": "shapes-cli",
+   "to": "shapes-api",
+   "label": "runs jobs"
+  },
+  {
+   "id": "shapes-save",
+   "from": "shapes-api",
+   "to": "shapes-orders",
+   "label": "saves"
+  },
+  {
+   "id": "shapes-paid",
+   "from": "shapes-api",
+   "to": "shapes-queue",
+   "label": "paid order"
+  },
+  {
+   "id": "shapes-charge",
+   "from": "shapes-api",
+   "to": "shapes-payments",
+   "label": "charges"
+  },
+  {
+   "id": "shapes-price",
+   "from": "shapes-api",
+   "to": "shapes-pricing",
+   "label": "prices"
+  },
+  {
+   "id": "shapes-check",
+   "from": "shapes-api",
+   "to": "shapes-fraud",
+   "label": "checks",
+   "kind": "triggers"
+  },
+  {
+   "id": "shapes-reply",
+   "from": "shapes-queue",
+   "to": "shapes-agent",
+   "label": "tickets"
+  },
+  {
+   "id": "shapes-read",
+   "from": "shapes-agent",
+   "to": "shapes-policies",
+   "label": "reads",
+   "kind": "state"
+  },
+  {
+   "from": "monorepo-apps/web",
+   "to": "monorepo-packages/ui/kit",
+   "weight": 3,
+   "what": "140 imports"
+  },
+  {
+   "from": "monorepo-apps/web",
+   "to": "monorepo-packages/shared/api-client",
+   "weight": 2,
+   "what": "60 imports"
+  },
+  {
+   "from": "monorepo-apps/admin",
+   "to": "monorepo-packages/ui/kit",
+   "weight": 2,
+   "what": "90 imports"
+  },
+  {
+   "from": "monorepo-apps/admin",
+   "to": "monorepo-packages/ui/charts",
+   "weight": 2,
+   "what": "25 imports"
+  },
+  {
+   "from": "monorepo-apps/admin",
+   "to": "monorepo-packages/shared/api-client",
+   "weight": 2,
+   "what": "40 imports"
+  },
+  {
+   "from": "monorepo-apps/mobile",
+   "to": "monorepo-packages/shared/api-client",
+   "weight": 2,
+   "what": "30 imports"
+  },
+  {
+   "from": "monorepo-services/api",
+   "to": "monorepo-packages/server/auth",
+   "weight": 2,
+   "what": "30 imports"
+  },
+  {
+   "from": "monorepo-services/api",
+   "to": "monorepo-packages/server/db",
+   "weight": 2,
+   "what": "80 imports"
+  },
+  {
+   "from": "monorepo-services/api",
+   "to": "monorepo-packages/shared/schemas",
+   "weight": 2,
+   "what": "55 imports"
+  },
+  {
+   "from": "monorepo-services/worker",
+   "to": "monorepo-packages/server/db",
+   "weight": 2,
+   "what": "25 imports"
+  },
+  {
+   "from": "monorepo-services/worker",
+   "to": "monorepo-packages/server/mailer",
+   "weight": 1,
+   "what": "9 imports"
+  },
+  {
+   "from": "monorepo-packages/ui/charts",
+   "to": "monorepo-packages/ui/kit",
+   "weight": 2,
+   "what": "10 imports"
+  },
+  {
+   "from": "monorepo-packages/ui/kit",
+   "to": "monorepo-packages/ui/tokens",
+   "weight": 2,
+   "what": "45 imports"
+  },
+  {
+   "from": "monorepo-packages/shared/api-client",
+   "to": "monorepo-packages/shared/schemas",
+   "weight": 2,
+   "what": "22 imports"
+  },
+  {
+   "from": "monorepo-packages/server/auth",
+   "to": "monorepo-packages/server/db",
+   "weight": 1,
+   "what": "6 imports"
+  },
+  {
+   "from": "monorepo-packages/server/db",
+   "to": "monorepo-packages/shared/schemas",
+   "weight": 2,
+   "what": "14 imports"
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Map examples",
+   "nodeIds": [
+    "card-shapes-shapes",
+    "card-monorepo-boxed",
+    "card-monorepo-plain"
+   ],
+   "layout": {
+    "card-shapes-shapes": [
+     0,
+     0
+    ],
+    "card-monorepo-boxed": [
+     1,
+     0
+    ],
+    "card-monorepo-plain": [
+     0,
+     1
+    ]
+   }
+  },
+  {
+   "id": "shapes-shapes",
+   "title": "Card shapes",
+   "caption": "The one card-shape style: a shape for each kind that has one, a rounded box for the rest.",
+   "nodeIds": [
+    "shapes-shoppers",
+    "shapes-staff",
+    "shapes-storefront",
+    "shapes-app",
+    "shapes-desk",
+    "shapes-cli",
+    "shapes-api",
+    "shapes-orders",
+    "shapes-queue",
+    "shapes-payments",
+    "shapes-pricing",
+    "shapes-fraud",
+    "shapes-agent",
+    "shapes-policies",
+    "shapes-hosts"
+   ],
+   "parent": "overview"
+  },
+  {
+   "id": "monorepo-boxed",
+   "parent": "overview",
+   "title": "Packages, a box per folder",
+   "nodeIds": [
+    "monorepo-apps/web",
+    "monorepo-apps/admin",
+    "monorepo-apps/mobile",
+    "monorepo-services/api",
+    "monorepo-services/worker",
+    "monorepo-packages/ui/charts",
+    "monorepo-packages/ui/kit",
+    "monorepo-packages/ui/tokens",
+    "monorepo-packages/shared/api-client",
+    "monorepo-packages/shared/schemas",
+    "monorepo-packages/server/auth",
+    "monorepo-packages/server/db",
+    "monorepo-packages/server/mailer",
+    "monorepo-tools/release",
+    "monorepo-tools/codemods"
+   ],
+   "containers": [
+    {
+     "id": "monorepo-apps/",
+     "label": "apps/",
+     "nodeIds": [
+      "monorepo-apps/web",
+      "monorepo-apps/admin",
+      "monorepo-apps/mobile"
+     ]
+    },
+    {
+     "id": "monorepo-services/",
+     "label": "services/",
+     "nodeIds": [
+      "monorepo-services/api",
+      "monorepo-services/worker"
+     ]
+    },
+    {
+     "id": "monorepo-packages/",
+     "label": "packages/",
+     "nodeIds": []
+    },
+    {
+     "id": "monorepo-packages/ui/",
+     "label": "packages/ui/",
+     "nodeIds": [
+      "monorepo-packages/ui/charts",
+      "monorepo-packages/ui/kit",
+      "monorepo-packages/ui/tokens"
+     ],
+     "parent": "monorepo-packages/"
+    },
+    {
+     "id": "monorepo-packages/shared/",
+     "label": "packages/shared/",
+     "nodeIds": [
+      "monorepo-packages/shared/api-client",
+      "monorepo-packages/shared/schemas"
+     ],
+     "parent": "monorepo-packages/"
+    },
+    {
+     "id": "monorepo-packages/server/",
+     "label": "packages/server/",
+     "nodeIds": [
+      "monorepo-packages/server/auth",
+      "monorepo-packages/server/db",
+      "monorepo-packages/server/mailer"
+     ],
+     "parent": "monorepo-packages/"
+    },
+    {
+     "id": "monorepo-tools/",
+     "label": "tools/",
+     "nodeIds": [
+      "monorepo-tools/release",
+      "monorepo-tools/codemods"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "monorepo-plain",
+   "parent": "monorepo-boxed",
+   "title": "Packages, no boxes",
+   "nodeIds": [
+    "monorepo-apps/web",
+    "monorepo-apps/admin",
+    "monorepo-apps/mobile",
+    "monorepo-services/api",
+    "monorepo-services/worker",
+    "monorepo-packages/ui/charts",
+    "monorepo-packages/ui/kit",
+    "monorepo-packages/ui/tokens",
+    "monorepo-packages/shared/api-client",
+    "monorepo-packages/shared/schemas",
+    "monorepo-packages/server/auth",
+    "monorepo-packages/server/db",
+    "monorepo-packages/server/mailer",
+    "monorepo-tools/release",
+    "monorepo-tools/codemods"
+   ]
+  }
+ ]
+}

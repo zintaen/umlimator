@@ -1,0 +1,744 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "C4 diagram examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-bookshop-c4-c4-context",
+   "label": "Bookshop: system context",
+   "kind": "file",
+   "sublabel": "system context",
+   "what": "The bookshop as a system among its people and external systems, on the map's card shapes.",
+   "how": "From examples/bookshop-c4.json.",
+   "opensView": "bookshop-c4-c4-context"
+  },
+  {
+   "id": "card-bookshop-c4-c4-containers",
+   "label": "Bookshop: containers",
+   "kind": "file",
+   "sublabel": "containers in a boundary",
+   "what": "The bookshop's containers inside its dashed boundary, each with its technology; implied relationships drawn where a view hides an end.",
+   "how": "From examples/bookshop-c4.json.",
+   "opensView": "bookshop-c4-c4-containers"
+  },
+  {
+   "id": "card-bookshop-c4-c4-components",
+   "label": "Shop API: components",
+   "kind": "file",
+   "sublabel": "components of one container",
+   "what": "The Shop API's components inside its boundary, with the containers and systems they talk to.",
+   "how": "From examples/bookshop-c4.json.",
+   "opensView": "bookshop-c4-c4-components"
+  },
+  {
+   "id": "card-bookshop-c4-c4-placing-an-order",
+   "label": "Placing an order",
+   "kind": "file",
+   "sublabel": "a dynamic view, numbered",
+   "what": "A dynamic view: placing an order as numbered steps between the containers.",
+   "how": "From examples/bookshop-c4.json.",
+   "opensView": "bookshop-c4-c4-placing-an-order"
+  },
+  {
+   "id": "card-bookshop-c4-c4-deployment",
+   "label": "Bookshop: production deployment",
+   "kind": "file",
+   "sublabel": "deployment nodes, instances",
+   "what": "Deployment nodes nested as boxes, holding the container instances that run in production.",
+   "how": "From examples/bookshop-c4.json.",
+   "opensView": "bookshop-c4-c4-deployment"
+  },
+  {
+   "id": "bookshop-c4-c4-shopper",
+   "type": "c4.Person",
+   "label": "Shopper",
+   "props": {
+    "description": "Browses the catalogue, buys books and tracks orders."
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-staff",
+   "type": "c4.Person",
+   "label": "Shop staff",
+   "props": {
+    "description": "Keep the catalogue up to date and refund orders."
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-bookshop",
+   "type": "c4.SoftwareSystem",
+   "label": "Bookshop",
+   "opensView": "bookshop-c4-c4-containers",
+   "props": {
+    "description": "Sells books online: catalogue, basket, checkout and order tracking."
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-payments",
+   "type": "c4.SoftwareSystem",
+   "label": "Payment provider",
+   "props": {
+    "description": "Takes card payments and makes refunds.",
+    "external": true
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-mail",
+   "type": "c4.SoftwareSystem",
+   "label": "Email service",
+   "props": {
+    "description": "Delivers the shop's emails.",
+    "external": true
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-courier",
+   "type": "c4.SoftwareSystem",
+   "label": "Courier",
+   "props": {
+    "description": "Collects parcels and delivers them to shoppers.",
+    "external": true
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-storefront",
+   "type": "c4.Container",
+   "label": "Storefront",
+   "parent": "bookshop-c4-c4-bookshop",
+   "props": {
+    "technology": "TypeScript, React",
+    "description": "The shop in the browser: catalogue, basket and checkout, and the admin pages for staff."
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-api",
+   "type": "c4.Container",
+   "label": "Shop API",
+   "parent": "bookshop-c4-c4-bookshop",
+   "opensView": "bookshop-c4-c4-components",
+   "props": {
+    "technology": "Python, FastAPI",
+    "description": "Catalogue, basket, checkout and accounts as a JSON API."
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-worker",
+   "type": "c4.Container",
+   "label": "Order worker",
+   "parent": "bookshop-c4-c4-bookshop",
+   "props": {
+    "technology": "Python",
+    "description": "Fulfils paid orders: books the delivery and sends the confirmation."
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-db",
+   "type": "c4.Container",
+   "label": "Database",
+   "parent": "bookshop-c4-c4-bookshop",
+   "props": {
+    "technology": "PostgreSQL",
+    "description": "Books, baskets, orders and accounts."
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-queue",
+   "type": "c4.Container",
+   "label": "Order queue",
+   "parent": "bookshop-c4-c4-bookshop",
+   "props": {
+    "technology": "PostgreSQL table",
+    "description": "Paid orders waiting to be fulfilled, oldest first."
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-catalogue",
+   "type": "c4.Component",
+   "label": "Catalogue",
+   "parent": "bookshop-c4-c4-api",
+   "props": {
+    "technology": "FastAPI router",
+    "description": "Lists and searches books."
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-checkout",
+   "type": "c4.Component",
+   "label": "Checkout",
+   "parent": "bookshop-c4-c4-api",
+   "props": {
+    "technology": "FastAPI router",
+    "description": "Turns a basket into a paid order."
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-accounts",
+   "type": "c4.Component",
+   "label": "Accounts and sign-in",
+   "parent": "bookshop-c4-c4-api",
+   "props": {
+    "technology": "FastAPI router",
+    "description": "Signs shoppers and staff in; keeps hashed passwords and sessions."
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-payment-client",
+   "type": "c4.Component",
+   "label": "Payment client",
+   "parent": "bookshop-c4-c4-api",
+   "props": {
+    "technology": "Python, httpx",
+    "description": "Starts card payments and reads their result."
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-order-store",
+   "type": "c4.Component",
+   "label": "Order store",
+   "parent": "bookshop-c4-c4-api",
+   "props": {
+    "technology": "SQLAlchemy",
+    "description": "Saves orders and puts the paid ones on the order queue."
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-device",
+   "type": "c4.DeploymentNode",
+   "label": "User's device",
+   "props": {
+    "technology": "Laptop, tablet or phone",
+    "description": "A shopper's or a staff member's own device."
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-browser",
+   "type": "c4.DeploymentNode",
+   "label": "Web browser",
+   "parent": "bookshop-c4-c4-device",
+   "props": {
+    "technology": "Chrome, Firefox, Safari or Edge"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-storefront-1",
+   "type": "c4.ContainerInstance",
+   "label": "Storefront",
+   "parent": "bookshop-c4-c4-browser",
+   "props": {
+    "container": "bookshop-c4-c4-storefront"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-web-host",
+   "type": "c4.DeploymentNode",
+   "label": "Web server",
+   "props": {
+    "technology": "Ubuntu 24.04 LTS",
+    "description": "The web tier's server."
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-docker",
+   "type": "c4.DeploymentNode",
+   "label": "Docker Compose",
+   "parent": "bookshop-c4-c4-web-host",
+   "props": {
+    "technology": "Docker Engine 27"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-api-1",
+   "type": "c4.ContainerInstance",
+   "label": "Shop API",
+   "parent": "bookshop-c4-c4-docker",
+   "props": {
+    "container": "bookshop-c4-c4-api"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-worker-1",
+   "type": "c4.ContainerInstance",
+   "label": "Order worker",
+   "parent": "bookshop-c4-c4-docker",
+   "props": {
+    "container": "bookshop-c4-c4-worker"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-db-host",
+   "type": "c4.DeploymentNode",
+   "label": "Database server",
+   "props": {
+    "technology": "Ubuntu 24.04 LTS",
+    "description": "Backed up every night."
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-postgres",
+   "type": "c4.DeploymentNode",
+   "label": "PostgreSQL",
+   "parent": "bookshop-c4-c4-db-host",
+   "props": {
+    "technology": "PostgreSQL 16"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-db-1",
+   "type": "c4.ContainerInstance",
+   "label": "Database",
+   "parent": "bookshop-c4-c4-postgres",
+   "props": {
+    "container": "bookshop-c4-c4-db"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-queue-1",
+   "type": "c4.ContainerInstance",
+   "label": "Order queue",
+   "parent": "bookshop-c4-c4-postgres",
+   "props": {
+    "container": "bookshop-c4-c4-queue"
+   }
+  }
+ ],
+ "edges": [
+  {
+   "id": "bookshop-c4-c4-shopper-bookshop",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-shopper",
+   "to": "bookshop-c4-c4-bookshop",
+   "label": "Browses and buys books with"
+  },
+  {
+   "id": "bookshop-c4-c4-staff-bookshop",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-staff",
+   "to": "bookshop-c4-c4-bookshop",
+   "label": "Keep the catalogue and refund orders with"
+  },
+  {
+   "id": "bookshop-c4-c4-bookshop-payments",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-bookshop",
+   "to": "bookshop-c4-c4-payments",
+   "label": "Takes card payments with",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-bookshop-mail",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-bookshop",
+   "to": "bookshop-c4-c4-mail",
+   "label": "Sends order confirmations with",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-bookshop-courier",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-bookshop",
+   "to": "bookshop-c4-c4-courier",
+   "label": "Books deliveries with",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-mail-shopper",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-mail",
+   "to": "bookshop-c4-c4-shopper",
+   "label": "Delivers confirmations to",
+   "props": {
+    "technology": "Email"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-shopper-storefront",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-shopper",
+   "to": "bookshop-c4-c4-storefront",
+   "label": "Fills a basket and checks out in",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-staff-storefront",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-staff",
+   "to": "bookshop-c4-c4-storefront",
+   "label": "Edit the catalogue and refund orders in",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-storefront-api",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-storefront",
+   "to": "bookshop-c4-c4-api",
+   "label": "Reads the catalogue and places orders through",
+   "props": {
+    "technology": "JSON over HTTPS"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-api-payments",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-api",
+   "to": "bookshop-c4-c4-payments",
+   "label": "Charges cards with",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-api-db",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-api",
+   "to": "bookshop-c4-c4-db",
+   "label": "Reads and writes books, baskets and orders in",
+   "props": {
+    "technology": "SQL"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-api-queue",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-api",
+   "to": "bookshop-c4-c4-queue",
+   "label": "Puts paid orders on",
+   "props": {
+    "technology": "SQL"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-worker-queue",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-worker",
+   "to": "bookshop-c4-c4-queue",
+   "label": "Claims paid orders from",
+   "props": {
+    "technology": "SQL"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-worker-courier",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-worker",
+   "to": "bookshop-c4-c4-courier",
+   "label": "Books deliveries with",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-worker-mail",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-worker",
+   "to": "bookshop-c4-c4-mail",
+   "label": "Sends confirmations with",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-worker-db",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-worker",
+   "to": "bookshop-c4-c4-db",
+   "label": "Marks orders as fulfilled in",
+   "props": {
+    "technology": "SQL"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-storefront-catalogue",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-storefront",
+   "to": "bookshop-c4-c4-catalogue",
+   "label": "Lists and searches books through",
+   "props": {
+    "technology": "JSON over HTTPS"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-storefront-checkout",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-storefront",
+   "to": "bookshop-c4-c4-checkout",
+   "label": "Places orders through",
+   "props": {
+    "technology": "JSON over HTTPS"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-storefront-accounts",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-storefront",
+   "to": "bookshop-c4-c4-accounts",
+   "label": "Signs in through",
+   "props": {
+    "technology": "JSON over HTTPS"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-checkout-payment-client",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-checkout",
+   "to": "bookshop-c4-c4-payment-client",
+   "label": "Charges the card through"
+  },
+  {
+   "id": "bookshop-c4-c4-payment-client-payments",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-payment-client",
+   "to": "bookshop-c4-c4-payments",
+   "label": "Starts a card payment with",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-checkout-order-store",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-checkout",
+   "to": "bookshop-c4-c4-order-store",
+   "label": "Saves the paid order with"
+  },
+  {
+   "id": "bookshop-c4-c4-order-store-db",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-order-store",
+   "to": "bookshop-c4-c4-db",
+   "label": "Reads and writes orders in",
+   "props": {
+    "technology": "SQL"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-order-store-queue",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-order-store",
+   "to": "bookshop-c4-c4-queue",
+   "label": "Puts paid orders on",
+   "props": {
+    "technology": "SQL"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-catalogue-db",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-catalogue",
+   "to": "bookshop-c4-c4-db",
+   "label": "Reads books from",
+   "props": {
+    "technology": "SQL"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-accounts-db",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-accounts",
+   "to": "bookshop-c4-c4-db",
+   "label": "Reads and writes accounts and sessions in",
+   "props": {
+    "technology": "SQL"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-storefront-1-api-1",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-storefront-1",
+   "to": "bookshop-c4-c4-api-1",
+   "label": "Calls",
+   "props": {
+    "technology": "JSON over HTTPS, port 443"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-api-1-db-1",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-api-1",
+   "to": "bookshop-c4-c4-db-1",
+   "label": "Reads from and writes to",
+   "props": {
+    "technology": "SQL, port 5432, private network"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-api-1-queue-1",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-api-1",
+   "to": "bookshop-c4-c4-queue-1",
+   "label": "Puts paid orders on",
+   "props": {
+    "technology": "SQL, port 5432, private network"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-worker-1-queue-1",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-worker-1",
+   "to": "bookshop-c4-c4-queue-1",
+   "label": "Claims paid orders from",
+   "props": {
+    "technology": "SQL, port 5432, private network"
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-worker-1-db-1",
+   "type": "c4.Relationship",
+   "from": "bookshop-c4-c4-worker-1",
+   "to": "bookshop-c4-c4-db-1",
+   "label": "Marks orders as fulfilled in",
+   "props": {
+    "technology": "SQL, port 5432, private network"
+   }
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "C4 diagram examples",
+   "nodeIds": [
+    "card-bookshop-c4-c4-context",
+    "card-bookshop-c4-c4-containers",
+    "card-bookshop-c4-c4-components",
+    "card-bookshop-c4-c4-placing-an-order",
+    "card-bookshop-c4-c4-deployment"
+   ],
+   "layout": {
+    "card-bookshop-c4-c4-context": [
+     0,
+     0
+    ],
+    "card-bookshop-c4-c4-containers": [
+     1,
+     0
+    ],
+    "card-bookshop-c4-c4-components": [
+     2,
+     0
+    ],
+    "card-bookshop-c4-c4-placing-an-order": [
+     0,
+     1
+    ],
+    "card-bookshop-c4-c4-deployment": [
+     1,
+     1
+    ]
+   }
+  },
+  {
+   "id": "bookshop-c4-c4-context",
+   "diagram": "c4.context",
+   "title": "Bookshop: system context",
+   "parent": "overview",
+   "subject": "bookshop-c4-c4-bookshop",
+   "nodeIds": [
+    "bookshop-c4-c4-shopper",
+    "bookshop-c4-c4-staff",
+    "bookshop-c4-c4-bookshop",
+    "bookshop-c4-c4-payments",
+    "bookshop-c4-c4-mail",
+    "bookshop-c4-c4-courier"
+   ]
+  },
+  {
+   "id": "bookshop-c4-c4-containers",
+   "diagram": "c4.container",
+   "title": "Bookshop: containers",
+   "parent": "bookshop-c4-c4-context",
+   "subject": "bookshop-c4-c4-bookshop",
+   "nodeIds": [
+    "bookshop-c4-c4-bookshop",
+    "bookshop-c4-c4-shopper",
+    "bookshop-c4-c4-staff",
+    "bookshop-c4-c4-storefront",
+    "bookshop-c4-c4-api",
+    "bookshop-c4-c4-worker",
+    "bookshop-c4-c4-db",
+    "bookshop-c4-c4-queue",
+    "bookshop-c4-c4-payments",
+    "bookshop-c4-c4-mail",
+    "bookshop-c4-c4-courier"
+   ]
+  },
+  {
+   "id": "bookshop-c4-c4-components",
+   "diagram": "c4.component",
+   "title": "Shop API: components",
+   "parent": "bookshop-c4-c4-containers",
+   "subject": "bookshop-c4-c4-api",
+   "nodeIds": [
+    "bookshop-c4-c4-api",
+    "bookshop-c4-c4-storefront",
+    "bookshop-c4-c4-catalogue",
+    "bookshop-c4-c4-checkout",
+    "bookshop-c4-c4-accounts",
+    "bookshop-c4-c4-payment-client",
+    "bookshop-c4-c4-order-store",
+    "bookshop-c4-c4-db",
+    "bookshop-c4-c4-queue",
+    "bookshop-c4-c4-payments"
+   ]
+  },
+  {
+   "id": "bookshop-c4-c4-placing-an-order",
+   "diagram": "c4.dynamic",
+   "title": "Placing an order",
+   "parent": "bookshop-c4-c4-containers",
+   "subject": "bookshop-c4-c4-bookshop",
+   "nodeIds": [
+    "bookshop-c4-c4-shopper",
+    "bookshop-c4-c4-storefront",
+    "bookshop-c4-c4-api",
+    "bookshop-c4-c4-payments",
+    "bookshop-c4-c4-db",
+    "bookshop-c4-c4-queue",
+    "bookshop-c4-c4-worker",
+    "bookshop-c4-c4-courier",
+    "bookshop-c4-c4-mail"
+   ],
+   "edges": [
+    "bookshop-c4-c4-shopper-storefront",
+    "bookshop-c4-c4-storefront-api",
+    "bookshop-c4-c4-api-payments",
+    "bookshop-c4-c4-api-db",
+    "bookshop-c4-c4-api-queue",
+    "bookshop-c4-c4-worker-queue",
+    "bookshop-c4-c4-worker-courier",
+    "bookshop-c4-c4-worker-mail",
+    "bookshop-c4-c4-mail-shopper",
+    "bookshop-c4-c4-worker-db"
+   ]
+  },
+  {
+   "id": "bookshop-c4-c4-deployment",
+   "diagram": "c4.deployment",
+   "title": "Bookshop: production deployment",
+   "parent": "bookshop-c4-c4-context",
+   "nodeIds": [
+    "bookshop-c4-c4-device",
+    "bookshop-c4-c4-browser",
+    "bookshop-c4-c4-storefront-1",
+    "bookshop-c4-c4-web-host",
+    "bookshop-c4-c4-docker",
+    "bookshop-c4-c4-api-1",
+    "bookshop-c4-c4-worker-1",
+    "bookshop-c4-c4-db-host",
+    "bookshop-c4-c4-postgres",
+    "bookshop-c4-c4-db-1",
+    "bookshop-c4-c4-queue-1"
+   ]
+  }
+ ]
+}

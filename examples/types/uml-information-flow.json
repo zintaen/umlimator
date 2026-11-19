@@ -1,0 +1,193 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Information flow diagram examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-order-information-flow-order-flows",
+   "label": "What travels with an order",
+   "kind": "file",
+   "sublabel": "items and flow lines",
+   "what": "Information items, and dashed `<<flow>>` lines between classifiers and actors, each saying what it conveys.",
+   "how": "From examples/order-information-flow.json.",
+   "opensView": "order-information-flow-order-flows"
+  },
+  {
+   "id": "order-information-flow-shopper",
+   "type": "uml.Actor",
+   "label": "Shopper"
+  },
+  {
+   "id": "order-information-flow-storefront-component",
+   "type": "uml.Component",
+   "label": "Storefront"
+  },
+  {
+   "id": "order-information-flow-shop-api",
+   "type": "uml.Component",
+   "label": "Shop API"
+  },
+  {
+   "id": "order-information-flow-payment-provider-component",
+   "type": "uml.Component",
+   "label": "Payment provider"
+  },
+  {
+   "id": "order-information-flow-warehouse",
+   "type": "uml.Component",
+   "label": "Warehouse"
+  },
+  {
+   "id": "order-information-flow-email-service",
+   "type": "uml.Component",
+   "label": "Email service"
+  },
+  {
+   "id": "order-information-flow-order-info",
+   "type": "uml.InformationItem",
+   "label": "Order"
+  },
+  {
+   "id": "order-information-flow-card-details",
+   "type": "uml.InformationItem",
+   "label": "Card details"
+  },
+  {
+   "id": "order-information-flow-receipt-info",
+   "type": "uml.InformationItem",
+   "label": "Receipt"
+  },
+  {
+   "id": "order-information-flow-stock-info",
+   "type": "uml.InformationItem",
+   "label": "Stock level"
+  }
+ ],
+ "edges": [
+  {
+   "id": "order-information-flow-flow-shopper-storefront",
+   "type": "uml.InformationFlow",
+   "from": "order-information-flow-shopper",
+   "to": "order-information-flow-storefront-component",
+   "props": {
+    "conveyed": [
+     "order-information-flow-order-info",
+     "order-information-flow-card-details"
+    ]
+   }
+  },
+  {
+   "id": "order-information-flow-storefront-payments",
+   "type": "uml.InformationFlow",
+   "from": "order-information-flow-storefront-component",
+   "to": "order-information-flow-payment-provider-component",
+   "props": {
+    "conveyed": [
+     "order-information-flow-card-details"
+    ]
+   }
+  },
+  {
+   "id": "order-information-flow-flow-storefront-api",
+   "type": "uml.InformationFlow",
+   "from": "order-information-flow-storefront-component",
+   "to": "order-information-flow-shop-api",
+   "props": {
+    "conveyed": [
+     "order-information-flow-order-info"
+    ]
+   }
+  },
+  {
+   "id": "order-information-flow-api-warehouse",
+   "type": "uml.InformationFlow",
+   "from": "order-information-flow-shop-api",
+   "to": "order-information-flow-warehouse",
+   "props": {
+    "conveyed": [
+     "order-information-flow-order-info"
+    ]
+   }
+  },
+  {
+   "id": "order-information-flow-warehouse-api",
+   "type": "uml.InformationFlow",
+   "from": "order-information-flow-warehouse",
+   "to": "order-information-flow-shop-api",
+   "props": {
+    "conveyed": [
+     "order-information-flow-stock-info"
+    ]
+   }
+  },
+  {
+   "id": "order-information-flow-api-storefront",
+   "type": "uml.InformationFlow",
+   "from": "order-information-flow-shop-api",
+   "to": "order-information-flow-storefront-component",
+   "props": {
+    "conveyed": [
+     "order-information-flow-stock-info"
+    ]
+   }
+  },
+  {
+   "id": "order-information-flow-api-email",
+   "type": "uml.InformationFlow",
+   "from": "order-information-flow-shop-api",
+   "to": "order-information-flow-email-service",
+   "props": {
+    "conveyed": [
+     "order-information-flow-order-info",
+     "order-information-flow-receipt-info"
+    ]
+   }
+  },
+  {
+   "id": "order-information-flow-email-shopper",
+   "type": "uml.InformationFlow",
+   "from": "order-information-flow-email-service",
+   "to": "order-information-flow-shopper",
+   "props": {
+    "conveyed": [
+     "order-information-flow-receipt-info"
+    ]
+   }
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Information flow diagram examples",
+   "nodeIds": [
+    "card-order-information-flow-order-flows"
+   ],
+   "layout": {
+    "card-order-information-flow-order-flows": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "order-information-flow-order-flows",
+   "diagram": "uml.information-flow",
+   "title": "What travels with an order",
+   "parent": "overview",
+   "nodeIds": [
+    "order-information-flow-shopper",
+    "order-information-flow-storefront-component",
+    "order-information-flow-shop-api",
+    "order-information-flow-payment-provider-component",
+    "order-information-flow-warehouse",
+    "order-information-flow-email-service",
+    "order-information-flow-order-info",
+    "order-information-flow-card-details",
+    "order-information-flow-receipt-info",
+    "order-information-flow-stock-info"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,215 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Mindmap examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-bookshop-opening-plan-mm-plan",
+   "label": "Opening the bookshop",
+   "kind": "file",
+   "sublabel": "branches left and right",
+   "what": "A tree of topics laid out left and right of its root, branches as curves in the map's kind colours, edited by N, F2, Alt + arrows and drops; Mermaid mindmaps imported.",
+   "how": "From examples/bookshop-opening-plan.json.",
+   "opensView": "bookshop-opening-plan-mm-plan"
+  },
+  {
+   "id": "bookshop-opening-plan-mm-opening",
+   "type": "mindmap.Topic",
+   "label": "Opening the bookshop"
+  },
+  {
+   "id": "bookshop-opening-plan-mm-catalogue",
+   "type": "mindmap.Topic",
+   "label": "Catalogue",
+   "parent": "bookshop-opening-plan-mm-opening"
+  },
+  {
+   "id": "bookshop-opening-plan-mm-first-titles",
+   "type": "mindmap.Topic",
+   "label": "Choose the first 500 titles",
+   "parent": "bookshop-opening-plan-mm-catalogue"
+  },
+  {
+   "id": "bookshop-opening-plan-mm-wholesalers",
+   "type": "mindmap.Topic",
+   "label": "Agree terms with two wholesalers",
+   "parent": "bookshop-opening-plan-mm-catalogue"
+  },
+  {
+   "id": "bookshop-opening-plan-mm-website",
+   "type": "mindmap.Topic",
+   "label": "Website",
+   "parent": "bookshop-opening-plan-mm-opening"
+  },
+  {
+   "id": "bookshop-opening-plan-mm-storefront",
+   "type": "mindmap.Topic",
+   "label": "Storefront",
+   "parent": "bookshop-opening-plan-mm-website"
+  },
+  {
+   "id": "bookshop-opening-plan-mm-checkout",
+   "type": "mindmap.Topic",
+   "label": "Checkout",
+   "parent": "bookshop-opening-plan-mm-website"
+  },
+  {
+   "id": "bookshop-opening-plan-mm-card-payments",
+   "type": "mindmap.Topic",
+   "label": "Card payments",
+   "parent": "bookshop-opening-plan-mm-checkout"
+  },
+  {
+   "id": "bookshop-opening-plan-mm-order-emails",
+   "type": "mindmap.Topic",
+   "label": "Order confirmation emails",
+   "parent": "bookshop-opening-plan-mm-checkout"
+  },
+  {
+   "id": "bookshop-opening-plan-mm-launch",
+   "type": "mindmap.Topic",
+   "label": "Launch",
+   "parent": "bookshop-opening-plan-mm-opening"
+  },
+  {
+   "id": "bookshop-opening-plan-mm-newsletter",
+   "type": "mindmap.Topic",
+   "label": "Newsletter to the waiting list",
+   "parent": "bookshop-opening-plan-mm-launch"
+  },
+  {
+   "id": "bookshop-opening-plan-mm-opening-offer",
+   "type": "mindmap.Topic",
+   "label": "Free delivery in the first week",
+   "parent": "bookshop-opening-plan-mm-launch"
+  },
+  {
+   "id": "bookshop-opening-plan-mm-warehouse",
+   "type": "mindmap.Topic",
+   "label": "Warehouse",
+   "parent": "bookshop-opening-plan-mm-opening"
+  },
+  {
+   "id": "bookshop-opening-plan-mm-shelving",
+   "type": "mindmap.Topic",
+   "label": "Shelving and a packing table",
+   "parent": "bookshop-opening-plan-mm-warehouse"
+  },
+  {
+   "id": "bookshop-opening-plan-mm-courier",
+   "type": "mindmap.Topic",
+   "label": "Courier contract",
+   "parent": "bookshop-opening-plan-mm-warehouse"
+  },
+  {
+   "id": "bookshop-opening-plan-mm-legal",
+   "type": "mindmap.Topic",
+   "label": "Legal and money",
+   "parent": "bookshop-opening-plan-mm-opening"
+  },
+  {
+   "id": "bookshop-opening-plan-mm-company",
+   "type": "mindmap.Topic",
+   "label": "Register the company",
+   "parent": "bookshop-opening-plan-mm-legal"
+  },
+  {
+   "id": "bookshop-opening-plan-mm-bank",
+   "type": "mindmap.Topic",
+   "label": "Business bank account",
+   "parent": "bookshop-opening-plan-mm-legal"
+  },
+  {
+   "id": "bookshop-opening-plan-mm-hosting",
+   "type": "mindmap.Topic",
+   "label": "Hosting",
+   "parent": "bookshop-opening-plan-mm-opening"
+  },
+  {
+   "id": "bookshop-opening-plan-mm-on-gcp",
+   "type": "mindmap.Topic",
+   "label": "On Google Cloud",
+   "parent": "bookshop-opening-plan-mm-hosting"
+  },
+  {
+   "id": "bookshop-opening-plan-mm-on-azure",
+   "type": "mindmap.Topic",
+   "label": "On Azure",
+   "parent": "bookshop-opening-plan-mm-hosting"
+  },
+  {
+   "id": "bookshop-opening-plan-mm-on-aws",
+   "type": "mindmap.Topic",
+   "label": "On AWS",
+   "parent": "bookshop-opening-plan-mm-hosting"
+  }
+ ],
+ "edges": [],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Mindmap examples",
+   "nodeIds": [
+    "card-bookshop-opening-plan-mm-plan"
+   ],
+   "layout": {
+    "card-bookshop-opening-plan-mm-plan": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "bookshop-opening-plan-mm-plan",
+   "diagram": "mindmap",
+   "title": "Opening the bookshop",
+   "parent": "overview",
+   "nodeIds": [
+    "bookshop-opening-plan-mm-opening",
+    "bookshop-opening-plan-mm-catalogue",
+    "bookshop-opening-plan-mm-first-titles",
+    "bookshop-opening-plan-mm-wholesalers",
+    "bookshop-opening-plan-mm-website",
+    "bookshop-opening-plan-mm-storefront",
+    "bookshop-opening-plan-mm-checkout",
+    "bookshop-opening-plan-mm-card-payments",
+    "bookshop-opening-plan-mm-order-emails",
+    "bookshop-opening-plan-mm-launch",
+    "bookshop-opening-plan-mm-newsletter",
+    "bookshop-opening-plan-mm-opening-offer",
+    "bookshop-opening-plan-mm-warehouse",
+    "bookshop-opening-plan-mm-shelving",
+    "bookshop-opening-plan-mm-courier",
+    "bookshop-opening-plan-mm-legal",
+    "bookshop-opening-plan-mm-company",
+    "bookshop-opening-plan-mm-bank",
+    "bookshop-opening-plan-mm-hosting",
+    "bookshop-opening-plan-mm-on-gcp",
+    "bookshop-opening-plan-mm-on-azure",
+    "bookshop-opening-plan-mm-on-aws"
+   ],
+   "present": {
+    "bookshop-opening-plan-mm-catalogue": {
+     "side": "right"
+    },
+    "bookshop-opening-plan-mm-website": {
+     "side": "right"
+    },
+    "bookshop-opening-plan-mm-launch": {
+     "side": "right"
+    },
+    "bookshop-opening-plan-mm-warehouse": {
+     "side": "left"
+    },
+    "bookshop-opening-plan-mm-legal": {
+     "side": "left"
+    },
+    "bookshop-opening-plan-mm-hosting": {
+     "side": "left"
+    }
+   }
+  }
+ ]
+}

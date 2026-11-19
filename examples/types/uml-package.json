@@ -1,0 +1,215 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Package diagram examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-bookshop-packages-packages",
+   "label": "Bookshop packages",
+   "kind": "file",
+   "sublabel": "nesting, import, access, merge",
+   "what": "Packages as boxes holding what they own, a package inside a package, two classes named Order in two packages, `<<import>>`, `<<access>>`, `<<merge>>` and a dependency between them, and a profile applied by `<<apply>>`.",
+   "how": "From examples/bookshop-packages.json.",
+   "opensView": "bookshop-packages-packages"
+  },
+  {
+   "id": "bookshop-packages-shared",
+   "type": "uml.Package",
+   "label": "shared"
+  },
+  {
+   "id": "bookshop-packages-money",
+   "type": "uml.DataType",
+   "label": "Money",
+   "parent": "bookshop-packages-shared"
+  },
+  {
+   "id": "bookshop-packages-catalog",
+   "type": "uml.Package",
+   "label": "catalog"
+  },
+  {
+   "id": "bookshop-packages-book",
+   "type": "uml.Class",
+   "label": "Book",
+   "parent": "bookshop-packages-catalog"
+  },
+  {
+   "id": "bookshop-packages-sales",
+   "type": "uml.Package",
+   "label": "sales"
+  },
+  {
+   "id": "bookshop-packages-customer",
+   "type": "uml.Class",
+   "label": "Customer",
+   "parent": "bookshop-packages-sales"
+  },
+  {
+   "id": "bookshop-packages-order",
+   "type": "uml.Class",
+   "label": "Order",
+   "parent": "bookshop-packages-sales",
+   "props": {
+    "stereotypes": [
+     "entity"
+    ]
+   }
+  },
+  {
+   "id": "bookshop-packages-line",
+   "type": "uml.Class",
+   "label": "OrderLine",
+   "parent": "bookshop-packages-sales"
+  },
+  {
+   "id": "bookshop-packages-status",
+   "type": "uml.Enumeration",
+   "label": "OrderStatus",
+   "parent": "bookshop-packages-sales"
+  },
+  {
+   "id": "bookshop-packages-payments-package",
+   "type": "uml.Package",
+   "label": "payments"
+  },
+  {
+   "id": "bookshop-packages-payable",
+   "type": "uml.Interface",
+   "label": "Payable",
+   "parent": "bookshop-packages-payments-package"
+  },
+  {
+   "id": "bookshop-packages-payment",
+   "type": "uml.Class",
+   "label": "Payment",
+   "parent": "bookshop-packages-payments-package"
+  },
+  {
+   "id": "bookshop-packages-card",
+   "type": "uml.Package",
+   "label": "card",
+   "parent": "bookshop-packages-payments-package"
+  },
+  {
+   "id": "bookshop-packages-card-payment",
+   "type": "uml.Class",
+   "label": "CardPayment",
+   "parent": "bookshop-packages-card"
+  },
+  {
+   "id": "bookshop-packages-wholesale",
+   "type": "uml.Package",
+   "label": "wholesale"
+  },
+  {
+   "id": "bookshop-packages-wholesale-order",
+   "type": "uml.Class",
+   "label": "Order",
+   "parent": "bookshop-packages-wholesale"
+  },
+  {
+   "id": "bookshop-packages-conventions",
+   "type": "uml.Profile",
+   "label": "BookshopConventions"
+  }
+ ],
+ "edges": [
+  {
+   "id": "bookshop-packages-catalog-imports-shared",
+   "type": "uml.PackageImport",
+   "from": "bookshop-packages-catalog",
+   "to": "bookshop-packages-shared",
+   "props": {
+    "visibility": "public"
+   }
+  },
+  {
+   "id": "bookshop-packages-sales-imports-catalog",
+   "type": "uml.PackageImport",
+   "from": "bookshop-packages-sales",
+   "to": "bookshop-packages-catalog",
+   "props": {
+    "visibility": "public"
+   }
+  },
+  {
+   "id": "bookshop-packages-payments-accesses-shared",
+   "type": "uml.PackageImport",
+   "from": "bookshop-packages-payments-package",
+   "to": "bookshop-packages-shared",
+   "props": {
+    "visibility": "private"
+   }
+  },
+  {
+   "id": "bookshop-packages-wholesale-merges-sales",
+   "type": "uml.PackageMerge",
+   "from": "bookshop-packages-wholesale",
+   "to": "bookshop-packages-sales"
+  },
+  {
+   "id": "bookshop-packages-sales-needs-payments",
+   "type": "uml.Dependency",
+   "from": "bookshop-packages-sales",
+   "to": "bookshop-packages-payments-package"
+  },
+  {
+   "id": "bookshop-packages-sales-applies-conventions",
+   "type": "uml.ProfileApplication",
+   "from": "bookshop-packages-sales",
+   "to": "bookshop-packages-conventions"
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Package diagram examples",
+   "nodeIds": [
+    "card-bookshop-packages-packages"
+   ],
+   "layout": {
+    "card-bookshop-packages-packages": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "bookshop-packages-packages",
+   "diagram": "uml.package",
+   "title": "Bookshop packages",
+   "parent": "overview",
+   "direction": "down",
+   "nodeIds": [
+    "bookshop-packages-shared",
+    "bookshop-packages-money",
+    "bookshop-packages-catalog",
+    "bookshop-packages-book",
+    "bookshop-packages-sales",
+    "bookshop-packages-customer",
+    "bookshop-packages-order",
+    "bookshop-packages-line",
+    "bookshop-packages-status",
+    "bookshop-packages-payments-package",
+    "bookshop-packages-payable",
+    "bookshop-packages-payment",
+    "bookshop-packages-card",
+    "bookshop-packages-card-payment",
+    "bookshop-packages-wholesale",
+    "bookshop-packages-wholesale-order",
+    "bookshop-packages-conventions"
+   ],
+   "edges": [
+    "bookshop-packages-catalog-imports-shared",
+    "bookshop-packages-sales-imports-catalog",
+    "bookshop-packages-sales-applies-conventions",
+    "bookshop-packages-payments-accesses-shared",
+    "bookshop-packages-wholesale-merges-sales",
+    "bookshop-packages-sales-needs-payments"
+   ]
+  }
+ ]
+}

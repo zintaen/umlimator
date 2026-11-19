@@ -1,0 +1,207 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Use case diagram examples",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "card-shopping-use-cases-shopping",
+   "label": "Shopping",
+   "kind": "file",
+   "sublabel": "actors, subject, include, extend",
+   "what": "Actors as stick figures, use cases as ellipses with their extension points, the subject as a box holding them, and include, extend and generalization between them.",
+   "how": "From examples/shopping-use-cases.json.",
+   "opensView": "shopping-use-cases-shopping"
+  },
+  {
+   "id": "shopping-use-cases-shopper",
+   "type": "uml.Actor",
+   "label": "Shopper"
+  },
+  {
+   "id": "shopping-use-cases-member",
+   "type": "uml.Actor",
+   "label": "Member"
+  },
+  {
+   "id": "shopping-use-cases-payment-provider",
+   "type": "uml.Actor",
+   "label": "Payment provider"
+  },
+  {
+   "id": "shopping-use-cases-bookshop",
+   "type": "uml.Subject",
+   "label": "Online bookshop"
+  },
+  {
+   "id": "shopping-use-cases-browse",
+   "type": "uml.UseCase",
+   "label": "Browse the catalog",
+   "parent": "shopping-use-cases-bookshop"
+  },
+  {
+   "id": "shopping-use-cases-check-out",
+   "type": "uml.UseCase",
+   "label": "Check out",
+   "parent": "shopping-use-cases-bookshop",
+   "members": [
+    {
+     "id": "shopping-use-cases-checkout.payment",
+     "type": "uml.ExtensionPoint",
+     "label": "payment"
+    },
+    {
+     "id": "shopping-use-cases-checkout.extras",
+     "type": "uml.ExtensionPoint",
+     "label": "extras"
+    }
+   ]
+  },
+  {
+   "id": "shopping-use-cases-pay",
+   "type": "uml.UseCase",
+   "label": "Pay for the order",
+   "parent": "shopping-use-cases-bookshop"
+  },
+  {
+   "id": "shopping-use-cases-pay-by-card",
+   "type": "uml.UseCase",
+   "label": "Pay by card",
+   "parent": "shopping-use-cases-bookshop"
+  },
+  {
+   "id": "shopping-use-cases-redeem-voucher",
+   "type": "uml.UseCase",
+   "label": "Redeem a voucher",
+   "parent": "shopping-use-cases-bookshop"
+  },
+  {
+   "id": "shopping-use-cases-gift-wrap",
+   "type": "uml.UseCase",
+   "label": "Add gift wrapping",
+   "parent": "shopping-use-cases-bookshop"
+  },
+  {
+   "id": "shopping-use-cases-sign-in",
+   "type": "uml.UseCase",
+   "label": "Sign in",
+   "parent": "shopping-use-cases-bookshop"
+  },
+  {
+   "id": "shopping-use-cases-track",
+   "type": "uml.UseCase",
+   "label": "Track an order",
+   "parent": "shopping-use-cases-bookshop"
+  }
+ ],
+ "edges": [
+  {
+   "id": "shopping-use-cases-member-is-shopper",
+   "type": "uml.Generalization",
+   "from": "shopping-use-cases-member",
+   "to": "shopping-use-cases-shopper"
+  },
+  {
+   "id": "shopping-use-cases-shopper-browses",
+   "type": "uml.Association",
+   "from": "shopping-use-cases-shopper",
+   "to": "shopping-use-cases-browse"
+  },
+  {
+   "id": "shopping-use-cases-shopper-checks-out",
+   "type": "uml.Association",
+   "from": "shopping-use-cases-shopper",
+   "to": "shopping-use-cases-check-out"
+  },
+  {
+   "id": "shopping-use-cases-member-tracks",
+   "type": "uml.Association",
+   "from": "shopping-use-cases-member",
+   "to": "shopping-use-cases-track"
+  },
+  {
+   "id": "shopping-use-cases-provider-takes-card",
+   "type": "uml.Association",
+   "from": "shopping-use-cases-payment-provider",
+   "to": "shopping-use-cases-pay-by-card"
+  },
+  {
+   "id": "shopping-use-cases-checkout-includes-pay",
+   "type": "uml.Include",
+   "from": "shopping-use-cases-check-out",
+   "to": "shopping-use-cases-pay"
+  },
+  {
+   "id": "shopping-use-cases-track-includes-sign-in",
+   "type": "uml.Include",
+   "from": "shopping-use-cases-track",
+   "to": "shopping-use-cases-sign-in"
+  },
+  {
+   "id": "shopping-use-cases-card-is-pay",
+   "type": "uml.Generalization",
+   "from": "shopping-use-cases-pay-by-card",
+   "to": "shopping-use-cases-pay"
+  },
+  {
+   "id": "shopping-use-cases-voucher-extends-checkout",
+   "type": "uml.Extend",
+   "from": "shopping-use-cases-redeem-voucher",
+   "to": "shopping-use-cases-check-out",
+   "props": {
+    "extensionPoints": [
+     "shopping-use-cases-checkout.payment"
+    ],
+    "condition": "the shopper has a voucher code"
+   }
+  },
+  {
+   "id": "shopping-use-cases-gift-wrap-extends-checkout",
+   "type": "uml.Extend",
+   "from": "shopping-use-cases-gift-wrap",
+   "to": "shopping-use-cases-check-out",
+   "props": {
+    "extensionPoints": [
+     "shopping-use-cases-checkout.extras"
+    ],
+    "condition": "the order is a gift"
+   }
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Use case diagram examples",
+   "nodeIds": [
+    "card-shopping-use-cases-shopping"
+   ],
+   "layout": {
+    "card-shopping-use-cases-shopping": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "shopping-use-cases-shopping",
+   "diagram": "uml.use-case",
+   "title": "Shopping",
+   "parent": "overview",
+   "nodeIds": [
+    "shopping-use-cases-shopper",
+    "shopping-use-cases-member",
+    "shopping-use-cases-payment-provider",
+    "shopping-use-cases-bookshop",
+    "shopping-use-cases-browse",
+    "shopping-use-cases-check-out",
+    "shopping-use-cases-pay",
+    "shopping-use-cases-pay-by-card",
+    "shopping-use-cases-redeem-voucher",
+    "shopping-use-cases-gift-wrap",
+    "shopping-use-cases-sign-in",
+    "shopping-use-cases-track"
+   ]
+  }
+ ]
+}

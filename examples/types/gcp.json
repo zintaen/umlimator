@@ -1,0 +1,272 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Google Cloud diagram examples",
+ "root": "overview",
+ "iconPacks": {
+  "gcp": "2026-11-14"
+ },
+ "nodes": [
+  {
+   "id": "card-bookshop-gcp-gcp-on-gcp",
+   "label": "Bookshop on Google Cloud",
+   "kind": "file",
+   "sublabel": "projects, regions, zones, products",
+   "what": "Groups nested as boxes titled with their kind, each product a card with its icon and full service name, lines to a group's border. On this site the icons are the vendor's own, fetched with Google's terms accepted; in a copy of this repository the diagram draws glyphs until you fetch them with `umlimator.py pack fetch gcp`. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.",
+   "how": "From examples/bookshop-gcp.json.",
+   "opensView": "bookshop-gcp-gcp-on-gcp"
+  },
+  {
+   "id": "bookshop-gcp-gcp-users",
+   "type": "gcp.User",
+   "label": "Shoppers"
+  },
+  {
+   "id": "bookshop-gcp-gcp-project",
+   "type": "gcp.Zone",
+   "label": "bookshop-prod",
+   "props": {
+    "zoneType": "project"
+   }
+  },
+  {
+   "id": "bookshop-gcp-gcp-dns",
+   "type": "gcp.Product",
+   "label": "DNS",
+   "parent": "bookshop-gcp-gcp-project",
+   "props": {
+    "icon": "Cloud-DNS"
+   }
+  },
+  {
+   "id": "bookshop-gcp-gcp-lb",
+   "type": "gcp.Product",
+   "label": "Load balancer",
+   "parent": "bookshop-gcp-gcp-project",
+   "props": {
+    "icon": "Cloud-Load-Balancing"
+   }
+  },
+  {
+   "id": "bookshop-gcp-gcp-cdn",
+   "type": "gcp.Product",
+   "label": "CDN",
+   "parent": "bookshop-gcp-gcp-project",
+   "props": {
+    "icon": "Cloud-CDN"
+   }
+  },
+  {
+   "id": "bookshop-gcp-gcp-assets",
+   "type": "gcp.Product",
+   "label": "Storefront files",
+   "parent": "bookshop-gcp-gcp-project",
+   "props": {
+    "icon": "Cloud-Storage"
+   }
+  },
+  {
+   "id": "bookshop-gcp-gcp-queue",
+   "type": "gcp.Product",
+   "label": "Order queue",
+   "parent": "bookshop-gcp-gcp-project",
+   "props": {
+    "icon": "Pub-Sub"
+   }
+  },
+  {
+   "id": "bookshop-gcp-gcp-region",
+   "type": "gcp.Zone",
+   "label": "europe-west1",
+   "parent": "bookshop-gcp-gcp-project",
+   "props": {
+    "zoneType": "region"
+   }
+  },
+  {
+   "id": "bookshop-gcp-gcp-api",
+   "type": "gcp.Product",
+   "label": "Shop API",
+   "parent": "bookshop-gcp-gcp-region",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "bookshop-gcp-gcp-worker",
+   "type": "gcp.Product",
+   "label": "Order worker",
+   "parent": "bookshop-gcp-gcp-region",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "bookshop-gcp-gcp-network",
+   "type": "gcp.Zone",
+   "label": "bookshop-vpc",
+   "parent": "bookshop-gcp-gcp-region",
+   "props": {
+    "zoneType": "network"
+   }
+  },
+  {
+   "id": "bookshop-gcp-gcp-subnet",
+   "type": "gcp.Zone",
+   "label": "data subnet, 10.10.0.0/24",
+   "parent": "bookshop-gcp-gcp-network",
+   "props": {
+    "zoneType": "subnetwork"
+   }
+  },
+  {
+   "id": "bookshop-gcp-gcp-zone-b",
+   "type": "gcp.Zone",
+   "label": "europe-west1-b",
+   "parent": "bookshop-gcp-gcp-subnet",
+   "props": {
+    "zoneType": "zone"
+   }
+  },
+  {
+   "id": "bookshop-gcp-gcp-db",
+   "type": "gcp.Product",
+   "label": "Database, primary",
+   "parent": "bookshop-gcp-gcp-zone-b",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "bookshop-gcp-gcp-zone-c",
+   "type": "gcp.Zone",
+   "label": "europe-west1-c",
+   "parent": "bookshop-gcp-gcp-subnet",
+   "props": {
+    "zoneType": "zone"
+   }
+  },
+  {
+   "id": "bookshop-gcp-gcp-db-standby",
+   "type": "gcp.Product",
+   "label": "Database, standby",
+   "parent": "bookshop-gcp-gcp-zone-c",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  }
+ ],
+ "edges": [
+  {
+   "id": "bookshop-gcp-gcp-users-dns",
+   "type": "gcp.Path",
+   "from": "bookshop-gcp-gcp-users",
+   "to": "bookshop-gcp-gcp-dns",
+   "label": "looks up"
+  },
+  {
+   "id": "bookshop-gcp-gcp-users-lb",
+   "type": "gcp.Path",
+   "from": "bookshop-gcp-gcp-users",
+   "to": "bookshop-gcp-gcp-lb",
+   "label": "HTTPS"
+  },
+  {
+   "id": "bookshop-gcp-gcp-lb-cdn",
+   "type": "gcp.Path",
+   "from": "bookshop-gcp-gcp-lb",
+   "to": "bookshop-gcp-gcp-cdn",
+   "label": "storefront"
+  },
+  {
+   "id": "bookshop-gcp-gcp-cdn-assets",
+   "type": "gcp.Path",
+   "from": "bookshop-gcp-gcp-cdn",
+   "to": "bookshop-gcp-gcp-assets",
+   "label": "cache fill"
+  },
+  {
+   "id": "bookshop-gcp-gcp-lb-api",
+   "type": "gcp.Path",
+   "from": "bookshop-gcp-gcp-lb",
+   "to": "bookshop-gcp-gcp-api",
+   "label": "/api"
+  },
+  {
+   "id": "bookshop-gcp-gcp-api-db",
+   "type": "gcp.Path",
+   "from": "bookshop-gcp-gcp-api",
+   "to": "bookshop-gcp-gcp-db",
+   "label": "SQL"
+  },
+  {
+   "id": "bookshop-gcp-gcp-api-queue",
+   "type": "gcp.Path",
+   "from": "bookshop-gcp-gcp-api",
+   "to": "bookshop-gcp-gcp-queue",
+   "label": "paid order"
+  },
+  {
+   "id": "bookshop-gcp-gcp-queue-worker",
+   "type": "gcp.Path",
+   "from": "bookshop-gcp-gcp-queue",
+   "to": "bookshop-gcp-gcp-worker",
+   "label": "pushes"
+  },
+  {
+   "id": "bookshop-gcp-gcp-worker-db",
+   "type": "gcp.Path",
+   "from": "bookshop-gcp-gcp-worker",
+   "to": "bookshop-gcp-gcp-db",
+   "label": "SQL"
+  },
+  {
+   "id": "bookshop-gcp-gcp-db-replica",
+   "type": "gcp.Path",
+   "from": "bookshop-gcp-gcp-db",
+   "to": "bookshop-gcp-gcp-db-standby",
+   "label": "replicates"
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Google Cloud diagram examples",
+   "nodeIds": [
+    "card-bookshop-gcp-gcp-on-gcp"
+   ],
+   "layout": {
+    "card-bookshop-gcp-gcp-on-gcp": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "bookshop-gcp-gcp-on-gcp",
+   "diagram": "gcp",
+   "title": "Bookshop on Google Cloud",
+   "caption": "Icons from a pack you fetch: umlimator.py pack fetch gcp, after Google's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.",
+   "parent": "overview",
+   "nodeIds": [
+    "bookshop-gcp-gcp-users",
+    "bookshop-gcp-gcp-project",
+    "bookshop-gcp-gcp-dns",
+    "bookshop-gcp-gcp-lb",
+    "bookshop-gcp-gcp-cdn",
+    "bookshop-gcp-gcp-assets",
+    "bookshop-gcp-gcp-queue",
+    "bookshop-gcp-gcp-region",
+    "bookshop-gcp-gcp-api",
+    "bookshop-gcp-gcp-worker",
+    "bookshop-gcp-gcp-network",
+    "bookshop-gcp-gcp-subnet",
+    "bookshop-gcp-gcp-zone-b",
+    "bookshop-gcp-gcp-db",
+    "bookshop-gcp-gcp-zone-c",
+    "bookshop-gcp-gcp-db-standby"
+   ]
+  }
+ ]
+}
