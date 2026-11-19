@@ -103,6 +103,14 @@ function ownerChoices(model, x) {
   return [...at.values()].filter(n => (def ? n.type === 'uml.Profile' : OWN_BOXES.includes(n.type))).map(n => ({ id: n.id, label: full(n.id) }));
 }
 
+// the owner hook (a drop into a box, the Owner field): a stereotype or a metaclass goes to a profile only, the choices the Owner
+// field offers (profile-owns), else refused; anything else, null, the default (audit 44)
+function defOwner(model, view, id, parent) {
+  const { at } = ownIndex(model), x = at.get(id), p = parent != null ? at.get(parent) : null;
+  if (!x || !(x.type === 'uml.Stereotype' || x.type === 'uml.MetaclassReference') || (p && p.type === 'uml.Profile')) return null;
+  return { error: `A ${x.type === 'uml.Stereotype' ? 'stereotype' : 'metaclass'} is owned by a profile` };
+}
+
 /* ---- the rules about owners and boxes (§9.3, §10.3). Each problem: { level, rule, path, message, ids } ---- */
 const OWNER_RULES = {
   'owner-kinds': 'a classifier, package or instance is owned by a package',
@@ -178,4 +186,4 @@ function placeTabs(g) {
   return g;
 }
 
-export { viewLines, modelLines, boxHead, OWN_BOXES, OWNER_RULES, ownersOn, readingOrder, holdsLine, lineInside, ownerChoices, ownerProblems, placeTabs };
+export { viewLines, modelLines, boxHead, OWN_BOXES, OWNER_RULES, ownersOn, readingOrder, holdsLine, lineInside, ownerChoices, defOwner, ownerProblems, placeTabs };

@@ -3,7 +3,8 @@ import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { r2 } from '../draw/shapes.js';
 import { csAdd, csConnect, csGeo, csMember, csMoveTo, csRemove, csRename } from '../uml/composite.js';
-import { SYS_AS_UML, SYS_BACK, SYS_FIELD, SYS_CS_PROBLEMS, SYS_TEXT_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS } from './sysml.js';
+import { bdField, bdTypeGuard } from './blocks.js';
+import { SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_TEXT_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS } from './sysml.js';
 
 /* ---------- SysML's internal block diagram, sysml.internal-block (work package M3.4, notes/milestone-3.md §8, §13) ----------
    The view's subject, a block, is drawn as the composite structure type draws a class (src/uml/composite.js), through M3.1's
@@ -223,7 +224,9 @@ function SYS_IB_ADD(model, view, entry, label, at) {
   const r = SYS_IB_RESAY(SYS_IB_ON(csAdd)(model, view, SYS_IB_ENTRY(entry), label, at)), t = SYS_IB_OBJ(entry) ? entry.type : null;
   return Object.hasOwn(SYS_IB_PROP, t) ? SYS_IB_SAYAS(SYS_IB_KIND(r, x => (Object.hasOwn(SYS_IB_PROP, x.type) ? { ...x, type: t } : x)), t) : r;
 }
-function SYS_IB_MEMBER(model, view, owner, id, text) {
+// a port row whose type would break port-kind is refused, as the block definition view's (bdTypeGuard, audit 44)
+const SYS_IB_MEMBER = (model, view, owner, id, text) => bdTypeGuard(model, SYS_IB_ROW(model, view, owner, id, text));
+function SYS_IB_ROW(model, view, owner, id, text) {
   const k = /^(proxy|full)\s+(?=port\s)/i.exec(String(text)), ref = /^ref\s+/i.test(String(text)), t = String(text).replace(/^(proxy|full)\s+(?=port\s)/i, '').replace(/^ref\s+/i, '');
   const was = id == null ? null : SYS_IB_INDEX(model, view).el(id);
   // a row keeps its member's kind, whichever way the keyword changed (audit 19: dropping ref or port was dropped without a word);
@@ -290,7 +293,7 @@ const SYS_IB_TYPE_DEF = registerDiagramType('sysml.internal-block', {
   rows: SYS_IB_ROWS,
   text: SYS_IB_LINE_TEXT,
   edits: { connect: (model, view, from, to, at, line) => SYS_IB_ON(csConnect)(model, view, from, to, at, SYS_IB_ENTRY(line)), moveTo: SYS_IB_ON(csMoveTo), add: SYS_IB_ADD,
-    remove: SYS_IB_ON(csRemove), rename: SYS_IB_RENAME, member: SYS_IB_MEMBER, field: SYS_FIELD },
+    remove: SYS_IB_ON(csRemove), rename: SYS_IB_RENAME, member: SYS_IB_MEMBER, field: bdField },
 });
 
 export { SYS_IB_TYPE_DEF, SYS_IB_GEO, SYS_IB_PROBLEMS, SYS_IB_FLOW, SYS_IB_SPOT };

@@ -147,17 +147,24 @@ const DFD_SAYS = { process: 'transforms the data flowing in into the data flowin
 const dfdLegendItem = (glyph, name, says) => `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round" fill="none">${glyph}</g></svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`;
 const dfdLegend = (I, ids, lines, skin) => [
   ...['process', 'store', 'entity'].filter(k => ids.some(id => DFD_KIND[I.ty(id)] === k)).map(k => dfdLegendItem(DFD_GLYPH[`${k}-${skin}`], DFD_WORD[Object.keys(DFD_KIND).find(t => DFD_KIND[t] === k)], DFD_SAYS[k])),
+  // a node of no DFD kind, drawn as a plain box with its keyword (dfdKeyword), and a comment, drawn as a note: each keyed, as the
+  // flowchart and C4 key theirs (audit 44)
+  ...(ids.some(id => !DFD_KIND[I.ty(id)] && I.ty(id) !== 'uml.Comment') ? [dfdLegendItem('<rect x="3" y="2" width="22" height="12" fill="var(--um-panel)"/><path d="M9 6H19" stroke-width="1"/>', 'Element', 'a kind this view does not draw as its own')] : []),
+  ...(ids.some(id => I.ty(id) === 'uml.Comment') ? [dfdLegendItem('<path d="M4 3H20L24 7V13H4Z"/>', 'Comment', 'a note on the diagram')] : []),
   ...DFD_LINES.filter(t => lines.some(e => (t === 'dfd.DataFlow' ? dfdFlow(e) : e.type === t))).map(t => dfdLegendItem(DFD_GLYPH[t], t === 'dfd.DataFlow' ? 'Data flow' : 'Comment link', DFD_SAYS[t])),
   // a listed line of another family, drawn plain (dfdOther): "Line", as the object and component views key it (audit 27)
   ...(lines.some(dfdOther) ? [dfdLegendItem('<path d="M2 8H26"/>', 'Line', 'a kind of line this view does not draw as its own')] : [])];
 
 /* ---- the view laid out (§7): labels cut at 280 with room made for them (labelGaps); a gap of 64 px, as 48 laid a label of
    22-data-flow.json on a line, down (the note's §7.3, amended) ---- */
+// a node of no DFD kind (none, a typo such as dfd.Entity, another notation's): a box headed by its kind's keyword, «element» for
+// none or a dfd kind the view does not know, «class» for uml.Class, so it is not read as an external entity (audit 44)
+const dfdKeyword = t => (typeof t === 'string' && /^(?!dfd\.)[^.]+\.\w/.test(t) ? t.split('.').pop().replace(/^./, c => c.toLowerCase()) : 'element');
 const DFD_END = { __proto__: null, 'dfd.DataFlow': { from: 'none', to: 'arrow' }, 'uml.CommentLink': { from: 'none', to: 'none', dashed: true } };
 function dfdGeo({ model, view, pos, memo }) {
   const I = dfdIndex(model), ids = DFD_ARR(view.nodeIds).filter((id, k, a) => I.at.has(id) && a.indexOf(id) === k), lines = dfdLines(model, view), skin = dfdSkin(view), P = id => (pos && Object.hasOwn(pos, id) ? pos[id] : [0, 0]);
   const nodes = ids.map(id => { const x = I.at.get(id), k = DFD_KIND[x.type];
-    const d = { id, label: elName(x), type: x.type || 'dfd.Process', kind: 'file', ...(k ? { shape: `dfd-${k}-${skin}`, number: dfdNum(x) } : x.type === 'uml.Comment' ? { shape: 'note' } : { shape: 'classifier', compartments: [] }),
+    const d = { id, label: elName(x), type: x.type || 'dfd.Process', kind: 'file', ...(k ? { shape: `dfd-${k}-${skin}`, number: dfdNum(x) } : x.type === 'uml.Comment' ? { shape: 'note' } : { shape: 'classifier', stereotypes: [dfdKeyword(x.type)], compartments: [] }),
       aria: dfdNodeName(I, id, lines), saysOpens: !!(x.type === 'dfd.Process' && I.views.get(x.opensView)), col: P(id)[0], row: P(id)[1] };
     return { ...d, ...SHAPE[d.shape].size(d) }; });
   const edges = lines.map(e => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, ...(DFD_HAS(e.label) ? { label: String(e.label), cut: 280 } : {}),

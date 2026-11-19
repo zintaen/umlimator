@@ -3,8 +3,8 @@ import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { csAdd, csConnect, csGeo, csMember, csMoveTo, csRemove, csRename } from '../uml/composite.js';
-import { SYS_AS_UML, SYS_BACK, SYS_FIELD, SYS_CS_PROBLEMS, SYS_TEXT_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS } from './sysml.js';
-import { bdProblems } from './blocks.js';
+import { SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_TEXT_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS } from './sysml.js';
+import { bdField, bdProblems, bdTypeGuard } from './blocks.js';
 import { modelLines } from '../uml/owners.js';
 
 /* ---------- SysML's parametric diagram, sysml.parametric (work package M3.5, notes/milestone-3.md §9, §13) ----------
@@ -214,7 +214,8 @@ function SYS_PAR_ADD(model, view, entry, label, at) {
   const t = SYS_PAR_OBJ(entry) ? entry.type : null, I = SYS_PAR_INDEX(model, view);
   if (t === 'sysml.ValueProperty' && I.S && I.S.type === 'sysml.ConstraintBlock') return { error: 'A constraint block holds no value property: add a parameter row (param name : Type)' };
   const r = SYS_PAR_ON(csAdd)(model, view, SYS_PAR_ENTRY(entry), label, at);
-  return Object.hasOwn(SYS_PAR_PROP, t) ? SYS_PAR_MAP(r, cs => cs.map(c => (SYS_PAR_OBJ(c) && c.op === 'add' && SYS_PAR_OBJ(c.element) ? { ...c, element: { ...c.element, type: t } } : c))) : r;
+  // a constraint property typed by nothing or a block: refused, the row's form said (constraint-type, audit 44)
+  return bdTypeGuard(model, Object.hasOwn(SYS_PAR_PROP, t) ? SYS_PAR_MAP(r, cs => cs.map(c => (SYS_PAR_OBJ(c) && c.op === 'add' && SYS_PAR_OBJ(c.element) ? { ...c, element: { ...c.element, type: t } } : c))) : r);
 }
 function SYS_PAR_MEMBER(model, view, owner, id, text) {
   const param = /^param\s+/i.test(String(text)), t = String(text).replace(/^param\s+/i, 'port '), was = id == null ? null : SYS_PAR_INDEX(model, view).el(id);
@@ -225,7 +226,7 @@ function SYS_PAR_MEMBER(model, view, owner, id, text) {
   // a new row's kind is its owner's: a constraint block holds parameters, a block constraint and value properties (no ports here)
   const o = was ? null : SYS_PAR_INDEX(model, view).el(owner), cb = o && o.type === 'sysml.ConstraintBlock';
   if (o && Object.hasOwn(SYS_PAR_SUBJ, o.type) && param !== cb) return { error: cb ? 'A constraint block holds parameters: add a row param name : Type' : 'A parameter belongs to a constraint block: on a block a row is name : Type' };
-  return param ? SYS_PAR_ON(csMember)(model, view, owner, id, t) : SYS_PAR_KEEP(model, was, SYS_PAR_ON(csMember)(model, view, owner, id, t));
+  return bdTypeGuard(model, param ? SYS_PAR_ON(csMember)(model, view, owner, id, t) : SYS_PAR_KEEP(model, was, SYS_PAR_ON(csMember)(model, view, owner, id, t))); // audit 44
 }
 // a property row's kind is its type's, as a new row's is (SYS_BACK): a type that names a constraint block makes a constraint
 // property, any other a value property. A retype across that line, by its row or by F2, is refused as a changed keyword is
@@ -296,7 +297,7 @@ const SYS_PAR_TYPE = registerDiagramType('sysml.parametric', {
   word: SYS_PAR_WORD,
   rows: SYS_PAR_ROWS,
   text: SYS_PAR_LINE_TEXT,
-  edits: { connect: SYS_PAR_CONNECT, moveTo: SYS_PAR_ON(csMoveTo), add: SYS_PAR_ADD, remove: SYS_PAR_ON(csRemove), rename: SYS_PAR_RENAME, member: SYS_PAR_MEMBER, field: SYS_FIELD },
+  edits: { connect: SYS_PAR_CONNECT, moveTo: SYS_PAR_ON(csMoveTo), add: SYS_PAR_ADD, remove: SYS_PAR_ON(csRemove), rename: SYS_PAR_RENAME, member: SYS_PAR_MEMBER, field: bdField },
 });
 
 export { SYS_PAR_TYPE, SYS_PAR_GEO, SYS_PAR_PROBLEMS };

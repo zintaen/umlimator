@@ -60,7 +60,7 @@ test('the definition: uml.profile is registered with its palette, its four lines
   assert.deepEqual(T.props['uml.Stereotype'], [{ key: 'isAbstract', label: 'Abstract', kind: 'bool' }]);
   assert.deepEqual(T.props['uml.Profile'].map(f => f.key), ['stereotypes']);
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows', 'rankFlip']) assert.equal(typeof T[k], 'function', k);
-  assert.deepEqual(Object.keys(T.edits), ['add', 'connect', 'rename', 'field']); // field: the Name field's clash check (audit 40)
+  assert.deepEqual(Object.keys(T.edits), ['add', 'connect', 'rename', 'field', 'owner']); // field: the Name field's clash check (audit 40); owner: a stereotype's drop (audit 44)
   for (const r of [...Object.keys(PR_RULES), ...Object.keys(STY_RULES), 'generalization-kinds', 'owner-kinds']) assert.ok(Object.hasOwn(T.rules, r), r);
   assert.deepEqual(Object.keys(PR_RULES), ['profile-owns', 'stereotype-names', 'extension-ends', 'application-ends', 'metaclass-known']);
   assert.ok(T.rankFlip({ type: 'uml.Extension' }) && T.rankFlip({ type: 'uml.Generalization' }) && !T.rankFlip({ type: 'uml.ProfileApplication' }));
@@ -252,7 +252,7 @@ test('connect (§4.3): an extension from a stereotype to a metaclass, an applica
   assert.deepEqual(c('conventions', 'conventions', 'ProfileApplication'), { error: 'A profile application runs from a package to a profile other than itself' });
   const two = structuredClone(PROFILE); two.nodes.push(N('p2', 'Profile', 'Other'));
   assert.equal(T.edits.connect(two, V, 'p2', 'conventions', null, { type: 'uml.ProfileApplication' }), null, 'a profile is a package');
-  assert.equal(c('owned', 'entity', 'Generalization'), null); assert.equal(c('order', 'entity', 'CommentLink'), null);
+  assert.equal(c('owned', 'entity', 'Generalization'), null); assert.deepEqual(c('order', 'entity', 'CommentLink'), { error: 'A comment link runs from a comment' }); // no comment at either end (audit 44)
   assert.deepEqual(c('mc-class', 'column', 'Extension'), { error: 'An extension runs from a stereotype to a metaclass' });
   assert.deepEqual(c('column', 'order', 'Extension'), { error: 'An extension runs from a stereotype to a metaclass' });
   assert.deepEqual(c('order', 'conventions', 'ProfileApplication'), { error: 'A profile application runs from a package to a profile' });
@@ -524,4 +524,44 @@ test('audit 41: F2, the Name field and Add refuse a profile named as another, an
   // an element of no type the view does not show is no class here
   const h = structuredClone(m); h.views[0].nodeIds = h.views[0].nodeIds.filter(id => id !== 'u');
   assert.equal(T.edits.field(h, h.views[0], 'e1', 'label', 'Thing'), null);
+});
+
+// audit 44: a stereotype or a metaclass dropped out of its profile (on the stage, into a plain package) is refused on the hint
+// line, as the Owner field offers profiles only; into another profile it moves; any other element's drop is the default
+test('a stereotype or metaclass dropped anywhere but a profile is refused, the drop and the Owner field alike (audit 44)', async () => {
+  const { typedEditor } = await import('../src/canvas/edit.js'); await import('../src/typed/edit.js');
+  const m = { schemaVersion: 2, nodes: [N('prof', 'Profile', 'Persist'), N('ent', 'Stereotype', 'Entity', 'prof'), N('mc', 'MetaclassReference', 'Class', 'prof'), N('p2', 'Profile', 'Other'),
+    N('app', 'Package', 'App'), N('ord', 'Class', 'Order', 'app', { props: { stereotypes: ['entity'] } })],
+    edges: [L('x', 'Extension', 'ent', 'mc'), L('pa', 'ProfileApplication', 'app', 'prof')], views: [{ id: 'v', diagram: 'uml.profile', nodeIds: ['prof', 'ent', 'mc', 'p2', 'app', 'ord'] }] };
+  const run = (id, into, how = 'drop') => { const got = [], status = [];
+    const I = typedEditor({ root: { addEventListener() {} }, stage: { addEventListener() {} }, can: () => true, say() {}, status: s => status.push(s), emit: c => got.push(c), view: () => 'v', model: () => m, picked: () => [], sel: () => null,
+      geo: () => ({ byId: {}, nodes: [] }), cam: () => null, focus() {}, touch() {} });
+    if (how === 'drop') I.drop({ id, x: 0, y: 0, w: 100, h: 40, col: 0, row: 0 }, { x: 500, y: 500, col: 3, row: 3 }, into, m.nodes.find(n => n.id === id).parent ?? null); else I.owner(id, into);
+    return { cmds: got.flat(), status }; };
+  for (const [id, word] of [['ent', 'stereotype'], ['mc', 'metaclass']]) for (const into of [null, 'app']) for (const how of ['drop', 'owner']) {
+    const r = run(id, into, how); assert.deepEqual(r.cmds, [], `${how} ${id} into ${into}`); assert.deepEqual(r.status, [`A ${word} is owned by a profile`]); }
+  const moved = run('ent', 'p2'); assert.deepEqual(moved.cmds, [{ op: 'reparent', id: 'ent', parent: 'p2' }]); assert.deepEqual(moved.status, []);
+  assert.ok(!validate(apply(m, moved.cmds)).some(p => p.rule === 'profile-owns'));
+  assert.deepEqual(run('ord', null).cmds, [{ op: 'reparent', id: 'ord', parent: null }], 'a class: the default');
+  // the class and package views guard it too: a stereotype the view shows
+  for (const d of ['uml.class', 'uml.package']) assert.deepEqual(diagramOf({ diagram: d }).edits.owner(m, { ...m.views[0], diagram: d }, 'ent', 'app'), { error: 'A stereotype is owned by a profile' });
+});
+
+// audit 44: a comment link drawn from an element to a comment, on the class, package and profile views, is added from the
+// comment; with no comment at either end, refused as the block view refuses it; a generalization generalization-kinds calls an
+// error is refused on the class view
+test('connect: a comment link drawn to a comment is added from it, and a generalization between kinds is refused (audit 44)', () => {
+  for (const d of ['uml.class', 'uml.package', 'uml.profile']) {
+    const pr = d === 'uml.profile', m = { schemaVersion: 2, nodes: [N('p', pr ? 'Profile' : 'Package', 'P'), N('a', pr ? 'Stereotype' : 'Class', 'A', 'p'), N('b', pr ? 'Stereotype' : 'Class', 'B', 'p'), N('k', 'Comment', 'note'), N('k2', 'Comment', 'other'), { id: 'commentlink1', type: 'uml.Comment', label: 'taken' }],
+      edges: [], views: [{ id: 'v', diagram: d, nodeIds: ['p', 'a', 'b', 'k', 'k2', 'commentlink1'] }] }, D = diagramOf(m.views[0]), c = (f, t) => D.edits.connect(m, m.views[0], f, t, null, { type: 'uml.CommentLink' });
+    const r = c('a', 'k'); assert.deepEqual(r, [{ op: 'add', element: { id: 'commentlink2', type: 'uml.CommentLink', from: 'k', to: 'a' }, view: 'v' }], d);
+    assert.deepEqual(validate(apply(m, r)).filter(p => p.level === 'error'), [], d);
+    assert.equal(c('k', 'a'), null, `${d}: from a comment, the default`); assert.equal(c('k', 'k2'), null);
+    assert.deepEqual(c('a', 'b'), { error: 'A comment link runs from a comment' }, d); }
+  const C = diagramOf({ diagram: 'uml.class' }), m = { schemaVersion: 2, nodes: [N('p', 'Package', 'P'), N('a', 'Class', 'A', 'p'), N('a2', 'Class', 'A2', 'p'), N('i', 'Interface', 'I', 'p'), N('k', 'Comment', 'note'), { id: 'u', label: 'Untyped' }, { id: 'blk', type: 'sysml.Block', label: 'Blk' }],
+    edges: [], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['p', 'a', 'a2', 'i', 'k', 'u', 'blk'] }] }, g = (f, t) => C.edits.connect(m, m.views[0], f, t, null, { type: 'uml.Generalization' });
+  assert.deepEqual(g('a', 'i'), { error: 'A generalization joins two classifiers of one kind, not a class and an interface' });
+  assert.deepEqual(g('a', 'p'), { error: 'A generalization joins two classifiers of one kind, not a class and a package' });
+  assert.deepEqual(g('k', 'a'), { error: 'A generalization joins two classifiers of one kind, not a comment and a class' });
+  for (const [f, t] of [['a', 'a2'], ['u', 'a'], ['a', 'blk']]) { assert.equal(g(f, t), null, `${f} to ${t}`); } // an untyped one is a class; another notation's end is its own
 });

@@ -628,3 +628,32 @@ test('audit 41: validate() says an operation\'s parameter name, direction or typ
     assert.deepEqual(said(one(type, diagram, { parameters: [{ direction: 'in', name: 'x', valueType: 'Int' }, 7, null], returnType: 'Real' })), [], `${type}: text, or no parameter at all, is said nothing`);
   }
 });
+
+// audit 44: a row, the parametric palette's add, a panel field and the internal block view's port row that would bring a
+// constraint-type or port-kind error are refused with the row's form; a type naming nothing stays a warning, let through
+test('a member typed so it breaks constraint-type or port-kind is refused, by row, palette, field and port row (audit 44)', () => {
+  const errs = m => validate(m).filter(p => p.level === 'error').map(p => p.message);
+  const BL = JSON.parse(readFileSync(new URL('../examples/ebike-blocks.json', import.meta.url), 'utf8')), BV = BL.views[0], BT = diagramOf(BV);
+  assert.deepEqual(errs(BL), []);
+  const row = (text, id = null) => BT.edits.member(BL, BV, 'ebike', id, text);
+  for (const [text, id] of [['constraint city', null], ['constraint city : Battery', null], ['constraint usable : Battery', 'ebike.usable'], ['proxy port p : Battery', null], ['proxy port p', null]]) {
+    const r = row(text, id); assert.ok(r && typeof r.error === 'string', text);
+    assert.match(r.error, /^(Constraint property|Proxy port) "EBike"\.\w+ is typed by .*: a (constraint property is name : ConstraintBlock|proxy port is typed by an interface block, a full port by none)$/, text); }
+  for (const text of ['constraint city : UsableEnergy', 'constraint c : Nope', 'part city : UsableEnergy', 'full port q : Battery', 'port p : Battery', 'value v : Real']) {
+    const r = row(text); assert.ok(Array.isArray(r), text); assert.deepEqual(errs(apply(BL, r)), [], text); }
+  assert.ok(Array.isArray(row('constraint usable : UsableEnergy', 'ebike.usable').commands), 'an edit that keeps it typed');
+  // the panel: a constraint property's type set to a block, or cleared, refused; to a constraint block, the default
+  assert.match(BT.edits.field(BL, BV, 'ebike.usable', 'props.valueType', 'Battery').error, /^Constraint property "EBike"\.usable is typed by "Battery"/);
+  assert.match(BT.edits.field(BL, BV, 'ebike.usable', 'props.valueType', undefined).error, /typed by nothing/);
+  assert.equal(BT.edits.field(BL, BV, 'ebike.usable', 'props.valueType', 'UsableEnergy'), null);
+  // a model with the error already: an edit that keeps it is not refused for it
+  const bad = apply(BL, [{ op: 'set', id: 'ebike.usable', path: 'props.valueType', value: 'Battery' }]);
+  assert.ok(Array.isArray(BT.edits.member(bad, bad.views[0], 'ebike', null, 'value v : Real')));
+  // the parametric palette's Constraint property: typed by nothing refused; name : ConstraintBlock added
+  const PR = JSON.parse(readFileSync(new URL('../examples/ebike-range.json', import.meta.url), 'utf8')), PV = PR.views[0], PT = diagramOf(PV), E = PT.elements.find(e => e.type === 'sysml.ConstraintProperty');
+  assert.match(PT.edits.add(PR, PV, E, 'city', null).error, /typed by nothing, not a constraint block: a constraint property is name : ConstraintBlock$/);
+  const ok = PT.edits.add(PR, PV, E, 'city : UsableEnergy', null); assert.ok(Array.isArray(ok)); assert.deepEqual(errs(apply(PR, ok)), []);
+  // the internal block view: a proxy port row typed by a block refused
+  const IB = diagramOf({ diagram: 'sysml.internal-block' }), iv = { id: 'ib', diagram: 'sysml.internal-block', subject: 'ebike', nodeIds: [] }, IM = { ...BL, views: [...BL.views, iv] };
+  assert.match(IB.edits.member(IM, iv, 'ebike', null, 'proxy port p : Battery').error, /^Proxy port "EBike"\.p is typed by "Battery", not an interface block: /);
+});

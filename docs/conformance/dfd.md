@@ -22,6 +22,7 @@ switch repaints and lays nothing out (§4.3).
 | Data flow | `dfd.DataFlow` | a solid line with a filled arrow, its label cut at 280 px | the same |
 | Level | a process's `opensView` names a `dfd` view whose `parent` is the view the process is on | | |
 | Comment | `uml.Comment`, `uml.CommentLink` | a note, a dashed line | the same |
+| Any other node | no type, or a kind the view does not draw (`dfd.Entity`, `uml.Class`) | a plain box headed by its keyword, `«element»` (none, or a `dfd.` kind the view does not know) or the kind's own (`«class»`), keyed `Element` | the same |
 
 `D` on a selected process that opens no view makes its level in one transaction: a new view holding the far ends of the
 process's flows and one child process numbered `<n>.1` (the next free), each flow copied to it, so the level balances

@@ -289,13 +289,16 @@ function mmRemove(model, view, ids, fromModel) {
 const mmAllKids = X => { const m = new Map(); X.N.forEach((n, id) => { const p = X.topic(id) && X.parentOf(id); if (p != null) (m.get(p) || m.set(p, []).get(p)).push(id); }); return m; };
 const mmUnder = (X, id, of) => { for (let p = X.parentOf(of), seen = new Set(); p != null && !seen.has(p); seen.add(p), p = X.parentOf(p)) if (p === id) return true; return false; };
 
-/* rename(model, view, id, text): F2, a topic's text */
+/* rename(model, view, id, text): F2, a topic's text; the panel's Name field too (field). A new text changes the topic's height and
+   so its branch's band, which would swing the first-level topics with no side stored: pinned first, as every other gesture pins
+   them (audit 44) */
 function mmRename(model, view, id, text) {
   const V = mmView(model, view); if (!V) return null;
   const X = mmIndex(model, V); if (!X.topic(id)) return null;
   const s = String(text ?? '').trim(); if (!s) return mmErr('a topic needs its text');
-  return [{ op: 'set', id, path: 'label', value: s }];
+  return [...mmPinsAt(model, X, V, null), { op: 'set', id, path: 'label', value: s }];
 }
+const mmField = (model, view, id, path, value) => (String(path) === 'label' && typeof value === 'string' ? mmRename(model, view, id, value) : null);
 const mmConnect = () => mmErr('A mindmap has no lines; drop a topic on another to move it');
 
 /* the outline's Show on a topic: the topic and the descendants hidden with it (under it through hidden topics only), in
@@ -330,7 +333,7 @@ const MM_TYPE = registerDiagramType('mindmap', {
   describe: mmDescribe,
   word: () => 'Topic',
   rows: mmRows,
-  edits: { connect: mmConnect, moveTo: mmMoveTo, add: mmAdd, remove: mmRemove, rename: mmRename },
+  edits: { connect: mmConnect, moveTo: mmMoveTo, add: mmAdd, remove: mmRemove, rename: mmRename, field: mmField },
 });
 
 // the outline's Show, on a mindmap topic, shows what was hidden with it (the canvas's Show adds the one id): heard on the
