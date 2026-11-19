@@ -497,3 +497,20 @@ test('a "string" (a name, a field\'s value) runs over line breaks to its closing
   const open = read('requirementDiagram\nrequirement r {\n  text: "never closed\n  risk: high\n}\n');
   assert.deepEqual([open.model.nodes[0].props, lines(open)], [{ text: '"never closed', risk: 'high' }, []]);
 });
+
+test('a field\'s value holding a line feed is written in quotes over its lines and read back, as Mermaid\'s qString reads it (audit 50)', () => {
+  // Mermaid 12.3.0's parser reads this as setNewElementType("simulation\nmodel") and setNewElementDocRef("spec\nv2")
+  const r = read('requirementDiagram\nelement e {\ntype: "simulation\nmodel"\ndocref: "spec\nv2"\n}\n');
+  assert.deepEqual(r.model.nodes[0].ext, { mermaid: { type: 'simulation\nmodel', docref: 'spec\nv2' } });
+  const t = write(r.model);
+  assert.doesNotMatch(t, /not written/, t);
+  assert.deepEqual(read(t).model.nodes[0].ext, r.model.nodes[0].ext);
+  const model = reqId => ({ schemaVersion: 2, nodes: [{ id: 'r1', type: 'sysml.Requirement', label: 'R', props: { reqId } }], edges: [], views: [{ id: 'v', diagram: 'sysml.requirement', nodeIds: ['r1'] }] });
+  for (const reqId of ['a\nb', 'a\n  b c', '\na', 'a\n', 'a\n}\nb', 'x%%\ny']) {
+    const w = write(model(reqId), 'v');
+    assert.doesNotMatch(w, /not written/, w);
+    assert.equal(read(w).model.nodes[0].props.reqId, reqId, w);
+  }
+  // a carriage return (a line's \r the reader drops) or a line that starts %% (Mermaid takes it out as a comment): not written
+  for (const reqId of ['a\r\nb', 'a\n%% c', 'a\n  %%c']) assert.match(write(model(reqId), 'v'), /not written: r1: reqId .*which Mermaid's quotes cannot hold/s, reqId);
+});

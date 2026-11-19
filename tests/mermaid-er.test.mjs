@@ -431,3 +431,22 @@ test('a line reported as not understood adds no entity, and uses up the %% id: h
   const ok = read('erDiagram\n%% id: li\nLINE-ITEM["Line item"]:::x {\n  int id PK\n}\nB[Bee]');
   assert.deepEqual(ok.model.nodes.map(n => [n.id, n.label]), [['li', 'Line item'], ['B', 'Bee']]);
 });
+
+test('a relationship\'s "label" or a column\'s "comment" runs over line breaks to its closing quote, as Mermaid\'s string token (audit 50)', () => {
+  // Mermaid 12.3.0's ER parser: addRelationship(CUSTOMER, "places\nmany", ORDER), addAttributes(ORDER, [id string "the\n  key"])
+  const r = read('erDiagram\nCUSTOMER ||--o{ ORDER : "places\nmany"\nORDER {\n  string id "the\n  key"\n}\n');
+  assert.deepEqual(r.model.edges.map(e => [e.from, e.to, e.label]), [['CUSTOMER', 'ORDER', 'places\nmany']]);
+  assert.deepEqual(r.model.nodes.find(n => n.id === 'ORDER').members.map(m => [m.label, m.props.dataType, m.ext.mermaid.comment]), [['id', 'string', 'the\n  key']]);
+  assert.deepEqual(r.report.map(x => [x.line, x.status]), [[5, 'approximated']]);
+  // a block on one line, a row after the closing quote, a relationship after the label: each read as Mermaid reads it
+  const one = read('erDiagram\nORDER { string id "a\nb" string b }\nC ||--o{ D : "x\ny" \nE ||--o{ F : "p"\n');
+  assert.deepEqual(one.model.nodes.find(n => n.id === 'ORDER').members.map(m => [m.label, m.ext?.mermaid?.comment ?? null]), [['id', 'a\nb'], ['b', null]]);
+  assert.deepEqual(one.model.edges.map(e => e.label), ['x\ny', 'p']);
+  // round trip
+  const back = read(write(r.model)).model;
+  assert.deepEqual([back.edges.map(e => e.label), back.nodes.find(n => n.id === 'ORDER').members.map(m => m.ext.mermaid.comment)], [['places\nmany'], ['the\n  key']]);
+  // no closing quote after it: the line read as before
+  assert.deepEqual(read('erDiagram\nA ||--o{ B : "never\nC ||--o{ D : p\n').model.edges.map(e => e.label), ['"never', 'p']);
+  const open = read('erDiagram\nORDER {\n  string id "open\n  int n\n}\n');
+  assert.deepEqual([open.model.nodes[0].members.map(m => m.label), open.report.map(x => x.line)], [['n'], [3]]);
+});
