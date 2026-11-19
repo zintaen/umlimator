@@ -185,7 +185,7 @@ test('audit 15: a Google Cloud product the pin has no icon of draws its category
   assert.doesNotMatch(read('../docs/conformance/gcp.md'), /draw a glyph/);
   assert.match(read('../docs/conformance/gcp.md'), /draw their\s+category's icon/);
   assert.doesNotMatch(read('../examples/README.md'), /The site draws it with no icon pack|Glyphs and full names on the site/);
-  assert.doesNotMatch(read('../examples/index.html'), /a glyph where the pinned pack lacks one/);
+  assert.doesNotMatch(read('../docs/examples.md'), /a glyph where the pinned pack lacks one/);
 });
 
 test('audit 15: the API page states the typed views\' default direction as the schema does', () => {

@@ -1,5 +1,6 @@
-// The documentation site (GitHub Pages, under /umlimator/). The examples gallery and pages are built beside it by CI's
-// site job, at /umlimator/examples/, and keep their URLs; links to them leave the site's router (target="_self").
+// The documentation site (GitHub Pages, under /umlimator/). Its Examples page (examples.md) and a page per diagram type
+// and for the Atlas (gallery/) are written by tools/gallery.mjs; the rendered example pages, their pictures and PDFs are
+// built beside it by CI's site job, at /umlimator/examples/, and links to them leave the site's router (target="_self").
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { posix } from 'node:path';
@@ -9,6 +10,8 @@ import umlimator from '../../lib/umlimator-markdown-it.js';
 const REPO = 'https://github.com/zintaen/umlimator';
 const BASE = '/umlimator/';
 const { version } = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
+// the examples' pages (examples.md, gallery/*.md) and their sidebar: written by tools/gallery.mjs
+const gallery = JSON.parse(readFileSync(new URL('./gallery.json', import.meta.url), 'utf8'));
 // docs/ files the site leaves out: their links go to GitHub
 const EXCLUDED = ['diagrams/**', 'editing.md', 'module-api.md'];   // module-api.md's releases are shown by changelog.md
 const excluded = (p: string) => p.startsWith('diagrams/') || p === 'editing.md' || p === 'module-api.md';
@@ -109,6 +112,8 @@ export const sidebar = {
     { text: 'API', items: api.map(([text, s]) => ({ text, link: s === 'index' ? '/api/' : `/api/${s}` })) },
     { text: 'Reference', items: [{ text: 'Diagram types', link: '/types' }, { text: 'Changelog', link: '/changelog' }] },
   ],
+  '/examples': gallery,   // the examples' index, examples.md (a key matches the paths it starts)
+  '/gallery/': gallery,
   '/conformance/': [
     { text: 'Diagram types', items: [{ text: 'All 28 types', link: '/types' }] },
     { text: 'Conformance notes', items: conformance.map(s => ({ text: label(s), link: `/conformance/${s}` })) },
@@ -153,7 +158,7 @@ export default defineConfig({
     nav: [
       { text: 'Guide', link: '/guide/getting-started', activeMatch: '^/guide/' },
       { text: 'API', link: '/api/', activeMatch: '^/api/' },
-      { text: 'Examples', link: '/examples/index.html', target: '_self', activeMatch: '^/examples/' },
+      { text: 'Examples', link: '/examples', activeMatch: '^/(examples$|gallery/)' },
       { text: `v${version}`, items: [
         { text: 'Changelog', link: '/changelog' },
         { text: 'npm', link: 'https://www.npmjs.com/package/umlimator' },
