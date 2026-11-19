@@ -9,7 +9,7 @@ Layered architecture maps and 28 UML, SysML, C4, BPMN and cloud diagram types yo
 [![docs](https://img.shields.io/badge/docs-zintaen.github.io%2Fumlimator-blue)](https://zintaen.github.io/umlimator/)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/cyberskill)
 
-One model drives an ES module with no dependencies, a CLI, a GitHub Action that posts what a pull request changes in your maps, and an MCP server for AI assistants. [Documentation](https://zintaen.github.io/umlimator/) | [Examples](https://zintaen.github.io/umlimator/examples/index.html) | [Playground](https://zintaen.github.io/umlimator/examples/playground.html) | [Changelog](https://zintaen.github.io/umlimator/changelog.html)
+One model drives an ES module with no dependencies, a CLI, a GitHub Action that posts what a pull request changes in your maps, and an MCP server for AI assistants. [Documentation](https://zintaen.github.io/umlimator/) | [Examples](https://zintaen.github.io/umlimator/examples.html) | [Playground](https://zintaen.github.io/umlimator/examples/playground.html) | [Changelog](https://zintaen.github.io/umlimator/changelog.html)
 
 [![The Umlimator Atlas's overview: umlimator's parts (the model JSON, the CLI, the module, the page and the diff Action) and who uses each](examples/stills/umlimator-atlas-overview.png)](https://zintaen.github.io/umlimator/examples/umlimator-atlas.html)
 
