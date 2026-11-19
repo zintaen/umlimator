@@ -4,7 +4,7 @@ import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { RULES, classProblems, commentConnect, drawnLines, lineIn, lineItem, lineVerb, memberClash, paramTextProblems, printMember } from './class.js';
+import { RULES, classProblems, commentConnect, drawnLines, lineIn, lineItem, lineVerb, memberClash, multProblem, paramTextProblems, printMember } from './class.js';
 import { OWN_BOXES, OWNER_RULES, holdsLine, modelLines, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 
 /* ---------- the object diagram, uml.object (work package 2.3, notes/stage-2.md §9) ----------
@@ -120,7 +120,9 @@ function obTextProblems(model, view) {
     if (n.type === 'uml.Comment' || OWN_BOXES.includes(n.type)) return;
     const ms = OB_ARR(n.members), at = m => `nodes[${i}].members[${ms.indexOf(m)}]`;
     if (isInstance(n)) out.push(...propTextProblems(n, `nodes[${i}]`, ['classifier']), ...slotsOf(n).flatMap(m => propTextProblems(m, at(m), ['value']))); // its head, `name : Classifier` (audit 43)
-    else classifierBoxes(n).flatMap(c => c.members).forEach(m => out.push(...propTextProblems(m, at(m), ['valueType', 'default', 'returnType']), ...paramTextProblems(m, at(m)))); });
+    else classifierBoxes(n).flatMap(c => c.members).forEach(m => { out.push(...propTextProblems(m, at(m), ['valueType', 'default', 'returnType']), ...paramTextProblems(m, at(m)));
+      // and the multiplicity it draws, `[1..*]`, judged as the class view judges it (audit 45)
+      const t = OB_OBJ(m.props) ? m.props.multiplicity : null, p = t != null && t !== '' && multProblem(String(t), `${at(m)}.props.multiplicity`, [m.id], `${jsonText(elName(n))}.${m.label}`); if (p) out.push(p); }); });
   // a drawn link's association and a drawn link's or association's end roles (audit 43)
   const { pic: dp, lines } = drawnLines(model, view, OBJECT_LINES), drawn = new Set(lines.filter(({ from, to }) => !holdsLine(dp, from, to)).map(l => l.e));
   viewLines(model, view).forEach(([e, path]) => { if (!drawn.has(e) || (e.type !== 'uml.Link' && e.type !== 'uml.Association')) return;
@@ -217,7 +219,7 @@ const OBJECT_TYPE = registerDiagramType('uml.object', {
   // a slot is a member row, `feature = value` (§9.2); a comment and a package hold none
   member: { print: m => (m.type === 'uml.Slot' ? printSlot(m) : printMember(m)), edit: slotEdit, add: (text, owner) => { const r = parseSlot(text); return r.error ? r : memberClash(owner, {}, r, OB_SLOTS_ONCE) || r; }, holds: n => isInstance(n) }, // and an element of no UML kind, drawn as an instance (audit 29)
   validate: (model, view) => [...classProblems(model, view).filter(p => p.rule === 'member-names'), ...obTextProblems(model, view), ...objectProblems(model, view), ...ownerProblems(model, view, drawnLines(model, view, OBJECT_LINES).lines)],
-  rules: { 'member-names': RULES['member-names'], ...OBJECT_RULES, ...OWNER_RULES }, // of the class rules, member-names only: two slots for one feature (§9.3)
+  rules: { 'member-names': RULES['member-names'], multiplicity: RULES.multiplicity, ...OBJECT_RULES, ...OWNER_RULES }, // of the class rules, member-names (two slots for one feature, §9.3) and a drawn classifier's multiplicity (audit 45)
   describe: objectDescribe,
   // the PDF's Kind: an element of no UML kind is drawn and named an instance specification (audit 28); null: the type's word
   word: (model, id) => { const x = OB_ARR(model && model.nodes).find(n => OB_OBJ(n) && n.id === id); return x && isInstance(x) ? 'Instance specification' : null; },

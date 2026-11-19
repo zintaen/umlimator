@@ -38,6 +38,10 @@ function multBounds(t) {
   return m[2] == null ? (m[1] === '*' ? { lower: 0, upper: Infinity } : { lower: +m[1], upper: +m[1] }) : { lower: +m[1], upper: n(m[2]) };
 }
 
+// the multiplicity rule's problem for text t drawn as [t] (what: whose, `"Order".lines`), or null: a malformed multiplicity or one
+// whose lower bound is above its upper, an error, as the class view and every view drawing a classifier's rows say it (audit 45)
+function multProblem(t, path, ids, what) { const b = multBounds(t), say = msg => ({ level: 'error', rule: 'multiplicity', path, ids: ids.filter(x => x != null), message: `multiplicity: ${what}: [${t}] ${msg}` });
+  return !b ? say('is not a multiplicity (1, *, 0..1, 1..*)') : b.lower > b.upper ? say('has its lower bound above its upper') : null; }
 // s split at each `sep` outside brackets of any kind: "a: Map<K, V>, b" → ["a: Map<K, V>", " b"]
 function splitTop(s, sep) {
   const out = []; let depth = 0, from = 0;
@@ -373,10 +377,7 @@ function classProblems(model, view) {
       out.push(...paramTextProblems(m, `${path}.members[${j}]`)); }); // and an operation's parameters (audit 41)
     if ((OWN_BOXES.includes(x.type) || x.type === 'uml.Comment' || x.type === 'uml.MetaclassReference') && ms.length) say('member-kinds', `${path}.members`, [x.id], `${q(x.id)} is a ${typeWord(x.type).toLowerCase()}, which has no members`);
   });
-  function multRule(t, path, ids, what) { const b = multBounds(t);
-    if (!b) say('multiplicity', path, ids, `${what}: [${t}] is not a multiplicity (1, *, 0..1, 1..*)`);
-    else if (b.lower > b.upper) say('multiplicity', path, ids, `${what}: [${t}] has its lower bound above its upper`);
-    return b; }
+  function multRule(t, path, ids, what) { const p = multProblem(t, path, ids, what); if (p) out.push(p); return multBounds(t); }
   const byOwner = new Map(); nodes.filter(r => CLASSIFIERS.includes(tyOf(r.x))).forEach(({ x, path }) => { const k = (x.parent ?? '') + '\u0000' + nameOfEl(x), was = byOwner.get(k);
     if (was) say('classifier-names', path, [was, x.id], `${q(x.id)} is named twice in ${x.parent != null ? q(x.parent) : 'the model'} (${was}, ${x.id})`); else byOwner.set(k, x.id); });
   const parents = new Map();
@@ -498,4 +499,4 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   edits: { connect: classConnect, rename: lineRename(lineLabel), owner: defOwner },
 });
 
-export { CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, memberClash, paramTextProblems, classProblems, closesCycle, commentConnect, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
+export { CLASSIFIERS, compartmentsOf, LINE_WORDS, lineVerb, lineIn, lineRename, CLASS_LINES, CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, lineItem, LINE_SAYS, LEGEND_ENDS, multBounds, multProblem, parseMember, printMember, memberEdit, memberClash, paramTextProblems, classProblems, closesCycle, commentConnect, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
