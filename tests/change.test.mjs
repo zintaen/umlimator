@@ -773,3 +773,47 @@ test('audit 44: diff() says a fully pinned view whose reorder routes its lines a
   const h = structuredClone(m); h.nodes.push({ id: '__proto__', label: 'x' }); h.views[0].nodeIds.push('__proto__', 'constructor'); h.views[0].layout.__proto__ = 'x'; h.edges.push({ id: 'eh', from: 'n0', to: 'gone' });
   const k = structuredClone(h); k.views[0].nodeIds.reverse(); assert.doesNotThrow(() => diff(h, k));
 });
+
+test('audit 44: a typed view draws diff()\'s marks as a map does: a removed element faded, dashed and struck through, an added or changed one tabbed, each said in its name', async () => {
+  const all = await fromSrc(), read = f => JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url)));
+  const tagOf = (s, id) => { const a = s.lastIndexOf('<g', s.indexOf(`data-id="${id}"`)); return s.slice(a, s.indexOf('>', a) + 1); };
+  const bodyOf = (s, id) => { const a = s.lastIndexOf('<g', s.indexOf(`data-id="${id}"`)); let d = 0, i = a; const re = /<g\b|<\/g>/g; re.lastIndex = a;
+    for (let m; (m = re.exec(s));) { d += m[0] === '</g>' ? -1 : 1; if (!d) { i = m.index + 4; break; } } return s.slice(a, i); };
+  const keyOf = (s, id) => (s.match(new RegExp(`data-node="${id}"[^>]*aria-label="([^"]*)"`)) || [])[1];
+  // the class example: OrderStatus removed with its lines, Customer renamed to Client, Coupon added
+  const a = read('sales-classes'), b = structuredClone(a);
+  b.nodes = b.nodes.filter(n => n.id !== 'status'); b.edges = b.edges.filter(e => e.from !== 'status' && e.to !== 'status');
+  b.views.forEach(v => { v.nodeIds = v.nodeIds.filter(i => i !== 'status'); }); b.nodes.find(n => n.id === 'customer').label = 'Client';
+  b.nodes.push({ id: 'coupon', type: 'uml.Class', label: 'Coupon', parent: 'sales' }); b.views[0].nodeIds.push('coupon');
+  const d = all.diff(a, b), s = svgOf(all.layout(d.model, b.views[0].id));
+  assert.deepEqual(d.summary, ['renames Customer to Client', 'adds Coupon', 'removes OrderStatus']);
+  assert.match(tagOf(s, 'status'), /aria-label="Enumeration OrderStatus, 4 literals, removed"/); assert.match(tagOf(s, 'status'), /opacity="\.6"/); assert.match(tagOf(s, 'status'), /stroke-dasharray="6 4"/);
+  const texts = bodyOf(s, 'status').match(/<text\b[^>]*>/g).filter(t => !/badge-tx/.test(t)); assert.ok(texts.length > 1 && texts.every(t => /line-through/.test(t)), 'every text of the removed class struck through');
+  assert.match(bodyOf(s, 'status'), />REMOVED<\/text>/); assert.match(bodyOf(s, 'coupon'), />NEW<\/text>/); assert.match(bodyOf(s, 'customer'), />CHANGED<\/text>/);
+  assert.match(tagOf(s, 'coupon'), /, new"/); assert.match(tagOf(s, 'customer'), /, changed"/); assert.doesNotMatch(tagOf(s, 'customer'), /opacity/);
+  assert.match(keyOf(s, 'coupon'), /, new$/); assert.match(keyOf(s, 'status'), /, removed$/);
+  // an element that did not change draws as before
+  assert.equal(bodyOf(s, 'order').replace(/\bg\d+-/g, 'g-'), bodyOf(svgOf(all.layout(b, b.views[0].id)), 'order').replace(/\bg\d+-/g, 'g-'));
+  // the ER example: payment removed, customer renamed; the flowchart: a step removed, one added
+  const er = read('bookshop-schema'), er2 = structuredClone(er); er2.nodes = er2.nodes.filter(n => n.id !== 'er-payment'); er2.edges = er2.edges.filter(e => e.from !== 'er-payment' && e.to !== 'er-payment');
+  er2.views[0].nodeIds = er2.views[0].nodeIds.filter(i => i !== 'er-payment'); er2.nodes.find(n => n.id === 'er-customer').label = 'client';
+  const se = svgOf(all.layout(all.diff(er, er2).model, 'er-schema'));
+  assert.match(tagOf(se, 'er-payment'), /, removed"[^>]*opacity="\.6"/); assert.match(tagOf(se, 'er-customer'), /, changed"/); assert.match(bodyOf(se, 'er-payment'), /line-through/);
+  const fc = read('returns-flowchart'), fc2 = structuredClone(fc); fc2.nodes = fc2.nodes.filter(n => n.id !== 'wait'); fc2.edges = fc2.edges.filter(e => e.from !== 'wait' && e.to !== 'wait');
+  fc2.views[0].nodeIds = fc2.views[0].nodeIds.filter(i => i !== 'wait'); fc2.nodes.push({ id: 'note-it', type: 'flow.Process', label: 'Log the return' }); fc2.views[0].nodeIds.push('note-it');
+  const sf = svgOf(all.layout(all.diff(fc, fc2).model, 'returns'));
+  assert.match(tagOf(sf, 'wait'), /, removed"/); assert.match(tagOf(sf, 'note-it'), /, new"/);
+  // the lines diff() marks on a typed view keep their marks: a removed one rose and dashed
+  assert.match(s, /stroke="var\(--um-rose\)"/);
+  // every typed example with every element marked in turn: each element's name says its mark, and no tag holds an attribute twice
+  for (const f of ['sales-classes', 'bookshop-schema', 'returns-flowchart', 'bookshop-c4', 'order-states', 'bookshop-data-flow', 'ebike-blocks', 'shopping-use-cases']) {
+    const m = read(f), x = structuredClone(m); x.nodes.forEach((n, i) => { n.change = ['added', 'changed', 'removed', 'planned'][i % 4]; });
+    for (const v of m.views.filter(v => v.diagram && v.diagram !== 'map')) { const g = all.layout(x, v.id), t = svgOf(g);
+      g.nodes.filter(n => n.change && t.includes(`data-id="${n.id}"`)).forEach(n => assert.match(tagOf(t, n.id), /, (new|changed|removed|planned)"/, `${f} ${v.id} ${n.id}`));
+      (t.match(/<(g|text|rect)\b[^>]*>/g) || []).forEach(tag => { const at = [...tag.matchAll(/\s([a-zA-Z:-]+)=/g)].map(y => y[1]); assert.equal(new Set(at).size, at.length, `${f}: ${tag}`); }); } }
+  // hostile: a change that is a prototype key, an object or a quote, and a label that closes the tag, mark nothing and break nothing
+  const h = structuredClone(b); h.nodes.find(n => n.id === 'order').change = '__proto__'; h.nodes.find(n => n.id === 'line').change = { toString: 'x' };
+  h.nodes.find(n => n.id === 'coupon').change = '" onload="x'; h.nodes.find(n => n.id === 'customer').label = '"><script>alert(1)</script>'; h.nodes.find(n => n.id === 'customer').change = 'removed';
+  const sh = svgOf(all.layout(h, h.views[0].id));
+  assert.doesNotMatch(sh, /<script|onload=/); ['order', 'line', 'coupon'].forEach(id => assert.doesNotMatch(tagOf(sh, id), /data-change/)); assert.match(tagOf(sh, 'customer'), /data-change="removed"/);
+});

@@ -495,11 +495,18 @@ function mapContext(model, opts = {}) {
   const condTag = l => { const m = /^(?:routes|on-ramp:?)\s+(\S+)$/i.exec(String(l || '').trim()); return m ? m[1] : null; }; // "routes bug" → a "bug" tag
   // quick: a candidate the layout searches below score and may drop, laid out once, as it was before 0.6.0 (no room for lines
   // with no route, no way round the cards for them, no warning)
+  // a typed element's or line's change (diff's added, changed or removed; an author's planned), the view's own over the model's,
+  // on what its type drew for it, which a type builds from the model and leaves out (audit 44: a removed class drawn as live)
+  const CHANGES = ['added', 'new', 'changed', 'modified', 'removed', 'planned'], chOf = x => x && typeof x.change === 'string' && CHANGES.includes(x.change.toLowerCase()) ? x.change : null;
+  function marks(g, vid) { const ev = O(); (D.edges || []).forEach(e => { if (e && typeof e.id === 'string' && chOf(e)) ev[e.id] ??= e.change; });
+    (g.nodes || []).forEach(n => { if (!n || typeof n.id !== 'string' || !N[n.id]) return; const c = chOf(nodeIn(n.id, vid)); if (c) n.change = c; else delete n.change; });
+    (g.edges || []).forEach(e => { const k = e && (e._id ?? e.id); if (typeof k !== 'string') return; if (ev[k]) e.change = ev[k]; else delete e.change; });
+    return g; }
   function buildGeo(vid, override, repair = (V[vid] || {}).repair !== false, quick = false) { // a view's repair: false turns port repair off
     const v = V[vid], ids = (v.nodeIds || []).filter(i => N[i]), T = ownLayout(vid);
     if (T) { // the type's layout (registry.js), in the host's measure (R2)
       const L = T.layout, memo = memos[vid] ||= {}, k = !override && L.key ? L.key(D, v) : null;
-      if (k != null && memo.runKey === k) return memo.runGeo;
+      if (k != null && memo.runKey === k) return marks(memo.runGeo, vid);
       const pos = override || (L.pins === false ? {} : L.rank === false ? onGrid(vid, v.layout || {}) : v.layout ? fillLayout(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid))); // pins: false, no ranking either (notes/stage-3.md Q9)
       let g = L.run ? L.run(D, v, { measure: M, pos, memo }) : L({ model: D, view: v, pos, memo });
       // the request/reply port swap (layered.js) is judged inside a pass; the later passes and the type's own steps can undo
@@ -515,7 +522,7 @@ function mapContext(model, opts = {}) {
       (g.nodes || []).forEach(n => { const o = N[n.id] && opensOf(n.id, vid); if (!o || n.saysOpens) return;
         n.opensTo = String(labelOr((V[o] || {}).title, o)); const t = `, opens ${n.opensTo}`; if (n.aria) n.aria += t; if (typeof n.ariaOwn === 'string' && n.ariaOwn) n.ariaOwn += t; });
       if (k != null) Object.assign(memo, { runKey: k, runGeo: g });
-      return g;
+      return marks(g, vid);
     }
     const edges = viewEdges(v, true).map(e => ({ ...e }));
     if (v.render === 'sequence') edges.forEach((e, i) => { e.step = i + 1; });
