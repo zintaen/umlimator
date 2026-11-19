@@ -21,13 +21,7 @@ it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2
 | 12.2 Package, as an owner | an instance's `parent` is a package | a shown package owning a shown instance is a box holding it, as in the class view (`uml-package.md`); an instance shown without its owner is named `shop::order1 : Order` |
 | 9.2 Classifier, shown beside instances | a node of a class diagram's types in an object view | drawn as the class view draws it: not underlined, its keyword, its compartments |
 
-Rules, each `validate()` problem naming its `rule` and its elements (`notes/stage-2.md` §9.3): `slot-kinds` (an instance
-holds slots only; a slot belongs to an instance), `link-ends` (a link joins two instances), `instance-of` (a warning:
-when `props.classifier` names exactly one classifier of the model, by its name or qualified name, each slot names an
-attribute of it or of one of its generals), `owner-kinds` (a warning: an instance's owner is a package), `line-inside` (a warning: a line between a package and
-what it holds is not drawn), `own-boxes` (a warning: a view's own `containers` are ignored) and the class diagram's
-`member-names` (two slots for one feature). Ownership cycles and references that do not resolve are the core's
-checks. A model with only object views gets no class rules but these.
+Rules, each `validate()` problem naming its `rule` and its elements (`notes/stage-2.md` §9.3): `slot-kinds` (an instance holds slots only; a slot belongs to an instance), `link-ends` (a link joins two instances), `instance-of` (a warning: when `props.classifier` names exactly one classifier of the model, by its name or qualified name, each slot names an attribute of it or of one of its generals), `owner-kinds` (a warning: an instance's owner is a package), `line-inside` (a warning: a line between a package and what it holds is not drawn), `own-boxes` (a warning: a view's own `containers` are ignored) and the class diagram's `member-names` (two slots for one feature) and `multiplicity` (an attribute's multiplicity on a classifier the view draws, judged as the class view judges it). Ownership cycles and references that do not resolve are the core's checks. A model with only object views gets no class rules but these.
 
 A view may set `direction: "down"`, `subject` (names are qualified from it) and pins in `layout`. A link from an
 instance to itself is drawn as a loop, and two links between one pair each keep their own line.

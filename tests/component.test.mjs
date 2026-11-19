@@ -40,7 +40,7 @@ test('the definition: uml.component is registered with its palette, its eight li
   assert.equal(T.layout.rank, false, 'the type ranks the view: the host passes the pins');
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'key', 'member', 'moveTo', 'remove', 'rename']);
-  assert.deepEqual(Object.keys(T.rules).sort(), ['assembly-ends', 'ball-interface', 'component-owner', 'component-realization-ends', 'delegation-ends', 'line-inside', 'manifest-ends', 'own-boxes', 'port-owner', 'provided-ends', 'required-ends'].sort());
+  assert.deepEqual(Object.keys(T.rules).sort(), ['assembly-ends', 'ball-interface', 'component-owner', 'component-realization-ends', 'delegation-ends', 'line-inside', 'manifest-ends', 'multiplicity', 'own-boxes', 'port-owner', 'provided-ends', 'required-ends'].sort());
   assert.deepEqual(['uml.Component', 'uml.Interface', 'uml.Artifact'].map(t => T.member.holds({ type: t })), [true, true, false]);
 });
 

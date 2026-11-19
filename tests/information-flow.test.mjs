@@ -241,7 +241,7 @@ test('connect: a flow between two classifiers or actors asks what it conveys, it
   assert.deepEqual(r.then(2), [{ op: 'add', element: { id: 'flow1', type: 'uml.InformationFlow', from: 'shopper', to: 'shop-api', props: { conveyed: ['receipt-info'] } }, view: V }]);
   assert.deepEqual(validate(apply(IF, r.then(2))), []);
   assert.deepEqual(T.edits.connect(IF, v, 'order-info', 'shop-api', null, line), { error: 'An information flow joins two classes, interfaces, components or actors' });
-  assert.equal(T.edits.connect(IF, v, 'shopper', 'shop-api', null, { type: 'uml.CommentLink' }), null, 'a comment link: the default');
+  assert.deepEqual(T.edits.connect(IF, v, 'shopper', 'shop-api', null, { type: 'uml.CommentLink' }), { error: 'A comment link runs from a comment' }, 'a comment link with no comment: refused (audit 45)');
   const bare = structuredClone(IF); bare.nodes = bare.nodes.filter(n => n.type === 'uml.Actor'); bare.nodes.push(N('c', 'Comment', 'x'));
   assert.deepEqual(T.edits.connect(bare, v, 'shopper', 'shopper', null, line), { error: 'Add an information item for the flow to convey first' }, 'an actor is never conveyed');
   // rename: the text as drawn, «flow» or not, `[name:] names`; each by its name, else its id

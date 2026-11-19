@@ -3,7 +3,7 @@ import { apply } from '../core/apply.js';
 import { brLines, esc, fit } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
-import { LINE_SAYS, legendItem } from './class.js'; // SHAPE.classifier and SHAPE.note too
+import { LINE_SAYS, commentConnect, legendItem } from './class.js'; // SHAPE.classifier and SHAPE.note too
 import { snKindName, snLineName } from './structure.js'; // SHAPE.component too
 import './usecase.js'; // SHAPE.actor
 import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
@@ -151,6 +151,7 @@ const ifOwn = (model, I, view) => { const V = IF_OBJ(view) ? view : IF_ARR(model
 const IF_OWN_SAY = 'lives in this view only: a flow between model elements conveys a model element';
 // connect: a flow between two classifiers or actors asks which element it conveys; other ends are refused, said on the hint line
 function ifConnect(model, view, from, to, at, line) {
+  if (IF_OBJ(line) && line.type === 'uml.CommentLink') return commentConnect(model, view, from, to, line); // from the comment (audit 45)
   if (!IF_OBJ(line) || line.type !== 'uml.InformationFlow') return null;
   const I = ifIndex(model);
   if (![from, to].every(id => IF_ENDS.includes((I.at.get(id) || {}).type))) return { error: 'An information flow joins two classes, interfaces, components or actors' };

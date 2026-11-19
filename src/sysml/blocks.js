@@ -204,13 +204,18 @@ const bdFresh = (model, base) => { const used = new Set(); usedIds(model, used);
 // port-kind error the model had not is refused, said with the form the row takes; a type that names nothing stays a warning, so
 // a constraint block not made yet may be named. r: a hook's commands, or { commands }; anything else passed on as it is
 const BD_GUARD = { __proto__: null, 'constraint-type': 'a constraint property is name : ConstraintBlock', 'port-kind': 'a proxy port is typed by an interface block, a full port by none' };
+const BD_KIND_FORM = "a port's kind is proxy, full or none";
 function bdTypeGuard(model, r) {
   const cs = Array.isArray(r) ? r : BD_OBJ(r) && Array.isArray(r.commands) ? r.commands : null; if (!cs || !cs.length) return r;
   let now; try { now = apply(model, cs); } catch { return r; } // apply()'s own refusal is the canvas's to say
   const key = p => p.rule + ' ' + p.ids.join(' '), errs = m => bdProblems(m).filter(p => p.level === 'error' && Object.hasOwn(BD_GUARD, p.rule));
   const was = new Set(errs(model).map(key)), bad = errs(now).find(p => !was.has(key(p)));
-  const said = bad && bad.message.slice(bad.rule.length + 2); // the rule's words, its name off
-  return bad ? { error: `${said[0].toUpperCase()}${said.slice(1)}: ${BD_GUARD[bad.rule]}` } : r;
+  if (!bad) return r;
+  // the rule's words, its name off, and the form once: a port of no SysML kind is told the kinds; words that end with the start of
+  // the form ("typed by nothing: a proxy port is typed by an interface block") end with the whole form, not with it twice (audit 45)
+  const said = bad.message.slice(bad.rule.length + 2), form = bad.rule === 'port-kind' && / has kind /.test(said) ? BD_KIND_FORM : BD_GUARD[bad.rule];
+  const cut = said.lastIndexOf(': '), base = cut >= 0 && form.startsWith(said.slice(cut + 2)) ? said.slice(0, cut) : said;
+  return { error: `${base[0].toUpperCase()}${base.slice(1)}: ${form}` };
 }
 // a field of the properties panel (edits.field): SYS_FIELD's, and a type or kind set there judged as a row is (audit 44)
 const bdField = (model, view, id, path, value) => { const r = SYS_FIELD(model, view, id, path, value);

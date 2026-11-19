@@ -20,6 +20,10 @@ import { svgOf } from '../src/draw/svg.js';
 import { tablesOf } from '../src/page/print.js';
 import { csParse, csRow } from '../src/uml/composite.js';
 import '../src/uml/component.js'; // the spreadPorts tests lay out component views too
+import '../src/uml/object.js';
+import '../src/uml/deployment.js';
+import '../src/uml/activity.js';
+import '../src/uml/information.js';
 
 const CS = JSON.parse(readFileSync(new URL('../examples/order-service-structure.json', import.meta.url)));
 const T = diagramOf({ diagram: 'uml.composite-structure' }), V = CS.views[0];
@@ -976,4 +980,26 @@ test('audit 43: validate() says a drawn port\'s type, a role\'s type and multipl
   assert.ok(validate(m).some(p => p.message === 'part-multiplicity: role "r"\'s multiplicity [[object Object]] is not one (1, *, 0..1, 1..*)'));
   const bad = structuredClone(m); bad.nodes[3].members[0].props = { valueType: 'W', multiplicity: '3..1' };
   assert.ok(validate(bad).some(p => p.message === 'part-multiplicity: role "r"\'s multiplicity [3..1] has its lower bound above its upper'));
+});
+
+// audit 45: a comment link drawn from an element to a comment on the object, component, deployment, composite, activity and
+// information flow views is added from the comment, as the class view's (audit 44); with no comment at either end, refused
+test('connect: a comment link drawn to a comment is added from it on the other UML views (audit 45)', () => {
+  for (const [d, t] of [['uml.object', 'uml.InstanceSpecification'], ['uml.component', 'uml.Component'], ['uml.deployment', 'uml.Node'], ['uml.activity', 'uml.Action'], ['uml.information-flow', 'uml.Class']]) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'a', type: t, label: 'A' }, { id: 'b', type: t, label: 'B' }, { id: 'k', type: 'uml.Comment', label: 'note' }, { id: 'k2', type: 'uml.Comment', label: 'other' }],
+      edges: [], views: [{ id: 'v', diagram: d, title: 'V', nodeIds: ['a', 'b', 'k', 'k2'] }] }, D = diagramOf(m.views[0]), c = (f, x) => D.edits.connect(m, m.views[0], f, x, null, { type: 'uml.CommentLink' });
+    const r = c('a', 'k'); assert.deepEqual(r, [{ op: 'add', element: { id: 'commentlink1', type: 'uml.CommentLink', from: 'k', to: 'a' }, view: 'v' }], d);
+    assert.ok(describe(apply(m, r), 'v').split('\n').every(l => !/about note|from A to note/.test(l)), d);
+    assert.equal(c('k', 'a'), null, `${d}: from a comment, the default`); assert.equal(c('k', 'k2'), null, d);
+    assert.deepEqual(c('a', 'b'), { error: 'A comment link runs from a comment' }, d);
+    // a comment the view holds as its own (view.nodes)
+    const own = structuredClone(m); own.nodes = own.nodes.filter(n => n.id !== 'k'); own.views[0].nodes = [{ id: 'k', type: 'uml.Comment', label: 'note' }];
+    assert.deepEqual(D.edits.connect(own, own.views[0], 'a', 'k', null, { type: 'uml.CommentLink' })[0].element, { id: 'commentlink1', type: 'uml.CommentLink', from: 'k', to: 'a' }, `${d}: a view's own comment`); }
+  // the composite view: between a part and a comment, from the comment; between two parts, refused; on a port of a part, as before
+  const m = JSON.parse(readFileSync(new URL('../examples/order-service-structure.json', import.meta.url), 'utf8')), v = m.views.find(x => x.diagram === 'uml.composite-structure');
+  m.nodes.push({ id: 'k', type: 'uml.Comment', label: 'note' }); v.nodeIds.push('k');
+  const D = diagramOf(v), c = (f, x) => D.edits.connect(m, v, f, x, null, { type: 'uml.CommentLink' });
+  assert.deepEqual(c('order-service.checkout', 'k'), [{ op: 'add', element: { id: 'commentlink1', type: 'uml.CommentLink', from: 'k', to: 'order-service.checkout' }, view: v.id }]);
+  assert.equal(c('k', 'order-service.checkout'), null);
+  assert.deepEqual(c('order-service.checkout', 'order-service.pricing'), { error: 'A comment link runs from a comment' });
 });

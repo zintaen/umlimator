@@ -657,3 +657,21 @@ test('a member typed so it breaks constraint-type or port-kind is refused, by ro
   const IB = diagramOf({ diagram: 'sysml.internal-block' }), iv = { id: 'ib', diagram: 'sysml.internal-block', subject: 'ebike', nodeIds: [] }, IM = { ...BL, views: [...BL.views, iv] };
   assert.match(IB.edits.member(IM, iv, 'ebike', null, 'proxy port p : Battery').error, /^Proxy port "EBike"\.p is typed by "Battery", not an interface block: /);
 });
+
+// audit 45: the internal block view's F2 on a port box is refused as the row and the field are, when it would set a kind or a
+// type that breaks port-kind; and a refusal says the form once, a port of no SysML kind told the kinds
+test('F2 on a port box that breaks port-kind is refused, and a refusal says its form once (audit 45)', () => {
+  const errs = m => validate(m).filter(p => p.level === 'error').map(p => p.message);
+  const A = JSON.parse(readFileSync(new URL('../examples/ebike-atlas.json', import.meta.url), 'utf8')), IV = A.views.find(v => v.diagram === 'sysml.internal-block'), IT = diagramOf(IV);
+  assert.deepEqual(errs(A), []);
+  const box = 'ebike.battery->battery.charge', F = 'a proxy port is typed by an interface block, a full port by none';
+  assert.equal(IT.edits.rename(A, IV, box, '«full»').error, `Full port "Battery".charge is typed by "ChargeInterface", an interface block: ${F}`);
+  assert.equal(IT.edits.rename(A, IV, box, '«proxy» charge : Battery').error, `Proxy port "Battery".charge is typed by "Battery", not an interface block: ${F}`);
+  for (const text of ['«proxy»', 'charger', '«proxy» charger : ChargeInterface']) { const r = IT.edits.rename(A, IV, box, text), cs = Array.isArray(r) ? r : r.commands;
+    assert.ok(Array.isArray(cs), text); assert.deepEqual(errs(apply(A, cs)), [], text); }
+  // the words: the form once, never twice; a kind that is none of SysML's told the kinds
+  const BL = JSON.parse(readFileSync(new URL('../examples/ebike-blocks.json', import.meta.url), 'utf8')), BV = BL.views[0], BT = diagramOf(BV);
+  assert.equal(BT.edits.member(BL, BV, 'ebike', null, 'proxy port p').error, `Proxy port "EBike".p is typed by nothing: ${F}`);
+  assert.equal(BT.edits.field(BL, BV, 'battery.charge', 'props.kind', 'sideways').error, 'Port "Battery".charge has kind "sideways", not proxy or full: a port\'s kind is proxy, full or none');
+  assert.equal(BT.edits.member(BL, BV, 'ebike', null, 'constraint city').error, 'Constraint property "EBike".city is typed by nothing, not a constraint block: a constraint property is name : ConstraintBlock');
+});

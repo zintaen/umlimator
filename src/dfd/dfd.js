@@ -121,8 +121,11 @@ function dfdNodeName(I, id, lines) {
   const x = I.at.get(id); if (x.type === 'uml.Comment') return 'Comment: ' + elName(x);
   const ins = lines.filter(e => dfdFlow(e) && e.to === id && e.from !== id).length, outs = lines.filter(e => dfdFlow(e) && e.from === id && e.to !== id).length;
   const v = x.type === 'dfd.Process' && I.views.get(x.opensView);
-  return `${DFD_WORD[x.type] || snKindName(x.type)} ${I.name(id)}${v ? `, opens level ${labelOr(v.title, v.id)}` : ''}, ${dfdPlural(ins, 'flow')} in, ${outs} out`;
+  return `${dfdWord(x.type)} ${I.name(id)}${v ? `, opens level ${labelOr(v.title, v.id)}` : ''}, ${dfdPlural(ins, 'flow')} in, ${outs} out`;
 }
+// a node's kind in words, the word its keyword gives (dfdKeyword): "Element" for none or a dfd kind the view does not know (the
+// typo dfd.Entity), so a screen reader does not hear an external entity either (audit 45)
+const dfdWord = t => DFD_WORD[t] || (dfdKeyword(t) === 'element' ? 'Element' : snKindName(t));
 // a listed line of another family by its own kind, plain, "Association", never "Comment link" (audit 26); one of no family
 // (no type, "constructor") a data flow, as audit 9 draws it
 const dfdOther = e => typeof e.type === 'string' && e.type.includes('.') && !DFD_LINES.includes(e.type);
@@ -287,7 +290,7 @@ const DFD_TYPE = registerDiagramType('dfd', {
   // the model lines the view draws (validate()'s stories read it, audit 38): a level leaves out its parent level's flows
   drawn: (model, view) => dfdLines(model, view).map(e => e.id),
   // the PDF's tables (§9): an element's kind; a process's number and the level it opens, a store's number
-  word: (model, id) => { const x = dfdIndex(model).at.get(id); return x && (Object.hasOwn(DFD_WORD, x.type) || x.type == null) ? DFD_WORD[x.type] || snKindName(x.type) : null; }, // none: "Element", as named (audit 27)
+  word: (model, id) => { const x = dfdIndex(model).at.get(id); return x && (Object.hasOwn(DFD_WORD, x.type) || dfdKeyword(x.type) === 'element') ? dfdWord(x.type) : null; }, // none or an unknown dfd kind: "Element", as named (audits 27, 45)
   rows: (model, view, id) => { const I = dfdIndex(model), x = I.at.get(id); if (!x || !['dfd.Process', 'dfd.DataStore'].includes(x.type)) return null;
     const v = x.type === 'dfd.Process' && I.views.get(x.opensView); return [...(dfdNum(x) ? [`number ${dfdNum(x)}`] : []), ...(v ? [`opens level ${labelOr(v.title, v.id)}`] : [])]; },
 });
