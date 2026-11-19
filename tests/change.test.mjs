@@ -1452,3 +1452,61 @@ test('audit 50: a message marked removed in another letter case is numbered as a
   const rows = c => all.layout(c, V).nodes.filter(n => n.shape === 'message-row').map(n => [n.id, n.num, n.aria]);
   assert.deepEqual(rows(mark('REMOVED')), rows(mark('removed')), 'the rows drawn, counted and said alike');
 });
+
+test('audit 51: deleting the subject of a composite structure, internal block or parametric view draws the view back as it was, its parts, ports and connectors removed', async () => {
+  const all = await fromSrc(), { apply } = await import('../src/core/apply.js');
+  for (const [f, id, V] of [['order-service-structure', 'order-service', 'internals'], ['ebike-structure', 'ebike', 'inside-ebike'], ['ebike-range', 'ebike', 'range-analysis']]) {
+    const m = read45(f), r = apply(m, [{ op: 'delete', id }]), d = all.diff(m, r.model || r), g0 = all.layout(m, V), g = all.layout(d.model, V);
+    const shapes = x => [...x.nodes, ...(x.families || [])].map(n => n.id).sort();
+    assert.deepEqual(shapes(g), shapes(g0), `${f}: every shape drawn back`); assert.equal(g.edges.length, g0.edges.length, `${f}: every connector drawn back`);
+    const own = [...g.nodes, ...(g.families || [])].filter(n => n.id === id || n.id.startsWith(id + '.'));
+    assert.ok(own.length > 1 && own.every(n => n.change === 'removed'), `${f}: the subject and what it holds marked removed`);
+    const mine = x => x === id || String(x).startsWith(id + '.'), conn = g.edges.filter(e => mine(e.from) || mine(e.to));
+    assert.ok(conn.length && conn.every(e => e.change === 'removed'), `${f}: its connectors marked removed`);
+  }
+});
+
+test('audit 51: a two-way or parallel line that stands for a removed or added edge says so in its title and key', () => {
+  const m = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ id: 'ab', from: 'a', to: 'b', label: 'asks' }, { id: 'ba', from: 'b', to: 'a', label: 'answers' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+  const said = x => { const s = svgOf(layout(diff(...x).model, 'v')); return [s.match(/<title>([^<\n]*)/)[1], s.match(/line-key[^>]*aria-label="([^"]*)"/)[1]]; };
+  const without = (x, id) => ({ ...x, edges: x.edges.filter(e => e.id !== id) });
+  for (const id of ['ab', 'ba']) for (const t of said([m, without(m, id)])) assert.match(t, /, removed$/, `${id} removed: ${t}`);
+  for (const t of said([without(m, 'ba'), m])) assert.match(t, /, new$/, 'a reply added');
+  const p = { ...m, edges: [{ id: 'x1', from: 'a', to: 'b', label: 'reads' }, { id: 'x2', from: 'a', to: 'b', label: 'writes' }] };
+  for (const t of said([p, without(p, 'x2')])) assert.match(t, /reads \+1, removed$/, 'a parallel line removed');
+  assert.doesNotMatch(said([m, m])[0], /, (removed|new)/, 'no change: no word');
+});
+
+test('audit 51: a card hidden from a view that lists its lines is drawn back with those lines, removed', async () => {
+  const all = await fromSrc(), { apply } = await import('../src/core/apply.js');
+  const m = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }, { id: 'c', label: 'C' }], edges: [{ id: 'ab', from: 'a', to: 'b' }, { id: 'bc', from: 'b', to: 'c' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], edges: ['ab', 'bc'] }] };
+  const drawn = (x, V, h) => { const r = apply(x, [{ op: 'hide', id: h, view: V }]); return Object.fromEntries(all.layout(all.diff(x, r.model || r).model, V).edges.map(e => [e._id ?? e.id, e.change ?? null])); };
+  assert.deepEqual(drawn(m, 'v', 'c'), { ab: null, bc: 'removed' });
+  assert.equal(drawn(read45('bookshop-atlas'), 'shopping', 'browse')['shopper-browses'], 'removed', 'a use case view');
+  assert.equal(drawn(read45('bookshop-deployment'), 'production', 'database')['app-to-database'], 'removed', 'a deployment view');
+});
+
+test('audit 51: a C4 dynamic view draws a step hidden, taken out of its list or put into it, numbered in place and marked', async () => {
+  const all = await fromSrc(), { apply } = await import('../src/core/apply.js'), B = read45('bookshop-c4'), V = 'c4-placing-an-order';
+  const steps = x => all.layout(x, V).edges.slice(0, 3).map(e => [e.step, e._id ?? e.id, e.change ?? null]);
+  const r = apply(B, [{ op: 'hide', id: 'c4-shopper-storefront', view: V }]), d = all.diff(B, r.model || r);
+  assert.deepEqual(steps(d.model)[0], [1, 'c4-shopper-storefront', 'removed'], 'a hidden step');
+  const { validate: check } = await import('../src/map/validate.js');
+  assert.ok(!check(d.model).some(p => p.rule === 'c4-steps'), 'the marked copy names the model relationship');
+  const A = structuredClone(B), v = A.views.find(x => x.id === V); v.edges = v.edges.filter(x => x !== 'c4-storefront-api');
+  assert.deepEqual(steps(all.diff(A, B).model)[1], [2, 'c4-storefront-api', 'added'], 'a step put into the list');
+  assert.deepEqual(steps(all.diff(B, A).model)[1], [2, 'c4-storefront-api', 'removed'], 'a step taken out of it');
+  assert.match(svgOf(all.layout(all.diff(B, A).model, V)), /Reads the catalogue/);
+});
+
+test('audit 51: a deleted timing lifeline is drawn back with its state rows, changes and the constraints on them, removed', async () => {
+  const all = await fromSrc(), { apply } = await import('../src/core/apply.js'), m = read45('bookshop-timing');
+  const r = apply(m, [{ op: 'delete', id: 'lifeline-worker' }]), g = all.layout(all.diff(m, r.model || r).model, 'one-charge');
+  const ch = Object.fromEntries(g.nodes.map(n => [n.id, n.change ?? null]));
+  assert.deepEqual(Object.keys(ch).sort(), all.layout(m, 'one-charge').nodes.map(n => n.id).sort(), 'every shape drawn back');
+  for (const id of ['lifeline-worker', 'lifeline-worker->Idle', 'lifeline-worker->Waiting for payment', 'w-idle', 'w-waiting', 'w-recording', 'w-done', 'c-wait', 'c-finished']) assert.equal(ch[id], 'removed', id);
+  for (const id of ['lifeline-payments', 'lifeline-payments->Idle', 'p-idle']) assert.equal(ch[id], null, id);
+  // a change taken out of a lifeline that stays is not drawn back (it would change the lane's steps)
+  const k = structuredClone(m); k.views[0].timeline.changes = k.views[0].timeline.changes.filter(c => c.id !== 'p-capturing');
+  assert.ok(!all.layout(all.diff(m, k).model, 'one-charge').nodes.some(n => n.id === 'p-capturing'));
+});

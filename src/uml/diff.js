@@ -60,5 +60,15 @@ TYPED.order = (A, out, views, V0, said, touched, name) => {
       const res = T1.map(c => { const g = id(c) && C0.get(c.id); return !id(c) || (g && canon(g) === canon(c)) ? c : { ...c, change: g ? 'changed' : 'added' }; });
       let at = 0; T0.forEach(c => { if (!id(c)) return; if (ids.has(c.id)) { at = res.findIndex(x => id(x) === c.id) + 1; return; } res.splice(at++, 0, { ...c, change: 'removed' }); });
       v.timeline = { ...v.timeline, constraints: res }; touched.add(v.id); }
+    // the changes of a lifeline removed from the view (deleted, as apply() deletes its changes with it) back in their place,
+    // marked removed, so its lane is drawn as it was and the constraints on them with it (audit 51). A change taken out of a
+    // lifeline that stays is not: drawn back, it would change the steps the lane draws
+    const S0 = UD_OBJ(o.timeline) ? UD_ARR(o.timeline.changes) : [], S1 = UD_OBJ(v.timeline) ? UD_ARR(v.timeline.changes) : null;
+    const ov = UD_OBJ(v.nodeOverrides) ? v.nodeOverrides : {}, N1 = new Map(UD_ARR(out.nodes).filter(UD_OBJ).map(n => [n.id, n]));
+    const gone = l => typeof l === 'string' && (Object.hasOwn(ov, l) && UD_OBJ(ov[l]) ? ov[l].change : (N1.get(l) || {}).change) === 'removed';
+    if (S1 && S0.some(c => UD_OBJ(c) && typeof c.id === 'string' && gone(c.lifeline))) { const ids = new Set(S1.filter(UD_OBJ).map(c => c.id)), res = [...S1]; let at = 0, put = false;
+      S0.forEach(c => { if (!UD_OBJ(c) || typeof c.id !== 'string') return; if (ids.has(c.id)) { at = res.findIndex(x => UD_OBJ(x) && x.id === c.id) + 1; return; }
+        if (gone(c.lifeline)) { res.splice(at++, 0, { ...c, change: 'removed' }); put = true; } });
+      if (put) { v.timeline = { ...v.timeline, changes: res }; touched.add(v.id); } }
   });
 };

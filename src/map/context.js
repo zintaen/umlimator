@@ -492,8 +492,12 @@ function mapContext(model, opts = {}) {
     return out.filter(e => { const r = !(V[vid] || {}).keepPairs && pair[e.to + '>' + e.from]; if (r) { r.both = true; r.back = false; r.all = [...(r.all || [r]), ...(e.all || [e])]; if (e.label && e.label !== r.label) r.label = (r.label ? r.label + ' / ' : '') + e.label;
       if (r.all.some(x => x.step != null)) r.when = r.all.map(x => (x.step != null ? x.step + '. ' : '') + (x.label || '')).join('\n'); else if (e.when) r.when = [r.when, e.when].filter(Boolean).join(' · '); return false; } pair[e.from + '>' + e.to] = e; return true; })
       .map(e => { const all = e.all || [e], subs = [...new Set(all.map(x => x.sublabel).filter(x => x != null && x !== '').map(String))];
-        return { ...e, wk: wireKind(e, opts.kinds || (V[vid] || {}).kindsFromLabels), weight: Math.max(...all.map(x => [2, 3].includes(x.weight) ? x.weight : 1)), sublabel: subs.join(' / ') || undefined, ...markOf(all) }; });
+        return { ...e, wk: wireKind(e, opts.kinds || (V[vid] || {}).kindsFromLabels), weight: Math.max(...all.map(x => [2, 3].includes(x.weight) ? x.weight : 1)), sublabel: subs.join(' / ') || undefined, ...markOf(all), ...chOfAll(all) }; });
   }
+  // the change a line that stands for several edges says in its title and key: the strongest of theirs, as markOf draws it
+  // (audit 51: a pair drawn removed was named with the first edge's change, none)
+  const chOfAll = all => { if (all.length < 2) return {}; const c = w => all.find(x => typeof x.change === 'string' && w.includes(x.change.toLowerCase()));
+    const top = c(['removed']) || c(['added', 'new']); return top ? { change: top.change } : {}; };
   const condTag = l => { const m = /^(?:routes|on-ramp:?)\s+(\S+)$/i.exec(String(l || '').trim()); return m ? m[1] : null; }; // "routes bug" → a "bug" tag
   // quick: a candidate the layout searches below score and may drop, laid out once, as it was before 0.6.0 (no room for lines
   // with no route, no way round the cards for them, no warning)
@@ -511,7 +515,7 @@ function mapContext(model, opts = {}) {
   let memberCh; const memberOf = id => (memberCh ||= ownCh([nodes]))[id] || null;
   const put = (x, c) => { if (c) { x.change = c; MARKED.add(x); } else if (MARKED.has(x)) { delete x.change; MARKED.delete(x); } };
   // a timing view's constraints are its own too (audit 49)
-  const ownLists = v => [v.edges, v.fragments, v.timeline && typeof v.timeline === 'object' ? v.timeline.constraints : null];
+  const ownLists = v => [v.edges, v.fragments, ...(v.timeline && typeof v.timeline === 'object' ? [v.timeline.constraints, v.timeline.changes] : [])]; // and its changes (audit 51: a removed lifeline's, drawn back)
   function marks(g, vid) { const v = V[vid] || {}, own = ownCh(ownLists(v)), ev = O(), lines = new Set();
     (D.edges || []).forEach(e => { if (e && typeof e.id === 'string') { lines.add(e.id); if (chOf(e)) ev[e.id] ??= chOf(e); } });
     // a shape a type draws for a model line (a communication view's message row) takes the line's change (audit 46)
@@ -520,7 +524,8 @@ function mapContext(model, opts = {}) {
     // a shape a type draws for a member on another, <part>-><port> (no element id holds '->', model.md rule 5): removed with the
     // part it sits on or its own member, else added with either (audit 46: the ports on a removed or added part drawn live)
     // or changed with its own member, a port renamed or retyped (audit 47; a part's own change is the part's, not its ports')
-    const onCh = id => { const s = id.split('->'); if (s.length < 2 || N[s[0]]) return null; const cs = s.map(x => (x ? boxCh(x) : null)), c = cs[cs.length - 1];
+    // A shape on a model element that went (a timing lane's state row, <lifeline>-><state>) is removed with it (audit 51)
+    const onCh = id => { const s = id.split('->'); if (s.length < 2) return null; if (N[s[0]]) return gone(boxCh(s[0])) ? boxCh(s[0]) : null; const cs = s.map(x => (x ? boxCh(x) : null)), c = cs[cs.length - 1];
       return cs.find(gone) || cs.find(came) || (c === 'changed' || c === 'modified' ? 'changed' : null); };
     // what diff() worked out from the view laid out before and after (audit 47: view.diffMarks.marks, by shape id): a port a
     // retyped part gained or lost, a containment line that is new, and "none" for a shape drawn from what it reads, or for an
