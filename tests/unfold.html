@@ -50,7 +50,9 @@ try {
   click('.node[data-id="fleet"] .n-label', { altKey: true });
   check('Alt + click unfolds a stacked card', h.expanded[0] === 'fleet' && cards().includes('dock-listener'));
   check('a line drawn both ways whose ends move to two cards inside stays a pair on the box', line('ops-console', 'fleet') || line('fleet', 'ops-console'));
-  click('.node[data-id="battery"] .n-label', { altKey: true });
+  // the fleet store: a card that opens nothing (the battery monitor opens the e-bike's blocks since step 3 of the one-model
+  // plan, a typed view this page's core bundle draws as a map, so Alt + click there would unfold it)
+  click('.node[data-id="fleet-db"] .n-label', { altKey: true });
   check('Alt + click on a card inside folds its box', h.expanded.length === 0);
 
   const stop = h.on('expand', e => e.preventDefault());

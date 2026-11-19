@@ -2,7 +2,8 @@
 
 A map is more useful when it can be read in more than one way. Stories walk a reader through it step by step, lenses
 show it by team or by data flow, and live data puts traffic, errors and traces over it, all without laying the view
-out again. [`examples/bike-share.json`](../../examples/bike-share.json) uses each of them.
+out again. [`examples/umlimator-atlas.json`](../../examples/umlimator-atlas.json) has two stories: a pull request
+from push to comment, and an assistant showing a reader the map.
 
 ## Stories
 
@@ -11,9 +12,9 @@ only `view` is required.
 
 ```json
 "stories": [
-  { "id": "ride", "title": "A ride, from unlock to payment", "steps": [
-    { "view": "overview", "caption": "A rider unlocks a bike in the app.", "select": "app" },
-    { "view": "trips", "caption": "The trip service starts the trip.", "highlight": ["app", "trips"], "tour": ["app", "trips"] }
+  { "id": "pull-request", "title": "A pull request, from push to comment", "steps": [
+    { "view": "overview", "caption": "A pull request changes a model. GitHub starts the diff Action.", "select": "action" },
+    { "view": "overview", "caption": "The Action posts one comment on the pull request.", "highlight": ["github", "action"], "tour": ["action", "github"] }
   ] }
 ]
 ```
@@ -100,7 +101,7 @@ layer. Marks survive `update()` and `setView()`, and `toSVG()` and `toPNG()` dra
   and keeps its duration as a label. `otlpSpans(json)` reads spans from an OpenTelemetry trace in OTLP JSON
   ([`examples/replay.html`](../../examples/replay.html)).
 - `sequenceFromTrace(model, spans, { view, match })` keeps a trace as a numbered view, to review in a pull request.
-  From the command line, `umlimator.py trace model.json trace.json --view ride-end --match match.json --out model.json`;
+  From the command line, `umlimator.py trace model.json trace.json --view checkout --match match.json --out model.json` (`match.json` is your own file of service names to card ids);
   with `--diagram uml.sequence`, as a UML sequence diagram.
 
 ### Budgets

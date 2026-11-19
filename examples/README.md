@@ -1,7 +1,7 @@
 # Examples
 
 Every example below is live at **[zintaen.github.io/umlimator](https://zintaen.github.io/umlimator/)**, built from `main`.
-The systems are made up, except the last map's: umlimator's own state machines.
+The systems are made up, except the Umlimator Atlas: umlimator's own model.
 
 ## Maps
 
@@ -9,14 +9,11 @@ Each map is a JSON model. CI turns it into a self-contained page (`python3 umlim
 
 | Model | Use case | What it shows |
 |---|---|---|
-| [`bookshop.json`](bookshop.json) | A product's architecture, in two levels | Brand logos, the details panel, a step-by-step order flow with a tour, and the checkout at a glance: numbered steps on its lines, its main path heavier, boxes with a tone |
-| [`bike-share.json`](bike-share.json) | A C4-style drill-down: context, containers, components | Boxes with tabs, a line to a box, line kinds and weights, a technology under each label, coloured tabs, a planned card, edited marks, a view pinned by hand, cards with no lines, two views loaded when opened, two rules that hold, owners and two lenses, latency and cost on the Trip service's lines, a trace kept as a numbered view |
-| [`weather.json`](weather.json) | A data pipeline | A process in five steps, weights by volume, a pair of lines kept apart, nested boxes, a line from a box, a loop back, swimlanes, a view list in a set order |
-| [`assistant.json`](assistant.json) | An AI agent's skills | Skill kinds (public, lane, external, verb, script, hook, board), chips under a sub-line, guard and state lines, steps that exist in one view only, a card changed for one view, kinds read from labels |
+| [`bike-share.json`](bike-share.json) | A city e-bike operator's whole system, the one test and bench model | Boxes with tabs, a line to a box, line kinds and weights, a technology under each label, coloured tabs, a planned card, edited marks, a view pinned by hand, cards with no lines, two views loaded when opened, two rules that hold, owners and two lenses, latency and cost on the Trip service's lines, a trace kept as a numbered view; the rider shop (brand logos, the checkout's numbered steps, a box's tone); the live dock feed (nested boxes, a line from a box, a loop back); the nightly forecast (swimlanes); rider help (cards only that view has, pinned by hand); and a view of each of the 28 diagram types, joined to the map by drill-down |
 | [`shapes.json`](shapes.json) | Card shapes, the one style maps draw | A card of each kind that has a shape: people, a browser app, a phone, a window (its own `shape`), a terminal, an agent, a database, a queue, a file, a module, hosts, a hook and an external system |
-| [`clinic.json`](clinic.json) | A Structurizr workspace, imported | What `umlimator.py import` writes from [`clinic.dsl`](clinic.dsl), as it is: the workspace's three views, its system and API as boxes, a group as a box, the lines Structurizr implies, a line to a person as the loop back |
+| [`bike-share-c4.json`](bike-share-c4.json) | A Structurizr workspace, imported | What `umlimator.py import` writes from [`bike-share.dsl`](bike-share.dsl), the bike share's C4 views as its teams keep them in Structurizr, as it is: the workspace's three static views, its system and trip API as boxes, a group as a box, the lines Structurizr implies, a line to a person as the loop back; the deployment and dynamic views it does not read are listed on stderr with their lines |
 | [`monorepo.json`](monorepo.json) | A map generated from a monorepo's dependency list | What [`monorepo.py`](monorepo.py) writes from a list of imports: a card per package, a line per import, heavier with more imports, a box per folder, nested as the folders are, and the same cards with no boxes |
-| [`states.json`](states.json) | State machines: umlimator's own, drawn with umlimator | How navigation, stories, tours, the page and the MCP page relate, then a view per machine: states as cards, transitions as lines labelled with what moves them, composite states as boxes, the machines that run in order numbered, loops back, a tour, and a story along a typical path. The [State chapter](../docs/module-api.md#state) has the tables |
+| [`umlimator-atlas.json`](umlimator-atlas.json) | The Umlimator Atlas: umlimator's own model, the gallery's one Atlas entry | A map of umlimator's parts and who uses each, its C4 context and containers, the module's layers (package), the typed families (component), the diff Action on a pull request (sequence) and umlimator's state machines, joined by cards that open them; two stories |
 
 [![Bike share: the boxed view](https://zintaen.github.io/umlimator/examples/stills/bike-share/system.png)](https://zintaen.github.io/umlimator/examples/bike-share.html)
 
@@ -24,6 +21,10 @@ Bike share's story, as `umlimator.py record` writes it (CI records it for the si
 [`#story=ride&step=1`](https://zintaen.github.io/umlimator/examples/bike-share.html#story=ride&step=1), or from its Stories menu.
 
 ![Bike share: a ride, from unlock to payment, in five steps](https://zintaen.github.io/umlimator/examples/stills/bike-share/story-ride.png)
+
+The bike share's runtime views (`production`, `c4-deployment`) and its cloud comparison (`new-city` and the three cloud views, a tender for a second city) are illustrative, not a system anyone runs. Its C4 views and [`bike-share.dsl`](bike-share.dsl), imported to `bike-share-c4.json`, are two sources of one picture: `tests/bike-share.test.mjs` fails when their cards disagree. Its typed elements' ids carry their family's prefix (`c4-`, `er-`, `dfd-`, `bp-`, `mm-`, `gcp-`, `az-` and `aws-`), as a C4 element and a map card are different elements, and the cloud views' icon packs' labels (`iconPacks`) are one per pack.
+
+`bike-share.json` is built, not written: edit its part files in [`../tools/bike-share/`](../tools/bike-share/) (the model's own fields and the parts' order in `model.json`, then one file per part holding its cards, lines and views) and run `node tools/bike-share.mjs`, which writes the model with every key in a fixed order. `node tools/bike-share.mjs --check` and `tests/bike-share.test.mjs` fail when the committed model or a part file is not what the build writes.
 
 ## Diagrams
 
@@ -91,51 +92,9 @@ this repository: every page and still committed is built with `UMLIMATOR_NO_PACK
 site is built with the Google Cloud, Azure and AWS packs fetched, their terms accepted, so the cloud examples there show
 the real icons with the vendors' legal lines.
 
-## The Bookshop atlas
+## Why the Umlimator Atlas is not a test model
 
-[`bookshop-atlas.json`](bookshop-atlas.json) is the Bookshop examples above in one model (`"schemaVersion": 2`): the
-map's three views and the thirty-six views of the twenty-four diagram files, one of each of UML's 14 diagram kinds and
-of the ER, flowchart, data flow, information flow, C4, mindmap, Google Cloud, Azure, AWS and BPMN diagrams, joined by drill-down. It
-opens at the C4 system context (0.24.0); the map and the opening plan (a mindmap, 0.26.0) are in the views list. Double-click a card to open what it leads to.
-Three of the elements below are drawn as boxes, which a double-click does not open yet: `sales` (in the packages), the
-Java 21 runtime (in production) and Shop API (in the components). Open the sales domain (also from the map) and the components
-from the views list, and inside the order service from Shop API's card in production or the information flow:
-
-| From | Card | Opens |
-|---|---|---|
-| The C4 views (`c4-context`, `c4-containers`, `c4-components`, `c4-deployment`) | Bookshop, Shop API; Shopper, Shop staff; Database, Order worker, Storefront; Checkout, Order store; the Shop API's instance | the containers, the components; the use cases, the returns flowchart; the schema (ER), fulfilling an order, what travels with an order (information flow); the checkout (sequence), the data flow; production (deployment) |
-| The data flow's level 1 | Take order | its level 2 |
-| The map (`overview`) | Shoppers, Storefront, Database, Order queue, Order worker, Payment provider, GitHub | the use cases, buying a book, the sales classes, order 1042, fulfilling an order, the communication diagram, the packages |
-| Sales domain, order 1042 | Order, order1042 | an order's life (state machine) |
-| Bookshop packages | sales, BookshopConventions | the sales domain, the conventions profile |
-| Shopping (use cases) | Browse the catalog, Check out, Pay for the order, Track an order | find a book, buying a book, take payment (activity), from order to shipment (BPMN, 0.27.0) |
-| Fulfilling an order, take payment | Take the next order from the queue, Charge the shopper's card, Record the payment on the order | queue the order, the checkout (sequences), one charge (timing) |
-| The map (`overview`), production, the components | Hosts, Java 21 runtime, Shop API | production (deployment), the components, inside the order service (composite structure) |
-| Opening the bookshop (mindmap) | On Google Cloud, On Azure, On AWS (under Hosting) | the bookshop on Google Cloud, on Azure, on AWS (0.26.0) |
-
-It is built, not written: `node tools/atlas.mjs` reads the example files and [`../tools/atlas-links.json`](../tools/atlas-links.json)
-(the files, in order, and which card opens which view) and writes the model. Elements are shared by id: one Order,
-one package `sales`, one `api` lifeline for the sequence, communication and overview files, one Shop API, its jar and the
-runtime it is deployed on for the component and deployment files; Order, its `placedAt` and the profile for the
-class, package and profile files, and the `worker` and `payments` lifelines for the overview, sequence and timing
-files; the shopper for the use case and information flow files, and the storefront, Shop API and payment provider for
-the component and information flow files. The ER, data flow and C4 files' ids carry `er-`, `dfd-` and `c4-` (a C4
-element and a map card are different elements: a card has no type); the mindmap, Google Cloud, Azure and AWS files' `mm-`,
-`gcp-`, `az-` and `aws-`, and their icon packs' labels (`iconPacks`) are one per pack. Where two files have an id, they must agree on it (a field one leaves out is the other's, a class's members are
-the union of theirs); where they disagree, the build stops and names the id, the files and the field, and the example
-files are what gets fixed.
-`tests/atlas.test.mjs` fails when the committed atlas is not what it writes. A card that opens another kind of diagram does not unfold in place (E): it opens.
-
-## The e-bike atlas
-
-SysML keeps its own domain: a bookshop has no system of hardware whose requirements, parts and equations a reader would
-recognise. [`ebike-atlas.json`](ebike-atlas.json) is the four e-bike files in one model, built as the Bookshop atlas is:
-`node tools/atlas.mjs --links tools/ebike-links.json --out examples/ebike-atlas.json` reads them and
-[`../tools/ebike-links.json`](../tools/ebike-links.json). It opens at the requirements; the specification opens the
-blocks, the range requirement the parametric view that checks it, and EBike the internal block view. The files write
-every element they share alike (EBike whole in the blocks, structure and range files; the requirements file names its
-blocks only), so each view draws in the atlas exactly as in its own file; `tests/ebike-atlas.test.mjs` holds that, and
-that the atlas validates with no problem.
+`bike-share.json` is the model the tests and the benchmark read; [`umlimator-atlas.json`](umlimator-atlas.json), umlimator drawn by itself, is the gallery's Atlas and stays out of every test, the bench and every pin. It has no honest trace, latency or cost data, no hardware for SysML and no business process for BPMN, and its content changes with the code, so a pinned picture of it would describe last month's umlimator. CI renders it, checks its layout and validates it, with nothing about its content pinned.
 
 ## Host pages
 
@@ -146,7 +105,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 |---|---|
 | [`playground.html`](playground.html) | Edit a model as JSON and the map follows, with `validate()`'s problems, and the broken rules (`rules()`) and `check()`'s layout issues for the view shown, each selecting what it is about; Share puts the model in the link |
 | [`embed.html`](embed.html) | `render()` with the standalone page's pieces, each a checkbox (`nav`, `details`, `legend`, `hints`), a view loaded when a card or its details open it (`open`, `update()`, `setView()`) or unfold it in place (`expand`, `map.expand()`), SVG and PNG export, light, dark and a host's own palette, the minimap |
-| [`live.html`](live.html) | `overlay()` once a second, the model unchanged: flow as fast as each line's readings, lines that drop readings pulse rose, slow ones glow amber with their delay, and each card's tab shows its lag |
+| [`live.html`](live.html) | `overlay()` once a second on the bike share's dock feed, the model unchanged: flow as fast as each line's dock events, lines that drop events pulse rose, slow ones glow amber with their delay, and each card's tab shows its lag |
 | [`ask.html`](ask.html) | Questions answered on the map: words, the cards and lines they are about lit (`highlight()` with `paths()` and `reach()`), a flow played as a `tour()`, and the view in sentences (`describe()`), the text an AI model would get |
 | [`replay.html`](replay.html) | A trace replayed (`replay()`): an OpenTelemetry export ([`traces/ride-end.json`](traces/ride-end.json)) read by `otlpSpans()`, each call along its line at its time, its duration kept as a label, with pause and stop; `umlimator.py trace` keeps the same trace as bike-share's `ride-end` view |
 | [`edit.html`](edit.html) | `editable`: the map emits `change` events, the host applies them and calls `update()`, with undo from `history()` |
@@ -163,35 +122,29 @@ The module embedded in a page, as an app would use it. Serve the repository over
 
 | Feature | Where |
 |---|---|
-| Views a card opens (`opensView`) | bike-share (three levels), weather, assistant, bookshop; bookshop-atlas, from a map to UML diagrams and between them |
+| Views a card opens (`opensView`) | bike-share: four levels of map, the rider shop's Shop API, and from the map to the typed views and between them |
 | A view the host loads when it's opened (`opensView` with `opensCount`) | bike-share: Trip service and Fleet service, in `embed.html` |
-| A stacked card unfolded in place (E, Alt + click, `map.expand()`) | bike-share: Trip service and Fleet service in `system`, Bike share in `context`; weather: Check in `stages`, Quality check in `flow`; numbered, with its run order: weather Forecast in `stages` (with its lanes), assistant answer in `assistant` |
-| Boxes (`containers`) and their tabs (`badges`) | bike-share `system`, weather `check` |
-| A box's tone, a tinted region (`tone`) | bookshop `checkout` |
-| Nested boxes (`parent`) | weather `check` |
-| A line to or from a box | bike-share `system` (Monitoring → Rides), weather `check` (Checks → Quarantine) |
-| Line kinds (`kind`: calls, feeds, triggers, state, guard) | bike-share, weather, assistant `answer` |
-| Line weights (`weight`) | bike-share, weather, bookshop `checkout`, `live.html` |
+| A stacked card unfolded in place (E, Alt + click, `map.expand()`) | bike-share: Trip service and Fleet service in `system`, Bike share in `context`, Dock listener in `fleet`; numbered, with its run order: Demand forecast in `fleet` (with its lanes) |
+| Boxes (`containers`) and their tabs (`badges`) | bike-share `system` and `dock-feed` |
+| A box's tone, a tinted region (`tone`) | bike-share `checkout` |
+| Nested boxes (`parent`) | bike-share `dock-feed` |
+| A line to or from a box | bike-share `system` (Monitoring to Rides) and `dock-feed` (Checks to Quarantine) |
+| Line kinds (`kind`: calls, feeds, triggers, state, guard) | bike-share |
+| Line weights (`weight`) | bike-share (`trips`, `dock-feed`, `checkout`), `live.html` |
 | A line's second label (`sublabel`) | bike-share (REST, gRPC, MQTT) |
-| The sides a line uses (`fromSide`, `toSide`) | bike-share `system` and `fleet`, weather `flow` |
+| The sides a line uses (`fromSide`, `toSide`) | bike-share `system` and `fleet` |
 | Tabs on cards (`badges`, with `tone`) | bike-share (SSO, v2 beta, 3 partitions), `live.html` |
-| Line icons and brand logos (`icon`) | every model; logos in bookshop |
-| Chips (`verbs`) and `subAndChips` | assistant |
+| Line icons and brand logos (`icon`) | every model; logos in bike-share |
 | A card with its name only (`noSub`) | bike-share (Payment provider) |
-| Edited and planned marks (`edited`, `change: "planned"`) | bike-share (Pricing, Charging), assistant (phone calls) |
-| Cards with no lines in a row of their own | assistant (the hooks, phone calls) |
-| Positions set by hand (`layout`) | bike-share `system`, assistant `answer`, bookshop `checkout` |
-| Space between columns and rows (`gap`, `rgap`) | weather `check` |
-| A→B and B→A as two lines (`keepPairs`) | weather `flow` |
-| A view's loop back (`loop: true`) | weather `check` |
-| Steps in run order (`render: "sequence"`) and a tour | bookshop `api`, weather `forecaster`, assistant `answer`, bike-share `ride-end` (no tour); states `navigation` (with loops back), `keys` and `mcp` (with boxes) |
-| Steps on the lines of any view (`step`) | bookshop `checkout` (with a tour) |
-| Swimlanes (`lanes`) | weather `forecaster` |
-| A process in steps (`render: "process"`, `stepIds`) | weather `stages` |
-| The view list's order (`browserOrder`) | weather `stages` |
-| Cards that only one view has (a view's `nodes`), and per-view changes (`nodeOverrides`) | assistant `answer` |
-| Kinds read from labels (`kindsFromLabels`) | assistant |
-| Skill-map kinds | assistant |
+| Edited and planned marks (`edited`, `change: "planned"`) | bike-share (Pricing, Charging) |
+| Cards with no lines in a row of their own | bike-share `system` (Status page, Feature flags) |
+| Positions set by hand (`layout`) | bike-share `system`, `help` and `checkout` |
+| Space between columns and rows (`gap`, `rgap`) | bike-share `dock-feed` |
+| A view's loop back (`loop: true`) | bike-share `dock-feed` (Quarantine back to the telemetry stream) |
+| Steps in run order (`render: "sequence"`) and a tour | bike-share `api`, `demand` and `help`, `ride-end` (no tour) |
+| Steps on the lines of any view (`step`) | bike-share `checkout` (with a tour) |
+| Swimlanes (`lanes`) | bike-share `demand` |
+| Cards that only one view has (a view's `nodes`), and per-view changes (`nodeOverrides`) | bike-share `help` |
 | `render()`, its events, `update()`, `setView()`, `focus()`, `toSVG()`, `toPNG()`, themes | `embed.html` |
 | Deeper tints (`--um-tint`) | `embed.html`, its host's palette |
 | The standalone page's pieces in `render()`: views list, details panel, legend, hint line (`nav`, `details`, `legend`, `hints`) | `embed.html` |
@@ -202,7 +155,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | A trace kept as a numbered view (`sequenceFromTrace()`, `umlimator.py trace`): each call a step, its duration under its label | bike-share `ride-end`, made from `traces/ride-end.json` with `traces/match.json` |
 | Lenses (`lenses`, `owner`, `map.lens()`), the page's Lenses menu and `#lens=<id>` | bike-share: By team (cards ringed by owner, with a legend) and Data flow (feeds and state lines lit, the rest dimmed) |
 | Budgets (`latency`, `cost`): the slowest or costliest path (`critical()`) and what-if (`whatIf()`) | bike-share `trips`: the details panel's ⏱, ¤ and ⊘ (What if this goes down?) |
-| A story told step by step (`stories`, `play()`), its Stories menu and recording in the page, `umlimator.py record` | bike-share (`ride`: a ride from unlock to payment), on the site; pictured under Maps; states (`assistant`: a page tool, then the reader) |
+| A story told step by step (`stories`, `play()`), its Stories menu and recording in the page, `umlimator.py record` | bike-share (`ride`: a ride from unlock to payment), on the site; pictured under Maps |
 | Editing and undo (`editable`, `change`, `history()`) | `edit.html` |
 | A diagram type: a typed model in its own notation (`schemaVersion: 2`, a view's `diagram`), from `umlimator/all` | sales-classes (`uml.class`), order-objects (`uml.object`), bookshop-packages (`uml.package`), checkout-sequence (`uml.sequence`), checkout-communication (`uml.communication`), shopping-use-cases (`uml.use-case`), fulfil-activity (`uml.activity`), order-states (`uml.state-machine`), buy-book-overview (`uml.interaction-overview`), bookshop-components (`uml.component`), bookshop-deployment (`uml.deployment`), order-service-structure (`uml.composite-structure`) |
 | A class diagram's parts: compartments, members as UML text, stereotypes, line ends, end labels, notes (`present.collapsed`, `direction: "down"`) | sales-classes `domain` and `payments-only` |
@@ -231,23 +184,23 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | BPMN: pools and nested lanes as bands, boundary events on an activity's border, message flows to a pool's border, a sub-process expanded or collapsed by the view, names outside events and gateways, a group across lanes | bookshop-order-to-shipment, [`tests/bpmn-stress.json`](../tests/bpmn-stress.json) |
 | BPMN XML, imported and exported laid out (`umlimator.py import`, `export`, through a `bpmn-moddle` you install) | [`tests/import/descriptive.bpmn`](../tests/import/descriptive.bpmn), which CI imports (`tests/import.py`) |
 | A Mermaid `erDiagram`, a Mermaid flowchart (`--typed`), a Structurizr JSON workspace and DBML, imported (`umlimator.py import`) | [`tests/import/er.mmd`](../tests/import/er.mmd), [`flowchart.mmd`](../tests/import/flowchart.mmd), [`structurizr.json`](../tests/import/structurizr.json), [`dbml.json`](../tests/import/dbml.json), which CI reads (`tests/import.py`, the readers' tests) |
-| SysML frames and their headers; requirements with wrapped text and containment crosshairs; named compartments; proxy and full ports with flow arrows, `~` conjugation and item flows; constraint properties with parameters on their borders and binding connectors | ebike-requirements, ebike-blocks, ebike-structure, ebike-range, ebike-atlas |
+| SysML frames and their headers; requirements with wrapped text and containment crosshairs; named compartments; proxy and full ports with flow arrows, `~` conjugation and item flows; constraint properties with parameters on their borders and binding connectors | ebike-requirements, ebike-blocks, ebike-structure, ebike-range, bike-share |
 | A Mermaid `requirementDiagram`, imported and written back (`umlimator.py import`) | [`tests/import/requirement.mmd`](../tests/import/requirement.mmd), which CI imports (`tests/import.py`) |
 | `layout()` in Node | `layout.mjs` |
-| The model's JSON Schema (`"$schema"`), `validate()` and `check()` | the maps and the models that set `"$schema"` (sales-classes, the ebike ones, bookshop-profile, bookshop-timing, the atlases), `playground.html` |
+| The model's JSON Schema (`"$schema"`), `validate()` and `check()` | the maps and the models that set `"$schema"` (sales-classes, the ebike ones, bookshop-profile, bookshop-timing, bike-share), `playground.html` |
 | The standalone page (`mountPage`) and the CLI's `render`, `check` and `stills` | every map on the site, built by CI |
 | The `<umlimator-map>` element (`src`, a model in the page, `view`, `minimap`, `controls`, `theme`, `height`, its events) and the docs-site blocks (`umlimator/markdown-it`, `umlimator/remark`) | `element.html`; [the embedding guide's In a docs site](../docs/guide/embedding.md#in-a-docs-site) has each docs setup |
-| Card shapes in one style (a shape by kind; a card's own `shape`) | `notations.html`, `shapes.json`; `clinic.json` (imported, its styles' shapes) |
+| Card shapes in one style (a shape by kind; a card's own `shape`) | `notations.html`, `shapes.json`; `bike-share-c4.json` (imported, its styles' shapes) |
 | Every view in one PDF to hand in for a review: a cover with the contents, each view with its legend and tables, the rules (`umlimator.py pdf`) | every map on the site (its PDF link, built by CI); bike-share's is checked in CI |
 | Rules on the map (`rules`: `from` and `to` by kind, id or box, and `not`; a rule that names a box holds where it is drawn) and `rules()` | bike-share (two rules, which hold; CI's check fails if one breaks), `playground.html` (break one: add a line from Rider app to Trips database) |
 | What changed between two models (`diff()`): NEW, CHANGED and REMOVED marks, and the summary in words | `timelapse.html` (Mark what changed); the CLI's `diff` and the diff Action (`action.yml`) |
 | The time-lapse: `update()` easing into the next model | `timelapse.html`; the CLI's `timelapse` writes one from a model's git history |
 | The map against the traffic seen (`drift()`), and the line style `faded` | `drift.html`; the CLI's `drift` |
-| A diagram you have already, as a model (`umlimator.py import`): Structurizr DSL, C4-PlantUML, Mermaid, compose or Kubernetes JSON | clinic, imported from [`clinic.dsl`](clinic.dsl) (CI imports it again and fails if the model differs); [`tests/import/`](../tests/import/): a sample of each other format, which CI imports, renders and checks (`tests/import.py`, with clinic's source too) |
-| Structurizr groups as boxes, nested as the source nests them | clinic `context` and `containers` (Clinic staff) |
+| A diagram you have already, as a model (`umlimator.py import`): Structurizr DSL, C4-PlantUML, Mermaid, compose or Kubernetes JSON | bike-share-c4, imported from [`bike-share.dsl`](bike-share.dsl) (CI imports it again and fails if the model differs); [`tests/import/`](../tests/import/): a sample of each other format, which CI imports, renders and checks (`tests/import.py`, with the bike share's source too) |
+| Structurizr groups as boxes, nested as the source nests them | bike-share-c4 `context` and `containers` (Field crews) |
 | An AI assistant reading a map and driving its page (an MCP server: `umlimator.py mcp`) | any model: `python3 umlimator.py mcp examples/bike-share.json`, as `tests/cli.py` runs it |
 
-Not shown: `repair: false`, a switch for debugging the router.
+Not shown: `repair: false`, a switch for debugging the router; and, since the bike share model replaced the smaller maps, chips (`verbs`, `subAndChips`), skill-map kinds and kinds read from labels (`kindsFromLabels`), a process in steps (`render: "process"`, `stepIds`), the view list's order (`browserOrder`) and A to B and B to A as two lines (`keepPairs`). [The model guide](../docs/guide/model.md) describes each.
 
 ## Diagram types to come
 

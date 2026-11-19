@@ -151,7 +151,11 @@ export default defineConfig({
       { text: 'Guide', link: '/guide/getting-started', activeMatch: '^/guide/' },
       { text: 'API', link: '/api/', activeMatch: '^/api/' },
       { text: 'Diagram types', link: '/types', activeMatch: '^/(types|conformance/)' },
-      { text: 'Examples', link: '/examples/index.html', target: '_self' },
+      { text: 'Examples', items: [
+        { text: 'Diagrams', link: '/examples/index.html#diagrams', target: '_self' },
+        { text: 'Atlas', link: '/examples/index.html#atlas', target: '_self' },
+        { text: 'In an app', link: '/examples/index.html#apps', target: '_self' },
+      ] },
       { text: `v${version}`, items: [
         { text: 'Changelog', link: '/changelog' },
         { text: 'npm', link: 'https://www.npmjs.com/package/umlimator' },

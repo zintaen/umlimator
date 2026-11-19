@@ -482,7 +482,7 @@ test('audit 38: validate() says a story step names a line its DFD or C4 view doe
   assert.deepEqual(validate(m).filter(p => p.path.startsWith('stories')).map(p => `${p.path}: ${p.message}`), ['stories[0].steps[0].select: "b" is no line of view "lv": the view does not draw it']);
   // every line of every DFD and C4 view of the examples, and of the stress fixtures: a step that selects it is said not drawn
   // exactly when layout() draws it neither as itself nor inside an implied line
-  for (const f of ['../examples/bookshop-atlas.json', '../examples/bookshop-c4.json', '../examples/bookshop-data-flow.json', './c4-stress.json', './dfd-stress.json']) {
+  for (const f of ['../examples/bike-share.json', '../examples/bookshop-c4.json', '../examples/bookshop-data-flow.json', './c4-stress.json', './dfd-stress.json']) { // bike-share: the atlas's C4 and data flow views, since step 3 of the one-model plan
     const x = JSON.parse(readFileSync(new URL(f, import.meta.url), 'utf8'));
     for (const v of x.views.filter(v => /^(dfd|c4\.)/.test(v.diagram || ''))) {
       const g = layout(x, v.id), drew = new Set(g.edges.flatMap(e => [e.id, ...(e.implied || []), ...(e.of || []).map(r => (r && typeof r === 'object' ? r.id : r))]));

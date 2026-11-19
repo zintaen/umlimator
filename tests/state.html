@@ -15,7 +15,8 @@ const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const until = async (f, ms = 3000) => { const t = Date.now(); while (!f() && Date.now() - t < ms) await wait(20); return f(); };
-const BOOK = await (await fetch('../examples/bookshop.json')).json(), BIKE = await (await fetch('../examples/bike-share.json')).json();
+// BOOK: bike-share with its rider shop's overview as the root, which these checks start on (the file's root is context)
+const BIKE = await (await fetch('../examples/bike-share.json')).json(), BOOK = { ...structuredClone(BIKE), root: 'overview' };
 const errors = [], onError = e => errors.push(String(e.message || e.error)); addEventListener('error', onError);
 const warned = [], warn0 = console.warn; console.warn = (...a) => { warned.push(a.join(' ')); warn0(...a); };
 const el = document.getElementById('a');
@@ -73,7 +74,7 @@ try {
   check('update() that redraws the view, with the selection still drawn, sends no select event and says nothing', se.length === 0 && live.length === 0 && h.selection.id === 'api', [se, live]);
   const copy = h.selection; copy.id = 'db';
   check("handle.selection is a copy: changing it changes nothing", h.selection.id === 'api' && h.selected[0].id === 'api');
-  const m3 = structuredClone(m2); m3.views[0].nodeIds = m3.views[0].nodeIds.filter(i => i !== 'api'); h.update(m3);
+  const m3 = structuredClone(m2), o3 = m3.views.find(v => v.id === 'overview'); o3.nodeIds = o3.nodeIds.filter(i => i !== 'api'); h.update(m3);
   check('…and one that drops the selected card sends select(null), once', JSON.stringify(se) === '[null]', se);
   const ue = []; mount(BIKE, { view: 'system', on: { select: e => ue.push(e.target ? e.target.type + ':' + e.target.id : null) } });
   h.select({ type: 'node', id: 'trips', view: 'system' }); ue.length = 0;

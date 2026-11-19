@@ -19,7 +19,6 @@ import { metaOf, stereoProblems, appliedOf } from '../src/uml/stereotypes.js';
 import { typedEditor } from '../src/canvas/edit.js';
 import { layoutTyped } from '../src/typed/layout.js';
 import { tagSize } from '../src/uml/frame.js';
-import { merge } from '../tools/atlas.mjs';
 import { SYS_TABLE, SYS_HEAD, SYS_FRAME, SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS } from '../src/sysml/sysml.js';
 import '../src/sysml/requirement.js';
 import '../src/sysml/blocks.js';
@@ -28,7 +27,24 @@ import '../src/sysml/parametric.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 const [M16, M17, M18, M19] = ['16-requirement', '17-block-definition', '18-internal-block', '19-parametric'].map(n => read('sysml-targets.json')[n]);
-// the four merged by id, as tools/atlas.mjs merges them (its merge, §15.2)
+// the four merged by id (notes/milestone-3.md 15.2), as tools/atlas.mjs merged them before the bike share model replaced the atlases: an
+// element in two files is one, a field both set must agree (type, parent and ends always), a field one leaves out is the other's
+const isObj = x => x && typeof x === 'object' && !Array.isArray(x);
+const canon = x => JSON.stringify(x, (k, v) => (isObj(v) ? Object.fromEntries(Object.keys(v).sort().map(j => [j, v[j]])) : v));
+function merge(a, b, who, pre = '') {
+  const out = {}, has = (x, k) => x[k] !== undefined;
+  for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    if (k === 'members') {
+      const m = new Map((a.members || []).map(x => [x.id, x]));
+      (b.members || []).forEach(x => m.set(x.id, m.has(x.id) ? merge(m.get(x.id), x, `member ${x.id} of ${who}`) : x));
+      out.members = [...m.values()];
+    } else if (k === 'props' && isObj(a.props) && isObj(b.props)) out.props = merge(a.props, b.props, who, 'props.');
+    else if (has(a, k) && has(b, k) ? canon(a[k]) !== canon(b[k]) : ['type', 'parent', 'from', 'to'].includes(k))
+      throw new Error(`${who} disagree on its ${pre}${k}: ${canon(a[k])} against ${canon(b[k])}`);
+    else out[k] = has(a, k) ? a[k] : b[k];
+  }
+  return out;
+}
 function atlas() {
   const out = { schemaVersion: 2, title: 'E-bike', nodes: [], edges: [], views: [] };
   for (const m of structuredClone([M16, M17, M18, M19])) {

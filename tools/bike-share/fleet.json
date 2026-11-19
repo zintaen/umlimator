@@ -1,0 +1,114 @@
+{
+  "nodes": [
+    {
+      "id": "dock-listener",
+      "label": "Dock listener",
+      "kind": "backend",
+      "owner": "Fleet",
+      "icon": "webhook",
+      "sublabel": "reads dock events",
+      "opensView": "dock-feed",
+      "what": "Keeps the fleet's state current.",
+      "when": "Every dock event.",
+      "how": "Consumes the telemetry stream."
+    },
+    {
+      "id": "battery-service",
+      "label": "Battery monitor",
+      "kind": "backend",
+      "owner": "Fleet",
+      "icon": "gauge",
+      "sublabel": "under 20% is low",
+      "opensView": "blocks",
+      "what": "Finds e-bikes that need charging.",
+      "when": "Every battery report.",
+      "how": "Raises an alert in the ops console."
+    },
+    {
+      "id": "forecast",
+      "label": "Demand forecast",
+      "kind": "ai",
+      "owner": "Fleet",
+      "icon": "sparkles",
+      "sublabel": "bikes needed per dock",
+      "opensView": "demand",
+      "what": "Predicts demand per dock, hourly.",
+      "when": "Every hour.",
+      "how": "A model trained on a year of trips."
+    },
+    {
+      "id": "planner",
+      "label": "Rebalance planner",
+      "kind": "backend",
+      "owner": "Fleet",
+      "icon": "calendar",
+      "sublabel": "van routes",
+      "opensView": "rebalance",
+      "what": "Plans where the vans move bikes.",
+      "when": "Each morning, and on request.",
+      "how": "Matches the forecast against stock."
+    },
+    {
+      "id": "fleet-api",
+      "label": "Fleet API",
+      "kind": "backend",
+      "owner": "Fleet",
+      "icon": "server",
+      "sublabel": "REST",
+      "what": "The Fleet service's endpoints.",
+      "when": "Every console call.",
+      "how": "Plans and moves."
+    },
+    {
+      "id": "fleet-db",
+      "label": "Fleet store",
+      "kind": "database",
+      "owner": "Fleet",
+      "icon": "database",
+      "sublabel": "bikes, docks, vans",
+      "what": "Where every bike is.",
+      "when": "Updated by each dock event.",
+      "how": "A key-value store per dock."
+    }
+  ],
+  "edges": [
+    { "id": "f1", "from": "telemetry", "to": "dock-listener", "label": "bike states", "kind": "feeds", "weight": 3 },
+    {
+      "id": "f2",
+      "from": "dock-listener",
+      "to": "fleet-db",
+      "label": "updates docks",
+      "kind": "state",
+      "weight": 2,
+      "fromSide": "top",
+      "toSide": "top"
+    },
+    { "id": "f3", "from": "dock-listener", "to": "battery-service", "label": "battery levels", "kind": "feeds" },
+    { "id": "f4", "from": "battery-service", "to": "ops-console", "label": "low battery", "kind": "triggers" },
+    { "id": "f5", "from": "warehouse", "to": "forecast", "label": "a year of trips", "kind": "feeds" },
+    {
+      "id": "f6",
+      "from": "forecast",
+      "to": "planner",
+      "label": "demand per dock",
+      "kind": "feeds",
+      "toSide": "bottom"
+    },
+    { "id": "f7", "from": "planner", "to": "fleet-db", "label": "reads stock", "kind": "state" },
+    { "id": "f8", "from": "ops-console", "to": "fleet-api", "label": "moves bikes", "sublabel": "REST" },
+    { "id": "f9", "from": "fleet-api", "to": "planner", "label": "today's plan" }
+  ],
+  "views": [
+    {
+      "id": "fleet",
+      "parent": "system",
+      "title": "Fleet service",
+      "caption": "From dock events to the vans' routes.",
+      "nodeIds": [
+        "telemetry", "dock-listener", "battery-service", "fleet-db", "warehouse", "forecast", "planner", "fleet-api",
+        "ops-console"
+      ],
+      "edges": ["f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9"]
+    }
+  ]
+}

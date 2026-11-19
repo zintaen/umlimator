@@ -1,0 +1,261 @@
+{
+  "nodes": [
+    {
+      "id": "rider-app",
+      "label": "Rider app",
+      "kind": "frontend",
+      "owner": "Apps",
+      "icon": "window",
+      "sublabel": "iOS, Android, web",
+      "what": "Find a bike, unlock it, pay.",
+      "when": "Every ride.",
+      "how": "Calls the Trip service and the map tiles."
+    },
+    {
+      "id": "ops-console",
+      "label": "Ops console",
+      "kind": "frontend",
+      "owner": "Apps",
+      "icon": "monitor",
+      "sublabel": "web, staff only",
+      "what": "Where the operations team plans the day.",
+      "when": "Every shift.",
+      "how": "Calls the Fleet service; shows low-battery alerts."
+    },
+    {
+      "id": "accounts",
+      "label": "Accounts",
+      "kind": "security",
+      "owner": "Rides",
+      "icon": "key",
+      "sublabel": "sign-in, tokens",
+      "badges": [{ "text": "SSO", "tone": "green" }],
+      "what": "Riders' and staff's accounts.",
+      "when": "At sign-in, and on every call.",
+      "how": "Issues tokens that the services check."
+    },
+    {
+      "id": "trips",
+      "label": "Trip service",
+      "kind": "backend",
+      "owner": "Rides",
+      "icon": "server",
+      "sublabel": "rides from unlock to end",
+      "opensView": "trips",
+      "opensCount": 6,
+      "what": "Runs each ride.",
+      "when": "Unlock, pause, end.",
+      "how": "Prices a ride when it ends and charges it. Its inner view loads when you open it."
+    },
+    {
+      "id": "pricing",
+      "label": "Pricing",
+      "kind": "backend",
+      "owner": "Rides",
+      "icon": "chart",
+      "sublabel": "fares, passes, caps",
+      "badges": [{ "text": "v2 beta", "tone": "amber" }],
+      "edited": true,
+      "what": "Works out what a ride costs.",
+      "when": "When a ride ends.",
+      "how": "Rules per city zone; v2 adds peak prices."
+    },
+    {
+      "id": "fleet",
+      "label": "Fleet service",
+      "kind": "backend",
+      "owner": "Fleet",
+      "icon": "gauge",
+      "sublabel": "bikes, docks, vans",
+      "opensView": "fleet",
+      "opensCount": 6,
+      "what": "Knows where every bike is.",
+      "when": "Every dock event.",
+      "how": "Reads the telemetry stream and plans rebalancing. Its inner view loads when you open it."
+    },
+    {
+      "id": "charging",
+      "label": "Charging",
+      "kind": "backend",
+      "owner": "Fleet",
+      "icon": "clock",
+      "sublabel": "e-bike charging slots",
+      "change": "planned",
+      "what": "Books charging slots for e-bikes.",
+      "when": "Planned for next year.",
+      "how": "Not built yet."
+    },
+    {
+      "id": "tripsdb",
+      "label": "Trips database",
+      "kind": "database",
+      "owner": "Rides",
+      "icon": "database",
+      "sublabel": "PostgreSQL",
+      "what": "Every ride and its fare.",
+      "when": "Written as rides change.",
+      "how": "One row per ride, kept seven years."
+    },
+    {
+      "id": "telemetry",
+      "label": "Telemetry stream",
+      "kind": "queue",
+      "owner": "Fleet",
+      "icon": "queue",
+      "sublabel": "Kafka",
+      "badges": ["3 partitions"],
+      "what": "Dock and bike events.",
+      "when": "Every few seconds per dock.",
+      "how": "Partitioned by dock; kept seven days."
+    },
+    {
+      "id": "warehouse",
+      "label": "Warehouse",
+      "kind": "database",
+      "owner": "Fleet",
+      "icon": "archive",
+      "sublabel": "hourly tables",
+      "what": "History for reports and forecasts.",
+      "when": "Loaded hourly.",
+      "how": "Columnar tables; exports anonymised trips weekly."
+    },
+    {
+      "id": "stations",
+      "label": "Docking stations",
+      "kind": "cloud",
+      "owner": "Fleet",
+      "icon": "gate",
+      "sublabel": "400 docks",
+      "what": "The docks on the street.",
+      "when": "Always on.",
+      "how": "Report each bike and battery over MQTT; open on command."
+    },
+    {
+      "id": "monitoring",
+      "label": "Monitoring",
+      "kind": "cloud",
+      "owner": "Platform",
+      "icon": "chart",
+      "sublabel": "metrics, alerts",
+      "what": "Watches every service.",
+      "when": "Every 15 seconds.",
+      "how": "Scrapes each service's metrics endpoint."
+    },
+    {
+      "id": "status",
+      "label": "Status page",
+      "kind": "cloud",
+      "owner": "Platform",
+      "icon": "alert",
+      "sublabel": "public uptime",
+      "what": "Tells riders when something is down.",
+      "when": "During incidents.",
+      "how": "Updated by hand; nothing calls it yet."
+    },
+    {
+      "id": "flags",
+      "label": "Feature flags",
+      "kind": "cloud",
+      "owner": "Platform",
+      "icon": "flag",
+      "sublabel": "staged roll-outs",
+      "what": "Turns features on per city.",
+      "when": "On each release.",
+      "how": "Not wired to the services yet."
+    }
+  ],
+  "edges": [
+    { "id": "s1", "from": "riders", "to": "rider-app", "label": "unlock, ride", "weight": 3 },
+    { "id": "s2", "from": "ops", "to": "ops-console", "label": "plans the day" },
+    { "id": "s3", "from": "rider-app", "to": "trips", "label": "starts, ends rides", "sublabel": "REST", "weight": 3 },
+    { "id": "s4", "from": "rider-app", "to": "accounts", "label": "signs in", "sublabel": "OIDC" },
+    { "id": "s6", "from": "ops-console", "to": "fleet", "label": "moves bikes", "sublabel": "REST", "toSide": "top" },
+    {
+      "id": "s7",
+      "from": "trips",
+      "to": "pricing",
+      "label": "prices a ride",
+      "sublabel": "gRPC",
+      "weight": 2,
+      "edited": true
+    },
+    { "id": "s8", "from": "trips", "to": "tripsdb", "label": "writes rides", "kind": "state", "weight": 3 },
+    { "id": "s9", "from": "trips", "to": "payments", "label": "charges", "sublabel": "REST", "weight": 2 },
+    {
+      "id": "s10",
+      "from": "stations",
+      "to": "telemetry",
+      "label": "dock events",
+      "kind": "feeds",
+      "sublabel": "MQTT",
+      "weight": 3
+    },
+    { "id": "s11", "from": "telemetry", "to": "fleet", "label": "bike states", "kind": "feeds", "weight": 3 },
+    {
+      "id": "s12",
+      "from": "fleet",
+      "to": "ops-console",
+      "label": "low battery",
+      "kind": "triggers",
+      "fromSide": "top"
+    },
+    { "id": "s13", "from": "telemetry", "to": "warehouse", "label": "streams", "kind": "feeds", "weight": 2 },
+    {
+      "id": "s14",
+      "from": "warehouse",
+      "to": "city",
+      "label": "publishes trips",
+      "kind": "feeds",
+      "sublabel": "weekly CSV"
+    },
+    { "id": "s16", "from": "monitoring", "to": "rides", "label": "scrapes metrics", "kind": "state" },
+    { "id": "s17", "from": "fleet", "to": "charging", "label": "books slots" }
+  ],
+  "views": [
+    {
+      "id": "system",
+      "parent": "context",
+      "title": "What runs",
+      "caption": "The apps and the two teams' services. Trip service and Fleet service open their parts.",
+      "nodeIds": [
+        "monitoring", "riders", "rider-app", "accounts", "pricing", "payments", "trips", "tripsdb", "ops",
+        "ops-console", "stations", "telemetry", "fleet", "charging", "warehouse", "city", "status", "flags"
+      ],
+      "containers": [
+        { "id": "apps", "label": "Apps", "nodeIds": ["rider-app", "ops-console"], "badges": ["iOS · Android · web"] },
+        {
+          "id": "rides",
+          "label": "Rides",
+          "nodeIds": ["accounts", "trips", "pricing", "tripsdb"],
+          "badges": [{ "text": "team Rides", "tone": "accent" }]
+        },
+        {
+          "id": "fleet-box",
+          "label": "Fleet",
+          "nodeIds": ["telemetry", "fleet", "charging", "warehouse"],
+          "badges": [{ "text": "team Fleet", "tone": "violet" }]
+        }
+      ],
+      "layout": {
+        "monitoring": [2, 0],
+        "riders": [0, 2],
+        "rider-app": [1, 2],
+        "accounts": [2, 2],
+        "pricing": [3, 2],
+        "trips": [2, 3],
+        "payments": [4, 3],
+        "tripsdb": [3, 4],
+        "ops": [0, 5],
+        "ops-console": [1, 5],
+        "stations": [0, 7],
+        "telemetry": [1, 7],
+        "fleet": [2, 7],
+        "charging": [3, 7],
+        "warehouse": [2, 8],
+        "city": [4, 8],
+        "status": [0, 9],
+        "flags": [1, 9]
+      }
+    }
+  ]
+}

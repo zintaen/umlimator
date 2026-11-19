@@ -6,8 +6,7 @@ and **edit** on the subset below. No interchange: Mermaid has no block definitio
 A view of a version-2 model whose `diagram` is `"sysml.block-definition"` is a block definition diagram, drawn by
 `lib/umlimator-all.js` (`umlimator/all`); `lib/umlimator.js` draws it as plain cards with a warning. The vocabulary is
 `docs/diagrams/model.md` §2, row 17; the example is [`examples/ebike-blocks.json`](../../examples/ebike-blocks.json),
-the e-bike's blocks, interface block, constraint blocks and value types, opened from the requirements' specification in
-the e-bike atlas; its EBike opens the internal block view.
+the e-bike's blocks, interface block, constraint blocks and value types.
 
 ## The subset, and SysML v1.7's clauses
 
@@ -66,8 +65,8 @@ Layout limits, measured on `examples/ebike-blocks.json` and `tests/block-definit
 
 - `repair: false`, `reroute: false`; a generalization ranks the general first. A bdd draws only the class type's lines: a
   model whose internal block or parametric views add connectors or bindings between the same blocks would draw them at
-  their owners, so the example's view lists its own `edges` (the five lines it draws), and the e-bike atlas draws it as the
-  file does. A gap: the type does not filter model lines by kind; a view with no `edges` list in such a model draws them.
+  their owners, so the example's view lists its own `edges` (the five lines it draws), and an atlas that joins it
+  draws it as the file does. A gap: the type does not filter model lines by kind; a view with no `edges` list in such a model draws them.
 - The example lays out clean right and down. The stress file's `edge-cases` view (every compartment, a block of 40 rows,
   a value type with unit and quantity kind, an interface block with each direction, a constraint block owning a
   constraint property, proxy, full and conjugated ports, a part typed by a value type, a constraint property typed by a
@@ -104,7 +103,7 @@ block renamed 68 ms: under the 100 ms target.
 
 `tests/blocks.test.mjs`, `tests/blocks.html`; `tests/block-definition-minimal.json`, `tests/block-definition-stress.json`
 with `tests/sysml-fixtures.test.mjs` and `tests/sysml.html`; `tests/sysml.test.mjs` (the class rule on SysML
-generalizations); `tests/cli.py`; `tests/mcp.py`; `tests/ebike-atlas.test.mjs`.
+generalizations); `tests/cli.py`; `tests/mcp.py`.
 
 **Gaps:** clause numbers inside clauses 8 to 10 were not quoted from SysML v1.7's PDF in this build (the file could not be
 read here); whether SysML lets an interface block hold value and reference properties is not settled; the type draws

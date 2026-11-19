@@ -85,10 +85,10 @@ test('audit 31: the standalone-page guide lists every entry of the page\'s Expor
   assert.match(guide, /- \*\*Map model \(JSON\)\*\*: the whole model as its file has it/);
 });
 
-test('audit 32: the file names the standalone-page guide gives for the bookshop\'s exports are the ones page.js makes of examples/bookshop.json', () => {
+test('audit 32: the file names the standalone-page guide gives for the Umlimator Atlas\'s exports are the ones page.js makes of examples/umlimator-atlas.json', () => {
   const guide = readFileSync(new URL('../docs/guide/standalone-page.md', import.meta.url), 'utf8'), src = readFileSync(new URL('../src/page/page.js', import.meta.url), 'utf8');
   const namePart = new Function(src.slice(src.indexOf('function namePart('), src.indexOf('/* ================= the standalone viewer')) + '; return namePart;')();
-  const shop = JSON.parse(readFileSync(new URL('../examples/bookshop.json', import.meta.url), 'utf8')), base = namePart(shop.title);
+  const shop = JSON.parse(readFileSync(new URL('../examples/umlimator-atlas.json', import.meta.url), 'utf8')), base = namePart(shop.title);
   const said = guide.match(/- \*\*Map model \(JSON\)\*\*:[^\n]*/)[0];
   assert.ok(said.includes('`' + base + '.json`'), said);
   assert.ok(said.includes('`' + base + '-' + namePart(shop.views[0].id, 60, false) + '.svg`'), said);

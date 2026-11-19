@@ -42,7 +42,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "bench views": 1})
 
 
 def ok(name, cond, info=""):
@@ -259,8 +259,10 @@ with tempfile.TemporaryDirectory() as tmp:
         ok("trace · a trace becomes the numbered view bike-share keeps, which it replaces where it is", r.get("steps") == 8 and r.get("cards") == 9
            and view(got) == view(bike) and [v["id"] for v in got.get("views", [])] == [v["id"] for v in bike["views"]], r)
 
-        # trace --diagram uml.sequence (3.8): the same trace as a UML sequence view, through the helper (notes/stage-3.md §7)
-        r = cli("trace", str(t / "before.json"), str(tr / "ride-end.json"), "--view", "ride-end", "--match", str(tr / "match.json"),
+        # trace --diagram uml.sequence (3.8): the same trace as a UML sequence view, through the helper (notes/stage-3.md §7),
+        # on a version-1 copy of bike-share, so schemaVersion 2 below is the upgrade the helper makes, not what the file had
+        (t / "before-v1.json").write_text(json.dumps({k: v for k, v in bike.items() if k != "schemaVersion"}))
+        r = cli("trace", str(t / "before-v1.json"), str(tr / "ride-end.json"), "--view", "ride-end", "--match", str(tr / "match.json"),
                 "--diagram", "uml.sequence", "--out", str(t / "traced-uml.json")) or {}
         got = json.loads((t / "traced-uml.json").read_text(encoding="utf-8")) if (t / "traced-uml.json").is_file() else {}
         v = view(got) or {}
@@ -268,7 +270,12 @@ with tempfile.TemporaryDirectory() as tmp:
            got.get("schemaVersion") == 2 and v.get("diagram") == "uml.sequence" and r.get("steps") == 8 and r.get("cards") == 9 and r.get("report") == []
            and all(isinstance(e, dict) and e.get("type") == "uml.Message" and "->" not in e["id"] for e in v.get("edges", [])), r)
         rv = cli("render", str(t / "traced-uml.json"), "--out", str(t / "traced-uml.html"))
-        ok("trace --diagram uml.sequence · the model renders and its check is clean", rv is not None and not rv.get("problems") and not rv.get("errors"), rv)
+        # clean but for the crossings of bike-share's typed views (step 3 of the one-model plan): none on a map view, ride-end
+        # (the traced view, a sequence now) among them, and at most CI's ceiling for the page (.github/workflows/check.yml)
+        maps = {w["id"] for w in bike["views"] if not w.get("diagram")}
+        ok("trace --diagram uml.sequence · the model renders and its check is clean", rv is not None and not rv.get("errors") and "ride-end" in maps
+           and all(p.endswith(" cross") and re.match(r"view ([^:\s]+)", p).group(1) not in maps for p in rv.get("problems", []))
+           and len(rv.get("problems", [])) <= 26, rv)
         # traced again into that view (audit 24): the UML sequence view it replaces takes its lifelines, those no view lists, with it
         span = lambda svc, sid, par, name, a, b: {"resource": {"attributes": [{"key": "service.name", "value": {"stringValue": svc}}]}, "scopeSpans": [{"spans": [
             {"traceId": "5b8aa5a2d2c872e8321cf37308d69df2", "spanId": sid, "parentSpanId": par, "name": name, "startTimeUnixNano": str(1762700000000000000 + a), "endTimeUnixNano": str(1762700000000000000 + b)}]}]}
@@ -1231,12 +1238,16 @@ with tempfile.TemporaryDirectory() as tmp:
            pages and r.get("pages") == len(pages) and all(p.endswith(flat(f"Bike share, an example page {i} of {len(pages)}")) for i, p in enumerate(pages, 1)), [r, [p[-40:] for p in pages]])
         V = {v["id"]: v for v in bike["views"]}
         path = lambda v: (path(V[v["parent"]]) + " › " if v.get("parent") else "") + v["title"]
-        at = {v["id"]: next((i for i, p in enumerate(pages, 1) if p.startswith(flat(f"{path(v)} {len(v['nodeIds'])} cards"))), None) for v in bike["views"]}
+        cards = lambda n: f"{n} card" + ("" if n == 1 else "s")  # the e-bike's internal block and parametric views (step 3) list 1
+        at = {v["id"]: next((i for i, p in enumerate(pages, 1) if p.startswith(flat(f"{path(v)} {cards(len(v['nodeIds']))}"))), None) for v in bike["views"]}
         at["rules"] = next((i for i, p in enumerate(pages, 1) if p.startswith("Rules")), None)
-        cover = pages[0] if pages else ""
+        # the cover and its contents: the pages before the first view's (two since step 3 of the one-model plan; 52 views listed since step 4)
+        cover = "".join(pages[:min([x for x in at.values() if x] or [2]) - 1])
         ok("pdf · the cover: the title, the date, the model's file, a summary line, and the contents, each view with the page its header starts",
-           re.match(r"Bikeshare,anexample\d{4}-\d\d-\d\d·examples/bike-share\.json5views·32cards·48lines·2rulesContents", cover) and None not in at.values()
-           and all(flat(f"{v['title']}{v['caption']}{at[v['id']]}") in cover for v in bike["views"]) and f"Rules{at['rules']}Bikeshare" in cover, [cover[:500], at])
+           # 52 views since step 4 of the one-model plan (49, 381 cards and 398 lines in step 3; 8, 45 cards and 67 lines before): dock-feed,
+           # demand and help add 18 cards and 25 lines
+           re.match(r"Bikeshare,anexample\d{4}-\d\d-\d\d·examples/bike-share\.json52views·399cards·423lines·2rulesContents", cover) and None not in at.values()
+           and all(flat(f"{v['title']}{v.get('caption', '')}{at[v['id']]}") in cover for v in bike["views"]) and f"Rules{at['rules']}Bikeshare" in cover, [cover[:500], at])
         seen = lambda a, b=None: "".join(pages[a - 1:b and b - 1]) if a else ""  # the pages from page a to the one before b
         ok("pdf · a view's page: its legend, then tables of its cards (name, sub-line, kind, what it is), lines (from → to, label, technology) and boxes",
            "Legend" in seen(at["system"], at["system"] and at["system"] + 1) and all(flat(s) in seen(at["system"], at["trips"]) for s in [
@@ -1281,7 +1292,7 @@ with tempfile.TemporaryDirectory() as tmp:
         # types' tests and stated in their conformance notes; nothing else
         # at most these: text widths differ between machines (Linux CI counts fewer than a Mac), so the count is a ceiling
         # M2.14: the crossings repair and reroute off leave in the C4 and data flow examples (notes/milestone-2.md §11), as Chrome
-        # counts them (tests/atlas.test.mjs counts Node's); stated in docs/conformance/c4.md and dfd.md
+        # counts them (tests/bike-share.test.mjs counts Node's in the bike share's views); stated in docs/conformance/c4.md and dfd.md
         # 4a.7: the Google Cloud and Azure examples' one each, repair and reroute off (notes/milestone-4a.md §11), stated in
         # docs/conformance/gcp.md and azure.md; the Azure example's two since audit 27 (a line no longer runs back through its own box)
         # 4b.5: the BPMN example's, repair and reroute off (notes/milestone-4b.md §14), stated in docs/conformance/bpmn.md
@@ -2171,7 +2182,7 @@ if part("audit 36"):
         g = t / "repo"; (g / "docs").mkdir(parents=True)
         sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
         sh("init", "-q")
-        (g / "docs" / "map.json").write_text((ROOT / "examples" / "bookshop.json").read_text(encoding="utf-8"))
+        (g / "docs" / "map.json").write_text((ROOT / "examples" / "bike-share.json").read_text(encoding="utf-8"))
         (g / "docs" / "model.md").write_text('# Model\n\nA model has `"nodes"` and `"views"`: <img src=//e.example/t.png>\n')
         (g / "docs" / "notes.txt").write_text('{"nodes": [], "views": [')
         (g / "docs" / "cut.JSON").write_text('{"nodes": [], "views": []}')
@@ -2366,5 +2377,19 @@ if part("audit 45"):
            r.returncode == 0 and sorted(said) == ["big.json", "dir.json", "eslint.json", "gone.json", "maps/shop.json", "pipe.json", "zero.json"] and all("symbolic link" in (w or "") for w in said.values())
            and "No map model changed" not in md and "OUTSIDE-45" not in written and "SECRET-45" not in written and "x.invalid" not in written,
            (said, md, r.stderr[-400:]))
+if part("bench views"):
+    # bench.py times map views only (bike share step 0): a version-2 model's typed views are left out with their benchViews,
+    # a version-1 model's views are all timed whatever they say, and a benchViews entry naming no view stops the bench
+    spec = importlib.util.spec_from_file_location("bench", ROOT / "bench" / "bench.py")
+    bench = importlib.util.module_from_spec(spec); spec.loader.exec_module(bench)
+    v2 = {"schemaVersion": 2, "views": [{"id": "m"}, {"id": "d", "diagram": "map"}, {"id": "c", "diagram": "uml.class"}], "benchViews": ["m+x", "c+y"]}
+    v1 = {"views": [{"id": "m"}, {"id": "c", "diagram": "uml.class"}], "benchViews": ["c+y"]}
+    try:
+        bench.bench_views(v2 | {"benchViews": ["gone+x"]}); stopped = None
+    except SystemExit as e:
+        stopped = str(e)
+    ok("bench · a version-2 model's map views and their benchViews are timed, its typed views not; a version-1 model's every view; a benchViews entry naming no view stops it",
+       bench.bench_views(v2) == ["m", "d", "m+x"] and bench.bench_views(v1) == ["m", "c", "c+y"] and stopped == "gone+x: benchViews names no view",
+       (bench.bench_views(v2), bench.bench_views(v1), stopped))
 part.done()
 sys.exit(1 if failed else 0)

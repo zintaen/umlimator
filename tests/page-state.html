@@ -226,11 +226,11 @@ try {
   wide.remove();
 
   /* ---------- one-shot modes: #still for a view the model lacks, and check's report ---------- */
-  const f1 = document.createElement('iframe'); f1.style.cssText = 'width:900px;height:600px;border:0'; f1.src = '../examples/bookshop.html#still=nope'; document.body.appendChild(f1);
+  const f1 = document.createElement('iframe'); f1.style.cssText = 'width:900px;height:600px;border:0'; f1.src = '../examples/bike-share.html#still=nope'; document.body.appendChild(f1);
   const still = await until(() => f1.contentDocument && f1.contentDocument.documentElement.getAttribute('data-still'), 6000);
   check('#still for a view the model lacks answers at once, with the reason (data-still), instead of waiting for ever', !!still && /no view "nope"/.test(JSON.parse(still).error), still);
   f1.remove();
-  const page = await (await fetch('../examples/bookshop.html')).text();
+  const page = await (await fetch('../examples/bike-share.html')).text();
   const late = URL.createObjectURL(new Blob([page.replace('</body>', '<script type="module">Promise.reject(new Error("a late failure"))<\/script></body>')], { type: 'text/html' }));
   const f2 = document.createElement('iframe'); f2.style.cssText = 'width:900px;height:600px;border:0'; f2.src = late + '#check=1'; document.body.appendChild(f2);
   const rep = await until(() => f2.contentDocument && f2.contentDocument.getElementById('visual-check'), 8000) && JSON.parse(f2.contentDocument.getElementById('visual-check').textContent);
@@ -257,7 +257,7 @@ try {
   const onCard = sr().activeElement && sr().activeElement.closest('.node');
   check('a Find pick by Enter puts focus on the card it found, not on <body> (audit 9)', onCard && onCard.dataset.id === 'trips', [document.activeElement && document.activeElement.tagName, onCard && onCard.dataset.id]);
   /* ---------- audit 8: Find reaches an element drawn as a box; a bare % in a source URL ---------- */
-  box.innerHTML = ''; pg = mountAll(box, await (await fetch('../examples/bookshop-atlas.json')).json(), { instant: true, params: new URLSearchParams() });
+  box.innerHTML = ''; pg = mountAll(box, await (await fetch('../examples/bike-share.json')).json(), { instant: true, params: new URLSearchParams() });
   await until(() => pg.view && document.querySelector('#m-canvas .umlimator')); await pg.setView('production'); await wait(30);
   key('/', document.body); await until(() => !$('m-pal').hidden); $('m-q').value = 'Java 21'; $('m-q').dispatchEvent(new Event('input'));
   const boxHit = ($('m-res').querySelector('.fr span') || {}).textContent || ''; key('Enter', $('m-q'));
@@ -289,15 +289,15 @@ try {
   const ODD = { title: 'Shop', meta: { owner: 'team-a' }, root: 'top', nodes: [{ id: 'web', label: 'Web' }, { id: 'api', label: 'API' }, { id: 'db', label: 'DB' }, 'no card'],
     edges: [{ from: 'web', to: 'api' }, { from: 'api', to: 'db' }, { id: 'own', from: 'web', to: 'db' }],
     views: [{ id: 'top', nodeIds: ['web', 'api'], containers: 'none' }, { id: 'inside-api', parent: 'api', nodeIds: ['db'], edges: [{ from: 'db', to: 'db' }] }, { id: 'x', diagram: 'nosuch.kind', nodeIds: ['db'] }] };
-  for (const [name, model] of [['bookshop', await (await fetch('../examples/bookshop.json')).json()], ['bike-share', BIKE], ['a model with id-less lines, a parent naming a card and fields that are no list', ODD]]) {
+  for (const [name, model] of [['bike-share', BIKE], ['a model with id-less lines, a parent naming a card and fields that are no list', ODD]]) {
     const got = await exported(model);
     check(`Export ▸ Map model (JSON) of ${name} is the model given: no _id on a line, each view's parent as written, no list dropped (audit 29)`,
       !!got && JSON.stringify(got) === JSON.stringify(less(model)), got && { edges: got.edges && got.edges.slice(0, 2), views: got.views && got.views.map(v => [v.id, v.parent, v.containers]) }); }
   /* ---------- audit 30: the page render wrote exports the model file as written: none of render's icons, source, avatarsEmbedded,
      kind or meta keys (meta.added names them), and the model's own meta kept; a page an older render wrote loses render's keys too ---------- */
-  { const page = await (await fetch('../examples/bookshop.html')).text(), given = JSON.parse(new DOMParser().parseFromString(page, 'text/html').getElementById('visual-data').textContent);
-    const file = await (await fetch('../examples/bookshop.json')).json(), got = await exported(given), keys = o => o && Object.keys(o).sort().join();
-    check('audit 30: Export ▸ Map model (JSON) of examples/bookshop.html is examples/bookshop.json: no icons, source, avatarsEmbedded or kind, and its meta {project} kept',
+  { const page = await (await fetch('../examples/bike-share.html')).text(), given = JSON.parse(new DOMParser().parseFromString(page, 'text/html').getElementById('visual-data').textContent);
+    const file = await (await fetch('../examples/bike-share.json')).json(), got = await exported(given), keys = o => o && Object.keys(o).sort().join();
+    check('audit 30: Export ▸ Map model (JSON) of examples/bike-share.html is examples/bike-share.json: no icons, source, avatarsEmbedded or kind, and its meta {project} kept',
       !!got && JSON.stringify(got) === JSON.stringify(file), got && { keys: keys(got), meta: got.meta, added: given.meta && given.meta.added });
     const old = structuredClone(given); delete old.meta.added; delete old.meta['umlimator:written']; old.meta.owner = 'team-a'; const was = await exported(old);
     check('audit 30: a page an older render wrote (no meta.added) exports without render\'s keys, the model\'s other meta kept',
@@ -399,19 +399,19 @@ try {
     check('audit 33: the PDF of a map titled 0: its title reads 0, and a rule titled 0 is listed as 0', fd.title === '0' && !!ruleRow, [fd.title, [...fd.querySelectorAll('tr td b')].map(b => b.textContent).slice(-4)]);
     f.remove(); }
   { /* ---------- audit 37: the view pill, its About box and the views list count what a typed view draws, one number ---------- */
-    box.innerHTML = ''; pg = mountAll(box, await (await fetch('../examples/bookshop-atlas.json')).json(), { instant: true, params: new URLSearchParams() });
+    box.innerHTML = ''; pg = mountAll(box, await (await fetch('../examples/bike-share.json')).json(), { instant: true, params: new URLSearchParams() });
     await until(() => pg.view && document.querySelector('#m-canvas .umlimator')); const got = {};
-    for (const [view, n] of [['one-charge', 2], ['checkout-sequence', 5], ['checkout-communication', 5], ['internals', 9], ['overview', 13]]) {
+    for (const [view, n] of [['dock-latch', 2], ['unlock-sequence', 5], ['unlock-communication', 5], ['trip-internals', 9], ['overview', 13]]) {
       await pg.setView(view); await until(() => pg.view === view && ($('m-vpill').querySelector('.n') || {}).textContent); await wait(30);
       got[view] = [$('m-vpill').querySelector('.n').textContent, $('m-vpop').querySelector('.vm').textContent.split(' · ')[0], (document.querySelector(`#m-tree .mit[data-v="${view}"] em`) || {}).textContent]; }
     check('a typed view\'s pill, About box and views list say one count, of what it draws (2 lifelines on a timing view, not 19 layout pieces; a map\'s cards as before) (audit 37)',
-      Object.entries(got).every(([v, [a, b, c]]) => a === b && parseInt(a) === { 'one-charge': 2, 'checkout-sequence': 5, 'checkout-communication': 5, internals: 9, overview: 13 }[v] && parseInt(c) === parseInt(a)), got);
+      Object.entries(got).every(([v, [a, b, c]]) => a === b && parseInt(a) === { 'dock-latch': 2, 'unlock-sequence': 5, 'unlock-communication': 5, 'trip-internals': 9, overview: 13 }[v] && parseInt(c) === parseInt(a)), got);
     pg.destroy(); pg = null; }
   { /* ---------- audit 38: the views list and the search palette count a typed view as its pill will, before it is first drawn ---------- */
     const row = id => (document.querySelector(`#m-tree .mit[data-v="${id}"] em`) || {}).textContent || '';
     const palRow = async title => { key('/', document.body); await until(() => !$('m-pal').hidden); $('m-q').value = title; $('m-q').dispatchEvent(new Event('input'));
       const r = [...$('m-res').querySelectorAll('.fr')].find(b => b.querySelector('b').textContent === title), t = r ? r.querySelector('span').textContent : null; key('Escape', $('m-q')); return t; };
-    for (const [file, ids] of [['bookshop-atlas', ['internals', 'order-life', 'order-to-shipment', 'domain']], ['ebike-atlas', ['inside-ebike', 'range-analysis', 'blocks']]]) {
+    for (const [file, ids] of [['bike-share', ['trip-internals', 'ride-life', 'repair-process', 'domain', 'inside-ebike', 'range-analysis', 'blocks']]]) {
       const A = await (await fetch(`../examples/${file}.json`)).json(), T = id => A.views.find(v => v.id === id).title, got = {};
       box.innerHTML = ''; pg = mountAll(box, A, { instant: true, params: new URLSearchParams() });
       await until(() => pg.view && document.querySelector('#m-canvas .umlimator')); const first = pg.view;
@@ -422,7 +422,7 @@ try {
         Object.assign(got[id], { pill: $('m-vpill').querySelector('.n').textContent, after: row(id), here: await palRow(T(id)) }); }
       check(`${file}: a typed view's views-list row and search row say, before its first visit, the count its pill says after it (audit 38)`,
         Object.values(got).every(g => parseInt(g.list) === parseInt(g.pill) && g.palette === g.pill && parseInt(g.after) === parseInt(g.pill) && g.here === g.pill + ' · here'), got);
-      if (file === 'ebike-atlas') check('the e-bike\'s internal block view is 13 nodes everywhere, its bdd 12 (no frame counted) (audit 38)', got['inside-ebike'].pill === '13 nodes' && got.blocks.pill === '12 nodes', got);
+      check('the e-bike\'s internal block view is 13 nodes everywhere, its bdd 12 (no frame counted) (audit 38)', got['inside-ebike'].pill === '13 nodes' && got.blocks.pill === '12 nodes', got);
       pg.destroy(); pg = null; }
     // one element: "1 node", in the pill, its About box and the search palette
     const one = { nodes: [{ id: 'a', label: 'Alone', kind: 'backend' }, { id: 'b', label: 'B', kind: 'backend' }], edges: [], views: [{ id: 'v', title: 'Just one', nodeIds: ['a'] }, { id: 'w', title: 'Two', nodeIds: ['a', 'b'] }] };
@@ -442,7 +442,7 @@ try {
       said.p.pill === '1 step' && said.s.pill === '1 step' && parseInt(said.p.list) === 1 && parseInt(said.s.list) === 1 && said.p.here === '1 step · here' && said.s.here === '1 step · here'
       && /^2 nodes · 1 wire\b/.test(said.s.about) && !document.querySelector('#m-vpop img'), said);
     pg.destroy(); pg = null;
-    const A = await (await fetch('../examples/bookshop-atlas.json')).json(), api = A.views.find(v => v.id === 'api');
+    const A = await (await fetch('../examples/bike-share.json')).json(), api = A.views.find(v => v.id === 'api');
     box.innerHTML = ''; pg = mountAll(box, A, { instant: true, params: new URLSearchParams() }); await until(() => pg.view && document.querySelector('#m-canvas .umlimator'));
     await pg.setView('api'); await until(() => pg.view === 'api' && ($('m-vpill').querySelector('.n') || {}).textContent); await wait(30);
     const apiSaid = { pill: $('m-vpill').querySelector('.n').textContent, list: row('api'), here: await palRow(api.title) };

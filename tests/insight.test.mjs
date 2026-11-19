@@ -3,6 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { critical, whatIf, sequenceFromTrace, otlpSpans, validate, check, rules } from '../lib/umlimator.js';
+// bike-share holds typed views since step 3 of the one-model plan: the full bundle validates them, as the page draws them
+import { validate as validateAll } from '../lib/umlimator-all.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 const bike = read('../examples/bike-share.json');
@@ -48,7 +50,7 @@ test("sequenceFromTrace(): the replay example's trace becomes bike-share's numbe
   assert.deepEqual(out.views.find(v => v.id === 'ride-end'), bike.views.find(v => v.id === 'ride-end'), 'umlimator.py trace wrote the view the example keeps');
   assert.deepEqual(out.views.map(v => v.id), bike.views.map(v => v.id), 'a view with that id is replaced where it is');
   assert.deepEqual(bike, before);
-  assert.deepEqual(validate(out), []);
+  assert.deepEqual(validateAll(out), []);
   assert.deepEqual(check(out, 'ride-end'), []);
   const fresh = sequenceFromTrace({ ...bike, views: bike.views.filter(v => v.id !== 'ride-end') }, otlpSpans(trace), { match });
   const v = fresh.views[fresh.views.length - 1];
@@ -81,7 +83,7 @@ test('validate() checks lenses, owners and budgets; owner works in rules too', (
   ]);
   assert.deepEqual(validate({ ...m, lenses: 'none' }).filter(p => p.path.startsWith('lenses')).map(p => p.path), ['lenses']);
   assert.deepEqual(rules({ ...m, rules: [{ id: 'r', from: { owner: 'web' } }] }).map(b => b.targets[0].ids), [['e']]);
-  assert.deepEqual(validate(bike), []);
+  assert.deepEqual(validateAll(bike), []);
 });
 
 test('audit 4: on a typed view reach() and paths() follow the lines as drawn, a line from a member (a port) from the card it is drawn on', async () => {

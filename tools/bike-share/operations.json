@@ -1,0 +1,338 @@
+{
+  "nodes": [
+    {
+      "id": "dock-gateway",
+      "label": "Dock gateway",
+      "kind": "backend",
+      "owner": "Fleet",
+      "icon": "network",
+      "sublabel": "MQTT broker",
+      "what": "Where the docks connect.",
+      "when": "Always on.",
+      "how": "Takes dock events in and sends settings out."
+    },
+    {
+      "id": "dock-settings",
+      "label": "Dock settings",
+      "kind": "file",
+      "owner": "Fleet",
+      "icon": "settings",
+      "sublabel": "lock timing, alarms",
+      "what": "How long a lock waits, and when a dock raises an alarm.",
+      "when": "Changed a few times a year.",
+      "how": "A file in the fleet team's repository."
+    },
+    {
+      "id": "range-check",
+      "label": "Range check",
+      "kind": "backend",
+      "owner": "Fleet",
+      "icon": "gauge",
+      "sublabel": "battery 0 to 100%",
+      "what": "Drops events a dock's sensors cannot report.",
+      "when": "First.",
+      "how": "Limits per sensor."
+    },
+    {
+      "id": "jump-check",
+      "label": "Jump check",
+      "kind": "backend",
+      "owner": "Fleet",
+      "icon": "chart",
+      "sublabel": "no bike in two docks",
+      "what": "Drops a bike seen at two docks at once.",
+      "when": "Second.",
+      "how": "Against the bike's last ten events."
+    },
+    {
+      "id": "dock-quarantine",
+      "label": "Quarantine",
+      "kind": "database",
+      "owner": "Fleet",
+      "icon": "archive",
+      "sublabel": "held for review",
+      "what": "Dock events that failed a check.",
+      "when": "Checked again hourly.",
+      "how": "A table the fleet team reviews."
+    },
+    {
+      "id": "telemetry-store",
+      "label": "Telemetry store",
+      "kind": "database",
+      "owner": "Fleet",
+      "icon": "database",
+      "sublabel": "every event, 90 days",
+      "what": "Every clean dock event.",
+      "when": "Written continuously.",
+      "how": "A time-series database."
+    },
+    {
+      "id": "weather-feed",
+      "label": "Weather feed",
+      "kind": "external",
+      "icon": "network",
+      "sublabel": "hourly, per district",
+      "what": "Tomorrow's weather, hour by hour.",
+      "when": "Read before each forecast.",
+      "how": "A national weather service's open API."
+    },
+    {
+      "id": "model-registry",
+      "label": "Model registry",
+      "kind": "database",
+      "owner": "Fleet",
+      "icon": "layers",
+      "sublabel": "models and their errors",
+      "what": "Every trained demand model, with how far it was off.",
+      "when": "A model a night.",
+      "how": "Files and a table of scores."
+    },
+    {
+      "id": "help-llm",
+      "label": "Language model",
+      "kind": "ai",
+      "owner": "Rides",
+      "icon": "bot",
+      "sublabel": "drafts replies",
+      "what": "Writes the help bot's drafts.",
+      "when": "While answering.",
+      "how": "A hosted model; nothing is kept after the call."
+    },
+    {
+      "id": "help-tone",
+      "label": "Tone check",
+      "kind": "security",
+      "owner": "Rides",
+      "icon": "checks",
+      "sublabel": "polite, no promises",
+      "what": "Stops drafts that are rude or promise too much.",
+      "when": "Before a draft is approved.",
+      "how": "Rules, then the model as a second reader."
+    },
+    {
+      "id": "help-review",
+      "label": "Review",
+      "kind": "backend",
+      "owner": "Rides",
+      "icon": "usercheck",
+      "sublabel": "refunds over 20 by a person",
+      "what": "Approves the draft, or hands it to a person.",
+      "when": "Before anything is sent.",
+      "how": "A refund over 20 goes to the ops console."
+    },
+    {
+      "id": "help-redact",
+      "label": "Redact",
+      "kind": "security",
+      "owner": "Rides",
+      "icon": "eyeoff",
+      "sublabel": "masks card numbers",
+      "what": "Masks card and phone numbers.",
+      "when": "Before anything is sent.",
+      "how": "Pattern matching, then a check by the model."
+    },
+    {
+      "id": "help-send",
+      "label": "Send",
+      "kind": "backend",
+      "owner": "Rides",
+      "icon": "webhook",
+      "sublabel": "in the app",
+      "what": "Posts the reply in the rider's help thread.",
+      "when": "Once approved.",
+      "how": "A push to the rider app."
+    },
+    {
+      "id": "help-thread",
+      "label": "Help thread",
+      "kind": "database",
+      "owner": "Rides",
+      "icon": "logs",
+      "sublabel": "every question and reply",
+      "what": "A rider's questions and the replies they got.",
+      "when": "Kept a year.",
+      "how": "One thread per rider."
+    }
+  ],
+  "edges": [
+    {
+      "id": "df1",
+      "from": "stations",
+      "to": "dock-gateway",
+      "label": "dock events",
+      "kind": "feeds",
+      "sublabel": "MQTT",
+      "weight": 3
+    },
+    { "id": "df2", "from": "dock-gateway", "to": "stations", "label": "settings", "sublabel": "MQTT, retained" },
+    { "id": "df3", "from": "dock-gateway", "to": "dock-settings", "label": "reads", "kind": "state" },
+    { "id": "df4", "from": "dock-gateway", "to": "telemetry", "label": "dock events", "kind": "feeds", "weight": 3 },
+    {
+      "id": "df5",
+      "from": "telemetry",
+      "to": "range-check",
+      "kind": "feeds",
+      "weight": 3,
+      "what": "Every dock event, in order."
+    },
+    { "id": "df6", "from": "range-check", "to": "jump-check", "label": "in range", "kind": "feeds", "weight": 3 },
+    { "id": "df7", "from": "jump-check", "to": "telemetry-store", "label": "clean", "kind": "feeds", "weight": 3 }
+  ],
+  "views": [
+    {
+      "id": "dock-feed",
+      "parent": "fleet",
+      "title": "Dock feed",
+      "caption": "Live dock events, by volume, through two checks to the store and the dock listener. Settings go back to the docks on their own line; an event that fails a check waits in quarantine and is checked again hourly.",
+      "nodeIds": [
+        "stations", "dock-gateway", "dock-settings", "telemetry", "range-check", "jump-check", "dock-quarantine",
+        "telemetry-store", "dock-listener"
+      ],
+      "edges": [
+        "df1",
+        "df2",
+        "df3",
+        "df4",
+        "df5",
+        "df6",
+        "df7",
+        {
+          "id": "dfl",
+          "from": "telemetry",
+          "to": "dock-listener",
+          "kind": "feeds",
+          "weight": 3,
+          "what": "Bike states, as the docks report them."
+        },
+        { "id": "dfk1", "from": "dock-checks", "to": "dock-quarantine", "label": "fails one", "kind": "feeds" },
+        { "id": "dfk2", "from": "dock-quarantine", "to": "telemetry", "label": "again, hourly", "loop": true }
+      ],
+      "containers": [
+        {
+          "id": "dock-checker",
+          "label": "Check service",
+          "nodeIds": ["dock-quarantine"],
+          "badges": [{ "text": "on call", "tone": "green" }]
+        },
+        {
+          "id": "dock-checks",
+          "label": "Checks",
+          "parent": "dock-checker",
+          "nodeIds": ["range-check", "jump-check"],
+          "badges": ["in order"]
+        }
+      ],
+      "gap": 96,
+      "rgap": 64
+    },
+    {
+      "id": "demand",
+      "parent": "fleet",
+      "title": "The nightly forecast",
+      "caption": "What the demand forecast does each night, step by step, filed under three lanes. The weather feed is one of its inputs.",
+      "render": "sequence",
+      "lanes": [
+        { "title": "Data", "nodeIds": ["warehouse", "weather-feed"] },
+        { "title": "Model", "nodeIds": ["model-registry"] },
+        { "title": "Planner", "nodeIds": ["planner", "ops-console"] }
+      ],
+      "nodeIds": ["forecast", "warehouse", "weather-feed", "model-registry", "planner", "ops-console"],
+      "edges": [
+        { "id": "dm1", "from": "forecast", "to": "warehouse", "kind": "state", "what": "Reads a year of trips." },
+        {
+          "id": "dm2",
+          "from": "forecast",
+          "to": "weather-feed",
+          "kind": "state",
+          "what": "Reads tomorrow's weather, hour by hour."
+        },
+        {
+          "id": "dm3",
+          "from": "forecast",
+          "to": "model-registry",
+          "kind": "feeds",
+          "what": "Stores tonight's model and how far yesterday's was off."
+        },
+        {
+          "id": "dm4",
+          "from": "forecast",
+          "to": "planner",
+          "kind": "feeds",
+          "what": "Hands over the bikes needed per dock."
+        },
+        { "id": "dm5", "from": "planner", "to": "ops-console", "label": "flags short docks", "kind": "triggers" }
+      ],
+      "tour": ["forecast", "planner", "ops-console"]
+    },
+    {
+      "id": "help",
+      "parent": "system",
+      "title": "Rider help, step by step",
+      "caption": "From a rider's question to a reply in the app. The help bot, its retriever and what they read exist only in this view.",
+      "render": "sequence",
+      "lanes": false,
+      "nodeIds": [
+        "rider-app", "retriever", "station-docs", "policy", "bot", "help-llm", "help-review", "help-tone", "help-send",
+        "help-redact", "help-thread"
+      ],
+      "nodes": [
+        {
+          "id": "retriever",
+          "label": "Find answers",
+          "kind": "step",
+          "sublabel": "station guides, policy",
+          "what": "Looks for the station guides and policy that fit the question."
+        },
+        {
+          "id": "station-docs",
+          "label": "Station guides",
+          "kind": "file",
+          "icon": "book",
+          "sublabel": "one per dock model",
+          "what": "How each dock model locks, charges and fails."
+        },
+        {
+          "id": "policy",
+          "label": "Refund policy",
+          "kind": "file",
+          "icon": "doc",
+          "sublabel": "fares, refunds, damage",
+          "what": "What help may promise a rider."
+        },
+        {
+          "id": "bot",
+          "label": "Help bot",
+          "kind": "step",
+          "sublabel": "cites its sources",
+          "what": "Drafts a reply that cites the guides and policy it read."
+        }
+      ],
+      "nodeOverrides": { "help-llm": { "sublabel": "temperature 0.2" } },
+      "edges": [
+        { "id": "h1", "from": "rider-app", "to": "retriever", "label": "the question" },
+        { "id": "h2", "from": "retriever", "to": "station-docs", "label": "searches" },
+        { "id": "h3", "from": "retriever", "to": "policy", "label": "reads" },
+        { "id": "h4", "from": "retriever", "to": "bot", "label": "sources" },
+        { "id": "h5", "from": "bot", "to": "help-llm", "label": "writes with" },
+        { "id": "h6", "from": "bot", "to": "help-review", "label": "a draft" },
+        { "id": "h7", "from": "help-tone", "to": "help-review", "label": "reviews" },
+        { "id": "h8", "from": "help-review", "to": "help-send", "label": "approved" },
+        { "id": "h9", "from": "help-redact", "to": "help-send", "label": "masks" },
+        { "id": "h10", "from": "help-send", "to": "help-thread", "label": "posts the reply" }
+      ],
+      "layout": {
+        "rider-app": [0, 1],
+        "retriever": [1, 1],
+        "station-docs": [2, 0],
+        "policy": [2, 2],
+        "help-tone": [3, 0],
+        "bot": [3, 1],
+        "help-redact": [4, 0],
+        "help-review": [4, 1],
+        "help-llm": [4, 2],
+        "help-send": [5, 1],
+        "help-thread": [6, 1]
+      }
+    }
+  ]
+}

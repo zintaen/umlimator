@@ -1,0 +1,469 @@
+{
+  "nodes": [
+    {
+      "id": "lifeline-rider",
+      "type": "uml.Lifeline",
+      "label": "rider",
+      "props": { "represents": "Rider", "stereotypes": ["actor"] }
+    },
+    { "id": "lifeline-app", "type": "uml.Lifeline", "label": "app", "props": { "represents": "RiderApp" } },
+    { "id": "lifeline-api", "type": "uml.Lifeline", "label": "api", "props": { "represents": "TripApi" } },
+    {
+      "id": "lifeline-dock",
+      "type": "uml.Lifeline",
+      "label": "dock",
+      "props": { "represents": "Dock", "states": ["Idle", "Checking the bike", "Unlatching"] }
+    },
+    { "id": "receipt", "type": "uml.Lifeline", "label": "ride", "props": { "represents": "RideRecord" } },
+    { "id": "buy-start", "type": "uml.InitialNode" },
+    { "id": "ref-find", "type": "uml.InteractionUse", "label": "Find a bike", "opensView": "locate-bike" },
+    { "id": "try-payment", "type": "uml.MergeNode" },
+    { "id": "ref-hire", "type": "uml.InteractionUse", "label": "Unlock", "opensView": "hire-unlock" },
+    { "id": "payment-ok", "type": "uml.DecisionNode", "label": "Bike released?" },
+    { "id": "buy-split", "type": "uml.ForkNode" },
+    { "id": "ref-receipt", "type": "uml.InteractionUse", "label": "Send the ride notice", "opensView": "ride-notice" },
+    { "id": "sd-queue", "type": "uml.Interaction", "label": "Log the ride", "opensView": "log-ride" },
+    { "id": "both-done", "type": "uml.JoinNode" },
+    { "id": "buy-done", "type": "uml.ActivityFinalNode" },
+    { "id": "email", "type": "uml.Lifeline", "label": "email", "props": { "represents": "EmailService" } },
+    { "id": "lifeline-queue", "type": "uml.Lifeline", "label": "queue", "props": { "represents": "RideQueue" } },
+    {
+      "id": "lifeline-worker",
+      "type": "uml.Lifeline",
+      "label": "worker",
+      "props": { "represents": "RideWorker", "states": ["Idle", "Waiting for the dock", "Recording the release"] }
+    }
+  ],
+  "edges": [
+    { "id": "rider-to-app", "type": "uml.Connector", "from": "lifeline-rider", "to": "lifeline-app" },
+    { "id": "app-api", "type": "uml.Connector", "from": "lifeline-app", "to": "lifeline-api" },
+    { "id": "api-self", "type": "uml.Connector", "from": "lifeline-api", "to": "lifeline-api" },
+    { "id": "api-dock", "type": "uml.Connector", "from": "lifeline-api", "to": "lifeline-dock" },
+    { "id": "api-ride", "type": "uml.Connector", "from": "lifeline-api", "to": "receipt" },
+    {
+      "id": "cm1",
+      "type": "uml.Message",
+      "from": "lifeline-rider",
+      "to": "lifeline-app",
+      "label": "unlock()",
+      "props": { "sort": "call" }
+    },
+    {
+      "id": "cm2",
+      "type": "uml.Message",
+      "from": "lifeline-app",
+      "to": "lifeline-api",
+      "label": "start(ride)",
+      "props": { "sort": "call" }
+    },
+    {
+      "id": "cm3",
+      "type": "uml.Message",
+      "from": "lifeline-api",
+      "to": "lifeline-api",
+      "label": "check(pass)",
+      "props": { "sort": "call" }
+    },
+    {
+      "id": "cm4",
+      "type": "uml.Message",
+      "from": "lifeline-api",
+      "to": "lifeline-dock",
+      "label": "release(bike)",
+      "props": { "sort": "call" }
+    },
+    {
+      "id": "cm5",
+      "type": "uml.Message",
+      "from": "lifeline-dock",
+      "to": "lifeline-api",
+      "label": "released",
+      "props": { "sort": "reply", "replyTo": "cm4" }
+    },
+    {
+      "id": "cm6",
+      "type": "uml.Message",
+      "from": "lifeline-api",
+      "to": "receipt",
+      "label": "new(ride)",
+      "props": { "sort": "create" }
+    },
+    {
+      "id": "cm7",
+      "type": "uml.Message",
+      "from": "lifeline-api",
+      "to": "lifeline-app",
+      "label": "rideStarted",
+      "props": { "sort": "async" }
+    },
+    {
+      "id": "cm8",
+      "type": "uml.Message",
+      "from": "lifeline-api",
+      "to": "lifeline-app",
+      "label": "result",
+      "props": { "sort": "reply", "replyTo": "cm2" }
+    },
+    {
+      "id": "cm9",
+      "type": "uml.Message",
+      "from": "lifeline-app",
+      "to": "lifeline-rider",
+      "label": "ride started screen",
+      "props": { "sort": "reply", "replyTo": "cm1" }
+    },
+    { "id": "f-buy-start", "type": "uml.ControlFlow", "from": "buy-start", "to": "ref-find" },
+    { "id": "f-found", "type": "uml.ControlFlow", "from": "ref-find", "to": "try-payment" },
+    { "id": "f-pay", "type": "uml.ControlFlow", "from": "try-payment", "to": "ref-hire" },
+    { "id": "f-result", "type": "uml.ControlFlow", "from": "ref-hire", "to": "payment-ok" },
+    {
+      "id": "f-accepted",
+      "type": "uml.ControlFlow",
+      "from": "payment-ok",
+      "to": "buy-split",
+      "props": { "guard": "bike released" }
+    },
+    {
+      "id": "f-declined",
+      "type": "uml.ControlFlow",
+      "from": "payment-ok",
+      "to": "try-payment",
+      "props": { "guard": "else" }
+    },
+    { "id": "f-to-receipt", "type": "uml.ControlFlow", "from": "buy-split", "to": "ref-receipt" },
+    { "id": "f-to-queue", "type": "uml.ControlFlow", "from": "buy-split", "to": "sd-queue" },
+    { "id": "f-receipt-sent", "type": "uml.ControlFlow", "from": "ref-receipt", "to": "both-done" },
+    { "id": "f-queued", "type": "uml.ControlFlow", "from": "sd-queue", "to": "both-done" },
+    { "id": "f-buy-done", "type": "uml.ControlFlow", "from": "both-done", "to": "buy-done" }
+  ],
+  "views": [
+    {
+      "id": "unlock-sequence",
+      "diagram": "uml.sequence",
+      "parent": null,
+      "title": "Unlocking a bike",
+      "nodeIds": ["lifeline-rider", "lifeline-app", "lifeline-api", "lifeline-dock", "receipt"],
+      "edges": [
+        {
+          "id": "m1",
+          "type": "uml.Message",
+          "from": "lifeline-rider",
+          "to": "lifeline-app",
+          "label": "unlock()",
+          "props": { "sort": "call" }
+        },
+        {
+          "id": "m2",
+          "type": "uml.Message",
+          "from": "lifeline-app",
+          "to": "lifeline-api",
+          "label": "start(ride)",
+          "props": { "sort": "call" }
+        },
+        {
+          "id": "m3",
+          "type": "uml.Message",
+          "from": "lifeline-api",
+          "to": "lifeline-api",
+          "label": "check(pass)",
+          "props": { "sort": "call" }
+        },
+        {
+          "id": "m4",
+          "type": "uml.Message",
+          "from": "lifeline-api",
+          "to": "lifeline-dock",
+          "label": "release(bike)",
+          "props": { "sort": "call" }
+        },
+        {
+          "id": "m5",
+          "type": "uml.Message",
+          "from": "lifeline-dock",
+          "to": "lifeline-api",
+          "parent": "f1-paid",
+          "label": "released",
+          "props": { "sort": "reply", "replyTo": "m4" }
+        },
+        {
+          "id": "m6",
+          "type": "uml.Message",
+          "from": "lifeline-api",
+          "to": "receipt",
+          "parent": "f1-paid",
+          "label": "new(ride)",
+          "props": { "sort": "create" }
+        },
+        {
+          "id": "m7",
+          "type": "uml.Message",
+          "from": "lifeline-api",
+          "to": "lifeline-app",
+          "parent": "f2-notify",
+          "label": "rideStarted",
+          "props": { "sort": "async" }
+        },
+        {
+          "id": "sq-f3",
+          "type": "uml.InteractionUse",
+          "parent": "f1-paid",
+          "label": "Send the ride start notice",
+          "props": { "covers": ["lifeline-api", "lifeline-dock", "receipt"] }
+        },
+        {
+          "id": "m8",
+          "type": "uml.Message",
+          "from": "lifeline-dock",
+          "to": "lifeline-api",
+          "parent": "f1-declined",
+          "label": "jammed",
+          "props": { "sort": "reply", "replyTo": "m4" }
+        },
+        {
+          "id": "m9",
+          "type": "uml.Message",
+          "from": "lifeline-api",
+          "to": "lifeline-app",
+          "label": "result",
+          "props": { "sort": "reply", "replyTo": "m2" }
+        },
+        {
+          "id": "m10",
+          "type": "uml.Message",
+          "from": "lifeline-app",
+          "to": "lifeline-rider",
+          "label": "ride started screen",
+          "props": { "sort": "reply", "replyTo": "m1" }
+        }
+      ],
+      "fragments": [
+        {
+          "id": "sq-f1",
+          "type": "uml.CombinedFragment",
+          "props": { "operator": "alt" },
+          "members": [
+            { "id": "f1-paid", "type": "uml.InteractionOperand", "label": "bike released" },
+            { "id": "f1-declined", "type": "uml.InteractionOperand", "label": "else" }
+          ]
+        },
+        {
+          "id": "sq-f2",
+          "type": "uml.CombinedFragment",
+          "parent": "f1-paid",
+          "props": { "operator": "opt" },
+          "members": [{ "id": "f2-notify", "type": "uml.InteractionOperand", "label": "rider is still at the dock" }]
+        }
+      ]
+    },
+    {
+      "id": "unlock-communication",
+      "diagram": "uml.communication",
+      "parent": null,
+      "title": "Unlocking: bike released",
+      "nodeIds": ["lifeline-rider", "lifeline-app", "lifeline-api", "lifeline-dock", "receipt"],
+      "edges": [
+        "rider-to-app", "app-api", "api-self", "api-dock", "api-ride", "cm1", "cm2", "cm3", "cm4", "cm5", "cm6", "cm7",
+        "cm8", "cm9"
+      ]
+    },
+    {
+      "id": "hire-overview",
+      "diagram": "uml.interaction-overview",
+      "parent": null,
+      "title": "Hiring a bike",
+      "direction": "down",
+      "nodeIds": [
+        "buy-start", "ref-find", "try-payment", "ref-hire", "payment-ok", "buy-split", "ref-receipt", "sd-queue",
+        "both-done", "buy-done"
+      ]
+    },
+    {
+      "id": "locate-bike",
+      "diagram": "uml.sequence",
+      "parent": "hire-overview",
+      "title": "Find a bike",
+      "nodeIds": ["lifeline-rider", "lifeline-app", "lifeline-api"],
+      "edges": [
+        {
+          "id": "find-1",
+          "type": "uml.Message",
+          "from": "lifeline-rider",
+          "to": "lifeline-app",
+          "label": "search(area)",
+          "props": { "sort": "call" }
+        },
+        {
+          "id": "find-2",
+          "type": "uml.Message",
+          "from": "lifeline-app",
+          "to": "lifeline-api",
+          "label": "findBikes(area)",
+          "props": { "sort": "call" }
+        },
+        {
+          "id": "find-3",
+          "type": "uml.Message",
+          "from": "lifeline-api",
+          "to": "lifeline-app",
+          "label": "bikes",
+          "props": { "sort": "reply", "replyTo": "find-2" }
+        },
+        {
+          "id": "find-4",
+          "type": "uml.Message",
+          "from": "lifeline-app",
+          "to": "lifeline-rider",
+          "label": "map of bikes",
+          "props": { "sort": "reply", "replyTo": "find-1" }
+        }
+      ]
+    },
+    {
+      "id": "hire-unlock",
+      "diagram": "uml.sequence",
+      "parent": "hire-overview",
+      "title": "Unlock",
+      "nodeIds": ["lifeline-app", "lifeline-api", "lifeline-dock"],
+      "edges": [
+        {
+          "id": "pay-1",
+          "type": "uml.Message",
+          "from": "lifeline-app",
+          "to": "lifeline-api",
+          "label": "start(ride)",
+          "props": { "sort": "call" }
+        },
+        {
+          "id": "pay-2",
+          "type": "uml.Message",
+          "from": "lifeline-api",
+          "to": "lifeline-dock",
+          "label": "release(bike)",
+          "props": { "sort": "call" }
+        },
+        {
+          "id": "pay-3",
+          "type": "uml.Message",
+          "from": "lifeline-dock",
+          "to": "lifeline-api",
+          "label": "released or jammed",
+          "props": { "sort": "reply", "replyTo": "pay-2" }
+        },
+        {
+          "id": "pay-4",
+          "type": "uml.Message",
+          "from": "lifeline-api",
+          "to": "lifeline-app",
+          "label": "result",
+          "props": { "sort": "reply", "replyTo": "pay-1" }
+        }
+      ]
+    },
+    {
+      "id": "ride-notice",
+      "diagram": "uml.sequence",
+      "parent": "hire-overview",
+      "title": "Send the ride notice",
+      "nodeIds": ["lifeline-api", "email", "lifeline-rider"],
+      "edges": [
+        {
+          "id": "mail-1",
+          "type": "uml.Message",
+          "from": "lifeline-api",
+          "to": "email",
+          "label": "send(notice)",
+          "props": { "sort": "async" }
+        },
+        {
+          "id": "mail-2",
+          "type": "uml.Message",
+          "from": "email",
+          "to": "lifeline-rider",
+          "label": "ride notice",
+          "props": { "sort": "async" }
+        }
+      ]
+    },
+    {
+      "id": "log-ride",
+      "diagram": "uml.sequence",
+      "parent": "hire-overview",
+      "title": "Log the ride",
+      "nodeIds": ["lifeline-api", "lifeline-queue", "lifeline-worker"],
+      "edges": [
+        {
+          "id": "queue-1",
+          "type": "uml.Message",
+          "from": "lifeline-api",
+          "to": "lifeline-queue",
+          "label": "enqueue(ride)",
+          "props": { "sort": "call" }
+        },
+        {
+          "id": "queue-2",
+          "type": "uml.Message",
+          "from": "lifeline-queue",
+          "to": "lifeline-api",
+          "label": "queued",
+          "props": { "sort": "reply", "replyTo": "queue-1" }
+        },
+        {
+          "id": "queue-3",
+          "type": "uml.Message",
+          "from": "lifeline-queue",
+          "to": "lifeline-worker",
+          "label": "rideStarted",
+          "props": { "sort": "async" }
+        }
+      ]
+    },
+    {
+      "id": "dock-latch",
+      "diagram": "uml.timing",
+      "parent": null,
+      "title": "One latch release",
+      "nodeIds": ["lifeline-worker", "lifeline-dock"],
+      "edges": [
+        {
+          "id": "m-charge",
+          "type": "uml.Message",
+          "from": "lifeline-worker",
+          "to": "lifeline-dock",
+          "label": "release(bike)",
+          "props": { "sort": "call", "sentAt": 100, "receivedAt": 140 }
+        },
+        {
+          "id": "m-paid",
+          "type": "uml.Message",
+          "from": "lifeline-dock",
+          "to": "lifeline-worker",
+          "label": "released",
+          "props": { "sort": "reply", "replyTo": "m-charge", "sentAt": 720, "receivedAt": 760 }
+        }
+      ],
+      "timeline": {
+        "unit": "ms",
+        "changes": [
+          { "id": "w-idle", "lifeline": "lifeline-worker", "at": 0, "state": "Idle" },
+          { "id": "w-waiting", "lifeline": "lifeline-worker", "at": 100, "state": "Waiting for the dock" },
+          { "id": "w-recording", "lifeline": "lifeline-worker", "at": 760, "state": "Recording the release" },
+          { "id": "w-done", "lifeline": "lifeline-worker", "at": 900, "state": "Idle" },
+          { "id": "p-idle", "lifeline": "lifeline-dock", "at": 0, "state": "Idle" },
+          { "id": "p-authorising", "lifeline": "lifeline-dock", "at": 140, "state": "Checking the bike" },
+          { "id": "p-capturing", "lifeline": "lifeline-dock", "at": 480, "state": "Unlatching" },
+          { "id": "p-done", "lifeline": "lifeline-dock", "at": 720, "state": "Idle" }
+        ],
+        "constraints": [
+          {
+            "id": "c-wait",
+            "type": "uml.DurationConstraint",
+            "from": "w-waiting",
+            "to": "w-recording",
+            "label": "{<= 800 ms}"
+          },
+          { "id": "c-finished", "type": "uml.TimeConstraint", "from": "w-done", "label": "{<= 1000 ms}" }
+        ]
+      }
+    }
+  ]
+}

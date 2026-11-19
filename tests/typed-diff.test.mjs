@@ -70,11 +70,15 @@ test('an element\'s members reordered read "moves" on every type with members; e
   assert.deepEqual(all.diff(noIds, rev).summary, core.diff(noIds, rev).summary);
 });
 
+// bike-share is schema version 2; a copy without schemaVersion keeps the version-1 path compared on a real map
+const bikes = () => [load('examples/bike-share.json'), edit(load('examples/bike-share.json'), m => { delete m.schemaVersion; })];
+
 test('maps diff as before, and lib/umlimator.js (no typed words) says what it said', () => {
-  const bike = load('examples/bike-share.json');
-  assert.deepEqual(all.diff(bike, edit(bike, m => m.edges.reverse())).summary, []);
-  const b = edit(bike, m => { m.nodes[0].label = 'X'; });
-  assert.deepEqual(all.diff(bike, b), core.diff(bike, b));
+  for (const bike of bikes()) {
+    assert.deepEqual(all.diff(bike, edit(bike, m => m.edges.reverse())).summary, []);
+    const b = edit(bike, m => { m.nodes[0].label = 'X'; });
+    assert.deepEqual(all.diff(bike, b), core.diff(bike, b));
+  }
   assert.deepEqual(core.diff(seq, edit(seq, m => swap(m.views[0].edges, 2, 3))).summary, []);
 });
 
@@ -84,8 +88,10 @@ test('paths() on a sequence view runs in time order; on other views as before', 
     ['lifeline-shopper', 'lifeline-storefront', 'lifeline-api', 'lifeline-payments', 'receipt', 'm1', 'm2', 'm4', 'm5', 'm6']);
   assert.deepEqual(all.paths(seq, 'checkout-sequence', 'receipt', 'lifeline-shopper'), []); // receipt sends nothing
   assert.deepEqual(all.paths(seq, 'checkout-sequence', 'lifeline-api', 'lifeline-api'), [{ type: 'node', id: 'lifeline-api', view: 'checkout-sequence' }]); // as on a map
-  const bike = load('examples/bike-share.json'), v = bike.views[0], [a, b] = v.nodeIds;
-  assert.deepEqual(all.paths(bike, v.id, a, b), core.paths(bike, v.id, a, b));
+  for (const bike of bikes()) {
+    const v = bike.views[0], [a, b] = v.nodeIds;
+    assert.deepEqual(all.paths(bike, v.id, a, b), core.paths(bike, v.id, a, b));
+  }
 });
 
 test('a sequence view: a removed message comes back in its place, inside its operand, and an interaction use is named by its label (audit 2)', () => {
@@ -125,8 +131,9 @@ test('audit 18: a line that ends on a port or a part names the view that draws i
     const del = all.diff(m, all.apply(m, { op: 'delete', id })), set = all.diff(m, all.apply(m, { op: 'set', id, path: 'label', value: 'Zq' }));
     assert.deepEqual([del.summary, del.views], [[`removes ${it}`], [view]], `${f} ${id}: delete`);
     assert.deepEqual([set.summary, set.views], [[`changes ${it} (label - → Zq)`], [view]], `${f} ${id}: set`); }
-  // a view that does not draw that kind of line is not named: the atlas's requirement and parametric views of the e-bike
-  const at = load('examples/ebike-atlas.json');
+  // a view that does not draw that kind of line is not named: bike-share's requirement and parametric views of the e-bike
+  // (the e-bike atlas's, since step 3 of the one-model plan), and its other typed views
+  const at = load('examples/bike-share.json');
   assert.deepEqual(all.diff(at, all.apply(at, { op: 'delete', id: 'battery-dock-charge' })).views, ['inside-ebike']);
 });
 
@@ -164,9 +171,9 @@ test('audit 35: diff() names what is labelled "" as it is drawn', () => {
 });
 
 test('audit 39: views lists a typed view that draws a changed element it does not list', () => {
-  const at = load('examples/bookshop-atlas.json'), rn = (m, id, label) => all.apply(m, { op: 'set', id, path: 'label', value: label });
+  const at = load('examples/bike-share.json'), rn = (m, id, label) => all.apply(m, { op: 'set', id, path: 'label', value: label }); // the atlases' typed views, since step 3
   // a package's box over the classes a class view lists; a deployed container's name on its instance; an overview's inline lifelines
-  for (const [id, view] of [['payments-package', 'domain'], ['payments-package', 'payments-only'], ['c4-api', 'c4-deployment'], ['lifeline-worker', 'buy-book']]) {
+  for (const [id, view] of [['payments-package', 'domain'], ['payments-package', 'payments-only'], ['c4-api', 'c4-deployment'], ['lifeline-worker', 'hire-overview']]) {
     const after = rn(at, id, 'Zq Renamed'), d = all.diff(at, after);
     assert.ok(all.layout(after, view).nodes.concat(all.layout(after, view).families || []).some(n => JSON.stringify(n).includes('Zq Renamed')), `${view} draws ${id}`);
     assert.ok(d.views.includes(view), `${id}: ${view} in ${JSON.stringify(d.views)}`); }
@@ -174,7 +181,7 @@ test('audit 39: views lists a typed view that draws a changed element it does no
   const os = load('examples/order-service-structure.json');
   assert.deepEqual(all.diff(os, rn(os, 'checkout-class.requests', 'inbox')).views, ['internals']);
   // an element that only opens a view: its view's title is drawn in its name, the view's cards are not
-  const eb = load('examples/ebike-atlas.json');
+  const eb = load('examples/bike-share.json');
   assert.deepEqual(all.diff(eb, all.apply(eb, { op: 'delete', id: 'battery-dock-charge' })).views, ['inside-ebike']);
   // a hostile model: an element that names itself, owners in a cycle, a tree 20,000 deep and ids such as __proto__ throw
   // nothing and list only the views that draw the change

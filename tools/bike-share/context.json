@@ -1,0 +1,89 @@
+{
+  "nodes": [
+    {
+      "id": "riders",
+      "label": "Riders",
+      "kind": "person",
+      "icon": "users",
+      "sublabel": "unlock, ride, pay",
+      "what": "People who hire a bike from a dock.",
+      "when": "Every ride.",
+      "how": "They use the rider app on a phone."
+    },
+    {
+      "id": "ops",
+      "label": "Operations team",
+      "kind": "person",
+      "icon": "usercheck",
+      "sublabel": "rebalance, repair",
+      "what": "Staff who keep bikes where riders want them.",
+      "when": "All day, in shifts.",
+      "how": "They plan van routes in the ops console."
+    },
+    {
+      "id": "bikeshare",
+      "label": "Bike share",
+      "kind": "backend",
+      "icon": "layers",
+      "sublabel": "the whole system",
+      "opensView": "system",
+      "what": "Everything the city's bike share runs on.",
+      "when": "Always on.",
+      "how": "Apps, services and data on one platform. Double-click to go in."
+    },
+    {
+      "id": "payments",
+      "label": "Payment provider",
+      "kind": "external",
+      "icon": "building",
+      "sublabel": "cards and wallets",
+      "noSub": true,
+      "what": "Takes card and wallet payments.",
+      "when": "At the end of each ride.",
+      "how": "A REST API; the bike share never stores card numbers."
+    },
+    {
+      "id": "maps",
+      "label": "Map tiles",
+      "kind": "external",
+      "icon": "network",
+      "sublabel": "street maps",
+      "what": "Street maps for the app.",
+      "when": "Whenever a rider opens the map.",
+      "how": "Tiles over HTTPS, cached on the phone."
+    },
+    {
+      "id": "city",
+      "label": "City data portal",
+      "kind": "external",
+      "icon": "building",
+      "sublabel": "open data",
+      "what": "The city's open-data site.",
+      "when": "Weekly.",
+      "how": "Receives anonymised trips as CSV."
+    }
+  ],
+  "edges": [
+    { "id": "c1", "from": "riders", "to": "bikeshare", "label": "rides", "sublabel": "mobile app", "weight": 3 },
+    { "id": "c2", "from": "ops", "to": "bikeshare", "label": "manages the fleet", "sublabel": "web console" },
+    { "id": "c3", "from": "bikeshare", "to": "payments", "label": "charges rides", "sublabel": "REST", "weight": 2 },
+    { "id": "c4", "from": "bikeshare", "to": "maps", "label": "fetches tiles", "sublabel": "HTTPS" },
+    {
+      "id": "c5",
+      "from": "bikeshare",
+      "to": "city",
+      "label": "publishes trips",
+      "kind": "feeds",
+      "sublabel": "weekly CSV"
+    }
+  ],
+  "views": [
+    {
+      "id": "context",
+      "parent": null,
+      "title": "Bike share",
+      "caption": "Who uses it and what it talks to. Double-click Bike share to go in.",
+      "nodeIds": ["riders", "ops", "bikeshare", "payments", "maps", "city"]
+    }
+  ]
+}

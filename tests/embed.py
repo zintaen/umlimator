@@ -216,9 +216,9 @@ class Legend(html.parser.HTMLParser):
 
 
 if part("the standalone page's legend"):
-    names = Legend(dom("examples/bookshop.html", lambda t: bool(Legend(t).names))).names  # waits for the legend itself; none if it never draws
+    names = Legend(dom("examples/bike-share.html#view=overview", lambda t: bool(Legend(t).names))).names  # the rider shop; waits for the legend itself; none if it never draws
     legend = {"calls", "state"} <= set(names)
-    print(("ok  " if legend else "FAIL"), "examples/bookshop.html · the standalone page's legend names the kinds it reads from labels (calls, state)", "" if legend else names)
+    print(("ok  " if legend else "FAIL"), "examples/bike-share.html · the standalone page's legend names the kinds it reads from labels (calls, state)", "" if legend else names)
     failed |= not legend
 if part("keepPairs"):
     # the layout check of a page umlimator.py renders: a view that keeps A→B and B→A apart (keepPairs) draws the return line

@@ -1,0 +1,156 @@
+{
+  "nodes": [
+    {
+      "id": "trip-api",
+      "label": "Trip API",
+      "kind": "backend",
+      "owner": "Rides",
+      "icon": "server",
+      "sublabel": "REST controllers",
+      "opensView": "unlock-sequence",
+      "what": "The Trip service's endpoints.",
+      "when": "Every app call.",
+      "how": "Validates the token, then hands on."
+    },
+    {
+      "id": "unlock",
+      "label": "Unlock coordinator",
+      "kind": "backend",
+      "owner": "Rides",
+      "icon": "key",
+      "sublabel": "opens a dock",
+      "what": "Releases a bike.",
+      "when": "When a ride starts.",
+      "how": "Sends the dock an open command and waits for its reply."
+    },
+    {
+      "id": "lifecycle",
+      "label": "Trip lifecycle",
+      "kind": "backend",
+      "owner": "Rides",
+      "icon": "state",
+      "sublabel": "started, paused, ended",
+      "opensView": "trip-internals",
+      "what": "The state of each ride.",
+      "when": "On every change.",
+      "how": "A state machine; each change is saved and published."
+    },
+    {
+      "id": "fare",
+      "label": "Fare calculator",
+      "kind": "backend",
+      "owner": "Rides",
+      "icon": "chart",
+      "sublabel": "minutes, passes, caps",
+      "opensView": "domain",
+      "what": "The price of a finished ride.",
+      "when": "When a ride ends.",
+      "how": "Asks Pricing for the rules, then charges the rider."
+    },
+    {
+      "id": "trip-repo",
+      "label": "Trip repository",
+      "kind": "backend",
+      "owner": "Rides",
+      "icon": "database",
+      "sublabel": "SQL, migrations",
+      "what": "Reads and writes rides.",
+      "when": "On every change.",
+      "how": "One table per city."
+    },
+    {
+      "id": "trip-events",
+      "label": "Event publisher",
+      "kind": "queue",
+      "owner": "Rides",
+      "icon": "webhook",
+      "sublabel": "outbox",
+      "what": "Tells the rest of the system about rides.",
+      "when": "After each saved change.",
+      "how": "An outbox table drained to the telemetry stream."
+    }
+  ],
+  "edges": [
+    {
+      "id": "t1",
+      "from": "rider-app",
+      "to": "trip-api",
+      "label": "start, end",
+      "sublabel": "REST",
+      "weight": 3,
+      "latency": 120
+    },
+    { "id": "t2", "from": "trip-api", "to": "unlock", "label": "unlock a bike", "latency": 15 },
+    {
+      "id": "t3",
+      "from": "unlock",
+      "to": "stations",
+      "label": "opens the dock",
+      "sublabel": "MQTT",
+      "latency": 400,
+      "cost": 1
+    },
+    { "id": "t4", "from": "trip-api", "to": "lifecycle", "label": "moves the ride on", "weight": 2, "latency": 5 },
+    { "id": "t5", "from": "lifecycle", "to": "fare", "label": "ride ended", "latency": 10 },
+    { "id": "t6", "from": "fare", "to": "pricing", "label": "price rules", "sublabel": "gRPC", "latency": 35 },
+    {
+      "id": "t7",
+      "from": "lifecycle",
+      "to": "trip-repo",
+      "label": "saves",
+      "kind": "state",
+      "weight": 2,
+      "latency": 4
+    },
+    {
+      "id": "t8",
+      "from": "trip-repo",
+      "to": "tripsdb",
+      "label": "SQL",
+      "kind": "state",
+      "weight": 3,
+      "latency": 25,
+      "cost": 2
+    },
+    {
+      "id": "t9",
+      "from": "lifecycle",
+      "to": "trip-events",
+      "label": "each change",
+      "kind": "triggers",
+      "fromSide": "bottom",
+      "latency": 3
+    },
+    {
+      "id": "t10",
+      "from": "trip-events",
+      "to": "telemetry",
+      "label": "publishes",
+      "kind": "feeds",
+      "latency": 50,
+      "cost": 1
+    },
+    {
+      "id": "t11",
+      "from": "fare",
+      "to": "payments",
+      "label": "charges",
+      "sublabel": "REST",
+      "latency": 450,
+      "cost": 30
+    }
+  ],
+  "views": [
+    {
+      "id": "trips",
+      "parent": "system",
+      "title": "Trip service",
+      "caption": "A ride from unlock to charge.",
+      "nodeIds": [
+        "rider-app", "trip-api", "unlock", "stations", "lifecycle", "fare", "pricing", "payments", "trip-repo",
+        "tripsdb", "trip-events", "telemetry"
+      ],
+      "edges": ["t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9", "t10", "t11"]
+    }
+  ]
+}

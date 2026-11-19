@@ -6,7 +6,7 @@
      topics or cards meeting, every text inside its shape, no branch curve through a topic (sampled every 4 px), every
      element inside its group, every vendor <image> with meet and nothing that crops, filters, masks, fades or transforms it,
      Google's legal line inside the picture under a Google icon only (AWS's under an AWS icon, 4a.8), every node named, texts at 4.5:1 and outlines, curves
-     and glyphs at 3:1. Then the Bookshop atlas: the opening plan's Hosting topics open the Google Cloud and Azure views.
+     and glyphs at 3:1. Then bike-share (the Bookshop atlas's typed views, since step 3 of the one-model plan): the second city's Hosting topics open the Google Cloud, Azure and AWS views.
      tests/m4a-fixtures.test.mjs lays the same views out in Node. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
@@ -91,15 +91,16 @@ try {
       }
   }
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
-  // the Bookshop atlas: the opening plan is a root view, and its Hosting topics carry the drill-down mark to the cloud views
-  const atlas = await load('../examples/bookshop-atlas.json');
-  el.innerHTML = ''; const h = render(el, atlas, { view: 'mm-plan' }); sr = el.querySelector('.umlimator').shadowRoot;
+  // bike-share, which holds the Bookshop atlas's typed views since step 3 of the one-model plan: the second city's plan is a
+  // root view, and its Hosting topics carry the drill-down mark to the cloud views
+  const atlas = await load('../examples/bike-share.json');
+  el.innerHTML = ''; const h = render(el, atlas, { view: 'new-city' }); sr = el.querySelector('.umlimator').shadowRoot;
   const marks = ['mm-on-gcp', 'mm-on-azure', 'mm-on-aws'].map(id => { const x = pick(`.node[data-id="${id}"]`); return x && x.querySelector('.open-hint') ? x.getAttribute('aria-label') : null; });
-  check('the atlas: the opening plan\'s Hosting topics open the Google Cloud, Azure and AWS views, each with its drill-down mark',
-    marks[0] === 'Topic On Google Cloud, under Hosting, opens Bookshop on Google Cloud' && marks[1] === 'Topic On Azure, under Hosting, opens Bookshop on Azure'
-    && marks[2] === 'Topic On AWS, under Hosting, opens Bookshop on AWS', marks);
-  h.setView('gcp-on-gcp');
-  check('the atlas: the Google Cloud view drawn there with glyphs (no pack in the atlas) and no legal line', all('.node.cloud-card').length === 9 && !all('.node image').length && !pick('text.cl-legal'), all('.node.cloud-card').length);
+  check('bike-share: the second city\'s Hosting topics open the Google Cloud, Azure and AWS views, each with its drill-down mark',
+    marks[0] === 'Topic On Google Cloud, under Hosting for the tender, opens Bike share on Google Cloud' && marks[1] === 'Topic On Azure, under Hosting for the tender, opens Bike share on Azure'
+    && marks[2] === 'Topic On AWS, under Hosting for the tender, opens Bike share on AWS', marks);
+  h.setView('on-gcp');
+  check('bike-share: the Google Cloud view drawn there with glyphs (no pack in the atlas) and no legal line', all('.node.cloud-card').length === 9 && !all('.node image').length && !pick('text.cl-legal'), all('.node.cloud-card').length);
   h.destroy();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);

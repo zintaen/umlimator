@@ -25,9 +25,9 @@
 <header><h1 class="sr">A host page</h1>
   <label>Model <select id="model">
     <option value="bike-share.json">Bike share</option>
-    <option value="weather.json">Weather stations</option>
-    <option value="assistant.json">Helpdesk assistant</option>
-    <option value="bookshop.json">Bookshop</option>
+    <option value="bike-share-c4.json">Bike share, imported from Structurizr</option>
+    <option value="shapes.json">Card shapes</option>
+    <option value="monorepo.json">A monorepo</option>
   </select></label>
   <span class="grow"></span>
   <span id="pieces"><label><input type="checkbox" id="nav" checked> views</label> <label><input type="checkbox" id="details" checked> details</label>
@@ -88,7 +88,7 @@ $('theme').onchange = e => {
 };
 $('pieces').onchange = () => mount(map.view);
 $('model').onchange = e => pick(e.target.value);
-const asked = new URLSearchParams(location.search).get('model');   // embed.html?model=weather.json
+const asked = new URLSearchParams(location.search).get('model');   // embed.html?model=shapes.json
 if ([...$('model').options].some(o => o.value === asked)) $('model').value = asked;
 await pick($('model').value);
 </script>

@@ -1,4 +1,4 @@
-// Every single delete over every example (the atlas among them) and every target (docs/diagrams/examples): Shift + Delete
+// Every single delete over every example (bike-share, which holds the atlases' views, among them) and every target (docs/diagrams/examples): Shift + Delete
 // on an element, through the remove hook of each view that draws it (the canvas's default, a bare delete, where a view's
 // type has none), and Delete (out of the view) in each view that draws it, through the canvas's own remove()
 // (src/canvas/edit.js), leaves no new validate() error with every type's rules loaded, as lib/umlimator-all.js loads them
@@ -53,7 +53,7 @@ function gesture(m, v, id, fromModel = true) {
 }
 const errors = m => validate(m).filter(p => p.level === 'error').map(p => p.message);
 
-test('no single delete or hide of any element of any example, target or the atlas leaves a new validate() error', () => {
+test('no single delete or hide of any element of any example or target leaves a new validate() error', () => {
   const bad = []; let n = 0;
   for (const [name, m] of files()) {
     const was = new Set(errors(m)), views = drawn(m), ids = new Set();

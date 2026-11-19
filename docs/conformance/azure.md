@@ -82,5 +82,4 @@ The family's stress view is Google Cloud's (`docs/conformance/gcp.md`): the two 
 failing, every gesture by pointer and key, a 30-step session); `tests/cloud-minimal.json` and `tests/cloud-stress.json` with
 `tests/m4a-fixtures.test.mjs` and `tests/m4a.html`; `tests/packs.py` (the packs, on a synthetic pack: no vendor icon is
 committed or fetched by CI); `tests/cli.py` (render, check, stills, pdf, the diff Action, map-repo's CLI); `tests/mcp.py`;
-`tests/notation.html` (the open arrow, groups dashed by kind); `tests/atlas.test.mjs` (opened from the opening plan's
-"On Azure").
+`tests/notation.html` (the open arrow, groups dashed by kind).

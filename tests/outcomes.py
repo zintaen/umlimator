@@ -120,7 +120,9 @@ with tempfile.TemporaryDirectory() as tmp:
     # ---------- views ----------
     r = cli("check", page, "--views", "sytem")
     ok("page-hook-protocol#1 · check --views that names no view fails, before Chrome starts, and lists the views",
-       r.returncode == 1 and "no view 'sytem'" in r.stderr and "its views: 'context', 'system', 'trips', 'fleet', 'ride-end'" in r.stderr and not r.stdout.strip(), r.stdout + r.stderr)
+       # every view, in order (52 since step 4 of the one-model plan, the first five the kept ones)
+       r.returncode == 1 and "no view 'sytem'" in r.stderr and "its views: 'context', 'system', 'trips', 'fleet', 'ride-end', 'overview', 'api', 'checkout', 'dock-feed', 'demand', 'help', 'domain', " in r.stderr
+       and r.stderr.rstrip().endswith("its views: " + ", ".join(repr(v["id"]) for v in bike["views"])) and len(bike["views"]) == 52 and not r.stdout.strip(), r.stdout + r.stderr)
     r = cli("stills", odd, "--out", t / "odd", "--views", "plain,R&D,a+b")
     ok("page-hook-protocol#2 · views whose ids hold & and + are stilled", r.returncode == 0 and made(r) == ["plain", "R&D", "a+b"], r.stdout + r.stderr)
     r = cli("check", odd, "--views", "R&D")
@@ -135,7 +137,7 @@ with tempfile.TemporaryDirectory() as tmp:
     # ---------- render ----------
     shop = t / "shop"
     shop.mkdir()
-    shutil.copy(ROOT / "examples" / "bookshop.json", shop / "m.json")
+    shutil.copy(ROOT / "examples" / "bike-share.json", shop / "m.json")
     r = cli("render", shop / "m.json", "--out", shop / "m.html")
     ok("cli-render-pipeline#3 · a checked render leaves no screenshot folder beside the page", r.returncode == 0 and hidden(shop) == [], hidden(shop))
     ok("cli-render-pipeline#5 · and its JSON says the page was checked", (said(r) or {}).get("checked") is True, r.stdout)
@@ -244,7 +246,7 @@ with tempfile.TemporaryDirectory() as tmp:
     next(n for n in comp["nodes"] if n["id"] == "checkout-class")["members"][1]["label"] = "prices"  # a port the part draws
     ok("stills-cache#3 · and, in a typed view, a connector to a part's port and the part's type, cards the view does not list (audit 4)", len({k1, k2, comp_key()}) == 3)
     cli("stills", page, "--out", k / "st", "--views", "ride-end")
-    again(lambda m: m["views"].pop())  # ride-end
+    again(lambda m: m["views"].remove(next(v for v in m["views"] if v["id"] == "ride-end")))  # by id: the rider shop's views come after it
     r = cli("stills", k / "m.html", "--out", k / "st", "--views", "system")
     ok("stills-cache#8 · views the page no longer has are named", "the page no longer has: ride-end" in r.stderr, r.stderr)
 
@@ -254,7 +256,7 @@ with tempfile.TemporaryDirectory() as tmp:
     (g / "a").mkdir(); (g / "a-b").mkdir()
     git = lambda *a: subprocess.run(["git", "-C", str(g), "-c", "user.name=t", "-c", "user.email=t@example.invalid", *a], capture_output=True, text=True, check=True)
     git("init", "-q")
-    shutil.copy(ROOT / "examples" / "bookshop.json", g / "docs" / "map.json")
+    shutil.copy(ROOT / "examples" / "bike-share.json", g / "docs" / "map.json")
     for f in ("a/b-c.json", "a-b/c.json"):
         (g / f).write_text(json.dumps({k: ODD[k] for k in ODD if k != "views"} | {"views": ODD["views"][:1]}), encoding="utf-8")
     git("add", "."); git("commit", "-q", "-m", "base")
@@ -280,7 +282,7 @@ with tempfile.TemporaryDirectory() as tmp:
        "**`a/b-c.json`**: cannot be read: it is no longer a map model" in summary and "removes Web" not in summary, summary)
     ok("diff-base-run (audit 10) · a new model git does not track yet is a change too",
        any(x.get("file") == "docs/new.json" and "adds the view Plain" in x.get("summary", []) for x in said(r) or []), r.stdout + r.stderr)
-    r = cli("render", ROOT / "examples" / "bookshop.json", "--out", t / "nc.html", stand_in="no-chrome")
+    r = cli("render", ROOT / "examples" / "bike-share.json", "--out", t / "nc.html", stand_in="no-chrome")
     ok("render (audit 10) · with no Chrome the layout check is skipped, and said: checked is false, not a clean check",
        r.returncode == 0 and (said(r) or {}).get("checked") is False and "no Chrome" in (said(r) or {}).get("skipped", "") and "check was skipped" in r.stderr, r.stdout + r.stderr)
 
@@ -288,7 +290,7 @@ with tempfile.TemporaryDirectory() as tmp:
     cache = t / "icons"
     cache.mkdir()
     (cache / "postgresql.svg").write_bytes(b"<svg xmlns='http://www.w3.org/2000/svg'><path d='M5 32") # a logo cut short
-    r = cli("render", ROOT / "examples" / "bookshop.json", "--out", t / "ic.html", "--no-check", env={"UMLIMATOR_ICON_CACHE": str(cache), "UMLIMATOR_OFFLINE": "1"})
+    r = cli("render", ROOT / "examples" / "bike-share.json", "--out", t / "ic.html", "--no-check", env={"UMLIMATOR_ICON_CACHE": str(cache), "UMLIMATOR_OFFLINE": "1"})
     data = json.loads(u.DATA.search((t / "ic.html").read_text(encoding="utf-8")).group(1)) if r.returncode == 0 else {}
     ok("icon-cache#1 · a cached logo that does not match its sha256 is not used: fetched again (offline here, so the card keeps its sigil)",
        "postgresql" not in data.get("icons", {"postgresql": 1}) and "postgresql.svg: the copy in" in r.stderr, r.stderr)

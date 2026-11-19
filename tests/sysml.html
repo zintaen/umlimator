@@ -6,8 +6,9 @@
      beside its square, aside), every node inside its box (the frame), every port centred on its owner's border, no line
      through a node but its own two ends, every line end within 1 px of its node's box, no line label over a node (these
      four not on the stress fixtures' all, whose crowding tests/sysml-fixtures.test.mjs pins), every node and line named,
-     texts at 4.5:1 and lines and outlines at 3:1. Then the e-bike atlas: each link of tools/ebike-links.json, selected in a
-     view that draws it as a card and opened by Enter, opens its view in the page. -->
+     texts at 4.5:1 and lines and outlines at 3:1. Then bike-share, which holds the e-bike atlas's views: each link the
+     e-bike atlas had, and the fleet map's battery monitor, selected in a view that draws it as a card and opened by
+     Enter, opens its view in the page. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
@@ -35,7 +36,10 @@ const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p
 const css = (x, k) => rgba(getComputedStyle(x)[k]);
 const FIX = {};
 for (const t of ['requirement', 'block-definition', 'internal-block', 'parametric']) for (const k of ['minimal', 'stress']) FIX[`${t}-${k}`] = await (await fetch(`${t}-${k}.json`)).json();
-const LINKS = await (await fetch('../tools/ebike-links.json')).json();
+// the four e-bike examples, and the links the e-bike atlas joined them by (tools/ebike-links.json until step 4 of the one-model plan)
+const LINKS = { sources: ['ebike-requirements', 'ebike-blocks', 'ebike-structure', 'ebike-range'],
+  links: [{ element: 'ebike-requirements/spec', opens: 'ebike-blocks/blocks' }, { element: 'ebike-requirements/range', opens: 'ebike-range/range-analysis' },
+    { element: 'ebike-blocks/ebike', opens: 'ebike-structure/inside-ebike' }] };
 for (const n of LINKS.sources) FIX[n] = await (await fetch(`../examples/${n}.json`)).json();
 
 // a port's (or parameter's) owner: a part, or the frame (the subject's family)
@@ -79,10 +83,11 @@ try {
     }
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
 
-  // ---- the e-bike atlas: each link opens its view in the page
-  const ATLAS = await (await fetch('../examples/ebike-atlas.json')).json(), id = ref => ref.slice(ref.indexOf('/') + 1);
-  for (const l of LINKS.links) {
-    const n = id(l.element), to = id(l.opens), went = [];
+  // ---- the e-bike atlas's links, in bike-share since step 3 of the one-model plan: each opens its view in the page, and so
+  // does the fleet map's battery monitor, which opens the blocks
+  const ATLAS = await (await fetch('../examples/bike-share.json')).json();
+  for (const l of [...LINKS.links.map(x => ({ n: x.element.slice(x.element.indexOf('/') + 1), to: x.opens.slice(x.opens.indexOf('/') + 1) })), { n: 'battery-service', to: 'blocks' }]) {
+    const n = l.n, to = l.to, went = [];
     let h, g, on;
     for (const v of ATLAS.views.filter(v => v.nodeIds.includes(n))) {
       el.innerHTML = ''; h = render(el, ATLAS, { view: v.id, on: { viewchange: e => went.push(e.view) } }); sr = el.querySelector('.umlimator').shadowRoot;
@@ -91,7 +96,7 @@ try {
     if (g) { g.dispatchEvent(new PointerEvent('pointerdown', { ...at, button: 0, pointerId: 7, pointerType: 'mouse' })); g.dispatchEvent(new PointerEvent('pointerup', { ...at, button: 0, pointerId: 7, pointerType: 'mouse' }));
       g.dispatchEvent(new MouseEvent('click', at)); stage.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true, cancelable: true })); }
     await new Promise(res => setTimeout(res, 0));
-    check(`the e-bike atlas: ${l.element}, selected in ${on && on.id} and opened by Enter, opens ${to}`, !!g && went.includes(to), [!!g, went]);
+    check(`bike-share: ${n}, selected in ${on && on.id} and opened by Enter, opens ${to}`, !!g && went.includes(to), [!!g, went]);
     h.destroy();
   }
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }

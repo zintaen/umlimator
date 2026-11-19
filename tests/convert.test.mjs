@@ -1,5 +1,5 @@
 // The helpers (work package 3.7, notes/stage-3.md §7), in Node on the sources: example 11 with { f1: 'f1-paid' } gives
-// example 12 except for ids; a numbered view (examples/bookshop.json's, one with no edges list) and a trace give views
+// example 12 except for ids; a numbered view (examples/bike-share.json's api, the rider shop's, one with no edges list) and a trace give views
 // that validate with no error; no derived id contains "->"; a second run replaces the view; the reports.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -59,8 +59,8 @@ test('a sequence view: the first operand by default, another by options.operands
   assert.equal(view(p.model, 'checkout-sequence.communication').edges.filter(id => /\.m\d+$/.test(id)).length, 10, "par: both operands' messages, one after another");
 });
 
-test("the numbered view in examples/bookshop.json gives a sequence view and a communication view that validate with no error", () => {
-  const bk = read('../examples/bookshop.json'), before = structuredClone(bk);
+test("the numbered view in examples/bike-share.json's rider shop gives a sequence view and a communication view that validate with no error", () => {
+  const bk = read('../examples/bike-share.json'), before = structuredClone(bk);
   const s = sequenceFromView(bk, 'api'), v = view(s.model, 'api.sequence');
   assert.deepEqual(bk, before);
   assert.deepEqual(errors(s.model), []);
@@ -98,6 +98,7 @@ test('a trace goes through its numbered view; overlapping calls are said in the 
   const S = [{ id: '1', service: 'web', start: 0, end: 100 }, { id: '2', parent: '1', service: 'api', start: 5, end: 50 },
     { id: '3', parent: '2', service: 'db', start: 10, end: 20 }, { id: '4', parent: '1', service: 'db', start: 30, end: 60 }];
   const t = view(sequenceFromSpans(m, S).model, 'trace');
+  assert.equal(sequenceFromSpans(m, S).model.schemaVersion, 2); // m has no schemaVersion: the helper upgrades it
   assert.ok(t.caption.endsWith('2 calls overlapped in the trace and are drawn one after another.'), t.caption); // 2 and 4
   assert.ok(!view(sequenceFromSpans(m, S.slice(0, 3)).model, 'trace').caption.includes('overlapped'), 'a call inside another: no overlap');
 });

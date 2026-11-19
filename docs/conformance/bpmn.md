@@ -13,8 +13,7 @@ the Common Executable sub-class or of execution semantics (clause 13). The stand
 A view of a version-2 model (`"schemaVersion": 2`) whose `diagram` is `"bpmn"` is a BPMN diagram. It is drawn by
 `lib/umlimator-all.js` (`umlimator/all`), which the CLI's page inlines; `lib/umlimator.js`, what a map host loads, draws
 it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2, row 24, and the note's §3; the example
-is [`examples/bookshop-order-to-shipment.json`](../../examples/bookshop-order-to-shipment.json), which the Bookshop atlas
-opens from the use case "Track an order".
+is [`examples/bookshop-order-to-shipment.json`](../../examples/bookshop-order-to-shipment.json).
 
 ## Table 2.1, row by row
 
@@ -137,4 +136,4 @@ and `tests/bpmn-engine.html` (boundary events as ports, the bands, the circle en
 `tests/bpmn-minimal.json` and `tests/bpmn-stress.json` with `tests/m4b-fixtures.test.mjs` and `tests/m4b.html`;
 `tests/bpmn-xml.test.mjs` (the reader and writer, hostile files, the round trip of the example and 500 generated models);
 `tests/import.py` (`import` and `export`, the export's diagram interchange from the type's layout); `tests/cli.py`
-(render, check, stills, pdf, the diff Action); `tests/mcp.py`; `tests/atlas.test.mjs`.
+(render, check, stills, pdf, the diff Action); `tests/mcp.py`.
