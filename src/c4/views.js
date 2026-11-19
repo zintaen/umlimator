@@ -272,8 +272,11 @@ function depOwners(model, x) {
   const I = c4Index(model); // not the node itself nor a node inside it (the core refuses a cycle)
   return V_ARR(model.nodes).filter(n => V_OBJ(n) && n.type === 'c4.DeploymentNode' && n.id !== x.id && !I.chain(n.id).includes(x.id)).map(n => ({ id: n.id, label: vName(n) }));
 }
-// some deployment view lists x and draws it as a leaf, where its description shows (depGeo's desc)
-const depLeaf = (model, x) => V_ARR(model && model.views).some(v => V_OBJ(v) && v.diagram === 'c4.deployment' && V_ARR(v.nodeIds).includes(x.id) && !depPic(model, v).open.has(x.id));
+// some deployment view lists x and draws it as a leaf, where its description shows (depGeo's desc); memo: validate()'s, so
+// each view's ids and depPic are worked out once a run, not once a node (audit 46)
+const depLeaf = (model, x, memo = new Map()) => V_ARR(model && model.views).some(v => { if (!V_OBJ(v) || v.diagram !== 'c4.deployment') return false;
+  if (!memo.has(v)) memo.set(v, { ids: new Set(V_ARR(v.nodeIds)), pic: null }); const s = memo.get(v);
+  return s.ids.has(x.id) && !(s.pic || (s.pic = depPic(model, v))).open.has(x.id); });
 const DEP_DEF = {
   title: 'C4 deployment diagram',
   elements: [{ type: 'c4.DeploymentNode', label: 'Deployment node' }, { type: 'c4.ContainerInstance', label: 'Container instance', name: false }, { type: 'uml.Comment', label: 'Comment' }],

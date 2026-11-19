@@ -12,7 +12,7 @@ function svgOf(geo, opts = {}) {
   const id = 'g' + (svgSeq++), { nodes, edges, groups, bounds: B, map } = geo;
   const LINE = map ? 'var(--um-arrow)' : 'var(--um-muted)'; // a typed view's lines: 3:1 or more in both themes
   const col = k => `var(--um-${KIND[k][0]})`, fill = k => `var(--um-${KIND[k][0]}-f)`;
-  const lc = x => String(x.change || '').toLowerCase(), ech = e => { const c = lc(e); return c === 'added' || c === 'new' ? 'added' : c === 'removed' ? 'removed' : ''; }; // a change in any case, as CHG reads it (audit 45)
+  const lc = x => (typeof x.change === 'string' ? x.change.toLowerCase() : ''), ech = e => { const c = lc(e); return c === 'added' || c === 'new' ? 'added' : c === 'removed' ? 'removed' : ''; }; // a change in any case, as CHG reads it (audit 45); text only, as validate() and the typed views read it (audit 46: a list ["removed"] drew REMOVED)
   const estyle = e => {
     if (e.style === 'faded') return { ...(map && e.wk ? { c: `var(--um-w-${e.wk})`, m: e.wk, cls: ' w-' + e.wk + ' faded' } : { c: LINE, m: 'd', cls: ' faded' }), dash: '', op: .35 }; // its own colour, faint, no flow (drift's idle lines)
     if (map && e.wk && !e.style && !ech(e)) return { c: `var(--um-w-${e.wk})`, m: e.wk, dash: e.back ? '6 5' : '', cls: ' w-' + e.wk + (e.back ? ' back' : '') };
@@ -190,7 +190,7 @@ return I && I.src ? `<rect x="${x - M * 3 / 28}" y="${y - M * 3 / 28}" width="${
     if (hint) { const kx = map ? n.x + n.w - 44 : n.x + n.w - 40, ky = map ? ty - 8 : n.y + n.h - 11;
       parts.push(`<g class="open-hint${map ? '' : ' depth-read'}"><title>Open the inner view (or double-click the card)</title><rect x="${kx}" y="${ky}" width="36" height="16" rx="8" class="n-mask" stroke="${c}"/><text x="${kx + 18}" y="${ky + 12}" text-anchor="middle" class="badge-tx" fill="${c}">⤢${kids ? ' ' + kids : ''}</text></g>`);
       said.push(kids ? `${kids} (cards inside, opens the inner view)` : '(opens the inner view)'); }
-    const ch = CHG[String(n.change || '').toLowerCase()];
+    const ch = CHG[lc(n)];
     if (ch) {
       const bw = ch[1].length * 6 + 12, bx = n.x + n.w - bw - 8 - (hint && map ? 40 : 0); // left of a map card's ⤢ pill, which sits on the same edge
       parts.push(`<rect x="${bx}" y="${ty - 8}" width="${bw}" height="16" rx="8" fill="var(--um-mask)" stroke="var(--um-${ch[0]})"/>

@@ -83,7 +83,7 @@ const OV_TIP = { arrow: [10, 4, true], open: [10, 5, false] };
 // added green, removed rose and dashed, as the sequence view draws diff()'s marks (audit 45: an inline message drawn as live)
 const OV_CH = { added: ['var(--um-green)', ''], new: ['var(--um-green)', ''], removed: ['var(--um-rose)', '5 5'] };
 function ovMessage(e, change) {
-  const C = OV_CH[String(change || '').toLowerCase()], line = C ? C[0] : OV_SD.line;
+  const C = typeof change === 'string' && Object.hasOwn(OV_CH, change.toLowerCase()) && OV_CH[change.toLowerCase()], line = C ? C[0] : OV_SD.line;
   const T = OV_TIP[e.end && e.end.to] || OV_TIP.open, P = e.pts, [p, q] = P.slice(-2), L = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1, u = [(q[0] - p[0]) / L, (q[1] - p[1]) / L];
   const b = [q[0] - u[0] * T[0], q[1] - u[1] * T[0]], s = [-u[1] * T[1], u[0] * T[1]], pts = T[2] ? trimLine(P, 0, T[0]) : P, dash = C && C[1] ? ` stroke-dasharray="${C[1]}"` : e.end && e.end.dashed ? ' stroke-dasharray="6 4"' : '';
   const tip = `M${r2(b[0] + s[0])} ${r2(b[1] + s[1])}L${r2(q[0])} ${r2(q[1])}L${r2(b[0] - s[0])} ${r2(b[1] - s[1])}${T[2] ? 'Z' : ''}`, l = e.lbl;
