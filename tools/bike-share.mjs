@@ -13,8 +13,10 @@
 // else one entry a line; a list of plain values that does not fit is filled line by line.
 //
 // The build also stops on what would break a pin without any error: an id used twice (cards, lines, a view's own lines
-// and boxes), a view whose id is a card's unless that card opens it, and a new view id starting with "f" (the
-// `--views system,f*` and `fl*` globs of tests/cli.py and tests/outcomes.py mean the fleet view only).
+// and boxes), a view whose id is a card's (a model card or a view's own; only the kept views trips and fleet may, as
+// trace refuses such an id and a card opens the view of its id), a new view id starting with "f" (the
+// `--views system,f*` and `fl*` globs of tests/cli.py and tests/outcomes.py mean the fleet view only), and a new view
+// that lists accounts, flags or payments (diff's views == ["system"] pins keep those cards to the kept views).
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -47,11 +49,11 @@ export const KEYS = {
   part: ['nodes', 'edges', 'views'],
 };
 // the kind of each field's value that is itself of a known kind (an object, or a list of them)
-const INNER = {
+export const INNER = {
   file: { nodes: 'node', edges: 'edge', views: 'view', rules: 'rule', lenses: 'lens', stories: 'story' },
   part: { nodes: 'node', edges: 'edge', views: 'view' },
   node: { badges: 'badge', members: 'node' },
-  view: { edges: 'edge', containers: 'container', fragments: 'node', nodeOverrides: 'overrides' },
+  view: { nodes: 'node', edges: 'edge', containers: 'container', fragments: 'node', nodeOverrides: 'overrides' },
   container: { badges: 'badge' },
   rule: { from: 'selector', to: 'selector' },
   selector: { not: 'selector' },
@@ -96,6 +98,8 @@ function print(x, pad, head = '', tail = '') {
 // the text of a model or a part file: its keys ordered, printed, one newline at the end
 export const format = (x, kind = 'file', where = 'the model') => print(order(x, kind, where), '') + '\n';
 
+// the kept views; of them, the ones whose id is a card's; the cards the diff pins change, which only kept views may list
+const KEPT = ['context', 'system', 'trips', 'fleet', 'ride-end'], SAME_AS_CARD = ['trips', 'fleet'], SAID = ['accounts', 'flags', 'payments'];
 const readPart = name => JSON.parse(readFileSync(new URL(`${name}.json`, PARTS), 'utf8'));
 
 // the model from the part files; `load` reads one by name ('model' is the head)
@@ -113,18 +117,28 @@ export function build(load = readPart) {
   for (const [name, p] of files) {
     const odd = Object.keys(p).filter(k => !['nodes', 'edges', 'views'].includes(k));
     if (odd.length) stop(`part ${name} has ${odd.join(', ')}; a part holds nodes, edges and views`);
+    order(p, 'part', `part ${name}`); // an unknown key stops here, named by its part file
     for (const n of p.nodes || []) { claim(n.id, 'a card', name); (n.members || []).forEach(c => claim(c.id, `a member of ${n.id}`, name)); }
     for (const e of p.edges || []) claim(e.id, 'a line', name);
     model.nodes.push(...(p.nodes || [])); model.edges.push(...(p.edges || []));
   }
+  // the cards: the model's and every view's own (trace counts both)
   const cards = new Map(model.nodes.map(n => [n.id, n])), views = new Set();
+  for (const [, p] of files) for (const v of p.views || []) for (const n of (v.nodes || []).filter(isObj)) if (!cards.has(n.id)) cards.set(n.id, n);
   for (const [name, p] of files) for (const v of p.views || []) {
     if (views.has(v.id)) stop(`view ${v.id} is in two parts (or twice in ${name})`);
     views.add(v.id);
-    if (cards.has(v.id) && cards.get(v.id).opensView !== v.id) stop(`view ${v.id} in ${name} has the id of a card that does not open it`);
+    if (cards.has(v.id) && !SAME_AS_CARD.includes(v.id)) stop(`view ${v.id} in ${name} has a card's id; only ${SAME_AS_CARD.join(' and ')} may`);
     if (/^f/.test(v.id) && v.id !== 'fleet') stop(`view ${v.id} in ${name} starts with "f", which the fleet view's globs would also match`);
+    if (!KEPT.includes(v.id)) {
+      const hit = (v.nodeIds || []).filter(id => SAID.includes(id));
+      if (hit.length) stop(`view ${v.id} in ${name} lists ${hit.join(', ')}, which diff's views == ["system"] pin keeps to the kept views`);
+    }
     for (const e of (v.edges || []).filter(isObj)) claim(e.id, `a line of view ${v.id}`, name);
+    const boxes = new Set();
     for (const c of v.containers || []) {
+      if (boxes.has(c.id)) stop(`box ${c.id} is in view ${v.id} twice (${name})`);
+      boxes.add(c.id);
       if (cards.has(c.id)) stop(`box ${c.id} of view ${v.id} in ${name} has a card's id`);
       if (from.has(c.id) && !from.get(c.id).startsWith('a box')) stop(`box ${c.id} of view ${v.id} in ${name} is ${from.get(c.id)} too`);
       from.set(c.id, `a box in ${name}`);
