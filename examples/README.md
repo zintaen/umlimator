@@ -26,6 +26,8 @@ Bike share's story, as `umlimator.py record` writes it (CI records it for the si
 
 ![Bike share: a ride, from unlock to payment, in five steps](https://zintaen.github.io/umlimator/examples/stills/bike-share/story-ride.png)
 
+`bike-share.json` is built, not written: edit its part files in [`../tools/bike-share/`](../tools/bike-share/) (the model's own fields and the parts' order in `model.json`, then one file per part holding its cards, lines and views) and run `node tools/bike-share.mjs`, which writes the model with every key in a fixed order. `node tools/bike-share.mjs --check` and `tests/bike-share.test.mjs` fail when the committed model or a part file is not what the build writes.
+
 ## Diagrams
 
 A diagram type draws a typed model (`"schemaVersion": 2`, [`docs/diagrams/model.md`](../docs/diagrams/model.md)) in its
