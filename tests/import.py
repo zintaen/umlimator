@@ -111,6 +111,16 @@ ok("mermaid · an entity code naming no character XML holds is U+FFFD and said, 
    and un == [(2, f"{c} names no character SVG or XML can hold: read as U+FFFD") for c in ("#1;", "#65535;")]
    + [(3, "#0; names no character SVG or XML can hold: read as U+FFFD"), (4, "#27; names no character SVG or XML can hold: read as U+FFFD"),
       (7, "#55296; names no character SVG or XML can hold: read as U+FFFD"), (7, "#8; names no character SVG or XML can hold: read as U+FFFD")], (m, un))
+raw = lambda c: f"the character U+{ord(c):04X}, which SVG or XML cannot hold, is read as U+FFFD"
+m, un = imp.read("mermaid", 'flowchart TD\r\n  A["bell \x01 here"] --> B[ok\x1b]\r  B --> C["￾"]\n', "x")
+m2, un2 = imp.read("structurizr", 'workspace {\n model {\n  u = person "User \x01x"\n  s = softwareSystem "Sys"\n  u -> s "uses \x02"\n }\n views {\n  systemContext s { include * }\n }\n}\n', "x")
+m3, un3 = imp.read("compose", '{"services": {"web\\u0001": {"image": "x", "depends_on": ["db"]}, "db": {"image": "pg\\ud800"}}}', "x")
+ok("a raw character XML cannot hold (a C0 control, U+FFFE) in a map's source is U+FFFD and said by line, as the module's mermaidScrub (audit 49)",
+   [n["label"] for n in m["nodes"]] == ["bell � here", "ok�", "�"] and un == [(2, raw("\x01")), (3, raw("￾"))]
+   and [n["label"] for n in m2["nodes"]] == ["User �x", "Sys"] and [e.get("label") for e in m2["edges"]] == ["uses �"]
+   and un2 == [(3, raw("\x01")), (5, raw("\x02"))]
+   and not re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff￾￿]", json.dumps(m3, ensure_ascii=False))
+   and un3 == [(None, raw("\x01")), (None, raw("\ud800"))], (m, un, m2, un2, m3, un3))
 ok("mermaid · front matter fences with spaces after them are front matter (audit 5)",
    imp.front("--- \ntitle: Shop\n---  \nflowchart LR\n")[0] == "Shop" and imp.mermaid_typed("--- \ntitle: t\n--- \nclassDiagram\n") == "classDiagram")
 m, un = imp.read("structurizr", 'workspace {\n  model {\n    u = person "User" \\\n      "A customer"\n    s = softwareSystem "Shop"\n    u -> s "Uses" \\\n      "HTTPS"\n  }\n}\n', "x")
@@ -794,7 +804,7 @@ with tempfile.TemporaryDirectory() as tmp:
     (t / "lone.json").write_text('{"services": {"a\\ud800": {}}}')  # audit 3: a lone surrogate ended the UTF-8 write in a traceback
     r = run("import", str(t / "lone.json"), "--out", str(t / "lone-out.json"))
     ok("a lone surrogate (an escape or entity) is written as U+FFFD and said, no traceback",
-       r.returncode == 0 and "written as U+FFFD" in r.stderr and "a\ufffd" in (t / "lone-out.json").read_text(encoding="utf-8"), r.stderr[-800:])
+       r.returncode == 0 and "U+D800, which SVG or XML cannot hold, is read as U+FFFD" in r.stderr and "a\ufffd" in (t / "lone-out.json").read_text(encoding="utf-8"), r.stderr[-800:])
     (t / "bare.json").write_text(json.dumps({"title": "t", "nodes": ["a", {"id": "b", "label": "B"}], "edges": [], "views": [{"id": "v", "nodeIds": ["b"]}]}))
     r = run("render", str(t / "bare.json"), "--out", str(t / "bare.html"), "--no-check")
     ok("render · a node that is not an object is a model problem, no traceback (backlog 4a.3)",
@@ -1123,9 +1133,10 @@ with tempfile.TemporaryDirectory() as tmp:
         r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", f, "--out", "o.json"], capture_output=True, text=True, cwd=t)
         said.append(r.stderr)
     bad = [x for x in said if re.search("[\x00-\x08\x0b-\x1f\x7f-\x9f]", x)]
-    # a typed reader reads a raw control as U+FFFD, said, before any report quotes it (audit 48)
+    # a typed reader (audit 48) and the map importer (audit 49) read a raw C0 control as U+FFFD, said, before any report quotes it;
+    # a C1 one (\x9b) is text XML holds, written to stderr as \xNN
     ok("a hostile file's escape sequences reach stderr as \\xNN, never raw, from the map importer, a typed reader and the file's name (audit 26)",
-       not bad and "zzz \\x1b]0\n" in said[0] and "PWNED\\x07 \\x1b[31mRED" in said[0] and "\\x9b2J" in said[0] and "\ufffd]8;;http://evil/" in said[1] and "the character U+001B, which SVG or XML cannot hold" in said[1] and "x\\x1b[2Jy.mmd:3:" in said[2], said)
+       not bad and "zzz \ufffd]0\n" in said[0] and "PWNED\ufffd \ufffd[31mRED" in said[0] and "\\x9b2J" in said[0] and "3: the character U+001B, which SVG or XML cannot hold" in said[0] and "\ufffd]8;;http://evil/" in said[1] and "the character U+001B, which SVG or XML cannot hold" in said[1] and "x\\x1b[2Jy.mmd:3:" in said[2], said)
 
 # audit 27: the bidi marks, embeddings, overrides and isolates (U+202E shows the rest of the line reversed) reached stderr
 # raw too; each is written as \uNNNN, from the map importer (Python), a typed reader (Node) and the file's own name
@@ -1142,7 +1153,7 @@ with tempfile.TemporaryDirectory() as tmp:
         said.append(r.stderr)
     raw = [x for x in said if re.search("[\x00-\x08\x0b-\x1f\x7f-\x9f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]", x)]
     ok("a hostile file's bidi controls reach stderr as \\uNNNN, never raw, from the map importer, a typed reader and the file's name (audit 27)",
-       not raw and "zzz \\u202eexe.txt\\u202c " in said[0] and "\\u202a\\u202b\\u202c\\u202d\\u202e\\u2066\\u2067\\u2068\\u2069\\u200e\\u200f\\u061c \\x1b[31mred" in said[0]
+       not raw and "zzz \\u202eexe.txt\\u202c " in said[0] and "\\u202a\\u202b\\u202c\\u202d\\u202e\\u2066\\u2067\\u2068\\u2069\\u200e\\u200f\\u061c \ufffd[31mred" in said[0]
        and "\\u2066\\u202e junk!!\\u2069" in said[1] and "x\\u202ey.mmd:3:" in said[2] and all(r for r in said), said)
 
 # notes/milestone-2.md §8.5 (M2.12): an erDiagram, a flowchart given --typed, a Structurizr JSON workspace and a .dbml file

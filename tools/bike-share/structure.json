@@ -129,6 +129,13 @@
     { "id": "app-requires-rides", "type": "uml.Usage", "from": "app-component", "to": "i-rides" },
     { "id": "app-requires-sign-in", "type": "uml.Usage", "from": "app-component", "to": "i-sign-in" },
     { "id": "api-requires-sign-in", "type": "uml.Usage", "from": "trips-api", "to": "i-sign-in" },
+    { "id": "api-provides-rides", "type": "uml.InterfaceRealization", "from": "trips-api.rides", "to": "i-rides" },
+    {
+      "id": "accounts-provides-sign-in",
+      "type": "uml.InterfaceRealization",
+      "from": "accounts-component",
+      "to": "i-sign-in"
+    },
     {
       "id": "rides-to-hire",
       "type": "uml.Connector",
