@@ -1,0 +1,48 @@
+name: Feature request
+description: A new option, diagram feature, import or export format, or command
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For an open question or an idea still taking shape, GitHub Discussions may fit better. The public API is additive only through 1.0.0.
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - ES module (render(), layout(), apply())
+        - <umlimator-map> element or a docs plugin (markdown-it, remark)
+        - A diagram type or its notation
+        - CLI (umlimator.py)
+        - GitHub Action (diff, drift)
+        - MCP server
+        - Import or export
+        - Documentation site or examples
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to do, and what stops you today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like
+      description: How it would work for you. For a notation feature, the specification section it comes from helps.
+    validations:
+      required: true
+  - type: textarea
+    id: model
+    attributes:
+      label: Model JSON
+      description: A model, or the part of one, that the feature would apply to.
+      render: json
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered

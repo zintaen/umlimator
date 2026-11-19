@@ -109,3 +109,7 @@ map.update(nextModel);   // redraws only what changed, keeping the view, camera 
 
 [Getting started](/guide/getting-started) walks through a first model, and the [API reference](/api/) lists every
 export.
+
+## Support
+
+umlimator is free and MIT licensed. Questions go to [GitHub Discussions](https://github.com/zintaen/umlimator/discussions), and if it saves you time, you can support its development on [Buy Me a Coffee](https://buymeacoffee.com/cyberskill) or through [GitHub Sponsors](https://github.com/sponsors/zintaen).

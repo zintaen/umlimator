@@ -1,12 +1,15 @@
 # umlimator
 
+Layered architecture maps and 28 UML, SysML, C4, BPMN and cloud diagram types you can click through, from one JSON model.
+
 [![check](https://github.com/zintaen/umlimator/actions/workflows/check.yml/badge.svg)](https://github.com/zintaen/umlimator/actions/workflows/check.yml)
 [![npm](https://img.shields.io/npm/v/umlimator)](https://www.npmjs.com/package/umlimator)
+[![npm downloads](https://img.shields.io/npm/dm/umlimator)](https://www.npmjs.com/package/umlimator)
 [![licence: MIT](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
 [![docs](https://img.shields.io/badge/docs-zintaen.github.io%2Fumlimator-blue)](https://zintaen.github.io/umlimator/)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/cyberskill)
 
-Layered architecture maps and 28 diagram types you can click through, from one JSON model: an ES module, a CLI and a
-GitHub Action.
+One model drives an ES module with no dependencies, a CLI, a GitHub Action that posts what a pull request changes in your maps, and an MCP server for AI assistants. [Documentation](https://zintaen.github.io/umlimator/) | [Examples](https://zintaen.github.io/umlimator/examples.html) | [Playground](https://zintaen.github.io/umlimator/examples/playground.html) | [Changelog](https://zintaen.github.io/umlimator/changelog.html)
 
 [![The Umlimator Atlas's overview: umlimator's parts (the model JSON, the CLI, the module, the page and the diff Action) and who uses each](examples/stills/umlimator-atlas-overview.png)](https://zintaen.github.io/umlimator/examples/umlimator-atlas.html)
 
@@ -81,6 +84,8 @@ The [getting started guide](https://zintaen.github.io/umlimator/guide/getting-st
 
 ## Development
 
+[CONTRIBUTING.md](CONTRIBUTING.md) has the setup, every test command CI runs and the rules a pull request must keep. In short:
+
 ```bash
 npm run build               # src/ into lib/umlimator.js and lib/umlimator-all.js: edit the sources, commit all three
 node --test                 # layout() in Node: the bench views' geometry and the layout rules; npm test runs the "(timed)" tests apart, one file at a time
@@ -114,6 +119,14 @@ examples/                    made-up systems: models, host pages and a Node scri
 .claude-plugin/, plugins/    the Claude Code marketplace and its map-repo skill
 ```
 
+## Contributing
+
+Bug reports, fixes, examples and docs are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before a pull request (each author signs the [CLA](CLA.md) once), and open an issue or a discussion first for a large change. Everyone taking part follows the [code of conduct](CODE_OF_CONDUCT.md). Report a security problem privately, as [SECURITY.md](SECURITY.md) says.
+
+## Support
+
+Questions go to [GitHub Discussions](https://github.com/zintaen/umlimator/discussions), bugs and feature requests to [issues](https://github.com/zintaen/umlimator/issues/new/choose); [SUPPORT.md](SUPPORT.md) lists where to look first. If umlimator saves you time, you can support its development on [Buy Me a Coffee](https://buymeacoffee.com/cyberskill) or through [GitHub Sponsors](https://github.com/sponsors/zintaen).
+
 ## Licence
 
-MIT (`LICENSE`). Third-party notices: `THIRD_PARTY_NOTICES.md`.
+MIT ([LICENSE](LICENSE)). Third-party notices: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The MIT License covers the code, not the umlimator name or logo: see [TRADEMARKS.md](TRADEMARKS.md).

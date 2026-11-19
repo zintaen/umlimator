@@ -166,12 +166,18 @@ export default defineConfig({
       ] },
     ],
     sidebar,
-    socialLinks: [{ icon: 'github', link: REPO }],
+    socialLinks: [
+      { icon: 'github', link: REPO },
+      // the maintainers' Buy Me a Coffee page (also .github/FUNDING.yml and package.json's funding), drawn as a cup
+      { icon: { svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 8h13v5a6 6 0 0 1-6 6h-1a6 6 0 0 1-6-6V8zm13 1h1.5a2.5 2.5 0 0 1 0 5H17v-1.6h1.5a.9.9 0 0 0 0-1.8H17V9zM3 20h16v1.5H3V20zM8 2.5c.8.8.8 1.7 0 2.5s-.8 1.7 0 2.5H6.6c-.8-.8-.8-1.7 0-2.5s.8-1.7 0-2.5H8zm4 0c.8.8.8 1.7 0 2.5s-.8 1.7 0 2.5h-1.4c-.8-.8-.8-1.7 0-2.5s.8-1.7 0-2.5H12z"/></svg>' },
+        link: 'https://buymeacoffee.com/cyberskill', ariaLabel: 'Buy Me a Coffee' },
+    ],
     search: { provider: 'local' },
     outline: { level: [2, 3] },
     editLink: { pattern: `${REPO}/edit/main/docs/:path`, text: 'Edit this page on GitHub' },
     footer: {
-      message: 'MIT licence. Not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.',
+      message: 'Released under the MIT License. Not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.',
+      copyright: 'Like umlimator? Support it on <a href="https://buymeacoffee.com/cyberskill">Buy Me a Coffee</a> or <a href="https://github.com/sponsors/zintaen">GitHub Sponsors</a>.',
     },
   },
 });

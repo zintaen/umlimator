@@ -12,3 +12,8 @@ docs/.vitepress/dist/
 docs/.vitepress/cache/
 # the type pages tools/types.mjs renders (each the whole module): CI's site job builds them
 examples/types/*.html
+# local scratch: browser automation logs and snapshots, the agents' own folder, throwaway JSON at the root
+.playwright-mcp/
+/.claude/
+/k.json
+/k.out.json
