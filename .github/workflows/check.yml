@@ -467,7 +467,8 @@ jobs:
           import json, pathlib, sys
           k, n = map(int, sys.argv[1:])
           paths = sorted(pathlib.Path("bench/models").glob("*.json")) + [pathlib.Path("examples/bookshop.json")]
-          views = {p.stem: len(m["views"]) + len(m.get("benchViews", [])) for p in paths for m in [json.loads(p.read_text())]}
+          maps = lambda m: [v["id"] for v in m["views"] if m.get("schemaVersion") != 2 or v.get("diagram") in (None, "map")]  # bench.py times map views only
+          views = {p.stem: len(maps(m)) + sum(x.split("+")[0] in maps(m) for x in m.get("benchViews", [])) for p in paths for m in [json.loads(p.read_text())]}
           load, shard = [0] * n, {}
           for x in sorted(views, key=lambda x: (-views[x], x)):
               i = load.index(min(load)); load[i] += views[x]; shard[x] = i + 1
