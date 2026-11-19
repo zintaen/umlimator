@@ -5,13 +5,13 @@ Layered architecture maps and 28 UML, SysML, C4, BPMN and cloud diagram types yo
 [![check](https://github.com/zintaen/umlimator/actions/workflows/check.yml/badge.svg)](https://github.com/zintaen/umlimator/actions/workflows/check.yml)
 [![npm](https://img.shields.io/npm/v/umlimator)](https://www.npmjs.com/package/umlimator)
 [![npm downloads](https://img.shields.io/npm/dm/umlimator)](https://www.npmjs.com/package/umlimator)
-[![licence: MIT](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
+[![licence: MIT](https://img.shields.io/badge/licence-MIT-blue)](https://github.com/zintaen/umlimator/blob/main/LICENSE)
 [![docs](https://img.shields.io/badge/docs-zintaen.github.io%2Fumlimator-blue)](https://zintaen.github.io/umlimator/)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/cyberskill)
 
 One model drives an ES module with no dependencies, a CLI, a GitHub Action that posts what a pull request changes in your maps, and an MCP server for AI assistants. [Documentation](https://zintaen.github.io/umlimator/) | [Examples](https://zintaen.github.io/umlimator/examples.html) | [Playground](https://zintaen.github.io/umlimator/examples/playground.html) | [Changelog](https://zintaen.github.io/umlimator/changelog.html)
 
-[![The Umlimator Atlas's overview: umlimator's parts (the model JSON, the CLI, the module, the page and the diff Action) and who uses each](examples/stills/umlimator-atlas-overview.png)](https://zintaen.github.io/umlimator/examples/umlimator-atlas.html)
+[![The Umlimator Atlas's overview: umlimator's parts (the model JSON, the CLI, the module, the page and the diff Action) and who uses each](https://raw.githubusercontent.com/zintaen/umlimator/main/examples/stills/umlimator-atlas-overview.png)](https://zintaen.github.io/umlimator/examples/umlimator-atlas.html)
 
 ## Install
 
@@ -54,7 +54,7 @@ The [getting started guide](https://zintaen.github.io/umlimator/guide/getting-st
   view, or unfolds in place. Automatic layout with orthogonal lines that never run through a card, the same picture for
   the same model, and a layout check.
 - **28 diagram types**: UML's 14 and its information flow diagram, ER, flowchart, data flow, C4's six views, SysML v1.7's four, mindmaps, Google
-  Cloud, Azure and AWS architecture diagrams and BPMN, each with a [conformance note](docs/conformance/) saying what it
+  Cloud, Azure and AWS architecture diagrams and BPMN, each with a [conformance note](https://github.com/zintaen/umlimator/tree/main/docs/conformance) saying what it
   covers.
 - **Editing with `apply()`**: opt-in gestures emit events; the host decides, and `apply()` turns a typed diagram's
   `edit` into the next model, with undo.
@@ -75,16 +75,16 @@ The [getting started guide](https://zintaen.github.io/umlimator/guide/getting-st
 | | |
 |---|---|
 | [Docs](https://zintaen.github.io/umlimator/) | the documentation site |
-| [Guide](https://zintaen.github.io/umlimator/guide/getting-started.html) | the model, embedding, editing, the CLI, the Action, MCP, import and icons ([as Markdown](docs/guide/)) |
+| [Guide](https://zintaen.github.io/umlimator/guide/getting-started.html) | the model, embedding, editing, the CLI, the Action, MCP, import and icons ([as Markdown](https://github.com/zintaen/umlimator/tree/main/docs/guide)) |
 | [API](https://zintaen.github.io/umlimator/api/) | every export, its options and events (`lib/umlimator.d.ts`) |
 | [Diagram types](https://zintaen.github.io/umlimator/types.html) | the 28 types, each with a live example and its conformance note |
-| [Examples](https://zintaen.github.io/umlimator/examples.html) | made-up systems, host pages for embedding, live updates and editing ([what each one shows](examples/README.md)) |
+| [Examples](https://zintaen.github.io/umlimator/examples.html) | made-up systems, host pages for embedding, live updates and editing ([what each one shows](https://github.com/zintaen/umlimator/blob/main/examples/README.md)) |
 | [Playground](https://zintaen.github.io/umlimator/examples/playground.html) | try a model in the browser |
-| [Changelog](docs/module-api.md) | each release's changes, and the decisions behind the API |
+| [Changelog](https://github.com/zintaen/umlimator/blob/main/docs/module-api.md) | each release's changes, and the decisions behind the API |
 
 ## Development
 
-[CONTRIBUTING.md](CONTRIBUTING.md) has the setup, every test command CI runs and the rules a pull request must keep. In short:
+[CONTRIBUTING.md](https://github.com/zintaen/umlimator/blob/main/CONTRIBUTING.md) has the setup, every test command CI runs and the rules a pull request must keep. In short:
 
 ```bash
 npm run build               # src/ into lib/umlimator.js and lib/umlimator-all.js: edit the sources, commit all three
@@ -121,12 +121,12 @@ examples/                    made-up systems: models, host pages and a Node scri
 
 ## Contributing
 
-Bug reports, fixes, examples and docs are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before a pull request (each author signs the [CLA](CLA.md) once), and open an issue or a discussion first for a large change. Everyone taking part follows the [code of conduct](CODE_OF_CONDUCT.md). Report a security problem privately, as [SECURITY.md](SECURITY.md) says.
+Bug reports, fixes, examples and docs are welcome. Read [CONTRIBUTING.md](https://github.com/zintaen/umlimator/blob/main/CONTRIBUTING.md) before a pull request (each author signs the [CLA](https://github.com/zintaen/umlimator/blob/main/CLA.md) once), and open an issue or a discussion first for a large change. Everyone taking part follows the [code of conduct](https://github.com/zintaen/umlimator/blob/main/CODE_OF_CONDUCT.md). Report a security problem privately, as [SECURITY.md](https://github.com/zintaen/umlimator/blob/main/SECURITY.md) says.
 
 ## Support
 
-Questions go to [GitHub Discussions](https://github.com/zintaen/umlimator/discussions), bugs and feature requests to [issues](https://github.com/zintaen/umlimator/issues/new/choose); [SUPPORT.md](SUPPORT.md) lists where to look first. If umlimator saves you time, you can support its development on [Buy Me a Coffee](https://buymeacoffee.com/cyberskill) or through [GitHub Sponsors](https://github.com/sponsors/zintaen).
+Questions go to [GitHub Discussions](https://github.com/zintaen/umlimator/discussions), bugs and feature requests to [issues](https://github.com/zintaen/umlimator/issues/new/choose); [SUPPORT.md](https://github.com/zintaen/umlimator/blob/main/SUPPORT.md) lists where to look first. If umlimator saves you time, you can support its development on [Buy Me a Coffee](https://buymeacoffee.com/cyberskill) or through [GitHub Sponsors](https://github.com/sponsors/zintaen).
 
 ## Licence
 
-MIT ([LICENSE](LICENSE)). Third-party notices: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The MIT License covers the code, not the umlimator name or logo: see [TRADEMARKS.md](TRADEMARKS.md).
+MIT ([LICENSE](https://github.com/zintaen/umlimator/blob/main/LICENSE)). Third-party notices: [THIRD_PARTY_NOTICES.md](https://github.com/zintaen/umlimator/blob/main/THIRD_PARTY_NOTICES.md). The MIT License covers the code, not the umlimator name or logo: see [TRADEMARKS.md](https://github.com/zintaen/umlimator/blob/main/TRADEMARKS.md).
