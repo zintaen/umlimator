@@ -118,7 +118,8 @@ function bdProblems(model, view) {
       if (m.type === 'sysml.FlowProperty' && !['in', 'out', 'inout'].includes(p.direction)) say('flow-direction', path, ids, (p.direction == null ? `flow property ${of} has no direction: give it in, out or inout` : `flow property ${of} has direction ${jsonText(p.direction)}, not in, out or inout`));
       if (m.type === 'sysml.Port') { const ib = T && T.includes('sysml.InterfaceBlock');
         if (BD_HAS(p.kind) && !Object.hasOwn(BD_KIND, p.kind)) say('port-kind', path, ids, `port ${of} has kind ${jsonText(p.kind)}, not proxy or full`);
-        else if (p.kind === 'proxy' && !ib) say('port-kind', path, ids, `proxy port ${of} is ${BD_HAS(p.valueType) ? typed + ', not an interface block' : 'typed by nothing: a proxy port is typed by an interface block'}`);
+        // a type name that names nothing (its interface block deleted, or not made yet): a warning, as constraint-type's (audit 52)
+        else if (p.kind === 'proxy' && !ib) say('port-kind', path, ids, `proxy port ${of} is ${BD_HAS(p.valueType) ? `${typed}${T ? '' : ', which names nothing'}, not an interface block` : 'typed by nothing: a proxy port is typed by an interface block'}`, BD_HAS(p.valueType) && !T ? 'warning' : 'error');
         else if (p.kind === 'full' && ib) say('port-kind', path, ids, `full port ${of} is ${typed}, an interface block`); }
       if ((String(m.type).startsWith('sysml.') || BD_CLS.includes(n.type)) && !bdHolds(n.type, m)) say('member-kinds', path, ids, `${bdKind(n)} ${q(n)} holds ${bdMWord(m)} ${q(m)}, which it may not`); }); });
   // the model's lines, and the view's own (view.edges objects, drawn as the model's are) at their own paths; one a model line's

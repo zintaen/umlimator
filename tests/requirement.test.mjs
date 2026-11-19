@@ -433,3 +433,15 @@ test('audit 28: what is drawn on a requirement relationship after its keyword (i
     assert.doesNotMatch(layout(bare, 'v').edges[0].aria, /:/);
   }
 });
+
+// audit 52: Shift + Delete of a requirement keeps what it holds whichever view makes it: another view's own requirement under it
+// goes to its nearest owner left too, counted, where apply()'s delete would take it
+test('audit 52: Shift + Delete of a requirement keeps another view\'s own requirement under it, moved to the owner', () => {
+  const R = (id, parent) => ({ id, type: 'sysml.Requirement', label: id, ...(parent ? { parent } : {}), props: { reqId: id.toUpperCase(), text: 'shall ' + id } });
+  const m = { schemaVersion: 2, nodes: [R('top'), R('mid', 'top'), R('kid', 'mid')], edges: [],
+    views: [{ id: 'v1', diagram: 'sysml.requirement', nodeIds: ['top', 'mid', 'kid'] }, { id: 'v2', diagram: 'sysml.requirement', nodeIds: ['top', 'mid', 'own'], nodes: [R('own', 'mid')] }] };
+  for (const vid of ['v1', 'v2']) { const v = m.views.find(x => x.id === vid), r = diagramOf(v).edits.remove(m, v, ['mid'], true), n = apply(m, r.commands);
+    assert.equal(r.say, '2 elements kept, moved to the owner', vid);
+    assert.deepEqual(n.views[1].nodes.map(x => [x.id, x.parent]), [['own', 'top']], vid);
+    assert.equal(n.nodes.find(x => x.id === 'kid').parent, 'top', vid); }
+});
