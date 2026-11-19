@@ -91,7 +91,7 @@ part added 45 ms: under the 100 ms target. `tests/internal-block.test.mjs` print
 
 `tests/internal-block.test.mjs`, `tests/internal-block.html` (on `tests/sysml-targets.json`'s 18, as M3.0 left it);
 `tests/internal-block-minimal.json`, `tests/internal-block-stress.json` with `tests/sysml-fixtures.test.mjs` and
-`tests/sysml.html`; `tests/sysml.test.mjs` (the projection); `tests/cli.py`; `tests/mcp.py`; `tests/ebike-atlas.test.mjs`.
+`tests/sysml.html`; `tests/sysml.test.mjs` (the projection); `tests/cli.py`; `tests/mcp.py`.
 
 **Gap:** the clause numbers inside clauses 8 and 9 were not quoted from SysML v1.7's PDF in this build (the file could not
 be read here).

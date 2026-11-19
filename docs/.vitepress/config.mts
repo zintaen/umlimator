@@ -154,6 +154,7 @@ export default defineConfig({
       { text: 'Examples', items: [
         { text: 'Diagrams', link: '/examples/index.html#diagrams', target: '_self' },
         { text: 'Atlas', link: '/examples/index.html#atlas', target: '_self' },
+        { text: 'In an app', link: '/examples/index.html#apps', target: '_self' },
       ] },
       { text: `v${version}`, items: [
         { text: 'Changelog', link: '/changelog' },

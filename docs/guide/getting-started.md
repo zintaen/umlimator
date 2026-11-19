@@ -100,4 +100,4 @@ The page works offline from a single file.
 | see what a pull request changes | [GitHub Action and diff](./github-action.md) |
 | bring in a diagram you already have | [Import and export](./import-export.md) |
 
-The [examples](../../examples/README.md) show each feature in a working model or host page.
+The [examples](/examples/index.html) show every diagram type, and the Atlas, in working models; [In an app](/examples/index.html#apps) shows the module in host pages.

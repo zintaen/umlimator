@@ -8,7 +8,7 @@
 Layered architecture maps and 28 diagram types you can click through, from one JSON model: an ES module, a CLI and a
 GitHub Action.
 
-[![The Umlimator Atlas's overview: umlimator's own parts, from the model JSON and the CLI to the module, the page and the diff Action, and who uses each](examples/stills/umlimator-atlas-overview.png)](https://zintaen.github.io/umlimator/examples/umlimator-atlas.html)
+[![The Umlimator Atlas's overview: umlimator's parts (the model JSON, the CLI, the module, the page and the diff Action) and who uses each](examples/stills/umlimator-atlas-overview.png)](https://zintaen.github.io/umlimator/examples/umlimator-atlas.html)
 
 ## Install
 

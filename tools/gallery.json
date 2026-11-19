@@ -1,6 +1,6 @@
 {
  "about": "What tools/gallery.mjs writes into examples/index.html besides what it reads from the models: each example's card text (the aspects of its notation it shows), its picture's alt text and its extra links, by file and, for a file with views of several types, by type; the map type's own description; and the Atlas's entries. tests/gallery.test.mjs fails when the committed page is not what the tool writes.",
- "retired": { "about": "Models of examples/ the gallery does not show: the real-world models that left it on 19 Nov 2026, the maintainer's decision, and bike-share.json, the hidden test and bench model. Their files stay until the bike share migration moves the tests and the bench off them and deletes them; until then the site still renders them, and the host pages that load them still work. No card, link or mention of them is on the gallery, the docs or the README.",
+ "retired": { "about": "Models of examples/ the gallery does not show: the real-world models that left it on 19 Nov 2026, the maintainer's decision, and bike-share.json, the hidden test and bench model. Their files stay until the bike share migration moves the tests and the bench off them and deletes them (with tests/ebike-atlas.test.mjs, which the conformance notes no longer list); until then the site still renders them, and the host pages that load them still work. No card, link or mention of them is on the gallery, the docs or the README.",
   "files": ["bike-share", "weather", "assistant", "bookshop", "clinic", "states", "bookshop-atlas", "ebike-atlas"] },
  "map": { "name": "Map", "text": "Layered architecture maps: cards, lines and boxes in views that open into each other, with stories, tours and lenses.", "covers": "docs/guide/model.md" },
  "examples": {
@@ -27,9 +27,9 @@
    "alt": "A UML activity diagram of fulfilling an order in three lanes, Order worker, Warehouse and Email service: actions, an object node, a data store, a decision and a merge, a fork and a join, and a flow final" },
   "order-states": { "text": "States with their activities, composite states as boxes with orthogonal regions, a choice, a fork and a join, a shallow history and a terminate, and transitions written <code>trigger [guard] / effect</code>.",
    "alt": "A UML state machine diagram of an order's life: Placed with its activities, a choice, a fork into the Parcel and Payment regions of Fulfilling, In delivery with a history, Cancelled and a terminate" },
-  "buy-book-overview": { "text": "Interaction uses and an inline interaction drawn with its sequence diagram inside, joined by the activity's control nodes and flows; each use opens its sequence view.",
+  "buy-book-overview": { "text": "Interaction uses and an inline interaction drawn with its sequence diagram inside, joined by the activity's control nodes and flows; each use, and the inline interaction, opens its sequence view.",
    "alt": "A UML interaction overview diagram of buying a book: interaction uses for finding a book, checking out and emailing the receipt, a decision looping back through a merge, a fork and a join, and an inline interaction with its three lifelines",
-   "types": { "uml.sequence": { "text": "The four sequence views the interaction overview's uses open: finding a book, the checkout, emailing the receipt and queueing the order, each a short exchange between lifelines.",
+   "types": { "uml.sequence": { "text": "The four sequence views the interaction overview opens: three from its interaction uses (finding a book, the checkout, emailing the receipt) and one from its inline interaction (queueing the order), each a short exchange between lifelines.",
      "alt": "A UML sequence diagram from the buying a book overview: finding a book" } } },
   "bookshop-components": { "text": "Components nested in components, ports on their borders, delegations inward, assembly connectors, provided and required interfaces as a ball and socket, artifacts and their manifestations.",
    "alt": "A UML component diagram of a bookshop: Shop API a box holding Checkout, ports on their borders with delegations between them, Orders as a ball with a socket, SignIn as a rectangle, an artifact manifesting Shop API" },
@@ -73,14 +73,14 @@
  "atlas": {
   "file": "umlimator-atlas",
   "name": "The Umlimator Atlas",
-  "text": "Umlimator's own model, drawn with umlimator: its parts and who uses each (a map), its system context and containers (C4), the core module's layers (a package diagram), the typed diagram families (a component diagram), the diff Action on a pull request (a sequence diagram) and umlimator's state machines (navigation, the story player, tours, the page's keys and the MCP page), joined by cards that open them.",
-  "alt": "The Umlimator Atlas's overview: the author, an AI assistant, the model JSON, umlimator.py, the module, umlimator/all, the page, the MCP page, the host page, the element, the docs site and the diff Action, with GitHub and Chrome",
+  "text": "Umlimator's own model, drawn with umlimator: its parts and who uses each (a map), its system context and containers (C4), the core module's packages in build order (a package diagram), the typed diagram families (a component diagram), the diff Action on a pull request (a sequence diagram) and umlimator's state machines (navigation, the story player, tours, the page's keys and the MCP page), joined by cards that open them.",
+  "alt": "The Umlimator Atlas's overview: the author, an AI assistant, the map-repo skill, the model JSON, umlimator.py, the readers, the module, umlimator/all, the page, the MCP page, the host page, the element, the docs site and the diff Action, with GitHub and Chrome",
   "stories": [["A pull request, from push to comment", "pull-request"], ["An assistant, then the reader", "assistant"]],
   "views": {
    "overview": "The atlas's root: umlimator's parts and who uses each, the Python parts in a box, line kinds (feeds, state, triggers) and weights, two cards whose views a host may load when opened, and a story along a pull request.",
    "context": "The system context: the author and the reader as people, umlimator as the system, the AI assistant, GitHub and Chrome as external systems.",
    "containers": "The containers inside umlimator's dashed boundary, each with its technology, and the relationships the context implies.",
-   "layers": "The core module's layers in src/, each a package, joined by <code>«import»</code> as tools/build.mjs orders them.",
+   "layers": "The core module's packages in src/, in the order tools/build.mjs concatenates them into lib/umlimator.js.",
    "registry": "The typed families as components, each depending on the core's registry, which the typed canvas looks up.",
    "diff-run": "The diff Action on a pull request: an async start, calls and their replies, a self-call, and an <code>alt</code> frame on whether the token can write.",
    "machines": "How umlimator's machines relate: the page and the MCP page drive render()'s handle, a box holding the story player, navigation and tours, which report every change to MapState.",

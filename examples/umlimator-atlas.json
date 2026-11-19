@@ -41,7 +41,7 @@
    "id": "readers",
    "label": "Readers",
    "kind": "module",
-   "sublabel": "Mermaid, Structurizr, BPMN",
+   "sublabel": "what umlimator.py import reads",
    "what": "The importers: a diagram written in another notation, read into a model.",
    "how": "`umlimator.py import` runs them in Node: Mermaid, Structurizr DSL and JSON, PlantUML, Compose, Kubernetes, DBML and BPMN XML."
   },
@@ -966,58 +966,46 @@
    }
   },
   {
-   "id": "pk-draw-imports-pk-core",
-   "type": "uml.PackageImport",
+   "id": "pk-draw-after-pk-core",
+   "type": "uml.Dependency",
    "from": "pk-draw",
    "to": "pk-core",
-   "props": {
-    "visibility": "public"
-   }
+   "label": "built after"
   },
   {
-   "id": "pk-layout-imports-pk-core",
-   "type": "uml.PackageImport",
+   "id": "pk-layout-after-pk-core",
+   "type": "uml.Dependency",
    "from": "pk-layout",
    "to": "pk-core",
-   "props": {
-    "visibility": "public"
-   }
+   "label": "built after"
   },
   {
-   "id": "pk-map-imports-pk-draw",
-   "type": "uml.PackageImport",
+   "id": "pk-map-after-pk-draw",
+   "type": "uml.Dependency",
    "from": "pk-map",
    "to": "pk-draw",
-   "props": {
-    "visibility": "public"
-   }
+   "label": "built after"
   },
   {
-   "id": "pk-map-imports-pk-layout",
-   "type": "uml.PackageImport",
+   "id": "pk-map-after-pk-layout",
+   "type": "uml.Dependency",
    "from": "pk-map",
    "to": "pk-layout",
-   "props": {
-    "visibility": "public"
-   }
+   "label": "built after"
   },
   {
-   "id": "pk-canvas-imports-pk-map",
-   "type": "uml.PackageImport",
+   "id": "pk-canvas-after-pk-map",
+   "type": "uml.Dependency",
    "from": "pk-canvas",
    "to": "pk-map",
-   "props": {
-    "visibility": "public"
-   }
+   "label": "built after"
   },
   {
-   "id": "pk-page-imports-pk-canvas",
-   "type": "uml.PackageImport",
+   "id": "pk-page-after-pk-canvas",
+   "type": "uml.Dependency",
    "from": "pk-page",
    "to": "pk-canvas",
-   "props": {
-    "visibility": "public"
-   }
+   "label": "built after"
   },
   {
    "id": "cp-uml-registers",
@@ -1218,7 +1206,7 @@
   {
    "id": "layers",
    "diagram": "uml.package",
-   "title": "The module's layers",
+   "title": "The module's packages, in build order",
    "parent": "overview",
    "direction": "down",
    "nodeIds": [
@@ -1230,12 +1218,12 @@
     "pk-core"
    ],
    "edges": [
-    "pk-draw-imports-pk-core",
-    "pk-layout-imports-pk-core",
-    "pk-map-imports-pk-draw",
-    "pk-map-imports-pk-layout",
-    "pk-canvas-imports-pk-map",
-    "pk-page-imports-pk-canvas"
+    "pk-draw-after-pk-core",
+    "pk-layout-after-pk-core",
+    "pk-map-after-pk-draw",
+    "pk-map-after-pk-layout",
+    "pk-canvas-after-pk-map",
+    "pk-page-after-pk-canvas"
    ]
   },
   {

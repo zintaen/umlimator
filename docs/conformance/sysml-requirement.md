@@ -118,7 +118,7 @@ model alike). The type's own ranking runs inside each edit's time.
 `tests/requirement.test.mjs` and `tests/requirement.html` (the look, the rules each passing and failing, every gesture by
 pointer and key, a 30-step session); `tests/requirement-minimal.json` and `tests/requirement-stress.json` with
 `tests/sysml-fixtures.test.mjs` and `tests/sysml.html`; `tests/mermaid-requirement.test.mjs`, `tests/import.py`; `tests/cli.py`;
-`tests/mcp.py`; `tests/ebike-atlas.test.mjs`.
+`tests/mcp.py`.
 
 **Gap:** the clause numbers inside clause 16 and the annexes' letters were not quoted from SysML v1.7's PDF in this
 build (the file could not be read here); each rule cites its stereotype's constraint by name. Settling them is the next

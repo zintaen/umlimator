@@ -94,7 +94,7 @@ Apple laptop (14 Nov 2026): a full layout and its SVG 101 ms; a binding added 80
 
 `tests/parametric.test.mjs`, `tests/parametric.html` (on `tests/sysml-targets.json`'s 19, as M3.0 left it);
 `tests/parametric-minimal.json`, `tests/parametric-stress.json` with `tests/sysml-fixtures.test.mjs` and `tests/sysml.html`;
-`tests/sysml.test.mjs`; `tests/cli.py`; `tests/mcp.py`; `tests/ebike-atlas.test.mjs`.
+`tests/sysml.test.mjs`; `tests/cli.py`; `tests/mcp.py`.
 
 **Gap:** the clause numbers inside clauses 8 and 10 were not quoted from SysML v1.7's PDF in this build (the file could not
 be read here).

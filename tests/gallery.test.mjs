@@ -66,9 +66,17 @@ test('Atlas holds exactly one entry, the Umlimator Atlas, and its state machines
   const m = json('examples/umlimator-atlas.json'), ids = new Set(m.views.map(v => v.id));
   assert.equal(m.title, 'Umlimator Atlas');
   for (const v of ['overview', 'machines', 'navigation', 'story', 'tour', 'keys', 'mcp']) assert.ok(ids.has(v), v);
-  // the machines are examples/states.json's (umlimator's state machines, which left the gallery for the atlas)
-  const machines = json('examples/states.json');
-  for (const v of machines.views) assert.deepEqual(m.views.find(w => w.id === v.id).nodeIds, v.nodeIds, v.id);
+  // the machines are umlimator's (docs/module-api.md's State chapter), as examples/states.json drew them before it left
+  // the gallery: written here, so that the check outlives that file, which the bike share migration deletes
+  const machines = {
+    machines: ['page', 'mcp', 'story', 'navigation', 'tour', 'mapstate'],
+    navigation: ['nav-rest', 'nav-leaving', 'nav-drawing', 'nav-entering'],
+    story: ['st-none', 'st-entering', 'st-playing', 'st-paused', 'st-ended', 'st-stopped'],
+    tour: ['tr-none', 'tr-riding', 'tr-held', 'tr-end', 'tr-cut', 'tr-rest'],
+    keys: ['ky-lightbox', 'ky-search', 'ky-help', 'ky-menu', 'ky-pill', 'ky-recorder', 'ky-story', 'ky-trip', 'ky-selection', 'ky-up'],
+    mcp: ['mc-asked', 'mc-want', 'mc-sent', 'mc-showing', 'mc-acked', 'mc-answer'],
+  };
+  for (const [id, nodeIds] of Object.entries(machines)) assert.deepEqual(m.views.find(w => w.id === id).nodeIds, nodeIds, id);
   // no other multi-view real-world model in examples/: every other example is a single-type example of one diagram type,
   // or a map
   for (const n of examples.filter(n => n !== 'umlimator-atlas')) assert.equal(new Set(json(`examples/${n}.json`).views.map(groupOf)).size <= 2, true, n);
@@ -146,7 +154,7 @@ test('the models that left the gallery are linked from nowhere in the gallery, t
   }
   assert.deepEqual(bad, []);
   // and no word of them on the gallery or the site's pages: the atlases, the bike share, the weather stations, the helpdesk
-  const words = /Bookshop atlas|e-bike atlas|bike[- ]share|weather station|helpdesk|clinic booking/i;
+  const words = /Bookshop atlas|e-bike atlas|bike[- ]share|weather station|helpdesk|clinic booking|Bookshop, an example|bookshop-an-example|\bride-end\b|Trip service|ebike-atlas\.test/i;
   assert.deepEqual(pages.filter(p => words.test(read(p))), []);
   assert.doesNotMatch(html, /(?<![\w-])(?:bike-share|states\.json)/);
 });

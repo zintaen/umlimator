@@ -61,8 +61,8 @@ python3 umlimator.py record page.html --story pull-request --out pr.png   # the 
 For a GIF or an MP4 (for chat or slides), convert it with ffmpeg:
 
 ```bash
-ffmpeg -f apng -i ride.png -vf "split[a][b];[a]palettegen[p];[b][p]paletteuse" ride.gif
-ffmpeg -f apng -i ride.png -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -pix_fmt yuv420p ride.mp4
+ffmpeg -f apng -i pr.png -vf "split[a][b];[a]palettegen[p];[b][p]paletteuse" pr.gif
+ffmpeg -f apng -i pr.png -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -pix_fmt yuv420p pr.mp4
 ```
 
 ## Change over time
@@ -79,8 +79,8 @@ python3 umlimator.py timelapse model.json --out history.html          # the late
 ## Traces
 
 ```bash
-python3 umlimator.py trace model.json trace.json --view ride-end --match match.json --out model.json   # an OTLP trace kept as a numbered view
-python3 umlimator.py trace model.json trace.json --view ride-end --match match.json --diagram uml.sequence --out traced.json  # ... as a UML sequence diagram, in a version-2 model
+python3 umlimator.py trace model.json trace.json --view checkout --match match.json --out model.json   # an OTLP trace kept as a numbered view; match.json (your own) maps services to cards
+python3 umlimator.py trace model.json trace.json --view checkout --match match.json --diagram uml.sequence --out traced.json  # ... as a UML sequence diagram, in a version-2 model
 ```
 
 ## Import and export

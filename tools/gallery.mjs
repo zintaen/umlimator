@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = new URL('../', import.meta.url);
 const read = p => readFileSync(new URL(p, ROOT), 'utf8'), json = p => JSON.parse(read(p));
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const unesc = s => s.replace(/&(lt|gt|quot|amp);/g, (_, e) => ({ lt: '<', gt: '>', quot: '"', amp: '&' })[e]);
 const REPO = 'https://github.com/zintaen/umlimator/blob/main/';
 const stop = msg => { throw new Error(`tools/gallery.mjs: ${msg}`); };
 
@@ -51,22 +52,35 @@ export function inventory() {
   return T.map(t => ({ ...t,
     examples: order.filter(n => views(models[n], t.id).length).map(n => {
       const m = models[n], c = { ...G.examples[n], ...((G.examples[n].types || {})[(firstOf(m, t.id) || {}).diagram] || {}) }, vs = views(m, t.id), first = firstOf(m, t.id);
-      return { file: n, title: m.title, text: c.text, alt: c.alt, links: c.links || [], views: vs.map(v => v.id), still: first.id, rootIs: first.id === m.root };
+      return { file: n, title: m.title, text: c.text, alt: c.alt, links: c.links || [], views: vs, still: first.id, rootIs: first.id === m.root };
     }),
     atlas: views(atlas, t.id).map(v => ({ view: v.id, title: v.title, text: G.atlas.views[v.id] || stop(`tools/gallery.json has no text for the atlas's view ${v.id}`) })),
-    samples: samples.filter(s => views(s.model, t.id).length).map(s => ({ ...s, views: views(s.model, t.id).map(v => v.id), still: firstOf(s.model, t.id).id })),
+    // a test model's thumbnail is a view other than its stress view 'all' when it has one: 'all' is too big to read small
+    samples: samples.filter(s => views(s.model, t.id).length).map(s => { const vs = views(s.model, t.id);
+      return { ...s, views: vs, still: (vs.find(v => v.id !== 'all') || firstOf(s.model, t.id)).id }; }),
   }));
 }
 
-const links = xs => `<span class="links">${xs.map(([t, h]) => `<a href="${esc(h)}">${esc(t)}</a>`).join('')}</span>`;
-const viewList = (page, ids) => ids.length < 2 ? '' : `<p class="views">Views: ${ids.map(id => `<a href="${esc(page)}#view=${esc(id)}">${esc(id)}</a>`).join(', ')}</p>`;
+// each link carries its card's name, hidden but read out, so that a links list tells the many Open, PDF and Model apart
+const links = (xs, name) => `<span class="links">${xs.map(([t, h]) => `<a href="${esc(h)}">${esc(t)}<span class="vh"> (${esc(name)})</span></a>`).join('')}</span>`;
+// a view as a reader knows it: its title, or for the test models' untitled views what their ids stand for
+const viewName = v => v.title || ({ v: 'Minimal', all: 'All', 'edge-cases': 'Edge cases' })[v.id] || v.id;
+const viewList = (page, vs) => vs.length < 2 ? '' : `<p class="views">Views: ${vs.map(v => `<a href="${esc(page)}#view=${esc(v.id)}">${esc(viewName(v))}</a>`).join(', ')}</p>`;
 const card = ({ img, alt, title, text, list = '', ls }) => `      <article class="card"><img src="${esc(img)}" alt="${esc(alt)}" loading="lazy" width="640" height="320">
         <div><h4>${title}</h4><p>${text}</p>${list}
-          ${links(ls)}</div></article>`;
+          ${links(ls, unesc(title.replace(/<[^>]+>/g, '')))}</div></article>`;
+const count = n => n === 1 ? 'one view' : `${n} views`;
 const sampleText = s => {
-  if (s.kind === 'minimal') return `A test model: the smallest view of this type the tests draw, ${s.views.length === 1 ? 'one view' : `${s.views.length} views`}.`;
-  const all = (s.model.views || []).find(v => v.id === 'all' && s.views.includes('all')), edge = s.views.filter(v => v !== 'all');
-  return `A test model: what the tests hold the type to, ${edge.length ? `its edge cases (${edge.length === 1 ? 'one view' : `${edge.length} views`})` : ''}${edge.length && all ? ', and ' : ''}${all ? `a view of ${all.nodeIds.length} elements` : ''}.`;
+  if (s.kind === 'minimal') return s.views.length === 1 ? 'A test model: the smallest view of this type the tests draw.'
+    : `A test model: the smallest views of this type the tests draw (${s.views.length} views).`;
+  // a stress model's views: its edge cases, its stress view 'all', the views that one opens, and any other
+  const all = s.views.find(v => v.id === 'all'), edge = s.views.filter(v => v.id.startsWith('ec-') || v.id.includes('edge-cases'));
+  const opened = s.views.filter(v => v !== all && !edge.includes(v) && v.parent === 'all'), rest = s.views.filter(v => v !== all && !edge.includes(v) && !opened.includes(v));
+  const parts = [edge.length && `its edge cases (${count(edge.length)})`,
+    all && (all.title && all.title !== 'All' ? `the stress view "${all.title}"` : 'a stress view of every element'),
+    opened.length && `the ${opened.length === 1 ? 'view' : `${opened.length} views`} the stress view opens`,
+    rest.length && (rest.length === 1 ? `the view "${viewName(rest[0])}"` : `${rest.length} more views`)].filter(Boolean);
+  return `A test model: what the tests hold the type to, ${parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts[0]}.`;
 };
 
 export function page() {
@@ -78,9 +92,10 @@ export function page() {
       ...t.examples.map(e => card({ img: `stills/${e.file}/${e.still}.png`, alt: e.alt, title: esc(e.title), text: e.text,
         list: viewList(`${e.file}.html`, e.views),
         ls: [['Open', e.rootIs ? `${e.file}.html` : `${e.file}.html#view=${e.still}`], ...e.links, ['PDF', `${e.file}.pdf`], ['Model', `${e.file}.json`]] })),
-      ...t.atlas.map(a => card({ img: `stills/${A.file}/${a.view}.png`, alt: `The Umlimator Atlas's view ${a.title}`, title: `Umlimator Atlas: ${esc(a.title)}`, text: a.text,
+      ...t.atlas.map(a => card({ img: `stills/${A.file}/${a.view}.png`, alt: `The Umlimator Atlas, ${a.title}: ${a.text.replace(/<[^>]+>/g, '')}`, title: `Umlimator Atlas: ${esc(a.title)}`, text: a.text,
         ls: [['Open', `${A.file}.html#view=${a.view}`], ['PDF', `${A.file}.pdf`], ['Model', `${A.file}.json`]] })),
-      ...t.samples.map(s => card({ img: `samples/stills/${s.name}/${s.still}.png`, alt: `${s.model.title}: the view ${s.still}`, title: esc(s.model.title),
+      ...t.samples.map(s => card({ img: `samples/stills/${s.name}/${s.still}.png`, alt: `${t.name}, ${s.kind} test model: the view "${viewName(s.views.find(v => v.id === s.still))}"`,
+        title: esc(`${t.name}: ${s.kind} test model`),
         text: sampleText(s), list: viewList(`samples/${s.name}.html`, s.views),
         ls: [['Open', `samples/${s.name}.html#view=${s.still}`], ['PDF', `samples/${s.name}.pdf`], ['Model', `samples/${s.name}.json`]] })),
     ];
@@ -97,7 +112,7 @@ ${cards.join('\n')}
   const atlasCard = `      <article class="card wide"><img src="stills/${A.file}/${atlas.root}.png" alt="${esc(A.alt)}" loading="lazy" width="640" height="320">
         <div><h3>${esc(A.name)}</h3><p>${A.text}</p>
           <p class="views">Its views, by type: ${byType.join('; ')}.</p>
-          ${links([['Open the atlas', `${A.file}.html`], ...A.stories.map(([t, id]) => [t, `${A.file}.html#story=${id}&step=1`]), ['PDF', `${A.file}.pdf`], ['Model', `${A.file}.json`]])}</div></article>`;
+          ${links([['Open the atlas', `${A.file}.html`], ...A.stories.map(([t, id]) => [t, `${A.file}.html#story=${id}&step=1`]), ['PDF', `${A.file}.pdf`], ['Model', `${A.file}.json`]], A.name)}</div></article>`;
   return `<!doctype html>
 <html lang="en">
 <!-- The examples' gallery, written by tools/gallery.mjs from the models and tools/gallery.json: edit those, not this file.
@@ -105,13 +120,13 @@ ${cards.join('\n')}
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>umlimator examples</title>
-<meta name="description" content="Every diagram type umlimator draws, each with all its examples, and the Atlas: real systems modelled in many views.">
+<meta name="description" content="Every diagram type umlimator draws, each with all its examples, and the Atlas: umlimator's own model in many views.">
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
 <style>
-  html { scroll-behavior: smooth; } @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  html { scroll-behavior: smooth; scroll-padding-top: 56px; } @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
   body { margin: 0; background: var(--um-bg); color: var(--um-text); font: 15px/1.55 var(--um-sans); }
   main { max-width: 1120px; margin: 0 auto; padding: 32px 16px 56px; }
-  h1 { font-size: 28px; margin: 0 0 6px; } h2 { font-size: 22px; margin: 40px 0 8px; scroll-margin-top: 64px; }
+  h1 { font-size: 28px; margin: 0 0 6px; } h2 { font-size: 22px; margin: 40px 0 8px; }
   h3 { font-size: 18px; margin: 0 0 4px; } h4 { font-size: 16px; margin: 0; }
   p { overflow-wrap: anywhere; } p.lead { color: var(--um-muted); margin: 0; max-width: 680px; }
   a { color: var(--um-accent); }
@@ -120,7 +135,7 @@ ${cards.join('\n')}
     background: var(--um-bg); border-bottom: 1px solid var(--um-border); font-weight: 600; }
   .types { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
   .types li { display: flex; flex-wrap: wrap; gap: 2px 12px; } .types b { color: var(--um-muted); font-weight: 600; min-width: 11em; }
-  section.type { margin-top: 32px; scroll-margin-top: 56px; } section.type > p { margin: 0 0 12px; color: var(--um-muted); max-width: 760px; }
+  section.type { margin-top: 32px; } section.type > p { margin: 0 0 12px; color: var(--um-muted); max-width: 760px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 16px; }
   .card { border: 1px solid var(--um-border); border-radius: 10px; background: var(--um-panel); overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
   .card.wide { grid-column: 1 / -1; }
@@ -131,19 +146,19 @@ ${cards.join('\n')}
   .card p { margin: 0; color: var(--um-muted); font-size: 14px; } .card div > p:first-of-type { flex: 1; }
   .card p.views { font-size: 13px; }
   .links { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; }
+  .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   table { border-collapse: collapse; width: 100%; font-size: 14px; }
-  td { border-top: 1px solid var(--um-border); padding: 8px 10px 8px 0; vertical-align: top; } td:first-child { white-space: nowrap; }
+  th, td { border-top: 1px solid var(--um-border); padding: 8px 10px 8px 0; vertical-align: top; } th { text-align: left; font-weight: 400; white-space: nowrap; }
   code { font: 13px var(--um-mono); }
   footer { margin-top: 40px; color: var(--um-muted); font-size: 13px; }
-  @media (max-width: 560px) { td:first-child { white-space: normal; } .types b { min-width: 0; width: 100%; } }
+  @media (max-width: 560px) { th { white-space: normal; } .types b { min-width: 0; width: 100%; } }
 </style>
 <main>
   <h1>umlimator examples</h1>
-  <p class="lead">Diagrams shows every type umlimator draws, each with all the examples of it the repository has, from the
-    smallest view the tests draw to the stress test. Atlas shows real systems, each modelled in many views joined by
-    drill-down. Open one to pan, zoom, select and go into the cards that stack.
-    <a href="https://github.com/zintaen/umlimator">The repository</a>; In an app, at the end, shows the module in host
-    pages.</p>
+  <p class="lead">Diagrams shows every type umlimator draws, with each of its examples and its smallest and stress test
+    models. Atlas shows a real system, umlimator itself, modelled in many views that open into each other. In an app, at
+    the end, shows the module inside host pages. Open any card to pan, zoom, select and go into the cards that stack.
+    Source: <a href="https://github.com/zintaen/umlimator">the repository</a>.</p>
   <nav class="jump" aria-label="Sections"><a href="#diagrams">Diagrams</a><a href="#atlas">Atlas</a><a href="#apps">In an app</a></nav>
 
   <section id="diagrams" aria-labelledby="diagrams-h">
@@ -158,7 +173,8 @@ ${groups}
 
   <section id="atlas" aria-labelledby="atlas-h">
     <h2 id="atlas-h">Atlas</h2>
-    <p>Real-world use cases: a real system modelled in many views of the types above, joined by cards that open them.</p>
+    <p>A real system modelled in many views of the types above, joined by cards that open them. For now it holds one:
+      umlimator itself.</p>
     <div class="grid">
 ${atlasCard}
     </div>
@@ -167,17 +183,17 @@ ${atlasCard}
   <section id="apps" aria-labelledby="apps-h">
     <h2 id="apps-h">In an app</h2>
     <table>
-      <tr><td><a href="playground.html">Playground</a></td><td>Edit a model and see the map, its problems (<code>validate()</code>), its broken rules (<code>rules()</code>) and its layout check (<code>check()</code>); share it by link.</td></tr>
-      <tr><td><a href="element.html">The element</a></td><td><code>&lt;umlimator-map src="..."&gt;</code>: a map from HTML alone, its still shown until it is drawn; the block a docs site (VitePress, Docusaurus, MkDocs) turns into it.</td></tr>
-      <tr><td><a href="embed.html">A host page</a></td><td><code>render()</code> with the standalone page's pieces (views list, details panel, legend, hint line), views loaded when opened, SVG and PNG export, themes and the minimap.</td></tr>
-      <tr><td><a href="live.html">Live traffic</a></td><td><code>overlay()</code> every second: flow as fast as the traffic, errors that pulse, slow lines that glow, lag on each card; the model never changes.</td></tr>
-      <tr><td><a href="ask.html">Ask the map</a></td><td>Questions answered with words, the paths or reach they are about lit, and a tour; the view in sentences (<code>describe()</code>) for an AI model.</td></tr>
-      <tr><td><a href="replay.html">Trace replay</a></td><td>An OpenTelemetry trace played on the map: each call along its line at its time, with its duration.</td></tr>
-      <tr><td><a href="edit.html">Editing</a></td><td>The map emits <code>change</code> events; the host applies them and keeps an undo history.</td></tr>
-      <tr><td><a href="class-editor.html">A class diagram editor</a></td><td>A class diagram emits <code>edit</code> events, each a transaction of commands; the host applies them with <code>apply()</code> and keeps <code>history()</code> for undo and redo.</td></tr>
-      <tr><td><a href="timelapse.html">A time-lapse</a></td><td>Four releases on a slider: new cards fade in, removed ones fade out, moved ones glide; <code>diff()</code> says what changed.</td></tr>
-      <tr><td><a href="drift.html">Drawn vs. seen</a></td><td><code>drift()</code>: the map against a week of traffic; lines that ran undrawn come in, idle ones fade.</td></tr>
-      <tr><td><a href="https://github.com/zintaen/umlimator/blob/main/examples/layout.mjs">In Node</a></td><td><code>layout()</code> without a browser, as a check a host can run in CI on maps it generates.</td></tr>
+      <tr><th scope="row"><a href="playground.html">Playground</a></th><td>Edit a model and see the map, its problems (<code>validate()</code>), its broken rules (<code>rules()</code>) and its layout check (<code>check()</code>); share it by link.</td></tr>
+      <tr><th scope="row"><a href="element.html">The element</a></th><td><code>&lt;umlimator-map src="..."&gt;</code>: a map from HTML alone, its still shown until it is drawn; the block a docs site (VitePress, Docusaurus, MkDocs) turns into it.</td></tr>
+      <tr><th scope="row"><a href="embed.html">A host page</a></th><td><code>render()</code> with the standalone page's pieces (views list, details panel, legend, hint line), views loaded when opened, SVG and PNG export, themes and the minimap.</td></tr>
+      <tr><th scope="row"><a href="live.html">Live traffic</a></th><td><code>overlay()</code> every second: flow as fast as the traffic, errors that pulse, slow lines that glow, lag on each card; the model never changes.</td></tr>
+      <tr><th scope="row"><a href="ask.html">Ask the map</a></th><td>Questions answered with words, the paths or reach they are about lit, and a tour; the view in sentences (<code>describe()</code>) for an AI model.</td></tr>
+      <tr><th scope="row"><a href="replay.html">Trace replay</a></th><td>An OpenTelemetry trace played on the map: each call along its line at its time, with its duration.</td></tr>
+      <tr><th scope="row"><a href="edit.html">Editing</a></th><td>The map emits <code>change</code> events; the host applies them and keeps an undo history.</td></tr>
+      <tr><th scope="row"><a href="class-editor.html">A class diagram editor</a></th><td>A class diagram emits <code>edit</code> events, each a transaction of commands; the host applies them with <code>apply()</code> and keeps <code>history()</code> for undo and redo.</td></tr>
+      <tr><th scope="row"><a href="timelapse.html">A time-lapse</a></th><td>Four releases on a slider: new cards fade in, removed ones fade out, moved ones glide; <code>diff()</code> says what changed.</td></tr>
+      <tr><th scope="row"><a href="drift.html">Drawn vs. seen</a></th><td><code>drift()</code>: the map against a week of traffic; lines that ran undrawn come in, idle ones fade.</td></tr>
+      <tr><th scope="row"><a href="https://github.com/zintaen/umlimator/blob/main/examples/layout.mjs">In Node</a></th><td><code>layout()</code> without a browser, as a check a host can run in CI on maps it generates.</td></tr>
     </table>
   </section>
 

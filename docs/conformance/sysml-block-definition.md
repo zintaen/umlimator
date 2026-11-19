@@ -103,7 +103,7 @@ block renamed 68 ms: under the 100 ms target.
 
 `tests/blocks.test.mjs`, `tests/blocks.html`; `tests/block-definition-minimal.json`, `tests/block-definition-stress.json`
 with `tests/sysml-fixtures.test.mjs` and `tests/sysml.html`; `tests/sysml.test.mjs` (the class rule on SysML
-generalizations); `tests/cli.py`; `tests/mcp.py`; `tests/ebike-atlas.test.mjs`.
+generalizations); `tests/cli.py`; `tests/mcp.py`.
 
 **Gaps:** clause numbers inside clauses 8 to 10 were not quoted from SysML v1.7's PDF in this build (the file could not be
 read here); whether SysML lets an interface block hold value and reference properties is not settled; the type draws

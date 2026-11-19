@@ -560,8 +560,9 @@ jobs:
             n=$(basename "$m" .json)
             cp "$m" _site/examples/samples/
             python3 umlimator.py render "$m" --out "_site/examples/samples/$n.html" --no-check
-            python3 umlimator.py stills "_site/examples/samples/$n.html" --out "_site/examples/samples/stills/$n"
-            python3 umlimator.py pdf "_site/examples/samples/$n.html" --out "_site/examples/samples/$n.pdf"
+            # at scale 1: the gallery shows them as thumbnails, and a stress view at scale 2 runs to tens of megapixels
+            python3 umlimator.py stills "_site/examples/samples/$n.html" --out "_site/examples/samples/stills/$n" --scale 1 || echo "::warning::samples/$n: no stills"
+            python3 umlimator.py pdf "_site/examples/samples/$n.html" --out "_site/examples/samples/$n.pdf" || echo "::warning::samples/$n: no PDF"
           done
 
       # the documentation site (VitePress, docs/) at the root, around the examples: the gallery stays at /examples/
