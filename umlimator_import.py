@@ -396,13 +396,69 @@ def loads(text):
     return json.loads(text, parse_float=_finite, parse_int=_whole, parse_constant=_no_constant)
 
 
+# a character XML 1.0 cannot hold: a C0 control but tab, line feed and carriage return, a lone surrogate, U+FFFE, U+FFFF
+RAW = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]")
+
+
+def raw_char(c):
+    """The report's message for such a character, as the module's mermaidRawChar."""
+    return f"the character U+{ord(c):04X}, which SVG or XML cannot hold, is read as U+FFFD"
+
+
+def scrub(text, say):
+    """A source's text with each character XML cannot hold as U+FFFD, each line that held one said once, as the module's
+    mermaidScrub: a raw one in a label made the page's SVG export not well-formed (audit 49). Lines are split as
+    split_lines splits them, so the numbers are the readers' own. Linear."""
+    if not RAW.search(text):
+        return text
+    parts = re.split(r"(\r\n?|\n)", text)
+    for k in range(0, len(parts), 2):
+        if c := RAW.search(parts[k]):
+            say(k // 2 + 1, raw_char(c[0]))
+            parts[k] = RAW.sub("\ufffd", parts[k])
+    return "".join(parts)
+
+
+def legal(d, say):
+    """Parsed JSON (compose, Kubernetes) with each character XML cannot hold, which an escape such as \\u0001 gives, as
+    U+FFFD in every key and value, each character said once (audit 49). One pass, with no recursion."""
+    told, top = set(), [d]
+
+    def fix(v):
+        if not isinstance(v, str) or not RAW.search(v):
+            return v
+        for c in RAW.findall(v):
+            if c not in told:
+                told.add(c)
+                say(None, raw_char(c))
+        return RAW.sub("\ufffd", v)
+    todo = [(top, 0)]
+    while todo:
+        box, k = todo.pop()
+        v = box[k]
+        if isinstance(v, dict):
+            box[k] = v = {fix(a): b for a, b in v.items()}
+            todo += [(v, a) for a in v]
+        elif isinstance(v, list):
+            todo += [(v, i) for i in range(len(v))]
+        else:
+            box[k] = fix(v)
+    return top[0]
+
+
 def read(fmt, text, name):
     if len(text) > LIMIT:  # hostile input (risks.md R2), as the module's readers refuse it
         m = Model(name)
         m.say(None, f"{len(text)} characters, over the limit of {LIMIT} (1 MiB) for {fmt}: nothing read")
     else:
-        m = compose(loads(text), name) if fmt == "compose" else kubernetes(loads(text), name) if fmt == "kubernetes" else \
-            {"structurizr": structurizr, "plantuml": plantuml, "mermaid": mermaid}[fmt](text, name)
+        said = []  # said before reading, then kept in the model's report
+        if fmt in ("compose", "kubernetes"):
+            d = legal(loads(text), lambda no, msg: said.append((no, msg)))
+            m = compose(d, name) if fmt == "compose" else kubernetes(d, name)
+        else:
+            text = scrub(text, lambda no, msg: said.append((no, msg)))
+            m = {"structurizr": structurizr, "plantuml": plantuml, "mermaid": mermaid}[fmt](text, name)
+        m.unread += said
     return m.model(), sorted(m.unread, key=lambda u: [int(t) if t.isdigit() else t for t in re.split(r"(\d+)", str(u[0]))])
 
 

@@ -491,3 +491,10 @@ test('a kind its scope cannot hold is read, and written, as a state and said, ne
   assert.equal(many.report.length, 999);
   assert.deepEqual(errors(many.model).filter(e => /^(initial-one|history-one|history-owner)/.test(e)), []);
 });
+
+test('state "description" as name: a description left open runs over line breaks to its closing quote, as Mermaid\'s string; a state\'s : text does not (audit 49)', () => {
+  const r = read('stateDiagram-v2\nstate S0 {\n  state "Waiting for\n     payment" as S1\n}\n[*] --> S1\nS1 --> S0\n');
+  assert.deepEqual(r.model.nodes.map(n => [n.id, n.label ?? null, n.parent ?? null]), [['S0', 'S0', null], ['S1', 'Waiting for\n     payment', 'S0'], ['start', null, null]]);
+  assert.deepEqual([r.model.edges.map(e => [e.from, e.to]), r.report], [[['start', 'S1'], ['S1', 'S0']], []]);
+  assert.deepEqual(read('stateDiagram-v2\nstate "never closed\nS1 --> S2\n').report.map(x => x.line), [2]);
+});

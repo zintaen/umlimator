@@ -53,15 +53,28 @@ function mmrText(s, bad, badChar) {
 }
 
 // a topic's line (indent taken off): { id, text, shape, md, quote, after, bare } or { unclosed }. more(): the next line,
-// for a Markdown string over several lines, or null. Each search is one indexOf from where the last stopped (R2)
-function mmrTopic(s, more) {
+// for a Markdown string over several lines, or null. ahead(stops): { line, take } for the next line holding one of stops,
+// or null; take() its lines from the next on, the reader moved past them. Each search is one indexOf from where the last
+// stopped, or one look-up (R2)
+function mmrTopic(s, more, ahead) {
   let k = 0;
   while (k < s.length && !'()[]{}'.includes(s[k])) k++;
   if (k === s.length) return { text: s.trim(), bare: true };
   const id = s.slice(0, k).trim(), sh = MMR_SHAPES.find(([o]) => s.startsWith(o, k));
   if (!sh) return { text: s.trim(), bare: true, unclosed: `${s[k]} opens no shape` };
   const [o, c, shape] = sh, j = k + o.length, out = { id, shape };
-  let end;
+  // Mermaid's string ("[^"]+) and a shape's bare text ([^)\](}]+) run over line breaks (audit 49): when the line holds
+  // no stop, the text goes on to the next stop, if that stop is the quote before the closer, or the closer
+  const over = (stops, q) => {
+    const n = ahead(stops);
+    if (!n) return null;
+    let p = 0;
+    while (!stops.includes(n.line[p])) p++;
+    if (!n.line.startsWith(c, p + q)) return null;
+    const parts = n.take();
+    return { text: [s.slice(j + q), ...parts.slice(0, -1), n.line.slice(0, p)].join('\n'), after: n.line.slice(p + q + c.length).trim() };
+  };
+  let end, x;
   if (s.startsWith('"`', j)) { // a Markdown string: to its `", over lines if it must
     let q = s.indexOf('`"', j + 2), at = s.length + 1; // `" never spans a line break: each line is searched once
     const parts = [s];
@@ -71,10 +84,12 @@ function mmrTopic(s, more) {
     else return { text: parts[0].trim(), bare: true, unclosed: `${o}"\` is not closed by \`"${c}`, rewind: true };
   } else if (s[j] === '"') {
     const q = s.indexOf('"', j + 1);
+    if (q < 0 && (x = over('"', 1))) return Object.assign(out, { text: x.text, quote: true, after: x.after });
     if (q >= 0 && s.startsWith(c, q + 1)) { out.text = s.slice(j + 1, q); out.quote = true; end = q + 1 + c.length; }
     else { const e = s.indexOf(c, j); if (e < 0) return { text: s.trim(), bare: true, unclosed: `${o} is not closed by ${c}` }; out.text = s.slice(j, e).trim(); out.openQuote = true; end = e + c.length; }
   } else {
     const e = s.indexOf(c, j);
+    if (e < 0 && !/[)\](}]/.test(s.slice(j)) && (x = over(')](}', 0))) return Object.assign(out, { text: x.text.trim(), after: x.after });
     if (e < 0) return { text: s.trim(), bare: true, unclosed: `${o} is not closed by ${c}` };
     out.text = s.slice(j, e).trim(); end = e + c.length;
   }
@@ -117,6 +132,17 @@ function mmrRead(text, report, say, empty) {
     i = j + 1;
   }
 
+  // for each stop set, the first line at or after each line that holds one of them, found once on first use (audit 49)
+  const nextAt = new Map(), ahead = stops => {
+    let a = nextAt.get(stops);
+    if (!a) {
+      a = new Int32Array(lines.length + 1).fill(-1);
+      for (let k = lines.length - 1; k >= 0; k--) a[k] = [...stops].some(ch => lines[k].includes(ch)) ? k : a[k + 1];
+      nextAt.set(stops, a);
+    }
+    const m = a[i + 1];
+    return m < 0 ? null : { line: lines[m], take: () => { const p = lines.slice(i + 1, m + 1); i = m; return p; } };
+  };
   const topics = [], stack = [], once = new Set(), hints = new Map();
   const first = (key, no, message) => { if (!once.has(key)) { once.add(key); say(no, 'approximated', message); } };
   const unused = () => { for (const [k, h] of hints) say(h.no, 'skipped', `%% ${k}: ${h.v}: no topic below it takes it`); hints.clear(); };
@@ -162,7 +188,7 @@ function mmrRead(text, report, say, empty) {
     }
     let ind = 0;
     while (/\s/.test(line[ind])) ind++;
-    const t = mmrTopic(line.slice(ind), () => (i + 1 < lines.length && i < dry ? lines[++i].replace(/\r$/, '') : null));
+    const t = mmrTopic(line.slice(ind), () => (i + 1 < lines.length && i < dry ? lines[++i].replace(/\r$/, '') : null), ahead);
     if (t.rewind) { dry = no - 1; i = no - 1; } // unclosed: the one line read as text, the lines after it read as they are
     if (t.unclosed) say(no, 'approximated', `${mmrClip(t.text)}: ${t.unclosed}, read as text`);
     if (t.after) say(no, 'skipped', `${mmrClip(t.after)}: text after the topic is not read`);

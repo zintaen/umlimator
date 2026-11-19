@@ -1,5 +1,5 @@
 import { unreadable, jsonText } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText, mermaidScrub } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText, mermaidScrub, mermaidOver, mermaidOpen } from './mermaid-front.js';
 /* ---------- Mermaid classDiagram: a reader and a writer (plan.md 1.10; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's class diagram page (docs/syntax/classDiagram.md, read 11 Nov 2026). Internal: the CLI
    (`umlimator.py import`) imports this file through Node; a host gets it once the registry is public.
@@ -307,6 +307,7 @@ function readMermaidClass(text) {
     rec.raw.push({ text: t, line: no, hint: take('id'), st: st.filter(Boolean) });
   };
 
+  const over = mermaidOver(lines);
   for (; i < lines.length; i++) {
     const no = i + 1;
     let s = lines[i].trim();
@@ -327,6 +328,9 @@ function readMermaidClass(text) {
       if (!/^classDiagram(-v2)?$/.test(s)) { say(no, 'skipped', 'not a Mermaid classDiagram: nothing read'); return empty(); }
       started = true; viewId = hint.id; hint = {}; continue;
     }
+    // a "string" left open before any label's : (a class's or namespace's ["label"], a note, a cardinality, a link) goes on
+    // over the lines to its closing quote, as Mermaid's string token; a member's text never does (audit 49)
+    if (stack.at(-1)?.kind !== 'class' && mermaidOpen(s, k => s[k] === ':')) { const o = over(i, s); if (o) ({ s, i } = o); }
     // Mermaid closes a block at any }, as a member is [^{}\n]*: a line that ends in one, with no { to open, is its
     // statement, then that } read again on its own on the same line (audit 15)
     if (s.length > 1 && s.endsWith('}') && !s.includes('{')) { lines[i--] = '}'; s = s.slice(0, -1).trim(); }
