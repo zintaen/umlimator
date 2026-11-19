@@ -68,32 +68,32 @@
           "props": { "dataType": "integer", "primaryKey": true }
         },
         {
-          "id": "er-ride_leg.bike_id",
+          "id": "er-ride_leg.moped_id",
           "type": "er.Column",
-          "label": "bike_id",
-          "props": { "dataType": "bigint", "foreignKey": true, "references": "er-bike.id" }
+          "label": "moped_id",
+          "props": { "dataType": "bigint", "foreignKey": true, "references": "er-moped.id" }
         },
         { "id": "er-ride_leg.minutes", "type": "er.Column", "label": "minutes", "props": { "dataType": "integer" } }
       ]
     },
     {
-      "id": "er-bike",
+      "id": "er-moped",
       "type": "er.Entity",
-      "label": "bike",
+      "label": "moped",
       "members": [
         {
-          "id": "er-bike.id",
+          "id": "er-moped.id",
           "type": "er.Column",
           "label": "id",
           "props": { "dataType": "bigint", "primaryKey": true }
         },
         {
-          "id": "er-bike.serial",
+          "id": "er-moped.serial",
           "type": "er.Column",
           "label": "serial",
           "props": { "dataType": "char(13)", "unique": true }
         },
-        { "id": "er-bike.model", "type": "er.Column", "label": "model", "props": { "dataType": "varchar(255)" } }
+        { "id": "er-moped.model", "type": "er.Column", "label": "model", "props": { "dataType": "varchar(255)" } }
       ]
     },
     {
@@ -111,18 +111,18 @@
       ]
     },
     {
-      "id": "er-bike_station",
+      "id": "er-moped_station",
       "type": "er.Entity",
-      "label": "bike_station",
+      "label": "moped_station",
       "members": [
         {
-          "id": "er-bike_station.bike_id",
+          "id": "er-moped_station.moped_id",
           "type": "er.Column",
-          "label": "bike_id",
-          "props": { "dataType": "bigint", "primaryKey": true, "foreignKey": true, "references": "er-bike.id" }
+          "label": "moped_id",
+          "props": { "dataType": "bigint", "primaryKey": true, "foreignKey": true, "references": "er-moped.id" }
         },
         {
-          "id": "er-bike_station.station_id",
+          "id": "er-moped_station.station_id",
           "type": "er.Column",
           "label": "station_id",
           "props": { "dataType": "bigint", "primaryKey": true, "foreignKey": true, "references": "er-station.id" }
@@ -161,9 +161,9 @@
     },
     { "id": "dfd-take-payment", "type": "dfd.Process", "label": "Take payment", "props": { "number": "2" } },
     { "id": "dfd-ship-ride", "type": "dfd.Process", "label": "Book a van", "props": { "number": "3" } },
-    { "id": "dfd-bikes", "type": "dfd.DataStore", "label": "Bikes", "props": { "number": "D1" } },
+    { "id": "dfd-mopeds", "type": "dfd.DataStore", "label": "Mopeds", "props": { "number": "D1" } },
     { "id": "dfd-rides", "type": "dfd.DataStore", "label": "Rides", "props": { "number": "D2" } },
-    { "id": "dfd-check-unlock", "type": "dfd.Process", "label": "Check the bike", "props": { "number": "1.1" } },
+    { "id": "dfd-check-unlock", "type": "dfd.Process", "label": "Check the moped", "props": { "number": "1.1" } },
     { "id": "dfd-total-ride", "type": "dfd.Process", "label": "Price the ride", "props": { "number": "1.2" } },
     { "id": "dfd-record-ride", "type": "dfd.Process", "label": "Record the ride", "props": { "number": "1.3" } },
     { "id": "depot", "type": "uml.Component", "label": "Depot" },
@@ -171,18 +171,18 @@
     { "id": "ride-info", "type": "uml.InformationItem", "label": "Ride" },
     { "id": "card-details", "type": "uml.InformationItem", "label": "Card details" },
     { "id": "receipt-info", "type": "uml.InformationItem", "label": "Receipt" },
-    { "id": "stock-info", "type": "uml.InformationItem", "label": "Bike state" },
+    { "id": "stock-info", "type": "uml.InformationItem", "label": "Moped state" },
     { "id": "report-arrives", "type": "flow.Terminator", "label": "Fault report arrives" },
     { "id": "read-report", "type": "flow.InputOutput", "label": "Read the report" },
-    { "id": "key-in", "type": "flow.ManualInput", "label": "Key in the bike number" },
-    { "id": "inspect", "type": "flow.Process", "label": "Inspect the bike" },
+    { "id": "key-in", "type": "flow.ManualInput", "label": "Key in the moped number" },
+    { "id": "inspect", "type": "flow.Process", "label": "Inspect the moped" },
     { "id": "safe", "type": "flow.Decision", "label": "Safe to ride?" },
     { "id": "refund", "type": "flow.PredefinedProcess", "label": "Refund the rider's ride" },
     { "id": "wait", "type": "flow.Delay", "label": "Wait for the bank to confirm" },
-    { "id": "redock", "type": "flow.Process", "label": "Put the bike back in a dock" },
+    { "id": "redock", "type": "flow.Process", "label": "Put the moped back in a dock" },
     { "id": "fleet-records", "type": "flow.Database", "label": "Fleet records" },
     { "id": "workshop-ticket", "type": "flow.Document", "label": "Workshop ticket" },
-    { "id": "to-workshop", "type": "flow.Process", "label": "Send the bike to the workshop" },
+    { "id": "to-workshop", "type": "flow.Process", "label": "Send the moped to the workshop" },
     { "id": "join", "type": "flow.Connector", "label": "A" },
     { "id": "end", "type": "flow.Terminator", "label": "Report closed" }
   ],
@@ -204,24 +204,24 @@
       "props": { "identifying": true, "ends": { "from": { "multiplicity": "1" }, "to": { "multiplicity": "1..*" } } }
     },
     {
-      "id": "er-bike-legs",
+      "id": "er-moped-legs",
       "type": "er.Relationship",
-      "from": "er-bike",
+      "from": "er-moped",
       "to": "er-ride_leg",
       "props": { "identifying": false, "ends": { "from": { "multiplicity": "1" }, "to": { "multiplicity": "0..*" } } }
     },
     {
-      "id": "er-bike-stations",
+      "id": "er-moped-stations",
       "type": "er.Relationship",
-      "from": "er-bike",
-      "to": "er-bike_station",
+      "from": "er-moped",
+      "to": "er-moped_station",
       "props": { "identifying": true, "ends": { "from": { "multiplicity": "1" }, "to": { "multiplicity": "1..*" } } }
     },
     {
-      "id": "er-station-bikes",
+      "id": "er-station-mopeds",
       "type": "er.Relationship",
       "from": "er-station",
-      "to": "er-bike_station",
+      "to": "er-moped_station",
       "props": { "identifying": true, "ends": { "from": { "multiplicity": "1" }, "to": { "multiplicity": "0..*" } } }
     },
     {
@@ -252,9 +252,9 @@
     {
       "id": "dfd-price-and-stock",
       "type": "dfd.DataFlow",
-      "from": "dfd-bikes",
+      "from": "dfd-mopeds",
       "to": "dfd-take-ride",
-      "label": "rate and bike state"
+      "label": "rate and moped state"
     },
     { "id": "dfd-new-ride", "type": "dfd.DataFlow", "from": "dfd-take-ride", "to": "dfd-rides", "label": "new ride" },
     {
@@ -296,8 +296,8 @@
       "id": "dfd-stock-change",
       "type": "dfd.DataFlow",
       "from": "dfd-ship-ride",
-      "to": "dfd-bikes",
-      "label": "bike state change"
+      "to": "dfd-mopeds",
+      "label": "moped state change"
     },
     {
       "id": "dfd-shipping-label",
@@ -323,16 +323,16 @@
     {
       "id": "dfd-l2-price-and-stock",
       "type": "dfd.DataFlow",
-      "from": "dfd-bikes",
+      "from": "dfd-mopeds",
       "to": "dfd-check-unlock",
-      "label": "rate and bike state"
+      "label": "rate and moped state"
     },
     {
       "id": "dfd-l2-checked-legs",
       "type": "dfd.DataFlow",
       "from": "dfd-check-unlock",
       "to": "dfd-total-ride",
-      "label": "checked bike"
+      "label": "checked moped"
     },
     {
       "id": "dfd-l2-totalled-ride",
@@ -432,16 +432,16 @@
       "parent": null,
       "title": "Trips schema",
       "notation": "crowsfoot",
-      "nodeIds": ["er-rider", "er-ride", "er-ride_leg", "er-bike", "er-station", "er-bike_station", "er-payment"]
+      "nodeIds": ["er-rider", "er-ride", "er-ride_leg", "er-moped", "er-station", "er-moped_station", "er-payment"]
     },
     {
       "id": "dfd-0",
       "diagram": "dfd",
       "parent": null,
-      "title": "Bike share, level 0",
+      "title": "Moped share, level 0",
       "notation": "yourdon",
       "nodeIds": [
-        "dfd-rider", "dfd-provider", "dfd-van", "dfd-take-ride", "dfd-take-payment", "dfd-ship-ride", "dfd-bikes",
+        "dfd-rider", "dfd-provider", "dfd-van", "dfd-take-ride", "dfd-take-payment", "dfd-ship-ride", "dfd-mopeds",
         "dfd-rides"
       ]
     },
@@ -451,7 +451,7 @@
       "parent": "dfd-0",
       "title": "1 Start ride",
       "notation": "yourdon",
-      "nodeIds": ["dfd-rider", "dfd-bikes", "dfd-rides", "dfd-check-unlock", "dfd-total-ride", "dfd-record-ride"]
+      "nodeIds": ["dfd-rider", "dfd-mopeds", "dfd-rides", "dfd-check-unlock", "dfd-total-ride", "dfd-record-ride"]
     },
     {
       "id": "rider-data",

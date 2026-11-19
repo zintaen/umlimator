@@ -20,7 +20,7 @@
       "icon": "gauge",
       "sublabel": "under 20% is low",
       "opensView": "blocks",
-      "what": "Finds e-bikes that need charging.",
+      "what": "Finds e-mopeds that need charging.",
       "when": "Every battery report.",
       "how": "Raises an alert in the ops console."
     },
@@ -30,7 +30,7 @@
       "kind": "ai",
       "owner": "Fleet",
       "icon": "sparkles",
-      "sublabel": "bikes needed per dock",
+      "sublabel": "mopeds needed per dock",
       "opensView": "demand",
       "what": "Predicts demand per dock, hourly.",
       "when": "Every hour.",
@@ -44,7 +44,7 @@
       "icon": "calendar",
       "sublabel": "van routes",
       "opensView": "rebalance",
-      "what": "Plans where the vans move bikes.",
+      "what": "Plans where the vans move mopeds.",
       "when": "Each morning, and on request.",
       "how": "Matches the forecast against stock."
     },
@@ -65,14 +65,14 @@
       "kind": "database",
       "owner": "Fleet",
       "icon": "database",
-      "sublabel": "bikes, docks, vans",
-      "what": "Where every bike is.",
+      "sublabel": "mopeds, docks, vans",
+      "what": "Where every moped is.",
       "when": "Updated by each dock event.",
       "how": "A key-value store per dock."
     }
   ],
   "edges": [
-    { "id": "f1", "from": "telemetry", "to": "dock-listener", "label": "bike states", "kind": "feeds", "weight": 3 },
+    { "id": "f1", "from": "telemetry", "to": "dock-listener", "label": "moped states", "kind": "feeds", "weight": 3 },
     {
       "id": "f2",
       "from": "dock-listener",
@@ -95,7 +95,7 @@
       "toSide": "bottom"
     },
     { "id": "f7", "from": "planner", "to": "fleet-db", "label": "reads stock", "kind": "state" },
-    { "id": "f8", "from": "ops-console", "to": "fleet-api", "label": "moves bikes", "sublabel": "REST" },
+    { "id": "f8", "from": "ops-console", "to": "fleet-api", "label": "moves mopeds", "sublabel": "REST" },
     { "id": "f9", "from": "fleet-api", "to": "planner", "label": "today's plan" },
     { "id": "f10", "from": "planner", "to": "fleet-api", "label": "the vans' routes" }
   ],

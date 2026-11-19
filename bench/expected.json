@@ -36,61 +36,6 @@
     "8e0b7363"
    ]
   },
-  "bike-share/api": {
-   "hashes": [
-    "3bab4983"
-   ]
-  },
-  "bike-share/checkout": {
-   "hashes": [
-    "c5d79a3e"
-   ]
-  },
-  "bike-share/context": {
-   "hashes": [
-    "3f2a4304"
-   ]
-  },
-  "bike-share/demand": {
-   "hashes": [
-    "7a7c5d67"
-   ]
-  },
-  "bike-share/dock-feed": {
-   "hashes": [
-    "d71b4377"
-   ]
-  },
-  "bike-share/fleet": {
-   "hashes": [
-    "acf50d53"
-   ]
-  },
-  "bike-share/help": {
-   "hashes": [
-    "2938e673"
-   ]
-  },
-  "bike-share/overview": {
-   "hashes": [
-    "6fa8e762"
-   ]
-  },
-  "bike-share/ride-end": {
-   "hashes": [
-    "8deb0c"
-   ]
-  },
-  "bike-share/system": {
-   "hashes": [
-    "9f816b1a"
-   ]
-  },
-  "bike-share/trips": {
-   "hashes": [
-    "733591bc"
-   ]
-  },
   "d24/boxed": {
    "hashes": [
     "cb098c71"
@@ -99,6 +44,61 @@
   "d24/plain": {
    "hashes": [
     "22a8212e"
+   ]
+  },
+  "i59/api": {
+   "hashes": [
+    "3bab4983"
+   ]
+  },
+  "i59/checkout": {
+   "hashes": [
+    "c5d79a3e"
+   ]
+  },
+  "i59/context": {
+   "hashes": [
+    "743dc1ee"
+   ]
+  },
+  "i59/demand": {
+   "hashes": [
+    "879e7b78"
+   ]
+  },
+  "i59/dock-feed": {
+   "hashes": [
+    "4f8c9ea3"
+   ]
+  },
+  "i59/fleet": {
+   "hashes": [
+    "65f2b083"
+   ]
+  },
+  "i59/help": {
+   "hashes": [
+    "2938e673"
+   ]
+  },
+  "i59/overview": {
+   "hashes": [
+    "6fa8e762"
+   ]
+  },
+  "i59/ride-end": {
+   "hashes": [
+    "8deb0c"
+   ]
+  },
+  "i59/system": {
+   "hashes": [
+    "11e81578"
+   ]
+  },
+  "i59/trips": {
+   "hashes": [
+    "da7eaa14"
    ]
   },
   "m50/overview": {

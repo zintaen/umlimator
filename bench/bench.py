@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Layout and routing benchmarks: time each view of each model in headless Chrome, as the page lays it out.
 
-  python3 bench/bench.py                          # every model in bench/models/ plus examples/bike-share.json
+  python3 bench/bench.py                          # every model in bench/models/
   python3 bench/bench.py --models m50,b26 --runs 9
   python3 bench/bench.py --optimize               # also time render's layout search, per view without a layout
   python3 bench/bench.py --save                   # also write bench/results/<date>-<commit>.json
@@ -93,7 +93,7 @@ def view_edges(m, v):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--models", help="comma list of names in bench/models/ (default: all, plus examples/bike-share)")
+    p.add_argument("--models", help="comma list of names in bench/models/ (default: all)")
     p.add_argument("--runs", type=int, default=5)
     p.add_argument("--timeout", type=int, default=120, help="seconds per view")
     p.add_argument("--optimize", action="store_true")
@@ -104,7 +104,7 @@ def main():
     p.add_argument("--expect", help="a results file (--save): fail when a view it lists lays out differently")
     a = p.parse_args()
     binary = visual.find_chrome() or sys.exit("bench needs Google Chrome or Chromium")
-    paths = sorted((HERE / "models").glob("*.json")) + [ROOT / "examples" / "bike-share.json"]
+    paths = sorted((HERE / "models").glob("*.json"))
     if a.models:
         want = a.models.split(",")
         paths = [q for q in paths if q.stem in want]

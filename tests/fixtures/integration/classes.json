@@ -85,7 +85,7 @@
           "label": "add",
           "props": {
             "visibility": "public",
-            "parameters": [{ "name": "bike", "valueType": "Bike" }, { "name": "minutes", "valueType": "Integer" }]
+            "parameters": [{ "name": "moped", "valueType": "Moped" }, { "name": "minutes", "valueType": "Integer" }]
           }
         },
         { "id": "ride.cancel", "type": "uml.Operation", "label": "cancel", "props": { "visibility": "public" } }
@@ -112,26 +112,26 @@
       ]
     },
     {
-      "id": "bike",
+      "id": "moped",
       "type": "uml.Class",
-      "label": "Bike",
+      "label": "Moped",
       "parent": "fleet-package",
       "opensView": "requirements",
       "members": [
         {
-          "id": "bike.serial",
+          "id": "moped.serial",
           "type": "uml.Property",
           "label": "serial",
           "props": { "visibility": "public", "valueType": "String" }
         },
         {
-          "id": "bike.model",
+          "id": "moped.model",
           "type": "uml.Property",
           "label": "model",
           "props": { "visibility": "public", "valueType": "String" }
         },
         {
-          "id": "bike.rate",
+          "id": "moped.rate",
           "type": "uml.Property",
           "label": "rate",
           "props": { "visibility": "public", "valueType": "Money" }
@@ -225,7 +225,7 @@
       "type": "uml.Comment",
       "label": "total is the sum of the legs' rate per minute times minutes"
     },
-    { "id": "conventions", "type": "uml.Profile", "label": "BikeSharePrivacy", "opensView": "privacy" },
+    { "id": "conventions", "type": "uml.Profile", "label": "MopedSharePrivacy", "opensView": "privacy" },
     { "id": "mc-class", "type": "uml.MetaclassReference", "label": "Class", "parent": "conventions" },
     { "id": "mc-property", "type": "uml.MetaclassReference", "label": "Property", "parent": "conventions" },
     {
@@ -318,24 +318,24 @@
       "members": [{ "id": "leg-2.minutes", "type": "uml.Slot", "label": "minutes", "props": { "value": "5" } }]
     },
     {
-      "id": "bike-0412",
+      "id": "moped-0412",
       "type": "uml.InstanceSpecification",
-      "label": "bike0412",
-      "opensView": "bike-life",
-      "props": { "classifier": "Bike" },
+      "label": "moped0412",
+      "opensView": "moped-life",
+      "props": { "classifier": "Moped" },
       "members": [
-        { "id": "bike-0412.model", "type": "uml.Slot", "label": "model", "props": { "value": "Urban e-bike" } },
-        { "id": "bike-0412.rate", "type": "uml.Slot", "label": "rate", "props": { "value": "0.20 EUR" } }
+        { "id": "moped-0412.model", "type": "uml.Slot", "label": "model", "props": { "value": "Urban e-moped" } },
+        { "id": "moped-0412.rate", "type": "uml.Slot", "label": "rate", "props": { "value": "0.20 EUR" } }
       ]
     },
     {
-      "id": "bike-0977",
+      "id": "moped-0977",
       "type": "uml.InstanceSpecification",
-      "label": "bike0977",
-      "props": { "classifier": "Bike" },
+      "label": "moped0977",
+      "props": { "classifier": "Moped" },
       "members": [
-        { "id": "bike-0977.model", "type": "uml.Slot", "label": "model", "props": { "value": "Cargo e-bike" } },
-        { "id": "bike-0977.rate", "type": "uml.Slot", "label": "rate", "props": { "value": "0.30 EUR" } }
+        { "id": "moped-0977.model", "type": "uml.Slot", "label": "model", "props": { "value": "Cargo e-moped" } },
+        { "id": "moped-0977.rate", "type": "uml.Slot", "label": "rate", "props": { "value": "0.30 EUR" } }
       ]
     },
     {
@@ -380,12 +380,15 @@
       }
     },
     {
-      "id": "leg-bike",
+      "id": "leg-moped",
       "type": "uml.Association",
       "from": "leg",
-      "to": "bike",
+      "to": "moped",
       "props": {
-        "ends": { "from": { "multiplicity": "0..*" }, "to": { "role": "bike", "multiplicity": "1", "navigable": true } }
+        "ends": {
+          "from": { "multiplicity": "0..*" },
+          "to": { "role": "moped", "multiplicity": "1", "navigable": true }
+        }
       }
     },
     {
@@ -452,15 +455,15 @@
       "id": "leg-1-is-for",
       "type": "uml.Link",
       "from": "leg-1",
-      "to": "bike-0412",
-      "props": { "ends": { "to": { "role": "bike" } } }
+      "to": "moped-0412",
+      "props": { "ends": { "to": { "role": "moped" } } }
     },
     {
       "id": "leg-2-is-for",
       "type": "uml.Link",
       "from": "leg-2",
-      "to": "bike-0977",
-      "props": { "ends": { "to": { "role": "bike" } } }
+      "to": "moped-0977",
+      "props": { "ends": { "to": { "role": "moped" } } }
     },
     {
       "id": "ride-paid-by-card",
@@ -500,9 +503,9 @@
       "parent": null,
       "title": "Ride domain",
       "direction": "down",
-      "present": { "bike": { "collapsed": ["operations"] } },
+      "present": { "moped": { "collapsed": ["operations"] } },
       "nodeIds": [
-        "rides-package", "rider", "ride", "leg", "bike", "payable", "payment", "card-payment", "ride-status", "money",
+        "rides-package", "rider", "ride", "leg", "moped", "payable", "payment", "card-payment", "ride-status", "money",
         "note-total"
       ],
       "layout": { "ride": [1, 0] }
@@ -521,7 +524,7 @@
       "id": "privacy",
       "diagram": "uml.profile",
       "parent": null,
-      "title": "Bike share privacy profile",
+      "title": "Moped share privacy profile",
       "direction": "down",
       "nodeIds": [
         "conventions", "mc-class", "mc-property", "entity", "aggregate-root", "personal-data", "column",
@@ -534,16 +537,16 @@
       "parent": null,
       "title": "Ride 1042, just started",
       "direction": "down",
-      "nodeIds": ["ada", "ride-1042", "leg-1", "leg-2", "bike-0412", "bike-0977", "card-1"]
+      "nodeIds": ["ada", "ride-1042", "leg-1", "leg-2", "moped-0412", "moped-0977", "card-1"]
     },
     {
       "id": "packages",
       "diagram": "uml.package",
       "parent": null,
-      "title": "Bike share packages",
+      "title": "Moped share packages",
       "direction": "down",
       "nodeIds": [
-        "shared", "money", "fleet-package", "bike", "rides-package", "rider", "ride", "leg", "ride-status",
+        "shared", "money", "fleet-package", "moped", "rides-package", "rider", "ride", "leg", "ride-status",
         "payments-package", "payable", "payment", "card", "card-payment", "business", "business-ride", "conventions"
       ],
       "edges": [

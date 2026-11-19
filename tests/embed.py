@@ -108,6 +108,10 @@ class Server(http.server.ThreadingHTTPServer):
 server = Server(("127.0.0.1", 0), functools.partial(Quiet, directory=str(ROOT)))
 threading.Thread(target=server.serve_forever, daemon=True).start()
 base = f"http://127.0.0.1:{server.server_address[1]}/"
+# the integration fixture's standalone page, which the pages read as fixtures/integration.html: rendered here on every
+# run (it is not committed), so it is always the page this checkout writes
+subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(ROOT / "tests" / "fixtures" / "integration.json"),
+                "--out", str(ROOT / "tests" / "fixtures" / "integration.html"), "--no-check"], check=True, capture_output=True)
 
 
 def dom(path, done, wait=60, motion=False):

@@ -27,7 +27,7 @@ test('the module built from src/ exports what 0.16.0 exported, and migrate() fro
 });
 
 test('layout() draws every benchmark view exactly as the browser did (bench/expected.json)', () => {
-  const models = { ...Object.fromEntries(readdirSync(new URL('../bench/models/', import.meta.url)).map(f => [f.replace('.json', ''), read('../bench/models/' + f)])), 'bike-share': read('../examples/bike-share.json') };
+  const models = { ...Object.fromEntries(readdirSync(new URL('../bench/models/', import.meta.url)).map(f => [f.replace('.json', ''), read('../bench/models/' + f)])) };
   let n = 0;
   for (const [name, m] of Object.entries(models)) for (const v of m.views) {
     const want = expected[`${name}/${v.id}`];

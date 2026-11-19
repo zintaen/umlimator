@@ -1,0 +1,1914 @@
+{
+ "title": "Moped share, map views",
+ "root": "context",
+ "nodes": [
+  {
+   "id": "riders",
+   "label": "Riders",
+   "kind": "person",
+   "icon": "users",
+   "sublabel": "unlock, ride, pay",
+   "what": "People who hire a moped from a dock.",
+   "when": "Every ride.",
+   "how": "They use the rider app on a phone."
+  },
+  {
+   "id": "ops",
+   "label": "Operations team",
+   "kind": "person",
+   "icon": "usercheck",
+   "sublabel": "rebalance, repair",
+   "what": "Staff who keep mopeds where riders want them.",
+   "when": "All day, in shifts.",
+   "how": "They plan van routes in the ops console."
+  },
+  {
+   "id": "mopedshare",
+   "label": "Moped share",
+   "kind": "backend",
+   "icon": "layers",
+   "sublabel": "the whole system",
+   "opensView": "system",
+   "what": "Everything the city's moped share runs on.",
+   "when": "Always on.",
+   "how": "Apps, services and data on one platform. Double-click to go in."
+  },
+  {
+   "id": "payments",
+   "label": "Payment provider",
+   "kind": "external",
+   "icon": "building",
+   "sublabel": "cards and wallets",
+   "noSub": true,
+   "what": "Takes card and wallet payments.",
+   "when": "At the end of each ride.",
+   "how": "A REST API; the moped share never stores card numbers."
+  },
+  {
+   "id": "maps",
+   "label": "Map tiles",
+   "kind": "external",
+   "icon": "network",
+   "sublabel": "street maps",
+   "what": "Street maps for the app.",
+   "when": "Whenever a rider opens the map.",
+   "how": "Tiles over HTTPS, cached on the phone."
+  },
+  {
+   "id": "city",
+   "label": "City data portal",
+   "kind": "external",
+   "icon": "building",
+   "sublabel": "open data",
+   "what": "The city's open-data site.",
+   "when": "Weekly.",
+   "how": "Receives anonymised trips as CSV."
+  },
+  {
+   "id": "rider-app",
+   "label": "Rider app",
+   "kind": "frontend",
+   "owner": "Apps",
+   "icon": "window",
+   "sublabel": "iOS, Android, web",
+   "what": "Find a moped, unlock it, pay.",
+   "when": "Every ride.",
+   "how": "Calls the Trip service and the map tiles."
+  },
+  {
+   "id": "ops-console",
+   "label": "Ops console",
+   "kind": "frontend",
+   "owner": "Apps",
+   "icon": "monitor",
+   "sublabel": "web, staff only",
+   "what": "Where the operations team plans the day.",
+   "when": "Every shift.",
+   "how": "Calls the Fleet service; shows low-battery alerts."
+  },
+  {
+   "id": "accounts",
+   "label": "Accounts",
+   "kind": "security",
+   "owner": "Rides",
+   "icon": "key",
+   "sublabel": "sign-in, tokens",
+   "badges": [
+    {
+     "text": "SSO",
+     "tone": "green"
+    }
+   ],
+   "what": "Riders' and staff's accounts.",
+   "when": "At sign-in, and on every call.",
+   "how": "Issues tokens that the services check."
+  },
+  {
+   "id": "trips",
+   "label": "Trip service",
+   "kind": "backend",
+   "owner": "Rides",
+   "icon": "server",
+   "sublabel": "rides from unlock to end",
+   "opensView": "trips",
+   "opensCount": 6,
+   "what": "Runs each ride.",
+   "when": "Unlock, pause, end.",
+   "how": "Prices a ride when it ends and charges it. Its inner view loads when you open it."
+  },
+  {
+   "id": "pricing",
+   "label": "Pricing",
+   "kind": "backend",
+   "owner": "Rides",
+   "icon": "chart",
+   "sublabel": "fares, passes, caps",
+   "badges": [
+    {
+     "text": "v2 beta",
+     "tone": "amber"
+    }
+   ],
+   "edited": true,
+   "what": "Works out what a ride costs.",
+   "when": "When a ride ends.",
+   "how": "Rules per city zone; v2 adds peak prices."
+  },
+  {
+   "id": "fleet",
+   "label": "Fleet service",
+   "kind": "backend",
+   "owner": "Fleet",
+   "icon": "gauge",
+   "sublabel": "mopeds, docks, vans",
+   "opensView": "fleet",
+   "opensCount": 6,
+   "what": "Knows where every moped is.",
+   "when": "Every dock event.",
+   "how": "Reads the telemetry stream and plans rebalancing. Its inner view loads when you open it."
+  },
+  {
+   "id": "charging",
+   "label": "Charging",
+   "kind": "backend",
+   "owner": "Fleet",
+   "icon": "clock",
+   "sublabel": "e-moped charging slots",
+   "change": "planned",
+   "what": "Books charging slots for e-mopeds.",
+   "when": "Planned for next year.",
+   "how": "Not built yet."
+  },
+  {
+   "id": "tripsdb",
+   "label": "Trips database",
+   "kind": "database",
+   "owner": "Rides",
+   "icon": "database",
+   "sublabel": "PostgreSQL",
+   "what": "Every ride and its fare.",
+   "when": "Written as rides change.",
+   "how": "One row per ride, kept seven years."
+  },
+  {
+   "id": "telemetry",
+   "label": "Telemetry stream",
+   "kind": "queue",
+   "owner": "Fleet",
+   "icon": "queue",
+   "sublabel": "Kafka",
+   "badges": [
+    "3 partitions"
+   ],
+   "what": "Dock and moped events.",
+   "when": "Every few seconds per dock.",
+   "how": "Partitioned by dock; kept seven days."
+  },
+  {
+   "id": "warehouse",
+   "label": "Warehouse",
+   "kind": "database",
+   "owner": "Fleet",
+   "icon": "archive",
+   "sublabel": "hourly tables",
+   "what": "History for reports and forecasts.",
+   "when": "Loaded hourly.",
+   "how": "Columnar tables; exports anonymised trips weekly."
+  },
+  {
+   "id": "stations",
+   "label": "Docking stations",
+   "kind": "cloud",
+   "owner": "Fleet",
+   "icon": "gate",
+   "sublabel": "400 docks",
+   "what": "The docks on the street.",
+   "when": "Always on.",
+   "how": "Report each moped and battery over MQTT; open on command."
+  },
+  {
+   "id": "monitoring",
+   "label": "Monitoring",
+   "kind": "cloud",
+   "owner": "Platform",
+   "icon": "chart",
+   "sublabel": "metrics, alerts",
+   "what": "Watches every service.",
+   "when": "Every 15 seconds.",
+   "how": "Scrapes each service's metrics endpoint."
+  },
+  {
+   "id": "status",
+   "label": "Status page",
+   "kind": "cloud",
+   "owner": "Platform",
+   "icon": "alert",
+   "sublabel": "public uptime",
+   "what": "Tells riders when something is down.",
+   "when": "During incidents.",
+   "how": "Updated by hand; nothing calls it yet."
+  },
+  {
+   "id": "flags",
+   "label": "Feature flags",
+   "kind": "cloud",
+   "owner": "Platform",
+   "icon": "flag",
+   "sublabel": "staged roll-outs",
+   "what": "Turns features on per city.",
+   "when": "On each release.",
+   "how": "Not wired to the services yet."
+  },
+  {
+   "id": "trip-api",
+   "label": "Trip API",
+   "kind": "backend",
+   "owner": "Rides",
+   "icon": "server",
+   "sublabel": "REST controllers",
+   "what": "The Trip service's endpoints.",
+   "when": "Every app call.",
+   "how": "Validates the token, then hands on."
+  },
+  {
+   "id": "unlock",
+   "label": "Unlock coordinator",
+   "kind": "backend",
+   "owner": "Rides",
+   "icon": "key",
+   "sublabel": "opens a dock",
+   "what": "Releases a moped.",
+   "when": "When a ride starts.",
+   "how": "Sends the dock an open command and waits for its reply."
+  },
+  {
+   "id": "lifecycle",
+   "label": "Trip lifecycle",
+   "kind": "backend",
+   "owner": "Rides",
+   "icon": "state",
+   "sublabel": "started, paused, ended",
+   "what": "The state of each ride.",
+   "when": "On every change.",
+   "how": "A state machine; each change is saved and published."
+  },
+  {
+   "id": "fare",
+   "label": "Fare calculator",
+   "kind": "backend",
+   "owner": "Rides",
+   "icon": "chart",
+   "sublabel": "minutes, passes, caps",
+   "what": "The price of a finished ride.",
+   "when": "When a ride ends.",
+   "how": "Asks Pricing for the rules, then charges the rider."
+  },
+  {
+   "id": "trip-repo",
+   "label": "Trip repository",
+   "kind": "backend",
+   "owner": "Rides",
+   "icon": "database",
+   "sublabel": "SQL, migrations",
+   "what": "Reads and writes rides.",
+   "when": "On every change.",
+   "how": "One table per city."
+  },
+  {
+   "id": "trip-events",
+   "label": "Event publisher",
+   "kind": "queue",
+   "owner": "Rides",
+   "icon": "webhook",
+   "sublabel": "outbox",
+   "what": "Tells the rest of the system about rides.",
+   "when": "After each saved change.",
+   "how": "An outbox table drained to the telemetry stream."
+  },
+  {
+   "id": "dock-listener",
+   "label": "Dock listener",
+   "kind": "backend",
+   "owner": "Fleet",
+   "icon": "webhook",
+   "sublabel": "reads dock events",
+   "opensView": "dock-feed",
+   "what": "Keeps the fleet's state current.",
+   "when": "Every dock event.",
+   "how": "Consumes the telemetry stream."
+  },
+  {
+   "id": "battery-service",
+   "label": "Battery monitor",
+   "kind": "backend",
+   "owner": "Fleet",
+   "icon": "gauge",
+   "sublabel": "under 20% is low",
+   "what": "Finds e-mopeds that need charging.",
+   "when": "Every battery report.",
+   "how": "Raises an alert in the ops console."
+  },
+  {
+   "id": "forecast",
+   "label": "Demand forecast",
+   "kind": "ai",
+   "owner": "Fleet",
+   "icon": "sparkles",
+   "sublabel": "mopeds needed per dock",
+   "opensView": "demand",
+   "what": "Predicts demand per dock, hourly.",
+   "when": "Every hour.",
+   "how": "A model trained on a year of trips."
+  },
+  {
+   "id": "planner",
+   "label": "Rebalance planner",
+   "kind": "backend",
+   "owner": "Fleet",
+   "icon": "calendar",
+   "sublabel": "van routes",
+   "what": "Plans where the vans move mopeds.",
+   "when": "Each morning, and on request.",
+   "how": "Matches the forecast against stock."
+  },
+  {
+   "id": "fleet-api",
+   "label": "Fleet API",
+   "kind": "backend",
+   "owner": "Fleet",
+   "icon": "server",
+   "sublabel": "REST",
+   "what": "The Fleet service's endpoints.",
+   "when": "Every console call.",
+   "how": "Plans and moves."
+  },
+  {
+   "id": "fleet-db",
+   "label": "Fleet store",
+   "kind": "database",
+   "owner": "Fleet",
+   "icon": "database",
+   "sublabel": "mopeds, docks, vans",
+   "what": "Where every moped is.",
+   "when": "Updated by each dock event.",
+   "how": "A key-value store per dock."
+  },
+  {
+   "id": "shoppers",
+   "label": "Shoppers",
+   "kind": "person",
+   "icon": "users",
+   "sublabel": "browse, buy, track orders",
+   "what": "Riders who buy passes, helmets and locks on the site.",
+   "when": "Every visit.",
+   "how": "They use the storefront in a browser."
+  },
+  {
+   "id": "storefront",
+   "label": "Storefront",
+   "kind": "frontend",
+   "icon": "react",
+   "sublabel": "React single-page app",
+   "what": "The rider shop's web app.",
+   "when": "Whenever a shopper browses or checks out.",
+   "how": "A static build served by the edge proxy; it calls the Shop API."
+  },
+  {
+   "id": "edge",
+   "label": "Edge proxy",
+   "kind": "backend",
+   "icon": "caddy",
+   "sublabel": "Caddy, TLS",
+   "what": "Terminates TLS and routes requests.",
+   "when": "Every request.",
+   "how": "Serves the storefront and forwards /api to the Shop API."
+  },
+  {
+   "id": "api",
+   "label": "Shop API",
+   "kind": "backend",
+   "icon": "fastapi",
+   "sublabel": "FastAPI",
+   "what": "Catalogue of passes and gear, basket, checkout.",
+   "when": "Every page that shows data.",
+   "how": "Reads and writes the database; puts paid orders on the order queue."
+  },
+  {
+   "id": "shop-accounts",
+   "label": "Accounts and sign-in",
+   "kind": "security",
+   "icon": "key",
+   "sublabel": "passwords hashed, sessions",
+   "what": "Who a shopper is, for the shop.",
+   "when": "Sign-in and checkout.",
+   "how": "Part of the Shop API; keeps hashed passwords and session tokens apart from the ride accounts."
+  },
+  {
+   "id": "db",
+   "label": "Database",
+   "kind": "database",
+   "icon": "postgresql",
+   "sublabel": "PostgreSQL",
+   "what": "Passes, gear, baskets, orders, accounts.",
+   "when": "Always.",
+   "how": "One schema; nightly backups."
+  },
+  {
+   "id": "queue",
+   "label": "Order queue",
+   "kind": "queue",
+   "icon": "queue",
+   "sublabel": "paid orders, in order",
+   "what": "Orders waiting to be fulfilled.",
+   "when": "After a payment succeeds.",
+   "how": "A table the worker claims from."
+  },
+  {
+   "id": "worker",
+   "label": "Order worker",
+   "kind": "backend",
+   "icon": "box",
+   "sublabel": "same image as the API",
+   "what": "Fulfils orders.",
+   "when": "Each paid order.",
+   "how": "Claims an order, books the delivery of gear, activates a pass and sends the confirmation."
+  },
+  {
+   "id": "shop-payments",
+   "label": "Payment provider",
+   "kind": "external",
+   "icon": "building",
+   "sublabel": "cards, refunds",
+   "what": "Takes the money.",
+   "when": "Checkout and refunds.",
+   "how": "The Shop API redirects to it and reads the result. The shop has its own merchant account, apart from ride charges."
+  },
+  {
+   "id": "mail",
+   "label": "Email service",
+   "kind": "external",
+   "icon": "alert",
+   "sublabel": "order confirmations",
+   "what": "Sends emails.",
+   "when": "Each fulfilled order.",
+   "how": "The worker calls its API."
+  },
+  {
+   "id": "hosts",
+   "label": "Hosts",
+   "kind": "cloud",
+   "icon": "docker",
+   "sublabel": "Docker Compose, two servers",
+   "what": "Where it all runs.",
+   "when": "Always.",
+   "how": "One server for the web tier, one for the database."
+  },
+  {
+   "id": "github",
+   "label": "GitHub",
+   "kind": "external",
+   "icon": "github",
+   "sublabel": "code, CI, deploys",
+   "what": "Source and pipelines.",
+   "when": "Every merge.",
+   "how": "A merge to main builds the image and deploys it to the hosts."
+  },
+  {
+   "id": "grafana",
+   "label": "Dashboards",
+   "kind": "cloud",
+   "icon": "grafana",
+   "sublabel": "Grafana",
+   "badge": "PROPOSED",
+   "what": "Metrics and logs in one place.",
+   "when": "Not yet built.",
+   "how": "Would read the API's and worker's metrics."
+  },
+  {
+   "id": "dock-gateway",
+   "label": "Dock gateway",
+   "kind": "backend",
+   "owner": "Fleet",
+   "icon": "network",
+   "sublabel": "MQTT broker",
+   "what": "Where the docks connect.",
+   "when": "Always on.",
+   "how": "Takes dock events in and sends settings out."
+  },
+  {
+   "id": "dock-settings",
+   "label": "Dock settings",
+   "kind": "file",
+   "owner": "Fleet",
+   "icon": "settings",
+   "sublabel": "lock timing, alarms",
+   "what": "How long a lock waits, and when a dock raises an alarm.",
+   "when": "Changed a few times a year.",
+   "how": "A file in the fleet team's repository."
+  },
+  {
+   "id": "range-check",
+   "label": "Range check",
+   "kind": "backend",
+   "owner": "Fleet",
+   "icon": "gauge",
+   "sublabel": "battery 0 to 100%",
+   "what": "Drops events a dock's sensors cannot report.",
+   "when": "First.",
+   "how": "Limits per sensor."
+  },
+  {
+   "id": "jump-check",
+   "label": "Jump check",
+   "kind": "backend",
+   "owner": "Fleet",
+   "icon": "chart",
+   "sublabel": "no moped in two docks",
+   "what": "Drops a moped seen at two docks at once.",
+   "when": "Second.",
+   "how": "Against the moped's last ten events."
+  },
+  {
+   "id": "dock-quarantine",
+   "label": "Quarantine",
+   "kind": "database",
+   "owner": "Fleet",
+   "icon": "archive",
+   "sublabel": "held for review",
+   "what": "Dock events that failed a check.",
+   "when": "Checked again hourly.",
+   "how": "A table the fleet team reviews."
+  },
+  {
+   "id": "telemetry-store",
+   "label": "Telemetry store",
+   "kind": "database",
+   "owner": "Fleet",
+   "icon": "database",
+   "sublabel": "every event, 90 days",
+   "what": "Every clean dock event.",
+   "when": "Written continuously.",
+   "how": "A time-series database."
+  },
+  {
+   "id": "weather-feed",
+   "label": "Weather feed",
+   "kind": "external",
+   "icon": "network",
+   "sublabel": "hourly, per district",
+   "what": "Tomorrow's weather, hour by hour.",
+   "when": "Read before each forecast.",
+   "how": "A national weather service's open API."
+  },
+  {
+   "id": "model-registry",
+   "label": "Model registry",
+   "kind": "database",
+   "owner": "Fleet",
+   "icon": "layers",
+   "sublabel": "models and their errors",
+   "what": "Every trained demand model, with how far it was off.",
+   "when": "A model a night.",
+   "how": "Files and a table of scores."
+  },
+  {
+   "id": "help-llm",
+   "label": "Language model",
+   "kind": "ai",
+   "owner": "Rides",
+   "icon": "bot",
+   "sublabel": "drafts replies",
+   "what": "Writes the help bot's drafts.",
+   "when": "While answering.",
+   "how": "A hosted model; nothing is kept after the call."
+  },
+  {
+   "id": "help-tone",
+   "label": "Tone check",
+   "kind": "security",
+   "owner": "Rides",
+   "icon": "checks",
+   "sublabel": "polite, no promises",
+   "what": "Stops drafts that are rude or promise too much.",
+   "when": "Before a draft is approved.",
+   "how": "Rules, then the model as a second reader."
+  },
+  {
+   "id": "help-review",
+   "label": "Review",
+   "kind": "backend",
+   "owner": "Rides",
+   "icon": "usercheck",
+   "sublabel": "refunds over 20 by a person",
+   "what": "Approves the draft, or hands it to a person.",
+   "when": "Before anything is sent.",
+   "how": "A refund over 20 goes to the ops console."
+  },
+  {
+   "id": "help-redact",
+   "label": "Redact",
+   "kind": "security",
+   "owner": "Rides",
+   "icon": "eyeoff",
+   "sublabel": "masks card numbers",
+   "what": "Masks card and phone numbers.",
+   "when": "Before anything is sent.",
+   "how": "Pattern matching, then a check by the model."
+  },
+  {
+   "id": "help-send",
+   "label": "Send",
+   "kind": "backend",
+   "owner": "Rides",
+   "icon": "webhook",
+   "sublabel": "in the app",
+   "what": "Posts the reply in the rider's help thread.",
+   "when": "Once approved.",
+   "how": "A push to the rider app."
+  },
+  {
+   "id": "help-thread",
+   "label": "Help thread",
+   "kind": "database",
+   "owner": "Rides",
+   "icon": "logs",
+   "sublabel": "every question and reply",
+   "what": "A rider's questions and the replies they got.",
+   "when": "Kept a year.",
+   "how": "One thread per rider."
+  }
+ ],
+ "edges": [
+  {
+   "id": "c1",
+   "from": "riders",
+   "to": "mopedshare",
+   "label": "rides",
+   "sublabel": "mobile app",
+   "weight": 3
+  },
+  {
+   "id": "c2",
+   "from": "ops",
+   "to": "mopedshare",
+   "label": "manages the fleet",
+   "sublabel": "web console"
+  },
+  {
+   "id": "c3",
+   "from": "mopedshare",
+   "to": "payments",
+   "label": "charges rides",
+   "sublabel": "REST",
+   "weight": 2
+  },
+  {
+   "id": "c4",
+   "from": "mopedshare",
+   "to": "maps",
+   "label": "fetches tiles",
+   "sublabel": "HTTPS"
+  },
+  {
+   "id": "c5",
+   "from": "mopedshare",
+   "to": "city",
+   "label": "publishes trips",
+   "kind": "feeds",
+   "sublabel": "weekly CSV"
+  },
+  {
+   "id": "s1",
+   "from": "riders",
+   "to": "rider-app",
+   "label": "unlock, ride",
+   "weight": 3
+  },
+  {
+   "id": "s2",
+   "from": "ops",
+   "to": "ops-console",
+   "label": "plans the day"
+  },
+  {
+   "id": "s3",
+   "from": "rider-app",
+   "to": "trips",
+   "label": "starts, ends rides",
+   "sublabel": "REST",
+   "weight": 3
+  },
+  {
+   "id": "s4",
+   "from": "rider-app",
+   "to": "accounts",
+   "label": "signs in",
+   "sublabel": "OIDC"
+  },
+  {
+   "id": "s6",
+   "from": "ops-console",
+   "to": "fleet",
+   "label": "moves mopeds",
+   "sublabel": "REST",
+   "toSide": "top"
+  },
+  {
+   "id": "s7",
+   "from": "trips",
+   "to": "pricing",
+   "label": "prices a ride",
+   "sublabel": "gRPC",
+   "weight": 2,
+   "edited": true
+  },
+  {
+   "id": "s8",
+   "from": "trips",
+   "to": "tripsdb",
+   "label": "writes rides",
+   "kind": "state",
+   "weight": 3
+  },
+  {
+   "id": "s9",
+   "from": "trips",
+   "to": "payments",
+   "label": "charges",
+   "sublabel": "REST",
+   "weight": 2
+  },
+  {
+   "id": "s10",
+   "from": "stations",
+   "to": "telemetry",
+   "label": "dock events",
+   "kind": "feeds",
+   "sublabel": "MQTT",
+   "weight": 3
+  },
+  {
+   "id": "s11",
+   "from": "telemetry",
+   "to": "fleet",
+   "label": "moped states",
+   "kind": "feeds",
+   "weight": 3
+  },
+  {
+   "id": "s12",
+   "from": "fleet",
+   "to": "ops-console",
+   "label": "low battery",
+   "kind": "triggers",
+   "fromSide": "top"
+  },
+  {
+   "id": "s13",
+   "from": "telemetry",
+   "to": "warehouse",
+   "label": "streams",
+   "kind": "feeds",
+   "weight": 2
+  },
+  {
+   "id": "s14",
+   "from": "warehouse",
+   "to": "city",
+   "label": "publishes trips",
+   "kind": "feeds",
+   "sublabel": "weekly CSV"
+  },
+  {
+   "id": "s16",
+   "from": "monitoring",
+   "to": "rides",
+   "label": "scrapes metrics",
+   "kind": "state"
+  },
+  {
+   "id": "s17",
+   "from": "fleet",
+   "to": "charging",
+   "label": "books slots"
+  },
+  {
+   "id": "t1",
+   "from": "rider-app",
+   "to": "trip-api",
+   "label": "start, end",
+   "sublabel": "REST",
+   "weight": 3,
+   "latency": 120
+  },
+  {
+   "id": "t2",
+   "from": "trip-api",
+   "to": "unlock",
+   "label": "unlock a moped",
+   "latency": 15
+  },
+  {
+   "id": "t3",
+   "from": "unlock",
+   "to": "stations",
+   "label": "opens the dock",
+   "sublabel": "MQTT",
+   "latency": 400,
+   "cost": 1
+  },
+  {
+   "id": "t4",
+   "from": "trip-api",
+   "to": "lifecycle",
+   "label": "moves the ride on",
+   "weight": 2,
+   "latency": 5
+  },
+  {
+   "id": "t5",
+   "from": "lifecycle",
+   "to": "fare",
+   "label": "ride ended",
+   "latency": 10
+  },
+  {
+   "id": "t6",
+   "from": "fare",
+   "to": "pricing",
+   "label": "price rules",
+   "sublabel": "gRPC",
+   "latency": 35
+  },
+  {
+   "id": "t7",
+   "from": "lifecycle",
+   "to": "trip-repo",
+   "label": "saves",
+   "kind": "state",
+   "weight": 2,
+   "latency": 4
+  },
+  {
+   "id": "t8",
+   "from": "trip-repo",
+   "to": "tripsdb",
+   "label": "SQL",
+   "kind": "state",
+   "weight": 3,
+   "latency": 25,
+   "cost": 2
+  },
+  {
+   "id": "t9",
+   "from": "lifecycle",
+   "to": "trip-events",
+   "label": "each change",
+   "kind": "triggers",
+   "fromSide": "bottom",
+   "latency": 3
+  },
+  {
+   "id": "t10",
+   "from": "trip-events",
+   "to": "telemetry",
+   "label": "publishes",
+   "kind": "feeds",
+   "latency": 50,
+   "cost": 1
+  },
+  {
+   "id": "t11",
+   "from": "fare",
+   "to": "payments",
+   "label": "charges",
+   "sublabel": "REST",
+   "latency": 450,
+   "cost": 30
+  },
+  {
+   "id": "f1",
+   "from": "telemetry",
+   "to": "dock-listener",
+   "label": "moped states",
+   "kind": "feeds",
+   "weight": 3
+  },
+  {
+   "id": "f2",
+   "from": "dock-listener",
+   "to": "fleet-db",
+   "label": "updates docks",
+   "kind": "state",
+   "weight": 2,
+   "fromSide": "top",
+   "toSide": "top"
+  },
+  {
+   "id": "f3",
+   "from": "dock-listener",
+   "to": "battery-service",
+   "label": "battery levels",
+   "kind": "feeds"
+  },
+  {
+   "id": "f4",
+   "from": "battery-service",
+   "to": "ops-console",
+   "label": "low battery",
+   "kind": "triggers"
+  },
+  {
+   "id": "f5",
+   "from": "warehouse",
+   "to": "forecast",
+   "label": "a year of trips",
+   "kind": "feeds"
+  },
+  {
+   "id": "f6",
+   "from": "forecast",
+   "to": "planner",
+   "label": "demand per dock",
+   "kind": "feeds",
+   "toSide": "bottom"
+  },
+  {
+   "id": "f7",
+   "from": "planner",
+   "to": "fleet-db",
+   "label": "reads stock",
+   "kind": "state"
+  },
+  {
+   "id": "f8",
+   "from": "ops-console",
+   "to": "fleet-api",
+   "label": "moves mopeds",
+   "sublabel": "REST"
+  },
+  {
+   "id": "f9",
+   "from": "fleet-api",
+   "to": "planner",
+   "label": "today's plan"
+  },
+  {
+   "id": "f10",
+   "from": "planner",
+   "to": "fleet-api",
+   "label": "the vans' routes"
+  },
+  {
+   "id": "e1",
+   "from": "shoppers",
+   "to": "edge",
+   "label": "HTTPS"
+  },
+  {
+   "id": "e2",
+   "from": "edge",
+   "to": "storefront",
+   "label": "serves"
+  },
+  {
+   "id": "e3",
+   "from": "edge",
+   "to": "api",
+   "label": "/api"
+  },
+  {
+   "id": "e4",
+   "from": "api",
+   "to": "shop-accounts",
+   "label": "checks sessions"
+  },
+  {
+   "id": "e5",
+   "from": "api",
+   "to": "db",
+   "label": "SQL"
+  },
+  {
+   "id": "e6",
+   "from": "api",
+   "to": "shop-payments",
+   "label": "checkout"
+  },
+  {
+   "id": "e7",
+   "from": "api",
+   "to": "queue",
+   "label": "paid order"
+  },
+  {
+   "id": "e8",
+   "from": "worker",
+   "to": "queue",
+   "label": "claims"
+  },
+  {
+   "id": "e9",
+   "from": "worker",
+   "to": "mail",
+   "label": "confirmation"
+  },
+  {
+   "id": "e10",
+   "from": "github",
+   "to": "hosts",
+   "label": "deploys",
+   "style": "dashed"
+  },
+  {
+   "id": "e11",
+   "from": "grafana",
+   "to": "api",
+   "label": "reads metrics",
+   "style": "dashed"
+  },
+  {
+   "id": "df1",
+   "from": "stations",
+   "to": "dock-gateway",
+   "label": "dock events",
+   "kind": "feeds",
+   "sublabel": "MQTT",
+   "weight": 3
+  },
+  {
+   "id": "df2",
+   "from": "dock-gateway",
+   "to": "stations",
+   "label": "settings",
+   "sublabel": "MQTT, retained"
+  },
+  {
+   "id": "df3",
+   "from": "dock-gateway",
+   "to": "dock-settings",
+   "label": "reads",
+   "kind": "state"
+  },
+  {
+   "id": "df4",
+   "from": "dock-gateway",
+   "to": "telemetry",
+   "label": "dock events",
+   "kind": "feeds",
+   "weight": 3
+  },
+  {
+   "id": "df5",
+   "from": "telemetry",
+   "to": "range-check",
+   "kind": "feeds",
+   "weight": 3,
+   "what": "Every dock event, in order."
+  },
+  {
+   "id": "df6",
+   "from": "range-check",
+   "to": "jump-check",
+   "label": "in range",
+   "kind": "feeds",
+   "weight": 3
+  },
+  {
+   "id": "df7",
+   "from": "jump-check",
+   "to": "telemetry-store",
+   "label": "clean",
+   "kind": "feeds",
+   "weight": 3
+  }
+ ],
+ "views": [
+  {
+   "id": "context",
+   "parent": null,
+   "title": "Moped share",
+   "caption": "Who uses it and what it talks to. Double-click Moped share to go in.",
+   "nodeIds": [
+    "riders",
+    "ops",
+    "mopedshare",
+    "payments",
+    "maps",
+    "city"
+   ]
+  },
+  {
+   "id": "system",
+   "parent": "context",
+   "title": "What runs",
+   "caption": "The apps and the two teams' services. Trip service and Fleet service open their parts.",
+   "nodeIds": [
+    "monitoring",
+    "riders",
+    "rider-app",
+    "accounts",
+    "pricing",
+    "payments",
+    "trips",
+    "tripsdb",
+    "ops",
+    "ops-console",
+    "stations",
+    "telemetry",
+    "fleet",
+    "charging",
+    "warehouse",
+    "city",
+    "status",
+    "flags"
+   ],
+   "containers": [
+    {
+     "id": "apps",
+     "label": "Apps",
+     "nodeIds": [
+      "rider-app",
+      "ops-console"
+     ],
+     "badges": [
+      "iOS · Android · web"
+     ]
+    },
+    {
+     "id": "rides",
+     "label": "Rides",
+     "nodeIds": [
+      "accounts",
+      "trips",
+      "pricing",
+      "tripsdb"
+     ],
+     "badges": [
+      {
+       "text": "team Rides",
+       "tone": "accent"
+      }
+     ]
+    },
+    {
+     "id": "fleet-box",
+     "label": "Fleet",
+     "nodeIds": [
+      "telemetry",
+      "fleet",
+      "charging",
+      "warehouse"
+     ],
+     "badges": [
+      {
+       "text": "team Fleet",
+       "tone": "violet"
+      }
+     ]
+    }
+   ],
+   "layout": {
+    "monitoring": [
+     2,
+     0
+    ],
+    "riders": [
+     0,
+     2
+    ],
+    "rider-app": [
+     1,
+     2
+    ],
+    "accounts": [
+     2,
+     2
+    ],
+    "pricing": [
+     3,
+     2
+    ],
+    "trips": [
+     2,
+     3
+    ],
+    "payments": [
+     4,
+     3
+    ],
+    "tripsdb": [
+     3,
+     4
+    ],
+    "ops": [
+     0,
+     5
+    ],
+    "ops-console": [
+     1,
+     5
+    ],
+    "stations": [
+     0,
+     7
+    ],
+    "telemetry": [
+     1,
+     7
+    ],
+    "fleet": [
+     2,
+     7
+    ],
+    "charging": [
+     3,
+     7
+    ],
+    "warehouse": [
+     2,
+     8
+    ],
+    "city": [
+     4,
+     8
+    ],
+    "status": [
+     0,
+     9
+    ],
+    "flags": [
+     1,
+     9
+    ]
+   }
+  },
+  {
+   "id": "trips",
+   "parent": "system",
+   "title": "Trip service",
+   "caption": "A ride from unlock to charge.",
+   "nodeIds": [
+    "rider-app",
+    "trip-api",
+    "unlock",
+    "stations",
+    "lifecycle",
+    "fare",
+    "pricing",
+    "payments",
+    "trip-repo",
+    "tripsdb",
+    "trip-events",
+    "telemetry"
+   ],
+   "edges": [
+    "t1",
+    "t2",
+    "t3",
+    "t4",
+    "t5",
+    "t6",
+    "t7",
+    "t8",
+    "t9",
+    "t10",
+    "t11"
+   ]
+  },
+  {
+   "id": "fleet",
+   "parent": "system",
+   "title": "Fleet service",
+   "caption": "From dock events to the vans' routes.",
+   "nodeIds": [
+    "telemetry",
+    "dock-listener",
+    "battery-service",
+    "fleet-db",
+    "warehouse",
+    "forecast",
+    "planner",
+    "fleet-api",
+    "ops-console"
+   ],
+   "edges": [
+    "f1",
+    "f2",
+    "f3",
+    "f4",
+    "f5",
+    "f6",
+    "f7",
+    "f8",
+    "f9",
+    "f10"
+   ],
+   "keepPairs": true
+  },
+  {
+   "id": "ride-end",
+   "parent": "trips",
+   "title": "A ride ends, from its trace",
+   "caption": "From a trace: 8 calls between cards, in time order, each with its duration. No card for fraud-check.",
+   "render": "sequence",
+   "lanes": false,
+   "nodeIds": [
+    "rider-app",
+    "trip-api",
+    "lifecycle",
+    "fare",
+    "pricing",
+    "payments",
+    "trip-repo",
+    "tripsdb",
+    "trip-events"
+   ],
+   "edges": [
+    {
+     "id": "ride-end-1",
+     "from": "rider-app",
+     "to": "trip-api",
+     "label": "POST /rides/{id}/end",
+     "sublabel": "200 ms"
+    },
+    {
+     "id": "ride-end-2",
+     "from": "trip-api",
+     "to": "lifecycle",
+     "label": "close ride",
+     "sublabel": "186 ms"
+    },
+    {
+     "id": "ride-end-3",
+     "from": "lifecycle",
+     "to": "fare",
+     "label": "fare for ride",
+     "sublabel": "98 ms"
+    },
+    {
+     "id": "ride-end-4",
+     "from": "fare",
+     "to": "pricing",
+     "label": "GetPrice",
+     "sublabel": "37 ms"
+    },
+    {
+     "id": "ride-end-5",
+     "from": "fare",
+     "to": "payments",
+     "label": "POST /charges",
+     "sublabel": "48 ms"
+    },
+    {
+     "id": "ride-end-6",
+     "from": "lifecycle",
+     "to": "trip-repo",
+     "label": "save ride",
+     "sublabel": "38 ms"
+    },
+    {
+     "id": "ride-end-7",
+     "from": "trip-repo",
+     "to": "tripsdb",
+     "label": "UPDATE rides",
+     "sublabel": "29 ms"
+    },
+    {
+     "id": "ride-end-8",
+     "from": "lifecycle",
+     "to": "trip-events",
+     "label": "publish ride.ended",
+     "sublabel": "26 ms"
+    }
+   ]
+  },
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Rider shop",
+   "caption": "The rider shop, which sells passes and gear: everything that runs, with its technology. Double-click Shop API for the order flow.",
+   "nodeIds": [
+    "shoppers",
+    "edge",
+    "storefront",
+    "api",
+    "shop-accounts",
+    "db",
+    "queue",
+    "worker",
+    "shop-payments",
+    "mail",
+    "hosts",
+    "github",
+    "grafana"
+   ]
+  },
+  {
+   "id": "api",
+   "parent": "overview",
+   "title": "An order, step by step",
+   "caption": "From checkout to the confirmation email.",
+   "render": "sequence",
+   "lanes": false,
+   "nodeIds": [
+    "shoppers",
+    "api",
+    "shop-payments",
+    "queue",
+    "worker",
+    "mail"
+   ],
+   "edges": [
+    {
+     "id": "api-s1",
+     "from": "shoppers",
+     "to": "api",
+     "label": "checks out"
+    },
+    "e6",
+    "e7",
+    {
+     "id": "api-s2",
+     "from": "queue",
+     "to": "worker",
+     "label": "claimed by"
+    },
+    "e9"
+   ],
+   "tour": [
+    "shoppers",
+    "api",
+    "queue",
+    "worker",
+    "mail"
+   ]
+  },
+  {
+   "id": "checkout",
+   "parent": "overview",
+   "title": "Checkout, at a glance",
+   "caption": "An order's way in six numbered steps: the main path drawn heavier, the web tier and the order handling as tinted boxes.",
+   "nodeIds": [
+    "shoppers",
+    "storefront",
+    "api",
+    "shop-payments",
+    "queue",
+    "worker",
+    "mail"
+   ],
+   "edges": [
+    {
+     "id": "checkout-c1",
+     "from": "shoppers",
+     "to": "storefront",
+     "label": "browse, buy",
+     "weight": 2,
+     "step": 1
+    },
+    {
+     "id": "checkout-c2",
+     "from": "storefront",
+     "to": "api",
+     "label": "checkout",
+     "sublabel": "JSON over HTTPS",
+     "weight": 2,
+     "step": 2
+    },
+    {
+     "id": "checkout-c3",
+     "from": "api",
+     "to": "shop-payments",
+     "label": "charge the card",
+     "step": 3
+    },
+    {
+     "id": "checkout-c4",
+     "from": "api",
+     "to": "queue",
+     "label": "paid order",
+     "weight": 2,
+     "step": 4
+    },
+    {
+     "id": "checkout-c5",
+     "from": "queue",
+     "to": "worker",
+     "label": "next order",
+     "weight": 2,
+     "step": 5
+    },
+    {
+     "id": "checkout-c6",
+     "from": "worker",
+     "to": "mail",
+     "label": "confirmation",
+     "weight": 2,
+     "step": 6
+    }
+   ],
+   "containers": [
+    {
+     "id": "web",
+     "label": "Web",
+     "tone": "cyan",
+     "nodeIds": [
+      "storefront",
+      "api"
+     ]
+    },
+    {
+     "id": "orders",
+     "label": "Orders",
+     "tone": "orange",
+     "nodeIds": [
+      "queue",
+      "worker"
+     ]
+    }
+   ],
+   "layout": {
+    "shoppers": [
+     0,
+     0
+    ],
+    "storefront": [
+     1,
+     0
+    ],
+    "api": [
+     2,
+     0
+    ],
+    "shop-payments": [
+     3,
+     1
+    ],
+    "queue": [
+     4,
+     0
+    ],
+    "worker": [
+     5,
+     0
+    ],
+    "mail": [
+     6,
+     0
+    ]
+   },
+   "tour": [
+    "shoppers",
+    "storefront",
+    "api",
+    "queue",
+    "worker",
+    "mail"
+   ],
+   "rgap": 104
+  },
+  {
+   "id": "dock-feed",
+   "parent": "fleet",
+   "title": "Dock feed",
+   "caption": "Live dock events, by volume, through two checks to the store and the dock listener. Settings go back to the docks on their own line; an event that fails a check waits in quarantine and is checked again hourly.",
+   "nodeIds": [
+    "stations",
+    "dock-gateway",
+    "dock-settings",
+    "telemetry",
+    "range-check",
+    "jump-check",
+    "dock-quarantine",
+    "telemetry-store",
+    "dock-listener"
+   ],
+   "edges": [
+    "df1",
+    "df2",
+    "df3",
+    "df4",
+    "df5",
+    "df6",
+    "df7",
+    {
+     "id": "dfl",
+     "from": "telemetry",
+     "to": "dock-listener",
+     "kind": "feeds",
+     "weight": 3,
+     "what": "Moped states, as the docks report them."
+    },
+    {
+     "id": "dfk1",
+     "from": "dock-checks",
+     "to": "dock-quarantine",
+     "label": "fails one",
+     "kind": "feeds"
+    },
+    {
+     "id": "dfk2",
+     "from": "dock-quarantine",
+     "to": "telemetry",
+     "label": "again, hourly",
+     "loop": true
+    }
+   ],
+   "containers": [
+    {
+     "id": "dock-checker",
+     "label": "Check service",
+     "nodeIds": [
+      "dock-quarantine"
+     ],
+     "badges": [
+      {
+       "text": "on call",
+       "tone": "green"
+      }
+     ]
+    },
+    {
+     "id": "dock-checks",
+     "label": "Checks",
+     "parent": "dock-checker",
+     "nodeIds": [
+      "range-check",
+      "jump-check"
+     ],
+     "badges": [
+      "in order"
+     ]
+    }
+   ],
+   "gap": 96,
+   "rgap": 64
+  },
+  {
+   "id": "demand",
+   "parent": "fleet",
+   "title": "The nightly forecast",
+   "caption": "What the demand forecast does each night, step by step, filed under three lanes. The weather feed is one of its inputs.",
+   "render": "sequence",
+   "lanes": [
+    {
+     "title": "Data",
+     "nodeIds": [
+      "warehouse",
+      "weather-feed"
+     ]
+    },
+    {
+     "title": "Model",
+     "nodeIds": [
+      "model-registry"
+     ]
+    },
+    {
+     "title": "Planner",
+     "nodeIds": [
+      "planner",
+      "ops-console"
+     ]
+    }
+   ],
+   "nodeIds": [
+    "forecast",
+    "warehouse",
+    "weather-feed",
+    "model-registry",
+    "planner",
+    "ops-console"
+   ],
+   "edges": [
+    {
+     "id": "dm1",
+     "from": "forecast",
+     "to": "warehouse",
+     "kind": "state",
+     "what": "Reads a year of trips."
+    },
+    {
+     "id": "dm2",
+     "from": "forecast",
+     "to": "weather-feed",
+     "kind": "state",
+     "what": "Reads tomorrow's weather, hour by hour."
+    },
+    {
+     "id": "dm3",
+     "from": "forecast",
+     "to": "model-registry",
+     "kind": "feeds",
+     "what": "Stores tonight's model and how far yesterday's was off."
+    },
+    {
+     "id": "dm4",
+     "from": "forecast",
+     "to": "planner",
+     "kind": "feeds",
+     "what": "Hands over the mopeds needed per dock."
+    },
+    {
+     "id": "dm5",
+     "from": "planner",
+     "to": "ops-console",
+     "label": "flags short docks",
+     "kind": "triggers"
+    }
+   ],
+   "tour": [
+    "forecast",
+    "planner",
+    "ops-console"
+   ]
+  },
+  {
+   "id": "help",
+   "parent": "system",
+   "title": "Rider help, step by step",
+   "caption": "From a rider's question to a reply in the app. The help bot, its retriever and what they read exist only in this view.",
+   "render": "sequence",
+   "lanes": false,
+   "nodeIds": [
+    "rider-app",
+    "retriever",
+    "station-docs",
+    "policy",
+    "bot",
+    "help-llm",
+    "help-review",
+    "help-tone",
+    "help-send",
+    "help-redact",
+    "help-thread"
+   ],
+   "nodes": [
+    {
+     "id": "retriever",
+     "label": "Find answers",
+     "kind": "step",
+     "sublabel": "station guides, policy",
+     "what": "Looks for the station guides and policy that fit the question."
+    },
+    {
+     "id": "station-docs",
+     "label": "Station guides",
+     "kind": "file",
+     "icon": "book",
+     "sublabel": "one per dock model",
+     "what": "How each dock model locks, charges and fails."
+    },
+    {
+     "id": "policy",
+     "label": "Refund policy",
+     "kind": "file",
+     "icon": "doc",
+     "sublabel": "fares, refunds, damage",
+     "what": "What help may promise a rider."
+    },
+    {
+     "id": "bot",
+     "label": "Help bot",
+     "kind": "step",
+     "sublabel": "cites its sources",
+     "what": "Drafts a reply that cites the guides and policy it read."
+    }
+   ],
+   "nodeOverrides": {
+    "help-llm": {
+     "sublabel": "temperature 0.2"
+    }
+   },
+   "edges": [
+    {
+     "id": "h1",
+     "from": "rider-app",
+     "to": "retriever",
+     "label": "the question"
+    },
+    {
+     "id": "h2",
+     "from": "retriever",
+     "to": "station-docs",
+     "label": "searches"
+    },
+    {
+     "id": "h3",
+     "from": "retriever",
+     "to": "policy",
+     "label": "reads"
+    },
+    {
+     "id": "h4",
+     "from": "retriever",
+     "to": "bot",
+     "label": "sources"
+    },
+    {
+     "id": "h5",
+     "from": "bot",
+     "to": "help-llm",
+     "label": "writes with"
+    },
+    {
+     "id": "h6",
+     "from": "bot",
+     "to": "help-review",
+     "label": "a draft"
+    },
+    {
+     "id": "h7",
+     "from": "help-tone",
+     "to": "help-review",
+     "label": "reviews"
+    },
+    {
+     "id": "h8",
+     "from": "help-review",
+     "to": "help-send",
+     "label": "approved"
+    },
+    {
+     "id": "h9",
+     "from": "help-redact",
+     "to": "help-send",
+     "label": "masks"
+    },
+    {
+     "id": "h10",
+     "from": "help-send",
+     "to": "help-thread",
+     "label": "posts the reply"
+    }
+   ],
+   "layout": {
+    "rider-app": [
+     0,
+     1
+    ],
+    "retriever": [
+     1,
+     1
+    ],
+    "station-docs": [
+     2,
+     0
+    ],
+    "policy": [
+     2,
+     2
+    ],
+    "help-tone": [
+     3,
+     0
+    ],
+    "bot": [
+     3,
+     1
+    ],
+    "help-redact": [
+     4,
+     0
+    ],
+    "help-review": [
+     4,
+     1
+    ],
+    "help-llm": [
+     4,
+     2
+    ],
+    "help-send": [
+     5,
+     1
+    ],
+    "help-thread": [
+     6,
+     1
+    ]
+   }
+  }
+ ]
+}

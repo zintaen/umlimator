@@ -1,7 +1,7 @@
 {
-  "$schema": "../lib/umlimator.schema.json",
+  "$schema": "../../lib/umlimator.schema.json",
   "schemaVersion": 2,
-  "title": "Bike share, an example",
+  "title": "Moped share, an example",
   "root": "context",
   "meta": { "project": "umlimator" },
   "iconPacks": { "gcp": "2026-11-14", "azure": "V25", "aws": "2026-07-31" },
@@ -12,7 +12,7 @@
       "kind": "person",
       "icon": "users",
       "sublabel": "unlock, ride, pay",
-      "what": "People who hire a bike from a dock.",
+      "what": "People who hire a moped from a dock.",
       "when": "Every ride.",
       "how": "They use the rider app on a phone."
     },
@@ -22,18 +22,18 @@
       "kind": "person",
       "icon": "usercheck",
       "sublabel": "rebalance, repair",
-      "what": "Staff who keep bikes where riders want them.",
+      "what": "Staff who keep mopeds where riders want them.",
       "when": "All day, in shifts.",
       "how": "They plan van routes in the ops console."
     },
     {
-      "id": "bikeshare",
-      "label": "Bike share",
+      "id": "mopedshare",
+      "label": "Moped share",
       "kind": "backend",
       "icon": "layers",
       "sublabel": "the whole system",
       "opensView": "system",
-      "what": "Everything the city's bike share runs on.",
+      "what": "Everything the city's moped share runs on.",
       "when": "Always on.",
       "how": "Apps, services and data on one platform. Double-click to go in."
     },
@@ -46,7 +46,7 @@
       "noSub": true,
       "what": "Takes card and wallet payments.",
       "when": "At the end of each ride.",
-      "how": "A REST API; the bike share never stores card numbers."
+      "how": "A REST API; the moped share never stores card numbers."
     },
     {
       "id": "maps",
@@ -75,7 +75,7 @@
       "owner": "Apps",
       "icon": "window",
       "sublabel": "iOS, Android, web",
-      "what": "Find a bike, unlock it, pay.",
+      "what": "Find a moped, unlock it, pay.",
       "when": "Every ride.",
       "how": "Calls the Trip service and the map tiles."
     },
@@ -134,10 +134,10 @@
       "kind": "backend",
       "owner": "Fleet",
       "icon": "gauge",
-      "sublabel": "bikes, docks, vans",
+      "sublabel": "mopeds, docks, vans",
       "opensView": "fleet",
       "opensCount": 6,
-      "what": "Knows where every bike is.",
+      "what": "Knows where every moped is.",
       "when": "Every dock event.",
       "how": "Reads the telemetry stream and plans rebalancing. Its inner view loads when you open it."
     },
@@ -147,9 +147,9 @@
       "kind": "backend",
       "owner": "Fleet",
       "icon": "clock",
-      "sublabel": "e-bike charging slots",
+      "sublabel": "e-moped charging slots",
       "change": "planned",
-      "what": "Books charging slots for e-bikes.",
+      "what": "Books charging slots for e-mopeds.",
       "when": "Planned for next year.",
       "how": "Not built yet."
     },
@@ -172,7 +172,7 @@
       "icon": "queue",
       "sublabel": "Kafka",
       "badges": ["3 partitions"],
-      "what": "Dock and bike events.",
+      "what": "Dock and moped events.",
       "when": "Every few seconds per dock.",
       "how": "Partitioned by dock; kept seven days."
     },
@@ -196,7 +196,7 @@
       "sublabel": "400 docks",
       "what": "The docks on the street.",
       "when": "Always on.",
-      "how": "Report each bike and battery over MQTT; open on command."
+      "how": "Report each moped and battery over MQTT; open on command."
     },
     {
       "id": "monitoring",
@@ -250,7 +250,7 @@
       "owner": "Rides",
       "icon": "key",
       "sublabel": "opens a dock",
-      "what": "Releases a bike.",
+      "what": "Releases a moped.",
       "when": "When a ride starts.",
       "how": "Sends the dock an open command and waits for its reply."
     },
@@ -320,7 +320,7 @@
       "icon": "gauge",
       "sublabel": "under 20% is low",
       "opensView": "blocks",
-      "what": "Finds e-bikes that need charging.",
+      "what": "Finds e-mopeds that need charging.",
       "when": "Every battery report.",
       "how": "Raises an alert in the ops console."
     },
@@ -330,7 +330,7 @@
       "kind": "ai",
       "owner": "Fleet",
       "icon": "sparkles",
-      "sublabel": "bikes needed per dock",
+      "sublabel": "mopeds needed per dock",
       "opensView": "demand",
       "what": "Predicts demand per dock, hourly.",
       "when": "Every hour.",
@@ -344,7 +344,7 @@
       "icon": "calendar",
       "sublabel": "van routes",
       "opensView": "rebalance",
-      "what": "Plans where the vans move bikes.",
+      "what": "Plans where the vans move mopeds.",
       "when": "Each morning, and on request.",
       "how": "Matches the forecast against stock."
     },
@@ -365,8 +365,8 @@
       "kind": "database",
       "owner": "Fleet",
       "icon": "database",
-      "sublabel": "bikes, docks, vans",
-      "what": "Where every bike is.",
+      "sublabel": "mopeds, docks, vans",
+      "what": "Where every moped is.",
       "when": "Updated by each dock event.",
       "how": "A key-value store per dock."
     },
@@ -540,10 +540,10 @@
       "kind": "backend",
       "owner": "Fleet",
       "icon": "chart",
-      "sublabel": "no bike in two docks",
-      "what": "Drops a bike seen at two docks at once.",
+      "sublabel": "no moped in two docks",
+      "what": "Drops a moped seen at two docks at once.",
       "when": "Second.",
-      "how": "Against the bike's last ten events."
+      "how": "Against the moped's last ten events."
     },
     {
       "id": "dock-quarantine",
@@ -739,7 +739,7 @@
           "label": "add",
           "props": {
             "visibility": "public",
-            "parameters": [{ "name": "bike", "valueType": "Bike" }, { "name": "minutes", "valueType": "Integer" }]
+            "parameters": [{ "name": "moped", "valueType": "Moped" }, { "name": "minutes", "valueType": "Integer" }]
           }
         },
         { "id": "ride.cancel", "type": "uml.Operation", "label": "cancel", "props": { "visibility": "public" } }
@@ -766,26 +766,26 @@
       ]
     },
     {
-      "id": "bike",
+      "id": "moped",
       "type": "uml.Class",
-      "label": "Bike",
+      "label": "Moped",
       "parent": "fleet-package",
       "opensView": "requirements",
       "members": [
         {
-          "id": "bike.serial",
+          "id": "moped.serial",
           "type": "uml.Property",
           "label": "serial",
           "props": { "visibility": "public", "valueType": "String" }
         },
         {
-          "id": "bike.model",
+          "id": "moped.model",
           "type": "uml.Property",
           "label": "model",
           "props": { "visibility": "public", "valueType": "String" }
         },
         {
-          "id": "bike.rate",
+          "id": "moped.rate",
           "type": "uml.Property",
           "label": "rate",
           "props": { "visibility": "public", "valueType": "Money" }
@@ -879,7 +879,7 @@
       "type": "uml.Comment",
       "label": "total is the sum of the legs' rate per minute times minutes"
     },
-    { "id": "conventions", "type": "uml.Profile", "label": "BikeSharePrivacy", "opensView": "privacy" },
+    { "id": "conventions", "type": "uml.Profile", "label": "MopedSharePrivacy", "opensView": "privacy" },
     { "id": "mc-class", "type": "uml.MetaclassReference", "label": "Class", "parent": "conventions" },
     { "id": "mc-property", "type": "uml.MetaclassReference", "label": "Property", "parent": "conventions" },
     {
@@ -972,24 +972,24 @@
       "members": [{ "id": "leg-2.minutes", "type": "uml.Slot", "label": "minutes", "props": { "value": "5" } }]
     },
     {
-      "id": "bike-0412",
+      "id": "moped-0412",
       "type": "uml.InstanceSpecification",
-      "label": "bike0412",
-      "opensView": "bike-life",
-      "props": { "classifier": "Bike" },
+      "label": "moped0412",
+      "opensView": "moped-life",
+      "props": { "classifier": "Moped" },
       "members": [
-        { "id": "bike-0412.model", "type": "uml.Slot", "label": "model", "props": { "value": "Urban e-bike" } },
-        { "id": "bike-0412.rate", "type": "uml.Slot", "label": "rate", "props": { "value": "0.20 EUR" } }
+        { "id": "moped-0412.model", "type": "uml.Slot", "label": "model", "props": { "value": "Urban e-moped" } },
+        { "id": "moped-0412.rate", "type": "uml.Slot", "label": "rate", "props": { "value": "0.20 EUR" } }
       ]
     },
     {
-      "id": "bike-0977",
+      "id": "moped-0977",
       "type": "uml.InstanceSpecification",
-      "label": "bike0977",
-      "props": { "classifier": "Bike" },
+      "label": "moped0977",
+      "props": { "classifier": "Moped" },
       "members": [
-        { "id": "bike-0977.model", "type": "uml.Slot", "label": "model", "props": { "value": "Cargo e-bike" } },
-        { "id": "bike-0977.rate", "type": "uml.Slot", "label": "rate", "props": { "value": "0.30 EUR" } }
+        { "id": "moped-0977.model", "type": "uml.Slot", "label": "model", "props": { "value": "Cargo e-moped" } },
+        { "id": "moped-0977.rate", "type": "uml.Slot", "label": "rate", "props": { "value": "0.30 EUR" } }
       ]
     },
     {
@@ -1018,14 +1018,14 @@
       "id": "lifeline-dock",
       "type": "uml.Lifeline",
       "label": "dock",
-      "props": { "represents": "Dock", "states": ["Idle", "Checking the bike", "Unlatching"] }
+      "props": { "represents": "Dock", "states": ["Idle", "Checking the moped", "Unlatching"] }
     },
     { "id": "receipt", "type": "uml.Lifeline", "label": "ride", "props": { "represents": "RideRecord" } },
     { "id": "buy-start", "type": "uml.InitialNode" },
-    { "id": "ref-find", "type": "uml.InteractionUse", "label": "Find a bike", "opensView": "locate-bike" },
+    { "id": "ref-find", "type": "uml.InteractionUse", "label": "Find a moped", "opensView": "locate-moped" },
     { "id": "try-payment", "type": "uml.MergeNode" },
     { "id": "ref-hire", "type": "uml.InteractionUse", "label": "Unlock", "opensView": "hire-unlock" },
-    { "id": "payment-ok", "type": "uml.DecisionNode", "label": "Bike released?" },
+    { "id": "payment-ok", "type": "uml.DecisionNode", "label": "Moped released?" },
     { "id": "buy-split", "type": "uml.ForkNode" },
     { "id": "ref-receipt", "type": "uml.InteractionUse", "label": "Send the ride notice", "opensView": "ride-notice" },
     { "id": "sd-queue", "type": "uml.Interaction", "label": "Log the ride", "opensView": "log-ride" },
@@ -1042,18 +1042,18 @@
     { "id": "rider-actor", "type": "uml.Actor", "label": "Rider" },
     { "id": "member", "type": "uml.Actor", "label": "Pass holder" },
     { "id": "payment-provider", "type": "uml.Actor", "label": "Payment provider" },
-    { "id": "hire-system", "type": "uml.Subject", "label": "Bike share" },
+    { "id": "hire-system", "type": "uml.Subject", "label": "Moped share" },
     {
       "id": "browse",
       "type": "uml.UseCase",
-      "label": "Find a bike",
+      "label": "Find a moped",
       "parent": "hire-system",
-      "opensView": "locate-bike"
+      "opensView": "locate-moped"
     },
     {
       "id": "check-out",
       "type": "uml.UseCase",
-      "label": "Hire a bike",
+      "label": "Hire a moped",
       "parent": "hire-system",
       "opensView": "hire-overview",
       "members": [
@@ -1082,11 +1082,11 @@
     {
       "id": "check-charge",
       "type": "uml.Action",
-      "label": "Check the charge of each bike",
+      "label": "Check the charge of each moped",
       "parent": "lane-warehouse"
     },
     { "id": "battery-levels", "type": "uml.DataStoreNode", "label": "Battery levels", "parent": "lane-warehouse" },
-    { "id": "all-charged", "type": "uml.DecisionNode", "label": "All bikes charged?", "parent": "lane-warehouse" },
+    { "id": "all-charged", "type": "uml.DecisionNode", "label": "All mopeds charged?", "parent": "lane-warehouse" },
     { "id": "ask-batteries", "type": "uml.SendSignalAction", "label": "Battery request", "parent": "lane-warehouse" },
     {
       "id": "batteries-arrive",
@@ -1103,14 +1103,14 @@
       "parent": "lane-planner",
       "opensView": "swap-battery"
     },
-    { "id": "load-van", "type": "uml.Action", "label": "Load the bikes on the van", "parent": "lane-warehouse" },
+    { "id": "load-van", "type": "uml.Action", "label": "Load the mopeds on the van", "parent": "lane-warehouse" },
     { "id": "tell-crew", "type": "uml.Action", "label": "Text the crew \"van loaded\"", "parent": "lane-crew" },
     { "id": "told", "type": "uml.FlowFinalNode", "parent": "lane-crew" },
     { "id": "loaded-and-swapped", "type": "uml.JoinNode", "parent": "lane-warehouse" },
     {
-      "id": "drop-bikes",
+      "id": "drop-mopeds",
       "type": "uml.Action",
-      "label": "Dock the bikes at the station",
+      "label": "Dock the mopeds at the station",
       "parent": "lane-warehouse",
       "opensView": "dock-latch"
     },
@@ -1124,7 +1124,7 @@
       "id": "placed",
       "type": "uml.State",
       "label": "Booked",
-      "props": { "entry": "reserve the bike", "do": "poll the payment provider", "exit": "log the payment result" },
+      "props": { "entry": "reserve the moped", "do": "poll the payment provider", "exit": "log the payment result" },
       "members": [
         {
           "id": "placed.address",
@@ -1140,7 +1140,7 @@
       "type": "uml.State",
       "label": "Riding",
       "members": [
-        { "id": "fulfilling.parcel", "type": "uml.Region", "label": "Bike" },
+        { "id": "fulfilling.parcel", "type": "uml.Region", "label": "Moped" },
         { "id": "fulfilling.payment", "type": "uml.Region", "label": "Payment" }
       ]
     },
@@ -1150,14 +1150,14 @@
       "type": "uml.State",
       "label": "Unlocking",
       "parent": "fulfilling.parcel",
-      "props": { "do": "release the bike from its dock" }
+      "props": { "do": "release the moped from its dock" }
     },
     {
       "id": "packed",
       "type": "uml.State",
       "label": "Unlocked",
       "parent": "fulfilling.parcel",
-      "props": { "entry": "light the bike's ready lamp" }
+      "props": { "entry": "light the moped's ready lamp" }
     },
     {
       "id": "payment-start",
@@ -1181,7 +1181,7 @@
       "type": "uml.State",
       "label": "Heading to a dock",
       "parent": "delivery",
-      "props": { "do": "follow the bike's position" }
+      "props": { "do": "follow the moped's position" }
     },
     {
       "id": "out-for-delivery",
@@ -1202,12 +1202,17 @@
       "label": "Under review",
       "props": { "entry": "open a case with support", "exit": "close the case" }
     },
-    { "id": "cancelled", "type": "uml.State", "label": "Cancelled", "props": { "entry": "release the reserved bike" } },
+    {
+      "id": "cancelled",
+      "type": "uml.State",
+      "label": "Cancelled",
+      "props": { "entry": "release the reserved moped" }
+    },
     { "id": "erased", "type": "uml.Pseudostate", "props": { "kind": "terminate" } },
     { "id": "delivered", "type": "uml.FinalState" },
-    { "id": "bl-ebike", "type": "uml.State", "label": "E-bike" },
-    { "id": "bl-new", "type": "uml.Pseudostate", "parent": "bl-ebike", "props": { "kind": "initial" } },
-    { "id": "bl-in-service", "type": "uml.State", "label": "In service", "parent": "bl-ebike" },
+    { "id": "bl-emoped", "type": "uml.State", "label": "E-moped" },
+    { "id": "bl-new", "type": "uml.Pseudostate", "parent": "bl-emoped", "props": { "kind": "initial" } },
+    { "id": "bl-in-service", "type": "uml.State", "label": "In service", "parent": "bl-emoped" },
     { "id": "bl-service-start", "type": "uml.Pseudostate", "parent": "bl-in-service", "props": { "kind": "initial" } },
     {
       "id": "bl-docked",
@@ -1240,18 +1245,18 @@
       "id": "bl-in-repair",
       "type": "uml.State",
       "label": "In repair",
-      "parent": "bl-ebike",
-      "props": { "entry": "lock the bike out of hire", "exit": "log the repair" }
+      "parent": "bl-emoped",
+      "props": { "entry": "lock the moped out of hire", "exit": "log the repair" }
     },
-    { "id": "bl-fixable", "type": "uml.Pseudostate", "parent": "bl-ebike", "props": { "kind": "choice" } },
+    { "id": "bl-fixable", "type": "uml.Pseudostate", "parent": "bl-emoped", "props": { "kind": "choice" } },
     {
       "id": "bl-retired",
       "type": "uml.State",
       "label": "Retired",
-      "parent": "bl-ebike",
+      "parent": "bl-emoped",
       "props": { "entry": "strip it for spare parts" }
     },
-    { "id": "bl-scrapped", "type": "uml.FinalState", "parent": "bl-ebike" },
+    { "id": "bl-scrapped", "type": "uml.FinalState", "parent": "bl-emoped" },
     { "id": "app-component", "type": "uml.Component", "label": "Rider app" },
     {
       "id": "trips-api",
@@ -1381,7 +1386,7 @@
       "type": "c4.Person",
       "label": "Rider",
       "opensView": "rider-uses",
-      "props": { "description": "Finds and hires bikes, pays for rides and reports faults." }
+      "props": { "description": "Finds and hires mopeds, pays for rides and reports faults." }
     },
     {
       "id": "c4-staff",
@@ -1391,11 +1396,11 @@
       "props": { "description": "Keep the fleet in service and refund rides." }
     },
     {
-      "id": "c4-bikeshare",
+      "id": "c4-mopedshare",
       "type": "c4.SoftwareSystem",
-      "label": "Bike share",
+      "label": "Moped share",
       "opensView": "c4-containers",
-      "props": { "description": "Hires e-bikes from city docks: finding, unlocking, pricing and paying for rides." }
+      "props": { "description": "Hires e-mopeds from city docks: finding, unlocking, pricing and paying for rides." }
     },
     {
       "id": "c4-payments",
@@ -1413,60 +1418,60 @@
       "id": "c4-van",
       "type": "c4.SoftwareSystem",
       "label": "Van service",
-      "props": { "description": "Collects faulty bikes and brings them back repaired.", "external": true }
+      "props": { "description": "Collects faulty mopeds and brings them back repaired.", "external": true }
     },
     {
       "id": "c4-app",
       "type": "c4.Container",
       "label": "Rider app",
-      "parent": "c4-bikeshare",
+      "parent": "c4-mopedshare",
       "opensView": "rider-data",
       "props": {
         "technology": "TypeScript, React",
-        "description": "The rider's app: a map of bikes, unlock and ride history, and the admin pages for staff."
+        "description": "The rider's app: a map of mopeds, unlock and ride history, and the admin pages for staff."
       }
     },
     {
       "id": "c4-api",
       "type": "c4.Container",
       "label": "Trip API",
-      "parent": "c4-bikeshare",
+      "parent": "c4-mopedshare",
       "opensView": "c4-components",
-      "props": { "technology": "Python, FastAPI", "description": "Bikes, rides, pricing and accounts as a JSON API." }
+      "props": { "technology": "Python, FastAPI", "description": "Mopeds, rides, pricing and accounts as a JSON API." }
     },
     {
       "id": "c4-worker",
       "type": "c4.Container",
       "label": "Ride worker",
-      "parent": "c4-bikeshare",
+      "parent": "c4-mopedshare",
       "opensView": "log-ride",
       "props": {
         "technology": "Python",
-        "description": "Closes ended rides: books a van for a faulty bike and sends the receipt."
+        "description": "Closes ended rides: books a van for a faulty moped and sends the receipt."
       }
     },
     {
       "id": "c4-db",
       "type": "c4.Container",
       "label": "Database",
-      "parent": "c4-bikeshare",
+      "parent": "c4-mopedshare",
       "opensView": "trips-schema",
-      "props": { "technology": "PostgreSQL", "description": "Bikes, docks, rides and accounts." }
+      "props": { "technology": "PostgreSQL", "description": "Mopeds, docks, rides and accounts." }
     },
     {
       "id": "c4-queue",
       "type": "c4.Container",
       "label": "Ride queue",
-      "parent": "c4-bikeshare",
+      "parent": "c4-mopedshare",
       "props": { "technology": "PostgreSQL table", "description": "Ended rides waiting to be closed, oldest first." }
     },
     {
       "id": "c4-finder",
       "type": "c4.Component",
-      "label": "Bike finder",
+      "label": "Moped finder",
       "parent": "c4-api",
       "opensView": "packages",
-      "props": { "technology": "FastAPI router", "description": "Lists and searches free bikes and docks." }
+      "props": { "technology": "FastAPI router", "description": "Lists and searches free mopeds and docks." }
     },
     {
       "id": "c4-hire",
@@ -1644,32 +1649,32 @@
           "props": { "dataType": "integer", "primaryKey": true }
         },
         {
-          "id": "er-ride_leg.bike_id",
+          "id": "er-ride_leg.moped_id",
           "type": "er.Column",
-          "label": "bike_id",
-          "props": { "dataType": "bigint", "foreignKey": true, "references": "er-bike.id" }
+          "label": "moped_id",
+          "props": { "dataType": "bigint", "foreignKey": true, "references": "er-moped.id" }
         },
         { "id": "er-ride_leg.minutes", "type": "er.Column", "label": "minutes", "props": { "dataType": "integer" } }
       ]
     },
     {
-      "id": "er-bike",
+      "id": "er-moped",
       "type": "er.Entity",
-      "label": "bike",
+      "label": "moped",
       "members": [
         {
-          "id": "er-bike.id",
+          "id": "er-moped.id",
           "type": "er.Column",
           "label": "id",
           "props": { "dataType": "bigint", "primaryKey": true }
         },
         {
-          "id": "er-bike.serial",
+          "id": "er-moped.serial",
           "type": "er.Column",
           "label": "serial",
           "props": { "dataType": "char(13)", "unique": true }
         },
-        { "id": "er-bike.model", "type": "er.Column", "label": "model", "props": { "dataType": "varchar(255)" } }
+        { "id": "er-moped.model", "type": "er.Column", "label": "model", "props": { "dataType": "varchar(255)" } }
       ]
     },
     {
@@ -1687,18 +1692,18 @@
       ]
     },
     {
-      "id": "er-bike_station",
+      "id": "er-moped_station",
       "type": "er.Entity",
-      "label": "bike_station",
+      "label": "moped_station",
       "members": [
         {
-          "id": "er-bike_station.bike_id",
+          "id": "er-moped_station.moped_id",
           "type": "er.Column",
-          "label": "bike_id",
-          "props": { "dataType": "bigint", "primaryKey": true, "foreignKey": true, "references": "er-bike.id" }
+          "label": "moped_id",
+          "props": { "dataType": "bigint", "primaryKey": true, "foreignKey": true, "references": "er-moped.id" }
         },
         {
-          "id": "er-bike_station.station_id",
+          "id": "er-moped_station.station_id",
           "type": "er.Column",
           "label": "station_id",
           "props": { "dataType": "bigint", "primaryKey": true, "foreignKey": true, "references": "er-station.id" }
@@ -1737,9 +1742,9 @@
     },
     { "id": "dfd-take-payment", "type": "dfd.Process", "label": "Take payment", "props": { "number": "2" } },
     { "id": "dfd-ship-ride", "type": "dfd.Process", "label": "Book a van", "props": { "number": "3" } },
-    { "id": "dfd-bikes", "type": "dfd.DataStore", "label": "Bikes", "props": { "number": "D1" } },
+    { "id": "dfd-mopeds", "type": "dfd.DataStore", "label": "Mopeds", "props": { "number": "D1" } },
     { "id": "dfd-rides", "type": "dfd.DataStore", "label": "Rides", "props": { "number": "D2" } },
-    { "id": "dfd-check-unlock", "type": "dfd.Process", "label": "Check the bike", "props": { "number": "1.1" } },
+    { "id": "dfd-check-unlock", "type": "dfd.Process", "label": "Check the moped", "props": { "number": "1.1" } },
     { "id": "dfd-total-ride", "type": "dfd.Process", "label": "Price the ride", "props": { "number": "1.2" } },
     { "id": "dfd-record-ride", "type": "dfd.Process", "label": "Record the ride", "props": { "number": "1.3" } },
     { "id": "depot", "type": "uml.Component", "label": "Depot" },
@@ -1747,18 +1752,18 @@
     { "id": "ride-info", "type": "uml.InformationItem", "label": "Ride" },
     { "id": "card-details", "type": "uml.InformationItem", "label": "Card details" },
     { "id": "receipt-info", "type": "uml.InformationItem", "label": "Receipt" },
-    { "id": "stock-info", "type": "uml.InformationItem", "label": "Bike state" },
+    { "id": "stock-info", "type": "uml.InformationItem", "label": "Moped state" },
     { "id": "report-arrives", "type": "flow.Terminator", "label": "Fault report arrives" },
     { "id": "read-report", "type": "flow.InputOutput", "label": "Read the report" },
-    { "id": "key-in", "type": "flow.ManualInput", "label": "Key in the bike number" },
-    { "id": "inspect", "type": "flow.Process", "label": "Inspect the bike" },
+    { "id": "key-in", "type": "flow.ManualInput", "label": "Key in the moped number" },
+    { "id": "inspect", "type": "flow.Process", "label": "Inspect the moped" },
     { "id": "safe", "type": "flow.Decision", "label": "Safe to ride?" },
     { "id": "refund", "type": "flow.PredefinedProcess", "label": "Refund the rider's ride" },
     { "id": "wait", "type": "flow.Delay", "label": "Wait for the bank to confirm" },
-    { "id": "redock", "type": "flow.Process", "label": "Put the bike back in a dock" },
+    { "id": "redock", "type": "flow.Process", "label": "Put the moped back in a dock" },
     { "id": "fleet-records", "type": "flow.Database", "label": "Fleet records" },
     { "id": "workshop-ticket", "type": "flow.Document", "label": "Workshop ticket" },
-    { "id": "to-workshop", "type": "flow.Process", "label": "Send the bike to the workshop" },
+    { "id": "to-workshop", "type": "flow.Process", "label": "Send the moped to the workshop" },
     { "id": "join", "type": "flow.Connector", "label": "A" },
     { "id": "end", "type": "flow.Terminator", "label": "Report closed" },
     { "id": "bp-rider", "type": "bpmn.Participant", "label": "Rider" },
@@ -1784,9 +1789,9 @@
       "props": { "definition": "none" }
     },
     {
-      "id": "bp-bikeshare",
+      "id": "bp-mopedshare",
       "type": "bpmn.Participant",
-      "label": "Bike share",
+      "label": "Moped share",
       "members": [
         { "id": "bp-support", "type": "bpmn.Lane", "label": "Support" },
         { "id": "bp-workshop", "type": "bpmn.Lane", "label": "Workshop" }
@@ -1800,18 +1805,18 @@
       "props": { "definition": "message" }
     },
     {
-      "id": "bp-check-bike",
+      "id": "bp-check-moped",
       "type": "bpmn.Task",
-      "label": "Check the bike remotely",
+      "label": "Check the moped remotely",
       "parent": "bp-support",
       "props": { "taskType": "service" }
     },
     {
       "id": "check-timeout",
       "type": "bpmn.BoundaryEvent",
-      "label": "No answer from the bike in 2 minutes",
+      "label": "No answer from the moped in 2 minutes",
       "parent": "bp-support",
-      "props": { "attachedTo": "bp-check-bike", "cancelActivity": true, "definition": "timer" }
+      "props": { "attachedTo": "bp-check-moped", "cancelActivity": true, "definition": "timer" }
     },
     { "id": "fault-confirmed", "type": "bpmn.ExclusiveGateway", "label": "Fault confirmed?", "parent": "bp-support" },
     { "id": "no-fault", "type": "bpmn.ExclusiveGateway", "parent": "bp-support" },
@@ -1820,7 +1825,7 @@
       "type": "bpmn.Task",
       "label": "Close the report",
       "parent": "bp-support",
-      "props": { "taskType": "service", "documentation": "Nothing to repair: the bike reports no fault." }
+      "props": { "taskType": "service", "documentation": "Nothing to repair: the moped reports no fault." }
     },
     {
       "id": "report-closed",
@@ -1840,9 +1845,9 @@
     {
       "id": "collect",
       "type": "bpmn.SubProcess",
-      "label": "Collect the bike",
+      "label": "Collect the moped",
       "parent": "bp-workshop",
-      "opensView": "collect-bike"
+      "opensView": "collect-moped"
     },
     { "id": "bp-join", "type": "bpmn.ParallelGateway", "parent": "bp-workshop" },
     {
@@ -1855,31 +1860,31 @@
     {
       "id": "bp-to-workshop",
       "type": "bpmn.CallActivity",
-      "label": "Take the bike to the workshop",
+      "label": "Take the moped to the workshop",
       "parent": "bp-workshop",
-      "props": { "calledElement": "Move bike", "categoryValueRef": ["dispatch"] }
+      "props": { "calledElement": "Move moped", "categoryValueRef": ["dispatch"] }
     },
     {
       "id": "out-notice",
       "type": "bpmn.IntermediateThrowEvent",
-      "label": "Station told the bike is out",
+      "label": "Station told the moped is out",
       "parent": "bp-support",
       "props": { "definition": "message", "categoryValueRef": ["dispatch"] }
     },
     {
       "id": "in-workshop",
       "type": "bpmn.EndEvent",
-      "label": "Bike in the workshop",
+      "label": "Moped in the workshop",
       "parent": "bp-support",
       "props": { "definition": "none" }
     },
-    { "id": "bp-ebike", "type": "bpmn.Participant", "label": "E-bike" },
-    { "id": "bp-report", "type": "bpmn.DataObject", "label": "Fault report", "parent": "bp-bikeshare" },
-    { "id": "bp-fleet-store", "type": "bpmn.DataStoreReference", "label": "Fleet store", "parent": "bp-bikeshare" },
+    { "id": "bp-emoped", "type": "bpmn.Participant", "label": "E-moped" },
+    { "id": "bp-report", "type": "bpmn.DataObject", "label": "Fault report", "parent": "bp-mopedshare" },
+    { "id": "bp-fleet-store", "type": "bpmn.DataStoreReference", "label": "Fleet store", "parent": "bp-mopedshare" },
     {
       "id": "note-sim",
       "type": "bpmn.TextAnnotation",
-      "label": "The bike reports its own state; support never unlocks it remotely"
+      "label": "The moped reports its own state; support never unlocks it remotely"
     },
     { "id": "dispatch", "type": "bpmn.Group", "label": "Dispatch" },
     {
@@ -1892,27 +1897,27 @@
     {
       "id": "lock-out",
       "type": "bpmn.Task",
-      "label": "Lock the bike out of hire",
+      "label": "Lock the moped out of hire",
       "parent": "collect",
       "props": { "taskType": "user" }
     },
     {
       "id": "tag-and-load",
       "type": "bpmn.Task",
-      "label": "Tag and load the bike",
+      "label": "Tag and load the moped",
       "parent": "collect",
       "props": { "taskType": "none" }
     },
     {
-      "id": "bike-loaded",
+      "id": "moped-loaded",
       "type": "bpmn.EndEvent",
-      "label": "Bike loaded",
+      "label": "Moped loaded",
       "parent": "collect",
       "props": { "definition": "none" }
     },
     { "id": "mm-opening", "type": "mindmap.Topic", "label": "Opening a second city" },
     { "id": "mm-fleet", "type": "mindmap.Topic", "label": "Fleet", "parent": "mm-opening" },
-    { "id": "mm-first-titles", "type": "mindmap.Topic", "label": "Order the first 500 e-bikes", "parent": "mm-fleet" },
+    { "id": "mm-first-titles", "type": "mindmap.Topic", "label": "Order the first 500 e-mopeds", "parent": "mm-fleet" },
     {
       "id": "mm-wholesalers",
       "type": "mindmap.Topic",
@@ -1965,7 +1970,7 @@
     },
     { "id": "mm-on-aws", "type": "mindmap.Topic", "label": "On AWS", "parent": "mm-hosting", "opensView": "on-aws" },
     { "id": "gcp-users", "type": "gcp.User", "label": "Riders" },
-    { "id": "gcp-project", "type": "gcp.Zone", "label": "bikeshare-prod", "props": { "zoneType": "project" } },
+    { "id": "gcp-project", "type": "gcp.Zone", "label": "mopedshare-prod", "props": { "zoneType": "project" } },
     {
       "id": "gcp-dns",
       "type": "gcp.Product",
@@ -2025,7 +2030,7 @@
     {
       "id": "gcp-network",
       "type": "gcp.Zone",
-      "label": "bikeshare-vpc",
+      "label": "mopedshare-vpc",
       "parent": "gcp-region",
       "props": { "zoneType": "network" }
     },
@@ -2067,13 +2072,13 @@
     {
       "id": "az-subscription",
       "type": "azure.Group",
-      "label": "Bike share production",
+      "label": "Moped share production",
       "props": { "groupType": "subscription" }
     },
     {
       "id": "az-rg",
       "type": "azure.Group",
-      "label": "rg-bikeshare-prod",
+      "label": "rg-mopedshare-prod",
       "parent": "az-subscription",
       "props": { "groupType": "resource-group" }
     },
@@ -2122,7 +2127,7 @@
     {
       "id": "az-vnet",
       "type": "azure.Group",
-      "label": "vnet-bikeshare",
+      "label": "vnet-mopedshare",
       "parent": "az-region",
       "props": { "groupType": "virtual-network" }
     },
@@ -2215,7 +2220,7 @@
     {
       "id": "aws-vpc",
       "type": "aws.Group",
-      "label": "Bike share VPC",
+      "label": "Moped share VPC",
       "parent": "aws-region",
       "props": { "groupType": "vpc" }
     },
@@ -2327,11 +2332,11 @@
     {
       "id": "spec",
       "type": "sysml.Requirement",
-      "label": "E-bike specification",
+      "label": "E-moped specification",
       "opensView": "blocks",
       "props": {
         "reqId": "EB-1",
-        "text": "The e-bike shall serve as a shared city bike that riders hire from a dock and return to a dock."
+        "text": "The e-moped shall serve as a shared city moped that riders hire from a dock and return to a dock."
       }
     },
     {
@@ -2348,7 +2353,7 @@
       "parent": "assist",
       "props": {
         "reqId": "EB-1.1.1",
-        "text": "Assistance shall fall away progressively and stop when the bike reaches 25 km/h."
+        "text": "Assistance shall fall away progressively and stop when the moped reaches 25 km/h."
       }
     },
     {
@@ -2366,7 +2371,7 @@
       "parent": "spec",
       "props": {
         "reqId": "EB-1.3",
-        "text": "The e-bike shall lock into a dock when it is returned and shall charge while it is docked."
+        "text": "The e-moped shall lock into a dock when it is returned and shall charge while it is docked."
       }
     },
     {
@@ -2374,7 +2379,10 @@
       "type": "sysml.Requirement",
       "label": "Locking time",
       "parent": "docking",
-      "props": { "reqId": "EB-1.3.1", "text": "The dock shall lock the e-bike within 2 s of the bike being pushed in." }
+      "props": {
+        "reqId": "EB-1.3.1",
+        "text": "The dock shall lock the e-moped within 2 s of the moped being pushed in."
+      }
     },
     {
       "id": "capacity",
@@ -2397,14 +2405,14 @@
       "label": "Maximum assisted speed",
       "props": {
         "reqId": "REG-3",
-        "text": "Assistance shall fall away progressively and stop when the bike reaches 25 km/h."
+        "text": "Assistance shall fall away progressively and stop when the moped reaches 25 km/h."
       }
     },
     {
       "id": "availability",
       "type": "sysml.Requirement",
       "label": "All-day availability",
-      "props": { "reqId": "CITY-4", "text": "A bike shall last a full day of hires on one charge." }
+      "props": { "reqId": "CITY-4", "text": "A moped shall last a full day of hires on one charge." }
     },
     {
       "id": "battery",
@@ -2468,97 +2476,97 @@
     },
     { "id": "rental-vehicle", "type": "sysml.Block", "label": "RentalVehicle" },
     {
-      "id": "ebike",
+      "id": "emoped",
       "type": "sysml.Block",
-      "label": "EBike",
-      "opensView": "inside-ebike",
+      "label": "EMoped",
+      "opensView": "inside-emoped",
       "members": [
         {
-          "id": "ebike.battery",
+          "id": "emoped.battery",
           "type": "sysml.PartProperty",
           "label": "battery",
           "props": { "valueType": "Battery", "multiplicity": "1" }
         },
         {
-          "id": "ebike.controller",
+          "id": "emoped.controller",
           "type": "sysml.PartProperty",
           "label": "controller",
           "props": { "valueType": "Controller", "multiplicity": "1" }
         },
         {
-          "id": "ebike.motor",
+          "id": "emoped.motor",
           "type": "sysml.PartProperty",
           "label": "motor",
           "props": { "valueType": "Motor", "multiplicity": "1" }
         },
         {
-          "id": "ebike.frontLight",
+          "id": "emoped.frontLight",
           "type": "sysml.PartProperty",
           "label": "frontLight",
           "props": { "valueType": "Light", "multiplicity": "1" }
         },
         {
-          "id": "ebike.rearLight",
+          "id": "emoped.rearLight",
           "type": "sysml.PartProperty",
           "label": "rearLight",
           "props": { "valueType": "Light", "multiplicity": "1" }
         },
         {
-          "id": "ebike.dock",
+          "id": "emoped.dock",
           "type": "sysml.ReferenceProperty",
           "label": "dock",
           "props": { "valueType": "Dock", "multiplicity": "0..1" }
         },
         {
-          "id": "ebike.batteryCapacity",
+          "id": "emoped.batteryCapacity",
           "type": "sysml.ValueProperty",
           "label": "batteryCapacity",
           "props": { "valueType": "Energy" }
         },
         {
-          "id": "ebike.usableShare",
+          "id": "emoped.usableShare",
           "type": "sysml.ValueProperty",
           "label": "usableShare",
           "props": { "valueType": "Real" }
         },
         {
-          "id": "ebike.ecoConsumption",
+          "id": "emoped.ecoConsumption",
           "type": "sysml.ValueProperty",
           "label": "ecoConsumption",
           "props": { "valueType": "EnergyPerDistance" }
         },
         {
-          "id": "ebike.boostConsumption",
+          "id": "emoped.boostConsumption",
           "type": "sysml.ValueProperty",
           "label": "boostConsumption",
           "props": { "valueType": "EnergyPerDistance" }
         },
         {
-          "id": "ebike.ecoRange",
+          "id": "emoped.ecoRange",
           "type": "sysml.ValueProperty",
           "label": "ecoRange",
           "props": { "valueType": "Distance" }
         },
         {
-          "id": "ebike.boostRange",
+          "id": "emoped.boostRange",
           "type": "sysml.ValueProperty",
           "label": "boostRange",
           "props": { "valueType": "Distance" }
         },
         {
-          "id": "ebike.usable",
+          "id": "emoped.usable",
           "type": "sysml.ConstraintProperty",
           "label": "usable",
           "props": { "valueType": "UsableEnergy" }
         },
         {
-          "id": "ebike.eco",
+          "id": "emoped.eco",
           "type": "sysml.ConstraintProperty",
           "label": "eco",
           "props": { "valueType": "RangeEquation" }
         },
         {
-          "id": "ebike.boost",
+          "id": "emoped.boost",
           "type": "sysml.ConstraintProperty",
           "label": "boost",
           "props": { "valueType": "RangeEquation" }
@@ -2670,13 +2678,13 @@
     }
   ],
   "edges": [
-    { "id": "c1", "from": "riders", "to": "bikeshare", "label": "rides", "sublabel": "mobile app", "weight": 3 },
-    { "id": "c2", "from": "ops", "to": "bikeshare", "label": "manages the fleet", "sublabel": "web console" },
-    { "id": "c3", "from": "bikeshare", "to": "payments", "label": "charges rides", "sublabel": "REST", "weight": 2 },
-    { "id": "c4", "from": "bikeshare", "to": "maps", "label": "fetches tiles", "sublabel": "HTTPS" },
+    { "id": "c1", "from": "riders", "to": "mopedshare", "label": "rides", "sublabel": "mobile app", "weight": 3 },
+    { "id": "c2", "from": "ops", "to": "mopedshare", "label": "manages the fleet", "sublabel": "web console" },
+    { "id": "c3", "from": "mopedshare", "to": "payments", "label": "charges rides", "sublabel": "REST", "weight": 2 },
+    { "id": "c4", "from": "mopedshare", "to": "maps", "label": "fetches tiles", "sublabel": "HTTPS" },
     {
       "id": "c5",
-      "from": "bikeshare",
+      "from": "mopedshare",
       "to": "city",
       "label": "publishes trips",
       "kind": "feeds",
@@ -2686,7 +2694,7 @@
     { "id": "s2", "from": "ops", "to": "ops-console", "label": "plans the day" },
     { "id": "s3", "from": "rider-app", "to": "trips", "label": "starts, ends rides", "sublabel": "REST", "weight": 3 },
     { "id": "s4", "from": "rider-app", "to": "accounts", "label": "signs in", "sublabel": "OIDC" },
-    { "id": "s6", "from": "ops-console", "to": "fleet", "label": "moves bikes", "sublabel": "REST", "toSide": "top" },
+    { "id": "s6", "from": "ops-console", "to": "fleet", "label": "moves mopeds", "sublabel": "REST", "toSide": "top" },
     {
       "id": "s7",
       "from": "trips",
@@ -2707,7 +2715,7 @@
       "sublabel": "MQTT",
       "weight": 3
     },
-    { "id": "s11", "from": "telemetry", "to": "fleet", "label": "bike states", "kind": "feeds", "weight": 3 },
+    { "id": "s11", "from": "telemetry", "to": "fleet", "label": "moped states", "kind": "feeds", "weight": 3 },
     {
       "id": "s12",
       "from": "fleet",
@@ -2736,7 +2744,7 @@
       "weight": 3,
       "latency": 120
     },
-    { "id": "t2", "from": "trip-api", "to": "unlock", "label": "unlock a bike", "latency": 15 },
+    { "id": "t2", "from": "trip-api", "to": "unlock", "label": "unlock a moped", "latency": 15 },
     {
       "id": "t3",
       "from": "unlock",
@@ -2795,7 +2803,7 @@
       "latency": 450,
       "cost": 30
     },
-    { "id": "f1", "from": "telemetry", "to": "dock-listener", "label": "bike states", "kind": "feeds", "weight": 3 },
+    { "id": "f1", "from": "telemetry", "to": "dock-listener", "label": "moped states", "kind": "feeds", "weight": 3 },
     {
       "id": "f2",
       "from": "dock-listener",
@@ -2818,7 +2826,7 @@
       "toSide": "bottom"
     },
     { "id": "f7", "from": "planner", "to": "fleet-db", "label": "reads stock", "kind": "state" },
-    { "id": "f8", "from": "ops-console", "to": "fleet-api", "label": "moves bikes", "sublabel": "REST" },
+    { "id": "f8", "from": "ops-console", "to": "fleet-api", "label": "moves mopeds", "sublabel": "REST" },
     { "id": "f9", "from": "fleet-api", "to": "planner", "label": "today's plan" },
     { "id": "f10", "from": "planner", "to": "fleet-api", "label": "the vans' routes" },
     { "id": "e1", "from": "shoppers", "to": "edge", "label": "HTTPS" },
@@ -2880,12 +2888,15 @@
       }
     },
     {
-      "id": "leg-bike",
+      "id": "leg-moped",
       "type": "uml.Association",
       "from": "leg",
-      "to": "bike",
+      "to": "moped",
       "props": {
-        "ends": { "from": { "multiplicity": "0..*" }, "to": { "role": "bike", "multiplicity": "1", "navigable": true } }
+        "ends": {
+          "from": { "multiplicity": "0..*" },
+          "to": { "role": "moped", "multiplicity": "1", "navigable": true }
+        }
       }
     },
     {
@@ -2952,15 +2963,15 @@
       "id": "leg-1-is-for",
       "type": "uml.Link",
       "from": "leg-1",
-      "to": "bike-0412",
-      "props": { "ends": { "to": { "role": "bike" } } }
+      "to": "moped-0412",
+      "props": { "ends": { "to": { "role": "moped" } } }
     },
     {
       "id": "leg-2-is-for",
       "type": "uml.Link",
       "from": "leg-2",
-      "to": "bike-0977",
-      "props": { "ends": { "to": { "role": "bike" } } }
+      "to": "moped-0977",
+      "props": { "ends": { "to": { "role": "moped" } } }
     },
     {
       "id": "ride-paid-by-card",
@@ -3026,7 +3037,7 @@
       "type": "uml.Message",
       "from": "lifeline-api",
       "to": "lifeline-dock",
-      "label": "release(bike)",
+      "label": "release(moped)",
       "props": { "sort": "call" }
     },
     {
@@ -3078,7 +3089,7 @@
       "type": "uml.ControlFlow",
       "from": "payment-ok",
       "to": "buy-split",
-      "props": { "guard": "bike released" }
+      "props": { "guard": "moped released" }
     },
     {
       "id": "f-declined",
@@ -3122,7 +3133,7 @@
       "type": "uml.ControlFlow",
       "from": "all-charged",
       "to": "charge-ready",
-      "props": { "guard": "all bikes charged" }
+      "props": { "guard": "all mopeds charged" }
     },
     {
       "id": "f-short",
@@ -3141,8 +3152,8 @@
     { "id": "f-stock-write", "type": "uml.ObjectFlow", "from": "load-van", "to": "battery-levels" },
     { "id": "f-paid", "type": "uml.ControlFlow", "from": "call-swap", "to": "loaded-and-swapped" },
     { "id": "f-packed", "type": "uml.ControlFlow", "from": "load-van", "to": "loaded-and-swapped" },
-    { "id": "f-ship", "type": "uml.ControlFlow", "from": "loaded-and-swapped", "to": "drop-bikes" },
-    { "id": "f-done", "type": "uml.ControlFlow", "from": "drop-bikes", "to": "done" },
+    { "id": "f-ship", "type": "uml.ControlFlow", "from": "loaded-and-swapped", "to": "drop-mopeds" },
+    { "id": "f-done", "type": "uml.ControlFlow", "from": "drop-mopeds", "to": "done" },
     { "id": "f-pay-start", "type": "uml.ControlFlow", "from": "swap-start", "to": "take-out-battery" },
     { "id": "f-charged", "type": "uml.ControlFlow", "from": "take-out-battery", "to": "fit-battery" },
     { "id": "f-recorded", "type": "uml.ControlFlow", "from": "fit-battery", "to": "swap-done" },
@@ -3183,7 +3194,7 @@
       "type": "uml.Transition",
       "from": "picking",
       "to": "packed",
-      "props": { "trigger": "bike released" }
+      "props": { "trigger": "moped released" }
     },
     { "id": "t-payment-start", "type": "uml.Transition", "from": "payment-start", "to": "capturing" },
     {
@@ -3229,7 +3240,7 @@
       "type": "uml.Transition",
       "from": "out-for-delivery",
       "to": "delivered",
-      "props": { "trigger": "bike docked", "effect": "email the receipt" }
+      "props": { "trigger": "moped docked", "effect": "email the receipt" }
     },
     {
       "id": "t-problem",
@@ -3431,39 +3442,39 @@
       "label": "subscriber"
     },
     {
-      "id": "c4-rider-bikeshare",
+      "id": "c4-rider-mopedshare",
       "type": "c4.Relationship",
       "from": "c4-rider",
-      "to": "c4-bikeshare",
-      "label": "Hires bikes with"
+      "to": "c4-mopedshare",
+      "label": "Hires mopeds with"
     },
     {
-      "id": "c4-staff-bikeshare",
+      "id": "c4-staff-mopedshare",
       "type": "c4.Relationship",
       "from": "c4-staff",
-      "to": "c4-bikeshare",
+      "to": "c4-mopedshare",
       "label": "Keep the fleet and refund rides with"
     },
     {
-      "id": "c4-bikeshare-payments",
+      "id": "c4-mopedshare-payments",
       "type": "c4.Relationship",
-      "from": "c4-bikeshare",
+      "from": "c4-mopedshare",
       "to": "c4-payments",
       "label": "Takes card payments with",
       "props": { "technology": "HTTPS" }
     },
     {
-      "id": "c4-bikeshare-mail",
+      "id": "c4-mopedshare-mail",
       "type": "c4.Relationship",
-      "from": "c4-bikeshare",
+      "from": "c4-mopedshare",
       "to": "c4-mail",
       "label": "Sends ride receipts with",
       "props": { "technology": "HTTPS" }
     },
     {
-      "id": "c4-bikeshare-van",
+      "id": "c4-mopedshare-van",
       "type": "c4.Relationship",
-      "from": "c4-bikeshare",
+      "from": "c4-mopedshare",
       "to": "c4-van",
       "label": "Books van pickups with",
       "props": { "technology": "HTTPS" }
@@ -3481,7 +3492,7 @@
       "type": "c4.Relationship",
       "from": "c4-rider",
       "to": "c4-app",
-      "label": "Finds and unlocks a bike in",
+      "label": "Finds and unlocks a moped in",
       "props": { "technology": "HTTPS" }
     },
     {
@@ -3497,7 +3508,7 @@
       "type": "c4.Relationship",
       "from": "c4-app",
       "to": "c4-api",
-      "label": "Finds bikes and starts rides through",
+      "label": "Finds mopeds and starts rides through",
       "props": { "technology": "JSON over HTTPS" }
     },
     {
@@ -3513,7 +3524,7 @@
       "type": "c4.Relationship",
       "from": "c4-api",
       "to": "c4-db",
-      "label": "Reads and writes bikes, docks and rides in",
+      "label": "Reads and writes mopeds, docks and rides in",
       "props": { "technology": "SQL" }
     },
     {
@@ -3553,7 +3564,7 @@
       "type": "c4.Relationship",
       "from": "c4-app",
       "to": "c4-finder",
-      "label": "Finds bikes through",
+      "label": "Finds mopeds through",
       "props": { "technology": "JSON over HTTPS" }
     },
     {
@@ -3615,7 +3626,7 @@
       "type": "c4.Relationship",
       "from": "c4-finder",
       "to": "c4-db",
-      "label": "Reads bikes and docks from",
+      "label": "Reads mopeds and docks from",
       "props": { "technology": "SQL" }
     },
     {
@@ -3675,24 +3686,24 @@
       "props": { "identifying": true, "ends": { "from": { "multiplicity": "1" }, "to": { "multiplicity": "1..*" } } }
     },
     {
-      "id": "er-bike-legs",
+      "id": "er-moped-legs",
       "type": "er.Relationship",
-      "from": "er-bike",
+      "from": "er-moped",
       "to": "er-ride_leg",
       "props": { "identifying": false, "ends": { "from": { "multiplicity": "1" }, "to": { "multiplicity": "0..*" } } }
     },
     {
-      "id": "er-bike-stations",
+      "id": "er-moped-stations",
       "type": "er.Relationship",
-      "from": "er-bike",
-      "to": "er-bike_station",
+      "from": "er-moped",
+      "to": "er-moped_station",
       "props": { "identifying": true, "ends": { "from": { "multiplicity": "1" }, "to": { "multiplicity": "1..*" } } }
     },
     {
-      "id": "er-station-bikes",
+      "id": "er-station-mopeds",
       "type": "er.Relationship",
       "from": "er-station",
-      "to": "er-bike_station",
+      "to": "er-moped_station",
       "props": { "identifying": true, "ends": { "from": { "multiplicity": "1" }, "to": { "multiplicity": "0..*" } } }
     },
     {
@@ -3723,9 +3734,9 @@
     {
       "id": "dfd-price-and-stock",
       "type": "dfd.DataFlow",
-      "from": "dfd-bikes",
+      "from": "dfd-mopeds",
       "to": "dfd-take-ride",
-      "label": "rate and bike state"
+      "label": "rate and moped state"
     },
     { "id": "dfd-new-ride", "type": "dfd.DataFlow", "from": "dfd-take-ride", "to": "dfd-rides", "label": "new ride" },
     {
@@ -3767,8 +3778,8 @@
       "id": "dfd-stock-change",
       "type": "dfd.DataFlow",
       "from": "dfd-ship-ride",
-      "to": "dfd-bikes",
-      "label": "bike state change"
+      "to": "dfd-mopeds",
+      "label": "moped state change"
     },
     {
       "id": "dfd-shipping-label",
@@ -3794,16 +3805,16 @@
     {
       "id": "dfd-l2-price-and-stock",
       "type": "dfd.DataFlow",
-      "from": "dfd-bikes",
+      "from": "dfd-mopeds",
       "to": "dfd-check-unlock",
-      "label": "rate and bike state"
+      "label": "rate and moped state"
     },
     {
       "id": "dfd-l2-checked-legs",
       "type": "dfd.DataFlow",
       "from": "dfd-check-unlock",
       "to": "dfd-total-ride",
-      "label": "checked bike"
+      "label": "checked moped"
     },
     {
       "id": "dfd-l2-totalled-ride",
@@ -3897,8 +3908,8 @@
     { "id": "join-end", "type": "flow.Flow", "from": "join", "to": "end" },
     { "id": "f-unlock", "type": "bpmn.SequenceFlow", "from": "fault-spotted", "to": "report-the-fault" },
     { "id": "f-placed", "type": "bpmn.SequenceFlow", "from": "report-the-fault", "to": "fault-reported" },
-    { "id": "f-received", "type": "bpmn.SequenceFlow", "from": "report-received", "to": "bp-check-bike" },
-    { "id": "bp-f-charged", "type": "bpmn.SequenceFlow", "from": "bp-check-bike", "to": "fault-confirmed" },
+    { "id": "f-received", "type": "bpmn.SequenceFlow", "from": "report-received", "to": "bp-check-moped" },
+    { "id": "bp-f-charged", "type": "bpmn.SequenceFlow", "from": "bp-check-moped", "to": "fault-confirmed" },
     { "id": "bp-f-paid", "type": "bpmn.SequenceFlow", "from": "fault-confirmed", "to": "fork", "label": "yes" },
     { "id": "bp-f-declined", "type": "bpmn.SequenceFlow", "from": "fault-confirmed", "to": "no-fault", "label": "no" },
     { "id": "f-timeout", "type": "bpmn.SequenceFlow", "from": "check-timeout", "to": "no-fault" },
@@ -3914,7 +3925,7 @@
     { "id": "f-shipped", "type": "bpmn.SequenceFlow", "from": "out-notice", "to": "in-workshop" },
     { "id": "f-pick", "type": "bpmn.SequenceFlow", "from": "collection-starts", "to": "lock-out" },
     { "id": "f-pack", "type": "bpmn.SequenceFlow", "from": "lock-out", "to": "tag-and-load" },
-    { "id": "bp-f-done", "type": "bpmn.SequenceFlow", "from": "tag-and-load", "to": "bike-loaded" },
+    { "id": "bp-f-done", "type": "bpmn.SequenceFlow", "from": "tag-and-load", "to": "moped-loaded" },
     {
       "id": "m-report",
       "type": "bpmn.MessageFlow",
@@ -3925,23 +3936,29 @@
     {
       "id": "bp-m-status",
       "type": "bpmn.MessageFlow",
-      "from": "bp-check-bike",
-      "to": "bp-ebike",
+      "from": "bp-check-moped",
+      "to": "bp-emoped",
       "label": "Status request"
     },
-    { "id": "m-status", "type": "bpmn.MessageFlow", "from": "bp-ebike", "to": "bp-check-bike", "label": "Bike status" },
+    {
+      "id": "m-status",
+      "type": "bpmn.MessageFlow",
+      "from": "bp-emoped",
+      "to": "bp-check-moped",
+      "label": "Moped status"
+    },
     {
       "id": "m-out-notice",
       "type": "bpmn.MessageFlow",
       "from": "out-notice",
       "to": "bp-rider",
-      "label": "Bike out notice"
+      "label": "Moped out notice"
     },
     { "id": "d-ride-out", "type": "bpmn.DataAssociation", "from": "report-received", "to": "bp-report" },
     { "id": "d-ride-in", "type": "bpmn.DataAssociation", "from": "bp-report", "to": "collect" },
     { "id": "d-stock-read", "type": "bpmn.DataAssociation", "from": "bp-fleet-store", "to": "collect" },
     { "id": "d-stock-write", "type": "bpmn.DataAssociation", "from": "collect", "to": "bp-fleet-store" },
-    { "id": "a-note-sim", "type": "bpmn.Association", "from": "note-sim", "to": "bp-check-bike" },
+    { "id": "a-note-sim", "type": "bpmn.Association", "from": "note-sim", "to": "bp-check-moped" },
     { "id": "gcp-users-dns", "type": "gcp.Path", "from": "gcp-users", "to": "gcp-dns", "label": "looks up" },
     { "id": "gcp-users-lb", "type": "gcp.Path", "from": "gcp-users", "to": "gcp-lb", "label": "HTTPS" },
     { "id": "gcp-lb-cdn", "type": "gcp.Path", "from": "gcp-lb", "to": "gcp-cdn", "label": "app" },
@@ -4037,9 +4054,9 @@
     { "id": "rollers-verify-cut-off", "type": "sysml.Verify", "from": "roller-test", "to": "cut-off" },
     { "id": "why-500-link", "type": "uml.CommentLink", "from": "why-500", "to": "capacity" },
     {
-      "id": "ebike-battery",
+      "id": "emoped-battery",
       "type": "uml.Association",
-      "from": "ebike",
+      "from": "emoped",
       "to": "battery",
       "props": {
         "ends": {
@@ -4049,9 +4066,9 @@
       }
     },
     {
-      "id": "ebike-motor",
+      "id": "emoped-motor",
       "type": "uml.Association",
-      "from": "ebike",
+      "from": "emoped",
       "to": "motor",
       "props": {
         "ends": {
@@ -4061,9 +4078,9 @@
       }
     },
     {
-      "id": "ebike-controller",
+      "id": "emoped-controller",
       "type": "uml.Association",
-      "from": "ebike",
+      "from": "emoped",
       "to": "controller",
       "props": {
         "ends": {
@@ -4072,7 +4089,7 @@
         }
       }
     },
-    { "id": "ebike-is-rental-vehicle", "type": "uml.Generalization", "from": "ebike", "to": "rental-vehicle" },
+    { "id": "emoped-is-rental-vehicle", "type": "uml.Generalization", "from": "emoped", "to": "rental-vehicle" },
     {
       "id": "dock-uses-charge-interface",
       "type": "uml.Dependency",
@@ -4086,7 +4103,7 @@
       "from": "battery.charge",
       "to": "dock.charge",
       "props": {
-        "ends": { "from": { "part": "ebike.battery" }, "to": { "part": "ebike.dock" } },
+        "ends": { "from": { "part": "emoped.battery" }, "to": { "part": "emoped.dock" } },
         "itemFlow": { "item": "DCPower", "direction": "to-from" }
       }
     },
@@ -4096,7 +4113,7 @@
       "from": "battery.power",
       "to": "controller.supply",
       "props": {
-        "ends": { "from": { "part": "ebike.battery" }, "to": { "part": "ebike.controller" } },
+        "ends": { "from": { "part": "emoped.battery" }, "to": { "part": "emoped.controller" } },
         "itemFlow": { "item": "DCPower", "direction": "from-to" }
       }
     },
@@ -4106,7 +4123,7 @@
       "from": "controller.drive",
       "to": "motor.phases",
       "props": {
-        "ends": { "from": { "part": "ebike.controller" }, "to": { "part": "ebike.motor" } },
+        "ends": { "from": { "part": "emoped.controller" }, "to": { "part": "emoped.motor" } },
         "itemFlow": { "item": "PhaseCurrent", "direction": "from-to" }
       }
     },
@@ -4115,86 +4132,86 @@
       "type": "sysml.Connector",
       "from": "battery.bus",
       "to": "controller.bus",
-      "props": { "ends": { "from": { "part": "ebike.battery" }, "to": { "part": "ebike.controller" } } }
+      "props": { "ends": { "from": { "part": "emoped.battery" }, "to": { "part": "emoped.controller" } } }
     },
     {
       "id": "controller-front-light",
       "type": "sysml.Connector",
       "from": "controller.lights",
       "to": "light.power",
-      "props": { "ends": { "from": { "part": "ebike.controller" }, "to": { "part": "ebike.frontLight" } } }
+      "props": { "ends": { "from": { "part": "emoped.controller" }, "to": { "part": "emoped.frontLight" } } }
     },
     {
       "id": "controller-rear-light",
       "type": "sysml.Connector",
       "from": "controller.lights",
       "to": "light.power",
-      "props": { "ends": { "from": { "part": "ebike.controller" }, "to": { "part": "ebike.rearLight" } } }
+      "props": { "ends": { "from": { "part": "emoped.controller" }, "to": { "part": "emoped.rearLight" } } }
     },
     {
       "id": "bind-capacity",
       "type": "sysml.BindingConnector",
-      "from": "ebike.batteryCapacity",
+      "from": "emoped.batteryCapacity",
       "to": "usable-energy.capacity",
-      "props": { "ends": { "to": { "part": "ebike.usable" } } }
+      "props": { "ends": { "to": { "part": "emoped.usable" } } }
     },
     {
       "id": "bind-share",
       "type": "sysml.BindingConnector",
-      "from": "ebike.usableShare",
+      "from": "emoped.usableShare",
       "to": "usable-energy.share",
-      "props": { "ends": { "to": { "part": "ebike.usable" } } }
+      "props": { "ends": { "to": { "part": "emoped.usable" } } }
     },
     {
       "id": "bind-usable-eco",
       "type": "sysml.BindingConnector",
       "from": "usable-energy.usable",
       "to": "range-equation.energy",
-      "props": { "ends": { "from": { "part": "ebike.usable" }, "to": { "part": "ebike.eco" } } }
+      "props": { "ends": { "from": { "part": "emoped.usable" }, "to": { "part": "emoped.eco" } } }
     },
     {
       "id": "bind-usable-boost",
       "type": "sysml.BindingConnector",
       "from": "usable-energy.usable",
       "to": "range-equation.energy",
-      "props": { "ends": { "from": { "part": "ebike.usable" }, "to": { "part": "ebike.boost" } } }
+      "props": { "ends": { "from": { "part": "emoped.usable" }, "to": { "part": "emoped.boost" } } }
     },
     {
       "id": "bind-eco-consumption",
       "type": "sysml.BindingConnector",
-      "from": "ebike.ecoConsumption",
+      "from": "emoped.ecoConsumption",
       "to": "range-equation.consumption",
-      "props": { "ends": { "to": { "part": "ebike.eco" } } }
+      "props": { "ends": { "to": { "part": "emoped.eco" } } }
     },
     {
       "id": "bind-boost-consumption",
       "type": "sysml.BindingConnector",
-      "from": "ebike.boostConsumption",
+      "from": "emoped.boostConsumption",
       "to": "range-equation.consumption",
-      "props": { "ends": { "to": { "part": "ebike.boost" } } }
+      "props": { "ends": { "to": { "part": "emoped.boost" } } }
     },
     {
       "id": "bind-eco-range",
       "type": "sysml.BindingConnector",
-      "from": "ebike.ecoRange",
+      "from": "emoped.ecoRange",
       "to": "range-equation.range",
-      "props": { "ends": { "to": { "part": "ebike.eco" } } }
+      "props": { "ends": { "to": { "part": "emoped.eco" } } }
     },
     {
       "id": "bind-boost-range",
       "type": "sysml.BindingConnector",
-      "from": "ebike.boostRange",
+      "from": "emoped.boostRange",
       "to": "range-equation.range",
-      "props": { "ends": { "to": { "part": "ebike.boost" } } }
+      "props": { "ends": { "to": { "part": "emoped.boost" } } }
     }
   ],
   "views": [
     {
       "id": "context",
       "parent": null,
-      "title": "Bike share",
-      "caption": "Who uses it and what it talks to. Double-click Bike share to go in.",
-      "nodeIds": ["riders", "ops", "bikeshare", "payments", "maps", "city"]
+      "title": "Moped share",
+      "caption": "Who uses it and what it talks to. Double-click Moped share to go in.",
+      "nodeIds": ["riders", "ops", "mopedshare", "payments", "maps", "city"]
     },
     {
       "id": "system",
@@ -4385,7 +4402,7 @@
           "to": "dock-listener",
           "kind": "feeds",
           "weight": 3,
-          "what": "Bike states, as the docks report them."
+          "what": "Moped states, as the docks report them."
         },
         { "id": "dfk1", "from": "dock-checks", "to": "dock-quarantine", "label": "fails one", "kind": "feeds" },
         { "id": "dfk2", "from": "dock-quarantine", "to": "telemetry", "label": "again, hourly", "loop": true }
@@ -4441,7 +4458,7 @@
           "from": "forecast",
           "to": "planner",
           "kind": "feeds",
-          "what": "Hands over the bikes needed per dock."
+          "what": "Hands over the mopeds needed per dock."
         },
         { "id": "dm5", "from": "planner", "to": "ops-console", "label": "flags short docks", "kind": "triggers" }
       ],
@@ -4523,9 +4540,9 @@
       "parent": null,
       "title": "Ride domain",
       "direction": "down",
-      "present": { "bike": { "collapsed": ["operations"] } },
+      "present": { "moped": { "collapsed": ["operations"] } },
       "nodeIds": [
-        "rides-package", "rider", "ride", "leg", "bike", "payable", "payment", "card-payment", "ride-status", "money",
+        "rides-package", "rider", "ride", "leg", "moped", "payable", "payment", "card-payment", "ride-status", "money",
         "note-total"
       ],
       "layout": { "ride": [1, 0] }
@@ -4544,7 +4561,7 @@
       "id": "privacy",
       "diagram": "uml.profile",
       "parent": null,
-      "title": "Bike share privacy profile",
+      "title": "Moped share privacy profile",
       "direction": "down",
       "nodeIds": [
         "conventions", "mc-class", "mc-property", "entity", "aggregate-root", "personal-data", "column",
@@ -4557,16 +4574,16 @@
       "parent": null,
       "title": "Ride 1042, just started",
       "direction": "down",
-      "nodeIds": ["ada", "ride-1042", "leg-1", "leg-2", "bike-0412", "bike-0977", "card-1"]
+      "nodeIds": ["ada", "ride-1042", "leg-1", "leg-2", "moped-0412", "moped-0977", "card-1"]
     },
     {
       "id": "packages",
       "diagram": "uml.package",
       "parent": null,
-      "title": "Bike share packages",
+      "title": "Moped share packages",
       "direction": "down",
       "nodeIds": [
-        "shared", "money", "fleet-package", "bike", "rides-package", "rider", "ride", "leg", "ride-status",
+        "shared", "money", "fleet-package", "moped", "rides-package", "rider", "ride", "leg", "ride-status",
         "payments-package", "payable", "payment", "card", "card-payment", "business", "business-ride", "conventions"
       ],
       "edges": [
@@ -4578,7 +4595,7 @@
       "id": "unlock-sequence",
       "diagram": "uml.sequence",
       "parent": null,
-      "title": "Unlocking a bike",
+      "title": "Unlocking a moped",
       "nodeIds": ["lifeline-rider", "lifeline-app", "lifeline-api", "lifeline-dock", "receipt"],
       "edges": [
         {
@@ -4610,7 +4627,7 @@
           "type": "uml.Message",
           "from": "lifeline-api",
           "to": "lifeline-dock",
-          "label": "release(bike)",
+          "label": "release(moped)",
           "props": { "sort": "call" }
         },
         {
@@ -4679,7 +4696,7 @@
           "type": "uml.CombinedFragment",
           "props": { "operator": "alt" },
           "members": [
-            { "id": "f1-paid", "type": "uml.InteractionOperand", "label": "bike released" },
+            { "id": "f1-paid", "type": "uml.InteractionOperand", "label": "moped released" },
             { "id": "f1-declined", "type": "uml.InteractionOperand", "label": "else" }
           ]
         },
@@ -4696,7 +4713,7 @@
       "id": "unlock-communication",
       "diagram": "uml.communication",
       "parent": null,
-      "title": "Unlocking: bike released",
+      "title": "Unlocking: moped released",
       "nodeIds": ["lifeline-rider", "lifeline-app", "lifeline-api", "lifeline-dock", "receipt"],
       "edges": [
         "rider-to-app", "app-api", "api-self", "api-dock", "api-ride", "cm1", "cm2", "cm3", "cm4", "cm5", "cm6", "cm7",
@@ -4707,7 +4724,7 @@
       "id": "hire-overview",
       "diagram": "uml.interaction-overview",
       "parent": null,
-      "title": "Hiring a bike",
+      "title": "Hiring a moped",
       "direction": "down",
       "nodeIds": [
         "buy-start", "ref-find", "try-payment", "ref-hire", "payment-ok", "buy-split", "ref-receipt", "sd-queue",
@@ -4715,10 +4732,10 @@
       ]
     },
     {
-      "id": "locate-bike",
+      "id": "locate-moped",
       "diagram": "uml.sequence",
       "parent": "hire-overview",
-      "title": "Find a bike",
+      "title": "Find a moped",
       "nodeIds": ["lifeline-rider", "lifeline-app", "lifeline-api"],
       "edges": [
         {
@@ -4734,7 +4751,7 @@
           "type": "uml.Message",
           "from": "lifeline-app",
           "to": "lifeline-api",
-          "label": "findBikes(area)",
+          "label": "findMopeds(area)",
           "props": { "sort": "call" }
         },
         {
@@ -4742,7 +4759,7 @@
           "type": "uml.Message",
           "from": "lifeline-api",
           "to": "lifeline-app",
-          "label": "bikes",
+          "label": "mopeds",
           "props": { "sort": "reply", "replyTo": "find-2" }
         },
         {
@@ -4750,7 +4767,7 @@
           "type": "uml.Message",
           "from": "lifeline-app",
           "to": "lifeline-rider",
-          "label": "map of bikes",
+          "label": "map of mopeds",
           "props": { "sort": "reply", "replyTo": "find-1" }
         }
       ]
@@ -4775,7 +4792,7 @@
           "type": "uml.Message",
           "from": "lifeline-api",
           "to": "lifeline-dock",
-          "label": "release(bike)",
+          "label": "release(moped)",
           "props": { "sort": "call" }
         },
         {
@@ -4866,7 +4883,7 @@
           "type": "uml.Message",
           "from": "lifeline-worker",
           "to": "lifeline-dock",
-          "label": "release(bike)",
+          "label": "release(moped)",
           "props": { "sort": "call", "sentAt": 100, "receivedAt": 140 }
         },
         {
@@ -4886,7 +4903,7 @@
           { "id": "w-recording", "lifeline": "lifeline-worker", "at": 760, "state": "Recording the release" },
           { "id": "w-done", "lifeline": "lifeline-worker", "at": 900, "state": "Idle" },
           { "id": "p-idle", "lifeline": "lifeline-dock", "at": 0, "state": "Idle" },
-          { "id": "p-authorising", "lifeline": "lifeline-dock", "at": 140, "state": "Checking the bike" },
+          { "id": "p-authorising", "lifeline": "lifeline-dock", "at": 140, "state": "Checking the moped" },
           { "id": "p-capturing", "lifeline": "lifeline-dock", "at": 480, "state": "Unlatching" },
           { "id": "p-done", "lifeline": "lifeline-dock", "at": 720, "state": "Idle" }
         ],
@@ -4921,7 +4938,7 @@
       "nodeIds": [
         "lane-planner", "lane-warehouse", "lane-crew", "start", "take-move", "move-object", "check-charge",
         "battery-levels", "all-charged", "ask-batteries", "batteries-arrive", "charge-ready", "split", "call-swap",
-        "load-van", "tell-crew", "told", "loaded-and-swapped", "drop-bikes", "done"
+        "load-van", "tell-crew", "told", "loaded-and-swapped", "drop-mopeds", "done"
       ]
     },
     {
@@ -4944,12 +4961,12 @@
       ]
     },
     {
-      "id": "bike-life",
+      "id": "moped-life",
       "diagram": "uml.state-machine",
       "parent": null,
-      "title": "A bike's life",
+      "title": "A moped's life",
       "nodeIds": [
-        "bl-ebike", "bl-new", "bl-in-service", "bl-service-start", "bl-docked", "bl-charging", "bl-in-use",
+        "bl-emoped", "bl-new", "bl-in-service", "bl-service-start", "bl-docked", "bl-charging", "bl-in-use",
         "bl-service-history", "bl-in-repair", "bl-fixable", "bl-retired", "bl-scrapped"
       ]
     },
@@ -4957,7 +4974,7 @@
       "id": "components",
       "diagram": "uml.component",
       "parent": null,
-      "title": "Bike share components",
+      "title": "Moped share components",
       "present": { "i-rides": { "as": "ball" } },
       "nodeIds": [
         "app-component", "trips-api", "hire-component", "accounts-component", "payment-provider-component",
@@ -4990,18 +5007,18 @@
       "id": "c4-context",
       "diagram": "c4.context",
       "parent": null,
-      "title": "Bike share: system context",
-      "subject": "c4-bikeshare",
-      "nodeIds": ["c4-rider", "c4-staff", "c4-bikeshare", "c4-payments", "c4-mail", "c4-van"]
+      "title": "Moped share: system context",
+      "subject": "c4-mopedshare",
+      "nodeIds": ["c4-rider", "c4-staff", "c4-mopedshare", "c4-payments", "c4-mail", "c4-van"]
     },
     {
       "id": "c4-containers",
       "diagram": "c4.container",
       "parent": "c4-context",
-      "title": "Bike share: containers",
-      "subject": "c4-bikeshare",
+      "title": "Moped share: containers",
+      "subject": "c4-mopedshare",
       "nodeIds": [
-        "c4-bikeshare", "c4-rider", "c4-staff", "c4-app", "c4-api", "c4-worker", "c4-db", "c4-queue", "c4-payments",
+        "c4-mopedshare", "c4-rider", "c4-staff", "c4-app", "c4-api", "c4-worker", "c4-db", "c4-queue", "c4-payments",
         "c4-mail", "c4-van"
       ]
     },
@@ -5021,7 +5038,7 @@
       "diagram": "c4.dynamic",
       "parent": "c4-containers",
       "title": "Ending a ride",
-      "subject": "c4-bikeshare",
+      "subject": "c4-mopedshare",
       "nodeIds": ["c4-rider", "c4-app", "c4-api", "c4-payments", "c4-db", "c4-queue", "c4-worker", "c4-van", "c4-mail"],
       "edges": [
         "c4-rider-app", "c4-app-api", "c4-api-payments", "c4-api-db", "c4-api-queue", "c4-worker-queue",
@@ -5032,7 +5049,7 @@
       "id": "c4-deployment",
       "diagram": "c4.deployment",
       "parent": "c4-context",
-      "title": "Bike share: production deployment",
+      "title": "Moped share: production deployment",
       "nodeIds": [
         "c4-device", "c4-browser", "c4-app-1", "c4-web-host", "c4-docker", "c4-api-1", "c4-worker-1", "c4-db-host",
         "c4-postgres", "c4-db-1", "c4-queue-1"
@@ -5044,16 +5061,16 @@
       "parent": null,
       "title": "Trips schema",
       "notation": "crowsfoot",
-      "nodeIds": ["er-rider", "er-ride", "er-ride_leg", "er-bike", "er-station", "er-bike_station", "er-payment"]
+      "nodeIds": ["er-rider", "er-ride", "er-ride_leg", "er-moped", "er-station", "er-moped_station", "er-payment"]
     },
     {
       "id": "dfd-0",
       "diagram": "dfd",
       "parent": null,
-      "title": "Bike share, level 0",
+      "title": "Moped share, level 0",
       "notation": "yourdon",
       "nodeIds": [
-        "dfd-rider", "dfd-provider", "dfd-van", "dfd-take-ride", "dfd-take-payment", "dfd-ship-ride", "dfd-bikes",
+        "dfd-rider", "dfd-provider", "dfd-van", "dfd-take-ride", "dfd-take-payment", "dfd-ship-ride", "dfd-mopeds",
         "dfd-rides"
       ]
     },
@@ -5063,7 +5080,7 @@
       "parent": "dfd-0",
       "title": "1 Start ride",
       "notation": "yourdon",
-      "nodeIds": ["dfd-rider", "dfd-bikes", "dfd-rides", "dfd-check-unlock", "dfd-total-ride", "dfd-record-ride"]
+      "nodeIds": ["dfd-rider", "dfd-mopeds", "dfd-rides", "dfd-check-unlock", "dfd-total-ride", "dfd-record-ride"]
     },
     {
       "id": "rider-data",
@@ -5090,21 +5107,21 @@
       "id": "repair-process",
       "diagram": "bpmn",
       "parent": null,
-      "title": "Repairing a reported bike",
+      "title": "Repairing a reported moped",
       "nodeIds": [
-        "bp-rider", "fault-spotted", "report-the-fault", "fault-reported", "bp-bikeshare", "report-received",
-        "bp-check-bike", "check-timeout", "fault-confirmed", "no-fault", "close-report", "report-closed", "fork",
-        "send-credit", "collect", "bp-join", "van-pickup", "bp-to-workshop", "out-notice", "in-workshop", "bp-ebike",
+        "bp-rider", "fault-spotted", "report-the-fault", "fault-reported", "bp-mopedshare", "report-received",
+        "bp-check-moped", "check-timeout", "fault-confirmed", "no-fault", "close-report", "report-closed", "fork",
+        "send-credit", "collect", "bp-join", "van-pickup", "bp-to-workshop", "out-notice", "in-workshop", "bp-emoped",
         "bp-report", "bp-fleet-store", "note-sim", "dispatch"
       ]
     },
     {
-      "id": "collect-bike",
+      "id": "collect-moped",
       "diagram": "bpmn",
       "parent": "repair-process",
-      "title": "Collect the bike",
+      "title": "Collect the moped",
       "subject": "collect",
-      "nodeIds": ["collection-starts", "lock-out", "tag-and-load", "bike-loaded"]
+      "nodeIds": ["collection-starts", "lock-out", "tag-and-load", "moped-loaded"]
     },
     {
       "id": "new-city",
@@ -5131,7 +5148,7 @@
       "id": "on-gcp",
       "diagram": "gcp",
       "parent": null,
-      "title": "Bike share on Google Cloud",
+      "title": "Moped share on Google Cloud",
       "caption": "Icons from a pack you fetch: umlimator.py pack fetch gcp, after Google's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.",
       "nodeIds": [
         "gcp-users", "gcp-project", "gcp-dns", "gcp-lb", "gcp-cdn", "gcp-assets", "gcp-queue", "gcp-region", "gcp-api",
@@ -5142,7 +5159,7 @@
       "id": "on-azure",
       "diagram": "azure",
       "parent": null,
-      "title": "Bike share on Azure",
+      "title": "Moped share on Azure",
       "caption": "Icons from a pack you fetch: umlimator.py pack fetch azure, after Microsoft's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.",
       "nodeIds": [
         "az-subscription", "az-rg", "az-front-door", "az-monitor", "az-region", "az-assets", "az-queue", "az-vault",
@@ -5153,7 +5170,7 @@
       "id": "on-aws",
       "diagram": "aws",
       "parent": null,
-      "title": "Bike share on AWS",
+      "title": "Moped share on AWS",
       "nodeIds": [
         "aws-users", "aws-cloud", "aws-dns", "aws-cdn", "aws-region", "aws-assets", "aws-queue", "aws-email",
         "aws-monitoring", "aws-vpc", "aws-alb", "aws-az-a", "aws-public-a", "aws-nat-a", "aws-private-a", "aws-api-a",
@@ -5165,7 +5182,7 @@
       "id": "requirements",
       "diagram": "sysml.requirement",
       "parent": null,
-      "title": "E-bike requirements",
+      "title": "E-moped requirements",
       "direction": "down",
       "nodeIds": [
         "spec", "assist", "cut-off", "range", "docking", "lock-time", "capacity", "assist-curve", "legal-speed",
@@ -5176,31 +5193,31 @@
       "id": "blocks",
       "diagram": "sysml.block-definition",
       "parent": null,
-      "title": "E-bike blocks",
+      "title": "E-moped blocks",
       "direction": "down",
       "nodeIds": [
-        "rental-vehicle", "ebike", "battery", "motor", "controller", "light", "dock", "charge-interface",
+        "rental-vehicle", "emoped", "battery", "motor", "controller", "light", "dock", "charge-interface",
         "usable-energy", "range-equation", "voltage", "energy"
       ],
       "edges": [
-        "ebike-battery", "ebike-motor", "ebike-controller", "ebike-is-rental-vehicle", "dock-uses-charge-interface"
+        "emoped-battery", "emoped-motor", "emoped-controller", "emoped-is-rental-vehicle", "dock-uses-charge-interface"
       ]
     },
     {
-      "id": "inside-ebike",
+      "id": "inside-emoped",
       "diagram": "sysml.internal-block",
       "parent": null,
-      "title": "Inside the e-bike",
-      "subject": "ebike",
-      "nodeIds": ["ebike"]
+      "title": "Inside the e-moped",
+      "subject": "emoped",
+      "nodeIds": ["emoped"]
     },
     {
       "id": "range-analysis",
       "diagram": "sysml.parametric",
       "parent": null,
-      "title": "E-bike range",
-      "subject": "ebike",
-      "nodeIds": ["ebike"]
+      "title": "E-moped range",
+      "subject": "emoped",
+      "nodeIds": ["emoped"]
     }
   ],
   "rules": [
@@ -5228,8 +5245,8 @@
       "steps": [
         {
           "view": "context",
-          "caption": "Riders hire bikes from Bike share, which charges each ride through a payment provider.",
-          "highlight": ["riders", "bikeshare", "payments"]
+          "caption": "Riders hire mopeds from Moped share, which charges each ride through a payment provider.",
+          "highlight": ["riders", "mopedshare", "payments"]
         },
         {
           "view": "system",
@@ -5240,7 +5257,7 @@
         },
         {
           "view": "trips",
-          "caption": "To unlock a bike, the trip API asks the unlock coordinator, which opens the dock.",
+          "caption": "To unlock a moped, the trip API asks the unlock coordinator, which opens the dock.",
           "highlight": ["rider-app", "trip-api", "unlock", "stations"],
           "tour": ["rider-app", "trip-api", "unlock", "stations"]
         },

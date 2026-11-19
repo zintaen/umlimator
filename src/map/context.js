@@ -269,7 +269,7 @@ function mapContext(model, opts = {}) {
     return out;
   }
   /* a card with no pin in a pinned view with boxes (audit 41): its auto-layout slot is from another layout, and its box, drawn
-     round its cards, grew over cards it does not hold (bike-share's pricing with no pin; a card edit.html adds to a box). The slot
+     round its cards, grew over cards it does not hold (the integration fixture's pricing with no pin; a card a host adds to a box). The slot
      is kept when no box then lies over a card or box it does not hold and its lines run ahead (audit 43; a view with no boxes too); else the card goes in the first such slot by its box's
      pinned cards: under them (nearest its auto-layout column first), in a gap among them, beside them, above them, further out a row at a time. Slots are grid cells: a
      box's cells run from its cards' first column and row to their last; a card more than half a row (column) into them is in it,
