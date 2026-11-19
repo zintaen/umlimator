@@ -51,7 +51,8 @@ TOOLS = [
     tool("highlight", "Lights cards and lines on the map's page and dims the rest. view: the view to show first." + PAGE,
          {"refs": {"type": "array", "items": {"anyOf": [{"type": "string"}, {"type": "object"}]},
                    "description": "card or line ids, or the Refs paths and reach give"}, "view": VIEW}, "refs"),
-    tool("tour", "A dot rides the lines through these cards in turn, on the map's page. view: the view to show first." + PAGE,
+    tool("tour", "A dot rides the lines through these cards in turn, on the map's page: each card must share a line with the next "
+         "on the view. view: the view to show first; with none, the first view that shows the cards and draws those lines." + PAGE,
          {"cards": {"type": "array", "items": {"type": "string"}, "description": "card ids, in order"}, "view": VIEW}, "cards"),
     tool("play_story", "Plays one of the model's stories on the map's page, step by step, with its captions." + PAGE,
          {"id": {"type": "string", "description": "a story's id (list_views gives them)"}}, "id"),
@@ -270,8 +271,9 @@ def call(name, a):
         onview = set(views(m)[asked].get("nodeIds") or []) if asked else {n["id"] for n in every(m, "nodes")}
         if bad := [c for c in cards if c not in onview]:
             raise Fail(f"no card {', '.join(map(repr, bad))}" + (f" on view {asked!r}" if asked else " in the model"))
-        at = asked or view_for(m, [{"type": "node", "id": c} for c in cards], want["view"])
-        rides(m, cards, at)  # a tour with no line to ride drew nothing, yet said "Shown" (audit 47); no view shows them all: said as that (audit 48)
+        # a tour with no line to ride drew nothing, yet said "Shown" (audit 47); no view shows them all: said as that (audit 48);
+        # with no view asked, the first view that shows them all and rides them, not the first that shows them (audit 51)
+        at = rides(m, cards, [asked] if asked else view_for(m, [{"type": "node", "id": c} for c in cards], want["view"], every_view=True))
         def fold(w, n):
             w.update(view=at or w["view"], tour={"n": n, "cards": cards}, story=None)
     elif name == "play_story":
@@ -286,18 +288,48 @@ def call(name, a):
     return command(fold)
 
 
+# for each view asked, the first two cards in turn that no line the view draws joins, either way, or null: reach() at
+# depth 1 from each card, once per view, all in one Node run (audit 51)
+RIDES = ("const [m, vs, cards] = a, out = {}; for (const v of vs) { const near = new Map(), of = c => { if (!near.has(c)) "
+         "near.set(c, new Set(u.reach(m, v, c, { depth: 1 }).filter(r => r.type === 'node').map(r => r.id))); return near.get(c); }; "
+         "out[v] = null; for (let k = 0; k + 1 < cards.length; k++) { const x = cards[k], y = cards[k + 1]; "
+         "if (!of(x).has(y) && !of(y).has(x)) { out[v] = [x, y]; break; } } } return out;")
+
+
 def rides(m, cards, at):
     """A tour's dot rides a line the view draws between each card and the next, either way, as the page's tour() does
-    (reach() walks the view's lines as drawn, a port's between the cards it is on). Fewer than two cards, or two in turn
-    that no line joins, is a tour the page would not ride, or would skip, so the tool says why and draws nothing."""
+    (reach() walks the view's lines as drawn, a port's between the cards it is on). at: the views that may show the tour,
+    in the order to try them; the first that rides it is returned. Fewer than two cards, or two in turn that no line
+    joins on any of them, is a tour the page would not ride, or would skip, so the tool says why and draws nothing."""
     if len(cards) < 2:
         raise Fail(f"a tour rides the lines between cards in turn, so it needs two cards or more (it was given {len(cards)})")
-    if at is None:
+    at = [at] if isinstance(at, str) else list(at or [])
+    if not at:
         raise Fail("no view shows all these cards; describe_view lists a view's cards")
-    near = {c: {r.get("id") for r in node("reach", m, at, c, {"depth": 1}) if r.get("type") == "node"} for c in dict.fromkeys(cards)}
-    if gap := next(((a, b) for a, b in zip(cards, cards[1:]) if b not in near[a] and a not in near[b]), None):
-        raise Fail(f"no line joins {gap[0]!r} and {gap[1]!r} on view {at!r}, so a tour cannot ride from one to the other; "
+    gaps = script(RIDES, m, at, cards)
+    if ok := next((v for v in at if not gaps.get(v)), None):
+        return ok
+    if len(at) == 1:
+        raise Fail(f"no line joins {gaps[at[0]][0]!r} and {gaps[at[0]][1]!r} on view {at[0]!r}, so a tour cannot ride from one to the other; "
                    "paths() gives a route of lines between two cards")
+    raise Fail("no view that shows these cards draws a line between each and the next, so a tour cannot ride them: "
+               + "; ".join(f"on view {v!r} no line joins {gaps[v][0]!r} and {gaps[v][1]!r}" for v in at)
+               + "; paths() gives a route of lines between two cards")
+
+
+def script(body, *args):
+    """body, JavaScript run in Node with the module as u and the arguments as a, its return value the answer: a few of the
+    module's functions in one Node run. An error is the tool's, as node()'s."""
+    nodejs = cli.shutil.which("node")
+    if not nodejs:
+        raise Fail("this tool needs Node.js 18 or later: it runs the module's own functions")
+    code = (f"import * as u from {json.dumps(cli.LIB.as_uri())}; let s = ''; for await (const c of process.stdin) s += c;"
+            f"const a = JSON.parse(s); process.stdout.write(JSON.stringify((() => {{ {body} }})()));")
+    r = cli.run([nodejs, "--input-type=module", "-e", code], input=json.dumps(args))
+    if r.returncode:
+        said = r.stderr.strip()[-2000:]
+        raise Fail((re.findall(r"^\w*Error: .*$", said, re.M) or [said])[-1])
+    return json.loads(r.stdout)
 
 
 def end(e, k):
@@ -308,13 +340,13 @@ def end(e, k):
     return part.get("part") if isinstance(part, dict) and isinstance(part.get("part"), str) else e.get(k)
 
 
-def view_for(m, lit, current):
+def view_for(m, lit, current, every_view=False):
     """The view a highlight or tour is about when the call names none: the Refs' own (paths and reach give it), else the
     view asked for last when it shows all their cards, else the first view that does. A page that opens later shows it
-    there, never on a view where it would dim every card."""
+    there, never on a view where it would dim every card. every_view: each view that would do, in that order (a list)."""
     named = [r["view"] for r in lit if isinstance(r, dict) and isinstance(r.get("view"), str)]
     if named:
-        return named[0]
+        return named[:1] if every_view else named[0]
     lines = known(m)[2]  # a line without an id too, by its "<from>-><to>#<n>" (audit 11)
     need = {r.get("id") for r in lit if r.get("type") == "node"} | {r["node"] for r in lit if r.get("type") in ("chip", "badge") and r.get("node")} | {
         x for r in lit if r.get("type") == "edge" for i in r.get("ids") or [] for x in map(lambda k: end(lines.get(i, {}), k), ("from", "to")) if x}
@@ -330,8 +362,9 @@ def view_for(m, lit, current):
     allboxes = {c.get("id") for v in vs.values() for c in v.get("containers") or [] if isinstance(c, dict)}
     boxes |= {x for x in need if x in allboxes and x not in cards}  # a line that ends on a box needs the box (audit 12)
     need -= boxes
-    return next((v for v in [current, *vs] if v in vs and need <= set(vs[v].get("nodeIds") or [])
-                 and boxes <= {c.get("id") for c in vs[v].get("containers") or [] if isinstance(c, dict)}), None)
+    fit = [v for v in dict.fromkeys([current, *vs]) if v in vs and need <= set(vs[v].get("nodeIds") or [])
+           and boxes <= {c.get("id") for c in vs[v].get("containers") or [] if isinstance(c, dict)}]
+    return fit if every_view else next(iter(fit), None)
 
 
 def command(fold):
