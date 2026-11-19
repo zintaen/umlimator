@@ -3,6 +3,7 @@ import { CLASS_DEF, RULES, classProblems, closesCycle, drawnLines, lineLabel, li
 import { OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder } from '../uml/owners.js';
 import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_PARTS, SYS_ROLES, SYS_CLASH, SYS_FIELD, SYS_TABLE, SYS_TEXT_PROBLEMS } from './sysml.js';
 import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
+import { apply } from '../core/apply.js';
 
 /* ---------- the block definition diagram, sysml.block-definition (work package M3.3, notes/milestone-3.md §7) ----------
    Blocks, interface blocks, constraint blocks and value types drawn by the classifier with «block», «interfaceBlock»,
@@ -199,13 +200,28 @@ function bdEdit(model, owner, m, text) {
 }
 const bdFresh = (model, base) => { const used = new Set(); usedIds(model, used);
   if (!used.has(base)) return base; let k = 2; while (used.has(base + k)) k++; return base + k; };
+// a member's type a gesture may not break (audit 44): a row, the palette's add, an edit that would bring a constraint-type or a
+// port-kind error the model had not is refused, said with the form the row takes; a type that names nothing stays a warning, so
+// a constraint block not made yet may be named. r: a hook's commands, or { commands }; anything else passed on as it is
+const BD_GUARD = { __proto__: null, 'constraint-type': 'a constraint property is name : ConstraintBlock', 'port-kind': 'a proxy port is typed by an interface block, a full port by none' };
+function bdTypeGuard(model, r) {
+  const cs = Array.isArray(r) ? r : BD_OBJ(r) && Array.isArray(r.commands) ? r.commands : null; if (!cs || !cs.length) return r;
+  let now; try { now = apply(model, cs); } catch { return r; } // apply()'s own refusal is the canvas's to say
+  const key = p => p.rule + ' ' + p.ids.join(' '), errs = m => bdProblems(m).filter(p => p.level === 'error' && Object.hasOwn(BD_GUARD, p.rule));
+  const was = new Set(errs(model).map(key)), bad = errs(now).find(p => !was.has(key(p)));
+  const said = bad && bad.message.slice(bad.rule.length + 2); // the rule's words, its name off
+  return bad ? { error: `${said[0].toUpperCase()}${said.slice(1)}: ${BD_GUARD[bad.rule]}` } : r;
+}
+// a field of the properties panel (edits.field): SYS_FIELD's, and a type or kind set there judged as a row is (audit 44)
+const bdField = (model, view, id, path, value) => { const r = SYS_FIELD(model, view, id, path, value);
+  if (r != null || String(path) === 'label') return r; const g = bdTypeGuard(model, [{ op: 'set', id, path, value }]); return BD_OBJ(g) && g.error != null ? g : null; };
 // the panel's member rows (edits.member): a row of a block, interface block, constraint block or value type, read with the model
 function bdMember(model, view, ownerId, id, text) {
   const o = bdNodeOf(model, ownerId); if (!o || !BD_CLS.includes(o.type)) return null;
-  if (id != null) { const m = BD_ARR(o.members).find(x => BD_OBJ(x) && x.id === id); return m ? bdEdit(model, o, m, text) : null; }
+  if (id != null) { const m = BD_ARR(o.members).find(x => BD_OBJ(x) && x.id === id); return m ? bdTypeGuard(model, bdEdit(model, o, m, text)) : null; }
   const r = bdParse(text, o, model); if (r.error) return r;
   const no = SYS_CLASH(o, {}, r.label, r.type, r.props); if (no) return no; // a name another member holds, as an edit's (audit 39)
-  return [{ op: 'add', element: { id: bdFresh(model, `${o.id}.${r.label}`), type: r.type, label: r.label, ...(Object.keys(r.props).length ? { props: r.props } : {}) }, owner: o.id }];
+  return bdTypeGuard(model, [{ op: 'add', element: { id: bdFresh(model, `${o.id}.${r.label}`), type: r.type, label: r.label, ...(Object.keys(r.props).length ? { props: r.props } : {}) }, owner: o.id }]);
 }
 /* connect (§7.4): a generalization joins two of one kind (general-kinds) and closes no cycle (generalization-cycle), a comment link runs from a comment; a part association
    from a block adds the part property it draws (a constraint property, to a constraint block), named after the part's type,
@@ -259,7 +275,7 @@ const BD_TYPE = registerDiagramType('sysml.block-definition', {
   word: (model, id) => { const x = bdNodeOf(model, id); return x && BD_CLS.includes(x.type) ? BD_WORD(x.type) : null; },
   rows: (model, view, id) => { const x = bdNodeOf(model, id); return x && BD_CLS.includes(x.type) ? bdRows(x) : null; },
   text: bdText,
-  edits: { connect: bdConnect, member: bdMember, field: SYS_FIELD, rename: Object.assign((model, view, id, text) => SYS_FRAME_RENAME(view, id, text) ?? lineRename(lineLabel)(model, view, id, text), { empty: SYS_FRAME_EMPTY }) }, // F2 on a frame with no subject: the view's title (audit 19)
+  edits: { connect: bdConnect, member: bdMember, field: bdField, rename: Object.assign((model, view, id, text) => SYS_FRAME_RENAME(view, id, text) ?? lineRename(lineLabel)(model, view, id, text), { empty: SYS_FRAME_EMPTY }) }, // F2 on a frame with no subject: the view's title (audit 19)
 });
 
-export { BD_TYPE, BD_RULES, bdGeo, bdProblems, bdDescribe, bdParse, bdPrint, bdConnect, bdMember };
+export { BD_TYPE, BD_RULES, bdGeo, bdProblems, bdDescribe, bdParse, bdPrint, bdConnect, bdMember, bdTypeGuard, bdField };

@@ -56,7 +56,7 @@ test('the definition: the palette\'s Topic, no lines, a layout of its own with n
   assert.deepEqual(D.elements, [{ type: T, label: 'Topic' }]);
   assert.deepEqual(D.lines, []);
   assert.deepEqual([typeof D.layout.run, D.layout.pins, typeof D.draw, typeof D.describe, typeof D.rows, D.word(null, 'x')], ['function', false, 'function', 'function', 'function', 'Topic']);
-  assert.deepEqual(Object.keys(D.edits), ['connect', 'moveTo', 'add', 'remove', 'rename']);
+  assert.deepEqual(Object.keys(D.edits), ['connect', 'moveTo', 'add', 'remove', 'rename', 'field']); // field: the Name field, pinned as F2 (audit 44)
   assert.deepEqual(Object.keys(D.rules), ['mindmap-root', 'topic-parent', 'side-first', 'mindmap-depth', 'mindmap-kinds']);
 });
 
@@ -614,4 +614,21 @@ test('audit 43: a subtopic dropped on another branch, or moved by Alt + arrows, 
       same(mmMoveTo(m, V(m), T.id, { by: [-out, 0] }), `Alt + ${out > 0 ? 'Left' : 'Right'} on ${T.id}`, T.id); // promote
     }
   }
+});
+
+// audit 44: F2 (and the panel's Name field) on any topic of a map with no side stored pins the first-level topics first, as every
+// other gesture does, so a text that changes a band never swings the other branches across
+test('a topic renamed, by F2 or the Name field, leaves every first-level topic on its side (audit 44)', () => {
+  const M = EX(); delete V(M).present; // as a Mermaid import gives it: no side stored
+  const sides = m => Object.fromEntries(mmRun(m, V(m)).nodes.filter(n => n.depth === 1).map(n => [n.id, n.side]));
+  const before = sides(M), long = 'a much longer text for this topic, so that it wraps onto four lines of two hundred pixels each and its band grows taller than before it was renamed';
+  let checked = 0;
+  for (const n of mmRun(M, V(M)).nodes) { if (n.root) continue;
+    for (const text of [long, 'x']) for (const how of ['rename', 'field']) {
+      const r = how === 'rename' ? mmRename(M, V(M), n.id, text) : MM_TYPE.edits.field(M, V(M), n.id, 'label', text);
+      assert.deepEqual(r.at(-1), { op: 'set', id: n.id, path: 'label', value: text });
+      assert.deepEqual(sides(apply(M, r)), before, `${how} ${n.id} to ${text.length} characters`); checked++; } }
+  assert.ok(checked > 40);
+  assert.equal(MM_TYPE.edits.field(M, V(M), 'mm-launch', 'props.note', 'x'), null, 'another field: the default');
+  assert.deepEqual(mmRename(EX(), V(EX()), 'mm-launch', 'Launch day').length, 1, 'sides stored: nothing to pin');
 });
