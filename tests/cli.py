@@ -42,7 +42,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf bike share": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "bench views": 1})
 
 
 def ok(name, cond, info=""):
@@ -259,8 +259,10 @@ with tempfile.TemporaryDirectory() as tmp:
         ok("trace · a trace becomes the numbered view bike-share keeps, which it replaces where it is", r.get("steps") == 8 and r.get("cards") == 9
            and view(got) == view(bike) and [v["id"] for v in got.get("views", [])] == [v["id"] for v in bike["views"]], r)
 
-        # trace --diagram uml.sequence (3.8): the same trace as a UML sequence view, through the helper (notes/stage-3.md §7)
-        r = cli("trace", str(t / "before.json"), str(tr / "ride-end.json"), "--view", "ride-end", "--match", str(tr / "match.json"),
+        # trace --diagram uml.sequence (3.8): the same trace as a UML sequence view, through the helper (notes/stage-3.md §7),
+        # on a version-1 copy of bike-share, so schemaVersion 2 below is the upgrade the helper makes, not what the file had
+        (t / "before-v1.json").write_text(json.dumps({k: v for k, v in bike.items() if k != "schemaVersion"}))
+        r = cli("trace", str(t / "before-v1.json"), str(tr / "ride-end.json"), "--view", "ride-end", "--match", str(tr / "match.json"),
                 "--diagram", "uml.sequence", "--out", str(t / "traced-uml.json")) or {}
         got = json.loads((t / "traced-uml.json").read_text(encoding="utf-8")) if (t / "traced-uml.json").is_file() else {}
         v = view(got) or {}
@@ -2366,5 +2368,19 @@ if part("audit 45"):
            r.returncode == 0 and sorted(said) == ["big.json", "dir.json", "eslint.json", "gone.json", "maps/shop.json", "pipe.json", "zero.json"] and all("symbolic link" in (w or "") for w in said.values())
            and "No map model changed" not in md and "OUTSIDE-45" not in written and "SECRET-45" not in written and "x.invalid" not in written,
            (said, md, r.stderr[-400:]))
+if part("bench views"):
+    # bench.py times map views only (bike share step 0): a version-2 model's typed views are left out with their benchViews,
+    # a version-1 model's views are all timed whatever they say, and a benchViews entry naming no view stops the bench
+    spec = importlib.util.spec_from_file_location("bench", ROOT / "bench" / "bench.py")
+    bench = importlib.util.module_from_spec(spec); spec.loader.exec_module(bench)
+    v2 = {"schemaVersion": 2, "views": [{"id": "m"}, {"id": "d", "diagram": "map"}, {"id": "c", "diagram": "uml.class"}], "benchViews": ["m+x", "c+y"]}
+    v1 = {"views": [{"id": "m"}, {"id": "c", "diagram": "uml.class"}], "benchViews": ["c+y"]}
+    try:
+        bench.bench_views(v2 | {"benchViews": ["gone+x"]}); stopped = None
+    except SystemExit as e:
+        stopped = str(e)
+    ok("bench · a version-2 model's map views and their benchViews are timed, its typed views not; a version-1 model's every view; a benchViews entry naming no view stops it",
+       bench.bench_views(v2) == ["m", "d", "m+x"] and bench.bench_views(v1) == ["m", "c", "c+y"] and stopped == "gone+x: benchViews names no view",
+       (bench.bench_views(v2), bench.bench_views(v1), stopped))
 part.done()
 sys.exit(1 if failed else 0)

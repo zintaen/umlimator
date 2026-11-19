@@ -679,7 +679,9 @@ test('audit 42: diff() says and lists a typed view whose picture changes with it
   // bands changes (a map view's cards come in another document order, drawn the same: not listed, as before)
   const place = (m, v) => { const g = all.layout(m, v), at = l => (l || []).map(x => JSON.stringify([x.id, x.x, x.y, x.w, x.h, x.pts || x.d || null])).sort();
     return JSON.stringify([at(g.nodes), at(g.edges), at(g.bands), at(g.lanes), at(g.groups)]); };
-  for (const f of ['bookshop-atlas', 'ebike-atlas', 'bookshop-aws', 'bookshop-c4', 'bike-share']) { const m = read(f);
+  // and bike-share as version 1 too, the case above on a map view of a version-1 model
+  for (const [f, m] of [...['bookshop-atlas', 'ebike-atlas', 'bookshop-aws', 'bookshop-c4', 'bike-share'].map(f => [f, read(f)]),
+    ['bike-share v1', (x => (delete x.schemaVersion, x))(read('bike-share'))]]) {
     for (const v of m.views) for (let i = 0; i + 1 < Math.min(arr(v.nodeIds).length, 4); i++) { const b = structuredClone(m), w = b.views.find(x => x.id === v.id);
       [w.nodeIds[i], w.nodeIds[i + 1]] = [w.nodeIds[i + 1], w.nodeIds[i]]; assert.equal(all.diff(m, b).views.includes(v.id), place(m, v.id) !== place(b, v.id), `${f} ${v.id} ${i}`); } }
   // many moved: one sentence; hostile ids (null, a number, __proto__, twice) and labels; a large view reversed stays quick

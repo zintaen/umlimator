@@ -17,6 +17,8 @@ layout check's route audit finds; hash is the geometry, the same on every run un
 A model's benchViews ("view+card") are run too: the view with those cards unfolded in place (#71), and unfold the time
 that took (routing the ways it tries).
 A view that does not finish within --timeout seconds, or that repairs although it says `repair: false`, fails the run.
+Only map views are timed: a schema version 2 model's typed views (a view whose diagram is set and is not "map") have their
+own layouts, which this bench does not measure, and a benchViews entry on a typed view is skipped with them.
 """
 import argparse, datetime, html, importlib.util, json, re, statistics, subprocess, sys, tempfile, urllib.parse
 from pathlib import Path
@@ -67,6 +69,21 @@ def summary(r, edges):
     return s
 
 
+def map_view(m, v):
+    """A view this bench times: any view of a version-1 model, and a version-2 model's views drawn as maps (no diagram, or "map")."""
+    return m.get("schemaVersion") != 2 or v.get("diagram") in (None, "map")
+
+
+def bench_views(m):
+    """The view ids timed, in order: the map views, then the benchViews ("view+card") whose view is one of them. A
+    benchViews entry naming no view at all is an error, never skipped: only one on a typed view is left out."""
+    maps, ids = [v["id"] for v in m["views"] if map_view(m, v)], {v["id"] for v in m["views"]}
+    for x in m.get("benchViews", []):
+        if x.split("+")[0] not in ids:
+            raise SystemExit(f"{x}: benchViews names no view")
+    return maps + [x for x in m.get("benchViews", []) if x.split("+")[0] in maps]
+
+
 def view_edges(m, v):
     if isinstance(v.get("edges"), list):
         return len(v["edges"])
@@ -101,7 +118,7 @@ def main():
             m = json.loads(path.read_text())
             page = page_of(path, tmp)
             # benchViews: "view+card", the view with cards unfolded in place (#71), timed as drawn and the unfolding apart
-            for vid in [v["id"] for v in m["views"]] + m.get("benchViews", []):
+            for vid in bench_views(m):
                 v = next(x for x in m["views"] if x["id"] == vid.split("+")[0])
                 key = f"{path.stem}/{vid}"
                 r = run_view(binary, page, vid, a.runs, a.optimize, a.timeout)
@@ -127,6 +144,11 @@ def main():
                         failed.append(f"{key}: a second page load laid it out differently")
                 if path.stem in limits and s["total"] > limits[path.stem]:
                     failed.append(f"{key}: {s['total']} ms > {limits[path.stem]} ms")
+    # a key --expect lists for a model this run timed, which the run did not time (a typed view, or a benchViews entry
+    # on one), would otherwise go unchecked without a word
+    timed = {q.stem for q in paths}
+    failed += [f"{k}: listed in {a.expect} but not timed (a typed view, or a benchViews entry on one)"
+               for k in expect if k.split("/")[0] in timed and k not in results]
     if a.save:
         sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, cwd=ROOT).stdout.strip()
         dirty = subprocess.run(["git", "status", "--porcelain", "engine", "patches"], capture_output=True, text=True, cwd=ROOT).stdout.strip()
