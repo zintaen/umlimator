@@ -178,6 +178,17 @@ function prClash(model, view, id, label) {
   if (prName(x) !== nm && kin.some(n => CLASSIFIERS.includes(ty(n)) && prName(n) === nm)) return { error: `${pn} has a classifier named ${nm} already` };
   return null;
 }
+// the owner hook (a drop into a box, the Owner field): a stereotype or a metaclass to a profile only (defOwner), and a classifier
+// moved to an owner whose kin holds its name refused in prClash's words, as an add and a rename are (audit 45). Null: the default
+function prOwner(model, view, id, parent) {
+  const d = defOwner(model, view, id, parent); if (d) return d;
+  const I = prIndex(model), x = I.at.get(id), p = parent ?? null; if (!x || (x.parent ?? null) === p) return null;
+  const shown = new Set(PR_ARR(view && view.nodeIds)), ty = n => (!n.type && shown.has(n.id) ? 'uml.Class' : n.type); if (!CLASSIFIERS.includes(ty(x))) return null;
+  const nm = prName(x), kin = PR_ARR(model.nodes).filter(n => PR_OBJ(n) && n !== x && I.at.get(n.id) === n && (n.parent ?? null) === p), pn = p != null && I.at.has(p) ? prName(I.at.get(p)) : 'The model';
+  if (x.type === 'uml.Stereotype' && I.ty(p) === 'uml.Profile' && kin.some(n => n.type === 'uml.Stereotype' && styKey(prName(n)) === styKey(nm)))
+    return { error: `${pn} has a stereotype ${styKey(nm)} already: names meet with the first letter in either case` };
+  return kin.some(n => CLASSIFIERS.includes(ty(n)) && prName(n) === nm) ? { error: `${pn} has a classifier named ${nm} already` } : null;
+}
 const prLineRename = lineRename(lineLabel);
 const prRename = (model, view, id, text) => prClash(model, view, id, text) ?? prLineRename(model, view, id, text);
 const prField = (model, view, id, path, value) => (String(path) === 'label' ? prClash(model, view, id, value) : null); // the Name field
@@ -229,7 +240,7 @@ const PR_TYPE = registerDiagramType('uml.profile', {
   // an element drawn as a profiled classifier prints what it draws, nothing more (a class with no stereotype: no row, not its
   // members, which the view does not draw; audit 27); a comment and a closed package with none, their own rows
   rows: (model, view, id) => { const I = prIndex(model), x = I.at.get(id); if (!x) return null; const r = prRows(model, x, I); return r.length || !(x.type === 'uml.Comment' || OWN_BOXES.includes(x.type)) ? r : null; },
-  edits: { add: prAdd, connect: prConnect, rename: prRename, field: prField, owner: defOwner },
+  edits: { add: prAdd, connect: prConnect, rename: prRename, field: prField, owner: prOwner },
 });
 
 export { PR_TYPE, PR_RULES, prGeo, prProblems, prDescribe, prAdd, prConnect, prRows };
