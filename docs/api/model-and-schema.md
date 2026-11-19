@@ -126,7 +126,7 @@ interface MapEdge {
   step?: number | string;
   sublabel?: string;
   style?: 'emphasis' | 'added' | 'dashed' | 'async' | 'security' | 'removed' | 'faded';
-  change?: 'added' | 'removed' | 'changed';
+  change?: 'added' | 'new' | 'removed' | 'changed' | 'modified';
   drift?: 'undrawn' | 'idle';
   latency?: number;
   cost?: number;

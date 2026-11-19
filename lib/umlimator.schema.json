@@ -1108,10 +1108,12 @@
     "change": {
      "enum": [
       "added",
+      "new",
       "removed",
-      "changed"
+      "changed",
+      "modified"
      ],
-     "description": "Drawn as an added or removed line; diff() marks a changed one edited."
+     "description": "added (or new) draws the line green and flowing, removed rose and dashed, with no style needed (a style set wins); changed (or modified) gets the edited dot. validate() and the renderer read it in any letter case; this schema lists the lower-case words."
     },
     "edited": {
      "type": "boolean",

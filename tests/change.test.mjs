@@ -997,3 +997,33 @@ test('audit 45: no tag of any example\'s views holds an attribute twice; a servi
     assert.ok(marks.some(([, d, w]) => /v2M/.test(d) && w === '1.2'), 'the timer\'s ticks and hands at 1.2');
   }
 });
+
+test('audit 46: a change that is not text (a list ["removed"], an object) draws unmarked on a map, as validate() says and the typed views draw it', async () => {
+  const all = await fromSrc();
+  const hostile = [['removed'], ['Added'], { toString: () => 'removed' }, ['https://track.example/p.gif'], 7];
+  hostile.forEach(ch => {
+    const m = { title: 'm', nodes: [{ id: 'a', label: 'A', change: ch }, { id: 'b', label: 'B' }, { id: 'c', label: 'C' }], edges: [{ id: 'e', from: 'a', to: 'b', change: ch }, { id: 'f', from: 'a', to: 'c', kind: 'calls', change: ch }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }] };
+    const s = svgOf(all.layout(m, 'v')).replace(/<defs>[\s\S]*?<\/defs>/, '');
+    assert.doesNotMatch(s, /REMOVED|>NEW<|CHANGED|, removed|, added|um-rose|um-green|track\.example/, `change ${JSON.stringify(ch)} draws no mark`);
+    assert.deepEqual(validate(m).filter(p => /change$/.test(p.path)).map(p => p.path), ['nodes[0].change', 'edges[0].change', 'edges[1].change'], 'and validate() says it draws unmarked');
+  });
+  // the text words still draw: the same models with "removed" are marked
+  const m = { title: 'm', nodes: [{ id: 'a', label: 'A', change: 'removed' }, { id: 'b', label: 'B' }], edges: [{ id: 'e', from: 'a', to: 'b', change: 'Added' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+  const s = svgOf(all.layout(m, 'v')); assert.match(s, /REMOVED/); assert.match(s, /class="edge[^"]*" stroke="var\(--um-green\)"/);
+});
+
+test('audit 46: lib/umlimator.d.ts and the schema list the map line changes validate() and the renderer take, and say a line draws by its change alone', async () => {
+  const all = await fromSrc(), words = ['added', 'new', 'modified', 'changed', 'removed', 'planned', 'bogus'];
+  const ok = words.filter(w => !validate({ nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ id: 'e', from: 'a', to: 'b', kind: 'calls', change: w }] }).some(p => p.path === 'edges[0].change'));
+  const schema = JSON.parse(readFileSync(new URL('../lib/umlimator.schema.json', import.meta.url), 'utf8'));
+  const find = (o, f) => { if (!o || typeof o !== 'object') return null; if (f(o)) return o; for (const v of Object.values(o)) { const r = find(v, f); if (r) return r; } return null; };
+  const edge = find(schema, o => o.properties && o.properties.from && o.properties.to && o.properties.change);
+  assert.deepEqual([...edge.properties.change.enum].sort(), [...ok].sort(), 'the schema\'s line change enum is what validate() takes');
+  const dts = readFileSync(new URL('../lib/umlimator.d.ts', import.meta.url), 'utf8'), me = dts.slice(dts.indexOf('export interface MapEdge'));
+  const ty = /\n {2}change\?: ([^;]+);/.exec(me)[1].split('|').map(x => x.trim().replace(/'/g, ''));
+  assert.deepEqual(ty.sort(), [...ok].sort(), 'the d.ts type is what validate() takes');
+  assert.doesNotMatch(me.slice(0, me.indexOf('\n}')), /draw only with the matching `style`/);
+  // and the picture: a wired line with change and no style draws by its change, as the d.ts now says
+  const m = { title: 'm', nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }, { id: 'c', label: 'C' }], edges: [{ id: 'e', from: 'a', to: 'b', kind: 'calls', change: 'removed' }, { id: 'f', from: 'a', to: 'c', kind: 'calls', change: 'new' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }] };
+  const s = svgOf(all.layout(m, 'v')); assert.match(s, /stroke="var\(--um-rose\)"/); assert.match(s, /stroke="var\(--um-green\)"/);
+});

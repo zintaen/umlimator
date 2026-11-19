@@ -15,13 +15,18 @@ const WIRE_KINDS = ['calls', 'feeds', 'triggers', 'state', 'guard'], SIDES = ['l
    function (model, element) says whether some view draws it, as a C4 deployment node's description is on a leaf, never on a box
    (audit 45) */
 const NOT_DRAWN = 'not drawn, and the panel shows it as';
-function fieldTextProblems(m, v, T) {
+function fieldTextProblems(m, v, T, memos = new Map()) {
+  const memoOf = f => memos.get(f) || memos.set(f, new Map()).get(f);
   const F = T && T.props && typeof T.props === 'object' ? T.props : null; if (!F) return [];
   const arr = x => (Array.isArray(x) ? x : []), obj = x => x && typeof x === 'object' && !Array.isArray(x), out = [], vi = arr(m.views).indexOf(v), shown = new Set(arr(v.nodeIds)), mems = new Set();
   const check = (x, at, kind) => { if (!obj(x.props) || typeof kind !== 'string' || !Object.hasOwn(F, kind)) return;
     arr(F[kind]).forEach(f => { if (!obj(f) || f.kind !== 'text' || typeof f.key !== 'string') return; const path = Array.isArray(f.path) ? f.path.map(String) : [f.key];
       let o = x.props; for (const k of path.slice(0, -1)) o = obj(o) && Object.hasOwn(o, k) ? o[k] : undefined;
-      const p = obj(o) && Object.hasOwn(o, path[path.length - 1]) ? labelProblem(o, `${at}.props${path.slice(0, -1).map(k => '.' + k).join('')}`, path[path.length - 1], f.drawn === false || (typeof f.drawn === 'function' && !f.drawn(m, x)) ? NOT_DRAWN : undefined) : null; if (p) out.push(p); }); };
+      const key = path[path.length - 1], where = `${at}.props${path.slice(0, -1).map(k => '.' + k).join('')}`;
+      // drawn asked only of a value that is not text, to word its warning (audit 46: a C4 deployment node's text description
+      // ran depLeaf, a depPic per view, on every node: validate() went quadratic); memo: one per validate() run, for drawn's own use
+      const p = obj(o) && Object.hasOwn(o, key) ? labelProblem(o, where, key) : null;
+      if (p) out.push(f.drawn === false || (typeof f.drawn === 'function' && !f.drawn(m, x, memoOf(f))) ? labelProblem(o, where, key, NOT_DRAWN) : p); }); };
   const nodes = new Map(); [...arr(m.nodes).map((n, i) => [n, `nodes[${i}]`]), ...arr(v.nodes).map((n, j) => [n, `views[${vi}].nodes[${j}]`])].forEach(([n, at]) => { if (obj(n) && typeof n.id === 'string' && !nodes.has(n.id)) nodes.set(n.id, [n, at]); });
   shown.forEach(id => { if (!nodes.has(id)) return; const [n, at] = nodes.get(id); check(n, at, drawnKind(T, n));
     arr(n.members).forEach((x, j) => { if (obj(x)) { check(x, `${at}.members[${j}]`, x.type); mems.add(x.id); } }); });
@@ -244,7 +249,7 @@ export function validate(model) {
     views.filter(typedView).forEach(v => { const T = diagramOf(v); if (!T || !T.validate || once.has(T)) return; if (T.validate.length < 2) once.add(T); T.validate(m, v).forEach(say); });
     if (TYPED.across) arrOf(TYPED.across(m)).forEach(say);
     // a panel's text field that is not text, unless a type's own rule says that path already (audit 43)
-    const ruled = new Set(out.map(p => p.path)); views.filter(typedView).forEach(v => fieldTextProblems(m, v, diagramOf(v)).forEach(p => { if (!ruled.has(p.path)) say(p); }));
+    const ruled = new Set(out.map(p => p.path)); const memos = new Map(); views.filter(typedView).forEach(v => fieldTextProblems(m, v, diagramOf(v), memos).forEach(p => { if (!ruled.has(p.path)) say(p); }));
   }
   // a change the renderer has no mark for draws unmarked, though a key may say it (audit 45: "bogus" passed, and a line's
   // "planned" was said and not drawn). In any case, as the renderer reads it; a card's and a member's, a line's, each its own words

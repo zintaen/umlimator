@@ -378,9 +378,11 @@ export interface MapEdge {
   /** A style that wins over the kind's colour: emphasis (green), added (green, flowing), dashed or async (violet),
    *  security (rose, dashed), removed (rose, dashed, faded) or faded (its kind's colour, faint, with no flow). */
   style?: 'emphasis' | 'added' | 'dashed' | 'async' | 'security' | 'removed' | 'faded';
-  /** A change mark: added and removed draw only with the matching `style` on a map; diff() sets both, and marks a
-   *  changed line `edited`. */
-  change?: 'added' | 'removed' | 'changed';
+  /** A change mark, read in any letter case and only as text: added (or new) draws the line green and flowing, removed
+   *  rose and dashed, with no `style` needed, a wire `kind` or not (a `style` set wins); changed (or modified) gets the
+   *  edited dot. diff() sets the matching `style` too, and marks a changed line `edited`. validate() warns on any other
+   *  value, which draws unmarked. */
+  change?: 'added' | 'new' | 'removed' | 'changed' | 'modified';
   /** What drift() found: undrawn (traffic ran on it, nobody drew it) or idle (drawn, carried nothing). */
   drift?: 'undrawn' | 'idle';
   /** Budgets (#95), which critical() sums along a path: how long the call takes, in ms, and what it costs, in any unit.
