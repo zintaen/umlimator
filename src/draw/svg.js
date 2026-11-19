@@ -53,7 +53,9 @@ function svgOf(geo, opts = {}) {
     if (gone) o = o.replace(/<text\b([^>]*)>/g, (m, a) => / text-decoration="/.test(a) ? m.replace(/ text-decoration="([^"]*)"/, (x, v) => ` text-decoration="${v} line-through"`) : `<text${a} text-decoration="line-through">`)
       .replace(FADE, (m, t, a, c) => / opacity="|\bn-logo\b/.test(a) ? m : `<${t}${a} opacity=".6"${c}>`);
     return !(Number.isFinite(n.x) && Number.isFinite(n.y) && Number.isFinite(n.w)) ? o : o.replace(/<\/g>\s*$/, `<g class="change-tab" aria-hidden="true"><rect x="${r2(bx)}" y="${r2(n.y - 8)}" width="${bw}" height="16" rx="8" fill="var(--um-mask)" stroke="var(--um-${ch[0]})" stroke-dasharray="none"/><text x="${r2(bx + bw / 2)}" y="${r2(n.y + 3)}" text-anchor="middle" class="badge-tx" fill="var(--um-${ch[0]})" text-decoration="none">${ch[1]}</text></g></g>`); };
-  const families = geo.families || [], familyDepth = f => f.parent ? 1 + familyDepth(families.find(p => p.id === f.parent) || {}) : 0;
+  // how many boxes a box sits in, each counted once: a container that names itself, or another in a cycle, as its parent
+  // (validate()'s "ends up inside itself") draws, as BPMN draws an owner cycle (audit 48: the recursion overflowed the stack)
+  const families = geo.families || [], familyDepth = f => { let d = 0; for (let p = f, seen = new Set([f]); p && p.parent != null && (p = families.find(q => q.id === p.parent)) && !seen.has(p); d++) seen.add(p); return d; };
   families.slice().sort((a,b) => familyDepth(a)-familyDepth(b)).forEach(f => {
     // a typed view's box whose shape draws a frame (notes/stage-2.md §5): the shape's markup, in the group the canvas selects. It keeps
     // .family-title (the audit, the canvas's "Box …, selected") and draws its border with class family-box: the canvas outlines a
@@ -100,6 +102,20 @@ function svgOf(geo, opts = {}) {
       <text x="${b.cx - b.r - 7}" y="${b.cy + 3.5}" text-anchor="end" class="intake-tx">${esc(b.label)}</text>
       ${tour ? `<circle r="3.2" class="tour tour-packet" opacity="0"><animateMotion path="${bp}" keyPoints="0;0;1" keyTimes="0;.86;1" calcMode="linear" dur="${TOUR}s" repeatCount="indefinite"/>${tourAnim('0;0;.8;.8;0', [0, .86, .88, .99, 1])}</circle>` : ''}</g>`;
   });
+  /* where a line's edited dot goes: the middle of its longest stretch clear of its own label, which is drawn over the lines (audit
+     48: centred on the longest segment, where the label sits too, the dot was hidden under it, so a changed labelled line showed
+     no mark). Each segment, the label's box widened by the dot's size cut out of it; the middle of a segment when none is clear */
+  const dotAt = e => { const P = e.pts, L = e.lbl, m = 7, len = (a, b) => Math.abs(b[0] - a[0]) + Math.abs(b[1] - a[1]);
+    const box = L && [L.x, L.y, L.w, L.h].every(Number.isFinite) ? [L.x - m, L.y - m, L.x + L.w + m, L.y + L.h + m] : null;
+    let best = null, mid = [P[0], P[1]];
+    for (let k = 1; k < P.length; k++) { const a = P[k - 1], b = P[k], d = len(a, b); if (d > len(mid[0], mid[1])) mid = [a, b]; if (!(d > 0)) continue;
+      // the part of the segment inside the box, as [t0, t1] along it (Liang-Barsky), and what is left either side of it
+      let t0 = 0, t1 = 1; const dx = b[0] - a[0], dy = b[1] - a[1];
+      if (box) for (const [p, q] of [[-dx, a[0] - box[0]], [dx, box[2] - a[0]], [-dy, a[1] - box[1]], [dy, box[3] - a[1]]]) {
+        if (p === 0) { if (q < 0) { t0 = 1; t1 = 0; } } else { const r = q / p; if (p < 0) t0 = Math.max(t0, r); else t1 = Math.min(t1, r); } }
+      const free = !box || t0 > t1 ? [[0, 1]] : [[0, t0], [t1, 1]];
+      free.forEach(([u, w]) => { const l = (w - u) * d; if (l > 0 && (!best || l > best[0])) best = [l, [a[0] + dx * (u + w) / 2, a[1] + dy * (u + w) / 2]]; }); }
+    return best && best[0] >= 8 ? best[1] : [(mid[0][0] + mid[1][0]) / 2, (mid[0][1] + mid[1][1]) / 2]; };
   edges.forEach((e, i) => {
     const E = T && T.edge(e, i), st = E ? E.st : lstyle(e), why = broke(e), d = roundPath(drawn[i]), mk = st.m + (e.weight > 1 ? '-w' + e.weight : '');
     const tip = 9 * (e.weight > 1 ? 1 + (e.weight - 1) * .35 : 1), fd = roundPath(E ? E.pts : trimLine(drawn[i], e.both ? tip : 0, tip)); // an arrowhead's length (marker refX)
@@ -108,9 +124,8 @@ function svgOf(geo, opts = {}) {
       s += `<path d="${d}" class="tour-glow" stroke="${st.c}" opacity="0">${tourAnim('0;0;.55;.55;0;0', [0, a, Math.min(a + .01, b), b, b + .03, 1])}</path>`; }
     s += `<g class="edge-g${st.cls || ''}${e.weight > 1 ? ' wt-' + e.weight : ''}" data-from="${esc(e.from)}" data-to="${esc(e.to)}" data-i="${i}"><path d="${d}" class="halo"/><path d="${d}" class="hitline"/>
       <path d="${d}" class="edge${st.flow ? ' flow' : ''}" stroke="${st.c}" ${st.dash && !st.flow ? `stroke-dasharray="${st.dash}"` : ''} ${st.op ? `opacity="${st.op}"` : ''} ${marks}/>
-      <path d="${fd}" class="flowline" stroke="${st.c}"/>${(e.all || [e]).some(x => x.edited || (CHG[lc(x)] || [])[1] === 'CHANGED') && !e.strong ? (() => { let m = [e.pts[0], e.pts[1]];
-        e.pts.slice(1).forEach((p, k) => { const a = e.pts[k]; if (Math.abs(p[0] - a[0]) + Math.abs(p[1] - a[1]) > Math.abs(m[1][0] - m[0][0]) + Math.abs(m[1][1] - m[0][1])) m = [a, p]; });
-        return `<circle cx="${(m[0][0] + m[1][0]) / 2}" cy="${(m[0][1] + m[1][1]) / 2}" r="4" class="edited-dot"><title>Edited</title></circle>`; })() : ''}${why.length ? ruleMark(e, why) : ''}
+      <path d="${fd}" class="flowline" stroke="${st.c}"/>${(e.all || [e]).some(x => x.edited || (CHG[lc(x)] || [])[1] === 'CHANGED') && !e.strong ? (() => { const [x, y] = dotAt(e);
+        return `<circle cx="${x}" cy="${y}" r="4" class="edited-dot"><title>Edited</title></circle>`; })() : ''}${why.length ? ruleMark(e, why) : ''}
       <title>${!map && e.aria != null ? esc(e.aria + chWord(e)) : `${e.step != null ? 'Step ' + esc(e.step) + ': ' : ''}${esc(e.s.label || e.s.id)} ${e.both ? '⇄' : '→'} ${esc(e.t.label || e.t.id)}${e.label ? ': ' + esc(e.label) : ''}${esc(chWord(e))}`}${e.label && e.sublabel ? ' (' + esc(e.sublabel) + ')' : ''}${e.when ? '\n' + esc(e.when) : ''}${why.length ? '\nBreaks rule: ' + esc(why.join('; ')) : ''}</title></g>`;
   });
   // the tour's dot rides over the lines and boxes but under the cards: it goes into a card and comes out at its next

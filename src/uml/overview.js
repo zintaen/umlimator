@@ -164,7 +164,9 @@ function ovGeo({ model, view, pos, memo }) {
     if (shape === 'rounded') d.stereotypes = ovStereo(x);
     if (shape === 'bar') Object.assign(d, { busy: Math.max(ins.get(id) || 0, outs.get(id) || 0), down });
     if (shape === 'ov-inline') { const b = sd && sd.run && sd.run.bounds, tw = tagSize(`sd ${d.label}`).w + 2 * OV_SD.pad;
-      return { ...d, ...(b ? { w: Math.ceil(Math.max(b.w + 2 * OV_SD.pad, tw)), h: Math.ceil(ovTagOf(d.label) + b.h), sd: { bounds: b, markup: ovInner(sd.run, sd.view, model) } } : useSize(d.label)) }; }
+      // drawn inline, it reads the lifelines and messages its interaction draws: what diff() marks it by (audit 48)
+      const rd = b ? [...new Set([...OV_ARR(sd.view.nodeIds), ...sqDrawnMessages(model, sd.view).map(o => o.id)].filter(x => typeof x === 'string'))] : [];
+      return { ...d, ...(b ? { w: Math.ceil(Math.max(b.w + 2 * OV_SD.pad, tw)), h: Math.ceil(ovTagOf(d.label) + b.h), sd: { bounds: b, markup: ovInner(sd.run, sd.view, model) }, ...(rd.length ? { reads: rd } : {}) } : useSize(d.label)) }; }
     return { ...d, ...SHAPE[shape].size(d) }; });
   const edges = I.lines.map(e => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, aria: ovFlowName(I, e), ...(OV_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}),
     ...(e.type === 'uml.CommentLink' ? { end: { from: 'none', to: 'none', dashed: true } }
