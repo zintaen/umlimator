@@ -2,19 +2,36 @@
  "about": "Each diagram type's page (examples/types/<type>.json, hand-authored, rendered to examples/types/<type>.html): its title, its intro (a sentence or two on the scenario the diagram draws), its main view (the model's root and first view: one comprehensive diagram of the type, showing every element kind, line kind, marker, compartment, stereotype and option of the type that can coexist in one picture), its alternatives (the same example in a setting that cannot coexist with the main view, such as a layout direction or a notation: each a view of the same model, a child of the main view, with what differs), and shows (the features the main view demonstrates, in the order a reader finds them, a checklist the docs page lists). A type may allow layout issues (issues, a count, with why, the reason the type's layout cannot avoid them); 0 is the default and the goal. A type still \"pending\" keeps its old page model (an overview of variant cards) until its comprehensive example replaces it. Plain keyboard characters; `code` in backticks.",
  "types": {
   "map": {
-   "title": "Map examples",
-   "intro": "Card shapes: people, a browser app, a phone, a window, a terminal, an agent, a database, a queue, a file, a package, hosts and a hook around a shop's API.",
-   "main": "overview",
-   "alternatives": [],
-   "shows": [
-    "every card shape",
-    "a box per folder",
-    "the same cards, no boxes",
-    "line kinds, weights, steps",
-    "nested, tinted boxes, lenses",
-    "badges, icons, edit marks"
+   "title": "Map",
+   "intro": "A bookshop's systems on one map: the people who use it, the apps they use, the API at its heart with what it calls, stores and hands on, the support desk, and what is new, planned and switched off.",
+   "main": "shop",
+   "alternatives": [
+    {
+     "view": "shop-run",
+     "setting": "As a numbered view (`render` `sequence`): the cards and lines a checkout touches, numbered in run order instead of the hand-set steps, with no boxes."
+    }
    ],
-   "pending": true
+   "shows": [
+    "The view's title and caption over the map",
+    "A card drawn by its kind: person (Shoppers), user (Shop staff), terminal (Admin CLI), browser app (Storefront), phone (Shop app), folder (Pricing), hexagon (Fraud check), cylinder (Orders), pipe (Order queue), robot (Support agent), page with a folded corner (returns.md), box in perspective (Hosts), dashed external card (Card gateway)",
+    "A card's own `shape` over its kind: Back office drawn as a window",
+    "A card with its name only, the sub-line kept for the panel (Admin CLI, `noSub`)",
+    "Logos on cards (Storefront React, Shop API FastAPI, Orders PostgreSQL)",
+    "Badges on cards, plain and in a tone (public, on call, backed up)",
+    "Change marks: a NEW card (Shop app), a PLANNED card dashed (Gift cards), a REMOVED card dashed and struck through (Reminder bot)",
+    "A main-step card with verb chips and an edit mark (Shop API: checkout, refund)",
+    "Line kinds in their colours: calls, feeds (charges, saves), triggers (checks), state (paid order, reads) and guard (if within 14 days)",
+    "Line weights 1 to 3 drawn as widths (POST /orders 3, order 2)",
+    "Steps in circles on the lines, numbers and a pill (1 to 6, and 3a)",
+    "A line with a sub-label (POST /orders over JSON)",
+    "Line styles over the kind: dashed (runs jobs), security (charges), async (paid order)",
+    "Added lines green and flowing (on the go, redeem), a removed line rose and dashed (nudges), an edit mark on a line (saves)",
+    "Boxes around cards, one nested in another (Data in Shop platform), with badges on their borders (EU, backed up nightly)",
+    "Tinted boxes, dashed with the title in their tone (Data in green, Support in violet)",
+    "A line ending on a box's border (Hosts runs Shop platform)",
+    "One pin (`layout`): the Card gateway at column 6, row 0, so the charges line clears the Data box",
+    "Two lenses in the page's Lenses menu: Who owns what (rings each card in its owner's tone) and Where the money goes (lights the feeds lines)"
+   ]
   },
   "uml-class": {
    "title": "Class diagram",
@@ -52,344 +69,758 @@
    ]
   },
   "uml-object": {
-   "title": "Object diagram examples",
-   "intro": "A UML object diagram of one placed order: ada, a Customer, linked to order1042, an Order, its two order lines, the books they are for and the card payment, each with its slots.",
-   "main": "overview",
-   "alternatives": [],
-   "shows": [
-    "instances, slots and links",
-    "a package box, stereotypes, a note",
-    "owner hidden, names qualified, down",
-    "classes, two links, a loop"
+   "title": "Object diagram",
+   "intro": "One bookshop order the moment it is placed: ada, her order with its two order lines, the books they are for, the card that paid and the web till that took it, each instance with its slots.",
+   "main": "snapshot",
+   "alternatives": [
+    {
+     "view": "snapshot-down",
+     "setting": "Laid out down (`direction` `down`) instead of right: the same instances, slots, links and package box."
+    }
    ],
-   "pending": true
+   "shows": [
+    "A package drawn as a box holding the instances it owns (sales)",
+    "Instances with a name and a classifier, the head underlined (ada : Customer, order1042 : Order)",
+    "An instance with a stereotype: <<entity>> over order1042",
+    "Slots as `feature = value` rows, and a slot with no value (ada's name)",
+    "A long slot value cut to the instance's width with an ellipsis (giftNote)",
+    "A link from an instance to itself, drawn as a loop (ada referred)",
+    "Two links between one pair of instances, each with its own line and name (places, ships to)",
+    "Links with role names at their ends (buyer, orders, deliveries)",
+    "An instance with a name and no classifier (webTill)",
+    "A link with a stereotype before its label (<<audit>> took)",
+    "Links named by their association instead of a label (OrderHasLines)",
+    "Anonymous instances, only the classifier after the colon (: OrderLine)",
+    "A note linked to an instance by a dashed line",
+    "Instances shown without their package, named with a qualified name (catalog::middlemarch : Book)",
+    "A class drawn beside the instances, not underlined, with its attributes (Customer)"
+   ]
   },
   "uml-package": {
-   "title": "Package diagram examples",
-   "intro": "A UML package diagram of a bookshop: the packages shared, catalog, sales, payments with card inside it, and wholesale, each a box holding its classes, joined by imports, an access, a merge and a dependency, and the profile BookshopConventions, a closed folder that sales applies.",
-   "main": "overview",
-   "alternatives": [],
-   "shows": [
-    "nesting, import, access, merge",
-    "closed folders, stereotypes, a note",
-    "three levels deep, laid out down",
-    "qualified names from a subject"
+   "title": "Package diagram",
+   "intro": "How a bookshop's software is split into packages: sales at the centre, the catalog, payments and the shared types it builds on, fulfilment and reporting that depend on it, and wholesale that merges it, in one package diagram.",
+   "main": "packages",
+   "alternatives": [
+    {
+     "view": "packages-right",
+     "setting": "Laid out right (`direction` left at its default) instead of down: the same packages, classifiers and lines, the dependents on the left."
+    }
    ],
-   "pending": true
+   "shows": [
+    "Open packages drawn as boxes holding their elements, each name in a tab at the top left (fulfilment, sales, payments, catalog, shared)",
+    "A qualified name for an element whose own package the view does not show (couriers::Courier inside fulfilment)",
+    "A closed package, a folder with an empty tab and its name in the body (reporting, whose contents are not shown)",
+    "A note (a comment with a folded corner) linked by a dashed line to a package (wholesale)",
+    "A dependency with a label (fulfilment ships orders from sales)",
+    "Dependencies with a stereotype as their label (reporting <<use>> sales, sales <<use>> payments)",
+    "A package merge, dashed with an open arrowhead and <<merge>> (wholesale merges sales)",
+    "A package with a stereotype in its tab (<<subsystem>> sales)",
+    "Classifiers drawn by name and keyword: classes, <<entity>> Order, <<enumeration>> OrderStatus, <<interface>> Payable, <<dataType>> Money, <<primitive>> Isbn",
+    "A public package import, dashed with an open arrowhead and <<import>> (sales imports catalog, catalog imports shared)",
+    "A profile application to a profile drawn as a closed folder, <<apply>> and <<profile>> (sales applies BookshopConventions)",
+    "A package nested in another, a box inside a box (card inside payments)",
+    "A private package import, drawn <<access>> (payments accesses shared)"
+   ]
   },
   "uml-composite-structure": {
-   "title": "Composite structure diagram examples",
-   "intro": "A UML composite structure diagram of an order service: its ports on its border, four parts, two of them showing their types' ports, connectors between them, an open collaboration as a dashed ellipse and a collaboration use with its role bindings.",
-   "main": "overview",
-   "alternatives": [],
-   "shows": [
-    "parts, ports, collaborations",
-    "a component, shared part, note",
-    "a collaboration as the subject"
+   "title": "Composite structure diagram",
+   "intro": "Inside a bookshop's OrderService: the parts it is built from, the ports it talks through, the connectors that join them, and the publish-subscribe collaboration its parts play roles in, in one composite structure diagram.",
+   "main": "inside",
+   "alternatives": [
+    {
+     "view": "inside-down",
+     "setting": "Laid out down (`direction` `down`) instead of right, the payments port on the bottom side: the same parts, ports, connectors and collaboration."
+    },
+    {
+     "view": "events",
+     "setting": "PublishSubscribe as the view's `subject` instead of OrderService: a collaboration as the subject, its roles drawn as its parts. A view has one subject, so the two cannot share a picture."
+    }
    ],
-   "pending": true
+   "shows": [
+    "The subject, OrderService, as a box with its name in the top left",
+    "Ports on the subject's border, each pinned to a side with `present` `side`: api on the left, payments on the right",
+    "Parts as rectangles `name : Type [multiplicity]`: checkout : CheckoutFlow [1], pricing : PriceCalculator [1], orders : OrderRepository [1]",
+    "Parts of other multiplicities: mailers : Mailer [1..*] and listeners : OrderListener [0..*]",
+    "A shared part, drawn dashed (listeners)",
+    "Parts showing their types' ports: checkout's requests, quotes and charges, pricing's quotes",
+    "A connector from the subject's port in to a port on a part (api to checkout's requests)",
+    "A connector between ports of two parts (checkout's quotes to pricing's quotes)",
+    "A connector from a part's port out to the subject's port (checkout's charges to payments)",
+    "Connectors between parts with no ports (checkout to orders, orders to mailers, checkout to listeners)",
+    "A collaboration use, a dashed ellipse `orderEvents : PublishSubscribe`",
+    "Role bindings, dashed with no ends, each labelled with its role (publisher, subscriber)",
+    "An open collaboration, a dashed ellipse with its name over a dashed line, holding its roles and the connector between them (PublishSubscribe)",
+    "A note linked to a port by a dashed line (on payments)"
+   ]
   },
   "uml-component": {
-   "title": "Component diagram examples",
-   "intro": "A UML component diagram of a bookshop: Shop API a box holding Checkout, ports on their borders with delegations between them, Orders as a ball with a socket, SignIn as a rectangle, an artifact manifesting Shop API.",
-   "main": "overview",
-   "alternatives": [],
-   "shows": [
-    "ports, ball and socket, artifacts",
-    "packages, realizations, <<use>>",
-    "balls, sockets, ports, down"
+   "title": "Component diagram",
+   "intro": "The bookshop's software as components: the Shop API holding its Basket and Checkout, the Storefront that calls it, sign-in from the accounts package, the outside payment provider, the order worker and the jar the API ships in.",
+   "main": "components",
+   "alternatives": [
+    {
+     "view": "components-down",
+     "setting": "Laid out down (`direction` `down`) instead of right: the same components, ports, interfaces and lines."
+    }
    ],
-   "pending": true
+   "shows": [
+    "A package drawn as a box holding a component and a class (accounts)",
+    "Components as rectangles with UML's component icon at the top right",
+    "A class realizing a component: dashed, a hollow triangle at the component (SessionStore to Accounts and sign-in)",
+    "An interface drawn as a rectangle with <<interface>> and its operation (SignIn)",
+    "A provided interface as a rectangle: dashed, a hollow triangle (Accounts and sign-in provides SignIn)",
+    "A required interface as a rectangle: dashed, an open arrowhead and <<use>> (Shop API uses SignIn)",
+    "A dependency with a stereotype: <<call>> from Order worker to Shop API",
+    "An artifact with <<artifact>> and UML's document icon (shop-api.jar)",
+    "A manifestation: dashed, an open arrowhead, <<manifest>> (shop-api.jar to Shop API)",
+    "A note linked to the artifact by a dashed line",
+    "A component holding components, drawn as a box with its name and icon in the header (Shop API holding Basket and Checkout)",
+    "Ports as small squares on their owners' borders, each named beside it",
+    "A delegation inward: a solid line with an open arrowhead from Shop API's orders port to Basket's",
+    "An assembly connector joining two parts directly (Basket and Checkout)",
+    "A delegation outward, from Checkout's payments port to Shop API's",
+    "An assembly connector between the ports of two components (Shop API's payments to Payment provider's charges)",
+    "A typed port, named `name : Type` (charges : Charging)",
+    "A provided interface as a ball on a plain stem, from a port (Orders, provided at Shop API's orders port)",
+    "A required interface as a socket, a half circle round the ball (Storefront requires Orders)",
+    "A component with a stereotype: <<web app>> over Storefront"
+   ]
   },
   "uml-deployment": {
-   "title": "Deployment diagram examples",
-   "intro": "A UML deployment diagram of a bookshop in production: devices and execution environments drawn as cubes and nested, artifacts deployed in them, communication paths labelled with their protocols.",
-   "main": "overview",
-   "alternatives": [],
-   "shows": [
-    "nodes, devices, artifacts",
-    "nested nodes, laid out down",
-    "<<deploy>> and <<manifest>> lines"
+   "title": "Deployment diagram",
+   "intro": "A bookshop in production: the shopper's device and browser, an edge proxy, the shop's data centre with its application server, Java runtime and database host, and the order queue, with the artifacts deployed on them and the components they manifest.",
+   "main": "production",
+   "alternatives": [
+    {
+     "view": "production-right",
+     "setting": "Laid out right (`direction` left at its default) instead of down: the same nodes, artifacts and lines, with one pin (`layout`, the order queue at column 4) so no line crosses another."
+    }
    ],
-   "pending": true
+   "shows": [
+    "A device drawn as a cube with <<device>> over its name (Shopper's device, Application server)",
+    "An execution environment nested in a device, <<executionEnvironment>> over its name (Web browser, Java 21 runtime)",
+    "Artifacts deployed by nesting, <<artifact>> over the name with the document icon (storefront.js, order-worker.jar, shop-api.jar)",
+    "A deployment line, dashed with an open arrowhead and <<deploy>> (routes.conf to the Edge proxy)",
+    "A node with a stereotype over its name (<<linux server>> Edge proxy, Database host)",
+    "Communication paths, plain solid lines with their protocols (HTTPS, HTTP, PostgreSQL wire protocol, AMQP)",
+    "A node holding nodes, three levels deep, each drawn as a cube inside its owner (Shop data centre, Application server, Java 21 runtime)",
+    "A deployment specification, <<deployment spec>> over its name (shop-api.yaml)",
+    "A dependency, dashed with an open arrowhead (shop-api.yaml to shop-api.jar)",
+    "A note linked to the deployment specification by a dashed line",
+    "Manifestations, dashed with <<manifest>>, from an artifact to the component it makes (order-worker.jar to Order worker, shop-api.jar to Shop API)",
+    "Components drawn with the component icon (Order worker, Shop API)",
+    "A plain node outside the data centre, joined by a path from a nested device (Order queue)"
+   ]
   },
   "uml-profile": {
-   "title": "Profile diagram examples",
-   "intro": "A UML profile diagram of a bookshop's modelling conventions: a profile holding metaclasses and stereotypes with their tag definitions, extensions with filled triangles, one marked required, a package applying the profile, and a class showing its stereotypes' tags.",
-   "main": "overview",
-   "alternatives": [],
-   "shows": [
-    "stereotypes, extensions, tags",
-    "abstract stereotype, enumeration tag",
-    "two profiles, qualified names"
+   "title": "Profile diagram",
+   "intro": "The bookshop's modelling conventions as a profile: stereotypes for entities, owners, columns and modules with their tag definitions, a second Audit profile, and the sales package that applies both, its classes showing the tags they carry.",
+   "main": "conventions-view",
+   "alternatives": [
+    {
+     "view": "conventions-right",
+     "setting": "Laid out right (`direction` `right`) instead of down: the same profiles, stereotypes and applying package."
+    }
    ],
-   "pending": true
+   "shows": [
+    "A package drawn as a box holding classes (sales), a closed package inside it with a stereotype over its name (<<module>> payments)",
+    "A class with two stereotypes over its name, one from another profile qualified by it (<<aggregateRoot>>, <<Audit::record>> on Order)",
+    "A tag compartment per stereotype, headed <<name>>, each row `tag = value`, inherited tags included (retainDays, table, boundedContext)",
+    "A required stereotype the tool supplies, with its tags (<<owned>> team = checkout, on Order and OrderLine)",
+    "Attributes that apply a stereotype, listed with it in front and their tags in braces, a long row cut with an ellipsis (<<column>> placedAt)",
+    "A profile application: dashed, an open arrowhead at the profile, <<apply>> (sales to BookshopConventions, sales to Audit)",
+    "Profiles drawn as boxes titled <<profile>> (BookshopConventions, Audit)",
+    "Metaclass references with <<metaclass>> and no compartment (Class, Property, Package)",
+    "Stereotypes with <<stereotype>> and their tag definitions as attribute rows (`team: String [0..1]`, `indexed: Boolean = false`)",
+    "An extension marked required: a solid line, a filled triangle at the metaclass, {required} as its label (owned to Class)",
+    "Plain extensions to three different metaclasses (record to Class, column to Property, module to Package)",
+    "An abstract stereotype, its name in italics (record)",
+    "Generalizations between stereotypes, two deep (aggregateRoot to entity to record)",
+    "An enumeration owned by the profile, the type of a tag (ColumnKind, typing column's kind)",
+    "A note with a dashed link to the abstract stereotype",
+    "Two profiles defining one stereotype name (record), told apart by the qualified name `Audit::record`"
+   ]
   },
   "uml-use-case": {
-   "title": "Use case diagram examples",
-   "intro": "A UML use case diagram of a bookshop: a shopper, a member and a payment provider as stick figures, eight use cases as ellipses in the Online bookshop subject, includes and extends drawn dashed with their labels.",
-   "main": "overview",
-   "alternatives": [],
-   "shows": [
-    "actors, subject, include, extend",
-    "two subjects, laid out down",
-    "no subject, chains of generalization"
+   "title": "Use case diagram",
+   "intro": "What shoppers do at an online bookshop: who takes part, the use cases inside the shop, and how checking out includes paying and is extended by vouchers and gift wrapping, in one use case diagram.",
+   "main": "shopping",
+   "alternatives": [
+    {
+     "view": "shopping-right",
+     "setting": "Laid out right (`direction` left at its default) instead of down: the same actors, use cases and lines, the actors on the left of the subject."
+    }
    ],
-   "pending": true
+   "shows": [
+    "Actors as stick figures with their names under them (Shopper, Member)",
+    "An actor with a stereotype under its figure (<<system>> Payment provider)",
+    "Generalization between two actors, a hollow triangle at the general one (Member is a Shopper)",
+    "A note (a comment with a folded corner) linked by a dashed line to a subject",
+    "A subject with nothing shown inside, drawn as a closed rectangle with its name (Warehouse)",
+    "A subject drawn as a box holding its use cases, its name in bold at the top left (Online bookshop)",
+    "Associations between an actor and a use case, plain lines",
+    "Use cases as ellipses holding their names",
+    "A use case with an extension points compartment under a divider (Check out: payment, extras)",
+    "An include, dashed with an open arrowhead and <<include>> (Check out includes Pay for the order, Track an order includes Sign in)",
+    "Extends naming their extension point and condition, `<<extend>> (payment) [the shopper has a voucher code]`",
+    "Generalization between two use cases (Pay by card is a Pay for the order)"
+   ]
   },
   "uml-activity": {
-   "title": "Activity diagram examples",
-   "intro": "A UML activity diagram of fulfilling an order in three lanes, Order worker, Warehouse and Email service: actions, an object node, a data store, a decision and a merge, a fork and a join, and a flow final.",
-   "main": "overview",
-   "alternatives": [],
-   "shows": [
-    "lanes, decisions, forks, objects",
-    "the activity a call opens",
-    "a loop, laid out right, no lanes",
-    "nested lanes, object flows"
+   "title": "Activity diagram",
+   "intro": "A bookshop fulfilling an order, in nested lanes for the order desk and the warehouse beside the email service: taking the order, checking stock and restocking, then paying, packing and telling the customer in parallel before the parcel ships.",
+   "main": "fulfil",
+   "alternatives": [
+    {
+     "view": "fulfil-right",
+     "setting": "Laid out right (`direction` `right`) instead of down: the lanes become bands across the page, their names turned, the same nodes and flows."
+    },
+    {
+     "view": "take-payment",
+     "setting": "The activity the call behaviour action Take payment opens (Enter or a double-click on it): its own view, with a retry loop back through a merge and a named flow `paid [yes]`."
+    }
    ],
-   "pending": true
+   "shows": [
+    "Lanes nested in a lane: Bookshop holding Order desk and Warehouse, beside Email service",
+    "An initial node, a filled circle",
+    "Actions as rounded boxes, long names wrapped (Take the next order from the queue)",
+    "A data store, <<datastore>> Stock levels, read by an object flow with a name (levels)",
+    "An object node (Order) with an object flow in and out",
+    "A decision with its question inside the diamond (All books in stock?) and guards on its exits ([yes], [else])",
+    "A note linked to the decision by a dashed line",
+    "A send signal action, a convex pentagon (Restock request), and an accept event action, a concave one (Books delivered)",
+    "A merge, a diamond two flows enter (books ready)",
+    "A fork, a bar sending three flows into three lanes",
+    "A call behaviour action with the rake at its bottom right (Take payment), opening the activity it calls",
+    "A join, a bar where payment and packing meet",
+    "A flow final, a circle with an X (after the email)",
+    "An activity final, a ring round a filled circle"
+   ]
   },
   "uml-state-machine": {
-   "title": "State machine diagram examples",
-   "intro": "A UML state machine diagram of an order's life: Placed with its activities, a choice, a fork into the Parcel and Payment regions of Fulfilling, In delivery with a history, Cancelled and a terminate.",
-   "main": "overview",
+   "title": "State machine diagram",
+   "intro": "One bookshop order's life, from placed to delivered, cancelled or erased: the payment result chosen at a choice, picking and payment run side by side in two regions, a hold resumed by history, delivery with its problems, and the refund.",
+   "main": "order-life",
    "alternatives": [],
    "shows": [
-    "regions, history, choice",
-    "deep history, a junction, a note",
-    "down, a closed composite"
-   ],
-   "pending": true
+    "An initial pseudostate, a filled circle",
+    "A state with entry, do and exit rows and an internal transition (Placed)",
+    "A transition labelled with its trigger only (payment result)",
+    "A choice, a diamond, its exits guarded: [card authorised], [paid by gift card] and [else] / email the shopper",
+    "A fork, a bar, splitting into states in two regions (after [paid by gift card])",
+    "A composite state with two orthogonal regions, each named, a dashed divider between them (Fulfilling: Parcel and Payment)",
+    "A transition ending on a composite state's border ([card authorised] into Fulfilling)",
+    "An initial pseudostate inside each region",
+    "A transition leaving a composite state from its border (hold requested, cancel requested / refund the payment)",
+    "A deep history H* in the Parcel region, re-entered from On hold (hold lifted)",
+    "A note linked to the deep history by a dashed line",
+    "A self-transition with a trigger, a guard and an effect: capture failed [attempts < 3] / count the attempt",
+    "A join, a bar, merging the two regions, then a transition with an effect only (/ hand the parcel to the carrier)",
+    "A composite state holding its substates with no regions (In delivery)",
+    "A shallow history H, re-entered when a problem is resolved",
+    "A state with its activities collapsed (Out for delivery, `present` `collapsed`)",
+    "A final state, a ring round a filled circle (parcel signed for / email the receipt)",
+    "A closed composite state with UML's decomposition mark, its substates not shown (Under enquiry)",
+    "A junction, a small filled circle, merging two transitions (refused at the door, parcel lost)",
+    "A state's compartment cut to two rows then \"+2 more\" (Cancelled, `present` `rows`)",
+    "A terminate pseudostate, an X (after 30 days / erase the shopper's details)"
+   ]
   },
   "uml-sequence": {
-   "title": "Sequence diagram examples",
-   "intro": "A UML sequence diagram of a bookshop's checkout: a shopper, the storefront, the api, payments and a receipt created on the way, their messages in time order with activation bars, an alt frame with an opt frame and an interaction use inside it.",
-   "main": "overview",
+   "title": "Sequence diagram",
+   "intro": "A bookshop's checkout: the shopper, the storefront, the api, a stock hold it creates and later deletes, the stock, the card gateway and the warehouse, their messages in time order with every frame the type draws.",
+   "main": "checkout",
    "alternatives": [],
    "shows": [
-    "fragments, activations, a create",
-    "from an interaction use",
-    "from an interaction use",
-    "from an interaction use",
-    "from an inline interaction",
-    "loop, break, create and delete",
-    "par with a nested opt"
-   ],
-   "pending": true
+    "Lifelines left to right, each head `name : Type` over a dashed stem (api : ShopApi)",
+    "An actor lifeline, <<actor>> over its head (shopper : Customer)",
+    "A synchronous call, solid with a filled arrowhead (checkout(), place(order))",
+    "A `break` frame with its guard (basket is empty) holding an asynchronous message",
+    "An asynchronous message, solid with an open arrowhead (showError, orderPlaced, release)",
+    "A self-call drawn as a loop back to its own lifeline (validate(order))",
+    "Activation bars derived from the messages, a nested bar set to the right of its parent (api during validate)",
+    "A create message, dashed and open, the created lifeline's head lowered to it (new(order) to hold : StockHold)",
+    "A `loop` frame (for each order line) with a call and its reply inside",
+    "A reply, dashed with an open arrowhead, back to the caller (reserved, paid, declined, result)",
+    "An `alt` frame with two operands, their guards and a dashed divider (payment accepted, else)",
+    "A `par` frame nested in an operand, its two operands running at once (tell the shopper, tell the warehouse)",
+    "An `opt` frame nested in the `par` (shopper is still on the page), three frames deep",
+    "An interaction use, a `ref` box over the lifelines it covers (Send receipt email, over storefront and api)",
+    "A message with a stereotype, <<amqp>> before its label (pickList(order) to the warehouse)",
+    "A delete message, the receiver's stem ending in a cross (close() to hold)"
+   ]
   },
   "uml-communication": {
-   "title": "Communication diagram examples",
-   "intro": "A UML communication diagram of the same checkout: five lifelines joined by connectors, each link's messages a stack of numbered rows.",
-   "main": "overview",
-   "alternatives": [],
-   "shows": [
-    "numbered messages on links",
-    "deep numbers, create, delete",
-    "async messages and a guard"
+   "title": "Communication diagram",
+   "intro": "A shopper checks out and the card is accepted: the storefront, the shop's API, the payment provider and the card network pass the order along their links, a receipt is created and the basket deleted.",
+   "main": "checkout",
+   "alternatives": [
+    {
+     "view": "checkout-right",
+     "setting": "Laid out right (`direction` `right`) instead of down: the same lifelines, links and numbered messages."
+    }
    ],
-   "pending": true
+   "shows": [
+    "A lifeline with <<actor>> over its head (shopper : Shopper)",
+    "Lifeline heads `name : Type` (storefront : Storefront, api : ShopApi)",
+    "Connectors as plain lines with no arrows, each carrying its messages as a stack the line runs through",
+    "Messages numbered by nesting, `1`, `1.1`, `1.1.2`, down to `1.1.2.1.1`",
+    "Calls with a small filled arrow toward the receiver (checkout(), charge(total))",
+    "A message with a stereotype after its number (1.1: <<secure>> place(order))",
+    "An async message with an open arrow (orderPlaced)",
+    "Replies with a dashed open arrow (paid, result, confirmation page)",
+    "A self connector drawn as a loop, carrying a message to the lifeline itself (validate(order))",
+    "A create message, <<create>> before its text (new(order) to receipt)",
+    "A delete message with a filled arrow, <<destroy>> before its text (clear() to basket)",
+    "Two messages one way and a reply the other way on one link (storefront to api)",
+    "A connector with no message, a single line (api to stock)"
+   ]
   },
   "uml-interaction-overview": {
-   "title": "Interaction overview diagram examples",
-   "intro": "A UML interaction overview diagram of buying a book: interaction uses for finding a book, checking out and emailing the receipt, a decision looping back through a merge, a fork and a join, and an inline interaction with its three lifelines.",
-   "main": "overview",
-   "alternatives": [],
-   "shows": [
-    "uses, inline interaction, loops",
-    "laid out right, flow final, a note",
-    "two inline interactions, a merge"
+   "title": "Interaction overview diagram",
+   "intro": "Buying a book at an online bookshop as an interaction overview: finding the book, checking out until the payment is accepted, then emailing the receipt, reserving the stock and queueing the order side by side. Each ref box opens its own sequence diagram.",
+   "main": "buy-book",
+   "alternatives": [
+    {
+     "view": "buy-book-right",
+     "setting": "Laid out right (`direction` left at its default) instead of down: the same nodes and flows, the start at the left."
+    },
+    {
+     "view": "find-book",
+     "setting": "The sequence diagram the interaction use Find a book opens (a drill-down from the main view)."
+    },
+    {
+     "view": "buy-checkout",
+     "setting": "The sequence diagram the interaction use Check out opens (a drill-down from the main view)."
+    },
+    {
+     "view": "reserve-stock",
+     "setting": "The sequence diagram the interaction use Reserve the stock opens (a drill-down from the main view)."
+    },
+    {
+     "view": "email-receipt",
+     "setting": "The sequence diagram the interaction use Email the receipt opens (a drill-down from the main view)."
+    },
+    {
+     "view": "queue-order",
+     "setting": "The sequence diagram the inline interaction Queue the order draws in its frame, opened as a view of its own."
+    }
    ],
-   "pending": true
+   "shows": [
+    "An initial node, a filled circle",
+    "Interaction uses, boxes with `ref` in their tag, each opening its sequence diagram (Find a book, Check out, Email the receipt, Reserve the stock)",
+    "A control flow with a name as its label (book chosen)",
+    "A merge node, a hollow diamond, where the retry comes back in",
+    "A note (a comment with a folded corner) linked by a dashed line to the decision",
+    "A decision node holding its question (Payment accepted?)",
+    "Guards on the decision's exits, and a flow with both a name and a guard (try again [else])",
+    "A flow looping back to an earlier node",
+    "A fork node, a bar splitting the flow three ways",
+    "An inline interaction, an `sd` frame with its sequence diagram drawn inside: lifelines, a call, its reply and an asynchronous message (Queue the order)",
+    "A flow final node, a circle with a cross, ending one branch alone (after the receipt)",
+    "A join node, a bar where two branches meet",
+    "An activity final node, a ringed dot"
+   ]
   },
   "uml-timing": {
-   "title": "Timing diagram examples",
-   "intro": "A UML timing diagram of one charge: two lifelines as step lines through their states on a time ruler in milliseconds, a call and its reply between them at their times, a duration constraint and a time constraint.",
-   "main": "overview",
+   "title": "Timing diagram",
+   "intro": "One bookshop order being paid for, millisecond by millisecond: the order worker, the card gateway and the mailer stepping through their states, the order's status as values, the messages between them and the limits on how long it may take.",
+   "main": "checkout",
    "alternatives": [],
    "shows": [
-    "states, values, constraints",
-    "a value lifeline, async messages",
-    "minutes, call and reply, overlaps"
-   ],
-   "pending": true
+    "Lifelines as lanes, `name : Type` on the left and their states in a column (worker : OrderWorker, payments : CardGateway, mailer : Mailer)",
+    "State lifelines as step lines, level in a state's row, upright at each change",
+    "A call message with a filled arrowhead from the sender's level to the receiver's (charge(total))",
+    "Its reply, dashed with an open arrowhead (paid)",
+    "A time constraint, a tick with its label (`{<= 1000 ms}`)",
+    "An asynchronous message with an open arrowhead and a stereotype (<<signal>> receipt)",
+    "A duration constraint spanning two lanes, its extension lines reaching both (`{<= 800 ms}`)",
+    "A duration constraint within one lane (`{<= 300 ms}`)",
+    "A general value lifeline, `present` `as` `values`: the order's status in a band whose edges cross at each change (placed, paying, paid, packing)",
+    "A time ruler in milliseconds under the last lane, major and minor ticks"
+   ]
   },
   "uml-information-flow": {
-   "title": "Information flow diagram examples",
-   "intro": "A UML information flow diagram of what travels with an order: a shopper, components and information items, joined by dashed flow lines each naming what it conveys.",
-   "main": "overview",
-   "alternatives": [],
-   "shows": [
-    "items and flow lines",
-    "named flows, classes, a self-flow",
-    "laid out down"
+   "title": "Information flow diagram",
+   "intro": "What travels with one bookshop order: the shopper's checkout, the card details sent on to the payment provider, the order saved, reserved and confirmed, stock levels back to the storefront and the receipt back to the shopper.",
+   "main": "order-flows",
+   "alternatives": [
+    {
+     "view": "order-flows-down",
+     "setting": "Laid out down (`direction` `down`) instead of right: the same ends, items and flows."
+    }
    ],
-   "pending": true
+   "shows": [
+    "A note linked by a dashed line to a flow's end (Shop API)",
+    "Components as flow ends (Shop API, Storefront, Payment provider)",
+    "A flow from an element to itself, drawn as a loop (<<flow>> retry: Order)",
+    "A named flow conveying an information item and a class: <<flow>> reserve: Order, Book",
+    "A class as a flow end (StockLedger)",
+    "An interface as a flow end, drawn with <<interface>> (Notifications)",
+    "A flow conveying two information items, named: <<flow>> confirm: Order, Receipt",
+    "Unnamed flows, labelled <<flow>> and what they convey (<<flow>> Receipt, <<flow>> Stock level)",
+    "An actor as a flow end (Shopper)",
+    "Flows drawn dashed with an open arrowhead, each into the element it reaches",
+    "A flow back over several columns, out of its source's bottom and into its target's (<<flow>> Order)",
+    "Information items, each a classifier with a small filled triangle in its top right corner (Order, Card details, Receipt, Stock level)",
+    "A class conveyed by a flow, drawn beside the items (Book)"
+   ]
   },
   "sysml-requirement": {
-   "title": "Requirement diagram examples",
-   "intro": "A SysML requirement diagram of a city e-bike in a req frame: requirements with their ids and wrapped texts, containment crosshairs, blocks satisfying and test cases verifying them.",
-   "main": "overview",
+   "title": "Requirement diagram",
+   "intro": "What an online bookshop must do: its ordering requirements broken down by containment, a payments package, a requirement copied from a regulation, and the blocks that satisfy and the test cases that verify them, in one req frame.",
+   "main": "requirements",
    "alternatives": [],
    "shows": [
-    "containment, derive, satisfy, verify",
-    "kinds, risk, verify method",
-    "satisfy, verify, refine, rows"
-   ],
-   "pending": true
+    "The req frame with its pentagon header, the view's subject a package: req [Package] Online bookshop [What the shop must do]",
+    "Requirements as classifiers, <<requirement>> over the name and an id and text compartment (SHOP-1 Online ordering)",
+    "Containment, a line with a crosshair at the owner's end, two levels deep (Online ordering holds Search, Checkout and Refunds; Search holds Search speed)",
+    "All five requirement kinds over the name: <<functionalRequirement>>, <<performanceRequirement>>, <<interfaceRequirement>>, <<physicalRequirement>>, <<designConstraint>>",
+    "The risk and verifyMethod rows of an extended requirement (Search: risk = low, verifyMethod = demonstration)",
+    "A long text wrapped over several rows",
+    "<<copy>> from a requirement to the regulation whose text it repeats (Refunds to Distance selling refunds)",
+    "<<satisfy>> from a block to a requirement (Warehouse satisfies Parcel size, Storefront satisfies Checkout)",
+    "<<refine>> from a block to a requirement (Search index refines Search)",
+    "<<deriveReqt>> from a derived requirement to its source (Short checkout from Checkout)",
+    "<<trace>> between two requirements (Gateway interface to Checkout)",
+    "A package drawn as a box holding requirements and a block (Payments)",
+    "A text cut to 4 rows then \"+6 more\" (No stored card numbers, `present` `rows`)",
+    "<<verify>> from a test case to a requirement, <<testCase>> over its name (Search load test, Checkout walk-through)",
+    "A <<problem>> note and a <<rationale>> note, each linked to its requirement by a dashed line"
+   ]
   },
   "sysml-block-definition": {
-   "title": "Block definition diagram examples",
-   "intro": "A SysML block definition diagram of a city e-bike in a bdd frame: blocks with named compartments of parts, values, constraints and ports, an interface block, constraint blocks and value types.",
-   "main": "overview",
-   "alternatives": [],
-   "shows": [
-    "blocks, value types, compartments",
-    "proxy, full and conjugated ports",
-    "a hierarchy, values with units"
+   "title": "Block definition diagram",
+   "intro": "A city e-bike's blocks: the bike and its battery, motor, controller and lights, the dock it may stand in, the interface block of the charge link, the constraint blocks behind its range, and the value types they use.",
+   "main": "ebike-blocks",
+   "alternatives": [
+    {
+     "view": "ebike-blocks-right",
+     "setting": "Laid out right (`direction` `right`) instead of down: the same blocks, compartments and lines."
+    }
    ],
-   "pending": true
+   "shows": [
+    "The frame and its header, `bdd [Package] EBikeSystem [A city e-bike's blocks]`",
+    "Blocks with <<block>> and SysML's titled compartments, an empty one not drawn",
+    "A block's values and operations (RentalVehicle)",
+    "A generalization with a hollow triangle (EBike to RentalVehicle)",
+    "A `parts` compartment with multiplicities (`lights: Light [2]`)",
+    "A `references` compartment (`dock: Dock [0..1]`)",
+    "A `values` compartment with a default (`usableShare: Real = 0.9`)",
+    "A `constraints` compartment of constraint properties (`usable: UsableEnergy`)",
+    "A `ports` compartment with <<proxy>> and <<full>> ports and a plain port (Battery, Motor)",
+    "A `flow properties` compartment with each direction: in, out, inout",
+    "Composite associations with filled diamonds, roles and multiplicities, matching the parts",
+    "A plain association to a referenced block, navigable, `0..1`",
+    "A conjugated port, its type starting `~` (Dock's `charge: ~ChargeInterface`)",
+    "A labelled dependency (Battery feeds PowerBus) and a <<use>> dependency (Dock to ChargeInterface)",
+    "An <<interfaceBlock>> with flow properties and an operation (ChargeInterface)",
+    "<<constraintBlock>>s with the expression in braces, their parameters, and one owning a constraint property (UsableEnergy, RangeEquation)",
+    "<<valueType>>s with a `quantity` compartment, `unit` and `quantityKind` (Distance, Energy, Voltage)"
+   ]
   },
   "sysml-internal-block": {
-   "title": "Internal block diagram examples",
-   "intro": "A SysML internal block diagram of a city e-bike: the bike as the ibd frame holding its parts, ports on their borders with flow arrows, connectors carrying DC power and phase current.",
-   "main": "overview",
-   "alternatives": [],
-   "shows": [
-    "parts, ports, item flows",
-    "frame ports, delegation, a full port",
-    "a part's own block, two delegations"
+   "title": "Internal block diagram",
+   "intro": "Inside a city e-bike: the battery, controller, motor and lights wired together, the dock the bike rests in, and the charge socket on the bike's own border, with what flows along each connector, in one SysML internal block diagram.",
+   "main": "inside-ebike",
+   "alternatives": [
+    {
+     "view": "inside-ebike-right",
+     "setting": "Laid out right (`direction` left at its default) instead of down, with no port side set by hand: the same parts, ports and connectors, the frame's port on its left border."
+    }
    ],
-   "pending": true
+   "shows": [
+    "The frame: the subject block's box with its header `ibd [Block] EBike [Inside the e-bike]`",
+    "A port on the frame's own border (<<proxy>> chargeSocket : ChargeInterface) and a connector delegating it to a part's port",
+    "Proxy ports typed by an interface block, with a two-way flow arrow inside from its in and out flow properties (charge : ChargeInterface)",
+    "A conjugated port, its type written with `~` (dock's charge : ~ChargeInterface)",
+    "Part properties as boxes `name : Type [multiplicity]` (battery : Battery [1], controller : Controller [1])",
+    "Untyped ports as plain squares on their part's border, each named beside it (power, bus, supply, drive)",
+    "A reference property, a dashed box (dock : Dock [0..1])",
+    "Value properties as boxes `name : Type` (batteryCapacity : Energy, ecoRange : Distance)",
+    "Item flows: the item as the connector's label and a filled triangle pointing the way it flows (DCPower, PhaseCurrent)",
+    "An item flowing against the connector's direction (DCPower from the dock to the battery, WheelSpeed from the motor to the controller)",
+    "A connector with no item flow (the bus between battery and controller)",
+    "Two connectors on one port (the controller's lights to both lights)",
+    "A full port, <<full>> beside it, set on its part's right side by `present` (sensor : SpeedSensor on the motor)"
+   ]
   },
   "sysml-parametric": {
-   "title": "Parametric diagram examples",
-   "intro": "A SysML parametric diagram of a city e-bike's range: constraint properties with rounded corners and their expressions, parameters on their borders bound to value properties.",
-   "main": "overview",
-   "alternatives": [],
-   "shows": [
-    "constraints and bindings",
-    "a constraint block as the frame",
-    "a power budget, laid out down"
+   "title": "Parametric diagram",
+   "intro": "How far a city e-bike goes on a charge, in eco and in boost: its battery's usable energy and each mode's consumption bound to the parameters of the equations that give the two ranges.",
+   "main": "range",
+   "alternatives": [
+    {
+     "view": "range-down",
+     "setting": "Laid out down (`direction` `down`) instead of right: the same values, constraint properties and bindings."
+    },
+    {
+     "view": "trip-frame",
+     "setting": "The constraint block TripRange as the view's `subject` instead of the block EBike: its own parameters on the frame, bound to the parameters of the constraint properties it is built from. A view has one subject, so the two cannot share a picture."
+    }
    ],
-   "pending": true
+   "shows": [
+    "The frame's header naming its block: `par [Block] EBike [...]`",
+    "Value properties as plain boxes `name : Type` (ecoConsumption : EnergyPerDistance, batteryCapacity : Energy)",
+    "Constraint properties as boxes with rounded corners, `name : ConstraintBlock`, the block's expression in braces under the name, cut to the box",
+    "Two constraint properties typed by one constraint block (eco and boost : RangeEquation)",
+    "Parameters as squares on a constraint property's border, `name : Type` beside each",
+    "Binding connectors, plain lines with no ends, from value properties to parameters",
+    "A binding between parameters of two constraint properties (usable's usable to the energy of eco and of boost)"
+   ]
   },
   "c4": {
-   "title": "C4 diagram examples",
-   "intro": "A C4 system context diagram of a bookshop: the shopper and staff as people, the bookshop as the system in the middle, the external systems it uses in grey.",
-   "main": "overview",
-   "alternatives": [],
-   "shows": [
-    "system context",
-    "containers in a boundary",
-    "components of one container",
-    "a dynamic view, numbered",
-    "deployment nodes, instances",
-    "system landscape",
-    "a container shape each"
+   "title": "C4 diagram",
+   "intro": "The online bookshop in C4, one model zoomed to every level: its containers first, inside the bookshop's boundary, then the same model as a system context, a landscape, the Shop API's components, placing an order step by step, and the production deployment.",
+   "main": "containers",
+   "alternatives": [
+    {
+     "view": "context",
+     "setting": "A system context view (`c4.context`): the bookshop as one box among its people and external systems; the box opens the containers."
+    },
+    {
+     "view": "landscape",
+     "setting": "A system landscape view (`c4.landscape`): every system of the business side by side, Bookkeeping included, with no system as the subject."
+    },
+    {
+     "view": "components",
+     "setting": "A component view (`c4.component`): inside the Shop API's boundary, its five components and what they talk to; an implied line becomes the real one, Accounts and sign-in to the Email service."
+    },
+    {
+     "view": "placing-an-order",
+     "setting": "A dynamic view (`c4.dynamic`): placing an order as ten numbered steps between the containers, the view's `edges` in time order."
+    },
+    {
+     "view": "deployment",
+     "setting": "A deployment view (`c4.deployment`): deployment nodes nested as boxes, holding the container instances that run in production."
+    }
    ],
-   "pending": true
+   "shows": [
+    "People in C4's person shape, with their description (Shopper, Shop staff)",
+    "The subject's boundary, a dashed box titled `Bookshop [Software System]`, holding its containers",
+    "Containers with C4's three lines: the name, `[Container: technology]` and the description",
+    "Container shapes chosen by `shape`: a phone (Mobile app), a browser (Storefront), a terminal (Stock import), a robot (Order worker), a folder (Cover images), a cylinder (Database), a pipe (Order queue)",
+    "A container in the default box (Shop API)",
+    "Relationships drawn solid with an open arrow, labelled `description [technology]`",
+    "A relationship with no technology, its description alone (Load price lists with)",
+    "A label cut with an ellipsis at 280 px (Reads the catalogue and places orders through [JSO...])",
+    "A view that draws only the relationships its `edges` lists (the email to the shopper and the worker's database write are left out)",
+    "An implied relationship, dashed: Shop API to Email service, standing for Accounts and sign-in's password reset emails",
+    "External software systems in grey outside the boundary (Payment provider, Email service, Courier)",
+    "A note linked by a dashed line to a container (Order worker)"
+   ]
   },
   "er": {
-   "title": "Entity-relationship diagram examples",
-   "intro": "An entity-relationship diagram of a bookshop's database: seven tables with their key columns first, related by crow's foot ends, identifying lines solid and the rest dashed.",
-   "main": "overview",
-   "alternatives": [],
-   "shows": [
-    "keys, crow's foot, junction table",
-    "IDEF1X, dependent entities",
-    "crow's foot, laid out down",
-    "rows capped, a section hidden"
+   "title": "Entity-relationship diagram",
+   "intro": "A bookshop's database: customers, their orders and order lines, the books and their authors, and payments, as seven tables related by their foreign keys, in crow's foot notation.",
+   "main": "schema",
+   "alternatives": [
+    {
+     "view": "schema-idef1x",
+     "setting": "In IDEF1X (`notation` `idef1x`) instead of crow's foot: the same tables and lines, a dot at the child end with P or Z, a hollow diamond at an optional parent, and dependent tables with rounded corners."
+    }
    ],
-   "pending": true
+   "shows": [
+    "Tables as boxes, the name in a header, the key columns above a divider and the rest below it",
+    "Column marks: PK, FK, UK and ? for a nullable column (customer's referred_by is FK ?)",
+    "A composite primary key whose part is also a foreign key (order_line: order_id PK FK, line_no PK)",
+    "A table cut to 3 rows a section then \"+2 more\" (customer, `present` `rows`)",
+    "A section collapsed: book shows its keys only (`present` `collapsed` `columns`)",
+    "A self-reference: customer referred customer, zero or one to zero or more",
+    "Relationship labels on the lines: places, contains, sold as, paid by, referred",
+    "Identifying relationships drawn solid (order contains order_line, book and author to book_author)",
+    "Non-identifying relationships drawn dashed (customer places order, book sold as order_line)",
+    "Crow's foot's exactly one end, two bars (the 1 end of every relationship)",
+    "Crow's foot's zero or more end, a ring and a crow's foot (customer places orders 0..*)",
+    "Crow's foot's one or more end, a bar and a crow's foot (order contains order_line 1..*)",
+    "Crow's foot's zero or one end, a ring and a bar (order paid by payment 0..1)",
+    "A many-to-many relationship resolved by a junction table (book_author between book and author)",
+    "A note linked to order_line by a dashed line"
+   ]
   },
   "dfd": {
-   "title": "Data flow diagram examples",
-   "intro": "A data flow diagram of a bookshop, level 1: three external entities, three numbered processes and two data stores, joined by labelled data flows.",
-   "main": "overview",
-   "alternatives": [],
-   "shows": [
-    "processes, stores, entities",
-    "a level, checked for balance",
-    "Gane and Sarson symbols",
-    "a context diagram, process 0",
-    "level 1, a local store, down"
+   "title": "Data flow diagram",
+   "intro": "The bookshop's data at level 1: the customer, the payment provider and the courier around three numbered processes and two data stores, with Take order opening its own level 2.",
+   "main": "level-1",
+   "alternatives": [
+    {
+     "view": "level-1-gane-sarson",
+     "setting": "The same level 1 in Gane and Sarson's symbols (`notation` `gane-sarson`): processes as rounded rectangles with a number band, stores with an id box, entities with a shadow."
+    },
+    {
+     "view": "take-order",
+     "setting": "Level 2 of process 1, Take order: the view the process opens, its flows across the edge balancing level 1's."
+    }
    ],
-   "pending": true
+   "shows": [
+    "A note linked by a dashed line to a data store",
+    "Data stores in Yourdon's style, two lines with the number before the name (D2 Orders, D1 Books)",
+    "Processes as ellipses, the number above the name (1 Take order, 2 Take payment, 3 Ship order)",
+    "Labelled data flows, solid with a filled arrow",
+    "A request and its reply between one pair (charge request, charge result)",
+    "External entities as rectangles (Payment provider, Courier, Customer)",
+    "Flows from a store into a process and from a process into a store (price and stock, stock change)",
+    "A process that opens its own level (Take order opens level 2, which balances it)"
+   ]
   },
   "flowchart": {
-   "title": "Flowchart examples",
-   "intro": "A flowchart of handling a returned book, laid out down: a start, input and manual input, a decision with yes and no exits, a delay, a database, a document, a connector and an end.",
-   "main": "overview",
-   "alternatives": [],
-   "shows": [
-    "ten symbols, laid out down",
-    "laid out right, three exits, a loop",
-    "an on-page connector pair, a note"
+   "title": "Flowchart",
+   "intro": "A bookshop handling a returned book, from the parcel arriving to the return closed: the slip read, the order looked up, the book's condition deciding between a refund, a courier claim and a rejection letter, every one of the ten symbols in one flowchart.",
+   "main": "returns",
+   "alternatives": [
+    {
+     "view": "returns-right",
+     "setting": "Laid out right (`direction` `right`) instead of down: the same symbols and flows, the start at the left."
+    }
    ],
-   "pending": true
+   "shows": [
+    "A start, a terminator drawn as a stadium with no flow in (Returned parcel arrives)",
+    "An input/output, a parallelogram leaning right (Read the returns slip)",
+    "A decision, a diamond with its text on two lines, its exits labelled yes and no (Order found?)",
+    "A manual input, its top sloping up to the right (Key in the order number)",
+    "A loop back: a labelled flow from the manual input up to the decision (look again)",
+    "A process, a rectangle (Inspect the book)",
+    "A decision with three exits, each labelled (as new, damaged in the post, worn by the reader)",
+    "A predefined process, a rectangle with a second line inside each side (Refund the payment), two flows coming into it",
+    "A delay, drawn as a D (Wait for the bank to confirm)",
+    "An on-page connector pair: the flow runs into one B circle and carries on from the other",
+    "A note linked by a dashed line to the B connector it explains",
+    "A database, a cylinder (Stock records)",
+    "A document with a wavy bottom (Rejection letter)",
+    "A connector as a junction: two flows into A, one out",
+    "An end, a terminator with no flow out (Return closed)",
+    "Flows drawn solid with a filled arrowhead, labels beside them"
+   ]
   },
   "bpmn": {
-   "title": "BPMN diagram examples",
-   "intro": "A BPMN diagram of a bookshop's order to shipment: three pools, the bookshop's in two lanes, tasks, events and gateways joined by sequence flows, dashed message flows between the pools, a timer on the payment task's border.",
-   "main": "overview",
-   "alternatives": [],
-   "shows": [
-    "pools, lanes, events, gateways",
-    "a collapsed sub-process, opened",
-    "nested lanes, expanded sub-process",
-    "black-box pools, data, laid out down"
+   "title": "BPMN diagram",
+   "intro": "A bookshop order from the shopper's basket to the courier: the shopper's, the payment provider's and the bookshop's pools, the bookshop's work split between sales and a warehouse of picking and dispatch, with the messages that pass between them.",
+   "main": "order-to-shipment",
+   "alternatives": [
+    {
+     "view": "pick-and-pack",
+     "setting": "The collapsed sub-process Pick and pack opened (Enter or a double-click on it): its own view, the sub-process its `subject`, showing the flow it holds."
+    },
+    {
+     "view": "order-to-shipment-expanded",
+     "setting": "The same process with Pick and pack expanded in place: a view that lists what a sub-process holds draws it as a frame round its flow instead of collapsed with the + marker."
+    }
    ],
-   "pending": true
+   "shows": [
+    "Pools as bands, each name turned in a header strip: Shopper, Payment provider, Bookshop",
+    "A black-box pool with no flow nodes (Payment provider)",
+    "A none start event (Basket is ready) and a user task with the figure at its top left (Place order)",
+    "A message intermediate throw event, a double ring with a filled envelope (Order sent)",
+    "Message flows, dashed with an open circle at the source and a hollow triangle at the target, labelled (Order, Charge request, Payment result, Shipping notice); those to the black-box pool end on its border",
+    "A message intermediate catch event, a double ring with an open envelope (Shipping notice received), then a none end event",
+    "Lanes in the Bookshop pool: Sales, and Warehouse holding the nested lanes Dispatch and Picking",
+    "A message start event (Order received)",
+    "A data object, a page with a folded corner (Order), and data associations, dotted with an arrowhead at their target",
+    "A service task with the gear (Take payment)",
+    "An interrupting timer boundary event on the task's border (No answer in 2 minutes)",
+    "A text annotation, an open bracket, joined by a dotted association with an arrowhead (`direction` `one`)",
+    "An exclusive gateway, a diamond with an X and its name outside (Paid?), its sequence flows labelled yes and no",
+    "A second exclusive gateway merging the no flow and the timeout",
+    "A terminate end event, a thick ring round a filled circle (Order cancelled)",
+    "A parallel gateway, a diamond with a +, forking to two tasks, and another joining them",
+    "A collapsed sub-process with the + marker (Pick and pack), opening its own view",
+    "A data store reference, a cylinder (Stock database), read and written by data associations",
+    "A timer start event beginning a second flow in the same pool (Every morning at 8:00)",
+    "A timer intermediate catch event (Courier's pickup at 16:00)",
+    "A call activity, a task with a thick border (Hand parcel to courier)",
+    "A non-interrupting message boundary event, its rings dashed (Shopper asks where it is)",
+    "A none intermediate throw event, a double ring with no marker (Parcel dispatched)",
+    "A group, a dashed and dotted rounded rectangle round its members (Dispatch)",
+    "A message end event, a thick ring with a filled envelope (Shipping notice sent)"
+   ]
   },
   "mindmap": {
-   "title": "Mindmap examples",
-   "intro": "A mindmap of opening a bookshop: the root in the middle, six branches left and right, each in its own colour, joined by curves.",
-   "main": "overview",
-   "alternatives": [],
-   "shows": [
-    "branches left and right",
-    "one side, deep, wrapped text",
-    "sides chosen, a drill-down",
-    "the view a topic opens"
+   "title": "Mindmap",
+   "intro": "The plan for opening the bookshop as one mindmap: seven branches from catalogue and website to hosting and staff, each broken into the jobs to do, and launch day in a mindmap of its own that the Launch topic opens.",
+   "main": "plan",
+   "alternatives": [
+    {
+     "view": "launch-day",
+     "setting": "The mindmap the Launch topic opens (`opensView`): launch day hour by hour, a tree of its own under the main view."
+    }
    ],
-   "pending": true
+   "shows": [
+    "The root in the middle, in a larger, bolder box (Opening the bookshop)",
+    "Topics as rounded boxes, joined to their parents by curves, thicker from the root",
+    "Each first-level branch in its own colour, borders and curves alike, the six colours cycled (Staff takes Catalogue's)",
+    "Branches set to a side by `present` `side`: Catalogue and Website right, Warehouse and Legal and money left",
+    "Branches with no side placed on the shorter half (Launch, Hosting, Staff)",
+    "Children in the view's order, top to bottom",
+    "A topic that opens another view, wider, with the drill-down mark (Launch)",
+    "A long topic wrapped to four lines and cut with an ellipsis (the wholesalers' terms)",
+    "A topic wrapped to two lines (Test with the provider's sandbox cards)",
+    "Four levels below the root: Website, Checkout, Card payments, the sandbox test"
+   ]
   },
   "aws": {
-   "title": "AWS diagram examples",
-   "intro": "An AWS architecture diagram of a bookshop: a cloud, a region, a VPC, two availability zones, public and private subnets and a security group as nested boxes, fifteen services and resources drawn with their icons and full service names.",
-   "main": "overview",
+   "title": "AWS diagram",
+   "intro": "The bookshop on AWS: shoppers reach DNS and a CDN, which serves the storefront files and passes the api to a load balancer in a VPC across two availability zones, with the database, the order queue and its workers, logs and a separate log archive account.",
+   "main": "on-aws",
    "alternatives": [],
    "shows": [
-    "accounts, VPCs, subnets, services",
-    "serverless, a generic group",
-    "two accounts, a security group"
-   ],
-   "pending": true
+    "A resource outside the cloud with its icon and full name (Shoppers, Users)",
+    "Connections, solid with an open arrow and a label (looks up, HTTPS, storefront, /api)",
+    "The cloud group, AWS Cloud [Cloud], holding global services (DNS, Amazon Route 53; CDN, Amazon CloudFront)",
+    "An account group, Bookshop production [Account]",
+    "A region group drawn dashed, Europe (Ireland) [Region]",
+    "Each service card with its icon, its label and the full service name under it (Storefront files, Amazon Simple Storage Service)",
+    "A VPC group, Bookshop VPC [VPC]",
+    "Availability zone groups drawn dashed, two of them (eu-west-1a, eu-west-1b)",
+    "Private subnet groups, one in each zone",
+    "A security group holding a service, nested four groups inside the VPC (Database security group around Database, primary)",
+    "A public subnet group holding a resource (NAT gateway, Amazon VPC NAT Gateway)",
+    "A connection from a group, ending on its border (Private subnet to NAT gateway, outbound; the VPC to the Order queue and to Logs and alarms)",
+    "A generic group, Order workers [Group], two functions inside, and a connection ending on its border (triggers)",
+    "A group whose content the view does not show, drawn as a card of its title, a connection ending on it (Log archive [Account], archived)"
+   ]
   },
   "gcp": {
-   "title": "Google Cloud diagram examples",
-   "intro": "A Google Cloud architecture diagram of a bookshop: a project, a region, a network, a subnetwork and two zones as nested boxes, nine products drawn with their icons and full service names.",
-   "main": "overview",
-   "alternatives": [],
-   "shows": [
-    "projects, regions, zones, products",
-    "a generic group, lines to groups",
-    "two regions, laid out down"
+   "title": "Google Cloud diagram",
+   "intro": "The bookshop deployed on Google Cloud: shoppers reach a load balancer and a CDN, the shop's API and an order worker run in europe-west1 against a database replicated across two zones, and a reporting group sends monthly sales to the accounts project.",
+   "main": "bookshop-gcp",
+   "alternatives": [
+    {
+     "view": "bookshop-gcp-right",
+     "setting": "Laid out right (`direction` `right`) instead of down: the same groups, products and paths."
+    }
    ],
-   "pending": true
+   "shows": [
+    "Users in the person shape (Shoppers, Shop staff)",
+    "A project as a solid box titled `bookshop-prod [Project]`",
+    "Product cards with the icon (a glyph without the pack), the label and under it the full service name (Load balancer, Cloud Load Balancing)",
+    "A label equal to the service name, drawn once (Cloud CDN)",
+    "Paths, solid with an open arrow and a label (HTTPS, /api, storefront)",
+    "A region and zones as dashed boxes (europe-west1, europe-west1-b, europe-west1-c)",
+    "A network and a subnetwork as solid boxes, nested inside the region (bookshop-vpc, data subnet)",
+    "Groups nested five deep: project, region, network, subnetwork, zone",
+    "Labels the author broke onto two lines (Database, primary)",
+    "A path between products in different groups (replicates, from zone b to zone c)",
+    "A generic group (reporting [Group])",
+    "A path from a group to a project, drawn to their borders (monthly sales)",
+    "A project holding nothing shown, a closed card (bookshop-accounts [Project])"
+   ]
   },
   "azure": {
-   "title": "Azure diagram examples",
-   "intro": "An Azure architecture diagram of a bookshop: a subscription, a resource group, a region, a virtual network and two subnets as nested boxes, eight services drawn with their icons and full service names.",
-   "main": "overview",
+   "title": "Azure diagram",
+   "intro": "A bookshop's production system on Azure: the storefront and API behind Front Door, the order queue and worker, the database with a standby in a second region, and the monitoring beside them, each in its subscription, resource group, region, virtual network and subnet.",
+   "main": "on-azure",
    "alternatives": [],
    "shows": [
-    "subscriptions, groups, networks",
-    "two regions, laid out down",
-    "closed subscriptions, a generic group"
-   ],
-   "pending": true
+    "Groups as boxes nested by ownership, each titled with its kind: a subscription, a resource group, a region (dashed), a virtual network and subnets",
+    "Service cards: the vendor icon on its tile (a plain square where no icon pack was fetched), the label, and the full service name under it in a smaller muted line (CDN and routing, Front Door and CDN Profiles)",
+    "Connectors, solid with an open arrow and a label (storefront, /api, paid order)",
+    "A label the author broke into two lines, kept as written (Order worker / queue trigger)",
+    "Lines leaving a subnet and its virtual network to reach services in the region (baskets, secrets)",
+    "A generic group holding services (Operations)",
+    "A service whose label is its full service name, drawn once (Application Insights)",
+    "A line starting at a group, drawn from its border (snet-apps: logs, metrics to Logs and alerts)",
+    "A group holding nothing the view shows, drawn as a closed card with its title, and a line ending on it (geo-replica to North Europe [Region])"
+   ]
   }
  }
 }

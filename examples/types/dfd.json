@@ -1,80 +1,35 @@
 {
  "$schema": "../../lib/umlimator.schema.json",
  "schemaVersion": 2,
- "title": "Data flow diagram examples",
- "root": "overview",
+ "title": "Data flow diagram",
+ "root": "level-1",
  "nodes": [
   {
-   "id": "card-bookshop-data-flow-dfd-level-1",
-   "label": "Bookshop, level 1",
-   "kind": "file",
-   "sublabel": "processes, stores, entities",
-   "what": "Level 1 in Yourdon notation: numbered processes, data stores and external entities joined by labelled data flows; a process opens its level.",
-   "how": "From examples/bookshop-data-flow.json.",
-   "opensView": "bookshop-data-flow-dfd-level-1"
-  },
-  {
-   "id": "card-bookshop-data-flow-dfd-level-2-take-order",
-   "label": "1 Take order",
-   "kind": "file",
-   "sublabel": "a level, checked for balance",
-   "what": "Level 2 of process 1, Take order: its own processes and stores, checked for balance against the flows of its parent process.",
-   "how": "From examples/bookshop-data-flow.json.",
-   "opensView": "bookshop-data-flow-dfd-level-2-take-order"
-  },
-  {
-   "id": "card-gane-sarson-rides",
-   "label": "Rides, Gane and Sarson",
-   "kind": "file",
-   "sublabel": "Gane and Sarson symbols",
-   "what": "Cycle hire rides in Gane and Sarson notation: processes as rounded rectangles with their number in a top band, data stores as open rectangles with an id box, external entities with a shadow, a request and its reply between one pair, and a note.",
-   "how": "From examples/variants/dfd-gane-sarson.json.",
-   "opensView": "gane-sarson-rides"
-  },
-  {
-   "id": "card-context-context",
-   "label": "Context diagram",
-   "kind": "file",
-   "sublabel": "a context diagram, process 0",
-   "what": "A library's lending as one process, numbered 0, with the external entities it trades data with; the process opens its level 1.",
-   "how": "From examples/variants/dfd-context.json.",
-   "opensView": "context-context"
-  },
-  {
-   "id": "card-context-level-1",
-   "label": "0 Lend books",
-   "kind": "file",
-   "sublabel": "level 1, a local store, down",
-   "what": "Process 0 broken into 0.1 to 0.3, laid out down, with a local data store that the balance check against the context diagram leaves out.",
-   "how": "From examples/variants/dfd-context.json.",
-   "opensView": "context-level-1"
-  },
-  {
-   "id": "bookshop-data-flow-dfd-customer",
+   "id": "customer",
    "type": "dfd.ExternalEntity",
    "label": "Customer"
   },
   {
-   "id": "bookshop-data-flow-dfd-provider",
+   "id": "provider",
    "type": "dfd.ExternalEntity",
    "label": "Payment provider"
   },
   {
-   "id": "bookshop-data-flow-dfd-courier",
+   "id": "courier",
    "type": "dfd.ExternalEntity",
    "label": "Courier"
   },
   {
-   "id": "bookshop-data-flow-dfd-take-order",
+   "id": "take-order",
    "type": "dfd.Process",
    "label": "Take order",
-   "opensView": "bookshop-data-flow-dfd-level-2-take-order",
+   "opensView": "take-order",
    "props": {
     "number": "1"
    }
   },
   {
-   "id": "bookshop-data-flow-dfd-take-payment",
+   "id": "take-payment",
    "type": "dfd.Process",
    "label": "Take payment",
    "props": {
@@ -82,7 +37,7 @@
    }
   },
   {
-   "id": "bookshop-data-flow-dfd-ship-order",
+   "id": "ship-order",
    "type": "dfd.Process",
    "label": "Ship order",
    "props": {
@@ -90,7 +45,7 @@
    }
   },
   {
-   "id": "bookshop-data-flow-dfd-books",
+   "id": "books",
    "type": "dfd.DataStore",
    "label": "Books",
    "props": {
@@ -98,7 +53,7 @@
    }
   },
   {
-   "id": "bookshop-data-flow-dfd-orders",
+   "id": "orders",
    "type": "dfd.DataStore",
    "label": "Orders",
    "props": {
@@ -106,7 +61,7 @@
    }
   },
   {
-   "id": "bookshop-data-flow-dfd-check-basket",
+   "id": "check-basket",
    "type": "dfd.Process",
    "label": "Check the basket",
    "props": {
@@ -114,7 +69,7 @@
    }
   },
   {
-   "id": "bookshop-data-flow-dfd-total-order",
+   "id": "total-order",
    "type": "dfd.Process",
    "label": "Total the order",
    "props": {
@@ -122,7 +77,7 @@
    }
   },
   {
-   "id": "bookshop-data-flow-dfd-record-order",
+   "id": "record-order",
    "type": "dfd.Process",
    "label": "Record the order",
    "props": {
@@ -130,525 +85,202 @@
    }
   },
   {
-   "id": "gane-sarson-rider",
-   "type": "dfd.ExternalEntity",
-   "label": "Rider"
-  },
-  {
-   "id": "gane-sarson-crew",
-   "type": "dfd.ExternalEntity",
-   "label": "Repair crew"
-  },
-  {
-   "id": "gane-sarson-start",
-   "type": "dfd.Process",
-   "label": "Start ride",
-   "props": {
-    "number": "4"
-   }
-  },
-  {
-   "id": "gane-sarson-end",
-   "type": "dfd.Process",
-   "label": "End ride",
-   "props": {
-    "number": "5"
-   }
-  },
-  {
-   "id": "gane-sarson-fault",
-   "type": "dfd.Process",
-   "label": "Log fault",
-   "props": {
-    "number": "6"
-   }
-  },
-  {
-   "id": "gane-sarson-bikes",
-   "type": "dfd.DataStore",
-   "label": "Bikes",
-   "props": {
-    "number": "D3"
-   }
-  },
-  {
-   "id": "gane-sarson-rides-store",
-   "type": "dfd.DataStore",
-   "label": "Rides",
-   "props": {
-    "number": "D4"
-   }
-  },
-  {
-   "id": "gane-sarson-note-fault",
+   "id": "note-orders",
    "type": "uml.Comment",
-   "label": "a bike flagged faulty cannot be unlocked"
-  },
-  {
-   "id": "context-member",
-   "type": "dfd.ExternalEntity",
-   "label": "Member"
-  },
-  {
-   "id": "context-supplier",
-   "type": "dfd.ExternalEntity",
-   "label": "Book supplier"
-  },
-  {
-   "id": "context-drop",
-   "type": "dfd.ExternalEntity",
-   "label": "Book drop"
-  },
-  {
-   "id": "context-lending",
-   "type": "dfd.Process",
-   "label": "Lend books",
-   "opensView": "context-level-1",
-   "props": {
-    "number": "0"
-   }
-  },
-  {
-   "id": "context-issue",
-   "type": "dfd.Process",
-   "label": "Issue loan",
-   "props": {
-    "number": "0.1"
-   }
-  },
-  {
-   "id": "context-return",
-   "type": "dfd.Process",
-   "label": "Take return",
-   "props": {
-    "number": "0.2"
-   }
-  },
-  {
-   "id": "context-order",
-   "type": "dfd.Process",
-   "label": "Order copies",
-   "props": {
-    "number": "0.3"
-   }
-  },
-  {
-   "id": "context-loans",
-   "type": "dfd.DataStore",
-   "label": "Loans",
-   "props": {
-    "number": "D5"
-   }
+   "label": "An order is kept seven years for the tax office"
   }
  ],
  "edges": [
   {
-   "id": "bookshop-data-flow-dfd-basket",
+   "id": "basket",
    "type": "dfd.DataFlow",
-   "from": "bookshop-data-flow-dfd-customer",
-   "to": "bookshop-data-flow-dfd-take-order",
+   "from": "customer",
+   "to": "take-order",
    "label": "basket"
   },
   {
-   "id": "bookshop-data-flow-dfd-price-and-stock",
+   "id": "price-and-stock",
    "type": "dfd.DataFlow",
-   "from": "bookshop-data-flow-dfd-books",
-   "to": "bookshop-data-flow-dfd-take-order",
+   "from": "books",
+   "to": "take-order",
    "label": "price and stock"
   },
   {
-   "id": "bookshop-data-flow-dfd-new-order",
+   "id": "new-order",
    "type": "dfd.DataFlow",
-   "from": "bookshop-data-flow-dfd-take-order",
-   "to": "bookshop-data-flow-dfd-orders",
+   "from": "take-order",
+   "to": "orders",
    "label": "new order"
   },
   {
-   "id": "bookshop-data-flow-dfd-confirmation",
+   "id": "confirmation",
    "type": "dfd.DataFlow",
-   "from": "bookshop-data-flow-dfd-take-order",
-   "to": "bookshop-data-flow-dfd-customer",
+   "from": "take-order",
+   "to": "customer",
    "label": "order confirmation"
   },
   {
-   "id": "bookshop-data-flow-dfd-amount-due",
+   "id": "amount-due",
    "type": "dfd.DataFlow",
-   "from": "bookshop-data-flow-dfd-orders",
-   "to": "bookshop-data-flow-dfd-take-payment",
+   "from": "orders",
+   "to": "take-payment",
    "label": "amount due"
   },
   {
-   "id": "bookshop-data-flow-dfd-charge-request",
+   "id": "charge-request",
    "type": "dfd.DataFlow",
-   "from": "bookshop-data-flow-dfd-take-payment",
-   "to": "bookshop-data-flow-dfd-provider",
+   "from": "take-payment",
+   "to": "provider",
    "label": "charge request"
   },
   {
-   "id": "bookshop-data-flow-dfd-charge-result",
+   "id": "charge-result",
    "type": "dfd.DataFlow",
-   "from": "bookshop-data-flow-dfd-provider",
-   "to": "bookshop-data-flow-dfd-take-payment",
+   "from": "provider",
+   "to": "take-payment",
    "label": "charge result"
   },
   {
-   "id": "bookshop-data-flow-dfd-paid-order",
+   "id": "paid-order",
    "type": "dfd.DataFlow",
-   "from": "bookshop-data-flow-dfd-take-payment",
-   "to": "bookshop-data-flow-dfd-ship-order",
+   "from": "take-payment",
+   "to": "ship-order",
    "label": "paid order"
   },
   {
-   "id": "bookshop-data-flow-dfd-stock-change",
+   "id": "stock-change",
    "type": "dfd.DataFlow",
-   "from": "bookshop-data-flow-dfd-ship-order",
-   "to": "bookshop-data-flow-dfd-books",
+   "from": "ship-order",
+   "to": "books",
    "label": "stock change"
   },
   {
-   "id": "bookshop-data-flow-dfd-shipping-label",
+   "id": "shipping-label",
    "type": "dfd.DataFlow",
-   "from": "bookshop-data-flow-dfd-ship-order",
-   "to": "bookshop-data-flow-dfd-courier",
+   "from": "ship-order",
+   "to": "courier",
    "label": "shipping label"
   },
   {
-   "id": "bookshop-data-flow-dfd-shipping-notice",
+   "id": "shipping-notice",
    "type": "dfd.DataFlow",
-   "from": "bookshop-data-flow-dfd-ship-order",
-   "to": "bookshop-data-flow-dfd-customer",
+   "from": "ship-order",
+   "to": "customer",
    "label": "shipping notice"
   },
   {
-   "id": "bookshop-data-flow-dfd-l2-basket",
+   "id": "l2-basket",
    "type": "dfd.DataFlow",
-   "from": "bookshop-data-flow-dfd-customer",
-   "to": "bookshop-data-flow-dfd-check-basket",
+   "from": "customer",
+   "to": "check-basket",
    "label": "basket"
   },
   {
-   "id": "bookshop-data-flow-dfd-l2-price-and-stock",
+   "id": "l2-price-and-stock",
    "type": "dfd.DataFlow",
-   "from": "bookshop-data-flow-dfd-books",
-   "to": "bookshop-data-flow-dfd-check-basket",
+   "from": "books",
+   "to": "check-basket",
    "label": "price and stock"
   },
   {
-   "id": "bookshop-data-flow-dfd-l2-checked-lines",
+   "id": "l2-checked-lines",
    "type": "dfd.DataFlow",
-   "from": "bookshop-data-flow-dfd-check-basket",
-   "to": "bookshop-data-flow-dfd-total-order",
+   "from": "check-basket",
+   "to": "total-order",
    "label": "checked lines"
   },
   {
-   "id": "bookshop-data-flow-dfd-l2-totalled-order",
+   "id": "l2-totalled-order",
    "type": "dfd.DataFlow",
-   "from": "bookshop-data-flow-dfd-total-order",
-   "to": "bookshop-data-flow-dfd-record-order",
+   "from": "total-order",
+   "to": "record-order",
    "label": "totalled order"
   },
   {
-   "id": "bookshop-data-flow-dfd-l2-new-order",
+   "id": "l2-new-order",
    "type": "dfd.DataFlow",
-   "from": "bookshop-data-flow-dfd-record-order",
-   "to": "bookshop-data-flow-dfd-orders",
+   "from": "record-order",
+   "to": "orders",
    "label": "new order"
   },
   {
-   "id": "bookshop-data-flow-dfd-l2-confirmation",
+   "id": "l2-confirmation",
    "type": "dfd.DataFlow",
-   "from": "bookshop-data-flow-dfd-record-order",
-   "to": "bookshop-data-flow-dfd-customer",
+   "from": "record-order",
+   "to": "customer",
    "label": "order confirmation"
   },
   {
-   "id": "gane-sarson-f-unlock",
-   "type": "dfd.DataFlow",
-   "from": "gane-sarson-rider",
-   "to": "gane-sarson-start",
-   "label": "unlock request"
-  },
-  {
-   "id": "gane-sarson-f-code",
-   "type": "dfd.DataFlow",
-   "from": "gane-sarson-start",
-   "to": "gane-sarson-rider",
-   "label": "unlock code"
-  },
-  {
-   "id": "gane-sarson-f-status",
-   "type": "dfd.DataFlow",
-   "from": "gane-sarson-bikes",
-   "to": "gane-sarson-start",
-   "label": "bike status"
-  },
-  {
-   "id": "gane-sarson-f-open",
-   "type": "dfd.DataFlow",
-   "from": "gane-sarson-start",
-   "to": "gane-sarson-rides-store",
-   "label": "open ride"
-  },
-  {
-   "id": "gane-sarson-f-return",
-   "type": "dfd.DataFlow",
-   "from": "gane-sarson-rider",
-   "to": "gane-sarson-end",
-   "label": "return at dock"
-  },
-  {
-   "id": "gane-sarson-f-read-open",
-   "type": "dfd.DataFlow",
-   "from": "gane-sarson-rides-store",
-   "to": "gane-sarson-end",
-   "label": "ride so far"
-  },
-  {
-   "id": "gane-sarson-f-closed",
-   "type": "dfd.DataFlow",
-   "from": "gane-sarson-end",
-   "to": "gane-sarson-rides-store",
-   "label": "closed ride"
-  },
-  {
-   "id": "gane-sarson-f-receipt",
-   "type": "dfd.DataFlow",
-   "from": "gane-sarson-end",
-   "to": "gane-sarson-rider",
-   "label": "fare receipt"
-  },
-  {
-   "id": "gane-sarson-f-damage",
-   "type": "dfd.DataFlow",
-   "from": "gane-sarson-crew",
-   "to": "gane-sarson-fault",
-   "label": "inspection report"
-  },
-  {
-   "id": "gane-sarson-f-flag",
-   "type": "dfd.DataFlow",
-   "from": "gane-sarson-fault",
-   "to": "gane-sarson-bikes",
-   "label": "fault flag"
-  },
-  {
-   "id": "gane-sarson-f-job",
-   "type": "dfd.DataFlow",
-   "from": "gane-sarson-fault",
-   "to": "gane-sarson-crew",
-   "label": "repair job"
-  },
-  {
-   "id": "gane-sarson-note-fault-link",
+   "id": "note-orders-link",
    "type": "uml.CommentLink",
-   "from": "gane-sarson-note-fault",
-   "to": "gane-sarson-fault"
-  },
-  {
-   "id": "context-c-request",
-   "type": "dfd.DataFlow",
-   "from": "context-member",
-   "to": "context-lending",
-   "label": "loan request"
-  },
-  {
-   "id": "context-c-slip",
-   "type": "dfd.DataFlow",
-   "from": "context-lending",
-   "to": "context-member",
-   "label": "due-date slip"
-  },
-  {
-   "id": "context-c-returned",
-   "type": "dfd.DataFlow",
-   "from": "context-drop",
-   "to": "context-lending",
-   "label": "returned book"
-  },
-  {
-   "id": "context-c-po",
-   "type": "dfd.DataFlow",
-   "from": "context-lending",
-   "to": "context-supplier",
-   "label": "purchase order"
-  },
-  {
-   "id": "context-l-request",
-   "type": "dfd.DataFlow",
-   "from": "context-member",
-   "to": "context-issue",
-   "label": "loan request"
-  },
-  {
-   "id": "context-l-slip",
-   "type": "dfd.DataFlow",
-   "from": "context-issue",
-   "to": "context-member",
-   "label": "due-date slip"
-  },
-  {
-   "id": "context-l-new",
-   "type": "dfd.DataFlow",
-   "from": "context-issue",
-   "to": "context-loans",
-   "label": "new loan"
-  },
-  {
-   "id": "context-l-returned",
-   "type": "dfd.DataFlow",
-   "from": "context-drop",
-   "to": "context-return",
-   "label": "returned book"
-  },
-  {
-   "id": "context-l-open",
-   "type": "dfd.DataFlow",
-   "from": "context-loans",
-   "to": "context-return",
-   "label": "open loan"
-  },
-  {
-   "id": "context-l-demand",
-   "type": "dfd.DataFlow",
-   "from": "context-return",
-   "to": "context-order",
-   "label": "waiting list length"
-  },
-  {
-   "id": "context-l-po",
-   "type": "dfd.DataFlow",
-   "from": "context-order",
-   "to": "context-supplier",
-   "label": "purchase order"
+   "from": "note-orders",
+   "to": "orders"
   }
  ],
  "views": [
   {
-   "id": "overview",
+   "id": "level-1",
+   "diagram": "dfd",
+   "title": "The bookshop, level 1",
    "parent": null,
-   "title": "Data flow diagram examples",
+   "notation": "yourdon",
    "nodeIds": [
-    "card-bookshop-data-flow-dfd-level-1",
-    "card-bookshop-data-flow-dfd-level-2-take-order",
-    "card-gane-sarson-rides",
-    "card-context-context",
-    "card-context-level-1"
+    "customer",
+    "provider",
+    "courier",
+    "take-order",
+    "take-payment",
+    "ship-order",
+    "books",
+    "orders",
+    "note-orders"
    ],
+   "direction": "down",
    "layout": {
-    "card-bookshop-data-flow-dfd-level-1": [
-     0,
-     0
-    ],
-    "card-bookshop-data-flow-dfd-level-2-take-order": [
-     1,
-     0
-    ],
-    "card-gane-sarson-rides": [
-     2,
-     0
-    ],
-    "card-context-context": [
-     0,
-     1
-    ],
-    "card-context-level-1": [
-     1,
+    "books": [
+     3,
      1
     ]
    }
   },
   {
-   "id": "bookshop-data-flow-dfd-level-1",
+   "id": "level-1-gane-sarson",
    "diagram": "dfd",
-   "title": "Bookshop, level 1",
-   "parent": "overview",
-   "notation": "yourdon",
-   "nodeIds": [
-    "bookshop-data-flow-dfd-customer",
-    "bookshop-data-flow-dfd-provider",
-    "bookshop-data-flow-dfd-courier",
-    "bookshop-data-flow-dfd-take-order",
-    "bookshop-data-flow-dfd-take-payment",
-    "bookshop-data-flow-dfd-ship-order",
-    "bookshop-data-flow-dfd-books",
-    "bookshop-data-flow-dfd-orders"
-   ]
-  },
-  {
-   "id": "bookshop-data-flow-dfd-level-2-take-order",
-   "diagram": "dfd",
-   "title": "1 Take order",
-   "parent": "bookshop-data-flow-dfd-level-1",
-   "notation": "yourdon",
-   "nodeIds": [
-    "bookshop-data-flow-dfd-customer",
-    "bookshop-data-flow-dfd-books",
-    "bookshop-data-flow-dfd-orders",
-    "bookshop-data-flow-dfd-check-basket",
-    "bookshop-data-flow-dfd-total-order",
-    "bookshop-data-flow-dfd-record-order"
-   ]
-  },
-  {
-   "id": "gane-sarson-rides",
-   "diagram": "dfd",
-   "title": "Rides, Gane and Sarson",
-   "parent": "overview",
+   "title": "The bookshop, level 1, in Gane and Sarson",
+   "parent": "level-1",
    "notation": "gane-sarson",
    "nodeIds": [
-    "gane-sarson-rider",
-    "gane-sarson-crew",
-    "gane-sarson-start",
-    "gane-sarson-end",
-    "gane-sarson-fault",
-    "gane-sarson-bikes",
-    "gane-sarson-rides-store",
-    "gane-sarson-note-fault"
-   ]
-  },
-  {
-   "id": "context-context",
-   "diagram": "dfd",
-   "title": "Context diagram",
-   "parent": "overview",
-   "notation": "yourdon",
-   "nodeIds": [
-    "context-member",
-    "context-drop",
-    "context-supplier",
-    "context-lending"
+    "customer",
+    "provider",
+    "courier",
+    "take-order",
+    "take-payment",
+    "ship-order",
+    "books",
+    "orders",
+    "note-orders"
    ],
-   "edges": [
-    "context-c-request",
-    "context-c-slip",
-    "context-c-returned",
-    "context-c-po"
-   ]
-  },
-  {
-   "id": "context-level-1",
-   "diagram": "dfd",
-   "title": "0 Lend books",
-   "parent": "context-context",
-   "notation": "yourdon",
    "direction": "down",
+   "layout": {
+    "books": [
+     3,
+     1
+    ]
+   }
+  },
+  {
+   "id": "take-order",
+   "diagram": "dfd",
+   "title": "1 Take order, level 2",
+   "parent": "level-1",
+   "notation": "yourdon",
    "nodeIds": [
-    "context-member",
-    "context-drop",
-    "context-supplier",
-    "context-issue",
-    "context-return",
-    "context-order",
-    "context-loans"
-   ],
-   "edges": [
-    "context-l-request",
-    "context-l-slip",
-    "context-l-new",
-    "context-l-returned",
-    "context-l-open",
-    "context-l-demand",
-    "context-l-po"
+    "customer",
+    "books",
+    "orders",
+    "check-basket",
+    "total-order",
+    "record-order"
    ]
   }
  ]
