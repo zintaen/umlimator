@@ -330,3 +330,11 @@ test('audit 30: the report lists 1,000 items, then counts the rest in one, for a
   assert.deepEqual(r.report[1000], { path: '', status: 'skipped', message: '339001 more items like these: not listed' });
   assert.deepEqual(r.model.nodes.map(n => n.label), ['a']);
 });
+
+test('a raw character XML cannot hold in a name or description is read as U+FFFD and said at its path (audit 48)', () => {
+  const r = read({ model: { people: [{ id: '1', name: 'Us\u0001er', description: 'd\uffff' }, { id: '2', name: 'Fine\t\u{1F4E6}' }] } });
+  assert.deepEqual(r.model.nodes.map(n => [n.label, n.props]), [['Us\uFFFDer', { description: 'd\uFFFD' }], ['Fine\t\u{1F4E6}', undefined]]);
+  assert.deepEqual(r.report.filter(x => x.message.includes('U+FFFD')), [
+    { path: 'model.people[0].name', status: 'approximated', message: 'the character U+0001, which SVG or XML cannot hold, is read as U+FFFD' },
+    { path: 'model.people[0].description', status: 'approximated', message: 'the character U+FFFF, which SVG or XML cannot hold, is read as U+FFFD' }]);
+});

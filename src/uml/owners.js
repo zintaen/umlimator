@@ -59,7 +59,8 @@ function ownIndex(model, members = []) {
    whose owner on the picture o is (null: the top), in the view's order; boxes: the open packages, in
    the registry's format (registry.js boxes), each holding exactly the shown elements whose owner on the picture it is, and
    the boxes nested in it by `parent`; name(id): the drawn name, with the owners between it and its owner on the picture,
-   or with none from the view's subject when that is one of its owners, else from the top (§6); full(id): from the top.
+   or with none from the view's subject when that is one of its owners, else from the top (§6); full(id): from the top;
+   via(id): the ids of the owners name(id) is written through.
    look (notes/stage-4.md §8.2, §6.1), each field optional: boxTypes, the node types that may be a box (OWN_BOXES); qualify
    false, names drawn without their owners; qualifyBy, the node types a name's owners may be, up to the first that is not; members, member types that are boxes too (a state's regions): one is shown when
    its node is and it holds something shown, and is a box when its node has two or more in the model (with one, what it
@@ -72,16 +73,20 @@ function ownersOn(model, view, look = {}) {
   const many = m => OWN_ARR(at.get(up.get(m)).members).filter(x => OWN_OBJ(x) && members.includes(x.type)).length > 1; // §6.1, 2: two or more in the model
   const kept = [...live].filter(many).sort((a, b) => place(a) - place(b)), all = [...ids, ...kept], shown = new Set(all);
   const ow = new Map(all.map(id => [id, chain(id).find(p => shown.has(p) && (mems.has(p) || boxTypes.includes(kind(at.get(p))))) ?? null])), owner = id => ow.get(id) ?? null;
-  const upTo = (id, stop, by) => { const c = chain(id), k = c.indexOf(stop), q = by ? c.findIndex(p => !by.includes(kind(at.get(p) || {}))) : -1;
-    return [...c.slice(0, Math.min(k < 0 ? c.length : k, q < 0 ? c.length : q)).reverse(), id].map(x => ownName(ownAt(at, x))).join('::'); };
-  const full = id => upTo(id, null), subject = OWN_OBJ(view) ? view.subject : null;
-  const name = id => { const o = owner(id); return !qualify ? ownName(ownAt(at, id)) : upTo(id, o != null ? o : chain(id).includes(subject) ? subject : null, qualifyBy); };
+  const over = (id, stop, by) => { const c = chain(id), k = c.indexOf(stop), q = by ? c.findIndex(p => !by.includes(kind(at.get(p) || {}))) : -1;
+    return c.slice(0, Math.min(k < 0 ? c.length : k, q < 0 ? c.length : q)); }; // the owners a name is qualified by, nearest first
+  const upTo = (id, stop, by) => [...over(id, stop, by).reverse(), id].map(x => ownName(ownAt(at, x))).join('::');
+  const full = id => upTo(id, null), subject = OWN_OBJ(view) ? view.subject : null, stopOf = id => { const o = owner(id); return o != null ? o : chain(id).includes(subject) ? subject : null; };
+  const name = id => (!qualify ? ownName(ownAt(at, id)) : upTo(id, stopOf(id), qualifyBy));
+  // the owners the drawn name is written through, which the view does not draw (audit 48: a shape's reads, so the diff page
+  // marks a class whose package was renamed)
+  const via = id => (!qualify ? [] : over(id, stopOf(id), qualifyBy));
   const by = new Map(); all.forEach(id => { const o = owner(id); if (!by.has(o)) by.set(o, []); by.get(o).push(id); }); // grouped once: a view of 10,000 elements
   const holds = o => by.get(o) || [], open = new Set([...by.keys()].filter(x => x != null));
   const boxes = all.filter(id => open.has(id)).map(id => { const p = at.get(id), st = stereoOf(p), held = holds(id), o = owner(id), nm = name(id);
     return boxHead({ id, label: ownName(p), title: [...(p.type === 'uml.Profile' ? ['«profile»'] : []), ...st.map(t => `«${t}»`), nm].join(' '), nodeIds: held.filter(x => !open.has(x)), ...(o != null ? { parent: o } : {}), shape: shape(p),
       aria: `${word(p)} ${nm}${st.length ? ` (${st.join(', ')})` : ''}, holding ${held.length} element${held.length === 1 ? '' : 's'}` }); });
-  return { ids, owner, holds, boxes, name, full, open, chain, at };
+  return { ids, owner, holds, boxes, name, full, via, open, chain, at };
 }
 
 // the reading order of a view's elements (§5): each box, then what it holds, depth first; the rest in the view's order

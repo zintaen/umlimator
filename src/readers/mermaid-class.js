@@ -1,5 +1,5 @@
 import { unreadable, jsonText } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText, mermaidScrub } from './mermaid-front.js';
 /* ---------- Mermaid classDiagram: a reader and a writer (plan.md 1.10; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's class diagram page (docs/syntax/classDiagram.md, read 11 Nov 2026). Internal: the CLI
    (`umlimator.py import`) imports this file through Node; a host gets it once the registry is public.
@@ -17,7 +17,7 @@ import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay
    `%% not written: <id>: <what>` (navigable on an end with a diamond, a parent the view does not show or that is not a
    namespace, a note's parent, an unknown visibility, a stereotype the reader would read as something else). A namespace
    with no class in it is not written, as Mermaid reads no empty one. A member whose text has a line break is not
-   written, nor a line that ends on a member. A model with views is written through its uml.class view; with none of them,
+   written, nor one holding a { or }, nor a line that ends on a member. A model with views is written through its uml.class view; with none of them,
    the text is one `%% not written:` line. A view's layout and present are not written.
 
    How UML maps onto Mermaid's text, both ways:
@@ -255,6 +255,7 @@ function readMermaidClass(text) {
   const empty = () => ({ model: { schemaVersion: 2, root: MC_VIEW, nodes: [], edges: [], views: [{ id: MC_VIEW, diagram: 'uml.class', nodeIds: [] }] }, report });
   if (typeof text !== 'string') { say(1, 'skipped', 'the input is not text: nothing read'); return empty(); }
   if (text.length > MC_LIMIT) { say(1, 'skipped', `the input is ${text.length} characters, over the limit of ${MC_LIMIT}: nothing read`); return empty(); }
+  text = mermaidScrub(text, say); // a raw character XML cannot hold as U+FFFD, said (audit 48)
   const lines = text.split('\n').map(l => l.replace(/\r$/, ''));
   let i = 0, title;
 
@@ -333,7 +334,9 @@ function readMermaidClass(text) {
     const cut = s.search(/[\s{:("[<`]/), word = cut < 0 ? s : s.slice(0, cut);
     if (top && top.kind === 'class') { // a class body
       if (s === '}') stack.pop();
-      else if (mcBrace(s)) { // a { outside quotes, which no member holds: the body was left open, so it is closed here and the line read again (audit 47)
+      // a class or namespace that opens a body (a { outside quotes): the body was left open, so it is closed here and the
+      // line read again (audit 47); only such a line, so a member holding { stays a member of its class (audit 48)
+      else if (/^(class|namespace)\s/.test(s) && mcBrace(s)) {
         stack.pop(); lines[i--] = s;
         say(no, 'approximated', `class ${top.rec.name} is not closed before this line: closed here`);
       } else member(top.rec, s, no);
@@ -682,14 +685,16 @@ function writeMermaidClass(model, viewId) {
         else text = `${vis}${p.isDerived ? '/' : ''}${x.label}${colon ? ' :' + (has(p.valueType) ? ' ' + gen(p.valueType) : '') : ''}${has(p.multiplicity) ? `[${p.multiplicity}]` : ''}${p.default != null ? ' = ' + p.default : ''}${p.isStatic ? '$' : ''}`;
       }
       // a member is one line of the class's body, which a line break, a lone }, a << or a %% would end or turn into another
-      // statement (as does a } at its end with no { before it, which the reader takes for the body's end, audit 19); and one the
+      // statement (as does a } at its end with no { before it, which the reader takes for the body's end, audit 19), and
+      // which holds no { or }, as Mermaid's member is [^{}\n]*: a brace in it would end the body there (audit 48); and one the
       // reader would read as another member (a name holding : ( ) ~ =, or led by + - # ~) is not written
       const back = text != null && mcMember(text, n.type === 'uml.Enumeration');
-      // and one that reads back with another type, static or abstract mark or parameters (a return type char* reads as abstract)
+      // and one that reads back with another type, default, static or abstract mark or parameters (a return type char* reads
+      // as abstract; a default en~US reads as en<US, as Mermaid reads ~ between letters across the line, audit 48)
       const bp = back ? back.props ?? {} : {}, same = (a, b) => (has(a) ? String(a).trim() : '') === (has(b) ? String(b).trim() : '');
-      const drift = back && x.type !== 'uml.EnumerationLiteral' && (!!bp.isStatic !== !!p.isStatic || (x.type === 'uml.Property' ? back.abstractField || !same(bp.valueType, p.valueType)
+      const drift = back && x.type !== 'uml.EnumerationLiteral' && (!!bp.isStatic !== !!p.isStatic || (x.type === 'uml.Property' ? back.abstractField || !same(bp.valueType, p.valueType) || !same(bp.default, p.default)
         : !!bp.isAbstract !== !!p.isAbstract || !same(bp.returnType, p.returnType) || JSON.stringify(arr(bp.parameters).map(a => [a.name ?? '', a.valueType ?? ''])) !== JSON.stringify(arr(p.parameters).filter(isObj).map(a => [String(a.name ?? '').trim(), has(a.valueType) ? String(a.valueType).trim() : '']))));
-      if (!back || drift || back.type !== x.type || back.label !== lab || badId(x.id) || nl(text) || /^(\}$|<<|%%)/.test(text.trim()) || (text.trim().endsWith('}') && !text.includes('{'))) { skip(x); continue; }
+      if (!back || drift || back.type !== x.type || back.label !== lab || badId(x.id) || nl(text) || /^(<<|%%)/.test(text.trim()) || /[{}]/.test(text)) { skip(x); continue; }
       // its stereotypes as <<x>> in front, which the reader takes off as them (audit 17); one it would not read back as itself is said
       const st = arr(p.stereotypes).filter(s => { const ok = typeof s === 'string' && s !== '' && s.trim() === s && !nl(s) && !s.includes('>>') && !s.endsWith('>') && !s.startsWith('<') && !text.trim().endsWith('>>');
         if (!ok) lose(x.id, `stereotype ${s}`); return ok; });

@@ -220,9 +220,10 @@ function SYS_BACK_ONE(c, model, view) {
   return { ...c, element: { ...x, type, ...(x.label != null ? { label: SYS_UNKIND(x.label) } : {}), ...(x.props ? { props } : {}) } };
 }
 
-/* ---- the composite type's problems, re-said (§8.1): connector-part, connector-scope, connector-drawn, and part-type for part
-   and reference properties only (a value property is value-type's to judge, a constraint property §9's), in SysML's words ---- */
-const SYS_CS_KEEP = ['connector-part', 'connector-scope', 'connector-drawn', 'part-type'];
+/* ---- the composite type's problems, re-said (§8.1): connector-part, connector-scope, connector-drawn, part-type for part
+   and reference properties only (a value property is value-type's to judge, a constraint property §9's), and present-values (a
+   port's side as Alt + arrows write it, misspelled or in another case: ignored, audit 48), in SysML's words ---- */
+const SYS_CS_KEEP = ['connector-part', 'connector-scope', 'connector-drawn', 'part-type', 'present-values'];
 const SYS_SAY = [[/, or one collaboration's roles/g, ''], [/class or component/g, 'block'], [/the box has no line/g, 'the frame has no line']];
 const SYS_SAY_PAR = [[/a connector joins/g, 'a binding joins'], [/ports and parts/g, 'parameters and properties'], [/not a part of the subject/g, 'not a constraint property of the subject'], [/not a port of/g, 'not a parameter of'], [/two ports of/g, 'two parameters of']];
 // the props SysML draws as text that are not text (audit 40): a constraint block's expression, a value type's unit and quantity

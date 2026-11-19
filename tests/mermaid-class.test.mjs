@@ -11,6 +11,7 @@ import { readMermaidEr } from '../src/readers/mermaid-er.js';
 import { readMermaidState } from '../src/readers/mermaid-state.js';
 import { readMermaidSequence } from '../src/readers/mermaid-sequence.js';
 import { readMermaidMindmap } from '../src/readers/mermaid-mindmap.js';
+import { readMermaidRequirement } from '../src/readers/mermaid-requirement.js';
 import { validate } from '../lib/umlimator-all.js';
 
 const json = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
@@ -833,4 +834,67 @@ test('an entity code for a character XML cannot hold is read as U+FFFD and said,
     for (const l of labels) assert.ok(all.includes(l), `${text}: ${JSON.stringify(l)} in ${JSON.stringify(all)}`);
     assert.ok(!all.some(l => bad.test(l)), text);
   }
+});
+
+test('a member holding { or } is not written, so read(write(model)) keeps every member; a { closes an open body only on a class or namespace line (audit 48)', () => {
+  // Mermaid's member is [^{}\n]*: a brace in it would end the body there, so the member gets a %% not written: line
+  for (const def of ['{}', '{', '}', 'a{b', 'v}w']) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'Order', type: 'uml.Class', label: 'Order', members: [
+      { id: 'Order.tags', type: 'uml.Property', label: 'tags', props: { valueType: 'Set', default: def } },
+      { id: 'Order.total', type: 'uml.Property', label: 'total', props: { valueType: 'int' } }] }],
+      edges: [], views: [{ id: 'class-diagram', diagram: 'uml.class', nodeIds: ['Order'] }] };
+    const t = write(m), r = read(t);
+    assert.match(t, /%% not written: Order\.tags \(uml\.Property\)/, def);
+    assert.doesNotMatch(t.replace(/%%.*$/gm, ''), /\btags\b/, def);
+    assert.deepEqual([r.report, r.model.nodes.map(n => [n.id, (n.members || []).map(x => x.id)])], [[], [['Order', ['Order.total']]]], def);
+  }
+  for (const [type, label] of [['Set{x}', 'tags'], ['int', 'x{y']]) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.Class', label: 'A', members: [{ id: 'A.m', type: 'uml.Operation', label, props: { returnType: type } }, { id: 'A.n', type: 'uml.Property', label: 'n' }] }], edges: [], views: [] };
+    const r = read(write(m));
+    assert.deepEqual([r.report, r.model.nodes.map(n => [n.id, (n.members || []).map(x => x.id)])], [[], [['A', ['A.n']]]], label);
+  }
+  // hand-written: a member holding { stays its class's, and the next member too; a class line closes an open body, as before
+  const hand = read('classDiagram\nclass Order {\n  tags : Set = {}\n  total : int\n}\n');
+  assert.deepEqual([hand.report, hand.model.nodes.map(n => [n.id, (n.members || []).map(x => x.label)])], [[], [['Order', ['tags', 'total']]]]);
+  const open = read('classDiagram\nclass Order {\n  +int id\nnamespace Shop {\nclass Customer\n}\n');
+  assert.deepEqual(open.report, [{ line: 4, status: 'approximated', message: 'class Order is not closed before this line: closed here' }]);
+  assert.equal(open.model.nodes.find(n => n.id === 'Customer').parent, 'Shop');
+});
+
+test('a property default that reads back otherwise (en~US as en<US) is not written but said (audit 48)', () => {
+  const one = def => ({ schemaVersion: 2, nodes: [{ id: 'Locale', type: 'uml.Class', label: 'Locale', members: [{ id: 'Locale.tag', type: 'uml.Property', label: 'tag', props: { valueType: 'String', default: def } }] }], edges: [], views: [] });
+  for (const def of ['en~US', 'a~b~c']) {
+    const t = write(one(def)), r = read(t);
+    assert.match(t, /%% not written: Locale\.tag \(uml\.Property\)/, def);
+    assert.deepEqual([r.report, r.model.nodes[0].members], [[], undefined], def);
+  }
+  for (const def of ['en_US', '~x', '0', 'a = b']) { // read back as written: kept
+    const r = read(write(one(def)));
+    assert.deepEqual(r.model.nodes[0].members[0].props, { valueType: 'String', default: def }, def);
+  }
+});
+
+test('a raw character XML cannot hold (not an entity code) is read as U+FFFD and said, in every Mermaid reader (audit 48)', () => {
+  const bad = /[\0-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]|[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
+  const said = (line, c) => ({ line, status: 'approximated', message: `the character U+${c}, which SVG or XML cannot hold, is read as U+FFFD` });
+  const cases = [
+    [read, 'classDiagram\n  class A["a\x01b"]\n  A --> B : x\x1by\x02', [said(2, '0001'), said(3, '001B')], ['a\uFFFDb', 'x\uFFFDy\uFFFD']],
+    [readMermaidFlowchart, 'flowchart LR\n  A["a\x01b"] --> B["\uffff"]', [said(2, '0001')], ['a\uFFFDb', '\uFFFD']],
+    [readMermaidSequence, 'sequenceDiagram\n  participant A as a\x01b\n  A->>B: m\ud800n', [said(2, '0001'), said(3, 'D800')], ['a\uFFFDb', 'm\uFFFDn']],
+    [readMermaidState, 'stateDiagram-v2\n  state "a\x01b" as A\n  A --> B : t\x7f\x0b', [said(2, '0001'), said(3, '000B')], ['a\uFFFDb', 't\x7f\uFFFD']],
+    [readMermaidEr, 'erDiagram\n  A ||--o{ B : "r\x01s"', [said(2, '0001')], ['r\uFFFDs']],
+    [readMermaidMindmap, 'mindmap\n  root[a\x01b]\n    child\x1f\n    ok\t\u{1F4E6}', [said(2, '0001'), said(3, '001F')], ['a\uFFFDb', 'child\uFFFD', 'ok\t\u{1F4E6}']],
+    [readMermaidRequirement, 'requirementDiagram\n  requirement r1 {\n    id: 1\n    text: "a\x01b"\n  }', [said(4, '0001')], ['a\uFFFDb']],
+  ];
+  for (const [fn, text, report, labels] of cases) {
+    const r = fn(text), all = [];
+    JSON.stringify(r.model, (k, v) => { if (typeof v === 'string') all.push(v); return v; });
+    assert.deepEqual(r.report.filter(x => x.message.includes('U+FFFD')), report, JSON.stringify(text));
+    for (const l of labels) assert.ok(all.includes(l), `${JSON.stringify(text)}: ${JSON.stringify(l)} in ${JSON.stringify(all)}`);
+    assert.ok(!all.some(l => bad.test(l)), JSON.stringify(text));
+  }
+  // hostile: a million controls on one line say it once, in linear time
+  const t0 = performance.now(), big = readMermaidFlowchart('flowchart LR\n  A["' + '\x01'.repeat(1e6 - 40) + '"]');
+  assert.ok(performance.now() - t0 < 2000);
+  assert.equal(big.report.filter(x => x.message.includes('U+0001')).length, 1);
 });

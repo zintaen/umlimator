@@ -1,5 +1,5 @@
 import { unreadable, jsonText } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidScrub } from './mermaid-front.js';
 import { parseTransition, printTransition, trScan } from '../uml/transition.js';
 /* ---------- Mermaid stateDiagram: a reader and a writer (notes/stage-4.md §13, S12, S22; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's state diagram page (docs/syntax/stateDiagram.md, read 13 Nov 2026) and its lexer, as
@@ -83,6 +83,7 @@ function readMermaidState(text) {
   const empty = () => ({ model: { schemaVersion: 2, root: MT_VIEW, nodes: [], edges: [], views: [{ id: MT_VIEW, diagram: 'uml.state-machine', direction: 'down', nodeIds: [] }] }, report });
   if (typeof text !== 'string') { say(1, 'skipped', 'the input is not text: nothing read'); return empty(); }
   if (text.length > MT_LIMIT) { say(1, 'skipped', `the input is ${text.length} characters, over the limit of ${MT_LIMIT}: nothing read`); return empty(); }
+  text = mermaidScrub(text, say); // a raw character XML cannot hold as U+FFFD, said (audit 48)
   const lines = text.replace(/^\uFEFF/, '').split('\n').map(l => l.replace(/\r$/, ''));
   let i = 0, title;
 

@@ -265,7 +265,7 @@ test('the panel\'s member rows (edits.member): New member adds the kind read, a 
   assert.deepEqual(T.member.edit(mem(M17, 'ebike.wheels'), 'wheels: Wheel [3]').commands[0], { op: 'set', id: 'ebike.wheels', path: 'type', value: 'sysml.ValueProperty' });
 });
 
-test('connect (§7.4): a part association adds the part property it draws, named by its role, and validates clean; a generalization of two kinds and a comment link from a block refused; the rest the default', () => {
+test('connect (§7.4): a part association adds the part property it draws, named by its role, and validates clean; a generalization of two kinds and a comment link with no comment refused, one drawn to a comment added from it; the rest the default', () => {
   const v = M17.views[0], c = (from, to, i) => T.edits.connect(M17, v, from, to, null, T.lines[i]);
   const r = c('motor', 'battery', 0);
   assert.deepEqual(r, [{ op: 'add', element: { id: 'motor.battery', type: 'sysml.PartProperty', label: 'battery', props: { valueType: 'Battery', multiplicity: '1' } }, owner: 'motor' },
@@ -284,6 +284,10 @@ test('connect (§7.4): a part association adds the part property it draws, named
   assert.deepEqual(c('energy', 'battery', 2), { error: 'A generalization joins two of one kind: value type and block differ' });
   assert.equal(c('motor', 'rental-vehicle', 2), null); assert.equal(c('dock', 'charge-interface', 3), null);
   assert.deepEqual(c('dock', 'battery', 4), { error: 'A comment link runs from a comment' });
+  // audit 48: drawn from a block to a comment, added from the comment, as every other SysML view's
+  const n = { ...M17, nodes: [...M17.nodes, { id: 'note', type: 'uml.Comment', label: 'a note' }], views: [{ ...v, nodeIds: [...v.nodeIds, 'note'] }] };
+  assert.deepEqual(T.edits.connect(n, n.views[0], 'dock', 'note', null, T.lines[4]), [{ op: 'add', element: { id: 'commentlink1', type: 'uml.CommentLink', from: 'note', to: 'dock' }, view: 'blocks' }]);
+  assert.equal(T.edits.connect(n, n.views[0], 'note', 'dock', null, T.lines[4]), null, 'from the comment: the default');
   assert.equal(c('nowhere', 'battery', 0), null);
   // audit 32: "an" before a vowel, and an end of no type named as the view draws it, a class
   const u = { ...M17, nodes: [...M17.nodes, { id: 'thing', label: 'Thing' }], views: [{ ...v, nodeIds: [...v.nodeIds, 'thing'] }] };

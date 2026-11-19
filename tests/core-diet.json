@@ -261,13 +261,13 @@
  },
  "all": {
   "examples/sales-classes.json": {
-   "layout domain": "f2c634469045ff47",
+   "layout domain": "933bcba8a9dbe400",
    "describe domain": "6895f2f5bfbdd8d8",
-   "layout payments-only": "1b621c742364acde",
+   "layout payments-only": "7e228d016e736177",
    "describe payments-only": "18a817b76e2956a0",
    "validate": "643d5437104296e2",
    "edit": "b44ba8a9f8e15e68",
-   "edited layout domain": "e8cd98cc12a5c5c6",
+   "edited layout domain": "84b73c8f40179ca5",
    "edited validate": "643d5437104296e2"
   }
  },

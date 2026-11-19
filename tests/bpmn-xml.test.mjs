@@ -658,7 +658,7 @@ test('audit 45: a pool\'s process name and documentation are said when not kept;
   assert.deepEqual(await said(D('<bpmn:process id="Process_1" name="Order handling"><bpmn:documentation>How</bpmn:documentation><bpmn:task id="t"/></bpmn:process>')),
     ['Process_1 process Process_1 ("Order handling"), in no pool: its elements are read in no pool, its id, name and documentation not kept']);
   assert.deepEqual(await said(D('<bpmn:process id="process"><bpmn:documentation>How</bpmn:documentation><bpmn:task id="t"/></bpmn:process>')),
-    ['process process process, in no pool: its elements are read in no pool, its id and documentation not kept']);
+    ['process process process, in no pool: its elements are read in no pool, its documentation not kept']); // its id kept: the view is process-2 (audit 48)
   // the example read back from its own export still says nothing of its processes
   const back = await read((await write(example, example.root, null, BpmnModdle())).xml, BpmnModdle());
   assert.deepEqual(back.report.filter(r => /process/.test(r.message) && r.line), []);
@@ -712,9 +712,9 @@ test('audit 46: a process in no pool says its id lost only when the writer would
   assert.deepEqual(await proc('process'), [[], 'process']);
   // "process-3" is written back "process": said
   assert.deepEqual(await proc('process-3'), [['process process-3, in no pool: its elements are read in no pool, its id not kept'], 'process']);
-  // no diagram interchange: the view takes "process", so the process is written "process-2", which is kept; "process" is not
+  // no diagram interchange: the view takes the next free of "process" that is not the process's own id, so either is kept (audit 48)
   assert.deepEqual(await proc('process-2', '', false), [[], 'process-2']);
-  assert.deepEqual(await proc('process', '', false), [['process process, in no pool: its elements are read in no pool, its id not kept'], 'process-2']);
+  assert.deepEqual(await proc('process', '', false), [[], 'process']);
   // a collaboration's name and documentation, a lane set's and a child lane set's name
   const c = await read(D(`<bpmn:collaboration id="c1" name="Collab name"><bpmn:documentation>collab doc</bpmn:documentation><bpmn:participant id="pa" processRef="pp"/></bpmn:collaboration>
     <bpmn:process id="pp"><bpmn:laneSet id="ls" name="LaneSet name"><bpmn:lane id="la" name="Desk"><bpmn:flowNodeRef>t</bpmn:flowNodeRef><bpmn:childLaneSet id="cls" name="Inner"><bpmn:lane id="lb"/></bpmn:childLaneSet></bpmn:lane></bpmn:laneSet><bpmn:task id="t"/></bpmn:process>`), BpmnModdle());
@@ -723,4 +723,31 @@ test('audit 46: a process in no pool says its id lost only when the writer would
   // the writer's own collaboration and lane sets, read back, say nothing
   const back = await read((await write(c.model, c.model.views[0].id, null, BpmnModdle())).xml, BpmnModdle());
   assert.deepEqual(back.report.filter(x => /^(collaboration|lane set|process) /.test(x.message)), []);
+});
+
+test('audit 48: with no diagram interchange the view takes no id the writer writes back (a processRef, the process in no pool); a raw character XML cannot hold is U+FFFD, said', needs, async () => {
+  const D = b => `<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" id="defs" targetNamespace="x">${b}</bpmn:definitions>`;
+  const pool = '<bpmn:collaboration id="c"><bpmn:participant id="bank" name="Bank" processRef="process"/></bpmn:collaboration>';
+  for (const [xml, view, procs, said = []] of [
+    [D(`${pool}<bpmn:process id="process"><bpmn:task id="t" name="Ship"/></bpmn:process>`), 'process-2', ['process']],
+    // an empty pool's process "process" and one in no pool, "process-2": the view is process-3, so both ids are written back
+    [D(`${pool}<bpmn:process id="process"/><bpmn:process id="process-2"><bpmn:task id="t" name="Ship"/></bpmn:process>`), 'process-3', ['process', 'process-2']],
+    // a task holds "process": the view is process-2, the process in no pool written process-3, its id lost and said as such
+    [D('<bpmn:process id="p"><bpmn:task id="process" name="Ship"/></bpmn:process>'), 'process-2', ['process-3'], ['process p, in no pool: its elements are read in no pool, its id not kept']],
+  ]) {
+    const r = await read(xml, BpmnModdle()), w = await write(r.model, undefined, undefined, BpmnModdle());
+    assert.equal(r.model.views[0].id, view);
+    assert.deepEqual(r.report.filter(x => /^process /.test(x.message)).map(x => x.message), said);
+    assert.deepEqual(w.report, []);
+    assert.deepEqual([...w.xml.matchAll(/<bpmn:process id="([^"]*)"/g)].map(m => m[1]), procs);
+    if (xml.includes('bank')) assert.match(w.xml, /processRef="process"/);
+  }
+  // a raw C0 control, U+FFFF or a lone surrogate in the text: U+FFFD, said once, as a reference to one is (audit 47)
+  for (const c of ['\x01', '\x1b', '\uffff', '\ud800']) {
+    const r = await read(D(`<bpmn:process id="p"><bpmn:task id="t" name="Ship${c}order"/></bpmn:process>`), BpmnModdle());
+    assert.equal(r.model.nodes.find(n => n.id === 't').label, 'Ship\uFFFDorder', JSON.stringify(c));
+    assert.deepEqual(r.report.filter(x => x.status === 'weakened').map(x => x.message), [`the character U+${c.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}, which SVG or XML cannot hold, is read as U+FFFD`]);
+  }
+  const fine = await read(D('<bpmn:process id="p"><bpmn:task id="t" name="a\tb \u{1F4E6}"/></bpmn:process>'), BpmnModdle());
+  assert.deepEqual(fine.report.filter(x => x.status === 'weakened'), []);
 });
