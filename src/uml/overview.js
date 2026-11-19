@@ -1,3 +1,4 @@
+import { apply } from '../core/apply.js';
 import { registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { trimLine } from '../draw/lines.js';
@@ -6,11 +7,11 @@ import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { brLines } from '../typed/draw.js';
 import { commentConnect } from './class.js'; // SHAPE.note, a comment
-import { FLOW_CONTROL, FLOW_RULES, flowOf, flowProblems, flowText, flowLabel, flowRename, flowStereo } from './flow.js';
+import { FLOW_CONTROL, FLOW_RULES, flowOf, flowProblems, flowText, flowLabel, flowRename, flowStereo, viewFlows } from './flow.js';
 import { frLines, frameTag, tagSize, useSize } from './frame.js';
 import { snKindName } from './structure.js';
 import { sqDraw, sqDrawnMessages, sqRun } from './sequence.js';
-import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
+import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the interaction overview diagram, uml.interaction-overview (work package 4.7, notes/stage-4.md §11) ----------
    Activity notation whose nodes are interactions: the control nodes of src/uml/flow.js (flow final included), interaction
@@ -243,6 +244,22 @@ function ovAdd(model, view, entry, label, at) {
   if (!vs.length) return { error: 'The model has no sequence view for it to open: add one first' };
   return { pick: vs.map(v => String(labelOr(v.title, v.id))), then: i => (vs[i] ? make(t || String(labelOr(vs[i].title, vs[i].id)), { opensView: vs[i].id }) : []) }; // a view titled "" by its id (audit 33)
 }
+/* connect(model, view, from, to, at, line): a comment link through commentConnect (audit 46); a control flow added as the
+   activity view adds one, which shares its flow rules (flow.js): a decision's second exit gets the guard else when neither has
+   one, and a flow that brings an error the model did not have (into an initial node, out of a final) is refused in its
+   words, as the activity's acGuard (audit 48) */
+function ovConnect(model, view, from, to, at, line) {
+  if (!OV_OBJ(line) || line.type === 'uml.CommentLink') return commentConnect(model, view, from, to, line);
+  if (!OV_OBJ(view) || line.type !== 'uml.ControlFlow') return null;
+  const x = OV_ARR(model && model.nodes).find(n => OV_OBJ(n) && n.id === from), outs = viewFlows(model, view).map(([e]) => e).filter(e => e.from === from);
+  const g = e => (OV_HAS(OV_PROPS(e).guard) ? String(OV_PROPS(e).guard).trim() : undefined), props = OV_OBJ(line.props) ? copyOf(line.props) : {};
+  if (x && x.type === 'uml.DecisionNode' && outs.length === 1 && !OV_HAS(props.guard) && g(outs[0]) !== 'else') props.guard = 'else';
+  const commands = [{ op: 'add', element: { id: ovFreshId(model, `${from}-${to}`), type: line.type, from, to, ...(Object.keys(props).length ? { props } : {}) }, view: view.id }];
+  const key = p => p.rule + ' ' + p.ids.join(' '), errs = m => ovProblems(m, OV_ARR(m.views).find(v => OV_OBJ(v) && v.id === view.id)).filter(p => p.level === 'error');
+  let now; try { now = apply(model, commands); } catch (e) { return { error: String(e.message) }; }
+  const was = new Set(errs(model).map(key)), bad = errs(now).find(p => !was.has(key(p)));
+  return bad ? { error: bad.message } : commands;
+}
 /* rename(model, view, id, text): F2 on a control flow reads "name [guard]" (§7.2) and sets the parts that changed, an
    absent part cleared; a text the parser refuses is { error } (E3). Anything else: null, the default set label */
 function ovRename(model, view, id, text) {
@@ -272,7 +289,7 @@ const OVERVIEW_TYPE = registerDiagramType('uml.interaction-overview', {
   describe: ovDescribe,
   // the PDF's Kind of an element of no type: "Element", as its accessible name (audit 28); null: the type's word
   word: (model, id) => { const x = OV_ARR(model && model.nodes).find(n => OV_OBJ(n) && n.id === id); return x && !x.type ? ovWordOf(x.type) : null; }, // no type (or ""): "Element" (audit 29)
-  edits: { add: ovAdd, rename: ovRename, connect: (model, view, from, to, at, line) => commentConnect(model, view, from, to, line) }, // a comment link (audit 46)
+  edits: { add: ovAdd, rename: ovRename, connect: ovConnect }, // a comment link (audit 46), a flow guarded (audit 48)
 });
 
 export { OVERVIEW_TYPE, OV_RULES, ovGeo, ovProblems, ovDescribe, ovAdd, ovRename };
