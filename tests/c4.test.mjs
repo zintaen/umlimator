@@ -219,11 +219,11 @@ test('the layout is not edited after layoutTyped: drawn twice from one memo, the
 
 test('names, reading order and the key (A1, §7.5): each element by type, technology and description; the boundary and what it holds first; each type, shape, external, the relationship and the implied line keyed', () => {
   const g = layout(C4, 'c4-containers'), s = svgOf(g);
-  assert.equal(g.byId['c4-api'].aria, 'Container Shop API, Python, FastAPI: Catalogue, basket, checkout and accounts as a JSON API., opens Shop API: components');
+  assert.equal(g.byId['c4-api'].aria, 'Container Shop API, Python, FastAPI: Catalogue, basket, checkout and accounts as a JSON API, opens Shop API: components'); // its period dropped before ", opens" (audit 52)
   assert.equal(g.byId['c4-shopper'].aria, 'Person Shopper: Browses the catalogue, buys books and tracks orders.');
   // audit 6: the word "opens" in the element's own text does not stand for its type saying which view it opens
   const said = structuredClone(C4); said.nodes.find(n => n.id === 'c4-api').props.description = 'Takes orders and opens baskets.';
-  assert.equal(layout(said, 'c4-containers').byId['c4-api'].aria, 'Container Shop API, Python, FastAPI: Takes orders and opens baskets., opens Shop API: components');
+  assert.equal(layout(said, 'c4-containers').byId['c4-api'].aria, 'Container Shop API, Python, FastAPI: Takes orders and opens baskets, opens Shop API: components');
   assert.equal(g.byId['c4-payments'].aria, 'External software system Payment provider: Takes card payments and makes refunds.');
   assert.equal(g.families[0].aria, 'Software system Bookshop, a boundary holding 5 containers');
   assert.equal(g.edges.find(e => e.id === 'c4-storefront-api').aria, 'Relationship from Storefront to Shop API: Reads the catalogue and places orders through [JSON over HTTPS]');
@@ -672,4 +672,16 @@ test('audit 28: a listed line of another kind between two elements is no relatio
   // a listed relationship between the two still takes the implied line's place
   m.edges.push({ id: 'rel', type: 'c4.Relationship', from: 'c4-bookshop', to: 'c4-courier', label: 'pays' }); v.edges.push('rel');
   assert.deepEqual(pair().sort(), ['c4.Relationship', 'uml.Dependency']);
+});
+
+test('audit 52: an element whose name ends a sentence and that opens a view says so after it, never ".,", in its name and the drawn one', () => {
+  let n = 0;
+  for (const f of ['../examples/types/c4.json', '../examples/bookshop-atlas.json', '../examples/umlimator-atlas.json', '../tests/fixtures/integration.json']) {
+    const m = JSON.parse(readFileSync(new URL(f, import.meta.url)));
+    for (const v of m.views) { if (!v.diagram || v.diagram === 'map') continue; const g = layout(m, v.id), svg = svgOf(g);
+      for (const x of g.nodes || []) for (const a of [x.aria, x.ariaOwn]) if (typeof a === 'string' && a.includes(', opens ')) { n++; assert.doesNotMatch(a, /\.,/, `${f} ${v.id} ${x.id}`); }
+      assert.doesNotMatch(svg, /\., opens /, `${f} ${v.id}`); } }
+  assert.ok(n > 10, `${n} names`);
+  const m = JSON.parse(readFileSync(new URL('../examples/types/c4.json', import.meta.url)));
+  assert.match(layout(m, 'containers').byId.api.aria, /as a JSON API, opens Shop API: components$/);
 });
