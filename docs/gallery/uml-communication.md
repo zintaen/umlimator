@@ -1,35 +1,46 @@
 ---
-title: "Communication diagram examples"
-description: "Numbered messages along the links between objects: 3 examples, live."
+title: "Communication diagram"
+description: "Numbered messages along the links between objects: one example that shows all it draws, live."
 aside: false
 pageClass: gallery-page
 ---
 
 <!-- Written by tools/gallery.mjs from the models, tools/gallery.json and tools/types.json: edit those, not this file. -->
 
-# Communication diagram examples
+# Communication diagram
 
-<p class="ex-lead">Numbered messages along the links between objects. The page below holds its 3 examples: its overview has a card for each, and each card opens it. Pan, zoom, select and go into the cards that stack.</p>
+<p class="ex-lead">A shopper checks out and the card is accepted: the storefront, the shop's API, the payment provider and the card network pass the order along their links, a receipt is created and the basket deleted. The page below opens on it, <a href="/umlimator/examples/types/uml-communication.html#view=checkout" target="_self">Checkout, the card accepted</a>, live: pan, zoom, select and go into the cards that stack.</p>
 
-<div class="ex-frame"><iframe src="/umlimator/examples/types/uml-communication.html" title="Communication diagram examples, live" loading="lazy"></iframe></div>
+<div class="ex-frame"><iframe src="/umlimator/examples/types/uml-communication.html" title="Communication diagram, live" loading="lazy"></iframe></div>
 <div class="ex-links"><a href="/umlimator/examples/types/uml-communication.html" target="_self">Open full screen<span class="visually-hidden"> (Communication)</span></a><a href="../conformance/uml-communication.html">Conformance<span class="visually-hidden"> (Communication)</span></a><a href="/umlimator/examples/types/uml-communication.pdf" target="_self">PDF<span class="visually-hidden"> (Communication)</span></a><a href="/umlimator/examples/types/uml-communication.json" target="_self">Model<span class="visually-hidden"> (Communication)</span></a></div>
 
-## The examples {#examples}
+## What it shows {#shows}
+
+<p>In the order you find them in the picture:</p>
+
+<ol class="ex-shows">
+<li>A lifeline with &lt;&lt;actor&gt;&gt; over its head (shopper : Shopper)</li>
+<li>Lifeline heads <code>name : Type</code> (storefront : Storefront, api : ShopApi)</li>
+<li>Connectors as plain lines with no arrows, each carrying its messages as a stack the line runs through</li>
+<li>Messages numbered by nesting, <code>1</code>, <code>1.1</code>, <code>1.1.2</code>, down to <code>1.1.2.1.1</code></li>
+<li>Calls with a small filled arrow toward the receiver (checkout(), charge(total))</li>
+<li>A message with a stereotype after its number (1.1: &lt;&lt;secure&gt;&gt; place(order))</li>
+<li>An async message with an open arrow (orderPlaced)</li>
+<li>Replies with a dashed open arrow (paid, result, confirmation page)</li>
+<li>A self connector drawn as a loop, carrying a message to the lifeline itself (validate(order))</li>
+<li>A create message, &lt;&lt;create&gt;&gt; before its text (new(order) to receipt)</li>
+<li>A delete message with a filled arrow, &lt;&lt;destroy&gt;&gt; before its text (clear() to basket)</li>
+<li>Two messages one way and a reply the other way on one link (storefront to api)</li>
+<li>A connector with no message, a single line (api to stock)</li>
+</ol>
+
+## In another setting {#alternatives}
+
+<p>The same example, where a setting cannot share the picture above:</p>
 
 <div class="ex-variants">
-<article class="ex-variant" id="view-checkout-communication-checkout-communication">
-<h3><a href="/umlimator/examples/types/uml-communication.html#view=checkout-communication-checkout-communication" target="_self">Checkout: payment accepted</a></h3>
-<p class="ex-sub">numbered messages on links</p>
-<p>The checkout's paid branch as lifelines joined by connectors, each link's messages a stack of numbered rows with an arrow toward the receiver.</p>
-</article>
-<article class="ex-variant" id="view-nested-unlock">
-<h3><a href="/umlimator/examples/types/uml-communication.html#view=nested-unlock" target="_self">Unlock: nested numbers, create and delete</a></h3>
-<p class="ex-sub">deep numbers, create, delete</p>
-<p>Unlocking a hire bike laid out down: numbers nested to four levels (1.1.2.1), a message with a &lt;&lt;secure&gt;&gt; stereotype after its number, a token created and then deleted, and a connector to the station map that carries no message.</p>
-</article>
-<article class="ex-variant" id="view-notify-hold-ready">
-<h3><a href="/umlimator/examples/types/uml-communication.html#view=notify-hold-ready" target="_self">A hold made ready: async and a guard</a></h3>
-<p class="ex-sub">async messages and a guard</p>
-<p>A returned library book freeing a hold: two asynchronous messages with open arrows, a guard written as text in front of a call, and replies that return along the connector their call came by.</p>
+<article class="ex-variant" id="view-checkout-right">
+<h3><a href="/umlimator/examples/types/uml-communication.html#view=checkout-right" target="_self">The same checkout, laid out right</a></h3>
+<p>Laid out right (<code>direction</code> <code>right</code>) instead of down: the same lifelines, links and numbered messages.</p>
 </article>
 </div>

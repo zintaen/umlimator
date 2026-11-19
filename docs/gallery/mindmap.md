@@ -1,40 +1,43 @@
 ---
-title: "Mindmap examples"
-description: "Ideas branching out from one topic: 4 examples, live."
+title: "Mindmap"
+description: "Ideas branching out from one topic: one example that shows all it draws, live."
 aside: false
 pageClass: gallery-page
 ---
 
 <!-- Written by tools/gallery.mjs from the models, tools/gallery.json and tools/types.json: edit those, not this file. -->
 
-# Mindmap examples
+# Mindmap
 
-<p class="ex-lead">Ideas branching out from one topic. The page below holds its 4 examples: its overview has a card for each, and each card opens it. Pan, zoom, select and go into the cards that stack.</p>
+<p class="ex-lead">The plan for opening the bookshop as one mindmap: seven branches from catalogue and website to hosting and staff, each broken into the jobs to do, and launch day in a mindmap of its own that the Launch topic opens. The page below opens on it, <a href="/umlimator/examples/types/mindmap.html#view=plan" target="_self">Opening the bookshop</a>, live: pan, zoom, select and go into the cards that stack.</p>
 
-<div class="ex-frame"><iframe src="/umlimator/examples/types/mindmap.html" title="Mindmap examples, live" loading="lazy"></iframe></div>
+<div class="ex-frame"><iframe src="/umlimator/examples/types/mindmap.html" title="Mindmap, live" loading="lazy"></iframe></div>
 <div class="ex-links"><a href="/umlimator/examples/types/mindmap.html" target="_self">Open full screen<span class="visually-hidden"> (Mindmap)</span></a><a href="../conformance/mindmap.html">Conformance<span class="visually-hidden"> (Mindmap)</span></a><a href="/umlimator/examples/types/mindmap.pdf" target="_self">PDF<span class="visually-hidden"> (Mindmap)</span></a><a href="/umlimator/examples/types/mindmap.json" target="_self">Model<span class="visually-hidden"> (Mindmap)</span></a></div>
 
-## The examples {#examples}
+## What it shows {#shows}
+
+<p>In the order you find them in the picture:</p>
+
+<ol class="ex-shows">
+<li>The root in the middle, in a larger, bolder box (Opening the bookshop)</li>
+<li>Topics as rounded boxes, joined to their parents by curves, thicker from the root</li>
+<li>Each first-level branch in its own colour, borders and curves alike, the six colours cycled (Staff takes Catalogue's)</li>
+<li>Branches set to a side by <code>present</code> <code>side</code>: Catalogue and Website right, Warehouse and Legal and money left</li>
+<li>Branches with no side placed on the shorter half (Launch, Hosting, Staff)</li>
+<li>Children in the view's order, top to bottom</li>
+<li>A topic that opens another view, wider, with the drill-down mark (Launch)</li>
+<li>A long topic wrapped to four lines and cut with an ellipsis (the wholesalers' terms)</li>
+<li>A topic wrapped to two lines (Test with the provider's sandbox cards)</li>
+<li>Four levels below the root: Website, Checkout, Card payments, the sandbox test</li>
+</ol>
+
+## In another setting {#alternatives}
+
+<p>The same example, where a setting cannot share the picture above:</p>
 
 <div class="ex-variants">
-<article class="ex-variant" id="view-bookshop-opening-plan-mm-plan">
-<h3><a href="/umlimator/examples/types/mindmap.html#view=bookshop-opening-plan-mm-plan" target="_self">Opening the bookshop</a></h3>
-<p class="ex-sub">branches left and right</p>
-<p>A tree of topics laid out left and right of its root, branches as curves in the map's kind colours, edited by N, F2, Alt + arrows and drops; Mermaid mindmaps imported.</p>
-</article>
-<article class="ex-variant" id="view-one-side-year">
-<h3><a href="/umlimator/examples/types/mindmap.html#view=one-side-year" target="_self">Every branch on one side</a></h3>
-<p class="ex-sub">one side, deep, wrapped text</p>
-<p>Every first-level branch set to the right by <code>present.side</code>, three levels below the root, and a long topic wrapped to four lines inside its box.</p>
-</article>
-<article class="ex-variant" id="view-drill-move">
-<h3><a href="/umlimator/examples/types/mindmap.html#view=drill-move" target="_self">Sides chosen for you, a topic that opens a view</a></h3>
-<p class="ex-sub">sides chosen, a drill-down</p>
-<p>No <code>side</code> given, so each branch goes to the shorter half; the Moving day topic carries the drill-down mark and opens its own mindmap.</p>
-</article>
-<article class="ex-variant" id="view-drill-moving-day">
-<h3><a href="/umlimator/examples/types/mindmap.html#view=drill-moving-day" target="_self">Moving day</a></h3>
-<p class="ex-sub">the view a topic opens</p>
-<p>The mindmap the Moving day topic opens, a tree of its own under the first view.</p>
+<article class="ex-variant" id="view-launch-day">
+<h3><a href="/umlimator/examples/types/mindmap.html#view=launch-day" target="_self">Launch day</a></h3>
+<p>The mindmap the Launch topic opens (<code>opensView</code>): launch day hour by hour, a tree of its own under the main view.</p>
 </article>
 </div>

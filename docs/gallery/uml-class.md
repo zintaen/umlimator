@@ -1,50 +1,55 @@
 ---
-title: "Class diagram examples"
-description: "Classes, their attributes and operations, and how they relate: 6 examples, live."
+title: "Class diagram"
+description: "Classes, their attributes and operations, and how they relate: one example that shows all it draws, live."
 aside: false
 pageClass: gallery-page
 ---
 
 <!-- Written by tools/gallery.mjs from the models, tools/gallery.json and tools/types.json: edit those, not this file. -->
 
-# Class diagram examples
+# Class diagram
 
-<p class="ex-lead">Classes, their attributes and operations, and how they relate. The page below holds its 6 examples: its overview has a card for each, and each card opens it. Pan, zoom, select and go into the cards that stack.</p>
+<p class="ex-lead">A bookshop's sales domain: who orders, what an order holds, how it is paid for, and the shared types the classes use, in one class diagram. The page below opens on it, <a href="/umlimator/examples/types/uml-class.html#view=sales" target="_self">A bookshop's sales domain</a>, live: pan, zoom, select and go into the cards that stack.</p>
 
-<div class="ex-frame"><iframe src="/umlimator/examples/types/uml-class.html" title="Class diagram examples, live" loading="lazy"></iframe></div>
+<div class="ex-frame"><iframe src="/umlimator/examples/types/uml-class.html" title="Class diagram, live" loading="lazy"></iframe></div>
 <div class="ex-links"><a href="/umlimator/examples/types/uml-class.html" target="_self">Open full screen<span class="visually-hidden"> (Class)</span></a><a href="../conformance/uml-class.html">Conformance<span class="visually-hidden"> (Class)</span></a><a href="/umlimator/examples/types/uml-class.pdf" target="_self">PDF<span class="visually-hidden"> (Class)</span></a><a href="/umlimator/examples/types/uml-class.json" target="_self">Model<span class="visually-hidden"> (Class)</span></a></div>
 
-## The examples {#examples}
+## What it shows {#shows}
+
+<p>In the order you find them in the picture:</p>
+
+<ol class="ex-shows">
+<li>A note (a comment with a folded corner) linked to Order by a dashed line</li>
+<li>Packages drawn as boxes holding their classes, their names in tabs: sales, payments with card nested inside it, shared</li>
+<li>A package-qualified name: catalog::Book, whose package the view does not show</li>
+<li>A class with a stereotype: &lt;&lt;entity&gt;&gt; over Order</li>
+<li>Attributes with all four visibilities: + public, - private, # protected, ~ package</li>
+<li>A derived attribute (/total), a default (status = draft) and a multiplicity on a member (name: String [0..1])</li>
+<li>A static attribute and a static operation, underlined (placed, find)</li>
+<li>Operations with parameters, a return type, and parameter directions (in by, out was)</li>
+<li>A class cut to 3 rows then &quot;+2 more&quot; (Customer, <code>present</code> <code>rows</code>)</li>
+<li>A compartment collapsed (Book's operations, <code>present</code> <code>collapsed</code>)</li>
+<li>An association with a label, role names, multiplicities and a navigable end (Customer places orders 0..*)</li>
+<li>An association navigable at both ends (Customer wishes for Book: readers *, wishlist *)</li>
+<li>Composition, a filled diamond (Order owns its lines 1..*)</li>
+<li>Aggregation, a hollow diamond (Order and its payments 0..*)</li>
+<li>An enumeration with its literals (OrderStatus)</li>
+<li>An interface and an interface realization, dashed with a hollow triangle (Order realizes Payable)</li>
+<li>An abstract class and an abstract operation, in italics (Payment, settle())</li>
+<li>Generalization, a hollow triangle at the general class, two subclasses sharing it (CardPayment, GiftCardPayment)</li>
+<li>A usage, dashed with an open arrowhead and &lt;&lt;use&gt;&gt; (CardPayment uses CardGateway)</li>
+<li>A dependency with the &lt;&lt;use&gt;&gt; stereotype (Payable on Money)</li>
+<li>A dependency with a label (Book keyed by Isbn)</li>
+<li>A data type (&lt;&lt;dataType&gt;&gt; Money) and a primitive type (&lt;&lt;primitive&gt;&gt; Isbn)</li>
+</ol>
+
+## In another setting {#alternatives}
+
+<p>The same example, where a setting cannot share the picture above:</p>
 
 <div class="ex-variants">
-<article class="ex-variant" id="view-sales-classes-domain">
-<h3><a href="/umlimator/examples/types/uml-class.html#view=sales-classes-domain" target="_self">Sales domain</a></h3>
-<p class="ex-sub">compartments, packages, every line</p>
-<p>Compartments of attributes and operations, an interface, an enumeration and a data type, composition and aggregation, generalization, realization, a <code>&lt;&lt;use&gt;&gt;</code> dependency and a note, each end with its role and multiplicity.</p>
-</article>
-<article class="ex-variant" id="view-sales-classes-payments-only">
-<h3><a href="/umlimator/examples/types/uml-class.html#view=sales-classes-payments-only" target="_self">Payments only</a></h3>
-<p class="ex-sub">a subject, collapsed compartments</p>
-<p>Four classes of the sales domain named plainly from the view's <code>subject</code>, Order with its compartments collapsed, laid out down.</p>
-</article>
-<article class="ex-variant" id="view-members-members">
-<h3><a href="/umlimator/examples/types/uml-class.html#view=members-members" target="_self">Member notation</a></h3>
-<p class="ex-sub">visibility, static, derived, rows</p>
-<p>Every member notation: the four visibilities (+ - # ~), a static attribute and operation underlined, a derived attribute, defaults and multiplicities, parameters with their direction, an abstract class and operation in italics, a primitive type and a data type, and a class cut to 3 rows then &quot;+k more&quot;.</p>
-</article>
-<article class="ex-variant" id="view-lines-lines">
-<h3><a href="/umlimator/examples/types/uml-class.html#view=lines-lines" target="_self">Every kind of line</a></h3>
-<p class="ex-sub">associations, usage, abstraction</p>
-<p>Every kind of line a class view draws: an association navigable both ways, roles and multiplicities, composite and shared aggregation, an interface realization, a usage, an abstraction, a plain dependency with a name and a comment link, listed in the view's <code>edges</code>.</p>
-</article>
-<article class="ex-variant" id="view-hierarchy-right">
-<h3><a href="/umlimator/examples/types/uml-class.html#view=hierarchy-right" target="_self">Hierarchy, laid out right</a></h3>
-<p class="ex-sub">abstract class, interfaces, an enumeration</p>
-<p>An abstract class with four specializations and two interfaces, laid out right (the default direction): generalizations and realizations as hollow triangles, an enumeration used by an interface.</p>
-</article>
-<article class="ex-variant" id="view-hierarchy-down">
-<h3><a href="/umlimator/examples/types/uml-class.html#view=hierarchy-down" target="_self">Hierarchy, laid out down</a></h3>
-<p class="ex-sub">direction down, pinned layout</p>
-<p>The same hierarchy with <code>direction: &quot;down&quot;</code>: the general class above its specializations, the interfaces beside it and each class's place pinned in <code>layout</code>.</p>
+<article class="ex-variant" id="view-sales-right">
+<h3><a href="/umlimator/examples/types/uml-class.html#view=sales-right" target="_self">The same domain, laid out right</a></h3>
+<p>Laid out right (<code>direction</code> left at its default) instead of down: the same classes, lines and presentation options; the main view runs <code>down</code>, so that generalizations put the general class above.</p>
 </article>
 </div>

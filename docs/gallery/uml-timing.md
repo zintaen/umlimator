@@ -1,35 +1,32 @@
 ---
-title: "Timing diagram examples"
-description: "How lifelines change state along a time axis: 3 examples, live."
+title: "Timing diagram"
+description: "How lifelines change state along a time axis: one example that shows all it draws, live."
 aside: false
 pageClass: gallery-page
 ---
 
 <!-- Written by tools/gallery.mjs from the models, tools/gallery.json and tools/types.json: edit those, not this file. -->
 
-# Timing diagram examples
+# Timing diagram
 
-<p class="ex-lead">How lifelines change state along a time axis. The page below holds its 3 examples: its overview has a card for each, and each card opens it. Pan, zoom, select and go into the cards that stack.</p>
+<p class="ex-lead">One bookshop order being paid for, millisecond by millisecond: the order worker, the card gateway and the mailer stepping through their states, the order's status as values, the messages between them and the limits on how long it may take. The page below opens on it, <a href="/umlimator/examples/types/uml-timing.html#view=checkout" target="_self">Paying for one bookshop order</a>, live: pan, zoom, select and go into the cards that stack.</p>
 
-<div class="ex-frame"><iframe src="/umlimator/examples/types/uml-timing.html" title="Timing diagram examples, live" loading="lazy"></iframe></div>
+<div class="ex-frame"><iframe src="/umlimator/examples/types/uml-timing.html" title="Timing diagram, live" loading="lazy"></iframe></div>
 <div class="ex-links"><a href="/umlimator/examples/types/uml-timing.html" target="_self">Open full screen<span class="visually-hidden"> (Timing)</span></a><a href="../conformance/uml-timing.html">Conformance<span class="visually-hidden"> (Timing)</span></a><a href="/umlimator/examples/types/uml-timing.pdf" target="_self">PDF<span class="visually-hidden"> (Timing)</span></a><a href="/umlimator/examples/types/uml-timing.json" target="_self">Model<span class="visually-hidden"> (Timing)</span></a></div>
 
-## The examples {#examples}
+## What it shows {#shows}
 
-<div class="ex-variants">
-<article class="ex-variant" id="view-bookshop-timing-one-charge">
-<h3><a href="/umlimator/examples/types/uml-timing.html#view=bookshop-timing-one-charge" target="_self">One charge</a></h3>
-<p class="ex-sub">states, values, constraints</p>
-<p>Lifelines on one linear time ruler, each a step line through its states or a band of values, messages at their times, duration and time constraints.</p>
-</article>
-<article class="ex-variant" id="view-values-unlock">
-<h3><a href="/umlimator/examples/types/uml-timing.html#view=values-unlock" target="_self">States and a value lifeline</a></h3>
-<p class="ex-sub">a value lifeline, async messages</p>
-<p>Two state lifelines and one drawn as a band of values (<code>present.&lt;lifeline&gt;.as: &quot;values&quot;</code>), in seconds: asynchronous messages, one with a <code>&lt;&lt;signal&gt;&gt;</code> stereotype, a duration constraint between two lifelines and a time constraint.</p>
-</article>
-<article class="ex-variant" id="view-charging-charging">
-<h3><a href="/umlimator/examples/types/uml-timing.html#view=charging-charging" target="_self">Minutes, calls and overlapping constraints</a></h3>
-<p class="ex-sub">minutes, call and reply, overlaps</p>
-<p>A longer run in minutes: a call and its reply, an asynchronous message, a battery's value band, and overlapping duration constraints on one lifeline drawn on their own levels.</p>
-</article>
-</div>
+<p>In the order you find them in the picture:</p>
+
+<ol class="ex-shows">
+<li>Lifelines as lanes, <code>name : Type</code> on the left and their states in a column (worker : OrderWorker, payments : CardGateway, mailer : Mailer)</li>
+<li>State lifelines as step lines, level in a state's row, upright at each change</li>
+<li>A call message with a filled arrowhead from the sender's level to the receiver's (charge(total))</li>
+<li>Its reply, dashed with an open arrowhead (paid)</li>
+<li>A time constraint, a tick with its label (<code>{&lt;= 1000 ms}</code>)</li>
+<li>An asynchronous message with an open arrowhead and a stereotype (&lt;&lt;signal&gt;&gt; receipt)</li>
+<li>A duration constraint spanning two lanes, its extension lines reaching both (<code>{&lt;= 800 ms}</code>)</li>
+<li>A duration constraint within one lane (<code>{&lt;= 300 ms}</code>)</li>
+<li>A general value lifeline, <code>present</code> <code>as</code> <code>values</code>: the order's status in a band whose edges cross at each change (placed, paying, paid, packing)</li>
+<li>A time ruler in milliseconds under the last lane, major and minor ticks</li>
+</ol>

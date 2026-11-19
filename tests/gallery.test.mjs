@@ -2,16 +2,17 @@
 // /umlimator/examples.html), in three parts, a page per type and one for the Atlas (docs/gallery/), their sidebar
 // (docs/.vitepress/gallery.json), and examples/index.html, the old address, now a redirect to the docs page. Diagrams has
 // one card for every diagram type (the map and docs/types.md's 28), each opening the type's docs page, which shows its
-// rendered page (examples/types/<type>.html, tools/types.mjs; tests/types.test.mjs checks those) in a frame and lists its
-// examples; Atlas holds exactly one entry, the Umlimator Atlas (the maintainer's decision, 19 Nov 2026); In an app lists
-// the host pages. Every link, picture and frame on them names a file the site serves, as the site job builds it
+// rendered page (examples/types/<type>.html, tools/types.mjs; tests/types.test.mjs checks those) in a frame, opened on its
+// main view, and lists what the diagram shows and its alternatives (the maintainer's decision, 20 Nov 2026: one
+// comprehensive example per type); Atlas lists tools/gallery.json's atlases, whole businesses each one model of many types,
+// the Umlimator Atlas first; In an app lists the host pages. Every link, picture and frame on them names a file the site serves, as the site job builds it
 // (.github/workflows/check.yml), or a docs page. The models the gallery does not show (tools/gallery.json's retired list,
 // empty since the test models moved to tests/fixtures/) are linked from nowhere in the gallery, the docs or the README,
 // and nor are the models that left the gallery.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { files, inventory, types, groupOf, EX } from '../tools/gallery.mjs';
+import { files, inventory, types, groupOf, atlases, EX } from '../tools/gallery.mjs';
 
 const root = new URL('../', import.meta.url), read = p => readFileSync(new URL(p, root), 'utf8'), json = p => JSON.parse(read(p));
 const html = read('docs/examples.md');
@@ -33,7 +34,7 @@ test('the committed examples pages, their sidebar and the redirect are what tool
   for (const [p, s] of Object.entries(written)) assert.equal(read(p), s, `${p} is stale: run node tools/gallery.mjs and commit it`);
   const pages = readdirSync(new URL('docs/gallery/', root)).map(f => `docs/gallery/${f}`).sort();
   assert.deepEqual(pages, Object.keys(written).filter(p => p.startsWith('docs/gallery/')).sort(), 'docs/gallery/ holds only the pages the tool writes');
-  assert.equal(pages.length, 30, 'the map, the 28 types and the atlas');
+  assert.equal(pages.length, 29 + atlases().length, 'the map, the 28 types and each atlas');
 });
 
 test('the site shows the examples in its own layout: the nav\'s Examples opens examples.html, the sidebar lists every examples page', () => {
@@ -42,7 +43,7 @@ test('the site shows the examples in its own layout: the nav\'s Examples opens e
   assert.match(config, /'\/examples': gallery,/);
   assert.match(config, /'\/gallery\/': gallery,/);
   const links = json('docs/.vitepress/gallery.json').flatMap(g => g.items.map(i => i.link));
-  assert.deepEqual(links, ['/examples', ...inventory().map(t => `/gallery/${t.id}`), '/gallery/atlas']);
+  assert.deepEqual(links, ['/examples', ...inventory().map(t => `/gallery/${t.id}`), ...atlases().map(A => `/gallery/${A.page}`)]);
   for (const l of links) assert.ok(existsSync(new URL(`docs${l}.md`, root)), `docs${l}.md`);
   // the docs link the examples' docs page, not the old address
   for (const p of ['README.md', 'docs/index.md', 'docs/types.md', 'docs/guide/getting-started.md']) assert.doesNotMatch(read(p), /examples\/index\.html/, p);
@@ -70,22 +71,34 @@ test('Diagrams has a card for the map and each of docs/types.md\'s 28 types, in 
   for (const t of inventory()) {
     const c = D.slice(D.indexOf(`id="type-${t.id}"`), D.indexOf('</article>', D.indexOf(`id="type-${t.id}"`)));
     assert.ok(attrs(c, 'href').includes(`./gallery/${t.id}.html`), `${t.id}: opens its docs page`);
-    assert.ok(t.cards.length > 0, `${t.id} has an example`);
-    // every example and variant on the type page's overview is listed on its card, and on its docs page
-    assert.deepEqual(attrs(c, 'href').filter(h => h.startsWith(`${EX}types/${t.id}.html#view=`)).map(h => h.split('=')[1]), t.cards.map(x => x.view), t.id);
+    // the card's picture is the main view's still, and it links the main view and the alternatives
+    const views = [t.main, ...t.alternatives.map(a => a.view)];
+    assert.ok(attrs(c, 'src').includes(`${EX}types/stills/${t.id}/${t.main}.png`), `${t.id}: its card shows the main view`);
+    assert.deepEqual(attrs(c, 'href').filter(h => h.startsWith(`${EX}types/${t.id}.html#view=`)).map(h => h.split('=')[1]), views, t.id);
+    assert.ok(t.shows.length > 0 && c.includes('<ul class="ex-shows-short"><li>'), `${t.id}: its card lists what it shows first`);
     const p = read(`docs/gallery/${t.id}.md`);
     assert.deepEqual(attrs(p, 'src').filter(s => s.startsWith(EX)), [`${EX}types/${t.id}.html`], `${t.id}: its docs page frames its type page`);
-    assert.deepEqual(attrs(p, 'href').filter(h => h.startsWith(`${EX}types/${t.id}.html#view=`)).map(h => h.split('=')[1]), t.cards.map(x => x.view), `${t.id}'s docs page`);
+    assert.equal(json(`examples/types/${t.id}.json`).root, t.main, `${t.id}: the framed page opens on the main view`);
+    assert.deepEqual(attrs(p, 'href').filter(h => h.startsWith(`${EX}types/${t.id}.html#view=`)).map(h => h.split('=')[1]), views, `${t.id}'s docs page`);
     assert.match(p, new RegExp(`<a href="${EX}types/${t.id}\\.html" target="_self">Open full screen`));
+    // its checklist: each "shows" item, in order
+    const list = p.slice(p.indexOf('<ol class="ex-shows">'), p.indexOf('</ol>'));
+    assert.equal(list.split('<li>').length - 1, t.shows.length, `${t.id}: its docs page lists every "shows" item`);
+    assert.equal(p.includes('{#alternatives}'), t.alternatives.length > 0, `${t.id}: its alternatives, when it has any`);
   }
 });
 
-test('Atlas holds exactly one entry, the Umlimator Atlas, and its state machines are views of it', () => {
-  const A = section('atlas'), cards = A.split('<article').length - 1;
-  assert.equal(cards, 1);
+test('Atlas lists tools/gallery.json\'s atlases in order, the Umlimator Atlas first, each framed on its page; its state machines are views of it', () => {
+  const A = section('atlas'), list = atlases();
+  assert.deepEqual([...A.matchAll(/<article class="ex-card ex-wide" id="atlas-([\w-]+)"/g)].map(m => m[1]), list.map(x => x.file));
+  assert.equal(list[0].file, 'umlimator-atlas');
   assert.match(A, /<h3><a href="\.\/gallery\/atlas\.html">The Umlimator Atlas<\/a><\/h3>/);
-  assert.ok(attrs(A, 'href').includes(`${EX}umlimator-atlas.json`));
-  assert.deepEqual(attrs(read('docs/gallery/atlas.md'), 'src'), [`${EX}umlimator-atlas.html`], 'the atlas page frames the atlas');
+  for (const x of list) {
+    assert.ok(attrs(A, 'href').includes(`${EX}${x.file}.json`), x.file);
+    assert.deepEqual(attrs(read(`docs/gallery/${x.page}.md`), 'src'), [`${EX}${x.file}.html`], `${x.page}: the atlas page frames the atlas`);
+    // a whole business: one model, many types
+    assert.ok(new Set(json(`examples/${x.file}.json`).views.map(groupOf)).size >= 3, `${x.file} uses many diagram types`);
+  }
   const m = json('examples/umlimator-atlas.json'), ids = new Set(m.views.map(v => v.id));
   assert.equal(m.title, 'Umlimator Atlas');
   for (const v of ['overview', 'machines', 'navigation', 'story', 'tour', 'keys', 'mcp']) assert.ok(ids.has(v), v);
@@ -102,7 +115,7 @@ test('Atlas holds exactly one entry, the Umlimator Atlas, and its state machines
   for (const [id, nodeIds] of Object.entries(machines)) assert.deepEqual(m.views.find(w => w.id === id).nodeIds, nodeIds, id);
   // no other multi-view real-world model in examples/: every other example is a single-type example of one diagram type,
   // or a map
-  for (const n of examples.filter(n => n !== 'umlimator-atlas')) assert.equal(new Set(json(`examples/${n}.json`).views.map(groupOf)).size <= 2, true, n);
+  for (const n of examples.filter(n => !list.some(x => x.file === n))) assert.equal(new Set(json(`examples/${n}.json`).views.map(groupOf)).size <= 2, true, n);
 });
 
 // what the site job publishes under /umlimator/examples/, read from its own steps so the two cannot drift
@@ -177,7 +190,7 @@ test('the host pages fetch only models and traces the site serves', () => {
 // tests/fixtures/ (20 Nov 2026)
 test('the models that left the gallery are linked from nowhere in the gallery, the docs or the README', () => {
   assert.deepEqual([...RETIRED], []);
-  const GONE = [...RETIRED, 'assistant', 'bookshop', 'bookshop-atlas', 'clinic', 'ebike-atlas', 'states', 'weather'];
+  const GONE = [...RETIRED, 'assistant', 'bookshop', 'clinic', 'ebike-atlas', 'states', 'weather'];
   for (const n of GONE.filter(n => !RETIRED.includes(n))) assert.ok(!existsSync(new URL(`examples/${n}.json`, root)), `examples/${n}.json is deleted`);
   const walk = dir => readdirSync(new URL(dir, root)).flatMap(f => { const p = `${dir}${f}`;
     if (f === 'node_modules' || f === 'dist' || f === 'cache') return [];
@@ -196,7 +209,7 @@ test('the models that left the gallery are linked from nowhere in the gallery, t
   assert.deepEqual(bad, []);
   // and no word of them on the gallery or the site's pages: the atlases, the bike share, the weather stations, the helpdesk
   // \s+ between words, so a phrase a docs page wraps across two lines is caught (audit 48)
-  const words = /Bookshop\s+atlas|e-bike\s+atlas|bike[-\s]share|weather\s+station|helpdesk|clinic\s+booking|Bookshop,\s+an\s+example|bookshop-an-example|\bride-end\b|Trip\s+service|ebike-atlas\.test/i;
+  const words = /e-bike\s+atlas|bike[-\s]share|weather\s+station|helpdesk|clinic\s+booking|Bookshop,\s+an\s+example|bookshop-an-example|\bride-end\b|Trip\s+service|ebike-atlas\.test/i;
   assert.deepEqual(pages.filter(p => words.test(read(p))), []);
   assert.doesNotMatch(html, /(?<![\w-])(?:bike-share|states\.json)/);
 });
@@ -213,11 +226,9 @@ test('the examples\' README links every example model, and the gallery and the m
   // the state machine's card claims only the pseudostates order-states.json draws (audit 12)
   const kinds = new Set(json('examples/order-states.json').nodes.filter(n => n.type === 'uml.Pseudostate').map(n => n.props.kind));
   assert.doesNotMatch(html, /every pseudostate/); assert.ok(!kinds.has('junction') && !kinds.has('deepHistory') && kinds.has('shallowHistory'), [...kinds].join());
-  // the C4 type page has a card for each view bookshop-c4.json holds; the model guide's milestone 4a table (the README's
-  // until the manual moved to docs/guide/) names each type, kind and diagram its four examples use (audit 13)
-  const ex = n => json(`examples/${n}.json`), c4 = json('examples/types/c4.json');
-  const opened = new Set(c4.nodes.filter(n => n.id.startsWith('card-')).map(n => n.opensView));
-  assert.deepEqual(ex('bookshop-c4').views.map(v => `bookshop-c4-${v.id}`).filter(id => !opened.has(id)), []);
+  // the model guide's milestone 4a table (the README's until the manual moved to docs/guide/) names each type, kind and
+  // diagram its four examples use (audit 13)
+  const ex = n => json(`examples/${n}.json`);
   const guide = read('docs/guide/model.md'), m4a = guide.slice(guide.indexOf('The mindmap and the three cloud'), guide.indexOf('A BPMN diagram'));
   for (const n of ['bookshop-opening-plan', 'bookshop-gcp', 'bookshop-azure', 'bookshop-aws']) {
     const m = ex(n), said = [...m.nodes, ...m.edges].flatMap(x => [x.type, x.props && (x.props.groupType ?? x.props.zoneType)]).filter(Boolean).map(t => '`' + t + '`');

@@ -1,5 +1,5 @@
 {
- "about": "What tools/gallery.mjs writes into examples/index.html besides what it reads from docs/types.md, tools/types.json and the models: the map type's own name and description, each type card's picture alt text (the picture is the first view of its type page, examples/types/<type>.html), and the Atlas's entry. tests/gallery.test.mjs fails when the committed page is not what the tool writes.",
+ "about": "What tools/gallery.mjs writes into examples/index.html besides what it reads from docs/types.md, tools/types.json and the models: the map type's own name and description, each type card's picture alt text (the picture is the main view of its type page, examples/types/<type>.html), and the Atlas's entries. tests/gallery.test.mjs fails when the committed page is not what the tool writes.",
  "retired": {
   "about": "Models of examples/ the gallery does not show: none. The test models live in tests/fixtures/ and the bench's in bench/models/ (the maintainer's decision, 20 Nov 2026); the real-world models that left the gallery on 19 Nov 2026 were deleted.",
   "files": []
@@ -10,64 +10,118 @@
   "covers": "docs/guide/model.md"
  },
  "alts": {
-  "map": "Card shapes: people, a browser app, a phone, a window, a terminal, an agent, a database, a queue, a file, a package, hosts and a hook around a shop's API",
-  "uml-class": "A UML class diagram of a bookshop's sales domain: Customer, Order, OrderLine, Book, an abstract Payment and its CardPayment, the Payable interface, the OrderStatus enumeration, the Money data type and a note",
-  "uml-object": "A UML object diagram of one placed order: ada, a Customer, linked to order1042, an Order, its two order lines, the books they are for and the card payment, each with its slots",
-  "uml-package": "A UML package diagram of a bookshop: the packages shared, catalog, sales, payments with card inside it, and wholesale, each a box holding its classes, joined by imports, an access, a merge and a dependency, and the profile BookshopConventions, a closed folder that sales applies",
-  "uml-composite-structure": "A UML composite structure diagram of an order service: its ports on its border, four parts, two of them showing their types' ports, connectors between them, an open collaboration as a dashed ellipse and a collaboration use with its role bindings",
-  "uml-component": "A UML component diagram of a bookshop: Shop API a box holding Checkout, ports on their borders with delegations between them, Orders as a ball with a socket, SignIn as a rectangle, an artifact manifesting Shop API",
-  "uml-deployment": "A UML deployment diagram of a bookshop in production: devices and execution environments drawn as cubes and nested, artifacts deployed in them, communication paths labelled with their protocols",
-  "uml-profile": "A UML profile diagram of a bookshop's modelling conventions: a profile holding metaclasses and stereotypes with their tag definitions, extensions with filled triangles, one marked required, a package applying the profile, and a class showing its stereotypes' tags",
-  "uml-use-case": "A UML use case diagram of a bookshop: a shopper, a member and a payment provider as stick figures, eight use cases as ellipses in the Online bookshop subject, includes and extends drawn dashed with their labels",
-  "uml-activity": "A UML activity diagram of fulfilling an order in three lanes, Order worker, Warehouse and Email service: actions, an object node, a data store, a decision and a merge, a fork and a join, and a flow final",
-  "uml-state-machine": "A UML state machine diagram of an order's life: Placed with its activities, a choice, a fork into the Parcel and Payment regions of Fulfilling, In delivery with a history, Cancelled and a terminate",
-  "uml-sequence": "A UML sequence diagram of a bookshop's checkout: a shopper, the storefront, the api, payments and a receipt created on the way, their messages in time order with activation bars, an alt frame with an opt frame and an interaction use inside it",
-  "uml-communication": "A UML communication diagram of the same checkout: five lifelines joined by connectors, each link's messages a stack of numbered rows",
-  "uml-interaction-overview": "A UML interaction overview diagram of buying a book: interaction uses for finding a book, checking out and emailing the receipt, a decision looping back through a merge, a fork and a join, and an inline interaction with its three lifelines",
-  "uml-timing": "A UML timing diagram of one charge: two lifelines as step lines through their states on a time ruler in milliseconds, a call and its reply between them at their times, a duration constraint and a time constraint",
-  "uml-information-flow": "A UML information flow diagram of what travels with an order: a shopper, components and information items, joined by dashed flow lines each naming what it conveys",
-  "sysml-requirement": "A SysML requirement diagram of a city e-bike in a req frame: requirements with their ids and wrapped texts, containment crosshairs, blocks satisfying and test cases verifying them",
-  "sysml-block-definition": "A SysML block definition diagram of a city e-bike in a bdd frame: blocks with named compartments of parts, values, constraints and ports, an interface block, constraint blocks and value types",
-  "sysml-internal-block": "A SysML internal block diagram of a city e-bike: the bike as the ibd frame holding its parts, ports on their borders with flow arrows, connectors carrying DC power and phase current",
-  "sysml-parametric": "A SysML parametric diagram of a city e-bike's range: constraint properties with rounded corners and their expressions, parameters on their borders bound to value properties",
-  "c4": "A C4 system context diagram of a bookshop: the shopper and staff as people, the bookshop as the system in the middle, the external systems it uses in grey",
-  "er": "An entity-relationship diagram of a bookshop's database: seven tables with their key columns first, related by crow's foot ends, identifying lines solid and the rest dashed",
-  "dfd": "A data flow diagram of a bookshop, level 1: three external entities, three numbered processes and two data stores, joined by labelled data flows",
-  "flowchart": "A flowchart of handling a returned book, laid out down: a start, input and manual input, a decision with yes and no exits, a delay, a database, a document, a connector and an end",
-  "bpmn": "A BPMN diagram of a bookshop's order to shipment: three pools, the bookshop's in two lanes, tasks, events and gateways joined by sequence flows, dashed message flows between the pools, a timer on the payment task's border",
-  "mindmap": "A mindmap of opening a bookshop: the root in the middle, six branches left and right, each in its own colour, joined by curves",
-  "aws": "An AWS architecture diagram of a bookshop: a cloud, a region, a VPC, two availability zones, public and private subnets and a security group as nested boxes, fifteen services and resources drawn with their icons and full service names",
-  "gcp": "A Google Cloud architecture diagram of a bookshop: a project, a region, a network, a subnetwork and two zones as nested boxes, nine products drawn with their icons and full service names",
-  "azure": "An Azure architecture diagram of a bookshop: a subscription, a resource group, a region, a virtual network and two subnets as nested boxes, eight services drawn with their icons and full service names"
+  "map": "A map of a bookshop's systems: shoppers and staff, the storefront, shop app, back office and admin CLI calling the Shop API in a Shop platform box with pricing, a fraud check hook, a planned gift card service and a nested green Data box holding the orders database and the order queue, a violet Support box with an agent and the returns policy, a card gateway, hosts and a removed reminder bot, lines of every kind, weight, style and step",
+  "uml-class": "A UML class diagram of a bookshop's sales domain: the sales, payments, card and shared packages as boxes, Customer, Order, OrderLine and OrderStatus, catalog::Book, the abstract Payment with CardPayment and GiftCardPayment, the Payable and CardGateway interfaces, the Money data type, the Isbn primitive and a note, joined by every kind of class line",
+  "uml-object": "A UML object diagram of one bookshop order just placed: inside the sales package box, ada : Customer with a referral loop and two links to order1042 : Order, the web till's audit link, two anonymous order lines, the card payment and a note; beside them the two catalog books by qualified name and the Customer class",
+  "uml-package": "A UML package diagram of a bookshop, laid out down: fulfilment, the closed folder reporting and wholesale with a note above the subsystem sales, which holds Customer, Order, OrderLine and OrderStatus; below it payments with card nested inside, catalog, the profile BookshopConventions and shared with Money and Isbn, joined by dependencies, a merge, imports, an access and a profile application",
+  "uml-composite-structure": "A UML composite structure diagram of a bookshop's OrderService: its api and payments ports on opposite sides of its box, five parts with their multiplicities, the shared listeners part dashed, ports on checkout and pricing, connectors through them, the collaboration use orderEvents with its publisher and subscriber bindings, the open PublishSubscribe collaboration as a dashed ellipse, and a note on the payments port",
+  "uml-component": "A UML component diagram of a bookshop: the accounts package box with SessionStore realizing Accounts and sign-in, which provides the SignIn interface box that Shop API uses, Order worker's call and shop-api.jar's manifestation into Shop API, a box holding Basket and Checkout joined by delegations through ports on its border, an assembly to the Payment provider's typed port, and Orders as a ball and socket that Storefront requires",
+  "uml-deployment": "A UML deployment diagram of a bookshop in production, laid out down: the shopper's device holding a web browser and storefront.js, routes.conf deployed on a linux server edge proxy, the shop data centre holding the application server, its Java 21 runtime with two jars and a deployment spec, and a database host, the order queue, the Shop API and Order worker components the jars manifest, a note and labelled communication paths",
+  "uml-profile": "A UML profile diagram of a bookshop's modelling conventions: the profiles BookshopConventions and Audit as boxes holding the Class, Property and Package metaclasses and their stereotypes, the abstract record and the entity and aggregateRoot below it, owned extending Class as required, the ColumnKind enumeration and a note; the sales package applies both, its Order and OrderLine showing their stereotypes and tag compartments",
+  "uml-use-case": "A UML use case diagram of an online bookshop, laid out down: Shopper, Member and the system Payment provider as stick figures above the Online bookshop subject, which holds eight use cases as ellipses, Check out with its extension points, joined by associations, includes, extends with their conditions and generalizations, and a note on the closed Warehouse subject",
+  "uml-activity": "A UML activity diagram of a bookshop fulfilling an order, laid out down in nested lanes, Order desk and Warehouse inside Bookshop, beside Email service: an initial node, actions, an Order object node, a Stock levels data store, a decision with a note, a send signal and an accept event action, a merge, a fork into three lanes, the Take payment call with its rake, a join, a flow final and an activity final",
+  "uml-state-machine": "A UML state machine diagram of a bookshop order's life, laid out right: Placed with entry, do, exit and an internal transition, a choice with three guarded exits, a fork into Fulfilling's Parcel and Payment regions with a deep history and a self-transition, On hold with a note, a join, In delivery with a shallow history, Under enquiry closed, a junction, a final state, Cancelled cut to two rows and a terminate",
+  "uml-sequence": "A UML sequence diagram of a bookshop's checkout: a shopper actor, the storefront, the api, a stock hold created and later deleted with a cross, the stock, the card gateway and the warehouse, their calls, replies, asynchronous and stereotyped messages in time order with activation bars, break, loop, alt, par and opt frames and an interaction use",
+  "uml-communication": "A UML communication diagram of a bookshop checkout, laid out down: the shopper as an actor, the storefront, the API with a self loop, the payment provider and the card network, the basket deleted, the receipt created and a stock ledger linked with no message, each link carrying its numbered messages from 1 to 1.1.2.1.1",
+  "uml-interaction-overview": "A UML interaction overview diagram of buying a book, laid out down: a start, ref boxes for finding a book and checking out, a merge and the decision Payment accepted? looping back with try again [else] and a note, a fork into Email the receipt ending at a flow final, the inline sd frame Queue the order with its three lifelines, and Reserve the stock, then a join and the activity final",
+  "uml-timing": "A UML timing diagram of paying for one bookshop order: the worker, card gateway and mailer as step lines through their states, the order's status as a value band, a call and its reply, an async signal, two duration constraints and a time constraint over a ruler in milliseconds",
+  "uml-information-flow": "A UML information flow diagram of what travels with a bookshop order, laid out right: dashed <<flow>> lines between Shop API, StockLedger, the Notifications interface, the shopper, Storefront and the payment provider, each naming what it conveys, a retry loop on Shop API with a note, and the Order, Card details, Receipt and Stock level items and the Book class below",
+  "sysml-requirement": "A SysML requirement diagram of an online bookshop in a req frame: Online ordering containing Search, Checkout and Refunds by crosshair lines, requirements of all five kinds with ids, texts, risk and verify method, a Payments package box, a requirement copied from a regulation, blocks that satisfy and refine requirements, test cases that verify them, derive and trace lines, and a problem and a rationale note",
+  "sysml-block-definition": "A SysML block definition diagram of a city e-bike in its bdd frame: EBike generalizing RentalVehicle and composed of Battery, Motor, Controller and two Lights, with parts, references, values, constraints, ports and flow properties compartments, a Dock with a conjugated port using the ChargeInterface interface block, two constraint blocks and three value types with units",
+  "sysml-internal-block": "A SysML internal block diagram of a city e-bike, laid out down: the frame ibd [Block] EBike with the proxy port chargeSocket on its top border, the battery, the dashed reference part dock with a conjugated port, the controller, the motor with a full port, two lights and two value properties, joined by connectors carrying DCPower, PhaseCurrent and WheelSpeed",
+  "sysml-parametric": "A SysML parametric diagram of a city e-bike's range: the par frame for EBike, six value properties bound to the parameters of three constraint properties with rounded corners and their equations, usable feeding the energy of eco and boost",
+  "c4": "A C4 container diagram of a bookshop: the shopper and staff as people on the left, the Bookshop boundary holding Mobile app, Storefront, Stock import, Order worker, Cover images, Shop API, Database and Order queue in their card shapes, a dashed implied line from Shop API to the Email service, and the payment provider, email service and courier in grey on the right",
+  "er": "An entity-relationship diagram of a bookshop's database in crow's foot notation: customer, order, order_line, payment, book, author and book_author with PK, FK, UK and nullable marks, a self-referencing customer, identifying lines solid and the rest dashed, all four crow's foot ends, and a note on order_line",
+  "dfd": "A data flow diagram of a bookshop, level 1, laid out down in Yourdon notation: the Orders and Books stores, the processes Take payment, Ship order and Take order, the Payment provider, Courier and Customer, labelled flows between them and a note on the Orders store",
+  "flowchart": "A flowchart of a bookshop handling a returned book, laid out down: a start, an input, a decision looping back through a manual input, a decision with three labelled exits, a predefined process, a delay, an on-page connector pair B with a note, a database, a document, a junction connector A and an end",
+  "bpmn": "A BPMN diagram of a bookshop order from basket to shipment: the Shopper, black-box Payment provider and Bookshop pools, the bookshop's Sales lane and Warehouse lane with Dispatch and Picking nested, message, timer, terminate and none events, user and service tasks, exclusive and parallel gateways, a collapsed sub-process, a call activity with a non-interrupting boundary event, data, an annotation, a group and dashed message flows between the pools",
+  "mindmap": "A mindmap of opening a bookshop: the root in the middle, Catalogue, Website and Staff on the right and Launch, Warehouse, Legal and money and Hosting on the left, each branch in its own colour and joined by curves, a long topic cut with an ellipsis, a branch four levels deep and Launch marked as opening launch day's own mindmap",
+  "aws": "An AWS architecture diagram of the bookshop, laid out down: shoppers outside the AWS Cloud, DNS and a CDN inside it, a production account and an Ireland region holding the storefront files, a VPC with a load balancer and two availability zones with private and public subnets, a database security group, the order queue, a generic group of two order worker functions, emails, stock, logs, and a log archive account drawn as a card, every service with its glyph and full service name",
+  "gcp": "A Google Cloud diagram of a bookshop, laid out down: shoppers and shop staff, the bookshop-prod project holding DNS, a load balancer, a CDN, storefront files, an order queue, a reporting group and the europe-west1 region with the API and an order worker, a VPC, a subnetwork and two zones with the primary and standby database, and a path to the closed bookshop-accounts project",
+  "azure": "An Azure architecture diagram of a bookshop: the subscription Bookshop production and resource group rg-bookshop-prod holding CDN and routing, the West Europe region with storefront files, the order queue, the basket cache and secrets, the virtual network with the snet-apps subnet (Shop API, Order worker) and the snet-data subnet (Database), the Operations group with Application Insights and Logs and alerts, and the closed North Europe region the database replicates to"
  },
- "atlas": {
-  "file": "umlimator-atlas",
-  "name": "The Umlimator Atlas",
-  "text": "Umlimator's own model, drawn with umlimator: its parts and who uses each (a map), its system context and containers (C4), the core module's packages in build order (a package diagram), the typed diagram families (a component diagram), the diff Action on a pull request (a sequence diagram) and umlimator's state machines (navigation, the story player, tours, the page's keys and the MCP page), joined by cards that open them.",
-  "alt": "The Umlimator Atlas's overview: the author, an AI assistant, the map-repo skill, the model JSON, umlimator.py, the readers, the module, umlimator/all, the page, the MCP page, the host page, the element, the docs site and the diff Action, with GitHub and Chrome",
-  "stories": [
-   [
-    "A pull request, from push to comment",
-    "pull-request"
-   ],
-   [
-    "An assistant, then the reader",
-    "assistant"
-   ]
-  ],
-  "views": {
-   "overview": "The atlas's root: umlimator's parts and who uses each, the Python parts in a box, line kinds (feeds, state, triggers) and weights, two cards whose views a host may load when opened, and a story along a pull request.",
-   "context": "The system context: the author and the reader as people, umlimator as the system, the AI assistant, GitHub and Chrome as external systems.",
-   "containers": "The containers inside umlimator's dashed boundary, each with its technology, and the relationships the context implies.",
-   "layers": "The core module's packages in src/, in the order tools/build.mjs concatenates them into lib/umlimator.js.",
-   "registry": "The typed families as components, each depending on the core's registry, which the typed canvas looks up.",
-   "diff-run": "The diff Action on a pull request: an async start, calls and their replies, a self-call, and an <code>alt</code> frame on whether the token can write.",
-   "machines": "How umlimator's machines relate: the page and the MCP page drive render()'s handle, a box holding the story player, navigation and tours, which report every change to MapState.",
-   "navigation": "Navigation's states, a move at a time, with its loops back and run order numbered.",
-   "story": "The story player's states, from entering a step to ended or stopped.",
-   "tour": "A tour's or a replay's states: riding, held, at the end or cut short.",
-   "keys": "The order the page's keys close its layers in, as boxes of states.",
-   "mcp": "A page tool, step by step, from the assistant's call to the answer once a page has shown it."
-  }
+ "atlases": {
+  "about": "The Atlas section: whole businesses modelled as one multi-view model each, many diagram types joined by cards that open them, in this order. Each entry: file (examples/<file>.json), page (docs/gallery/<page>.md), name, text (HTML), alt (the root view's still), description (the docs page's), stories ([title, story id]) and views (a text per view of the model, in the model's order).",
+  "list": [
+   {
+    "page": "atlas",
+    "file": "umlimator-atlas",
+    "name": "The Umlimator Atlas",
+    "text": "Umlimator's own model, drawn with umlimator: its parts and who uses each (a map), its system context and containers (C4), the core module's packages in build order (a package diagram), the typed diagram families (a component diagram), the diff Action on a pull request (a sequence diagram) and umlimator's state machines (navigation, the story player, tours, the page's keys and the MCP page), joined by cards that open them.",
+    "alt": "The Umlimator Atlas's overview: the author, an AI assistant, the map-repo skill, the model JSON, umlimator.py, the readers, the module, umlimator/all, the page, the MCP page, the host page, the element, the docs site and the diff Action, with GitHub and Chrome",
+    "stories": [
+     [
+      "A pull request, from push to comment",
+      "pull-request"
+     ],
+     [
+      "An assistant, then the reader",
+      "assistant"
+     ]
+    ],
+    "views": {
+     "overview": "The atlas's root: umlimator's parts and who uses each, the Python parts in a box, line kinds (feeds, state, triggers) and weights, two cards whose views a host may load when opened, and a story along a pull request.",
+     "context": "The system context: the author and the reader as people, umlimator as the system, the AI assistant, GitHub and Chrome as external systems.",
+     "containers": "The containers inside umlimator's dashed boundary, each with its technology, and the relationships the context implies.",
+     "layers": "The core module's packages in src/, in the order tools/build.mjs concatenates them into lib/umlimator.js.",
+     "registry": "The typed families as components, each depending on the core's registry, which the typed canvas looks up.",
+     "diff-run": "The diff Action on a pull request: an async start, calls and their replies, a self-call, and an <code>alt</code> frame on whether the token can write.",
+     "machines": "How umlimator's machines relate: the page and the MCP page drive render()'s handle, a box holding the story player, navigation and tours, which report every change to MapState.",
+     "navigation": "Navigation's states, a move at a time, with its loops back and run order numbered.",
+     "story": "The story player's states, from entering a step to ended or stopped.",
+     "tour": "A tour's or a replay's states: riding, held, at the end or cut short.",
+     "keys": "The order the page's keys close its layers in, as boxes of states.",
+     "mcp": "A page tool, step by step, from the assistant's call to the answer once a page has shown it."
+    },
+    "description": "Umlimator's own model, drawn with umlimator, in many views that open into each other."
+   },
+   {
+    "page": "bookshop-atlas",
+    "file": "bookshop-atlas",
+    "name": "The Bookshop Atlas",
+    "text": "An online bookshop modelled end to end as one model: a map of its systems and the people around them opens into its C4 views, the shopper's use cases, buying a book step by step, its components and sales domain, an order's life, the database, the data flows, fulfilling and paying, the order's way from basket to courier in BPMN, returns, the deployment in production and on three clouds, and the plan for opening the shop. The same names run through every view.",
+    "alt": "The Bookshop Atlas's overview: the shopper and the shop staff, the storefront, the shop API, the database, the order queue and the order worker, with the payment provider, the warehouse, the email service, the courier, the hosting and the opening plan",
+    "description": "An online bookshop modelled end to end in one model: many views of many diagram types that open into each other.",
+    "views": {
+     "overview": "The atlas's root: the bookshop's systems and the people and partners around them. Each card opens the view that tells its part of the business.",
+     "c4-context": "The system context: the shopper and the shop staff as people, the bookshop as the system, and the payment provider, the email service and the courier as external systems.",
+     "shopping": "What a shopper does with the shop: use cases inside the online bookshop's boundary, with include and extend relationships and a member who is a kind of shopper.",
+     "c4-containers": "The containers inside the bookshop's boundary, the storefront, the shop API, the order worker, the database and the order queue, each with its technology.",
+     "c4-components": "The shop API's components: the catalogue, checkout, accounts and sign-in, the payment client and the order store.",
+     "c4-placing-an-order": "Placing an order as a C4 dynamic view: numbered steps from the shopper through the storefront, the API, the payment provider and the queue to the courier.",
+     "buy-book": "Buying a book as an interaction overview: find a book, check out, a decision on whether payment was accepted, then the receipt and the queued order in parallel.",
+     "find-book": "Finding a book: the shopper searches through the storefront and the API answers.",
+     "buy-checkout": "Checking out: the storefront calls the API, which asks the payment provider to charge the card.",
+     "email-receipt": "Emailing the receipt: the API sends it through the email service to the shopper.",
+     "queue-order": "Queueing the order: the API puts it on the queue and the order worker takes it.",
+     "components": "The bookshop's components and their Orders and SignIn interfaces, the information that flows between them, and the image the shop API manifests in.",
+     "domain": "The sales domain as classes: Customer, Order, OrderLine, Book, the Payable interface, Payment and CardPayment, the OrderStatus enumeration and Money, with a note on the order's total.",
+     "payments-only": "The same domain filtered to payments: Order, Payable, Payment and CardPayment.",
+     "order-life": "An order's life as a state machine: placed, a choice on whether it was prepaid, fulfilling with picking and capturing payment between a fork and a join, in delivery with a shallow history state, cancelled with a terminate, and delivered.",
+     "snapshot": "Order 1042 just after it was placed: Ada's order, its two lines, the books Middlemarch and Frankenstein, and the card payment, as objects with their slots.",
+     "packages": "The bookshop's packages, shared, catalog, sales and payments, with their imports and a merge, a wholesale package with an Order of its own, and the conventions profile applied.",
+     "profile": "The modelling conventions as a profile: the entity and aggregateRoot stereotypes on Class, owned and column on Property, applied to the sales package's Order.",
+     "internals": "Inside OrderService: its ports, its parts checkout, pricing, orders and listeners, and a publish-subscribe collaboration for the order events.",
+     "order-flows": "What travels with an order: the order, the card details, the receipt and the stock level, conveyed between the shopper, the storefront, the API, the payment provider, the warehouse and the email service.",
+     "er-schema": "The bookshop's database: customer, order, order_line, book, author, book_author and payment, with their keys and cardinalities.",
+     "dfd-level-1": "The bookshop at level 1 of a data flow diagram: take order, take payment and ship order, the books and orders stores, and the shopper, the payment provider and the courier.",
+     "dfd-level-2-take-order": "Take order, one level down: check the basket, total the order and record it, with the same stores and the shopper.",
+     "fulfil": "Fulfilling an order as an activity in swimlanes for the order worker, the warehouse and the email service: a stock check with a restock loop, payment and packing in parallel, and the handover to the carrier.",
+     "take-payment": "Take payment, the action fulfilling calls: charge the card, then record the payment on the order.",
+     "one-charge": "One charge on a timeline: the order worker's and the payment provider's states while a card is charged.",
+     "checkout-sequence": "Checkout as a sequence: the shopper, the storefront, the API, the payment provider and the receipt, with the calls and replies of a paid order.",
+     "checkout-communication": "The same checkout as a communication diagram: the lifelines as objects with numbered messages, for the case where payment is accepted.",
+     "order-to-shipment": "From order to shipment in BPMN: pools for the shopper, the bookshop and the payment provider, a payment timeout on a boundary event, a gateway on whether the order was paid, invoicing and packing in parallel, the courier's pickup timer, data, a group and the message flows between pools.",
+     "pick-and-pack": "Pick and pack, the subprocess the order-to-shipment process calls: pick the books, then pack and label the parcel.",
+     "returns": "Handling a returned book as a flowchart: reading the slip, inspecting the book, a decision on whether it is fit for resale, the refund, the stock records and a connector.",
+     "c4-deployment": "The production deployment in C4: the user's device and browser, the web server, the Docker Compose host running the shop API and the order worker, and the database server.",
+     "production": "Production as a UML deployment diagram: devices, execution environments, the artifacts deployed on them and the components they manifest.",
+     "mm-plan": "The plan for opening the bookshop as a mindmap: the catalogue, the website, the launch, the warehouse, legal and money, and three ways to host it.",
+     "gcp-on-gcp": "The bookshop on Google Cloud: a project with DNS, a load balancer, a CDN, storage for the storefront, a queue, the API and the worker in a region, and the database across two zones.",
+     "az-on-azure": "The bookshop on Azure: a resource group with routing, monitoring, storage, a queue and secrets, and a virtual network with subnets for the apps and the database.",
+     "aws-on-aws": "The bookshop on AWS: DNS and a CDN, a region with storage, a queue, email and monitoring, and a VPC across two availability zones with public and private subnets."
+    }
+   }
+  ]
  }
 }

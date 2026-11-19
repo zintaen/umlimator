@@ -1,35 +1,45 @@
 ---
-title: "Use case diagram examples"
-description: "Actors and the use cases they take part in: 3 examples, live."
+title: "Use case diagram"
+description: "Actors and the use cases they take part in: one example that shows all it draws, live."
 aside: false
 pageClass: gallery-page
 ---
 
 <!-- Written by tools/gallery.mjs from the models, tools/gallery.json and tools/types.json: edit those, not this file. -->
 
-# Use case diagram examples
+# Use case diagram
 
-<p class="ex-lead">Actors and the use cases they take part in. The page below holds its 3 examples: its overview has a card for each, and each card opens it. Pan, zoom, select and go into the cards that stack.</p>
+<p class="ex-lead">What shoppers do at an online bookshop: who takes part, the use cases inside the shop, and how checking out includes paying and is extended by vouchers and gift wrapping, in one use case diagram. The page below opens on it, <a href="/umlimator/examples/types/uml-use-case.html#view=shopping" target="_self">What shoppers do at the bookshop</a>, live: pan, zoom, select and go into the cards that stack.</p>
 
-<div class="ex-frame"><iframe src="/umlimator/examples/types/uml-use-case.html" title="Use case diagram examples, live" loading="lazy"></iframe></div>
+<div class="ex-frame"><iframe src="/umlimator/examples/types/uml-use-case.html" title="Use case diagram, live" loading="lazy"></iframe></div>
 <div class="ex-links"><a href="/umlimator/examples/types/uml-use-case.html" target="_self">Open full screen<span class="visually-hidden"> (Use case)</span></a><a href="../conformance/uml-use-case.html">Conformance<span class="visually-hidden"> (Use case)</span></a><a href="/umlimator/examples/types/uml-use-case.pdf" target="_self">PDF<span class="visually-hidden"> (Use case)</span></a><a href="/umlimator/examples/types/uml-use-case.json" target="_self">Model<span class="visually-hidden"> (Use case)</span></a></div>
 
-## The examples {#examples}
+## What it shows {#shows}
+
+<p>In the order you find them in the picture:</p>
+
+<ol class="ex-shows">
+<li>Actors as stick figures with their names under them (Shopper, Member)</li>
+<li>An actor with a stereotype under its figure (&lt;&lt;system&gt;&gt; Payment provider)</li>
+<li>Generalization between two actors, a hollow triangle at the general one (Member is a Shopper)</li>
+<li>A note (a comment with a folded corner) linked by a dashed line to a subject</li>
+<li>A subject with nothing shown inside, drawn as a closed rectangle with its name (Warehouse)</li>
+<li>A subject drawn as a box holding its use cases, its name in bold at the top left (Online bookshop)</li>
+<li>Associations between an actor and a use case, plain lines</li>
+<li>Use cases as ellipses holding their names</li>
+<li>A use case with an extension points compartment under a divider (Check out: payment, extras)</li>
+<li>An include, dashed with an open arrowhead and &lt;&lt;include&gt;&gt; (Check out includes Pay for the order, Track an order includes Sign in)</li>
+<li>Extends naming their extension point and condition, <code>&lt;&lt;extend&gt;&gt; (payment) [the shopper has a voucher code]</code></li>
+<li>Generalization between two use cases (Pay by card is a Pay for the order)</li>
+</ol>
+
+## In another setting {#alternatives}
+
+<p>The same example, where a setting cannot share the picture above:</p>
 
 <div class="ex-variants">
-<article class="ex-variant" id="view-shopping-use-cases-shopping">
-<h3><a href="/umlimator/examples/types/uml-use-case.html#view=shopping-use-cases-shopping" target="_self">Shopping</a></h3>
-<p class="ex-sub">actors, subject, include, extend</p>
-<p>Actors as stick figures, use cases as ellipses with their extension points, the subject as a box holding them, and include, extend and generalization between them.</p>
-</article>
-<article class="ex-variant" id="view-dock-dock">
-<h3><a href="/umlimator/examples/types/uml-use-case.html#view=dock-dock" target="_self">Two subjects, laid out down</a></h3>
-<p class="ex-sub">two subjects, laid out down</p>
-<p>Two subjects side by side, the dock kiosk and the rider app, each holding its own use cases, laid out down; a <code>&lt;&lt;system&gt;&gt;</code> actor, an include, an extend at the extension point &quot;after locking&quot; with its condition, and a note on a use case.</p>
-</article>
-<article class="ex-variant" id="view-library-lending">
-<h3><a href="/umlimator/examples/types/uml-use-case.html#view=library-lending" target="_self">Lending, with no subject box</a></h3>
-<p class="ex-sub">no subject, chains of generalization</p>
-<p>Use cases with no subject box around them; actors specialized two levels deep (a junior member is a member is a borrower), two use cases specializing one, and an include.</p>
+<article class="ex-variant" id="view-shopping-right">
+<h3><a href="/umlimator/examples/types/uml-use-case.html#view=shopping-right" target="_self">The same use cases, laid out right</a></h3>
+<p>Laid out right (<code>direction</code> left at its default) instead of down: the same actors, use cases and lines, the actors on the left of the subject.</p>
 </article>
 </div>

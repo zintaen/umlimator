@@ -1,35 +1,43 @@
 ---
-title: "State machine diagram examples"
-description: "States and the transitions between them: 3 examples, live."
+title: "State machine diagram"
+description: "States and the transitions between them: one example that shows all it draws, live."
 aside: false
 pageClass: gallery-page
 ---
 
 <!-- Written by tools/gallery.mjs from the models, tools/gallery.json and tools/types.json: edit those, not this file. -->
 
-# State machine diagram examples
+# State machine diagram
 
-<p class="ex-lead">States and the transitions between them. The page below holds its 3 examples: its overview has a card for each, and each card opens it. Pan, zoom, select and go into the cards that stack.</p>
+<p class="ex-lead">One bookshop order's life, from placed to delivered, cancelled or erased: the payment result chosen at a choice, picking and payment run side by side in two regions, a hold resumed by history, delivery with its problems, and the refund. The page below opens on it, <a href="/umlimator/examples/types/uml-state-machine.html#view=order-life" target="_self">An order's life</a>, live: pan, zoom, select and go into the cards that stack.</p>
 
-<div class="ex-frame"><iframe src="/umlimator/examples/types/uml-state-machine.html" title="State machine diagram examples, live" loading="lazy"></iframe></div>
+<div class="ex-frame"><iframe src="/umlimator/examples/types/uml-state-machine.html" title="State machine diagram, live" loading="lazy"></iframe></div>
 <div class="ex-links"><a href="/umlimator/examples/types/uml-state-machine.html" target="_self">Open full screen<span class="visually-hidden"> (State machine)</span></a><a href="../conformance/uml-state-machine.html">Conformance<span class="visually-hidden"> (State machine)</span></a><a href="/umlimator/examples/types/uml-state-machine.pdf" target="_self">PDF<span class="visually-hidden"> (State machine)</span></a><a href="/umlimator/examples/types/uml-state-machine.json" target="_self">Model<span class="visually-hidden"> (State machine)</span></a></div>
 
-## The examples {#examples}
+## What it shows {#shows}
 
-<div class="ex-variants">
-<article class="ex-variant" id="view-order-states-order-life">
-<h3><a href="/umlimator/examples/types/uml-state-machine.html#view=order-states-order-life" target="_self">An order's life</a></h3>
-<p class="ex-sub">regions, history, choice</p>
-<p>States with their activities, composite states as boxes with orthogonal regions, a choice, a fork and a join, a shallow history and a terminate, and transitions written <code>trigger [guard] / effect</code>.</p>
-</article>
-<article class="ex-variant" id="view-loan-loan">
-<h3><a href="/umlimator/examples/types/uml-state-machine.html#view=loan-loan" target="_self">A library loan</a></h3>
-<p class="ex-sub">deep history, a junction, a note</p>
-<p>A library loan: a composite state left on a closure and re-entered by its deep history (H*), a junction merging two returns, an internal transition with a guard, a final state and a note on the history.</p>
-</article>
-<article class="ex-variant" id="view-coffee-machine">
-<h3><a href="/umlimator/examples/types/uml-state-machine.html#view=coffee-machine" target="_self">A coffee machine, down</a></h3>
-<p class="ex-sub">down, a closed composite</p>
-<p>A coffee machine laid out down: entry, do and exit rows, two internal transitions, Brewing as a closed composite with UML's decomposition mark (its substates not shown), and Descaling with its activities collapsed.</p>
-</article>
-</div>
+<p>In the order you find them in the picture:</p>
+
+<ol class="ex-shows">
+<li>An initial pseudostate, a filled circle</li>
+<li>A state with entry, do and exit rows and an internal transition (Placed)</li>
+<li>A transition labelled with its trigger only (payment result)</li>
+<li>A choice, a diamond, its exits guarded: [card authorised], [paid by gift card] and [else] / email the shopper</li>
+<li>A fork, a bar, splitting into states in two regions (after [paid by gift card])</li>
+<li>A composite state with two orthogonal regions, each named, a dashed divider between them (Fulfilling: Parcel and Payment)</li>
+<li>A transition ending on a composite state's border ([card authorised] into Fulfilling)</li>
+<li>An initial pseudostate inside each region</li>
+<li>A transition leaving a composite state from its border (hold requested, cancel requested / refund the payment)</li>
+<li>A deep history H* in the Parcel region, re-entered from On hold (hold lifted)</li>
+<li>A note linked to the deep history by a dashed line</li>
+<li>A self-transition with a trigger, a guard and an effect: capture failed [attempts &lt; 3] / count the attempt</li>
+<li>A join, a bar, merging the two regions, then a transition with an effect only (/ hand the parcel to the carrier)</li>
+<li>A composite state holding its substates with no regions (In delivery)</li>
+<li>A shallow history H, re-entered when a problem is resolved</li>
+<li>A state with its activities collapsed (Out for delivery, <code>present</code> <code>collapsed</code>)</li>
+<li>A final state, a ring round a filled circle (parcel signed for / email the receipt)</li>
+<li>A closed composite state with UML's decomposition mark, its substates not shown (Under enquiry)</li>
+<li>A junction, a small filled circle, merging two transitions (refused at the door, parcel lost)</li>
+<li>A state's compartment cut to two rows then &quot;+2 more&quot; (Cancelled, <code>present</code> <code>rows</code>)</li>
+<li>A terminate pseudostate, an X (after 30 days / erase the shopper's details)</li>
+</ol>
