@@ -432,12 +432,34 @@ def legal(d, say):
                 told.add(c)
                 say(None, raw_char(c))
         return RAW.sub("\ufffd", v)
+
+    def keys(v):
+        """v's keys fixed, in their order: two that differ only in such characters (web\\u0001 and web\\u0002) or a fixed one
+        that is another's text kept apart, the later taking the first free of key-2, key-3 ... each said (audit 50), as the
+        module's readers keep two names that scrub to one text apart. Linear in the keys but for the free-key search."""
+        if not any(isinstance(a, str) and RAW.search(a) for a in v):
+            return v
+        used, out = set(a for a in v if not (isinstance(a, str) and RAW.search(a))), {}
+        for a, b in v.items():
+            if not (isinstance(a, str) and RAW.search(a)):
+                out[a] = b
+                continue
+            f = fix(a)
+            if f in used:
+                n = 2
+                while f"{f}-{n}" in used:
+                    n += 1
+                say(None, f"key {f}: another key reads as the same text, so this one is read as {f}-{n}")
+                f = f"{f}-{n}"
+            used.add(f)
+            out[f] = b
+        return out
     todo = [(top, 0)]
     while todo:
         box, k = todo.pop()
         v = box[k]
         if isinstance(v, dict):
-            box[k] = v = {fix(a): b for a, b in v.items()}
+            box[k] = v = keys(v)
             todo += [(v, a) for a in v]
         elif isinstance(v, list):
             todo += [(v, i) for i in range(len(v))]

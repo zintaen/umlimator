@@ -1,5 +1,5 @@
 import { unreadable, jsonText } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText, mermaidScrub } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText, mermaidScrub, mermaidOver, mermaidOpen } from './mermaid-front.js';
 /* ---------- Mermaid erDiagram: a reader and a writer (notes/milestone-2.md §8.1, M2.8; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's entity relationship page (docs/syntax/entityRelationshipDiagram.md, read 14 Nov 2026)
    and its lexer (packages/mermaid/src/diagrams/er/parser/erDiagram.jison), as the other readers are against theirs.
@@ -88,7 +88,8 @@ function meName(s, k) {
 }
 
 // a column block's attributes from k, as Mermaid's lexer reads them in its block state: { cols, end, closed, bad }, each
-// col { type, nullable, name, keys, comment, at }; bad is where an attribute that is not one starts
+// col { type, nullable, name, keys, comment, at }; bad is where an attribute that is not one starts, open set when it is
+// one whose comment's quote is left open on the line
 function meRow(s, k, tilde = s.lastIndexOf('~')) {
   const cols = [];
   let nt = -2, nw = -2; // the next ~ and the next whitespace at or after k, found once each as k moves on (linear)
@@ -124,7 +125,7 @@ function meRow(s, k, tilde = s.lastIndexOf('~')) {
       if (!isKey()) return { cols, end: k, closed: false, bad: at };
     }
     let comment;
-    if (s[k] === '"') { const e = s.indexOf('"', k + 1); if (e < 0) return { cols, end: k, closed: false, bad: at }; comment = s.slice(k + 1, e); k = e + 1; }
+    if (s[k] === '"') { const e = s.indexOf('"', k + 1); if (e < 0) return { cols, end: k, closed: false, bad: at, open: true }; comment = s.slice(k + 1, e); k = e + 1; }
     cols.push({ type, nullable, name, keys, comment, at });
   }
 }
@@ -168,6 +169,11 @@ function readMermaidEr(text) {
   }
 
   const ents = new Map(), seen = [], rels = [], groups = new Set(), once = new Set();
+  // Mermaid's string token runs over line breaks (audit 49): a relationship's "label" or a column's "comment" left open
+  // on its line goes on over the lines to its closing quote (audit 50). grow(s) is s with those lines joined on, and the
+  // loop's i moved to the last of them, or null when no later line closes it
+  const over = mermaidOver(lines);
+  let grow;
   let viewId, viewNo, direction = 'down', started = false, hint = {}, acc = false, depth = 0, block = null;
   const ent = (name, no) => { let r = ents.get(name); if (!r) { r = { name, no, cols: [], names: new Set() }; ents.set(name, r); seen.push(r); } return r; };
   const column = (rec, c, no) => {
@@ -255,7 +261,9 @@ function readMermaidEr(text) {
     if (!b) return notRead();
     k2 = styled(s, meSkip(s, b.end), b.text, no);
     let label;
-    if (s[k2] === ':') { const t = s.slice(k2 + 1).trim(), q = /^"([^"]*)"$/.exec(t); label = meDecode(q ? q[1] : t, code => say(no, 'approximated', mermaidBadChar(code))); }
+    if (s[k2] === ':') {
+      if (/^\s*"/.test(s.slice(k2 + 1)) && mermaidOpen(s.slice(k2 + 1))) { const g = grow(s); if (g !== null) s = g; }
+      const t = s.slice(k2 + 1).trim(), q = /^"([^"]*)"$/.exec(t); label = meDecode(q ? q[1] : t, code => say(no, 'approximated', mermaidBadChar(code))); }
     else if (k2 < s.length) return notRead();
     else say(no, 'approximated', `${a.text} ${card[0]}${rel[0]}${card2[0]} ${b.text}: no : label, which Mermaid asks for, so it has none`);
     if (card[5] || card2[5]) say(no, 'approximated', `${a.text} ${card[0]}${rel[0]}${card2[0]} ${b.text}: u, a parent marker Mermaid's page does not show, is read as 1`);
@@ -266,7 +274,8 @@ function readMermaidEr(text) {
   };
 
   for (; i < lines.length; i++) {
-    const no = i + 1, s = lines[i], t = s.trim();
+    const no = i + 1, t = lines[i].trim();
+    let s = lines[i];
     if (!t) continue;
     if (acc) { if (t.includes('}')) acc = false; continue; }
     if (t.startsWith('%%')) {
@@ -283,13 +292,19 @@ function readMermaidEr(text) {
       if (!/^\uFEFF?erDiagram$/i.test(t)) { say(no, 'skipped', 'not a Mermaid erDiagram: nothing read'); return empty(); }
       started = true; viewId = hint.id; viewNo = hint.no; hint = {}; continue;
     }
-    const tilde = s.lastIndexOf('~');
-    let dir = -1;
+    let tilde = s.lastIndexOf('~'), dir = -1;
     if (!block) for (const m of s.matchAll(ME_DIRECTION)) dir = m.index;
+    grow = cur => {
+      const o = over(i, cur.trim());
+      if (!o) return null;
+      s = [cur, ...lines.slice(i + 1, o.i + 1)].join('\n'); i = o.i; tilde = s.lastIndexOf('~');
+      return s;
+    };
     for (let k = 0; k < s.length;) {
       if (!block) { k = statement(s, k, no, dir); continue; }
       const r = meRow(s, k, tilde);
       for (const c of r.cols) column(block, c, no);
+      if (r.open && grow(s) !== null) { k = r.bad; continue; } // the row whose comment was left open read again, joined
       if (r.bad !== undefined) {
         const e = s.indexOf('}', r.end);
         say(no, 'skipped', `"${meShort(s.slice(r.bad, e < 0 ? s.length : e).trim())}" in ${block.name}'s block is not a column`);
