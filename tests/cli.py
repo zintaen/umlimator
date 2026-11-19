@@ -42,7 +42,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf integration": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "bench views": 1})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "bench views": 1})
 
 
 def ok(name, cond, info=""):
@@ -2398,6 +2398,22 @@ if part("audit 45"):
            r.returncode == 0 and sorted(said) == ["big.json", "dir.json", "eslint.json", "gone.json", "maps/shop.json", "pipe.json", "zero.json"] and all("symbolic link" in (w or "") for w in said.values())
            and "No map model changed" not in md and "OUTSIDE-45" not in written and "SECRET-45" not in written and "x.invalid" not in written,
            (said, md, r.stderr[-400:]))
+if part("audit 51"):
+    # the guide's --views values name views of the page its block renders (audit 51: 'overview,api' and 'pic-*' named none of
+    # the Umlimator Atlas's, so both documented commands stopped with exit 1): each through pick(), as stills, check and pdf read it
+    guide, pages, said = (ROOT / "docs" / "guide" / "cli.md").read_text(), {}, []
+    with tempfile.TemporaryDirectory() as t:
+        for line in re.findall(r"^python3 umlimator\.py .*$", guide, re.M):
+            if m := re.match(r"python3 umlimator\.py render (\S+) --out (\S+)", line):
+                cli("render", str(ROOT / m.group(1)), "--out", str(Path(t) / m.group(2)), "--no-check"); pages[m.group(2)] = Path(t) / m.group(2)
+            if v := re.search(r"--views '?([^' ]+)'?", line):
+                page = re.match(r"python3 umlimator\.py \w+ (\S+)", line).group(1)
+                try:
+                    said.append((line, page in pages and bool(u.pick(str(pages[page]), v.group(1)))))
+                except SystemExit as e:
+                    said.append((line, str(e)))
+    ok("docs/guide/cli.md · every --views value names views of the page its block renders (audit 51)",
+       len(said) >= 2 and all(r is True for _, r in said), said)
 if part("bench views"):
     # bench.py times map views only (step 0 of the one-model plan): a version-2 model's typed views are left out with their benchViews,
     # a version-1 model's views are all timed whatever they say, and a benchViews entry naming no view stops the bench
