@@ -253,3 +253,17 @@ test('the examples\' README links only files that exist, and \'Not shown\' names
   assert.ok(said.length > 8, said.length);
   assert.deepEqual(said.flatMap(([k, v]) => models.filter(m => sets(m, k, v)).map(m => `${k}${v ? ': ' + v : ''} in ${m}`)), []);
 });
+
+// audit 51: docs/types.md said a type's "All examples" opens one page holding every example and variant of the type, a
+// card for each on its overview, the gallery before 20 Nov; the page tools/gallery.mjs writes is one live example, its
+// checklist and its alternatives, with no cards
+test('docs/types.md describes a type\'s page as tools/gallery.mjs writes it: one live example, its checklist and alternatives', () => {
+  const intro = read('docs/types.md').split('\n## ')[0].replace(/\s+/g, ' ');
+  assert.doesNotMatch(intro, /variant|a card for each|every example/);
+  assert.match(intro, /"All examples" opens its page in the \[examples\]\(\.\/examples\.md#diagrams\): one example, live, that shows everything the type draws, with a checklist of what to find in it and the settings that need a view of their own/);
+  for (const t of typePages) {
+    const page = written[`docs/gallery/${t}.md`]; assert.ok(page, t);
+    assert.equal((page.match(/<iframe /g) || []).length, 1, t); assert.match(page, /## What it shows \{#shows\}/, t);
+    assert.doesNotMatch(page, /class="(?:ex-card|card)"/, t);
+  }
+});
