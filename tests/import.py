@@ -104,6 +104,13 @@ ok("mermaid · text and two-way links, an invisible link left out, and what isn'
 m, un = imp.read("mermaid", 'flowchart LR\n  A["Say #quot;hi#quot;"] --> B["5 #lt; 6"]\n  B -->|#35;1 step| C\n  C -- #lt;go#gt; --> D[#quot;x#quot;]\n', "x")
 ok("mermaid · entity codes are read in labels, and their ; ends no statement (audit 5)",
    [n["label"] for n in m["nodes"]] == ['Say "hi"', "5 < 6", "C", '"x"'] and ends(m) == [("A", "B", None), ("B", "C", "#1 step"), ("C", "D", "<go>")] and not un, (m, un))
+m, un = imp.read("mermaid", 'flowchart LR\n  A["bad #1; char"] --> B["x #65535; y"]\n  B -->|t#0;| C\n  subgraph s [k#27;]\n  C\n  end\n  C <-->|w#8;| D["#9;#65;#55296;"]\n', "x")
+ok("mermaid · an entity code naming no character XML holds is U+FFFD and said, as the module's mermaidChar (audit 48)",
+   [n["label"] for n in m["nodes"]] == ["bad \ufffd char", "x \ufffd y", "C", "A\ufffd"] and [e.get("label") for e in m["edges"]] == [None, "t\ufffd", "w\ufffd", "w\ufffd"]
+   and m["views"][0]["containers"][0]["label"] == "k\ufffd"
+   and un == [(2, f"{c} names no character SVG or XML can hold: read as U+FFFD") for c in ("#1;", "#65535;")]
+   + [(3, "#0; names no character SVG or XML can hold: read as U+FFFD"), (4, "#27; names no character SVG or XML can hold: read as U+FFFD"),
+      (7, "#55296; names no character SVG or XML can hold: read as U+FFFD"), (7, "#8; names no character SVG or XML can hold: read as U+FFFD")], (m, un))
 ok("mermaid · front matter fences with spaces after them are front matter (audit 5)",
    imp.front("--- \ntitle: Shop\n---  \nflowchart LR\n")[0] == "Shop" and imp.mermaid_typed("--- \ntitle: t\n--- \nclassDiagram\n") == "classDiagram")
 m, un = imp.read("structurizr", 'workspace {\n  model {\n    u = person "User" \\\n      "A customer"\n    s = softwareSystem "Shop"\n    u -> s "Uses" \\\n      "HTTPS"\n  }\n}\n', "x")
@@ -1116,8 +1123,9 @@ with tempfile.TemporaryDirectory() as tmp:
         r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", f, "--out", "o.json"], capture_output=True, text=True, cwd=t)
         said.append(r.stderr)
     bad = [x for x in said if re.search("[\x00-\x08\x0b-\x1f\x7f-\x9f]", x)]
+    # a typed reader reads a raw control as U+FFFD, said, before any report quotes it (audit 48)
     ok("a hostile file's escape sequences reach stderr as \\xNN, never raw, from the map importer, a typed reader and the file's name (audit 26)",
-       not bad and "zzz \\x1b]0\n" in said[0] and "PWNED\\x07 \\x1b[31mRED" in said[0] and "\\x9b2J" in said[0] and "\\x1b]8;;http://evil/" in said[1] and "x\\x1b[2Jy.mmd:3:" in said[2], said)
+       not bad and "zzz \\x1b]0\n" in said[0] and "PWNED\\x07 \\x1b[31mRED" in said[0] and "\\x9b2J" in said[0] and "\ufffd]8;;http://evil/" in said[1] and "the character U+001B, which SVG or XML cannot hold" in said[1] and "x\\x1b[2Jy.mmd:3:" in said[2], said)
 
 # audit 27: the bidi marks, embeddings, overrides and isolates (U+202E shows the rest of the line reversed) reached stderr
 # raw too; each is written as \uNNNN, from the map importer (Python), a typed reader (Node) and the file's own name
