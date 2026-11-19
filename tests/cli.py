@@ -989,7 +989,7 @@ with tempfile.TemporaryDirectory() as tmp:
         by = {x["file"]: x for x in r}
         md = (t / "action-out" / "summary.md").read_text(encoding="utf-8") if (t / "action-out" / "summary.md").is_file() else ""
         ok("diff --base, as the Action runs it · an object model: what changed in words, its view, a page and a still",
-           by.get("examples/order-objects.json", {}).get("summary") == ["renames order1042 to order1043 (members)"] and by["examples/order-objects.json"]["views"] == ["snapshot"]
+           by.get("examples/order-objects.json", {}).get("summary") == ["renames order1042 to order1043", "changes status of order1043 (props)"] and by["examples/order-objects.json"]["views"] == ["snapshot"]
            and (t / "action-out" / "examples-order-objects.html").is_file() and all(Path(s).is_file() for s in by["examples/order-objects.json"].get("stills", [None])), r)
         ok("diff --base, as the Action runs it · a package model: a re-own reads moves … into …, with its view, a page and a still",
            by.get("examples/bookshop-packages.json", {}).get("summary") == ["moves Book into sales"] and by["examples/bookshop-packages.json"]["views"] == ["packages"]

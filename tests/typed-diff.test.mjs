@@ -63,7 +63,8 @@ test('an element\'s members reordered read "moves" on every type with members; e
     if (said) assert.deepEqual(got, [said]);
   }
   const k = load('examples/sales-classes.json');
-  assert.deepEqual(all.diff(k, edit(k, m => { const c = m.nodes.find(x => x.id === 'customer'); c.members.reverse(); c.members[0].label = 'fullName'; })).summary, ['changes Customer (members)']);
+  // audit 47: an edited member is said by its name, and the rest's new order still reads "moves"
+  assert.deepEqual(all.diff(k, edit(k, m => { const c = m.nodes.find(x => x.id === 'customer'); c.members.reverse(); c.members[0].label = 'fullName'; })).summary, ['moves email after name in Customer', 'renames name to fullName in Customer']);
   // members with no ids: no move can be found, so "changes" as before, as lib/umlimator.js says
   const noIds = edit(k, m => m.nodes.find(x => x.id === 'customer').members.forEach(x => delete x.id)), rev = edit(noIds, m => m.nodes.find(x => x.id === 'customer').members.reverse());
   assert.deepEqual(all.diff(noIds, rev).summary, ['changes Customer (members)']);
@@ -190,8 +191,8 @@ test('audit 39: views lists a typed view that draws a changed element it does no
     { id: 'c', type: 'uml.Class', label: 'C', parent: '__proto__', props: { self: 'c', v: 'cv' } }, deep],
     edges: [], views: [{ id: 'cv', diagram: 'uml.class', nodeIds: ['c'] }, { id: 'dv', diagram: 'uml.class', nodeIds: ['d0'] }, { id: 'pv', diagram: 'uml.package', nodeIds: ['q'] }] };
   const relabel = (i, label) => ({ ...H, nodes: H.nodes.map((n, j) => (j === i ? { ...n, label } : n)) });
-  assert.deepEqual(all.diff(H, relabel(1, 'Q2')).views, ['cv', 'pv']);
-  assert.deepEqual(all.diff(H, relabel(0, 'Z')).views, ['cv', 'pv']);
+  assert.deepEqual(all.diff(H, relabel(1, 'Q2')).views, ['pv']); // audit 47: cv draws c's package, not that package's owner Q: the same picture
+  assert.deepEqual(all.diff(H, relabel(0, 'Z')).views, ['cv']); // audit 47: pv draws Q closed, not the package inside it: the same picture
   assert.deepEqual(all.diff(H, relabel(3, 'D2')).views, ['dv']);
 });
 

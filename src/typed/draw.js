@@ -110,6 +110,9 @@ function endLabels(e, pts = e.pts, also = []) { // also: boxes to keep clear of 
 // which a memo hands back (Q13), are never changed. Every typed shape with an inset gets the
 // copy, its ends rounded; where the inset is 0 (the classifier, a package, an object) the ends stay on the box
 const insetLook = n => { const S = n && hasKey(SHAPE, n.shape) ? SHAPE[n.shape] : null; return S && S.draw && S.inset ? { ...n, S } : null; };
+// a line drawn added or removed, as svgOf's estyle reads it: its style when it has one, else its change mark in any letter case
+const chgStyle = e => { const c = typeof e.change === 'string' ? e.change.toLowerCase() : '', s = e.style || (c === 'added' || c === 'new' ? 'added' : c === 'removed' ? 'removed' : '');
+  return s === 'added' || s === 'removed'; };
 TYPED.lines = ({ id, nodes = [], families = [], edges, drawn, lstyle, MC }) => {
   edges.forEach((e, i) => { if (e.pts) drawn[i] = drawnPts(e, insetLook); });
   const ends = [...new Set(edges.flatMap(e => e.end ? ['from', 'to'].map(w => endOf(e.end, w)).filter(Boolean).map(k => k + '-' + lstyle(e).m) : []))];
@@ -126,8 +129,9 @@ TYPED.lines = ({ id, nodes = [], families = [], edges, drawn, lstyle, MC }) => {
     defs: ends.map(endMark).join(''),
     edge(e, i) { const E = e.end; if (!E) return null;
       // a dashed notation keeps its dash when the line is added: a flowing line's own dash would draw a dependency as an
-      // association, a message flow as a sequence flow (audit 46)
-      const st = E.dashed ? { ...lstyle(e), dash: E.dashed === 'dot' ? '2 3' : '6 4', flow: false } : lstyle(e), cut = w => endOf(E, w) ? ENDS[endOf(E, w)][0] : 0, at = w => endOf(E, w) ? `url(#${id}-${endOf(E, w)}-${st.m})` : '';
+      // association, a message flow as a sequence flow (audit 46); and a solid one stays solid when it is added or removed, so
+      // an added generalization is no realization, a removed association no dependency (audit 47): the change is its colour
+      const st = E.dashed ? { ...lstyle(e), dash: E.dashed === 'dot' ? '2 3' : '6 4', flow: false } : chgStyle(e) ? { ...lstyle(e), dash: '', flow: false } : lstyle(e), cut = w => endOf(E, w) ? ENDS[endOf(E, w)][0] : 0, at = w => endOf(E, w) ? `url(#${id}-${endOf(E, w)}-${st.m})` : '';
       return { st, pts: trimLine(drawn[i], cut('from'), cut('to')), marks: `${at('to') ? `marker-end="${at('to')}"` : ''} ${at('from') ? `marker-start="${at('from')}"` : ''}` }; },
     labels: i => edges[i].end ? endLabs(i).map(b => brLines(b.text).map((l, k) => `<text x="${r2(b.x + b.w / 2)}" y="${r2(b.y + 10.5 + k * 12)}" text-anchor="middle" class="end-lab" data-i="${i}" data-end="${b.end}" data-box="${b.x} ${b.y} ${b.w} ${b.h}" fill="var(--um-muted)" style="font:500 10px var(--um-sans)">${esc(l)}</text>`).join('')).join('') : '',
   };
