@@ -1,35 +1,46 @@
 ---
-title: "Internal block diagram examples"
-description: "The parts of a block and what flows between their ports: 3 examples, live."
+title: "Internal block diagram"
+description: "The parts of a block and what flows between their ports: one example that shows all it draws, live."
 aside: false
 pageClass: gallery-page
 ---
 
 <!-- Written by tools/gallery.mjs from the models, tools/gallery.json and tools/types.json: edit those, not this file. -->
 
-# Internal block diagram examples
+# Internal block diagram
 
-<p class="ex-lead">The parts of a block and what flows between their ports. The page below holds its 3 examples: its overview has a card for each, and each card opens it. Pan, zoom, select and go into the cards that stack.</p>
+<p class="ex-lead">Inside a city e-bike: the battery, controller, motor and lights wired together, the dock the bike rests in, and the charge socket on the bike's own border, with what flows along each connector, in one SysML internal block diagram. The page below opens on it, <a href="/umlimator/examples/types/sysml-internal-block.html#view=inside-ebike" target="_self">Inside the e-bike</a>, live: pan, zoom, select and go into the cards that stack.</p>
 
-<div class="ex-frame"><iframe src="/umlimator/examples/types/sysml-internal-block.html" title="Internal block diagram examples, live" loading="lazy"></iframe></div>
+<div class="ex-frame"><iframe src="/umlimator/examples/types/sysml-internal-block.html" title="Internal block diagram, live" loading="lazy"></iframe></div>
 <div class="ex-links"><a href="/umlimator/examples/types/sysml-internal-block.html" target="_self">Open full screen<span class="visually-hidden"> (Internal block)</span></a><a href="../conformance/sysml-internal-block.html">Conformance<span class="visually-hidden"> (Internal block)</span></a><a href="/umlimator/examples/types/sysml-internal-block.pdf" target="_self">PDF<span class="visually-hidden"> (Internal block)</span></a><a href="/umlimator/examples/types/sysml-internal-block.json" target="_self">Model<span class="visually-hidden"> (Internal block)</span></a></div>
 
-## The examples {#examples}
+## What it shows {#shows}
+
+<p>In the order you find them in the picture:</p>
+
+<ol class="ex-shows">
+<li>The frame: the subject block's box with its header <code>ibd [Block] EBike [Inside the e-bike]</code></li>
+<li>A port on the frame's own border (&lt;&lt;proxy&gt;&gt; chargeSocket : ChargeInterface) and a connector delegating it to a part's port</li>
+<li>Proxy ports typed by an interface block, with a two-way flow arrow inside from its in and out flow properties (charge : ChargeInterface)</li>
+<li>A conjugated port, its type written with <code>~</code> (dock's charge : ~ChargeInterface)</li>
+<li>Part properties as boxes <code>name : Type [multiplicity]</code> (battery : Battery [1], controller : Controller [1])</li>
+<li>Untyped ports as plain squares on their part's border, each named beside it (power, bus, supply, drive)</li>
+<li>A reference property, a dashed box (dock : Dock [0..1])</li>
+<li>Value properties as boxes <code>name : Type</code> (batteryCapacity : Energy, ecoRange : Distance)</li>
+<li>Item flows: the item as the connector's label and a filled triangle pointing the way it flows (DCPower, PhaseCurrent)</li>
+<li>An item flowing against the connector's direction (DCPower from the dock to the battery, WheelSpeed from the motor to the controller)</li>
+<li>A connector with no item flow (the bus between battery and controller)</li>
+<li>Two connectors on one port (the controller's lights to both lights)</li>
+<li>A full port, &lt;&lt;full&gt;&gt; beside it, set on its part's right side by <code>present</code> (sensor : SpeedSensor on the motor)</li>
+</ol>
+
+## In another setting {#alternatives}
+
+<p>The same example, where a setting cannot share the picture above:</p>
 
 <div class="ex-variants">
-<article class="ex-variant" id="view-ebike-structure-inside-ebike">
-<h3><a href="/umlimator/examples/types/sysml-internal-block.html#view=ebike-structure-inside-ebike" target="_self">Inside the e-bike</a></h3>
-<p class="ex-sub">parts, ports, item flows</p>
-<p>A block's parts, references and values inside its frame; proxy and full ports with flow arrows and conjugation; connectors with item flows.</p>
-</article>
-<article class="ex-variant" id="view-dock-inside-station">
-<h3><a href="/umlimator/examples/types/sysml-internal-block.html#view=dock-inside-station" target="_self">Inside the dock station</a></h3>
-<p class="ex-sub">frame ports, delegation, a full port</p>
-<p>A dock station's parts, a reference and a value; a proxy port on the frame delegating to the charger's port, a full port on the frame, conjugated proxy ports meeting, and item flows on four connectors.</p>
-</article>
-<article class="ex-variant" id="view-dock-inside-charger">
-<h3><a href="/umlimator/examples/types/sysml-internal-block.html#view=dock-inside-charger" target="_self">Inside the charger</a></h3>
-<p class="ex-sub">a part's own block, two delegations</p>
-<p>The charger, a part of the dock, as the subject of its own diagram: its two frame ports delegate in to the breaker and out from the rectifier, with alternating current flowing between them.</p>
+<article class="ex-variant" id="view-inside-ebike-right">
+<h3><a href="/umlimator/examples/types/sysml-internal-block.html#view=inside-ebike-right" target="_self">Inside the e-bike, laid out right</a></h3>
+<p>Laid out right (<code>direction</code> left at its default) instead of down, with no port side set by hand: the same parts, ports and connectors, the frame's port on its left border.</p>
 </article>
 </div>

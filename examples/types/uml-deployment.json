@@ -1,482 +1,244 @@
 {
  "$schema": "../../lib/umlimator.schema.json",
  "schemaVersion": 2,
- "title": "Deployment diagram examples",
- "root": "overview",
+ "title": "Deployment diagram",
+ "root": "production",
  "nodes": [
   {
-   "id": "card-bookshop-deployment-production",
-   "label": "Production",
-   "kind": "file",
-   "sublabel": "nodes, devices, artifacts",
-   "what": "Nodes, devices and execution environments as cubes, nested; artifacts deployed by nesting or by a `<<deploy>>` line; deployment specifications and communication paths.",
-   "how": "From examples/bookshop-deployment.json.",
-   "opensView": "bookshop-deployment-production"
-  },
-  {
-   "id": "card-docks-docks",
-   "label": "Dock network, laid out down",
-   "kind": "file",
-   "sublabel": "nested nodes, laid out down",
-   "what": "A bike dock network laid out down: a node inside a node inside a data centre, execution environments on devices, a stereotyped device, a deployment specification and paths that end on a box's border.",
-   "how": "From examples/variants/uml-deployment-docks.json.",
-   "opensView": "docks-docks"
-  },
-  {
-   "id": "card-lines-lines",
-   "label": "Deployed by lines",
-   "kind": "file",
-   "sublabel": "<<deploy>> and <<manifest>> lines",
-   "what": "A library catalogue whose artifacts stand apart from their targets: each deployed by a dashed `<<deploy>>` line, a deployment specification deployed the same way, `<<manifest>>` lines to components and stereotyped server nodes.",
-   "how": "From examples/variants/uml-deployment-lines.json.",
-   "opensView": "lines-lines"
-  },
-  {
-   "id": "bookshop-deployment-shopper-device",
+   "id": "shopper-device",
    "type": "uml.Device",
    "label": "Shopper's device"
   },
   {
-   "id": "bookshop-deployment-browser",
+   "id": "browser",
    "type": "uml.ExecutionEnvironment",
    "label": "Web browser",
-   "parent": "bookshop-deployment-shopper-device"
+   "parent": "shopper-device"
   },
   {
-   "id": "bookshop-deployment-storefront-bundle",
+   "id": "storefront-js",
    "type": "uml.Artifact",
    "label": "storefront.js",
-   "parent": "bookshop-deployment-browser"
+   "parent": "browser"
   },
   {
-   "id": "bookshop-deployment-edge-node",
+   "id": "edge",
    "type": "uml.Node",
-   "label": "Edge proxy"
+   "label": "Edge proxy",
+   "props": {
+    "stereotypes": [
+     "linux server"
+    ]
+   }
   },
   {
-   "id": "bookshop-deployment-edge-routes",
+   "id": "routes",
    "type": "uml.Artifact",
    "label": "routes.conf"
   },
   {
-   "id": "bookshop-deployment-app-server",
-   "type": "uml.Device",
-   "label": "Application server"
+   "id": "datacentre",
+   "type": "uml.Node",
+   "label": "Shop data centre"
   },
   {
-   "id": "bookshop-deployment-jvm",
+   "id": "app-server",
+   "type": "uml.Device",
+   "label": "Application server",
+   "parent": "datacentre"
+  },
+  {
+   "id": "jvm",
    "type": "uml.ExecutionEnvironment",
    "label": "Java 21 runtime",
-   "parent": "bookshop-deployment-app-server"
+   "parent": "app-server"
   },
   {
-   "id": "bookshop-deployment-shop-api-jar",
+   "id": "api-jar",
    "type": "uml.Artifact",
    "label": "shop-api.jar",
-   "parent": "bookshop-deployment-jvm"
+   "parent": "jvm"
   },
   {
-   "id": "bookshop-deployment-order-worker-jar",
+   "id": "worker-jar",
    "type": "uml.Artifact",
    "label": "order-worker.jar",
-   "parent": "bookshop-deployment-jvm"
+   "parent": "jvm"
   },
   {
-   "id": "bookshop-deployment-shop-api-config",
+   "id": "api-config",
    "type": "uml.DeploymentSpecification",
    "label": "shop-api.yaml",
-   "parent": "bookshop-deployment-jvm"
+   "parent": "jvm"
   },
   {
-   "id": "bookshop-deployment-database",
+   "id": "db-host",
    "type": "uml.Node",
-   "label": "Database"
+   "label": "Database host",
+   "parent": "datacentre",
+   "props": {
+    "stereotypes": [
+     "linux server"
+    ]
+   }
   },
   {
-   "id": "bookshop-deployment-queue-node",
+   "id": "queue",
    "type": "uml.Node",
    "label": "Order queue"
   },
   {
-   "id": "bookshop-deployment-shop-api",
+   "id": "shop-api",
    "type": "uml.Component",
    "label": "Shop API"
   },
   {
-   "id": "bookshop-deployment-order-worker",
+   "id": "order-worker",
    "type": "uml.Component",
    "label": "Order worker"
   },
   {
-   "id": "docks-phone",
-   "type": "uml.Device",
-   "label": "Rider's phone"
-  },
-  {
-   "id": "docks-phone-os",
-   "type": "uml.ExecutionEnvironment",
-   "label": "Mobile OS",
-   "parent": "docks-phone"
-  },
-  {
-   "id": "docks-rider-app",
-   "type": "uml.Artifact",
-   "label": "rider-app.apk",
-   "parent": "docks-phone-os"
-  },
-  {
-   "id": "docks-dock",
-   "type": "uml.Device",
-   "label": "Dock controller",
-   "props": {
-    "stereotypes": [
-     "embedded"
-    ]
-   }
-  },
-  {
-   "id": "docks-dock-os",
-   "type": "uml.ExecutionEnvironment",
-   "label": "Embedded Linux",
-   "parent": "docks-dock"
-  },
-  {
-   "id": "docks-firmware",
-   "type": "uml.Artifact",
-   "label": "dock-firmware.bin",
-   "parent": "docks-dock-os"
-  },
-  {
-   "id": "docks-dock-config",
-   "type": "uml.DeploymentSpecification",
-   "label": "dock-id.toml",
-   "parent": "docks-dock-os"
-  },
-  {
-   "id": "docks-datacenter",
-   "type": "uml.Node",
-   "label": "City data centre"
-  },
-  {
-   "id": "docks-cluster",
-   "type": "uml.Node",
-   "label": "Container cluster",
-   "parent": "docks-datacenter"
-  },
-  {
-   "id": "docks-runtime",
-   "type": "uml.ExecutionEnvironment",
-   "label": "Container runtime",
-   "parent": "docks-cluster"
-  },
-  {
-   "id": "docks-trip-image",
-   "type": "uml.Artifact",
-   "label": "trip-service.img",
-   "parent": "docks-runtime"
-  },
-  {
-   "id": "docks-dock-image",
-   "type": "uml.Artifact",
-   "label": "dock-gateway.img",
-   "parent": "docks-runtime"
-  },
-  {
-   "id": "docks-db-host",
-   "type": "uml.Node",
-   "label": "Database host",
-   "parent": "docks-datacenter"
-  },
-  {
-   "id": "lines-web-host",
-   "type": "uml.Node",
-   "label": "Web host",
-   "props": {
-    "stereotypes": [
-     "linux server"
-    ]
-   }
-  },
-  {
-   "id": "lines-search-host",
-   "type": "uml.Node",
-   "label": "Search host",
-   "props": {
-    "stereotypes": [
-     "linux server"
-    ]
-   }
-  },
-  {
-   "id": "lines-kiosk",
-   "type": "uml.Device",
-   "label": "Branch kiosk"
-  },
-  {
-   "id": "lines-catalogue-war",
-   "type": "uml.Artifact",
-   "label": "catalogue.war"
-  },
-  {
-   "id": "lines-catalogue-spec",
-   "type": "uml.DeploymentSpecification",
-   "label": "catalogue.properties"
-  },
-  {
-   "id": "lines-index-jar",
-   "type": "uml.Artifact",
-   "label": "search-index.jar"
-  },
-  {
-   "id": "lines-kiosk-app",
-   "type": "uml.Artifact",
-   "label": "kiosk-ui.zip"
-  },
-  {
-   "id": "lines-catalogue",
-   "type": "uml.Component",
-   "label": "Catalogue"
-  },
-  {
-   "id": "lines-search",
-   "type": "uml.Component",
-   "label": "Title search"
+   "id": "note-config",
+   "type": "uml.Comment",
+   "label": "Holds the pool size and the card gateway's keys"
   }
  ],
  "edges": [
   {
-   "id": "bookshop-deployment-routes-on-edge",
+   "id": "routes-on-edge",
    "type": "uml.Deployment",
-   "from": "bookshop-deployment-edge-routes",
-   "to": "bookshop-deployment-edge-node"
+   "from": "routes",
+   "to": "edge"
   },
   {
-   "id": "bookshop-deployment-api-jar-manifests-api",
+   "id": "api-jar-manifests",
    "type": "uml.Manifestation",
-   "from": "bookshop-deployment-shop-api-jar",
-   "to": "bookshop-deployment-shop-api"
+   "from": "api-jar",
+   "to": "shop-api"
   },
   {
-   "id": "bookshop-deployment-worker-jar-manifests-worker",
+   "id": "worker-jar-manifests",
    "type": "uml.Manifestation",
-   "from": "bookshop-deployment-order-worker-jar",
-   "to": "bookshop-deployment-order-worker"
+   "from": "worker-jar",
+   "to": "order-worker"
   },
   {
-   "id": "bookshop-deployment-config-for-api-jar",
+   "id": "config-for-api",
    "type": "uml.Dependency",
-   "from": "bookshop-deployment-shop-api-config",
-   "to": "bookshop-deployment-shop-api-jar"
+   "from": "api-config",
+   "to": "api-jar"
   },
   {
-   "id": "bookshop-deployment-device-to-edge",
+   "id": "device-to-edge",
    "type": "uml.CommunicationPath",
-   "from": "bookshop-deployment-shopper-device",
-   "to": "bookshop-deployment-edge-node",
+   "from": "shopper-device",
+   "to": "edge",
    "label": "HTTPS"
   },
   {
-   "id": "bookshop-deployment-edge-to-app",
+   "id": "edge-to-app",
    "type": "uml.CommunicationPath",
-   "from": "bookshop-deployment-edge-node",
-   "to": "bookshop-deployment-app-server",
+   "from": "edge",
+   "to": "app-server",
    "label": "HTTP"
   },
   {
-   "id": "bookshop-deployment-app-to-database",
+   "id": "app-to-db",
    "type": "uml.CommunicationPath",
-   "from": "bookshop-deployment-app-server",
-   "to": "bookshop-deployment-database",
+   "from": "app-server",
+   "to": "db-host",
    "label": "PostgreSQL wire protocol"
   },
   {
-   "id": "bookshop-deployment-app-to-queue",
+   "id": "app-to-queue",
    "type": "uml.CommunicationPath",
-   "from": "bookshop-deployment-app-server",
-   "to": "bookshop-deployment-queue-node",
+   "from": "app-server",
+   "to": "queue",
    "label": "AMQP"
   },
   {
-   "id": "docks-phone-to-dc",
-   "type": "uml.CommunicationPath",
-   "from": "docks-phone",
-   "to": "docks-datacenter",
-   "label": "HTTPS"
-  },
-  {
-   "id": "docks-dock-to-dc",
-   "type": "uml.CommunicationPath",
-   "from": "docks-dock",
-   "to": "docks-datacenter",
-   "label": "MQTT over LTE"
-  },
-  {
-   "id": "docks-cluster-to-db",
-   "type": "uml.CommunicationPath",
-   "from": "docks-cluster",
-   "to": "docks-db-host",
-   "label": "SQL"
-  },
-  {
-   "id": "lines-war-on-web",
-   "type": "uml.Deployment",
-   "from": "lines-catalogue-war",
-   "to": "lines-web-host"
-  },
-  {
-   "id": "lines-spec-on-web",
-   "type": "uml.Deployment",
-   "from": "lines-catalogue-spec",
-   "to": "lines-web-host"
-  },
-  {
-   "id": "lines-index-on-search",
-   "type": "uml.Deployment",
-   "from": "lines-index-jar",
-   "to": "lines-search-host"
-  },
-  {
-   "id": "lines-app-on-kiosk",
-   "type": "uml.Deployment",
-   "from": "lines-kiosk-app",
-   "to": "lines-kiosk"
-  },
-  {
-   "id": "lines-war-manifests",
-   "type": "uml.Manifestation",
-   "from": "lines-catalogue-war",
-   "to": "lines-catalogue"
-  },
-  {
-   "id": "lines-index-manifests",
-   "type": "uml.Manifestation",
-   "from": "lines-index-jar",
-   "to": "lines-search"
-  },
-  {
-   "id": "lines-kiosk-to-web",
-   "type": "uml.CommunicationPath",
-   "from": "lines-kiosk",
-   "to": "lines-web-host",
-   "label": "HTTPS"
-  },
-  {
-   "id": "lines-web-to-search",
-   "type": "uml.CommunicationPath",
-   "from": "lines-web-host",
-   "to": "lines-search-host",
-   "label": "gRPC"
+   "id": "note-config-link",
+   "type": "uml.CommentLink",
+   "from": "note-config",
+   "to": "api-config"
   }
  ],
  "views": [
   {
-   "id": "overview",
+   "id": "production",
+   "diagram": "uml.deployment",
+   "title": "The bookshop in production",
    "parent": null,
-   "title": "Deployment diagram examples",
-   "nodeIds": [
-    "card-bookshop-deployment-production",
-    "card-docks-docks",
-    "card-lines-lines"
-   ],
-   "layout": {
-    "card-bookshop-deployment-production": [
-     0,
-     0
-    ],
-    "card-docks-docks": [
-     1,
-     0
-    ],
-    "card-lines-lines": [
-     0,
-     1
-    ]
-   }
-  },
-  {
-   "id": "bookshop-deployment-production",
-   "diagram": "uml.deployment",
-   "title": "Production",
-   "parent": "overview",
-   "nodeIds": [
-    "bookshop-deployment-shopper-device",
-    "bookshop-deployment-browser",
-    "bookshop-deployment-storefront-bundle",
-    "bookshop-deployment-edge-node",
-    "bookshop-deployment-edge-routes",
-    "bookshop-deployment-app-server",
-    "bookshop-deployment-jvm",
-    "bookshop-deployment-shop-api-jar",
-    "bookshop-deployment-order-worker-jar",
-    "bookshop-deployment-shop-api-config",
-    "bookshop-deployment-database",
-    "bookshop-deployment-queue-node",
-    "bookshop-deployment-shop-api",
-    "bookshop-deployment-order-worker"
-   ],
-   "edges": [
-    "bookshop-deployment-routes-on-edge",
-    "bookshop-deployment-api-jar-manifests-api",
-    "bookshop-deployment-worker-jar-manifests-worker",
-    "bookshop-deployment-config-for-api-jar",
-    "bookshop-deployment-device-to-edge",
-    "bookshop-deployment-edge-to-app",
-    "bookshop-deployment-app-to-database",
-    "bookshop-deployment-app-to-queue"
-   ]
-  },
-  {
-   "id": "docks-docks",
-   "diagram": "uml.deployment",
-   "title": "Dock network, laid out down",
-   "parent": "overview",
    "direction": "down",
    "nodeIds": [
-    "docks-phone",
-    "docks-phone-os",
-    "docks-rider-app",
-    "docks-dock",
-    "docks-dock-os",
-    "docks-firmware",
-    "docks-dock-config",
-    "docks-datacenter",
-    "docks-cluster",
-    "docks-runtime",
-    "docks-trip-image",
-    "docks-dock-image",
-    "docks-db-host"
+    "shopper-device",
+    "browser",
+    "storefront-js",
+    "edge",
+    "routes",
+    "datacentre",
+    "app-server",
+    "jvm",
+    "api-jar",
+    "worker-jar",
+    "api-config",
+    "db-host",
+    "queue",
+    "shop-api",
+    "order-worker",
+    "note-config"
    ],
    "edges": [
-    "docks-phone-to-dc",
-    "docks-dock-to-dc",
-    "docks-cluster-to-db"
+    "routes-on-edge",
+    "api-jar-manifests",
+    "worker-jar-manifests",
+    "config-for-api",
+    "device-to-edge",
+    "edge-to-app",
+    "app-to-db",
+    "app-to-queue",
+    "note-config-link"
    ]
   },
   {
-   "id": "lines-lines",
+   "id": "production-right",
    "diagram": "uml.deployment",
-   "title": "Deployed by lines",
-   "parent": "overview",
+   "title": "The same deployment, laid out right",
+   "parent": "production",
+   "layout": {
+    "queue": [
+     4,
+     1
+    ]
+   },
    "nodeIds": [
-    "lines-web-host",
-    "lines-search-host",
-    "lines-kiosk",
-    "lines-catalogue-war",
-    "lines-catalogue-spec",
-    "lines-index-jar",
-    "lines-kiosk-app",
-    "lines-catalogue",
-    "lines-search"
+    "shopper-device",
+    "browser",
+    "storefront-js",
+    "edge",
+    "routes",
+    "datacentre",
+    "app-server",
+    "jvm",
+    "api-jar",
+    "worker-jar",
+    "api-config",
+    "db-host",
+    "queue",
+    "shop-api",
+    "order-worker",
+    "note-config"
    ],
    "edges": [
-    "lines-war-on-web",
-    "lines-spec-on-web",
-    "lines-index-on-search",
-    "lines-app-on-kiosk",
-    "lines-war-manifests",
-    "lines-index-manifests",
-    "lines-kiosk-to-web",
-    "lines-web-to-search"
+    "routes-on-edge",
+    "api-jar-manifests",
+    "worker-jar-manifests",
+    "config-for-api",
+    "device-to-edge",
+    "edge-to-app",
+    "app-to-db",
+    "app-to-queue",
+    "note-config-link"
    ]
   }
  ]

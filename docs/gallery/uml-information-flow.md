@@ -1,35 +1,46 @@
 ---
-title: "Information flow diagram examples"
-description: "Information items conveyed between elements: 3 examples, live."
+title: "Information flow diagram"
+description: "Information items conveyed between elements: one example that shows all it draws, live."
 aside: false
 pageClass: gallery-page
 ---
 
 <!-- Written by tools/gallery.mjs from the models, tools/gallery.json and tools/types.json: edit those, not this file. -->
 
-# Information flow diagram examples
+# Information flow diagram
 
-<p class="ex-lead">Information items conveyed between elements. The page below holds its 3 examples: its overview has a card for each, and each card opens it. Pan, zoom, select and go into the cards that stack.</p>
+<p class="ex-lead">What travels with one bookshop order: the shopper's checkout, the card details sent on to the payment provider, the order saved, reserved and confirmed, stock levels back to the storefront and the receipt back to the shopper. The page below opens on it, <a href="/umlimator/examples/types/uml-information-flow.html#view=order-flows" target="_self">What travels with an order</a>, live: pan, zoom, select and go into the cards that stack.</p>
 
-<div class="ex-frame"><iframe src="/umlimator/examples/types/uml-information-flow.html" title="Information flow diagram examples, live" loading="lazy"></iframe></div>
+<div class="ex-frame"><iframe src="/umlimator/examples/types/uml-information-flow.html" title="Information flow diagram, live" loading="lazy"></iframe></div>
 <div class="ex-links"><a href="/umlimator/examples/types/uml-information-flow.html" target="_self">Open full screen<span class="visually-hidden"> (Information flow)</span></a><a href="../conformance/uml-information-flow.html">Conformance<span class="visually-hidden"> (Information flow)</span></a><a href="/umlimator/examples/types/uml-information-flow.pdf" target="_self">PDF<span class="visually-hidden"> (Information flow)</span></a><a href="/umlimator/examples/types/uml-information-flow.json" target="_self">Model<span class="visually-hidden"> (Information flow)</span></a></div>
 
-## The examples {#examples}
+## What it shows {#shows}
+
+<p>In the order you find them in the picture:</p>
+
+<ol class="ex-shows">
+<li>A note linked by a dashed line to a flow's end (Shop API)</li>
+<li>Components as flow ends (Shop API, Storefront, Payment provider)</li>
+<li>A flow from an element to itself, drawn as a loop (&lt;&lt;flow&gt;&gt; retry: Order)</li>
+<li>A named flow conveying an information item and a class: &lt;&lt;flow&gt;&gt; reserve: Order, Book</li>
+<li>A class as a flow end (StockLedger)</li>
+<li>An interface as a flow end, drawn with &lt;&lt;interface&gt;&gt; (Notifications)</li>
+<li>A flow conveying two information items, named: &lt;&lt;flow&gt;&gt; confirm: Order, Receipt</li>
+<li>Unnamed flows, labelled &lt;&lt;flow&gt;&gt; and what they convey (&lt;&lt;flow&gt;&gt; Receipt, &lt;&lt;flow&gt;&gt; Stock level)</li>
+<li>An actor as a flow end (Shopper)</li>
+<li>Flows drawn dashed with an open arrowhead, each into the element it reaches</li>
+<li>A flow back over several columns, out of its source's bottom and into its target's (&lt;&lt;flow&gt;&gt; Order)</li>
+<li>Information items, each a classifier with a small filled triangle in its top right corner (Order, Card details, Receipt, Stock level)</li>
+<li>A class conveyed by a flow, drawn beside the items (Book)</li>
+</ol>
+
+## In another setting {#alternatives}
+
+<p>The same example, where a setting cannot share the picture above:</p>
 
 <div class="ex-variants">
-<article class="ex-variant" id="view-order-information-flow-order-flows">
-<h3><a href="/umlimator/examples/types/uml-information-flow.html#view=order-information-flow-order-flows" target="_self">What travels with an order</a></h3>
-<p class="ex-sub">items and flow lines</p>
-<p>Information items, and dashed <code>&lt;&lt;flow&gt;&gt;</code> lines between classifiers and actors, each saying what it conveys.</p>
-</article>
-<article class="ex-variant" id="view-classes-classes">
-<h3><a href="/umlimator/examples/types/uml-information-flow.html#view=classes-classes" target="_self">Named flows between classes</a></h3>
-<p class="ex-sub">named flows, classes, a self-flow</p>
-<p>Flows between an actor, classes and an interface, each named (<code>&lt;&lt;flow&gt;&gt; borrow: Card number, Copy</code>), one conveying a class beside information items, a flow from a class to itself and a note.</p>
-</article>
-<article class="ex-variant" id="view-down-orders">
-<h3><a href="/umlimator/examples/types/uml-information-flow.html#view=down-orders" target="_self">Flows laid out down</a></h3>
-<p class="ex-sub">laid out down</p>
-<p>A cafe's orders laid out down: a guest, a barista and three components, an order, a ticket and the beans used flowing between them.</p>
+<article class="ex-variant" id="view-order-flows-down">
+<h3><a href="/umlimator/examples/types/uml-information-flow.html#view=order-flows-down" target="_self">What travels with an order, laid out down</a></h3>
+<p>Laid out down (<code>direction</code> <code>down</code>) instead of right: the same ends, items and flows.</p>
 </article>
 </div>

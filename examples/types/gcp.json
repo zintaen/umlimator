@@ -1,46 +1,21 @@
 {
  "$schema": "../../lib/umlimator.schema.json",
  "schemaVersion": 2,
- "title": "Google Cloud diagram examples",
- "root": "overview",
- "iconPacks": {
-  "gcp": "2026-11-14"
- },
+ "title": "Google Cloud diagram",
+ "root": "bookshop-gcp",
  "nodes": [
   {
-   "id": "card-bookshop-gcp-gcp-on-gcp",
-   "label": "Bookshop on Google Cloud",
-   "kind": "file",
-   "sublabel": "projects, regions, zones, products",
-   "what": "Groups nested as boxes titled with their kind, each product a card with its icon and full service name, lines to a group's border. On this site the icons are the vendor's own, fetched with Google's terms accepted; in a copy of this repository the diagram draws glyphs until you fetch them with `umlimator.py pack fetch gcp`. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.",
-   "how": "From examples/bookshop-gcp.json.",
-   "opensView": "bookshop-gcp-gcp-on-gcp"
-  },
-  {
-   "id": "card-groups-telemetry",
-   "label": "Cycle hire dock telemetry",
-   "kind": "file",
-   "sublabel": "a generic group, lines to groups",
-   "what": "Cycle hire dock telemetry: a generic group inside a project, a line that ends on that group's border, a line to a second project drawn as a closed card because nothing it holds is shown, and a label broken over two lines by the author.",
-   "how": "From examples/variants/gcp-groups.json.",
-   "opensView": "groups-telemetry"
-  },
-  {
-   "id": "card-regions-two-regions",
-   "label": "Library catalogue in two regions",
-   "kind": "file",
-   "sublabel": "two regions, laid out down",
-   "what": "A library catalogue served from two regions of one project, laid out down: global products in the project, the same service in each region, and readers reaching DNS, the load balancer and the CDN directly.",
-   "how": "From examples/variants/gcp-regions.json.",
-   "opensView": "regions-two-regions"
-  },
-  {
-   "id": "bookshop-gcp-gcp-users",
+   "id": "users",
    "type": "gcp.User",
    "label": "Shoppers"
   },
   {
-   "id": "bookshop-gcp-gcp-project",
+   "id": "staff",
+   "type": "gcp.User",
+   "label": "Shop staff"
+  },
+  {
+   "id": "project",
    "type": "gcp.Zone",
    "label": "bookshop-prod",
    "props": {
@@ -48,314 +23,171 @@
    }
   },
   {
-   "id": "bookshop-gcp-gcp-dns",
+   "id": "dns",
    "type": "gcp.Product",
    "label": "DNS",
-   "parent": "bookshop-gcp-gcp-project",
+   "parent": "project",
    "props": {
     "icon": "Cloud-DNS"
    }
   },
   {
-   "id": "bookshop-gcp-gcp-lb",
+   "id": "lb",
    "type": "gcp.Product",
    "label": "Load balancer",
-   "parent": "bookshop-gcp-gcp-project",
+   "parent": "project",
    "props": {
     "icon": "Cloud-Load-Balancing"
    }
   },
   {
-   "id": "bookshop-gcp-gcp-cdn",
+   "id": "cdn",
    "type": "gcp.Product",
-   "label": "CDN",
-   "parent": "bookshop-gcp-gcp-project",
+   "label": "Cloud CDN",
+   "parent": "project",
    "props": {
     "icon": "Cloud-CDN"
    }
   },
   {
-   "id": "bookshop-gcp-gcp-assets",
+   "id": "assets",
    "type": "gcp.Product",
    "label": "Storefront files",
-   "parent": "bookshop-gcp-gcp-project",
+   "parent": "project",
    "props": {
     "icon": "Cloud-Storage"
    }
   },
   {
-   "id": "bookshop-gcp-gcp-queue",
+   "id": "queue",
    "type": "gcp.Product",
    "label": "Order queue",
-   "parent": "bookshop-gcp-gcp-project",
+   "parent": "project",
    "props": {
     "icon": "Pub-Sub"
    }
   },
   {
-   "id": "bookshop-gcp-gcp-region",
+   "id": "region",
    "type": "gcp.Zone",
    "label": "europe-west1",
-   "parent": "bookshop-gcp-gcp-project",
+   "parent": "project",
    "props": {
     "zoneType": "region"
    }
   },
   {
-   "id": "bookshop-gcp-gcp-api",
+   "id": "api",
    "type": "gcp.Product",
    "label": "Shop API",
-   "parent": "bookshop-gcp-gcp-region",
+   "parent": "region",
    "props": {
     "icon": "Cloud-Run"
    }
   },
   {
-   "id": "bookshop-gcp-gcp-worker",
+   "id": "worker",
    "type": "gcp.Product",
    "label": "Order worker",
-   "parent": "bookshop-gcp-gcp-region",
+   "parent": "region",
    "props": {
     "icon": "Cloud-Run"
    }
   },
   {
-   "id": "bookshop-gcp-gcp-network",
+   "id": "network",
    "type": "gcp.Zone",
    "label": "bookshop-vpc",
-   "parent": "bookshop-gcp-gcp-region",
+   "parent": "region",
    "props": {
     "zoneType": "network"
    }
   },
   {
-   "id": "bookshop-gcp-gcp-subnet",
+   "id": "subnet",
    "type": "gcp.Zone",
    "label": "data subnet, 10.10.0.0/24",
-   "parent": "bookshop-gcp-gcp-network",
+   "parent": "network",
    "props": {
     "zoneType": "subnetwork"
    }
   },
   {
-   "id": "bookshop-gcp-gcp-zone-b",
+   "id": "zone-b",
    "type": "gcp.Zone",
    "label": "europe-west1-b",
-   "parent": "bookshop-gcp-gcp-subnet",
+   "parent": "subnet",
    "props": {
     "zoneType": "zone"
    }
   },
   {
-   "id": "bookshop-gcp-gcp-db",
+   "id": "db",
    "type": "gcp.Product",
-   "label": "Database, primary",
-   "parent": "bookshop-gcp-gcp-zone-b",
+   "label": "Database,\nprimary",
+   "parent": "zone-b",
    "props": {
     "icon": "Cloud-SQL"
    }
   },
   {
-   "id": "bookshop-gcp-gcp-zone-c",
+   "id": "zone-c",
    "type": "gcp.Zone",
    "label": "europe-west1-c",
-   "parent": "bookshop-gcp-gcp-subnet",
+   "parent": "subnet",
    "props": {
     "zoneType": "zone"
    }
   },
   {
-   "id": "bookshop-gcp-gcp-db-standby",
+   "id": "db-standby",
    "type": "gcp.Product",
-   "label": "Database, standby",
-   "parent": "bookshop-gcp-gcp-zone-c",
+   "label": "Database,\nstandby",
+   "parent": "zone-c",
    "props": {
     "icon": "Cloud-SQL"
    }
   },
   {
-   "id": "groups-riders",
-   "type": "gcp.User",
-   "label": "Riders"
-  },
-  {
-   "id": "groups-prod",
+   "id": "reporting",
    "type": "gcp.Zone",
-   "label": "cyclehire-prod",
-   "props": {
-    "zoneType": "project"
-   }
-  },
-  {
-   "id": "groups-lb",
-   "type": "gcp.Product",
-   "label": "Load balancer",
-   "parent": "groups-prod",
-   "props": {
-    "icon": "Cloud-Load-Balancing"
-   }
-  },
-  {
-   "id": "groups-ew1",
-   "type": "gcp.Zone",
-   "label": "europe-west1",
-   "parent": "groups-prod",
-   "props": {
-    "zoneType": "region"
-   }
-  },
-  {
-   "id": "groups-dock-api",
-   "type": "gcp.Product",
-   "label": "Dock API",
-   "parent": "groups-ew1",
-   "props": {
-    "icon": "Cloud-Run"
-   }
-  },
-  {
-   "id": "groups-events",
-   "type": "gcp.Product",
-   "label": "Dock events",
-   "parent": "groups-ew1",
-   "props": {
-    "icon": "Pub-Sub"
-   }
-  },
-  {
-   "id": "groups-analytics",
-   "type": "gcp.Zone",
-   "label": "analytics",
-   "parent": "groups-prod",
+   "label": "reporting",
+   "parent": "project",
    "props": {
     "zoneType": "generic"
    }
   },
   {
-   "id": "groups-archive",
+   "id": "archive",
    "type": "gcp.Product",
-   "label": "Ride archive",
-   "parent": "groups-analytics",
+   "label": "Sales archive",
+   "parent": "reporting",
    "props": {
     "icon": "Cloud-Storage"
    }
   },
   {
-   "id": "groups-report",
+   "id": "report",
    "type": "gcp.Product",
-   "label": "Nightly\nreport job",
-   "parent": "groups-analytics",
+   "label": "Nightly\nsales report",
+   "parent": "reporting",
    "props": {
     "icon": "Cloud-Run"
    }
   },
   {
-   "id": "groups-billing",
+   "id": "accounts",
    "type": "gcp.Zone",
-   "label": "cyclehire-billing",
+   "label": "bookshop-accounts",
    "props": {
     "zoneType": "project"
    }
   },
   {
-   "id": "groups-ledger",
+   "id": "ledger",
    "type": "gcp.Product",
    "label": "Ledger",
-   "parent": "groups-billing",
-   "props": {
-    "icon": "Cloud-SQL"
-   }
-  },
-  {
-   "id": "regions-readers",
-   "type": "gcp.User",
-   "label": "Readers"
-  },
-  {
-   "id": "regions-catalogue-project",
-   "type": "gcp.Zone",
-   "label": "library-catalogue",
-   "props": {
-    "zoneType": "project"
-   }
-  },
-  {
-   "id": "regions-dns",
-   "type": "gcp.Product",
-   "label": "DNS",
-   "parent": "regions-catalogue-project",
-   "props": {
-    "icon": "Cloud-DNS"
-   }
-  },
-  {
-   "id": "regions-lb",
-   "type": "gcp.Product",
-   "label": "Global load balancer",
-   "parent": "regions-catalogue-project",
-   "props": {
-    "icon": "Cloud-Load-Balancing"
-   }
-  },
-  {
-   "id": "regions-cdn",
-   "type": "gcp.Product",
-   "label": "Cover images",
-   "parent": "regions-catalogue-project",
-   "props": {
-    "icon": "Cloud-CDN"
-   }
-  },
-  {
-   "id": "regions-eu",
-   "type": "gcp.Zone",
-   "label": "europe-west1",
-   "parent": "regions-catalogue-project",
-   "props": {
-    "zoneType": "region"
-   }
-  },
-  {
-   "id": "regions-eu-run",
-   "type": "gcp.Product",
-   "label": "Search API",
-   "parent": "regions-eu",
-   "props": {
-    "icon": "Cloud-Run"
-   }
-  },
-  {
-   "id": "regions-eu-sql",
-   "type": "gcp.Product",
-   "label": "Catalogue",
-   "parent": "regions-eu",
-   "props": {
-    "icon": "Cloud-SQL"
-   }
-  },
-  {
-   "id": "regions-us",
-   "type": "gcp.Zone",
-   "label": "us-central1",
-   "parent": "regions-catalogue-project",
-   "props": {
-    "zoneType": "region"
-   }
-  },
-  {
-   "id": "regions-us-run",
-   "type": "gcp.Product",
-   "label": "Search API",
-   "parent": "regions-us",
-   "props": {
-    "icon": "Cloud-Run"
-   }
-  },
-  {
-   "id": "regions-us-sql",
-   "type": "gcp.Product",
-   "label": "Catalogue replica",
-   "parent": "regions-us",
+   "parent": "accounts",
    "props": {
     "icon": "Cloud-SQL"
    }
@@ -363,249 +195,181 @@
  ],
  "edges": [
   {
-   "id": "bookshop-gcp-gcp-users-dns",
+   "id": "users-dns",
    "type": "gcp.Path",
-   "from": "bookshop-gcp-gcp-users",
-   "to": "bookshop-gcp-gcp-dns",
+   "from": "users",
+   "to": "dns",
    "label": "looks up"
   },
   {
-   "id": "bookshop-gcp-gcp-users-lb",
+   "id": "users-lb",
    "type": "gcp.Path",
-   "from": "bookshop-gcp-gcp-users",
-   "to": "bookshop-gcp-gcp-lb",
+   "from": "users",
+   "to": "lb",
    "label": "HTTPS"
   },
   {
-   "id": "bookshop-gcp-gcp-lb-cdn",
+   "id": "lb-cdn",
    "type": "gcp.Path",
-   "from": "bookshop-gcp-gcp-lb",
-   "to": "bookshop-gcp-gcp-cdn",
+   "from": "lb",
+   "to": "cdn",
    "label": "storefront"
   },
   {
-   "id": "bookshop-gcp-gcp-cdn-assets",
+   "id": "cdn-assets",
    "type": "gcp.Path",
-   "from": "bookshop-gcp-gcp-cdn",
-   "to": "bookshop-gcp-gcp-assets",
+   "from": "cdn",
+   "to": "assets",
    "label": "cache fill"
   },
   {
-   "id": "bookshop-gcp-gcp-lb-api",
+   "id": "lb-api",
    "type": "gcp.Path",
-   "from": "bookshop-gcp-gcp-lb",
-   "to": "bookshop-gcp-gcp-api",
+   "from": "lb",
+   "to": "api",
    "label": "/api"
   },
   {
-   "id": "bookshop-gcp-gcp-api-db",
+   "id": "api-db",
    "type": "gcp.Path",
-   "from": "bookshop-gcp-gcp-api",
-   "to": "bookshop-gcp-gcp-db",
+   "from": "api",
+   "to": "db",
    "label": "SQL"
   },
   {
-   "id": "bookshop-gcp-gcp-api-queue",
+   "id": "api-queue",
    "type": "gcp.Path",
-   "from": "bookshop-gcp-gcp-api",
-   "to": "bookshop-gcp-gcp-queue",
+   "from": "api",
+   "to": "queue",
    "label": "paid order"
   },
   {
-   "id": "bookshop-gcp-gcp-queue-worker",
+   "id": "queue-worker",
    "type": "gcp.Path",
-   "from": "bookshop-gcp-gcp-queue",
-   "to": "bookshop-gcp-gcp-worker",
+   "from": "queue",
+   "to": "worker",
    "label": "pushes"
   },
   {
-   "id": "bookshop-gcp-gcp-worker-db",
+   "id": "worker-db",
    "type": "gcp.Path",
-   "from": "bookshop-gcp-gcp-worker",
-   "to": "bookshop-gcp-gcp-db",
+   "from": "worker",
+   "to": "db",
    "label": "SQL"
   },
   {
-   "id": "bookshop-gcp-gcp-db-replica",
+   "id": "db-replica",
    "type": "gcp.Path",
-   "from": "bookshop-gcp-gcp-db",
-   "to": "bookshop-gcp-gcp-db-standby",
+   "from": "db",
+   "to": "db-standby",
    "label": "replicates"
   },
   {
-   "id": "groups-p-riders-lb",
+   "id": "queue-report",
    "type": "gcp.Path",
-   "from": "groups-riders",
-   "to": "groups-lb",
-   "label": "HTTPS"
+   "from": "queue",
+   "to": "report",
+   "label": "order events"
   },
   {
-   "id": "groups-p-lb-api",
+   "id": "report-archive",
    "type": "gcp.Path",
-   "from": "groups-lb",
-   "to": "groups-dock-api",
-   "label": "unlock, return"
+   "from": "report",
+   "to": "archive",
+   "label": "writes"
   },
   {
-   "id": "groups-p-api-events",
+   "id": "reporting-accounts",
    "type": "gcp.Path",
-   "from": "groups-dock-api",
-   "to": "groups-events",
-   "label": "publishes"
+   "from": "reporting",
+   "to": "accounts",
+   "label": "monthly sales"
   },
   {
-   "id": "groups-p-events-analytics",
+   "id": "staff-report",
    "type": "gcp.Path",
-   "from": "groups-events",
-   "to": "groups-analytics",
-   "label": "ride events"
-  },
-  {
-   "id": "groups-p-report-billing",
-   "type": "gcp.Path",
-   "from": "groups-report",
-   "to": "groups-billing",
-   "label": "monthly invoices"
-  },
-  {
-   "id": "regions-r-dns",
-   "type": "gcp.Path",
-   "from": "regions-readers",
-   "to": "regions-dns",
-   "label": "looks up"
-  },
-  {
-   "id": "regions-r-lb",
-   "type": "gcp.Path",
-   "from": "regions-readers",
-   "to": "regions-lb",
-   "label": "HTTPS"
-  },
-  {
-   "id": "regions-lb-cdn",
-   "type": "gcp.Path",
-   "from": "regions-readers",
-   "to": "regions-cdn",
-   "label": "covers"
-  },
-  {
-   "id": "regions-lb-eu",
-   "type": "gcp.Path",
-   "from": "regions-lb",
-   "to": "regions-eu-run",
-   "label": "nearest"
-  },
-  {
-   "id": "regions-lb-us",
-   "type": "gcp.Path",
-   "from": "regions-lb",
-   "to": "regions-us-run",
-   "label": "nearest"
-  },
-  {
-   "id": "regions-eu-q",
-   "type": "gcp.Path",
-   "from": "regions-eu-run",
-   "to": "regions-eu-sql",
-   "label": "queries"
-  },
-  {
-   "id": "regions-us-q",
-   "type": "gcp.Path",
-   "from": "regions-us-run",
-   "to": "regions-us-sql",
+   "from": "staff",
+   "to": "report",
    "label": "reads"
   }
  ],
  "views": [
   {
-   "id": "overview",
+   "id": "bookshop-gcp",
+   "diagram": "gcp",
+   "title": "The bookshop on Google Cloud",
+   "caption": "Icons from a pack you fetch: umlimator.py pack fetch gcp, after Google's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.",
    "parent": null,
-   "title": "Google Cloud diagram examples",
    "nodeIds": [
-    "card-bookshop-gcp-gcp-on-gcp",
-    "card-groups-telemetry",
-    "card-regions-two-regions"
+    "users",
+    "staff",
+    "project",
+    "dns",
+    "lb",
+    "cdn",
+    "assets",
+    "queue",
+    "region",
+    "api",
+    "worker",
+    "network",
+    "subnet",
+    "zone-b",
+    "db",
+    "zone-c",
+    "db-standby",
+    "reporting",
+    "archive",
+    "report",
+    "accounts"
    ],
    "layout": {
-    "card-bookshop-gcp-gcp-on-gcp": [
-     0,
-     0
-    ],
-    "card-groups-telemetry": [
-     1,
-     0
-    ],
-    "card-regions-two-regions": [
-     0,
-     1
+    "staff": [
+     2,
+     2
     ]
-   }
+   },
+   "direction": "down"
   },
   {
-   "id": "bookshop-gcp-gcp-on-gcp",
+   "id": "bookshop-gcp-right",
    "diagram": "gcp",
-   "title": "Bookshop on Google Cloud",
+   "title": "The same deployment, laid out right",
    "caption": "Icons from a pack you fetch: umlimator.py pack fetch gcp, after Google's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.",
-   "parent": "overview",
+   "parent": "bookshop-gcp",
    "nodeIds": [
-    "bookshop-gcp-gcp-users",
-    "bookshop-gcp-gcp-project",
-    "bookshop-gcp-gcp-dns",
-    "bookshop-gcp-gcp-lb",
-    "bookshop-gcp-gcp-cdn",
-    "bookshop-gcp-gcp-assets",
-    "bookshop-gcp-gcp-queue",
-    "bookshop-gcp-gcp-region",
-    "bookshop-gcp-gcp-api",
-    "bookshop-gcp-gcp-worker",
-    "bookshop-gcp-gcp-network",
-    "bookshop-gcp-gcp-subnet",
-    "bookshop-gcp-gcp-zone-b",
-    "bookshop-gcp-gcp-db",
-    "bookshop-gcp-gcp-zone-c",
-    "bookshop-gcp-gcp-db-standby"
-   ]
-  },
-  {
-   "id": "groups-telemetry",
-   "diagram": "gcp",
-   "title": "Cycle hire dock telemetry",
-   "caption": "Icons from a pack you fetch: umlimator.py pack fetch gcp, after Google's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.",
-   "parent": "overview",
-   "nodeIds": [
-    "groups-riders",
-    "groups-prod",
-    "groups-lb",
-    "groups-ew1",
-    "groups-dock-api",
-    "groups-events",
-    "groups-analytics",
-    "groups-archive",
-    "groups-report",
-    "groups-billing"
-   ]
-  },
-  {
-   "id": "regions-two-regions",
-   "diagram": "gcp",
-   "title": "Library catalogue in two regions",
-   "caption": "Icons from a pack you fetch: umlimator.py pack fetch gcp, after Google's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.",
-   "parent": "overview",
-   "direction": "down",
-   "nodeIds": [
-    "regions-readers",
-    "regions-catalogue-project",
-    "regions-dns",
-    "regions-lb",
-    "regions-cdn",
-    "regions-eu",
-    "regions-eu-run",
-    "regions-eu-sql",
-    "regions-us",
-    "regions-us-run",
-    "regions-us-sql"
-   ]
+    "users",
+    "staff",
+    "project",
+    "dns",
+    "lb",
+    "cdn",
+    "assets",
+    "queue",
+    "region",
+    "api",
+    "worker",
+    "network",
+    "subnet",
+    "zone-b",
+    "db",
+    "zone-c",
+    "db-standby",
+    "reporting",
+    "archive",
+    "report",
+    "accounts"
+   ],
+   "layout": {
+    "staff": [
+     2,
+     2
+    ]
+   },
+   "direction": "right"
   }
- ]
+ ],
+ "iconPacks": {
+  "gcp": "2026-11-14"
+ }
 }

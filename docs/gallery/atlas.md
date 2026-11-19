@@ -1,6 +1,6 @@
 ---
 title: "The Umlimator Atlas"
-description: Umlimator's own model, drawn with umlimator, in many views that open into each other.
+description: "Umlimator's own model, drawn with umlimator, in many views that open into each other."
 aside: false
 pageClass: gallery-page
 ---

@@ -1,35 +1,36 @@
 ---
-title: "AWS diagram examples"
-description: "Accounts, regions, VPCs, subnets and the services in them: 3 examples, live."
+title: "AWS diagram"
+description: "Accounts, regions, VPCs, subnets and the services in them: one example that shows all it draws, live."
 aside: false
 pageClass: gallery-page
 ---
 
 <!-- Written by tools/gallery.mjs from the models, tools/gallery.json and tools/types.json: edit those, not this file. -->
 
-# AWS diagram examples
+# AWS diagram
 
-<p class="ex-lead">Accounts, regions, VPCs, subnets and the services in them. The page below holds its 3 examples: its overview has a card for each, and each card opens it. Pan, zoom, select and go into the cards that stack.</p>
+<p class="ex-lead">The bookshop on AWS: shoppers reach DNS and a CDN, which serves the storefront files and passes the api to a load balancer in a VPC across two availability zones, with the database, the order queue and its workers, logs and a separate log archive account. The page below opens on it, <a href="/umlimator/examples/types/aws.html#view=on-aws" target="_self">The bookshop on AWS</a>, live: pan, zoom, select and go into the cards that stack.</p>
 
-<div class="ex-frame"><iframe src="/umlimator/examples/types/aws.html" title="AWS diagram examples, live" loading="lazy"></iframe></div>
+<div class="ex-frame"><iframe src="/umlimator/examples/types/aws.html" title="AWS diagram, live" loading="lazy"></iframe></div>
 <div class="ex-links"><a href="/umlimator/examples/types/aws.html" target="_self">Open full screen<span class="visually-hidden"> (AWS)</span></a><a href="../conformance/aws.html">Conformance<span class="visually-hidden"> (AWS)</span></a><a href="/umlimator/examples/types/aws.pdf" target="_self">PDF<span class="visually-hidden"> (AWS)</span></a><a href="/umlimator/examples/types/aws.json" target="_self">Model<span class="visually-hidden"> (AWS)</span></a></div>
 
-## The examples {#examples}
+## What it shows {#shows}
 
-<div class="ex-variants">
-<article class="ex-variant" id="view-bookshop-aws-aws-on-aws">
-<h3><a href="/umlimator/examples/types/aws.html#view=bookshop-aws-aws-on-aws" target="_self">Bookshop on AWS</a></h3>
-<p class="ex-sub">accounts, VPCs, subnets, services</p>
-<p>Accounts, regions, VPCs, availability zones, subnets and security groups as nested boxes, each service or resource a card with its icon and full service name. On this site the icons are the vendor's own, fetched with AWS's terms accepted; in a copy of this repository the diagram draws glyphs until you fetch them with <code>umlimator.py pack fetch aws</code>. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.</p>
-</article>
-<article class="ex-variant" id="view-serverless-serverless">
-<h3><a href="/umlimator/examples/types/aws.html#view=serverless-serverless" target="_self">Serverless, no VPC</a></h3>
-<p class="ex-sub">serverless, a generic group</p>
-<p>A cycle hire API with no VPC: a region holding managed services, a generic group of functions that a line leaves from its border, and riders on a mobile client.</p>
-</article>
-<article class="ex-variant" id="view-accounts-accounts">
-<h3><a href="/umlimator/examples/types/aws.html#view=accounts-accounts" target="_self">Two accounts</a></h3>
-<p class="ex-sub">two accounts, a security group</p>
-<p>A library's production account and its log archive account side by side in one cloud, a VPC, a private subnet and a security group nested in turn, and a line from the VPC's border to a bucket in the other account.</p>
-</article>
-</div>
+<p>In the order you find them in the picture:</p>
+
+<ol class="ex-shows">
+<li>A resource outside the cloud with its icon and full name (Shoppers, Users)</li>
+<li>Connections, solid with an open arrow and a label (looks up, HTTPS, storefront, /api)</li>
+<li>The cloud group, AWS Cloud [Cloud], holding global services (DNS, Amazon Route 53; CDN, Amazon CloudFront)</li>
+<li>An account group, Bookshop production [Account]</li>
+<li>A region group drawn dashed, Europe (Ireland) [Region]</li>
+<li>Each service card with its icon, its label and the full service name under it (Storefront files, Amazon Simple Storage Service)</li>
+<li>A VPC group, Bookshop VPC [VPC]</li>
+<li>Availability zone groups drawn dashed, two of them (eu-west-1a, eu-west-1b)</li>
+<li>Private subnet groups, one in each zone</li>
+<li>A security group holding a service, nested four groups inside the VPC (Database security group around Database, primary)</li>
+<li>A public subnet group holding a resource (NAT gateway, Amazon VPC NAT Gateway)</li>
+<li>A connection from a group, ending on its border (Private subnet to NAT gateway, outbound; the VPC to the Order queue and to Logs and alarms)</li>
+<li>A generic group, Order workers [Group], two functions inside, and a connection ending on its border (triggers)</li>
+<li>A group whose content the view does not show, drawn as a card of its title, a connection ending on it (Log archive [Account], archived)</li>
+</ol>

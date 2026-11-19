@@ -1,602 +1,87 @@
 {
  "$schema": "../../lib/umlimator.schema.json",
  "schemaVersion": 2,
- "title": "Profile diagram examples",
- "root": "overview",
+ "title": "Profile diagram",
+ "root": "conventions-view",
  "nodes": [
-  {
-   "id": "card-bookshop-profile-profile",
-   "label": "Bookshop conventions profile",
-   "kind": "file",
-   "sublabel": "stereotypes, extensions, tags",
-   "what": "Stereotypes with tag definitions extending metaclasses, a required extension, a profile applied to a package, and an element's tags in a compartment per stereotype; stereotypes applied anywhere in the model are checked against it.",
-   "how": "From examples/bookshop-profile.json.",
-   "opensView": "bookshop-profile-profile"
-  },
-  {
-   "id": "card-abstract-fleet-profile",
-   "label": "An abstract stereotype and an enumeration tag",
-   "kind": "file",
-   "sublabel": "abstract stereotype, enumeration tag",
-   "what": "A cycle hire profile whose abstract <<asset>> stereotype is specialized by <<vehicle>> and <<station>>, a tag typed by the profile's own enumeration, a tag with a default, and classes showing their tags in a compartment per stereotype, inherited tags included.",
-   "how": "From examples/variants/uml-profile-abstract.json.",
-   "opensView": "abstract-fleet-profile"
-  },
-  {
-   "id": "card-two-two-profiles",
-   "label": "Two profiles, one name, qualified",
-   "kind": "file",
-   "sublabel": "two profiles, qualified names",
-   "what": "A library package applying two profiles that both define <<record>>, told apart as `Storage::record` and `Audit::record`, and a required extension of Package that puts <<owner>> over a closed package with no stereotype stored.",
-   "how": "From examples/variants/uml-profile-two.json.",
-   "opensView": "two-two-profiles"
-  },
-  {
-   "id": "bookshop-profile-conventions",
-   "type": "uml.Profile",
-   "label": "BookshopConventions"
-  },
-  {
-   "id": "bookshop-profile-mc-class",
-   "type": "uml.MetaclassReference",
-   "label": "Class",
-   "parent": "bookshop-profile-conventions"
-  },
-  {
-   "id": "bookshop-profile-mc-property",
-   "type": "uml.MetaclassReference",
-   "label": "Property",
-   "parent": "bookshop-profile-conventions"
-  },
-  {
-   "id": "bookshop-profile-entity",
-   "type": "uml.Stereotype",
-   "label": "entity",
-   "parent": "bookshop-profile-conventions",
+  { "id": "conventions", "type": "uml.Profile", "label": "BookshopConventions" },
+  { "id": "mc-class", "type": "uml.MetaclassReference", "label": "Class", "parent": "conventions" },
+  { "id": "mc-property", "type": "uml.MetaclassReference", "label": "Property", "parent": "conventions" },
+  { "id": "mc-package", "type": "uml.MetaclassReference", "label": "Package", "parent": "conventions" },
+  { "id": "record", "type": "uml.Stereotype", "label": "record", "parent": "conventions", "props": { "isAbstract": true },
    "members": [
-    {
-     "id": "bookshop-profile-entity.table",
-     "type": "uml.Property",
-     "label": "table",
-     "props": {
-      "valueType": "String"
-     }
-    }
-   ]
-  },
-  {
-   "id": "bookshop-profile-aggregate-root",
-   "type": "uml.Stereotype",
-   "label": "aggregateRoot",
-   "parent": "bookshop-profile-conventions",
+    { "id": "record.retainDays", "type": "uml.Property", "label": "retainDays", "props": { "valueType": "Integer", "default": "365" } }
+   ] },
+  { "id": "entity", "type": "uml.Stereotype", "label": "entity", "parent": "conventions",
    "members": [
-    {
-     "id": "bookshop-profile-aggregate-root.boundedContext",
-     "type": "uml.Property",
-     "label": "boundedContext",
-     "props": {
-      "valueType": "String"
-     }
-    }
-   ]
-  },
-  {
-   "id": "bookshop-profile-owned",
-   "type": "uml.Stereotype",
-   "label": "owned",
-   "parent": "bookshop-profile-conventions",
+    { "id": "entity.table", "type": "uml.Property", "label": "table", "props": { "valueType": "String" } }
+   ] },
+  { "id": "aggregate-root", "type": "uml.Stereotype", "label": "aggregateRoot", "parent": "conventions",
    "members": [
-    {
-     "id": "bookshop-profile-owned.team",
-     "type": "uml.Property",
-     "label": "team",
-     "props": {
-      "valueType": "String",
-      "multiplicity": "0..1"
-     }
-    }
-   ]
-  },
-  {
-   "id": "bookshop-profile-column",
-   "type": "uml.Stereotype",
-   "label": "column",
-   "parent": "bookshop-profile-conventions",
+    { "id": "aggregate-root.boundedContext", "type": "uml.Property", "label": "boundedContext", "props": { "valueType": "String" } }
+   ] },
+  { "id": "owned", "type": "uml.Stereotype", "label": "owned", "parent": "conventions",
    "members": [
-    {
-     "id": "bookshop-profile-column.name",
-     "type": "uml.Property",
-     "label": "name",
-     "props": {
-      "valueType": "String",
-      "multiplicity": "0..1"
-     }
-    },
-    {
-     "id": "bookshop-profile-column.indexed",
-     "type": "uml.Property",
-     "label": "indexed",
-     "props": {
-      "valueType": "Boolean",
-      "default": "false"
-     }
-    }
-   ]
-  },
-  {
-   "id": "bookshop-profile-sales",
-   "type": "uml.Package",
-   "label": "sales"
-  },
-  {
-   "id": "bookshop-profile-order",
-   "type": "uml.Class",
-   "label": "Order",
-   "parent": "bookshop-profile-sales",
-   "props": {
-    "stereotypes": [
-     "entity"
-    ],
-    "tags": {
-     "entity": {
-      "table": "orders"
-     },
-     "owned": {
-      "team": "checkout"
-     }
-    }
-   },
+    { "id": "owned.team", "type": "uml.Property", "label": "team", "props": { "valueType": "String", "multiplicity": "0..1" } }
+   ] },
+  { "id": "column", "type": "uml.Stereotype", "label": "column", "parent": "conventions",
    "members": [
-    {
-     "id": "bookshop-profile-order.placedAt",
-     "type": "uml.Property",
-     "label": "placedAt",
-     "props": {
-      "visibility": "private",
-      "valueType": "Instant",
-      "multiplicity": "0..1",
-      "stereotypes": [
-       "column"
-      ],
-      "tags": {
-       "column": {
-        "name": "placed_at",
-        "indexed": "true"
-       }
-      }
-     }
-    }
-   ]
-  },
-  {
-   "id": "abstract-fleet-profile-pkg",
-   "type": "uml.Profile",
-   "label": "FleetConventions"
-  },
-  {
-   "id": "abstract-mc-class",
-   "type": "uml.MetaclassReference",
-   "label": "Class",
-   "parent": "abstract-fleet-profile-pkg"
-  },
-  {
-   "id": "abstract-asset",
-   "type": "uml.Stereotype",
-   "label": "asset",
-   "parent": "abstract-fleet-profile-pkg",
-   "props": {
-    "isAbstract": true
-   },
+    { "id": "column.name", "type": "uml.Property", "label": "name", "props": { "valueType": "String", "multiplicity": "0..1" } },
+    { "id": "column.indexed", "type": "uml.Property", "label": "indexed", "props": { "valueType": "Boolean", "default": "false" } },
+    { "id": "column.kind", "type": "uml.Property", "label": "kind", "props": { "valueType": "ColumnKind", "default": "plain" } }
+   ] },
+  { "id": "column-kind", "type": "uml.Enumeration", "label": "ColumnKind", "parent": "conventions",
    "members": [
-    {
-     "id": "abstract-asset.service",
-     "type": "uml.Property",
-     "label": "serviceDays",
-     "props": {
-      "valueType": "Integer",
-      "default": "90"
-     }
-    }
-   ]
-  },
-  {
-   "id": "abstract-vehicle",
-   "type": "uml.Stereotype",
-   "label": "vehicle",
-   "parent": "abstract-fleet-profile-pkg",
+    { "id": "column-kind.plain", "type": "uml.EnumerationLiteral", "label": "plain" },
+    { "id": "column-kind.key", "type": "uml.EnumerationLiteral", "label": "key" },
+    { "id": "column-kind.money", "type": "uml.EnumerationLiteral", "label": "money" }
+   ] },
+  { "id": "module", "type": "uml.Stereotype", "label": "module", "parent": "conventions",
    "members": [
-    {
-     "id": "abstract-vehicle.power",
-     "type": "uml.Property",
-     "label": "power",
-     "props": {
-      "valueType": "PowerKind"
-     }
-    },
-    {
-     "id": "abstract-vehicle.range",
-     "type": "uml.Property",
-     "label": "rangeKm",
-     "props": {
-      "valueType": "Real",
-      "multiplicity": "0..1"
-     }
-    }
-   ]
-  },
-  {
-   "id": "abstract-station",
-   "type": "uml.Stereotype",
-   "label": "station",
-   "parent": "abstract-fleet-profile-pkg",
+    { "id": "module.owner", "type": "uml.Property", "label": "owner", "props": { "valueType": "String", "multiplicity": "0..1" } }
+   ] },
+  { "id": "audit", "type": "uml.Profile", "label": "Audit" },
+  { "id": "audit-class", "type": "uml.MetaclassReference", "label": "Class", "parent": "audit" },
+  { "id": "audit-record", "type": "uml.Stereotype", "label": "record", "parent": "audit",
    "members": [
-    {
-     "id": "abstract-station.zone",
-     "type": "uml.Property",
-     "label": "zone",
-     "props": {
-      "valueType": "String"
-     }
-    }
-   ]
-  },
-  {
-   "id": "abstract-power-kind",
-   "type": "uml.Enumeration",
-   "label": "PowerKind",
-   "parent": "abstract-fleet-profile-pkg",
+    { "id": "audit-record.keepYears", "type": "uml.Property", "label": "keepYears", "props": { "valueType": "Integer" } }
+   ] },
+  { "id": "sales", "type": "uml.Package", "label": "sales" },
+  { "id": "payments", "type": "uml.Package", "label": "payments", "parent": "sales",
+   "props": { "stereotypes": ["module"], "tags": { "module": { "owner": "finance" } } } },
+  { "id": "order", "type": "uml.Class", "label": "Order", "parent": "sales",
+   "props": { "stereotypes": ["aggregateRoot", "Audit::record"],
+    "tags": { "aggregateRoot": { "table": "orders", "boundedContext": "sales", "retainDays": "3650" }, "owned": { "team": "checkout" }, "Audit::record": { "keepYears": "7" } } },
    "members": [
-    {
-     "id": "abstract-power-kind.pedal",
-     "type": "uml.EnumerationLiteral",
-     "label": "pedal"
-    },
-    {
-     "id": "abstract-power-kind.electric",
-     "type": "uml.EnumerationLiteral",
-     "label": "electric"
-    }
-   ]
-  },
-  {
-   "id": "abstract-fleet",
-   "type": "uml.Package",
-   "label": "fleet"
-  },
-  {
-   "id": "abstract-bike",
-   "type": "uml.Class",
-   "label": "EBike",
-   "parent": "abstract-fleet",
-   "props": {
-    "stereotypes": [
-     "vehicle"
-    ],
-    "tags": {
-     "vehicle": {
-      "power": "electric",
-      "rangeKm": "60",
-      "serviceDays": "30"
-     }
-    }
-   }
-  },
-  {
-   "id": "abstract-dock",
-   "type": "uml.Class",
-   "label": "Dock",
-   "parent": "abstract-fleet",
-   "props": {
-    "stereotypes": [
-     "station"
-    ],
-    "tags": {
-     "station": {
-      "zone": "riverside"
-     }
-    }
-   }
-  },
-  {
-   "id": "abstract-note-asset",
-   "type": "uml.Comment",
-   "label": "asset is abstract: apply vehicle or station"
-  },
-  {
-   "id": "two-storage",
-   "type": "uml.Profile",
-   "label": "Storage"
-  },
-  {
-   "id": "two-st-class",
-   "type": "uml.MetaclassReference",
-   "label": "Class",
-   "parent": "two-storage"
-  },
-  {
-   "id": "two-st-record",
-   "type": "uml.Stereotype",
-   "label": "record",
-   "parent": "two-storage",
+    { "id": "order.placedAt", "type": "uml.Property", "label": "placedAt",
+     "props": { "visibility": "private", "valueType": "Instant", "stereotypes": ["column"], "tags": { "column": { "name": "placed_at", "indexed": "true" } } } },
+    { "id": "order.id", "type": "uml.Property", "label": "id",
+     "props": { "visibility": "private", "valueType": "UUID", "stereotypes": ["column"], "tags": { "column": { "kind": "key" } } } }
+   ] },
+  { "id": "line", "type": "uml.Class", "label": "OrderLine", "parent": "sales",
+   "props": { "stereotypes": ["entity"], "tags": { "entity": { "table": "order_lines" }, "owned": { "team": "checkout" } } },
    "members": [
-    {
-     "id": "two-st-record.table",
-     "type": "uml.Property",
-     "label": "table",
-     "props": {
-      "valueType": "String"
-     }
-    }
-   ]
-  },
-  {
-   "id": "two-audit",
-   "type": "uml.Profile",
-   "label": "Audit"
-  },
-  {
-   "id": "two-au-class",
-   "type": "uml.MetaclassReference",
-   "label": "Class",
-   "parent": "two-audit"
-  },
-  {
-   "id": "two-au-package",
-   "type": "uml.MetaclassReference",
-   "label": "Package",
-   "parent": "two-audit"
-  },
-  {
-   "id": "two-au-record",
-   "type": "uml.Stereotype",
-   "label": "record",
-   "parent": "two-audit",
-   "members": [
-    {
-     "id": "two-au-record.keepYears",
-     "type": "uml.Property",
-     "label": "keepYears",
-     "props": {
-      "valueType": "Integer"
-     }
-    }
-   ]
-  },
-  {
-   "id": "two-au-owner",
-   "type": "uml.Stereotype",
-   "label": "owner",
-   "parent": "two-audit",
-   "members": [
-    {
-     "id": "two-au-owner.team",
-     "type": "uml.Property",
-     "label": "team",
-     "props": {
-      "valueType": "String",
-      "multiplicity": "0..1"
-     }
-    }
-   ]
-  },
-  {
-   "id": "two-catalogue",
-   "type": "uml.Package",
-   "label": "catalogue"
-  },
-  {
-   "id": "two-holds",
-   "type": "uml.Package",
-   "label": "holds",
-   "parent": "two-catalogue",
-   "props": {
-    "tags": {
-     "owner": {
-      "team": "circulation"
-     }
-    }
-   }
-  },
-  {
-   "id": "two-title",
-   "type": "uml.Class",
-   "label": "Title",
-   "parent": "two-catalogue",
-   "props": {
-    "stereotypes": [
-     "Storage::record",
-     "Audit::record"
-    ],
-    "tags": {
-     "Storage::record": {
-      "table": "titles"
-     },
-     "Audit::record": {
-      "keepYears": "7"
-     }
-    }
-   }
-  }
+    { "id": "line.unitPrice", "type": "uml.Property", "label": "unitPrice",
+     "props": { "visibility": "private", "valueType": "Money", "stereotypes": ["column"], "tags": { "column": { "name": "unit_price", "kind": "money" } } } }
+   ] },
+  { "id": "note-record", "type": "uml.Comment", "parent": "conventions", "label": "record is abstract: apply entity or aggregateRoot" }
  ],
  "edges": [
-  {
-   "id": "bookshop-profile-entity-extends-class",
-   "type": "uml.Extension",
-   "from": "bookshop-profile-entity",
-   "to": "bookshop-profile-mc-class"
-  },
-  {
-   "id": "bookshop-profile-owned-extends-class",
-   "type": "uml.Extension",
-   "from": "bookshop-profile-owned",
-   "to": "bookshop-profile-mc-class",
-   "props": {
-    "isRequired": true
-   }
-  },
-  {
-   "id": "bookshop-profile-column-extends-property",
-   "type": "uml.Extension",
-   "from": "bookshop-profile-column",
-   "to": "bookshop-profile-mc-property"
-  },
-  {
-   "id": "bookshop-profile-root-is-entity",
-   "type": "uml.Generalization",
-   "from": "bookshop-profile-aggregate-root",
-   "to": "bookshop-profile-entity"
-  },
-  {
-   "id": "bookshop-profile-sales-applies-conventions",
-   "type": "uml.ProfileApplication",
-   "from": "bookshop-profile-sales",
-   "to": "bookshop-profile-conventions"
-  },
-  {
-   "id": "abstract-vehicle-is-asset",
-   "type": "uml.Generalization",
-   "from": "abstract-vehicle",
-   "to": "abstract-asset"
-  },
-  {
-   "id": "abstract-station-is-asset",
-   "type": "uml.Generalization",
-   "from": "abstract-station",
-   "to": "abstract-asset"
-  },
-  {
-   "id": "abstract-asset-extends-class",
-   "type": "uml.Extension",
-   "from": "abstract-asset",
-   "to": "abstract-mc-class"
-  },
-  {
-   "id": "abstract-fleet-applies",
-   "type": "uml.ProfileApplication",
-   "from": "abstract-fleet",
-   "to": "abstract-fleet-profile-pkg"
-  },
-  {
-   "id": "abstract-note-asset-link",
-   "type": "uml.CommentLink",
-   "from": "abstract-note-asset",
-   "to": "abstract-asset"
-  },
-  {
-   "id": "two-st-record-ext",
-   "type": "uml.Extension",
-   "from": "two-st-record",
-   "to": "two-st-class"
-  },
-  {
-   "id": "two-au-record-ext",
-   "type": "uml.Extension",
-   "from": "two-au-record",
-   "to": "two-au-class"
-  },
-  {
-   "id": "two-au-owner-ext",
-   "type": "uml.Extension",
-   "from": "two-au-owner",
-   "to": "two-au-package",
-   "props": {
-    "isRequired": true
-   }
-  },
-  {
-   "id": "two-applies-storage",
-   "type": "uml.ProfileApplication",
-   "from": "two-catalogue",
-   "to": "two-storage"
-  },
-  {
-   "id": "two-applies-audit",
-   "type": "uml.ProfileApplication",
-   "from": "two-catalogue",
-   "to": "two-audit"
-  }
+  { "id": "record-extends-class", "type": "uml.Extension", "from": "record", "to": "mc-class" },
+  { "id": "owned-extends-class", "type": "uml.Extension", "from": "owned", "to": "mc-class", "props": { "isRequired": true } },
+  { "id": "column-extends-property", "type": "uml.Extension", "from": "column", "to": "mc-property" },
+  { "id": "module-extends-package", "type": "uml.Extension", "from": "module", "to": "mc-package" },
+  { "id": "entity-is-record", "type": "uml.Generalization", "from": "entity", "to": "record" },
+  { "id": "root-is-entity", "type": "uml.Generalization", "from": "aggregate-root", "to": "entity" },
+  { "id": "audit-record-extends-class", "type": "uml.Extension", "from": "audit-record", "to": "audit-class" },
+  { "id": "sales-applies-conventions", "type": "uml.ProfileApplication", "from": "sales", "to": "conventions" },
+  { "id": "sales-applies-audit", "type": "uml.ProfileApplication", "from": "sales", "to": "audit" },
+  { "id": "note-record-link", "type": "uml.CommentLink", "from": "note-record", "to": "record" }
  ],
  "views": [
-  {
-   "id": "overview",
-   "parent": null,
-   "title": "Profile diagram examples",
-   "nodeIds": [
-    "card-bookshop-profile-profile",
-    "card-abstract-fleet-profile",
-    "card-two-two-profiles"
-   ],
-   "layout": {
-    "card-bookshop-profile-profile": [
-     0,
-     0
-    ],
-    "card-abstract-fleet-profile": [
-     1,
-     0
-    ],
-    "card-two-two-profiles": [
-     0,
-     1
-    ]
-   }
-  },
-  {
-   "id": "bookshop-profile-profile",
-   "diagram": "uml.profile",
-   "title": "Bookshop conventions profile",
-   "parent": "overview",
-   "direction": "down",
-   "nodeIds": [
-    "bookshop-profile-conventions",
-    "bookshop-profile-mc-class",
-    "bookshop-profile-mc-property",
-    "bookshop-profile-entity",
-    "bookshop-profile-aggregate-root",
-    "bookshop-profile-owned",
-    "bookshop-profile-column",
-    "bookshop-profile-sales",
-    "bookshop-profile-order"
-   ]
-  },
-  {
-   "id": "abstract-fleet-profile",
-   "diagram": "uml.profile",
-   "title": "An abstract stereotype and an enumeration tag",
-   "parent": "overview",
-   "direction": "down",
-   "nodeIds": [
-    "abstract-fleet-profile-pkg",
-    "abstract-mc-class",
-    "abstract-asset",
-    "abstract-vehicle",
-    "abstract-station",
-    "abstract-power-kind",
-    "abstract-fleet",
-    "abstract-bike",
-    "abstract-dock",
-    "abstract-note-asset"
-   ]
-  },
-  {
-   "id": "two-two-profiles",
-   "diagram": "uml.profile",
-   "title": "Two profiles, one name, qualified",
-   "parent": "overview",
-   "direction": "down",
-   "nodeIds": [
-    "two-storage",
-    "two-st-class",
-    "two-st-record",
-    "two-audit",
-    "two-au-class",
-    "two-au-package",
-    "two-au-record",
-    "two-au-owner",
-    "two-catalogue",
-    "two-holds",
-    "two-title"
-   ]
-  }
+  { "id": "conventions-view", "diagram": "uml.profile", "title": "The bookshop's modelling conventions", "parent": null, "direction": "down",
+   "nodeIds": ["conventions", "mc-class", "mc-property", "mc-package", "record", "entity", "aggregate-root", "owned", "column", "column-kind", "module", "audit", "audit-class", "audit-record", "sales", "payments", "order", "line", "note-record"] },
+  { "id": "conventions-right", "diagram": "uml.profile", "title": "The same conventions, laid out right", "parent": "conventions-view", "direction": "right",
+   "nodeIds": ["conventions", "mc-class", "mc-property", "mc-package", "record", "entity", "aggregate-root", "owned", "column", "column-kind", "module", "audit", "audit-class", "audit-record", "sales", "payments", "order", "line", "note-record"] }
  ]
 }
