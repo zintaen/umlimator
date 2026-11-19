@@ -68,7 +68,7 @@ function mermaidFrontTitle(lines, j) {
 // an id or a report never ends in a lone surrogate, which no UTF-8 file, SVG or XML holds
 const mermaidCut = (s, n) => (s.length > n && /[\uD800-\uDBFF]/.test(s[n - 1]) ? s.slice(0, n - 1) : s.slice(0, n));
 // the character a numeric entity code (#n;) names, above U+10FFFF as U+10FFFF; one that XML 1.0 cannot hold (#0;, a C0
-// control other than tab, line feed and carriage return, a lone surrogate, #65534; #65535;) as U+FFFD, and bad(code)
+// control other than tab, line feed and carriage return, a lone surrogate, U+FFFE or U+FFFF) as U+FFFD, and bad(code)
 // told, as the BPMN reader does: a raw one would make the model's SVG and XML exports not well-formed (audit 47)
 function mermaidChar(n, code, bad) {
   const v = Math.min(n, 0x10ffff);
