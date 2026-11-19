@@ -11,7 +11,7 @@ import { snKindName } from './structure.js';
 import { frame } from './frame.js';
 import { FLOW_RULES, flowOf, flowProblems, flowLabel, flowRename, flowStereo, viewFlows } from './flow.js';
 import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
-import { LINE_SAYS } from './class.js'; // the "Line" key's words, for a line of another kind (audit 28)
+import { LINE_SAYS, commentConnect } from './class.js'; // the "Line" key's words, for a line of another kind (audit 28)
 
 /* ---------- the activity diagram, uml.activity (work package 4.5, notes/stage-4.md §9) ----------
    Control nodes, actions and flows from src/uml/flow.js; the send and accept signals, the object node, the data store and
@@ -277,6 +277,7 @@ function acGuard(model, view, commands) {
 }
 // connect: a flow of the kind picked; a decision's second exit gets the guard else when neither has one
 function actConnect(model, view, from, to, at, line) {
+  if (AC_OBJ(line) && line.type === 'uml.CommentLink') return commentConnect(model, view, from, to, line); // from the comment (audit 45)
   if (!AC_OBJ(view) || !AC_OBJ(line) || !AC_FLOWS.includes(line.type)) return null;
   // the decision's exits as decision-guards counts them (flowProblems): the model's flows and the view's own (audit 21)
   const I = actIndex(model, view), x = I.N.get(from), own = AC_ARR(view.edges).filter(e => AC_OBJ(e) && !I.E.has(e.id));

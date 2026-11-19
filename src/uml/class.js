@@ -425,12 +425,14 @@ function closesCycle(model, view, type, from, to, word = 'a generalization', sai
 }
 // connect on a class view: a generalization that would close a cycle is refused (generalization-cycle), and a realization
 // realization-target calls an error, in its words, as the component view's (audit 38); else the default
-// a comment link (comment-link) on the class, package and profile views: drawn from an element to a comment, added from the
+// a comment link (comment-link) on the class, package, profile, object, component, deployment and composite views: drawn from an element to a comment, added from the
 // comment, as the deployment view turns a deploy drawn the wrong way round; with no comment at either end, refused in the rule's
 // words, as the block view's (audit 44). Null: not a comment link, or drawn from a comment
 function commentConnect(model, view, from, to, line) {
   if (!UML_OBJ(line) || line.type !== 'uml.CommentLink') return null;
-  const I = classIndex(UML_OBJ(model) ? model : {}), isNote = id => { const r = I.get(id); return !!r && r.x.type === 'uml.Comment'; };
+  // a comment the model holds, or the view's own (view.nodes), as the object, component, deployment and composite views draw one (audit 45)
+  const I = classIndex(UML_OBJ(model) ? model : {}), own = UML_ARR(UML_OBJ(view) && view.nodes);
+  const isNote = id => { const r = I.get(id), x = r ? r.x : own.find(n => UML_OBJ(n) && n.id === id); return !!x && x.type === 'uml.Comment'; };
   if (isNote(from)) return null;
   if (!isNote(to)) return { error: 'A comment link runs from a comment' };
   const used = new Set(); usedIds(model, used); let k = 1; while (used.has('commentlink' + k)) k++;

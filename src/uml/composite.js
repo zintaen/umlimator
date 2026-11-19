@@ -4,7 +4,7 @@ import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
 import { brLines } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
-import { CLASSIFIERS, LINE_WORDS, legendOf, lineIn, lineLabel, lineLook, lineRename, memberClash, memberEdit, multBounds, printMember } from './class.js'; // a subject's other members, as the class type's; SHAPE.note, a comment's look
+import { CLASSIFIERS, commentConnect, LINE_WORDS, legendOf, lineIn, lineLabel, lineLook, lineRename, memberClash, memberEdit, multBounds, printMember } from './class.js'; // a subject's other members, as the class type's; SHAPE.note, a comment's look
 import './usecase.js'; // SHAPE.ellipse, a collaboration use's; SHAPE.subject, a class subject's frame
 import { SN_SAY, STRUCT_RULES, snKindName, snKindWord, portFit, portSides, portsDrawn, structProblems } from './structure.js';
 import { viewLines } from './owners.js';
@@ -372,6 +372,9 @@ function csConnect(model, view, from, to, at, line) {
     if (C && !all.length) return { error: `Add a role to ${csName(C)} first: a role binding names the role it binds` }; // binding-role would warn (audit 18)
     return roles.length ? { pick: roles, then: i => add(roles[i]) } : add(null);
   }
+  // a comment link between two boxes (a part, a role, the subject, a comment): from the comment (audit 45); one on a port of a part is
+  // refused below, as any line but a connector is
+  if (line.type === 'uml.CommentLink' && !a.part && !b.part) return commentConnect(model, view, a.id, b.id, line);
   // the node each end is drawn on: its part, the subject (its port), else itself. One node, through a port or a box: not drawn (audit 11)
   const at2 = x => x.part ?? (P.S && P.sPorts.some(q => q.id === x.id) ? P.sid : x.id), port = x => x.part != null || at2(x) !== x.id;
   if (at2(a) === at2(b) && (port(a) || port(b) || P.boxed.has(at2(a)))) return { error: 'A connector joins two parts or ports of two elements: no line runs from a part or a box to itself' };

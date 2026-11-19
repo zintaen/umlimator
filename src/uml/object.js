@@ -4,7 +4,7 @@ import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { RULES, classProblems, drawnLines, lineIn, lineItem, lineVerb, memberClash, paramTextProblems, printMember } from './class.js';
+import { RULES, classProblems, commentConnect, drawnLines, lineIn, lineItem, lineVerb, memberClash, paramTextProblems, printMember } from './class.js';
 import { OWN_BOXES, OWNER_RULES, holdsLine, modelLines, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 
 /* ---------- the object diagram, uml.object (work package 2.3, notes/stage-2.md §9) ----------
@@ -193,6 +193,7 @@ function obRename(model, view, id, text) {
    the hint line, in link-ends' words, as the class and package views refuse a line their rules call an error (audit 40). Null:
    the default */
 function obConnect(model, view, from, to, at, line) {
+  if (OB_OBJ(line) && line.type === 'uml.CommentLink') return commentConnect(model, view, from, to, line); // from the comment (audit 45)
   if (!OB_OBJ(line) || line.type !== 'uml.Link') return null;
   const by = new Map(); OB_ARR(model && model.nodes).forEach(n => { if (OB_OBJ(n) && typeof n.id === 'string' && !by.has(n.id)) by.set(n.id, n); });
   const inst = id => by.has(id) && isInstance(by.get(id));

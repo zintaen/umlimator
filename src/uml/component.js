@@ -3,7 +3,7 @@ import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { CLASSIFIERS, lineRename, memberClash, memberEdit, paramTextProblems, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
+import { CLASSIFIERS, commentConnect, lineRename, memberClash, memberEdit, paramTextProblems, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 import { SN_ARTIFACTS, SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, snKindName, snKindWord, structProblems } from './structure.js';
 import { usedIds, jsonText, labelOr, elName, propTextProblems } from '../core/model.js';
@@ -278,6 +278,7 @@ const cpPortPrint = m => `${m.label ?? ''}${CP_HAS(cpProps(m).valueType) ? ' : '
 // connect: a connector between a port (or component) and one inside its owner is a delegation, else an assembly
 function cpConnect(model, view, from, to, at, line) {
   if (!CP_OBJ(line)) return null;
+  if (line.type === 'uml.CommentLink') return commentConnect(model, view, from, to, line); // from the comment (audit 45)
   const I = cpIndex(model), within = (a, b) => I.chain(I.comp(a)).includes(I.comp(b)), t = line.type, port = id => I.P.has(id);
   // a realization, a component realization or a manifestation the rules call an error is refused, said in the rule's words; a
   // manifestation drawn from the component to its artifact is added from the artifact, as the deployment view's (audit 20)
