@@ -510,16 +510,31 @@ function mapContext(model, opts = {}) {
     return into; };
   let memberCh; const memberOf = id => (memberCh ||= ownCh([nodes]))[id] || null;
   const put = (x, c) => { if (c) { x.change = c; MARKED.add(x); } else if (MARKED.has(x)) { delete x.change; MARKED.delete(x); } };
-  function marks(g, vid) { const v = V[vid] || {}, own = ownCh([v.edges, v.fragments]), ev = O();
-    (D.edges || []).forEach(e => { if (e && typeof e.id === 'string' && chOf(e)) ev[e.id] ??= chOf(e); });
-    const lineCh = k => (k in own ? own[k] : ev[k]) || null, boxCh = id => (N[id] ? chOf(nodeIn(id, vid)) : id in own ? own[id] : memberOf(id));
-    (g.nodes || []).forEach(n => { if (!n || typeof n.id !== 'string') return; if (N[n.id]) { const c = chOf(nodeIn(n.id, vid)); if (c) n.change = c; else delete n.change; } else put(n, boxCh(n.id)); });
+  function marks(g, vid) { const v = V[vid] || {}, own = ownCh([v.edges, v.fragments]), ev = O(), lines = new Set();
+    (D.edges || []).forEach(e => { if (e && typeof e.id === 'string') { lines.add(e.id); if (chOf(e)) ev[e.id] ??= chOf(e); } });
+    // a shape a type draws for a model line (a communication view's message row) takes the line's change (audit 46)
+    const lineCh = k => (k in own ? own[k] : ev[k]) || null, boxCh = id => (N[id] ? chOf(nodeIn(id, vid)) : id in own ? own[id] : memberOf(id) || ev[id] || null);
+    const came = c => !!c && CHG_IS.added.includes(c), gone = c => !!c && CHG_IS.removed.includes(c), diffCh = c => came(c) || gone(c) || c === 'changed' || c === 'modified';
+    // a shape a type draws for a member on another, <part>-><port> (no element id holds '->', model.md rule 5): removed with the
+    // part it sits on or its own member, else added with either (audit 46: the ports on a removed or added part drawn live)
+    const onCh = id => { const s = id.split('->'); if (s.length < 2 || N[s[0]]) return null; const cs = s.map(x => (x ? boxCh(x) : null));
+      return cs.find(gone) || cs.find(came) || null; };
+    // what a type draws from elements or lines it does not draw itself (x.reads: their ids): a container instance drawn as its
+    // container, an implied line through a hidden owner, an information flow's conveyed items (audit 46)
+    const readsCh = x => Array.isArray(x.reads) && x.reads.some(r => typeof r === 'string' && diffCh(boxCh(r))) ? 'changed' : null;
+    (g.nodes || []).forEach(n => { if (!n || typeof n.id !== 'string') return;
+      if (N[n.id]) { const c = chOf(nodeIn(n.id, vid)) || readsCh(n); if (c) n.change = c; else delete n.change; } else put(n, boxCh(n.id) || onCh(n.id) || readsCh(n)); });
     // a box a type draws for an element (a package, a node, a boundary, a group, a composite state and its regions), as a shape
-    (g.families || []).forEach(f => { if (f && typeof f.id === 'string') put(f, boxCh(f.id)); });
-    // a line drawn for others (a C4 implied relationship): added or removed when all it stands for were, else changed when any was
-    const implied = l => { const cs = l.map(k => (typeof k === 'string' ? lineCh(k) : null)); if (!cs.some(Boolean)) return null;
+    (g.families || []).forEach(f => { if (f && typeof f.id === 'string') put(f, boxCh(f.id) || readsCh(f)); });
+    // a line drawn for others (a C4 implied relationship): added or removed when all it stands for were, else changed when any
+    // was; an author's planned is no change of the line's (audit 46: drawn as edited)
+    const implied = l => { const cs = l.map(k => (typeof k === 'string' ? lineCh(k) : null)).map(c => (diffCh(c) ? c : null)); if (!cs.some(Boolean)) return null;
       const all = w => cs.every(c => c && CHG_IS[w].includes(c)); return all('added') ? 'added' : all('removed') ? 'removed' : 'changed'; };
-    (g.edges || []).forEach(e => { const k = e && (e._id ?? e.id); if (typeof k !== 'string') return; const c = lineCh(k) || (Array.isArray(e.implied) ? implied(e.implied) : null);
+    // a line a type derives from its ends (a SysML containment line, <owner>-><child>), no model line's: with an end that came or went
+    const endCh = new Map([...(g.nodes || []), ...(g.families || [])].filter(x => x && typeof x.id === 'string').map(x => [x.id, x.change || null]));
+    const derived = e => { const a = endCh.get(e.from), b = endCh.get(e.to); return gone(a) || gone(b) ? 'removed' : came(a) || came(b) ? 'added' : null; };
+    (g.edges || []).forEach(e => { const k = e && (e._id ?? e.id); if (typeof k !== 'string') return;
+      const c = lineCh(k) || (Array.isArray(e.implied) ? implied(e.implied) : !lines.has(k) && !(k in own) && k.includes('->') ? derived(e) : null) || readsCh(e);
       if (c) e.change = c; else delete e.change; });
     return g; }
   function buildGeo(vid, override, repair = (V[vid] || {}).repair !== false, quick = false) { // a view's repair: false turns port repair off
