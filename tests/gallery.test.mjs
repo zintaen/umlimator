@@ -1,37 +1,67 @@
-// The examples' page (examples/index.html, the site's /umlimator/examples/): written by tools/gallery.mjs, in three
-// parts. Diagrams has one card for every diagram type (the map and docs/types.md's 28), each opening the type's own page
-// (examples/types/<type>.html, tools/types.mjs; tests/types.test.mjs checks those) and listing its examples; Atlas holds
-// exactly one entry, the Umlimator Atlas (the maintainer's decision, 19 Nov 2026); In an app lists the host pages. Every
-// link and picture on it names a file the site serves, as the site job builds it (.github/workflows/check.yml). The
-// models the gallery does not show (tools/gallery.json's retired list: the bike share, the hidden test model, and its
-// Structurizr import) are linked from nowhere in the gallery, the docs or the README, and nor are the models the bike
-// share replaced.
+// The examples' pages of the documentation site, written by tools/gallery.mjs: docs/examples.md (the site's
+// /umlimator/examples.html), in three parts, a page per type and one for the Atlas (docs/gallery/), their sidebar
+// (docs/.vitepress/gallery.json), and examples/index.html, the old address, now a redirect to the docs page. Diagrams has
+// one card for every diagram type (the map and docs/types.md's 28), each opening the type's docs page, which shows its
+// rendered page (examples/types/<type>.html, tools/types.mjs; tests/types.test.mjs checks those) in a frame and lists its
+// examples; Atlas holds exactly one entry, the Umlimator Atlas (the maintainer's decision, 19 Nov 2026); In an app lists
+// the host pages. Every link, picture and frame on them names a file the site serves, as the site job builds it
+// (.github/workflows/check.yml), or a docs page. The models the gallery does not show (tools/gallery.json's retired list:
+// the bike share, the hidden test model, and its Structurizr import) are linked from nowhere in the gallery, the docs or
+// the README, and nor are the models the bike share replaced.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { page, inventory, types, groupOf } from '../tools/gallery.mjs';
+import { files, inventory, types, groupOf, EX } from '../tools/gallery.mjs';
 
 const root = new URL('../', import.meta.url), read = p => readFileSync(new URL(p, root), 'utf8'), json = p => JSON.parse(read(p));
-const html = read('examples/index.html');
+const html = read('docs/examples.md');
+const written = files();
 const RETIRED = json('tools/gallery.json').retired.files;
 const examples = readdirSync(new URL('examples/', root)).filter(f => f.endsWith('.json')).map(f => f.slice(0, -5)).filter(n => !RETIRED.includes(n)).sort();
 const typePages = readdirSync(new URL('examples/types/', root)).filter(f => f.endsWith('.json')).map(f => f.slice(0, -5)).sort();
-// a section by its id, to its closing tag at its own indent: the page's parts (Diagrams, Atlas) and each type's group
+// a part of the index by its heading's id ("## Diagrams {#diagrams}"), to the next heading of its level
 const section = id => {
-  const m = new RegExp(`\\n( *)<section[^>]* id="${id}"`).exec(html); assert.ok(m, `a section ${id}`);
-  return html.slice(m.index, html.indexOf(`\n${m[1]}</section>`, m.index));
+  const m = new RegExp(`^(#+) [^\\n]* \\{#${id}\\}$`, 'm').exec(html); assert.ok(m, `a section ${id}`);
+  const next = new RegExp(`^#{1,${m[1].length}} `, 'm').exec(html.slice(m.index + m[0].length));
+  return html.slice(m.index, next ? m.index + m[0].length + next.index : html.length);
 };
-// an attribute's values in the tags of a piece of the page (not in text such as <code>&lt;umlimator-map src="..."&gt;</code>)
-const attrs = (s, name) => [...s.matchAll(/<[a-z][^<>]*>/g)].flatMap(t => [...t[0].matchAll(new RegExp(` ${name}="([^"]*)"`, 'g'))]).map(m => m[1].replace(/&amp;/g, '&'));
+// an attribute's values in the tags of a piece of a page (not in text such as <code>&lt;umlimator-map src="..."&gt;</code>);
+// a bound one (:src="'...'") by its string
+const attrs = (s, name) => [...s.matchAll(/<[a-z][^<>]*>/g)].flatMap(t => [...t[0].matchAll(new RegExp(` :?${name}="([^"]*)"`, 'g'))]).map(m => m[1].replace(/^'(.*)'$/, '$1').replace(/&amp;/g, '&'));
 
-test('the committed gallery is what tools/gallery.mjs writes', () => {
-  assert.equal(html, page(), 'examples/index.html is stale: run node tools/gallery.mjs and commit it');
+test('the committed examples pages, their sidebar and the redirect are what tools/gallery.mjs writes', () => {
+  for (const [p, s] of Object.entries(written)) assert.equal(read(p), s, `${p} is stale: run node tools/gallery.mjs and commit it`);
+  const pages = readdirSync(new URL('docs/gallery/', root)).map(f => `docs/gallery/${f}`).sort();
+  assert.deepEqual(pages, Object.keys(written).filter(p => p.startsWith('docs/gallery/')).sort(), 'docs/gallery/ holds only the pages the tool writes');
+  assert.equal(pages.length, 30, 'the map, the 28 types and the atlas');
 });
 
-test('Diagrams has a card for the map and each of docs/types.md\'s 28 types, in its order, each opening its type page', () => {
+test('the site shows the examples in its own layout: the nav\'s Examples opens examples.html, the sidebar lists every examples page', () => {
+  const config = read('docs/.vitepress/config.mts');
+  assert.match(config, /\{ text: 'Examples', link: '\/examples', activeMatch: '\^\/\(examples\$\|gallery\/\)' \}/);
+  assert.match(config, /'\/examples': gallery,/);
+  assert.match(config, /'\/gallery\/': gallery,/);
+  const links = json('docs/.vitepress/gallery.json').flatMap(g => g.items.map(i => i.link));
+  assert.deepEqual(links, ['/examples', ...inventory().map(t => `/gallery/${t.id}`), '/gallery/atlas']);
+  for (const l of links) assert.ok(existsSync(new URL(`docs${l}.md`, root)), `docs${l}.md`);
+  // the docs link the examples' docs page, not the old address
+  for (const p of ['README.md', 'docs/index.md', 'docs/types.md', 'docs/guide/getting-started.md']) assert.doesNotMatch(read(p), /examples\/index\.html/, p);
+});
+
+test('examples/index.html, the old address, sends a reader to the docs page with the #fragment', () => {
+  const r = read('examples/index.html');
+  assert.match(r, /<script>location\.replace\('\.\.\/examples\.html' \+ location\.hash\);<\/script>/);
+  assert.match(r, /<meta http-equiv="refresh" content="0; url=\.\.\/examples\.html">/);
+  assert.match(r, /<a href="\.\.\/examples\.html">/);
+  // an old link to a card or a part lands on it
+  const ids = new Set([...attrs(html, 'id'), ...[...html.matchAll(/ \{#([\w-]+)\}$/gm)].map(m => m[1])]);
+  for (const id of ['diagrams', 'atlas', 'apps', ...inventory().map(t => `type-${t.id}`)]) assert.ok(ids.has(id), id);
+});
+
+test('Diagrams has a card for the map and each of docs/types.md\'s 28 types, in its order, each opening its docs page', () => {
   const T = types();
   assert.equal(T.length, 28);
-  const want = ['map', ...T.map(t => t.id)], D = section('diagrams'), got = [...D.matchAll(/<article class="card" id="type-([\w-]+)"/g)].map(m => m[1]);
+  const want = ['map', ...T.map(t => t.id)], D = section('diagrams'), got = [...D.matchAll(/<article class="ex-card" id="type-([\w-]+)"/g)].map(m => m[1]);
   assert.deepEqual(got, want);
   assert.deepEqual(typePages, [...want].sort(), 'examples/types/ holds a model for each type, and no other');
   // the type list at the top of Diagrams goes to each card
@@ -39,18 +69,23 @@ test('Diagrams has a card for the map and each of docs/types.md\'s 28 types, in 
   assert.deepEqual(attrs(nav, 'href').filter(h => h.startsWith('#type-')).map(h => h.slice(6)), want);
   for (const t of inventory()) {
     const c = D.slice(D.indexOf(`id="type-${t.id}"`), D.indexOf('</article>', D.indexOf(`id="type-${t.id}"`)));
-    assert.ok(attrs(c, 'href').includes(`types/${t.id}.html`), `${t.id}: opens its page`);
+    assert.ok(attrs(c, 'href').includes(`./gallery/${t.id}.html`), `${t.id}: opens its docs page`);
     assert.ok(t.cards.length > 0, `${t.id} has an example`);
-    // every example and variant on the type page's overview is listed on its card
-    assert.deepEqual(attrs(c, 'href').filter(h => h.startsWith(`types/${t.id}.html#view=`)).map(h => h.split('=')[1]), t.cards.map(x => x.view), t.id);
+    // every example and variant on the type page's overview is listed on its card, and on its docs page
+    assert.deepEqual(attrs(c, 'href').filter(h => h.startsWith(`${EX}types/${t.id}.html#view=`)).map(h => h.split('=')[1]), t.cards.map(x => x.view), t.id);
+    const p = read(`docs/gallery/${t.id}.md`);
+    assert.deepEqual(attrs(p, 'src').filter(s => s.startsWith(EX)), [`${EX}types/${t.id}.html`], `${t.id}: its docs page frames its type page`);
+    assert.deepEqual(attrs(p, 'href').filter(h => h.startsWith(`${EX}types/${t.id}.html#view=`)).map(h => h.split('=')[1]), t.cards.map(x => x.view), `${t.id}'s docs page`);
+    assert.match(p, new RegExp(`<a href="${EX}types/${t.id}\\.html" target="_self">Open full screen`));
   }
 });
 
 test('Atlas holds exactly one entry, the Umlimator Atlas, and its state machines are views of it', () => {
   const A = section('atlas'), cards = A.split('<article').length - 1;
   assert.equal(cards, 1);
-  assert.match(A, /<h3>The Umlimator Atlas<\/h3>/);
-  assert.ok(attrs(A, 'href').includes('umlimator-atlas.json'));
+  assert.match(A, /<h3><a href="\.\/gallery\/atlas\.html">The Umlimator Atlas<\/a><\/h3>/);
+  assert.ok(attrs(A, 'href').includes(`${EX}umlimator-atlas.json`));
+  assert.deepEqual(attrs(read('docs/gallery/atlas.md'), 'src'), [`${EX}umlimator-atlas.html`], 'the atlas page frames the atlas');
   const m = json('examples/umlimator-atlas.json'), ids = new Set(m.views.map(v => v.id));
   assert.equal(m.title, 'Umlimator Atlas');
   for (const v of ['overview', 'machines', 'navigation', 'story', 'tour', 'keys', 'mcp']) assert.ok(ids.has(v), v);
@@ -91,23 +126,39 @@ function served() {
   return { files, views };
 }
 
-test('every link and picture on the gallery names a file the site serves, and a view or story its model has', () => {
-  const { files, views } = served(), ids = new Set(attrs(html, 'id')), bad = [];
-  for (const ref of [...attrs(html, 'href'), ...attrs(html, 'src')]) {
-    const [path, hash = ''] = ref.split('#');
-    if (/^https:\/\/github\.com\/zintaen\/umlimator(\/blob\/main\/(.+))?$/.test(path)) {
-      const file = path.match(/\/blob\/main\/(.+)$/)?.[1];
-      if (file && !existsSync(new URL(file, root))) bad.push(`${ref}: no ${file} in the repository`);
-      continue;
+test('every link, picture and frame on the examples pages names a docs page or a file the site serves, and a view or story its model has', () => {
+  const { files, views } = served(), bad = [];
+  for (const page of Object.keys(written).filter(p => p.endsWith('.md') || p.endsWith('.html'))) {
+    const s = read(page), dir = page.slice(0, page.lastIndexOf('/') + 1);
+    const ids = new Set([...attrs(s, 'id'), ...[...s.matchAll(/ \{#([\w-]+)\}$/gm)].map(m => m[1])]);
+    // the docs' own links ([text](./page.md)) too
+    const md = [...s.matchAll(/\]\(([^)\s]+)\)/g)].map(m => m[1]);
+    for (const ref of [...attrs(s, 'href'), ...attrs(s, 'src'), ...md]) {
+      const [path, hash = ''] = ref.split('#'), at = `${page}: ${ref}`;
+      if (/^https:\/\/github\.com\/zintaen\/umlimator(\/blob\/main\/(.+))?$/.test(path)) {
+        const file = path.match(/\/blob\/main\/(.+)$/)?.[1];
+        if (file && !existsSync(new URL(file, root))) bad.push(`${at}: no ${file} in the repository`);
+        continue;
+      }
+      if (/^https?:/.test(path)) { bad.push(`${at}: an address outside the repository`); continue; }
+      if (!path) { if (!ids.has(hash)) bad.push(`${at}: no such id on the page`); continue; }
+      if (path.startsWith(EX)) {
+        const p = path.slice(EX.length);
+        if (!files.has(p)) { bad.push(`${at}: the site does not serve examples/${p}`); continue; }
+        const m = views[p], q = new URLSearchParams(hash);
+        if (q.get('view') && !(m && m.views.some(v => v.id === q.get('view')))) bad.push(`${at}: ${p} has no view ${q.get('view')}`);
+        if (q.get('story') && !(m && (m.stories || []).some(s => s.id === q.get('story')))) bad.push(`${at}: ${p} has no story ${q.get('story')}`);
+        continue;
+      }
+      if (path.startsWith('/')) { bad.push(`${at}: a site path outside the examples (base /umlimator/ is not added to raw HTML)`); continue; }
+      // a docs page, relative to this one (the redirect's ../examples.html is docs/examples.md on the site)
+      const to = new URL(path, new URL(page === 'examples/index.html' ? 'docs/examples/' : dir, root)), file = new URL(to.pathname.replace(/\.html$/, '.md'), root);
+      if (!/\.(md|html)$/.test(to.pathname) || !existsSync(file)) { bad.push(`${at}: no docs page ${file.pathname}`); continue; }
+      if (hash && !page.endsWith('.html')) {
+        const t = readFileSync(file, 'utf8');
+        if (!new RegExp(`(?: id="${hash}"| \\{#${hash}\\}$)`, 'm').test(t)) bad.push(`${at}: no #${hash} on it`);
+      }
     }
-    if (/^https?:/.test(path)) { bad.push(`${ref}: an address outside the repository`); continue; }
-    if (!path) { if (!ids.has(hash)) bad.push(`${ref}: no such id on the page`); continue; }
-    if (path.startsWith('../lib/') || path.startsWith('../icons/')) { if (!existsSync(new URL(path.slice(3), root))) bad.push(`${ref}: no ${path.slice(3)}`); continue; }
-    if (path.startsWith('../')) { const md = new URL(`docs/${path.slice(3).replace(/\.html$/, '.md')}`, root); if (!existsSync(md)) bad.push(`${ref}: no docs page ${md.pathname}`); continue; }
-    if (!files.has(path)) { bad.push(`${ref}: the site does not serve examples/${path}`); continue; }
-    const m = views[path], q = new URLSearchParams(hash);
-    if (q.get('view') && !(m && m.views.some(v => v.id === q.get('view')))) bad.push(`${ref}: ${path} has no view ${q.get('view')}`);
-    if (q.get('story') && !(m && (m.stories || []).some(s => s.id === q.get('story')))) bad.push(`${ref}: ${path} has no story ${q.get('story')}`);
   }
   assert.deepEqual(bad, []);
 });

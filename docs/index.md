@@ -13,8 +13,7 @@ hero:
       link: /guide/getting-started
     - theme: alt
       text: Examples
-      link: /examples/index.html
-      target: _self
+      link: /examples
     - theme: alt
       text: GitHub
       link: https://github.com/zintaen/umlimator
@@ -50,7 +49,7 @@ features:
 
 This is the Umlimator Atlas, umlimator's own model, drawn on this page by `<umlimator-map>`. Click a card to select
 it, and open a stacked card to go one level down. [Open it full size](/examples/umlimator-atlas.html), or browse the
-examples: [every diagram type](/examples/index.html#diagrams) and [the Atlas](/examples/index.html#atlas).
+examples: [every diagram type](./examples.md#diagrams) and [the Atlas](./examples.md#atlas).
 
 ```umlimator
 src: /umlimator/examples/umlimator-atlas.json
