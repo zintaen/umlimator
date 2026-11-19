@@ -347,7 +347,9 @@ function stProblems(model, view) {
   // a comment link with no comment at either end, the model's and the view's own (audit 46)
   const cls = ST_ARR(model && model.edges).map((e, i) => [e, `edges[${i}]`]), cids = new Set(cls.map(([e]) => ST_OBJ(e) && e.id));
   if (vi >= 0 && view.diagram === 'uml.state-machine') ST_ARR(view.edges).forEach((e, j) => { if (ST_OBJ(e) && !cids.has(e.id)) cls.push([e, `views[${vi}].edges[${j}]`]); });
-  out.push(...commentLinkProblems(cls, ty, q));
+  // of the lines this view draws: one another view draws is that view's to judge (audit 47)
+  const drawn = ST_OBJ(view) ? new Set(stLines(model, view, stPic(model, view)).map(e => e.id)) : null;
+  out.push(...commentLinkProblems(drawn ? cls.filter(([e]) => ST_OBJ(e) && drawn.has(e.id)) : cls, ty, q));
   return out;
 }
 
@@ -462,7 +464,9 @@ function stRemove(model, view, ids, fromModel) {
   if (ST_OBJ(view)) [...ST_ARR(view.nodes), ...ST_ARR(view.edges)].forEach(put);
   const I = stIndex(ST_OBJ(view) ? ownNodes(model, view).model : model), rs = fromModel || ids.every(id => own.has(id)) ? ids.filter(id => I.M.has(id) && I.M.get(id).x.type === 'uml.Region') : [];
   if (!rs.length) return fromModel || !ST_OBJ(view) ? null : stHide(model, view, ids, I, own);
-  const held = [...I.N.keys()].filter(n => rs.some(r => stWithin(I, n, r))).length, x = I.M.get(rs[0]).x;
+  // a model element under what the view alone holds is lifted out by apply(), not deleted: not counted (audit 47, as cloud's)
+  const goes = (n, r) => { for (let c = n, p = stUp(I, n), seen = new Set([n]); p != null && !seen.has(p); c = p, p = stUp(I, p)) { if (own.has(p) && !own.has(c)) return false; if (p === r) return true; seen.add(p); } return false; };
+  const held = [...I.N.keys()].filter(n => rs.some(r => goes(n, r))).length, x = I.M.get(rs[0]).x;
   return { commands: ids.map(id => ({ op: 'delete', id })), say: `Deleted ${rs.length === 1 ? 'region ' + (ST_HAS(x.label) ? x.label : x.id) : stPlural(rs.length, 'region')} and the ${stPlural(held, 'element')} ${rs.length === 1 ? 'it' : 'they'} held` };
 }
 

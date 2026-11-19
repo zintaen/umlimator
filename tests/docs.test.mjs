@@ -333,3 +333,19 @@ test('the state machine note\'s labels on a looser spot are the ones check() nam
   const onLine = said(ex, ex.views[0].id).filter(p => / lies on edge /.test(p)).length, border = both.filter(p => /^view [^:]+: label .* sits on the border of /.test(p)).length;
   assert.ok(doc.includes(`(example 10: ${words[onLine]} labels on lines; the stress file: ${border ? `${words[border]} on a region's border, ` : ''}${words[all.filter(p => / lies on edge /.test(p)).length]} on lines in \`all\`)`), 'the note counts what check() names');
 });
+
+// audit 47 findings 16 and 21: the released 0.43.0 notes describe 0.43.0 and say what changed since, as main draws and edits
+test('audit 47: the 0.43.0 notes do not credit 0.43.0 with the later d.ts and schema, and say the comment link and stereotype gaps as they stand', async () => {
+  const doc = readFileSync(new URL('../docs/module-api.md', import.meta.url), 'utf8'), s = doc.slice(doc.indexOf('\n## 0.43.0'), doc.indexOf('\n## ', doc.indexOf('\n## 0.43.0') + 5) >>> 0 || undefined);
+  assert.ok(s.length > 1000);
+  assert.doesNotMatch(s, /`lib\/umlimator\.d\.ts` and the schema say so/);
+  const dts = readFileSync(new URL('../lib/umlimator.d.ts', import.meta.url), 'utf8');
+  assert.match(dts, /change\?: 'added' \| 'new' \| 'removed' \| 'changed' \| 'modified'/, 'main\'s d.ts lists them: the note says they came after the release');
+  assert.match(s, /The 0\.43\.0 `lib\/umlimator\.d\.ts` and schema still describe a map line's `change` as `added`, `removed` or `changed`/);
+  // the views refuse a comment link with no comment at either end now (the requirement view's connect, as the repro drives it)
+  const { diagramOf } = await import('../src/core/registry.js'); await import('../src/map/typed.js'); await import('../src/sysml/requirement.js');
+  const m = { schemaVersion: 2, nodes: [{ id: 'r1', type: 'sysml.Requirement', label: 'A' }, { id: 'r2', type: 'sysml.Requirement', label: 'B' }], edges: [], views: [{ id: 'v', diagram: 'sysml.requirement', nodeIds: ['r1', 'r2'] }] };
+  assert.ok(diagramOf(m.views[0]).edits.connect(m, m.views[0], 'r1', 'r2', null, { type: 'uml.CommentLink' }).error);
+  assert.doesNotMatch(s, /(?<!In 0\.43\.0 )the use case, state machine, interaction overview, ER, flowchart, DFD, SysML requirement and all six C4 views still add a comment link/i);
+  assert.match(s, /since that release \(#519 to #521\) they refuse one/);
+});

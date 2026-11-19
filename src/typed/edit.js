@@ -85,7 +85,10 @@ TYPED.edit = (I, c) => {
     const o = !h && re && hook('owner'); // a drop that keeps the owner: the default's pin (audit 34)
     if (o) { const m = model(), v = view(); return ran(owns(n.id, to()) ?? o(m, v, n.id, to()), dflt); }
     const g = api.geo(), col = arrOf((view() || {}).nodeIds).filter(id => id !== n.id && isRec(g.byId[id]) && g.byId[id].x + g.byId[id].w / 2 < hint.x).length;
-    return h && can('move') ? ran(h(model(), view(), n.id, { ...near(hint.x, hint.y + Math.sign(dy) * n.h / 2), pt: [hint.x, hint.y], col, geo: g }), dflt) : dflt(); };
+    if (!h || !can('move')) return dflt();
+    // a moveTo's own reparent is asked of TYPED.owns too (a stereotype dropped into a state or a partition, audit 47)
+    const r = h(model(), view(), n.id, { ...near(hint.x, hint.y + Math.sign(dy) * n.h / 2), pt: [hint.x, hint.y], col, geo: g }), cs = Array.isArray(r) ? r : isRec(r) && Array.isArray(r.commands) ? r.commands : [];
+    return ran(cs.map(x => isRec(x) && x.op === 'reparent' && owns(x.id, x.parent)).find(Boolean) ?? r, dflt); };
   I.addNode = i => { const h = hook('add'), t = c.nodeTypes()[i], cam = api.cam(); if (!t || !can('add') || !cam || (!h && t.name !== false)) return base.addNode(i);
     const s = keyAt(), at = s && { ...s, sel: c.picks() }; // where the selection is now, before the name field takes the focus
     const go = label => ran(h && h(model(), view(), t, label, at), () => emit([{ op: 'add', element: { ...c.typed(t, 'node'), ...(label ? { label } : {}) }, view: api.view() }]));

@@ -517,15 +517,23 @@ function mapContext(model, opts = {}) {
     const came = c => !!c && CHG_IS.added.includes(c), gone = c => !!c && CHG_IS.removed.includes(c), diffCh = c => came(c) || gone(c) || c === 'changed' || c === 'modified';
     // a shape a type draws for a member on another, <part>-><port> (no element id holds '->', model.md rule 5): removed with the
     // part it sits on or its own member, else added with either (audit 46: the ports on a removed or added part drawn live)
-    const onCh = id => { const s = id.split('->'); if (s.length < 2 || N[s[0]]) return null; const cs = s.map(x => (x ? boxCh(x) : null));
-      return cs.find(gone) || cs.find(came) || null; };
+    // or changed with its own member, a port renamed or retyped (audit 47; a part's own change is the part's, not its ports')
+    const onCh = id => { const s = id.split('->'); if (s.length < 2 || N[s[0]]) return null; const cs = s.map(x => (x ? boxCh(x) : null)), c = cs[cs.length - 1];
+      return cs.find(gone) || cs.find(came) || (c === 'changed' || c === 'modified' ? 'changed' : null); };
+    // what diff() worked out from the view laid out before and after (audit 47: view.diffMarks.marks, by shape id): a port a
+    // retyped part gained or lost, a containment line that is new, and "none" for a shape drawn from what it reads, or for an
+    // implied or derived line, that the change leaves as it was. It is read only where the type's own reading would mark it
+    const dm = v.diffMarks && typeof v.diffMarks === 'object' && v.diffMarks.marks && typeof v.diffMarks.marks === 'object' && !Array.isArray(v.diffMarks.marks) ? v.diffMarks.marks : null;
+    const dg = v.diffMarks && typeof v.diffMarks === 'object' && Array.isArray(v.diffMarks.gone) ? new Set(v.diffMarks.gone.filter(x => x && typeof x === 'object' && typeof x.id === 'string').map(x => x.id)) : null; // a ghost the type drew back: removed
+    const hint = (k, c) => { if (!dm || typeof k !== 'string' || !Object.hasOwn(dm, k)) return c; const h = dm[k];
+      return h === 'none' ? null : h === 'added' || h === 'removed' || h === 'changed' ? h : c; };
     // what a type draws from elements or lines it does not draw itself (x.reads: their ids): a container instance drawn as its
     // container, an implied line through a hidden owner, an information flow's conveyed items (audit 46)
     const readsCh = x => Array.isArray(x.reads) && x.reads.some(r => typeof r === 'string' && diffCh(boxCh(r))) ? 'changed' : null;
     (g.nodes || []).forEach(n => { if (!n || typeof n.id !== 'string') return;
-      if (N[n.id]) { const c = chOf(nodeIn(n.id, vid)) || readsCh(n); if (c) n.change = c; else delete n.change; } else put(n, boxCh(n.id) || onCh(n.id) || readsCh(n)); });
+      if (N[n.id]) { const c = chOf(nodeIn(n.id, vid)) || hint(n.id, readsCh(n)); if (c) n.change = c; else delete n.change; } else put(n, boxCh(n.id) || hint(n.id, onCh(n.id) || readsCh(n))); });
     // a box a type draws for an element (a package, a node, a boundary, a group, a composite state and its regions), as a shape
-    (g.families || []).forEach(f => { if (f && typeof f.id === 'string') put(f, boxCh(f.id) || readsCh(f)); });
+    (g.families || []).forEach(f => { if (f && typeof f.id === 'string') put(f, boxCh(f.id) || hint(f.id, readsCh(f))); });
     // a line drawn for others (a C4 implied relationship): added or removed when all it stands for were, else changed when any
     // was; an author's planned is no change of the line's (audit 46: drawn as edited)
     const implied = l => { const cs = l.map(k => (typeof k === 'string' ? lineCh(k) : null)).map(c => (diffCh(c) ? c : null)); if (!cs.some(Boolean)) return null;
@@ -534,7 +542,7 @@ function mapContext(model, opts = {}) {
     const endCh = new Map([...(g.nodes || []), ...(g.families || [])].filter(x => x && typeof x.id === 'string').map(x => [x.id, x.change || null]));
     const derived = e => { const a = endCh.get(e.from), b = endCh.get(e.to); return gone(a) || gone(b) ? 'removed' : came(a) || came(b) ? 'added' : null; };
     (g.edges || []).forEach(e => { const k = e && (e._id ?? e.id); if (typeof k !== 'string') return;
-      const c = lineCh(k) || (Array.isArray(e.implied) ? implied(e.implied) : !lines.has(k) && !(k in own) && k.includes('->') ? derived(e) : null) || readsCh(e);
+      const c = lineCh(k) || (dg && dg.has(k) && !lines.has(k) && !(k in own) ? 'removed' : null) || hint(k, (Array.isArray(e.implied) ? implied(e.implied) : !lines.has(k) && !(k in own) && k.includes('->') ? derived(e) : null) || readsCh(e));
       if (c) e.change = c; else delete e.change; });
     return g; }
   function buildGeo(vid, override, repair = (V[vid] || {}).repair !== false, quick = false) { // a view's repair: false turns port repair off

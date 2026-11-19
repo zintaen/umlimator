@@ -41,7 +41,7 @@ Rules on definitions (errors): `profile-owns` (a stereotype's and a metaclass re
 was valid stays so): `stereotype-unknown`, `stereotype-applied` (a profile's stereotype outside its scope),
 `stereotype-ambiguous`, `stereotype-extends` (it does not fit the element), `stereotype-required` (an abstract required
 stereotype met by no specialization), `tag-defined`, `tag-value` (Boolean, Integer, Real, UnlimitedNatural, an
-enumeration of the profile), `tag-required`; and `stereotype-abstract` (an abstract stereotype applied), an error.
+enumeration of the profile), `tag-required`, `stereotype-text` (a stereotype stored with the guillemets or `<< >>` it is drawn in, on any element, profile or none); and `stereotype-abstract` (an abstract stereotype applied), an error.
 
 **Departures from UML 2.5.1:** a required extension's stereotype is supplied by the tool, not demanded: 12.3.3 says a
 model without it is not well formed; this tool applies it to every element of the metaclass in the profile's scope, with

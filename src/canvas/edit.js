@@ -250,7 +250,9 @@ function typedEditor(api) {
       // a member row: given its owner, so a name another member holds is refused (audit 40)
       if (d.m != null && M) { const e = at.get(d.m) || {}, m = e.x, r = m && M.edit(m, value, e.owner); if (!r || r.error) return bad(r ? r.error : 'not a member');
         t.removeAttribute('aria-invalid'); d.was = t.value; return emit(r.commands); }
-      if (value === '') value = undefined; else if (d.list != null) value = value.split(',').map(x => x.trim()).filter(Boolean); }
+      if (value === '') value = undefined; else if (d.list != null) value = value.split(',').map(x => x.trim()).filter(Boolean)
+        // a stereotype typed as the card draws it, «entity» or <<entity>>: its name, without the marks (audit 47)
+        .map(x => (d.key === 'stereotypes' ? x.replace(/^«(.*)»$/s, '$1').replace(/^<<(.*)>>$/s, '$1').trim() || x : x)); }
     const path = d.path ? ['props', ...JSON.parse(d.path)] : d.key == null ? 'label' : d.key.includes('.') ? ['props', d.key] : 'props.' + d.key;
     const set = () => emit([{ op: 'set', id: d.m ?? id, path, value }]);
     // the type's edits.field first (src/typed/edit.js); one it refuses marks the field, kept as typed, as a member row's (audit 37)

@@ -6,7 +6,7 @@ import { brLines } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
 import { CLASSIFIERS, commentConnect, LINE_WORDS, legendOf, lineIn, lineLabel, lineLook, lineRename, memberClash, memberEdit, multBounds, printMember } from './class.js'; // a subject's other members, as the class type's; SHAPE.note, a comment's look
 import './usecase.js'; // SHAPE.ellipse, a collaboration use's; SHAPE.subject, a class subject's frame
-import { SN_SAY, STRUCT_RULES, snKindName, snKindWord, portFit, portSides, portsDrawn, structProblems } from './structure.js';
+import { SN_SAY, STRUCT_RULES, sideProblem, snKindName, snKindWord, portFit, portSides, portsDrawn, structProblems } from './structure.js';
 import { viewLines } from './owners.js';
 import { usedIds, jsonText, labelOr, elName, propTextProblems } from '../core/model.js';
 
@@ -278,6 +278,7 @@ const CS_RULES = {
   'binding-ends': 'a role binding runs from a part of the subject to a collaboration use of it (a view with no subject: a warning)',
   'binding-role': 'a role binding\'s label names a role of the collaboration its use names',
   'collaboration-named': 'a collaboration use\'s collaboration names a collaboration of the model',
+  'present-values': 'a port\'s present side, present.<port>.side or present.<part>.ports.<port>.side, is left, right, top or bottom: any other value is ignored',
   ...STRUCT_RULES,
 };
 const csCollab = (P, u) => [...P.at.values()].find(n => n.type === 'uml.Collaboration' && CS_HAS(CS_PROPS(u).collaboration) && elName(n) === CS_PROPS(u).collaboration) || null;
@@ -342,6 +343,10 @@ function csProblems(model, view) {
   P.uses.forEach(id => { const u = P.at.get(id); if (!csCollab(P, u)) say('warning', 'collaboration-named', `nodes[${nodeAt(id)}].props.collaboration`, [id],
     !CS_HAS(CS_PROPS(u).collaboration) ? `collaboration use ${q(id)} names no collaboration` // said in words, not "names null" (audit 25)
       : `collaboration use ${q(id)} names ${jsonText(CS_PROPS(u).collaboration)}, not a collaboration of the model`); });
+  // a port's side as written, misspelled or in another case: ignored, so said (audit 47)
+  const pr = CS_OBJ(view.present) ? view.present : {}, side = (x, k) => (CS_OBJ(x) && Object.hasOwn(x, k) ? x[k] : undefined);
+  P.sPorts.forEach(p => { const w = sideProblem(side(side(pr, p.id), 'side'), `views[${vi}].present.${p.id}.side`, p.id, q(p.id)); if (w) out.push(w); });
+  [...P.partPorts].forEach(([part, qs]) => qs.forEach(p => { const w = sideProblem(side(side(side(side(pr, part), 'ports'), p.id), 'side'), `views[${vi}].present.${part}.ports.${p.id}.side`, p.id, `${q(p.id)} of ${q(part)}`); if (w) out.push(w); }));
   return [...out, ...structProblems(model, view)];
 }
 

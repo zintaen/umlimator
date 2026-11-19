@@ -905,7 +905,7 @@ test('audit 35: members nested 4,000 deep are read by every core entry point', a
     assert.deepEqual(U.references(m, 'm' + (D - 1)).map(r => r.path), [['edges', 0, 'to']]);
     assert.deepEqual(U.references(m, 'bad'), []);
     const set = U.apply(m, { op: 'set', id: 'm' + (D - 1), path: 'label', value: 'z' });
-    assert.deepEqual(U.diff(m, set).summary, ['changes A (members)'], diagram); // as at any depth
+    assert.deepEqual(U.diff(m, set).summary, [`renames p${D - 1} to z in p${D - 2}`], diagram); // as at any depth (audit 47: an edited member by its name)
     const gone = U.apply(m, { op: 'delete', id: 'm5' });
     assert.deepEqual([gone.nodes[0].members[0].members[0].members[0].members[0].members[0].members, gone.edges], [[], []]);
     assert.throws(() => U.apply(m, { op: 'move', id: 'm' + (D - 1), owner: 'm' + (D - 1) }), /would end up inside itself/);

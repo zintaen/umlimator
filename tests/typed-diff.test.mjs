@@ -63,7 +63,8 @@ test('an element\'s members reordered read "moves" on every type with members; e
     if (said) assert.deepEqual(got, [said]);
   }
   const k = load('examples/sales-classes.json');
-  assert.deepEqual(all.diff(k, edit(k, m => { const c = m.nodes.find(x => x.id === 'customer'); c.members.reverse(); c.members[0].label = 'fullName'; })).summary, ['changes Customer (members)']);
+  // audit 47: an edited member is said by its name, and the rest's new order still reads "moves"
+  assert.deepEqual(all.diff(k, edit(k, m => { const c = m.nodes.find(x => x.id === 'customer'); c.members.reverse(); c.members[0].label = 'fullName'; })).summary, ['moves email after name in Customer', 'renames name to fullName in Customer']);
   // members with no ids: no move can be found, so "changes" as before, as lib/umlimator.js says
   const noIds = edit(k, m => m.nodes.find(x => x.id === 'customer').members.forEach(x => delete x.id)), rev = edit(noIds, m => m.nodes.find(x => x.id === 'customer').members.reverse());
   assert.deepEqual(all.diff(noIds, rev).summary, ['changes Customer (members)']);
@@ -190,8 +191,8 @@ test('audit 39: views lists a typed view that draws a changed element it does no
     { id: 'c', type: 'uml.Class', label: 'C', parent: '__proto__', props: { self: 'c', v: 'cv' } }, deep],
     edges: [], views: [{ id: 'cv', diagram: 'uml.class', nodeIds: ['c'] }, { id: 'dv', diagram: 'uml.class', nodeIds: ['d0'] }, { id: 'pv', diagram: 'uml.package', nodeIds: ['q'] }] };
   const relabel = (i, label) => ({ ...H, nodes: H.nodes.map((n, j) => (j === i ? { ...n, label } : n)) });
-  assert.deepEqual(all.diff(H, relabel(1, 'Q2')).views, ['cv', 'pv']);
-  assert.deepEqual(all.diff(H, relabel(0, 'Z')).views, ['cv', 'pv']);
+  assert.deepEqual(all.diff(H, relabel(1, 'Q2')).views, ['pv']); // audit 47: cv draws c's package, not that package's owner Q: the same picture
+  assert.deepEqual(all.diff(H, relabel(0, 'Z')).views, ['cv']); // audit 47: pv draws Q closed, not the package inside it: the same picture
   assert.deepEqual(all.diff(H, relabel(3, 'D2')).views, ['dv']);
 });
 
@@ -202,4 +203,15 @@ test('audit 39: a schemaVersion change lists every typed view, which then draws 
   assert.deepEqual(all.diff(b, m).views, m.views.filter(v => v.diagram && v.diagram !== 'map').map(v => v.id));
   const map = { nodes: [{ id: 'a' }], views: [{ id: 'v', nodeIds: ['a'] }] };
   assert.deepEqual(core.diff(map, { ...map, schemaVersion: 2 }).views, [], 'a map view draws the same at either version');
+});
+
+// audit 47: a flow node moved between lanes names the lane by its label, as a move into the pool or a package does
+test('a BPMN task moved into another lane, or out of a lane removed, names the lane by its label', () => {
+  const bz = load('examples/bookshop-order-to-shipment.json'), t = bz.nodes.find(n => n.type === 'bpmn.Task' && n.parent === 'bp-sales');
+  assert.deepEqual(all.diff(bz, edit(bz, m => { m.nodes.find(n => n.id === t.id).parent = 'bp-warehouse'; })).summary, [`moves ${t.label} into Warehouse`]);
+  assert.deepEqual(all.diff(bz, edit(bz, m => { m.nodes.find(n => n.id === t.id).parent = 'bp-bookshop'; })).summary, [`moves ${t.label} into Bookshop`]);
+  const pool = bz.nodes.find(n => n.id === 'bp-bookshop'), lanes = pool.members.map(l => l.label);
+  assert.ok(lanes.includes('Sales') && lanes.includes('Warehouse'));
+  const s = all.diff(bz, edit(bz, m => { const P = m.nodes.find(n => n.id === 'bp-bookshop'); P.members = P.members.filter(l => l.id !== 'bp-warehouse'); m.nodes.forEach(n => { if (n.parent === 'bp-warehouse') n.parent = 'bp-sales'; }); })).summary;
+  assert.ok(s.length > 1 && s.slice(1).every(x => x.endsWith(' into Sales')) && !s.some(x => /bp-(sales|warehouse)/.test(x)), s.join('; '));
 });

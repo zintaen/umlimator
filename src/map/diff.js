@@ -238,12 +238,20 @@ export function diff(before, after) {
     if (!x || typeof x !== 'object' || x.id == null || rooted.has(x.id)) continue; rooted.add(x.id); arr(x.members).forEach(y => s.push(y)); } });
   const gained = new Map(); have.forEach(([x, up], id) => { if (typeof up !== 'string' || at0.has(id) || !at0.has(up) || !rooted.has(id)) return;
     gained.set(id, [x, top(up), up]); x.change = 'added'; });
-  const strip = x => { const y = copyOf(x), seen = new Set(); for (const s = [y]; s.length;) { const z = s.pop(); if (seen.has(z)) continue; seen.add(z); if (Array.isArray(z.members)) { const k = z.members.filter(m => !(m && typeof m === 'object' && (lost.has(m.id) || gained.has(m.id)))); if (!k.length) delete z.members; else z.members = k; arr(z.members).forEach(m => m && typeof m === 'object' && s.push(m)); } } return y; };
+  // a member in both whose own fields changed, or that another element of the model now holds (audit 47: a renamed or retyped
+  // part or port, drawn as its own shape, was drawn as live): marked changed, and said by its name, as a card is. What it
+  // holds is its own; a member's change (an author's) is no field of its own here
+  const ownOf = y => { const z = { ...y }; delete z.members; delete z.change; return canon(z); }, edited = new Map();
+  have.forEach(([x, up], id) => { if (typeof up !== 'string' || !at0.has(id) || !rooted.has(id) || gained.has(id)) return; const [o, up0] = at0.get(id);
+    if (o === x || !o || typeof o !== 'object' || ownOf(o) === ownOf(x) && up0 === up) return; edited.set(id, [x, top(up), up, o, up0]); x.change = 'changed'; });
+  // an element as it was or is with the members that came or went taken out, and one edited as it was (said on its own, and
+  // kept in its place, so a reorder of the rest still reads "moves")
+  const strip = x => { const y = copyOf(x), seen = new Set(); for (const s = [y]; s.length;) { const z = s.pop(); if (seen.has(z)) continue; seen.add(z); if (Array.isArray(z.members)) { const k = z.members.filter(m => !(m && typeof m === 'object' && (lost.has(m.id) || gained.has(m.id)))).map(m => m && typeof m === 'object' && edited.has(m.id) ? { ...copyOf(edited.get(m.id)[3]), ...(Array.isArray(m.members) ? { members: m.members } : {}) } : m); if (!k.length) delete z.members; else z.members = k; arr(z.members).forEach(m => m && typeof m === 'object' && s.push(m)); } } return y; };
 
   // the summary: views, then cards, then lines, in model order; a line to a card that came or went goes with the card
   const cards = [...out.nodes, ...views.flatMap(v => arr(v && v.nodes))].filter(Boolean);
-  const named = new Map([...views.flatMap(v => arr(v && v.containers)), ...cards, ...[...lost.values(), ...gained.values()].map(([y]) => y), ...[...lost.values(), ...gained.values()].map(([, , u]) => (have.get(u) || [])[0])].filter(Boolean).map(n => [n.id, n]));
-  const name = id => String(labelOr((named.get(id) || {}).label, id));
+  const named = new Map([...views.flatMap(v => arr(v && v.containers)), ...cards, ...[...lost.values(), ...gained.values(), ...edited.values()].map(([y]) => y), ...[...lost.values(), ...gained.values(), ...edited.values()].map(([, , u]) => (have.get(u) || [])[0])].filter(Boolean).map(n => [n.id, n]));
+  const name = id => String(labelOr((named.get(id) || (have.get(id) || at0.get(id) || [])[0] || {}).label, id)); // a member that stayed (a lane in its pool, audit 47) by its label too
   // a line's end on a member, as describe() names it (audit 18): a port by its owner ("orders of Shop API"), an end through a part by
   // that part ("charge of battery"); else a member by its own name
   const ups = id => { const s = []; for (let t = id, r; (r = have.get(t) || at0.get(t)) && typeof r[1] === 'string' && !s.includes(r[1]);) s.push(t = r[1]); return s; };
@@ -263,10 +271,15 @@ export function diff(before, after) {
     if (h === 'removed') said.push(`removes ${name(n.id)}`);
     lost.forEach(([y, t, u]) => { if (t === n.id) said.push(`removes ${name(y.id)} from ${name(u)}`); });
     gained.forEach(([y, t, u]) => { if (t === n.id) said.push(`adds ${name(y.id)} to ${name(u)}`); });
-    if (h === 'changed') { const [o, x] = [...lost.values(), ...gained.values()].some(([, t]) => t === n.id) ? was.get(n).map(strip) : was.get(n); if (canon(o) === canon(x)) return; const keys = diffKeys([o, x]), rest = keys.filter(k => k !== 'label'), p0 = o.parent ?? null, p1 = x.parent ?? null;
+    if (h === 'changed') (() => { const [o, x] = [...lost.values(), ...gained.values(), ...edited.values()].some(([, t]) => t === n.id) ? was.get(n).map(strip) : was.get(n); if (canon(o) === canon(x)) return; const keys = diffKeys([o, x]), rest = keys.filter(k => k !== 'label'), p0 = o.parent ?? null, p1 = x.parent ?? null;
       if (keys.join() === 'parent' && p0 !== p1 && A.schemaVersion === 2 && out.schemaVersion === 2) return said.push(`moves ${name(n.id)} ${p1 != null ? 'into ' + name(p1) : 'out of ' + name(p0)}`); // a re-own (schema version 2; absent or null is no owner)
       const t = TYPED.diff && TYPED.diff(o, x, name, [A, out]); if (t) return said.push(...t); // a typed element's own words (src/uml/diff.js)
-      said.push((keys.includes('label') ? `renames ${labelOr(o.label, o.id)} to ${labelOr(x.label, x.id)}` : `changes ${name(n.id)}`) + (rest.length ? ` (${rest.join(', ')})` : '')); } });
+      said.push((keys.includes('label') ? `renames ${labelOr(o.label, o.id)} to ${labelOr(x.label, x.id)}` : `changes ${name(n.id)}`) + (rest.length ? ` (${rest.join(', ')})` : '')); })();
+    // its edited members after it (audit 47)
+    edited.forEach(([y, t, u, o, u0]) => { if (t !== n.id) return; const ks = diffKeys([o, y]).filter(k => !['members', 'change', 'label'].includes(k)), n0 = elName(o), n1 = elName(y);
+      if (n0 !== n1) said.push(`renames ${n0} to ${n1} in ${name(u)}` + (ks.length ? ` (${ks.join(', ')})` : ''));
+      else if (ks.length) said.push(`changes ${n1} of ${name(u)} (${ks.join(', ')})`);
+      if (u0 !== u) said.push(`moves ${n1} ${typeof u0 === 'string' ? 'out of ' + String(labelOr(((have.get(u0) || at0.get(u0) || [])[0] || {}).label, u0)) + ' ' : ''}into ${name(u)}`); }); });
   lines.forEach(e => { const h = how.get(e), p = (e.props && e.props.ends) || {}; // an end on a part: the part counts as its card
     if (!h || h !== 'changed' && [e.from, e.to, (p.from || {}).part, (p.to || {}).part].some(id => id != null && cardHow.get(id) === h)) return;
     const ends = e.from == null && e.to == null ? null : `${endName(e, 'from')} to ${endName(e, 'to')}`, lab = labelOr(e.label, null) != null ? ` (${e.label})` : '', it = ends ? 'the line from ' + ends : labelOr(e.label, e.id); // an item with no ends (an interaction use) by its name
@@ -334,7 +347,11 @@ export function diff(before, after) {
     // what its elements name, and what those name in turn (a part's type's port's type), each with its owners
     for (let d = 0; d < 2 && now.length; d++) { const next = []; now.forEach(t => texts(elOf.get(t)).forEach(s => { const n = name(s); if (n != null) up(n, next); else if (vids.has(s)) vs.add(s); })); now = next; }
     return { ids, vs }; };
-  const changed = new Set(views.filter(v => v && (touched.has(v.id) || arr(v.nodeIds).some(id => cardHow.has(id)) || linesOf(out, v, ups).some(e => how.has(e)))).map(v => v.id));
+  // a typed view whose type says which lines it draws (drawn) shows a line's change only through what it draws (audit 47: a
+  // context-level line between a container view's subject, drawn as its boundary, and a person was counted as drawn there)
+  const ownLines = v => !(typedV(v) && out.schemaVersion === 2 && typeof (diagramOf(v) || {}).drawn === 'function');
+  const changed = new Set(views.filter(v => v && (touched.has(v.id) || arr(v.nodeIds).some(id => cardHow.has(id)) || ownLines(v) && linesOf(out, v, ups).some(e => how.has(e)))).map(v => v.id));
+  const sure = new Set(changed); // listed by what it lists itself; the rest below by what it draws from others, and a typed one of those only when its picture changed
   /* what a typed view draws from beyond its own elements and lines (audit 40): the relationships an implied C4 line stands for
      (its type's drawn), a required stereotype's extension, the identifying relationship that makes a shown IDEF1X entity
      dependent (its type's touches), each in the model before and after: listed when one of them is marked */
@@ -390,6 +407,52 @@ export function diff(before, after) {
         drew.add(x.id); const j = x.id.lastIndexOf('->'); if (j >= 0) drew.add(x.id.slice(j + 2)); })); } catch { /* a view the old model cannot lay out: nothing to bring back from it */ } }
     back2.forEach(([id, [x, , up]]) => { const [, , i] = at0.get(id), o = have.get(up)[0]; if (!drew.has(id) || arr(o.members).some(m => m && m.id === id)) return; const y = { ...copyOf(x), change: 'removed' };
       (o.members = [...arr(o.members)]).splice(Math.min(i, o.members.length), 0, y); ownIn(y, have, up, i); }); }
+  /* what a typed view draws that is no element or line of its own (audit 47), from the view laid out in the model before and
+     after: a port a retyped part gained or lost, a containment line that is new, and a line the type derived from an owner an
+     element left (a C4 implied line, a requirement's containment), which comes back removed (view.diffMarks.gone); and "none"
+     for a shape drawn from what it reads (x.reads), an implied or a derived line, that looks as it did, so a change it does not
+     draw (a container's description, an undrawn relationship's label) marks nothing. Written to view.diffMarks, which marks()
+     and the types read. Laid out: the listed typed views, and a view whose type draws from what it does not list (drawn,
+     touches) */
+  views.forEach(v => { if (v && typeof v === 'object') delete v.diffMarks; }); // what an earlier diff worked out is no mark of this one (a copy: the input stays)
+  if (out.schemaVersion === 2 && B0.schemaVersion === 2 && B1.schemaVersion === 2) {
+    const GEO = new Set(['x', 'y', 'w', 'h', 'col', 'row', 'gx', 'gy', 'nx', 'ny', 'tx', 'tw', 'pts', 'p1', 'p2', 'stubs', 'lbl', 's', 't', 'fs', 'ts', 'stack', 'fromSide', 'toSide',
+      'fixed', 'portRank', 'tpb', 'fpb', 'portMin', 'how', 'sort', 'cut', 'nameBox', 'points', 'ticks', 'busy', 'head', 'pad', 'depth', 'div', 'down', 'portTop', 'change', 'edited',
+      'reads', 'implied', 'ids', '_id']);
+    const sig = x => canon(Object.keys(x).filter(k => !GEO.has(k)).sort().map(k => [k, x[k]]));
+    // a view's whole picture, but for the marks an author wrote (a typed view's own lines are drawn by their geometry, not their ends' objects)
+    const picture = g => canon([g.legend ?? null, g.bounds ?? null, ...['nodes', 'families', 'edges', 'lanes', 'groups', 'bands'].map(k => arr(g[k]).map(x => x && typeof x === 'object'
+      ? Object.keys(x).filter(q => !['change', 'edited', 's', 't'].includes(q)).sort().map(q => [q, x[q]]) : x))]);
+    const lay = (i, id) => { try { const c = ctx(i); return c ? held(() => c.buildGeo(id))[0] : null; } catch { return null; } };
+    const shapes = g => new Map(['nodes', 'families'].flatMap(k => arr(g && g[k])).filter(x => x && typeof x.id === 'string').map(x => [x.id, x]));
+    const linesG = g => new Map(arr(g && g.edges).filter(x => x && typeof (x._id ?? x.id) === 'string').map(x => [String(x._id ?? x.id), x]));
+    const modelLine = new Set([...arr(A.edges), ...arr(after && after.edges), ...arr(A.views).flatMap(w => arr(w && w.edges)), ...arr(after && after.views).flatMap(w => arr(w && w.edges))]
+      .filter(e => e && typeof e === 'object' && e.id != null).map(e => String(e.id)));
+    const elId = id => at0.has(id) || have.has(id);
+    // what diff() marks: a "none" only where marks() would put a mark (a shape reading, or an implied line standing for, one of them)
+    const hit = new Set([...cardHow.keys(), ...lineHow, ...edited.keys(), ...gained.keys()].map(String)), hits = l => Array.isArray(l) && l.some(r => typeof r === 'string' && hit.has(r));
+    // a port on a part, <part>-><port>: both ends elements of the model, before or after
+    const onPart = id => { const j = id.lastIndexOf('->'); return j > 0 && elId(id.slice(0, j)) && elId(id.slice(j + 2)) ? id.slice(0, j) : null; };
+    const derivedL = (e, k) => Array.isArray(e.implied) || (k.includes('->') && !modelLine.has(k));
+    views.forEach(v => { if (!v || !typedV(v) || !V0.has(v.id)) return; const T = diagramOf(v); let listed = changed.has(v.id);
+      if (!T || !listed && typeof T.drawn !== 'function' && typeof T.touches !== 'function') return;
+      const g1 = lay(1, v.id); if (!g1) return; const S1 = shapes(g1), L1 = linesG(g1);
+      const reading = [...S1.values(), ...L1.values()].some(x => hits(x.reads) || hits(x.implied));
+      if (!listed && !reading) return;
+      const g0 = lay(0, v.id); if (!g0) return; const S0 = shapes(g0), L0 = linesG(g0), marks = Object.create(null), gone = [];
+      // listed for what it draws from others (refs, drawn, touches), with the same picture before and after: not listed (audit 47)
+      if (listed && !sure.has(v.id) && picture(g0) === picture(g1)) { changed.delete(v.id); listed = false; }
+      const same = (x, y) => y && sig(x) === sig(y);
+      S1.forEach((x, id) => { const y = S0.get(id), part = onPart(id);
+        if (hits(x.reads) && same(x, y)) marks[id] = 'none';
+        else if (listed && part != null && !y && S0.has(part)) marks[id] = 'added'; });
+      L1.forEach((x, k) => { if (!derivedL(x, k) && !Array.isArray(x.reads)) return; const y = L0.get(k);
+        if (same(x, y)) { if (hits(x.reads) || hits(x.implied)) marks[k] = 'none'; } else if (listed && !y && !Array.isArray(x.implied) && derivedL(x, k)) marks[k] = 'added'; });
+      if (listed) { S0.forEach((y, id) => { const part = onPart(id); if (part != null && !S1.has(id) && S1.has(part)) marks[id] = 'removed'; });
+        L0.forEach((y, k) => { if (L1.has(k) || !derivedL(y, k) || !S1.has(y.from) || !S1.has(y.to)) return;
+          gone.push({ id: k, from: y.from, to: y.to, ...(typeof y.label === 'string' && y.label ? { label: y.label } : {}) }); }); }
+      if (Object.keys(marks).length || gone.length) v.diffMarks = { ...(Object.keys(marks).length ? { marks: plain(marks) } : {}), ...(gone.length ? { gone } : {}) }; });
+  }
   return { model: out, summary: said, views: views.filter(v => v && changed.has(v.id)).map(v => v.id) };
 }
 

@@ -1,5 +1,5 @@
 import { unreadable, jsonText } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort, mermaidText } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText } from './mermaid-front.js';
 /* ---------- Mermaid erDiagram: a reader and a writer (notes/milestone-2.md §8.1, M2.8; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's entity relationship page (docs/syntax/entityRelationshipDiagram.md, read 14 Nov 2026)
    and its lexer (packages/mermaid/src/diagrams/er/parser/erDiagram.jison), as the other readers are against theirs.
@@ -66,9 +66,9 @@ function meFree(used, next, base) {
 }
 
 // text: Mermaid's line breaks and entity codes (#quot; #lt; #35;)
-function meDecode(s) {
-  return s.replace(/<br\s?\/?>/gi, '\n').replace(/#(quot|lt|gt|amp|\d{1,6});/g, (_, e) =>
-    ({ quot: '"', lt: '<', gt: '>', amp: '&' })[e] ?? String.fromCodePoint(Math.min(Number(e), 0x10ffff)));
+function meDecode(s, bad) {
+  return s.replace(/<br\s?\/?>/gi, '\n').replace(/#(quot|lt|gt|amp|\d{1,6});/g, (all, e) =>
+    ({ quot: '"', lt: '<', gt: '>', amp: '&' })[e] ?? mermaidChar(Number(e), all, bad));
 }
 // the writer's text in quotes: what would end the quotes, start a comment or an entity code, or make the line a direction
 // statement, as entity codes, which Mermaid draws as the characters and the reader decodes
@@ -130,13 +130,13 @@ function meRow(s, k, tilde = s.lastIndexOf('~')) {
 }
 
 // a row as the model has it: its label, its props, its comment
-function meColumn(c) {
+function meColumn(c, bad) {
   const star = !c.name.quoted && c.name.text.length > 1 && c.name.text[0] === '*', props = { dataType: c.type.text };
   if (star || c.keys.includes('PK')) props.primaryKey = true;
   if (c.keys.includes('FK')) props.foreignKey = true;
   if (c.keys.includes('UK')) props.unique = true;
   if (c.nullable) props.nullable = true;
-  return { label: star ? c.name.text.slice(1) : c.name.text, props, ...(c.comment !== undefined ? { comment: meDecode(c.comment) } : {}) };
+  return { label: star ? c.name.text.slice(1) : c.name.text, props, ...(c.comment !== undefined ? { comment: meDecode(c.comment, bad) } : {}) };
 }
 
 function readMermaidEr(text) {
@@ -170,7 +170,7 @@ function readMermaidEr(text) {
   let viewId, viewNo, direction = 'down', started = false, hint = {}, acc = false, depth = 0, block = null;
   const ent = (name, no) => { let r = ents.get(name); if (!r) { r = { name, no, cols: [], names: new Set() }; ents.set(name, r); seen.push(r); } return r; };
   const column = (rec, c, no) => {
-    const col = meColumn(c), h = hint;
+    const col = meColumn(c, code => say(no, 'approximated', mermaidBadChar(code))), h = hint;
     hint = {};
     if (rec.names.has(col.label)) { say(no, 'skipped', `${rec.name}.${col.label}: ${rec.name} has a column ${col.label} already`); return; }
     rec.names.add(col.label);
@@ -226,7 +226,7 @@ function readMermaidEr(text) {
       if (s[k2] === '[') {
         const q = meSkip(s, k2 + 1), n = s[q] === '"' ? meName(s, q) : null, e = n ? meSkip(s, n.end) : s.indexOf(']', q);
         if (e < 0 || s[e] !== ']' || (!n && !s.slice(q, e).trim())) return notRead();
-        alias = meDecode(n ? n.text : s.slice(q, e).trim());
+        alias = meDecode(n ? n.text : s.slice(q, e).trim(), code => say(no, 'approximated', mermaidBadChar(code)));
         k2 = styled(s, meSkip(s, e + 1), a.text, no);
       }
       if (s[k2] !== '{' && k2 < s.length) return notRead();
@@ -254,7 +254,7 @@ function readMermaidEr(text) {
     if (!b) return notRead();
     k2 = styled(s, meSkip(s, b.end), b.text, no);
     let label;
-    if (s[k2] === ':') { const t = s.slice(k2 + 1).trim(), q = /^"([^"]*)"$/.exec(t); label = meDecode(q ? q[1] : t); }
+    if (s[k2] === ':') { const t = s.slice(k2 + 1).trim(), q = /^"([^"]*)"$/.exec(t); label = meDecode(q ? q[1] : t, code => say(no, 'approximated', mermaidBadChar(code))); }
     else if (k2 < s.length) return notRead();
     else say(no, 'approximated', `${a.text} ${card[0]}${rel[0]}${card2[0]} ${b.text}: no : label, which Mermaid asks for, so it has none`);
     if (card[5] || card2[5]) say(no, 'approximated', `${a.text} ${card[0]}${rel[0]}${card2[0]} ${b.text}: u, a parent marker Mermaid's page does not show, is read as 1`);

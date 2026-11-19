@@ -482,3 +482,14 @@ test('audit 44: laid out down, two communication paths into an execution environ
   assert.ok(Math.abs(ends[0][0] - ends[1][0]) >= 14, `the paths meet the box apart: ${JSON.stringify(ends)}`);
   assert.deepEqual(check(m, 'v').map(x => x.message), []);
 });
+
+// audit 47: Shift + Delete of a view's own node counts only what apply() deletes: a model artifact under it is lifted out (as cloud's)
+test('audit 47: Shift + Delete of a view\'s own node does not count the model artifacts it lifts out', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'a1', type: 'uml.Artifact', label: 'app.jar', parent: 'own' }, { id: 'a2', type: 'uml.Artifact', label: 'b.jar', parent: 'own' }],
+    edges: [], views: [{ id: 'v', diagram: 'uml.deployment', nodeIds: ['own', 'a1', 'a2'], nodes: [{ id: 'own', type: 'uml.Node', label: 'srv' }] }] };
+  assert.equal(T.edits.remove(m, m.views[0], ['own'], true), null);
+  const k = structuredClone(m); k.views[0].nodes.push({ id: 'a3', type: 'uml.Artifact', label: 'c.jar', parent: 'own' }); k.views[0].nodeIds.push('a3');
+  const r = T.edits.remove(k, k.views[0], ['own'], true);
+  assert.equal(r.say, 'Deleted node srv and the 1 element it held');
+  assert.deepEqual(apply(k, r.commands).nodes.map(n => n.id), ['a1', 'a2']);
+});
