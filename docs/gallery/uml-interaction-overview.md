@@ -1,6 +1,6 @@
 ---
 title: "Interaction overview diagram examples"
-description: "An activity whose steps are interactions: 3 examples, live."
+description: "An activity whose steps are interactions: one example that shows all it draws, live."
 aside: false
 pageClass: gallery-page
 ---
@@ -9,27 +9,17 @@ pageClass: gallery-page
 
 # Interaction overview diagram examples
 
-<p class="ex-lead">An activity whose steps are interactions. The page below holds its 3 examples: its overview has a card for each, and each card opens it. Pan, zoom, select and go into the cards that stack.</p>
+<p class="ex-lead">A UML interaction overview diagram of buying a book: interaction uses for finding a book, checking out and emailing the receipt, a decision looping back through a merge, a fork and a join, and an inline interaction with its three lifelines. The page below opens on it, <a href="/umlimator/examples/types/uml-interaction-overview.html#view=overview" target="_self">Interaction overview diagram examples</a>, live: pan, zoom, select and go into the cards that stack.</p>
 
 <div class="ex-frame"><iframe src="/umlimator/examples/types/uml-interaction-overview.html" title="Interaction overview diagram examples, live" loading="lazy"></iframe></div>
 <div class="ex-links"><a href="/umlimator/examples/types/uml-interaction-overview.html" target="_self">Open full screen<span class="visually-hidden"> (Interaction overview)</span></a><a href="../conformance/uml-interaction-overview.html">Conformance<span class="visually-hidden"> (Interaction overview)</span></a><a href="/umlimator/examples/types/uml-interaction-overview.pdf" target="_self">PDF<span class="visually-hidden"> (Interaction overview)</span></a><a href="/umlimator/examples/types/uml-interaction-overview.json" target="_self">Model<span class="visually-hidden"> (Interaction overview)</span></a></div>
 
-## The examples {#examples}
+## What it shows {#shows}
 
-<div class="ex-variants">
-<article class="ex-variant" id="view-buy-book-overview-buy-book">
-<h3><a href="/umlimator/examples/types/uml-interaction-overview.html#view=buy-book-overview-buy-book" target="_self">Buying a book</a></h3>
-<p class="ex-sub">uses, inline interaction, loops</p>
-<p>Interaction uses and an inline interaction drawn with its sequence diagram inside, joined by the activity's control nodes and flows; each use, and the inline interaction, opens its sequence view.</p>
-</article>
-<article class="ex-variant" id="view-rent-rent">
-<h3><a href="/umlimator/examples/types/uml-interaction-overview.html#view=rent-rent" target="_self">Renting a bike, laid out right</a></h3>
-<p class="ex-sub">laid out right, flow final, a note</p>
-<p>Four interaction uses laid out right, each opening its own sequence view; named flows, a decision with guards, a flow final node that ends one branch only, and a note on it.</p>
-</article>
-<article class="ex-variant" id="view-inline-return-book">
-<h3><a href="/umlimator/examples/types/uml-interaction-overview.html#view=inline-return-book" target="_self">Returning a book: inline interactions</a></h3>
-<p class="ex-sub">two inline interactions, a merge</p>
-<p>Two inline interactions drawn as sd frames with their sequence diagrams inside, and an interaction use between them on one branch of a decision, joined again by a merge node, laid out down.</p>
-</article>
-</div>
+<p>In the order you find them in the picture:</p>
+
+<ol class="ex-shows">
+<li>uses, inline interaction, loops</li>
+<li>laid out right, flow final, a note</li>
+<li>two inline interactions, a merge</li>
+</ol>

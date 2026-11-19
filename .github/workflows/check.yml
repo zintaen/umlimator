@@ -558,8 +558,8 @@ jobs:
               python3 umlimator.py record "_site/examples/$n.html" --story "$s" --out "_site/examples/stills/$n/story-$s.png"   # each story, recorded
             done
           done
-          # each diagram type's page (tools/types.mjs): one multi-view model holding every example and variant of the
-          # type, its overview a card per variant; the gallery's Diagrams part has a card for each
+          # each diagram type's page (tools/types.mjs): one hand-authored model drawing one comprehensive example of the
+          # type, opened on its main view, with its alternatives; the gallery's Diagrams part has a card for each
           mkdir -p _site/examples/types
           cp examples/types/*.json _site/examples/types/
           for m in examples/types/*.json; do

@@ -68,6 +68,8 @@ umlimator-map {
 .ex-card p { margin: 6px 0 0; font-size: 14px; line-height: 22px; color: var(--vp-c-text-2); overflow-wrap: anywhere; }
 .ex-card > p:first-of-type { flex: 1; }
 .ex-card p.ex-views { font-size: 13px; line-height: 20px; }
+.ex-card ul.ex-shows-short { margin: 8px 0 0; padding-left: 18px; font-size: 13px; line-height: 20px; color: var(--vp-c-text-2); overflow-wrap: anywhere; }
+.ex-card ul.ex-shows-short li + li { margin-top: 2px; }
 .ex-links { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 12px; font-size: 14px; font-weight: 500; }
 .ex-links a { text-decoration: none; }
 .ex-links a:hover { text-decoration: underline; }
@@ -88,6 +90,8 @@ umlimator-map {
 .ex-variant h3 { margin: 0; padding: 0; border: 0; font-size: 16px; line-height: 24px; }
 .ex-variant p { margin: 6px 0 0; font-size: 14px; line-height: 22px; color: var(--vp-c-text-2); }
 .ex-variant p.ex-sub { margin-top: 2px; font-size: 13px; color: var(--vp-c-text-2); font-style: italic; }
+.ex-shows { margin-top: 12px; }
+.ex-shows li { margin-top: 4px; line-height: 24px; }
 @media (max-width: 640px) {
   .ex-card.ex-wide { display: flex; }
   .ex-wide .ex-still { margin: -4px -6px 14px; height: 160px; }

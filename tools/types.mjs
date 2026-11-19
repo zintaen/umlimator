@@ -1,125 +1,96 @@
-// Writes the examples' type pages: for each diagram type (the map and docs/types.md's 28), one multi-view model
-// examples/types/<type>.json holding every example of that type, and its page examples/types/<type>.html.
-//   The model's root view, "overview", is a map view titled "<Type> examples" with one card per variant; each card opens
-//   (drills into) the variant's own view. A variant is a view of that type in one of the sources tools/types.json lists
-//   for the type: an example of examples/ (examples/<name>.json) or a variant file (examples/variants/<type>-<name>.json,
-//   a small model with views of that type). Each source is copied in whole (its views of other types too, so that what
-//   its cards open and its lines name stays there), its ids prefixed with the source's name and a hyphen
-//   (examples/variants/uml-class-down.json's ids with "down-"), so that sources never clash. A source's top views get
-//   the overview as their parent.
-//   node tools/types.mjs                write every type's model and page
-//   node tools/types.mjs uml-class ...  write those types' only
-//   --no-html                           write the models only (the page needs python3; tests/types.test.mjs reads the models)
-// The pages are not committed (each is the whole module, 2.5 MB): CI's site job renders them; tests/types.test.mjs fails
-// when a committed model is not what this writes. No dependency.
-import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
+// The examples' type pages: for each diagram type (the map and docs/types.md's 28), one hand-authored model
+// examples/types/<type>.json, the source of truth, committed, and its page examples/types/<type>.html, rendered from it.
+//   The model draws ONE comprehensive example of the type: its root and first view is the main view (tools/types.json's
+//   "main"), a diagram showing every element kind, line kind, marker, compartment, stereotype and option of the type that
+//   can coexist in one picture. A choice that cannot coexist with it (a layout direction, a notation, a per-view
+//   presentation option) is an alternative: a view of the SAME model, the main view its parent, listed in
+//   tools/types.json's "alternatives" with what differs. tools/types.json also says what the main view shows ("shows",
+//   a checklist in reading order), which the docs page (tools/gallery.mjs) lists.
+//   node tools/types.mjs                validate and check every type's model, and render its page
+//   node tools/types.mjs uml-class ...  those types' only
+//   --no-html                           validate and check only (rendering needs python3)
+// It exits 1 when a model has a validate() error, more check() issues than its entry allows, or does not match its entry
+// (tests/types.test.mjs checks the same). The pages are not committed (each is the whole module, 2.5 MB): CI's site job
+// renders them. No dependency.
+import { readFileSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = new URL('../', import.meta.url);
 const read = p => readFileSync(new URL(p, ROOT), 'utf8'), json = p => JSON.parse(read(p));
-const stop = msg => { throw new Error(`tools/types.mjs: ${msg}`); };
 
 // a view's diagram type as the pages group it: C4's six view kinds are one type, a map view (no diagram) is the map
 export const groupOf = view => { const d = view && view.diagram; return !d || d === 'map' ? 'map' : d.startsWith('c4.') ? 'c4' : d.replace('.', '-'); };
-// the types, the map first, then docs/types.md's 28 in its order: [{ id, name }]
+// the types, the map first, then docs/types.md's 28 in its order
 export function typeIds() {
   const out = ['map'];
   for (const [, id] of read('docs/types.md').matchAll(/<h3 id="([\w-]+)">/g)) out.push(id);
   return out;
 }
 
-// a source by its name in tools/types.json: "sales-classes" is examples/sales-classes.json, "variants/uml-class-down"
-// examples/variants/uml-class-down.json; its prefix is its name less the folder and the type ("down")
-export const sourcePath = name => `examples/${name}.json`;
-export const prefixOf = (type, name) => name.startsWith('variants/') ? name.slice(9).replace(new RegExp(`^${type}-`), '') : name;
-
-// Fields whose text is never an id, though it may read like one (a node's kind "queue" beside a node "queue", a class's
-// stereotype "entity" beside a stereotype "entity", which names it by name): left as they are. Every other string that
-// equals an id the source declares is a reference to it, and is prefixed; and so are the keys of a view's layout and
-// present, which are ids.
-const TEXT = new Set(['label', 'sublabel', 'title', 'text', 'what', 'how', 'caption', 'kind', 'type', 'diagram', 'name',
-  'aggregation', 'role', 'stereotypes', 'quantityKind', 'value', 'guard', 'condition', 'unit', 'shape', 'icon', 'owner',
-  'tone', 'badge', 'badges', 'dataType', 'classifier', 'multiplicity', 'valueType', 'returnType', 'default', 'visibility',
-  'sort', 'operator', 'direction', 'notation', 'render', 'expression', 'body', 'technology', 'description', 'tags',
-  'represents', 'specification', 'documentation', 'note', 'tooltip', 'alt', 'color', 'protocol']);
-const KEYED = new Set(['layout', 'present']);
-
-export function prefixed(model, prefix) {
-  const ids = new Set();
-  const collect = x => { if (Array.isArray(x)) x.forEach(collect); else if (x && typeof x === 'object') { if (typeof x.id === 'string') ids.add(x.id); Object.values(x).forEach(collect); } };
-  collect(model);
-  const p = id => `${prefix}-${id}`;
-  const walk = (x, key) => {
-    if (Array.isArray(x)) return x.map(y => walk(y, key));
-    if (x && typeof x === 'object') return Object.fromEntries(Object.entries(x).map(([k, v]) =>
-      [KEYED.has(key) && ids.has(k) ? p(k) : k, TEXT.has(k) ? v : walk(v, k)]));
-    return typeof x === 'string' && ids.has(x) ? p(x) : x;
-  };
-  const out = walk(model, '');
-  return { model: out, ids };
-}
-
-// what tools/types.json says of each type: { title, variants: [{ file, views: { <view id>: { sub, text } } }] }
+// what tools/types.json says of each type:
+// { title, intro, main, alternatives: [{ view, setting }], shows: [string], issues?, why?, pending? }
 export const spec = () => json('tools/types.json');
+export const modelPath = type => `examples/types/${type}.json`;
+export const model = type => json(modelPath(type));
 
-export function build(type) {
-  const S = spec(), T = S.types[type] || stop(`no type ${type} in tools/types.json`);
-  const nodes = [], edges = [], views = [], stories = [], lenses = [], rules = [], packs = {}, cards = [];
-  const seen = new Set();
-  for (const v of T.variants) {
-    const src = json(sourcePath(v.file)), pre = prefixOf(type, v.file);
-    if (seen.has(pre)) stop(`${type}: two sources with the prefix ${pre}`);
-    seen.add(pre);
-    const typed = src.views.filter(w => groupOf(w) === type).map(w => w.id);
-    if (!typed.length) stop(`${type}: ${sourcePath(v.file)} has no view of this type`);
-    for (const id of typed) if (!(v.views || {})[id]) stop(`${type}: ${sourcePath(v.file)}'s view ${id} has no card in tools/types.json`);
-    for (const id of Object.keys(v.views || {})) if (!typed.includes(id)) stop(`${type}: ${sourcePath(v.file)} has no ${type} view ${id}`);
-    const { model: m } = prefixed(src, pre);
-    nodes.push(...(m.nodes || [])); edges.push(...(m.edges || []));
-    for (const w of m.views) views.push(w.parent == null || w.parent === '' ? { ...w, parent: 'overview' } : w);
-    stories.push(...(m.stories || [])); lenses.push(...(m.lenses || [])); rules.push(...(m.rules || []));
-    for (const [k, pin] of Object.entries(src.iconPacks || {})) {
-      if (packs[k] && packs[k] !== pin) stop(`${type}: two sources pin the ${k} icon pack differently (${packs[k]}, ${pin})`);
-      packs[k] = pin;
-    }
-    for (const [id, c] of Object.entries(v.views)) {
-      if (!c.sub || !c.text) stop(`${type}: ${sourcePath(v.file)}'s view ${id} needs its card's sub and text`);
-      const view = m.views.find(w => w.id === `${pre}-${id}`);
-      cards.push({ id: `card-${pre}-${id}`, label: c.title || view.title || id, kind: 'file', icon: c.icon,
-        sublabel: c.sub, what: c.text, how: `From ${sourcePath(v.file)}.`, opensView: view.id });
-    }
+// what is wrong with a type's model against its entry, as sentences ([] when nothing): the entry's fields, the main view
+// (the root, first), the alternatives (views of the model under the main view), every view of the type or a child of
+// the main view
+export function problems(type, m = model(type), T = spec().types[type]) {
+  const out = [], say = s => out.push(`${type}: ${s}`);
+  if (!T) return [`${type}: no entry in tools/types.json`];
+  for (const k of ['title', 'intro', 'main']) if (typeof T[k] !== 'string' || !T[k].trim()) say(`its entry needs a ${k}`);
+  if (!Array.isArray(T.shows) || !T.shows.length) say('its entry needs a "shows" checklist');
+  else T.shows.forEach((s, i) => { if (typeof s !== 'string' || !s.trim()) say(`"shows" item ${i + 1} is empty`); });
+  if (!Array.isArray(T.alternatives)) say('its entry needs "alternatives" (an empty list when none)');
+  if (T.issues && !(typeof T.why === 'string' && T.why.length > 20)) say(`it allows ${T.issues} layout issues: say why`);
+  const views = new Map((m.views || []).map(v => [v.id, v]));
+  if (m.root !== T.main) say(`the model's root is ${m.root}, not the main view ${T.main}`);
+  if (!m.views || !m.views.length || m.views[0].id !== T.main) say(`the main view ${T.main} is not the model's first view`);
+  if (T.pending) return out;   // the old page model, an overview of variant cards, until the type's rework replaces it
+  const main = views.get(T.main);
+  if (!main) return [...out, `${type}: the model has no main view ${T.main}`];
+  if (groupOf(main) !== type) say(`the main view ${T.main} is a ${groupOf(main)} view, not a ${type} one`);
+  const alts = new Set();
+  for (const a of T.alternatives || []) {
+    if (!a || !a.view || !(typeof a.setting === 'string' && a.setting.trim())) { say('an alternative needs its view and its setting'); continue; }
+    if (alts.has(a.view)) say(`the alternative ${a.view} is listed twice`);
+    alts.add(a.view);
+    const v = views.get(a.view);
+    if (!v) { say(`the alternative ${a.view} is not a view of the model`); continue; }
+    if (a.view === T.main) say('the main view is not an alternative of itself');
   }
-  for (const c of cards) if (c.icon === undefined) delete c.icon;
-  const clash = [...nodes, ...edges, ...views].map(x => x.id).filter(id => typeof id === 'string').find((id, i, a) => a.indexOf(id) !== i || id === 'overview' || id.startsWith('card-'));
-  if (clash) stop(`${type}: the id ${clash} is used twice`);
-  const COLS = cards.length <= 4 ? 2 : 3;
-  const overview = { id: 'overview', parent: null, title: T.title, nodeIds: cards.map(c => c.id),
-    layout: Object.fromEntries(cards.map((c, i) => [c.id, [i % COLS, Math.floor(i / COLS)]])) };
-  const model = { $schema: '../../lib/umlimator.schema.json', schemaVersion: 2, title: T.title, root: 'overview',
-    ...(Object.keys(packs).length ? { iconPacks: packs } : {}),
-    nodes: [...cards, ...nodes], edges, views: [overview, ...views],
-    ...(stories.length ? { stories } : {}), ...(lenses.length ? { lenses } : {}), ...(rules.length ? { rules } : {}) };
-  return model;
+  // every other view is reachable from the main view: its parent chain reaches it
+  for (const v of m.views || []) if (v.id !== T.main) {
+    let p = v, seen = new Set();
+    while (p && p.parent && p.parent !== T.main && !seen.has(p.id)) { seen.add(p.id); p = views.get(p.parent); }
+    if (!p || p.parent !== T.main) say(`view ${v.id} does not hang under the main view ${T.main}`);
+  }
+  return out;
 }
-
-export const text = model => JSON.stringify(model, null, 1) + '\n';
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const { validate, check } = await import(new URL('lib/umlimator-all.js', ROOT).href);
   const args = process.argv.slice(2), html = !args.includes('--no-html'), names = args.filter(a => !a.startsWith('--'));
-  const all = Object.keys(spec().types), want = names.length ? names : all;
-  for (const t of typeIds()) if (!all.includes(t)) stop(`tools/types.json has no type ${t}`);
-  for (const t of all) if (!typeIds().includes(t)) stop(`tools/types.json's type ${t} is not the map or one of docs/types.md's`);
-  mkdirSync(new URL('examples/types/', ROOT), { recursive: true });
-  for (const t of want) {
-    const out = `examples/types/${t}.json`;
-    writeFileSync(new URL(out, ROOT), text(build(t)));
-    console.log(`${out} written`);
-    if (html) {
-      execFileSync('python3', ['umlimator.py', 'render', out, '--out', `examples/types/${t}.html`, '--no-check'], { cwd: fileURLToPath(ROOT), stdio: 'inherit' });
-    }
-  }
-  // a model left by a type tools/types.json no longer has
+  const S = spec(), all = typeIds(), want = names.length ? names : all;
+  let bad = 0;
+  for (const t of all) if (!S.types[t]) { console.error(`tools/types.json has no type ${t}`); bad++; }
+  for (const t of Object.keys(S.types)) if (!all.includes(t)) { console.error(`tools/types.json's type ${t} is not the map or one of docs/types.md's`); bad++; }
   for (const f of readdirSync(new URL('examples/types/', ROOT)).filter(f => f.endsWith('.json')))
-    if (!all.includes(f.slice(0, -5))) console.warn(`examples/types/${f}: no such type in tools/types.json; delete it`);
+    if (!all.includes(f.slice(0, -5))) { console.error(`examples/types/${f}: no such type; delete it`); bad++; }
+  for (const t of want) {
+    const m = model(t), T = S.types[t] || {};
+    const p = problems(t, m), errs = validate(m).filter(x => x.level === 'error');
+    const issues = (m.views || []).flatMap(v => check(m, v.id).map(i => i.message));
+    for (const x of p) console.error(x);
+    for (const e of errs) console.error(`${t}: ${e.path}: ${e.message}`);
+    const allowed = T.pending ? Infinity : T.issues || 0;
+    for (const i of issues) console[issues.length > allowed ? 'error' : 'log'](`${t}: ${i}`);
+    const ok = !p.length && !errs.length && issues.length <= allowed;
+    if (!ok) bad++;
+    console.log(`${modelPath(t)}: ${ok ? 'ok' : 'NOT ok'}, ${(m.views || []).length} views, ${issues.length} layout issues (allowed ${allowed})${T.pending ? ', pending' : ''}`);
+    if (html) execFileSync('python3', ['umlimator.py', 'render', modelPath(t), '--out', `examples/types/${t}.html`, '--no-check'], { cwd: fileURLToPath(ROOT), stdio: 'inherit' });
+  }
+  process.exit(bad ? 1 : 0);
 }
