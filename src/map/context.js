@@ -40,6 +40,8 @@ function phaseOf(texts) {
 
 // every model edge gets an id for events: its own, else "<from>-><to>#<n>" (n: its place among edges with the same ends)
 // by-id maps with no prototype, so an id named __proto__, constructor or toString is a key like any other (M3, audit 8)
+// what marks() put a change on, which it takes off again when a type's kept drawing is drawn for another model (a memo outlives its context)
+const MARKED = new WeakSet();
 const O = () => Object.create(null), byId = es => Object.assign(O(), Object.fromEntries(es));
 function edgeIds(list) {
   const seen = {};
@@ -497,10 +499,28 @@ function mapContext(model, opts = {}) {
   // with no route, no way round the cards for them, no warning)
   // a typed element's or line's change (diff's added, changed or removed; an author's planned), the view's own over the model's,
   // on what its type drew for it, which a type builds from the model and leaves out (audit 44: a removed class drawn as live)
-  const CHANGES = ['added', 'new', 'changed', 'modified', 'removed', 'planned'], chOf = x => x && typeof x.change === 'string' && CHANGES.includes(x.change.toLowerCase()) ? x.change : null;
-  function marks(g, vid) { const ev = O(); (D.edges || []).forEach(e => { if (e && typeof e.id === 'string' && chOf(e)) ev[e.id] ??= e.change; });
-    (g.nodes || []).forEach(n => { if (!n || typeof n.id !== 'string' || !N[n.id]) return; const c = chOf(nodeIn(n.id, vid)); if (c) n.change = c; else delete n.change; });
-    (g.edges || []).forEach(e => { const k = e && (e._id ?? e.id); if (typeof k !== 'string') return; if (ev[k]) e.change = ev[k]; else delete e.change; });
+  const CHANGES = ['added', 'new', 'changed', 'modified', 'removed', 'planned'], chOf = x => x && typeof x.change === 'string' && CHANGES.includes(x.change.toLowerCase()) ? x.change.toLowerCase() : null, CHG_IS = { added: ['added', 'new'], removed: ['removed'] };
+  // what the view owns itself, by id: its own lines (a sequence's or timing's messages, a class view's own association), its
+  // fragments and their operands; then every element's members (a region, a part, a port a type draws as its own shape or box).
+  // Each the first of its id (audit 45: a removed message, fragment, package or region drawn as live)
+  // A member of what came or went came or went with it (a removed composite state's regions)
+  const ownCh = (lists, into = O()) => { const s = lists.flatMap(l => (Array.isArray(l) ? l : []).map(x => [x, null])), seen = new Set();
+    for (let i = 0; i < s.length; i++) { const [x, up] = s[i]; if (!x || typeof x !== 'object' || seen.has(x)) continue; seen.add(x); const c = chOf(x) || up;
+      if (typeof x.id === 'string' && !(x.id in into)) into[x.id] = c; if (Array.isArray(x.members)) x.members.forEach(m => s.push([m, c === 'changed' || c === 'modified' || c === 'planned' ? null : c])); }
+    return into; };
+  let memberCh; const memberOf = id => (memberCh ||= ownCh([nodes]))[id] || null;
+  const put = (x, c) => { if (c) { x.change = c; MARKED.add(x); } else if (MARKED.has(x)) { delete x.change; MARKED.delete(x); } };
+  function marks(g, vid) { const v = V[vid] || {}, own = ownCh([v.edges, v.fragments]), ev = O();
+    (D.edges || []).forEach(e => { if (e && typeof e.id === 'string' && chOf(e)) ev[e.id] ??= chOf(e); });
+    const lineCh = k => (k in own ? own[k] : ev[k]) || null, boxCh = id => (N[id] ? chOf(nodeIn(id, vid)) : id in own ? own[id] : memberOf(id));
+    (g.nodes || []).forEach(n => { if (!n || typeof n.id !== 'string') return; if (N[n.id]) { const c = chOf(nodeIn(n.id, vid)); if (c) n.change = c; else delete n.change; } else put(n, boxCh(n.id)); });
+    // a box a type draws for an element (a package, a node, a boundary, a group, a composite state and its regions), as a shape
+    (g.families || []).forEach(f => { if (f && typeof f.id === 'string') put(f, boxCh(f.id)); });
+    // a line drawn for others (a C4 implied relationship): added or removed when all it stands for were, else changed when any was
+    const implied = l => { const cs = l.map(k => (typeof k === 'string' ? lineCh(k) : null)); if (!cs.some(Boolean)) return null;
+      const all = w => cs.every(c => c && CHG_IS[w].includes(c)); return all('added') ? 'added' : all('removed') ? 'removed' : 'changed'; };
+    (g.edges || []).forEach(e => { const k = e && (e._id ?? e.id); if (typeof k !== 'string') return; const c = lineCh(k) || (Array.isArray(e.implied) ? implied(e.implied) : null);
+      if (c) e.change = c; else delete e.change; });
     return g; }
   function buildGeo(vid, override, repair = (V[vid] || {}).repair !== false, quick = false) { // a view's repair: false turns port repair off
     const v = V[vid], ids = (v.nodeIds || []).filter(i => N[i]), T = ownLayout(vid);
