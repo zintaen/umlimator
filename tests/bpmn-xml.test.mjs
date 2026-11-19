@@ -15,6 +15,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { readBpmnXml as read, writeBpmnXml as write } from '../src/readers/bpmn-xml.js';
+import { validate } from '../lib/umlimator-all.js';
 
 const folder = process.env.UMLIMATOR_BPMN_MODDLE || process.cwd();
 let BpmnModdle = null, why = '';
@@ -100,7 +101,11 @@ function generated(seed) {
   const line = (type, from, to, props = {}) => { const e = { id: id(), type, from: from.id, to: to.id, ...(type.endsWith('Flow') ? named() : {}) };
     props = { ...props, ...doc() }; if (Object.keys(props).length) e.props = props; edges.push(e); };
   for (let c = Math.floor(rnd() * 12); c > 0 && flow.length; c--) line('bpmn.SequenceFlow', pick(flow), pick(flow));
-  for (let c = Math.floor(rnd() * 4); c > 0 && pools.length; c--) line('bpmn.MessageFlow', pick([...flow, ...pools]), pick([...flow, ...pools]));
+  // a none end or throw event a message flow leaves, or a none start event one arrives at, is a message one: the reader
+  // reads it so and says it (audit 44)
+  const msgEnd = (x, kinds) => { if (kinds.includes(x.type) && (x.props?.definition ?? 'none') === 'none') x.props = { ...x.props, definition: 'message' }; return x; };
+  for (let c = Math.floor(rnd() * 4); c > 0 && pools.length; c--) { const a = pick([...flow, ...pools]), b = pick([...flow, ...pools]);
+    line('bpmn.MessageFlow', msgEnd(a, ['bpmn.EndEvent', 'bpmn.IntermediateThrowEvent']), msgEnd(b, ['bpmn.StartEvent'])); }
   for (const n of notes) if (some(.7)) line('bpmn.Association', n, pick([...flow, ...data, ...notes]), some(.5) ? { direction: pick(['one', 'both']) } : {});
   const into = flow.filter(n => ['bpmn.Task', 'bpmn.SubProcess', 'bpmn.CallActivity', 'bpmn.EndEvent', 'bpmn.IntermediateThrowEvent'].includes(n.type));
   const outOf = flow.filter(n => ['bpmn.Task', 'bpmn.SubProcess', 'bpmn.CallActivity', 'bpmn.StartEvent', 'bpmn.IntermediateCatchEvent', 'bpmn.BoundaryEvent'].includes(n.type));
@@ -606,4 +611,39 @@ test('audit 43: a character reference above U+FFFF is read as its character, one
   assert.equal(doc.model.nodes[0].props.documentation, '&#x1F4E6;');
   for (const junk of ['<!--' + '&#x1F4E6;'.repeat(1000), '<![CDATA['.repeat(5000), '<?'.repeat(5000) + '&#1114112;', '&#' + '9'.repeat(5000) + ';'])
     assert.ok(Array.isArray((await read(junk, BpmnModdle())).report), junk.slice(0, 20));
+});
+
+// audit 44: bpmn-js lets a user draw a message flow into a none start event or out of a none end or throw event, and the
+// reader kept the event none, so validate() gave message-ends errors and the report said nothing: the event is read as a
+// message one and said; an event with another definition, or a message one, is left as it is
+test('audit 44: a none event a message flow leaves or arrives at is read as a message event and said', needs, async () => {
+  const D = (ev, flows) => '<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d"><bpmn:collaboration id="c">'
+    + '<bpmn:participant id="shop" name="Shop" processRef="ps"/><bpmn:participant id="cust" name="Customer" processRef="pc"/>' + flows + '</bpmn:collaboration>'
+    + '<bpmn:process id="pc"><bpmn:startEvent id="cs"/><bpmn:task id="send" name="Place order"/><bpmn:endEvent id="ce"/><bpmn:sequenceFlow id="c1" sourceRef="cs" targetRef="send"/><bpmn:sequenceFlow id="c2" sourceRef="send" targetRef="ce"/></bpmn:process>'
+    + `<bpmn:process id="ps">${ev}<bpmn:task id="t" name="Pack"/><bpmn:sequenceFlow id="s1" sourceRef="got" targetRef="t"/><bpmn:sequenceFlow id="s2" sourceRef="t" targetRef="sent"/></bpmn:process></bpmn:definitions>`;
+  const none = '<bpmn:startEvent id="got" name="Order received"/><bpmn:endEvent id="sent" name="Confirmed"/>';
+  const flows = '<bpmn:messageFlow id="m1" sourceRef="send" targetRef="got"/><bpmn:messageFlow id="m2" sourceRef="sent" targetRef="send"/>';
+  const errors = m => validate(m).filter(v => v.level === 'error').map(v => v.message);
+  const r = await read(D(none, flows), BpmnModdle());
+  assert.deepEqual(errors(r.model), []);
+  assert.deepEqual(r.report.filter(x => x.line), [{ line: 'got', status: 'weakened', message: 'a none start event the message flow m1 arrives at: read as a message start event' },
+    { line: 'sent', status: 'weakened', message: 'a none end event the message flow m2 leaves: read as a message end event' }]);
+  assert.deepEqual(['got', 'sent'].map(id => r.model.nodes.find(n => n.id === id).props), [{ definition: 'message' }, { definition: 'message' }]);
+  // an intermediate throw event, and a none start event two message flows arrive at, said once
+  const thr = await read(D('<bpmn:startEvent id="got"/><bpmn:intermediateThrowEvent id="sent"/>', flows + '<bpmn:messageFlow id="m3" sourceRef="ce" targetRef="got"/>').replace('<bpmn:endEvent id="ce"/>', '<bpmn:endEvent id="ce"><bpmn:messageEventDefinition/></bpmn:endEvent>'), BpmnModdle());
+  assert.deepEqual(thr.report.filter(x => x.line).map(x => `${x.line} ${x.message}`), ['got a none start event the message flow m1 arrives at: read as a message start event',
+    'sent a none intermediate throw event the message flow m2 leaves: read as a message intermediate throw event']);
+  assert.ok(!errors(thr.model).some(e => e.startsWith('message-ends')), errors(thr.model).join('; '));
+  // a message event, or one with no message flow, is read as written and nothing said; a timer start a flow arrives at
+  // is left for validate() to name
+  const msg = await read(D('<bpmn:startEvent id="got"><bpmn:messageEventDefinition/></bpmn:startEvent><bpmn:endEvent id="sent"><bpmn:messageEventDefinition/></bpmn:endEvent>', flows), BpmnModdle());
+  assert.deepEqual(msg.report.filter(x => x.line), []);
+  assert.deepEqual((await read(D(none, ''), BpmnModdle())).model.nodes.filter(n => n.props && n.props.definition === 'message'), []);
+  const timer = await read(D('<bpmn:startEvent id="got"><bpmn:timerEventDefinition/></bpmn:startEvent><bpmn:endEvent id="sent"/>', '<bpmn:messageFlow id="m1" sourceRef="send" targetRef="got"/>'), BpmnModdle());
+  assert.equal(timer.model.nodes.find(n => n.id === 'got').props.definition, 'timer');
+  assert.deepEqual(errors(timer.model).map(e => e.split(':')[0]), ['message-ends']);
+  // what it reads writes and reads back as it is, with nothing more said
+  const back = await read((await write(r.model, r.model.views[0].id, null, BpmnModdle())).xml, BpmnModdle());
+  assert.deepEqual(back.report.filter(x => x.line), []);
+  assert.deepEqual(canon(back.model), canon(r.model));
 });
