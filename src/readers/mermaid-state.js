@@ -1,5 +1,5 @@
 import { unreadable, jsonText } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort } from './mermaid-front.js';
 import { parseTransition, printTransition, trScan } from '../uml/transition.js';
 /* ---------- Mermaid stateDiagram: a reader and a writer (notes/stage-4.md §13, S12, S22; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's state diagram page (docs/syntax/stateDiagram.md, read 13 Nov 2026) and its lexer, as
@@ -57,9 +57,9 @@ function mtFree(used, next, base) {
 }
 
 // text: Mermaid's line breaks and entity codes (#quot; #lt; #59; ...); a named one Mermaid knows and this does not stays
-function mtDecode(s) {
-  return s.replace(/<br\s?\/?>|\\n/gi, '\n').replace(/#(quot|lt|gt|amp|\d{1,6});/g, (_, e) =>
-    ({ quot: '"', lt: '<', gt: '>', amp: '&' })[e] ?? String.fromCodePoint(Math.min(Number(e), 0x10ffff)));
+function mtDecode(s, bad) {
+  return s.replace(/<br\s?\/?>|\\n/gi, '\n').replace(/#(quot|lt|gt|amp|\d{1,6});/g, (all, e) =>
+    ({ quot: '"', lt: '<', gt: '>', amp: '&' })[e] ?? mermaidChar(Number(e), all, bad));
 }
 
 // trigger [guard] / effect is src/uml/transition.js's (notes/stage-4.md §7.1); its parts here, the absent ones left out
@@ -185,7 +185,7 @@ function readMermaidState(text) {
       else if (c.startsWith('region:')) {
         const r = after('region:'), sp = r.search(/\s/), part = cur();
         if (part === top || stack.at(-1).flat) say(no, 'skipped', '%% region: outside a composite state: not read');
-        else part.hint = { id: sp < 0 ? r : r.slice(0, sp), name: sp < 0 ? undefined : mtDecode(r.slice(sp).trim()) };
+        else part.hint = { id: sp < 0 ? r : r.slice(0, sp), name: sp < 0 ? undefined : mtDecode(r.slice(sp).trim(), code => say(no, 'approximated', mermaidBadChar(code))) };
       }
       if (s.startsWith('%%')) continue;
     }
@@ -211,7 +211,7 @@ function readMermaidState(text) {
       if (rest.startsWith('"')) {
         const q = rest.indexOf('"', 1), as = q < 0 ? null : /^\s*as\s+/i.exec(rest.slice(q + 1));
         if (!as) { say(no, 'skipped', `state ${rest}: a "description" with no as <name>`); hint = {}; continue; }
-        label = mtDecode(rest.slice(1, q)); k = q + 1 + as[0].length;
+        label = mtDecode(rest.slice(1, q), code => say(no, 'approximated', mermaidBadChar(code))); k = q + 1 + as[0].length;
       }
       let e = k;
       while (e < rest.length && !/[\s{]/.test(rest[e])) e++;
@@ -240,7 +240,7 @@ function readMermaidState(text) {
       else if (d === 'LR') direction = 'right';
       else if (d === 'BT' || d === 'RL') { direction = d === 'BT' ? 'down' : 'right'; say(no, 'approximated', `direction ${d} is drawn ${direction === 'down' ? 'top to bottom' : 'left to right'}`); }
       else say(no, 'skipped', `direction ${rest}: not a direction`);
-    } else if (word === 'title') title = mtDecode(rest.replace(/^:/, '').trim());
+    } else if (word === 'title') title = mtDecode(rest.replace(/^:/, '').trim(), code => say(no, 'approximated', mermaidBadChar(code)));
     else if (['classdef', 'class', 'style'].includes(word)) say(no, 'skipped', `${word === 'classdef' ? 'classDef' : word} ${rest}: styles are not read`);
     else if (word === 'hide' || word === 'scale' || word === 'click') say(no, 'skipped', `${s}: not read`);
     else if (word === 'acctitle' || word === 'accdescr') {
@@ -255,11 +255,12 @@ function readMermaidState(text) {
       const a = nameOf(left, no, true), b = nameOf(target, no, true);
       if (!a || !b) { say(no, 'skipped', `"${mermaidClip(s)}" is not understood`); hint = {}; continue; }
       const from = a === '[*]' ? star(true, no) : mention(a, no), to = b === '[*]' ? star(false, no) : mention(b, no);
-      items.push({ kind: 'trans', no, from, to, what: `${a} --> ${b}`, text: c < 0 ? '' : mtDecode(after.slice(c + 1).trim()), hint: hint.id });
+      items.push({ kind: 'trans', no, from, to, what: `${a} --> ${b}`, text: c < 0 ? '' : mtDecode(after.slice(c + 1).trim(), code => say(no, 'approximated', mermaidBadChar(code))), hint: hint.id });
     } else if (colon > 0) { // s1 : text
-      const name = nameOf(s.slice(0, colon), no), rawText = s.slice(colon + 1).trim(), t = mtDecode(rawText);
+      const name = nameOf(s.slice(0, colon), no), codes = [], rawText = s.slice(colon + 1).trim(), t = mtDecode(rawText, code => codes.push(code));
       if (!name) { say(no, 'skipped', `"${mermaidClip(s)}" is not understood`); hint = {}; continue; }
       const rec = mention(name, no), line = mtLine(t);
+      if (line.activity || line.internal) for (const code of codes) say(no, 'approximated', mermaidBadChar(code)); // a description's are said when its note is read
       if (line.activity) {
         if (rec.acts.some(a => a.activity === line.activity)) say(no, 'approximated', `${name} : ${line.activity}: a second ${line.activity} replaces the first`);
         rec.acts.push({ ...line, no });
@@ -345,7 +346,7 @@ function readMermaidState(text) {
       if (!isState(x.rec)) { say(x.no, 'approximated', `${x.rec.name} : ${mtPrint(x.props) ?? 'an internal transition'}: ${x.rec.name} is ${what(x.rec)}, which has no internal transition: not read`); continue; }
       (o.members ||= []).push({ id: take(x.hint, `${o.id}.t${++x.rec.internal}`, x.rec.no, `an internal transition of ${o.id}`), type: 'uml.InternalTransition', props: x.props });
     } else {
-      const label = mtDecode(x.text.join('\n')), c = { id: take(x.hint, `note-${++notes}`, x.no, 'a note'), type: 'uml.Comment', ...(label ? { label } : {}), ...(x.desc ? { ext: { mermaid: { description: true } } } : {}) };
+      const label = mtDecode(x.text.join('\n'), code => say(x.no, 'approximated', mermaidBadChar(code))), c = { id: take(x.hint, `note-${++notes}`, x.no, 'a note'), type: 'uml.Comment', ...(label ? { label } : {}), ...(x.desc ? { ext: { mermaid: { description: true } } } : {}) };
       nodes.push(c);
       edges.push({ id: take(x.link, `${c.id}-link`, x.no, "a note's line"), type: 'uml.CommentLink', from: c.id, to: x.target.node.id });
     }

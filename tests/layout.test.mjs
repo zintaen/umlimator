@@ -709,6 +709,16 @@ test('audit 41: a card with no pin in a pinned view goes by its box\'s pinned ca
         const m = structuredClone(base); delete m.views.find(x => x.id === v.id).layout[k]; warns.length = 0;
         const g = U.layout(m, v.id); assert.deepEqual(foreignUnder(m, v.id, g), [], `${f} ${v.id} with no pin for ${k}`);
         assert.ok(!warns.some(w => /something inside it/.test(w)), `${f} ${v.id} with no pin for ${k}: ${warns}`); } }
+    // states.json's three pinned, boxed views (machines, story, tour) left in step 4 of the one-model plan; dock-feed, the
+    // boxed map view (two nested boxes) that came with it, has no pins, so it is pinned here from its own auto layout and
+    // each of its pins taken out in turn the same way
+    { const base = read('../examples/bike-share.json'), m0 = structuredClone(base), v0 = m0.views.find(v => v.id === 'dock-feed');
+      v0.layout = Object.fromEntries(U.layout(m0, 'dock-feed').nodes.filter(n => v0.nodeIds.includes(n.id)).map(n => [n.id, [n.col, n.row]]));
+      assert.ok((U.layout(m0, 'dock-feed').families || []).length >= 2 && Object.keys(v0.layout).length >= 5, JSON.stringify(v0.layout));
+      for (const k of Object.keys(v0.layout)) {
+        const m = structuredClone(m0); delete m.views.find(x => x.id === 'dock-feed').layout[k]; warns.length = 0;
+        const g = U.layout(m, 'dock-feed'); assert.deepEqual(foreignUnder(m, 'dock-feed', g), [], `dock-feed with no pin for ${k}`);
+        assert.ok(!warns.some(w => /something inside it/.test(w)), `dock-feed with no pin for ${k}: ${warns}`); } }
     // bike-share's system view with pricing unpinned: the line from monitoring to box rides is drawn
     const bike = read('../examples/bike-share.json'); delete bike.views.find(v => v.id === 'system').layout.pricing;
     assert.ok(U.layout(bike, 'system').edges.some(e => (e.all || [e]).some(x => x._id === 's16')));

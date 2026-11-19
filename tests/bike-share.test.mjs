@@ -168,9 +168,10 @@ test('every view lays out; check() finds only the crossings of the typed views t
 });
 // rebalance's 2 and the C4, data flow, cloud and BPMN views' as their Bookshop files' (repair-process 5, 4 in the Bookshop's,
 // and hire-overview 1, none in the Bookshop's: the bike share's labels are other widths); counted in Node, where the CI loop's
-// browser count may differ by a crossing or two (its ceiling is in .github/workflows/check.yml)
-const PINNED_CROSS = ['view hire-overview', ...Array(2).fill('view rebalance'), ...Array(3).fill('view c4-containers'), ...Array(2).fill('view c4-components'),
-  ...Array(2).fill('view c4-end-ride'), 'view c4-deployment', 'view dfd-0', ...Array(5).fill('view repair-process'), 'view on-gcp', ...Array(2).fill('view on-azure'),
+// browser count may differ by a crossing or two (its ceiling is in .github/workflows/check.yml). Step 4's review took the
+// worker's line to the database out of the C4 views, as out of bike-share.dsl: c4-containers kept 1 of its 3, and
+// c4-end-ride's 2 and c4-deployment's 1 went with it
+const PINNED_CROSS = ['view hire-overview', ...Array(2).fill('view rebalance'), 'view c4-containers', ...Array(2).fill('view c4-components'), 'view dfd-0', ...Array(5).fill('view repair-process'), 'view on-gcp', ...Array(2).fill('view on-azure'),
   ...Array(2).fill('view on-aws')];
 
 test('every drill-down opens a view of the model; from the map, the C4 context, the mindmap and the rider shop a reader reaches every view', () => {

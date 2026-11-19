@@ -255,7 +255,10 @@ export function validate(model) {
   // "planned" was said and not drawn). In any case, as the renderer reads it; a card's and a member's, a line's, each its own words
   const CARD_CH = ['added', 'new', 'modified', 'changed', 'removed', 'planned'], LINE_CH = ['added', 'new', 'modified', 'changed', 'removed'];
   const chIs = (x, at, ok, line) => { if (!x || typeof x !== 'object' || x.change == null) return;
-    if (!(typeof x.change === 'string' && ok.includes(x.change.toLowerCase()))) warn(at + '.change', `change ${jsonText(x.change)} is not ${line ? 'added, changed or removed' : 'added, changed, removed or planned'}: drawn unmarked`); };
+    if (!(typeof x.change === 'string' && ok.includes(x.change.toLowerCase()))) warn(at + '.change', `change ${jsonText(x.change)} is not ${line ? 'added, changed or removed' : 'added, changed, removed or planned'}: drawn unmarked`);
+    // one rule for its letter case (audit 47): written in lower case, as the schema and lib/umlimator.d.ts list it; the
+    // renderer reads another case as its lower-case word, and this says so, so a schema check and validate() agree
+    else if (x.change !== x.change.toLowerCase()) warn(at + '.change', `change ${jsonText(x.change)} is drawn as ${jsonText(x.change.toLowerCase())}: write it in lower case, as the schema lists it`); };
   const deep = (x, at) => { const s = [[x, at]], seen = new Set(); for (let k = 0; k < s.length; k++) { const [y, p] = s[k]; if (!y || typeof y !== 'object' || seen.has(y)) continue; seen.add(y); chIs(y, p, CARD_CH);
     arr(y.members).forEach((z, j) => s.push([z, `${p}.members[${j}]`])); } };
   arr(m.nodes).forEach((n, i) => deep(n, `nodes[${i}]`)); arr(m.edges).forEach((e, i) => chIs(e, `edges[${i}]`, LINE_CH, true));

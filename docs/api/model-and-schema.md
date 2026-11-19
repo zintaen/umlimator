@@ -143,7 +143,7 @@ interface MapEdge {
 | `weight` | How much the line stands for, drawn as its width: 1 (default), 2 or 3. |
 | `step` | Its place in the order things happen, in a circle on the line: `2`, `2.1`, or up to 3 characters such as `"2a"`. |
 | `style` | A style that wins over the kind's colour: `emphasis`, `added`, `dashed`, `async`, `security`, `removed` or `faded`. |
-| `change` | A change mark, as [`diff()`](./apply-and-commands.md#diff) sets it. |
+| `change` | A change mark, as [`diff()`](./apply-and-commands.md#diff) sets it, written in lower case. The renderer draws another letter case as its lower-case word, and `validate()` warns on it, as a schema check refuses it. |
 | `drift` | What [`drift()`](./apply-and-commands.md#drift) found: `undrawn` or `idle`. |
 | `latency`, `cost` | Budgets, in ms and in any unit, that [`critical()`](./apply-and-commands.md#critical) sums along a path. Not drawn. |
 | `edited` | Draws a marker at the middle of the line. |

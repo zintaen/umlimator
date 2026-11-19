@@ -11,7 +11,7 @@ import { snKindName } from './structure.js';
 import { frame } from './frame.js';
 import { FLOW_RULES, flowOf, flowProblems, flowLabel, flowRename, flowStereo, viewFlows } from './flow.js';
 import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
-import { LINE_SAYS, commentConnect } from './class.js'; // the "Line" key's words, for a line of another kind (audit 28)
+import { LINE_SAYS, commentConnect, commentLinkProblems } from './class.js'; // the "Line" key's words, for a line of another kind (audit 28)
 
 /* ---------- the activity diagram, uml.activity (work package 4.5, notes/stage-4.md §9) ----------
    Control nodes, actions and flows from src/uml/flow.js; the send and accept signals, the object node, the data store and
@@ -219,6 +219,7 @@ const ACT_RULES = {
   'partition-owner': 'a partition\'s owner is a partition or none; a node\'s owner is a partition or none',
   'in-lane': 'on a view that shows a partition, every node is in one',
   'calls-view': 'a call behaviour action opens an activity view of the model',
+  'comment-link': 'a comment link the view draws has a comment at one end, at least',
 };
 function actProblems(model, view) {
   const I = actIndex(model, view), out = [...flowProblems(model, view, AC_NODES)], seen = id => !view || I.shown.has(id);
@@ -240,6 +241,10 @@ function actProblems(model, view) {
     if (!v || v.diagram !== 'uml.activity') say('calls-view', I.path.get(id), [id], `${q(id)} ${x.opensView == null ? 'opens no view' : `opens ${jsonText(x.opensView)}, which is ${v ? 'not an activity view' : 'no view of the model'}`}`); });
   if (view && I.parts.length) { const vi = AC_ARR(model.views).indexOf(view);
     I.drawn.forEach(id => { if (I.N.get(id).type !== 'uml.Comment' && I.laneOf(id) == null) say('in-lane', `views[${vi}].nodeIds`, [id, view.id], `${q(id)} is in no partition view ${jsonText(view.id)} shows: it is drawn after the lanes`); }); }
+  // a comment link the view draws with no comment at either end: connect refuses one (audit 45), and a hand-written one is said (audit 47)
+  if (view) { const vi = AC_ARR(model.views).indexOf(view), es = AC_ARR(model.edges), ves = AC_ARR(view.edges);
+    const at = e => (es.includes(e) ? `edges[${es.indexOf(e)}]` : ves.includes(e) ? `views[${vi}].edges[${ves.indexOf(e)}]` : I.path.get(e.id) || 'edges');
+    out.push(...commentLinkProblems(I.lines.map(e => [e, at(e)]), id => (I.N.get(id) || {}).type, id => JSON.stringify(I.N.has(id) && AC_HAS(I.N.get(id).label) ? String(I.N.get(id).label) : String(id)))); }
   return out;
 }
 

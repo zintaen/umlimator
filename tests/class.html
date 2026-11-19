@@ -173,6 +173,9 @@ try {
   h.select({ type: 'node', id: 'order', view: 'domain' });
   f('stereotypes').value = 'entity, root'; f('stereotypes').dispatchEvent(new Event('change', { bubbles: true }));
   check('stereotypes are a list, edited as text', same(ed[ed.length - 1].commands, [{ op: 'set', id: 'order', path: 'props.stereotypes', value: ['entity', 'root'] }]), ed[ed.length - 1]);
+  // audit 47: typed back as the card draws them, «entity» or <<root>>: stored by name, without the marks
+  f('stereotypes').value = '«entity», <<root>>, «»'; f('stereotypes').dispatchEvent(new Event('change', { bubbles: true }));
+  check('a stereotype typed in its guillemets is stored by its name', same(ed[ed.length - 1].commands, [{ op: 'set', id: 'order', path: 'props.stereotypes', value: ['entity', 'root', '«»'] }]), ed[ed.length - 1]);
   // a comment holds no members: no Members section; a refused new member is marked invalid until one is added or Escape
   h.select({ type: 'node', id: 'note-total', view: 'domain' });
   check('a comment\'s properties have no Members section', !pick('.um-editor [data-new]') && !all('.um-editor .um-props h3').some(x => x.textContent === 'Members'));

@@ -1,5 +1,5 @@
 import { unreadable } from '../core/model.js';
-import { mermaidFrontTitle, mermaidCut, mermaidClip, mermaidSay, mermaidSort, mermaidText } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidCut, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText } from './mermaid-front.js';
 /* ---------- Mermaid mindmap: a reader and a writer (notes/milestone-4a.md §8, 4a.5; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's mindmap page (docs/syntax/mindmap.md) and its lexer and database
    (diagrams/mindmap/parser/mindmap.jison, mindmapDb.ts), read on Mermaid's repository 14 Nov 2026. Internal: the CLI
@@ -42,10 +42,11 @@ function mmrFree(used, next, base) { // the first of base, base-2, ... not in us
   return id;
 }
 
-// text as Mermaid shows it: <br> a line break, its entity codes read; one it does not know kept as written, reported
-function mmrText(s, bad) {
+// text as Mermaid shows it: <br> a line break, its entity codes read; one it does not know kept as written, reported;
+// one naming a character XML cannot hold read as U+FFFD, reported through badChar (audit 47)
+function mmrText(s, bad, badChar) {
   return s.replace(/<br\s*\/?>/gi, '\n').replace(/#([a-z]+|\d+);/gi, (all, e) => {
-    const n = /^\d/.test(e) ? Number(e) : -1, c = n >= 0 ? (n <= 0x10ffff ? String.fromCodePoint(n) : undefined) : MMR_ENT.get(e.toLowerCase());
+    const n = /^\d/.test(e) ? Number(e) : -1, c = n >= 0 ? (n <= 0x10ffff ? mermaidChar(n, all, badChar) : undefined) : MMR_ENT.get(e.toLowerCase());
     if (c === undefined) bad(all);
     return c ?? all;
   });
@@ -165,7 +166,7 @@ function mmrRead(text, report, say, empty) {
     if (t.unclosed) say(no, 'approximated', `${mmrClip(t.text)}: ${t.unclosed}, read as text`);
     if (t.after) say(no, 'skipped', `${mmrClip(t.after)}: text after the topic is not read`);
     const bad = e => say(no, 'skipped', `${e}: an entity Mermaid does not know, kept as written`);
-    const rec = { no, label: mmrText(t.text, bad), name: t.id || null };
+    const rec = { no, label: mmrText(t.text, bad, code => say(no, 'approximated', mermaidBadChar(code))), name: t.id || null };
     if (t.openQuote) say(no, 'approximated', `${mmrClip(t.text)}: a quote is not closed, kept as written`);
     if (t.shape) { (rec.mer = {}).shape = t.shape; first(t.shape, no, `${MMR_OPEN.get(t.shape)[3]} ${MMR_OPEN.get(t.shape)[0]} ${MMR_OPEN.get(t.shape)[1]} is kept, drawn as a rounded box`); }
     if (t.md) { (rec.mer ||= {}).markdown = true; first('markdown', no, 'a Markdown string is kept, drawn as plain text'); }

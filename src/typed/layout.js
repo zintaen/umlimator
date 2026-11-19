@@ -343,4 +343,14 @@ function typedLines(model, keep) {
   arr(model && model.views).forEach((v, i) => { if (v && typeof v === 'object' && keep(v)) arr(v.edges).forEach((e, k) => { if (e && typeof e === 'object' && !seen.has(e)) { seen.add(e); out.push([e, `views[${i}].edges[${k}]`]); } }); });
   return out;
 }
-export { VIEW_GEO, VIEW_PAINT, geometryKey, layoutTyped, typedLines };
+// the lines a type derived in the model before a diff and no longer draws (audit 47: a C4 implied line, a requirement's
+// containment, from an element that moved to another owner): view.diffMarks.gone, as diff() writes it, read as hostile. Each
+// between two shapes the view draws (ids: the drawn ids), its geometry id one no element takes ('->' in it, model.md rule 5)
+// and no line of the view's own (taken): { id, from, to, label }, the label text only
+function goneLines(view, ids, taken) {
+  const d = view && typeof view.diffMarks === 'object' && view.diffMarks ? view.diffMarks.gone : null, seen = new Set();
+  return (Array.isArray(d) ? d : []).filter(x => x && typeof x === 'object' && typeof x.id === 'string' && x.id.includes('->') && !taken.has(x.id) && !seen.has(x.id)
+    && typeof x.from === 'string' && typeof x.to === 'string' && x.from !== x.to && ids.has(x.from) && ids.has(x.to) && seen.add(x.id))
+    .map(x => ({ id: x.id, from: x.from, to: x.to, ...(typeof x.label === 'string' && x.label ? { label: x.label } : {}) }));
+}
+export { VIEW_GEO, VIEW_PAINT, geometryKey, goneLines, layoutTyped, typedLines };

@@ -148,3 +148,27 @@ test('the models that left the gallery are linked from nowhere in the gallery, t
   assert.deepEqual(pages.filter(p => words.test(read(p))), []);
   assert.doesNotMatch(html, /(?<![\w-])(?:bike-share|states\.json)/);
 });
+
+// moved from tests/atlas.test.mjs when step 4 of the one-model plan deleted it: the examples' README links every example
+// model, its tables are tables, and the gallery's and the model guide's claims about the examples hold
+test('the examples\' README links every example model, and the gallery and the model guide say only what the examples draw', () => {
+  const dir = new URL('examples/', root), readme = read('examples/README.md');
+  const names = readdirSync(dir).filter(f => f.endsWith('.json') && !f.startsWith('.')).map(f => f.slice(0, -5));
+  assert.deepEqual(names.filter(n => !readme.includes(`(${n}.json)`)), []);
+  // a table's rows run on: a row after a blank line starts a table, so a delimiter row follows it (audit 3)
+  assert.doesNotMatch(readme, /\n\n\|[^\n]*\n(?!\|[-| :]+\n)/);
+  assert.doesNotMatch(html, /production's deployment, the components/);
+  // the state machine's card claims only the pseudostates order-states.json draws (audit 12)
+  const kinds = new Set(json('examples/order-states.json').nodes.filter(n => n.type === 'uml.Pseudostate').map(n => n.props.kind));
+  assert.doesNotMatch(html, /every pseudostate/); assert.ok(!kinds.has('junction') && !kinds.has('deepHistory') && kinds.has('shallowHistory'), [...kinds].join());
+  // the C4 card counts the views bookshop-c4.json holds; the model guide's milestone 4a table (the README's until the
+  // manual moved to docs/guide/) names each type, kind and diagram its four examples use (audit 13)
+  const ex = n => json(`examples/${n}.json`), words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'];
+  assert.match(html, new RegExp(`Typed C4 in ${words[ex('bookshop-c4').views.length]} views`));
+  const guide = read('docs/guide/model.md'), m4a = guide.slice(guide.indexOf('The mindmap and the three cloud'), guide.indexOf('A BPMN diagram'));
+  for (const n of ['bookshop-opening-plan', 'bookshop-gcp', 'bookshop-azure', 'bookshop-aws']) {
+    const m = ex(n), said = [...m.nodes, ...m.edges].flatMap(x => [x.type, x.props && (x.props.groupType ?? x.props.zoneType)]).filter(Boolean).map(t => '`' + t + '`');
+    assert.ok(m4a.includes(n + '.json'), n);
+    for (const t of new Set([...said, ...m.views.map(v => `"${v.diagram}"`)])) assert.ok(m4a.includes(t), `${n}: ${t}`);
+  }
+});

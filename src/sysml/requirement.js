@@ -2,7 +2,7 @@ import { ownNodes, registerDiagramType } from '../core/registry.js';
 import { brLines, fit, textW } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { labelW, rowsFor, untangle } from '../layout/layered.js';
-import { layoutTyped } from '../typed/layout.js';
+import { goneLines, layoutTyped } from '../typed/layout.js';
 import { commentConnect, drawnLines, legendItem, lineRename } from '../uml/class.js'; // and SHAPE.note, a comment's look
 import { holdsLine, ownersOn, placeTabs } from '../uml/owners.js';
 import { SYS_FRAME, SYS_FRAME_EMPTY, SYS_FRAME_RENAME, SYS_HEAD, SYS_TABLE } from './sysml.js';
@@ -149,6 +149,10 @@ function rqGeo({ model, view, pos: pins, memo }) {
     return { ...d, ...SHAPE[d.shape].size(d) }; });
   const edges = [...lines.map(({ e, from, to }) => ({ id: e.id, _id: e.id, type: e.type, from, to, label: rqLabel(e) || undefined, end: RQ_LOOK[e.type === RQ_LINK ? 'link' : 'open'], aria: rqLineName(I, e), ...(RQ_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) })),
     ...owned.map(id => { const o = I.at.get(id).parent; return { id: rqCid(o, id), _id: rqCid(o, id), type: 'containment', from: id, to: o, end: RQ_LOOK.contain, aria: `Containment of ${rqKind(I, id)} in ${rqKind(I, o)}` }; })];
+  // a containment the model before a diff drew and this one does not (audit 47: a requirement moved to another owner): drawn
+  // back, as diff() says in view.diffMarks, removed, from the child to its old owner, when the view still draws both
+  edges.push(...goneLines(view, shown, new Set(edges.map(e => e.id))).map(x => ({ id: x.id, _id: x.id, type: 'containment', from: x.from, to: x.to, end: RQ_LOOK.contain,
+    aria: `Containment of ${rqKind(I, x.from)} in ${rqKind(I, x.to)}` })));
   // ranked: a relationship's supplier, a containment's owner and what a comment is about first; a pin wins, and a card on its cell goes down a row
   const at = rqRank(frame, boxes, [...lines.map(({ e, from, to }) => [to, from]), ...owned.map(id => [I.at.get(id).parent, id])]);
   const pinOf = id => (RQ_OBJ(pins) && Object.hasOwn(pins, id) && Array.isArray(pins[id]) && pins[id].length === 2 && pins[id].every(Number.isFinite) ? pins[id] : null), taken = [];

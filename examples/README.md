@@ -98,7 +98,7 @@ the real icons with the vendors' legal lines.
 
 ## Why the Umlimator Atlas is not a test model
 
-`bike-share.json` is the model the tests and the benchmark read; [`umlimator-atlas.json`](umlimator-atlas.json), umlimator drawn by itself, is the gallery's Atlas and stays out of every test, the bench and every pin. It has no honest trace, latency or cost data, no hardware for SysML and no business process for BPMN, and its content changes with the code, so a pinned picture of it would describe last month's umlimator. CI renders it, checks its layout and validates it, with nothing about its content pinned.
+`bike-share.json` is the model the tests and the benchmark read; [`umlimator-atlas.json`](umlimator-atlas.json), umlimator drawn by itself, is the gallery's Atlas and stays out of the bench and every layout, hash and count pin; only the gallery and doc-name tests read it, to check that its links and export names exist. It has no honest trace, latency or cost data, no hardware for SysML and no business process for BPMN, and its content changes with the code, so a pinned picture of it would describe last month's umlimator. CI renders it, checks its layout and validates it, with nothing about its content pinned.
 
 ## Host pages
 
@@ -149,6 +149,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | Steps on the lines of any view (`step`) | bike-share `checkout` (with a tour) |
 | Swimlanes (`lanes`) | bike-share `demand` |
 | Cards that only one view has (a view's `nodes`), and per-view changes (`nodeOverrides`) | bike-share `help` |
+| A to B and B to A as two lines (`keepPairs`) | bike-share `fleet` (today's plan and the vans' routes) |
 | `render()`, its events, `update()`, `setView()`, `focus()`, `toSVG()`, `toPNG()`, themes | `embed.html` |
 | Deeper tints (`--um-tint`) | `embed.html`, its host's palette |
 | The standalone page's pieces in `render()`: views list, details panel, legend, hint line (`nav`, `details`, `legend`, `hints`) | `embed.html` |
@@ -204,7 +205,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | Structurizr groups as boxes, nested as the source nests them | bike-share-c4 `context` and `containers` (Field crews) |
 | An AI assistant reading a map and driving its page (an MCP server: `umlimator.py mcp`) | any model: `python3 umlimator.py mcp examples/bike-share.json`, as `tests/cli.py` runs it |
 
-Not shown: `repair: false`, a switch for debugging the router; and, since the bike share model replaced the smaller maps, chips (`verbs`, `subAndChips`), skill-map kinds and kinds read from labels (`kindsFromLabels`), a process in steps (`render: "process"`, `stepIds`), the view list's order (`browserOrder`) and A to B and B to A as two lines (`keepPairs`). [The model guide](../docs/guide/model.md) describes each.
+Not shown: `repair: false`, a switch for debugging the router; and, since the bike share model replaced the smaller maps, chips (`verbs`, `subAndChips`), skill-map kinds and kinds read from labels (`kindsFromLabels`), a process in steps (`render: "process"`, `stepIds`) and the view list's order (`browserOrder`). [The model guide](../docs/guide/model.md) describes each.
 
 ## Diagram types to come
 

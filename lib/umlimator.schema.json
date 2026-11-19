@@ -1852,6 +1852,48 @@
       },
       true
      ]
+    },
+    "diffMarks": {
+     "description": "Written by diff() on a typed view (0.44.0): what the view draws that is no element or line of its own, from the view laid out in the model before and after. marks, by shape id: a port a retyped part gained (added) or lost (removed), a containment line that is new (added), none for a shape drawn from what it reads, or an implied line, that the change leaves as it was. gone: a line the type derived in the model before (a C4 implied line, a requirement's containment) from an owner an element left, drawn back removed.",
+     "type": "object",
+     "properties": {
+      "marks": {
+       "type": "object",
+       "additionalProperties": {
+        "enum": [
+         "added",
+         "removed",
+         "changed",
+         "none"
+        ]
+       }
+      },
+      "gone": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "id": {
+          "type": "string"
+         },
+         "from": {
+          "type": "string"
+         },
+         "to": {
+          "type": "string"
+         },
+         "label": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "id",
+         "from",
+         "to"
+        ]
+       }
+      }
+     }
     }
    }
   },

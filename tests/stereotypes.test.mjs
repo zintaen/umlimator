@@ -63,6 +63,7 @@ const BREAKS = {
   'tag-defined': m => { by(m, 'order').props.tags.entity.tabel = 'x'; return ['order', 'entity']; },
   'tag-value': m => { by(m, 'order').members[0].props.tags.column.indexed = 'yes'; return ['order.placedAt', 'column.indexed']; },
   'tag-required': m => { delete by(m, 'order').props.tags.entity.table; return ['order', 'entity.table']; },
+  'stereotype-text': m => { by(m, 'book').props.stereotypes = ['«entity»']; return ['book']; }, // audit 47
 };
 
 test('each rule of §5.3 to §5.6 passes on a model that keeps it and fails on one that breaks it, naming its rule and its elements, at its level', () => {

@@ -60,7 +60,7 @@ test('the definition: uml.composite-structure with its palette, three lines, §1
   for (const k of ['layout', 'validate', 'describe', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'field', 'member', 'moveTo', 'remove', 'rename']);
   assert.deepEqual(['uml.Class', 'uml.Component', 'uml.Collaboration', 'uml.Interface'].map(t => T.member.holds({ type: t })), [true, true, true, false]);
-  assert.deepEqual(Object.keys(T.rules), ['subject-shown', 'part-type', 'part-multiplicity', 'connector-part', 'connector-scope', 'connector-drawn', 'binding-ends', 'binding-role', 'collaboration-named', 'own-boxes', 'port-owner', 'manifest-ends']);
+  assert.deepEqual(Object.keys(T.rules), ['subject-shown', 'part-type', 'part-multiplicity', 'connector-part', 'connector-scope', 'connector-drawn', 'binding-ends', 'binding-role', 'collaboration-named', 'present-values', 'own-boxes', 'port-owner', 'manifest-ends']);
 });
 
 test('the shapes: a part (dashed when shared), a collaboration use (a dashed ellipse), an open collaboration\'s frame', () => {
@@ -200,12 +200,13 @@ const RULE_CASES = {
   'binding-ends': m => { m.edges.push({ id: 'bad-binding', type: 'uml.RoleBinding', from: 'publish-subscribe.publisher', to: 'order-events', label: 'publisher' }); },
   'binding-role': m => { m.edges.find(e => e.id === 'checkout-is-publisher').label = 'nobody'; },
   'collaboration-named': m => { node(m, 'order-events').props.collaboration = 'Gone'; },
+  'present-values': m => { m.views[0].present = { ...m.views[0].present, 'order-service.api': { side: 'Top' } }; }, // audit 47
   'port-owner': m => { node(m, 'publish-subscribe').members.push(port('publish-subscribe.p')); },
 };
 test('validators: each rule passes the example and fails on a model that breaks it, naming its rule and its elements, at its level', () => {
   const base = validate(CS).map(p => p.rule);
   assert.deepEqual(base, ['part-type', 'part-type'], 'the example\'s two parts typed by classes it does not hold');
-  const LEVEL = { 'part-type': 'warning', 'part-multiplicity': 'warning', 'connector-drawn': 'warning', 'binding-role': 'warning', 'collaboration-named': 'warning' };
+  const LEVEL = { 'part-type': 'warning', 'part-multiplicity': 'warning', 'connector-drawn': 'warning', 'binding-role': 'warning', 'collaboration-named': 'warning', 'present-values': 'warning' };
   for (const [rule, breakIt] of Object.entries(RULE_CASES)) { const m = structuredClone(CS); breakIt(m);
     const got = validate(m).filter(p => p.rule === rule && (rule !== 'part-type' || p.ids[0] === 'order-service.pricing'));
     assert.equal(got.length, 1, `${rule}: ${JSON.stringify(validate(m))}`); assert.equal(got[0].level, LEVEL[rule] || 'error', rule);

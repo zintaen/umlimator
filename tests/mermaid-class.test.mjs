@@ -6,6 +6,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { readMermaidClass as read, writeMermaidClass as write } from '../src/readers/mermaid-class.js';
+import { readMermaidFlowchart } from '../src/readers/mermaid-flowchart.js';
+import { readMermaidEr } from '../src/readers/mermaid-er.js';
+import { readMermaidState } from '../src/readers/mermaid-state.js';
+import { readMermaidSequence } from '../src/readers/mermaid-sequence.js';
+import { readMermaidMindmap } from '../src/readers/mermaid-mindmap.js';
 import { validate } from '../lib/umlimator-all.js';
 
 const json = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
@@ -255,6 +260,13 @@ test('malformed input is reported, never thrown', () => {
   }
   assert.deepEqual(read('flowchart LR\nA-->B').report, [{ line: 1, status: 'skipped', message: 'not a Mermaid classDiagram: nothing read' }]);
   assert.deepEqual(read('classDiagram\nclass A{\n+x').report, [{ line: 3, status: 'approximated', message: 'class A is never closed: read to the end' }]);
+  // a body left open in the middle of the file: Mermaid's member holds no {, so the next class's { closes it there, said,
+  // and that class reads its own members (audit 47)
+  const open = read('classDiagram\nclass Order {\n  +int id\n\nclass Customer {\n  +String name\n}\nOrder --> Customer');
+  assert.deepEqual(open.model.nodes.map(n => [n.id, (n.members || []).map(x => x.id)]), [['Order', ['Order.id']], ['Customer', ['Customer.name']]]);
+  assert.deepEqual(open.report, [{ line: 5, status: 'approximated', message: 'class Order is not closed before this line: closed here' }]);
+  const quoted = read('classDiagram\nclass A {\n+x\n+s "{"\n}\nclass B'); // a { in quotes is a member's text, as before
+  assert.deepEqual([quoted.model.nodes.map(n => (n.members || []).length), quoted.report], [[2, 0], []]);
   // every prefix of the every-construct file, and the file with characters broken at random
   const r = rng(7);
   for (let k = 0; k < every.length; k += 7) read(every.slice(0, k));
@@ -800,4 +812,25 @@ test('a generalization cycle is skipped at the line that closes it, never an inv
   assert.equal(big.report.filter(x => /generalization cycle/.test(x.message)).length, 2);
   assert.equal(big.model.edges.length, 60000);
   assert.ok(!errors(big.model).some(e => e.startsWith('generalization-cycle')));
+});
+
+test('an entity code for a character XML cannot hold is read as U+FFFD and said, in every Mermaid reader (audit 47)', () => {
+  // a raw control character in a label makes the model's SVG export not well-formed; #9; #10; #13; and the rest still read
+  const bad = /[\0-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]|[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
+  const said = (line, code) => ({ line, status: 'approximated', message: `${code} names no character SVG or XML can hold: read as U+FFFD` });
+  const cases = [
+    [read, 'classDiagram\nclass A["x#27;[31mz"]\nnote "a#8;"\nA "#1;" --> "1" B : <<#2;>> t#3;', [said(2, '#27;'), said(3, '#8;'), said(4, '#1;'), said(4, '#2;'), said(4, '#3;')], ['x\uFFFD[31mz', 'a\uFFFD', 't\uFFFD']],
+    [readMermaidFlowchart, 'flowchart LR\nA["a#27;"] -->|b#0;| C', [said(2, '#27;'), said(2, '#0;')], ['a\uFFFD', 'b\uFFFD']],
+    [readMermaidEr, 'erDiagram\nA["#27;x"]\nA ||--o{ B : "r#2;"', [said(2, '#27;'), said(3, '#2;')], ['\uFFFDx', 'r\uFFFD']],
+    [readMermaidState, 'stateDiagram-v2\nstate "s#27;" as S\nS --> T : t#3;\nT : d#4;', [said(2, '#27;'), said(3, '#3;'), said(4, '#4;')], ['s\uFFFD', 't\uFFFD', 'd\uFFFD']],
+    [readMermaidSequence, 'sequenceDiagram\nparticipant A as a#27;\nA->>B: m#6;', [said(2, '#27;'), said(3, '#6;')], ['a\uFFFD', 'm\uFFFD']],
+    [readMermaidMindmap, 'mindmap\n  r#27;\n    k#55296;\n    t#9;u#65;', [said(2, '#27;'), said(3, '#55296;')], ['r\uFFFD', 'k\uFFFD', 't\tuA']],
+  ];
+  for (const [fn, text, report, labels] of cases) {
+    const r = fn(text), all = [];
+    JSON.stringify(r.model, (k, v) => { if (typeof v === 'string') all.push(v); return v; }); // every text in the model
+    assert.deepEqual(r.report.filter(x => x.message.includes('U+FFFD')), report, text);
+    for (const l of labels) assert.ok(all.includes(l), `${text}: ${JSON.stringify(l)} in ${JSON.stringify(all)}`);
+    assert.ok(!all.some(l => bad.test(l)), text);
+  }
 });

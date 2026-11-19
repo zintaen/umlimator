@@ -39,12 +39,12 @@ box = lambda m, view, bid: next((c for v in m["views"] if v["id"] == view for c 
 card = lambda m, cid: next((n for n in m["nodes"] if n["id"] == cid), {})
 
 # per sample: its format, the views, what stderr names (file:where), and what the model says
-# the bike share's container view: Trip API and Ride worker each have a line to the database and to the ride queue, which
-# two layers draw with a crossing; its unread lines are the workspace's description, the deployment environment, the
-# dynamic and deployment views (which the importer does not read) and the theme
-CROSSINGS = {"examples/bike-share.dsl": 2}
+# the bike share's unread lines are the workspace's description, the deployment environment, the dynamic and deployment
+# views (which the importer does not read) and the theme. Its Ride queue, tagged Queue, reads as a database: its
+# technology, a PostgreSQL table, matches the database words first (the inline case beside the "tools" one below shows
+# that the tag alone makes a queue)
 EXPECT = {
-    "examples/bike-share.dsl": ("structurizr", ["context", "containers", "api-components"], [":5:", ":51:", ":85:", ":98:", ":110:"], lambda m: [
+    "examples/bike-share.dsl": ("structurizr", ["context", "containers", "api-components"], [":5:", ":50:", ":84:", ":96:", ":108:"], lambda m: [
         ("views nest as the source's levels", [v.get("parent") for v in m["views"]] == [None, "context", "containers"]),
         ("a relationship to a container lifts to its system in the context view (an implied line)", line(m, "rider", "bikeshare", "context")),
         ("the container view boxes the system's containers", box(m, "containers", "bikeshare").get("nodeIds") == ["app", "api", "worker", "db", "queue"]),
@@ -352,6 +352,8 @@ m, un = imp.read("structurizr", tools, "x")
 ok("structurizr · a software system or component its words make a store, a queue or a file keeps that colour, drawn a box; a container takes the shape",
    [(card(m, i).get("kind"), card(m, i).get("shape")) for i in ("dw", "bus", "dms", "st", "fx", "db")]
    == [("database", "box"), ("queue", "box"), ("file", "box"), ("database", "box"), ("file", "box"), ("database", None)], m["nodes"])
+m, un = imp.read("structurizr", 'workspace {\n model {\n  s = softwareSystem "Shop" {\n   j = container "Jobs" "" "Go" "Queue"\n  }\n }\n}\n', "x")
+ok("structurizr · a container tagged Queue is a queue", card(m, "j").get("kind") == "queue", m["nodes"])
 gw = ('workspace {\n model {\n  gw = softwareSystem "API Gateway"\n  s = softwareSystem "Shop" {\n   edge = container "Edge" "" "nginx" {\n'
       '    lb = component "Load balancer" "" "HAProxy"\n   }\n  }\n }\n}\n')
 m, un = imp.read("structurizr", gw, "x")
@@ -809,9 +811,7 @@ with tempfile.TemporaryDirectory() as tmp:
         r = run("render", str(out), "--out", str(page), "--no-check")
         c = run("check", str(page)) if r.returncode == 0 else r
         rep = json.loads(c.stdout[c.stdout.find("{"):]) if c.returncode == 0 and "{" in c.stdout else {}
-        cross = CROSSINGS.get(name, 0)   # at most these crossings, and no other problem
-        ok(f"{name} · renders, and its layout check is clean" + (f" but for at most {cross} crossings" if cross else ""),
-           rep.get("checked") and not rep.get("errors") and all(p.endswith(" cross") for p in rep.get("problems", [])) and len(rep.get("problems", [])) <= cross, rep or c.stderr[-1500:])
+        ok(f"{name} · renders, and its layout check is clean", rep.get("checked") and not rep.get("problems") and not rep.get("errors"), rep or c.stderr[-1500:])
     shutil.copy(ROOT / "examples" / "bike-share.dsl", t / "bike-share.txt")
     r = run("import", str(t / "bike-share.txt"), "--out", str(t / "txt.json"))
     ok("knows a format by its content, whatever the extension", r.returncode == 0 and json.loads(r.stdout).get("format") == "structurizr", r.stderr)

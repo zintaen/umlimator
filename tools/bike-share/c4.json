@@ -321,14 +321,6 @@
       "props": { "technology": "HTTPS" }
     },
     {
-      "id": "c4-worker-db",
-      "type": "c4.Relationship",
-      "from": "c4-worker",
-      "to": "c4-db",
-      "label": "Marks rides as closed in",
-      "props": { "technology": "SQL" }
-    },
-    {
       "id": "c4-app-finder",
       "type": "c4.Relationship",
       "from": "c4-app",
@@ -437,14 +429,6 @@
       "to": "c4-queue-1",
       "label": "Claims ended rides from",
       "props": { "technology": "SQL, port 5432, private network" }
-    },
-    {
-      "id": "c4-worker-1-db-1",
-      "type": "c4.Relationship",
-      "from": "c4-worker-1",
-      "to": "c4-db-1",
-      "label": "Marks rides as closed in",
-      "props": { "technology": "SQL, port 5432, private network" }
     }
   ],
   "views": [
@@ -487,7 +471,7 @@
       "nodeIds": ["c4-rider", "c4-app", "c4-api", "c4-payments", "c4-db", "c4-queue", "c4-worker", "c4-van", "c4-mail"],
       "edges": [
         "c4-rider-app", "c4-app-api", "c4-api-payments", "c4-api-db", "c4-api-queue", "c4-worker-queue",
-        "c4-worker-van", "c4-worker-mail", "c4-mail-rider", "c4-worker-db"
+        "c4-worker-van", "c4-worker-mail", "c4-mail-rider"
       ]
     },
     {

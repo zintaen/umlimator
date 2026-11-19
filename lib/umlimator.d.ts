@@ -378,10 +378,10 @@ export interface MapEdge {
   /** A style that wins over the kind's colour: emphasis (green), added (green, flowing), dashed or async (violet),
    *  security (rose, dashed), removed (rose, dashed, faded) or faded (its kind's colour, faint, with no flow). */
   style?: 'emphasis' | 'added' | 'dashed' | 'async' | 'security' | 'removed' | 'faded';
-  /** A change mark, read in any letter case and only as text: added (or new) draws the line green and flowing, removed
+  /** A change mark, written in lower case and only as text: added (or new) draws the line green and flowing, removed
    *  rose and dashed, with no `style` needed, a wire `kind` or not (a `style` set wins); changed (or modified) gets the
    *  edited dot. diff() sets the matching `style` too, and marks a changed line `edited`. validate() warns on any other
-   *  value, which draws unmarked. */
+   *  value, which draws unmarked, and on one in another letter case, which the renderer draws as its lower-case word. */
   change?: 'added' | 'new' | 'removed' | 'changed' | 'modified';
   /** What drift() found: undrawn (traffic ran on it, nobody drew it) or idle (drawn, carried nothing). */
   drift?: 'undrawn' | 'idle';
@@ -411,6 +411,12 @@ export interface MapView {
   /** The space between columns and between rows, in px (default 66 and 44; a process view, render 'process' or mainSteps,
    *  with no boxes: 38 between columns): more room when a line passes close to a card. */
   gap?: number; rgap?: number;
+  /** Written by diff() on a typed view (0.44.0): what the view draws that is no element or line of its own, worked out from
+   *  the view laid out in the model before and after. `marks`, by shape id: a port a retyped part gained (added) or lost
+   *  (removed), a containment line that is new (added), and none for a shape drawn from what it reads, or an implied line,
+   *  that the change leaves as it was. `gone`: a line the type derived in the model before (a C4 implied line, a
+   *  requirement's containment) from an owner an element left, drawn back removed between two shapes the view still draws. */
+  diffMarks?: { marks?: Record<string, 'added' | 'removed' | 'changed' | 'none'>; gone?: { id: string; from: string; to: string; label?: string }[] };
   [key: string]: unknown;
 }
 

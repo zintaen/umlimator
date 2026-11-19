@@ -1,7 +1,7 @@
 import { countOf, registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, portsOn, r2, sidePorts } from '../draw/shapes.js';
-import { layoutTyped } from '../typed/layout.js';
+import { goneLines, layoutTyped } from '../typed/layout.js';
 import { commentConnect } from '../uml/class.js'; // SHAPE.note, a comment's look too
 import { flowWrap } from '../uml/flow.js';
 import { boxHead, ownersOn, readingOrder } from '../uml/owners.js';
@@ -177,6 +177,11 @@ function c4Count(own, implied) {
 }
 const C4_NOTE_LINE = '<path d="M2 8H26" stroke="var(--um-muted)" stroke-width="1.4" stroke-dasharray="3 2" fill="none"/>';
 
+// an implied line the model before a diff drew and this one does not (audit 47: from the owner a container left): drawn back,
+// as diff() says in view.diffMarks, implied and removed, between two elements the view still draws
+const c4Gone = (view, nodes, edges, pic, L) => { const nm = id => (pic.nameOf || c4Name)(pic.at.get(id) || { id });
+  return goneLines(view, new Set(nodes.map(n => n.id)), new Set(edges.map(e => e.id))).map(x => ({ id: x.id, _id: x.id, type: 'c4.Relationship', from: x.from, to: x.to, implied: [], end: L.implied,
+    aria: `Implied relationship from ${nm(x.from)} to ${nm(x.to)}`, cut: 280, ...(x.label ? { label: x.label } : {}) })); };
 /* ---- the view laid out (§7.5, §11) ---- */
 function c4Geo({ model, view, pos, memo }) {
   const pic = c4Pic(model, view), { own, implied } = c4Lines(model, view, pic), P = id => (C4_OBJ(pos) && Object.hasOwn(pos, id) ? pos[id] : [0, 0]);
@@ -190,6 +195,7 @@ function c4Geo({ model, view, pos, memo }) {
     return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: label || undefined, end: c4LineLook(e, C4_LINE_LOOK), aria: c4LineName(e, pic), cut: 280 }; }),
   ...implied.map(e => ({ id: e.id, _id: e.id, type: 'c4.Relationship', from: e.from, to: e.to, implied: e.of.map(r => r.id), reads: e.via, end: C4_LINE_LOOK.implied, aria: c4LineName(e, pic), cut: 280,
     label: [e.of[0].label, e.of.length > 1 ? `[+${e.of.length - 1}]` : ''].filter(C4_HAS).join(' ') || undefined }))];
+  edges.push(...c4Gone(view, nodes, edges, pic, C4_LINE_LOOK));
   const g = layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: view.direction === 'down' ? 'down' : 'right',
     gap: 48, rgap: 64, labelGaps: true, repair: false, reroute: false }, memo);
   // on a copy (stage 4 §2.4): a person's or robot's body starts just above the highest line on its side, as a map card's
@@ -378,4 +384,4 @@ const C4_DEF = {
 };
 const C4_TYPES = Object.keys(C4_KIND).map(name => registerDiagramType(name, C4_DEF));
 
-export { c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, C4_TYPES, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, C4_SHAPES, c4Index, c4Pic, c4Lift, c4Lines, c4Keys, c4Geo, c4Problems, c4Describe, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Zoom, c4Key, c4Add, c4Owners, c4Rename };
+export { c4Gone, c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, C4_TYPES, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, C4_SHAPES, c4Index, c4Pic, c4Lift, c4Lines, c4Keys, c4Geo, c4Problems, c4Describe, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Zoom, c4Key, c4Add, c4Owners, c4Rename };

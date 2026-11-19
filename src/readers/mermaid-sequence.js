@@ -1,5 +1,5 @@
 import { unreadable, jsonText } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip, mermaidSay, mermaidSort } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort } from './mermaid-front.js';
 /* ---------- Mermaid sequenceDiagram: a reader and a writer (notes/stage-3.md §8, S10; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's sequence diagram page (docs/syntax/sequenceDiagram.md, read 12 Nov 2026), as the class
    reader is against its class page. Internal: the CLI (`umlimator.py import`) imports this file through Node; a host
@@ -59,9 +59,9 @@ function msFree(used, next, base) {
 }
 
 // text: Mermaid's line breaks and entity codes (#quot; #lt; #59; ...); a named one Mermaid knows and this does not stays
-function msDecode(s) {
-  return s.replace(/<br\s?\/?>|\\n/gi, '\n').replace(/#(quot|lt|gt|amp|\d{1,6});/g, (_, e) =>
-    ({ quot: '"', lt: '<', gt: '>', amp: '&' })[e] ?? String.fromCodePoint(Math.min(Number(e), 0x10ffff)));
+function msDecode(s, bad) {
+  return s.replace(/<br\s?\/?>|\\n/gi, '\n').replace(/#(quot|lt|gt|amp|\d{1,6});/g, (all, e) =>
+    ({ quot: '"', lt: '<', gt: '>', amp: '&' })[e] ?? mermaidChar(Number(e), all, bad));
 }
 
 // a line's statements: `;` ends one, unless it closes an entity such as #59;
@@ -202,8 +202,8 @@ function readMermaidSequence(text) {
     const rec = life(p.name, no), n = rec.node, stereotypes = [...(actor ? ['actor'] : []), ...(p.type ? [p.type] : [])];
     if (hint.id != null) rec.hint = hint.id;
     if (p.type) say(no, 'approximated', `${p.name}'s type ${p.type} is read as a stereotype, shown as text`);
-    if (p.alias != null) { const c = hint.represents ? p.alias.indexOf(':') : -1; n.label = msDecode((c < 0 ? p.alias : p.alias.slice(0, c)).trim()); }
-    if (hint.represents) n.props = { ...n.props, represents: msDecode(hint.represents) };
+    if (p.alias != null) { const c = hint.represents ? p.alias.indexOf(':') : -1; n.label = msDecode((c < 0 ? p.alias : p.alias.slice(0, c)).trim(), code => say(no, 'approximated', mermaidBadChar(code))); }
+    if (hint.represents) n.props = { ...n.props, represents: msDecode(hint.represents, code => say(no, 'approximated', mermaidBadChar(code))) };
     if (stereotypes.length) n.props = { ...n.props, stereotypes };
     if (created) creating.set(p.name, no);
   };
@@ -215,7 +215,7 @@ function readMermaidSequence(text) {
     }
     frames++;
     const frag = { kind: 'frag', operator, no, hint: hint.id, parent: cur(), ops: [] };
-    const op = { kind: 'op', no, frag, k: 1, label: guard ? msDecode(guard) : undefined, hint: hint.operand };
+    const op = { kind: 'op', no, frag, k: 1, label: guard ? msDecode(guard, code => say(no, 'approximated', mermaidBadChar(code))) : undefined, hint: hint.operand };
     frag.ops.push(op); items.push(frag, op); stack.push({ frag, cur: op, no });
   };
 
@@ -261,7 +261,7 @@ function readMermaidSequence(text) {
       else if (word === 'par_over') { open('par', rest, no); say(no, 'approximated', `par_over ${rest}: read as par (a par drawn over its participants only)`); }
       else if (word === 'else' || word === 'and') {
         if (top && top.frag && top.frag.operator === (word === 'else' ? 'alt' : 'par')) {
-          const op = { kind: 'op', no, frag: top.frag, k: top.frag.ops.length + 1, label: rest ? msDecode(rest) : word === 'else' ? 'else' : undefined, hint: hint.id };
+          const op = { kind: 'op', no, frag: top.frag, k: top.frag.ops.length + 1, label: rest ? msDecode(rest, code => say(no, 'approximated', mermaidBadChar(code))) : word === 'else' ? 'else' : undefined, hint: hint.id };
           top.frag.ops.push(op); items.push(op); top.cur = op;
         } else say(no, 'skipped', `${word} outside ${word === 'else' ? 'an alt' : 'a par'}: not read`);
       } else if (word === 'critical') { stack.push({ what: 'critical', cur: cur(), no }); say(no, 'approximated', `critical ${rest}: its content is read, with no frame (critical is not in the subset)`); }
@@ -278,10 +278,10 @@ function readMermaidSequence(text) {
         const c = rest.indexOf(':'), where = (c < 0 ? rest : rest.slice(0, c)).trim(), body = c < 0 ? '' : rest.slice(c + 1).trim();
         const names = where.replace(/^(over|left of|right of)\s+/i, '').split(',').map(x => x.trim()).filter(Boolean);
         if (hint.use && names.length) {
-          const t = body === 'ref' ? '' : body.startsWith('ref ') ? body.slice(4).trim() : body, label = msDecode(t);
+          const t = body === 'ref' ? '' : body.startsWith('ref ') ? body.slice(4).trim() : body, label = msDecode(t, code => say(no, 'approximated', mermaidBadChar(code)));
           items.push({ kind: 'use', no, id: hint.use.id, refersTo: hint.use.refersTo, label, covers: names.map(x => life(x, no)), parent: cur() });
         } else say(no, 'skipped', 'a note is not read (notes are not in the subset)');
-      } else if (word === 'title') title = msDecode(rest.replace(/^:/, '').trim());
+      } else if (word === 'title') title = msDecode(rest.replace(/^:/, '').trim(), code => say(no, 'approximated', mermaidBadChar(code)));
       else if (word === 'autonumber') say(no, 'skipped', 'autonumber: message numbers are not drawn in a sequence view');
       else if (['link', 'links', 'properties', 'details'].includes(word)) say(no, 'skipped', `${word}: actor menus are not read`);
       else if (word === 'acctitle' || word === 'accdescr') {
@@ -301,7 +301,7 @@ function readMermaidSequence(text) {
         else if (destroying.has(from.name)) { say(destroying.get(from.name), 'skipped', `destroy ${from.name}: the next message is from it, so its stem is not ended`); destroying.delete(from.name); }
         if (sort === m.arrow[1] && m.arrow[2]) say(no, 'approximated', `${what}: read as ${sort === 'async' ? 'an' : 'a'} ${sort}; ${m.arrow[2]}`);
         if (m.central) say(no, 'approximated', `${what}: the central connection is not drawn`);
-        const msg = { kind: 'msg', no, what, from, to, sort, label: msDecode(m.text), hint: hint.id, want: hint.replyTo || undefined, parent: cur(), plus: m.plus, minus: m.minus };
+        const msg = { kind: 'msg', no, what, from, to, sort, label: msDecode(m.text, code => say(no, 'approximated', mermaidBadChar(code))), hint: hint.id, want: hint.replyTo || undefined, parent: cur(), plus: m.plus, minus: m.minus };
         items.push(msg); last = msg;
       }
       hint = {};
