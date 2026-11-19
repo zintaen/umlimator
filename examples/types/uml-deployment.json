@@ -14,6 +14,24 @@
    "opensView": "bookshop-deployment-production"
   },
   {
+   "id": "card-docks-docks",
+   "label": "Dock network, laid out down",
+   "kind": "file",
+   "sublabel": "nested nodes, laid out down",
+   "what": "A bike dock network laid out down: a node inside a node inside a data centre, execution environments on devices, a stereotyped device, a deployment specification and paths that end on a box's border.",
+   "how": "From examples/variants/uml-deployment-docks.json.",
+   "opensView": "docks-docks"
+  },
+  {
+   "id": "card-lines-lines",
+   "label": "Deployed by lines",
+   "kind": "file",
+   "sublabel": "<<deploy>> and <<manifest>> lines",
+   "what": "A library catalogue whose artifacts stand apart from their targets: each deployed by a dashed `<<deploy>>` line, a deployment specification deployed the same way, `<<manifest>>` lines to components and stereotyped server nodes.",
+   "how": "From examples/variants/uml-deployment-lines.json.",
+   "opensView": "lines-lines"
+  },
+  {
    "id": "bookshop-deployment-shopper-device",
    "type": "uml.Device",
    "label": "Shopper's device"
@@ -88,6 +106,141 @@
    "id": "bookshop-deployment-order-worker",
    "type": "uml.Component",
    "label": "Order worker"
+  },
+  {
+   "id": "docks-phone",
+   "type": "uml.Device",
+   "label": "Rider's phone"
+  },
+  {
+   "id": "docks-phone-os",
+   "type": "uml.ExecutionEnvironment",
+   "label": "Mobile OS",
+   "parent": "docks-phone"
+  },
+  {
+   "id": "docks-rider-app",
+   "type": "uml.Artifact",
+   "label": "rider-app.apk",
+   "parent": "docks-phone-os"
+  },
+  {
+   "id": "docks-dock",
+   "type": "uml.Device",
+   "label": "Dock controller",
+   "props": {
+    "stereotypes": [
+     "embedded"
+    ]
+   }
+  },
+  {
+   "id": "docks-dock-os",
+   "type": "uml.ExecutionEnvironment",
+   "label": "Embedded Linux",
+   "parent": "docks-dock"
+  },
+  {
+   "id": "docks-firmware",
+   "type": "uml.Artifact",
+   "label": "dock-firmware.bin",
+   "parent": "docks-dock-os"
+  },
+  {
+   "id": "docks-dock-config",
+   "type": "uml.DeploymentSpecification",
+   "label": "dock-id.toml",
+   "parent": "docks-dock-os"
+  },
+  {
+   "id": "docks-datacenter",
+   "type": "uml.Node",
+   "label": "City data centre"
+  },
+  {
+   "id": "docks-cluster",
+   "type": "uml.Node",
+   "label": "Container cluster",
+   "parent": "docks-datacenter"
+  },
+  {
+   "id": "docks-runtime",
+   "type": "uml.ExecutionEnvironment",
+   "label": "Container runtime",
+   "parent": "docks-cluster"
+  },
+  {
+   "id": "docks-trip-image",
+   "type": "uml.Artifact",
+   "label": "trip-service.img",
+   "parent": "docks-runtime"
+  },
+  {
+   "id": "docks-dock-image",
+   "type": "uml.Artifact",
+   "label": "dock-gateway.img",
+   "parent": "docks-runtime"
+  },
+  {
+   "id": "docks-db-host",
+   "type": "uml.Node",
+   "label": "Database host",
+   "parent": "docks-datacenter"
+  },
+  {
+   "id": "lines-web-host",
+   "type": "uml.Node",
+   "label": "Web host",
+   "props": {
+    "stereotypes": [
+     "linux server"
+    ]
+   }
+  },
+  {
+   "id": "lines-search-host",
+   "type": "uml.Node",
+   "label": "Search host",
+   "props": {
+    "stereotypes": [
+     "linux server"
+    ]
+   }
+  },
+  {
+   "id": "lines-kiosk",
+   "type": "uml.Device",
+   "label": "Branch kiosk"
+  },
+  {
+   "id": "lines-catalogue-war",
+   "type": "uml.Artifact",
+   "label": "catalogue.war"
+  },
+  {
+   "id": "lines-catalogue-spec",
+   "type": "uml.DeploymentSpecification",
+   "label": "catalogue.properties"
+  },
+  {
+   "id": "lines-index-jar",
+   "type": "uml.Artifact",
+   "label": "search-index.jar"
+  },
+  {
+   "id": "lines-kiosk-app",
+   "type": "uml.Artifact",
+   "label": "kiosk-ui.zip"
+  },
+  {
+   "id": "lines-catalogue",
+   "type": "uml.Component",
+   "label": "Catalogue"
+  },
+  {
+   "id": "lines-search",
+   "type": "uml.Component",
+   "label": "Title search"
   }
  ],
  "edges": [
@@ -142,6 +295,77 @@
    "from": "bookshop-deployment-app-server",
    "to": "bookshop-deployment-queue-node",
    "label": "AMQP"
+  },
+  {
+   "id": "docks-phone-to-dc",
+   "type": "uml.CommunicationPath",
+   "from": "docks-phone",
+   "to": "docks-datacenter",
+   "label": "HTTPS"
+  },
+  {
+   "id": "docks-dock-to-dc",
+   "type": "uml.CommunicationPath",
+   "from": "docks-dock",
+   "to": "docks-datacenter",
+   "label": "MQTT over LTE"
+  },
+  {
+   "id": "docks-cluster-to-db",
+   "type": "uml.CommunicationPath",
+   "from": "docks-cluster",
+   "to": "docks-db-host",
+   "label": "SQL"
+  },
+  {
+   "id": "lines-war-on-web",
+   "type": "uml.Deployment",
+   "from": "lines-catalogue-war",
+   "to": "lines-web-host"
+  },
+  {
+   "id": "lines-spec-on-web",
+   "type": "uml.Deployment",
+   "from": "lines-catalogue-spec",
+   "to": "lines-web-host"
+  },
+  {
+   "id": "lines-index-on-search",
+   "type": "uml.Deployment",
+   "from": "lines-index-jar",
+   "to": "lines-search-host"
+  },
+  {
+   "id": "lines-app-on-kiosk",
+   "type": "uml.Deployment",
+   "from": "lines-kiosk-app",
+   "to": "lines-kiosk"
+  },
+  {
+   "id": "lines-war-manifests",
+   "type": "uml.Manifestation",
+   "from": "lines-catalogue-war",
+   "to": "lines-catalogue"
+  },
+  {
+   "id": "lines-index-manifests",
+   "type": "uml.Manifestation",
+   "from": "lines-index-jar",
+   "to": "lines-search"
+  },
+  {
+   "id": "lines-kiosk-to-web",
+   "type": "uml.CommunicationPath",
+   "from": "lines-kiosk",
+   "to": "lines-web-host",
+   "label": "HTTPS"
+  },
+  {
+   "id": "lines-web-to-search",
+   "type": "uml.CommunicationPath",
+   "from": "lines-web-host",
+   "to": "lines-search-host",
+   "label": "gRPC"
   }
  ],
  "views": [
@@ -150,12 +374,22 @@
    "parent": null,
    "title": "Deployment diagram examples",
    "nodeIds": [
-    "card-bookshop-deployment-production"
+    "card-bookshop-deployment-production",
+    "card-docks-docks",
+    "card-lines-lines"
    ],
    "layout": {
     "card-bookshop-deployment-production": [
      0,
      0
+    ],
+    "card-docks-docks": [
+     1,
+     0
+    ],
+    "card-lines-lines": [
+     0,
+     1
     ]
    }
   },
@@ -189,6 +423,60 @@
     "bookshop-deployment-edge-to-app",
     "bookshop-deployment-app-to-database",
     "bookshop-deployment-app-to-queue"
+   ]
+  },
+  {
+   "id": "docks-docks",
+   "diagram": "uml.deployment",
+   "title": "Dock network, laid out down",
+   "parent": "overview",
+   "direction": "down",
+   "nodeIds": [
+    "docks-phone",
+    "docks-phone-os",
+    "docks-rider-app",
+    "docks-dock",
+    "docks-dock-os",
+    "docks-firmware",
+    "docks-dock-config",
+    "docks-datacenter",
+    "docks-cluster",
+    "docks-runtime",
+    "docks-trip-image",
+    "docks-dock-image",
+    "docks-db-host"
+   ],
+   "edges": [
+    "docks-phone-to-dc",
+    "docks-dock-to-dc",
+    "docks-cluster-to-db"
+   ]
+  },
+  {
+   "id": "lines-lines",
+   "diagram": "uml.deployment",
+   "title": "Deployed by lines",
+   "parent": "overview",
+   "nodeIds": [
+    "lines-web-host",
+    "lines-search-host",
+    "lines-kiosk",
+    "lines-catalogue-war",
+    "lines-catalogue-spec",
+    "lines-index-jar",
+    "lines-kiosk-app",
+    "lines-catalogue",
+    "lines-search"
+   ],
+   "edges": [
+    "lines-war-on-web",
+    "lines-spec-on-web",
+    "lines-index-on-search",
+    "lines-app-on-kiosk",
+    "lines-war-manifests",
+    "lines-index-manifests",
+    "lines-kiosk-to-web",
+    "lines-web-to-search"
    ]
   }
  ]

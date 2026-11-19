@@ -14,6 +14,24 @@
    "opensView": "ebike-blocks-blocks"
   },
   {
+   "id": "card-ports-charging",
+   "label": "Ports and flows",
+   "kind": "file",
+   "sublabel": "proxy, full and conjugated ports",
+   "what": "A cycle hire charging dock framed by its package (`bdd [Package] Charging`): proxy ports typed by an interface block and by its conjugate (`~ChargeLink`), a full port typed by a block, flow properties in, out and inout, and an interface block's operation.",
+   "how": "From examples/variants/sysml-block-definition-ports.json.",
+   "opensView": "ports-charging"
+  },
+  {
+   "id": "card-values-fleet",
+   "label": "A block hierarchy and value types",
+   "kind": "file",
+   "sublabel": "a hierarchy, values with units",
+   "what": "Fleet vehicles specializing one block, value properties with defaults and multiplicities typed by value types with units and quantity kinds, a value type specializing another, a part drawn as a composite line, and a reference drawn as a plain association.",
+   "how": "From examples/variants/sysml-block-definition-values.json.",
+   "opensView": "values-fleet"
+  },
+  {
    "id": "ebike-blocks-rental-vehicle",
    "type": "sysml.Block",
    "label": "RentalVehicle"
@@ -390,6 +408,256 @@
     "unit": "Wh",
     "quantityKind": "energy"
    }
+  },
+  {
+   "id": "ports-charging-pkg",
+   "type": "uml.Package",
+   "label": "Charging"
+  },
+  {
+   "id": "ports-dock",
+   "type": "sysml.Block",
+   "label": "ChargingDock",
+   "parent": "ports-charging-pkg",
+   "members": [
+    {
+     "id": "ports-dock.charger",
+     "type": "sysml.PartProperty",
+     "label": "charger",
+     "props": {
+      "valueType": "Charger",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "ports-dock.slot",
+     "type": "sysml.Port",
+     "label": "slot",
+     "props": {
+      "kind": "proxy",
+      "valueType": "~ChargeLink"
+     }
+    },
+    {
+     "id": "ports-dock.mains",
+     "type": "sysml.Port",
+     "label": "mains",
+     "props": {
+      "kind": "full",
+      "valueType": "MainsFeed"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ports-charger",
+   "type": "sysml.Block",
+   "label": "Charger",
+   "parent": "ports-charging-pkg",
+   "members": [
+    {
+     "id": "ports-charger.out",
+     "type": "sysml.FlowProperty",
+     "label": "dc",
+     "props": {
+      "valueType": "DCPower",
+      "direction": "out"
+     }
+    },
+    {
+     "id": "ports-charger.start",
+     "type": "uml.Operation",
+     "label": "start",
+     "props": {
+      "returnType": "Boolean"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ports-bike",
+   "type": "sysml.Block",
+   "label": "Bike",
+   "parent": "ports-charging-pkg",
+   "members": [
+    {
+     "id": "ports-bike.socket",
+     "type": "sysml.Port",
+     "label": "socket",
+     "props": {
+      "kind": "proxy",
+      "valueType": "ChargeLink"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ports-mains",
+   "type": "sysml.Block",
+   "label": "MainsFeed",
+   "parent": "ports-charging-pkg"
+  },
+  {
+   "id": "ports-link",
+   "type": "sysml.InterfaceBlock",
+   "label": "ChargeLink",
+   "parent": "ports-charging-pkg",
+   "members": [
+    {
+     "id": "ports-link.dc",
+     "type": "sysml.FlowProperty",
+     "label": "dc",
+     "props": {
+      "valueType": "DCPower",
+      "direction": "in"
+     }
+    },
+    {
+     "id": "ports-link.soc",
+     "type": "sysml.FlowProperty",
+     "label": "stateOfCharge",
+     "props": {
+      "valueType": "Percent",
+      "direction": "out"
+     }
+    },
+    {
+     "id": "ports-link.can",
+     "type": "sysml.FlowProperty",
+     "label": "canFrames",
+     "props": {
+      "valueType": "Frame",
+      "direction": "inout"
+     }
+    },
+    {
+     "id": "ports-link.handshake",
+     "type": "uml.Operation",
+     "label": "handshake",
+     "props": {
+      "returnType": "Boolean"
+     }
+    }
+   ]
+  },
+  {
+   "id": "values-vehicle",
+   "type": "sysml.Block",
+   "label": "FleetVehicle",
+   "members": [
+    {
+     "id": "values-vehicle.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Mass"
+     }
+    },
+    {
+     "id": "values-vehicle.maxSpeed",
+     "type": "sysml.ValueProperty",
+     "label": "maxSpeed",
+     "props": {
+      "valueType": "Speed",
+      "default": "25"
+     }
+    },
+    {
+     "id": "values-vehicle.home",
+     "type": "sysml.ReferenceProperty",
+     "label": "home",
+     "props": {
+      "valueType": "Station",
+      "multiplicity": "0..1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "values-bike",
+   "type": "sysml.Block",
+   "label": "PedalBike",
+   "members": [
+    {
+     "id": "values-bike.gears",
+     "type": "sysml.ValueProperty",
+     "label": "gears",
+     "props": {
+      "valueType": "Integer",
+      "default": "7"
+     }
+    }
+   ]
+  },
+  {
+   "id": "values-scooter",
+   "type": "sysml.Block",
+   "label": "Scooter",
+   "members": [
+    {
+     "id": "values-scooter.wheels",
+     "type": "sysml.PartProperty",
+     "label": "wheels",
+     "props": {
+      "valueType": "Wheel",
+      "multiplicity": "2"
+     }
+    },
+    {
+     "id": "values-scooter.tyrePressure",
+     "type": "sysml.ValueProperty",
+     "label": "tyrePressure",
+     "props": {
+      "valueType": "Pressure",
+      "multiplicity": "2"
+     }
+    }
+   ]
+  },
+  {
+   "id": "values-wheel",
+   "type": "sysml.Block",
+   "label": "Wheel"
+  },
+  {
+   "id": "values-station",
+   "type": "sysml.Block",
+   "label": "Station"
+  },
+  {
+   "id": "values-mass",
+   "type": "sysml.ValueType",
+   "label": "Mass",
+   "props": {
+    "unit": "kg",
+    "quantityKind": "mass"
+   }
+  },
+  {
+   "id": "values-speed",
+   "type": "sysml.ValueType",
+   "label": "Speed",
+   "props": {
+    "unit": "km/h",
+    "quantityKind": "speed"
+   }
+  },
+  {
+   "id": "values-pressure",
+   "type": "sysml.ValueType",
+   "label": "Pressure",
+   "props": {
+    "unit": "kPa",
+    "quantityKind": "pressure"
+   }
+  },
+  {
+   "id": "values-tyre-pressure",
+   "type": "sysml.ValueType",
+   "label": "TyrePressure",
+   "props": {
+    "unit": "kPa"
+   }
   }
  ],
  "edges": [
@@ -463,6 +731,100 @@
      "use"
     ]
    }
+  },
+  {
+   "id": "ports-dock-charger",
+   "type": "uml.Association",
+   "from": "ports-dock",
+   "to": "ports-charger",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite",
+      "multiplicity": "1"
+     },
+     "to": {
+      "role": "charger",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "ports-bike-uses-link",
+   "type": "uml.Dependency",
+   "from": "ports-bike",
+   "to": "ports-link",
+   "props": {
+    "stereotypes": [
+     "use"
+    ]
+   }
+  },
+  {
+   "id": "ports-dock-uses-mains",
+   "type": "uml.Dependency",
+   "from": "ports-dock",
+   "to": "ports-mains",
+   "props": {
+    "stereotypes": [
+     "use"
+    ]
+   }
+  },
+  {
+   "id": "values-bike-is-vehicle",
+   "type": "uml.Generalization",
+   "from": "values-bike",
+   "to": "values-vehicle"
+  },
+  {
+   "id": "values-scooter-is-vehicle",
+   "type": "uml.Generalization",
+   "from": "values-scooter",
+   "to": "values-vehicle"
+  },
+  {
+   "id": "values-scooter-wheels",
+   "type": "uml.Association",
+   "from": "values-scooter",
+   "to": "values-wheel",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite",
+      "multiplicity": "1"
+     },
+     "to": {
+      "role": "wheels",
+      "multiplicity": "2"
+     }
+    }
+   }
+  },
+  {
+   "id": "values-vehicle-home",
+   "type": "uml.Association",
+   "from": "values-vehicle",
+   "to": "values-station",
+   "props": {
+    "ends": {
+     "from": {
+      "multiplicity": "*"
+     },
+     "to": {
+      "role": "home",
+      "multiplicity": "0..1",
+      "navigable": true
+     }
+    }
+   }
+  },
+  {
+   "id": "values-tyre-is-pressure",
+   "type": "uml.Generalization",
+   "from": "values-tyre-pressure",
+   "to": "values-pressure"
   }
  ],
  "views": [
@@ -471,12 +833,22 @@
    "parent": null,
    "title": "Block definition diagram examples",
    "nodeIds": [
-    "card-ebike-blocks-blocks"
+    "card-ebike-blocks-blocks",
+    "card-ports-charging",
+    "card-values-fleet"
    ],
    "layout": {
     "card-ebike-blocks-blocks": [
      0,
      0
+    ],
+    "card-ports-charging": [
+     1,
+     0
+    ],
+    "card-values-fleet": [
+     0,
+     1
     ]
    }
   },
@@ -506,6 +878,50 @@
     "ebike-blocks-ebike-controller",
     "ebike-blocks-ebike-is-rental-vehicle",
     "ebike-blocks-dock-uses-charge-interface"
+   ]
+  },
+  {
+   "id": "ports-charging",
+   "diagram": "sysml.block-definition",
+   "title": "Ports and flows",
+   "parent": "overview",
+   "subject": "ports-charging-pkg",
+   "nodeIds": [
+    "ports-dock",
+    "ports-charger",
+    "ports-bike",
+    "ports-mains",
+    "ports-link"
+   ],
+   "edges": [
+    "ports-dock-charger",
+    "ports-bike-uses-link",
+    "ports-dock-uses-mains"
+   ]
+  },
+  {
+   "id": "values-fleet",
+   "diagram": "sysml.block-definition",
+   "title": "A block hierarchy and value types",
+   "parent": "overview",
+   "direction": "down",
+   "nodeIds": [
+    "values-vehicle",
+    "values-bike",
+    "values-scooter",
+    "values-wheel",
+    "values-station",
+    "values-mass",
+    "values-speed",
+    "values-pressure",
+    "values-tyre-pressure"
+   ],
+   "edges": [
+    "values-bike-is-vehicle",
+    "values-scooter-is-vehicle",
+    "values-scooter-wheels",
+    "values-vehicle-home",
+    "values-tyre-is-pressure"
    ]
   }
  ]

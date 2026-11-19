@@ -14,6 +14,24 @@
    "opensView": "order-service-structure-internals"
   },
   {
+   "id": "card-component-inside",
+   "label": "A component's parts and ports",
+   "kind": "file",
+   "sublabel": "a component, shared part, note",
+   "what": "A component as the subject: parts with multiplicities such as `1..*` and `0..1`, a shared part drawn dashed, ports on the component and on its parts' types, connectors through them, the component's two ports pinned to opposite sides in `present`, and a comment linked to a port.",
+   "how": "From examples/variants/uml-composite-structure-component.json.",
+   "opensView": "component-inside"
+  },
+  {
+   "id": "card-collaboration-roles",
+   "label": "A collaboration as the subject",
+   "kind": "file",
+   "sublabel": "a collaboration as the subject",
+   "what": "A collaboration as the view's subject: its roles drawn as parts with their types and multiplicities, and the connectors that join the roles.",
+   "how": "From examples/variants/uml-composite-structure-collaboration.json.",
+   "opensView": "collaboration-roles"
+  },
+  {
    "id": "order-service-structure-order-service",
    "type": "uml.Class",
    "label": "OrderService",
@@ -137,6 +155,177 @@
      }
     }
    ]
+  },
+  {
+   "id": "component-station",
+   "type": "uml.Component",
+   "label": "DockStation",
+   "members": [
+    {
+     "id": "component-station.mains",
+     "type": "uml.Port",
+     "label": "mains"
+    },
+    {
+     "id": "component-station.uplink",
+     "type": "uml.Port",
+     "label": "uplink"
+    },
+    {
+     "id": "component-station.controller",
+     "type": "uml.Property",
+     "label": "controller",
+     "props": {
+      "valueType": "StationController",
+      "multiplicity": "1",
+      "aggregation": "composite"
+     }
+    },
+    {
+     "id": "component-station.docks",
+     "type": "uml.Property",
+     "label": "docks",
+     "props": {
+      "valueType": "Dock",
+      "multiplicity": "1..*",
+      "aggregation": "composite"
+     }
+    },
+    {
+     "id": "component-station.screen",
+     "type": "uml.Property",
+     "label": "screen",
+     "props": {
+      "valueType": "Kiosk",
+      "multiplicity": "0..1",
+      "aggregation": "composite"
+     }
+    },
+    {
+     "id": "component-station.power",
+     "type": "uml.Property",
+     "label": "power",
+     "props": {
+      "valueType": "PowerUnit",
+      "multiplicity": "1",
+      "aggregation": "shared"
+     }
+    }
+   ]
+  },
+  {
+   "id": "component-controller",
+   "type": "uml.Class",
+   "label": "StationController",
+   "members": [
+    {
+     "id": "component-controller.net",
+     "type": "uml.Port",
+     "label": "net"
+    },
+    {
+     "id": "component-controller.bus",
+     "type": "uml.Port",
+     "label": "bus"
+    }
+   ]
+  },
+  {
+   "id": "component-dock",
+   "type": "uml.Class",
+   "label": "Dock",
+   "members": [
+    {
+     "id": "component-dock.bus",
+     "type": "uml.Port",
+     "label": "bus"
+    }
+   ]
+  },
+  {
+   "id": "component-kiosk",
+   "type": "uml.Class",
+   "label": "Kiosk"
+  },
+  {
+   "id": "component-power",
+   "type": "uml.Component",
+   "label": "PowerUnit",
+   "members": [
+    {
+     "id": "component-power.in",
+     "type": "uml.Port",
+     "label": "in"
+    }
+   ]
+  },
+  {
+   "id": "component-note",
+   "type": "uml.Comment",
+   "label": "mains comes from the street lighting circuit"
+  },
+  {
+   "id": "collaboration-loan",
+   "type": "uml.Collaboration",
+   "label": "BookLoan",
+   "members": [
+    {
+     "id": "collaboration-loan.member",
+     "type": "uml.Property",
+     "label": "borrower",
+     "props": {
+      "valueType": "Member",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "collaboration-loan.copy",
+     "type": "uml.Property",
+     "label": "item",
+     "props": {
+      "valueType": "Copy",
+      "multiplicity": "1..*"
+     }
+    },
+    {
+     "id": "collaboration-loan.desk",
+     "type": "uml.Property",
+     "label": "lender",
+     "props": {
+      "valueType": "Desk",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "collaboration-loan.ledger",
+     "type": "uml.Property",
+     "label": "record",
+     "props": {
+      "valueType": "LoanLedger",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "collaboration-member",
+   "type": "uml.Class",
+   "label": "Member"
+  },
+  {
+   "id": "collaboration-copy",
+   "type": "uml.Class",
+   "label": "Copy"
+  },
+  {
+   "id": "collaboration-desk",
+   "type": "uml.Class",
+   "label": "Desk"
+  },
+  {
+   "id": "collaboration-ledger",
+   "type": "uml.Class",
+   "label": "LoanLedger"
   }
  ],
  "edges": [
@@ -213,6 +402,84 @@
    "from": "order-service-structure-order-service.listeners",
    "to": "order-service-structure-order-events",
    "label": "subscriber"
+  },
+  {
+   "id": "component-uplink-net",
+   "type": "uml.Connector",
+   "from": "component-station.uplink",
+   "to": "component-controller.net",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "component-station.controller"
+     }
+    }
+   }
+  },
+  {
+   "id": "component-bus",
+   "type": "uml.Connector",
+   "from": "component-controller.bus",
+   "to": "component-dock.bus",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "component-station.controller"
+     },
+     "to": {
+      "part": "component-station.docks"
+     }
+    }
+   }
+  },
+  {
+   "id": "component-screen-link",
+   "type": "uml.Connector",
+   "from": "component-station.controller",
+   "to": "component-station.screen"
+  },
+  {
+   "id": "component-mains-in",
+   "type": "uml.Connector",
+   "from": "component-station.mains",
+   "to": "component-power.in",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "component-station.power"
+     }
+    }
+   }
+  },
+  {
+   "id": "component-power-controller",
+   "type": "uml.Connector",
+   "from": "component-station.power",
+   "to": "component-station.docks"
+  },
+  {
+   "id": "component-note-link",
+   "type": "uml.CommentLink",
+   "from": "component-note",
+   "to": "component-station.mains"
+  },
+  {
+   "id": "collaboration-borrows",
+   "type": "uml.Connector",
+   "from": "collaboration-loan.member",
+   "to": "collaboration-loan.desk"
+  },
+  {
+   "id": "collaboration-lends",
+   "type": "uml.Connector",
+   "from": "collaboration-loan.desk",
+   "to": "collaboration-loan.copy"
+  },
+  {
+   "id": "collaboration-records",
+   "type": "uml.Connector",
+   "from": "collaboration-loan.desk",
+   "to": "collaboration-loan.ledger"
   }
  ],
  "views": [
@@ -221,12 +488,22 @@
    "parent": null,
    "title": "Composite structure diagram examples",
    "nodeIds": [
-    "card-order-service-structure-internals"
+    "card-order-service-structure-internals",
+    "card-component-inside",
+    "card-collaboration-roles"
    ],
    "layout": {
     "card-order-service-structure-internals": [
      0,
      0
+    ],
+    "card-component-inside": [
+     1,
+     0
+    ],
+    "card-collaboration-roles": [
+     0,
+     1
     ]
    }
   },
@@ -240,6 +517,35 @@
     "order-service-structure-order-service",
     "order-service-structure-order-events",
     "order-service-structure-publish-subscribe"
+   ]
+  },
+  {
+   "id": "component-inside",
+   "diagram": "uml.composite-structure",
+   "title": "A component's parts and ports",
+   "parent": "overview",
+   "subject": "component-station",
+   "nodeIds": [
+    "component-station",
+    "component-note"
+   ],
+   "present": {
+    "component-station.mains": {
+     "side": "left"
+    },
+    "component-station.uplink": {
+     "side": "right"
+    }
+   }
+  },
+  {
+   "id": "collaboration-roles",
+   "diagram": "uml.composite-structure",
+   "title": "A collaboration as the subject",
+   "parent": "overview",
+   "subject": "collaboration-loan",
+   "nodeIds": [
+    "collaboration-loan"
    ]
   }
  ]

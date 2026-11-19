@@ -14,6 +14,24 @@
    "opensView": "order-information-flow-order-flows"
   },
   {
+   "id": "card-classes-classes",
+   "label": "Named flows between classes",
+   "kind": "file",
+   "sublabel": "named flows, classes, a self-flow",
+   "what": "Flows between an actor, classes and an interface, each named (`<<flow>> borrow: Card number, Copy`), one conveying a class beside information items, a flow from a class to itself and a note.",
+   "how": "From examples/variants/uml-information-flow-classes.json.",
+   "opensView": "classes-classes"
+  },
+  {
+   "id": "card-down-orders",
+   "label": "Flows laid out down",
+   "kind": "file",
+   "sublabel": "laid out down",
+   "what": "A cafe's orders laid out down: a guest, a barista and three components, an order, a ticket and the beans used flowing between them.",
+   "how": "From examples/variants/uml-information-flow-down.json.",
+   "opensView": "down-orders"
+  },
+  {
    "id": "order-information-flow-shopper",
    "type": "uml.Actor",
    "label": "Shopper"
@@ -62,6 +80,91 @@
    "id": "order-information-flow-stock-info",
    "type": "uml.InformationItem",
    "label": "Stock level"
+  },
+  {
+   "id": "classes-member",
+   "type": "uml.Actor",
+   "label": "Member"
+  },
+  {
+   "id": "classes-desk",
+   "type": "uml.Class",
+   "label": "LoanDesk"
+  },
+  {
+   "id": "classes-reminders",
+   "type": "uml.Interface",
+   "label": "Reminders"
+  },
+  {
+   "id": "classes-ledger",
+   "type": "uml.Class",
+   "label": "FineLedger"
+  },
+  {
+   "id": "classes-copy",
+   "type": "uml.Class",
+   "label": "Copy"
+  },
+  {
+   "id": "classes-card",
+   "type": "uml.InformationItem",
+   "label": "Card number"
+  },
+  {
+   "id": "classes-due-date",
+   "type": "uml.InformationItem",
+   "label": "Due date"
+  },
+  {
+   "id": "classes-fine",
+   "type": "uml.InformationItem",
+   "label": "Fine"
+  },
+  {
+   "id": "classes-note",
+   "type": "uml.Comment",
+   "label": "the ledger rechecks its own totals every night"
+  },
+  {
+   "id": "down-guest",
+   "type": "uml.Actor",
+   "label": "Guest"
+  },
+  {
+   "id": "down-till",
+   "type": "uml.Component",
+   "label": "Till"
+  },
+  {
+   "id": "down-barista",
+   "type": "uml.Actor",
+   "label": "Barista"
+  },
+  {
+   "id": "down-kitchen",
+   "type": "uml.Component",
+   "label": "Kitchen screen"
+  },
+  {
+   "id": "down-stock",
+   "type": "uml.Component",
+   "label": "Stock list"
+  },
+  {
+   "id": "down-order",
+   "type": "uml.InformationItem",
+   "label": "Order"
+  },
+  {
+   "id": "down-ticket",
+   "type": "uml.InformationItem",
+   "label": "Ticket"
+  },
+  {
+   "id": "down-usage",
+   "type": "uml.InformationItem",
+   "label": "Beans used"
   }
  ],
  "edges": [
@@ -154,6 +257,119 @@
      "order-information-flow-receipt-info"
     ]
    }
+  },
+  {
+   "id": "classes-member-desk",
+   "type": "uml.InformationFlow",
+   "from": "classes-member",
+   "to": "classes-desk",
+   "label": "borrow",
+   "props": {
+    "conveyed": [
+     "classes-card",
+     "classes-copy"
+    ]
+   }
+  },
+  {
+   "id": "classes-reminders-member",
+   "type": "uml.InformationFlow",
+   "from": "classes-reminders",
+   "to": "classes-member",
+   "label": "reminder",
+   "props": {
+    "conveyed": [
+     "classes-due-date"
+    ]
+   }
+  },
+  {
+   "id": "classes-desk-reminders",
+   "type": "uml.InformationFlow",
+   "from": "classes-desk",
+   "to": "classes-reminders",
+   "label": "schedule",
+   "props": {
+    "conveyed": [
+     "classes-due-date",
+     "classes-copy"
+    ]
+   }
+  },
+  {
+   "id": "classes-desk-ledger",
+   "type": "uml.InformationFlow",
+   "from": "classes-desk",
+   "to": "classes-ledger",
+   "label": "late return",
+   "props": {
+    "conveyed": [
+     "classes-fine",
+     "classes-card"
+    ]
+   }
+  },
+  {
+   "id": "classes-ledger-self",
+   "type": "uml.InformationFlow",
+   "from": "classes-ledger",
+   "to": "classes-ledger",
+   "label": "nightly",
+   "props": {
+    "conveyed": [
+     "classes-fine"
+    ]
+   }
+  },
+  {
+   "id": "classes-note-link",
+   "type": "uml.CommentLink",
+   "from": "classes-note",
+   "to": "classes-ledger"
+  },
+  {
+   "id": "down-guest-till",
+   "type": "uml.InformationFlow",
+   "from": "down-guest",
+   "to": "down-till",
+   "props": {
+    "conveyed": [
+     "down-order"
+    ]
+   }
+  },
+  {
+   "id": "down-till-barista",
+   "type": "uml.InformationFlow",
+   "from": "down-till",
+   "to": "down-barista",
+   "props": {
+    "conveyed": [
+     "down-ticket"
+    ]
+   }
+  },
+  {
+   "id": "down-till-kitchen",
+   "type": "uml.InformationFlow",
+   "from": "down-till",
+   "to": "down-kitchen",
+   "props": {
+    "conveyed": [
+     "down-ticket"
+    ]
+   }
+  },
+  {
+   "id": "down-barista-stock",
+   "type": "uml.InformationFlow",
+   "from": "down-barista",
+   "to": "down-stock",
+   "props": {
+    "conveyed": [
+     "down-usage"
+    ]
+   }
   }
  ],
  "views": [
@@ -162,12 +378,22 @@
    "parent": null,
    "title": "Information flow diagram examples",
    "nodeIds": [
-    "card-order-information-flow-order-flows"
+    "card-order-information-flow-order-flows",
+    "card-classes-classes",
+    "card-down-orders"
    ],
    "layout": {
     "card-order-information-flow-order-flows": [
      0,
      0
+    ],
+    "card-classes-classes": [
+     1,
+     0
+    ],
+    "card-down-orders": [
+     0,
+     1
     ]
    }
   },
@@ -187,6 +413,40 @@
     "order-information-flow-card-details",
     "order-information-flow-receipt-info",
     "order-information-flow-stock-info"
+   ]
+  },
+  {
+   "id": "classes-classes",
+   "diagram": "uml.information-flow",
+   "title": "Named flows between classes",
+   "parent": "overview",
+   "nodeIds": [
+    "classes-member",
+    "classes-desk",
+    "classes-reminders",
+    "classes-ledger",
+    "classes-copy",
+    "classes-card",
+    "classes-due-date",
+    "classes-fine",
+    "classes-note"
+   ]
+  },
+  {
+   "id": "down-orders",
+   "diagram": "uml.information-flow",
+   "title": "Flows laid out down",
+   "parent": "overview",
+   "direction": "down",
+   "nodeIds": [
+    "down-guest",
+    "down-till",
+    "down-barista",
+    "down-kitchen",
+    "down-stock",
+    "down-order",
+    "down-ticket",
+    "down-usage"
    ]
   }
  ]

@@ -1,0 +1,26 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "A cafe's orders",
+ "root": "orders",
+ "nodes": [
+  { "id": "guest", "type": "uml.Actor", "label": "Guest" },
+  { "id": "till", "type": "uml.Component", "label": "Till" },
+  { "id": "barista", "type": "uml.Actor", "label": "Barista" },
+  { "id": "kitchen", "type": "uml.Component", "label": "Kitchen screen" },
+  { "id": "stock", "type": "uml.Component", "label": "Stock list" },
+  { "id": "order", "type": "uml.InformationItem", "label": "Order" },
+  { "id": "ticket", "type": "uml.InformationItem", "label": "Ticket" },
+  { "id": "usage", "type": "uml.InformationItem", "label": "Beans used" }
+ ],
+ "edges": [
+  { "id": "guest-till", "type": "uml.InformationFlow", "from": "guest", "to": "till", "props": { "conveyed": ["order"] } },
+  { "id": "till-barista", "type": "uml.InformationFlow", "from": "till", "to": "barista", "props": { "conveyed": ["ticket"] } },
+  { "id": "till-kitchen", "type": "uml.InformationFlow", "from": "till", "to": "kitchen", "props": { "conveyed": ["ticket"] } },
+  { "id": "barista-stock", "type": "uml.InformationFlow", "from": "barista", "to": "stock", "props": { "conveyed": ["usage"] } }
+ ],
+ "views": [
+  { "id": "orders", "diagram": "uml.information-flow", "title": "Flows laid out down", "parent": null, "direction": "down",
+   "nodeIds": ["guest", "till", "barista", "kitchen", "stock", "order", "ticket", "usage"] }
+ ]
+}

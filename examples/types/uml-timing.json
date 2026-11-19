@@ -14,6 +14,24 @@
    "opensView": "bookshop-timing-one-charge"
   },
   {
+   "id": "card-values-unlock",
+   "label": "States and a value lifeline",
+   "kind": "file",
+   "sublabel": "a value lifeline, async messages",
+   "what": "Two state lifelines and one drawn as a band of values (`present.<lifeline>.as: \"values\"`), in seconds: asynchronous messages, one with a `<<signal>>` stereotype, a duration constraint between two lifelines and a time constraint.",
+   "how": "From examples/variants/uml-timing-values.json.",
+   "opensView": "values-unlock"
+  },
+  {
+   "id": "card-charging-charging",
+   "label": "Minutes, calls and overlapping constraints",
+   "kind": "file",
+   "sublabel": "minutes, call and reply, overlaps",
+   "what": "A longer run in minutes: a call and its reply, an asynchronous message, a battery's value band, and overlapping duration constraints on one lifeline drawn on their own levels.",
+   "how": "From examples/variants/uml-timing-charging.json.",
+   "opensView": "charging-charging"
+  },
+  {
    "id": "bookshop-timing-lifeline-worker",
    "type": "uml.Lifeline",
    "label": "worker",
@@ -38,6 +56,75 @@
      "Capturing"
     ]
    }
+  },
+  {
+   "id": "values-app",
+   "type": "uml.Lifeline",
+   "label": "app",
+   "props": {
+    "represents": "RiderApp",
+    "states": [
+     "Idle",
+     "Waiting",
+     "Riding"
+    ]
+   }
+  },
+  {
+   "id": "values-lock",
+   "type": "uml.Lifeline",
+   "label": "lock",
+   "props": {
+    "represents": "DockLock",
+    "states": [
+     "Locked",
+     "Releasing",
+     "Open"
+    ]
+   }
+  },
+  {
+   "id": "values-led",
+   "type": "uml.Lifeline",
+   "label": "light",
+   "props": {
+    "represents": "DockLight"
+   }
+  },
+  {
+   "id": "charging-dock",
+   "type": "uml.Lifeline",
+   "label": "dock",
+   "props": {
+    "represents": "ChargingDock",
+    "states": [
+     "Idle",
+     "Charging",
+     "Topping up",
+     "Full"
+    ]
+   }
+  },
+  {
+   "id": "charging-battery",
+   "type": "uml.Lifeline",
+   "label": "battery",
+   "props": {
+    "represents": "Battery"
+   }
+  },
+  {
+   "id": "charging-ops",
+   "type": "uml.Lifeline",
+   "label": "ops",
+   "props": {
+    "represents": "FleetService",
+    "states": [
+     "Unaware",
+     "Bike unavailable",
+     "Bike available"
+    ]
+   }
   }
  ],
  "edges": [],
@@ -47,12 +134,22 @@
    "parent": null,
    "title": "Timing diagram examples",
    "nodeIds": [
-    "card-bookshop-timing-one-charge"
+    "card-bookshop-timing-one-charge",
+    "card-values-unlock",
+    "card-charging-charging"
    ],
    "layout": {
     "card-bookshop-timing-one-charge": [
      0,
      0
+    ],
+    "card-values-unlock": [
+     1,
+     0
+    ],
+    "card-charging-charging": [
+     0,
+     1
     ]
    }
   },
@@ -157,6 +254,286 @@
       "type": "uml.TimeConstraint",
       "from": "bookshop-timing-w-done",
       "label": "{<= 1000 ms}"
+     }
+    ]
+   }
+  },
+  {
+   "id": "values-unlock",
+   "diagram": "uml.timing",
+   "title": "States and a value lifeline",
+   "parent": "overview",
+   "nodeIds": [
+    "values-app",
+    "values-lock",
+    "values-led"
+   ],
+   "present": {
+    "values-led": {
+     "as": "values"
+    }
+   },
+   "edges": [
+    {
+     "id": "values-m-unlock",
+     "type": "uml.Message",
+     "from": "values-app",
+     "to": "values-lock",
+     "label": "unlock(bike 42)",
+     "props": {
+      "sort": "async",
+      "sentAt": 1,
+      "receivedAt": 2
+     }
+    },
+    {
+     "id": "values-m-open",
+     "type": "uml.Message",
+     "from": "values-lock",
+     "to": "values-app",
+     "label": "released",
+     "props": {
+      "sort": "async",
+      "stereotypes": [
+       "signal"
+      ],
+      "sentAt": 5,
+      "receivedAt": 6
+     }
+    }
+   ],
+   "timeline": {
+    "unit": "s",
+    "changes": [
+     {
+      "id": "values-a0",
+      "lifeline": "values-app",
+      "at": 0,
+      "state": "Idle"
+     },
+     {
+      "id": "values-a1",
+      "lifeline": "values-app",
+      "at": 1,
+      "state": "Waiting"
+     },
+     {
+      "id": "values-a2",
+      "lifeline": "values-app",
+      "at": 6,
+      "state": "Riding"
+     },
+     {
+      "id": "values-l0",
+      "lifeline": "values-lock",
+      "at": 0,
+      "state": "Locked"
+     },
+     {
+      "id": "values-l1",
+      "lifeline": "values-lock",
+      "at": 2,
+      "state": "Releasing"
+     },
+     {
+      "id": "values-l2",
+      "lifeline": "values-lock",
+      "at": 5,
+      "state": "Open"
+     },
+     {
+      "id": "values-l3",
+      "lifeline": "values-lock",
+      "at": 9,
+      "state": "Locked"
+     },
+     {
+      "id": "values-g0",
+      "lifeline": "values-led",
+      "at": 0,
+      "state": "green"
+     },
+     {
+      "id": "values-g1",
+      "lifeline": "values-led",
+      "at": 2,
+      "state": "blinking blue"
+     },
+     {
+      "id": "values-g2",
+      "lifeline": "values-led",
+      "at": 5,
+      "state": "off"
+     },
+     {
+      "id": "values-g3",
+      "lifeline": "values-led",
+      "at": 9,
+      "state": "red"
+     }
+    ],
+    "constraints": [
+     {
+      "id": "values-c-release",
+      "type": "uml.DurationConstraint",
+      "from": "values-a1",
+      "to": "values-l2",
+      "label": "{<= 5 s}"
+     },
+     {
+      "id": "values-c-relock",
+      "type": "uml.TimeConstraint",
+      "from": "values-l3",
+      "label": "{t = 9 s}"
+     }
+    ]
+   }
+  },
+  {
+   "id": "charging-charging",
+   "diagram": "uml.timing",
+   "title": "Minutes, calls and overlapping constraints",
+   "parent": "overview",
+   "nodeIds": [
+    "charging-dock",
+    "charging-ops",
+    "charging-battery"
+   ],
+   "present": {
+    "charging-battery": {
+     "as": "values"
+    }
+   },
+   "edges": [
+    {
+     "id": "charging-m-docked",
+     "type": "uml.Message",
+     "from": "charging-dock",
+     "to": "charging-ops",
+     "label": "docked(low)",
+     "props": {
+      "sort": "call",
+      "sentAt": 10,
+      "receivedAt": 16
+     }
+    },
+    {
+     "id": "charging-m-ack",
+     "type": "uml.Message",
+     "from": "charging-ops",
+     "to": "charging-dock",
+     "label": "hold",
+     "props": {
+      "sort": "reply",
+      "replyTo": "charging-m-docked",
+      "sentAt": 22,
+      "receivedAt": 28
+     }
+    },
+    {
+     "id": "charging-m-full",
+     "type": "uml.Message",
+     "from": "charging-dock",
+     "to": "charging-ops",
+     "label": "charged",
+     "props": {
+      "sort": "async",
+      "sentAt": 95,
+      "receivedAt": 96
+     }
+    }
+   ],
+   "timeline": {
+    "unit": "min",
+    "changes": [
+     {
+      "id": "charging-d0",
+      "lifeline": "charging-dock",
+      "at": 0,
+      "state": "Idle"
+     },
+     {
+      "id": "charging-d1",
+      "lifeline": "charging-dock",
+      "at": 28,
+      "state": "Charging"
+     },
+     {
+      "id": "charging-d2",
+      "lifeline": "charging-dock",
+      "at": 60,
+      "state": "Topping up"
+     },
+     {
+      "id": "charging-d3",
+      "lifeline": "charging-dock",
+      "at": 95,
+      "state": "Full"
+     },
+     {
+      "id": "charging-b0",
+      "lifeline": "charging-battery",
+      "at": 0,
+      "state": "15 %"
+     },
+     {
+      "id": "charging-b1",
+      "lifeline": "charging-battery",
+      "at": 30,
+      "state": "50 %"
+     },
+     {
+      "id": "charging-b2",
+      "lifeline": "charging-battery",
+      "at": 60,
+      "state": "80 %"
+     },
+     {
+      "id": "charging-b3",
+      "lifeline": "charging-battery",
+      "at": 95,
+      "state": "100 %"
+     },
+     {
+      "id": "charging-o-start",
+      "lifeline": "charging-ops",
+      "at": 0,
+      "state": "Unaware"
+     },
+     {
+      "id": "charging-o0",
+      "lifeline": "charging-ops",
+      "at": 16,
+      "state": "Bike unavailable"
+     },
+     {
+      "id": "charging-o1",
+      "lifeline": "charging-ops",
+      "at": 96,
+      "state": "Bike available"
+     }
+    ],
+    "constraints": [
+     {
+      "id": "charging-c-fast",
+      "type": "uml.DurationConstraint",
+      "from": "charging-d1",
+      "to": "charging-d2",
+      "label": "{<= 60 min}"
+     },
+     {
+      "id": "charging-c-all",
+      "type": "uml.DurationConstraint",
+      "from": "charging-d1",
+      "to": "charging-d3",
+      "label": "{<= 120 min}"
+     },
+     {
+      "id": "charging-c-out",
+      "type": "uml.DurationConstraint",
+      "from": "charging-o0",
+      "to": "charging-o1",
+      "label": "{<= 2 h}"
      }
     ]
    }

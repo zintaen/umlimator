@@ -14,6 +14,24 @@
    "opensView": "shopping-use-cases-shopping"
   },
   {
+   "id": "card-dock-dock",
+   "label": "Two subjects, laid out down",
+   "kind": "file",
+   "sublabel": "two subjects, laid out down",
+   "what": "Two subjects side by side, the dock kiosk and the rider app, each holding its own use cases, laid out down; a `<<system>>` actor, an include, an extend at the extension point \"after locking\" with its condition, and a note on a use case.",
+   "how": "From examples/variants/uml-use-case-dock.json.",
+   "opensView": "dock-dock"
+  },
+  {
+   "id": "card-library-lending",
+   "label": "Lending, with no subject box",
+   "kind": "file",
+   "sublabel": "no subject, chains of generalization",
+   "what": "Use cases with no subject box around them; actors specialized two levels deep (a junior member is a member is a borrower), two use cases specializing one, and an include.",
+   "how": "From examples/variants/uml-use-case-library.json.",
+   "opensView": "library-lending"
+  },
+  {
    "id": "shopping-use-cases-shopper",
    "type": "uml.Actor",
    "label": "Shopper"
@@ -92,6 +110,129 @@
    "type": "uml.UseCase",
    "label": "Track an order",
    "parent": "shopping-use-cases-bookshop"
+  },
+  {
+   "id": "dock-rider",
+   "type": "uml.Actor",
+   "label": "Rider"
+  },
+  {
+   "id": "dock-bank",
+   "type": "uml.Actor",
+   "label": "Card bank",
+   "props": {
+    "stereotypes": [
+     "system"
+    ]
+   }
+  },
+  {
+   "id": "dock-kiosk",
+   "type": "uml.Subject",
+   "label": "Dock kiosk"
+  },
+  {
+   "id": "dock-unlock",
+   "type": "uml.UseCase",
+   "label": "Unlock a bike",
+   "parent": "dock-kiosk"
+  },
+  {
+   "id": "dock-return",
+   "type": "uml.UseCase",
+   "label": "Return a bike",
+   "parent": "dock-kiosk",
+   "members": [
+    {
+     "id": "dock-return.locked",
+     "type": "uml.ExtensionPoint",
+     "label": "after locking"
+    }
+   ]
+  },
+  {
+   "id": "dock-close-ride",
+   "type": "uml.UseCase",
+   "label": "Close the ride",
+   "parent": "dock-kiosk"
+  },
+  {
+   "id": "dock-report",
+   "type": "uml.UseCase",
+   "label": "Report a fault",
+   "parent": "dock-kiosk"
+  },
+  {
+   "id": "dock-app",
+   "type": "uml.Subject",
+   "label": "Rider app"
+  },
+  {
+   "id": "dock-find-dock",
+   "type": "uml.UseCase",
+   "label": "Find a dock with space",
+   "parent": "dock-app"
+  },
+  {
+   "id": "dock-day-pass",
+   "type": "uml.UseCase",
+   "label": "Buy a day pass",
+   "parent": "dock-app"
+  },
+  {
+   "id": "dock-unlock-note",
+   "type": "uml.Comment",
+   "label": "A day pass or a card on file unlocks"
+  },
+  {
+   "id": "library-borrower",
+   "type": "uml.Actor",
+   "label": "Borrower"
+  },
+  {
+   "id": "library-member",
+   "type": "uml.Actor",
+   "label": "Library member"
+  },
+  {
+   "id": "library-child",
+   "type": "uml.Actor",
+   "label": "Junior member"
+  },
+  {
+   "id": "library-librarian",
+   "type": "uml.Actor",
+   "label": "Librarian"
+  },
+  {
+   "id": "library-borrow",
+   "type": "uml.UseCase",
+   "label": "Borrow a book"
+  },
+  {
+   "id": "library-check-card",
+   "type": "uml.UseCase",
+   "label": "Check the library card"
+  },
+  {
+   "id": "library-pay-fine",
+   "type": "uml.UseCase",
+   "label": "Pay a fine"
+  },
+  {
+   "id": "library-pay-cash",
+   "type": "uml.UseCase",
+   "label": "Pay a fine in cash"
+  },
+  {
+   "id": "library-pay-online",
+   "type": "uml.UseCase",
+   "label": "Pay a fine online"
+  },
+  {
+   "id": "library-waive",
+   "type": "uml.UseCase",
+   "label": "Waive a fine"
   }
  ],
  "edges": [
@@ -166,6 +307,108 @@
     ],
     "condition": "the order is a gift"
    }
+  },
+  {
+   "id": "dock-rider-unlocks",
+   "type": "uml.Association",
+   "from": "dock-rider",
+   "to": "dock-unlock"
+  },
+  {
+   "id": "dock-rider-returns",
+   "type": "uml.Association",
+   "from": "dock-rider",
+   "to": "dock-return"
+  },
+  {
+   "id": "dock-rider-finds",
+   "type": "uml.Association",
+   "from": "dock-rider",
+   "to": "dock-find-dock"
+  },
+  {
+   "id": "dock-rider-buys",
+   "type": "uml.Association",
+   "from": "dock-rider",
+   "to": "dock-day-pass"
+  },
+  {
+   "id": "dock-bank-charges",
+   "type": "uml.Association",
+   "from": "dock-bank",
+   "to": "dock-day-pass"
+  },
+  {
+   "id": "dock-return-closes",
+   "type": "uml.Include",
+   "from": "dock-return",
+   "to": "dock-close-ride"
+  },
+  {
+   "id": "dock-report-extends-return",
+   "type": "uml.Extend",
+   "from": "dock-report",
+   "to": "dock-return",
+   "props": {
+    "extensionPoints": [
+     "dock-return.locked"
+    ],
+    "condition": "the bike is damaged"
+   }
+  },
+  {
+   "id": "dock-unlock-note-link",
+   "type": "uml.CommentLink",
+   "from": "dock-unlock-note",
+   "to": "dock-unlock"
+  },
+  {
+   "id": "library-member-is-borrower",
+   "type": "uml.Generalization",
+   "from": "library-member",
+   "to": "library-borrower"
+  },
+  {
+   "id": "library-child-is-member",
+   "type": "uml.Generalization",
+   "from": "library-child",
+   "to": "library-member"
+  },
+  {
+   "id": "library-borrower-borrows",
+   "type": "uml.Association",
+   "from": "library-borrower",
+   "to": "library-borrow"
+  },
+  {
+   "id": "library-borrower-pays",
+   "type": "uml.Association",
+   "from": "library-borrower",
+   "to": "library-pay-fine"
+  },
+  {
+   "id": "library-librarian-waives",
+   "type": "uml.Association",
+   "from": "library-librarian",
+   "to": "library-waive"
+  },
+  {
+   "id": "library-borrow-checks-card",
+   "type": "uml.Include",
+   "from": "library-borrow",
+   "to": "library-check-card"
+  },
+  {
+   "id": "library-cash-is-pay",
+   "type": "uml.Generalization",
+   "from": "library-pay-cash",
+   "to": "library-pay-fine"
+  },
+  {
+   "id": "library-online-is-pay",
+   "type": "uml.Generalization",
+   "from": "library-pay-online",
+   "to": "library-pay-fine"
   }
  ],
  "views": [
@@ -174,12 +417,22 @@
    "parent": null,
    "title": "Use case diagram examples",
    "nodeIds": [
-    "card-shopping-use-cases-shopping"
+    "card-shopping-use-cases-shopping",
+    "card-dock-dock",
+    "card-library-lending"
    ],
    "layout": {
     "card-shopping-use-cases-shopping": [
      0,
      0
+    ],
+    "card-dock-dock": [
+     1,
+     0
+    ],
+    "card-library-lending": [
+     0,
+     1
     ]
    }
   },
@@ -201,6 +454,44 @@
     "shopping-use-cases-gift-wrap",
     "shopping-use-cases-sign-in",
     "shopping-use-cases-track"
+   ]
+  },
+  {
+   "id": "dock-dock",
+   "diagram": "uml.use-case",
+   "title": "Two subjects, laid out down",
+   "parent": "overview",
+   "direction": "down",
+   "nodeIds": [
+    "dock-rider",
+    "dock-bank",
+    "dock-kiosk",
+    "dock-unlock",
+    "dock-return",
+    "dock-close-ride",
+    "dock-report",
+    "dock-app",
+    "dock-find-dock",
+    "dock-day-pass",
+    "dock-unlock-note"
+   ]
+  },
+  {
+   "id": "library-lending",
+   "diagram": "uml.use-case",
+   "title": "Lending, with no subject box",
+   "parent": "overview",
+   "nodeIds": [
+    "library-borrower",
+    "library-member",
+    "library-child",
+    "library-librarian",
+    "library-borrow",
+    "library-check-card",
+    "library-pay-fine",
+    "library-pay-cash",
+    "library-pay-online",
+    "library-waive"
    ]
   }
  ]

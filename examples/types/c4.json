@@ -50,6 +50,24 @@
    "opensView": "bookshop-c4-c4-deployment"
   },
   {
+   "id": "card-landscape-landscape",
+   "label": "City libraries: system landscape",
+   "kind": "file",
+   "sublabel": "system landscape",
+   "what": "A landscape view: the city libraries' software systems side by side with the people who use them and two external systems, with no system as its subject.",
+   "how": "From examples/variants/c4-landscape.json.",
+   "opensView": "landscape-landscape"
+  },
+  {
+   "id": "card-shapes-shapes",
+   "label": "Cinema tickets: a container shape each",
+   "kind": "file",
+   "sublabel": "a container shape each",
+   "what": "A container view whose containers use C4's card shapes by `shape`: a browser, a phone, a window, a robot, a terminal, a cylinder, a pipe and a folder, beside the default box and a grey external system.",
+   "how": "From examples/variants/c4-shapes.json.",
+   "opensView": "shapes-shapes"
+  },
+  {
    "id": "bookshop-c4-c4-shopper",
    "type": "c4.Person",
    "label": "Shopper",
@@ -299,6 +317,187 @@
    "parent": "bookshop-c4-c4-postgres",
    "props": {
     "container": "bookshop-c4-c4-queue"
+   }
+  },
+  {
+   "id": "landscape-member",
+   "type": "c4.Person",
+   "label": "Library member",
+   "props": {
+    "description": "Borrows books, reserves copies and pays fines."
+   }
+  },
+  {
+   "id": "landscape-librarian",
+   "type": "c4.Person",
+   "label": "Librarian",
+   "props": {
+    "description": "Lends and returns copies at the desk."
+   }
+  },
+  {
+   "id": "landscape-catalogue",
+   "type": "c4.SoftwareSystem",
+   "label": "Catalogue",
+   "props": {
+    "description": "Every title and copy across the city's branches."
+   }
+  },
+  {
+   "id": "landscape-lending",
+   "type": "c4.SoftwareSystem",
+   "label": "Lending",
+   "props": {
+    "description": "Loans, renewals, holds and fines."
+   }
+  },
+  {
+   "id": "landscape-events",
+   "type": "c4.SoftwareSystem",
+   "label": "Events booking",
+   "props": {
+    "description": "Readings, clubs and children's sessions."
+   }
+  },
+  {
+   "id": "landscape-council-id",
+   "type": "c4.SoftwareSystem",
+   "label": "Council sign-in",
+   "props": {
+    "description": "The city's single sign-in for residents.",
+    "external": true
+   }
+  },
+  {
+   "id": "landscape-payments",
+   "type": "c4.SoftwareSystem",
+   "label": "Card payments",
+   "props": {
+    "description": "Takes fine and booking payments.",
+    "external": true
+   }
+  },
+  {
+   "id": "shapes-guest",
+   "type": "c4.Person",
+   "label": "Film-goer",
+   "props": {
+    "description": "Buys tickets and picks seats."
+   }
+  },
+  {
+   "id": "shapes-cinema",
+   "type": "c4.SoftwareSystem",
+   "label": "Cinema tickets",
+   "props": {
+    "description": "Sells tickets online, in the app and at the kiosk."
+   }
+  },
+  {
+   "id": "shapes-web",
+   "type": "c4.Container",
+   "label": "Website",
+   "parent": "shapes-cinema",
+   "props": {
+    "technology": "TypeScript, Vue",
+    "description": "Showtimes and checkout in the browser.",
+    "shape": "browser"
+   }
+  },
+  {
+   "id": "shapes-app",
+   "type": "c4.Container",
+   "label": "Phone app",
+   "parent": "shapes-cinema",
+   "props": {
+    "technology": "Kotlin, Swift",
+    "description": "Tickets on the phone, scanned at the door.",
+    "shape": "mobile"
+   }
+  },
+  {
+   "id": "shapes-kiosk",
+   "type": "c4.Container",
+   "label": "Kiosk",
+   "parent": "shapes-cinema",
+   "props": {
+    "technology": "Electron",
+    "description": "Self-service tickets in the foyer.",
+    "shape": "window"
+   }
+  },
+  {
+   "id": "shapes-api",
+   "type": "c4.Container",
+   "label": "Booking API",
+   "parent": "shapes-cinema",
+   "props": {
+    "technology": "Go",
+    "description": "Holds seats and takes orders."
+   }
+  },
+  {
+   "id": "shapes-seat-bot",
+   "type": "c4.Container",
+   "label": "Reminder bot",
+   "parent": "shapes-cinema",
+   "props": {
+    "technology": "Go",
+    "description": "Emails a reminder when a paid show is near.",
+    "shape": "robot"
+   }
+  },
+  {
+   "id": "shapes-ops",
+   "type": "c4.Container",
+   "label": "Ops console",
+   "parent": "shapes-cinema",
+   "props": {
+    "technology": "Python",
+    "description": "Loads the week's schedule.",
+    "shape": "terminal"
+   }
+  },
+  {
+   "id": "shapes-db",
+   "type": "c4.Container",
+   "label": "Bookings",
+   "parent": "shapes-cinema",
+   "props": {
+    "technology": "PostgreSQL",
+    "description": "Shows, seats and orders.",
+    "shape": "cylinder"
+   }
+  },
+  {
+   "id": "shapes-queue",
+   "type": "c4.Container",
+   "label": "Ticket events",
+   "parent": "shapes-cinema",
+   "props": {
+    "technology": "NATS",
+    "description": "Seat held, order paid, ticket scanned.",
+    "shape": "pipe"
+   }
+  },
+  {
+   "id": "shapes-pdfs",
+   "type": "c4.Container",
+   "label": "Ticket PDFs",
+   "parent": "shapes-cinema",
+   "props": {
+    "technology": "Object storage",
+    "description": "The printable tickets.",
+    "shape": "folder"
+   }
+  },
+  {
+   "id": "shapes-payments",
+   "type": "c4.SoftwareSystem",
+   "label": "Card payments",
+   "props": {
+    "description": "Takes card and wallet payments.",
+    "external": true
    }
   }
  ],
@@ -600,6 +799,181 @@
    "props": {
     "technology": "SQL, port 5432, private network"
    }
+  },
+  {
+   "id": "landscape-member-lending",
+   "type": "c4.Relationship",
+   "from": "landscape-member",
+   "to": "landscape-lending",
+   "label": "Renews and reserves with"
+  },
+  {
+   "id": "landscape-member-events",
+   "type": "c4.Relationship",
+   "from": "landscape-member",
+   "to": "landscape-events",
+   "label": "Books sessions with"
+  },
+  {
+   "id": "landscape-librarian-lending",
+   "type": "c4.Relationship",
+   "from": "landscape-librarian",
+   "to": "landscape-lending",
+   "label": "Lends copies with"
+  },
+  {
+   "id": "landscape-lending-catalogue",
+   "type": "c4.Relationship",
+   "from": "landscape-lending",
+   "to": "landscape-catalogue",
+   "label": "Looks up copies in",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "landscape-lending-id",
+   "type": "c4.Relationship",
+   "from": "landscape-lending",
+   "to": "landscape-council-id",
+   "label": "Signs members in with",
+   "props": {
+    "technology": "OpenID Connect"
+   }
+  },
+  {
+   "id": "landscape-events-id",
+   "type": "c4.Relationship",
+   "from": "landscape-events",
+   "to": "landscape-council-id",
+   "label": "Signs members in with",
+   "props": {
+    "technology": "OpenID Connect"
+   }
+  },
+  {
+   "id": "landscape-lending-payments",
+   "type": "c4.Relationship",
+   "from": "landscape-lending",
+   "to": "landscape-payments",
+   "label": "Takes fines with",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "shapes-guest-web",
+   "type": "c4.Relationship",
+   "from": "shapes-guest",
+   "to": "shapes-web",
+   "label": "Buys tickets with",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "shapes-guest-kiosk",
+   "type": "c4.Relationship",
+   "from": "shapes-guest",
+   "to": "shapes-kiosk",
+   "label": "Buys tickets at"
+  },
+  {
+   "id": "shapes-kiosk-api",
+   "type": "c4.Relationship",
+   "from": "shapes-kiosk",
+   "to": "shapes-api",
+   "label": "Calls",
+   "props": {
+    "technology": "JSON, HTTPS"
+   }
+  },
+  {
+   "id": "shapes-api-db",
+   "type": "c4.Relationship",
+   "from": "shapes-api",
+   "to": "shapes-db",
+   "label": "Reads and writes",
+   "props": {
+    "technology": "SQL"
+   }
+  },
+  {
+   "id": "shapes-web-api",
+   "type": "c4.Relationship",
+   "from": "shapes-web",
+   "to": "shapes-api",
+   "label": "Calls",
+   "props": {
+    "technology": "JSON, HTTPS"
+   }
+  },
+  {
+   "id": "shapes-api-pdfs",
+   "type": "c4.Relationship",
+   "from": "shapes-api",
+   "to": "shapes-pdfs",
+   "label": "Writes",
+   "props": {
+    "technology": "S3 API"
+   }
+  },
+  {
+   "id": "shapes-api-queue",
+   "type": "c4.Relationship",
+   "from": "shapes-api",
+   "to": "shapes-queue",
+   "label": "Publishes to",
+   "props": {
+    "technology": "NATS"
+   }
+  },
+  {
+   "id": "shapes-ops-api",
+   "type": "c4.Relationship",
+   "from": "shapes-ops",
+   "to": "shapes-api",
+   "label": "Loads schedules into",
+   "props": {
+    "technology": "JSON, HTTPS"
+   }
+  },
+  {
+   "id": "shapes-bot-queue",
+   "type": "c4.Relationship",
+   "from": "shapes-seat-bot",
+   "to": "shapes-queue",
+   "label": "Listens to",
+   "props": {
+    "technology": "NATS"
+   }
+  },
+  {
+   "id": "shapes-guest-app",
+   "type": "c4.Relationship",
+   "from": "shapes-guest",
+   "to": "shapes-app",
+   "label": "Shows tickets with"
+  },
+  {
+   "id": "shapes-app-api",
+   "type": "c4.Relationship",
+   "from": "shapes-app",
+   "to": "shapes-api",
+   "label": "Calls",
+   "props": {
+    "technology": "JSON, HTTPS"
+   }
+  },
+  {
+   "id": "shapes-web-payments",
+   "type": "c4.Relationship",
+   "from": "shapes-web",
+   "to": "shapes-payments",
+   "label": "Takes card payments with",
+   "props": {
+    "technology": "HTTPS"
+   }
   }
  ],
  "views": [
@@ -612,7 +986,9 @@
     "card-bookshop-c4-c4-containers",
     "card-bookshop-c4-c4-components",
     "card-bookshop-c4-c4-placing-an-order",
-    "card-bookshop-c4-c4-deployment"
+    "card-bookshop-c4-c4-deployment",
+    "card-landscape-landscape",
+    "card-shapes-shapes"
    ],
    "layout": {
     "card-bookshop-c4-c4-context": [
@@ -634,6 +1010,14 @@
     "card-bookshop-c4-c4-deployment": [
      1,
      1
+    ],
+    "card-landscape-landscape": [
+     2,
+     1
+    ],
+    "card-shapes-shapes": [
+     0,
+     2
     ]
    }
   },
@@ -738,6 +1122,42 @@
     "bookshop-c4-c4-postgres",
     "bookshop-c4-c4-db-1",
     "bookshop-c4-c4-queue-1"
+   ]
+  },
+  {
+   "id": "landscape-landscape",
+   "diagram": "c4.landscape",
+   "title": "City libraries: system landscape",
+   "parent": "overview",
+   "nodeIds": [
+    "landscape-member",
+    "landscape-librarian",
+    "landscape-catalogue",
+    "landscape-lending",
+    "landscape-events",
+    "landscape-council-id",
+    "landscape-payments"
+   ]
+  },
+  {
+   "id": "shapes-shapes",
+   "diagram": "c4.container",
+   "title": "Cinema tickets: a container shape each",
+   "parent": "overview",
+   "subject": "shapes-cinema",
+   "nodeIds": [
+    "shapes-cinema",
+    "shapes-web",
+    "shapes-ops",
+    "shapes-seat-bot",
+    "shapes-app",
+    "shapes-queue",
+    "shapes-guest",
+    "shapes-payments",
+    "shapes-api",
+    "shapes-db",
+    "shapes-kiosk",
+    "shapes-pdfs"
    ]
   }
  ]

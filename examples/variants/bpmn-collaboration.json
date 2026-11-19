@@ -1,0 +1,34 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "BPMN: monthly cycle hire billing",
+ "root": "billing",
+ "nodes": [
+  {"id": "member", "type": "bpmn.Participant", "label": "Member"},
+  {"id": "scheme", "type": "bpmn.Participant", "label": "Cycle hire scheme", "props": {"processRef": "monthly-billing"}},
+  {"id": "bank", "type": "bpmn.Participant", "label": "Bank"},
+  {"id": "month-start", "type": "bpmn.StartEvent", "label": "1st of the month", "parent": "scheme", "props": {"definition": "timer"}},
+  {"id": "total", "type": "bpmn.Task", "label": "Total each member's trips", "parent": "scheme", "props": {"taskType": "service"}},
+  {"id": "trips", "type": "bpmn.DataStoreReference", "label": "Trip log", "parent": "scheme", "props": {"dataStoreRef": "trip-log"}},
+  {"id": "invoice", "type": "bpmn.DataObject", "label": "Invoice", "parent": "scheme"},
+  {"id": "collect", "type": "bpmn.Task", "label": "Collect by direct debit", "parent": "scheme", "props": {"taskType": "service"}},
+  {"id": "debit-result", "type": "bpmn.IntermediateCatchEvent", "label": "Debit result", "parent": "scheme", "props": {"definition": "message"}},
+  {"id": "send", "type": "bpmn.EndEvent", "label": "Invoice sent", "parent": "scheme", "props": {"definition": "message"}},
+  {"id": "note", "type": "bpmn.TextAnnotation", "label": "Sent only to members who rode this month"}
+ ],
+ "edges": [
+  {"id": "s1", "type": "bpmn.SequenceFlow", "from": "month-start", "to": "total"},
+  {"id": "s2", "type": "bpmn.SequenceFlow", "from": "total", "to": "collect"},
+  {"id": "s3", "type": "bpmn.SequenceFlow", "from": "collect", "to": "debit-result"},
+  {"id": "s4", "type": "bpmn.SequenceFlow", "from": "debit-result", "to": "send"},
+  {"id": "d1", "type": "bpmn.DataAssociation", "from": "trips", "to": "total"},
+  {"id": "d2", "type": "bpmn.DataAssociation", "from": "invoice", "to": "collect"},
+  {"id": "m1", "type": "bpmn.MessageFlow", "from": "collect", "to": "bank", "label": "Debit request"},
+  {"id": "m2", "type": "bpmn.MessageFlow", "from": "bank", "to": "debit-result", "label": "Paid or refused"},
+  {"id": "m3", "type": "bpmn.MessageFlow", "from": "send", "to": "member", "label": "Invoice"},
+  {"id": "a1", "type": "bpmn.Association", "from": "note", "to": "send", "props": {"direction": "one"}}
+ ],
+ "views": [
+  {"id": "billing", "diagram": "bpmn", "title": "Black-box pools, data and messages, laid out down", "parent": null, "direction": "down", "nodeIds": ["member", "scheme", "month-start", "invoice", "total", "trips", "collect", "debit-result", "send", "note", "bank"]}
+ ]
+}

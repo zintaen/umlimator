@@ -1,0 +1,38 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "A library loan",
+ "root": "loan",
+ "nodes": [
+  { "id": "loan-machine", "type": "uml.State", "label": "Library loan" },
+  { "id": "start", "type": "uml.Pseudostate", "props": { "kind": "initial" }, "parent": "loan-machine" },
+  { "id": "on-shelf", "type": "uml.State", "label": "On the shelf", "props": { "entry": "mark the copy available" }, "parent": "loan-machine" },
+  { "id": "on-loan", "type": "uml.State", "label": "On loan", "parent": "loan-machine" },
+  { "id": "loan-start", "type": "uml.Pseudostate", "parent": "on-loan", "props": { "kind": "initial" } },
+  { "id": "borrowed", "type": "uml.State", "label": "Borrowed", "parent": "on-loan", "props": { "do": "count the days left" }, "members": [{ "id": "borrowed.renew", "type": "uml.InternalTransition", "props": { "trigger": "renew", "guard": "renewals < 2", "effect": "add 14 days" } }] },
+  { "id": "overdue", "type": "uml.State", "label": "Overdue", "parent": "on-loan", "props": { "entry": "send a reminder", "do": "add the daily fine" } },
+  { "id": "loan-history", "type": "uml.Pseudostate", "parent": "on-loan", "props": { "kind": "deepHistory" } },
+  { "id": "paused", "type": "uml.State", "label": "Library closed", "props": { "entry": "stop every clock" }, "parent": "loan-machine" },
+  { "id": "returned", "type": "uml.Pseudostate", "props": { "kind": "junction" }, "parent": "loan-machine" },
+  { "id": "checking", "type": "uml.State", "label": "Checking the copy", "props": { "do": "look for damage" }, "parent": "loan-machine" },
+  { "id": "withdrawn", "type": "uml.FinalState", "parent": "loan-machine" },
+  { "id": "note", "type": "uml.Comment", "label": "the history brings a loan back to Borrowed or Overdue, as it was" }
+ ],
+ "edges": [
+  { "id": "t-start", "type": "uml.Transition", "from": "start", "to": "on-shelf" },
+  { "id": "t-lend", "type": "uml.Transition", "from": "on-shelf", "to": "on-loan", "props": { "trigger": "lend", "effect": "stamp the due date" } },
+  { "id": "t-loan-start", "type": "uml.Transition", "from": "loan-start", "to": "borrowed" },
+  { "id": "t-due", "type": "uml.Transition", "from": "borrowed", "to": "overdue", "props": { "trigger": "due date passed" } },
+  { "id": "t-close", "type": "uml.Transition", "from": "on-loan", "to": "paused", "props": { "trigger": "closure" } },
+  { "id": "t-reopen", "type": "uml.Transition", "from": "paused", "to": "loan-history", "props": { "trigger": "reopening" } },
+  { "id": "t-return-late", "type": "uml.Transition", "from": "overdue", "to": "returned", "props": { "trigger": "return", "effect": "take the fine" } },
+  { "id": "t-return-on-time", "type": "uml.Transition", "from": "borrowed", "to": "returned", "props": { "trigger": "return" } },
+  { "id": "t-check", "type": "uml.Transition", "from": "returned", "to": "checking" },
+  { "id": "t-shelve", "type": "uml.Transition", "from": "checking", "to": "on-shelf", "props": { "guard": "copy fine" } },
+  { "id": "t-withdraw", "type": "uml.Transition", "from": "checking", "to": "withdrawn", "props": { "guard": "copy damaged", "effect": "order a new copy" } },
+  { "id": "note-link", "type": "uml.CommentLink", "from": "note", "to": "loan-history" }
+ ],
+ "views": [
+  { "id": "loan", "diagram": "uml.state-machine", "title": "A library loan", "parent": null, "nodeIds": ["start", "on-shelf", "on-loan", "loan-start", "borrowed", "overdue", "loan-history", "paused", "returned", "checking", "withdrawn", "note"] }
+ ]
+}

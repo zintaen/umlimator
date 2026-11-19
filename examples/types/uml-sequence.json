@@ -50,6 +50,24 @@
    "opensView": "buy-book-overview-queue-order"
   },
   {
+   "id": "card-unlock-unlock",
+   "label": "Unlock, ride and return",
+   "kind": "file",
+   "sublabel": "loop, break, create and delete",
+   "what": "Unlocking a hire bike: a `break` frame when the rider has no credit, a `loop` frame for the ride, a trip lifeline created and later deleted with a cross, and async messages stereotyped `<<mqtt>>`.",
+   "how": "From examples/variants/uml-sequence-unlock.json.",
+   "opensView": "unlock-unlock"
+  },
+  {
+   "id": "card-parallel-parallel",
+   "label": "Return, in parallel",
+   "kind": "file",
+   "sublabel": "par with a nested opt",
+   "what": "Returning a library book: a `par` frame whose two operands run at once, an `opt` frame nested in one of them, a self-call and replies to each call.",
+   "how": "From examples/variants/uml-sequence-parallel.json.",
+   "opensView": "parallel-parallel"
+  },
+  {
    "id": "checkout-sequence-lifeline-shopper",
    "type": "uml.Lifeline",
    "label": "shopper",
@@ -199,6 +217,89 @@
    "props": {
     "represents": "OrderWorker"
    }
+  },
+  {
+   "id": "unlock-rider",
+   "type": "uml.Lifeline",
+   "label": "rider",
+   "props": {
+    "represents": "Rider",
+    "stereotypes": [
+     "actor"
+    ]
+   }
+  },
+  {
+   "id": "unlock-app",
+   "type": "uml.Lifeline",
+   "label": "app",
+   "props": {
+    "represents": "RiderApp"
+   }
+  },
+  {
+   "id": "unlock-hire",
+   "type": "uml.Lifeline",
+   "label": "hire",
+   "props": {
+    "represents": "HireService"
+   }
+  },
+  {
+   "id": "unlock-dock",
+   "type": "uml.Lifeline",
+   "label": "dock",
+   "props": {
+    "represents": "DockController"
+   }
+  },
+  {
+   "id": "unlock-trip",
+   "type": "uml.Lifeline",
+   "label": "trip",
+   "props": {
+    "represents": "Trip"
+   }
+  },
+  {
+   "id": "parallel-kiosk",
+   "type": "uml.Lifeline",
+   "label": "kiosk",
+   "props": {
+    "represents": "ReturnKiosk"
+   }
+  },
+  {
+   "id": "parallel-loans",
+   "type": "uml.Lifeline",
+   "label": "loans",
+   "props": {
+    "represents": "LoanService"
+   }
+  },
+  {
+   "id": "parallel-holds",
+   "type": "uml.Lifeline",
+   "label": "holds",
+   "props": {
+    "represents": "HoldQueue"
+   }
+  },
+  {
+   "id": "parallel-fines",
+   "type": "uml.Lifeline",
+   "label": "fines",
+   "props": {
+    "represents": "FineLedger"
+   }
+  },
+  {
+   "id": "parallel-mailer",
+   "type": "uml.Lifeline",
+   "label": "mailer",
+   "props": {
+    "represents": "Notifier"
+   }
   }
  ],
  "edges": [
@@ -285,7 +386,9 @@
     "card-buy-book-overview-find-book",
     "card-buy-book-overview-buy-checkout",
     "card-buy-book-overview-email-receipt",
-    "card-buy-book-overview-queue-order"
+    "card-buy-book-overview-queue-order",
+    "card-unlock-unlock",
+    "card-parallel-parallel"
    ],
    "layout": {
     "card-checkout-sequence-checkout-sequence": [
@@ -307,6 +410,14 @@
     "card-buy-book-overview-queue-order": [
      1,
      1
+    ],
+    "card-unlock-unlock": [
+     2,
+     1
+    ],
+    "card-parallel-parallel": [
+     0,
+     2
     ]
    }
   },
@@ -685,6 +796,311 @@
      "props": {
       "sort": "async"
      }
+    }
+   ]
+  },
+  {
+   "id": "unlock-unlock",
+   "diagram": "uml.sequence",
+   "title": "Unlock, ride and return",
+   "parent": "overview",
+   "nodeIds": [
+    "unlock-rider",
+    "unlock-app",
+    "unlock-hire",
+    "unlock-dock",
+    "unlock-trip"
+   ],
+   "edges": [
+    {
+     "id": "unlock-m1",
+     "type": "uml.Message",
+     "from": "unlock-rider",
+     "to": "unlock-app",
+     "label": "scan(dockCode)",
+     "props": {
+      "sort": "call"
+     }
+    },
+    {
+     "id": "unlock-m2",
+     "type": "uml.Message",
+     "from": "unlock-app",
+     "to": "unlock-hire",
+     "label": "startHire(dockCode)",
+     "props": {
+      "sort": "call"
+     }
+    },
+    {
+     "id": "unlock-m3",
+     "type": "uml.Message",
+     "from": "unlock-hire",
+     "to": "unlock-app",
+     "label": "showTopUp()",
+     "parent": "unlock-f1-broke",
+     "props": {
+      "sort": "async"
+     }
+    },
+    {
+     "id": "unlock-m4",
+     "type": "uml.Message",
+     "from": "unlock-hire",
+     "to": "unlock-trip",
+     "label": "new(rider, dock)",
+     "props": {
+      "sort": "create"
+     }
+    },
+    {
+     "id": "unlock-m5",
+     "type": "uml.Message",
+     "from": "unlock-hire",
+     "to": "unlock-dock",
+     "label": "release(bay)",
+     "props": {
+      "sort": "async",
+      "stereotypes": [
+       "mqtt"
+      ]
+     }
+    },
+    {
+     "id": "unlock-m6",
+     "type": "uml.Message",
+     "from": "unlock-hire",
+     "to": "unlock-app",
+     "label": "hire started",
+     "props": {
+      "sort": "reply",
+      "replyTo": "unlock-m2"
+     }
+    },
+    {
+     "id": "unlock-m7",
+     "type": "uml.Message",
+     "from": "unlock-app",
+     "to": "unlock-hire",
+     "label": "position(gps)",
+     "parent": "unlock-f2-riding",
+     "props": {
+      "sort": "async"
+     }
+    },
+    {
+     "id": "unlock-m8",
+     "type": "uml.Message",
+     "from": "unlock-hire",
+     "to": "unlock-trip",
+     "label": "addPoint(gps)",
+     "parent": "unlock-f2-riding",
+     "props": {
+      "sort": "call"
+     }
+    },
+    {
+     "id": "unlock-m9",
+     "type": "uml.Message",
+     "from": "unlock-dock",
+     "to": "unlock-hire",
+     "label": "bikeDocked(bay)",
+     "props": {
+      "sort": "async",
+      "stereotypes": [
+       "mqtt"
+      ]
+     }
+    },
+    {
+     "id": "unlock-m10",
+     "type": "uml.Message",
+     "from": "unlock-hire",
+     "to": "unlock-trip",
+     "label": "close()",
+     "props": {
+      "sort": "delete"
+     }
+    },
+    {
+     "id": "unlock-m11",
+     "type": "uml.Message",
+     "from": "unlock-hire",
+     "to": "unlock-app",
+     "label": "receipt(fare)",
+     "props": {
+      "sort": "async"
+     }
+    }
+   ],
+   "fragments": [
+    {
+     "id": "unlock-f1",
+     "type": "uml.CombinedFragment",
+     "props": {
+      "operator": "break"
+     },
+     "members": [
+      {
+       "id": "unlock-f1-broke",
+       "type": "uml.InteractionOperand",
+       "label": "balance below the minimum fare"
+      }
+     ]
+    },
+    {
+     "id": "unlock-f2",
+     "type": "uml.CombinedFragment",
+     "props": {
+      "operator": "loop"
+     },
+     "members": [
+      {
+       "id": "unlock-f2-riding",
+       "type": "uml.InteractionOperand",
+       "label": "every 30 s while riding"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "parallel-parallel",
+   "diagram": "uml.sequence",
+   "title": "Return, in parallel",
+   "parent": "overview",
+   "nodeIds": [
+    "parallel-kiosk",
+    "parallel-loans",
+    "parallel-holds",
+    "parallel-fines",
+    "parallel-mailer"
+   ],
+   "edges": [
+    {
+     "id": "parallel-m1",
+     "type": "uml.Message",
+     "from": "parallel-kiosk",
+     "to": "parallel-loans",
+     "label": "checkIn(barcode)",
+     "props": {
+      "sort": "call"
+     }
+    },
+    {
+     "id": "parallel-m2",
+     "type": "uml.Message",
+     "from": "parallel-loans",
+     "to": "parallel-holds",
+     "label": "nextHold(title)",
+     "parent": "parallel-f1-holds",
+     "props": {
+      "sort": "call"
+     }
+    },
+    {
+     "id": "parallel-m3",
+     "type": "uml.Message",
+     "from": "parallel-holds",
+     "to": "parallel-loans",
+     "label": "member",
+     "parent": "parallel-f1-holds",
+     "props": {
+      "sort": "reply",
+      "replyTo": "parallel-m2"
+     }
+    },
+    {
+     "id": "parallel-m4",
+     "type": "uml.Message",
+     "from": "parallel-loans",
+     "to": "parallel-mailer",
+     "label": "readyForPickup(member)",
+     "parent": "parallel-f2-held",
+     "props": {
+      "sort": "async"
+     }
+    },
+    {
+     "id": "parallel-m5",
+     "type": "uml.Message",
+     "from": "parallel-loans",
+     "to": "parallel-fines",
+     "label": "charge(daysLate)",
+     "parent": "parallel-f1-fines",
+     "props": {
+      "sort": "call"
+     }
+    },
+    {
+     "id": "parallel-m6",
+     "type": "uml.Message",
+     "from": "parallel-fines",
+     "to": "parallel-fines",
+     "label": "addLine()",
+     "parent": "parallel-f1-fines",
+     "props": {
+      "sort": "call"
+     }
+    },
+    {
+     "id": "parallel-m7",
+     "type": "uml.Message",
+     "from": "parallel-fines",
+     "to": "parallel-loans",
+     "label": "fine",
+     "parent": "parallel-f1-fines",
+     "props": {
+      "sort": "reply",
+      "replyTo": "parallel-m5"
+     }
+    },
+    {
+     "id": "parallel-m8",
+     "type": "uml.Message",
+     "from": "parallel-loans",
+     "to": "parallel-kiosk",
+     "label": "slip",
+     "props": {
+      "sort": "reply",
+      "replyTo": "parallel-m1"
+     }
+    }
+   ],
+   "fragments": [
+    {
+     "id": "parallel-f1",
+     "type": "uml.CombinedFragment",
+     "props": {
+      "operator": "par"
+     },
+     "members": [
+      {
+       "id": "parallel-f1-holds",
+       "type": "uml.InteractionOperand",
+       "label": "a hold on the title"
+      },
+      {
+       "id": "parallel-f1-fines",
+       "type": "uml.InteractionOperand",
+       "label": "returned late"
+      }
+     ]
+    },
+    {
+     "id": "parallel-f2",
+     "type": "uml.CombinedFragment",
+     "parent": "parallel-f1-holds",
+     "props": {
+      "operator": "opt"
+     },
+     "members": [
+      {
+       "id": "parallel-f2-held",
+       "type": "uml.InteractionOperand",
+       "label": "a member is waiting"
+      }
+     ]
     }
    ]
   }

@@ -1,0 +1,37 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Activity: returning a bike",
+ "root": "return-right",
+ "nodes": [
+  {"id": "start", "type": "uml.InitialNode"},
+  {"id": "dock", "type": "uml.Action", "label": "Push the bike into a dock"},
+  {"id": "try-lock", "type": "uml.MergeNode", "label": "try lock"},
+  {"id": "lock", "type": "uml.Action", "label": "Engage the dock lock"},
+  {"id": "locked", "type": "uml.DecisionNode", "label": "Locked?"},
+  {"id": "tries", "type": "uml.DecisionNode", "label": "Tries left?"},
+  {"id": "beep", "type": "uml.Action", "label": "Beep and ask to re-seat"},
+  {"id": "fault", "type": "uml.SendSignalAction", "label": "Dock fault"},
+  {"id": "gave-up", "type": "uml.FlowFinalNode"},
+  {"id": "end-trip", "type": "uml.Action", "label": "End the trip and price it"},
+  {"id": "done", "type": "uml.ActivityFinalNode"},
+  {"id": "note", "type": "uml.Comment", "label": "three tries, then the rider is told to use another dock"}
+ ],
+ "edges": [
+  {"id": "f1", "type": "uml.ControlFlow", "from": "start", "to": "dock"},
+  {"id": "f2", "type": "uml.ControlFlow", "from": "dock", "to": "try-lock"},
+  {"id": "f3", "type": "uml.ControlFlow", "from": "try-lock", "to": "lock"},
+  {"id": "f4", "type": "uml.ControlFlow", "from": "lock", "to": "locked"},
+  {"id": "f5", "type": "uml.ControlFlow", "from": "locked", "to": "end-trip", "props": {"guard": "yes"}},
+  {"id": "f6", "type": "uml.ControlFlow", "from": "locked", "to": "beep", "props": {"guard": "else"}},
+  {"id": "f7", "type": "uml.ControlFlow", "from": "beep", "to": "tries"},
+  {"id": "f8", "type": "uml.ControlFlow", "from": "tries", "to": "try-lock", "props": {"guard": "yes"}},
+  {"id": "f9", "type": "uml.ControlFlow", "from": "tries", "to": "fault", "props": {"guard": "else"}},
+  {"id": "f10", "type": "uml.ControlFlow", "from": "fault", "to": "gave-up"},
+  {"id": "f11", "type": "uml.ControlFlow", "from": "end-trip", "to": "done"},
+  {"id": "n1", "type": "uml.CommentLink", "from": "note", "to": "tries"}
+ ],
+ "views": [
+  {"id": "return-right", "diagram": "uml.activity", "title": "A retry loop, laid out right", "parent": null, "direction": "right", "nodeIds": ["start", "dock", "try-lock", "lock", "locked", "tries", "beep", "fault", "gave-up", "end-trip", "done", "note"]}
+ ]
+}

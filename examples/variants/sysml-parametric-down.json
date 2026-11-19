@@ -1,0 +1,22 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Parametric: a dock station's power budget",
+ "root": "power-down",
+ "nodes": [
+  {"id": "station", "type": "sysml.Block", "label": "DockStation", "members": [{"id": "station.docks", "type": "sysml.ValueProperty", "label": "dockCount", "props": {"valueType": "Integer"}}, {"id": "station.rate", "type": "sysml.ValueProperty", "label": "chargeRate", "props": {"valueType": "Power"}}, {"id": "station.kiosk", "type": "sysml.ValueProperty", "label": "kioskDraw", "props": {"valueType": "Power"}}, {"id": "station.supply", "type": "sysml.ValueProperty", "label": "supply", "props": {"valueType": "Power"}}, {"id": "station.margin", "type": "sysml.ValueProperty", "label": "margin", "props": {"valueType": "Power"}}, {"id": "station.charging", "type": "sysml.ConstraintProperty", "label": "charging", "props": {"valueType": "ChargeLoad"}}, {"id": "station.headroom", "type": "sysml.ConstraintProperty", "label": "headroom", "props": {"valueType": "Headroom"}}]},
+  {"id": "charge-load", "type": "sysml.ConstraintBlock", "label": "ChargeLoad", "props": {"constraint": "load = n * rate"}, "members": [{"id": "charge-load.load", "type": "sysml.ConstraintParameter", "label": "load", "props": {"valueType": "Power"}}, {"id": "charge-load.n", "type": "sysml.ConstraintParameter", "label": "n", "props": {"valueType": "Integer"}}, {"id": "charge-load.rate", "type": "sysml.ConstraintParameter", "label": "rate", "props": {"valueType": "Power"}}]},
+  {"id": "headroom", "type": "sysml.ConstraintBlock", "label": "Headroom", "props": {"constraint": "margin = supply - load - other"}, "members": [{"id": "headroom.margin", "type": "sysml.ConstraintParameter", "label": "margin", "props": {"valueType": "Power"}}, {"id": "headroom.supply", "type": "sysml.ConstraintParameter", "label": "supply", "props": {"valueType": "Power"}}, {"id": "headroom.load", "type": "sysml.ConstraintParameter", "label": "load", "props": {"valueType": "Power"}}, {"id": "headroom.other", "type": "sysml.ConstraintParameter", "label": "other", "props": {"valueType": "Power"}}]}
+ ],
+ "edges": [
+  {"id": "b-n", "type": "sysml.BindingConnector", "from": "station.docks", "to": "charge-load.n", "props": {"ends": {"to": {"part": "station.charging"}}}},
+  {"id": "b-rate", "type": "sysml.BindingConnector", "from": "station.rate", "to": "charge-load.rate", "props": {"ends": {"to": {"part": "station.charging"}}}},
+  {"id": "b-load", "type": "sysml.BindingConnector", "from": "charge-load.load", "to": "headroom.load", "props": {"ends": {"from": {"part": "station.charging"}, "to": {"part": "station.headroom"}}}},
+  {"id": "b-other", "type": "sysml.BindingConnector", "from": "station.kiosk", "to": "headroom.other", "props": {"ends": {"to": {"part": "station.headroom"}}}},
+  {"id": "b-supply", "type": "sysml.BindingConnector", "from": "station.supply", "to": "headroom.supply", "props": {"ends": {"to": {"part": "station.headroom"}}}},
+  {"id": "b-margin", "type": "sysml.BindingConnector", "from": "station.margin", "to": "headroom.margin", "props": {"ends": {"to": {"part": "station.headroom"}}}}
+ ],
+ "views": [
+  {"id": "power-down", "diagram": "sysml.parametric", "title": "A power budget, laid out down", "parent": null, "subject": "station", "direction": "down", "nodeIds": ["station"]}
+ ]
+}

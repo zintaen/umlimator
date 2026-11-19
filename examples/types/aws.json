@@ -17,6 +17,24 @@
    "opensView": "bookshop-aws-aws-on-aws"
   },
   {
+   "id": "card-serverless-serverless",
+   "label": "Serverless, no VPC",
+   "kind": "file",
+   "sublabel": "serverless, a generic group",
+   "what": "A cycle hire API with no VPC: a region holding managed services, a generic group of functions that a line leaves from its border, and riders on a mobile client.",
+   "how": "From examples/variants/aws-serverless.json.",
+   "opensView": "serverless-serverless"
+  },
+  {
+   "id": "card-accounts-accounts",
+   "label": "Two accounts",
+   "kind": "file",
+   "sublabel": "two accounts, a security group",
+   "what": "A library's production account and its log archive account side by side in one cloud, a VPC, a private subnet and a security group nested in turn, and a line from the VPC's border to a bucket in the other account.",
+   "how": "From examples/variants/aws-accounts.json.",
+   "opensView": "accounts-accounts"
+  },
+  {
    "id": "bookshop-aws-aws-users",
    "type": "aws.Resource",
    "label": "Shoppers",
@@ -238,6 +256,218 @@
    "props": {
     "icon": "Amazon-RDS"
    }
+  },
+  {
+   "id": "serverless-riders",
+   "type": "aws.Resource",
+   "label": "Riders",
+   "props": {
+    "icon": "Mobile-client"
+   }
+  },
+  {
+   "id": "serverless-aws-cloud",
+   "type": "aws.Group",
+   "label": "AWS Cloud",
+   "props": {
+    "groupType": "cloud"
+   }
+  },
+  {
+   "id": "serverless-main-region",
+   "type": "aws.Group",
+   "label": "Europe (Paris)",
+   "parent": "serverless-aws-cloud",
+   "props": {
+    "groupType": "region"
+   }
+  },
+  {
+   "id": "serverless-sign-in",
+   "type": "aws.Service",
+   "label": "Rider sign-in",
+   "parent": "serverless-main-region",
+   "props": {
+    "icon": "Amazon-Cognito"
+   }
+  },
+  {
+   "id": "serverless-api",
+   "type": "aws.Service",
+   "label": "Hire API",
+   "parent": "serverless-main-region",
+   "props": {
+    "icon": "Amazon-API-Gateway"
+   }
+  },
+  {
+   "id": "serverless-fns",
+   "type": "aws.Group",
+   "label": "Hire functions",
+   "parent": "serverless-main-region",
+   "props": {
+    "groupType": "generic"
+   }
+  },
+  {
+   "id": "serverless-start-fn",
+   "type": "aws.Service",
+   "label": "Start a hire",
+   "parent": "serverless-fns",
+   "props": {
+    "icon": "AWS-Lambda"
+   }
+  },
+  {
+   "id": "serverless-end-fn",
+   "type": "aws.Service",
+   "label": "End a hire",
+   "parent": "serverless-fns",
+   "props": {
+    "icon": "AWS-Lambda"
+   }
+  },
+  {
+   "id": "serverless-hires",
+   "type": "aws.Service",
+   "label": "Hires table",
+   "parent": "serverless-main-region",
+   "props": {
+    "icon": "Amazon-DynamoDB"
+   }
+  },
+  {
+   "id": "serverless-events",
+   "type": "aws.Service",
+   "label": "Dock events",
+   "parent": "serverless-main-region",
+   "props": {
+    "icon": "Amazon-EventBridge"
+   }
+  },
+  {
+   "id": "serverless-texts",
+   "type": "aws.Service",
+   "label": "Receipt texts",
+   "parent": "serverless-main-region",
+   "props": {
+    "icon": "Amazon-Simple-Notification-Service"
+   }
+  },
+  {
+   "id": "accounts-staff",
+   "type": "aws.Resource",
+   "label": "Library staff",
+   "props": {
+    "icon": "Users"
+   }
+  },
+  {
+   "id": "accounts-aws-cloud",
+   "type": "aws.Group",
+   "label": "AWS Cloud",
+   "props": {
+    "groupType": "cloud"
+   }
+  },
+  {
+   "id": "accounts-prod",
+   "type": "aws.Group",
+   "label": "Catalogue production",
+   "parent": "accounts-aws-cloud",
+   "props": {
+    "groupType": "account"
+   }
+  },
+  {
+   "id": "accounts-prod-region",
+   "type": "aws.Group",
+   "label": "Canada (Central)",
+   "parent": "accounts-prod",
+   "props": {
+    "groupType": "region"
+   }
+  },
+  {
+   "id": "accounts-catalogue-vpc",
+   "type": "aws.Group",
+   "label": "Catalogue VPC",
+   "parent": "accounts-prod-region",
+   "props": {
+    "groupType": "vpc"
+   }
+  },
+  {
+   "id": "accounts-subnet",
+   "type": "aws.Group",
+   "label": "Private subnet",
+   "parent": "accounts-catalogue-vpc",
+   "props": {
+    "groupType": "private-subnet"
+   }
+  },
+  {
+   "id": "accounts-app-sg",
+   "type": "aws.Group",
+   "label": "App security group",
+   "parent": "accounts-subnet",
+   "props": {
+    "groupType": "security-group"
+   }
+  },
+  {
+   "id": "accounts-app",
+   "type": "aws.Service",
+   "label": "Catalogue app",
+   "parent": "accounts-app-sg",
+   "props": {
+    "icon": "Amazon-EC2"
+   }
+  },
+  {
+   "id": "accounts-db",
+   "type": "aws.Service",
+   "label": "Catalogue database",
+   "parent": "accounts-subnet",
+   "props": {
+    "icon": "Amazon-RDS"
+   }
+  },
+  {
+   "id": "accounts-logs",
+   "type": "aws.Group",
+   "label": "Log archive",
+   "parent": "accounts-aws-cloud",
+   "props": {
+    "groupType": "account"
+   }
+  },
+  {
+   "id": "accounts-logs-region",
+   "type": "aws.Group",
+   "label": "Canada (Central)",
+   "parent": "accounts-logs",
+   "props": {
+    "groupType": "region"
+   }
+  },
+  {
+   "id": "accounts-bucket",
+   "type": "aws.Service",
+   "label": "Audit log bucket",
+   "parent": "accounts-logs-region",
+   "props": {
+    "icon": "Amazon-Simple-Storage-Service"
+   }
+  },
+  {
+   "id": "accounts-query",
+   "type": "aws.Service",
+   "label": "Log queries",
+   "parent": "accounts-logs-region",
+   "props": {
+    "icon": "Amazon-Athena"
+   }
   }
  ],
  "edges": [
@@ -359,6 +589,76 @@
    "from": "bookshop-aws-aws-vpc",
    "to": "bookshop-aws-aws-monitoring",
    "label": "logs, metrics"
+  },
+  {
+   "id": "serverless-riders-sign-in",
+   "type": "aws.Connection",
+   "from": "serverless-riders",
+   "to": "serverless-sign-in",
+   "label": "sign in"
+  },
+  {
+   "id": "serverless-riders-api",
+   "type": "aws.Connection",
+   "from": "serverless-riders",
+   "to": "serverless-api",
+   "label": "HTTPS"
+  },
+  {
+   "id": "serverless-api-start",
+   "type": "aws.Connection",
+   "from": "serverless-api",
+   "to": "serverless-start-fn",
+   "label": "POST /hires"
+  },
+  {
+   "id": "serverless-fns-hires",
+   "type": "aws.Connection",
+   "from": "serverless-fns",
+   "to": "serverless-hires",
+   "label": "read, write"
+  },
+  {
+   "id": "serverless-events-end",
+   "type": "aws.Connection",
+   "from": "serverless-events",
+   "to": "serverless-end-fn",
+   "label": "bike docked"
+  },
+  {
+   "id": "serverless-end-texts",
+   "type": "aws.Connection",
+   "from": "serverless-end-fn",
+   "to": "serverless-texts",
+   "label": "fare"
+  },
+  {
+   "id": "accounts-staff-app",
+   "type": "aws.Connection",
+   "from": "accounts-staff",
+   "to": "accounts-app",
+   "label": "HTTPS"
+  },
+  {
+   "id": "accounts-app-db",
+   "type": "aws.Connection",
+   "from": "accounts-app",
+   "to": "accounts-db",
+   "label": "SQL"
+  },
+  {
+   "id": "accounts-vpc-bucket",
+   "type": "aws.Connection",
+   "from": "accounts-catalogue-vpc",
+   "to": "accounts-bucket",
+   "label": "flow logs"
+  },
+  {
+   "id": "accounts-bucket-query",
+   "type": "aws.Connection",
+   "from": "accounts-bucket",
+   "to": "accounts-query",
+   "label": "log files"
   }
  ],
  "views": [
@@ -367,12 +667,22 @@
    "parent": null,
    "title": "AWS diagram examples",
    "nodeIds": [
-    "card-bookshop-aws-aws-on-aws"
+    "card-bookshop-aws-aws-on-aws",
+    "card-serverless-serverless",
+    "card-accounts-accounts"
    ],
    "layout": {
     "card-bookshop-aws-aws-on-aws": [
      0,
      0
+    ],
+    "card-serverless-serverless": [
+     1,
+     0
+    ],
+    "card-accounts-accounts": [
+     0,
+     1
     ]
    }
   },
@@ -407,6 +717,46 @@
     "bookshop-aws-aws-api-b",
     "bookshop-aws-aws-worker",
     "bookshop-aws-aws-db-standby"
+   ]
+  },
+  {
+   "id": "serverless-serverless",
+   "diagram": "aws",
+   "title": "Serverless, no VPC",
+   "parent": "overview",
+   "nodeIds": [
+    "serverless-riders",
+    "serverless-aws-cloud",
+    "serverless-main-region",
+    "serverless-sign-in",
+    "serverless-api",
+    "serverless-fns",
+    "serverless-start-fn",
+    "serverless-end-fn",
+    "serverless-hires",
+    "serverless-events",
+    "serverless-texts"
+   ]
+  },
+  {
+   "id": "accounts-accounts",
+   "diagram": "aws",
+   "title": "Two accounts",
+   "parent": "overview",
+   "nodeIds": [
+    "accounts-staff",
+    "accounts-aws-cloud",
+    "accounts-prod",
+    "accounts-prod-region",
+    "accounts-catalogue-vpc",
+    "accounts-subnet",
+    "accounts-app-sg",
+    "accounts-app",
+    "accounts-db",
+    "accounts-logs",
+    "accounts-logs-region",
+    "accounts-bucket",
+    "accounts-query"
    ]
   }
  ]

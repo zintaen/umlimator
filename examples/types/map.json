@@ -32,6 +32,33 @@
    "opensView": "monorepo-plain"
   },
   {
+   "id": "card-lines-lines",
+   "label": "Line kinds, weights and steps",
+   "kind": "file",
+   "sublabel": "line kinds, weights, steps",
+   "what": "A library's holds as lines of each kind, drawn in its colour: calls, feeds, triggers, state and guard; weights 1 to 3 as widths; numbered steps, 4a and 4b among them; and a line's sublabel under its label.",
+   "how": "From examples/variants/map-lines.json.",
+   "opensView": "lines-lines"
+  },
+  {
+   "id": "card-boxes-boxes",
+   "label": "Boxes, nested and tinted",
+   "kind": "file",
+   "sublabel": "nested, tinted boxes, lenses",
+   "what": "A cafe chain's systems in boxes: two nested in a head office box, a tinted box with a tone, badges on a box's border, cards with owners, and two lenses, one ringing cards by owner and one lighting the lines that feed data.",
+   "how": "From examples/variants/map-boxes.json.",
+   "opensView": "boxes-boxes"
+  },
+  {
+   "id": "card-badges-badges",
+   "label": "Badges, icons and edit marks",
+   "kind": "file",
+   "sublabel": "badges, icons, edit marks",
+   "what": "A bakery's order cards with icons, badges as plain tabs and in tones, an edit mark on a card and on a line, and a card with `noSub`, its description kept for the details panel.",
+   "how": "From examples/variants/map-badges.json.",
+   "opensView": "badges-badges"
+  },
+  {
    "id": "shapes-shoppers",
    "label": "Shoppers",
    "kind": "person",
@@ -256,6 +283,199 @@
    "icon": "wrench",
    "sublabel": "tools/codemods",
    "what": "The tools/codemods package."
+  },
+  {
+   "id": "lines-member",
+   "label": "Member",
+   "kind": "person",
+   "sublabel": "places a hold",
+   "what": "A library member who wants a copy that is out."
+  },
+  {
+   "id": "lines-site",
+   "label": "Library site",
+   "kind": "frontend",
+   "sublabel": "catalogue, holds",
+   "what": "The catalogue in the browser."
+  },
+  {
+   "id": "lines-holds",
+   "label": "Holds service",
+   "kind": "backend",
+   "sublabel": "queues the holds",
+   "what": "Keeps each title's queue of holds."
+  },
+  {
+   "id": "lines-loans",
+   "label": "Loans",
+   "kind": "database",
+   "sublabel": "PostgreSQL",
+   "what": "Every loan and hold."
+  },
+  {
+   "id": "lines-returns",
+   "label": "Return events",
+   "kind": "queue",
+   "sublabel": "a copy came back",
+   "what": "A message each time a copy is returned."
+  },
+  {
+   "id": "lines-notifier",
+   "label": "Notifier",
+   "kind": "backend",
+   "sublabel": "email and text",
+   "what": "Tells the member the copy is waiting."
+  },
+  {
+   "id": "lines-sms",
+   "label": "Text gateway",
+   "kind": "external",
+   "sublabel": "texts the member",
+   "what": "Sends the text that the copy is waiting."
+  },
+  {
+   "id": "lines-shelf-check",
+   "label": "Shelf check",
+   "kind": "hook",
+   "sublabel": "every night",
+   "what": "Expires holds not collected in a week."
+  },
+  {
+   "id": "boxes-guest",
+   "label": "Guest",
+   "kind": "person",
+   "sublabel": "orders at the counter",
+   "what": "A guest at any branch."
+  },
+  {
+   "id": "boxes-till",
+   "label": "Till",
+   "kind": "frontend",
+   "sublabel": "tablet app",
+   "owner": "branch team",
+   "what": "The counter tablet that takes orders."
+  },
+  {
+   "id": "boxes-kitchen",
+   "label": "Kitchen screen",
+   "kind": "frontend",
+   "sublabel": "shows tickets",
+   "owner": "branch team",
+   "what": "Shows each order to the kitchen."
+  },
+  {
+   "id": "boxes-orders",
+   "label": "Orders API",
+   "kind": "backend",
+   "sublabel": "Node",
+   "owner": "platform team",
+   "what": "Takes every branch's orders."
+  },
+  {
+   "id": "boxes-menu",
+   "label": "Menu service",
+   "kind": "backend",
+   "sublabel": "prices, allergens",
+   "owner": "platform team",
+   "what": "The menu and its prices."
+  },
+  {
+   "id": "boxes-sales",
+   "label": "Sales",
+   "kind": "database",
+   "sublabel": "PostgreSQL",
+   "owner": "platform team",
+   "what": "Every order of every branch."
+  },
+  {
+   "id": "boxes-reports",
+   "label": "Daily report",
+   "kind": "file",
+   "sublabel": "PDF per branch",
+   "owner": "finance team",
+   "what": "A branch's takings for the day."
+  },
+  {
+   "id": "boxes-cards",
+   "label": "Card terminal",
+   "kind": "external",
+   "sublabel": "the bank's",
+   "what": "Takes card payments."
+  },
+  {
+   "id": "badges-shop",
+   "label": "Order site",
+   "kind": "frontend",
+   "icon": "react",
+   "sublabel": "React",
+   "badges": [
+    "public",
+    {
+     "text": "beta",
+     "tone": "violet"
+    }
+   ],
+   "what": "Cakes ordered a day ahead."
+  },
+  {
+   "id": "badges-api",
+   "label": "Orders API",
+   "kind": "backend",
+   "icon": "fastapi",
+   "sublabel": "FastAPI",
+   "badges": [
+    {
+     "text": "on call",
+     "tone": "rose"
+    }
+   ],
+   "edited": true,
+   "what": "Changed this week: the cut-off moved to 2 pm."
+  },
+  {
+   "id": "badges-db",
+   "label": "Orders",
+   "kind": "database",
+   "icon": "postgresql",
+   "sublabel": "PostgreSQL",
+   "badges": [
+    {
+     "text": "backed up",
+     "tone": "green"
+    }
+   ],
+   "what": "Every order and its pickup time."
+  },
+  {
+   "id": "badges-baker",
+   "label": "Baker's list",
+   "kind": "file",
+   "icon": "doc",
+   "noSub": true,
+   "sublabel": "printed at 4 am",
+   "what": "What to bake, printed each morning; noSub keeps this line in the panel only."
+  },
+  {
+   "id": "badges-bot",
+   "label": "Reminder bot",
+   "kind": "ai",
+   "icon": "bot",
+   "sublabel": "texts the pickup time",
+   "badges": [
+    {
+     "text": "new",
+     "tone": "cyan"
+    }
+   ],
+   "what": "Texts each customer the evening before."
+  },
+  {
+   "id": "badges-sms",
+   "label": "Text gateway",
+   "kind": "external",
+   "icon": "network",
+   "sublabel": "pay per message",
+   "what": "Sends the texts."
   }
  ],
  "edges": [
@@ -440,6 +660,140 @@
    "to": "monorepo-packages/shared/schemas",
    "weight": 2,
    "what": "14 imports"
+  },
+  {
+   "id": "lines-place",
+   "from": "lines-member",
+   "to": "lines-site",
+   "label": "place a hold",
+   "step": 1
+  },
+  {
+   "id": "lines-request",
+   "from": "lines-site",
+   "to": "lines-holds",
+   "label": "POST /holds",
+   "sublabel": "JSON",
+   "step": 2,
+   "weight": 3
+  },
+  {
+   "id": "lines-store",
+   "from": "lines-holds",
+   "to": "lines-loans",
+   "label": "write the hold",
+   "kind": "feeds",
+   "step": 3,
+   "weight": 2
+  },
+  {
+   "id": "lines-returned",
+   "from": "lines-returns",
+   "to": "lines-holds",
+   "label": "copy back",
+   "kind": "triggers",
+   "step": "4a"
+  },
+  {
+   "id": "lines-ready",
+   "from": "lines-holds",
+   "to": "lines-notifier",
+   "label": "on hold shelf",
+   "kind": "state",
+   "step": "4b"
+  },
+  {
+   "id": "lines-tell",
+   "from": "lines-notifier",
+   "to": "lines-sms",
+   "label": "come and collect",
+   "step": 5
+  },
+  {
+   "id": "lines-expire",
+   "from": "lines-shelf-check",
+   "to": "lines-loans",
+   "label": "if not collected",
+   "kind": "guard",
+   "weight": 1
+  },
+  {
+   "id": "boxes-order",
+   "from": "boxes-guest",
+   "to": "boxes-till",
+   "label": "orders"
+  },
+  {
+   "id": "boxes-send",
+   "from": "boxes-till",
+   "to": "boxes-orders",
+   "label": "send order"
+  },
+  {
+   "id": "boxes-show",
+   "from": "boxes-kitchen",
+   "to": "boxes-orders",
+   "label": "fetch tickets"
+  },
+  {
+   "id": "boxes-price",
+   "from": "boxes-orders",
+   "to": "boxes-menu",
+   "label": "price"
+  },
+  {
+   "id": "boxes-save",
+   "from": "boxes-orders",
+   "to": "boxes-sales",
+   "label": "save",
+   "kind": "feeds"
+  },
+  {
+   "id": "boxes-report",
+   "from": "boxes-sales",
+   "to": "boxes-reports",
+   "label": "nightly",
+   "kind": "feeds"
+  },
+  {
+   "id": "boxes-pay",
+   "from": "boxes-till",
+   "to": "boxes-cards",
+   "label": "pay"
+  },
+  {
+   "id": "badges-place",
+   "from": "badges-shop",
+   "to": "badges-api",
+   "label": "place order"
+  },
+  {
+   "id": "badges-write",
+   "from": "badges-api",
+   "to": "badges-db",
+   "label": "save",
+   "kind": "feeds",
+   "edited": true
+  },
+  {
+   "id": "badges-print",
+   "from": "badges-db",
+   "to": "badges-baker",
+   "label": "4 am",
+   "kind": "feeds"
+  },
+  {
+   "id": "badges-remind",
+   "from": "badges-db",
+   "to": "badges-bot",
+   "label": "tomorrow's orders",
+   "kind": "triggers"
+  },
+  {
+   "id": "badges-text",
+   "from": "badges-bot",
+   "to": "badges-sms",
+   "label": "send"
   }
  ],
  "views": [
@@ -450,7 +804,10 @@
    "nodeIds": [
     "card-shapes-shapes",
     "card-monorepo-boxed",
-    "card-monorepo-plain"
+    "card-monorepo-plain",
+    "card-lines-lines",
+    "card-boxes-boxes",
+    "card-badges-badges"
    ],
    "layout": {
     "card-shapes-shapes": [
@@ -462,7 +819,19 @@
      0
     ],
     "card-monorepo-plain": [
+     2,
+     0
+    ],
+    "card-lines-lines": [
      0,
+     1
+    ],
+    "card-boxes-boxes": [
+     1,
+     1
+    ],
+    "card-badges-badges": [
+     2,
      1
     ]
    }
@@ -594,6 +963,109 @@
     "monorepo-tools/release",
     "monorepo-tools/codemods"
    ]
+  },
+  {
+   "id": "lines-lines",
+   "title": "Line kinds, weights and steps",
+   "parent": "overview",
+   "nodeIds": [
+    "lines-member",
+    "lines-site",
+    "lines-holds",
+    "lines-loans",
+    "lines-returns",
+    "lines-notifier",
+    "lines-sms",
+    "lines-shelf-check"
+   ]
+  },
+  {
+   "id": "boxes-boxes",
+   "title": "Boxes, nested and tinted",
+   "parent": "overview",
+   "nodeIds": [
+    "boxes-guest",
+    "boxes-till",
+    "boxes-kitchen",
+    "boxes-orders",
+    "boxes-menu",
+    "boxes-sales",
+    "boxes-reports",
+    "boxes-cards"
+   ],
+   "containers": [
+    {
+     "id": "boxes-branch",
+     "label": "Each branch",
+     "nodeIds": [
+      "boxes-till",
+      "boxes-kitchen"
+     ],
+     "tone": "amber",
+     "badges": [
+      "12 sites"
+     ]
+    },
+    {
+     "id": "boxes-cloud",
+     "label": "Head office cloud",
+     "nodeIds": [],
+     "badges": [
+      {
+       "text": "EU",
+       "tone": "accent"
+      }
+     ]
+    },
+    {
+     "id": "boxes-platform",
+     "label": "Platform",
+     "nodeIds": [
+      "boxes-orders",
+      "boxes-menu",
+      "boxes-sales"
+     ],
+     "parent": "boxes-cloud"
+    },
+    {
+     "id": "boxes-finance",
+     "label": "Finance",
+     "nodeIds": [
+      "boxes-reports"
+     ],
+     "parent": "boxes-cloud",
+     "tone": "green"
+    }
+   ]
+  },
+  {
+   "id": "badges-badges",
+   "title": "Badges, icons and edit marks",
+   "parent": "overview",
+   "nodeIds": [
+    "badges-shop",
+    "badges-api",
+    "badges-db",
+    "badges-baker",
+    "badges-bot",
+    "badges-sms"
+   ]
+  }
+ ],
+ "lenses": [
+  {
+   "id": "boxes-by-owner",
+   "title": "Who owns what",
+   "color": "owner"
+  },
+  {
+   "id": "boxes-data",
+   "title": "Where the takings go",
+   "pick": {
+    "line": [
+     "feeds"
+    ]
+   }
   }
  ]
 }

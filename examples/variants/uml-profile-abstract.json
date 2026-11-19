@@ -1,0 +1,45 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Cycle hire: a fleet profile",
+ "root": "fleet-profile",
+ "nodes": [
+  { "id": "fleet-profile-pkg", "type": "uml.Profile", "label": "FleetConventions" },
+  { "id": "mc-class", "type": "uml.MetaclassReference", "label": "Class", "parent": "fleet-profile-pkg" },
+  { "id": "asset", "type": "uml.Stereotype", "label": "asset", "parent": "fleet-profile-pkg", "props": { "isAbstract": true },
+   "members": [
+    { "id": "asset.service", "type": "uml.Property", "label": "serviceDays", "props": { "valueType": "Integer", "default": "90" } }
+   ] },
+  { "id": "vehicle", "type": "uml.Stereotype", "label": "vehicle", "parent": "fleet-profile-pkg",
+   "members": [
+    { "id": "vehicle.power", "type": "uml.Property", "label": "power", "props": { "valueType": "PowerKind" } },
+    { "id": "vehicle.range", "type": "uml.Property", "label": "rangeKm", "props": { "valueType": "Real", "multiplicity": "0..1" } }
+   ] },
+  { "id": "station", "type": "uml.Stereotype", "label": "station", "parent": "fleet-profile-pkg",
+   "members": [
+    { "id": "station.zone", "type": "uml.Property", "label": "zone", "props": { "valueType": "String" } }
+   ] },
+  { "id": "power-kind", "type": "uml.Enumeration", "label": "PowerKind", "parent": "fleet-profile-pkg",
+   "members": [
+    { "id": "power-kind.pedal", "type": "uml.EnumerationLiteral", "label": "pedal" },
+    { "id": "power-kind.electric", "type": "uml.EnumerationLiteral", "label": "electric" }
+   ] },
+  { "id": "fleet", "type": "uml.Package", "label": "fleet" },
+  { "id": "bike", "type": "uml.Class", "label": "EBike", "parent": "fleet",
+   "props": { "stereotypes": ["vehicle"], "tags": { "vehicle": { "power": "electric", "rangeKm": "60", "serviceDays": "30" } } } },
+  { "id": "dock", "type": "uml.Class", "label": "Dock", "parent": "fleet",
+   "props": { "stereotypes": ["station"], "tags": { "station": { "zone": "riverside" } } } },
+  { "id": "note-asset", "type": "uml.Comment", "label": "asset is abstract: apply vehicle or station" }
+ ],
+ "edges": [
+  { "id": "vehicle-is-asset", "type": "uml.Generalization", "from": "vehicle", "to": "asset" },
+  { "id": "station-is-asset", "type": "uml.Generalization", "from": "station", "to": "asset" },
+  { "id": "asset-extends-class", "type": "uml.Extension", "from": "asset", "to": "mc-class" },
+  { "id": "fleet-applies", "type": "uml.ProfileApplication", "from": "fleet", "to": "fleet-profile-pkg" },
+  { "id": "note-asset-link", "type": "uml.CommentLink", "from": "note-asset", "to": "asset" }
+ ],
+ "views": [
+  { "id": "fleet-profile", "diagram": "uml.profile", "title": "An abstract stereotype and an enumeration tag", "parent": null, "direction": "down",
+   "nodeIds": ["fleet-profile-pkg", "mc-class", "asset", "vehicle", "station", "power-kind", "fleet", "bike", "dock", "note-asset"] }
+ ]
+}

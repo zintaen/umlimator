@@ -17,6 +17,24 @@
    "opensView": "bookshop-azure-az-on-azure"
   },
   {
+   "id": "card-regions-regions",
+   "label": "Two regions, laid out down",
+   "kind": "file",
+   "sublabel": "two regions, laid out down",
+   "what": "Two dashed regions in one resource group, each running the same pair of services behind a traffic manager, laid out down; a label broken over two lines, and lines that start at a region's border. Icons come from the pack you fetch, as on the first card.",
+   "how": "From examples/variants/azure-regions.json.",
+   "opensView": "regions-regions"
+  },
+  {
+   "id": "card-landing-landing",
+   "label": "Closed subscriptions and a generic group",
+   "kind": "file",
+   "sublabel": "closed subscriptions, a generic group",
+   "what": "Three subscriptions whose services the view hides, each drawn as a closed card, joined by lines that end on the groups themselves, and a generic group holding two services. Icons come from the pack you fetch, as on the first card.",
+   "how": "From examples/variants/azure-landing.json.",
+   "opensView": "landing-landing"
+  },
+  {
    "id": "bookshop-azure-az-subscription",
    "type": "azure.Group",
    "label": "Bookshop production",
@@ -140,6 +158,181 @@
    "props": {
     "icon": "SQL-Database"
    }
+  },
+  {
+   "id": "regions-sub",
+   "type": "azure.Group",
+   "label": "Cycle hire production",
+   "props": {
+    "groupType": "subscription"
+   }
+  },
+  {
+   "id": "regions-rg",
+   "type": "azure.Group",
+   "label": "rg-cyclehire-prod",
+   "parent": "regions-sub",
+   "props": {
+    "groupType": "resource-group"
+   }
+  },
+  {
+   "id": "regions-traffic",
+   "type": "azure.Service",
+   "label": "Rider traffic",
+   "parent": "regions-rg",
+   "props": {
+    "icon": "Traffic-Manager-Profiles"
+   }
+  },
+  {
+   "id": "regions-rides",
+   "type": "azure.Service",
+   "label": "Ride records\nwritten in both regions",
+   "parent": "regions-rg",
+   "props": {
+    "icon": "Azure-Cosmos-DB"
+   }
+  },
+  {
+   "id": "regions-insights",
+   "type": "azure.Service",
+   "label": "Telemetry",
+   "parent": "regions-rg",
+   "props": {
+    "icon": "Application-Insights"
+   }
+  },
+  {
+   "id": "regions-north",
+   "type": "azure.Group",
+   "label": "North Europe",
+   "parent": "regions-rg",
+   "props": {
+    "groupType": "region"
+   }
+  },
+  {
+   "id": "regions-api-north",
+   "type": "azure.Service",
+   "label": "Rider API",
+   "parent": "regions-north",
+   "props": {
+    "icon": "App-Services"
+   }
+  },
+  {
+   "id": "regions-events-north",
+   "type": "azure.Service",
+   "label": "Dock events",
+   "parent": "regions-north",
+   "props": {
+    "icon": "Function-Apps"
+   }
+  },
+  {
+   "id": "regions-west",
+   "type": "azure.Group",
+   "label": "West Europe",
+   "parent": "regions-rg",
+   "props": {
+    "groupType": "region"
+   }
+  },
+  {
+   "id": "regions-api-west",
+   "type": "azure.Service",
+   "label": "Rider API",
+   "parent": "regions-west",
+   "props": {
+    "icon": "App-Services"
+   }
+  },
+  {
+   "id": "regions-events-west",
+   "type": "azure.Service",
+   "label": "Dock events",
+   "parent": "regions-west",
+   "props": {
+    "icon": "Function-Apps"
+   }
+  },
+  {
+   "id": "landing-hub",
+   "type": "azure.Group",
+   "label": "Connectivity hub",
+   "props": {
+    "groupType": "subscription"
+   }
+  },
+  {
+   "id": "landing-hub-gateway",
+   "type": "azure.Service",
+   "label": "Office VPN",
+   "parent": "landing-hub",
+   "props": {
+    "icon": "Virtual-Network-Gateways"
+   }
+  },
+  {
+   "id": "landing-prod",
+   "type": "azure.Group",
+   "label": "Cycle hire production",
+   "props": {
+    "groupType": "subscription"
+   }
+  },
+  {
+   "id": "landing-prod-api",
+   "type": "azure.Service",
+   "label": "Rider API",
+   "parent": "landing-prod",
+   "props": {
+    "icon": "App-Services"
+   }
+  },
+  {
+   "id": "landing-staging",
+   "type": "azure.Group",
+   "label": "Cycle hire staging",
+   "props": {
+    "groupType": "subscription"
+   }
+  },
+  {
+   "id": "landing-staging-api",
+   "type": "azure.Service",
+   "label": "Rider API",
+   "parent": "landing-staging",
+   "props": {
+    "icon": "App-Services"
+   }
+  },
+  {
+   "id": "landing-partners",
+   "type": "azure.Group",
+   "label": "Partner feeds",
+   "props": {
+    "groupType": "generic"
+   }
+  },
+  {
+   "id": "landing-gateway",
+   "type": "azure.Service",
+   "label": "Partner API",
+   "parent": "landing-partners",
+   "props": {
+    "icon": "API-Management-Services"
+   }
+  },
+  {
+   "id": "landing-topics",
+   "type": "azure.Service",
+   "label": "Dock status topic",
+   "parent": "landing-partners",
+   "props": {
+    "icon": "Event-Grid-Topics"
+   }
   }
  ],
  "edges": [
@@ -205,6 +398,90 @@
    "from": "bookshop-azure-az-snet-apps",
    "to": "bookshop-azure-az-monitor",
    "label": "logs, metrics"
+  },
+  {
+   "id": "regions-traffic-north",
+   "type": "azure.Connector",
+   "from": "regions-traffic",
+   "to": "regions-api-north",
+   "label": "primary"
+  },
+  {
+   "id": "regions-traffic-west",
+   "type": "azure.Connector",
+   "from": "regions-traffic",
+   "to": "regions-api-west",
+   "label": "failover"
+  },
+  {
+   "id": "regions-events-north-rides",
+   "type": "azure.Connector",
+   "from": "regions-events-north",
+   "to": "regions-rides",
+   "label": "ride ended"
+  },
+  {
+   "id": "regions-events-west-rides",
+   "type": "azure.Connector",
+   "from": "regions-events-west",
+   "to": "regions-rides",
+   "label": "ride ended"
+  },
+  {
+   "id": "regions-api-north-events",
+   "type": "azure.Connector",
+   "from": "regions-api-north",
+   "to": "regions-events-north",
+   "label": "unlock"
+  },
+  {
+   "id": "regions-api-west-events",
+   "type": "azure.Connector",
+   "from": "regions-api-west",
+   "to": "regions-events-west",
+   "label": "unlock"
+  },
+  {
+   "id": "regions-north-insights",
+   "type": "azure.Connector",
+   "from": "regions-north",
+   "to": "regions-insights",
+   "label": "traces"
+  },
+  {
+   "id": "regions-west-insights",
+   "type": "azure.Connector",
+   "from": "regions-west",
+   "to": "regions-insights",
+   "label": "traces"
+  },
+  {
+   "id": "landing-prod-hub",
+   "type": "azure.Connector",
+   "from": "landing-prod",
+   "to": "landing-hub",
+   "label": "peering"
+  },
+  {
+   "id": "landing-staging-hub",
+   "type": "azure.Connector",
+   "from": "landing-staging",
+   "to": "landing-hub",
+   "label": "peering"
+  },
+  {
+   "id": "landing-gateway-prod",
+   "type": "azure.Connector",
+   "from": "landing-gateway",
+   "to": "landing-prod",
+   "label": "fares, docks"
+  },
+  {
+   "id": "landing-topics-gateway",
+   "type": "azure.Connector",
+   "from": "landing-topics",
+   "to": "landing-gateway",
+   "label": "dock status"
   }
  ],
  "views": [
@@ -213,12 +490,22 @@
    "parent": null,
    "title": "Azure diagram examples",
    "nodeIds": [
-    "card-bookshop-azure-az-on-azure"
+    "card-bookshop-azure-az-on-azure",
+    "card-regions-regions",
+    "card-landing-landing"
    ],
    "layout": {
     "card-bookshop-azure-az-on-azure": [
      0,
      0
+    ],
+    "card-regions-regions": [
+     1,
+     0
+    ],
+    "card-landing-landing": [
+     0,
+     1
     ]
    }
   },
@@ -243,6 +530,42 @@
     "bookshop-azure-az-worker",
     "bookshop-azure-az-snet-data",
     "bookshop-azure-az-db"
+   ]
+  },
+  {
+   "id": "regions-regions",
+   "diagram": "azure",
+   "title": "Two regions, laid out down",
+   "parent": "overview",
+   "direction": "down",
+   "caption": "Icons from a pack you fetch: umlimator.py pack fetch azure, after Microsoft's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.",
+   "nodeIds": [
+    "regions-sub",
+    "regions-rg",
+    "regions-traffic",
+    "regions-rides",
+    "regions-insights",
+    "regions-north",
+    "regions-api-north",
+    "regions-events-north",
+    "regions-west",
+    "regions-api-west",
+    "regions-events-west"
+   ]
+  },
+  {
+   "id": "landing-landing",
+   "diagram": "azure",
+   "title": "Closed subscriptions and a generic group",
+   "parent": "overview",
+   "caption": "Icons from a pack you fetch: umlimator.py pack fetch azure, after Microsoft's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.",
+   "nodeIds": [
+    "landing-hub",
+    "landing-prod",
+    "landing-staging",
+    "landing-partners",
+    "landing-gateway",
+    "landing-topics"
    ]
   }
  ]

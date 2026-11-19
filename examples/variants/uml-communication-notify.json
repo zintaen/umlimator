@@ -1,0 +1,30 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Library: a returned book frees a hold",
+ "root": "hold-ready",
+ "nodes": [
+  { "id": "librarian", "type": "uml.Lifeline", "label": "librarian", "props": { "represents": "Librarian", "stereotypes": ["actor"] } },
+  { "id": "desk", "type": "uml.Lifeline", "label": "desk", "props": { "represents": "ReturnsDesk" } },
+  { "id": "holds", "type": "uml.Lifeline", "label": "holds", "props": { "represents": "HoldQueue" } },
+  { "id": "mailer", "type": "uml.Lifeline", "label": "mailer", "props": { "represents": "Mailer" } },
+  { "id": "catalogue", "type": "uml.Lifeline", "label": "catalogue", "props": { "represents": "Catalogue" } }
+ ],
+ "edges": [
+  { "id": "k-lib-desk", "type": "uml.Connector", "from": "librarian", "to": "desk" },
+  { "id": "k-desk-cat", "type": "uml.Connector", "from": "desk", "to": "catalogue" },
+  { "id": "k-desk-holds", "type": "uml.Connector", "from": "desk", "to": "holds" },
+  { "id": "k-holds-mailer", "type": "uml.Connector", "from": "holds", "to": "mailer" },
+  { "id": "n1", "type": "uml.Message", "from": "librarian", "to": "desk", "label": "checkIn(copy)", "props": { "sort": "call" } },
+  { "id": "n2", "type": "uml.Message", "from": "desk", "to": "catalogue", "label": "markReturned(copy)", "props": { "sort": "async" } },
+  { "id": "n3", "type": "uml.Message", "from": "desk", "to": "holds", "label": "[held] next(title)", "props": { "sort": "call" } },
+  { "id": "n5", "type": "uml.Message", "from": "holds", "to": "mailer", "label": "notify(member)", "props": { "sort": "async" } },
+  { "id": "n6", "type": "uml.Message", "from": "holds", "to": "desk", "label": "member", "props": { "sort": "reply", "replyTo": "n3" } },
+  { "id": "n7", "type": "uml.Message", "from": "desk", "to": "librarian", "label": "put on hold shelf", "props": { "sort": "reply", "replyTo": "n1" } }
+ ],
+ "views": [
+  { "id": "hold-ready", "diagram": "uml.communication", "title": "A hold made ready: async and a guard", "parent": null,
+   "nodeIds": ["librarian", "desk", "holds", "mailer", "catalogue"],
+   "edges": ["k-lib-desk", "k-desk-cat", "k-desk-holds", "k-holds-mailer", "n1", "n2", "n3", "n5", "n6", "n7"] }
+ ]
+}

@@ -23,6 +23,24 @@
    "opensView": "fulfil-activity-take-payment"
   },
   {
+   "id": "card-loop-return-right",
+   "label": "A retry loop, laid out right",
+   "kind": "file",
+   "sublabel": "a loop, laid out right, no lanes",
+   "what": "An activity with no lanes laid out right: a retry loop through a named merge, two decisions with `[yes]` and `[else]` guards, a send signal action, a flow final and an activity final, and a comment on a decision.",
+   "how": "From examples/variants/uml-activity-loop.json.",
+   "opensView": "loop-return-right"
+  },
+  {
+   "id": "card-lanes-rebalance",
+   "label": "Nested lanes, laid out right",
+   "kind": "file",
+   "sublabel": "nested lanes, object flows",
+   "what": "Partitions nested in a partition (Operations holds the control room and the van crew), laid out right: a data store and an object node on object flows, then a send signal action that an accept event action in another lane takes up.",
+   "how": "From examples/variants/uml-activity-lanes.json.",
+   "opensView": "lanes-rebalance"
+  },
+  {
    "id": "fulfil-activity-lane-worker",
    "type": "uml.ActivityPartition",
    "label": "Order worker"
@@ -151,6 +169,143 @@
   {
    "id": "fulfil-activity-pay-done",
    "type": "uml.ActivityFinalNode"
+  },
+  {
+   "id": "loop-start",
+   "type": "uml.InitialNode"
+  },
+  {
+   "id": "loop-dock",
+   "type": "uml.Action",
+   "label": "Push the bike into a dock"
+  },
+  {
+   "id": "loop-try-lock",
+   "type": "uml.MergeNode",
+   "label": "try lock"
+  },
+  {
+   "id": "loop-lock",
+   "type": "uml.Action",
+   "label": "Engage the dock lock"
+  },
+  {
+   "id": "loop-locked",
+   "type": "uml.DecisionNode",
+   "label": "Locked?"
+  },
+  {
+   "id": "loop-tries",
+   "type": "uml.DecisionNode",
+   "label": "Tries left?"
+  },
+  {
+   "id": "loop-beep",
+   "type": "uml.Action",
+   "label": "Beep and ask to re-seat"
+  },
+  {
+   "id": "loop-fault",
+   "type": "uml.SendSignalAction",
+   "label": "Dock fault"
+  },
+  {
+   "id": "loop-gave-up",
+   "type": "uml.FlowFinalNode"
+  },
+  {
+   "id": "loop-end-trip",
+   "type": "uml.Action",
+   "label": "End the trip and price it"
+  },
+  {
+   "id": "loop-done",
+   "type": "uml.ActivityFinalNode"
+  },
+  {
+   "id": "loop-note",
+   "type": "uml.Comment",
+   "label": "three tries, then the rider is told to use another dock"
+  },
+  {
+   "id": "lanes-ops",
+   "type": "uml.ActivityPartition",
+   "label": "Operations"
+  },
+  {
+   "id": "lanes-control",
+   "type": "uml.ActivityPartition",
+   "label": "Control room",
+   "parent": "lanes-ops"
+  },
+  {
+   "id": "lanes-van",
+   "type": "uml.ActivityPartition",
+   "label": "Van crew",
+   "parent": "lanes-ops"
+  },
+  {
+   "id": "lanes-station",
+   "type": "uml.ActivityPartition",
+   "label": "Station"
+  },
+  {
+   "id": "lanes-start",
+   "type": "uml.InitialNode",
+   "parent": "lanes-control"
+  },
+  {
+   "id": "lanes-find",
+   "type": "uml.Action",
+   "label": "Find full and empty stations",
+   "parent": "lanes-control"
+  },
+  {
+   "id": "lanes-levels",
+   "type": "uml.DataStoreNode",
+   "label": "Dock levels",
+   "parent": "lanes-control"
+  },
+  {
+   "id": "lanes-plan",
+   "type": "uml.ObjectNode",
+   "label": "Move plan",
+   "parent": "lanes-control"
+  },
+  {
+   "id": "lanes-send",
+   "type": "uml.SendSignalAction",
+   "label": "Job sent",
+   "parent": "lanes-control"
+  },
+  {
+   "id": "lanes-accept",
+   "type": "uml.AcceptEventAction",
+   "label": "Job received",
+   "parent": "lanes-van"
+  },
+  {
+   "id": "lanes-load",
+   "type": "uml.Action",
+   "label": "Load bikes at the full station",
+   "parent": "lanes-van"
+  },
+  {
+   "id": "lanes-unload",
+   "type": "uml.Action",
+   "label": "Unload at the empty station",
+   "parent": "lanes-van"
+  },
+  {
+   "id": "lanes-report",
+   "type": "uml.Action",
+   "label": "Report the new dock levels",
+   "parent": "lanes-station"
+  },
+  {
+   "id": "lanes-done",
+   "type": "uml.ActivityFinalNode",
+   "parent": "lanes-station"
   }
  ],
  "edges": [
@@ -291,6 +446,144 @@
    "type": "uml.ControlFlow",
    "from": "fulfil-activity-record",
    "to": "fulfil-activity-pay-done"
+  },
+  {
+   "id": "loop-f1",
+   "type": "uml.ControlFlow",
+   "from": "loop-start",
+   "to": "loop-dock"
+  },
+  {
+   "id": "loop-f2",
+   "type": "uml.ControlFlow",
+   "from": "loop-dock",
+   "to": "loop-try-lock"
+  },
+  {
+   "id": "loop-f3",
+   "type": "uml.ControlFlow",
+   "from": "loop-try-lock",
+   "to": "loop-lock"
+  },
+  {
+   "id": "loop-f4",
+   "type": "uml.ControlFlow",
+   "from": "loop-lock",
+   "to": "loop-locked"
+  },
+  {
+   "id": "loop-f5",
+   "type": "uml.ControlFlow",
+   "from": "loop-locked",
+   "to": "loop-end-trip",
+   "props": {
+    "guard": "yes"
+   }
+  },
+  {
+   "id": "loop-f6",
+   "type": "uml.ControlFlow",
+   "from": "loop-locked",
+   "to": "loop-beep",
+   "props": {
+    "guard": "else"
+   }
+  },
+  {
+   "id": "loop-f7",
+   "type": "uml.ControlFlow",
+   "from": "loop-beep",
+   "to": "loop-tries"
+  },
+  {
+   "id": "loop-f8",
+   "type": "uml.ControlFlow",
+   "from": "loop-tries",
+   "to": "loop-try-lock",
+   "props": {
+    "guard": "yes"
+   }
+  },
+  {
+   "id": "loop-f9",
+   "type": "uml.ControlFlow",
+   "from": "loop-tries",
+   "to": "loop-fault",
+   "props": {
+    "guard": "else"
+   }
+  },
+  {
+   "id": "loop-f10",
+   "type": "uml.ControlFlow",
+   "from": "loop-fault",
+   "to": "loop-gave-up"
+  },
+  {
+   "id": "loop-f11",
+   "type": "uml.ControlFlow",
+   "from": "loop-end-trip",
+   "to": "loop-done"
+  },
+  {
+   "id": "loop-n1",
+   "type": "uml.CommentLink",
+   "from": "loop-note",
+   "to": "loop-tries"
+  },
+  {
+   "id": "lanes-f1",
+   "type": "uml.ControlFlow",
+   "from": "lanes-start",
+   "to": "lanes-find"
+  },
+  {
+   "id": "lanes-o1",
+   "type": "uml.ObjectFlow",
+   "from": "lanes-levels",
+   "to": "lanes-find"
+  },
+  {
+   "id": "lanes-o2",
+   "type": "uml.ObjectFlow",
+   "from": "lanes-find",
+   "to": "lanes-plan"
+  },
+  {
+   "id": "lanes-o3",
+   "type": "uml.ObjectFlow",
+   "from": "lanes-plan",
+   "to": "lanes-send"
+  },
+  {
+   "id": "lanes-f2",
+   "type": "uml.ControlFlow",
+   "from": "lanes-send",
+   "to": "lanes-accept"
+  },
+  {
+   "id": "lanes-f3",
+   "type": "uml.ControlFlow",
+   "from": "lanes-accept",
+   "to": "lanes-load"
+  },
+  {
+   "id": "lanes-f4",
+   "type": "uml.ControlFlow",
+   "from": "lanes-load",
+   "to": "lanes-unload"
+  },
+  {
+   "id": "lanes-f5",
+   "type": "uml.ControlFlow",
+   "from": "lanes-unload",
+   "to": "lanes-report"
+  },
+  {
+   "id": "lanes-f6",
+   "type": "uml.ControlFlow",
+   "from": "lanes-report",
+   "to": "lanes-done"
   }
  ],
  "views": [
@@ -300,7 +593,9 @@
    "title": "Activity diagram examples",
    "nodeIds": [
     "card-fulfil-activity-fulfil",
-    "card-fulfil-activity-take-payment"
+    "card-fulfil-activity-take-payment",
+    "card-loop-return-right",
+    "card-lanes-rebalance"
    ],
    "layout": {
     "card-fulfil-activity-fulfil": [
@@ -310,6 +605,14 @@
     "card-fulfil-activity-take-payment": [
      1,
      0
+    ],
+    "card-loop-return-right": [
+     0,
+     1
+    ],
+    "card-lanes-rebalance": [
+     1,
+     1
     ]
    }
   },
@@ -353,6 +656,50 @@
     "fulfil-activity-charge",
     "fulfil-activity-record",
     "fulfil-activity-pay-done"
+   ]
+  },
+  {
+   "id": "loop-return-right",
+   "diagram": "uml.activity",
+   "title": "A retry loop, laid out right",
+   "parent": "overview",
+   "direction": "right",
+   "nodeIds": [
+    "loop-start",
+    "loop-dock",
+    "loop-try-lock",
+    "loop-lock",
+    "loop-locked",
+    "loop-tries",
+    "loop-beep",
+    "loop-fault",
+    "loop-gave-up",
+    "loop-end-trip",
+    "loop-done",
+    "loop-note"
+   ]
+  },
+  {
+   "id": "lanes-rebalance",
+   "diagram": "uml.activity",
+   "title": "Nested lanes, laid out right",
+   "parent": "overview",
+   "direction": "right",
+   "nodeIds": [
+    "lanes-ops",
+    "lanes-control",
+    "lanes-van",
+    "lanes-station",
+    "lanes-start",
+    "lanes-find",
+    "lanes-levels",
+    "lanes-plan",
+    "lanes-send",
+    "lanes-accept",
+    "lanes-load",
+    "lanes-unload",
+    "lanes-report",
+    "lanes-done"
    ]
   }
  ]

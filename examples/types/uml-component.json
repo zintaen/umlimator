@@ -14,6 +14,24 @@
    "opensView": "bookshop-components-components"
   },
   {
+   "id": "card-library-packages",
+   "label": "Packages, realizations, an interface box",
+   "kind": "file",
+   "sublabel": "packages, realizations, <<use>>",
+   "what": "Library components in packages, two classes realizing a component (dashed, hollow triangle), an interface drawn as a box with its operations, provided and required by dashed lines, a `<<call>>` dependency and a plain one, an artifact's `<<manifest>>` and a note.",
+   "how": "From examples/variants/uml-component-library.json.",
+   "opensView": "library-packages"
+  },
+  {
+   "id": "card-sockets-sockets",
+   "label": "Balls and sockets, laid out down",
+   "kind": "file",
+   "sublabel": "balls, sockets, ports, down",
+   "what": "A cinema's booking laid out down: interfaces as balls with their sockets, typed ports (`seats : SeatPicker`) joined by an assembly, delegations into and out of a component's parts, and two parts joined directly.",
+   "how": "From examples/variants/uml-component-sockets.json.",
+   "opensView": "sockets-sockets"
+  },
+  {
    "id": "bookshop-components-storefront-component",
    "type": "uml.Component",
    "label": "Storefront"
@@ -101,6 +119,168 @@
    "type": "uml.ExecutionEnvironment",
    "label": "Java 21 runtime",
    "parent": "bookshop-components-app-server"
+  },
+  {
+   "id": "library-lending",
+   "type": "uml.Package",
+   "label": "Lending"
+  },
+  {
+   "id": "library-loans",
+   "type": "uml.Component",
+   "label": "Loans",
+   "parent": "library-lending"
+  },
+  {
+   "id": "library-holds",
+   "type": "uml.Component",
+   "label": "Holds",
+   "parent": "library-lending"
+  },
+  {
+   "id": "library-members-pkg",
+   "type": "uml.Package",
+   "label": "Members"
+  },
+  {
+   "id": "library-cards",
+   "type": "uml.Component",
+   "label": "Library cards",
+   "parent": "library-members-pkg"
+  },
+  {
+   "id": "library-i-catalogue",
+   "type": "uml.Interface",
+   "label": "CatalogueSearch",
+   "members": [
+    {
+     "id": "library-i-catalogue.find",
+     "type": "uml.Operation",
+     "label": "find",
+     "props": {
+      "visibility": "public",
+      "returnType": "Title[*]"
+     }
+    },
+    {
+     "id": "library-i-catalogue.copies",
+     "type": "uml.Operation",
+     "label": "copiesOf",
+     "props": {
+      "visibility": "public",
+      "returnType": "Copy[*]"
+     }
+    }
+   ]
+  },
+  {
+   "id": "library-catalogue",
+   "type": "uml.Component",
+   "label": "Catalogue"
+  },
+  {
+   "id": "library-loan-rules",
+   "type": "uml.Class",
+   "label": "LoanRules"
+  },
+  {
+   "id": "library-fines",
+   "type": "uml.Class",
+   "label": "FineCalculator"
+  },
+  {
+   "id": "library-loans-war",
+   "type": "uml.Artifact",
+   "label": "loans.war"
+  },
+  {
+   "id": "library-note",
+   "type": "uml.Comment",
+   "label": "a search covers the copies of every branch"
+  },
+  {
+   "id": "sockets-kiosk",
+   "type": "uml.Component",
+   "label": "Ticket kiosk",
+   "members": [
+    {
+     "id": "sockets-kiosk.seats",
+     "type": "uml.Port",
+     "label": "seats",
+     "props": {
+      "valueType": "SeatPicker"
+     }
+    }
+   ]
+  },
+  {
+   "id": "sockets-booking",
+   "type": "uml.Component",
+   "label": "Booking",
+   "members": [
+    {
+     "id": "sockets-booking.seats",
+     "type": "uml.Port",
+     "label": "seats",
+     "props": {
+      "valueType": "SeatPicker"
+     }
+    },
+    {
+     "id": "sockets-booking.pay",
+     "type": "uml.Port",
+     "label": "pay",
+     "props": {
+      "valueType": "Payment"
+     }
+    }
+   ]
+  },
+  {
+   "id": "sockets-seat-map",
+   "type": "uml.Component",
+   "label": "Seat map",
+   "parent": "sockets-booking",
+   "members": [
+    {
+     "id": "sockets-seat-map.in",
+     "type": "uml.Port",
+     "label": "in"
+    }
+   ]
+  },
+  {
+   "id": "sockets-basket",
+   "type": "uml.Component",
+   "label": "Basket",
+   "parent": "sockets-booking",
+   "members": [
+    {
+     "id": "sockets-basket.out",
+     "type": "uml.Port",
+     "label": "out"
+    }
+   ]
+  },
+  {
+   "id": "sockets-till",
+   "type": "uml.Component",
+   "label": "Card till"
+  },
+  {
+   "id": "sockets-screens",
+   "type": "uml.Component",
+   "label": "Screen schedule"
+  },
+  {
+   "id": "sockets-i-pay",
+   "type": "uml.Interface",
+   "label": "Payment"
+  },
+  {
+   "id": "sockets-i-shows",
+   "type": "uml.Interface",
+   "label": "Showtimes"
   }
  ],
  "edges": [
@@ -172,6 +352,119 @@
    "type": "uml.Manifestation",
    "from": "bookshop-components-shop-api-jar",
    "to": "bookshop-components-shop-api"
+  },
+  {
+   "id": "library-catalogue-provides",
+   "type": "uml.InterfaceRealization",
+   "from": "library-catalogue",
+   "to": "library-i-catalogue"
+  },
+  {
+   "id": "library-loans-uses",
+   "type": "uml.Usage",
+   "from": "library-loans",
+   "to": "library-i-catalogue"
+  },
+  {
+   "id": "library-loans-holds",
+   "type": "uml.Dependency",
+   "from": "library-loans",
+   "to": "library-holds"
+  },
+  {
+   "id": "library-rules-realize",
+   "type": "uml.ComponentRealization",
+   "from": "library-loan-rules",
+   "to": "library-loans"
+  },
+  {
+   "id": "library-fines-realize",
+   "type": "uml.ComponentRealization",
+   "from": "library-fines",
+   "to": "library-loans"
+  },
+  {
+   "id": "library-loans-cards",
+   "type": "uml.Dependency",
+   "from": "library-loans",
+   "to": "library-cards",
+   "props": {
+    "stereotypes": [
+     "call"
+    ]
+   }
+  },
+  {
+   "id": "library-war-manifests",
+   "type": "uml.Manifestation",
+   "from": "library-loans-war",
+   "to": "library-loans"
+  },
+  {
+   "id": "library-note-link",
+   "type": "uml.CommentLink",
+   "from": "library-note",
+   "to": "library-catalogue"
+  },
+  {
+   "id": "sockets-kiosk-booking",
+   "type": "uml.Connector",
+   "from": "sockets-kiosk.seats",
+   "to": "sockets-booking.seats",
+   "props": {
+    "kind": "assembly"
+   }
+  },
+  {
+   "id": "sockets-seats-in",
+   "type": "uml.Connector",
+   "from": "sockets-booking.seats",
+   "to": "sockets-seat-map.in",
+   "props": {
+    "kind": "delegation"
+   }
+  },
+  {
+   "id": "sockets-seat-basket",
+   "type": "uml.Connector",
+   "from": "sockets-seat-map",
+   "to": "sockets-basket",
+   "props": {
+    "kind": "assembly"
+   }
+  },
+  {
+   "id": "sockets-basket-pay",
+   "type": "uml.Connector",
+   "from": "sockets-basket.out",
+   "to": "sockets-booking.pay",
+   "props": {
+    "kind": "delegation"
+   }
+  },
+  {
+   "id": "sockets-booking-needs-pay",
+   "type": "uml.Usage",
+   "from": "sockets-booking.pay",
+   "to": "sockets-i-pay"
+  },
+  {
+   "id": "sockets-till-pay",
+   "type": "uml.InterfaceRealization",
+   "from": "sockets-till",
+   "to": "sockets-i-pay"
+  },
+  {
+   "id": "sockets-screens-shows",
+   "type": "uml.InterfaceRealization",
+   "from": "sockets-screens",
+   "to": "sockets-i-shows"
+  },
+  {
+   "id": "sockets-kiosk-shows",
+   "type": "uml.Usage",
+   "from": "sockets-kiosk",
+   "to": "sockets-i-shows"
   }
  ],
  "views": [
@@ -180,12 +473,22 @@
    "parent": null,
    "title": "Component diagram examples",
    "nodeIds": [
-    "card-bookshop-components-components"
+    "card-bookshop-components-components",
+    "card-library-packages",
+    "card-sockets-sockets"
    ],
    "layout": {
     "card-bookshop-components-components": [
      0,
      0
+    ],
+    "card-library-packages": [
+     1,
+     0
+    ],
+    "card-sockets-sockets": [
+     0,
+     1
     ]
    }
   },
@@ -207,6 +510,50 @@
    ],
    "present": {
     "bookshop-components-i-orders": {
+     "as": "ball"
+    }
+   }
+  },
+  {
+   "id": "library-packages",
+   "diagram": "uml.component",
+   "title": "Packages, realizations, an interface box",
+   "parent": "overview",
+   "nodeIds": [
+    "library-lending",
+    "library-loans",
+    "library-holds",
+    "library-members-pkg",
+    "library-cards",
+    "library-i-catalogue",
+    "library-catalogue",
+    "library-loan-rules",
+    "library-fines",
+    "library-loans-war",
+    "library-note"
+   ]
+  },
+  {
+   "id": "sockets-sockets",
+   "diagram": "uml.component",
+   "title": "Balls and sockets, laid out down",
+   "parent": "overview",
+   "direction": "down",
+   "nodeIds": [
+    "sockets-kiosk",
+    "sockets-booking",
+    "sockets-seat-map",
+    "sockets-basket",
+    "sockets-till",
+    "sockets-screens",
+    "sockets-i-pay",
+    "sockets-i-shows"
+   ],
+   "present": {
+    "sockets-i-pay": {
+     "as": "ball"
+    },
+    "sockets-i-shows": {
      "as": "ball"
     }
    }

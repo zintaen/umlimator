@@ -14,6 +14,24 @@
    "opensView": "ebike-structure-inside-ebike"
   },
   {
+   "id": "card-dock-inside-station",
+   "label": "Inside the dock station",
+   "kind": "file",
+   "sublabel": "frame ports, delegation, a full port",
+   "what": "A dock station's parts, a reference and a value; a proxy port on the frame delegating to the charger's port, a full port on the frame, conjugated proxy ports meeting, and item flows on four connectors.",
+   "how": "From examples/variants/sysml-internal-block-dock.json.",
+   "opensView": "dock-inside-station"
+  },
+  {
+   "id": "card-dock-inside-charger",
+   "label": "Inside the charger",
+   "kind": "file",
+   "sublabel": "a part's own block, two delegations",
+   "what": "The charger, a part of the dock, as the subject of its own diagram: its two frame ports delegate in to the breaker and out from the rectifier, with alternating current flowing between them.",
+   "how": "From examples/variants/sysml-internal-block-dock.json.",
+   "opensView": "dock-inside-charger"
+  },
+  {
    "id": "ebike-structure-ebike",
    "type": "sysml.Block",
    "label": "EBike",
@@ -299,6 +317,280 @@
      }
     }
    ]
+  },
+  {
+   "id": "dock-station",
+   "type": "sysml.Block",
+   "label": "DockStation",
+   "members": [
+    {
+     "id": "dock-station.charger",
+     "type": "sysml.PartProperty",
+     "label": "charger",
+     "props": {
+      "valueType": "Charger",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "dock-station.latch",
+     "type": "sysml.PartProperty",
+     "label": "latch",
+     "props": {
+      "valueType": "Latch",
+      "multiplicity": "12"
+     }
+    },
+    {
+     "id": "dock-station.reader",
+     "type": "sysml.PartProperty",
+     "label": "reader",
+     "props": {
+      "valueType": "CardReader",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "dock-station.backend",
+     "type": "sysml.ReferenceProperty",
+     "label": "backend",
+     "props": {
+      "valueType": "FleetServer",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "dock-station.slots",
+     "type": "sysml.ValueProperty",
+     "label": "slots",
+     "props": {
+      "valueType": "Integer"
+     }
+    },
+    {
+     "id": "dock-station.mains",
+     "type": "sysml.Port",
+     "label": "mains",
+     "props": {
+      "kind": "proxy",
+      "valueType": "MainsIf"
+     }
+    },
+    {
+     "id": "dock-station.uplink",
+     "type": "sysml.Port",
+     "label": "uplink",
+     "props": {
+      "kind": "full",
+      "valueType": "Modem"
+     }
+    }
+   ]
+  },
+  {
+   "id": "dock-charger",
+   "type": "sysml.Block",
+   "label": "Charger",
+   "members": [
+    {
+     "id": "dock-charger.breaker",
+     "type": "sysml.PartProperty",
+     "label": "breaker",
+     "props": {
+      "valueType": "Breaker",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "dock-charger.rectifier",
+     "type": "sysml.PartProperty",
+     "label": "rectifier",
+     "props": {
+      "valueType": "Rectifier",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "dock-charger.ac",
+     "type": "sysml.Port",
+     "label": "ac",
+     "props": {
+      "kind": "proxy",
+      "valueType": "MainsIf"
+     }
+    },
+    {
+     "id": "dock-charger.out",
+     "type": "sysml.Port",
+     "label": "out",
+     "props": {
+      "kind": "proxy",
+      "valueType": "DcIf"
+     }
+    }
+   ]
+  },
+  {
+   "id": "dock-latch",
+   "type": "sysml.Block",
+   "label": "Latch",
+   "members": [
+    {
+     "id": "dock-latch.power",
+     "type": "sysml.Port",
+     "label": "power",
+     "props": {
+      "kind": "proxy",
+      "valueType": "~DcIf"
+     }
+    },
+    {
+     "id": "dock-latch.signal",
+     "type": "sysml.Port",
+     "label": "signal"
+    }
+   ]
+  },
+  {
+   "id": "dock-reader",
+   "type": "sysml.Block",
+   "label": "CardReader",
+   "members": [
+    {
+     "id": "dock-reader.net",
+     "type": "sysml.Port",
+     "label": "net",
+     "props": {
+      "kind": "proxy",
+      "valueType": "DataIf"
+     }
+    },
+    {
+     "id": "dock-reader.unlock",
+     "type": "sysml.Port",
+     "label": "unlock"
+    }
+   ]
+  },
+  {
+   "id": "dock-server",
+   "type": "sysml.Block",
+   "label": "FleetServer",
+   "members": [
+    {
+     "id": "dock-server.api",
+     "type": "sysml.Port",
+     "label": "api",
+     "props": {
+      "kind": "proxy",
+      "valueType": "~DataIf"
+     }
+    }
+   ]
+  },
+  {
+   "id": "dock-modem",
+   "type": "sysml.Block",
+   "label": "Modem"
+  },
+  {
+   "id": "dock-breaker",
+   "type": "sysml.Block",
+   "label": "Breaker",
+   "members": [
+    {
+     "id": "dock-breaker.line",
+     "type": "sysml.Port",
+     "label": "line",
+     "props": {
+      "kind": "proxy",
+      "valueType": "MainsIf"
+     }
+    },
+    {
+     "id": "dock-breaker.load",
+     "type": "sysml.Port",
+     "label": "load"
+    }
+   ]
+  },
+  {
+   "id": "dock-rectifier",
+   "type": "sysml.Block",
+   "label": "Rectifier",
+   "members": [
+    {
+     "id": "dock-rectifier.in",
+     "type": "sysml.Port",
+     "label": "in"
+    },
+    {
+     "id": "dock-rectifier.out",
+     "type": "sysml.Port",
+     "label": "out",
+     "props": {
+      "kind": "proxy",
+      "valueType": "DcIf"
+     }
+    }
+   ]
+  },
+  {
+   "id": "dock-mains-if",
+   "type": "sysml.InterfaceBlock",
+   "label": "MainsIf",
+   "members": [
+    {
+     "id": "dock-mains-if.ac",
+     "type": "sysml.FlowProperty",
+     "label": "ac",
+     "props": {
+      "valueType": "ACPower",
+      "direction": "in"
+     }
+    }
+   ]
+  },
+  {
+   "id": "dock-dc-if",
+   "type": "sysml.InterfaceBlock",
+   "label": "DcIf",
+   "members": [
+    {
+     "id": "dock-dc-if.dc",
+     "type": "sysml.FlowProperty",
+     "label": "dc",
+     "props": {
+      "valueType": "DCPower",
+      "direction": "out"
+     }
+    }
+   ]
+  },
+  {
+   "id": "dock-data-if",
+   "type": "sysml.InterfaceBlock",
+   "label": "DataIf",
+   "members": [
+    {
+     "id": "dock-data-if.request",
+     "type": "sysml.FlowProperty",
+     "label": "request",
+     "props": {
+      "valueType": "RideRequest",
+      "direction": "out"
+     }
+    },
+    {
+     "id": "dock-data-if.grant",
+     "type": "sysml.FlowProperty",
+     "label": "grant",
+     "props": {
+      "valueType": "Grant",
+      "direction": "in"
+     }
+    }
+   ]
   }
  ],
  "edges": [
@@ -409,6 +701,129 @@
      }
     }
    }
+  },
+  {
+   "id": "dock-mains-to-charger",
+   "type": "sysml.Connector",
+   "from": "dock-station.mains",
+   "to": "dock-charger.ac",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "dock-station.charger"
+     }
+    },
+    "itemFlow": {
+     "item": "ACPower",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "dock-charger-to-latch",
+   "type": "sysml.Connector",
+   "from": "dock-charger.out",
+   "to": "dock-latch.power",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "dock-station.charger"
+     },
+     "to": {
+      "part": "dock-station.latch"
+     }
+    },
+    "itemFlow": {
+     "item": "DCPower",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "dock-reader-to-backend",
+   "type": "sysml.Connector",
+   "from": "dock-reader.net",
+   "to": "dock-server.api",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "dock-station.reader"
+     },
+     "to": {
+      "part": "dock-station.backend"
+     }
+    },
+    "itemFlow": {
+     "item": "RideRequest",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "dock-reader-to-latch",
+   "type": "sysml.Connector",
+   "from": "dock-reader.unlock",
+   "to": "dock-latch.signal",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "dock-station.reader"
+     },
+     "to": {
+      "part": "dock-station.latch"
+     }
+    },
+    "itemFlow": {
+     "item": "UnlockCommand",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "dock-ac-to-breaker",
+   "type": "sysml.Connector",
+   "from": "dock-charger.ac",
+   "to": "dock-breaker.line",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "dock-charger.breaker"
+     }
+    }
+   }
+  },
+  {
+   "id": "dock-breaker-to-rectifier",
+   "type": "sysml.Connector",
+   "from": "dock-breaker.load",
+   "to": "dock-rectifier.in",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "dock-charger.breaker"
+     },
+     "to": {
+      "part": "dock-charger.rectifier"
+     }
+    },
+    "itemFlow": {
+     "item": "ACPower",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "dock-rectifier-to-out",
+   "type": "sysml.Connector",
+   "from": "dock-rectifier.out",
+   "to": "dock-charger.out",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "dock-charger.rectifier"
+     }
+    }
+   }
   }
  ],
  "views": [
@@ -417,12 +832,22 @@
    "parent": null,
    "title": "Internal block diagram examples",
    "nodeIds": [
-    "card-ebike-structure-inside-ebike"
+    "card-ebike-structure-inside-ebike",
+    "card-dock-inside-station",
+    "card-dock-inside-charger"
    ],
    "layout": {
     "card-ebike-structure-inside-ebike": [
      0,
      0
+    ],
+    "card-dock-inside-station": [
+     1,
+     0
+    ],
+    "card-dock-inside-charger": [
+     0,
+     1
     ]
    }
   },
@@ -434,6 +859,26 @@
    "subject": "ebike-structure-ebike",
    "nodeIds": [
     "ebike-structure-ebike"
+   ]
+  },
+  {
+   "id": "dock-inside-station",
+   "diagram": "sysml.internal-block",
+   "title": "Inside the dock station",
+   "parent": "overview",
+   "subject": "dock-station",
+   "nodeIds": [
+    "dock-station"
+   ]
+  },
+  {
+   "id": "dock-inside-charger",
+   "diagram": "sysml.internal-block",
+   "title": "Inside the charger",
+   "parent": "overview",
+   "subject": "dock-charger",
+   "nodeIds": [
+    "dock-charger"
    ]
   }
  ]

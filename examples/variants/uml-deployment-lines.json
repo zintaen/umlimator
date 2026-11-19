@@ -1,0 +1,32 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Library catalogue: deployment by lines",
+ "root": "lines",
+ "nodes": [
+  { "id": "web-host", "type": "uml.Node", "label": "Web host", "props": { "stereotypes": ["linux server"] } },
+  { "id": "search-host", "type": "uml.Node", "label": "Search host", "props": { "stereotypes": ["linux server"] } },
+  { "id": "kiosk", "type": "uml.Device", "label": "Branch kiosk" },
+  { "id": "catalogue-war", "type": "uml.Artifact", "label": "catalogue.war" },
+  { "id": "catalogue-spec", "type": "uml.DeploymentSpecification", "label": "catalogue.properties" },
+  { "id": "index-jar", "type": "uml.Artifact", "label": "search-index.jar" },
+  { "id": "kiosk-app", "type": "uml.Artifact", "label": "kiosk-ui.zip" },
+  { "id": "catalogue", "type": "uml.Component", "label": "Catalogue" },
+  { "id": "search", "type": "uml.Component", "label": "Title search" }
+ ],
+ "edges": [
+  { "id": "war-on-web", "type": "uml.Deployment", "from": "catalogue-war", "to": "web-host" },
+  { "id": "spec-on-web", "type": "uml.Deployment", "from": "catalogue-spec", "to": "web-host" },
+  { "id": "index-on-search", "type": "uml.Deployment", "from": "index-jar", "to": "search-host" },
+  { "id": "app-on-kiosk", "type": "uml.Deployment", "from": "kiosk-app", "to": "kiosk" },
+  { "id": "war-manifests", "type": "uml.Manifestation", "from": "catalogue-war", "to": "catalogue" },
+  { "id": "index-manifests", "type": "uml.Manifestation", "from": "index-jar", "to": "search" },
+  { "id": "kiosk-to-web", "type": "uml.CommunicationPath", "from": "kiosk", "to": "web-host", "label": "HTTPS" },
+  { "id": "web-to-search", "type": "uml.CommunicationPath", "from": "web-host", "to": "search-host", "label": "gRPC" }
+ ],
+ "views": [
+  { "id": "lines", "diagram": "uml.deployment", "title": "Deployed by lines", "parent": null,
+   "nodeIds": ["web-host", "search-host", "kiosk", "catalogue-war", "catalogue-spec", "index-jar", "kiosk-app", "catalogue", "search"],
+   "edges": ["war-on-web", "spec-on-web", "index-on-search", "app-on-kiosk", "war-manifests", "index-manifests", "kiosk-to-web", "web-to-search"] }
+ ]
+}

@@ -1,0 +1,32 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Cycle hire: serverless on AWS",
+ "root": "serverless",
+ "nodes": [
+  { "id": "riders", "type": "aws.Resource", "label": "Riders", "props": { "icon": "Mobile-client" } },
+  { "id": "aws-cloud", "type": "aws.Group", "label": "AWS Cloud", "props": { "groupType": "cloud" } },
+  { "id": "main-region", "type": "aws.Group", "label": "Europe (Paris)", "parent": "aws-cloud", "props": { "groupType": "region" } },
+  { "id": "sign-in", "type": "aws.Service", "label": "Rider sign-in", "parent": "main-region", "props": { "icon": "Amazon-Cognito" } },
+  { "id": "api", "type": "aws.Service", "label": "Hire API", "parent": "main-region", "props": { "icon": "Amazon-API-Gateway" } },
+  { "id": "fns", "type": "aws.Group", "label": "Hire functions", "parent": "main-region", "props": { "groupType": "generic" } },
+  { "id": "start-fn", "type": "aws.Service", "label": "Start a hire", "parent": "fns", "props": { "icon": "AWS-Lambda" } },
+  { "id": "end-fn", "type": "aws.Service", "label": "End a hire", "parent": "fns", "props": { "icon": "AWS-Lambda" } },
+  { "id": "hires", "type": "aws.Service", "label": "Hires table", "parent": "main-region", "props": { "icon": "Amazon-DynamoDB" } },
+  { "id": "events", "type": "aws.Service", "label": "Dock events", "parent": "main-region", "props": { "icon": "Amazon-EventBridge" } },
+  { "id": "texts", "type": "aws.Service", "label": "Receipt texts", "parent": "main-region", "props": { "icon": "Amazon-Simple-Notification-Service" } }
+ ],
+ "edges": [
+  { "id": "riders-sign-in", "type": "aws.Connection", "from": "riders", "to": "sign-in", "label": "sign in" },
+  { "id": "riders-api", "type": "aws.Connection", "from": "riders", "to": "api", "label": "HTTPS" },
+  { "id": "api-start", "type": "aws.Connection", "from": "api", "to": "start-fn", "label": "POST /hires" },
+  { "id": "fns-hires", "type": "aws.Connection", "from": "fns", "to": "hires", "label": "read, write" },
+  { "id": "events-end", "type": "aws.Connection", "from": "events", "to": "end-fn", "label": "bike docked" },
+  { "id": "end-texts", "type": "aws.Connection", "from": "end-fn", "to": "texts", "label": "fare" }
+ ],
+ "views": [
+  { "id": "serverless", "diagram": "aws", "title": "Serverless, no VPC", "parent": null,
+   "nodeIds": ["riders", "aws-cloud", "main-region", "sign-in", "api", "fns", "start-fn", "end-fn", "hires", "events", "texts"] }
+ ],
+ "iconPacks": { "aws": "2026-07-31" }
+}

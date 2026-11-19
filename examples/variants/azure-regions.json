@@ -1,0 +1,35 @@
+{
+ "$schema": "../../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Cycle hire: two regions on Azure",
+ "root": "regions",
+ "nodes": [
+  { "id": "sub", "type": "azure.Group", "label": "Cycle hire production", "props": { "groupType": "subscription" } },
+  { "id": "rg", "type": "azure.Group", "label": "rg-cyclehire-prod", "parent": "sub", "props": { "groupType": "resource-group" } },
+  { "id": "traffic", "type": "azure.Service", "label": "Rider traffic", "parent": "rg", "props": { "icon": "Traffic-Manager-Profiles" } },
+  { "id": "rides", "type": "azure.Service", "label": "Ride records\nwritten in both regions", "parent": "rg", "props": { "icon": "Azure-Cosmos-DB" } },
+  { "id": "insights", "type": "azure.Service", "label": "Telemetry", "parent": "rg", "props": { "icon": "Application-Insights" } },
+  { "id": "north", "type": "azure.Group", "label": "North Europe", "parent": "rg", "props": { "groupType": "region" } },
+  { "id": "api-north", "type": "azure.Service", "label": "Rider API", "parent": "north", "props": { "icon": "App-Services" } },
+  { "id": "events-north", "type": "azure.Service", "label": "Dock events", "parent": "north", "props": { "icon": "Function-Apps" } },
+  { "id": "west", "type": "azure.Group", "label": "West Europe", "parent": "rg", "props": { "groupType": "region" } },
+  { "id": "api-west", "type": "azure.Service", "label": "Rider API", "parent": "west", "props": { "icon": "App-Services" } },
+  { "id": "events-west", "type": "azure.Service", "label": "Dock events", "parent": "west", "props": { "icon": "Function-Apps" } }
+ ],
+ "edges": [
+  { "id": "traffic-north", "type": "azure.Connector", "from": "traffic", "to": "api-north", "label": "primary" },
+  { "id": "traffic-west", "type": "azure.Connector", "from": "traffic", "to": "api-west", "label": "failover" },
+  { "id": "events-north-rides", "type": "azure.Connector", "from": "events-north", "to": "rides", "label": "ride ended" },
+  { "id": "events-west-rides", "type": "azure.Connector", "from": "events-west", "to": "rides", "label": "ride ended" },
+  { "id": "api-north-events", "type": "azure.Connector", "from": "api-north", "to": "events-north", "label": "unlock" },
+  { "id": "api-west-events", "type": "azure.Connector", "from": "api-west", "to": "events-west", "label": "unlock" },
+  { "id": "north-insights", "type": "azure.Connector", "from": "north", "to": "insights", "label": "traces" },
+  { "id": "west-insights", "type": "azure.Connector", "from": "west", "to": "insights", "label": "traces" }
+ ],
+ "views": [
+  { "id": "regions", "diagram": "azure", "title": "Two regions, laid out down", "parent": null, "direction": "down",
+   "caption": "Icons from a pack you fetch: umlimator.py pack fetch azure, after Microsoft's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.",
+   "nodeIds": ["sub", "rg", "traffic", "rides", "insights", "north", "api-north", "events-north", "west", "api-west", "events-west"] }
+ ],
+ "iconPacks": { "azure": "V25" }
+}

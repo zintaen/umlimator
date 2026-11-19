@@ -14,6 +14,33 @@
    "opensView": "bookshop-opening-plan-mm-plan"
   },
   {
+   "id": "card-one-side-year",
+   "label": "Every branch on one side",
+   "kind": "file",
+   "sublabel": "one side, deep, wrapped text",
+   "what": "Every first-level branch set to the right by `present.side`, three levels below the root, and a long topic wrapped to four lines inside its box.",
+   "how": "From examples/variants/mindmap-one-side.json.",
+   "opensView": "one-side-year"
+  },
+  {
+   "id": "card-drill-move",
+   "label": "Sides chosen for you, a topic that opens a view",
+   "kind": "file",
+   "sublabel": "sides chosen, a drill-down",
+   "what": "No `side` given, so each branch goes to the shorter half; the Moving day topic carries the drill-down mark and opens its own mindmap.",
+   "how": "From examples/variants/mindmap-drill.json.",
+   "opensView": "drill-move"
+  },
+  {
+   "id": "card-drill-moving-day",
+   "label": "Moving day",
+   "kind": "file",
+   "sublabel": "the view a topic opens",
+   "what": "The mindmap the Moving day topic opens, a tree of its own under the first view.",
+   "how": "From examples/variants/mindmap-drill.json.",
+   "opensView": "drill-moving-day"
+  },
+  {
    "id": "bookshop-opening-plan-mm-opening",
    "type": "mindmap.Topic",
    "label": "Opening the bookshop"
@@ -143,6 +170,208 @@
    "type": "mindmap.Topic",
    "label": "On AWS",
    "parent": "bookshop-opening-plan-mm-hosting"
+  },
+  {
+   "id": "one-side-club",
+   "type": "mindmap.Topic",
+   "label": "Reading club, next year"
+  },
+  {
+   "id": "one-side-books",
+   "type": "mindmap.Topic",
+   "label": "Books",
+   "parent": "one-side-club"
+  },
+  {
+   "id": "one-side-classics",
+   "type": "mindmap.Topic",
+   "label": "One classic a quarter",
+   "parent": "one-side-books"
+  },
+  {
+   "id": "one-side-winter",
+   "type": "mindmap.Topic",
+   "label": "Winter: a long Russian novel, read over eight weeks in four parts, with a short summary sent before each meeting",
+   "parent": "one-side-classics"
+  },
+  {
+   "id": "one-side-summer",
+   "type": "mindmap.Topic",
+   "label": "Summer: a short one",
+   "parent": "one-side-classics"
+  },
+  {
+   "id": "one-side-picks",
+   "type": "mindmap.Topic",
+   "label": "Members' picks",
+   "parent": "one-side-books"
+  },
+  {
+   "id": "one-side-vote",
+   "type": "mindmap.Topic",
+   "label": "Vote in the group chat",
+   "parent": "one-side-picks"
+  },
+  {
+   "id": "one-side-meetings",
+   "type": "mindmap.Topic",
+   "label": "Meetings",
+   "parent": "one-side-club"
+  },
+  {
+   "id": "one-side-where",
+   "type": "mindmap.Topic",
+   "label": "Library back room",
+   "parent": "one-side-meetings"
+  },
+  {
+   "id": "one-side-when",
+   "type": "mindmap.Topic",
+   "label": "First Thursday, 7 pm",
+   "parent": "one-side-meetings"
+  },
+  {
+   "id": "one-side-money",
+   "type": "mindmap.Topic",
+   "label": "Money",
+   "parent": "one-side-club"
+  },
+  {
+   "id": "one-side-dues",
+   "type": "mindmap.Topic",
+   "label": "Dues",
+   "parent": "one-side-money"
+  },
+  {
+   "id": "one-side-dues-amount",
+   "type": "mindmap.Topic",
+   "label": "10 a year",
+   "parent": "one-side-dues"
+  },
+  {
+   "id": "one-side-dues-waived",
+   "type": "mindmap.Topic",
+   "label": "Waived for students",
+   "parent": "one-side-dues"
+  },
+  {
+   "id": "one-side-tea",
+   "type": "mindmap.Topic",
+   "label": "Tea and biscuits",
+   "parent": "one-side-money"
+  },
+  {
+   "id": "drill-move-root",
+   "type": "mindmap.Topic",
+   "label": "Moving the library"
+  },
+  {
+   "id": "drill-new-site",
+   "type": "mindmap.Topic",
+   "label": "New building",
+   "parent": "drill-move-root"
+  },
+  {
+   "id": "drill-shelving",
+   "type": "mindmap.Topic",
+   "label": "Shelving ordered",
+   "parent": "drill-new-site"
+  },
+  {
+   "id": "drill-wifi",
+   "type": "mindmap.Topic",
+   "label": "Public wifi",
+   "parent": "drill-new-site"
+  },
+  {
+   "id": "drill-members",
+   "type": "mindmap.Topic",
+   "label": "Tell the members",
+   "parent": "drill-move-root"
+  },
+  {
+   "id": "drill-poster",
+   "type": "mindmap.Topic",
+   "label": "Posters in the old branch",
+   "parent": "drill-members"
+  },
+  {
+   "id": "drill-email",
+   "type": "mindmap.Topic",
+   "label": "An email a month ahead",
+   "parent": "drill-members"
+  },
+  {
+   "id": "drill-loans-paused",
+   "type": "mindmap.Topic",
+   "label": "Loans",
+   "parent": "drill-move-root"
+  },
+  {
+   "id": "drill-due-dates",
+   "type": "mindmap.Topic",
+   "label": "No due dates in moving week",
+   "parent": "drill-loans-paused"
+  },
+  {
+   "id": "drill-day",
+   "type": "mindmap.Topic",
+   "label": "Moving day",
+   "parent": "drill-move-root",
+   "opensView": "drill-moving-day"
+  },
+  {
+   "id": "drill-day-root",
+   "type": "mindmap.Topic",
+   "label": "Moving day"
+  },
+  {
+   "id": "drill-boxes",
+   "type": "mindmap.Topic",
+   "label": "Boxes",
+   "parent": "drill-day-root"
+  },
+  {
+   "id": "drill-box-labels",
+   "type": "mindmap.Topic",
+   "label": "Label by shelf number",
+   "parent": "drill-boxes"
+  },
+  {
+   "id": "drill-box-count",
+   "type": "mindmap.Topic",
+   "label": "About 400 boxes",
+   "parent": "drill-boxes"
+  },
+  {
+   "id": "drill-van",
+   "type": "mindmap.Topic",
+   "label": "Van",
+   "parent": "drill-day-root"
+  },
+  {
+   "id": "drill-van-trips",
+   "type": "mindmap.Topic",
+   "label": "Six trips",
+   "parent": "drill-van"
+  },
+  {
+   "id": "drill-helpers",
+   "type": "mindmap.Topic",
+   "label": "Helpers",
+   "parent": "drill-day-root"
+  },
+  {
+   "id": "drill-volunteers",
+   "type": "mindmap.Topic",
+   "label": "Twelve volunteers",
+   "parent": "drill-helpers"
+  },
+  {
+   "id": "drill-lunch",
+   "type": "mindmap.Topic",
+   "label": "Lunch for everyone",
+   "parent": "drill-helpers"
   }
  ],
  "edges": [],
@@ -152,12 +381,27 @@
    "parent": null,
    "title": "Mindmap examples",
    "nodeIds": [
-    "card-bookshop-opening-plan-mm-plan"
+    "card-bookshop-opening-plan-mm-plan",
+    "card-one-side-year",
+    "card-drill-move",
+    "card-drill-moving-day"
    ],
    "layout": {
     "card-bookshop-opening-plan-mm-plan": [
      0,
      0
+    ],
+    "card-one-side-year": [
+     1,
+     0
+    ],
+    "card-drill-move": [
+     0,
+     1
+    ],
+    "card-drill-moving-day": [
+     1,
+     1
     ]
    }
   },
@@ -210,6 +454,75 @@
      "side": "left"
     }
    }
+  },
+  {
+   "id": "one-side-year",
+   "diagram": "mindmap",
+   "title": "Every branch on one side",
+   "parent": "overview",
+   "nodeIds": [
+    "one-side-club",
+    "one-side-books",
+    "one-side-classics",
+    "one-side-winter",
+    "one-side-summer",
+    "one-side-picks",
+    "one-side-vote",
+    "one-side-meetings",
+    "one-side-where",
+    "one-side-when",
+    "one-side-money",
+    "one-side-dues",
+    "one-side-dues-amount",
+    "one-side-dues-waived",
+    "one-side-tea"
+   ],
+   "present": {
+    "one-side-books": {
+     "side": "right"
+    },
+    "one-side-meetings": {
+     "side": "right"
+    },
+    "one-side-money": {
+     "side": "right"
+    }
+   }
+  },
+  {
+   "id": "drill-move",
+   "diagram": "mindmap",
+   "title": "Sides chosen for you, a topic that opens a view",
+   "parent": "overview",
+   "nodeIds": [
+    "drill-move-root",
+    "drill-new-site",
+    "drill-shelving",
+    "drill-wifi",
+    "drill-members",
+    "drill-poster",
+    "drill-email",
+    "drill-loans-paused",
+    "drill-due-dates",
+    "drill-day"
+   ]
+  },
+  {
+   "id": "drill-moving-day",
+   "diagram": "mindmap",
+   "title": "Moving day",
+   "parent": "drill-move",
+   "nodeIds": [
+    "drill-day-root",
+    "drill-boxes",
+    "drill-box-labels",
+    "drill-box-count",
+    "drill-van",
+    "drill-van-trips",
+    "drill-helpers",
+    "drill-volunteers",
+    "drill-lunch"
+   ]
   }
  ]
 }

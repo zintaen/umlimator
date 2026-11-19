@@ -25,6 +25,33 @@
        "text": "The same packages and imports as the boxed view, with no boxes: the layout without folders."
       }
      }
+    },
+    {
+     "file": "variants/map-lines",
+     "views": {
+      "lines": {
+       "sub": "line kinds, weights, steps",
+       "text": "A library's holds as lines of each kind, drawn in its colour: calls, feeds, triggers, state and guard; weights 1 to 3 as widths; numbered steps, 4a and 4b among them; and a line's sublabel under its label."
+      }
+     }
+    },
+    {
+     "file": "variants/map-boxes",
+     "views": {
+      "boxes": {
+       "sub": "nested, tinted boxes, lenses",
+       "text": "A cafe chain's systems in boxes: two nested in a head office box, a tinted box with a tone, badges on a box's border, cards with owners, and two lenses, one ringing cards by owner and one lighting the lines that feed data."
+      }
+     }
+    },
+    {
+     "file": "variants/map-badges",
+     "views": {
+      "badges": {
+       "sub": "badges, icons, edit marks",
+       "text": "A bakery's order cards with icons, badges as plain tabs and in tones, an edit mark on a card and on a line, and a card with `noSub`, its description kept for the details panel."
+      }
+     }
     }
    ]
   },
@@ -88,6 +115,28 @@
        "text": "Instances of the bookshop's classes, each head `name : Classifier` underlined, slots as `feature = value`, and links with a name or roles by their ends."
       }
      }
+    },
+    {
+     "file": "variants/uml-object-package",
+     "views": {
+      "branch": {
+       "sub": "a package box, stereotypes, a note",
+       "text": "Library loan instances held in a package drawn as a box, two of them with an <<entity>> stereotype, an anonymous instance shown as `: Copy`, an instance with no classifier, a slot with no value, a link named by its association, and a note on the anonymous copy."
+      },
+      "unboxed": {
+       "sub": "owner hidden, names qualified, down",
+       "text": "The same instances without their package, so each is named `lending::loan7 : Loan`, laid out down."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-object-classes",
+     "views": {
+      "beside": {
+       "sub": "classes, two links, a loop",
+       "text": "Cycle hire docks and a bike drawn beside the Dock and Bike classes their slots are checked against, two links between one pair each on its own line, and a link from an instance to itself drawn as a loop."
+      }
+     }
     }
    ]
   },
@@ -100,6 +149,28 @@
       "packages": {
        "sub": "nesting, import, access, merge",
        "text": "Packages as boxes holding what they own, a package inside a package, two classes named Order in two packages, `<<import>>`, `<<access>>`, `<<merge>>` and a dependency between them, and a profile applied by `<<apply>>`."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-package-closed",
+     "views": {
+      "closed": {
+       "sub": "closed folders, stereotypes, a note",
+       "text": "Five packages with none of their contents in the view, so each is drawn as a closed folder with its name in the body; `<<subsystem>>` and `<<library>>` stereotypes, a public import, a private import drawn as `<<access>>`, a `<<use>>` dependency and a note on one package."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-package-nested",
+     "views": {
+      "nested": {
+       "sub": "three levels deep, laid out down",
+       "text": "A package inside a package inside a package, each box holding its classes, an enumeration and an interface; an import from lending to catalogue, and `<<use>>` and `<<call>>` dependencies that cross the box borders."
+      },
+      "qualified": {
+       "sub": "qualified names from a subject",
+       "text": "The same classes with no package drawn: the view's `subject` is the library package, so each class is named by the packages between it and the subject, such as lending::holds::Hold."
       }
      }
     }
@@ -116,6 +187,24 @@
        "text": "A class's parts and ports, a part showing its type's ports, connectors through parts, open collaborations and collaboration uses with their role bindings."
       }
      }
+    },
+    {
+     "file": "variants/uml-composite-structure-component",
+     "views": {
+      "inside": {
+       "sub": "a component, shared part, note",
+       "text": "A component as the subject: parts with multiplicities such as `1..*` and `0..1`, a shared part drawn dashed, ports on the component and on its parts' types, connectors through them, the component's two ports pinned to opposite sides in `present`, and a comment linked to a port."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-composite-structure-collaboration",
+     "views": {
+      "roles": {
+       "sub": "a collaboration as the subject",
+       "text": "A collaboration as the view's subject: its roles drawn as parts with their types and multiplicities, and the connectors that join the roles."
+      }
+     }
     }
    ]
   },
@@ -128,6 +217,24 @@
       "components": {
        "sub": "ports, ball and socket, artifacts",
        "text": "Components nested in components, ports on their borders, delegations inward, assembly connectors, provided and required interfaces as a ball and socket, artifacts and their manifestations."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-component-library",
+     "views": {
+      "packages": {
+       "sub": "packages, realizations, <<use>>",
+       "text": "Library components in packages, two classes realizing a component (dashed, hollow triangle), an interface drawn as a box with its operations, provided and required by dashed lines, a `<<call>>` dependency and a plain one, an artifact's `<<manifest>>` and a note."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-component-sockets",
+     "views": {
+      "sockets": {
+       "sub": "balls, sockets, ports, down",
+       "text": "A cinema's booking laid out down: interfaces as balls with their sockets, typed ports (`seats : SeatPicker`) joined by an assembly, delegations into and out of a component's parts, and two parts joined directly."
       }
      }
     }
@@ -144,6 +251,24 @@
        "text": "Nodes, devices and execution environments as cubes, nested; artifacts deployed by nesting or by a `<<deploy>>` line; deployment specifications and communication paths."
       }
      }
+    },
+    {
+     "file": "variants/uml-deployment-docks",
+     "views": {
+      "docks": {
+       "sub": "nested nodes, laid out down",
+       "text": "A bike dock network laid out down: a node inside a node inside a data centre, execution environments on devices, a stereotyped device, a deployment specification and paths that end on a box's border."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-deployment-lines",
+     "views": {
+      "lines": {
+       "sub": "<<deploy>> and <<manifest>> lines",
+       "text": "A library catalogue whose artifacts stand apart from their targets: each deployed by a dashed `<<deploy>>` line, a deployment specification deployed the same way, `<<manifest>>` lines to components and stereotyped server nodes."
+      }
+     }
     }
    ]
   },
@@ -158,6 +283,24 @@
        "text": "Stereotypes with tag definitions extending metaclasses, a required extension, a profile applied to a package, and an element's tags in a compartment per stereotype; stereotypes applied anywhere in the model are checked against it."
       }
      }
+    },
+    {
+     "file": "variants/uml-profile-abstract",
+     "views": {
+      "fleet-profile": {
+       "sub": "abstract stereotype, enumeration tag",
+       "text": "A cycle hire profile whose abstract <<asset>> stereotype is specialized by <<vehicle>> and <<station>>, a tag typed by the profile's own enumeration, a tag with a default, and classes showing their tags in a compartment per stereotype, inherited tags included."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-profile-two",
+     "views": {
+      "two-profiles": {
+       "sub": "two profiles, qualified names",
+       "text": "A library package applying two profiles that both define <<record>>, told apart as `Storage::record` and `Audit::record`, and a required extension of Package that puts <<owner>> over a closed package with no stereotype stored."
+      }
+     }
     }
    ]
   },
@@ -170,6 +313,24 @@
       "shopping": {
        "sub": "actors, subject, include, extend",
        "text": "Actors as stick figures, use cases as ellipses with their extension points, the subject as a box holding them, and include, extend and generalization between them."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-use-case-dock",
+     "views": {
+      "dock": {
+       "sub": "two subjects, laid out down",
+       "text": "Two subjects side by side, the dock kiosk and the rider app, each holding its own use cases, laid out down; a `<<system>>` actor, an include, an extend at the extension point \"after locking\" with its condition, and a note on a use case."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-use-case-library",
+     "views": {
+      "lending": {
+       "sub": "no subject, chains of generalization",
+       "text": "Use cases with no subject box around them; actors specialized two levels deep (a junior member is a member is a borrower), two use cases specializing one, and an include."
       }
      }
     }
@@ -190,6 +351,24 @@
        "text": "The activity the call behaviour action Take payment calls: its own actions and flows, opened from the fulfilling activity."
       }
      }
+    },
+    {
+     "file": "variants/uml-activity-loop",
+     "views": {
+      "return-right": {
+       "sub": "a loop, laid out right, no lanes",
+       "text": "An activity with no lanes laid out right: a retry loop through a named merge, two decisions with `[yes]` and `[else]` guards, a send signal action, a flow final and an activity final, and a comment on a decision."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-activity-lanes",
+     "views": {
+      "rebalance": {
+       "sub": "nested lanes, object flows",
+       "text": "Partitions nested in a partition (Operations holds the control room and the van crew), laid out right: a data store and an object node on object flows, then a send signal action that an accept event action in another lane takes up."
+      }
+     }
     }
    ]
   },
@@ -202,6 +381,24 @@
       "order-life": {
        "sub": "regions, history, choice",
        "text": "States with their activities, composite states as boxes with orthogonal regions, a choice, a fork and a join, a shallow history and a terminate, and transitions written `trigger [guard] / effect`."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-state-machine-loan",
+     "views": {
+      "loan": {
+       "sub": "deep history, a junction, a note",
+       "text": "A library loan: a composite state left on a closure and re-entered by its deep history (H*), a junction merging two returns, an internal transition with a guard, a final state and a note on the history."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-state-machine-coffee",
+     "views": {
+      "machine": {
+       "sub": "down, a closed composite",
+       "text": "A coffee machine laid out down: entry, do and exit rows, two internal transitions, Brewing as a closed composite with UML's decomposition mark (its substates not shown), and Descaling with its activities collapsed."
       }
      }
     }
@@ -239,6 +436,24 @@
        "text": "The sequence view the interaction overview's inline interaction Queue the order shows."
       }
      }
+    },
+    {
+     "file": "variants/uml-sequence-unlock",
+     "views": {
+      "unlock": {
+       "sub": "loop, break, create and delete",
+       "text": "Unlocking a hire bike: a `break` frame when the rider has no credit, a `loop` frame for the ride, a trip lifeline created and later deleted with a cross, and async messages stereotyped `<<mqtt>>`."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-sequence-parallel",
+     "views": {
+      "parallel": {
+       "sub": "par with a nested opt",
+       "text": "Returning a library book: a `par` frame whose two operands run at once, an `opt` frame nested in one of them, a self-call and replies to each call."
+      }
+     }
     }
    ]
   },
@@ -251,6 +466,24 @@
       "checkout-communication": {
        "sub": "numbered messages on links",
        "text": "The checkout's paid branch as lifelines joined by connectors, each link's messages a stack of numbered rows with an arrow toward the receiver."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-communication-nested",
+     "views": {
+      "unlock": {
+       "sub": "deep numbers, create, delete",
+       "text": "Unlocking a hire bike laid out down: numbers nested to four levels (1.1.2.1), a message with a <<secure>> stereotype after its number, a token created and then deleted, and a connector to the station map that carries no message."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-communication-notify",
+     "views": {
+      "hold-ready": {
+       "sub": "async messages and a guard",
+       "text": "A returned library book freeing a hold: two asynchronous messages with open arrows, a guard written as text in front of a call, and replies that return along the connector their call came by."
       }
      }
     }
@@ -267,6 +500,24 @@
        "text": "Interaction uses and an inline interaction drawn with its sequence diagram inside, joined by the activity's control nodes and flows; each use, and the inline interaction, opens its sequence view."
       }
      }
+    },
+    {
+     "file": "variants/uml-interaction-overview-rent",
+     "views": {
+      "rent": {
+       "sub": "laid out right, flow final, a note",
+       "text": "Four interaction uses laid out right, each opening its own sequence view; named flows, a decision with guards, a flow final node that ends one branch only, and a note on it."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-interaction-overview-inline",
+     "views": {
+      "return-book": {
+       "sub": "two inline interactions, a merge",
+       "text": "Two inline interactions drawn as sd frames with their sequence diagrams inside, and an interaction use between them on one branch of a decision, joined again by a merge node, laid out down."
+      }
+     }
     }
    ]
   },
@@ -279,6 +530,24 @@
       "one-charge": {
        "sub": "states, values, constraints",
        "text": "Lifelines on one linear time ruler, each a step line through its states or a band of values, messages at their times, duration and time constraints."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-timing-values",
+     "views": {
+      "unlock": {
+       "sub": "a value lifeline, async messages",
+       "text": "Two state lifelines and one drawn as a band of values (`present.<lifeline>.as: \"values\"`), in seconds: asynchronous messages, one with a `<<signal>>` stereotype, a duration constraint between two lifelines and a time constraint."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-timing-charging",
+     "views": {
+      "charging": {
+       "sub": "minutes, call and reply, overlaps",
+       "text": "A longer run in minutes: a call and its reply, an asynchronous message, a battery's value band, and overlapping duration constraints on one lifeline drawn on their own levels."
       }
      }
     }
@@ -295,6 +564,24 @@
        "text": "Information items, and dashed `<<flow>>` lines between classifiers and actors, each saying what it conveys."
       }
      }
+    },
+    {
+     "file": "variants/uml-information-flow-classes",
+     "views": {
+      "classes": {
+       "sub": "named flows, classes, a self-flow",
+       "text": "Flows between an actor, classes and an interface, each named (`<<flow>> borrow: Card number, Copy`), one conveying a class beside information items, a flow from a class to itself and a note."
+      }
+     }
+    },
+    {
+     "file": "variants/uml-information-flow-down",
+     "views": {
+      "orders": {
+       "sub": "laid out down",
+       "text": "A cafe's orders laid out down: a guest, a barista and three components, an order, a ticket and the beans used flowing between them."
+      }
+     }
     }
    ]
   },
@@ -307,6 +594,24 @@
       "requirements": {
        "sub": "containment, derive, satisfy, verify",
        "text": "Requirements with their id and text in a frame with SysML's header; containment drawn with a crosshair; derive, satisfy, verify, refine, trace and copy, each checked as SysML says."
+      }
+     }
+    },
+    {
+     "file": "variants/sysml-requirement-kinds",
+     "views": {
+      "kinds": {
+       "sub": "kinds, risk, verify method",
+       "text": "A dock station's requirements in a package the frame names as its subject: the five requirement kinds over their names, each with its risk and verify method rows, and a `<<problem>>` note."
+      }
+     }
+    },
+    {
+     "file": "variants/sysml-requirement-trace",
+     "views": {
+      "trace": {
+       "sub": "satisfy, verify, refine, rows",
+       "text": "Library self-checkout: requirements derived from one whose long text is cut to 3 rows then \"+n more\", blocks that satisfy them, test cases that verify them and a block that refines one."
       }
      }
     }
@@ -323,6 +628,24 @@
        "text": "Blocks, interface blocks, constraint blocks and value types with SysML's named compartments; composition, generalization and dependency."
       }
      }
+    },
+    {
+     "file": "variants/sysml-block-definition-ports",
+     "views": {
+      "charging": {
+       "sub": "proxy, full and conjugated ports",
+       "text": "A cycle hire charging dock framed by its package (`bdd [Package] Charging`): proxy ports typed by an interface block and by its conjugate (`~ChargeLink`), a full port typed by a block, flow properties in, out and inout, and an interface block's operation."
+      }
+     }
+    },
+    {
+     "file": "variants/sysml-block-definition-values",
+     "views": {
+      "fleet": {
+       "sub": "a hierarchy, values with units",
+       "text": "Fleet vehicles specializing one block, value properties with defaults and multiplicities typed by value types with units and quantity kinds, a value type specializing another, a part drawn as a composite line, and a reference drawn as a plain association."
+      }
+     }
     }
    ]
   },
@@ -337,6 +660,19 @@
        "text": "A block's parts, references and values inside its frame; proxy and full ports with flow arrows and conjugation; connectors with item flows."
       }
      }
+    },
+    {
+     "file": "variants/sysml-internal-block-dock",
+     "views": {
+      "inside-station": {
+       "sub": "frame ports, delegation, a full port",
+       "text": "A dock station's parts, a reference and a value; a proxy port on the frame delegating to the charger's port, a full port on the frame, conjugated proxy ports meeting, and item flows on four connectors."
+      },
+      "inside-charger": {
+       "sub": "a part's own block, two delegations",
+       "text": "The charger, a part of the dock, as the subject of its own diagram: its two frame ports delegate in to the breaker and out from the rectifier, with alternating current flowing between them."
+      }
+     }
     }
    ]
   },
@@ -349,6 +685,24 @@
       "range-analysis": {
        "sub": "constraints and bindings",
        "text": "Constraint properties with their expressions, parameters on their borders, binding connectors to the block's value properties."
+      }
+     }
+    },
+    {
+     "file": "variants/sysml-parametric-constraint-block",
+     "views": {
+      "frame": {
+       "sub": "a constraint block as the frame",
+       "text": "A constraint block as the subject: its own parameters on the frame, bound to the parameters of three constraint properties whose expressions add a thinking distance to a braking distance."
+      }
+     }
+    },
+    {
+     "file": "variants/sysml-parametric-down",
+     "views": {
+      "power-down": {
+       "sub": "a power budget, laid out down",
+       "text": "A block's value properties bound through two chained constraint properties, a charging load and the supply headroom, with `direction: \"down\"`."
       }
      }
     }
@@ -381,6 +735,24 @@
        "text": "Deployment nodes nested as boxes, holding the container instances that run in production."
       }
      }
+    },
+    {
+     "file": "variants/c4-landscape",
+     "views": {
+      "landscape": {
+       "sub": "system landscape",
+       "text": "A landscape view: the city libraries' software systems side by side with the people who use them and two external systems, with no system as its subject."
+      }
+     }
+    },
+    {
+     "file": "variants/c4-shapes",
+     "views": {
+      "shapes": {
+       "sub": "a container shape each",
+       "text": "A container view whose containers use C4's card shapes by `shape`: a browser, a phone, a window, a robot, a terminal, a cylinder, a pipe and a folder, beside the default box and a grey external system."
+      }
+     }
     }
    ]
   },
@@ -393,6 +765,28 @@
       "er-schema": {
        "sub": "keys, crow's foot, junction table",
        "text": "Tables and their columns as rows, related in crow's foot or IDEF1X on one geometry: a composite key, a junction table, a nullable foreign key, a self-reference."
+      }
+     }
+    },
+    {
+     "file": "variants/er-docks",
+     "views": {
+      "idef1x": {
+       "sub": "IDEF1X, dependent entities",
+       "text": "A cycle hire schema in IDEF1X: identifying relationships make dock and hire_point dependent entities with rounded corners, a dot and P or Z at each child, a diamond at an optional parent."
+      },
+      "crowsfoot-down": {
+       "sub": "crow's foot, laid out down",
+       "text": "The same schema in crow's foot laid out down, showing all four end forms (exactly one, zero or one, one or more, zero or more) and a note on a table."
+      }
+     }
+    },
+    {
+     "file": "variants/er-rows",
+     "views": {
+      "rows": {
+       "sub": "rows capped, a section hidden",
+       "text": "A library catalogue where the title table is cut to 4 rows then \"+n more\" and the copy table shows its key only, its other columns collapsed; nullable and unique columns marked."
       }
      }
     }
@@ -413,6 +807,28 @@
        "text": "Level 2 of process 1, Take order: its own processes and stores, checked for balance against the flows of its parent process."
       }
      }
+    },
+    {
+     "file": "variants/dfd-gane-sarson",
+     "views": {
+      "rides": {
+       "sub": "Gane and Sarson symbols",
+       "text": "Cycle hire rides in Gane and Sarson notation: processes as rounded rectangles with their number in a top band, data stores as open rectangles with an id box, external entities with a shadow, a request and its reply between one pair, and a note."
+      }
+     }
+    },
+    {
+     "file": "variants/dfd-context",
+     "views": {
+      "context": {
+       "sub": "a context diagram, process 0",
+       "text": "A library's lending as one process, numbered 0, with the external entities it trades data with; the process opens its level 1."
+      },
+      "level-1": {
+       "sub": "level 1, a local store, down",
+       "text": "Process 0 broken into 0.1 to 0.3, laid out down, with a local data store that the balance check against the context diagram leaves out."
+      }
+     }
     }
    ]
   },
@@ -425,6 +841,24 @@
       "returns": {
        "sub": "ten symbols, laid out down",
        "text": "Ten symbols, laid out down: terminators, processes, a decision with labelled exits, input/output, a predefined process, a document, a database, manual input, a delay and a connector."
+      }
+     }
+    },
+    {
+     "file": "variants/flowchart-right",
+     "views": {
+      "unlock": {
+       "sub": "laid out right, three exits, a loop",
+       "text": "Laid out right: a decision with three labelled exits, one of which loops back to it through a manual input, a delay, a database, a document and two end terminators."
+      }
+     }
+    },
+    {
+     "file": "variants/flowchart-connectors",
+     "views": {
+      "renew": {
+       "sub": "an on-page connector pair, a note",
+       "text": "Two connectors labelled B: the flow goes into one and carries on from the other, so the chart breaks without a long line; two decisions, a manual input and a note on the connector."
       }
      }
     }
@@ -445,6 +879,24 @@
        "text": "The collapsed sub-process Pick and pack, opened as its own view: its tasks and events between its start and end."
       }
      }
+    },
+    {
+     "file": "variants/bpmn-expanded",
+     "views": {
+      "hold": {
+       "sub": "nested lanes, expanded sub-process",
+       "text": "One pool with lanes nested in a lane, an expanded sub-process drawn as a frame round its own flow and gateways, a none intermediate throw event, a non-interrupting timer boundary event (dashed) and a message end event."
+      }
+     }
+    },
+    {
+     "file": "variants/bpmn-collaboration",
+     "views": {
+      "billing": {
+       "sub": "black-box pools, data, laid out down",
+       "text": "A collaboration laid out down: two black-box pools, a timer start event, a data store and a data object each read by a task, message flows to and from the pools, a message catch event, a message end event and a text annotation on a directed association."
+      }
+     }
     }
    ]
   },
@@ -457,6 +909,28 @@
       "mm-plan": {
        "sub": "branches left and right",
        "text": "A tree of topics laid out left and right of its root, branches as curves in the map's kind colours, edited by N, F2, Alt + arrows and drops; Mermaid mindmaps imported."
+      }
+     }
+    },
+    {
+     "file": "variants/mindmap-one-side",
+     "views": {
+      "year": {
+       "sub": "one side, deep, wrapped text",
+       "text": "Every first-level branch set to the right by `present.side`, three levels below the root, and a long topic wrapped to four lines inside its box."
+      }
+     }
+    },
+    {
+     "file": "variants/mindmap-drill",
+     "views": {
+      "move": {
+       "sub": "sides chosen, a drill-down",
+       "text": "No `side` given, so each branch goes to the shorter half; the Moving day topic carries the drill-down mark and opens its own mindmap."
+      },
+      "moving-day": {
+       "sub": "the view a topic opens",
+       "text": "The mindmap the Moving day topic opens, a tree of its own under the first view."
       }
      }
     }
@@ -473,6 +947,24 @@
        "text": "Accounts, regions, VPCs, availability zones, subnets and security groups as nested boxes, each service or resource a card with its icon and full service name. On this site the icons are the vendor's own, fetched with AWS's terms accepted; in a copy of this repository the diagram draws glyphs until you fetch them with `umlimator.py pack fetch aws`. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft."
       }
      }
+    },
+    {
+     "file": "variants/aws-serverless",
+     "views": {
+      "serverless": {
+       "sub": "serverless, a generic group",
+       "text": "A cycle hire API with no VPC: a region holding managed services, a generic group of functions that a line leaves from its border, and riders on a mobile client."
+      }
+     }
+    },
+    {
+     "file": "variants/aws-accounts",
+     "views": {
+      "accounts": {
+       "sub": "two accounts, a security group",
+       "text": "A library's production account and its log archive account side by side in one cloud, a VPC, a private subnet and a security group nested in turn, and a line from the VPC's border to a bucket in the other account."
+      }
+     }
     }
    ]
   },
@@ -487,6 +979,24 @@
        "text": "Groups nested as boxes titled with their kind, each product a card with its icon and full service name, lines to a group's border. On this site the icons are the vendor's own, fetched with Google's terms accepted; in a copy of this repository the diagram draws glyphs until you fetch them with `umlimator.py pack fetch gcp`. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft."
       }
      }
+    },
+    {
+     "file": "variants/gcp-groups",
+     "views": {
+      "telemetry": {
+       "sub": "a generic group, lines to groups",
+       "text": "Cycle hire dock telemetry: a generic group inside a project, a line that ends on that group's border, a line to a second project drawn as a closed card because nothing it holds is shown, and a label broken over two lines by the author."
+      }
+     }
+    },
+    {
+     "file": "variants/gcp-regions",
+     "views": {
+      "two-regions": {
+       "sub": "two regions, laid out down",
+       "text": "A library catalogue served from two regions of one project, laid out down: global products in the project, the same service in each region, and readers reaching DNS, the load balancer and the CDN directly."
+      }
+     }
     }
    ]
   },
@@ -499,6 +1009,24 @@
       "az-on-azure": {
        "sub": "subscriptions, groups, networks",
        "text": "Subscriptions, resource groups, regions, virtual networks and subnets as nested boxes, each service a card with its icon and full service name. On this site the icons are the vendor's own, fetched with Microsoft's terms accepted; in a copy of this repository the diagram draws glyphs until you fetch them with `umlimator.py pack fetch azure`. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft."
+      }
+     }
+    },
+    {
+     "file": "variants/azure-regions",
+     "views": {
+      "regions": {
+       "sub": "two regions, laid out down",
+       "text": "Two dashed regions in one resource group, each running the same pair of services behind a traffic manager, laid out down; a label broken over two lines, and lines that start at a region's border. Icons come from the pack you fetch, as on the first card."
+      }
+     }
+    },
+    {
+     "file": "variants/azure-landing",
+     "views": {
+      "landing": {
+       "sub": "closed subscriptions, a generic group",
+       "text": "Three subscriptions whose services the view hides, each drawn as a closed card, joined by lines that end on the groups themselves, and a generic group holding two services. Icons come from the pack you fetch, as on the first card."
       }
      }
     }
