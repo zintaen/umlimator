@@ -36,9 +36,9 @@ nothing else changes.
 From a CDN, with no install:
 
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/umlimator@0.42.0/lib/umlimator-theme.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/umlimator@0.43.0/lib/umlimator-theme.css">
 <script type="module">
-  import { render } from 'https://cdn.jsdelivr.net/npm/umlimator@0.42.0/lib/umlimator.js';
+  import { render } from 'https://cdn.jsdelivr.net/npm/umlimator@0.43.0/lib/umlimator.js';
 </script>
 ```
 
