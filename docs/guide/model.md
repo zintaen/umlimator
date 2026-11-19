@@ -69,7 +69,7 @@ kinds such as `public`, `lane`, `script`, `hook` and `board` work too). Fields b
 | node | `shape` | the card's own shape, over the one its kind draws: `box`, `person`, `browser`, `mobile`, `cylinder`, `pipe`, `document`, `hexagon`, `robot`, `terminal`, `window`, `folder` or `node` |
 | node, edge | `edited` | a marker on the card or line |
 | edge | `kind` | what the line means, drawn as its colour: `calls` (default), `feeds`, `triggers`, `state`, `guard` |
-| edge | `weight` | 1, 2 or 3: how much the line stands for, drawn as its width |
+| edge | `weight` | 1, 2 or 3: how much the line stands for. Every line is drawn thin at rest; a line of weight 2 or 3 grows to its width (and a larger arrowhead) on hover, when its card is selected and when it has keyboard focus, and its tooltip and accessible name say its `what`, else "weight 2 of 3" |
 | edge | `step` | a number (2, or 2.1) or text of up to 3 characters (2a), in a circle on the line in any view (a pill for 2 or 3 characters): the order things happen, shown as written in the line's name and title. A numbered view numbers its lines in run order instead |
 | edge | `sublabel` | a second, smaller line under the label |
 | edge | `fromSide`, `toSide` | the card sides the line uses |

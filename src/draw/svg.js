@@ -42,6 +42,9 @@ function svgOf(geo, opts = {}) {
   let s = `<svg viewBox="${B.x} ${B.y} ${B.w} ${B.h}" data-w="${B.w}" data-h="${B.h}" role="group" aria-label="${esc(opts.title == null || opts.title === '' ? 'Diagram' : opts.title)}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
     <defs>${marker('d', LINE)}${marker('g', 'var(--um-green)')}${marker('r', 'var(--um-rose)')}${marker('v', 'var(--um-violet)')}${marker('h', 'var(--um-cyan)')}${map ? WIRES.map(w => marker(w[0], `var(--um-w-${w[0]})`)).join('') : ''}${heavy.map(m => { const [c, k] = m.split('-w'); return marker(m, MC[c], 1 + (k - 1) * .35); }).join('')}${T ? T.defs : ''}</defs>`;
   const chWord = x => { const c = CHG[lc(x)]; return c ? ', ' + c[1].toLowerCase() : ''; }; // a key and a line's title say its change (audits 44, 45)
+  // a map line's weight (2 or 3) shows as its width on hover, selection and focus only; its title and name say why: its what, else "weight 2 of 3"
+  const wtWord = e => { if (!map || !(e.weight > 1)) return ''; const w = [...new Set((e.all || [e]).map(x => x.what).filter(x => x != null && x !== '').map(String))].join(' / ');
+    return w || `weight ${e.weight} of 3`; };
   // a typed shape's or box's change, as a card's: a NEW, CHANGED or PLANNED tab on its top; removed, its outlines faded, dashed and its
   // text struck through; its accessible name says it (audit 44: the diff page drew a removed class as live, an added one unmarked).
   // The fade is on its outlines, not its group, as a map card's is on its body: the page takes a drawn group's opacity off for its
@@ -101,17 +104,17 @@ function svgOf(geo, opts = {}) {
       ${tour ? `<circle r="3.2" class="tour tour-packet" opacity="0"><animateMotion path="${bp}" keyPoints="0;0;1" keyTimes="0;.86;1" calcMode="linear" dur="${TOUR}s" repeatCount="indefinite"/>${tourAnim('0;0;.8;.8;0', [0, .86, .88, .99, 1])}</circle>` : ''}</g>`;
   });
   edges.forEach((e, i) => {
-    const E = T && T.edge(e, i), st = E ? E.st : lstyle(e), why = broke(e), d = roundPath(drawn[i]), mk = st.m + (e.weight > 1 ? '-w' + e.weight : '');
+    const E = T && T.edge(e, i), st = E ? E.st : lstyle(e), why = broke(e), d = roundPath(drawn[i]), mk = st.m, hk = st.m + (e.weight > 1 ? '-w' + e.weight : ''), ww = wtWord(e);
     const tip = 9 * (e.weight > 1 ? 1 + (e.weight - 1) * .35 : 1), fd = roundPath(E ? E.pts : trimLine(drawn[i], e.both ? tip : 0, tip)); // an arrowhead's length (marker refX)
     const marks = E ? E.marks : `marker-end="url(#${id}-${mk})" ${e.both ? `marker-start="url(#${id}-${mk})"` : ''}`;
     if (tour && tour.legs[i]) { const [a, b] = tour.legs[i];
       s += `<path d="${d}" class="tour-glow" stroke="${st.c}" opacity="0">${tourAnim('0;0;.55;.55;0;0', [0, a, Math.min(a + .01, b), b, b + .03, 1])}</path>`; }
-    s += `<g class="edge-g${st.cls || ''}${e.weight > 1 ? ' wt-' + e.weight : ''}" data-from="${esc(e.from)}" data-to="${esc(e.to)}" data-i="${i}"><path d="${d}" class="halo"/><path d="${d}" class="hitline"/>
+    s += `<g class="edge-g${st.cls || ''}${e.weight > 1 ? ' wt-' + e.weight : ''}"${e.weight > 1 && !E ? ` style="--um-mk: url(#${id}-${hk})${e.both ? `; --um-mk-s: url(#${id}-${hk})` : ''}"` : ''} data-from="${esc(e.from)}" data-to="${esc(e.to)}" data-i="${i}"><path d="${d}" class="halo"/><path d="${d}" class="hitline"/>
       <path d="${d}" class="edge${st.flow ? ' flow' : ''}" stroke="${st.c}" ${st.dash && !st.flow ? `stroke-dasharray="${st.dash}"` : ''} ${st.op ? `opacity="${st.op}"` : ''} ${marks}/>
       <path d="${fd}" class="flowline" stroke="${st.c}"/>${(e.all || [e]).some(x => x.edited || (CHG[lc(x)] || [])[1] === 'CHANGED') && !e.strong ? (() => { let m = [e.pts[0], e.pts[1]];
         e.pts.slice(1).forEach((p, k) => { const a = e.pts[k]; if (Math.abs(p[0] - a[0]) + Math.abs(p[1] - a[1]) > Math.abs(m[1][0] - m[0][0]) + Math.abs(m[1][1] - m[0][1])) m = [a, p]; });
         return `<circle cx="${(m[0][0] + m[1][0]) / 2}" cy="${(m[0][1] + m[1][1]) / 2}" r="4" class="edited-dot"><title>Edited</title></circle>`; })() : ''}${why.length ? ruleMark(e, why) : ''}
-      <title>${!map && e.aria != null ? esc(e.aria + chWord(e)) : `${e.step != null ? 'Step ' + esc(e.step) + ': ' : ''}${esc(e.s.label || e.s.id)} ${e.both ? '⇄' : '→'} ${esc(e.t.label || e.t.id)}${e.label ? ': ' + esc(e.label) : ''}${esc(chWord(e))}`}${e.label && e.sublabel ? ' (' + esc(e.sublabel) + ')' : ''}${e.when ? '\n' + esc(e.when) : ''}${why.length ? '\nBreaks rule: ' + esc(why.join('; ')) : ''}</title></g>`;
+      <title>${!map && e.aria != null ? esc(e.aria + chWord(e)) : `${e.step != null ? 'Step ' + esc(e.step) + ': ' : ''}${esc(e.s.label || e.s.id)} ${e.both ? '⇄' : '→'} ${esc(e.t.label || e.t.id)}${e.label ? ': ' + esc(e.label) : ''}${esc(chWord(e))}`}${e.label && e.sublabel ? ' (' + esc(e.sublabel) + ')' : ''}${ww ? '\n' + esc(ww) : ''}${e.when ? '\n' + esc(e.when) : ''}${why.length ? '\nBreaks rule: ' + esc(why.join('; ')) : ''}</title></g>`;
   });
   // the tour's dot rides over the lines and boxes but under the cards: it goes into a card and comes out at its next
   // line, rather than across the card's name
@@ -225,7 +228,7 @@ return I && I.src ? `<rect x="${x - M * 3 / 28}" y="${y - M * 3 / 28}" width="${
   // focus targets after the cards (#43), under the labels: each line's (a typed one's named by e.aria), or one per id of geo.order (notes/stage-3.md S13)
   const ring = (a, name, d) => `<g class="um-key line-key${a}" tabindex="0" role="button" aria-pressed="false" aria-label="${esc(name)}"><path d="${d}" class="key-ring"/></g>`;
   const line = (e, i, said = e.label ? `: ${e.label}${e.sublabel ? ` (${e.sublabel})` : ''}` : '') => ring(`${e.weight > 1 ? ' wt-' + e.weight : ''}" data-i="${i}`, !map && e.aria != null ? e.aria + chWord(e)
-    : `${e.step != null ? `Step ${e.step}: ` : ''}Line ${e.both ? `between ${e.s.label || e.s.id} and ${e.t.label || e.t.id}, both ways` : `from ${e.s.label || e.s.id} to ${e.t.label || e.t.id}`}${said}${chWord(e)}${broke(e).length ? `, breaks rule ${broke(e).join('; ')}` : ''}`, roundPath(drawn[i]));
+    : `${e.step != null ? `Step ${e.step}: ` : ''}Line ${e.both ? `between ${e.s.label || e.s.id} and ${e.t.label || e.t.id}, both ways` : `from ${e.s.label || e.s.id} to ${e.t.label || e.t.id}`}${said}${chWord(e)}${wtWord(e) ? ', ' + wtWord(e) : ''}${broke(e).length ? `, breaks rule ${broke(e).join('; ')}` : ''}`, roundPath(drawn[i]));
   s += '</g><g class="keys">' + (!map && Array.isArray(geo.order) ? geo.order.map(id => { const n = hasKey(geo.byId || {}, id) && geo.byId[id], i = edges.findIndex(e => e.id === id);
     return n ? ring(` node-key" data-node="${esc(id)}`, String(n.aria || n.label || id) + chWord(n), `M${n.x} ${n.y}h${n.w}v${n.h}h${-n.w}z`) : i < 0 ? '' : line(edges[i], i); }) : edges.map((e, i) => line(e, i))).join('');
   s += '</g>' + (opts.over || '') + '<g class="labels depth-read">';
