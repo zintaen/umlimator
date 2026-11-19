@@ -121,7 +121,7 @@ with tempfile.TemporaryDirectory() as tmp:
     r = cli("check", page, "--views", "sytem")
     ok("page-hook-protocol#1 · check --views that names no view fails, before Chrome starts, and lists the views",
        # every view, in order (52 since step 4 of the one-model plan, the first five the kept ones)
-       r.returncode == 1 and "no view 'sytem'" in r.stderr and "its views: 'context', 'system', 'trips', 'fleet', 'ride-end', 'overview', 'api', 'checkout', 'domain', " in r.stderr
+       r.returncode == 1 and "no view 'sytem'" in r.stderr and "its views: 'context', 'system', 'trips', 'fleet', 'ride-end', 'overview', 'api', 'checkout', 'dock-feed', 'demand', 'help', 'domain', " in r.stderr
        and r.stderr.rstrip().endswith("its views: " + ", ".join(repr(v["id"]) for v in bike["views"])) and len(bike["views"]) == 52 and not r.stdout.strip(), r.stdout + r.stderr)
     r = cli("stills", odd, "--out", t / "odd", "--views", "plain,R&D,a+b")
     ok("page-hook-protocol#2 · views whose ids hold & and + are stilled", r.returncode == 0 and made(r) == ["plain", "R&D", "a+b"], r.stdout + r.stderr)
