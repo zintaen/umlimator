@@ -12,7 +12,7 @@ const ids = g => g.edges.flatMap(e => e.ids);
 
 test('every card that unfolds in the examples unfolds with a clean layout check', () => {
   let n = 0;
-  for (const f of ['bike-share', 'weather', 'assistant']) {
+  for (const f of ['bike-share']) {
     const m = read(`../examples/${f}.json`);
     // bike-share's typed views (step 3) are drawn by the full bundle, as the page draws them, where a card opening a view of
     // another type opens it and never unfolds; every view
@@ -22,7 +22,7 @@ test('every card that unfolds in the examples unfolds with a clean layout check'
       assert.deepEqual(C(m, v.id, { expand: [card.id] }).map(i => i.message), [], `${f} ${v.id} with ${card.id} unfolded`); n++;
     }
   }
-  assert.ok(n >= 7, `unfolded ${n}`); // bike-share: bikeshare, trips, fleet, and rebalance's Swap battery; weather: the check stage, the checker, the forecast stage (numbered, #82); assistant: answer (numbered)
+  assert.ok(n >= 5, `unfolded ${n}`); // bike-share: bikeshare, trips, fleet, and the fleet's dock listener and demand forecast (numbered); weather's three and assistant's one left with their files (step 4 of the one-model plan)
 });
 
 test("the card becomes a box of its inner view's own cards, in the box it was in; the inner view's boxes come along", () => {
@@ -99,11 +99,17 @@ test("a numbered view drawn around the card brings its lanes as boxes, in order,
 });
 
 test('on a numbered card, a numbered view unfolds under its number: 4.1, 4.2; elsewhere it keeps 1, 2 (#82)', () => {
-  const weather = read('../examples/weather.json'), g = layout(weather, 'stages', { expand: ['st-forecast'] }), card = id => g.nodes.find(n => n.id === id);
-  assert.deepEqual(['warehouse', 'api', 'alerts'].map(i => card(i).step), ['4.1', '4.2', '4.3'], 'the Forecast stage is step 4 of the process');
-  const pushes = g.edges.find(e => e.from === 'alerts' && e.to === 'app');
-  assert.ok(pushes.step === '4.4' && pushes.lbl.step === '4.4' && pushes.lbl.sw > 16, 'a longer number gets a wider mark on its line');
-  assert.equal(card('st-publish').step, 5, "the process's own steps keep theirs");
+  // bike-share's nightly forecast (demand, numbered) opened from step 4 of a five-step process laid over the model here
+  const bike = read('../examples/bike-share.json'), S = ['collect', 'check', 'store', 'forecast', 'plan'];
+  bike.nodes.push(...S.map(s => ({ id: `st-${s}`, label: s, kind: 'backend', ...(s === 'forecast' ? { opensView: 'demand' } : {}) })));
+  bike.edges.push(...S.slice(1).map((s, i) => ({ id: `st-p${i + 1}`, from: `st-${S[i]}`, to: `st-${s}`, kind: 'feeds' })));
+  bike.views.push({ id: 'stages', title: 'Stages', render: 'process', stepIds: S.map(s => `st-${s}`), nodeIds: S.map(s => `st-${s}`) });
+  const g = all.layout(bike, 'stages', { expand: ['st-forecast'] }), card = id => g.nodes.find(n => n.id === id), step = (a, b) => g.edges.find(e => e.from === a && e.to === b);
+  assert.deepEqual(['warehouse', 'weather-feed', 'model-registry', 'planner'].map(i => step('forecast', i).step), ['4.1', '4.2', '4.3', '4.4'], 'the Forecast stage is step 4 of the process');
+  const flags = step('planner', 'ops-console');
+  assert.ok(flags.step === '4.5' && flags.lbl.step === '4.5' && flags.lbl.sw > 16, 'a longer number gets a wider mark on its line');
+  assert.equal(card('st-plan').step, 5, "the process's own steps keep theirs");
+  assert.deepEqual(all.check(bike, 'stages', { expand: ['st-forecast'] }).map(i => i.message), []);
   const m = { nodes: [{ id: 'a', label: 'Asker' }, { id: 'b', label: 'Builder', opensView: 'b' }, { id: 'b1', label: 'Planner' }, { id: 'b2', label: 'Runner', opensView: 'b2' }, { id: 'c1', label: 'Fetcher' }, { id: 'c2', label: 'Writer' }],
     views: [{ id: 'top', nodeIds: ['a', 'b'], edges: [{ from: 'a', to: 'b', label: 'asks' }] },
       { id: 'b', parent: 'top', render: 'sequence', nodeIds: ['b', 'b1', 'b2'], edges: [{ from: 'b', to: 'b1', label: 'plans' }, { from: 'b', to: 'b2', label: 'runs' }] },

@@ -335,9 +335,9 @@ test('the writer says what it drops: a parent cycle, a class\'s class parent, a 
     '%% not written: A (uml.Class)', '%% not written: e (uml.Dependency)']);
   const m = json('../examples/sales-classes.json');
   assert.equal(write(m, 'nope'), '%% not written: view nope, which the model does not have\n');
-  const weather = json('../examples/weather.json');
-  assert.equal(write(weather), '%% not written: the model, which has no uml.class view\n');
-  assert.match(write(weather, weather.views[0].id), /^%% not written: view .*, not a uml\.class one\n$/);
+  const map = json('../examples/bike-share-c4.json');
+  assert.equal(write(map), '%% not written: the model, which has no uml.class view\n');
+  assert.match(write(map, map.views[0].id), /^%% not written: view .*, not a uml\.class one\n$/);
 });
 
 test('a directive over several lines is passed over; a view with no direction is down; o and * mark only before a space', () => {

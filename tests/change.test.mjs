@@ -93,7 +93,7 @@ test('drift() brings in the lines traffic ran on but nobody drew, fades the draw
     { parent: 'tile-cache', child: 'rider-app', callCount: 40 },        // no card for tile-cache (cdn names the cloud views' CDN cards since step 3)
   ] };
   const r = drift(bike, seen, { match: { 'trip-service': 'trips', 'fleet-service': 'fleet', 'trips-db': 'tripsdb' } });
-  assert.deepEqual(r.counts, { carried: 2, undrawn: 1, idle: 3, unknown: 394, unmatched: ['tile-cache'] }); // 51 map lines (the rider shop's 11 among them), the 8 of the trace's view (#96) and the shop's 8 own (api 2, checkout 6): 62; and, since step 3, the typed views' 306 model lines and 26 view-own lines
+  assert.deepEqual(r.counts, { carried: 2, undrawn: 1, idle: 3, unknown: 419, unmatched: ['tile-cache'] }); // 51 map lines (the rider shop's 11 among them), the 8 of the trace's view (#96) and the shop's 8 own (api 2, checkout 6): 62; and, since step 3, the typed views' 306 model lines and 26 view-own lines; and, since step 4, dock-feed's 7 model lines and 3 own, demand's 5 own and help's 10 own
   const came = r.model.edges.filter(e => e.drift === 'undrawn'), idle = r.model.edges.filter(e => e.drift === 'idle').map(e => e.id);
   assert.deepEqual(came, [{ id: 'drift:ops-console->tripsdb', from: 'ops-console', to: 'tripsdb', label: 'not drawn', sublabel: '1,500 calls', style: 'security', drift: 'undrawn' }]);
   assert.deepEqual(idle, ['s8', 's12', 's17']); // trips→tripsdb and fleet→ops-console: both ends had traffic, these lines none
@@ -249,13 +249,14 @@ test('audit 17: present keyed by a member (a port\'s side, a part\'s ports) is s
 });
 
 test('audit 17: diff() passes over a null in the after model\'s lines, as layout() and validate() do', () => {
-  const as = JSON.parse(readFileSync(new URL('../examples/assistant.json', import.meta.url))), nul = structuredClone(as); nul.edges[1] = null;
+  const as = JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url))), nul = structuredClone(as); nul.edges[1] = null;
   assert.doesNotThrow(() => diff(as, nul));
   assert.ok(diff(as, nul).summary.length > 0);
 });
 
 test('audit 19: diff() says a sequence view\'s own steps reordered, as its model lines\' are, and lists that view', () => {
-  for (const [f, vid] of [['assistant.json', 'answer'], ['weather.json', 'forecaster'], ['bike-share.json', 'ride-end'], ['bookshop.json', 'api']]) {
+  // bike-share's rider help (view-local cards and lines), its nightly forecast (lanes), its ride end and its rider shop's api
+  for (const [f, vid] of [['bike-share.json', 'help'], ['bike-share.json', 'demand'], ['bike-share.json', 'ride-end'], ['bike-share.json', 'api']]) {
     const a = JSON.parse(readFileSync(new URL('../examples/' + f, import.meta.url))), b = structuredClone(a), v = b.views.find(x => x.id === vid);
     [v.edges[0], v.edges[1]] = [v.edges[1], v.edges[0]];
     const d = diff(a, b);
@@ -263,8 +264,8 @@ test('audit 19: diff() says a sequence view\'s own steps reordered, as its model
     assert.deepEqual(diff(a, structuredClone(a)).summary, [], f);
   }
   // an own step added or taken away is no reorder of the steps that stayed
-  const as = JSON.parse(readFileSync(new URL('../examples/assistant.json', import.meta.url))), less = structuredClone(as);
-  less.views.find(x => x.id === 'answer').edges.splice(1, 1);
+  const as = JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url))), less = structuredClone(as);
+  less.views.find(x => x.id === 'help').edges.splice(1, 1);
   assert.ok(!diff(as, less).summary.some(s => s.startsWith('reorders')));
   assert.ok(!diff(less, as).summary.some(s => s.startsWith('reorders')));
 });
@@ -388,7 +389,7 @@ test('audit 21: validate() says a value it leaves out once, at its path, and not
   m.edges[1].from = 'z'; assert.deepEqual(validate(m).map(p => p.message), ['"z" is neither a card nor a box'], 'an end that names nothing is still said');
   // a typed model: a member's type, a timing change's lifeline; every example, each text value in turn
   // bike-share's map part only: its strings are the ones this bundle's validate reads, and the three typed files cover the
-  // typed strings (each string of the whole model, 49 views since step 3 of the one-model plan, cost the walk 20 s)
+  // typed strings (each string of the whole model, 52 views since step 4 of the one-model plan, cost the walk 20 s)
   const mapPart = m => ({ ...m, views: m.views.filter(v => !v.diagram), nodes: m.nodes.filter(n => !n.type), edges: m.edges.filter(e => !e.type) });
   for (const f of ['bookshop-schema.json', 'bookshop-timing.json', 'order-states.json', 'bike-share.json']) {
     const read = () => JSON.parse(readFileSync(new URL('../examples/' + f, import.meta.url))), base = f === 'bike-share.json' ? mapPart(read()) : read(), was = new Set(validate(base).map(p => p.path + p.message));

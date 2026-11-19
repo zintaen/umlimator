@@ -14,7 +14,7 @@
 //
 // The build also stops on what would break a pin without any error: an id used twice (cards, lines, a view's own lines
 // and boxes), a view whose id is a card's (a model card or a view's own; only the kept views trips and fleet,
-// and the rider shop's api, which its card Shop API opens as bookshop.json's did, may: trace refuses such an id and a card
+// and the rider shop's api, which its card Shop API opens as the Bookshop's did, may: trace refuses such an id and a card
 // opens the view of its id), a new view id starting with "f" (the
 // `--views system,f*` and `fl*` globs of tests/cli.py and tests/outcomes.py mean the fleet view only), and a new view
 // that lists accounts, flags or payments (diff's views == ["system"] pins keep those cards to the kept views).

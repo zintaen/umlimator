@@ -12,7 +12,7 @@ const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 
 test('validate() finds nothing wrong in the examples and the benchmark models', () => {
   assert.deepEqual(validateAll(read('../examples/bike-share.json')), [], 'bike-share');
-  for (const f of ['weather', 'assistant']) assert.deepEqual(validate(read(`../examples/${f}.json`)), [], f);
+  assert.deepEqual(validate(read('../examples/bike-share-c4.json')), [], 'bike-share-c4');
   for (const f of ['b10', 'b26', 'b69', 'd24', 'm50']) assert.deepEqual(validate(read(`../bench/models/${f}.json`)), [], f);
 });
 

@@ -1,0 +1,439 @@
+{
+  "title": "Bike share",
+  "root": "context",
+  "nodes": [
+    {
+      "id": "rider",
+      "label": "Rider",
+      "kind": "person",
+      "sublabel": "Person",
+      "what": "Finds and hires bikes, pays for rides and reports faults.",
+      "icon": "user",
+      "shape": "person"
+    },
+    {
+      "id": "staff",
+      "label": "Operations staff",
+      "kind": "person",
+      "sublabel": "Person",
+      "what": "Keep the fleet in service and refund rides.",
+      "icon": "user",
+      "shape": "person"
+    },
+    {
+      "id": "van",
+      "label": "Van service",
+      "kind": "external",
+      "sublabel": "Software system",
+      "what": "Collects faulty bikes and brings them back repaired."
+    },
+    {
+      "id": "bikeshare",
+      "label": "Bike share",
+      "kind": "backend",
+      "sublabel": "Software system",
+      "what": "Hires e-bikes from city docks: finding, unlocking, pricing and paying for rides.",
+      "opensView": "containers"
+    },
+    {
+      "id": "app",
+      "label": "Rider app",
+      "kind": "frontend",
+      "sublabel": "TypeScript, React",
+      "what": "The rider's app: a map of bikes, unlock and ride history, and the admin pages for staff."
+    },
+    {
+      "id": "api",
+      "label": "Trip API",
+      "kind": "backend",
+      "sublabel": "Python, FastAPI",
+      "what": "Bikes, rides, pricing and accounts as a JSON API.",
+      "opensView": "api-components"
+    },
+    {
+      "id": "finder",
+      "label": "Bike finder",
+      "kind": "backend",
+      "sublabel": "FastAPI router",
+      "what": "Lists and searches free bikes and docks."
+    },
+    {
+      "id": "hire",
+      "label": "Hire",
+      "kind": "backend",
+      "sublabel": "FastAPI router",
+      "what": "Turns an unlock into a paid ride."
+    },
+    {
+      "id": "accounts",
+      "label": "Accounts and sign-in",
+      "kind": "security",
+      "sublabel": "FastAPI router",
+      "what": "Signs riders and staff in; keeps hashed passwords and sessions."
+    },
+    {
+      "id": "payment-client",
+      "label": "Payment client",
+      "kind": "frontend",
+      "sublabel": "Python, httpx",
+      "what": "Starts card payments and reads their result.",
+      "shape": "box"
+    },
+    {
+      "id": "ride-store",
+      "label": "Ride store",
+      "kind": "database",
+      "sublabel": "SQLAlchemy",
+      "what": "Saves rides and puts the ended ones on the ride queue.",
+      "shape": "box"
+    },
+    {
+      "id": "worker",
+      "label": "Ride worker",
+      "kind": "backend",
+      "sublabel": "Python",
+      "what": "Closes ended rides: books a van for a faulty bike and sends the receipt."
+    },
+    {
+      "id": "db",
+      "label": "Database",
+      "kind": "database",
+      "sublabel": "PostgreSQL",
+      "what": "Bikes, docks, rides and accounts.",
+      "shape": "cylinder"
+    },
+    {
+      "id": "queue",
+      "label": "Ride queue",
+      "kind": "database",
+      "sublabel": "PostgreSQL table",
+      "what": "Ended rides waiting to be closed, oldest first."
+    },
+    {
+      "id": "payments",
+      "label": "Payment provider",
+      "kind": "external",
+      "sublabel": "Software system",
+      "what": "Takes card payments and makes refunds."
+    },
+    {
+      "id": "mail",
+      "label": "Email service",
+      "kind": "external",
+      "sublabel": "Software system",
+      "what": "Delivers the operator's emails."
+    }
+  ],
+  "edges": [
+    {
+      "id": "worker-queue",
+      "from": "worker",
+      "to": "queue",
+      "label": "Claims ended rides from",
+      "sublabel": "SQL"
+    },
+    {
+      "id": "worker-db",
+      "from": "worker",
+      "to": "db",
+      "label": "Marks rides as closed in",
+      "sublabel": "SQL"
+    },
+    {
+      "id": "worker-van",
+      "from": "worker",
+      "to": "van",
+      "label": "Books van pickups with",
+      "sublabel": "HTTPS"
+    },
+    {
+      "id": "worker-mail",
+      "from": "worker",
+      "to": "mail",
+      "label": "Sends receipts with",
+      "sublabel": "HTTPS"
+    },
+    {
+      "id": "mail-rider",
+      "from": "mail",
+      "to": "rider",
+      "label": "Delivers receipts to",
+      "sublabel": "Email",
+      "loop": true
+    },
+    {
+      "id": "rider-app",
+      "from": "rider",
+      "to": "app",
+      "label": "Finds and unlocks a bike in",
+      "sublabel": "HTTPS"
+    },
+    {
+      "id": "staff-app",
+      "from": "staff",
+      "to": "app",
+      "label": "Edit the fleet and refund…",
+      "sublabel": "HTTPS",
+      "what": "Edit the fleet and refund rides in"
+    },
+    {
+      "id": "app-finder",
+      "from": "app",
+      "to": "finder",
+      "label": "Finds bikes through",
+      "sublabel": "JSON over HTTPS"
+    },
+    {
+      "id": "app-hire",
+      "from": "app",
+      "to": "hire",
+      "label": "Starts rides through",
+      "sublabel": "JSON over HTTPS"
+    },
+    {
+      "id": "app-accounts",
+      "from": "app",
+      "to": "accounts",
+      "label": "Signs in through",
+      "sublabel": "JSON over HTTPS"
+    },
+    {
+      "id": "hire-payment-client",
+      "from": "hire",
+      "to": "payment-client",
+      "label": "Charges the card through"
+    },
+    {
+      "id": "payment-client-payments",
+      "from": "payment-client",
+      "to": "payments",
+      "label": "Starts a card payment with",
+      "sublabel": "HTTPS"
+    },
+    {
+      "id": "hire-ride-store",
+      "from": "hire",
+      "to": "ride-store",
+      "label": "Saves the paid ride with"
+    },
+    {
+      "id": "ride-store-db",
+      "from": "ride-store",
+      "to": "db",
+      "label": "Reads and writes rides in",
+      "sublabel": "SQL"
+    },
+    {
+      "id": "ride-store-queue",
+      "from": "ride-store",
+      "to": "queue",
+      "label": "Puts ended rides on",
+      "sublabel": "SQL"
+    },
+    {
+      "id": "finder-db",
+      "from": "finder",
+      "to": "db",
+      "label": "Reads bikes and docks from",
+      "sublabel": "SQL"
+    },
+    {
+      "id": "accounts-db",
+      "from": "accounts",
+      "to": "db",
+      "label": "Reads and writes accounts…",
+      "sublabel": "SQL",
+      "what": "Reads and writes accounts and sessions in"
+    },
+    {
+      "id": "bikeshare-van",
+      "from": "bikeshare",
+      "to": "van",
+      "label": "Books van pickups with",
+      "sublabel": "HTTPS"
+    },
+    {
+      "id": "bikeshare-mail",
+      "from": "bikeshare",
+      "to": "mail",
+      "label": "Sends receipts with",
+      "sublabel": "HTTPS"
+    },
+    {
+      "id": "rider-bikeshare",
+      "from": "rider",
+      "to": "bikeshare",
+      "label": "Finds and unlocks a bike in",
+      "sublabel": "HTTPS"
+    },
+    {
+      "id": "staff-bikeshare",
+      "from": "staff",
+      "to": "bikeshare",
+      "label": "Edit the fleet and refund…",
+      "sublabel": "HTTPS",
+      "what": "Edit the fleet and refund rides in"
+    },
+    {
+      "id": "bikeshare-payments",
+      "from": "bikeshare",
+      "to": "payments",
+      "label": "Starts a card payment with",
+      "sublabel": "HTTPS"
+    },
+    {
+      "id": "app-api",
+      "from": "app",
+      "to": "api",
+      "label": "Finds bikes through",
+      "sublabel": "JSON over HTTPS"
+    },
+    {
+      "id": "api-payments",
+      "from": "api",
+      "to": "payments",
+      "label": "Starts a card payment with",
+      "sublabel": "HTTPS"
+    },
+    {
+      "id": "api-db",
+      "from": "api",
+      "to": "db",
+      "label": "Reads and writes rides in",
+      "sublabel": "SQL"
+    },
+    {
+      "id": "api-queue",
+      "from": "api",
+      "to": "queue",
+      "label": "Puts ended rides on",
+      "sublabel": "SQL"
+    }
+  ],
+  "views": [
+    {
+      "id": "context",
+      "title": "Bike share",
+      "nodeIds": [
+        "rider",
+        "staff",
+        "van",
+        "bikeshare",
+        "payments",
+        "mail"
+      ],
+      "containers": [
+        {
+          "id": "field-crews",
+          "label": "Field crews",
+          "nodeIds": [
+            "staff"
+          ]
+        }
+      ],
+      "caption": "Who hires bikes, who keeps them running, and what Bike share leans on.",
+      "edges": [
+        "bikeshare-van",
+        "bikeshare-mail",
+        "mail-rider",
+        "rider-bikeshare",
+        "staff-bikeshare",
+        "bikeshare-payments"
+      ],
+      "parent": null
+    },
+    {
+      "id": "containers",
+      "title": "Bike share containers",
+      "nodeIds": [
+        "rider",
+        "staff",
+        "van",
+        "app",
+        "api",
+        "worker",
+        "db",
+        "queue",
+        "payments",
+        "mail"
+      ],
+      "containers": [
+        {
+          "id": "bikeshare",
+          "label": "Bike share",
+          "nodeIds": [
+            "app",
+            "api",
+            "worker",
+            "db",
+            "queue"
+          ]
+        },
+        {
+          "id": "field-crews",
+          "label": "Field crews",
+          "nodeIds": [
+            "staff"
+          ]
+        }
+      ],
+      "caption": "The rider app, the trip API, the ride worker, and where rides wait.",
+      "edges": [
+        "worker-queue",
+        "worker-db",
+        "worker-van",
+        "worker-mail",
+        "mail-rider",
+        "rider-app",
+        "staff-app",
+        "app-api",
+        "api-payments",
+        "api-db",
+        "api-queue"
+      ],
+      "parent": "context"
+    },
+    {
+      "id": "api-components",
+      "title": "Trip API components",
+      "nodeIds": [
+        "app",
+        "finder",
+        "hire",
+        "accounts",
+        "payment-client",
+        "ride-store",
+        "db",
+        "queue",
+        "payments"
+      ],
+      "containers": [
+        {
+          "id": "api",
+          "label": "Trip API",
+          "nodeIds": [
+            "finder",
+            "hire",
+            "accounts",
+            "payment-client",
+            "ride-store"
+          ]
+        }
+      ],
+      "caption": "Inside the trip API.",
+      "edges": [
+        "app-finder",
+        "app-hire",
+        "app-accounts",
+        "hire-payment-client",
+        "payment-client-payments",
+        "hire-ride-store",
+        "ride-store-db",
+        "ride-store-queue",
+        "finder-db",
+        "accounts-db"
+      ],
+      "parent": "containers"
+    }
+  ]
+}

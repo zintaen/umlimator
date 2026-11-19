@@ -63,7 +63,7 @@
     }
   ],
   "parts": [
-    "context", "system", "trips", "fleet", "ride-end", "shop", "classes", "interactions", "behaviour", "structure",
-    "c4", "data", "bpmn", "cloud", "sysml"
+    "context", "system", "trips", "fleet", "ride-end", "shop", "operations", "classes", "interactions", "behaviour",
+    "structure", "c4", "data", "bpmn", "cloud", "sysml"
   ]
 }

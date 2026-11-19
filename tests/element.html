@@ -102,8 +102,8 @@ try {
   fire('.node[data-id="api"]', 'dblclick');
   check('umlimator:viewchange follows an open that goes ahead', await until(() => ev.some(x => x[0] === 'umlimator:viewchange' && x[1].view === 'api' && x[1].from === 'overview')) && a.map.view === 'api');
 
-  a.setAttribute('src', '../examples/weather.json');
-  check('a new src is fetched and drawn', await redrawn(4) && a.map.view === 'stages', [loads.length, a.map && a.map.view]);
+  a.setAttribute('src', '../examples/bike-share-c4.json');
+  check('a new src is fetched and drawn', await redrawn(4) && a.map.view === 'context', [loads.length, a.map && a.map.view]);
   a.setAttribute('src', 'nope.json');
   check('a model that can\'t be had: error, no map, the children show again', await until(() => ev.some(x => x[0] === 'error')) && a.map === null && still.getClientRects().length === 1);
 
@@ -121,10 +121,10 @@ try {
   check('a model with no view to draw is an error, not a load: no map, the children show', dev.length === 1 && dev[0].type === 'error' && d.map === null
     && document.getElementById('dnote').getClientRects().length === 1, dev.map(e => e.type));
   check('…the error is an ErrorEvent, its message the reason', dev[0] instanceof ErrorEvent && /no view to draw/.test(dev[0].message), dev[0].message);
-  d.setAttribute('src', '../examples/weather.json');
+  d.setAttribute('src', '../examples/bike-share-c4.json');
   const wasLoading = d.loading; await until(() => dev.length === 2);
-  check('loading is true from the moment a new src is set until the map is drawn', wasLoading === true && dev[1].type === 'load' && d.loading === false && d.map && d.map.view === 'stages', [wasLoading, d.loading]);
-  const drawn = d.map; d.setAttribute('src', '../examples/weather.json'); await wait(200);
+  check('loading is true from the moment a new src is set until the map is drawn', wasLoading === true && dev[1].type === 'load' && d.loading === false && d.map && d.map.view === 'context', [wasLoading, d.loading]);
+  const drawn = d.map; d.setAttribute('src', '../examples/bike-share-c4.json'); await wait(200);
   check('an attribute set to the value it has draws nothing again', d.map === drawn && dev.length === 2 && d.loading === false);
   d.setAttribute('src', 'nope.json'); await until(() => dev.length === 3);
   check("…and a model that can't be had ends loading, with an error that says why", d.loading === false && dev[2] instanceof ErrorEvent && /nope\.json: 404/.test(dev[2].message), dev[2].message);

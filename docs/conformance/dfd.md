@@ -86,5 +86,4 @@ set, laid out and drawn, 37 to 63 ms (two runs). CI holds 1 s and prints the fig
 `tests/dfd.test.mjs` and `tests/dfd.html` (both skins, numbers, balancing, `D`, the rules each passing and failing, a
 30-step session, every gesture by pointer and key); `tests/dfd-minimal.json` and `tests/dfd-stress.json` with
 `tests/m2-fixtures.test.mjs` and `tests/m2.html` (three levels, the third unbalanced, a level made by `D`, both
-notations); `tests/cli.py`; `tests/mcp.py`; `tests/atlas.test.mjs` (the data flow, opened from the C4 component view's
-order store).
+notations); `tests/cli.py`; `tests/mcp.py`.

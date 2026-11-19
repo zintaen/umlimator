@@ -51,9 +51,24 @@
     "3f2a4304"
    ]
   },
+  "bike-share/demand": {
+   "hashes": [
+    "7a7c5d67"
+   ]
+  },
+  "bike-share/dock-feed": {
+   "hashes": [
+    "d71b4377"
+   ]
+  },
   "bike-share/fleet": {
    "hashes": [
-    "6061d741"
+    "c06910c9"
+   ]
+  },
+  "bike-share/help": {
+   "hashes": [
+    "2938e673"
    ]
   },
   "bike-share/overview": {

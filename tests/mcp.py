@@ -329,7 +329,7 @@ try:
     srv.stdin.close()
     srv.wait(timeout=30)
     shop = work / "shop.json"
-    shutil.copy(ROOT / "examples" / "bookshop.json", shop)
+    shutil.copy(ROOT / "examples" / "bike-share-c4.json", shop)   # a second, different map: the bike share's Structurizr import
     srv = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(shop), "--port", str(port)], stdin=subprocess.PIPE,
                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
     taken = re.search(r"127\.0\.0\.1:(\d+)", rpc("server/discover")["result"]["instructions"]).group(1)

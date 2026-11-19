@@ -180,12 +180,12 @@ try {
 
   { // #112: render() with all four pieces, light and dark, in a view the list marks, with a card's every tab (a missing text,
     // a highlight and code, an origin, a public card's tag, a card with no lines in or out)
-    const RICH = structuredClone(BIKE), ASSIST = await (await fetch('../examples/assistant.json')).json(), bad = [];
+    const RICH = structuredClone(BIKE), bad = [];
     const riders = RICH.nodes.find(n => n.id === 'riders'); delete riders.when; riders.what = 'Rides with ==one highlight== and `code`.';
     RICH.nodes.find(n => n.id === 'payments').origin = 'vendor SDK';
     for (const theme of ['light', 'dark']) {
       document.documentElement.dataset.theme = theme;
-      for (const [model, view, cards] of [[RICH, 'system', ['riders', 'payments', 'trips']], [ASSIST, 'answer', ['kb', 'fetch', 'a-find']], [ASSIST, 'assistant', ['ask', 'redact']]]) {
+      for (const [model, view, cards] of [[RICH, 'system', ['riders', 'payments', 'trips']], [BIKE, 'help', ['station-docs', 'rider-app', 'retriever']], [BIKE, 'dock-feed', ['dock-gateway', 'dock-quarantine']]]) {
         const [h, sr, q] = make({ nav: true, legend: true, hints: true, details: true, view }, model); await wait(200);
         for (const id of cards) { h.select({ type: 'node', id }); if (q('.panel').hidden) { bad.push(`${id} shows no panel`); continue; }
           for (const t of [...sr.querySelectorAll('[role="tab"]')].map(b => b.dataset.tab)) { q(`[data-tab="${t}"]`).click(); bad.push(...axeRules(sr, window, q('.stage')).map(x => `${theme} ${view} ${id} ${t}: ${x}`)); } }

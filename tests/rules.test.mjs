@@ -7,7 +7,7 @@ import { rules, validate } from '../lib/umlimator.js';
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 
 test('rules() finds nothing in the examples, whose rules hold, nor in a model without rules', () => {
-  for (const f of ['bookshop', 'bike-share', 'weather', 'assistant']) assert.deepEqual(rules(read(`../examples/${f}.json`)), [], f);
+  for (const f of ['bike-share', 'bike-share-c4']) assert.deepEqual(rules(read(`../examples/${f}.json`)), [], f);
   assert.ok(read('../examples/bike-share.json').rules.length >= 2);
   assert.deepEqual(rules({ nodes: [], views: [] }), []);
 });

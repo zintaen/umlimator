@@ -21,8 +21,7 @@ for (const d of families) { const u = new URL(d + '/', src); for (const f of rea
 
 const arr = x => (Array.isArray(x) ? x : []), read = url => JSON.parse(readFileSync(url));
 const files = () => { const ex = new URL('../examples/', import.meta.url), seen = new Map();
-  // not the two atlases: bike-share holds their views since step 3 of the one-model plan (step 4 deletes them)
-  readdirSync(ex).filter(f => f.endsWith('.json') && !['bookshop-atlas.json', 'ebike-atlas.json'].includes(f)).forEach(f => seen.set(new URL(f, ex).href, 'examples/' + f));
+  readdirSync(ex).filter(f => f.endsWith('.json')).forEach(f => seen.set(new URL(f, ex).href, 'examples/' + f));
   targets().forEach(([f, url]) => { if (!seen.has(url.href)) seen.set(url.href, f); });
   return [...seen].map(([href, name]) => [name, read(new URL(href))]); };
 // the ids each view draws: its cards and their members, its own elements, its lines (listed, or every line between its cards)

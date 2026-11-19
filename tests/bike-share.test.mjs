@@ -110,10 +110,10 @@ test('the build stops on what would break a pin without an error', () => {
   assert.throws(() => build(head(x => { x.parts = []; })), /names no parts/);
 });
 
-// ---- the typed views (step 3 of the one-model plan): what tests/atlas.test.mjs and tests/ebike-atlas.test.mjs read of the
+// ---- the typed views (step 3 of the one-model plan): what tests/atlas.test.mjs and tests/ebike-atlas.test.mjs (gone in step 4) read of the
 // Bookshop and e-bike atlases, read of the bike share, which holds a view of each of the 28 types
 const M = JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url), 'utf8'));
-const MAPS = ['context', 'system', 'trips', 'fleet', 'ride-end', 'overview', 'api', 'checkout'];
+const MAPS = ['context', 'system', 'trips', 'fleet', 'ride-end', 'overview', 'api', 'checkout', 'dock-feed', 'demand', 'help'];
 const view = id => M.views.find(v => v.id === id);
 
 test('the bike share holds a view of each of the 28 types: the 14 UML diagrams and information flow, SysML\'s four, C4 (five of its levels), ER, data flow, flowchart, BPMN, the mindmap and the three clouds', () => {
@@ -178,7 +178,7 @@ test('every drill-down opens a view of the model; from the map, the C4 context, 
   for (const v of M.views) for (const n of v.nodeIds || []) { const o = ctx.opensOf(n, v.id); if (o) opens.push([v.id, n, o]); }
   opens.forEach(([v, n, o]) => assert.ok(ctx.V[o], `${n} in ${v} opens ${o}, no view of the model`));
   // the map's cards that open a typed view (a cross-type link, which opens and never unfolds in place)
-  assert.deepEqual(opens.filter(([v]) => ['trips', 'fleet'].includes(v)).map(x => x.join(' ')), ['trips trip-api unlock-sequence', 'trips lifecycle trip-internals',
+  assert.deepEqual(opens.filter(([v, , o]) => ['trips', 'fleet'].includes(v) && ctx.V[o].diagram).map(x => x.join(' ')), ['trips trip-api unlock-sequence', 'trips lifecycle trip-internals',
     'trips fare domain', 'fleet battery-service blocks', 'fleet planner rebalance']);
   const across = opens.filter(([v, , o]) => ctx.V[o].diagram !== ctx.V[v].diagram);
   assert.ok(across.length > 20); across.forEach(([v, n]) => assert.equal(ctx.unfoldable(n, v), null, `${n} in ${v}`));
@@ -200,6 +200,8 @@ test('every drill-down opens a view of the model; from the map, the C4 context, 
   step('trips', 'domain'); step('domain', 'ride-life'); step('domain', 'ride-snapshot'); step('ride-snapshot', 'bike-life');
   step('fleet', 'blocks'); step('blocks', 'inside-ebike'); step('requirements', 'range-analysis'); step('requirements', 'blocks');
   step('fleet', 'rebalance'); step('rebalance', 'swap-battery'); step('rebalance', 'dock-latch');
+  // the fleet's dock listener and demand forecast open its two map views of step 4: the live dock feed and the nightly forecast
+  step('fleet', 'dock-feed'); step('fleet', 'demand');
   // the use cases to hiring a bike to its inner interactions; reporting a fault to the repair process to collecting the bike
   step('rider-uses', 'hire-overview'); step('hire-overview', 'hire-unlock'); step('rider-uses', 'repair-process'); step('repair-process', 'collect-bike');
   // C4 down its levels, and out of them to the views each element's design is in
@@ -300,4 +302,21 @@ test('MCP list_views counts a typed view\'s cards as the page does: the elements
   const want = M.views.map(v => { const n = elementCount(v, layoutAll(M, v.id)); differs += n != null && n !== v.nodeIds.length; return [v.id, n ?? v.nodeIds.length]; });
   assert.deepEqual(listed.map(v => [v.id, v.cards]), want);
   assert.ok(differs >= 5, `typed views that draw more than they list (${differs})`);
+});
+
+// the plan's sixth risk: the C4 views here and examples/bike-share.dsl, imported to examples/bike-share-c4.json, are two
+// sources of one picture. Each static view the import reads holds the cards of its view here, by id (here with "c4-" in
+// front) and by name: the subject a container or component view boxes is a box there, a card here
+test('the C4 views and the Structurizr import agree on their cards: the context, the containers and the trip API\'s components', () => {
+  const C4 = JSON.parse(readFileSync(new URL('../examples/bike-share-c4.json', import.meta.url), 'utf8'));
+  const label = (m, id) => m.nodes.find(n => n.id === id)?.label;
+  for (const [here, there] of [['c4-context', 'context'], ['c4-containers', 'containers'], ['c4-components', 'api-components']]) {
+    const v = M.views.find(x => x.id === here), w = C4.views.find(x => x.id === there);
+    const ours = v.nodeIds.map(id => id.replace(/^c4-/, '')).sort();
+    const theirs = [...w.nodeIds, ...(w.containers || []).map(c => c.id).filter(id => label(C4, id))].sort();
+    assert.deepEqual(ours, theirs, `${here} and ${there}`);
+    for (const id of v.nodeIds) assert.equal(label(M, id), label(C4, id.replace(/^c4-/, '')), `${here}: ${id}`);
+  }
+  // the import is version 1 (a map), the second, different map the element page and the MCP server swap to
+  assert.equal(C4.schemaVersion, undefined); assert.notEqual(C4.title, M.title);
 });
