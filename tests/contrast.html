@@ -26,7 +26,7 @@ const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.05
 const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
 const opacity = el => { let o = 1; for (let e = el; e && e.tagName !== 'svg'; e = e.parentNode) o *= +getComputedStyle(e).opacity; return o; };
 const paint = (el, prop) => { const c = rgba(getComputedStyle(el)[prop]); if (c) c[3] *= opacity(el); return c; };
-const EXAMPLE = await (await fetch('../examples/bookshop.json')).json();
+const EXAMPLE = await (await fetch('../examples/bike-share.json')).json(); // drawn on its rider shop's overview (its root is context)
 const STATES = { nodes: [{ id: 'a', label: 'Planned service', sublabel: 'not built yet', change: 'planned' }, { id: 'b', label: 'Removed service', sublabel: 'going away', change: 'removed' },
   { id: 'c', label: 'Tones', sublabel: 'badge colours', badges: ['plain', { text: 'green', tone: 'green' }, { text: 'amber', tone: 'amber' }, { text: 'rose', tone: 'rose' }, { text: 'violet', tone: 'violet' }, { text: 'cyan', tone: 'cyan' }], edited: true },
   { id: 'd', label: 'Changed', change: 'modified', kind: 'database' }, { id: 'e', label: 'New', change: 'added', kind: 'external' }],
@@ -48,7 +48,7 @@ const STEPS = { nodes: ['a', 'b', 'c', 'd'].map(id => ({ id, label: 'Part ' + id
   views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd'] }, { id: 's', render: 'sequence', nodeIds: ['a', 'b', 'c', 'd'] }] };
 const WEATHER = await (await fetch('../examples/weather.json')).json();
 try {
-  for (const [name, MODEL, tint, view] of [['example', EXAMPLE], ['states', STATES], ['line kinds', KINDS], ['boxes in every tone', TONED], ['boxes in every tone, --um-tint 2', TONED, 2],
+  for (const [name, MODEL, tint, view] of [['example', EXAMPLE, 1, 'overview'], ['states', STATES], ['line kinds', KINDS], ['boxes in every tone', TONED], ['boxes in every tone, --um-tint 2', TONED, 2],
     ['steps on a view\'s lines', STEPS], ['a numbered view', STEPS, 1, 's'], ['swimlanes', WEATHER, 1, 'forecaster']]) for (const theme of ['light', 'dark']) {
     document.documentElement.dataset.theme = theme;
     const el = document.getElementById('m'); el.innerHTML = '';
@@ -84,7 +84,7 @@ try {
   for (const theme of ['light', 'dark']) { // the zoom controls' texts on their bar, over the stage: the zoom, the buttons, the reading depth
     document.documentElement.dataset.theme = theme;
     const el = document.getElementById('m'); el.innerHTML = '';
-    const h = render(el, EXAMPLE, { flow: false });
+    const h = render(el, EXAMPLE, { flow: false, view: 'overview' });
     const sr = el.querySelector('.umlimator').shadowRoot, bar = sr.querySelector('.ctl');
     const bg = over(rgba(getComputedStyle(bar).backgroundColor), rgba(getComputedStyle(sr.querySelector('.stage')).backgroundColor));
     const texts = [...bar.querySelectorAll('button, span')].filter(x => x.textContent.trim() && !x.disabled); // a disabled button is exempt
@@ -94,7 +94,7 @@ try {
   }
   // the keyboard focus ring on a line and on a typed view's element (one per id), against the stage: 3:1 (WCAG 1.4.11, audit 11)
   const CLASSES = await (await fetch('../examples/sales-classes.json')).json(), all = await import('../lib/umlimator-all.js'); // every type: the class diagram
-  for (const [name, MODEL, view, sel] of [['a line', EXAMPLE, null, '.line-key'], ['a class', CLASSES, 'domain', '.node-key']]) for (const theme of ['light', 'dark']) {
+  for (const [name, MODEL, view, sel] of [['a line', EXAMPLE, 'overview', '.line-key'], ['a class', CLASSES, 'domain', '.node-key']]) for (const theme of ['light', 'dark']) {
     document.documentElement.dataset.theme = theme;
     const el = document.getElementById('m'); el.innerHTML = '';
     const h = all.render(el, MODEL, { flow: false, controls: false, ...(view ? { view } : {}) });

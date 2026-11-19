@@ -226,11 +226,11 @@ try {
   wide.remove();
 
   /* ---------- one-shot modes: #still for a view the model lacks, and check's report ---------- */
-  const f1 = document.createElement('iframe'); f1.style.cssText = 'width:900px;height:600px;border:0'; f1.src = '../examples/bookshop.html#still=nope'; document.body.appendChild(f1);
+  const f1 = document.createElement('iframe'); f1.style.cssText = 'width:900px;height:600px;border:0'; f1.src = '../examples/bike-share.html#still=nope'; document.body.appendChild(f1);
   const still = await until(() => f1.contentDocument && f1.contentDocument.documentElement.getAttribute('data-still'), 6000);
   check('#still for a view the model lacks answers at once, with the reason (data-still), instead of waiting for ever', !!still && /no view "nope"/.test(JSON.parse(still).error), still);
   f1.remove();
-  const page = await (await fetch('../examples/bookshop.html')).text();
+  const page = await (await fetch('../examples/bike-share.html')).text();
   const late = URL.createObjectURL(new Blob([page.replace('</body>', '<script type="module">Promise.reject(new Error("a late failure"))<\/script></body>')], { type: 'text/html' }));
   const f2 = document.createElement('iframe'); f2.style.cssText = 'width:900px;height:600px;border:0'; f2.src = late + '#check=1'; document.body.appendChild(f2);
   const rep = await until(() => f2.contentDocument && f2.contentDocument.getElementById('visual-check'), 8000) && JSON.parse(f2.contentDocument.getElementById('visual-check').textContent);
@@ -289,15 +289,15 @@ try {
   const ODD = { title: 'Shop', meta: { owner: 'team-a' }, root: 'top', nodes: [{ id: 'web', label: 'Web' }, { id: 'api', label: 'API' }, { id: 'db', label: 'DB' }, 'no card'],
     edges: [{ from: 'web', to: 'api' }, { from: 'api', to: 'db' }, { id: 'own', from: 'web', to: 'db' }],
     views: [{ id: 'top', nodeIds: ['web', 'api'], containers: 'none' }, { id: 'inside-api', parent: 'api', nodeIds: ['db'], edges: [{ from: 'db', to: 'db' }] }, { id: 'x', diagram: 'nosuch.kind', nodeIds: ['db'] }] };
-  for (const [name, model] of [['bookshop', await (await fetch('../examples/bookshop.json')).json()], ['bike-share', BIKE], ['a model with id-less lines, a parent naming a card and fields that are no list', ODD]]) {
+  for (const [name, model] of [['bike-share', BIKE], ['a model with id-less lines, a parent naming a card and fields that are no list', ODD]]) {
     const got = await exported(model);
     check(`Export ▸ Map model (JSON) of ${name} is the model given: no _id on a line, each view's parent as written, no list dropped (audit 29)`,
       !!got && JSON.stringify(got) === JSON.stringify(less(model)), got && { edges: got.edges && got.edges.slice(0, 2), views: got.views && got.views.map(v => [v.id, v.parent, v.containers]) }); }
   /* ---------- audit 30: the page render wrote exports the model file as written: none of render's icons, source, avatarsEmbedded,
      kind or meta keys (meta.added names them), and the model's own meta kept; a page an older render wrote loses render's keys too ---------- */
-  { const page = await (await fetch('../examples/bookshop.html')).text(), given = JSON.parse(new DOMParser().parseFromString(page, 'text/html').getElementById('visual-data').textContent);
-    const file = await (await fetch('../examples/bookshop.json')).json(), got = await exported(given), keys = o => o && Object.keys(o).sort().join();
-    check('audit 30: Export ▸ Map model (JSON) of examples/bookshop.html is examples/bookshop.json: no icons, source, avatarsEmbedded or kind, and its meta {project} kept',
+  { const page = await (await fetch('../examples/bike-share.html')).text(), given = JSON.parse(new DOMParser().parseFromString(page, 'text/html').getElementById('visual-data').textContent);
+    const file = await (await fetch('../examples/bike-share.json')).json(), got = await exported(given), keys = o => o && Object.keys(o).sort().join();
+    check('audit 30: Export ▸ Map model (JSON) of examples/bike-share.html is examples/bike-share.json: no icons, source, avatarsEmbedded or kind, and its meta {project} kept',
       !!got && JSON.stringify(got) === JSON.stringify(file), got && { keys: keys(got), meta: got.meta, added: given.meta && given.meta.added });
     const old = structuredClone(given); delete old.meta.added; delete old.meta['umlimator:written']; old.meta.owner = 'team-a'; const was = await exported(old);
     check('audit 30: a page an older render wrote (no meta.added) exports without render\'s keys, the model\'s other meta kept',

@@ -1,5 +1,5 @@
 {
- "commit": "14e5844",
+ "commit": "1a4bb22c",
  "results": {
   "b10/norepair": {
    "hashes": [
@@ -36,19 +36,44 @@
     "8e0b7363"
    ]
   },
-  "bookshop/api": {
+  "bike-share/api": {
    "hashes": [
-    "bfeb7b5f"
+    "3bab4983"
    ]
   },
-  "bookshop/checkout": {
+  "bike-share/checkout": {
    "hashes": [
-    "e259c79c"
+    "c5d79a3e"
    ]
   },
-  "bookshop/overview": {
+  "bike-share/context": {
    "hashes": [
-    "12e6dea4"
+    "3f2a4304"
+   ]
+  },
+  "bike-share/fleet": {
+   "hashes": [
+    "6061d741"
+   ]
+  },
+  "bike-share/overview": {
+   "hashes": [
+    "6fa8e762"
+   ]
+  },
+  "bike-share/ride-end": {
+   "hashes": [
+    "8deb0c"
+   ]
+  },
+  "bike-share/system": {
+   "hashes": [
+    "9f816b1a"
+   ]
+  },
+  "bike-share/trips": {
+   "hashes": [
+    "733591bc"
    ]
   },
   "d24/boxed": {

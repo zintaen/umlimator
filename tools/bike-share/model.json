@@ -2,6 +2,7 @@
   "schemaVersion": 2,
   "title": "Bike share, an example",
   "root": "context",
+  "meta": { "project": "umlimator" },
   "rules": [
     {
       "id": "apps-no-db",
@@ -60,5 +61,5 @@
       ]
     }
   ],
-  "parts": ["context", "system", "trips", "fleet", "ride-end"]
+  "parts": ["context", "system", "trips", "fleet", "ride-end", "shop"]
 }

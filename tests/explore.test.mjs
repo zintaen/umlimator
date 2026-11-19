@@ -38,7 +38,9 @@ test('describe() puts a view in sentences, the same each time: cards, boxes, wha
   assert.match(system, /\nRides holds Accounts, Trip service, Pricing and Trips database\.\n/);
   assert.match(system, /\nMonitoring reads or writes Rides \("scrapes metrics"\)\./, 'a line to a box names the box');
   assert.match(system, /\nNot connected here: Status page and Feature flags\.$/);
-  assert.match(describe(read('../examples/bookshop.json'), 'api'), /\nStep 1: Shoppers calls Shop API \("checks out"\)\.\n/);
+  assert.match(describe(bike, 'api'), /\nStep 1: Shoppers calls Shop API \("checks out"\)\.\n/);
+  // a version-2 map view's own lines keep their labels and sublabels (they were walked as drawn, by model line, and lost them)
+  assert.match(describe(bike, 'ride-end'), /\nStep 1: Rider app calls Trip API \("POST \/rides\/\{id\}\/end", 200 ms\)\.\n/);
 });
 
 test('otlpSpans() reads an OTLP JSON trace into spans, in milliseconds', () => {

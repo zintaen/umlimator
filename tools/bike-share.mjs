@@ -13,8 +13,9 @@
 // else one entry a line; a list of plain values that does not fit is filled line by line.
 //
 // The build also stops on what would break a pin without any error: an id used twice (cards, lines, a view's own lines
-// and boxes), a view whose id is a card's (a model card or a view's own; only the kept views trips and fleet may, as
-// trace refuses such an id and a card opens the view of its id), a new view id starting with "f" (the
+// and boxes), a view whose id is a card's (a model card or a view's own; only the kept views trips and fleet,
+// and the rider shop's api, which its card Shop API opens as bookshop.json's did, may: trace refuses such an id and a card
+// opens the view of its id), a new view id starting with "f" (the
 // `--views system,f*` and `fl*` globs of tests/cli.py and tests/outcomes.py mean the fleet view only), and a new view
 // that lists accounts, flags or payments (diff's views == ["system"] pins keep those cards to the kept views).
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -32,7 +33,7 @@ const EDGE = ['id', 'type', 'from', 'to', 'parent', 'label', 'kind', 'sublabel',
   'fromSide', 'toSide', 'loop', 'latency', 'cost', 'props', 'what', 'when'];
 // each kind's keys in the order they are written; null: a map whose keys are ids or data, written in the part's order
 export const KEYS = {
-  file: ['$schema', 'schemaVersion', 'title', 'root', 'sourcesBase', 'authors', 'icons', 'iconPacks', 'nodes', 'edges', 'views',
+  file: ['$schema', 'schemaVersion', 'title', 'root', 'meta', 'sourcesBase', 'authors', 'icons', 'iconPacks', 'nodes', 'edges', 'views',
     'rules', 'lenses', 'stories'],
   node: NODE, edge: EDGE,
   view: ['id', 'diagram', 'parent', 'title', 'caption', 'note', 'subject', 'direction', 'notation', 'render', 'lanes', 'present',
@@ -99,7 +100,7 @@ function print(x, pad, head = '', tail = '') {
 export const format = (x, kind = 'file', where = 'the model') => print(order(x, kind, where), '') + '\n';
 
 // the kept views; of them, the ones whose id is a card's; the cards the diff pins change, which only kept views may list
-const KEPT = ['context', 'system', 'trips', 'fleet', 'ride-end'], SAME_AS_CARD = ['trips', 'fleet'], SAID = ['accounts', 'flags', 'payments'];
+const KEPT = ['context', 'system', 'trips', 'fleet', 'ride-end'], SAME_AS_CARD = ['trips', 'fleet', 'api'], SAID = ['accounts', 'flags', 'payments'];
 const readPart = name => JSON.parse(readFileSync(new URL(`${name}.json`, PARTS), 'utf8'));
 
 // the model from the part files; `load` reads one by name ('model' is the head)
@@ -128,7 +129,7 @@ export function build(load = readPart) {
   for (const [name, p] of files) for (const v of p.views || []) {
     if (views.has(v.id)) stop(`view ${v.id} is in two parts (or twice in ${name})`);
     views.add(v.id);
-    if (cards.has(v.id) && !SAME_AS_CARD.includes(v.id)) stop(`view ${v.id} in ${name} has a card's id; only ${SAME_AS_CARD.join(' and ')} may`);
+    if (cards.has(v.id) && !SAME_AS_CARD.includes(v.id)) stop(`view ${v.id} in ${name} has a card's id; only ${SAME_AS_CARD.slice(0, -1).join(', ')} and ${SAME_AS_CARD.at(-1)} may`);
     if (/^f/.test(v.id) && v.id !== 'fleet') stop(`view ${v.id} in ${name} starts with "f", which the fleet view's globs would also match`);
     if (!KEPT.includes(v.id)) {
       const hit = (v.nodeIds || []).filter(id => SAID.includes(id));

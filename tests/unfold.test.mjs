@@ -11,7 +11,7 @@ const ids = g => g.edges.flatMap(e => e.ids);
 
 test('every card that unfolds in the examples unfolds with a clean layout check', () => {
   let n = 0;
-  for (const f of ['bike-share', 'weather', 'assistant', 'bookshop']) {
+  for (const f of ['bike-share', 'weather', 'assistant']) {
     const m = read(`../examples/${f}.json`);
     for (const v of m.views) for (const card of layout(m, v.id).nodes.filter(x => x.opens || x.kids)) {
       if (!layout(m, v.id, { expand: [card.id] }).unfolded.length) continue;
@@ -67,7 +67,7 @@ test('a card inside an unfolded box unfolds too, whatever order they are named i
 test('what does not unfold: a card on a numbered view, a view not loaded, a card with no cards of its own inside', () => {
   assert.deepEqual(layout(SHOP, 'shop', { expand: ['reports', 'buyers', 'nope'] }).unfolded, []);
   assert.deepEqual(layout(PRINT, 'job', { expand: ['pay'] }).unfolded, [], 'on a numbered view: its own steps would be numbered again');
-  const book = read('../examples/bookshop.json');
+  const book = read('../examples/bike-share.json');
   assert.deepEqual(layout(book, 'overview', { expand: ['api'] }).unfolded, [], 'every card of its numbered view is on the overview already');
   assert.equal(layout(SHOP, 'shop').unfolded, undefined, 'no expand, no unfolded');
 });

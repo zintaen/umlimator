@@ -1,7 +1,7 @@
 // The bike share model, examples/bike-share.json: the one test and bench model, built by tools/bike-share.mjs from its
 // part files in tools/bike-share/. The committed model is what the build writes, byte for byte, and so is each part
 // file, so neither can drift from the other. The build stops on an id used twice, an unknown key, a view whose id is a
-// card's (but trips and fleet), a new view id starting with "f", and a new view that lists accounts, flags or payments.
+// card's (but trips, fleet and the shop's api), a new view id starting with "f", and a new view that lists accounts, flags or payments.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -46,9 +46,9 @@ test('the build stops on what would break a pin without an error', () => {
   const stops = (change, msg, part) => assert.throws(() => build(load(change, part)), msg);
   stops(x => x.nodes.push({ id: 'trips', label: 'Again' }), /trips is a card in system and a card in fleet/);
   stops(x => x.edges.push({ id: 's1', from: 'fleet', to: 'trips' }), /s1 is a line in system and a line in fleet/);
-  stops(x => x.views.push({ id: 'ops', title: 'Ops', nodeIds: ['ops'] }), /view ops in fleet has a card's id; only trips and fleet may/);
+  stops(x => x.views.push({ id: 'ops', title: 'Ops', nodeIds: ['ops'] }), /view ops in fleet has a card's id; only trips, fleet and api may/);
   stops(x => { x.nodes.find(n => n.id === 'ops').opensView = 'ops'; x.views.push({ id: 'ops', title: 'Ops', nodeIds: ['ops'] }); },
-    /view ops in context has a card's id; only trips and fleet may/, 'context'); // a card that opens it is no way out: trace still refuses the id
+    /view ops in context has a card's id; only trips, fleet and api may/, 'context'); // a card that opens it is no way out: trace still refuses the id
   stops(x => x.views.push({ id: 'gateway', title: 'G', nodeIds: [] }, { id: 'feed', title: 'Feed', nodes: [{ id: 'gateway', label: 'Gateway' }] }),
     /view gateway in fleet has a card's id/); // a view's own card counts
   stops(x => x.views.push({ id: 'dock', title: 'D', nodes: [{ id: 'gw', label: 'Gateway', colour: 'red' }] }), /part fleet\.views\[dock\]\.nodes\[gw\] has colour/);

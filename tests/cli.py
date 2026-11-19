@@ -1237,7 +1237,7 @@ with tempfile.TemporaryDirectory() as tmp:
         at["rules"] = next((i for i, p in enumerate(pages, 1) if p.startswith("Rules")), None)
         cover = pages[0] if pages else ""
         ok("pdf · the cover: the title, the date, the model's file, a summary line, and the contents, each view with the page its header starts",
-           re.match(r"Bikeshare,anexample\d{4}-\d\d-\d\d·examples/bike-share\.json5views·32cards·48lines·2rulesContents", cover) and None not in at.values()
+           re.match(r"Bikeshare,anexample\d{4}-\d\d-\d\d·examples/bike-share\.json8views·45cards·67lines·2rulesContents", cover) and None not in at.values()
            and all(flat(f"{v['title']}{v['caption']}{at[v['id']]}") in cover for v in bike["views"]) and f"Rules{at['rules']}Bikeshare" in cover, [cover[:500], at])
         seen = lambda a, b=None: "".join(pages[a - 1:b and b - 1]) if a else ""  # the pages from page a to the one before b
         ok("pdf · a view's page: its legend, then tables of its cards (name, sub-line, kind, what it is), lines (from → to, label, technology) and boxes",
@@ -2173,7 +2173,7 @@ if part("audit 36"):
         g = t / "repo"; (g / "docs").mkdir(parents=True)
         sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
         sh("init", "-q")
-        (g / "docs" / "map.json").write_text((ROOT / "examples" / "bookshop.json").read_text(encoding="utf-8"))
+        (g / "docs" / "map.json").write_text((ROOT / "examples" / "bike-share.json").read_text(encoding="utf-8"))
         (g / "docs" / "model.md").write_text('# Model\n\nA model has `"nodes"` and `"views"`: <img src=//e.example/t.png>\n')
         (g / "docs" / "notes.txt").write_text('{"nodes": [], "views": [')
         (g / "docs" / "cut.JSON").write_text('{"nodes": [], "views": []}')

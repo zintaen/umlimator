@@ -6,7 +6,7 @@
 <title>umlimator element test</title>
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
 <body style="margin:0">
-<umlimator-map id="a" src="../examples/bookshop.json" view="api" style="width:900px"><img id="still" src="../examples/stills/api.png" alt="An order, step by step"></umlimator-map>
+<umlimator-map id="a" src="../examples/bike-share.json" view="api" style="width:900px"><img id="still" src="../examples/stills/bike-share/api.png" alt="An order, step by step"></umlimator-map>
 <umlimator-map id="b" style="width:600px">
   <script type="application/json">{ "nodes": [{ "id": "web", "label": "Web app", "kind": "frontend" }, { "id": "api", "label": "API", "kind": "backend" }],
     "edges": [{ "from": "web", "to": "api", "label": "calls" }], "views": [{ "id": "v", "nodeIds": ["web", "api"] }] }</script>
@@ -50,14 +50,14 @@ try {
   const first = a.map;
   a.setAttribute('view', 'overview');
   check('changing view draws it again, on that view', await redrawn(1) && a.map !== first && a.map.view === 'overview' && cards(a) === 13, a.map && a.map.view);
-  check('…and the model is not fetched again for the same src', performance.getEntriesByType('resource').filter(r => r.name.endsWith('/bookshop.json')).length === 1);
+  check('…and the model is not fetched again for the same src', performance.getEntriesByType('resource').filter(r => r.name.endsWith('/bike-share.json')).length === 1);
   a.setAttribute('minimap', ''); a.setAttribute('controls', 'false');
   check('minimap and controls="false" draw it again, once, with a minimap and no controls', await redrawn(2) && await wait(100).then(() => loads.length === 3)
     && !!sr(a).querySelector('.minimap') && !sr(a).querySelector('.ctl'));
   a.removeAttribute('minimap'); a.removeAttribute('controls');
   check('…and without them, as before', await redrawn(3) && !sr(a).querySelector('.minimap') && !!sr(a).querySelector('.ctl'));
   // wheel="ctrl": a map in a document leaves a plain wheel to the page (another element, so a's draws keep their count)
-  const wh = document.createElement('umlimator-map'); wh.setAttribute('wheel', 'ctrl'); wh.setAttribute('src', '../examples/bookshop.json'); document.body.append(wh);
+  const wh = document.createElement('umlimator-map'); wh.setAttribute('wheel', 'ctrl'); wh.setAttribute('src', '../examples/bike-share.json'); document.body.append(wh);
   const wheel = (el, extra) => { const w = new WheelEvent('wheel', { deltaY: -100, clientX: 300, clientY: 200, bubbles: true, composed: true, cancelable: true, ...extra }); sr(el).querySelector('.stage').dispatchEvent(w); return w.defaultPrevented; };
   check('wheel="ctrl" leaves a plain wheel to the page, and zooms with Ctrl (wheel zooms without it)', await until(() => wh.map) && !wheel(wh) && wheel(wh, { ctrlKey: true }) && wheel(a));
   wh.remove();
