@@ -421,8 +421,10 @@ def scrub(text, say):
 
 def legal(d, say):
     """Parsed JSON (compose, Kubernetes) with each character XML cannot hold, which an escape such as \\u0001 gives, as
-    U+FFFD in every key and value, each character said once (audit 49). One pass, with no recursion."""
-    told, top = set(), [d]
+    U+FFFD in every key and value, each character said once (audit 49). Keys first, then values: a value that is a key's
+    source text (depends_on: [web\\u0002]) reads as the name that key was given, so a reference follows a key kept apart
+    (audit 52). One pass over the keys and one over the values, with no recursion."""
+    told, top, named, given = set(), [d], {}, set()  # named: a key's source text -> the text it is read as, given those
 
     def fix(v):
         if not isinstance(v, str) or not RAW.search(v):
@@ -431,12 +433,15 @@ def legal(d, say):
             if c not in told:
                 told.add(c)
                 say(None, raw_char(c))
-        return RAW.sub("\ufffd", v)
+        return named.get(v) or RAW.sub("\ufffd", v)
 
     def keys(v):
         """v's keys fixed, in their order: two that differ only in such characters (web\\u0001 and web\\u0002) or a fixed one
         that is another's text kept apart, the later taking the first free of key-2, key-3 ... each said (audit 50), as the
-        module's readers keep two names that scrub to one text apart. Linear in the keys but for the free-key search."""
+        module's readers keep two names that scrub to one text apart. A source text keeps the name it was first given in
+        every map it keys (a service and its depends_on map, a selector and the pod labels it picks), and no other source
+        text is given that name, so the same key reads as one name throughout (audit 52). Linear in the keys
+        but for the free-key search."""
         if not any(isinstance(a, str) and RAW.search(a) for a in v):
             return v
         used, out = set(a for a in v if not (isinstance(a, str) and RAW.search(a))), {}
@@ -445,16 +450,19 @@ def legal(d, say):
                 out[a] = b
                 continue
             f = fix(a)
-            if f in used:
-                n = 2
-                while f"{f}-{n}" in used:
+            if f in used or (a not in named and f in given):
+                g, n = RAW.sub("\ufffd", a), 2
+                while f"{g}-{n}" in used or (a not in named and f"{g}-{n}" in given):
                     n += 1
-                say(None, f"key {f}: another key reads as the same text, so this one is read as {f}-{n}")
-                f = f"{f}-{n}"
+                say(None, f"key {g}: another key reads as the same text, so this one is read as {g}-{n}")
+                f = f"{g}-{n}"
+            if a not in named:
+                named[a] = f
+                given.add(f)
             used.add(f)
             out[f] = b
         return out
-    todo = [(top, 0)]
+    todo, leaves = [(top, 0)], []
     while todo:
         box, k = todo.pop()
         v = box[k]
@@ -464,7 +472,9 @@ def legal(d, say):
         elif isinstance(v, list):
             todo += [(v, i) for i in range(len(v))]
         else:
-            box[k] = fix(v)
+            leaves.append((box, k))
+    for box, k in leaves:
+        box[k] = fix(box[k])
     return top[0]
 
 

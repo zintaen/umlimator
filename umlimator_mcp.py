@@ -52,7 +52,8 @@ TOOLS = [
          {"refs": {"type": "array", "items": {"anyOf": [{"type": "string"}, {"type": "object"}]},
                    "description": "card or line ids, or the Refs paths and reach give"}, "view": VIEW}, "refs"),
     tool("tour", "A dot rides the lines through these cards in turn, on the map's page: each card must share a line with the next "
-         "on the view. view: the view to show first; with none, the first view that shows the cards and draws those lines." + PAGE,
+         "on the view, and each must be drawn as a card there, not as a box that holds cards. view: the view to show first; with none, "
+         "the view shown now if it shows the cards and draws those lines, else the first view that does." + PAGE,
          {"cards": {"type": "array", "items": {"type": "string"}, "description": "card ids, in order"}, "view": VIEW}, "cards"),
     tool("play_story", "Plays one of the model's stories on the map's page, step by step, with its captions." + PAGE,
          {"id": {"type": "string", "description": "a story's id (list_views gives them)"}}, "id"),
@@ -288,33 +289,45 @@ def call(name, a):
     return command(fold)
 
 
-# for each view asked, the first two cards in turn that no line the view draws joins, either way, or null: reach() at
-# depth 1 from each card, once per view, all in one Node run (audit 51)
-RIDES = ("const [m, vs, cards] = a, out = {}; for (const v of vs) { const near = new Map(), of = c => { if (!near.has(c)) "
-         "near.set(c, new Set(u.reach(m, v, c, { depth: 1 }).filter(r => r.type === 'node').map(r => r.id))); return near.get(c); }; "
-         "out[v] = null; for (let k = 0; k + 1 < cards.length; k++) { const x = cards[k], y = cards[k + 1]; "
-         "if (!of(x).has(y) && !of(y).has(x)) { out[v] = [x, y]; break; } } } return out;")
+# for each view asked, in turn until one rides: why the page's tour() would not ride it there, or null. The page lays the
+# view out and rides geo.edges between cards geo.byId has, so the view is laid out here as the page does: a card the view
+# draws as a box (a package that holds cards, a deployment node with its instances) is no stop, and two cards in turn
+# ride only a line drawn between them, either way, a card and itself only its own self-line (audit 52)
+RIDES = ("const [m, vs, cards] = a, out = {}; for (const v of vs) { const geo = u.layout(m, v), by = geo.byId || {}, near = new Set(); "
+         "const key = (x, y) => JSON.stringify([x, y]); for (const e of geo.edges || []) { near.add(key(e.from, e.to)); near.add(key(e.to, e.from)); } "
+         "const box = cards.find(c => !by[c]); out[v] = box != null ? { box } : null; "
+         "for (let k = 0; !out[v] && k + 1 < cards.length; k++) { const x = cards[k], y = cards[k + 1]; "
+         "if (!near.has(key(x, y))) out[v] = { gap: [x, y] }; } if (!out[v]) break; } return out;")
+
+
+def unridden(v, g, alone):
+    """Why the page would not ride a tour on view v, from RIDES; alone: the only view tried, said as before (audit 47)."""
+    if "box" in g:
+        return f"view {v!r} draws {g['box']!r} as a box that holds cards, and a tour stops only at cards" if alone else f"view {v!r} draws {g['box']!r} as a box"
+    x, y = g["gap"]
+    if x == y:
+        return f"{x!r} follows itself, and no line on view {v!r} joins it to itself" if alone else f"on view {v!r} no line joins {x!r} to itself"
+    return f"no line joins {x!r} and {y!r} on view {v!r}, so a tour cannot ride from one to the other" if alone else f"on view {v!r} no line joins {x!r} and {y!r}"
 
 
 def rides(m, cards, at):
-    """A tour's dot rides a line the view draws between each card and the next, either way, as the page's tour() does
-    (reach() walks the view's lines as drawn, a port's between the cards it is on). at: the views that may show the tour,
-    in the order to try them; the first that rides it is returned. Fewer than two cards, or two in turn that no line
-    joins on any of them, is a tour the page would not ride, or would skip, so the tool says why and draws nothing."""
+    """A tour's dot rides a line the view draws between each card and the next, either way, as the page's tour() does:
+    it lays the view out and rides the lines it draws between the cards it draws (a port's between the cards it is on); a
+    card drawn as a box is no stop. at: the views that may show the tour, in the order to try them; the first that rides
+    it is returned. Fewer than two cards, a box, or two in turn that no line joins on any of them, is a tour the page
+    would not ride, or would skip, so the tool says why and draws nothing."""
     if len(cards) < 2:
         raise Fail(f"a tour rides the lines between cards in turn, so it needs two cards or more (it was given {len(cards)})")
     at = [at] if isinstance(at, str) else list(at or [])
     if not at:
         raise Fail("no view shows all these cards; describe_view lists a view's cards")
     gaps = script(RIDES, m, at, cards)
-    if ok := next((v for v in at if not gaps.get(v)), None):
+    if ok := next((v for v in at if v in gaps and not gaps[v]), None):
         return ok
     if len(at) == 1:
-        raise Fail(f"no line joins {gaps[at[0]][0]!r} and {gaps[at[0]][1]!r} on view {at[0]!r}, so a tour cannot ride from one to the other; "
-                   "paths() gives a route of lines between two cards")
+        raise Fail(unridden(at[0], gaps[at[0]], True) + "; paths() gives a route of lines between two cards")
     raise Fail("no view that shows these cards draws a line between each and the next, so a tour cannot ride them: "
-               + "; ".join(f"on view {v!r} no line joins {gaps[v][0]!r} and {gaps[v][1]!r}" for v in at)
-               + "; paths() gives a route of lines between two cards")
+               + "; ".join(unridden(v, gaps[v], False) for v in at) + "; paths() gives a route of lines between two cards")
 
 
 def script(body, *args):

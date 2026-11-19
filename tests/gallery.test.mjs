@@ -270,15 +270,18 @@ test('docs/types.md describes a type\'s page as tools/gallery.mjs writes it: one
 
 // audit 51: the Umlimator Atlas's C4 context view hung under the overview with no card opening it, so the C4 views of
 // "views that open into each other" were reached from the views list only: in each atlas, every view is reached from the
-// root by opening cards, as the page's mapContext reads a card (opensView, view, its id, a view's node, nodeOverrides)
+// root by opening cards, as the page's mapContext reads a card (opensView, view, its id, a view's node, nodeOverrides).
+// Audit 52: only a card the view draws as one opens, so a node the view lays out as a box (the Bookshop's Shop API holding
+// Checkout, its Docker host holding the API's instance) opens nothing: the cards are the view's layout, as the page's
 test('in each atlas every view is reached from the root by opening cards', async () => {
   await import('../src/map/typed.js');
   const { mapContext } = await import('../src/map/context.js');
+  const { layout } = await import('../lib/umlimator-all.js');
   const bad = [];
   for (const f of ['umlimator-atlas', 'bookshop-atlas']) {
-    const ctx = mapContext(json(`examples/${f}.json`)), seen = new Set([ctx.rootId]), todo = [ctx.rootId];
-    while (todo.length) { const vid = todo.pop();
-      for (const id of ctx.V[vid].nodeIds || []) { const o = ctx.opensOf(id, vid); if (o && ctx.V[o] && !seen.has(o)) { seen.add(o); todo.push(o); } } }
+    const model = json(`examples/${f}.json`), ctx = mapContext(model), seen = new Set([ctx.rootId]), todo = [ctx.rootId];
+    while (todo.length) { const vid = todo.pop(), drawn = layout(model, vid).byId;
+      for (const id of (ctx.V[vid].nodeIds || []).filter(id => drawn[id])) { const o = ctx.opensOf(id, vid); if (o && ctx.V[o] && !seen.has(o)) { seen.add(o); todo.push(o); } } }
     bad.push(...ctx.views.filter(v => !seen.has(v.id)).map(v => `${f}: ${v.id} under ${v.parent}`));
   }
   assert.deepEqual(bad, []);

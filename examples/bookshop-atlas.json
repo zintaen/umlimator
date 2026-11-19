@@ -203,8 +203,7 @@
    "parent": "c4-web-host",
    "props": {
     "technology": "Docker Engine 27"
-   },
-   "opensView": "production"
+   }
   },
   {
    "id": "c4-api-1",
@@ -213,7 +212,8 @@
    "parent": "c4-docker",
    "props": {
     "container": "c4-api"
-   }
+   },
+   "opensView": "production"
   },
   {
    "id": "c4-worker-1",
@@ -3040,7 +3040,7 @@
    "label": "Hosting",
    "kind": "cloud",
    "sublabel": "servers, then a cloud",
-   "what": "Where the shop runs. Opens the production deployment (C4), whose Docker host opens the same deployment in UML.",
+   "what": "Where the shop runs. Opens the production deployment (C4), whose Shop API instance opens the same deployment in UML.",
    "opensView": "c4-deployment",
    "icon": "server"
   },
@@ -5733,7 +5733,7 @@
     }
    },
    "nodeOverrides": {
-    "shop-api": {
+    "shop-api-jar": {
      "opensView": "domain"
     }
    },
@@ -5779,6 +5779,14 @@
     "money",
     "note-total"
    ],
+   "nodeOverrides": {
+    "payment": {
+     "opensView": "payments-only"
+    },
+    "money": {
+     "opensView": "packages"
+    }
+   },
    "layout": {
     "order": [
      1,
