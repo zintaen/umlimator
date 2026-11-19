@@ -361,8 +361,9 @@ export interface MapEdge {
   /** The line's kind (default calls). A line that stands for several edges (A→B and B→A, parallel edges) takes the first
    *  kind they name, in model order. Nothing is guessed from the label unless the view has `kindsFromLabels`. */
   kind?: WireKind;
-  /** How much the line stands for, drawn as its width: 1 (the default), 2 or 3 (about 1.8, 3.2 and 4.5 px), the arrowhead and
-   *  hit line growing with it. The host picks the bucket (say under 10, under 100, 100 or more relations); anything else is 1.
+  /** How much the line stands for: 1 (the default), 2 or 3. Every line is drawn at one width at rest; a line of weight 2 or 3
+   *  shows its width and a larger arrowhead on hover, when its card is selected and when it has keyboard focus, and its title
+   *  and accessible name say its `what`, else "weight 2 of 3". The host picks the bucket (say under 10, under 100, 100 or more relations); anything else is 1.
    *  A line that stands for several edges takes the largest. */
   weight?: 1 | 2 | 3;
   /** Its place in the order things happen, drawn in a circle on the line before its label, as a numbered view draws its

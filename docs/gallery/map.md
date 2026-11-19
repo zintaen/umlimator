@@ -28,7 +28,7 @@ pageClass: gallery-page
 <li>Change marks: a NEW card (Shop app), a PLANNED card dashed (Gift cards), a REMOVED card dashed and struck through (Reminder bot)</li>
 <li>A main-step card with verb chips and an edit mark (Shop API: checkout, refund)</li>
 <li>Line kinds in their colours: calls, feeds (charges, saves), triggers (checks), state (paid order, reads) and guard (if within 14 days)</li>
-<li>Line weights 1 to 3 drawn as widths (POST /orders 3, order 2)</li>
+<li>Line weights 1 to 3, shown as widths on hover, selection and keyboard focus (POST /orders 3, order 2)</li>
 <li>Steps in circles on the lines, numbers and a pill (1 to 6, and 3a)</li>
 <li>A line with a sub-label (POST /orders over JSON)</li>
 <li>Line styles over the kind: dashed (runs jobs), security (charges), async (paid order)</li>
