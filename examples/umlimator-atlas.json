@@ -51,7 +51,8 @@
    "kind": "cli",
    "sublabel": "render, check, pdf, diff",
    "what": "The command line: one Python file, standard library only.",
-   "how": "Renders a page, checks its layout and draws stills and PDFs in headless Chrome; diff, drift, trace and timelapse run the module's functions in Node."
+   "how": "Renders a page, checks its layout and draws stills and PDFs in headless Chrome; diff, drift, trace and timelapse run the module's functions in Node.",
+   "opensView": "context"
   },
   {
    "id": "module",

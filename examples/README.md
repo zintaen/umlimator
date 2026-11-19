@@ -121,7 +121,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 
 | Feature | Where |
 |---|---|
-| Views a card opens (`opensView`) | umlimator-atlas: from the overview to the module's layers, the typed families, the diff Action and the state machines, from the machines to each machine's states, and from the C4 context to the containers |
+| Views a card opens (`opensView`) | umlimator-atlas: from the overview to the C4 context (umlimator.py), the module's layers, the typed families, the diff Action and the state machines, from the machines to each machine's states, and from the C4 context to the containers |
 | A view the host loads when it's opened (`opensView` with `opensCount`) | umlimator-atlas: umlimator/all and Diff Action, in `embed.html` |
 | A stacked card unfolded in place (E, Alt + click, `map.expand()`) | umlimator-atlas: The module and umlimator/all in `overview`; numbered, with its run order: Navigation in `machines` |
 | Boxes (`containers`) and their tabs (`badges`) | umlimator-atlas `machines` and `story`; [`types/map.json`](types/map.json) `shop` (Platform and Data) |
