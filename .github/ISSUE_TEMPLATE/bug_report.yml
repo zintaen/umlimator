@@ -1,0 +1,63 @@
+name: Bug report
+description: Something draws, lays out, imports or exports wrongly, or a command fails
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. A small model that shows the problem gets it fixed fastest. For a security problem, do not open an issue: follow SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: umlimator version
+      description: The npm version, the tag or the commit (`npm ls umlimator`, or the `v` in the docs' navigation bar).
+      placeholder: "0.x.y"
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where it happens
+      multiple: true
+      options:
+        - ES module (render(), layout(), apply())
+        - <umlimator-map> element or a docs plugin (markdown-it, remark)
+        - CLI (umlimator.py)
+        - GitHub Action (diff, drift)
+        - MCP server
+        - Import or export
+        - Documentation site or examples
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Browser and version, Node or Python version, and operating system, as they apply.
+      placeholder: "Chrome 142, Node 24, macOS 15"
+  - type: textarea
+    id: model
+    attributes:
+      label: Model JSON
+      description: The smallest model that shows the problem, or the part of it that matters. Leave out anything private.
+      render: json
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The code you ran or the command line, and what you did on the page.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+      description: What happened instead. A screenshot, the console output or the CLI's error helps.
+    validations:
+      required: true

@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/zintaen/umlimator/discussions
+    about: Ask how to do something, or share an idea, in GitHub Discussions.
+  - name: Documentation
+    url: https://zintaen.github.io/umlimator/
+    about: The guide, the API reference, the diagram types and the examples.
+  - name: Report a security problem
+    url: https://github.com/zintaen/umlimator/security/advisories/new
+    about: Report a vulnerability privately, never in a public issue.
