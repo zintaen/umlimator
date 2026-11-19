@@ -75,8 +75,12 @@ def map_view(m, v):
 
 
 def bench_views(m):
-    """The view ids timed, in order: the map views, then the benchViews ("view+card") whose view is one of them."""
-    maps = [v["id"] for v in m["views"] if map_view(m, v)]
+    """The view ids timed, in order: the map views, then the benchViews ("view+card") whose view is one of them. A
+    benchViews entry naming no view at all is an error, never skipped: only one on a typed view is left out."""
+    maps, ids = [v["id"] for v in m["views"] if map_view(m, v)], {v["id"] for v in m["views"]}
+    for x in m.get("benchViews", []):
+        if x.split("+")[0] not in ids:
+            raise SystemExit(f"{x}: benchViews names no view")
     return maps + [x for x in m.get("benchViews", []) if x.split("+")[0] in maps]
 
 
@@ -140,6 +144,11 @@ def main():
                         failed.append(f"{key}: a second page load laid it out differently")
                 if path.stem in limits and s["total"] > limits[path.stem]:
                     failed.append(f"{key}: {s['total']} ms > {limits[path.stem]} ms")
+    # a key --expect lists for a model this run timed, which the run did not time (a typed view, or a benchViews entry
+    # on one), would otherwise go unchecked without a word
+    timed = {q.stem for q in paths}
+    failed += [f"{k}: listed in {a.expect} but not timed (a typed view, or a benchViews entry on one)"
+               for k in expect if k.split("/")[0] in timed and k not in results]
     if a.save:
         sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, cwd=ROOT).stdout.strip()
         dirty = subprocess.run(["git", "status", "--porcelain", "engine", "patches"], capture_output=True, text=True, cwd=ROOT).stdout.strip()

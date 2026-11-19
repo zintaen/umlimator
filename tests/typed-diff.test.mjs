@@ -70,11 +70,15 @@ test('an element\'s members reordered read "moves" on every type with members; e
   assert.deepEqual(all.diff(noIds, rev).summary, core.diff(noIds, rev).summary);
 });
 
+// bike-share is schema version 2; a copy without schemaVersion keeps the version-1 path compared on a real map
+const bikes = () => [load('examples/bike-share.json'), edit(load('examples/bike-share.json'), m => { delete m.schemaVersion; })];
+
 test('maps diff as before, and lib/umlimator.js (no typed words) says what it said', () => {
-  const bike = load('examples/bike-share.json');
-  assert.deepEqual(all.diff(bike, edit(bike, m => m.edges.reverse())).summary, []);
-  const b = edit(bike, m => { m.nodes[0].label = 'X'; });
-  assert.deepEqual(all.diff(bike, b), core.diff(bike, b));
+  for (const bike of bikes()) {
+    assert.deepEqual(all.diff(bike, edit(bike, m => m.edges.reverse())).summary, []);
+    const b = edit(bike, m => { m.nodes[0].label = 'X'; });
+    assert.deepEqual(all.diff(bike, b), core.diff(bike, b));
+  }
   assert.deepEqual(core.diff(seq, edit(seq, m => swap(m.views[0].edges, 2, 3))).summary, []);
 });
 
@@ -84,8 +88,10 @@ test('paths() on a sequence view runs in time order; on other views as before', 
     ['lifeline-shopper', 'lifeline-storefront', 'lifeline-api', 'lifeline-payments', 'receipt', 'm1', 'm2', 'm4', 'm5', 'm6']);
   assert.deepEqual(all.paths(seq, 'checkout-sequence', 'receipt', 'lifeline-shopper'), []); // receipt sends nothing
   assert.deepEqual(all.paths(seq, 'checkout-sequence', 'lifeline-api', 'lifeline-api'), [{ type: 'node', id: 'lifeline-api', view: 'checkout-sequence' }]); // as on a map
-  const bike = load('examples/bike-share.json'), v = bike.views[0], [a, b] = v.nodeIds;
-  assert.deepEqual(all.paths(bike, v.id, a, b), core.paths(bike, v.id, a, b));
+  for (const bike of bikes()) {
+    const v = bike.views[0], [a, b] = v.nodeIds;
+    assert.deepEqual(all.paths(bike, v.id, a, b), core.paths(bike, v.id, a, b));
+  }
 });
 
 test('a sequence view: a removed message comes back in its place, inside its operand, and an interaction use is named by its label (audit 2)', () => {

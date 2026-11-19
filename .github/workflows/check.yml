@@ -464,11 +464,11 @@ jobs:
         # examples/bookshop.json), so a new model is benchmarked without a list to edit
         run: |
           models=$(python3 -I - ${{ matrix.shard }} 2 <<'PY'
-          import json, pathlib, sys
+          import importlib.util, json, pathlib, sys
           k, n = map(int, sys.argv[1:])
+          s = importlib.util.spec_from_file_location("bench", "bench/bench.py"); b = importlib.util.module_from_spec(s); s.loader.exec_module(b)
           paths = sorted(pathlib.Path("bench/models").glob("*.json")) + [pathlib.Path("examples/bookshop.json")]
-          maps = lambda m: [v["id"] for v in m["views"] if m.get("schemaVersion") != 2 or v.get("diagram") in (None, "map")]  # bench.py times map views only
-          views = {p.stem: len(maps(m)) + sum(x.split("+")[0] in maps(m) for x in m.get("benchViews", [])) for p in paths for m in [json.loads(p.read_text())]}
+          views = {p.stem: len(b.bench_views(json.loads(p.read_text()))) for p in paths}  # bench.py's own list of the views it times
           load, shard = [0] * n, {}
           for x in sorted(views, key=lambda x: (-views[x], x)):
               i = load.index(min(load)); load[i] += views[x]; shard[x] = i + 1

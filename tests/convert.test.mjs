@@ -98,6 +98,7 @@ test('a trace goes through its numbered view; overlapping calls are said in the 
   const S = [{ id: '1', service: 'web', start: 0, end: 100 }, { id: '2', parent: '1', service: 'api', start: 5, end: 50 },
     { id: '3', parent: '2', service: 'db', start: 10, end: 20 }, { id: '4', parent: '1', service: 'db', start: 30, end: 60 }];
   const t = view(sequenceFromSpans(m, S).model, 'trace');
+  assert.equal(sequenceFromSpans(m, S).model.schemaVersion, 2); // m has no schemaVersion: the helper upgrades it
   assert.ok(t.caption.endsWith('2 calls overlapped in the trace and are drawn one after another.'), t.caption); // 2 and 4
   assert.ok(!view(sequenceFromSpans(m, S.slice(0, 3)).model, 'trace').caption.includes('overlapped'), 'a call inside another: no overlap');
 });
