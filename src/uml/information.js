@@ -104,9 +104,10 @@ function ifGeo({ model, view, pos, memo }) {
       : n.type === 'uml.InformationItem' ? { shape: 'information-item', stereotypes: st, compartments: [] } : { shape: 'if-classifier', stereotypes: [...[IF_HAS(n.type) ? ifKey(n.type) : 'element'].filter(Boolean), ...st], compartments: [] };
     const d = { id, label: ifName(n), type: n.type || 'uml.Class', kind: 'file', ...look, aria: ifNodeName(I, n), col: P(id)[0], row: P(id)[1] };
     return { ...d, ...SHAPE[d.shape].size(d) }; });
+  // a flow reads what it conveys: its label names them, so a renamed item changes it on the diff page (audit 46)
   const edges = lines.map(e => { const flow = e.type === 'uml.InformationFlow', label = flow ? '«flow» ' + ifSays(I, e) : e.label;
     return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: IF_HAS(label) ? label : undefined, end: flow ? { from: 'none', to: 'open', dashed: true } : { from: 'none', to: 'none', dashed: e.type === 'uml.CommentLink' },
-      aria: ifLineName(I, e), cut: 280, ...(P(e.from)[0] - P(e.to)[0] > 1 ? { fromSide: 'bottom', toSide: 'bottom' } : {}), ...(IF_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }; });
+      aria: ifLineName(I, e), cut: 280, ...(flow ? { reads: I.conveyed(e).filter(x => typeof x === 'string') } : {}), ...(P(e.from)[0] - P(e.to)[0] > 1 ? { fromSide: 'bottom', toSide: 'bottom' } : {}), ...(IF_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }; });
   const g = layoutTyped({ nodes, edges, direction: view.direction === 'down' ? 'down' : 'right', gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo);
   return { ...g, legend: ifLegend(g.edges), order: [...ids, ...lines.map(e => e.id)] }; // a new object: what layoutTyped returned is never edited (§2.6)
 }

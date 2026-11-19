@@ -200,11 +200,12 @@ function depGeo({ model, view, pos, memo }) {
     if (x.type === 'uml.Comment') { const d = { ...base, label: vName(x), kind: 'file', shape: 'note' }; return { ...d, ...SHAPE.note.size(d) }; }
     // an instance as its container; a deployment node holding nothing shown as the map's node; anything else (c4-level's error) as itself
     const c = x.type === 'c4.ContainerInstance' ? depOf(I, x) || x : x, dn = x.type === 'c4.DeploymentNode', ext = !dn && c4Ext(c);
-    const d = { ...base, label: vName(c), kind: ext ? 'external' : 'frontend', shape: 'c4', sh: dn ? 'node' : c4Shape(c), ext, tag: dn ? depTag(x) : c === x && x.type === 'c4.ContainerInstance' ? '[Container]' : c4TagOf(c), desc: V_P(dn ? x : c).description };
+    // an instance reads its container: drawn as it, it shows the container's change on the diff page (audit 46)
+    const d = { ...base, ...(c !== x ? { reads: [c.id] } : {}), label: vName(c), kind: ext ? 'external' : 'frontend', shape: 'c4', sh: dn ? 'node' : c4Shape(c), ext, tag: dn ? depTag(x) : c === x && x.type === 'c4.ContainerInstance' ? '[Container]' : c4TagOf(c), desc: V_P(dn ? x : c).description };
     return { ...d, ...SHAPE.c4.size(d) }; });
   const edges = [...own.map(e => { const note = e.type === 'uml.CommentLink', label = note ? '' : c4LineLabel(e);
     return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: label || undefined, end: c4LineLook(e, V_LINE), aria: c4LineName(e, pic), cut: 280 }; }),
-  ...implied.map(e => ({ id: e.id, _id: e.id, type: 'c4.Relationship', from: e.from, to: e.to, implied: e.of.map(r => r.id), end: V_LINE.implied, aria: c4LineName(e, pic), cut: 280,
+  ...implied.map(e => ({ id: e.id, _id: e.id, type: 'c4.Relationship', from: e.from, to: e.to, implied: e.of.map(r => r.id), reads: e.via, end: V_LINE.implied, aria: c4LineName(e, pic), cut: 280,
     label: [e.of[0].label, e.of.length > 1 ? `[+${e.of.length - 1}]` : ''].filter(V_HAS).join(' ') || undefined }))];
   const g = layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: view.direction === 'down' ? 'down' : 'right',
     gap: 48, rgap: 64, labelGaps: true, repair: false, reroute: false }, memo);

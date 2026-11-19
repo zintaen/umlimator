@@ -107,7 +107,11 @@ function mmRun(model, view) {
 function mmDraw(g) {
   if (!g.mm) return { under: '', over: '' };
   const d = ({ p1: [a, b], p2: [c, e] }) => { const x = r2((a + c) / 2); return `M${a} ${b}C${x} ${b} ${x} ${e} ${c} ${e}`; };
-  return { under: `<g class="mm-under">${g.mm.links.map(l => `<path class="mm-branch" d="${d(l)}" fill="none" stroke="var(--um-k-${l.ink})" stroke-width="${l.first ? 2.5 : 1.5}" stroke-linecap="round"/>`).join('')}</g>`, over: '' };
+  // a branch goes with its topic on the diff page (audit 46): to a removed one faded and dashed, as a removed line; the change
+  // read off the topic as marked now (a memo's geometry is marked again on each call)
+  const ch = l => { const t = g.byId && Object.hasOwn(g.byId, l.to) ? g.byId[l.to] : null, c = t && typeof t.change === 'string' ? t.change.toLowerCase() : '';
+    return c === 'removed' ? ' data-change="removed" stroke-dasharray="6 4" opacity=".6"' : c === 'added' || c === 'new' ? ' data-change="new"' : ''; };
+  return { under: `<g class="mm-under">${g.mm.links.map(l => `<path class="mm-branch" d="${d(l)}" fill="none" stroke="var(--um-k-${l.ink})" stroke-width="${l.first ? 2.5 : 1.5}" stroke-linecap="round"${ch(l)}/>`).join('')}</g>`, over: '' };
 }
 
 /* a topic: a rounded box in its branch's colour (the root's in the text's), its lines centred; the drill-down mark when
