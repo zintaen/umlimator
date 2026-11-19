@@ -22,16 +22,16 @@
 </style>
 <main>
   <h1>&lt;umlimator-map&gt;</h1>
-  <p>A map from HTML alone: <code>&lt;umlimator-map src="bike-share.json" view="overview"&gt;</code> loads the model and draws that view of it, here the bike share's rider shop. Its
+  <p>A map from HTML alone: <code>&lt;umlimator-map src="umlimator-atlas.json" view="overview"&gt;</code> loads the model and draws that view of it, here the Umlimator Atlas's overview. Its
     still shows until then, and stays where scripts don't run. Each control below sets an attribute, and the map follows.</p>
   <div class="bar">
-    <label>view <select id="view"><option value="overview">overview</option><option value="api">api</option><option value="">the root</option></select></label>
+    <label>view <select id="view"><option value="overview">overview</option><option value="machines">machines</option><option value="">the root</option></select></label>
     <label><input type="checkbox" id="minimap"> minimap</label>
     <label><input type="checkbox" id="controls" checked> controls</label>
     <label>theme <select id="theme"><option value="">the page's</option><option>light</option><option>dark</option></select></label>
   </div>
-  <umlimator-map id="shop" src="bike-share.json" view="overview" height="520">
-    <img src="stills/bike-share/overview.png" alt="The rider shop: a storefront, an API, its stores and the services around them">
+  <umlimator-map id="atlas" src="umlimator-atlas.json" view="overview" height="520">
+    <img src="stills/umlimator-atlas/overview.png" alt="What umlimator is made of: the model file, the CLI, the module, the page and who uses each">
   </umlimator-map>
   <p id="said" aria-live="polite"></p>
 
@@ -52,20 +52,20 @@
     for Docusaurus. A block names a model's <code>src</code>, or holds the model in JSON; on MkDocs, or any site that
     allows HTML, write the element itself. The guide's Embedding page (docs/guide/embedding.md) has each setup.</p>
   <pre>```umlimator
-src: /maps/bike-share.json
-view: api
+src: /maps/umlimator-atlas.json
+view: machines
 ```</pre>
 </main>
 <script type="module">
-const shop = document.getElementById('shop'), said = document.getElementById('said'), $ = id => document.getElementById(id);
+const atlas = document.getElementById('atlas'), said = document.getElementById('said'), $ = id => document.getElementById(id);
 const say = t => { said.textContent = t; };
 const name = t => !t ? 'nothing' : `${t.type} ${t.id ?? t.node ?? t.ids.join(', ')}`;
-shop.addEventListener('load', () => say(`Drawn: ${shop.map.view}`));
-shop.addEventListener('error', () => say('No model: the still stays'));
-shop.addEventListener('umlimator:select', e => say(`umlimator:select · ${name(e.detail.target)}`));
-shop.addEventListener('umlimator:open', e => say(`umlimator:open · ${e.detail.view}`));
-shop.addEventListener('umlimator:viewchange', e => say(`umlimator:viewchange · ${e.detail.from} → ${e.detail.view}`));
-const attr = (key, value) => value == null ? shop.removeAttribute(key) : shop.setAttribute(key, value);
+atlas.addEventListener('load', () => say(`Drawn: ${atlas.map.view}`));
+atlas.addEventListener('error', () => say('No model: the still stays'));
+atlas.addEventListener('umlimator:select', e => say(`umlimator:select · ${name(e.detail.target)}`));
+atlas.addEventListener('umlimator:open', e => say(`umlimator:open · ${e.detail.view}`));
+atlas.addEventListener('umlimator:viewchange', e => say(`umlimator:viewchange · ${e.detail.from} → ${e.detail.view}`));
+const attr = (key, value) => value == null ? atlas.removeAttribute(key) : atlas.setAttribute(key, value);
 $('view').onchange = e => attr('view', e.target.value || null);
 $('minimap').onchange = e => attr('minimap', e.target.checked ? '' : null);
 $('controls').onchange = e => attr('controls', e.target.checked ? null : 'false');

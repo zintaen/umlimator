@@ -74,7 +74,7 @@ def hidden(folder):
 spec = importlib.util.spec_from_file_location("umlimator", ROOT / "umlimator.py")
 u = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(u)
-bike = json.loads((ROOT / "examples" / "bike-share.json").read_text(encoding="utf-8"))
+fixture = json.loads((ROOT / "tests" / "fixtures" / "integration.json").read_text(encoding="utf-8"))
 ODD = {"title": "Odd ids", "nodes": [{"id": "web", "label": "Web", "kind": "frontend"}, {"id": "api", "label": "API", "kind": "backend"},
                                      {"id": "db", "label": "Store", "kind": "database"}],
        "edges": [{"id": "e1", "from": "web", "to": "api", "label": "calls"}, {"id": "e2", "from": "api", "to": "db", "label": "reads"}],
@@ -83,10 +83,10 @@ ODD = {"title": "Odd ids", "nodes": [{"id": "web", "label": "Web", "kind": "fron
 
 with tempfile.TemporaryDirectory() as tmp:
     t = Path(tmp)
-    (t / "bike.json").write_text(json.dumps(bike), encoding="utf-8")
+    (t / "integration.json").write_text(json.dumps(fixture), encoding="utf-8")
     (t / "odd.json").write_text(json.dumps(ODD), encoding="utf-8")
-    page, odd = t / "bike.html", t / "odd.html"
-    for m, p in (("bike.json", page), ("odd.json", odd)):
+    page, odd = t / "integration.html", t / "odd.html"
+    for m, p in (("integration.json", page), ("odd.json", odd)):
         r = cli("render", t / m, "--out", p, "--no-check")
         if r.returncode:
             sys.exit(f"cannot render {m}: {r.stderr}")
@@ -122,7 +122,7 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("page-hook-protocol#1 · check --views that names no view fails, before Chrome starts, and lists the views",
        # every view, in order (52 since step 4 of the one-model plan, the first five the kept ones)
        r.returncode == 1 and "no view 'sytem'" in r.stderr and "its views: 'context', 'system', 'trips', 'fleet', 'ride-end', 'overview', 'api', 'checkout', 'dock-feed', 'demand', 'help', 'domain', " in r.stderr
-       and r.stderr.rstrip().endswith("its views: " + ", ".join(repr(v["id"]) for v in bike["views"])) and len(bike["views"]) == 52 and not r.stdout.strip(), r.stdout + r.stderr)
+       and r.stderr.rstrip().endswith("its views: " + ", ".join(repr(v["id"]) for v in fixture["views"])) and len(fixture["views"]) == 52 and not r.stdout.strip(), r.stdout + r.stderr)
     r = cli("stills", odd, "--out", t / "odd", "--views", "plain,R&D,a+b")
     ok("page-hook-protocol#2 · views whose ids hold & and + are stilled", r.returncode == 0 and made(r) == ["plain", "R&D", "a+b"], r.stdout + r.stderr)
     r = cli("check", odd, "--views", "R&D")
@@ -137,7 +137,7 @@ with tempfile.TemporaryDirectory() as tmp:
     # ---------- render ----------
     shop = t / "shop"
     shop.mkdir()
-    shutil.copy(ROOT / "examples" / "bike-share.json", shop / "m.json")
+    shutil.copy(ROOT / "tests" / "fixtures" / "integration.json", shop / "m.json")
     r = cli("render", shop / "m.json", "--out", shop / "m.html")
     ok("cli-render-pipeline#3 · a checked render leaves no screenshot folder beside the page", r.returncode == 0 and hidden(shop) == [], hidden(shop))
     ok("cli-render-pipeline#5 · and its JSON says the page was checked", (said(r) or {}).get("checked") is True, r.stdout)
@@ -153,7 +153,7 @@ with tempfile.TemporaryDirectory() as tmp:
        (r.stdout, r.stderr, hidden(shop)))
     term = t / "term"
     term.mkdir()
-    shutil.copy(t / "bike.json", term / "m.json")
+    shutil.copy(t / "integration.json", term / "m.json")
     p = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "render", "m.json", "--out", "m.html", "--no-check"], cwd=term,
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for _ in range(1500):
@@ -215,7 +215,7 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("stills-cache#7 · a record cut short is drawn again, not a crash", r.returncode == 0 and made(r) == ["system"], r.stdout + r.stderr)
     k = t / "k"
     k.mkdir()
-    (k / "m.json").write_text(json.dumps(bike), encoding="utf-8")
+    (k / "m.json").write_text(json.dumps(fixture), encoding="utf-8")
     def again(change):
         m = json.loads((k / "m.json").read_text(encoding="utf-8"))
         change(m)
@@ -256,7 +256,7 @@ with tempfile.TemporaryDirectory() as tmp:
     (g / "a").mkdir(); (g / "a-b").mkdir()
     git = lambda *a: subprocess.run(["git", "-C", str(g), "-c", "user.name=t", "-c", "user.email=t@example.invalid", *a], capture_output=True, text=True, check=True)
     git("init", "-q")
-    shutil.copy(ROOT / "examples" / "bike-share.json", g / "docs" / "map.json")
+    shutil.copy(ROOT / "tests" / "fixtures" / "integration.json", g / "docs" / "map.json")
     for f in ("a/b-c.json", "a-b/c.json"):
         (g / f).write_text(json.dumps({k: ODD[k] for k in ODD if k != "views"} | {"views": ODD["views"][:1]}), encoding="utf-8")
     git("add", "."); git("commit", "-q", "-m", "base")
@@ -282,7 +282,7 @@ with tempfile.TemporaryDirectory() as tmp:
        "**`a/b-c.json`**: cannot be read: it is no longer a map model" in summary and "removes Web" not in summary, summary)
     ok("diff-base-run (audit 10) · a new model git does not track yet is a change too",
        any(x.get("file") == "docs/new.json" and "adds the view Plain" in x.get("summary", []) for x in said(r) or []), r.stdout + r.stderr)
-    r = cli("render", ROOT / "examples" / "bike-share.json", "--out", t / "nc.html", stand_in="no-chrome")
+    r = cli("render", ROOT / "tests" / "fixtures" / "integration.json", "--out", t / "nc.html", stand_in="no-chrome")
     ok("render (audit 10) · with no Chrome the layout check is skipped, and said: checked is false, not a clean check",
        r.returncode == 0 and (said(r) or {}).get("checked") is False and "no Chrome" in (said(r) or {}).get("skipped", "") and "check was skipped" in r.stderr, r.stdout + r.stderr)
 
@@ -290,7 +290,7 @@ with tempfile.TemporaryDirectory() as tmp:
     cache = t / "icons"
     cache.mkdir()
     (cache / "postgresql.svg").write_bytes(b"<svg xmlns='http://www.w3.org/2000/svg'><path d='M5 32") # a logo cut short
-    r = cli("render", ROOT / "examples" / "bike-share.json", "--out", t / "ic.html", "--no-check", env={"UMLIMATOR_ICON_CACHE": str(cache), "UMLIMATOR_OFFLINE": "1"})
+    r = cli("render", ROOT / "tests" / "fixtures" / "integration.json", "--out", t / "ic.html", "--no-check", env={"UMLIMATOR_ICON_CACHE": str(cache), "UMLIMATOR_OFFLINE": "1"})
     data = json.loads(u.DATA.search((t / "ic.html").read_text(encoding="utf-8")).group(1)) if r.returncode == 0 else {}
     ok("icon-cache#1 · a cached logo that does not match its sha256 is not used: fetched again (offline here, so the card keeps its sigil)",
        "postgresql" not in data.get("icons", {"postgresql": 1}) and "postgresql.svg: the copy in" in r.stderr, r.stderr)
@@ -310,8 +310,8 @@ with tempfile.TemporaryDirectory() as tmp:
 
     # ---------- the MCP server ----------
     (t / "mcp").mkdir()
-    (t / "mcp" / "m.json").write_text(json.dumps(bike), encoding="utf-8")
-    (t / "mcp" / "before.json").write_text(json.dumps(bike), encoding="utf-8")
+    (t / "mcp" / "m.json").write_text(json.dumps(fixture), encoding="utf-8")
+    (t / "mcp" / "before.json").write_text(json.dumps(fixture), encoding="utf-8")
 
     def server(port):
         p = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(t / "mcp" / "m.json"), "--port", str(port)], cwd=ROOT,
@@ -332,18 +332,18 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("mcp-session#4 · a relative path is the model's folder's", r.get("isError") is False, r)
     r = ask({"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "diff", "arguments": {"other_model_path": "nope.json"}}})["result"]
     ok("mcp-session#4 · and a path it cannot read is said with where it looked", r.get("isError") and str((t / "mcp" / "nope.json").resolve()) in r["content"][0]["text"], r)
-    listed = json.loads(json.dumps(bike)); listed["nodes"][1]["id"] = [listed["nodes"][1]["id"]]
+    listed = json.loads(json.dumps(fixture)); listed["nodes"][1]["id"] = [listed["nodes"][1]["id"]]
     (t / "mcp" / "m.json").write_text(json.dumps(listed), encoding="utf-8")
     r = [ask({"jsonrpc": "2.0", "id": 6 + i, "method": "tools/call", "params": {"name": n, "arguments": g}})
-         for i, (n, g) in enumerate([("describe_view", {"view": bike["views"][0]["id"]}), ("highlight", {"refs": ["x"]})])]
+         for i, (n, g) in enumerate([("describe_view", {"view": fixture["views"][0]["id"]}), ("highlight", {"refs": ["x"]})])]
     ok("mcp-session#5 · a model with a list for an id is a tool error saying where, as render says it, never an internal error (audit 8)",
        all(x.get("result", {}).get("isError") and "nodes[1].id is not a string" in x["result"]["content"][0]["text"] for x in r), r)
-    nulled = json.loads(json.dumps(bike)); nulled["views"][0]["nodeIds"].insert(1, None)
+    nulled = json.loads(json.dumps(fixture)); nulled["views"][0]["nodeIds"].insert(1, None)
     (t / "mcp" / "m.json").write_text(json.dumps(nulled), encoding="utf-8")
-    r = ask({"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "paths", "arguments": {"view": bike["views"][0]["id"], "from": "a", "to": "zz"}}})
+    r = ask({"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "paths", "arguments": {"view": fixture["views"][0]["id"], "from": "a", "to": "zz"}}})
     ok("mcp-session#5 · a null in a view's nodeIds is a tool error saying where, never an internal error (audit 15)",
        r.get("result", {}).get("isError") and "views[0].nodeIds[1] is not a string" in r["result"]["content"][0]["text"], r)
-    (t / "mcp" / "m.json").write_text(json.dumps(bike), encoding="utf-8")
+    (t / "mcp" / "m.json").write_text(json.dumps(fixture), encoding="utf-8")
     r = ask({"jsonrpc": "2.0", "id": 9, "method": "tools/call", "params": {"name": "show_view", "arguments": {"view": ""}}})
     ok("mcp-session#5 · show_view with view \"\" names no view: refused as an unknown view, not sent (audit 15)",
        r.get("result", {}).get("isError") and "no view ''" in r["result"]["content"][0]["text"], r)

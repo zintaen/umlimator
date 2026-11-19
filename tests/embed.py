@@ -220,9 +220,9 @@ class Legend(html.parser.HTMLParser):
 
 
 if part("the standalone page's legend"):
-    names = Legend(dom("examples/bike-share.html#view=overview", lambda t: bool(Legend(t).names))).names  # the rider shop; waits for the legend itself; none if it never draws
+    names = Legend(dom("tests/fixtures/integration.html#view=overview", lambda t: bool(Legend(t).names))).names  # the rider shop; waits for the legend itself; none if it never draws
     legend = {"calls", "state"} <= set(names)
-    print(("ok  " if legend else "FAIL"), "examples/bike-share.html · the standalone page's legend names the kinds it reads from labels (calls, state)", "" if legend else names)
+    print(("ok  " if legend else "FAIL"), "tests/fixtures/integration.html · the standalone page's legend names the kinds it reads from labels (calls, state)", "" if legend else names)
     failed |= not legend
 if part("keepPairs"):
     # the layout check of a page umlimator.py renders: a view that keeps A→B and B→A apart (keepPairs) draws the return line
@@ -272,11 +272,11 @@ if part("label kinds"):
     failed |= not kinds_ok
 
 if part("record"):
-    # umlimator.py record (#69): bike-share's story as an animated PNG, a frame per step, shown for the step's duration; a step
+    # umlimator.py record (#69): the integration fixture's story as an animated PNG, a frame per step, shown for the step's duration; a step
     # that plays a tour has 2 to 6 frames, each a different picture (the dot rides), which share the step's duration (#83)
     with tempfile.TemporaryDirectory() as tmp:
-        page, png = Path(tmp) / "bike-share.html", Path(tmp) / "ride.png"
-        subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(ROOT / "examples" / "bike-share.json"), "--out", str(page), "--no-check"], capture_output=True)
+        page, png = Path(tmp) / "integration.html", Path(tmp) / "ride.png"
+        subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(ROOT / "tests" / "fixtures" / "integration.json"), "--out", str(page), "--no-check"], capture_output=True)
         r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "record", str(page), "--story", "ride", "--out", str(png)], capture_output=True, text=True)
         b, chunks, i = png.read_bytes() if png.is_file() else b"", [], 8
         while i + 8 <= len(b):
@@ -288,7 +288,7 @@ if part("record"):
             elif t in (b"IDAT", b"fdAT") and frames:
                 frames[-1][1] += d if t == b"IDAT" else d[4:]
         k, steps_ok = 0, []
-        for s in json.loads((ROOT / "examples" / "bike-share.json").read_text())["stories"][0]["steps"]:
+        for s in json.loads((ROOT / "tests" / "fixtures" / "integration.json").read_text())["stories"][0]["steps"]:
             mine, ms = [], s.get("duration") or 4000
             while k < len(frames) and sum(d for d, _ in mine) < ms:
                 mine.append(frames[k]); k += 1

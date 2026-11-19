@@ -168,7 +168,7 @@ When the maintainer says 1.0.0 is ready (13 Nov 2026: not straight after 0.27.0)
 | `docs/diagrams/README.md` | The status table, in every pull request |
 | `docs/diagrams/model.md`, `risks.md` | What the stage's design note changed; risks closed or found |
 | Per type | A conformance note: subset, clauses, what is left out, the fidelity table |
-| `examples/` | Each type's small example (the reference: gallery, fixtures, conformance), `examples/bike-share.json`, the one test and bench model (built by `tools/bike-share.mjs` from its part files), holding a view of each of the 28 types, with its Structurizr source `examples/bike-share.dsl` and that file's import `examples/bike-share-c4.json`, and the gallery's Umlimator Atlas. The Bookshop and e-bike atlases the bike share replaced were deleted in step 4 of the one-model plan, with `tools/atlas.mjs` (19 Nov 2026) |
+| `examples/` | Each type's small example (the reference: gallery, fixtures, conformance), and the gallery's Umlimator Atlas: the showcase, which tests only smoke-check (`tests/showcase.test.mjs`). The test models live in `tests/fixtures/`: the integration fixture `tests/fixtures/integration.json` (built by `tests/fixtures/integration.mjs` from its part files), holding a view of each of the 28 types, with its Structurizr source `integration.dsl` and that file's import `integration-c4.json`; the bench's models live in `bench/models/` (20 Nov 2026). The Bookshop and e-bike atlases the integration fixture replaced were deleted in step 4 of the one-model plan, with `tools/atlas.mjs` (19 Nov 2026) |
 
 ## 8. Working rules
 

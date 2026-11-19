@@ -14,7 +14,7 @@ const check = (name, cond, info) => { document.title = name; if (cond) out.ok.pu
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const motion = on => { const mm = window.matchMedia; window.matchMedia = q => /reduced-motion/.test(q) ? { matches: !on, media: q, addEventListener() {}, removeEventListener() {} } : mm.call(window, q); return () => { window.matchMedia = mm; }; };
 try {
-  const bike = await (await fetch('../examples/bike-share.json')).json();
+  const fx = await (await fetch('fixtures/integration.json')).json();
   const card = (id, label, kind = 'backend') => ({ id, label, kind });
   const v1 = { nodes: [card('a', 'Alpha'), card('b', 'Bravo'), card('c', 'Charlie')], edges: [{ id: 'ab', from: 'a', to: 'b' }, { id: 'bc', from: 'b', to: 'c' }],
     views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }] };
@@ -53,12 +53,12 @@ try {
   hq.destroy();
 
   // diff's marks, as the map draws them: NEW, CHANGED and REMOVED tabs, an added line flowing, a removed one dashed
-  const next = structuredClone(bike), sys = next.views.find(v => v.id === 'system');
+  const next = structuredClone(fx), sys = next.views.find(v => v.id === 'system');
   next.nodes.push({ id: 'pay-queue', label: 'Payments queue', kind: 'queue' }); sys.nodeIds.push('pay-queue'); sys.layout['pay-queue'] = [3, 3]; sys.layout.payments = [5, 3];
   next.edges = next.edges.filter(e => e.id !== 's9'); next.edges.push({ id: 'q1', from: 'trips', to: 'pay-queue' }, { id: 'q2', from: 'pay-queue', to: 'payments' });
   next.nodes.find(n => n.id === 'trips').sublabel = 'rides, from unlock to end';   // Trip service opens a view: its tab sits left of the ⤢ pill
   next.nodes = next.nodes.filter(n => n.id !== 'flags'); sys.nodeIds = sys.nodeIds.filter(id => id !== 'flags');
-  const h2 = render(el, diff(bike, next).model, { view: 'system' }), s2 = el.querySelector('.umlimator').shadowRoot;
+  const h2 = render(el, diff(fx, next).model, { view: 'system' }), s2 = el.querySelector('.umlimator').shadowRoot;
   const tabs = [...s2.querySelectorAll('.node text.badge-tx')].map(t => t.textContent);
   check('diff\'s marks draw as tabs: NEW, CHANGED, REMOVED', ['NEW', 'CHANGED', 'REMOVED'].every(t => tabs.includes(t)), tabs);
   const trips = s2.querySelector('.node[data-id="trips"]'), boxes = [...trips.querySelectorAll('rect')].filter(r => +r.getAttribute('height') === 16).map(r => [+r.getAttribute('x'), +r.getAttribute('width')]);
@@ -69,7 +69,7 @@ try {
   h2.destroy();
 
   // drift's marks: an idle line is faint and still, an undrawn one rose and dashed
-  const r = drift(bike, [{ from: 'ops-console', to: 'tripsdb', count: 9 }, { from: 'fleet', to: 'charging', count: 0 }]);
+  const r = drift(fx, [{ from: 'ops-console', to: 'tripsdb', count: 9 }, { from: 'fleet', to: 'charging', count: 0 }]);
   const h3 = render(el, r.model, { view: 'system' }), s3 = el.querySelector('.umlimator').shadowRoot;
   const idle = s3.querySelector('.edge-g.faded'), path = idle && idle.querySelector('path.edge');
   check('drift\'s idle line is faded: its own colour, faint, and no flow along it', !!idle && path.getAttribute('opacity') === '0.35' && /var\(--um-w-/.test(path.getAttribute('stroke')) && getComputedStyle(idle.querySelector('.flowline')).display === 'none',

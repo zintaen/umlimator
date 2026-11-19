@@ -238,7 +238,7 @@ test('the example moved and renamed (§13): every reference with its id, check.m
   assert.ok(url.href.endsWith('/examples/bookshop-order-to-shipment.json'), f);
   assert.deepEqual(checkTarget(m, 'bpmn'), []);
   assert.deepEqual(m.nodes.filter(n => n.props?.documentation).map(n => n.id), ['cancel-order', 'send-invoice'], 'documentation on two elements (§3.1)');
-  const atlas = read('../examples/bike-share.json'); // the Bookshop atlas's typed views, in bike-share since step 3 of the one-model plan
+  const atlas = read('./fixtures/integration.json'); // the Bookshop atlas's typed views, in the integration fixture since step 3 of the one-model plan
   assert.equal(atlas.nodes.find(n => n.id === 'report-fault').opensView, 'repair-process', 'Report a fault opens the process (S17), as Track an order did');
 });
 

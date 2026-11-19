@@ -5,9 +5,9 @@
 // rendered page (examples/types/<type>.html, tools/types.mjs; tests/types.test.mjs checks those) in a frame and lists its
 // examples; Atlas holds exactly one entry, the Umlimator Atlas (the maintainer's decision, 19 Nov 2026); In an app lists
 // the host pages. Every link, picture and frame on them names a file the site serves, as the site job builds it
-// (.github/workflows/check.yml), or a docs page. The models the gallery does not show (tools/gallery.json's retired list:
-// the bike share, the hidden test model, and its Structurizr import) are linked from nowhere in the gallery, the docs or
-// the README, and nor are the models the bike share replaced.
+// (.github/workflows/check.yml), or a docs page. The models the gallery does not show (tools/gallery.json's retired list,
+// empty since the test models moved to tests/fixtures/) are linked from nowhere in the gallery, the docs or the README,
+// and nor are the models that left the gallery.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
@@ -90,7 +90,7 @@ test('Atlas holds exactly one entry, the Umlimator Atlas, and its state machines
   assert.equal(m.title, 'Umlimator Atlas');
   for (const v of ['overview', 'machines', 'navigation', 'story', 'tour', 'keys', 'mcp']) assert.ok(ids.has(v), v);
   // the machines are umlimator's (docs/module-api.md's State chapter), as examples/states.json drew them before it left
-  // the gallery: written here, so that the check outlives that file, which the bike share migration deletes
+  // the gallery: written here, so that the check outlives that file, which step 4 of the one-model plan deleted
   const machines = {
     machines: ['page', 'mcp', 'story', 'navigation', 'tour', 'mapstate'],
     navigation: ['nav-rest', 'nav-leaving', 'nav-drawing', 'nav-entering'],
@@ -172,11 +172,11 @@ test('the host pages fetch only models and traces the site serves', () => {
   assert.deepEqual(bad, []);
 });
 
-// the models that left the gallery on 19 Nov 2026 (the maintainer's decision) were deleted in step 4 of the bike share
-// migration; the gallery, the docs and the README link none of them, nor the bike share model, the hidden test model, nor
-// its Structurizr source and import
+// the models that left the gallery on 19 Nov 2026 (the maintainer's decision) were deleted in step 4 of the one-model
+// plan; the gallery, the docs and the README link none of them, nor the old test model, which left examples/ for
+// tests/fixtures/ (20 Nov 2026)
 test('the models that left the gallery are linked from nowhere in the gallery, the docs or the README', () => {
-  assert.deepEqual([...RETIRED].sort(), ['bike-share', 'bike-share-c4']);
+  assert.deepEqual([...RETIRED], []);
   const GONE = [...RETIRED, 'assistant', 'bookshop', 'bookshop-atlas', 'clinic', 'ebike-atlas', 'states', 'weather'];
   for (const n of GONE.filter(n => !RETIRED.includes(n))) assert.ok(!existsSync(new URL(`examples/${n}.json`, root)), `examples/${n}.json is deleted`);
   const walk = dir => readdirSync(new URL(dir, root)).flatMap(f => { const p = `${dir}${f}`;

@@ -197,7 +197,7 @@ test('fields (§5.7): one per tag of each stereotype an element has, the key car
 });
 
 test('no example, target or fixture without a uml.Profile gets a problem from the check, and none is touched by it', () => {
-  const urls = [...readdirSync(new URL('../examples/', here)).filter(f => f.endsWith('.json')).map(f => new URL(`../examples/${f}`, here)), ...targets().map(([, u]) => u),
+  const urls = [...readdirSync(new URL('../examples/', here)).filter(f => f.endsWith('.json')).map(f => new URL(`../examples/${f}`, here)), new URL('./fixtures/integration.json', here), ...targets().map(([, u]) => u),
     ...readdirSync(here).filter(f => /^[a-z]+-(minimal|stress)\.json$/.test(f)).map(f => new URL(f, here))];
   assert.ok(urls.length > 50, `${urls.length} files`);
   let some = 0;

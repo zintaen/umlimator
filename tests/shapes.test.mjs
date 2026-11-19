@@ -8,9 +8,9 @@ const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 // a view's geometry as the bench hashes it: the cards' boxes, the lines' points and their labels' places
 const sig = g => JSON.stringify([g.nodes.map(n => [n.id, n.x, n.y, n.w, n.h]), g.edges.map(e => [e.from, e.to, e.pts, e.lbl ? [e.lbl.x, e.lbl.y] : null])]);
 
-test('a shape lays nothing out: each view of the examples and the benchmark models is the same with every card a person, and with a stale shapes field', () => {
-  const models = [...['bike-share', 'bike-share-c4', 'shapes'].map(f => read(`../examples/${f}.json`)), ...['b10', 'd24'].map(f => read(`../bench/models/${f}.json`))];
-  // map views: a typed view (bike-share's, since step 3 of the one-model plan) is drawn by its type, which no card shape reaches
+test('a shape lays nothing out: each view of the test fixtures, the shapes example and the benchmark models is the same with every card a person, and with a stale shapes field', () => {
+  const models = [...['./fixtures/integration.json', './fixtures/integration-c4.json', '../examples/shapes.json'].map(read), ...['b10', 'd24'].map(f => read(`../bench/models/${f}.json`))];
+  // map views: a typed view (the integration fixture holds them) is drawn by its type, which no card shape reaches
   for (const m of models) for (const v of m.views.filter(v => !v.diagram || v.diagram === 'map')) {
     const base = sig(layout(m, v.id));
     assert.equal(sig(layout({ ...m, nodes: m.nodes.map(n => ({ ...n, shape: 'person' })) }, v.id)), base, `${m.title} / ${v.id}, every card a person`);
@@ -19,9 +19,9 @@ test('a shape lays nothing out: each view of the examples and the benchmark mode
   }
 });
 
-test('validate() takes the shapes, and finds nothing wrong in the shapes example and the imported bike share', () => {
+test('validate() takes the shapes, and finds nothing wrong in the shapes example and the imported integration fixture', () => {
   assert.deepEqual(validate(read('../examples/shapes.json')), []);
-  assert.deepEqual(validate(read('../examples/bike-share-c4.json')), []);
+  assert.deepEqual(validate(read('./fixtures/integration-c4.json')), []);
   const all = ['box', 'person', 'browser', 'mobile', 'cylinder', 'pipe', 'document', 'hexagon', 'robot', 'terminal', 'window', 'folder', 'node'];
   assert.deepEqual(validate({ nodes: all.map(s => ({ id: s, shape: s, kind: 'person' })), views: [{ id: 'v', nodeIds: all }] }), []);
 });

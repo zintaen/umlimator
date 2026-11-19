@@ -448,18 +448,18 @@ test('a block definition view laid out down draws no label on another line (audi
 // audit 36: connect makes a part and the part association naming it by its role together, and part-unlisted reads the role as
 // the part's name; a rename of the part (a member row, F2 in the internal block or parametric view) left the role on the old name
 test('a part or constraint property renamed renames the role of its part association in the same transaction, in every view that renames it (audit 36)', () => {
-  const atlas = JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url))); // the e-bike atlas's views, in bike-share since step 3 of the one-model plan
+  const atlas = JSON.parse(readFileSync(new URL('./fixtures/integration.json', import.meta.url))); // the SysML atlas's views, in the integration fixture since step 3 of the one-model plan
   // a constraint property's part association, a line of the blocks view's own
-  atlas.views.find(v => v.id === 'blocks').edges.push({ id: 'ebike-eco', type: 'uml.Association', from: 'ebike', to: 'range-equation', props: { ends: { from: { aggregation: 'composite' }, to: { role: 'eco', multiplicity: '1' } } } });
+  atlas.views.find(v => v.id === 'blocks').edges.push({ id: 'emoped-eco', type: 'uml.Association', from: 'emoped', to: 'range-equation', props: { ends: { from: { aggregation: 'composite' }, to: { role: 'eco', multiplicity: '1' } } } });
   const said = m => validate(m).map(p => p.message).sort(), before = said(atlas), view = id => atlas.views.find(v => v.id === id);
   const role = (m, id) => [...m.edges, ...m.views.flatMap(v => (v.edges || []).filter(e => typeof e === 'object'))].find(e => e.id === id).props.ends.to.role;
   const run1 = r => apply(atlas, Array.isArray(r) ? r : r.commands);
   for (const [what, r, line, name] of [
-    ['bdd member row', diagramOf(view('blocks')).edits.member(atlas, view('blocks'), 'ebike', 'ebike.battery', 'part pack: Battery [1]'), 'ebike-battery', 'pack'],
-    ['ibd F2', diagramOf(view('inside-ebike')).edits.rename(atlas, view('inside-ebike'), 'ebike.battery', 'pack : Battery [1]'), 'ebike-battery', 'pack'],
-    ['ibd member row', diagramOf(view('inside-ebike')).edits.member(atlas, view('inside-ebike'), 'ebike', 'ebike.motor', 'drive : Motor [1]'), 'ebike-motor', 'drive'],
-    ['bdd member row, a constraint property', diagramOf(view('blocks')).edits.member(atlas, view('blocks'), 'ebike', 'ebike.eco', 'constraint economy: RangeEquation [1]'), 'ebike-eco', 'economy'],
-    ['par F2, a constraint property', diagramOf(view('range-analysis')).edits.rename(atlas, view('range-analysis'), 'ebike.eco', 'economy : RangeEquation'), 'ebike-eco', 'economy'],
+    ['bdd member row', diagramOf(view('blocks')).edits.member(atlas, view('blocks'), 'emoped', 'emoped.battery', 'part pack: Battery [1]'), 'emoped-battery', 'pack'],
+    ['ibd F2', diagramOf(view('inside-emoped')).edits.rename(atlas, view('inside-emoped'), 'emoped.battery', 'pack : Battery [1]'), 'emoped-battery', 'pack'],
+    ['ibd member row', diagramOf(view('inside-emoped')).edits.member(atlas, view('inside-emoped'), 'emoped', 'emoped.motor', 'drive : Motor [1]'), 'emoped-motor', 'drive'],
+    ['bdd member row, a constraint property', diagramOf(view('blocks')).edits.member(atlas, view('blocks'), 'emoped', 'emoped.eco', 'constraint economy: RangeEquation [1]'), 'emoped-eco', 'economy'],
+    ['par F2, a constraint property', diagramOf(view('range-analysis')).edits.rename(atlas, view('range-analysis'), 'emoped.eco', 'economy : RangeEquation'), 'emoped-eco', 'economy'],
   ]) {
     assert.ok(!r.error, `${what}: ${r.error}`);
     const n = run1(r);
@@ -467,13 +467,13 @@ test('a part or constraint property renamed renames the role of its part associa
     assert.deepEqual(said(n), before, what);
   }
   // a part made a value by its row is no part: its line keeps its role (part-unlisted then says so); an unchanged name adds nothing
-  const val = diagramOf(view('blocks')).edits.member(atlas, view('blocks'), 'ebike', 'ebike.controller', 'value ctl: Controller [1]');
-  assert.equal(role(run1(val), 'ebike-controller'), 'controller');
-  const same = diagramOf(view('blocks')).edits.member(atlas, view('blocks'), 'ebike', 'ebike.battery', 'part battery: Battery [1]');
+  const val = diagramOf(view('blocks')).edits.member(atlas, view('blocks'), 'emoped', 'emoped.controller', 'value ctl: Controller [1]');
+  assert.equal(role(run1(val), 'emoped-controller'), 'controller');
+  const same = diagramOf(view('blocks')).edits.member(atlas, view('blocks'), 'emoped', 'emoped.battery', 'part battery: Battery [1]');
   assert.ok(!same.commands.some(c => c.path === 'props.ends.to.role'));
   // one transaction: the name and the role, so one undo takes back both
-  const h = history(structuredClone(atlas)), r = diagramOf(view('blocks')).edits.member(atlas, view('blocks'), 'ebike', 'ebike.battery', 'part pack: Battery [1]');
-  h.push(apply(h.model, r.commands)); assert.equal(role(h.model, 'ebike-battery'), 'pack'); assert.equal(role(h.undo(), 'ebike-battery'), 'battery');
+  const h = history(structuredClone(atlas)), r = diagramOf(view('blocks')).edits.member(atlas, view('blocks'), 'emoped', 'emoped.battery', 'part pack: Battery [1]');
+  h.push(apply(h.model, r.commands)); assert.equal(role(h.model, 'emoped-battery'), 'pack'); assert.equal(role(h.undo(), 'emoped-battery'), 'battery');
 });
 
 // audit 36: connect let a generalization close a cycle (or join a block to itself), which validate() then reports as
@@ -514,38 +514,38 @@ test('connect refuses a generalization that closes a cycle or joins an element t
 // held took that part's association with it, and renamed back took both; a name another member holds is now refused, and only a
 // role whose part end is the part's block (and no twin's) follows a rename
 test('a part renamed to another member\'s name is refused, and a rename renames only the role that names that part (audit 37)', () => {
-  const atlas = JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url))), view = id => atlas.views.find(v => v.id === id); // the e-bike atlas's views, in bike-share since step 3
+  const atlas = JSON.parse(readFileSync(new URL('./fixtures/integration.json', import.meta.url))), view = id => atlas.views.find(v => v.id === id); // the SysML atlas's views, in the integration fixture since step 3
   const said = m => validate(m).map(p => p.message).sort(), before = said(atlas);
   const role = (m, id) => m.edges.find(e => e.id === id).props.ends.to.role;
-  const clash = /^member-names: "EBike" has a member named "motor" already \(ebike\.motor\)/;
+  const clash = /^member-names: "EMoped" has a member named "motor" already \(emoped\.motor\)/;
   for (const [what, r] of [
-    ['bdd member row', diagramOf(view('blocks')).edits.member(atlas, view('blocks'), 'ebike', 'ebike.battery', 'part motor: Battery [1]')],
-    ['ibd F2', diagramOf(view('inside-ebike')).edits.rename(atlas, view('inside-ebike'), 'ebike.battery', 'motor : Battery [1]')],
-    ['ibd member row', diagramOf(view('inside-ebike')).edits.member(atlas, view('inside-ebike'), 'ebike', 'ebike.battery', 'motor : Battery [1]')],
-    ['par F2, a constraint property', diagramOf(view('range-analysis')).edits.rename(atlas, view('range-analysis'), 'ebike.eco', 'motor : RangeEquation')],
-    ['the Name field, ibd', diagramOf(view('inside-ebike')).edits.field(atlas, view('inside-ebike'), 'ebike.battery', 'label', 'motor')],
-    ['the Name field, bdd', diagramOf(view('blocks')).edits.field(atlas, view('blocks'), 'ebike.battery', 'label', 'motor')],
+    ['bdd member row', diagramOf(view('blocks')).edits.member(atlas, view('blocks'), 'emoped', 'emoped.battery', 'part motor: Battery [1]')],
+    ['ibd F2', diagramOf(view('inside-emoped')).edits.rename(atlas, view('inside-emoped'), 'emoped.battery', 'motor : Battery [1]')],
+    ['ibd member row', diagramOf(view('inside-emoped')).edits.member(atlas, view('inside-emoped'), 'emoped', 'emoped.battery', 'motor : Battery [1]')],
+    ['par F2, a constraint property', diagramOf(view('range-analysis')).edits.rename(atlas, view('range-analysis'), 'emoped.eco', 'motor : RangeEquation')],
+    ['the Name field, ibd', diagramOf(view('inside-emoped')).edits.field(atlas, view('inside-emoped'), 'emoped.battery', 'label', 'motor')],
+    ['the Name field, bdd', diagramOf(view('blocks')).edits.field(atlas, view('blocks'), 'emoped.battery', 'label', 'motor')],
   ]) assert.match(String(r && r.error), clash, what);
   // a name kept, or another member's of another kind of line (an operation's), is no clash
-  assert.ok(!diagramOf(view('blocks')).edits.member(atlas, view('blocks'), 'ebike', 'ebike.battery', 'part battery: Battery [2]').error);
+  assert.ok(!diagramOf(view('blocks')).edits.member(atlas, view('blocks'), 'emoped', 'emoped.battery', 'part battery: Battery [2]').error);
   // a model that holds two parts of one name already (a file written so): renaming one back renames its own association only,
   // the one whose part end is its block
-  const twin = structuredClone(atlas); twin.nodes.find(n => n.id === 'ebike').members.find(x => x.id === 'ebike.battery').label = 'motor';
-  twin.edges.find(e => e.id === 'ebike-battery').props.ends.to.role = 'motor';
-  const back = diagramOf(view('blocks')).edits.member(twin, twin.views.find(v => v.id === 'blocks'), 'ebike', 'ebike.battery', 'part battery: Battery [1]');
+  const twin = structuredClone(atlas); twin.nodes.find(n => n.id === 'emoped').members.find(x => x.id === 'emoped.battery').label = 'motor';
+  twin.edges.find(e => e.id === 'emoped-battery').props.ends.to.role = 'motor';
+  const back = diagramOf(view('blocks')).edits.member(twin, twin.views.find(v => v.id === 'blocks'), 'emoped', 'emoped.battery', 'part battery: Battery [1]');
   assert.ok(!back.error, back.error);
   const n = apply(twin, back.commands);
-  assert.equal(role(n, 'ebike-battery'), 'battery'); assert.equal(role(n, 'ebike-motor'), 'motor');
+  assert.equal(role(n, 'emoped-battery'), 'battery'); assert.equal(role(n, 'emoped-motor'), 'motor');
   assert.deepEqual(said(n), before);
   // a role that names the part but whose part end is another block is not the part's: kept
-  const far = structuredClone(atlas); far.edges.find(e => e.id === 'ebike-motor').props.ends.to.role = 'battery';
-  const r2 = diagramOf(far.views.find(v => v.id === 'blocks')).edits.member(far, far.views.find(v => v.id === 'blocks'), 'ebike', 'ebike.battery', 'part pack: Battery [1]');
+  const far = structuredClone(atlas); far.edges.find(e => e.id === 'emoped-motor').props.ends.to.role = 'battery';
+  const r2 = diagramOf(far.views.find(v => v.id === 'blocks')).edits.member(far, far.views.find(v => v.id === 'blocks'), 'emoped', 'emoped.battery', 'part pack: Battery [1]');
   const n2 = apply(far, r2.commands);
-  assert.equal(role(n2, 'ebike-battery'), 'pack'); assert.equal(role(n2, 'ebike-motor'), 'battery');
+  assert.equal(role(n2, 'emoped-battery'), 'pack'); assert.equal(role(n2, 'emoped-motor'), 'battery');
   // two parts of one name and type: which one a role names is not known, so no role follows
-  const two = structuredClone(atlas), eb = two.nodes.find(n => n.id === 'ebike');
-  eb.members.push({ id: 'ebike.battery2', type: 'sysml.PartProperty', label: 'battery', props: { valueType: 'Battery' } });
-  const r3 = diagramOf(two.views.find(v => v.id === 'blocks')).edits.member(two, two.views.find(v => v.id === 'blocks'), 'ebike', 'ebike.battery2', 'part spare: Battery [1]');
+  const two = structuredClone(atlas), eb = two.nodes.find(n => n.id === 'emoped');
+  eb.members.push({ id: 'emoped.battery2', type: 'sysml.PartProperty', label: 'battery', props: { valueType: 'Battery' } });
+  const r3 = diagramOf(two.views.find(v => v.id === 'blocks')).edits.member(two, two.views.find(v => v.id === 'blocks'), 'emoped', 'emoped.battery2', 'part spare: Battery [1]');
   assert.ok(!r3.commands.some(c => String(c.path).includes('role')), JSON.stringify(r3.commands));
 });
 
@@ -554,28 +554,28 @@ test('a part renamed to another member\'s name is refused, and a rename renames 
 test('the properties panel\'s Name field on a part renames its association\'s role, and the Role field renames the part (audit 37)', async () => {
   await import('../src/typed/edit.js');
   const { typedEditor } = await import('../src/canvas/edit.js');
-  const atlas = JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url))); // the e-bike atlas's views, in bike-share since step 3 of the one-model plan
+  const atlas = JSON.parse(readFileSync(new URL('./fixtures/integration.json', import.meta.url))); // the SysML atlas's views, in the integration fixture since step 3 of the one-model plan
   const said = m => validate(m).map(p => p.message).sort(), before = said(atlas), role = (m, id) => m.edges.find(e => e.id === id).props.ends.to.role;
-  const part = (m, id) => m.nodes.find(n => n.id === 'ebike').members.find(x => x.id === id).label;
-  for (const vid of ['inside-ebike', 'blocks', 'range-analysis']) {
+  const part = (m, id) => m.nodes.find(n => n.id === 'emoped').members.find(x => x.id === id).label;
+  for (const vid of ['inside-emoped', 'blocks', 'range-analysis']) {
     const got = [], status = [];
     const I = typedEditor({ root: { addEventListener() {} }, stage: { addEventListener() {} }, can: () => true, say() {}, status: s => status.push(s), emit: c => got.push(c), view: () => vid, model: () => atlas, picked: () => [], sel: () => null,
       geo: () => ({ byId: {}, nodes: [] }), cam: () => null, focus() {}, touch() {} });
     const set = (id, path, value) => { got.length = 0; const ok = I.field(id, path, value, () => { got.push([{ op: 'set', id, path, value }]); return true; }); return { ok, c: got.flat() }; };
     // the Name field on a part: its role with it, one transaction
-    const a = set('ebike.battery', 'label', 'pack'), na = apply(atlas, a.c);
-    assert.equal(a.c.length, 2, `${vid}: ${JSON.stringify(a.c)}`); assert.equal(part(na, 'ebike.battery'), 'pack'); assert.equal(role(na, 'ebike-battery'), 'pack', vid);
+    const a = set('emoped.battery', 'label', 'pack'), na = apply(atlas, a.c);
+    assert.equal(a.c.length, 2, `${vid}: ${JSON.stringify(a.c)}`); assert.equal(part(na, 'emoped.battery'), 'pack'); assert.equal(role(na, 'emoped-battery'), 'pack', vid);
     assert.deepEqual(said(na), before, vid);
     // the Role field on its part association: the part renamed with it
-    const b = set('ebike-battery', ['props', 'ends', 'to', 'role'], 'pack'), nb = apply(atlas, b.c);
-    assert.equal(part(nb, 'ebike.battery'), 'pack', vid); assert.equal(role(nb, 'ebike-battery'), 'pack', vid); assert.deepEqual(said(nb), before, vid);
+    const b = set('emoped-battery', ['props', 'ends', 'to', 'role'], 'pack'), nb = apply(atlas, b.c);
+    assert.equal(part(nb, 'emoped.battery'), 'pack', vid); assert.equal(role(nb, 'emoped-battery'), 'pack', vid); assert.deepEqual(said(nb), before, vid);
     // a name another member holds: refused, nothing emitted, said
-    const c = set('ebike.battery', 'label', 'motor');
+    const c = set('emoped.battery', 'label', 'motor');
     assert.equal(c.ok, false, vid); assert.deepEqual(c.c, [], vid); assert.match(status.join(), /member-names/, vid);
-    const d = set('ebike-battery', ['props', 'ends', 'to', 'role'], 'motor');
+    const d = set('emoped-battery', ['props', 'ends', 'to', 'role'], 'motor');
     assert.equal(d.ok, false, vid); assert.deepEqual(d.c, [], vid);
     // another field, another element: the plain set, as before
-    assert.deepEqual(set('ebike-battery', ['props', 'ends', 'to', 'multiplicity'], '2').c, [{ op: 'set', id: 'ebike-battery', path: ['props', 'ends', 'to', 'multiplicity'], value: '2' }], vid);
+    assert.deepEqual(set('emoped-battery', ['props', 'ends', 'to', 'multiplicity'], '2').c, [{ op: 'set', id: 'emoped-battery', path: ['props', 'ends', 'to', 'multiplicity'], value: '2' }], vid);
     assert.deepEqual(set('battery', 'label', 'Pack').c, [{ op: 'set', id: 'battery', path: 'label', value: 'Pack' }], vid);
   }
 });
@@ -583,41 +583,41 @@ test('the properties panel\'s Name field on a part renames its association\'s ro
 // audit 38: SYS_CLASH judged a member row's edit by the member's old type and by its bare label: a value turned into an
 // operation named like a value was refused, an operation turned into a value named like a value let through
 test('a member row edit is refused exactly when member-names would say the edited member clashes, by its new kind (audit 38)', () => {
-  const m0 = apply(JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url), 'utf8')), [{ op: 'add', owner: 'ebike', element: { id: 'ebike.op1', type: 'uml.Operation', label: 'compute' } },
-    { op: 'add', owner: 'ebike', element: { id: 'ebike.op2', type: 'uml.Operation', label: 'charge', props: { parameters: [{ name: 'to', valueType: 'Real' }] } } }]);
-  const v = m0.views.find(x => x.diagram === 'sysml.block-definition'), clashes = m => validate(m).filter(p => p.rule === 'member-names' && p.ids.includes('ebike')).length, base = clashes(m0);
+  const m0 = apply(JSON.parse(readFileSync(new URL('./fixtures/integration.json', import.meta.url), 'utf8')), [{ op: 'add', owner: 'emoped', element: { id: 'emoped.op1', type: 'uml.Operation', label: 'compute' } },
+    { op: 'add', owner: 'emoped', element: { id: 'emoped.op2', type: 'uml.Operation', label: 'charge', props: { parameters: [{ name: 'to', valueType: 'Real' }] } } }]);
+  const v = m0.views.find(x => x.diagram === 'sysml.block-definition'), clashes = m => validate(m).filter(p => p.rule === 'member-names' && p.ids.includes('emoped')).length, base = clashes(m0);
   const texts = ['value ecoRange: Real', 'ecoRange(): Real', 'ecoRange(x: Real): Real', 'compute(): Real', 'compute(x: Real)', 'value compute: Real', 'charge(to: Real)', 'charge(to: Integer)', 'charge()', 'value charge: Real', 'part battery: Battery', 'value fresh: Real'];
   let refused = 0, applied = 0;
-  for (const id of ['ebike.usableShare', 'ebike.ecoRange', 'ebike.op1', 'ebike.op2', 'ebike.battery']) for (const text of texts) {
-    const r = T.edits.member(m0, v, 'ebike', id, text);
+  for (const id of ['emoped.usableShare', 'emoped.ecoRange', 'emoped.op1', 'emoped.op2', 'emoped.battery']) for (const text of texts) {
+    const r = T.edits.member(m0, v, 'emoped', id, text);
     if (r && r.commands) { applied++; assert.equal(clashes(apply(m0, r.commands)) > base, false, `${id} "${text}" was let through, and member-names then errors`); }
     else if (r && r.error && /^member-names:/.test(r.error)) { refused++; // and it was right to refuse: the same edit forced through would clash
-      const m = structuredClone(m0), owner = m.nodes.find(n => n.id === 'ebike'), x = owner.members.find(y => y.id === id), p = bdParse(text, owner, m);
+      const m = structuredClone(m0), owner = m.nodes.find(n => n.id === 'emoped'), x = owner.members.find(y => y.id === id), p = bdParse(text, owner, m);
       Object.assign(x, { type: p.type, label: p.label, props: p.props }); assert.ok(clashes(m) > base, `${id} "${text}" was refused, though member-names allows it`); } }
   assert.ok(refused >= 5 && applied >= 10, `${refused} refused, ${applied} applied`);
   // the two the audit found
-  assert.ok(T.edits.member(m0, v, 'ebike', 'ebike.usableShare', 'ecoRange(): Real').commands, 'an operation ecoRange() and a value ecoRange do not clash');
-  assert.match(T.edits.member(m0, v, 'ebike', 'ebike.op1', 'value ecoRange: Real').error, /^member-names: "EBike" has a member named "ecoRange" already \(ebike\.ecoRange\)/);
+  assert.ok(T.edits.member(m0, v, 'emoped', 'emoped.usableShare', 'ecoRange(): Real').commands, 'an operation ecoRange() and a value ecoRange do not clash');
+  assert.match(T.edits.member(m0, v, 'emoped', 'emoped.op1', 'value ecoRange: Real').error, /^member-names: "EMoped" has a member named "ecoRange" already \(emoped\.ecoRange\)/);
 });
 
 // audit 39: a member row added (id null) with a name its owner holds already went through in all three SysML views, where the
 // same name given by a rename is refused; validate() then said member-names. An add is judged as the edit is
 test('a member row added is refused exactly when member-names would say the new member clashes, in the bdd, ibd and par (audit 39)', () => {
-  const m0 = apply(JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url), 'utf8')), [{ op: 'add', owner: 'ebike', element: { id: 'ebike.op1', type: 'uml.Operation', label: 'compute' } }]);
+  const m0 = apply(JSON.parse(readFileSync(new URL('./fixtures/integration.json', import.meta.url), 'utf8')), [{ op: 'add', owner: 'emoped', element: { id: 'emoped.op1', type: 'uml.Operation', label: 'compute' } }]);
   const clashes = m => validate(m).filter(p => p.rule === 'member-names').length, base = clashes(m0);
   assert.equal(base, 0);
   const rows = { 'sysml.block-definition': ['value battery : Real', 'part battery : Battery', 'value ecoRange : Real', 'compute(): Real', 'compute(x: Real)', 'value compute : Real', 'value fresh : Real', 'battery(): Real', '«x» value battery : Real', 'value " battery" : Real'],
     'sysml.internal-block': ['battery : Battery', 'ecoRange : Real', 'port battery : Power', 'compute : Real', 'fresh : Battery', '«full» battery : Battery'],
     'sysml.parametric': ['battery : Real', 'ecoRange : Real', 'fresh : Real', 'compute : Real'] };
   let refused = 0, applied = 0;
-  for (const [diag, texts] of Object.entries(rows)) { const v = m0.views.find(x => x.diagram === diag), D = diagramOf(v), owner = diag === 'sysml.block-definition' ? 'ebike' : v.subject;
-    assert.equal(owner, 'ebike');
+  for (const [diag, texts] of Object.entries(rows)) { const v = m0.views.find(x => x.diagram === diag), D = diagramOf(v), owner = diag === 'sysml.block-definition' ? 'emoped' : v.subject;
+    assert.equal(owner, 'emoped');
     for (const text of texts) { const r = D.edits.member(m0, v, owner, null, text), cs = Array.isArray(r) ? r : r && r.commands;
       if (cs) { applied++; assert.equal(clashes(apply(m0, cs)), base, `${diag} "${text}" was added, and member-names then errors`); }
       else { assert.ok(r && r.error, `${diag} "${text}": ${JSON.stringify(r)}`); if (/^member-names:/.test(r.error)) refused++; } } }
   assert.ok(refused >= 8 && applied >= 6, `${refused} refused, ${applied} applied`);
   const v = m0.views.find(x => x.diagram === 'sysml.internal-block');
-  assert.equal(diagramOf(v).edits.member(m0, v, 'ebike', null, 'battery : Battery').error, 'member-names: "EBike" has a member named "battery" already (ebike.battery): a block\'s members have different names');
+  assert.equal(diagramOf(v).edits.member(m0, v, 'emoped', null, 'battery : Battery').error, 'member-names: "EMoped" has a member named "battery" already (emoped.battery): a block\'s members have different names');
 });
 
 test('audit 41: validate() says an operation\'s parameter name, direction or type, and a block operation\'s return type, that is not text, at its own path, here and in the class view', () => {
@@ -666,9 +666,9 @@ test('a member typed so it breaks constraint-type or port-kind is refused, by ro
 // type that breaks port-kind; and a refusal says the form once, a port of no SysML kind told the kinds
 test('F2 on a port box that breaks port-kind is refused, and a refusal says its form once (audit 45)', () => {
   const errs = m => validate(m).filter(p => p.level === 'error').map(p => p.message);
-  const A = JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url), 'utf8')), IV = A.views.find(v => v.diagram === 'sysml.internal-block'), IT = diagramOf(IV);
+  const A = JSON.parse(readFileSync(new URL('./fixtures/integration.json', import.meta.url), 'utf8')), IV = A.views.find(v => v.diagram === 'sysml.internal-block'), IT = diagramOf(IV);
   assert.deepEqual(errs(A), []);
-  const box = 'ebike.battery->battery.charge', F = 'a proxy port is typed by an interface block, a full port by none';
+  const box = 'emoped.battery->battery.charge', F = 'a proxy port is typed by an interface block, a full port by none';
   assert.equal(IT.edits.rename(A, IV, box, '«full»').error, `Full port "Battery".charge is typed by "ChargeInterface", an interface block: ${F}`);
   assert.equal(IT.edits.rename(A, IV, box, '«proxy» charge : Battery').error, `Proxy port "Battery".charge is typed by "Battery", not an interface block: ${F}`);
   for (const text of ['«proxy»', 'charger', '«proxy» charger : ChargeInterface']) { const r = IT.edits.rename(A, IV, box, text), cs = Array.isArray(r) ? r : r.commands;

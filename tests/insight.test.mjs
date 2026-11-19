@@ -3,24 +3,24 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { critical, whatIf, sequenceFromTrace, otlpSpans, validate, check, rules } from '../lib/umlimator.js';
-// bike-share holds typed views since step 3 of the one-model plan: the full bundle validates them, as the page draws them
+// the integration fixture holds typed views since step 3 of the one-model plan: the full bundle validates them, as the page draws them
 import { validate as validateAll } from '../lib/umlimator-all.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
-const bike = read('../examples/bike-share.json');
+const fx = read('./fixtures/integration.json');
 const brief = refs => refs.map(r => (r.type === 'node' ? r.id : r.ids.join('+')) + (r.distance != null ? '@' + r.distance : ''));
 
 test('critical() finds the path with the highest total, by latency or cost, from a card, between two, or anywhere', () => {
-  const slow = critical(bike, 'trips', { from: 'rider-app' });
+  const slow = critical(fx, 'trips', { from: 'rider-app' });
   assert.deepEqual([brief(slow.refs), slow.total], [['rider-app', 'trip-api', 'lifecycle', 'fare', 'payments', 't1', 't4', 't5', 't11'], 585]);
-  assert.deepEqual(critical(bike, 'trips', { from: 'rider-app', by: 'cost' }).total, 30);
-  const dock = critical(bike, 'trips', { from: 'rider-app', to: 'stations' });
+  assert.deepEqual(critical(fx, 'trips', { from: 'rider-app', by: 'cost' }).total, 30);
+  const dock = critical(fx, 'trips', { from: 'rider-app', to: 'stations' });
   assert.deepEqual([brief(dock.refs), dock.total], [['rider-app', 'trip-api', 'unlock', 'stations', 't1', 't2', 't3'], 535]);
-  assert.equal(critical(bike, 'trips').total, 585, 'from and to left out: any card to any card');
-  assert.deepEqual(critical(bike, 'trips', { from: 'payments' }), { refs: [], total: 0 }, 'a card no line leaves');
-  assert.deepEqual(critical(bike, 'trips', { from: 'stations', to: 'rider-app' }), { refs: [], total: 0 }, 'against the lines');
-  assert.deepEqual(critical(bike, 'trips', { from: 'ghost' }), { refs: [], total: 0 });
-  assert.throws(() => critical(bike, 'nope'), /no view/);
+  assert.equal(critical(fx, 'trips').total, 585, 'from and to left out: any card to any card');
+  assert.deepEqual(critical(fx, 'trips', { from: 'payments' }), { refs: [], total: 0 }, 'a card no line leaves');
+  assert.deepEqual(critical(fx, 'trips', { from: 'stations', to: 'rider-app' }), { refs: [], total: 0 }, 'against the lines');
+  assert.deepEqual(critical(fx, 'trips', { from: 'ghost' }), { refs: [], total: 0 });
+  assert.throws(() => critical(fx, 'nope'), /no view/);
 });
 
 test('critical() never comes back to a card, counts a line with no budget as 0, and takes the larger of two parallel lines', () => {
@@ -35,27 +35,27 @@ test('critical() never comes back to a card, counts a line with no budget as 0, 
 });
 
 test('whatIf() lights what loses its way to the cards taken out (backward, nearest first), and nothing else', () => {
-  const before = structuredClone(bike), w = whatIf(bike, 'trips', { remove: ['pricing'] });
+  const before = structuredClone(fx), w = whatIf(fx, 'trips', { remove: ['pricing'] });
   assert.deepEqual(Object.keys(w), ['unreachable'], 'no broken rules: taking cards out never adds a line or a cycle');
   assert.deepEqual(brief(w.unreachable), ['pricing@0', 'fare@1', 'lifecycle@2', 'trip-api@3', 'rider-app@4', 't6@1', 't5@2', 't4@3', 't1@4']);
-  assert.deepEqual(bike, before, 'the model is left as it is');
-  assert.deepEqual(brief(whatIf(bike, 'trips', { remove: ['pricing', 'trip-repo'] }).unreachable),
+  assert.deepEqual(fx, before, 'the model is left as it is');
+  assert.deepEqual(brief(whatIf(fx, 'trips', { remove: ['pricing', 'trip-repo'] }).unreachable),
     ['pricing@0', 'trip-repo@0', 'fare@1', 'lifecycle@1', 'trip-api@2', 'rider-app@3', 't6@1', 't7@1', 't5@2', 't4@2', 't1@3'], 'two cards: each thing at its distance from the nearest');
-  assert.deepEqual(whatIf(bike, 'trips', { remove: ['ghost'] }), { unreachable: [] });
+  assert.deepEqual(whatIf(fx, 'trips', { remove: ['ghost'] }), { unreachable: [] });
 });
 
-test("sequenceFromTrace(): the replay example's trace becomes bike-share's numbered view, which validates and checks clean", () => {
-  const trace = read('../examples/traces/ride-end.json'), match = read('../examples/traces/match.json'), before = structuredClone(bike);
-  const out = sequenceFromTrace(bike, otlpSpans(trace), { view: 'ride-end', match, title: 'A ride ends, from its trace' });
-  assert.deepEqual(out.views.find(v => v.id === 'ride-end'), bike.views.find(v => v.id === 'ride-end'), 'umlimator.py trace wrote the view the example keeps');
-  assert.deepEqual(out.views.map(v => v.id), bike.views.map(v => v.id), 'a view with that id is replaced where it is');
-  assert.deepEqual(bike, before);
+test("sequenceFromTrace(): the integration fixture's ride-end trace becomes its numbered view, which validates and checks clean", () => {
+  const trace = read('./fixtures/traces/ride-end.json'), match = read('./fixtures/traces/match.json'), before = structuredClone(fx);
+  const out = sequenceFromTrace(fx, otlpSpans(trace), { view: 'ride-end', match, title: 'A ride ends, from its trace' });
+  assert.deepEqual(out.views.find(v => v.id === 'ride-end'), fx.views.find(v => v.id === 'ride-end'), 'umlimator.py trace wrote the view the fixture keeps');
+  assert.deepEqual(out.views.map(v => v.id), fx.views.map(v => v.id), 'a view with that id is replaced where it is');
+  assert.deepEqual(fx, before);
   assert.deepEqual(validateAll(out), []);
   assert.deepEqual(check(out, 'ride-end'), []);
-  const fresh = sequenceFromTrace({ ...bike, views: bike.views.filter(v => v.id !== 'ride-end') }, otlpSpans(trace), { match });
+  const fresh = sequenceFromTrace({ ...fx, views: fx.views.filter(v => v.id !== 'ride-end') }, otlpSpans(trace), { match });
   const v = fresh.views[fresh.views.length - 1];
   assert.deepEqual([v.id, v.title, v.parent, v.render, v.edges.length], ['trace', 'trace', 'trips', 'sequence', 8], 'a new view comes last, under the view that shows most of its cards');
-  const root = sequenceFromTrace(bike, otlpSpans(trace), { view: 'context', match }).views.find(v => v.id === 'context');
+  const root = sequenceFromTrace(fx, otlpSpans(trace), { view: 'context', match }).views.find(v => v.id === 'context');
   assert.equal(root.parent, undefined, 'audit 6: a view replaced is never put under itself or a view below it (a parent cycle)');
 });
 
@@ -83,7 +83,7 @@ test('validate() checks lenses, owners and budgets; owner works in rules too', (
   ]);
   assert.deepEqual(validate({ ...m, lenses: 'none' }).filter(p => p.path.startsWith('lenses')).map(p => p.path), ['lenses']);
   assert.deepEqual(rules({ ...m, rules: [{ id: 'r', from: { owner: 'web' } }] }).map(b => b.targets[0].ids), [['e']]);
-  assert.deepEqual(validateAll(bike), []);
+  assert.deepEqual(validateAll(fx), []);
 });
 
 test('audit 4: on a typed view reach() and paths() follow the lines as drawn, a line from a member (a port) from the card it is drawn on', async () => {
@@ -125,8 +125,9 @@ test('audit 22: describe() says a label\'s line break as a space, one sentence p
   const broken = (x, br) => Array.isArray(x) ? x.map(y => broken(y, br)) : x && typeof x === 'object'
     ? Object.fromEntries(Object.entries(x).map(([k, v]) => [k, (k === 'label' || k === 'title') && typeof v === 'string' ? v.replace(' ', br) : broken(v, br)])) : x;
   let views = 0;
-  for (const f of readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json'))) {
-    const m = read(`../examples/${f}`); if (!Array.isArray(m.views)) continue;
+  // every example, and the integration fixture (its views of every type, which the examples held until it left them)
+  for (const f of [...readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json')).map(f => `../examples/${f}`), './fixtures/integration.json']) {
+    const m = read(f); if (!Array.isArray(m.views)) continue;
     for (const v of m.views) { const was = say(m, v.id); views++;
       for (const br of ['\n', '\r\n', ' ', ' \n ']) assert.equal(say(broken(m, br), v.id), was, `${f} ${v.id} ${JSON.stringify(br)}`); }
   }

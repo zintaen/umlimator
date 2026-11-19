@@ -1,5 +1,5 @@
 // The Structurizr JSON reader (notes/milestone-2.md §8.3, M2.10): tests/import/structurizr.json's two workspaces, the
-// clinic written in the export's form from the clinic workspace (examples/clinic.dsl until the bike share's replaced it) and one holding every view kind, read into typed C4 that docs/diagrams/
+// clinic written in the export's form from the clinic workspace (examples/clinic.dsl until tests/fixtures/integration.dsl replaced it) and one holding every view kind, read into typed C4 that docs/diagrams/
 // examples/check.mjs passes, with their reports pinned (risks.md R1, R4); ids from the DSL's identifiers and names, the
 // same across two reads and across a regenerated workspace's new numeric ids (R3); §8's limits on hostile input, each by
 // a test: a deep nest, a count over the limit, a __proto__ name, text over 1 MiB, never a throw (R2).

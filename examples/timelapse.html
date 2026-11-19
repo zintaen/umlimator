@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-<!-- A time-lapse (#67): four made-up releases of the bike share, on a slider. update() eases the map from one to the
+<!-- A time-lapse (#67): four made-up releases of umlimator itself (the Umlimator Atlas's overview), on a slider. update() eases the map from one to the
      next: new cards fade in, removed ones fade out, moved ones glide. diff() says what changed, and its marks show on
      the map when asked. `umlimator.py timelapse model.json` writes the same page from a model's git history. -->
 <meta charset="utf-8">
@@ -29,7 +29,7 @@
 import { render, diff } from '../lib/umlimator.js';
 import { withIcons } from './icons.js';
 
-const full = await withIcons(await (await fetch('bike-share.json')).json());
+const full = await withIcons(await (await fetch('umlimator-atlas.json')).json());
 // each release, as the cards that came after it: a model without them (and their lines, places and boxes)
 const without = (m, drop) => {
   const out = structuredClone(m), keep = id => !drop.includes(id);
@@ -45,17 +45,17 @@ const without = (m, drop) => {
   return out;
 };
 const V = [
-  ['2023: docks and rides', ['planner', 'forecast', 'warehouse', 'battery-service', 'charging', 'city', 'status', 'flags', 'monitoring']],
-  ['2024: batteries and charging', ['planner', 'forecast', 'warehouse', 'city', 'status', 'flags', 'monitoring']],
-  ['2025: forecasts and monitoring', ['planner', 'status', 'flags']],
-  ['2026: rebalancing', []],
+  ['Release 1: a model, the CLI and its page', ['readers', 'typed', 'element', 'docs', 'action', 'github', 'assistant', 'skill', 'mcp']],
+  ['Release 2: the diff Action on pull requests', ['readers', 'typed', 'element', 'docs', 'assistant', 'skill', 'mcp']],
+  ['Release 3: the element, the docs site and the readers', ['typed', 'assistant', 'skill', 'mcp']],
+  ['Release 4: diagram types and AI assistants', []],
 ].map(([label, drop]) => ({ label, model: without(full, drop) }));
 
 const $ = id => document.getElementById(id), at = $('at'), marks = $('marks'), play = $('play');
 let i = 0, timer = null;
 at.max = V.length - 1;
-// the Fleet service, whose cards lay themselves out; stableLayout: false draws each release as its own map would be drawn
-const map = render($('map'), V[0].model, { view: 'fleet', stableLayout: false });
+// the overview; stableLayout: false draws each release as its own map would be drawn
+const map = render($('map'), V[0].model, { view: 'overview', stableLayout: false });
 window.map = map;
 function show(k) {
   i = k; at.value = k;

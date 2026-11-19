@@ -10,7 +10,7 @@ const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 const jsons = dir => readdirSync(new URL(dir, import.meta.url)).filter(f => f.endsWith('.json')).map(f => dir + f);
 
 test('every version-1 model migrates to itself, untouched: lines with no id keep their positional names (F9)', () => {
-  const files = [...jsons('../examples/'), ...jsons('../bench/models/')];
+  const files = [...jsons('../examples/'), ...jsons('../bench/models/'), './fixtures/integration.json'];
   assert.ok(files.length > 10);
   for (const f of files) {
     const m = read(f), before = JSON.stringify(m);

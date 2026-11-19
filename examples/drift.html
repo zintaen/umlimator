@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
-<!-- Drift (#68): the bike share's map against a week of traffic, as a tracing backend (Jaeger, Tempo) lists the calls
-     between services. drift() marks the model: lines that run but are not drawn come in, dashed rose; drawn lines
+<!-- Drift (#68): the Umlimator Atlas's overview against a week of made-up traffic, as a tracing backend (Jaeger, Tempo)
+     lists the calls between services. drift() marks the model: lines that run but are not drawn come in, dashed rose; drawn lines
      between services the traffic reached, that carried nothing, fade. `umlimator.py drift` writes the same page. -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -26,20 +26,21 @@
 import { render, drift } from '../lib/umlimator.js';
 import { withIcons } from './icons.js';
 
-const model = await withIcons(await (await fetch('bike-share.json')).json());
-// a week of calls between services, as the tracing backend names them (made up)
+const model = await withIcons(await (await fetch('umlimator-atlas.json')).json());
+// a week of calls between umlimator's parts, as a tracing backend names them (made up)
 const seen = { data: [
-  ['rider-app', 'trip-service', 51200], ['rider-app', 'accounts', 49800], ['trip-service', 'pricing', 50100], ['trip-service', 'trips-db', 152000],
-  ['trip-service', 'payments', 12400], ['telemetry', 'fleet-service', 880000], ['telemetry', 'warehouse', 2100], ['ops-console', 'fleet-service', 310],
-  ['fleet-service', 'charging', 0], ['ops-console', 'trips-db', 1500], ['rider-app', 'pricing', 4100], ['push-gateway', 'rider-app', 9000],
+  ['github', 'diff-action', 4200], ['diff-action', 'umlimator-py', 4200], ['diff-action', 'github', 4100], ['umlimator-py', 'core-module', 9100],
+  ['umlimator-py', 'chrome', 3800], ['umlimator-py', 'readers', 0], ['standalone-page', 'typed', 52000], ['typed', 'core-module', 52000],
+  ['assistant', 'mcp-server', 1250], ['mcp-server', 'standalone-page', 1300], ['host', 'core-module', 8800], ['docs', 'element', 2400],
+  ['element', 'core-module', 2400], ['mcp-server', 'core-module', 640], ['diff-action', 'chrome', 90], ['umlimator-py', 'icon-cdn', 120],
 ].map(([parent, child, callCount]) => ({ parent, child, callCount })) };
 // where a service's name is not a card's id or label
-const match = { 'trip-service': 'trips', 'fleet-service': 'fleet', 'trips-db': 'tripsdb' };
+const match = { 'umlimator-py': 'cli', 'core-module': 'module', 'standalone-page': 'page', 'mcp-server': 'mcp', 'diff-action': 'action' };
 const { model: marked, counts } = drift(model, seen, { match });
 const c = counts;
-// counts are of the model's edges: a line drawn for two edges (moves bikes / low battery) fades only when both were idle
+// counts are of the model's edges: a line drawn for two edges fades only when both were idle
 document.getElementById('counts').textContent = `Edges: ${c.carried} carried traffic, ${c.undrawn} ran undrawn, ${c.idle} idle (a line drawn for two fades only when both are); ${c.unknown} not judged (an end the traffic never reached); no card for ${c.unmatched.join(', ') || 'none'}`;
-const map = render(document.getElementById('map'), marked, { view: 'system' });
+const map = render(document.getElementById('map'), marked, { view: 'overview' });
 window.map = map;
 document.getElementById('on').addEventListener('change', e => map.update(e.target.checked ? marked : model));
 </script>

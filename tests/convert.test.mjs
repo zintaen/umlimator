@@ -1,5 +1,5 @@
 // The helpers (work package 3.7, notes/stage-3.md §7), in Node on the sources: example 11 with { f1: 'f1-paid' } gives
-// example 12 except for ids; a numbered view (examples/bike-share.json's api, the rider shop's, one with no edges list) and a trace give views
+// example 12 except for ids; a numbered view (tests/fixtures/integration.json's api, the rider shop's, one with no edges list) and a trace give views
 // that validate with no error; no derived id contains "->"; a second run replaces the view; the reports.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -59,8 +59,8 @@ test('a sequence view: the first operand by default, another by options.operands
   assert.equal(view(p.model, 'checkout-sequence.communication').edges.filter(id => /\.m\d+$/.test(id)).length, 10, "par: both operands' messages, one after another");
 });
 
-test("the numbered view in examples/bike-share.json's rider shop gives a sequence view and a communication view that validate with no error", () => {
-  const bk = read('../examples/bike-share.json'), before = structuredClone(bk);
+test("the numbered view in tests/fixtures/integration.json's rider shop gives a sequence view and a communication view that validate with no error", () => {
+  const bk = read('./fixtures/integration.json'), before = structuredClone(bk);
   const s = sequenceFromView(bk, 'api'), v = view(s.model, 'api.sequence');
   assert.deepEqual(bk, before);
   assert.deepEqual(errors(s.model), []);
@@ -88,8 +88,8 @@ test('a numbered view with no edges list: the order the core numbers in; a step 
 });
 
 test('a trace goes through its numbered view; overlapping calls are said in the caption', () => {
-  const bike = read('../examples/bike-share.json'), spans = otlpSpans(read('../examples/traces/ride-end.json')), match = read('../examples/traces/match.json');
-  const { model } = sequenceFromSpans(bike, spans, { view: 'ride-end', match }), v = view(model, 'ride-end');
+  const fx = read('./fixtures/integration.json'), spans = otlpSpans(read('./fixtures/traces/ride-end.json')), match = read('./fixtures/traces/match.json');
+  const { model } = sequenceFromSpans(fx, spans, { view: 'ride-end', match }), v = view(model, 'ride-end');
   assert.deepEqual(errors(model), []);
   assert.equal(v.diagram, 'uml.sequence');
   assert.equal(v.edges.length, 8);

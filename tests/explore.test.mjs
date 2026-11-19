@@ -6,13 +6,13 @@ import { paths, reach, describe, otlpSpans, layout } from '../lib/umlimator.js';
 import { svgOf } from '../src/draw/svg.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
-const bike = read('../examples/bike-share.json');
+const fx = read('./fixtures/integration.json');
 const brief = refs => refs.map(r => (r.type === 'node' ? r.id : r.ids.join('+')) + (r.distance != null ? '@' + r.distance : ''));
 
 test('paths() lights every card and line on a way from one card to another, forward only', () => {
-  assert.deepEqual(brief(paths(bike, 'trips', 'rider-app', 'payments')), ['rider-app', 'trip-api', 'lifecycle', 'fare', 'payments', 't1', 't4', 't5', 't11']);
-  assert.deepEqual(paths(bike, 'trips', 'payments', 'rider-app'), [], 'against the lines: none');
-  assert.deepEqual(paths(bike, 'trips', 'rider-app', 'nowhere'), []);
+  assert.deepEqual(brief(paths(fx, 'trips', 'rider-app', 'payments')), ['rider-app', 'trip-api', 'lifecycle', 'fare', 'payments', 't1', 't4', 't5', 't11']);
+  assert.deepEqual(paths(fx, 'trips', 'payments', 'rider-app'), [], 'against the lines: none');
+  assert.deepEqual(paths(fx, 'trips', 'rider-app', 'nowhere'), []);
   // two ways from a to d, and a branch off the way that leads nowhere near d
   const m = { nodes: ['a', 'b', 'c', 'd', 'x'].map(id => ({ id })), edges: [{ from: 'a', to: 'b' }, { from: 'a', to: 'c' }, { from: 'b', to: 'd' }, { from: 'c', to: 'd' }, { from: 'b', to: 'x' }],
     views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd', 'x'] }] };
@@ -21,26 +21,26 @@ test('paths() lights every card and line on a way from one card to another, forw
 });
 
 test('reach() walks forward or backward with each card\'s distance, and stops at depth', () => {
-  assert.deepEqual(brief(reach(bike, 'trips', 'pricing', { backward: true })), ['pricing@0', 'fare@1', 'lifecycle@2', 'trip-api@3', 'rider-app@4', 't6@1', 't5@2', 't4@3', 't1@4']);
-  assert.deepEqual(brief(reach(bike, 'trips', 'pricing', { backward: true, depth: 1 })), ['pricing@0', 'fare@1', 't6@1']);
-  assert.deepEqual(brief(reach(bike, 'trips', 'lifecycle', { depth: 1 })), ['lifecycle@0', 'fare@1', 'trip-repo@1', 'trip-events@1', 't5@1', 't7@1', 't9@1']);
-  assert.deepEqual(brief(reach(bike, 'trips', 'payments')), ['payments@0'], 'a card no line leaves');
-  assert.deepEqual(reach(bike, 'trips', 'ghost'), []);
+  assert.deepEqual(brief(reach(fx, 'trips', 'pricing', { backward: true })), ['pricing@0', 'fare@1', 'lifecycle@2', 'trip-api@3', 'rider-app@4', 't6@1', 't5@2', 't4@3', 't1@4']);
+  assert.deepEqual(brief(reach(fx, 'trips', 'pricing', { backward: true, depth: 1 })), ['pricing@0', 'fare@1', 't6@1']);
+  assert.deepEqual(brief(reach(fx, 'trips', 'lifecycle', { depth: 1 })), ['lifecycle@0', 'fare@1', 'trip-repo@1', 'trip-events@1', 't5@1', 't7@1', 't9@1']);
+  assert.deepEqual(brief(reach(fx, 'trips', 'payments')), ['payments@0'], 'a card no line leaves');
+  assert.deepEqual(reach(fx, 'trips', 'ghost'), []);
 });
 
 test('describe() puts a view in sentences, the same each time: cards, boxes, what lines do, steps, cards alone', () => {
-  const trips = describe(bike, 'trips');
-  assert.equal(trips, describe(structuredClone(bike), 'trips'));
+  const trips = describe(fx, 'trips');
+  assert.equal(trips, describe(structuredClone(fx), 'trips'));
   assert.match(trips, /^Trip service: 12 cards and 11 lines\.\n/);
   assert.match(trips, /\nFare calculator calls Pricing \("price rules", gRPC\) and Payment provider \("charges", REST\)\.\n/);
   assert.match(trips, /\nTrip lifecycle calls Fare calculator \("ride ended"\); reads or writes Trip repository \("saves"\); triggers Event publisher \("each change"\)\./);
-  const system = describe(bike, 'system');
+  const system = describe(fx, 'system');
   assert.match(system, /\nRides holds Accounts, Trip service, Pricing and Trips database\.\n/);
   assert.match(system, /\nMonitoring reads or writes Rides \("scrapes metrics"\)\./, 'a line to a box names the box');
   assert.match(system, /\nNot connected here: Status page and Feature flags\.$/);
-  assert.match(describe(bike, 'api'), /\nStep 1: Shoppers calls Shop API \("checks out"\)\.\n/);
+  assert.match(describe(fx, 'api'), /\nStep 1: Shoppers calls Shop API \("checks out"\)\.\n/);
   // a version-2 map view's own lines keep their labels and sublabels (they were walked as drawn, by model line, and lost them)
-  assert.match(describe(bike, 'ride-end'), /\nStep 1: Rider app calls Trip API \("POST \/rides\/\{id\}\/end", 200 ms\)\.\n/);
+  assert.match(describe(fx, 'ride-end'), /\nStep 1: Rider app calls Trip API \("POST \/rides\/\{id\}\/end", 200 ms\)\.\n/);
 });
 
 test('otlpSpans() reads an OTLP JSON trace into spans, in milliseconds', () => {

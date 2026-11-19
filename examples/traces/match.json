@@ -1,1 +1,0 @@
-{ "trip-lifecycle": "lifecycle", "fare-calculator": "fare", "payment-gateway": "payments", "trip-repository": "trip-repo", "postgres": "tripsdb", "event-publisher": "trip-events" }

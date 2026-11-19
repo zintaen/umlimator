@@ -156,9 +156,9 @@ def until(cond, seconds=20):
 
 
 work = Path(tempfile.mkdtemp())
-model = work / "bike.json"
-bike = json.loads((ROOT / "examples" / "bike-share.json").read_text(encoding="utf-8"))
-model.write_text(json.dumps(bike), encoding="utf-8")
+model = work / "integration.json"
+fixture = json.loads((ROOT / "tests" / "fixtures" / "integration.json").read_text(encoding="utf-8"))
+model.write_text(json.dumps(fixture), encoding="utf-8")
 srv = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(model), "--port", "0"], stdin=subprocess.PIPE,
                        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
 stop = threading.Timer(400, srv.kill); stop.daemon = True; stop.start()  # a server that stops answering fails here, not on CI's clock
@@ -196,24 +196,24 @@ BOXES = "(() => { const host = document.querySelector('#m-canvas .umlimator'); r
 # audit 16: stories, or a story's steps, that are no list ended list_views and play_story in an internal error
 said = []
 for bad in ({"stories": 7}, {"stories": [{"id": "s", "steps": 3}]}):
-    model.write_text(json.dumps(bike | bad), encoding="utf-8")
+    model.write_text(json.dumps(fixture | bad), encoding="utf-8")
     said += [tool("list_views"), tool("play_story", id="s")]
 # audit 17: a null stories, or a story's null steps, is no stories (as validate() reads it), not a refused model
-model.write_text(json.dumps(bike | {"stories": None}), encoding="utf-8")
+model.write_text(json.dumps(fixture | {"stories": None}), encoding="utf-8")
 said17 = tool("list_views")
-model.write_text(json.dumps(bike | {"stories": [{"id": "s", "steps": None}]}), encoding="utf-8")
+model.write_text(json.dumps(fixture | {"stories": [{"id": "s", "steps": None}]}), encoding="utf-8")
 said17b = tool("list_views")
 ok("list_views on a null stories or a null steps lists the views, no tool error (audit 17)",
    '"trips"' in said17 and "not a list" not in said17 + said17b and re.search(r'"steps":\s*0', said17b), [said17[:200], said17b[:300]])
 # audit 18: a member id that is no string ended highlight and tour in an internal error (-32603); so did a tool name that is no string
-mem = json.loads(json.dumps(bike)); mem["nodes"][0]["members"] = [{"id": ["p"], "label": "p"}]
+mem = json.loads(json.dumps(fixture)); mem["nodes"][0]["members"] = [{"id": ["p"], "label": "p"}]
 model.write_text(json.dumps(mem), encoding="utf-8")
-said18 = [tool("highlight", refs=[bike["nodes"][0]["id"]]), tool("tour", cards=[bike["nodes"][0]["id"], bike["nodes"][1]["id"]])]
+said18 = [tool("highlight", refs=[fixture["nodes"][0]["id"]]), tool("tour", cards=[fixture["nodes"][0]["id"], fixture["nodes"][1]["id"]])]
 named18 = [rpc("tools/call", {"name": x, "arguments": {}}).get("error", {}) for x in (["list_views"], {"a": 1})]
 ok("highlight and tour on a model whose member id is no string name the field; a tool name that is no string is an unknown tool (-32602), no internal error (audit 18)",
    all("nodes[0].members[0].id is not a string" in x for x in said18) and [e.get("code") for e in named18] == [-32602, -32602]
    and all(e.get("message", "").startswith("Unknown tool") for e in named18), [said18, named18])
-model.write_text(json.dumps(bike), encoding="utf-8")
+model.write_text(json.dumps(fixture), encoding="utf-8")
 ok("list_views and play_story on stories, or steps, that are no list: the tool names the field, no internal error (audit 16)",
    all("stories is not a list" in x for x in said[:2]) and all("stories[0].steps is not a list" in x for x in said[2:]), said)
 chrome = Chrome()
@@ -246,7 +246,7 @@ try:
        away and "mcp" not in away["overlays"] and away["dimmed"] == 0 and back and back["lit"] == ["payments"], (away, back))
 
     # the model stops rendering: the page keeps the last version that did, and the tools say why
-    broken = dict(bike, edges=[*bike["edges"], {"id": "oops", "from": "fare", "to": "nobody"}])
+    broken = dict(fixture, edges=[*fixture["edges"], {"id": "oops", "from": "fare", "to": "nobody"}])
     model.write_text(json.dumps(broken), encoding="utf-8")
     said = tool("show_view", view="trips")
     got = until(lambda: (lambda s: s if s and s["view"] == "trips" and s["banner"] else None)(chrome.eval(sid, LOOK)))
@@ -254,13 +254,13 @@ try:
     ok("mcp-page-render#1 · a model that no longer renders: the page keeps its map, says so, and the tool says why",
        said.startswith("The model no longer renders, so the page shows its last version that did:") and "nobody" in said and "Shown on 1 page" in said
        and got and "no longer renders" in got["banner"] and ps["model"].get("renders") is False and ps["pages"][0].get("latest"), (said, got, ps.get("model")))
-    model.write_text(json.dumps(bike)[:-40], encoding="utf-8")  # mid-edit: a version that is not JSON (audit 10)
+    model.write_text(json.dumps(fixture)[:-40], encoding="utf-8")  # mid-edit: a version that is not JSON (audit 10)
     said, ps = tool("show_view", view="system"), state()
     got = until(lambda: (lambda s: s if s and s["view"] == "system" and "not JSON" in (s["banner"] or "") else None)(chrome.eval(sid, LOOK)))
     ok("mcp-page-render#2 · a version that is not JSON: page_state() says it does not render, and a page tool shows the last that did, with why",
        said.startswith("The model no longer renders, so the page shows its last version that did: it is not JSON") and got
        and ps["model"].get("renders") is False and "not JSON" in ps["model"].get("error", ""), (said, got, ps.get("model")))
-    model.write_text(json.dumps(bike), encoding="utf-8")
+    model.write_text(json.dumps(fixture), encoding="utf-8")
     said = tool("show_view", view="fleet")
     got = until(lambda: (lambda s: s if s and s["view"] == "fleet" and not s["banner"] else None)(chrome.eval(sid, LOOK)))
     ok("…and once it renders again, the page draws it", said.startswith("Shown on 1 page") and got, (said, got))
@@ -326,7 +326,7 @@ try:
 
     # a highlight's cards that a new version no longer has are dropped from what pages are shown
     tool("highlight", refs=["fare", "pricing"], view="trips")
-    smaller = json.loads(json.dumps(bike))
+    smaller = json.loads(json.dumps(fixture))
     gone = {e["id"] for e in smaller["edges"] if "pricing" in (e["from"], e["to"])}
     smaller["nodes"] = [x for x in smaller["nodes"] if x["id"] != "pricing"]
     smaller["edges"] = [e for e in smaller["edges"] if e["id"] not in gone]
@@ -342,23 +342,23 @@ try:
     ok("mcp-latest-command#2 · a new version's page is never sent ids it no longer has", ps["model"].get("renders")
        and [r.get("id") for r in (ps["asked"].get("highlight") or {}).get("refs", [])] == ["fare"], ps["asked"])
 
-    # this server stops, and another model's server takes its port: the tab stays the bike share, and says so
+    # this server stops, and another model's server takes its port: the tab stays the moped share, and says so
     port = int(url.rsplit(":", 1)[1])
     srv.stdin.close()
     srv.wait(timeout=30)
     shop = work / "shop.json"
-    shutil.copy(ROOT / "examples" / "bike-share-c4.json", shop)   # a second, different map: the bike share's Structurizr import
+    shutil.copy(ROOT / "tests" / "fixtures" / "integration-c4.json", shop)   # a second, different map: the moped share's Structurizr import
     srv = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(shop), "--port", str(port)], stdin=subprocess.PIPE,
                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
     taken = re.search(r"127\.0\.0\.1:(\d+)", rpc("server/discover")["result"]["instructions"]).group(1)
     said = until(lambda: (chrome.eval(sid, "(document.getElementById('mcp-banner') || {}).textContent") or "").startswith("This page's server now serves another map"), 20)
     ok("mcp-session#1 · a tab outlives its server, and another map's server takes the port: the tab stays, and says so",
-       taken == str(port) and said and chrome.eval(sid, "document.title").endswith("Bike share, an example"), (taken, port, said, chrome.eval(sid, "document.title")))
+       taken == str(port) and said and chrome.eval(sid, "document.title").endswith("Moped share, an example"), (taken, port, said, chrome.eval(sid, "document.title")))
 
     # audit 25: the page shown while no version renders listened with the run's TOKEN and had no onerror, so after the
     # server ran again (a new TOKEN) its stream was refused and it never drew the map once the model rendered
     late = work / "late.json"
-    late.write_text(json.dumps(bike)[:-40], encoding="utf-8")
+    late.write_text(json.dumps(fixture)[:-40], encoding="utf-8")
     def again():
         global srv
         srv.stdin.close()
@@ -371,8 +371,8 @@ try:
     waits = until(lambda: chrome.eval(sid2, "document.title") == "The map does not render yet")
     second = again()
     time.sleep(1)  # the page's stream is refused by the new run before the model renders again
-    late.write_text(json.dumps(bike), encoding="utf-8")
-    drawn = until(lambda: tool("show_view", view="system") and (chrome.eval(sid2, "document.title") or "").endswith("Bike share, an example"), 30)
+    late.write_text(json.dumps(fixture), encoding="utf-8")
+    drawn = until(lambda: tool("show_view", view="system") and (chrome.eval(sid2, "document.title") or "").endswith("Moped share, an example"), 30)
     ok("audit 25 · the page shown while the model does not render follows its server across a restart, and draws the map once it renders",
        first == second == str(port) and waits and drawn, (first, second, waits, chrome.eval(sid2, "document.title")))
 finally:

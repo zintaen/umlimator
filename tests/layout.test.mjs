@@ -68,7 +68,7 @@ test("a map's repair: false keeps its lines' ports (no request/reply swap)", () 
 });
 
 test('an unknown view is an error', () => {
-  assert.throws(() => layout(read('../examples/bike-share.json'), 'nope'), /no view "nope"/);
+  assert.throws(() => layout(read('./fixtures/integration.json'), 'nope'), /no view "nope"/);
 });
 
 test('the module bakes in no colour: every colour is a --um-* variable (lib/umlimator-theme.css has the defaults)', () => {
@@ -371,14 +371,14 @@ test('auto-layout puts a card level with the card its line comes from, so the li
 });
 
 test('auto-layout puts a card no line comes into just before its callee when that routes better, not in the first column (0.11.0)', () => {
-  const g = layout(read('../examples/bike-share.json'), 'overview'), at = id => g.nodes.find(n => n.id === id);
+  const g = layout(read('./fixtures/integration.json'), 'overview'), at = id => g.nodes.find(n => n.id === id);
   assert.equal(at('grafana').col, at('api').col - 1, 'Dashboards, which only reads Shop API\'s metrics, sits in the column before it');
 });
 
 test("a line from a card's top into another's top on the top row goes up, across and down, not past its card and back (#80)", () => {
   const m = { nodes: ['a', 'b', 'c'].map(id => ({ id, label: id.toUpperCase(), kind: 'backend' })), // no row above it: it can't come in from above
     edges: [{ from: 'a', to: 'b' }, { from: 'b', to: 'c' }, { id: 'over', from: 'a', to: 'c', fromSide: 'top', toSide: 'top' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }] };
-  const over = layout(m, 'v').edges.find(e => e.ids.includes('over')), docks = layout(read('../examples/bike-share.json'), 'fleet').edges.find(e => e.ids.includes('f2'));
+  const over = layout(m, 'v').edges.find(e => e.ids.includes('over')), docks = layout(read('./fixtures/integration.json'), 'fleet').edges.find(e => e.ids.includes('f2'));
   for (const e of [over, docks]) assert.equal(e.pts.length, 4, `${e.from} -> ${e.to}: ${JSON.stringify(e.pts.map(p => p.map(Math.round)))}`);
 });
 
@@ -440,8 +440,8 @@ test("a model's edge ids don't change its picture: port repair tries every pair 
   for (const v of m.views) assert.deepEqual(layout(m, v.id).edges.map(e => e.pts), layout(named, v.id).edges.map(e => e.pts), v.id);
 });
 
-test("a line's label finds the gap where it fits between the cards and lines beside it, not the box border by it (the imported bike share's trip API)", () => {
-  assert.deepEqual(check(read('../examples/bike-share-c4.json'), 'api-components').map(i => i.message), []);
+test("a line's label finds the gap where it fits between the cards and lines beside it, not the box border by it (the imported moped share's trip API)", () => {
+  assert.deepEqual(check(read('./fixtures/integration-c4.json'), 'api-components').map(i => i.message), []);
 });
 
 test("a loop drawn under the boxes comes up beside its target into its near side, the lowest port there; two into one card nest (#128)", () => {
@@ -450,8 +450,8 @@ test("a loop drawn under the boxes comes up beside its target into its near side
     assert.equal(x, t.x + t.w); assert.ok(e.pts.slice(-3).every(([px]) => px >= t.x + t.w), JSON.stringify(e.pts)); // up the gap beside it
     assert.ok(g.edges.every(o => o === e || o.ts !== 'R' || o.t !== t || o.pts.at(-1)[1] <= y || o.under), 'the lowest port on that side');
     return e; };
-  // bike-share's dock feed: quarantine's "again, hourly" back to the telemetry stream, under the Check service box
-  const w = read('../examples/bike-share.json'), g = layout(w, 'dock-feed');
+  // the integration fixture's dock feed: quarantine's "again, hourly" back to the telemetry stream, under the Check service box
+  const w = read('./fixtures/integration.json'), g = layout(w, 'dock-feed');
   near(g, 'dock-quarantine', 'telemetry'); assert.deepEqual(check(w, 'dock-feed').map(i => i.message), []);
   const b = layout(read('../bench/models/b26.json'), 'overview'), [i, o] = [near(b, 'n18', 'n21'), near(b, 'n14', 'n21')]; // o runs lower: it comes up nearer the card, into the lower port
   assert.ok(o.pts.at(-1)[1] > i.pts.at(-1)[1] && o.pts.at(-2)[0] < i.pts.at(-2)[0], JSON.stringify([i.pts, o.pts]));
@@ -573,8 +573,8 @@ test('a labelled line whose label finds no spot is said by check(), on a map or 
   const A = { id: 'a', label: 'A' }, B = { id: 'b', label: 'B' }, line = x => ({ from: 'a', to: 'b', s: A, t: B, pts: [[0, 0], [10, 0]], lbl: null, ...x });
   for (const map of [true, false]) assert.deepEqual(leaveIssues({ map, nodes: [A, B], edges: [line({ label: 'pays' }), line({ step: 2 }), line({ step: 1, fixed: true }), line({})] }, 'view v'),
     ['view v: label "pays" has no room on edge A→B: not drawn', 'view v: step 2 has no room on edge A→B: not drawn']); // a comb line's step is on its card
-  // bike-share's nightly forecast (a numbered view in lanes): "flags short docks", between two cards of one lane, is drawn
-  const w = read('../examples/bike-share.json'), g = layout(w, 'demand');
+  // the integration fixture's nightly forecast (a numbered view in lanes): "flags short docks", between two cards of one lane, is drawn
+  const w = read('./fixtures/integration.json'), g = layout(w, 'demand');
   assert.deepEqual(g.edges.filter(e => e.label && !e.lbl).map(e => e.label), []);
   assert.deepEqual(check(w, 'demand'), []);
 });
@@ -592,13 +592,13 @@ test('examples/layout.mjs reports a model with no title (optional in MapModel) b
 
 test('examples/layout.mjs refuses a --max that is no number of at least 1, so a CI step with a typo fails, not passes (audit 18)', () => {
   const run = (...a) => spawnSync(process.execPath, [fileURLToPath(new URL('../examples/layout.mjs', import.meta.url)), ...a], { encoding: 'utf8' });
-  const c4 = fileURLToPath(new URL('../examples/bike-share-c4.json', import.meta.url));
+  const c4 = fileURLToPath(new URL('./fixtures/integration-c4.json', import.meta.url));
   for (const bad of [['--max', 'x2', c4], ['--max', '', c4], ['--max', '0.5', c4], ['--max', c4], ['--max=x', c4], [c4, '--max']]) {
     const r = run(...bad);
     assert.equal(r.status, 2, bad.join(' '));
     assert.match(r.stderr, /^--max takes a number of at least 1/, bad.join(' '));
   }
-  assert.equal(run('--max', '1', c4).status, 1);   // the imported bike share's longest line runs over 1.2 times its direct route
+  assert.equal(run('--max', '1', c4).status, 1);   // the imported moped share's longest line runs over 1.2 times its direct route
   assert.equal(run('--max=1', c4).status, 1);
   assert.equal(run('--max', '3', c4).status, 0);
 });
@@ -696,15 +696,15 @@ const foreignUnder = (m, vid, g) => { const fs = g.families || [], out = [];
 test('audit 41: a card with no pin in a pinned view goes by its box\'s pinned cards: no box grows over a card it does not hold, and no line to the box is dropped', async () => {
   const U = await import('../lib/umlimator-all.js'), warns = [], keep = console.warn; console.warn = (...a) => warns.push(a.join(' '));
   try {
-    // edit.html's own add-in-box: a new card in each box of each bike-share view (the rider shop's checkout among them), with no pin
-    const shop = read('../examples/bike-share.json');
+    // edit.html's own add-in-box: a new card in each box of each integration fixture view (the rider shop's checkout among them), with no pin
+    const shop = read('./fixtures/integration.json');
     for (const v0 of shop.views) for (const c of v0.containers || []) { const m = structuredClone(shop), v = m.views.find(x => x.id === v0.id);
       m.nodes.push({ id: 'new-1', label: 'New card', kind: 'backend' }); v.nodeIds.push('new-1'); v.containers.find(x => x.id === c.id).nodeIds.push('new-1');
       const g = U.layout(m, v.id); assert.deepEqual(foreignUnder(m, v.id, g), [], `${v.id}: new card in ${c.id}`);
       assert.ok(!U.check(m, v.id).some(p => / lies over /.test(p.message)), `${v.id}: ${c.id}`); }
     // each pin of each example view with boxes taken out in turn
-    // (bike-share holds the Bookshop atlas's typed views since step 3 of the one-model plan)
-    for (const f of ['bike-share.json']) { const base = read('../examples/' + f);
+    // (the integration fixture holds the Bookshop atlas's typed views since step 3 of the one-model plan)
+    for (const f of ['fixtures/integration.json']) { const base = read('./' + f);
       for (const v of base.views) if (v && v.layout && (U.layout(base, v.id).families || []).length) for (const k of Object.keys(v.layout)) {
         const m = structuredClone(base); delete m.views.find(x => x.id === v.id).layout[k]; warns.length = 0;
         const g = U.layout(m, v.id); assert.deepEqual(foreignUnder(m, v.id, g), [], `${f} ${v.id} with no pin for ${k}`);
@@ -712,16 +712,16 @@ test('audit 41: a card with no pin in a pinned view goes by its box\'s pinned ca
     // states.json's three pinned, boxed views (machines, story, tour) left in step 4 of the one-model plan; dock-feed, the
     // boxed map view (two nested boxes) that came with it, has no pins, so it is pinned here from its own auto layout and
     // each of its pins taken out in turn the same way
-    { const base = read('../examples/bike-share.json'), m0 = structuredClone(base), v0 = m0.views.find(v => v.id === 'dock-feed');
+    { const base = read('./fixtures/integration.json'), m0 = structuredClone(base), v0 = m0.views.find(v => v.id === 'dock-feed');
       v0.layout = Object.fromEntries(U.layout(m0, 'dock-feed').nodes.filter(n => v0.nodeIds.includes(n.id)).map(n => [n.id, [n.col, n.row]]));
       assert.ok((U.layout(m0, 'dock-feed').families || []).length >= 2 && Object.keys(v0.layout).length >= 5, JSON.stringify(v0.layout));
       for (const k of Object.keys(v0.layout)) {
         const m = structuredClone(m0); delete m.views.find(x => x.id === 'dock-feed').layout[k]; warns.length = 0;
         const g = U.layout(m, 'dock-feed'); assert.deepEqual(foreignUnder(m, 'dock-feed', g), [], `dock-feed with no pin for ${k}`);
         assert.ok(!warns.some(w => /something inside it/.test(w)), `dock-feed with no pin for ${k}: ${warns}`); } }
-    // bike-share's system view with pricing unpinned: the line from monitoring to box rides is drawn
-    const bike = read('../examples/bike-share.json'); delete bike.views.find(v => v.id === 'system').layout.pricing;
-    assert.ok(U.layout(bike, 'system').edges.some(e => (e.all || [e]).some(x => x._id === 's16')));
+    // the integration fixture's system view with pricing unpinned: the line from monitoring to box rides is drawn
+    const fx = read('./fixtures/integration.json'); delete fx.views.find(v => v.id === 'system').layout.pricing;
+    assert.ok(U.layout(fx, 'system').edges.some(e => (e.all || [e]).some(x => x._id === 's16')));
     // hostile boxes: a parent cycle, a card listed by two boxes, a box that lists itself, pins that are no places: laid out, no throw, soon
     const t0 = performance.now(), hm = { nodes: ['a', 'b', 'c', 'd', 'e'].map(id => ({ id, label: id, kind: 'service' })), edges: [{ from: 'a', to: 'b' }, { from: 'c', to: 'p' }],
       views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd', 'e'], layout: { a: [0, 0], b: ['x', 1], c: [1e308, 0], d: null },
@@ -766,10 +766,10 @@ test('audit 42: a box keeps clear of a card half a row from it, on an auto layou
 });
 test('audit 42: a card with no pin in no box, or the first placed of its box, goes clear of the other boxes', () => {
   const issues = (m, v, re = / lies over |families .* overlap/) => check(m, v).map(p => p.message).filter(s => re.test(s));
-  // bike-share's system view: a card in no box, with a line from Riders, as a host adds one
-  const bike = read('../examples/bike-share.json'), sys = bike.views.find(v => v.id === 'system');
-  bike.nodes.push({ id: 'free', label: 'Free card', kind: 'service' }); sys.nodeIds.push('free'); bike.edges.push({ id: 'fe', from: 'riders', to: 'free' });
-  assert.deepEqual(issues(bike, 'system'), []);
+  // the integration fixture's system view: a card in no box, with a line from Riders, as a host adds one
+  const fx = read('./fixtures/integration.json'), sys = fx.views.find(v => v.id === 'system');
+  fx.nodes.push({ id: 'free', label: 'Free card', kind: 'service' }); sys.nodeIds.push('free'); fx.edges.push({ id: 'fe', from: 'riders', to: 'free' });
+  assert.deepEqual(issues(fx, 'system'), []);
   // monorepo's boxed view with one card dragged: packages/ui's charts is placed before any card of its box
   const mono = read('../examples/monorepo.json'); mono.views.find(v => v.id === 'boxed').layout = { 'apps/web': [5, 1] };
   assert.deepEqual(issues(mono, 'boxed'), []);
@@ -781,19 +781,19 @@ test('audit 42: a card with no pin in no box, or the first placed of its box, go
 test('audit 42: a card boxFit moves keeps its lines left to right where a slot does', () => {
   const issues = (m, v, re) => check(m, v).map(p => p.message).filter(s => re.test(s));
   // the rider shop's checkout with queue's pin taken out: queue goes left of the worker it feeds, not under it
-  const shop = read('../examples/bike-share.json'); delete shop.views.find(v => v.id === 'checkout').layout.queue;
+  const shop = read('./fixtures/integration.json'); delete shop.views.find(v => v.id === 'checkout').layout.queue;
   const g = layout(shop, 'checkout'), at = id => g.nodes.find(n => n.id === id);
   assert.ok(at('queue').x + at('queue').w < at('worker').x); assert.deepEqual(issues(shop, 'checkout', /right-to-left| lies over /), []);
-  // bike-share: a card added to box apps with a line from Rider app goes where that line takes no detour round Ops console
-  const b2 = read('../examples/bike-share.json'), s2 = b2.views.find(v => v.id === 'system');
+  // the integration fixture: a card added to box apps with a line from Rider app goes where that line takes no detour round Ops console
+  const b2 = read('./fixtures/integration.json'), s2 = b2.views.find(v => v.id === 'system');
   b2.nodes.push({ id: 'new0', label: 'New card 0', kind: 'service' }); s2.nodeIds.push('new0'); s2.containers.find(c => c.id === 'apps').nodeIds.push('new0'); b2.edges.push({ id: 'ne0', from: 'rider-app', to: 'new0' });
   assert.deepEqual(issues(b2, 'system', /detour| lies over /), []);
 });
 test('audit 43: a card with no pin whose clean auto-layout slot runs its lines back goes where they run ahead, with or without boxes', () => {
   const back = (m, v) => check(m, v).map(p => p.message).filter(s => /right-to-left/.test(s));
   // each pin of the rider shop's checkout (Orders box) and the rider help (no boxes) dropped in turn: no line runs back
-  for (const [f, vid] of [['bike-share', 'checkout'], ['bike-share', 'help']]) {
-    const m = read(`../examples/${f}.json`), pins = Object.keys(m.views.find(v => v.id === vid).layout);
+  for (const [f, vid] of [['integration', 'checkout'], ['integration', 'help']]) {
+    const m = read(`./fixtures/${f}.json`), pins = Object.keys(m.views.find(v => v.id === vid).layout);
     for (const id of pins) { const b = structuredClone(m); delete b.views.find(v => v.id === vid).layout[id]; assert.deepEqual(back(b, vid), [], `${f} ${vid} without ${id}`); }
   }
   // hostile: a chain pinned right to left at every other card; the cards between still get a slot each, quickly

@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="en">
-<!-- replay() of a trace: a ride ending in bike share's Trip service, as an OpenTelemetry collector exports it (OTLP JSON,
-     traces/ride-end.json), read by otlpSpans(). Each call runs along its line at the trace's relative timing, the line
-     glows while the call lasts and keeps its duration. Services match cards by id, by label, or through a match map
-     (traces/match.json). One service (fraud-check) has no card on this view, so its span is skipped and counted. The
-     trace is made up. Serve the repository over HTTP to open it: python3 -m http.server  then  http://localhost:8000/examples/replay.html -->
+<!-- replay() of a trace: the diff Action on a pull request, on the Umlimator Atlas's overview, as an OpenTelemetry
+     collector exports it (OTLP JSON, traces/pull-request.json), read by otlpSpans(). Each call runs along its line at the
+     trace's relative timing, the line glows while the call lasts and keeps its duration. Services match cards by id, by
+     label, or through a match map (traces/pull-request-match.json). One service (git) has no card on this view, so its
+     span is skipped and counted. The trace is made up. Serve the repository over HTTP to open it: python3 -m http.server  then  http://localhost:8000/examples/replay.html -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>umlimator: trace replay</title>
@@ -20,7 +20,7 @@
   header h1 { margin: 0; font-size: inherit; } /* the page's heading, drawn as the bold title it was */
 </style>
 <header>
-  <h1>A ride ends: the trace, replayed</h1>
+  <h1>A pull request's diff: the trace, replayed</h1>
   <p id="status" aria-live="polite">Play runs the trace over 6 seconds.</p>
   <button id="play">Play</button>
   <button id="pause" aria-pressed="false" disabled>Pause</button>
@@ -31,13 +31,13 @@
 import { render, otlpSpans } from '../lib/umlimator.js';
 import { withIcons } from './icons.js';
 
-const model = await withIcons(await (await fetch('bike-share.json')).json());
-const map = render(document.getElementById('map'), model, { view: 'trips' });
+const model = await withIcons(await (await fetch('umlimator-atlas.json')).json());
+const map = render(document.getElementById('map'), model, { view: 'overview' });
 
 // the trace, as an OpenTelemetry collector exports it (one resource per service, times in ns), and the services whose
-// names aren't a card's id or label (rider-app and trip-api are ids, Pricing is a label). umlimator.py trace keeps the
-// same trace as a numbered view: bike-share's "A ride ends, from its trace" (#96)
-const [trace, match] = await Promise.all(['traces/ride-end.json', 'traces/match.json'].map(async f => (await fetch(f)).json()));
+// names aren't a card's id or label (github and chrome are ids, umlimator.py is a label). umlimator.py trace keeps
+// a trace like this one as a numbered view (#96)
+const [trace, match] = await Promise.all(['traces/pull-request.json', 'traces/pull-request-match.json'].map(async f => (await fetch(f)).json()));
 
 const $ = id => document.getElementById(id), status = $('status');
 let run = null;

@@ -1,0 +1,78 @@
+// The showcase: examples/ (each type's example, its variants and the atlases) is what the gallery and the site show, so
+// tests only smoke-check it here: every model validates with no error and every view lays out. Tests pin content on their
+// own models: tests/fixtures/ (the integration fixture, tests/fixtures/integration.json, among them) and the per-type
+// tests/*-minimal.json and *-stress.json; the bench reads bench/models/ (the maintainer's decision, 20 Nov 2026).
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { validate, layout } from '../lib/umlimator-all.js';
+
+const root = new URL('../', import.meta.url);
+const models = ['examples', 'examples/types', 'examples/variants']
+  .filter(d => existsSync(new URL(d + '/', root)))
+  .flatMap(d => readdirSync(new URL(d + '/', root)).filter(f => f.endsWith('.json')).sort().map(f => `${d}/${f}`));
+
+test('every showcase model validates with no error, and each of its views lays out', () => {
+  assert.ok(models.filter(f => f.startsWith('examples/types/')).length >= 28, 'a model for each type');
+  for (const f of models) {
+    const m = JSON.parse(readFileSync(new URL(f, root), 'utf8'));
+    assert.deepEqual(validate(m).filter(p => p.level === 'error' || !p.level), [], f);
+    assert.ok((m.views || []).length > 0, `${f}: no view`);
+    for (const v of m.views) {
+      let g;
+      assert.doesNotThrow(() => { g = layout(m, v.id); }, `${f}: view ${v.id}`);
+      assert.ok(g && Array.isArray(g.nodes), `${f}: view ${v.id} gave no layout`);
+    }
+  }
+});
+
+// No test pins showcase content but these: this smoke test, the gallery, types and docs tests (they check what the pages
+// show), and the README test. The files in LEGACY read examples/ models from before the decision; each moves to a model
+// of its own in tests/fixtures/ and leaves the list, which only shrinks: a file not listed may not start reading examples/.
+const ALLOWED = ['tests/showcase.test.mjs', 'tests/gallery.test.mjs', 'tests/types.test.mjs', 'tests/docs.test.mjs',
+  'tests/api-docs.test.mjs', 'tests/site.test.mjs', 'tests/readme.test.mjs'];
+const LEGACY = ['tests/activity.html', 'tests/activity.test.mjs', 'tests/aids.test.mjs', 'tests/apply.test.mjs',
+  'tests/blocks.test.mjs', 'tests/bpmn-xml.test.mjs', 'tests/bpmn.html', 'tests/bpmn.test.mjs', 'tests/c4-views.html',
+  'tests/c4-views.test.mjs', 'tests/c4.html', 'tests/c4.test.mjs', 'tests/change.html', 'tests/change.test.mjs',
+  'tests/class.html', 'tests/class.test.mjs', 'tests/cli.py', 'tests/cloud.html', 'tests/cloud.test.mjs',
+  'tests/communication.html', 'tests/communication.test.mjs', 'tests/component.html', 'tests/component.test.mjs',
+  'tests/composite.html', 'tests/composite.test.mjs', 'tests/contrast.html', 'tests/convert.test.mjs',
+  'tests/core-diet.html', 'tests/core-diet.json', 'tests/core-diet.test.mjs', 'tests/delete-cascade.test.mjs',
+  'tests/deployment.html', 'tests/deployment.test.mjs', 'tests/dfd.html', 'tests/dfd.test.mjs', 'tests/element.html',
+  'tests/embed.py', 'tests/er.html', 'tests/er.test.mjs', 'tests/flow.test.mjs', 'tests/flowchart.html',
+  'tests/flowchart.test.mjs', 'tests/import.py', 'tests/import/state.mmd', 'tests/information-flow.html',
+  'tests/information-flow.test.mjs', 'tests/insight.test.mjs', 'tests/interaction.test.mjs',
+  'tests/internal-block.test.mjs', 'tests/layout-typed.test.mjs', 'tests/layout.test.mjs', 'tests/m4a-fixtures.test.mjs',
+  'tests/m4b-fixtures.test.mjs', 'tests/mcp.py', 'tests/mermaid-class.test.mjs', 'tests/mermaid-er.test.mjs',
+  'tests/mermaid-flowchart.test.mjs', 'tests/mermaid-requirement.test.mjs', 'tests/mermaid-sequence.test.mjs',
+  'tests/mermaid-state.test.mjs', 'tests/mindmap.html', 'tests/mindmap.test.mjs', 'tests/model.test.mjs',
+  'tests/motion.html', 'tests/names.test.mjs', 'tests/notation.html', 'tests/object.html', 'tests/object.test.mjs',
+  'tests/outcomes.py', 'tests/overview.html', 'tests/overview.test.mjs', 'tests/package.html', 'tests/package.test.mjs',
+  'tests/page-state.html', 'tests/parametric.test.mjs', 'tests/print-typed.test.mjs', 'tests/profile.html',
+  'tests/profile.test.mjs', 'tests/registry.test.mjs', 'tests/schema.test.mjs', 'tests/sequence.html',
+  'tests/sequence.test.mjs', 'tests/shapes.html', 'tests/shapes.test.mjs', 'tests/spike-sequence.test.mjs',
+  'tests/stage6-core.test.mjs', 'tests/state-machine.html', 'tests/state.test.mjs', 'tests/stereotypes.test.mjs',
+  'tests/stories.test.mjs', 'tests/structure.test.mjs', 'tests/sysml.html', 'tests/sysml.test.mjs', 'tests/timing.test.mjs',
+  'tests/transition.test.mjs', 'tests/typed-diff.test.mjs', 'tests/uml-panel.html', 'tests/unfold.test.mjs',
+  'tests/usecase.html', 'tests/usecase.test.mjs'];
+
+// a path to a model under examples/ (not docs/diagrams/examples/), a template or a listing of the folder
+const READS = /(?<!diagrams\/)(?<![\w-])examples\/(?:types\/|variants\/)?(?:[\w.-]+\.json|\$\{|['"`])|\/ ?"examples"|join\([^)]*'examples'|URL\('\.\.\/examples\/'/;
+
+test('no test but the allowed ones reads the showcase models, and the legacy list only shrinks', () => {
+  const tracked = execFileSync('git', ['ls-files', 'tests'], { cwd: root, encoding: 'utf8' }).split('\n')
+    .filter(f => /\.(mjs|js|py|html|json|mmd|dsl|txt)$/.test(f) && !f.startsWith('tests/fixtures/'));
+  const readers = tracked.filter(f => READS.test(readFileSync(new URL(f, root), 'utf8')));
+  assert.deepEqual(readers.filter(f => !ALLOWED.includes(f) && !LEGACY.includes(f)), [],
+    'a test pins its own model in tests/fixtures/, never one of examples/');
+  assert.deepEqual(LEGACY.filter(f => !readers.includes(f)), [], 'reads examples/ no more: take it off LEGACY');
+  for (const f of tracked) assert.doesNotMatch(readFileSync(new URL(f, root), 'utf8'), /examples\/(?:bike-share|traces\/ride-end|traces\/match)/, f);
+});
+
+// the bike share left examples/ for good (20 Nov 2026): its model, its Structurizr pair, its page, stills and traces
+test('the old test model and its files are gone from examples/', () => {
+  for (const f of ['bike-share.json', 'bike-share-c4.json', 'bike-share.dsl', 'bike-share.html', 'stills/bike-share', 'traces/ride-end.json', 'traces/match.json'])
+    assert.ok(!existsSync(new URL(`examples/${f}`, root)), `examples/${f}`);
+  for (const f of ['tools/bike-share.mjs', 'tools/bike-share']) assert.ok(!existsSync(new URL(f, root)), f);
+});

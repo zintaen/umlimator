@@ -19,12 +19,12 @@ const check = (name, cond, info) => { document.title = name; if (cond) out.ok.pu
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const until = async (f, ms = 3000) => { const t = Date.now(); while (!f() && Date.now() - t < ms) await wait(20); return f(); };
 const state = p => Promise.race([p.then(v => ['settled', v]), wait(0).then(() => ['pending'])]);
-const BIKE = await (await fetch('../examples/bike-share.json')).json();
+const FX = await (await fetch('fixtures/integration.json')).json();
 const errors = [], onError = e => errors.push(String(e.message || e.error)); addEventListener('error', onError);
 const el = document.getElementById('a');
 let h = null, sr = null, ev = [];
 // each scenario on a fresh map, once its first resize and font redraws have passed (either moves the camera)
-const mount = async (opts = {}, model = BIKE) => { if (h) h.destroy(); el.innerHTML = ''; ev = [];
+const mount = async (opts = {}, model = FX) => { if (h) h.destroy(); el.innerHTML = ''; ev = [];
   h = render(el, model, { ...opts, on: { viewchange: e => ev.push(e.view), select: e => ev.push('select:' + (e.target ? e.target.id : null)), ...(opts.on || {}) } });
   sr = el.querySelector('.umlimator').shadowRoot; await document.fonts.ready; await wait(400); return h; };
 const stage = () => sr.querySelector('.stage');
@@ -35,7 +35,7 @@ try {
 
   // a press as the drill-down zoom starts settled nothing: the map stayed on the old view, busy, until a later camera move
   await mount();
-  sr.querySelector('.node[data-id="bikeshare"]').dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true, detail: 2 }));
+  sr.querySelector('.node[data-id="mopedshare"]').dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true, detail: 2 }));
   press(); // the same task: before the zoom's first frame
   await until(() => ev.includes('system'), 3000);
   check('a press on the map as a drill-down zooms in lets the move finish: the view shows and viewchange comes', h.view === 'system' && ev.includes('system'), [h.view, ev]);
@@ -58,27 +58,27 @@ try {
   // an update() that drops the view being gone to
   await mount({ view: 'system' });
   const p3 = h.setView('fleet'); await wait(40);
-  const m2 = structuredClone(BIKE); m2.views = m2.views.filter(v => v.id !== 'fleet'); h.update(m2);
+  const m2 = structuredClone(FX); m2.views = m2.views.filter(v => v.id !== 'fleet'); h.update(m2);
   check("an update() that drops the view a move goes to: its setView() resolves false, and the map stays visible on its view", await p3 === false && h.view === 'system' && !stage().classList.contains('fading'), [h.view, stage().className]);
   check('…and the next setView() works', await h.setView('trips') === true && h.view === 'trips', h.view);
 
   // a listener that throws during a move
   await mount({ on: { select: e => { void e.target.id; } } });
-  h.select({ type: 'node', id: 'bikeshare', view: 'context' }); errors.length = 0;
+  h.select({ type: 'node', id: 'mopedshare', view: 'context' }); errors.length = 0;
   const p4 = h.setView('system');
   check('a select listener that throws during a move: the move completes, the error is reported', await p4 === true && h.view === 'system' && errors.length > 0 && !stage().classList.contains('fading'), [h.view, errors]);
 
   // destroy() settles every promise
   await mount();
   const p5 = h.setView('system'); await wait(60);
-  const t5 = h.tour(['riders', 'bikeshare', 'payments']); const h5 = h; h = null; h5.destroy();
+  const t5 = h.tour(['riders', 'mopedshare', 'payments']); const h5 = h; h = null; h5.destroy();
   await wait(0);
   check("destroy() during a move: setView()'s promise resolves false", JSON.stringify(await state(p5)) === '["settled",false]');
   check("…and a tour's resolves false at once, not on a later frame", JSON.stringify(await state(t5)) === '["settled",false]');
 
   // the ease's fading copies answer nothing: a selection mid-ease, and collapse() right after expand()
   await mount({ view: 'system' });
-  errors.length = 0; const m3 = structuredClone(BIKE), sys = m3.views.find(v => v.id === 'system'); sys.nodeIds = sys.nodeIds.slice(0, 3);
+  errors.length = 0; const m3 = structuredClone(FX), sys = m3.views.find(v => v.id === 'system'); sys.nodeIds = sys.nodeIds.slice(0, 3);
   h.update(m3); const easing = !!sr.querySelector('.um-leaving'); let threw = null;
   try { h.select({ type: 'node', id: sys.nodeIds[0], view: 'system' }); } catch (e) { threw = String(e); }
   check('a selection while an update() eases in throws nothing and is reported (select event)', easing && threw === null && ev.includes('select:' + sys.nodeIds[0]) && errors.length === 0, [easing, threw, errors]);
@@ -88,8 +88,8 @@ try {
 
   // motion belongs to each map: an instant one (as the page's #check, #still and #shot draw) stills only itself
   await mount();
-  const other = render(document.getElementById('b'), BIKE, { _page: { instant: true } });
-  const t6 = h.tour(['riders', 'bikeshare', 'payments']), t7 = other.tour(['riders', 'bikeshare', 'payments']);
+  const other = render(document.getElementById('b'), FX, { _page: { instant: true } });
+  const t6 = h.tour(['riders', 'mopedshare', 'payments']), t7 = other.tour(['riders', 'mopedshare', 'payments']);
   check('a map drawn instant leaves another map moving: its tour rides while the instant one\'s is done at once',
     (await state(t6))[0] === 'pending' && JSON.stringify(await state(t7)) === '["settled",true]');
   other.destroy();
@@ -100,10 +100,10 @@ try {
   await pn;
   check('while a move is under way, navigating and state.navigating name where it goes; null once there', nav0 === 'system' && sn === 'system' && h.navigating === null && h.state.navigating === null && h.state.motion === 'full', [nav0, sn]);
   await h.setView('context');
-  const tr = h.tour(['riders', 'bikeshare', 'payments']), riding = h.state.tour; h.tour(null); await tr;
+  const tr = h.tour(['riders', 'mopedshare', 'payments']), riding = h.state.tour; h.tour(null); await tr;
   check('a tour riding is in the state, and gone once it ends', riding === true && h.state.tour === false, riding);
   await h.setView('trips');
-  const { otlpSpans } = await import('../lib/umlimator.js'), T = await (await fetch('../examples/traces/ride-end.json')).json(), M = await (await fetch('../examples/traces/match.json')).json();
+  const { otlpSpans } = await import('../lib/umlimator.js'), T = await (await fetch('fixtures/traces/ride-end.json')).json(), M = await (await fetch('fixtures/traces/match.json')).json();
   const rp = h.replay(otlpSpans(T), { match: M }), rs0 = h.state.replay; rp.pause(); const rs1 = h.state.replay; rp.stop();
   check('a replay under way is in the state: playing, then paused, then gone', JSON.stringify([rs0, rs1, h.state.replay]) === '[{"playing":true},{"playing":false},null]', [rs0, rs1, h.state.replay]);
 
@@ -161,7 +161,7 @@ try {
     && roff.join() === 'false,{"playing":true},true,false', [ron, roff]);
   // an update() as a step's camera glides in: the step still gets its framing (rider-app at 75%)
   await mount({ view: 'context' });
-  let cut = false; h.on('select', e => { if (cut || !e.target || e.target.id !== 'trips') return; cut = true; const m = structuredClone(BIKE); m.nodes.find(n => n.id === 'accounts').label = 'Accounts and sign-in'; h.update(m); });
+  let cut = false; h.on('select', e => { if (cut || !e.target || e.target.id !== 'trips') return; cut = true; const m = structuredClone(FX); m.nodes.find(n => n.id === 'accounts').label = 'Accounts and sign-in'; h.update(m); });
   const s2 = h.play('ride', { step: 1, auto: false });
   await until(() => cut && s2.state === 'paused', 4000); await wait(800);
   check("an update() as a step's camera glides in: the camera still comes to the step's framing", cut && Math.abs(h.state.camera.zoom - 0.75) < 0.01, [cut, h.state.camera]);
@@ -205,7 +205,7 @@ try {
   const [hw, hew] = hot ? widths(hot) : [];
   check("a selected card's lines: the flow stays as wide as the line, not a bump on it", hot && hw <= hew + 0.01, [hw, hew, !!hot]);
   if (h) { h.destroy(); h = null; }
-  const pe = [], hp = mountPage(document.getElementById('page'), BIKE, { params: new URLSearchParams() });
+  const pe = [], hp = mountPage(document.getElementById('page'), FX, { params: new URLSearchParams() });
   hp.on('viewchange', e => pe.push(e.view));
   await until(() => hp.view === 'context', 3000); await wait(400);
   await hp.setView('system'); await wait(200);
