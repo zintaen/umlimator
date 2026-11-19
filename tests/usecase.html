@@ -119,11 +119,16 @@ try {
   const m4 = gives('picking Extend: one add of a uml.Extend, which names no point yet', [{ op: 'add', element: { id: 'extend1', type: 'uml.Extend', from: 'browse', to: 'check-out' }, view: 'shopping' }],
     m => m.edges.some(e => e.id === 'extend1'), m3, 1);
   // the other line kinds, each by L and the picker
-  for (const [from, name, kind, to, id, type] of [['browse', 'sign', 'Include', 'sign-in', 'include1', 'Include'], ['actor1', 'shopper', 'Generalization', 'shopper', 'generalization1', 'Generalization'], ['track', 'courier', 'Comment link', 'actor1', 'commentlink1', 'CommentLink']]) {
+  for (const [from, name, kind, to, id, type] of [['browse', 'sign', 'Include', 'sign-in', 'include1', 'Include'], ['actor1', 'shopper', 'Generalization', 'shopper', 'generalization1', 'Generalization']]) {
     click(`.node[data-id="${from}"] .c-name`); key('l'); for (const c of name) key(c); key('Enter');
     all('.um-pick button').find(b => b.textContent === kind).click();
     check(`picking ${kind}: one add of a uml.${type}`, same(last().commands, [{ op: 'add', element: { id, type: 'uml.' + type, from, to }, view: 'shopping' }]) && apply(m3, last().commands).edges.some(e => e.id === id), last());
   }
+  // a comment link between a use case and an actor, neither a comment: refused, said on the hint line (audit 46)
+  const cl0 = ed.length;
+  click('.node[data-id="track"] .c-name'); key('l'); for (const c of 'courier') key(c); key('Enter');
+  all('.um-pick button').find(b => b.textContent === 'Comment link').click();
+  check('picking Comment link between a use case and an actor: refused, said on the hint line', ed.length === cl0 && pick('.um-live').textContent === 'A comment link runs from a comment', [ed.length - cl0, pick('.um-live').textContent]);
   h.update(m4);
   check('extend-points is listed in the problems panel, by its rule', all('.um-editor .um-probs button').some(b => /extend-points: extend1 names no extension point of "Check out"/.test(b.textContent)), all('.um-editor .um-probs button').map(b => b.textContent));
   h.select({ type: 'edge', ids: ['extend1'], view: 'shopping' });

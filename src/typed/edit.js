@@ -77,10 +77,13 @@ TYPED.edit = (I, c) => {
     return true; }
 
   I.connect = (from, to, ev, at) => base.connect(from, to, ev, at !== undefined ? at : ev ? near(...world(ev)) : keyAt());
-  I.drop = (n, hint, into, from) => { const h = hook('moveTo'), dflt = () => base.drop(n, hint, into, from), dy = hint.y - (n.y + n.h / 2);
-    // no moveTo: a drop into another box is a new owner, which the owner hook guards as it guards the Owner field (cloud, audit 19)
-    const o = !h && !c.stays(n.id, into, from) && can('move') && hook('owner'); // a drop that keeps the owner: the default's pin (audit 34)
-    if (o) { const m = model(), v = view(); return ran(o(m, v, n.id, arrOf(m.nodes).some(x => isRec(x) && x.id === into) ? into : v.subject ?? null), dflt); }
+  I.drop = (n, hint, into, from) => { const h = hook('moveTo'), dy = hint.y - (n.y + n.h / 2);
+    // a drop into another box is a new owner, which the owner hook guards as it guards the Owner field (cloud, audit 19), and
+    // so does a moveTo's default (null): TYPED.owns, the rule on a stereotype's owner, in every view (audit 46)
+    const re = !c.stays(n.id, into, from) && can('move'), to = () => { const m = model(), v = view(); return arrOf(m.nodes).some(x => isRec(x) && x.id === into) ? into : v.subject ?? null; };
+    const dflt = () => (re ? ran(owns(n.id, to()), () => base.drop(n, hint, into, from)) : base.drop(n, hint, into, from));
+    const o = !h && re && hook('owner'); // a drop that keeps the owner: the default's pin (audit 34)
+    if (o) { const m = model(), v = view(); return ran(owns(n.id, to()) ?? o(m, v, n.id, to()), dflt); }
     const g = api.geo(), col = arrOf((view() || {}).nodeIds).filter(id => id !== n.id && isRec(g.byId[id]) && g.byId[id].x + g.byId[id].w / 2 < hint.x).length;
     return h && can('move') ? ran(h(model(), view(), n.id, { ...near(hint.x, hint.y + Math.sign(dy) * n.h / 2), pt: [hint.x, hint.y], col, geo: g }), dflt) : dflt(); };
   I.addNode = i => { const h = hook('add'), t = c.nodeTypes()[i], cam = api.cam(); if (!t || !can('add') || !cam || (!h && t.name !== false)) return base.addNode(i);
@@ -101,7 +104,9 @@ TYPED.edit = (I, c) => {
     const vs = arrOf(model().views).filter(v => isRec(v) && v.diagram === t.opens);
     choose(vs.map(v => String(labelOr(v.title, v.id))), i => emit([{ op: 'set', id, path: 'opensView', value: vs[i].id }]), 'Opens view', id); return true; }
   // the hook is given a line's geometry ids too ('owner->child', a type's derived line, sysml-requirement.md); the core's delete only element ids
-  I.owner = (id, parent) => { const h = hook('owner'), dflt = () => base.owner(id, parent); return h && can('move') ? ran(h(model(), view(), id, parent), dflt) : dflt(); };
+  // TYPED.owns first (src/uml/owners.js): a rule on an element's owner whatever the view's type, null where it has none
+  const owns = (id, parent) => (typeof TYPED.owns === 'function' ? TYPED.owns(model(), view(), id, parent) : null);
+  I.owner = (id, parent) => { const h = hook('owner'), dflt = () => base.owner(id, parent); return can('move') ? ran(owns(id, parent) ?? (h ? h(model(), view(), id, parent) : null), dflt) : dflt(); };
   I.remove = (fromModel, ids) => { const h = hook('remove'), all = ids || [...new Set([...c.picks(), ...api.picked().flatMap(r => r && r.type === 'edge' ? arrOf(r.ids) : [])])], dflt = () => base.remove(fromModel, ids);
     return h && can('delete') && all.length ? ran(h(model(), view(), all, !!fromModel), dflt) : dflt(); };
   function wrap(ids) { // W: the picker of the type's wraps, under the first card selected, else under the far end of the first line

@@ -53,9 +53,9 @@ test('the definition: uml.state-machine with its palette (kinds and name: false)
   assert.deepEqual(T.props['uml.Pseudostate'][0], { key: 'kind', label: 'Kind', kind: 'enum', options: ['initial', 'choice', 'junction', 'fork', 'join', 'shallowHistory', 'deepHistory', 'terminate'] });
   assert.deepEqual(T.props['uml.Transition'].map(f => f.key), ['trigger', 'guard', 'effect', 'stereotypes']);
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners']) assert.equal(typeof T[k], 'function', k);
-  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'moveTo', 'remove', 'rename']);
+  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'moveTo', 'remove', 'rename']); // connect: a comment link (audit 46)
   assert.deepEqual(['uml.State', 'uml.Pseudostate', 'uml.FinalState'].map(t => T.member.holds({ type: t })), [true, false, false]);
-  assert.equal(Object.keys(T.rules).length, 18);
+  assert.equal(Object.keys(T.rules).length, 19); // comment-link (audit 46)
 });
 
 test('the shapes: junction, history and terminate; a state\'s compartment, its rows cut by present.rows, hidden by collapsed, and the indicator', () => {
@@ -202,8 +202,9 @@ const BREAKS = {
   'internal-trigger': m => { delete node(m, 'placed').members[0].props.trigger; return ['placed', 'placed.address']; },
   'pseudo-kind': m => { node(m, 'erased').props.kind = 'stop'; return ['erased']; },
   'label-syntax': m => { m.edges.find(e => e.id === 't-picked').props.trigger = 'all [books'; return ['t-picked']; },
+  'comment-link': m => { m.edges.push({ id: 'cl', type: 'uml.CommentLink', from: 'placed', to: 'enquiry' }); return ['cl', 'placed', 'enquiry']; }, // audit 46
 };
-const WARNS = ['choice-guards', 'composite-entry', 'region-mixed', 'region-cross', 'composite-inner', 'internal-trigger', 'pseudo-kind', 'label-syntax'];
+const WARNS = ['comment-link', 'choice-guards', 'composite-entry', 'region-mixed', 'region-cross', 'composite-inner', 'internal-trigger', 'pseudo-kind', 'label-syntax'];
 test('validators: order-states.json (example 10) breaks no rule; each rule fails on a model that breaks it, naming its rule and its elements, at its level', () => {
   assert.deepEqual(T.validate(SM), []);
   assert.deepEqual(Object.keys(BREAKS).sort(), Object.keys(T.rules).sort());

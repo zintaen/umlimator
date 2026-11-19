@@ -4,7 +4,7 @@ import { SHAPE, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { brLines } from '../typed/draw.js';
-import { closesCycle, lineIn, lineItem } from './class.js'; // SHAPE.note, a comment's look too
+import { closesCycle, commentConnect, commentLinkProblems, lineIn, lineItem } from './class.js'; // SHAPE.note, a comment's look too
 import { ownersOn, placeTabs, readingOrder } from './owners.js';
 import { snKindName } from './structure.js';
 import { usedIds, jsonText, labelOr, elName, propTextProblems } from '../core/model.js';
@@ -231,6 +231,7 @@ const UC_RULES = {
   'generalization-cycle': 'no actor or use case is its own ancestor',
   named: 'every actor and use case has a name',
   'point-names': 'a use case\'s extension points have different names',
+  'comment-link': 'a comment link has a comment at one end',
 };
 const UC_KINDS = ['uml.Actor', 'uml.UseCase'];
 function ucProblems(model, view) {
@@ -274,6 +275,7 @@ function ucProblems(model, view) {
         else if (!state.has(p)) { state.set(p, 1); stack.push(p); at.push(0); } } };
     [...next.keys()].forEach(id => { if (!state.has(id)) walk(id); }); };
   cycles(inc, 'include-cycle', 'includes itself'); cycles(gen, 'generalization-cycle', 'is its own ancestor');
+  out.push(...commentLinkProblems(lines, ty, q)); // a comment link with no comment at either end (audit 46)
   return out;
 }
 
@@ -299,6 +301,7 @@ function ucConnect(model, view, from, to, at, line) {
   const ty = id => (UC_ARR(model.nodes).find(n => UC_OBJ(n) && n.id === id) || {}).type;
   // a generalization or an include that would close a cycle (generalization-cycle, include-cycle), an extend to its own use
   // case (extend-ends) is refused, as validate() would flag it (audit 36)
+  if (UC_OBJ(line) && line.type === 'uml.CommentLink') return commentConnect(model, view, from, to, line); // from the comment (audit 46)
   if (UC_OBJ(line) && line.type === 'uml.Extend' && from === to) return { error: 'An extend runs from a use case to another use case' };
   const loop = UC_OBJ(line) && (line.type === 'uml.Generalization' ? closesCycle(model, view, line.type, from, to)
     : line.type === 'uml.Include' ? closesCycle(model, view, line.type, from, to, 'an include', 'include itself') : null);
