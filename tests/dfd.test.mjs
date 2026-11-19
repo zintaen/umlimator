@@ -50,7 +50,7 @@ test('the definition: dfd is registered with its palette, its two lines, its num
   assert.deepEqual(T.lines.map(e => [e.type, e.label]), [['dfd.DataFlow', 'Data flow'], ['uml.CommentLink', 'Comment link']]);
   for (const t of ['dfd.Process', 'dfd.DataStore']) assert.deepEqual(T.props[t], [{ key: 'number', label: 'Number', kind: 'text' }], t);
   for (const k of ['layout', 'validate', 'describe', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
-  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'key']);
+  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'key']); // connect: a comment link (audit 46)
   assert.deepEqual(Object.keys(T.rules).sort(), ['dfd-balance', 'dfd-flow-label', 'dfd-flow-process', 'dfd-level', 'dfd-notation', 'dfd-numbers', 'dfd-process-io']);
   assert.equal(T.unfolds, undefined, 'a level opens, never unfolds in place (§6.3)');
 });

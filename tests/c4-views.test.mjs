@@ -49,7 +49,7 @@ test('the definitions: c4.dynamic and c4.deployment, each its own; the static ty
   assert.deepEqual(DEP.lines.map(e => e.type), ['c4.Relationship', 'uml.CommentLink']);
   assert.deepEqual(DEP.props['c4.DeploymentNode'].map(f => f.key), ['description', 'technology']);
   assert.deepEqual(DEP.props['c4.ContainerInstance'].map(f => f.key), ['container']);
-  assert.deepEqual(Object.keys(DEP.edits), ['add', 'key', 'rename']);
+  assert.deepEqual(Object.keys(DEP.edits), ['add', 'key', 'rename', 'connect']); // connect: a comment link (audit 46)
   for (const T of [DYN, DEP]) for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows', 'text']) assert.equal(typeof T[k], 'function', `${T.name} ${k}`);
   assert.deepEqual(Object.keys(DYN.rules), [...Object.keys(STATIC.rules), 'c4-steps']);
   assert.deepEqual(Object.keys(DEP.rules), [...Object.keys(STATIC.rules), 'c4-steps', 'c4-box-line']);
@@ -177,7 +177,7 @@ test('connect on a dynamic view: a relationship the model has between the two, n
   const r = DYN.edits.connect(m, m.views[V(DV)], 'c4-api', 'c4-db', null, line);
   assert.deepEqual(r, [{ op: 'set', view: DV, path: 'edges', value: [...m.views[V(DV)].edges, 'c4-api-db'] }]);
   assert.deepEqual([layout(apply(m, r), DV).edges.at(-1).step, layout(apply(m, r), DV).edges.at(-1).label], [10, 'Reads and writes books, baskets and orders in [SQL]']);
-  assert.equal(DYN.edits.connect(m, m.views[V(DV)], 'c4-api', 'c4-db', null, { type: 'uml.CommentLink' }), null);
+  assert.deepEqual(DYN.edits.connect(m, m.views[V(DV)], 'c4-api', 'c4-db', null, { type: 'uml.CommentLink' }), { error: 'A comment link runs from a comment' }); // no comment at either end (audit 46)
   assert.equal(DYN.edits.connect(m, m.views[V(DV)], 'c4-db', 'c4-api', null, line), null, 'no relationship that way');
   // the canvas's add on a view that lists its lines lists the new one last: a new step
   const added = apply(C4, [{ op: 'add', element: Rel('new', 'c4-mail', 'c4-courier', 'Tells'), view: DV }]);

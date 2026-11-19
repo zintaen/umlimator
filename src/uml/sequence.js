@@ -44,7 +44,7 @@ const sqHeadText = n => sqName(n) + (SQ_HAS(sqProps(n).represents) ? ' : ' + sqP
 const sqStereo = n => SQ_ARR(sqProps(n).stereotypes).filter(SQ_HAS).map(String);
 // a message's drawn text: its «stereotypes», then its label (audit 19); F2 takes the «…» off before it sets the label
 const sqMsgPre = el => sqStereo(el).map(t => `«${t}»`).join(' '), sqMsgText = el => [sqMsgPre(el), SQ_HAS(el.label) ? String(el.label) : ''].filter(Boolean).join(' ');
-const sqOperator = f => String(sqProps(f).operator ?? '');
+const sqOperator = f => { try { return String(sqProps(f).operator ?? ''); } catch { return ''; } }; // a value with no string form: none (audit 46)
 
 /* The view's structure, read once: the walk (interaction.js), each operand's fragment, each fragment's parent and its
    operands, which operand chain each occurrence lies in, and each fragment's block of occurrences (rows lo to hi) */
@@ -182,7 +182,9 @@ function sqProblems(model, view) {
   // operator, empty
   const holds = id => X.occ.some(o => o.chain.some(c => c.op === id));
   X.frags.forEach(f => { const op = sqProps(f).operator, ms = SQ_ARR(f.members).filter(SQ_OBJ);
-    if (!SQ_OPS.includes(op)) say('operator', fPath(f) + '.props.operator', [f.id], `fragment ${f.id} has ${op === undefined ? 'no operator' : `operator ${jsonText(op)}`}, not one of ${SQ_OPS.join(', ')}: it is drawn by its name`, 'warning');
+    // an operator that is not text is said so, with what is drawn, as labelProblem says a label (audit 46)
+    if (op != null && typeof op !== 'string' && typeof op !== 'number') say('operator', fPath(f) + '.props.operator', [f.id], `fragment ${f.id} has operator ${jsonText(op)}, which is not text: drawn as ${jsonText(sqOperator(f))}`, 'warning');
+    else if (!SQ_OPS.includes(op)) say('operator', fPath(f) + '.props.operator', [f.id], `fragment ${f.id} has ${op === undefined ? 'no operator' : `operator ${jsonText(op)}`}, not one of ${SQ_OPS.join(', ')}: it is drawn by its name`, 'warning');
     else if (['opt', 'loop', 'break'].includes(op) && ms.length !== 1) say('operator', fPath(f) + '.members', [f.id], `fragment ${f.id} is ${op}, which has one operand, not ${ms.length}`, 'warning');
     if (!ms.length || !ms.some(m => holds(m.id))) say('empty', fPath(f), [f.id], `fragment ${f.id} holds nothing: it has no place in time and is drawn at the end of what holds it`, 'warning');
     else ms.forEach((m, j) => { if (!holds(m.id)) say('empty', `${fPath(f)}.members[${j}]`, [m.id, f.id], `operand ${m.id} of ${f.id} holds nothing`, 'warning'); }); });

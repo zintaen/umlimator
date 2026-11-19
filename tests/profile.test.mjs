@@ -547,6 +547,23 @@ test('a stereotype or metaclass dropped anywhere but a profile is refused, the d
   for (const d of ['uml.class', 'uml.package']) assert.deepEqual(diagramOf({ diagram: d }).edits.owner(m, { ...m.views[0], diagram: d }, 'ent', 'app'), { error: 'A stereotype is owned by a profile' });
 });
 
+// audit 46: the same refusal in every view that draws the profile's box, not only the profile, class and package views: the
+// object, component, deployment, use case, composite, state machine and activity views (a moveTo's default drop included)
+test('a stereotype dragged out of its profile is refused in every UML view, the drop and the Owner field alike (audit 46)', async () => {
+  const { typedEditor } = await import('../src/canvas/edit.js'); await import('../src/typed/edit.js');
+  const kinds = ['uml.object', 'uml.component', 'uml.deployment', 'uml.use-case', 'uml.composite-structure', 'uml.state-machine', 'uml.activity', 'uml.communication', 'uml.timing', 'uml.information-flow', 'uml.interaction-overview'];
+  for (const d of kinds) {
+    const m = { schemaVersion: 2, nodes: [N('pr', 'Profile', 'P'), N('pk', 'Package', 'Pk'), N('s', 'Stereotype', 'entity', 'pr'), N('p2', 'Profile', 'Q')], edges: [],
+      views: [{ id: 'v', diagram: d, nodeIds: ['pr', 'pk', 's', 'p2'] }] };
+    const run = (into, how) => { const got = [], status = [];
+      const I = typedEditor({ root: { addEventListener() {} }, stage: { addEventListener() {} }, can: () => true, say() {}, status: x => status.push(x), emit: c => got.push(c), view: () => 'v', model: () => m, picked: () => [], sel: () => null,
+        geo: () => ({ byId: {}, nodes: [] }), cam: () => null, focus() {}, touch() {} });
+      if (how === 'drop') I.drop({ id: 's', x: 0, y: 0, w: 100, h: 40, col: 0, row: 0 }, { x: 500, y: 500, col: 3, row: 3 }, into, 'pr'); else I.owner('s', into);
+      return { cmds: got.flat(), status }; };
+    for (const into of [null, 'pk']) for (const how of ['drop', 'owner']) assert.deepEqual(run(into, how), { cmds: [], status: ['A stereotype is owned by a profile'] }, `${d} ${how} into ${into}`);
+    assert.deepEqual(run('p2', 'owner').cmds, [{ op: 'reparent', id: 's', parent: 'p2' }], `${d}: into another profile, the default`); }
+});
+
 // audit 44: a comment link drawn from an element to a comment, on the class, package and profile views, is added from the
 // comment; with no comment at either end, refused as the block view refuses it; a generalization generalization-kinds calls an
 // error is refused on the class view
@@ -564,6 +581,25 @@ test('connect: a comment link drawn to a comment is added from it, and a general
   assert.deepEqual(g('a', 'p'), { error: 'A generalization joins two classifiers of one kind, not a class and a package' });
   assert.deepEqual(g('k', 'a'), { error: 'A generalization joins two classifiers of one kind, not a comment and a class' });
   for (const [f, t] of [['a', 'a2'], ['u', 'a'], ['a', 'blk']]) { assert.equal(g(f, t), null, `${f} to ${t}`); } // an untyped one is a class; another notation's end is its own
+});
+
+// audit 46: every other view whose palette offers a comment link does the same: drawn to a comment, added from it; with no
+// comment at either end, refused (use case, state machine, interaction overview, DFD, ER, flowchart, SysML requirement, the C4 views)
+test('connect: a comment link with no comment at either end is refused in every view that offers one (audit 46)', async () => {
+  for (const f of ['../src/uml/usecase.js', '../src/uml/state.js', '../src/uml/overview.js', '../src/dfd/dfd.js', '../src/er/er.js', '../src/flowchart/flowchart.js', '../src/sysml/requirement.js', '../src/c4/c4.js', '../src/c4/views.js']) await import(f);
+  const kinds = { 'uml.use-case': 'uml.UseCase', 'uml.state-machine': 'uml.State', 'uml.interaction-overview': 'uml.InteractionUse', dfd: 'dfd.Process', er: 'er.Entity', flowchart: 'flow.Process', 'sysml.requirement': 'sysml.Requirement',
+    'c4.landscape': 'c4.SoftwareSystem', 'c4.context': 'c4.SoftwareSystem', 'c4.container': 'c4.Container', 'c4.component': 'c4.Component', 'c4.dynamic': 'c4.Container', 'c4.deployment': 'c4.DeploymentNode' };
+  for (const [d, t] of Object.entries(kinds)) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'a', type: t, label: 'A' }, { id: 'b', type: t, label: 'B' }, N('k', 'Comment', 'note')], edges: [], views: [{ id: 'v', diagram: d, nodeIds: ['a', 'b', 'k'], edges: [] }] };
+    const D = diagramOf(m.views[0]); assert.ok(D.lines.some(l => l.type === 'uml.CommentLink'), `${d} offers a comment link`);
+    const c = (f, to) => D.edits.connect(m, m.views[0], f, to, null, { type: 'uml.CommentLink' });
+    assert.deepEqual(c('a', 'b'), { error: 'A comment link runs from a comment' }, d);
+    assert.deepEqual(c('a', 'k'), [{ op: 'add', element: { id: 'commentlink1', type: 'uml.CommentLink', from: 'k', to: 'a' }, view: 'v' }], d);
+    assert.equal(c('k', 'a'), null, `${d}: from a comment, the default`); }
+  // a dynamic view that lists no steps yet: the link, from the comment, and the list of it
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'c4.Container', label: 'A' }, N('k', 'Comment', 'note')], edges: [], views: [{ id: 'v', diagram: 'c4.dynamic', nodeIds: ['a', 'k'] }] };
+  assert.deepEqual(diagramOf(m.views[0]).edits.connect(m, m.views[0], 'a', 'k', null, { type: 'uml.CommentLink' }),
+    [{ op: 'add', element: { id: 'link1', type: 'uml.CommentLink', from: 'k', to: 'a' } }, { op: 'set', view: 'v', path: 'edges', value: ['link1'] }]);
 });
 
 // audit 45: a stereotype or a classifier moved (a drop, the Owner field) into an owner whose kin holds its name is refused in the

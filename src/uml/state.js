@@ -5,7 +5,7 @@ import { SHAPE, portsOn, r2 } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
 import { brLines } from '../typed/draw.js';
 import '../typed/edit.js'; // TYPED.edit, which asks edits.member for the activity rows below
-import './class.js'; // SHAPE.note, a comment's look
+import { commentConnect, commentLinkProblems } from './class.js'; // SHAPE.note, a comment's look too
 import { flowWrap } from './flow.js'; // SHAPE.initial, final, diamond and bar too
 import { ownersOn, readingOrder } from './owners.js';
 import { parseTransition, printTransition, transitionText } from './transition.js';
@@ -239,6 +239,9 @@ function stGeo({ model, view, pos, memo }) {
   return { ...g, families, slots, legend: stLegend(g.nodes, g.edges), order: stOrder(pic, lines) }; // a new object: what layoutTyped returned is never edited (§2.4)
 }
 
+// connect: a comment link through commentConnect (src/uml/class.js), as the activity view's (audit 46); any other line, the default
+const stConnect = (model, view, from, to, at, line) => commentConnect(model, view, from, to, line);
+
 /* ---- validators (§10.2). Each problem: { level, rule, path, message, ids } ---- */
 const ST_RULES = {
   'transition-ends': 'a transition joins states, pseudostates or final states, never a region, a comment or a line',
@@ -259,6 +262,7 @@ const ST_RULES = {
   'internal-trigger': 'an internal transition has a trigger',
   'pseudo-kind': 'a pseudostate\'s kind is one of initial, choice, junction, fork, join, shallowHistory, deepHistory, terminate',
   'label-syntax': 'a transition\'s trigger, guard and effect print as text that reads back as them',
+  'comment-link': 'a comment link has a comment at one end',
 };
 function stProblems(model, view) {
   const out = [], I = stIndex(ST_OBJ(model) ? model : {}), { N, M } = I, say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
@@ -340,6 +344,10 @@ function stProblems(model, view) {
     if (e.from !== e.to && (stWithin(I, e.from, e.to) || stWithin(I, e.to, e.from))) say('warning', 'composite-inner', path, [e.id, e.from, e.to], `${e.id} joins ${q(e.from)} and ${q(e.to)}, which one holds: it is not drawn`);
     if (s != null) say('warning', 'region-cross', path, [e.id, a.get(s), b.get(s)], `${e.id} joins ${q(e.from)} in ${q(a.get(s))} and ${q(e.to)} in ${q(b.get(s))}, two regions of ${q(s)}`);
   });
+  // a comment link with no comment at either end, the model's and the view's own (audit 46)
+  const cls = ST_ARR(model && model.edges).map((e, i) => [e, `edges[${i}]`]), cids = new Set(cls.map(([e]) => ST_OBJ(e) && e.id));
+  if (vi >= 0 && view.diagram === 'uml.state-machine') ST_ARR(view.edges).forEach((e, j) => { if (ST_OBJ(e) && !cids.has(e.id)) cls.push([e, `views[${vi}].edges[${j}]`]); });
+  out.push(...commentLinkProblems(cls, ty, q));
   return out;
 }
 
@@ -516,8 +524,9 @@ const ST_TYPE = registerDiagramType('uml.state-machine', {
       : x.type === 'uml.State' ? (I.subs(id).length || stMembers(x, 'uml.Region').length ? 'Composite state' : 'State') : !x.type ? snKindName(x.type) : null; }, // no type (or ""): "Element", as named (audits 28, 29)
   rows: (model, view, id) => { const x = (stIndex(model).N.get(id) || {}).x;
     return x && x.type === 'uml.State' ? [...stActs(x).map(([k, t]) => `${k} / ${t}`), ...ST_ARR(x.members).filter(ST_OBJ).map(ST_MEMBER.print)] : null; },
-  // member is not enumerable: Object.keys(edits) stays 4.6's four (tests/state.test.mjs), as notes/stage-5.md §12.1 (as built) says
-  edits: Object.defineProperty({ add: stAdd, rename: stRename, moveTo: stMoveTo, remove: stRemove }, 'member', { value: stMemberRow }),
+  // member is not enumerable: Object.keys(edits) stays 4.6's four (tests/state.test.mjs), as notes/stage-5.md §12.1 (as built) says,
+  // and connect (audit 46): a comment link drawn to a comment is added from it, one with no comment at either end refused
+  edits: Object.defineProperty({ add: stAdd, rename: stRename, moveTo: stMoveTo, remove: stRemove, connect: stConnect }, 'member', { value: stMemberRow }),
 });
 
 export { ST_TYPE, ST_RULES, stGeo, stProblems, stDescribe, stAdd, stRename, stMoveTo, stActivityRow, stOwners, stRemove, ST_MEMBER };

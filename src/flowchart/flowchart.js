@@ -2,7 +2,7 @@ import { registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { layoutTyped, typedLines } from '../typed/layout.js';
-import '../uml/class.js'; // SHAPE.note, a comment's look
+import { commentConnect } from '../uml/class.js'; // SHAPE.note, a comment's look too
 import { flowWrap } from '../uml/flow.js'; // and SHAPE.diamond, SHAPE.initial's circle, read only
 import { snKindName, snLineName } from '../uml/structure.js';
 import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
@@ -216,6 +216,7 @@ const fcId = (model, base) => { const used = new Set(); usedIds(model, used);
 // connect: a flow joins two flowchart nodes (refused otherwise); a decision's second exit is labelled to answer its first,
 // yes then no, and an unlabelled first exit becomes yes
 function fcConnect(model, view, from, to, at, line) {
+  if (FC_OBJ(line) && line.type === 'uml.CommentLink') return commentConnect(model, view, from, to, line); // from the comment (audit 46)
   if (!FC_OBJ(view) || !FC_OBJ(line) || line.type !== 'flow.Flow') return null;
   const I = fcIndex(model, null), bad = [from, to].find(id => !I.N.has(id) || !fcNode(I.N.get(id)));
   if (bad != null) return { error: `flow-ends: a flow joins two flowchart nodes, and ${fcCalled(I.N.get(bad))} is not one` };

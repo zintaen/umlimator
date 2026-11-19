@@ -1,5 +1,5 @@
 import { jsonText, labelOr } from '../core/model.js';
-import { aKind, diagramOf } from '../core/registry.js';
+import { TYPED, aKind, diagramOf } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { brLines } from '../typed/draw.js'; // SHAPE.classifier, whose ports the closed package takes
@@ -110,6 +110,10 @@ function defOwner(model, view, id, parent) {
   if (!x || !(x.type === 'uml.Stereotype' || x.type === 'uml.MetaclassReference') || (p && p.type === 'uml.Profile')) return null;
   return { error: `A ${x.type === 'uml.Stereotype' ? 'stereotype' : 'metaclass'} is owned by a profile` };
 }
+// the rule for every typed view, not only the class, package and profile views that wire defOwner: a stereotype or a metaclass
+// drawn in its profile's box (the object, component, use case, state machine view...) and dragged out, or its Owner field set,
+// is refused too (src/typed/edit.js asks TYPED.owns before the type's own owner hook and before a moveTo's default drop, audit 46)
+TYPED.owns = defOwner;
 
 /* ---- the rules about owners and boxes (§9.3, §10.3). Each problem: { level, rule, path, message, ids } ---- */
 const OWNER_RULES = {
