@@ -161,10 +161,11 @@ test('the examples\' README links every example model, and the gallery and the m
   // the state machine's card claims only the pseudostates order-states.json draws (audit 12)
   const kinds = new Set(json('examples/order-states.json').nodes.filter(n => n.type === 'uml.Pseudostate').map(n => n.props.kind));
   assert.doesNotMatch(html, /every pseudostate/); assert.ok(!kinds.has('junction') && !kinds.has('deepHistory') && kinds.has('shallowHistory'), [...kinds].join());
-  // the C4 card counts the views bookshop-c4.json holds; the model guide's milestone 4a table (the README's until the
-  // manual moved to docs/guide/) names each type, kind and diagram its four examples use (audit 13)
-  const ex = n => json(`examples/${n}.json`), words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'];
-  assert.match(html, new RegExp(`Typed C4 in ${words[ex('bookshop-c4').views.length]} views`));
+  // the C4 type page has a card for each view bookshop-c4.json holds; the model guide's milestone 4a table (the README's
+  // until the manual moved to docs/guide/) names each type, kind and diagram its four examples use (audit 13)
+  const ex = n => json(`examples/${n}.json`), c4 = json('examples/types/c4.json');
+  const opened = new Set(c4.nodes.filter(n => n.id.startsWith('card-')).map(n => n.opensView));
+  assert.deepEqual(ex('bookshop-c4').views.map(v => `bookshop-c4-${v.id}`).filter(id => !opened.has(id)), []);
   const guide = read('docs/guide/model.md'), m4a = guide.slice(guide.indexOf('The mindmap and the three cloud'), guide.indexOf('A BPMN diagram'));
   for (const n of ['bookshop-opening-plan', 'bookshop-gcp', 'bookshop-azure', 'bookshop-aws']) {
     const m = ex(n), said = [...m.nodes, ...m.edges].flatMap(x => [x.type, x.props && (x.props.groupType ?? x.props.zoneType)]).filter(Boolean).map(t => '`' + t + '`');
