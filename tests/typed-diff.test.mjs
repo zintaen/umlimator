@@ -215,3 +215,90 @@ test('a BPMN task moved into another lane, or out of a lane removed, names the l
   const s = all.diff(bz, edit(bz, m => { const P = m.nodes.find(n => n.id === 'bp-bookshop'); P.members = P.members.filter(l => l.id !== 'bp-warehouse'); m.nodes.forEach(n => { if (n.parent === 'bp-warehouse') n.parent = 'bp-sales'; }); })).summary;
   assert.ok(s.length > 1 && s.slice(1).every(x => x.endsWith(' into Sales')) && !s.some(x => /bp-(sales|warehouse)/.test(x)), s.join('; '));
 });
+
+// audit 49: a member moved to another owner is said once, and a shape drawn for it in its old place comes back removed
+test('audit 49: a member moved between owners reads only "moves X out of A into B"; a moved port leaves a removed ghost', () => {
+  const cl = load('tests/class-minimal.json'), mv = all.diff(cl, edit(cl, m => { const x = m.nodes[0].members.shift(); m.nodes[1].members = [x]; }));
+  assert.deepEqual(mv.summary, ['moves total out of Order into OrderLine']);
+  const cs = edit(load('tests/composite-minimal.json'), m => { m.edges = []; m.nodes[0].members.push({ id: 's.out', type: 'uml.Port', label: 'out' }); });
+  for (const into of ['Engine', 'a class no view draws']) {
+    const after = edit(cs, m => { const p = m.nodes[0].members.splice(2, 1)[0];
+      if (into === 'Engine') m.nodes[1].members.push(p); else m.nodes.push({ id: 'Z', type: 'uml.Class', label: 'Zed', members: [p] }); });
+    const d = all.diff(cs, after), g = all.layout(d.model, 'v'), ghost = g.nodes.filter(n => n.change === 'removed');
+    assert.equal(d.summary.filter(s => /\(members\)/.test(s)).length, 0, d.summary.join('; '));
+    assert.deepEqual(ghost.map(n => [n.label, n.owner, n.shape]), [['out', 's', 'port']], into);
+    assert.notEqual(ghost[0].id, 's.out'); assert.deepEqual(all.validate(d.model), []);
+  }
+  // deleted, as before: the port itself comes back
+  assert.deepEqual(all.layout(all.diff(cs, edit(cs, m => { m.nodes[0].members.splice(2, 1); })).model, 'v').nodes.filter(n => n.change === 'removed').map(n => n.id), ['s.out']);
+});
+
+test('audit 49: the object view and an open package box mark a name qualified through a renamed undrawn package', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'p', type: 'uml.Package', label: 'sales' }, { id: 'q', type: 'uml.Package', label: 'orders', parent: 'p' },
+    { id: 'c', type: 'uml.Class', label: 'Order', parent: 'p' }, { id: 'o', type: 'uml.InstanceSpecification', label: 'o1', parent: 'p', props: { classifier: 'Order' } }, { id: 'k', type: 'uml.Class', label: 'Line', parent: 'q' }],
+  views: [{ id: 'ov', diagram: 'uml.object', nodeIds: ['c', 'o'] }, ...['uml.class', 'uml.package', 'uml.component', 'uml.profile', 'uml.object'].map((diagram, i) => ({ id: 'b' + i, diagram, nodeIds: ['q', 'k'] }))] };
+  const d = all.diff(m, edit(m, x => { x.nodes[0].label = 'shop'; })), at = (v, id) => [...all.layout(d.model, v).nodes, ...(all.layout(d.model, v).families || [])].find(n => n.id === id);
+  assert.deepEqual(d.summary, ['renames sales to shop']);
+  assert.deepEqual(['c', 'o'].map(id => [at('ov', id).label, at('ov', id).change]), [['shop::Order', 'changed'], ['shop::o1 : Order', 'changed']]);
+  for (const v of ['b0', 'b1', 'b2', 'b3', 'b4']) { assert.ok(d.views.includes(v), v); assert.equal(at(v, 'q').change, 'changed', v); assert.match(String(at(v, 'q').title), /shop::orders/, v); }
+  // a rename that leaves the drawn names as they were marks nothing on them
+  const e = all.diff(m, edit(m, x => { x.nodes[2].props = { isAbstract: false }; })), g = all.layout(e.model, 'b0');
+  assert.equal([...g.nodes, ...(g.families || [])].find(n => n.id === 'q').change, undefined);
+});
+
+test('audit 49: a C4 implied line drawn before and after reads changed when the only relationship behind it is replaced', () => {
+  const El = (id, t, label, parent) => ({ id, type: 'c4.' + t, label, ...(parent ? { parent } : {}), props: {} });
+  const base = () => ({ schemaVersion: 2, nodes: [El('S', 'SoftwareSystem', 'Shop'), El('T', 'SoftwareSystem', 'Pay'), El('a', 'Container', 'Web', 'S'), El('b', 'Container', 'API', 'S'), El('c', 'Container', 'Gateway', 'T')],
+    edges: [{ id: 'r1', type: 'c4.Relationship', from: 'b', to: 'c', label: 'charges' }], views: [{ id: 'ctx', diagram: 'c4.context', title: 'Context', nodeIds: ['S', 'T'] }] });
+  const marks = (b, f) => { const a = edit(b, f); return all.layout(all.diff(b, a).model, 'ctx').edges.map(e => [e._id ?? e.id, e.label, e.change]); };
+  assert.deepEqual(marks(base(), m => { m.edges = [{ id: 'r2', type: 'c4.Relationship', from: 'a', to: 'c', label: 'pays' }]; }), [['S->T', 'pays', 'changed']]);
+  assert.deepEqual(marks(base(), m => { m.edges = [{ id: 'r2', type: 'c4.Relationship', from: 'b', to: 'c', label: 'charges' }]; }), [['S->T', 'charges', undefined]]);
+  assert.deepEqual(marks(edit(base(), m => { m.edges = []; }), m => { m.edges = [{ id: 'r2', type: 'c4.Relationship', from: 'a', to: 'c', label: 'pays' }]; }), [['S->T', 'pays', 'added']]);
+});
+
+// audit 49: what a typed view draws through another view, or from what it does not list, marked on the diff page
+test('audit 49: an inline interaction is marked changed when its sequence view changes through its own messages, fragments or what it shows; a changed message inside it has the edited dot', () => {
+  const ov = load('examples/buy-book-overview.json'), sd = m => all.layout(m, 'buy-book').nodes.find(n => n.id === 'sd-queue');
+  const q = m => m.views.find(v => v.id === 'queue-order');
+  assert.equal(sd(all.diff(ov, ov).model).change, undefined);
+  for (const [what, f] of [['relabel', m => { q(m).edges[2].label = 'orderQueued'; }],
+    ['add', m => { q(m).edges.push({ id: 'queue-4', type: 'uml.Message', from: 'lifeline-worker', to: 'lifeline-queue', label: 'ack', props: { sort: 'async' } }); }],
+    ['fragment', m => { q(m).fragments = [{ id: 'fx', type: 'uml.CombinedFragment', props: { operator: 'opt' }, members: [{ id: 'fx-1', type: 'uml.InteractionOperand', label: 'ok' }] }]; }],
+    ['show', m => { q(m).nodeIds.push('lifeline-shopper'); }],
+    ['hide', m => { q(m).nodeIds = q(m).nodeIds.filter(id => id !== 'lifeline-api'); q(m).edges = q(m).edges.filter(e => e.from !== 'lifeline-api' && e.to !== 'lifeline-api'); }]]) {
+    const d = all.diff(ov, edit(ov, f)), n = sd(d.model);
+    assert.deepEqual([d.views.includes('buy-book'), n.change], [true, 'changed'], what);
+    if (what === 'relabel') assert.equal((n.sd.markup.match(/class="edited-dot"/g) || []).length, 1); }
+});
+
+test('audit 49: a timing view\'s constraints added, changed or removed are marked so, a removed one drawn back', () => {
+  const tm = load('examples/bookshop-timing.json'), cs = m => m.views[0].timeline.constraints;
+  const marked = b => { const d = all.diff(tm, edit(tm, b)); return all.layout(d.model, d.model.views[0].id).nodes.filter(n => n.change).map(n => [n.id, n.change]); };
+  assert.deepEqual(marked(() => {}), []);
+  assert.deepEqual(marked(m => { cs(m)[0].label = '{<= 500 ms}'; }), [['c-wait', 'changed']]);
+  assert.deepEqual(marked(m => { cs(m).splice(0, 1); }), [['c-wait', 'removed']]);
+  assert.deepEqual(marked(m => { cs(m).push({ id: 'c-new', type: 'uml.TimeConstraint', from: 'p-done', label: '{<= 2 s}' }); }), [['c-new', 'added']]);
+  const d = all.diff(tm, edit(tm, m => { cs(m).splice(0, 1); }));
+  assert.deepEqual([cs(d.model).map(c => c.id), cs(tm).length], [['c-wait', 'c-finished'], 2]);
+});
+
+test('audit 49: a BPMN group deleted from the model is drawn back, removed, round the elements that named it', () => {
+  const bz = load('examples/bookshop-order-to-shipment.json'), vid = bz.views[0].id, gid = 'dispatch';
+  const before = all.layout(bz, vid).nodes.find(n => n.id === gid), d = all.diff(bz, all.apply(bz, { op: 'delete', id: gid }));
+  const g = all.layout(d.model, vid).nodes.find(n => n.id === gid);
+  assert.ok(before && g, 'drawn');
+  assert.deepEqual([g.change, d.summary.includes('removes Dispatch')], ['removed', true]);
+  assert.deepEqual(bz.nodes.filter(n => ((n.props || {}).categoryValueRef || []).includes(gid)).map(n => n.id).sort(),
+    d.model.nodes.filter(n => ((n.props || {}).categoryValueRef || []).includes(gid)).map(n => n.id).sort());
+});
+
+test('audit 49: an internal block view marks the ports whose flow arrows an interface block\'s flow properties turned round', () => {
+  const m = load('tests/internal-block-stress.json'), vid = 'edge-cases', flip = x => edit(x, a => a.nodes.find(n => n.label === 'PowerIf').members.filter(y => y.type === 'sysml.FlowProperty')
+    .forEach(y => { y.props = { ...y.props, direction: y.props.direction === 'in' ? 'out' : 'in' }; }));
+  const ports = g => g.nodes.filter(n => n.shape === 'port'), g0 = all.layout(m, vid), d = all.diff(m, flip(m)), g1 = all.layout(d.model, vid);
+  const turned = ports(g1).filter(n => ports(g0).find(o => o.id === n.id).flow !== n.flow);
+  assert.ok(turned.length >= 6, turned.length);
+  assert.deepEqual(ports(g1).filter(n => n.change).map(n => n.id).sort(), turned.map(n => n.id).sort());
+  const doc = all.diff(m, edit(m, a => { const B = a.nodes.find(n => n.label === 'PowerIf'); B.props = { ...B.props, documentation: 'x' }; }));
+  assert.deepEqual(ports(all.layout(doc.model, vid)).filter(n => n.change), []);
+});

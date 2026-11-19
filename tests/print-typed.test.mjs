@@ -71,7 +71,7 @@ test('a type\'s word and rows: the element\'s kind and what is listed for it, es
 // What printDoc listed before 4.9, for the examples drawn today: pinned as one hash a file over its views' tables, those
 // of a typed view with their old heading, "Cards". A change to one of these examples or to the tables changes its hash.
 const PINNED = {
-  'bike-share.json': '88f696105bc1cb1f', 'bike-share-c4.json': '61b680937d248209', 'monorepo.json': '4e2638724ead87d6', 'shapes.json': '49fdf9fb182b383b',
+  'bike-share.json': 'd0e3c4dde99bdc7b', 'bike-share-c4.json': '61b680937d248209', 'monorepo.json': '4e2638724ead87d6', 'shapes.json': '49fdf9fb182b383b',
   'sales-classes.json': 'cea8962c5cc55d53', 'order-objects.json': '67b4d8e36a4b59c5', 'bookshop-packages.json': '61f60b0985090f3d', // 6.7: the profile's row and its application's
 }; // audit 1: a typed view's element by its drawn name (catalog::Book, ada : Customer), so sales-classes and order-objects changed
 // bike-share.json changed when the rider shop's three views (overview, api, checkout, from bookshop.json) joined it,

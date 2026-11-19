@@ -134,22 +134,20 @@ test('the bike share holds a view of each of the 28 types: the 14 UML diagrams a
   assert.ok(!M.views.some(v => v.diagram && (v.nodeIds || []).includes('charging')));
 });
 
-test('the model validates clean through every type\'s rules; the six problems the Bookshop atlas raised come back when their lines and types do', () => {
+test('the model validates clean through every type\'s rules; the four problems the Bookshop atlas raised come back when their lines and types do', () => {
   assert.deepEqual(validateAll(M), []);
   for (const v of M.views.filter(v => v.diagram)) assert.deepEqual(diagramOf(v).validate(M, v), [], v.id);
   // the class type's rules run on the whole model: a generalization between two actors or two use cases is not one between
-  // classifiers to them, nor an interface realization from a component or a port; a part typed by a class the model lacks warns
+  // classifiers to them; a part typed by a class the model lacks warns. The components view's interface realizations from a
+  // component and from a port pass the class rule as the component view's (audit 49)
   const back = structuredClone(M);
+  assert.deepEqual(['api-provides-rides', 'accounts-provides-sign-in'].map(id => (M.edges.find(e => e.id === id) || {}).type), ['uml.InterfaceRealization', 'uml.InterfaceRealization']);
   back.edges.push({ id: 'member-is-rider', type: 'uml.Generalization', from: 'member', to: 'rider-actor' },
-    { id: 'card-is-pay', type: 'uml.Generalization', from: 'pay-by-card', to: 'pay' },
-    { id: 'api-provides-rides', type: 'uml.InterfaceRealization', from: 'trips-api.rides', to: 'i-rides' },
-    { id: 'accounts-provides-sign-in', type: 'uml.InterfaceRealization', from: 'accounts-component', to: 'i-sign-in' });
+    { id: 'card-is-pay', type: 'uml.Generalization', from: 'pay-by-card', to: 'pay' });
   back.nodes = back.nodes.filter(n => !['ride-repository', 'ride-listener'].includes(n.id));
   assert.deepEqual(validateAll(back).map(p => [p.level, p.rule, p.ids]), [
     ['error', 'generalization-kinds', ['member-is-rider', 'member', 'rider-actor']],
     ['error', 'generalization-kinds', ['card-is-pay', 'pay-by-card', 'pay']],
-    ['error', 'realization-target', ['api-provides-rides', 'trips-api.rides', 'i-rides']],
-    ['error', 'realization-target', ['accounts-provides-sign-in', 'accounts-component', 'i-sign-in']],
     ['warning', 'part-type', ['ride-service.rides', 'ride-service']], ['warning', 'part-type', ['ride-service.listeners', 'ride-service']]]);
   // one state machine's initial pseudostate at the model's top: the bike's life is drawn inside its E-bike state
   const two = structuredClone(M); two.nodes.find(n => n.id === 'bl-new').parent = undefined;
@@ -299,7 +297,7 @@ test('each typed element that opens a view says so in its accessible name; every
       if (x && x.aria && un(a) !== x.aria) bad.push(`${v.id} ${un(d)}: ${un(a)} | ${x.aria}`); } }
   assert.ok(k > 30, `${k} boxes`); assert.deepEqual(bad, []);
   const at = mk => mk.match(/<g class="node classifier" data-id="i-sign-in"[^>]*aria-label="([^"]*)"/)[1];
-  assert.equal(un(at(ctx.buildView('components').markup)), 'Interface SignIn, required by Rider app, Trip API');
+  assert.equal(un(at(ctx.buildView('components').markup)), 'Interface SignIn, provided by Accounts and sign-in, required by Rider app, Trip API');
 });
 
 test('MCP list_views counts a typed view\'s cards as the page does: the elements it draws, not its nodeIds', () => {

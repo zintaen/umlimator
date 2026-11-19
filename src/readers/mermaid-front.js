@@ -98,6 +98,28 @@ function mermaidScrub(text, say) {
   return text.split('\n').map((l, k) => mermaidLegal(l, what => say(k + 1, 'approximated', mermaidRawChar(what)))).join('\n');
 }
 
+// Mermaid's "string" token ("[^"]*") runs over line breaks (audit 49). mermaidOver(lines) -> over(i, s): s is line i's
+// statement, trimmed, with a string left open; over gives { s, i }: s and the lines after it joined with line feeds, to
+// the first that closes every string (an odd count of " on it), its own indent kept, and i that line's index; or null
+// when no later line closes it. Which line closes from where is found once, on first use: linear in the text
+function mermaidOver(lines) {
+  let next;
+  return (i, s) => {
+    if (!next) {
+      next = new Int32Array(lines.length + 1).fill(-1);
+      for (let k = lines.length - 1; k >= 0; k--) next[k] = (lines[k].split('"').length - 1) % 2 ? k : next[k + 1];
+    }
+    const m = next[i + 1];
+    return m < 0 ? null : { s: [s, ...lines.slice(i + 1, m + 1)].join('\n').trim(), i: m };
+  };
+}
+// whether a " opened in s is left open; stop(k) says where reading ends outside a string (a label's : say)
+function mermaidOpen(s, stop = () => false) {
+  let open = false;
+  for (let k = 0; k < s.length; k++) if (s[k] === '"') open = !open; else if (!open && stop(k)) break;
+  return open;
+}
+
 // a report's quote of the source: up to 60, else its first 57 and ...
 const mermaidClip = s => (s.length > 60 ? mermaidCut(s, 57) + '...' : s);
 
@@ -123,4 +145,4 @@ function mermaidSay(report) {
   };
 }
 
-export { mermaidTitle, mermaidFrontTitle, mermaidCut, mermaidClip, mermaidChar, mermaidBadChar, mermaidLegal, mermaidRawChar, mermaidScrub, mermaidSay, mermaidSort, mermaidText, MERMAID_REPORT_MAX };
+export { mermaidTitle, mermaidFrontTitle, mermaidCut, mermaidClip, mermaidChar, mermaidBadChar, mermaidLegal, mermaidRawChar, mermaidScrub, mermaidOver, mermaidOpen, mermaidSay, mermaidSort, mermaidText, MERMAID_REPORT_MAX };

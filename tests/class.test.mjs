@@ -646,7 +646,7 @@ test('audit 38: connect on a class or package view refuses a realization or a pa
     const bad = validate(m2).some(p => p.level === 'error' && /^(realization-target|import-ends):/.test(p.message));
     assert.equal(!!(r && r.error), bad, `${vid} ${type} ${from} -> ${to}: ${JSON.stringify(r)}`);
     if (r && r.error) said.add(r.error); }
-  assert.deepEqual([...said].sort(), ['A package import runs from a package to another package', 'A package merge runs from a package to another package', 'A realization runs from a class, an enumeration or a data type to an interface']);
+  assert.deepEqual([...said].sort(), ['A package import runs from a package to another package', 'A package merge runs from a package to another package', 'A realization runs from a class, a component, a port, an enumeration or a data type to an interface']);
   // the class view still refuses a generalization that closes a cycle, and leaves any other line to the default
   const cv = m.views[0], loop = { ...m, edges: [{ id: 'g', type: 'uml.Generalization', from: 'c', to: 'd' }] };
   assert.match(diagramOf(cv).edits.connect(loop, cv, 'd', 'c', null, { type: 'uml.Generalization' }).error, /may not close a cycle/);
@@ -681,4 +681,20 @@ test('audit 43: validate() says an association end\'s role that is not text, at 
     edges: [{ id: 'l', type: 'uml.Association', from: 'a', to: 'b', props: { ends: { from: { role: 'x' }, to: { role: { z: 3 } } } } }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b'] }] };
   const p = validate(m).filter(x => / is not text/.test(x.message));
   assert.deepEqual(p.map(x => [x.level, x.path, x.message]), [['warning', 'edges[0].props.ends.to.role', 'role {"z":3} is not text: drawn as "[object Object]"']]);
+});
+
+test('audit 49: an interface realization from a component, or from a port a component or class owns, passes the class view\'s rule and connect, as the component view\'s', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'c', type: 'uml.Component', label: 'API', members: [{ id: 'c.p', type: 'uml.Port', label: 'p' }] },
+    { id: 'k', type: 'uml.Class', label: 'K', members: [{ id: 'k.q', type: 'uml.Port', label: 'q' }, { id: 'k.a', type: 'uml.Property', label: 'a' }] },
+    { id: 'i', type: 'uml.Interface', label: 'IRides' }, { id: 'j', type: 'uml.Interface', label: 'IOther' }],
+  edges: [{ id: 'r1', type: 'uml.InterfaceRealization', from: 'c', to: 'i' }, { id: 'r2', type: 'uml.InterfaceRealization', from: 'c.p', to: 'i' }, { id: 'r3', type: 'uml.InterfaceRealization', from: 'k.q', to: 'i' }],
+  views: [{ id: 'cp', diagram: 'uml.component', nodeIds: ['c', 'i'] }, { id: 'cv', diagram: 'uml.class', nodeIds: ['k'] }] };
+  assert.deepEqual(validate(m).filter(p => p.level === 'error').map(p => p.rule), []);
+  const cv = m.views[1], connect = (from, to) => diagramOf(cv).edits.connect(m, cv, from, to, null, { type: 'uml.InterfaceRealization' });
+  assert.equal(connect('c', 'i'), null); assert.equal(connect('c.p', 'i'), null); assert.equal(connect('k.q', 'i'), null);
+  // still refused: an interface realizing one, a property, a realization to a component
+  for (const [from, to] of [['j', 'i'], ['k.a', 'i'], ['k', 'c']]) {
+    assert.match(connect(from, to).error, /^A realization runs from a class, a component, a port, an enumeration or a data type to an interface$/, `${from} -> ${to}`);
+    const m2 = structuredClone(m); m2.edges.push({ id: 'x', type: 'uml.InterfaceRealization', from, to });
+    assert.deepEqual(validate(m2).filter(p => p.rule === 'realization-target').map(p => p.ids[0]), ['x'], `${from} -> ${to}`); }
 });

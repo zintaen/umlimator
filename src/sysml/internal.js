@@ -129,7 +129,10 @@ function SYS_IB_GEO({ model, view, pos, memo }) {
   const raw = csGeo({ model: P.model, view: P.view, pos, memo });
   const d = SYS_DRESS(raw, model, view, id => SYS_IB_SAY(I, raw, id));
   const memberOf = id => { const k = String(id).indexOf('->'); return k < 0 ? id : String(id).slice(k + 2); };
-  const out = { ...d, nodes: d.nodes.map(n => { if (n.shape !== 'port') return n; const m = I.el(memberOf(n.id)), f = m ? SYS_IB_FLOW(I, m) : null; return { ...n, member: memberOf(n.id), ...(f ? { flow: f } : {}) }; }),
+  // a port reads the interface block that types it, whose flow properties its arrow draws: what diff() marks it by (audit 49)
+  const out = { ...d, nodes: d.nodes.map(n => { if (n.shape !== 'port') return n; const m = I.el(memberOf(n.id)), f = m ? SYS_IB_FLOW(I, m) : null, B = m ? SYS_IB_IFACE(I, SYS_IB_TYPE(m).name) : null;
+    const rd = B && typeof B.id === 'string' ? [...new Set([...(Array.isArray(n.reads) ? n.reads : []), B.id])] : null;
+    return { ...n, member: memberOf(n.id), ...(f ? { flow: f } : {}), ...(rd ? { reads: rd } : {}) }; }),
     edges: d.edges.map(e => { const x = I.E.get(e.id), f = x && x.type === 'sysml.Connector' ? SYS_IB_IF(x) : null, s = f && SYS_IB_SPOT(e);
       return s ? { ...e, item: { ...s, u: f.direction === 'to-from' ? [-s.u[0], -s.u[1]] : s.u } } : e; }) };
   const now = new Map(out.nodes.map(n => [n.id, n])); out.byId = idTable(Object.fromEntries(Object.entries(d.byId).map(([k, n]) => [k, now.get(k) || n])));

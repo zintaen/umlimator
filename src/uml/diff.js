@@ -53,5 +53,12 @@ TYPED.order = (A, out, views, V0, said, touched, name) => {
       said.push(g ? `changes ${op(g)} (${[...new Set([...Object.keys(g), ...Object.keys(f)])].filter(k => canon(g[k]) !== canon(f[k])).join(', ')})` : `adds ${op(f)}`); touched.add(v.id);
       if (f.change == null) f.change = g ? 'changed' : 'added'; }); // its frame drawn so, as a card is (audit 45)
     F0.forEach((f, id) => { if (!F1.has(id)) { said.push(`removes ${op(f)}`); touched.add(v.id); } });
+    // a timing view's time and duration constraints (timeline.constraints), drawn by their own ids: marked added or changed, and
+    // one removed back in its place, marked removed, as a sequence view's own messages are (audit 49). The view says "(timeline)"
+    const T0 = UD_OBJ(o.timeline) ? UD_ARR(o.timeline.constraints) : [], T1 = UD_OBJ(v.timeline) ? UD_ARR(v.timeline.constraints) : null;
+    if (T1 && canon(T0) !== canon(T1)) { const id = c => (UD_OBJ(c) && typeof c.id === 'string' ? c.id : null), C0 = new Map(T0.filter(id).map(c => [c.id, c])), ids = new Set(T1.map(id).filter(Boolean));
+      const res = T1.map(c => { const g = id(c) && C0.get(c.id); return !id(c) || (g && canon(g) === canon(c)) ? c : { ...c, change: g ? 'changed' : 'added' }; });
+      let at = 0; T0.forEach(c => { if (!id(c)) return; if (ids.has(c.id)) { at = res.findIndex(x => id(x) === c.id) + 1; return; } res.splice(at++, 0, { ...c, change: 'removed' }); });
+      v.timeline = { ...v.timeline, constraints: res }; touched.add(v.id); }
   });
 };

@@ -898,3 +898,13 @@ test('a raw character XML cannot hold (not an entity code) is read as U+FFFD and
   assert.ok(performance.now() - t0 < 2000);
   assert.equal(big.report.filter(x => x.message.includes('U+0001')).length, 1);
 });
+
+test('a "string" left open before any label\'s : (a class\'s or namespace\'s ["label"], a note, a cardinality) runs over line breaks to its closing quote, as Mermaid\'s; a member\'s text does not (audit 49)', () => {
+  const r = read('classDiagram\nnamespace Shop["The\n  shop"] {\n  class A["Order\nservice"] {\n    +int a\n  }\n}\nnote for A "a\n  note"\nA "1\n2" --> B : owns\nA : +x "y\nB : +z\n');
+  assert.deepEqual(r.model.nodes.map(n => [n.id, n.label, n.parent ?? null, (n.members || []).map(m => m.label)]),
+    [['Shop', 'The\n  shop', null, []], ['A', 'Order\nservice', 'Shop', ['a', '"y']], ['note-1', 'a\n  note', null, []], ['B', 'B', null, ['z']]]);
+  assert.deepEqual(r.model.edges.map(e => [e.from, e.to, e.label ?? null, e.props?.ends?.from ?? null]), [['A', 'B', 'owns', { role: '1\n2' }], ['note-1', 'A', null, null]]);
+  assert.deepEqual(r.report, []);
+  // no closing quote after it: the line read as before
+  assert.deepEqual(read('classDiagram\nclass A["never closed\nclass B\n').report.map(x => [x.line, x.message]), [[2, 'class A: "["never closed" is not read']]);
+});

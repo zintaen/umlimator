@@ -486,3 +486,14 @@ test('entity codes (#lt; #quot; #35;) in names and field values read as their ch
   assert.match(t, /"x #35;lt; y #35;35; #99999999; z"/);
   assert.deepEqual([back.model.nodes, back.model.edges, back.report], [m.nodes, m.edges, []]);
 });
+
+test('a "string" (a name, a field\'s value) runs over line breaks to its closing quote, as Mermaid\'s qString (audit 49)', () => {
+  const r = read('requirementDiagram\nrequirement "Log\n orders" {\n  id: 1\n  text: "The system shall\n  log every order"\n  risk: high\n}\nelement e {\n  type: "x\ny"\n}\ne - satisfies -> "Log\n orders"\n');
+  assert.deepEqual(r.model.nodes.map(n => [n.id, n.label, n.props ?? null, n.ext ?? null]), [['Log-orders', 'Log\n orders', { reqId: '1', text: 'The system shall\n  log every order', risk: 'high' }, null],
+    ['e', 'e', null, { mermaid: { type: 'x\ny' } }]]);
+  assert.deepEqual(r.model.edges.map(e => [e.from, e.to, e.type]), [['e', 'Log-orders', 'sysml.Satisfy']]);
+  assert.deepEqual(lines(r), ["9 approximated: e: an element's type and docref are kept under ext.mermaid and not drawn, as every other element's"]);
+  // no closing quote after it: the line read as before
+  const open = read('requirementDiagram\nrequirement r {\n  text: "never closed\n  risk: high\n}\n');
+  assert.deepEqual([open.model.nodes[0].props, lines(open)], [{ text: '"never closed', risk: 'high' }, []]);
+});

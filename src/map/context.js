@@ -510,7 +510,9 @@ function mapContext(model, opts = {}) {
     return into; };
   let memberCh; const memberOf = id => (memberCh ||= ownCh([nodes]))[id] || null;
   const put = (x, c) => { if (c) { x.change = c; MARKED.add(x); } else if (MARKED.has(x)) { delete x.change; MARKED.delete(x); } };
-  function marks(g, vid) { const v = V[vid] || {}, own = ownCh([v.edges, v.fragments]), ev = O(), lines = new Set();
+  // a timing view's constraints are its own too (audit 49)
+  const ownLists = v => [v.edges, v.fragments, v.timeline && typeof v.timeline === 'object' ? v.timeline.constraints : null];
+  function marks(g, vid) { const v = V[vid] || {}, own = ownCh(ownLists(v)), ev = O(), lines = new Set();
     (D.edges || []).forEach(e => { if (e && typeof e.id === 'string') { lines.add(e.id); if (chOf(e)) ev[e.id] ??= chOf(e); } });
     // a shape a type draws for a model line (a communication view's message row) takes the line's change (audit 46)
     const lineCh = k => (k in own ? own[k] : ev[k]) || null, boxCh = id => (N[id] ? chOf(nodeIn(id, vid)) : id in own ? own[id] : memberOf(id) || ev[id] || null);
@@ -529,7 +531,11 @@ function mapContext(model, opts = {}) {
       return h === 'none' ? null : h === 'added' || h === 'removed' || h === 'changed' ? h : c; };
     // what a type draws from elements or lines it does not draw itself (x.reads: their ids): a container instance drawn as its
     // container, an implied line through a hidden owner, an information flow's conveyed items (audit 46)
-    const readsCh = x => Array.isArray(x.reads) && x.reads.some(r => typeof r === 'string' && diffCh(boxCh(r))) ? 'changed' : null;
+    // read in the view the shape draws (x.readsIn: an inline interaction's sequence view), its own lines and its overrides
+    // there (audit 49: a message of that view's own relabelled, added or hidden marked nothing)
+    const ownIn = O(), boxIn = (id, w) => { if (w === vid || !V[w]) return boxCh(id); if (N[id]) return chOf(nodeIn(id, w));
+      const o = ownIn[w] ||= ownCh(ownLists(V[w])); return id in o ? o[id] : memberOf(id) || ev[id] || null; };
+    const readsCh = x => Array.isArray(x.reads) && x.reads.some(r => typeof r === 'string' && diffCh(boxIn(r, typeof x.readsIn === 'string' ? x.readsIn : vid))) ? 'changed' : null;
     (g.nodes || []).forEach(n => { if (!n || typeof n.id !== 'string') return;
       if (N[n.id]) { const c = chOf(nodeIn(n.id, vid)) || hint(n.id, readsCh(n)); if (c) n.change = c; else delete n.change; } else put(n, boxCh(n.id) || hint(n.id, onCh(n.id) || readsCh(n))); });
     // a box a type draws for an element (a package, a node, a boundary, a group, a composite state and its regions), as a shape
