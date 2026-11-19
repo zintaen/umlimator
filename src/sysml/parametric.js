@@ -135,6 +135,7 @@ const SYS_PAR_RULES = {
   'binding-types': 'the two ends\' types, when both are set and name elements, are equal or one specializes the other',
   'parameter-bound': 'each parameter of a constraint property shown has a binding',
   'connector-drawn': 'a binding between two parameters of the subject is not drawn: the frame has no line to itself',
+  'present-values': 'a parameter\'s present side, present.<parameter>.side or present.<property>.ports.<parameter>.side, is left, right, top or bottom: any other value is ignored',
   'value-type': 'a value property\'s type, when it names an element, names a value type (as the block definition view says)',
   'constraint-type': 'a constraint property\'s type names a constraint block (as the block definition view says)',
 };
@@ -145,7 +146,7 @@ function SYS_PAR_PROBLEMS(model, view) {
   if (view.subject == null) say('warning', 'subject-kind', `views[${vi}]`, [view.id], `view ${jsonText(view.id)} has no subject (deleted, or hidden from it): it draws no frame until one is set`);
   else if (!S || !Object.hasOwn(SYS_PAR_SUBJ, S.type) || !SYS_PAR_ARR(view.nodeIds).includes(S.id)) say('error', 'subject-kind', `views[${vi}].subject`, [view.id, view.subject], `view ${jsonText(view.id)}'s subject ${jsonText(view.subject)} is not a block or a constraint block it lists in nodeIds`);
   if (!S || !Object.hasOwn(SYS_PAR_SUBJ, S.type)) return out;
-  out.push(...SYS_CS_PROBLEMS(model, view).filter(p => p.rule === 'connector-drawn'));
+  out.push(...SYS_CS_PROBLEMS(model, view).filter(p => p.rule === 'connector-drawn' || p.rule === 'present-values')); // a side Alt + arrows write, misspelled: ignored, so said (audit 48)
   // the subject's properties typed as their kind says, as the block definition view judges them: a model with a parametric
   // view only says so too (audit 20); with both views validate() says each once
   out.push(...bdProblems(model).filter(p => (p.rule === 'value-type' || p.rule === 'constraint-type') && p.ids[0] === S.id));
