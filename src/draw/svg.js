@@ -12,10 +12,11 @@ function svgOf(geo, opts = {}) {
   const id = 'g' + (svgSeq++), { nodes, edges, groups, bounds: B, map } = geo;
   const LINE = map ? 'var(--um-arrow)' : 'var(--um-muted)'; // a typed view's lines: 3:1 or more in both themes
   const col = k => `var(--um-${KIND[k][0]})`, fill = k => `var(--um-${KIND[k][0]}-f)`;
+  const lc = x => String(x.change || '').toLowerCase(), ech = e => { const c = lc(e); return c === 'added' || c === 'new' ? 'added' : c === 'removed' ? 'removed' : ''; }; // a change in any case, as CHG reads it (audit 45)
   const estyle = e => {
     if (e.style === 'faded') return { ...(map && e.wk ? { c: `var(--um-w-${e.wk})`, m: e.wk, cls: ' w-' + e.wk + ' faded' } : { c: LINE, m: 'd', cls: ' faded' }), dash: '', op: .35 }; // its own colour, faint, no flow (drift's idle lines)
-    if (map && e.wk && !e.style) return { c: `var(--um-w-${e.wk})`, m: e.wk, dash: e.back ? '6 5' : '', cls: ' w-' + e.wk + (e.back ? ' back' : '') };
-    const st = e.style || (e.change === 'added' ? 'added' : e.change === 'removed' ? 'removed' : '');
+    if (map && e.wk && !e.style && !ech(e)) return { c: `var(--um-w-${e.wk})`, m: e.wk, dash: e.back ? '6 5' : '', cls: ' w-' + e.wk + (e.back ? ' back' : '') };
+    const st = e.style || ech(e);
     if (st === 'added' || st === 'emphasis') return { c: 'var(--um-green)', m: 'g', dash: '', flow: st === 'added' || e.animate };
     if (st === 'removed') return { c: 'var(--um-rose)', m: 'r', dash: '5 5', op: .7 };
     if (st === 'security') return { c: 'var(--um-rose)', m: 'r', dash: '5 5' };
@@ -40,16 +41,28 @@ function svgOf(geo, opts = {}) {
   const T = !map && TYPED.lines ? TYPED.lines({ id, nodes, families: geo.families, edges, drawn, lstyle, MC }) : null; // a typed view's line ends and end labels (src/typed/draw.js)
   let s = `<svg viewBox="${B.x} ${B.y} ${B.w} ${B.h}" data-w="${B.w}" data-h="${B.h}" role="group" aria-label="${esc(opts.title == null || opts.title === '' ? 'Diagram' : opts.title)}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
     <defs>${marker('d', LINE)}${marker('g', 'var(--um-green)')}${marker('r', 'var(--um-rose)')}${marker('v', 'var(--um-violet)')}${marker('h', 'var(--um-cyan)')}${map ? WIRES.map(w => marker(w[0], `var(--um-w-${w[0]})`)).join('') : ''}${heavy.map(m => { const [c, k] = m.split('-w'); return marker(m, MC[c], 1 + (k - 1) * .35); }).join('')}${T ? T.defs : ''}</defs>`;
+  const chWord = x => { const c = CHG[lc(x)]; return c ? ', ' + c[1].toLowerCase() : ''; }; // a key and a line's title say its change (audits 44, 45)
+  // a typed shape's or box's change, as a card's: a NEW, CHANGED or PLANNED tab on its top; removed, its outlines faded, dashed and its
+  // text struck through; its accessible name says it (audit 44: the diff page drew a removed class as live, an added one unmarked).
+  // The fade is on its outlines, not its group, as a map card's is on its body: the page takes a drawn group's opacity off for its
+  // highlights, and a vendor's icon is never faded (audit 45)
+  const FADE = /<(rect|path|circle|ellipse|line|polyline|polygon)\b((?:[^>"]|"[^"]*")*?)(\/?)>/g;
+  const marked = (n, out) => { const ch = CHG[lc(n)]; if (!ch || typeof out !== 'string' || !/^\s*<g\b/.test(out)) return out;
+    const word = ch[1].toLowerCase(), gone = word === 'removed', dash = gone || word === 'planned', bw = ch[1].length * 6 + 12, bx = n.x + n.w - bw - 8;
+    let o = out.replace(/^(\s*<g\b[^>]*?)(\s*>)/, (_, a, b) => a.replace(/ aria-label="([^"]*)"/, (m, t) => ` aria-label="${t}, ${word}"`) + ` data-change="${word}"` + (dash ? ' stroke-dasharray="6 4"' : '') + b);
+    if (gone) o = o.replace(/<text\b([^>]*)>/g, (m, a) => / text-decoration="/.test(a) ? m.replace(/ text-decoration="([^"]*)"/, (x, v) => ` text-decoration="${v} line-through"`) : `<text${a} text-decoration="line-through">`)
+      .replace(FADE, (m, t, a, c) => / opacity="|\bn-logo\b/.test(a) ? m : `<${t}${a} opacity=".6"${c}>`);
+    return !(Number.isFinite(n.x) && Number.isFinite(n.y) && Number.isFinite(n.w)) ? o : o.replace(/<\/g>\s*$/, `<g class="change-tab" aria-hidden="true"><rect x="${r2(bx)}" y="${r2(n.y - 8)}" width="${bw}" height="16" rx="8" fill="var(--um-mask)" stroke="var(--um-${ch[0]})" stroke-dasharray="none"/><text x="${r2(bx + bw / 2)}" y="${r2(n.y + 3)}" text-anchor="middle" class="badge-tx" fill="var(--um-${ch[0]})" text-decoration="none">${ch[1]}</text></g></g>`); };
   const families = geo.families || [], familyDepth = f => f.parent ? 1 + familyDepth(families.find(p => p.id === f.parent) || {}) : 0;
   families.slice().sort((a,b) => familyDepth(a)-familyDepth(b)).forEach(f => {
     // a typed view's box whose shape draws a frame (notes/stage-2.md §5): the shape's markup, in the group the canvas selects. It keeps
     // .family-title (the audit, the canvas's "Box …, selected") and draws its border with class family-box: the canvas outlines a
     // selected box and the box under a drag by .family-box alone (src/canvas/styles.js)
-    if (!map && hasKey(SHAPE, f.shape) && SHAPE[f.shape].frame) { s += `<g class="family" data-family="${esc(f.id)}"${f.parent ? ` data-parent="${esc(f.parent)}"` : ''}${f.aria ? ` role="img" aria-label="${esc(f.aria)}"` : ''}>${SHAPE[f.shape].frame(f)}</g>`; return; }
-    s += `<g class="family${f.tone ? ' toned' : ''}" data-family="${esc(f.id)}"${f.parent ? ` data-parent="${esc(f.parent)}"` : ''}${f.tone ? ` style="--um-tone:${toneOf(f)}"` : ''}><rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="14" stroke="var(--um-${familyDepth(f) ? 'cyan' : 'border-2'})"/>
+    if (!map && hasKey(SHAPE, f.shape) && SHAPE[f.shape].frame) { s += marked(f, `<g class="family" data-family="${esc(f.id)}"${f.parent ? ` data-parent="${esc(f.parent)}"` : ''}${f.aria ? ` role="img" aria-label="${esc(f.aria)}"` : ''}>${SHAPE[f.shape].frame(f)}</g>`); return; }
+    s += (map ? x => x : x => marked(f, x))(`<g class="family${f.tone ? ' toned' : ''}" data-family="${esc(f.id)}"${f.parent ? ` data-parent="${esc(f.parent)}"` : ''}${f.tone ? ` style="--um-tone:${toneOf(f)}"` : ''}><rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="14" stroke="var(--um-${familyDepth(f) ? 'cyan' : 'border-2'})"/>
       ${(map ? [f.label || f.id] : String(f.title || f.label || f.id).split(/\r\n?|[\n\u2028\u2029]/)).map((t, i) => `<text class="family-title" x="${f.x+12}" y="${f.y+18+i*14}" fill="var(--um-muted)" data-t="ft" data-o="${esc(f.id)}">${esc(t)}</text>`).join('')}${(f.tabs || []).map(t => t.fold ? `
       <g class="fold-hint"><title>Fold back into one card (E, or Alt + click a card in it)</title><rect x="${t.x}" y="${f.y - 8}" width="${t.w}" height="16" rx="8" class="n-mask" stroke="var(--um-accent)"/><text x="${t.x + t.w / 2}" y="${f.y + 4}" text-anchor="middle" class="badge-tx" fill="var(--um-accent)">⤡</text></g>` : `
-      <g class="pub-tab" data-badge="${t.badge}"><rect x="${t.x}" y="${f.y - 8}" width="${t.w}" height="15" rx="4" fill="${t.fill}"/><text x="${t.x + t.w / 2}" y="${f.y + 3}" text-anchor="middle" class="tab-tx">${esc(t.text)}</text></g>`).join('')}</g>`;
+      <g class="pub-tab" data-badge="${t.badge}"><rect x="${t.x}" y="${f.y - 8}" width="${t.w}" height="15" rx="4" fill="${t.fill}"/><text x="${t.x + t.w / 2}" y="${f.y + 3}" text-anchor="middle" class="tab-tx">${esc(t.text)}</text></g>`).join('')}</g>`);
   });
   (geo.lanes || []).forEach((l, i) => {
     s += `<g class="lane" data-lane="${i}">${l.bare ? '' : `<rect x="${l.x}" y="${l.y}" width="${l.w}" height="${l.h}" rx="14" class="lane-box"/>`}
@@ -95,24 +108,17 @@ function svgOf(geo, opts = {}) {
       s += `<path d="${d}" class="tour-glow" stroke="${st.c}" opacity="0">${tourAnim('0;0;.55;.55;0;0', [0, a, Math.min(a + .01, b), b, b + .03, 1])}</path>`; }
     s += `<g class="edge-g${st.cls || ''}${e.weight > 1 ? ' wt-' + e.weight : ''}" data-from="${esc(e.from)}" data-to="${esc(e.to)}" data-i="${i}"><path d="${d}" class="halo"/><path d="${d}" class="hitline"/>
       <path d="${d}" class="edge${st.flow ? ' flow' : ''}" stroke="${st.c}" ${st.dash && !st.flow ? `stroke-dasharray="${st.dash}"` : ''} ${st.op ? `opacity="${st.op}"` : ''} ${marks}/>
-      <path d="${fd}" class="flowline" stroke="${st.c}"/>${(e.all || [e]).some(x => x.edited) && !e.strong ? (() => { let m = [e.pts[0], e.pts[1]];
+      <path d="${fd}" class="flowline" stroke="${st.c}"/>${(e.all || [e]).some(x => x.edited || (CHG[lc(x)] || [])[1] === 'CHANGED') && !e.strong ? (() => { let m = [e.pts[0], e.pts[1]];
         e.pts.slice(1).forEach((p, k) => { const a = e.pts[k]; if (Math.abs(p[0] - a[0]) + Math.abs(p[1] - a[1]) > Math.abs(m[1][0] - m[0][0]) + Math.abs(m[1][1] - m[0][1])) m = [a, p]; });
         return `<circle cx="${(m[0][0] + m[1][0]) / 2}" cy="${(m[0][1] + m[1][1]) / 2}" r="4" class="edited-dot"><title>Edited</title></circle>`; })() : ''}${why.length ? ruleMark(e, why) : ''}
-      <title>${!map && e.aria != null ? esc(e.aria) : `${e.step != null ? 'Step ' + esc(e.step) + ': ' : ''}${esc(e.s.label || e.s.id)} ${e.both ? '⇄' : '→'} ${esc(e.t.label || e.t.id)}${e.label ? ': ' + esc(e.label) : ''}`}${e.label && e.sublabel ? ' (' + esc(e.sublabel) + ')' : ''}${e.when ? '\n' + esc(e.when) : ''}${why.length ? '\nBreaks rule: ' + esc(why.join('; ')) : ''}</title></g>`;
+      <title>${!map && e.aria != null ? esc(e.aria + chWord(e)) : `${e.step != null ? 'Step ' + esc(e.step) + ': ' : ''}${esc(e.s.label || e.s.id)} ${e.both ? '⇄' : '→'} ${esc(e.t.label || e.t.id)}${e.label ? ': ' + esc(e.label) : ''}${esc(chWord(e))}`}${e.label && e.sublabel ? ' (' + esc(e.sublabel) + ')' : ''}${e.when ? '\n' + esc(e.when) : ''}${why.length ? '\nBreaks rule: ' + esc(why.join('; ')) : ''}</title></g>`;
   });
   // the tour's dot rides over the lines and boxes but under the cards: it goes into a card and comes out at its next
   // line, rather than across the card's name
   s += '</g>' + (tour ? `<g class="tour" aria-hidden="true"><circle r="5.5" class="tour-dot"><animateMotion path="${tour.d}" dur="${TOUR}s" repeatCount="indefinite"/></circle></g>` : '') + '<g class="nodes">';
-  // a typed shape's change, as a card's: a NEW, CHANGED or PLANNED tab on its top; removed, faded, dashed and its text struck
-  // through; its accessible name says it (audit 44: the diff page drew a removed class as live, an added one unmarked)
-  const marked = (n, out) => { const ch = CHG[String(n.change || '').toLowerCase()]; if (!ch || typeof out !== 'string' || !/^\s*<g\b/.test(out)) return out;
-    const word = ch[1].toLowerCase(), gone = word === 'removed', dash = gone || word === 'planned', bw = ch[1].length * 6 + 12, bx = n.x + n.w - bw - 8;
-    let o = out.replace(/^(\s*<g\b[^>]*?)(\s*>)/, (_, a, b) => a.replace(/ aria-label="([^"]*)"/, (m, t) => ` aria-label="${t}, ${word}"`) + ` data-change="${word}"` + (gone ? ' opacity=".6"' : '') + (dash ? ' stroke-dasharray="6 4"' : '') + b);
-    if (gone) o = o.replace(/<text\b([^>]*)>/g, (m, a) => / text-decoration="/.test(a) ? m.replace(/ text-decoration="([^"]*)"/, (x, v) => ` text-decoration="${v} line-through"`) : `<text${a} text-decoration="line-through">`);
-    return !(Number.isFinite(n.x) && Number.isFinite(n.y) && Number.isFinite(n.w)) ? o : o.replace(/<\/g>\s*$/, `<g class="change-tab" aria-hidden="true"><rect x="${r2(bx)}" y="${r2(n.y - 8)}" width="${bw}" height="16" rx="8" fill="var(--um-mask)" stroke="var(--um-${ch[0]})" stroke-dasharray="none"/><text x="${r2(bx + bw / 2)}" y="${r2(n.y + 3)}" text-anchor="middle" class="badge-tx" fill="var(--um-${ch[0]})" text-decoration="none">${ch[1]}</text></g></g>`); };
   nodes.forEach(n => {
     if (!map && hasKey(SHAPE, n.shape) && SHAPE[n.shape].draw) { s += marked(n, SHAPE[n.shape].draw(n, col(n.k), fill(n.k))); return; } // a typed view's own shape: a class box (1.5), a note (1.9)
-    const c = col(n.k), f = fill(n.k), removed = n.change === 'removed', planned = n.change === 'planned';
+    const c = col(n.k), f = fill(n.k), removed = lc(n) === 'removed', planned = lc(n) === 'planned';
     const L = looks.get(n) || null, S = L && L.S; // a shaped card (0.15.0); null: a box, drawn as before
     const pub = map && n.k === 'm-public', priv = map && n.k === 'm-script', ext = map && n.k === 'm-ext', verb = map && n.k === 'm-verb';
     const dash = removed || ext || planned || (map && n.k === 'external'); // an external card is dashed (the legend says so)
@@ -218,9 +224,8 @@ return I && I.src ? `<rect x="${x - M * 3 / 28}" y="${y - M * 3 / 28}" width="${
   });
   // focus targets after the cards (#43), under the labels: each line's (a typed one's named by e.aria), or one per id of geo.order (notes/stage-3.md S13)
   const ring = (a, name, d) => `<g class="um-key line-key${a}" tabindex="0" role="button" aria-pressed="false" aria-label="${esc(name)}"><path d="${d}" class="key-ring"/></g>`;
-  const chWord = x => { const c = CHG[String(x.change || '').toLowerCase()]; return c ? ', ' + c[1].toLowerCase() : ''; }; // a typed key says its change (audit 44)
   const line = (e, i, said = e.label ? `: ${e.label}${e.sublabel ? ` (${e.sublabel})` : ''}` : '') => ring(`${e.weight > 1 ? ' wt-' + e.weight : ''}" data-i="${i}`, !map && e.aria != null ? e.aria + chWord(e)
-    : `${e.step != null ? `Step ${e.step}: ` : ''}Line ${e.both ? `between ${e.s.label || e.s.id} and ${e.t.label || e.t.id}, both ways` : `from ${e.s.label || e.s.id} to ${e.t.label || e.t.id}`}${said}${broke(e).length ? `, breaks rule ${broke(e).join('; ')}` : ''}`, roundPath(drawn[i]));
+    : `${e.step != null ? `Step ${e.step}: ` : ''}Line ${e.both ? `between ${e.s.label || e.s.id} and ${e.t.label || e.t.id}, both ways` : `from ${e.s.label || e.s.id} to ${e.t.label || e.t.id}`}${said}${chWord(e)}${broke(e).length ? `, breaks rule ${broke(e).join('; ')}` : ''}`, roundPath(drawn[i]));
   s += '</g><g class="keys">' + (!map && Array.isArray(geo.order) ? geo.order.map(id => { const n = hasKey(geo.byId || {}, id) && geo.byId[id], i = edges.findIndex(e => e.id === id);
     return n ? ring(` node-key" data-node="${esc(id)}`, String(n.aria || n.label || id) + chWord(n), `M${n.x} ${n.y}h${n.w}v${n.h}h${-n.w}z`) : i < 0 ? '' : line(edges[i], i); }) : edges.map((e, i) => line(e, i))).join('');
   s += '</g>' + (opts.over || '') + '<g class="labels depth-read">';

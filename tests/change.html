@@ -76,6 +76,19 @@ try {
     idle && idle.outerHTML.slice(0, 200));
   check('…and the line that ran undrawn is rose and dashed, labelled', [...s3.querySelectorAll('.e-label')].some(t => t.textContent === 'not drawn') && [...s3.querySelectorAll('.edge-g path.edge')].some(p => p.getAttribute('stroke') === 'var(--um-rose)'));
   h3.destroy();
+
+  // audit 45: a removed typed shape is faded as drawn, on the page and in its export: the page's highlights take a drawn
+  // group's opacity off, so the fade is on its outlines
+  const cls = await (await fetch('../examples/sales-classes.json')).json(), cls2 = structuredClone(cls);
+  cls2.nodes = cls2.nodes.filter(n => n.id !== 'status'); cls2.edges = cls2.edges.filter(e => e.from !== 'status' && e.to !== 'status'); cls2.views.forEach(v => { v.nodeIds = v.nodeIds.filter(i => i !== 'status'); });
+  const ALL = await import('../lib/umlimator-all.js'); // the typed types
+  const h4 = ALL.render(el, ALL.diff(cls, cls2).model, { view: cls.views[0].id }), s4 = el.querySelector('.umlimator').shadowRoot;
+  await wait(50);
+  const gone = s4.querySelector('.node[data-id="status"]'), faded = gone ? [...gone.querySelectorAll('rect, path')].filter(x => getComputedStyle(x).opacity === '0.6') : [];
+  check('a removed class is drawn faded on the page: its outlines at 0.6, its text struck through', !!gone && gone.getAttribute('data-change') === 'removed' && faded.length > 0
+    && [...gone.querySelectorAll('text')].some(t => /line-through/.test(t.getAttribute('text-decoration') || '')), gone && gone.outerHTML.slice(0, 300));
+  check('…and in its export', /data-id="status"[^]*?opacity="?\.?0?\.6/.test(h4.toSVG()) || /data-id="status"[^]*?opacity: 0\.6/.test(h4.toSVG()));
+  h4.destroy();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>
