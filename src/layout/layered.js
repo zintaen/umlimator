@@ -26,6 +26,9 @@ const PLAIN = Symbol('plain');
 // a typed view whose lines to one card took its top and bottom by turns though the card's other lines go elsewhere (audit 39),
 // laid out without those turns too (layoutTyped): a symbol, so no field of a model's view can set it
 const TURNS = Symbol('turns');
+// a typed view whose box side, past its title, had no room for its lines and grew over the title (audit 44), laid out without
+// that too (layoutTyped): a symbol, as TURNS
+const SPAN = Symbol('span');
 // a typed view's labels placed only once routing was done, on a looser spot (layoutPass's last try): they ask for room as a lost one does
 const LOOSE = new WeakSet();
 // gridRoute's working arrays, kept between its searches and cleared for each: a fresh set for every search (a view of 90 cards
@@ -116,12 +119,13 @@ function rowsFor(cols, links, h = () => 1, fixed = Object.create(null)) {
 /* Geometry: node boxes, ports, orthogonal routes, label slots. A view with lines the router found no route for is laid
    out once more, with room where those lines need it (#40); a view whose lines all route keeps its geometry. */
 function layoutGraph(dg, map) {
-  let g = layoutPass(dg, map, null), rr = g.rr, turns = g.turns;
-  if (g.room) { const g2 = layoutPass(dg, map, g.room, true); g2.ms.probe = g.ms.probe; g = g2; rr ||= g.rr; turns ||= g.turns; }
+  let g = layoutPass(dg, map, null), rr = g.rr, turns = g.turns, grew = g.grew;
+  if (g.room) { const g2 = layoutPass(dg, map, g.room, true); g2.ms.probe = g.ms.probe; g = g2; rr ||= g.rr; turns ||= g.turns; grew ||= g.grew; }
   // a label with no room where it fits: the view laid out again with room for it, kept with fewer issues and labels cut short
   if (g.labelRoom) { const g2 = layoutPass(dg, map, g.labelRoom, true), cut = h => h.edges.reduce((n, e) => n + (e.label || e.step != null ? !e.lbl ? 2 : e.lbl.short || LOOSE.has(e) ? 1 : 0 : 0), 0); // a label not drawn the worst
-    delete g.labelRoom; rr ||= g2.rr; turns ||= g2.turns; if (routeAudit(g2, '').length + cut(g2) < routeAudit(g, '').length + cut(g)) g = g2; }
+    delete g.labelRoom; rr ||= g2.rr; turns ||= g2.turns; grew ||= g2.grew; if (routeAudit(g2, '').length + cut(g2) < routeAudit(g, '').length + cut(g)) g = g2; }
   if (turns) g.turns = true; // layoutTyped judges those turns
+  if (grew) g.grew = true; // and a side grown over a box's title
   if (rr) g.rr = true; // a typed view's request/reply swap kept: buildGeo (context.js) judges it by the finished picture
   // two lines that still cross: one takes another side, and the view is laid out so once more, kept if it has fewer issues. A
   // line that closes a loop leaves its source on the far side, out round the map as a loop under the boxes does, and still comes
@@ -177,7 +181,7 @@ function layoutGraph(dg, map) {
   return best;
 }
 function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: px } } (lx, ly: a label's, past the boxes'); last: lay out with it, find no more
-  const __ms = { t: performance.now() }, t0 = __ms.t, NEST = !map && !!dg.typed && !!dg.nest && !dg[PLAIN]; let used = false, turns = false; // NEST: audit 38's ways (PLAIN); used: one of them changed the layout
+  const __ms = { t: performance.now() }, t0 = __ms.t, NEST = !map && !!dg.typed && !!dg.nest && !dg[PLAIN]; let used = false, turns = false, grew = false; // NEST: audit 38's ways (PLAIN); used: one of them changed the layout
   const px = x => typeof x === 'number' && x > 0 ? Math.min(x, 2000) : 0; // a gap that is no positive number is the default (audit 9)
   const CG = px(dg.gap) || (map ? (dg.mainSteps && !(Array.isArray(dg.containers) && dg.containers.length) ? 38 : 66) : CG0), RG = px(dg.rgap) || (map ? 44 : RG0); // family borders also need clearance between columns; containers: [] is no boxes (audit 38)
   const NH = dg.nodeH || 64, pitch = NH + RG;
@@ -467,10 +471,11 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       const across = TB ? !vertical : vertical, a0 = vertical ? n.y : n.x, len = vertical ? n.h : n.w;
       const sp = across ? [a0 + 40, a0 + len - 16] : TB ? [side === 'L' ? n.y + n.hd + 16 : n.y, n.y + n.h] : sideSpan(n, side) || [n.x, n.x + n.w];
       let lo = across ? sp[0] : Math.max(sp[0], a0 + 20), hi = across ? sp[1] : Math.min(sp[1], a0 + len - 20); if (hi < lo) lo = hi = (lo + hi) / 2;
-      // a span too short for its lines (a title that fills the side, audit 44: laid out down, two paths into an execution
-      // environment's top met at one point) grows past the title, toward the side's far end, until its ports lie PORT apart
+      // a typed view's span too short for its lines (a title that fills the side, audit 44: laid out down, two paths into an
+      // execution environment's top met at one point) grows over the title until its ports lie PORT apart; layoutTyped lays the
+      // view out without that too and keeps the one check() has less to say of (a dense view's other lines took worse ways)
       let gap = Math.min(vertical ? 16 : 26, (hi - lo) * 0.84 / list.length);
-      if (list.length > 1 && gap < PORT) { const need = (list.length - 1) * PORT, f0 = a0 + 20, f1 = a0 + len - 20;
+      if (dg.typed && !dg[SPAN] && list.length > 1 && gap < PORT) { grew = true; const need = (list.length - 1) * PORT, f0 = a0 + 20, f1 = a0 + len - 20;
         lo = Math.max(Math.min(f0, lo), Math.min(lo, hi - need)); if (hi - lo < need) hi = Math.max(hi, Math.min(f1, lo + need)); gap = Math.min(PORT, (hi - lo) / (list.length - 1)); }
       const ws = list.map(want), order = list.map((_, i) => i).sort((a, b) => ws[a] - ws[b]);
       const v = order.map(i => Math.min(hi, Math.max(lo, ws[i])));
@@ -1113,7 +1118,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   intake.forEach(b => { xs.push(b.cx - b.r - 8 - textW(b.label || '', 10.5), b.cx + b.r); ys.push(b.cy - b.r, b.cy + b.r); });
   if (!xs.length) xs.push(0), ys.push(0); // a view with nothing in it: an empty stage
   const M = 36, minX = Math.min(...xs) - M, minY = Math.min(...ys) - M;
-  return { ms: __ms, ...(used ? { nested: true } : {}), ...(turns ? { turns: true } : {}), ...(labelRoom ? { labelRoom } : {}), ...(rrSwap ? { rr: true } : {}), stats, nodes, edges, subAndChips: !!dg.subAndChips, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: Math.max(...xs) - minX + M, h: Math.max(...ys) - minY + M } };
+  return { ms: __ms, ...(used ? { nested: true } : {}), ...(turns ? { turns: true } : {}), ...(grew ? { grew: true } : {}), ...(labelRoom ? { labelRoom } : {}), ...(rrSwap ? { rr: true } : {}), stats, nodes, edges, subAndChips: !!dg.subAndChips, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: Math.max(...xs) - minX + M, h: Math.max(...ys) - minY + M } };
 }
 
-export { CHG, NW, OWN_ROUTE, PLAIN, TURNS, labelW, pillW, stepW, stepOrder, hit, untangle, pullSources, rowsFor, layoutGraph };
+export { CHG, NW, OWN_ROUTE, PLAIN, SPAN, TURNS, labelW, pillW, stepW, stepOrder, hit, untangle, pullSources, rowsFor, layoutGraph };
