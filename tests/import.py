@@ -427,6 +427,23 @@ ok("hostile · an Ingress of 18000 rules reads in linear time (its hosts counted
 m, _, dt = quick("kubernetes", json.dumps([{"kind": "Service", "metadata": {"name": f"s{i}"}, "spec": {"selector": {"app": f"a{i}"}}} for i in range(3000)]
                                          + [{"kind": "Deployment", "metadata": {"name": f"d{i}"}, "spec": {"template": {"metadata": {"labels": {"app": f"a{i}"}}}}} for i in range(3000)]))
 ok("hostile · 3000 Services selecting 3000 workloads read in linear time, each to its own", len(m["edges"]) == 3000 and line(m, "svc-s2999", "deploy-d2999") and dt < 1, dt)
+# audit 45: Services by workloads is a product: 1500 Services all selecting app=x drew 2.25 million lines (1.7 GB); a selector
+# whose labels each match half the workloads and together none checked every Service against half of them
+W = lambda i, lab: {"kind": "Deployment", "metadata": {"name": f"d{i}"}, "spec": {"template": {"metadata": {"labels": lab}}}}
+S = lambda i, sel: {"kind": "Service", "metadata": {"name": f"s{i}"}, "spec": {"selector": sel}}
+m, un, dt = quick("kubernetes", json.dumps([W(i, {"app": "x"}) for i in range(1500)] + [S(i, {"app": "x"}) for i in range(1500)]))
+ok("hostile · 1500 Services each selecting the same 1500 workloads: lines stop at FLOWS, said once, in bounded time",
+   len(m["edges"]) == imp.FLOWS and dt < 5 and [u for u in un if "over" in u[1]] == [("[1566]", f"over {imp.FLOWS} lines from Services to the workloads they select: the rest are not imported")],
+   (len(m["edges"]), dt, un[:3]))
+m, un, dt = quick("kubernetes", json.dumps([W(i, {"a": "x"} if i % 2 else {"b": "y"}) for i in range(4000)] + [S(i, {"a": "x", "b": "y"}) for i in range(4000)]))
+ok("hostile · 4000 Services whose two labels each match 2000 workloads and together none: checks stop at SELECTS, said once",
+   m["edges"] == [] and dt < 5 and len(un) == 1 and un[0][1] == f"over {imp.SELECTS} workloads checked against Service selectors: the rest of their lines are not imported",
+   (dt, un[:3]))
+m, un, _ = quick("kubernetes", json.dumps([W(0, {"app": "a", "tier": "web"}), W(1, {"app": "a", "tier": "db"}), W(2, {"tier": "web"}),
+                                           S(0, {"app": "a", "tier": "web"}), S(1, {"tier": "web"}), S(2, {"app": "a"})]))
+ok("kubernetes · a Service selects every workload whose labels hold all of its selector, by its rarest label, in file order",
+   [(e["from"], e["to"]) for e in m["edges"]] == [("svc-s0", "deploy-d0"), ("svc-s1", "deploy-d0"), ("svc-s1", "deploy-d2"),
+                                                ("svc-s2", "deploy-d0"), ("svc-s2", "deploy-d1")] and un == [], (m["edges"], un))
 m, _, dt = quick("compose", json.dumps({"services": {f"s{i}": {"networks": [f"n{i % 2}" if i < 4 else f"n{i}"]} for i in range(20000)}}))
 ok("hostile · 20000 compose services on their own networks read in linear time", dt < 3 and m["views"][0]["containers"][0]["nodeIds"] == ["s0", "s2"], dt)
 m, un, _ = quick("compose", json.dumps({"services": {}, "x": " " * imp.LIMIT}))
