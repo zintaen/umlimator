@@ -63,7 +63,7 @@ test('the definition: uml.activity with row 9\'s palette, its lines, properties,
   assert.deepEqual(T.props['uml.ControlFlow'].map(f => f.key), ['guard', 'stereotypes']);
   assert.deepEqual(T.props['uml.Action'].map(f => f.key), ['stereotypes']);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'moveTo', 'remove', 'rename']);
-  assert.deepEqual(Object.keys(T.rules), [...Object.keys(FLOW_RULES), 'object-flow', 'partition-owner', 'in-lane', 'calls-view']);
+  assert.deepEqual(Object.keys(T.rules), [...Object.keys(FLOW_RULES), 'object-flow', 'partition-owner', 'in-lane', 'calls-view', 'comment-link']);
   for (const k of ['layout', 'draw', 'owners', 'validate', 'describe', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
 });
 
@@ -592,4 +592,16 @@ test('audit 39: every word an activity node draws is in its accessible name, an 
   assert.equal(node('j').aria, 'Join, 2 branches'); assert.equal(node('f').aria, 'Fork, 2 branches');
   assert.match(d, /^Decision d, 2 exits; then q; then m<img src=https:\/\/e\.example\/t\.png>\.$/m);
   assert.ok(!/<img/.test(svgOf(g)), 'an id is drawn as text, never as markup');
+});
+
+// audit 47: a hand-written comment link the view draws between two actions is warned, as the use case and state views warn one
+test('audit 47: comment-link warns of a drawn comment link with no comment at either end', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'a1', type: 'uml.Action', label: 'Pick' }, { id: 'a2', type: 'uml.Action', label: 'Pack' }, { id: 'n', type: 'uml.Comment', label: 'fragile' }],
+    edges: [{ id: 'f', type: 'uml.ControlFlow', from: 'a1', to: 'a2' }, { id: 'cl', type: 'uml.CommentLink', from: 'a1', to: 'a2' }, { id: 'ok', type: 'uml.CommentLink', from: 'n', to: 'a1' }],
+    views: [{ id: 'av', diagram: 'uml.activity', nodeIds: ['a1', 'a2', 'n'] }] };
+  assert.deepEqual(validate(m).filter(p => p.rule === 'comment-link').map(p => [p.level, p.path, p.message]), [['warning', 'edges[1]', 'comment-link: cl joins "Pick" and "Pack", neither a comment']]);
+  // the view's own line, at its own path; a line the view does not draw is not its to say
+  const o = structuredClone(m); o.views[0].edges = ['f', { id: 'c2', type: 'uml.CommentLink', from: 'a2', to: 'a1' }];
+  assert.deepEqual(validate(o).filter(p => p.rule === 'comment-link').map(p => p.path), ['views[0].edges[1]']);
+  assert.deepEqual(validate(EX).filter(p => p.rule === 'comment-link'), []);
 });

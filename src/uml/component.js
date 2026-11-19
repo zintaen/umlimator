@@ -5,7 +5,7 @@ import { rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { CLASSIFIERS, RULES, commentConnect, lineRename, multProblem, memberClash, memberEdit, paramTextProblems, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
-import { SN_ARTIFACTS, SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, snKindName, snKindWord, structProblems } from './structure.js';
+import { SN_ARTIFACTS, SN_PRESENT_RULE, SN_SAY, STRUCT_RULES, portFit, sideProblem, portSides, portsDrawn, snKindName, snKindWord, structProblems } from './structure.js';
 import { usedIds, jsonText, labelOr, elName, propTextProblems } from '../core/model.js';
 
 /* ---------- the component diagram, uml.component (work package 5.4, notes/stage-5.md §10.1) ----------
@@ -222,6 +222,7 @@ const CP_RULES = {
   'provided-ends': 'a realization runs from a component, a class or a port to an interface',
   'required-ends': 'a usage from a component or a port runs to an interface (another is drawn as «use»)',
   'ball-interface': 'a view draws only an interface as a ball',
+  'present-values': SN_PRESENT_RULE,
   'delegation-ends': 'a delegation joins a component\'s port with a component or port inside it, at any depth',
   'assembly-ends': 'an assembly joins two components or their ports, neither inside the other',
   'component-realization-ends': 'a component realization runs from a class or a component to a component',
@@ -260,7 +261,10 @@ function cpProblems(model, view) {
           const t = CP_OBJ(m.props) ? m.props.multiplicity : null, p = CP_HAS(t) && multProblem(String(t), `${at}.props.multiplicity`, [m.id], `${q(n.id)}.${m.label}`); if (p) out.push(p); } }); });
     pic.inside.forEach(({ e, from, to }) => { if (e.type !== 'uml.Connector') out.push(lineInside(view, vi, e, from, to, q)); });
     Object.entries(CP_OBJ(view.present) ? view.present : {}).forEach(([id, p]) => { if (CP_OWN(p, 'as') === 'ball' && (I.N.get(id) || {}).type !== 'uml.Interface')
-      say('warning', 'ball-interface', `views[${vi}].present`, [id], `${q(id)} is not an interface: view ${jsonText(view.id)} does not draw it as a ball`); }); }
+      say('warning', 'ball-interface', `views[${vi}].present`, [id], `${q(id)} is not an interface: view ${jsonText(view.id)} does not draw it as a ball`);
+    // a value the view reads only as written, misspelled or in another case: ignored, so said (audit 47)
+    const as = CP_OWN(p, 'as'); if (as != null && as !== 'ball') say('warning', 'present-values', `views[${vi}].present.${id}.as`, [id], `${q(id)}'s as ${jsonText(as)} is not ball: ignored`);
+    if (I.P.has(id)) { const w = sideProblem(CP_OWN(p, 'side'), `views[${vi}].present.${id}.side`, id, q(id)); if (w) out.push(w); } }); }
   return out;
 }
 

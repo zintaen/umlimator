@@ -882,3 +882,25 @@ test('audit 44: a transition the last resort drew along a self-transition\'s top
   assert.deepEqual(runs, [], `t7 keeps off the loop's top run: ${JSON.stringify(t7.pts)}`);
   assert.deepEqual(notCross(m), []);
 });
+
+// audit 47: Shift + Delete of a region of a view's own state counts only what apply() deletes: a model state in it is lifted out
+test('audit 47: Shift + Delete of a view\'s own region does not count the model states it lifts out', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'x', type: 'uml.State', label: 'X', parent: 'R' }], edges: [],
+    views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['S', 'x', 'y'], nodes: [{ id: 'S', type: 'uml.State', label: 'S', members: [{ id: 'R', type: 'uml.Region', label: 'r' }] }, { id: 'y', type: 'uml.State', label: 'Y', parent: 'R' }] }] };
+  const r = T.edits.remove(m, m.views[0], ['R'], true);
+  assert.equal(r.say, 'Deleted region r and the 1 element it held');
+  const after = apply(m, r.commands); assert.deepEqual([after.nodes.map(n => n.id), after.views[0].nodes.map(n => n.id)], [['x'], ['S']]);
+});
+
+// audit 47: comment-link is said by the views that draw the line, never by a use case or state machine view that does not
+test('audit 47: a class view\'s comment link is not warned again by use case and state machine views that do not draw it', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.Actor', label: 'Clerk' }, { id: 'U', type: 'uml.UseCase', label: 'Buy' }, { id: 'S', type: 'uml.State', label: 'Idle' },
+    { id: 'S2', type: 'uml.State', label: 'Busy' }, { id: 'K1', type: 'uml.Class', label: 'K1' }, { id: 'K2', type: 'uml.Class', label: 'K2' }],
+    edges: [{ id: 'as', type: 'uml.Association', from: 'A', to: 'U' }, { id: 'cl', type: 'uml.CommentLink', from: 'K1', to: 'K2' }],
+    views: [{ id: 'cv', diagram: 'uml.class', nodeIds: ['K1', 'K2'] }, { id: 'uv', diagram: 'uml.use-case', nodeIds: ['A', 'U'] }, { id: 'sv', diagram: 'uml.state-machine', nodeIds: ['S'] }] };
+  const ps = validate(m).filter(p => p.rule === 'comment-link');
+  assert.deepEqual(ps.map(p => p.level), ['error'], ps.map(p => p.message).join('; '));
+  // a line each view draws is still said, once a view
+  const k = structuredClone(m); k.edges.push({ id: 'c2', type: 'uml.CommentLink', from: 'A', to: 'U' }, { id: 'c3', type: 'uml.CommentLink', from: 'S', to: 'S2' }); k.views[2].nodeIds.push('S2');
+  assert.deepEqual(validate(k).filter(p => p.rule === 'comment-link' && p.level === 'warning').map(p => p.ids[0]).sort(), ['c2', 'c3']);
+});

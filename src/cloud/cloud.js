@@ -261,7 +261,10 @@ function clRemove(F, model, view, ids, fromModel) {
   const V = CL_OBJ(view) ? view : CL_ARR(model && model.views).find(v => CL_OBJ(v) && v.id === view);
   const I = clIndex(V ? ownNodes(model, V).model : model), all = fromModel ? ids.filter(id => (I.at.get(id) || {}).type === F.group) : [];
   // a group under another selected one is held by it, and what either holds is counted, selected or not: it goes all the same (audit 33)
-  const gs = all.filter(id => !I.chain(id).some(p => all.includes(p))), under = id => I.chain(id).some(p => gs.includes(p));
+  // what goes as apply() deletes: a model element under the view's own node is lifted out, not deleted, so it is not counted (audit 47)
+  const own = new Set(V ? CL_ARR(V.nodes).filter(n => CL_OBJ(n) && typeof n.id === 'string').map(n => n.id) : []);
+  const gs = all.filter(id => !I.chain(id).some(p => all.includes(p)));
+  const under = id => { for (let c = id, ps = I.chain(id), i = 0; i < ps.length; c = ps[i++]) { if (own.has(ps[i]) && !own.has(c)) return false; if (gs.includes(ps[i])) return true; } return false; };
   const held = gs.length ? [...I.at.keys()].filter(under).length : 0;
   if (!held) return null;
   const one = gs.length === 1 && I.at.get(gs[0]), more = new Set(ids.filter(id => !gs.includes(id) && !under(id))).size;
