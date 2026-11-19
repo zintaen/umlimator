@@ -162,7 +162,7 @@ function readMermaidState(text) {
     return s[key];
   };
 
-  const over = mermaidOver(lines);
+  const over = mermaidOver(lines, say);
   for (; i < lines.length; i++) {
     const no = i + 1;
     let s = lines[i].trim();

@@ -450,3 +450,10 @@ test('a relationship\'s "label" or a column\'s "comment" runs over line breaks t
   const open = read('erDiagram\nORDER {\n  string id "open\n  int n\n}\n');
   assert.deepEqual([open.model.nodes[0].members.map(m => m.label), open.report.map(x => x.line)], [['n'], [3]]);
 });
+
+test('a %% comment line inside a "label" or "comment" over lines is taken out, as Mermaid\'s cleanupComments does before it parses, its quotes not counted, and said (audit 51)', () => {
+  const r = read('erDiagram\n  A ||--o{ B : "first\n  %% a " quote\n  second"\n  C {\n    string id "the\n  %% x\n    key"\n  }\n');
+  assert.deepEqual(r.model.edges.map(e => e.label), ['first\n  second']);
+  assert.deepEqual(r.model.nodes.find(n => n.id === 'C').members.map(m => m.ext.mermaid.comment), ['the\n    key']);
+  assert.deepEqual(r.report.filter(x => x.message.startsWith('a %%')).map(x => [x.line, x.status, x.message]), [[3, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read'], [7, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read']]);
+});

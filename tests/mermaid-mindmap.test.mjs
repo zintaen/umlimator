@@ -314,3 +314,9 @@ test('a shape\'s "string" and bare text run over line breaks to the closer, as M
   assert.deepEqual(tree(read('mindmap\n  root\n    c["x]\n    d["y"]\n')), [['root', 'root', null], ['c', '"x', 'root'], ['d', 'y', 'root']]);
   assert.deepEqual(tree(read('mindmap\n  root\n    c[x\n    d\n')), [['root', 'root', null], ['c-x', 'c[x', 'root'], ['d', 'd', 'root']]);
 });
+
+test('a %% comment line inside a shape\'s "string", Markdown string or bare text over lines is taken out, as Mermaid\'s cleanupComments does before it parses, its stops not counted, and said (audit 51)', () => {
+  const r = read('mindmap\n  root\n    a["first\n    %% a "] x\n    second"]\n    b["`one\n    %% two`"]\n    three`"]\n    c(x\n    %% y)\n    z)\n');
+  assert.deepEqual(r.model.nodes.map(n => [n.label, n.parent ?? null]), [['root', null], ['first\n    second', 'root'], ['one\n    three', 'root'], ['x\n    z', 'root']]);
+  assert.deepEqual(r.report.filter(x => x.message.startsWith('a %%')).map(x => [x.line, x.status, x.message]), [[4, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read'], [7, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read'], [10, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read']]);
+});

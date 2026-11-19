@@ -112,7 +112,7 @@ test("a file with every construct on Mermaid's flowchart page gives the pinned r
     '80 approximated: Q <--> R: an arrowhead at each end: read as two flows',
     '81 approximated: R x--x S: a cross end, an arrowhead at each end: read as two flows',
     '92 skipped: subgraph one: the group is not read, the nodes in it are',
-    '95 skipped: subgraph two-words: the group is not read, the nodes in it are',
+    '95 skipped: subgraph subGraph1: the group is not read, the nodes in it are', // a title with a space is no id: two-words on line 105 is a node (audit 51)
     '98 skipped: subgraph three: the group is not read, the nodes in it are',
     '99 approximated: direction RL inside a subgraph is not kept: the view has one direction',
     '101 skipped: subgraph inner: the group is not read, the nodes in it are',
@@ -469,4 +469,20 @@ test('a node of no type (or "") is written as a process, with its flows, and sai
     assert.deepEqual(back.nodes.map(n => [n.id, n.type]), [['s', 'flow.Terminator'], ['x', 'flow.Process'], ['e', 'flow.Terminator']]);
     assert.deepEqual(back.edges.map(x => [x.id, x.from, x.to]), [['f1', 's', 'x'], ['f2', 'x', 'e']]);
   }
+});
+
+test('a %% comment line inside a quoted label over lines is taken out, as Mermaid\'s cleanupComments does before it parses, its quotes not counted, and said (audit 51)', () => {
+  const r = read('flowchart LR\n  A["first\n  %% a " quote\n  second"] --> B\n');
+  assert.deepEqual(r.model.nodes.map(n => [n.id, n.label]), [['A', 'first\nsecond'], ['B', 'B']]);
+  assert.deepEqual(r.model.edges.map(e => [e.from, e.to]), [['A', 'B']]);
+  assert.deepEqual(r.report.map(x => [x.line, x.status, x.message]), [[3, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read']]);
+});
+
+test('a subgraph titled with no id of its own whose title holds whitespace is Mermaid\'s subGraph<n>, so a node named as its slug is a node with its flows (audit 51)', () => {
+  const r = read('flowchart LR\n  subgraph "Order flow"\n    pay\n  end\n  subgraph Ship it\n    box\n  end\n  subgraph one\n    x\n  end\n  order-flow --> ship\n  ship-it --> one\n');
+  assert.deepEqual(r.model.nodes.map(n => n.id), ['pay', 'box', 'x', 'order-flow', 'ship', 'ship-it']);
+  assert.deepEqual(r.model.edges.map(e => `${e.from}->${e.to}`), ['order-flow->ship']);
+  assert.deepEqual(r.report.map(x => `${x.line}: ${x.message}`), ['2: subgraph subGraph0: the group is not read, the nodes in it are',
+    '5: subgraph subGraph1: the group is not read, the nodes in it are', '8: subgraph one: the group is not read, the nodes in it are',
+    '12: ship-it --> one: one is a subgraph, which is not read']);
 });

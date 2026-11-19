@@ -98,19 +98,39 @@ function mermaidScrub(text, say) {
   return text.split('\n').map((l, k) => mermaidLegal(l, what => say(k + 1, 'approximated', mermaidRawChar(what)))).join('\n');
 }
 
-// Mermaid's "string" token ("[^"]*") runs over line breaks (audit 49). mermaidOver(lines) -> over(i, s): s is line i's
-// statement, trimmed, with a string left open; over gives { s, i }: s and the lines after it joined with line feeds, to
-// the first that closes every string (an odd count of " on it), its own indent kept, and i that line's index; or null
-// when no later line closes it. Which line closes from where is found once, on first use: linear in the text
-function mermaidOver(lines) {
+// Mermaid's "string" token ("[^"]*") runs over line breaks (audit 49). mermaidOver(lines, say) -> over(i, s): s is line
+// i's statement, trimmed, with a string left open; over gives { s, i, rest }: s and the lines after it joined with line
+// feeds, to the first that closes every string (an odd count of " on it), its own indent kept, i that line's index, and
+// rest the lines after s that are joined; or null when no later line closes it. Which line closes from where is found
+// once, on first use: linear in the text. Mermaid takes out a %% comment line (/^\s*%%(?!{)[^\n]+\n?/gm, with the blank
+// lines before it) before it reads any string, so such a line is not joined and its " count nothing; said, when a
+// say(line, status, message) is given, once per string at its first such line (audit 51)
+const MERMAID_COMMENT = /^\s*%%(?!\{)./, mermaidComment = l => MERMAID_COMMENT.test(l);
+// the lines of a string after its first, less each %% comment line and the blank lines before it: { kept, cut }, cut the
+// index of the first comment line or -1
+function mermaidUncomment(ls) {
+  const kept = [];
+  let cut = -1;
+  ls.forEach((l, k) => {
+    if (!mermaidComment(l)) { kept.push(l); return; }
+    while (kept.length && !kept.at(-1).trim()) kept.pop();
+    if (cut < 0) cut = k;
+  });
+  return { kept, cut };
+}
+const MERMAID_IN_STRING = 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read';
+function mermaidOver(lines, say) {
   let next;
   return (i, s) => {
     if (!next) {
       next = new Int32Array(lines.length + 1).fill(-1);
-      for (let k = lines.length - 1; k >= 0; k--) next[k] = (lines[k].split('"').length - 1) % 2 ? k : next[k + 1];
+      for (let k = lines.length - 1; k >= 0; k--) next[k] = !mermaidComment(lines[k]) && (lines[k].split('"').length - 1) % 2 ? k : next[k + 1];
     }
     const m = next[i + 1];
-    return m < 0 ? null : { s: [s, ...lines.slice(i + 1, m + 1)].join('\n').trim(), i: m };
+    if (m < 0) return null;
+    const { kept: rest, cut } = mermaidUncomment(lines.slice(i + 1, m + 1)), kept = [s, ...rest];
+    if (cut >= 0 && say) say(i + 2 + cut, 'approximated', MERMAID_IN_STRING);
+    return { s: kept.join('\n').trim(), i: m, rest: kept.slice(1) };
   };
 }
 // whether a " opened in s is left open; stop(k) says where reading ends outside a string (a label's : say)
@@ -145,4 +165,4 @@ function mermaidSay(report) {
   };
 }
 
-export { mermaidTitle, mermaidFrontTitle, mermaidCut, mermaidClip, mermaidChar, mermaidBadChar, mermaidLegal, mermaidRawChar, mermaidScrub, mermaidOver, mermaidOpen, mermaidSay, mermaidSort, mermaidText, MERMAID_REPORT_MAX };
+export { mermaidTitle, mermaidFrontTitle, mermaidCut, mermaidClip, mermaidChar, mermaidBadChar, mermaidLegal, mermaidRawChar, mermaidScrub, mermaidOver, mermaidOpen, mermaidComment, mermaidUncomment, MERMAID_IN_STRING, mermaidSay, mermaidSort, mermaidText, MERMAID_REPORT_MAX };

@@ -1,5 +1,5 @@
 import { unreadable } from '../core/model.js';
-import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText, mermaidScrub } from './mermaid-front.js';
+import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText, mermaidScrub, mermaidComment, mermaidUncomment, MERMAID_IN_STRING } from './mermaid-front.js';
 /* ---------- Mermaid flowchart: a reader and a writer (notes/milestone-2.md §8, §8.2, M2.9; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's flowchart page (docs/syntax/flowchart.md) and its shapes' names and aliases
    (rendering-elements/shapes.ts), both read on Mermaid's repository 14 Nov 2026, and ported from the map
@@ -246,9 +246,11 @@ function readMermaidFlowchart(text) {
     if (!s) return;
     const bad = code => say(no, 'approximated', mermaidBadChar(code));
     const sg = /^subgraph(?:\s+(?:([^\s["]+)\s*\[([^\]]*)\]|"(.+)"|(\S+)$|(.+))|$)/.exec(s);
-    if (sg) { // its id as the importer's ident(): the name when it is plain, else a slug of its title; a bare one Mermaid's subGraph<n>
+    if (sg) { // its id as the importer's ident(): the name when it is plain, else a slug of its title; Mermaid's subGraph<n>
+      // for a bare one, and for a title with no id of its own that holds whitespace, which flowDb.addSubGraph takes for no id (audit 51)
       const label = mfText(sg[2] ?? sg[3] ?? sg[4] ?? sg[5] ?? '', undefined, bad), raw = (sg[1] ?? sg[4] ?? label).trim();
-      subs.push({ id: s === 'subgraph' ? `subGraph${nsub}` : /^[\p{L}\p{N}_.-]+$/u.test(raw) ? raw : raw.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'x', no });
+      const none = s === 'subgraph' || (sg[1] == null && /\s/.test(sg[3] ?? sg[5] ?? ''));
+      subs.push({ id: none ? `subGraph${nsub}` : /^[\p{L}\p{N}_.-]+$/u.test(raw) ? raw : raw.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'x', no });
       nsub++;
       say(no, 'skipped', `subgraph ${subs.at(-1).id}: the group is not read, the nodes in it are`);
       return;
@@ -316,14 +318,17 @@ function readMermaidFlowchart(text) {
   const unused = () => { if (hint != null) say(hintNo, 'skipped', `%% id: ${hint}: the statement below it takes no id from it`); hint = null; };
 
   // a quoted label over several lines (Mermaid's lexer allows it) is one line: its close is the next line with an odd count
-  // of quotes; none, it is left as it is. Joined in place, the later lines left empty, so the scan is linear
-  const odd = l => (l.split('"').length - 1) % 2 === 1;
+  // of quotes; none, it is left as it is. Joined in place, the later lines left empty, so the scan is linear. A %% comment
+  // line between is taken out, as Mermaid does before it reads, its quotes not counted, and said (audit 51)
+  const odd = l => !mermaidComment(l) && (l.split('"').length - 1) % 2 === 1;
   for (let k = i; k < lines.length; k++) {
     if (lines[k].trimStart().startsWith('%%') || !odd(lines[k])) continue;
     let j = k + 1;
     while (j < lines.length && !odd(lines[j])) j++;
     if (j === lines.length) break; // no later line has an odd count
-    lines[k] = lines.slice(k, j + 1).map(l => l.trim()).join('\n');
+    const { kept, cut } = mermaidUncomment(lines.slice(k + 1, j + 1));
+    if (cut >= 0) say(k + 2 + cut, 'approximated', MERMAID_IN_STRING);
+    lines[k] = [lines[k], ...kept].map(l => l.trim()).join('\n');
     lines.fill('', k + 1, j + 1);
     k = j;
   }

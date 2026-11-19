@@ -208,7 +208,7 @@ function readMermaidRequirement(text) {
     leftover(h, ['id']);
   };
 
-  const over = mermaidOver(lines);
+  const over = mermaidOver(lines, say);
   for (; i < lines.length; i++) {
     const no = i + 1;
     let t = lines[i].trim();

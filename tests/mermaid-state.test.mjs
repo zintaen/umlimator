@@ -498,3 +498,9 @@ test('state "description" as name: a description left open runs over line breaks
   assert.deepEqual([r.model.edges.map(e => [e.from, e.to]), r.report], [[['start', 'S1'], ['S1', 'S0']], []]);
   assert.deepEqual(read('stateDiagram-v2\nstate "never closed\nS1 --> S2\n').report.map(x => x.line), [2]);
 });
+
+test('a %% comment line inside a state "description" over lines is taken out, as Mermaid\'s cleanupComments does before it parses, its quotes not counted, and said (audit 51)', () => {
+  const r = read('stateDiagram-v2\n  state "first\n  %% a " quote\n  second" as A\n  A --> B\n');
+  assert.deepEqual(r.model.nodes.map(n => [n.id, n.label]), [['A', 'first\n  second'], ['B', 'B']]);
+  assert.deepEqual(r.report.map(x => [x.line, x.status, x.message]), [[3, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read']]);
+});
