@@ -6,7 +6,8 @@ import { layoutTyped, typedLines } from '../typed/layout.js';
 import { LINE_SAYS, commentConnect, commentLinkProblems, legendItem } from './class.js'; // SHAPE.classifier and SHAPE.note too
 import { snKindName, snLineName } from './structure.js'; // SHAPE.component too
 import './usecase.js'; // SHAPE.actor
-import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName, isGone } from '../core/model.js';
+import { liveLine } from '../typed/draw.js';
 
 /* ---------- the information flow diagram, uml.information-flow (work package M2.5, notes/milestone-2.md §7.4) ----------
    Classes and interfaces (the class type's classifier, name only), components (src/uml/structure.js's look) and actors (the
@@ -74,7 +75,10 @@ const ifShown = (I, view) => [...new Set(IF_ARR(view && view.nodeIds))].filter(i
    conveys Order and Card details" ---- */
 function ifNodeName(I, n) {
   if (n.type === 'uml.Comment') return 'Comment: ' + ifName(n);
-  const st = ifStereo(n), w = ifKindName(n.type), k = I.flowsOf(n.id).length;
+  // the model after's count on the diff page: not a flow diff() drew back removed, nor one to or from an element it drew back
+  // removed; one itself removed counts what it had, the model before's (audit 56)
+  const live = e => isGone(n) || liveLine(e, id => isGone(I.at.get(id)));
+  const st = ifStereo(n), w = ifKindName(n.type), k = I.flowsOf(n.id).filter(live).length;
   return `${w} ${ifName(n)}${st.length ? ` (${st.join(', ')})` : ''}${k ? `, conveyed by ${ifPlural(k, 'flow')}` : ''}`;
 }
 function ifLineName(I, e) {

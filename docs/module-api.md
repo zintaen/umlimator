@@ -911,6 +911,7 @@ Nothing is removed. Two defaults change for a host that upgrades:
     dot);
   - what left comes back in its views, boxes and places;
   - a card put into or taken out of a view is marked in that view only (`nodeOverrides`).
+  - on the diff page a count or a role in an unmarked card's or box's accessible name is the model after's: a port, member, line or card drawn back removed is not counted, a card taken out of the view is not counted where the view's count is of what it shows, and a box taken out counts what it held in its owner, where the model after holds it. A removed card or box says what the model before said (audits 55 and 56).
 
   Cards and lines match by id, and a line without one by its ends, as a Ref names it. `summary` says what changed in
   words, in model order, for example "adds Payments queue between Trip service and Payment provider" or "renames Accounts

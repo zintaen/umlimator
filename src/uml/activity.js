@@ -5,7 +5,7 @@ import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { laneBands, laneRows } from '../layout/lanes.js';
 import { layoutTyped } from '../typed/layout.js';
-import { brLines } from '../typed/draw.js';
+import { brLines, goneIn, liveLine } from '../typed/draw.js';
 import './class.js'; // SHAPE.note, a comment's
 import { snKindName } from './structure.js';
 import { frame } from './frame.js';
@@ -96,11 +96,12 @@ function actIndex(model, view) {
   const list = Array.isArray(view && view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)))] : [...E.values()].filter(e => AC_LINES.includes(e.type));
   const lines = list.filter(e => AC_OBJ(e) && typeof e.id === 'string' && on.has(e.from) && on.has(e.to));
   const n = new Map(), under = p => n.get(p) || 0; // the nodes under each lane, at any depth, counted in one pass
-  // on the diff page not one diff() drew back removed, so a partition says the model after's count (audit 55)
-  const gone = id => { const c = (N.get(id) || {}).change; return typeof c === 'string' && c.toLowerCase() === 'removed'; };
+  // on the diff page not one diff() drew back removed, so a partition says the model after's count (audit 55), nor one taken out
+  // of the view (audit 56)
+  const gone = goneIn(view, id => N.get(id));
   drawn.forEach(id => { if (!gone(id)) for (let l = laneOf(id); l != null; l = outer(l)) n.set(l, under(l) + 1); });
   // an unfolded call's box: its title a line each where the author broke it (svgOf, 14 px apart), its header room grown for them (audit 23)
-  return { N, E, path, ids, shown, parts, drawn, lines, up, laneOf, isPart, under, boxes: boxes.map(b => ({ id: b.id, label: acName(N.get(b.id)), title: acName(N.get(b.id)),
+  return { N, E, path, ids, shown, parts, drawn, lines, up, laneOf, isPart, under, gone, boxes: boxes.map(b => ({ id: b.id, label: acName(N.get(b.id)), title: acName(N.get(b.id)),
       ...(brLines(acName(N.get(b.id))).length > 1 ? { head: (brLines(acName(N.get(b.id))).length - 1) * 14 } : {}),
       nodeIds: AC_ARR(b.nodeIds).filter(i => on.has(i)), ...(inBox.has(b.id) ? { parent: inBox.get(b.id) } : {}), aria: `Call behaviour ${acName(N.get(b.id))}, unfolded` })),
     // a name the author broke (a Mermaid <br>): its header strip as wide as its lines (laneBands, audit 22)
@@ -121,7 +122,9 @@ const acViewName = (model, id) => { const v = AC_ARR(model && model.views).find(
 
 // accessible names (§14): "Action Take the next order from the queue, in Order worker"; "Decision All books in stock?, 2 exits"
 function acNodeName(model, I, x, lines) {
-  const [, word] = acLook(x), st = acStereo(x), lane = I.laneOf(x.id), outs = lines.filter(e => e.from === x.id && AC_FLOWS.includes(e.type)).length, ins = lines.filter(e => e.to === x.id && AC_FLOWS.includes(e.type)).length;
+  // the flows the model after draws, on the diff page (audit 56); a node itself removed counts all it had, the model before's
+  const all = !I.gone || I.gone(x.id), flow = e => AC_FLOWS.includes(e.type) && (all || liveLine(e, I.gone));
+  const [, word] = acLook(x), st = acStereo(x), lane = I.laneOf(x.id), outs = lines.filter(e => e.from === x.id && flow(e)).length, ins = lines.filter(e => e.to === x.id && flow(e)).length;
   if (x.type === 'uml.Comment') return 'Comment: ' + acName(x);
   if (x.type === 'uml.ActivityPartition') return `Partition ${acName(x)}${st.length ? ` (${st.join(', ')})` : ''}, ${acPlural(I.under(x.id), 'node')}`;
   const named = !AC_GLYPHS.includes(acLook(x)[0]) && AC_HAS(x.label) ? ' ' + String(x.label).trim() : acById(x) ? ' ' + acName(x) : '';

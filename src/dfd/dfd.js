@@ -7,6 +7,7 @@ import { flowWrap } from '../uml/flow.js';
 import '../uml/usecase.js'; // SHAPE.ellipse, Yourdon's process
 import { snKindName } from '../uml/structure.js';
 import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
+import { goneIn, liveLine } from '../typed/draw.js';
 
 /* ---------- the data flow diagram, dfd (work package M2.4, notes/milestone-2.md §4.3, §6.1, §6.4, §7.3) ----------
    Processes, data stores and external entities, joined by data flows; comments. Two skins on one geometry (§4.3): each
@@ -117,8 +118,11 @@ function dfdLines(model, view) {
   return list.filter(e => DFD_OBJ(e) && typeof e.id === 'string' && shown.has(e.from) && shown.has(e.to) && at.has(e.from) && at.has(e.to) && !(up.has(e.from) && up.has(e.to)));
 }
 // accessible names (A1): "Process 1 Take order, opens level 1 Take order, 2 flows in, 2 out"; a flow: "Data flow basket from Customer to 1 Take order"
-function dfdNodeName(I, id, lines) {
+// view: the flows counted as the model after counts them on the diff page, not one diff() drew back removed nor one to or from
+// a card it drew back removed; a card itself removed counts what it had, the model before's (audit 56)
+function dfdNodeName(I, id, lines, view) {
   const x = I.at.get(id); if (x.type === 'uml.Comment') return 'Comment: ' + elName(x);
+  const gone = goneIn(view, k => I.at.get(k)); if (!gone(id)) lines = lines.filter(e => liveLine(e, gone));
   const ins = lines.filter(e => dfdFlow(e) && e.to === id && e.from !== id).length, outs = lines.filter(e => dfdFlow(e) && e.from === id && e.to !== id).length;
   const v = x.type === 'dfd.Process' && I.views.get(x.opensView);
   return `${dfdWord(x.type)} ${I.name(id)}${v ? `, opens level ${labelOr(v.title, v.id)}` : ''}, ${dfdPlural(ins, 'flow')} in, ${outs} out`;
@@ -168,7 +172,7 @@ function dfdGeo({ model, view, pos, memo }) {
   const I = dfdIndex(model), ids = DFD_ARR(view.nodeIds).filter((id, k, a) => I.at.has(id) && a.indexOf(id) === k), lines = dfdLines(model, view), skin = dfdSkin(view), P = id => (pos && Object.hasOwn(pos, id) ? pos[id] : [0, 0]);
   const nodes = ids.map(id => { const x = I.at.get(id), k = DFD_KIND[x.type];
     const d = { id, label: elName(x), type: x.type || 'dfd.Process', kind: 'file', ...(k ? { shape: `dfd-${k}-${skin}`, number: dfdNum(x) } : x.type === 'uml.Comment' ? { shape: 'note' } : { shape: 'classifier', stereotypes: [dfdKeyword(x.type)], compartments: [] }),
-      aria: dfdNodeName(I, id, lines), saysOpens: !!(x.type === 'dfd.Process' && I.views.get(x.opensView)), col: P(id)[0], row: P(id)[1] };
+      aria: dfdNodeName(I, id, lines, view), saysOpens: !!(x.type === 'dfd.Process' && I.views.get(x.opensView)), col: P(id)[0], row: P(id)[1] };
     return { ...d, ...SHAPE[d.shape].size(d) }; });
   const edges = lines.map(e => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, ...(DFD_HAS(e.label) ? { label: String(e.label), cut: 280 } : {}),
     end: dfdOther(e) ? { from: 'none', to: 'none' } : DFD_END[e.type] || DFD_END['dfd.DataFlow'], aria: dfdLineName(I, e), ...(DFD_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }));
@@ -230,7 +234,7 @@ function dfdDescribe(model, viewId) {
   const v = DFD_ARR(model && model.views).find(x => DFD_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
   const I = dfdIndex(model), ids = DFD_ARR(v.nodeIds).filter((id, k, a) => I.at.has(id) && a.indexOf(id) === k), lines = dfdLines(model, v), by = new Map(lines.map(e => [e.id, e])), up = I.parentOf(v.id);
   return [`${labelOr(v.title, v.id)}: a data flow diagram${up ? `, the level of ${I.q(up.id)},` : ''} of ${dfdPlural(ids.length, 'element')} and ${dfdPlural(lines.length, 'line')}.`,
-    ...dfdOrder(I, ids, lines).map(id => (by.has(id) ? dfdLineName(I, by.get(id)) : dfdNodeName(I, id, lines)) + '.')].join('\n');
+    ...dfdOrder(I, ids, lines).map(id => (by.has(id) ? dfdLineName(I, by.get(id)) : dfdNodeName(I, id, lines, v)) + '.')].join('\n');
 }
 
 /* ---- editing (§6.1, §7.3) ---- */

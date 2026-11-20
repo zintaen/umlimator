@@ -3,6 +3,7 @@ import { brLines, esc, fit, textW, widest } from '../core/text.js';
 import { trimLine } from '../draw/lines.js';
 import { SHAPE, boxOut, drawnPts, portsOn, r2 } from '../draw/shapes.js';
 import { hasKey } from '../map/kinds.js';
+import { isGone } from '../core/model.js';
 
 /* What a typed view draws and a map never does (risks.md C5): the classifier shape, a typed line's ends and its end labels.
    Only lib/umlimator-all.js holds this file; it installs SHAPE.classifier and TYPED.lines (registry.js) as it loads. */
@@ -137,4 +138,19 @@ TYPED.lines = ({ id, nodes = [], families = [], edges, drawn, lstyle, MC }) => {
   };
 };
 
-export { brLines, endLabels, ENDS };
+/* ---- the diff page's live members (audit 56): what a count in a name says there is the model after's ----
+   goneIn(view, el) asks isGone (src/core/model.js) of an id on a picture of view, el(id) its element: a card taken out of the
+   view too, which diff() marks in view.nodeOverrides only. A count of what a view shows reads goneIn, a count of the model's
+   members isGone, as the model after counts each */
+const goneIn = (view, el) => { const ov = view !== null && typeof view === 'object' && view.nodeOverrides !== null && typeof view.nodeOverrides === 'object' ? view.nodeOverrides : {};
+  return id => isGone(el(id)) || (typeof id === 'string' && Object.hasOwn(ov, id) && isGone(ov[id])); };
+// a line the model after draws, which a card's name counts on the diff page: not one diff() drew back removed, nor one to or
+// from a card gone(id) says it drew back removed (a card itself removed counts all it had, the model before's)
+const liveLine = (e, gone) => !isGone(e) && !gone(e.from) && !gone(e.to);
+// which of ids the model after holds there: a gone one gives, in its place, what it holds (kids(id)), which the model after
+// moves up to its owner (audit 56: a package or a topic taken out of a view, its own still drawn in it on the diff page)
+function liveOf(ids, gone, kids = () => [], seen = new Set()) { const out = [];
+  for (const id of ids) { if (seen.has(id)) continue; seen.add(id); if (gone(id)) out.push(...liveOf(kids(id), gone, kids, seen)); else out.push(id); }
+  return out; }
+
+export { brLines, endLabels, ENDS, goneIn, liveLine, liveOf };
