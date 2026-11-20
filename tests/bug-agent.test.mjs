@@ -12,7 +12,7 @@ import {
   fenceFor, issueFile, fillPrompt, readResult, testArgv, checkPaths, checkPatch, checkStaged, gitPatchInfo, quoteText, message, verify, check, childEnv,
   agentSettings, holdsSecret, OUTCOMES,
 } from '../tools/bug_agent.mjs';
-import { createProxy, refuseBody } from '../tools/bug_agent_proxy.mjs';
+import { createProxy, refuseBody, safeBetas } from '../tools/bug_agent_proxy.mjs';
 import { createServer } from 'node:http';
 
 const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
@@ -429,6 +429,34 @@ test('bug agent: the verify check compares lib/ before the test runs, so a test 
   } finally { b.done(); }
 });
 
+test('bug agent proxy: no content block can make the API fetch a URL; plain text, tools and thinking pass', () => {
+  const msg = content => JSON.stringify({ model: 'm', messages: [{ role: 'user', content }] });
+  const url = { type: 'url', url: 'https://attacker.example/x?d=SECRET' };
+  for (const [name, body] of [
+    ['an image with a url source', msg([{ type: 'image', source: url }])],
+    ['a document with a url source', msg([{ type: 'document', source: url }])],
+    ['an image even with a base64 source', msg([{ type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'AA' } }])],
+    ['a file by id', msg([{ type: 'document', source: { type: 'file', file_id: 'f' } }])],
+    ['a search_result', msg([{ type: 'search_result', source: 'https://attacker.example/?d=x', title: 't', content: [{ type: 'text', text: 'x' }] }])],
+    ['a url inside tool_result content', msg([{ type: 'tool_result', tool_use_id: 't', content: [{ type: 'image', source: url }] }])],
+    ['a search_result inside tool_result content', msg([{ type: 'tool_result', tool_use_id: 't', content: [{ type: 'search_result', source: 'https://a', title: 't', content: [] }] }])],
+    ['a text block carrying a source', msg([{ type: 'text', text: 'x', source: url }])],
+    ['a url in system', JSON.stringify({ messages: [], system: [{ type: 'document', source: url }] })],
+    ['a server tool result', msg([{ type: 'web_fetch_tool_result', tool_use_id: 't', content: {} }])],
+    ['content that is neither text nor a list', msg({ type: 'text', text: 'x' })],
+    ['messages that are not a list', JSON.stringify({ messages: { a: 1 } })],
+  ]) assert.notEqual(refuseBody(body), '', name);
+  for (const [name, body] of [
+    ['plain text', msg('hello')],
+    ['text blocks', msg([{ type: 'text', text: 'hello', cache_control: { type: 'ephemeral' } }])],
+    ['tool use and a text tool result', JSON.stringify({ system: [{ type: 'text', text: 'sys' }], messages: [
+      { role: 'assistant', content: [{ type: 'thinking', thinking: 't', signature: 's' }, { type: 'redacted_thinking', data: 'd' }, { type: 'tool_use', id: 'a', name: 'Read', input: { file_path: '/x' } }] },
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'a', content: 'file text' }, { type: 'tool_result', tool_use_id: 'b', content: [{ type: 'text', text: 'x' }], is_error: true }] }] })],
+  ]) assert.equal(refuseBody(body), '', name);
+  assert.equal(safeBetas(''), '');
+  assert.equal(safeBetas('code-execution-2025-08-25,computer-use-2025-01-24,prompt-caching-2024-07-31'), 'prompt-caching-2024-07-31');
+});
+
 test('bug agent proxy: the real key goes upstream, the placeholder and other credentials do not', async () => {
   const seen = [];
   const upstream = createServer((req, res) => {
@@ -466,6 +494,11 @@ test('bug agent proxy: the real key goes upstream, the placeholder and other cre
     assert.equal(notJson.status, 403);
     assert.equal(seen.length, 2, 'refused requests never reach the API');
     assert.equal(refuseBody('{"tools":[{"name":"a"}]}'), '');
+    // anthropic-beta: only the known-safe features go on
+    await post('/v1/messages', { messages: [] }, { 'anthropic-beta': 'claude-code-20250219, files-api-2025-04-14,interleaved-thinking-2025-05-14,web-fetch-2025-09-10,mcp-client-2025-04-04' });
+    assert.equal(seen.at(-1).headers['anthropic-beta'], 'claude-code-20250219,interleaved-thinking-2025-05-14');
+    await post('/v1/messages', { messages: [] }, { 'anthropic-beta': 'search-results-2025-06-09' });
+    assert.equal(seen.at(-1).headers['anthropic-beta'], undefined);
     assert.throws(() => createProxy({ key: '' }), /no key/);
   } finally {
     proxy.close(); upstream.close();
