@@ -459,8 +459,14 @@ _, un, dt = quick("plantuml", "@startuml\n" + "{\n" * 500000)
 _, un2, dt2 = quick("mermaid", "C4Context\n" + "{\n" * 500000)
 m, un3, dt3 = quick("plantuml", "@startuml\n" + "".join(f'System_Boundary(b{i}, "b") {{\n' for i in range(12000))
                     + "".join(f'System(s{i}, "s")\n' for i in range(30000)))
+# linear by growth, not by a wall clock (CI runners are slower): a quarter of each input first; the hang was ~500 s
+_, _, q1 = quick("plantuml", "@startuml\n" + "{\n" * 125000)
+_, _, q2 = quick("mermaid", "C4Context\n" + "{\n" * 125000)
+_, _, q3 = quick("plantuml", "@startuml\n" + "".join(f'System_Boundary(b{i}, "b") {{\n' for i in range(3000))
+                 + "".join(f'System(s{i}, "s")\n' for i in range(7500)))
+lin = lambda full, quarter: full < 3 or (full < 30 and full / max(quarter, 1e-3) < 8)
 ok("hostile · 500000 open { (C4-PlantUML or Mermaid C4), or 12000 boundaries holding 30000 systems, read in linear time",
-   dt < 3 and dt2 < 3 and dt3 < 3 and len(un) - 1 == len(un2) == 1000000 and box(m, "context", "b11999")["nodeIds"][-1] == "s29999", (dt, dt2, dt3))
+   lin(dt, q1) and lin(dt2, q2) and lin(dt3, q3) and len(un) - 1 == len(un2) == 1000000 and box(m, "context", "b11999")["nodeIds"][-1] == "s29999", (dt, q1, dt2, q2, dt3, q3))
 # audit 61: each link of a line copied the rest of it to see whether it was blank: quadratic on one 1 MB line of links
 _, _, dq = quick("mermaid", "flowchart LR\n" + "A-->" * 65000)
 _, _, df = quick("mermaid", "flowchart LR\n" + "A-->" * 260000)
