@@ -323,6 +323,20 @@ test('audit 51: a profile card whose stereotypes and tags come from an undrawn s
   assert.deepEqual(mark(m => { m.nodes.find(n => n.id === 'aggregate-root').members[0].label = 'ctx'; }, 'only'), [false, false, null]);
 });
 
+test('audit 53: a profile card is marked when the metaclass a required Extension reaches is renamed, or an owner leaves the applying package', () => {
+  const p = load('examples/bookshop-profile.json');
+  const mark = (b, a = p) => { const after = edit(a, b), g = all.layout(all.diff(a, after).model, 'profile'), n = [...g.nodes, ...(g.families || [])];
+    return [all.describe(a, 'profile') !== all.describe(after, 'profile'), Object.fromEntries(n.filter(x => x.change).map(x => [x.id, x.change]))]; };
+  // the «owned» extension now reaches components: Order loses its «owned» compartment
+  assert.deepEqual(mark(m => { m.nodes.find(n => n.id === 'mc-class').label = 'Component'; }), [true, { 'mc-class': 'changed', order: 'changed' }]);
+  // a package between Order and the one applying the profile moved out of it: Order leaves the profile's scope
+  const nest = edit(p, m => { m.nodes.push({ id: 'shop', type: 'uml.Package', label: 'shop' }); m.nodes.find(n => n.id === 'sales').parent = 'shop';
+    m.edges.find(e => e.id === 'sales-applies-conventions').from = 'shop'; });
+  assert.deepEqual(mark(m => { delete m.nodes.find(n => n.id === 'sales').parent; }, nest)[1], { order: 'changed', sales: 'changed' });
+  // an owner renamed, which the card does not draw: only the owner
+  assert.deepEqual(mark(m => { m.nodes.find(n => n.id === 'sales').label = 'Sales'; })[1], { sales: 'changed' });
+});
+
 test('audit 51: an interaction overview\'s inline interaction marks a lifeline its sequence view holds as its own, added or removed', () => {
   const ov = load('examples/types/uml-interaction-overview.json'), L = { id: 'audit-log', type: 'uml.Lifeline', label: 'audit' };
   const withIt = own => edit(ov, m => { const q = m.views.find(v => v.id === 'queue-order'); if (own) q.nodes = [L]; else m.nodes.push(L); q.nodeIds.push(L.id); });
@@ -339,6 +353,14 @@ test('audit 51: a sequence view on the diff page counts the live messages, as th
   assert.deepEqual(page.filter(a => !/^Message \d/.test(a)), ['Message: storefront to api, place(order), call']); // the removed one: no place
   // a message added is counted among the live ones
   assert.deepEqual(names(all.diff(after, sq).model), names(sq));
+});
+
+test('audit 53: an interaction overview\'s inline interaction on the diff page counts the live lifelines and messages, as the model after the change does', () => {
+  const ov = load('examples/buy-book-overview.json'), aria = m => all.layout(m, 'buy-book').nodes.find(n => n.id === 'sd-queue').aria;
+  const afters = [edit(ov, m => { m.views.find(v => v.id === 'queue-order').edges.splice(2, 1); }),
+    all.apply(ov, [{ op: 'hide', id: 'lifeline-worker', view: 'queue-order' }]), all.apply(ov, [{ op: 'delete', id: 'lifeline-worker' }])];
+  assert.deepEqual(afters.map(a => aria(a).match(/\d+ lifelines?, \d+ messages?/)[0]), ['3 lifelines, 2 messages', '2 lifelines, 2 messages', '2 lifelines, 2 messages']);
+  for (const a of afters) { assert.equal(aria(all.diff(ov, a).model), aria(a)); assert.equal(aria(all.diff(a, ov).model), aria(ov), 'added ones are counted'); }
 });
 
 test('audit 51: an undrawn relationship to an IDEF1X entity that comes or goes marks nothing on it, and lists no view', () => {

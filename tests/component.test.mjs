@@ -654,3 +654,15 @@ test('audit 52: a port pinned to a side where a line to its component\'s body en
   // a slot longer (56 + 20 px) for the port it held; with no line to the body, nothing grows: as big as its two ports need
   assert.equal(layout(m, 'v').byId.n1.h, 76); const c = structuredClone(m); c.edges.pop(); assert.equal(layout(c, 'v').byId.n1.h, 56);
 });
+
+test('audit 53: two lineless ports pinned to a side where four or more lines reach the component\'s body stay clear of each other', () => {
+  for (const [np, nl, side, col] of [[2, 4, 'left', 0], [2, 6, 'left', 0], [3, 8, 'right', 2], [2, 12, 'left', 0]]) {
+    const ports = Array.from({ length: np }, (_, i) => ({ id: 'c.p' + i, type: 'uml.Port', label: 'p' + i }));
+    const others = Array.from({ length: nl }, (_, i) => ({ id: 'o' + i, type: 'uml.Component', label: 'Client' + i }));
+    const m = { schemaVersion: 2, nodes: [{ id: 'c', type: 'uml.Component', label: 'Orders', members: ports }, ...others],
+      edges: others.map((o, i) => ({ id: 'u' + i, type: 'uml.Usage', from: o.id, to: 'c' })),
+      views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['c', ...others.map(o => o.id)], present: Object.fromEntries(ports.map(p => [p.id, { side }])),
+        layout: Object.fromEntries([['c', [1, 1]], ...others.map((o, i) => [o.id, [col, i]])]) }] };
+    assert.deepEqual(validate(m).filter(p => p.level === 'error'), []);
+    assert.deepEqual(check(m, 'v').map(p => p.message).filter(x => /overlap/.test(x)), [], `${np} ports, ${nl} lines`); }
+});

@@ -11,6 +11,7 @@ import { FLOW_CONTROL, FLOW_RULES, flowOf, flowProblems, flowText, flowLabel, fl
 import { frLines, frameTag, tagSize, useSize } from './frame.js';
 import { snKindName } from './structure.js';
 import { sqDraw, sqDrawnMessages, sqRun } from './sequence.js';
+import { IA_GONE } from './interaction.js';
 import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the interaction overview diagram, uml.interaction-overview (work package 4.7, notes/stage-4.md §11) ----------
@@ -64,8 +65,12 @@ const ovNm = (I, id) => { const x = I.el(id); return x ? ovLabel(x) || ovWordOf(
 function ovInline(model, I, n, lay = true) {
   const sv = I.V.get(n.opensView);
   if (!sv || sv.diagram !== 'uml.sequence') return null;
-  const own = new Set(OV_ARR(sv.nodes).filter(OV_OBJ).map(x => x.id)), heads = new Set(OV_ARR(sv.nodeIds).filter(id => I.N.has(id) || own.has(id))).size; // listed twice: one head, as sqHeads draws
-  const messages = sqDrawnMessages(model, sv).length; // the messages its sequence view draws, as its describe() counts them (audit 41)
+  // on the diff page the live ones only, as the model after the change counts them (audit 53, as the sequence view's own names,
+  // audit 51): a lifeline diff() put back removed (its node, or the view's override of it) and a removed message are not counted
+  const own = new Map(OV_ARR(sv.nodes).filter(OV_OBJ).map(x => [x.id, x])), ovr = OV_OBJ(sv.nodeOverrides) ? sv.nodeOverrides : {};
+  const live = id => !IA_GONE(Object.hasOwn(ovr, id) ? ovr[id] : (I.N.get(id) || [])[0] || own.get(id)); // as ovInner marks it
+  const heads = new Set(OV_ARR(sv.nodeIds).filter(id => (I.N.has(id) || own.has(id)) && live(id))).size; // listed twice: one head, as sqHeads draws
+  const messages = sqDrawnMessages(model, sv).filter(o => !IA_GONE(o.el)).length; // the messages its sequence view draws, as its describe() counts them (audit 41)
   const small = heads <= OV_MAX.heads && messages <= OV_MAX.messages;
   return { view: sv, heads, messages, small, run: small && lay ? sqRun(model, sv) : null };
 }

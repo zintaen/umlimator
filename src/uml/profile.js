@@ -73,7 +73,8 @@ function prAria(model, x, drawn, I) {
 // compartment went with its required Extension, or whose tag was renamed, was not marked on the diff page): the stereotypes it and
 // its members have and their profiles, the generals they take extensions from, each one's tag definitions, the profiles its scope
 // applies (a package of its owners, or itself) with their applications, and every Extension of their stereotypes, which may
-// supply a required one or stop. What it draws as before marks nothing all the same (diff()'s view.diffMarks: "none"). One diff()
+// supply a required one or stop, with the metaclass reference it extends (audit 53: renaming it changes what a required one reaches).
+// The owners on its chain are read too (audit 53: a package moved out of the one applying the profile takes the card out of scope). What it draws as before marks nothing all the same (diff()'s view.diffMarks: "none"). One diff()
 // brought back removed is not read: the page draws the model after, and diff() marks the card when it drew otherwise before (as
 // the IDEF1X entity's, src/er/er.js)
 const prGone = x => PR_OBJ(x) && typeof x.change === 'string' && x.change.toLowerCase() === 'removed';
@@ -81,10 +82,10 @@ function prReads(model, I, x) {
   const mine = new Set([x.id, ...PR_ARR(x.members).filter(m => PR_OBJ(m) && typeof m.id === 'string').map(m => m.id)]), on = new Set(), prof = new Set(), out = new Set();
   mine.forEach(id => appliedOf(model, id).forEach(e => { if (PR_OBJ(e.stereotype)) on.add(e.stereotype.id); if (PR_OBJ(e.profile)) prof.add(e.profile.id); }));
   const apps = I.of('uml.ProfileApplication'), gens = I.of('uml.Generalization'), exts = I.of('uml.Extension');
-  for (let p = x.id, seen = new Set(); p != null && !seen.has(p); p = (I.at.get(p) || {}).parent) { seen.add(p); apps.forEach(e => { if (e.from === p && I.ty(e.to) === 'uml.Profile') { out.add(e.id); prof.add(e.to); } }); }
+  for (let p = x.id, seen = new Set(); p != null && !seen.has(p); p = (I.at.get(p) || {}).parent) { seen.add(p); if (p !== x.id) out.add(p); apps.forEach(e => { if (e.from === p && I.ty(e.to) === 'uml.Profile') { out.add(e.id); prof.add(e.to); } }); }
   for (let more = true; more;) { more = false; gens.forEach(e => { if (on.has(e.from) && typeof e.to === 'string' && I.at.has(e.to) && !on.has(e.to)) { on.add(e.to); out.add(e.id); more = true; } }); }
   gens.forEach(e => { if (on.has(e.from) && on.has(e.to)) out.add(e.id); });
-  exts.forEach(e => { if (on.has(e.from) || prof.has((I.at.get(e.from) || {}).parent)) { out.add(e.id); if (I.at.has(e.from)) on.add(e.from); } });
+  exts.forEach(e => { if (on.has(e.from) || prof.has((I.at.get(e.from) || {}).parent)) { out.add(e.id); if (typeof e.to === 'string') out.add(e.to); if (I.at.has(e.from)) on.add(e.from); } });
   [...on].forEach(id => { out.add(id); PR_ARR((I.at.get(id) || {}).members).forEach(m => { if (PR_OBJ(m) && typeof m.id === 'string') out.add(m.id); }); });
   prof.forEach(id => out.add(id));
   mine.forEach(id => out.delete(id)); const line = new Map(I.E.map(e => [e.id, e]));

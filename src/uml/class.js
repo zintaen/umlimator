@@ -272,9 +272,10 @@ function classIndex(model) {
   return at;
 }
 // an interface realization's source (realization-target): a classifier but an interface, a component, or a port a component
-// or a class owns, as the component view's provided-ends takes one (audit 49: a class view in the model called an error)
+// or a class owns, as the component view's provided-ends takes one (audit 49: a class view in the model called an error); an
+// owner of type "" is a class, as the class view draws it (audit 53)
 const realizer = (at, id) => { const r = at.get(id), t = !r ? undefined : r.kind === 'node' && !r.x.type ? 'uml.Class' : r.x.type;
-  return t === 'uml.Port' ? r.kind === 'member' && ['uml.Component', 'uml.Class', undefined].includes(r.owner.type) : t !== 'uml.Interface' && (t === 'uml.Component' || CLASSIFIERS.includes(t)); };
+  return t === 'uml.Port' ? r.kind === 'member' && ['uml.Component', 'uml.Class'].includes(r.owner.type || 'uml.Class') : t !== 'uml.Interface' && (t === 'uml.Component' || CLASSIFIERS.includes(t)); };
 const typeWord = t => kindWord(t || 'uml.Class'); // 'uml.DataType': "Data type"; of no notation, as written (registry.js, audit 30)
 const nameOfEl = elName;
 const plural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
