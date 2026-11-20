@@ -467,11 +467,11 @@ test('audit 58: a requirement text with no spaces (Chinese, a long URL) wraps at
   assert.ok(layout(m, 'v').byId.q.compartments[0].members.length > 2, 'the text takes more than one row');
 });
 
-// audit 59: in the gallery's requirement view, Alt + Down twice on Payment gateway (as src/canvas/edit.js pins it, from the
+// audit 59: in the gallery's requirement view (a copy pinned in tests/fixtures/), Alt + Down twice on Payment gateway (as src/canvas/edit.js pins it, from the
 // drawn cell, a down view's axes swapped, a cell another card is pinned to stepped over) stretched the Payments package over
 // the Checkout walk-through: rqGeo placed pins by the frame's cells with only a row bump, and pinsClear's tries found no clean cell
 test('a pin in a package of the requirement gallery keeps its box off other cards (audit 59)', () => {
-  const g = JSON.parse(readFileSync(new URL('../examples/types/sysml-requirement.json', import.meta.url))), vid = 'requirements', v = g.views.find(x => x.id === vid);
+  const g = JSON.parse(readFileSync(new URL('fixtures/sysml-requirement.json', import.meta.url))), vid = 'requirements', v = g.views.find(x => x.id === vid);
   const bad = () => check(g, vid).map(p => p.message).filter(s => /lies over|overlap/.test(s));
   for (const [id, d0, n] of [['gateway', [0, 1], 2], ['card-data', [0, 1], 2], ['gateway-api', [1, 0], 2]]) { const keep = structuredClone(v.layout);
     for (let s = 0; s < n; s++) { const h = layout(g, vid), x = h.byId[id], d = h.down ? [d0[1], d0[0]] : d0, L = v.layout || {};
