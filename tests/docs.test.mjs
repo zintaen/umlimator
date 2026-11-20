@@ -446,3 +446,12 @@ test('audit 49: the types, the schema and the example texts say a line\'s weight
   for (const p of ['../tools/types.json', '../examples/bookshop-atlas.json', '../docs/atlas/bookshop.md', '../examples/README.md', '../examples/monorepo.py', '../tests/fixtures/integration/shop.json', '../tests/fixtures/integration.json'])
     assert.doesNotMatch(read(p), /heavier with more imports|weights 1 to 3 as widths|main path drawn heavier/, p);
 });
+
+// audit 58 finding 17: destroy() removes the map's element only (docs/api/render.md); the Exports block and step 5 of the
+// teardown list say so, as the 0.43.0 note's correction says they do
+test('audit 58: module-api.md says destroy() leaves the rest of the container, in the Exports block and the teardown list', () => {
+  const doc = readFileSync(new URL('../docs/module-api.md', import.meta.url), 'utf8'), head = doc.slice(0, doc.indexOf('\n## 0.5.0'));
+  assert.doesNotMatch(head, /left empty/);
+  assert.match(head, /destroy\(\): void; +\/\/ removes the map's element, listeners, observers, timers; the rest of the container stays/);
+  assert.match(head, /\n5\. The map's element is removed; anything else in the container stays\./);
+});

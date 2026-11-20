@@ -37,7 +37,7 @@ export interface Handle {
   on<K extends keyof Events>(type: K, fn: (e: Events[K]) => void): () => void;   // returns unsubscribe
   readonly view: string;
   readonly selection: Ref | null;
-  destroy(): void;                    // removes DOM, listeners, observers, timers; the container is left empty
+  destroy(): void;                    // removes the map's element, listeners, observers, timers; the rest of the container stays
 }
 ```
 
@@ -486,7 +486,7 @@ In the order the code does it:
 2. The story shown stops: a last `story` event with `step: null`, and its `done` resolves `false`.
 3. Every waiting `setView()` resolves `false`, and a tour or replay ends: `tour()` and `replay().done` resolve `false`.
 4. Timers stop, every wait inside a move settles, and the camera's glide stops.
-5. The map's element is removed, and the container is left empty.
+5. The map's element is removed; anything else in the container stays.
 6. A state listener hears a last `state` event, with `destroyed: true` and the camera where it stopped. Then every
    listener is dropped.
 

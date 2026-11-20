@@ -1030,3 +1030,28 @@ test('audit 55: 150 sequence flows into one gateway lay out in about linear time
   assert.ok(ms < 4000, `${Math.round(ms)} ms`);
   assert.equal(g.edges.filter(e => e.pts && e.pts.length >= 2).length, 150, 'every flow drawn');
 });
+
+test('a boundary event on an activity one view alone holds lives in that view too; Delete of such an activity deletes its events and says so (audit 58)', () => {
+  const E = T.edits, be = T.elements.find(e => e.type === 'bpmn.BoundaryEvent');
+  let m = apply(EX, [{ op: 'add', element: N('own-t', 'Task', 'Own task', { parent: 'bp-sales' }), view: VID, in: 'view' }]);
+  // the palette's add on the selected view-own task: into the view's own nodes, not the model
+  const add = E.add(m, V(m), be, 'Late', { sel: ['own-t'] });
+  assert.equal(add[0].in, 'view'); m = apply(m, add);
+  assert.ok(V(m).nodes.some(n => n.id === 'late') && !m.nodes.some(n => n.id === 'late')); assert.deepEqual(errors(m), []);
+  // Delete: both deleted, said as deleted, not hid
+  const r = E.remove(m, V(m), ['own-t'], false);
+  assert.deepEqual(r.commands, [{ op: 'delete', id: 'own-t' }, { op: 'delete', id: 'late' }]);
+  assert.match(r.say, /^Deleted its boundary event Late with Own task: it lived in this view only/);
+  const m1 = apply(m, r.commands); assert.ok(!m1.nodes.some(n => n.id === 'own-t' || n.id === 'late') && !(V(m1).nodes || []).some(n => n.id === 'own-t' || n.id === 'late'));
+  // a model event on it (written so by hand): the cascade takes it, no hide that apply() refuses
+  const m2 = structuredClone(m); V(m2).nodes = V(m2).nodes.filter(n => n.id !== 'late'); m2.nodes.push(N('late', 'BoundaryEvent', 'Late', { parent: 'bp-sales', props: { definition: 'timer', attachedTo: 'own-t' } }));
+  const r2 = E.remove(m2, V(m2), ['own-t'], false);
+  assert.deepEqual(r2.commands, [{ op: 'delete', id: 'own-t' }]); assert.match(r2.say, /^Deleted its boundary event Late/);
+  assert.ok(!apply(m2, r2.commands).nodes.some(n => n.id === 'late'));
+  // a model event is not moved onto it: not offered by A, refused by a drop on its border
+  const pick = E.key(m, V(m), ['payment-timeout'], 'A'); assert.ok(pick.pick.length && !pick.pick.includes('Own task'));
+  const g = layout(m, VID), b = g.byId['own-t'];
+  assert.match(E.moveTo(m, V(m), 'payment-timeout', { pt: [b.x + 2, b.y + b.h], geo: g }).error, /^Own task lives in this view only/);
+  // a model task keeps its model events as before
+  assert.equal(E.add(m, V(m), be, 'Late 2', { sel: ['cancel-order'] })[0].in, undefined);
+});

@@ -280,3 +280,27 @@ test('the built site\'s links, frames and pictures each name a page or file it h
   assert.ok(n > 2000, `${n} links`);
   assert.deepEqual(bad, []);
 });
+
+test('the live diagram frames follow the site\'s light/dark switch, on load and on every switch (audit 58)', async () => {
+  const { followSiteTheme } = await import('../docs/.vitepress/theme/frames.js');
+  assert.match(read('docs/.vitepress/theme/index.js'), /followSiteTheme\(document\)/, 'the theme starts it on the client');
+  const cls = new Set(), listeners = [], obs = [];
+  const inner = () => ({ documentElement: { dataset: {} } });
+  const frame = (inEx, cross) => { const d = inner(); return { tagName: 'IFRAME', d, closest: s => (s === '.ex-frame' && inEx ? {} : null), get contentDocument() { if (cross) throw new Error('cross-origin'); return d; } }; };
+  const a = frame(true), b = frame(true), other = frame(false), far = frame(true, true);
+  const doc = { documentElement: { classList: { contains: c => cls.has(c) } }, querySelectorAll: s => (s === '.ex-frame iframe' ? [a, b, far] : []),
+    addEventListener: (t, f, cap) => listeners.push([t, f, cap]), removeEventListener: (t, f) => { const i = listeners.findIndex(l => l[0] === t && l[1] === f); if (i >= 0) listeners.splice(i, 1); } };
+  class Obs { constructor(f) { this.f = f; obs.push(this); } observe(el, o) { this.el = el; this.o = o; } disconnect() { this.off = true; } }
+  const stop = followSiteTheme(doc, Obs);
+  assert.equal(a.d.documentElement.dataset.theme, 'light'); assert.equal(b.d.documentElement.dataset.theme, 'light');
+  cls.add('dark'); obs[0].f(); // the site's switch: html.dark
+  assert.deepEqual([a, b].map(f => f.d.documentElement.dataset.theme), ['dark', 'dark']);
+  assert.deepEqual(obs[0].o, { attributes: true, attributeFilter: ['class'] }); assert.equal(obs[0].el, doc.documentElement);
+  // a frame that loads later (another page, a lazy frame) takes the theme as it loads; a frame outside .ex-frame is left alone
+  const late = frame(true); late.d.documentElement.dataset.theme = 'light';
+  const [, onLoad, cap] = listeners.find(l => l[0] === 'load'); assert.equal(cap, true);
+  onLoad({ target: late }); onLoad({ target: other });
+  assert.equal(late.d.documentElement.dataset.theme, 'dark'); assert.equal(other.d.documentElement.dataset.theme, undefined);
+  cls.delete('dark'); obs[0].f(); assert.equal(a.d.documentElement.dataset.theme, 'light');
+  stop(); assert.ok(obs[0].off); assert.equal(listeners.length, 0);
+});
