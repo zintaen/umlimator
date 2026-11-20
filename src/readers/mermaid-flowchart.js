@@ -303,8 +303,12 @@ function readMermaidFlowchart(text) {
       if (lk.id) edgeIds.add(lk.id);
       const md = () => say(no, 'approximated', `${p.groups[k].map(n => n.id).join(' & ')} -> ${p.groups[k + 1].map(n => n.id).join(' & ')}: a Markdown string is read as plain text`); // audit 25
       const label = lk.pipe !== undefined ? mfText(lk.pipe, md, bad) : lk.text !== undefined ? mfText(lk.text, md, bad) : undefined, head = arrow.at(-1), tail = arrow[0];
-      const two = '<ox'.includes(tail), how = [...(arrow.includes('.') ? ['dotted'] : []), ...(arrow.includes('=') ? ['thick'] : []), ...('>ox'.includes(head) ? [] : ['no arrowhead']),
-        ...(head === 'o' || tail === 'o' ? ['a circle end'] : []), ...(head === 'x' || tail === 'x' ? ['a cross end'] : []), ...(two ? ['an arrowhead at each end'] : [])];
+      // as in Mermaid, a link is two only when its start matches its end (< with >, o with o, x with x); another start is
+      // not drawn there, and is said (audit 62)
+      const two = tail === '<' ? head === '>' : 'ox'.includes(tail) && tail === head;
+      const how = [...(arrow.includes('.') ? ['dotted'] : []), ...(arrow.includes('=') ? ['thick'] : []), ...('>ox'.includes(head) ? [] : ['no arrowhead']),
+        ...(head === 'o' ? ['a circle end'] : []), ...(head === 'x' ? ['a cross end'] : []), ...(two ? ['an arrowhead at each end'] : []),
+        ...('<ox'.includes(tail) && !two ? [`the ${tail} at its start is not drawn, as in Mermaid`] : [])];
       for (const a of p.groups[k]) for (const b of p.groups[k + 1]) {
         if (flows >= MF_FLOWS) { if (!over) { over = true; say(no, 'skipped', `over ${MF_FLOWS} links: the rest are not read`); } return; }
         flows++;
