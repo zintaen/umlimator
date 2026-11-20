@@ -18,6 +18,7 @@ import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
 import { tablesOf } from '../src/page/print.js';
+import { diff } from '../src/map/diff.js';
 import { stActivityRow } from '../src/uml/state.js';
 import '../src/uml/usecase.js';
 import '../src/uml/activity.js';
@@ -933,4 +934,22 @@ test('audit 55: a vertex in an unnamed region is said in it as the region\'s own
   assert.deepEqual([fam('moving.r1').aria, g.byId.i1.aria], ['Region 1 of Moving, 2 states', 'Initial pseudostate in region 1 of Moving']);
   assert.equal(g.byId.i2.aria, 'Initial pseudostate in Sound'); // a named one by its name, as before
   const d = describe(m, 'sm'); assert.match(d, /^Initial pseudostate in region 1 of Moving\.$/m); assert.doesNotMatch(d + [...svgOf(g).matchAll(/aria-label="([^"]*)"/g)].map(x => x[1]).join('\n'), /moving\.r1/);
+});
+
+test('audit 57: a composite state removed by Delete or Shift + Delete: its regions drawn back removed count what they held, and the region it sat in counts none of them', () => {
+  const name = (m, id) => (layout(m, V.id).families.find(f => f.id === id) || {}).aria;
+  // the example as shipped: Fulfilling's regions
+  for (const fm of [false, true]) { const r = T.edits.remove(SM, V, ['fulfilling'], fm), d = diff(SM, apply(SM, Array.isArray(r) ? r : r ? r.commands : [{ op: 'delete', id: 'fulfilling' }])).model;
+    assert.deepEqual(['fulfilling.parcel', 'fulfilling.payment'].map(id => name(d, id)), ['fulfilling.parcel', 'fulfilling.payment'].map(id => name(SM, id)), `${fm}`); }
+  assert.match(name(SM, 'fulfilling.parcel'), /^Region Parcel of Fulfilling, \d states$/);
+  // Fulfilling nested in region A of In delivery: region A holds nothing in the model after, and says no count
+  const m = structuredClone(SM), dl = m.nodes.find(n => n.id === 'delivery');
+  dl.members = [{ id: 'delivery.a', type: 'uml.Region', label: 'A' }, { id: 'delivery.b', type: 'uml.Region', label: 'B' }];
+  m.nodes.forEach(n => { if (n.parent === 'delivery') n.parent = 'delivery.b'; }); m.nodes.find(n => n.id === 'fulfilling').parent = 'delivery.a';
+  assert.deepEqual(validate(m).filter(p => p.level === 'error'), []);
+  assert.equal(name(m, 'delivery.a'), 'Region A of In delivery, 1 state');
+  for (const fm of [false, true]) { const r = T.edits.remove(m, m.views[0], ['fulfilling'], fm), after = apply(m, Array.isArray(r) ? r : r ? r.commands : [{ op: 'delete', id: 'fulfilling' }]), d = diff(m, after).model;
+    assert.equal(name(d, 'delivery.a'), 'Region A of In delivery', `${fm}`);
+    assert.equal(name(d, 'fulfilling.parcel'), name(m, 'fulfilling.parcel'), `${fm}`);
+    assert.equal(name(diff(after, m).model, 'delivery.a'), 'Region A of In delivery, 1 state', `${fm}: what comes back is counted`); }
 });

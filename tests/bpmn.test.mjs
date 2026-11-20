@@ -374,6 +374,9 @@ test('remove: a lane deleted by Delete or Shift + Delete, what it held and its n
   // the two flow nodes Warehouse held, now in no lane of a pool that keeps lanes, said with the in-lane warnings they bring (audit 48)
   assert.equal(r.say, 'Deleted lane Warehouse from the model: a lane is not hidden from a view, keeping what it held; 2 flow nodes now in no lane of Bookshop: drag them into a lane');
   assert.deepEqual(validate(m).filter(p => p.rule === 'in-lane').map(p => p.ids[0]), ['pick-pack', 'courier-pickup']);
+  // two lanes at once: what they held, the pronoun by the count (audit 57)
+  assert.match(bzRemove(EX, V(EX), ['bp-sales', 'bp-warehouse'], true).say, /^Deleted 2 lanes from the model, keeping what they held(;|$)/);
+  assert.match(bzRemove(EX, V(EX), ['bp-sales', 'bp-warehouse'], false).say, /^Deleted 2 lanes from the model: a lane is not hidden from a view, keeping what they held(;|$)/);
   const lanes = m.nodes.find(n => n.id === 'bp-bookshop').members;
   assert.deepEqual(lanes.map(l => [l.id, l.parent]), [['bp-sales', undefined], ['packing', undefined], ['boxes', 'packing']], 'the nested lanes kept, one level up');
   assert.deepEqual(['pick-pack', 'bp-join', 'bp-ship', 'courier-pickup'].map(id => m.nodes.find(n => n.id === id).parent), ['bp-bookshop', 'packing', 'boxes', 'bp-bookshop']);
