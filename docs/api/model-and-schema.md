@@ -123,6 +123,7 @@ interface MapEdge {
   id?: string; from: string; to: string; label?: string; edited?: boolean;
   kind?: WireKind;
   weight?: 1 | 2 | 3;
+  what?: string; when?: string;
   step?: number | string;
   sublabel?: string;
   style?: 'emphasis' | 'added' | 'dashed' | 'async' | 'security' | 'removed' | 'faded';
@@ -140,7 +141,8 @@ interface MapEdge {
 | `from`, `to` | A card's id, or a box (container) of the view, where the line ends on the box's border. |
 | `label`, `sublabel` | The line's label, and a smaller second line under it (shown only with a label). |
 | `kind` | What the line means, drawn as its colour. See [`WireKind`](#wirekind). Default `calls`. |
-| `weight` | How much the line stands for: 1 (default), 2 or 3. Lines are drawn at one width at rest; a line of weight 2 or 3 shows its width on hover, selection and keyboard focus, and its tooltip and accessible name say its `what`, else "weight 2 of 3". |
+| `weight` | How much the line stands for: 1 (default), 2 or 3. Lines are drawn at one width at rest; a line of weight 2 or 3 shows its width on hover, selection and keyboard focus, and its tooltip and accessible name say its `what` (as plain words, its first sentence), else "weight 2 of 3". |
+| `what`, `when` | The details panel's text (Markdown: `` `code` ``, `**bold**`, `[links](https://…)`, blank-line paragraphs, `- ` bullets), and when the line is used, in its tooltip. |
 | `step` | Its place in the order things happen, in a circle on the line: `2`, `2.1`, or up to 3 characters such as `"2a"`. |
 | `style` | A style that wins over the kind's colour: `emphasis`, `added`, `dashed`, `async`, `security`, `removed` or `faded`. |
 | `change` | A change mark, as [`diff()`](./apply-and-commands.md#diff) sets it, written in lower case. The renderer draws another letter case as its lower-case word, and `validate()` warns on it, as a schema check refuses it. |

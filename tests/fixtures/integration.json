@@ -4345,7 +4345,7 @@
       "id": "checkout",
       "parent": "overview",
       "title": "Checkout, at a glance",
-      "caption": "An order's way in six numbered steps: the main path drawn heavier, the web tier and the order handling as tinted boxes.",
+      "caption": "An order's way in six numbered steps: the main path weighted (heavier on hover, selection and focus), the web tier and the order handling as tinted boxes.",
       "nodeIds": ["shoppers", "storefront", "api", "shop-payments", "queue", "worker", "mail"],
       "edges": [
         { "id": "checkout-c1", "from": "shoppers", "to": "storefront", "label": "browse, buy", "weight": 2, "step": 1 },
