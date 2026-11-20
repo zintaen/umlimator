@@ -1051,7 +1051,7 @@ test('audit 54: a part named with a run of 200,000 dashes is added in linear tim
 });
 
 test('audit 64: a connector from a collaboration use to a collaboration is refused by connect and said connector-scope by the view that draws it', () => {
-  const m = JSON.parse(readFileSync(new URL('../examples/types/uml-composite-structure.json', import.meta.url))), v = m.views.find(x => x.id === 'inside');
+  const m = JSON.parse(readFileSync(new URL('./fixtures/uml-composite-structure.json', import.meta.url))), v = m.views.find(x => x.id === 'inside');
   for (const [a, b] of [['order-events', 'publish-subscribe'], ['publish-subscribe', 'order-events']]) {
     assert.deepEqual(T.edits.connect(m, v, a, b, null, { type: 'uml.Connector', label: 'Connector' }), { error: 'A connector\'s ends lie in one structure: the subject\'s ports and parts, or one collaboration\'s roles' });
     const m1 = apply(m, [{ op: 'add', element: { id: 'zz9', type: 'uml.Connector', from: a, to: b }, view: 'inside' }]);
