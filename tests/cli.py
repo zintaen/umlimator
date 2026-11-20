@@ -9,7 +9,7 @@ through its pipes as an MCP client drives it, with a page's event stream.
 Needs Node (diff, drift, trace and the MCP server's read tools run the module's own functions), git, and Chrome or
 Chromium (pdf).
 """
-import base64, contextlib, hashlib, http.client, importlib.util, io, json, os, re, subprocess, sys, tempfile, threading, time, urllib.request, zlib
+import base64, contextlib, hashlib, http.client, importlib.util, io, json, os, re, shutil, subprocess, sys, tempfile, threading, time, urllib.request, zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -42,7 +42,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf integration": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "audit 57 diff": 2, "bench views": 1})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "audit 57 diff": 2, "audit 60 no git": 6, "bench views": 1})
 
 
 def ok(name, cond, info=""):
@@ -2538,6 +2538,33 @@ if part("audit 55 tools"):
     said = re.findall(r"`(\w+)`", row.split("|")[2]) if row.count("|") > 2 else []
     ok("docs/module-api.md · the import table gives a person the kinds the importer writes (audit 54 finding 7)",
        kinds.get("shopper") == "person" and kinds.get("guest") == "user" and said[:2] == ["person", "user"], (kinds, row))
+if part("audit 60 no git"):
+    # audit 60: on a machine with Python (and Node) but no git, render, diff and drift ended in a FileNotFoundError traceback
+    # and wrote nothing (page_model's git call, then the engine's load_map); git is no requirement of theirs. diff --base and
+    # timelapse, which read git's history, say so in one line
+    with tempfile.TemporaryDirectory() as t:
+        t = Path(t); bare = t / "bin"; bare.mkdir()
+        (bare / "python3").symlink_to(sys.executable)
+        if shutil.which("node"):
+            (bare / "node").symlink_to(shutil.which("node"))
+        m = {"title": "No git", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "edges": [{"from": "a", "to": "b", "label": "calls"}],
+             "views": [{"id": "main", "title": "Main", "nodeIds": ["a", "b"]}]}
+        (t / "m.json").write_text(json.dumps(m), encoding="utf-8")
+        (t / "n.json").write_text(json.dumps({**m, "nodes": [*m["nodes"], {"id": "c", "label": "C"}], "views": [{"id": "main", "title": "Main", "nodeIds": ["a", "b", "c"]}]}), encoding="utf-8")
+        env = {**os.environ, "PATH": str(bare)}
+        go = lambda *x: subprocess.run([str(bare / "python3"), str(ROOT / "umlimator.py"), *x], cwd=t, env=env, capture_output=True, text=True)
+        r = go("render", "m.json", "--out", "m.html", "--no-check")
+        ok("render · with no git installed the page is written, the model's folder its root (audit 60)",
+           r.returncode == 0 and (t / "m.html").is_file() and "Traceback" not in r.stderr, r.stderr[-600:])
+        r = go("diff", "m.json", "n.json", "--out", "d.html")
+        ok("diff · two files with no git installed: the page is written (audit 60)",
+           r.returncode == 0 and (t / "d.html").is_file() and '"adds C"' in r.stdout and "Traceback" not in r.stderr, (r.stdout[-300:], r.stderr[-600:]))
+        r = go("diff", "--base", "main", "--out", "e")
+        ok("diff --base · with no git installed: one line, no traceback (audit 60)",
+           r.returncode == 1 and r.stderr.strip() == "diff --base needs git, and none is installed", r.stderr[-600:])
+        r = go("timelapse", "m.json", "--out", "tl.html")
+        ok("timelapse · with no git installed: one line, no traceback (audit 60)",
+           r.returncode == 1 and r.stderr.strip() == "timelapse needs git, and none is installed", r.stderr[-600:])
 if part("bench views"):
     # bench.py times map views only (step 0 of the one-model plan): a version-2 model's typed views are left out with their benchViews,
     # a version-1 model's views are all timed whatever they say, and a benchViews entry naming no view stops the bench
