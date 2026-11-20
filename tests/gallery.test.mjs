@@ -286,3 +286,17 @@ test('in each atlas every view is reached from the root by opening cards', async
   }
   assert.deepEqual(bad, []);
 });
+
+// audit 53: the Atlas's Readers card and its line said `umlimator.py import` runs every importer in Node; Structurizr DSL,
+// C4-PlantUML, Compose and Kubernetes it reads in Python (umlimator_import.FORMATS), only NODE_FORMATS go to the module's readers
+test('the Umlimator Atlas says which formats umlimator.py import reads in Node, as umlimator_import.py splits them', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const { FORMATS, NODE_FORMATS } = JSON.parse(execFileSync('python3', ['-c', 'import json, umlimator_import as i; print(json.dumps({"FORMATS": i.FORMATS, "NODE_FORMATS": i.NODE_FORMATS}))'], { cwd: root, encoding: 'utf8' }));
+  const name = { structurizr: 'Structurizr DSL', plantuml: 'PlantUML', compose: 'Compose', kubernetes: 'Kubernetes', 'structurizr-json': 'Structurizr JSON', dbml: 'DBML' };
+  const m = json('examples/umlimator-atlas.json'), how = m.nodes.find(n => n.id === 'readers').how;
+  const node = how.split(/(?<=\.) /).find(s => /\bin Node\b/.test(s)) || '', python = how.split(/(?<=\.) /).find(s => /\bin Python\b/.test(s)) || '';
+  for (const f of NODE_FORMATS) assert.ok(node.includes(name[f]) && !python.includes(name[f]), `${f}: read in Node (${how})`);
+  for (const f of FORMATS.filter(f => name[f])) assert.ok(python.includes(name[f]) && !node.includes(name[f]), `${f}: read in Python (${how})`);
+  const line = m.edges.find(e => e.from === 'cli' && e.to === 'readers');
+  assert.notEqual(line.sublabel, 'in Node', 'the import line: not every format is read in Node');
+});

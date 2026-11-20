@@ -91,3 +91,18 @@ test('the old test model and its files are gone from examples/', () => {
     assert.ok(!existsSync(new URL(`examples/${f}`, root)), `examples/${f}`);
   for (const f of ['tools/bike-share.mjs', 'tools/bike-share']) assert.ok(!existsSync(new URL(f, root)), f);
 });
+
+// audit 53: examples/README.md said no test reads the showcase and only the gallery and doc-name tests read the Atlas, while
+// the LEGACY tests read examples/ and two of them pinned the Atlas: the Atlas is read only by the tests the README names, and
+// the README names the LEGACY list
+test('the tests that read the Umlimator Atlas are the ones examples/README.md names, and it says the LEGACY tests still read examples/', () => {
+  const tracked = execFileSync('git', ['ls-files', 'tests'], { cwd: root, encoding: 'utf8' }).split('\n').filter(f => /\.(mjs|js|py|html)$/.test(f));
+  const atlas = tracked.filter(f => readFileSync(new URL(f, root), 'utf8').includes('umlimator-atlas'));
+  assert.deepEqual(atlas.filter(f => !['tests/gallery.test.mjs', 'tests/docs.test.mjs', 'tests/showcase.test.mjs'].includes(f)), [], 'a test that reads the Atlas pins its content');
+  const why = readFileSync(new URL('examples/README.md', root), 'utf8').split('## Why the Umlimator Atlas is not a test model')[1].split('\n## ')[0];
+  assert.match(why, /`LEGACY` in \[`\.\.\/tests\/showcase\.test\.mjs`\]/);
+  assert.doesNotMatch(why, /never the showcase|only the gallery and doc-name tests read it/);
+  assert.match(why, /the showcase test validates it/);
+  assert.match(why, /\[`edit\.html`\]\(edit\.html\), which the editing tests open, draws it/);
+  assert.match(readFileSync(new URL('examples/edit.html', root), 'utf8'), /fetch\('umlimator-atlas\.json'\)/, 'edit.html draws the Atlas, as the README says');
+});
