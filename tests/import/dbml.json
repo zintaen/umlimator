@@ -1,6 +1,6 @@
 {
  "core": "@dbml/core 11.0.0",
- "dbml": "Project bookshop {\n  database_type: 'PostgreSQL'\n  Note: 'The bookshop schema'\n}\n\nEnum order_status {\n  placed\n  paid\n  shipped [note: 'left the warehouse']\n}\n\nTable customer as C [headercolor: #3498DB] {\n  id bigint [pk, increment]\n  email varchar(255) [unique, not null]\n  referred_by bigint [ref: > C.id]\n  created_at timestamptz [default: `now()`]\n  Note: 'A person who buys'\n}\n\nTable \"order\" {\n  id bigint [pk]\n  customer_id bigint [not null]\n  status order_status [default: 'placed']\n  placed_at timestamptz\n}\n\nTable order_line {\n  order_id bigint [not null]\n  line_no integer [not null]\n  book_id bigint [not null]\n  quantity integer [not null, note: 'at least one']\n\n  indexes {\n    (order_id, line_no) [pk]\n    book_id\n  }\n}\n\nTable book {\n  id bigint [pk]\n  isbn char(13) [unique, not null]\n  title varchar(255) [not null]\n}\n\nTable author {\n  id bigint [pk]\n  name varchar(120) [not null]\n}\n\nTable book_author {\n  book_id bigint [ref: > book.id]\n  author_id bigint [ref: > author.id]\n  indexes {\n    (book_id, author_id) [pk]\n  }\n}\n\nTable payment {\n  id bigint [pk]\n  order_id bigint [unique, not null]\n  amount \"numeric(10,2)\" [not null]\n}\n\nTable shipment {\n  order_id bigint\n  line_no integer\n  carrier varchar\n}\n\nTable tag {\n  id int [pk]\n}\n\nTablePartial audited {\n  updated_at timestamptz [null]\n}\n\nTable review {\n  id bigint [pk]\n  book_id bigint [not null]\n  rating integer [not null, check: `rating between 1 and 5`]\n}\n\nTable profile {\n  customer_id bigint [pk, ref: - customer.id]\n  bio text [null]\n  ~audited\n\n  checks {\n    `length(bio) < 2000`\n  }\n}\n\nTable warehouse.stock {\n  book_id bigint [pk]\n  on_hand integer [not null, default: 0]\n}\n\nRef: \"order\".customer_id > customer.id [delete: cascade]\nRef: order_line.order_id > \"order\".id\nRef fk_line_book: order_line.book_id > book.id\nRef: payment.order_id - \"order\".id\nRef: shipment.(order_id, line_no) > order_line.(order_id, line_no)\nRef: book.id <> tag.id\nRef: warehouse.stock.book_id - book.id\nRef: book.id < review.book_id [update: cascade, color: #79AD51]\n\nTableGroup sales [color: #345678, note: 'Orders and who places them'] {\n  customer\n  \"order\"\n  order_line\n}\n\n\nNote stock_policy {\n  'Stock is counted nightly'\n}\n\nRecords review(id, book_id, rating) {\n  1, 1, 5\n}\n\nDiagramView sales_view {\n  Tables { customer\n    \"order\" }\n}\n",
+ "dbml": "Project bookshop {\n  database_type: 'PostgreSQL'\n  Note: 'The bookshop schema'\n}\n\nEnum order_status {\n  placed\n  paid\n  shipped [note: 'left the warehouse']\n}\n\nTable customer as C [headercolor: #3498DB] {\n  id bigint [pk, increment]\n  email varchar(255) [unique, not null]\n  referred_by bigint [ref: > C.id]\n  created_at timestamptz [default: `now()`]\n  Note: 'A person who buys'\n}\n\nTable \"order\" {\n  id bigint [pk]\n  customer_id bigint [not null]\n  status order_status [default: 'placed']\n  placed_at timestamptz\n}\n\nTable order_line {\n  order_id bigint [not null]\n  line_no integer [not null]\n  book_id bigint [not null]\n  quantity integer [not null, note: 'at least one']\n\n  indexes {\n    (order_id, line_no) [pk]\n    book_id\n  }\n}\n\nTable book {\n  id bigint [pk]\n  isbn char(13) [unique, not null]\n  title varchar(255) [not null]\n}\n\nTable author {\n  id bigint [pk]\n  name varchar(120) [not null]\n}\n\nTable book_author {\n  book_id bigint [ref: > book.id]\n  author_id bigint [ref: > author.id]\n  indexes {\n    (book_id, author_id) [pk]\n  }\n}\n\nTable payment {\n  id bigint [pk]\n  order_id bigint [unique, not null]\n  amount \"numeric(10,2)\" [not null]\n}\n\nTable shipment {\n  order_id bigint\n  line_no integer\n  carrier varchar\n}\n\nTable tag {\n  id int [pk]\n}\n\nTablePartial audited {\n  updated_at timestamptz [null]\n}\n\nTable review {\n  id bigint [pk]\n  book_id bigint [not null]\n  rating integer [not null, check: `rating between 1 and 5`]\n}\n\nTable profile {\n  customer_id bigint [pk, ref: - customer.id]\n  bio text [null]\n  ~audited\n\n  checks {\n    `length(bio) < 2000`\n  }\n}\n\nTable warehouse.stock {\n  book_id bigint [pk]\n  on_hand integer [not null, default: 0]\n}\n\nRef: \"order\".customer_id > customer.id [delete: cascade]\nRef: order_line.order_id > \"order\".id\nRef fk_line_book: order_line.book_id > book.id\nRef: \"order\".id - payment.order_id\nRef: shipment.(order_id, line_no) > order_line.(order_id, line_no)\nRef: book.id <> tag.id\nRef: book.id - warehouse.stock.book_id\nRef: book.id < review.book_id [update: cascade, color: #79AD51]\n\nTableGroup sales [color: #345678, note: 'Orders and who places them'] {\n  customer\n  \"order\"\n  order_line\n}\n\n\nNote stock_policy {\n  'Stock is counted nightly'\n}\n\nRecords review(id, book_id, rating) {\n  1, 1, 5\n}\n\nDiagramView sales_view {\n  Tables { customer\n    \"order\" }\n}\n",
  "database": {
   "schemas": [
    {
@@ -859,17 +859,17 @@
       "endpoints": [
        {
         "schemaName": null,
-        "tableName": "payment",
+        "tableName": "order",
         "fieldNames": [
-         "order_id"
+         "id"
         ],
         "relation": "1"
        },
        {
         "schemaName": null,
-        "tableName": "order",
+        "tableName": "payment",
         "fieldNames": [
-         "id"
+         "order_id"
         ],
         "relation": "1"
        }
@@ -923,18 +923,18 @@
       "name": null,
       "endpoints": [
        {
-        "schemaName": "warehouse",
-        "tableName": "stock",
-        "fieldNames": [
-         "book_id"
-        ],
-        "relation": "1"
-       },
-       {
         "schemaName": null,
         "tableName": "book",
         "fieldNames": [
          "id"
+        ],
+        "relation": "1"
+       },
+       {
+        "schemaName": "warehouse",
+        "tableName": "stock",
+        "fieldNames": [
+         "book_id"
         ],
         "relation": "1"
        }

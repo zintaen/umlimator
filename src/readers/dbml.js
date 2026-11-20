@@ -17,10 +17,10 @@
      composite key), `unique`, and `nullable` when it is neither `not null` nor a key, as SQL has it; a partial's fields
      are the table's own (@dbml/core injects them), reported;
    - a ref is an `er.Relationship` from its `1` end (the referenced columns) to its `*` end (the referring ones), `1` to
-     `0..*`. In a one-to-one (`-`, both ends `1`), `1` to `0..1`, the referring end is the first of a standalone ref
-     (`Ref: b.a_id - a.id`) and the second of an inline one (`a_id int [ref: - a.id]`, which @dbml/core writes
-     referenced end first and with no `name` key). The referring columns take `foreignKey` and `references`, pair by
-     pair; it is identifying when they lie in the child's key, and its parent end is `0..1` when one of them is nullable
+     `0..*`. In a one-to-one (`-`, both ends `1`), `1` to `0..1`, the referring end is the second, as @dbml/core's SQL
+     exporters read it: of a standalone ref (`Ref: a.id - b.a_id`, the DBML documentation's form) and of an inline one
+     (`a_id int [ref: - a.id]`, which @dbml/core writes referenced end first). The referring columns take `foreignKey`
+     and `references`, pair by pair; it is identifying when they lie in the child's key, and its parent end is `0..1` when one of them is nullable
      (an optional parent). A many-to-many (`<>`) is one relationship `0..*` to `0..*` with no foreign key, approximated
      (DBML builds a junction table for it);
    - enums, notes, the project's note and database type, table groups, other indexes, defaults, increments, checks, a
@@ -199,8 +199,9 @@ function readDbml(database) {
         say(at, 'skipped', `ref ${ends[0].name} - ${ends[1].name}: inactive, so not read`);
         continue;
       }
-      // a standalone ref writes its referring end first (`>`, `-`); an inline one, with no name key, its referenced end
-      let [child, parent] = r.name === undefined ? [ends[1], ends[0]] : ends;
+      // the `*` end refers; in a one-to-one the second, standalone or inline, as @dbml/core's own SQL exporters have it
+      // (`Ref: a.id - b.a_id`: b.a_id refers, audit 59); a many-to-many is drawn from the end written first
+      let [child, parent] = r.name === undefined || ends.every(e => e.one) ? [ends[1], ends[0]] : ends;
       if (child.one && !parent.one) [child, parent] = [parent, child];
       const what = `ref ${child.name} -> ${parent.name}`;
       extra(r, at, what, [['name', 'its name is'], ['note', 'its note is'], ['onDelete', 'its delete action is'],

@@ -137,11 +137,19 @@ test('input that is not a Database, and fields of the wrong kind, are skipped an
   // a thrown object whose message is not text, or whose message getter throws again
   for (const e of [{ message: Symbol('x') }, { get message() { throw 1; } }, null])
     assert.deepEqual(read({ get schemas() { throw e; } }).report, [skip('', 'the Database could not be read to its end (an error): the rest is not read')]);
-  // a one-to-one: a standalone ref (a name key, null when unnamed) writes its referring end first, an inline one (none) second
+  // a one-to-one: its second end refers, in a standalone ref (a name key, null when unnamed: `Ref: a.id - b.a_id`, the DBML
+  // documentation's form) and an inline one (none), as @dbml/core's SQL exporters print the foreign key (audit 59)
   const one = [table('a'), table('b', [{ name: 'a_id', type: { type_name: 'int' }, unique: true, not_null: true }])];
   const fk = r => r.model.nodes.flatMap(n => n.members).filter(c => c.props.foreignKey).map(c => `${c.id} ${c.props.references}`);
-  assert.deepEqual(fk(read(db(one, [{ ...ref('b', 'a', '1', '1', ['a_id']), name: null }]))), ['b.a_id a.id']);
+  const o2o = read(db(one, [{ ...ref('a', 'b', '1', '1', ['id'], ['a_id']), name: null }]));
+  assert.deepEqual(fk(o2o), ['b.a_id a.id']);
+  assert.deepEqual(o2o.model.edges.map(rel), [['a-b', 'a', 'b', false, '1', '0..1']]);
   assert.deepEqual(fk(read(db(one, [ref('a', 'b', '1', '1', ['id'], ['a_id'])]))), ['b.a_id a.id']);
+  assert.deepEqual(fk(read(db(one, [{ ...ref('b', 'a', '1', '1', ['a_id']), name: 'r' }]))), ['a.id b.a_id'], 'written the other way: a.id refers');
+  // a many-to-one keeps its `*` end as the child, written either way; a many-to-many is drawn from its first end
+  assert.deepEqual(fk(read(db(one, [{ ...ref('a', 'b', '1', '*', ['id'], ['a_id']), name: null }]))), ['b.a_id a.id']);
+  assert.deepEqual(fk(read(db(one, [{ ...ref('b', 'a', '*', '1', ['a_id']), name: null }]))), ['b.a_id a.id']);
+  assert.deepEqual(read(db(one, [{ ...ref('b', 'a', '*', '*', ['a_id']), name: null }])).model.edges.map(e => [e.from, e.to]), [['b', 'a']]);
   // a schema name that is not text is not read as `public`
   assert.deepEqual(read(db([table('a')], [{ endpoints: [{ schemaName: 5, tableName: 'a', fieldNames: ['id'], relation: '*' },
     { tableName: 'a', fieldNames: ['id'], relation: '1' }] }])).report, [skip('schemas[0].refs[0]', 'a ref whose ends are not two columns of tables read: not read')]);

@@ -1055,3 +1055,17 @@ test('a boundary event on an activity one view alone holds lives in that view to
   // a model task keeps its model events as before
   assert.equal(E.add(m, V(m), be, 'Late 2', { sel: ['cancel-order'] })[0].in, undefined);
 });
+test('Delete of a view-own activity with the model boundary event on it also selected deletes the activity alone, in either order (audit 59)', () => {
+  const E = T.edits;
+  const m = structuredClone(apply(EX, [{ op: 'add', element: N('own-t', 'Task', 'Own task', { parent: 'bp-sales' }), view: VID, in: 'view' }]));
+  m.nodes.push(N('late', 'BoundaryEvent', 'Late', { parent: 'bp-sales', props: { definition: 'timer', attachedTo: 'own-t' } })); V(m).nodeIds.push('late');
+  for (const sel of [['own-t', 'late'], ['late', 'own-t']]) {
+    const r = E.remove(m, V(m), sel, false);
+    assert.deepEqual(r.commands, [{ op: 'delete', id: 'own-t' }], sel.join());
+    assert.match(r.say, /^Deleted its boundary event Late with Own task: a boundary event goes with its activity/);
+    const a = apply(m, r.commands); assert.ok(!a.nodes.some(n => n.id === 'late' || n.id === 'own-t'));
+  }
+  // a model event on a model task, selected with it: still hidden, as before
+  const r = E.remove(m, V(m), ['cancel-order', 'payment-timeout'], false);
+  assert.ok(r == null || !r.commands.some(c => c.op === 'delete'));
+});

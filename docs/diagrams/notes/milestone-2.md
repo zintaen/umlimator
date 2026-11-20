@@ -979,9 +979,9 @@ indexes, defaults and several schemas' names reported.
 As built (M2.11), where the build is more exact than the paragraph above: a column is `nullable` when it is neither
 `not null` nor a key, as SQL has it, and a relationship's parent end is `0..1` when a referring column is nullable (an
 optional parent, as `20-entity-relationship.json`'s self-reference), else `1`. In a one-to-one (`-`, both ends `1`) the
-referring end is the first of a standalone ref (`Ref: b.a_id - a.id`) and the second of an inline one
-(`a_id int [ref: - a.id]`): `@dbml/core` writes an inline ref's referenced end first and gives it no `name` key, which
-is how the adapter tells the two apart. A many-to-many (`<>`) is one relationship `0..*` to `0..*` with no foreign key,
+referring end is the second, of a standalone ref (`Ref: a.id - b.a_id`, the DBML documentation's form) and of an inline
+one (`a_id int [ref: - a.id]`, which `@dbml/core` writes referenced end first), as `@dbml/core`'s own SQL exporters print
+the foreign key (audit 59: the first end of a standalone ref was read as the referring one before). A many-to-many (`<>`) is one relationship `0..*` to `0..*` with no foreign key,
 reported as approximated; a table partial's fields are the table's own (`@dbml/core` injects them), approximated. A
 parsed object keeps no line numbers, so a report item's `line` is its path in the Database
 (`schemas[0].tables[2].fields[1]`), as the CLI names a JSON source's items. The adapter reads a `Database` or its

@@ -581,8 +581,12 @@ function bzRemove(model, view, ids, fromModel) {
   // collapse does (audit 18): BPMN has no boundary event without its activity, nor a sub-process's node outside it
   const shown = BZ_ARR(view.nodeIds), hosts = fromModel ? [] : ids.filter(id => BZ_ACT.includes(I.ty(id))), under = (n, h) => n === h || I.chain(n).includes(h);
   const bes = shown.filter(n => !ids.includes(n) && I.N.has(n) && hosts.some(h => (n !== h && under(n, h)) || (I.ty(n) === BZ_BE && under(bzProps(I.el(n)).attachedTo, h))));
-  if (!gone.size && !(fromModel && pools.length) && !bes.length) return null;
-  const cmds = [], rest = [...ids.filter(id => !gone.has(id)), ...bes], own = new Set([...BZ_ARR(view.nodes), ...BZ_ARR(view.edges)].filter(BZ_OBJ).map(x => x.id));
+  const own = new Set([...BZ_ARR(view.nodes), ...BZ_ARR(view.edges)].filter(BZ_OBJ).map(x => x.id)), rest = [...ids.filter(id => !gone.has(id)), ...bes];
+  // a model boundary event on an activity this Delete deletes (one the view alone holds) goes with it by the type's cascade: no
+  // hide after that, whether the event was shown or selected too (apply() would find it gone, audits 58 and 59)
+  const at = n => bzProps(I.el(n)).attachedTo, cut = new Set(fromModel ? [] : rest.filter(n => !own.has(n) && I.ty(n) === BZ_BE && own.has(at(n)) && rest.includes(at(n))));
+  if (!gone.size && !(fromModel && pools.length) && !bes.length && !cut.size) return null;
+  const cmds = [];
   // a lane's new owner: the nearest lane above it not deleted, else its pool
   const keep = id => { let p = I.up(id); for (let k = 0; p != null && gone.has(p) && k < 64; k++) p = I.up(p); return p; };
   // the lanes nested under a deleted one move up: apply() cannot reparent a member, so each is deleted and added again
@@ -614,10 +618,7 @@ function bzRemove(model, view, ids, fromModel) {
   // a view-own line goes first, deleted: a hide or delete of a node after it takes the lines to that node out of the view (audit 22)
   const ownLine = id => own.has(id) && I.E.has(id) && !I.N.has(id);
   cmds.unshift(...rest.filter(ownLine).map(id => ({ op: 'delete', id })));
-  // a model boundary event on an activity this Delete deletes (one the view alone holds) goes with it by the type's cascade: no
-  // hide after that (apply() would find it gone, audit 58)
-  const cut = new Set(bes.filter(n => !own.has(n) && I.ty(n) === BZ_BE && own.has(bzProps(I.el(n)).attachedTo) && rest.includes(bzProps(I.el(n)).attachedTo)));
-  const dead = bes.filter(n => own.has(n) || cut.has(n)), hid = bes.filter(n => !dead.includes(n));
+  const dead = rest.filter(n => cut.has(n) || bes.includes(n) && own.has(n)), hid = bes.filter(n => !dead.includes(n));
   // the hint names what each Delete did: deleted what lived in this view only (and what went with it), hid the rest (audit 58)
   const withH = list => `${list.length === 1 && I.ty(list[0]) === BZ_BE ? 'its boundary event ' + bzLabel(I.el(list[0])) : `the ${bzPlural(list.length, 'element')} shown in or on it`} with ${hosts.filter(h => list.some(n => under(n, h) || under(bzProps(I.el(n)).attachedTo, h))).map(h => bzLabel(I.el(h))).join(', ')}`;
   rest.forEach(id => { if (ownLine(id) || cut.has(id)) return; if (fromModel || own.has(id) || I.L.has(id)) cmds.push({ op: 'delete', id }); else if (!(kept && I.E.has(id)) && !(subj && id === view.subject)) cmds.push({ op: 'hide', id, view: view.id }); });
