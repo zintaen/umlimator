@@ -2,8 +2,9 @@
 <!-- The time-lapse slider's spoken value (audit 61): a screen reader read the range input's 0-based index ("0") while the
      page showed "1 of 3". Its aria-valuetext is the label the page shows, at the version it opens on, the first and the
      last, on the page umlimator.py timelapse writes (tests/fixtures/timelapse.html, which tests/embed.py writes from a
-     small repository first) and on examples/timelapse.html. tests/embed.py opens this in headless Chrome and reads
-     <pre id="result">. -->
+     small repository first). The example page fetches a showcase model, which only the allowed tests read
+     (tests/showcase.test.mjs), so tests/embed.py checks its slider in its own source. tests/embed.py opens this in
+     headless Chrome and reads <pre id="result">. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <title>umlimator time-lapse slider test</title>
@@ -13,7 +14,7 @@ const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 try {
-  for (const [src, what] of [['fixtures/timelapse.html', 'the page umlimator.py timelapse writes'], ['../examples/timelapse.html', 'examples/timelapse.html']]) {
+  for (const [src, what] of [['fixtures/timelapse.html', 'the page umlimator.py timelapse writes']]) {
     const f = document.createElement('iframe');
     f.style.cssText = 'width:1000px;height:700px;border:0'; f.src = src;
     const loaded = new Promise(r => f.addEventListener('load', r, { once: true }));

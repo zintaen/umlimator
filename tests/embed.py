@@ -28,7 +28,7 @@ tests/class.html: the class diagram (1.9): examples/sales-classes.json drawn in 
   tests/class-stress.json in both themes and three fonts, an edit to paint on the stress fixture.
 tests/uml-panel.html: the UML views' panel and F2 (audit 18): no Members section where a view draws none, a member row's ✕ through the type's remove, F2 on a fragment's operator and an emptied timing ruler.
 tests/phone.html: the standalone page at a phone's width (audit 61): the details header keeps the card's name and its buttons on the screen.
-tests/timelapse.html: the time-lapse slider says the version shown ("1 of 3"), not its 0-based index, on the page umlimator.py timelapse writes and on examples/timelapse.html (audit 61).
+tests/timelapse.html: the time-lapse slider says the version shown ("1 of 3"), not its 0-based index, on the page umlimator.py timelapse writes; examples/timelapse.html's show() is read for the same (audit 61).
 tests/package.html: the package diagram (2.2): examples/bookshop-packages.json as stage 2 made it (6.7's profile and «apply» line taken out) in both themes, three fonts and both directions (boxes hold exactly their contents, titles, ends, names, contrast,
   legend), a closed package, and each gesture by pointer and keyboard (palette, import by the picker, visibility, Owner, a drop into a box, a box's name, hide, delete).
 tests/object.html: the object diagram (2.3): examples/order-objects.json in both themes, three fonts and both directions (underlined heads, slot rows, names, roles,
@@ -222,6 +222,13 @@ if part("the time-lapse slider"):
     for name in r["fail"]:
         print("FAIL", "tests/timelapse.html ·", name)
     failed |= bool(r["fail"])
+    # examples/timelapse.html fetches the atlas, a showcase model tests/timelapse.html may not read (tests/showcase.test.mjs):
+    # its show() is read instead, setting the slider's spoken value to the label it has just written, as the CLI's page does
+    src = (ROOT / "examples" / "timelapse.html").read_text(encoding="utf-8")
+    show = re.search(r"function show\(k\) \{(.*?)\n\}", src, re.S)
+    ex_ok = bool(show) and re.search(r"\$\('label'\)\.textContent = [^\n]*\n\s*at\.setAttribute\('aria-valuetext', \$\('label'\)\.textContent\)", show.group(1)) is not None
+    print(("ok  " if ex_ok else "FAIL"), "examples/timelapse.html · show() sets the slider's aria-valuetext to the label it shows (audit 61)")
+    failed |= not ex_ok
 # the standalone page (mountPage) shows a legend, so it still names line kinds from label words: "reads metrics" is state
 
 
