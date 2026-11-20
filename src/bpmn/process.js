@@ -1,7 +1,7 @@
 import { apply } from '../core/apply.js';
 import { copyOf, usedIds, jsonText, labelOr, propTextProblems } from '../core/model.js';
 import { everyOwn, heldBy, registerDiagramType } from '../core/registry.js';
-import { esc } from '../core/text.js';
+import { esc, trimDash } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { routeAudit } from '../layout/audit.js';
 import { laneBands, laneOrder } from '../layout/lanes.js';
@@ -296,7 +296,15 @@ function bzFinish(P, g, { runs, anchors, grown, side, down }) {
   // boundary events after it), what is in no pool, the groups, then the lines
   const order = [];
   const put = id => { if (!byId[id] && !families.some(f => f.id === id)) return; order.push(id); circles.filter(c => c.owner === id).forEach(c => order.push(c.id)); if (P.open.has(id)) P.holds(id).sort(rankOf).forEach(put); };
-  const rankOf = (a, b) => { const p = x => (byId[x] ? [byId[x].col, byId[x].row] : P.open.has(x) ? [Math.min(...P.holds(x).map(y => p(y)[0])), Math.min(...P.holds(x).map(y => p(y)[1]))] : [0, 0]); const u = p(a), v = p(b); return u[0] - v[0] || u[1] - v[1]; };
+  // an open box ranks at its contents' least column and row, each id's key worked out once: worked out afresh in every
+  // comparison, twice per child, it cost 2^depth calls, and 30 nested sub-processes holding one more item each hung (audit 54)
+  const keys = new Map();
+  const p = x => { let k = keys.get(x); if (k) return k;
+    if (byId[x]) k = [byId[x].col, byId[x].row];
+    else if (P.open.has(x)) { k = [Infinity, Infinity]; for (const y of P.holds(x)) { const q = p(y); if (q[0] < k[0]) k[0] = q[0]; if (q[1] < k[1]) k[1] = q[1]; } }
+    else k = [0, 0];
+    keys.set(x, k); return k; };
+  const rankOf = (a, b) => { const u = p(a), v = p(b); return u[0] - v[0] || u[1] - v[1]; };
   laneOrder(P.lanes).forEach(l => { order.push(l.id); P.holds(null).filter(x => P.laneOf(x) === l.id).sort(rankOf).forEach(put); });
   P.holds(null).filter(x => P.laneOf(x) == null).sort(rankOf).forEach(put);
   // the groups (§9.3), round their members drawn, under everything; one round nothing drawn is not drawn
@@ -445,7 +453,7 @@ function bzDescribe(model, viewId) {
    { commands, say }; none emits a transaction that brings an error the model did not have ---- */
 function bzFreshId(model, base) {
   const used = new Set(); usedIds(model, used);
-  const b = String(base).toLowerCase().replace(/->/g, '-').replace(/[^\p{L}\p{N}_$-]+/gu, '-').replace(/^-+|-+$/g, '') || 'element';
+  const b = trimDash(String(base).toLowerCase().replace(/->/g, '-').replace(/[^\p{L}\p{N}_$-]+/gu, '-')) || 'element';
   let k = 1; while (used.has(k === 1 ? b : `${b}-${k}`)) k++;
   return k === 1 ? b : `${b}-${k}`;
 }

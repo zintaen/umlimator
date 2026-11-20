@@ -1,5 +1,5 @@
 import { ownNodes, registerDiagramType } from '../core/registry.js';
-import { esc, fit, textW, widest } from '../core/text.js';
+import { esc, fit, textW, trimDash, widest } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
 import { brLines } from '../typed/draw.js';
@@ -73,7 +73,7 @@ const csIdOf = (o, r) => `${o ? o + '.' : ''}${String(r.label ?? r.valueType ?? 
 // an id not yet in the model: base, else base-2, base-3, …
 function csFresh(model, base) {
   const used = new Set(); usedIds(model, used);
-  const b = String(base).replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '') || 'element'; let id = b, k = 1; while (used.has(id)) id = `${b}-${++k}`;
+  const b = trimDash(String(base).replace(/[^\w.-]+/g, '-')) || 'element'; let id = b, k = 1; while (used.has(id)) id = `${b}-${++k}`;
   return id;
 }
 

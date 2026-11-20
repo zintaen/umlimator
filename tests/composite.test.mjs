@@ -1040,3 +1040,9 @@ test('audit 53: a part\'s two lineless type ports pinned to a side where four or
     assert.deepEqual(validate(m).filter(p => p.level === 'error'), []);
     assert.deepEqual(check(m, 'v').map(p => p.message).filter(x => /overlap/.test(x)), [], `${np} ports, ${nl} connectors`); }
 });
+
+test('audit 54: a part named with a run of 200,000 dashes is added in linear time (before: 16 s), its id keeping the run (timed)', () => {
+  const d = '-'.repeat(200000), t = performance.now(), r = T.edits.add(CS, V, { type: 'uml.Property' }, `a${d}b- : T`, { sel: [] });
+  assert.ok(performance.now() - t < 500, `${Math.round(performance.now() - t)} ms`);
+  assert.match(r[0].element.id, new RegExp(`\\.a-{200000}b$`));
+});

@@ -615,3 +615,11 @@ test('audit 52: Shift + Delete of a partition keeps a node another view holds as
   for (const v of m.views) { const n = apply(m, actRemove(m, v, ['p'], true));
     assert.deepEqual(n.views[1].nodes.map(x => [x.id, x.parent]), [['own', 'a']], v.id); assert.equal(n.nodes.find(x => x.id === 'x').parent, 'a', v.id); }
 });
+
+test('audit 54: an action named with a run of 200,000 dashes is added in linear time (before: 16 s); the id keeps its inner run and loses its ends (timed)', () => {
+  const m = { schemaVersion: 2, nodes: [], edges: [], views: [{ id: 'v', diagram: 'uml.activity', nodeIds: [] }] }, d = '-'.repeat(200000), t = performance.now();
+  const [c] = actAdd(m, m.views[0], { type: 'uml.Action' }, `-a${d}b-`, null);
+  assert.ok(performance.now() - t < 500, `${Math.round(performance.now() - t)} ms`);
+  assert.equal(c.element.id, `a${d}b`);
+  assert.equal(actAdd(m, m.views[0], { type: 'uml.Action' }, '--Pick, pack--', null)[0].element.id, 'pick-pack');
+});

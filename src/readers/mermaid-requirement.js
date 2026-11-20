@@ -1,4 +1,5 @@
 import { unreadable, jsonText } from '../core/model.js';
+import { trimDash } from '../core/text.js';
 import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidText, mermaidScrub, mermaidOver, mermaidOpen } from './mermaid-front.js';
 /* ---------- Mermaid requirementDiagram: a reader and a writer (notes/milestone-3.md §12, M3.6; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's requirement diagram page (docs/syntax/requirementDiagram.md, read 14 Nov 2026), as the
@@ -63,7 +64,7 @@ const mqText = (s, bad) => s.replace(MQ_CODE, (all, e) => ({ quot: '"', lt: '<',
 // a # the reader would read as the start of a code, written as #35; (audit 48)
 const mqCode = s => s.replace(/#(?=(?:quot|lt|gt|amp|\d{1,6});)/g, '#35;');
 // the id a name gives: the name when it is one, else a slug of it
-const mqWant = name => (/^[\p{L}\p{N}_.-]+$/u.test(name) ? name : name.replace(/[^\p{L}\p{N}_.-]+/gu, '-').replace(/^-+|-+$/g, '') || 'element');
+const mqWant = name => (/^[\p{L}\p{N}_.-]+$/u.test(name) ? name : trimDash(name.replace(/[^\p{L}\p{N}_.-]+/gu, '-')) || 'element');
 // a name Mermaid reads bare: a word of letters, digits, _ and ., not one of its grammar's
 const mqBare = name => /^\w[\w.]*$/.test(name) && !MQ_WORDS.has(name.toLowerCase());
 

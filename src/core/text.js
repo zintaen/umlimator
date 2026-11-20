@@ -91,4 +91,7 @@ function glyph(g) {
 
 // a line break in a typed view's line label: each part its own line, EDGE_LH px below the one before (audit 22)
 const EDGE_BREAK = /\r\n?|[\n\u2028\u2029]/, EDGE_LH = 12;
-export { measureText, measured, esc, XML_BAD, inline, md, mdPlain, textW, widest, brLines, linesW, sansW, hostMeasure, wrap2, clauseFit, fit, glyph, EDGE_BREAK, EDGE_LH };
+/* s without its leading and trailing '-', by index: `.replace(/^-+|-+$/g, '')` retries `-+$` at each dash of an inner run the slug
+   kept, so a typed name of 200k dashes froze an add for 16 s (audit 54) */
+const trimDash = s => { let i = 0, j = s.length; while (i < j && s[i] === '-') i++; while (j > i && s[j - 1] === '-') j--; return s.slice(i, j); };
+export { trimDash, measureText, measured, esc, XML_BAD, inline, md, mdPlain, textW, widest, brLines, linesW, sansW, hostMeasure, wrap2, clauseFit, fit, glyph, EDGE_BREAK, EDGE_LH };
