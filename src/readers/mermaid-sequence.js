@@ -1,4 +1,5 @@
 import { unreadable, jsonText } from '../core/model.js';
+import { interactionProblems } from '../uml/interaction.js';
 import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay, mermaidSort, mermaidScrub } from './mermaid-front.js';
 /* ---------- Mermaid sequenceDiagram: a reader and a writer (notes/stage-3.md §8, S10; risks.md R1 to R4, R7) ----------
    Written against Mermaid 12.3.0's sequence diagram page (docs/syntax/sequenceDiagram.md, read 12 Nov 2026), as the class
@@ -30,7 +31,7 @@ import { mermaidFrontTitle, mermaidClip, mermaidChar, mermaidBadChar, mermaidSay
      Mermaid's types (boundary, control, entity, database, collections, queue) is written so;
    - `->>` call, `-)` async, `-->>` reply, its `replyTo` the latest unanswered call from its receiver to its sender (a
      call answered only in another operand of an alt is unanswered); `create participant B` makes the next message to
-     B a create, `destroy B` the next message to B a delete. Other arrows are read as the nearest, approximated;
+     B a create, `destroy B` the next message to B a delete (an ordinary message, reported, when a later one still reaches B). Other arrows are read as the nearest, approximated;
    - `+`, `-`, `activate`, `deactivate`: activations are derived, so nothing is read; reported where they disagree;
    - `alt`/`else`, `opt`, `loop`, `par`/`and`, `break` ... `end` are fragments and operands (`par_over` is read as `par`, reported), the text their guard (a bare
      `else` is the guard else). `critical`/`option` and `rect` are read as their content; `box` as its participants;
@@ -60,7 +61,7 @@ function msFree(used, next, base) {
 
 // text: Mermaid's line breaks and entity codes (#quot; #lt; #59; ...); a named one Mermaid knows and this does not stays
 function msDecode(s, bad) {
-  return s.replace(/<br\s?\/?>|\\n/gi, '\n').replace(/#(quot|lt|gt|amp|\d{1,6});/g, (all, e) =>
+  return s.replace(/<br\s?\/?>/gi, '\n').replace(/\\n/g, '\n').replace(/#(quot|lt|gt|amp|\d{1,6});/g, (all, e) =>
     ({ quot: '"', lt: '<', gt: '>', amp: '&' })[e] ?? mermaidChar(Number(e), all, bad));
 }
 
@@ -303,11 +304,12 @@ function readMermaidSequence(text) {
         let sort = m.arrow[1];
         if (creating.has(from.name) && from !== to) { say(creating.get(from.name), 'skipped', `create ${from.name}: the next message is from it, so nothing creates it`); creating.delete(from.name); }
         if (creating.has(to.name)) { sort = 'create'; creating.delete(to.name); }
-        if (destroying.has(to.name)) { sort = 'delete'; destroying.delete(to.name); }
+        let dno;
+        if (destroying.has(to.name)) { sort = 'delete'; dno = destroying.get(to.name); destroying.delete(to.name); }
         else if (destroying.has(from.name)) { say(destroying.get(from.name), 'skipped', `destroy ${from.name}: the next message is from it, so its stem is not ended`); destroying.delete(from.name); }
         if (sort === m.arrow[1] && m.arrow[2]) say(no, 'approximated', `${what}: read as ${sort === 'async' ? 'an' : 'a'} ${sort}; ${m.arrow[2]}`);
         if (m.central) say(no, 'approximated', `${what}: the central connection is not drawn`);
-        const msg = { kind: 'msg', no, what, from, to, sort, label: msDecode(m.text, code => say(no, 'approximated', mermaidBadChar(code))), hint: hint.id, want: hint.replyTo || undefined, parent: cur(), plus: m.plus, minus: m.minus };
+        const msg = { kind: 'msg', no, what, from, to, sort, label: msDecode(m.text, code => say(no, 'approximated', mermaidBadChar(code))), hint: hint.id, want: hint.replyTo || undefined, parent: cur(), plus: m.plus, minus: m.minus, arrow: m.arrow, dno };
         items.push(msg); last = msg;
       }
       hint = {};
@@ -344,6 +346,20 @@ function readMermaidSequence(text) {
   const frags = items.filter(x => x.kind === 'frag').map(f => ({ id: f.id, type: 'uml.CombinedFragment', ...(f.parent ? { parent: f.parent.id } : {}), props: { operator: f.operator },
     members: f.ops.map(o => ({ id: o.id, type: 'uml.InteractionOperand', ...(o.label != null ? { label: o.label } : {}) })) }));
   const occ = items.filter(x => x.kind === 'msg' || x.kind === 'use');
+  // a destroy a later message still reaches (one not in another operand of an alt, nor after a break) ends no stem: the delete
+  // is read as its arrow says and reported, as a create after a message is (audit 57), so validate's delete-once finds nothing
+  if (occ.some(x => x.sort === 'delete')) {
+    const msgs = occ.filter(x => x.kind === 'msg'), byId = new Map(msgs.map(x => [x.id, x]));
+    const draft = { id: MS_VIEW, diagram: 'uml.sequence', nodeIds: nodes.map(n => n.id), fragments: frags,
+      edges: msgs.map(x => ({ id: x.id, type: 'uml.Message', from: x.from.node.id, to: x.to.node.id, ...(x.parent ? { parent: x.parent.id } : {}), props: { sort: x.sort } })) };
+    for (const p of interactionProblems({ schemaVersion: 2, nodes, edges: [], views: [draft] }, draft)) {
+      const x = p.rule === 'delete-once' && byId.get(p.ids[0]);
+      if (!x || x.sort !== 'delete' || x.from === x.to) continue;
+      x.sort = x.arrow[1];
+      say(x.dno, 'skipped', `destroy ${x.to.name}: a later message reaches ${x.to.name}, so its stem is not ended`);
+      if (x.arrow[2]) say(x.no, 'approximated', `${x.what}: read as ${x.sort === 'async' ? 'an' : 'a'} ${x.sort}; ${x.arrow[2]}`);
+    }
+  }
   const [replies] = msMatch(occ.filter(x => x.kind === 'msg').map(x => ({ x, id: x.id, from: x.from.node.id, to: x.to.node.id, sort: x.sort, parent: x.parent?.id, want: x.want })), frags);
   const answer = new Map([...replies].map(([r, c]) => [r.x, c.x])), lastReply = new Map();
   for (const [r, c] of answer) lastReply.set(c, r);

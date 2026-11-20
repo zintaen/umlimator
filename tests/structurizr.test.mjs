@@ -382,3 +382,21 @@ test('audit 56: an element of a level the view does not draw is left out of it a
     'view live: Ledger, a container instance of Ledger; Shopper, a person, are not drawn in a deployment view of Shop: not shown']);
   assert.deepEqual(validate(model).filter(p => p.rule === 'c4-level'), []);
 });
+
+test('audit 57: an owner listed in a view with what it holds is left out and said, unless it is the subject, so validate() takes the import', async () => {
+  const { validate } = await import('../lib/umlimator-all.js');
+  const ws = { model: { people: [{ id: '1', name: 'User', relationships: [{ id: 'r1', destinationId: '3', description: 'uses' }] }],
+    softwareSystems: [{ id: '2', name: 'Shop', containers: [{ id: '3', name: 'Web', components: [{ id: '4', name: 'Ctl' }], relationships: [{ id: 'r2', destinationId: '6', description: 'calls' }] }] },
+      { id: '5', name: 'Payments', containers: [{ id: '6', name: 'Pay API', components: [{ id: '7', name: 'Charge' }] }] }] },
+  views: { containerViews: [{ key: 'box', softwareSystemId: '2', elements: [{ id: '1' }, { id: '3' }, { id: '5' }, { id: '6' }] }],
+    componentViews: [{ key: 'parts', containerId: '3', elements: [{ id: '2' }, { id: '4' }, { id: '5' }, { id: '6' }] }],
+    dynamicViews: [{ key: 'flow', elementId: '2', elements: [{ id: '1' }, { id: '3' }, { id: '5' }, { id: '6' }], relationships: [{ id: 'r1', order: '1' }, { id: 'r2', order: '2' }] }] } };
+  const { model, report } = read(ws);
+  assert.deepEqual(model.views.map(v => [v.id, v.nodeIds]), [['box', ['shop', 'user', 'web', 'pay-api']], ['parts', ['web', 'ctl', 'pay-api']],
+    ['flow', ['shop', 'user', 'web', 'pay-api']]]);
+  assert.deepEqual(report.filter(x => x.path.endsWith('.elements')).map(x => x.message), [
+    "view box: Payments, a software system, is listed with what it holds, and only the view's subject is drawn as a boundary: not shown",
+    "view parts: Shop, a software system; Payments, a software system, are listed with what they hold, and only the view's subject is drawn as a boundary: not shown",
+    "view flow: Payments, a software system, is listed with what it holds, and only the view's subject is drawn as a boundary: not shown"]);
+  assert.deepEqual(validate(model).filter(p => p.rule === 'c4-level'), []);
+});
