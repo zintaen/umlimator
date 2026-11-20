@@ -7,10 +7,11 @@ name: bug-agent
 # Off unless the repository variable BUG_AGENT_ENABLED is "true" and the secret ANTHROPIC_API_KEY is set
 # (CONTRIBUTING.md, "The bug agent"). The issue's text is data, never instructions (SECURITY.md): it reaches the agent as
 # a fenced file, never through the prompt, a shell command or a workflow expression. Three jobs, each on a fresh runner:
-#   agent    a read-only token and the API key. The agent (the Claude Code CLI, pinned) runs as a user of its own that
-#            holds no token, whose processes reach no network but the Anthropic API (tools/bug_agent_jail.sh), and whose
-#            shell takes only exact commands. The runner's git takes its diff, and the job hands the diff and the
-#            result on as a job output, as data.
+#   agent    a read-only token and the API key, which only a proxy holds (tools/bug_agent_proxy.mjs, as a user of its
+#            own that reaches the Anthropic API and nothing else). The agent (the Claude Code CLI, pinned) runs as
+#            another user with a placeholder key, no token, loopback only (tools/bug_agent_jail.sh) and a shell that
+#            takes exact commands. The runner's git takes its diff, and the job hands the diff and the result on as a
+#            job output, as data.
 #   verify   a read-only token and no secret; the base branch's checker (tools/bug_agent.mjs) takes the patch only within
 #            the allowed paths and only when its test fails on the base branch and passes with the fix. The patch's
 #            code runs as a jailed user with no network at all, in a copy of the tree with no .git.
@@ -59,6 +60,7 @@ jobs:
       HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
       JAIL: /srv/bug-agent
       CLI: /opt/bug-agent-cli
+      PORT: "8417"
     steps:
       # The runner's own steps (checkout, setup-node, the CLI's install, the issue) reach only these hosts. The agent's
       # user is held tighter by tools/bug_agent_jail.sh: the Anthropic API and nothing else.
@@ -111,12 +113,28 @@ jobs:
           node tools/bug_agent.mjs issue "$WORK/issue.json" "$WORK/issue.md"
           node tools/bug_agent.mjs prompt .github/bug-agent/prompt.md "$WORK/prompt.md" \
             "BASE=$BASE" "NUMBER=$NUMBER" "ISSUE_FILE=$JAIL/work/issue.md" "RESULT_FILE=$JAIL/work/result.json"
-          node tools/bug_agent.mjs settings tests "$NUMBER" "$JAIL/work" "$WORK/settings.json"
+          node tools/bug_agent.mjs settings tests "$NUMBER" "$JAIL/work" "$JAIL/repo" "$WORK/settings.json"
           echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
 
-      - name: A user of its own, with no token and no network but the API
+      # The key goes to the proxy's user only, through the environment of a process the agent's user cannot read (another
+      # uid). The proxy's copy of its code is root-owned, out of the agent's reach.
+      - name: The proxy that holds the key, as a user that reaches only the API
+        env:
+          BUG_AGENT_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          sudo bash tools/bug_agent_jail.sh agent api
+          sudo bash tools/bug_agent_jail.sh bugkey api
+          sudo install -d -o root -g root -m 755 /opt/bug-agent-proxy
+          sudo install -o root -g root -m 644 tools/bug_agent_proxy.mjs /opt/bug-agent-proxy/proxy.mjs
+          # the runner's own log file, written by the runner's shell
+          # shellcheck disable=SC2024
+          sudo --preserve-env=BUG_AGENT_KEY -u bugkey -H -- nohup "$(command -v node)" /opt/bug-agent-proxy/proxy.mjs "$PORT" \
+            > "$RUNNER_TEMP/proxy.log" 2>&1 &
+          for _ in $(seq 1 50); do curl -fsS "http://127.0.0.1:$PORT/health" > /dev/null 2>&1 && break; sleep 0.2; done
+          curl -fsS "http://127.0.0.1:$PORT/health"
+
+      - name: A user of its own for the agent, with no token, no key and loopback only
+        run: |
+          sudo bash tools/bug_agent_jail.sh agent local
           sudo install -d -o root -g root -m 755 "$JAIL"
           sudo install -d -o agent -g agent -m 755 "$JAIL/work"
           sudo cp -a "$GITHUB_WORKSPACE" "$JAIL/repo"
@@ -126,13 +144,12 @@ jobs:
 
       - id: claude
         name: The agent reproduces and fixes
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          # the key goes to the agent's user through the environment, never on a command line; nothing else of the
-          # runner's environment does (sudo resets it). The runner's shell reads the prompt, which the agent cannot.
+          # the agent gets a placeholder key and the proxy's address; nothing else of the runner's environment reaches it
+          # (sudo resets it). The runner's shell reads the prompt, which the agent cannot.
           # shellcheck disable=SC2024
-          sudo --preserve-env=ANTHROPIC_API_KEY -u agent -H -- env -C "$JAIL/repo" PATH="$PATH" \
+          sudo -u agent -H -- env -C "$JAIL/repo" PATH="$PATH" \
+            ANTHROPIC_BASE_URL="http://127.0.0.1:$PORT" ANTHROPIC_API_KEY=placeholder-the-proxy-holds-the-key \
             CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 DISABLE_AUTOUPDATER=1 CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1 \
             timeout 35m "$CLI/node_modules/.bin/claude" --bare -p --settings "$JAIL/settings.json" --setting-sources user \
               --permission-mode dontAsk --tools Read,Edit,Write,Glob,Grep,Bash --strict-mcp-config \
@@ -145,6 +162,7 @@ jobs:
           KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           sudo pkill -KILL -u agent || true
+          sudo pkill -KILL -u bugkey || true
           mkdir -p "$WORK/raw" "$WORK/after"
           # the agent's tree, copied as it is (links stay links) and handed to the runner's user without its .git; the
           # runner's own git directory, which the agent never had, reads it
@@ -159,7 +177,7 @@ jobs:
           # read as the agent's user, so a link it left cannot point the runner at a file the agent could not read
           # shellcheck disable=SC2024
           sudo -u agent head -c 20000 "$JAIL/work/result.json" > "$WORK/raw/result.json" 2> /dev/null || rm -f "$WORK/raw/result.json"
-          # the key must not leave in what the agent wrote: GitHub masks it in logs, not in an output's files
+          # a second check (the agent never held the key): the key must not leave in what the agent wrote
           if ! node tools/bug_agent.mjs leak KEY "$WORK/raw/result.json" "$WORK/raw/fix.patch"; then
             rm -f "$WORK/raw/result.json" "$WORK/raw/fix.patch"; echo "the API key was in what the agent wrote" > "$WORK/raw/leak.txt"
           fi

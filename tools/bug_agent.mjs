@@ -10,7 +10,7 @@
 //                                                                  rules, then the test fails without the fix and passes with it
 //   node tools/bug_agent.mjs check-patch <fix.patch>               the path rules again, as git reads the patch (publish job)
 //   node tools/bug_agent.mjs check-staged                          after git apply --index: what git staged (publish job)
-//   node tools/bug_agent.mjs settings <tests-dir> <n> <work> <out>  the agent's Claude Code settings (fixed commands only)
+//   node tools/bug_agent.mjs settings <tests-dir> <n> <work> <repo> <out>  the agent's settings (fixed commands only)
 //   node tools/bug_agent.mjs leak <ENV_NAME> <file>...             exits 1 when a file holds that variable's value
 //   node tools/bug_agent.mjs comment <result.json> <kind> <url>    the issue comment or pull request body, on stdout
 //
@@ -175,21 +175,24 @@ export function checkStaged(cwd) {
 // in a shell command: the shell takes the build, `git diff`, `git status`, and each test file of the base branch by its
 // exact command, plus the issue's own new test file. Edits are allowed only where a fix may write and in the work folder
 // (the result file). Everything else is denied without a prompt (dontAsk), and no hook runs.
-export function agentSettings(testFiles, number, workDir) {
+export function agentSettings(testFiles, number, workDir, repoDir) {
   if (!Number.isInteger(number) || number <= 0) throw new Error('issue number must be a positive integer');
-  if (!/^\/[A-Za-z0-9_./-]+$/.test(workDir) || workDir.split('/').includes('..')) throw new Error('work folder must be a plain absolute path');
+  for (const d of [workDir, repoDir]) {
+    if (typeof d !== 'string' || !/^\/[A-Za-z0-9_./-]+$/.test(d) || d.split('/').includes('..')) throw new Error('work folder must be a plain absolute path');
+  }
   const bash = ['node tools/build.mjs', 'git diff', 'git status', `node --test tests/issue-${number}.test.mjs`];
   for (const f of [...testFiles].sort()) {
     if (/^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*\.test\.mjs$/.test(f)) bash.push(`node --test tests/${f}`);
     else if (/^[A-Za-z0-9_-]+\.py$/.test(f)) bash.push(`python3 tests/${f}`);
   }
-  const allow = ['Read', 'Glob', 'Grep', 'Edit(src/**)', 'Edit(lib/**)', 'Edit(tests/**)', 'Edit(docs/**)', 'Edit(umlimator*.py)',
-    `Edit(/${workDir}/**)`, ...[...new Set(bash)].map(c => `Bash(${c})`)];
+  // Read (which Glob and Grep follow) only in the checkout and the work folder; /proc, /sys, /etc and the home folder are
+  // denied outright, and in dontAsk mode any other path is refused without a prompt
+  const allow = [`Read(/${repoDir}/**)`, `Read(/${workDir}/**)`, 'Glob', 'Grep', 'Edit(src/**)', 'Edit(lib/**)', 'Edit(tests/**)',
+    'Edit(docs/**)', 'Edit(umlimator*.py)', `Edit(/${workDir}/**)`, ...[...new Set(bash)].map(c => `Bash(${c})`)];
   for (const r of allow) fixedRule(r);
-  return {
-    permissions: { defaultMode: 'dontAsk', allow, deny: ['WebFetch', 'WebSearch', 'Edit(.github/**)', 'Edit(.claude/**)', 'Edit(~/.claude/**)'] },
-    disableAllHooks: true,
-  };
+  const deny = ['WebFetch', 'WebSearch', 'Read(//proc/**)', 'Read(//sys/**)', 'Read(//etc/**)', 'Read(~/**)', 'Read(//root/**)',
+    'Read(//home/**)', 'Edit(.github/**)', 'Edit(.claude/**)', 'Edit(~/**)'];
+  return { permissions: { defaultMode: 'dontAsk', allow, deny }, disableAllHooks: true };
 }
 
 // A shell rule is one exact command with no shell syntax in it.
@@ -198,12 +201,21 @@ function fixedRule(rule) {
   if (m && (/[*;&|<>`$(){}\\'"\n]/.test(m[1]) || / :/.test(m[1]))) throw new Error('not a fixed command: ' + rule);
 }
 
-// Whether any of the files holds the secret, as it is or base64-encoded. The agent job runs this on the agent's diff and
-// result before they leave the job; GitHub masks a secret in logs, not in a file the job hands on.
+// Whether any of the texts holds the secret: as it is, reversed, in hex, or in base64 at any of its three alignments, after
+// whitespace and punctuation are taken out of both sides and case is folded (so a key split by spaces, dashes or line
+// breaks, or written in upper case, is still found). A second check only: the agent never holds the key (the proxy does,
+// tools/bug_agent_proxy.mjs), and an encoding not listed here gets past it.
 export function holdsSecret(secret, texts) {
-  if (!secret || secret.length < 8) return false;
-  const forms = [secret, Buffer.from(secret).toString('base64').replace(/=+$/, ''), Buffer.from(secret).toString('hex')];
-  return texts.some(t => forms.some(f => t.includes(f)));
+  if (!secret || secret.length < 16) return false;
+  const norm = t => String(t).toLowerCase().replace(/[^a-z0-9]/g, '');
+  const raw = Buffer.from(secret);
+  const forms = [secret, [...secret].reverse().join(''), raw.toString('hex')];
+  for (let k = 0; k < 3; k++) {
+    const b64 = Buffer.concat([Buffer.alloc(k), raw]).toString('base64');
+    forms.push(b64.slice(k ? 4 : 0, -4));
+  }
+  const needles = forms.map(norm).filter(n => n.length >= 12);
+  return texts.some(t => { const h = norm(t); return needles.some(n => h.includes(n)); });
 }
 
 // The agent's own words, made safe to post: no mentions (they notify), no fences or HTML comments (they could close the
@@ -246,11 +258,12 @@ export function childEnv(env = process.env) {
   return out;
 }
 
-// Runs the build and the test. With BUG_AGENT_SANDBOX_USER set (the verify job, after tools/bug_agent_jail.sh), they run as
-// that user, with no network, in a copy of the tree that user owns (BUG_AGENT_BOX, default /srv/bug-agent-box): the
-// patch's code never runs as the runner's user, never touches the checkout or its .git, and is killed when the test ends.
-// lib/ is then the box's build compared with the patch's. Without it (the tests here), it runs in place, and lib/ is
-// checked with git.
+// Runs the build and the test. lib/ is compared with the patch's own lib/ right after the build, before the test starts,
+// so the test cannot change what is compared. With BUG_AGENT_SANDBOX_USER set (the verify job, after
+// tools/bug_agent_jail.sh), the build and the test run as that user, with no network, in a copy of the tree that user owns
+// (BUG_AGENT_BOX, default /srv/bug-agent-box) without .git; before the test, the box's top folder and lib/ are given to
+// root and made read-only, so the test cannot rewrite or replace the build it is checked against. Without it (the tests
+// here), it runs in place, and lib/ is compared with git.
 function runTest(cwd, test, stdio) {
   const [cmd, args] = testArgv(test);
   const user = process.env.BUG_AGENT_SANDBOX_USER;
@@ -258,8 +271,9 @@ function runTest(cwd, test, stdio) {
     const env = childEnv();
     const build = spawnSync('node', ['tools/build.mjs'], { cwd, env, stdio });
     if (build.status !== 0) return { built: false, ok: false, libSame: false };
+    const libSame = !git(cwd, 'diff', '--name-only', '--', 'lib').trim() && !git(cwd, 'ls-files', '--others', '--', 'lib').trim();
     const r = spawnSync(cmd, args, { cwd, env, stdio, timeout: 10 * 60 * 1000 });
-    return { built: true, ok: r.status === 0, libSame: !git(cwd, 'diff', '--name-only', '--', 'lib').trim() };
+    return { built: true, ok: r.status === 0, libSame };
   }
   if (!/^[a-z][a-z0-9_-]*$/.test(user)) throw new Error('BUG_AGENT_SANDBOX_USER is not a user name');
   const box = process.env.BUG_AGENT_BOX || '/srv/bug-agent-box';
@@ -272,10 +286,14 @@ function runTest(cwd, test, stdio) {
       if (sudo(a).status !== 0) throw new Error('cannot prepare ' + box);
     }
     const build = as('node', ['tools/build.mjs']);
-    if (build.status !== 0) return { built: false, ok: false, libSame: false };
-    const r = as(cmd, args);
     sudo(['pkill', '-KILL', '-u', user]);
+    if (build.status !== 0) return { built: false, ok: false, libSame: false };
     const libSame = sudo(['diff', '-rq', '--no-dereference', join(cwd, 'lib'), join(box, 'lib')]).status === 0;
+    for (const a of [['chown', '-R', 'root:root', join(box, 'lib')], ['chmod', '-R', 'a-w', join(box, 'lib')],
+      ['chown', 'root:root', box], ['chmod', '755', box]]) {
+      if (sudo(a).status !== 0) throw new Error('cannot prepare ' + box);
+    }
+    const r = as(cmd, args);
     return { built: true, ok: r.status === 0, libSame };
   } finally {
     sudo(['pkill', '-KILL', '-u', user]);
@@ -355,7 +373,7 @@ function main(argv) {
     if (problems.length) { console.error(problems.join('\n')); process.exit(1); }
   } else if (cmd === 'settings') {
     const files = readdirSync(a[0]);
-    writeFileSync(a[3], JSON.stringify(agentSettings(files, Number(a[1]), a[2]), null, 2) + '\n');
+    writeFileSync(a[4], JSON.stringify(agentSettings(files, Number(a[1]), a[2], a[3]), null, 2) + '\n');
   } else if (cmd === 'leak') {
     const texts = a.slice(1).map(f => { try { return readFileSync(f, 'utf8'); } catch { return ''; } });
     if (holdsSecret(process.env[a[0]] || '', texts)) { console.error('the secret is in what the agent wrote'); process.exit(1); }

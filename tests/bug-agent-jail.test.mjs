@@ -42,6 +42,18 @@ test('bug agent jail: the user has no sudo, and cannot read the runner files', {
   assert.doesNotMatch(as(['id', '-nG']).stdout, /\b(sudo|adm|admin|docker|root|wheel)\b/);
 });
 
+test('bug agent jail, local: the agent user reaches loopback (the proxy) and not the API itself', { skip }, async () => {
+  jail('local');
+  const { createServer } = await import('node:http');
+  const server = createServer((req, res) => res.end('ok'));
+  await new Promise(ok => server.listen(0, '127.0.0.1', ok));
+  try {
+    assert.equal(status(`http://127.0.0.1:${server.address().port}/`), '200');
+    assert.equal(status('https://api.anthropic.com/v1/models'), 'blocked');
+    assert.equal(status('https://github.com'), 'blocked');
+  } finally { server.close(); }
+});
+
 test('bug agent jail, none: not even the API', { skip }, () => {
   jail('none');
   assert.equal(status('https://api.anthropic.com/v1/models'), 'blocked');
@@ -98,5 +110,26 @@ test('bug agent sandbox: the patch test has no network, no runner identity, and 
     const offline = r.edit({ 'tests/t.test.mjs': t.replace(/  const res[^\n]*\n  assert\.ok\(res\.ok\);\n/, ''), 'src/a.mjs': FIX, 'lib/a.mjs': FIX });
     assert.deepEqual(verify(r.dir, RESULT, offline, 'ignore'), []);
     assert.equal(existsSync(probe), false);
+  } finally { r.done(); delete process.env.BUG_AGENT_SANDBOX_USER; }
+});
+
+test('bug agent sandbox: the jailed test cannot rewrite or replace lib/, and a lib/ the build does not make is caught first', { skip }, () => {
+  jail('none');
+  process.env.BUG_AGENT_SANDBOX_USER = user;
+  const r = repo();
+  try {
+    // a test that tries to overwrite lib/a.mjs, and to move lib/ aside and put its own in place, then passes only if
+    // either worked
+    const t = head + "import { writeFileSync, renameSync, mkdirSync } from 'node:fs';\n" +
+      "test('t', () => {\n  let wrote = false;\n  try { writeFileSync('lib/a.mjs', 'x'); wrote = true; } catch {}\n" +
+      "  try { renameSync('lib', 'lib-old'); mkdirSync('lib'); wrote = true; } catch {}\n  assert.equal(twice(2), 4);\n  assert.ok(wrote);\n});\n";
+    const patch = r.edit({ 'tests/t.test.mjs': t, 'src/a.mjs': FIX, 'lib/a.mjs': FIX });
+    assert.deepEqual(verify(r.dir, RESULT, patch, 'ignore'), ['the test fails with the fix'], 'neither write lands');
+    // a patch lib/ that is not what src/ builds, with a test that would write it back: caught before the test runs
+    const evil = FIX + '// not built\n';
+    const back = head + `import { writeFileSync } from 'node:fs';\ntry { writeFileSync('lib/a.mjs', ${JSON.stringify(evil)}); } catch {}\n` +
+      "test('t', () => assert.equal(twice(2), 4));\n";
+    const p2 = r.edit({ 'tests/t.test.mjs': back, 'src/a.mjs': FIX, 'lib/a.mjs': evil });
+    assert.deepEqual(verify(r.dir, RESULT, p2, 'ignore'), ['lib/ is not what src/ builds']);
   } finally { r.done(); delete process.env.BUG_AGENT_SANDBOX_USER; }
 });

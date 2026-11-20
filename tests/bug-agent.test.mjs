@@ -12,6 +12,8 @@ import {
   fenceFor, issueFile, fillPrompt, readResult, testArgv, checkPaths, checkPatch, checkStaged, gitPatchInfo, quoteText, message, verify, check, childEnv,
   agentSettings, holdsSecret, OUTCOMES,
 } from '../tools/bug_agent.mjs';
+import { createProxy, refuseBody } from '../tools/bug_agent_proxy.mjs';
+import { createServer } from 'node:http';
 
 const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const wf = read('.github/workflows/bug-agent.yml');
@@ -325,16 +327,25 @@ test('bug agent workflow: least privilege, no other secret, the CLI pinned', () 
   assert.ok(allowed.includes('api.anthropic.com:443'));
   assert.ok(!allowed.some(h => /blob|storage|actions\.githubusercontent/.test(h)), 'no storage host: the diff leaves as a job output');
   assert.doesNotMatch(agent, /upload-artifact/);
-  assert.ok(agent.indexOf('bug_agent_jail.sh agent api') < agent.indexOf('claude" --bare'), 'the jail is up before the agent starts');
   // the agent runs as its own user, the key through the environment only, with the fixed-command settings and no hooks
   const run = agent.slice(agent.indexOf('- id: claude'), agent.indexOf('- id: raw'));
-  assert.match(run, /sudo --preserve-env=ANTHROPIC_API_KEY -u agent -H -- env -C "\$JAIL\/repo"/);
-  assert.doesNotMatch(run, /GH_TOKEN|github\.token|GITHUB_TOKEN/);
+  assert.match(run, /sudo -u agent -H -- env -C "\$JAIL\/repo"/);
+  assert.doesNotMatch(run, /GH_TOKEN|github\.token|GITHUB_TOKEN|secrets\.|preserve-env/);
+  // the agent holds a placeholder and the proxy's address; only the proxy's user gets the key
+  assert.match(run, /ANTHROPIC_BASE_URL="http:\/\/127\.0\.0\.1:\$PORT" ANTHROPIC_API_KEY=placeholder/);
+  const keyed = [...agent.matchAll(/secrets\.ANTHROPIC_API_KEY/g)].length;
+  assert.equal(keyed, 3, 'the key: HAS_KEY, the proxy step, the second leak check');
+  const proxy = agent.slice(agent.indexOf('name: The proxy that holds the key'), agent.indexOf('name: A user of its own for the agent'));
+  assert.match(proxy, /BUG_AGENT_KEY: \$\{\{ secrets\.ANTHROPIC_API_KEY \}\}/);
+  assert.match(proxy, /bug_agent_jail\.sh bugkey api/);
+  assert.match(proxy, /sudo --preserve-env=BUG_AGENT_KEY -u bugkey -H/);
+  assert.match(proxy, /install -o root -g root -m 644 tools\/bug_agent_proxy\.mjs/);
+  assert.ok(agent.indexOf('bug_agent_jail.sh agent local') < agent.indexOf('claude" --bare'));
   assert.doesNotMatch(run, /--allowedTools|--dangerously|bypassPermissions/);
   assert.match(run, /--bare -p --settings "\$JAIL\/settings\.json" --setting-sources user/);
   assert.match(run, /--permission-mode dontAsk/);
   assert.match(run, /timeout \d+m /);
-  assert.match(agent, /node tools\/bug_agent\.mjs settings tests "\$NUMBER" "\$JAIL\/work" "\$WORK\/settings\.json"/);
+  assert.match(agent, /node tools\/bug_agent\.mjs settings tests "\$NUMBER" "\$JAIL\/work" "\$JAIL\/repo" "\$WORK\/settings\.json"/);
   assert.match(agent, /sudo install -o root -g root -m 644 "\$WORK\/settings\.json" "\$JAIL\/settings\.json"/, 'a settings file the agent cannot write');
   // after the agent ran: its processes are killed, the runner's git (not the agent's .git) takes the diff, hooks and
   // fsmonitor off, and the result is read with the agent's own rights
@@ -366,7 +377,7 @@ test('bug agent workflow: least privilege, no other secret, the CLI pinned', () 
 });
 
 test('bug agent: the shell of the agent takes exact commands only, and edits only where a fix may write', () => {
-  const s = agentSettings(['diff.test.mjs', 'cli.py', 'helpers.mjs', 'x;y.test.mjs', 'a b.test.mjs'], 42, '/srv/bug-agent/work');
+  const s = agentSettings(['diff.test.mjs', 'cli.py', 'helpers.mjs', 'x;y.test.mjs', 'a b.test.mjs'], 42, '/srv/bug-agent/work', '/srv/bug-agent/repo');
   const bash = s.permissions.allow.filter(r => r.startsWith('Bash(')).map(r => r.slice(5, -1));
   assert.deepEqual(bash, ['node tools/build.mjs', 'git diff', 'git status', 'node --test tests/issue-42.test.mjs',
     'python3 tests/cli.py', 'node --test tests/diff.test.mjs']);
@@ -374,21 +385,91 @@ test('bug agent: the shell of the agent takes exact commands only, and edits onl
   assert.equal(s.permissions.defaultMode, 'dontAsk');
   assert.equal(s.disableAllHooks, true);
   assert.ok(!s.permissions.allow.includes('Edit') && !s.permissions.allow.includes('Write') && !s.permissions.allow.includes('Bash'));
+  // Read only in the checkout and the work folder, never /proc or the home folder
+  assert.deepEqual(s.permissions.allow.filter(r => r.startsWith('Read')), ['Read(//srv/bug-agent/repo/**)', 'Read(//srv/bug-agent/work/**)']);
+  for (const r of ['Read(//proc/**)', 'Read(//sys/**)', 'Read(//etc/**)', 'Read(~/**)', 'Read(//home/**)']) assert.ok(s.permissions.deny.includes(r), r);
   assert.ok(s.permissions.allow.includes('Edit(//srv/bug-agent/work/**)'));
   assert.ok(s.permissions.deny.includes('Edit(.github/**)') && s.permissions.deny.includes('WebFetch'));
-  assert.throws(() => agentSettings([], 0, '/w'), /positive integer/);
-  assert.throws(() => agentSettings([], 1, 'rel/w'), /absolute/);
-  assert.throws(() => agentSettings([], 1, '/w/../etc'), /absolute/);
-  assert.throws(() => agentSettings([], 1, '/w w'), /absolute/);
+  assert.throws(() => agentSettings([], 0, '/w', '/r'), /positive integer/);
+  assert.throws(() => agentSettings([], 1, 'rel/w', '/r'), /absolute/);
+  assert.throws(() => agentSettings([], 1, '/w/../etc', '/r'), /absolute/);
+  assert.throws(() => agentSettings([], 1, '/w w', '/r'), /absolute/);
+  assert.throws(() => agentSettings([], 1, '/w', '/'), /absolute/);
+  assert.throws(() => agentSettings([], 1, '/w'), /absolute/);
 });
 
-test('bug agent: the API key is caught in what the agent wrote, as it is or encoded', () => {
-  const key = 'sk-ant-test-0123456789abcdef';
+test('bug agent: the second leak check finds the key split, cased, reversed, in hex and in base64 at any alignment', () => {
+  const key = 'sk-ant-api03-Test0123456789abcdefXYZ';
+  const b64 = k => Buffer.concat([Buffer.alloc(k, 65), Buffer.from(key)]).toString('base64');
   assert.equal(holdsSecret(key, ['nothing here', '']), false);
-  assert.equal(holdsSecret(key, ['+const k = "' + key + '";']), true);
-  assert.equal(holdsSecret(key, [Buffer.from(key).toString('base64')]), true);
-  assert.equal(holdsSecret(key, ['x' + Buffer.from(key).toString('hex')]), true);
+  for (const t of ['+const k = "' + key + '";', key.toUpperCase(), key.split('').join(' '), key.replace(/-/g, '\n'),
+    [...key].reverse().join(''), Buffer.from(key).toString('hex').toUpperCase(), b64(0), b64(1), b64(2),
+    b64(1).replace(/\+/g, '-').replace(/\//g, '_'), b64(2).match(/.{1,10}/g).join('\n')]) {
+    assert.equal(holdsSecret(key, ['x', t]), true, t);
+  }
   assert.equal(holdsSecret('', ['anything']), false, 'no key, nothing to find');
+  assert.equal(holdsSecret('short', ['short']), false, 'too short to look for');
+});
+
+test('bug agent: the verify check compares lib/ before the test runs, so a test that rewrites lib/ is caught', () => {
+  const r = repo();
+  try {
+    // the patch carries a lib/ that is not what src/ builds, and a test that writes that same lib/ back as it runs,
+    // so that a comparison made after the test would find them equal
+    const evil = FIX + '// not what src/ builds\n';
+    const t = TEST + `import { writeFileSync } from 'node:fs';\nwriteFileSync('lib/a.mjs', ${JSON.stringify(evil)});\n`;
+    const patch = r.edit({ 'tests/twice.test.mjs': t, 'src/a.mjs': FIX, 'lib/a.mjs': evil });
+    assert.deepEqual(verify(r.dir, RESULT, patch, 'ignore'), ['lib/ is not what src/ builds']);
+  } finally { r.done(); }
+  // the same with a lib/ file the build does not make at all
+  const b = repo();
+  try {
+    const patch = b.edit({ 'tests/twice.test.mjs': TEST, 'src/a.mjs': FIX, 'lib/a.mjs': FIX, 'lib/extra.mjs': 'export {};\n' });
+    assert.deepEqual(verify(b.dir, RESULT, patch, 'ignore'), []);
+  } finally { b.done(); }
+});
+
+test('bug agent proxy: the real key goes upstream, the placeholder and other credentials do not', async () => {
+  const seen = [];
+  const upstream = createServer((req, res) => {
+    let body = '';
+    req.on('data', c => { body += c; });
+    req.on('end', () => { seen.push({ url: req.url, headers: req.headers, body }); res.writeHead(200, { 'content-type': 'application/json', 'set-cookie': 'a=b' }); res.end('{"ok":true}'); });
+  });
+  await new Promise(ok => upstream.listen(0, '127.0.0.1', ok));
+  const proxy = createProxy({ key: 'sk-real-key-0123456789', upstream: `http://127.0.0.1:${upstream.address().port}` });
+  await new Promise(ok => proxy.listen(0, '127.0.0.1', ok));
+  const base = `http://127.0.0.1:${proxy.address().port}`;
+  const post = (path, body, headers = {}) => fetch(base + path, { method: 'POST', body: JSON.stringify(body),
+    headers: { 'content-type': 'application/json', 'x-api-key': 'placeholder', authorization: 'Bearer stolen', cookie: 'c=d', ...headers } });
+  try {
+    assert.equal((await fetch(base + '/health')).status, 200);
+    const ok = await post('/v1/messages?beta=true', { model: 'm', messages: [], tools: [{ name: 'Bash', input_schema: {} }, { type: 'custom', name: 'X', input_schema: {} }] },
+      { 'anthropic-version': '2023-06-01' });
+    assert.equal(ok.status, 200);
+    assert.equal(ok.headers.get('set-cookie'), null);
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0].url, '/v1/messages?beta=true');
+    assert.equal(seen[0].headers['x-api-key'], 'sk-real-key-0123456789');
+    assert.equal(seen[0].headers.authorization, undefined);
+    assert.equal(seen[0].headers.cookie, undefined);
+    assert.equal(seen[0].headers['anthropic-version'], '2023-06-01');
+    assert.equal((await post('/v1/messages/count_tokens', { model: 'm', messages: [] })).status, 200);
+    // nothing else goes through: other endpoints, other methods, server tools, MCP servers, a body that is not JSON
+    for (const [path, body, method] of [['/v1/files', {}], ['/v1/models', {}, 'GET'], ['/v1/messages/batches', {}], ['/v1/messages', { tools: [{ type: 'web_fetch_20250910', name: 'web_fetch' }] }],
+      ['/v1/messages', { tools: [{ type: 'web_search_20250305', name: 'web_search' }] }], ['/v1/messages', { mcp_servers: [{ url: 'https://x' }] }],
+      ['/v1/messages', { container: 'c' }], ['/v1/messages', { tools: 'x' }]]) {
+      const r = method === 'GET' ? await fetch(base + path) : await post(path, body);
+      assert.equal(r.status, 403, path + ' ' + JSON.stringify(body));
+    }
+    const notJson = await fetch(base + '/v1/messages', { method: 'POST', body: 'nope' });
+    assert.equal(notJson.status, 403);
+    assert.equal(seen.length, 2, 'refused requests never reach the API');
+    assert.equal(refuseBody('{"tools":[{"name":"a"}]}'), '');
+    assert.throws(() => createProxy({ key: '' }), /no key/);
+  } finally {
+    proxy.close(); upstream.close();
+  }
 });
 
 test('bug agent: the issue template asks for a minimal model and the steps', () => {
@@ -404,8 +485,9 @@ test('bug agent: CONTRIBUTING.md and SECURITY.md describe the switch, the key an
   assert.match(s, /issue[^.]*data/i);
   // the risk that is left is written down
   assert.match(s, /What is left/);
-  assert.match(s, /only one way out, the Anthropic API/);
-  for (const w of ['bug_agent_jail.sh', 'bug-agent-jail']) assert.ok(c.includes(w), w);
+  assert.match(s, /not the main control/);
+  assert.match(s, /never holds the key/);
+  for (const w of ['bug_agent_jail.sh', 'bug-agent-jail', 'bug_agent_proxy.mjs']) assert.ok(c.includes(w), w);
 });
 
 test('bug agent workflow: actionlint finds nothing, where it is installed', (t) => {
@@ -422,6 +504,7 @@ test('bug agent jail: the script parses, refuses a bad user or mode before it to
   execFileSync('bash', ['-n', sh]);
   const run = (...a) => { try { execFileSync('bash', [sh, ...a], { stdio: 'pipe' }); return 0; } catch (e) { return e.status; } };
   assert.equal(run('agent', 'all'), 2);
+  assert.equal(run('agent', 'api;x'), 2);
   assert.equal(run('Agent', 'api'), 2);
   assert.equal(run('a;b', 'none'), 2);
   assert.equal(run(), 2);
@@ -429,12 +512,14 @@ test('bug agent jail: the script parses, refuses a bad user or mode before it to
   const text = read('tools/bug_agent_jail.sh');
   // the published API range, the user matched in OUTPUT, DNS closed, and everything else rejected, for IPv4 and IPv6
   assert.match(text, /range=160\.79\.104\.0\/23/);
-  assert.match(text, /-I OUTPUT 1 -m owner --uid-owner "\$uid" -j BUG_AGENT/);
+  assert.match(text, /-I OUTPUT 1 -m owner --uid-owner "\$uid" -j "\$chain"/);
+  assert.match(text, /chain="BUG_AGENT_\$uid"/, 'a chain per user, so the proxy and the agent keep their own rules');
   assert.match(text, /--dport 53 -j REJECT/);
-  assert.match(text, /iptables -w -A BUG_AGENT -j REJECT\nip6tables -w -A BUG_AGENT -j REJECT/);
+  assert.match(text, /iptables -w -A "\$chain" -j REJECT\nip6tables -w -A "\$chain" -j REJECT/);
+  assert.match(text, /if \[ "\$mode" = api \]; then iptables -w -A "\$chain" -p tcp -d "\$range" --dport 443 -j ACCEPT; fi/, 'only api mode reaches the API');
   // the jail test runs on a pull request that changes any part of it
   const jw = read('.github/workflows/bug-agent-jail.yml');
-  for (const f of ['tools/bug_agent.mjs', 'tools/bug_agent_jail.sh', 'tests/bug-agent-jail.test.mjs', '.github/workflows/bug-agent.yml']) assert.ok(jw.includes('- ' + f), f);
+  for (const f of ['tools/bug_agent.mjs', 'tools/bug_agent_jail.sh', 'tools/bug_agent_proxy.mjs', 'tests/bug-agent-jail.test.mjs', '.github/workflows/bug-agent.yml']) assert.ok(jw.includes('- ' + f), f);
   assert.match(jw, /BUG_AGENT_JAIL_USER: agent/);
   assert.doesNotMatch(jw, /secrets\./);
 });
