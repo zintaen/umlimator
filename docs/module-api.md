@@ -428,10 +428,7 @@ The link's keys are `view`, `node`, `story`, `step` (from 1), `lens`, and `theme
 `reader` stays as the page was opened. `check`, `shot` and `still` describe one run, and the link the page writes
 leaves them out, so Copy link never shares a page in check mode.
 
-The hint line shows the key hints, and for a while what just happened ("Link corrected: …", "Already at the top").
-That message is said in a live region of its own, so a screen reader hears the message and not the key hints after it.
-At a phone's width the key hints are hidden and a message shows as a toast at the foot of the map. ◐ is a toggle named
-"Dark theme", pressed while the page is dark.
+The hint line shows the key hints, and for a while what just happened ("Link corrected: …", "Already at the top"). That message is said in a live region of its own, so a screen reader hears the message and not the key hints after it. At a phone's width the key hints are hidden and a message shows as a toast at the foot of the map, and the details panel's buttons (Open, the light buttons, What if, Close) move to a row under the card's name when the name would have less than 160 px, wrapping there if they must, so the name and Close stay on the screen (audit 61). ◐ is a toggle named "Dark theme", pressed while the page is dark.
 
 **`<umlimator-map>`'s lifecycle**, in `lib/umlimator-element.js`:
 

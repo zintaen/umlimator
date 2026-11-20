@@ -20,3 +20,5 @@ examples/types/*.html
 
 # the integration fixture's standalone page: tests/embed.py renders it from tests/fixtures/integration.json before the browser pages
 tests/fixtures/integration.html
+# the time-lapse page tests/embed.py writes with umlimator.py timelapse for tests/timelapse.html
+tests/fixtures/timelapse.html
