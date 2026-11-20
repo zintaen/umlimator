@@ -958,3 +958,14 @@ test('::: right after a name outside a class statement (A:::foo, A:::foo --> B, 
   const r = read('classDiagram\nA : ::x\nA -- B : ::y');
   assert.deepEqual([r.model.nodes[0].members.map(m => m.label), r.model.edges.map(e => e.label), r.report], [['::x'], ['::y'], []]);
 });
+
+test('a backslash before a capital N is text, not a line break, in the flowchart, class, sequence and state readers; a lower-case \\n still breaks (audit 57)', () => {
+  const labels = m => [...m.nodes.flatMap(n => [n.label, n.props?.description]), ...[...(m.edges || []), ...(m.views || []).flatMap(v => v.edges || [])].map(e => e.label)].filter(x => typeof x === 'string' && x.includes('\\'));
+  assert.deepEqual(labels(readMermaidFlowchart('flowchart LR\n  A["Save to D:\\New folder"] --> B').model), ['Save to D:\\New folder']);
+  assert.deepEqual(labels(read('classDiagram\n  class A\n  note for A "see C:\\Notes\\Nina"').model), ['see C:\\Notes\\Nina']);
+  assert.deepEqual(labels(readMermaidSequence('sequenceDiagram\n  A->>B: open D:\\New folder').model), ['open D:\\New folder']);
+  const st = readMermaidState('stateDiagram-v2\n  s1 : saved to D:\\New folder').model;
+  assert.ok(JSON.stringify(st).includes('saved to D:\\\\New folder'), JSON.stringify(st));
+  assert.equal(readMermaidFlowchart('flowchart LR\n  A["one\\ntwo<BR>three"]').model.nodes[0].label, 'one\ntwo\nthree');
+  assert.equal(readMermaidSequence('sequenceDiagram\n  A->>B: one\\ntwo<Br/>three').model.views[0].edges[0].label, 'one\ntwo\nthree');
+});

@@ -91,7 +91,7 @@ function mcGeneric(s) {
 
 // text in a label, a note or a cardinality: Mermaid's line breaks and entity codes (#quot; #lt; #35;)
 function mcText(s, bad) {
-  return s.replace(/<br\s?\/?>|\\n/gi, '\n').replace(/#(quot|lt|gt|amp|\d{1,6});/g, (all, e) =>
+  return s.replace(/<br\s?\/?>/gi, '\n').replace(/\\n/g, '\n').replace(/#(quot|lt|gt|amp|\d{1,6});/g, (all, e) =>
     ({ quot: '"', lt: '<', gt: '>', amp: '&' })[e] ?? mermaidChar(Number(e), all, bad));
 }
 

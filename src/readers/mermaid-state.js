@@ -58,7 +58,7 @@ function mtFree(used, next, base) {
 
 // text: Mermaid's line breaks and entity codes (#quot; #lt; #59; ...); a named one Mermaid knows and this does not stays
 function mtDecode(s, bad) {
-  return s.replace(/<br\s?\/?>|\\n/gi, '\n').replace(/#(quot|lt|gt|amp|\d{1,6});/g, (all, e) =>
+  return s.replace(/<br\s?\/?>/gi, '\n').replace(/\\n/g, '\n').replace(/#(quot|lt|gt|amp|\d{1,6});/g, (all, e) =>
     ({ quot: '"', lt: '<', gt: '>', amp: '&' })[e] ?? mermaidChar(Number(e), all, bad));
 }
 

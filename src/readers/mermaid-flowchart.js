@@ -78,7 +78,7 @@ function mfText(raw, md, bad) {
     s = s.slice(1, -1);
     if (s.length > 1 && s[0] === '`' && s.at(-1) === '`') { s = s.slice(1, -1); md?.(); }
   }
-  return s.replace(/<br\s?\/?>|\\n/gi, '\n').replace(/#(quot|lt|gt|amp|\d{1,6});/g, (all, e) =>
+  return s.replace(/<br\s?\/?>/gi, '\n').replace(/\\n/g, '\n').replace(/#(quot|lt|gt|amp|\d{1,6});/g, (all, e) =>
     ({ quot: '"', lt: '<', gt: '>', amp: '&' })[e] ?? mermaidChar(Number(e), all, bad));
 }
 
