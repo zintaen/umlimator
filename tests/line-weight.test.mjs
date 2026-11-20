@@ -113,3 +113,15 @@ test("audit 54: a weighted line's first sentence ends at no abbreviation, its fi
   const c = svgOf(layout({ root: 'v', nodes: [{ id: 'a', label: 'A', what: 'Stores orders, e.g. book orders. Also refunds.' }], views: [{ id: 'v', nodeIds: ['a'] }] }, 'v'));
   assert.ok(c.includes('e.g. book') && !c.includes('Also refunds'), c.match(/Stores[^<]*/)?.[0]);
 });
+
+test('audit 54 follow-up: firstSentence checks only a 9-character tail for an abbreviation (constant work per period on any regex engine) and still cuts as before', async () => {
+  const { firstSentence } = await import('../src/core/text.js');
+  const s = 'x e.g. '.repeat(40000) + 'end. tail';
+  const t0 = performance.now();
+  const out = firstSentence(s);
+  assert.ok(out.endsWith('end.'), 'cuts after the first real sentence');
+  assert.ok(performance.now() - t0 < 250, 'under 250 ms');
+  assert.equal(firstSentence('Carries orders, e.g. book orders. Then more.'), 'Carries orders, e.g. book orders.');
+  assert.equal(firstSentence('vs. this. next'), 'vs. this.');
+  assert.equal(firstSentence('Canvas. next'), 'Canvas.');
+});

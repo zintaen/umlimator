@@ -21,7 +21,7 @@ const md = s => String(s ?? '').trim().split(/\n{2,}/).map(b => /^\s*[-*] /.test
    (a model's "play() returns null." or "tour() starts one"), so what follows is not read */
 const ABBR = /(?:^|[^\p{L}.])(?:e\.g|i\.e|approx|vs|cf|incl|esp|viz|ca)\.$/iu;
 const firstSentence = s => { s = String(s ?? ''); for (const m of s.matchAll(/(?<=\.)\s+/g)) { const h = s.slice(0, m.index);
-  if (!ABBR.test(h)) return h; } return s; };
+  if (!ABBR.test(h.slice(-9))) return h; } return s; }; // the longest abbreviation with its boundary is 8 characters; 9 keeps ^ true only at the text's start, and each test stays constant time
 // a Markdown text (md()'s: `code`, **bold**, ==mark==, [links](https://…), - bullets, blank-line paragraphs) as plain words, its
 // first sentence only: what a tooltip and an accessible name say for it (audit 49: a weighted line read its markers aloud).
 // Its first paragraph only, and a bullet list's items each after a "; ", or a ":" that leads in to them (audit 54: they ran on
