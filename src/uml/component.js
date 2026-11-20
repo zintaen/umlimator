@@ -3,7 +3,7 @@ import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { pinCells, rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { CLASSIFIERS, RULES, commentConnect, lineRename, multProblem, memberClash, memberEdit, paramTextProblems, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
+import { CLASSIFIERS, RULES, commentConnect, commentLinkProblems, lineRename, multProblem, memberClash, memberEdit, paramTextProblems, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
 import { SN_ARTIFACTS, SN_PRESENT_RULE, SN_SAY, STRUCT_RULES, portFit, sideProblem, portSides, portsHeld, snKindName, snKindWord, structProblems } from './structure.js';
 import { usedIds, jsonText, labelOr, elName, propTextProblems, isGone } from '../core/model.js';
@@ -98,10 +98,10 @@ const cpEnd = (pic, id) => (pic.I.P.has(id) ? `${cpName(pic.I.P.get(id).x)} of $
 function cpNodeName(model, view, pic, id, bare) { // bare: a port without " of <owner>" (the PDF's rows)
   const { I, lines } = pic, x = I.N.get(id) || (I.P.get(id) || {}).x, of = k => lines.filter(l => l.e.type === k);
   if (!x) return String(id);
-  if (I.P.has(id)) { const by = k => of(k).filter(l => l.e.from === id && I.ty(l.e.to) === 'uml.Interface').map(l => cpName(I.N.get(l.e.to)));
+  if (I.P.has(id)) { const by = k => of(k).filter(l => l.e.from === id && I.ty(l.e.to) === 'uml.Interface').map(l => cpName(I.N.get(l.e.to))).filter((n, i, a) => a.indexOf(n) === i);
     return SN_SAY.port(cpName(x), bare ? null : pic.name(I.P.get(id).owner), { valueType: cpProps(x).valueType, stereotypes: cpStereo(x), provides: by('uml.InterfaceRealization'), requires: by('uml.Usage') }); }
   const b = pic.boxes.find(y => y.id === id); if (b) return b.aria;
-  const st = cpStereo(x), owners = k => of(k).filter(l => l.e.to === id).map(l => pic.name(I.comp(l.e.from)));
+  const st = cpStereo(x), owners = k => [...new Set(of(k).filter(l => l.e.to === id).map(l => pic.name(I.comp(l.e.from))))]; // each once: a component's port and the component realizing one interface (audit 64)
   // an element of no type, drawn as a component: "Element Shop, 1 port", as audit 28 named it, with its ports (audit 29)
   if (x.type === 'uml.Component' || !x.type) { const s = SN_SAY.component(pic.name(id), { stereotypes: st, ports: cpLivePorts(x) }); return x.type ? s : snKindName(x.type) + s.slice('Component'.length); }
   if (x.type === 'uml.Interface') return SN_SAY.iface(pic.name(id), { ball: cpBall(I, view, id), stereotypes: st, providers: owners('uml.InterfaceRealization'), requirers: owners('uml.Usage') });
@@ -233,6 +233,7 @@ const CP_RULES = {
   'component-owner': 'a component\'s owner is a component or a package',
   multiplicity: RULES.multiplicity, // an interface box's attribute's, as the class view's (audit 45)
   'line-inside': 'a line between a box and something it holds, with no port at the box\'s end, is not drawn (a connector: delegation-ends, assembly-ends)',
+  'comment-link': 'a comment link the view draws has a comment at one end',
 };
 function cpProblems(model, view) {
   const out = [...structProblems(model, view)], I = cpIndex(model), say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
@@ -268,7 +269,9 @@ function cpProblems(model, view) {
       say('warning', 'ball-interface', `views[${vi}].present`, [id], `${q(id)} is not an interface: view ${jsonText(view.id)} does not draw it as a ball`);
     // a value the view reads only as written, misspelled or in another case: ignored, so said (audit 47)
     const as = CP_OWN(p, 'as'); if (as != null && as !== 'ball') say('warning', 'present-values', `views[${vi}].present.${id}.as`, [id], `${q(id)}'s as ${jsonText(as)} is not ball: ignored`);
-    if (I.P.has(id)) { const w = sideProblem(CP_OWN(p, 'side'), `views[${vi}].present.${id}.side`, id, q(id)); if (w) out.push(w); } }); }
+    if (I.P.has(id)) { const w = sideProblem(CP_OWN(p, 'side'), `views[${vi}].present.${id}.side`, id, q(id)); if (w) out.push(w); } });
+    // a comment link with no comment at either end, of the lines this view draws (connect refuses one), a warning (audit 64)
+    const drawn = new Set(pic.lines.map(l => l.e)); out.push(...commentLinkProblems(viewLines(model, view).filter(([e]) => drawn.has(e)), I.ty, q)); }
   return out;
 }
 

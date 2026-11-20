@@ -40,7 +40,7 @@ test('the definition: uml.component is registered with its palette, its eight li
   assert.equal(T.layout.rank, false, 'the type ranks the view: the host passes the pins');
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'key', 'member', 'moveTo', 'remove', 'rename']);
-  assert.deepEqual(Object.keys(T.rules).sort(), ['assembly-ends', 'ball-interface', 'component-owner', 'component-realization-ends', 'delegation-ends', 'line-inside', 'manifest-ends', 'multiplicity', 'own-boxes', 'port-owner', 'present-values', 'provided-ends', 'required-ends'].sort());
+  assert.deepEqual(Object.keys(T.rules).sort(), ['assembly-ends', 'ball-interface', 'component-owner', 'component-realization-ends', 'delegation-ends', 'line-inside', 'manifest-ends', 'multiplicity', 'own-boxes', 'port-owner', 'present-values', 'provided-ends', 'required-ends', 'comment-link'].sort());
   assert.deepEqual(['uml.Component', 'uml.Interface', 'uml.Artifact'].map(t => T.member.holds({ type: t })), [true, true, false]);
 });
 
@@ -701,4 +701,28 @@ test('a pin with no clean cell near goes in a fresh row under its box (audit 59)
   // the gallery's accounts package pinned far right drew its box over Sign in
   const g = JSON.parse(readFileSync(new URL('../examples/types/uml-component.json', import.meta.url))), gv = g.views.find(v => (v.nodeIds || []).includes('accounts'));
   for (const col of [21, 28, 40]) { gv.layout = { ...gv.layout, accounts: [col, 2.5] }; assert.deepEqual(bad(g, gv.id), [], 'accounts pinned at column ' + col); }
+});
+
+test('audit 64: a comment link with no comment at either end is warned comment-link by the object, component, deployment and composite structure views that draw it', async () => {
+  await Promise.all(['object', 'deployment', 'composite'].map(f => import(`../src/uml/${f}.js`)));
+  const kinds = { 'uml.object': 'uml.InstanceSpecification', 'uml.component': 'uml.Component', 'uml.deployment': 'uml.Node', 'uml.composite-structure': 'uml.Class' };
+  for (const [diagram, type] of Object.entries(kinds)) {
+    const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 'a', type, label: 'A' }, { id: 'b', type, label: 'B' }, { id: 'n', type: 'uml.Comment', label: 'note' }],
+      edges: [{ id: 'cl', type: 'uml.CommentLink', from: 'a', to: 'b' }, { id: 'ok', type: 'uml.CommentLink', from: 'n', to: 'a' }], views: [{ id: 'v', diagram, nodeIds: ['a', 'b', 'n'] }] };
+    assert.ok(layout(m, 'v').edges.some(e => e._id === 'cl'), diagram);
+    assert.deepEqual(validate(m).filter(p => p.rule === 'comment-link').map(p => [p.level, p.path, p.ids, p.message]), [['warning', 'edges[0]', ['cl', 'a', 'b'], 'comment-link: cl joins "A" and "B", neither a comment']], diagram);
+    assert.ok(Object.hasOwn(diagramOf({ diagram }).rules, 'comment-link'), diagram);
+    // a view that does not show both ends does not draw it, and says nothing
+    m.views[0].nodeIds = ['a', 'n']; assert.deepEqual(validate(m).filter(p => p.rule === 'comment-link'), [], diagram); }
+});
+
+test('audit 64: an interface realized by a component and by its port names the component once, in the component view and the class view', () => {
+  const m = { schemaVersion: 2, root: 'c', nodes: [{ id: 'api', type: 'uml.Component', label: 'Api', members: [{ id: 'api.p', type: 'uml.Port', label: 'p' }] }, { id: 'i', type: 'uml.Interface', label: 'Orders' }, { id: 'k', type: 'uml.Class', label: 'K', members: [{ id: 'k.q', type: 'uml.Port', label: 'q' }] }],
+    edges: [E('r1', 'InterfaceRealization', 'api.p', 'i'), E('r2', 'InterfaceRealization', 'k.q', 'i'), E('r3', 'InterfaceRealization', 'api', 'i')],
+    views: [{ id: 'c', diagram: 'uml.component', nodeIds: ['api', 'i', 'k'] }, { id: 'v', diagram: 'uml.class', nodeIds: ['api', 'i', 'k'] }] };
+  assert.equal(layout(m, 'c').byId.i.aria, 'Interface Orders, provided by Api, K');
+  assert.ok(describe(m, 'c').split('\n').includes('Interface Orders, provided by Api, K.'));
+  assert.ok(describe(m, 'v').split('\n').includes('Component Api, 0 attributes, 0 operations; realizes Orders.'));
+  // each line is still drawn and listed
+  assert.deepEqual(layout(m, 'c').edges.map(e => e._id).sort(), ['r1', 'r2', 'r3']);
 });

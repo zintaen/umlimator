@@ -60,7 +60,7 @@ test('the definition: uml.composite-structure with its palette, three lines, §1
   for (const k of ['layout', 'validate', 'describe', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'field', 'member', 'moveTo', 'remove', 'rename']);
   assert.deepEqual(['uml.Class', 'uml.Component', 'uml.Collaboration', 'uml.Interface'].map(t => T.member.holds({ type: t })), [true, true, true, false]);
-  assert.deepEqual(Object.keys(T.rules), ['subject-shown', 'part-type', 'part-multiplicity', 'connector-part', 'connector-scope', 'connector-drawn', 'binding-ends', 'binding-role', 'collaboration-named', 'present-values', 'own-boxes', 'port-owner', 'manifest-ends']);
+  assert.deepEqual(Object.keys(T.rules), ['subject-shown', 'part-type', 'part-multiplicity', 'connector-part', 'connector-scope', 'connector-drawn', 'binding-ends', 'binding-role', 'collaboration-named', 'comment-link', 'present-values', 'own-boxes', 'port-owner', 'manifest-ends']);
 });
 
 test('the shapes: a part (dashed when shared), a collaboration use (a dashed ellipse), an open collaboration\'s frame', () => {
@@ -201,12 +201,13 @@ const RULE_CASES = {
   'binding-role': m => { m.edges.find(e => e.id === 'checkout-is-publisher').label = 'nobody'; },
   'collaboration-named': m => { node(m, 'order-events').props.collaboration = 'Gone'; },
   'present-values': m => { m.views[0].present = { ...m.views[0].present, 'order-service.api': { side: 'Top' } }; }, // audit 47
+  'comment-link': m => { m.edges.push({ id: 'cl', type: 'uml.CommentLink', from: 'order-service.checkout', to: 'order-service.payments' }); }, // audit 64
   'port-owner': m => { node(m, 'publish-subscribe').members.push(port('publish-subscribe.p')); },
 };
 test('validators: each rule passes the example and fails on a model that breaks it, naming its rule and its elements, at its level', () => {
   const base = validate(CS).map(p => p.rule);
   assert.deepEqual(base, ['part-type', 'part-type'], 'the example\'s two parts typed by classes it does not hold');
-  const LEVEL = { 'part-type': 'warning', 'part-multiplicity': 'warning', 'connector-drawn': 'warning', 'binding-role': 'warning', 'collaboration-named': 'warning', 'present-values': 'warning' };
+  const LEVEL = { 'part-type': 'warning', 'part-multiplicity': 'warning', 'connector-drawn': 'warning', 'binding-role': 'warning', 'collaboration-named': 'warning', 'present-values': 'warning', 'comment-link': 'warning' };
   for (const [rule, breakIt] of Object.entries(RULE_CASES)) { const m = structuredClone(CS); breakIt(m);
     const got = validate(m).filter(p => p.rule === rule && (rule !== 'part-type' || p.ids[0] === 'order-service.pricing'));
     assert.equal(got.length, 1, `${rule}: ${JSON.stringify(validate(m))}`); assert.equal(got[0].level, LEVEL[rule] || 'error', rule);
@@ -1045,4 +1046,15 @@ test('audit 54: a part named with a run of 200,000 dashes is added in linear tim
   const d = '-'.repeat(200000), t = performance.now(), r = T.edits.add(CS, V, { type: 'uml.Property' }, `a${d}b- : T`, { sel: [] });
   assert.ok(performance.now() - t < 500, `${Math.round(performance.now() - t)} ms`);
   assert.match(r[0].element.id, new RegExp(`\\.a-{200000}b$`));
+});
+
+test('audit 64: a connector from a collaboration use to a collaboration is refused by connect and said connector-scope by the view that draws it', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/types/uml-composite-structure.json', import.meta.url))), v = m.views.find(x => x.id === 'inside');
+  for (const [a, b] of [['order-events', 'publish-subscribe'], ['publish-subscribe', 'order-events']]) {
+    assert.deepEqual(T.edits.connect(m, v, a, b, null, { type: 'uml.Connector', label: 'Connector' }), { error: 'A connector\'s ends lie in one structure: the subject\'s ports and parts, or one collaboration\'s roles' });
+    const m1 = apply(m, [{ op: 'add', element: { id: 'zz9', type: 'uml.Connector', from: a, to: b }, view: 'inside' }]);
+    assert.ok(layout(m1, 'inside').edges.some(e => e._id === 'zz9'));
+    const [n1, n2] = [a, b].map(id => JSON.stringify(m.nodes.find(n => n.id === id).label));
+    assert.deepEqual(diagramOf(v).validate(m1, m1.views.find(x => x.id === 'inside')).filter(p => p.ids.includes('zz9')).map(p => [p.level, p.rule, p.message]),
+      [['error', 'connector-scope', `connector-scope: zz9 joins ${n1} and ${n2}, which lie in no structure of this view: its ends are the subject's ports and parts, or one collaboration's roles`]]); }
 });
