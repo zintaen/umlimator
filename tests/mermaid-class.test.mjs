@@ -944,3 +944,17 @@ test('an end\'s multiplicity written with spaces (0 .. 1) is written without the
     assert.deepEqual([...text.matchAll(/%% not written: A-B: (multiplicity .*? end)/g)].map(x => x[1]), said, text);
   }
 });
+
+test('::: right after a name outside a class statement (A:::foo, A:::foo --> B, A --> B:::foo), which Mermaid\'s class parser refuses, is said and not read as a member or a label (audit 54)', () => {
+  const said = '": Mermaid reads ::: only in a class statement, as class A:::foo: not read';
+  for (const [src, nodes] of [['class A\nA:::foo', [['A', []]]], ['A:::foo --> B', []], ['A --> B:::foo', []], ['A :::foo', []], ['A~T~:::foo', []]]) {
+    const r = read(`classDiagram\n${src}`), last = src.split('\n').at(-1);
+    assert.deepEqual(r.model.nodes.map(n => [n.id, (n.members || []).map(m => m.label)]), nodes, src);
+    assert.deepEqual(r.model.edges, [], src);
+    assert.deepEqual(r.report.map(x => [x.line, x.status, x.message]), [[src.split('\n').length + 1, 'skipped', `"${last}${said}`]], src);
+  }
+  // class A:::foo is styling, said as before; a member or label after ": " that starts with :: is read as text, as the writer writes it
+  assert.deepEqual(read('classDiagram\nclass A:::foo').report.map(x => x.message), [':::foo on class A: styling is not read']);
+  const r = read('classDiagram\nA : ::x\nA -- B : ::y');
+  assert.deepEqual([r.model.nodes[0].members.map(m => m.label), r.model.edges.map(e => e.label), r.report], [['::x'], ['::y'], []]);
+});

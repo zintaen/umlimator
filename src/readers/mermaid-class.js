@@ -239,7 +239,7 @@ function mcRelation(s) {
   const b = mcNameG(s, k); if (!b) return null;
   k = mcSkip(s, b[1]);
   if (k < s.length && s[k] !== ':') return null;
-  return { a: a[0], b: b[0], ga: a[2], gb: b[2], c1, c2, left, right, line, label: k < s.length ? s.slice(k + 1).trim() : '' };
+  return { a: a[0], b: b[0], ga: a[2], gb: b[2], c1, c2, left, right, line, label: k < s.length ? s.slice(k + 1).trim() : '', style: s.startsWith(':::', k) };
 }
 
 // a cardinality's text as an end: "1", "0..*", "lines 1..*", "lines"; Mermaid's "many" and "n" are *
@@ -426,10 +426,14 @@ function readMermaidClass(text) {
       say(no, 'skipped', `${word.startsWith('accTitle') ? 'accTitle' : 'accDescr'}: accessibility text is not read`);
       if (word.startsWith('accDescr') && s.includes('{') && !s.includes('}')) block = true;
     } else {
-      const r = mcRelation(s);
+      // ::: after a name outside `class A:::foo`, as a flowchart takes it, is a parse error to Mermaid: said, not read as a
+      // member or a label (audit 54)
+      const r = mcRelation(s), style = () => say(no, 'skipped', `"${mermaidClip(s)}": Mermaid reads ::: only in a class statement, as class A:::foo: not read`);
+      if (r && r.style) { style(); drop(no); continue; }
       if (r) { relations.push({ ...r, no, hint: take('id'), from: generic(cls(r.a, no), r.ga, no), to: generic(cls(r.b, no), r.gb, no) }); drop(no); continue; }
       const n = mcNameG(s, 0), k = n ? mcSkip(s, n[1]) : -1;
-      if (n && s[k] === ':') member(generic(cls(n[0], no), n[2], no), s.slice(k + 1), no);
+      if (n && s.startsWith(':::', k)) style();
+      else if (n && s[k] === ':') member(generic(cls(n[0], no), n[2], no), s.slice(k + 1), no);
       else if (n && k >= s.length) generic(cls(n[0], no), n[2], no);
       else say(no, 'skipped', `"${mermaidClip(s)}" is not understood`);
     }
