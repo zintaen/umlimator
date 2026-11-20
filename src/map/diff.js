@@ -216,7 +216,7 @@ export function diff(before, after) {
     // a line a view lists is drawn only when both its ends are on the view (a card, a box, or one that holds the end): audit 60, a
     // re-pointed line a view still lists, its new end not on the view, read as drawn there, and was neither said nor drawn back removed
     const drew = (m, x) => { const K = keyed(arr(m.edges)), S = new Set([...arr(x.nodeIds), ...arr(x.containers).map(c => c && c.id), ...arr(x.nodes).map(n => n && n.id)]);
-      return new Set(linesOf(m, x).filter(e => !Array.isArray(x.edges) || onCard({ from: e.from }, S) && onCard({ from: e.to }, S)).map(e => K.get(e))); };
+      return new Set(linesOf(m, x).filter(e => !Array.isArray(x.edges) || typedL(v) || onCard({ from: e.from }, S) && onCard({ from: e.to }, S)).map(e => K.get(e))); };
     const d0 = moved1.size ? drew(A, o) : null, d1 = moved1.size ? drew(out, v) : null;
     const s0 = shown(A, o), s1 = shown(out, v), hid = s0.filter(id => moved1.has(id) ? d0.has(id) && !d1.has(id) : !s1.includes(id)), put = s1.filter(id => moved1.has(id) ? d1.has(id) && !d0.has(id) : !s0.includes(id));
     // a line taken out by its ends before, one put in by its ends after (audit 59: a re-pointed line put in read its old ends)
@@ -224,8 +224,9 @@ export function diff(before, after) {
     hid.forEach(id => { viewSaid.push(`takes ${ln(id)} out of the view ${vn}`); touched.add(v.id); }); put.forEach(id => says(`puts ${ln(id, true)}`));
     // a re-pointed line taken out, drawn back removed by its old ends wherever the view drew it (audit 60: only a view that stopped
     // listing it drew it back; one that still lists it, or lists none, drew nothing). Without its id: a copy between other ends
-    // under the model line's id is a second line (validate()), and the sketch would draw it for the model's line
-    const ghost = new Map(hid.filter(id => moved1.has(id)).map(id => [id, (({ id: _, ...e }) => line(e, 'removed'))(line0.get(id))]));
+    // under the model line's id is a second line (validate()), and the sketch would draw it for the model's line. Not in a typed view,
+    // whose own line needs an id and whose type may read it as the model's (a C4 step): there it is as audit 59 left it
+    const ghost = new Map(typedL(v) ? [] : hid.filter(id => moved1.has(id)).map(id => [id, (({ id: _, ...e }) => line(e, 'removed'))(line0.get(id))]));
     // the steps' order: a view's list as it runs (a model line by id, one of its own by its id), else its model lines. A step
     // with no id is matched by what it is (its ends and label), and by its Ref name only when nothing matches it, so taking
     // out an earlier a->b step does not read as the later one moving (audit 20)
