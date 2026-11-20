@@ -518,6 +518,15 @@ m, un, _ = quick("kubernetes", json.dumps([W(0, {"app": "a", "tier": "web"}), W(
 ok("kubernetes · a Service selects every workload whose labels hold all of its selector, by its rarest label, in file order",
    [(e["from"], e["to"]) for e in m["edges"]] == [("svc-s0", "deploy-d0"), ("svc-s1", "deploy-d0"), ("svc-s1", "deploy-d2"),
                                                 ("svc-s2", "deploy-d0"), ("svc-s2", "deploy-d1")] and un == [], (m["edges"], un))
+# audit 63: a resource backend was said as "Service null", and a v1beta1 spec.backend was dropped with nothing said
+m, un = imp.read("kubernetes", json.dumps({"kind": "List", "items": [
+    {"kind": "Service", "metadata": {"name": "api"}, "spec": {"selector": {"app": "api"}}},
+    {"kind": "Ingress", "metadata": {"name": "ing"}, "spec": {"defaultBackend": {"resource": {"apiGroup": "k8s.example.com", "kind": "StorageBucket", "name": "static"}},
+                                                         "rules": [{"http": {"paths": [{"path": "/x", "backend": {}}]}}]}},
+    {"kind": "Ingress", "apiVersion": "extensions/v1beta1", "metadata": {"name": "old"}, "spec": {"backend": {"serviceName": "api", "servicePort": 80}}}]}), "x")
+ok("kubernetes · an Ingress resource backend is said as one, a backend naming nothing as naming no Service, a v1beta1 spec.backend read as the default route",
+   ends(m) == [("ing-old", "svc-api", "default")] and un == [("items[1]", "Ingress ing: route /x names no Service: not imported"),
+                                                            ("items[1]", "Ingress ing routes default to StorageBucket static (a resource backend), which is not imported")], (ends(m), un))
 m, _, dt = quick("compose", json.dumps({"services": {f"s{i}": {"networks": [f"n{i % 2}" if i < 4 else f"n{i}"]} for i in range(20000)}}))
 ok("hostile · 20000 compose services on their own networks read in linear time", dt < 3 and m["views"][0]["containers"][0]["nodeIds"] == ["s0", "s2"], dt)
 m, un, _ = quick("compose", json.dumps({"services": {}, "x": " " * imp.LIMIT}))

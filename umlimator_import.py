@@ -1555,10 +1555,16 @@ def kubernetes(d, name):
             hosts = len({word(x.get("host")) for x in rules}) > 1
             routes = [(((word(r.get("host")) or "") if hosts else "") + (word(p.get("path")) or "/"), obj(p.get("backend")))
                       for r in rules for p in objs_in(obj(r.get("http")).get("paths"))]
-            for label, b in routes + ([("default", obj(spec["defaultBackend"]))] if spec.get("defaultBackend") else []):
+            dflt = spec.get("defaultBackend") or spec.get("backend")  # networking.k8s.io/v1, or the older v1beta1 (audit 63)
+            for label, b in routes + ([("default", obj(dflt))] if dflt else []):
                 to = obj(b.get("service")).get("name") or b.get("serviceName")  # networking.k8s.io/v1, or the older v1beta1
+                res = obj(b.get("resource"))  # a resource backend (a bucket, say): no Service, said as what it is (audit 63)
                 if isinstance(to, str) and (ns, to) in svc:
                     m.line(cid, svc[(ns, to)], label)
+                elif to is None and res:
+                    m.say(at(i), f"Ingress {nm} routes {label} to {word(res.get('kind')) or 'a resource'} {word(res.get('name')) or spell(res.get('name'))} (a resource backend), which is not imported")
+                elif to is None:
+                    m.say(at(i), f"Ingress {nm}: route {label} names no Service: not imported")
                 else:
                     m.say(at(i), f"Ingress {nm} routes to Service {to if isinstance(to, str) else spell(to)}, which is not here")
         elif kind not in ("Service", "Ingress"):  # an env value that names a Service: its host, as name, name.namespace or name.namespace.svc...
