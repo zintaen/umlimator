@@ -1831,3 +1831,35 @@ test('audit 57: describe(), paths(), reach() and critical() on the diff model re
   const dc = diff(A, C).model;
   assert.equal(describe(dc, 'v'), describe(C, 'v')); assert.deepEqual(reach(dc, 'v', 'web'), reach(C, 'v', 'web'));
 });
+test('audit 58: a line re-pointed from a card that goes, or to one that comes, is said as changed, not as put in or taken out of the view', () => {
+  const N = [{ id: 'web', label: 'Web' }, { id: 'new', label: 'New API' }, { id: 'old', label: 'Old API' }];
+  const A = { schemaVersion: 1, nodes: N, edges: [{ id: 'calls', from: 'web', to: 'old', label: 'orders' }], views: [{ id: 'v', title: 'Shop', nodeIds: ['web', 'new', 'old'] }] };
+  const B = structuredClone(A); B.edges[0].to = 'new'; B.nodes = B.nodes.filter(n => n.id !== 'old'); B.views[0].nodeIds = ['web', 'new'];
+  assert.deepEqual(diff(A, B).summary, ['removes Old API', 'changes the line from Web to New API (to)']);
+  const A2 = structuredClone(A), B2 = structuredClone(B); A2.views[0].edges = ['calls']; B2.views[0].edges = ['calls'];
+  assert.deepEqual(diff(A2, B2).summary, ['removes Old API', 'changes the line from Web to New API (to)']);
+  const C = { schemaVersion: 1, nodes: [N[0], N[2]], edges: [{ id: 'calls', from: 'web', to: 'old', label: 'orders' }], views: [{ id: 'v', title: 'Shop', nodeIds: ['web', 'old'] }] };
+  const D = { schemaVersion: 1, nodes: N, edges: [{ id: 'calls', from: 'web', to: 'new', label: 'orders' }], views: [{ id: 'v', title: 'Shop', nodeIds: ['web', 'new', 'old'] }] };
+  assert.deepEqual(diff(C, D).summary, ['adds New API', 'changes the line from Web to New API (to)']);
+  // a line the view really hid (its ends kept): still said
+  const E = structuredClone(A2); E.views[0].edges = [];
+  assert.deepEqual(diff(A2, E).summary, ['takes the line from Web to Old API (orders) out of the view Shop']);
+});
+test('audit 58: a removed card is drawn back as the view presented it (a ball interface stays a ball)', async () => {
+  const U = await import('../lib/umlimator-all.js'), m = JSON.parse(readFileSync(modelUrl('types/uml-component')));
+  const d = U.diff(m, U.apply(m, [{ op: 'delete', id: 'i-orders' }])).model, at = (x, id) => U.layout(x, 'components').nodes.find(n => n.id === id);
+  assert.deepEqual(d.views.find(v => v.id === 'components').present, m.views.find(v => v.id === 'components').present);
+  assert.equal(at(m, 'i-orders').shape, 'ball'); assert.equal(at(d, 'i-orders').shape, 'ball'); assert.equal(at(d, 'i-orders').change, 'removed');
+  const e = x => U.layout(x, 'components').edges.find(l => l.id === 'storefront-requires-orders');
+  assert.deepEqual(e(d).end, e(m).end);
+});
+test('audit 58: describe() of a typed view on the diff model reads the model after (ER, flowchart, DFD, C4, information flow)', async () => {
+  const U = await import('../lib/umlimator-all.js');
+  for (const f of ['bookshop-schema', 'returns-flowchart', 'bookshop-data-flow', 'bookshop-c4', 'order-information-flow']) {
+    const a = JSON.parse(readFileSync(modelUrl(f)));
+    for (const id of [a.edges[0].id, a.nodes[a.nodes.length - 1].id]) { const b = U.apply(a, [{ op: 'delete', id }]), d = U.diff(a, b).model;
+      for (const v of b.views) assert.equal(U.describe(d, v.id), U.describe(b, v.id), `${f} without ${id}, ${v.id}`); }
+    // a card taken out of a view only, and put back
+    for (const [i, v] of a.views.entries()) { const id = v.nodeIds.at(-1), b = structuredClone(a); b.views[i].nodeIds = v.nodeIds.filter(x => x !== id);
+      assert.equal(U.describe(U.diff(a, b).model, v.id), U.describe(b, v.id), `${f} ${v.id} without ${id}`); } }
+});

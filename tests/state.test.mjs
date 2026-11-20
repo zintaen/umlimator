@@ -953,3 +953,13 @@ test('audit 57: a composite state removed by Delete or Shift + Delete: its regio
     assert.equal(name(d, 'fulfilling.parcel'), name(m, 'fulfilling.parcel'), `${fm}`);
     assert.equal(name(diff(after, m).model, 'delivery.a'), 'Region A of In delivery, 1 state', `${fm}: what comes back is counted`); }
 });
+test('audit 58: a composite state taken out of the view (kept in the model): its regions are marked removed on the diff page, as when it is deleted', () => {
+  const inside = new Set(['fulfilling']), regs = new Set(SM.nodes.find(n => n.id === 'fulfilling').members.map(r => r.id));
+  for (let grew = true; grew;) { grew = false; for (const n of SM.nodes) if ((inside.has(n.parent) || regs.has(n.parent)) && !inside.has(n.id)) { inside.add(n.id); grew = true; } }
+  const out = structuredClone(SM); out.views[0].nodeIds = out.views[0].nodeIds.filter(id => !inside.has(id));
+  for (const [x, y, c] of [[SM, out, 'removed'], [out, SM, 'added']]) { const g = layout(diff(x, y).model, V.id), s = svgOf(g);
+    for (const id of regs) { assert.equal(g.families.find(f => f.id === id).change, c, `${id} ${c}`);
+      if (c === 'removed') assert.match(s, new RegExp(`data-family="${id.replace('.', '\\.')}"[^>]*aria-label="Region [^"]*, removed" data-change="removed"`)); } }
+  // the view as it was: nothing marked
+  assert.ok(layout(diff(SM, SM).model, V.id).families.every(f => !f.change));
+});
