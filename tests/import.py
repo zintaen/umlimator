@@ -454,6 +454,25 @@ _, _, dt = quick("mermaid", "flowchart\na -- " + "." * 1000000 + "x")
 ok("hostile · a link's text of 1000000 dots reads in linear time", dt < 2, dt)
 m, _, dt = quick("mermaid", "flowchart\na-->b" + ';"' * 400000 + "\nc-->d;e-->f")
 ok("hostile · a line of 400000 ;\" pairs splits in linear time, and ; outside quotes still splits", dt < 3 and line(m, "e", "f"), dt)
+# audit 61: each line walked every open { that was not a boundary to find its box, and each element every box: quadratic
+_, un, dt = quick("plantuml", "@startuml\n" + "{\n" * 500000)
+_, un2, dt2 = quick("mermaid", "C4Context\n" + "{\n" * 500000)
+m, un3, dt3 = quick("plantuml", "@startuml\n" + "".join(f'System_Boundary(b{i}, "b") {{\n' for i in range(12000))
+                    + "".join(f'System(s{i}, "s")\n' for i in range(30000)))
+ok("hostile · 500000 open { (C4-PlantUML or Mermaid C4), or 12000 boundaries holding 30000 systems, read in linear time",
+   dt < 3 and dt2 < 3 and dt3 < 3 and len(un) - 1 == len(un2) == 1000000 and box(m, "context", "b11999")["nodeIds"][-1] == "s29999", (dt, dt2, dt3))
+# audit 61: each link of a line copied the rest of it to see whether it was blank: quadratic on one 1 MB line of links
+_, _, dq = quick("mermaid", "flowchart LR\n" + "A-->" * 65000)
+_, _, df = quick("mermaid", "flowchart LR\n" + "A-->" * 260000)
+ok("hostile · a 1 MB line of 260000 links reads in linear time", df < 1.5 or df / dq < 6, (dq, df))
+# audit 61: a link with no arrowhead, or a circle or cross end, came in as a plain arrow, said nowhere; o--o and x--x as one
+m, un = imp.read("mermaid", "flowchart LR\n A --- B\n A --o C\n A --x D\n A o--o E\n A -.- F\n A === G\n A x--x H\n A <--> I\n A -- t --o J\n A --> K\n", "x")
+ok("mermaid · no arrowhead, circle and cross ends are said, as the typed reader's; o--o and x--x are two lines, as <-->",
+   un == [(2, "A --- B: no arrowhead: read as a line"), (3, "A --o C: a circle end: read as a line"), (4, "A --x D: a cross end: read as a line"),
+          (5, "A o--o E: a circle end, an arrowhead at each end: read as two lines"), (6, "A -.- F: no arrowhead: read as a line"),
+          (7, "A === G: no arrowhead: read as a line"), (8, "A x--x H: a cross end, an arrowhead at each end: read as two lines"),
+          (10, "A -- ... --o J: a circle end: read as a line")]
+   and all(line(m, b, "A") for b in "EHI") and not any(line(m, b, "A") for b in "BCDFGJK"), un)
 t0 = time.time()
 ok("hostile · detect() reads 400000 unclosed /* and 1000000 blank lines in linear time",
    imp.detect("x", "/*" * 400000) is None and imp.detect("x", "\n" * 1000000 + "x") is None and time.time() - t0 < 1, time.time() - t0)
