@@ -38,9 +38,9 @@ test('read(write(model)) is example 16 without its comment, and nothing is repor
   // the writer's text is Mermaid's: a quoted name, a field quoted, containment, a relationship, an id it would not derive
   assert.match(text, /\n {2}%% id: assist\n {2}requirement "Pedal assistance" \{\n {4}id: "EB-1\.1"\n {4}text: "The motor shall assist the rider only while the rider is pedalling\."\n {2}\}\n/);
   assert.match(text, /\n {2}element Battery \{\n {4}type: Block\n {2}\}\n/);
-  assert.match(text, /\n {2}"E-bike specification" - contains -> Range\n/);
+  assert.match(text, /\n {2}"Cargo bike specification" - contains -> "Delivery range"\n/);
   assert.match(text, /\n {2}Battery - satisfies -> "Battery capacity"\n/);
-  assert.match(text, /\n {2}%% id: capacity-from-range\n {2}"Battery capacity" - derives -> Range\n/);
+  assert.match(text, /\n {2}%% id: capacity-from-range\n {2}"Battery capacity" - derives -> "Delivery range"\n/);
   // a comment and its link are not written, and said so
   assert.match(text, /\n {2}%% not written: why-500 \(uml\.Comment\)\n {2}%% not written: why-500-link \(uml\.CommentLink\)\n$/);
   assert.deepEqual(core(back.model), []);

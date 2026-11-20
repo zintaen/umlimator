@@ -363,7 +363,7 @@ test('audit 9: an element or member typed toString or constructor, or a port of 
 
 test('audit 21: F2 emptied on a bdd or req frame that is no element removes the view\'s title (rename.empty lets the field pass \'\' on)', async () => {
   const { apply } = await import('../src/core/apply.js'), { layout } = await import('../src/map/api.js');
-  for (const [f, head] of [['ebike-blocks', 'bdd [Model] E-bike: blocks'], ['ebike-requirements', 'req [Model] E-bike: requirements']]) {
+  for (const [f, head] of [['ebike-blocks', 'bdd [Model] Cargo e-bike: blocks'], ['ebike-requirements', 'req [Model] Cargo e-bike: requirements']]) {
     const m = JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url), 'utf8')), v = m.views[0], R = diagramOf(v).edits.rename, frame = `${v.id}->frame`;
     assert.equal(typeof R.empty, 'function', f);
     assert.equal(R.empty(m, v, frame), true, 'the frame reads an emptied field');
@@ -386,5 +386,5 @@ test('audit 33: a frame with no subject in an untitled model names "model" with 
   }
   const m = JSON.parse(readFileSync(new URL('../examples/ebike-blocks.json', import.meta.url))); delete m.title;
   const v = m.views.find(x => x.diagram === 'sysml.block-definition' && x.subject == null), { describe } = await import('../src/map/insight.js');
-  assert.equal(describe(m, v.id).split('\n')[1], 'Block definition diagram of model: E-bike blocks.');
+  assert.equal(describe(m, v.id).split('\n')[1], 'Block definition diagram of model: Cargo bike blocks.');
 });

@@ -1043,8 +1043,8 @@ test('audit 46: diff() marks a member new to an element that stayed and says "ad
   const all = await fromSrc(), eb = read45('ebike-structure'), e1 = structuredClone(eb);
   e1.nodes.find(n => n.id === 'ebike').members.push({ id: 'ebike.battery2', type: 'uml.Property', label: 'battery2', props: { valueType: 'Battery', multiplicity: '1' } });
   const keep = JSON.stringify(e1), d = all.diff(eb, e1); assert.equal(JSON.stringify(e1), keep, 'the after model is not changed');
-  assert.deepEqual(d.summary, ['adds battery2 to EBike']); assert.match(tag45(svgOf(all.layout(d.model, 'inside-ebike')), 'data-id="ebike.battery2"'), /, new" data-change="new"/);
-  const back = all.diff(e1, eb); assert.deepEqual(back.summary, ['removes battery2 from EBike']);
+  assert.deepEqual(d.summary, ['adds battery2 to CargoBike']); assert.match(tag45(svgOf(all.layout(d.model, 'inside-ebike')), 'data-id="ebike.battery2"'), /, new" data-change="new"/);
+  const back = all.diff(e1, eb); assert.deepEqual(back.summary, ['removes battery2 from CargoBike']);
   assert.match(tag45(svgOf(all.layout(back.model, 'inside-ebike')), 'data-id="ebike.battery2"'), /, removed" data-change="removed"/);
   // a lane added to a pool, and one removed (its elements moved to the pool)
   const bp = read45('bookshop-order-to-shipment'), pool = bp.nodes.find(n => n.type === 'bpmn.Participant' && (n.members || []).some(x => x.type === 'bpmn.Lane')), lane = pool.members.find(x => x.type === 'bpmn.Lane');
@@ -1651,7 +1651,7 @@ test('audit 53: an IDEF1X view that lists its lines marks no entity when one rel
 test('audit 53: a namesake interface or constraint block that comes or goes marks the ports and constraint properties it leaves unresolved', async () => {
   const all = await fromSrc();
   const cases = [['ebike-structure', 'inside-ebike', { id: 'ci2', type: 'sysml.InterfaceBlock', label: 'ChargeInterface' }, ['ebike.battery->battery.charge', 'ebike.dock->dock.charge'], n => n.flow ?? null],
-    ['ebike-range', 'range-analysis', { id: 're2', type: 'sysml.ConstraintBlock', label: 'RangeEquation' }, ['ebike.eco', 'ebike.boost'], n => n.expr ?? null]];
+    ['ebike-range', 'range-analysis', { id: 're2', type: 'sysml.ConstraintBlock', label: 'RangeEquation' }, ['ebike.empty', 'ebike.laden'], n => n.expr ?? null]];
   for (const [f, vid, twin, ids, look] of cases) { const m = read45(f), b = structuredClone(m); b.nodes.push(twin);
     for (const [x, y, word] of [[m, b, 'added'], [b, m, 'deleted']]) { const d = all.diff(x, y), g = all.layout(d.model, vid), at = id => g.nodes.find(n => n.id === id);
       assert.ok(d.views.includes(vid), `${f}: namesake ${word}, the view listed`);

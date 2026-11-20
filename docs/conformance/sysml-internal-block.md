@@ -3,11 +3,7 @@
 Release 0.25.0 (milestone 3, `docs/diagrams/notes/milestone-3.md` §8). Support is claimed by level (decision D3): **render**
 and **edit** on the subset below. No interchange: Mermaid has no internal block notation, and there is no XMI.
 
-A view of a version-2 model whose `diagram` is `"sysml.internal-block"` is an internal block diagram, drawn by
-`lib/umlimator-all.js` (`umlimator/all`); `lib/umlimator.js` draws it as plain cards with a warning. The vocabulary is
-`docs/diagrams/model.md` §2, row 18; the example is [`examples/ebike-structure.json`](../../examples/ebike-structure.json),
-inside the e-bike: the battery, controller, motor, two lights and the dock it refers to, wired by connectors carrying DC
-power and phase current.
+A view of a version-2 model whose `diagram` is `"sysml.internal-block"` is an internal block diagram, drawn by `lib/umlimator-all.js` (`umlimator/all`); `lib/umlimator.js` draws it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2, row 18; the example is [`examples/ebike-structure.json`](../../examples/ebike-structure.json), inside the bookshop's delivery cargo e-bike: the battery, controller, motor, two lights and the dock at the dispatch bay it refers to, wired by connectors carrying DC power and phase current.
 
 ## The subset, and SysML v1.7's clauses
 
@@ -17,7 +13,7 @@ on a copy, filtered by view kind, and dresses the result (S11): the frame, port 
 
 | SysML v1.7 | In the model | Drawn as |
 |---|---|---|
-| Annex A, the frame | the view's `subject`, a block it lists in `nodeIds` | the subject's box is the frame, `ibd [Block] EBike [view title]`, its own ports on it |
+| Annex A, the frame | the view's `subject`, a block it lists in `nodeIds` | the subject's box is the frame, `ibd [Block] CargoBike [view title]`, its own ports on it |
 | 8, part properties | `sysml.PartProperty` of the subject | a box `name : Type [mult]`, the ports of its type on its border |
 | 8, reference properties | `sysml.ReferenceProperty` | a dashed box |
 | 8, value properties | `sysml.ValueProperty` | a box `name : Type` |
@@ -76,10 +72,7 @@ Measured on `examples/ebike-structure.json` (0.25.0); the PDF's text read back b
 
 ## Accessibility
 
-Names: "Part battery: Battery [1], in EBike, 3 ports"; "Port charge: ChargeInterface of dock, conjugated, flow in and
-out"; "Connector from power of battery to supply of controller, carrying DCPower from power to supply". Text at 4.5:1
-(a port's name against the stage), lines and outlines at 3:1 in both themes (`tests/internal-block.html`,
-`tests/sysml.html`); every gesture has a key (`docs/editing.md`).
+Names: "Part battery: Battery [1], in CargoBike, 3 ports"; "Port charge: ChargeInterface of dock, conjugated, flow in and out"; "Connector from power of battery to supply of controller, carrying DCPower from power to supply". Text at 4.5:1 (a port's name against the stage), lines and outlines at 3:1 in both themes (`tests/internal-block.html`, `tests/sysml.html`); every gesture has a key (`docs/editing.md`).
 
 ## Performance (P1)
 

@@ -1,11 +1,11 @@
 {
   "$schema": "../lib/umlimator.schema.json",
   "schemaVersion": 2,
-  "title": "E-bike: blocks",
+  "title": "Cargo e-bike: blocks",
   "root": "blocks",
   "nodes": [
-    {"id": "rental-vehicle", "type": "sysml.Block", "label": "RentalVehicle"},
-    {"id": "ebike", "type": "sysml.Block", "label": "EBike",
+    {"id": "delivery-vehicle", "type": "sysml.Block", "label": "DeliveryVehicle"},
+    {"id": "ebike", "type": "sysml.Block", "label": "CargoBike",
       "members": [
         {"id": "ebike.battery", "type": "sysml.PartProperty", "label": "battery", "props": {"valueType": "Battery", "multiplicity": "1"}},
         {"id": "ebike.controller", "type": "sysml.PartProperty", "label": "controller", "props": {"valueType": "Controller", "multiplicity": "1"}},
@@ -15,13 +15,13 @@
         {"id": "ebike.dock", "type": "sysml.ReferenceProperty", "label": "dock", "props": {"valueType": "Dock", "multiplicity": "0..1"}},
         {"id": "ebike.batteryCapacity", "type": "sysml.ValueProperty", "label": "batteryCapacity", "props": {"valueType": "Energy"}},
         {"id": "ebike.usableShare", "type": "sysml.ValueProperty", "label": "usableShare", "props": {"valueType": "Real"}},
-        {"id": "ebike.ecoConsumption", "type": "sysml.ValueProperty", "label": "ecoConsumption", "props": {"valueType": "EnergyPerDistance"}},
-        {"id": "ebike.boostConsumption", "type": "sysml.ValueProperty", "label": "boostConsumption", "props": {"valueType": "EnergyPerDistance"}},
-        {"id": "ebike.ecoRange", "type": "sysml.ValueProperty", "label": "ecoRange", "props": {"valueType": "Distance"}},
-        {"id": "ebike.boostRange", "type": "sysml.ValueProperty", "label": "boostRange", "props": {"valueType": "Distance"}},
+        {"id": "ebike.emptyConsumption", "type": "sysml.ValueProperty", "label": "emptyConsumption", "props": {"valueType": "EnergyPerDistance"}},
+        {"id": "ebike.ladenConsumption", "type": "sysml.ValueProperty", "label": "ladenConsumption", "props": {"valueType": "EnergyPerDistance"}},
+        {"id": "ebike.emptyRange", "type": "sysml.ValueProperty", "label": "emptyRange", "props": {"valueType": "Distance"}},
+        {"id": "ebike.ladenRange", "type": "sysml.ValueProperty", "label": "ladenRange", "props": {"valueType": "Distance"}},
         {"id": "ebike.usable", "type": "sysml.ConstraintProperty", "label": "usable", "props": {"valueType": "UsableEnergy"}},
-        {"id": "ebike.eco", "type": "sysml.ConstraintProperty", "label": "eco", "props": {"valueType": "RangeEquation"}},
-        {"id": "ebike.boost", "type": "sysml.ConstraintProperty", "label": "boost", "props": {"valueType": "RangeEquation"}}
+        {"id": "ebike.empty", "type": "sysml.ConstraintProperty", "label": "empty", "props": {"valueType": "RangeEquation"}},
+        {"id": "ebike.laden", "type": "sysml.ConstraintProperty", "label": "laden", "props": {"valueType": "RangeEquation"}}
       ] },
     {"id": "battery", "type": "sysml.Block", "label": "Battery",
       "members": [
@@ -76,10 +76,10 @@
     {"id": "ebike-battery", "type": "uml.Association", "from": "ebike", "to": "battery", "props": {"ends": {"from": {"aggregation": "composite", "multiplicity": "1"}, "to": {"role": "battery", "multiplicity": "1"}}}},
     {"id": "ebike-motor", "type": "uml.Association", "from": "ebike", "to": "motor", "props": {"ends": {"from": {"aggregation": "composite", "multiplicity": "1"}, "to": {"role": "motor", "multiplicity": "1"}}}},
     {"id": "ebike-controller", "type": "uml.Association", "from": "ebike", "to": "controller", "props": {"ends": {"from": {"aggregation": "composite", "multiplicity": "1"}, "to": {"role": "controller", "multiplicity": "1"}}}},
-    {"id": "ebike-is-rental-vehicle", "type": "uml.Generalization", "from": "ebike", "to": "rental-vehicle"},
+    {"id": "ebike-is-delivery-vehicle", "type": "uml.Generalization", "from": "ebike", "to": "delivery-vehicle"},
     {"id": "dock-uses-charge-interface", "type": "uml.Dependency", "from": "dock", "to": "charge-interface", "props": {"stereotypes": ["use"]}}
   ],
   "views": [
-    {"id": "blocks", "diagram": "sysml.block-definition", "title": "E-bike blocks", "parent": null, "direction": "down", "nodeIds": ["rental-vehicle", "ebike", "battery", "motor", "controller", "light", "dock", "charge-interface", "usable-energy", "range-equation", "voltage", "energy"], "edges": ["ebike-battery", "ebike-motor", "ebike-controller", "ebike-is-rental-vehicle", "dock-uses-charge-interface"]}
+    {"id": "blocks", "diagram": "sysml.block-definition", "title": "Cargo bike blocks", "parent": null, "direction": "down", "nodeIds": ["delivery-vehicle", "ebike", "battery", "motor", "controller", "light", "dock", "charge-interface", "usable-energy", "range-equation", "voltage", "energy"], "edges": ["ebike-battery", "ebike-motor", "ebike-controller", "ebike-is-delivery-vehicle", "dock-uses-charge-interface"]}
   ]
 }

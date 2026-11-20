@@ -1141,9 +1141,9 @@ with tempfile.TemporaryDirectory() as tmp:
     if part("diff Action milestone 3"):
         # C10 for milestone 3 (M3.7): the Action's step on SysML's four e-bike models, each changed in a pull request
         SYSML = {"ebike-requirements": (lambda m: rename(m, "capacity", "Pack capacity"), "requirements", "renames Battery capacity to Pack capacity"),
-                 "ebike-blocks": (lambda m: rename(m, "rental-vehicle", "HireVehicle"), "blocks", "renames RentalVehicle to HireVehicle"),
-                 "ebike-structure": (lambda m: rename(m, "ebike", "Bike"), "inside-ebike", "renames EBike to Bike"),
-                 "ebike-range": (lambda m: rename(m, "ebike", "Bike"), "range-analysis", "renames EBike to Bike")}
+                 "ebike-blocks": (lambda m: rename(m, "delivery-vehicle", "HireVehicle"), "blocks", "renames DeliveryVehicle to HireVehicle"),
+                 "ebike-structure": (lambda m: rename(m, "ebike", "Bike"), "inside-ebike", "renames CargoBike to Bike"),
+                 "ebike-range": (lambda m: rename(m, "ebike", "Bike"), "range-analysis", "renames CargoBike to Bike")}
         d = t / "action-m3"; (d / "examples").mkdir(parents=True)
         dgit = lambda *x: subprocess.run(["git", "-C", str(d), "-c", "user.name=test", "-c", "user.email=test@example.invalid", *x], capture_output=True, text=True, check=True)
         dgit("init", "-q")
@@ -1431,13 +1431,13 @@ with tempfile.TemporaryDirectory() as tmp:
     # M3.7: SysML's tables (notes/milestone-3.md §13): a requirement's id, text and derived relations, each relationship by its
     # keyword; a block's compartments, an interface block's flow properties, a constraint block's expression and parameters, a
     # value type's unit; the subject's members; each connector with the item it carries, each binding by its ends
-    PDF3 = {"ebike-requirements": ["RangeRequirementid:EB-1.2text:Afullchargeshallgiveatleast60kmofassistedriding.containedinE-bikespecificationderivesBatterycapacity",
-                                   "BatterycapacityRequirementid:BAT-1", "Battery→Batterycapacity«satisfy»Satisfy", "Rangerideonthetestcircuit→Range«verify»Verify"],
+    PDF3 = {"ebike-requirements": ["DeliveryrangeRequirementid:EB-1.2text:Afullchargeshallgiveatleast60kmofassistedridingwithafull40kgpayload.containedinCargobikespecificationderivesBatterycapacity",
+                                   "BatterycapacityRequirementid:BAT-1", "Battery→Batterycapacity«satisfy»Satisfy", "Ladenrangerideonthetestcircuit→Deliveryrange«verify»Verify"],
             "ebike-blocks": ["ChargeInterfaceInterfaceblockflowproperties:indc:DCPowerflowproperties:outstateOfCharge:Percent",
                              "RangeEquationConstraintblockconstraints:{range=energy/consumption}parameters:range:Distance", "EnergyValuetypequantity:unit=Wh",
-                             "EBike→RentalVehicleGeneralization"],
-            "ebike-structure": ["EBikeBlockbattery:Battery[1]", "refdock:Dock[0..1]", "DCPower,batterytocontrollerConnector"],  # a connector: a Lines row (audit 17)
-            "ebike-range": ["eco:RangeEquation", "ecoRangetorangeofecoBindingconnector", "usableofusabletoenergyofboostBindingconnector"]}  # a binding: a Lines row only (audit 18)
+                             "CargoBike→DeliveryVehicleGeneralization"],
+            "ebike-structure": ["CargoBikeBlockbattery:Battery[1]", "refdock:Dock[0..1]", "DCPower,batterytocontrollerConnector"],  # a connector: a Lines row (audit 17)
+            "ebike-range": ["empty:RangeEquation", "emptyRangetorangeofemptyBindingconnector", "usableofusabletoenergyofladenBindingconnector"]}  # a binding: a Lines row only (audit 18)
     for n, want in PDF3.items():
         if not part.of(f"typed {n}"):
             continue

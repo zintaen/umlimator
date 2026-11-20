@@ -491,7 +491,7 @@
   },
   "sysml-block-definition": {
    "title": "Block definition diagram",
-   "intro": "A city e-bike's blocks: the bike and its battery, motor, controller and lights, the dock it may stand in, the interface block of the charge link, the constraint blocks behind its range, and the value types they use.",
+   "intro": "The bookshop's delivery cargo e-bike, which carries book orders to local customers: the bike and its battery, motor, controller, lights and cargo box with its parcel lock, the dock at the shop's dispatch bay it may stand in, the interface block of the charge link, the constraint blocks behind its delivery range, and the value types they use.",
    "main": "ebike-blocks",
    "alternatives": [
     {
@@ -500,10 +500,10 @@
     }
    ],
    "shows": [
-    "The frame and its header, `bdd [Package] EBikeSystem [A city e-bike's blocks]`",
+    "The frame and its header, `bdd [Package] DeliveryFleet [The delivery bike's blocks]`",
     "Blocks with <<block>> and SysML's titled compartments, an empty one not drawn",
-    "A block's values and operations (RentalVehicle)",
-    "A generalization with a hollow triangle (EBike to RentalVehicle)",
+    "A block's values and operations (DeliveryVehicle, CargoBox)",
+    "A generalization with a hollow triangle (CargoBike to DeliveryVehicle)",
     "A `parts` compartment with multiplicities (`lights: Light [2]`)",
     "A `references` compartment (`dock: Dock [0..1]`)",
     "A `values` compartment with a default (`usableShare: Real = 0.9`)",
@@ -516,12 +516,12 @@
     "A labelled dependency (Battery feeds PowerBus) and a <<use>> dependency (Dock to ChargeInterface)",
     "An <<interfaceBlock>> with flow properties and an operation (ChargeInterface)",
     "<<constraintBlock>>s with the expression in braces, their parameters, and one owning a constraint property (UsableEnergy, RangeEquation)",
-    "<<valueType>>s with a `quantity` compartment, `unit` and `quantityKind` (Distance, Energy, Voltage)"
+    "<<valueType>>s with a `quantity` compartment, `unit` and `quantityKind` (Distance, Energy, Mass, Voltage)"
    ]
   },
   "sysml-internal-block": {
    "title": "Internal block diagram",
-   "intro": "Inside a city e-bike: the battery, controller, motor and lights wired together, the dock the bike rests in, and the charge socket on the bike's own border, with what flows along each connector, in one SysML internal block diagram.",
+   "intro": "Inside the bookshop's delivery cargo e-bike: the battery, controller, motor, lights and cargo box wired together, the dock at the dispatch bay the bike rests in, and the charge socket on the bike's own border, with what flows along each connector, in one SysML internal block diagram.",
    "main": "inside-ebike",
    "alternatives": [
     {
@@ -530,15 +530,15 @@
     }
    ],
    "shows": [
-    "The frame: the subject block's box with its header `ibd [Block] EBike [Inside the e-bike]`",
+    "The frame: the subject block's box with its header `ibd [Block] CargoBike [Inside the cargo bike]`",
     "A port on the frame's own border (<<proxy>> chargeSocket : ChargeInterface) and a connector delegating it to a part's port",
     "Proxy ports typed by an interface block, with a two-way flow arrow inside from its in and out flow properties (charge : ChargeInterface)",
     "A conjugated port, its type written with `~` (dock's charge : ~ChargeInterface)",
     "Part properties as boxes `name : Type [multiplicity]` (battery : Battery [1], controller : Controller [1])",
     "Untyped ports as plain squares on their part's border, each named beside it (power, bus, supply, drive)",
     "A reference property, a dashed box (dock : Dock [0..1])",
-    "Value properties as boxes `name : Type` (batteryCapacity : Energy, ecoRange : Distance)",
-    "Item flows: the item as the connector's label and a filled triangle pointing the way it flows (DCPower, PhaseCurrent)",
+    "Value properties as boxes `name : Type` (batteryCapacity : Energy, emptyRange : Distance)",
+    "Item flows: the item as the connector's label and a filled triangle pointing the way it flows (DCPower, PhaseCurrent, UnlockCode)",
     "An item flowing against the connector's direction (DCPower from the dock to the battery, WheelSpeed from the motor to the controller)",
     "A connector with no item flow (the bus between battery and controller)",
     "Two connectors on one port (the controller's lights to both lights)",
@@ -547,7 +547,7 @@
   },
   "sysml-parametric": {
    "title": "Parametric diagram",
-   "intro": "How far a city e-bike goes on a charge, in eco and in boost: its battery's usable energy and each mode's consumption bound to the parameters of the equations that give the two ranges.",
+   "intro": "How far the bookshop's delivery cargo e-bike goes on a charge, empty and laden with a full payload: its battery's usable energy and each load's consumption bound to the parameters of the equations that give the two delivery ranges.",
    "main": "range",
    "alternatives": [
     {
@@ -555,18 +555,18 @@
      "setting": "Laid out down (`direction` `down`) instead of right: the same values, constraint properties and bindings."
     },
     {
-     "view": "trip-frame",
-     "setting": "The constraint block TripRange as the view's `subject` instead of the block EBike: its own parameters on the frame, bound to the parameters of the constraint properties it is built from. A view has one subject, so the two cannot share a picture."
+     "view": "delivery-frame",
+     "setting": "The constraint block DeliveryRange as the view's `subject` instead of the block CargoBike: its own parameters on the frame, bound to the parameters of the constraint properties it is built from. A view has one subject, so the two cannot share a picture."
     }
    ],
    "shows": [
-    "The frame's header naming its block: `par [Block] EBike [...]`",
-    "Value properties as plain boxes `name : Type` (ecoConsumption : EnergyPerDistance, batteryCapacity : Energy)",
+    "The frame's header naming its block: `par [Block] CargoBike [...]`",
+    "Value properties as plain boxes `name : Type` (ladenConsumption : EnergyPerDistance, batteryCapacity : Energy)",
     "Constraint properties as boxes with rounded corners, `name : ConstraintBlock`, the block's expression in braces under the name, cut to the box",
-    "Two constraint properties typed by one constraint block (eco and boost : RangeEquation)",
+    "Two constraint properties typed by one constraint block (empty and laden : RangeEquation)",
     "Parameters as squares on a constraint property's border, `name : Type` beside each",
     "Binding connectors, plain lines with no ends, from value properties to parameters",
-    "A binding between parameters of two constraint properties (usable's usable to the energy of eco and of boost)"
+    "A binding between parameters of two constraint properties (usable's usable to the energy of empty and of laden)"
    ]
   },
   "c4": {

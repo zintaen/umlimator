@@ -3,10 +3,7 @@
 Release 0.25.0 (milestone 3, `docs/diagrams/notes/milestone-3.md` §7). Support is claimed by level (decision D3): **render**
 and **edit** on the subset below. No interchange: Mermaid has no block definition notation, and there is no XMI.
 
-A view of a version-2 model whose `diagram` is `"sysml.block-definition"` is a block definition diagram, drawn by
-`lib/umlimator-all.js` (`umlimator/all`); `lib/umlimator.js` draws it as plain cards with a warning. The vocabulary is
-`docs/diagrams/model.md` §2, row 17; the example is [`examples/ebike-blocks.json`](../../examples/ebike-blocks.json),
-the e-bike's blocks, interface block, constraint blocks and value types.
+A view of a version-2 model whose `diagram` is `"sysml.block-definition"` is a block definition diagram, drawn by `lib/umlimator-all.js` (`umlimator/all`); `lib/umlimator.js` draws it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2, row 17; the example is [`examples/ebike-blocks.json`](../../examples/ebike-blocks.json), the blocks of the bookshop's delivery cargo e-bike, its interface block, constraint blocks and value types.
 
 ## The subset, and SysML v1.7's clauses
 
@@ -89,9 +86,7 @@ Measured on `examples/ebike-blocks.json` (0.25.0); the PDF's text read back by `
 
 ## Accessibility
 
-Names: "Block EBike, 5 parts, 1 reference, 6 values, 3 constraints"; "Value type Energy, unit = Wh, quantityKind =
-energy". Text at 4.5:1, lines and outlines at 3:1 in both themes (`tests/blocks.html`, `tests/sysml.html`); every
-gesture has a key (`docs/editing.md`).
+Names: "Block CargoBike, 5 parts, 1 reference, 6 values, 3 constraints"; "Value type Energy, unit = Wh, quantityKind = energy". Text at 4.5:1, lines and outlines at 3:1 in both themes (`tests/blocks.html`, `tests/sysml.html`); every gesture has a key (`docs/editing.md`).
 
 ## Performance (P1)
 

@@ -527,7 +527,7 @@ with no subject) reparents the card to the view's subject, or to none; Delete on
 | Requirement (`sysml.requirement`) | a requirement, test case, block, package, comment | the palette | `N` | `add`; a requirement into the selected requirement or package (its `parent`), else the frame's subject |
 | | containment | the palette's Containment line, or a drag | `L`, the owner, Enter | `reparent` of the first to the second |
 | | derive, satisfy, verify, refine, trace, copy | the handle or a drag | `L`, a picker | `add`, checked against the rules' errors (`{ error }` with the rule's words); a copy also sets the client's `text` to the supplier's, in one transaction |
-| | a name and id | double-click once selected | `F2`: `EB-1.2 Range` sets `reqId` and the name together | `set label`, `set props.reqId` |
+| | a name and id | double-click once selected | `F2`: `EB-1.2 Delivery range` sets `reqId` and the name together | `set label`, `set props.reqId` |
 | | id, text, risk, verify method | the properties panel | | `set props.<field>` |
 | | a containment line deleted | | `Delete` or `Shift + Delete` on the line (for a host: the type's `remove` hook on the line's id) | `reparent` of the child to its owner's owner, said on the hint line |
 | | a requirement deleted | | `Shift + Delete` | what it contains re-homed to its owner, then `delete`, one transaction |

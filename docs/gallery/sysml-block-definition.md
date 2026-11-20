@@ -9,7 +9,7 @@ pageClass: gallery-page
 
 # Block definition diagram
 
-<p class="ex-lead">A city e-bike's blocks: the bike and its battery, motor, controller and lights, the dock it may stand in, the interface block of the charge link, the constraint blocks behind its range, and the value types they use. The page below opens on it, <a href="/umlimator/examples/types/sysml-block-definition.html#view=ebike-blocks" target="_self">A city e-bike's blocks</a>, live: pan, zoom, select and go into the cards that stack.</p>
+<p class="ex-lead">The bookshop's delivery cargo e-bike, which carries book orders to local customers: the bike and its battery, motor, controller, lights and cargo box with its parcel lock, the dock at the shop's dispatch bay it may stand in, the interface block of the charge link, the constraint blocks behind its delivery range, and the value types they use. The page below opens on it, <a href="/umlimator/examples/types/sysml-block-definition.html#view=ebike-blocks" target="_self">The delivery bike's blocks</a>, live: pan, zoom, select and go into the cards that stack.</p>
 
 <div class="ex-frame"><iframe src="/umlimator/examples/types/sysml-block-definition.html" title="Block definition diagram, live" loading="lazy"></iframe></div>
 <div class="ex-links"><a href="/umlimator/examples/types/sysml-block-definition.html" target="_self">Open full screen<span class="visually-hidden"> (Block definition)</span></a><a href="../conformance/sysml-block-definition.html">Conformance<span class="visually-hidden"> (Block definition)</span></a><a href="/umlimator/examples/types/sysml-block-definition.pdf" target="_self">PDF<span class="visually-hidden"> (Block definition)</span></a><a href="/umlimator/examples/types/sysml-block-definition.json" target="_self">Model<span class="visually-hidden"> (Block definition)</span></a></div>
@@ -19,10 +19,10 @@ pageClass: gallery-page
 <p>In the order you find them in the picture:</p>
 
 <ol class="ex-shows">
-<li>The frame and its header, <code>bdd [Package] EBikeSystem [A city e-bike's blocks]</code></li>
+<li>The frame and its header, <code>bdd [Package] DeliveryFleet [The delivery bike's blocks]</code></li>
 <li>Blocks with &lt;&lt;block&gt;&gt; and SysML's titled compartments, an empty one not drawn</li>
-<li>A block's values and operations (RentalVehicle)</li>
-<li>A generalization with a hollow triangle (EBike to RentalVehicle)</li>
+<li>A block's values and operations (DeliveryVehicle, CargoBox)</li>
+<li>A generalization with a hollow triangle (CargoBike to DeliveryVehicle)</li>
 <li>A <code>parts</code> compartment with multiplicities (<code>lights: Light [2]</code>)</li>
 <li>A <code>references</code> compartment (<code>dock: Dock [0..1]</code>)</li>
 <li>A <code>values</code> compartment with a default (<code>usableShare: Real = 0.9</code>)</li>
@@ -35,7 +35,7 @@ pageClass: gallery-page
 <li>A labelled dependency (Battery feeds PowerBus) and a &lt;&lt;use&gt;&gt; dependency (Dock to ChargeInterface)</li>
 <li>An &lt;&lt;interfaceBlock&gt;&gt; with flow properties and an operation (ChargeInterface)</li>
 <li>&lt;&lt;constraintBlock&gt;&gt;s with the expression in braces, their parameters, and one owning a constraint property (UsableEnergy, RangeEquation)</li>
-<li>&lt;&lt;valueType&gt;&gt;s with a <code>quantity</code> compartment, <code>unit</code> and <code>quantityKind</code> (Distance, Energy, Voltage)</li>
+<li>&lt;&lt;valueType&gt;&gt;s with a <code>quantity</code> compartment, <code>unit</code> and <code>quantityKind</code> (Distance, Energy, Mass, Voltage)</li>
 </ol>
 
 ## In another setting {#alternatives}

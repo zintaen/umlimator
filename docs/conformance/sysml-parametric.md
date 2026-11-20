@@ -3,10 +3,7 @@
 Release 0.25.0 (milestone 3, `docs/diagrams/notes/milestone-3.md` §9). Support is claimed by level (decision D3): **render**
 and **edit** on the subset below. No interchange, and no solving: the equations are text.
 
-A view of a version-2 model whose `diagram` is `"sysml.parametric"` is a parametric diagram, drawn by
-`lib/umlimator-all.js` (`umlimator/all`); `lib/umlimator.js` draws it as plain cards with a warning. The vocabulary is
-`docs/diagrams/model.md` §2, row 19; the example is [`examples/ebike-range.json`](../../examples/ebike-range.json), the
-e-bike's range in eco and boost from its battery's usable energy.
+A view of a version-2 model whose `diagram` is `"sysml.parametric"` is a parametric diagram, drawn by `lib/umlimator-all.js` (`umlimator/all`); `lib/umlimator.js` draws it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2, row 19; the example is [`examples/ebike-range.json`](../../examples/ebike-range.json), the range of the bookshop's delivery cargo e-bike, empty and laden with a full payload, from its battery's usable energy.
 
 ## The subset, and SysML v1.7's clauses
 
@@ -16,10 +13,10 @@ composite structure type.
 
 | SysML v1.7 | In the model | Drawn as |
 |---|---|---|
-| Annex A, the frame | the view's `subject`, a block or a constraint block | `par [Block] EBike [view title]`; a constraint block subject's own parameters on the frame |
-| 10, constraint properties | `sysml.ConstraintProperty`, typed by a constraint block | a box with 10 px rounded corners, `eco : RangeEquation`, its block's expression `{range = energy / consumption}` under the name, cut to the box |
+| Annex A, the frame | the view's `subject`, a block or a constraint block | `par [Block] CargoBike [view title]`; a constraint block subject's own parameters on the frame |
+| 10, constraint properties | `sysml.ConstraintProperty`, typed by a constraint block | a box with 10 px rounded corners, `laden : RangeEquation`, its block's expression `{range = energy / consumption}` under the name, cut to the box |
 | 10, parameters | `sysml.ConstraintParameter` of the constraint block | squares on the constraint property's border, their names beside them |
-| 8, value properties | `sysml.ValueProperty` of the subject | a plain box `ecoRange : Distance` |
+| 8, value properties | `sysml.ValueProperty` of the subject | a plain box `ladenRange : Distance` |
 | 8, binding connectors | `sysml.BindingConnector`, ends through constraint properties (`ends.to.part`) | a plain solid line, no ends |
 
 Rules (`src/sysml/parametric.js`), each with a passing and a failing fixture in `tests/parametric.test.mjs`:
@@ -77,13 +74,11 @@ Measured on `examples/ebike-range.json` (0.25.0); the PDF's text read back by `t
 | The header | Cut to the frame | Cut | Cut | |
 | The legend | No | No | Yes: binding | |
 | Accessible names | Kept on nodes, lines' `<title>` removed | None | None | |
-| Tables | None | None | "Elements": the subject's values and constraint properties as rows; "Lines": each binding once, its text by its ends ("ecoRange to range of eco"), the subject's rows not listing it again (audit 18) | |
+| Tables | None | None | "Elements": the subject's values and constraint properties as rows; "Lines": each binding once, its text by its ends ("ladenRange to range of laden"), the subject's rows not listing it again (audit 18) | |
 
 ## Accessibility
 
-Names: "Constraint eco: RangeEquation {range = energy / consumption}, in EBike, 3 parameters"; "Parameter range: Distance
-of eco"; "Binding from value ecoRange to parameter range of eco". Text at 4.5:1, lines and outlines at 3:1 in both themes
-(`tests/parametric.html`, `tests/sysml.html`); every gesture has a key (`docs/editing.md`).
+Names: "Constraint laden: RangeEquation {range = energy / consumption}, in CargoBike, 3 parameters"; "Parameter range: Distance of laden"; "Binding from value ladenRange to parameter range of laden". Text at 4.5:1, lines and outlines at 3:1 in both themes (`tests/parametric.html`, `tests/sysml.html`); every gesture has a key (`docs/editing.md`).
 
 ## Performance (P1)
 

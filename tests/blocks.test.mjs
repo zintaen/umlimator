@@ -486,13 +486,13 @@ test('connect refuses a generalization that closes a cycle or joins an element t
     // what the hook lets through, validate() takes; what it refuses, validate() flags
     const n = apply(m, [{ op: 'add', element: { id: 'l-new', ...line, from, to }, view: v.id }]);
     assert.equal(errs(n).some(k => /cycle|ends/.test(k)) && !errs(m).some(k => /cycle|ends/.test(k)), !!error, `${v.diagram} ${from} → ${to}: ${errs(n)}`); };
-  gives(ebike, bv, 'rental-vehicle', 'ebike', G, 'A generalization may not close a cycle: "RentalVehicle" → "EBike" → "RentalVehicle" would be its own ancestor');
-  gives(ebike, bv, 'ebike', 'ebike', G, 'A generalization may not close a cycle: "EBike" → "EBike" would be its own ancestor');
-  gives(ebike, bv, 'battery', 'rental-vehicle', G, null);
+  gives(ebike, bv, 'delivery-vehicle', 'ebike', G, 'A generalization may not close a cycle: "DeliveryVehicle" → "CargoBike" → "DeliveryVehicle" would be its own ancestor');
+  gives(ebike, bv, 'ebike', 'ebike', G, 'A generalization may not close a cycle: "CargoBike" → "CargoBike" would be its own ancestor');
+  gives(ebike, bv, 'battery', 'delivery-vehicle', G, null);
   // a line of the view's own counts as the model's do
   const own = structuredClone(ebike), ov = own.views.find(v => v.diagram === 'sysml.block-definition');
-  own.edges = own.edges.filter(e => e.type !== 'uml.Generalization'); ov.edges = [...(ov.edges || []).filter(e => typeof e !== 'string' || own.edges.some(x => x.id === e)), { id: 'g-own', type: 'uml.Generalization', from: 'ebike', to: 'rental-vehicle' }];
-  gives(own, ov, 'rental-vehicle', 'ebike', G, 'A generalization may not close a cycle: "RentalVehicle" → "EBike" → "RentalVehicle" would be its own ancestor');
+  own.edges = own.edges.filter(e => e.type !== 'uml.Generalization'); ov.edges = [...(ov.edges || []).filter(e => typeof e !== 'string' || own.edges.some(x => x.id === e)), { id: 'g-own', type: 'uml.Generalization', from: 'ebike', to: 'delivery-vehicle' }];
+  gives(own, ov, 'delivery-vehicle', 'ebike', G, 'A generalization may not close a cycle: "DeliveryVehicle" → "CargoBike" → "DeliveryVehicle" would be its own ancestor');
   // the class view: three deep
   const C = (id, label, type = 'uml.Class') => ({ id, type, label }), cls = { schemaVersion: 2, nodes: [C('a', 'A'), C('b', 'B'), C('c', 'C')],
     edges: [{ id: 'ab', type: 'uml.Generalization', from: 'a', to: 'b' }, { id: 'bc', type: 'uml.Generalization', from: 'b', to: 'c' }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b', 'c'] }] };
@@ -642,12 +642,12 @@ test('a member typed so it breaks constraint-type or port-kind is refused, by ro
   const row = (text, id = null) => BT.edits.member(BL, BV, 'ebike', id, text);
   for (const [text, id] of [['constraint city', null], ['constraint city : Battery', null], ['constraint usable : Battery', 'ebike.usable'], ['proxy port p : Battery', null], ['proxy port p', null]]) {
     const r = row(text, id); assert.ok(r && typeof r.error === 'string', text);
-    assert.match(r.error, /^(Constraint property|Proxy port) "EBike"\.\w+ is typed by .*: a (constraint property is name : ConstraintBlock|proxy port is typed by an interface block, a full port by none)$/, text); }
+    assert.match(r.error, /^(Constraint property|Proxy port) "CargoBike"\.\w+ is typed by .*: a (constraint property is name : ConstraintBlock|proxy port is typed by an interface block, a full port by none)$/, text); }
   for (const text of ['constraint city : UsableEnergy', 'constraint c : Nope', 'part city : UsableEnergy', 'full port q : Battery', 'port p : Battery', 'value v : Real']) {
     const r = row(text); assert.ok(Array.isArray(r), text); assert.deepEqual(errs(apply(BL, r)), [], text); }
   assert.ok(Array.isArray(row('constraint usable : UsableEnergy', 'ebike.usable').commands), 'an edit that keeps it typed');
   // the panel: a constraint property's type set to a block, or cleared, refused; to a constraint block, the default
-  assert.match(BT.edits.field(BL, BV, 'ebike.usable', 'props.valueType', 'Battery').error, /^Constraint property "EBike"\.usable is typed by "Battery"/);
+  assert.match(BT.edits.field(BL, BV, 'ebike.usable', 'props.valueType', 'Battery').error, /^Constraint property "CargoBike"\.usable is typed by "Battery"/);
   assert.match(BT.edits.field(BL, BV, 'ebike.usable', 'props.valueType', undefined).error, /typed by nothing/);
   assert.equal(BT.edits.field(BL, BV, 'ebike.usable', 'props.valueType', 'UsableEnergy'), null);
   // a model with the error already: an edit that keeps it is not refused for it
@@ -659,7 +659,7 @@ test('a member typed so it breaks constraint-type or port-kind is refused, by ro
   const ok = PT.edits.add(PR, PV, E, 'city : UsableEnergy', null); assert.ok(Array.isArray(ok)); assert.deepEqual(errs(apply(PR, ok)), []);
   // the internal block view: a proxy port row typed by a block refused
   const IB = diagramOf({ diagram: 'sysml.internal-block' }), iv = { id: 'ib', diagram: 'sysml.internal-block', subject: 'ebike', nodeIds: [] }, IM = { ...BL, views: [...BL.views, iv] };
-  assert.match(IB.edits.member(IM, iv, 'ebike', null, 'proxy port p : Battery').error, /^Proxy port "EBike"\.p is typed by "Battery", not an interface block: /);
+  assert.match(IB.edits.member(IM, iv, 'ebike', null, 'proxy port p : Battery').error, /^Proxy port "CargoBike"\.p is typed by "Battery", not an interface block: /);
 });
 
 // audit 45: the internal block view's F2 on a port box is refused as the row and the field are, when it would set a kind or a
@@ -675,9 +675,9 @@ test('F2 on a port box that breaks port-kind is refused, and a refusal says its 
     assert.ok(Array.isArray(cs), text); assert.deepEqual(errs(apply(A, cs)), [], text); }
   // the words: the form once, never twice; a kind that is none of SysML's told the kinds
   const BL = JSON.parse(readFileSync(new URL('../examples/ebike-blocks.json', import.meta.url), 'utf8')), BV = BL.views[0], BT = diagramOf(BV);
-  assert.equal(BT.edits.member(BL, BV, 'ebike', null, 'proxy port p').error, `Proxy port "EBike".p is typed by nothing: ${F}`);
+  assert.equal(BT.edits.member(BL, BV, 'ebike', null, 'proxy port p').error, `Proxy port "CargoBike".p is typed by nothing: ${F}`);
   assert.equal(BT.edits.field(BL, BV, 'battery.charge', 'props.kind', 'sideways').error, 'Port "Battery".charge has kind "sideways", not proxy or full: a port\'s kind is proxy, full or none');
-  assert.equal(BT.edits.member(BL, BV, 'ebike', null, 'constraint city').error, 'Constraint property "EBike".city is typed by nothing, not a constraint block: a constraint property is name : ConstraintBlock');
+  assert.equal(BT.edits.member(BL, BV, 'ebike', null, 'constraint city').error, 'Constraint property "CargoBike".city is typed by nothing, not a constraint block: a constraint property is name : ConstraintBlock');
 });
 
 // audit 52: a proxy port typed by a name that names nothing (its interface block deleted, or not made yet) is a port-kind

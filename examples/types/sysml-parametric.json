@@ -7,7 +7,7 @@
   {
    "id": "ebike",
    "type": "sysml.Block",
-   "label": "EBike",
+   "label": "CargoBike",
    "members": [
     {
      "id": "ebike.battery",
@@ -80,33 +80,33 @@
      }
     },
     {
-     "id": "ebike.ecoConsumption",
+     "id": "ebike.emptyConsumption",
      "type": "sysml.ValueProperty",
-     "label": "ecoConsumption",
+     "label": "emptyConsumption",
      "props": {
       "valueType": "EnergyPerDistance"
      }
     },
     {
-     "id": "ebike.boostConsumption",
+     "id": "ebike.ladenConsumption",
      "type": "sysml.ValueProperty",
-     "label": "boostConsumption",
+     "label": "ladenConsumption",
      "props": {
       "valueType": "EnergyPerDistance"
      }
     },
     {
-     "id": "ebike.ecoRange",
+     "id": "ebike.emptyRange",
      "type": "sysml.ValueProperty",
-     "label": "ecoRange",
+     "label": "emptyRange",
      "props": {
       "valueType": "Distance"
      }
     },
     {
-     "id": "ebike.boostRange",
+     "id": "ebike.ladenRange",
      "type": "sysml.ValueProperty",
-     "label": "boostRange",
+     "label": "ladenRange",
      "props": {
       "valueType": "Distance"
      }
@@ -120,17 +120,17 @@
      }
     },
     {
-     "id": "ebike.eco",
+     "id": "ebike.empty",
      "type": "sysml.ConstraintProperty",
-     "label": "eco",
+     "label": "empty",
      "props": {
       "valueType": "RangeEquation"
      }
     },
     {
-     "id": "ebike.boost",
+     "id": "ebike.laden",
      "type": "sysml.ConstraintProperty",
-     "label": "boost",
+     "label": "laden",
      "props": {
       "valueType": "RangeEquation"
      }
@@ -206,15 +206,15 @@
    ]
   },
   {
-   "id": "trip-range",
+   "id": "delivery-range",
    "type": "sysml.ConstraintBlock",
-   "label": "TripRange",
+   "label": "DeliveryRange",
    "props": {
-    "constraint": "tripRange = batteryEnergy * usableShare / rate"
+    "constraint": "deliveryRange = batteryEnergy * usableShare / rate"
    },
    "members": [
     {
-     "id": "trip-range.capacity",
+     "id": "delivery-range.capacity",
      "type": "sysml.ConstraintParameter",
      "label": "batteryEnergy",
      "props": {
@@ -222,7 +222,7 @@
      }
     },
     {
-     "id": "trip-range.share",
+     "id": "delivery-range.share",
      "type": "sysml.ConstraintParameter",
      "label": "usableShare",
      "props": {
@@ -230,7 +230,7 @@
      }
     },
     {
-     "id": "trip-range.consumption",
+     "id": "delivery-range.consumption",
      "type": "sysml.ConstraintParameter",
      "label": "rate",
      "props": {
@@ -238,15 +238,15 @@
      }
     },
     {
-     "id": "trip-range.range",
+     "id": "delivery-range.range",
      "type": "sysml.ConstraintParameter",
-     "label": "tripRange",
+     "label": "deliveryRange",
      "props": {
       "valueType": "Distance"
      }
     },
     {
-     "id": "trip-range.usable",
+     "id": "delivery-range.usable",
      "type": "sysml.ConstraintProperty",
      "label": "usable",
      "props": {
@@ -254,9 +254,9 @@
      }
     },
     {
-     "id": "trip-range.trip",
+     "id": "delivery-range.round",
      "type": "sysml.ConstraintProperty",
-     "label": "trip",
+     "label": "round",
      "props": {
       "valueType": "RangeEquation"
      }
@@ -292,7 +292,7 @@
    }
   },
   {
-   "id": "bind-usable-eco",
+   "id": "bind-usable-empty",
    "type": "sysml.BindingConnector",
    "from": "usable-energy.usable",
    "to": "range-equation.energy",
@@ -302,13 +302,13 @@
       "part": "ebike.usable"
      },
      "to": {
-      "part": "ebike.eco"
+      "part": "ebike.empty"
      }
     }
    }
   },
   {
-   "id": "bind-usable-boost",
+   "id": "bind-usable-laden",
    "type": "sysml.BindingConnector",
    "from": "usable-energy.usable",
    "to": "range-equation.energy",
@@ -318,59 +318,59 @@
       "part": "ebike.usable"
      },
      "to": {
-      "part": "ebike.boost"
+      "part": "ebike.laden"
      }
     }
    }
   },
   {
-   "id": "bind-eco-consumption",
+   "id": "bind-empty-consumption",
    "type": "sysml.BindingConnector",
-   "from": "ebike.ecoConsumption",
+   "from": "ebike.emptyConsumption",
    "to": "range-equation.consumption",
    "props": {
     "ends": {
      "to": {
-      "part": "ebike.eco"
+      "part": "ebike.empty"
      }
     }
    }
   },
   {
-   "id": "bind-boost-consumption",
+   "id": "bind-laden-consumption",
    "type": "sysml.BindingConnector",
-   "from": "ebike.boostConsumption",
+   "from": "ebike.ladenConsumption",
    "to": "range-equation.consumption",
    "props": {
     "ends": {
      "to": {
-      "part": "ebike.boost"
+      "part": "ebike.laden"
      }
     }
    }
   },
   {
-   "id": "bind-eco-range",
+   "id": "bind-empty-range",
    "type": "sysml.BindingConnector",
-   "from": "ebike.ecoRange",
+   "from": "ebike.emptyRange",
    "to": "range-equation.range",
    "props": {
     "ends": {
      "to": {
-      "part": "ebike.eco"
+      "part": "ebike.empty"
      }
     }
    }
   },
   {
-   "id": "bind-boost-range",
+   "id": "bind-laden-range",
    "type": "sysml.BindingConnector",
-   "from": "ebike.boostRange",
+   "from": "ebike.ladenRange",
    "to": "range-equation.range",
    "props": {
     "ends": {
      "to": {
-      "part": "ebike.boost"
+      "part": "ebike.laden"
      }
     }
    }
@@ -378,12 +378,12 @@
   {
    "id": "t-capacity",
    "type": "sysml.BindingConnector",
-   "from": "trip-range.capacity",
+   "from": "delivery-range.capacity",
    "to": "usable-energy.capacity",
    "props": {
     "ends": {
      "to": {
-      "part": "trip-range.usable"
+      "part": "delivery-range.usable"
      }
     }
    }
@@ -391,12 +391,12 @@
   {
    "id": "t-share",
    "type": "sysml.BindingConnector",
-   "from": "trip-range.share",
+   "from": "delivery-range.share",
    "to": "usable-energy.share",
    "props": {
     "ends": {
      "to": {
-      "part": "trip-range.usable"
+      "part": "delivery-range.usable"
      }
     }
    }
@@ -409,10 +409,10 @@
    "props": {
     "ends": {
      "from": {
-      "part": "trip-range.usable"
+      "part": "delivery-range.usable"
      },
      "to": {
-      "part": "trip-range.trip"
+      "part": "delivery-range.round"
      }
     }
    }
@@ -420,12 +420,12 @@
   {
    "id": "t-consumption",
    "type": "sysml.BindingConnector",
-   "from": "trip-range.consumption",
+   "from": "delivery-range.consumption",
    "to": "range-equation.consumption",
    "props": {
     "ends": {
      "to": {
-      "part": "trip-range.trip"
+      "part": "delivery-range.round"
      }
     }
    }
@@ -433,12 +433,12 @@
   {
    "id": "t-range",
    "type": "sysml.BindingConnector",
-   "from": "trip-range.range",
+   "from": "delivery-range.range",
    "to": "range-equation.range",
    "props": {
     "ends": {
      "to": {
-      "part": "trip-range.trip"
+      "part": "delivery-range.round"
      }
     }
    }
@@ -448,7 +448,7 @@
   {
    "id": "range",
    "diagram": "sysml.parametric",
-   "title": "The e-bike's range in eco and boost",
+   "title": "The cargo bike's delivery range, empty and laden",
    "parent": null,
    "subject": "ebike",
    "nodeIds": [
@@ -467,13 +467,13 @@
    ]
   },
   {
-   "id": "trip-frame",
+   "id": "delivery-frame",
    "diagram": "sysml.parametric",
-   "title": "TripRange, a constraint block as the frame",
+   "title": "DeliveryRange, a constraint block as the frame",
    "parent": "range",
-   "subject": "trip-range",
+   "subject": "delivery-range",
    "nodeIds": [
-    "trip-range"
+    "delivery-range"
    ]
   }
  ]

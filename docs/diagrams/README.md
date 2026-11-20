@@ -301,13 +301,7 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   `shape` stays. A model that still has `shapes` loads, as any unknown field does. Typed diagrams keep their own
   notation (UML's shapes); later non-UML types reuse this shape set where their standard allows. It is its own work
   package after 4.1 (both edit `src/canvas/render.js`), in 0.21.0.
-- **13 Nov 2026 (examples).** The maintainer decided how the types' examples show: both. One small example per type
-  stays the gallery card, the CI fixture and the conformance reference, mostly the Bookshop, with a type taking its own
-  domain where the Bookshop is a stretch (SysML's e-bike). One flagship, the Bookshop atlas, is a single model whose
-  views are the Bookshop examples linked by drill-down (`opensView`): from C4 to components, deployment, classes and an
-  order's state machine; from the use cases to the activity and the sequence. It is assembled from the per-type files,
-  which share ids, with a check that it matches them. It grows with each release, with a full pass at 0.23.0 (the 14 UML
-  types) and after milestone 2 (`plan.md` §7).
+- **13 Nov 2026 (examples).** The maintainer decided how the types' examples show: both. One small example per type stays the gallery card, the CI fixture and the conformance reference, mostly the Bookshop, with a type taking its own domain where the Bookshop is a stretch (SysML's e-bike; on 20 Nov 2026 the maintainer made it the Bookshop's own delivery cargo e-bike, which carries book orders to local customers, so every type's example is now the Bookshop's). One flagship, the Bookshop atlas, is a single model whose views are the Bookshop examples linked by drill-down (`opensView`): from C4 to components, deployment, classes and an order's state machine; from the use cases to the activity and the sequence. It is assembled from the per-type files, which share ids, with a check that it matches them. It grows with each release, with a full pass at 0.23.0 (the 14 UML types) and after milestone 2 (`plan.md` §7).
 - **13 Nov 2026 (stage 4 complete).** 4.0 to 4.10, maps' one card-shape style (#210), the Bookshop atlas (#222) and
   CI's serial timing step (#221, #226) merged; 0.21.0's release pull request follows. It also carries stage 5's 5.0 to
   5.6, which are on `main`, provisional until 0.22.0. `lib/umlimator.js` is 185,149 B with `gzip -9`, 12.24% over 0.16.0.

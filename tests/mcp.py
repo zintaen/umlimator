@@ -496,10 +496,10 @@ for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order
                                           # C10 for milestone 3 (M3.7): SysML's four e-bike models; each view's frame is its one box, an
                                           # internal block or parametric view's parts' ports and parameters are cards; a part or a
                                           # constraint property is a member, which highlight takes as a Ref (a member's id is no card's)
-                                          ("ebike-requirements", "requirements", ["spec", "assist"], "E-bike requirements: a requirement diagram (req [Model] E-bike: requirements [E-bike requirements]) of 16 elements and 15 lines.", 16, 1),
-                                          ("ebike-blocks", "blocks", ["ebike", "battery"], "E-bike blocks: a block definition diagram of 12 elements and 5 lines.", 12, 1),
-                                          ("ebike-structure", "inside-ebike", [{"type": "node", "id": "ebike.battery"}, {"type": "node", "id": "ebike.controller"}], "Inside the e-bike: an internal block diagram of 24 elements and 6 lines.", 23, 1),
-                                          ("ebike-range", "range-analysis", [{"type": "node", "id": "ebike.eco"}, {"type": "node", "id": "ebike.ecoRange"}], "E-bike range: a parametric diagram of 19 elements and 8 lines.", 18, 1),
+                                          ("ebike-requirements", "requirements", ["spec", "assist"], "Cargo bike requirements: a requirement diagram (req [Model] Cargo e-bike: requirements [Cargo bike requirements]) of 16 elements and 15 lines.", 16, 1),
+                                          ("ebike-blocks", "blocks", ["ebike", "battery"], "Cargo bike blocks: a block definition diagram of 12 elements and 5 lines.", 12, 1),
+                                          ("ebike-structure", "inside-ebike", [{"type": "node", "id": "ebike.battery"}, {"type": "node", "id": "ebike.controller"}], "Inside the cargo bike: an internal block diagram of 24 elements and 6 lines.", 23, 1),
+                                          ("ebike-range", "range-analysis", [{"type": "node", "id": "ebike.empty"}, {"type": "node", "id": "ebike.emptyRange"}], "Cargo bike range, empty and laden: a parametric diagram of 19 elements and 8 lines.", 18, 1),
                                           # C10 for milestone 4a (4a.7, decision 22): a mindmap, a Google Cloud and an Azure model, with
                                           # no pack (the server never fetches one; CI has none, so cards draw glyphs); groups are boxes
                                           ("bookshop-opening-plan", "mm-plan", ["mm-checkout", "mm-hosting"], "Opening the bookshop: a mindmap of 22 topics.", 22, 0),

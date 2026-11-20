@@ -4112,14 +4112,7 @@ but for the one changed rule below and the four SysML targets, which draw for th
   `parent`, the six relationships, `direction`; 1 MiB, a one-pass scanner, prototype-free tables, a containment cycle found
   by one colouring pass, each bad line skipped and reported; the writer's `%% id:`, `%% text:` and `%% name:` comments read
   back as untrusted input. `umlimator.py import` reads a `requirementDiagram` (it was refused).
-- **Fixtures, examples, the e-bike atlas, docs (M3.7).** The four targets moved to `examples/ebike-requirements.json`,
-  `ebike-blocks.json`, `ebike-structure.json` and `ebike-range.json`, every element two of them share written alike (EBike
-  whole in the blocks, structure and range files; Battery, Controller, Motor, Dock, Light and the interface and constraint
-  blocks in each that uses them; the requirements file names its blocks only), so each view draws in the atlas as in its
-  own file; the blocks view lists its own `edges`. `tools/atlas.mjs` takes `--links` and `--out` and carries SysML's props;
-  `tools/ebike-links.json` builds `examples/ebike-atlas.json`, rooted at the requirements. `tests/*-minimal.json` and
-  `*-stress.json` for the four types, `tests/sysml-fixtures.test.mjs`, `tests/sysml.html`, `tests/ebike-atlas.test.mjs`;
-  the schema and `.d.ts` name SysML's vocabulary; the MCP server, the diff Action and the skill's CLI tested on each.
+- **Fixtures, examples, the e-bike atlas, docs (M3.7).** The four targets moved to `examples/ebike-requirements.json`, `ebike-blocks.json`, `ebike-structure.json` and `ebike-range.json`, every element two of them share written alike (CargoBike, EBike before the examples became the bookshop's delivery bike, whole in the blocks, structure and range files; Battery, Controller, Motor, Dock, Light and the interface and constraint blocks in each that uses them; the requirements file names its blocks only), so each view draws in the atlas as in its own file; the blocks view lists its own `edges`. `tools/atlas.mjs` takes `--links` and `--out` and carries SysML's props; `tools/ebike-links.json` builds `examples/ebike-atlas.json`, rooted at the requirements. `tests/*-minimal.json` and `*-stress.json` for the four types, `tests/sysml-fixtures.test.mjs`, `tests/sysml.html`, `tests/ebike-atlas.test.mjs`; the schema and `.d.ts` name SysML's vocabulary; the MCP server, the diff Action and the skill's CLI tested on each.
 - **Left out** (`notes/milestone-3.md` §17): SysML v2; the other five SysML diagrams (UML's types here); allocations; views
   and viewpoints; requirement tables; nested parts and connector ends; flow ports; solving equations; XMI; copy and paste.
 - **Known gaps:** a block definition view draws every model line between its blocks, connectors and bindings too, unless
@@ -5284,21 +5277,7 @@ unchanged. **Typed views change in one way: #377 removes crossings** where a req
 itself (listed below). The release also brings the documentation site at zintaen.github.io/umlimator/ (#370 to #373)
 and category icons for Google Cloud products the pinned pack has no icon of (#378). What changes for callers:
 
-- **Core, round 13 (#369).** **Story line names (`a->b#n`) are counted per list**: the model's list, and each view's own
-  `edges` list. **`lineNames()` now returns a Map from list to names** (`-1` for the model's list, `i` for view `i`'s own
-  list), each a Map from a name to its lines; 0.39.0's Map from name to lines is one entry of it. A delete or a hide
-  renames or clears a name only in the list it touched and only where that list is drawn (steps, pins, `present` and
-  overrides on a view that draws it); before, a step on one view could move onto a line of another view between the same
-  cards. `validate()` checks a step's `a->b#n` against the list its view draws. **`diff()` says a member gone from an
-  element that stayed as "removes battery from EBike"** (it said "changes EBike (members)") and no longer repeats its
-  connectors; a deleted part or port that a removed line ends on comes back `change: 'removed'` at its old index, so its
-  connectors draw rose and dashed and the diff model validates (a deleted class attribute or internal transition is said
-  but not put back). **A view that dropped its `edges` list** gets a list built from the lines it draws, so its own lines
-  come back marked removed and removed lines to removed cards stay drawn, whether or not it put a line in. `render()` no
-  longer throws on `change: 'constructor'` or `'__proto__'` (no badge is drawn). The details panel names a port or
-  parameter end as drawn ("requests of checkout", "capacity of usable"), a port's own lines are found, and a row whose
-  end is drawn only in another typed view opens that view with the end selected; when no view draws an end, the status
-  line says so. A selected part's rows now name the far port ("quotes of pricing"), not the far part.
+- **Core, round 13 (#369).** **Story line names (`a->b#n`) are counted per list**: the model's list, and each view's own `edges` list. **`lineNames()` now returns a Map from list to names** (`-1` for the model's list, `i` for view `i`'s own list), each a Map from a name to its lines; 0.39.0's Map from name to lines is one entry of it. A delete or a hide renames or clears a name only in the list it touched and only where that list is drawn (steps, pins, `present` and overrides on a view that draws it); before, a step on one view could move onto a line of another view between the same cards. `validate()` checks a step's `a->b#n` against the list its view draws. **`diff()` says a member gone from an element that stayed as "removes battery from CargoBike"** (it said "changes CargoBike (members)") and no longer repeats its connectors; a deleted part or port that a removed line ends on comes back `change: 'removed'` at its old index, so its connectors draw rose and dashed and the diff model validates (a deleted class attribute or internal transition is said but not put back). **A view that dropped its `edges` list** gets a list built from the lines it draws, so its own lines come back marked removed and removed lines to removed cards stay drawn, whether or not it put a line in. `render()` no longer throws on `change: 'constructor'` or `'__proto__'` (no badge is drawn). The details panel names a port or parameter end as drawn ("requests of checkout", "capacity of usable"), a port's own lines are found, and a row whose end is drawn only in another typed view opens that view with the end selected; when no view draws an end, the status line says so. A selected part's rows now name the far port ("quotes of pricing"), not the far part.
 - **UML, C4 and mindmap, round 13 (#367).** **The PDF Lines table lists self-lines on typed views** (class, object,
   package, component, a state machine's self-transitions); map views still leave them out. State machine: dropping an
   initial or history pseudostate into a one-region state goes through the same guard as other moves, so a second one is
