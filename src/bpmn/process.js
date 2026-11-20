@@ -615,7 +615,7 @@ function bzRemove(model, view, ids, fromModel) {
   const ownLine = id => own.has(id) && I.E.has(id) && !I.N.has(id);
   cmds.unshift(...rest.filter(ownLine).map(id => ({ op: 'delete', id })));
   rest.forEach(id => { if (ownLine(id)) return; if (fromModel || own.has(id) || I.L.has(id)) cmds.push({ op: 'delete', id }); else if (!(kept && I.E.has(id)) && !(subj && id === view.subject)) cmds.push({ op: 'hide', id, view: view.id }); });
-  const said = [...(gone.size ? [`Deleted ${gone.size === 1 ? 'lane ' + bzLabel(I.el([...gone][0])) : bzPlural(gone.size, 'lane')} from the model${fromModel ? '' : ': a lane is not hidden from a view'}, keeping what it held`] : []),
+  const said = [...(gone.size ? [`Deleted ${gone.size === 1 ? 'lane ' + bzLabel(I.el([...gone][0])) : bzPlural(gone.size, 'lane')} from the model${fromModel ? '' : ': a lane is not hidden from a view'}, keeping what ${gone.size === 1 ? 'it' : 'they'} held`] : []),
     ...[...loose].map(([p, k]) => `${bzPlural(k, 'flow node')} now in no lane of ${bzLabel(I.el(p))}: drag ${k === 1 ? 'it' : 'them'} into a lane`),
     ...(fromModel ? pools.map(p => `deleted pool ${bzLabel(I.el(p))} and the ${bzPlural(owned(p), 'element')} it holds`) : []),
     ...(bes.length ? [`hid ${bes.length === 1 && I.ty(bes[0]) === BZ_BE ? 'its boundary event ' + bzLabel(I.el(bes[0])) : `the ${bzPlural(bes.length, 'element')} shown in or on it`} with ${hosts.filter(h => bes.some(n => under(n, h) || under(bzProps(I.el(n)).attachedTo, h))).map(h => bzLabel(I.el(h))).join(', ')}`] : []),

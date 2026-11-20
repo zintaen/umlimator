@@ -57,7 +57,8 @@ function ifIndex(model) {
   const at = new Map(); IF_ARR(model && model.nodes).forEach(n => { if (IF_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
   // M: the model's lines; E: those and the lines written inline in information flow views (audit 14), for what a flow conveys
   const M = IF_ARR(model && model.edges).filter(e => IF_OBJ(e) && typeof e.id === 'string');
-  const E = typedLines(model, v => v.diagram === 'uml.information-flow').map(([e]) => e).filter(e => IF_OBJ(e) && typeof e.id === 'string');
+  // each flow id once, the model's line first: diff()'s marked copy of a model flow in a view's edges is no second flow (audit 57)
+  const ids = new Set(), E = typedLines(model, v => v.diagram === 'uml.information-flow').map(([e]) => e).filter(e => IF_OBJ(e) && typeof e.id === 'string' && !ids.has(e.id) && ids.add(e.id));
   const conveyed = e => IF_ARR(IF_OBJ(e.props) ? e.props.conveyed : null);
   const nm = id => (at.has(id) ? ifName(at.get(id)) : String(id)); // a conveyed id that is gone: said as itself (conveyed-kind)
   return { at, M, E, conveyed, nm, flowsOf: id => E.filter(e => e.type === 'uml.InformationFlow' && conveyed(e).includes(id)) };

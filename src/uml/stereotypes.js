@@ -267,8 +267,10 @@ function styResolve(I, r, say) {
 // stereotype-text: a stereotype stored with its own marks, «entity» or <<entity>>, is drawn doubled and is no profile's stereotype
 // of that name; said on every element, profile or none (audit 47): the model's nodes, lines and their members, and views' own
 function styText(model) {
-  const out = [], tops = [...STY_ARR(model.nodes).map((x, i) => [x, `nodes[${i}]`]), ...STY_ARR(model.edges).map((x, i) => [x, `edges[${i}]`]),
-    ...STY_ARR(model.views).flatMap((v, k) => (STY_OBJ(v) ? [...STY_ARR(v.nodes).map((x, i) => [x, `views[${k}].nodes[${i}]`]), ...STY_ARR(v.edges).map((x, i) => [x, `views[${k}].edges[${i}]`])] : []))];
+  // Array.from, never map: a hole in a list (a JS host's delete) is an undefined entry, which STY_OBJ skips (audit 57)
+  const at = (xs, p) => Array.from(STY_ARR(xs), (x, i) => [x, `${p}[${i}]`]);
+  const out = [], tops = [...at(model.nodes, 'nodes'), ...at(model.edges, 'edges'),
+    ...Array.from(STY_ARR(model.views), (v, k) => (STY_OBJ(v) ? [...at(v.nodes, `views[${k}].nodes`), ...at(v.edges, `views[${k}].edges`)] : [])).flat()];
   for (const s = tops.reverse(), seen = new Set(); s.length;) { const [x, path] = s.pop(); if (!STY_OBJ(x) || seen.has(x)) continue; seen.add(x);
     STY_ARR(STY_OBJ(x.props) ? x.props.stereotypes : null).forEach((t, j) => { if (typeof t !== 'string' || !STY_MARKED.test(t)) return;
       const bare = t.trim().replace(/^(?:«|<<)\s*|\s*(?:»|>>)$/g, '');

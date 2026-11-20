@@ -371,3 +371,16 @@ test('audit 43: a stereotype entry that is not text is said at its own path in e
   P.nodes[order].props = { ...P.nodes[order].props, stereotypes: [{ a: 1 }] };
   assert.ok(validate(P).some(p => p.path === `nodes[${order}].props.stereotypes[0]` && / is not text/.test(p.message)));
 });
+
+test('audit 57: validate() on a model whose nodes, edges or a view\'s lists hold a hole returns its problems: the stereotype-text rule skips the hole', () => {
+  const cm = read(new URL('class-minimal.json', here));
+  const holed = [m => { delete m.nodes[0]; }, m => { delete m.edges[0]; }, m => { m.views[0].edges = [{ id: 'x1', type: 'uml.Dependency', from: m.nodes[0].id, to: m.nodes[1].id }, { id: 'x2', type: 'uml.Dependency', from: m.nodes[0].id, to: m.nodes[1].id }]; delete m.views[0].edges[0]; },
+    m => { m.views[0].nodes = [{ id: 'own', type: 'uml.Class', label: 'Own' }, { id: 'own2', type: 'uml.Class', label: 'Own2' }]; delete m.views[0].nodes[0]; }];
+  for (const f of holed) { const m = structuredClone(cm); f(m); assert.doesNotThrow(() => validate(m), String(f)); assert.ok(Array.isArray(stereoProblems(m))); }
+  // a plain map too, once the stereotype rule is loaded (TYPED.across)
+  const map = { schemaVersion: 2, nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [], views: [{ id: 'v', nodeIds: ['a', 'b'] }] }; delete map.nodes[0];
+  assert.deepEqual(validate(map).map(p => p.message), ['"a" is not a card']);
+  // a hole beside a marked stereotype: the rule still says the marked one, at its own path
+  const st = structuredClone(cm); st.nodes.unshift(undefined); delete st.nodes[0]; st.nodes[1].props = { ...st.nodes[1].props, stereotypes: ['«entity»'] };
+  assert.deepEqual(stereoProblems(st).filter(p => p.rule === 'stereotype-text').map(p => p.path), ['nodes[1].props.stereotypes[0]']);
+});
