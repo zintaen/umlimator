@@ -252,3 +252,15 @@ test('P1 (§17): the Mermaid state reader and writer, 500 transitions each way, 
   assert.equal(back.model.edges.length, 500);
   assert.ok(w < 1000 && r < 1000, `write ${w} ms, read ${r} ms`);
 });
+
+// audit 62: on the use case gallery example, one association added (the L gesture: Shopper to Sign in, Member to Add gift
+// wrapping) or deleted (Member to Track an order) left a long extend label on the include and the other extend that ran through
+// the one gap its own line crosses; with repair off, the lines under such a label are routed again round it
+test('audit 62: the use case gallery example with one association added or deleted lays no label on a line', () => {
+  const ex = JSON.parse(readFileSync(new URL('../examples/types/uml-use-case.json', import.meta.url))), vid = 'shopping';
+  const on = m => check(m, vid).map(p => p.message).filter(s => / lies on edge /.test(s));
+  assert.deepEqual(on(ex), []);
+  for (const [a, b] of [['shopper', 'sign-in'], ['member', 'gift-wrap']]) assert.deepEqual(on(apply(ex, [{ op: 'add', element: { id: 'association1', type: 'uml.Association', from: a, to: b }, view: vid }])), [], `${a} to ${b}`);
+  const rm = structuredClone(ex); rm.edges = rm.edges.filter(e => e.id !== 'member-tracks');
+  assert.deepEqual(on(rm), [], 'member-tracks deleted');
+});
