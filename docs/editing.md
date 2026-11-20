@@ -327,6 +327,7 @@ The **use case diagram** (`uml.use-case`, `examples/shopping-use-cases.json`):
 | an extend's condition and extension points | the properties panel | Enter | `set props.condition`, `set props.extensionPoints` (ids) |
 | add, rename, reorder an extension point | the use case's member rows | F2, Enter; `Alt + ↑ / ↓` in a row | the member hook; deleting one drops it from every extend that names it, and takes an extend left naming none |
 | put a use case in a subject | drop it into the subject's box | the Owner field | `reparent` |
+| move an actor along the actors' column | drag | `Alt + ↑ / ↓` (`Alt + ← / →` laid out down) | a pin, of which the layout reads the row; `Alt` + an arrow out of the actors' column does nothing and the hint line says why |
 | rename | double-click once selected | `F2` | `set label` |
 | hide, delete | Remove from view, Delete from model | `Delete`, `Shift + Delete` | `hide`, `delete` |
 

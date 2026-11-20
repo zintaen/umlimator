@@ -202,6 +202,15 @@ function ucActorsFirst(pos, view, pic, lines) {
   order.filter(id => !pinned.includes(id)).reduce((r, id) => { let y = Math.max(r, at(id)); while (pinned.some(p => Math.abs(out[p][1] - y) < 1)) y++; out[id] = [c, y]; return y + 1; }, -Infinity);
   return out;
 }
+// an actor ucActorsFirst places keeps the actors' column (rank) whatever its pin says: the canvas's Alt + an arrow along the
+// rank axis asks this (src/canvas/edit.js) and says why instead of writing a pin that moves nothing (audit 63)
+function ucKeepsRank(model, view, id) {
+  const pic = ucPic(model, view), x = pic.at.get(id);
+  if (!x || x.type !== 'uml.Actor' || !pic.holds(null).includes(id)) return null;
+  const actor = i => pic.at.get(i).type === 'uml.Actor' && pic.holds(null).includes(i);
+  if (!pic.ids.some(i => !pic.open.has(i) && !actor(i))) return null; // actors alone: ranked as any card
+  return view.direction === 'down' ? 'An actor stays in the actors\' row: Alt + Left or Right moves it along' : 'An actor stays in the actors\' column: Alt + Up or Down moves it along';
+}
 function ucGeo({ model, view, pos: ranked, memo }) {
   const pic = ucPic(model, view), lines = ucLines(model, view, pic), pos = ucActorsFirst(ranked || {}, view, pic, lines), P = id => (Object.hasOwn(pos, id) ? pos[id] : [0, 0]);
   const nodes = pic.ids.filter(id => !pic.open.has(id)).map(id => { const n = pic.at.get(id), st = ucStereo(n);
@@ -355,7 +364,7 @@ const UC_TYPE = registerDiagramType('uml.use-case', {
   },
   refs: { 'uml.Extend': { 'props.extensionPoints': 'drop empties' } }, // a deleted extension point leaves every extend that names it; an extend left naming none goes too, on any path (audit 19)
   rankFlip: e => e.type === 'uml.Generalization' || e.type === 'uml.Extend', // the parent and the base first
-  layout: ucGeo,
+  layout: Object.assign(ucGeo, { keepsRank: ucKeepsRank }), // keepsRank: the canvas's Alt + an arrow writes no rank an actor ignores
   boxes: (model, view) => ucPic(model, view).boxes,
   owners: ucOwners,
   member: { print: m => String(m.label ?? ''), edit: (m, t) => { const r = ucPointText(t); return r.error ? r : { commands: [{ op: 'set', id: m.id, path: 'label', value: r.label }] }; }, add: ucPointText, holds: n => n.type === 'uml.UseCase' },

@@ -103,8 +103,7 @@ const next = apply(classModel, [
 function history(model: MapModel, limit?: number): History;
 ```
 
-Undo and redo for a host. Push each model you apply, and hand what `undo()` and `redo()` return to
-[`handle.update()`](./render.md#update). `limit` caps how many models it keeps (default 100).
+Undo and redo for a host. Push each model you apply, and hand what `undo()` and `redo()` return to [`handle.update()`](./render.md#update). `limit` caps how many steps back it keeps (default 100): `history(model, 2)` allows two undos.
 
 ## History
 

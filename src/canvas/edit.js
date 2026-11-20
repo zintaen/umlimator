@@ -153,6 +153,10 @@ function typedEditor(api) {
     const K = e.key, s = api.sel();
     if (e.altKey) { const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[K], n = s && s.type === 'node' && api.geo().byId[s.id];
       if (!d || !n) return false; if (!Number.isFinite(n.col)) return true; if (api.geo().down) d.reverse();
+      // a card the type keeps in its rank (a use case actor in the actors' column, layout.keepsRank): a step along the rank axis
+      // wrote a pin the layout does not read, an undo step that moved nothing (audit 63); said instead, nothing emitted
+      const kr = d[0] && (def().layout || {}).keepsRank, why = typeof kr === 'function' && kr(model(), view(), n.id);
+      if (why) { say(typeof why === 'string' ? why : `${api.nameOf(n.id)} keeps its place along this axis`); return true; }
       // a cell another card is pinned to is stepped over (audit 58: Alt + Left onto it drew the two cards one over the other)
       // and so is the cell the card's own pin names when the card is drawn elsewhere: the layout settled that pin back (a box over
       // another there), and writing it again changed nothing, so the card could not be stepped past it by keyboard (audit 62)

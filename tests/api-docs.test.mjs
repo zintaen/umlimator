@@ -187,3 +187,16 @@ test('audit 43: risks.md M11 and C10 and the diff Action guide say a map view\'s
   assert.match(row('C10'), /a view's cards in a new order read "moves `X` after `Y`" or "reorders `N` cards" on a map too/);
   assert.match(guide, /cards in a new order read "moves X after Y" or "moves X to the start", or "reorders N cards"/);
 });
+
+// audit 63: the history() section said `limit` capped the models kept; push() keeps `limit` steps back plus the model now.
+// The page's own example, history(model, N) allows K undos, is run against the real history()
+test('the history() section says what `limit` caps, and its example holds', async () => {
+  const { history } = await import('../lib/umlimator.js'), page = pages['apply-and-commands.md'];
+  assert.ok(!/caps how many models/.test(page), 'history(): `limit` caps steps back, not models');
+  const ex = /`history\(model, (\d+)\)` allows (\w+) undos/.exec(page);
+  assert.ok(ex, 'the history() section gives an example of `limit`');
+  const words = { one: 1, two: 2, three: 3, four: 4, five: 5 }, limit = Number(ex[1]), said = words[ex[2]] ?? Number(ex[2]);
+  const h = history({ n: 0 }, limit); for (let i = 1; i <= limit + 3; i++) h.push({ n: i });
+  let undos = 0; while (h.canUndo) { h.undo(); undos++; }
+  assert.equal(undos, said, `history(model, ${limit}) allows ${undos} undos, the page says ${said}`);
+});

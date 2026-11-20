@@ -175,6 +175,16 @@ try {
   mount(apply(m7, last().commands));
   check('the pinned model drawn fresh: the actor a row lower, the use cases where they were', was('shopper').y > before.shopper.y && was('shopper').x === before.shopper.x && ['browse', 'check-out', 'pay'].every(id => same(was(id), before[id])),
     [before, ['shopper', 'browse', 'check-out', 'pay'].map(was)]);
+  // audit 63: the actors keep the actors' column (ucActorsFirst reads only a pinned actor's row), so Alt + an arrow along the
+  // rank axis wrote a pin that moved nothing, each press another undo step: nothing emitted, said on the hint line
+  for (const direction of ['right', 'down']) { const M = structuredClone(m7); M.views[0].direction = direction; h = mount(M, { editable: true });
+    const along = direction === 'down' ? 'ArrowDown' : 'ArrowRight', across = direction === 'down' ? 'ArrowRight' : 'ArrowDown';
+    click('.node[data-id="shopper"] .c-name'); const r0 = ed.length; key(along, { altKey: true }); key(along === 'ArrowDown' ? 'ArrowUp' : 'ArrowLeft', { altKey: true });
+    check(`audit 63, ${direction}: Alt + an arrow along the rank axis on an actor emits nothing, said on the hint line`, ed.length === r0 && /actors' (row|column)/.test(pick('.um-live').textContent), [ed.slice(r0), pick('.um-live').textContent]);
+    click('.node[data-id="browse"] .c-name'); const r1 = ed.length; key(along, { altKey: true });
+    check(`audit 63, ${direction}: a use case still takes a pin along the rank axis`, ed.length === r1 + 1 && same(last().commands[0].path, ['layout', 'browse']), ed.slice(r1));
+    click('.node[data-id="shopper"] .c-name'); const r2 = ed.length; key(across, { altKey: true });
+    check(`audit 63, ${direction}: the actor still takes a pin across it`, ed.length === r2 + 1 && same(last().commands[0].path, ['layout', 'shopper']), ed.slice(r2)); }
   h = mount(m7, { editable: true });
   click('.node[data-id="gift-wrap"] .c-name'); key('Delete');
   gives('Delete: hide the use case from the view', [{ op: 'hide', id: 'gift-wrap', view: 'shopping' }], m => !m.views[0].nodeIds.includes('gift-wrap'), m7);

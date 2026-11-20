@@ -82,7 +82,9 @@ function withOwnNodes(def) {
   const typed = model => views(model).filter(v => R_OBJ(v) && v.diagram != null && v.diagram !== 'map'), all = model => ownMerge(model, typed(model));
   const said = (o, ps) => (!o.at.length || !Array.isArray(ps) ? ps : ps.map(p => { const r = /^nodes\[(\d+)\]/.exec(String((R_OBJ(p) ? p.path : '') ?? '')), i = r ? Number(r[1]) - o.k : -1;
     return i >= 0 && i < o.at.length ? { ...p, path: `views[${o.at[i][0]}].nodes[${o.at[i][1]}]` + p.path.slice(r[0].length) } : p; }));
-  if (typeof L === 'function') out.layout = ownWrap('layout', L, f => a => f({ ...a, model: M(a.model, a.view) }));
+  if (typeof L === 'function') { out.layout = ownWrap('layout', L, f => a => f({ ...a, model: M(a.model, a.view) }));
+    // layout.keepsRank(model, view, id): the view's own nodes too, as the layout sees them (src/canvas/edit.js asks it)
+    if (typeof L.keepsRank === 'function') out.layout.keepsRank = ownWrap('keepsRank', L.keepsRank, f => (model, view, id) => { const v = R_OBJ(view) ? view : viewOf(model, view); return v ? f(M(model, v), v, id) : null; }); }
   else if (R_OBJ(L) && typeof L.run === 'function') out.layout = { ...L, run: ownWrap('run', L.run, f => (model, view, o) => f(M(model, view), view, o)) };
   ['boxes', 'rows', 'text', 'touches', 'drawn', 'drawnKeys'].forEach(k => { if (typeof def[k] === 'function') out[k] = ownWrap('view', def[k], f => (model, view, ...rest) => f(M(model, view), view, ...rest)); });
   // with no view (the PDF's word, the Owner field asked by a host): every view's own nodes
@@ -119,6 +121,8 @@ function withOwnNodes(def) {
      holds are left out; its owner is added when not offered).
      None, or not a list: no Owner field.
    - layout.pins false: pos is {}, no ranking; layout.rank false: pos is the view's pins alone, no ranking (risks.md P1).
+     layout.keepsRank(model, view, id): a card the layout keeps in its rank whatever its pin says, by a text the canvas says
+     when Alt + an arrow would step it along the rank axis, which then emits nothing (the use case's actors, audit 63).
      layout.direction 'down' or 'right': the type draws every view that way and warns of another direction itself (audit 52).
      reroute is no registry field: reroute: false goes in the dg the type's own layout passes to layoutTyped (src/typed/layout.js).
    Stage 4's (notes/stage-4.md §12.1, §15): edits.rename(model, view, id, text); a hook's { pick, then }; name: false and
