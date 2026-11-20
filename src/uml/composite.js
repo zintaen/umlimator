@@ -2,13 +2,13 @@ import { ownNodes, registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW, trimDash, widest } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
-import { brLines } from '../typed/draw.js';
+import { brLines, goneIn } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
 import { CLASSIFIERS, commentConnect, LINE_WORDS, legendOf, lineIn, lineLabel, lineLook, lineRename, memberClash, memberEdit, multBounds, printMember } from './class.js'; // a subject's other members, as the class type's; SHAPE.note, a comment's look
 import './usecase.js'; // SHAPE.ellipse, a collaboration use's; SHAPE.subject, a class subject's frame
 import { SN_SAY, STRUCT_RULES, sideProblem, snKindName, snKindWord, portFit, portSides, portsHeld, structProblems } from './structure.js';
 import { viewLines } from './owners.js';
-import { usedIds, jsonText, labelOr, elName, oneNamed, propTextProblems } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName, oneNamed, propTextProblems, isGone } from '../core/model.js';
 
 /* ---------- the composite structure diagram, uml.composite-structure (work package 5.6, notes/stage-5.md §6, §10.2) ----------
    The view's subject (a class, a component or a collaboration, listed in nodeIds) is a box holding its parts (its uml.Property
@@ -146,7 +146,11 @@ function csPic(model, view) {
     lines.forEach(({ f, t }) => [f, t].forEach(x => { if (x.part === p && !seen.has(x.id)) { seen.add(x.id); own.push(mem.get(x.id).m); } }));
     lostPorts.forEach(([q, id]) => { if (q === p && !seen.has(id)) { seen.add(id); own.push(mem.get(id).m); } });
     return [p, own]; }));
-  return { at, mem, el, ids, S, sid, parts, sPorts, uses, collabs, boxed, rest, partOf, typeOf, lines, loops, partPorts, kids };
+  // what a name counts on the diff page, as the model after counts it: not a member or a card diff() drew back removed, a card
+  // taken out of the view too (goneIn), nor a port a part lost (audit 56)
+  const gone = goneIn(view, el), lost = new Set(lostPorts.map(([q, id]) => csPortId(q, id)));
+  const livePorts = p => partPorts.get(p).filter(m => !isGone(m) && !lost.has(csPortId(p, m.id)));
+  return { at, mem, el, ids, S, sid, parts, sPorts, uses, collabs, boxed, rest, partOf, typeOf, lines, loops, partPorts, kids, gone, livePorts };
 }
 
 /* ---- names (§10.2, A1), reading order and the legend ---- */
@@ -158,14 +162,15 @@ function csNodeName(P, id) {
   const x = P.el(id); if (!x) return String(id); // an id with '->' (invalid: validate says so) names nothing
   const st = csStereo(x), why = st.length ? ` (${st.join(', ')})` : '';
   if (x.type === 'uml.Comment') return 'Comment: ' + csName(x);
-  // the live ones: on the diff page not one diff() drew back removed (audit 55)
-  const live = y => { const c = (y || {}).change; return !(typeof c === 'string' && c.toLowerCase() === 'removed'); };
-  if (P.boxed.has(id)) { const held = id === P.sid ? [...P.parts.filter(live).map(() => x.type === 'uml.Collaboration' ? 'role' : 'part'), ...P.uses.filter(u => live(P.el(u))).map(() => 'collaboration use')] : P.collabs.find(c => c.x.id === id).roles.filter(live).map(() => 'role');
-    return SN_SAY.component(csName(x), { stereotypes: st, ports: id === P.sid ? P.sPorts.length : 0, holds: held }).replace(/^Component/, csWord(x.type)); }
-  if (P.partOf.has(id)) { const o = P.partOf.get(id), role = o.type === 'uml.Collaboration' && o !== P.S || P.S && P.S.type === 'uml.Collaboration', k = P.partPorts.get(id).length;
+  // the live ones: on the diff page not one diff() drew back removed (audit 55), nor a use taken out of the view (audit 56); one
+  // itself removed counts all it had, the model before's
+  const all = P.gone(id), live = y => all || !isGone(y), sPorts = P.sPorts.filter(live).length;
+  if (P.boxed.has(id)) { const held = id === P.sid ? [...P.parts.filter(live).map(() => x.type === 'uml.Collaboration' ? 'role' : 'part'), ...P.uses.filter(u => all || !P.gone(u)).map(() => 'collaboration use')] : P.collabs.find(c => c.x.id === id).roles.filter(live).map(() => 'role');
+    return SN_SAY.component(csName(x), { stereotypes: st, ports: id === P.sid ? sPorts : 0, holds: held }).replace(/^Component/, csWord(x.type)); }
+  if (P.partOf.has(id)) { const o = P.partOf.get(id), role = o.type === 'uml.Collaboration' && o !== P.S || P.S && P.S.type === 'uml.Collaboration', k = (isGone(x) ? P.partPorts.get(id) : P.livePorts(id)).length;
     return `${role ? 'Role' : 'Part'} ${csPartSaid(x)}${why}${!role && CS_PROPS(x).aggregation === 'shared' ? ', shared' : ''}, in ${csName(o)}${k ? ', ' + csPlural(k, 'port') : ''}`; }
   if (x.type === 'uml.CollaborationUse') { const b = csBindings(P, id); return `Collaboration use ${csUseText(x)}${why}${b.length ? ', binding ' + b.join(', ') : ''}`; }
-  return `${csWord(x.type)} ${csName(x)}${why}${id === P.sid && P.sPorts.length ? ', ' + csPlural(P.sPorts.length, 'port') : ''}`;
+  return `${csWord(x.type)} ${csName(x)}${why}${id === P.sid && sPorts ? ', ' + csPlural(sPorts, 'port') : ''}`;
 }
 const csEndName = (P, x) => (x.part != null ? `${csName(P.mem.get(x.id).m)} of ${csName(P.el(x.part))}` : x.port != null ? `${csName(P.mem.get(x.id).m)} of ${csName(P.S)}` : csName(P.el(x.id)));
 const CS_LINE_WORD = { __proto__: null, 'uml.Connector': 'Connector', 'uml.RoleBinding': 'Role binding', 'uml.CommentLink': 'Comment link' };

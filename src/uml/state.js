@@ -9,7 +9,7 @@ import { commentConnect, commentLinkProblems } from './class.js'; // SHAPE.note,
 import { flowWrap } from './flow.js'; // SHAPE.initial, final, diamond and bar too
 import { ownersOn, readingOrder } from './owners.js';
 import { parseTransition, printTransition, transitionText } from './transition.js';
-import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
+import { copyOf, usedIds, jsonText, labelOr, elName, isGone } from '../core/model.js';
 import { snKindName } from './structure.js';
 
 /* ---------- the state machine diagram, uml.state-machine (work package 4.6, notes/stage-4.md §6, §10) ----------
@@ -132,8 +132,11 @@ function stPic(model, view) {
   const boxes = pic.boxes.map(b => { const x = pic.at.get(b.id);
     if (x.type === 'uml.Region') { const s = pic.at.get(b.parent), rs = stMembers(s, 'uml.Region'), k = rs.indexOf(x) + 1; // s: none when ownersOn broke a cycle
       const st = stStereo(x); // its «stereotypes» before its name, drawn and said (audit 17)
+      // the states the model after draws in it on the diff page, none when it draws no region; a region diff() drew back removed
+      // counts what it held, as the model before's (audit 56)
+      const n = pic.counted(b.id).length;
       return { ...b, rname: [...st.map(t => `«${t}»`), ...ST_HAS(x.label) ? [x.label] : []].join(' '),
-        aria: `Region ${ST_HAS(x.label) ? x.label : k}${st.length ? ` (${st.join(', ')})` : ''} of ${s ? stName(s) : String(b.parent ?? '')}, ${stPlural(pic.holds(b.id).filter(id => !pic.gone(id)).length, 'state')}` }; }
+        aria: `Region ${ST_HAS(x.label) ? x.label : k}${st.length ? ` (${st.join(', ')})` : ''} of ${s ? stName(s) : String(b.parent ?? '')}${n ? ', ' + stPlural(n, 'state') : ''}` }; }
     const k = brLines(b.title ?? b.label).length; // a title the author broke: a line each, the header room grown for them (audit 22)
     return { ...b, aria: stNodeName(x, pic, I, true), ...(k > 1 ? { head: (k - 1) * ST_TL } : {}) }; });
   return { ...pic, I, boxes };
@@ -148,7 +151,8 @@ function stNodeName(x, pic, I, open) {
   if (x.type === 'uml.Comment') return 'Comment: ' + stName(x);
   const st = stStereo(x), why = st.length ? ` (${st.join(', ')})` : '', up = x.parent != null && pic.at.get(x.parent), within = up && !open && x.type !== 'uml.State' ? ` in ${stPlace(up, I)}` : '';
   if (x.type !== 'uml.State') return stWord(x) + why + within;
-  const it = stMembers(x, 'uml.InternalTransition').length, rs = stMembers(x, 'uml.Region').length, subs = I.subs(x.id).filter(y => !pic.gone || !pic.gone(y.id)).length; // the live ones on the diff page (audit 55)
+  // the model's live ones on the diff page (audit 55); a state only taken out of the view still counts, as the model after counts it (audit 56)
+  const it = stMembers(x, 'uml.InternalTransition').filter(y => !isGone(y)).length, rs = stMembers(x, 'uml.Region').filter(y => !isGone(y)).length, subs = I.subs(x.id).filter(y => !isGone(y)).length;
   const parts = [...stActs(x).map(([k, t]) => `${k} ${t}`), ...(it ? [stPlural(it, 'internal transition')] : [])];
   if (!subs && !rs) return [`State ${stName(x)}${why}`, ...parts].join(', ');
   return [`Composite state ${stName(x)}${why}`, ...parts, rs ? stPlural(rs, 'region') : stPlural(subs, 'state'), ...(open ? [] : ['closed'])].join(', ');

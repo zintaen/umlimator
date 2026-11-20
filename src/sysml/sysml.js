@@ -1,4 +1,4 @@
-import { elName, labelOr, propTextProblems } from '../core/model.js';
+import { elName, labelOr, propTextProblems, isGone } from '../core/model.js';
 import { esc } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { ENDS } from '../typed/draw.js';
@@ -251,6 +251,10 @@ function SYS_CS_PROBLEMS(model, view) {
 // the internal block and parametric legends' keys for a listed line of another kind (a dependency): each as the composite type
 // draws and keys it (class.js legendOf: "Dependency", "Line"), after the view's own connector or binding (audit 28)
 const SYS_OTHER_KEYS = edges => legendOf(edges.filter(e => e.type !== 'uml.Connector' && e.type !== 'uml.CommentLink'));
+// a port or a parameter drawn on a part ("<part>-><member>") that a name does not count on the diff page, as the model after
+// does not (audit 56): its member diff() drew back removed, or one the part lost, which view.diffMarks marks removed
+function SYS_PORT_GONE(view, el) { const dm = view && typeof view === 'object' && view.diffMarks && typeof view.diffMarks === 'object' && view.diffMarks.marks && typeof view.diffMarks.marks === 'object' ? view.diffMarks.marks : {};
+  return id => { const s = String(id), k = s.indexOf('->'); return isGone(el(k < 0 ? s : s.slice(k + 2))) || (Object.hasOwn(dm, s) && dm[s] === 'removed'); }; }
 function SYS_DRESS(g, model, view, names) {
   const h = SYS_HEAD(model, view), said = x => (names && names(x.id)) || x.aria, map = new Map(), sid = view.subject;
   const card = g.byId && Object.hasOwn(g.byId, sid) ? g.byId[sid] : null, frame = { shape: 'sysml-frame', title: h.title, label: h.title, aria: h.aria, ...(h.el ? { edit: SYS_EDIT(view, h) } : {}) };
@@ -260,4 +264,4 @@ function SYS_DRESS(g, model, view, names) {
     families: [...(card ? [{ id: sid, x: card.x, y: card.y, w: card.w, h: card.h, nodeIds: [], ...frame }] : []), ...SYS_ARR(g.families).map(f => (f.id === sid ? { ...f, ...frame } : f))] };
 }
 
-export { SYS_TABLE, SYS_KIND, SYS_HEAD, SYS_FRAME, SYS_FRAME_RENAME, SYS_FRAME_EMPTY, SYS_AS_UML, SYS_LINES, SYS_BACK, SYS_ROLES, SYS_CLASH, SYS_FIELD, SYS_PARTS, SYS_CS_PROBLEMS, SYS_TEXT_PROBLEMS, SYS_DRESS, SYS_OTHER_KEYS };
+export { SYS_TABLE, SYS_KIND, SYS_HEAD, SYS_FRAME, SYS_FRAME_RENAME, SYS_FRAME_EMPTY, SYS_AS_UML, SYS_LINES, SYS_BACK, SYS_ROLES, SYS_CLASH, SYS_FIELD, SYS_PARTS, SYS_CS_PROBLEMS, SYS_TEXT_PROBLEMS, SYS_DRESS, SYS_PORT_GONE, SYS_OTHER_KEYS };

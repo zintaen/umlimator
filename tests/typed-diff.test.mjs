@@ -445,3 +445,51 @@ test('audit 55: on the diff page an owner\'s name counts what it holds as the mo
     assert.equal(name(all.diff(after, m).model, vid, owner), was, `${why}: an added one is counted`);
   }
 });
+
+test('audit 56: every count a name says on the diff page is the model after\'s: not a port, member, line or card diff() drew back removed, nor a card only taken out of the view; a box taken out counts what it held live in its owner', () => {
+  const name = (m, vid, id) => { const g = all.layout(m, vid), n = [...g.nodes, ...(g.families || []), ...g.edges].find(x => x.id === id);
+    return n && n.aria ? n.aria : (all.svgOf(g).match(new RegExp(`data-family="${id}"[^>]*aria-label="([^"]*)"`)) || [])[1]; };
+  const del = (...ids) => () => ids.map(id => ({ op: 'delete', id })), hide = (view, ...ids) => () => ids.map(id => ({ op: 'hide', id, view }));
+  const lines = (...ends) => m => m.edges.filter(e => ends.includes(e.from) || ends.includes(e.to)).map(e => ({ op: 'delete', id: e.id }));
+  const also = (a, b) => m => [...a(m), ...b(m)];
+  // [example, view, the change, the names it counts in]
+  const cases = [
+    // component and composite structure ports (finding 3), a collaboration use taken out of the view (4)
+    ['examples/types/uml-component.json', 'components', del('shop-api.orders'), ['shop-api']], ['examples/types/uml-component.json', 'components', del('basket.orders'), ['basket']],
+    ['examples/types/uml-composite-structure.json', 'inside', del('order-service.api'), ['order-service']], ['examples/types/uml-composite-structure.json', 'inside', del('checkout-flow.requests'), ['order-service.checkout']],
+    ['examples/types/uml-composite-structure.json', 'inside', hide('inside', 'order-events'), ['order-service']],
+    // a nested package or a deployment node taken out of the view: what it held counts in its owner, as the model after holds it (5)
+    ['examples/types/uml-package.json', 'packages', hide('packages', 'card'), ['payments']], ['examples/types/uml-class.json', 'sales', hide('sales', 'card'), ['payments']],
+    ['examples/types/uml-deployment.json', 'production', hide('production', 'app-server'), ['datacentre']], ['examples/types/aws.json', 'on-aws', hide('on-aws', 'region'), ['prod']],
+    // a composite state's states are the model's: one only taken out of the view still counts (audit 55 counted it out)
+    ['examples/types/uml-state-machine.json', 'order-life', hide('order-life', 'in-transit'), ['delivery']],
+    // flowchart, data flow and information flow lines (8)
+    ['examples/returns-flowchart.json', 'returns', del('resaleable-yes'), ['resaleable']], ['examples/returns-flowchart.json', 'returns', del('join-end'), ['end']],
+    ['examples/bookshop-data-flow.json', 'dfd-level-1', del('dfd-basket'), ['dfd-take-order']], ['examples/types/dfd.json', 'level-1', hide('level-1', 'customer'), ['take-order']],
+    ['examples/order-information-flow.json', 'order-flows', del('api-email'), ['receipt-info']],
+    // activity and interaction overview lines, a partition's nodes, a connector's messages: the same rule
+    ['examples/types/uml-activity.json', 'fulfil', hide('fulfil', 'ask-restock'), ['in-stock']], ['examples/types/uml-activity.json', 'fulfil', hide('fulfil', 'start'), ['lane-shop']],
+    ['examples/types/uml-interaction-overview.json', 'buy-book', del('try-payment'), ['payment-ok']], ['examples/types/uml-communication.json', 'checkout', del('m-checkout'), ['c-shopper-storefront']],
+    // BPMN: a removed lane, a removed group member, a task taken out of the view, a boundary event left alone (9)
+    ['examples/types/bpmn.json', 'order-to-shipment', del('bp-picking'), ['bp-bookshop', 'bp-warehouse']], ['examples/types/bpmn.json', 'order-to-shipment', del('courier-pickup'), ['dispatch']],
+    ['examples/types/bpmn.json', 'order-to-shipment', hide('order-to-shipment', 'count-stock'), ['bp-picking', 'bp-bookshop']], ['examples/types/bpmn.json', 'order-to-shipment', hide('order-to-shipment', 'bp-take-payment'), ['bp-sales']],
+    ['examples/types/bpmn.json', 'order-to-shipment', del('a-note-card'), ['bp-sales']],
+    // a mindmap topic taken out of the view, a leaf and one with subtopics (10)
+    ['examples/types/mindmap.json', 'plan', hide('plan', 'first-titles'), ['catalogue']], ['examples/types/mindmap.json', 'plan', hide('plan', 'catalogue'), ['opening']],
+    // SysML ports and parameters (11)
+    ['examples/types/sysml-internal-block.json', 'inside-ebike', also(del('battery.bus'), lines('battery.bus')), ['ebike.battery']],
+    ['examples/types/sysml-parametric.json', 'range', also(del('usable-energy.share'), lines('usable-energy.share')), ['ebike.usable']]];
+  for (const [f, vid, ops, ids] of cases) {
+    const m = load(f), after = all.apply(m, ops(m)), d = all.diff(m, after).model, back = all.diff(after, m).model;
+    for (const id of ids) { const was = name(m, vid, id), now = name(after, vid, id), why = `${f} ${vid}: ${id}`;
+      assert.ok(was && now, `${why} is named (${was} / ${now})`);
+      assert.equal(name(d, vid, id), now, why);
+      assert.equal(name(back, vid, id), was, `${why}: what comes back is counted`); }
+  }
+  // a box that holds only removed cards says no count, as the model after's says none; one itself removed, what it held (7)
+  const uc = load('examples/types/uml-use-case.json'), held = uc.nodes.filter(n => n.parent === 'bookshop').map(n => n.id);
+  assert.equal(name(all.diff(uc, all.apply(uc, del(...held)())).model, 'shopping', 'bookshop'), 'Subject Online bookshop');
+  assert.equal(name(all.diff(uc, all.apply(uc, del('bookshop', ...held)())).model, 'shopping', 'bookshop'), name(uc, 'shopping', 'bookshop'));
+  const sm = load('examples/types/uml-state-machine.json'), parcel = sm.nodes.filter(n => n.parent === 'fulfilling.parcel').map(n => n.id);
+  assert.equal(name(all.diff(sm, all.apply(sm, del(...parcel)())).model, 'order-life', 'fulfilling.parcel'), 'Region Parcel of Fulfilling');
+});

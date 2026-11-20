@@ -1,5 +1,5 @@
 import { apply } from '../core/apply.js';
-import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
+import { copyOf, usedIds, jsonText, labelOr, elName, isGone } from '../core/model.js';
 import { ownNodes, registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW, trimDash, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
@@ -128,7 +128,7 @@ function commGeo({ model, view, memo }) {
   // its arrows the same way and one half back across the picture
   const { rank } = cmRank(I.ids, I.connectors.filter(c => c.from !== c.to).map(c => { const f = (I.on.get(c.id)[0] || c).from; return [f, f === c.from ? c.to : c.from]; }));
   const onward = (a, b) => (rank[a] <= rank[b] ? [a, b] : [b, a]);
-  const edges = [], links = [], stacks = new Map(), conAria = c => `Connector ${c.from === c.to ? `from ${cmNameOf(I.N.get(c.from))} to itself` : `between ${cmNameOf(I.N.get(c.from))} and ${cmNameOf(I.N.get(c.to))}`}, ${cmPlural(I.on.get(c.id).length, 'message')}`;
+  const edges = [], links = [], stacks = new Map(), conAria = c => `Connector ${c.from === c.to ? `from ${cmNameOf(I.N.get(c.from))} to itself` : `between ${cmNameOf(I.N.get(c.from))} and ${cmNameOf(I.N.get(c.to))}`}, ${cmPlural(I.on.get(c.id).filter(m => isGone(c) || !isGone(m)).length, 'message')}`; // the model after's count on the diff page (audit 56)
   I.connectors.forEach(c => {
     const ms = I.on.get(c.id), plain = { id: c.id, _id: c.id, type: c.type, from: c.from, to: c.to, end: { from: 'none', to: 'none' }, aria: conAria(c) };
     if (!ms.length) { edges.push(plain); if (c.from !== c.to) links.push(onward(c.from, c.to)); return; }
