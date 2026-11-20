@@ -42,7 +42,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf integration": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "bench views": 1})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "bench views": 1})
 
 
 def ok(name, cond, info=""):
@@ -2414,6 +2414,26 @@ if part("audit 51"):
                     said.append((line, str(e)))
     ok("docs/guide/cli.md · every --views value names views of the page its block renders (audit 51)",
        len(said) >= 2 and all(r is True for _, r in said), said)
+if part("audit 54 tools"):
+    # audit 54: a card's or a line's change an author wrote as a list or an object ended diff --base (and the diff Action) in
+    # TypeError: unhashable type, before summary.md, for every model of the pull request; the sketch draws a string mark only
+    odd = [[1], {}, {"a": 1}, 3, None]
+    sks = [u.sketch({"nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B", "change": c}, {"id": "c", "label": "C", "change": "added"}],
+                     "edges": [{"from": "a", "to": "b", "change": c}, {"from": "a", "to": "c", "change": c}, {"from": "b", "to": "c", "change": "removed"}],
+                     "views": [{"id": "v", "nodeIds": ["a", "b", "c"]}]}) for c in odd]
+    ok("diff --base · a card's or a line's change that is a list, an object or a number is no mark in the sketch, and the sketch is drawn (audit 54)",
+       all(sk[:2] == ["```mermaid", "flowchart LR"] and '  n2["C"]:::added' in sk and '  n1["B"]' in sk and "  n1 -.-> n2" in sk and "  n0 --> n2" in sk
+           and not any("n0 --> n1" in x for x in sk) and sum("linkStyle" in x for x in sk) == 1 for sk in sks), sks)
+    # audit 54: the map-repo skill's pin moved to v0.43.0 and v0.44.0 with plugin.json kept at 0.1.15, so Claude Code offered no
+    # update and installed skills ran the 0.42.0 pin; each pin is recorded here with the plugin version it shipped in, so a pin
+    # move without a version bump fails until both are recorded
+    shipped = {"0.42.0-847d167": "0.1.15", "0.44.0-679af7d": "0.1.16"}
+    launcher = (ROOT / "plugins" / "umlimator" / "skills" / "map-repo" / "scripts" / "cli.py").read_text(encoding="utf-8")
+    pin = re.search(r'REF, SHA = "([^"]+)"', launcher).group(1)
+    plugin = json.loads((ROOT / "plugins" / "umlimator" / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]
+    ok("map-repo · each pin of the skill's CLI ships in a plugin version of its own: plugin.json's version is the one recorded with the pin (audit 54)",
+       shipped.get(pin) == plugin and len(set(shipped.values())) == len(shipped)
+       and list(shipped.values()) == sorted(shipped.values(), key=lambda v: tuple(map(int, v.split(".")))), (pin, plugin, shipped))
 if part("bench views"):
     # bench.py times map views only (step 0 of the one-model plan): a version-2 model's typed views are left out with their benchViews,
     # a version-1 model's views are all timed whatever they say, and a benchViews entry naming no view stops the bench

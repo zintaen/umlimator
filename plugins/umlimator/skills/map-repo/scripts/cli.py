@@ -6,7 +6,7 @@ CLI, the module, the page template, the icon manifest and line icons) into ~/.ca
 is the commit pinned (and, on every run, that the cache holds that commit), and from then on runs
 `python3 umlimator.py ...` from there. The pin is a release's commit, or main's when the release lags behind a security
 fix the pages it writes need (audit 23: v0.42.0 had neither the own_logos nor the own_media guard of risks.md S1, S2;
-v0.43.0 has both, so the pin is its release commit again). The CLI itself downloads a brand logo only when a model's card
+v0.43.0 and later have both, so the pin is a release commit again: v0.44.0's). The CLI itself downloads a brand logo only when a model's card
 names one (into ~/.cache/umlimator/icons).
 
   python3 cli.py render map.json --out map.html     the page, then its layout check

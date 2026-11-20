@@ -137,7 +137,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | A card with its name only (`noSub`) | [`types/map.json`](types/map.json) `shop` (Admin CLI) |
 | Edited marks (`edited`) | [`types/map.json`](types/map.json) `shop` (Shop API) |
 | Chips (`verbs`), planned and removed cards (`change`), brand logos (`icon`) | [`types/map.json`](types/map.json) `shop` (Shop API's checkout and refund; Gift cards; React, FastAPI and PostgreSQL) |
-| A card's setting in one view only (`nodeOverrides`) | bookshop-atlas `components` (Shop API opens `domain`) and `checkout-sequence` |
+| A card's setting in one view only (`nodeOverrides`) | bookshop-atlas `components` (the shop-api image opens `domain`) and `checkout-sequence` (api opens `checkout-communication`) |
 | Cards with no lines in a row of their own | monorepo `plain` (tools/release, tools/codemods) |
 | Positions set by hand (`layout`) | umlimator-atlas `overview`, `machines`, `story` and `tour` |
 | Space between columns and rows (`gap`, `rgap`) | umlimator-atlas `machines`, `story` and `tour` |
