@@ -591,8 +591,9 @@ function mapContext(model, opts = {}) {
       const L = T.layout, memo = memos[vid] ||= {}, k = !override && L.key ? L.key(D, v) : null;
       if (k != null && memo.runKey === k) return marks(memo.runGeo, vid);
       const pos = override || (L.pins === false ? {} : L.rank === false ? onGrid(vid, v.layout || {}) : v.layout ? fillLayout(vid, v.layout, true) : (layoutCache[vid] ||= autoPos(vid))); // pins: false, no ranking either (notes/stage-3.md Q9)
-      let g = L.run ? L.run(D, v, { measure: M, pos, memo }) : L({ model: D, view: v, pos, memo });
-      if (!override && v.layout && L.pins !== false) g = pinsClear(vid, v, L, g, memo);
+      const run = (pos, memo) => (L.run ? L.run(D, v, { measure: M, pos, memo }) : L({ model: D, view: v, pos, memo }));
+      let g; // a pinned view's warnings held back: pinsClear may drop the layout that gave them, and only the one kept says its own (audit 59)
+      if (!override && v.layout && L.pins !== false) { let said; [g, said] = held(() => run(pos, memo)); [g, said] = pinsClear(vid, v, L, g, memo, said, run); said.forEach(warn); } else g = run(pos, memo);
       // the request/reply port swap (layered.js) is judged inside a pass; the later passes and the type's own steps can undo
       // it, so a view that kept one is laid out once more without it, and that kept when it has fewer issues (audit 15).
       // ponytail: a layout more, so only up to 30 cards (as bestFlow); a larger view keeps the swap as the pass judged it
@@ -626,21 +627,21 @@ function mapContext(model, opts = {}) {
      other (settlePins goes by cells, and a tall row reaches over the half row after it: audit 58, the profile example's Order
      one column down, its package box over the profile beside it): a pin moves to a cell round it, nearest first, a pin of what
      they meet before the others (a pin moves cards with none too), until none is left (12 layouts at most), the fewest kept. ponytail: a cell model that knows each row's reach */
-  function pinsClear(vid, v, L, g, memo) {
-    const met = boxClash(g); if (!met.size) return g;
+  function pinsClear(vid, v, L, g, memo, said, run) { // said: what the layout g warned of; returns [the layout kept, what it warned of]
+    const met = boxClash(g); if (!met.size) return [g, said];
     const fam = O(), homes = O(); (g.families || []).forEach(f => { fam[f.id] = f; arrOf(f.nodeIds).forEach(i => { (homes[i] ||= []).push(f.id); }); });
     const hit = i => { if (met.has(i)) return true; const st = [...(homes[i] || [])]; for (let k = 0; st.length && k <= 4096; k++) { const f = st.pop(); if (met.has(f)) return true; if (fam[f] && fam[f].parent != null) st.push(fam[f].parent); } return false; };
     const all = (v.nodeIds || []).filter(i => Object.hasOwn(v.layout, i) && Array.isArray(v.layout[i])).reverse(), pins = [...all.filter(hit), ...all.filter(i => !hit(i))]; // what they meet first, then the rest, last first
-    if (!pins.length) return g;
-    let best = { g, n: met.size, memo: null }, left = 12; const seen = new Set();
+    if (!pins.length) return [g, said];
+    let best = { g, n: met.size, memo: null, said }, left = 12; const seen = new Set();
     for (const i of pins) { const n0 = (g.byId || {})[i] || (g.nodes || []).find(n => n.id === i), p = n0 && Number.isFinite(n0.col) ? [n0.col, n0.row] : v.layout[i];
       for (let m = 1; m <= 2 && best.n && left > 0; m++) for (let dc = -m; dc <= m && best.n && left > 0; dc++) for (const dr of new Set([m - Math.abs(dc), Math.abs(dc) - m])) {
         if (!best.n || left <= 0) break; const c = p[0] + dc, r = p[1] + dr; if (c < 0 || r < 0) continue;
         const L2 = { ...v.layout, [i]: [c, r] }, pos = L.rank === false ? onGrid(vid, L2) : fillLayout(vid, L2, true), key = JSON.stringify(pos); if (seen.has(key)) continue; seen.add(key); left--;
-        const m2 = {}, h = L.run ? L.run(D, v, { measure: M, pos, memo: m2 }) : L({ model: D, view: v, pos, memo: m2 }), k = boxClash(h).size;
-        if (k < best.n) best = { g: h, n: k, memo: m2 }; } }
+        const m2 = {}, [h, w] = held(() => run(pos, m2)), k = boxClash(h).size;
+        if (k < best.n) best = { g: h, n: k, memo: m2, said: w }; } }
     if (best.memo) { Object.keys(memo).forEach(k => { delete memo[k]; }); Object.assign(memo, best.memo); }
-    return best.g;
+    return [best.g, best.said];
   }
   function hubGeo(vid, P, edges, repair, quick) {
     const NH = V[vid].subAndChips ? 80 : 64, CG = 108, RG = 44, pitch = NH + RG, hub = P.hub;

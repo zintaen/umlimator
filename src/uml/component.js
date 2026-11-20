@@ -1,7 +1,7 @@
 import { aKind, drawnKind, ownNodes, registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
-import { rowsFor, settlePins, untangle } from '../layout/layered.js';
+import { pinCells, rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { CLASSIFIERS, RULES, commentConnect, lineRename, multProblem, memberClash, memberEdit, paramTextProblems, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
@@ -162,17 +162,10 @@ function cpPlace(pic, lines, pins) {
   [...seq].reverse().forEach(g => done.set(g, block(g)));
   const at = done.get(null).pos, P = Object.entries(CP_OBJ(pins) ? pins : {}).filter(([id, p]) => Object.hasOwn(at, id) && Array.isArray(p) && p.length === 2 && p.every(Number.isFinite));
   if (!P.length) return at;
-  // the pins settled first (settlePins, audit 58): none on another pin, nor on or in a box it is not in, nor growing its own
-  // box over what it does not hold; a card a pin would then cover moves down, and on to the nearest clean slot when its box
-  // would grow over what it does not hold there (the gallery's Basket pinned on Checkout's cell, Checkout down past Payment provider)
-  const pinned = new Set(P.map(([id]) => id)), up = x => { const a = []; for (let k = 0, y = pic.owner(x); y != null && k <= seq.size; k++, y = pic.owner(y)) if (pic.open.has(y)) a.push(y); return a; };
-  const S = settlePins(P, Object.fromEntries(Object.entries(at).filter(([id]) => !pinned.has(id))), up);
-  const taken = P.map(([id]) => S[id]), free = (c, r) => !taken.some(([c2, r2]) => c2 === c && Math.abs(r2 - r) < 1), held = new Set(pinned);
-  P.forEach(([id]) => { at[id] = S[id]; });
-  Object.keys(at).forEach(id => { if (pinned.has(id)) return; let [c, r] = at[id]; if (!free(c, r)) { while (!free(c, r)) r++;
-    const rest = Object.assign(Object.create(null), at); delete rest[id]; [c, r] = settlePins([[id, [c, r]]], rest, up, held)[id]; }
-    at[id] = [c, r]; taken.push([c, r]); held.add(id); });
-  return at;
+  // the pins settled first (pinCells, src/layout/layered.js: audit 58): none on another pin, nor on or in a box it is not in,
+  // nor growing its own box over what it does not hold; a card a pin would then cover moves down, and on to a clean slot
+  const up = x => { const a = []; for (let k = 0, y = pic.owner(x); y != null && k <= seq.size; k++, y = pic.owner(y)) if (pic.open.has(y)) a.push(y); return a; };
+  return pinCells(at, P, up);
 }
 function cpGeo({ model, view, pos: pins, memo }) {
   const pic = cpPic(model, view), { I, lines } = pic, down = view.direction === 'down', present = CP_OBJ(view.present) ? view.present : {}, pos = cpPlace(pic, lines, pins);

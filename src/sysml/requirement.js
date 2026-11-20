@@ -1,7 +1,7 @@
 import { everyOwn, registerDiagramType } from '../core/registry.js';
 import { brLines, wrapLines } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
-import { labelW, rowsFor, untangle } from '../layout/layered.js';
+import { labelW, pinCells, rowsFor, untangle } from '../layout/layered.js';
 import { goneLines, layoutTyped } from '../typed/layout.js';
 import { commentConnect, drawnLines, legendItem, lineRename } from '../uml/class.js'; // and SHAPE.note, a comment's look
 import { holdsLine, ownersOn, placeTabs } from '../uml/owners.js';
@@ -153,9 +153,12 @@ function rqGeo({ model, view, pos: pins, memo }) {
     aria: `Containment of ${rqKind(I, x.from)} in ${rqKind(I, x.to)}` })));
   // ranked: a relationship's supplier, a containment's owner and what a comment is about first; a pin wins, and a card on its cell goes down a row
   const at = rqRank(frame, boxes, [...lines.map(({ e, from, to }) => [to, from]), ...owned.map(id => [I.at.get(id).parent, id])]);
-  const pinOf = id => (RQ_OBJ(pins) && Object.hasOwn(pins, id) && Array.isArray(pins[id]) && pins[id].length === 2 && pins[id].every(Number.isFinite) ? pins[id] : null), taken = [];
-  // ponytail: a pin is a cell of the frame's grid, not of a box's block, so a card pinned inside another box's block can overlap it; buildGeo's pinsClear (src/map/context.js) then moves the pin to a cell clear of it, a layout per try (audit 58); ranking pins into blocks would need none
-  [...ids.filter(pinOf), ...ids.filter(id => !pinOf(id))].forEach(id => { let [c, r] = pinOf(id) || at[id]; while (taken.some(([c2, r2]) => c2 === c && Math.abs(r2 - r) < 1)) r++; at[id] = [c, r]; taken.push([c, r]); });
+  const pinOf = id => (RQ_OBJ(pins) && Object.hasOwn(pins, id) && Array.isArray(pins[id]) && pins[id].length === 2 && pins[id].every(Number.isFinite) ? pins[id] : null);
+  // the pins settled among the boxes as the component view's are (pinCells, src/layout/layered.js): one that would sit in a box it
+  // is not in, or grow its own box over a card it does not hold, goes to the nearest clean slot (audit 59: the gallery's Payment
+  // gateway Alt + Down twice, the Payments package over the Checkout walk-through); buildGeo's pinsClear (src/map/context.js) checks the picture
+  const up = x => { const a = []; for (let k = 0, y = pic.owner(x); y != null && y !== sid && k <= ids.length + boxes.length; k++, y = pic.owner(y)) if (pic.open.has(y)) a.push(y); return a; };
+  pinCells(at, ids.filter(id => pinOf(id) && Object.hasOwn(at, id)).map(id => [id, pinOf(id)]), up, ids);
   nodes.forEach(n => { [n.col, n.row] = at[n.id]; });
   const down = view.direction == null || view.direction === 'down', wide = down ? 0 : Math.max(0, ...edges.filter(e => e.label).map(labelW)); // down by default (§6.1); a direction neither right nor down is drawn right, as the core warns (audit 12); laid out right, the class type's room for labels
   const g = placeTabs(layoutTyped({ nodes, edges, containers: [frame, ...boxes], direction: down ? 'down' : 'right', gap: 96 + (wide ? Math.ceil(wide) + 40 : 0), rgap: 56, repair: false, reroute: false }, memo));

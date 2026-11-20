@@ -125,33 +125,57 @@ function rowsFor(cols, links, h = () => 1, fixed = Object.create(null)) {
 /* A typed view's pins, settled (audit 58): two pins on one cell, a pin on the cell of a card in a box it is not in or in such
    a box's cells, or one that grows its own box over a card or box it does not hold, drew one thing over another (Alt + an
    arrow, or a drag, onto any of them). The pins are taken in order, each kept where it is clean, else moved to the nearest
-   clean slot: a row down, then up, then across, then a ring further out. pins: [[id, [col, row]]]; at: the other cards that
-   hold a place (by id); up(id): the boxes a card, or a box, lies in, innermost first; fixed: those of them whose cell no pin
-   shares, in a box or not. A box's cells run from its cards' first column and row to their last, a card more than half a row
-   (column) into them in it (as boxFit, src/map/context.js) */
+   clean slot: a row down, then up, then across, then a ring further out, as far as the cards placed reach and two cells past.
+   With none there (its box hemmed in, a pin far off: audit 59), it goes in a fresh row under its box, what lies below moved
+   down to make it, which is always clean. pins: [[id, [col, row]]]; at: the other cards that hold a place (by id); up(id): the
+   boxes a card, or a box, lies in, innermost first; fixed: those of them whose cell no pin shares, in a box or not. A box's
+   cells run from its cards' first column and row to their last, a card more than half a row (column) into them in it (as
+   boxFit, src/map/context.js). The result: the pins' cells by id, and under MOVED the other cards a fresh row moved down.
+   Each box's cells are found once a pin, not once a cell tried (audit 59: seconds a layout) */
+const MOVED = Symbol('moved');
 function settlePins(pins, at, up, fixed = null, rows = .5) { // rows: how far past a box's last row a card is in it (1: a whole row)
-  const pos = Object.assign(Object.create(null), at), out = Object.create(null), mine = [], ups = Object.create(null), upOf = x => (ups[x] ||= up(x) || []);
+  const pos = Object.assign(Object.create(null), at), out = Object.create(null), moved = Object.create(null), ups = Object.create(null), upOf = x => (ups[x] ||= up(x) || []);
   const boxes = [...new Set([...Object.keys(pos), ...pins.map(p => p[0])].flatMap(upOf))];
-  const span = (b, skip) => { let R = null; for (const j in pos) { if (j === skip || !upOf(j).includes(b)) continue; const [c, r] = pos[j];
-    R = R ? { c0: Math.min(R.c0, c), c1: Math.max(R.c1, c), r0: Math.min(R.r0, r), r1: Math.max(R.r1, r) } : { c0: c, c1: c, r0: r, r1: r }; } return R; };
   const over = (R, c, r) => !!R && c > R.c0 - .5 && c < R.c1 + .5 && r > R.r0 - rows && r < R.r1 + rows, meet = (A, B) => !!A && !!B && A.c0 < B.c1 + .5 && B.c0 < A.c1 + .5 && A.r0 < B.r1 + rows && B.r0 < A.r1 + rows;
-  const clean = (i, c, r) => { const ui = upOf(i);
-    if (mine.some(([c2, r2]) => c2 === c && Math.abs(r2 - r) < 1)) return false; // an earlier pin's cell
-    for (const j in pos) { if (j !== i && pos[j][0] === c && Math.abs(pos[j][1] - r) < 1 && (fixed && fixed.has(j) || upOf(j).some(b => !ui.includes(b)))) return false; } // a card of a box it is not in
-    const R = Object.create(null); boxes.forEach(b => { R[b] = span(b, i); });
-    for (const b of boxes) { if (ui.includes(b)) continue; if (over(R[b], c, r)) return false; } // in such a box's cells
-    for (const b of ui) { const R0 = R[b], R1 = R0 ? { c0: Math.min(R0.c0, c), c1: Math.max(R0.c1, c), r0: Math.min(R0.r0, r), r1: Math.max(R0.r1, r) } : { c0: c, c1: c, r0: r, r1: r };
-      for (const j in pos) if (j !== i && !upOf(j).includes(b) && over(R1, ...pos[j]) && !over(R0, ...pos[j])) return false; // its box grown over a card it does not hold
-      for (const o of boxes) if (o !== b && !ui.includes(o) && !upOf(o).includes(b) && meet(R1, R[o]) && !meet(R0, R[o])) return false; } // or over another box
-    return true; };
+  const grow = (R, c, r) => (R ? { c0: Math.min(R.c0, c), c1: Math.max(R.c1, c), r0: Math.min(R.r0, r), r1: Math.max(R.r1, r) } : { c0: c, c1: c, r0: r, r1: r });
   pins.forEach(([i, p]) => { let q = p; delete pos[i];
-    if (!clean(i, p[0], p[1])) { const lim = pins.length + Object.keys(pos).length + 4, neg = (v, v0) => v < 0 && v0 >= 0; q = null;
+    const R = Object.create(null), col = new Map(), ui = upOf(i), mine = new Set(Object.keys(out)); // each box's cells, and the cards by column, as placed so far
+    for (const j in pos) { const [c, r] = pos[j]; upOf(j).forEach(b => { R[b] = grow(R[b], c, r); }); if (!col.has(c)) col.set(c, []); col.get(c).push(j); }
+    const clean = (c, r) => {
+      for (const j of col.get(c) || []) if (Math.abs(pos[j][1] - r) < 1 && (mine.has(j) || fixed && fixed.has(j) || upOf(j).some(b => !ui.includes(b)))) return false; // an earlier pin's cell, or a card of a box it is not in
+      for (const b of boxes) { if (ui.includes(b)) continue; if (over(R[b], c, r)) return false; } // in such a box's cells
+      for (const b of ui) { const R0 = R[b], R1 = grow(R0, c, r); if (R0 && R1.c0 === R0.c0 && R1.c1 === R0.c1 && R1.r0 === R0.r0 && R1.r1 === R0.r1) continue; // not grown
+        for (const j in pos) if (!upOf(j).includes(b) && over(R1, ...pos[j]) && !over(R0, ...pos[j])) return false; // its box grown over a card it does not hold
+        for (const o of boxes) if (o !== b && !ui.includes(o) && !upOf(o).includes(b) && meet(R1, R[o]) && !meet(R0, R[o])) return false; } // or over another box
+      return true; };
+    if (!clean(p[0], p[1])) { let c0 = p[0], c1 = p[0], r0 = p[1], r1 = p[1]; for (const j in pos) { const [c, r] = pos[j]; c0 = Math.min(c0, c); c1 = Math.max(c1, c); r0 = Math.min(r0, r); r1 = Math.max(r1, r); }
+      c0 -= 2; c1 += 2; r0 -= 2; r1 += 2; // the cells tried: as far as the cards placed reach, and two past
+      const lim = Math.min(pins.length + Object.keys(pos).length + 4, Math.max(p[0] - c0, c1 - p[0]) + Math.max(p[1] - r0, r1 - p[1])), neg = (v, v0) => v < 0 && v0 >= 0; q = null;
       for (let m = 1; !q && m <= lim; m++) { const ring = []; for (let dc = -m; dc <= m; dc++) { const k = m - Math.abs(dc); ring.push([dc, k]); if (k) ring.push([dc, -k]); }
         ring.sort((a, b) => Math.abs(a[0]) - Math.abs(b[0]) || (a[1] < 0) - (b[1] < 0) || (a[0] < 0) - (b[0] < 0));
-        for (const [dc, dr] of ring) { const c = p[0] + dc, r = p[1] + dr; if (neg(c, p[0]) || neg(r, p[1])) continue; if (clean(i, c, r)) { q = [c, r]; break; } } }
-      q ||= p; }
-    out[i] = pos[i] = q; mine.push(q); });
+        for (const [dc, dr] of ring) { const c = p[0] + dc, r = p[1] + dr; if (c < c0 || c > c1 || r < r0 || r > r1 || neg(c, p[0]) || neg(r, p[1])) continue; if (clean(c, r)) { q = [c, r]; break; } } }
+      if (!q) { // a fresh row under its innermost box with cards placed, in the column nearest the pin; with none, under every card
+        const b = ui.find(x => R[x]), B = b ? R[b] : null, low = B ? B.r1 : Math.max(p[1], ...Object.values(pos).map(x => x[1]));
+        const below = Object.keys(pos).filter(j => pos[j][1] > low), d = B && below.length ? Math.max(0, Math.ceil(low + 2 - Math.min(...below.map(j => pos[j][1])))) : 0;
+        if (d) below.forEach(j => { pos[j] = [pos[j][0], pos[j][1] + d]; if (mine.has(j)) out[j] = pos[j]; else moved[j] = pos[j]; });
+        q = B ? [Math.min(B.c1, Math.max(B.c0, p[0])), low + 1] : [p[0], Math.floor(low) + 2]; } }
+    out[i] = pos[i] = q; });
+  Object.defineProperty(out, MOVED, { value: moved });
   return out;
+}
+/* A view that ranks its own cards (component, BPMN, requirement) with pins: at, its ranked cells by id, the pins [[id, cell]]
+   settled (settlePins) and put in, then each other card, in order, at its cell, or down a row while a card is there, and on
+   to the nearest clean slot when its box would grow there over what it does not hold (the component gallery's Basket pinned
+   on Checkout's cell, Checkout down past Payment provider). at is changed and returned */
+function pinCells(at, P, up, order = Object.keys(at)) {
+  const pinned = new Set(P.map(([id]) => id)), S = settlePins(P, Object.fromEntries(Object.entries(at).filter(([id]) => !pinned.has(id))), up), held = new Set(pinned);
+  let taken = P.map(([id]) => S[id]); const free = (c, r) => !taken.some(([c2, r2]) => c2 === c && Math.abs(r2 - r) < 1);
+  P.forEach(([id]) => { at[id] = S[id]; }); Object.assign(at, S[MOVED]); // what a fresh row a pin went in moved down
+  order.forEach(id => { if (pinned.has(id) || !Object.hasOwn(at, id)) return; let [c, r] = at[id]; if (!free(c, r)) { while (!free(c, r)) r++;
+    const rest = Object.assign(Object.create(null), at); delete rest[id]; const S2 = settlePins([[id, [c, r]]], rest, up, held); [c, r] = S2[id];
+    if (Object.keys(S2[MOVED]).length) { Object.assign(at, S2[MOVED]); taken = [...held].map(h => at[h]); } }
+    at[id] = [c, r]; taken.push([c, r]); held.add(id); });
+  return at;
 }
 /* Geometry: node boxes, ports, orthogonal routes, label slots. A view with lines the router found no route for is laid
    out once more, with room where those lines need it (#40); a view whose lines all route keeps its geometry. */
@@ -1203,4 +1227,4 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   return { ms: __ms, ...(used ? { nested: true } : {}), ...(turns ? { turns: true } : {}), ...(grew ? { grew: true } : {}), ...(labelRoom ? { labelRoom } : {}), ...(rrSwap ? { rr: true } : {}), stats, nodes, edges, subAndChips: !!dg.subAndChips, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: Math.max(...xs) - minX + M, h: Math.max(...ys) - minY + M } };
 }
 
-export { CHG, NW, OWN_ROUTE, PLAIN, SPAN, TURNS, labelW, pillW, stepW, stepOrder, hit, untangle, pullSources, rowsFor, layoutGraph, settlePins };
+export { CHG, NW, OWN_ROUTE, PLAIN, SPAN, TURNS, labelW, pillW, stepW, stepOrder, hit, untangle, pullSources, rowsFor, layoutGraph, settlePins, pinCells };

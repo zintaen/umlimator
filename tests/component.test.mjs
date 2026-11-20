@@ -684,3 +684,21 @@ test('a pin on a box\'s cell or on another pin\'s cell: no box over a card it do
     const c = structuredClone(g), v = c.views.find(x => x.id === vid); v.layout = { ...v.layout, [id]: p };
     assert.deepEqual(bad(c, vid), [], `${vid}: ${id} pinned at [${p}]`); }
 });
+
+// audit 59: a pin with no clean cell within settlePins' rings kept its cell: Accounts pinned 13 or more columns right of its
+// package drew the package over Payments, and three cards of three packages pinned to one cell were drawn on one another
+test('a pin with no clean cell near goes in a fresh row under its box (audit 59)', () => {
+  const bad = (m, v) => check(m, v).map(p => p.message).filter(s => /lies over|overlap/.test(s));
+  const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 'pkg', type: 'uml.Package', label: 'accounts' }, { id: 'a', type: 'uml.Component', label: 'Accounts', parent: 'pkg' },
+    { id: 'b', type: 'uml.Component', label: 'Sessions', parent: 'pkg' }, { id: 'c', type: 'uml.Component', label: 'Storefront' }, { id: 'd', type: 'uml.Component', label: 'Payments' }],
+  edges: [{ id: 'ab', type: 'uml.Usage', from: 'a', to: 'b' }, { id: 'bc', type: 'uml.Usage', from: 'c', to: 'b' }, { id: 'bd', type: 'uml.Usage', from: 'b', to: 'd' }],
+  views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['pkg', 'a', 'b', 'c', 'd'] }] };
+  for (const col of [12, 13, 20, 40]) { m.views[0].layout = { a: [col, 0] }; assert.deepEqual(bad(m, 'v'), [], 'Accounts pinned at column ' + col); }
+  const nodes = [0, 1, 2].map(k => ({ id: 'p' + k, type: 'uml.Package', label: 'Pkg ' + k })), cards = Array.from({ length: 9 }, (_, i) => ({ id: 'n' + i, type: 'uml.Component', label: 'Element ' + i, parent: 'p' + (i % 3) }));
+  const all = { schemaVersion: 2, root: 'v', nodes: [...nodes, ...cards], edges: cards.slice(1).map((n, i) => ({ id: 'e' + i, type: 'uml.Usage', from: 'n' + i, to: n.id })),
+    views: [{ id: 'v', diagram: 'uml.component', nodeIds: [...nodes, ...cards].map(n => n.id), layout: Object.fromEntries(cards.map(n => [n.id, [0, 0]])) }] };
+  assert.deepEqual(bad(all, 'v'), [], 'nine cards in three packages pinned to one cell');
+  // the gallery's accounts package pinned far right drew its box over Sign in
+  const g = JSON.parse(readFileSync(new URL('../examples/types/uml-component.json', import.meta.url))), gv = g.views.find(v => (v.nodeIds || []).includes('accounts'));
+  for (const col of [21, 28, 40]) { gv.layout = { ...gv.layout, accounts: [col, 2.5] }; assert.deepEqual(bad(g, gv.id), [], 'accounts pinned at column ' + col); }
+});

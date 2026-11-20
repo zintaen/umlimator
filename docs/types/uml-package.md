@@ -108,7 +108,7 @@ when it is closed; a box takes its place from what it holds.
 - **The open package's tab is drawn inside the box's header room**, not above it, so the border right of the tab is
   level with the tab's top, as in UML's frame notation; the closed folder is UML's own shape (`notes/stage-2.md` §5,
   (a)).
-- A pin that puts a node outside its owner's columns grows the box to hold it, as on maps. A pin that would grow the box over a card or box it does not hold, or put the node in another box's cells or on another pin's cell, is drawn in the nearest clean slot instead (audit 58). `tests/package-minimal.json` holds a pinned class in a box, laid out clean.
+- A pin that puts a node outside its owner's columns grows the box to hold it, as on maps. A pin that would grow the box over a card or box it does not hold, or put the node in another box's cells or on another pin's cell, is drawn in the nearest clean slot instead (audit 58). When no clean slot is near (its box hemmed in by other boxes, or the pin far off), it goes in a fresh row under its box, and what lies below moves down to make room (audit 59). `tests/package-minimal.json` holds a pinned class in a box, laid out clean.
 - A change of owner lays the view out again, so the picture moves on that edit (`notes/stage-2.md` §3.2).
 - A known limit found by 2.6: the router may take a line through a box that holds neither of its ends. In
   `examples/bookshop-packages.json` as stage 2 made it (without 6.7's profile, as `tests/package.html` draws it), laid

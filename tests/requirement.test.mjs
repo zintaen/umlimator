@@ -7,6 +7,7 @@
 // keyboard. Imports src/ to reach the internals; lib/umlimator-all.js holds the same code.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { diagramOf } from '../src/core/registry.js';
 import { apply } from '../src/core/apply.js';
 import { history } from '../src/core/history.js';
@@ -464,4 +465,18 @@ test('audit 58: a requirement text with no spaces (Chinese, a long URL) wraps at
   }
   const m = { schemaVersion: 2, nodes: [{ id: 'q', type: 'sysml.Requirement', label: '续航', props: { reqId: 'EB-1', text: '为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限' } }], views: [{ id: 'v', diagram: 'sysml.requirement', nodeIds: ['q'] }] };
   assert.ok(layout(m, 'v').byId.q.compartments[0].members.length > 2, 'the text takes more than one row');
+});
+
+// audit 59: in the gallery's requirement view, Alt + Down twice on Payment gateway (as src/canvas/edit.js pins it, from the
+// drawn cell, a down view's axes swapped, a cell another card is pinned to stepped over) stretched the Payments package over
+// the Checkout walk-through: rqGeo placed pins by the frame's cells with only a row bump, and pinsClear's tries found no clean cell
+test('a pin in a package of the requirement gallery keeps its box off other cards (audit 59)', () => {
+  const g = JSON.parse(readFileSync(new URL('../examples/types/sysml-requirement.json', import.meta.url))), vid = 'requirements', v = g.views.find(x => x.id === vid);
+  const bad = () => check(g, vid).map(p => p.message).filter(s => /lies over|overlap/.test(s));
+  for (const [id, d0, n] of [['gateway', [0, 1], 2], ['card-data', [0, 1], 2], ['gateway-api', [1, 0], 2]]) { const keep = structuredClone(v.layout);
+    for (let s = 0; s < n; s++) { const h = layout(g, vid), x = h.byId[id], d = h.down ? [d0[1], d0[0]] : d0, L = v.layout || {};
+      const onPin = (c, r) => Object.entries(L).some(([k, p]) => k !== id && Array.isArray(p) && p[0] === c && Math.abs(p[1] - r) < 1);
+      let c = x.col + d[0], r = x.row + d[1]; for (let i = 0; onPin(c, r) && i < 64; i++) { c += d[0]; r += d[1]; }
+      v.layout = { ...L, [id]: [c, r] }; assert.deepEqual(bad(), [], `${id} step ${s + 1}: ${JSON.stringify(v.layout)}`); }
+    v.layout = keep; }
 });

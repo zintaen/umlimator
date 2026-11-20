@@ -499,3 +499,13 @@ test('audit 58: a use case named with no spaces (Chinese) wraps to more than one
   const ls = [...SHAPE.ellipse.draw(n).matchAll(/class="c-name"[^>]*>([^<]*)</g)].map(x => x[1]);
   assert.ok(ls.length > 1 && ls.join('') === n.label, JSON.stringify(ls));
 });
+
+// audit 59: the shopping example after Alt + Left on the shopper and Alt + Down on the payment provider warned twice that a
+// line runs through the payment provider: the warnings came from the layout as pinned, which pinsClear drops for a clean one
+test('a pinned view warns only of the layout it draws (audit 59)', () => {
+  const m = structuredClone(UC), said = [], keep = console.warn; m.views[0].layout = { shopper: [0, 1], 'payment-provider': [1, 1] };
+  console.warn = s => said.push(String(s));
+  try { layout(m, m.views[0].id); } finally { console.warn = keep; }
+  assert.deepEqual(check(m, m.views[0].id), []);
+  assert.deepEqual(said.filter(s => /runs through/.test(s)), []);
+});
