@@ -521,3 +521,20 @@ test('audit 56: a description with no text is not read and said; a comment with 
   assert.deepEqual(back.model.nodes.filter(n => n.type === 'uml.Comment'), [{ id: 'n', type: 'uml.Comment' }, { id: 'n2', type: 'uml.Comment' }]);
   assert.equal(write(back.model, 'v'), text.replace(/ {2}%% not written.*\n/, ''));
 });
+
+test('audit 56: a state\'s, a pseudostate\'s, a region\'s and an internal transition\'s keys Mermaid has no place for are said, never dropped', () => {
+  const m = { schemaVersion: 2, root: 'v', nodes: [
+    { id: 'a', type: 'uml.State', label: 'A', opensView: 'w', what: 'a note', change: 'added', sublabel: 's', stereotype: 'x',
+      members: [{ id: 'a.r1', type: 'uml.Region', label: 'R', what: 'r' }, { id: 'a.t1', type: 'uml.InternalTransition', props: { trigger: 'go' }, change: 'removed' }] },
+    { id: 'b', type: 'uml.State', label: 'B', parent: 'a.r1' }, { id: 'f', type: 'uml.Pseudostate', props: { kind: 'fork' }, opensView: 'w' },
+    { id: 'start', type: 'uml.Pseudostate', props: { kind: 'initial' }, what: 'the start' }],
+  edges: [{ id: 'start-a', type: 'uml.Transition', from: 'start', to: 'a' }, { id: 'a-f', type: 'uml.Transition', from: 'a', to: 'f' }],
+  views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['a', 'b', 'f', 'start'] }, { id: 'w', diagram: 'uml.state-machine', nodeIds: ['b'] }] };
+  const said = write(m, 'v').split('\n').filter(l => l.includes('not written')).map(l => l.trim()).sort();
+  assert.deepEqual(said, ['a.r1: what', 'a.t1: change', 'a: change', 'a: opensView', 'a: stereotype', 'a: sublabel', 'a: what', 'f: opensView', 'start: what'].map(x => `%% not written: ${x}`));
+  // the Bookshop atlas's order-life view says the link it cannot carry from Placed to the snapshot view
+  const atlas = json('../examples/bookshop-atlas.json'), linked = atlas.nodes.filter(n => n.opensView != null && atlas.views.find(v => v.id === 'order-life').nodeIds.includes(n.id));
+  assert.ok(linked.length > 0);
+  const text = write(atlas, 'order-life');
+  for (const n of linked) assert.match(text, new RegExp(`%% not written: ${n.id}: opensView\\n`), text);
+});

@@ -526,7 +526,12 @@ function writeMermaidState(model, viewId) {
       lostExt(c, 'description');
     }
   };
+  // a key Mermaid has no place for on a state, a pseudostate, a region or an internal transition (opensView, what, change,
+  // sublabel, stereotype ...): named, as the transitions' and comments' are, never dropped without a word (audit 56)
+  const lostKeys = (x, keys) => Object.keys(x).filter(k => !keys.includes(k)).forEach(k => lose(x.id, k));
+  const NODE_KEYS = ['id', 'type', 'label', 'parent', 'props', 'members', 'ext'];
   const writeNode = (n, d) => {
+    lostKeys(n, NODE_KEYS);
     const name = names.get(n.id), heads = n.id !== name ? [`%% id: ${n.id}`] : [], kind = n.props?.kind;
     if (n.type === 'uml.Pseudostate' && MT_FORKS.includes(kind)) {
       if (has(n.label)) lose(n.id, `label ${typeof n.label === 'string' ? n.label : jsonText(n.label)}`); // as validate() quotes it (audit 32)
@@ -551,6 +556,7 @@ function writeMermaidState(model, viewId) {
           if (k) put(d + 1, '--');
           const h = idOf(r.id, `${n.id}.r${k + 1}`);
           if (r.label === '') lose(r.id, 'an empty label');
+          lostKeys(r, ['id', 'type', 'label']);
           if (rs.length === 1 || h || has(r.label)) put(d + 1, `%% region: ${r.id}${has(r.label) ? ' ' + enc(r.label) : ''}`);
           writeScope(r.id, d + 1);
         });
@@ -569,7 +575,7 @@ function writeMermaidState(model, viewId) {
         const text = printed && (q.effect === undefined ? printed + ' /' : printed), line = text && mtLine(text);
         if (!line?.internal || !mtSame(line.internal, parts)) { skip(x); continue; }
         const k = (internals.get(n.id) || 0) + 1, h = idOf(x.id, `${n.id}.t${k}`);
-        internals.set(n.id, k);
+        internals.set(n.id, k); lostKeys(x, ['id', 'type', 'props']);
         put(d, ...(h ? [`%% id: ${h}`] : []), textLine(n, text));
       }
     }
@@ -581,7 +587,7 @@ function writeMermaidState(model, viewId) {
     const lines = [], end = x => {
       const s = stars.get(x);
       if (!s) return names.get(x);
-      if (!seenStar.has(x)) { seenStar.add(x); const k = keyOf.get(x), h = idOf(x, k ? `${k}.${s}` : s); if (h) lines.push(`%% ${s}-id: ${h}`); }
+      if (!seenStar.has(x)) { seenStar.add(x); lostKeys(byId.get(x), NODE_KEYS); const k = keyOf.get(x), h = idOf(x, k ? `${k}.${s}` : s); if (h) lines.push(`%% ${s}-id: ${h}`); }
       return '[*]';
     };
     const a = end(t.from), b = end(t.to), h = idOf(t.id, mtId(`${t.from}-${t.to}`)), p = isObj(t.props) ? t.props : {};
