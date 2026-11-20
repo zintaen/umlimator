@@ -358,3 +358,27 @@ test('a relationship between an element and its own owner, or its owner\'s owner
     ['model.deploymentNodes[0].children[0].containerInstances[0].relationships[0]', 'a relationship between C and its own owner Inner: not read']]);
   assert.deepEqual(check(r.model).filter(p => p.level === 'error'), []);
 });
+
+test('audit 56: an element of a level the view does not draw is left out of it and said, so validate() takes the import', async () => {
+  const { validate } = await import('../lib/umlimator-all.js');
+  const ws = { model: { people: [{ id: '1', name: 'Shopper' }], softwareSystems: [{ id: '2', name: 'Shop', containers: [{ id: '3', name: 'API', components: [{ id: '4', name: 'Cart' }] }] },
+    { id: '5', name: 'Bank', containers: [{ id: '6', name: 'Ledger', components: [{ id: '9', name: 'Book' }] }] }],
+  deploymentNodes: [{ id: '7', name: 'Server', containerInstances: [{ id: '8', containerId: '3' }, { id: '10', containerId: '6' }] }] },
+  views: { systemLandscapeViews: [{ key: 'all', elements: [{ id: '1' }, { id: '2' }, { id: '3' }] }],
+    systemContextViews: [{ key: 'ctx', softwareSystemId: '2', elements: [{ id: '1' }, { id: '2' }, { id: '3' }, { id: '7' }] }],
+    containerViews: [{ key: 'box', softwareSystemId: '2', elements: [{ id: '1' }, { id: '3' }, { id: '4' }] }],
+    componentViews: [{ key: 'parts', containerId: '3', elements: [{ id: '4' }, { id: '9' }, { id: '8' }] }],
+    dynamicViews: [{ key: 'flow', elements: [{ id: '1' }, { id: '2' }, { id: '3' }] }],
+    deploymentViews: [{ key: 'live', softwareSystemId: '2', elements: [{ id: '7' }, { id: '8' }, { id: '10' }, { id: '1' }] }] } };
+  const { model, report } = read(ws);
+  assert.deepEqual(model.views.map(v => [v.id, v.nodeIds]), [['all', ['shopper', 'shop']], ['ctx', ['shopper', 'shop']], ['box', ['shop', 'shopper', 'api']],
+    ['parts', ['api', 'cart']], ['flow', ['shopper', 'shop']], ['live', ['server', 'api-1']]]);
+  assert.deepEqual(report.filter(x => x.path.endsWith('.elements')).map(x => x.message), [
+    'view all: API, a container, is not drawn in a system landscape view: not shown',
+    'view ctx: API, a container; Server, a deployment node, are not drawn in a system context view: not shown',
+    'view box: Cart, a component, is not drawn in a containers view of Shop: not shown',
+    'view parts: Book, a component; API, a container instance of API, are not drawn in a components view of API: not shown',
+    'view flow: API, a container, is not drawn in a dynamic view: not shown',
+    'view live: Ledger, a container instance of Ledger; Shopper, a person, are not drawn in a deployment view of Shop: not shown']);
+  assert.deepEqual(validate(model).filter(p => p.rule === 'c4-level'), []);
+});
