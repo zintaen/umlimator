@@ -85,6 +85,7 @@ told = threading.Condition(lock)  # a page reported what it shows
 # highlight: {refs, view}; tour: {n, cards}; story: {n, story}. n: the command that started a tour or story, so a page
 # starts each once, and a tour or story that ended (a page says so) is not played again for a page that opens later.
 want = {"view": None, "highlight": None, "tour": None, "story": None}
+view_n = 0               # the command that last changed want["view"]: a page that has shown it reports the view shown now
 latest = None            # the latest command's event id: a page that connects after it is sent `want`
 pages = {}               # each page by the id it gives itself: q (its event queue while it is open), state, model, ack, seen
 drawn = [None, "", None] # the page as served: the model's version it shows (the last that rendered), its HTML, and that model
@@ -264,7 +265,7 @@ def call(name, a):
             w.update(view=asked, tour=None, story=None, highlight=w["highlight"] if w["highlight"] and w["highlight"]["view"] == asked else None)
     elif name == "highlight":
         lit = refs(m, a["refs"])
-        at = asked or view_for(m, lit, want["view"])
+        at = asked or view_for(m, lit, shown_view(m))
         def fold(w, n):
             w.update(view=at or w["view"], highlight={"refs": lit, "view": at or w["view"]}, story=None)
     elif name == "tour":
@@ -274,7 +275,7 @@ def call(name, a):
             raise Fail(f"no card {', '.join(map(repr, bad))}" + (f" on view {asked!r}" if asked else " in the model"))
         # a tour with no line to ride drew nothing, yet said "Shown" (audit 47); no view shows them all: said as that (audit 48);
         # with no view asked, the first view that shows them all and rides them, not the first that shows them (audit 51)
-        at = rides(m, cards, [asked] if asked else view_for(m, [{"type": "node", "id": c} for c in cards], want["view"], every_view=True))
+        at = rides(m, cards, [asked] if asked else view_for(m, [{"type": "node", "id": c} for c in cards], shown_view(m), every_view=True))
         def fold(w, n):
             w.update(view=at or w["view"], tour={"n": n, "cards": cards}, story=None)
     elif name == "play_story":
@@ -353,9 +354,26 @@ def end(e, k):
     return part.get("part") if isinstance(part, dict) and isinstance(part.get("part"), str) else e.get(k)
 
 
+def shown_view(m):
+    """The view shown now: the one the page that reported last says it shows, once it has shown the view the assistant
+    asked for last (the reader may have moved since); else the view asked for last; else the view a page opens on, the
+    model's root (as the page picks it). A tour or highlight with no view rides it when it can, so the page stays put
+    (audit 53: it took the view asked for last, none on a fresh server, and the page jumped to the first view)."""
+    vs = views(m)
+    with lock:
+        seen = sorted((p for p in pages.values() if isinstance(p.get("state"), dict) and p["state"].get("view") in vs
+                       and num((p.get("ack") or [None])[0]) >= view_n), key=lambda p: p.get("seen") or 0, reverse=True)
+        if seen:
+            return seen[0]["state"]["view"]
+        if want["view"] in vs:
+            return want["view"]
+    root = m.get("root")
+    return root if isinstance(root, str) and root in vs else next((i for i, v in vs.items() if not v.get("parent")), next(iter(vs), None))
+
+
 def view_for(m, lit, current, every_view=False):
     """The view a highlight or tour is about when the call names none: the Refs' own (paths and reach give it), else the
-    view asked for last when it shows all their cards, else the first view that does. A page that opens later shows it
+    view shown now (shown_view) when it shows all their cards, else the first view that does. A page that opens later shows it
     there, never on a view where it would dim every card. every_view: each view that would do, in that order (a list)."""
     named = [r["view"] for r in lit if isinstance(r, dict) and isinstance(r.get("view"), str)]
     if named:
@@ -384,11 +402,13 @@ def command(fold):
     """A page tool's command: folded into `want`, which goes to every open page; then the answer, once the pages have
     shown it (or have not, in WAIT s). The model's latest version is rendered first, so the pages show it, or the last
     version that rendered, and the answer says why."""
-    global latest
+    global latest, view_n
     shown, broken = page()
     with lock:
-        n = next(ids)
+        n, before = next(ids), want["view"]
         fold(want, n)
+        if want["view"] != before:
+            view_n = n
         latest = f"{RUN}-{n}"
         data = event()
         for p in pages.values():

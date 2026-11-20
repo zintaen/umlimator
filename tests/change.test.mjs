@@ -1284,10 +1284,15 @@ test('audit 48: a context-level relationship added or deleted lists the containe
 });
 
 test('audit 48: a view a card opens is listed when retitled, though a map card has the view\'s id', async () => {
-  const all = await fromSrc(), a = read45('umlimator-atlas'), b = structuredClone(a); b.views.find(v => v.id === 'mcp').title += ' X';
-  assert.ok(a.nodes.some(n => n.id === 'mcp'), 'the map card is named after the view');
-  assert.notEqual(pic48(all, a, 'containers'), pic48(all, b, 'containers'));
-  assert.deepEqual(all.diff(a, b).views, ['containers', 'mcp']);
+  // the integration fixture, with a map card named after the view its C4 container c4-app opens (the Atlas's mcp card did
+  // this; a test reads no showcase model, audit 53): the same views as with no such card, the container view among them
+  const all = await fromSrc(), a = read45('integration'), retitle = m => { const x = structuredClone(m); x.views.find(v => v.id === 'rider-data').title += ' X'; return x; };
+  const plain = structuredClone(a); a.nodes.push({ id: 'rider-data', label: 'Rider data' }); a.views.find(v => v.id === 'context').nodeIds.push('rider-data');
+  const b = retitle(a);
+  assert.equal(a.nodes.find(n => n.id === 'c4-app').opensView, 'rider-data', 'the container opens the view');
+  assert.notEqual(pic48(all, a, 'c4-containers'), pic48(all, b, 'c4-containers'));
+  assert.ok(all.diff(a, b).views.includes('c4-containers') && all.diff(a, b).views.includes('rider-data'), all.diff(a, b).views.join());
+  assert.deepEqual(all.diff(a, b).views, all.diff(plain, retitle(plain)).views);
 });
 
 test('audit 48: the diff page marks the shape drawn through a renamed element it does not draw: a class through its package, an overview\'s inline interaction, a constraint property through its block', async () => {

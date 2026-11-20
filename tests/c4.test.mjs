@@ -676,7 +676,7 @@ test('audit 28: a listed line of another kind between two elements is no relatio
 
 test('audit 52: an element whose name ends a sentence and that opens a view says so after it, never ".,", in its name and the drawn one', () => {
   let n = 0;
-  for (const f of ['../examples/types/c4.json', '../examples/bookshop-atlas.json', '../examples/umlimator-atlas.json', '../tests/fixtures/integration.json']) {
+  for (const f of ['../examples/types/c4.json', '../examples/bookshop-atlas.json', '../tests/fixtures/integration.json']) {
     const m = JSON.parse(readFileSync(new URL(f, import.meta.url)));
     for (const v of m.views) { if (!v.diagram || v.diagram === 'map') continue; const g = layout(m, v.id), svg = svgOf(g);
       for (const x of g.nodes || []) for (const a of [x.aria, x.ariaOwn]) if (typeof a === 'string' && a.includes(', opens ')) { n++; assert.doesNotMatch(a, /\.,/, `${f} ${v.id} ${x.id}`); }

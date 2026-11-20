@@ -48,3 +48,12 @@ test('every model validates with no error, and lays out with no issue beyond its
 test('no type is still pending its comprehensive example', { todo: PENDING.length ? `pending: ${PENDING.join(', ')}` : false }, () => {
   assert.deepEqual(PENDING, []);
 });
+
+// audit 53: a name given that is no type ended in an uncaught ENOENT and a Node stack trace; it is said in one line
+test('tools/types.mjs says a name that is no type in one line, with the types, and exits 1', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const r = spawnSync(process.execPath, ['tools/types.mjs', 'uml-clas', 'uml-class', '--no-html'], { cwd: new URL('../', import.meta.url), encoding: 'utf8' });
+  assert.equal(r.status, 1, r.stderr);
+  assert.equal(r.stderr.trim(), `tools/types.mjs: no type uml-clas; the types: ${typeIds().join(', ')}`);
+  assert.match(r.stdout, /examples\/types\/uml-class\.json: ok/);
+});

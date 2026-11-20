@@ -79,8 +79,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   for (const t of Object.keys(S.types)) if (!all.includes(t)) { console.error(`tools/types.json's type ${t} is not the map or one of docs/types.md's`); bad++; }
   for (const f of readdirSync(new URL('examples/types/', ROOT)).filter(f => f.endsWith('.json')))
     if (!all.includes(f.slice(0, -5))) { console.error(`examples/types/${f}: no such type; delete it`); bad++; }
-  for (const t of want) {
-    const m = model(t), T = S.types[t] || {};
+  // a name given that is no type, or a type whose model is missing or not JSON: one line each, not a stack trace (audit 53)
+  for (const t of want) if (!all.includes(t)) { console.error(`tools/types.mjs: no type ${t}; the types: ${all.join(', ')}`); bad++; }
+  for (const t of want.filter(x => all.includes(x))) {
+    let m;
+    try { m = model(t); } catch (e) { console.error(`${modelPath(t)}: ${e.code === 'ENOENT' ? 'no such file' : e.message}`); bad++; continue; }
+    const T = S.types[t] || {};
     const p = problems(t, m), errs = validate(m).filter(x => x.level === 'error');
     const issues = (m.views || []).flatMap(v => check(m, v.id).map(i => i.message));
     for (const x of p) console.error(x);

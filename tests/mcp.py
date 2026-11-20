@@ -129,6 +129,31 @@ ok("audit 52 · tour refuses a card the view draws as a box, and a card that fol
    and said52[1] and "view 'packages' draws 'catalog' as a box" in said52[1] and "view 'packages-2' draws 'catalog' as a box" in said52[1]
    and said52[2] == "'a' follows itself, and no line on view 'v' joins it to itself; paths() gives a route of lines between two cards"
    and "the view shown now if it shows the cards and draws those lines, else the first view that does" in desc52, (said52, desc52))
+# audit 53: a tour or highlight with no view took the view asked for last (none on a fresh server) as the view shown now, so
+# it rode the first view and the page jumped off the root view it opens on, or off the view the reader moved to
+keep53 = (mcp.MODEL, mcp.page, dict(mcp.want), dict(mcp.pages), mcp.view_n)
+mcp.page = lambda: ("v", None)
+rode53 = []
+with tempfile.TemporaryDirectory() as d53:
+    mcp.MODEL = Path(d53) / "two.json"
+    mcp.MODEL.write_text(json.dumps({"root": "second", "nodes": [{"id": x, "label": x} for x in "xyz"], "edges": [{"id": "e", "from": "x", "to": "y"}],
+                                     "views": [{"id": "first", "parent": "second", "nodeIds": ["x", "y"]}, {"id": "second", "nodeIds": ["x", "y", "z"]}]}), encoding="utf-8")
+    def ride53(tool, args):
+        mcp.call(tool, args); rode53.append(mcp.want["view"])
+    mcp.want.update(view=None, highlight=None, tour=None, story=None); mcp.pages.clear()
+    ride53("tour", {"cards": ["x", "y"]})                                    # no page yet: the root view, where a page opens
+    mcp.call("show_view", {"view": "first"})
+    mcp.report("p53", {"state": {"view": "second"}, "ack": "an older command"})  # a page that has not shown show_view yet
+    ride53("tour", {"cards": ["x", "y"]})
+    mcp.call("show_view", {"view": "first"})
+    mcp.report("p53", {"state": {"view": "first"}, "ack": mcp.latest})          # shown, then the reader moves to second
+    mcp.report("p53", {"state": {"view": "second"}})
+    ride53("tour", {"cards": ["x", "y"]})
+    ride53("highlight", {"refs": ["x"]})
+mcp.MODEL, mcp.page, mcp.view_n = keep53[0], keep53[1], keep53[4]
+mcp.want.clear(); mcp.want.update(keep53[2]); mcp.pages.clear(); mcp.pages.update(keep53[3])
+ok("audit 53 · tour and highlight with no view stay on the view shown now: the root view on a fresh server, the view a page reports once it has shown the last one asked for",
+   rode53 == ["second", "first", "second", "second"], rode53)
 # view_for (audit 11): a line with no id, a box, a chip lands on the view that shows it, never on the first view (every card dimmed)
 m = {"nodes": [{"id": x} for x in "abcd"], "edges": [{"from": "c", "to": "d"}], "views": [{"id": "ctx", "nodeIds": ["a", "b"]},
      {"id": "inner", "nodeIds": ["c", "d"], "containers": [{"id": "box", "nodeIds": ["c", "d"]}]}]}
