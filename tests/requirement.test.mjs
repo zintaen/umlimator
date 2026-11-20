@@ -445,3 +445,13 @@ test('audit 52: Shift + Delete of a requirement keeps another view\'s own requir
     assert.deepEqual(n.views[1].nodes.map(x => [x.id, x.parent]), [['own', 'top']], vid);
     assert.equal(n.nodes.find(x => x.id === 'kid').parent, 'top', vid); }
 });
+
+test('audit 55: 150 sub-requirements of one requirement, with and without a derive chain through them, lay out in about linear time (before: 7 s and 20 s; the containment lines into the parent\'s side, too many for its tracks, each fell to the last resort, whose search over a grid of every line before it visited all of it; each line marked that grid cell by cell; and the column order counted crossings pair by pair) (timed)', () => {
+  const mk = chain => { const nodes = [{ id: 'r', type: 'sysml.Requirement', label: 'R', props: { reqId: 'R', text: 'x' } }], edges = [];
+    for (let i = 0; i < 150; i++) { nodes.push({ id: 'q' + i, type: 'sysml.Requirement', label: 'Req ' + i, parent: 'r', props: { reqId: 'R' + i, text: 'text ' + i } });
+      if (chain && i) edges.push({ id: 'd' + i, type: 'sysml.DeriveReqt', from: 'q' + i, to: 'q' + (i - 1) }); }
+    return { schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'sysml.requirement', nodeIds: nodes.map(x => x.id) }] }; };
+  for (const [chain, cap] of [[false, 4000], [true, 6000]]) { const t = performance.now(), g = layout(mk(chain), 'v'), ms = performance.now() - t;
+    assert.ok(ms < cap, `${chain ? 'with' : 'without'} a derive chain: ${Math.round(ms)} ms`);
+    assert.equal(g.edges.filter(e => e.pts && e.pts.length >= 2).length, chain ? 299 : 150, 'every line drawn'); }
+});
