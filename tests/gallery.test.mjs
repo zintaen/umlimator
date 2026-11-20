@@ -312,6 +312,21 @@ test('the Diagrams page describes a type\'s page as tools/gallery.mjs writes it:
   }
 });
 
+// audit 57: the bdd card's alt text read "CargoBike generalizing DeliveryVehicle", the general block backwards: the model's
+// generalization runs from CargoBike, the specific block, to DeliveryVehicle. Each alt's "A generalizing B" and "A, a kind
+// of B" are its model's generalizations (from the specific to the general)
+test('a card\'s alt text names each generalization the way its model draws it, the general one general (audit 57)', () => {
+  const alts = json('tools/gallery.json').alts;
+  let n = 0;
+  for (const [t, alt] of Object.entries(alts)) {
+    const m = json(`examples/types/${t}.json`), label = Object.fromEntries(m.nodes.map(x => [x.id, x.label ?? x.id]));
+    const isA = new Set(m.edges.filter(e => /Generalization$/.test(e.type ?? '')).map(e => `${label[e.from]} > ${label[e.to]}`));
+    for (const [, general, specific] of alt.matchAll(/(\w+) generalizing (\w+)/g)) { n++; assert.ok(isA.has(`${specific} > ${general}`), `${t}: "${general} generalizing ${specific}", but ${[...isA].join(', ')}`); }
+    for (const [, specific, general] of alt.matchAll(/(\w+), a kind of (\w+)/g)) { n++; assert.ok(isA.has(`${specific} > ${general}`), `${t}: "${specific}, a kind of ${general}", but ${[...isA].join(', ')}`); }
+  }
+  assert.ok(n >= 1, 'an alt names a generalization');
+});
+
 // audit 51: the Umlimator atlas's C4 context view hung under the overview with no card opening it, so the C4 views of
 // "views that open into each other" were reached from the views list only: in each atlas, every view is reached from the
 // root by opening cards, as the page's mapContext reads a card (opensView, view, its id, a view's node, nodeOverrides).

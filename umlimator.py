@@ -21,8 +21,9 @@
 MODEL.json is the map model in engine/references/schema.md (nodes, edges, views), plus umlimator's `badge` field on a
 node (PROPOSED, TARGET, OFF ...). `stills` needs Google Chrome or Chromium; the PNGs are what a document that cannot
 run the page (a wiki such as Confluence) shows. `diff`, `drift`, `trace` and `mcp` run the module's own functions in Node,
-and so does `import` of a Mermaid classDiagram, sequenceDiagram, stateDiagram, erDiagram, requirementDiagram or mindmap (their
-readers are the module's, in src/readers/).
+and so does `import` of a Mermaid classDiagram, sequenceDiagram, stateDiagram, erDiagram, requirementDiagram or mindmap, a
+flowchart with --typed, a Structurizr JSON workspace or DBML (their readers are the module's, in src/readers/; DBML's
+needs @dbml/core, which umlimator never installs).
 BPMN XML is read and written by the module's adapter in Node through bpmn-moddle, which umlimator never installs: `npm
 install bpmn-moddle@10.3.1` in the working folder, or name its folder with --moddle or UMLIMATOR_BPMN_MODDLE.
 """

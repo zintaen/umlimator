@@ -3,8 +3,7 @@
 `umlimator.py` turns a model into files: an interactive page, still pictures, a PDF, an animated story. It also checks
 models, imports diagrams you already have, and compares versions.
 
-**Requirements.** Python 3.9+ (standard library only); Google Chrome or Chromium for `stills`, `check`, `record` and
-`pdf`; Node 18+ for `diff`, `drift`, `trace` and `mcp`. Get it by cloning the repository at a release tag:
+**Requirements.** Python 3.9+ (standard library only); Google Chrome or Chromium for `stills`, `check`, `record` and `pdf`; Node 18+ for `diff`, `drift`, `trace`, `mcp` and `export`, and for `import` of a Mermaid class, sequence, state, ER, requirement or mindmap diagram (or a flowchart with `--typed`), a Structurizr JSON workspace, DBML or BPMN XML (DBML and BPMN also need a package you install: [Import and export](./import-export.md) has each format's needs). Get it by cloning the repository at a release tag:
 
 ```bash
 git clone --depth 1 --branch v0.44.0 https://github.com/zintaen/umlimator.git
@@ -81,7 +80,7 @@ python3 umlimator.py trace model.json trace.json --view checkout --match match.j
 ```bash
 python3 umlimator.py import workspace.dsl --out model.json            # a diagram you have already, as a model
 python3 umlimator.py import order.bpmn --out order.json               # BPMN XML, as a BPMN diagram (needs Node and bpmn-moddle, installed by you)
-python3 umlimator.py export order.json --out order.bpmn               # a model's BPMN as BPMN XML, laid out
+python3 umlimator.py export order.json --out order.bpmn               # a model's BPMN as BPMN XML, laid out (needs Node and bpmn-moddle)
 ```
 
 [Import and export](./import-export.md) lists every format.

@@ -121,6 +121,25 @@ test('examples/README.md sends each docs-site setup to a heading that exists, no
   assert.ok(read(file).split('\n').some(l => /^#+ /.test(l) && slug(l.replace(/^#+ /, '')) === anchor), `${file} has #${anchor}`);
 });
 
+// audit 57: Install and Command line said Node 18+ for diff, drift, trace and mcp only, so a reader with Python and Chrome
+// hit umlimator.py's "install Node" exit on importing a Mermaid classDiagram or on export. Each page's requirements name
+// every format umlimator.py import hands to a reader in Node (its readers table, and BPMN's adapter) and export
+test('Install and Command line name every command and import format that needs Node, as umlimator.py runs them (audit 57)', () => {
+  const cli = read('umlimator.py'), table = cli.slice(cli.indexOf('name, fn = {"classDiagram"'), cli.indexOf('}[kind or fmt]'));
+  const formats = [...table.matchAll(/"([\w-]+)": \("[\w-]+\.js"/g)].map(m => m[1]).concat('bpmn');
+  assert.ok(formats.length >= 10, formats.join());
+  assert.match(cli, /if fmt == "bpmn":[^\n]*\n\s+r = bpmn\(/, 'BPMN import runs the adapter in Node');
+  // how the pages name each: a format added to the readers table needs a name here and on both pages
+  const said = { classDiagram: 'class', sequenceDiagram: 'sequence', stateDiagram: 'state', erDiagram: 'ER', requirementDiagram: 'requirement',
+    mindmap: 'mindmap', flowchart: 'a flowchart with `--typed`', 'structurizr-json': 'Structurizr JSON', dbml: 'DBML', bpmn: 'BPMN XML' };
+  for (const [page, line] of [['docs/use/cli.md', /^\*\*Requirements\.\*\*.*$/m], ['docs/start/install.md', /^The CLI is `umlimator\.py`.*$/m]]) {
+    const req = read(page).match(line)?.[0] ?? '', at = req.indexOf('Node 18+'), node = req.slice(at);
+    assert.ok(at >= 0, `${page}'s requirements paragraph, one line, names Node 18+`);
+    for (const c of ['diff', 'drift', 'trace', 'mcp', 'export', 'import']) assert.ok(node.includes(`\`${c}\``), `${page}: Node for ${c}`);
+    for (const f of formats) { assert.ok(said[f], `umlimator.py reads ${f} in Node: name it here and on the pages`); assert.ok(node.includes(said[f]), `${page}: Node for ${f} (${said[f]})`); }
+  }
+});
+
 test('risks.md M25 is closed: AWS accepted, the aws type and its pack row are on (audit 17)', () => {
   const m25 = read('docs/diagrams/risks.md').split('\n').find(l => l.startsWith('| M25 |'));
   assert.doesNotMatch(m25, /CLOUD_AWS = false|no pack row/);
@@ -166,6 +185,51 @@ test('the built site\'s table header cells each hold text (axe empty-table-heade
     for (const [, th] of page.matchAll(/<th\b[^>]*>([\s\S]*?)<\/th>/g)) if (!th.replace(/<[^>]*>/g, '').trim()) bad.push(name);
   }
   assert.deepEqual([...new Set(bad)], []);
+});
+
+// audit 57: each collapsible family group (UML structure, UML behaviour, ...) was VitePress's role=button holding a second
+// role=button caret, two Tab stops for one action, and neither said whether the group was open (axe nested-interactive,
+// WCAG 4.1.2). theme/VPSidebarItem.vue makes the group's row the one button, with aria-expanded, and its caret a picture
+test('the built site\'s sidebar groups are each one button saying whether it is open, none in another (axe nested-interactive, audit 57)', { skip: !built && 'the site is not built (npm --prefix docs run build)' }, () => {
+  const groups = JSON.parse(read('docs/.vitepress/sidebar.json')).flatMap(g => g.items).filter(i => i.collapsed != null).map(i => i.text);
+  assert.ok(groups.length >= 5, groups.join());
+  const bad = [];
+  for (const p of pages()) {
+    const page = readFileSync(p, 'utf8'), name = p.pathname.split('/dist/')[1], at = page.indexOf('<aside class="VPSidebar');
+    if (at < 0) continue;
+    const side = page.slice(at, page.indexOf('</aside>', at));
+    // a sidebar row is a div.item: a button row holds no other control (a link, a button, a tab stop)
+    for (const [, attrs, inner] of side.matchAll(/<div class="item"([^>]*)>([\s\S]*?)<div class="items"/g)) {
+      const text = inner.replace(/<[^>]+>/g, '').trim();
+      if (/role="button"/.test(attrs)) {
+        if (!groups.includes(text)) bad.push(`${name}: ${text} is a button but cannot collapse`);
+        if (!/aria-expanded="(true|false)"/.test(attrs)) bad.push(`${name}: ${text} has no aria-expanded`);
+        if (/role="button"|tabindex=|<a\b|<button\b/.test(inner)) bad.push(`${name}: ${text} holds another control`);
+      } else if (groups.includes(text)) bad.push(`${name}: ${text} is no button`);
+    }
+    if ((side.match(/aria-expanded=/g) || []).length !== groups.length) bad.push(`${name}: ${(side.match(/aria-expanded=/g) || []).length} aria-expanded for ${groups.length} groups`);
+  }
+  assert.deepEqual(bad, []);
+});
+
+// audit 57: "Edit this page on GitHub" opened the pages tools/gallery.mjs writes (its next run overwrites the edit, and
+// tests/gallery.test.mjs fails until then) and the changelog's one-line placeholder. A written page has no edit link,
+// the changelog's opens docs/module-api.md, which holds its releases, and every other page's opens its own file
+test('the built site\'s edit links open the file to edit: none on a page tools/gallery.mjs writes, docs/module-api.md for the changelog (audit 57)', { skip: !built && 'the site is not built (npm --prefix docs run build)' }, () => {
+  const bad = [];
+  let generated = 0;
+  for (const p of pages()) {
+    const name = p.pathname.split('/dist/')[1];
+    if (name === '404.html') continue;
+    const src = `docs/${name.replace(/\.html$/, '.md')}`, edit = [...readFileSync(p, 'utf8').matchAll(/href="([^"]*\/edit\/main\/[^"]*)"/g)].map(m => m[1]);
+    if (!existsSync(new URL(src, root))) continue;
+    const want = read(src).includes('<!-- Written by tools/gallery.mjs ') ? [] : [`https://github.com/zintaen/umlimator/edit/main/${name === 'changelog.html' ? 'docs/module-api.md' : src}`];
+    if (!want.length) generated++;
+    if (name === 'index.html') continue;   // the home page has no doc footer
+    if (JSON.stringify(edit) !== JSON.stringify(want)) bad.push(`${name}: ${edit.join(' ') || 'none'}, not ${want.join(' ') || 'none'}`);
+  }
+  assert.ok(generated >= 30, `${generated} written pages`);
+  assert.deepEqual(bad, []);
 });
 
 // VitePress writes 404.html with an empty #app: the page is drawn in the browser, so it is read in headless Chrome, as
