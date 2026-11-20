@@ -698,3 +698,12 @@ test('audit 49: an interface realization from a component, or from a port a comp
     const m2 = structuredClone(m); m2.edges.push({ id: 'x', type: 'uml.InterfaceRealization', from, to });
     assert.deepEqual(validate(m2).filter(p => p.rule === 'realization-target').map(p => p.ids[0]), ['x'], `${from} -> ${to}`); }
 });
+
+test('audit 53: a realization from a port whose owner has type "" passes the class view\'s rule and connect, as the class view draws the owner a class', () => {
+  for (const type of [undefined, '', 'uml.Class']) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'svc', ...(type === undefined ? {} : { type }), label: 'Service', members: [{ id: 'svc.api', type: 'uml.Port', label: 'api' }] },
+      { id: 'i', type: 'uml.Interface', label: 'Api' }], edges: [{ id: 'r', type: 'uml.InterfaceRealization', from: 'svc.api', to: 'i' }],
+    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['svc', 'i'] }] }, v = m.views[0];
+    assert.deepEqual(validate(m).filter(p => p.rule === 'realization-target'), [], JSON.stringify(type));
+    assert.equal(diagramOf(v).edits.connect(m, v, 'svc.api', 'i', null, { type: 'uml.InterfaceRealization' }), null, JSON.stringify(type)); }
+});

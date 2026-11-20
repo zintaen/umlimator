@@ -5,7 +5,7 @@ import { rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { CLASSIFIERS, RULES, commentConnect, lineRename, multProblem, memberClash, memberEdit, paramTextProblems, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
-import { SN_ARTIFACTS, SN_PRESENT_RULE, SN_SAY, STRUCT_RULES, portFit, sideProblem, portSides, portsDrawn, portRoom, snKindName, snKindWord, structProblems } from './structure.js';
+import { SN_ARTIFACTS, SN_PRESENT_RULE, SN_SAY, STRUCT_RULES, portFit, sideProblem, portSides, portsHeld, snKindName, snKindWord, structProblems } from './structure.js';
 import { usedIds, jsonText, labelOr, elName, propTextProblems } from '../core/model.js';
 
 /* ---------- the component diagram, uml.component (work package 5.4, notes/stage-5.md §10.1) ----------
@@ -210,10 +210,9 @@ function cpGeo({ model, view, pos: pins, memo }) {
       end: CP_LOOK[l.kind][0], aria: cpLineName(pic, l), ...(CP_OBJ(l.e.style) || typeof l.e.style === 'string' ? { style: l.e.style } : {}) }; });
   const run = ns => placeTabs(layoutTyped({ nodes: ns, edges, ...(boxes.length ? { containers: boxes } : {}), direction: down ? 'down' : 'right', gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo));
   // on a copy (stage 4 §2.4): every port as a node, and its name; a node that could not hold a port with no line grows and is laid
-  // out once more (portRoom, audit 52). ponytail: that view lays out twice each time, as its memo holds the second layout's key
+  // out once more while one is still held (portRoom, audit 52; portsHeld, audit 53). ponytail: that view lays out more than once each time, as its memo holds the last layout's key
   const ports = shownPorts.map(({ p, owner }) => ({ id: p.id, owner, side: side[p.id], label: cpName(p), valueType: cpProps(p).valueType, stereotypes: cpStereo(p), aria: cpNodeName(model, view, pic, p.id) }));
-  let g = run(nodes); const over = []; let d = portsDrawn(g, ports, over); const grown = portRoom(nodes, over);
-  if (grown) { g = run(grown); d = portsDrawn(g, ports); }
+  const { d } = portsHeld(nodes, run(nodes), run, ports);
   // a slot after each element (src/typed/edit.js): the palette's add hears the selection through it (cpAdd, at.sel)
   const slots = Object.values(d.byId).map((n, index) => ({ index, x: n.x, y: n.y, after: n.id }));
   return { ...d, slots, legend: cpLegend(new Set(lines.map(l => l.kind))), order: cpOrder(pic) };

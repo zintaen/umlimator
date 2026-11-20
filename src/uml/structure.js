@@ -145,6 +145,15 @@ function portRoom(nodes, over) {
   return SN_ARR(nodes).map(n => (n && Object.hasOwn(add, n.id) ? { ...n, w: n.w + add[n.id].w, h: n.h + add[n.id].h } : n));
 }
 
+// portsDrawn over g, its layout of nodes by run, and portRoom's growth laid out again while a port is still held (audit 53: the
+// lines to the grown node's body spread over the longer side again, so one pass left two ports over each other with four lines),
+// at most four times, each pass's growth twice the last's (1, 2, 4, 8 slots for each held port); the first pass is audit 52's, so
+// a picture it settled stays as it was. { g, d }: the last layout and what portsDrawn drew over it
+function portsHeld(nodes, g, run, ports) {
+  for (let k = 0, cur = nodes; ; k++) { const over = k < 4 ? [] : null, d = portsDrawn(g, ports, over), grown = over && portRoom(cur, Array(2 ** k).fill(over).flat());
+    if (!grown) return { g, d }; g = run(cur = grown); }
+}
+
 /* ---- after the layout, on a copy (§4.3, §4.5) ----
    g: what layoutTyped returned, never edited. ports: [{ id, owner, side, label, valueType, stereotypes, aria }] in members order, side as
    portSides gave it; id is the port's geometry id (`<part>-><port>` on a part, §6), the one its lines name as fromPort or
@@ -247,4 +256,4 @@ function structProblems(model, view) {
   return out;
 }
 
-export { SN_PRESENT_RULE, sideProblem, SN_ARTIFACTS, SN_SAY, snKindWord, snKindName, snLineName, portLen, portSides, portFit, portsDrawn, portRoom, STRUCT_RULES, structProblems };
+export { SN_PRESENT_RULE, sideProblem, SN_ARTIFACTS, SN_SAY, snKindWord, snKindName, snLineName, portLen, portSides, portFit, portsDrawn, portRoom, portsHeld, STRUCT_RULES, structProblems };

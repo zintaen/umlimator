@@ -1025,3 +1025,18 @@ test('audit 52: a part\'s port pinned to a side where a connector to the part\'s
   assert.deepEqual(validate(m), []); assert.deepEqual(check(m, 'v'), []);
   assert.equal(layout(m, 'v').byId['s.a'].h, 76);
 });
+
+test('audit 53: a part\'s two lineless type ports pinned to a side where four or more connectors reach the part\'s body stay clear of each other', () => {
+  for (const [np, nl] of [[2, 4], [2, 6], [3, 8]]) {
+    const parts = Array.from({ length: nl }, (_, i) => ({ id: 's.o' + i, type: 'uml.Property', label: 'o' + i, props: { valueType: 'Other', aggregation: 'composite' } }));
+    const m = { schemaVersion: 2, nodes: [
+      { id: 's', type: 'uml.Class', label: 'Sys', members: [{ id: 's.core', type: 'uml.Property', label: 'core', props: { valueType: 'Core', aggregation: 'composite' } }, ...parts] },
+      { id: 'core-t', type: 'uml.Class', label: 'Core', members: Array.from({ length: np }, (_, i) => ({ id: 'core-t.p' + i, type: 'uml.Port', label: 'p' + i })) },
+      { id: 'other-t', type: 'uml.Class', label: 'Other' }],
+    edges: parts.map((p, i) => ({ id: 'c' + i, type: 'uml.Connector', from: p.id, to: 's.core' })),
+    views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 's', nodeIds: ['s'],
+      present: { 's.core': { ports: Object.fromEntries(Array.from({ length: np }, (_, i) => ['core-t.p' + i, { side: 'left' }])) } },
+      layout: Object.fromEntries([['s.core', [1, 1]], ...parts.map((p, i) => [p.id, [0, i]])]) }] };
+    assert.deepEqual(validate(m).filter(p => p.level === 'error'), []);
+    assert.deepEqual(check(m, 'v').map(p => p.message).filter(x => /overlap/.test(x)), [], `${np} ports, ${nl} connectors`); }
+});

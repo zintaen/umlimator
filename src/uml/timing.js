@@ -37,8 +37,12 @@ const tmHead = n => tmName(n) + (TM_HAS(tmProps(n).represents) ? ' : ' + tmProps
 const tmStereo = n => TM_ARR(tmProps(n).stereotypes).filter(TM_HAS).map(String);
 const tmSt = n => tmStereo(n).map(t => `«${t}»`).join(' '), tmShown = n => [tmSt(n), tmHead(n)].filter(TM_HAS).join(' '); // its «stereotypes»: a line over its name, and first in describe() (audit 17); F2 edits tmHead
 const tmStates = n => [...new Set(TM_ARR(tmProps(n).states).filter(TM_HAS).map(String))]; // a state listed twice is one row
-const TM_SEP = /\s*(?<!:):(?!:)\s*/; // a lone colon: '::' is part of a name (Shop::Worker)
-const tmNameType = s => { const [name, ...rest] = s.split(TM_SEP); return [name, rest.join(':').trim()]; }; // `a : B : C` is a, represents B:C
+// a lone colon: '::' is part of a name (Shop::Worker). Found by indexOf and the parts trimmed, not by splitting on
+// /\s*(?<!:):(?!:)\s*/, which took time in the square of a run of spaces (audit 53, as tmParse's in audit 50)
+const tmSep = (s, from = 0) => { for (let k = s.indexOf(':', from); k >= 0; k = s.indexOf(':', k + 1)) if (s[k - 1] !== ':' && s[k + 1] !== ':') return k; return -1; };
+const tmNameType = s => { // `a : B : C` is a, represents B:C
+  const parts = []; for (let i = 0, k = tmSep(s); ; k = tmSep(s, i)) { if (k < 0) { parts.push(s.slice(i)); break; } parts.push(s.slice(i, k)); i = k + 1; }
+  return [parts.length > 1 ? parts[0].trimEnd() : parts[0], parts.slice(1).map(x => x.trim()).join(':').trim()]; };
 const tmLabel = x => (TM_HAS(x.label) ? String(x.label) : '');
 // a message's drawn text: its «stereotypes», then its label (audit 19); F2 takes the «…» off before it reads the rest
 const tmMsgText = m => [tmSt(m), tmLabel(m)].filter(TM_HAS).join(' ');
@@ -393,7 +397,7 @@ function tmRename(model, view, id, text) {
   if (X.cons.some(k => k.id === id)) return [{ op: 'set', id, path: 'label', value: s || undefined }];
   if (X.H.has(id)) { const [name, rep] = tmNameType(s);
     if (!name) return tmErr('a lifeline needs a name');
-    return [{ op: 'set', id, path: 'label', value: name }, ...(TM_SEP.test(s) ? [{ op: 'set', id, path: 'props.represents', value: rep || undefined }] : [])]; }
+    return [{ op: 'set', id, path: 'label', value: name }, ...(tmSep(s) >= 0 ? [{ op: 'set', id, path: 'props.represents', value: rep || undefined }] : [])]; }
   const k = String(id).indexOf('->'), lane = k > 0 ? String(id).slice(0, k) : null, was = k > 0 ? String(id).slice(k + 2) : null;
   if (lane && X.H.has(lane)) { const ss = tmStates(X.N.get(lane));
     if (!ss.includes(was)) return tmErr(`${was} is not one of ${X.name(lane)}'s listed states: add it to its states first`);

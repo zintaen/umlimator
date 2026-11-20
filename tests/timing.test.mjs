@@ -757,6 +757,18 @@ test('audit 50: F2 on a change or a message parses in linear time, a run of spac
   assert.deepEqual(tmRename(m, V(m), 'c-wait', '{<= 800 ms}' + ' '.repeat(5000)), [{ op: 'set', id: 'c-wait', path: 'label', value: '{<= 800 ms}' }], 'a constraint\'s label is not capped');
 });
 
+test('audit 53: F2 and the palette\'s add on a lifeline find its lone colon in linear time, a run of spaces too', () => {
+  const sp = ' '.repeat(64000), m = EX(), timed = (f, s) => { const t = performance.now(), r = f(s); assert.ok(performance.now() - t < 250, `${s.length} characters in ${performance.now() - t} ms`); return r; };
+  timed(s => tmRename(m, V(m), 'worker', s), 'worker' + sp + 'x');
+  timed(s => tmAdd(m, V(m), ENTRY('uml.Lifeline'), s, null), 'bank' + sp + 'x');
+  assert.deepEqual(timed(s => tmRename(m, V(m), 'worker', s), 'worker' + sp + ':' + sp + 'Shop::Worker' + sp + ': x'),
+    [{ op: 'set', id: 'worker', path: 'label', value: 'worker' }, { op: 'set', id: 'worker', path: 'props.represents', value: 'Shop::Worker:x' }]);
+  // as before: '::' is part of a name, and `a : B : C` is a, represents B:C
+  assert.deepEqual(tmRename(m, V(m), 'worker', 'Shop::w'), [{ op: 'set', id: 'worker', path: 'label', value: 'Shop::w' }]);
+  assert.deepEqual(tmRename(m, V(m), 'worker', 'a : B : C'), [{ op: 'set', id: 'worker', path: 'label', value: 'a' }, { op: 'set', id: 'worker', path: 'props.represents', value: 'B:C' }]);
+  assert.deepEqual(tmRename(m, V(m), 'worker', 'a :'), [{ op: 'set', id: 'worker', path: 'label', value: 'a' }, { op: 'set', id: 'worker', path: 'props.represents', value: undefined }]);
+});
+
 test('audit 52: a timing view says layout pins and a direction other than right, which change nothing, as a sequence view says its own; the core says no "drawn right" for either', () => {
   const tm = JSON.parse(readFileSync(new URL('../examples/types/uml-timing.json', import.meta.url))), sq = JSON.parse(readFileSync(new URL('../examples/types/uml-sequence.json', import.meta.url)));
   const said = (m, f) => { const c = structuredClone(m); f(c.views[0]); return validate(c).filter(p => /direction|pins/.test(p.message)).map(p => p.message); };
