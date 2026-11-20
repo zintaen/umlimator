@@ -1561,7 +1561,7 @@ test('audit 52: a card hidden from a view that lists no lines, and a removed vie
 });
 
 test('audit 52: a box removed from or added to a map view is said, and drawn marked', async () => {
-  const all = await fromSrc(), m = types52('map'), V = m.views[0];
+  const all = await fromSrc(), m = JSON.parse(readFileSync(new URL('fixtures/map-shop.json', import.meta.url))), V = m.views[0]; // the old map type page's model, kept as a fixture
   const box = (f, ...want) => { const b = structuredClone(m); f(b.views[0]); const d = all.diff(m, b); want.forEach(w => assert.ok(d.summary.includes(`${w} in the view ${V.title}`), `${w}: ${d.summary}`)); return d; };
   const gone = box(v => { v.containers = v.containers.filter(c => c.id !== 'support'); }, 'removes the box Support');
   const g = all.layout(gone.model, V.id), sup = (g.families || []).find(f => f.id === 'support');

@@ -85,7 +85,7 @@ test('audit 31: the standalone-page guide lists every entry of the page\'s Expor
   assert.match(guide, /- \*\*Map model \(JSON\)\*\*: the whole model as its file has it/);
 });
 
-test('audit 32: the file names the standalone-page guide gives for the Umlimator Atlas\'s exports are the ones page.js makes of examples/umlimator-atlas.json', () => {
+test('audit 32: the file names the standalone-page guide gives for the Umlimator atlas\'s exports are the ones page.js makes of examples/umlimator-atlas.json', () => {
   const guide = readFileSync(new URL('../docs/guide/standalone-page.md', import.meta.url), 'utf8'), src = readFileSync(new URL('../src/page/page.js', import.meta.url), 'utf8');
   const namePart = new Function(src.slice(src.indexOf('function namePart('), src.indexOf('/* ================= the standalone viewer')) + '; return namePart;')();
   const shop = JSON.parse(readFileSync(new URL('../examples/umlimator-atlas.json', import.meta.url), 'utf8')), base = namePart(shop.title);
@@ -359,9 +359,9 @@ test('audit 47: the 0.43.0 notes do not credit 0.43.0 with the later d.ts and sc
   assert.match(s, /since that release \(#519 to #521\) they refuse one/);
 });
 
-// audit 48: the CLI guide's PDF section heads a view page with an example path; it is one the Umlimator Atlas's PDF prints,
+// audit 48: the CLI guide's PDF section heads a view page with an example path; it is one the Umlimator atlas's PDF prints,
 // the titles of a view's chain (mapContext's chain(), which print.js heads each page with), not a title no view has
-test('audit 48: the CLI guide\'s example PDF page heading is a view path of the Umlimator Atlas it links', async () => {
+test('audit 48: the CLI guide\'s example PDF page heading is a view path of the Umlimator atlas it links', async () => {
   const { mapContext } = await import('../src/map/context.js');
   const guide = readFileSync(new URL('../docs/guide/cli.md', import.meta.url), 'utf8').replace(/\s+/g, ' ');
   const said = guide.match(/under its path \("([^"]+)"\)/)[1];
@@ -371,9 +371,9 @@ test('audit 48: the CLI guide\'s example PDF page heading is a view path of the 
 });
 
 // audit 51: the API page and the Action guide quoted "adds Readers between umlimator.py and The module", a sentence diff()
-// never writes for the Umlimator Atlas (Readers has no line to The module): each quoted "adds <card>..." is what diff()
+// never writes for the Umlimator atlas (Readers has no line to The module): each quoted "adds <card>..." is what diff()
 // says when that card, and its lines, are added to the atlas
-test('audit 51: the diff() summary the docs quote is what diff() says for the Umlimator Atlas', async () => {
+test('audit 51: the diff() summary the docs quote is what diff() says for the Umlimator atlas', async () => {
   const { diff } = await import('../lib/umlimator-all.js');
   const after = JSON.parse(readFileSync(new URL('../examples/umlimator-atlas.json', import.meta.url), 'utf8'));
   let n = 0;
@@ -412,7 +412,7 @@ test('audit 51: a parameter\'s direction is documented as the class diagram draw
   assert.match(item, /out was/);
 });
 
-// audit 49: the CLI guide's first block renders the Umlimator Atlas to page.html, but its stills and check lines still named
+// audit 49: the CLI guide's first block renders the Umlimator atlas to page.html, but its stills and check lines still named
 // the bookshop's views ('api', 'pic-*'), and both stopped with exit 1. Each --views on a page.html line goes through
 // umlimator.py's own pick() on the page that block's render line writes.
 test('audit 49: every --views in the CLI guide names views of the page its render line writes', async () => {
@@ -443,6 +443,6 @@ test('audit 49: the types, the schema and the example texts say a line\'s weight
   assert.doesNotMatch(w, /drawn as its width/); assert.match(w, /at one width at rest[\s\S]*on hover, selection and keyboard[\s\S]*focus/);
   const schema = JSON.parse(read('../lib/umlimator.schema.json')).$defs.edge.properties.weight.description;
   assert.doesNotMatch(schema, /drawn as its width/); assert.match(schema, /one width at rest; a line of weight 2 or 3 shows its width on hover, selection and keyboard focus/);
-  for (const p of ['../tools/types.json', '../examples/types/map.json', '../docs/gallery/map.md', '../examples/README.md', '../examples/monorepo.py', '../tests/fixtures/integration/shop.json', '../tests/fixtures/integration.json'])
+  for (const p of ['../tools/types.json', '../examples/bookshop-atlas.json', '../docs/gallery/bookshop-atlas.md', '../examples/README.md', '../examples/monorepo.py', '../tests/fixtures/integration/shop.json', '../tests/fixtures/integration.json'])
     assert.doesNotMatch(read(p), /heavier with more imports|weights 1 to 3 as widths|main path drawn heavier/, p);
 });

@@ -1,4 +1,4 @@
-// The examples' type pages: for each diagram type (the map and docs/types.md's 28), one hand-authored model
+// The examples' type pages: for each diagram type (docs/types.md's 28), one hand-authored model
 // examples/types/<type>.json, the source of truth, committed, and its page examples/types/<type>.html, rendered from it.
 //   The model draws ONE comprehensive example of the type: its root and first view is the main view (tools/types.json's
 //   "main"), a diagram showing every element kind, line kind, marker, compartment, stereotype and option of the type that
@@ -21,9 +21,10 @@ const read = p => readFileSync(new URL(p, ROOT), 'utf8'), json = p => JSON.parse
 
 // a view's diagram type as the pages group it: C4's six view kinds are one type, a map view (no diagram) is the map
 export const groupOf = view => { const d = view && view.diagram; return !d || d === 'map' ? 'map' : d.startsWith('c4.') ? 'c4' : d.replace('.', '-'); };
-// the types, the map first, then docs/types.md's 28 in its order
+// the types: docs/types.md's 28 in its order. The map is no type and has no page: its example is the first layer of
+// every atlas, the Bookshop atlas's overview first (tools/gallery.json's map)
 export function typeIds() {
-  const out = ['map'];
+  const out = [];
   for (const [, id] of read('docs/types.md').matchAll(/<h3 id="([\w-]+)">/g)) out.push(id);
   return out;
 }
@@ -76,7 +77,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const S = spec(), all = typeIds(), want = names.length ? names : all;
   let bad = 0;
   for (const t of all) if (!S.types[t]) { console.error(`tools/types.json has no type ${t}`); bad++; }
-  for (const t of Object.keys(S.types)) if (!all.includes(t)) { console.error(`tools/types.json's type ${t} is not the map or one of docs/types.md's`); bad++; }
+  for (const t of Object.keys(S.types)) if (!all.includes(t)) { console.error(`tools/types.json's type ${t} is not one of docs/types.md's`); bad++; }
   for (const f of readdirSync(new URL('examples/types/', ROOT)).filter(f => f.endsWith('.json')))
     if (!all.includes(f.slice(0, -5))) { console.error(`examples/types/${f}: no such type; delete it`); bad++; }
   // a name given that is no type, or a type whose model is missing or not JSON: one line each, not a stack trace (audit 53)
