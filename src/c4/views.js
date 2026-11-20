@@ -6,7 +6,7 @@ import { layoutTyped } from '../typed/layout.js';
 import { ownersOn, readingOrder } from '../uml/owners.js';
 import { commentConnect } from '../uml/class.js';
 import { brLines } from '../typed/draw.js';
-import { c4Gone, c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Keys, c4Problems, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners, c4Rename } from './c4.js';
+import { c4Ghost, c4Gone, c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Keys, c4Problems, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners, c4Rename } from './c4.js';
 
 /* ---------- C4's dynamic and deployment views, c4.dynamic and c4.deployment (work package M2.7, notes/milestone-2.md §7.5.2,
    §7.5.3, §5.1) ----------
@@ -194,11 +194,11 @@ SHAPE['c4-node'] = { frame: f => { const line = (t, dy, wt, px, fill) => brLines
     + (f.kw ? line(f.name, 17, 600, 12, 'var(--um-text)') + line(f.kw, 17 + V_HEAD + (brLines(f.name).length - 1) * V_LH, 400, 11, 'var(--um-muted)') : line(f.title ?? f.label ?? f.id, 17, 600, 12, 'var(--um-text)')); } };
 const DEP_LOOK = { boxTypes: ['c4.DeploymentNode'], qualify: false, shape: () => 'c4-node', word: () => 'Deployment node' };
 function depPic(model, view) {
-  const pic = ownersOn(model, view, DEP_LOOK), I = c4Index(model);
+  const ghost = c4Ghost(view), pic = ownersOn(model, view, { ...DEP_LOOK, ghost }), I = c4Index(model); // a removed card opens no box (c4Pic's, audit 54)
   const boxes = pic.boxes.map(b => { const x = pic.at.get(b.id), held = pic.holds(b.id).map(id => pic.at.get(id)), k = new Map();
     held.forEach(y => { const w = (C4_WORD[y.type] || 'element').toLowerCase(); k.set(w, (k.get(w) || 0) + 1); });
     return { ...b, title: `${vName(x)} ${depTag(x)}`, name: vName(x), kw: depTag(x), head: V_HEAD + (brLines(vName(x)).length - 1) * V_LH, aria: `Deployment node ${vName(x)}${V_HAS(V_P(x).technology) ? ', ' + V_P(x).technology : ''}, a box holding ${[...k].map(([w, c]) => vPlural(c, w)).join(', ')}` }; });
-  return { ...pic, I, boxes, nameOf: x => vName(x.type === 'c4.ContainerInstance' && depOf(I, x) || x) }; // an instance named as drawn: its container's name
+  return { ...pic, I, boxes, ghost, nameOf: x => vName(x.type === 'c4.ContainerInstance' && depOf(I, x) || x) }; // an instance named as drawn: its container's name
 }
 // the key: a deployment node, each instance's look (as its container's), the relationship and the implied line
 function depLegend(nodes, edges, boxes) {

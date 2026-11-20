@@ -72,7 +72,12 @@ function ownersOn(model, view, look = {}) {
   const live = new Set(ids.flatMap(id => chain(id).filter(p => mems.has(p) && seen.has(up.get(p))))), place = m => OWN_ARR(at.get(up.get(m)).members).indexOf(at.get(m)); // members holding something shown
   const many = m => OWN_ARR(at.get(up.get(m)).members).filter(x => OWN_OBJ(x) && members.includes(x.type)).length > 1; // §6.1, 2: two or more in the model
   const kept = [...live].filter(many).sort((a, b) => place(a) - place(b)), all = [...ids, ...kept], shown = new Set(all);
-  const ow = new Map(all.map(id => [id, chain(id).find(p => shown.has(p) && (mems.has(p) || boxTypes.includes(kind(at.get(p))))) ?? null])), owner = id => ow.get(id) ?? null;
+  const boxy = p => shown.has(p) && (mems.has(p) || boxTypes.includes(kind(at.get(p)))), gh = typeof look.ghost === 'function' ? id => look.ghost(id, at.get(id)) : null;
+  const ow = new Map(all.filter(id => !gh || !gh(id)).map(id => [id, chain(id).find(boxy) ?? null])), owner = id => ow.get(id) ?? null;
+  // look.ghost(id, x): a card diff() draws back removed (C4's), which opens no box: in the nearest one something live opens, else
+  // at the top, so its owner is drawn as the model after draws it (audit 54: a deployment node holding only a removed instance
+  // was drawn a box, and the implied line the model after draws from it could not be)
+  if (gh) { const opened = new Set(ow.values()); all.forEach(id => { if (gh(id)) ow.set(id, chain(id).find(p => boxy(p) && opened.has(p)) ?? null); }); }
   const over = (id, stop, by) => { const c = chain(id), k = c.indexOf(stop), q = by ? c.findIndex(p => !by.includes(kind(at.get(p) || {}))) : -1;
     return c.slice(0, Math.min(k < 0 ? c.length : k, q < 0 ? c.length : q)); }; // the owners a name is qualified by, nearest first
   const upTo = (id, stop, by) => [...over(id, stop, by).reverse(), id].map(x => ownName(ownAt(at, x))).join('::');

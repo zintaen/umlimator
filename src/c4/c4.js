@@ -87,19 +87,24 @@ function c4Index(model) {
 }
 const C4_LOOK = { boxTypes: ['c4.SoftwareSystem', 'c4.Container'], qualify: false, shape: () => 'c4-boundary', word: c4Word };
 // the view's picture: its boxes, titled as C4 titles a boundary, each named by what it holds
+// a card diff() draws back removed because the view no longer shows it (its nodeOverrides' change): it opens no box, and no
+// relationship is lifted to it or stops at it, as in the model after, whose relationships stay (audit 54: the diff page drew no
+// implied line where the model after does). A deleted one is not: its relationships went with it, and its box holds what went too
+const c4Ghost = view => { const ov = C4_OBJ(view) && C4_OBJ(view.nodeOverrides) ? view.nodeOverrides : {};
+  return id => Object.hasOwn(ov, id) && C4_OBJ(ov[id]) && typeof ov[id].change === 'string' && ov[id].change.toLowerCase() === 'removed'; };
 function c4Pic(model, view) {
-  const pic = ownersOn(model, view, C4_LOOK), I = c4Index(model);
+  const ghost = c4Ghost(view), pic = ownersOn(model, view, { ...C4_LOOK, ghost }), I = c4Index(model);
   const boxes = pic.boxes.map(b => { const x = pic.at.get(b.id), held = pic.holds(b.id).map(id => pic.at.get(id)), k = new Map();
     held.forEach(y => { const w = c4Word(y).toLowerCase(); k.set(w, (k.get(w) || 0) + 1); });
     return { ...boxHead({ ...b, title: `${c4Name(x)} [${C4_TAG[x.type]}]` }), aria: `${c4Word(x)} ${c4Name(x)}, a boundary holding ${[...k].map(([w, c]) => c4Plural(c, w)).join(', ') || 'nothing'}` }; });
-  return { ...pic, I, boxes };
+  return { ...pic, I, boxes, ghost };
 }
 
 /* ---- the lines drawn (§5.2): the view's own relationships between shown elements, then one implied line a pair ---- */
 // a relationship's end lifted to what the view shows of it: itself, else its nearest shown owner; null when the first shown
 // thing up its chain is a boundary (a boundary is no end) or nothing is shown
 function c4Lift(pic, id) {
-  for (const x of [id, ...pic.I.chain(id)]) if (pic.ids.includes(x)) return pic.open.has(x) ? null : x;
+  for (const x of [id, ...pic.I.chain(id)]) if (pic.ids.includes(x) && !(pic.ghost && pic.ghost(x))) return pic.open.has(x) ? null : x;
   return null;
 }
 function c4Lines(model, view, pic) {
@@ -112,8 +117,10 @@ function c4Lines(model, view, pic) {
   // (audit 48: the diff page drew no implied line where the model after does, and a "[+1]" for a relationship that is gone); it
   // still draws as its own ghost between two shown ends
   const gone = e => typeof e.change === 'string' && e.change.toLowerCase() === 'removed', live = pic.I.rels.filter(e => !gone(e));
-  const joined = new Set([...own.filter(e => e.type === 'c4.Relationship' && !gone(e)), ...live].filter(e => ends.has(e.from) && ends.has(e.to)).map(e => e.from + '\n' + e.to)), implied = new Map();
-  live.forEach(r => { if (ends.has(r.from) && ends.has(r.to)) return; // shown as itself, or hidden from the view: never lifted
+  // and one with an end diff() draws back removed (pic.ghost) is lifted as the model after lifts it, beside its own ghost (audit 54)
+  const lit = pic.ghost ? new Set([...ends].filter(id => !pic.ghost(id))) : ends;
+  const joined = new Set([...own.filter(e => e.type === 'c4.Relationship' && !gone(e)), ...live].filter(e => lit.has(e.from) && lit.has(e.to)).map(e => e.from + '\n' + e.to)), implied = new Map();
+  live.forEach(r => { if (lit.has(r.from) && lit.has(r.to)) return; // shown as itself, or hidden from the view: never lifted
     const a = c4Lift(pic, r.from), b = c4Lift(pic, r.to), k = a + '\n' + b;
     if (a == null || b == null || a === b || joined.has(k)) return;
     if (!implied.has(k)) implied.set(k, { id: `${a}->${b}`, from: a, to: b, of: [], via: [] });
@@ -182,9 +189,11 @@ function c4Count(own, implied) {
 const C4_NOTE_LINE = '<path d="M2 8H26" stroke="var(--um-muted)" stroke-width="1.4" stroke-dasharray="3 2" fill="none"/>';
 
 // an implied line the model before a diff drew and this one does not (audit 47: from the owner a container left): drawn back,
-// as diff() says in view.diffMarks, implied and removed, between two elements the view still draws
+// as diff() says in view.diffMarks, implied and removed, between two elements the view still draws, a card or a box (audit 54:
+// an instance put back into a deployment node drawn as a card before made it a box, and its old implied line went undrawn)
 const c4Gone = (view, nodes, edges, pic, L) => { const nm = id => (pic.nameOf || c4Name)(pic.at.get(id) || { id });
-  return goneLines(view, new Set(nodes.map(n => n.id)), new Set(edges.map(e => e.id))).map(x => ({ id: x.id, _id: x.id, type: 'c4.Relationship', from: x.from, to: x.to, implied: [], end: L.implied,
+  const box = new Set(pic.boxes.map(b => b.id)), inside = (o, x) => box.has(o) && pic.chain(x).includes(o); // a box and what it holds: no line (layoutTyped's)
+  return goneLines(view, new Set([...nodes.map(n => n.id), ...box]), new Set(edges.map(e => e.id))).filter(x => !inside(x.from, x.to) && !inside(x.to, x.from)).map(x => ({ id: x.id, _id: x.id, type: 'c4.Relationship', from: x.from, to: x.to, implied: [], end: L.implied,
     aria: `Implied relationship from ${nm(x.from)} to ${nm(x.to)}`, cut: 280, ...(x.label ? { label: x.label } : {}) })); };
 /* ---- the view laid out (§7.5, §11) ---- */
 function c4Geo({ model, view, pos, memo }) {
@@ -388,4 +397,4 @@ const C4_DEF = {
 };
 const C4_TYPES = Object.keys(C4_KIND).map(name => registerDiagramType(name, C4_DEF));
 
-export { c4Gone, c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, C4_TYPES, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, C4_SHAPES, c4Index, c4Pic, c4Lift, c4Lines, c4Keys, c4Geo, c4Problems, c4Describe, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Zoom, c4Key, c4Add, c4Owners, c4Rename };
+export { c4Ghost, c4Gone, c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, C4_TYPES, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, C4_SHAPES, c4Index, c4Pic, c4Lift, c4Lines, c4Keys, c4Geo, c4Problems, c4Describe, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Zoom, c4Key, c4Add, c4Owners, c4Rename };
