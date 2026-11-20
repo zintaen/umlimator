@@ -430,3 +430,68 @@ test('audit 26: an actor or participant with no name is reported with the right 
   const r = read('sequenceDiagram\n  actor \n  participant \n  A->>B: hi');
   assert.deepEqual(r.report.filter(x => x.status === 'skipped').map(x => x.message), ['an actor with no name', 'a participant with no name']);
 });
+
+test('audit 55: a reply in a break and one after it both answer the call: the break is performed instead of the rest', () => {
+  const { model, report } = read('sequenceDiagram\n  A->>B: place\n  break empty\n    B-->>A: error\n  end\n  B-->>A: order\n');
+  const ms = model.views[0].edges.filter(e => e.type === 'uml.Message');
+  assert.deepEqual(ms.map(e => e.props.replyTo ?? null), [null, ms[0].id, ms[0].id]);
+  assert.deepEqual(validate(model).filter(p => p.level !== 'info'), [], JSON.stringify(report));
+});
+
+test('audit 56: a reply after a break does not answer a call inside it, nor one in another operand of an alt, as the editor pairs it', () => {
+  const pairs = t => { const ms = read(t).model.views[0].edges.filter(e => e.type === 'uml.Message'), at = new Map(ms.map((e, i) => [e.id, i]));
+    return ms.map(e => (e.props.replyTo == null ? null : at.get(e.props.replyTo))); };
+  // the call inside the break never happens with the reply after it: the reply answers the one before the break
+  assert.deepEqual(pairs('sequenceDiagram\n  A->>B: first()\n  break card declined\n    A->>B: second()\n  end\n  B-->>A: done\n'), [null, null, 0]);
+  // a reply inside the break still answers the call inside it, and one after the break the call before it
+  assert.deepEqual(pairs('sequenceDiagram\n  A->>B: first()\n  break card declined\n    A->>B: second()\n    B-->>A: no\n  end\n  B-->>A: done\n'), [null, null, 1, 0]);
+  // a break inside an opt ends the opt only: a reply after the opt can answer the call in the break
+  assert.deepEqual(pairs('sequenceDiagram\n  A->>B: first()\n  opt maybe\n    break card declined\n      A->>B: second()\n    end\n  end\n  B-->>A: done\n'), [null, null, 1]);
+  // a call in one operand of an alt is never answered from another
+  assert.deepEqual(pairs('sequenceDiagram\n  A->>B: first()\n  alt ok\n    A->>B: second()\n  else not\n    B-->>A: done\n  end\n'), [null, null, 0]);
+  // what the reader pairs, the writer writes without a reply-to hint, and it reads back the same
+  for (const t of ['sequenceDiagram\n  A->>B: first()\n  break card declined\n    A->>B: second()\n  end\n  B-->>A: done\n']) {
+    const { model } = read(t), text = write(model);
+    assert.doesNotMatch(text, /reply-to/, text);
+    assert.deepEqual(read(text).model.views[0].edges, model.views[0].edges, text);
+    assert.deepEqual(validate(model).filter(p => p.level !== 'info'), []);
+  }
+});
+
+test('audit 56: replies after thousands of calls in breaks are matched in linear time: each call passed is charged', () => {
+  const make = n => 'sequenceDiagram\n' + 'break x\n  A->>B: in\nend\n'.repeat(n) + 'B-->>A: r\n'.repeat(n);
+  const time = text => { const t = performance.now(), r = read(text); return [performance.now() - t, r]; };
+  const [q] = time(make(1500)), [ms, { model }] = time(make(6000)); // linear by growth, not a wall clock: quadratic was 1.5 s and 16x a quarter
+  assert.ok(ms < 250 || (ms < 1000 && ms / Math.max(q, 1) < 8), `${ms} ms, a quarter ${q} ms`);
+  assert.equal(model.views[0].edges.filter(e => e.props?.replyTo != null).length, 0); // every call is in a break the replies follow
+});
+
+test('a destroy a later message still reaches is read as its arrow and reported, so validate finds nothing; one in another operand of an alt stays a delete (audit 57)', () => {
+  const sorts = r => r.model.views[0].edges.map(e => `${e.id}:${e.props.sort}`);
+  const errs = r => validate(r.model).filter(p => p.level === 'error').map(p => p.message);
+  let r = read('sequenceDiagram\n    A->>B: one\n    destroy B\n    A-xB: bye\n    B->>A: ghost');
+  assert.deepEqual([sorts(r), r.report.map(x => `${x.line} ${x.message}`), errs(r)], [['A-B:call', 'A-B-2:async', 'B-A:call'],
+    ['3 destroy B: B sends a later message, so its stem is not ended', '4 A-xB: read as an async; its cross is not drawn'], []]);
+  r = read('sequenceDiagram\n    participant A\n    destroy B\n    A->>B: one\n    A->>B: two');
+  assert.deepEqual([sorts(r), r.report.map(x => `${x.line} ${x.message}`), errs(r)], [['A-B:call', 'A-B-2:call'], ['3 destroy B: a later message reaches B, so its stem is not ended'], []]);
+  r = read('sequenceDiagram\n    A->>B: one\n    alt ok\n    destroy B\n    A-xB: bye\n    else no\n    A->>B: again\n    end');
+  assert.deepEqual([sorts(r).filter(x => x.startsWith('A-B-2')), r.report, errs(r)], [['A-B-2:delete'], [], []]);
+  r = read('sequenceDiagram\n    A->>B: one\n    destroy B\n    A-xB: bye');
+  assert.deepEqual([sorts(r), r.report, errs(r)], [['A-B:call', 'A-B-2:delete'], [], []]);
+});
+
+test('a self-message after create or destroy is an ordinary message, a create and destroy on one message keeps the create when the destroy is dropped, and the report names a later message from the lifeline (audit 58)', () => {
+  const sorts = r => r.model.views[0].edges.map(e => `${e.id}:${e.props.sort}`);
+  const errs = r => validate(r.model).filter(p => p.level === 'error').map(p => p.message);
+  const all = t => { const r = read(t); return [sorts(r), r.report.map(x => `${x.line} ${x.message}`), errs(r)]; };
+  assert.deepEqual(all('sequenceDiagram\nA->>B: hi\ndestroy B\nA->>B: bye\nB->>A: still here'),
+    [['A-B:call', 'A-B-2:call', 'B-A:call'], ['3 destroy B: B sends a later message, so its stem is not ended'], []]);
+  assert.deepEqual(all('sequenceDiagram\nA->>B: hi\ndestroy B\nB->>B: cleanup'),
+    [['A-B:call', 'B-B:call'], ['3 destroy B: the next message is from it to itself, so its stem is not ended'], []]);
+  assert.deepEqual(all('sequenceDiagram\nA->>B: hi\ncreate participant C\nC->>C: init\nA->>C: x'),
+    [['A-B:call', 'C-C:call', 'A-C:call'], ['3 create C: the next message is from it to itself, so nothing creates it'], []]);
+  assert.deepEqual(all('sequenceDiagram\nA->>B: hi\ncreate participant C\ndestroy C\nA->>C: both\nA->>C: later'),
+    [['A-B:call', 'A-C:create', 'A-C-2:call'], ['4 destroy C: a later message reaches C, so its stem is not ended'], []]);
+  assert.deepEqual(all('sequenceDiagram\nA->>B: hi\ncreate participant C\ndestroy C\nA->>C: both'),
+    [['A-B:call', 'A-C:delete'], ['3 create C: the next message to it also destroys it, so it is read as a delete'], []]);
+});

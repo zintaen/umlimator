@@ -1,39 +1,95 @@
 {
- "about": "Each diagram type's page (examples/types/<type>.json, hand-authored, rendered to examples/types/<type>.html): its title, its intro (a sentence or two on the scenario the diagram draws), its main view (the model's root and first view: one comprehensive diagram of the type, showing every element kind, line kind, marker, compartment, stereotype and option of the type that can coexist in one picture), its alternatives (the same example in a setting that cannot coexist with the main view, such as a layout direction or a notation: each a view of the same model, a child of the main view, with what differs), and shows (the features the main view demonstrates, in the order a reader finds them, a checklist the docs page lists). A type may allow layout issues (issues, a count, with why, the reason the type's layout cannot avoid them); 0 is the default and the goal. A type still \"pending\" keeps its old page model (an overview of variant cards) until its comprehensive example replaces it. Plain keyboard characters; `code` in backticks.",
- "types": {
-  "map": {
-   "title": "Map",
-   "intro": "A bookshop's systems on one map: the people who use it, the apps they use, the API at its heart with what it calls, stores and hands on, the support desk, and what is new, planned and switched off.",
-   "main": "shop",
-   "alternatives": [
-    {
-     "view": "shop-run",
-     "setting": "As a numbered view (`render` `sequence`): the cards and lines a checkout touches, numbered in run order instead of the hand-set steps, with no boxes."
-    }
-   ],
-   "shows": [
-    "The view's title and caption over the map",
-    "A card drawn by its kind: person (Shoppers), user (Shop staff), terminal (Admin CLI), browser app (Storefront), phone (Shop app), folder (Pricing), hexagon (Fraud check), cylinder (Orders), pipe (Order queue), robot (Support agent), page with a folded corner (returns.md), box in perspective (Hosts), dashed external card (Card gateway)",
-    "A card's own `shape` over its kind: Back office drawn as a window",
-    "A card with its name only, the sub-line kept for the panel (Admin CLI, `noSub`)",
-    "Logos on cards (Storefront React, Shop API FastAPI, Orders PostgreSQL)",
-    "Badges on cards, plain and in a tone (public, on call, backed up)",
-    "Change marks: a NEW card (Shop app), a PLANNED card dashed (Gift cards), a REMOVED card dashed and struck through (Reminder bot)",
-    "A main-step card with verb chips and an edit mark (Shop API: checkout, refund)",
-    "Line kinds in their colours: calls, feeds (charges, saves), triggers (checks), state (paid order, reads) and guard (if within 14 days)",
-    "Line weights 1 to 3 drawn as widths (POST /orders 3, order 2)",
-    "Steps in circles on the lines, numbers and a pill (1 to 6, and 3a)",
-    "A line with a sub-label (POST /orders over JSON)",
-    "Line styles over the kind: dashed (runs jobs), security (charges), async (paid order)",
-    "Added lines green and flowing (on the go, redeem), a removed line rose and dashed (nudges), an edit mark on a line (saves)",
-    "Boxes around cards, one nested in another (Data in Shop platform), with badges on their borders (EU, backed up nightly)",
-    "Tinted boxes, dashed with the title in their tone (Data in green, Support in violet)",
-    "A line ending on a box's border (Hosts runs Shop platform)",
-    "One pin (`layout`): the Card gateway at column 6, row 0, so the charges line clears the Data box",
-    "Two lenses in the page's Lenses menu: Who owns what (rings each card in its owner's tone) and Where the money goes (lights the feeds lines)"
+ "about": "Each diagram type's page (examples/types/<type>.json, hand-authored, rendered to examples/types/<type>.html): its title, its intro (a sentence or two on the scenario the diagram draws), its main view (the model's root and first view: one comprehensive diagram of the type, showing every element kind, line kind, marker, compartment, stereotype and option of the type that can coexist in one picture), its alternatives (the same example in a setting that cannot coexist with the main view, such as a layout direction or a notation: each a view of the same model, a child of the main view, with what differs), and shows (the features the main view demonstrates, in the order a reader finds them, a checklist the docs page lists). A type may allow layout issues (issues, a count, with why, the reason the type's layout cannot avoid them); 0 is the default and the goal. A type still \"pending\" keeps its old page model (an overview of variant cards) until its comprehensive example replaces it. Plain keyboard characters; `code` in backticks. Each entry also has its name (the short name the sidebar and the Diagrams page use) and text (one line on what the type draws). families groups the 28 types, in the order the Diagrams page and the sidebar list them: each its id, name, text (Markdown, its links relative to docs/types/) and types.",
+ "families": [
+  {
+   "id": "uml-structure",
+   "name": "UML structure",
+   "text": "The structure diagrams of UML 2.5.1: what a system is made of and how its parts relate.",
+   "types": [
+    "uml-class",
+    "uml-object",
+    "uml-package",
+    "uml-composite-structure",
+    "uml-component",
+    "uml-deployment",
+    "uml-profile"
    ]
   },
+  {
+   "id": "uml-behaviour",
+   "name": "UML behaviour",
+   "text": "The behaviour diagrams of UML 2.5.1, and its information flow diagram.",
+   "types": [
+    "uml-use-case",
+    "uml-activity",
+    "uml-state-machine",
+    "uml-sequence",
+    "uml-communication",
+    "uml-interaction-overview",
+    "uml-timing",
+    "uml-information-flow"
+   ]
+  },
+  {
+   "id": "data-and-flow",
+   "name": "Data and flow",
+   "text": "A database schema, the data a system moves, and the steps of a process.",
+   "types": [
+    "er",
+    "dfd",
+    "flowchart"
+   ]
+  },
+  {
+   "id": "c4",
+   "name": "C4",
+   "text": "The C4 model's views, from the landscape down to a deployment.",
+   "types": [
+    "c4"
+   ]
+  },
+  {
+   "id": "sysml",
+   "name": "SysML",
+   "text": "Four diagrams of SysML v1.7.",
+   "types": [
+    "sysml-requirement",
+    "sysml-block-definition",
+    "sysml-internal-block",
+    "sysml-parametric"
+   ]
+  },
+  {
+   "id": "bpmn",
+   "name": "BPMN",
+   "text": "Business processes in BPMN 2.0.2.",
+   "types": [
+    "bpmn"
+   ]
+  },
+  {
+   "id": "cloud",
+   "name": "Cloud",
+   "text": "Cloud architecture, with the vendor's service icons when its icon pack is fetched ([Icons and icon packs](../use/icon-packs.md)) and named glyphs without them.",
+   "types": [
+    "aws",
+    "gcp",
+    "azure"
+   ]
+  },
+  {
+   "id": "mindmap",
+   "name": "Mindmap",
+   "text": "Ideas branching out from one topic.",
+   "types": [
+    "mindmap"
+   ]
+  }
+ ],
+ "types": {
   "uml-class": {
+   "name": "Class",
+   "text": "Classes, their attributes and operations, and how they relate.",
    "title": "Class diagram",
    "intro": "A bookshop's sales domain: who orders, what an order holds, how it is paid for, and the shared types the classes use, in one class diagram.",
    "main": "sales",
@@ -51,7 +107,7 @@
     "Attributes with all four visibilities: + public, - private, # protected, ~ package",
     "A derived attribute (/total), a default (status = draft) and a multiplicity on a member (name: String [0..1])",
     "A static attribute and a static operation, underlined (placed, find)",
-    "Operations with parameters, a return type, and parameter directions (in by, out was)",
+    "Operations with parameters, a return type, and parameter directions (out was; in, the default, is not drawn)",
     "A class cut to 3 rows then \"+2 more\" (Customer, `present` `rows`)",
     "A compartment collapsed (Book's operations, `present` `collapsed`)",
     "An association with a label, role names, multiplicities and a navigable end (Customer places orders 0..*)",
@@ -69,6 +125,8 @@
    ]
   },
   "uml-object": {
+   "name": "Object",
+   "text": "Instances and the links between them at one moment.",
    "title": "Object diagram",
    "intro": "One bookshop order the moment it is placed: ada, her order with its two order lines, the books they are for, the card that paid and the web till that took it, each instance with its slots.",
    "main": "snapshot",
@@ -97,6 +155,8 @@
    ]
   },
   "uml-package": {
+   "name": "Package",
+   "text": "Packages and the dependencies between them.",
    "title": "Package diagram",
    "intro": "How a bookshop's software is split into packages: sales at the centre, the catalog, payments and the shared types it builds on, fulfilment and reporting that depend on it, and wholesale that merges it, in one package diagram.",
    "main": "packages",
@@ -123,6 +183,8 @@
    ]
   },
   "uml-composite-structure": {
+   "name": "Composite structure",
+   "text": "The parts inside a class, their ports and connectors.",
    "title": "Composite structure diagram",
    "intro": "Inside a bookshop's OrderService: the parts it is built from, the ports it talks through, the connectors that join them, and the publish-subscribe collaboration its parts play roles in, in one composite structure diagram.",
    "main": "inside",
@@ -154,6 +216,8 @@
    ]
   },
   "uml-component": {
+   "name": "Component",
+   "text": "Components and the interfaces they provide and require.",
    "title": "Component diagram",
    "intro": "The bookshop's software as components: the Shop API holding its Basket and Checkout, the Storefront that calls it, sign-in from the accounts package, the outside payment provider, the order worker and the jar the API ships in.",
    "main": "components",
@@ -187,6 +251,8 @@
    ]
   },
   "uml-deployment": {
+   "name": "Deployment",
+   "text": "Nodes, execution environments and the artifacts deployed on them.",
    "title": "Deployment diagram",
    "intro": "A bookshop in production: the shopper's device and browser, an edge proxy, the shop's data centre with its application server, Java runtime and database host, and the order queue, with the artifacts deployed on them and the components they manifest.",
    "main": "production",
@@ -213,6 +279,8 @@
    ]
   },
   "uml-profile": {
+   "name": "Profile",
+   "text": "Stereotypes that extend UML for a domain.",
    "title": "Profile diagram",
    "intro": "The bookshop's modelling conventions as a profile: stereotypes for entities, owners, columns and modules with their tag definitions, a second Audit profile, and the sales package that applies both, its classes showing the tags they carry.",
    "main": "conventions-view",
@@ -242,6 +310,8 @@
    ]
   },
   "uml-use-case": {
+   "name": "Use case",
+   "text": "Actors and the use cases they take part in.",
    "title": "Use case diagram",
    "intro": "What shoppers do at an online bookshop: who takes part, the use cases inside the shop, and how checking out includes paying and is extended by vouchers and gift wrapping, in one use case diagram.",
    "main": "shopping",
@@ -267,6 +337,8 @@
    ]
   },
   "uml-activity": {
+   "name": "Activity",
+   "text": "Actions, decisions and flows, in partitions.",
    "title": "Activity diagram",
    "intro": "A bookshop fulfilling an order, in nested lanes for the order desk and the warehouse beside the email service: taking the order, checking stock and restocking, then paying, packing and telling the customer in parallel before the parcel ships.",
    "main": "fulfil",
@@ -298,6 +370,8 @@
    ]
   },
   "uml-state-machine": {
+   "name": "State machine",
+   "text": "States and the transitions between them.",
    "title": "State machine diagram",
    "intro": "One bookshop order's life, from placed to delivered, cancelled or erased: the payment result chosen at a choice, picking and payment run side by side in two regions, a hold resumed by history, delivery with its problems, and the refund.",
    "main": "order-life",
@@ -327,6 +401,8 @@
    ]
   },
   "uml-sequence": {
+   "name": "Sequence",
+   "text": "Messages between lifelines, in time order.",
    "title": "Sequence diagram",
    "intro": "A bookshop's checkout: the shopper, the storefront, the api, a stock hold it creates and later deletes, the stock, the card gateway and the warehouse, their messages in time order with every frame the type draws.",
    "main": "checkout",
@@ -351,6 +427,8 @@
    ]
   },
   "uml-communication": {
+   "name": "Communication",
+   "text": "Numbered messages along the links between objects.",
    "title": "Communication diagram",
    "intro": "A shopper checks out and the card is accepted: the storefront, the shop's API, the payment provider and the card network pass the order along their links, a receipt is created and the basket deleted.",
    "main": "checkout",
@@ -377,6 +455,8 @@
    ]
   },
   "uml-interaction-overview": {
+   "name": "Interaction overview",
+   "text": "An activity whose steps are interactions.",
    "title": "Interaction overview diagram",
    "intro": "Buying a book at an online bookshop as an interaction overview: finding the book, checking out until the payment is accepted, then emailing the receipt, reserving the stock and queueing the order side by side. Each ref box opens its own sequence diagram.",
    "main": "buy-book",
@@ -423,6 +503,8 @@
    ]
   },
   "uml-timing": {
+   "name": "Timing",
+   "text": "How lifelines change state along a time axis.",
    "title": "Timing diagram",
    "intro": "One bookshop order being paid for, millisecond by millisecond: the order worker, the card gateway and the mailer stepping through their states, the order's status as values, the messages between them and the limits on how long it may take.",
    "main": "checkout",
@@ -441,6 +523,8 @@
    ]
   },
   "uml-information-flow": {
+   "name": "Information flow",
+   "text": "Information items conveyed between elements.",
    "title": "Information flow diagram",
    "intro": "What travels with one bookshop order: the shopper's checkout, the card details sent on to the payment provider, the order saved, reserved and confirmed, stock levels back to the storefront and the receipt back to the shopper.",
    "main": "order-flows",
@@ -467,6 +551,8 @@
    ]
   },
   "sysml-requirement": {
+   "name": "Requirement",
+   "text": "Requirements and how they are derived, satisfied and verified.",
    "title": "Requirement diagram",
    "intro": "What an online bookshop must do: its ordering requirements broken down by containment, a payments package, a requirement copied from a regulation, and the blocks that satisfy and the test cases that verify them, in one req frame.",
    "main": "requirements",
@@ -490,8 +576,10 @@
    ]
   },
   "sysml-block-definition": {
+   "name": "Block definition",
+   "text": "Blocks, their properties and how they are composed.",
    "title": "Block definition diagram",
-   "intro": "A city e-bike's blocks: the bike and its battery, motor, controller and lights, the dock it may stand in, the interface block of the charge link, the constraint blocks behind its range, and the value types they use.",
+   "intro": "The bookshop's delivery cargo e-bike, which carries book orders to local customers: the bike and its battery, motor, controller, lights and cargo box with its parcel lock, the dock at the shop's dispatch bay it may stand in, the interface block of the charge link, the constraint blocks behind its delivery range, and the value types they use.",
    "main": "ebike-blocks",
    "alternatives": [
     {
@@ -500,10 +588,10 @@
     }
    ],
    "shows": [
-    "The frame and its header, `bdd [Package] EBikeSystem [A city e-bike's blocks]`",
+    "The frame and its header, `bdd [Package] DeliveryFleet [The delivery bike's blocks]`",
     "Blocks with <<block>> and SysML's titled compartments, an empty one not drawn",
-    "A block's values and operations (RentalVehicle)",
-    "A generalization with a hollow triangle (EBike to RentalVehicle)",
+    "A block's values and operations (DeliveryVehicle, CargoBox)",
+    "A generalization with a hollow triangle (CargoBike to DeliveryVehicle)",
     "A `parts` compartment with multiplicities (`lights: Light [2]`)",
     "A `references` compartment (`dock: Dock [0..1]`)",
     "A `values` compartment with a default (`usableShare: Real = 0.9`)",
@@ -516,12 +604,14 @@
     "A labelled dependency (Battery feeds PowerBus) and a <<use>> dependency (Dock to ChargeInterface)",
     "An <<interfaceBlock>> with flow properties and an operation (ChargeInterface)",
     "<<constraintBlock>>s with the expression in braces, their parameters, and one owning a constraint property (UsableEnergy, RangeEquation)",
-    "<<valueType>>s with a `quantity` compartment, `unit` and `quantityKind` (Distance, Energy, Voltage)"
+    "<<valueType>>s with a `quantity` compartment, `unit` and `quantityKind` (Distance, Energy, Mass, Voltage)"
    ]
   },
   "sysml-internal-block": {
+   "name": "Internal block",
+   "text": "The parts of a block and what flows between their ports.",
    "title": "Internal block diagram",
-   "intro": "Inside a city e-bike: the battery, controller, motor and lights wired together, the dock the bike rests in, and the charge socket on the bike's own border, with what flows along each connector, in one SysML internal block diagram.",
+   "intro": "Inside the bookshop's delivery cargo e-bike: the battery, controller, motor, lights and cargo box wired together, the dock at the dispatch bay the bike rests in, and the charge socket on the bike's own border, with what flows along each connector, in one SysML internal block diagram.",
    "main": "inside-ebike",
    "alternatives": [
     {
@@ -530,15 +620,15 @@
     }
    ],
    "shows": [
-    "The frame: the subject block's box with its header `ibd [Block] EBike [Inside the e-bike]`",
+    "The frame: the subject block's box with its header `ibd [Block] CargoBike [Inside the cargo bike]`",
     "A port on the frame's own border (<<proxy>> chargeSocket : ChargeInterface) and a connector delegating it to a part's port",
     "Proxy ports typed by an interface block, with a two-way flow arrow inside from its in and out flow properties (charge : ChargeInterface)",
     "A conjugated port, its type written with `~` (dock's charge : ~ChargeInterface)",
     "Part properties as boxes `name : Type [multiplicity]` (battery : Battery [1], controller : Controller [1])",
     "Untyped ports as plain squares on their part's border, each named beside it (power, bus, supply, drive)",
     "A reference property, a dashed box (dock : Dock [0..1])",
-    "Value properties as boxes `name : Type` (batteryCapacity : Energy, ecoRange : Distance)",
-    "Item flows: the item as the connector's label and a filled triangle pointing the way it flows (DCPower, PhaseCurrent)",
+    "Value properties as boxes `name : Type` (batteryCapacity : Energy, emptyRange : Distance)",
+    "Item flows: the item as the connector's label and a filled triangle pointing the way it flows (DCPower, PhaseCurrent, UnlockCode)",
     "An item flowing against the connector's direction (DCPower from the dock to the battery, WheelSpeed from the motor to the controller)",
     "A connector with no item flow (the bus between battery and controller)",
     "Two connectors on one port (the controller's lights to both lights)",
@@ -546,8 +636,10 @@
    ]
   },
   "sysml-parametric": {
+   "name": "Parametric",
+   "text": "Constraint blocks that bind a system's values.",
    "title": "Parametric diagram",
-   "intro": "How far a city e-bike goes on a charge, in eco and in boost: its battery's usable energy and each mode's consumption bound to the parameters of the equations that give the two ranges.",
+   "intro": "How far the bookshop's delivery cargo e-bike goes on a charge, empty and laden: its battery's usable energy, its empty consumption and its payload in kilograms bound to the parameters of the equations that give the laden consumption and the two delivery ranges.",
    "main": "range",
    "alternatives": [
     {
@@ -555,21 +647,23 @@
      "setting": "Laid out down (`direction` `down`) instead of right: the same values, constraint properties and bindings."
     },
     {
-     "view": "trip-frame",
-     "setting": "The constraint block TripRange as the view's `subject` instead of the block EBike: its own parameters on the frame, bound to the parameters of the constraint properties it is built from. A view has one subject, so the two cannot share a picture."
+     "view": "delivery-frame",
+     "setting": "The constraint block DeliveryRange as the view's `subject` instead of the block CargoBike: its own parameters on the frame, bound to the parameters of the constraint properties it is built from. A view has one subject, so the two cannot share a picture."
     }
    ],
    "shows": [
-    "The frame's header naming its block: `par [Block] EBike [...]`",
-    "Value properties as plain boxes `name : Type` (ecoConsumption : EnergyPerDistance, batteryCapacity : Energy)",
+    "The frame's header naming its block: `par [Block] CargoBike [...]`",
+    "Value properties as plain boxes `name : Type` (payload : Mass, batteryCapacity : Energy)",
     "Constraint properties as boxes with rounded corners, `name : ConstraintBlock`, the block's expression in braces under the name, cut to the box",
-    "Two constraint properties typed by one constraint block (eco and boost : RangeEquation)",
+    "Two constraint properties typed by one constraint block (empty and laden : RangeEquation)",
     "Parameters as squares on a constraint property's border, `name : Type` beside each",
     "Binding connectors, plain lines with no ends, from value properties to parameters",
-    "A binding between parameters of two constraint properties (usable's usable to the energy of eco and of boost)"
+    "A binding between parameters of two constraint properties (usable's usable to the energy of empty and of laden; the consumption of empty into load, load's laden into the consumption of laden)"
    ]
   },
   "c4": {
+   "name": "C4",
+   "text": "C4's landscape, context, container, component, dynamic and deployment views.",
    "title": "C4 diagram",
    "intro": "The online bookshop in C4, one model zoomed to every level: its containers first, inside the bookshop's boundary, then the same model as a system context, a landscape, the Shop API's components, placing an order step by step, and the production deployment.",
    "main": "containers",
@@ -611,6 +705,8 @@
    ]
   },
   "er": {
+   "name": "Entity-relationship",
+   "text": "Entities, their attributes and relationships, with cardinality.",
    "title": "Entity-relationship diagram",
    "intro": "A bookshop's database: customers, their orders and order lines, the books and their authors, and payments, as seven tables related by their foreign keys, in crow's foot notation.",
    "main": "schema",
@@ -639,6 +735,8 @@
    ]
   },
   "dfd": {
+   "name": "Data flow",
+   "text": "Processes, data stores and external entities, and the data between them.",
    "title": "Data flow diagram",
    "intro": "The bookshop's data at level 1: the customer, the payment provider and the courier around three numbered processes and two data stores, with Take order opening its own level 2.",
    "main": "level-1",
@@ -664,6 +762,8 @@
    ]
   },
   "flowchart": {
+   "name": "Flowchart",
+   "text": "The steps and decisions of a process.",
    "title": "Flowchart",
    "intro": "A bookshop handling a returned book, from the parcel arriving to the return closed: the slip read, the order looked up, the book's condition deciding between a refund, a courier claim and a rejection letter, every one of the ten symbols in one flowchart.",
    "main": "returns",
@@ -693,6 +793,8 @@
    ]
   },
   "bpmn": {
+   "name": "BPMN",
+   "text": "Business processes: events, tasks, gateways, pools and lanes.",
    "title": "BPMN diagram",
    "intro": "A bookshop order from the shopper's basket to the courier: the shopper's, the payment provider's and the bookshop's pools, the bookshop's work split between sales and a warehouse of picking and dispatch, with the messages that pass between them.",
    "main": "order-to-shipment",
@@ -735,6 +837,8 @@
    ]
   },
   "mindmap": {
+   "name": "Mindmap",
+   "text": "Ideas branching out from one topic.",
    "title": "Mindmap",
    "intro": "The plan for opening the bookshop as one mindmap: seven branches from catalogue and website to hosting and staff, each broken into the jobs to do, and launch day in a mindmap of its own that the Launch topic opens.",
    "main": "plan",
@@ -758,6 +862,8 @@
    ]
   },
   "aws": {
+   "name": "AWS",
+   "text": "Accounts, regions, VPCs, subnets and the services in them.",
    "title": "AWS diagram",
    "intro": "The bookshop on AWS: shoppers reach DNS and a CDN, which serves the storefront files and passes the api to a load balancer in a VPC across two availability zones, with the database, the order queue and its workers, logs and a separate log archive account.",
    "main": "on-aws",
@@ -780,6 +886,8 @@
    ]
   },
   "gcp": {
+   "name": "Google Cloud",
+   "text": "Projects, regions, zones and the services in them.",
    "title": "Google Cloud diagram",
    "intro": "The bookshop deployed on Google Cloud: shoppers reach a load balancer and a CDN, the shop's API and an order worker run in europe-west1 against a database replicated across two zones, and a reporting group sends monthly sales to the accounts project.",
    "main": "bookshop-gcp",
@@ -806,6 +914,8 @@
    ]
   },
   "azure": {
+   "name": "Azure",
+   "text": "Subscriptions, resource groups, virtual networks and the services in them.",
    "title": "Azure diagram",
    "intro": "A bookshop's production system on Azure: the storefront and API behind Front Door, the order queue and worker, the database with a standby in a second region, and the monitoring beside them, each in its subscription, resource group, region, virtual network and subnet.",
    "main": "on-azure",

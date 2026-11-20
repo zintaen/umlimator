@@ -27,6 +27,9 @@ function ownMerge(model, views) {
   return { model: add.length ? { ...model, nodes: [...base, ...add] } : model, at, k: base.length };
 }
 const ownNodes = (model, view) => ownMerge(model, [view]);
+// the model with every view's own nodes, the view's first: what a Shift + Delete's hint counts, as apply() deletes one under a
+// model element in any view (audit 51)
+const everyOwn = (model, view) => ownMerge(model, [...(R_OBJ(view) ? [view] : []), ...R_ARR(R_OBJ(model) ? model.views : null).filter(w => R_OBJ(w) && w !== view && !(R_OBJ(view) && w.id === view.id))]);
 // what one view alone holds: its own nodes (none a model element's id takes) and their members, at any depth, by id
 function heldBy(model) {
   // members on a stack, in the order a recursion took: thousands deep are read, never a stack overflow (audit 35)
@@ -42,6 +45,10 @@ function heldBy(model) {
 function ownGuard(model, r) {
   if (R_OBJ(r) && Array.isArray(r.pick) && typeof r.then === 'function') return { ...r, then: i => ownGuard(model, r.then(i)) };
   const list = Array.isArray(r) ? r : R_OBJ(r) && Array.isArray(r.commands) ? r.commands : null; if (!list) return r;
+  // a node's cascade refs (a boundary event's props.attachedTo) hold it as its parent does: what one view alone holds and it goes
+  // with them (audit 58), so a model node never hangs on one either
+  const ties = x => Object.entries(propRefs(x.type)).filter(([, how]) => /\bcascade\b/.test(how)).flatMap(([p]) => [].concat(p.split('.').reduce((o, k) => (R_OBJ(o) ? o[k] : undefined), x)));
+  const els = new Map([...R_ARR(model.nodes)].filter(R_OBJ).map(n => [n.id, n]));
   const held = heldBy(model), hold = x0 => { for (const q = [x0], seen = new Set(); q.length;) { const x = q.pop(); if (!R_OBJ(x) || typeof x.id !== 'string' || seen.has(x)) continue; seen.add(x); held.set(x.id, x); for (const y of R_ARR(x.members)) q.push(y); } }, out = [];
   for (const c of list) {
     const x = R_OBJ(c) && c.op === 'add' && R_OBJ(c.element) ? c.element : null;
@@ -49,11 +56,16 @@ function ownGuard(model, r) {
     const node = () => { const v = R_ARR(model.views).find(w => R_OBJ(w) && w.id === c.view), T = v ? diagramOf(v) || {} : {}, pal = R_ARR(T.elements);
       return !!v && x.from == null && x.to == null && !R_ARR(T.items).includes(x.type) && (!pal.length || pal.some(t => R_OBJ(t) && t.type === x.type)); };
     if (x && c.in === 'view') { if (node()) hold(x); }
-    else if (x && c.owner == null && x.from == null && x.to == null && x.parent != null && held.has(x.parent)) {
+    else if (x && c.owner == null && x.from == null && x.to == null && ((x.parent != null && held.has(x.parent)) || ties(x).some(t => held.has(t)))) {
+      if (!(x.parent != null && held.has(x.parent))) { if (node()) { out.push({ ...c, in: 'view' }); hold(x); continue; }
+        const t = held.get(ties(x).find(i => held.has(i))); return { error: `${elName(t)} lives in this view only: an element of the model cannot be attached to it` }; }
       if (node()) { out.push({ ...c, in: 'view' }); hold(x); continue; }
       const { parent, ...y } = x; out.push({ ...c, element: y }); continue; }
     else if (R_OBJ(c) && c.op === 'reparent' && c.parent != null && held.has(c.parent) && !held.has(c.id)) {
       const p = held.get(c.parent); return { error: `${elName(p)} lives in this view only: an element of the model cannot go under it` }; }
+    else if (R_OBJ(c) && c.op === 'set' && c.view == null && els.has(c.id) && !held.has(c.id) && els.get(c.id).from == null && held.has(c.value)
+      && Object.entries(propRefs(els.get(c.id).type)).some(([p, how]) => /\bcascade\b/.test(how) && p === (Array.isArray(c.path) ? c.path.join('.') : c.path))) { // a model node re-attached to one (a boundary event, A or a drop)
+      const p = held.get(c.value); return { error: `${elName(p)} lives in this view only: an element of the model cannot be attached to it` }; }
     else if (R_OBJ(c) && c.op === 'move' && c.owner != null && held.has(c.owner) && !held.has(c.id)) { // a member moved to a new owner: the same rule (audit 35)
       const p = held.get(c.owner); return { error: `${elName(p)} lives in this view only: an element of the model cannot go under it` }; }
     out.push(c);
@@ -107,6 +119,7 @@ function withOwnNodes(def) {
      holds are left out; its owner is added when not offered).
      None, or not a list: no Owner field.
    - layout.pins false: pos is {}, no ranking; layout.rank false: pos is the view's pins alone, no ranking (risks.md P1).
+     layout.direction 'down' or 'right': the type draws every view that way and warns of another direction itself (audit 52).
      reroute is no registry field: reroute: false goes in the dg the type's own layout passes to layoutTyped (src/typed/layout.js).
    Stage 4's (notes/stage-4.md §12.1, §15): edits.rename(model, view, id, text); a hook's { pick, then }; name: false and
    opens on a palette entry; a line's cut, its label's width (150); rows(model, view, id) and word(model, id), the PDF's.
@@ -155,4 +168,4 @@ const idTable = (o = {}) => Object.assign(Object.create(null), o);
 // a type is text: any other value (one with a toString key, which no key is read from) refers to nothing (audit 21)
 const propRefs = type => typeof type !== 'string' ? {} : Object.assign({}, ...[...TYPES.values()].map(T => T.refs && Object.hasOwn(T.refs, type) && T.refs[type]));
 
-export { registerDiagramType, diagramOf, kindWord, untypedKind, untypedLine, aWord, aKind, countOf, drawnKind, propRefs, idTable, TYPED, ownNodes, heldBy, ownGuard };
+export { registerDiagramType, diagramOf, kindWord, untypedKind, untypedLine, aWord, aKind, countOf, drawnKind, propRefs, idTable, TYPED, ownNodes, everyOwn, heldBy, ownGuard };

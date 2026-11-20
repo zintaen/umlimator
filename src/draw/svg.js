@@ -1,5 +1,5 @@
 import { TYPED } from '../core/registry.js';
-import { EDGE_BREAK, EDGE_LH, clauseFit, esc, fit, glyph, measureText, sansW, textW, wrap2 } from '../core/text.js';
+import { EDGE_BREAK, EDGE_LH, clauseFit, esc, firstSentence, fit, glyph, mdPlain, measureText, sansW, textW, unstop, wrap2 } from '../core/text.js';
 import { roundPath, trimLine } from './lines.js';
 import { SHAPE, cardLook, drawnPts, markShape, r2, sidePorts, tabLine } from './shapes.js';
 import { CHG } from '../layout/layered.js';
@@ -42,8 +42,13 @@ function svgOf(geo, opts = {}) {
   let s = `<svg viewBox="${B.x} ${B.y} ${B.w} ${B.h}" data-w="${B.w}" data-h="${B.h}" role="group" aria-label="${esc(opts.title == null || opts.title === '' ? 'Diagram' : opts.title)}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
     <defs>${marker('d', LINE)}${marker('g', 'var(--um-green)')}${marker('r', 'var(--um-rose)')}${marker('v', 'var(--um-violet)')}${marker('h', 'var(--um-cyan)')}${map ? WIRES.map(w => marker(w[0], `var(--um-w-${w[0]})`)).join('') : ''}${heavy.map(m => { const [c, k] = m.split('-w'); return marker(m, MC[c], 1 + (k - 1) * .35); }).join('')}${T ? T.defs : ''}</defs>`;
   const chWord = x => { const c = CHG[lc(x)]; return c ? ', ' + c[1].toLowerCase() : ''; }; // a key and a line's title say its change (audits 44, 45)
-  // a map line's weight (2 or 3) shows as its width on hover, selection and focus only; its title and name say why: its what, else "weight 2 of 3"
-  const wtWord = e => { if (!map || !(e.weight > 1)) return ''; const w = [...new Set((e.all || [e]).map(x => x.what).filter(x => x != null && x !== '').map(String))].join(' / ');
+  // a line says only the marks a line is drawn with ('planned' is drawn unmarked, as validate() warns), and its edit mark, as
+  // a card's name does (audit 56: a planned line was announced planned, an edited one's amber dot was never said)
+  // a line diff() marks changed carries edited too: one amber dot, said once as changed (audit 57: "changed (edited)")
+  const lnWord = e => { const c = CHG[lc(e)]; return (lc(e) === 'planned' ? '' : chWord(e)) + (!(c && c[0] === 'amber') && (e.all || [e]).some(x => x && x.edited) && !e.strong ? ' (edited)' : ''); };
+  // a map line's weight (2 or 3) shows as its width on hover, selection and focus only; its title and name say why: its what
+  // (Markdown for the details panel: as plain words, its first sentence, as a card's sub-line), else "weight 2 of 3"
+  const wtWord = e => { if (!map || !(e.weight > 1)) return ''; const w = [...new Set((e.all || [e]).map(x => x.what).filter(x => x != null && x !== '').map(mdPlain).filter(Boolean))].join(' / ');
     return w || `weight ${e.weight} of 3`; };
   const marked = markShape; // a typed shape's or box's change (src/draw/shapes.js)
   // how many boxes a box sits in, each counted once: a container that names itself, or another in a cycle, as its parent
@@ -54,7 +59,7 @@ function svgOf(geo, opts = {}) {
     // .family-title (the audit, the canvas's "Box …, selected") and draws its border with class family-box: the canvas outlines a
     // selected box and the box under a drag by .family-box alone (src/canvas/styles.js)
     if (!map && hasKey(SHAPE, f.shape) && SHAPE[f.shape].frame) { s += marked(f, `<g class="family" data-family="${esc(f.id)}"${f.parent ? ` data-parent="${esc(f.parent)}"` : ''}${f.aria ? ` role="img" aria-label="${esc(f.aria)}"` : ''}>${SHAPE[f.shape].frame(f)}</g>`); return; }
-    s += (map ? x => x : x => marked(f, x))(`<g class="family${f.tone ? ' toned' : ''}" data-family="${esc(f.id)}"${f.parent ? ` data-parent="${esc(f.parent)}"` : ''}${f.tone ? ` style="--um-tone:${toneOf(f)}"` : ''}><rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="14" stroke="var(--um-${familyDepth(f) ? 'cyan' : 'border-2'})"/>
+    s += marked(f, `<g class="family${f.tone ? ' toned' : ''}" data-family="${esc(f.id)}"${f.parent ? ` data-parent="${esc(f.parent)}"` : ''}${f.tone ? ` style="--um-tone:${toneOf(f)}"` : ''}><rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="14" stroke="var(--um-${familyDepth(f) ? 'cyan' : 'border-2'})"/>
       ${(map ? [f.label || f.id] : String(f.title || f.label || f.id).split(/\r\n?|[\n\u2028\u2029]/)).map((t, i) => `<text class="family-title" x="${f.x+12}" y="${f.y+18+i*14}" fill="var(--um-muted)" data-t="ft" data-o="${esc(f.id)}">${esc(t)}</text>`).join('')}${(f.tabs || []).map(t => t.fold ? `
       <g class="fold-hint"><title>Fold back into one card (E, or Alt + click a card in it)</title><rect x="${t.x}" y="${f.y - 8}" width="${t.w}" height="16" rx="8" class="n-mask" stroke="var(--um-accent)"/><text x="${t.x + t.w / 2}" y="${f.y + 4}" text-anchor="middle" class="badge-tx" fill="var(--um-accent)">⤡</text></g>` : `
       <g class="pub-tab" data-badge="${t.badge}"><rect x="${t.x}" y="${f.y - 8}" width="${t.w}" height="15" rx="4" fill="${t.fill}"/><text x="${t.x + t.w / 2}" y="${f.y + 3}" text-anchor="middle" class="tab-tx">${esc(t.text)}</text></g>`).join('')}</g>`);
@@ -121,7 +126,7 @@ function svgOf(geo, opts = {}) {
       <path d="${d}" class="edge${st.flow ? ' flow' : ''}" stroke="${st.c}" ${st.dash && !st.flow ? `stroke-dasharray="${st.dash}"` : ''} ${st.op ? `opacity="${st.op}"` : ''} ${marks}/>
       <path d="${fd}" class="flowline" stroke="${st.c}"/>${e.weight > 1 && !E ? `<path d="${fl(e.weight)}" class="flowline fl-hv" stroke="${st.c}"/>` : ''}${(e.all || [e]).some(x => x.edited || (CHG[lc(x)] || [])[1] === 'CHANGED') && !e.strong ? (() => { const [x, y] = dotAt(e);
         return `<circle cx="${x}" cy="${y}" r="4" class="edited-dot"><title>Edited</title></circle>`; })() : ''}${why.length ? ruleMark(e, why) : ''}
-      <title>${!map && e.aria != null ? esc(e.aria + chWord(e)) : `${e.step != null ? 'Step ' + esc(e.step) + ': ' : ''}${esc(e.s.label || e.s.id)} ${e.both ? '⇄' : '→'} ${esc(e.t.label || e.t.id)}${e.label ? ': ' + esc(e.label) : ''}${esc(chWord(e))}`}${e.label && e.sublabel ? ' (' + esc(e.sublabel) + ')' : ''}${ww ? '\n' + esc(ww) : ''}${e.when ? '\n' + esc(e.when) : ''}${why.length ? '\nBreaks rule: ' + esc(why.join('; ')) : ''}</title></g>`;
+      <title>${!map && e.aria != null ? esc(e.aria + lnWord(e)) : `${e.step != null ? 'Step ' + esc(e.step) + ': ' : ''}${esc(e.s.label || e.s.id)} ${e.both ? '⇄' : '→'} ${esc(e.t.label || e.t.id)}${e.label ? ': ' + esc(e.label) : ''}${esc(lnWord(e))}`}${e.label && e.sublabel ? ' (' + esc(e.sublabel) + ')' : ''}${ww ? '\n' + esc(ww) : ''}${e.when ? '\n' + esc(e.when) : ''}${why.length ? '\nBreaks rule: ' + esc(why.join('; ')) : ''}</title></g>`;
   });
   // the tour's dot rides over the lines and boxes but under the cards: it goes into a card and comes out at its next
   // line, rather than across the card's name
@@ -136,7 +141,7 @@ function svgOf(geo, opts = {}) {
     const kids = kidsOf(n), stacked = !!(kids || n.opens); // opens a view, loaded or not (#47)
     const subject = opts.subject === n.id;
     const verbs = map && (n.verbs || []).length ? n.verbs : null;
-    const subTxt = n.noSub ? '' : String(n.sub || (map && n.origin ? n.origin : '') || (map ? (n.what ? String(n.what).replace(/[`*]/g, '').split(/(?<=\.)\s/)[0] : KIND[n.k][1]) : '')); // a model's text may be a number or a list: drawn as written
+    const subTxt = n.noSub ? '' : String(n.sub || (map && n.origin ? n.origin : '') || (map ? (n.what ? (typeof n.what === 'string' ? mdPlain(n.what) : firstSentence(String(n.what))) : KIND[n.k][1]) : '')); // a Markdown what as plain words, as a line's (audit 58: a link, ==mark== and bullets were drawn raw); a model's text may be a number or a list: drawn as written
     const third = !!(verbs && subTxt && !priv && geo.subAndChips); // the view's subAndChips: the sub-line, then the chips on a third line (a script card shows no sub-line)
     const sw = map ? n.w - 70 : n.w - 24;  // map cards: text runs from 54 px in (after the mark) to 16 px from the right
     // a shape's face: the rows its mark and text use (a box's: the card). A short face takes a two-line sub-line to one, and
@@ -227,15 +232,15 @@ return I && I.src ? `<rect x="${x - M * 3 / 28}" y="${y - M * 3 / 28}" width="${
         const key = point.join(','); const port = ports.get(key) || { point, indices: [] }; port.indices.push(i); ports.set(key, port); });
       ports.forEach(({ point, indices }) => { parts.push(`<circle cx="${point[0]}" cy="${point[1]}" r="3.5" class="n-port" data-edges="${indices.join(',')}" stroke="${c}"/>`); });
     }
-    const name = said.join(', ') + (n.edited ? ' (edited)' : '') + (stacked && !hint ? ' (opens inner view)' : '') + (!map && n.opensTo ? `, opens ${n.opensTo}` : '');
+    const name = (s0 => (!map && n.opensTo ? `${unstop(s0)}, opens ${n.opensTo}` : s0))(said.join(', ') + (n.edited ? ' (edited)' : '') + (stacked && !hint ? ' (opens inner view)' : '')); // no ".," (audit 52)
     s += `<g class="node${pub ? ' pub' : ''}${priv ? ' priv' : ''}${stacked ? ' has-child' : ''}${subject ? ' subject' : ''}${n.emphasis ? ' main-step' : ''}${planned ? ' planned' : ''}${tour && n.id in tour.at ? ' tour-stop' : ''}"${tour && n.id in tour.at ? ` style="animation-delay:${(tour.at[n.id] * TOUR - .32).toFixed(2)}s"` : ''}${L ? ` data-shape="${L.sh}" data-face="${r2(ft)} ${r2(fb)}"` : ''} data-id="${esc(n.id)}" tabindex="${map ? 0 : -1}" role="${map ? 'button' : 'img'}" aria-label="${esc(name)}">
       ${parts.join('\n')}
     </g>`;
   });
   // focus targets after the cards (#43), under the labels: each line's (a typed one's named by e.aria), or one per id of geo.order (notes/stage-3.md S13)
   const ring = (a, name, d) => `<g class="um-key line-key${a}" tabindex="0" role="button" aria-pressed="false" aria-label="${esc(name)}"><path d="${d}" class="key-ring"/></g>`;
-  const line = (e, i, said = e.label ? `: ${e.label}${e.sublabel ? ` (${e.sublabel})` : ''}` : '') => ring(`${e.weight > 1 ? ' wt-' + e.weight : ''}" data-i="${i}`, !map && e.aria != null ? e.aria + chWord(e)
-    : `${e.step != null ? `Step ${e.step}: ` : ''}Line ${e.both ? `between ${e.s.label || e.s.id} and ${e.t.label || e.t.id}, both ways` : `from ${e.s.label || e.s.id} to ${e.t.label || e.t.id}`}${said}${chWord(e)}${wtWord(e) ? ', ' + wtWord(e) : ''}${broke(e).length ? `, breaks rule ${broke(e).join('; ')}` : ''}`, roundPath(drawn[i]));
+  const line = (e, i, said = e.label ? `: ${e.label}${e.sublabel ? ` (${e.sublabel})` : ''}` : '') => ring(`${e.weight > 1 ? ' wt-' + e.weight : ''}" data-i="${i}`, !map && e.aria != null ? e.aria + lnWord(e)
+    : `${e.step != null ? `Step ${e.step}: ` : ''}Line ${e.both ? `between ${e.s.label || e.s.id} and ${e.t.label || e.t.id}, both ways` : `from ${e.s.label || e.s.id} to ${e.t.label || e.t.id}`}${said}${lnWord(e)}${wtWord(e) ? ', ' + wtWord(e) : ''}${broke(e).length ? `, breaks rule ${broke(e).join('; ')}` : ''}`, roundPath(drawn[i]));
   s += '</g><g class="keys">' + (!map && Array.isArray(geo.order) ? geo.order.map(id => { const n = hasKey(geo.byId || {}, id) && geo.byId[id], i = edges.findIndex(e => e.id === id);
     return n ? ring(` node-key" data-node="${esc(id)}`, String(n.aria || n.label || id) + chWord(n), `M${n.x} ${n.y}h${n.w}v${n.h}h${-n.w}z`) : i < 0 ? '' : line(edges[i], i); }) : edges.map((e, i) => line(e, i))).join('');
   s += '</g>' + (opts.over || '') + '<g class="labels depth-read">';

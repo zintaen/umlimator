@@ -1,0 +1,196 @@
+---
+title: "Component diagram"
+description: "Components and the interfaces they provide and require: one example that shows all it draws, live, how to write it, and what is drawn and left out."
+aside: false
+pageClass: gallery-page
+---
+
+<!-- Written by tools/gallery.mjs from the models, tools/gallery.json, tools/types.json, tools/types.md and docs/diagrams/conformance/: edit those, not this file. -->
+
+# Component diagram
+
+<p class="ex-lead">Components and the interfaces they provide and require. The bookshop's software as components: the Shop API holding its Basket and Checkout, the Storefront that calls it, sign-in from the accounts package, the outside payment provider, the order worker and the jar the API ships in. The page below opens on it, <a href="/umlimator/examples/types/uml-component.html#view=components" target="_self">The bookshop's components</a>, live: pan, zoom, select and go into the cards that stack.</p>
+
+<div class="ex-frame"><iframe src="/umlimator/examples/types/uml-component.html" title="Component diagram, live" loading="lazy"></iframe></div>
+<div class="ex-links"><a href="/umlimator/examples/types/uml-component.html" target="_self">Open full screen<span class="visually-hidden"> (Component)</span></a><a href="/umlimator/examples/types/uml-component.pdf" target="_self">PDF<span class="visually-hidden"> (Component)</span></a><a href="/umlimator/examples/types/uml-component.json" target="_self">Model<span class="visually-hidden"> (Component)</span></a></div>
+
+## What it shows {#shows}
+
+<p>In the order you find them in the picture:</p>
+
+<ol class="ex-shows">
+<li>A package drawn as a box holding a component and a class (accounts)</li>
+<li>Components as rectangles with UML's component icon at the top right</li>
+<li>A class realizing a component: dashed, a hollow triangle at the component (SessionStore to Accounts and sign-in)</li>
+<li>An interface drawn as a rectangle with &lt;&lt;interface&gt;&gt; and its operation (SignIn)</li>
+<li>A provided interface as a rectangle: dashed, a hollow triangle (Accounts and sign-in provides SignIn)</li>
+<li>A required interface as a rectangle: dashed, an open arrowhead and &lt;&lt;use&gt;&gt; (Shop API uses SignIn)</li>
+<li>A dependency with a stereotype: &lt;&lt;call&gt;&gt; from Order worker to Shop API</li>
+<li>An artifact with &lt;&lt;artifact&gt;&gt; and UML's document icon (shop-api.jar)</li>
+<li>A manifestation: dashed, an open arrowhead, &lt;&lt;manifest&gt;&gt; (shop-api.jar to Shop API)</li>
+<li>A note linked to the artifact by a dashed line</li>
+<li>A component holding components, drawn as a box with its name and icon in the header (Shop API holding Basket and Checkout)</li>
+<li>Ports as small squares on their owners' borders, each named beside it</li>
+<li>A delegation inward: a solid line with an open arrowhead from Shop API's orders port to Basket's</li>
+<li>An assembly connector joining two parts directly (Basket and Checkout)</li>
+<li>A delegation outward, from Checkout's payments port to Shop API's</li>
+<li>An assembly connector between the ports of two components (Shop API's payments to Payment provider's charges)</li>
+<li>A typed port, named <code>name : Type</code> (charges : Charging)</li>
+<li>A provided interface as a ball on a plain stem, from a port (Orders, provided at Shop API's orders port)</li>
+<li>A required interface as a socket, a half circle round the ball (Storefront requires Orders)</li>
+<li>A component with a stereotype: &lt;&lt;web app&gt;&gt; over Storefront</li>
+</ol>
+
+## In another setting {#alternatives}
+
+<p>The same example, where a setting cannot share the picture above:</p>
+
+<div class="ex-variants">
+<article class="ex-variant" id="view-components-down">
+<h3><a href="/umlimator/examples/types/uml-component.html#view=components-down" target="_self">The same components, laid out down</a></h3>
+<p>Laid out down (<code>direction</code> <code>down</code>) instead of right: the same components, ports, interfaces and lines.</p>
+</article>
+</div>
+
+## How to write it {#model}
+
+The view's `diagram`, the types its elements, members and lines may have, and its props types, which describe `props` (every field in them is optional). The element envelope, typed views and the props all UML types share are on [Typed diagrams](../api/typed-diagrams.md).
+
+`diagram: 'uml.component'`.
+
+| Type | Values |
+|---|---|
+| `UmlComponentElementType` | `uml.Component`, `uml.Interface`, `uml.Artifact`, `uml.Package`, `uml.Comment` |
+| `UmlComponentMemberType` | `uml.Port` |
+| `UmlComponentLineType` | `uml.InterfaceRealization`, `uml.ComponentRealization`, `uml.Usage`, `uml.Connector`, `uml.Dependency`, `uml.Manifestation`, `uml.CommentLink` |
+| `UmlPortProps` | `valueType` (drawn `name : Type`), `stereotypes` |
+| `UmlConnectorProps` | `kind` (`assembly`, the default, or `delegation`); in a composite structure view, `ends.from.part` or `ends.to.part`; `stereotypes` |
+| `UmlStructurePresent` | `as: 'ball'` (an interface as a ball), a port's `side`, and on a part each of its type's `ports`' sides |
+
+## What is drawn and left out {#conformance}
+
+<!-- the conformance note, as written: docs/diagrams/conformance/uml-component.md -->
+
+Release 0.22.0 (stage 5, `docs/diagrams/notes/stage-5.md`). Support is claimed by level (decision D3): **render** and
+**edit** on the subset below. No interchange: Mermaid has no component notation, and there is no XMI and no UML diagram
+interchange (`docs/diagrams/proposal.md` §8.1).
+
+A view of a version-2 model (`"schemaVersion": 2`) whose `diagram` is `"uml.component"` is a component diagram. It is
+drawn by `lib/umlimator-all.js` (`umlimator/all`), which the CLI's page inlines; `lib/umlimator.js`, what a map host
+loads, draws it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2, row 5; the example is
+[`examples/bookshop-components.json`](../../examples/bookshop-components.json).
+
+### The subset, and UML 2.5.1's clauses
+
+| UML 2.5.1 | In the model | Drawn as |
+|---|---|---|
+| 11.6 Component | `uml.Component`; `props.stereotypes`; `parent` a component or a package | a rectangle, its name centred, UML's component icon (16 × 12 px) at the top right; holding a shown component, a box with its name and icon in the header room |
+| 11.3 Port | a `uml.Port` member of a component or class; `props.valueType` | a 12 px square centred on its owner's border, on the side `present.<port>.side` names or the side facing most of its lines; longer along the border by 10 px for each further line on a face; its name `name : Type` outside, beside it |
+| 10.4 Interface | `uml.Interface`; its members as the class type's | a rectangle with «interface» (the class type's look), or with `present.<id>.as: "ball"` a 16 px circle, its name under it |
+| 10.4 InterfaceRealization (provided) | `uml.InterfaceRealization`, from a component, a class or a port to the interface | to a ball: a plain solid line (the stem); to a rectangle: dashed, a hollow triangle |
+| 7.8 Usage (required) | `uml.Usage`, to the interface | to a ball: solid, a socket (a half circle of 11 px) round the ball; to a rectangle: dashed, an open arrowhead, «use» |
+| 11.6 ComponentRealization | `uml.ComponentRealization`, from the realizing class or component to the component | dashed, a hollow triangle at the component |
+| 11.8 Connector, assembly | `uml.Connector` with `props.kind: "assembly"` (or no kind), between two components or their ports, neither inside the other | a plain solid line |
+| 11.8 Connector, delegation | `uml.Connector` with `props.kind: "delegation"`, between a box's port and something it holds | a solid line with an open arrowhead at its `to` end (a departure, below), entering the box at its port |
+| 19.3 Manifestation | `uml.Manifestation`, from an artifact | dashed, an open arrowhead, «manifest» |
+| 19.3 Artifact | `uml.Artifact` | a rectangle with «artifact» over its name and UML's document icon at the top right |
+| 12.2 Package | `uml.Package`, holding components | a box, its name in the header room |
+| 7.7 Dependency, 7.8 Comment | `uml.Dependency` (`props.stereotypes`), `uml.Comment`, `uml.CommentLink` | dashed with an open arrowhead; a note, a dashed line |
+
+Rules, each `validate()` problem naming its `rule` and its elements (`notes/stage-5.md` §10.1): `port-owner` (a port is a member of a component or a class), `provided-ends`, `delegation-ends` (as built: the outer end a port), `assembly-ends`, `manifest-ends` (from an artifact; to anything but a component, a warning), `component-realization-ends`, `multiplicity` (an attribute's multiplicity on an interface drawn as a box, judged as the class view judges it) (errors); `required-ends`, `ball-interface`, `present-values` (a port's present side other than left, right, top or bottom, or an interface's present as other than ball, as written: ignored), `component-owner`, `line-inside` (a line other than a connector between a box and something it holds, with no port at the box's end, is not drawn), `own-boxes` (the view draws its own boxes: its hand-written containers are ignored) (warnings).
+
+**Departures from UML 2.5.1:**
+
+- The delegation's arrow (decision 20): UML 2.5.1 does not require an arrowhead on a delegation connector, and an open
+  arrow on a solid line is also its look for a navigable association. Kept to show which way the port delegates.
+- A realization or usage drawn from a port (`provided-ends`): in the metamodel a port's provided and required interfaces
+  are derived from its type; a port does not realize or use an interface. The model stores the line from the port, as
+  UML tools draw the lollipop on a port; a reader of the model must know it.
+- «manifest» to a component only (`manifest-ends` warns on other targets).
+
+### Left out
+
+`notes/stage-5.md` §17: connector multiplicities; «subsystem» and «specification»; a component's parts drawn inside it
+as a composite structure (nested components only); the black-box compartments («provided interfaces», «required
+interfaces», «realizations», «artifacts»); provided and required interfaces as a port's own props; a ball and socket
+joined with no interface node; the ball's stem kept short (it is a line the layout places; on the example it is one
+column gap). And for all three stage 5 types: a port's multiplicity; behaviour, service and conjugated ports (`~`); XMI;
+copy and paste; per-type `diff()` writers (a reorder reads as changed); a reader; storing a port's order (it follows
+its lines); ELK in the module (5.7's trial).
+
+Hiding (definition of done, item 4): a port is a member, drawn because its owner is, so it cannot be hidden. Delete on a
+port deletes it from the model, with its lines, as Shift + Delete does; the hint line says so before it goes (decision
+19, stage 3's precedent for messages).
+
+Layout limits, measured on `examples/bookshop-components.json` and `tests/component-stress.json`:
+
+- The type ranks its own view (`layout.rank: false`): each box's contents, then the top, by longest paths; what no line
+  reaches is packed by size under the lined columns. It lays out with port repair off (`repair: false`,
+  `reroute: false`), with `gap: 48`, `rgap: 56`, `cut: 280` and `labelGaps` (decision 9). A box whose ports have lines
+  takes a 48 px padding.
+- The example lays out clean right and down: no crossing, `check()` finds nothing, every line routed by the grid.
+- `tests/stage5-fixtures.test.mjs` pins the stress file. Its `edge-cases` view: laid out right two crossings, down one,
+  both between lines of the component whose four ports are pinned to the four sides (a pin against the ranking). Ten
+  ports on one side of a box: a box is sized by its contents, not its ports (§4.1), so five are held at the start of the
+  side's free span, marked `over`, and `check()` reports them overlapping (15 pairs); ten on one side of a node: the node
+  grows and every port fits. A port with no line and a 40-character name: the name is drawn whole, but on a crowded side
+  the end labels' search may place it far from its port (L5). Its generated `all` view (50 elements, 60 lines, 54 ports
+  in boxes three deep): 114 crossings right (116 before audit 60) and 128 down. Laid out right: a port's name over a node in six cases (`c0.b`
+  over `c4`, `u1`, `u9` and `u14`; `c21.b` over `r8` and `r9`), since the layout keeps no room for names (§4.3).
+  Laid out down: one pair of lines sharing a line and one line across a box's header (along a box's border before audit 21). These are stated limits, not §13's
+  "no overlap, no line along a box's border, no port name over a node or a line".
+- Found in 5.8 (`tests/stage5.html`): in the browser under a font wider than the layout's estimate (the page's monospace
+  font, laid out right), two of the `all` view's usages that come into a ball from below end on its node's bottom beside the circle, not on the circle
+  (`risks.md` L17).
+- A line's end labels and a port's name are placed apart from each other only as far as the end labels' search sees
+  (§4.5, as built in 5.3).
+
+### Writers: what each shows of a component diagram
+
+Measured on `examples/bookshop-components.json` (0.22.0): `umlimator.py stills` (SVG and PNG) and `umlimator.py pdf` on
+its rendered page. The PNG was looked at, the SVG read, the PDF's text read back (`tests/cli.py` reads its tables).
+
+| What is drawn | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
+|---|---|---|---|
+| Components with their icons, the box, the ports on the borders, the ball, the rectangle interface, the artifact | Yes | Yes | Yes, in vectors |
+| Lines, dashes, the socket, the delegation's arrow, triangles, «use» and «manifest» | Yes | Yes | Yes |
+| Port names | Yes, as text beside each port | Yes | Yes |
+| The legend of line kinds (stem, socket, then the rectangle's realization and usage, assembly, delegation, dependency, manifestation) | No: the legend is a piece of the page, not of the picture | No | Yes, under the picture |
+| Text | Text, in the page's font family; the font is not embedded unless `fontCSS` is given | Pixels | Selectable text |
+| Accessible names | Each component's, port's, interface's and artifact's `aria-label` kept ("Port orders of Shop API, provides Orders"); the lines' `<title>` removed, as for maps | None | None |
+| Theme | The page's, every colour resolved | The page's | `--theme`, light by default |
+| Tables | None | None | "Elements": each component with its ports (`name : Type`, what each provides), an interface's kind and operations, what an artifact manifests; "Lines": each line between two elements, from → to and its kind. A line from or to a port is a row of "Lines" too (since 0.30.0, `risks.md` R10), between the components that own its ends; a port's realization is also in its row ("provides Orders"). A connector is listed once, in "Lines" (audit 17) |
+
+The site builds every example's stills and PDF ([zintaen.github.io/umlimator](https://zintaen.github.io/umlimator/)).
+
+### Accessibility
+
+Every piece has a name: "Component Shop API, 2 ports, holding 1 component", "Port orders of Shop API, provides Orders",
+"Interface Orders, as a ball, provided by Shop API, required by Storefront", "Delegation from orders of Shop API to
+orders of Checkout", "Artifact shop-api.jar, manifests Shop API". Tab reads what each box holds, each element's
+ports after it in their drawn order, then the lines (`geo.order`); a box is not a Tab stop: the keyboard reaches it through the outline of elements. `describe()` writes the view in sentences. Text reads
+at 4.5:1 and lines, outlines and ports at 3:1 on the stage in both themes (`tests/component.html`, `tests/stage5.html`).
+A port's hit area is 24 px. Every editing gesture has a key (`docs/editing.md`): `B` turns an interface into a ball and
+back; `Alt + arrows` moves a port to another side.
+
+### Performance (P1)
+
+`tests/stage5-fixtures.test.mjs` on `tests/component-stress.json`'s `all` view (50 elements, 60 lines, 54 ports in boxes
+three deep), CPU time, best of seven after a warm-up, on an Apple laptop at a load average of 3 to 8 (13 Nov 2026): a
+full layout and its SVG 131 ms; a colour (an edit that moves nothing) 5.4 ms; a port renamed 5.5 ms (no layout); a
+component renamed 139 ms; a stereotype set (it grows the header, so the view lays out again) 136 ms, against the 100 ms
+target. CI holds 1 s and prints the figures (the maintainer's decision of 13 Nov 2026). The layout
+is over the target on this view: the router's cost (5.4 measured 124 ms without `labelGaps`).
+
+### Tests
+
+`tests/component.test.mjs` and `tests/component.html` (the type, its rules with a passing and a failing case each, the
+example under three fonts, both themes and both directions, every gesture by pointer and key through `apply()`, a
+30-step session); `tests/structure.test.mjs` and `tests/structure.html` (the port, component, ball and artifact shapes);
+`tests/typed-ports.test.mjs` and `tests/typed-ports.html` (the router's ports and inner lines);
+`tests/component-minimal.json` and `tests/component-stress.json` with `tests/stage5-fixtures.test.mjs` and
+`tests/stage5.html` (`notes/stage-5.md` §13: every edge case, laid out right and down, every port line on its square
+within 1 px, every port on its owner's border, what `check()` finds pinned, P1); `tests/notation.html` (the socket, the
+stem, the delegation's arrow, the triangles, «use» and «manifest», each tip on what it points to); `tests/cli.py`
+(render, check, stills, pdf and its tables, the diff Action's step); `tests/mcp.py` (the MCP server's read tools, the
+page drawing the view, a highlight).

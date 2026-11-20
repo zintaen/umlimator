@@ -1,4 +1,4 @@
-import { ownNodes, registerDiagramType } from '../core/registry.js';
+import { everyOwn, registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW, widest, wrap2 } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { brLines } from '../typed/draw.js';
@@ -66,7 +66,7 @@ const clGiven = (F, D) => CL_OBJ(D && D.icons) && Object.keys(D.icons).some(k =>
 /* ---- the service card (§5.2): the icon on its tile, the label (13 px, two lines of 180 px), the full name under it ---- */
 const CLD = { pad: 12, icon: 32, gap: 10, label: 13, llh: 16, name: 11, nlh: 14, text: 180, minW: 180, maxW: 280, minH: 56 }, CL_TILE = CLD.icon * 34 / 28; // svgOf's tile rule
 // a text the author broke (a Mermaid <br>): a line each where they broke it, never one line with a space (audit 23)
-const clWrap = (s, px) => { s = String(s ?? ''); const ls = brLines(s); return ls.length > 1 ? ls : textW(s, px) <= CLD.text ? [s] : wrap2(s, px, CLD.text) || [fit(s, px, CLD.text, true)]; };
+const clWrap = (s, px) => { s = String(s ?? ''); const ls = brLines(s); return ls.length > 1 ? ls : textW(s, px) <= CLD.text ? [s] : wrap2(s, px, CLD.text, true) || [fit(s, px, CLD.text, true)]; };
 const clText = (x, y, t, px, wt, fill, cls, more = '', anchor = 'start') => `<text x="${r2(x)}" y="${r2(y)}"${anchor === 'start' ? '' : ` text-anchor="${anchor}"`} class="${cls}"${more} fill="${fill}" style="font:${wt} ${px}px var(--um-sans)">${esc(t)}</text>`;
 function clParts(n) {
   const label = clWrap(n.label, CLD.label), name = CL_HAS(n.name) && n.name !== n.label ? clWrap(n.name, CLD.name) : [], left = CLD.pad + CL_TILE + CLD.gap;
@@ -258,11 +258,12 @@ function clAdd(F, model, view, entry, label, at) {
 // its contents then drawn in the next shown group (ownersOn): the default
 function clRemove(F, model, view, ids, fromModel) {
   // the view's own nodes too: the core passes the model as it is, and a view's own group or service under the group goes with it (audit 46)
+  // and every other view's own nodes: apply() deletes one under a model group in any view, so the hint counts it (audit 51)
   const V = CL_OBJ(view) ? view : CL_ARR(model && model.views).find(v => CL_OBJ(v) && v.id === view);
-  const I = clIndex(V ? ownNodes(model, V).model : model), all = fromModel ? ids.filter(id => (I.at.get(id) || {}).type === F.group) : [];
+  const M = everyOwn(model, V), I = clIndex(M.model), all = fromModel ? ids.filter(id => (I.at.get(id) || {}).type === F.group) : [];
   // a group under another selected one is held by it, and what either holds is counted, selected or not: it goes all the same (audit 33)
-  // what goes as apply() deletes: a model element under the view's own node is lifted out, not deleted, so it is not counted (audit 47)
-  const own = new Set(V ? CL_ARR(V.nodes).filter(n => CL_OBJ(n) && typeof n.id === 'string').map(n => n.id) : []);
+  // what goes as apply() deletes: a model element under a view's own node is lifted out, not deleted, so it is not counted (audit 47)
+  const own = new Set(CL_ARR(M.model.nodes).slice(M.k).map(n => n.id));
   const gs = all.filter(id => !I.chain(id).some(p => all.includes(p)));
   const under = id => { for (let c = id, ps = I.chain(id), i = 0; i < ps.length; c = ps[i++]) { if (own.has(ps[i]) && !own.has(c)) return false; if (gs.includes(ps[i])) return true; } return false; };
   const held = gs.length ? [...I.at.keys()].filter(under).length : 0;

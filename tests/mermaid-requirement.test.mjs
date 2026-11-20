@@ -38,9 +38,9 @@ test('read(write(model)) is example 16 without its comment, and nothing is repor
   // the writer's text is Mermaid's: a quoted name, a field quoted, containment, a relationship, an id it would not derive
   assert.match(text, /\n {2}%% id: assist\n {2}requirement "Pedal assistance" \{\n {4}id: "EB-1\.1"\n {4}text: "The motor shall assist the rider only while the rider is pedalling\."\n {2}\}\n/);
   assert.match(text, /\n {2}element Battery \{\n {4}type: Block\n {2}\}\n/);
-  assert.match(text, /\n {2}"E-bike specification" - contains -> Range\n/);
+  assert.match(text, /\n {2}"Cargo bike specification" - contains -> "Delivery range"\n/);
   assert.match(text, /\n {2}Battery - satisfies -> "Battery capacity"\n/);
-  assert.match(text, /\n {2}%% id: capacity-from-range\n {2}"Battery capacity" - derives -> Range\n/);
+  assert.match(text, /\n {2}%% id: capacity-from-range\n {2}"Battery capacity" - derives -> "Delivery range"\n/);
   // a comment and its link are not written, and said so
   assert.match(text, /\n {2}%% not written: why-500 \(uml\.Comment\)\n {2}%% not written: why-500-link \(uml\.CommentLink\)\n$/);
   assert.deepEqual(core(back.model), []);
@@ -513,4 +513,16 @@ test('a field\'s value holding a line feed is written in quotes over its lines a
   }
   // a carriage return (a line's \r the reader drops) or a line that starts %% (Mermaid takes it out as a comment): not written
   for (const reqId of ['a\r\nb', 'a\n%% c', 'a\n  %%c']) assert.match(write(model(reqId), 'v'), /not written: r1: reqId .*which Mermaid's quotes cannot hold/s, reqId);
+});
+
+test('a %% comment line inside a "string" over lines is taken out, as Mermaid\'s cleanupComments does before it parses, its quotes not counted, and said (audit 51)', () => {
+  const r = read('requirementDiagram\n  requirement r {\n    id: 1\n    text: "first\n    %% reviewer: "drop" this\n\n    %% two\n    second"\n  }\n');
+  assert.deepEqual(r.model.nodes[0].props, { reqId: '1', text: 'first\n    second' });
+  assert.deepEqual(r.report.map(x => [x.line, x.status, x.message]), [[5, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read']]);
+});
+
+test('audit 54: a requirement whose name holds a run of 200,000 dashes and a space is read in linear time (before: 16 s), its id keeping the run (timed)', () => {
+  const d = '-'.repeat(200000), t = performance.now(), r = read(`requirementDiagram\nrequirement "a${d}b x-" {\nid: 1\n}\n`);
+  assert.ok(performance.now() - t < 1000, `${Math.round(performance.now() - t)} ms`);
+  assert.equal(r.model.nodes[0].id, `a${d}b-x`);
 });

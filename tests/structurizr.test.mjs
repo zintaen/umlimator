@@ -338,3 +338,65 @@ test('a raw character XML cannot hold in a name or description is read as U+FFFD
     { path: 'model.people[0].name', status: 'approximated', message: 'the character U+0001, which SVG or XML cannot hold, is read as U+FFFD' },
     { path: 'model.people[0].description', status: 'approximated', message: 'the character U+FFFF, which SVG or XML cannot hold, is read as U+FFFD' }]);
 });
+
+test('a relationship between an element and its own owner, or its owner\'s owner, is reported and not read (audit 54)', () => {
+  const ws = { model: {
+    softwareSystems: [{ id: '3', name: 'S', relationships: [{ id: 'r3', sourceId: '3', destinationId: '5', description: 'down' }, { id: 'r4', sourceId: '3', destinationId: '6', description: 'kept' }],
+      containers: [{ id: '4', name: 'C', relationships: [{ id: 'r1', sourceId: '4', destinationId: '3', description: 'calls' }],
+        components: [{ id: '5', name: 'K', relationships: [{ id: 'r2', sourceId: '5', destinationId: '3', description: 'up' }, { id: 'r5', sourceId: '5', destinationId: '5', description: 'self' }] }] }] },
+      { id: '6', name: 'T' }],
+    deploymentNodes: [{ id: '7', name: 'Box', environment: 'Live', relationships: [{ id: 'r6', sourceId: '7', destinationId: '9' }],
+      children: [{ id: '8', name: 'Inner', environment: 'Live', containerInstances: [{ id: '9', containerId: '4', instanceId: '1', environment: 'Live', relationships: [{ id: 'r7', sourceId: '9', destinationId: '8' }] }] }] }] },
+    views: { containerViews: [{ key: 'c', softwareSystemId: '3', elements: [{ id: '4' }] }] } };
+  const r = read(ws);
+  assert.deepEqual(r.model.edges.map(e => [e.from, e.to, e.label]), [['s', 't', 'kept'], ['k', 'k', 'self']]);
+  assert.deepEqual(r.report.filter(x => x.message.includes('own owner')).map(x => [x.path, x.message]), [
+    ['model.softwareSystems[0].relationships[0]', 'a relationship between K and its own owner S: not read'],
+    ['model.softwareSystems[0].containers[0].relationships[0]', 'a relationship between C and its own owner S: not read'],
+    ['model.softwareSystems[0].containers[0].components[0].relationships[0]', 'a relationship between K and its own owner S: not read'],
+    ['model.deploymentNodes[0].relationships[0]', 'a relationship between C and its own owner Box: not read'],
+    ['model.deploymentNodes[0].children[0].containerInstances[0].relationships[0]', 'a relationship between C and its own owner Inner: not read']]);
+  assert.deepEqual(check(r.model).filter(p => p.level === 'error'), []);
+});
+
+test('audit 56: an element of a level the view does not draw is left out of it and said, so validate() takes the import', async () => {
+  const { validate } = await import('../lib/umlimator-all.js');
+  const ws = { model: { people: [{ id: '1', name: 'Shopper' }], softwareSystems: [{ id: '2', name: 'Shop', containers: [{ id: '3', name: 'API', components: [{ id: '4', name: 'Cart' }] }] },
+    { id: '5', name: 'Bank', containers: [{ id: '6', name: 'Ledger', components: [{ id: '9', name: 'Book' }] }] }],
+  deploymentNodes: [{ id: '7', name: 'Server', containerInstances: [{ id: '8', containerId: '3' }, { id: '10', containerId: '6' }] }] },
+  views: { systemLandscapeViews: [{ key: 'all', elements: [{ id: '1' }, { id: '2' }, { id: '3' }] }],
+    systemContextViews: [{ key: 'ctx', softwareSystemId: '2', elements: [{ id: '1' }, { id: '2' }, { id: '3' }, { id: '7' }] }],
+    containerViews: [{ key: 'box', softwareSystemId: '2', elements: [{ id: '1' }, { id: '3' }, { id: '4' }] }],
+    componentViews: [{ key: 'parts', containerId: '3', elements: [{ id: '4' }, { id: '9' }, { id: '8' }] }],
+    dynamicViews: [{ key: 'flow', elements: [{ id: '1' }, { id: '2' }, { id: '3' }] }],
+    deploymentViews: [{ key: 'live', softwareSystemId: '2', elements: [{ id: '7' }, { id: '8' }, { id: '10' }, { id: '1' }] }] } };
+  const { model, report } = read(ws);
+  assert.deepEqual(model.views.map(v => [v.id, v.nodeIds]), [['all', ['shopper', 'shop']], ['ctx', ['shopper', 'shop']], ['box', ['shop', 'shopper', 'api']],
+    ['parts', ['api', 'cart']], ['flow', ['shopper', 'shop']], ['live', ['server', 'api-1']]]);
+  assert.deepEqual(report.filter(x => x.path.endsWith('.elements')).map(x => x.message), [
+    'view all: API, a container, is not drawn in a system landscape view: not shown',
+    'view ctx: API, a container; Server, a deployment node, are not drawn in a system context view: not shown',
+    'view box: Cart, a component, is not drawn in a containers view of Shop: not shown',
+    'view parts: Book, a component; API, a container instance of API, are not drawn in a components view of API: not shown',
+    'view flow: API, a container, is not drawn in a dynamic view: not shown',
+    'view live: Ledger, a container instance of Ledger; Shopper, a person, are not drawn in a deployment view of Shop: not shown']);
+  assert.deepEqual(validate(model).filter(p => p.rule === 'c4-level'), []);
+});
+
+test('audit 57: an owner listed in a view with what it holds is left out and said, unless it is the subject, so validate() takes the import', async () => {
+  const { validate } = await import('../lib/umlimator-all.js');
+  const ws = { model: { people: [{ id: '1', name: 'User', relationships: [{ id: 'r1', destinationId: '3', description: 'uses' }] }],
+    softwareSystems: [{ id: '2', name: 'Shop', containers: [{ id: '3', name: 'Web', components: [{ id: '4', name: 'Ctl' }], relationships: [{ id: 'r2', destinationId: '6', description: 'calls' }] }] },
+      { id: '5', name: 'Payments', containers: [{ id: '6', name: 'Pay API', components: [{ id: '7', name: 'Charge' }] }] }] },
+  views: { containerViews: [{ key: 'box', softwareSystemId: '2', elements: [{ id: '1' }, { id: '3' }, { id: '5' }, { id: '6' }] }],
+    componentViews: [{ key: 'parts', containerId: '3', elements: [{ id: '2' }, { id: '4' }, { id: '5' }, { id: '6' }] }],
+    dynamicViews: [{ key: 'flow', elementId: '2', elements: [{ id: '1' }, { id: '3' }, { id: '5' }, { id: '6' }], relationships: [{ id: 'r1', order: '1' }, { id: 'r2', order: '2' }] }] } };
+  const { model, report } = read(ws);
+  assert.deepEqual(model.views.map(v => [v.id, v.nodeIds]), [['box', ['shop', 'user', 'web', 'pay-api']], ['parts', ['web', 'ctl', 'pay-api']],
+    ['flow', ['shop', 'user', 'web', 'pay-api']]]);
+  assert.deepEqual(report.filter(x => x.path.endsWith('.elements')).map(x => x.message), [
+    "view box: Payments, a software system, is listed with what it holds, and only the view's subject is drawn as a boundary: not shown",
+    "view parts: Shop, a software system; Payments, a software system, are listed with what they hold, and only the view's subject is drawn as a boundary: not shown",
+    "view flow: Payments, a software system, is listed with what it holds, and only the view's subject is drawn as a boundary: not shown"]);
+  assert.deepEqual(validate(model).filter(p => p.rule === 'c4-level'), []);
+});

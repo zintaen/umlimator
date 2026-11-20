@@ -6,7 +6,7 @@ import { layoutTyped } from '../typed/layout.js';
 import { ownersOn, readingOrder } from '../uml/owners.js';
 import { commentConnect } from '../uml/class.js';
 import { brLines } from '../typed/draw.js';
-import { c4Gone, c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Keys, c4Problems, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners, c4Rename } from './c4.js';
+import { c4Ghost, c4Gone, c4Count, c4OtherKey, c4LineLook, C4_NOTE_LINE, c4NoteBox, c4A, c4Word, C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Keys, c4Problems, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners, c4Rename } from './c4.js';
 
 /* ---------- C4's dynamic and deployment views, c4.dynamic and c4.deployment (work package M2.7, notes/milestone-2.md §7.5.2,
    §7.5.3, §5.1) ----------
@@ -36,13 +36,20 @@ const DEP_RULES = { ...V_RULES, 'c4-box-line': 'a deployment view draws no line 
 const vUsed = model => { const used = new Set(V_ARR(model.views).filter(V_OBJ).map(v => v.id)); usedIds(model, used); return used; };
 
 /* ---- the dynamic view (§7.5.2) ---- */
+// a step or comment link the view lists: a model line by id, or diff()'s copy of one marked (a step put into the list, or
+// taken out of it or hidden, drawn back removed: audit 51), read as the model's line; its mark is the view's own (marks())
+const dynRef = (x, by) => typeof x === 'string' ? by.get(x) : V_OBJ(x) && typeof x.id === 'string' && typeof x.change === 'string' ? by.get(x.id) : undefined;
+// a step diff() draws back removed: its marked copy in the list, or a relationship the model after no longer holds
+const dynGone = (x, e) => [x, e].some(y => V_OBJ(y) && typeof y.change === 'string' && y.change.toLowerCase() === 'removed');
 // its steps drawn: [{ e, k, i }], each model relationship listed (the first time) between two elements the view shows (not a
-// boundary), numbered 1, 2, 3 among those drawn (S13), i its place in view.edges
+// boundary), numbered 1, 2, 3 among those drawn (S13), i its place in view.edges. On the diff page over the live ones only, as
+// the model after counts them: a removed step has no number (k null) and is said without a place (audit 52, as the sequence
+// and communication views)
 function dynSteps(model, view) {
   if (!V_OBJ(view)) return [];
   const pic = c4Pic(model, view), ends = new Set(pic.ids.filter(id => !pic.open.has(id))), rel = new Map(pic.I.rels.map(r => [r.id, r])), seen = new Set(), out = [];
-  V_ARR(view.edges).forEach((x, i) => { const e = typeof x === 'string' ? rel.get(x) : null;
-    if (e && !seen.has(e.id) && ends.has(e.from) && ends.has(e.to)) out.push({ e, k: out.length + 1, i }); if (e) seen.add(e.id); });
+  let n = 0; V_ARR(view.edges).forEach((x, i) => { const e = dynRef(x, rel);
+    if (e && !seen.has(e.id) && ends.has(e.from) && ends.has(e.to)) out.push({ e, k: dynGone(x, e) ? null : ++n, i }); if (e) seen.add(e.id); });
   return out;
 }
 // the level a dynamic view draws at: as the static view its subject's type zooms to
@@ -51,10 +58,11 @@ const dynLevel = (model, view) => { const t = (c4Index(model).at.get(view.subjec
 // what a dynamic view draws: its steps between two elements it shows (not a boundary), and the comment links it lists
 function dynDrawn(model, view) {
   const pic = c4Pic(model, view), ends = new Set(pic.ids.filter(id => !pic.open.has(id))), steps = dynSteps(model, view);
-  const notes = [...new Set(V_ARR(view.edges).map(x => (typeof x === 'string' ? pic.I.E.find(e => e.id === x) : null)))].filter(e => e && e.type === 'uml.CommentLink' && ends.has(e.from) && ends.has(e.to));
+  const E = new Map(pic.I.E.filter(e => V_OBJ(e) && typeof e.id === 'string').reverse().map(e => [e.id, e])); // the first of an id, as find() read it
+  const notes = [...new Set(V_ARR(view.edges).map(x => dynRef(x, E)))].filter(e => e && e.type === 'uml.CommentLink' && ends.has(e.from) && ends.has(e.to));
   return { pic, steps, notes };
 }
-const dynName = (e, k, pic) => `Step ${k}: ${c4LineName(e, pic)}`;
+const dynName = (e, k, pic) => `Step${k == null ? '' : ' ' + k}: ${c4LineName(e, pic)}`;
 // the key's items: each element type, shape and tone drawn (as src/c4/c4.js keys them), the relationship and the implied line
 const vItem = (name, says, svg) => `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true">${svg}</svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`;
 const vSwatch = ext => `<rect x="3" y="2" width="22" height="12" rx="3" fill="var(--um-${ext ? 'slate' : 'cyan'}-f)" stroke="var(--um-${ext ? 'slate' : 'cyan'})"/>`;
@@ -74,7 +82,7 @@ function vNode(id, x, P, more = {}) {
 function dynGeo({ model, view, pos, memo }) {
   const { pic, steps, notes } = dynDrawn(model, view), P = id => (V_OBJ(pos) && Object.hasOwn(pos, id) ? pos[id] : [0, 0]);
   const nodes = pic.ids.filter(id => !pic.open.has(id)).map(id => vNode(id, pic.at.get(id), P));
-  const edges = [...steps.map(({ e, k }) => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, step: k, label: c4LineLabel(e) || undefined, end: V_LINE.rel, aria: dynName(e, k, pic), cut: 280 })),
+  const edges = [...steps.map(({ e, k }) => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, ...(k != null ? { step: k } : {}), label: c4LineLabel(e) || undefined, end: V_LINE.rel, aria: dynName(e, k, pic), cut: 280 })),
     ...notes.map(e => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, end: V_LINE.note, aria: c4LineName(e, pic), cut: 280 }))];
   const g = layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: view.direction === 'down' ? 'down' : 'right',
     gap: 48, rgap: 64, labelGaps: true, repair: false, reroute: false }, memo);
@@ -97,7 +105,8 @@ function dynProblems(model, view) {
   out.push(...c4Problems({ ...model, views: views.map(v => (v === view ? as : v)) }, as).map(p => (p.rule === 'c4-level' ? { ...p, message: p.message.replace(`in a ${kind} view`, () => `in a dynamic view${lvl && view.subject != null ? ' of ' + q(view.subject) : ''}`) } : p)));
   // its steps (§5.1): each a model relationship, each once, between elements the view shows
   const pic = c4Pic(model, view), ends = new Set(pic.ids.filter(id => !pic.open.has(id))), rel = new Set(I.rels.map(r => r.id)), seen = new Set();
-  V_ARR(view.edges).forEach((x, k) => { const p = `${at}.edges[${k}]`;
+  const named = x => (V_OBJ(x) && typeof x.id === 'string' && typeof x.change === 'string' && (rel.has(x.id) || I.E.some(e => e.id === x.id && e.type === 'uml.CommentLink')) ? x.id : x); // diff()'s marked copy: the line it names
+  V_ARR(view.edges).map(named).forEach((x, k) => { const p = `${at}.edges[${k}]`;
     if (V_OBJ(x) && x.type === 'c4.Relationship') return out.push(say('error', 'c4-steps', p, [x.id], `step ${typeof x.id === 'string' ? x.id : `at edges[${k}]`} is written in the view: a step names a relationship of the model`));
     if (V_OBJ(x)) return out.push(say('error', 'c4-steps', p, [typeof x.id === 'string' ? x.id : null], `step ${jsonText(typeof x.id === 'string' ? x.id : null)} is written in the view and is no relationship: a step names a relationship of the model`));
     if (typeof x !== 'string' || !(rel.has(x) || I.E.some(e => e.id === x && e.type === 'uml.CommentLink'))) return out.push(say('error', 'c4-steps', p, [String(x)], `step ${jsonText(String(x))} is no relationship of the model`));
@@ -105,7 +114,7 @@ function dynProblems(model, view) {
     if (seen.has(x)) return out.push(say('error', 'c4-steps', p, [x], `${x} is a step twice: each relationship is one step`));
     seen.add(x); const e = I.E.find(r => r.id === x), gone = [e.from, e.to].filter(id => !ends.has(id));
     if (gone.length) out.push(say('warning', 'c4-steps', p, [x, ...gone], `${x}, from ${q(e.from)} to ${q(e.to)}, is not drawn: the view ${gone.map(id => (pic.open.has(id) ? `draws ${q(id)} as a boundary` : `does not show ${q(id)}`)).join(' and ')}`)); return null; });
-  if (!V_ARR(view.edges).some(x => typeof x === 'string' && rel.has(x))) out.push(say('warning', 'c4-steps', `${at}.edges`, [], `view ${jsonText(String(view.id))} lists no step: a dynamic view draws its steps alone`));
+  if (!V_ARR(view.edges).map(named).some(x => typeof x === 'string' && rel.has(x))) out.push(say('warning', 'c4-steps', `${at}.edges`, [], `view ${jsonText(String(view.id))} lists no step: a dynamic view draws its steps alone`));
   return out;
 }
 function dynDescribe(model, viewId) {
@@ -147,7 +156,7 @@ function dynConnect(model, view, from, to, at, line) {
 // ("3." or "3 ·"), are not the description; what is left is set as its label. Anything else: null, the canvas's own
 function dynRename(model, view, id, text) {
   const s = dynSteps(model, view).find(x => x.e.id === id); if (!s) return null;
-  return c4Rename(model, view, id, String(text).trim().replace(new RegExp(`^${s.k}\\s*(·|\\.(?!\\S))\\s*`), ''));
+  return c4Rename(model, view, id, s.k == null ? String(text).trim() : String(text).trim().replace(new RegExp(`^${s.k}\\s*(·|\\.(?!\\S))\\s*`), ''));
 }
 // add: a container or component added at the view's level (its subject's, §5.1) is owned by the subject, as on that static view
 const dynAdd = (model, view, entry, label) => (V_OBJ(view) ? C4_DEF.edits.add(model, { ...view, diagram: dynLevel(model, view) }, entry, label) : null);
@@ -161,7 +170,7 @@ const DYN_DEF = { ...C4_DEF,
   rules: V_RULES,
   describe: dynDescribe,
   // the PDF's lines table: a step's number before its text, as drawn
-  text: (model, view, id) => { const t = C4_DEF.text(model, view, id), s = dynSteps(model, view).find(x => x.e.id === id); return s ? [String(s.k), t].filter(V_HAS).join(' · ') : t; },
+  text: (model, view, id) => { const t = C4_DEF.text(model, view, id), s = dynSteps(model, view).find(x => x.e.id === id); return s && s.k != null ? [String(s.k), t].filter(V_HAS).join(' · ') : t; },
   edits: { ...C4_DEF.edits, add: dynAdd, connect: dynConnect, moveTo: dynMoveTo, rename: dynRename },
   steps: true, // its lines are numbered by their order in view.edges: diff() says a reorder (audit 18)
 };
@@ -185,11 +194,11 @@ SHAPE['c4-node'] = { frame: f => { const line = (t, dy, wt, px, fill) => brLines
     + (f.kw ? line(f.name, 17, 600, 12, 'var(--um-text)') + line(f.kw, 17 + V_HEAD + (brLines(f.name).length - 1) * V_LH, 400, 11, 'var(--um-muted)') : line(f.title ?? f.label ?? f.id, 17, 600, 12, 'var(--um-text)')); } };
 const DEP_LOOK = { boxTypes: ['c4.DeploymentNode'], qualify: false, shape: () => 'c4-node', word: () => 'Deployment node' };
 function depPic(model, view) {
-  const pic = ownersOn(model, view, DEP_LOOK), I = c4Index(model);
-  const boxes = pic.boxes.map(b => { const x = pic.at.get(b.id), held = pic.holds(b.id).map(id => pic.at.get(id)), k = new Map();
+  const ghost = c4Ghost(view), pic = ownersOn(model, view, { ...DEP_LOOK, ghost }), I = c4Index(model); // a removed card opens no box (c4Pic's, audit 54)
+  const boxes = pic.boxes.map(b => { const x = pic.at.get(b.id), held = pic.counted(b.id).map(id => pic.at.get(id)), k = new Map(); // live ones only (audit 55)
     held.forEach(y => { const w = (C4_WORD[y.type] || 'element').toLowerCase(); k.set(w, (k.get(w) || 0) + 1); });
-    return { ...b, title: `${vName(x)} ${depTag(x)}`, name: vName(x), kw: depTag(x), head: V_HEAD + (brLines(vName(x)).length - 1) * V_LH, aria: `Deployment node ${vName(x)}${V_HAS(V_P(x).technology) ? ', ' + V_P(x).technology : ''}, a box holding ${[...k].map(([w, c]) => vPlural(c, w)).join(', ')}` }; });
-  return { ...pic, I, boxes, nameOf: x => vName(x.type === 'c4.ContainerInstance' && depOf(I, x) || x) }; // an instance named as drawn: its container's name
+    return { ...b, title: `${vName(x)} ${depTag(x)}`, name: vName(x), kw: depTag(x), head: V_HEAD + (brLines(vName(x)).length - 1) * V_LH, aria: `Deployment node ${vName(x)}${V_HAS(V_P(x).technology) ? ', ' + V_P(x).technology : ''}${k.size ? `, a box holding ${[...k].map(([w, c]) => vPlural(c, w)).join(', ')}` : ''}` }; });
+  return { ...pic, I, boxes, ghost, nameOf: x => vName(x.type === 'c4.ContainerInstance' && depOf(I, x) || x) }; // an instance named as drawn: its container's name
 }
 // the key: a deployment node, each instance's look (as its container's), the relationship and the implied line
 function depLegend(nodes, edges, boxes) {

@@ -127,6 +127,16 @@ ok("compose · two keys that differ only in a character XML cannot hold are kept
    [(n["label"], n.get("sublabel")) for n in m["nodes"]] == [("web\ufffd", "nginx"), ("web\ufffd-2", "x"), ("web\ufffd-3", "redis"), ("db", "postgres")]
    and un == [(None, raw("\x01")), (None, raw("\x02")), (None, "key web\ufffd: another key reads as the same text, so this one is read as web\ufffd-3")]
    and (None, "key k\ufffd: another key reads as the same text, so this one is read as k\ufffd-2") in un2, (m, un, un2))
+m, un = imp.read("compose", '{"services": {"web\\u0001": {"image": "x", "depends_on": ["web\\u0002"]}, "web\\u0002": {"image": "y", "depends_on": {"web\\u0001": {"condition": "service_started"}}}, "db": {"image": "z", "depends_on": ["web\\u0002"]}}}', "x")
+k8s = {"kind": "List", "items": [
+    {"kind": "Service", "metadata": {"name": "s"}, "spec": {"selector": {"k\u0002": "b"}}},
+    {"kind": "Deployment", "metadata": {"name": "d"}, "spec": {"template": {"metadata": {"labels": {"k\u0001": "a", "k\u0002": "b"}}}}}]}
+m2, un2 = imp.read("kubernetes", json.dumps(k8s), "x")
+m3, un3 = imp.read("kubernetes", json.dumps({"kind": "List", "items": k8s["items"][::-1]}), "x")  # the selector read first, then
+ok("compose, kubernetes · a reference to a key kept apart (depends_on as a list or a map, a selector before the labels it picks) follows the name that key is read as, not the first key's (audit 52)",
+   sorted((e["from"], e["to"]) for e in m["edges"]) == [("db", "web\ufffd-2"), ("web\ufffd", "web\ufffd-2"), ("web\ufffd-2", "web\ufffd")]
+   and not any("itself" in x for _, x in un)
+   and all([(card(x, e["from"]).get("label"), card(x, e["to"]).get("label")) for e in x["edges"]] == [("s", "d")] for x in (m2, m3)), (m, un, m2, un2, m3, un3))
 ok("mermaid · front matter fences with spaces after them are front matter (audit 5)",
    imp.front("--- \ntitle: Shop\n---  \nflowchart LR\n")[0] == "Shop" and imp.mermaid_typed("--- \ntitle: t\n--- \nclassDiagram\n") == "classDiagram")
 m, un = imp.read("structurizr", 'workspace {\n  model {\n    u = person "User" \\\n      "A customer"\n    s = softwareSystem "Shop"\n    u -> s "Uses" \\\n      "HTTPS"\n  }\n}\n', "x")
@@ -444,6 +454,31 @@ _, _, dt = quick("mermaid", "flowchart\na -- " + "." * 1000000 + "x")
 ok("hostile · a link's text of 1000000 dots reads in linear time", dt < 2, dt)
 m, _, dt = quick("mermaid", "flowchart\na-->b" + ';"' * 400000 + "\nc-->d;e-->f")
 ok("hostile · a line of 400000 ;\" pairs splits in linear time, and ; outside quotes still splits", dt < 3 and line(m, "e", "f"), dt)
+# audit 61: each line walked every open { that was not a boundary to find its box, and each element every box: quadratic
+_, un, dt = quick("plantuml", "@startuml\n" + "{\n" * 500000)
+_, un2, dt2 = quick("mermaid", "C4Context\n" + "{\n" * 500000)
+m, un3, dt3 = quick("plantuml", "@startuml\n" + "".join(f'System_Boundary(b{i}, "b") {{\n' for i in range(12000))
+                    + "".join(f'System(s{i}, "s")\n' for i in range(30000)))
+# linear by growth, not by a wall clock (CI runners are slower): a quarter of each input first; the hang was ~500 s
+_, _, q1 = quick("plantuml", "@startuml\n" + "{\n" * 125000)
+_, _, q2 = quick("mermaid", "C4Context\n" + "{\n" * 125000)
+_, _, q3 = quick("plantuml", "@startuml\n" + "".join(f'System_Boundary(b{i}, "b") {{\n' for i in range(3000))
+                 + "".join(f'System(s{i}, "s")\n' for i in range(7500)))
+lin = lambda full, quarter: full < 3 or (full < 30 and full / max(quarter, 1e-3) < 8)
+ok("hostile · 500000 open { (C4-PlantUML or Mermaid C4), or 12000 boundaries holding 30000 systems, read in linear time",
+   lin(dt, q1) and lin(dt2, q2) and lin(dt3, q3) and len(un) - 1 == len(un2) == 1000000 and box(m, "context", "b11999")["nodeIds"][-1] == "s29999", (dt, q1, dt2, q2, dt3, q3))
+# audit 61: each link of a line copied the rest of it to see whether it was blank: quadratic on one 1 MB line of links
+_, _, dq = quick("mermaid", "flowchart LR\n" + "A-->" * 65000)
+_, _, df = quick("mermaid", "flowchart LR\n" + "A-->" * 260000)
+ok("hostile · a 1 MB line of 260000 links reads in linear time", df < 1.5 or df / dq < 6, (dq, df))
+# audit 61: a link with no arrowhead, or a circle or cross end, came in as a plain arrow, said nowhere; o--o and x--x as one
+m, un = imp.read("mermaid", "flowchart LR\n A --- B\n A --o C\n A --x D\n A o--o E\n A -.- F\n A === G\n A x--x H\n A <--> I\n A -- t --o J\n A --> K\n", "x")
+ok("mermaid · no arrowhead, circle and cross ends are said, as the typed reader's; o--o and x--x are two lines, as <-->",
+   un == [(2, "A --- B: no arrowhead: read as a line"), (3, "A --o C: a circle end: read as a line"), (4, "A --x D: a cross end: read as a line"),
+          (5, "A o--o E: a circle end, an arrowhead at each end: read as two lines"), (6, "A -.- F: no arrowhead: read as a line"),
+          (7, "A === G: no arrowhead: read as a line"), (8, "A x--x H: a cross end, an arrowhead at each end: read as two lines"),
+          (10, "A -- ... --o J: a circle end: read as a line")]
+   and all(line(m, b, "A") for b in "EHI") and not any(line(m, b, "A") for b in "BCDFGJK"), un)
 t0 = time.time()
 ok("hostile · detect() reads 400000 unclosed /* and 1000000 blank lines in linear time",
    imp.detect("x", "/*" * 400000) is None and imp.detect("x", "\n" * 1000000 + "x") is None and time.time() - t0 < 1, time.time() - t0)
@@ -895,6 +930,12 @@ ok("mermaid · an inner box of a subgraph with no end is drawn at the top level"
 m, un = imp.read("mermaid", "flowchart LR\nsubgraph pay [Payments]\ncard\nend\nsubgraph pay [Again]\nfraud\nend\nsubgraph api\nsubgraph api\nh\nend\nr\nend\n", "x")
 ok("mermaid · a subgraph opened again, after or inside itself, is one box, with no parent of its own id",
    boxes_of(m) == [{"id": "pay", "label": "Payments", "nodeIds": ["card", "fraud"]}, {"id": "api", "label": "api", "nodeIds": ["h", "r"]}], (m, un))
+# audit 51: a subgraph titled with no id of its own whose title holds whitespace was named by a slug of it (order-flow),
+# where Mermaid gives it subGraph<n>: a node of that name was taken for the box, and its line drawn from the box
+m, un = imp.read("mermaid", 'flowchart LR\n  subgraph "Order flow"\n    pay\n  end\n  subgraph Ship it\n    box\n  end\n  order-flow --> ship\n  ship-it --> pay\n', "x")
+ok("mermaid · a subgraph title with whitespace and no id is Mermaid's subGraph<n>; a node named as its slug is a card with its line (audit 51)",
+   [n["id"] for n in m["nodes"]] == ["pay", "box", "order-flow", "ship", "ship-it"] and line(m, "order-flow", "ship") and line(m, "ship-it", "pay")
+   and boxes_of(m) == [{"id": "subGraph0", "label": "Order flow", "nodeIds": ["pay"]}, {"id": "subGraph1", "label": "Ship it", "nodeIds": ["box"]}] and not un, (m, un))
 m, un = imp.read("mermaid", "flowchart LR\naccDescr {\nCheckout\nA --> Z\n}\nA --> B\n", "x")
 c4m, c4un = imp.read("mermaid", 'C4Context\naccDescr {\nPerson(x, "y")\n}\nPerson(a, "A")\n', "x")
 ok("mermaid · an accDescr { ... } block is passed over whole (flowchart, C4)", [n["id"] for n in m["nodes"]] == ["A", "B"]

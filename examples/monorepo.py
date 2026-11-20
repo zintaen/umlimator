@@ -3,7 +3,7 @@
 
   python3 -I examples/monorepo.py          # writes examples/monorepo.json
 
-Each package is a card, each import a line (heavier with more imports), and each folder a box (nested as the folders
+Each package is a card, each import a line (its weight by the count of imports, shown on hover), and each folder a box (nested as the folders
 are), plus the same cards with no boxes. Feed it your own list: one "from -> to: count" per line, in DEPS below, or the
 output of a dependency tool turned into that shape. The model is bench/models/r15.json with another title (#111).
 """

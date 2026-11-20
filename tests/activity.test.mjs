@@ -606,3 +606,20 @@ test('audit 47: comment-link warns of a drawn comment link with no comment at ei
   assert.deepEqual(validate(o).filter(p => p.rule === 'comment-link').map(p => p.path), ['views[0].edges[1]']);
   assert.deepEqual(validate(EX).filter(p => p.rule === 'comment-link'), []);
 });
+
+// audit 52: Shift + Delete of a partition keeps what it holds whichever view makes it: another view's own node in it goes to
+// the partition's owner too, where apply()'s delete would take it
+test('audit 52: Shift + Delete of a partition keeps a node another view holds as its own in it', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Activity', label: 'A' }, { id: 'p', type: 'uml.ActivityPartition', label: 'P', parent: 'a' }, { id: 'x', type: 'uml.Action', label: 'X', parent: 'p' }], edges: [],
+    views: [{ id: 'v1', diagram: 'uml.activity', nodeIds: ['a', 'p', 'x'] }, { id: 'v2', diagram: 'uml.activity', nodeIds: ['a', 'p', 'own'], nodes: [{ id: 'own', type: 'uml.Action', label: 'Own', parent: 'p' }] }] };
+  for (const v of m.views) { const n = apply(m, actRemove(m, v, ['p'], true));
+    assert.deepEqual(n.views[1].nodes.map(x => [x.id, x.parent]), [['own', 'a']], v.id); assert.equal(n.nodes.find(x => x.id === 'x').parent, 'a', v.id); }
+});
+
+test('audit 54: an action named with a run of 200,000 dashes is added in linear time (before: 16 s); the id keeps its inner run and loses its ends (timed)', () => {
+  const m = { schemaVersion: 2, nodes: [], edges: [], views: [{ id: 'v', diagram: 'uml.activity', nodeIds: [] }] }, d = '-'.repeat(200000), t = performance.now();
+  const [c] = actAdd(m, m.views[0], { type: 'uml.Action' }, `-a${d}b-`, null);
+  assert.ok(performance.now() - t < 500, `${Math.round(performance.now() - t)} ms`);
+  assert.equal(c.element.id, `a${d}b`);
+  assert.equal(actAdd(m, m.views[0], { type: 'uml.Action' }, '--Pick, pack--', null)[0].element.id, 'pick-pack');
+});

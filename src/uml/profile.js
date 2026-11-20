@@ -69,15 +69,40 @@ function prAria(model, x, drawn, I) {
 
 /* ---- the look: the class type's, the classifiers drawn by SHAPE.profiled, which is the classifier with the node's own
    accessible name (the classifier writes one from its compartments, which here are a stereotype's tags) ---- */
+// what an element's stereotype and tag compartments are drawn from, which the view need not draw (audit 51: a card whose «owned»
+// compartment went with its required Extension, or whose tag was renamed, was not marked on the diff page): the stereotypes it and
+// its members have and their profiles, the generals they take extensions from, each one's tag definitions, the profiles its scope
+// applies (a package of its owners, or itself) with their applications, and every Extension of their stereotypes, which may
+// supply a required one or stop, with the metaclass reference it extends (audit 53: renaming it changes what a required one reaches).
+// The owners on its chain are read too (audit 53: a package moved out of the one applying the profile takes the card out of scope). What it draws as before marks nothing all the same (diff()'s view.diffMarks: "none"). One diff()
+// brought back removed is not read: the page draws the model after, and diff() marks the card when it drew otherwise before (as
+// the IDEF1X entity's, src/er/er.js), nor are its members (audit 54: a removed stereotype's tag definitions, read by every card in
+// its profile's scope, marked them changed on the diff page, drawn as before)
+const prGone = x => PR_OBJ(x) && typeof x.change === 'string' && x.change.toLowerCase() === 'removed';
+function prReads(model, I, x) {
+  const mine = new Set([x.id, ...PR_ARR(x.members).filter(m => PR_OBJ(m) && typeof m.id === 'string').map(m => m.id)]), on = new Set(), prof = new Set(), out = new Set();
+  mine.forEach(id => appliedOf(model, id).forEach(e => { if (PR_OBJ(e.stereotype)) on.add(e.stereotype.id); if (PR_OBJ(e.profile)) prof.add(e.profile.id); }));
+  const apps = I.of('uml.ProfileApplication'), gens = I.of('uml.Generalization'), exts = I.of('uml.Extension');
+  for (let p = x.id, seen = new Set(); p != null && !seen.has(p); p = (I.at.get(p) || {}).parent) { seen.add(p); if (p !== x.id) out.add(p); apps.forEach(e => { if (e.from === p && I.ty(e.to) === 'uml.Profile') { out.add(e.id); prof.add(e.to); } }); }
+  for (let more = true; more;) { more = false; gens.forEach(e => { if (on.has(e.from) && typeof e.to === 'string' && I.at.has(e.to) && !on.has(e.to)) { on.add(e.to); out.add(e.id); more = true; } }); }
+  gens.forEach(e => { if (on.has(e.from) && on.has(e.to)) out.add(e.id); });
+  exts.forEach(e => { if (on.has(e.from) || prof.has((I.at.get(e.from) || {}).parent)) { out.add(e.id); if (typeof e.to === 'string') out.add(e.to); if (I.at.has(e.from)) on.add(e.from); } });
+  [...on].forEach(id => { out.add(id); if (!prGone(I.at.get(id))) PR_ARR((I.at.get(id) || {}).members).forEach(m => { if (PR_OBJ(m) && typeof m.id === 'string') out.add(m.id); }); });
+  prof.forEach(id => out.add(id));
+  mine.forEach(id => out.delete(id)); const line = new Map(I.E.map(e => [e.id, e]));
+  return [...out].filter(id => !prGone(I.at.get(id) || I.mem.get(id) || line.get(id)));
+}
+const prRead = (d, rd) => { const all = [...new Set([...PR_ARR(d.reads), ...rd])]; return all.length ? { ...d, reads: all } : d; };
 SHAPE.profiled = { ...SHAPE.classifier, draw: (n, c, f) => SHAPE.classifier.draw(n, c, f).replace(/aria-label="[^"]*"/, () => `aria-label="${esc(n.aria)}"`) };
 const row = text => ({ type: 'uml.Property', label: text }); // a compartment row as the classifier prints it: its text alone
 function prNode(d, n, model, pic, view) {
   if (d.shape === 'note') return d;
   const I = prIndex(model), aria = prAria(model, n, pic.name(n.id), I);
   // a closed package: over its name the stereotypes it has, the required ones supplied too (prBox's); its tags in its accessible name
-  if (d.shape === 'package') { const st = PR_ARR(d.stereotypes); return { ...d, aria, stereotypes: [...st, ...appliedOf(model, n.id).map(e => e.key).filter(k => !st.includes(k))] }; }
+  if (d.shape === 'package') { const st = PR_ARR(d.stereotypes); return { ...prRead(d, prReads(model, I, n)), aria, stereotypes: [...st, ...appliedOf(model, n.id).map(e => e.key).filter(k => !st.includes(k))] }; }
   if (d.shape !== 'classifier') return { ...d, aria };
   if (n.type === 'uml.Stereotype') return { ...d, shape: 'profiled', aria, compartments: d.compartments.filter(c => c.name === 'attributes') };
+  d = prRead(d, prReads(model, I, n));
   const tags = appliedOf(model, n.id).map(e => ({ name: `«${e.key}»`, members: [row(`«${e.key}»`), ...prTags(e).map(row)] })), has = m => PR_OBJ(m) && appliedOf(model, m.id).length > 0;
   const mrow = m => { const A = appliedOf(model, m.id), t = A.flatMap(prTags); return row(`${A.map(e => `«${e.key}»`).join(' ')} ${prBare(model, m)}${t.length ? ` {${t.join(', ')}}` : ''}`); };
   // a metaclass and an enumeration keep their own compartments (none; the literals), the tag compartments over them
@@ -87,7 +112,7 @@ function prNode(d, n, model, pic, view) {
 }
 // an open package's or profile's box: over its name the stereotypes it has, the required ones too; its tags in its accessible name
 function prBox(b, model, pic) {
-  const x = pic.at.get(b.id), A = appliedOf(model, b.id); if (!A.length) return b;
+  const x = pic.at.get(b.id), A = appliedOf(model, b.id); b = prRead(b, prReads(model, prIndex(model), x)); if (!A.length) return b;
   const st = PR_ARR(PR_OBJ(x.props) ? x.props.stereotypes : null).filter(t => t != null && t !== '').map(String), all = [...st, ...A.map(e => e.key).filter(k => !st.includes(k))];
   return boxHead({ ...b, title: [...(x.type === 'uml.Profile' ? ['«profile»'] : []), ...all.map(t => `«${t}»`), pic.name(b.id)].join(' '), aria: `${b.aria}: ${A.map(prSay).join('; ')}` }); // its header room as its title's lines need (audit 23)
 }

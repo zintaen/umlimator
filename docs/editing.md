@@ -220,7 +220,7 @@ palette, lines and fields. Each is one `edit` event; the host applies it with `a
 
 A member line the syntax does not read (`+ total Money`) is kept in its row as typed, marked invalid with the reason
 in the hint line, and nothing is applied (risks.md E3); a good line, or Escape, clears the mark. A comment and a package
-have no Members section. What breaks a rule of the class diagram (`validate()`, `docs/conformance/uml-class.md`) shows
+have no Members section. What breaks a rule of the class diagram (`validate()`, `docs/diagrams/conformance/uml-class.md`) shows
 in the problems list, by its rule and its elements, and choosing it selects them.
 
 ## Ownership, and the object and package diagrams' gestures (0.19.0)
@@ -305,7 +305,7 @@ layout, as a class diagram:
 | hide or delete a message or a connector | Remove from view, Delete from model | `Delete`, `Shift + Delete` | `hide`, with a hidden call's replies and a hidden connector's messages; or `delete`, which takes a connector's messages in every communication view where no other connector joins their lifelines |
 
 Numbers are derived, so a move renumbers. `tests/sequence.html` and `tests/communication.html` test each gesture by
-pointer and by key; the conformance notes (`docs/conformance/uml-sequence.md`, `uml-communication.md`) list what is left
+pointer and by key; the conformance notes (`docs/diagrams/conformance/uml-sequence.md`, `uml-communication.md`) list what is left
 out.
 
 ## The use case, activity, state machine and interaction overview diagrams' gestures (0.21.0)
@@ -527,7 +527,7 @@ with no subject) reparents the card to the view's subject, or to none; Delete on
 | Requirement (`sysml.requirement`) | a requirement, test case, block, package, comment | the palette | `N` | `add`; a requirement into the selected requirement or package (its `parent`), else the frame's subject |
 | | containment | the palette's Containment line, or a drag | `L`, the owner, Enter | `reparent` of the first to the second |
 | | derive, satisfy, verify, refine, trace, copy | the handle or a drag | `L`, a picker | `add`, checked against the rules' errors (`{ error }` with the rule's words); a copy also sets the client's `text` to the supplier's, in one transaction |
-| | a name and id | double-click once selected | `F2`: `EB-1.2 Range` sets `reqId` and the name together | `set label`, `set props.reqId` |
+| | a name and id | double-click once selected | `F2`: `EB-1.2 Delivery range` sets `reqId` and the name together | `set label`, `set props.reqId` |
 | | id, text, risk, verify method | the properties panel | | `set props.<field>` |
 | | a containment line deleted | | `Delete` or `Shift + Delete` on the line (for a host: the type's `remove` hook on the line's id) | `reparent` of the child to its owner's owner, said on the hint line |
 | | a requirement deleted | | `Shift + Delete` | what it contains re-homed to its owner, then `delete`, one transaction |
@@ -571,7 +571,7 @@ typed canvas's (1.7) with the type's hooks, and every one goes through `apply()`
 
 The icons a cloud view draws come from the host's `icons` table (`<pack>/<id>`), never from the module: the CLI builds it
 from a pack the user fetched after reading the vendor's terms (`python3 umlimator.py pack fetch gcp`, `pack fetch azure`,
-`pack fetch aws`, `pack list`; the guide's [Icons and icon packs](guide/icon-packs.md)). Without it a card draws a glyph with the service's full name.
+`pack fetch aws`, `pack list`; the guide's [Icons and icon packs](use/icon-packs.md)). Without it a card draws a glyph with the service's full name.
 
 ## BPMN's gestures (0.27.0)
 

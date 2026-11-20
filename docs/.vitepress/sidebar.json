@@ -1,0 +1,273 @@
+[
+ {
+  "text": "Start",
+  "items": [
+   {
+    "text": "What umlimator is",
+    "link": "/"
+   },
+   {
+    "text": "Install",
+    "link": "/start/install"
+   },
+   {
+    "text": "A first diagram",
+    "link": "/start/first-diagram"
+   }
+  ]
+ },
+ {
+  "text": "Diagrams",
+  "items": [
+   {
+    "text": "All 28 types",
+    "link": "/types/"
+   },
+   {
+    "text": "UML structure",
+    "collapsed": true,
+    "items": [
+     {
+      "text": "Class",
+      "link": "/types/uml-class"
+     },
+     {
+      "text": "Object",
+      "link": "/types/uml-object"
+     },
+     {
+      "text": "Package",
+      "link": "/types/uml-package"
+     },
+     {
+      "text": "Composite structure",
+      "link": "/types/uml-composite-structure"
+     },
+     {
+      "text": "Component",
+      "link": "/types/uml-component"
+     },
+     {
+      "text": "Deployment",
+      "link": "/types/uml-deployment"
+     },
+     {
+      "text": "Profile",
+      "link": "/types/uml-profile"
+     }
+    ]
+   },
+   {
+    "text": "UML behaviour",
+    "collapsed": true,
+    "items": [
+     {
+      "text": "Use case",
+      "link": "/types/uml-use-case"
+     },
+     {
+      "text": "Activity",
+      "link": "/types/uml-activity"
+     },
+     {
+      "text": "State machine",
+      "link": "/types/uml-state-machine"
+     },
+     {
+      "text": "Sequence",
+      "link": "/types/uml-sequence"
+     },
+     {
+      "text": "Communication",
+      "link": "/types/uml-communication"
+     },
+     {
+      "text": "Interaction overview",
+      "link": "/types/uml-interaction-overview"
+     },
+     {
+      "text": "Timing",
+      "link": "/types/uml-timing"
+     },
+     {
+      "text": "Information flow",
+      "link": "/types/uml-information-flow"
+     }
+    ]
+   },
+   {
+    "text": "Data and flow",
+    "collapsed": true,
+    "items": [
+     {
+      "text": "Entity-relationship",
+      "link": "/types/er"
+     },
+     {
+      "text": "Data flow",
+      "link": "/types/dfd"
+     },
+     {
+      "text": "Flowchart",
+      "link": "/types/flowchart"
+     }
+    ]
+   },
+   {
+    "text": "C4",
+    "link": "/types/c4"
+   },
+   {
+    "text": "SysML",
+    "collapsed": true,
+    "items": [
+     {
+      "text": "Requirement",
+      "link": "/types/sysml-requirement"
+     },
+     {
+      "text": "Block definition",
+      "link": "/types/sysml-block-definition"
+     },
+     {
+      "text": "Internal block",
+      "link": "/types/sysml-internal-block"
+     },
+     {
+      "text": "Parametric",
+      "link": "/types/sysml-parametric"
+     }
+    ]
+   },
+   {
+    "text": "BPMN",
+    "link": "/types/bpmn"
+   },
+   {
+    "text": "Cloud",
+    "collapsed": true,
+    "items": [
+     {
+      "text": "AWS",
+      "link": "/types/aws"
+     },
+     {
+      "text": "Google Cloud",
+      "link": "/types/gcp"
+     },
+     {
+      "text": "Azure",
+      "link": "/types/azure"
+     }
+    ]
+   },
+   {
+    "text": "Mindmap",
+    "link": "/types/mindmap"
+   }
+  ]
+ },
+ {
+  "text": "Maps and atlases",
+  "items": [
+   {
+    "text": "The model",
+    "link": "/maps/model"
+   },
+   {
+    "text": "Views and layers",
+    "link": "/maps/views-and-layers"
+   },
+   {
+    "text": "Stories, lenses and live data",
+    "link": "/maps/stories-lenses-live"
+   },
+   {
+    "text": "Atlases",
+    "link": "/atlas/"
+   },
+   {
+    "text": "Umlimator",
+    "link": "/atlas/umlimator"
+   },
+   {
+    "text": "Bookshop",
+    "link": "/atlas/bookshop"
+   }
+  ]
+ },
+ {
+  "text": "Use it",
+  "items": [
+   {
+    "text": "Command line",
+    "link": "/use/cli"
+   },
+   {
+    "text": "Embedding",
+    "link": "/use/embedding"
+   },
+   {
+    "text": "The standalone page",
+    "link": "/use/standalone-page"
+   },
+   {
+    "text": "MCP server",
+    "link": "/use/mcp"
+   },
+   {
+    "text": "GitHub Action and diff",
+    "link": "/use/github-action"
+   },
+   {
+    "text": "Import and export",
+    "link": "/use/import-export"
+   },
+   {
+    "text": "Icons and icon packs",
+    "link": "/use/icon-packs"
+   },
+   {
+    "text": "Editing",
+    "link": "/use/editing"
+   }
+  ]
+ },
+ {
+  "text": "Reference",
+  "items": [
+   {
+    "text": "API overview",
+    "link": "/api/"
+   },
+   {
+    "text": "render",
+    "link": "/api/render"
+   },
+   {
+    "text": "Apply and commands",
+    "link": "/api/apply-and-commands"
+   },
+   {
+    "text": "Events and state",
+    "link": "/api/events-and-state"
+   },
+   {
+    "text": "Element and plugins",
+    "link": "/api/element-and-plugins"
+   },
+   {
+    "text": "Model and schema",
+    "link": "/api/model-and-schema"
+   },
+   {
+    "text": "Typed diagrams",
+    "link": "/api/typed-diagrams"
+   },
+   {
+    "text": "Changelog",
+    "link": "/changelog"
+   }
+  ]
+ }
+]

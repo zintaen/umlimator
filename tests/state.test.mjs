@@ -18,6 +18,7 @@ import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
 import { tablesOf } from '../src/page/print.js';
+import { diff } from '../src/map/diff.js';
 import { stActivityRow } from '../src/uml/state.js';
 import '../src/uml/usecase.js';
 import '../src/uml/activity.js';
@@ -432,7 +433,7 @@ test(`P1 (S15): a state machine of 50 states, 60 transitions, composites three d
   const best = timeEdit(M, 7);
   assert.ok(best('full') < 1000, `full layout ${best('full')} ms`);
   // a CI runner is 2 to 5 times slower than an idle machine, where this edit takes about 87 ms: CI holds the 1 s ceiling
-  // and prints the edit against S15's 100 ms; docs/conformance records the idle machine's figure
+  // and prints the edit against S15's 100 ms; docs/diagrams/conformance records the idle machine's figure
   assert.ok(best('label') < 1000, `a label edit ${best('label')} ms`);
   console.log(`# P1 wired: a label edit ${best('label').toFixed(1)} ms (target 100 ms), full layout ${best('full').toFixed(1)} ms`);
 });
@@ -911,4 +912,80 @@ test('connect: a transition that brings an error (into an initial pseudostate, o
   for (const [f, t, rule] of [['delivered', 'placed', 'final-out'], ['erased', 'placed', 'final-out'], ['placed', 'fulfilling.parcel', 'transition-ends']]) assert.match(C(f, t).error, new RegExp(`^${rule}: `), `${f} -> ${t}`);
   for (const [f, t] of [['placed', 'erased'], ['picking', 'delivery-history']]) { const r = C(f, t);
     assert.deepEqual(r, [{ op: 'add', element: { id: 'transition1', type: 'uml.Transition', from: f, to: t }, view: V.id }]); assert.deepEqual(validate(apply(SM, r)).filter(p => p.level === 'error'), []); }
+});
+
+// audit 51: Shift + Delete of a model region counts another view's own states in it too, which apply() deletes all the same (as cloud's)
+test('audit 51: Shift + Delete of a model region counts the states another view holds as its own in it', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'S', type: 'uml.State', label: 'S', members: [{ id: 'R', type: 'uml.Region', label: 'r' }] }, { id: 'x', type: 'uml.State', label: 'X', parent: 'R' }], edges: [],
+    views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['S', 'x'] }, { id: 'v2', diagram: 'uml.state-machine', nodeIds: ['S', 'y'], nodes: [{ id: 'y', type: 'uml.State', label: 'Y', parent: 'R' }] }] };
+  const r = T.edits.remove(m, m.views[0], ['R'], true);
+  assert.equal(r.say, 'Deleted region r and the 2 elements it held');
+  const after = apply(m, r.commands); assert.deepEqual([after.nodes.map(n => n.id), after.views[1].nodes], [['S'], []]);
+});
+
+test('audit 55: a vertex in an unnamed region is said in it as the region\'s own name numbers it, never by the region\'s id', () => {
+  const m = { schemaVersion: 2, nodes: [
+    { id: 'moving', type: 'uml.State', label: 'Moving', members: [{ id: 'moving.r1', type: 'uml.Region' }, { id: 'moving.r2', type: 'uml.Region', label: 'Sound' }] },
+    { id: 'i1', type: 'uml.Pseudostate', parent: 'moving.r1', props: { kind: 'initial' } }, { id: 'slow', type: 'uml.State', label: 'Slow', parent: 'moving.r1' },
+    { id: 'i2', type: 'uml.Pseudostate', parent: 'moving.r2', props: { kind: 'initial' } }, { id: 'quiet', type: 'uml.State', label: 'Quiet', parent: 'moving.r2' }],
+    edges: [{ id: 't1', type: 'uml.Transition', from: 'i1', to: 'slow' }, { id: 't2', type: 'uml.Transition', from: 'i2', to: 'quiet' }],
+    views: [{ id: 'sm', diagram: 'uml.state-machine', nodeIds: ['moving', 'i1', 'slow', 'i2', 'quiet'] }] };
+  const g = layout(m, 'sm'), fam = id => g.families.find(f => f.id === id);
+  assert.deepEqual([fam('moving.r1').aria, g.byId.i1.aria], ['Region 1 of Moving, 2 states', 'Initial pseudostate in region 1 of Moving']);
+  assert.equal(g.byId.i2.aria, 'Initial pseudostate in Sound'); // a named one by its name, as before
+  const d = describe(m, 'sm'); assert.match(d, /^Initial pseudostate in region 1 of Moving\.$/m); assert.doesNotMatch(d + [...svgOf(g).matchAll(/aria-label="([^"]*)"/g)].map(x => x[1]).join('\n'), /moving\.r1/);
+});
+
+test('audit 57: a composite state removed by Delete or Shift + Delete: its regions drawn back removed count what they held, and the region it sat in counts none of them', () => {
+  const name = (m, id) => (layout(m, V.id).families.find(f => f.id === id) || {}).aria;
+  // the example as shipped: Fulfilling's regions
+  for (const fm of [false, true]) { const r = T.edits.remove(SM, V, ['fulfilling'], fm), d = diff(SM, apply(SM, Array.isArray(r) ? r : r ? r.commands : [{ op: 'delete', id: 'fulfilling' }])).model;
+    assert.deepEqual(['fulfilling.parcel', 'fulfilling.payment'].map(id => name(d, id)), ['fulfilling.parcel', 'fulfilling.payment'].map(id => name(SM, id)), `${fm}`); }
+  assert.match(name(SM, 'fulfilling.parcel'), /^Region Parcel of Fulfilling, \d states$/);
+  // Fulfilling nested in region A of In delivery: region A holds nothing in the model after, and says no count
+  const m = structuredClone(SM), dl = m.nodes.find(n => n.id === 'delivery');
+  dl.members = [{ id: 'delivery.a', type: 'uml.Region', label: 'A' }, { id: 'delivery.b', type: 'uml.Region', label: 'B' }];
+  m.nodes.forEach(n => { if (n.parent === 'delivery') n.parent = 'delivery.b'; }); m.nodes.find(n => n.id === 'fulfilling').parent = 'delivery.a';
+  assert.deepEqual(validate(m).filter(p => p.level === 'error'), []);
+  assert.equal(name(m, 'delivery.a'), 'Region A of In delivery, 1 state');
+  for (const fm of [false, true]) { const r = T.edits.remove(m, m.views[0], ['fulfilling'], fm), after = apply(m, Array.isArray(r) ? r : r ? r.commands : [{ op: 'delete', id: 'fulfilling' }]), d = diff(m, after).model;
+    assert.equal(name(d, 'delivery.a'), 'Region A of In delivery', `${fm}`);
+    assert.equal(name(d, 'fulfilling.parcel'), name(m, 'fulfilling.parcel'), `${fm}`);
+    assert.equal(name(diff(after, m).model, 'delivery.a'), 'Region A of In delivery, 1 state', `${fm}: what comes back is counted`); }
+});
+test('audit 58: a composite state taken out of the view (kept in the model): its regions are marked removed on the diff page, as when it is deleted', () => {
+  const inside = new Set(['fulfilling']), regs = new Set(SM.nodes.find(n => n.id === 'fulfilling').members.map(r => r.id));
+  for (let grew = true; grew;) { grew = false; for (const n of SM.nodes) if ((inside.has(n.parent) || regs.has(n.parent)) && !inside.has(n.id)) { inside.add(n.id); grew = true; } }
+  const out = structuredClone(SM); out.views[0].nodeIds = out.views[0].nodeIds.filter(id => !inside.has(id));
+  for (const [x, y, c] of [[SM, out, 'removed'], [out, SM, 'added']]) { const g = layout(diff(x, y).model, V.id), s = svgOf(g);
+    for (const id of regs) { assert.equal(g.families.find(f => f.id === id).change, c, `${id} ${c}`);
+      if (c === 'removed') assert.match(s, new RegExp(`data-family="${id.replace('.', '\\.')}"[^>]*aria-label="Region [^"]*, removed" data-change="removed"`)); } }
+  // the view as it was: nothing marked
+  assert.ok(layout(diff(SM, SM).model, V.id).families.every(f => !f.change));
+});
+
+// audit 60: a region's initial pseudostate dropped right of its composite, on a cell (enquiry's) where the composite's regions,
+// stacked after the cells are settled, grow over the composite beside it: no pin near it is clean, so the pin is dropped and
+// the pseudostate takes a slot as one with no pin does (a copy of the gallery model in tests/fixtures/)
+test('audit 60: a pseudostate pinned where its composite would lie over another is drawn with no box over another', () => {
+  const g = JSON.parse(readFileSync(new URL('fixtures/order-states.json', import.meta.url))), vid = g.views[0].id, g0 = layout(g, vid), at = g0.byId.enquiry;
+  const m = apply(g, [{ op: 'set', view: vid, path: ['layout', 'parcel-start'], value: [at.col, at.row] }]);
+  assert.deepEqual(check(m, vid).map(p => p.message).filter(x => /overlap|lies over/.test(x)), []);
+});
+
+// audit 61: with that pin in the model (dropped, as above), a drag of a state in the composite's other region to a cell it can
+// take was ignored: every pin in the composite that clashed was dropped with it. The pins are dropped one at a time first
+test('audit 61: a clean drag in a composite holding a pin that cannot be met is kept', () => {
+  const g = JSON.parse(readFileSync(new URL('fixtures/order-states.json', import.meta.url))), vid = g.views[0].id, at = layout(g, vid).byId.enquiry;
+  const m1 = apply(g, [{ op: 'set', view: vid, path: ['layout', 'parcel-start'], value: [at.col, at.row] }]);
+  const m2 = apply(m1, [{ op: 'set', view: vid, path: ['layout', 'captured'], value: [6, 1] }]), n = layout(m2, vid).byId.captured;
+  assert.deepEqual([n.col, n.row], [6, 1]); assert.deepEqual(check(m2, vid).map(p => p.message).filter(x => !/ cross$/.test(x)), []);
+});
+
+// audit 61: the Payment region's initial pseudostate dragged right of (or under) its composite kept its pin, and its line ran
+// through the region's title and along its border: pinsClear weighs those as check() does, past what the view says with no pin
+test('audit 61: a region\'s initial pseudostate pinned outside its composite leaves no line across a title or along a border', () => {
+  const g = JSON.parse(readFileSync(new URL('fixtures/order-states.json', import.meta.url))), vid = g.views[0].id;
+  for (const q of [[7, 2], [5, 2]]) { const m = apply(g, [{ op: 'set', view: vid, path: ['layout', 'payment-start'], value: q }]);
+    assert.deepEqual(check(m, vid).map(p => p.message).filter(x => !/ cross$/.test(x)), [], JSON.stringify(q)); }
 });

@@ -1,36 +1,36 @@
 {
- "about": "SysML's four target examples as milestone 3's M3.0 left them (docs/diagrams/examples/16 to 19, before M3.7 moved them to examples/ebike-*.json and made their shared elements agree): tests/sysml.test.mjs, tests/internal-block.* and tests/parametric.* pin what their types draw of these",
+ "about": "SysML's four target examples as milestone 3's M3.0 left them (docs/diagrams/examples/16 to 19, before M3.7 moved them to examples/ebike-*.json and made their shared elements agree), their subject renamed on 20 Nov 2026 from the shared city e-bike to the bookshop's delivery cargo e-bike as the examples were (names and texts only, the same shapes): tests/sysml.test.mjs, tests/internal-block.* and tests/parametric.* pin what their types draw of these",
  "16-requirement": {
    "schemaVersion": 2,
-   "title": "E-bike: requirements",
+   "title": "Cargo e-bike: requirements",
    "root": "requirements",
    "nodes": [
-     { "id": "spec", "type": "sysml.Requirement", "label": "E-bike specification",
-       "props": { "reqId": "EB-1", "text": "The e-bike shall serve as a shared city bike that riders hire from a dock and return to a dock." } },
+     { "id": "spec", "type": "sysml.Requirement", "label": "Cargo bike specification",
+       "props": { "reqId": "EB-1", "text": "The cargo e-bike shall carry book orders from the dispatch bay to local customers and return to its dock at the bay." } },
      { "id": "assist", "type": "sysml.Requirement", "label": "Pedal assistance", "parent": "spec",
        "props": { "reqId": "EB-1.1", "text": "The motor shall assist the rider only while the rider is pedalling." } },
      { "id": "cut-off", "type": "sysml.Requirement", "label": "Assistance cut-off", "parent": "assist",
        "props": { "reqId": "EB-1.1.1", "text": "Assistance shall fall away progressively and stop when the bike reaches 25 km/h." } },
-     { "id": "range", "type": "sysml.Requirement", "label": "Range", "parent": "spec",
-       "props": { "reqId": "EB-1.2", "text": "A full charge shall give at least 60 km of assisted riding." } },
+     { "id": "range", "type": "sysml.Requirement", "label": "Delivery range", "parent": "spec",
+       "props": { "reqId": "EB-1.2", "text": "A full charge shall give at least 60 km of assisted riding with a full 40 kg payload." } },
      { "id": "docking", "type": "sysml.Requirement", "label": "Docking", "parent": "spec",
-       "props": { "reqId": "EB-1.3", "text": "The e-bike shall lock into a dock when it is returned and shall charge while it is docked." } },
+       "props": { "reqId": "EB-1.3", "text": "The bike shall lock into its dock at the dispatch bay when it returns and shall charge while it is docked." } },
      { "id": "lock-time", "type": "sysml.Requirement", "label": "Locking time", "parent": "docking",
-       "props": { "reqId": "EB-1.3.1", "text": "The dock shall lock the e-bike within 2 s of the bike being pushed in." } },
+       "props": { "reqId": "EB-1.3.1", "text": "The dock shall lock the bike within 2 s of the bike being pushed in." } },
      { "id": "capacity", "type": "sysml.Requirement", "label": "Battery capacity",
        "props": { "reqId": "BAT-1", "text": "The battery shall store at least 500 Wh." } },
      { "id": "assist-curve", "type": "sysml.Requirement", "label": "Assistance curve",
        "props": { "reqId": "CTL-1", "text": "Assistance shall follow pedal torque and shall not exceed 250 W of continuous power." } },
      { "id": "legal-speed", "type": "sysml.Requirement", "label": "Maximum assisted speed",
        "props": { "reqId": "REG-3", "text": "Assistance shall fall away progressively and stop when the bike reaches 25 km/h." } },
-     { "id": "availability", "type": "sysml.Requirement", "label": "All-day availability",
-       "props": { "reqId": "CITY-4", "text": "A bike shall last a full day of hires on one charge." } },
+     { "id": "availability", "type": "sysml.Requirement", "label": "Full day of deliveries",
+       "props": { "reqId": "OPS-4", "text": "A bike shall last a full day of delivery rounds on one charge." } },
      { "id": "battery", "type": "sysml.Block", "label": "Battery" },
      { "id": "controller", "type": "sysml.Block", "label": "Controller" },
      { "id": "dock", "type": "sysml.Block", "label": "Dock" },
-     { "id": "range-ride", "type": "sysml.TestCase", "label": "Range ride on the test circuit" },
+     { "id": "range-ride", "type": "sysml.TestCase", "label": "Laden range ride on the test circuit" },
      { "id": "roller-test", "type": "sysml.TestCase", "label": "Cut-off speed on the rollers" },
-     { "id": "why-500", "type": "uml.Comment", "label": "60 km at 7 Wh/km takes 420 Wh; 500 Wh keeps 15 % in reserve", "props": { "stereotypes": ["rationale"] } }
+     { "id": "why-500", "type": "uml.Comment", "label": "60 km laden at 7 Wh/km takes 420 Wh; 500 Wh keeps 15 % in reserve", "props": { "stereotypes": ["rationale"] } }
    ],
    "edges": [
      { "id": "capacity-from-range", "type": "sysml.DeriveReqt", "from": "capacity", "to": "range" },
@@ -45,18 +45,18 @@
      { "id": "why-500-link", "type": "uml.CommentLink", "from": "why-500", "to": "capacity" }
    ],
    "views": [
-     { "id": "requirements", "diagram": "sysml.requirement", "title": "E-bike requirements", "parent": null, "direction": "down",
+     { "id": "requirements", "diagram": "sysml.requirement", "title": "Cargo bike requirements", "parent": null, "direction": "down",
        "nodeIds": ["spec", "assist", "cut-off", "range", "docking", "lock-time", "capacity", "assist-curve", "legal-speed", "availability",
          "battery", "controller", "dock", "range-ride", "roller-test", "why-500"] }
    ]
  },
  "17-block-definition": {
    "schemaVersion": 2,
-   "title": "E-bike: blocks",
+   "title": "Cargo e-bike: blocks",
    "root": "blocks",
    "nodes": [
-     { "id": "rental-vehicle", "type": "sysml.Block", "label": "RentalVehicle" },
-     { "id": "ebike", "type": "sysml.Block", "label": "EBike",
+     { "id": "delivery-vehicle", "type": "sysml.Block", "label": "DeliveryVehicle" },
+     { "id": "ebike", "type": "sysml.Block", "label": "CargoBike",
        "members": [
          { "id": "ebike.battery", "type": "sysml.PartProperty", "label": "battery", "props": { "valueType": "Battery", "multiplicity": "1" } },
          { "id": "ebike.controller", "type": "sysml.PartProperty", "label": "controller", "props": { "valueType": "Controller", "multiplicity": "1" } },
@@ -106,20 +106,20 @@
        "props": { "ends": { "from": { "aggregation": "composite", "multiplicity": "1" }, "to": { "role": "motor", "multiplicity": "1" } } } },
      { "id": "ebike-controller", "type": "uml.Association", "from": "ebike", "to": "controller",
        "props": { "ends": { "from": { "aggregation": "composite", "multiplicity": "1" }, "to": { "role": "controller", "multiplicity": "1" } } } },
-     { "id": "ebike-is-rental-vehicle", "type": "uml.Generalization", "from": "ebike", "to": "rental-vehicle" },
+     { "id": "ebike-is-delivery-vehicle", "type": "uml.Generalization", "from": "ebike", "to": "delivery-vehicle" },
      { "id": "dock-uses-charge-interface", "type": "uml.Dependency", "from": "dock", "to": "charge-interface", "props": { "stereotypes": ["use"] } }
    ],
    "views": [
-     { "id": "blocks", "diagram": "sysml.block-definition", "title": "E-bike blocks", "parent": null, "direction": "down",
-       "nodeIds": ["rental-vehicle", "ebike", "battery", "motor", "controller", "dock", "charge-interface", "range-equation", "voltage", "energy"] }
+     { "id": "blocks", "diagram": "sysml.block-definition", "title": "Cargo bike blocks", "parent": null, "direction": "down",
+       "nodeIds": ["delivery-vehicle", "ebike", "battery", "motor", "controller", "dock", "charge-interface", "range-equation", "voltage", "energy"] }
    ]
  },
  "18-internal-block": {
    "schemaVersion": 2,
-   "title": "E-bike: internal structure",
+   "title": "Cargo e-bike: internal structure",
    "root": "inside-ebike",
    "nodes": [
-     { "id": "ebike", "type": "sysml.Block", "label": "EBike",
+     { "id": "ebike", "type": "sysml.Block", "label": "CargoBike",
        "members": [
          { "id": "ebike.battery", "type": "sysml.PartProperty", "label": "battery", "props": { "valueType": "Battery" } },
          { "id": "ebike.controller", "type": "sysml.PartProperty", "label": "controller", "props": { "valueType": "Controller" } },
@@ -169,26 +169,26 @@
        "props": { "ends": { "from": { "part": "ebike.controller" }, "to": { "part": "ebike.rearLight" } } } }
    ],
    "views": [
-     { "id": "inside-ebike", "diagram": "sysml.internal-block", "title": "Inside the e-bike", "parent": null, "subject": "ebike",
+     { "id": "inside-ebike", "diagram": "sysml.internal-block", "title": "Inside the cargo bike", "parent": null, "subject": "ebike",
        "nodeIds": ["ebike"] }
    ]
  },
  "19-parametric": {
    "schemaVersion": 2,
-   "title": "E-bike: range",
+   "title": "Cargo e-bike: range",
    "root": "range-analysis",
    "nodes": [
-     { "id": "ebike", "type": "sysml.Block", "label": "EBike",
+     { "id": "ebike", "type": "sysml.Block", "label": "CargoBike",
        "members": [
          { "id": "ebike.batteryCapacity", "type": "sysml.ValueProperty", "label": "batteryCapacity", "props": { "valueType": "Energy" } },
          { "id": "ebike.usableShare", "type": "sysml.ValueProperty", "label": "usableShare", "props": { "valueType": "Real" } },
-         { "id": "ebike.ecoConsumption", "type": "sysml.ValueProperty", "label": "ecoConsumption", "props": { "valueType": "EnergyPerDistance" } },
-         { "id": "ebike.boostConsumption", "type": "sysml.ValueProperty", "label": "boostConsumption", "props": { "valueType": "EnergyPerDistance" } },
-         { "id": "ebike.ecoRange", "type": "sysml.ValueProperty", "label": "ecoRange", "props": { "valueType": "Distance" } },
-         { "id": "ebike.boostRange", "type": "sysml.ValueProperty", "label": "boostRange", "props": { "valueType": "Distance" } },
+         { "id": "ebike.emptyConsumption", "type": "sysml.ValueProperty", "label": "emptyConsumption", "props": { "valueType": "EnergyPerDistance" } },
+         { "id": "ebike.ladenConsumption", "type": "sysml.ValueProperty", "label": "ladenConsumption", "props": { "valueType": "EnergyPerDistance" } },
+         { "id": "ebike.emptyRange", "type": "sysml.ValueProperty", "label": "emptyRange", "props": { "valueType": "Distance" } },
+         { "id": "ebike.ladenRange", "type": "sysml.ValueProperty", "label": "ladenRange", "props": { "valueType": "Distance" } },
          { "id": "ebike.usable", "type": "sysml.ConstraintProperty", "label": "usable", "props": { "valueType": "UsableEnergy" } },
-         { "id": "ebike.eco", "type": "sysml.ConstraintProperty", "label": "eco", "props": { "valueType": "RangeEquation" } },
-         { "id": "ebike.boost", "type": "sysml.ConstraintProperty", "label": "boost", "props": { "valueType": "RangeEquation" } }
+         { "id": "ebike.empty", "type": "sysml.ConstraintProperty", "label": "empty", "props": { "valueType": "RangeEquation" } },
+         { "id": "ebike.laden", "type": "sysml.ConstraintProperty", "label": "laden", "props": { "valueType": "RangeEquation" } }
        ] },
      { "id": "usable-energy", "type": "sysml.ConstraintBlock", "label": "UsableEnergy",
        "props": { "constraint": "usable = capacity * share" },
@@ -210,21 +210,21 @@
        "props": { "ends": { "to": { "part": "ebike.usable" } } } },
      { "id": "bind-share", "type": "sysml.BindingConnector", "from": "ebike.usableShare", "to": "usable-energy.share",
        "props": { "ends": { "to": { "part": "ebike.usable" } } } },
-     { "id": "bind-usable-eco", "type": "sysml.BindingConnector", "from": "usable-energy.usable", "to": "range-equation.energy",
-       "props": { "ends": { "from": { "part": "ebike.usable" }, "to": { "part": "ebike.eco" } } } },
-     { "id": "bind-usable-boost", "type": "sysml.BindingConnector", "from": "usable-energy.usable", "to": "range-equation.energy",
-       "props": { "ends": { "from": { "part": "ebike.usable" }, "to": { "part": "ebike.boost" } } } },
-     { "id": "bind-eco-consumption", "type": "sysml.BindingConnector", "from": "ebike.ecoConsumption", "to": "range-equation.consumption",
-       "props": { "ends": { "to": { "part": "ebike.eco" } } } },
-     { "id": "bind-boost-consumption", "type": "sysml.BindingConnector", "from": "ebike.boostConsumption", "to": "range-equation.consumption",
-       "props": { "ends": { "to": { "part": "ebike.boost" } } } },
-     { "id": "bind-eco-range", "type": "sysml.BindingConnector", "from": "ebike.ecoRange", "to": "range-equation.range",
-       "props": { "ends": { "to": { "part": "ebike.eco" } } } },
-     { "id": "bind-boost-range", "type": "sysml.BindingConnector", "from": "ebike.boostRange", "to": "range-equation.range",
-       "props": { "ends": { "to": { "part": "ebike.boost" } } } }
+     { "id": "bind-usable-empty", "type": "sysml.BindingConnector", "from": "usable-energy.usable", "to": "range-equation.energy",
+       "props": { "ends": { "from": { "part": "ebike.usable" }, "to": { "part": "ebike.empty" } } } },
+     { "id": "bind-usable-laden", "type": "sysml.BindingConnector", "from": "usable-energy.usable", "to": "range-equation.energy",
+       "props": { "ends": { "from": { "part": "ebike.usable" }, "to": { "part": "ebike.laden" } } } },
+     { "id": "bind-empty-consumption", "type": "sysml.BindingConnector", "from": "ebike.emptyConsumption", "to": "range-equation.consumption",
+       "props": { "ends": { "to": { "part": "ebike.empty" } } } },
+     { "id": "bind-laden-consumption", "type": "sysml.BindingConnector", "from": "ebike.ladenConsumption", "to": "range-equation.consumption",
+       "props": { "ends": { "to": { "part": "ebike.laden" } } } },
+     { "id": "bind-empty-range", "type": "sysml.BindingConnector", "from": "ebike.emptyRange", "to": "range-equation.range",
+       "props": { "ends": { "to": { "part": "ebike.empty" } } } },
+     { "id": "bind-laden-range", "type": "sysml.BindingConnector", "from": "ebike.ladenRange", "to": "range-equation.range",
+       "props": { "ends": { "to": { "part": "ebike.laden" } } } }
    ],
    "views": [
-     { "id": "range-analysis", "diagram": "sysml.parametric", "title": "E-bike range", "parent": null, "subject": "ebike",
+     { "id": "range-analysis", "diagram": "sysml.parametric", "title": "Cargo bike range", "parent": null, "subject": "ebike",
        "nodeIds": ["ebike"] }
    ]
  }

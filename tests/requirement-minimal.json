@@ -5,10 +5,10 @@
   {
    "id": "need",
    "type": "sysml.Requirement",
-   "label": "Need",
+   "label": "Delivery",
    "props": {
     "reqId": "N-1",
-    "text": "The bike shall be hired from a dock."
+    "text": "The cargo bike shall carry book orders to local customers."
    }
   },
   {
@@ -18,20 +18,20 @@
    "parent": "need",
    "props": {
     "reqId": "N-1.1",
-    "text": "The dock shall lock the bike."
+    "text": "The cargo box shall lock the parcels in."
    }
   },
   {
-   "id": "dock",
+   "id": "cargo-box",
    "type": "sysml.Block",
-   "label": "Dock"
+   "label": "CargoBox"
   }
  ],
  "edges": [
   {
-   "id": "dock-satisfies-lock",
+   "id": "cargo-box-satisfies-lock",
    "type": "sysml.Satisfy",
-   "from": "dock",
+   "from": "cargo-box",
    "to": "lock"
   }
  ],
@@ -43,7 +43,7 @@
    "nodeIds": [
     "need",
     "lock",
-    "dock"
+    "cargo-box"
    ]
   }
  ]

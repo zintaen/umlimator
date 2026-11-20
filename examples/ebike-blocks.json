@@ -1,27 +1,29 @@
 {
   "$schema": "../lib/umlimator.schema.json",
   "schemaVersion": 2,
-  "title": "E-bike: blocks",
+  "title": "Cargo e-bike: blocks",
   "root": "blocks",
   "nodes": [
-    {"id": "rental-vehicle", "type": "sysml.Block", "label": "RentalVehicle"},
-    {"id": "ebike", "type": "sysml.Block", "label": "EBike",
+    {"id": "delivery-vehicle", "type": "sysml.Block", "label": "DeliveryVehicle"},
+    {"id": "ebike", "type": "sysml.Block", "label": "CargoBike",
       "members": [
         {"id": "ebike.battery", "type": "sysml.PartProperty", "label": "battery", "props": {"valueType": "Battery", "multiplicity": "1"}},
         {"id": "ebike.controller", "type": "sysml.PartProperty", "label": "controller", "props": {"valueType": "Controller", "multiplicity": "1"}},
         {"id": "ebike.motor", "type": "sysml.PartProperty", "label": "motor", "props": {"valueType": "Motor", "multiplicity": "1"}},
         {"id": "ebike.frontLight", "type": "sysml.PartProperty", "label": "frontLight", "props": {"valueType": "Light", "multiplicity": "1"}},
         {"id": "ebike.rearLight", "type": "sysml.PartProperty", "label": "rearLight", "props": {"valueType": "Light", "multiplicity": "1"}},
+        {"id": "ebike.cargoBox", "type": "sysml.PartProperty", "label": "cargoBox", "props": {"valueType": "CargoBox", "multiplicity": "1"}},
         {"id": "ebike.dock", "type": "sysml.ReferenceProperty", "label": "dock", "props": {"valueType": "Dock", "multiplicity": "0..1"}},
+        {"id": "ebike.payload", "type": "sysml.ValueProperty", "label": "payload", "props": {"valueType": "Mass"}},
         {"id": "ebike.batteryCapacity", "type": "sysml.ValueProperty", "label": "batteryCapacity", "props": {"valueType": "Energy"}},
         {"id": "ebike.usableShare", "type": "sysml.ValueProperty", "label": "usableShare", "props": {"valueType": "Real"}},
-        {"id": "ebike.ecoConsumption", "type": "sysml.ValueProperty", "label": "ecoConsumption", "props": {"valueType": "EnergyPerDistance"}},
-        {"id": "ebike.boostConsumption", "type": "sysml.ValueProperty", "label": "boostConsumption", "props": {"valueType": "EnergyPerDistance"}},
-        {"id": "ebike.ecoRange", "type": "sysml.ValueProperty", "label": "ecoRange", "props": {"valueType": "Distance"}},
-        {"id": "ebike.boostRange", "type": "sysml.ValueProperty", "label": "boostRange", "props": {"valueType": "Distance"}},
+        {"id": "ebike.emptyConsumption", "type": "sysml.ValueProperty", "label": "emptyConsumption", "props": {"valueType": "EnergyPerDistance"}},
+        {"id": "ebike.emptyRange", "type": "sysml.ValueProperty", "label": "emptyRange", "props": {"valueType": "Distance"}},
+        {"id": "ebike.ladenRange", "type": "sysml.ValueProperty", "label": "ladenRange", "props": {"valueType": "Distance"}},
         {"id": "ebike.usable", "type": "sysml.ConstraintProperty", "label": "usable", "props": {"valueType": "UsableEnergy"}},
-        {"id": "ebike.eco", "type": "sysml.ConstraintProperty", "label": "eco", "props": {"valueType": "RangeEquation"}},
-        {"id": "ebike.boost", "type": "sysml.ConstraintProperty", "label": "boost", "props": {"valueType": "RangeEquation"}}
+        {"id": "ebike.load", "type": "sysml.ConstraintProperty", "label": "load", "props": {"valueType": "LadenConsumption"}},
+        {"id": "ebike.empty", "type": "sysml.ConstraintProperty", "label": "empty", "props": {"valueType": "RangeEquation"}},
+        {"id": "ebike.laden", "type": "sysml.ConstraintProperty", "label": "laden", "props": {"valueType": "RangeEquation"}}
       ] },
     {"id": "battery", "type": "sysml.Block", "label": "Battery",
       "members": [
@@ -42,11 +44,17 @@
         {"id": "controller.supply", "type": "sysml.Port", "label": "supply"},
         {"id": "controller.drive", "type": "sysml.Port", "label": "drive"},
         {"id": "controller.lights", "type": "sysml.Port", "label": "lights"},
-        {"id": "controller.bus", "type": "sysml.Port", "label": "bus"}
+        {"id": "controller.bus", "type": "sysml.Port", "label": "bus"},
+        {"id": "controller.lock", "type": "sysml.Port", "label": "lock"}
       ] },
     {"id": "light", "type": "sysml.Block", "label": "Light",
       "members": [
         {"id": "light.power", "type": "sysml.Port", "label": "power"}
+      ] },
+    {"id": "cargo-box", "type": "sysml.Block", "label": "CargoBox",
+      "members": [
+        {"id": "cargo-box.maxPayload", "type": "sysml.ValueProperty", "label": "maxPayload", "props": {"valueType": "Mass"}},
+        {"id": "cargo-box.parcelLock", "type": "sysml.Port", "label": "parcelLock"}
       ] },
     {"id": "dock", "type": "sysml.Block", "label": "Dock",
       "members": [
@@ -63,6 +71,12 @@
         {"id": "usable-energy.capacity", "type": "sysml.ConstraintParameter", "label": "capacity", "props": {"valueType": "Energy"}},
         {"id": "usable-energy.share", "type": "sysml.ConstraintParameter", "label": "share", "props": {"valueType": "Real"}}
       ] },
+    {"id": "laden-consumption", "type": "sysml.ConstraintBlock", "label": "LadenConsumption", "props": {"constraint": "laden = empty + 0.1 * payload"},
+      "members": [
+        {"id": "laden-consumption.laden", "type": "sysml.ConstraintParameter", "label": "laden", "props": {"valueType": "EnergyPerDistance"}},
+        {"id": "laden-consumption.empty", "type": "sysml.ConstraintParameter", "label": "empty", "props": {"valueType": "EnergyPerDistance"}},
+        {"id": "laden-consumption.payload", "type": "sysml.ConstraintParameter", "label": "payload", "props": {"valueType": "Mass"}}
+      ] },
     {"id": "range-equation", "type": "sysml.ConstraintBlock", "label": "RangeEquation", "props": {"constraint": "range = energy / consumption"},
       "members": [
         {"id": "range-equation.range", "type": "sysml.ConstraintParameter", "label": "range", "props": {"valueType": "Distance"}},
@@ -70,16 +84,18 @@
         {"id": "range-equation.consumption", "type": "sysml.ConstraintParameter", "label": "consumption", "props": {"valueType": "EnergyPerDistance"}}
       ] },
     {"id": "voltage", "type": "sysml.ValueType", "label": "Voltage", "props": {"unit": "V", "quantityKind": "voltage"}},
-    {"id": "energy", "type": "sysml.ValueType", "label": "Energy", "props": {"unit": "Wh", "quantityKind": "energy"}}
+    {"id": "energy", "type": "sysml.ValueType", "label": "Energy", "props": {"unit": "Wh", "quantityKind": "energy"}},
+    {"id": "mass", "type": "sysml.ValueType", "label": "Mass", "props": {"unit": "kg", "quantityKind": "mass"}}
   ],
   "edges": [
     {"id": "ebike-battery", "type": "uml.Association", "from": "ebike", "to": "battery", "props": {"ends": {"from": {"aggregation": "composite", "multiplicity": "1"}, "to": {"role": "battery", "multiplicity": "1"}}}},
     {"id": "ebike-motor", "type": "uml.Association", "from": "ebike", "to": "motor", "props": {"ends": {"from": {"aggregation": "composite", "multiplicity": "1"}, "to": {"role": "motor", "multiplicity": "1"}}}},
     {"id": "ebike-controller", "type": "uml.Association", "from": "ebike", "to": "controller", "props": {"ends": {"from": {"aggregation": "composite", "multiplicity": "1"}, "to": {"role": "controller", "multiplicity": "1"}}}},
-    {"id": "ebike-is-rental-vehicle", "type": "uml.Generalization", "from": "ebike", "to": "rental-vehicle"},
+    {"id": "ebike-cargo-box", "type": "uml.Association", "from": "ebike", "to": "cargo-box", "props": {"ends": {"from": {"aggregation": "composite", "multiplicity": "1"}, "to": {"role": "cargoBox", "multiplicity": "1"}}}},
+    {"id": "ebike-is-delivery-vehicle", "type": "uml.Generalization", "from": "ebike", "to": "delivery-vehicle"},
     {"id": "dock-uses-charge-interface", "type": "uml.Dependency", "from": "dock", "to": "charge-interface", "props": {"stereotypes": ["use"]}}
   ],
   "views": [
-    {"id": "blocks", "diagram": "sysml.block-definition", "title": "E-bike blocks", "parent": null, "direction": "down", "nodeIds": ["rental-vehicle", "ebike", "battery", "motor", "controller", "light", "dock", "charge-interface", "usable-energy", "range-equation", "voltage", "energy"], "edges": ["ebike-battery", "ebike-motor", "ebike-controller", "ebike-is-rental-vehicle", "dock-uses-charge-interface"]}
+    {"id": "blocks", "diagram": "sysml.block-definition", "title": "Cargo bike blocks", "parent": null, "direction": "down", "nodeIds": ["delivery-vehicle", "ebike", "battery", "motor", "controller", "light", "cargo-box", "dock", "charge-interface", "usable-energy", "laden-consumption", "range-equation", "voltage", "energy", "mass"], "edges": ["ebike-battery", "ebike-motor", "ebike-controller", "ebike-cargo-box", "ebike-is-delivery-vehicle", "dock-uses-charge-interface"]}
   ]
 }

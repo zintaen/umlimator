@@ -1,5 +1,6 @@
-import { jsonText, labelOr, labelProblem, lineNames, listOf, typedProblems, unreadable, versionProblem } from '../core/model.js';
+import { isGone, jsonText, labelOr, labelProblem, lineNames, listOf, markedCopy, typedProblems, unreadable, versionProblem } from '../core/model.js';
 import { TYPED, diagramOf, drawnKind } from '../core/registry.js';
+import { XML_BAD } from '../core/text.js';
 import { held } from '../core/warn.js';
 import { SHAPE_NAMES, shapeOf } from '../draw/shapes.js';
 import { boxHolds, mapContext } from './context.js';
@@ -27,7 +28,8 @@ function fieldTextProblems(m, v, T, memos = new Map()) {
       // ran depLeaf, a depPic per view, on every node: validate() went quadratic); memo: one per validate() run, for drawn's own use
       const p = obj(o) && Object.hasOwn(o, key) ? labelProblem(o, where, key) : null;
       if (p) out.push(f.drawn === false || (typeof f.drawn === 'function' && !f.drawn(m, x, memoOf(f))) ? labelProblem(o, where, key, NOT_DRAWN) : p); }); };
-  const nodes = new Map(); [...arr(m.nodes).map((n, i) => [n, `nodes[${i}]`]), ...arr(v.nodes).map((n, j) => [n, `views[${vi}].nodes[${j}]`])].forEach(([n, at]) => { if (obj(n) && typeof n.id === 'string' && !nodes.has(n.id)) nodes.set(n.id, [n, at]); });
+  const nodes = new Map(); [...Array.from(arr(m.nodes), (n, i) => [n, `nodes[${i}]`]), ...Array.from(arr(v.nodes), (n, j) => [n, `views[${vi}].nodes[${j}]`])].forEach( // Array.from: a hole is an undefined entry (audit 57)
+    ([n, at]) => { if (obj(n) && typeof n.id === 'string' && !nodes.has(n.id)) nodes.set(n.id, [n, at]); });
   shown.forEach(id => { if (!nodes.has(id)) return; const [n, at] = nodes.get(id); check(n, at, drawnKind(T, n));
     arr(n.members).forEach((x, j) => { if (obj(x)) { check(x, `${at}.members[${j}]`, x.type); mems.add(x.id); } }); });
   const lines = new Map(); arr(m.edges).forEach((e, i) => { if (obj(e) && typeof e.id === 'string' && !lines.has(e.id)) lines.set(e.id, [e, `edges[${i}]`]); });
@@ -106,7 +108,9 @@ export function validate(model) {
   const shared = (e, at) => { if (typeof e.id === 'string' && ids.has(e.id)) err(at + '.id', `line id "${e.id}" is also a card's id`); };
   // a view's own line is in that id space too: an id another view's own line or a model line holds sends apply()'s set or delete, and
   // references(), to the first of them, not the line selected (audit 30). lineAt: each line id -> where it is first
-  const lineAt = new Map(), ownLine = (e, at) => { if (e.id == null) return; if (lineAt.has(e.id)) err(at + '.id', `line id "${e.id}" is used twice (also ${lineAt.get(e.id)})`); else lineAt.set(e.id, at); };
+  // a view's marked copy of a model line, removed or added (core/model.js markedCopy, as diff() writes it) names the model line: no second line
+  const modelL = new Map(Array.from(arr(m.edges), e => [e && e.id, e])), ghostOf = e => markedCopy(modelL, e);
+  const lineAt = new Map(), ownLine = (e, at) => { if (e.id == null || ghostOf(e)) return; if (lineAt.has(e.id)) err(at + '.id', `line id "${e.id}" is used twice (also ${lineAt.get(e.id)})`); else lineAt.set(e.id, at); };
   // a model line may end on any view's box (#28); a view's own line only on that view's boxes
   const anyBox = new Set(views.flatMap(v => arr(v.containers).map(c => c && c.id)));
   arr(m.edges).forEach((e, i) => { if (!(typed && e && e.type != null)) line(e, `edges[${i}]`, new Set([...ids, ...anyBox]));
@@ -264,7 +268,17 @@ export function validate(model) {
   arr(m.nodes).forEach((n, i) => deep(n, `nodes[${i}]`)); arr(m.edges).forEach((e, i) => chIs(e, `edges[${i}]`, LINE_CH, true));
   views.forEach(v => { const i = arr(m.views).indexOf(v); arr(v.nodes).forEach((n, j) => deep(n, `views[${i}].nodes[${j}]`)); arr(v.fragments).forEach((f, j) => deep(f, `views[${i}].fragments[${j}]`));
     arr(v.edges).forEach((e, j) => chIs(e, `views[${i}].edges[${j}]`, LINE_CH, true));
+    arr(v.containers).forEach((c, j) => chIs(c, `views[${i}].containers[${j}]`, CARD_CH)); // a box's, as a card's: diff() writes it on a map's boxes (audit 53)
     if (v.nodeOverrides && typeof v.nodeOverrides === 'object') Object.entries(v.nodeOverrides).forEach(([id, o]) => chIs(o, `views[${i}].nodeOverrides.${id}`, CARD_CH)); });
+  /* a text holding a character no XML document may hold (a C0 control but tab, line feed and carriage return; U+FFFE, U+FFFF;
+     a lone surrogate, as Word's paste can bring) is drawn with U+FFFD there (esc), so the SVG stays well-formed: said, at its
+     path (audit 53: a native model's label drew it raw and the export was no XML, with no warning). A walk with a list; a value
+     another problem is said of already (a gap that is no number), and what it holds, is not said again */
+  { const said = new Set(out.map(q => q.path)), s = [[m, '']], seen = new Set(); for (let k = 0; k < s.length; k++) { const [y, p] = s[k]; if (seen.has(y)) continue; seen.add(y);
+      const list = Array.isArray(y); for (const key of Object.keys(y)) { const x = y[key], at = list ? `${p}[${key}]` : p ? `${p}.${key}` : key; if (said.has(at)) continue;
+        // an icon's glyph (text.js glyph) reads one as a space, which its markup holds as white space (audit 54)
+        if (typeof x === 'string') { if (XML_BAD.test(x)) warn(at, `holds a character XML cannot hold (a control character, U+FFFE, U+FFFF or a lone surrogate): ${key === 'g' && p.startsWith('icons.') && m.icons && typeof m.icons === 'object' && m.icons[p.slice(6)] === y ? 'read as a space' : 'drawn as U+FFFD'}`); }
+        else if (x && typeof x === 'object') s.push([x, at]); } } }
   // a value left out is said once, as left out: not again at its path as a missing end, type or name (audit 21: a line's
   // end {"toString": 1} was also '"undefined" is neither a card nor a box'). A path in the copy, where a list's entry
   // left out moved the ones after it up, is said as the model has it, so the next entry's problem is said, at its own
@@ -292,6 +306,10 @@ const picks = (s, end) => !s || ((s.id == null || [s.id].flat().includes(end.id)
   && (s.owner == null || [s.owner].flat().includes(end.owner))
   && (s.not == null || !picks(s.not, end)));
 const andList = xs => xs.length > 1 ? xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1] : xs.join(''), arrOf = x => (Array.isArray(x) ? x : []);
+// a map sequence view's step numbers, its lines in run order: on the diff page over the live ones only, as the model after counts
+// them; a line marked removed has no number (null) and is said without a place (audit 55, as the C4 dynamic, sequence and
+// communication views)
+const runSteps = l => { let k = 0; return Array.from(l, e => e && typeof e === 'object' && typeof e.change === 'string' && e.change.toLowerCase() === 'removed' ? null : ++k); };
 // a view's cards and boxes as a selector sees them (rules, lenses): a card's kind as drawn, the boxes it is in (outermost
 // first) and its owner; a box is in itself and its parents, and has no kind or owner
 // a view's hand-written boxes: none on a typed view whose type lays it out, which draws its own boxes (own-boxes, audit 10)
@@ -304,6 +322,14 @@ function endsIn(ctx, v) {
     : (n => ({ id, kind: kindOf(n.kind, true), boxes: chain(home[id]), owner: typeof n.owner === 'string' ? n.owner : undefined, label: n.label || id }))(ctx.nodeIn(id, v.id));
   return { box, end };
 }
+// on the diff page's model, what the model after has in a view (audit 57: rules(), describe(), paths() and reach() read the
+// removed lines and cards diff() draws back as live): a card or box isGone() leaves, here or in the model; a line too, and one
+// with an end that left. Each a test: card(id), box(c), line(e)
+function liveIn(ctx, v) {
+  const bx = Object.create(null); handBoxes(v).forEach(c => { if (c && c.id != null) bx[c.id] ||= c; });
+  const card = id => (bx[id] ? !isGone(bx[id]) : !isGone(ctx.nodeIn(id, v.id)));
+  return { card, box: c => !isGone(c), line: e => !isGone(e) && card(e.from) && card(e.to) };
+}
 /** Every rule the model breaks, in each view that draws it broken: a line a rule forbids, or a cycle of boxes. */
 export function rules(model) {
   model = unreadable(model).model; // read as validate() and mapContext read it: no text String() throws on (audit 20)
@@ -313,11 +339,11 @@ export function rules(model) {
   const anyBox = new Set(views.flatMap(v => handBoxes(v).map(c => c && c.id).filter(Boolean)));
   const named = new Map(list.map(r => [r, [r.from, r.to].flatMap(s => boxesNamed(s, id => anyBox.has(id) && !N[id]))]));
   views.forEach(v => {
-    const { box, end } = endsIn(ctx, v), order = Object.values(box).map(c => c.id);
+    const live = liveIn(ctx, v), { box, end } = endsIn(ctx, { ...v, containers: handBoxes(v).filter(live.box) }), order = Object.values(box).map(c => c.id); // what the model after has (audit 57)
     // a target names the drawn line, which may stand for several edges: grouped as prepEdges groups them (parallel edges, and
     // A→B with B→A, unless keepPairs), in its order, so select() finds it
     // ponytail: a copy of prepEdges' grouping; share one helper if that grouping changes
-    const lines = viewEdges(v).filter(e => e.from !== e.to), par = new Map(), drawn = new Map(), ends = new Map();
+    const lines = viewEdges(v).filter(e => e.from !== e.to && live.line(e)), par = new Map(), drawn = new Map(), ends = new Map();
     lines.forEach(e => { const k = e.from + '>' + e.to + (v.keepPairs ? '#' + e.id : ''); par.has(k) ? par.get(k).push(e) : par.set(k, [e]); });
     par.forEach(es => { const back = !v.keepPairs && ends.get(es[0].to + '>' + es[0].from);
       if (back) back.push(...es); else ends.set(es[0].from + '>' + es[0].to, es); es.forEach(e => drawn.set(e, back || es)); });
@@ -349,4 +375,4 @@ export function rules(model) {
   return out;
 }
 
-export { WIRE_KINDS, boxesNamed, picks, andList, arrOf, endsIn, handBoxes };
+export { WIRE_KINDS, boxesNamed, picks, andList, arrOf, endsIn, handBoxes, liveIn, runSteps };

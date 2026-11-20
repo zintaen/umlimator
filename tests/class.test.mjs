@@ -698,3 +698,33 @@ test('audit 49: an interface realization from a component, or from a port a comp
     const m2 = structuredClone(m); m2.edges.push({ id: 'x', type: 'uml.InterfaceRealization', from, to });
     assert.deepEqual(validate(m2).filter(p => p.rule === 'realization-target').map(p => p.ids[0]), ['x'], `${from} -> ${to}`); }
 });
+
+test('audit 53: a realization from a port whose owner has type "" passes the class view\'s rule and connect, as the class view draws the owner a class', () => {
+  for (const type of [undefined, '', 'uml.Class']) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'svc', ...(type === undefined ? {} : { type }), label: 'Service', members: [{ id: 'svc.api', type: 'uml.Port', label: 'api' }] },
+      { id: 'i', type: 'uml.Interface', label: 'Api' }], edges: [{ id: 'r', type: 'uml.InterfaceRealization', from: 'svc.api', to: 'i' }],
+    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['svc', 'i'] }] }, v = m.views[0];
+    assert.deepEqual(validate(m).filter(p => p.rule === 'realization-target'), [], JSON.stringify(type));
+    assert.equal(diagramOf(v).edits.connect(m, v, 'svc.api', 'i', null, { type: 'uml.InterfaceRealization' }), null, JSON.stringify(type)); }
+});
+
+// audit 58: Alt + Left on Customer in the shipped class example pinned it to the cell Order is pinned to, and two cards pinned to
+// one cell were drawn one over the other (on every typed view); the second goes to the nearest free slot (settlePins)
+test('two cards pinned to one cell are drawn apart (audit 58)', () => {
+  const bad = (m, v) => check(m, v).map(p => p.message).filter(s => /lies over|overlap|no room/.test(s));
+  const m = JSON.parse(readFileSync(new URL('../examples/sales-classes.json', import.meta.url))), v = m.views.find(x => x.id === 'domain');
+  v.layout = { ...v.layout, customer: [...v.layout.order] };
+  assert.deepEqual(bad(m, 'domain'), []);
+  for (const [d, t] of [['uml.class', 'uml.Class'], ['uml.package', 'uml.Package']]) {
+    const two = { schemaVersion: 2, root: 'v', nodes: ['Alpha', 'Beta', 'Gamma'].map(l => ({ id: l.toLowerCase(), type: t, label: l })), edges: [],
+      views: [{ id: 'v', diagram: d, nodeIds: ['alpha', 'beta', 'gamma'], layout: { alpha: [1, 0], beta: [1, 0] } }] };
+    assert.deepEqual(bad(two, 'v'), [], d);
+    const g = layout(two, 'v'), at = id => g.nodes.find(n => n.id === id);
+    assert.deepEqual([at('alpha').col, at('alpha').row], [1, 0], `${d}: the first pin keeps its cell`); }
+});
+
+test('audit 58: a comment with no spaces (Chinese) wraps at 220 px between two characters', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'n', type: 'uml.Comment', label: '为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限' }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['n'] }] };
+  const ls = [...mapContext(m).buildView('v').markup.matchAll(/data-shape="note"[\s\S]*?<\/g><\/g>/g)].flatMap(g => [...g[0].matchAll(/<text[^>]*>([^<]*)</g)].map(x => x[1]));
+  assert.ok(ls.length > 1 && ls.join('') === '为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限', JSON.stringify(ls));
+});

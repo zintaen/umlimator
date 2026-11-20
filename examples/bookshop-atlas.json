@@ -1,8 +1,29 @@
 {
  "$schema": "../lib/umlimator.schema.json",
  "schemaVersion": 2,
- "title": "Bookshop Atlas",
+ "title": "Bookshop",
  "root": "overview",
+ "iconPacks": {
+  "gcp": "2026-11-14",
+  "azure": "V25",
+  "aws": "2026-07-31"
+ },
+ "lenses": [
+  {
+   "id": "by-owner",
+   "title": "Who owns what",
+   "color": "owner"
+  },
+  {
+   "id": "money",
+   "title": "Where the money goes",
+   "pick": {
+    "line": [
+     "feeds"
+    ]
+   }
+  }
+ ],
  "nodes": [
   {
    "id": "c4-shopper",
@@ -203,8 +224,7 @@
    "parent": "c4-web-host",
    "props": {
     "technology": "Docker Engine 27"
-   },
-   "opensView": "production"
+   }
   },
   {
    "id": "c4-api-1",
@@ -213,7 +233,8 @@
    "parent": "c4-docker",
    "props": {
     "container": "c4-api"
-   }
+   },
+   "opensView": "production"
   },
   {
    "id": "c4-worker-1",
@@ -2956,9 +2977,9 @@
   {
    "id": "bs-staff",
    "label": "Shop staff",
-   "kind": "person",
+   "kind": "user",
    "sublabel": "packs parcels, takes returns",
-   "what": "The people who run the shop. Opens how they handle a returned book (a flowchart).",
+   "what": "The people who run the shop: a `user` card is drawn as a person. Opens how they handle a returned book (a flowchart).",
    "opensView": "returns",
    "icon": "user"
   },
@@ -2967,33 +2988,60 @@
    "label": "Storefront",
    "kind": "frontend",
    "sublabel": "the shop in the browser",
-   "what": "Catalogue, basket and checkout in the browser. Opens buying a book (an interaction overview), whose steps open sequence diagrams.",
-   "opensView": "buy-book"
+   "what": "Catalogue, basket and checkout in the browser, built with React: a `frontend` card, a browser window with its address bar. Opens buying a book (an interaction overview), whose steps open sequence diagrams.",
+   "opensView": "buy-book",
+   "icon": "react",
+   "badges": [
+    "public"
+   ],
+   "owner": "web team"
   },
   {
    "id": "bs-api",
    "label": "Shop API",
    "kind": "backend",
    "sublabel": "catalogue, checkout, accounts",
-   "what": "The JSON API behind the storefront. Opens its components, which open the sales domain's classes, an order's life and the order service inside.",
-   "opensView": "components"
+   "what": "The JSON API behind the storefront and the shop app, the heart of the shop: drawn as a main step, with chips, a badge in a tone and an edit mark. Opens its components, which open the sales domain's classes, an order's life and the order service inside.",
+   "opensView": "components",
+   "icon": "fastapi",
+   "owner": "platform team",
+   "badges": [
+    {
+     "text": "on call",
+     "tone": "rose"
+    }
+   ],
+   "verbs": [
+    "checkout",
+    "refund"
+   ],
+   "edited": true,
+   "emphasis": true
   },
   {
    "id": "bs-db",
    "label": "Database",
    "kind": "database",
    "sublabel": "books, orders, accounts",
-   "what": "PostgreSQL: books, baskets, orders and accounts. Opens its schema (an ER diagram).",
+   "what": "PostgreSQL: books, baskets, orders and accounts, a `database` card drawn as a cylinder. Opens its schema (an ER diagram).",
    "opensView": "er-schema",
-   "icon": "postgresql"
+   "icon": "postgresql",
+   "owner": "platform team",
+   "badges": [
+    {
+     "text": "backed up",
+     "tone": "green"
+    }
+   ]
   },
   {
    "id": "bs-queue",
    "label": "Order queue",
    "kind": "queue",
-   "sublabel": "paid orders, oldest first",
-   "what": "Paid orders waiting to be fulfilled. Opens how order data flows through the shop (a data flow diagram, two levels).",
-   "opensView": "dfd-level-1"
+   "sublabel": "RabbitMQ, oldest first",
+   "what": "Paid orders waiting to be fulfilled: a `queue` card, a pipe open where the work leaves. Opens how order data flows through the shop (a data flow diagram, two levels).",
+   "opensView": "dfd-level-1",
+   "owner": "platform team"
   },
   {
    "id": "bs-worker",
@@ -3001,14 +3049,15 @@
    "kind": "backend",
    "sublabel": "fulfils paid orders",
    "what": "Takes paid orders off the queue and fulfils them. Opens fulfilling an order (an activity diagram), whose payment step opens one charge over time (a timing diagram).",
-   "opensView": "fulfil"
+   "opensView": "fulfil",
+   "owner": "platform team"
   },
   {
    "id": "bs-payments",
    "label": "Payment provider",
    "kind": "external",
    "sublabel": "card payments, refunds",
-   "what": "Takes card payments and makes refunds. Opens checkout (a sequence diagram), and from there the same checkout as a communication diagram.",
+   "what": "Takes card payments and makes refunds: outside the shop, so an `external` card, dashed. Opens checkout (a sequence diagram), and from there the same checkout as a communication diagram.",
    "opensView": "checkout-sequence"
   },
   {
@@ -3018,7 +3067,8 @@
    "sublabel": "shelves, packing table",
    "what": "Where the books are picked and packed. Opens from order to shipment (BPMN), whose pick and pack opens its own process.",
    "opensView": "order-to-shipment",
-   "icon": "box"
+   "icon": "box",
+   "owner": "ops team"
   },
   {
    "id": "bs-mail",
@@ -3039,8 +3089,8 @@
    "id": "bs-hosting",
    "label": "Hosting",
    "kind": "cloud",
-   "sublabel": "servers, then a cloud",
-   "what": "Where the shop runs. Opens the production deployment (C4), whose Docker host opens the same deployment in UML.",
+   "sublabel": "two servers, then a cloud",
+   "what": "Where the shop runs: a `cloud` card, a box seen in perspective. Its line ends on the Bookshop box's border. Opens the production deployment (C4), whose Shop API instance opens the same deployment in UML.",
    "opensView": "c4-deployment",
    "icon": "server"
   },
@@ -3052,6 +3102,86 @@
    "what": "Everything to do before the shop opens (a mindmap). Its three hosting choices open the shop on Google Cloud, Azure and AWS.",
    "opensView": "mm-plan",
    "icon": "calendar"
+  },
+  {
+   "id": "bs-app",
+   "label": "Shop app",
+   "kind": "mobile",
+   "sublabel": "iOS and Android",
+   "owner": "web team",
+   "change": "new",
+   "what": "The shop on a phone: a `mobile` card, a phone on its side, marked NEW."
+  },
+  {
+   "id": "bs-backoffice",
+   "label": "Back office",
+   "kind": "frontend",
+   "shape": "window",
+   "sublabel": "staff only",
+   "owner": "ops team",
+   "what": "Where the staff refund orders and answer shoppers: its own `shape`, a window, which wins over its kind."
+  },
+  {
+   "id": "bs-cli",
+   "label": "Admin CLI",
+   "kind": "cli",
+   "sublabel": "python3",
+   "owner": "ops team",
+   "noSub": true,
+   "what": "Night jobs and stock imports from a terminal: a `cli` card; `noSub` keeps its sub-line (python3) in the panel only."
+  },
+  {
+   "id": "bs-pricing",
+   "label": "Pricing",
+   "kind": "module",
+   "sublabel": "discounts, tax",
+   "owner": "platform team",
+   "what": "Prices a basket: discounts, tax and shipping. A `module` card, a folder. Opens an order in run order: the cards and lines a checkout touches, numbered.",
+   "opensView": "overview-run"
+  },
+  {
+   "id": "bs-fraud",
+   "label": "Fraud check",
+   "kind": "hook",
+   "sublabel": "fires on checkout",
+   "owner": "platform team",
+   "what": "Looks at each order before the card is charged: a `hook` card, a hexagon."
+  },
+  {
+   "id": "bs-giftcards",
+   "label": "Gift cards",
+   "kind": "backend",
+   "sublabel": "next quarter",
+   "owner": "platform team",
+   "change": "planned",
+   "what": "Not built yet: a PLANNED card is dashed."
+  },
+  {
+   "id": "bs-agent",
+   "label": "Support agent",
+   "kind": "agent",
+   "sublabel": "drafts replies",
+   "owner": "ops team",
+   "what": "Reads shoppers' questions and drafts the staff's replies: an `agent` card, a robot."
+  },
+  {
+   "id": "bs-returns-policy",
+   "label": "returns.md",
+   "kind": "file",
+   "sublabel": "returns policy",
+   "owner": "ops team",
+   "opensView": "returns",
+   "what": "The returns policy the support agent reads: a `file` card, a page with its corner folded. Opens how the staff handle a returned book (a flowchart)."
+  },
+  {
+   "id": "bs-reminders",
+   "label": "Reminder bot",
+   "kind": "ai",
+   "icon": "bot",
+   "sublabel": "nudged carts",
+   "owner": "web team",
+   "change": "removed",
+   "what": "Switched off: a REMOVED card is dashed and struck through."
   }
  ],
  "edges": [
@@ -5215,34 +5345,45 @@
    "from": "bs-shopper",
    "to": "bs-storefront",
    "label": "browses, buys",
-   "weight": 2
+   "weight": 2,
+   "step": 1
   },
   {
    "id": "bs-e2",
    "from": "bs-storefront",
    "to": "bs-api",
-   "label": "JSON over HTTPS",
-   "weight": 2
+   "label": "POST /orders",
+   "weight": 3,
+   "sublabel": "JSON over HTTPS",
+   "step": 2
   },
   {
    "id": "bs-e3",
    "from": "bs-api",
    "to": "bs-db",
    "label": "reads, writes",
-   "kind": "state"
+   "kind": "state",
+   "step": 5,
+   "edited": true
   },
   {
    "id": "bs-e4",
    "from": "bs-api",
    "to": "bs-payments",
-   "label": "charges cards"
+   "label": "charges cards",
+   "kind": "feeds",
+   "style": "security",
+   "step": 4,
+   "weight": 2
   },
   {
    "id": "bs-e5",
    "from": "bs-api",
    "to": "bs-queue",
-   "label": "queues paid orders",
-   "kind": "feeds"
+   "label": "paid order",
+   "kind": "state",
+   "style": "async",
+   "step": 6
   },
   {
    "id": "bs-e6",
@@ -5288,6 +5429,88 @@
    "from": "bs-plan",
    "to": "bs-hosting",
    "label": "chooses"
+  },
+  {
+   "id": "bs-e13",
+   "from": "bs-shopper",
+   "to": "bs-app",
+   "label": "on the go",
+   "change": "added"
+  },
+  {
+   "id": "bs-e14",
+   "from": "bs-app",
+   "to": "bs-api",
+   "label": "orders",
+   "weight": 2
+  },
+  {
+   "id": "bs-e15",
+   "from": "bs-staff",
+   "to": "bs-backoffice",
+   "label": "refunds, answers"
+  },
+  {
+   "id": "bs-e16",
+   "from": "bs-backoffice",
+   "to": "bs-api",
+   "label": "manages"
+  },
+  {
+   "id": "bs-e17",
+   "from": "bs-cli",
+   "to": "bs-api",
+   "label": "runs jobs",
+   "style": "dashed"
+  },
+  {
+   "id": "bs-e18",
+   "from": "bs-api",
+   "to": "bs-pricing",
+   "label": "prices",
+   "step": 3
+  },
+  {
+   "id": "bs-e19",
+   "from": "bs-api",
+   "to": "bs-fraud",
+   "label": "checks",
+   "kind": "triggers",
+   "step": "3a"
+  },
+  {
+   "id": "bs-e20",
+   "from": "bs-api",
+   "to": "bs-giftcards",
+   "label": "redeems",
+   "change": "added"
+  },
+  {
+   "id": "bs-e21",
+   "from": "bs-mail",
+   "to": "bs-agent",
+   "label": "questions"
+  },
+  {
+   "id": "bs-e22",
+   "from": "bs-agent",
+   "to": "bs-returns-policy",
+   "label": "reads",
+   "kind": "state"
+  },
+  {
+   "id": "bs-e23",
+   "from": "bs-returns-policy",
+   "to": "bs-payments",
+   "label": "refund if within 14 days",
+   "kind": "guard"
+  },
+  {
+   "id": "bs-e24",
+   "from": "bs-reminders",
+   "to": "bs-storefront",
+   "label": "nudges",
+   "change": "removed"
   }
  ],
  "views": [
@@ -5295,15 +5518,24 @@
    "id": "overview",
    "parent": null,
    "title": "Bookshop",
-   "caption": "The whole bookshop business. Double-click a card to go in: each opens a diagram of its part, and those open further.",
+   "caption": "The whole bookshop business on one map. Double-click a card to go in: each opens a diagram of its part, and those open further.",
    "nodeIds": [
     "bs-shopper",
     "bs-staff",
+    "bs-reminders",
     "bs-storefront",
+    "bs-app",
+    "bs-backoffice",
+    "bs-cli",
     "bs-api",
+    "bs-pricing",
+    "bs-fraud",
+    "bs-giftcards",
     "bs-db",
     "bs-queue",
     "bs-worker",
+    "bs-agent",
+    "bs-returns-policy",
     "bs-payments",
     "bs-warehouse",
     "bs-mail",
@@ -5312,57 +5544,93 @@
     "bs-plan"
    ],
    "layout": {
+    "bs-reminders": [
+     0,
+     0
+    ],
     "bs-shopper": [
      0,
-     0.5
+     1
+    ],
+    "bs-staff": [
+     0,
+     3.5
+    ],
+    "bs-plan": [
+     0,
+     6.5
     ],
     "bs-storefront": [
      1,
      0.5
     ],
-    "bs-api": [
-     2,
-     0.5
-    ],
-    "bs-db": [
-     3,
-     0
-    ],
-    "bs-queue": [
-     3,
+    "bs-app": [
+     1,
      1.5
     ],
-    "bs-worker": [
-     4,
-     1.5
+    "bs-backoffice": [
+     1,
+     3.5
     ],
-    "bs-payments": [
-     5,
-     0
-    ],
-    "bs-warehouse": [
-     5,
-     1.5
-    ],
-    "bs-mail": [
-     6,
-     0.5
-    ],
-    "bs-courier": [
-     6,
-     1.5
-    ],
-    "bs-staff": [
-     4,
-     2.5
+    "bs-cli": [
+     1,
+     4.5
     ],
     "bs-hosting": [
      1,
+     6.5
+    ],
+    "bs-api": [
+     2,
+     2.5
+    ],
+    "bs-pricing": [
+     3,
+     0
+    ],
+    "bs-fraud": [
+     3,
+     1
+    ],
+    "bs-db": [
+     3,
+     2
+    ],
+    "bs-queue": [
+     3,
      3
     ],
-    "bs-plan": [
-     0,
+    "bs-giftcards": [
+     3,
+     4.2
+    ],
+    "bs-worker": [
+     4,
      3
+    ],
+    "bs-mail": [
+     5,
+     2
+    ],
+    "bs-warehouse": [
+     5,
+     3.5
+    ],
+    "bs-courier": [
+     6,
+     3.5
+    ],
+    "bs-agent": [
+     6,
+     2
+    ],
+    "bs-returns-policy": [
+     7,
+     2
+    ],
+    "bs-payments": [
+     8,
+     1
     ]
    },
    "containers": [
@@ -5371,12 +5639,70 @@
      "label": "Bookshop",
      "nodeIds": [
       "bs-storefront",
+      "bs-app",
+      "bs-backoffice",
+      "bs-cli",
       "bs-api",
-      "bs-db",
-      "bs-queue",
+      "bs-pricing",
+      "bs-fraud",
+      "bs-giftcards",
       "bs-worker"
+     ],
+     "badges": [
+      {
+       "text": "EU",
+       "tone": "accent"
+      }
      ]
+    },
+    {
+     "id": "bs-data",
+     "label": "Data",
+     "parent": "bs-shop",
+     "nodeIds": [
+      "bs-db",
+      "bs-queue"
+     ],
+     "tone": "green",
+     "badges": [
+      "backed up nightly"
+     ]
+    },
+    {
+     "id": "bs-support",
+     "label": "Support",
+     "nodeIds": [
+      "bs-agent",
+      "bs-returns-policy"
+     ],
+     "tone": "violet"
     }
+   ]
+  },
+  {
+   "id": "overview-run",
+   "parent": "overview",
+   "title": "An order, in run order",
+   "render": "sequence",
+   "caption": "The cards and lines a checkout touches, numbered in the order they run.",
+   "nodeIds": [
+    "bs-shopper",
+    "bs-storefront",
+    "bs-api",
+    "bs-pricing",
+    "bs-fraud",
+    "bs-payments",
+    "bs-db",
+    "bs-queue"
+   ],
+   "edges": [
+    "bs-e1",
+    "bs-e2",
+    "bs-e18",
+    "bs-e19",
+    "bs-e4",
+    "bs-e3",
+    "bs-e5"
    ]
   },
   {
@@ -5733,7 +6059,7 @@
     }
    },
    "nodeOverrides": {
-    "shop-api": {
+    "shop-api-jar": {
      "opensView": "domain"
     }
    },
@@ -5779,6 +6105,14 @@
     "money",
     "note-total"
    ],
+   "nodeOverrides": {
+    "payment": {
+     "opensView": "payments-only"
+    },
+    "money": {
+     "opensView": "packages"
+    }
+   },
    "layout": {
     "order": [
      1,
@@ -6593,10 +6927,5 @@
     "aws-db-standby"
    ]
   }
- ],
- "iconPacks": {
-  "gcp": "2026-11-14",
-  "azure": "V25",
-  "aws": "2026-07-31"
- }
+ ]
 }

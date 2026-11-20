@@ -66,3 +66,159 @@ test("audit 50: a line's flow stops where the arrowhead drawn begins: weight 1's
   assert.match(STYLES, /svg \.fl-hv, svg \.edge-g:is\(\.wt-2, \.wt-3\):is\(\.hov, \.hot, \.key-on\) \.flowline:not\(\.fl-hv\)[^{]*\{ display: none; \}/, 'the hover one hidden at rest, the rest one in those states');
   assert.match(STYLES, /\.edge-g:not\(\.faded\):is\(\.wt-2, \.wt-3\):is\(\.hov, \.hot, \.key-on\) \.fl-hv[^{]*\{ display: inline; \}/, 'and the hover one shown then');
 });
+
+// audit 51: the d.ts, the JSON Schema, the map's checklist (tools/types.json then, tools/gallery.json's map now, and the
+// docs page tools/gallery.mjs writes from it, the Bookshop atlas's), the examples' README and monorepo.py still said a weight is drawn as a width, as before 19 Nov; each
+// now says what the test above draws: one width at rest, its width on hover, selection and keyboard focus
+test('every description of a line\'s weight says it shows on hover, selection and focus, not as a width at rest', async () => {
+  const { readFileSync } = await import('node:fs');
+  const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
+  const schema = JSON.parse(read('lib/umlimator.schema.json'));
+  const descs = []; JSON.parse(JSON.stringify(schema), (k, v) => { if (v && typeof v === 'object' && v.weight && v.weight.description) descs.push(v.weight.description); return v; });
+  assert.ok(descs.length >= 1);
+  const dts = /\/\*\*((?:(?!\*\/)[\s\S])*)\*\/\s*weight\?:/.exec(read('lib/umlimator.d.ts'));
+  assert.ok(dts, 'the d.ts documents weight');
+  const map = JSON.parse(read('tools/gallery.json')).map, item = JSON.stringify(map).match(/"(Line weights[^"]*)"/);
+  assert.ok(item, 'the map checklist lists weights');
+  const said = { schema: descs.join(' '), dts: dts[1], checklist: item[1], page: read('docs/atlas/bookshop.md').match(/<li>Line weights[^<]*<\/li>/)?.[0] ?? '',
+    readme: read('examples/README.md').match(/^\| \[`monorepo\.json`\][^\n]*/m)[0], monorepo: read('examples/monorepo.py').split('"""')[1] };
+  for (const [where, text] of Object.entries(said)) {
+    assert.doesNotMatch(text, /drawn as (its )?widths?|heavier|about 1\.8, 3\.2 and 4\.5 px/, where);
+    if (where !== 'monorepo') assert.match(text, /hover/, where);
+  }
+});
+
+// audit 49: a weighted line's `what` is Markdown for the details panel; its title and accessible name read its markers aloud
+test("a weighted line's title and accessible name say its Markdown what as plain words, its first sentence only", () => {
+  const whats = [['Carries **every** ride.\n\nSee [the runbook](https://example.com/runbook) and `rides.v2`.\n\n- MQTT\n- REST', 'Carries every ride.'],
+    ['- `rides.v2` over ==MQTT==\n- REST', 'rides.v2 over MQTT; REST'], ['See [the runbook](https://example.com/r) first', 'See the runbook first'], ['60 imports', '60 imports'], ['- ', 'weight 2 of 3']];
+  for (const [what, said] of whats) {
+    const m = { root: 'v', nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b', weight: 2, what }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+    const s = svgOf(layout(m, 'v'));
+    assert.equal(/<g class="edge-g[\s\S]*?<title>([\s\S]*?)<\/title>/.exec(s)[1], `A → B\n${said}`, what);
+    assert.equal(/class="um-key line-key[^"]*"[^>]*aria-label="([^"]*)"/.exec(s)[1], `Line from A to B, ${said}`, what); }
+});
+
+test("audit 54: a weighted line's first sentence ends at no abbreviation, its first paragraph only, a list's items each after a \"; \"", () => {
+  const whats = [['Carries orders, e.g. book orders and refunds, to the queue.', 'Carries orders, e.g. book orders and refunds, to the queue.'],
+    ['Approx. 100 calls/s at peak.', 'Approx. 100 calls/s at peak.'], ['Roughly 1,000 calls a second, i.e. most of the traffic. More here.', 'Roughly 1,000 calls a second, i.e. most of the traffic.'],
+    ['Every order\n\nRetried twice by the worker', 'Every order'], ['- orders\n- refunds\n- stock moves', 'orders; refunds; stock moves'], ['Carries:\n- orders\n- refunds', 'Carries: orders; refunds'],
+    ['play() returns null. tour() starts one.', 'play() returns null.']];
+  for (const [what, said] of whats) {
+    const m = { root: 'v', nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b', weight: 3, what }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+    const s = svgOf(layout(m, 'v'));
+    assert.equal(/<g class="edge-g[\s\S]*?<title>([\s\S]*?)<\/title>/.exec(s)[1], `A \u2192 B\n${said}`, what);
+    assert.equal(/class="um-key line-key[^"]*"[^>]*aria-label="([^"]*)"/.exec(s)[1], `Line from A to B, ${said}`, what); }
+  // a card's sub-line, which the line's words match, ends its first sentence at no abbreviation either
+  const c = svgOf(layout({ root: 'v', nodes: [{ id: 'a', label: 'A', what: 'Stores orders, e.g. book orders. Also refunds.' }], views: [{ id: 'v', nodeIds: ['a'] }] }, 'v'));
+  assert.ok(c.includes('e.g. book') && !c.includes('Also refunds'), c.match(/Stores[^<]*/)?.[0]);
+});
+
+test('audit 54 follow-up: firstSentence checks only a 9-character tail for an abbreviation (constant work per period on any regex engine) and still cuts as before', async () => {
+  const { firstSentence } = await import('../src/core/text.js');
+  const s = 'x e.g. '.repeat(40000) + 'end. tail';
+  const t0 = performance.now();
+  const out = firstSentence(s);
+  assert.ok(out.endsWith('end.'), 'cuts after the first real sentence');
+  assert.ok(performance.now() - t0 < 250, 'under 250 ms');
+  assert.equal(firstSentence('Carries orders, e.g. book orders. Then more.'), 'Carries orders, e.g. book orders.');
+  assert.equal(firstSentence('vs. this. next'), 'vs. this.');
+  assert.equal(firstSentence('Canvas. next'), 'Canvas.');
+});
+
+test('audit 55: a first sentence runs past a list number, a capital initial, a letter chain and a title; a bullet item drops its period before the "; "', async () => {
+  const { firstSentence, mdPlain } = await import('../src/core/text.js');
+  for (const [t, f] of [['1. Validates the basket.\n2. Charges the card.', '1. Validates the basket.'], ['Run by J. Smith in the U.S. office. More.', 'Run by J. Smith in the U.S. office.'],
+    ['Sends Dr. Smith the report. Then more.', 'Sends Dr. Smith the report.'], ['Runs at 3 p.m. daily. More.', 'Runs at 3 p.m. daily.'],
+    ['Released in 2024. Then more.', 'Released in 2024.'], ['Calls x vs. y. More', 'Calls x vs. y.'], ['Canvas. next', 'Canvas.']]) assert.equal(firstSentence(t), f, t);
+  for (const [t, f] of [['- Charges the card.\n- Sends the receipt.\n- Logs the order.', 'Charges the card; Sends the receipt; Logs the order.'], ['Carries:\n- orders.\n- refunds.', 'Carries: orders; refunds.'],
+    ['- gift cards etc.\n- maps', 'gift cards etc.; maps'], ['- orders\n- refunds', 'orders; refunds']]) assert.equal(mdPlain(t), f, t);
+  // drawn: a card's title and a weighted line's title and name
+  const m = { root: 'v', nodes: [{ id: 'a', label: 'Checkout', what: '1. Validates the basket.\n2. Charges the card.' }, { id: 'b', label: 'Gateway', what: 'Run by J. Smith in the U.S. office.' }],
+    edges: [{ from: 'a', to: 'b', weight: 3, what: '- Charges the card.\n- Sends the receipt.' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+  const s = svgOf(layout(m, 'v')), titles = [...s.matchAll(/<title>([^<]*)<\/title>/g)].map(x => x[1]);
+  assert.ok(titles.includes('Checkout \u00b7 1. Validates the basket.') && titles.includes('Gateway \u00b7 Run by J. Smith in the U.S. office.'), titles.join(' | '));
+  assert.equal(/class="um-key line-key[^"]*"[^>]*aria-label="([^"]*)"/.exec(s)[1], 'Line from Checkout to Gateway, Charges the card; Sends the receipt.');
+});
+
+test('audit 56: a first sentence ends after "ms.", a capital or a short number, a title, initial or list number only where it leads to a name or opens a line', async () => {
+  const { firstSentence, unstop, mdPlain } = await import('../src/core/text.js');
+  for (const [t, f] of [['Times out after 500 ms. Retries twice.', 'Times out after 500 ms.'], ['Calls service A. Returns the total.', 'Calls service A.'],
+    ['Listens on port 443. Accepts TLS only.', 'Listens on port 443.'], ['Runs on Python 3. Ships as a wheel.', 'Runs on Python 3.'], ['Speaks HTTP/2. Falls back to 1.1.', 'Speaks HTTP/2.'],
+    ['a CA. Then signs them.', 'a CA.'], ['Talks to service B. Then retries.', 'Talks to service B.'], ['Calls A. Then B.', 'Calls A.'],
+    // still not cut: a title before a name, "ca." before a number, initials that lead to a name, a list number that opens a line
+    ['Sends 3 copies to Dr. Smith. Then waits.', 'Sends 3 copies to Dr. Smith.'], ['Takes ca. 100 ms. More.', 'Takes ca. 100 ms.'], ['J. R. R. Tolkien wrote it. More.', 'J. R. R. Tolkien wrote it.'],
+    ['Built by J. F. Kennedy for us. More.', 'Built by J. F. Kennedy for us.'], ['Steps:\n1. Validate.\n2. Pay.', 'Steps:\n1. Validate.']]) assert.equal(firstSentence(t), f, t);
+  assert.equal(unstop('Answers in 200 ms.'), 'Answers in 200 ms');
+  assert.equal(mdPlain('- Answers in 200 ms.\n- Retries twice.'), 'Answers in 200 ms; Retries twice.');
+  // drawn: a weighted line's title and name, and a card's sub-line, hold only the first sentence
+  const m = { root: 'v', nodes: [{ id: 'a', label: 'Shoppers', what: 'Buy at shop A. They pay later.' }, { id: 'b', label: 'Cache' }],
+    edges: [{ from: 'a', to: 'b', weight: 3, what: 'Answers in under 5 ms. Falls back to the database on a miss, which takes 40 ms.' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+  const s = svgOf(layout(m, 'v'));
+  assert.equal(/class="um-key line-key[^"]*"[^>]*aria-label="([^"]*)"/.exec(s)[1], 'Line from Shoppers to Cache, Answers in under 5 ms.');
+  assert.ok(s.includes('Buy at shop A.') && !/>[^<]*They pay later/.test(s), s.match(/Buy at[^<"]*/g)?.join(' | '));
+});
+
+// audit 56: a line's title and accessible name say its edit mark, as a card's name does, and only the change marks a line is
+// drawn with ('planned' is drawn unmarked, as validate() warns)
+test('audit 56: an edited map line says (edited) in its title and name; a planned line says nothing it does not draw', () => {
+  const name = s => /class="um-key line-key[^"]*"[^>]*aria-label="([^"]*)"/.exec(s)[1], title = s => /<g class="edge-g[\s\S]*?<title>([^<]*)<\/title><\/g>/.exec(s)[1];
+  const one = e => svgOf(layout({ root: 'v', nodes: [{ id: 'a', label: 'API', edited: true }, { id: 'b', label: 'Database' }],
+    edges: [{ id: 'e', from: 'a', to: 'b', label: 'reads, writes', ...e }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] }, 'v'));
+  const ed = one({ edited: true });
+  assert.match(ed, /data-id="a"[^>]*aria-label="API[^"]*\(edited\)"/);
+  assert.equal(name(ed), 'Line from API to Database: reads, writes (edited)'); assert.equal(title(ed), 'API → Database: reads, writes (edited)');
+  assert.equal(name(one({})), 'Line from API to Database: reads, writes');
+  assert.equal(name(one({ edited: true, weight: 2 })), 'Line from API to Database: reads, writes (edited), weight 2 of 3');
+  for (const c of ['planned', 'Planned']) { const s = one({ change: c });
+    assert.equal(name(s), 'Line from API to Database: reads, writes', c); assert.equal(title(s), 'API → Database: reads, writes', c); }
+  assert.equal(name(one({ change: 'removed' })), 'Line from API to Database: reads, writes, removed');
+  assert.equal(name(one({ change: 'added' })), 'Line from API to Database: reads, writes, new');
+  // the card keeps its planned word: a planned card is drawn planned
+  assert.match(svgOf(layout({ root: 'v', nodes: [{ id: 'a', label: 'A', change: 'planned' }], edges: [], views: [{ id: 'v', nodeIds: ['a'] }] }, 'v')), /aria-label="A[^"]*, planned"/);
+});
+
+// audit 57: diff() marks a relabelled line both change 'changed' and edited: one amber dot, said once
+test('audit 57: a line diff() marks changed says changed once, with no (edited) beside it', async () => {
+  const { diff } = await import('../lib/umlimator.js');
+  const name = s => /class="um-key line-key[^"]*"[^>]*aria-label="([^"]*)"/.exec(s)[1], title = s => /<g class="edge-g[\s\S]*?<title>([^<]*)<\/title><\/g>/.exec(s)[1];
+  const m = l => ({ root: 'v', nodes: [{ id: 'a', label: 'API' }, { id: 'b', label: 'Database' }], edges: [{ id: 'e', from: 'a', to: 'b', label: l }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] });
+  const d = diff(m('reads'), m('writes')).model, s = svgOf(layout(d, 'v'));
+  assert.deepEqual([d.edges[0].change, d.edges[0].edited], ['changed', true]);
+  assert.equal(name(s), 'Line from API to Database: writes, changed'); assert.equal(title(s), 'API → Database: writes, changed');
+  for (const c of ['changed', 'Modified']) assert.doesNotMatch(name(svgOf(layout({ ...m('x'), edges: [{ id: 'e', from: 'a', to: 'b', label: 'x', change: c, edited: true }] }, 'v'))), /edited/, c);
+  // edited with another mark, or none, still says its edit
+  assert.equal(name(svgOf(layout({ ...m('x'), edges: [{ id: 'e', from: 'a', to: 'b', label: 'x', change: 'added', edited: true }] }, 'v'))), 'Line from API to Database: x, new (edited)');
+});
+
+test('audit 57: a capital initial after a capitalised word or "from" ends a sentence, and a lead-in before a numbered list keeps its first item', async () => {
+  const { firstSentence, mdPlain } = await import('../src/core/text.js');
+  for (const [t, f] of [['Sends the order to Service B. Waits for the reply.', 'Sends the order to Service B.'], ['Reads stock from A. Writes the total to B.', 'Reads stock from A.'],
+    ['Fails over to Region B. Then retries.', 'Fails over to Region B.'], ['Owned by Team X. Deployed nightly.', 'Owned by Team X.'], ['Talks to System A. Retries on failure.', 'Talks to System A.'],
+    ['The fallback is Plan A. Then B starts.', 'The fallback is Plan A.'], ['Stores the data for App A. Backed up hourly.', 'Stores the data for App A.'],
+    // still read as a name: an initial at the text's start, after another initial, after "by" or "cc"
+    ['J. Smith wrote it. More.', 'J. Smith wrote it.'], ['Run by J. Smith. More.', 'Run by J. Smith.'], ['cc J. Doe on it. Then.', 'cc J. Doe on it.']]) assert.equal(firstSentence(t), f, t);
+  for (const [t, f] of [['Checkout in steps:\n1. Validates the basket.\n2. Takes payment.', 'Checkout in steps: 1. Validates the basket.'], ['1. Validates the basket.\n2. Takes payment.', '1. Validates the basket.'],
+    ['Line one\nwraps here. Then more.', 'Line one wraps here.'], ['**Bold** text\n  with  spaces. Next.', 'Bold text with spaces.'], ['Reads from Service B. Then\nwrites.', 'Reads from Service B.']]) assert.equal(mdPlain(t), f, t);
+  // drawn: a weighted line's name and a card's sub-line
+  const m = { root: 'v', nodes: [{ id: 'a', label: 'Orders', what: 'Sends the order to Service B. Waits for the reply.' }, { id: 'b', label: 'Payments' }],
+    edges: [{ from: 'a', to: 'b', weight: 3, what: 'Checkout in steps:\n1. Validates the basket.\n2. Takes payment.' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+  const s = svgOf(layout(m, 'v'));
+  assert.equal(/class="um-key line-key[^"]*"[^>]*aria-label="([^"]*)"/.exec(s)[1], 'Line from Orders to Payments, Checkout in steps: 1. Validates the basket.');
+  assert.ok(s.includes('Sends the order to Service B.') && !/>[^<]*Waits for the reply/.test(s), s.match(/Sends the[^<"]*/g)?.join(' | '));
+});
+
+test('audit 58: a hard-wrapped what ends at a number that ends its sentence; a card\'s sub-line, title and name read its Markdown what as plain words', async () => {
+  const { mdPlain } = await import('../src/core/text.js');
+  for (const [t, f] of [['Retries up to\n3. Then gives up.', 'Retries up to 3.'], ['Keeps orders for\n30. Older ones are archived.', 'Keeps orders for 30.'],
+    // still a list: after a lead-in or a sentence, or beside another numbered line
+    ['Steps:\n1. Validate.\n2. Pay.', 'Steps: 1. Validate.'], ['Totals\n1. a b\n2. c d', 'Totals 1. a b 2. c d'], ['1. Validates the basket.\n2. Takes payment.', '1. Validates the basket.']]) assert.equal(mdPlain(t), f, t);
+  for (const [what, plain] of [['See [the runbook](https://ex.com/rb) for paging. More.', 'See the runbook for paging.'], ['Takes ==all== orders. More.', 'Takes all orders.'], ['- takes orders\n- refunds', 'takes orders; refunds']]) {
+    const s = svgOf(layout({ root: 'v', nodes: [{ id: 'a', label: 'Orders', kind: 'service', what }], views: [{ id: 'v', nodeIds: ['a'] }] }, 'v'));
+    const g = s.slice(s.indexOf('data-id="a"')), title = /<title>([^<]*)<\/title>/.exec(g)[1], name = /aria-label="([^"]*)"/.exec(g)[1];
+    assert.equal(title, `Orders · ${plain}`, what);
+    assert.ok(name.startsWith('Orders, ') && name.includes(plain.split(' ')[0]) && !/\]\(|==|- /.test(name), name);
+    const drawn = [...g.matchAll(/class="n-sub[^"]*"[^>]*>([\s\S]*?)<\/text>/g)].map(x => x[1].replace(/<[^>]*>/g, ' ')).join(' ');
+    assert.ok(drawn.trim() && !/\]\(|==|\[|- /.test(drawn), drawn);
+  }
+});

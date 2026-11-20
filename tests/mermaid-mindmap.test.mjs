@@ -314,3 +314,25 @@ test('a shape\'s "string" and bare text run over line breaks to the closer, as M
   assert.deepEqual(tree(read('mindmap\n  root\n    c["x]\n    d["y"]\n')), [['root', 'root', null], ['c', '"x', 'root'], ['d', 'y', 'root']]);
   assert.deepEqual(tree(read('mindmap\n  root\n    c[x\n    d\n')), [['root', 'root', null], ['c-x', 'c[x', 'root'], ['d', 'd', 'root']]);
 });
+
+test('a %% comment line inside a shape\'s "string", Markdown string or bare text over lines is taken out, as Mermaid\'s cleanupComments does before it parses, its stops not counted, and said (audit 51)', () => {
+  const r = read('mindmap\n  root\n    a["first\n    %% a "] x\n    second"]\n    b["`one\n    %% two`"]\n    three`"]\n    c(x\n    %% y)\n    z)\n');
+  assert.deepEqual(r.model.nodes.map(n => [n.label, n.parent ?? null]), [['root', null], ['first\n    second', 'root'], ['one\n    three', 'root'], ['x\n    z', 'root']]);
+  assert.deepEqual(r.report.filter(x => x.message.startsWith('a %%')).map(x => [x.line, x.status, x.message]), [[4, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read'], [7, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read'], [10, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read']]);
+});
+
+test('(- opens a topic Mermaid draws with no border, as does -) opening a line: read without the dash, said; a rounded topic whose text starts with - is written quoted (audit 54)', () => {
+  // Mermaid 12's mindmap lexer: (- and -) are openers, getType gives no border; t(-5 C) is the topic "5 C", w((-z)) a circle "-z"
+  const r = read('mindmap\n  root\n    t(-5 C)\n    u(-x)\n    -)y)\n    v(-"q")\n    w((-z))\n');
+  assert.deepEqual(r.model.nodes.map(n => [n.id, n.label, n.ext?.mermaid?.shape ?? null]), [['root', 'root', null], ['t', '5 C', null], ['u', 'x', null], ['y', 'y', null], ['v', 'q', null], ['w', '-z', 'circle']]);
+  assert.deepEqual(r.report.map(x => [x.line, x.message]), [[3, '(- opens a topic Mermaid draws with no border: read as a plain topic'],
+    [5, '-) opens a topic Mermaid draws with no border: read as a plain topic'], [7, 'a circle (( )) is kept, drawn as a rounded box']]);
+  const m = { schemaVersion: 2, root: 'mindmap', nodes: [{ id: 'root', type: 'mindmap.Topic', label: 'root' },
+    ...['-5 C', '-', '--x-'].map((label, k) => ({ id: `t${k}`, type: 'mindmap.Topic', label, parent: 'root', ext: { mermaid: { shape: 'rounded' } } })),
+    ...['-c', '-h', '-b'].map((label, k) => ({ id: `s${k}`, type: 'mindmap.Topic', label, parent: 'root', ext: { mermaid: { shape: ['cloud', 'hexagon', 'bang'][k] } } }))],
+  edges: [], views: [{ id: 'mindmap', diagram: 'mindmap', nodeIds: ['root', 't0', 't1', 't2', 's0', 's1', 's2'] }] };
+  const out = write(m);
+  assert.deepEqual(out.split('\n').slice(2, 8), ['    t0("-5 C")', '    t1("-")', '    t2("--x-")', '    s0)-c(', '    s1{{-h}}', '    s2))-b((']);
+  const back = read(out);
+  assert.deepEqual(back.model.nodes.map(n => [n.id, n.label, n.ext?.mermaid?.shape]), m.nodes.map(n => [n.id, n.label, n.ext?.mermaid?.shape]));
+});

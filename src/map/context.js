@@ -1,15 +1,15 @@
-import { esc, fit, measured, sansW, textW } from '../core/text.js';
+import { esc, fit, measured, sansW, textW, unstop } from '../core/text.js';
 import { copyOf, labelOr, migrate, unreadable } from '../core/model.js';
 import { diagramOf } from '../core/registry.js';
 import { held, warn } from '../core/warn.js';
 import { r2 } from '../draw/shapes.js';
 import { svgOf } from '../draw/svg.js';
-import { leaveIssues, routeAudit } from '../layout/audit.js';
-import { layoutGraph, pillW, pullSources, rowsFor, stepW, untangle } from '../layout/layered.js';
+import { boxClash, leaveIssues, routeAudit, throughIssues } from '../layout/audit.js';
+import { layoutGraph, pillW, pullSources, rowsFor, settlePins, stepW, untangle } from '../layout/layered.js';
 import { WIRES, badgesOf, mapNodeW } from './cards.js';
 import { jsonText, markOf } from './diff.js';
 import { plainViews } from './typed.js';
-import { arrOf, rules } from './validate.js';
+import { arrOf, rules, runSteps } from './validate.js';
 
 
 /* Swimlanes for run-order views. A view may set `lanes` ([{title, nodeIds}] or false); otherwise a
@@ -223,7 +223,7 @@ function mapContext(model, opts = {}) {
     const sources = ids.filter(i => outs(i) && !lp.edges.some(e => e.to === i && e.from !== i));
     if (!hub && lp.edges.length && outs(lp.edges[0].from) >= 3 && sources.length === 1 && /^(public|lane|verb|external)$/.test(N[lp.edges[0].from]?.kind || '')) hub = lp.edges[0].from; // one trigger only; an overview with several stays a flow
     if (hub && outs(hub) < 3) hub = null;
-    const steps = O(); if (v.render === 'sequence') lp.edges.forEach((e, i) => { (steps[e.to] ||= []).push(i + 1); });
+    const steps = O(); if (v.render === 'sequence') { const k = runSteps(lp.edges); lp.edges.forEach((e, i) => { if (k[i] != null) (steps[e.to] ||= []).push(k[i]); }); }
     const flow = { flow: true, backKeys: lp.keys, steps, hub: null };
     // a type with its own layout has no hub plan: a typed view named as one of its cards is no drill-down into it (audit 24)
     if (!hub || (Array.isArray(v.containers) && v.containers.length) || v.mainSteps || v.render === 'process' || ownLayout(vid)) return (planCache[vid] = flow);
@@ -252,21 +252,39 @@ function mapContext(model, opts = {}) {
   // one that is not two numbers is no pin (validate warns of both)
   function onGrid(vid, L) { const lim = ((V[vid] || {}).nodeIds || []).length + 64, off = x => typeof x === 'number' && !(Math.abs(x) <= lim), cut = p => (Array.isArray(p) && !(typeof p[0] === 'number' && typeof p[1] === 'number') ? null : Array.isArray(p) && p.some(off) ? p.map(x => (off(x) ? Math.max(-lim, Math.min(lim, x || 0)) : x)) : p);
     return Object.values(L).some(p => cut(p) !== p) ? Object.fromEntries(Object.entries(L).map(([k, p]) => [k, cut(p)]).filter(e => e[1])) : L; }
-  function fillLayout(vid, L) {
+  function fillLayout(vid, L, typed = false) {
     L = onGrid(vid, L);
     const bx = boxesOf(vid), ids = (V[vid].nodeIds || []).filter(i => N[i] && !bx.some(b => b.id === i)); // a box takes its place from what it holds
-    if (ids.every(i => Array.isArray(L[i]))) return L;
-    const auto = autoPos(vid), out = O(), taken = (c, r) => Object.values(out).some(([c2, r2]) => c2 === c && Math.abs(r2 - r) < 1);
-    ids.forEach(i => { if (Array.isArray(L[i])) out[i] = L[i]; });
-    // a map's lines, which a card boxFit moves keeps left to right (a typed view's may be drawn turned or flipped)
-    const lp = bx.length ? null : loopsOf(V[vid]), fwd = lp ? lp.edges.filter((e, k) => !lp.back.has(k) && e.from !== e.to) : [];
-    const boxes = bx.length ? bx : (V[vid].containers || []).filter(b => b && b.id != null), fit = boxes.length || fwd.length ? boxFit(boxes, ids, out, fwd) : null;
-    // the auto-layout slot is kept when it is clean and its lines run ahead; a clean slot whose lines run back gives way only to
-    // one whose lines run back less (audit 43: a card with its pin dropped went under the card that feeds it, a slot free beside)
-    ids.forEach(i => { if (out[i]) return; let [c, r] = auto[i] || [0, 0]; while (taken(c, r)) r++; // auto rows may be half rows: a row apart
-      const k = fit && fit.clean(i, c, r) ? fit.cost(i)(c, r) : null;
-      out[i] = fit && k !== 0 ? fit.near(i, taken, c, r, k) || [c, r] : [c, r]; });
+    const boxes = bx.length ? bx : (V[vid].containers || []).filter(b => b && b.id != null);
+    let A = null; const autoOf = () => (A ||= autoPos(vid));
+    const fill = L => {
+      if (ids.every(i => Array.isArray(L[i]))) return L;
+      const auto = autoOf(), out = O(), taken = (c, r) => Object.values(out).some(([c2, r2]) => c2 === c && Math.abs(r2 - r) < 1);
+      ids.forEach(i => { if (Array.isArray(L[i])) out[i] = L[i]; });
+      // a map's lines, which a card boxFit moves keeps left to right (a typed view's may be drawn turned or flipped)
+      const lp = bx.length ? null : loopsOf(V[vid]), fwd = lp ? lp.edges.filter((e, k) => !lp.back.has(k) && e.from !== e.to) : [];
+      const fit = boxes.length || fwd.length ? boxFit(boxes, ids, out, fwd) : null;
+      // the auto-layout slot is kept when it is clean and its lines run ahead; a clean slot whose lines run back gives way only to
+      // one whose lines run back less (audit 43: a card with its pin dropped went under the card that feeds it, a slot free beside)
+      ids.forEach(i => { if (out[i]) return; let [c, r] = auto[i] || [0, 0]; while (taken(c, r)) r++; // auto rows may be half rows: a row apart
+        const k = fit && fit.clean(i, c, r) ? fit.cost(i)(c, r) : null;
+        out[i] = fit && k !== 0 ? fit.near(i, taken, c, r, k) || [c, r] : [c, r]; });
+      return out; };
+    let out = fill(L);
+    // a typed view's pins settled (settlePins, layered.js) among the cards as placed, and the rest placed again round them; a
+    // map's pins stay as given. Rows count a whole row out: a typed view's tall row reaches over the half row after it (audit
+    // 58: the profile example's Order one column down, its package box over the half row of the profile beside it)
+    for (let k = 0; typed && k < 3; k++) { const L2 = typedPins(L, out, ids, boxes); if (L2 === L) break; L = L2; out = fill(L); }
     return out;
+  }
+  function typedPins(L, out, ids, boxes) {
+    const P = ids.filter(i => Array.isArray(L[i])).map(i => [i, L[i]]); if (!P.length) return L;
+    const byB = O(), home = O(); boxes.forEach(b => { byB[b.id] = b; }); boxes.forEach(b => arrOf(b.nodeIds).forEach(i => { if (b.id !== i) home[i] = b.id; }));
+    const chain = x => { const a = []; for (let k = 0, y = x; y != null && Object.hasOwn(byB, y) && k <= boxes.length; y = byB[y].parent, k++) a.push(y); return a; };
+    const up = x => (Object.hasOwn(byB, x) ? chain(byB[x].parent) : chain(home[x]));
+    const at = O(); ids.forEach(i => { if (!Array.isArray(L[i]) && Array.isArray(out[i])) at[i] = out[i]; });
+    const S = settlePins(P, at, up);
+    return P.every(([i, p]) => S[i] === p) ? L : { ...L, ...S };
   }
   /* a card with no pin in a pinned view with boxes (audit 41): its auto-layout slot is from another layout, and its box, drawn
      round its cards, grew over cards it does not hold (the integration fixture's pricing with no pin; a card a host adds to a box). The slot
@@ -492,8 +510,12 @@ function mapContext(model, opts = {}) {
     return out.filter(e => { const r = !(V[vid] || {}).keepPairs && pair[e.to + '>' + e.from]; if (r) { r.both = true; r.back = false; r.all = [...(r.all || [r]), ...(e.all || [e])]; if (e.label && e.label !== r.label) r.label = (r.label ? r.label + ' / ' : '') + e.label;
       if (r.all.some(x => x.step != null)) r.when = r.all.map(x => (x.step != null ? x.step + '. ' : '') + (x.label || '')).join('\n'); else if (e.when) r.when = [r.when, e.when].filter(Boolean).join(' · '); return false; } pair[e.from + '>' + e.to] = e; return true; })
       .map(e => { const all = e.all || [e], subs = [...new Set(all.map(x => x.sublabel).filter(x => x != null && x !== '').map(String))];
-        return { ...e, wk: wireKind(e, opts.kinds || (V[vid] || {}).kindsFromLabels), weight: Math.max(...all.map(x => [2, 3].includes(x.weight) ? x.weight : 1)), sublabel: subs.join(' / ') || undefined, ...markOf(all) }; });
+        return { ...e, wk: wireKind(e, opts.kinds || (V[vid] || {}).kindsFromLabels), weight: Math.max(...all.map(x => [2, 3].includes(x.weight) ? x.weight : 1)), sublabel: subs.join(' / ') || undefined, ...markOf(all), ...chOfAll(all) }; });
   }
+  // the change a line that stands for several edges says in its title and key: the strongest of theirs, as markOf draws it
+  // (audit 51: a pair drawn removed was named with the first edge's change, none)
+  const chOfAll = all => { if (all.length < 2) return {}; const c = w => all.find(x => typeof x.change === 'string' && w.includes(x.change.toLowerCase()));
+    const top = c(['removed']) || c(['added', 'new']); return top ? { change: top.change } : {}; };
   const condTag = l => { const m = /^(?:routes|on-ramp:?)\s+(\S+)$/i.exec(String(l || '').trim()); return m ? m[1] : null; }; // "routes bug" → a "bug" tag
   // quick: a candidate the layout searches below score and may drop, laid out once, as it was before 0.6.0 (no room for lines
   // with no route, no way round the cards for them, no warning)
@@ -509,18 +531,27 @@ function mapContext(model, opts = {}) {
       if (typeof x.id === 'string' && !(x.id in into)) into[x.id] = c; if (Array.isArray(x.members)) x.members.forEach(m => s.push([m, c === 'changed' || c === 'modified' || c === 'planned' ? null : c])); }
     return into; };
   let memberCh; const memberOf = id => (memberCh ||= ownCh([nodes]))[id] || null;
+  // the element a member (a state's region) is a member of, at any depth: the first of its id
+  let memberTop; const topOf = id => { if (!memberTop) { memberTop = O(); const s = nodes.map(n => [n, n && n.id]);
+    for (let i = 0; i < s.length; i++) { const [x, t] = s[i]; if (!x || typeof x !== 'object' || !Array.isArray(x.members)) continue;
+      x.members.forEach(m => { if (m && typeof m === 'object' && typeof m.id === 'string' && !(m.id in memberTop)) { memberTop[m.id] = t; s.push([m, t]); } }); } }
+    return memberTop[id] ?? null; };
   const put = (x, c) => { if (c) { x.change = c; MARKED.add(x); } else if (MARKED.has(x)) { delete x.change; MARKED.delete(x); } };
   // a timing view's constraints are its own too (audit 49)
-  const ownLists = v => [v.edges, v.fragments, v.timeline && typeof v.timeline === 'object' ? v.timeline.constraints : null];
+  const ownLists = v => [v.edges, v.fragments, ...(v.timeline && typeof v.timeline === 'object' ? [v.timeline.constraints, v.timeline.changes] : [])]; // and its changes (audit 51: a removed lifeline's, drawn back)
   function marks(g, vid) { const v = V[vid] || {}, own = ownCh(ownLists(v)), ev = O(), lines = new Set();
     (D.edges || []).forEach(e => { if (e && typeof e.id === 'string') { lines.add(e.id); if (chOf(e)) ev[e.id] ??= chOf(e); } });
     // a shape a type draws for a model line (a communication view's message row) takes the line's change (audit 46)
-    const lineCh = k => (k in own ? own[k] : ev[k]) || null, boxCh = id => (N[id] ? chOf(nodeIn(id, vid)) : id in own ? own[id] : memberOf(id) || ev[id] || null);
+    // a member drawn as its own box goes or comes with the element it is a member of, which the view alone took out or put in
+    // (audit 58: a composite state taken out of the view, its regions drawn live inside it)
+    const viaTop = id => { const t = topOf(id), c = t != null && N[t] ? chOf(nodeIn(t, vid)) : null; return came(c) || gone(c) ? c : null; };
+    const lineCh = k => (k in own ? own[k] : ev[k]) || null, boxCh = id => (N[id] ? chOf(nodeIn(id, vid)) : id in own ? own[id] : (m => came(m) || gone(m) ? m : viaTop(id) || m)(memberOf(id) || ev[id] || null));
     const came = c => !!c && CHG_IS.added.includes(c), gone = c => !!c && CHG_IS.removed.includes(c), diffCh = c => came(c) || gone(c) || c === 'changed' || c === 'modified';
     // a shape a type draws for a member on another, <part>-><port> (no element id holds '->', model.md rule 5): removed with the
     // part it sits on or its own member, else added with either (audit 46: the ports on a removed or added part drawn live)
     // or changed with its own member, a port renamed or retyped (audit 47; a part's own change is the part's, not its ports')
-    const onCh = id => { const s = id.split('->'); if (s.length < 2 || N[s[0]]) return null; const cs = s.map(x => (x ? boxCh(x) : null)), c = cs[cs.length - 1];
+    // A shape on a model element that went (a timing lane's state row, <lifeline>-><state>) is removed with it (audit 51)
+    const onCh = id => { const s = id.split('->'); if (s.length < 2) return null; if (N[s[0]]) return gone(boxCh(s[0])) ? boxCh(s[0]) : null; const cs = s.map(x => (x ? boxCh(x) : null)), c = cs[cs.length - 1];
       return cs.find(gone) || cs.find(came) || (c === 'changed' || c === 'modified' ? 'changed' : null); };
     // what diff() worked out from the view laid out before and after (audit 47: view.diffMarks.marks, by shape id): a port a
     // retyped part gained or lost, a containment line that is new, and "none" for a shape drawn from what it reads, or for an
@@ -547,8 +578,11 @@ function mapContext(model, opts = {}) {
     // a line a type derives from its ends (a SysML containment line, <owner>-><child>), no model line's: with an end that came or went
     const endCh = new Map([...(g.nodes || []), ...(g.families || [])].filter(x => x && typeof x.id === 'string').map(x => [x.id, x.change || null]));
     const derived = e => { const a = endCh.get(e.from), b = endCh.get(e.to); return gone(a) || gone(b) ? 'removed' : came(a) || came(b) ? 'added' : null; };
+    // a line diff() marked changed (its label edited) that goes with a card the view no longer shows, or comes with one it now
+    // shows, or with the view itself: removed (added), as on a map view (audit 56: drawn live, amber, to the card's ghost)
+    const gw = k => { const h = dm && Object.hasOwn(dm, k) ? dm[k] : null, c = lineCh(k); return (h === 'removed' || h === 'added') && (c === 'changed' || c === 'modified') ? h : c; };
     (g.edges || []).forEach(e => { const k = e && (e._id ?? e.id); if (typeof k !== 'string') return;
-      const c = lineCh(k) || (dg && dg.has(k) && !lines.has(k) && !(k in own) ? 'removed' : null) || hint(k, (Array.isArray(e.implied) ? implied(e.implied) : !lines.has(k) && !(k in own) && k.includes('->') ? derived(e) : null) || readsCh(e));
+      const c = gw(k) || (dg && dg.has(k) && !lines.has(k) && !(k in own) ? 'removed' : null) || hint(k, (Array.isArray(e.implied) ? implied(e.implied) : !lines.has(k) && !(k in own) && k.includes('->') ? derived(e) : null) || readsCh(e));
       if (c) e.change = c; else delete e.change; });
     return g; }
   function buildGeo(vid, override, repair = (V[vid] || {}).repair !== false, quick = false) { // a view's repair: false turns port repair off
@@ -556,8 +590,10 @@ function mapContext(model, opts = {}) {
     if (T) { // the type's layout (registry.js), in the host's measure (R2)
       const L = T.layout, memo = memos[vid] ||= {}, k = !override && L.key ? L.key(D, v) : null;
       if (k != null && memo.runKey === k) return marks(memo.runGeo, vid);
-      const pos = override || (L.pins === false ? {} : L.rank === false ? onGrid(vid, v.layout || {}) : v.layout ? fillLayout(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid))); // pins: false, no ranking either (notes/stage-3.md Q9)
-      let g = L.run ? L.run(D, v, { measure: M, pos, memo }) : L({ model: D, view: v, pos, memo });
+      const pos = override || (L.pins === false ? {} : L.rank === false ? onGrid(vid, v.layout || {}) : v.layout ? fillLayout(vid, v.layout, true) : (layoutCache[vid] ||= autoPos(vid))); // pins: false, no ranking either (notes/stage-3.md Q9)
+      const run = (pos, memo) => (L.run ? L.run(D, v, { measure: M, pos, memo }) : L({ model: D, view: v, pos, memo }));
+      let g; // a pinned view's warnings held back: pinsClear may drop the layout that gave them, and only the one kept says its own (audit 59)
+      if (!override && v.layout && L.pins !== false) { let said; [g, said] = held(() => run(pos, memo)); [g, said] = pinsClear(vid, v, L, g, memo, said, run); said.forEach(warn); } else g = run(pos, memo);
       // the request/reply port swap (layered.js) is judged inside a pass; the later passes and the type's own steps can undo
       // it, so a view that kept one is laid out once more without it, and that kept when it has fewer issues (audit 15).
       // ponytail: a layout more, so only up to 30 cards (as bestFlow); a larger view keeps the swap as the pass judged it
@@ -569,12 +605,13 @@ function mapContext(model, opts = {}) {
       // an element that opens a view says which in its name, as a map card does, unless its type's name says so already
       // (saysOpens; a typed node draws no ⤢ mark: notes/stage-4.md)
       (g.nodes || []).forEach(n => { const o = N[n.id] && opensOf(n.id, vid); if (!o || n.saysOpens) return;
-        n.opensTo = String(labelOr((V[o] || {}).title, o)); const t = `, opens ${n.opensTo}`; if (n.aria) n.aria += t; if (typeof n.ariaOwn === 'string' && n.ariaOwn) n.ariaOwn += t; });
+        // a name that ends a sentence (a C4 description) drops its period before the suffix: never ".," (audit 52)
+        n.opensTo = String(labelOr((V[o] || {}).title, o)); const t = a => `${unstop(a)}, opens ${n.opensTo}`; if (n.aria) n.aria = t(String(n.aria)); if (typeof n.ariaOwn === 'string' && n.ariaOwn) n.ariaOwn = t(n.ariaOwn); });
       if (k != null) Object.assign(memo, { runKey: k, runGeo: g });
       return marks(g, vid);
     }
     const edges = viewEdges(v, true).map(e => ({ ...e }));
-    if (v.render === 'sequence') edges.forEach((e, i) => { e.step = i + 1; });
+    if (v.render === 'sequence') { const k = runSteps(edges); edges.forEach((e, i) => { e.step = k[i]; }); } // a removed line: no step (audit 55)
     const P = planCache[vid] || { flow: true, backKeys: loopsOf(v).keys, steps: O() };
     if (!override && P.hub) return hubGeo(vid, P, edges, repair, quick);
     const pos = override || (v.layout ? fillLayout(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid)));
@@ -585,6 +622,52 @@ function mapContext(model, opts = {}) {
       edges: prepEdges(vid, edges, P.backKeys) };
     dg.authors = D.authors; dg.fan = !scouting; dg.repair = repair; dg.intake = v.intake; dg.tour = v.tour; dg.gap = v.gap; dg.rgap = v.rgap; dg.quick = quick;
     return layoutGraph(dg, true);
+  }
+  /* a typed view whose pins, as drawn, leave a box over a card it does not hold, two boxes over each other or two cards over each
+     other (settlePins goes by cells, and a tall row reaches over the half row after it: audit 58, the profile example's Order
+     one column down, its package box over the profile beside it): a pin moves to a cell round it, nearest first, a pin of what
+     they meet before the others (a pin moves cards with none too), until none is left (12 layouts at most), the fewest kept. ponytail: a cell model that knows each row's reach */
+  function pinsClear(vid, v, L, g, memo, said, run) { // said: what the layout g warned of; returns [the layout kept, what it warned of]
+    // and a line of a pinned card on another (check()'s share a line), counted after the boxes (audit 60: laid out down, the SysML
+    // internal block gallery's battery stepped a column on, its bus to the controller fanned on the track a line out of the
+    // controller's same side takes from its port, and the two shared a line)
+    // (a pin of a card the view draws though its nodeIds do not list it: an internal block's part, under its block)
+    const ids = v.nodeIds || [], pinned = [...ids, ...Object.keys(v.layout).filter(i => !ids.includes(i) && (g.byId || {})[i])].filter(i => Object.hasOwn(v.layout, i) && Array.isArray(v.layout[i])), share = (h, ids) => { const own = new Set(ids);
+      return routeAudit(h, '', new Set((h.edges || []).filter(e => own.has(e.from) || own.has(e.to)))).filter(s => / share a line$/.test(s)).length; };
+    // and what else check() says of the picture but crossings (a line along a box's border or across its title, a label on a line or
+    // with no room, a line through a card), past what the view says with no pin (audit 61: a region's initial pseudostate dragged
+    // right of its composite, its line through the region's title and along its border; one Alt + arrow on a gallery card, a label
+    // then not drawn). All of those weigh less than one shared line of a pinned card
+    const soft = h => [...routeAudit(h, ''), ...throughIssues(h, ''), ...leaveIssues(h, '')].filter(s => !/ cross$/.test(s)).length;
+    let base = null; const over = h => { const k = soft(h); if (!k) return 0; if (base == null) { const [b] = held(() => run(L.rank === false ? {} : (layoutCache[vid] ||= autoPos(vid)), {})); base = soft(b); } return Math.min(99, Math.max(0, k - base)); };
+    const score = h => 100 * (1000 * boxClash(h).size + share(h, pinned)) + over(h);
+    const met = boxClash(g), n0 = 100 * (1000 * met.size + share(g, pinned)) + over(g); if (!n0) return [g, said];
+    pinned.forEach(i => { if (share(g, [i])) met.add(i); });
+    // a pinned card a line of which (or which itself) check() names past those: met too
+    if (n0 % 100) { const a1 = [], a2 = [], ps = [...routeAudit(g, '', null, a1).map((s, k) => [s, a1[k]]), ...throughIssues(g, '', a2).map((s, k) => [s, a2[k]])];
+      ps.forEach(([s, a]) => { if (!/ cross$/.test(s)) (a || []).forEach(x => { if (x) [x.id, x.from, x.to].forEach(i => { if (pinned.includes(i)) met.add(i); }); }); });
+      (g.edges || []).forEach(e => { if ((e.label || e.step != null) && !e.lbl) [e.from, e.to].forEach(i => { if (pinned.includes(i)) met.add(i); }); }); }
+    const fam = O(), homes = O(); (g.families || []).forEach(f => { fam[f.id] = f; arrOf(f.nodeIds).forEach(i => { (homes[i] ||= []).push(f.id); }); });
+    const hit = i => { if (met.has(i)) return true; const st = [...(homes[i] || [])]; for (let k = 0; st.length && k <= 4096; k++) { const f = st.pop(); if (met.has(f)) return true; if (fam[f] && fam[f].parent != null) st.push(fam[f].parent); } return false; };
+    const all = [...pinned].reverse(), pins = [...all.filter(hit), ...all.filter(i => !hit(i))]; // what they meet first, then the rest, last first
+    if (!pins.length) return [g, said];
+    let best = { g, n: n0, memo: null, said }, left = 12; const seen = new Set();
+    for (const i of pins) { const n0 = (g.byId || {})[i] || (g.nodes || []).find(n => n.id === i), p = n0 && Number.isFinite(n0.col) ? [n0.col, n0.row] : v.layout[i];
+      for (let m = 1; m <= 2 && best.n && left > 0; m++) for (let dc = -m; dc <= m && best.n && left > 0; dc++) for (const dr of new Set([m - Math.abs(dc), Math.abs(dc) - m])) {
+        if (!best.n || left <= 0) break; const c = p[0] + dc, r = p[1] + dr; if (c < 0 || r < 0) continue;
+        const L2 = { ...v.layout, [i]: [c, r] }, pos = L.rank === false ? onGrid(vid, L2) : fillLayout(vid, L2, true), key = JSON.stringify(pos); if (seen.has(key)) continue; seen.add(key); left--;
+        const m2 = {}, [h, w] = held(() => run(pos, m2)), k = score(h);
+        if (k < best.n) best = { g: h, n: k, memo: m2, said: w }; } }
+    // none of those clean (a region's box reaches past the cells the pins settle by: audit 60, order-states' parcel-start dropped
+    // right of Fulfilling, its box over In delivery): the pins that meet something dropped, so those cards take a slot as a card
+    // with no pin does (boxFit), the pins the picture can keep kept. One at a time first, in that order (audit 61: a pin in the
+    // composite's other region, which met nothing itself, went with the one that did, and a clean drag there did nothing), then all
+    const hits = pins.filter(hit), drop = ids => { const L2 = { ...v.layout }; ids.forEach(i => { delete L2[i]; });
+      const pos = L.rank === false ? onGrid(vid, L2) : fillLayout(vid, L2, true), m2 = {}, [h, w] = held(() => run(pos, m2)), k = score(h);
+      if (k < best.n) best = { g: h, n: k, memo: m2, said: w }; };
+    if (best.n && hits.length) { if (hits.length > 1) for (const i of hits.slice(0, 6)) { if (!best.n) break; drop([i]); } if (best.n) drop(hits); }
+    if (best.memo) { Object.keys(memo).forEach(k => { delete memo[k]; }); Object.assign(memo, best.memo); }
+    return [best.g, best.said];
   }
   function hubGeo(vid, P, edges, repair, quick) {
     const NH = V[vid].subAndChips ? 80 : 64, CG = 108, RG = 44, pitch = NH + RG, hub = P.hub;

@@ -135,6 +135,25 @@ function portFit(ports, sides) {
   return Object.fromEntries(Object.entries(sum).map(([o, k]) => [o, { w: Math.max(k.T, k.B), h: Math.max(k.L, k.R) }]));
 }
 
+/* a node whose port with no line portsDrawn held over another port (its side's slots taken by lines to the node's body, which
+   portFit does not count): over, the { owner, side } portsDrawn gave in its third argument. The nodes again, each such owner a slot (12 + 8 px)
+   longer on that side for each, to be laid out once more; null when none was held, so every other picture stays as it was (audit 52:
+   a component's pinned port with no line was drawn over the next port, and check() said they overlap) */
+function portRoom(nodes, over) {
+  const add = Object.create(null); SN_ARR(over).forEach(({ owner, side }) => { const k = add[owner] ||= { w: 0, h: 0 }; k[side === 'L' || side === 'R' ? 'h' : 'w'] += SN.port + 8; });
+  const ids = Object.keys(add); if (!ids.length) return null;
+  return SN_ARR(nodes).map(n => (n && Object.hasOwn(add, n.id) ? { ...n, w: n.w + add[n.id].w, h: n.h + add[n.id].h } : n));
+}
+
+// portsDrawn over g, its layout of nodes by run, and portRoom's growth laid out again while a port is still held (audit 53: the
+// lines to the grown node's body spread over the longer side again, so one pass left two ports over each other with four lines),
+// at most four times, each pass's growth twice the last's (1, 2, 4, 8 slots for each held port); the first pass is audit 52's, so
+// a picture it settled stays as it was. { g, d }: the last layout and what portsDrawn drew over it
+function portsHeld(nodes, g, run, ports) {
+  for (let k = 0, cur = nodes; ; k++) { const over = k < 4 ? [] : null, d = portsDrawn(g, ports, over), grown = over && portRoom(cur, Array(2 ** k).fill(over).flat());
+    if (!grown) return { g, d }; g = run(cur = grown); }
+}
+
 /* ---- after the layout, on a copy (§4.3, §4.5) ----
    g: what layoutTyped returned, never edited. ports: [{ id, owner, side, label, valueType, stereotypes, aria }] in members order, side as
    portSides gave it; id is the port's geometry id (`<part>-><port>` on a part, §6), the one its lines name as fromPort or
@@ -145,7 +164,7 @@ function portFit(ports, sides) {
    along the side they leave by, onto the square's outer face (its inner face, for a line inward). Each port becomes a node
    of the copy (shape 'port'), with its name `name : Type` placed by the end labels' search (endLabels) beside its first
    line out, or where a line straight out would be: clear of lines, nodes, ports, line labels and the names before it */
-function portsDrawn(g, ports) {
+function portsDrawn(g, ports, held0 = null) {
   const fams = SN_ARR(g.families), has = id => SN_OBJ(g.byId) && Object.hasOwn(g.byId, id), owner = id => (has(id) ? g.byId[id] : fams.find(f => f.id === id)), isBox = id => !has(id);
   const slide = (p, s) => [r2(p[0] + 6 * SN_OUT[s][0]), r2(p[1] + 6 * SN_OUT[s][1])];
   const edges = SN_ARR(g.edges).map(e => { if (!e.pts || !(e.fromPort || e.toPort)) return e; const pts = e.pts.map(p => p.slice());
@@ -177,6 +196,9 @@ function portsDrawn(g, ports) {
     mine.forEach((p, i) => { const t = Math.max(ts[i], a + 6), r = v ? { x: r2(edge - 6), y: r2(t - 6), w: 12, h: 12 } : { x: r2(t - 6), y: r2(edge - 6), w: 12, h: 12 };
       if (t > ts[i]) r.over = true; at.set(p.id, r); held.push(r); });
   });
+  // one held over another port of a node (not one that only meets a line's end) is said to the caller, whose node then grows (portRoom)
+  if (Array.isArray(held0)) list.forEach(p => { const r = at.get(p.id); if (!r || !r.over || isBox(p.owner)) return;
+    if (list.some(q => q !== p && q.owner === p.owner && at.has(q.id) && (z => r.x < z.x + z.w && z.x < r.x + r.w && r.y < z.y + z.h && z.y < r.y + r.h)(at.get(q.id)))) held0.push({ owner: p.owner, side: p.side }); });
   // the names: obstacles are the nodes, the ports, every box's border and 24 px header room, every line's segments and labels,
   // and the names placed before
   const segs = edges.filter(e => e.pts).flatMap(e => e.pts.slice(1).map((q, k) => { const p = e.pts[k]; return { x: Math.min(p[0], q[0]) - 3, y: Math.min(p[1], q[1]) - 3, w: Math.abs(q[0] - p[0]) + 6, h: Math.abs(q[1] - p[1]) + 6 }; }));
@@ -234,4 +256,4 @@ function structProblems(model, view) {
   return out;
 }
 
-export { SN_PRESENT_RULE, sideProblem, SN_ARTIFACTS, SN_SAY, snKindWord, snKindName, snLineName, portLen, portSides, portFit, portsDrawn, STRUCT_RULES, structProblems };
+export { SN_PRESENT_RULE, sideProblem, SN_ARTIFACTS, SN_SAY, snKindWord, snKindName, snLineName, portLen, portSides, portFit, portsDrawn, portRoom, portsHeld, STRUCT_RULES, structProblems };

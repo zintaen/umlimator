@@ -2,7 +2,7 @@ import { jsonText, labelOr } from '../core/model.js';
 import { TYPED, aKind, diagramOf } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
-import { brLines } from '../typed/draw.js'; // SHAPE.classifier, whose ports the closed package takes
+import { brLines, goneIn, liveOf } from '../typed/draw.js'; // SHAPE.classifier, whose ports the closed package takes
 
 /* ---------- owners on the picture (work package 2.2, notes/stage-2.md §4 to §7) ----------
    What the class, package and object views share: which shown package is a box and what it holds (§4.1), the names drawn
@@ -72,7 +72,12 @@ function ownersOn(model, view, look = {}) {
   const live = new Set(ids.flatMap(id => chain(id).filter(p => mems.has(p) && seen.has(up.get(p))))), place = m => OWN_ARR(at.get(up.get(m)).members).indexOf(at.get(m)); // members holding something shown
   const many = m => OWN_ARR(at.get(up.get(m)).members).filter(x => OWN_OBJ(x) && members.includes(x.type)).length > 1; // §6.1, 2: two or more in the model
   const kept = [...live].filter(many).sort((a, b) => place(a) - place(b)), all = [...ids, ...kept], shown = new Set(all);
-  const ow = new Map(all.map(id => [id, chain(id).find(p => shown.has(p) && (mems.has(p) || boxTypes.includes(kind(at.get(p))))) ?? null])), owner = id => ow.get(id) ?? null;
+  const boxy = p => shown.has(p) && (mems.has(p) || boxTypes.includes(kind(at.get(p)))), gh = typeof look.ghost === 'function' ? id => look.ghost(id, at.get(id)) : null;
+  const ow = new Map(all.filter(id => !gh || !gh(id)).map(id => [id, chain(id).find(boxy) ?? null])), owner = id => ow.get(id) ?? null;
+  // look.ghost(id, x): a card diff() draws back removed (C4's), which opens no box: in the nearest one something live opens, else
+  // at the top, so its owner is drawn as the model after draws it (audit 54: a deployment node holding only a removed instance
+  // was drawn a box, and the implied line the model after draws from it could not be)
+  if (gh) { const opened = new Set(ow.values()); all.forEach(id => { if (gh(id)) ow.set(id, chain(id).find(p => boxy(p) && opened.has(p)) ?? null); }); }
   const over = (id, stop, by) => { const c = chain(id), k = c.indexOf(stop), q = by ? c.findIndex(p => !by.includes(kind(at.get(p) || {}))) : -1;
     return c.slice(0, Math.min(k < 0 ? c.length : k, q < 0 ? c.length : q)); }; // the owners a name is qualified by, nearest first
   const upTo = (id, stop, by) => [...over(id, stop, by).reverse(), id].map(x => ownName(ownAt(at, x))).join('::');
@@ -85,10 +90,16 @@ function ownersOn(model, view, look = {}) {
   const holds = o => by.get(o) || [], open = new Set([...by.keys()].filter(x => x != null));
   // an open box's title is qualified as a card's name is, so it reads those owners too (audit 49: a box titled "sales::orders"
   // was not marked when sales was renamed)
-  const boxes = all.filter(id => open.has(id)).map(id => { const p = at.get(id), st = stereoOf(p), held = holds(id), o = owner(id), nm = name(id), rd = via(id);
+  // the count in a box's name is the model after's on the diff page: a card diff() drew back removed is not counted, and a box
+  // holding only such cards says no count, as the model after's card says none (audit 55, as the overview's since audit 53)
+  // a removed box counts what it still holds live, which the model after holds in its owner (audit 56)
+  // a member box (a state's region) is gone with the element it is a member of, which diff() alone marks (audit 57)
+  const gone0 = goneIn(view, id => at.get(id)), gone = id => { for (let p = id, k = 0; p != null && k < 64; p = mems.has(p) ? up.get(p) : null, k++) if ((gh ? gh(p) : false) || gone0(p)) return true; return false; }, liveHeld = id => liveOf(holds(id), gone, holds); // the live ones a box holds
+  const counted = id => (gone(id) ? holds(id) : liveHeld(id)); // what its name counts: a removed box's, what it held, the model before's
+  const boxes = all.filter(id => open.has(id)).map(id => { const p = at.get(id), st = stereoOf(p), held = holds(id), o = owner(id), nm = name(id), rd = via(id), n = counted(id).length;
     return boxHead({ id, label: ownName(p), title: [...(p.type === 'uml.Profile' ? ['«profile»'] : []), ...st.map(t => `«${t}»`), nm].join(' '), nodeIds: held.filter(x => !open.has(x)), ...(o != null ? { parent: o } : {}), shape: shape(p), ...(rd.length ? { reads: rd } : {}),
-      aria: `${word(p)} ${nm}${st.length ? ` (${st.join(', ')})` : ''}, holding ${held.length} element${held.length === 1 ? '' : 's'}` }); });
-  return { ids, owner, holds, boxes, name, full, via, open, chain, at };
+      aria: `${word(p)} ${nm}${st.length ? ` (${st.join(', ')})` : ''}${n ? `, holding ${n} element${n === 1 ? '' : 's'}` : ''}` }); });
+  return { ids, owner, holds, boxes, name, full, via, open, chain, at, gone, counted };
 }
 
 // the reading order of a view's elements (§5): each box, then what it holds, depth first; the rest in the view's order

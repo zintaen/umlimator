@@ -1,9 +1,10 @@
-import { TYPED, registerDiagramType, idTable, ownGuard } from '../core/registry.js';
-import { brLines, esc, fit, textW, widest } from '../core/text.js';
+import { TYPED, registerDiagramType, idTable, ownGuard, everyOwn } from '../core/registry.js';
+import { brLines, esc, fit, joinWords, textW, widest, wrapLines } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { layoutTree } from '../layout/tree.js';
 import '../typed/edit.js'; // TYPED.edit, which the outline's Show on a topic wraps (mmShow)
 import { usedIds, jsonText, labelOr } from '../core/model.js';
+import { goneIn, liveOf } from '../typed/draw.js';
 
 /* ---------- the mindmap, mindmap (work package 4a.4, notes/milestone-4a.md §7) ----------
    Topics (mindmap.Topic) form a tree by parent; the view's nodeIds say which are shown and, among siblings, in what order.
@@ -59,12 +60,11 @@ function mmSize(n, root, opens) {
   const S = root ? MM.root : MM.topic, out = [];
   // ponytail: text past 400 characters per paragraph is cut before wrapping (four lines hold about 130); fit's loop is quadratic in what it gets
   const paras = brLines(mmText(n)).map(p => p.trim().slice(0, 400).replace(/[\uD800-\uDBFF]$/, '')); // never half a letter
-  for (const p of paras) { let line = '';
-    for (const w of p.split(/\s+/).filter(Boolean)) { const t = line ? line + ' ' + w : w;
-      if (textW(t, S.px) <= MM.max || !line) line = t; else { out.push(line); line = w; } }
-    out.push(line);
+  // a line breaks between words, and between two ideographs (Chinese, Japanese: no spaces) or inside a word too wide for it (audit 58)
+  for (const p of paras) { const ls = wrapLines(p, S.px, MM.max);
+    out.push(...(ls.length ? ls : [['', true]]).map((l, i) => (i ? l : [l[0], true]))); // a paragraph's first line follows a space
     if (out.length > MM.lines) break; }
-  const lines = out.length > MM.lines ? [...out.slice(0, MM.lines - 1), out.slice(MM.lines - 1).join(' ')] : out;
+  const lines = out.length > MM.lines ? [...out.slice(0, MM.lines - 1).map(l => l[0]), joinWords(out.slice(MM.lines - 1))] : out.map(l => l[0]);
   const shown = lines.map(l => fit(l, S.px, MM.max, true)), tw = Math.max(1, widest(shown, l => Math.ceil(textW(l, S.px))));
   if (lines.length === MM.lines && out.length > MM.lines && !shown.at(-1).endsWith('…')) shown[MM.lines - 1] = fit(shown.at(-1) + '…', S.px, MM.max);
   return { lines: shown, tw, w: tw + 2 * S.pad + (opens ? MM.open : 0), h: shown.length * S.lh + 2 * S.pad };
@@ -85,7 +85,12 @@ function mmRun(model, view) {
     const dy = bottom == null ? 0 : bottom + MM.trees - o.bounds.y; bottom = o.bounds.y + o.bounds.h + dy;
     const ink = new Map(), kids = new Map(), up = new Map(o.links.map(l => [l.to, l.from]));
     o.nodes.forEach(n => { if (n.depth === 1) ink.set(n.id, MM_INK[ink.size % MM_INK.length]); });
-    const mine = o.links.map(l => { kids.set(l.from, (kids.get(l.from) || 0) + 1); return { from: l.from, to: l.to, p1: [l.p1[0], r2(l.p1[1] + dy)], p2: [l.p2[0], r2(l.p2[1] + dy)] }; });
+    // a topic's subtopics counted as the model after counts them: on the diff page not one diff() drew back removed (audit 55),
+    // nor one taken out of the view; one with subtopics gives its own live ones, which the model after hangs on its parent (audit 56)
+    const sub = new Map(); o.links.forEach(l => (sub.get(l.from) || sub.set(l.from, []).get(l.from)).push(l.to));
+    const gone = goneIn(V, id => X.N.get(id)), kidsOf = id => sub.get(id) || [];
+    sub.forEach((v, id) => kids.set(id, (gone(id) ? v : liveOf(v, gone, kidsOf)).length)); // a removed one: what it had, the model before's
+    const mine = o.links.map(l => ({ from: l.from, to: l.to, p1: [l.p1[0], r2(l.p1[1] + dy)], p2: [l.p2[0], r2(l.p2[1] + dy)] }));
     const branches = new Map(); // a first-level topic's subtree in pre-order (nodes come in pre-order)
     o.nodes.forEach(t => { const x = X.N.get(t.id), k = kids.get(t.id) || 0, v = opens(t.id), p = up.get(t.id), s = size.get(t.id);
       const n = { id: t.id, shape: 'mm-topic', type: MM_T, label: mmText(x), k: 'file', x: t.x, y: r2(t.y + dy), w: t.w, h: t.h, depth: t.depth, side: t.side, branch: t.branch,
@@ -269,8 +274,9 @@ function mmRemove(model, view, ids, fromModel) {
   const X = mmIndex(model, V), mine = [...new Set(MM_ARR(ids))]; if (!mine.length || mine.some(id => !X.topic(id))) return null;
   const top = mine.filter(id => !mine.some(o => o !== id && (fromModel ? mmUnder(X, o, id) : mmInside(X, o, id)))); // one under another goes with it
   const said = (k, verb) => `${verb} ${top.map(id => mmOne(X.N.get(id))).join(', ')}${k ? ` and ${top.length === 1 ? 'its' : 'their'} ${mmPlural(k, 'subtopic')}` : ''}`;
-  if (fromModel) { const all = mmAllKids(X), gone = new Set(), own = new Set(MM_ARR(V.nodes).filter(MM_OBJ).map(x => x.id));
-    // a model topic under one this view alone holds is not taken with it: apply() lifts it (audit 23)
+  // every view's own topics too: apply() deletes another view's own topic under a model topic, so the hint counts it (audit 52, as clRemove)
+  if (fromModel) { const M = everyOwn(model, V), all = mmAllKids(mmIndex(M.model, V)), gone = new Set(), own = new Set(MM_ARR(M.model.nodes).slice(M.k).filter(MM_OBJ).map(x => x.id));
+    // a model topic under one a view alone holds is not taken with it: apply() lifts it (audit 23)
     top.forEach(r => { for (const s = [r]; s.length;) { const k = s.pop(); if (gone.has(k)) continue; gone.add(k); MM_ARR(all.get(k)).forEach(c => (!own.has(k) || own.has(c)) && s.push(c)); } });
     return { commands: [...mmPinsAt(model, X, V, null, gone), ...top.map(id => ({ op: 'delete', id }))], say: said(gone.size - top.length, 'Deleted') }; }
   const hide = []; top.filter(id => X.shown.has(id)).forEach(r => { for (const s = [r]; s.length;) { const k = s.pop(); hide.push(k); s.push(...X.kids.get(k)); } });

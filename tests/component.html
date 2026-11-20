@@ -158,6 +158,13 @@ try {
   click('.node[data-id="order-worker"] .c-name'); key('Delete', { shiftKey: true });
   gives('Shift + Delete: delete the component and its dependency', [{ op: 'delete', id: 'order-worker' }], m => !m.edges.some(e => e.id === 'worker-needs-api'), m3);
   h.destroy();
+  // Alt + an arrow onto a cell another card is pinned to steps over it (audit 58: the two were drawn one over the other)
+  const m4 = { schemaVersion: 2, root: 'components', nodes: [{ id: 'pa', type: 'uml.Component', label: 'Alpha' }, { id: 'pb', type: 'uml.Component', label: 'Beta' }], edges: [],
+    views: [{ id: 'components', diagram: 'uml.component', nodeIds: ['pa', 'pb'], layout: { pb: [1, 0] } }] };
+  h = mount(m4, { editable: true });
+  click('.node[data-id="pa"] .c-name'); key('ArrowRight', { altKey: true });
+  gives('Alt + → onto Beta\'s pinned cell: Alpha pinned past it', [{ op: 'set', view: 'components', path: ['layout', 'pa'], value: [2, 0] }], m => true, m4);
+  h.destroy();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

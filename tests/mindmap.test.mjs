@@ -632,3 +632,27 @@ test('a topic renamed, by F2 or the Name field, leaves every first-level topic o
   assert.equal(MM_TYPE.edits.field(M, V(M), 'mm-launch', 'props.note', 'x'), null, 'another field: the default');
   assert.deepEqual(mmRename(EX(), V(EX()), 'mm-launch', 'Launch day').length, 1, 'sides stored: nothing to pin');
 });
+
+// audit 52: Shift + Delete of a model topic counts the subtopics another view holds as its own under it, which apply() deletes
+// all the same (as cloud's clRemove, audit 51); a model topic under one a view alone holds is lifted, not counted
+test('audit 52: Shift + Delete of a model topic counts another view\'s own subtopics under it', () => {
+  const T = 'mindmap.Topic', m = { schemaVersion: 2, nodes: [{ id: 'r', type: T, label: 'Root' }, { id: 'a', type: T, label: 'A', parent: 'r' }], edges: [],
+    views: [{ id: 'v1', diagram: 'mindmap', nodeIds: ['r', 'a'] }, { id: 'v2', diagram: 'mindmap', nodeIds: ['r', 'a', 'b', 'c'], nodes: [{ id: 'b', type: T, label: 'B', parent: 'a' }, { id: 'c', type: T, label: 'C', parent: 'b' }] }] };
+  for (const v of m.views) { const r = mmRemove(m, v, ['a'], true), n = apply(m, r.commands);
+    assert.equal(r.say, 'Deleted A and its 2 subtopics', v.id); assert.deepEqual(n.views[1].nodes, [], v.id); }
+});
+
+test('audit 58: a topic with no spaces (Chinese, Japanese, a long URL) wraps to its four lines of 200 px between two characters', () => {
+  for (const label of ['为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限', '書店の開店に向けて最初の五百冊を選び、二つの卸売業者と返品条件と支払期限を決める', 'https://example.com/bookshop/opening/plan/first-five-hundred-titles/returns']) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'r', type: 'mindmap.Topic', label: 'root' }, { id: 'a', type: 'mindmap.Topic', label, parent: 'r' }], views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['r', 'a'] }] };
+    const ls = layout(m, 'v').byId.a.lines;
+    assert.ok(ls.length > 1 && ls.every(l => textW(l, 13) <= 200), JSON.stringify(ls));
+    assert.equal(ls.join(''), label, 'joined with no space, nothing lost');
+  }
+  // a Japanese closing mark stays with the character before it
+  const ja = layout({ schemaVersion: 2, nodes: [{ id: 'a', type: 'mindmap.Topic', label: '書店の開店に向けて最初の五百冊を選び、二つの卸売業者と返品条件と支払期限を決める' }], views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['a'] }] }, 'v').byId.a.lines;
+  assert.ok(ja.every(l => !/^[、。」]/.test(l)), JSON.stringify(ja));
+  // English topics wrap as before, at spaces
+  const en = layout({ schemaVersion: 2, nodes: [{ id: 'a', type: 'mindmap.Topic', label: 'Choose the first five hundred titles for the shelves' }], views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['a'] }] }, 'v').byId.a.lines;
+  assert.equal(en.join(' '), 'Choose the first five hundred titles for the shelves');
+});

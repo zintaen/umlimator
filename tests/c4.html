@@ -92,7 +92,7 @@ try {
     const legend = all('.m-legend b').map(b => b.textContent), implied = vid === 'ctx' || vid === 'c4-context'; // the system's own line to the payment provider is gone from G3
     check(`${tag}: the key names each element type drawn, external, the relationship${implied ? ' and the implied line' : ''}`, legend.includes('Person') === (vid !== 'c4-components') && legend.includes('External software system')
       && legend.includes('Relationship') && legend.includes('Implied relationship') === implied, legend);
-    if (vid === 'c4-containers') check(`${tag}: names a screen reader reads`, pick('.node[data-id="c4-api"]').getAttribute('aria-label') === 'Container Shop API, Python, FastAPI: Catalogue, basket, checkout and accounts as a JSON API., opens Shop API: components'
+    if (vid === 'c4-containers') check(`${tag}: names a screen reader reads`, pick('.node[data-id="c4-api"]').getAttribute('aria-label') === 'Container Shop API, Python, FastAPI: Catalogue, basket, checkout and accounts as a JSON API, opens Shop API: components'
       && pick('.family[data-family="c4-bookshop"]').getAttribute('aria-label') === 'Software system Bookshop, a boundary holding 5 containers'
       && pick('.edge-g[data-from="c4-storefront"][data-to="c4-api"] title').textContent === 'Relationship from Storefront to Shop API: Reads the catalogue and places orders through [JSON over HTTPS]'
       && pick('.family[data-family="c4-bookshop"] .family-title').textContent === 'Bookshop [Software System]');

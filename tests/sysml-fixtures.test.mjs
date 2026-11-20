@@ -5,7 +5,7 @@
 // type's own test times, written out. Each view is laid out right and down with no line through a node but its own two
 // ends, every line end within 1 px of its node's box, no line label over a node, every port centred on its owner's border
 // (a part's, or the frame's), and what check() finds pinned: the crossings that repair and reroute off leave (§14, S18) and
-// the few other findings, each stated in its type's conformance note (docs/conformance/sysml-*.md). Then §14's budgets on
+// the few other findings, each stated in its type's conformance note (docs/diagrams/conformance/sysml-*.md). Then §14's budgets on
 // each fixture's all, in CPU time, best of seven after a warm-up: a full layout and its SVG under 1 s; the common edits under
 // CI's 1 s ceiling, their time printed against the 100 ms target. tests/sysml.html draws every view in Chrome under three
 // fonts and both themes, with the same checks on every view but the generated alls.
@@ -55,18 +55,18 @@ function clean(m, vid) {
 // what each view keeps, laid out right and down, counted: [crossings, check()'s other findings, what clean() calls wrong].
 // The edge-cases views and the minimal ones are clean but for the crossings counted here and one finding: laid out down, a
 // constraint block subject's parameter on the frame's top crosses its header band (M3.5's gap, stated in
-// docs/conformance/sysml-parametric.md). The generated views all crowd 60 lines with repair and reroute off (§14): there
+// docs/diagrams/conformance/sysml-parametric.md). The generated views all crowd 60 lines with repair and reroute off (§14): there
 // lines share a track, and labels that found no spot and were left off with nothing said, drawn now on a looser spot (audit 6),
 // lie on lines. Each is stated in its type's conformance note
 const PINNED = {
   'requirement-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
-  'requirement-stress': { 'edge-cases': { right: [1, 0, 0], down: [1, 0, 0] }, 'ec-package': { right: [0, 0, 0], down: [0, 0, 0] }, all: { right: [204, 1, 0], down: [233, 3, 0] } },
+  'requirement-stress': { 'edge-cases': { right: [1, 0, 0], down: [1, 0, 0] }, 'ec-package': { right: [0, 0, 0], down: [0, 0, 0] }, all: { right: [204, 1, 0], down: [232, 4, 0] } },
   'block-definition-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
-  'block-definition-stress': { 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, all: { right: [54, 0, 0], down: [50, 0, 0] } },
+  'block-definition-stress': { 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, all: { right: [49, 0, 0], down: [48, 0, 0] } },
   'internal-block-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
   'internal-block-stress': { 'edge-cases': { right: [1, 0, 0], down: [2, 0, 0] }, 'ec-ports-only': { right: [0, 0, 0], down: [0, 0, 0] }, all: { right: [5, 0, 0], down: [20, 1, 0] } }, // fewer since audit 38: lines between two parts keep their ports' order
   'parametric-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
-  'parametric-stress': { 'edge-cases': { right: [1, 0, 0], down: [1, 0, 0] }, 'ec-constraint-block': { right: [0, 0, 0], down: [0, 1, 0] }, all: { right: [207, 22, 0], down: [205, 24, 0] } },
+  'parametric-stress': { 'edge-cases': { right: [1, 0, 0], down: [1, 0, 0] }, 'ec-constraint-block': { right: [0, 0, 0], down: [0, 1, 0] }, all: { right: [208, 16, 0], down: [201, 18, 0] } },
 };
 
 test('every view of the eight fixtures, right and down: a line through a node, an end off its node, a label over a node, a port off its owner\'s border and check()\'s findings, each only as pinned (the stated limits)', () => {
@@ -86,7 +86,7 @@ test('every view of the eight fixtures, right and down: a line through a node, a
 // audit 25 lowered the pin to 22
 test('each SysML conformance note states its generated `all` view\'s crossings, and the parametric note its findings, as pinned', () => {
   for (const t of TYPES) {
-    const note = readFileSync(new URL(`../docs/conformance/sysml-${t}.md`, import.meta.url), 'utf8').replace(/\s+/g, ' '), { right, down } = PINNED[`${t}-stress`].all;
+    const note = readFileSync(new URL(`../docs/diagrams/conformance/sysml-${t}.md`, import.meta.url), 'utf8').replace(/\s+/g, ' '), { right, down } = PINNED[`${t}-stress`].all;
     assert.match(note, new RegExp(`crosses ${right[0]} times right and ${down[0]} down`), t);
     if (t === 'parametric') assert.match(note, new RegExp(`crosses ${right[0]} times right and ${down[0]} down, with ${right[1]} and ${down[1]} findings`), t);
   }
@@ -96,10 +96,10 @@ test('the minimal fixtures: what §15.3 says each holds, and no problem', () => 
   for (const t of TYPES) assert.deepEqual(said(FIX[`${t}-minimal`]), [], t);
   const r = FIX['requirement-minimal'];
   assert.deepEqual([r.nodes.map(n => [n.type, n.parent ?? null]), r.edges.map(e => [e.type, e.from, e.to])],
-    [[['sysml.Requirement', null], ['sysml.Requirement', 'need'], ['sysml.Block', null]], [['sysml.Satisfy', 'dock', 'lock']]], 'two requirements, one containing the other, a block satisfying one');
+    [[['sysml.Requirement', null], ['sysml.Requirement', 'need'], ['sysml.Block', null]], [['sysml.Satisfy', 'cargo-box', 'lock']]], 'two requirements, one containing the other, a block satisfying one');
   const b = FIX['block-definition-minimal'];
   assert.deepEqual([node(b, 'bike').members.map(x => [x.type, x.props.valueType]), b.edges.map(e => [e.type, e.props.ends.from.aggregation])],
-    [[['sysml.PartProperty', 'Wheel']], [['uml.Association', 'composite']]], 'a block with a part typed by a second block, one composite association');
+    [[['sysml.PartProperty', 'CargoBox']], [['uml.Association', 'composite']]], 'a block with a part typed by a second block, one composite association');
   const i = FIX['internal-block-minimal'];
   assert.deepEqual([node(i, 'bike').members.map(x => x.type), i.edges.map(e => e.type)], [['sysml.PartProperty', 'sysml.PartProperty'], ['sysml.Connector']], 'a block with two parts and one connector between their ports');
   const p = FIX['parametric-minimal'];

@@ -58,7 +58,7 @@ function mtFree(used, next, base) {
 
 // text: Mermaid's line breaks and entity codes (#quot; #lt; #59; ...); a named one Mermaid knows and this does not stays
 function mtDecode(s, bad) {
-  return s.replace(/<br\s?\/?>|\\n/gi, '\n').replace(/#(quot|lt|gt|amp|\d{1,6});/g, (all, e) =>
+  return s.replace(/<br\s?\/?>/gi, '\n').replace(/\\n/g, '\n').replace(/#(quot|lt|gt|amp|\d{1,6});/g, (all, e) =>
     ({ quot: '"', lt: '<', gt: '>', amp: '&' })[e] ?? mermaidChar(Number(e), all, bad));
 }
 
@@ -162,7 +162,7 @@ function readMermaidState(text) {
     return s[key];
   };
 
-  const over = mermaidOver(lines);
+  const over = mermaidOver(lines, say);
   for (; i < lines.length; i++) {
     const no = i + 1;
     let s = lines[i].trim();
@@ -264,6 +264,7 @@ function readMermaidState(text) {
     } else if (colon > 0) { // s1 : text
       const name = nameOf(s.slice(0, colon), no), codes = [], rawText = s.slice(colon + 1).trim(), t = mtDecode(rawText, code => codes.push(code));
       if (!name) { say(no, 'skipped', `"${mermaidClip(s)}" is not understood`); hint = {}; continue; }
+      if (!rawText) { say(no, 'skipped', `${name} : has no text: not read`); hint = {}; continue; } // no empty description (audit 56)
       const rec = mention(name, no), line = mtLine(t);
       if (line.activity || line.internal) for (const code of codes) say(no, 'approximated', mermaidBadChar(code)); // a description's are said when its note is read
       if (line.activity) {
@@ -517,15 +518,20 @@ function writeMermaidState(model, viewId) {
       const heads = [...(ch ? [`%% id: ${ch}`] : []), ...(lh ? [`%% link-id: ${lh}`] : [])];
       if (desc && has(c.label) && mtLine(String(c.label)).description) put(d, ...heads, textLine(n, c.label));
       else {
-        if (desc) lose(c.id, 'its text reads as an activity or a transition, so it is written as a note');
-        if (!has(c.label)) lose(c.id, 'no text');
+        // a note with no text reads back as the comment it is: said only of a description, which is written as a note (audit 56)
+        if (desc) lose(c.id, has(c.label) ? 'its text reads as an activity or a transition, so it is written as a note' : 'a description with no text, so it is written as a note');
         put(d, ...heads, `note right of ${names.get(n.id)} : ${has(c.label) ? enc(c.label) : ''}`);
       }
       Object.keys(c).filter(p => !['id', 'type', 'label', 'ext'].includes(p)).forEach(p => lose(c.id, p));
       lostExt(c, 'description');
     }
   };
+  // a key Mermaid has no place for on a state, a pseudostate, a region or an internal transition (opensView, what, change,
+  // sublabel, stereotype ...): named, as the transitions' and comments' are, never dropped without a word (audit 56)
+  const lostKeys = (x, keys) => Object.keys(x).filter(k => !keys.includes(k)).forEach(k => lose(x.id, k));
+  const NODE_KEYS = ['id', 'type', 'label', 'parent', 'props', 'members', 'ext'];
   const writeNode = (n, d) => {
+    lostKeys(n, NODE_KEYS);
     const name = names.get(n.id), heads = n.id !== name ? [`%% id: ${n.id}`] : [], kind = n.props?.kind;
     if (n.type === 'uml.Pseudostate' && MT_FORKS.includes(kind)) {
       if (has(n.label)) lose(n.id, `label ${typeof n.label === 'string' ? n.label : jsonText(n.label)}`); // as validate() quotes it (audit 32)
@@ -550,6 +556,7 @@ function writeMermaidState(model, viewId) {
           if (k) put(d + 1, '--');
           const h = idOf(r.id, `${n.id}.r${k + 1}`);
           if (r.label === '') lose(r.id, 'an empty label');
+          lostKeys(r, ['id', 'type', 'label']);
           if (rs.length === 1 || h || has(r.label)) put(d + 1, `%% region: ${r.id}${has(r.label) ? ' ' + enc(r.label) : ''}`);
           writeScope(r.id, d + 1);
         });
@@ -568,7 +575,7 @@ function writeMermaidState(model, viewId) {
         const text = printed && (q.effect === undefined ? printed + ' /' : printed), line = text && mtLine(text);
         if (!line?.internal || !mtSame(line.internal, parts)) { skip(x); continue; }
         const k = (internals.get(n.id) || 0) + 1, h = idOf(x.id, `${n.id}.t${k}`);
-        internals.set(n.id, k);
+        internals.set(n.id, k); lostKeys(x, ['id', 'type', 'props']);
         put(d, ...(h ? [`%% id: ${h}`] : []), textLine(n, text));
       }
     }
@@ -580,7 +587,7 @@ function writeMermaidState(model, viewId) {
     const lines = [], end = x => {
       const s = stars.get(x);
       if (!s) return names.get(x);
-      if (!seenStar.has(x)) { seenStar.add(x); const k = keyOf.get(x), h = idOf(x, k ? `${k}.${s}` : s); if (h) lines.push(`%% ${s}-id: ${h}`); }
+      if (!seenStar.has(x)) { seenStar.add(x); lostKeys(byId.get(x), NODE_KEYS); const k = keyOf.get(x), h = idOf(x, k ? `${k}.${s}` : s); if (h) lines.push(`%% ${s}-id: ${h}`); }
       return '[*]';
     };
     const a = end(t.from), b = end(t.to), h = idOf(t.id, mtId(`${t.from}-${t.to}`)), p = isObj(t.props) ? t.props : {};

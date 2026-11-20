@@ -2,7 +2,7 @@
 
 Status: draft. It is the starting point for stage 1's design note, and the examples in [`examples/`](examples/) follow
 it; the class diagram's moved to [`../../examples/`](../../examples/) when it drew. From 0.18.0 the library reads the
-`uml.class` rows (`docs/conformance/uml-class.md`); the other types' fields are kept, not drawn yet. Why the model looks like this: [`proposal.md`](proposal.md) §4.
+`uml.class` rows (`docs/diagrams/conformance/uml-class.md`); the other types' fields are kept, not drawn yet. Why the model looks like this: [`proposal.md`](proposal.md) §4.
 
 Check the examples against this page with `node docs/diagrams/examples/check.mjs`.
 
@@ -68,7 +68,7 @@ Check the examples against this page with `node docs/diagrams/examples/check.mjs
     - `direction`: `right` (the default, today's) or `down`, which lays the view out turned and transposes it. A map
       view stays left to right, with a warning (stage 1 note, §6).
 
-    In a sequence view `layout` pins mean nothing (warned, not drawn), and `direction` is `down` only.
+    In a sequence view `layout` pins mean nothing (warned, not drawn), and `direction` is `down` only; in a timing view pins mean nothing too, and `direction` is `right` only (each warned).
 11. **Text, not references, for now.** A property's type is text (`"valueType": "Money"`). References by id
     (`classifierRef`) come with integrity across diagram types, after 1.0.0.
 12. **Unknown is kept.** A type the library does not know is drawn as a plain card with a warning and written back

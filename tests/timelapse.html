@@ -1,0 +1,38 @@
+<!doctype html>
+<!-- The time-lapse slider's spoken value (audit 61): a screen reader read the range input's 0-based index ("0") while the
+     page showed "1 of 3". Its aria-valuetext is the label the page shows, at the version it opens on, the first and the
+     last, on the page umlimator.py timelapse writes (tests/fixtures/timelapse.html, which tests/embed.py writes from a
+     small repository first). The example page fetches a showcase model, which only the allowed tests read
+     (tests/showcase.test.mjs), so tests/embed.py checks its slider in its own source. tests/embed.py opens this in
+     headless Chrome and reads <pre id="result">. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>umlimator time-lapse slider test</title>
+<body style="margin:0">
+<script type="module">
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const wait = ms => new Promise(r => setTimeout(r, ms));
+try {
+  for (const [src, what] of [['fixtures/timelapse.html', 'the page umlimator.py timelapse writes']]) {
+    const f = document.createElement('iframe');
+    f.style.cssText = 'width:1000px;height:700px;border:0'; f.src = src;
+    const loaded = new Promise(r => f.addEventListener('load', r, { once: true }));
+    document.body.appendChild(f); await loaded;
+    let d = null;
+    for (let i = 0; i < 200; i++) { await wait(50); d = f.contentDocument; if (d && d.getElementById('at') && /^\d+ of \d+/.test((d.getElementById('label') || {}).textContent || '')) break; }
+    const at = d && d.getElementById('at'), label = d && d.getElementById('label');
+    const said = () => ({ value: at.value, valuetext: at.getAttribute('aria-valuetext'), label: label.textContent });
+    const right = s => !!s.valuetext && s.valuetext === s.label && s.valuetext.startsWith(`${+s.value + 1} of `);
+    if (!at || !label) { check(`${what} · the slider and its label are on the page`, false); f.remove(); continue; }
+    const seen = [said()];
+    for (const k of [0, +at.max]) { at.value = k; at.dispatchEvent(new Event('input', { bubbles: true })); seen.push(said()); }
+    check(`${what} · the slider's spoken value is the version the page shows ("1 of n: ..."), not its 0-based index, as it opens and at the first and last version (audit 61)`,
+      +at.max > 0 && seen.every(right), seen);
+    f.remove();
+  }
+} catch (err) {
+  out.fail.push('threw: ' + (err && err.stack || err));
+}
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

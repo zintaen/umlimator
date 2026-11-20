@@ -172,7 +172,7 @@ function readMermaidEr(text) {
   // Mermaid's string token runs over line breaks (audit 49): a relationship's "label" or a column's "comment" left open
   // on its line goes on over the lines to its closing quote (audit 50). grow(s) is s with those lines joined on, and the
   // loop's i moved to the last of them, or null when no later line closes it
-  const over = mermaidOver(lines);
+  const over = mermaidOver(lines, say);
   let grow;
   let viewId, viewNo, direction = 'down', started = false, hint = {}, acc = false, depth = 0, block = null;
   const ent = (name, no) => { let r = ents.get(name); if (!r) { r = { name, no, cols: [], names: new Set() }; ents.set(name, r); seen.push(r); } return r; };
@@ -297,7 +297,7 @@ function readMermaidEr(text) {
     grow = cur => {
       const o = over(i, cur.trim());
       if (!o) return null;
-      s = [cur, ...lines.slice(i + 1, o.i + 1)].join('\n'); i = o.i; tilde = s.lastIndexOf('~');
+      s = [cur, ...o.rest].join('\n'); i = o.i; tilde = s.lastIndexOf('~');
       return s;
     };
     for (let k = 0; k < s.length;) {

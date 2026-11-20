@@ -417,7 +417,7 @@ interface Geometry {
 }
 ```
 
-Card boxes, drawn lines (one may stand for several model edges, listed in `ids`) with their points, width bucket, [kind](./model-and-schema.md#wirekind) and label box, and the view's bounds, all in map units. A map view's lines carry `weight` and `wk`; a typed view's lines carry neither (their notation says what they are), and a line with no label may have no `lbl`. Fields beyond these are internal and may change.
+Card boxes, drawn lines (one may stand for several model edges, listed in `ids`) with their points, width bucket (the `weight` a line grows to on hover, selection and keyboard focus; every line is drawn at one width at rest), [kind](./model-and-schema.md#wirekind) and label box, and the view's bounds, all in map units. A map view's lines carry `weight` and `wk`; a typed view's lines carry neither (their notation says what they are), and a line with no label may have no `lbl`. Fields beyond these are internal and may change.
 
 ## check
 

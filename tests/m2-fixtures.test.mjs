@@ -4,7 +4,7 @@
 // all is §11's P1 view, the generator each type's own test times, written out. Each view is laid out right and down with
 // no line through a node but its own two ends, every line end within 1 px of its node's box, no line label over a node,
 // and what check() finds pinned: the crossings that repair and reroute off leave (§11, S19) and the few other findings,
-// each stated in its type's conformance note (docs/conformance/). Then §11's budgets in CPU time, best of seven after a
+// each stated in its type's conformance note (docs/diagrams/conformance/). Then §11's budgets in CPU time, best of seven after a
 // warm-up: a full layout and its SVG under 1 s; the common edit and an edit that moves nothing under CI's 1 s ceiling,
 // their time printed against the 100 ms target, the edit that moves nothing checked to lay nothing out; an ER notation switch
 // lays nothing out. tests/m2.html draws every view in Chrome under three fonts and both themes, with the same three line
@@ -71,7 +71,7 @@ const PINNED = {
   'information-flow-stress': { 'edge-cases': { right: [1, 0, 0], down: [0, 0, 0] }, 'all': { right: [149, 1, 0], down: [119, 35, 0] } },
   'c4-minimal': { 'v': { right: [0, 0, 0], down: [0, 0, 0] } },
   'c4-stress': {
-    'ec-landscape': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-context': { right: [0, 0, 0], down: [0, 0, 0] }, 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-component': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-dynamic': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-deployment': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [133, 3, 0], down: [141, 5, 0] } },
+    'ec-landscape': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-context': { right: [0, 0, 0], down: [0, 0, 0] }, 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-component': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-dynamic': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-deployment': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [133, 3, 0], down: [138, 8, 0] } },
 };
 
 test('every view of the ten fixtures, right and down: a line through a node, an end off its node, a label over a node and check()\'s findings, each only as pinned (the stated limits)', () => {
@@ -84,7 +84,7 @@ test('every view of the ten fixtures, right and down: a line through a node, an 
   if (process.env.PIN) console.log(JSON.stringify(counts));
   assert.deepEqual(counts, PINNED);
   // the information flow note states the generated view's crossings as counted here (audit 27: it said 122 down after audit 25 made it 121)
-  const ifAll = counts['information-flow-stress'].all, ifNote = readFileSync(new URL('../docs/conformance/uml-information-flow.md', import.meta.url), 'utf8').replace(/\s+/g, ' ');
+  const ifAll = counts['information-flow-stress'].all, ifNote = readFileSync(new URL('../docs/diagrams/conformance/uml-information-flow.md', import.meta.url), 'utf8').replace(/\s+/g, ' ');
   assert.match(ifNote, new RegExp(`crosses ${ifAll.right[0]} times right and ${ifAll.down[0]} down, with ${['', 'one', 'two', 'three'][ifAll.right[1]] || ifAll.right[1]} labels? on (?:a line|lines) right and ${ifAll.down[1]} findings down`));
   // outside the generated views, no finding but crossings
   assert.deepEqual(other, []);
@@ -238,8 +238,8 @@ test('the readers\' construct files read into models their types\' validate pass
     // Mermaid's ER page leaves keys and foreign keys unsaid, so most entities have none; one line, DOCK }o--|| HARBOUR,
     // is identifying with its many end first: the type names it (identifying-parent), as Mermaid draws it without a word
     'er.mmd': [29, ['er'], { 'warning pk-exists': 25, 'warning fk-flag': 2, 'warning relationship-fk': 20, 'error identifying-parent': 1 }],
-    // the shapes page's nodes stand alone: no start reaches them
-    'flowchart.mmd': [62, ['flowchart'], { 'warning start-end': 1, 'warning reachable': 101, 'warning terminator-flows': 4, 'warning decision-exits': 2 }],
+    // the shapes page's nodes stand alone: no start reaches them (nor two-words, a node beside subgraph "Two words", audit 51)
+    'flowchart.mmd': [62, ['flowchart'], { 'warning start-end': 1, 'warning reachable': 102, 'warning terminator-flows': 4, 'warning decision-exits': 2 }],
     'structurizr.json clinic': [6, ['c4.context', 'c4.container', 'c4.component'], {}],
     // a dynamic view's one step with an end that view does not show (a component), not drawn; its implied steps are kept
     // between the containers it shows and drawn (audit 17)

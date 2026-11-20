@@ -27,6 +27,8 @@ tests/notation.html: notation (1.5): a classifier, every line end and end labels
 tests/class.html: the class diagram (1.9): examples/sales-classes.json drawn in both themes and three fonts, edited as text and by the picker through apply(), an edit to paint on 40 classes; the fixtures tests/class-minimal.json and
   tests/class-stress.json in both themes and three fonts, an edit to paint on the stress fixture.
 tests/uml-panel.html: the UML views' panel and F2 (audit 18): no Members section where a view draws none, a member row's ✕ through the type's remove, F2 on a fragment's operator and an emptied timing ruler.
+tests/phone.html: the standalone page at a phone's width (audit 61): the details header keeps the card's name and its buttons on the screen.
+tests/timelapse.html: the time-lapse slider says the version shown ("1 of 3"), not its 0-based index, on the page umlimator.py timelapse writes; examples/timelapse.html's show() is read for the same (audit 61).
 tests/package.html: the package diagram (2.2): examples/bookshop-packages.json as stage 2 made it (6.7's profile and «apply» line taken out) in both themes, three fonts and both directions (boxes hold exactly their contents, titles, ends, names, contrast,
   legend), a closed package, and each gesture by pointer and keyboard (palette, import by the picker, visibility, Owner, a drop into a box, a box's name, hide, delete).
 tests/object.html: the object diagram (2.3): examples/order-objects.json in both themes, three fonts and both directions (underlined heads, slot rows, names, roles,
@@ -114,7 +116,7 @@ subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(ROOT /
                 "--out", str(ROOT / "tests" / "fixtures" / "integration.html"), "--no-check"], check=True, capture_output=True)
 
 
-def dom(path, done, wait=60, motion=False):
+def dom(path, done, wait=60, motion=False, extra=()):
     # reduced motion: navigation without animation frames, which headless virtual time does not run. Chrome reads the
     # page once its virtual time is up, which on a busy machine can be before the page has drawn what a check reads (the
     # standalone page draws on an animation frame, in real time), or Chrome may give back nothing at all (a rare headless
@@ -126,7 +128,7 @@ def dom(path, done, wait=60, motion=False):
     end = time.monotonic() + wait
     while True:
         t = visual.chrome(binary, "--window-size=1200,1200", f"--virtual-time-budget={120000 if motion else 30000}", *([] if motion else ["--force-prefers-reduced-motion"]),
-                          "--dump-dom", base + path, done=done, timeout=90)
+                          *extra, "--dump-dom", base + path, done=done, timeout=90)
         if done(t) or time.monotonic() > end:
             return t
 
@@ -136,7 +138,7 @@ failed = False
 # with about its seconds on a runner, in exactly one of them; unset (as on a developer's machine) every part runs, in
 # order. A check outside every part, or a part not declared here, fails the run (tests/shards.py)
 # the motion pass: tests/motion.html runs with motion on, so a bug in what animates can't hide behind reduced motion
-PAGES = [(p, False) for p in ("tests/embed.html", "tests/edit.html", "tests/typed-edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html", "tests/insight.html", "tests/page-handle.html", "tests/element.html", "tests/pieces.html", "tests/state.html", "tests/page-state.html", "tests/shapes.html", "tests/aids.html", "tests/notation.html", "tests/class.html", "tests/class-editor.html", "tests/package.html", "tests/object.html", "tests/package-object.html", "tests/type-hooks.html", "tests/core-diet.html", "tests/timeaxis.html", "tests/sequence.html", "tests/sequence-fixtures.html", "tests/communication.html", "tests/flow.html", "tests/c4.html", "tests/information-flow.html", "tests/dfd.html", "tests/flowchart.html", "tests/stage5.html", "tests/composite.html", "tests/deployment.html", "tests/typed-ports.html", "tests/structure.html", "tests/stage4.html", "tests/state-machine.html", "tests/overview.html", "tests/activity.html", "tests/usecase.html", "tests/component.html", "tests/profile.html", "tests/timing.html", "tests/stage6.html", "tests/er.html", "tests/m2.html", "tests/c4-views.html", "tests/bpmn-engine.html", "tests/bpmn-notation.html", "tests/bpmn.html", "tests/m4b.html", "tests/requirement.html", "tests/blocks.html", "tests/internal-block.html", "tests/parametric.html", "tests/mindmap.html", "tests/cloud.html", "tests/sysml.html", "tests/m4a.html", "tests/uml-panel.html")] + [("tests/motion.html", True), ("tests/page-motion.html", True)]
+PAGES = [(p, False) for p in ("tests/embed.html", "tests/edit.html", "tests/typed-edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html", "tests/insight.html", "tests/page-handle.html", "tests/element.html", "tests/pieces.html", "tests/state.html", "tests/page-state.html", "tests/shapes.html", "tests/aids.html", "tests/notation.html", "tests/class.html", "tests/class-editor.html", "tests/package.html", "tests/object.html", "tests/package-object.html", "tests/type-hooks.html", "tests/core-diet.html", "tests/timeaxis.html", "tests/sequence.html", "tests/sequence-fixtures.html", "tests/communication.html", "tests/flow.html", "tests/c4.html", "tests/information-flow.html", "tests/dfd.html", "tests/flowchart.html", "tests/stage5.html", "tests/composite.html", "tests/deployment.html", "tests/typed-ports.html", "tests/structure.html", "tests/stage4.html", "tests/state-machine.html", "tests/overview.html", "tests/activity.html", "tests/usecase.html", "tests/component.html", "tests/profile.html", "tests/timing.html", "tests/stage6.html", "tests/er.html", "tests/m2.html", "tests/c4-views.html", "tests/bpmn-engine.html", "tests/bpmn-notation.html", "tests/bpmn.html", "tests/m4b.html", "tests/requirement.html", "tests/blocks.html", "tests/internal-block.html", "tests/parametric.html", "tests/mindmap.html", "tests/cloud.html", "tests/sysml.html", "tests/m4a.html", "tests/uml-panel.html", "tests/phone.html")] + [("tests/motion.html", True), ("tests/page-motion.html", True)]
 DEMOS = (("examples/edit.html", "the editing demo"), ("examples/embed.html", "the host page"), ("examples/live.html", "the live page"),
          ("examples/playground.html", "the playground"), ("examples/ask.html", "the ask-the-map page"), ("examples/replay.html", "the trace replay page"), ("examples/timelapse.html", "the time-lapse"), ("examples/drift.html", "the drift page"))
 spec = importlib.util.spec_from_file_location("shards", ROOT / "tests" / "shards.py")
@@ -146,7 +148,7 @@ SLOW = {"tests/m2.html": 46, "tests/sysml.html": 31, "tests/embed.html": 29, "te
         "tests/unfold.html": 5}  # their seconds on a runner; the rest about 3
 part = shards.Parts(__file__, {**{page: SLOW.get(page, 3) for page, _ in PAGES}, **{page: 3 for page, _ in DEMOS}, "examples/element.html": 3,
                               "examples/notations.html": 3, "the standalone page's legend": 3, "keepPairs": 4, "rules": 3, "label kinds": 3, "record": 16,
-                              "the playground's own icons": 3})
+                              "the playground's own icons": 3, "the time-lapse slider": 4})
 for page, motion in PAGES:
     if not part(page):
         continue
@@ -164,9 +166,16 @@ for page, motion in PAGES:
 for page, what in DEMOS:
     if not part(page):
         continue
-    demo = dom(page, lambda t: 'class="umlimator"' in t)
+    # the page's console, in Chrome's log: a demo of a version 2 model on the core module drew its typed views as plain
+    # cards, each said in a warning, and the playground opened on them (audit 52)
+    with tempfile.TemporaryDirectory() as logs:
+        log = Path(logs) / "console.log"
+        demo = dom(page, lambda t: 'class="umlimator"' in t, extra=("--enable-logging", f"--log-file={log}"))
+        said = [x for x in (log.read_text(encoding="utf-8", errors="replace") if log.exists() else "").splitlines() if "is not drawn by this release" in x]
     print(("ok  " if 'class="umlimator"' in demo else "FAIL"), f"{page} · {what} draws its map")
     failed |= 'class="umlimator"' not in demo
+    print(("ok  " if not said else "FAIL"), f"{page} · {what} draws every view of its model in its own notation: no view is drawn as plain cards", "" if not said else said[:2])
+    failed |= bool(said)
 if part("examples/element.html"):
     demo = dom("examples/element.html", lambda t: "Drawn: " in t)  # the map is in the element's shadow root: the page says when it is drawn
     print(("ok  " if "Drawn: " in demo else "FAIL"), "examples/element.html · the element page draws its map")
@@ -192,6 +201,34 @@ if part("the playground's own icons"):
     print(("ok  " if pg_ok else "FAIL"), "examples/playground.html · a shared model's image icon is never loaded and is said in the problems",
           "" if pg_ok else (said, [a for a in asked if "model" in a]))
     failed |= not pg_ok
+if part("the time-lapse slider"):
+    # audit 61: the slider is a 0-based range input, so a screen reader said "0" next to "1 of 3". The page umlimator.py
+    # timelapse writes, from a small repository of three versions, then tests/timelapse.html reads it and the example's
+    (ROOT / "tests" / "fixtures" / "timelapse.html").unlink(missing_ok=True)  # never a page an earlier run wrote
+    with tempfile.TemporaryDirectory() as tmp:
+        g = Path(tmp)
+        git = lambda *a: subprocess.run(["git", "-C", str(g), "-c", "user.name=test", "-c", "user.email=test@example.invalid", *a], capture_output=True, text=True, check=True)
+        git("init", "-q")
+        for k in range(3):
+            m = {"title": "Lapse", "nodes": [{"id": f"n{i}", "label": f"Card {i}"} for i in range(k + 1)], "edges": [],
+                 "views": [{"id": "v", "title": "V", "nodeIds": [f"n{i}" for i in range(k + 1)]}]}
+            (g / "m.json").write_text(json.dumps(m)); git("add", "m.json"); git("commit", "-q", "-m", f"version {k + 1}")
+        subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "timelapse", "m.json", "--out", str(ROOT / "tests" / "fixtures" / "timelapse.html")], cwd=g, capture_output=True)
+    t = dom("tests/timelapse.html", lambda t: 'id="result"' in t)
+    m = re.search(r'<pre id="result">(.*?)</pre>', t, re.S)
+    r = json.loads(html.unescape(m.group(1))) if m else {"ok": [], "fail": ["the page did not report"]}
+    for name in r["ok"]:
+        print("ok  ", "tests/timelapse.html ·", name)
+    for name in r["fail"]:
+        print("FAIL", "tests/timelapse.html ·", name)
+    failed |= bool(r["fail"])
+    # examples/timelapse.html fetches the atlas, a showcase model tests/timelapse.html may not read (tests/showcase.test.mjs):
+    # its show() is read instead, setting the slider's spoken value to the label it has just written, as the CLI's page does
+    src = (ROOT / "examples" / "timelapse.html").read_text(encoding="utf-8")
+    show = re.search(r"function show\(k\) \{(.*?)\n\}", src, re.S)
+    ex_ok = bool(show) and re.search(r"\$\('label'\)\.textContent = [^\n]*\n\s*at\.setAttribute\('aria-valuetext', \$\('label'\)\.textContent\)", show.group(1)) is not None
+    print(("ok  " if ex_ok else "FAIL"), "examples/timelapse.html · show() sets the slider's aria-valuetext to the label it shows (audit 61)")
+    failed |= not ex_ok
 # the standalone page (mountPage) shows a legend, so it still names line kinds from label words: "reads metrics" is state
 
 

@@ -1,4 +1,4 @@
-import { aWord, countOf, ownNodes, registerDiagramType } from '../core/registry.js';
+import { aWord, countOf, everyOwn, registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { brLines } from '../typed/draw.js';
@@ -6,7 +6,7 @@ import { layoutTyped } from '../typed/layout.js';
 import { commentConnect, lineItem, lineRename } from './class.js'; // SHAPE.note, a comment's look too
 import { lineInside, ownersOn, readingOrder, viewLines } from './owners.js';
 import { SN_SAY, STRUCT_RULES, snKindName, snKindWord, structProblems } from './structure.js'; // SHAPE.artifact and SHAPE.component too
-import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName, isGone } from '../core/model.js';
 
 /* ---------- the deployment diagram, uml.deployment (work package 5.5, notes/stage-5.md §10.3) ----------
    Nodes, devices and execution environments (UML's cube: a front face with a top and a right face 10 px deep), each a box
@@ -72,7 +72,10 @@ function dpIndex(model, view) {
   const E = viewLines(model, V).map(([e]) => e).filter(e => DP_OBJ(e) && typeof e.id === 'string');
   const into = (t, id) => E.filter(e => e.type === t && e.to === id), outOf = (t, id) => E.filter(e => e.type === t && e.from === id);
   // what is deployed on a target: the artifacts it owns, then those a «deploy» line brings, each once
-  const deployed = id => [...new Set([...[...at.values()].filter(n => n.parent === id && DP_ARTIFACTS.includes(n.type)).map(n => n.id), ...into('uml.Deployment', id).map(e => e.from).filter(x => at.has(x) && DP_ARTIFACTS.includes(at.get(x).type))])];
+  // live: not one diff() drew back removed, nor through a removed «deploy» line, as the model after counts them (audit 55)
+  const gone = isGone;
+  const deployed = (id, live) => [...new Set([...[...at.values()].filter(n => n.parent === id && DP_ARTIFACTS.includes(n.type) && !(live && gone(n))).map(n => n.id),
+    ...into('uml.Deployment', id).filter(e => !(live && gone(e))).map(e => e.from).filter(x => at.has(x) && DP_ARTIFACTS.includes(at.get(x).type) && !(live && gone(at.get(x))))])];
   // does a hold b, at any depth
   const holds = (a, b) => { for (let p = (at.get(b) || {}).parent, seen = new Set(); p != null && !seen.has(p); p = (at.get(p) || {}).parent) { if (p === a) return true; seen.add(p); } return false; };
   return { at, E, into, outOf, deployed, holds };
@@ -112,9 +115,9 @@ function dpNodeName(n, pic, I) {
   if (!DP_TARGETS.includes(n.type)) return out[0];
   // the box drawn round it, not a card beside it (audit 32): the owner on the picture, through any the view does not show (audit 33)
   const box = pic.owner(n.id); if (box != null && I.at.has(box)) out.push(`in ${dpName(I.at.get(box))}`);
-  const k = new Map(); pic.holds(n.id).map(id => I.at.get(id)).filter(x => !DP_ARTIFACTS.includes(x.type)).forEach(x => { const w = dpWord(x).toLowerCase(); k.set(w, (k.get(w) || 0) + 1); });
+  const k = new Map(); pic.counted(n.id).map(id => I.at.get(id)).filter(x => !DP_ARTIFACTS.includes(x.type)).forEach(x => { const w = dpWord(x).toLowerCase(); k.set(w, (k.get(w) || 0) + 1); });
   if (k.size) out.push('holding ' + [...k].map(([w, c]) => dpPlural(c, w)).join(', '));
-  const d = I.deployed(n.id).length; if (d) out.push(`${dpPlural(d, 'artifact')} deployed`);
+  const d = I.deployed(n.id, true).length; if (d) out.push(`${dpPlural(d, 'artifact')} deployed`);
   return out.join(', ');
 }
 // "Communication path HTTPS from Shopper's device to Edge proxy"; "Deployment from routes.conf to Edge proxy"
@@ -240,10 +243,11 @@ function dpConnect(model, view, from, to, at, line) {
 function dpRemove(model, view, ids, fromModel) {
   // with the view's own elements (remove gets the model as it is: registry.js), and a target the view holds as its own, which
   // Delete deletes too (audit 24)
-  const I = dpIndex(ownNodes(model, view).model), own = new Set(DP_ARR(DP_OBJ(view) ? view.nodes : null).filter(DP_OBJ).map(n => n.id));
+  // and every other view's own elements: apply() deletes one under a model target in any view, so the hint counts it (audit 51, as cloud's)
+  const M = everyOwn(model, DP_OBJ(view) ? view : null), I = dpIndex(M.model), own = new Set(DP_ARR(DP_OBJ(view) ? view.nodes : null).filter(DP_OBJ).map(n => n.id)), owns = new Set(DP_ARR(M.model.nodes).slice(M.k).map(n => n.id));
   const all = ids.filter(id => (fromModel || own.has(id) && !DP_ARR(model.nodes).some(n => DP_OBJ(n) && n.id === id)) && DP_TARGETS.includes((I.at.get(id) || {}).type));
   // a model element under the view's own node is lifted out by apply(), not deleted: not held by it (audit 47, as cloud's)
-  const inside = (id, S) => { for (let c = id, p = (I.at.get(id) || {}).parent, seen = new Set(); p != null && !seen.has(p); c = p, p = (I.at.get(p) || {}).parent) { if (own.has(p) && !own.has(c)) return false; if (S.includes(p)) return true; seen.add(p); } return false; };
+  const inside = (id, S) => { for (let c = id, p = (I.at.get(id) || {}).parent, seen = new Set(); p != null && !seen.has(p); c = p, p = (I.at.get(p) || {}).parent) { if (owns.has(p) && !owns.has(c)) return false; if (S.includes(p)) return true; seen.add(p); } return false; };
   // a target under another selected one is held by it, and what either holds is counted, selected or not: it goes all the same (audit 33, as cloud's)
   const ts = all.filter(id => !inside(id, all)), under = id => inside(id, ts);
   const held = [...I.at.keys()].filter(under).length;

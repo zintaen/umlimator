@@ -1,0 +1,303 @@
+---
+title: "Diagram types"
+description: "The 28 diagram types umlimator draws besides its maps, each with one live example that shows all it draws."
+aside: false
+pageClass: gallery-page
+---
+
+<!-- Written by tools/gallery.mjs from the models, tools/gallery.json, tools/types.json, tools/types.md and docs/diagrams/conformance/: edit those, not this file. -->
+
+# Diagram types
+
+umlimator draws 28 diagram types besides its layered maps. Each is a model of schema version 2 with `"diagram"` set on its views, drawn by `umlimator/all` ([Typed diagrams](../api/typed-diagrams.md) has what they share). Each type has a page: one example, live, made up for an online bookshop and its delivery cargo e-bike, that shows everything the type draws, with a checklist of what to find in it and the settings that need a view of their own (a layout direction, a notation); then how to write the type in the model, and what of its notation is drawn and left out, and why. The map is not one of them: every [atlas](../atlas/index.md) opens on one, and the [Bookshop atlas's overview](../atlas/bookshop.md#view-overview) shows everything a map draws.
+
+<nav class="ex-jump" aria-label="Diagram types"><ul>
+<li><b>UML structure</b> <a href="./uml-class.html">Class</a> <a href="./uml-object.html">Object</a> <a href="./uml-package.html">Package</a> <a href="./uml-composite-structure.html">Composite structure</a> <a href="./uml-component.html">Component</a> <a href="./uml-deployment.html">Deployment</a> <a href="./uml-profile.html">Profile</a></li>
+<li><b>UML behaviour</b> <a href="./uml-use-case.html">Use case</a> <a href="./uml-activity.html">Activity</a> <a href="./uml-state-machine.html">State machine</a> <a href="./uml-sequence.html">Sequence</a> <a href="./uml-communication.html">Communication</a> <a href="./uml-interaction-overview.html">Interaction overview</a> <a href="./uml-timing.html">Timing</a> <a href="./uml-information-flow.html">Information flow</a></li>
+<li><b>Data and flow</b> <a href="./er.html">Entity-relationship</a> <a href="./dfd.html">Data flow</a> <a href="./flowchart.html">Flowchart</a></li>
+<li><b>C4</b> <a href="./c4.html">C4</a></li>
+<li><b>SysML</b> <a href="./sysml-requirement.html">Requirement</a> <a href="./sysml-block-definition.html">Block definition</a> <a href="./sysml-internal-block.html">Internal block</a> <a href="./sysml-parametric.html">Parametric</a></li>
+<li><b>BPMN</b> <a href="./bpmn.html">BPMN</a></li>
+<li><b>Cloud</b> <a href="./aws.html">AWS</a> <a href="./gcp.html">Google Cloud</a> <a href="./azure.html">Azure</a></li>
+<li><b>Mindmap</b> <a href="./mindmap.html">Mindmap</a></li>
+</ul></nav>
+
+## UML structure {#uml-structure}
+
+The structure diagrams of UML 2.5.1: what a system is made of and how its parts relate.
+
+<div class="ex-grid">
+<article class="ex-card" id="type-uml-class">
+<a class="ex-still" href="./uml-class.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/uml-class/sales.png'" alt="A UML class diagram of a bookshop's sales domain: the sales, payments, card and shared packages as boxes, Customer, Order, OrderLine and OrderStatus, catalog::Book, the abstract Payment with CardPayment and GiftCardPayment, the Payable and CardGateway interfaces, the Money data type, the Isbn primitive and a note, joined by every kind of class line" loading="lazy" width="640" height="320"></a>
+<h3><a href="./uml-class.html">Class</a></h3>
+<p>Classes, their attributes and operations, and how they relate.</p>
+<ul class="ex-shows-short"><li>A note (a comment with a folded corner) linked to Order by a dashed line</li><li>Packages drawn as boxes holding their classes, their names in tabs: sales, payments with card nested inside it, shared</li><li>A package-qualified name: catalog::Book, whose package the view does not show</li><li><a href="./uml-class.html#shows">19 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/uml-class.html#view=sales" target="_self">A bookshop's sales domain</a>; also <a href="/umlimator/examples/types/uml-class.html#view=sales-right" target="_self">The same domain, laid out right</a></p>
+<div class="ex-links"><a href="./uml-class.html">Open<span class="visually-hidden"> (Class)</span></a><a href="/umlimator/examples/types/uml-class.pdf" target="_self">PDF<span class="visually-hidden"> (Class)</span></a><a href="/umlimator/examples/types/uml-class.json" target="_self">Model<span class="visually-hidden"> (Class)</span></a></div>
+</article>
+<article class="ex-card" id="type-uml-object">
+<a class="ex-still" href="./uml-object.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/uml-object/snapshot.png'" alt="A UML object diagram of one bookshop order just placed: inside the sales package box, ada : Customer with a referral loop and two links to order1042 : Order, the web till's audit link, two anonymous order lines, the card payment and a note; beside them the two catalog books by qualified name and the Customer class" loading="lazy" width="640" height="320"></a>
+<h3><a href="./uml-object.html">Object</a></h3>
+<p>Instances and the links between them at one moment.</p>
+<ul class="ex-shows-short"><li>A package drawn as a box holding the instances it owns (sales)</li><li>Instances with a name and a classifier, the head underlined (ada : Customer, order1042 : Order)</li><li>An instance with a stereotype: &lt;&lt;entity&gt;&gt; over order1042</li><li><a href="./uml-object.html#shows">12 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/uml-object.html#view=snapshot" target="_self">Order 1042, just placed</a>; also <a href="/umlimator/examples/types/uml-object.html#view=snapshot-down" target="_self">The same order, laid out down</a></p>
+<div class="ex-links"><a href="./uml-object.html">Open<span class="visually-hidden"> (Object)</span></a><a href="/umlimator/examples/types/uml-object.pdf" target="_self">PDF<span class="visually-hidden"> (Object)</span></a><a href="/umlimator/examples/types/uml-object.json" target="_self">Model<span class="visually-hidden"> (Object)</span></a></div>
+</article>
+<article class="ex-card" id="type-uml-package">
+<a class="ex-still" href="./uml-package.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/uml-package/packages.png'" alt="A UML package diagram of a bookshop, laid out down: fulfilment, the closed folder reporting and wholesale with a note above the subsystem sales, which holds Customer, Order, OrderLine and OrderStatus; below it payments with card nested inside, catalog, the profile BookshopConventions and shared with Money and Isbn, joined by dependencies, a merge, imports, an access and a profile application" loading="lazy" width="640" height="320"></a>
+<h3><a href="./uml-package.html">Package</a></h3>
+<p>Packages and the dependencies between them.</p>
+<ul class="ex-shows-short"><li>Open packages drawn as boxes holding their elements, each name in a tab at the top left (fulfilment, sales, payments, catalog, shared)</li><li>A qualified name for an element whose own package the view does not show (couriers::Courier inside fulfilment)</li><li>A closed package, a folder with an empty tab and its name in the body (reporting, whose contents are not shown)</li><li><a href="./uml-package.html#shows">10 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/uml-package.html#view=packages" target="_self">Bookshop packages</a>; also <a href="/umlimator/examples/types/uml-package.html#view=packages-right" target="_self">Bookshop packages, laid out right</a></p>
+<div class="ex-links"><a href="./uml-package.html">Open<span class="visually-hidden"> (Package)</span></a><a href="/umlimator/examples/types/uml-package.pdf" target="_self">PDF<span class="visually-hidden"> (Package)</span></a><a href="/umlimator/examples/types/uml-package.json" target="_self">Model<span class="visually-hidden"> (Package)</span></a></div>
+</article>
+<article class="ex-card" id="type-uml-composite-structure">
+<a class="ex-still" href="./uml-composite-structure.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/uml-composite-structure/inside.png'" alt="A UML composite structure diagram of a bookshop's OrderService: its api and payments ports on opposite sides of its box, five parts with their multiplicities, the shared listeners part dashed, ports on checkout and pricing, connectors through them, the collaboration use orderEvents with its publisher and subscriber bindings, the open PublishSubscribe collaboration as a dashed ellipse, and a note on the payments port" loading="lazy" width="640" height="320"></a>
+<h3><a href="./uml-composite-structure.html">Composite structure</a></h3>
+<p>The parts inside a class, their ports and connectors.</p>
+<ul class="ex-shows-short"><li>The subject, OrderService, as a box with its name in the top left</li><li>Ports on the subject's border, each pinned to a side with <code>present</code> <code>side</code>: api on the left, payments on the right</li><li>Parts as rectangles <code>name : Type [multiplicity]</code>: checkout : CheckoutFlow [1], pricing : PriceCalculator [1], orders : OrderRepository [1]</li><li><a href="./uml-composite-structure.html#shows">11 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/uml-composite-structure.html#view=inside" target="_self">Inside the bookshop's OrderService</a>; also <a href="/umlimator/examples/types/uml-composite-structure.html#view=inside-down" target="_self">The same structure, laid out down</a>, <a href="/umlimator/examples/types/uml-composite-structure.html#view=events" target="_self">PublishSubscribe as the subject</a></p>
+<div class="ex-links"><a href="./uml-composite-structure.html">Open<span class="visually-hidden"> (Composite structure)</span></a><a href="/umlimator/examples/types/uml-composite-structure.pdf" target="_self">PDF<span class="visually-hidden"> (Composite structure)</span></a><a href="/umlimator/examples/types/uml-composite-structure.json" target="_self">Model<span class="visually-hidden"> (Composite structure)</span></a></div>
+</article>
+<article class="ex-card" id="type-uml-component">
+<a class="ex-still" href="./uml-component.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/uml-component/components.png'" alt="A UML component diagram of a bookshop: the accounts package box with SessionStore realizing Accounts and sign-in, which provides the SignIn interface box that Shop API uses, Order worker's call and shop-api.jar's manifestation into Shop API, a box holding Basket and Checkout joined by delegations through ports on its border, an assembly to the Payment provider's typed port, and Orders as a ball and socket that Storefront requires" loading="lazy" width="640" height="320"></a>
+<h3><a href="./uml-component.html">Component</a></h3>
+<p>Components and the interfaces they provide and require.</p>
+<ul class="ex-shows-short"><li>A package drawn as a box holding a component and a class (accounts)</li><li>Components as rectangles with UML's component icon at the top right</li><li>A class realizing a component: dashed, a hollow triangle at the component (SessionStore to Accounts and sign-in)</li><li><a href="./uml-component.html#shows">17 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/uml-component.html#view=components" target="_self">The bookshop's components</a>; also <a href="/umlimator/examples/types/uml-component.html#view=components-down" target="_self">The same components, laid out down</a></p>
+<div class="ex-links"><a href="./uml-component.html">Open<span class="visually-hidden"> (Component)</span></a><a href="/umlimator/examples/types/uml-component.pdf" target="_self">PDF<span class="visually-hidden"> (Component)</span></a><a href="/umlimator/examples/types/uml-component.json" target="_self">Model<span class="visually-hidden"> (Component)</span></a></div>
+</article>
+<article class="ex-card" id="type-uml-deployment">
+<a class="ex-still" href="./uml-deployment.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/uml-deployment/production.png'" alt="A UML deployment diagram of a bookshop in production, laid out down: the shopper's device holding a web browser and storefront.js, routes.conf deployed on a linux server edge proxy, the shop data centre holding the application server, its Java 21 runtime with two jars and a deployment spec, and a database host, the order queue, the Shop API and Order worker components the jars manifest, a note and labelled communication paths" loading="lazy" width="640" height="320"></a>
+<h3><a href="./uml-deployment.html">Deployment</a></h3>
+<p>Nodes, execution environments and the artifacts deployed on them.</p>
+<ul class="ex-shows-short"><li>A device drawn as a cube with &lt;&lt;device&gt;&gt; over its name (Shopper's device, Application server)</li><li>An execution environment nested in a device, &lt;&lt;executionEnvironment&gt;&gt; over its name (Web browser, Java 21 runtime)</li><li>Artifacts deployed by nesting, &lt;&lt;artifact&gt;&gt; over the name with the document icon (storefront.js, order-worker.jar, shop-api.jar)</li><li><a href="./uml-deployment.html#shows">10 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/uml-deployment.html#view=production" target="_self">The bookshop in production</a>; also <a href="/umlimator/examples/types/uml-deployment.html#view=production-right" target="_self">The same deployment, laid out right</a></p>
+<div class="ex-links"><a href="./uml-deployment.html">Open<span class="visually-hidden"> (Deployment)</span></a><a href="/umlimator/examples/types/uml-deployment.pdf" target="_self">PDF<span class="visually-hidden"> (Deployment)</span></a><a href="/umlimator/examples/types/uml-deployment.json" target="_self">Model<span class="visually-hidden"> (Deployment)</span></a></div>
+</article>
+<article class="ex-card" id="type-uml-profile">
+<a class="ex-still" href="./uml-profile.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/uml-profile/conventions-view.png'" alt="A UML profile diagram of a bookshop's modelling conventions: the profiles BookshopConventions and Audit as boxes holding the Class, Property and Package metaclasses and their stereotypes, the abstract record and the entity and aggregateRoot below it, owned extending Class as required, the ColumnKind enumeration and a note; the sales package applies both, its Order and OrderLine showing their stereotypes and tag compartments" loading="lazy" width="640" height="320"></a>
+<h3><a href="./uml-profile.html">Profile</a></h3>
+<p>Stereotypes that extend UML for a domain.</p>
+<ul class="ex-shows-short"><li>A package drawn as a box holding classes (sales), a closed package inside it with a stereotype over its name (&lt;&lt;module&gt;&gt; payments)</li><li>A class with two stereotypes over its name, one from another profile qualified by it (&lt;&lt;aggregateRoot&gt;&gt;, &lt;&lt;Audit::record&gt;&gt; on Order)</li><li>A tag compartment per stereotype, headed &lt;&lt;name&gt;&gt;, each row <code>tag = value</code>, inherited tags included (retainDays, table, boundedContext)</li><li><a href="./uml-profile.html#shows">13 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/uml-profile.html#view=conventions-view" target="_self">The bookshop's modelling conventions</a>; also <a href="/umlimator/examples/types/uml-profile.html#view=conventions-right" target="_self">The same conventions, laid out right</a></p>
+<div class="ex-links"><a href="./uml-profile.html">Open<span class="visually-hidden"> (Profile)</span></a><a href="/umlimator/examples/types/uml-profile.pdf" target="_self">PDF<span class="visually-hidden"> (Profile)</span></a><a href="/umlimator/examples/types/uml-profile.json" target="_self">Model<span class="visually-hidden"> (Profile)</span></a></div>
+</article>
+</div>
+
+## UML behaviour {#uml-behaviour}
+
+The behaviour diagrams of UML 2.5.1, and its information flow diagram.
+
+<div class="ex-grid">
+<article class="ex-card" id="type-uml-use-case">
+<a class="ex-still" href="./uml-use-case.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/uml-use-case/shopping.png'" alt="A UML use case diagram of an online bookshop, laid out down: Shopper, Member and the system Payment provider as stick figures above the Online bookshop subject, which holds eight use cases as ellipses, Check out with its extension points, joined by associations, includes, extends with their conditions and generalizations, and a note on the closed Warehouse subject" loading="lazy" width="640" height="320"></a>
+<h3><a href="./uml-use-case.html">Use case</a></h3>
+<p>Actors and the use cases they take part in.</p>
+<ul class="ex-shows-short"><li>Actors as stick figures with their names under them (Shopper, Member)</li><li>An actor with a stereotype under its figure (&lt;&lt;system&gt;&gt; Payment provider)</li><li>Generalization between two actors, a hollow triangle at the general one (Member is a Shopper)</li><li><a href="./uml-use-case.html#shows">9 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/uml-use-case.html#view=shopping" target="_self">What shoppers do at the bookshop</a>; also <a href="/umlimator/examples/types/uml-use-case.html#view=shopping-right" target="_self">The same use cases, laid out right</a></p>
+<div class="ex-links"><a href="./uml-use-case.html">Open<span class="visually-hidden"> (Use case)</span></a><a href="/umlimator/examples/types/uml-use-case.pdf" target="_self">PDF<span class="visually-hidden"> (Use case)</span></a><a href="/umlimator/examples/types/uml-use-case.json" target="_self">Model<span class="visually-hidden"> (Use case)</span></a></div>
+</article>
+<article class="ex-card" id="type-uml-activity">
+<a class="ex-still" href="./uml-activity.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/uml-activity/fulfil.png'" alt="A UML activity diagram of a bookshop fulfilling an order, laid out down in nested lanes, Order desk and Warehouse inside Bookshop, beside Email service: an initial node, actions, an Order object node, a Stock levels data store, a decision with a note, a send signal and an accept event action, a merge, a fork into three lanes, the Take payment call with its rake, a join, a flow final and an activity final" loading="lazy" width="640" height="320"></a>
+<h3><a href="./uml-activity.html">Activity</a></h3>
+<p>Actions, decisions and flows, in partitions.</p>
+<ul class="ex-shows-short"><li>Lanes nested in a lane: Bookshop holding Order desk and Warehouse, beside Email service</li><li>An initial node, a filled circle</li><li>Actions as rounded boxes, long names wrapped (Take the next order from the queue)</li><li><a href="./uml-activity.html#shows">11 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/uml-activity.html#view=fulfil" target="_self">Fulfilling a bookshop order</a>; also <a href="/umlimator/examples/types/uml-activity.html#view=fulfil-right" target="_self">The same activity, laid out right</a>, <a href="/umlimator/examples/types/uml-activity.html#view=take-payment" target="_self">Take payment, the activity the call opens</a></p>
+<div class="ex-links"><a href="./uml-activity.html">Open<span class="visually-hidden"> (Activity)</span></a><a href="/umlimator/examples/types/uml-activity.pdf" target="_self">PDF<span class="visually-hidden"> (Activity)</span></a><a href="/umlimator/examples/types/uml-activity.json" target="_self">Model<span class="visually-hidden"> (Activity)</span></a></div>
+</article>
+<article class="ex-card" id="type-uml-state-machine">
+<a class="ex-still" href="./uml-state-machine.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/uml-state-machine/order-life.png'" alt="A UML state machine diagram of a bookshop order's life, laid out right: Placed with entry, do, exit and an internal transition, a choice with three guarded exits, a fork into Fulfilling's Parcel and Payment regions with a deep history and a self-transition, On hold with a note, a join, In delivery with a shallow history, Under enquiry closed, a junction, a final state, Cancelled cut to two rows and a terminate" loading="lazy" width="640" height="320"></a>
+<h3><a href="./uml-state-machine.html">State machine</a></h3>
+<p>States and the transitions between them.</p>
+<ul class="ex-shows-short"><li>An initial pseudostate, a filled circle</li><li>A state with entry, do and exit rows and an internal transition (Placed)</li><li>A transition labelled with its trigger only (payment result)</li><li><a href="./uml-state-machine.html#shows">18 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/uml-state-machine.html#view=order-life" target="_self">An order's life</a></p>
+<div class="ex-links"><a href="./uml-state-machine.html">Open<span class="visually-hidden"> (State machine)</span></a><a href="/umlimator/examples/types/uml-state-machine.pdf" target="_self">PDF<span class="visually-hidden"> (State machine)</span></a><a href="/umlimator/examples/types/uml-state-machine.json" target="_self">Model<span class="visually-hidden"> (State machine)</span></a></div>
+</article>
+<article class="ex-card" id="type-uml-sequence">
+<a class="ex-still" href="./uml-sequence.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/uml-sequence/checkout.png'" alt="A UML sequence diagram of a bookshop's checkout: a shopper actor, the storefront, the api, a stock hold created and later deleted with a cross, the stock, the card gateway and the warehouse, their calls, replies, asynchronous and stereotyped messages in time order with activation bars, break, loop, alt, par and opt frames and an interaction use" loading="lazy" width="640" height="320"></a>
+<h3><a href="./uml-sequence.html">Sequence</a></h3>
+<p>Messages between lifelines, in time order.</p>
+<ul class="ex-shows-short"><li>Lifelines left to right, each head <code>name : Type</code> over a dashed stem (api : ShopApi)</li><li>An actor lifeline, &lt;&lt;actor&gt;&gt; over its head (shopper : Customer)</li><li>A synchronous call, solid with a filled arrowhead (checkout(), place(order))</li><li><a href="./uml-sequence.html#shows">13 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/uml-sequence.html#view=checkout" target="_self">A bookshop's checkout</a></p>
+<div class="ex-links"><a href="./uml-sequence.html">Open<span class="visually-hidden"> (Sequence)</span></a><a href="/umlimator/examples/types/uml-sequence.pdf" target="_self">PDF<span class="visually-hidden"> (Sequence)</span></a><a href="/umlimator/examples/types/uml-sequence.json" target="_self">Model<span class="visually-hidden"> (Sequence)</span></a></div>
+</article>
+<article class="ex-card" id="type-uml-communication">
+<a class="ex-still" href="./uml-communication.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/uml-communication/checkout.png'" alt="A UML communication diagram of a bookshop checkout, laid out down: the shopper as an actor, the storefront, the API with a self loop, the payment provider and the card network, the basket deleted, the receipt created and a stock ledger linked with no message, each link carrying its numbered messages from 1 to 1.1.2.1.1" loading="lazy" width="640" height="320"></a>
+<h3><a href="./uml-communication.html">Communication</a></h3>
+<p>Numbered messages along the links between objects.</p>
+<ul class="ex-shows-short"><li>A lifeline with &lt;&lt;actor&gt;&gt; over its head (shopper : Shopper)</li><li>Lifeline heads <code>name : Type</code> (storefront : Storefront, api : ShopApi)</li><li>Connectors as plain lines with no arrows, each carrying its messages as a stack the line runs through</li><li><a href="./uml-communication.html#shows">10 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/uml-communication.html#view=checkout" target="_self">Checkout, the card accepted</a>; also <a href="/umlimator/examples/types/uml-communication.html#view=checkout-right" target="_self">The same checkout, laid out right</a></p>
+<div class="ex-links"><a href="./uml-communication.html">Open<span class="visually-hidden"> (Communication)</span></a><a href="/umlimator/examples/types/uml-communication.pdf" target="_self">PDF<span class="visually-hidden"> (Communication)</span></a><a href="/umlimator/examples/types/uml-communication.json" target="_self">Model<span class="visually-hidden"> (Communication)</span></a></div>
+</article>
+<article class="ex-card" id="type-uml-interaction-overview">
+<a class="ex-still" href="./uml-interaction-overview.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/uml-interaction-overview/buy-book.png'" alt="A UML interaction overview diagram of buying a book, laid out down: a start, ref boxes for finding a book and checking out, a merge and the decision Payment accepted? looping back with try again [else] and a note, a fork into Email the receipt ending at a flow final, the inline sd frame Queue the order with its three lifelines, and Reserve the stock, then a join and the activity final" loading="lazy" width="640" height="320"></a>
+<h3><a href="./uml-interaction-overview.html">Interaction overview</a></h3>
+<p>An activity whose steps are interactions.</p>
+<ul class="ex-shows-short"><li>An initial node, a filled circle</li><li>Interaction uses, boxes with <code>ref</code> in their tag, each opening its sequence diagram (Find a book, Check out, Email the receipt, Reserve the stock)</li><li>A control flow with a name as its label (book chosen)</li><li><a href="./uml-interaction-overview.html#shows">10 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/uml-interaction-overview.html#view=buy-book" target="_self">Buying a book</a>; also <a href="/umlimator/examples/types/uml-interaction-overview.html#view=buy-book-right" target="_self">Buying a book, laid out right</a>, <a href="/umlimator/examples/types/uml-interaction-overview.html#view=find-book" target="_self">Find a book</a>, <a href="/umlimator/examples/types/uml-interaction-overview.html#view=buy-checkout" target="_self">Check out</a>, <a href="/umlimator/examples/types/uml-interaction-overview.html#view=reserve-stock" target="_self">Reserve the stock</a>, <a href="/umlimator/examples/types/uml-interaction-overview.html#view=email-receipt" target="_self">Email the receipt</a>, <a href="/umlimator/examples/types/uml-interaction-overview.html#view=queue-order" target="_self">Queue the order</a></p>
+<div class="ex-links"><a href="./uml-interaction-overview.html">Open<span class="visually-hidden"> (Interaction overview)</span></a><a href="/umlimator/examples/types/uml-interaction-overview.pdf" target="_self">PDF<span class="visually-hidden"> (Interaction overview)</span></a><a href="/umlimator/examples/types/uml-interaction-overview.json" target="_self">Model<span class="visually-hidden"> (Interaction overview)</span></a></div>
+</article>
+<article class="ex-card" id="type-uml-timing">
+<a class="ex-still" href="./uml-timing.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/uml-timing/checkout.png'" alt="A UML timing diagram of paying for one bookshop order: the worker, card gateway and mailer as step lines through their states, the order's status as a value band, a call and its reply, an async signal, two duration constraints and a time constraint over a ruler in milliseconds" loading="lazy" width="640" height="320"></a>
+<h3><a href="./uml-timing.html">Timing</a></h3>
+<p>How lifelines change state along a time axis.</p>
+<ul class="ex-shows-short"><li>Lifelines as lanes, <code>name : Type</code> on the left and their states in a column (worker : OrderWorker, payments : CardGateway, mailer : Mailer)</li><li>State lifelines as step lines, level in a state's row, upright at each change</li><li>A call message with a filled arrowhead from the sender's level to the receiver's (charge(total))</li><li><a href="./uml-timing.html#shows">7 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/uml-timing.html#view=checkout" target="_self">Paying for one bookshop order</a></p>
+<div class="ex-links"><a href="./uml-timing.html">Open<span class="visually-hidden"> (Timing)</span></a><a href="/umlimator/examples/types/uml-timing.pdf" target="_self">PDF<span class="visually-hidden"> (Timing)</span></a><a href="/umlimator/examples/types/uml-timing.json" target="_self">Model<span class="visually-hidden"> (Timing)</span></a></div>
+</article>
+<article class="ex-card" id="type-uml-information-flow">
+<a class="ex-still" href="./uml-information-flow.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/uml-information-flow/order-flows.png'" alt="A UML information flow diagram of what travels with a bookshop order, laid out right: dashed &lt;&lt;flow&gt;&gt; lines between Shop API, StockLedger, the Notifications interface, the shopper, Storefront and the payment provider, each naming what it conveys, a retry loop on Shop API with a note, and the Order, Card details, Receipt and Stock level items and the Book class below" loading="lazy" width="640" height="320"></a>
+<h3><a href="./uml-information-flow.html">Information flow</a></h3>
+<p>Information items conveyed between elements.</p>
+<ul class="ex-shows-short"><li>A note linked by a dashed line to a flow's end (Shop API)</li><li>Components as flow ends (Shop API, Storefront, Payment provider)</li><li>A flow from an element to itself, drawn as a loop (&lt;&lt;flow&gt;&gt; retry: Order)</li><li><a href="./uml-information-flow.html#shows">10 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/uml-information-flow.html#view=order-flows" target="_self">What travels with an order</a>; also <a href="/umlimator/examples/types/uml-information-flow.html#view=order-flows-down" target="_self">What travels with an order, laid out down</a></p>
+<div class="ex-links"><a href="./uml-information-flow.html">Open<span class="visually-hidden"> (Information flow)</span></a><a href="/umlimator/examples/types/uml-information-flow.pdf" target="_self">PDF<span class="visually-hidden"> (Information flow)</span></a><a href="/umlimator/examples/types/uml-information-flow.json" target="_self">Model<span class="visually-hidden"> (Information flow)</span></a></div>
+</article>
+</div>
+
+## Data and flow {#data-and-flow}
+
+A database schema, the data a system moves, and the steps of a process.
+
+<div class="ex-grid">
+<article class="ex-card" id="type-er">
+<a class="ex-still" href="./er.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/er/schema.png'" alt="An entity-relationship diagram of a bookshop's database in crow's foot notation: customer, order, order_line, payment, book, author and book_author with PK, FK, UK and nullable marks, a self-referencing customer, identifying lines solid and the rest dashed, all four crow's foot ends, and a note on order_line" loading="lazy" width="640" height="320"></a>
+<h3><a href="./er.html">Entity-relationship</a></h3>
+<p>Entities, their attributes and relationships, with cardinality.</p>
+<ul class="ex-shows-short"><li>Tables as boxes, the name in a header, the key columns above a divider and the rest below it</li><li>Column marks: PK, FK, UK and ? for a nullable column (customer's referred_by is FK ?)</li><li>A composite primary key whose part is also a foreign key (order_line: order_id PK FK, line_no PK)</li><li><a href="./er.html#shows">12 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/er.html#view=schema" target="_self">A bookshop's database</a>; also <a href="/umlimator/examples/types/er.html#view=schema-idef1x" target="_self">The same database in IDEF1X</a></p>
+<div class="ex-links"><a href="./er.html">Open<span class="visually-hidden"> (Entity-relationship)</span></a><a href="/umlimator/examples/types/er.pdf" target="_self">PDF<span class="visually-hidden"> (Entity-relationship)</span></a><a href="/umlimator/examples/types/er.json" target="_self">Model<span class="visually-hidden"> (Entity-relationship)</span></a></div>
+</article>
+<article class="ex-card" id="type-dfd">
+<a class="ex-still" href="./dfd.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/dfd/level-1.png'" alt="A data flow diagram of a bookshop, level 1, laid out down in Yourdon notation: the Orders and Books stores, the processes Take payment, Ship order and Take order, the Payment provider, Courier and Customer, labelled flows between them and a note on the Orders store" loading="lazy" width="640" height="320"></a>
+<h3><a href="./dfd.html">Data flow</a></h3>
+<p>Processes, data stores and external entities, and the data between them.</p>
+<ul class="ex-shows-short"><li>A note linked by a dashed line to a data store</li><li>Data stores in Yourdon's style, two lines with the number before the name (D2 Orders, D1 Books)</li><li>Processes as ellipses, the number above the name (1 Take order, 2 Take payment, 3 Ship order)</li><li><a href="./dfd.html#shows">5 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/dfd.html#view=level-1" target="_self">The bookshop, level 1</a>; also <a href="/umlimator/examples/types/dfd.html#view=level-1-gane-sarson" target="_self">The bookshop, level 1, in Gane and Sarson</a>, <a href="/umlimator/examples/types/dfd.html#view=take-order" target="_self">1 Take order, level 2</a></p>
+<div class="ex-links"><a href="./dfd.html">Open<span class="visually-hidden"> (Data flow)</span></a><a href="/umlimator/examples/types/dfd.pdf" target="_self">PDF<span class="visually-hidden"> (Data flow)</span></a><a href="/umlimator/examples/types/dfd.json" target="_self">Model<span class="visually-hidden"> (Data flow)</span></a></div>
+</article>
+<article class="ex-card" id="type-flowchart">
+<a class="ex-still" href="./flowchart.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/flowchart/returns.png'" alt="A flowchart of a bookshop handling a returned book, laid out down: a start, an input, a decision looping back through a manual input, a decision with three labelled exits, a predefined process, a delay, an on-page connector pair B with a note, a database, a document, a junction connector A and an end" loading="lazy" width="640" height="320"></a>
+<h3><a href="./flowchart.html">Flowchart</a></h3>
+<p>The steps and decisions of a process.</p>
+<ul class="ex-shows-short"><li>A start, a terminator drawn as a stadium with no flow in (Returned parcel arrives)</li><li>An input/output, a parallelogram leaning right (Read the returns slip)</li><li>A decision, a diamond with its text on two lines, its exits labelled yes and no (Order found?)</li><li><a href="./flowchart.html#shows">13 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/flowchart.html#view=returns" target="_self">Handling a returned book</a>; also <a href="/umlimator/examples/types/flowchart.html#view=returns-right" target="_self">The same flowchart, laid out right</a></p>
+<div class="ex-links"><a href="./flowchart.html">Open<span class="visually-hidden"> (Flowchart)</span></a><a href="/umlimator/examples/types/flowchart.pdf" target="_self">PDF<span class="visually-hidden"> (Flowchart)</span></a><a href="/umlimator/examples/types/flowchart.json" target="_self">Model<span class="visually-hidden"> (Flowchart)</span></a></div>
+</article>
+</div>
+
+## C4 {#c4}
+
+The C4 model's views, from the landscape down to a deployment.
+
+<div class="ex-grid">
+<article class="ex-card" id="type-c4">
+<a class="ex-still" href="./c4.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/c4/containers.png'" alt="A C4 container diagram of a bookshop: the shopper and staff as people on the left, the Bookshop boundary holding Mobile app, Storefront, Stock import, Order worker, Cover images, Shop API, Database and Order queue in their card shapes, a dashed implied line from Shop API to the Email service, and the payment provider, email service and courier in grey on the right" loading="lazy" width="640" height="320"></a>
+<h3><a href="./c4.html">C4</a></h3>
+<p>C4's landscape, context, container, component, dynamic and deployment views.</p>
+<ul class="ex-shows-short"><li>People in C4's person shape, with their description (Shopper, Shop staff)</li><li>The subject's boundary, a dashed box titled <code>Bookshop [Software System]</code>, holding its containers</li><li>Containers with C4's three lines: the name, <code>[Container: technology]</code> and the description</li><li><a href="./c4.html#shows">9 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/c4.html#view=containers" target="_self">Bookshop: containers</a>; also <a href="/umlimator/examples/types/c4.html#view=context" target="_self">Bookshop: system context</a>, <a href="/umlimator/examples/types/c4.html#view=landscape" target="_self">The bookshop's systems: landscape</a>, <a href="/umlimator/examples/types/c4.html#view=components" target="_self">Shop API: components</a>, <a href="/umlimator/examples/types/c4.html#view=placing-an-order" target="_self">Placing an order</a>, <a href="/umlimator/examples/types/c4.html#view=deployment" target="_self">Bookshop: production deployment</a></p>
+<div class="ex-links"><a href="./c4.html">Open<span class="visually-hidden"> (C4)</span></a><a href="/umlimator/examples/types/c4.pdf" target="_self">PDF<span class="visually-hidden"> (C4)</span></a><a href="/umlimator/examples/types/c4.json" target="_self">Model<span class="visually-hidden"> (C4)</span></a></div>
+</article>
+</div>
+
+## SysML {#sysml}
+
+Four diagrams of SysML v1.7.
+
+<div class="ex-grid">
+<article class="ex-card" id="type-sysml-requirement">
+<a class="ex-still" href="./sysml-requirement.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/sysml-requirement/requirements.png'" alt="A SysML requirement diagram of an online bookshop in a req frame: Online ordering containing Search, Checkout and Refunds by crosshair lines, requirements of all five kinds with ids, texts, risk and verify method, a Payments package box, a requirement copied from a regulation, blocks that satisfy and refine requirements, test cases that verify them, derive and trace lines, and a problem and a rationale note" loading="lazy" width="640" height="320"></a>
+<h3><a href="./sysml-requirement.html">Requirement</a></h3>
+<p>Requirements and how they are derived, satisfied and verified.</p>
+<ul class="ex-shows-short"><li>The req frame with its pentagon header, the view's subject a package: req [Package] Online bookshop [What the shop must do]</li><li>Requirements as classifiers, &lt;&lt;requirement&gt;&gt; over the name and an id and text compartment (SHOP-1 Online ordering)</li><li>Containment, a line with a crosshair at the owner's end, two levels deep (Online ordering holds Search, Checkout and Refunds; Search holds Search speed)</li><li><a href="./sysml-requirement.html#shows">12 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/sysml-requirement.html#view=requirements" target="_self">What the shop must do</a></p>
+<div class="ex-links"><a href="./sysml-requirement.html">Open<span class="visually-hidden"> (Requirement)</span></a><a href="/umlimator/examples/types/sysml-requirement.pdf" target="_self">PDF<span class="visually-hidden"> (Requirement)</span></a><a href="/umlimator/examples/types/sysml-requirement.json" target="_self">Model<span class="visually-hidden"> (Requirement)</span></a></div>
+</article>
+<article class="ex-card" id="type-sysml-block-definition">
+<a class="ex-still" href="./sysml-block-definition.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/sysml-block-definition/ebike-blocks.png'" alt="A SysML block definition diagram of the bookshop's delivery cargo e-bike in its bdd frame: CargoBike, a kind of DeliveryVehicle, composed of Battery, Motor, Controller, two Lights and a CargoBox with its parcel lock, with parts, references, values, constraints, ports and flow properties compartments, a Dock at the dispatch bay with a conjugated port using the ChargeInterface interface block, two constraint blocks and four value types with units" loading="lazy" width="640" height="320"></a>
+<h3><a href="./sysml-block-definition.html">Block definition</a></h3>
+<p>Blocks, their properties and how they are composed.</p>
+<ul class="ex-shows-short"><li>The frame and its header, <code>bdd [Package] DeliveryFleet [The delivery bike's blocks]</code></li><li>Blocks with &lt;&lt;block&gt;&gt; and SysML's titled compartments, an empty one not drawn</li><li>A block's values and operations (DeliveryVehicle, CargoBox)</li><li><a href="./sysml-block-definition.html#shows">14 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/sysml-block-definition.html#view=ebike-blocks" target="_self">The delivery bike's blocks</a>; also <a href="/umlimator/examples/types/sysml-block-definition.html#view=ebike-blocks-right" target="_self">The same blocks, laid out right</a></p>
+<div class="ex-links"><a href="./sysml-block-definition.html">Open<span class="visually-hidden"> (Block definition)</span></a><a href="/umlimator/examples/types/sysml-block-definition.pdf" target="_self">PDF<span class="visually-hidden"> (Block definition)</span></a><a href="/umlimator/examples/types/sysml-block-definition.json" target="_self">Model<span class="visually-hidden"> (Block definition)</span></a></div>
+</article>
+<article class="ex-card" id="type-sysml-internal-block">
+<a class="ex-still" href="./sysml-internal-block.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/sysml-internal-block/inside-ebike.png'" alt="A SysML internal block diagram of the bookshop's delivery cargo e-bike, laid out down: the frame ibd [Block] CargoBike with the proxy port chargeSocket on its top border, the battery, the dashed reference part dock with a conjugated port, the controller, the motor with a full port, two lights, the cargo box and two value properties, joined by connectors carrying DCPower, PhaseCurrent, WheelSpeed and UnlockCode" loading="lazy" width="640" height="320"></a>
+<h3><a href="./sysml-internal-block.html">Internal block</a></h3>
+<p>The parts of a block and what flows between their ports.</p>
+<ul class="ex-shows-short"><li>The frame: the subject block's box with its header <code>ibd [Block] CargoBike [Inside the cargo bike]</code></li><li>A port on the frame's own border (&lt;&lt;proxy&gt;&gt; chargeSocket : ChargeInterface) and a connector delegating it to a part's port</li><li>Proxy ports typed by an interface block, with a two-way flow arrow inside from its in and out flow properties (charge : ChargeInterface)</li><li><a href="./sysml-internal-block.html#shows">10 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/sysml-internal-block.html#view=inside-ebike" target="_self">Inside the cargo bike</a>; also <a href="/umlimator/examples/types/sysml-internal-block.html#view=inside-ebike-right" target="_self">Inside the cargo bike, laid out right</a></p>
+<div class="ex-links"><a href="./sysml-internal-block.html">Open<span class="visually-hidden"> (Internal block)</span></a><a href="/umlimator/examples/types/sysml-internal-block.pdf" target="_self">PDF<span class="visually-hidden"> (Internal block)</span></a><a href="/umlimator/examples/types/sysml-internal-block.json" target="_self">Model<span class="visually-hidden"> (Internal block)</span></a></div>
+</article>
+<article class="ex-card" id="type-sysml-parametric">
+<a class="ex-still" href="./sysml-parametric.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/sysml-parametric/range.png'" alt="A SysML parametric diagram of the bookshop's delivery cargo e-bike's range: the par frame for CargoBike, six value properties bound to the parameters of four constraint properties with rounded corners and their equations, usable feeding the energy of empty and laden, and load turning the payload and the empty consumption into the laden one" loading="lazy" width="640" height="320"></a>
+<h3><a href="./sysml-parametric.html">Parametric</a></h3>
+<p>Constraint blocks that bind a system's values.</p>
+<ul class="ex-shows-short"><li>The frame's header naming its block: <code>par [Block] CargoBike [...]</code></li><li>Value properties as plain boxes <code>name : Type</code> (payload : Mass, batteryCapacity : Energy)</li><li>Constraint properties as boxes with rounded corners, <code>name : ConstraintBlock</code>, the block's expression in braces under the name, cut to the box</li><li><a href="./sysml-parametric.html#shows">4 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/sysml-parametric.html#view=range" target="_self">The cargo bike's delivery range, empty and laden</a>; also <a href="/umlimator/examples/types/sysml-parametric.html#view=range-down" target="_self">The same analysis, laid out down</a>, <a href="/umlimator/examples/types/sysml-parametric.html#view=delivery-frame" target="_self">DeliveryRange, a constraint block as the frame</a></p>
+<div class="ex-links"><a href="./sysml-parametric.html">Open<span class="visually-hidden"> (Parametric)</span></a><a href="/umlimator/examples/types/sysml-parametric.pdf" target="_self">PDF<span class="visually-hidden"> (Parametric)</span></a><a href="/umlimator/examples/types/sysml-parametric.json" target="_self">Model<span class="visually-hidden"> (Parametric)</span></a></div>
+</article>
+</div>
+
+## BPMN {#bpmn}
+
+Business processes in BPMN 2.0.2.
+
+<div class="ex-grid">
+<article class="ex-card" id="type-bpmn">
+<a class="ex-still" href="./bpmn.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/bpmn/order-to-shipment.png'" alt="A BPMN diagram of a bookshop order from basket to shipment: the Shopper, black-box Payment provider and Bookshop pools, the bookshop's Sales lane and Warehouse lane with Dispatch and Picking nested, message, timer, terminate and none events, user and service tasks, exclusive and parallel gateways, a collapsed sub-process, a call activity with a non-interrupting boundary event, data, an annotation, a group and dashed message flows between the pools" loading="lazy" width="640" height="320"></a>
+<h3><a href="./bpmn.html">BPMN</a></h3>
+<p>Business processes: events, tasks, gateways, pools and lanes.</p>
+<ul class="ex-shows-short"><li>Pools as bands, each name turned in a header strip: Shopper, Payment provider, Bookshop</li><li>A black-box pool with no flow nodes (Payment provider)</li><li>A none start event (Basket is ready) and a user task with the figure at its top left (Place order)</li><li><a href="./bpmn.html#shows">22 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/bpmn.html#view=order-to-shipment" target="_self">A bookshop order, from basket to shipment</a>; also <a href="/umlimator/examples/types/bpmn.html#view=pick-and-pack" target="_self">Pick and pack, the collapsed sub-process opened</a>, <a href="/umlimator/examples/types/bpmn.html#view=order-to-shipment-expanded" target="_self">The same process, Pick and pack expanded</a></p>
+<div class="ex-links"><a href="./bpmn.html">Open<span class="visually-hidden"> (BPMN)</span></a><a href="/umlimator/examples/types/bpmn.pdf" target="_self">PDF<span class="visually-hidden"> (BPMN)</span></a><a href="/umlimator/examples/types/bpmn.json" target="_self">Model<span class="visually-hidden"> (BPMN)</span></a></div>
+</article>
+</div>
+
+## Cloud {#cloud}
+
+Cloud architecture, with the vendor's service icons when its icon pack is fetched ([Icons and icon packs](../use/icon-packs.md)) and named glyphs without them.
+
+<div class="ex-grid">
+<article class="ex-card" id="type-aws">
+<a class="ex-still" href="./aws.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/aws/on-aws.png'" alt="An AWS architecture diagram of the bookshop, laid out down: shoppers outside the AWS Cloud, DNS and a CDN inside it, a production account and an Ireland region holding the storefront files, a VPC with a load balancer and two availability zones with private and public subnets, a database security group, the order queue, a generic group of two order worker functions, emails, stock, logs, and a log archive account drawn as a card, every service with its glyph and full service name" loading="lazy" width="640" height="320"></a>
+<h3><a href="./aws.html">AWS</a></h3>
+<p>Accounts, regions, VPCs, subnets and the services in them.</p>
+<ul class="ex-shows-short"><li>A resource outside the cloud with its icon and full name (Shoppers, Users)</li><li>Connections, solid with an open arrow and a label (looks up, HTTPS, storefront, /api)</li><li>The cloud group, AWS Cloud [Cloud], holding global services (DNS, Amazon Route 53; CDN, Amazon CloudFront)</li><li><a href="./aws.html#shows">11 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/aws.html#view=on-aws" target="_self">The bookshop on AWS</a></p>
+<div class="ex-links"><a href="./aws.html">Open<span class="visually-hidden"> (AWS)</span></a><a href="/umlimator/examples/types/aws.pdf" target="_self">PDF<span class="visually-hidden"> (AWS)</span></a><a href="/umlimator/examples/types/aws.json" target="_self">Model<span class="visually-hidden"> (AWS)</span></a></div>
+</article>
+<article class="ex-card" id="type-gcp">
+<a class="ex-still" href="./gcp.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/gcp/bookshop-gcp.png'" alt="A Google Cloud diagram of a bookshop, laid out down: shoppers and shop staff, the bookshop-prod project holding DNS, a load balancer, a CDN, storefront files, an order queue, a reporting group and the europe-west1 region with the API and an order worker, a VPC, a subnetwork and two zones with the primary and standby database, and a path to the closed bookshop-accounts project" loading="lazy" width="640" height="320"></a>
+<h3><a href="./gcp.html">Google Cloud</a></h3>
+<p>Projects, regions, zones and the services in them.</p>
+<ul class="ex-shows-short"><li>Users in the person shape (Shoppers, Shop staff)</li><li>A project as a solid box titled <code>bookshop-prod [Project]</code></li><li>Product cards with the icon (a glyph without the pack), the label and under it the full service name (Load balancer, Cloud Load Balancing)</li><li><a href="./gcp.html#shows">10 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/gcp.html#view=bookshop-gcp" target="_self">The bookshop on Google Cloud</a>; also <a href="/umlimator/examples/types/gcp.html#view=bookshop-gcp-right" target="_self">The same deployment, laid out right</a></p>
+<div class="ex-links"><a href="./gcp.html">Open<span class="visually-hidden"> (Google Cloud)</span></a><a href="/umlimator/examples/types/gcp.pdf" target="_self">PDF<span class="visually-hidden"> (Google Cloud)</span></a><a href="/umlimator/examples/types/gcp.json" target="_self">Model<span class="visually-hidden"> (Google Cloud)</span></a></div>
+</article>
+<article class="ex-card" id="type-azure">
+<a class="ex-still" href="./azure.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/azure/on-azure.png'" alt="An Azure architecture diagram of a bookshop: the subscription Bookshop production and resource group rg-bookshop-prod holding CDN and routing, the West Europe region with storefront files, the order queue, the basket cache and secrets, the virtual network with the snet-apps subnet (Shop API, Order worker) and the snet-data subnet (Database), the Operations group with Application Insights and Logs and alerts, and the closed North Europe region the database replicates to" loading="lazy" width="640" height="320"></a>
+<h3><a href="./azure.html">Azure</a></h3>
+<p>Subscriptions, resource groups, virtual networks and the services in them.</p>
+<ul class="ex-shows-short"><li>Groups as boxes nested by ownership, each titled with its kind: a subscription, a resource group, a region (dashed), a virtual network and subnets</li><li>Service cards: the vendor icon on its tile (a plain square where no icon pack was fetched), the label, and the full service name under it in a smaller muted line (CDN and routing, Front Door and CDN Profiles)</li><li>Connectors, solid with an open arrow and a label (storefront, /api, paid order)</li><li><a href="./azure.html#shows">6 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/azure.html#view=on-azure" target="_self">Bookshop on Azure</a></p>
+<div class="ex-links"><a href="./azure.html">Open<span class="visually-hidden"> (Azure)</span></a><a href="/umlimator/examples/types/azure.pdf" target="_self">PDF<span class="visually-hidden"> (Azure)</span></a><a href="/umlimator/examples/types/azure.json" target="_self">Model<span class="visually-hidden"> (Azure)</span></a></div>
+</article>
+</div>
+
+## Mindmap {#mindmap}
+
+Ideas branching out from one topic.
+
+<div class="ex-grid">
+<article class="ex-card" id="type-mindmap">
+<a class="ex-still" href="./mindmap.html" tabindex="-1" aria-hidden="true"><img :src="'/umlimator/examples/types/stills/mindmap/plan.png'" alt="A mindmap of opening a bookshop: the root in the middle, Catalogue, Website and Staff on the right and Launch, Warehouse, Legal and money and Hosting on the left, each branch in its own colour and joined by curves, a long topic cut with an ellipsis, a branch four levels deep and Launch marked as opening launch day's own mindmap" loading="lazy" width="640" height="320"></a>
+<h3><a href="./mindmap.html">Mindmap</a></h3>
+<p>Ideas branching out from one topic.</p>
+<ul class="ex-shows-short"><li>The root in the middle, in a larger, bolder box (Opening the bookshop)</li><li>Topics as rounded boxes, joined to their parents by curves, thicker from the root</li><li>Each first-level branch in its own colour, borders and curves alike, the six colours cycled (Staff takes Catalogue's)</li><li><a href="./mindmap.html#shows">7 more</a></li></ul>
+<p class="ex-views">Opens on <a href="/umlimator/examples/types/mindmap.html#view=plan" target="_self">Opening the bookshop</a>; also <a href="/umlimator/examples/types/mindmap.html#view=launch-day" target="_self">Launch day</a></p>
+<div class="ex-links"><a href="./mindmap.html">Open<span class="visually-hidden"> (Mindmap)</span></a><a href="/umlimator/examples/types/mindmap.pdf" target="_self">PDF<span class="visually-hidden"> (Mindmap)</span></a><a href="/umlimator/examples/types/mindmap.json" target="_self">Model<span class="visually-hidden"> (Mindmap)</span></a></div>
+</article>
+</div>

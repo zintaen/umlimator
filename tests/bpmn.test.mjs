@@ -374,6 +374,9 @@ test('remove: a lane deleted by Delete or Shift + Delete, what it held and its n
   // the two flow nodes Warehouse held, now in no lane of a pool that keeps lanes, said with the in-lane warnings they bring (audit 48)
   assert.equal(r.say, 'Deleted lane Warehouse from the model: a lane is not hidden from a view, keeping what it held; 2 flow nodes now in no lane of Bookshop: drag them into a lane');
   assert.deepEqual(validate(m).filter(p => p.rule === 'in-lane').map(p => p.ids[0]), ['pick-pack', 'courier-pickup']);
+  // two lanes at once: what they held, the pronoun by the count (audit 57)
+  assert.match(bzRemove(EX, V(EX), ['bp-sales', 'bp-warehouse'], true).say, /^Deleted 2 lanes from the model, keeping what they held(;|$)/);
+  assert.match(bzRemove(EX, V(EX), ['bp-sales', 'bp-warehouse'], false).say, /^Deleted 2 lanes from the model: a lane is not hidden from a view, keeping what they held(;|$)/);
   const lanes = m.nodes.find(n => n.id === 'bp-bookshop').members;
   assert.deepEqual(lanes.map(l => [l.id, l.parent]), [['bp-sales', undefined], ['packing', undefined], ['boxes', 'packing']], 'the nested lanes kept, one level up');
   assert.deepEqual(['pick-pack', 'bp-join', 'bp-ship', 'courier-pickup'].map(id => m.nodes.find(n => n.id === id).parent), ['bp-bookshop', 'packing', 'boxes', 'bp-bookshop']);
@@ -990,4 +993,79 @@ test('audit 43: the example\'s timer moved to each side by Alt + arrows, laid ou
     const bad = quiet(() => check(n, v.id)).map(p => p.message).filter(t => / share a line| overlap/.test(t));
     assert.deepEqual(bad, [], `${direction}, the timer on the ${s}`);
   }
+});
+
+// audit 52: Delete of a lane keeps what it held whichever view makes it: another view's own flow node in the lane (or in a
+// nested lane moved up) is moved too, which apply()'s delete would take otherwise; Shift + Delete of a pool counts it
+test('audit 52: Delete of a lane keeps a flow node another view holds as its own in it; a pool\'s Shift + Delete counts it', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'pool', type: 'bpmn.Participant', label: 'Shop', members: [{ id: 'l1', type: 'bpmn.Lane', label: 'Sales' }, { id: 'l1a', type: 'bpmn.Lane', label: 'Sub', parent: 'l1' }, { id: 'l2', type: 'bpmn.Lane', label: 'Stock' }] },
+    { id: 's', type: 'bpmn.StartEvent', label: 'Start', parent: 'l1' }, { id: 't', type: 'bpmn.Task', label: 'Sell', parent: 'l1a' }], edges: [],
+    views: [{ id: 'v1', diagram: 'bpmn', nodeIds: ['pool', 's', 't'] }, { id: 'v2', diagram: 'bpmn', nodeIds: ['pool', 's', 't', 'own', 'own2'],
+      nodes: [{ id: 'own', type: 'bpmn.Task', label: 'Own', parent: 'l1' }, { id: 'own2', type: 'bpmn.Task', label: 'Own two', parent: 'l1a' }] }] };
+  assert.deepEqual(validate(m).filter(p => p.level === 'error'), []);
+  for (const vid of ['v1', 'v2']) { const v = m.views.find(x => x.id === vid), r = bzRemove(m, v, ['l1'], false), n = apply(m, r.commands), w = n.views[1];
+    assert.deepEqual(w.nodes.map(x => [x.id, x.parent]), [['own', 'pool'], ['own2', 'l1a']], vid);
+    assert.match(r.say, /keeping what it held/, vid); }
+  // the hint counts in-lane only what this view shows: v1 shows s alone of what lands in the pool
+  assert.match(bzRemove(m, m.views[0], ['l1'], false).say, /; 1 flow node now in no lane of Shop/);
+  // Shift + Delete of the pool: s, t and v2's own two go
+  assert.match(bzRemove(m, m.views[0], ['pool'], true).say, /deleted pool Shop and the 4 elements it holds/i);
+});
+
+test('audit 54: 26 expanded sub-processes nested, each holding a start event, lay out in about linear time (before: the reading order\'s rank worked each box out twice per child, 2^depth, 7 s here, over 60 s at 30); a task named with 200,000 dashes is added in linear time (timed)', () => {
+  const nodes = [N('p', 'Participant', 'P')];
+  for (let i = 0, par = 'p'; i < 26; par = 'sp' + i++) nodes.push(N('sp' + i, 'SubProcess', 'S' + i, { parent: par }), N('st' + i, 'StartEvent', null, { parent: 'sp' + i }));
+  const m = one(nodes, []); let t = performance.now(); const g = layout(m, 'v');
+  assert.ok(performance.now() - t < 1000, `${Math.round(performance.now() - t)} ms`);
+  assert.deepEqual(nodes.map(n => n.id).filter(id => !g.order.includes(id)), []);
+  const d = '-'.repeat(200000); t = performance.now();
+  const [c] = bzAdd(one([], []), one([], []).views[0], { type: 'bpmn.Task' }, `-a${d}b-`, null);
+  assert.ok(performance.now() - t < 500, `${Math.round(performance.now() - t)} ms`); assert.equal(c.element.id, `a${d}b`);
+});
+
+test('audit 55: 150 sequence flows into one gateway lay out in about linear time (before: the lines into its side, too many for its tracks, each fell to the last resort, whose grid held every line before it and whose search visited all of it, 30 s; and each line marked its grid cell by cell) (timed)', () => {
+  const nodes = [N('p', 'Participant', 'P'), N('j', 'ExclusiveGateway', 'J', { parent: 'p' })], edges = [];
+  for (let i = 0; i < 150; i++) { nodes.push(N('t' + i, 'Task', 'T' + i, { parent: 'p' })); edges.push({ id: 'e' + i, type: 'bpmn.SequenceFlow', from: 't' + i, to: 'j' }); }
+  const t = performance.now(), g = layout(one(nodes, edges), 'v'), ms = performance.now() - t;
+  assert.ok(ms < 4000, `${Math.round(ms)} ms`);
+  assert.equal(g.edges.filter(e => e.pts && e.pts.length >= 2).length, 150, 'every flow drawn');
+});
+
+test('a boundary event on an activity one view alone holds lives in that view too; Delete of such an activity deletes its events and says so (audit 58)', () => {
+  const E = T.edits, be = T.elements.find(e => e.type === 'bpmn.BoundaryEvent');
+  let m = apply(EX, [{ op: 'add', element: N('own-t', 'Task', 'Own task', { parent: 'bp-sales' }), view: VID, in: 'view' }]);
+  // the palette's add on the selected view-own task: into the view's own nodes, not the model
+  const add = E.add(m, V(m), be, 'Late', { sel: ['own-t'] });
+  assert.equal(add[0].in, 'view'); m = apply(m, add);
+  assert.ok(V(m).nodes.some(n => n.id === 'late') && !m.nodes.some(n => n.id === 'late')); assert.deepEqual(errors(m), []);
+  // Delete: both deleted, said as deleted, not hid
+  const r = E.remove(m, V(m), ['own-t'], false);
+  assert.deepEqual(r.commands, [{ op: 'delete', id: 'own-t' }, { op: 'delete', id: 'late' }]);
+  assert.match(r.say, /^Deleted its boundary event Late with Own task: it lived in this view only/);
+  const m1 = apply(m, r.commands); assert.ok(!m1.nodes.some(n => n.id === 'own-t' || n.id === 'late') && !(V(m1).nodes || []).some(n => n.id === 'own-t' || n.id === 'late'));
+  // a model event on it (written so by hand): the cascade takes it, no hide that apply() refuses
+  const m2 = structuredClone(m); V(m2).nodes = V(m2).nodes.filter(n => n.id !== 'late'); m2.nodes.push(N('late', 'BoundaryEvent', 'Late', { parent: 'bp-sales', props: { definition: 'timer', attachedTo: 'own-t' } }));
+  const r2 = E.remove(m2, V(m2), ['own-t'], false);
+  assert.deepEqual(r2.commands, [{ op: 'delete', id: 'own-t' }]); assert.match(r2.say, /^Deleted its boundary event Late/);
+  assert.ok(!apply(m2, r2.commands).nodes.some(n => n.id === 'late'));
+  // a model event is not moved onto it: not offered by A, refused by a drop on its border
+  const pick = E.key(m, V(m), ['payment-timeout'], 'A'); assert.ok(pick.pick.length && !pick.pick.includes('Own task'));
+  const g = layout(m, VID), b = g.byId['own-t'];
+  assert.match(E.moveTo(m, V(m), 'payment-timeout', { pt: [b.x + 2, b.y + b.h], geo: g }).error, /^Own task lives in this view only/);
+  // a model task keeps its model events as before
+  assert.equal(E.add(m, V(m), be, 'Late 2', { sel: ['cancel-order'] })[0].in, undefined);
+});
+test('Delete of a view-own activity with the model boundary event on it also selected deletes the activity alone, in either order (audit 59)', () => {
+  const E = T.edits;
+  const m = structuredClone(apply(EX, [{ op: 'add', element: N('own-t', 'Task', 'Own task', { parent: 'bp-sales' }), view: VID, in: 'view' }]));
+  m.nodes.push(N('late', 'BoundaryEvent', 'Late', { parent: 'bp-sales', props: { definition: 'timer', attachedTo: 'own-t' } })); V(m).nodeIds.push('late');
+  for (const sel of [['own-t', 'late'], ['late', 'own-t']]) {
+    const r = E.remove(m, V(m), sel, false);
+    assert.deepEqual(r.commands, [{ op: 'delete', id: 'own-t' }], sel.join());
+    assert.match(r.say, /^Deleted its boundary event Late with Own task: a boundary event goes with its activity/);
+    const a = apply(m, r.commands); assert.ok(!a.nodes.some(n => n.id === 'late' || n.id === 'own-t'));
+  }
+  // a model event on a model task, selected with it: still hidden, as before
+  const r = E.remove(m, V(m), ['cancel-order', 'payment-timeout'], false);
+  assert.ok(r == null || !r.commands.some(c => c.op === 'delete'));
 });

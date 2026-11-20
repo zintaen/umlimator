@@ -1,14 +1,14 @@
 import { ownNodes, registerDiagramType } from '../core/registry.js';
-import { esc, fit, textW, widest } from '../core/text.js';
+import { esc, fit, textW, trimDash, widest } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
-import { brLines } from '../typed/draw.js';
+import { brLines, goneIn } from '../typed/draw.js';
 import { layoutTyped } from '../typed/layout.js';
 import { CLASSIFIERS, commentConnect, LINE_WORDS, legendOf, lineIn, lineLabel, lineLook, lineRename, memberClash, memberEdit, multBounds, printMember } from './class.js'; // a subject's other members, as the class type's; SHAPE.note, a comment's look
 import './usecase.js'; // SHAPE.ellipse, a collaboration use's; SHAPE.subject, a class subject's frame
-import { SN_SAY, STRUCT_RULES, sideProblem, snKindName, snKindWord, portFit, portSides, portsDrawn, structProblems } from './structure.js';
+import { SN_SAY, STRUCT_RULES, sideProblem, snKindName, snKindWord, portFit, portSides, portsHeld, structProblems } from './structure.js';
 import { viewLines } from './owners.js';
-import { usedIds, jsonText, labelOr, elName, propTextProblems } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName, oneNamed, propTextProblems, isGone } from '../core/model.js';
 
 /* ---------- the composite structure diagram, uml.composite-structure (work package 5.6, notes/stage-5.md §6, §10.2) ----------
    The view's subject (a class, a component or a collaboration, listed in nodeIds) is a box holding its parts (its uml.Property
@@ -73,7 +73,7 @@ const csIdOf = (o, r) => `${o ? o + '.' : ''}${String(r.label ?? r.valueType ?? 
 // an id not yet in the model: base, else base-2, base-3, …
 function csFresh(model, base) {
   const used = new Set(); usedIds(model, used);
-  const b = String(base).replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '') || 'element'; let id = b, k = 1; while (used.has(id)) id = `${b}-${++k}`;
+  const b = trimDash(String(base).replace(/[^\w.-]+/g, '-')) || 'element'; let id = b, k = 1; while (used.has(id)) id = `${b}-${++k}`;
   return id;
 }
 
@@ -119,7 +119,7 @@ function csPic(model, view) {
   const rest = ids.filter(id => !boxed.has(id) && !uses.includes(id));
   const partOf = new Map([...parts.map(m => [m.id, S]), ...collabs.flatMap(c => c.roles.map(m => [m.id, c.x]))]); // a part or role: its structure
   const classes = [...at.values()].filter(n => CS_TYPED.includes(n.type));
-  const typeOf = p => { const vt = CS_PROPS(p).valueType, c = CS_HAS(vt) ? classes.filter(n => elName(n) === vt) : []; return c.length === 1 ? c[0] : null; };
+  const typeOf = p => { const vt = CS_PROPS(p).valueType, c = CS_HAS(vt) ? classes.filter(n => elName(n) === vt) : []; return oneNamed(c); };
   const el = id => at.get(id) || (mem.get(id) || {}).m || null;
   // a line's end as drawn: { node, port?, id (the model's) }; null where nothing drawn is it
   const end = (e, k) => { const x = e[k], p = (CS_PROPS(e).ends || {})[k], part = CS_OBJ(p) ? p.part : null;
@@ -146,7 +146,11 @@ function csPic(model, view) {
     lines.forEach(({ f, t }) => [f, t].forEach(x => { if (x.part === p && !seen.has(x.id)) { seen.add(x.id); own.push(mem.get(x.id).m); } }));
     lostPorts.forEach(([q, id]) => { if (q === p && !seen.has(id)) { seen.add(id); own.push(mem.get(id).m); } });
     return [p, own]; }));
-  return { at, mem, el, ids, S, sid, parts, sPorts, uses, collabs, boxed, rest, partOf, typeOf, lines, loops, partPorts, kids };
+  // what a name counts on the diff page, as the model after counts it: not a member or a card diff() drew back removed, a card
+  // taken out of the view too (goneIn), nor a port a part lost (audit 56)
+  const gone = goneIn(view, el), lost = new Set(lostPorts.map(([q, id]) => csPortId(q, id)));
+  const livePorts = p => partPorts.get(p).filter(m => !isGone(m) && !lost.has(csPortId(p, m.id)));
+  return { at, mem, el, ids, S, sid, parts, sPorts, uses, collabs, boxed, rest, partOf, typeOf, lines, loops, partPorts, kids, gone, livePorts };
 }
 
 /* ---- names (§10.2, A1), reading order and the legend ---- */
@@ -158,12 +162,15 @@ function csNodeName(P, id) {
   const x = P.el(id); if (!x) return String(id); // an id with '->' (invalid: validate says so) names nothing
   const st = csStereo(x), why = st.length ? ` (${st.join(', ')})` : '';
   if (x.type === 'uml.Comment') return 'Comment: ' + csName(x);
-  if (P.boxed.has(id)) { const held = id === P.sid ? [...P.parts.map(() => x.type === 'uml.Collaboration' ? 'role' : 'part'), ...P.uses.map(() => 'collaboration use')] : P.collabs.find(c => c.x.id === id).roles.map(() => 'role');
-    return SN_SAY.component(csName(x), { stereotypes: st, ports: id === P.sid ? P.sPorts.length : 0, holds: held }).replace(/^Component/, csWord(x.type)); }
-  if (P.partOf.has(id)) { const o = P.partOf.get(id), role = o.type === 'uml.Collaboration' && o !== P.S || P.S && P.S.type === 'uml.Collaboration', k = P.partPorts.get(id).length;
+  // the live ones: on the diff page not one diff() drew back removed (audit 55), nor a use taken out of the view (audit 56); one
+  // itself removed counts all it had, the model before's
+  const all = P.gone(id), live = y => all || !isGone(y), sPorts = P.sPorts.filter(live).length;
+  if (P.boxed.has(id)) { const held = id === P.sid ? [...P.parts.filter(live).map(() => x.type === 'uml.Collaboration' ? 'role' : 'part'), ...P.uses.filter(u => all || !P.gone(u)).map(() => 'collaboration use')] : P.collabs.find(c => c.x.id === id).roles.filter(live).map(() => 'role');
+    return SN_SAY.component(csName(x), { stereotypes: st, ports: id === P.sid ? sPorts : 0, holds: held }).replace(/^Component/, csWord(x.type)); }
+  if (P.partOf.has(id)) { const o = P.partOf.get(id), role = o.type === 'uml.Collaboration' && o !== P.S || P.S && P.S.type === 'uml.Collaboration', k = (isGone(x) ? P.partPorts.get(id) : P.livePorts(id)).length;
     return `${role ? 'Role' : 'Part'} ${csPartSaid(x)}${why}${!role && CS_PROPS(x).aggregation === 'shared' ? ', shared' : ''}, in ${csName(o)}${k ? ', ' + csPlural(k, 'port') : ''}`; }
   if (x.type === 'uml.CollaborationUse') { const b = csBindings(P, id); return `Collaboration use ${csUseText(x)}${why}${b.length ? ', binding ' + b.join(', ') : ''}`; }
-  return `${csWord(x.type)} ${csName(x)}${why}${id === P.sid && P.sPorts.length ? ', ' + csPlural(P.sPorts.length, 'port') : ''}`;
+  return `${csWord(x.type)} ${csName(x)}${why}${id === P.sid && sPorts ? ', ' + csPlural(sPorts, 'port') : ''}`;
 }
 const csEndName = (P, x) => (x.part != null ? `${csName(P.mem.get(x.id).m)} of ${csName(P.el(x.part))}` : x.port != null ? `${csName(P.mem.get(x.id).m)} of ${csName(P.S)}` : csName(P.el(x.id)));
 const CS_LINE_WORD = { __proto__: null, 'uml.Connector': 'Connector', 'uml.RoleBinding': 'Role binding', 'uml.CommentLink': 'Comment link' };
@@ -269,10 +276,14 @@ function csGeo({ model, view, pos: pins, memo }) {
     nodeIds: x === P.S ? blocks[0][0] : P.collabs.find(c => c.x === x).roles.map(m => m.id), shape: shape[x.type] || 'subject', aria: csNodeName(P, x.id),
     ...(x === P.S && portsWithLines ? { pad: 48 + (inLbl && inLbl + 24) } : {}), ...(x.type === 'uml.Collaboration' ? { round: true } : {}) }));
   // labelGaps (§8, decision 9): the role names on role bindings, which span the subject's columns, else find no spot
-  const g = layoutTyped({ nodes, edges, ...(containers.length ? { containers } : {}), direction: down ? 'down' : 'right', gap: 64, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo);
+  const run = ns => layoutTyped({ nodes: ns, edges, ...(containers.length ? { containers } : {}), direction: down ? 'down' : 'right', gap: 64, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo);
+  const g = run(nodes);
   const ports = [...P.sPorts.map(q => ({ q, id: q.id, owner: P.sid })), ...partPorts].map(p => ({ id: p.id, owner: p.owner, side: sides[p.id], label: csName(p.q), valueType: CS_PROPS(p.q).valueType, stereotypes: csStereo(p.q),
     aria: SN_SAY.port(csName(p.q), csName(P.el(p.owner)), { valueType: CS_PROPS(p.q).valueType, stereotypes: csStereo(p.q) }) }));
-  const out = portsDrawn(g, ports), byId = out.byId; // a copy: what layoutTyped returned is never edited (§2.4)
+  // a copy: what layoutTyped returned is never edited (§2.4); a part that could not hold a port with no line grows and is laid out
+  // once more while one is still held (portRoom, audit 52; portsHeld, audit 53, as the component view)
+  const { d: out } = portsHeld(nodes, g, run, ports);
+  const byId = out.byId;
   // the slots (src/typed/edit.js): one at each node and box, so the palette's add hears what is selected (state.js's)
   const slots = [...out.nodes, ...CS_ARR(out.families)].map(n => ({ after: n.id, parent: null, x: n.x + n.w / 2, y: n.y + n.h / 2 }));
   // the legend: this view's kinds, then each kind drawn as the class view draws it (a dependency, a usage), keyed as its legend keys it (audit 23)

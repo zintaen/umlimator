@@ -1,6 +1,6 @@
 import { apply } from '../core/apply.js';
 import { aKind, ownNodes, registerDiagramType, idTable } from '../core/registry.js';
-import { esc, fit, textW, widest } from '../core/text.js';
+import { esc, fit, textW, widest, wrapLines } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
@@ -19,7 +19,7 @@ import { usedIds, jsonText, labelOr, elName, propTextProblems, copyOf } from '..
    lib/umlimator-all.js only. */
 
 const UC_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), UC_ARR = x => (Array.isArray(x) ? x : []);
-const UC_HAS = x => x != null && x !== '';
+const UC_HAS = x => x != null && x !== '' && !(typeof x === 'string' && x.trim() === ''); // text of only spaces shows nothing, as "" (audit 52)
 const UC_PROPS = x => (UC_OBJ(x && x.props) ? x.props : {});
 const ucName = elName;
 const ucStereo = x => UC_ARR(UC_PROPS(x).stereotypes).filter(UC_HAS).map(String);
@@ -32,11 +32,8 @@ const UC = { px: 12, lh: 16, max: 160, st: 10, sth: 13, ep: 11, eph: 15, head: 1
 // a text in lines of at most max px, at most k lines: the last holds the rest, cut when drawn. A line break in t (a Mermaid
 // <br>, F2's Shift+Enter) starts a new line where the author put it (audit 22, as flowWrap)
 function ucWrap(t, px, max, k) {
-  const out = []; brLines(t).forEach(part => { let fresh = true;
-    part.split(/\s+/).filter(Boolean).forEach(w => { const l = out.length && !fresh ? out[out.length - 1] : null;
-      if (l != null && (out.length === k || textW(l + ' ' + w, px) <= max)) out[out.length - 1] = l + ' ' + w;
-      else if (out.length === k) out[k - 1] += ' ' + w; else out.push(w);
-      fresh = false; }); });
+  // a line breaks between words, between two ideographs (Chinese, Japanese) and inside a word wider than max (audit 58)
+  const out = []; brLines(t).forEach(part => wrapLines(part, px, max).forEach(([l, gap], i) => { if (out.length === k) out[k - 1] += (i && !gap ? '' : ' ') + l; else out.push(l); }));
   return out.length ? out : [''];
 }
 // a use case's texts: its stereotypes, its name on at most three lines, then its extension points' heading and names
@@ -102,7 +99,10 @@ function ucPic(model, view) {
   const pic = ownersOn(model, view, UC_LOOK);
   const boxes = pic.boxes.map(b => { const held = pic.holds(b.id), x = pic.at.get(b.id), st = ucStereo(x);
     const k = x.type === 'uml.Subject' ? brLines(b.title ?? b.label).length : 1, c = k > 1 ? { ...b, head: (k - 1) * UC.lh } : b;
-    return held.every(id => pic.at.get(id).type === 'uml.UseCase') ? { ...c, aria: `${UC_LOOK.word(x)} ${ucName(x)}${st.length ? ` (${st.join(', ')})` : ''}, holding ${ucPlural(held.length, 'use case')}` } : c; });
+    // the model after's count on the diff page (audit 55), none when it holds no live one, as the model after's subject card
+    // says none; one diff() drew back removed counts what it held, as the model before's (audit 56)
+    const n = pic.counted(b.id).length;
+    return held.every(id => pic.at.get(id).type === 'uml.UseCase') ? { ...c, aria: `${UC_LOOK.word(x)} ${ucName(x)}${st.length ? ` (${st.join(', ')})` : ''}${n ? `, holding ${ucPlural(n, 'use case')}` : ''}` } : c; });
   return { ...pic, boxes };
 }
 // the lines drawn: those the view lists, or with no list the model's of this type's kinds, between two elements it shows; a
@@ -121,6 +121,7 @@ function ucExtendParts(model, e) {
   if (UC_OBJ(e.pointNames)) Object.entries(e.pointNames).forEach(([id, w]) => { if (!by.has(id) && typeof w === 'string') by.set(id, w); });
   return { points: UC_ARR(UC_PROPS(e).extensionPoints).map(id => by.get(id) ?? String(id)), cond: UC_HAS(UC_PROPS(e).condition) ? String(UC_PROPS(e).condition) : null };
 }
+const ucReads = e => [...new Set(UC_ARR(UC_PROPS(e).extensionPoints).filter(id => typeof id === 'string'))];
 function ucLineLabel(model, e) {
   const x = e.type === 'uml.Extend' ? ucExtendParts(model, e) : null;
   return [UC_KEYWORD[e.type], ...ucStereo(e).map(t => `«${t}»`), e.label, x && x.points.length ? `(${x.points.join(', ')})` : '', x && x.cond ? `[${x.cond}]` : ''].filter(UC_HAS).join(' ');
@@ -210,7 +211,8 @@ function ucGeo({ model, view, pos: ranked, memo }) {
     return { ...d, ...SHAPE[d.shape].size(d) }; });
   const edges = lines.map(e => { const label = ucLineLabel(model, e);
     return { id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: label || undefined, end: ucLookOf(e), aria: ucLineName(model, e, pic),
-      ...(e.type === 'uml.Extend' ? { cut: 280 } : {}), ...(UC_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }; });
+      // an extend draws its points' names, so it reads them: a renamed point marks it changed on the diff page (audit 52)
+      ...(e.type === 'uml.Extend' ? { cut: 280, ...(ucReads(e).length ? { reads: ucReads(e) } : {}) } : {}), ...(UC_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }; });
   // as the class view (class.js typeGeo): laid out right with boxes, the columns spread by the widest label
   const down = view.direction === 'down', wide = !down && pic.boxes.length ? Math.max(0, ...edges.filter(e => e.label).map(labelW)) : 0;
   const g = placeTabs(layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: down ? 'down' : 'right',

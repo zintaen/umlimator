@@ -51,7 +51,9 @@ TOOLS = [
     tool("highlight", "Lights cards and lines on the map's page and dims the rest. view: the view to show first." + PAGE,
          {"refs": {"type": "array", "items": {"anyOf": [{"type": "string"}, {"type": "object"}]},
                    "description": "card or line ids, or the Refs paths and reach give"}, "view": VIEW}, "refs"),
-    tool("tour", "A dot rides the lines through these cards in turn, on the map's page. view: the view to show first." + PAGE,
+    tool("tour", "A dot rides the lines through these cards in turn, on the map's page: each card must share a line with the next "
+         "on the view, and each must be drawn as a card there, not as a box that holds cards. view: the view to show first; with none, "
+         "the view shown now if it shows the cards and draws those lines, else the first view that does." + PAGE,
          {"cards": {"type": "array", "items": {"type": "string"}, "description": "card ids, in order"}, "view": VIEW}, "cards"),
     tool("play_story", "Plays one of the model's stories on the map's page, step by step, with its captions." + PAGE,
          {"id": {"type": "string", "description": "a story's id (list_views gives them)"}}, "id"),
@@ -83,6 +85,7 @@ told = threading.Condition(lock)  # a page reported what it shows
 # highlight: {refs, view}; tour: {n, cards}; story: {n, story}. n: the command that started a tour or story, so a page
 # starts each once, and a tour or story that ended (a page says so) is not played again for a page that opens later.
 want = {"view": None, "highlight": None, "tour": None, "story": None}
+view_n = 0               # the command that last changed want["view"]: a page that has shown it reports the view shown now
 latest = None            # the latest command's event id: a page that connects after it is sent `want`
 pages = {}               # each page by the id it gives itself: q (its event queue while it is open), state, model, ack, seen
 drawn = [None, "", None] # the page as served: the model's version it shows (the last that rendered), its HTML, and that model
@@ -262,7 +265,7 @@ def call(name, a):
             w.update(view=asked, tour=None, story=None, highlight=w["highlight"] if w["highlight"] and w["highlight"]["view"] == asked else None)
     elif name == "highlight":
         lit = refs(m, a["refs"])
-        at = asked or view_for(m, lit, want["view"])
+        at = asked or view_for(m, lit, shown_view(m))
         def fold(w, n):
             w.update(view=at or w["view"], highlight={"refs": lit, "view": at or w["view"]}, story=None)
     elif name == "tour":
@@ -270,8 +273,9 @@ def call(name, a):
         onview = set(views(m)[asked].get("nodeIds") or []) if asked else {n["id"] for n in every(m, "nodes")}
         if bad := [c for c in cards if c not in onview]:
             raise Fail(f"no card {', '.join(map(repr, bad))}" + (f" on view {asked!r}" if asked else " in the model"))
-        at = asked or view_for(m, [{"type": "node", "id": c} for c in cards], want["view"])
-        rides(m, cards, at)  # a tour with no line to ride drew nothing, yet said "Shown" (audit 47); no view shows them all: said as that (audit 48)
+        # a tour with no line to ride drew nothing, yet said "Shown" (audit 47); no view shows them all: said as that (audit 48);
+        # with no view asked, the first view that shows them all and rides them, not the first that shows them (audit 51)
+        at = rides(m, cards, [asked] if asked else view_for(m, [{"type": "node", "id": c} for c in cards], shown_view(m), every_view=True))
         def fold(w, n):
             w.update(view=at or w["view"], tour={"n": n, "cards": cards}, story=None)
     elif name == "play_story":
@@ -286,18 +290,60 @@ def call(name, a):
     return command(fold)
 
 
+# for each view asked, in turn until one rides: why the page's tour() would not ride it there, or null. The page lays the
+# view out and rides geo.edges between cards geo.byId has, so the view is laid out here as the page does: a card the view
+# draws as a box (a package that holds cards, a deployment node with its instances) is no stop, and two cards in turn
+# ride only a line drawn between them, either way, a card and itself only its own self-line (audit 52)
+RIDES = ("const [m, vs, cards] = a, out = {}; for (const v of vs) { const geo = u.layout(m, v), by = geo.byId || {}, near = new Set(); "
+         "const key = (x, y) => JSON.stringify([x, y]); for (const e of geo.edges || []) { near.add(key(e.from, e.to)); near.add(key(e.to, e.from)); } "
+         "const box = cards.find(c => !by[c]); out[v] = box != null ? { box } : null; "
+         "for (let k = 0; !out[v] && k + 1 < cards.length; k++) { const x = cards[k], y = cards[k + 1]; "
+         "if (!near.has(key(x, y))) out[v] = { gap: [x, y] }; } if (!out[v]) break; } return out;")
+
+
+def unridden(v, g, alone):
+    """Why the page would not ride a tour on view v, from RIDES; alone: the only view tried, said as before (audit 47)."""
+    if "box" in g:
+        return f"view {v!r} draws {g['box']!r} as a box that holds cards, and a tour stops only at cards" if alone else f"view {v!r} draws {g['box']!r} as a box"
+    x, y = g["gap"]
+    if x == y:
+        return f"{x!r} follows itself, and no line on view {v!r} joins it to itself" if alone else f"on view {v!r} no line joins {x!r} to itself"
+    return f"no line joins {x!r} and {y!r} on view {v!r}, so a tour cannot ride from one to the other" if alone else f"on view {v!r} no line joins {x!r} and {y!r}"
+
+
 def rides(m, cards, at):
-    """A tour's dot rides a line the view draws between each card and the next, either way, as the page's tour() does
-    (reach() walks the view's lines as drawn, a port's between the cards it is on). Fewer than two cards, or two in turn
-    that no line joins, is a tour the page would not ride, or would skip, so the tool says why and draws nothing."""
+    """A tour's dot rides a line the view draws between each card and the next, either way, as the page's tour() does:
+    it lays the view out and rides the lines it draws between the cards it draws (a port's between the cards it is on); a
+    card drawn as a box is no stop. at: the views that may show the tour, in the order to try them; the first that rides
+    it is returned. Fewer than two cards, a box, or two in turn that no line joins on any of them, is a tour the page
+    would not ride, or would skip, so the tool says why and draws nothing."""
     if len(cards) < 2:
         raise Fail(f"a tour rides the lines between cards in turn, so it needs two cards or more (it was given {len(cards)})")
-    if at is None:
+    at = [at] if isinstance(at, str) else list(at or [])
+    if not at:
         raise Fail("no view shows all these cards; describe_view lists a view's cards")
-    near = {c: {r.get("id") for r in node("reach", m, at, c, {"depth": 1}) if r.get("type") == "node"} for c in dict.fromkeys(cards)}
-    if gap := next(((a, b) for a, b in zip(cards, cards[1:]) if b not in near[a] and a not in near[b]), None):
-        raise Fail(f"no line joins {gap[0]!r} and {gap[1]!r} on view {at!r}, so a tour cannot ride from one to the other; "
-                   "paths() gives a route of lines between two cards")
+    gaps = script(RIDES, m, at, cards)
+    if ok := next((v for v in at if v in gaps and not gaps[v]), None):
+        return ok
+    if len(at) == 1:
+        raise Fail(unridden(at[0], gaps[at[0]], True) + "; paths() gives a route of lines between two cards")
+    raise Fail("no view that shows these cards draws a line between each and the next, so a tour cannot ride them: "
+               + "; ".join(unridden(v, gaps[v], False) for v in at) + "; paths() gives a route of lines between two cards")
+
+
+def script(body, *args):
+    """body, JavaScript run in Node with the module as u and the arguments as a, its return value the answer: a few of the
+    module's functions in one Node run. An error is the tool's, as node()'s."""
+    nodejs = cli.shutil.which("node")
+    if not nodejs:
+        raise Fail("this tool needs Node.js 18 or later: it runs the module's own functions")
+    code = (f"import * as u from {json.dumps(cli.LIB.as_uri())}; let s = ''; for await (const c of process.stdin) s += c;"
+            f"const a = JSON.parse(s); process.stdout.write(JSON.stringify((() => {{ {body} }})()));")
+    r = cli.run([nodejs, "--input-type=module", "-e", code], input=json.dumps(args))
+    if r.returncode:
+        said = r.stderr.strip()[-2000:]
+        raise Fail((re.findall(r"^\w*Error: .*$", said, re.M) or [said])[-1])
+    return json.loads(r.stdout)
 
 
 def end(e, k):
@@ -308,13 +354,30 @@ def end(e, k):
     return part.get("part") if isinstance(part, dict) and isinstance(part.get("part"), str) else e.get(k)
 
 
-def view_for(m, lit, current):
+def shown_view(m):
+    """The view shown now: the one the page that reported last says it shows, once it has shown the view the assistant
+    asked for last (the reader may have moved since); else the view asked for last; else the view a page opens on, the
+    model's root (as the page picks it). A tour or highlight with no view rides it when it can, so the page stays put
+    (audit 53: it took the view asked for last, none on a fresh server, and the page jumped to the first view)."""
+    vs = views(m)
+    with lock:
+        seen = sorted((p for p in pages.values() if isinstance(p.get("state"), dict) and p["state"].get("view") in vs
+                       and num((p.get("ack") or [None])[0]) >= view_n), key=lambda p: p.get("seen") or 0, reverse=True)
+        if seen:
+            return seen[0]["state"]["view"]
+        if want["view"] in vs:
+            return want["view"]
+    root = m.get("root")
+    return root if isinstance(root, str) and root in vs else next((i for i, v in vs.items() if not v.get("parent")), next(iter(vs), None))
+
+
+def view_for(m, lit, current, every_view=False):
     """The view a highlight or tour is about when the call names none: the Refs' own (paths and reach give it), else the
-    view asked for last when it shows all their cards, else the first view that does. A page that opens later shows it
-    there, never on a view where it would dim every card."""
+    view shown now (shown_view) when it shows all their cards, else the first view that does. A page that opens later shows it
+    there, never on a view where it would dim every card. every_view: each view that would do, in that order (a list)."""
     named = [r["view"] for r in lit if isinstance(r, dict) and isinstance(r.get("view"), str)]
     if named:
-        return named[0]
+        return named[:1] if every_view else named[0]
     lines = known(m)[2]  # a line without an id too, by its "<from>-><to>#<n>" (audit 11)
     need = {r.get("id") for r in lit if r.get("type") == "node"} | {r["node"] for r in lit if r.get("type") in ("chip", "badge") and r.get("node")} | {
         x for r in lit if r.get("type") == "edge" for i in r.get("ids") or [] for x in map(lambda k: end(lines.get(i, {}), k), ("from", "to")) if x}
@@ -330,19 +393,22 @@ def view_for(m, lit, current):
     allboxes = {c.get("id") for v in vs.values() for c in v.get("containers") or [] if isinstance(c, dict)}
     boxes |= {x for x in need if x in allboxes and x not in cards}  # a line that ends on a box needs the box (audit 12)
     need -= boxes
-    return next((v for v in [current, *vs] if v in vs and need <= set(vs[v].get("nodeIds") or [])
-                 and boxes <= {c.get("id") for c in vs[v].get("containers") or [] if isinstance(c, dict)}), None)
+    fit = [v for v in dict.fromkeys([current, *vs]) if v in vs and need <= set(vs[v].get("nodeIds") or [])
+           and boxes <= {c.get("id") for c in vs[v].get("containers") or [] if isinstance(c, dict)}]
+    return fit if every_view else next(iter(fit), None)
 
 
 def command(fold):
     """A page tool's command: folded into `want`, which goes to every open page; then the answer, once the pages have
     shown it (or have not, in WAIT s). The model's latest version is rendered first, so the pages show it, or the last
     version that rendered, and the answer says why."""
-    global latest
+    global latest, view_n
     shown, broken = page()
     with lock:
-        n = next(ids)
+        n, before = next(ids), want["view"]
         fold(want, n)
+        if want["view"] != before:
+            view_n = n
         latest = f"{RUN}-{n}"
         data = event()
         for p in pages.values():

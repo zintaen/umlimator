@@ -27,7 +27,7 @@
   <ol id="log" reversed></ol>
 </aside>
 <script type="module">
-import { render, history } from '../lib/umlimator.js';
+import { render, history } from '../lib/umlimator-all.js';
 
 let model = await (await fetch('umlimator-atlas.json')).json();
 let n = 0;
@@ -57,7 +57,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 const log = document.getElementById('log'), note = t => log.insertAdjacentHTML('afterbegin', `<li>${t}</li>`);
 // undo is the host's: history() keeps the models it had, and the host hands one back to the map
 const steps = history(model);
-const map = render(document.getElementById('map'), model, { view: 'overview', editable: true, minimap: true, on: { change: c => { // the Umlimator Atlas's overview: what umlimator is made of
+const map = render(document.getElementById('map'), model, { view: 'overview', editable: true, minimap: true, on: { change: c => { // the Umlimator atlas's overview: what umlimator is made of
   const ok = document.getElementById('apply').checked;
   note((ok ? '' : '<b>refused</b> ') + esc(JSON.stringify(c)));
   if (ok) { model = steps.push(apply(c)); map.update(model); }

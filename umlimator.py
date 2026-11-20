@@ -21,8 +21,9 @@
 MODEL.json is the map model in engine/references/schema.md (nodes, edges, views), plus umlimator's `badge` field on a
 node (PROPOSED, TARGET, OFF ...). `stills` needs Google Chrome or Chromium; the PNGs are what a document that cannot
 run the page (a wiki such as Confluence) shows. `diff`, `drift`, `trace` and `mcp` run the module's own functions in Node,
-and so does `import` of a Mermaid classDiagram, sequenceDiagram, stateDiagram, erDiagram, requirementDiagram or mindmap (their
-readers are the module's, in src/readers/).
+and so does `import` of a Mermaid classDiagram, sequenceDiagram, stateDiagram, erDiagram, requirementDiagram or mindmap, a
+flowchart with --typed, a Structurizr JSON workspace or DBML (their readers are the module's, in src/readers/; DBML's
+needs @dbml/core, which umlimator never installs).
 BPMN XML is read and written by the module's adapter in Node through bpmn-moddle, which umlimator never installs: `npm
 install bpmn-moddle@10.3.1` in the working folder, or name its folder with --moddle or UMLIMATOR_BPMN_MODDLE.
 """
@@ -71,7 +72,7 @@ def visual_cmd(tmp, *args):
            "def load(name, path): s = importlib.util.spec_from_file_location(name, path); m = importlib.util.module_from_spec(s); s.loader.exec_module(m); return m\n"
            "v, u = load('visual', sys.argv[1]), load('umlimator', sys.argv[2]); v.TEMPLATE = pathlib.Path(sys.argv[3])\n"
            "check = v.validate_map; v.validate_map = lambda d: u.not_objects(d) or check(u.upstream_view(d))\n"
-           "v.write_page = lambda out, data: u.write_page(v, out, data)\n"
+           "v.write_page = lambda out, data: u.write_page(v, out, data); v.subprocess.run = u.soft_git(v.subprocess.run)\n"
            "e = v.embed_avatars; v.embed_avatars = lambda d: u.avatars(e, d)\n"
            "sys.argv = [sys.argv[1]] + sys.argv[4:]; v.main()")
     # -I: no folder of the caller's on sys.path, so a base64.py where it runs (a mapped repository, a pull request) never loads
@@ -261,6 +262,27 @@ def upstream_view(d):
     # a member that shares a node's id stays listed, so upstream says the id is used twice, as validate() does
     d["nodes"] = [*d.get("nodes", []), *({"id": b} for b in sorted(boxes - ids)), *({"id": m} for m in members if m not in boxes)]
     return d
+
+
+def soft_git(run):
+    """subprocess.run, but a git that is not installed is a run that printed nothing (status 127), as git outside any
+    checkout prints nothing: render, diff and drift need no git, which docs/use/cli.md does not ask for (audit 60).
+    It wraps the engine's subprocess.run too (visual_cmd), so visual.py's load_map takes the model's folder as its root."""
+    def soft(cmd, *a, **k):
+        try:
+            return run(cmd, *a, **k)
+        except FileNotFoundError:
+            if not (isinstance(cmd, (list, tuple)) and cmd and cmd[0] == "git"):
+                raise
+            empty = "" if k.get("text") or k.get("universal_newlines") or k.get("encoding") else b""
+            return subprocess.CompletedProcess(cmd, 127, empty, empty)
+    return soft
+
+
+def no_git(what):
+    """diff --base and timelapse read git's history: without git, one line, never a traceback (audit 60)"""
+    if not shutil.which("git"):
+        sys.exit(f"{what} needs git, and none is installed")
 
 
 def run(cmd, timeout=None, input=None):
@@ -547,7 +569,7 @@ def page_model(model_path, out, source=None):
     own_media(m, Path(model_path).resolve().parent, source or model_path)  # ENGINE_ONLY keys dropped there too
     # visual.py records the checkout's root relative to the page; for a page outside the checkout that path climbs
     # through the folders above it (a home folder, a user name) into a page that gets shared
-    root = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip()
+    root = soft_git(subprocess.run)(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip()
     base = Path(root or os.getcwd()).resolve()
     if not Path(out).resolve().is_relative_to(base):
         m.setdefault("meta", {}).setdefault("root", "")
@@ -933,6 +955,7 @@ def model_of(text, where=None):
 
 
 def diff_since(a):
+    no_git("diff --base")
     git = lambda *x, env=None, put=None: subprocess.run(["git", *x], capture_output=True, text=True, env=env, input=put)
     # a new model not yet added to git is a working-tree change too, named from the top as diff's are (audit 10)
     new = git("ls-files", "-z", "--others", "--exclude-standard", "--full-name", "--", *(a.models or ["*.json"]))
@@ -1097,7 +1120,11 @@ def diff_since(a):
             continue
         done.append({"file": name, **({"movedFrom": was} if was != name else {}), **{k: v for k, v in r.items() if k != "model"}})
         md += [f"**{fname}**: " + flat(", ".join(r["views"])) if r["views"] else f"**{fname}**", ""]
-        md += [f"- {flat(s)}" for s in r["summary"]] + [""] + sketch(r["model"]) + [""]
+        try:  # a sketch that fails costs this file its sketch, never the summary of the rest (audit 54)
+            drawn = sketch(r["model"], after=after or {}, before=before or {})
+        except Exception as e:
+            drawn = [f"_No sketch: {flat(str(e))}._"]
+        md += [f"- {flat(s)}" for s in r["summary"]] + [""] + drawn + [""]
         if r.get("stillsFailed"):
             said = no_pictures(r["stillsFailed"])
             md += [f"_{flat(said[:1].upper() + said[1:])}._", ""]  # view ids are model words (audit 11)
@@ -1158,11 +1185,17 @@ def title_of(m, path):
 MARKS = {"added": "#1a7f37", "changed": "#9a6700", "removed": "#cf222e"}
 
 
-def sketch(m, most=60):
+def sketch(m, most=60, after=None, before=None):
     """The cards a diff marks, and the cards next to them, as a mermaid flowchart: GitHub draws it in a comment or a
-    job summary, so the picture needs no hosting. The map's own pictures are the stills."""
+    job summary, so the picture needs no hosting. The map's own pictures are the stills. after: the model after the
+    change, whose views tell the ones the diff removed; before: the model before it, whose lines a removed view's copies are."""
     lst = lambda x: x if isinstance(x, list) else []
     views = [v for v in m.get("views") or [] if isinstance(v, dict)]
+    # a view the diff removed comes back with its cards marked removed there and copies of its model lines marked removed
+    # (so the diff page draws it gone): its cards and those lines stay in the model, so they mark nothing here; what was
+    # its own (its cards, its lines) went with it (audit 56: a removed view drew its shared cards and lines as removed)
+    kept = None if not isinstance(after, dict) else {v.get("id") for v in lst(after.get("views")) if isinstance(v, dict)}
+    gone = lambda v: kept is not None and v.get("id") not in kept
     cards = {n["id"]: n for n in [*(m.get("nodes") or []), *(n for v in views for n in v.get("nodes") or [])] if isinstance(n, dict) and "id" in n}
     owner, todo = {}, [(x, i) for i, n in cards.items() for x in lst(n.get("members"))]
     while todo:  # a member (a port, a part) at any depth stands for the card it is on, as the stills draw it (audit 34); a stack, not recursion
@@ -1173,10 +1206,46 @@ def sketch(m, most=60):
             todo += [(y, i) for y in lst(x.get("members"))]
     at = lambda r: r if isinstance(r, str) and r in cards else owner.get(r) if isinstance(r, str) else None
     # lifted: an end was a member, drawn on its card; a line from a card to itself (a self-transition, a reflexive call) is not
-    lines = [{**e, "from": at(e.get("from")), "to": at(e.get("to")), "lifted": e.get("from") not in cards or e.get("to") not in cards}
-             for e in [*(m.get("edges") or []), *(e for v in views for e in v.get("edges") or [])] if isinstance(e, dict) and at(e.get("from")) and at(e.get("to"))]
-    hot = {i for i, n in cards.items() if n.get("change") in MARKS}
-    lines = [e for e in lines if e.get("change") in MARKS or e["from"] in hot or e["to"] in hot]  # marked lines, and the lines of marked cards
+    lines = [({**e, "from": at(e.get("from")), "to": at(e.get("to")), "lifted": e.get("from") not in cards or e.get("to") not in cards}, w, e)
+             for w, es in enumerate([m.get("edges") or [], *(v.get("edges") or [] for v in views)]) for e in es if isinstance(e, dict) and at(e.get("from")) and at(e.get("to"))]
+    # a removed view's copies are the model lines as they were before the change: matched against those as well as the
+    # model's, and a line with an id by its id alone (audit 57: a line re-pointed, or one with no id edited, while a view
+    # that showed it was removed was sketched removed too)
+    whose = lambda e: ("id", e.get("id")) if isinstance(e.get("id"), (str, int, float)) and not isinstance(e.get("id"), bool) else \
+        json.dumps({k: v for k, v in e.items() if k not in ("change", "style", "edited")}, sort_keys=True, default=repr)
+    model = {whose(e) for e in [*lst(m.get("edges")), *lst((before if isinstance(before, dict) else {}).get("edges"))] if isinstance(e, dict)}
+    lines = [x for x in lines if not (x[1] and gone(views[x[1] - 1]) and whose(x[2]) in model)]
+    # a change the sketch draws: a mark, as a string; a list or object an author wrote is no mark and is left out, as the
+    # module's own pictures leave it (audit 54: `[1] in MARKS` raised TypeError and the diff Action wrote no summary)
+    mark = lambda x: x["change"] if isinstance(x, dict) and isinstance(x.get("change"), str) and x["change"] in MARKS else None
+    # one line is drawn once (audit 55): diff() writes a copy of a model line, marked or not, into each view that lists lines
+    # (a line taken out of a view or put in, a card taken out or put in), so the model's line and a view's copy, or two views'
+    # copies, are one line. A line is keyed by its id and ends, or with no id by all it says but its mark, and by how many
+    # such lines its own list held before it (two alike in one list stay two); a marked copy wins over an unmarked one, and two
+    # different marks are 'changed'
+    one, seen = {}, {}
+    for e, w, raw in lines:
+        i = raw.get("id")
+        say = (i, e["from"], e["to"]) if isinstance(i, (str, int, float)) and not isinstance(i, bool) else \
+            json.dumps({k: v for k, v in raw.items() if k not in ("change", "style")}, sort_keys=True, default=repr)
+        n = seen[w, say] = seen.get((w, say), -1) + 1
+        key, was = (say, n), one.get((say, n))
+        if was is None or (not mark(was) and mark(e)):
+            one[key] = e
+        elif mark(e) and mark(was) != mark(e):
+            one[key] = {**was, "change": "changed"}
+    lines = list(one.values())
+    # a card a view takes out or puts in: diff() marks it in that view's nodeOverrides, not on the card (audit 55); the card's
+    # own mark wins, and two different marks from two views are 'changed'
+    viewmark = {}
+    for v in views:
+        ov = v.get("nodeOverrides") if isinstance(v.get("nodeOverrides"), dict) and not gone(v) else {}
+        for i, o in ov.items():
+            if i in cards and mark(o):
+                viewmark[i] = mark(o) if viewmark.get(i) in (None, mark(o)) else "changed"
+    cmark = lambda i: mark(cards[i]) or viewmark.get(i)
+    hot = {i for i in cards if cmark(i)}
+    lines = [e for e in lines if mark(e) or e["from"] in hot or e["to"] in hot]  # marked lines, and the lines of marked cards
     # a line between two members of one card, or a member and its card: the card, with no line (audit 34); a card's own loop
     # is drawn (audit 35)
     inside = {e["from"] for e in lines if e["from"] == e["to"] and e["lifted"]}
@@ -1187,12 +1256,12 @@ def sketch(m, most=60):
     key = {i: f"n{k}" for k, i in enumerate(i for i in cards if i in near)}
     q = lambda s: re.sub(r"[\r\n]+", " ", str(s)).replace("#", "#35;").replace('"', "#quot;").replace("`", "#96;").replace("<", "#lt;").replace(">", "#gt;")
     out = ["```mermaid", "flowchart LR"]
-    out += [f'  {key[i]}["{q(label_of(cards[i].get("label"), i))}"]' + (f":::{cards[i]['change']}" if cards[i].get("change") in MARKS else "") for i in key]
+    out += [f'  {key[i]}["{q(label_of(cards[i].get("label"), i))}"]' + (f":::{cmark(i)}" if cmark(i) else "") for i in key]
     style = []
     for k, e in enumerate(lines):
-        out.append(f'  {key[e["from"]]} {"-.->" if e.get("change") == "removed" else "-->"}' + (f'|"{q(label_of(e["label"], ""))}"|' if label_of(e.get("label"), "") != "" else "") + f' {key[e["to"]]}')
-        if e.get("change") in MARKS:
-            style.append(f"  linkStyle {k} stroke:{MARKS[e['change']]},stroke-width:2px")
+        out.append(f'  {key[e["from"]]} {"-.->" if mark(e) == "removed" else "-->"}' + (f'|"{q(label_of(e["label"], ""))}"|' if label_of(e.get("label"), "") != "" else "") + f' {key[e["to"]]}')
+        if mark(e):
+            style.append(f"  linkStyle {k} stroke:{MARKS[mark(e)]},stroke-width:2px")
     out += style + [f"  classDef {c} stroke:{v},stroke-width:2px" + (",stroke-dasharray:4 3" if c == "removed" else "") for c, v in MARKS.items()]
     return out + ["```"]
 
@@ -1260,6 +1329,7 @@ def cmd_timelapse(a):
     the next (new cards fade in, removed ones fade out, moved ones glide), with what changed in words."""
     # git run in the model's own folder, so its history is its repository's wherever the command runs (audit 28: from a
     # folder outside it, git said "not a git repository" or that the model is outside the repository)
+    no_git("timelapse")
     here = Path(a.model).absolute()
     # the model named as a literal path, never a pattern: map[v].json is no glob that takes in mapv.json's history (audit 29)
     git = lambda *x: subprocess.run(["git", "-C", str(here.parent), *x], capture_output=True, env={**os.environ, "GIT_LITERAL_PATHSPECS": "1"})

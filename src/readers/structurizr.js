@@ -29,7 +29,8 @@ import { mermaidLegal, mermaidRawChar } from './mermaid-front.js';
      when it is not the type's own (a person's person, the rest's box). A shape the map lacks is a box, approximated.
    - Views: each kind as its c4 view, its key slugged as id, its `subject` the software system or container it is scoped
      to, `nodeIds` its elements; a container, component or dynamic view lists its subject, as Structurizr draws it as a
-     boundary;
+     boundary; an element of a level the view does not draw (validate's c4-level: a container in a landscape view) is left
+     out, skipped, and so is an owner listed with what it holds unless it is the subject (only the subject is a boundary);
      a dynamic view's steps, ordered by `order`, are its `edges`, each relationship once (S13); a step naming an implied
      relationship is the relationship it is implied by when the view draws that one's ends, else the implied one, kept as a
      relationship of the model when the view draws its ends (approximated either way); a deployment view's
@@ -54,6 +55,11 @@ const SZ_VIEWS = [['systemLandscapeViews', 'c4.landscape', null, 'system landsca
   ['containerViews', 'c4.container', 'softwareSystemId', 'containers'], ['componentViews', 'c4.component', 'containerId', 'components'],
   ['dynamicViews', 'c4.dynamic', 'elementId', 'dynamic'], ['deploymentViews', 'c4.deployment', 'softwareSystemId', 'deployment']];
 const SZ_SUBJECT = { 'c4.context': ['c4.SoftwareSystem'], 'c4.container': ['c4.SoftwareSystem'], 'c4.component': ['c4.Container'], 'c4.dynamic': ['c4.SoftwareSystem', 'c4.Container'], 'c4.deployment': ['c4.SoftwareSystem'] };
+// what each level of view draws, as validate()'s c4-level has it: a dynamic view the level of its subject (c4.dynamic's
+// dynLevel), a component view only its subject's components, a deployment view of a system only its containers' instances
+const SZ_LEVEL = { 'c4.landscape': ['c4.Person', 'c4.SoftwareSystem'], 'c4.context': ['c4.Person', 'c4.SoftwareSystem'], 'c4.container': ['c4.Person', 'c4.SoftwareSystem', 'c4.Container'],
+  'c4.component': ['c4.Person', 'c4.SoftwareSystem', 'c4.Container', 'c4.Component'], 'c4.deployment': ['c4.DeploymentNode', 'c4.ContainerInstance'] };
+const SZ_WORD = { 'c4.Person': 'a person', 'c4.SoftwareSystem': 'a software system', 'c4.Container': 'a container', 'c4.Component': 'a component', 'c4.DeploymentNode': 'a deployment node', 'c4.ContainerInstance': 'a container instance' };
 const SZ_ID = 'structurizr.dsl.identifier';
 const szOrder = new Intl.Collator('en', { numeric: true }).compare; // a dynamic view's steps: 2 before 10
 const SZ_UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
@@ -225,6 +231,9 @@ function szRead(workspace, report, recs, rels, views) {
     if (rels.length === SZ_MAX) { if (!fullR) { fullR = true; say(path, 'skipped', `over ${SZ_MAX} relationships: this and the rest are not read`); } continue; }
     const to = bySid.get(szKey(szOwn(x, 'destinationId')));
     if (!to) { say(path, 'skipped', `a relationship from ${from.node.label} whose destination is not read: not read`); continue; }
+    // one between an element and its own owner, or its owner's owner (Structurizr refuses it; the C4 type can not hold it)
+    const owner = [[from, to], [to, from]].find(([a, b]) => { for (let p = a.parent, n = 0; p && n <= SZ_DEEP + 4; p = p.parent, n++) if (p === b) return true; return false; });
+    if (owner) { say(path, 'skipped', `a relationship between ${owner[0].node.label} and its own owner ${owner[1].node.label}: not read`); continue; }
     const description = text(x, 'description', path), technology = text(x, 'technology', path);
     const edge = { type: 'c4.Relationship', from, to, ...(description ? { label: description } : {}), ...(technology ? { props: { technology } } : {}) };
     const r = { edge, ident: ident(x) };
@@ -317,12 +326,29 @@ function szRead(workspace, report, recs, rels, views) {
     }
     const shown = new Set(subject && diagram !== 'c4.context' && diagram !== 'c4.deployment' ? [subject.node.id] : []);
     let lost = 0, placed = 0;
+    // an element of a level the view does not draw (a container in a landscape view) is left out and said, once a view (audit 56)
+    const level = diagram !== 'c4.dynamic' ? diagram : !subject ? 'c4.landscape' : subject.node.type === 'c4.SoftwareSystem' ? 'c4.container' : 'c4.component';
+    const draws = r => SZ_LEVEL[level].includes(r.node.type) && !(level === 'c4.component' && r.node.type === 'c4.Component' && r.parent !== subject)
+      && !(level === 'c4.deployment' && subject && r.node.type === 'c4.ContainerInstance' && r.container.parent !== subject);
+    const wrong = [], recs = new Map(subject ? [[subject.node.id, subject]] : []);
     for (const e of list(x, 'elements', path)) {
       const r = bySid.get(szKey(szOwn(e, 'id')));
-      if (r) shown.add(r.node.id); else lost++;
+      if (!r) lost++; else if (draws(r)) { shown.add(r.node.id); recs.set(r.node.id, r); } else if (!wrong.includes(r)) wrong.push(r);
       if (szOwn(e, 'x') != null || szOwn(e, 'y') != null) placed++;
     }
+    // c4-level's other half: only the subject is drawn as a boundary, so an owner listed with what it holds is left out and
+    // said, as Structurizr will not add a parent and its child to one view; the child, the finer element, is kept (audit 57)
+    const owners = [];
+    if (level !== 'c4.deployment') for (const r of [...shown].map(n => recs.get(n))) {
+      for (let p = r && r.parent, seen = new Set(); p && !seen.has(p); p = p.parent) {
+        seen.add(p);
+        if (p !== subject && shown.has(p.node.id) && !owners.includes(p)) owners.push(p);
+      }
+    }
+    for (const o of owners) shown.delete(o.node.id);
+    if (owners.length) say(`${path}.elements`, 'skipped', `view ${id}: ${owners.slice(0, 5).map(o => `${o.node.label}, ${SZ_WORD[o.node.type]}`).join('; ')}${owners.length > 5 ? `; and ${owners.length - 5} more` : ''}, ${owners.length > 1 ? 'are' : 'is'} listed with what ${owners.length > 1 ? 'they hold' : 'it holds'}, and only the view's subject is drawn as a boundary: not shown`);
     if (lost) say(`${path}.elements`, 'skipped', `view ${id}: ${lost} element${lost > 1 ? 's' : ''} not read ${lost > 1 ? 'are' : 'is'} not shown`);
+    if (wrong.length) say(`${path}.elements`, 'skipped', `view ${id}: ${wrong.slice(0, 5).map(r => `${r.node.label}, ${SZ_WORD[r.node.type]}${r.node.type === 'c4.ContainerInstance' ? ` of ${r.container.node.label}` : ''}`).join('; ')}${wrong.length > 5 ? `; and ${wrong.length - 5} more` : ''}, ${wrong.length > 1 ? 'are' : 'is'} not drawn in a ${word} view${subject && level !== 'c4.context' ? ` of ${subject.node.label}` : ''}: not shown`);
     if (placed) say(`${path}.elements`, 'skipped', `view ${id}: element positions are not read; the view is laid out`);
     v.nodeIds = [...shown];
     if (diagram === 'c4.dynamic') {

@@ -5,7 +5,7 @@ import { SHAPE } from '../draw/shapes.js';
 import { layoutTimeAxis } from '../layout/timeaxis.js';
 import { brLines } from '../typed/draw.js';
 import { frame, tagSize, guardSize, useSize } from './frame.js';
-import { interactionWalk, activationBars, replyCallFor, INTERACTION_RULES, interactionProblems, interactionGone, interactionCounts } from './interaction.js';
+import { IA_GONE, interactionWalk, activationBars, replyCallFor, INTERACTION_RULES, interactionProblems, interactionGone, interactionCounts } from './interaction.js';
 import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the sequence diagram, uml.sequence (work package 3.3, notes/stage-3.md §4 and §5) ----------
@@ -18,7 +18,7 @@ import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
    commands for apply(), null, or { error }. Ships in lib/umlimator-all.js only. */
 
 const SQ_ARR = x => (Array.isArray(x) ? x : []), SQ_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x);
-const SQ_HAS = x => x != null && x !== '';
+const SQ_HAS = x => x != null && x !== '' && !(typeof x === 'string' && x.trim() === ''); // text of only spaces shows nothing, as "" (audit 52)
 const SQ_SORTS = ['call', 'async', 'reply', 'create', 'delete'], SQ_OPS = ['alt', 'opt', 'loop', 'par', 'break'];
 const SQ_LABEL = { px: 10.5, pad: 12, h: 16, lh: 13 }; // a message's label as svgOf draws a typed line's: 10.5 px text on a backing
 // its box: a text the author broke (a Mermaid <br>) a line each, as svgOf draws a label box tall enough for them (audit 22)
@@ -93,10 +93,13 @@ function sqInput(model, view, X = sqIndex(model, view)) {
 function sqRun(model, view) {
   const X = sqIndex(model, view), inp = sqInput(model, view, X), o = layoutTimeAxis(inp), heads = sqHeads(model, view), H = new Map(heads.map(n => [n.id, n]));
   // numbered among the messages drawn, as describe() and the PDF's Lines table number them (audit 41)
-  const drawn = sqDrawn(H), msgs = X.occ.filter(m => m.message && drawn(m)), M = new Map(msgs.map(m => [m.i, m])), U = new Map(X.occ.filter(u => !u.message).map(u => [u.id, u])), nth = new Map(msgs.map((m, k) => [m, k + 1])); // by row: two messages of one id (the core reports it) each its own
+  // on the diff page over the live ones only, as the model after the change counts them; a removed one is said without a place (audit 51,
+  // as the communication view since audit 48)
+  const drawn = sqDrawn(H), msgs = X.occ.filter(m => m.message && drawn(m)), M = new Map(msgs.map(m => [m.i, m])), U = new Map(X.occ.filter(u => !u.message).map(u => [u.id, u]));
+  const live = msgs.filter(m => !IA_GONE(m.el)), nth = new Map(live.map((m, k) => [m, k + 1])); // by row: two messages of one id (the core reports it) each its own
   const inWhat = parent => { const c = X.chain(parent)[0]; if (!c) return ''; const op = SQ_ARR(c.f.members).find(m => SQ_OBJ(m) && m.id === c.op) || {};
     return `, in ${sqOperator(c.f) || 'fragment'}${SQ_HAS(op.label) ? ', ' + op.label : ''}`; };
-  const direct = id => X.occ.filter(m => m.parent === id && drawn(m)).length; // what the operand draws (audit 41)
+  const direct = id => X.occ.filter(m => m.parent === id && drawn(m) && !IA_GONE(m.el)).length; // what the operand draws (audit 41), the live ones (audit 51)
   const nodes = [
     ...o.heads.map((h, j) => { const n = H.get(h.id), st = sqStereo(n);
       return { ...h, shape: 'lifeline', type: 'uml.Lifeline', label: sqHeadText(n), stereotypes: st, k: 'file', stem: o.stems[j], aria: `Lifeline ${sqHeadText(n)}${st.length ? ` (${st.join(', ')})` : ''}` }; }),
@@ -112,7 +115,7 @@ function sqRun(model, view) {
   const edges = o.lines.map(l => { const m = M.get(l.ri), t = sqMsgText(m.el);
     return { id: m.id, _id: m.id, type: 'uml.Message', from: m.from, to: m.to, s: byId[m.from], t: byId[m.to], pts: l.pts, end: SQ_END[m.sort], sort: m.sort,
       ...(t ? { lbl: { ...l.lbl, text: t }, label: t } : {}),
-      aria: `Message ${nth.get(m)} of ${msgs.length}: ${sqName(H.get(m.from))} to ${sqName(H.get(m.to))}${t ? ', ' + t : ''}, ${m.sort}${inWhat(m.parent)}` }; });
+      aria: `Message${nth.has(m) ? ` ${nth.get(m)} of ${live.length}` : ''}: ${sqName(H.get(m.from))} to ${sqName(H.get(m.to))}${t ? ', ' + t : ''}, ${m.sort}${inWhat(m.parent)}` }; });
   // reading order: by height on the page; at one height a frame before its first operand, both before what they hold
   const rank = { frame: 0, operand: 1 }, at = [...nodes.filter(n => n.shape !== 'lifeline').map(n => [n.id, n.y, rank[n.shape] ?? 2]), ...edges.map(e => [e.id, e.pts[0][1], 2])];
   const order = [...o.heads.map(h => h.id), ...at.sort((a, b) => a[1] - b[1] || a[2] - b[2]).map(x => x[0])];
@@ -468,7 +471,7 @@ const SEQ_TYPE = registerDiagramType('uml.sequence', {
     'uml.InteractionUse': [{ key: 'refersTo', label: 'Refers to', kind: 'text', drawn: false }, { key: 'covers', label: 'Covers', kind: 'list' }],
     'uml.CombinedFragment': [{ key: 'operator', label: 'Operator', kind: 'enum', options: SQ_OPS }],
   },
-  layout: { run: sqRun, pins: false },
+  layout: { run: sqRun, pins: false, direction: 'down' },
   // a fragment draws its operator, never its label: no Name field (audit 21; F2 sets the operator, audit 18)
   unnamed: ['uml.CombinedFragment'],
   draw: sqDraw,

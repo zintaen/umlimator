@@ -421,8 +421,10 @@ def scrub(text, say):
 
 def legal(d, say):
     """Parsed JSON (compose, Kubernetes) with each character XML cannot hold, which an escape such as \\u0001 gives, as
-    U+FFFD in every key and value, each character said once (audit 49). One pass, with no recursion."""
-    told, top = set(), [d]
+    U+FFFD in every key and value, each character said once (audit 49). Keys first, then values: a value that is a key's
+    source text (depends_on: [web\\u0002]) reads as the name that key was given, so a reference follows a key kept apart
+    (audit 52). One pass over the keys and one over the values, with no recursion."""
+    told, top, named, given = set(), [d], {}, set()  # named: a key's source text -> the text it is read as, given those
 
     def fix(v):
         if not isinstance(v, str) or not RAW.search(v):
@@ -431,12 +433,15 @@ def legal(d, say):
             if c not in told:
                 told.add(c)
                 say(None, raw_char(c))
-        return RAW.sub("\ufffd", v)
+        return named.get(v) or RAW.sub("\ufffd", v)
 
     def keys(v):
         """v's keys fixed, in their order: two that differ only in such characters (web\\u0001 and web\\u0002) or a fixed one
         that is another's text kept apart, the later taking the first free of key-2, key-3 ... each said (audit 50), as the
-        module's readers keep two names that scrub to one text apart. Linear in the keys but for the free-key search."""
+        module's readers keep two names that scrub to one text apart. A source text keeps the name it was first given in
+        every map it keys (a service and its depends_on map, a selector and the pod labels it picks), and no other source
+        text is given that name, so the same key reads as one name throughout (audit 52). Linear in the keys
+        but for the free-key search."""
         if not any(isinstance(a, str) and RAW.search(a) for a in v):
             return v
         used, out = set(a for a in v if not (isinstance(a, str) and RAW.search(a))), {}
@@ -445,16 +450,19 @@ def legal(d, say):
                 out[a] = b
                 continue
             f = fix(a)
-            if f in used:
-                n = 2
-                while f"{f}-{n}" in used:
+            if f in used or (a not in named and f in given):
+                g, n = RAW.sub("\ufffd", a), 2
+                while f"{g}-{n}" in used or (a not in named and f"{g}-{n}" in given):
                     n += 1
-                say(None, f"key {f}: another key reads as the same text, so this one is read as {f}-{n}")
-                f = f"{f}-{n}"
+                say(None, f"key {g}: another key reads as the same text, so this one is read as {g}-{n}")
+                f = f"{g}-{n}"
+            if a not in named:
+                named[a] = f
+                given.add(f)
             used.add(f)
             out[f] = b
         return out
-    todo = [(top, 0)]
+    todo, leaves = [(top, 0)], []
     while todo:
         box, k = todo.pop()
         v = box[k]
@@ -464,7 +472,9 @@ def legal(d, say):
         elif isinstance(v, list):
             todo += [(v, i) for i in range(len(v))]
         else:
-            box[k] = fix(v)
+            leaves.append((box, k))
+    for box, k in leaves:
+        box[k] = fix(box[k])
     return top[0]
 
 
@@ -977,6 +987,9 @@ def unread(names, pos, named, read=READ):
 def c4(lines, m):
     """Macro calls, one per line: elements, boundaries ({ ... } boxes), relationships. One view."""
     boxes, stack, rels, bases, people, opened, named_as = [], [], [], set(), set(), [], {}  # named_as: each alias's id
+    # stack: each open {'s innermost boundary (its own or the one around it), so a line finds its box in O(1), never by
+    # walking every open { that is not a boundary (hostile input, R2, audit 61); a box's dict by its id, for the same reason
+    by_id = {}
     for no, s in lines:
         if s == "}":
             if stack:
@@ -990,7 +1003,7 @@ def c4(lines, m):
             continue
         c = CALL.match(s)
         name, (pos, named), opens = (c.group(1), call_args(c.group(2)), c.group(3)) if c else (None, ([], {}), s.endswith("{"))
-        box, alias = next((b for b in reversed(stack) if b), None), None
+        box, alias = stack[-1] if stack else None, None
         if c and (e := ELEMENT.fullmatch(name)):
             base, shape, ext = e.groups()
             a = {**dict(zip(ARGS[base].split(), pos)), **named}
@@ -1008,15 +1021,14 @@ def c4(lines, m):
                 bases.add(base)
                 if base == "Person":
                     people.add(cid)
-                for b in boxes:
-                    if b["id"] == box:
-                        b["nodeIds"].append(cid)
+                if box:
+                    by_id[box]["nodeIds"].append(cid)
         elif c and BOUNDARY.fullmatch(name):
             if not pos or not pos[0] or pos[0] in named_as:
                 m.say(no, f"{name}({pos[0] if pos else ''}): {'its alias is used already' if pos and pos[0] else 'no alias'}")
             else:
                 alias = named_as.setdefault(pos[0], m.named(pos[0], no))
-                boxes.append({"id": alias, "label": clip(named.get("label") or (pos + [""])[1] or alias, 40), "nodeIds": [], "parent": box, "line": no})
+                boxes.append(by_id.setdefault(alias, {"id": alias, "label": clip(named.get("label") or (pos + [""])[1] or alias, 40), "nodeIds": [], "parent": box, "line": no}))
                 if left := unread(BOXARGS.get(name, "alias label tags link descr"), pos, named, {"alias", "label"}):
                     m.say(no, f"{name}({pos[0]}): {left}")
         elif c and (r := REL.fullmatch(name)):
@@ -1029,7 +1041,7 @@ def c4(lines, m):
         elif named.get("shape"):  # ponytail: a tag's $shape (RoundedBoxShape, EightSidedShape) is said, not drawn
             m.say(no, f"{name}({clip((pos or [''])[0], 40)}): $shape={named['shape']} is not imported")
         if opens:
-            stack.append(alias)
+            stack.append(alias or box)
             opened.append((no, s))
     left_open(m, opened)
     ids = m.view("components" if "Component" in bases else "containers" if "Container" in bases else "context", list(m.nodes), boxes)
@@ -1108,7 +1120,7 @@ def mermaid(text, name):
 
 
 SHAPES = [("(((", ")))"), ("([", "])"), ("[[", "]]"), ("[(", ")]"), ("((", "))"), ("{{", "}}"), ("[/", "/]"), ("[/", "\\]"),
-          ("[\\", "\\]"), ("[\\", "/]"), ("[", "]"), ("(", ")"), ("{", "}"), (">", "]")]
+          ("[\\", "\\]"), ("[\\", "/]"), ("[", "]"), ("(-", "-)"), ("(", ")"), ("{", "}"), (">", "]")]
 NODE = re.compile(r"\s*([\w$]+(?:[.-][\w$]+)*)")
 LINK = re.compile(r"""\s*(?:(?P<plain>[<ox]?(?:-{2,}[->ox]|={2,}[=>ox]|-?\.+-[>ox]?|~{3,}))
                      |(?P<open>[<ox]?(?:--|==|-\.))(?P<text>(?:"[^"]*"|"(?![^"]*")|[^"])+?)(?P<close>-{2,}[->ox]|={2,}[=>ox]|(?<!\.)\.+-[>ox]?))
@@ -1199,7 +1211,7 @@ def statement(s, bad=None):
         if not grp:
             return None
         groups.append(grp)
-        if not s[i:].strip():
+        if WS.match(s, i).end() == len(s):  # not s[i:].strip(): a copy of the rest at each link was quadratic (audit 61)
             return groups, links
         # A e1@--> B: an edge id runs from the link's start to the next @, holding no space, " & or | (Mermaid's LINK_ID), with
         # no { or " after the @ (audit 29: the statement was not imported). The next @ and the next break are each kept
@@ -1232,7 +1244,10 @@ def flowchart(lines, m):
             if g:
                 raw = g.group(2) or (g.group(3) and f'"{g.group(3)}"') or g.group(4) or g.group(5)  # its quotes kept, so a Markdown string is seen
                 label, nsub = text(raw, bad_code(m, no)), nsub + 1
-                subs.append({"id": ident(g.group(1) or g.group(4) or label) if g.group(0) != "subgraph" else f"subGraph{nsub - 1}", "label": clip(label, 40), "seen": [], "line": no,
+                # Mermaid's subGraph<n> for a bare one, and for a title with no id of its own that holds whitespace, which
+                # flowDb.addSubGraph takes for no id (audit 51)
+                none = g.group(0) == "subgraph" or (not g.group(1) and re.search(JS_S, g.group(3) or g.group(5) or ""))
+                subs.append({"id": f"subGraph{nsub - 1}" if none else ident(g.group(1) or g.group(4) or label), "label": clip(label, 40), "seen": [], "line": no,
                              "parent": subs[-1]["id"] if subs else None})
                 if markdown(raw):
                     m.say(no, f"subgraph {subs[-1]['id']}: a Markdown string is read as plain text")
@@ -1303,8 +1318,16 @@ def flowchart(lines, m):
             continue
         style = {"style": "async"} if "." in arrow else {"weight": 2} if "=" in arrow else {}
         label = text(lk["pipe"] or lk["text"], bad_code(m, no))
+        # a map line always has one arrowhead: no arrowhead, a circle end and a cross end are said, and o--o and x--x are
+        # two lines as <--> is, in the typed reader's words (audit 61)
+        head, tail = arrow[-1], arrow[0]
+        two = tail in "<ox"
+        how = (["no arrowhead"] if head not in ">ox" else []) + (["a circle end"] if "o" in (head, tail) else []) \
+            + (["a cross end"] if "x" in (head, tail) else []) + (["an arrowhead at each end"] if two and tail != "<" else [])
+        if how:
+            m.say(no, f"{a} {lk['plain'] or lk['open'] + ' ... ' + lk['close']} {b}: {', '.join(how)}: read as {'two lines' if two else 'a line'}")
         m.line(a, b, label, where=no, hint=eid, **style)  # the edge id names its first line
-        if arrow[0] == "<":
+        if two:
             m.line(b, a, label, where=no, **style)
 
 

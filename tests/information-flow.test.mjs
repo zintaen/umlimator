@@ -19,6 +19,7 @@ import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
 import { tablesOf } from '../src/page/print.js';
+import { diff } from '../src/map/diff.js';
 import '../src/uml/information.js';
 import '../src/er/er.js';
 
@@ -493,4 +494,17 @@ test('audit 50: validate() warns comment-link on a comment link with no comment 
   const own = structuredClone(m); own.edges = []; own.views[0].edges = [{ id: 'cl', type: 'uml.CommentLink', from: 'b', to: 'a' }];
   assert.deepEqual(validate(own).map(p => [p.rule, p.path]), [['comment-link', 'views[0].edges[0]']]);
   assert.deepEqual(validate(IF).filter(p => p.rule === 'comment-link'), [], 'the example as before');
+});
+
+test('audit 57: a model flow the view\'s edges list gains is counted once on the diff page: the item\'s name, describe() and its PDF row are the model after\'s', () => {
+  const after = structuredClone(IF), v = after.views[0];
+  v.edges = after.edges.filter(e => e.type === 'uml.InformationFlow').map(e => e.id); // the view lists its flows
+  const flows = v.edges.slice(), items = after.nodes.filter(n => n.type === 'uml.InformationItem').map(n => n.id);
+  const name = (m, id) => layout(m, v.id).nodes.find(n => n.id === id).aria, said = (m, id) => describe(m, v.id).split('\n').find(l => l.startsWith(name(after, id).split(',')[0] + ','));
+  assert.ok(items.length >= 3);
+  for (const f of flows) { // each flow put into the list, and taken out of it
+    const before = structuredClone(after); before.views[0].edges = flows.filter(x => x !== f);
+    for (const [a, b] of [[before, after], [after, before]]) { const d = diff(a, b).model;
+      for (const id of items) { assert.equal(name(d, id), name(b, id), `${f}: ${id}`); assert.equal(said(d, id), said(b, id), `${f}: ${id}, describe()`);
+        assert.deepEqual(T.rows(d, d.views[0], id), T.rows(b, b.views[0], id), `${f}: ${id}, the PDF row`); } } }
 });

@@ -1,9 +1,9 @@
-import { jsonText, labelOr, elName } from '../core/model.js';
+import { jsonText, labelOr, elName, oneNamed, isGone } from '../core/model.js';
 import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { csAdd, csConnect, csGeo, csMember, csMoveTo, csRemove, csRename } from '../uml/composite.js';
-import { SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_TEXT_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS } from './sysml.js';
+import { SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_TEXT_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS, SYS_PORT_GONE } from './sysml.js';
 import { bdField, bdProblems, bdTypeGuard } from './blocks.js';
 import { modelLines } from '../uml/owners.js';
 
@@ -34,9 +34,10 @@ function SYS_PAR_INDEX(model, view) {
   const E = new Map(); SYS_LINES(model, view).forEach(([e]) => { if (SYS_PAR_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); }); // the view's own lines too (audit 23)
   const S = view && at.has(view.subject) ? at.get(view.subject) : null;
   // the constraint block a constraint property's type names (exactly one, by label, else id, as the composite type finds a part's type)
-  const block = m => { const t = SYS_PAR_PROPS(m).valueType, c = SYS_PAR_HAS(t) ? [...at.values()].filter(n => n.type === 'sysml.ConstraintBlock' && elName(n) === t) : []; return c.length === 1 ? c[0] : null; };
+  // its namesakes, all of them: what the constraint property reads, so one that comes or goes marks it (audit 53)
+  const blocks = m => { const t = SYS_PAR_PROPS(m).valueType; return SYS_PAR_HAS(t) ? [...at.values()].filter(n => n.type === 'sysml.ConstraintBlock' && elName(n) === t) : []; }, block = m => oneNamed(blocks(m));
   const params = B => SYS_PAR_ARR(B && B.members).filter(m => SYS_PAR_OBJ(m) && m.type === 'sysml.ConstraintParameter');
-  return { at, mem, E, S, block, params, el: id => at.get(id) || (mem.get(id) || {}).m || null, owner: id => (mem.get(id) || {}).owner || null };
+  return { at, mem, E, S, block, blocks, params, el: id => at.get(id) || (mem.get(id) || {}).m || null, owner: id => (mem.get(id) || {}).owner || null };
 }
 // the subject's members this view draws: its constraint and value properties (§4 row 19)
 const SYS_PAR_SHOWN = I => (I.S ? SYS_PAR_ARR(I.S.members).filter(m => SYS_PAR_OBJ(m) && Object.hasOwn(SYS_PAR_PROP, m.type)) : []);
@@ -64,11 +65,11 @@ function SYS_PAR_END(I, e, k) {
   return x && x.type === 'sysml.ValueProperty' ? `value ${nm}` : nm;
 }
 const SYS_PAR_LINE_SAY = (I, e) => `Binding from ${SYS_PAR_END(I, e, 'from')} to ${SYS_PAR_END(I, e, 'to')}`;
-function SYS_PAR_SAY(I, g, id) {
+function SYS_PAR_SAY(I, g, id, gone = () => false) {
   const n = I.at.get(id); if (n && Object.hasOwn(SYS_PAR_SUBJ, n.type)) { const c = g.byId && Object.hasOwn(g.byId, id) && g.byId[id]; return c && c.aria ? String(c.aria).replace(/^Class\b/, SYS_PAR_SUBJ[n.type]) : null; }
   const k = String(id).indexOf('->'), m = I.mem.get(k < 0 ? id : String(id).slice(k + 2));
   if (m && m.m.type === 'sysml.ConstraintParameter') return SYS_PAR_PARAM_SAY(m.m, k < 0 ? m.owner : I.el(String(id).slice(0, k)));
-  if (m && I.S && m.owner === I.S && Object.hasOwn(SYS_PAR_PROP, m.m.type)) { const B = m.m.type === 'sysml.ConstraintProperty' ? I.block(m.m) : null, ports = SYS_PAR_ARR(g.nodes).filter(x => x.owner === id && x.shape === 'port').length;
+  if (m && I.S && m.owner === I.S && Object.hasOwn(SYS_PAR_PROP, m.m.type)) { const B = m.m.type === 'sysml.ConstraintProperty' ? I.block(m.m) : null, ports = SYS_PAR_ARR(g.nodes).filter(x => x.owner === id && x.shape === 'port' && (isGone(m.m) || !gone(x.id))).length; // the model after's count on the diff page (audit 56)
     return `${SYS_PAR_PROP[m.m.type]} ${SYS_PAR_TEXT(m.m)}${SYS_PAR_EXPR(B) ? ' ' + SYS_PAR_EXPR(B) : ''}, in ${SYS_PAR_NAME(I.S)}${ports ? ', ' + SYS_PAR_PLURAL(ports, 'parameter') : ''}`; }
   const e = I.at.has(id) || m ? null : I.E.get(id);
   return e && e.type === 'sysml.BindingConnector' ? SYS_PAR_LINE_SAY(I, e) : null;
@@ -85,10 +86,11 @@ const SYS_PAR_LEGEND = [
 function SYS_PAR_GEO({ model, view, pos, memo }) {
   const I = SYS_PAR_INDEX(model, view), P = SYS_AS_UML(model, view);
   const raw = csGeo({ model: P.model, view: P.view, pos, memo });
-  const d = SYS_DRESS(raw, model, view, id => SYS_PAR_SAY(I, raw, id));
+  const d = SYS_DRESS(raw, model, view, id => SYS_PAR_SAY(I, raw, id, SYS_PORT_GONE(view, I.el)));
   const nodes = d.nodes.map(n => { const m = I.mem.get(n.id); if (!m || m.owner !== I.S || m.m.type !== 'sysml.ConstraintProperty') return n;
-    // it reads its block, whose name and expression it draws: what diff() marks it by (audit 48)
-    const b = I.block(m.m), x = SYS_PAR_EXPR(b), rd = b && typeof b.id === 'string' ? [b.id] : [];
+    // it reads its block, whose name and expression it draws: what diff() marks it by (audit 48), and each namesake, which leaves
+    // it no block when it comes (audit 53)
+    const b = I.block(m.m), x = SYS_PAR_EXPR(b), rd = I.blocks(m.m).map(n => n.id).filter(k => typeof k === 'string');
     return { ...n, shape: 'sysml-constraint', ...(x ? { expr: x } : {}), ...(rd.length ? { reads: [...new Set([...(Array.isArray(n.reads) ? n.reads : []), ...rd])] } : {}) }; });
   const now = new Map(SYS_PAR_NAMES(d, nodes, I).map(n => [n.id, n]));
   return { ...d, nodes: [...now.values()], ...SYS_PAR_BOUNDS(d, now), byId: idTable(Object.fromEntries(Object.entries(d.byId).map(([k, n]) => [k, now.get(k) || n]))),

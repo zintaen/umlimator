@@ -511,3 +511,10 @@ test('audit 42: the rows\' names count and place the messages drawn alone, as de
   const g = layout(EX, VIEW(EX).id), rs = rowsOf(g);
   assert.deepEqual(rs.map(n => n.aria.match(/^Message (\d+) of (\d+),/).slice(1).map(Number)).sort((a, b) => a[0] - b[0]), rs.map((_, k) => [k + 1, rs.length]));
 });
+
+test('audit 54: a lifeline named with a run of 200,000 dashes is added in linear time (before: 16 s); the id keeps its inner run and loses its ends (timed)', () => {
+  const m = { schemaVersion: 2, nodes: [], edges: [], views: [{ id: 'v', diagram: 'uml.communication', nodeIds: [], edges: [] }] }, d = '-'.repeat(200000), t = performance.now();
+  const [c] = commAdd(m, m.views[0], { type: 'uml.Lifeline' }, `-a${d}b-`);
+  assert.ok(performance.now() - t < 500, `${Math.round(performance.now() - t)} ms`);
+  assert.equal(c.element.id, `a${d}b`);
+});

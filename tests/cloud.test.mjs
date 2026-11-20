@@ -526,12 +526,12 @@ test('audit 26: a cloud card whose name runs to 16,000 characters is drawn measu
   assert.ok(chars < 100 * 16000, `${chars} characters measured`);
 });
 
-test('audit 30: a label the author broke draws each of its lines, as docs/conformance/gcp.md and azure.md say; unbroken text is cut at two', () => {
+test('audit 30: a label the author broke draws each of its lines, as docs/diagrams/conformance/gcp.md and azure.md say; unbroken text is cut at two', () => {
   const m = structuredClone(GCP), api = m.nodes.find(n => n.id === 'gcp-api');
   api.label = 'Shop API\nline two\nline three\nline four\nline five\nline six';
   const mk = mapContext(m).buildView('gcp-on-gcp').markup, card = mk.match(/<g class="node cloud-card" data-id="gcp-api"[^]*?<\/g><\/g>/)[0];
   assert.deepEqual(card.match(/>line [a-z]+</g), ['>line two<', '>line three<', '>line four<', '>line five<', '>line six<'], 'every line drawn, none cut');
-  for (const f of ['gcp', 'azure']) { const d = readFileSync(new URL(`../docs/conformance/${f}.md`, import.meta.url), 'utf8');
+  for (const f of ['gcp', 'azure']) { const d = readFileSync(new URL(`../docs/diagrams/conformance/${f}.md`, import.meta.url), 'utf8');
     assert.match(d, /A label is wrapped to two lines of 180 px, the full name to two, then cut with an ellipsis\. A label or full name the author broke \(a Mermaid `<br>`, a newline\) keeps each of its lines/, f);
     assert.match(d, /two lines of 180 px, or one per line the author broke it into\)/, f); }
 });
@@ -623,4 +623,90 @@ test('audit 47: Shift + Delete of a view\'s own group does not count the model s
   const after = apply(k, r.commands); assert.deepEqual([after.nodes.map(n => n.id), after.views[0].nodes.length], [['run', 'db'], 0]);
   // a model service selected with it goes by its own command: one other element
   assert.equal(T.gcp.edits.remove(k, k.views[0], ['own-net', 'db'], true).say, 'Deleted Network vpc and the 1 element it held, and 1 other element');
+});
+
+// audit 51: Shift + Delete of a model group counts another view's own elements under it too, which apply() deletes all the same;
+// a model service under one of them is lifted out there, not counted (audit 47's rule, in every view)
+test('audit 51: Shift + Delete of a model group counts the elements another view holds as its own under it', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'net', type: 'gcp.Zone', label: 'vpc', props: { zoneType: 'network' } }, { id: 'run', type: 'gcp.Product', label: 'API', parent: 'net', props: { icon: 'Cloud-Run' } },
+    { id: 'db', type: 'gcp.Product', label: 'DB', parent: 'z2', props: { icon: 'Cloud-SQL' } }], edges: [],
+    views: [{ id: 'v', diagram: 'gcp', nodeIds: ['net', 'run'] }, { id: 'v2', diagram: 'gcp', nodeIds: ['net', 'cache', 'z2', 'db'], nodes: [{ id: 'cache', type: 'gcp.Product', label: 'Cache', parent: 'net', props: { icon: 'Memorystore' } },
+      { id: 'z2', type: 'gcp.Zone', label: 'sub', parent: 'net', props: { zoneType: 'subnet' } }] }] };
+  const r = T.gcp.edits.remove(m, m.views[0], ['net'], true);
+  assert.equal(r.say, 'Deleted Network vpc and the 3 elements it held');
+  const after = apply(m, r.commands); assert.deepEqual([after.nodes.map(n => n.id), after.views[1].nodes.map(n => n.id)], [['db'], []]);
+});
+
+test('audit 58: a service card label with no spaces (Chinese, a long URL) wraps to two lines', () => {
+  const C = SHAPE['cloud-card'], label = '为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限', n = { id: 'a', label, name: 'Cloud Run', x: 0, y: 0, ...C.size({ label, name: 'Cloud Run' }) };
+  const ls = [...C.draw(n).matchAll(/class="c-name"[^>]*>([^<]*)</g)].map(x => x[1]);
+  assert.equal(ls.length, 2, JSON.stringify(ls)); assert.ok(ls[0].startsWith('为书店') && !ls[0].endsWith('…'), ls[0]);
+  const url = 'https://shop.example.com/api/orders', u = [...C.draw({ ...n, label: url, ...C.size({ label: url, name: 'Cloud Run' }) }).matchAll(/class="c-name"[^>]*>([^<]*)</g)].map(x => x[1]);
+  assert.equal(u.join(''), url, 'a long URL breaks between two characters');
+});
+
+test('audit 60: a path from a service three groups deep to one outside them all keeps off the outer group\'s border, in each family, down and right', () => {
+  const F = { gcp: ['gcp.Zone', 'zoneType', ['project', 'region', 'network'], 'gcp.Product', 'gcp.Path'], aws: ['aws.Group', 'groupType', ['account', 'region', 'vpc'], 'aws.Service', 'aws.Connection'],
+    azure: ['azure.Group', 'groupType', ['subscription', 'resource-group', 'virtual-network'], 'azure.Service', 'azure.Connector'] };
+  for (const [fam, [G, key, kinds, S, L]] of Object.entries(F)) for (const direction of ['down', 'right']) {
+    const m = { schemaVersion: 2, title: 'Shop', nodes: [
+      { id: 'g0', type: G, label: 'Bookshop', props: { [key]: kinds[0] } }, { id: 'g1', type: G, label: 'europe-west1', props: { [key]: kinds[1] }, parent: 'g0' },
+      { id: 'g2', type: G, label: 'shop-vpc', props: { [key]: kinds[2] }, parent: 'g1' }, { id: 'api', type: S, label: 'Shop API', props: { icon: 'X' }, parent: 'g2' },
+      { id: 'pay', type: S, label: 'Payment provider', props: { icon: 'X' } }, { id: 'web', type: S, label: 'Web shop', props: { icon: 'X' } }],
+      edges: [{ id: 'charge', type: L, from: 'api', to: 'pay' }, { id: 'token', type: L, from: 'web', to: 'pay' }],
+      views: [{ id: 'v', diagram: fam, direction, nodeIds: ['g0', 'g1', 'g2', 'api', 'pay', 'web'] }] };
+    assert.deepEqual(check(m, 'v').map(p => p.message), [], `${fam} ${direction}`);
+  }
+});
+
+test('audit 60: laid out down, a third call out of a service\'s top in a virtual network takes no way through the network\'s title', () => {
+  const G = (id, t, parent) => ({ id, type: 'azure.Group', label: id === 'g3' ? 'virtual-network g3' : id, props: { groupType: t }, ...(parent ? { parent } : {}) });
+  const S = (id, parent) => ({ id, type: 'azure.Service', label: id, props: { icon: 'X' }, ...(parent ? { parent } : {}) });
+  const m = { schemaVersion: 2, nodes: [G('g0', 'subscription'), G('g1', 'resource-group', 'g0'), G('g2', 'region', 'g1'), G('g3', 'virtual-network', 'g2'), G('g4', 'subnet', 'g3'), S('s5'), S('s6', 'g0'), S('s7', 'g3')],
+    edges: [{ id: 'e8', type: 'azure.Connector', from: 's7', to: 's5', label: 'HTTPS' }, { id: 'e9', type: 'azure.Connector', from: 's5', to: 's6', label: 'HTTPS' },
+      { id: 'e10', type: 'azure.Connector', from: 's5', to: 's7' }, { id: 'e11', type: 'azure.Connector', from: 's7', to: 's5' }],
+    views: [{ id: 'v', diagram: 'azure', direction: 'down', nodeIds: ['g0', 'g1', 'g2', 'g3', 'g4', 's5', 's6', 's7'] }] };
+  for (const d of ['down', 'right']) { m.views[0].direction = d; assert.deepEqual(check(m, 'v').map(p => p.message).filter(s => !/ cross$/.test(s)), [], d); }
+});
+
+// audit 61: the round-60 rule (a side way into a card kept over the way in head on) applies only when the way in head on runs
+// along a box's border: kept whatever that way, laid out right, a call each way between two services beside an account group
+// set off a port swap that ran one line 4 px under the group's border, and laid out down a side way into a card's top ran on
+// the line the last resort drew later. And the last resort keeps a moved end only with no label more on a line
+test('audit 61: small cloud views clean on the round-60 base stay clean, right and down', () => {
+  const g = (id, k, parent) => ({ id, type: 'aws.Group', label: id, props: { groupType: k }, ...(parent ? { parent } : {}) });
+  const s = (id, label, parent, fam = 'aws') => ({ id, type: `${fam}.Service`, label, props: { icon: 'X' }, ...(parent ? { parent } : {}) });
+  const deep = { schemaVersion: 2, nodes: [g('acct', 'account'), g('eu', 'region', 'acct'), g('vpc', 'vpc', 'eu'), s('web', 'Web shop'), s('pay', 'Payment provider'), s('api', 'Shop API', 'vpc')],
+    edges: [{ id: 'e0', type: 'aws.Connection', from: 'web', to: 'api' }, { id: 'e2', type: 'aws.Connection', from: 'pay', to: 'web', label: 'HTTPS' }, { id: 'e3', type: 'aws.Connection', from: 'web', to: 'pay' }],
+    views: [{ id: 'v', diagram: 'aws', nodeIds: ['acct', 'eu', 'vpc', 'web', 'pay', 'api'] }] };
+  const twice = { schemaVersion: 2, nodes: [g('acct', 'account'), s('api', 'Service 0', 'acct'), s('web', 'Service 1'), s('cli', 'Service 3')],
+    edges: [{ id: 'e0', type: 'aws.Connection', from: 'cli', to: 'api' }, { id: 'e1', type: 'aws.Connection', from: 'web', to: 'api' }, { id: 'e2', type: 'aws.Connection', from: 'cli', to: 'web' }, { id: 'e4', type: 'aws.Connection', from: 'cli', to: 'web' }],
+    views: [{ id: 'v', diagram: 'aws', nodeIds: ['acct', 'api', 'web', 'cli'] }] };
+  const az = (id, k, parent) => ({ id, type: 'azure.Group', label: id, props: { groupType: k }, ...(parent ? { parent } : {}) });
+  const labelled = { schemaVersion: 2, nodes: [az('sub', 'subscription'), az('rg', 'resource-group', 'sub'), s('db', 'Service 1', 'rg', 'azure'), s('cdn', 'Service 2', null, 'azure'), s('app', 'Service 5', 'sub', 'azure')],
+    edges: [{ id: 'e0', type: 'azure.Connector', from: 'app', to: 'db' }, { id: 'e2', type: 'azure.Connector', from: 'app', to: 'cdn' }, { id: 'e3', type: 'azure.Connector', from: 'app', to: 'cdn', label: 'HTTPS' }],
+    views: [{ id: 'v', diagram: 'azure', nodeIds: ['sub', 'rg', 'db', 'cdn', 'app'] }] };
+  for (const [k, m] of Object.entries({ deep, twice, labelled })) for (const d of ['right', 'down']) { m.views[0].direction = d;
+    assert.deepEqual(check(m, 'v').map(p => p.message).filter(x => !/ cross$/.test(x)), [], `${k} ${d}`); }
+});
+
+// audit 61: laid out down, a line into the top of a card under its source, its port level with the port another line (routed
+// earlier) takes on the facing side of the card above, ran on that line for 6 px: a typed view with repair off routes such a
+// line again round every other one, kept on the last resort's terms
+test('audit 61: laid out down, three services, two in one account, a call each way: no two lines share a track', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'g0', type: 'aws.Group', label: 'Shop account', props: { groupType: 'account' } }, { id: 's0', type: 'aws.Service', label: 'Orders', props: { icon: 'X' }, parent: 'g0' },
+    { id: 's1', type: 'aws.Service', label: 'Payments', props: { icon: 'X' }, parent: 'g0' }, { id: 's2', type: 'aws.Service', label: 'Gateway', props: { icon: 'X' } }],
+    edges: [{ id: 'e0', type: 'aws.Connection', from: 's0', to: 's2', label: 'HTTPS' }, { id: 'e1', type: 'aws.Connection', from: 's2', to: 's1' }, { id: 'e2', type: 'aws.Connection', from: 's2', to: 's0' }],
+    views: [{ id: 'v', diagram: 'aws', direction: 'down', nodeIds: ['g0', 's0', 's1', 's2'] }] };
+  for (const d of ['down', 'right']) { m.views[0].direction = d; assert.deepEqual(check(m, 'v').map(p => p.message), [], d); }
+});
+
+// audit 61: one pin (Alt + arrow on the canvas) of a card in the AWS view of a copy of the gallery model (tests/fixtures/): pinsClear
+// weighs a line along a box's border or a label on a line as check() does, past what the view says with no pin
+test('audit 61: one pin of a card in the AWS view leaves no line along a border and no label on a line', () => {
+  const g = JSON.parse(readFileSync(new URL('fixtures/integration.json', import.meta.url))), vid = 'on-aws';
+  assert.deepEqual(check(g, vid).map(p => p.message).filter(x => !/ cross$/.test(x)), []);
+  for (const [id, q] of [['aws-users', [1, 1.5]], ['aws-cdn', [2, 2]], ['aws-assets', [1, 3]]]) {
+    const m = apply(g, [{ op: 'set', view: vid, path: ['layout', id], value: q }]);
+    assert.deepEqual(check(m, vid).map(p => p.message).filter(x => !/ cross$/.test(x)), [], `${id} ${JSON.stringify(q)}`); }
 });

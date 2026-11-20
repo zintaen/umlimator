@@ -1,10 +1,10 @@
-import { jsonText, labelOr, elName } from '../core/model.js';
+import { jsonText, labelOr, elName, oneNamed, isGone } from '../core/model.js';
 import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { r2 } from '../draw/shapes.js';
 import { csAdd, csConnect, csGeo, csMember, csMoveTo, csRemove, csRename } from '../uml/composite.js';
 import { bdField, bdTypeGuard } from './blocks.js';
-import { SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_TEXT_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS } from './sysml.js';
+import { SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_TEXT_PROBLEMS, SYS_DRESS, SYS_LINES, SYS_OTHER_KEYS, SYS_PORT_GONE } from './sysml.js';
 
 /* ---------- SysML's internal block diagram, sysml.internal-block (work package M3.4, notes/milestone-3.md §8, §13) ----------
    The view's subject, a block, is drawn as the composite structure type draws a class (src/uml/composite.js), through M3.1's
@@ -34,7 +34,7 @@ function SYS_IB_INDEX(model, view) {
 }
 // a port's type: its name, and whether ~ conjugates it (§8.2)
 const SYS_IB_TYPE = p => { const t = String(SYS_IB_PROPS(p).valueType ?? '').trim(), name = t.replace(/^~\s*/, ''); return { conj: t.startsWith('~') && name !== '', name }; }; // a lone ~ conjugates nothing
-const SYS_IB_IFACE = (I, name) => { const c = name ? [...I.at.values()].filter(n => n.type === 'sysml.InterfaceBlock' && elName(n) === name) : []; return c.length === 1 ? c[0] : null; };
+const SYS_IB_IFACES = (I, name) => (name ? [...I.at.values()].filter(n => n.type === 'sysml.InterfaceBlock' && elName(n) === name) : []), SYS_IB_IFACE = (I, name) => oneNamed(SYS_IB_IFACES(I, name));
 // the way a port's items flow, seen from its owner: in, out or inout (both), from the flow properties of the interface block
 // that types it, turned round by ~; null when no interface block with flow properties types it
 function SYS_IB_FLOW(I, p) {
@@ -66,11 +66,11 @@ function SYS_IB_LINE_SAY(I, e) {
   const say = name(a) === name(b) ? SYS_IB_END : (I2, e2, k) => name(k); // two ends of one name: each with its part
   return `Connector from ${SYS_IB_END(I, e, 'from')} to ${SYS_IB_END(I, e, 'to')}${f ? `, carrying ${f.item} from ${say(I, e, a)} to ${say(I, e, b)}` : SYS_IB_HAS(e.label) ? ': ' + e.label : ''}`;
 }
-function SYS_IB_SAY(I, g, id) {
+function SYS_IB_SAY(I, g, id, gone = () => false) {
   const n = I.at.get(id); if (n && n.type === 'sysml.Block') { const c = g.byId && Object.hasOwn(g.byId, id) && g.byId[id]; return c && c.aria ? String(c.aria).replace(/^Class\b/, 'Block') : null; } // a block's card: not "Class"
   const k = String(id).indexOf('->'), m = I.mem.get(k < 0 ? id : String(id).slice(k + 2));
   if (m && m.m.type === 'sysml.Port') return SYS_IB_PORT_SAY(I, m.m, k < 0 ? m.owner : I.el(String(id).slice(0, k)));
-  if (m && I.S && m.owner === I.S && Object.hasOwn(SYS_IB_PROP, m.m.type)) { const ports = SYS_IB_ARR(g.nodes).filter(n => n.owner === id && n.shape === 'port').length;
+  if (m && I.S && m.owner === I.S && Object.hasOwn(SYS_IB_PROP, m.m.type)) { const ports = SYS_IB_ARR(g.nodes).filter(n => n.owner === id && n.shape === 'port' && (isGone(m.m) || !gone(n.id))).length; // the model after's count on the diff page (audit 56)
     return `${SYS_IB_PROP[m.m.type]} ${SYS_IB_TEXT(m.m)}, in ${SYS_IB_NAME(I.S)}${ports ? ', ' + SYS_IB_PLURAL(ports, 'port') : ''}`; }
   const e = I.at.has(id) || m ? null : I.E.get(id);
   return e && e.type === 'sysml.Connector' ? SYS_IB_LINE_SAY(I, e) : null;
@@ -127,11 +127,12 @@ function SYS_IB_PROJ(model, view, I) {
 function SYS_IB_GEO({ model, view, pos, memo }) {
   const I = SYS_IB_INDEX(model, view), P = SYS_IB_PROJ(model, view, I);
   const raw = csGeo({ model: P.model, view: P.view, pos, memo });
-  const d = SYS_DRESS(raw, model, view, id => SYS_IB_SAY(I, raw, id));
+  const d = SYS_DRESS(raw, model, view, id => SYS_IB_SAY(I, raw, id, SYS_PORT_GONE(view, I.el)));
   const memberOf = id => { const k = String(id).indexOf('->'); return k < 0 ? id : String(id).slice(k + 2); };
-  // a port reads the interface block that types it, whose flow properties its arrow draws: what diff() marks it by (audit 49)
-  const out = { ...d, nodes: d.nodes.map(n => { if (n.shape !== 'port') return n; const m = I.el(memberOf(n.id)), f = m ? SYS_IB_FLOW(I, m) : null, B = m ? SYS_IB_IFACE(I, SYS_IB_TYPE(m).name) : null;
-    const rd = B && typeof B.id === 'string' ? [...new Set([...(Array.isArray(n.reads) ? n.reads : []), B.id])] : null;
+  // a port reads the interface block that types it, whose flow properties its arrow draws: what diff() marks it by (audit 49),
+  // and each namesake, which leaves it no arrow when it comes (audit 53)
+  const out = { ...d, nodes: d.nodes.map(n => { if (n.shape !== 'port') return n; const m = I.el(memberOf(n.id)), f = m ? SYS_IB_FLOW(I, m) : null, Bs = m ? SYS_IB_IFACES(I, SYS_IB_TYPE(m).name).map(x => x.id).filter(k => typeof k === 'string') : [];
+    const rd = Bs.length ? [...new Set([...(Array.isArray(n.reads) ? n.reads : []), ...Bs])] : null;
     return { ...n, member: memberOf(n.id), ...(f ? { flow: f } : {}), ...(rd ? { reads: rd } : {}) }; }),
     edges: d.edges.map(e => { const x = I.E.get(e.id), f = x && x.type === 'sysml.Connector' ? SYS_IB_IF(x) : null, s = f && SYS_IB_SPOT(e);
       return s ? { ...e, item: { ...s, u: f.direction === 'to-from' ? [-s.u[0], -s.u[1]] : s.u } } : e; }) };

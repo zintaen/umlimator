@@ -7,6 +7,7 @@
 // keyboard. Imports src/ to reach the internals; lib/umlimator-all.js holds the same code.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { diagramOf } from '../src/core/registry.js';
 import { apply } from '../src/core/apply.js';
 import { history } from '../src/core/history.js';
@@ -25,34 +26,34 @@ const R = (id, label, parent, reqId, text, more = {}) => ({ id, type: 'sysml.Req
 const L = (id, type, from, to) => ({ id, type: 'sysml.' + type, from, to });
 const CUT = 'Assistance shall fall away progressively and stop when the bike reaches 25 km/h.';
 // an inline copy of docs/diagrams/examples/16-requirement.json (M3.7 moves the file)
-const M16 = { schemaVersion: 2, title: 'E-bike: requirements', root: V, nodes: [
-  R('spec', 'E-bike specification', null, 'EB-1', 'The e-bike shall serve as a shared city bike that riders hire from a dock and return to a dock.'),
+const M16 = { schemaVersion: 2, title: 'Cargo e-bike: requirements', root: V, nodes: [
+  R('spec', 'Cargo bike specification', null, 'EB-1', 'The cargo e-bike shall carry book orders from the dispatch bay to local customers and return to its dock at the bay.'),
   R('assist', 'Pedal assistance', 'spec', 'EB-1.1', 'The motor shall assist the rider only while the rider is pedalling.'),
   R('cut-off', 'Assistance cut-off', 'assist', 'EB-1.1.1', CUT),
-  R('range', 'Range', 'spec', 'EB-1.2', 'A full charge shall give at least 60 km of assisted riding.'),
-  R('docking', 'Docking', 'spec', 'EB-1.3', 'The e-bike shall lock into a dock when it is returned and shall charge while it is docked.'),
-  R('lock-time', 'Locking time', 'docking', 'EB-1.3.1', 'The dock shall lock the e-bike within 2 s of the bike being pushed in.'),
+  R('range', 'Delivery range', 'spec', 'EB-1.2', 'A full charge shall give at least 60 km of assisted riding with a full 40 kg payload.'),
+  R('docking', 'Docking', 'spec', 'EB-1.3', 'The bike shall lock into its dock at the dispatch bay when it returns and shall charge while it is docked.'),
+  R('lock-time', 'Locking time', 'docking', 'EB-1.3.1', 'The dock shall lock the bike within 2 s of the bike being pushed in.'),
   R('capacity', 'Battery capacity', null, 'BAT-1', 'The battery shall store at least 500 Wh.'),
   R('assist-curve', 'Assistance curve', null, 'CTL-1', 'Assistance shall follow pedal torque and shall not exceed 250 W of continuous power.'),
   R('legal-speed', 'Maximum assisted speed', null, 'REG-3', CUT),
-  R('availability', 'All-day availability', null, 'CITY-4', 'A bike shall last a full day of hires on one charge.'),
+  R('availability', 'Full day of deliveries', null, 'OPS-4', 'A bike shall last a full day of delivery rounds on one charge.'),
   { id: 'battery', type: 'sysml.Block', label: 'Battery' }, { id: 'controller', type: 'sysml.Block', label: 'Controller' }, { id: 'dock', type: 'sysml.Block', label: 'Dock' },
-  { id: 'range-ride', type: 'sysml.TestCase', label: 'Range ride on the test circuit' }, { id: 'roller-test', type: 'sysml.TestCase', label: 'Cut-off speed on the rollers' },
-  { id: 'why-500', type: 'uml.Comment', label: '60 km at 7 Wh/km takes 420 Wh; 500 Wh keeps 15 % in reserve', props: { stereotypes: ['rationale'] } }],
+  { id: 'range-ride', type: 'sysml.TestCase', label: 'Laden range ride on the test circuit' }, { id: 'roller-test', type: 'sysml.TestCase', label: 'Cut-off speed on the rollers' },
+  { id: 'why-500', type: 'uml.Comment', label: '60 km laden at 7 Wh/km takes 420 Wh; 500 Wh keeps 15 % in reserve', props: { stereotypes: ['rationale'] } }],
 edges: [L('capacity-from-range', 'DeriveReqt', 'capacity', 'range'), L('curve-refines-assist', 'Refine', 'assist-curve', 'assist'), L('range-traces-availability', 'Trace', 'range', 'availability'),
   L('cut-off-copies-legal-speed', 'Copy', 'cut-off', 'legal-speed'), L('battery-satisfies-capacity', 'Satisfy', 'battery', 'capacity'), L('controller-satisfies-cut-off', 'Satisfy', 'controller', 'cut-off'),
   L('dock-satisfies-lock-time', 'Satisfy', 'dock', 'lock-time'), L('ride-verifies-range', 'Verify', 'range-ride', 'range'), L('rollers-verify-cut-off', 'Verify', 'roller-test', 'cut-off'),
   { id: 'why-500-link', type: 'uml.CommentLink', from: 'why-500', to: 'capacity' }],
-views: [{ id: V, diagram: 'sysml.requirement', title: 'E-bike requirements', parent: null, direction: 'down',
+views: [{ id: V, diagram: 'sysml.requirement', title: 'Cargo bike requirements', parent: null, direction: 'down',
   nodeIds: ['spec', 'assist', 'cut-off', 'range', 'docking', 'lock-time', 'capacity', 'assist-curve', 'legal-speed', 'availability', 'battery', 'controller', 'dock', 'range-ride', 'roller-test', 'why-500'] }] };
 const OWNED = [['spec', 'assist'], ['assist', 'cut-off'], ['spec', 'range'], ['spec', 'docking'], ['docking', 'lock-time']];
 const look = (m, direction) => { const c = structuredClone(m); c.views.forEach(v => { v.direction = direction; }); return c; };
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const inside = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h;
 const unid = s => s.replace(/\bg\d+-/g, 'g-');
-// a package subject's model: E-bike holds A (holding B), a block, and the package Regulation (holding C, holding D)
+// a package subject's model: DeliveryFleet holds A (holding B), a block, and the package Regulation (holding C, holding D)
 const N = (id, type, label, more = {}) => ({ id, type, label, ...more });
-const PKG = { schemaVersion: 2, title: 'T', nodes: [N('eb', 'uml.Package', 'E-bike'), N('reg', 'uml.Package', 'Regulation', { parent: 'eb' }),
+const PKG = { schemaVersion: 2, title: 'T', nodes: [N('eb', 'uml.Package', 'DeliveryFleet'), N('reg', 'uml.Package', 'Regulation', { parent: 'eb' }),
   R('a', 'A', 'eb', 'A-1', 'a'), R('b', 'B', 'a', 'B-1', 'b'), R('c', 'C', 'reg', 'C-1', 'c'), R('d', 'D', 'c', 'D-1', 'd'), N('blk', 'sysml.Block', 'Blk', { parent: 'eb' })],
 edges: [L('s', 'Satisfy', 'blk', 'b'), L('t', 'Trace', 'd', 'a')],
 views: [{ id: 'v', diagram: 'sysml.requirement', subject: 'eb', title: 'Reqs', nodeIds: ['eb', 'reg', 'a', 'b', 'c', 'd', 'blk'] }] };
@@ -76,7 +77,7 @@ test('16-requirement.json lays out clean down and right in its frame, each owner
   for (const direction of ['down', 'right']) {
     const m = look(M16, direction), g = layout(m, V), [F] = g.families;
     assert.deepEqual(check(m, V).map(p => p.message), [], direction);
-    assert.equal(g.families.length, 1); assert.deepEqual([F.id, F.shape, F.title], ['requirements->frame', 'sysml-frame', 'req [Model] E-bike: requirements [E-bike requirements]']);
+    assert.equal(g.families.length, 1); assert.deepEqual([F.id, F.shape, F.title], ['requirements->frame', 'sysml-frame', 'req [Model] Cargo e-bike: requirements [Cargo bike requirements]']);
     assert.equal(g.nodes.length, 16); g.nodes.forEach(n => assert.ok(inside(n, F), `${direction}: ${n.id} in the frame`));
     for (const p of g.nodes) for (const q of g.nodes) assert.ok(p === q || !meets(p, q), `${direction}: ${p.id} and ${q.id} overlap`);
     for (const [o, c] of OWNED) { const a = g.byId[o], b = g.byId[c]; assert.ok(direction === 'down' ? a.y + a.h < b.y : a.x + a.w < b.x, `${direction}: ${o} before ${c}`); }
@@ -91,24 +92,24 @@ test('a package subject is the frame, not a box or a card; a package it holds is
   for (const direction of ['down', 'right']) {
     const m = look(PKG, direction), g = layout(m, 'v'), F = g.families.find(f => f.id === 'eb'), B = g.families.find(f => f.id === 'reg');
     assert.deepEqual(check(m, 'v').map(p => p.message), [], direction);
-    assert.deepEqual([F.shape, F.title, F.parent, B.shape, B.parent, B.title], ['sysml-frame', 'req [Package] E-bike [Reqs]', undefined, 'package', 'eb', 'Regulation']);
+    assert.deepEqual([F.shape, F.title, F.parent, B.shape, B.parent, B.title], ['sysml-frame', 'req [Package] DeliveryFleet [Reqs]', undefined, 'package', 'eb', 'Regulation']);
     assert.deepEqual(g.nodes.map(n => n.id), ['a', 'b', 'c', 'd', 'blk'], 'no card for either package');
     assert.ok(inside(B, F) && ['c', 'd'].every(id => inside(g.byId[id], B)) && ['a', 'b', 'blk'].every(id => inside(g.byId[id], F) && !meets(g.byId[id], B)), direction);
     assert.deepEqual(g.edges.map(e => [e.id, e.end.to]), [['s', 'open'], ['t', 'open'], ['a->b', 'crosshair'], ['c->d', 'crosshair']]);
   }
   assert.deepEqual(T.boxes(PKG, PKG.views[0]).map(b => [b.id, b.parent ?? null]), [['eb', null], ['reg', 'eb']], 'the canvas drops into the frame and the box');
   assert.deepEqual(validate(PKG), []);
-  assert.match(svgOf(layout(PKG, 'v')), /<g class="family" data-family="eb" role="img" aria-label="Requirement diagram of package E-bike: Reqs">/);
+  assert.match(svgOf(layout(PKG, 'v')), /<g class="family" data-family="eb" role="img" aria-label="Requirement diagram of package DeliveryFleet: Reqs">/);
 });
 
 test('a requirement: «requirement» over its name, one compartment of its id, its text wrapped at 224 px, its risk and verify method; capped by present.rows, hidden by collapsed', () => {
   const g = layout(M16, V), n = g.byId.spec;
   assert.deepEqual([n.shape, n.stereotypes, n.compartments.map(c => c.name)], ['classifier', ['requirement'], ['requirement']]);
-  assert.deepEqual(n.compartments[0].members.map(r => r.label), ['id = "EB-1"', 'text = "The e-bike shall serve as', 'a shared city bike that riders', 'hire from a dock and return to a', 'dock."']);
+  assert.deepEqual(n.compartments[0].members.map(r => r.label), ['id = "EB-1"', 'text = "The cargo e-bike shall', 'carry book orders from the', 'dispatch bay to local customers', 'and return to its dock at the', 'bay."']);
   const long = 'word '.repeat(120).trim(), rows = rqWrap(`text = "${long}"`);
   assert.ok(rows.length > 10 && rows.every(r => textW(r, 11) <= 224), 'every row within 224 px');
   assert.equal(rows.join(' '), `text = "${long}"`, 'nothing lost');
-  const wide = rqWrap('x'.repeat(80)); assert.ok(wide.length === 1 && textW(wide[0], 11) <= 224 && wide[0].endsWith('…'), 'a word wider than 224 px is cut there');
+  const wide = rqWrap('x'.repeat(80)); assert.ok(wide.length > 1 && wide.every(r => textW(r, 11) <= 224) && wide.join('') === 'x'.repeat(80), 'a word wider than 224 px breaks there (audit 58)');
   const m = structuredClone(M16); Object.assign(m.nodes[0].props, { text: long, risk: 'high', verifyMethod: 'test' }); m.nodes[0].props.stereotypes = ['functionalRequirement'];
   const big = layout(m, V).byId.spec, members = big.compartments[0].members.map(r => r.label);
   assert.deepEqual([members.at(-2), members.at(-1)], ['risk = high', 'verifyMethod = test']);
@@ -121,14 +122,14 @@ test('a requirement: «requirement» over its name, one compartment of its id, i
   const shut = layout(m, V).byId.spec; assert.ok(!svgOf({ nodes: [shut], edges: [], groups: [], bounds: { x: 0, y: 0, w: 400, h: 400 }, byId: { spec: shut } }).includes('c-comp'), 'collapsed: no compartment');
   // a test case, a block, a comment's stereotypes first
   assert.deepEqual([g.byId['range-ride'].stereotypes, g.byId['range-ride'].compartments, g.byId.battery.stereotypes, g.byId.battery.compartments], [['testCase'], [], ['block'], []]);
-  assert.deepEqual([g.byId['why-500'].shape, g.byId['why-500'].label], ['note', '«rationale» 60 km at 7 Wh/km takes 420 Wh; 500 Wh keeps 15 % in reserve']);
+  assert.deepEqual([g.byId['why-500'].shape, g.byId['why-500'].label], ['note', '«rationale» 60 km laden at 7 Wh/km takes 420 Wh; 500 Wh keeps 15 % in reserve']);
   assert.equal(SHAPE.classifier.size(g.byId.spec).h, n.h);
 });
 
 test('containment (§6.2): a requirement owned by a shown requirement is joined to it by a derived line, crosshair at the owner, never stored; none when the owner is hidden', () => {
   const g = layout(M16, V), c = g.edges.filter(e => e.type === 'containment');
   assert.deepEqual(c.map(e => [e.id, e.from, e.to, e.end]), OWNED.map(([o, k]) => [`${o}->${k}`, k, o, { from: 'none', to: 'crosshair' }]));
-  assert.equal(c[0].aria, 'Containment of requirement Pedal assistance in requirement E-bike specification');
+  assert.equal(c[0].aria, 'Containment of requirement Pedal assistance in requirement Cargo bike specification');
   assert.match(svgOf(g), /marker-end="url\(#g\d+-crosshair-d\)"/);
   const hid = apply(M16, [{ op: 'hide', id: 'assist', view: V }]);
   assert.deepEqual(layout(hid, V).edges.filter(e => e.type === 'containment').map(e => e.id), ['spec->range', 'spec->docking', 'docking->lock-time'], 'cut-off\'s owner hidden: no line');
@@ -162,11 +163,11 @@ test('names, reading order, legend and describe() (§13): the frame named, each 
   const g = layout(M16, V), s = svgOf(g);
   assert.equal(g.byId.assist.aria, 'Requirement Pedal assistance, EB-1.1: The motor shall assist the rider only while the rider is pedalling.');
   assert.match(s, /data-shape="classifier" tabindex="-1" role="img" aria-label="Requirement Pedal assistance, EB-1.1: The motor shall assist the rider only while the rider is pedalling."/);
-  assert.equal(g.byId['range-ride'].aria, 'Test case Range ride on the test circuit');
-  assert.equal(g.byId['why-500'].aria, 'Comment (rationale): 60 km at 7 Wh/km takes 420 Wh; 500 Wh keeps 15 % in reserve');
+  assert.equal(g.byId['range-ride'].aria, 'Test case Laden range ride on the test circuit');
+  assert.equal(g.byId['why-500'].aria, 'Comment (rationale): 60 km laden at 7 Wh/km takes 420 Wh; 500 Wh keeps 15 % in reserve');
   assert.equal(g.edges.find(e => e.id === 'controller-satisfies-cut-off').aria, 'Satisfy from block Controller to requirement Assistance cut-off');
   assert.equal(g.edges.find(e => e.id === 'controller-satisfies-cut-off').label, '«satisfy»');
-  assert.match(s, /aria-label="Requirement diagram of model E-bike: requirements: E-bike requirements"/);
+  assert.match(s, /aria-label="Requirement diagram of model Cargo e-bike: requirements: Cargo bike requirements"/);
   // reading order: the cards by their places, top to bottom (down: rank by rank), then left to right, then the lines
   const ys = g.order.slice(0, 16).map(id => g.byId[id]); assert.ok(ys.every((n, i) => !i || ys[i - 1].col < n.col || (ys[i - 1].col === n.col && ys[i - 1].row <= n.row) && ys[i - 1].x < n.x));
   const r = layout(look(M16, 'right'), V), rs = r.order.slice(0, 16).map(id => r.byId[id]); assert.ok(rs.every((n, i) => !i || rs[i - 1].row < n.row || (rs[i - 1].row === n.row && rs[i - 1].x < n.x)), 'right: row by row');
@@ -174,7 +175,7 @@ test('names, reading order, legend and describe() (§13): the frame named, each 
   assert.deepEqual(g.legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Derive «deriveReqt»', 'Satisfy «satisfy»', 'Verify «verify»', 'Refine «refine»', 'Trace «trace»', 'Copy «copy»', 'Containment', 'Comment link']);
   assert.match(g.legend[6], /<path d="M14 8A6 6 0 1 0 26 8/);
   const d = describe(M16, V).split('\n');
-  assert.equal(d[0], 'E-bike requirements: a requirement diagram (req [Model] E-bike: requirements [E-bike requirements]) of 16 elements and 15 lines.');
+  assert.equal(d[0], 'Cargo bike requirements: a requirement diagram (req [Model] Cargo e-bike: requirements [Cargo bike requirements]) of 16 elements and 15 lines.');
   assert.equal(d[3], 'Requirement Assistance cut-off, EB-1.1.1: Assistance shall fall away progressively and stop when the bike reaches 25 km/h; contained in Pedal assistance; copies Maximum assisted speed; satisfied by Controller; verified by Cut-off speed on the rollers.');
   assert.equal(d.length, 17);
 });
@@ -207,7 +208,7 @@ const BREAKS = {
   'requirement-members': [m => { find(m, 'range').members = [{ id: 'range.x', type: 'uml.Property', label: 'x' }]; }, ['range'], 'error'],
   'requirement-general': [m => { m.edges.push({ id: 'g', type: 'uml.Generalization', from: 'capacity', to: 'range' }); }, ['g', 'capacity', 'range'], 'error'],
   'requirement-association': [m => { m.edges.push({ id: 'as', type: 'uml.Association', from: 'battery', to: 'range' }); }, ['as', 'battery', 'range'], 'error'],
-  'requirement-typing': [m => { find(m, 'battery').members = [{ id: 'battery.r', type: 'sysml.ValueProperty', label: 'r', props: { valueType: '~Range' } }]; }, ['battery.r', 'range'], 'error'],
+  'requirement-typing': [m => { find(m, 'battery').members = [{ id: 'battery.r', type: 'sysml.ValueProperty', label: 'r', props: { valueType: '~Delivery range' } }]; }, ['battery.r', 'range'], 'error'],
   'requirement-id': [m => { find(m, 'availability').props.reqId = 'BAT-1'; }, ['capacity', 'availability'], 'warning'],
   'requirement-text': [m => { delete find(m, 'availability').props.text; }, ['availability'], 'warning'],
   'derive-ends': [m => { m.edges.push(L('x', 'DeriveReqt', 'battery', 'range')); }, ['x', 'battery', 'range'], 'error'],
@@ -242,7 +243,7 @@ test('validators: 16 breaks no rule (copy-text passes on it); each rule fails on
   assert.deepEqual(T.validate(ok), []);
   // a derive to itself is warned once; a missing end is the core's
   const self = structuredClone(M16); self.edges.push(L('x', 'DeriveReqt', 'range', 'range'));
-  assert.deepEqual(T.validate(self).map(p => p.message), ['derive-cycle: requirement "Range" → requirement "Range" derives a requirement from itself (x)']);
+  assert.deepEqual(T.validate(self).map(p => p.message), ['derive-cycle: requirement "Delivery range" → requirement "Delivery range" derives a requirement from itself (x)']);
   // audit 2: a 20,000-long derive chain written forward, closed into a loop, is walked without overflowing the stack
   const K = 20000, chain = { schemaVersion: 2, nodes: Array.from({ length: K }, (_, i) => N('r' + i, 'sysml.Requirement', 'R' + i, { props: { text: 't' } })),
     edges: Array.from({ length: K }, (_, i) => L('d' + i, 'DeriveReqt', 'r' + i, 'r' + ((i + 1) % K))), views: [] };
@@ -256,7 +257,7 @@ test('validators: 16 breaks no rule (copy-text passes on it); each rule fails on
 test('add: a requirement goes into the requirement or package selected, else the frame\'s package, else none, with no id, said; the rest is the canvas\'s', () => {
   const add = (m, sel, label = 'Brakes') => T.edits.add(m, m.views[0], { type: 'sysml.Requirement' }, label, sel && { sel });
   assert.deepEqual(add(M16, ['range']), { commands: [{ op: 'add', element: { id: 'requirement1', type: 'sysml.Requirement', label: 'Brakes', parent: 'range' }, view: V }],
-    say: 'Requirement added in Range with no id: F2 with "EB-2 Brakes" sets its id and name' });
+    say: 'Requirement added in Delivery range with no id: F2 with "EB-2 Brakes" sets its id and name' });
   assert.deepEqual(add(M16, ['battery']).commands[0].element, { id: 'requirement1', type: 'sysml.Requirement', label: 'Brakes' });
   assert.deepEqual(add(M16, null).commands[0].element.parent, undefined);
   assert.equal(add(PKG, ['reg']).commands[0].element.parent, 'reg');
@@ -271,7 +272,7 @@ test('connect: Containment re-owns; a relationship breaking §6.3\'s errors is r
   const v = M16.views[0], c = (from, to, type) => T.edits.connect(M16, v, from, to, null, { type, label: type });
   assert.deepEqual(c('capacity', 'range', 'containment'), [{ op: 'reparent', id: 'capacity', parent: 'range' }]);
   assert.deepEqual(c('availability', 'pk', 'containment'), { error: 'Containment runs from a requirement to the requirement or package that holds it' });
-  assert.deepEqual(c('spec', 'cut-off', 'containment'), { error: 'Assistance cut-off is inside E-bike specification: it cannot hold it' });
+  assert.deepEqual(c('spec', 'cut-off', 'containment'), { error: 'Assistance cut-off is inside Cargo bike specification: it cannot hold it' });
   assert.deepEqual(c('battery', 'range', 'containment'), { error: 'Containment runs from a requirement to the requirement or package that holds it' });
   assert.deepEqual(c('dock', 'docking', 'sysml.Satisfy'), [{ op: 'add', element: { id: 'satisfy1', type: 'sysml.Satisfy', from: 'dock', to: 'docking' }, view: V }]);
   assert.deepEqual(c('battery', 'dock', 'sysml.Satisfy'), { error: 'satisfy-ends: a satisfy runs to a requirement' });
@@ -279,7 +280,7 @@ test('connect: Containment re-owns; a relationship breaking §6.3\'s errors is r
   assert.deepEqual(c('range-ride', 'battery', 'sysml.Verify'), { error: 'verify-ends: a verify runs to a requirement' });
   assert.deepEqual(c('battery', 'legal-speed', 'sysml.Copy'), { error: 'copy-ends: a copy runs from a requirement to a requirement' });
   const cp = c('availability', 'range', 'sysml.Copy');
-  assert.deepEqual(cp, [{ op: 'add', element: { id: 'copy1', type: 'sysml.Copy', from: 'availability', to: 'range' }, view: V }, { op: 'set', id: 'availability', path: 'props.text', value: 'A full charge shall give at least 60 km of assisted riding.' }]);
+  assert.deepEqual(cp, [{ op: 'add', element: { id: 'copy1', type: 'sysml.Copy', from: 'availability', to: 'range' }, view: V }, { op: 'set', id: 'availability', path: 'props.text', value: 'A full charge shall give at least 60 km of assisted riding with a full 40 kg payload.' }]);
   assert.deepEqual(T.validate(apply(M16, cp)), [], 'copy-text holds by construction');
   // audit 10: a requirement in a copy already keeps its text: a copy that would change it is refused
   assert.deepEqual(c('legal-speed', 'availability', 'sysml.Copy'), { error: 'copy-text: requirement "Maximum assisted speed" is copied by requirement "Assistance cut-off", whose text it keeps: a copy\'s client has its supplier\'s text' });
@@ -296,14 +297,14 @@ test('F2: "EB-1.2 Range" sets a requirement\'s id and name together; plain text,
   for (const [id, t] of [['range', 'Full range'], ['range', 'EB-1.4'], ['battery', 'B-2 Battery pack'], ['range', 'v2']]) assert.equal(T.edits.rename(M16, v, id, t), null, `${id} ${t}`);
   assert.deepEqual(T.edits.rename(M16, v, 'requirements->frame', 'All of it'), [{ op: 'set', view: V, path: 'title', value: 'All of it' }]);
   assert.equal(apply(M16, T.edits.rename(M16, v, 'requirements->frame', 'All of it')).views[0].title, 'All of it');
-  assert.equal(layout(apply(M16, T.edits.rename(M16, v, 'requirements->frame', 'All of it')), V).families[0].title, 'req [Model] E-bike: requirements [All of it]');
+  assert.equal(layout(apply(M16, T.edits.rename(M16, v, 'requirements->frame', 'All of it')), V).families[0].title, 'req [Model] Cargo e-bike: requirements [All of it]');
 });
 
 test('the PDF\'s tables (§13): a requirement\'s id, text whole, risk, verify method and relations; a test case\'s; each word; a line\'s keyword', () => {
   const m = structuredClone(M16); Object.assign(find(m, 'range').props, { risk: 'high', verifyMethod: 'test' });
-  assert.deepEqual(T.rows(m, m.views[0], 'range'), ['id: EB-1.2', 'text: A full charge shall give at least 60 km of assisted riding.', 'risk: high', 'verify method: test',
-    'contained in E-bike specification', 'derives Battery capacity', 'traced to All-day availability', 'verified by Range ride on the test circuit']);
-  assert.deepEqual(T.rows(M16, V, 'range-ride'), ['verifies Range']);
+  assert.deepEqual(T.rows(m, m.views[0], 'range'), ['id: EB-1.2', 'text: A full charge shall give at least 60 km of assisted riding with a full 40 kg payload.', 'risk: high', 'verify method: test',
+    'contained in Cargo bike specification', 'derives Battery capacity', 'traced to Full day of deliveries', 'verified by Laden range ride on the test circuit']);
+  assert.deepEqual(T.rows(M16, V, 'range-ride'), ['verifies Delivery range']);
   assert.deepEqual(T.rows(M16, V, 'controller'), ['satisfies Assistance cut-off']);
   assert.equal(T.rows(M16, V, 'why-500'), null);
   assert.deepEqual(['spec', 'range-ride', 'dock', 'why-500', 'nowhere', 'capacity-from-range'].map(id => T.word(M16, id)), ['Requirement', 'Test case', 'Block', null, null, null]);
@@ -432,4 +433,58 @@ test('audit 28: what is drawn on a requirement relationship after its keyword (i
     const bare = structuredClone(m); delete bare.edges[0].label; delete bare.edges[0].props;
     assert.doesNotMatch(layout(bare, 'v').edges[0].aria, /:/);
   }
+});
+
+// audit 52: Shift + Delete of a requirement keeps what it holds whichever view makes it: another view's own requirement under it
+// goes to its nearest owner left too, counted, where apply()'s delete would take it
+test('audit 52: Shift + Delete of a requirement keeps another view\'s own requirement under it, moved to the owner', () => {
+  const R = (id, parent) => ({ id, type: 'sysml.Requirement', label: id, ...(parent ? { parent } : {}), props: { reqId: id.toUpperCase(), text: 'shall ' + id } });
+  const m = { schemaVersion: 2, nodes: [R('top'), R('mid', 'top'), R('kid', 'mid')], edges: [],
+    views: [{ id: 'v1', diagram: 'sysml.requirement', nodeIds: ['top', 'mid', 'kid'] }, { id: 'v2', diagram: 'sysml.requirement', nodeIds: ['top', 'mid', 'own'], nodes: [R('own', 'mid')] }] };
+  for (const vid of ['v1', 'v2']) { const v = m.views.find(x => x.id === vid), r = diagramOf(v).edits.remove(m, v, ['mid'], true), n = apply(m, r.commands);
+    assert.equal(r.say, '2 elements kept, moved to the owner', vid);
+    assert.deepEqual(n.views[1].nodes.map(x => [x.id, x.parent]), [['own', 'top']], vid);
+    assert.equal(n.nodes.find(x => x.id === 'kid').parent, 'top', vid); }
+});
+
+test('audit 55: 150 sub-requirements of one requirement, with and without a derive chain through them, lay out in about linear time (before: 7 s and 20 s; the containment lines into the parent\'s side, too many for its tracks, each fell to the last resort, whose search over a grid of every line before it visited all of it; each line marked that grid cell by cell; and the column order counted crossings pair by pair) (timed)', () => {
+  const mk = chain => { const nodes = [{ id: 'r', type: 'sysml.Requirement', label: 'R', props: { reqId: 'R', text: 'x' } }], edges = [];
+    for (let i = 0; i < 150; i++) { nodes.push({ id: 'q' + i, type: 'sysml.Requirement', label: 'Req ' + i, parent: 'r', props: { reqId: 'R' + i, text: 'text ' + i } });
+      if (chain && i) edges.push({ id: 'd' + i, type: 'sysml.DeriveReqt', from: 'q' + i, to: 'q' + (i - 1) }); }
+    return { schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'sysml.requirement', nodeIds: nodes.map(x => x.id) }] }; };
+  for (const [chain, cap] of [[false, 4000], [true, 6000]]) { const t = performance.now(), g = layout(mk(chain), 'v'), ms = performance.now() - t;
+    assert.ok(ms < cap, `${chain ? 'with' : 'without'} a derive chain: ${Math.round(ms)} ms`);
+    assert.equal(g.edges.filter(e => e.pts && e.pts.length >= 2).length, chain ? 299 : 150, 'every line drawn'); }
+});
+
+test('audit 58: a requirement text with no spaces (Chinese, a long URL) wraps at 224 px between two characters, nothing lost', () => {
+  for (const t of ['为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限', 'https://example.com/specs/ebike/range/requirements/EB-1/acceptance-criteria/v2']) {
+    const rows = rqWrap(`text = "${t}"`);
+    assert.ok(rows.length > 1 && rows.every(r => textW(r, 11) <= 224), JSON.stringify(rows));
+    assert.equal(rows.join('').replace(/ /g, ''), `text="${t}"`, 'nothing lost');
+  }
+  const m = { schemaVersion: 2, nodes: [{ id: 'q', type: 'sysml.Requirement', label: '续航', props: { reqId: 'EB-1', text: '为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限' } }], views: [{ id: 'v', diagram: 'sysml.requirement', nodeIds: ['q'] }] };
+  assert.ok(layout(m, 'v').byId.q.compartments[0].members.length > 2, 'the text takes more than one row');
+});
+
+// audit 59: in the gallery's requirement view (a copy pinned in tests/fixtures/), Alt + Down twice on Payment gateway (as src/canvas/edit.js pins it, from the
+// drawn cell, a down view's axes swapped, a cell another card is pinned to stepped over) stretched the Payments package over
+// the Checkout walk-through: rqGeo placed pins by the frame's cells with only a row bump, and pinsClear's tries found no clean cell
+test('a pin in a package of the requirement gallery keeps its box off other cards (audit 59)', () => {
+  const g = JSON.parse(readFileSync(new URL('fixtures/sysml-requirement.json', import.meta.url))), vid = 'requirements', v = g.views.find(x => x.id === vid);
+  const bad = () => check(g, vid).map(p => p.message).filter(s => /lies over|overlap/.test(s));
+  for (const [id, d0, n] of [['gateway', [0, 1], 2], ['card-data', [0, 1], 2], ['gateway-api', [1, 0], 2]]) { const keep = structuredClone(v.layout);
+    for (let s = 0; s < n; s++) { const h = layout(g, vid), x = h.byId[id], d = h.down ? [d0[1], d0[0]] : d0, L = v.layout || {};
+      const onPin = (c, r) => Object.entries(L).some(([k, p]) => k !== id && Array.isArray(p) && p[0] === c && Math.abs(p[1] - r) < 1);
+      let c = x.col + d[0], r = x.row + d[1]; for (let i = 0; onPin(c, r) && i < 64; i++) { c += d[0]; r += d[1]; }
+      v.layout = { ...L, [id]: [c, r] }; assert.deepEqual(bad(), [], `${id} step ${s + 1}: ${JSON.stringify(v.layout)}`); }
+    v.layout = keep; }
+});
+
+// audit 61: one pin of Range (Alt + Down on the canvas) in a copy of the gallery model left the «deriveReqt» label no room: pinsClear
+// weighs a label not drawn as check() does, past what the view says with no pin
+test('audit 61: one pin of a requirement leaves every label drawn', () => {
+  const g = JSON.parse(readFileSync(new URL('fixtures/integration.json', import.meta.url))), vid = 'requirements';
+  for (const [id, q] of [['range', [2, 3.5]], ['capacity', [1, 3.5]], ['range-ride', [1, 4.5]]]) { const m = apply(g, [{ op: 'set', view: vid, path: ['layout', id], value: q }]);
+    assert.deepEqual(check(m, vid).map(p => p.message).filter(x => !/ cross$/.test(x)), [], `${id} ${JSON.stringify(q)}`); }
 });

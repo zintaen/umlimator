@@ -1,7 +1,7 @@
 {
  "$schema": "../lib/umlimator.schema.json",
  "schemaVersion": 2,
- "title": "Umlimator Atlas",
+ "title": "Umlimator",
  "root": "overview",
  "nodes": [
   {
@@ -43,7 +43,7 @@
    "kind": "module",
    "sublabel": "what umlimator.py import reads",
    "what": "The importers: a diagram written in another notation, read into a model.",
-   "how": "`umlimator.py import` runs them in Node: Mermaid, Structurizr DSL and JSON, PlantUML, Compose, Kubernetes, DBML and BPMN XML."
+   "how": "`umlimator.py import` runs them in Node for Structurizr JSON, DBML, BPMN XML, Mermaid's class, sequence, state, ER, requirement and mindmap diagrams, and a Mermaid flowchart given --typed. Structurizr DSL, C4-PlantUML, Compose, Kubernetes and Mermaid's flowcharts and C4 diagrams it reads into a map in Python (umlimator_import.py), with no Node."
   },
   {
    "id": "cli",
@@ -51,7 +51,8 @@
    "kind": "cli",
    "sublabel": "render, check, pdf, diff",
    "what": "The command line: one Python file, standard library only.",
-   "how": "Renders a page, checks its layout and draws stills and PDFs in headless Chrome; diff, drift, trace and timelapse run the module's functions in Node."
+   "how": "Renders a page, checks its layout and draws stills and PDFs in headless Chrome; diff, drift, trace and timelapse run the module's functions in Node.",
+   "opensView": "context"
   },
   {
    "id": "module",
@@ -701,7 +702,7 @@
    "from": "cli",
    "to": "readers",
    "label": "import",
-   "sublabel": "in Node"
+   "sublabel": "some formats, in Node"
   },
   {
    "id": "o7",

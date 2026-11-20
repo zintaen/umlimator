@@ -91,7 +91,7 @@ function mcGeneric(s) {
 
 // text in a label, a note or a cardinality: Mermaid's line breaks and entity codes (#quot; #lt; #35;)
 function mcText(s, bad) {
-  return s.replace(/<br\s?\/?>|\\n/gi, '\n').replace(/#(quot|lt|gt|amp|\d{1,6});/g, (all, e) =>
+  return s.replace(/<br\s?\/?>/gi, '\n').replace(/\\n/g, '\n').replace(/#(quot|lt|gt|amp|\d{1,6});/g, (all, e) =>
     ({ quot: '"', lt: '<', gt: '>', amp: '&' })[e] ?? mermaidChar(Number(e), all, bad));
 }
 
@@ -239,7 +239,7 @@ function mcRelation(s) {
   const b = mcNameG(s, k); if (!b) return null;
   k = mcSkip(s, b[1]);
   if (k < s.length && s[k] !== ':') return null;
-  return { a: a[0], b: b[0], ga: a[2], gb: b[2], c1, c2, left, right, line, label: k < s.length ? s.slice(k + 1).trim() : '' };
+  return { a: a[0], b: b[0], ga: a[2], gb: b[2], c1, c2, left, right, line, label: k < s.length ? s.slice(k + 1).trim() : '', style: s.startsWith(':::', k) };
 }
 
 // a cardinality's text as an end: "1", "0..*", "lines 1..*", "lines"; Mermaid's "many" and "n" are *
@@ -307,7 +307,7 @@ function readMermaidClass(text) {
     rec.raw.push({ text: t, line: no, hint: take('id'), st: st.filter(Boolean) });
   };
 
-  const over = mermaidOver(lines);
+  const over = mermaidOver(lines, say);
   for (; i < lines.length; i++) {
     const no = i + 1;
     let s = lines[i].trim();
@@ -330,7 +330,7 @@ function readMermaidClass(text) {
     }
     // a "string" left open before any label's : (a class's or namespace's ["label"], a note, a cardinality, a link) goes on
     // over the lines to its closing quote, as Mermaid's string token; a member's text never does (audit 49)
-    if (stack.at(-1)?.kind !== 'class' && mermaidOpen(s, k => s[k] === ':')) { const o = over(i, s); if (o) ({ s, i } = o); }
+    if (stack.at(-1)?.kind !== 'class' && mermaidOpen(s, k => s[k] === ':', true)) { const o = over(i, s); if (o) ({ s, i } = o); }
     // Mermaid closes a block at any }, as a member is [^{}\n]*: a line that ends in one, with no { to open, is its
     // statement, then that } read again on its own on the same line (audit 15)
     if (s.length > 1 && s.endsWith('}') && !s.includes('{')) { lines[i--] = '}'; s = s.slice(0, -1).trim(); }
@@ -426,10 +426,14 @@ function readMermaidClass(text) {
       say(no, 'skipped', `${word.startsWith('accTitle') ? 'accTitle' : 'accDescr'}: accessibility text is not read`);
       if (word.startsWith('accDescr') && s.includes('{') && !s.includes('}')) block = true;
     } else {
-      const r = mcRelation(s);
+      // ::: after a name outside `class A:::foo`, as a flowchart takes it, is a parse error to Mermaid: said, not read as a
+      // member or a label (audit 54)
+      const r = mcRelation(s), style = () => say(no, 'skipped', `"${mermaidClip(s)}": Mermaid reads ::: only in a class statement, as class A:::foo: not read`);
+      if (r && r.style) { style(); drop(no); continue; }
       if (r) { relations.push({ ...r, no, hint: take('id'), from: generic(cls(r.a, no), r.ga, no), to: generic(cls(r.b, no), r.gb, no) }); drop(no); continue; }
       const n = mcNameG(s, 0), k = n ? mcSkip(s, n[1]) : -1;
-      if (n && s[k] === ':') member(generic(cls(n[0], no), n[2], no), s.slice(k + 1), no);
+      if (n && s.startsWith(':::', k)) style();
+      else if (n && s[k] === ':') member(generic(cls(n[0], no), n[2], no), s.slice(k + 1), no);
       else if (n && k >= s.length) generic(cls(n[0], no), n[2], no);
       else say(no, 'skipped', `"${mermaidClip(s)}" is not understood`);
     }
@@ -607,7 +611,7 @@ function writeMermaidClass(model, viewId) {
   const VIS = mcTable({ public: '+', private: '-', protected: '#', package: '~' });
   const ARROW = mcTable({ 'uml.Generalization': '--|>', 'uml.InterfaceRealization': '..|>', 'uml.Dependency': '..>' });
   const has = x => x != null && x !== '', gen = s => String(s).replace(/[<>]/g, '~');
-  const enc = s => String(s).replace(/[#\\]/g, c => (c === '#' ? '#35;' : '#92;')).replace(/"/g, '#quot;').replace(/</g, '#lt;').replace(/>/g, '#gt;').replace(/\n/g, '<br>');
+  const enc = s => String(s).replace(/[#\\]/g, c => (c === '#' ? '#35;' : '#92;')).replace(/"/g, '#quot;').replace(/</g, '#lt;').replace(/>/g, '#gt;').replace(/\r/g, '#13;').replace(/\n/g, '<br>');
   // a statement keyword in backticks too: the reader takes a line's first word as one (`note -- Order` is a note)
   const name = id => (/^[\p{L}\p{N}_]+(-[\p{L}\p{N}_]+)*$/u.test(id) && !MC_KEYWORDS.has(id) ? id : '`' + id + '`');
   // what Mermaid cannot carry: an element, as `<id> (<type>)`, or one property of one, as `<id>: <what>`
@@ -732,9 +736,22 @@ function writeMermaidClass(model, viewId) {
         if (dia && end.navigable) lose(e.id, `navigable at the ${w} end, which has a ${end.aggregation} diamond`);
         return dia || (end.navigable ? nav : '');
       };
-      const card = end => { const t = [end.role, end.multiplicity].filter(has).join(' '); return t ? ` "${enc(t)}"` : ''; };
+      // an end's role and multiplicity as one cardinality, which the reader splits at its last word: a multiplicity it
+      // would not read as one, or a role it would read back as another (its last word a number, many or n), is not
+      // written and is said (audit 51). The written text is read back once and must give both: a multiplicity is written
+      // without its spaces, which a cardinality's grammar has none of ("0 .. 1" read as the role "0 .." and 1), and must
+      // read back as itself, and the role as the model's, none when it has none (audit 52)
+      const card = (end, w) => {
+        const said = has(end.multiplicity) ? String(end.multiplicity) : null;
+        let role = has(end.role) ? String(end.role) : null, mult = said == null ? null : said.replace(/\s+/g, '');
+        const back = () => mcEnd(enc([role, mult].filter(x => x != null).join(' ')), () => {});
+        if (mult != null && (!mcBounds(mult) || back().multiplicity !== mcBounds(mult))) { lose(e.id, `multiplicity ${said} at the ${w} end, which Mermaid's cardinality does not read as one`); mult = null; }
+        if ((back().role ?? null) !== role) { if (role != null) lose(e.id, `role ${role} at the ${w} end, which Mermaid's cardinality reads as another role or a multiplicity`); role = null; }
+        const t = [role, mult].filter(x => x != null).join(' ');
+        return t ? ` "${enc(t)}"` : '';
+      };
       const f = isObj(ends.from) ? ends.from : {}, t = isObj(ends.to) ? ends.to : {};
-      arrow = mark(f, '<', 'from') + '--' + mark(t, '>', 'to'); c1 = card(f); c2 = card(t);
+      arrow = mark(f, '<', 'from') + '--' + mark(t, '>', 'to'); c1 = card(f, 'from'); c2 = card(t, 'to');
     }
     relations.push([idOf(e.id, `${e.from}-${e.to}`), `${name(e.from)}${c1} ${arrow}${c2} ${name(e.to)}${label ? ' : ' + label : ''}`]);
   }

@@ -71,7 +71,7 @@ test('maps draw as now: the map\'s shapes are read only; C4 adds its own two (c4
 
 
 test('audit 20: the C4ElementProps row names the shapes C4 draws, the card shapes but node, as C4_SHAPES holds them', () => {
-  const row = readFileSync(new URL('../docs/api/typed-diagrams.md', import.meta.url), 'utf8').split('\n').find(l => l.startsWith('| `C4ElementProps`'));
+  const row = readFileSync(new URL('../tools/types.md', import.meta.url), 'utf8').split('\n').find(l => l.startsWith('| `C4ElementProps`'));
   const shape = /`shape` \((.*?)\), `container`/.exec(row)[1], named = [...shape.matchAll(/`([a-z]+)`/g)].map(m => m[1]);
   assert.deepEqual(named.slice(named.indexOf('node') + 1, named.indexOf('node') + 1 + C4_SHAPES.length).sort(), [...C4_SHAPES].sort());
   assert.ok(/other than `node`/.test(shape), shape);
@@ -81,8 +81,8 @@ test('audit 20: the C4ElementProps row names the shapes C4 draws, the card shape
 });
 test('audit 21: the guide\'s C4 row, the C4 conformance note and the schema name the shapes C4 draws (C4_SHAPES, not node) and the default for any other name', () => {
   const read = p => readFileSync(new URL(p, import.meta.url), 'utf8'), names = t => [...t.matchAll(/`?\b([a-z]+)\b`?/g)].map(m => m[1]);
-  const guide = /a C4 element's [^|]*?`shape` \((.*?)\), an instance's/.exec(read('../docs/guide/model.md'))[1];
-  const note = read('../docs/conformance/c4.md').split('\n').find(l => l.startsWith('| Person, software system')).split(' | ')[2];
+  const guide = /a C4 element's [^|]*?`shape` \((.*?)\), an instance's/.exec(read('../docs/maps/model.md'))[1];
+  const note = read('../docs/diagrams/conformance/c4.md').split('\n').find(l => l.startsWith('| Person, software system')).split(' | ')[2];
   const schema = JSON.parse(read('../lib/umlimator.schema.json'));
   let desc; JSON.stringify(schema, (k, v) => { if (k === 'shape' && v && typeof v.description === 'string' && v.description.startsWith('A C4 element')) desc = v.description; return v; });
   const vocab = /`shape` \((.*?)\)\. Relationship:/.exec(read('../docs/diagrams/model.md').split('\n').find(l => l.startsWith('| 23 |')))?.[1]; // audit 22: the vocabulary row c4.md cites
@@ -138,7 +138,7 @@ test('23-c4.json\'s static views draw: people and boxes, external grey, the subj
   assert.deepEqual(got, pinned, 'no overlap, overflow, line through a node or label over a node; the crossings and one label on a line pinned (repair and reroute off, §11)');
   // the conformance note states the container view's labels on lines laid out down as counted here (audit 27: it said 8 after audit 25 made it 6)
   const onLine = parseInt(got['c4-containers down'].find(k => / label on a line$/.test(k)), 10);
-  assert.ok(readFileSync(new URL('../docs/conformance/c4.md', import.meta.url), 'utf8').replace(/\s+/g, ' ').includes(`the container view's on a looser spot, ${onLine} labels on lines, which \`check()\` names`), `the C4 note says ${onLine} labels on lines`);
+  assert.ok(readFileSync(new URL('../docs/diagrams/conformance/c4.md', import.meta.url), 'utf8').replace(/\s+/g, ' ').includes(`the container view's on a looser spot, ${onLine} labels on lines, which \`check()\` names`), `the C4 note says ${onLine} labels on lines`);
   const g = layout(C4, 'c4-containers'), f = g.families;
   assert.deepEqual(f.map(x => [x.id, x.title, x.shape]), [['c4-bookshop', 'Bookshop [Software System]', 'c4-boundary']]);
   ['c4-storefront', 'c4-api', 'c4-worker', 'c4-db', 'c4-queue'].forEach(id => assert.ok(inside(g.byId[id], f[0]), id));
@@ -219,11 +219,11 @@ test('the layout is not edited after layoutTyped: drawn twice from one memo, the
 
 test('names, reading order and the key (A1, §7.5): each element by type, technology and description; the boundary and what it holds first; each type, shape, external, the relationship and the implied line keyed', () => {
   const g = layout(C4, 'c4-containers'), s = svgOf(g);
-  assert.equal(g.byId['c4-api'].aria, 'Container Shop API, Python, FastAPI: Catalogue, basket, checkout and accounts as a JSON API., opens Shop API: components');
+  assert.equal(g.byId['c4-api'].aria, 'Container Shop API, Python, FastAPI: Catalogue, basket, checkout and accounts as a JSON API, opens Shop API: components'); // its period dropped before ", opens" (audit 52)
   assert.equal(g.byId['c4-shopper'].aria, 'Person Shopper: Browses the catalogue, buys books and tracks orders.');
   // audit 6: the word "opens" in the element's own text does not stand for its type saying which view it opens
   const said = structuredClone(C4); said.nodes.find(n => n.id === 'c4-api').props.description = 'Takes orders and opens baskets.';
-  assert.equal(layout(said, 'c4-containers').byId['c4-api'].aria, 'Container Shop API, Python, FastAPI: Takes orders and opens baskets., opens Shop API: components');
+  assert.equal(layout(said, 'c4-containers').byId['c4-api'].aria, 'Container Shop API, Python, FastAPI: Takes orders and opens baskets, opens Shop API: components');
   assert.equal(g.byId['c4-payments'].aria, 'External software system Payment provider: Takes card payments and makes refunds.');
   assert.equal(g.families[0].aria, 'Software system Bookshop, a boundary holding 5 containers');
   assert.equal(g.edges.find(e => e.id === 'c4-storefront-api').aria, 'Relationship from Storefront to Shop API: Reads the catalogue and places orders through [JSON over HTTPS]');
@@ -442,7 +442,7 @@ test('audit 1: D leaves a container reached with its system to it; c4-relationsh
     ['c4-relationship: r3 joins "Shop", a software system, and "a note", a comment: a relationship joins two static elements or two deployment elements']);
   const cv = { ...m, edges: [], views: [{ id: 'v', diagram: 'c4.container', title: 'C', subject: 's', nodeIds: ['s', 'a', 'c2'] }] };
   assert.deepEqual(validate(cv).filter(p => p.rule === 'c4-level'), [], 'another system\'s container on a container view');
-  assert.match(readFileSync(new URL('../docs/conformance/c4.md', import.meta.url), 'utf8'), /containers too \(its subject's and other systems'\)/);
+  assert.match(readFileSync(new URL('../docs/diagrams/conformance/c4.md', import.meta.url), 'utf8'), /containers too \(its subject's and other systems'\)/);
 });
 
 test('audit 5: lines go round the cards on a typed view, however wide the host font (bookshop-c4 containers), and check() reports one drawn through a card', () => {
@@ -461,6 +461,22 @@ test('audit 5: lines go round the cards on a typed view, however wide the host f
     assert.ok(at >= 0, found.join('\n'));
     assert.ok(refs[at][0] === e && refs[at][1].id === 'c4-queue', 'about the line and the card');
   }
+});
+
+// audit 60's router rule took a way into an end from the side when head on cost more than two bends and 80 px over it, for
+// whatever reason. In Linux CI's fonts (Liberation Sans, Arial's metrics: tests/fixtures/bookshop-c4-containers-widths.json,
+// each text's width at 600 weight as Chrome measures it in Arial) the last resort's worker→database line came in from above,
+// over the API's lines to the database and the payment provider: 4 crossings, where head on draws 3. Head on is now tried too,
+// and kept when the line has fewer issues
+test('bookshop-c4 containers in Linux CI\'s fonts: the worker\'s line comes into the database head on, 3 crossings (CI of PR 548)', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/bookshop-c4.json', import.meta.url), 'utf8')), was = console.warn;
+  const T = new Map(JSON.parse(readFileSync(new URL('./fixtures/bookshop-c4-containers-widths.json', import.meta.url), 'utf8')).map(([px, s, w]) => [px + '\u0000' + s, w]));
+  const measure = (s, px) => T.get(px + '\u0000' + s) ?? s.length * px * 0.55;
+  let said, g; console.warn = () => {}; try { said = check(m, 'c4-containers', { measure }); g = layout(m, 'c4-containers', { measure }); } finally { console.warn = was; }
+  assert.deepEqual(said.filter(i => / cross$/.test(i.message)).map(i => i.message), ['view c4-containers: edges Storefront→Shop API and Order worker→Email service cross',
+    'view c4-containers: edges Shop API→Payment provider and Order worker→Database cross', 'view c4-containers: edges Shop API→Order queue and Order worker→Database cross']);
+  const e = g.edges.find(x => x.ids.includes('c4-worker-db')), P = e.pts, db = g.byId['c4-db'];
+  assert.ok(P[P.length - 2][1] === P[P.length - 1][1] && P.every(p => p[1] >= P[P.length - 1][1]) && P[P.length - 1][0] === db.x, JSON.stringify(P));
 });
 
 test('a request and its reply between two systems, laid out right, do not cross (audit 14)', () => {
@@ -672,4 +688,25 @@ test('audit 28: a listed line of another kind between two elements is no relatio
   // a listed relationship between the two still takes the implied line's place
   m.edges.push({ id: 'rel', type: 'c4.Relationship', from: 'c4-bookshop', to: 'c4-courier', label: 'pays' }); v.edges.push('rel');
   assert.deepEqual(pair().sort(), ['c4.Relationship', 'uml.Dependency']);
+});
+
+test('audit 52: an element whose name ends a sentence and that opens a view says so after it, never ".,", in its name and the drawn one', () => {
+  let n = 0;
+  for (const f of ['../examples/types/c4.json', '../examples/bookshop-atlas.json', '../tests/fixtures/integration.json']) {
+    const m = JSON.parse(readFileSync(new URL(f, import.meta.url)));
+    for (const v of m.views) { if (!v.diagram || v.diagram === 'map') continue; const g = layout(m, v.id), svg = svgOf(g);
+      for (const x of g.nodes || []) for (const a of [x.aria, x.ariaOwn]) if (typeof a === 'string' && a.includes(', opens ')) { n++; assert.doesNotMatch(a, /\.,/, `${f} ${v.id} ${x.id}`); }
+      assert.doesNotMatch(svg, /\., opens /, `${f} ${v.id}`); } }
+  assert.ok(n > 10, `${n} names`);
+  const m = JSON.parse(readFileSync(new URL('../examples/types/c4.json', import.meta.url)));
+  assert.match(layout(m, 'containers').byId.api.aria, /as a JSON API, opens Shop API: components$/);
+});
+
+test('audit 55: an element whose description ends in an abbreviation keeps its period before ", opens", and only a sentence\'s stop is dropped', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/bookshop-c4.json', import.meta.url)));
+  const n = m.nodes.find(x => x.id === 'c4-bookshop');
+  for (const [d, said] of [['Sells books, maps, gift cards etc.', 'gift cards etc., opens'], ['Sells books in the U.S.', 'in the U.S., opens'], ['Sells books, approx.', 'approx., opens'], ['Sells books.', 'Sells books, opens'], ['Sells books...', 'Sells books..., opens'], ['Answers every call within 200 ms.', 'within 200 ms, opens'], ['Signs with a CA.', 'with a CA, opens']]) {
+    n.props = { ...n.props, description: d }; const g = layout(m, 'c4-context'), s = svgOf(g);
+    assert.ok(g.byId['c4-bookshop'].aria.includes(said), g.byId['c4-bookshop'].aria);
+    assert.ok(/data-id="c4-bookshop"[^>]*aria-label="([^"]*)"/.exec(s)[1].includes(said), d); }
 });

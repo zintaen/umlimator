@@ -39,13 +39,16 @@ function erIndex(model) {
 const ER_FLAG = { pk: 'primaryKey', fk: 'foreignKey', uk: 'unique', null: 'nullable' };
 const ER_SYNTAX = ['dataType', 'primaryKey', 'foreignKey', 'unique', 'nullable', 'references'];
 const erFlag = t => Object.hasOwn(ER_FLAG, String(t).toLowerCase());
-function erTokens(s) { // split at spaces outside brackets and "quotes": "amount numeric(10, 2) NULL"; null when a bracket is left open or closes none
-  const out = []; let depth = 0, cur = '', q = 0;
+// null when a bracket is left open or closes none or another kind. < and > pair as a type's (map<string, int>) only outside
+// ( [ {: inside them they are text, a comparison (CHECK (amount > 0), audit 59)
+function erTokens(s) { // split at spaces outside brackets and "quotes": "amount numeric(10, 2) NULL"
+  const out = [], open = []; let cur = '', q = 0;
   for (const ch of s) { if (q) { cur += ch; q = q > 1 ? 1 : ch === '\\' ? 2 : ch !== '"'; continue; }
-    if (ch === '"') q = 1; else if ('([{<'.includes(ch)) depth++; else if (')]}>'.includes(ch) && --depth < 0) return null;
-    if (/\s/.test(ch) && !depth) { if (cur) out.push(cur); cur = ''; } else cur += ch; }
+    const top = open.at(-1), text = (ch === '<' || ch === '>') && top != null && top !== '<';
+    if (ch === '"') q = 1; else if (text); else if ('([{<'.includes(ch)) open.push(ch); else if (')]}>'.includes(ch) && open.pop() !== '([{<'[')]}>'.indexOf(ch)]) return null;
+    if (/\s/.test(ch) && !open.length) { if (cur) out.push(cur); cur = ''; } else cur += ch; }
   if (cur) out.push(cur);
-  return depth || q ? null : out;
+  return open.length || q ? null : out;
 }
 // a column named by table.column, its entity's label and its own, when exactly one column has them; else by its id. Labels
 // first: an id (`<entity id>.<label>`, erNewId) can read as another column's labels once a table is renamed. A label may hold
@@ -214,8 +217,10 @@ function erGeo({ model, view, pos, memo }) {
   const nodes = ids.map(id => { const n = I.at.get(id), pr = ER_OBJ(erPick(view.present, id)) ? view.present[id] : {};
     const d = n.type === 'uml.Comment' ? { shape: 'note' } : !erTable(n) ? { shape: 'classifier', compartments: [] } : { shape: 'entity', sections: erSections(n), collapsed: ER_ARR(pr.collapsed), ...(Number.isFinite(pr.rows) ? { rows: pr.rows } : {}), ...(idef && erDependent(R, id) ? { dep: true } : {}) };
     // IDEF1X: it reads the relationships to it, which make it dependent or not (audit 46), the ones the view draws too (audit 47:
-    // one removed is drawn back, and the entity it made dependent draws independent): diff() marks it only when it draws otherwise
-    const rd = idef ? R.filter(e => e.to === id && typeof e.id === 'string').map(e => e.id) : [];
+    // one removed is drawn back, and the entity it made dependent draws independent): diff() marks it only when it draws otherwise.
+    // One diff() brought back removed is read only when it was identifying and the entity is dependent no more (audit 51: an
+    // undrawn non-identifying one removed marked the child changed, though it draws as before)
+    const rd = idef ? R.filter(e => e.to === id && typeof e.id === 'string' && (!erGone(e) || erIdentifying(e) && !erDependent(R, id))).map(e => e.id) : [];
     const x = { id, label: erName(n), type: n.type || 'er.Entity', kind: 'file', ...d, ...(rd.length ? { reads: rd } : {}), aria: erFull(n, I), col: P(id)[0], row: P(id)[1] };
     return { ...x, ...SHAPE[x.shape].size(x) }; });
   const edges = lines.map(e => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: ER_HAS(e.label) ? String(e.label) : undefined, end: erLook(e, idef), aria: erLineName(e, I), cut: 280,

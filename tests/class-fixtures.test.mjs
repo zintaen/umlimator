@@ -65,9 +65,9 @@ test('the stress fixture lays out with no overlap, no line through a node and no
     assert.deepEqual(r.others, [], `${v.id}: check() finds nothing but lines that cross`);
     assert.ok(r.labels > 20 || v.id !== 'all', `${v.id}: ${r.labels} end labels`);
     console.log(`# ${v.id}: ${r.g.nodes.length} elements, ${r.g.edges.length} lines, ${r.crossings.length} crossings`);
-    // the counts docs/conformance/uml-class.md and risks.md L4 state: a change of layout that moves them updates both. From
+    // the counts docs/diagrams/conformance/uml-class.md and risks.md L4 state: a change of layout that moves them updates both. From
     // 0.19.0 (2.2) shop and catalog are boxes, and the all view holds two classes more: 29 and 2 before
-    assert.equal(r.crossings.length, { all: 19, 'edge-cases': 3 }[v.id], `${v.id}: the crossings the conformance note states`);
+    assert.equal(r.crossings.length, { all: 18, 'edge-cases': 3 }[v.id], `${v.id}: the crossings the conformance note states`);
     // each box holds exactly the shown elements it owns, at any depth, and nothing else
     const own = id => { const n = STRESS.nodes.find(x => x.id === id); return n && n.parent; }, holds = (b, id) => { for (let p = own(id); p; p = own(p)) if (p === b) return true; return false; };
     r.g.families.forEach(f => r.g.nodes.forEach(n => assert.equal(n.x > f.x && n.y > f.y && n.x + n.w < f.x + f.w && n.y + n.h < f.y + f.h, holds(f.id, n.id), `${v.id}: ${f.id} and ${n.id}`)));

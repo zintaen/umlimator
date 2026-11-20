@@ -119,7 +119,7 @@ function generate(seed) {
     const up = c => edges.filter(e => e.type === 'uml.Generalization' && e.from === c).map(e => e.to);
     const reaches = (a, b) => a === b || up(a).some(x => reaches(x, b));
     if (type === 'uml.Generalization') { const ok = classes.filter(c => kinds.get(c) === kinds.get(from) && !reaches(c, from)); if (ok.length) to = pick(ok); else type = 'uml.Dependency'; }
-    const end = () => clean({ role: maybe(0.4, pick(['lines', 'the owner'])), multiplicity: maybe(0.5, pick(['1', '0..1', '0..*', '1..*', '*', '2..5'])), aggregation: maybe(0.3, pick(['composite', 'shared'])), navigable: maybe(0.4, true) });
+    const end = () => clean({ role: maybe(0.4, pick(['lines', 'the owner', 'phase 2', 'top 10', 'many', 'n'])), multiplicity: maybe(0.5, pick(['1', '0..1', '0..*', '1..*', '*', '2..5'])), aggregation: maybe(0.3, pick(['composite', 'shared'])), navigable: maybe(0.4, true) });
     const ends = type === 'uml.Association' ? clean({ from: end(), to: end() }) : {};
     Object.keys(ends).forEach(k2 => { if (!Object.keys(ends[k2]).length) delete ends[k2]; });
     const props = clean({ ends: Object.keys(ends).length ? ends : undefined, stereotypes: maybe(0.2, ['use']) });
@@ -135,7 +135,7 @@ function generate(seed) {
 }
 
 test('read(write(model)) equals the model, less the owners the view does not show, for 500 generated models in the subset', () => {
-  let both = 0, hidden = 0, nested = 0, empty = 0, dots = 0, implied = 0, splits = 0;
+  let roles = 0, both = 0, hidden = 0, nested = 0, empty = 0, dots = 0, implied = 0, splits = 0;
   for (let seed = 1; seed <= 500; seed++) {
     const m = generate(seed), { text, back } = roundTrip(m), want = project(m, m.views[0].id), shown = new Set(m.views[0].nodeIds);
     // a hidden owner is left out, and the text names it on each element it held
@@ -158,10 +158,19 @@ test('read(write(model)) equals the model, less the owners the view does not sho
       delete end.navigable; both++;
       assert.ok(text.includes(`%% not written: ${e.id}: navigable at the ${w} end, which has a ${end.aggregation} diamond\n`), `seed ${seed}\n${text}`);
     }
+    // a role alone whose last word reads as a multiplicity (phase 2, top 10, many, n) would come back as another role and
+    // a multiplicity: it is not written, and the text says so (audit 51)
+    for (const e of want.edges) for (const [w, end] of Object.entries(e.props?.ends ?? {})) if (['phase 2', 'top 10', 'many', 'n'].includes(end.role) && end.multiplicity == null) {
+      roles++; assert.ok(text.includes(`%% not written: ${e.id}: role ${end.role} at the ${w} end, which Mermaid's cardinality reads as another role or a multiplicity\n`), `seed ${seed}\n${text}`);
+      delete end.role; if (!Object.keys(end).length) delete e.props.ends[w];
+      if (!Object.keys(e.props.ends).length) delete e.props.ends;
+      if (!Object.keys(e.props).length) delete e.props;
+    }
     assert.deepEqual(back.report, [], `seed ${seed}\n${text}`);
     assert.deepEqual(canon(back.model), canon(want), `seed ${seed}\n${text}`);
   }
   assert.ok(both > 0, 'the generator makes an end both navigable and with a diamond');
+  assert.ok(roles > 10, `the generator makes a role alone that reads as a multiplicity (${roles})`);
   assert.ok(hidden > 100 && nested > 20 && empty > 20 && dots > 10 && implied > 0 && splits > 5, `the generator hides owners (${hidden}), nests a class two shown packages deep (${nested}), leaves packages empty (${empty}), writes dotted ids (${dots}), namespaces only they imply (${implied}) and a hidden owner's dotted path (${splits})`);
 });
 
@@ -907,4 +916,99 @@ test('a "string" left open before any label\'s : (a class\'s or namespace\'s ["l
   assert.deepEqual(r.report, []);
   // no closing quote after it: the line read as before
   assert.deepEqual(read('classDiagram\nclass A["never closed\nclass B\n').report.map(x => [x.line, x.message]), [[2, 'class A: "["never closed" is not read']]);
+});
+
+test('a %% comment line inside a "string" over lines (a note, a cardinality) is taken out, as Mermaid\'s cleanupComments does before it parses, its quotes not counted, and said (audit 51)', () => {
+  const r = read('classDiagram\n  note "first\n  %% a " quote\n  second"\n  A "role\n  %% x\n  1" --> B\n');
+  assert.deepEqual(r.model.nodes.map(n => n.label), ['first\n  second', 'A', 'B']);
+  assert.deepEqual(r.model.edges.map(e => e.props.ends.from), [{ role: 'role', multiplicity: '1' }]);
+  assert.deepEqual(r.report.map(x => [x.line, x.status, x.message]), [[3, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read'], [6, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read']]);
+});
+
+test('an end\'s multiplicity written with spaces (0 .. 1) is written without them, so it reads back as itself and no role appears; one that is still no multiplicity is not written and said, and the role is checked alone (audit 52)', () => {
+  const cases = [
+    [{ multiplicity: '0 .. 1' }, { multiplicity: '0..1' }, []],
+    [{ role: 'items', multiplicity: '1 .. *' }, { role: 'items', multiplicity: '1..*' }, []],
+    [{ multiplicity: ' 0..* ' }, { multiplicity: '0..*' }, []],
+    [{ role: 'items', multiplicity: 'some' }, { role: 'items' }, ['multiplicity some at the to end']],
+    [{ multiplicity: '0 .. 1 x' }, {}, ['multiplicity 0 .. 1 x at the to end']],
+    [{ role: 'phase', multiplicity: '2 ..' }, { role: 'phase' }, ['multiplicity 2 .. at the to end']],
+  ];
+  for (const [end, got, said] of cases) {
+    const m = { nodes: [{ id: 'A', type: 'uml.Class', label: 'A' }, { id: 'B', type: 'uml.Class', label: 'B' }],
+      edges: [{ id: 'A-B', type: 'uml.Association', from: 'A', to: 'B', props: { ends: { to: end } } }],
+      views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['A', 'B'] }] };
+    assert.deepEqual(validate(m), [], JSON.stringify(end));
+    const text = write(m, 'v'), back = read(text).model.edges[0];
+    assert.deepEqual(back.props?.ends?.to ?? {}, got, `${JSON.stringify(end)}\n${text}`);
+    assert.deepEqual([...text.matchAll(/%% not written: A-B: (multiplicity .*? end)/g)].map(x => x[1]), said, text);
+  }
+});
+
+test('::: right after a name outside a class statement (A:::foo, A:::foo --> B, A --> B:::foo), which Mermaid\'s class parser refuses, is said and not read as a member or a label (audit 54)', () => {
+  const said = '": Mermaid reads ::: only in a class statement, as class A:::foo: not read';
+  for (const [src, nodes] of [['class A\nA:::foo', [['A', []]]], ['A:::foo --> B', []], ['A --> B:::foo', []], ['A :::foo', []], ['A~T~:::foo', []]]) {
+    const r = read(`classDiagram\n${src}`), last = src.split('\n').at(-1);
+    assert.deepEqual(r.model.nodes.map(n => [n.id, (n.members || []).map(m => m.label)]), nodes, src);
+    assert.deepEqual(r.model.edges, [], src);
+    assert.deepEqual(r.report.map(x => [x.line, x.status, x.message]), [[src.split('\n').length + 1, 'skipped', `"${last}${said}`]], src);
+  }
+  // class A:::foo is styling, said as before; a member or label after ": " that starts with :: is read as text, as the writer writes it
+  assert.deepEqual(read('classDiagram\nclass A:::foo').report.map(x => x.message), [':::foo on class A: styling is not read']);
+  const r = read('classDiagram\nA : ::x\nA -- B : ::y');
+  assert.deepEqual([r.model.nodes[0].members.map(m => m.label), r.model.edges.map(e => e.label), r.report], [['::x'], ['::y'], []]);
+});
+
+test('a backslash before a capital N is text, not a line break, in the flowchart, class, sequence and state readers; a lower-case \\n still breaks (audit 57)', () => {
+  const labels = m => [...m.nodes.flatMap(n => [n.label, n.props?.description]), ...[...(m.edges || []), ...(m.views || []).flatMap(v => v.edges || [])].map(e => e.label)].filter(x => typeof x === 'string' && x.includes('\\'));
+  assert.deepEqual(labels(readMermaidFlowchart('flowchart LR\n  A["Save to D:\\New folder"] --> B').model), ['Save to D:\\New folder']);
+  assert.deepEqual(labels(read('classDiagram\n  class A\n  note for A "see C:\\Notes\\Nina"').model), ['see C:\\Notes\\Nina']);
+  assert.deepEqual(labels(readMermaidSequence('sequenceDiagram\n  A->>B: open D:\\New folder').model), ['open D:\\New folder']);
+  const st = readMermaidState('stateDiagram-v2\n  s1 : saved to D:\\New folder').model;
+  assert.ok(JSON.stringify(st).includes('saved to D:\\\\New folder'), JSON.stringify(st));
+  assert.equal(readMermaidFlowchart('flowchart LR\n  A["one\\ntwo<BR>three"]').model.nodes[0].label, 'one\ntwo\nthree');
+  assert.equal(readMermaidSequence('sequenceDiagram\n  A->>B: one\\ntwo<Br/>three').model.views[0].edges[0].label, 'one\ntwo\nthree');
+});
+
+test('the class writer writes a carriage return as #13;, in a class, relation and note label, so Mermaid reads one statement and it reads back (audit 58)', () => {
+  for (const label of ['Order\r\nLine', 'y\r}\rclass Z']) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.Class', label }, { id: 'B', type: 'uml.Class', label: 'B' }, { id: 'n', type: 'uml.Comment', label }],
+      edges: [{ id: 'A-B', type: 'uml.Association', from: 'A', to: 'B', label }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['A', 'B', 'n'] }] };
+    const text = write(m), back = read(text).model;
+    assert.ok(!text.includes('\r'), JSON.stringify(text));
+    assert.equal(text.split('#13;').length - 1, 3 * (label.split('\r').length - 1));
+    assert.deepEqual([back.nodes.map(n => n.label), back.edges.map(e => e.label)], [[label, 'B', label], [label]]);
+  }
+});
+
+// audit 59: the class writer's #13; came after 0.44.0, so the 0.30.0 note keeps the three writers it shipped, and the
+// section for what main holds past the last release (package.json's version) records the class writer
+test('docs/module-api.md records the class writer\'s #13; after the last release, not in the 0.30.0 note (audit 59)', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.Class', label: 'a\rb' }], edges: [], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['A'] }] };
+  assert.match(write(m), /a#13;b/, 'the class writer writes #13;');
+  const doc = readFileSync(new URL('../docs/module-api.md', import.meta.url), 'utf8'), at = h => doc.indexOf('\n## ' + h);
+  const section = h => doc.slice(at(h), doc.indexOf('\n## ', at(h) + 4) >>> 0 || undefined).replace(/\s+/g, ' ');
+  const version = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+  assert.match(section('0.30.0:'), /the flowchart, state and sequence writers write a carriage return as `#13;`/);
+  const after = doc.slice(doc.indexOf('\n## ', at(version + ':') + 4)).replace(/\s+/g, ' ');
+  assert.ok(at(version + ':') > 0 && doc.indexOf('\n## ', at(version + ':') + 4) > 0, 'a section after the last release');
+  assert.match(after, /The Mermaid class writer writes a carriage return in a class, relation, cardinality, note or namespace label as `#13;`/);
+});
+
+test('a " inside a backtick class name is a plain character: the statements after it are read, and read(write(m)) keeps the ids (audit 60)', () => {
+  const r = read('classDiagram\n  class `Pipe 5"`\n  class Valve\n  class Pump\n  `Pipe 5"` --> Valve : feeds\n  Pump --> Valve : drives\n  class Tank\n');
+  assert.deepEqual(r.model.nodes.map(n => n.id), ['Pipe 5"', 'Valve', 'Pump', 'Tank']);
+  assert.deepEqual(r.model.edges.map(e => [e.from, e.to, e.label]), [['Pipe 5"', 'Valve', 'feeds'], ['Pump', 'Valve', 'drives']]);
+  assert.deepEqual(r.report, []);
+  // a real string still goes on over the lines to its closing quote, and a ` inside it is plain
+  const s = read('classDiagram\n  class A["a `b\n  c"]\n  class B\n');
+  assert.deepEqual(s.model.nodes.map(n => [n.id, n.label]), [['A', 'a `b\n  c'], ['B', 'B']]);
+  const m = { schemaVersion: 2, nodes: [
+    { id: 'Pipe 5"', type: 'uml.Class', label: 'Pipe', members: [{ id: 'Pipe 5".d', type: 'uml.Property', label: 'diameter', props: { valueType: 'int' } }] },
+    { id: 'Valve', type: 'uml.Class', label: 'Valve', members: [{ id: 'Valve.state-id', type: 'uml.Property', label: 'state', props: { valueType: 'string' } }] }],
+  edges: [{ id: 'feeds', type: 'uml.Association', from: 'Pipe 5"', to: 'Valve', label: 'feeds' }],
+  views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['Pipe 5"', 'Valve'] }] };
+  const back = read(write(m));
+  assert.deepEqual([back.model.nodes.flatMap(n => (n.members || []).map(c => c.id)), back.model.edges.map(e => e.id)], [['Pipe 5".d', 'Valve.state-id'], ['feeds']]);
+  assert.deepEqual(back.report, []);
 });

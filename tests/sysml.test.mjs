@@ -46,7 +46,7 @@ function merge(a, b, who, pre = '') {
   return out;
 }
 function atlas() {
-  const out = { schemaVersion: 2, title: 'E-bike', nodes: [], edges: [], views: [] };
+  const out = { schemaVersion: 2, title: 'Cargo e-bike', nodes: [], edges: [], views: [] };
   for (const m of structuredClone([M16, M17, M18, M19])) {
     for (const k of ['nodes', 'edges']) m[k].forEach(x => { const i = out[k].findIndex(y => y.id === x.id); if (i < 0) out[k].push(x); else out[k][i] = merge(out[k][i], x, x.id); });
     out.views.push(...m.views); }
@@ -110,9 +110,9 @@ test('a required extension of a profile in scope reaches a SysML element of its 
 
 // ---- the class rule (§7.3, S20)
 test('17 with a class view added has no generalization-kinds problem; a UML generalization between kinds still has', () => {
-  const [m] = withView(M17, { id: 'cls', diagram: 'uml.class', nodeIds: ['ebike', 'rental-vehicle'] });
+  const [m] = withView(M17, { id: 'cls', diagram: 'uml.class', nodeIds: ['ebike', 'delivery-vehicle'] });
   assert.deepEqual(classProblems(m).filter(p => p.rule === 'generalization-kinds'), []);
-  assert.ok(m.edges.some(e => e.type === 'uml.Generalization' && e.from === 'ebike' && e.to === 'rental-vehicle'));
+  assert.ok(m.edges.some(e => e.type === 'uml.Generalization' && e.from === 'ebike' && e.to === 'delivery-vehicle'));
   const bad = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'A' }, { id: 'p', type: 'uml.Package', label: 'p' }], edges: [{ id: 'g', type: 'uml.Generalization', from: 'a', to: 'p' }], views: [] };
   assert.deepEqual(classProblems(bad).map(p => p.rule), ['generalization-kinds']);
   // an end of another notation is left to it (§7.3, option (a)); one of a type of no notation is still judged; one untyped is a
@@ -129,13 +129,13 @@ test('asUml keeps only the view kind\'s members of the subject, in each example 
   const all = atlas(), ibd = all.views.find(v => v.id === 'inside-ebike'), par = all.views.find(v => v.id === 'range-analysis');
   assert.ok(IBD[ibd.diagram] && par.diagram === 'sysml.parametric');
   assert.deepEqual(kept(M18, M18.views[0]), ['ebike.battery', 'ebike.controller', 'ebike.motor', 'ebike.frontLight', 'ebike.rearLight', 'ebike.dock']);
-  assert.deepEqual(kept(M19, M19.views[0]), ['ebike.batteryCapacity', 'ebike.usableShare', 'ebike.ecoConsumption', 'ebike.boostConsumption', 'ebike.ecoRange', 'ebike.boostRange', 'ebike.usable', 'ebike.eco', 'ebike.boost']);
+  assert.deepEqual(kept(M19, M19.views[0]), ['ebike.batteryCapacity', 'ebike.usableShare', 'ebike.emptyConsumption', 'ebike.ladenConsumption', 'ebike.emptyRange', 'ebike.ladenRange', 'ebike.usable', 'ebike.empty', 'ebike.laden']);
   assert.deepEqual(kept(...withView(M17, { id: 'x', diagram: 'sysml.internal-block', subject: 'ebike', nodeIds: ['ebike'] })), ['ebike.battery', 'ebike.controller', 'ebike.motor', 'ebike.wheels', 'ebike.dock']);
   assert.deepEqual(kept(...withView(M16, { id: 'x', diagram: 'sysml.internal-block', subject: 'battery', nodeIds: ['battery'] })), []);
   // merged: the ibd shows no constraint property, the par view no part
   assert.deepEqual(kept(all, ibd), ['ebike.battery', 'ebike.controller', 'ebike.motor', 'ebike.wheels', 'ebike.dock', 'ebike.frontLight', 'ebike.rearLight',
-    'ebike.batteryCapacity', 'ebike.usableShare', 'ebike.ecoConsumption', 'ebike.boostConsumption', 'ebike.ecoRange', 'ebike.boostRange']);
-  assert.deepEqual(kept(all, par), ['ebike.rangeEq', 'ebike.batteryCapacity', 'ebike.usableShare', 'ebike.ecoConsumption', 'ebike.boostConsumption', 'ebike.ecoRange', 'ebike.boostRange', 'ebike.usable', 'ebike.eco', 'ebike.boost']);
+    'ebike.batteryCapacity', 'ebike.usableShare', 'ebike.emptyConsumption', 'ebike.ladenConsumption', 'ebike.emptyRange', 'ebike.ladenRange']);
+  assert.deepEqual(kept(all, par), ['ebike.rangeEq', 'ebike.batteryCapacity', 'ebike.usableShare', 'ebike.emptyConsumption', 'ebike.ladenConsumption', 'ebike.emptyRange', 'ebike.ladenRange', 'ebike.usable', 'ebike.empty', 'ebike.laden']);
   // what is not kept keeps its SysML type and its index: the arrays are as long, the ids in order
   const P = SYS_AS_UML(all, par);
   assert.deepEqual(P.model.nodes.map(n => [n.id, (n.members || []).map(x => x.id)]), all.nodes.map(n => [n.id, (n.members || []).map(x => x.id)]));
@@ -147,8 +147,8 @@ test('asUml keeps only the view kind\'s members of the subject, in each example 
 });
 test('asUml gives models the composite type validates with the problems listed here', () => {
   const all = atlas(), say = (m, v) => { const P = SYS_AS_UML(m, v); return csProblems(P.model, P.view).map(p => p.message); };
-  const typed = n => `part-type: part "${n[0]}" of "EBike" is typed "${n[1]}", which names no class or component, so it shows only the ports its connectors reach through it`;
-  const values = [['batteryCapacity', 'Energy'], ['usableShare', 'Real'], ['ecoConsumption', 'EnergyPerDistance'], ['boostConsumption', 'EnergyPerDistance'], ['ecoRange', 'Distance'], ['boostRange', 'Distance']].map(typed);
+  const typed = n => `part-type: part "${n[0]}" of "CargoBike" is typed "${n[1]}", which names no class or component, so it shows only the ports its connectors reach through it`;
+  const values = [['batteryCapacity', 'Energy'], ['usableShare', 'Real'], ['emptyConsumption', 'EnergyPerDistance'], ['ladenConsumption', 'EnergyPerDistance'], ['emptyRange', 'Distance'], ['ladenRange', 'Distance']].map(typed);
   assert.deepEqual(say(M18, M18.views[0]), []);
   assert.deepEqual(say(M19, M19.views[0]), values);
   assert.deepEqual(say(...withView(M17, { id: 'x', diagram: 'sysml.internal-block', subject: 'ebike', nodeIds: ['ebike'] })), [typed(['wheels', 'Wheel'])]);
@@ -174,9 +174,9 @@ test('the texts the layout measures are set before it: an item flow is a connect
 // nothing; what still differs is data the targets carry differently: the merged subject holds members of the view's kind
 // other files give it, and 17 gives the parts multiplicities and battery.charge a type 18 does not. With the file's own
 // nodes put back in the merged model, each view is its file's picture (what M3.7's atlas settles, §15.2)
-test('each e-bike view laid out from the merged four is its own file\'s picture once the file\'s nodes agree', () => {
+test('each cargo bike view laid out from the merged four is its own file\'s picture once the file\'s nodes agree', () => {
   const pic = (m, v) => { const P = SYS_AS_UML(m, v); return svgOf(SYS_DRESS(csGeo({ model: P.model, view: P.view, pos: {}, memo: {} }), m, v), { title: 't' }).replace(/\bg\d+-/g, 'g-'); };
-  for (const [M, extra] of [[M18, ['ebike.wheels', 'ebike.batteryCapacity', 'ebike.usableShare', 'ebike.ecoConsumption', 'ebike.boostConsumption', 'ebike.ecoRange', 'ebike.boostRange']], [M19, ['ebike.rangeEq']]]) {
+  for (const [M, extra] of [[M18, ['ebike.wheels', 'ebike.batteryCapacity', 'ebike.usableShare', 'ebike.emptyConsumption', 'ebike.ladenConsumption', 'ebike.emptyRange', 'ebike.ladenRange']], [M19, ['ebike.rangeEq']]]) {
     const all = atlas(), v = all.views.find(x => x.id === M.views[0].id), own = pic(M, M.views[0]);
     assert.notEqual(pic(all, v), own);
     assert.deepEqual(kept(all, v).filter(id => !kept(M, M.views[0]).includes(id)), extra, 'what the merged subject adds of the view\'s kind');
@@ -207,8 +207,8 @@ test('what the composite type\'s hooks add on the projection takes its SysML typ
   assert.equal(pick.then(0)[0].element.type, 'sysml.Connector');
   // parametric: a binding, a constraint property, a value, a parameter of a constraint block
   const pm = M19, pv = pm.views[0], PP = SYS_AS_UML(pm, pv), pb = r => SYS_BACK(r, pm, pv);
-  const bind = pb(csConnect(PP.model, PP.view, 'ebike.ecoRange', 'ebike.boost->range-equation.range', null, { type: 'uml.Connector', label: 'Binding' }));
-  assert.deepEqual([bind[0].element.type, bind[0].element.props], ['sysml.BindingConnector', { ends: { to: { part: 'ebike.boost' } } }]);
+  const bind = pb(csConnect(PP.model, PP.view, 'ebike.emptyRange', 'ebike.laden->range-equation.range', null, { type: 'uml.Connector', label: 'Binding' }));
+  assert.deepEqual([bind[0].element.type, bind[0].element.props], ['sysml.BindingConnector', { ends: { to: { part: 'ebike.laden' } } }]);
   assert.deepEqual(pb([{ op: 'add', owner: 'ebike', element: { id: 'q', type: 'uml.Property', label: 'q', props: { valueType: 'RangeEquation' } } }])[0].element.type, 'sysml.ConstraintProperty');
   assert.deepEqual(pb([{ op: 'add', owner: 'ebike', element: { id: 'q', type: 'uml.Property', label: 'q', props: { valueType: 'Distance' } } }])[0].element.type, 'sysml.ValueProperty');
   assert.deepEqual(pb([{ op: 'add', owner: 'range-equation', element: { id: 'q', type: 'uml.Port', label: 'q' } }])[0].element.type, 'sysml.ConstraintParameter');
@@ -227,24 +227,24 @@ test('the composite type\'s problems are kept where their words fit, in SysML\'s
     { id: 'self', type: 'sysml.Connector', from: 'ebike', to: 'battery.bus', props: { ends: { to: { part: 'ebike.battery' } } } });
   const got = SYS_CS_PROBLEMS(m, v);
   assert.deepEqual(got.map(p => [p.level, p.rule, p.path, p.ids, p.message]), [
-    ['warning', 'part-type', 'nodes[0].members[6].props.valueType', ['ebike.ghost', 'ebike'], 'part-type: part "ghost" of "EBike" is typed "Nothing", which names no block, so it shows only the ports its connectors reach through it'],
+    ['warning', 'part-type', 'nodes[0].members[6].props.valueType', ['ebike.ghost', 'ebike'], 'part-type: part "ghost" of "CargoBike" is typed "Nothing", which names no block, so it shows only the ports its connectors reach through it'],
     ['error', 'connector-part', 'edges[6].from', ['bad', 'motor.phases', 'ebike.battery'], 'connector-part: bad\'s from end "phases" is not a port of "Battery", the type of "battery"'],
-    ['error', 'connector-scope', 'edges[7].from', ['self', 'ebike'], 'connector-scope: self\'s from end is "EBike" itself: a connector joins the subject\'s ports and parts']]);
+    ['error', 'connector-scope', 'edges[7].from', ['self', 'ebike'], 'connector-scope: self\'s from end is "CargoBike" itself: a connector joins the subject\'s ports and parts']]);
   // parametric: a binding through a value property, not a constraint property
-  const p = structuredClone(M19); p.edges.push({ id: 'b2', type: 'sysml.BindingConnector', from: 'ebike.ecoRange', to: 'range-equation.range', props: { ends: { to: { part: 'ebike.missing' } } } });
+  const p = structuredClone(M19); p.edges.push({ id: 'b2', type: 'sysml.BindingConnector', from: 'ebike.emptyRange', to: 'range-equation.range', props: { ends: { to: { part: 'ebike.missing' } } } });
   assert.deepEqual(SYS_CS_PROBLEMS(p, p.views[0]).map(x => x.message), ['connector-part: b2\'s to end goes through "ebike.missing", not a constraint property of the subject',
-    'connector-scope: b2 joins "ecoRange" and "range", and "range" lies in no structure of this view: its ends are the subject\'s parameters and properties']); // the one end out of scope named (audit 22)
+    'connector-scope: b2 joins "emptyRange" and "range", and "range" lies in no structure of this view: its ends are the subject\'s parameters and properties']); // the one end out of scope named (audit 22)
 });
 
 // ---- the frame (§5)
 test('the header: kind [ElementType] name [view title]; [Model] and the model\'s title with no subject; a title equal to the name left out', () => {
-  assert.deepEqual(SYS_HEAD(M18, M18.views[0]), { el: M18.nodes[0], title: 'ibd [Block] EBike [Inside the e-bike]', aria: 'Internal block diagram of block EBike: Inside the e-bike' });
-  assert.equal(SYS_HEAD(M19, M19.views[0]).title, 'par [Block] EBike [E-bike range]');
-  assert.deepEqual(SYS_HEAD(M17, M17.views[0]), { el: null, title: 'bdd [Model] E-bike: blocks [E-bike blocks]', aria: 'Block definition diagram of model E-bike: blocks: E-bike blocks' });
-  assert.equal(SYS_HEAD(M16, M16.views[0]).title, 'req [Model] E-bike: requirements [E-bike requirements]');
-  const pk = { title: 'T', nodes: [{ id: 'eb', type: 'uml.Package', label: 'E-bike' }, { id: 'cb', type: 'sysml.ConstraintBlock', label: 'RangeEquation' }] };
-  assert.deepEqual(SYS_HEAD(pk, { id: 'v', diagram: 'sysml.block-definition', subject: 'eb', title: 'E-bike blocks' }), { el: pk.nodes[0], title: 'bdd [Package] E-bike [E-bike blocks]', aria: 'Block definition diagram of package E-bike: E-bike blocks' });
-  assert.equal(SYS_HEAD(pk, { id: 'v', diagram: 'sysml.block-definition', subject: 'eb', title: 'E-bike' }).title, 'bdd [Package] E-bike');
+  assert.deepEqual(SYS_HEAD(M18, M18.views[0]), { el: M18.nodes[0], title: 'ibd [Block] CargoBike [Inside the cargo bike]', aria: 'Internal block diagram of block CargoBike: Inside the cargo bike' });
+  assert.equal(SYS_HEAD(M19, M19.views[0]).title, 'par [Block] CargoBike [Cargo bike range]');
+  assert.deepEqual(SYS_HEAD(M17, M17.views[0]), { el: null, title: 'bdd [Model] Cargo e-bike: blocks [Cargo bike blocks]', aria: 'Block definition diagram of model Cargo e-bike: blocks: Cargo bike blocks' });
+  assert.equal(SYS_HEAD(M16, M16.views[0]).title, 'req [Model] Cargo e-bike: requirements [Cargo bike requirements]');
+  const pk = { title: 'T', nodes: [{ id: 'eb', type: 'uml.Package', label: 'DeliveryFleet' }, { id: 'cb', type: 'sysml.ConstraintBlock', label: 'RangeEquation' }] };
+  assert.deepEqual(SYS_HEAD(pk, { id: 'v', diagram: 'sysml.block-definition', subject: 'eb', title: 'Cargo bike blocks' }), { el: pk.nodes[0], title: 'bdd [Package] DeliveryFleet [Cargo bike blocks]', aria: 'Block definition diagram of package DeliveryFleet: Cargo bike blocks' });
+  assert.equal(SYS_HEAD(pk, { id: 'v', diagram: 'sysml.block-definition', subject: 'eb', title: 'DeliveryFleet' }).title, 'bdd [Package] DeliveryFleet');
   assert.deepEqual(SYS_HEAD(pk, { id: 'v', diagram: 'sysml.parametric', subject: 'cb' }), { el: pk.nodes[1], title: 'par [ConstraintBlock] RangeEquation', aria: 'Parametric diagram of constraint block RangeEquation' });
   assert.equal(SYS_HEAD(pk, { id: 'v', diagram: 'sysml.requirement', subject: 'nowhere', title: 'R' }).title, 'req [Model] T [R]');
   // each kind names only its own element types (§17): a block on a bdd, a package on an ibd, a constraint block on an ibd: [Model]
@@ -259,29 +259,29 @@ test('the header: kind [ElementType] name [view title]; [Model] and the model\'s
   assert.deepEqual([f.id, f.title], ['v->frame', 'req [Model] T']);
 });
 test('a req or bdd frame is a box of the layout: the package subject\'s id, else <view>->frame; 38 px above its cards', () => {
-  const pk = { title: 'T', nodes: [{ id: 'eb', type: 'uml.Package', label: 'E-bike' }] };
+  const pk = { title: 'T', nodes: [{ id: 'eb', type: 'uml.Package', label: 'DeliveryFleet' }] };
   assert.deepEqual(SYS_FRAME(pk, { id: 'v', diagram: 'sysml.block-definition', subject: 'eb', title: 'B' }, ['a']),
-    { id: 'eb', label: 'bdd [Package] E-bike [B]', title: 'bdd [Package] E-bike [B]', nodeIds: ['a'], shape: 'sysml-frame', head: 14, aria: 'Block definition diagram of package E-bike: B', edit: 'E-bike' });
+    { id: 'eb', label: 'bdd [Package] DeliveryFleet [B]', title: 'bdd [Package] DeliveryFleet [B]', nodeIds: ['a'], shape: 'sysml-frame', head: 14, aria: 'Block definition diagram of package DeliveryFleet: B', edit: 'DeliveryFleet' });
   assert.equal(SYS_FRAME(pk, { id: 'v', diagram: 'sysml.requirement' }, []).id, 'v->frame');
   // laid out down and right: its head is on top either way (laid out down, the turned layout's left), the tag above its cards
   for (const direction of ['right', 'down']) {
     const nodes = ['a', 'b', 'c'].map((id, i) => ({ id, label: id, shape: 'classifier', kind: 'file', w: 120, h: 60, col: i % 2, row: i >> 1 }));
-    const g = layoutTyped({ nodes, edges: [{ id: 'e', from: 'a', to: 'b' }], containers: [SYS_FRAME({ title: 'E-bike: blocks' }, { id: 'v', diagram: 'sysml.block-definition', title: 'E-bike blocks' }, ['a', 'b', 'c'])], direction, gap: 96, rgap: 56 });
+    const g = layoutTyped({ nodes, edges: [{ id: 'e', from: 'a', to: 'b' }], containers: [SYS_FRAME({ title: 'Cargo e-bike: blocks' }, { id: 'v', diagram: 'sysml.block-definition', title: 'Cargo bike blocks' }, ['a', 'b', 'c'])], direction, gap: 96, rgap: 56 });
     const F = g.families[0], top = Math.min(...g.nodes.map(n => n.y)), left = Math.min(...g.nodes.map(n => n.x));
     assert.deepEqual([top - F.y, left - F.x], [64, 48], direction);
     assert.ok(tagSize(F.title).h + 8 <= top - F.y && tagSize(F.title).w <= F.w, direction);
   }
 });
 test('the frame shape: a rectangle and the pentagon tag, the tag cut to a narrow frame, its title selectable as a box\'s', () => {
-  const f = { id: 'v->frame', x: 10, y: 20, w: 600, h: 300, title: 'bdd [Model] E-bike: blocks [E-bike blocks]' }, s = SHAPE['sysml-frame'].frame(f);
+  const f = { id: 'v->frame', x: 10, y: 20, w: 600, h: 300, title: 'bdd [Model] Cargo e-bike: blocks [Cargo bike blocks]' }, s = SHAPE['sysml-frame'].frame(f);
   assert.match(s, /^<rect class="family-box" x="10" y="20" width="600" height="300" stroke="var\(--um-muted\)"\/><path d="M10 20H/);
-  assert.match(s, /<text class="family-title" data-t="ft" data-o="v-&gt;frame" [^>]*>bdd \[Model\] E-bike: blocks \[E-bike blocks\]<\/text>$/);
+  assert.match(s, /<text class="family-title" data-t="ft" data-o="v-&gt;frame" [^>]*>bdd \[Model\] Cargo e-bike: blocks \[Cargo bike blocks\]<\/text>$/);
   const n = SHAPE['sysml-frame'].frame({ ...f, w: 80 });
   assert.match(n, /M10 20H90V/, 'the tag no wider than the frame'); assert.match(n, />[^<]*…<\/text>$/, 'its text cut');
 });
 test('ibd and par: the subject\'s box is the frame; a subject with ports and no parts, and one with nothing, is a frame too, its ports on it', () => {
   const g = SYS_DRESS(geoOf(M18, M18.views[0]), M18, M18.views[0]), f = g.families.find(x => x.id === 'ebike');
-  assert.deepEqual([f.shape, f.title, f.aria], ['sysml-frame', 'ibd [Block] EBike [Inside the e-bike]', 'Internal block diagram of block EBike: Inside the e-bike']);
+  assert.deepEqual([f.shape, f.title, f.aria], ['sysml-frame', 'ibd [Block] CargoBike [Inside the cargo bike]', 'Internal block diagram of block CargoBike: Inside the cargo bike']);
   const one = mem => ({ schemaVersion: 2, title: 'T', nodes: [{ id: 'b', type: 'sysml.Block', label: 'B', members: mem }, { id: 'c', type: 'uml.Comment', label: 'note' }], edges: [],
     views: [{ id: 'v', diagram: 'sysml.internal-block', subject: 'b', title: 'Inside', nodeIds: ['b', 'c'] }] });
   for (const m of [one([]), one([{ id: 'b.p', type: 'sysml.Port', label: 'p', props: { kind: 'proxy' } }, { id: 'b.q', type: 'sysml.Port', label: 'q' }])]) {
@@ -310,14 +310,14 @@ test('dressing lays the same picture out twice from one memo, and renames by Sys
 
 // ---- the classifier (§6.1, §7.1) and the crosshair (§6.2)
 test('a titled compartment draws its name as a muted, centred first row, counted in its size; ariaOwn replaces the accessible name', () => {
-  const m = (title, extra = {}) => ({ id: 'b', label: 'EBike', type: 'sysml.Block', stereotypes: ['block'], compartments: [{ name: 'parts', title, members: [{ type: 'sysml.PartProperty', label: 'battery', props: { valueType: 'Battery' } }] }], ...extra });
+  const m = (title, extra = {}) => ({ id: 'b', label: 'CargoBike', type: 'sysml.Block', stereotypes: ['block'], compartments: [{ name: 'parts', title, members: [{ type: 'sysml.PartProperty', label: 'battery', props: { valueType: 'Battery' } }] }], ...extra });
   const plain = SHAPE.classifier.size(m(undefined)), titled = SHAPE.classifier.size(m(true));
   assert.equal(titled.h - plain.h, 15);
-  const s = SHAPE.classifier.draw({ ...m(true, { ariaOwn: 'Block EBike, 1 part' }), x: 0, y: 0, ...titled }, 'c', 'f');
-  assert.match(s, /aria-label="Block EBike, 1 part"/);
+  const s = SHAPE.classifier.draw({ ...m(true, { ariaOwn: 'Block CargoBike, 1 part' }), x: 0, y: 0, ...titled }, 'c', 'f');
+  assert.match(s, /aria-label="Block CargoBike, 1 part"/);
   assert.match(s, /<g class="c-comp" data-comp="parts" [^>]*><path [^>]*\/><text x="\d+(\.\d+)?" y="[\d.]+" text-anchor="middle" class="c-title" fill="var\(--um-muted\)" [^>]*>parts<\/text><text [^>]*class="c-row"[^>]*>battery: Battery<\/text>/);
   const u = SHAPE.classifier.draw({ ...m(undefined), x: 0, y: 0, ...plain }, 'c', 'f');
-  assert.ok(!u.includes('c-title') && u.includes('aria-label="Block EBike (block), 1 part"'), 'no title, no ariaOwn: as before');
+  assert.ok(!u.includes('c-title') && u.includes('aria-label="Block CargoBike (block), 1 part"'), 'no title, no ariaOwn: as before');
 });
 test('the crosshair end: a 14 px hollow circle with a cross, drawn as a typed line\'s end (tests/notation.html: its tip on the outline)', () => {
   const [L, H, , fill] = ENDS.crosshair;
@@ -336,7 +336,7 @@ function editor(model, picked = []) {
   return { I, got };
 }
 test('a card dropped on a frame that is no element is reparented to the view\'s subject, or to none; Delete on that frame emits nothing', () => {
-  const m = (subject) => ({ schemaVersion: 2, nodes: [{ id: 'eb', type: 'uml.Package', label: 'E-bike' }, { id: 'pk', type: 'uml.Package', label: 'inner', parent: 'eb' }, { id: 'a', type: 'sysml.Block', label: 'A', parent: 'pk' }],
+  const m = (subject) => ({ schemaVersion: 2, nodes: [{ id: 'eb', type: 'uml.Package', label: 'DeliveryFleet' }, { id: 'pk', type: 'uml.Package', label: 'inner', parent: 'eb' }, { id: 'a', type: 'sysml.Block', label: 'A', parent: 'pk' }],
     edges: [], views: [{ id: 'v', diagram: 'sysml.block-definition', nodeIds: ['eb', 'pk', 'a'], ...(subject ? { subject } : {}) }] });
   const drop = (model, into, from) => { const { I, got } = editor(model); I.drop({ id: 'a', col: 0, row: 0 }, { col: 0, row: 0, x: 0, y: 0 }, into, from); return got; };
   assert.deepEqual(drop(m(), 'v->frame', 'pk'), [[{ op: 'reparent', id: 'a', parent: null }]]);
@@ -363,7 +363,7 @@ test('audit 9: an element or member typed toString or constructor, or a port of 
 
 test('audit 21: F2 emptied on a bdd or req frame that is no element removes the view\'s title (rename.empty lets the field pass \'\' on)', async () => {
   const { apply } = await import('../src/core/apply.js'), { layout } = await import('../src/map/api.js');
-  for (const [f, head] of [['ebike-blocks', 'bdd [Model] E-bike: blocks'], ['ebike-requirements', 'req [Model] E-bike: requirements']]) {
+  for (const [f, head] of [['ebike-blocks', 'bdd [Model] Cargo e-bike: blocks'], ['ebike-requirements', 'req [Model] Cargo e-bike: requirements']]) {
     const m = JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url), 'utf8')), v = m.views[0], R = diagramOf(v).edits.rename, frame = `${v.id}->frame`;
     assert.equal(typeof R.empty, 'function', f);
     assert.equal(R.empty(m, v, frame), true, 'the frame reads an emptied field');
@@ -380,11 +380,11 @@ test('audit 33: a frame with no subject in an untitled model names "model" with 
   for (const [diagram, word] of Object.entries(kinds)) {
     for (const title of [undefined, null, '', '  ']) {
       const m = { nodes: [], ...(title === undefined ? {} : { title }) };
-      assert.equal(SYS_HEAD(m, { id: 'v', diagram, title: 'E-bike blocks' }).aria, `${word} of model: E-bike blocks`, `${diagram} ${JSON.stringify(title)}`);
+      assert.equal(SYS_HEAD(m, { id: 'v', diagram, title: 'Cargo bike blocks' }).aria, `${word} of model: Cargo bike blocks`, `${diagram} ${JSON.stringify(title)}`);
       assert.equal(SYS_HEAD(m, { id: 'v', diagram }).aria, `${word} of model`, diagram);
     }
   }
   const m = JSON.parse(readFileSync(new URL('../examples/ebike-blocks.json', import.meta.url))); delete m.title;
   const v = m.views.find(x => x.diagram === 'sysml.block-definition' && x.subject == null), { describe } = await import('../src/map/insight.js');
-  assert.equal(describe(m, v.id).split('\n')[1], 'Block definition diagram of model: E-bike blocks.');
+  assert.equal(describe(m, v.id).split('\n')[1], 'Block definition diagram of model: Cargo bike blocks.');
 });

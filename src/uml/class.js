@@ -1,6 +1,6 @@
 import { jsonText, labelOr, elName, labelProblem, propTextProblems, usedIds } from '../core/model.js';
 import { aWord, kindWord, registerDiagramType } from '../core/registry.js';
-import { brLines, esc, fit, textW, widest } from '../core/text.js';
+import { brLines, esc, fit, textW, widest, wrapLines } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import '../typed/draw.js'; // SHAPE.classifier, which the note's outline and ports take
 import { labelW } from '../layout/layered.js';
@@ -183,10 +183,7 @@ function compartmentsOf(n) { // a class's attributes and operations; an enumerat
 const NOTE = { pad: 8, px: 11, lh: 15, max: 220, fold: 10 };
 function noteLines(t) {
   const out = [], parts = brLines(String(t ?? '').trim());
-  parts.forEach(part => { let line = '';
-    part.split(/\s+/).filter(Boolean).forEach(w => { const next = line ? line + ' ' + w : w;
-      if (line && textW(next, NOTE.px) > NOTE.max) { out.push(line); line = w; } else line = next; });
-    out.push(line); });
+  parts.forEach(part => { const ls = wrapLines(part, NOTE.px, NOTE.max); out.push(...(ls.length ? ls.map(l => l[0]) : [''])); }); // breaks as mmSize's (audit 58)
   return out;
 }
 SHAPE.note = {
@@ -272,9 +269,10 @@ function classIndex(model) {
   return at;
 }
 // an interface realization's source (realization-target): a classifier but an interface, a component, or a port a component
-// or a class owns, as the component view's provided-ends takes one (audit 49: a class view in the model called an error)
+// or a class owns, as the component view's provided-ends takes one (audit 49: a class view in the model called an error); an
+// owner of type "" is a class, as the class view draws it (audit 53)
 const realizer = (at, id) => { const r = at.get(id), t = !r ? undefined : r.kind === 'node' && !r.x.type ? 'uml.Class' : r.x.type;
-  return t === 'uml.Port' ? r.kind === 'member' && ['uml.Component', 'uml.Class', undefined].includes(r.owner.type) : t !== 'uml.Interface' && (t === 'uml.Component' || CLASSIFIERS.includes(t)); };
+  return t === 'uml.Port' ? r.kind === 'member' && ['uml.Component', 'uml.Class'].includes(r.owner.type || 'uml.Class') : t !== 'uml.Interface' && (t === 'uml.Component' || CLASSIFIERS.includes(t)); };
 const typeWord = t => kindWord(t || 'uml.Class'); // 'uml.DataType': "Data type"; of no notation, as written (registry.js, audit 30)
 const nameOfEl = elName;
 const plural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
@@ -417,7 +415,7 @@ function classProblems(model, view) {
 /* ---- a line that would close a cycle (connect, audit 36): a generalization from `from` to `to` closes one when `from` is
    `to` or an ancestor of it already, through the model's lines and the view's own (each id's first, as classProblems and
    ucProblems weigh them). A walk on a stack from `to`, each element once. The words: { error } naming every element on the
-   cycle, as generalization-cycle says it ("EBike" → "RentalVehicle" → "EBike" is its own ancestor); null when none closes ---- */
+   cycle, as generalization-cycle says it ("CargoBike" → "DeliveryVehicle" → "CargoBike" is its own ancestor); null when none closes ---- */
 function closesCycle(model, view, type, from, to, word = 'a generalization', said = 'be its own ancestor') {
   const at = classIndex(UML_OBJ(model) ? model : {}), next = new Map(), add = e => { if (UML_OBJ(e) && e.type === type) { if (!next.has(e.from)) next.set(e.from, []); next.get(e.from).push(e.to); } };
   at.forEach(r => { if (r.kind === 'edge') add(r.x); });

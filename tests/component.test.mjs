@@ -640,3 +640,65 @@ test('a class\'s port: F2 and the palette refuse a name another member of the cl
   assert.ok(Array.isArray(T.edits.add(m, v, { type: 'uml.Port' }, 'p', { sel: ['k'] })));
   assert.ok(Array.isArray(T.edits.rename(m, v, 'k.p', 'q')));
 });
+
+test('audit 52: a port pinned to a side where a line to its component\'s body ends is sized a slot of its own, clear of the next port', () => {
+  const m = { schemaVersion: 2, root: 'v', nodes: [
+    { id: 'n1', type: 'uml.Component', label: 'Orders', members: [{ id: 'n1.p0', type: 'uml.Port', label: 'admin' }, { id: 'n1.p1', type: 'uml.Port', label: 'api' }] },
+    { id: 'n2', type: 'uml.Component', label: 'Web' }],
+    edges: [{ id: 'e0', type: 'uml.Connector', from: 'n2', to: 'n1.p1', props: { kind: 'assembly' } }, { id: 'e2', type: 'uml.Connector', from: 'n2', to: 'n1', props: { kind: 'assembly' } }],
+    views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['n1', 'n2'], present: { 'n1.p0': { side: 'left' } } }] };
+  for (const direction of [undefined, 'down']) { const c = structuredClone(m); if (direction) c.views[0].direction = direction;
+    assert.deepEqual(validate(c), []); assert.deepEqual(check(c, 'v'), [], direction || 'right');
+    const g = layout(c, 'v'), ports = g.nodes.filter(n => n.shape === 'port');
+    assert.equal(ports.length, 2); }
+  // a slot longer (56 + 20 px) for the port it held; with no line to the body, nothing grows: as big as its two ports need
+  assert.equal(layout(m, 'v').byId.n1.h, 76); const c = structuredClone(m); c.edges.pop(); assert.equal(layout(c, 'v').byId.n1.h, 56);
+});
+
+test('audit 53: two lineless ports pinned to a side where four or more lines reach the component\'s body stay clear of each other', () => {
+  for (const [np, nl, side, col] of [[2, 4, 'left', 0], [2, 6, 'left', 0], [3, 8, 'right', 2], [2, 12, 'left', 0]]) {
+    const ports = Array.from({ length: np }, (_, i) => ({ id: 'c.p' + i, type: 'uml.Port', label: 'p' + i }));
+    const others = Array.from({ length: nl }, (_, i) => ({ id: 'o' + i, type: 'uml.Component', label: 'Client' + i }));
+    const m = { schemaVersion: 2, nodes: [{ id: 'c', type: 'uml.Component', label: 'Orders', members: ports }, ...others],
+      edges: others.map((o, i) => ({ id: 'u' + i, type: 'uml.Usage', from: o.id, to: 'c' })),
+      views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['c', ...others.map(o => o.id)], present: Object.fromEntries(ports.map(p => [p.id, { side }])),
+        layout: Object.fromEntries([['c', [1, 1]], ...others.map((o, i) => [o.id, [col, i]])]) }] };
+    assert.deepEqual(validate(m).filter(p => p.level === 'error'), []);
+    assert.deepEqual(check(m, 'v').map(p => p.message).filter(x => /overlap/.test(x)), [], `${np} ports, ${nl} lines`); }
+});
+
+// audit 58: a pin on a cell the ranking gives a box's contents (a drag, or Alt + an arrow, on the gallery example) drew the box
+// round the pinned card it does not hold; two cards pinned to one cell were drawn one over the other. A pin that would goes to
+// the nearest clean slot (settlePins, src/layout/layered.js), and a card a pin moves down keeps its box off what it does not hold
+test('a pin on a box\'s cell or on another pin\'s cell: no box over a card it does not hold, no two cards over each other (audit 58)', () => {
+  const bad = (m, v) => check(m, v).map(p => p.message).filter(s => /lies over|overlap/.test(s));
+  const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 'api', type: 'uml.Component', label: 'Shop API' }, { id: 'a', type: 'uml.Component', label: 'Basket', parent: 'api' },
+    { id: 'b', type: 'uml.Component', label: 'Checkout', parent: 'api' }, { id: 'x', type: 'uml.Component', label: 'Payment provider' }],
+    edges: [{ id: 'ab', type: 'uml.Connector', from: 'a', to: 'b' }], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['api', 'a', 'b', 'x'], layout: { x: [1, 0] } }] };
+  assert.deepEqual(bad(m, 'v'), []);
+  const two = structuredClone(m); two.views[0].layout = { a: [3, 0], x: [3, 0] };
+  assert.deepEqual(bad(two, 'v'), [], 'two pins on one cell');
+  const g = JSON.parse(readFileSync(new URL('../examples/types/uml-component.json', import.meta.url)));
+  for (const [vid, id, p] of [['components', 'payment-provider', [4, 2]], ['components', 'payment-provider', [3, 2]], ['components', 'basket', [4, 1.5]], ['components', 'shop-api-jar', [3, 2]],
+    ['components', 'accounts', [1, 1]], ['components', 'order-worker', [0, 0]], ['components-down', 'accounts', [1, 1]], ['components-down', 'order-worker', [0, 0]], ['components-down', 'shop-api-jar', [3, 2]]]) {
+    const c = structuredClone(g), v = c.views.find(x => x.id === vid); v.layout = { ...v.layout, [id]: p };
+    assert.deepEqual(bad(c, vid), [], `${vid}: ${id} pinned at [${p}]`); }
+});
+
+// audit 59: a pin with no clean cell within settlePins' rings kept its cell: Accounts pinned 13 or more columns right of its
+// package drew the package over Payments, and three cards of three packages pinned to one cell were drawn on one another
+test('a pin with no clean cell near goes in a fresh row under its box (audit 59)', () => {
+  const bad = (m, v) => check(m, v).map(p => p.message).filter(s => /lies over|overlap/.test(s));
+  const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 'pkg', type: 'uml.Package', label: 'accounts' }, { id: 'a', type: 'uml.Component', label: 'Accounts', parent: 'pkg' },
+    { id: 'b', type: 'uml.Component', label: 'Sessions', parent: 'pkg' }, { id: 'c', type: 'uml.Component', label: 'Storefront' }, { id: 'd', type: 'uml.Component', label: 'Payments' }],
+  edges: [{ id: 'ab', type: 'uml.Usage', from: 'a', to: 'b' }, { id: 'bc', type: 'uml.Usage', from: 'c', to: 'b' }, { id: 'bd', type: 'uml.Usage', from: 'b', to: 'd' }],
+  views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['pkg', 'a', 'b', 'c', 'd'] }] };
+  for (const col of [12, 13, 20, 40]) { m.views[0].layout = { a: [col, 0] }; assert.deepEqual(bad(m, 'v'), [], 'Accounts pinned at column ' + col); }
+  const nodes = [0, 1, 2].map(k => ({ id: 'p' + k, type: 'uml.Package', label: 'Pkg ' + k })), cards = Array.from({ length: 9 }, (_, i) => ({ id: 'n' + i, type: 'uml.Component', label: 'Element ' + i, parent: 'p' + (i % 3) }));
+  const all = { schemaVersion: 2, root: 'v', nodes: [...nodes, ...cards], edges: cards.slice(1).map((n, i) => ({ id: 'e' + i, type: 'uml.Usage', from: 'n' + i, to: n.id })),
+    views: [{ id: 'v', diagram: 'uml.component', nodeIds: [...nodes, ...cards].map(n => n.id), layout: Object.fromEntries(cards.map(n => [n.id, [0, 0]])) }] };
+  assert.deepEqual(bad(all, 'v'), [], 'nine cards in three packages pinned to one cell');
+  // the gallery's accounts package pinned far right drew its box over Sign in
+  const g = JSON.parse(readFileSync(new URL('../examples/types/uml-component.json', import.meta.url))), gv = g.views.find(v => (v.nodeIds || []).includes('accounts'));
+  for (const col of [21, 28, 40]) { gv.layout = { ...gv.layout, accounts: [col, 2.5] }; assert.deepEqual(bad(g, gv.id), [], 'accounts pinned at column ' + col); }
+});

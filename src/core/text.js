@@ -2,7 +2,12 @@
 // the bench and layout() in Node use it). render() measures in the host's own font while it lays out a view: measured().
 let measureText = null;
 const measured = (M, f) => { const prev = measureText; measureText = M; try { return f(); } finally { measureText = prev; } };
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* markup-safe text: & < > " ' as entities, and a character no XML document may hold (a C0 control but tab, line feed and carriage
+   return; U+FFFE, U+FFFF; a lone surrogate) as U+FFFD, as the readers write one (MERMAID_RAWS): a label pasted with one drew it
+   raw into <text>, <title> and aria-label, and the page's Export SVG and a still's .svg were no well-formed XML (audit 53).
+   One code unit for one: a text is as wide, and wraps where it did */
+const XML_BAD = /[\0-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]|\p{Cs}/u, XML_BADS = /[\0-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]|\p{Cs}/gu;
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])).replace(XML_BADS, '\uFFFD');
 const inline = s => esc(s)
   .replace(/`([^`]+)`/g, '<code>$1</code>')
   .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
@@ -11,6 +16,48 @@ const inline = s => esc(s)
 const md = s => String(s ?? '').trim().split(/\n{2,}/).map(b => /^\s*[-*] /.test(b)
     ? '<ul>' + b.split(/\n/).map(l => '<li>' + inline(l.replace(/^\s*[-*] /, '')) + '</li>').join('') + '</ul>'
     : '<p>' + inline(b).replace(/\n/g, '<br>') + '</p>').join('');
+/* a text's first sentence: up to a period and the white space after it, where the word the period ends is no abbreviation (audit
+   54: "Carries orders, e.g. book orders" was cut at "e.g.", "Approx. 100 calls" at "Approx.") and no letter chain ("U.S.", "p.m.").
+   Audit 55 ran on past a title, a capital initial and a list number too, but read each anywhere, so "within 200 ms.", "service
+   A." and "port 443." never ended a sentence (audit 56). Now: a title (Dr. Mr. Mrs. Ms. Prof., capitalised as written) and "ca."
+   only before the word they lead to (a capital; a digit); a capital initial only before a capitalised word, and only after the
+   text's start, another initial ("J. R. Tolkien") or "by"/"cc" ("by J. Smith"); a list number only at the text's or a line's
+   start ("1. Validates the basket."). Audit 57: a capitalised word or "from", "for", "with", "and", "of" before an initial
+   ran on past "Service B.", "Plan A.", "from A.": those now end a sentence, and so does a middle initial after a given name
+   ("John F. Kennedy" is cut at "F.": a name such as "Team X." looks the same, and "Service B." is far more common in a model's
+   text). A sentence may open in lower case (a model's "play() returns null." or "tour() starts one"), so what follows is read
+   only for those */
+const ABBR = /(?:^|[^\p{L}\p{N}.])(?:approx|vs|cf|incl|esp|viz|\p{L}(?:\.\p{L}){1,3})\.$/iu;
+const TITLE = /(?:^|[^\p{L}\p{N}.])(?:Dr|Mr|Mrs|Ms|Prof)\.$/u, CIRCA = /(?:^|[^\p{L}\p{N}.])ca\.$/iu;
+const LISTNO = /(?:^|\n)[ \t]{0,8}\p{N}{1,3}\.$/u; // on a 14-character tail: ^ holds only where the text is that short
+const INITIAL = /(?:^|[^\p{L}\p{N}.])\p{Lu}\.$/u, NAMEWORD = /^(?:by|cc)$/i;
+// a capital initial ends h, and a capitalised word follows: does a name lead to it? The 40-character tail holds the words before it
+const leadsToName = h => { const w = h.slice(-40).trim().split(/\s+/), p = w[w.length - 2];
+  if (p === undefined) return h.length <= 40; // the text's own start ("J. Smith wrote it")
+  return /^\p{Lu}\.$/u.test(p) || NAMEWORD.test(p); }; // "J. R. Tolkien", "by J. Smith"
+const firstSentence = s => { s = String(s ?? ''); for (const m of s.matchAll(/(?<=\.)\s+/g)) { const h = s.slice(0, m.index), e = h.slice(-9), nx = s[m.index + m[0].length] ?? '';
+  const cap = /\p{Lu}/u.test(nx);
+  if (ABBR.test(e) || LISTNO.test(h.slice(-14)) || (cap && TITLE.test(e)) || (/\p{N}/u.test(nx) && CIRCA.test(e)) || (cap && INITIAL.test(e) && leadsToName(h))) continue;
+  return h; } return s; }; // the longest abbreviation with its period is 8 characters ("a.b.c.d."), 9 with its boundary: ^ is true only at the text's start, and each test stays constant time
+/* a text without the period that closes it, as the text a clause follows (", opens ...", "; " before the next item): an
+   abbreviation's or a letter chain's own period stays ("gift cards etc., opens ...", audit 55), and so does an ellipsis */
+const ETC = /(?:^|[^\p{L}\p{N}.])etc\.$/iu;
+const unstop = s => { s = String(s ?? ''); const t = s.trimEnd(), e = t.slice(-9);
+  return !/\.$/.test(t) || /\.\.$/.test(t) || ABBR.test(e) || ETC.test(e) ? s : t.slice(0, -1); };
+// a Markdown text (md()'s: `code`, **bold**, ==mark==, [links](https://…), - bullets, blank-line paragraphs) as plain words, its
+// first sentence only: what a tooltip and an accessible name say for it (audit 49: a weighted line read its markers aloud).
+// Its first paragraph only, and a bullet list's items each after a "; ", or a ":" that leads in to them (audit 54: they ran on
+// into one phrase, "orders refunds"), an item before a "; " without its closing period (audit 55: "card.; Sends"); a line's
+// break kept until its first sentence is found, so a list number that opens a line stays one (audit 57: "steps: 1." was cut).
+// A number opens a list only after a line that ends a sentence or leads in (. : ! ?), or next to another numbered line: a
+// hard-wrapped "Retries up to\n3. Then gives up." ends at "3." (audit 58), its break read as a space
+const LISTLINE = /^[ \t]{0,8}\p{N}{1,3}\.(?:\s|$)/u;
+const mdPlain = s => { const b = String(s ?? '').split(/\n[ \t\r]*\n/).find(p => p.trim()) ?? '';
+  const q = b.split(/\r?\n/).filter(l => l.trim()).map((l, i) => { const li = /^\s*[-*] /.test(l), x = li ? l.replace(/^\s*[-*] /, '') : l; return i && li ? '\0' + x : x; });
+  const u = q.map((x, i) => q[i + 1]?.[0] === '\0' ? unstop(x) : x); // a line break kept only before a list number (audit 58, below)
+  const t = u.reduce((a, x, i) => a + (!i ? '' : LISTLINE.test(x) && (/[.:!?]\s*$/.test(u[i - 1]) || LISTLINE.test(u[i - 1]) || LISTLINE.test(u[i + 1] ?? '')) ? '\n' : ' ') + x, '').replace(/(:?)\s*\0/g, (_, c) => c ? ': ' : '; ');
+  return firstSentence(t.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '$1').replace(/`([^`]+)`/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1').replace(/==([^=]+)==/g, '$1').trim()).replace(/\s+/g, ' ').trim(); };
 const textW = (s, px) => measureText ? measureText(String(s ?? ''), px) : String(s ?? '').length * px * 0.6;
 // a text's lines where its author broke it (a Mermaid <br>, F2's Shift+Enter), one line where it has none: each drawn on its
 // own line, not as a space (audit 22, as flowWrap since audit 21); a broken text is as wide as its widest line (audit 24)
@@ -30,13 +77,42 @@ function hostMeasure(el) { // widths in the font the host gives the map (--um-sa
    width grows as words or characters are added, so wrap2() and fit() search their cut in a few measures rather than
    measuring every one: a card's 'what' or name of some thousands of characters froze render() for seconds (audit 26) */
 const lastOk = (lo, hi, ok) => { let r = lo - 1; while (lo <= hi) { const m = (lo + hi) >> 1; if (ok(m)) { r = m; lo = m + 1; } else hi = m - 1; } return r; };
-// a text on two lines: split at the word where the wider line is narrowest (the first such word), each line then fit to max
-function wrap2(s, px, max) { const w = String(s ?? '').split(' '), n = w.length; if (n < 2) return null;
-  const A = i => textW(w.slice(0, i).join(' '), px), B = i => textW(w.slice(i).join(' '), px), m = i => Math.max(A(i), B(i));
+/* where a line may break (audit 58: a text with no spaces, Chinese, Japanese, a long URL, was one word, drawn as one cut line).
+   Between words, at white space. UAX 14 lets a line break before and after each ideograph, kana and hangul syllable
+   (class ID), so each is a word of its own, joined to the next with no space; a closing mark (。、」) stays with the
+   character before it, an opening one (「) with the one after. A word still wider than the line (a URL, Thai, which breaks
+   only by dictionary) breaks between any two of its characters. Each word: [text, a space before it, the first piece of a word too wide]; a text with spaces and
+   no word wider than max gives its words as before */
+const WB_IDEO = /[\u1100-\u11FF\u2E80-\u2FDF\u3005-\u3007\u3021-\u3029\u3031-\u303C\u3040-\u30FF\u3105-\u312F\u3131-\u318E\u31A0-\u31FF\u3400-\u4DBF\u4E00-\u9FFF\uA960-\uA97F\uAC00-\uD7A3\uF900-\uFAFF\uFF66-\uFF9F]|[\uD840-\uD87F][\uDC00-\uDFFF]/;
+const WB_NOSTART = /^[\p{Pe}\p{Pf}\p{Po}\p{M}\u200D\uFE0F\u30FC\u3005\u309D\u309E\u30FD\u30FEぁぃぅぇぉっゃゅょゎゕゖァィゥェォッャュョヮヵヶ\u31F0-\u31FF]/u, WB_NOEND = /[\p{Ps}\p{Pi}\u200D"]$/u;
+let WB_SEG; // a grapheme splitter, made once: Intl.Segmenter where the host has it, code points where not
+const wbGraphemes = w => { if (WB_SEG === undefined) WB_SEG = typeof Intl === 'object' && Intl.Segmenter ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;
+  return WB_SEG ? Array.from(WB_SEG.segment(w), x => x.segment) : Array.from(w); };
+// w's pieces, a break allowed between two where brk(previous, next) holds and next may open a line and the piece before may end one
+const wbSplit = (w, brk) => { const out = []; let cur = '', prev = '';
+  for (const g of wbGraphemes(w)) { if (cur && brk(prev, g) && !WB_NOSTART.test(g) && !WB_NOEND.test(cur)) { out.push(cur); cur = g; } else cur += g; prev = WB_NOSTART.test(g) && prev ? prev : g; }
+  if (cur) out.push(cur); return out; };
+function breakWords(s, px, max, spaces) { const out = []; // spaces: split at each ' ' as written (wrap2's), not at white space
+  String(s ?? '').split(spaces ? ' ' : /\s+/).forEach(w => { if (!w && !spaces) return; let gap = true;
+    for (const p of WB_IDEO.test(w) ? wbSplit(w, (a, b) => WB_IDEO.test(a) || WB_IDEO.test(b)) : [w])
+      (textW(p, px) > max ? wbSplit(p, () => true) : [p]).forEach((q, i, a) => { out.push([q, gap && out.length > 0, a.length > 1 && !i]); gap = false; }); });
+  return out; }
+const joinWords = ws => ws.map(([t, gap], i) => (i && gap ? ' ' : '') + t).join('');
+// a paragraph's lines of at most max px, filled word by word; a line holds at least one word, and says whether a space came
+// before it. A word too wide for any line starts a line of its own before it breaks (CSS's overflow-wrap: break-word)
+function wrapLines(s, px, max) { const out = []; let line = null;
+  for (const [t, gap, wide] of breakWords(s, px, max)) { const next = line ? line[0] + (gap ? ' ' : '') + t : t;
+    if (line && (wide || textW(next, px) > max)) { out.push(line); line = [t, gap]; } else line = line ? [next, line[1]] : [t, gap]; }
+  if (line) out.push(line); return out; }
+// a text on two lines: split at the word where the wider line is narrowest (the first such word), each line then fit to max.
+// Between two ideographs too (audit 58); inside a word wider than max only when chars is set (a cloud card's label): a map
+// card's one long word keeps its smaller font and its cut
+function wrap2(s, px, max, chars) { const w = breakWords(s, px, chars ? max : Infinity, true), n = w.length; if (n < 2) return null;
+  const A = i => textW(joinWords(w.slice(0, i)), px), B = i => textW(joinWords(w.slice(i)), px), m = i => Math.max(A(i), B(i));
   // the first line widens and the second narrows as the split moves on: the narrowest wider line is where they cross
   const c = lastOk(1, n - 1, i => A(i) < B(i)) + 1; let i = c > n - 1 ? n - 1 : c > 1 && m(c - 1) <= m(c) ? c - 1 : c;
   if (m(i) > max) i = Math.max(1, lastOk(2, n - 1, j => A(j) <= max)); // too wide all the same: as much on the first line as fits
-  return [fit(w.slice(0, i).join(' '), px, max, true), fit(w.slice(i).join(' '), px, max, true)]; }
+  return [fit(joinWords(w.slice(0, i)), px, max, true), fit(joinWords(w.slice(i)), px, max, true)]; }
 // a text fits its room when its width is within a hair of it: a room worked out by subtraction (an ER row's, its entity sized
 // to hold the widest name) loses 1e-14 to floating point, and the name the box was made for must not be cut (audit 33)
 const fits = (s, px, max) => textW(s, px) <= max + 1e-6;
@@ -50,7 +126,7 @@ function fit(s, px, max, words) { s = String(s ?? ''); if (fits(s, px, max)) ret
 
 // A model's icon glyph (icons[k].g) as inert vector shapes (risks.md S2: an icon's SVG may carry script and is never
 // inlined as it comes). Kept: the shape elements and their geometry and presentation attributes, each tag as written when
-// all of it passes (a Lucide glyph comes back unchanged); a value holds plain characters only (no url(), entity or quote).
+// all of it passes, its values quoted (a Lucide glyph comes back unchanged); a value holds plain characters only (no url(), entity or quote).
 // Dropped: every other element and attribute (an event handler, href, style; image, use, foreignObject, script, a comment)
 // and text, which a glyph never draws. A tag left open is closed, so a glyph never swallows the card's own marks (audit 18).
 const GLYPH_EL = new Set(['path', 'circle', 'ellipse', 'rect', 'line', 'polyline', 'polygon', 'g']);
@@ -62,17 +138,22 @@ const GLYPH_ATTR = /\s+([^\s"'<>\/=]+)(?:\s*=\s*("[^"]*"|'[^']*'|[^\s"'=<>`]+))?
 const glyphs = new Map();
 function glyph(g) {
   const s = typeof g === 'string' ? g : ''; let o = glyphs.get(s); if (o !== undefined) return o;
-  const open = []; o = '';
-  for (let i = 0; i < s.length;) {
-    if (s[i] !== '<') { if (/\s/.test(s[i])) o += s[i]; i++; continue; }
-    GLYPH_TAG.lastIndex = i; const m = GLYPH_TAG.exec(s);
+  // a character no XML document may hold (a vertical tab or form feed, which JS's \s takes for white space, any other control
+  // character, a lone surrogate) is read as a space: kept as written, it reached the SVG raw (audit 54)
+  const open = [], t = s.replace(XML_BADS, ' '); o = '';
+  for (let i = 0; i < t.length;) {
+    if (t[i] !== '<') { if (/\s/.test(t[i])) o += t[i]; i++; continue; }
+    GLYPH_TAG.lastIndex = i; const m = GLYPH_TAG.exec(t);
     if (!m) { i++; continue; }
     i = GLYPH_TAG.lastIndex; const [tag, close, el, attrs, self] = m;
     if (!GLYPH_EL.has(el)) continue;
-    if (close) { if (open[open.length - 1] === el) { open.pop(); o += tag; } continue; }
-    const kept = [...attrs.matchAll(GLYPH_ATTR)].map(([, k, v]) => [k, v == null ? '' : /^["']/.test(v) ? v.slice(1, -1) : v])
-      .filter(([k, v]) => GLYPH_AT.has(k) && /^[\w\s.,#%+\-()]*$/.test(v) && !/url\s*\(/i.test(v));
-    o += kept.length === [...attrs.matchAll(GLYPH_ATTR)].length ? tag : `<${el}${kept.map(([k, v]) => ` ${k}="${v}"`).join('')}${self ? '/' : ''}>`;
+    if (close) { if (open[open.length - 1] === el) { open.pop(); o += `</${el}>`; } continue; } // never as written: an end tag's attributes are no XML (audit 56)
+    // an attribute with no value, or one named again in the same tag, is dropped: either made the SVG no well-formed XML (audit 55)
+    const all = [...attrs.matchAll(GLYPH_ATTR)], seen = new Set();
+    const kept = all.map(([, k, v]) => [k, v == null ? null : /^["']/.test(v) ? v.slice(1, -1) : v])
+      .filter(([k, v]) => v != null && GLYPH_AT.has(k) && /^[\w\s.,#%+\-()]*$/.test(v) && !/url\s*\(/i.test(v) && !seen.has(k) && seen.add(k));
+    // as written only when every attribute is kept and quoted: an unquoted value (stroke-width=2) is no XML either (audit 56)
+    o += kept.length === all.length && all.every(x => x[2] == null || /^["']/.test(x[2])) ? tag : `<${el}${kept.map(([k, v]) => ` ${k}="${v}"`).join('')}${self ? '/' : ''}>`;
     if (!self) open.push(el);
   }
   o += open.reverse().map(el => `</${el}>`).join('');
@@ -82,4 +163,7 @@ function glyph(g) {
 
 // a line break in a typed view's line label: each part its own line, EDGE_LH px below the one before (audit 22)
 const EDGE_BREAK = /\r\n?|[\n\u2028\u2029]/, EDGE_LH = 12;
-export { measureText, measured, esc, inline, md, textW, widest, brLines, linesW, sansW, hostMeasure, wrap2, clauseFit, fit, glyph, EDGE_BREAK, EDGE_LH };
+/* s without its leading and trailing '-', by index: `.replace(/^-+|-+$/g, '')` retries `-+$` at each dash of an inner run the slug
+   kept, so a typed name of 200k dashes froze an add for 16 s (audit 54) */
+const trimDash = s => { let i = 0, j = s.length; while (i < j && s[i] === '-') i++; while (j > i && s[j - 1] === '-') j--; return s.slice(i, j); };
+export { trimDash, measureText, measured, esc, XML_BAD, inline, md, firstSentence, unstop, mdPlain, textW, widest, brLines, linesW, sansW, hostMeasure, joinWords, wrapLines, wrap2, clauseFit, fit, glyph, EDGE_BREAK, EDGE_LH };

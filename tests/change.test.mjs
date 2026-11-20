@@ -46,7 +46,9 @@ test('diff() says what changed in words, marks it on the after model, and names 
 test('diff() of a model with itself changes nothing; from nothing, everything is new; to nothing, everything is gone', () => {
   const same = diff(fx, fx);
   assert.deepEqual([same.summary, same.views], [[], []]);
-  assert.deepEqual(same.model, fx);
+  // the model as it is, but for the marks it carries of its own that the change does not make (audit 61): a line's edited dot
+  const bare = structuredClone(fx); bare.edges.forEach(e => { delete e.edited; });
+  assert.deepEqual(same.model, bare);
   const born = diff(null, { nodes: [{ id: 'a', label: 'A' }], edges: [], views: [{ id: 'v', nodeIds: ['a'] }] });
   assert.deepEqual([born.summary, born.views, born.model.nodes[0].change], [['adds the view v', 'adds A'], ['v'], 'added']);
   const gone = diff({ nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b' }], views: [{ id: 'v', title: 'Vee', nodeIds: ['a', 'b'] }] }, null);
@@ -869,7 +871,7 @@ test('audit 45: a sequence\'s, a timing\'s and a class view\'s own lines carry d
   assert.deepEqual(['m1', 'm2', 'mx', 'm3'].map(id => g.edges[at(id)].change ?? null), ['changed', 'removed', 'added', null]);
   // audit 47: rose and faded with its notation's stroke, a call's solid one (dashed, it read as a reply)
   assert.match(lineOf(s, at('m2')), /class="edge" stroke="var\(--um-rose\)"  opacity="0\.7"/); assert.doesNotMatch(lineOf(s, at('m2')), /stroke-dasharray/); assert.match(lineOf(s, at('mx')), /class="edge[^"]*" stroke="var\(--um-green\)"/);
-  assert.match(lineOf(s, at('m1')), /class="edited-dot"/); assert.match(lineOf(s, at('m2')), /<title>Message 2 of 11: [^<]*, removed<\/title>/);
+  assert.match(lineOf(s, at('m1')), /class="edited-dot"/); assert.match(lineOf(s, at('m2')), /<title>Message: [^<]*, removed<\/title>/); // no place among the live ones (audit 51)
   assert.match(keyAt45(s, at('m2')), /, removed$/); assert.match(keyAt45(s, at('mx')), /, new$/); assert.match(keyAt45(s, at('m1')), /, changed$/); assert.doesNotMatch(keyAt45(s, at('m3')), /, (new|changed|removed)$/);
   // its fragments: one whose operator changed is CHANGED; one removed with its messages comes back REMOVED
   const c = structuredClone(a); c.views[0].fragments.find(f => f.id === 'f2').props.operator = 'loop';
@@ -1043,8 +1045,8 @@ test('audit 46: diff() marks a member new to an element that stayed and says "ad
   const all = await fromSrc(), eb = read45('ebike-structure'), e1 = structuredClone(eb);
   e1.nodes.find(n => n.id === 'ebike').members.push({ id: 'ebike.battery2', type: 'uml.Property', label: 'battery2', props: { valueType: 'Battery', multiplicity: '1' } });
   const keep = JSON.stringify(e1), d = all.diff(eb, e1); assert.equal(JSON.stringify(e1), keep, 'the after model is not changed');
-  assert.deepEqual(d.summary, ['adds battery2 to EBike']); assert.match(tag45(svgOf(all.layout(d.model, 'inside-ebike')), 'data-id="ebike.battery2"'), /, new" data-change="new"/);
-  const back = all.diff(e1, eb); assert.deepEqual(back.summary, ['removes battery2 from EBike']);
+  assert.deepEqual(d.summary, ['adds battery2 to CargoBike']); assert.match(tag45(svgOf(all.layout(d.model, 'inside-ebike')), 'data-id="ebike.battery2"'), /, new" data-change="new"/);
+  const back = all.diff(e1, eb); assert.deepEqual(back.summary, ['removes battery2 from CargoBike']);
   assert.match(tag45(svgOf(all.layout(back.model, 'inside-ebike')), 'data-id="ebike.battery2"'), /, removed" data-change="removed"/);
   // a lane added to a pool, and one removed (its elements moved to the pool)
   const bp = read45('bookshop-order-to-shipment'), pool = bp.nodes.find(n => n.type === 'bpmn.Participant' && (n.members || []).some(x => x.type === 'bpmn.Lane')), lane = pool.members.find(x => x.type === 'bpmn.Lane');
@@ -1284,10 +1286,15 @@ test('audit 48: a context-level relationship added or deleted lists the containe
 });
 
 test('audit 48: a view a card opens is listed when retitled, though a map card has the view\'s id', async () => {
-  const all = await fromSrc(), a = read45('umlimator-atlas'), b = structuredClone(a); b.views.find(v => v.id === 'mcp').title += ' X';
-  assert.ok(a.nodes.some(n => n.id === 'mcp'), 'the map card is named after the view');
-  assert.notEqual(pic48(all, a, 'containers'), pic48(all, b, 'containers'));
-  assert.deepEqual(all.diff(a, b).views, ['containers', 'mcp']);
+  // the integration fixture, with a map card named after the view its C4 container c4-app opens (the Atlas's mcp card did
+  // this; a test reads no showcase model, audit 53): the same views as with no such card, the container view among them
+  const all = await fromSrc(), a = read45('integration'), retitle = m => { const x = structuredClone(m); x.views.find(v => v.id === 'rider-data').title += ' X'; return x; };
+  const plain = structuredClone(a); a.nodes.push({ id: 'rider-data', label: 'Rider data' }); a.views.find(v => v.id === 'context').nodeIds.push('rider-data');
+  const b = retitle(a);
+  assert.equal(a.nodes.find(n => n.id === 'c4-app').opensView, 'rider-data', 'the container opens the view');
+  assert.notEqual(pic48(all, a, 'c4-containers'), pic48(all, b, 'c4-containers'));
+  assert.ok(all.diff(a, b).views.includes('c4-containers') && all.diff(a, b).views.includes('rider-data'), all.diff(a, b).views.join());
+  assert.deepEqual(all.diff(a, b).views, all.diff(plain, retitle(plain)).views);
 });
 
 test('audit 48: the diff page marks the shape drawn through a renamed element it does not draw: a class through its package, an overview\'s inline interaction, a constraint property through its block', async () => {
@@ -1451,4 +1458,500 @@ test('audit 50: a message marked removed in another letter case is numbered as a
   assert.deepEqual(nums(mark('Removed')), nums(mark('removed'))); assert.notDeepEqual(nums(mark('Removed')), nums(a));
   const rows = c => all.layout(c, V).nodes.filter(n => n.shape === 'message-row').map(n => [n.id, n.num, n.aria]);
   assert.deepEqual(rows(mark('REMOVED')), rows(mark('removed')), 'the rows drawn, counted and said alike');
+});
+
+test('audit 51: deleting the subject of a composite structure, internal block or parametric view draws the view back as it was, its parts, ports and connectors removed', async () => {
+  const all = await fromSrc(), { apply } = await import('../src/core/apply.js');
+  for (const [f, id, V] of [['order-service-structure', 'order-service', 'internals'], ['ebike-structure', 'ebike', 'inside-ebike'], ['ebike-range', 'ebike', 'range-analysis']]) {
+    const m = read45(f), r = apply(m, [{ op: 'delete', id }]), d = all.diff(m, r.model || r), g0 = all.layout(m, V), g = all.layout(d.model, V);
+    const shapes = x => [...x.nodes, ...(x.families || [])].map(n => n.id).sort();
+    assert.deepEqual(shapes(g), shapes(g0), `${f}: every shape drawn back`); assert.equal(g.edges.length, g0.edges.length, `${f}: every connector drawn back`);
+    const own = [...g.nodes, ...(g.families || [])].filter(n => n.id === id || n.id.startsWith(id + '.'));
+    assert.ok(own.length > 1 && own.every(n => n.change === 'removed'), `${f}: the subject and what it holds marked removed`);
+    const mine = x => x === id || String(x).startsWith(id + '.'), conn = g.edges.filter(e => mine(e.from) || mine(e.to));
+    assert.ok(conn.length && conn.every(e => e.change === 'removed'), `${f}: its connectors marked removed`);
+  }
+});
+
+test('audit 51: a two-way or parallel line that stands for a removed or added edge says so in its title and key', () => {
+  const m = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ id: 'ab', from: 'a', to: 'b', label: 'asks' }, { id: 'ba', from: 'b', to: 'a', label: 'answers' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+  const said = x => { const s = svgOf(layout(diff(...x).model, 'v')); return [s.match(/<title>([^<\n]*)/)[1], s.match(/line-key[^>]*aria-label="([^"]*)"/)[1]]; };
+  const without = (x, id) => ({ ...x, edges: x.edges.filter(e => e.id !== id) });
+  for (const id of ['ab', 'ba']) for (const t of said([m, without(m, id)])) assert.match(t, /, removed$/, `${id} removed: ${t}`);
+  for (const t of said([without(m, 'ba'), m])) assert.match(t, /, new$/, 'a reply added');
+  const p = { ...m, edges: [{ id: 'x1', from: 'a', to: 'b', label: 'reads' }, { id: 'x2', from: 'a', to: 'b', label: 'writes' }] };
+  for (const t of said([p, without(p, 'x2')])) assert.match(t, /reads \+1, removed$/, 'a parallel line removed');
+  assert.doesNotMatch(said([m, m])[0], /, (removed|new)/, 'no change: no word');
+});
+
+test('audit 51: a card hidden from a view that lists its lines is drawn back with those lines, removed', async () => {
+  const all = await fromSrc(), { apply } = await import('../src/core/apply.js');
+  const m = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }, { id: 'c', label: 'C' }], edges: [{ id: 'ab', from: 'a', to: 'b' }, { id: 'bc', from: 'b', to: 'c' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], edges: ['ab', 'bc'] }] };
+  const drawn = (x, V, h) => { const r = apply(x, [{ op: 'hide', id: h, view: V }]); return Object.fromEntries(all.layout(all.diff(x, r.model || r).model, V).edges.map(e => [e._id ?? e.id, e.change ?? null])); };
+  assert.deepEqual(drawn(m, 'v', 'c'), { ab: null, bc: 'removed' });
+  assert.equal(drawn(read45('bookshop-atlas'), 'shopping', 'browse')['shopper-browses'], 'removed', 'a use case view');
+  assert.equal(drawn(read45('bookshop-deployment'), 'production', 'database')['app-to-database'], 'removed', 'a deployment view');
+});
+
+test('audit 51: a C4 dynamic view draws a step hidden, taken out of its list or put into it, in place and marked (audit 52: a removed one unnumbered)', async () => {
+  const all = await fromSrc(), { apply } = await import('../src/core/apply.js'), B = read45('bookshop-c4'), V = 'c4-placing-an-order';
+  const steps = x => all.layout(x, V).edges.slice(0, 3).map(e => [e.step, e._id ?? e.id, e.change ?? null]);
+  const r = apply(B, [{ op: 'hide', id: 'c4-shopper-storefront', view: V }]), d = all.diff(B, r.model || r);
+  assert.deepEqual(steps(d.model)[0], [undefined, 'c4-shopper-storefront', 'removed'], 'a hidden step');
+  const { validate: check } = await import('../src/map/validate.js');
+  assert.ok(!check(d.model).some(p => p.rule === 'c4-steps'), 'the marked copy names the model relationship');
+  const A = structuredClone(B), v = A.views.find(x => x.id === V); v.edges = v.edges.filter(x => x !== 'c4-storefront-api');
+  assert.deepEqual(steps(all.diff(A, B).model)[1], [2, 'c4-storefront-api', 'added'], 'a step put into the list');
+  assert.deepEqual(steps(all.diff(B, A).model)[1], [undefined, 'c4-storefront-api', 'removed'], 'a step taken out of it');
+  assert.match(svgOf(all.layout(all.diff(B, A).model, V)), /Reads the catalogue/);
+});
+
+test('audit 51: a deleted timing lifeline is drawn back with its state rows, changes and the constraints on them, removed', async () => {
+  const all = await fromSrc(), { apply } = await import('../src/core/apply.js'), m = read45('bookshop-timing');
+  const r = apply(m, [{ op: 'delete', id: 'lifeline-worker' }]), g = all.layout(all.diff(m, r.model || r).model, 'one-charge');
+  const ch = Object.fromEntries(g.nodes.map(n => [n.id, n.change ?? null]));
+  assert.deepEqual(Object.keys(ch).sort(), all.layout(m, 'one-charge').nodes.map(n => n.id).sort(), 'every shape drawn back');
+  for (const id of ['lifeline-worker', 'lifeline-worker->Idle', 'lifeline-worker->Waiting for payment', 'w-idle', 'w-waiting', 'w-recording', 'w-done', 'c-wait', 'c-finished']) assert.equal(ch[id], 'removed', id);
+  for (const id of ['lifeline-payments', 'lifeline-payments->Idle', 'p-idle']) assert.equal(ch[id], null, id);
+  // a change taken out of a lifeline that stays is not drawn back (it would change the lane's steps)
+  const k = structuredClone(m); k.views[0].timeline.changes = k.views[0].timeline.changes.filter(c => c.id !== 'p-capturing');
+  assert.ok(!all.layout(all.diff(m, k).model, 'one-charge').nodes.some(n => n.id === 'p-capturing'));
+});
+
+// audit 52
+const types52 = f => JSON.parse(readFileSync(new URL(`../examples/types/${f}.json`, import.meta.url)));
+test('audit 52: a deleted lifeline or timing lane is drawn back in its old place, and an interaction use covering it keeps its width', async () => {
+  const all = await fromSrc(), { apply } = await import('../src/core/apply.js');
+  const m = types52('uml-sequence'), V = m.views[0].id, d = all.diff(m, apply(m, { op: 'delete', id: 'storefront' }));
+  assert.deepEqual(d.model.views[0].nodeIds, m.views[0].nodeIds, 'storefront back between shopper and api');
+  const g = all.layout(d.model, V), at = id => g.nodes.find(n => n.id === id), u = at('u1');
+  assert.equal(at('storefront').change, 'removed');
+  assert.ok(at('storefront').x < at('api').x && at('shopper').x < at('storefront').x, 'in its place');
+  assert.ok(u.x + u.w < at('hold').x, `u1 covers storefront and api only: ${u.x}+${u.w} against hold at ${at('hold').x}`);
+  const t = types52('uml-timing'), T = t.views[0], lane = T.nodeIds[0], dt = all.diff(t, apply(t, { op: 'delete', id: lane })), gt = all.layout(dt.model, T.id);
+  assert.deepEqual(dt.model.views[0].nodeIds, T.nodeIds);
+  const y = id => gt.nodes.find(n => n.id === id).y; assert.ok(T.nodeIds.slice(1).every(id => y(lane) < y(id)), 'the removed lane stays at the top');
+  // a card taken out of a map view comes back in its place too, and a card that stays keeps its own
+  const p = { nodes: ['a', 'b', 'c', 'd'].map(id => ({ id })), views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd'] }] }, q = structuredClone(p);
+  q.views[0].nodeIds = ['d', 'a', 'c']; assert.deepEqual(all.diff(p, q).model.views[0].nodeIds, ['d', 'a', 'b', 'c']);
+  q.views[0].nodeIds = ['c', 'd']; assert.deepEqual(all.diff(p, q).model.views[0].nodeIds, ['a', 'b', 'c', 'd']);
+});
+
+test('audit 52: a card hidden from a view that lists no lines, and a removed view, bring their lines back removed', async () => {
+  const all = await fromSrc(), { apply } = await import('../src/core/apply.js');
+  const m = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }, { id: 'c', label: 'C' }], edges: [{ id: 'e1', from: 'a', to: 'b', label: 'x' }, { id: 'e2', from: 'b', to: 'c' }, { from: 'c', to: 'a' }],
+    views: [{ id: 'w', title: 'W', nodeIds: ['a', 'b', 'c'] }, { id: 'u', title: 'U', nodeIds: ['a', 'b', 'c'] }] };
+  const lines = (x, V) => Object.fromEntries(all.layout(x, V).edges.map(e => [e._id ?? e.id, e.change ?? null]));
+  const h = structuredClone(m); h.views[0].nodeIds = ['b', 'c'];
+  const d = all.diff(m, h); assert.deepEqual(d.summary, ['takes A out of the view W']);
+  assert.deepEqual(lines(d.model, 'w'), { e1: 'removed', e2: null, 'c->a#0': 'removed' });
+  assert.match(svgOf(all.layout(d.model, 'w')), /<title>A → B: x, removed<\/title>/);
+  const r = structuredClone(m); r.views = r.views.slice(0, 1); const dr = all.diff(m, r);
+  assert.deepEqual(lines(dr.model, 'u'), { e1: 'removed', e2: 'removed', 'c->a#0': 'removed' }, 'a removed view');
+  // a typed view: its type picks its lines, so they are marked in view.diffMarks
+  const s = read45('sales-classes'), dv = s.views.find(v => v.id === 'domain'), ds = all.diff(s, apply(s, { op: 'hide', id: 'customer', view: 'domain' }));
+  assert.ok(!Array.isArray(dv.edges)); assert.equal(lines(ds.model, 'domain')['customer-orders'], 'removed', 'a class view');
+  // a removed typed view: what it draws, its fragments and its timeline's changes, removed
+  for (const f of ['uml-timing', 'uml-communication', 'bpmn', 'uml-sequence']) { const x = types52(f), y = { ...structuredClone(x), views: [] }, dx = all.diff(x, y);
+    for (const v of x.views) { const g = all.layout(dx.model, v.id);
+      const live = [...g.nodes, ...(g.families || []), ...g.edges].filter(n => n.change !== 'removed').map(n => n._id ?? n.id);
+      assert.deepEqual(live, [], `${f} ${v.id}`); } }
+  const sq = types52('uml-sequence'), w0 = all.diff(sq, { ...sq, views: [] }).model.views[0];
+  assert.ok(w0.fragments.length && w0.fragments.every(f => f.change === 'removed'), 'a removed sequence view\'s fragments');
+  const tm = types52('uml-timing'), t0 = all.diff(tm, { ...tm, views: [] }).model.views[0];
+  assert.ok(t0.timeline.changes.every(c => c.change === 'removed'), 'a removed timing view\'s changes');
+});
+
+test('audit 52: a box removed from or added to a map view is said, and drawn marked', async () => {
+  const all = await fromSrc(), m = JSON.parse(readFileSync(new URL('fixtures/map-shop.json', import.meta.url))), V = m.views[0]; // the old map type page's model, kept as a fixture
+  const box = (f, ...want) => { const b = structuredClone(m); f(b.views[0]); const d = all.diff(m, b); want.forEach(w => assert.ok(d.summary.includes(`${w} in the view ${V.title}`), `${w}: ${d.summary}`)); return d; };
+  const gone = box(v => { v.containers = v.containers.filter(c => c.id !== 'support'); }, 'removes the box Support');
+  const g = all.layout(gone.model, V.id), sup = (g.families || []).find(f => f.id === 'support');
+  assert.equal(sup && sup.change, 'removed', 'drawn back, removed');
+  assert.match(svgOf(g), /data-family="support"[^>]*data-change="removed"/);
+  const came = box(v => { v.containers.push({ id: 'nb', label: 'New box', nodeIds: [v.nodeIds[0]] }); }, 'adds the box New box');
+  assert.equal(all.layout(came.model, V.id).families.find(f => f.id === 'nb').change, 'added');
+  assert.deepEqual(box(v => { v.containers[0].label = 'Platform 2'; }).summary, [`renames the box Shop platform to Platform 2 in the view ${V.title}`], 'a rename as before');
+  assert.doesNotMatch(svgOf(all.layout(m, V.id)), /data-family="[^"]*"[^>]*data-change/, 'a map box with no change: no mark');
+});
+
+test('audit 52: a C4 dynamic view on the diff page numbers its live steps only, as the model after does', async () => {
+  const all = await fromSrc();
+  const mk = (steps, rels = ['r1', 'r2', 'r3']) => ({ schemaVersion: 2, nodes: [{ id: 'S', type: 'c4.SoftwareSystem', label: 'Shop' },
+    { id: 'a', type: 'c4.Container', label: 'Web', parent: 'S' }, { id: 'b', type: 'c4.Container', label: 'Api', parent: 'S' }, { id: 'c', type: 'c4.Container', label: 'Db', parent: 'S' }],
+    edges: [{ id: 'r1', type: 'c4.Relationship', from: 'a', to: 'b', label: 'one' }, { id: 'r2', type: 'c4.Relationship', from: 'b', to: 'c', label: 'two' }, { id: 'r3', type: 'c4.Relationship', from: 'b', to: 'a', label: 'three' }].filter(e => rels.includes(e.id)),
+    views: [{ id: 'd', diagram: 'c4.dynamic', subject: 'S', nodeIds: ['a', 'b', 'c'], edges: steps }] });
+  const nums = x => (svgOf(all.layout(x, 'd')).match(/>(\d · )?[a-z]+<\/text>/g) || []).map(t => t.slice(1, -7));
+  const arias = x => (svgOf(all.layout(x, 'd')).match(/aria-label="Step[^"]*"/g) || []);
+  for (const [b, label] of [[mk(['r2', 'r3']), 'taken out of the view'], [mk(['r2', 'r3'], ['r2', 'r3']), 'its relationship deleted']]) {
+    const d = all.diff(mk(['r1', 'r2', 'r3']), b).model;
+    assert.deepEqual(nums(d), ['one', '1 · two', '2 · three'], label); assert.deepEqual(nums(b), ['1 · two', '2 · three']);
+    assert.deepEqual(arias(d), ['aria-label="Step: Relationship from Web to Api: one, removed"', 'aria-label="Step 1: Relationship from Api to Db: two"', 'aria-label="Step 2: Relationship from Api to Web: three"'], label); }
+  assert.deepEqual(nums(all.diff(mk(['r1', 'r3']), mk(['r1', 'r2', 'r3'])).model), ['1 · one', '2 · two', '3 · three'], 'a step put in is numbered');
+});
+
+test('audit 52: a moved requirement\'s old containment is drawn back when its old owner was taken out of the view', async () => {
+  const all = await fromSrc(), a = read45('ebike-requirements'), b = structuredClone(a);
+  b.views[0].nodeIds = b.views[0].nodeIds.filter(x => x !== 'spec'); b.nodes.find(n => n.id === 'range').parent = 'docking';
+  const g = all.layout(all.diff(a, b).model, a.views[0].id), ch = Object.fromEntries(g.edges.filter(e => e.type === 'containment').map(e => [`${e.from}->${e.to}`, e.change ?? null]));
+  assert.equal(ch['range->spec'], 'removed'); assert.equal(ch['range->docking'], 'added'); assert.equal(ch['docking->spec'], 'removed');
+});
+
+const edit = (m, f) => { const x = structuredClone(m); f(x); return x; };
+test('audit 53: what diff() writes validates when a card is taken out of a map view, a line hidden or a map view removed: a line drawn back removed is no second line', async () => {
+  const all = await fromSrc(), { validate: check } = await import('../src/map/validate.js'), errs = x => check(x).filter(p => p.level === 'error');
+  const m = { nodes: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], edges: [{ id: 'ab', from: 'a', to: 'b' }, { id: 'bc', from: 'b', to: 'c' }],
+    views: [{ id: 'main', nodeIds: ['a', 'b', 'c'] }, { id: 'side', title: 'Side', nodeIds: ['a', 'b'] }] };
+  const listed = edit(m, x => { x.views[0].edges = ['ab', 'bc']; });
+  for (const [name, a, b] of [['hidden card', m, edit(m, x => { x.views[0].nodeIds = ['a', 'b']; })], ['removed view', m, edit(m, x => { x.views.pop(); })],
+    ['hidden card, listed lines', listed, edit(listed, x => { x.views[0].nodeIds = ['a', 'b']; x.views[0].edges = ['ab']; })], ['hidden line', listed, edit(listed, x => { x.views[0].edges = ['ab']; })]]) {
+    const d = all.diff(a, b); assert.ok(d.model.views.some(v => (v.edges || []).some(e => e && e.change === 'removed')), name); assert.deepEqual(errs(d.model), [], name); }
+  // the rule holds for anything else: a view's own line under a model line's id, live or between other ends
+  for (const e of [{ id: 'bc', from: 'b', to: 'c' }, { id: 'bc', from: 'a', to: 'c', change: 'removed' }])
+    assert.match(errs(edit(m, x => { x.views[0].edges = ['ab', e]; })).map(p => p.message).join(), /line id "bc" is used twice/, JSON.stringify(e));
+  // every example: each map view removed, and each of its first cards taken out
+  for (const f of ['shapes', 'integration']) { const x = read45(f), e0 = new Set(errs(x).map(p => p.message));
+    for (const v of x.views.filter(w => w && !(x.schemaVersion === 2 && w.diagram != null && w.diagram !== 'map') && w.id !== x.root)) {
+      const n = d => errs(all.diff(x, d).model).filter(p => !e0.has(p.message)).map(p => p.message);
+      assert.deepEqual(n(edit(x, y => { y.views = y.views.filter(w => w.id !== v.id); y.views.forEach(w => { if (w.parent === v.id) delete w.parent; }); })), [], `${f}: ${v.id} removed`);
+      for (const id of v.nodeIds.slice(0, 3)) assert.deepEqual(n(edit(x, y => { const w = y.views.find(z => z.id === v.id); w.nodeIds = w.nodeIds.filter(z => z !== id);
+        (w.containers || []).forEach(c => { if (c && Array.isArray(c.nodeIds)) c.nodeIds = c.nodeIds.filter(z => z !== id); }); })), [], `${f}: ${id} out of ${v.id}`); } }
+});
+
+test('audit 53: a map box\'s change is checked as a card\'s, and the schema and the types list it', async () => {
+  const { validate: check } = await import('../src/map/validate.js');
+  const box = ch => check({ nodes: [{ id: 'a' }, { id: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'], containers: [{ id: 'box', label: 'Box', nodeIds: ['a'], change: ch }] }] });
+  for (const ch of ['removed', 'added', 'planned']) assert.deepEqual(box(ch), [], ch);
+  assert.deepEqual(box('Removed').map(p => [p.level, p.path]), [['warning', 'views[0].containers[0].change']]); assert.match(box('Removed')[0].message, /write it in lower case/);
+  for (const ch of ['bogus', ['removed']]) assert.match(box(ch).map(p => `${p.path} ${p.message}`).join(), /views\[0\]\.containers\[0\]\.change .*drawn unmarked/, JSON.stringify(ch));
+  const schema = JSON.parse(readFileSync(new URL('../lib/umlimator.schema.json', import.meta.url), 'utf8'));
+  assert.deepEqual(schema.$defs.container.properties.change.enum, schema.$defs.node.properties.change.enum);
+  assert.match(readFileSync(new URL('../lib/umlimator.d.ts', import.meta.url), 'utf8'), /containers\?: \{[^}]*change\?: 'added'/);
+});
+
+test('audit 53: an information flow\'s conveyed item taken out of or put into the view marks the item only: the flows draw as they did', async () => {
+  const all = await fromSrc(), m = read45('order-information-flow'), V = m.views[0].id, out = edit(m, x => { x.views[0].nodeIds = x.views[0].nodeIds.filter(id => id !== 'stock-info'); });
+  const marked = x => { const g = all.layout(x, V); return Object.fromEntries([...g.nodes, ...g.edges].filter(n => n.change).map(n => [n._id ?? n.id, n.change])); };
+  assert.deepEqual(marked(all.diff(m, out).model), { 'stock-info': 'removed' }, 'taken out');
+  assert.deepEqual(marked(all.diff(out, m).model), { 'stock-info': 'added' }, 'put in');
+  assert.deepEqual(marked(all.diff(m, edit(m, x => { x.nodes.find(n => n.id === 'stock-info').label = 'Stock'; })).model),
+    { 'stock-info': 'changed', 'warehouse-api': 'changed', 'api-storefront': 'changed' }, 'renamed: the flows name it, as before');
+});
+
+test('audit 53: an IDEF1X view that lists its lines marks no entity when one relationship is taken out of the list', async () => {
+  const all = await fromSrc(), m = read45('bookshop-schema'), V = m.views[0];
+  V.notation = 'idef1x'; V.edges = m.edges.map(e => e.id);
+  for (const id of V.edges) { const b = structuredClone(m); b.views[0].edges = b.views[0].edges.filter(x => x !== id);
+    const g = all.layout(all.diff(m, b).model, V.id);
+    assert.deepEqual(g.nodes.filter(n => n.change).map(n => n.id), [], `${id} taken out: no entity marked`);
+    assert.equal(g.edges.find(e => (e._id ?? e.id) === id).change, 'removed', `${id} drawn back removed`); }
+  // a relationship deleted from the model still marks its child, which draws otherwise
+  const b = structuredClone(m); b.edges = b.edges.filter(e => e.id !== 'er-order-lines'); b.views[0].edges = b.views[0].edges.filter(x => x !== 'er-order-lines');
+  assert.equal(all.layout(all.diff(m, b).model, V.id).nodes.find(n => n.id === 'er-order_line').change, 'changed');
+});
+
+test('audit 53: a namesake interface or constraint block that comes or goes marks the ports and constraint properties it leaves unresolved', async () => {
+  const all = await fromSrc();
+  const cases = [['ebike-structure', 'inside-ebike', { id: 'ci2', type: 'sysml.InterfaceBlock', label: 'ChargeInterface' }, ['ebike.battery->battery.charge', 'ebike.dock->dock.charge'], n => n.flow ?? null],
+    ['ebike-range', 'range-analysis', { id: 're2', type: 'sysml.ConstraintBlock', label: 'RangeEquation' }, ['ebike.empty', 'ebike.laden'], n => n.expr ?? null]];
+  for (const [f, vid, twin, ids, look] of cases) { const m = read45(f), b = structuredClone(m); b.nodes.push(twin);
+    for (const [x, y, word] of [[m, b, 'added'], [b, m, 'deleted']]) { const d = all.diff(x, y), g = all.layout(d.model, vid), at = id => g.nodes.find(n => n.id === id);
+      assert.ok(d.views.includes(vid), `${f}: namesake ${word}, the view listed`);
+      assert.deepEqual(ids.map(id => at(id).change), ids.map(() => 'changed'), `${f}: namesake ${word}, marked`);
+      assert.deepEqual(ids.map(id => look(at(id))), ids.map(id => look(all.layout(y, vid).nodes.find(n => n.id === id))), `${f}: namesake ${word}, drawn as the model after`); } }
+});
+
+test('audit 53: an interface, constraint or part type block re-created under a new id draws on the diff page as in the model after', async () => {
+  const all = await fromSrc();
+  const remake = (f, id, nid) => { const m = read45(f), a = structuredClone(m), i = a.nodes.findIndex(n => n.id === id), o = a.nodes[i];
+    a.nodes[i] = { ...o, id: nid, members: (o.members || []).map(x => ({ ...x, id: x.id.replace(id + '.', nid + '.') })) };
+    a.edges.forEach(e => { for (const k of ['from', 'to']) if (typeof e[k] === 'string') e[k] = e[k].replace(id + '.', nid + '.'); }); return [m, a]; };
+  { const [m, a] = remake('ebike-range', 'usable-energy', 'ue2'), pick = g => g.nodes.find(n => n.id === 'ebike.usable');
+    const g = all.layout(all.diff(m, a).model, 'range-analysis');
+    assert.equal(pick(g).expr, '{usable = capacity * share}'); assert.equal(pick(g).expr, pick(all.layout(a, 'range-analysis')).expr); assert.equal(pick(g).change, undefined, 'drawn as it was: no mark'); }
+  { const [m, a] = remake('ebike-structure', 'charge-interface', 'ci2'), d = all.diff(m, a);
+    const flow = x => all.layout(x, 'inside-ebike').nodes.find(n => n.id === 'ebike.battery->battery.charge').flow;
+    assert.equal(flow(a), 'inout'); assert.equal(flow(d.model), 'inout'); }
+  { const [m, a] = remake('ebike-structure', 'battery', 'bat2'), g = all.layout(all.diff(m, a).model, 'inside-ebike');
+    const ports = g.nodes.filter(n => n.id.startsWith('ebike.battery->')).map(n => `${n.id.split('->')[1]}:${n.change}`).sort();
+    assert.deepEqual(ports.filter(p => p.startsWith('bat2.')), all.layout(a, 'inside-ebike').nodes.filter(n => n.id.startsWith('ebike.battery->')).map(n => `${n.id.split('->')[1]}:added`).sort(), 'the new block\'s ports drawn, added'); }
+});
+
+// audit 54
+test('audit 54: a stereotype removed from a profile marks no card or box of its scope that draws as before, as the reverse diff marks none', async () => {
+  const all = await fromSrc(), b = read45('bookshop-profile'), V = 'profile';
+  const marked = (x, y) => Object.fromEntries([...all.layout(all.diff(x, y).model, V).nodes, ...(all.layout(all.diff(x, y).model, V).families || [])].filter(n => n.change).map(n => [n.id, n.change]));
+  for (const st of ['column', 'entity']) { const a = structuredClone(b); a.nodes = a.nodes.filter(n => n.id !== st); a.edges = a.edges.filter(e => e.from !== st && e.to !== st);
+    const out = marked(b, a), back = marked(a, b);
+    assert.equal(out.sales, undefined, `removing «${st}» marks the package sales: ${JSON.stringify(out)}`);
+    assert.equal(out[st], 'removed'); assert.equal(back[st], 'added');
+    // what else it marks is what the reverse marks too: a card that draws the tag compartment
+    assert.deepEqual(Object.keys(out).sort(), Object.keys(back).sort(), `both ways mark the same: ${JSON.stringify(out)} ${JSON.stringify(back)}`); }
+});
+
+test('audit 54: a C4 dynamic view on the diff page draws the steps through a card taken out of it removed and unnumbered, the live ones numbered as the model after', async () => {
+  const all = await fromSrc(), B = read45('bookshop-c4'), V = 'c4-placing-an-order';
+  const A = structuredClone(B), w = A.views.find(v => v.id === V); w.nodeIds = w.nodeIds.filter(id => id !== 'c4-shopper');
+  const steps = m => all.layout(m, V).edges.map(e => [e._id ?? e.id, e.step ?? null, e.change ?? null]);
+  const live = (m, ch) => steps(m).filter(s => s[2] !== ch).map(s => s.slice(0, 2));
+  const out = steps(all.diff(B, A).model);
+  assert.deepEqual(out.filter(s => s[2] === 'removed').map(s => s.slice(0, 2)), [['c4-shopper-storefront', null], ['c4-mail-shopper', null]]);
+  assert.deepEqual(live(all.diff(B, A).model, 'removed'), live(A), 'the live steps as the model after numbers them');
+  assert.match(svgOf(all.layout(all.diff(B, A).model, V)), /aria-label="Step 8: Relationship from Order worker to Database/);
+  // put back: drawn added, numbered as the model after
+  const back = steps(all.diff(A, B).model);
+  assert.deepEqual(back.filter(s => s[2] === 'added').map(s => s.slice(0, 2)), [['c4-shopper-storefront', 1], ['c4-mail-shopper', 9]]);
+  assert.deepEqual(back.map(s => s.slice(0, 2)), steps(B).map(s => s.slice(0, 2)));
+});
+
+test('audit 54: a C4 deployment view on the diff page draws both sides of an instance taken out or put back: its line and the implied line from its node', async () => {
+  const all = await fromSrc(), B = read45('bookshop-c4'), V = 'c4-deployment';
+  const A = structuredClone(B), w = A.views.find(v => v.id === V); w.nodeIds = w.nodeIds.filter(id => id !== 'c4-storefront-1');
+  const lines = m => Object.fromEntries(all.layout(m, V).edges.map(e => [e._id ?? e.id, e.change ?? null]));
+  // every line diff() marks in the view is drawn (view.diffMarks: marks and gone)
+  const drawsMarks = (d, why) => { const dm = d.model.views.find(v => v.id === V).diffMarks || {}, L = lines(d.model);
+    for (const [k, h] of Object.entries(dm.marks || {})) assert.equal(L[k], h, `${why}: ${k} drawn ${h}: ${JSON.stringify(L)}`);
+    for (const x of dm.gone || []) assert.equal(L[x.id], 'removed', `${why}: ${x.id} drawn back removed: ${JSON.stringify(L)}`); };
+  const out = all.diff(B, A); drawsMarks(out, 'taken out');
+  const g = all.layout(out.model, V), at = id => g.nodes.find(n => n.id === id);
+  assert.ok(at('c4-browser'), 'Web browser drawn as a card, as the model after draws it');
+  assert.equal(at('c4-storefront-1').change, 'removed');
+  assert.deepEqual([lines(out.model)['c4-browser->c4-api-1'], lines(out.model)['c4-storefront-1-api-1']], ['added', 'removed']);
+  const back = all.diff(A, B); drawsMarks(back, 'put back');
+  assert.deepEqual([lines(back.model)['c4-browser->c4-api-1'], lines(back.model)['c4-storefront-1-api-1']], ['removed', 'added']);
+  for (const d of [out, back]) assert.doesNotThrow(() => svgOf(all.layout(d.model, V)));
+});
+
+// audit 55
+test('audit 55: a map sequence view on the diff page numbers its live steps as the model after does; a removed step has no number', async () => {
+  const { describe } = await import('../lib/umlimator.js'), A = JSON.parse(readFileSync(new URL('fixtures/map-shop.json', import.meta.url))), V = 'shop-run';
+  const steps = m => layout(m, V).edges.map(e => [e._id ?? e.id, e.step ?? null, e.change ?? null]);
+  // the price step: deleted from the model, taken out of the view's list, or its card taken out of the view
+  const cases = { deleted: edit(A, m => { m.edges = m.edges.filter(e => e.id !== 'price'); m.views.forEach(v => { if (Array.isArray(v.edges)) v.edges = v.edges.filter(e => e !== 'price'); }); }),
+    hidden: edit(A, m => { const v = m.views.find(x => x.id === V); v.edges = (v.edges || layout(A, V).edges.map(e => e._id ?? e.id)).filter(e => e !== 'price'); }),
+    'card out': edit(A, m => { const v = m.views.find(x => x.id === V); v.nodeIds = v.nodeIds.filter(id => id !== 'pricing'); }) };
+  for (const [why, B] of Object.entries(cases)) { const d = diff(A, B).model, s = steps(d);
+    assert.deepEqual(s.filter(x => x[2] === 'removed').map(x => x.slice(0, 2)), [['price', null]], why);
+    assert.deepEqual(s.filter(x => x[2] !== 'removed').map(x => x.slice(0, 2)), steps(B).map(x => x.slice(0, 2)), `${why}: live steps as the model after numbers them`);
+    const svg = svgOf(layout(d, V)); assert.doesNotMatch(svg, /Step \d+: Shop API → Pricing/, why); assert.match(svg, /Step 3: Shop API → Fraud check/, why);
+    const said = describe(d, V); assert.match(said, /Removed step: Shop API calls Pricing/, why); assert.match(said, /Step 6: Shop API reads or writes Order queue/, why); assert.doesNotMatch(said, /Step 7/, why); }
+});
+
+test('audit 55: a view\'s own lines to a card taken out of it (or put back) are drawn removed (added) on the diff page, as the model lines it lists', async () => {
+  const all = await fromSrc(), A = read45('integration');
+  for (const [V, card, own] of [['ride-end', 'pricing', ['ride-end-4']], ['unlock-sequence', 'lifeline-dock', ['m4', 'm5', 'm8']]]) {
+    const B = edit(A, m => { const v = m.views.find(x => x.id === V); v.nodeIds = v.nodeIds.filter(id => id !== card); });
+    const marks = m => all.layout(m, V).edges.filter(e => e.change).map(e => [e._id ?? e.id, e.change]);
+    assert.deepEqual(marks(all.diff(A, B).model), own.map(id => [id, 'removed']), `${V}: ${card} taken out`);
+    assert.deepEqual(marks(all.diff(B, A).model), own.map(id => [id, 'added']), `${V}: ${card} put back`);
+    for (const d of [all.diff(A, B), all.diff(B, A)]) assert.deepEqual(validateAll(d.model).filter(p => p.level === 'error'), [], V); }
+  // the map sequence view's live steps keep the model after's numbers
+  const B = edit(A, m => { const v = m.views.find(x => x.id === 'ride-end'); v.nodeIds = v.nodeIds.filter(id => id !== 'pricing'); });
+  const titles = m => [...svgOf(all.layout(m, 'ride-end')).matchAll(/<title>(Step \d+)?([^<]*?)(?:\(|<)/g)].map(x => x[1] ?? 'none').filter(x => x !== 'none');
+  assert.deepEqual(titles(all.diff(A, B).model), titles(B));
+});
+
+test('audit 55: a component view that lists its lines draws a line between ports removed (added) with the card that holds its far port', async () => {
+  const all = await fromSrc(), A = edit(read45('bookshop-components'), m => { m.views[0].edges = m.edges.map(e => e.id); }), V = A.views[0].id;
+  const B = edit(A, m => { m.views[0].nodeIds = m.views[0].nodeIds.filter(id => id !== 'payment-provider-component'); });
+  const at = m => (all.layout(m, V).edges.find(e => (e._id ?? e.id) === 'api-to-provider') || {}).change ?? null;
+  assert.equal(at(all.diff(A, B).model), 'removed'); assert.equal(at(all.diff(B, A).model), 'added');
+});
+
+// audit 56
+test('audit 56: a line whose label changed, to a card taken out of a view that lists no lines (or put back), is drawn removed (added) there', () => {
+  const nodes = [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }, { id: 'c', label: 'C' }];
+  const m = (ids, two = 'two', es) => ({ nodes, edges: [{ id: 'ab', from: 'a', to: 'b', label: 'one' }, { id: 'bc', from: 'b', to: 'c', label: two }],
+    views: [{ id: 'main', title: 'Main', nodeIds: ids, ...(es ? { edges: es } : {}) }] });
+  const bc = (x, V) => { const g = layout(x, V), e = g.edges.find(y => (y._id ?? y.id) === 'bc'); return e && [e.change ?? null, !!e.edited]; };
+  for (const es of [undefined, ['ab', 'bc']]) { const how = es ? 'a view that lists its lines' : 'a view that lists none';
+    assert.deepEqual(bc(diff(m(['a', 'b', 'c'], 'two', es), m(['a', 'b'], 'two', es)).model, 'main'), ['removed', false], `${how}: no edit`);
+    assert.deepEqual(bc(diff(m(['a', 'b', 'c'], 'two', es), m(['a', 'b'], 'three', es)).model, 'main'), ['removed', true], `${how}: its label edited`);
+    assert.deepEqual(bc(diff(m(['a', 'b'], 'two', es), m(['a', 'b', 'c'], 'three', es)).model, 'main'), ['added', true], `${how}: put back, its label edited`); }
+  // the model's own line stays changed: only the view's copy goes with the card
+  const d = diff(m(['a', 'b', 'c']), m(['a', 'b'], 'three'));
+  assert.equal(d.model.edges.find(e => e.id === 'bc').change, 'changed');
+});
+
+test('audit 56: on a typed view a line whose label changed goes (comes) with a card taken out of it (put in), and with a removed view', async () => {
+  const all = await fromSrc(), c4 = JSON.parse(readFileSync(new URL('../examples/types/c4.json', import.meta.url))), V = 'context', L = 'bookshop-courier';
+  const cut = (x, edit) => { const y = structuredClone(x), w = y.views.find(v => v.id === V); w.nodeIds = w.nodeIds.filter(id => id !== 'courier');
+    if (edit) y.edges.find(e => e.id === L).label += ' (edited)'; return y; };
+  const ch = (x, v = V) => (all.layout(x, v).edges.find(e => (e._id ?? e.id) === L) || {}).change ?? null;
+  const edited = c => { const y = structuredClone(c); y.edges.find(e => e.id === L).label += ' (edited)'; return y; };
+  assert.equal(ch(all.diff(c4, cut(c4)).model), 'removed', 'taken out');
+  assert.equal(ch(all.diff(c4, cut(c4, true)).model), 'removed', 'taken out, its label edited');
+  assert.equal(ch(all.diff(cut(c4), edited(c4)).model), 'added', 'put back, its label edited');
+  const gone = { ...edited(c4), views: edited(c4).views.filter(v => v.id !== V) };
+  assert.equal(ch(all.diff(c4, gone).model), 'removed', 'its view removed, its label edited');
+});
+
+// audit 57: what reads the diff page's model reads the model after: a line or card diff() drew back removed is gone
+test('audit 57: rules() on the diff model of a change that fixes a rule finds nothing, and the page marks no line broken', async () => {
+  const { rules } = await import('../lib/umlimator.js'), { mapContext } = await import('../src/map/context.js');
+  const A = { nodes: [{ id: 'web', kind: 'ui' }, { id: 'db', kind: 'db' }, { id: 'api' }], edges: [{ id: 'bad', from: 'web', to: 'db' }, { id: 'ok', from: 'web', to: 'api' }, { id: 'ok2', from: 'api', to: 'db' }],
+    views: [{ id: 'v', nodeIds: ['web', 'db', 'api'] }], rules: [{ id: 'r', title: 'UI never reads the DB', from: { kind: 'ui' }, to: { kind: 'db' } }] };
+  const cases = { 'line removed': m => { m.edges = m.edges.filter(e => e.id !== 'bad'); },
+    'card taken out of the view': m => { m.views[0].nodeIds = ['web', 'api']; },
+    'card removed': m => { m.nodes = m.nodes.filter(n => n.id !== 'db'); m.edges = m.edges.filter(e => e.to !== 'db'); m.views[0].nodeIds = ['web', 'api']; } };
+  for (const [why, f] of Object.entries(cases)) { const B = structuredClone(A); f(B); const d = diff(A, B).model;
+    assert.equal(rules(A).length, 1, why); assert.deepEqual(rules(B), [], why); assert.deepEqual(rules(d), [], why);
+    assert.doesNotMatch(mapContext(d).buildView('v').markup, /Breaks rule|breaks rule/, why); }
+  // a cycle the change breaks, and one through a box it removes
+  const C = { nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ id: 'ab', from: 'a', to: 'b' }, { id: 'ba', from: 'b', to: 'a' }], views: [{ id: 'v', nodeIds: ['a', 'b'], containers: [{ id: 'X', nodeIds: ['a'] }, { id: 'Y', nodeIds: ['b'] }] }], rules: [{ id: 'c', noCycles: true }] };
+  const C2 = structuredClone(C); C2.edges.pop();
+  assert.equal(rules(C).length, 1); assert.deepEqual(rules(diff(C, C2).model), []);
+  const C3 = structuredClone(C); C3.views[0].containers = [{ id: 'X', nodeIds: ['a'] }]; // the box Y goes: no cycle of boxes is left
+  assert.deepEqual(rules(C3), []); assert.deepEqual(rules(diff(C, C3).model), []);
+  // a rule the change still breaks is still found
+  const D = structuredClone(A); D.edges = D.edges.filter(e => e.id !== 'ok');
+  assert.deepEqual(rules(diff(A, D).model).map(b => b.targets[0].ids), [['bad']]);
+});
+
+test('audit 57: diff() leaves a view that is no object out, as validate() does', () => {
+  const A = { nodes: [{ id: 'a' }], edges: [], views: [{ id: 'v', nodeIds: ['a'] }, { id: 'w', nodeIds: ['a'] }] };
+  for (const odd of ['w', 7, true, ['w'], { nodeIds: ['a'] }]) { const B = structuredClone(A); B.views[1] = odd;
+    const d = diff(A, B), back = diff(B, A);
+    assert.deepEqual([d.views, d.summary], [['w'], ['removes the view w']], JSON.stringify(odd));
+    assert.deepEqual([back.views, back.summary], [['w'], ['adds the view w']], JSON.stringify(odd));
+    for (const r of [d, back]) for (const id of r.views) assert.doesNotThrow(() => layout(r.model, id)); }
+});
+
+test('audit 57: describe(), paths(), reach() and critical() on the diff model read the model after', async () => {
+  const { describe, paths, reach, critical } = await import('../lib/umlimator.js');
+  const A = { nodes: [{ id: 'web', label: 'Web' }, { id: 'db', label: 'DB' }, { id: 'api', label: 'API' }, { id: 'old', label: 'Old cache' }],
+    edges: [{ id: 'bad', from: 'web', to: 'db', label: 'reads', latency: 9 }, { id: 'ok', from: 'web', to: 'api', latency: 1 }, { id: 'ok2', from: 'api', to: 'old' }],
+    views: [{ id: 'v', nodeIds: ['web', 'db', 'api', 'old'] }] };
+  const B = structuredClone(A); B.edges = B.edges.filter(e => e.id !== 'bad' && e.id !== 'ok2'); B.nodes = B.nodes.filter(n => n.id !== 'old'); B.views[0].nodeIds = ['web', 'db', 'api'];
+  const d = diff(A, B).model;
+  assert.equal(describe(d, 'v'), describe(B, 'v'));
+  assert.deepEqual(paths(d, 'v', 'web', 'db'), []); assert.deepEqual(paths(d, 'v', 'web', 'api'), paths(B, 'v', 'web', 'api'));
+  assert.deepEqual(reach(d, 'v', 'web'), reach(B, 'v', 'web')); assert.deepEqual(reach(d, 'v', 'old'), []);
+  assert.deepEqual(critical(d, 'v'), critical(B, 'v'));
+  // a card taken out of the view only, its lines kept in the model
+  const C = structuredClone(A); C.views[0].nodeIds = ['web', 'api', 'old'];
+  const dc = diff(A, C).model;
+  assert.equal(describe(dc, 'v'), describe(C, 'v')); assert.deepEqual(reach(dc, 'v', 'web'), reach(C, 'v', 'web'));
+});
+test('audit 58: a line re-pointed from a card that goes, or to one that comes, is said as changed, not as put in or taken out of the view', () => {
+  const N = [{ id: 'web', label: 'Web' }, { id: 'new', label: 'New API' }, { id: 'old', label: 'Old API' }];
+  const A = { schemaVersion: 1, nodes: N, edges: [{ id: 'calls', from: 'web', to: 'old', label: 'orders' }], views: [{ id: 'v', title: 'Shop', nodeIds: ['web', 'new', 'old'] }] };
+  const B = structuredClone(A); B.edges[0].to = 'new'; B.nodes = B.nodes.filter(n => n.id !== 'old'); B.views[0].nodeIds = ['web', 'new'];
+  assert.deepEqual(diff(A, B).summary, ['removes Old API', 'changes the line from Web to New API (to)']);
+  const A2 = structuredClone(A), B2 = structuredClone(B); A2.views[0].edges = ['calls']; B2.views[0].edges = ['calls'];
+  assert.deepEqual(diff(A2, B2).summary, ['removes Old API', 'changes the line from Web to New API (to)']);
+  const C = { schemaVersion: 1, nodes: [N[0], N[2]], edges: [{ id: 'calls', from: 'web', to: 'old', label: 'orders' }], views: [{ id: 'v', title: 'Shop', nodeIds: ['web', 'old'] }] };
+  const D = { schemaVersion: 1, nodes: N, edges: [{ id: 'calls', from: 'web', to: 'new', label: 'orders' }], views: [{ id: 'v', title: 'Shop', nodeIds: ['web', 'new', 'old'] }] };
+  assert.deepEqual(diff(C, D).summary, ['adds New API', 'changes the line from Web to New API (to)']);
+  // a line the view really hid (its ends kept): still said
+  const E = structuredClone(A2); E.views[0].edges = [];
+  assert.deepEqual(diff(A2, E).summary, ['takes the line from Web to Old API (orders) out of the view Shop']);
+});
+test('audit 58: a removed card is drawn back as the view presented it (a ball interface stays a ball)', async () => {
+  const U = await import('../lib/umlimator-all.js'), m = JSON.parse(readFileSync(modelUrl('types/uml-component')));
+  const d = U.diff(m, U.apply(m, [{ op: 'delete', id: 'i-orders' }])).model, at = (x, id) => U.layout(x, 'components').nodes.find(n => n.id === id);
+  assert.deepEqual(d.views.find(v => v.id === 'components').present, m.views.find(v => v.id === 'components').present);
+  assert.equal(at(m, 'i-orders').shape, 'ball'); assert.equal(at(d, 'i-orders').shape, 'ball'); assert.equal(at(d, 'i-orders').change, 'removed');
+  const e = x => U.layout(x, 'components').edges.find(l => l.id === 'storefront-requires-orders');
+  assert.deepEqual(e(d).end, e(m).end);
+});
+test('audit 58: describe() of a typed view on the diff model reads the model after (ER, flowchart, DFD, C4, information flow)', async () => {
+  const U = await import('../lib/umlimator-all.js');
+  for (const f of ['bookshop-schema', 'returns-flowchart', 'bookshop-data-flow', 'bookshop-c4', 'order-information-flow']) {
+    const a = JSON.parse(readFileSync(modelUrl(f)));
+    for (const id of [a.edges[0].id, a.nodes[a.nodes.length - 1].id]) { const b = U.apply(a, [{ op: 'delete', id }]), d = U.diff(a, b).model;
+      for (const v of b.views) assert.equal(U.describe(d, v.id), U.describe(b, v.id), `${f} without ${id}, ${v.id}`); }
+    // a card taken out of a view only, and put back
+    for (const [i, v] of a.views.entries()) { const id = v.nodeIds.at(-1), b = structuredClone(a); b.views[i].nodeIds = v.nodeIds.filter(x => x !== id);
+      assert.equal(U.describe(U.diff(a, b).model, v.id), U.describe(b, v.id), `${f} ${v.id} without ${id}`); } }
+});
+test('audit 59: a re-pointed line a view stops drawing is said taken out by its old ends, and one a view starts drawing put in by its new ends', () => {
+  const N = ['a', 'b', 'c'].map(id => ({ id, label: id.toUpperCase(), kind: 'service' }));
+  const A = { nodes: N, edges: [{ id: 'L', from: 'a', to: 'b', label: 'calls' }, { id: 'M', from: 'b', to: 'c' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], edges: ['L', 'M'] }] };
+  const B = { nodes: N, edges: [{ id: 'L', from: 'a', to: 'c', label: 'calls' }, { id: 'M', from: 'b', to: 'c' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], edges: ['M'] }] };
+  const d = diff(A, B);
+  assert.deepEqual(d.summary, ['changes the line from A to C (to)', 'takes the line from A to B (calls) out of the view v']);
+  assert.deepEqual(d.views, ['v']);
+  assert.deepEqual(layout(d.model, 'v').edges.map(e => [e.from, e.to, e.change ?? null]), [['a', 'b', 'removed'], ['b', 'c', null]]);
+  // re-pointed from a card one view shows to one only another view shows: both views listed, each said with its own ends
+  const X = ['a', 'b', 'x'].map(id => ({ id, label: id.toUpperCase(), kind: 'service' })), vs = [{ id: 'v', nodeIds: ['a', 'b'] }, { id: 'w', nodeIds: ['a', 'x'] }];
+  const d2 = diff({ nodes: X, edges: [{ id: 'L', from: 'a', to: 'b', label: 'calls' }], views: vs }, { nodes: X, edges: [{ id: 'L', from: 'a', to: 'x', label: 'calls' }], views: vs });
+  assert.deepEqual(d2.summary, ['changes the line from A to X (to)', 'takes the line from A to B (calls) out of the view v', 'puts the line from A to X (calls) in the view w']);
+  assert.deepEqual(d2.views, ['v', 'w']);
+});
+test('audit 59: describe() of a communication view on the diff model numbers its messages as the model after does, a lifeline hidden or only taken out of nodeIds', async () => {
+  const U = await import('../lib/umlimator-all.js'), m = JSON.parse(readFileSync(modelUrl('types/uml-communication')));
+  for (const v of m.views) for (const id of v.nodeIds) {
+    const hid = U.apply(m, [{ op: 'hide', id, view: v.id }]), raw = structuredClone(m); raw.views.find(w => w.id === v.id).nodeIds = v.nodeIds.filter(x => x !== id);
+    for (const b of [hid, raw]) assert.equal(U.describe(U.diff(m, b).model, v.id), U.describe(b, v.id), `${v.id} without ${id}`); }
+});
+test('audit 59: a C4 view whose implied line stands for a relabelled relationship it does not draw the label of is not listed', async () => {
+  const U = await import('../lib/umlimator-all.js'), C = (id, label) => ({ id, type: 'c4.Container', parent: 's1', label, props: { technology: 'Python', description: 'Does ' + label } });
+  const m = { schemaVersion: 2, nodes: [{ id: 'p', type: 'c4.Person', label: 'Shopper', props: { description: 'Buys' } }, { id: 's1', type: 'c4.SoftwareSystem', label: 'Shop', props: { description: 'Sells' } }, C('web', 'Storefront'), C('api', 'API')],
+    edges: [{ id: 'r1', type: 'c4.Relationship', from: 'p', to: 'web', label: 'Browses' }, { id: 'r4', type: 'c4.Relationship', from: 'p', to: 'api', label: 'Uses app' }],
+    views: [{ id: 'ctx', diagram: 'c4.context', subject: 's1', title: 'Context', nodeIds: ['p', 's1'] }] };
+  assert.deepEqual(U.diff(m, U.apply(m, [{ op: 'set', id: 'r4', path: 'label', value: 'Orders via app' }])).views, []);
+  // the relationship whose label it draws: listed, and the line marked
+  const d = U.diff(m, U.apply(m, [{ op: 'set', id: 'r1', path: 'label', value: 'Looks' }]));
+  assert.deepEqual(d.views, ['ctx']); assert.equal(U.layout(d.model, 'ctx').edges.find(e => e.from === 'p').change, 'changed');
+});
+test('audit 60: a re-pointed line a view drew and no longer draws, its new end not on the view, is said taken out and drawn back removed there, listed or not', async () => {
+  const { validate: check } = await import('../src/map/validate.js');
+  const N = [['web', 'Web'], ['api', 'API'], ['db', 'DB'], ['q', 'Queue']].map(([id, label]) => ({ id, label, kind: 'service' }));
+  const m = { nodes: N, edges: [{ id: 'wa', from: 'web', to: 'api', label: 'calls' }, { id: 'ad', from: 'api', to: 'db', label: 'reads' }],
+    views: [{ id: 'all', nodeIds: ['web', 'api', 'db', 'q'] }, { id: 'back', title: 'Back', nodeIds: ['api', 'db', 'web'] }] };
+  for (const list of [null, ['ad', 'wa'], ['wa', 'ad']]) {
+    const a = edit(m, x => { if (list) x.views[1].edges = list; }), b = edit(a, x => { x.edges[1].to = 'q'; }), d = diff(a, b), tag = JSON.stringify(list);
+    assert.deepEqual(d.summary, ['changes the line from API to Queue (to)', 'takes the line from API to DB (reads) out of the view Back'], tag);
+    assert.deepEqual(d.views, ['all', 'back'], tag);
+    const drawn = layout(d.model, 'back').edges.map(e => [e.from, e.to, e.change ?? null]), at = list ? list.indexOf('ad') : 1;
+    assert.deepEqual(drawn[at], ['api', 'db', 'removed'], tag); assert.deepEqual(drawn[1 - at], ['web', 'api', null], tag); assert.equal(drawn.length, 2, tag);
+    assert.deepEqual(check(d.model).filter(p => p.level === 'error'), [], tag); // the copy between its old ends is no second line under the model line's id
+    // the other way round: put in by its new ends, drawn
+    const r = diff(b, a); assert.deepEqual(r.summary, ['changes the line from API to DB (to)', 'puts the line from API to DB (reads) in the view Back'], tag);
+    assert.ok(layout(r.model, 'back').edges.some(e => e.from === 'api' && e.to === 'db' && e.change), tag);
+  }
+});
+
+test('audit 61: a map view that lists no lines draws a line re-pointed off it removed and the lines of a card put in or taken out in the same change; one re-pointed onto it added, listed or not', () => {
+  const N = [['web', 'Web'], ['api', 'API'], ['db', 'DB'], ['q', 'Queue'], ['log', 'Log']].map(([id, label]) => ({ id, label, kind: 'service' }));
+  const m = { nodes: N, edges: [{ id: 'wa', from: 'web', to: 'api', label: 'calls' }, { id: 'ad', from: 'api', to: 'db', label: 'reads' }, { id: 'al', from: 'api', to: 'log', label: 'logs' }],
+    views: [{ id: 'all', nodeIds: ['web', 'api', 'db', 'q', 'log'] }, { id: 'back', title: 'Back', nodeIds: ['api', 'db', 'web'] }] };
+  const drawn = x => layout(x, 'back').edges.map(e => [e.from, e.to, e.change ?? null]);
+  // Log put in (audit 54) or taken out (audit 52), and ad re-pointed off the view (audit 60), in one change
+  const came = edit(m, x => { x.views[1].nodeIds.push('log'); x.edges[1].to = 'q'; });
+  assert.deepEqual(drawn(diff(m, came).model), [['web', 'api', null], ['api', 'db', 'removed'], ['api', 'log', 'added']]);
+  const shown = edit(m, x => { x.views[1].nodeIds.push('log'); }), hidden = edit(shown, x => { x.views[1].nodeIds.pop(); x.edges[1].to = 'q'; });
+  assert.deepEqual(drawn(diff(shown, hidden).model), [['web', 'api', null], ['api', 'db', 'removed'], ['api', 'log', 'removed']]);
+  // re-pointed onto the card taken out with it: drawn back by its old ends alone, never by its new ones, where the view never drew it
+  const onto = edit(shown, x => { x.views[1].nodeIds.pop(); x.edges[1].to = 'log'; });
+  assert.deepEqual(drawn(diff(shown, onto).model), [['web', 'api', null], ['api', 'db', 'removed'], ['api', 'log', 'removed']]);
+  // ad re-pointed from Queue onto DB: put in the view, drawn added whether the view lists its lines or not
+  for (const list of [null, ['wa', 'ad']]) { const a = edit(m, x => { x.edges[1].to = 'q'; if (list) x.views[1].edges = list; }), b = edit(a, x => { x.edges[1].to = 'db'; }), d = diff(a, b);
+    assert.ok(d.summary.includes('puts the line from API to DB (reads) in the view Back'), JSON.stringify(list));
+    assert.deepEqual(drawn(d.model), [['web', 'api', null], ['api', 'db', 'added']], JSON.stringify(list)); }
+});
+
+test('audit 61: diff() marks only what changed: a card, line, box, member or override the author marked in the model is drawn unmarked where the change leaves it; planned stays', () => {
+  const m = { title: 'Shop', nodes: [{ id: 'web', label: 'Web shop', kind: 'frontend' }, { id: 'app', label: 'Shop app', kind: 'mobile', change: 'new' },
+    { id: 'bot', label: 'Reminder bot', kind: 'ai', change: 'removed', members: [{ id: 'm1', label: 'Nudge', change: 'added' }] }, { id: 'api', label: 'Orders API', kind: 'backend' }, { id: 'gift', label: 'Gift cards', change: 'planned' }],
+    edges: [{ id: 'e1', from: 'web', to: 'api', label: 'orders', edited: true }, { id: 'e2', from: 'bot', to: 'web', label: 'nudges', change: 'removed', style: 'removed' }],
+    views: [{ id: 'v', nodeIds: ['web', 'app', 'bot', 'api', 'gift'], containers: [{ id: 'b', label: 'Apps', nodeIds: ['web', 'app'], change: 'new' }], nodeOverrides: { api: { change: 'changed' } } }] };
+  const d = diff(m, edit(m, x => { x.nodes[3].label = 'Shop API'; }));
+  assert.deepEqual(d.summary, ['renames Orders API to Shop API']);
+  assert.deepEqual(d.model.nodes.map(n => n.change ?? null), [null, null, null, 'changed', 'planned']);
+  assert.deepEqual(d.model.edges.map(e => [e.change ?? null, e.style ?? null, e.edited ?? null]), [[null, null, null], [null, null, null]]);
+  assert.equal(d.model.nodes[2].members[0].change, undefined);
+  const v = d.model.views[0]; assert.equal(v.containers[0].change, undefined); assert.equal(v.nodeOverrides.api.change, undefined);
+  // the page: no card or line drawn new or removed but the one renamed, changed
+  const g = layout(d.model, 'v'); assert.deepEqual(g.nodes.filter(n => n.change).map(n => [n.id, n.change]), [['api', 'changed'], ['gift', 'planned']]);
+  assert.deepEqual(g.edges.filter(e => e.change || e.style || e.edited).map(e => e.id), []);
+  // the input is not changed, and a mark the change itself takes off is said, the card marked changed
+  assert.equal(m.nodes[1].change, 'new');
+  const shipped = diff(m, edit(m, x => { delete x.nodes[1].change; }));
+  assert.deepEqual(shipped.summary, ['changes Shop app (change)']); assert.equal(shipped.model.nodes[1].change, 'changed');
+  // the Bookshop atlas, which carries its own marks: its diff with itself marks nothing
+  const atlas = JSON.parse(readFileSync(modelUrl('bookshop-atlas'))), same = diff(atlas, atlas).model;
+  const marked = [...same.nodes.filter(n => n.change && n.change !== 'planned'), ...same.edges.filter(e => e.change && e.change !== 'planned' || e.edited || e.style === 'added' || e.style === 'removed')];
+  assert.deepEqual(marked.map(x => x.id), []);
 });

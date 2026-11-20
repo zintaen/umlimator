@@ -71,7 +71,7 @@ test('the stress fixture: 50 instances with their slots, 60 links with roles, on
 });
 
 test('the stress fixture lays out clean, right and down; its crossings are the ones the conformance note states', () => {
-  // the counts docs/conformance/uml-object.md and risks.md L4 state: a change of layout that moves them updates both
+  // the counts docs/diagrams/conformance/uml-object.md and risks.md L4 state: a change of layout that moves them updates both
   const want = { down: 42, right: 42 };
   for (const direction of ['down', 'right']) {
     const r = clean(turned(STRESS, 'all', direction), 'all');

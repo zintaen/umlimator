@@ -9,7 +9,7 @@ through its pipes as an MCP client drives it, with a page's event stream.
 Needs Node (diff, drift, trace and the MCP server's read tools run the module's own functions), git, and Chrome or
 Chromium (pdf).
 """
-import base64, contextlib, hashlib, http.client, importlib.util, io, json, os, re, subprocess, sys, tempfile, threading, time, urllib.request, zlib
+import base64, contextlib, hashlib, http.client, importlib.util, io, json, os, re, shutil, subprocess, sys, tempfile, threading, time, urllib.request, zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -42,7 +42,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf integration": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "bench views": 1})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "audit 57 diff": 2, "audit 60 no git": 6, "bench views": 1})
 
 
 def ok(name, cond, info=""):
@@ -1141,9 +1141,9 @@ with tempfile.TemporaryDirectory() as tmp:
     if part("diff Action milestone 3"):
         # C10 for milestone 3 (M3.7): the Action's step on SysML's four e-bike models, each changed in a pull request
         SYSML = {"ebike-requirements": (lambda m: rename(m, "capacity", "Pack capacity"), "requirements", "renames Battery capacity to Pack capacity"),
-                 "ebike-blocks": (lambda m: rename(m, "rental-vehicle", "HireVehicle"), "blocks", "renames RentalVehicle to HireVehicle"),
-                 "ebike-structure": (lambda m: rename(m, "ebike", "Bike"), "inside-ebike", "renames EBike to Bike"),
-                 "ebike-range": (lambda m: rename(m, "ebike", "Bike"), "range-analysis", "renames EBike to Bike")}
+                 "ebike-blocks": (lambda m: rename(m, "delivery-vehicle", "HireVehicle"), "blocks", "renames DeliveryVehicle to HireVehicle"),
+                 "ebike-structure": (lambda m: rename(m, "ebike", "Bike"), "inside-ebike", "renames CargoBike to Bike"),
+                 "ebike-range": (lambda m: rename(m, "ebike", "Bike"), "range-analysis", "renames CargoBike to Bike")}
         d = t / "action-m3"; (d / "examples").mkdir(parents=True)
         dgit = lambda *x: subprocess.run(["git", "-C", str(d), "-c", "user.name=test", "-c", "user.email=test@example.invalid", *x], capture_output=True, text=True, check=True)
         dgit("init", "-q")
@@ -1293,10 +1293,10 @@ with tempfile.TemporaryDirectory() as tmp:
         # types' tests and stated in their conformance notes; nothing else
         # at most these: text widths differ between machines (Linux CI counts fewer than a Mac), so the count is a ceiling
         # M2.14: the crossings repair and reroute off leave in the C4 and data flow examples (notes/milestone-2.md §11), as Chrome
-        # counts them (tests/integration.test.mjs counts Node's in the integration fixture's views); stated in docs/conformance/c4.md and dfd.md
+        # counts them (tests/integration.test.mjs counts Node's in the integration fixture's views); stated in docs/diagrams/conformance/c4.md and dfd.md
         # 4a.7: the Google Cloud and Azure examples' one each, repair and reroute off (notes/milestone-4a.md §11), stated in
-        # docs/conformance/gcp.md and azure.md; the Azure example's two since audit 27 (a line no longer runs back through its own box)
-        # 4b.5: the BPMN example's, repair and reroute off (notes/milestone-4b.md §14), stated in docs/conformance/bpmn.md
+        # docs/diagrams/conformance/gcp.md and azure.md; the Azure example's two since audit 27 (a line no longer runs back through its own box)
+        # 4b.5: the BPMN example's, repair and reroute off (notes/milestone-4b.md §14), stated in docs/diagrams/conformance/bpmn.md
         crossings = {"fulfil-activity": 2, "order-states": 2, "bookshop-c4": 8, "bookshop-data-flow": 2, "bookshop-gcp": 1, "bookshop-azure": 2, "bookshop-order-to-shipment": 5}.get(name, 0)
         ok(f"render · a typed model ({name}): the engine accepts lines that end on members, and the check is clean" + (f" but its {crossings} pinned crossings" if crossings else ""),
            r is not None and len(r.get("problems") or []) <= crossings and all(p.endswith(" cross") for p in r.get("problems") or []) and not r.get("errors"), r)
@@ -1431,13 +1431,16 @@ with tempfile.TemporaryDirectory() as tmp:
     # M3.7: SysML's tables (notes/milestone-3.md §13): a requirement's id, text and derived relations, each relationship by its
     # keyword; a block's compartments, an interface block's flow properties, a constraint block's expression and parameters, a
     # value type's unit; the subject's members; each connector with the item it carries, each binding by its ends
-    PDF3 = {"ebike-requirements": ["RangeRequirementid:EB-1.2text:Afullchargeshallgiveatleast60kmofassistedriding.containedinE-bikespecificationderivesBatterycapacity",
-                                   "BatterycapacityRequirementid:BAT-1", "Battery→Batterycapacity«satisfy»Satisfy", "Rangerideonthetestcircuit→Range«verify»Verify"],
+    PDF3 = {"ebike-requirements": ["DeliveryrangeRequirementid:EB-1.2text:Afullchargeshallgiveatleast60kmofassistedridingwithafull40kgpayload.containedinCargobikespecificationderivesBatterycapacity",
+                                   "BatterycapacityRequirementid:BAT-1", "Battery→Batterycapacity«satisfy»Satisfy", "Ladenrangerideonthetestcircuit→Deliveryrange«verify»Verify"],
             "ebike-blocks": ["ChargeInterfaceInterfaceblockflowproperties:indc:DCPowerflowproperties:outstateOfCharge:Percent",
                              "RangeEquationConstraintblockconstraints:{range=energy/consumption}parameters:range:Distance", "EnergyValuetypequantity:unit=Wh",
-                             "EBike→RentalVehicleGeneralization"],
-            "ebike-structure": ["EBikeBlockbattery:Battery[1]", "refdock:Dock[0..1]", "DCPower,batterytocontrollerConnector"],  # a connector: a Lines row (audit 17)
-            "ebike-range": ["eco:RangeEquation", "ecoRangetorangeofecoBindingconnector", "usableofusabletoenergyofboostBindingconnector"]}  # a binding: a Lines row only (audit 18)
+                             "CargoBike→DeliveryVehicleGeneralization", "CargoBoxBlockvalues:maxPayload:Massports:parcelLock",
+                             "LadenConsumptionConstraintblockconstraints:{laden=empty+0.1*payload}parameters:laden:EnergyPerDistance", "MassValuetypequantity:unit=kg"],
+            "ebike-structure": ["CargoBikeBlockbattery:Battery[1]", "refdock:Dock[0..1]", "DCPower,batterytocontrollerConnector",  # a connector: a Lines row (audit 17)
+                                "cargoBox:CargoBox[1]", "UnlockCode,controllertocargoBoxConnector"],
+            "ebike-range": ["empty:RangeEquation", "emptyRangetorangeofemptyBindingconnector", "usableofusabletoenergyofladenBindingconnector",  # a binding: a Lines row only (audit 18)
+                            "load:LadenConsumption", "payloadtopayloadofloadBindingconnector", "consumptionofemptytoemptyofloadBindingconnector", "ladenofloadtoconsumptionofladenBindingconnector"]}
     for n, want in PDF3.items():
         if not part.of(f"typed {n}"):
             continue
@@ -2398,6 +2401,170 @@ if part("audit 45"):
            r.returncode == 0 and sorted(said) == ["big.json", "dir.json", "eslint.json", "gone.json", "maps/shop.json", "pipe.json", "zero.json"] and all("symbolic link" in (w or "") for w in said.values())
            and "No map model changed" not in md and "OUTSIDE-45" not in written and "SECRET-45" not in written and "x.invalid" not in written,
            (said, md, r.stderr[-400:]))
+if part("audit 51"):
+    # the guide's --views values name views of the page its block renders (audit 51: 'overview,api' and 'pic-*' named none of
+    # the Umlimator atlas's, so both documented commands stopped with exit 1): each through pick(), as stills, check and pdf read it
+    guide, pages, said = (ROOT / "docs" / "use" / "cli.md").read_text(), {}, []
+    with tempfile.TemporaryDirectory() as t:
+        for line in re.findall(r"^python3 umlimator\.py .*$", guide, re.M):
+            if m := re.match(r"python3 umlimator\.py render (\S+) --out (\S+)", line):
+                cli("render", str(ROOT / m.group(1)), "--out", str(Path(t) / m.group(2)), "--no-check"); pages[m.group(2)] = Path(t) / m.group(2)
+            if v := re.search(r"--views '?([^' ]+)'?", line):
+                page = re.match(r"python3 umlimator\.py \w+ (\S+)", line).group(1)
+                try:
+                    said.append((line, page in pages and bool(u.pick(str(pages[page]), v.group(1)))))
+                except SystemExit as e:
+                    said.append((line, str(e)))
+    ok("docs/use/cli.md · every --views value names views of the page its block renders (audit 51)",
+       len(said) >= 2 and all(r is True for _, r in said), said)
+if part("audit 54 tools"):
+    # audit 54: a card's or a line's change an author wrote as a list or an object ended diff --base (and the diff Action) in
+    # TypeError: unhashable type, before summary.md, for every model of the pull request; the sketch draws a string mark only
+    odd = [[1], {}, {"a": 1}, 3, None]
+    sks = [u.sketch({"nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B", "change": c}, {"id": "c", "label": "C", "change": "added"}],
+                     "edges": [{"from": "a", "to": "b", "change": c}, {"from": "a", "to": "c", "change": c}, {"from": "b", "to": "c", "change": "removed"}],
+                     "views": [{"id": "v", "nodeIds": ["a", "b", "c"]}]}) for c in odd]
+    ok("diff --base · a card's or a line's change that is a list, an object or a number is no mark in the sketch, and the sketch is drawn (audit 54)",
+       all(sk[:2] == ["```mermaid", "flowchart LR"] and '  n2["C"]:::added' in sk and '  n1["B"]' in sk and "  n1 -.-> n2" in sk and "  n0 --> n2" in sk
+           and not any("n0 --> n1" in x for x in sk) and sum("linkStyle" in x for x in sk) == 1 for sk in sks), sks)
+    # audit 54: the map-repo skill's pin moved to v0.43.0 and v0.44.0 with plugin.json kept at 0.1.15, so Claude Code offered no
+    # update and installed skills ran the 0.42.0 pin; each pin is recorded here with the plugin version it shipped in, so a pin
+    # move without a version bump fails until both are recorded
+    shipped = {"0.42.0-847d167": "0.1.15", "0.44.0-679af7d": "0.1.16"}
+    launcher = (ROOT / "plugins" / "umlimator" / "skills" / "map-repo" / "scripts" / "cli.py").read_text(encoding="utf-8")
+    pin = re.search(r'REF, SHA = "([^"]+)"', launcher).group(1)
+    plugin = json.loads((ROOT / "plugins" / "umlimator" / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]
+    ok("map-repo · each pin of the skill's CLI ships in a plugin version of its own: plugin.json's version is the one recorded with the pin (audit 54)",
+       shipped.get(pin) == plugin and len(set(shipped.values())) == len(shipped)
+       and list(shipped.values()) == sorted(shipped.values(), key=lambda v: tuple(map(int, v.split(".")))), (pin, plugin, shipped))
+if part("audit 56 diff"):
+    # audit 56: a removed view comes back from diff() with its cards marked removed there and copies of its model lines marked
+    # removed (the diff page draws it gone); the sketch drew those cards and lines as removed, though they stay in the model
+    # and in the other views. What was the view's own (its cards, its lines) went with it, and is still sketched removed
+    nodes = [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}, {"id": "c", "label": "C"}]
+    lines = [{"id": "ab", "from": "a", "to": "b", "label": "one"}, {"id": "bc", "from": "b", "to": "c", "label": "two"}]
+    main = {"id": "main", "title": "Main", "nodeIds": ["a", "b", "c"]}
+    for v2 in ({"id": "v2", "title": "Two", "nodeIds": ["b", "c"]}, {"id": "v2", "title": "Two", "nodeIds": ["b", "c"], "edges": ["bc"]},
+               {"id": "v2", "title": "Two", "nodeIds": ["b", "c"], "nodeOverrides": {"b": {"label": "B here"}}}):
+        b5, a5 = {"title": "T", "nodes": nodes, "edges": lines, "views": [main, v2]}, {"title": "T", "nodes": nodes, "edges": lines, "views": [main]}
+        d = u.js("diff", b5, a5)
+        sk = u.sketch(d["model"], after=a5)
+        ok("diff --base · the sketch of a removed view marks none of the cards and lines it shared with the model (audit 56)",
+           d["summary"] == ["removes the view Two"] and sk == [] and u.sketch(u.js("diff", a5, b5)["model"], after=b5) == [], (v2, d["summary"], sk))
+    # its own card and line went with it: sketched removed; and a card the model lost with it too
+    own = {"id": "v2", "title": "Two", "nodeIds": ["b", "c", "x"], "nodes": [{"id": "x", "label": "X"}], "edges": [{"id": "bx", "from": "b", "to": "x", "label": "own"}]}
+    b6, a6 = {"title": "T", "nodes": nodes, "edges": lines, "views": [main, own]}, {"title": "T", "nodes": nodes, "edges": lines, "views": [main]}
+    sk = u.sketch(u.js("diff", b6, a6)["model"], after=a6)
+    ok("diff --base · the sketch of a removed view marks its own card and line removed, the shared ones not (audit 56)",
+       '  n1["X"]:::removed' in sk and '  n0 -.->|"own"| n1' in sk and '  n0["B"]' in sk and not any('"two"' in x or '"C"' in x for x in sk), sk)
+    gone = {"title": "T", "nodes": nodes[:2], "edges": lines[:1], "views": [{"id": "main", "title": "Main", "nodeIds": ["a", "b"]}]}
+    sk = u.sketch(u.js("diff", b6, gone)["model"], after=gone)
+    ok("diff --base · a removed view's card the model lost too is still sketched removed (audit 56)",
+       any('["C"]:::removed' in x for x in sk) and any('-.->|"two"|' in x for x in sk), sk)
+    # the CLI's diff --base passes the model after to the sketch
+    with tempfile.TemporaryDirectory() as tmp:
+        g = Path(tmp)
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
+        sh("init", "-q"); (g / "m.json").write_text(json.dumps(b5)); sh("add", "."); sh("commit", "-qm", "one"); (g / "m.json").write_text(json.dumps(a5))
+        r = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                            "sys.argv = ['umlimator.py', 'diff', '--base', 'HEAD', '--out', 'out']; u.main()", str(ROOT)], cwd=g, capture_output=True, text=True)
+        md = (g / "out" / "summary.md").read_text(encoding="utf-8") if (g / "out" / "summary.md").is_file() else ""
+        ok("diff --base · the summary of a removed view sketches no card or line it shared (audit 56)",
+           "removes the view Two" in md and ":::removed" not in md and "-.->" not in md, (r.stderr[-400:], md))
+if part("audit 57 diff"):
+    # audit 57: a removed view's copies of its model lines are the lines as they were before the change; the sketch matched
+    # them against the model after only, so a line re-pointed, or one with no id edited, while that view went was sketched
+    # removed beside its changed self
+    nodes = [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}, {"id": "c", "label": "C"}]
+    views = [{"id": "main", "title": "Main", "nodeIds": ["a", "b", "c"]}, {"id": "side", "title": "Side", "parent": "main", "nodeIds": ["a", "b", "c"]}]
+    for why, line, edit in (("re-pointed", {"id": "e1", "from": "a", "to": "b", "label": "calls"}, {"to": "c"}),
+                            ("no id, relabelled", {"from": "a", "to": "b", "label": "calls", "style": "dashed"}, {"label": "rings"}),
+                            ("no id, re-pointed", {"from": "a", "to": "b", "label": "calls"}, {"to": "c"})):
+        b7 = {"title": "T", "nodes": nodes, "edges": [line], "views": views}
+        a7 = {"title": "T", "nodes": nodes, "edges": [{**line, **edit}], "views": views[:1]}
+        same = {**b7, "views": views[:1]}
+        d = u.js("diff", b7, a7)
+        sk, plain = u.sketch(d["model"], after=a7, before=b7), u.sketch(u.js("diff", same, a7)["model"], after=a7, before=same)
+        ok(f"diff --base · a line {why} while a view that showed it is removed is sketched once, changed, not removed too (audit 57)",
+           "removes the view Side" in d["summary"] and sk == plain and (why == "no id, re-pointed" or not any("-.->" in x for x in sk)), (d["summary"], sk, plain))
+    # the CLI's diff --base passes the model before to the sketch
+    b7 = {"title": "T", "nodes": nodes, "edges": [{"from": "a", "to": "b", "label": "calls"}], "views": views}
+    a7 = {"title": "T", "nodes": nodes, "edges": [{"from": "a", "to": "b", "label": "rings"}], "views": views[:1]}
+    with tempfile.TemporaryDirectory() as tmp:
+        g = Path(tmp)
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
+        sh("init", "-q"); (g / "m.json").write_text(json.dumps(b7)); sh("add", "."); sh("commit", "-qm", "one"); (g / "m.json").write_text(json.dumps(a7))
+        r = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                            "sys.argv = ['umlimator.py', 'diff', '--base', 'HEAD', '--out', 'out']; u.main()", str(ROOT)], cwd=g, capture_output=True, text=True)
+        md = (g / "out" / "summary.md").read_text(encoding="utf-8") if (g / "out" / "summary.md").is_file() else ""
+        ok("diff --base · the summary of a removed view sketches a line it shared and the change relabelled once, not removed (audit 57)",
+           "removes the view Side" in md and '-->|"rings"|' in md and "-.->" not in md, (r.stderr[-400:], md))
+if part("audit 55 tools"):
+    # audit 55: diff() writes a marked copy of a model line into each view that lists lines, and the sketch drew the model's
+    # line and every copy, so one line came twice (a live copy beside a removed one, or the same mark twice); and a card a view
+    # takes out or puts in is marked only in that view's nodeOverrides, which the sketch never read
+    nodes = [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}, {"id": "c", "label": "C"}]
+    lines = [{"id": "ab", "from": "a", "to": "b", "label": "one"}, {"id": "bc", "from": "b", "to": "c", "label": "two"}]
+    two = lambda ids: [{"id": "main", "title": "Main", "nodeIds": ids}, {"id": "two", "title": "Two", "parent": "main", "nodeIds": ids}]
+    listed = lambda es, b="B": {"title": "T", "nodes": [*nodes[:1], {"id": "b", "label": b}, *nodes[2:]], "edges": lines,
+                                "views": [{"id": "main", "title": "Main", "nodeIds": ["a", "b", "c"], "edges": es}]}
+    sk = lambda b, a: u.sketch(u.js("diff", b, a)["model"])
+    out_listed = sk(listed(["ab", "bc"]), listed(["ab"], "B2"))  # a line taken out of a view's list, its card renamed
+    out_two = sk({"title": "T", "nodes": nodes, "edges": lines, "views": two(["a", "b", "c"])}, {"title": "T", "nodes": nodes, "edges": lines, "views": two(["a", "b"])})
+    in_two = sk({"title": "T", "nodes": nodes, "edges": lines, "views": two(["a", "b"])}, {"title": "T", "nodes": nodes, "edges": lines, "views": two(["a", "b", "c"])})
+    bare = [{k: v for k, v in e.items() if k != "id"} for e in lines]  # lines with no id, as a map's: copied into each view too
+    no_id = sk({"title": "T", "nodes": nodes, "edges": bare, "views": two(["a", "b", "c"])}, {"title": "T", "nodes": nodes, "edges": bare[1:], "views": two(["a", "b"])})
+    drawn = lambda sk_, arrow: sum(arrow in x for x in sk_)
+    ok("diff --base · the sketch draws a line once: a view's marked copy wins over the model's line, and two views' copies are one (audit 55)",
+       drawn(out_listed, '|"two"|') == 1 and drawn(out_listed, ' -.->|"two"| ') == 1 and drawn(out_two, '|"two"|') == 1
+       and drawn(in_two, '|"two"|') == 1 and sum("linkStyle" in x for x in out_two) == 1 and sum("linkStyle" in x for x in in_two) == 1
+       and drawn(no_id, '|"one"|') == 1 and drawn(no_id, '|"two"|') == 1 and sum("linkStyle" in x for x in no_id) == 2,
+       (out_listed, out_two, in_two, no_id))
+    one = lambda ids: {"title": "T", "nodes": nodes, "edges": lines, "views": [{"id": "main", "title": "Main", "nodeIds": ids}]}
+    taken, put = sk(one(["a", "b", "c"]), one(["a", "b"])), sk(one(["a", "b"]), one(["a", "b", "c"]))
+    # one card taken out of one view and put into another: 'changed'
+    moved = u.sketch({"nodes": nodes, "edges": [], "views": [{"id": "v", "nodeIds": ["a"], "nodeOverrides": {"a": {"change": "removed"}}},
+                                                            {"id": "w", "nodeIds": ["a"], "nodeOverrides": {"a": {"change": "added"}}}]})
+    ok("diff --base · the sketch marks a card a view takes out or puts in, as diff() marks it in the view's nodeOverrides (audit 55)",
+       '  n1["C"]:::removed' in taken and '  n1["C"]:::added' in put and '  n0["A"]:::changed' in moved, (taken, put, moved))
+    # audit 54 finding 7: the import table said a person becomes kind frontend (external when external); the importers write
+    # person, and user for an external one
+    with tempfile.TemporaryDirectory() as t:
+        (Path(t) / "p.puml").write_text('@startuml\n!include <C4/C4_Context>\nPerson(shopper, "Shopper")\nPerson_Ext(guest, "Guest")\n'
+                                        'System(shop, "Shop")\nRel(shopper, shop, "Uses")\nRel(guest, shop, "Uses")\n@enduml\n', encoding="utf-8")
+        subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", str(Path(t) / "p.puml"), "--out", str(Path(t) / "p.json")], capture_output=True, text=True)
+        kinds = {n["id"]: n.get("kind") for n in json.loads((Path(t) / "p.json").read_text(encoding="utf-8"))["nodes"]}
+    row = next((x for x in (ROOT / "docs" / "module-api.md").read_text(encoding="utf-8").splitlines() if x.strip().startswith("| A person (")), "").strip()
+    said = re.findall(r"`(\w+)`", row.split("|")[2]) if row.count("|") > 2 else []
+    ok("docs/module-api.md · the import table gives a person the kinds the importer writes (audit 54 finding 7)",
+       kinds.get("shopper") == "person" and kinds.get("guest") == "user" and said[:2] == ["person", "user"], (kinds, row))
+if part("audit 60 no git"):
+    # audit 60: on a machine with Python (and Node) but no git, render, diff and drift ended in a FileNotFoundError traceback
+    # and wrote nothing (page_model's git call, then the engine's load_map); git is no requirement of theirs. diff --base and
+    # timelapse, which read git's history, say so in one line
+    with tempfile.TemporaryDirectory() as t:
+        t = Path(t); bare = t / "bin"; bare.mkdir()
+        (bare / "python3").symlink_to(sys.executable)
+        if shutil.which("node"):
+            (bare / "node").symlink_to(shutil.which("node"))
+        m = {"title": "No git", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "edges": [{"from": "a", "to": "b", "label": "calls"}],
+             "views": [{"id": "main", "title": "Main", "nodeIds": ["a", "b"]}]}
+        (t / "m.json").write_text(json.dumps(m), encoding="utf-8")
+        (t / "n.json").write_text(json.dumps({**m, "nodes": [*m["nodes"], {"id": "c", "label": "C"}], "views": [{"id": "main", "title": "Main", "nodeIds": ["a", "b", "c"]}]}), encoding="utf-8")
+        env = {**os.environ, "PATH": str(bare)}
+        go = lambda *x: subprocess.run([str(bare / "python3"), str(ROOT / "umlimator.py"), *x], cwd=t, env=env, capture_output=True, text=True)
+        r = go("render", "m.json", "--out", "m.html", "--no-check")
+        ok("render · with no git installed the page is written, the model's folder its root (audit 60)",
+           r.returncode == 0 and (t / "m.html").is_file() and "Traceback" not in r.stderr, r.stderr[-600:])
+        r = go("diff", "m.json", "n.json", "--out", "d.html")
+        ok("diff · two files with no git installed: the page is written (audit 60)",
+           r.returncode == 0 and (t / "d.html").is_file() and '"adds C"' in r.stdout and "Traceback" not in r.stderr, (r.stdout[-300:], r.stderr[-600:]))
+        r = go("diff", "--base", "main", "--out", "e")
+        ok("diff --base · with no git installed: one line, no traceback (audit 60)",
+           r.returncode == 1 and r.stderr.strip() == "diff --base needs git, and none is installed", r.stderr[-600:])
+        r = go("timelapse", "m.json", "--out", "tl.html")
+        ok("timelapse · with no git installed: one line, no traceback (audit 60)",
+           r.returncode == 1 and r.stderr.strip() == "timelapse needs git, and none is installed", r.stderr[-600:])
 if part("bench views"):
     # bench.py times map views only (step 0 of the one-model plan): a version-2 model's typed views are left out with their benchViews,
     # a version-1 model's views are all timed whatever they say, and a benchViews entry naming no view stops the bench

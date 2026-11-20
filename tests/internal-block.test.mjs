@@ -62,7 +62,7 @@ test('18-internal-block.json draws clean in its frame, right and down: parts ins
   for (const m of [M18, RICH]) for (const direction of ['right', 'down']) {
     const d = withDir(m, direction), g = layout(d, VID), F = g.families.find(f => f.id === 'ebike'), tag = `${m === RICH ? 'rich' : '18'}, ${direction}`;
     assert.deepEqual(check(d, VID), [], `${tag}: no overlap, no crossing, no line through a node`);
-    assert.deepEqual([F.shape, F.title], ['sysml-frame', 'ibd [Block] EBike [Inside the e-bike]'], tag);
+    assert.deepEqual([F.shape, F.title], ['sysml-frame', 'ibd [Block] CargoBike [Inside the cargo bike]'], tag);
     node(m, 'ebike').members.filter(x => x.type !== 'sysml.Port').forEach(x => { const b = g.byId[x.id];
       assert.ok(b.x >= F.x && b.y >= F.y && b.x + b.w <= F.x + F.w && b.y + b.h <= F.y + F.h, `${tag}: ${x.id} in the frame`); });
     const ports = g.nodes.filter(n => n.shape === 'port');
@@ -118,24 +118,24 @@ test('an item flow\'s triangle: filled, on its line\'s longest segment, pointing
 
 test('names, reading order, legend and describe() (§13)', () => {
   const g = layout(RICH, VID), by = g.byId, E = Object.fromEntries(g.edges.map(e => [e.id, e.aria]));
-  assert.equal(g.families[0].aria, 'Internal block diagram of block EBike: Inside the e-bike');
-  assert.equal(by['ebike.battery'].aria, 'Part battery: Battery, in EBike, 3 ports');
-  assert.equal(by['ebike.dock'].aria, 'Reference dock: Dock [0..1], in EBike, 1 port');
+  assert.equal(g.families[0].aria, 'Internal block diagram of block CargoBike: Inside the cargo bike');
+  assert.equal(by['ebike.battery'].aria, 'Part battery: Battery, in CargoBike, 3 ports');
+  assert.equal(by['ebike.dock'].aria, 'Reference dock: Dock [0..1], in CargoBike, 1 port');
   assert.equal(by['ebike.dock->dock.charge'].aria, 'Proxy port charge: ChargeInterface of dock, conjugated, flow out');
   assert.equal(by['ebike.controller->controller.supply'].aria, 'Full port supply: PowerIn of controller, flow in and out');
-  assert.equal(by['ebike.plug'].aria, 'Proxy port plug: ChargeInterface of EBike, flow in');
+  assert.equal(by['ebike.plug'].aria, 'Proxy port plug: ChargeInterface of CargoBike, flow in');
   assert.equal(by['ebike.motor->motor.phases'].aria, 'Port phases of motor');
   assert.equal(E['battery-feeds-controller'], 'Connector from power of battery to supply of controller, carrying DCPower from power to supply');
   assert.equal(E['battery-dock-charge'], 'Connector from charge of battery to charge of dock, carrying DCPower from charge of dock to charge of battery');
-  assert.equal(E['plug-battery'], 'Connector from plug of EBike to charge of battery');
+  assert.equal(E['plug-battery'], 'Connector from plug of CargoBike to charge of battery');
   assert.deepEqual(g.order.slice(0, 4), ['ebike', 'ebike.plug', 'ebike.battery', 'ebike.battery->battery.charge']);
   assert.deepEqual(g.order.slice(-7), RICH.edges.map(e => e.id));
   assert.deepEqual(g.legend.map(s => s.match(/<b>(.*?)<\/b>/)[1]), ['Connector', 'Item flow', 'Proxy port', 'Full port']);
   assert.deepEqual(layout(M18, VID).legend.map(s => s.match(/<b>(.*?)<\/b>/)[1]), ['Connector', 'Item flow'], 'only what is drawn');
   const said = describe(RICH, VID).split('\n');
-  assert.equal(said[0], 'Inside the e-bike: an internal block diagram of 19 elements and 7 lines.');
-  assert.equal(said[1], 'Internal block diagram of block EBike: Inside the e-bike.');
-  assert.equal(said.length, 1 + 19 + 7); assert.equal(said.at(-1), 'Connector from plug of EBike to charge of battery.');
+  assert.equal(said[0], 'Inside the cargo bike: an internal block diagram of 19 elements and 7 lines.');
+  assert.equal(said[1], 'Internal block diagram of block CargoBike: Inside the cargo bike.');
+  assert.equal(said.length, 1 + 19 + 7); assert.equal(said.at(-1), 'Connector from plug of CargoBike to charge of battery.');
 });
 
 test('the layout is not edited after layoutTyped: drawn twice from one memo, the same markup', () => {
@@ -199,7 +199,7 @@ test('port-compatible, delegation: the frame\'s port and a part\'s port of one t
   for (const [vt, ok] of [['ChargeInterface', true], ['~ChargeInterface', false], ['PowerIn', false]]) { const m = structuredClone(RICH); mem(m, 'ebike.plug').props.valueType = vt;
     const got = validate(m).filter(p => p.rule === 'port-compatible');
     assert.equal(got.length, ok ? 0 : 1, vt);
-    if (!ok) assert.equal(got[0].message, `port-compatible: plug-battery delegates "plug" of "EBike" (${vt}) to "charge" of "battery" (ChargeInterface): a delegation joins ports of one type, conjugated alike, so both flow the same way`); }
+    if (!ok) assert.equal(got[0].message, `port-compatible: plug-battery delegates "plug" of "CargoBike" (${vt}) to "charge" of "battery" (ChargeInterface): a delegation joins ports of one type, conjugated alike, so both flow the same way`); }
   const u = structuredClone(RICH); delete mem(u, 'ebike.plug').props.valueType;
   assert.deepEqual(validate(u).filter(p => p.rule === 'port-compatible'), [], 'an untyped end: not judged');
 });
@@ -229,7 +229,7 @@ test('add: a part, a reference and a value into the subject by their palette ent
 });
 test('remove, rename, moveTo and member rows on the projection: SysML\'s types back, no «proxy» written, a port\'s kind by its row', () => {
   let r = T.edits.remove(RICH, V, ['ebike.battery'], false);
-  assert.deepEqual(r.commands, [{ op: 'delete', id: 'ebike.battery' }]); assert.match(r.say, /part battery of EBike and its 4 lines/);
+  assert.deepEqual(r.commands, [{ op: 'delete', id: 'ebike.battery' }]); assert.match(r.say, /part battery of CargoBike and its 4 lines/);
   const m = run(RICH, r); assert.deepEqual(m.edges.map(e => e.id), ['controller-drives-motor', 'controller-front-light', 'controller-rear-light'], 'its connectors go with it (refs)');
   assert.deepEqual(errors(m), []);
   r = T.edits.rename(RICH, V, 'ebike.dock->dock.charge', 'inlet');
@@ -242,7 +242,7 @@ test('remove, rename, moveTo and member rows on the projection: SysML\'s types b
   assert.equal(T.edits.member(RICH, V, 'ebike', null, 'ref home : Dock')[0].element.type, 'sysml.ReferenceProperty');
   assert.equal(T.edits.member(RICH, V, 'ebike', null, 'mass : Real')[0].element.type, 'sysml.ValueProperty');
   // a full port typed by an interface block breaks port-kind: refused (audit 44)
-  assert.match(T.edits.member(RICH, V, 'ebike', 'ebike.plug', 'full port plug : ChargeInterface').error, /^Full port "EBike"\.plug is typed by "ChargeInterface", an interface block: /);
+  assert.match(T.edits.member(RICH, V, 'ebike', 'ebike.plug', 'full port plug : ChargeInterface').error, /^Full port "CargoBike"\.plug is typed by "ChargeInterface", an interface block: /);
   assert.deepEqual(T.edits.member(RICH, V, 'ebike', 'ebike.plug', 'port plug : ChargeInterface'), [{ op: 'set', id: 'ebike.plug', path: 'props.kind', value: undefined }]);
   assert.deepEqual(node(RICH, 'ebike').members.map(T.member.print).slice(-2), ['ref dock : Dock [0..1]', 'proxy port plug : ChargeInterface']);
   assert.equal(T.member.print(mem(RICH, 'dock.charge')), 'proxy port charge : ~ChargeInterface');
@@ -265,7 +265,7 @@ test('a port\'s ~ and kind by F2 and its row, both ways; nothing changed says no
 test('a block\'s card is named a block; an item flow with no direction is no label; a lone ~ conjugates nothing', () => {
   const b = structuredClone(RICH); b.views[0].nodeIds.push('battery');
   assert.ok(describe(b, VID).split('\n').includes('Block Battery.'));
-  const n = structuredClone(RICH); n.views[0].subject = null; assert.equal(describe(n, VID).split('\n')[1], 'Block EBike.');
+  const n = structuredClone(RICH); n.views[0].subject = null; assert.equal(describe(n, VID).split('\n')[1], 'Block CargoBike.');
   const f = structuredClone(RICH); f.edges[0].props.itemFlow = { item: 'Data' };
   const g = layout(f, VID), e = g.edges.find(x => x.id === f.edges[0].id);
   assert.equal(e.label, undefined); assert.equal(e.item, undefined); assert.doesNotMatch(mapContext(f).buildView(VID).markup, />Data</);
@@ -359,7 +359,7 @@ test('audit 17: an anonymous part, drawn ": Battery [1]", is said and printed as
   const m = structuredClone(M18), V = m.views.find(v => v.id === VID); delete mem(m, 'ebike.battery').label; mem(m, 'ebike.battery').props.multiplicity = '1';
   const g = layout(m, VID), n = g.byId['ebike.battery'];
   assert.equal(n.label, ': Battery [1]');
-  assert.match(n.aria, /^Part : Battery \[1\], in EBike/);
+  assert.match(n.aria, /^Part : Battery \[1\], in CargoBike/);
   const said = describe(m, VID);
   assert.doesNotMatch(said, /ebike\.battery/, said); assert.match(said, /Connector from power of : Battery \[1\] to supply of controller/);
   assert.deepEqual(T.rows(m, V, 'ebike.battery'), [': Battery [1]']);
@@ -496,4 +496,21 @@ test('audit 41: Add refuses a port, a reference or a value in SysML\'s words: a 
   assert.deepEqual(T.edits.add(m3, m3.views[0], { type: 'sysml.ValueProperty' }, 'r', { sel: [] }), { error: 'This view has no subject to add a value to' });
   assert.deepEqual(T.edits.add(m3, m3.views[0], { type: 'sysml.PartProperty' }, 'r', { sel: [] }), { error: 'This view has no subject to add a part to' });
   assert.ok(Array.isArray(T.edits.add(m, v, { type: 'sysml.Port' }, 'p', { sel: [v.subject] })), 'a port on the subject still goes in');
+});
+
+// audit 60: in the gallery's internal block view laid out down (a copy in tests/fixtures/), Alt + Down twice on the battery (as
+// src/canvas/edit.js steps it: a down view's column grows) left the fanned battery-controller bus turning on the track the
+// controller-cargo box line takes from its port on the same side, and the two shared a line
+test('audit 60: the gallery\'s battery stepped twice, laid out down, shares no line', () => {
+  const g = JSON.parse(readFileSync(new URL('fixtures/sysml-internal-block.json', import.meta.url))), vid = 'inside-ebike', v = g.views.find(x => x.id === vid);
+  for (let s = 1; s <= 2; s++) { const n = layout(g, vid).byId['ebike.battery']; v.layout = { ...(v.layout || {}), 'ebike.battery': [n.col + 1, n.row] };
+    assert.deepEqual(check(g, vid).map(p => p.message).filter(x => !/ cross$/.test(x)), [], `step ${s}`); }
+});
+
+// audit 61: one pin of a part (Alt + arrow on the canvas) left a connector's item flow label on two connectors: pinsClear weighs a
+// label on a line as check() does, past what the view says with no pin
+test('audit 61: one pin of a part leaves no item flow label on a connector', () => {
+  for (const [f, vid, id, q] of [['sysml-internal-block', 'inside-ebike', 'ebike.frontLight', [2, 0]], ['integration', 'inside-emoped', 'emoped.battery', [1, 1.5]]]) {
+    const g = JSON.parse(readFileSync(new URL(`fixtures/${f}.json`, import.meta.url))), m = apply(g, [{ op: 'set', view: vid, path: ['layout', id], value: q }]);
+    assert.deepEqual(check(m, vid).map(p => p.message).filter(x => !/ cross$/.test(x)), [], `${f} ${id}`); }
 });

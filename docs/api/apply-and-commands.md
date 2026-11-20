@@ -191,6 +191,8 @@ function rules(model: MapModel): RuleBreak[];
 Every [rule](./model-and-schema.md#rule) in `model.rules` the model breaks, view by view. No browser needed. The map
 draws the lines that break a rule in rose, with a mark that names it; `umlimator.py check` fails on any break.
 
+A card, box or line marked removed (`change: "removed"`, as [`diff()`](#diff) draws back what a change took out) counts for nothing, so on a diff model `rules()` finds what the model after breaks: a pull request that takes out the line breaking a rule shows that line removed, with no rule mark.
+
 ```js
 import { rules } from 'umlimator';
 const m = {
@@ -233,7 +235,9 @@ d.views;     // [ 'system' ]
 render(el, d.model, { view: d.views[0] });
 ```
 
-A member drawn as its own shape (a part, a port, a lane) that was renamed or retyped is marked changed and said by its name ("renames charge to inlet in Battery"). On a typed view, what the type draws that is no element or line of its own is marked from the view laid out before and after, and written to the view's `diffMarks`: the ports a retyped part gained or lost, a containment line that is new, a C4 implied line or a requirement's containment from an owner an element left (drawn back, removed), and no mark on a shape whose picture the change leaves as it was. A typed view is listed in `views` for what it draws from other elements only when its picture changed.
+A member drawn as its own shape (a part, a port, a lane) that was renamed or retyped is marked changed and said by its name ("renames charge to inlet in Battery"). On a typed view, what the type draws that is no element or line of its own is marked from the view laid out before and after, and written to the view's `diffMarks`: the ports a retyped part gained or lost, a containment line that is new, a C4 implied line or a requirement's containment from an owner an element left (drawn back, removed), and no mark on a shape whose picture the change leaves as it was. A typed view is listed in `views` for what it draws from other elements only when its picture changed; a shape's accessible name alone does not count (a C4 implied line naming a relationship whose label it does not draw). A model line the view still lists to a card taken out of it, drawn back removed, is named in `diffMarks.listed`, so a reader of the model after tells it from a line the view stopped listing. A re-pointed line is said as changed, and as taken out of a view (by its old ends) or put into one (by its new ends) only where the view drew it on one side alone: a view drawn as a map draws a line only when both its ends are on the view, whether it lists its lines or not, and one taken out of it is drawn back removed between its old ends, a copy with no id, since the model line under that id now runs between other ends. A typed view still reads a line it lists as drawn, and draws one taken out back only when it stopped listing it. A re-pointed line put into a view drawn as a map is drawn added there, whether the view lists its lines or not.
+
+Only what changed is marked. A mark the model carries of its own, such as a card's `change: "new"` or `"removed"`, a line's `edited` dot or its `added` or `removed` style, or a `change` on a box, a member or a view's `nodeOverrides`, is dropped from `model` where the change leaves that element as it was, so the page draws nothing as new or removed that the summary does not say. A `planned` mark stays, since it draws as itself and `diff()` never writes it. A mark the change itself adds or takes off is a change of that element: "changes Shop app (change)", marked changed.
 
 `umlimator.py diff` and the GitHub Action draw the same result for a pull request.
 
@@ -245,8 +249,8 @@ interface DiffResult { model: MapModel; summary: string[]; views: string[] }
 
 | Field | What it is |
 |---|---|
-| `model` | `after` with the change marks: a card's `change` (a NEW or CHANGED tab; REMOVED is faded, dashed and struck through), a line's `style` (`added` or `removed`) or `edited`, and `nodeOverrides` for a card put into or taken out of one view. The marks are the model's own fields, so a page or still the CLI makes shows them. |
-| `summary` | What changed, in words and in model order ("adds Readers between umlimator.py and The module"). |
+| `model` | `after` with the change marks, and none of its own but `planned` on what the change leaves as it was: a card's `change` (a NEW or CHANGED tab; REMOVED is faded, dashed and struck through), a line's `style` (`added` or `removed`) or `edited`, and `nodeOverrides` for a card put into or taken out of one view. The marks are the model's own fields, so a page or still the CLI makes shows them. |
+| `summary` | What changed, in words and in model order ("adds Readers, from umlimator.py"). |
 | `views` | The views that show a change. |
 
 ## drift
@@ -305,6 +309,8 @@ function describe(model: MapModel, viewId: string): string;
 A view in plain sentences: its cards and their kinds, its boxes, what each card's lines do, and cards with no line.
 Deterministic. Useful as alt text, in a pull request, or for an assistant. With `umlimator/all` a typed view is
 described in its own terms.
+
+On a map view, `describe()`, `paths()`, `reach()` and `critical()` read the model after a change: a card, box or line marked removed, as [`diff()`](#diff) draws it back, is not counted, named or walked. A map sequence view still says a removed line as a removed step, in its place.
 
 ```js
 describe(model, 'system');

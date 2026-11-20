@@ -79,6 +79,81 @@ with tempfile.TemporaryDirectory() as d48:
     mcp.MODEL, mcp.page = keep48
 ok("audit 48 · tour on cards split over two views says no view shows them all, and blames no line on a view",
    all(x == "no view shows all these cards; describe_view lists a view's cards" for x in said48), said48)
+# audit 51: a tour with no view took the first view that shows its cards (containers, where shopper and bookshop share no
+# line) and refused it, though the context view draws the route shopper -> bookshop -> payments: it rides the first that does
+keep51 = (mcp.MODEL, mcp.page, dict(mcp.want))
+mcp.MODEL, mcp.page = ROOT / "examples" / "types" / "c4.json", (lambda: ("v", None))
+rode51 = []
+for current in (None, "containers"):
+    mcp.want.update(view=current, highlight=None, tour=None, story=None)
+    try:
+        mcp.call("tour", {"cards": ["shopper", "bookshop", "payments"]}); rode51.append(mcp.want["view"])
+    except mcp.Fail as e:
+        rode51.append(str(e))
+try:
+    mcp.call("tour", {"cards": ["shopper", "payments"]}); none51 = None
+except mcp.Fail as e:
+    none51 = str(e)
+mcp.MODEL, mcp.page = keep51[:2]
+mcp.want.clear(); mcp.want.update(keep51[2])
+ok("audit 51 · tour with no view rides the first view that shows its cards and draws a line between each and the next; none that does is said, naming each",
+   rode51 == ["context", "context"] and none51 and none51.startswith("no view that shows these cards draws a line between each and the next")
+   and "on view 'context' no line joins 'shopper' and 'payments'" in none51 and "on view 'containers'" in none51, (rode51, none51))
+# audit 52: the tour check took reach()'s lines, so a card the view draws as a box (a package holding cards) passed, though
+# the page's tour() rides only cards the laid-out view draws, and threw "no line joins these cards"; [a, a] passed with no
+# self-line, as reach() lists the card itself. And the description named the first view, where the view shown now wins
+keep52 = (mcp.MODEL, mcp.page, dict(mcp.want))
+mcp.page = lambda: ("v", None)
+said52 = []
+with tempfile.TemporaryDirectory() as d52:
+    # two packages that hold classes, drawn as boxes on a package view, and a line between them; a second view draws it too
+    pk = {"schemaVersion": 2, "nodes": [{"id": "catalog", "type": "uml.Package", "label": "catalog"}, {"id": "book", "type": "uml.Class", "label": "Book", "parent": "catalog"},
+                                        {"id": "shared", "type": "uml.Package", "label": "shared"}, {"id": "money", "type": "uml.DataType", "label": "Money", "parent": "shared"}],
+          "edges": [{"id": "imports", "type": "uml.PackageImport", "from": "catalog", "to": "shared"}],
+          "views": [{"id": "packages", "diagram": "uml.package", "nodeIds": ["catalog", "book", "shared", "money"]},
+                    {"id": "packages-2", "diagram": "uml.package", "nodeIds": ["catalog", "book", "shared", "money"]}]}
+    for model, cards, kw in ((pk, ["catalog", "shared"], {"view": "packages"}), (pk, ["catalog", "shared"], {}),
+                             ({"nodes": [{"id": "a"}, {"id": "b"}], "edges": [{"id": "ab", "from": "a", "to": "b"}], "views": [{"id": "v", "nodeIds": ["a", "b"]}]}, ["a", "a"], {})):
+        (Path(d52) / "m.json").write_text(json.dumps(model), encoding="utf-8")
+        mcp.MODEL = Path(d52) / "m.json"
+        mcp.want.update(view=None, highlight=None, tour=None, story=None)
+        try:
+            mcp.call("tour", {"cards": cards, **kw}); said52.append(None)
+        except mcp.Fail as e:
+            said52.append(str(e))
+mcp.MODEL, mcp.page = keep52[:2]
+mcp.want.clear(); mcp.want.update(keep52[2])
+desc52 = mcp.TOOL["tour"]["description"]
+ok("audit 52 · tour refuses a card the view draws as a box, and a card that follows itself with no line to itself, as the page's tour() rides neither; its description names the view shown now first",
+   said52[0] == "view 'packages' draws 'catalog' as a box that holds cards, and a tour stops only at cards; paths() gives a route of lines between two cards"
+   and said52[1] and "view 'packages' draws 'catalog' as a box" in said52[1] and "view 'packages-2' draws 'catalog' as a box" in said52[1]
+   and said52[2] == "'a' follows itself, and no line on view 'v' joins it to itself; paths() gives a route of lines between two cards"
+   and "the view shown now if it shows the cards and draws those lines, else the first view that does" in desc52, (said52, desc52))
+# audit 53: a tour or highlight with no view took the view asked for last (none on a fresh server) as the view shown now, so
+# it rode the first view and the page jumped off the root view it opens on, or off the view the reader moved to
+keep53 = (mcp.MODEL, mcp.page, dict(mcp.want), dict(mcp.pages), mcp.view_n)
+mcp.page = lambda: ("v", None)
+rode53 = []
+with tempfile.TemporaryDirectory() as d53:
+    mcp.MODEL = Path(d53) / "two.json"
+    mcp.MODEL.write_text(json.dumps({"root": "second", "nodes": [{"id": x, "label": x} for x in "xyz"], "edges": [{"id": "e", "from": "x", "to": "y"}],
+                                     "views": [{"id": "first", "parent": "second", "nodeIds": ["x", "y"]}, {"id": "second", "nodeIds": ["x", "y", "z"]}]}), encoding="utf-8")
+    def ride53(tool, args):
+        mcp.call(tool, args); rode53.append(mcp.want["view"])
+    mcp.want.update(view=None, highlight=None, tour=None, story=None); mcp.pages.clear()
+    ride53("tour", {"cards": ["x", "y"]})                                    # no page yet: the root view, where a page opens
+    mcp.call("show_view", {"view": "first"})
+    mcp.report("p53", {"state": {"view": "second"}, "ack": "an older command"})  # a page that has not shown show_view yet
+    ride53("tour", {"cards": ["x", "y"]})
+    mcp.call("show_view", {"view": "first"})
+    mcp.report("p53", {"state": {"view": "first"}, "ack": mcp.latest})          # shown, then the reader moves to second
+    mcp.report("p53", {"state": {"view": "second"}})
+    ride53("tour", {"cards": ["x", "y"]})
+    ride53("highlight", {"refs": ["x"]})
+mcp.MODEL, mcp.page, mcp.view_n = keep53[0], keep53[1], keep53[4]
+mcp.want.clear(); mcp.want.update(keep53[2]); mcp.pages.clear(); mcp.pages.update(keep53[3])
+ok("audit 53 · tour and highlight with no view stay on the view shown now: the root view on a fresh server, the view a page reports once it has shown the last one asked for",
+   rode53 == ["second", "first", "second", "second"], rode53)
 # view_for (audit 11): a line with no id, a box, a chip lands on the view that shows it, never on the first view (every card dimmed)
 m = {"nodes": [{"id": x} for x in "abcd"], "edges": [{"from": "c", "to": "d"}], "views": [{"id": "ctx", "nodeIds": ["a", "b"]},
      {"id": "inner", "nodeIds": ["c", "d"], "containers": [{"id": "box", "nodeIds": ["c", "d"]}]}]}
@@ -129,8 +204,15 @@ class Chrome:
                 return m.get("result", {})
 
     def open(self, url):
+        """A tab on url, with motion as a reader's who has not asked for less: the host's own setting (a Mac with Reduce
+        motion on) would make every tour a path lit at rest, which the reduced-motion checks ask for themselves (#132)."""
         tid = self.call("Target.createTarget", {"url": url})["targetId"]
-        return tid, self.call("Target.attachToTarget", {"targetId": tid, "flatten": True})["sessionId"]
+        sid = self.call("Target.attachToTarget", {"targetId": tid, "flatten": True})["sessionId"]
+        self.motion(sid)
+        return tid, sid
+
+    def motion(self, sid, reduce=False):
+        self.call("Emulation.setEmulatedMedia", {"features": [{"name": "prefers-reduced-motion", "value": "reduce" if reduce else "no-preference"}]}, sid)
 
     def eval(self, sid, expr):
         r = self.call("Runtime.evaluate", {"expression": expr, "returnByValue": True, "awaitPromise": True}, sid)
@@ -297,7 +379,7 @@ try:
     chrome.eval(sid, "window.umlimatorMap.play(null), true")
     # …and under reduced motion, where a tour is a path lit at rest: a story's step takes the assistant's off and keeps its
     # own through the assistant's next command, and clear() takes the assistant's own off
-    chrome.call("Emulation.setEmulatedMedia", {"features": [{"name": "prefers-reduced-motion", "value": "reduce"}]}, sid)
+    chrome.motion(sid, reduce=True)
     lit = "window.umlimatorMap.state.overlays.includes('tour')"
     tool("tour", cards=["rider-app", "trip-api", "lifecycle"])
     mine = chrome.eval(sid, lit)
@@ -309,7 +391,7 @@ try:
     tool("tour", cards=["rider-app", "trip-api", "lifecycle"])
     tool("clear")
     cleared = not chrome.eval(sid, lit)
-    chrome.call("Emulation.setEmulatedMedia", {"features": []}, sid)
+    chrome.motion(sid)
     ok("#132 · …under reduced motion too: the story's path lit at rest stays through the assistant's next command, and clear() takes the assistant's own off",
        mine and theirs and kept and cleared, (mine, theirs, kept, cleared))
 
@@ -414,10 +496,10 @@ for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order
                                           # C10 for milestone 3 (M3.7): SysML's four e-bike models; each view's frame is its one box, an
                                           # internal block or parametric view's parts' ports and parameters are cards; a part or a
                                           # constraint property is a member, which highlight takes as a Ref (a member's id is no card's)
-                                          ("ebike-requirements", "requirements", ["spec", "assist"], "E-bike requirements: a requirement diagram (req [Model] E-bike: requirements [E-bike requirements]) of 16 elements and 15 lines.", 16, 1),
-                                          ("ebike-blocks", "blocks", ["ebike", "battery"], "E-bike blocks: a block definition diagram of 12 elements and 5 lines.", 12, 1),
-                                          ("ebike-structure", "inside-ebike", [{"type": "node", "id": "ebike.battery"}, {"type": "node", "id": "ebike.controller"}], "Inside the e-bike: an internal block diagram of 24 elements and 6 lines.", 23, 1),
-                                          ("ebike-range", "range-analysis", [{"type": "node", "id": "ebike.eco"}, {"type": "node", "id": "ebike.ecoRange"}], "E-bike range: a parametric diagram of 19 elements and 8 lines.", 18, 1),
+                                          ("ebike-requirements", "requirements", ["spec", "assist"], "Cargo bike requirements: a requirement diagram (req [Model] Cargo e-bike: requirements [Cargo bike requirements]) of 16 elements and 15 lines.", 16, 1),
+                                          ("ebike-blocks", "blocks", ["ebike", "battery"], "Cargo bike blocks: a block definition diagram of 15 elements and 6 lines.", 15, 1),
+                                          ("ebike-structure", "inside-ebike", [{"type": "node", "id": "ebike.battery"}, {"type": "node", "id": "ebike.controller"}], "Inside the cargo bike: an internal block diagram of 27 elements and 7 lines.", 26, 1),
+                                          ("ebike-range", "range-analysis", [{"type": "node", "id": "ebike.empty"}, {"type": "node", "id": "ebike.emptyRange"}], "Cargo bike range, empty and laden: a parametric diagram of 23 elements and 10 lines.", 22, 1),
                                           # C10 for milestone 4a (4a.7, decision 22): a mindmap, a Google Cloud and an Azure model, with
                                           # no pack (the server never fetches one; CI has none, so cards draw glyphs); groups are boxes
                                           ("bookshop-opening-plan", "mm-plan", ["mm-checkout", "mm-hosting"], "Opening the bookshop: a mindmap of 22 topics.", 22, 0),

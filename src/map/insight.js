@@ -1,9 +1,9 @@
-import { copyOf, nameTable, unreadable, jsonText, labelOr, usedIds } from '../core/model.js';
+import { copyOf, isGone, nameTable, unreadable, jsonText, labelOr, usedIds } from '../core/model.js';
 import { diagramOf } from '../core/registry.js';
 import { edgeRefIds } from './api.js';
 import { mapContext } from './context.js';
 import { KIND, kindOf } from './kinds.js';
-import { WIRE_KINDS, andList, arrOf } from './validate.js';
+import { WIRE_KINDS, andList, arrOf, liveIn, runSteps } from './validate.js';
 
 /* ---------- paths(), reach(), describe() and otlpSpans(): a view's lines walked and put in words, with no DOM (#62, #64, #65) ----------
    A line runs from → to as the model gives it. Each result is a list of Refs a host can hand to highlight(); a line's Ref
@@ -12,14 +12,56 @@ import { WIRE_KINDS, andList, arrOf } from './validate.js';
 // lines with their labels, steps and latency (it was walked as drawn, by model line, which lost a view's own lines' fields)
 const viewType = (model, viewId) => { const v = model && model.schemaVersion === 2 && arrOf(model.views).find(x => x && x.id === viewId);
   return v && v.diagram != null && v.diagram !== 'map' ? diagramOf(v) : null; };
+// on the diff page's model, the model after's: a card, box or line diff() drew back removed is not walked or counted (audit 57);
+// gone: a map sequence view's lines with the removed ones in their places, which describe() says as removed steps (audit 55)
 function lineGraph(model, viewId) {
   const ctx = mapContext(model), v = ctx.V[viewId];
   if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
-  const ids = (v.nodeIds || []).filter(i => ctx.N[i]), M = new Map(arrOf(ctx.D.edges).map(e => [e && e._id, e]));
-  if (!viewType(model, viewId)) return { ctx, v, ids, edges: ctx.viewEdges(v).filter(e => e.from !== e.to) };
+  const live = liveIn(ctx, v), ids = (v.nodeIds || []).filter(i => ctx.N[i] && live.card(i)), M = new Map(arrOf(ctx.D.edges).map(e => [e && e._id, e]));
+  if (!viewType(model, viewId)) { const all = ctx.viewEdges(v).filter(e => e.from !== e.to); return { ctx, v, ids, edges: all.filter(live.line), gone: all }; }
   // a typed view: its lines as drawn (a port's between the cards it is on)
-  const g = ctx.buildGeo(viewId);
-  return { ctx, v, ids: [...new Set([...ids, ...g.nodes.map(n => n.id)])], edges: g.edges.flatMap(d => d.from === d.to ? [] : edgeRefIds(d).map(_id => ({ ...M.get(_id), _id, from: d.from, to: d.to }))) };
+  const g = ctx.buildGeo(viewId), out = new Set(g.nodes.filter(n => isGone(n) || !live.card(n.id)).map(n => n.id)), ok = id => !out.has(id) && live.card(id);
+  return { ctx, v, ids: [...new Set([...ids, ...g.nodes.map(n => n.id).filter(ok)])], edges: g.edges.flatMap(d => d.from === d.to || isGone(d) || !ok(d.from) || !ok(d.to) ? [] : edgeRefIds(d).map(_id => ({ ...M.get(_id), _id, from: d.from, to: d.to })).filter(e => !isGone(e))) };
+}
+// the model after a diff model stands for, as a type's own describe() reads it: what diff() drew back removed left out (a card,
+// a member, a line or one to what went, a view's card taken out, its own lines, boxes and fragments), every other mark kept
+// (audit 58: an ER, flowchart, DFD, C4 or information flow view counted and listed them). A model with nothing removed: as it is
+function afterOf(model) {
+  const obj = x => x !== null && typeof x === 'object' && !Array.isArray(x), gone = new Set(), lost = new Set(); let any = false;
+  // a host's member that holds its owner (audit 28) is read once, and members nested 4,000 deep (audit 35) with no recursion
+  const seen = new Set(), walk = top => { for (const st = [top]; st.length;) { const x = st.pop(); if (!obj(x) || seen.has(x)) continue; seen.add(x);
+    if (isGone(x)) { any = true; if (typeof x.id === 'string') gone.add(x.id); } st.push(...arrOf(x.members)); } };
+  arrOf(model.nodes).forEach(walk); arrOf(model.edges).forEach(e => { if (isGone(e)) { any = true; if (obj(e) && e.id != null) lost.add(String(e.id)); } });
+  arrOf(model.views).forEach(v => { if (!obj(v)) return; arrOf(v.nodes).forEach(walk);
+    if (obj(v.nodeOverrides) && Object.values(v.nodeOverrides).some(isGone)) any = true;
+    if ([v.edges, v.containers, v.fragments].some(l => arrOf(l).some(isGone)) || v.diffMarks != null) any = true; });
+  if (!any) return model;
+  // one copy per element: a member that holds its owner keeps that loop in the copy, as the model has it
+  const copy = new Map(), keep = root => { if (!obj(root) || !Array.isArray(root.members)) return root; if (copy.has(root)) return copy.get(root);
+    const todo = [], mk = x => { const y = { ...x }; copy.set(x, y); todo.push(x); return y; }, out = mk(root);
+    while (todo.length) { const x = todo.pop(); copy.get(x).members = x.members.filter(m => !isGone(m)).map(m => !obj(m) || !Array.isArray(m.members) ? m : copy.has(m) ? copy.get(m) : mk(m)); }
+    return out; };
+  const live = l => (Array.isArray(l) ? l.filter(x => !isGone(x)).map(keep) : l), endsOk = e => !obj(e) || (!gone.has(e.from) && !gone.has(e.to));
+  const edges = Array.isArray(model.edges) ? model.edges.filter(e => !isGone(e) && endsOk(e)) : model.edges;
+  arrOf(edges).forEach(e => { if (obj(e) && e.id != null) lost.delete(String(e.id)); });
+  arrOf(model.edges).forEach(e => { if (obj(e) && e.id != null && !arrOf(edges).includes(e)) lost.add(String(e.id)); });
+  const model1 = new Set(arrOf(edges).filter(e => obj(e) && e.id != null).map(e => String(e.id)));
+  const views = Array.isArray(model.views) ? model.views.map(v => { if (!obj(v)) return v;
+    const ov = obj(v.nodeOverrides) ? v.nodeOverrides : {}, out = new Set([...gone, ...Object.keys(ov).filter(k => Object.hasOwn(ov, k) && isGone(ov[k]))]);
+    const w = { ...v }; delete w.diffMarks;
+    if (Array.isArray(v.nodeIds)) w.nodeIds = v.nodeIds.filter(id => !out.has(id));
+    if (Array.isArray(v.nodes)) w.nodes = live(v.nodes);
+    if (obj(v.nodeOverrides)) w.nodeOverrides = Object.fromEntries(Object.entries(v.nodeOverrides).filter(([k]) => !out.has(k)));
+    // a model line it still lists to a card taken out of it: listed, as the model after lists it (diff() marked it removed there,
+    // and named it in view.diffMarks.listed); one it stopped listing, drawn back removed alike, is not (audit 59: apply()'s hide)
+    const dm = obj(v.diffMarks) ? v.diffMarks : {}, still = new Set(arrOf(dm.listed).filter(x => typeof x === 'string'));
+    const back = x => obj(x) && isGone(x) && x.id != null && still.has(String(x.id)) && model1.has(String(x.id)) && (out.has(x.from) || out.has(x.to)) ? String(x.id) : x;
+    if (Array.isArray(v.edges)) w.edges = v.edges.map(back).filter(x => typeof x === 'string' ? !lost.has(x) : !isGone(x) && endsOk(x) && !(obj(x) && (out.has(x.from) || out.has(x.to))));
+    if (Array.isArray(v.containers)) w.containers = v.containers.filter(c => !isGone(c)).map(c => obj(c) && Array.isArray(c.nodeIds) ? { ...c, nodeIds: c.nodeIds.filter(id => !out.has(id)) } : c);
+    if (Array.isArray(v.fragments)) w.fragments = live(v.fragments);
+    if (v.subject != null && out.has(v.subject)) delete w.subject;
+    return w; }) : model.views;
+  return { ...model, nodes: Array.isArray(model.nodes) ? model.nodes.filter(n => !isGone(n)).map(keep) : model.nodes, edges, views };
 }
 const walkFrom = (edges, start, back) => { const seen = new Set([start]); // breadth first along lines (back: against them)
   for (let q = [start]; q.length;) { const u = q.shift(); edges.forEach(e => { const [a, b] = back ? [e.to, e.from] : [e.from, e.to]; if (a === u && !seen.has(b)) { seen.add(b); q.push(b); } }); }
@@ -66,8 +108,8 @@ function oneLine(model) {
  *  view), and the cards with no line. The same model gives the same words: a text alternative, docs, or an AI's context. */
 export function describe(model, viewId) {
   model = oneLine(unreadable(model).model); // as paths(): its view read once a host's getter is no value (audit 25)
-  const T = viewType(model, viewId); if (T && T.describe) return T.describe(model, viewId); // a type's own words (1.9), read as mapContext reads them (audit 19)
-  const { ctx, v, ids, edges } = lineGraph(model, viewId), boxes = (v.containers || []).filter(c => c && c.id);
+  const T = viewType(model, viewId); if (T && T.describe) return T.describe(afterOf(model), viewId); // a type's own words (1.9), read as mapContext reads them (audit 19)
+  const { ctx, v, ids, edges, gone } = lineGraph(model, viewId), boxes = (v.containers || []).filter(c => c && c.id && !isGone(c));
   const name = id => ctx.N[id] ? ctx.nodeIn(id, viewId).label || id : (boxes.find(c => c.id === id) || {}).label || id;
   const list = xs => xs.length < 3 ? xs.join(' and ') : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1];
   const count = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
@@ -80,7 +122,7 @@ export function describe(model, viewId) {
   const out = [`${labelOr(v.title, v.id)}: ${count(ids.length, 'card')} and ${count(edges.length, 'line')}.`];
   if (ids.length) out.push(`Cards: ${ids.map(id => `${name(id)} (${KIND[kindOf(ctx.nodeIn(id, viewId).kind, true)][1]})`).join(', ')}.`);
   boxes.forEach(c => { const ins = (c.nodeIds || []).filter(i => ids.includes(i)); if (ins.length) out.push(`${name(c.id)} holds ${list(ins.map(name))}.`); });
-  if (v.render === 'sequence') edges.forEach((e, i) => out.push(`Step ${i + 1}: ${name(e.from)} ${VERB[kind(e)]} ${name(e.to)}${what(e)}.`));
+  if (v.render === 'sequence') { const steps = gone || edges, k = runSteps(steps); steps.forEach((e, i) => out.push(`${k[i] == null ? 'Removed step' : 'Step ' + k[i]}: ${name(e.from)} ${VERB[kind(e)]} ${name(e.to)}${what(e)}.`)); } // audit 55
   else [...ids, ...boxes.map(c => c.id)].forEach(id => { const outs = edges.filter(e => e.from === id); if (!outs.length) return;
     out.push(`${name(id)} ${[...new Set(outs.map(kind))].map(k => `${VERB[k]} ${list(far(outs.filter(e => kind(e) === k)))}`).join('; ')}.`); });
   const alone = ids.filter(id => !edges.some(e => e.from === id || e.to === id));

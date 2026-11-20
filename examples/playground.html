@@ -37,7 +37,7 @@
 <header>
   <h1>Playground</h1>
   <label>Example <select id="example">
-    <option value="umlimator-atlas.json">The Umlimator Atlas</option>
+    <option value="umlimator-atlas.json">Umlimator</option>
     <option value="shapes.json">Card shapes</option>
     <option value="monorepo.json">A monorepo</option>
   </select></label>
@@ -57,7 +57,7 @@
 <div id="map"></div>
 </main>
 <script type="module">
-import { render, validate, check, rules } from '../lib/umlimator.js';
+import { render, validate, check, rules } from '../lib/umlimator-all.js';
 import { withIcons } from './icons.js';
 
 const $ = id => document.getElementById(id);

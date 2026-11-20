@@ -152,7 +152,11 @@ function typedEditor(api) {
     if (link) return linkKey(e);
     const K = e.key, s = api.sel();
     if (e.altKey) { const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[K], n = s && s.type === 'node' && api.geo().byId[s.id];
-      if (!d || !n) return false; if (Number.isFinite(n.col)) { if (api.geo().down) d.reverse(); pin(n.id, n.col + d[0], n.row + d[1]); } return true; }
+      if (!d || !n) return false; if (!Number.isFinite(n.col)) return true; if (api.geo().down) d.reverse();
+      // a cell another card is pinned to is stepped over (audit 58: Alt + Left onto it drew the two cards one over the other)
+      const L = (view() || {}).layout, onPin = (c, r) => isRec(L) && Object.entries(L).some(([k, p]) => k !== n.id && Array.isArray(p) && p[0] === c && Math.abs(p[1] - r) < 1);
+      let c = n.col + d[0], r = n.row + d[1]; for (let k = 0; onPin(c, r) && k < 64; k++) { c += d[0]; r += d[1]; }
+      pin(n.id, c, r); return true; }
     if (K === 'F2' && s && can('rename')) { api.rename(); return true; }
     if ((K === 'n' || K === 'N') && can('add')) { I.addNode(0); return true; }
     const from = s && (s.type === 'node' ? s.id : s.type === 'edge' && hook('connect') && (api.geo().edges.find(x => idsOf(s).includes(x._id)) || {}).to);

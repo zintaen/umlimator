@@ -88,13 +88,7 @@ function routeAudit(geo, where, only, refs) { // only: a set of edges; counts ju
   });
   (geo.blocks || []).forEach(b => geo.edges.forEach((o, j) => { if (segHit({ x: b.x + 1, y: b.y + 1, w: b.w - 2, h: b.h - 2 }, j)) say(`${where}: lane "${b.title || ''}": header crossed by edge ${name(o)}`, o); }));
   const families = geo.families || [], inside = (a,b) => b.x > a.x && b.y > a.y && b.x+b.w < a.x+a.w && b.y+b.h < a.y+a.h;
-  // a box over a card it does not hold, itself or through a box in it (audit 41: a pinned box grown round a card with no pin
-  // covered its neighbour, which then read as the box's own); a port by its owner, a frame that holds what it meets, a box's own card
-  const fam = Object.create(null), upTo = (f, id) => { for (let k = 0, x = id; x != null && k <= families.length; x = (fam[x] || {}).parent, k++) if (x === f.id) return true; return false; };
-  if (!only && families.length && geo.nodes) { families.forEach(f => { fam[f.id] = f; });
-    const homes = Object.create(null); families.forEach(f => (f.nodeIds || []).forEach(id => { (homes[id] ||= []).push(f.id); }));
-    families.forEach(f => geo.nodes.forEach(n => { if (n.id === f.id || n.holder || n.owner != null || !hit(f, n, -1) || (homes[n.id] || []).some(h => upTo(f, h))) return;
-      say(`${where}: family "${nm(f)}" lies over "${nm(n)}", which it does not hold`, f, n); })); }
+  if (!only) boxOver(geo, (f, n) => say(`${where}: family "${nm(f)}" lies over "${nm(n)}", which it does not hold`, f, n));
   families.forEach(f => {
     const parent = families.find(p => p.id === f.parent);
     if (f.parent && (!parent || !inside(parent,f))) say(`${where}: family "${nm(f)}" sticks out of its parent`, f);
@@ -109,6 +103,23 @@ function routeAudit(geo, where, only, refs) { // only: a set of edges; counts ju
   return issues;
 }
 
+// a box over a card it does not hold, itself or through a box in it (audit 41: a pinned box grown round a card with no pin
+// covered its neighbour, which then read as the box's own); a port by its owner, a frame that holds what it meets, a box's own card
+function boxOver(geo, say) {
+  const families = geo.families || [], fam = Object.create(null), upTo = (f, id) => { for (let k = 0, x = id; x != null && k <= families.length; x = (fam[x] || {}).parent, k++) if (x === f.id) return true; return false; };
+  if (!families.length || !geo.nodes) return; families.forEach(f => { fam[f.id] = f; });
+  const homes = Object.create(null); families.forEach(f => (f.nodeIds || []).forEach(id => { (homes[id] ||= []).push(f.id); }));
+  families.forEach(f => geo.nodes.forEach(n => { if (n.id === f.id || n.holder || n.owner != null || !hit(f, n, -1) || (homes[n.id] || []).some(h => upTo(f, h))) return; say(f, n); }));
+}
+// what a typed view's pins may not do (audit 58): a box over a card it does not hold, two boxes in one box over each other, two
+// cards over each other; the boxes and cards met (buildGeo, src/map/context.js, moves a pin that does any of them)
+function boxClash(geo) {
+  const met = new Set(), F = geo.families || [], refs = [], two = (a, b) => { met.add(a.id); met.add(b.id); };
+  boxOver(geo, two);
+  F.forEach((f, i) => F.slice(i + 1).forEach(g => { if (g.parent === f.parent && hit(f, g, -1)) two(f, g); }));
+  overlapIssues(geo, '', refs); refs.forEach(([a, b]) => two(a, b));
+  return met;
+}
 /* The layout check's geometry, which needs no fonts: check() runs it on layout()'s geometry, and the page adds what it
    measures in the DOM (text against its card, a lane's or box's title, edge labels against each other). */
 const box = n => ({ x: n.x, y: n.y, w: n.w, h: n.h });
@@ -186,4 +197,4 @@ function auditSvg(svg, geo, where) {
   return issues;
 }
 
-export { onBorder, detour, behind, routeAudit, overlapIssues, throughIssues, leaveIssues };
+export { onBorder, detour, behind, boxClash, routeAudit, overlapIssues, throughIssues, leaveIssues };

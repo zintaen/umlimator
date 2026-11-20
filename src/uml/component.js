@@ -1,12 +1,12 @@
 import { aKind, drawnKind, ownNodes, registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
-import { rowsFor, untangle } from '../layout/layered.js';
+import { pinCells, rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { CLASSIFIERS, RULES, commentConnect, lineRename, multProblem, memberClash, memberEdit, paramTextProblems, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, ownersOn, placeTabs, readingOrder, viewLines } from './owners.js';
-import { SN_ARTIFACTS, SN_PRESENT_RULE, SN_SAY, STRUCT_RULES, portFit, sideProblem, portSides, portsDrawn, snKindName, snKindWord, structProblems } from './structure.js';
-import { usedIds, jsonText, labelOr, elName, propTextProblems } from '../core/model.js';
+import { SN_ARTIFACTS, SN_PRESENT_RULE, SN_SAY, STRUCT_RULES, portFit, sideProblem, portSides, portsHeld, snKindName, snKindWord, structProblems } from './structure.js';
+import { usedIds, jsonText, labelOr, elName, propTextProblems, isGone } from '../core/model.js';
 
 /* ---------- the component diagram, uml.component (work package 5.4, notes/stage-5.md §10.1) ----------
    Components (src/uml/structure.js's look), a component or package that holds something shown a box (src/uml/owners.js),
@@ -28,6 +28,8 @@ const cpPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const CP_LINES = ['uml.InterfaceRealization', 'uml.ComponentRealization', 'uml.Usage', 'uml.Connector', 'uml.Dependency', 'uml.Manifestation', 'uml.CommentLink'];
 const CP_SIDE = { L: 'left', R: 'right', T: 'top', B: 'bottom' }, CP_OPP = { L: 'R', R: 'L', T: 'B', B: 'T' }, CP_TURN = { L: 'T', T: 'L', R: 'B', B: 'R' };
 const cpPortsOf = n => CP_ARR(n && n.members).filter(m => CP_OBJ(m) && m.type === 'uml.Port' && typeof m.id === 'string');
+// the ports a name counts: on the diff page not one diff() drew back removed, as the model after counts them (audit 56)
+const cpLivePorts = n => cpPortsOf(n).filter(p => isGone(n) || !isGone(p)).length; // a removed one: all it had, the model before's
 
 /* ---- the model read: every node, every port and its owner, each node's owners up the chain ---- */
 function cpIndex(model) {
@@ -85,7 +87,7 @@ function cpPic(model, view) {
     if (f.at === t.at && (f.port || t.port)) return;
     lines.push({ e, f, t, inner, kind: cpKind(I, view, e) }); });
   const boxes = pic.boxes.map(b => { const x = I.N.get(b.id); if (cpKindOf(x) !== 'uml.Component') return b;
-    const s = SN_SAY.component(pic.name(b.id), { stereotypes: cpStereo(x), ports: cpPortsOf(x).length, holds: pic.holds(b.id).map(id => CP_WORD[(I.N.get(id) || {}).type] || 'element') });
+    const s = SN_SAY.component(pic.name(b.id), { stereotypes: cpStereo(x), ports: cpLivePorts(x), holds: pic.counted(b.id).map(id => CP_WORD[(I.N.get(id) || {}).type] || 'element') });
     return { ...b, aria: x.type ? s : snKindName(x.type) + s.slice('Component'.length) }; }); // of no type: "Element Shop, 1 port, holding 1 component", as cpNodeName names it
   return { ...pic, boxes, I, lines, inside };
 }
@@ -101,12 +103,12 @@ function cpNodeName(model, view, pic, id, bare) { // bare: a port without " of <
   const b = pic.boxes.find(y => y.id === id); if (b) return b.aria;
   const st = cpStereo(x), owners = k => of(k).filter(l => l.e.to === id).map(l => pic.name(I.comp(l.e.from)));
   // an element of no type, drawn as a component: "Element Shop, 1 port", as audit 28 named it, with its ports (audit 29)
-  if (x.type === 'uml.Component' || !x.type) { const s = SN_SAY.component(pic.name(id), { stereotypes: st, ports: cpPortsOf(x).length }); return x.type ? s : snKindName(x.type) + s.slice('Component'.length); }
+  if (x.type === 'uml.Component' || !x.type) { const s = SN_SAY.component(pic.name(id), { stereotypes: st, ports: cpLivePorts(x) }); return x.type ? s : snKindName(x.type) + s.slice('Component'.length); }
   if (x.type === 'uml.Interface') return SN_SAY.iface(pic.name(id), { ball: cpBall(I, view, id), stereotypes: st, providers: owners('uml.InterfaceRealization'), requirers: owners('uml.Usage') });
   if (x.type === 'uml.Artifact') return SN_SAY.artifact(pic.name(id), { stereotypes: st, manifests: of('uml.Manifestation').filter(l => l.e.from === id).map(l => cpEnd(pic, l.e.to)) });
   if (x.type === 'uml.Comment') return 'Comment: ' + cpName(x);
   // another kind (a class) with the ports drawn on its border, "Class Shop, 1 port", as a component is named (audit 31)
-  return snKindName(x.type) + SN_SAY.component(pic.name(id), { stereotypes: st, ports: cpPortsOf(x).length }).slice('Component'.length);
+  return snKindName(x.type) + SN_SAY.component(pic.name(id), { stereotypes: st, ports: cpLivePorts(x) }).slice('Component'.length);
 }
 const cpLabel = (l, said) => [CP_LOOK[l.kind][1], ...cpStereo(l.e).map(t => `«${t}»`), said ? null : l.e.label].filter(CP_HAS).join(' ');
 // "Delegation from orders of Shop API to orders of Checkout"
@@ -127,7 +129,7 @@ const cpLegend = kinds => Object.keys(CP_LOOK).filter(k => kinds.has(k)).map(k =
    ranked by the lines between them (a line to what a box holds is the box's), longest paths with cycles broken depth first,
    a usage of a ball turned so the ball comes before its requirers (provider, ball, socket from left to right); a box is a block of its
    contents' columns and rows; columns ordered by untangle and rows by rowsFor (src/layout/layered.js); what no line reaches
-   in rows under its block. A pin (the view's layout, by element) wins, and a node it would cover moves down */
+   in rows under its block. A pin (the view's layout, by element) wins where it is clean (settlePins), and a node it would cover moves down */
 function cpRank(items, links) {
   const outs = new Map(items.map(id => [id, []])), st = new Map(), fwd = [];
   links.forEach(l => outs.get(l[0]).push(l));
@@ -160,10 +162,10 @@ function cpPlace(pic, lines, pins) {
   [...seq].reverse().forEach(g => done.set(g, block(g)));
   const at = done.get(null).pos, P = Object.entries(CP_OBJ(pins) ? pins : {}).filter(([id, p]) => Object.hasOwn(at, id) && Array.isArray(p) && p.length === 2 && p.every(Number.isFinite));
   if (!P.length) return at;
-  const taken = P.map(([, p]) => p), free = (c, r) => !taken.some(([c2, r2]) => c2 === c && Math.abs(r2 - r) < 1), pinned = new Set(P.map(([id]) => id));
-  P.forEach(([id, p]) => { at[id] = p; });
-  Object.keys(at).forEach(id => { if (pinned.has(id)) return; let [c, r] = at[id]; while (!free(c, r)) r++; at[id] = [c, r]; taken.push([c, r]); });
-  return at;
+  // the pins settled first (pinCells, src/layout/layered.js: audit 58): none on another pin, nor on or in a box it is not in,
+  // nor growing its own box over what it does not hold; a card a pin would then cover moves down, and on to a clean slot
+  const up = x => { const a = []; for (let k = 0, y = pic.owner(x); y != null && k <= seq.size; k++, y = pic.owner(y)) if (pic.open.has(y)) a.push(y); return a; };
+  return pinCells(at, P, up);
 }
 function cpGeo({ model, view, pos: pins, memo }) {
   const pic = cpPic(model, view), { I, lines } = pic, down = view.direction === 'down', present = CP_OBJ(view.present) ? view.present : {}, pos = cpPlace(pic, lines, pins);
@@ -208,9 +210,11 @@ function cpGeo({ model, view, pos: pins, memo }) {
     return { id: l.e.id, _id: l.e.id, type: l.e.type, from: l.f.at, to: l.t.at, ...end(l, 'from'), ...end(l, 'to'), ...(l.inner ? { inner: l.inner } : {}),
       ...(l.f.port || l.t.port ? { portRank: l.f.port && l.t.port ? r : r[l.f.port ? 0 : 1] } : {}), label: label || undefined, ...(label ? { cut: 280 } : {}),
       end: CP_LOOK[l.kind][0], aria: cpLineName(pic, l), ...(CP_OBJ(l.e.style) || typeof l.e.style === 'string' ? { style: l.e.style } : {}) }; });
-  const g = placeTabs(layoutTyped({ nodes, edges, ...(boxes.length ? { containers: boxes } : {}), direction: down ? 'down' : 'right', gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo));
-  // on a copy (stage 4 §2.4): every port as a node, and its name
-  const d = portsDrawn(g, shownPorts.map(({ p, owner }) => ({ id: p.id, owner, side: side[p.id], label: cpName(p), valueType: cpProps(p).valueType, stereotypes: cpStereo(p), aria: cpNodeName(model, view, pic, p.id) })));
+  const run = ns => placeTabs(layoutTyped({ nodes: ns, edges, ...(boxes.length ? { containers: boxes } : {}), direction: down ? 'down' : 'right', gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo));
+  // on a copy (stage 4 §2.4): every port as a node, and its name; a node that could not hold a port with no line grows and is laid
+  // out once more while one is still held (portRoom, audit 52; portsHeld, audit 53). ponytail: that view lays out more than once each time, as its memo holds the last layout's key
+  const ports = shownPorts.map(({ p, owner }) => ({ id: p.id, owner, side: side[p.id], label: cpName(p), valueType: cpProps(p).valueType, stereotypes: cpStereo(p), aria: cpNodeName(model, view, pic, p.id) }));
+  const { d } = portsHeld(nodes, run(nodes), run, ports);
   // a slot after each element (src/typed/edit.js): the palette's add hears the selection through it (cpAdd, at.sel)
   const slots = Object.values(d.byId).map((n, index) => ({ index, x: n.x, y: n.y, after: n.id }));
   return { ...d, slots, legend: cpLegend(new Set(lines.map(l => l.kind))), order: cpOrder(pic) };

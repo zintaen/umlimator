@@ -1,9 +1,9 @@
 import { apply } from '../core/apply.js';
-import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
+import { copyOf, usedIds, jsonText, labelOr, elName, isGone } from '../core/model.js';
 import { ownNodes, registerDiagramType } from '../core/registry.js';
-import { esc, fit, textW, widest } from '../core/text.js';
+import { esc, fit, textW, trimDash, widest } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
-import { rowsFor, untangle } from '../layout/layered.js';
+import { rowsFor, settlePins, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { brLines } from '../typed/draw.js';
 import './frame.js'; // SHAPE.lifeline, the head a lifeline is drawn with
@@ -18,7 +18,7 @@ import { IA_GONE, interactionWalk, messageNumbers, replyCallFor, INTERACTION_RUL
    src/uml/interaction.js), its text and a small arrow toward its receiver. Ships in lib/umlimator-all.js only. */
 
 const CM_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), CM_ARR = x => (Array.isArray(x) ? x : []);
-const CM_HAS = x => x != null && x !== '';
+const CM_HAS = x => x != null && x !== '' && !(typeof x === 'string' && x.trim() === ''); // text of only spaces shows nothing, as "" (audit 52)
 const CM_SORTS = ['call', 'async', 'reply', 'create', 'delete'];
 const CM_ROW = { h: 16, px: 11, arrow: 16, pad: 5, max: 280, lh: 13 }; // a message row: its height, font, arrow's room, padding, widest stack, each line more
 const CM_STACK = '\u0000'; // a stack's id and its connector's halves': the connector's id after it, never a model id
@@ -112,7 +112,8 @@ function cmPlace(ids, links, pins) {
   mains.forEach((c, k) => c.forEach(id => { at[id] = [ranks[k], row[id]]; }));
   const loose = ids.filter(id => !lined.has(id)), per = Math.max(2, mains.length), under = Math.max(-1, ...Object.values(at).map(p => p[1])) + 1;
   loose.forEach((id, k) => { at[id] = [k % per, under + Math.floor(k / per)]; });
-  if (pins.size) { // pinned first, then each other node at its place or the nearest free one below it
+  if (pins.size) { // pinned first (two on one cell: the later to the nearest free one, settlePins), then each other node at its place or the nearest free one below it
+    const S = settlePins([...pins], {}, () => []); ids.forEach(id => { if (pins.has(id)) pins.set(id, S[id]); });
     const taken = [...pins.values()], free = (c, r) => !taken.some(([c2, r2]) => c2 === c && Math.abs(r2 - r) < 1);
     ids.forEach(id => { if (pins.has(id)) { at[id] = pins.get(id); return; } let [c, r] = at[id]; while (!free(c, r)) r++; at[id] = [c, r]; taken.push([c, r]); });
   }
@@ -128,7 +129,7 @@ function commGeo({ model, view, memo }) {
   // its arrows the same way and one half back across the picture
   const { rank } = cmRank(I.ids, I.connectors.filter(c => c.from !== c.to).map(c => { const f = (I.on.get(c.id)[0] || c).from; return [f, f === c.from ? c.to : c.from]; }));
   const onward = (a, b) => (rank[a] <= rank[b] ? [a, b] : [b, a]);
-  const edges = [], links = [], stacks = new Map(), conAria = c => `Connector ${c.from === c.to ? `from ${cmNameOf(I.N.get(c.from))} to itself` : `between ${cmNameOf(I.N.get(c.from))} and ${cmNameOf(I.N.get(c.to))}`}, ${cmPlural(I.on.get(c.id).length, 'message')}`;
+  const edges = [], links = [], stacks = new Map(), conAria = c => `Connector ${c.from === c.to ? `from ${cmNameOf(I.N.get(c.from))} to itself` : `between ${cmNameOf(I.N.get(c.from))} and ${cmNameOf(I.N.get(c.to))}`}, ${cmPlural(I.on.get(c.id).filter(m => isGone(c) || !isGone(m)).length, 'message')}`; // the model after's count on the diff page (audit 56)
   I.connectors.forEach(c => {
     const ms = I.on.get(c.id), plain = { id: c.id, _id: c.id, type: c.type, from: c.from, to: c.to, end: { from: 'none', to: 'none' }, aria: conAria(c) };
     if (!ms.length) { edges.push(plain); if (c.from !== c.to) links.push(onward(c.from, c.to)); return; }
@@ -323,7 +324,7 @@ function commRename(model, view, id, text) {
 }
 function commAdd(model, view, entry, label, at) {
   if (!CM_OBJ(view) || !CM_OBJ(entry) || entry.type !== 'uml.Lifeline') return null;
-  const id = cmFreshId(model, String(label ?? '').trim().toLowerCase().replace(/[^\p{L}\p{N}_$-]+/gu, '-').replace(/^-+|-+$/g, '') || 'lifeline');
+  const id = cmFreshId(model, trimDash(String(label ?? '').trim().toLowerCase().replace(/[^\p{L}\p{N}_$-]+/gu, '-')) || 'lifeline');
   return [{ op: 'add', element: { id, type: 'uml.Lifeline', label: String(label ?? '') }, view: view.id, ...(CM_OBJ(at) && Number.isInteger(at.index) ? { index: at.index } : {}) }];
 }
 

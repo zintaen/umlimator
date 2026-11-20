@@ -5,12 +5,13 @@ import { trimLine } from '../draw/lines.js';
 import { SHAPE, boxOut, markShape, portsOn, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { brLines } from '../typed/draw.js';
+import { brLines, goneIn, liveLine } from '../typed/draw.js';
 import { commentConnect } from './class.js'; // SHAPE.note, a comment
 import { FLOW_CONTROL, FLOW_RULES, flowOf, flowProblems, flowText, flowLabel, flowRename, flowStereo, viewFlows } from './flow.js';
 import { frLines, frameTag, tagSize, useSize } from './frame.js';
 import { snKindName } from './structure.js';
 import { sqDraw, sqDrawnMessages, sqRun } from './sequence.js';
+import { IA_GONE } from './interaction.js';
 import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
 
 /* ---------- the interaction overview diagram, uml.interaction-overview (work package 4.7, notes/stage-4.md §11) ----------
@@ -23,7 +24,7 @@ import { copyOf, usedIds, jsonText, labelOr, elName } from '../core/model.js';
    lib/umlimator-all.js only. */
 
 const OV_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), OV_ARR = x => (Array.isArray(x) ? x : []);
-const OV_HAS = x => x != null && x !== '';
+const OV_HAS = x => x != null && x !== '' && !(typeof x === 'string' && x.trim() === ''); // text of only spaces shows nothing, as "" (audit 52)
 const OV_PROPS = x => (OV_OBJ(x && x.props) ? x.props : {});
 const OV_ENDS = [...FLOW_CONTROL, 'uml.InteractionUse', 'uml.Interaction'], OV_NODES = [...OV_ENDS, 'uml.Comment']; // model.md row 13
 const OV_LINES = ['uml.ControlFlow', 'uml.CommentLink'];
@@ -50,7 +51,8 @@ function ovIndex(model, view) {
   const both = list.filter(e => OV_OBJ(e) && typeof e.id === 'string' && shown.has(e.from) && shown.has(e.to));
   const lines = both.filter(e => OV_LINES.includes(e.type)), stray = both.filter(e => !OV_LINES.includes(e.type)); // stray: not drawn, warned of
   const el = id => (N.get(id) || [])[0];
-  return { N, V, ids, shown, lines, stray, el, flows: lines.filter(e => e.type === 'uml.ControlFlow') };
+  // gone: what the diff page drew back removed, so a node's name counts the flows the model after draws (audit 56)
+  return { N, V, ids, shown, lines, stray, el, flows: lines.filter(e => e.type === 'uml.ControlFlow'), gone: goneIn(view, el) };
 }
 // a node's name as drawn: a control node or a comment its label only; a use, an inline interaction or another kind (drawn as an
 // action) by its id when it has no label, as the sequence and activity views draw it (elName; audit 37)
@@ -64,8 +66,12 @@ const ovNm = (I, id) => { const x = I.el(id); return x ? ovLabel(x) || ovWordOf(
 function ovInline(model, I, n, lay = true) {
   const sv = I.V.get(n.opensView);
   if (!sv || sv.diagram !== 'uml.sequence') return null;
-  const own = new Set(OV_ARR(sv.nodes).filter(OV_OBJ).map(x => x.id)), heads = new Set(OV_ARR(sv.nodeIds).filter(id => I.N.has(id) || own.has(id))).size; // listed twice: one head, as sqHeads draws
-  const messages = sqDrawnMessages(model, sv).length; // the messages its sequence view draws, as its describe() counts them (audit 41)
+  // on the diff page the live ones only, as the model after the change counts them (audit 53, as the sequence view's own names,
+  // audit 51): a lifeline diff() put back removed (its node, or the view's override of it) and a removed message are not counted
+  const own = new Map(OV_ARR(sv.nodes).filter(OV_OBJ).map(x => [x.id, x])), ovr = OV_OBJ(sv.nodeOverrides) ? sv.nodeOverrides : {};
+  const live = id => !IA_GONE(Object.hasOwn(ovr, id) ? ovr[id] : (I.N.get(id) || [])[0] || own.get(id)); // as ovInner marks it
+  const heads = new Set(OV_ARR(sv.nodeIds).filter(id => (I.N.has(id) || own.has(id)) && live(id))).size; // listed twice: one head, as sqHeads draws
+  const messages = sqDrawnMessages(model, sv).filter(o => !IA_GONE(o.el)).length; // the messages its sequence view draws, as its describe() counts them (audit 41)
   const small = heads <= OV_MAX.heads && messages <= OV_MAX.messages;
   return { view: sv, heads, messages, small, run: small && lay ? sqRun(model, sv) : null };
 }
@@ -107,7 +113,9 @@ function ovInner(run, sv, model) {
   const E = new Map(); OV_ARR(model && model.edges).forEach(e => { if (OV_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); });
   const word = x => (OV_OBJ(x) && typeof x.change === 'string' ? x.change.toLowerCase() : null);
   const ch = new Map(); OV_ARR(sv && sv.edges).forEach(x => { const e = typeof x === 'string' ? E.get(x) : x; if (OV_OBJ(e) && typeof e.change === 'string' && !ch.has(e.id)) ch.set(e.id, e.change); });
-  const ov = OV_OBJ(sv && sv.nodeOverrides) ? sv.nodeOverrides : {}, N = new Map(OV_ARR(model && model.nodes).filter(n => OV_OBJ(n) && typeof n.id === 'string').map(n => [n.id, n]));
+  // a lifeline the sequence view holds as its own (view.nodes) too, one a model node's id takes being that node (audit 51)
+  const ov = OV_OBJ(sv && sv.nodeOverrides) ? sv.nodeOverrides : {}, N = new Map();
+  [...OV_ARR(model && model.nodes), ...OV_ARR(sv && sv.nodes)].forEach(n => { if (OV_OBJ(n) && typeof n.id === 'string' && !N.has(n.id)) N.set(n.id, n); });
   const own = new Map(); OV_ARR(sv && sv.fragments).forEach(f => { if (!OV_OBJ(f) || typeof f.id !== 'string') return; const c = word(f); if (!own.has(f.id)) own.set(f.id, c);
     OV_ARR(f.members).forEach(m => { if (OV_OBJ(m) && typeof m.id === 'string' && !own.has(m.id)) own.set(m.id, word(m) || (c === 'added' || c === 'new' || c === 'removed' ? c : null)); }); });
   const change = n => (n.shape === 'lifeline' ? word(Object.hasOwn(ov, n.id) ? ov[n.id] : null) || word(N.get(n.id)) : n.shape === 'use' ? (typeof ch.get(n.id) === 'string' ? ch.get(n.id).toLowerCase() : null) : own.get(n.id)) || null;
@@ -172,10 +180,12 @@ function ovGeo({ model, view, pos, memo }) {
   const I = ovIndex(model, view), down = view.direction === 'down', at = id => ovOwn(pos || {}, id) || [0, 0];
   const ins = new Map(), outs = new Map(), bump = (m, id) => m.set(id, (m.get(id) || 0) + 1);
   I.flows.forEach(e => { bump(outs, e.from); bump(ins, e.to); });
+  // what a name counts: the flows the model after draws; a removed node, all it had, the model before's (audit 56)
+  const sIn = new Map(), sOut = new Map(); I.flows.forEach(e => { if (liveLine(e, I.gone) || I.gone(e.from)) bump(sOut, e.from); if (liveLine(e, I.gone) || I.gone(e.to)) bump(sIn, e.to); });
   const bar = id => I.el(id).type === 'uml.ForkNode' || I.el(id).type === 'uml.JoinNode';
   const nodes = I.ids.map(id => { const x = I.el(id), shape = ovOwn(OV_SHAPE, x.type) || 'rounded', d = { id, label: [...(['diamond', 'ov-use', 'ov-inline'].includes(shape) ? ovStereo(x).map(t => `«${t}»`) : []), ...(ovLabel(x) ? [ovLabel(x)] : [])].join(' '), type: x.type, kind: 'file', shape, col: at(id)[0], row: at(id)[1] };
     const sd = x.type === 'uml.Interaction' ? ovInline(model, I, x) : null;
-    d.aria = ovNodeName(model, I, x, ins.get(id) || 0, outs.get(id) || 0, sd); d.saysOpens = x.type === 'uml.InteractionUse' || x.type === 'uml.Interaction' && !sd;
+    d.aria = ovNodeName(model, I, x, sIn.get(id) || 0, sOut.get(id) || 0, sd); d.saysOpens = x.type === 'uml.InteractionUse' || x.type === 'uml.Interaction' && !sd;
     if (shape === 'rounded') d.stereotypes = ovStereo(x);
     if (shape === 'bar') Object.assign(d, { busy: Math.max(ins.get(id) || 0, outs.get(id) || 0), down });
     if (shape === 'ov-inline') { const b = sd && sd.run && sd.run.bounds, tw = tagSize(`sd ${d.label}`).w + 2 * OV_SD.pad;

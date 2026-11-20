@@ -1,16 +1,136 @@
 {
- "about": "What tools/gallery.mjs writes into examples/index.html besides what it reads from docs/types.md, tools/types.json and the models: the map type's own name and description, each type card's picture alt text (the picture is the main view of its type page, examples/types/<type>.html), and the Atlas's entries. tests/gallery.test.mjs fails when the committed page is not what the tool writes.",
+ "about": "What tools/gallery.mjs writes into the documentation site's Diagrams pages (docs/types/), its atlas pages (docs/atlas/) and its sidebar (docs/.vitepress/sidebar.json) besides what it reads from tools/types.json, tools/types.md, the conformance notes (docs/diagrams/conformance/) and the models: the hand-written pages the sidebar lists (docs), each type card's picture alt text (the picture is the main view of its type page, examples/types/<type>.html), the atlases' entries, and the checklist of what the map draws on the atlas view that is the map's showcase. tests/gallery.test.mjs fails when a committed page is not what the tool writes.",
+ "docs": {
+  "about": "The hand-written pages of the documentation site, as the sidebar lists them around the pages tools/gallery.mjs writes (Diagrams, and the atlases under Maps and atlases): each [text, link], link the page's path on the site without .md. Each group is a part of the sidebar, in reading order.",
+  "start": [
+   [
+    "What umlimator is",
+    "/"
+   ],
+   [
+    "Install",
+    "/start/install"
+   ],
+   [
+    "A first diagram",
+    "/start/first-diagram"
+   ]
+  ],
+  "maps": [
+   [
+    "The model",
+    "/maps/model"
+   ],
+   [
+    "Views and layers",
+    "/maps/views-and-layers"
+   ],
+   [
+    "Stories, lenses and live data",
+    "/maps/stories-lenses-live"
+   ]
+  ],
+  "use": [
+   [
+    "Command line",
+    "/use/cli"
+   ],
+   [
+    "Embedding",
+    "/use/embedding"
+   ],
+   [
+    "The standalone page",
+    "/use/standalone-page"
+   ],
+   [
+    "MCP server",
+    "/use/mcp"
+   ],
+   [
+    "GitHub Action and diff",
+    "/use/github-action"
+   ],
+   [
+    "Import and export",
+    "/use/import-export"
+   ],
+   [
+    "Icons and icon packs",
+    "/use/icon-packs"
+   ],
+   [
+    "Editing",
+    "/use/editing"
+   ]
+  ],
+  "reference": [
+   [
+    "API overview",
+    "/api/"
+   ],
+   [
+    "render",
+    "/api/render"
+   ],
+   [
+    "Apply and commands",
+    "/api/apply-and-commands"
+   ],
+   [
+    "Events and state",
+    "/api/events-and-state"
+   ],
+   [
+    "Element and plugins",
+    "/api/element-and-plugins"
+   ],
+   [
+    "Model and schema",
+    "/api/model-and-schema"
+   ],
+   [
+    "Typed diagrams",
+    "/api/typed-diagrams"
+   ],
+   [
+    "Changelog",
+    "/changelog"
+   ]
+  ]
+ },
  "retired": {
   "about": "Models of examples/ the gallery does not show: none. The test models live in tests/fixtures/ and the bench's in bench/models/ (the maintainer's decision, 20 Nov 2026); the real-world models that left the gallery on 19 Nov 2026 were deleted.",
   "files": []
  },
  "map": {
-  "name": "Map",
-  "text": "Layered architecture maps: cards, lines and boxes in views that open into each other, with stories, tours and lenses.",
-  "covers": "docs/guide/model.md"
+  "about": "The map is not one of the 28 diagram types and has no page of its own: its example is the first layer every atlas opens on, the Bookshop atlas's overview first (atlas, the file in examples/; main, the view). shows is the checklist of what that view draws, which the atlas's page lists under it.",
+  "atlas": "bookshop-atlas",
+  "main": "overview",
+  "shows": [
+   "The view's title and caption over the map",
+   "A card drawn by its kind: person (Shopper), user (Shop staff), browser app (Storefront), phone (Shop app), terminal (Admin CLI), folder (Pricing), hexagon (Fraud check), cylinder (Database), pipe (Order queue), robot (Support agent), page with a folded corner (returns.md, Opening plan), box in perspective (Hosting), dashed external card (Payment provider, Email service, Courier), AI card (Reminder bot), backend card (Shop API, Order worker, Warehouse, Gift cards)",
+   "A card's own `shape` over its kind: Back office drawn as a window",
+   "A card with its name only, the sub-line kept for the panel (Admin CLI, `noSub`)",
+   "Logos and icons on cards (Storefront React, Shop API FastAPI, Database PostgreSQL, Reminder bot a robot)",
+   "Badges on cards, plain and in a tone (public, on call, backed up)",
+   "Change marks: a NEW card (Shop app), a PLANNED card dashed (Gift cards), a REMOVED card dashed and struck through (Reminder bot)",
+   "A main-step card with verb chips and an edit mark (Shop API: checkout, refund)",
+   "Cards that open a view of their own, marked in their top corner: every card but the Shop app, Back office, Admin CLI, Fraud check, Gift cards, Support agent, Reminder bot, Email service and Courier opens the diagram that tells its part",
+   "Line kinds in their colours: calls, feeds (charges cards, oldest first, parcels), triggers (checks, pick lists), state (reads, writes; paid order; reads) and guard (refund if within 14 days)",
+   "Line weights 1 to 3, shown as widths on hover, selection and keyboard focus (POST /orders 3, browses and orders 2)",
+   "Steps in circles on the lines, numbers and a pill (1 to 6, and 3a)",
+   "A line with a sub-label (POST /orders over JSON over HTTPS)",
+   "Line styles over the kind: dashed (runs jobs), security (charges cards), async (paid order)",
+   "Added lines green and flowing (on the go, redeems), a removed line rose and dashed (nudges), an edit mark on a line (reads, writes)",
+   "Boxes around cards, one nested in another (Data in Bookshop), with badges on their borders (EU, backed up nightly)",
+   "Tinted boxes, dashed with the title in their tone (Data in green, Support in violet)",
+   "A line ending on a box's border (Hosting runs the Bookshop)",
+   "Pins (`layout`): each card at its column and row, so the lines run left to right and cross nothing",
+   "Two lenses in the page's Lenses menu: Who owns what (rings each card in its owner's tone) and Where the money goes (lights the feeds lines)"
+  ]
  },
  "alts": {
-  "map": "A map of a bookshop's systems: shoppers and staff, the storefront, shop app, back office and admin CLI calling the Shop API in a Shop platform box with pricing, a fraud check hook, a planned gift card service and a nested green Data box holding the orders database and the order queue, a violet Support box with an agent and the returns policy, a card gateway, hosts and a removed reminder bot, lines of every kind, weight, style and step",
   "uml-class": "A UML class diagram of a bookshop's sales domain: the sales, payments, card and shared packages as boxes, Customer, Order, OrderLine and OrderStatus, catalog::Book, the abstract Payment with CardPayment and GiftCardPayment, the Payable and CardGateway interfaces, the Money data type, the Isbn primitive and a note, joined by every kind of class line",
   "uml-object": "A UML object diagram of one bookshop order just placed: inside the sales package box, ada : Customer with a referral loop and two links to order1042 : Order, the web till's audit link, two anonymous order lines, the card payment and a note; beside them the two catalog books by qualified name and the Customer class",
   "uml-package": "A UML package diagram of a bookshop, laid out down: fulfilment, the closed folder reporting and wholesale with a note above the subsystem sales, which holds Customer, Order, OrderLine and OrderStatus; below it payments with card nested inside, catalog, the profile BookshopConventions and shared with Money and Isbn, joined by dependencies, a merge, imports, an access and a profile application",
@@ -27,9 +147,9 @@
   "uml-timing": "A UML timing diagram of paying for one bookshop order: the worker, card gateway and mailer as step lines through their states, the order's status as a value band, a call and its reply, an async signal, two duration constraints and a time constraint over a ruler in milliseconds",
   "uml-information-flow": "A UML information flow diagram of what travels with a bookshop order, laid out right: dashed <<flow>> lines between Shop API, StockLedger, the Notifications interface, the shopper, Storefront and the payment provider, each naming what it conveys, a retry loop on Shop API with a note, and the Order, Card details, Receipt and Stock level items and the Book class below",
   "sysml-requirement": "A SysML requirement diagram of an online bookshop in a req frame: Online ordering containing Search, Checkout and Refunds by crosshair lines, requirements of all five kinds with ids, texts, risk and verify method, a Payments package box, a requirement copied from a regulation, blocks that satisfy and refine requirements, test cases that verify them, derive and trace lines, and a problem and a rationale note",
-  "sysml-block-definition": "A SysML block definition diagram of a city e-bike in its bdd frame: EBike generalizing RentalVehicle and composed of Battery, Motor, Controller and two Lights, with parts, references, values, constraints, ports and flow properties compartments, a Dock with a conjugated port using the ChargeInterface interface block, two constraint blocks and three value types with units",
-  "sysml-internal-block": "A SysML internal block diagram of a city e-bike, laid out down: the frame ibd [Block] EBike with the proxy port chargeSocket on its top border, the battery, the dashed reference part dock with a conjugated port, the controller, the motor with a full port, two lights and two value properties, joined by connectors carrying DCPower, PhaseCurrent and WheelSpeed",
-  "sysml-parametric": "A SysML parametric diagram of a city e-bike's range: the par frame for EBike, six value properties bound to the parameters of three constraint properties with rounded corners and their equations, usable feeding the energy of eco and boost",
+  "sysml-block-definition": "A SysML block definition diagram of the bookshop's delivery cargo e-bike in its bdd frame: CargoBike, a kind of DeliveryVehicle, composed of Battery, Motor, Controller, two Lights and a CargoBox with its parcel lock, with parts, references, values, constraints, ports and flow properties compartments, a Dock at the dispatch bay with a conjugated port using the ChargeInterface interface block, two constraint blocks and four value types with units",
+  "sysml-internal-block": "A SysML internal block diagram of the bookshop's delivery cargo e-bike, laid out down: the frame ibd [Block] CargoBike with the proxy port chargeSocket on its top border, the battery, the dashed reference part dock with a conjugated port, the controller, the motor with a full port, two lights, the cargo box and two value properties, joined by connectors carrying DCPower, PhaseCurrent, WheelSpeed and UnlockCode",
+  "sysml-parametric": "A SysML parametric diagram of the bookshop's delivery cargo e-bike's range: the par frame for CargoBike, six value properties bound to the parameters of four constraint properties with rounded corners and their equations, usable feeding the energy of empty and laden, and load turning the payload and the empty consumption into the laden one",
   "c4": "A C4 container diagram of a bookshop: the shopper and staff as people on the left, the Bookshop boundary holding Mobile app, Storefront, Stock import, Order worker, Cover images, Shop API, Database and Order queue in their card shapes, a dashed implied line from Shop API to the Email service, and the payment provider, email service and courier in grey on the right",
   "er": "An entity-relationship diagram of a bookshop's database in crow's foot notation: customer, order, order_line, payment, book, author and book_author with PK, FK, UK and nullable marks, a self-referencing customer, identifying lines solid and the rest dashed, all four crow's foot ends, and a note on order_line",
   "dfd": "A data flow diagram of a bookshop, level 1, laid out down in Yourdon notation: the Orders and Books stores, the processes Take payment, Ship order and Take order, the Payment provider, Courier and Customer, labelled flows between them and a note on the Orders store",
@@ -41,14 +161,14 @@
   "azure": "An Azure architecture diagram of a bookshop: the subscription Bookshop production and resource group rg-bookshop-prod holding CDN and routing, the West Europe region with storefront files, the order queue, the basket cache and secrets, the virtual network with the snet-apps subnet (Shop API, Order worker) and the snet-data subnet (Database), the Operations group with Application Insights and Logs and alerts, and the closed North Europe region the database replicates to"
  },
  "atlases": {
-  "about": "The Atlas section: whole businesses modelled as one multi-view model each, many diagram types joined by cards that open them, in this order. Each entry: file (examples/<file>.json), page (docs/gallery/<page>.md), name, text (HTML), alt (the root view's still), description (the docs page's), stories ([title, story id]) and views (a text per view of the model, in the model's order).",
+  "about": "The Atlas section: whole businesses modelled as one multi-view model each, many diagram types joined by cards that open them, in this order. Each entry: file (examples/<file>.json), page (docs/atlas/<page>.md), name, text (HTML), alt (the root view's still), description (the docs page's), stories ([title, story id]) and views (a text per view of the model, in the model's order).",
   "list": [
    {
-    "page": "atlas",
+    "page": "umlimator",
     "file": "umlimator-atlas",
-    "name": "The Umlimator Atlas",
+    "name": "Umlimator",
     "text": "Umlimator's own model, drawn with umlimator: its parts and who uses each (a map), its system context and containers (C4), the core module's packages in build order (a package diagram), the typed diagram families (a component diagram), the diff Action on a pull request (a sequence diagram) and umlimator's state machines (navigation, the story player, tours, the page's keys and the MCP page), joined by cards that open them.",
-    "alt": "The Umlimator Atlas's overview: the author, an AI assistant, the map-repo skill, the model JSON, umlimator.py, the readers, the module, umlimator/all, the page, the MCP page, the host page, the element, the docs site and the diff Action, with GitHub and Chrome",
+    "alt": "The Umlimator atlas's overview: the author, an AI assistant, the map-repo skill, the model JSON, umlimator.py, the readers, the module, umlimator/all, the page, the MCP page, the host page, the element, the docs site and the diff Action, with GitHub and Chrome",
     "stories": [
      [
       "A pull request, from push to comment",
@@ -76,14 +196,15 @@
     "description": "Umlimator's own model, drawn with umlimator, in many views that open into each other."
    },
    {
-    "page": "bookshop-atlas",
+    "page": "bookshop",
     "file": "bookshop-atlas",
-    "name": "The Bookshop Atlas",
-    "text": "An online bookshop modelled end to end as one model: a map of its systems and the people around them opens into its C4 views, the shopper's use cases, buying a book step by step, its components and sales domain, an order's life, the database, the data flows, fulfilling and paying, the order's way from basket to courier in BPMN, returns, the deployment in production and on three clouds, and the plan for opening the shop. The same names run through every view.",
-    "alt": "The Bookshop Atlas's overview: the shopper and the shop staff, the storefront, the shop API, the database, the order queue and the order worker, with the payment provider, the warehouse, the email service, the courier, the hosting and the opening plan",
+    "name": "Bookshop",
+    "text": "An online bookshop modelled end to end as one model: a map of its systems and the people around them, which shows everything a map draws, opens into its C4 views, the shopper's use cases, buying a book step by step, its components and sales domain, an order's life, the database, the data flows, fulfilling and paying, the order's way from basket to courier in BPMN, returns, the deployment in production and on three clouds, and the plan for opening the shop. The same names run through every view.",
+    "alt": "The Bookshop atlas's overview, a map of the bookshop's systems: the shopper and the shop staff, a removed reminder bot, the storefront, shop app, back office and admin CLI calling the Shop API in the Bookshop box with pricing, a fraud check hook, planned gift cards, the order worker and a nested green Data box holding the database and the order queue, a violet Support box with a support agent and returns.md, the payment provider, email service, warehouse and courier, the hosting and the opening plan, lines of every kind, weight, style and step",
     "description": "An online bookshop modelled end to end in one model: many views of many diagram types that open into each other.",
     "views": {
-     "overview": "The atlas's root: the bookshop's systems and the people and partners around them. Each card opens the view that tells its part of the business.",
+     "overview": "The atlas's root and the map's example: the bookshop's systems and the people and partners around them, with every card kind, boxes nested and tinted, badges, change marks, line kinds, weights, styles and steps, and two lenses. Each card that stands for a part of the business opens the view that tells it.",
+     "overview-run": "The same map's checkout as a numbered view (<code>render: sequence</code>): the cards and lines a checkout touches, numbered in run order, with no boxes. The Pricing card opens it.",
      "c4-context": "The system context: the shopper and the shop staff as people, the bookshop as the system, and the payment provider, the email service and the courier as external systems.",
      "shopping": "What a shopper does with the shop: use cases inside the online bookshop's boundary, with include and extend relationships and a member who is a kind of shopper.",
      "c4-containers": "The containers inside the bookshop's boundary, the storefront, the shop API, the order worker, the database and the order queue, each with its technology.",

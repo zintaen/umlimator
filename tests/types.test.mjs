@@ -13,13 +13,15 @@ const root = new URL('../', import.meta.url);
 const S = spec(), TYPES = typeIds();
 const PENDING = TYPES.filter(t => S.types[t] && S.types[t].pending);
 
-test('every type, the map and docs/types.md\'s 28, has its model and its entry, and nothing else is there', () => {
-  assert.equal(TYPES.length, 29);
+test('every type, tools/types.json\'s families\' 28, has its model and its entry, and nothing else is there: the map has none', () => {
+  assert.equal(TYPES.length, 28);
+  assert.equal(new Set(TYPES).size, 28, 'each type in one family, once');
+  assert.ok(!TYPES.includes('map') && !S.types.map, 'the map is no type: its example is an atlas\'s first layer');
   assert.deepEqual(Object.keys(S.types).sort(), [...TYPES].sort(), 'tools/types.json names each type once');
   assert.deepEqual(readdirSync(new URL('examples/types/', root)).filter(f => f.endsWith('.json')).sort(), TYPES.map(t => `${t}.json`).sort());
 });
 
-test('each model matches its entry: a title, an intro, a "shows" checklist with no empty item, the main view first and the root, the alternatives views of it', () => {
+test('each model matches its entry: a name, a text, a title, an intro, a "shows" checklist with no empty item, the main view first and the root, the alternatives views of it', () => {
   assert.deepEqual(TYPES.flatMap(t => problems(t)), []);
   for (const t of TYPES.filter(t => !PENDING.includes(t))) {
     const m = model(t), T = S.types[t], ids = m.views.map(v => v.id);
@@ -47,4 +49,13 @@ test('every model validates with no error, and lays out with no issue beyond its
 // a type still pending keeps its old overview page until its comprehensive example replaces it; this reports them
 test('no type is still pending its comprehensive example', { todo: PENDING.length ? `pending: ${PENDING.join(', ')}` : false }, () => {
   assert.deepEqual(PENDING, []);
+});
+
+// audit 53: a name given that is no type ended in an uncaught ENOENT and a Node stack trace; it is said in one line
+test('tools/types.mjs says a name that is no type in one line, with the types, and exits 1', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const r = spawnSync(process.execPath, ['tools/types.mjs', 'uml-clas', 'uml-class', '--no-html'], { cwd: new URL('../', import.meta.url), encoding: 'utf8' });
+  assert.equal(r.status, 1, r.stderr);
+  assert.equal(r.stderr.trim(), `tools/types.mjs: no type uml-clas; the types: ${typeIds().join(', ')}`);
+  assert.match(r.stdout, /examples\/types\/uml-class\.json: ok/);
 });

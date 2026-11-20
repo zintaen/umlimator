@@ -7,7 +7,7 @@
 // findings it leaves, each stated in its type's conformance note. Then §17's budgets in CPU time, best of three after a
 // warm-up: a full layout and its SVG under 1 s; the common edit and an edit that moves nothing under a 1 s ceiling, with
 // their time printed against S15's 100 ms (the repository's rule for CI timing, from the maintainer's decision of 13 Nov
-// 2026 on the wired state machine: CI runners are 2 to 5 times slower than a laptop; docs/conformance records the laptop's
+// 2026 on the wired state machine: CI runners are 2 to 5 times slower than a laptop; docs/diagrams/conformance records the laptop's
 // figures, at a load average of 6 to 8); each inline time axis and the Mermaid state reader and writer (500 transitions
 // each way) under the same ceiling, printed against 5 ms and 100 ms. tests/stage4.html draws every view in Chrome under three
 // fonts and both themes.

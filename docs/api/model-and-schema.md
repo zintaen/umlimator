@@ -26,7 +26,7 @@ and the other functions that return a model return a new one.
 }
 ```
 
-The full field list, with examples, is in [The model](../guide/model.md) and `engine/references/schema.md` (§ Map model);
+The full field list, with examples, is in [The model](../maps/model.md) and `engine/references/schema.md` (§ Map model);
 `examples/umlimator-atlas.json`, umlimator's own model, uses much of it.
 
 ## MapModel
@@ -123,6 +123,7 @@ interface MapEdge {
   id?: string; from: string; to: string; label?: string; edited?: boolean;
   kind?: WireKind;
   weight?: 1 | 2 | 3;
+  what?: string; when?: string;
   step?: number | string;
   sublabel?: string;
   style?: 'emphasis' | 'added' | 'dashed' | 'async' | 'security' | 'removed' | 'faded';
@@ -140,7 +141,8 @@ interface MapEdge {
 | `from`, `to` | A card's id, or a box (container) of the view, where the line ends on the box's border. |
 | `label`, `sublabel` | The line's label, and a smaller second line under it (shown only with a label). |
 | `kind` | What the line means, drawn as its colour. See [`WireKind`](#wirekind). Default `calls`. |
-| `weight` | How much the line stands for: 1 (default), 2 or 3. Lines are drawn at one width at rest; a line of weight 2 or 3 shows its width on hover, selection and keyboard focus, and its tooltip and accessible name say its `what`, else "weight 2 of 3". |
+| `weight` | How much the line stands for: 1 (default), 2 or 3. Lines are drawn at one width at rest; a line of weight 2 or 3 shows its width on hover, selection and keyboard focus, and its tooltip and accessible name say its `what` (as plain words, its first sentence), else "weight 2 of 3". |
+| `what`, `when` | The details panel's text (Markdown: `` `code` ``, `**bold**`, `[links](https://…)`, blank-line paragraphs, `- ` bullets), and when the line is used, in its tooltip. |
 | `step` | Its place in the order things happen, in a circle on the line: `2`, `2.1`, or up to 3 characters such as `"2a"`. |
 | `style` | A style that wins over the kind's colour: `emphasis`, `added`, `dashed`, `async`, `security`, `removed` or `faded`. |
 | `change` | A change mark, as [`diff()`](./apply-and-commands.md#diff) sets it, written in lower case. The renderer draws another letter case as its lower-case word, and `validate()` warns on it, as a schema check refuses it. |
@@ -168,7 +170,7 @@ interface MapView {
   edges?: (string | MapEdge | Element)[]; layout?: Record<string, [number, number]>; repair?: boolean;
   subAndChips?: boolean;
   kindsFromLabels?: boolean;
-  containers?: { id: string; label?: string; nodeIds?: string[]; parent?: string; badges?: Badge[]; tone?: string }[];
+  containers?: { id: string; label?: string; nodeIds?: string[]; parent?: string; badges?: Badge[]; tone?: string; change?: 'added' | 'new' | 'modified' | 'changed' | 'removed' | 'planned' }[];
   [key: string]: unknown;
 }
 ```
@@ -181,7 +183,7 @@ interface MapView {
 | `edges` | The lines it draws: model edge ids, or lines of its own. Without it, every model edge between two of its cards. A typed view draws its own kinds of line; most draw a listed line of another kind too, and a state machine, requirement, sequence, timing, communication, interaction overview, mindmap or cloud view leaves it out, which `validate()` warns of. A C4 dynamic view leaves it out too: its lines are its steps, each a relationship of the model, so `validate()` reports any other line it lists as a `c4-steps` error. |
 | `layout` | A `[col, row]` place per card id. |
 | `repair` | `false` turns off port repair for this map view. A typed view ignores it: its lines are never port-repaired. |
-| `containers` | Boxes: each with a label, the cards it holds, an optional parent box, badges on its border, and a `tone` that tints the region behind it. |
+| `containers` | Boxes: each with a label, the cards it holds, an optional parent box, badges on its border, a `tone` that tints the region behind it, and a `change` mark, as a card's, that [`diff()`](./apply-and-commands.md#diff) sets on a box the view gained or lost, written in lower case (`validate()` warns on another case or a value with no mark). |
 | `subAndChips` | Cards 80 px tall that show their sub-line, then their chips. |
 | `kindsFromLabels` | Guess a line's kind from its label's words when its edges name none. The standalone page always guesses. |
 

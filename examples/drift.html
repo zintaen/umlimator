@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-<!-- Drift (#68): the Umlimator Atlas's overview against a week of made-up traffic, as a tracing backend (Jaeger, Tempo)
+<!-- Drift (#68): the Umlimator atlas's overview against a week of made-up traffic, as a tracing backend (Jaeger, Tempo)
      lists the calls between services. drift() marks the model: lines that run but are not drawn come in, dashed rose; drawn lines
      between services the traffic reached, that carried nothing, fade. `umlimator.py drift` writes the same page. -->
 <meta charset="utf-8">
@@ -23,7 +23,7 @@
   <span><i class="k new"></i>runs, not drawn</span><span><i class="k idle"></i>drawn, carried nothing</span><span id="counts" aria-live="polite"></span></header>
 <main><div id="map"></div></main>
 <script type="module">
-import { render, drift } from '../lib/umlimator.js';
+import { render, drift } from '../lib/umlimator-all.js';
 import { withIcons } from './icons.js';
 
 const model = await withIcons(await (await fetch('umlimator-atlas.json')).json());

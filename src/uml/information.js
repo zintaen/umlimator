@@ -6,7 +6,8 @@ import { layoutTyped, typedLines } from '../typed/layout.js';
 import { LINE_SAYS, commentConnect, commentLinkProblems, legendItem } from './class.js'; // SHAPE.classifier and SHAPE.note too
 import { snKindName, snLineName } from './structure.js'; // SHAPE.component too
 import './usecase.js'; // SHAPE.actor
-import { usedIds, jsonText, labelOr, elName } from '../core/model.js';
+import { usedIds, jsonText, labelOr, elName, isGone } from '../core/model.js';
+import { liveLine } from '../typed/draw.js';
 
 /* ---------- the information flow diagram, uml.information-flow (work package M2.5, notes/milestone-2.md §7.4) ----------
    Classes and interfaces (the class type's classifier, name only), components (src/uml/structure.js's look) and actors (the
@@ -56,7 +57,8 @@ function ifIndex(model) {
   const at = new Map(); IF_ARR(model && model.nodes).forEach(n => { if (IF_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
   // M: the model's lines; E: those and the lines written inline in information flow views (audit 14), for what a flow conveys
   const M = IF_ARR(model && model.edges).filter(e => IF_OBJ(e) && typeof e.id === 'string');
-  const E = typedLines(model, v => v.diagram === 'uml.information-flow').map(([e]) => e).filter(e => IF_OBJ(e) && typeof e.id === 'string');
+  // each flow id once, the model's line first: diff()'s marked copy of a model flow in a view's edges is no second flow (audit 57)
+  const ids = new Set(), E = typedLines(model, v => v.diagram === 'uml.information-flow').map(([e]) => e).filter(e => IF_OBJ(e) && typeof e.id === 'string' && !ids.has(e.id) && ids.add(e.id));
   const conveyed = e => IF_ARR(IF_OBJ(e.props) ? e.props.conveyed : null);
   const nm = id => (at.has(id) ? ifName(at.get(id)) : String(id)); // a conveyed id that is gone: said as itself (conveyed-kind)
   return { at, M, E, conveyed, nm, flowsOf: id => E.filter(e => e.type === 'uml.InformationFlow' && conveyed(e).includes(id)) };
@@ -74,7 +76,10 @@ const ifShown = (I, view) => [...new Set(IF_ARR(view && view.nodeIds))].filter(i
    conveys Order and Card details" ---- */
 function ifNodeName(I, n) {
   if (n.type === 'uml.Comment') return 'Comment: ' + ifName(n);
-  const st = ifStereo(n), w = ifKindName(n.type), k = I.flowsOf(n.id).length;
+  // the model after's count on the diff page: not a flow diff() drew back removed, nor one to or from an element it drew back
+  // removed; one itself removed counts what it had, the model before's (audit 56)
+  const live = e => isGone(n) || liveLine(e, id => isGone(I.at.get(id)));
+  const st = ifStereo(n), w = ifKindName(n.type), k = I.flowsOf(n.id).filter(live).length;
   return `${w} ${ifName(n)}${st.length ? ` (${st.join(', ')})` : ''}${k ? `, conveyed by ${ifPlural(k, 'flow')}` : ''}`;
 }
 function ifLineName(I, e) {

@@ -1,7 +1,7 @@
-import { ownNodes, registerDiagramType } from '../core/registry.js';
-import { brLines, fit, textW } from '../core/text.js';
+import { everyOwn, registerDiagramType } from '../core/registry.js';
+import { brLines, wrapLines } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
-import { labelW, rowsFor, untangle } from '../layout/layered.js';
+import { labelW, pinCells, rowsFor, untangle } from '../layout/layered.js';
 import { goneLines, layoutTyped } from '../typed/layout.js';
 import { commentConnect, drawnLines, legendItem, lineRename } from '../uml/class.js'; // and SHAPE.note, a comment's look
 import { holdsLine, ownersOn, placeTabs } from '../uml/owners.js';
@@ -68,10 +68,8 @@ const RQ_WRAP = 224, RQ_PX = 11; // the classifier's row font
 // a break the author put in the text breaks the line there, as flowWrap's (audit 27)
 function rqWrap(t) {
   const out = [];
-  brLines(t).forEach(par => { let line = '';
-    par.split(/\s+/).filter(Boolean).map(w => (textW(w, RQ_PX) > RQ_WRAP ? fit(w, RQ_PX, RQ_WRAP) : w)).forEach(w => { const next = line ? line + ' ' + w : w; // a word wider than 224 px is cut there
-      if (line && textW(next, RQ_PX) > RQ_WRAP) { out.push(line); line = w; } else line = next; });
-    if (line) out.push(line); });
+  // a line breaks between words, between two ideographs (Chinese, Japanese), and inside a word wider than 224 px (audit 58: cut there)
+  brLines(t).forEach(par => wrapLines(par, RQ_PX, RQ_WRAP).forEach(l => out.push(l[0])));
   return out;
 }
 const rqRows = x => { const p = RQ_PROPS(x);
@@ -155,9 +153,12 @@ function rqGeo({ model, view, pos: pins, memo }) {
     aria: `Containment of ${rqKind(I, x.from)} in ${rqKind(I, x.to)}` })));
   // ranked: a relationship's supplier, a containment's owner and what a comment is about first; a pin wins, and a card on its cell goes down a row
   const at = rqRank(frame, boxes, [...lines.map(({ e, from, to }) => [to, from]), ...owned.map(id => [I.at.get(id).parent, id])]);
-  const pinOf = id => (RQ_OBJ(pins) && Object.hasOwn(pins, id) && Array.isArray(pins[id]) && pins[id].length === 2 && pins[id].every(Number.isFinite) ? pins[id] : null), taken = [];
-  // ponytail: a pin is a cell of the frame's grid, not of a box's block, so a card pinned inside another box's block can overlap it; ranking pins into blocks would lift that
-  [...ids.filter(pinOf), ...ids.filter(id => !pinOf(id))].forEach(id => { let [c, r] = pinOf(id) || at[id]; while (taken.some(([c2, r2]) => c2 === c && Math.abs(r2 - r) < 1)) r++; at[id] = [c, r]; taken.push([c, r]); });
+  const pinOf = id => (RQ_OBJ(pins) && Object.hasOwn(pins, id) && Array.isArray(pins[id]) && pins[id].length === 2 && pins[id].every(Number.isFinite) ? pins[id] : null);
+  // the pins settled among the boxes as the component view's are (pinCells, src/layout/layered.js): one that would sit in a box it
+  // is not in, or grow its own box over a card it does not hold, goes to the nearest clean slot (audit 59: the gallery's Payment
+  // gateway Alt + Down twice, the Payments package over the Checkout walk-through); buildGeo's pinsClear (src/map/context.js) checks the picture
+  const up = x => { const a = []; for (let k = 0, y = pic.owner(x); y != null && y !== sid && k <= ids.length + boxes.length; k++, y = pic.owner(y)) if (pic.open.has(y)) a.push(y); return a; };
+  pinCells(at, ids.filter(id => pinOf(id) && Object.hasOwn(at, id)).map(id => [id, pinOf(id)]), up, ids);
   nodes.forEach(n => { [n.col, n.row] = at[n.id]; });
   const down = view.direction == null || view.direction === 'down', wide = down ? 0 : Math.max(0, ...edges.filter(e => e.label).map(labelW)); // down by default (§6.1); a direction neither right nor down is drawn right, as the core warns (audit 12); laid out right, the class type's room for labels
   const g = placeTabs(layoutTyped({ nodes, edges, containers: [frame, ...boxes], direction: down ? 'down' : 'right', gap: 96 + (wide ? Math.ceil(wide) + 40 : 0), rgap: 56, repair: false, reroute: false }, memo));
@@ -286,8 +287,9 @@ rqRename.empty = SYS_FRAME_EMPTY; // an emptied F2 on the frame removes the view
 // core's delete would take it along). Anything else, and Delete on a card, the canvas's
 function rqRemove(model, view, ids, fromModel) {
   // the core hands remove the model as it is (registry.js): the view's own requirements read here too, so what one holds
-  // goes to its owner and its containment line is cut, as a model one's (audit 24)
-  const V = RQ_OBJ(view) ? view : RQ_ARR(model && model.views).find(v => RQ_OBJ(v) && v.id === view), I = rqIndex(V ? ownNodes(model, V).model : model, V), cut = [], rest = [];
+  // goes to its owner and its containment line is cut, as a model one's (audit 24); every other view's own too, which apply()
+  // deletes under a model requirement in any view, so each is kept and counted (audit 52, as clRemove)
+  const V = RQ_OBJ(view) ? view : RQ_ARR(model && model.views).find(v => RQ_OBJ(v) && v.id === view), I = rqIndex(everyOwn(model, V).model, V), cut = [], rest = [];
   ids.forEach(id => { const k = String(id).indexOf('->'), o = String(id).slice(0, k), c = String(id).slice(k + 2);
     if (k > 0 && I.is(c, RQ) && I.at.get(c).parent === o) cut.push([c, o]); else rest.push(id); });
   if (!ids.length || (rest.length && !fromModel) || (!cut.length && !rest.some(id => I.is(id, RQ) || I.is(id, RQ_PKG)))) return null;

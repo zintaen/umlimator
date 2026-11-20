@@ -62,6 +62,18 @@ test('the definition: uml.interaction-overview is registered with its palette, l
   for (const k of ['layout', 'validate', 'describe']) assert.equal(typeof T[k], 'function', k);
 });
 
+// the Accessibility section of the conformance page, and the docs page built from it, quotes names as the code draws them:
+// the inline interaction's ends ", opens Queue the order" as the interaction use's does (audit 59)
+test('the docs\' Accessibility section quotes each name as example 13 draws it (audit 59)', () => {
+  const drawn = new Set(layout(EX, 'buy-book').nodes.map(n => n.aria));
+  for (const f of ['../docs/diagrams/conformance/uml-interaction-overview.md', '../docs/types/uml-interaction-overview.md']) {
+    const sec = readFileSync(new URL(f, import.meta.url), 'utf8').split(/^#{2,3} Accessibility$/m)[1].split(/^#{2,3} /m)[0].replace(/\s+/g, ' ');
+    const quoted = [...sec.matchAll(/"([^"]+)"/g)].map(x => x[1]);
+    assert.ok(quoted.length >= 4, f);
+    for (const q of quoted) assert.ok(drawn.has(q), `${f}: "${q}" is not a drawn name`);
+  }
+});
+
 test('example 13 validates, lays out clean down and right, and names every node and flow (§14)', () => {
   assert.deepEqual(validate(EX), []);
   for (const d of ['down', 'right']) { const r = clean(dir(EX, d), 'buy-book');

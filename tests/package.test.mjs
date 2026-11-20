@@ -264,9 +264,10 @@ test('a pinned class in a box stays in it (a pin far outside its box is §4.3\'s
   // both pinned there: Money, with no pin and the first card of shared placed, goes clear of payments (audit 42: it kept its
   // auto-layout place inside payments' cells, and payments grew over shared)
   m.views[0].layout = { payment: [3, 3], payable: [1, 1] }; assert.deepEqual(check(m, 'packages'), []);
-  m.views[0].layout = { payment: [3, 3], payable: [1, 1], money: [3, 1.5] }; // Money pinned there too: payments grows over shared and its card, which the check reports
-  const said = check(m, 'packages').map(p => p.message);
-  for (const s of ['view packages: families "payments" and "shared" overlap', 'view packages: family "payments" lies over "Money", which it does not hold']) assert.ok(said.includes(s), said.join(' | '));
+  // Money pinned there too, in payments' cells: it goes to the nearest clean slot, so payments no longer grows over shared and
+  // its card (audit 58; up to then the check reported both)
+  m.views[0].layout = { payment: [3, 3], payable: [1, 1], money: [3, 1.5] };
+  assert.deepEqual(check(m, 'packages').map(p => p.message).filter(s => /overlap|lies over/.test(s)), []);
   const memos = {}, run = x => mapContext(x, { memos }).buildGeo('packages');
   run(PKG); run(apply(PKG, [{ op: 'set', id: 'catalog-imports-shared', path: 'props.visibility', value: 'public' }])); // a prop that draws nothing new
   assert.equal(memos.packages.runs, 1);
@@ -367,4 +368,28 @@ test('audit 27: a line out of a box to something outside it keeps out of that bo
   const [x0, y0] = e.pts[0], [x9, y9] = e.pts.at(-1), back = [[x0, y0], [x0 + 18, y0], [x0 + 18, y0 + 6], [f.x + f.w - 35, y0 + 6], [f.x + f.w - 35, 51], [x9 - 48, 51], [x9 - 48, y9], [x9, y9]];
   assert.deepEqual(throughIssues({ ...g, edges: g.edges.map(x => x === e ? { ...e, pts: back } : x) }, 'view v'), ['view v: edge payments→lines runs back inside its own box "payments"']);
   assert.deepEqual(throughIssues(g, 'view v'), [], 'the route it draws now keeps out');
+});
+
+// audit 59: pins that ignore the packages (every class pinned where it was drawn, then classes moved to another package; classes
+// pinned to scattered cells; several pinned to one cell) took seconds a layout to settle (settlePins found each box's cells
+// again for every cell it tried, and tried as far as the count of cards) and still drew a card over a card, or a package over
+// a card it does not hold, where no clean cell was near: the pin now goes in a fresh row under its box
+test('pins that ignore the packages settle clean, in milliseconds (audit 59)', () => {
+  const bad = (m, v) => check(m, v).map(p => p.message).filter(s => /lies over|overlap/.test(s));
+  const classes = (N, P, view = 'uml.package', chain = false) => { const nodes = [...Array.from({ length: P }, (_, i) => ({ id: 'p' + i, type: 'uml.Package', label: 'package' + i })),
+    ...Array.from({ length: N }, (_, i) => ({ id: 'c' + i, type: 'uml.Class', label: 'Class' + i, parent: 'p' + (i % P) }))];
+    return { schemaVersion: 2, nodes, edges: chain ? Array.from({ length: N - 1 }, (_, i) => ({ id: 'e' + i, type: 'uml.Dependency', from: 'c' + i, to: 'c' + (i + 1) })) : [], views: [{ id: 'v', diagram: view, nodeIds: nodes.map(n => n.id) }] }; };
+  const timed = (m, ms, what) => { const t = performance.now(); layout(m, 'v'); const dt = performance.now() - t; assert.ok(dt < ms, `${what}: ${Math.round(dt)} ms`); assert.deepEqual(bad(m, 'v'), [], what); };
+  // 40 classes in 4 packages, each pinned where it was drawn, then 6 moved to another package (apply reparent, which keeps pins)
+  let seed = 11; const R = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648, m = classes(40, 4);
+  m.edges = Array.from({ length: 39 }, (_, i) => ({ id: 'e' + i, type: 'uml.Association', from: 'c' + i, to: 'c' + Math.floor(R() * 40) })).filter(e => e.from !== e.to);
+  m.views[0].layout = Object.fromEntries(layout(m, 'v').nodes.filter(n => /^c/.test(n.id)).map(n => [n.id, [n.col, n.row]]));
+  timed(apply(m, Array.from({ length: 6 }, () => ({ op: 'reparent', id: 'c' + Math.floor(R() * 40), parent: 'p' + Math.floor(R() * 4) }))), 250, 'six classes moved');
+  // 60 classes in 4 packages, each pinned to a cell of an 8 by 8 grid at random (was 17 s, with 27 clashes left)
+  seed = 5; const cells = []; for (let c = 0; c < 8; c++) for (let r = 0; r < 8; r++) cells.push([c, r]);
+  for (let i = cells.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [cells[i], cells[j]] = [cells[j], cells[i]]; }
+  const s = classes(60, 4); s.views[0].layout = Object.fromEntries(Array.from({ length: 60 }, (_, i) => ['c' + i, cells[i]])); timed(s, 250, 'scattered pins');
+  // 80 classes in 10 packages joined in a chain, 5 pinned to one cell (was 5 to 9 s); 9 classes in 3 packages all on one cell
+  const f = classes(80, 10, 'uml.class', true); f.views[0].layout = Object.fromEntries(Array.from({ length: 5 }, (_, i) => ['c' + i, [0, 0]])); timed(f, 1500, 'five on one cell');
+  for (const view of ['uml.class', 'uml.package']) { const o = classes(9, 3, view, true); o.views[0].layout = Object.fromEntries(Array.from({ length: 9 }, (_, i) => ['c' + i, [0, 0]])); timed(o, 250, view + ': nine on one cell'); }
 });

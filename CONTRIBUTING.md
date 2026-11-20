@@ -61,7 +61,7 @@ The bench lays out fixed models in headless Chrome and fails on a view that no l
 - `engine/scripts/`, `engine/references/` and `tools/fetch_icons.py` are copies of pinned upstream files (see `THIRD_PARTY_NOTICES.md`). Never edit them: CI checks that they are unmodified. Change behaviour around them in umlimator's own code instead.
 - Examples are made-up systems. Do not name real host applications, companies or people in models, docs or tests.
 - Cloud icon packs are fetched by each user after reading the vendor's terms. Do not commit vendor icons.
-- A change in behaviour comes with a test, and with the docs that describe it (`docs/guide/`, `docs/api/`, a conformance note in `docs/conformance/`).
+- A change in behaviour comes with a test, and with the docs that describe it (`docs/start/`, `docs/maps/`, `docs/use/`, `docs/api/`, a type's section of `tools/types.md` or its conformance note in `docs/diagrams/conformance/`; `node tools/gallery.mjs` then writes the type pages).
 - Write docs in plain, direct English with plain keyboard characters: straight quotes, a hyphen for a dash, three periods for an ellipsis.
 
 ## How a pull request is checked

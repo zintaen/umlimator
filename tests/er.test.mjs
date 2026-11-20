@@ -148,6 +148,12 @@ test('a column\'s row (S9): name type [PK] [FK table.column] [UK] [NULL], flags 
   assert.deepEqual(parseColumn('note  numeric(10, 2)  null uk', I), { label: 'note', props: { dataType: 'numeric(10, 2)', nullable: true, unique: true } });
   assert.deepEqual(parseColumn('ref FK er-book.id PK', I), { label: 'ref', props: { foreignKey: true, references: 'er-book.id', primaryKey: true } }, 'by id; no type');
   assert.deepEqual(parseColumn('x int FK', I), { label: 'x', props: { dataType: 'int', foreignKey: true } }, 'FK alone (fk-flag then warns)');
+  // a comparison inside paired parentheses is text, not a bracket; a bracket closed by another kind does not pair (audit 59)
+  assert.deepEqual(parseColumn('amount int CHECK (amount > 0)', I), { label: 'amount', props: { dataType: 'int CHECK (amount > 0)' } });
+  assert.deepEqual(parseColumn('qty int CHECK (qty >= 1)', I), { label: 'qty', props: { dataType: 'int CHECK (qty >= 1)' } });
+  assert.deepEqual(parseColumn('price numeric(10,2) CHECK (price < 1000) NULL', I), { label: 'price', props: { dataType: 'numeric(10,2) CHECK (price < 1000)', nullable: true } });
+  assert.deepEqual(parseColumn('m map<string, list<int>> NULL', I), { label: 'm', props: { dataType: 'map<string, list<int>>', nullable: true } });
+  for (const bad of ['x numeric(10]', 'x map<int', 'x int >', 'y list<int)>']) assert.match(parseColumn(bad, I).error, /its brackets do not pair/, bad);
   assert.deepEqual(parseColumn('x int FK NOT NULL', I), { label: 'x', props: { dataType: 'int', foreignKey: true } }, 'audit 16: FK with no target, then NOT NULL: NOT is no target');
   assert.deepEqual(parseColumn('id', I), { label: 'id', props: {} });
   for (const [t, why] of [['', 'it is empty'], ['id int PK pk', 'PK is written twice'], ['id int PK extra', '"extra" is left over: write name type [PK] [FK table.column] [UK] [NULL]'], ['x int FK customer.nope', 'FK customer.nope names no column (table.column)'],
@@ -366,9 +372,9 @@ test('audit 17: the PDF\'s Lines table lists a self-reference, as er.md says', (
   const ctx = mapContext(m), [, lines] = tablesOf(ctx, ctx.V[vid], { nodes: [], edges: layout(m, vid).edges }), cells = r => [...r.matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1]);
   const rows = lines.rows.map(r => cells(r).slice(0, 2).map(c => c.replace(/<[^>]*>/g, '')));
   assert.ok(rows.some(([a, b]) => a === 'customer → customer' && b === 'referred: 0..1 to 0..*, non-identifying'), rows.join('\n'));
-  const doc = readFileSync(new URL('../docs/conformance/er.md', import.meta.url), 'utf8');
+  const doc = readFileSync(new URL('../docs/diagrams/conformance/er.md', import.meta.url), 'utf8');
   assert.ok(doc.includes('a self-reference is listed too') && doc.includes('`customer -> customer referred: 0..1 to 0..*, non-identifying`'));
-  assert.match(readFileSync(new URL('../docs/conformance/uml-information-flow.md', import.meta.url), 'utf8'), /the PDF's lines table lists it/); // the same for a flow to itself
+  assert.match(readFileSync(new URL('../docs/diagrams/conformance/uml-information-flow.md', import.meta.url), 'utf8'), /the PDF's lines table lists it/); // the same for a flow to itself
 });
 
 test('audit 19: a column is deleted from the panel\'s Members row, as er.md and editing.md say; only the notation switch is a host\'s', () => {
@@ -378,7 +384,7 @@ test('audit 19: a column is deleted from the panel\'s Members row, as er.md and 
   const after = apply(m, [{ op: 'delete', id: 'er-customer.id' }]), cols = id => after.nodes.flatMap(n => n.members || []).find(c => c.id === id);
   assert.equal(cols('er-customer.id'), undefined);
   assert.equal(cols('er-order.customer_id').props.references, undefined, 'a column that referenced it loses references');
-  const doc = readFileSync(new URL('../docs/conformance/er.md', import.meta.url), 'utf8').replace(/\s+/g, ' '), ed = readFileSync(new URL('../docs/editing.md', import.meta.url), 'utf8');
+  const doc = readFileSync(new URL('../docs/diagrams/conformance/er.md', import.meta.url), 'utf8').replace(/\s+/g, ' '), ed = readFileSync(new URL('../docs/editing.md', import.meta.url), 'utf8');
   assert.ok(!/no canvas gesture[^.]*deleting a column/.test(doc) && doc.includes('A column is deleted with the ✕ on its Members row in the properties panel'), 'er.md');
   assert.ok(!ed.includes('| a column deleted, the notation switched |') && ed.includes('| | a column deleted | the ✕ on its Members row in the properties panel |'), 'editing.md');
 });

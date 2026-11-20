@@ -112,7 +112,7 @@ test("a file with every construct on Mermaid's flowchart page gives the pinned r
     '80 approximated: Q <--> R: an arrowhead at each end: read as two flows',
     '81 approximated: R x--x S: a cross end, an arrowhead at each end: read as two flows',
     '92 skipped: subgraph one: the group is not read, the nodes in it are',
-    '95 skipped: subgraph two-words: the group is not read, the nodes in it are',
+    '95 skipped: subgraph subGraph1: the group is not read, the nodes in it are', // a title with a space is no id: two-words on line 105 is a node (audit 51)
     '98 skipped: subgraph three: the group is not read, the nodes in it are',
     '99 approximated: direction RL inside a subgraph is not kept: the view has one direction',
     '101 skipped: subgraph inner: the group is not read, the nodes in it are',
@@ -173,9 +173,11 @@ print(json.dumps({"nodes": [n["id"] for n in m["nodes"]], "edges": [[e["id"], e[
   // the importer draws a line to a subgraph's box; the typed flowchart has no box, so the reader reports it (pinned above)
   assert.deepEqual(edges.filter(e => py.edges.some(p => p[0] === e[0])), py.edges.filter(([, a, b]) => !boxes.has(a) && !boxes.has(b)));
   assert.deepEqual(py.edges.filter(([, a, b]) => boxes.has(a) || boxes.has(b)), [['one-three', 'one', 'three'], ['three-c2', 'three', 'c2']]);
-  // what it reads besides: Mermaid's @{ } forms, the second flow of o--o and x--x; an edge id both read, as the line's id (audit 29)
+  // what it reads besides: Mermaid's @{ } forms; an edge id both read, as the line's id (audit 29). The second flow of o--o
+  // and x--x both read since audit 61, when the importer drew it as for <-->
   assert.deepEqual(nodes.filter(id => !py.nodes.includes(id)), [...Array.from({ length: 18 }, (_, k) => `sh${k + 1}`), 'icon', 'img']);
-  assert.deepEqual(edges.filter(e => !py.edges.some(p => p[0] === e[0])), [['Q-P', 'Q', 'P'], ['S-R', 'S', 'R']]);
+  assert.deepEqual(edges.filter(e => !py.edges.some(p => p[0] === e[0])), []);
+  assert.deepEqual(['Q-P', 'S-R'].map(id => py.edges.find(p => p[0] === id)), [['Q-P', 'Q', 'P'], ['S-R', 'S', 'R']]);
   assert.deepEqual(py.edges.find(p => p[0] === 'e1'), ['e1', 'K', 'L']);
 });
 
@@ -469,4 +471,38 @@ test('a node of no type (or "") is written as a process, with its flows, and sai
     assert.deepEqual(back.nodes.map(n => [n.id, n.type]), [['s', 'flow.Terminator'], ['x', 'flow.Process'], ['e', 'flow.Terminator']]);
     assert.deepEqual(back.edges.map(x => [x.id, x.from, x.to]), [['f1', 's', 'x'], ['f2', 'x', 'e']]);
   }
+});
+
+test('a %% comment line inside a quoted label over lines is taken out, as Mermaid\'s cleanupComments does before it parses, its quotes not counted, and said (audit 51)', () => {
+  const r = read('flowchart LR\n  A["first\n  %% a " quote\n  second"] --> B\n');
+  assert.deepEqual(r.model.nodes.map(n => [n.id, n.label]), [['A', 'first\nsecond'], ['B', 'B']]);
+  assert.deepEqual(r.model.edges.map(e => [e.from, e.to]), [['A', 'B']]);
+  assert.deepEqual(r.report.map(x => [x.line, x.status, x.message]), [[3, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read']]);
+});
+
+test('a subgraph titled with no id of its own whose title holds whitespace is Mermaid\'s subGraph<n>, so a node named as its slug is a node with its flows (audit 51)', () => {
+  const r = read('flowchart LR\n  subgraph "Order flow"\n    pay\n  end\n  subgraph Ship it\n    box\n  end\n  subgraph one\n    x\n  end\n  order-flow --> ship\n  ship-it --> one\n');
+  assert.deepEqual(r.model.nodes.map(n => n.id), ['pay', 'box', 'x', 'order-flow', 'ship', 'ship-it']);
+  assert.deepEqual(r.model.edges.map(e => `${e.from}->${e.to}`), ['order-flow->ship']);
+  assert.deepEqual(r.report.map(x => `${x.line}: ${x.message}`), ['2: subgraph subGraph0: the group is not read, the nodes in it are',
+    '5: subgraph subGraph1: the group is not read, the nodes in it are', '8: subgraph one: the group is not read, the nodes in it are',
+    '12: ship-it --> one: one is a subgraph, which is not read']);
+});
+
+test('an ellipse A(-text-) is read as Mermaid reads it, its text without the dashes, in this reader and the map importer alike (audit 54)', () => {
+  // Mermaid's flow.jison: '(-' text '-)' is addVertex(A, text, 'ellipse'); its text may hold dashes, and a quoted one -)
+  const src = ['flowchart TD', 'A(-Start here-) --> B(round)', 'C(- x -) & D(-a-b-) --> E(--x--)', 'F(-"q -) z"-)'].join('\n');
+  const want = [['A', 'Start here'], ['B', 'round'], ['C', ' x '], ['D', 'a-b'], ['E', '-x-'], ['F', 'q -) z']];
+  const { model, report } = read(src);
+  assert.deepEqual(model.nodes.map(n => [n.id, n.label]), want.map(([id, l]) => [id, l.trim()]));
+  assert.deepEqual(model.nodes.map(n => n.type), Array(6).fill('flow.Process'));
+  assert.deepEqual(report.map(r => r.message), ['A: an ellipse is read as a process', 'B: a rounded box is read as a process',
+    'C: an ellipse is read as a process', 'D: an ellipse is read as a process', 'E: an ellipse is read as a process', 'F: an ellipse is read as a process']);
+  const root = fileURLToPath(new URL('../', import.meta.url));
+  const py = JSON.parse(execFileSync('python3', ['-I', '-c', `import json, sys
+sys.path.insert(0, ${JSON.stringify(root)})
+import umlimator_import as imp
+m, unread = imp.read("mermaid", sys.stdin.read(), "flowchart")
+print(json.dumps([[n["id"], n["label"]] for n in m["nodes"]]))`], { input: src, encoding: 'utf8' }));
+  assert.deepEqual(py, want.map(([id, l]) => [id, l.trim()]));
 });
