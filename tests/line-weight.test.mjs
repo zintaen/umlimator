@@ -80,7 +80,7 @@ test('every description of a line\'s weight says it shows on hover, selection an
   assert.ok(dts, 'the d.ts documents weight');
   const map = JSON.parse(read('tools/gallery.json')).map, item = JSON.stringify(map).match(/"(Line weights[^"]*)"/);
   assert.ok(item, 'the map checklist lists weights');
-  const said = { schema: descs.join(' '), dts: dts[1], checklist: item[1], page: read('docs/gallery/bookshop-atlas.md').match(/<li>Line weights[^<]*<\/li>/)?.[0] ?? '',
+  const said = { schema: descs.join(' '), dts: dts[1], checklist: item[1], page: read('docs/atlas/bookshop.md').match(/<li>Line weights[^<]*<\/li>/)?.[0] ?? '',
     readme: read('examples/README.md').match(/^\| \[`monorepo\.json`\][^\n]*/m)[0], monorepo: read('examples/monorepo.py').split('"""')[1] };
   for (const [where, text] of Object.entries(said)) {
     assert.doesNotMatch(text, /drawn as (its )?widths?|heavier|about 1\.8, 3\.2 and 4\.5 px/, where);

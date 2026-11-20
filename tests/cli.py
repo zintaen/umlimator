@@ -2401,7 +2401,7 @@ if part("audit 45"):
 if part("audit 51"):
     # the guide's --views values name views of the page its block renders (audit 51: 'overview,api' and 'pic-*' named none of
     # the Umlimator atlas's, so both documented commands stopped with exit 1): each through pick(), as stills, check and pdf read it
-    guide, pages, said = (ROOT / "docs" / "guide" / "cli.md").read_text(), {}, []
+    guide, pages, said = (ROOT / "docs" / "use" / "cli.md").read_text(), {}, []
     with tempfile.TemporaryDirectory() as t:
         for line in re.findall(r"^python3 umlimator\.py .*$", guide, re.M):
             if m := re.match(r"python3 umlimator\.py render (\S+) --out (\S+)", line):

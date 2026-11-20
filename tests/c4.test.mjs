@@ -71,7 +71,7 @@ test('maps draw as now: the map\'s shapes are read only; C4 adds its own two (c4
 
 
 test('audit 20: the C4ElementProps row names the shapes C4 draws, the card shapes but node, as C4_SHAPES holds them', () => {
-  const row = readFileSync(new URL('../docs/api/typed-diagrams.md', import.meta.url), 'utf8').split('\n').find(l => l.startsWith('| `C4ElementProps`'));
+  const row = readFileSync(new URL('../tools/types.md', import.meta.url), 'utf8').split('\n').find(l => l.startsWith('| `C4ElementProps`'));
   const shape = /`shape` \((.*?)\), `container`/.exec(row)[1], named = [...shape.matchAll(/`([a-z]+)`/g)].map(m => m[1]);
   assert.deepEqual(named.slice(named.indexOf('node') + 1, named.indexOf('node') + 1 + C4_SHAPES.length).sort(), [...C4_SHAPES].sort());
   assert.ok(/other than `node`/.test(shape), shape);
