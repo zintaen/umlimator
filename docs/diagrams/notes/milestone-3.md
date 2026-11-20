@@ -311,7 +311,7 @@ pair, the owner first, so a requirement sits above what it contains. M3.2 owns i
 
 The wrapped text is the type's: it splits `text` into rows by `textW` before the layout, each row a member of the
 classifier's drawing input, so the classifier draws them as it draws attributes, and its size counts them. A word wider
-than 224 px is cut there. The classifier builds its `aria-label` itself (`classSvg`: the type's words, the stereotypes,
+than 224 px starts a row and breaks between two of its characters, and a text with no spaces (Chinese, Japanese) breaks between two ideographs (audit 58; it was cut there). The classifier builds its `aria-label` itself (`classSvg`: the type's words, the stereotypes,
 each compartment's count), so a requirement would be read "Requirement Pedal assistance (requirement), 4 requirement",
 its keyword twice and its wrapped rows counted as members. M3.1's edit of `src/typed/draw.js` lets a new node field,
 `ariaOwn`, replace that label when set. The class and object types already set `aria` on their classifier nodes (for the

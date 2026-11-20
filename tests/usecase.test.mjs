@@ -493,3 +493,9 @@ test('audit 50: connect refuses a line validate() calls an error, in the rule\'s
   assert.equal(c('track', 'sign-in', 'Include'), null); assert.equal(c('shopper', 'track', 'Association'), null);
   assert.deepEqual(c('track', 'shopper', 'Association'), [{ op: 'add', element: { id: 'association1', type: 'uml.Association', from: 'shopper', to: 'track' }, view: 'shopping' }]);
 });
+
+test('audit 58: a use case named with no spaces (Chinese) wraps to more than one line', () => {
+  const n = { id: 'u', label: '为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限', x: 0, y: 0 }; Object.assign(n, SHAPE.ellipse.size(n));
+  const ls = [...SHAPE.ellipse.draw(n).matchAll(/class="c-name"[^>]*>([^<]*)</g)].map(x => x[1]);
+  assert.ok(ls.length > 1 && ls.join('') === n.label, JSON.stringify(ls));
+});

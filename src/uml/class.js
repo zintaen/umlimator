@@ -1,6 +1,6 @@
 import { jsonText, labelOr, elName, labelProblem, propTextProblems, usedIds } from '../core/model.js';
 import { aWord, kindWord, registerDiagramType } from '../core/registry.js';
-import { brLines, esc, fit, textW, widest } from '../core/text.js';
+import { brLines, esc, fit, textW, widest, wrapLines } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import '../typed/draw.js'; // SHAPE.classifier, which the note's outline and ports take
 import { labelW } from '../layout/layered.js';
@@ -183,10 +183,7 @@ function compartmentsOf(n) { // a class's attributes and operations; an enumerat
 const NOTE = { pad: 8, px: 11, lh: 15, max: 220, fold: 10 };
 function noteLines(t) {
   const out = [], parts = brLines(String(t ?? '').trim());
-  parts.forEach(part => { let line = '';
-    part.split(/\s+/).filter(Boolean).forEach(w => { const next = line ? line + ' ' + w : w;
-      if (line && textW(next, NOTE.px) > NOTE.max) { out.push(line); line = w; } else line = next; });
-    out.push(line); });
+  parts.forEach(part => { const ls = wrapLines(part, NOTE.px, NOTE.max); out.push(...(ls.length ? ls.map(l => l[0]) : [''])); }); // breaks as mmSize's (audit 58)
   return out;
 }
 SHAPE.note = {

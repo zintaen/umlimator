@@ -636,3 +636,11 @@ test('audit 51: Shift + Delete of a model group counts the elements another view
   assert.equal(r.say, 'Deleted Network vpc and the 3 elements it held');
   const after = apply(m, r.commands); assert.deepEqual([after.nodes.map(n => n.id), after.views[1].nodes.map(n => n.id)], [['db'], []]);
 });
+
+test('audit 58: a service card label with no spaces (Chinese, a long URL) wraps to two lines', () => {
+  const C = SHAPE['cloud-card'], label = '为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限', n = { id: 'a', label, name: 'Cloud Run', x: 0, y: 0, ...C.size({ label, name: 'Cloud Run' }) };
+  const ls = [...C.draw(n).matchAll(/class="c-name"[^>]*>([^<]*)</g)].map(x => x[1]);
+  assert.equal(ls.length, 2, JSON.stringify(ls)); assert.ok(ls[0].startsWith('为书店') && !ls[0].endsWith('…'), ls[0]);
+  const url = 'https://shop.example.com/api/orders', u = [...C.draw({ ...n, label: url, ...C.size({ label: url, name: 'Cloud Run' }) }).matchAll(/class="c-name"[^>]*>([^<]*)</g)].map(x => x[1]);
+  assert.equal(u.join(''), url, 'a long URL breaks between two characters');
+});

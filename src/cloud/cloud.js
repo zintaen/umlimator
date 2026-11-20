@@ -66,7 +66,7 @@ const clGiven = (F, D) => CL_OBJ(D && D.icons) && Object.keys(D.icons).some(k =>
 /* ---- the service card (§5.2): the icon on its tile, the label (13 px, two lines of 180 px), the full name under it ---- */
 const CLD = { pad: 12, icon: 32, gap: 10, label: 13, llh: 16, name: 11, nlh: 14, text: 180, minW: 180, maxW: 280, minH: 56 }, CL_TILE = CLD.icon * 34 / 28; // svgOf's tile rule
 // a text the author broke (a Mermaid <br>): a line each where they broke it, never one line with a space (audit 23)
-const clWrap = (s, px) => { s = String(s ?? ''); const ls = brLines(s); return ls.length > 1 ? ls : textW(s, px) <= CLD.text ? [s] : wrap2(s, px, CLD.text) || [fit(s, px, CLD.text, true)]; };
+const clWrap = (s, px) => { s = String(s ?? ''); const ls = brLines(s); return ls.length > 1 ? ls : textW(s, px) <= CLD.text ? [s] : wrap2(s, px, CLD.text, true) || [fit(s, px, CLD.text, true)]; };
 const clText = (x, y, t, px, wt, fill, cls, more = '', anchor = 'start') => `<text x="${r2(x)}" y="${r2(y)}"${anchor === 'start' ? '' : ` text-anchor="${anchor}"`} class="${cls}"${more} fill="${fill}" style="font:${wt} ${px}px var(--um-sans)">${esc(t)}</text>`;
 function clParts(n) {
   const label = clWrap(n.label, CLD.label), name = CL_HAS(n.name) && n.name !== n.label ? clWrap(n.name, CLD.name) : [], left = CLD.pad + CL_TILE + CLD.gap;

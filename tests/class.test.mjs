@@ -707,3 +707,9 @@ test('audit 53: a realization from a port whose owner has type "" passes the cla
     assert.deepEqual(validate(m).filter(p => p.rule === 'realization-target'), [], JSON.stringify(type));
     assert.equal(diagramOf(v).edits.connect(m, v, 'svc.api', 'i', null, { type: 'uml.InterfaceRealization' }), null, JSON.stringify(type)); }
 });
+
+test('audit 58: a comment with no spaces (Chinese) wraps at 220 px between two characters', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'n', type: 'uml.Comment', label: '为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限' }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['n'] }] };
+  const ls = [...mapContext(m).buildView('v').markup.matchAll(/data-shape="note"[\s\S]*?<\/g><\/g>/g)].flatMap(g => [...g[0].matchAll(/<text[^>]*>([^<]*)</g)].map(x => x[1]));
+  assert.ok(ls.length > 1 && ls.join('') === '为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限为书店开业准备第一批五百种图书并与两家批发商谈好退货条款和付款期限', JSON.stringify(ls));
+});
