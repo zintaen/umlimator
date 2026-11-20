@@ -120,7 +120,7 @@ function msParticipant(rest) {
 }
 
 // which call each reply answers, the same for the reader and the writer: the latest call from the reply's receiver to its
-// sender that has no reply yet, where a reply in another operand of an alt does not count; or the call its `want` names,
+// sender that has no reply yet, where a reply in another operand of an alt, or in a break the reply follows, does not count; or the call its `want` names,
 // when that is an earlier call the reply goes back along (the writer's `%% reply-to:`). occ: [{ x, id, from, to, sort,
 // parent, want }] in time order; fragments: [{ parent, props: { operator }, members: [{ id }] }]. Returns
 // [Map reply -> call, Set of the replies (their x) whose call is their want and not the latest unanswered one].
@@ -143,8 +143,10 @@ function msMatch(occ, fragments) {
       if (x.id != null) byId.set(x.id, call);
     } else if (x.sort === 'reply') {
       const key = `${x.to}\0${x.from}`, st = stacks.get(key), c = chain(x.parent), at = new Map(c.map(o => [fragOf.get(o), o]));
-      // two answers are apart when they lie in different operands of one alt
-      const apart = a => a.some(o => { const f = fragOf.get(o), y = at.get(f); return y !== undefined && y !== o && f.props?.operator === 'alt'; });
+      // two answers are apart when they lie in different operands of one alt, or the earlier in a break the later follows in
+      // the operand around it (or at the top level): a break operand is performed instead of the rest (UML 2.5.1 17.6.3, audit 55)
+      const apart = a => a.some(o => { const f = fragOf.get(o), y = at.get(f), op = f.props?.operator;
+        return op === 'alt' ? y !== undefined && y !== o : op === 'break' && y === undefined && (!fragOf.has(f.parent) || c.includes(f.parent)); });
       let budget = 256, found;
       if (st) for (let k = open(st, st.calls.length - 1); k >= 0 && budget > 0; k = open(st, k - 1)) {
         const call = st.calls[k];

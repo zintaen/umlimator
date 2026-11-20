@@ -26,7 +26,7 @@ Rules, each `validate()` problem naming its `rule` and its elements (`notes/stag
 warning when a reply names no call), `reply-once`, `create-once`, `delete-once`, `covers` (a warning when a use covers
 none, drawn across all of them) (errors); `operator`, `sort`, `empty`, `view` (warnings: another
 operator or sort is drawn by its name or as a call; an empty operand or fragment; pins, or a direction other than down).
-The shared ones live in `src/uml/interaction.js` and the communication diagram runs them too.
+The shared ones live in `src/uml/interaction.js` and the communication diagram runs them too. Two replies to one call, two creates or two deletes of one lifeline, or a delete and a later message to it, are allowed where they never both happen: in different operands of one `alt`, or the first in a `break` operand and the second after that `break` in the operand around it (UML 2.5.1 17.6.3: a `break` operand is performed instead of the rest of that fragment). The Mermaid reader pairs a reply after a `break` with the call the `break`'s reply answers on the same grounds.
 
 Deleting an alt, or one of its operands, that would leave two replies to one call outside different operands is refused,
 said on the hint line (`reply-once: …`): the type's remove hook checks what is left (`sqGuard`), so no single delete leaves a

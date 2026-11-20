@@ -85,7 +85,7 @@ function cpPic(model, view) {
     if (f.at === t.at && (f.port || t.port)) return;
     lines.push({ e, f, t, inner, kind: cpKind(I, view, e) }); });
   const boxes = pic.boxes.map(b => { const x = I.N.get(b.id); if (cpKindOf(x) !== 'uml.Component') return b;
-    const s = SN_SAY.component(pic.name(b.id), { stereotypes: cpStereo(x), ports: cpPortsOf(x).length, holds: pic.holds(b.id).map(id => CP_WORD[(I.N.get(id) || {}).type] || 'element') });
+    const s = SN_SAY.component(pic.name(b.id), { stereotypes: cpStereo(x), ports: cpPortsOf(x).length, holds: pic.holds(b.id).filter(id => !pic.gone(id)).map(id => CP_WORD[(I.N.get(id) || {}).type] || 'element') });
     return { ...b, aria: x.type ? s : snKindName(x.type) + s.slice('Component'.length) }; }); // of no type: "Element Shop, 1 port, holding 1 component", as cpNodeName names it
   return { ...pic, boxes, I, lines, inside };
 }
