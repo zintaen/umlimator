@@ -125,3 +125,18 @@ test('audit 54 follow-up: firstSentence checks only a 9-character tail for an ab
   assert.equal(firstSentence('vs. this. next'), 'vs. this.');
   assert.equal(firstSentence('Canvas. next'), 'Canvas.');
 });
+
+test('audit 55: a first sentence runs past a list number, a capital initial, a letter chain and a title; a bullet item drops its period before the "; "', async () => {
+  const { firstSentence, mdPlain } = await import('../src/core/text.js');
+  for (const [t, f] of [['1. Validates the basket.\n2. Charges the card.', '1. Validates the basket.'], ['Run by J. Smith in the U.S. office. More.', 'Run by J. Smith in the U.S. office.'],
+    ['Sends Dr. Smith the report. Then more.', 'Sends Dr. Smith the report.'], ['Runs at 3 p.m. daily. More.', 'Runs at 3 p.m. daily.'],
+    ['Released in 2024. Then more.', 'Released in 2024.'], ['Calls x vs. y. More', 'Calls x vs. y.'], ['Canvas. next', 'Canvas.']]) assert.equal(firstSentence(t), f, t);
+  for (const [t, f] of [['- Charges the card.\n- Sends the receipt.\n- Logs the order.', 'Charges the card; Sends the receipt; Logs the order.'], ['Carries:\n- orders.\n- refunds.', 'Carries: orders; refunds.'],
+    ['- gift cards etc.\n- maps', 'gift cards etc.; maps'], ['- orders\n- refunds', 'orders; refunds']]) assert.equal(mdPlain(t), f, t);
+  // drawn: a card's title and a weighted line's title and name
+  const m = { root: 'v', nodes: [{ id: 'a', label: 'Checkout', what: '1. Validates the basket.\n2. Charges the card.' }, { id: 'b', label: 'Gateway', what: 'Run by J. Smith in the U.S. office.' }],
+    edges: [{ from: 'a', to: 'b', weight: 3, what: '- Charges the card.\n- Sends the receipt.' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+  const s = svgOf(layout(m, 'v')), titles = [...s.matchAll(/<title>([^<]*)<\/title>/g)].map(x => x[1]);
+  assert.ok(titles.includes('Checkout \u00b7 1. Validates the basket.') && titles.includes('Gateway \u00b7 Run by J. Smith in the U.S. office.'), titles.join(' | '));
+  assert.equal(/class="um-key line-key[^"]*"[^>]*aria-label="([^"]*)"/.exec(s)[1], 'Line from Checkout to Gateway, Charges the card; Sends the receipt.');
+});
