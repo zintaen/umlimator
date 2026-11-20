@@ -52,8 +52,10 @@ function afterOf(model) {
     if (Array.isArray(v.nodeIds)) w.nodeIds = v.nodeIds.filter(id => !out.has(id));
     if (Array.isArray(v.nodes)) w.nodes = live(v.nodes);
     if (obj(v.nodeOverrides)) w.nodeOverrides = Object.fromEntries(Object.entries(v.nodeOverrides).filter(([k]) => !out.has(k)));
-    // a model line it still lists to a card taken out of it: listed, as the model after lists it (diff() marked it removed there)
-    const back = x => obj(x) && isGone(x) && x.id != null && model1.has(String(x.id)) && (out.has(x.from) || out.has(x.to)) ? String(x.id) : x;
+    // a model line it still lists to a card taken out of it: listed, as the model after lists it (diff() marked it removed there,
+    // and named it in view.diffMarks.listed); one it stopped listing, drawn back removed alike, is not (audit 59: apply()'s hide)
+    const dm = obj(v.diffMarks) ? v.diffMarks : {}, still = new Set(arrOf(dm.listed).filter(x => typeof x === 'string'));
+    const back = x => obj(x) && isGone(x) && x.id != null && still.has(String(x.id)) && model1.has(String(x.id)) && (out.has(x.from) || out.has(x.to)) ? String(x.id) : x;
     if (Array.isArray(v.edges)) w.edges = v.edges.map(back).filter(x => typeof x === 'string' ? !lost.has(x) : !isGone(x) && endsOk(x) && !(obj(x) && (out.has(x.from) || out.has(x.to))));
     if (Array.isArray(v.containers)) w.containers = v.containers.filter(c => !isGone(c)).map(c => obj(c) && Array.isArray(c.nodeIds) ? { ...c, nodeIds: c.nodeIds.filter(id => !out.has(id)) } : c);
     if (Array.isArray(v.fragments)) w.fragments = live(v.fragments);

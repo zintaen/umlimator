@@ -873,7 +873,7 @@ Nothing is removed. Two defaults change for a host that upgrades:
     - Each card comes with its `distance` in lines, starting with the card itself at 0.
     - `depth` stops the walk that many lines out.
   - A line's Ref names one model edge.
-  - A card, box or line marked removed (a diff model's) is not walked, and `rules(model)` and `describe()` leave it out the same way (audit 57); a typed view's own `describe()` (ER, flowchart, DFD, C4, information flow and the rest) reads the model after too, with every card, member, line and view entry `diff()` drew back removed left out (audit 58).
+  - A card, box or line marked removed (a diff model's) is not walked, and `rules(model)` and `describe()` leave it out the same way (audit 57); a typed view's own `describe()` (ER, flowchart, DFD, C4, information flow and the rest) reads the model after too, with every card, member, line and view entry `diff()` drew back removed left out (audit 58), except a model line the view after still lists to a card taken out of it, which `diff()` names in the view's `diffMarks.listed` (audit 59: a communication view's messages to a hidden lifeline were counted and numbered).
   - **In the standalone page:**
     - the details panel's → and ← (or the > and < keys) light what a card leads to and what leads to it;
     - with two cards selected (Shift-click), ⇄ (or P) lights every path between them, in either direction;
