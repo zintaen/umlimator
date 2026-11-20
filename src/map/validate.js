@@ -106,7 +106,11 @@ export function validate(model) {
   const shared = (e, at) => { if (typeof e.id === 'string' && ids.has(e.id)) err(at + '.id', `line id "${e.id}" is also a card's id`); };
   // a view's own line is in that id space too: an id another view's own line or a model line holds sends apply()'s set or delete, and
   // references(), to the first of them, not the line selected (audit 30). lineAt: each line id -> where it is first
-  const lineAt = new Map(), ownLine = (e, at) => { if (e.id == null) return; if (lineAt.has(e.id)) err(at + '.id', `line id "${e.id}" is used twice (also ${lineAt.get(e.id)})`); else lineAt.set(e.id, at); };
+  // A view's removed copy of a model line, with its id and its ends, is that line drawn back removed, as diff() writes it for a line
+  // taken out of a view, or with a card or a view (audit 53): it names the model line, so it is no second line
+  const modelL = new Map(Array.from(arr(m.edges), e => [e && e.id, e])), ghostOf = e => { const l = modelL.get(e.id);
+    return !!l && typeof l === 'object' && l !== e && typeof e.change === 'string' && e.change.toLowerCase() === 'removed' && l.from === e.from && l.to === e.to; };
+  const lineAt = new Map(), ownLine = (e, at) => { if (e.id == null || ghostOf(e)) return; if (lineAt.has(e.id)) err(at + '.id', `line id "${e.id}" is used twice (also ${lineAt.get(e.id)})`); else lineAt.set(e.id, at); };
   // a model line may end on any view's box (#28); a view's own line only on that view's boxes
   const anyBox = new Set(views.flatMap(v => arr(v.containers).map(c => c && c.id)));
   arr(m.edges).forEach((e, i) => { if (!(typed && e && e.type != null)) line(e, `edges[${i}]`, new Set([...ids, ...anyBox]));
@@ -264,6 +268,7 @@ export function validate(model) {
   arr(m.nodes).forEach((n, i) => deep(n, `nodes[${i}]`)); arr(m.edges).forEach((e, i) => chIs(e, `edges[${i}]`, LINE_CH, true));
   views.forEach(v => { const i = arr(m.views).indexOf(v); arr(v.nodes).forEach((n, j) => deep(n, `views[${i}].nodes[${j}]`)); arr(v.fragments).forEach((f, j) => deep(f, `views[${i}].fragments[${j}]`));
     arr(v.edges).forEach((e, j) => chIs(e, `views[${i}].edges[${j}]`, LINE_CH, true));
+    arr(v.containers).forEach((c, j) => chIs(c, `views[${i}].containers[${j}]`, CARD_CH)); // a box's, as a card's: diff() writes it on a map's boxes (audit 53)
     if (v.nodeOverrides && typeof v.nodeOverrides === 'object') Object.entries(v.nodeOverrides).forEach(([id, o]) => chIs(o, `views[${i}].nodeOverrides.${id}`, CARD_CH)); });
   // a value left out is said once, as left out: not again at its path as a missing end, type or name (audit 21: a line's
   // end {"toString": 1} was also '"undefined" is neither a card nor a box'). A path in the copy, where a list's entry

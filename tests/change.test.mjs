@@ -1589,3 +1589,44 @@ test('audit 52: a moved requirement\'s old containment is drawn back when its ol
   const g = all.layout(all.diff(a, b).model, a.views[0].id), ch = Object.fromEntries(g.edges.filter(e => e.type === 'containment').map(e => [`${e.from}->${e.to}`, e.change ?? null]));
   assert.equal(ch['range->spec'], 'removed'); assert.equal(ch['range->docking'], 'added'); assert.equal(ch['docking->spec'], 'removed');
 });
+
+const edit = (m, f) => { const x = structuredClone(m); f(x); return x; };
+test('audit 53: what diff() writes validates when a card is taken out of a map view, a line hidden or a map view removed: a line drawn back removed is no second line', async () => {
+  const all = await fromSrc(), { validate: check } = await import('../src/map/validate.js'), errs = x => check(x).filter(p => p.level === 'error');
+  const m = { nodes: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], edges: [{ id: 'ab', from: 'a', to: 'b' }, { id: 'bc', from: 'b', to: 'c' }],
+    views: [{ id: 'main', nodeIds: ['a', 'b', 'c'] }, { id: 'side', title: 'Side', nodeIds: ['a', 'b'] }] };
+  const listed = edit(m, x => { x.views[0].edges = ['ab', 'bc']; });
+  for (const [name, a, b] of [['hidden card', m, edit(m, x => { x.views[0].nodeIds = ['a', 'b']; })], ['removed view', m, edit(m, x => { x.views.pop(); })],
+    ['hidden card, listed lines', listed, edit(listed, x => { x.views[0].nodeIds = ['a', 'b']; x.views[0].edges = ['ab']; })], ['hidden line', listed, edit(listed, x => { x.views[0].edges = ['ab']; })]]) {
+    const d = all.diff(a, b); assert.ok(d.model.views.some(v => (v.edges || []).some(e => e && e.change === 'removed')), name); assert.deepEqual(errs(d.model), [], name); }
+  // the rule holds for anything else: a view's own line under a model line's id, live or between other ends
+  for (const e of [{ id: 'bc', from: 'b', to: 'c' }, { id: 'bc', from: 'a', to: 'c', change: 'removed' }])
+    assert.match(errs(edit(m, x => { x.views[0].edges = ['ab', e]; })).map(p => p.message).join(), /line id "bc" is used twice/, JSON.stringify(e));
+  // every example: each map view removed, and each of its first cards taken out
+  for (const f of ['shapes', 'integration']) { const x = read45(f), e0 = new Set(errs(x).map(p => p.message));
+    for (const v of x.views.filter(w => w && !(x.schemaVersion === 2 && w.diagram != null && w.diagram !== 'map') && w.id !== x.root)) {
+      const n = d => errs(all.diff(x, d).model).filter(p => !e0.has(p.message)).map(p => p.message);
+      assert.deepEqual(n(edit(x, y => { y.views = y.views.filter(w => w.id !== v.id); y.views.forEach(w => { if (w.parent === v.id) delete w.parent; }); })), [], `${f}: ${v.id} removed`);
+      for (const id of v.nodeIds.slice(0, 3)) assert.deepEqual(n(edit(x, y => { const w = y.views.find(z => z.id === v.id); w.nodeIds = w.nodeIds.filter(z => z !== id);
+        (w.containers || []).forEach(c => { if (c && Array.isArray(c.nodeIds)) c.nodeIds = c.nodeIds.filter(z => z !== id); }); })), [], `${f}: ${id} out of ${v.id}`); } }
+});
+
+test('audit 53: a map box\'s change is checked as a card\'s, and the schema and the types list it', async () => {
+  const { validate: check } = await import('../src/map/validate.js');
+  const box = ch => check({ nodes: [{ id: 'a' }, { id: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'], containers: [{ id: 'box', label: 'Box', nodeIds: ['a'], change: ch }] }] });
+  for (const ch of ['removed', 'added', 'planned']) assert.deepEqual(box(ch), [], ch);
+  assert.deepEqual(box('Removed').map(p => [p.level, p.path]), [['warning', 'views[0].containers[0].change']]); assert.match(box('Removed')[0].message, /write it in lower case/);
+  for (const ch of ['bogus', ['removed']]) assert.match(box(ch).map(p => `${p.path} ${p.message}`).join(), /views\[0\]\.containers\[0\]\.change .*drawn unmarked/, JSON.stringify(ch));
+  const schema = JSON.parse(readFileSync(new URL('../lib/umlimator.schema.json', import.meta.url), 'utf8'));
+  assert.deepEqual(schema.$defs.container.properties.change.enum, schema.$defs.node.properties.change.enum);
+  assert.match(readFileSync(new URL('../lib/umlimator.d.ts', import.meta.url), 'utf8'), /containers\?: \{[^}]*change\?: 'added'/);
+});
+
+test('audit 53: an information flow\'s conveyed item taken out of or put into the view marks the item only: the flows draw as they did', async () => {
+  const all = await fromSrc(), m = read45('order-information-flow'), V = m.views[0].id, out = edit(m, x => { x.views[0].nodeIds = x.views[0].nodeIds.filter(id => id !== 'stock-info'); });
+  const marked = x => { const g = all.layout(x, V); return Object.fromEntries([...g.nodes, ...g.edges].filter(n => n.change).map(n => [n._id ?? n.id, n.change])); };
+  assert.deepEqual(marked(all.diff(m, out).model), { 'stock-info': 'removed' }, 'taken out');
+  assert.deepEqual(marked(all.diff(out, m).model), { 'stock-info': 'added' }, 'put in');
+  assert.deepEqual(marked(all.diff(m, edit(m, x => { x.nodes.find(n => n.id === 'stock-info').label = 'Stock'; })).model),
+    { 'stock-info': 'changed', 'warehouse-api': 'changed', 'api-storefront': 'changed' }, 'renamed: the flows name it, as before');
+});
