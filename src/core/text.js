@@ -2,7 +2,12 @@
 // the bench and layout() in Node use it). render() measures in the host's own font while it lays out a view: measured().
 let measureText = null;
 const measured = (M, f) => { const prev = measureText; measureText = M; try { return f(); } finally { measureText = prev; } };
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* markup-safe text: & < > " ' as entities, and a character no XML document may hold (a C0 control but tab, line feed and carriage
+   return; U+FFFE, U+FFFF; a lone surrogate) as U+FFFD, as the readers write one (MERMAID_RAWS): a label pasted with one drew it
+   raw into <text>, <title> and aria-label, and the page's Export SVG and a still's .svg were no well-formed XML (audit 53).
+   One code unit for one: a text is as wide, and wraps where it did */
+const XML_BAD = /[\0-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]|\p{Cs}/u, XML_BADS = /[\0-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]|\p{Cs}/gu;
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])).replace(XML_BADS, '\uFFFD');
 const inline = s => esc(s)
   .replace(/`([^`]+)`/g, '<code>$1</code>')
   .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
@@ -86,4 +91,4 @@ function glyph(g) {
 
 // a line break in a typed view's line label: each part its own line, EDGE_LH px below the one before (audit 22)
 const EDGE_BREAK = /\r\n?|[\n\u2028\u2029]/, EDGE_LH = 12;
-export { measureText, measured, esc, inline, md, mdPlain, textW, widest, brLines, linesW, sansW, hostMeasure, wrap2, clauseFit, fit, glyph, EDGE_BREAK, EDGE_LH };
+export { measureText, measured, esc, XML_BAD, inline, md, mdPlain, textW, widest, brLines, linesW, sansW, hostMeasure, wrap2, clauseFit, fit, glyph, EDGE_BREAK, EDGE_LH };

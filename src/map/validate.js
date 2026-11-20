@@ -1,5 +1,6 @@
 import { jsonText, labelOr, labelProblem, lineNames, listOf, typedProblems, unreadable, versionProblem } from '../core/model.js';
 import { TYPED, diagramOf, drawnKind } from '../core/registry.js';
+import { XML_BAD } from '../core/text.js';
 import { held } from '../core/warn.js';
 import { SHAPE_NAMES, shapeOf } from '../draw/shapes.js';
 import { boxHolds, mapContext } from './context.js';
@@ -270,6 +271,14 @@ export function validate(model) {
     arr(v.edges).forEach((e, j) => chIs(e, `views[${i}].edges[${j}]`, LINE_CH, true));
     arr(v.containers).forEach((c, j) => chIs(c, `views[${i}].containers[${j}]`, CARD_CH)); // a box's, as a card's: diff() writes it on a map's boxes (audit 53)
     if (v.nodeOverrides && typeof v.nodeOverrides === 'object') Object.entries(v.nodeOverrides).forEach(([id, o]) => chIs(o, `views[${i}].nodeOverrides.${id}`, CARD_CH)); });
+  /* a text holding a character no XML document may hold (a C0 control but tab, line feed and carriage return; U+FFFE, U+FFFF;
+     a lone surrogate, as Word's paste can bring) is drawn with U+FFFD there (esc), so the SVG stays well-formed: said, at its
+     path (audit 53: a native model's label drew it raw and the export was no XML, with no warning). A walk with a list; a value
+     another problem is said of already (a gap that is no number), and what it holds, is not said again */
+  { const said = new Set(out.map(q => q.path)), s = [[m, '']], seen = new Set(); for (let k = 0; k < s.length; k++) { const [y, p] = s[k]; if (seen.has(y)) continue; seen.add(y);
+      const list = Array.isArray(y); for (const key of Object.keys(y)) { const x = y[key], at = list ? `${p}[${key}]` : p ? `${p}.${key}` : key; if (said.has(at)) continue;
+        if (typeof x === 'string') { if (XML_BAD.test(x)) warn(at, 'holds a character XML cannot hold (a control character, U+FFFE, U+FFFF or a lone surrogate): drawn as U+FFFD'); }
+        else if (x && typeof x === 'object') s.push([x, at]); } } }
   // a value left out is said once, as left out: not again at its path as a missing end, type or name (audit 21: a line's
   // end {"toString": 1} was also '"undefined" is neither a card nor a box'). A path in the copy, where a list's entry
   // left out moved the ones after it up, is said as the model has it, so the next entry's problem is said, at its own

@@ -195,6 +195,15 @@ test('audit 15: the API page states the typed views\' default direction as the s
   assert.match(JSON.parse(read('../lib/umlimator.schema.json')).$defs.view.properties.direction.description, /down for a flowchart, a profile, a SysML block definition or requirement view/);
 });
 
+test('audit 53: the API page says a timing view is always drawn right and another direction is a warning, as validate() and the schema do', async () => {
+  const read = p => readFileSync(new URL(p, import.meta.url), 'utf8'), { validate } = await import('../lib/umlimator-all.js');
+  const row = read('../docs/api/typed-diagrams.md').split('\n').find(l => l.startsWith('| `direction` |'));
+  assert.match(row, /A sequence view is always drawn down and a timing view always right; another direction is a warning/);
+  const m = JSON.parse(read('../examples/bookshop-timing.json')); m.views[0].direction = 'down';
+  assert.ok(validate(m).some(p => /direction "down": a timing diagram is drawn left to right/.test(p.message)), 'validate() warns of down on a timing view');
+  assert.match(JSON.parse(read('../lib/umlimator.schema.json')).$defs.view.properties.direction.description, /timing view always right; another direction is a warning/);
+});
+
 test('audit 18: the composite note says Delete on the subject is refused; the sequence and communication notes count self-lines on the cover', () => {
   const read = p => readFileSync(new URL(p, import.meta.url), 'utf8'), cs = read('../docs/conformance/uml-composite-structure.md');
   assert.doesNotMatch(cs, /hiding it from the view,\s+leaves it|Hiding the subject \(Delete\) keeps/);

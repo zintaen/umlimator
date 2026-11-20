@@ -712,3 +712,19 @@ test('audit 46: a fragment operator that is not text is said not text, with what
   f.props.operator = 'alt2';
   assert.match(validate(m).find(x => x.rule === 'operator').message, /operator "alt2", not one of .*: it is drawn by its name$/);
 });
+
+test('audit 53: a label holding a character XML cannot hold (U+0008, as Word\'s paste brings) is drawn as U+FFFD, so the SVG is well-formed, and validate() says so at its path', async () => {
+  const { svgOf } = await import('../src/draw/svg.js');
+  const BAD = /[\0-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]|\p{Cs}/u;
+  const m = JSON.parse(readFileSync(new URL('../examples/checkout-sequence.json', import.meta.url), 'utf8'));
+  const n = m.nodes.find(x => m.views[0].nodeIds.includes(x.id)), i = m.nodes.indexOf(n); n.label = 'Shop\bper\u0001\uD800\uFFFF';
+  const s = svgOf(layout(m, m.views[0].id));
+  assert.doesNotMatch(s, BAD, 'no XML-illegal character in the drawn SVG (text, <title>, aria-label)');
+  assert.match(s, /Shop\uFFFDper\uFFFD\uFFFD\uFFFD/);
+  assert.ok(validate(m).some(p => p.level === 'warning' && p.path === `nodes[${i}].label` && /XML cannot hold.*drawn as U\+FFFD/.test(p.message)), 'validate() warns at the label');
+  // a map's card and line too, and a well-formed model says nothing
+  const map = { nodes: [{ id: 'a', label: 'a\u0002b' }, { id: 'b', label: 'b' }], edges: [{ from: 'a', to: 'b', label: 'x\u001fy' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+  assert.doesNotMatch(svgOf(layout(map, 'v')), BAD);
+  assert.deepEqual(validate(map).filter(p => /XML cannot hold/.test(p.message)).map(p => p.path), ['nodes[0].label', 'edges[0].label']);
+  assert.deepEqual(validate(JSON.parse(readFileSync(new URL('../examples/checkout-sequence.json', import.meta.url), 'utf8'))).filter(p => /XML cannot hold/.test(p.message)), []);
+});
