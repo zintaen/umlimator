@@ -408,3 +408,19 @@ test('audit 54: a typed view whose edges list drops a line: the diff model valid
       v.edges.forEach((e, j) => { if (typeof e !== 'string') return; const a = edit(m, x => { x.views[i].edges.splice(j, 1); }), before = new Set(errs(a));
         assert.deepEqual(errs(all.diff(m, a).model).filter(x => !before.has(x)), [], `${f} ${v.id} without ${e}`); }); }); }
 });
+
+test('audit 55: a card or a line put back into a view that lists its lines: the diff model validates, its added copy no second element', () => {
+  const errs = m => all.validate(m).filter(p => p.level === 'error').map(p => p.path + ' ' + p.message);
+  for (const f of ['examples/bookshop-c4.json', 'examples/bookshop-atlas.json', 'examples/types/map.json', 'examples/types/sysml-block-definition.json', 'examples/types/uml-class.json', 'examples/types/uml-communication.json']) {
+    const m = load(f);
+    m.views.forEach((v, i) => { if (!Array.isArray(v.edges) || !Array.isArray(v.nodeIds)) return;
+      const less = [...v.nodeIds.map(id => [`card ${id}`, edit(m, x => { x.views[i].nodeIds = x.views[i].nodeIds.filter(y => y !== id); })]),
+        ...v.edges.flatMap((e, j) => typeof e === 'string' ? [[`line ${e}`, edit(m, x => { x.views[i].edges.splice(j, 1); })]] : [])];
+      less.forEach(([what, a]) => { const before = new Set([...errs(a), ...errs(m)]);
+        assert.deepEqual(errs(all.diff(a, m).model).filter(x => !before.has(x)), [], `${f} ${v.id}: ${what} put back`); }); }); }
+  // an own line of the same id that is no added copy (other ends) is still a second element
+  const mp = { nodes: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], edges: [{ id: 'ab', from: 'a', to: 'b' }, { id: 'bc', from: 'b', to: 'c' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], edges: ['ab', 'bc'] }] };
+  const d = all.diff(edit(mp, x => { x.views[0].edges = ['ab']; }), mp).model;
+  assert.equal(d.views[0].edges[1].change, 'added'); assert.deepEqual(errs(d), []);
+  assert.match(errs(edit(d, x => { x.views[0].edges[1].to = 'a'; })).join('\n'), /line id "bc" is used twice/);
+});

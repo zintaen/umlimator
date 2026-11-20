@@ -1719,3 +1719,39 @@ test('audit 54: a C4 deployment view on the diff page draws both sides of an ins
   assert.deepEqual([lines(back.model)['c4-browser->c4-api-1'], lines(back.model)['c4-storefront-1-api-1']], ['removed', 'added']);
   for (const d of [out, back]) assert.doesNotThrow(() => svgOf(all.layout(d.model, V)));
 });
+
+// audit 55
+test('audit 55: a map sequence view on the diff page numbers its live steps as the model after does; a removed step has no number', async () => {
+  const { describe } = await import('../lib/umlimator.js'), A = read45('types/map'), V = 'shop-run';
+  const steps = m => layout(m, V).edges.map(e => [e._id ?? e.id, e.step ?? null, e.change ?? null]);
+  // the price step: deleted from the model, taken out of the view's list, or its card taken out of the view
+  const cases = { deleted: edit(A, m => { m.edges = m.edges.filter(e => e.id !== 'price'); m.views.forEach(v => { if (Array.isArray(v.edges)) v.edges = v.edges.filter(e => e !== 'price'); }); }),
+    hidden: edit(A, m => { const v = m.views.find(x => x.id === V); v.edges = (v.edges || layout(A, V).edges.map(e => e._id ?? e.id)).filter(e => e !== 'price'); }),
+    'card out': edit(A, m => { const v = m.views.find(x => x.id === V); v.nodeIds = v.nodeIds.filter(id => id !== 'pricing'); }) };
+  for (const [why, B] of Object.entries(cases)) { const d = diff(A, B).model, s = steps(d);
+    assert.deepEqual(s.filter(x => x[2] === 'removed').map(x => x.slice(0, 2)), [['price', null]], why);
+    assert.deepEqual(s.filter(x => x[2] !== 'removed').map(x => x.slice(0, 2)), steps(B).map(x => x.slice(0, 2)), `${why}: live steps as the model after numbers them`);
+    const svg = svgOf(layout(d, V)); assert.doesNotMatch(svg, /Step \d+: Shop API → Pricing/, why); assert.match(svg, /Step 3: Shop API → Fraud check/, why);
+    const said = describe(d, V); assert.match(said, /Removed step: Shop API calls Pricing/, why); assert.match(said, /Step 6: Shop API reads or writes Order queue/, why); assert.doesNotMatch(said, /Step 7/, why); }
+});
+
+test('audit 55: a view\'s own lines to a card taken out of it (or put back) are drawn removed (added) on the diff page, as the model lines it lists', async () => {
+  const all = await fromSrc(), A = read45('integration');
+  for (const [V, card, own] of [['ride-end', 'pricing', ['ride-end-4']], ['unlock-sequence', 'lifeline-dock', ['m4', 'm5', 'm8']]]) {
+    const B = edit(A, m => { const v = m.views.find(x => x.id === V); v.nodeIds = v.nodeIds.filter(id => id !== card); });
+    const marks = m => all.layout(m, V).edges.filter(e => e.change).map(e => [e._id ?? e.id, e.change]);
+    assert.deepEqual(marks(all.diff(A, B).model), own.map(id => [id, 'removed']), `${V}: ${card} taken out`);
+    assert.deepEqual(marks(all.diff(B, A).model), own.map(id => [id, 'added']), `${V}: ${card} put back`);
+    for (const d of [all.diff(A, B), all.diff(B, A)]) assert.deepEqual(validateAll(d.model).filter(p => p.level === 'error'), [], V); }
+  // the map sequence view's live steps keep the model after's numbers
+  const B = edit(A, m => { const v = m.views.find(x => x.id === 'ride-end'); v.nodeIds = v.nodeIds.filter(id => id !== 'pricing'); });
+  const titles = m => [...svgOf(all.layout(m, 'ride-end')).matchAll(/<title>(Step \d+)?([^<]*?)(?:\(|<)/g)].map(x => x[1] ?? 'none').filter(x => x !== 'none');
+  assert.deepEqual(titles(all.diff(A, B).model), titles(B));
+});
+
+test('audit 55: a component view that lists its lines draws a line between ports removed (added) with the card that holds its far port', async () => {
+  const all = await fromSrc(), A = edit(read45('bookshop-components'), m => { m.views[0].edges = m.edges.map(e => e.id); }), V = A.views[0].id;
+  const B = edit(A, m => { m.views[0].nodeIds = m.views[0].nodeIds.filter(id => id !== 'payment-provider-component'); });
+  const at = m => (all.layout(m, V).edges.find(e => (e._id ?? e.id) === 'api-to-provider') || {}).change ?? null;
+  assert.equal(at(all.diff(A, B).model), 'removed'); assert.equal(at(all.diff(B, A).model), 'added');
+});

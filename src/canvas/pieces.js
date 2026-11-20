@@ -5,7 +5,7 @@ import { SHAPE, SHAPE_NAMES, shapeOf } from '../draw/shapes.js';
 import { WIRES, badgesOf } from '../map/cards.js';
 import { critical, msText, paths, reach, whatIf } from '../map/insight.js';
 import { KIND, SIGIL, kindOf } from '../map/kinds.js';
-import { arrOf } from '../map/validate.js';
+import { arrOf, runSteps } from '../map/validate.js';
 import { elementCount } from '../map/context.js';
 import { wordOf } from '../page/print.js';
 import { labelOr } from '../core/model.js';
@@ -155,7 +155,7 @@ function pieces(X, el, o) {
       geo.edges.forEach(e => { const all = (e.all || [e]).filter(x => x._id), mid = all.length === 1 ? all[0]._id : null; // a line for several edges: by label, as before
         const f = e.fromPort || e.from, t = e.toPort || e.to; // a line between ports: its ends are the ports
         if (dir === 'up' && (e.to === nid || e.toPort === nid)) add(e, f, true, mid); if (dir === 'down' && (e.from === nid || e.fromPort === nid)) add(e, t, true, mid); });
-      viewEdges(V[cur]).forEach((e, i) => { const e2 = V[cur].render === 'sequence' ? { ...e, step: i + 1 } : e; if (dir === 'up' && e.to === nid) add(e2, e.from, true, e.id); if (dir === 'down' && e.from === nid) add(e2, e.to, true, e.id); });
+      const ve = viewEdges(V[cur]), k = runSteps(ve); ve.forEach((e, i) => { const e2 = V[cur].render === 'sequence' ? { ...e, step: k[i] } : e; if (dir === 'up' && e.to === nid) add(e2, e.from, true, e.id); if (dir === 'down' && e.from === nid) add(e2, e.to, true, e.id); });
       const [near, far] = dir === 'up' ? ['to', 'from'] : ['from', 'to'];
       (D.edges || []).forEach(e => { if (e[near] !== nid && drawnIn(e, near, geo) !== nid) return;
         const id = drawnIn(e, far, geo), w = !inView.has(id) && !N[id] && elsewhere(e, far); add(e, w ? w.id : id, inView.has(id), e.id, w && w.view); });
@@ -330,7 +330,7 @@ function pieces(X, el, o) {
 const counted = new WeakMap();
 // a numbered view counts its steps, as its pill says (audit 39: the pill said "5 steps", the views list and search 6): a process
 // or numbered-card view's cards in run order, a sequence view's lines; null for any other view
-const stepCount = (ctx, v) => v.mainSteps || v.render === 'process' ? arrOf(v.stepIds || v.nodeIds).length : v.render === 'sequence' ? arrOf(ctx.viewEdges(v)).length : null;
+const stepCount = (ctx, v) => v.mainSteps || v.render === 'process' ? arrOf(v.stepIds || v.nodeIds).length : v.render === 'sequence' ? runSteps(arrOf(ctx.viewEdges(v))).filter(k => k != null).length : null;
 const nWord = (n, w) => (n === 1 ? '1 ' + w : n + ' ' + w + 's'); // "1 node", "1 step", "1 wire" (audits 38, 39)
 // a view's count in words, as its pill gives it: "5 steps", "1 node"
 const countText = (ctx, v, cur, g) => nWord(viewCount(ctx, v, cur, g), stepCount(ctx, v) != null ? 'step' : 'node');

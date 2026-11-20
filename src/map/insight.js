@@ -3,7 +3,7 @@ import { diagramOf } from '../core/registry.js';
 import { edgeRefIds } from './api.js';
 import { mapContext } from './context.js';
 import { KIND, kindOf } from './kinds.js';
-import { WIRE_KINDS, andList, arrOf } from './validate.js';
+import { WIRE_KINDS, andList, arrOf, runSteps } from './validate.js';
 
 /* ---------- paths(), reach(), describe() and otlpSpans(): a view's lines walked and put in words, with no DOM (#62, #64, #65) ----------
    A line runs from → to as the model gives it. Each result is a list of Refs a host can hand to highlight(); a line's Ref
@@ -80,7 +80,7 @@ export function describe(model, viewId) {
   const out = [`${labelOr(v.title, v.id)}: ${count(ids.length, 'card')} and ${count(edges.length, 'line')}.`];
   if (ids.length) out.push(`Cards: ${ids.map(id => `${name(id)} (${KIND[kindOf(ctx.nodeIn(id, viewId).kind, true)][1]})`).join(', ')}.`);
   boxes.forEach(c => { const ins = (c.nodeIds || []).filter(i => ids.includes(i)); if (ins.length) out.push(`${name(c.id)} holds ${list(ins.map(name))}.`); });
-  if (v.render === 'sequence') edges.forEach((e, i) => out.push(`Step ${i + 1}: ${name(e.from)} ${VERB[kind(e)]} ${name(e.to)}${what(e)}.`));
+  if (v.render === 'sequence') { const k = runSteps(edges); edges.forEach((e, i) => out.push(`${k[i] == null ? 'Removed step' : 'Step ' + k[i]}: ${name(e.from)} ${VERB[kind(e)]} ${name(e.to)}${what(e)}.`)); } // audit 55
   else [...ids, ...boxes.map(c => c.id)].forEach(id => { const outs = edges.filter(e => e.from === id); if (!outs.length) return;
     out.push(`${name(id)} ${[...new Set(outs.map(kind))].map(k => `${VERB[k]} ${list(far(outs.filter(e => kind(e) === k)))}`).join('; ')}.`); });
   const alone = ids.filter(id => !edges.some(e => e.from === id || e.to === id));

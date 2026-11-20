@@ -9,7 +9,7 @@ import { layoutGraph, pillW, pullSources, rowsFor, stepW, untangle } from '../la
 import { WIRES, badgesOf, mapNodeW } from './cards.js';
 import { jsonText, markOf } from './diff.js';
 import { plainViews } from './typed.js';
-import { arrOf, rules } from './validate.js';
+import { arrOf, rules, runSteps } from './validate.js';
 
 
 /* Swimlanes for run-order views. A view may set `lanes` ([{title, nodeIds}] or false); otherwise a
@@ -223,7 +223,7 @@ function mapContext(model, opts = {}) {
     const sources = ids.filter(i => outs(i) && !lp.edges.some(e => e.to === i && e.from !== i));
     if (!hub && lp.edges.length && outs(lp.edges[0].from) >= 3 && sources.length === 1 && /^(public|lane|verb|external)$/.test(N[lp.edges[0].from]?.kind || '')) hub = lp.edges[0].from; // one trigger only; an overview with several stays a flow
     if (hub && outs(hub) < 3) hub = null;
-    const steps = O(); if (v.render === 'sequence') lp.edges.forEach((e, i) => { (steps[e.to] ||= []).push(i + 1); });
+    const steps = O(); if (v.render === 'sequence') { const k = runSteps(lp.edges); lp.edges.forEach((e, i) => { if (k[i] != null) (steps[e.to] ||= []).push(k[i]); }); }
     const flow = { flow: true, backKeys: lp.keys, steps, hub: null };
     // a type with its own layout has no hub plan: a typed view named as one of its cards is no drill-down into it (audit 24)
     if (!hub || (Array.isArray(v.containers) && v.containers.length) || v.mainSteps || v.render === 'process' || ownLayout(vid)) return (planCache[vid] = flow);
@@ -580,7 +580,7 @@ function mapContext(model, opts = {}) {
       return marks(g, vid);
     }
     const edges = viewEdges(v, true).map(e => ({ ...e }));
-    if (v.render === 'sequence') edges.forEach((e, i) => { e.step = i + 1; });
+    if (v.render === 'sequence') { const k = runSteps(edges); edges.forEach((e, i) => { e.step = k[i]; }); } // a removed line: no step (audit 55)
     const P = planCache[vid] || { flow: true, backKeys: loopsOf(v).keys, steps: O() };
     if (!override && P.hub) return hubGeo(vid, P, edges, repair, quick);
     const pos = override || (v.layout ? fillLayout(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid)));
