@@ -4,7 +4,7 @@ import { diagramOf } from '../core/registry.js';
 import { held, warn } from '../core/warn.js';
 import { r2 } from '../draw/shapes.js';
 import { svgOf } from '../draw/svg.js';
-import { boxClash, leaveIssues, routeAudit } from '../layout/audit.js';
+import { boxClash, leaveIssues, routeAudit, throughIssues } from '../layout/audit.js';
 import { layoutGraph, pillW, pullSources, rowsFor, settlePins, stepW, untangle } from '../layout/layered.js';
 import { WIRES, badgesOf, mapNodeW } from './cards.js';
 import { jsonText, markOf } from './diff.js';
@@ -634,9 +634,19 @@ function mapContext(model, opts = {}) {
     // (a pin of a card the view draws though its nodeIds do not list it: an internal block's part, under its block)
     const ids = v.nodeIds || [], pinned = [...ids, ...Object.keys(v.layout).filter(i => !ids.includes(i) && (g.byId || {})[i])].filter(i => Object.hasOwn(v.layout, i) && Array.isArray(v.layout[i])), share = (h, ids) => { const own = new Set(ids);
       return routeAudit(h, '', new Set((h.edges || []).filter(e => own.has(e.from) || own.has(e.to)))).filter(s => / share a line$/.test(s)).length; };
-    const score = h => 1000 * boxClash(h).size + share(h, pinned);
-    const met = boxClash(g), n0 = 1000 * met.size + share(g, pinned); if (!n0) return [g, said];
+    // and what else check() says of the picture but crossings (a line along a box's border or across its title, a label on a line or
+    // with no room, a line through a card), past what the view says with no pin (audit 61: a region's initial pseudostate dragged
+    // right of its composite, its line through the region's title and along its border; one Alt + arrow on a gallery card, a label
+    // then not drawn). All of those weigh less than one shared line of a pinned card
+    const soft = h => [...routeAudit(h, ''), ...throughIssues(h, ''), ...leaveIssues(h, '')].filter(s => !/ cross$/.test(s)).length;
+    let base = null; const over = h => { const k = soft(h); if (!k) return 0; if (base == null) { const [b] = held(() => run(L.rank === false ? {} : (layoutCache[vid] ||= autoPos(vid)), {})); base = soft(b); } return Math.min(99, Math.max(0, k - base)); };
+    const score = h => 100 * (1000 * boxClash(h).size + share(h, pinned)) + over(h);
+    const met = boxClash(g), n0 = 100 * (1000 * met.size + share(g, pinned)) + over(g); if (!n0) return [g, said];
     pinned.forEach(i => { if (share(g, [i])) met.add(i); });
+    // a pinned card a line of which (or which itself) check() names past those: met too
+    if (n0 % 100) { const a1 = [], a2 = [], ps = [...routeAudit(g, '', null, a1).map((s, k) => [s, a1[k]]), ...throughIssues(g, '', a2).map((s, k) => [s, a2[k]])];
+      ps.forEach(([s, a]) => { if (!/ cross$/.test(s)) (a || []).forEach(x => { if (x) [x.id, x.from, x.to].forEach(i => { if (pinned.includes(i)) met.add(i); }); }); });
+      (g.edges || []).forEach(e => { if ((e.label || e.step != null) && !e.lbl) [e.from, e.to].forEach(i => { if (pinned.includes(i)) met.add(i); }); }); }
     const fam = O(), homes = O(); (g.families || []).forEach(f => { fam[f.id] = f; arrOf(f.nodeIds).forEach(i => { (homes[i] ||= []).push(f.id); }); });
     const hit = i => { if (met.has(i)) return true; const st = [...(homes[i] || [])]; for (let k = 0; st.length && k <= 4096; k++) { const f = st.pop(); if (met.has(f)) return true; if (fam[f] && fam[f].parent != null) st.push(fam[f].parent); } return false; };
     const all = [...pinned].reverse(), pins = [...all.filter(hit), ...all.filter(i => !hit(i))]; // what they meet first, then the rest, last first
@@ -650,11 +660,12 @@ function mapContext(model, opts = {}) {
         if (k < best.n) best = { g: h, n: k, memo: m2, said: w }; } }
     // none of those clean (a region's box reaches past the cells the pins settle by: audit 60, order-states' parcel-start dropped
     // right of Fulfilling, its box over In delivery): the pins that meet something dropped, so those cards take a slot as a card
-    // with no pin does (boxFit), the pins the picture can keep kept
-    const hits = pins.filter(hit);
-    if (best.n >= 1000 && hits.length) { const L2 = { ...v.layout }; hits.forEach(i => { delete L2[i]; });
+    // with no pin does (boxFit), the pins the picture can keep kept. One at a time first, in that order (audit 61: a pin in the
+    // composite's other region, which met nothing itself, went with the one that did, and a clean drag there did nothing), then all
+    const hits = pins.filter(hit), drop = ids => { const L2 = { ...v.layout }; ids.forEach(i => { delete L2[i]; });
       const pos = L.rank === false ? onGrid(vid, L2) : fillLayout(vid, L2, true), m2 = {}, [h, w] = held(() => run(pos, m2)), k = score(h);
-      if (k < best.n) best = { g: h, n: k, memo: m2, said: w }; }
+      if (k < best.n) best = { g: h, n: k, memo: m2, said: w }; };
+    if (best.n && hits.length) { if (hits.length > 1) for (const i of hits.slice(0, 6)) { if (!best.n) break; drop([i]); } if (best.n) drop(hits); }
     if (best.memo) { Object.keys(memo).forEach(k => { delete memo[k]; }); Object.assign(memo, best.memo); }
     return [best.g, best.said];
   }

@@ -506,3 +506,11 @@ test('audit 60: the gallery\'s battery stepped twice, laid out down, shares no l
   for (let s = 1; s <= 2; s++) { const n = layout(g, vid).byId['ebike.battery']; v.layout = { ...(v.layout || {}), 'ebike.battery': [n.col + 1, n.row] };
     assert.deepEqual(check(g, vid).map(p => p.message).filter(x => !/ cross$/.test(x)), [], `step ${s}`); }
 });
+
+// audit 61: one pin of a part (Alt + arrow on the canvas) left a connector's item flow label on two connectors: pinsClear weighs a
+// label on a line as check() does, past what the view says with no pin
+test('audit 61: one pin of a part leaves no item flow label on a connector', () => {
+  for (const [f, vid, id, q] of [['sysml-internal-block', 'inside-ebike', 'ebike.frontLight', [2, 0]], ['integration', 'inside-emoped', 'emoped.battery', [1, 1.5]]]) {
+    const g = JSON.parse(readFileSync(new URL(`fixtures/${f}.json`, import.meta.url))), m = apply(g, [{ op: 'set', view: vid, path: ['layout', id], value: q }]);
+    assert.deepEqual(check(m, vid).map(p => p.message).filter(x => !/ cross$/.test(x)), [], `${f} ${id}`); }
+});

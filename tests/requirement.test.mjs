@@ -480,3 +480,11 @@ test('a pin in a package of the requirement gallery keeps its box off other card
       v.layout = { ...L, [id]: [c, r] }; assert.deepEqual(bad(), [], `${id} step ${s + 1}: ${JSON.stringify(v.layout)}`); }
     v.layout = keep; }
 });
+
+// audit 61: one pin of Range (Alt + Down on the canvas) in a copy of the gallery model left the «deriveReqt» label no room: pinsClear
+// weighs a label not drawn as check() does, past what the view says with no pin
+test('audit 61: one pin of a requirement leaves every label drawn', () => {
+  const g = JSON.parse(readFileSync(new URL('fixtures/integration.json', import.meta.url))), vid = 'requirements';
+  for (const [id, q] of [['range', [2, 3.5]], ['capacity', [1, 3.5]], ['range-ride', [1, 4.5]]]) { const m = apply(g, [{ op: 'set', view: vid, path: ['layout', id], value: q }]);
+    assert.deepEqual(check(m, vid).map(p => p.message).filter(x => !/ cross$/.test(x)), [], `${id} ${JSON.stringify(q)}`); }
+});
