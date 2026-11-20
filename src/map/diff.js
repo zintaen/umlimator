@@ -111,8 +111,9 @@ export function diff(before, after) {
   const goneLines = new Map(out.edges.filter(e => how.get(e) === 'removed' && e.id != null).map(e => [String(e.id), String(e.id)]));
   const keyed = l => { const k = lineKeys(l); return new Map(Array.from(l, (e, i) => [e, k[i]])); }, k1 = new Set(lineKeys(arr(after && after.edges)));
   const line0 = new Map([...keyed(arr(A.edges))].filter(([e, k]) => e && typeof e === 'object' && k1.has(k)).map(([e, k]) => [k, e])); // model lines in both, by their Ref name (an id-less one by its ends)
-  // a line whose end moved (re-pointed) is said as changed, never as put in or taken out of a view (audit 58)
-  const moved1 = new Set([...keyed(E1)].filter(([e, k]) => e && typeof e === 'object' && line0.has(k) && (line0.get(k).from !== e.from || line0.get(k).to !== e.to)).map(([, k]) => k));
+  // a line whose end moved (re-pointed), by its Ref name, as the model after has it: said as changed, and as put in or taken out of
+  // a view only when the view drew it on one side alone (audit 58: never where it drew it both times; audit 59: always where not)
+  const moved1 = new Map([...keyed(E1)].filter(([e, k]) => e && typeof e === 'object' && line0.has(k) && (line0.get(k).from !== e.from || line0.get(k).to !== e.to)).map(([e, k]) => [k, e]));
   // a view as mapContext reads one: an object with an id; any other entry stays as it is, neither added nor removed (audit 57:
   // a string view read as an added view {0:'w'}, "adds the view undefined", and diff().views listed undefined)
   const isView = v => !!v && typeof v === 'object' && !!v.id;
@@ -121,6 +122,7 @@ export function diff(before, after) {
   // a view its type lays out (version 2), which picks the lines it draws; version 1, or a map view, is drawn as a map
   const typedL = x => out.schemaVersion === 2 && (T => !!(T && T.layout && (T.layout.run || typeof T.layout === 'function')))(diagramOf(x));
   const hidIn = [], rmTyped = []; // typed views whose lines to a card they no longer show, or that went, are marked in view.diffMarks
+  const listedIn = new Map(); // a view's model lines it still lists to a card taken out of it, drawn removed (view.diffMarks.listed)
   // a line's ends as cards: each end, an end through a part, and the elements that hold them (a port by its card, audit 55: a
   // listed line between ports was drawn live with its far card taken out of the view). onCard(e, S): an end on a card in S
   let upOf = null; const onCard = (e, S) => { if (!upOf) { upOf = new Map();
@@ -210,10 +212,12 @@ export function diff(before, after) {
         w.containers = res.map(c => c && c.change === 'removed' && c.parent != null && !has.has(c.parent) ? (({ parent, ...r }) => r)(c) : c); } }
     // a model line the view hid or showed (its ends staying), and a sequence's steps in a new order: said, and marked in a list
     const shown = (m, x) => { const K = keyed(arr(m.edges));
-      return linesOf(m, x).filter(e => line0.has(K.get(e)) && !moved1.has(K.get(e)) && !left.includes(e.from) && !left.includes(e.to) && !came.includes(e.from) && !came.includes(e.to)).map(e => K.get(e)); };
-    const s0 = shown(A, o), s1 = shown(out, v), hid = s0.filter(id => !s1.includes(id)), put = s1.filter(id => !s0.includes(id));
-    const ln = id => { const e = line0.get(id); return `the line from ${labelOr((at.get(e.from) || {}).label, e.from)} to ${labelOr((at.get(e.to) || {}).label, e.to)}${labelOr(e.label, null) != null ? ` (${e.label})` : ''}`; };
-    hid.forEach(id => { viewSaid.push(`takes ${ln(id)} out of the view ${vn}`); touched.add(v.id); }); put.forEach(id => says(`puts ${ln(id)}`));
+      return linesOf(m, x).filter(e => line0.has(K.get(e)) && !left.includes(e.from) && !left.includes(e.to) && !came.includes(e.from) && !came.includes(e.to)).map(e => K.get(e)); };
+    const drew = (m, x) => { const K = keyed(arr(m.edges)); return new Set(linesOf(m, x).map(e => K.get(e))); }, d0 = moved1.size ? drew(A, o) : null, d1 = moved1.size ? drew(out, v) : null;
+    const s0 = shown(A, o), s1 = shown(out, v), hid = s0.filter(id => !s1.includes(id) && !(moved1.has(id) && d1.has(id))), put = s1.filter(id => !s0.includes(id) && !(moved1.has(id) && d0.has(id)));
+    // a line taken out by its ends before, one put in by its ends after (audit 59: a re-pointed line put in read its old ends)
+    const ln = (id, now) => { const e = now && moved1.get(id) || line0.get(id); return `the line from ${labelOr((at.get(e.from) || {}).label, e.from)} to ${labelOr((at.get(e.to) || {}).label, e.to)}${labelOr(e.label, null) != null ? ` (${e.label})` : ''}`; };
+    hid.forEach(id => { viewSaid.push(`takes ${ln(id)} out of the view ${vn}`); touched.add(v.id); }); put.forEach(id => says(`puts ${ln(id, true)}`));
     // the steps' order: a view's list as it runs (a model line by id, one of its own by its id), else its model lines. A step
     // with no id is matched by what it is (its ends and label), and by its Ref name only when nothing matches it, so taking
     // out an earlier a->b step does not read as the later one moving (audit 20)
@@ -249,6 +253,7 @@ export function diff(before, after) {
       if (outS.size || inS.size) w.edges = w.edges.map(x => { const own = x && typeof x === 'object' && (how.get(x) === 'changed' || !how.has(x) && x.change == null);
         const e = typeof x === 'string' ? now.has(x) && lineAt.get(x) : own && x, h0 = e && how.get(e);
         if (!e || h0 === 'added' || h0 === 'removed') return x; const h = onCard(e, outS) ? 'removed' : onCard(e, inS) ? 'added' : null;
+        if (h === 'removed' && typeof x === 'string') (listedIn.get(w) || listedIn.set(w, []).get(w)).push(x);
         return h ? line(e, h) : x; }); } // said with the card (as audit 51's), not as a line of the model
     else if (Array.isArray(o.edges)) { // a view that dropped its list: its lines listed (to the cards that left too), the ones it puts marked, and the old
       // list's own and removed lines back in their place (as tags first: mark() keeps a string, so only those come back marked)
@@ -531,9 +536,10 @@ export function diff(before, after) {
     const sig = x => canon(Object.keys(x).filter(k => !GEO.has(k)).sort().map(k => [k, x[k]]));
     // a view's whole picture, but for the marks an author wrote (a typed view's own lines are drawn by their geometry, not their ends' objects)
     // and the ids a shape reads or a line stands for, which are never drawn (audit 51: an undrawn relationship to an IDEF1X entity
-    // that came or went listed the view, its picture the same)
+    // that came or went listed the view, its picture the same), and its accessible name, as sig() leaves it out (audit 59: a C4
+    // implied line's name read a relabelled relationship whose label it does not draw, and the view was listed with no mark on it)
     const picture = g => canon([g.legend ?? null, g.bounds ?? null, ...['nodes', 'families', 'edges', 'lanes', 'groups', 'bands'].map(k => arr(g[k]).map(x => x && typeof x === 'object'
-      ? Object.keys(x).filter(q => !['change', 'edited', 's', 't', 'reads', 'implied'].includes(q)).sort().map(q => [q, x[q]]) : x))]);
+      ? Object.keys(x).filter(q => !['change', 'edited', 's', 't', 'reads', 'implied', 'aria'].includes(q)).sort().map(q => [q, x[q]]) : x))]);
     const lay = (i, id) => { try { const c = ctx(i); return c ? held(() => c.buildGeo(id))[0] : null; } catch { return null; } };
     const shapes = g => new Map(['nodes', 'families'].flatMap(k => arr(g && g[k])).filter(x => x && typeof x.id === 'string').map(x => [x.id, x]));
     const linesG = g => new Map(arr(g && g.edges).filter(x => x && typeof (x._id ?? x.id) === 'string').map(x => [String(x._id ?? x.id), x]));
@@ -604,6 +610,9 @@ export function diff(before, after) {
     hidIn.forEach(([v, L, C]) => { const rm = touching(L, h => h !== 'removed'); gone(v, touching(C, h => h == null || h === 'changed').filter(k => !rm.includes(k)), 'added'); gone(v, rm); });
     rmTyped.forEach(v => { let g = null; try { g = held(() => ctx0().buildGeo(v.id))[0]; } catch { g = null; } if (!g) return;
       gone(v, [...new Set([...arr(g.nodes), ...arr(g.families), ...arr(g.edges)].map(x => x && (x._id ?? x.id)).filter(k => typeof k === 'string'))]); }); }
+  // a model line the view after still lists, drawn removed with a card taken out of it: view.diffMarks.listed, so a reader of
+  // the model after (describe()) tells it from a line the view stopped listing, drawn back removed alike (audit 59)
+  listedIn.forEach((ids, v) => { v.diffMarks = { ...(v.diffMarks && typeof v.diffMarks === 'object' ? v.diffMarks : {}), listed: [...new Set(ids)] }; });
   return { model: out, summary: said, views: views.filter(v => isView(v) && changed.has(v.id)).map(v => v.id) };
 }
 

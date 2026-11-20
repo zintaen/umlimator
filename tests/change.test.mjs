@@ -1863,3 +1863,33 @@ test('audit 58: describe() of a typed view on the diff model reads the model aft
     for (const [i, v] of a.views.entries()) { const id = v.nodeIds.at(-1), b = structuredClone(a); b.views[i].nodeIds = v.nodeIds.filter(x => x !== id);
       assert.equal(U.describe(U.diff(a, b).model, v.id), U.describe(b, v.id), `${f} ${v.id} without ${id}`); } }
 });
+test('audit 59: a re-pointed line a view stops drawing is said taken out by its old ends, and one a view starts drawing put in by its new ends', () => {
+  const N = ['a', 'b', 'c'].map(id => ({ id, label: id.toUpperCase(), kind: 'service' }));
+  const A = { nodes: N, edges: [{ id: 'L', from: 'a', to: 'b', label: 'calls' }, { id: 'M', from: 'b', to: 'c' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], edges: ['L', 'M'] }] };
+  const B = { nodes: N, edges: [{ id: 'L', from: 'a', to: 'c', label: 'calls' }, { id: 'M', from: 'b', to: 'c' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], edges: ['M'] }] };
+  const d = diff(A, B);
+  assert.deepEqual(d.summary, ['changes the line from A to C (to)', 'takes the line from A to B (calls) out of the view v']);
+  assert.deepEqual(d.views, ['v']);
+  assert.deepEqual(layout(d.model, 'v').edges.map(e => [e.from, e.to, e.change ?? null]), [['a', 'b', 'removed'], ['b', 'c', null]]);
+  // re-pointed from a card one view shows to one only another view shows: both views listed, each said with its own ends
+  const X = ['a', 'b', 'x'].map(id => ({ id, label: id.toUpperCase(), kind: 'service' })), vs = [{ id: 'v', nodeIds: ['a', 'b'] }, { id: 'w', nodeIds: ['a', 'x'] }];
+  const d2 = diff({ nodes: X, edges: [{ id: 'L', from: 'a', to: 'b', label: 'calls' }], views: vs }, { nodes: X, edges: [{ id: 'L', from: 'a', to: 'x', label: 'calls' }], views: vs });
+  assert.deepEqual(d2.summary, ['changes the line from A to X (to)', 'takes the line from A to B (calls) out of the view v', 'puts the line from A to X (calls) in the view w']);
+  assert.deepEqual(d2.views, ['v', 'w']);
+});
+test('audit 59: describe() of a communication view on the diff model numbers its messages as the model after does, a lifeline hidden or only taken out of nodeIds', async () => {
+  const U = await import('../lib/umlimator-all.js'), m = JSON.parse(readFileSync(modelUrl('types/uml-communication')));
+  for (const v of m.views) for (const id of v.nodeIds) {
+    const hid = U.apply(m, [{ op: 'hide', id, view: v.id }]), raw = structuredClone(m); raw.views.find(w => w.id === v.id).nodeIds = v.nodeIds.filter(x => x !== id);
+    for (const b of [hid, raw]) assert.equal(U.describe(U.diff(m, b).model, v.id), U.describe(b, v.id), `${v.id} without ${id}`); }
+});
+test('audit 59: a C4 view whose implied line stands for a relabelled relationship it does not draw the label of is not listed', async () => {
+  const U = await import('../lib/umlimator-all.js'), C = (id, label) => ({ id, type: 'c4.Container', parent: 's1', label, props: { technology: 'Python', description: 'Does ' + label } });
+  const m = { schemaVersion: 2, nodes: [{ id: 'p', type: 'c4.Person', label: 'Shopper', props: { description: 'Buys' } }, { id: 's1', type: 'c4.SoftwareSystem', label: 'Shop', props: { description: 'Sells' } }, C('web', 'Storefront'), C('api', 'API')],
+    edges: [{ id: 'r1', type: 'c4.Relationship', from: 'p', to: 'web', label: 'Browses' }, { id: 'r4', type: 'c4.Relationship', from: 'p', to: 'api', label: 'Uses app' }],
+    views: [{ id: 'ctx', diagram: 'c4.context', subject: 's1', title: 'Context', nodeIds: ['p', 's1'] }] };
+  assert.deepEqual(U.diff(m, U.apply(m, [{ op: 'set', id: 'r4', path: 'label', value: 'Orders via app' }])).views, []);
+  // the relationship whose label it draws: listed, and the line marked
+  const d = U.diff(m, U.apply(m, [{ op: 'set', id: 'r1', path: 'label', value: 'Looks' }]));
+  assert.deepEqual(d.views, ['ctx']); assert.equal(U.layout(d.model, 'ctx').edges.find(e => e.from === 'p').change, 'changed');
+});
