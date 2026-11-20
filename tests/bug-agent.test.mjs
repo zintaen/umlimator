@@ -4,12 +4,12 @@
 // keeps its permissions, its switch, its per-issue concurrency and its time limits.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  fenceFor, issueFile, fillPrompt, readResult, testArgv, checkPaths, checkPatch, quoteText, message, verify, check, childEnv, OUTCOMES,
+  fenceFor, issueFile, fillPrompt, readResult, testArgv, checkPaths, checkPatch, checkStaged, quoteText, message, verify, check, childEnv, OUTCOMES,
 } from '../tools/bug_agent.mjs';
 
 const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
@@ -100,16 +100,55 @@ test('bug agent: a fix stays in the allowed paths, with a test and a code change
   assert.match(checkPaths(['tests/a.test.mjs', 'docs/a.md']).join(), /no change outside/);
 });
 
-test('bug agent: a patch is read for its paths, links and binaries', () => {
-  const diff = (a, extra = '') => `diff --git a/${a} b/${a}\n${extra}--- a/${a}\n+++ b/${a}\n@@ -1 +1 @@\n-x\n+y\n`;
-  assert.deepEqual(checkPatch(diff('src/a.js') + diff('tests/a.test.mjs')), []);
-  assert.match(checkPatch(diff('src/a.js') + diff('tests/a.test.mjs') + diff('.github/workflows/x.yml')).join(), /outside/);
-  assert.match(checkPatch(diff('src/a.js') + diff('tests/a.test.mjs', 'new file mode 120000\n')).join(), /symbolic link/);
-  assert.match(checkPatch(diff('src/a.js') + diff('tests/a.test.mjs') + 'GIT binary patch\n').join(), /binary/);
-  assert.match(checkPatch('diff --git "a/src/\\303" "b/src/\\303"\n' + diff('tests/a.test.mjs')).join(), /quote/);
-  // a rename names both sides, and both are checked
-  assert.match(checkPatch('diff --git a/package.json b/src/p.json\n' + diff('tests/a.test.mjs')).join(), /package\.json/);
-  assert.match(checkPatch('').join(), /changes nothing/);
+test('bug agent: git reads the patch, so hostile patches cannot hide a path', () => {
+  const r = repo();
+  try {
+    const ok = r.edit({ 'tests/twice.test.mjs': TEST, 'src/a.mjs': FIX });
+    assert.deepEqual(checkPatch(ok, r.dir), []);
+    // a rename into .github/: both sides are listed, and a rename is refused outright
+    const rename = 'diff --git a/src/a.mjs b/.github/workflows/x.yml\nsimilarity index 100%\nrename from src/a.mjs\nrename to .github/workflows/x.yml\n' + ok;
+    const rp = checkPatch(rename, r.dir).join('\n');
+    assert.match(rp, /renames, copies/);
+    assert.match(rp, /outside what a fix may change: [^\n]*\.github\/workflows\/x\.yml/);
+    // a traversal out of the repository
+    const up = ok + '--- a/src/../../outside.txt\n+++ b/src/../../outside.txt\n@@ -0,0 +1 @@\n+x\n';
+    assert.match(checkPatch(up, r.dir).join(), /outside what a fix may change|cannot read/);
+    // a symbolic link, made by git itself
+    symlinkSync('../package.json', join(r.dir, 'tests/link'));
+    const link = r.edit({ 'tests/twice.test.mjs': TEST, 'src/a.mjs': FIX });
+    assert.match(link, /new file mode 120000/);
+    assert.match(checkPatch(link, r.dir).join(), /links or changes the mode/);
+    // a mode change and a binary file
+    const mode = 'diff --git a/src/a.mjs b/src/a.mjs\nold mode 100644\nnew mode 100755\n' + ok;
+    assert.match(checkPatch(mode, r.dir).join(), /changes the mode/);
+    const bin = r.edit({ 'tests/twice.test.mjs': TEST, 'src/a.mjs': FIX, 'src/b.bin': Buffer.from([0, 1, 2, 0, 255]) });
+    assert.match(checkPatch(bin, r.dir).join(), /binary/);
+    // a second header after a hunk, in the traditional form that has no "diff --git" line: git applies it, so it counts
+    const hidden = ok + '--- a/.github/workflows/check.yml\n+++ b/.github/workflows/check.yml\n@@ -0,0 +1 @@\n+run: evil\n';
+    assert.match(checkPatch(hidden, r.dir).join(), /outside what a fix may change: [^\n]*\.github\/workflows\/check\.yml/);
+    // headers that disagree with each other, and nothing at all
+    const liar = 'diff --git a/src/a.mjs b/src/a.mjs\n--- a/src/a.mjs\n+++ b/.github/x\n@@ -1 +1 @@\n-x\n+y\n' + ok;
+    assert.ok(checkPatch(liar, r.dir).length > 0);
+    assert.match(checkPatch('', r.dir).join(), /changes nothing/);
+    assert.match(checkPatch('not a patch\n', r.dir).join(), /changes nothing|cannot read/);
+  } finally { r.done(); }
+});
+
+test('bug agent: what git staged is checked once more before a commit', () => {
+  const r = repo();
+  try {
+    const run = (...a) => execFileSync('git', a, { cwd: r.dir, stdio: 'pipe' });
+    writeFileSync(join(r.dir, 'tests/twice.test.mjs'), TEST); writeFileSync(join(r.dir, 'src/a.mjs'), FIX);
+    run('add', '-A');
+    assert.deepEqual(checkStaged(r.dir), []);
+    mkdirSync(join(r.dir, '.github')); writeFileSync(join(r.dir, '.github/x.yml'), 'x\n');
+    run('add', '-A');
+    assert.match(checkStaged(r.dir).join(), /outside what a fix may change: \.github\/x\.yml/);
+    run('rm', '-q', '--cached', '.github/x.yml');
+    symlinkSync('../package.json', join(r.dir, 'src/l'));
+    run('add', 'src/l');
+    assert.match(checkStaged(r.dir).join(), /links or changes the mode/);
+  } finally { r.done(); }
 });
 
 test('bug agent: what the agent wrote is posted defused', () => {
@@ -255,9 +294,30 @@ test('bug agent workflow: least privilege, no other secret, the action pinned', 
   assert.match(job('verify'), /persist-credentials: false/);
   assert.match(job('agent'), /CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"/);
   assert.match(job('agent'), /--disallowedTools "[^"]*WebFetch[^"]*Bash\(git push:\*\)[^"]*Bash\(gh:\*\)/);
-  // after the agent ran, its checkout runs nothing of the repository's: only git, to take its diff
+  // after the agent ran, its checkout runs nothing of the repository's: only git, with hooks and fsmonitor off, to take
+  // its diff
   const agent = job('agent');
-  assert.doesNotMatch(agent.slice(agent.indexOf('claude-code-action')), /node |python3 /);
+  const after = agent.slice(agent.indexOf('- id: raw'));
+  assert.doesNotMatch(after, /\bnode |python3 /);
+  assert.match(after, /core\.hooksPath=\/dev\/null -c core\.fsmonitor=false/);
+  // egress blocked but for the API and the installs, before any other step
+  assert.ok(agent.indexOf('step-security/harden-runner@') < agent.indexOf('actions/checkout'), 'harden-runner comes first');
+  assert.match(agent, /uses: step-security\/harden-runner@[0-9a-f]{40} [\s\S]*?egress-policy: block/);
+  const allowed = /allowed-endpoints: >-\n((?:            \S+\n)+)/.exec(agent)[1].trim().split(/\s+/);
+  assert.ok(allowed.includes('api.anthropic.com:443'));
+  assert.ok(!allowed.some(h => /blob|storage|actions\.githubusercontent/.test(h)), 'no storage host: the diff leaves as a job output');
+  assert.doesNotMatch(agent, /upload-artifact/);
+  // Bash in fixed forms: no interpreter by bare prefix
+  const tools = /--allowedTools "([^"]*)"/.exec(agent)[1].split(',');
+  for (const t of tools.filter(t => t.startsWith('Bash('))) {
+    assert.doesNotMatch(t, /^Bash\((node|python3|bash|sh|npx|npm)(:\*)?\)$/, t);
+    assert.doesNotMatch(t, /^Bash\((node|python3) :\*\)$/, t);
+  }
+  assert.ok(tools.includes('Bash(node --test tests/:*)') && tools.includes('Bash(node tools/build.mjs)'));
+  assert.ok(!tools.some(t => /^Bash\((node|python3):\*\)$/.test(t)));
+  // publish checks what git staged before it commits
+  const pubj = job('publish');
+  assert.ok(pubj.indexOf('git apply --index') < pubj.indexOf('check-staged') && pubj.indexOf('check-staged') < pubj.indexOf('commit -q'));
   // verify and publish run the base branch's own checker, copied out before the patch touches the tree
   for (const [name, at] of [['verify', 'check "$RUNNER_TEMP/raw"'], ['publish', 'git apply']]) {
     const j = job(name);

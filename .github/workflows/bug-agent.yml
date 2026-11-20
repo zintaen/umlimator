@@ -7,7 +7,8 @@ name: bug-agent
 # Off unless the repository variable BUG_AGENT_ENABLED is "true" and the secret ANTHROPIC_API_KEY is set
 # (CONTRIBUTING.md, "The bug agent"). The issue's text is data, never instructions (SECURITY.md): it reaches the agent as
 # a fenced file, never through the prompt, a shell command or a workflow expression. Three jobs, each on a fresh runner:
-#   agent    a read-only token and the API key; the agent edits its checkout, and the job uploads its diff and result
+#   agent    a read-only token and the API key, egress blocked but for the API and installs, Bash in fixed forms only;
+#            the agent edits its checkout, and the job hands its diff and result on as a job output
 #   verify   a read-only token and no secret; the base branch's checker (tools/bug_agent.mjs) takes the patch only within
 #            the allowed paths and only when its test fails on the base branch and passes with the fix
 #   publish  contents, pull-requests and issues write and no secret; runs no agent and none of the patch's code, checks
@@ -51,11 +52,33 @@ jobs:
       issues: read     # the issue's text
     outputs:
       number: ${{ steps.issue.outputs.number }}
+      raw: ${{ steps.raw.outputs.raw }}
     env:
+      # no update checks, telemetry or error reports: the egress allowlist below does not carry them
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
       # Claude Code's best-effort scrub of the API key and the runner's tokens from the shells the agent starts
       CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"
       HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
     steps:
+      # Egress is blocked except for these hosts: the Anthropic API, and what the checkout, setup-node and the action's
+      # own install (Bun from GitHub releases, its packages from npm) need. No storage host is allowed: the agent's diff
+      # leaves this job as a job output, not an artifact. Hosts on the list that take writes with someone else's
+      # credentials remain a way out (SECURITY.md).
+      - uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c  # v2.23.0
+        with:
+          egress-policy: block
+          disable-telemetry: true
+          allowed-endpoints: >-
+            api.anthropic.com:443
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            registry.npmjs.org:443
+            nodejs.org:443
+
       - id: key
         name: The API key is set
         run: |
@@ -70,10 +93,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
 
       - id: issue
         name: The issue, as a data file
@@ -100,26 +119,27 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ github.token }}
           prompt: ${{ steps.issue.outputs.prompt }}
+          # Bash only in fixed forms: the build, one test file, a script under the work folder, and git read-only.
+          # The test and the script are code the agent wrote, so the egress block above is what keeps the key in.
           claude_args: >-
             --max-turns 80
             --add-dir ${{ runner.temp }}/bug-agent
-            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(node:*),Bash(python3:*),Bash(git diff:*),Bash(git status:*),Bash(git checkout -- .),Bash(ls:*),Bash(mkdir:*)"
-            --disallowedTools "WebFetch,WebSearch,Bash(git push:*),Bash(git commit:*),Bash(gh:*),Bash(curl:*),Bash(wget:*)"
+            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(node tools/build.mjs),Bash(node --test tests/:*),Bash(python3 tests/:*),Bash(node ${{ runner.temp }}/bug-agent/repro/:*),Bash(python3 ${{ runner.temp }}/bug-agent/repro/:*),Bash(git diff:*),Bash(git status:*),Bash(git checkout -- .),Bash(ls:*)"
+            --disallowedTools "WebFetch,WebSearch,Bash(git push:*),Bash(git commit:*),Bash(git config:*),Bash(gh:*),Bash(curl:*),Bash(wget:*),Bash(node -e:*),Bash(node --eval:*),Bash(node -p:*),Bash(python3 -c:*)"
 
-      - name: The agent's diff and result, as data for the verify job
+      - id: raw
+        name: The agent's diff and result, as data for the verify job
         if: always() && steps.issue.outcome == 'success'
         run: |
+          # hooks, fsmonitor and external diff off: the agent could have written .git/config
+          g() { git -c core.hooksPath=/dev/null -c core.fsmonitor=false -c diff.external= "$@"; }
           mkdir -p "$WORK/raw"
-          if [ -f "$WORK/result.json" ]; then cp "$WORK/result.json" "$WORK/raw/result.json"; fi
-          git add -A
-          git diff --cached --binary --no-ext-diff --no-renames > "$WORK/raw/fix.patch"
-
-      - if: always() && steps.issue.outcome == 'success'
-        uses: actions/upload-artifact@v4
-        with:
-          name: bug-agent-raw
-          path: ${{ runner.temp }}/bug-agent/raw/
-          retention-days: 7
+          if [ -f "$WORK/result.json" ]; then head -c 20000 "$WORK/result.json" > "$WORK/raw/result.json"; fi
+          g add -A
+          g diff --cached --binary --no-ext-diff --no-renames --no-textconv > "$WORK/raw/fix.patch"
+          # one base64 line, at most 700 kB (a job's outputs hold 1 MB); a bigger diff is left out and verify says so
+          tar -czf "$WORK/raw.tgz" -C "$WORK/raw" .
+          if [ "$(wc -c < "$WORK/raw.tgz")" -le 512000 ]; then echo "raw=$(base64 -w0 "$WORK/raw.tgz")" >> "$GITHUB_OUTPUT"; fi
 
   verify:
     needs: agent
@@ -144,19 +164,20 @@ jobs:
         with:
           python-version: "3.12"
 
-      - uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: bug-agent-raw
-          path: ${{ runner.temp }}/raw
-
       - id: check
         name: The test fails without the fix and passes with it
+        env:
+          RAW: ${{ needs.agent.outputs.raw }}
         run: |
           # the base branch's checker, copied out before the patch touches the tree; the patch's code runs without the
           # runner's GITHUB_ and ACTIONS_ variables
           ba="$RUNNER_TEMP/bug_agent.mjs"; cp tools/bug_agent.mjs "$ba"
           mkdir -p "$RUNNER_TEMP/raw"
+          # the agent job's output, unpacked as plain files only (no links, no paths out of the folder)
+          if [ -n "$RAW" ] && printf %s "$RAW" | base64 -d > "$RUNNER_TEMP/raw.tgz" 2>/dev/null; then
+            tar -xzf "$RUNNER_TEMP/raw.tgz" -C "$RUNNER_TEMP/raw" --no-same-owner --no-same-permissions ./result.json ./fix.patch 2>/dev/null || true
+            find "$RUNNER_TEMP/raw" -mindepth 1 ! -type f -exec rm -rf {} + 2>/dev/null || true
+          fi
           node "$ba" check "$RUNNER_TEMP/raw" "$RUNNER_TEMP/out" > "$RUNNER_TEMP/outcome.txt" || echo failed > "$RUNNER_TEMP/outcome.txt"
           outcome=$(head -n 1 "$RUNNER_TEMP/outcome.txt")
           case "$outcome" in fixed|reproduced|not-reproduced|failed) ;; *) outcome=failed ;; esac
@@ -210,6 +231,14 @@ jobs:
               branch="bug-agent/issue-$NUMBER-$GITHUB_RUN_ID"
               git switch -c "$branch"
               git apply --index "$out/fix.patch"
+              # what git staged, checked again against the allowlist before anything is committed
+              if ! node "$ba" check-staged 2> "$out/reason.txt"; then
+                git reset -q --hard HEAD; git switch -q -
+                reason=$(head -c 600 "$out/reason.txt")
+                node "$ba" comment - failed "$RUN" "$(node -p 'JSON.stringify({reason: process.argv[1]})' "$reason")" > "$out/comment.md"
+                gh issue comment "$NUMBER" --repo "$GITHUB_REPOSITORY" --body-file "$out/comment.md"
+                exit 0
+              fi
               git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
                 commit -q -m "Bug agent: a proposed fix for #$NUMBER"
               git push -q origin "$branch"

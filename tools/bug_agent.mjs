@@ -8,7 +8,8 @@
 //   node tools/bug_agent.mjs prompt <template.md> <out.md> <vars>  the prompt, with {{NAME}} filled from NAME=value args
 //   node tools/bug_agent.mjs check <in-dir> <out-dir>              verify job, in a clean checkout: the result file, the path
 //                                                                  rules, then the test fails without the fix and passes with it
-//   node tools/bug_agent.mjs check-patch <fix.patch>               the path rules again, on the patch alone (publish job)
+//   node tools/bug_agent.mjs check-patch <fix.patch>               the path rules again, as git reads the patch (publish job)
+//   node tools/bug_agent.mjs check-staged                          after git apply --index: what git staged (publish job)
 //   node tools/bug_agent.mjs comment <result.json> <kind> <url>    the issue comment or pull request body, on stdout
 //
 // Issue text is data. It is written to a file inside a fence whose marker it cannot contain, it never enters the prompt
@@ -90,7 +91,7 @@ const ALLOWED = [/^src\//, /^lib\//, /^tests\//, /^docs\//, /^umlimator[a-z_]*\.
 const DENIED = [/^engine\/scripts\//, /^engine\/references\//, /^tools\/fetch_icons\.py$/, /(^|\/)\.(?!vitepress\/)/, /(^|\/)node_modules\//];
 
 export function checkPaths(files) {
-  const bad = files.filter(f => !ALLOWED.some(r => r.test(f)) || DENIED.some(r => r.test(f)) || f.includes('..'));
+  const bad = files.filter(f => !ALLOWED.some(r => r.test(f)) || DENIED.some(r => r.test(f)) || f.split('/').includes('..') || /^\/|\\|[\x00-\x1f]/.test(f));
   const tests = files.filter(f => f.startsWith('tests/'));
   const code = files.filter(f => !f.startsWith('tests/') && !f.startsWith('docs/'));
   const problems = [];
@@ -100,22 +101,51 @@ export function checkPaths(files) {
   return problems;
 }
 
-// The files a git patch touches, and whether it makes a link or changes a mode to one.
-export function patchFiles(patch) {
-  const files = new Set();
-  for (const m of patch.matchAll(/^diff --git a\/(\S+) b\/(\S+)$/gm)) { files.add(m[1]); files.add(m[2]); }
-  const links = /^(new file mode|new mode|old mode|deleted file mode) 120000$/m.test(patch);
-  const quoted = /^diff --git "/m.test(patch);
-  return { files: [...files], links, quoted };
+// What git itself reads in a patch: every path it would write (both sides of a rename or copy), and whether anything is
+// not a plain edit of a regular file. `git apply --numstat -z` and `--summary` parse the patch as `git apply` will, so a
+// second header, a traditional `---`/`+++` section or a rename cannot hide a path from the check. Nothing is applied.
+export function gitPatchInfo(patch, cwd = tmpdir()) {
+  const run = args => {
+    const r = spawnSync('git', ['apply', ...args], { cwd, input: patch, encoding: 'utf8', env: childEnv() });
+    if (r.status !== 0) throw new Error('git cannot read the patch: ' + String(r.stderr).trim().split('\n')[0]);
+    return r.stdout;
+  };
+  const files = [];
+  let binary = false;
+  const parts = run(['--numstat', '-z', '-']).split('\0');
+  for (let i = 0; i < parts.length; i++) {
+    const m = /^(-|\d+)\t(-|\d+)\t([\s\S]*)$/.exec(parts[i]);
+    if (!m) continue;
+    if (m[1] === '-' || m[2] === '-') binary = true;
+    if (m[3] !== '') files.push(m[3]);
+    else { files.push(parts[i + 1], parts[i + 2]); i += 2; }
+  }
+  const odd = run(['--summary', '-']).split('\n').map(l => l.trim()).filter(l =>
+    /^(rename|copy|mode change) /.test(l) || (/^(create|delete) mode /.test(l) && !/^(create|delete) mode 100644 /.test(l)));
+  return { files, binary, odd };
 }
 
-export function checkPatch(patch) {
-  const { files, links, quoted } = patchFiles(patch);
+// The path rules on a patch, as git reads it.
+export function checkPatch(patch, cwd) {
+  if (!patch.trim()) return ['the patch changes nothing'];
+  let info;
+  try { info = gitPatchInfo(patch, cwd); } catch (e) { return [e.message]; }
   const problems = [];
-  if (!files.length) problems.push('the patch changes nothing');
-  if (links) problems.push('the patch makes a symbolic link');
-  if (quoted) problems.push('the patch names a path git had to quote');
-  if (/^GIT binary patch$/m.test(patch)) problems.push('the patch holds a binary file');
+  if (!info.files.length) problems.push('the patch changes nothing');
+  if (info.binary) problems.push('the patch holds a binary file');
+  if (info.odd.length) problems.push('the patch renames, copies, links or changes the mode of a file: ' + info.odd.join('; '));
+  return problems.concat(info.files.length ? checkPaths(info.files) : []);
+}
+
+// After `git apply --index` in the publish job: what git staged, checked against the rules once more.
+export function checkStaged(cwd) {
+  const g = (...a) => execFileSync('git', ['-c', 'core.quotepath=off', ...a], { cwd, encoding: 'utf8', env: childEnv() });
+  const files = g('diff', '--cached', '--name-only', '-z', '--no-renames').split('\0').filter(Boolean);
+  const odd = g('diff', '--cached', '--summary', '--no-renames').split('\n').map(l => l.trim())
+    .filter(l => /^mode change /.test(l) || (/^(create|delete) mode /.test(l) && !/^(create|delete) mode 100644 /.test(l)));
+  const problems = [];
+  if (!files.length) problems.push('nothing is staged');
+  if (odd.length) problems.push('the staged change links or changes the mode of a file: ' + odd.join('; '));
   return problems.concat(files.length ? checkPaths(files) : []);
 }
 
@@ -172,7 +202,7 @@ function runTest(cwd, test, stdio) {
 // fail) and with the whole patch (it must pass, and lib/ must be what src/ builds). Leaves the fix applied. Returns the
 // problems found ([] when the fix holds).
 export function verify(cwd, result, patch, stdio = 'inherit') {
-  const problems = checkPatch(patch);
+  const problems = checkPatch(patch, cwd);
   if (problems.length) return problems;
   const tmp = mkdtempSync(join(tmpdir(), 'bug-agent-patch-'));
   const file = join(tmp, 'fix.patch');
@@ -184,6 +214,8 @@ export function verify(cwd, result, patch, stdio = 'inherit') {
     const without = runTest(cwd, result.test, stdio);
     reset();
     git(cwd, 'apply', '--index', file);
+    const staged = checkStaged(cwd);
+    if (staged.length) return problems.concat(staged);
     const withFix = runTest(cwd, result.test, stdio);
     if (without.built && without.ok) problems.push('the test passes without the fix');
     if (!withFix.built) problems.push('the fix does not build');
@@ -230,14 +262,17 @@ function main(argv) {
   } else if (cmd === 'check') {
     process.stdout.write(check(process.cwd(), a[0], a[1]) + '\n');
   } else if (cmd === 'check-patch') {
-    const problems = checkPatch(readFileSync(a[0], 'utf8'));
+    const problems = checkPatch(readFileSync(a[0], 'utf8'), process.cwd());
+    if (problems.length) { console.error(problems.join('\n')); process.exit(1); }
+  } else if (cmd === 'check-staged') {
+    const problems = checkStaged(process.cwd());
     if (problems.length) { console.error(problems.join('\n')); process.exit(1); }
   } else if (cmd === 'comment') {
     const extra = a[3] ? JSON.parse(a[3]) : {};
     const r = a[1] === 'failed' ? { summary: '', ...extra } : { ...readResult(readFileSync(a[0], 'utf8')), ...extra };
     process.stdout.write(message(a[1], r, a[2] || ''));
   } else {
-    console.error('usage: node tools/bug_agent.mjs issue|prompt|check|check-patch|comment ...');
+    console.error('usage: node tools/bug_agent.mjs issue|prompt|check|check-patch|check-staged|comment ...');
     process.exit(2);
   }
 }
