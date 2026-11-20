@@ -134,6 +134,9 @@ try {
   check('a link that names the theme names the one shown, after ◐ too', link().theme === 'light' && document.documentElement.dataset.theme === 'light', location.hash);
   const pressed = () => $('m-theme').getAttribute('aria-pressed'), named = $('m-theme').getAttribute('aria-label');
   check('◐ says which theme is on: "Dark theme", pressed in dark and not in light (#135)', named === 'Dark theme' && pressed() === 'false' && ($('m-theme').click(), pressed() === 'true'), [named, pressed()]);
+  document.documentElement.dataset.theme = 'light'; const outLight = await until(() => pressed() === 'false', 1000) && pressed();
+  document.documentElement.dataset.theme = 'dark'; const outDark = await until(() => pressed() === 'true', 1000) && pressed();
+  check('…and when a script outside the page sets the theme, as a docs frame following its site\'s switch does (audit 59)', outLight === 'false' && outDark === 'true', [outLight, outDark]);
   const fb = $('m-find'), seen = fb.querySelector('.ft').textContent.replace('…', '').toLowerCase();
   check('the Find button\'s name holds its visible label (WCAG 2.5.3, audit 1)', fb.getAttribute('aria-label').toLowerCase().includes(seen), [fb.getAttribute('aria-label'), seen]);
   const words = t => t.replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').toLowerCase().trim(), seenAll = words(fb.textContent); // axe reads aria-hidden text too

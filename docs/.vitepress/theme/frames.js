@@ -1,6 +1,7 @@
 // The live diagram frames (.ex-frame, tools/gallery.mjs) follow the site's light/dark switch, not only the system's (audit 58):
 // VitePress marks the site dark with html.dark, and each framed page (same origin) takes the site's theme as its data-theme,
-// set when the frame loads and again on every switch. The page's own ◐ still works inside the frame.
+// set when the frame loads and again on every switch. The page's own ◐ still works inside the frame, and its aria-pressed follows
+// a data-theme set from here (src/page/page.js, audit 59).
 export function followSiteTheme(doc, Observer = globalThis.MutationObserver) {
   const theme = () => (doc.documentElement.classList.contains('dark') ? 'dark' : 'light');
   const sync = f => { try { const d = f.contentDocument; if (d && d.documentElement) d.documentElement.dataset.theme = theme(); } catch (e) {} }; // another origin: left as it is

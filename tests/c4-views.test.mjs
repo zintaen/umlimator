@@ -273,6 +273,18 @@ test('validators: 23-c4.json breaks no rule in its two views; each rule fails on
 });
 
 // ---- names, the key, describe(), the PDF
+// the Accessibility section of the conformance page, and the docs page built from it, quotes names as the code draws them,
+// ", opens Shop API: components" included; a name the docs cut short with "…" is checked up to the cut (audit 59)
+test('the docs\' Accessibility section quotes each name as the example\'s views draw it (audit 59)', () => {
+  const drawn = C4.views.flatMap(v => { const g = layout(C4, v.id); return [...g.nodes, ...g.edges].map(x => x.aria).concat([...svgOf(g).matchAll(/aria-label="([^"]*)"/g)].map(x => x[1].replace(/&amp;/g, '&'))); });
+  for (const f of ['../docs/diagrams/conformance/c4.md', '../docs/types/c4.md']) {
+    const sec = readFileSync(new URL(f, import.meta.url), 'utf8').split(/^#{2,3} Accessibility$/m)[1].split(/^#{2,3} /m)[0].replace(/\s+/g, ' ');
+    const quoted = [...sec.matchAll(/"([^"]+)"/g)].map(x => x[1]);
+    assert.ok(quoted.length >= 3, f);
+    for (const q of quoted) assert.ok(q.endsWith('…') ? drawn.some(d => d.startsWith(q.slice(0, -1))) : drawn.includes(q), `${f}: "${q}" is not a drawn name`);
+  }
+});
+
 test('names, reading order and the key (A1): steps named by number; boxes then what they hold; each view\'s key', () => {
   const g = layout(C4, DV);
   assert.equal(g.edges[0].aria, 'Step 1: Relationship from Shopper to Storefront: Fills a basket and checks out in [HTTPS]');
