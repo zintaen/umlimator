@@ -463,6 +463,22 @@ test('audit 5: lines go round the cards on a typed view, however wide the host f
   }
 });
 
+// audit 60's router rule took a way into an end from the side when head on cost more than two bends and 80 px over it, for
+// whatever reason. In Linux CI's fonts (Liberation Sans, Arial's metrics: tests/fixtures/bookshop-c4-containers-widths.json,
+// each text's width at 600 weight as Chrome measures it in Arial) the last resort's worker→database line came in from above,
+// over the API's lines to the database and the payment provider: 4 crossings, where head on draws 3. Head on is now tried too,
+// and kept when the line has fewer issues
+test('bookshop-c4 containers in Linux CI\'s fonts: the worker\'s line comes into the database head on, 3 crossings (CI of PR 548)', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/bookshop-c4.json', import.meta.url), 'utf8')), was = console.warn;
+  const T = new Map(JSON.parse(readFileSync(new URL('./fixtures/bookshop-c4-containers-widths.json', import.meta.url), 'utf8')).map(([px, s, w]) => [px + '\u0000' + s, w]));
+  const measure = (s, px) => T.get(px + '\u0000' + s) ?? s.length * px * 0.55;
+  let said, g; console.warn = () => {}; try { said = check(m, 'c4-containers', { measure }); g = layout(m, 'c4-containers', { measure }); } finally { console.warn = was; }
+  assert.deepEqual(said.filter(i => / cross$/.test(i.message)).map(i => i.message), ['view c4-containers: edges Storefront→Shop API and Order worker→Email service cross',
+    'view c4-containers: edges Shop API→Payment provider and Order worker→Database cross', 'view c4-containers: edges Shop API→Order queue and Order worker→Database cross']);
+  const e = g.edges.find(x => x.ids.includes('c4-worker-db')), P = e.pts, db = g.byId['c4-db'];
+  assert.ok(P[P.length - 2][1] === P[P.length - 1][1] && P.every(p => p[1] >= P[P.length - 1][1]) && P[P.length - 1][0] === db.x, JSON.stringify(P));
+});
+
 test('a request and its reply between two systems, laid out right, do not cross (audit 14)', () => {
   const m = { schemaVersion: 2, nodes: [El('u', 'Person', 'User'), El('s', 'SoftwareSystem', 'Shop'), El('b', 'SoftwareSystem', 'Bank', { external: true }), El('m', 'SoftwareSystem', 'Mail', { external: true })],
     edges: [Rel('r1', 'u', 's', 'Buys'), Rel('r2', 's', 'b', 'Charges'), Rel('r3', 'b', 's', 'Notifies'), Rel('r4', 's', 'm', 'Sends')], views: [{ id: 'v', diagram: 'c4.landscape', title: 'T', nodeIds: ['u', 's', 'b', 'm'] }] };
