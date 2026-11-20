@@ -65,7 +65,7 @@ All on 11 Nov 2026, by the maintainer. The options that were weighed are in `pro
 | [`ui-draft.html`](ui-draft.html) | A drawing of the editor: views, palette, canvas, properties, problems |
 | [`examples/`](examples/) | One target model per diagram type, `01-class.json` to `28-azure.json`, and `check.mjs`, which checks them against `model.md`; a type's file moves to [`../../examples/`](../../examples/) when it draws (`check.mjs` lists where: `01-class.json` is `examples/sales-classes.json`) |
 | [`conformance/`](conformance/) | The conformance note of each of the 28 types: which parts of its notation are drawn, which are left out, and why. `tools/gallery.mjs` puts each, as written, at the end of its type's page on the site (`docs/types/<type>.md`) |
-| [`notes/`](notes/) | Design notes, one per stage, written when the stage starts: [`stage-1.md`](notes/stage-1.md), [`stage-2.md`](notes/stage-2.md), [`stage-3.md`](notes/stage-3.md); the sequence spike's findings, [`spike-sequence.md`](notes/spike-sequence.md) |
+| [`notes/`](notes/) | Design notes, one per stage, written when the stage starts: [`stage-1.md`](notes/stage-1.md), [`stage-2.md`](notes/stage-2.md), [`stage-3.md`](notes/stage-3.md); the sequence spike's findings, [`spike-sequence.md`](notes/spike-sequence.md); the design for layout by business flow (a main flow on one row, dependency lines that do not pull, semantic zones, stable layout across edits, a quality score and the weekly tuning loop), [`layout-flow.md`](notes/layout-flow.md) |
 
 ## Picking up a work package
 
