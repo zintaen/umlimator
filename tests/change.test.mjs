@@ -1755,3 +1755,31 @@ test('audit 55: a component view that lists its lines draws a line between ports
   const at = m => (all.layout(m, V).edges.find(e => (e._id ?? e.id) === 'api-to-provider') || {}).change ?? null;
   assert.equal(at(all.diff(A, B).model), 'removed'); assert.equal(at(all.diff(B, A).model), 'added');
 });
+
+// audit 56
+test('audit 56: a line whose label changed, to a card taken out of a view that lists no lines (or put back), is drawn removed (added) there', () => {
+  const nodes = [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }, { id: 'c', label: 'C' }];
+  const m = (ids, two = 'two', es) => ({ nodes, edges: [{ id: 'ab', from: 'a', to: 'b', label: 'one' }, { id: 'bc', from: 'b', to: 'c', label: two }],
+    views: [{ id: 'main', title: 'Main', nodeIds: ids, ...(es ? { edges: es } : {}) }] });
+  const bc = (x, V) => { const g = layout(x, V), e = g.edges.find(y => (y._id ?? y.id) === 'bc'); return e && [e.change ?? null, !!e.edited]; };
+  for (const es of [undefined, ['ab', 'bc']]) { const how = es ? 'a view that lists its lines' : 'a view that lists none';
+    assert.deepEqual(bc(diff(m(['a', 'b', 'c'], 'two', es), m(['a', 'b'], 'two', es)).model, 'main'), ['removed', false], `${how}: no edit`);
+    assert.deepEqual(bc(diff(m(['a', 'b', 'c'], 'two', es), m(['a', 'b'], 'three', es)).model, 'main'), ['removed', true], `${how}: its label edited`);
+    assert.deepEqual(bc(diff(m(['a', 'b'], 'two', es), m(['a', 'b', 'c'], 'three', es)).model, 'main'), ['added', true], `${how}: put back, its label edited`); }
+  // the model's own line stays changed: only the view's copy goes with the card
+  const d = diff(m(['a', 'b', 'c']), m(['a', 'b'], 'three'));
+  assert.equal(d.model.edges.find(e => e.id === 'bc').change, 'changed');
+});
+
+test('audit 56: on a typed view a line whose label changed goes (comes) with a card taken out of it (put in), and with a removed view', async () => {
+  const all = await fromSrc(), c4 = JSON.parse(readFileSync(new URL('../examples/types/c4.json', import.meta.url))), V = 'context', L = 'bookshop-courier';
+  const cut = (x, edit) => { const y = structuredClone(x), w = y.views.find(v => v.id === V); w.nodeIds = w.nodeIds.filter(id => id !== 'courier');
+    if (edit) y.edges.find(e => e.id === L).label += ' (edited)'; return y; };
+  const ch = (x, v = V) => (all.layout(x, v).edges.find(e => (e._id ?? e.id) === L) || {}).change ?? null;
+  const edited = c => { const y = structuredClone(c); y.edges.find(e => e.id === L).label += ' (edited)'; return y; };
+  assert.equal(ch(all.diff(c4, cut(c4)).model), 'removed', 'taken out');
+  assert.equal(ch(all.diff(c4, cut(c4, true)).model), 'removed', 'taken out, its label edited');
+  assert.equal(ch(all.diff(cut(c4), edited(c4)).model), 'added', 'put back, its label edited');
+  const gone = { ...edited(c4), views: edited(c4).views.filter(v => v.id !== V) };
+  assert.equal(ch(all.diff(c4, gone).model), 'removed', 'its view removed, its label edited');
+});

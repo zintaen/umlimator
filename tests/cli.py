@@ -42,7 +42,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf integration": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "bench views": 1})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "bench views": 1})
 
 
 def ok(name, cond, info=""):
@@ -2434,6 +2434,40 @@ if part("audit 54 tools"):
     ok("map-repo · each pin of the skill's CLI ships in a plugin version of its own: plugin.json's version is the one recorded with the pin (audit 54)",
        shipped.get(pin) == plugin and len(set(shipped.values())) == len(shipped)
        and list(shipped.values()) == sorted(shipped.values(), key=lambda v: tuple(map(int, v.split(".")))), (pin, plugin, shipped))
+if part("audit 56 diff"):
+    # audit 56: a removed view comes back from diff() with its cards marked removed there and copies of its model lines marked
+    # removed (the diff page draws it gone); the sketch drew those cards and lines as removed, though they stay in the model
+    # and in the other views. What was the view's own (its cards, its lines) went with it, and is still sketched removed
+    nodes = [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}, {"id": "c", "label": "C"}]
+    lines = [{"id": "ab", "from": "a", "to": "b", "label": "one"}, {"id": "bc", "from": "b", "to": "c", "label": "two"}]
+    main = {"id": "main", "title": "Main", "nodeIds": ["a", "b", "c"]}
+    for v2 in ({"id": "v2", "title": "Two", "nodeIds": ["b", "c"]}, {"id": "v2", "title": "Two", "nodeIds": ["b", "c"], "edges": ["bc"]},
+               {"id": "v2", "title": "Two", "nodeIds": ["b", "c"], "nodeOverrides": {"b": {"label": "B here"}}}):
+        b5, a5 = {"title": "T", "nodes": nodes, "edges": lines, "views": [main, v2]}, {"title": "T", "nodes": nodes, "edges": lines, "views": [main]}
+        d = u.js("diff", b5, a5)
+        sk = u.sketch(d["model"], after=a5)
+        ok("diff --base · the sketch of a removed view marks none of the cards and lines it shared with the model (audit 56)",
+           d["summary"] == ["removes the view Two"] and sk == [] and u.sketch(u.js("diff", a5, b5)["model"], after=b5) == [], (v2, d["summary"], sk))
+    # its own card and line went with it: sketched removed; and a card the model lost with it too
+    own = {"id": "v2", "title": "Two", "nodeIds": ["b", "c", "x"], "nodes": [{"id": "x", "label": "X"}], "edges": [{"id": "bx", "from": "b", "to": "x", "label": "own"}]}
+    b6, a6 = {"title": "T", "nodes": nodes, "edges": lines, "views": [main, own]}, {"title": "T", "nodes": nodes, "edges": lines, "views": [main]}
+    sk = u.sketch(u.js("diff", b6, a6)["model"], after=a6)
+    ok("diff --base · the sketch of a removed view marks its own card and line removed, the shared ones not (audit 56)",
+       '  n1["X"]:::removed' in sk and '  n0 -.->|"own"| n1' in sk and '  n0["B"]' in sk and not any('"two"' in x or '"C"' in x for x in sk), sk)
+    gone = {"title": "T", "nodes": nodes[:2], "edges": lines[:1], "views": [{"id": "main", "title": "Main", "nodeIds": ["a", "b"]}]}
+    sk = u.sketch(u.js("diff", b6, gone)["model"], after=gone)
+    ok("diff --base · a removed view's card the model lost too is still sketched removed (audit 56)",
+       any('["C"]:::removed' in x for x in sk) and any('-.->|"two"|' in x for x in sk), sk)
+    # the CLI's diff --base passes the model after to the sketch
+    with tempfile.TemporaryDirectory() as tmp:
+        g = Path(tmp)
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
+        sh("init", "-q"); (g / "m.json").write_text(json.dumps(b5)); sh("add", "."); sh("commit", "-qm", "one"); (g / "m.json").write_text(json.dumps(a5))
+        r = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                            "sys.argv = ['umlimator.py', 'diff', '--base', 'HEAD', '--out', 'out']; u.main()", str(ROOT)], cwd=g, capture_output=True, text=True)
+        md = (g / "out" / "summary.md").read_text(encoding="utf-8") if (g / "out" / "summary.md").is_file() else ""
+        ok("diff --base · the summary of a removed view sketches no card or line it shared (audit 56)",
+           "removes the view Two" in md and ":::removed" not in md and "-.->" not in md, (r.stderr[-400:], md))
 if part("audit 55 tools"):
     # audit 55: diff() writes a marked copy of a model line into each view that lists lines, and the sketch drew the model's
     # line and every copy, so one line came twice (a live copy beside a removed one, or the same mark twice); and a card a view
