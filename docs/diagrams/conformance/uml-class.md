@@ -63,7 +63,7 @@ something it holds is not drawn (`line-inside`).
   (from 0.19.0 its packages `shop` and `catalog` are boxes, and it gained two classes so that 50 nodes are still laid
   out) the `edge-cases` view (13 elements, 12 of them drawn as nodes and `shop` as a box, 15 lines) has 3 crossings, all
   among the four lines between Order and Customer; the `all` view (52 elements, 50 drawn nodes and 2 boxes, 59 lines)
-  has 19: generalizations to Entity and Person across Customer's and Order's lines, Customer's line to Account across
+  has 18 (19 until audit 60): generalizations to Entity and Person across Customer's and Order's lines, Customer's line to Account across
   Invoice's, Shipment's and Gift's, and others. Before 0.19.0 they were 2 and 29 on 13 and 50 elements.
   `tests/class-fixtures.test.mjs` pins both counts (`docs/diagrams/risks.md` L4).
 

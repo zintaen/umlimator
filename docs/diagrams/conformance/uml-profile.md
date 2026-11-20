@@ -68,7 +68,7 @@ Layout limits, measured on `examples/bookshop-profile.json` and `tests/profile-s
 - The example lays out clean down and right: no crossing, `check()` finds nothing.
 - `tests/stage6-fixtures.test.mjs` pins the stress file. Its `edge-cases` view (two profiles, 26 stereotypes and
   metaclasses, 20 applying elements, packages two deep) is clean both ways. Its generated `all` view (3 profiles, 40
-  stereotypes, 50 metaclass references and classes, 60 lines) crosses 17 times laid out right and 30 times down; no line
+  stereotypes, 50 metaclass references and classes, 60 lines) crosses 17 times laid out right and 31 times down (30 till audit 60); no line
   runs through a node.
 - A member row with long tags is cut with an ellipsis at the classifier's width (`«column» - placedAt: Instant [0..1]
   {name = placed_a…` on the example); its whole text is in the node's accessible name, `describe()` and the PDF's rows.

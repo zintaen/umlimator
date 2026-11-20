@@ -644,3 +644,27 @@ test('audit 58: a service card label with no spaces (Chinese, a long URL) wraps 
   const url = 'https://shop.example.com/api/orders', u = [...C.draw({ ...n, label: url, ...C.size({ label: url, name: 'Cloud Run' }) }).matchAll(/class="c-name"[^>]*>([^<]*)</g)].map(x => x[1]);
   assert.equal(u.join(''), url, 'a long URL breaks between two characters');
 });
+
+test('audit 60: a path from a service three groups deep to one outside them all keeps off the outer group\'s border, in each family, down and right', () => {
+  const F = { gcp: ['gcp.Zone', 'zoneType', ['project', 'region', 'network'], 'gcp.Product', 'gcp.Path'], aws: ['aws.Group', 'groupType', ['account', 'region', 'vpc'], 'aws.Service', 'aws.Connection'],
+    azure: ['azure.Group', 'groupType', ['subscription', 'resource-group', 'virtual-network'], 'azure.Service', 'azure.Connector'] };
+  for (const [fam, [G, key, kinds, S, L]] of Object.entries(F)) for (const direction of ['down', 'right']) {
+    const m = { schemaVersion: 2, title: 'Shop', nodes: [
+      { id: 'g0', type: G, label: 'Bookshop', props: { [key]: kinds[0] } }, { id: 'g1', type: G, label: 'europe-west1', props: { [key]: kinds[1] }, parent: 'g0' },
+      { id: 'g2', type: G, label: 'shop-vpc', props: { [key]: kinds[2] }, parent: 'g1' }, { id: 'api', type: S, label: 'Shop API', props: { icon: 'X' }, parent: 'g2' },
+      { id: 'pay', type: S, label: 'Payment provider', props: { icon: 'X' } }, { id: 'web', type: S, label: 'Web shop', props: { icon: 'X' } }],
+      edges: [{ id: 'charge', type: L, from: 'api', to: 'pay' }, { id: 'token', type: L, from: 'web', to: 'pay' }],
+      views: [{ id: 'v', diagram: fam, direction, nodeIds: ['g0', 'g1', 'g2', 'api', 'pay', 'web'] }] };
+    assert.deepEqual(check(m, 'v').map(p => p.message), [], `${fam} ${direction}`);
+  }
+});
+
+test('audit 60: laid out down, a third call out of a service\'s top in a virtual network takes no way through the network\'s title', () => {
+  const G = (id, t, parent) => ({ id, type: 'azure.Group', label: id === 'g3' ? 'virtual-network g3' : id, props: { groupType: t }, ...(parent ? { parent } : {}) });
+  const S = (id, parent) => ({ id, type: 'azure.Service', label: id, props: { icon: 'X' }, ...(parent ? { parent } : {}) });
+  const m = { schemaVersion: 2, nodes: [G('g0', 'subscription'), G('g1', 'resource-group', 'g0'), G('g2', 'region', 'g1'), G('g3', 'virtual-network', 'g2'), G('g4', 'subnet', 'g3'), S('s5'), S('s6', 'g0'), S('s7', 'g3')],
+    edges: [{ id: 'e8', type: 'azure.Connector', from: 's7', to: 's5', label: 'HTTPS' }, { id: 'e9', type: 'azure.Connector', from: 's5', to: 's6', label: 'HTTPS' },
+      { id: 'e10', type: 'azure.Connector', from: 's5', to: 's7' }, { id: 'e11', type: 'azure.Connector', from: 's7', to: 's5' }],
+    views: [{ id: 'v', diagram: 'azure', direction: 'down', nodeIds: ['g0', 'g1', 'g2', 'g3', 'g4', 's5', 's6', 's7'] }] };
+  for (const d of ['down', 'right']) { m.views[0].direction = d; assert.deepEqual(check(m, 'v').map(p => p.message).filter(s => !/ cross$/.test(s)), [], d); }
+});

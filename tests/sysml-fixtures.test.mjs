@@ -60,13 +60,13 @@ function clean(m, vid) {
 // lie on lines. Each is stated in its type's conformance note
 const PINNED = {
   'requirement-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
-  'requirement-stress': { 'edge-cases': { right: [1, 0, 0], down: [1, 0, 0] }, 'ec-package': { right: [0, 0, 0], down: [0, 0, 0] }, all: { right: [204, 1, 0], down: [233, 3, 0] } },
+  'requirement-stress': { 'edge-cases': { right: [1, 0, 0], down: [1, 0, 0] }, 'ec-package': { right: [0, 0, 0], down: [0, 0, 0] }, all: { right: [204, 1, 0], down: [232, 4, 0] } },
   'block-definition-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
-  'block-definition-stress': { 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, all: { right: [54, 0, 0], down: [50, 0, 0] } },
+  'block-definition-stress': { 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, all: { right: [49, 0, 0], down: [48, 0, 0] } },
   'internal-block-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
   'internal-block-stress': { 'edge-cases': { right: [1, 0, 0], down: [2, 0, 0] }, 'ec-ports-only': { right: [0, 0, 0], down: [0, 0, 0] }, all: { right: [5, 0, 0], down: [20, 1, 0] } }, // fewer since audit 38: lines between two parts keep their ports' order
   'parametric-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
-  'parametric-stress': { 'edge-cases': { right: [1, 0, 0], down: [1, 0, 0] }, 'ec-constraint-block': { right: [0, 0, 0], down: [0, 1, 0] }, all: { right: [207, 22, 0], down: [205, 24, 0] } },
+  'parametric-stress': { 'edge-cases': { right: [1, 0, 0], down: [1, 0, 0] }, 'ec-constraint-block': { right: [0, 0, 0], down: [0, 1, 0] }, all: { right: [208, 16, 0], down: [201, 18, 0] } },
 };
 
 test('every view of the eight fixtures, right and down: a line through a node, an end off its node, a label over a node, a port off its owner\'s border and check()\'s findings, each only as pinned (the stated limits)', () => {

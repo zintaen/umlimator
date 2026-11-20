@@ -141,7 +141,7 @@ Layout limits, measured on `examples/ebike-blocks.json` and `tests/block-definit
   constraint property, proxy, full and conjugated ports, a part typed by a value type, a constraint property typed by a
   block, a flow property in a constraint block, a part drawn also as a disagreeing association, a generalization between a
   value type and a block, a package holding blocks) is clean right and down; the generated `all` view (50 blocks, 57
-  lines) crosses 54 times right and 50 down, with no other finding.
+  lines) crosses 49 times right and 48 down (54 and 50 till audit 60), with no other finding.
 
 ### Writers: what each shows of a block definition diagram
 

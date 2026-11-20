@@ -135,7 +135,7 @@ Layout limits, measured on `examples/bookshop-components.json` and `tests/compon
   side's free span, marked `over`, and `check()` reports them overlapping (15 pairs); ten on one side of a node: the node
   grows and every port fits. A port with no line and a 40-character name: the name is drawn whole, but on a crowded side
   the end labels' search may place it far from its port (L5). Its generated `all` view (50 elements, 60 lines, 54 ports
-  in boxes three deep): 116 crossings right and 128 down. Laid out right: a port's name over a node in six cases (`c0.b`
+  in boxes three deep): 114 crossings right (116 before audit 60) and 128 down. Laid out right: a port's name over a node in six cases (`c0.b`
   over `c4`, `u1`, `u9` and `u14`; `c21.b` over `r8` and `r9`), since the layout keeps no room for names (§4.3).
   Laid out down: one pair of lines sharing a line and one line across a box's header (along a box's border before audit 21). These are stated limits, not §13's
   "no overlap, no line along a box's border, no port name over a node or a line".

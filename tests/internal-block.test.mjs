@@ -497,3 +497,12 @@ test('audit 41: Add refuses a port, a reference or a value in SysML\'s words: a 
   assert.deepEqual(T.edits.add(m3, m3.views[0], { type: 'sysml.PartProperty' }, 'r', { sel: [] }), { error: 'This view has no subject to add a part to' });
   assert.ok(Array.isArray(T.edits.add(m, v, { type: 'sysml.Port' }, 'p', { sel: [v.subject] })), 'a port on the subject still goes in');
 });
+
+// audit 60: in the gallery's internal block view laid out down (a copy in tests/fixtures/), Alt + Down twice on the battery (as
+// src/canvas/edit.js steps it: a down view's column grows) left the fanned battery-controller bus turning on the track the
+// controller-cargo box line takes from its port on the same side, and the two shared a line
+test('audit 60: the gallery\'s battery stepped twice, laid out down, shares no line', () => {
+  const g = JSON.parse(readFileSync(new URL('fixtures/sysml-internal-block.json', import.meta.url))), vid = 'inside-ebike', v = g.views.find(x => x.id === vid);
+  for (let s = 1; s <= 2; s++) { const n = layout(g, vid).byId['ebike.battery']; v.layout = { ...(v.layout || {}), 'ebike.battery': [n.col + 1, n.row] };
+    assert.deepEqual(check(g, vid).map(p => p.message).filter(x => !/ cross$/.test(x)), [], `step ${s}`); }
+});

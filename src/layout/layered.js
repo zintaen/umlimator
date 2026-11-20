@@ -795,6 +795,10 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       // (NEST) head on only for up to two bends more than the cheapest way in: a route that kept to it at any cost ran along a
       // box's border into its end (audit 38: laid out right, a transition past a two-level composite state, 3616 for 1950)
       if (NEST && best >= 0 && pd > dist[best] + 2 * BEND) { used = true; break; }
+      // (a typed view with boxes) nor at the cost of a run along a box's border, which costs more than that and eight px of it:
+      // the way in from the side is kept (audit 60: laid out down, a cloud service three groups deep to one outside them all, its
+      // port 4 px inside the outer group's border, came in head on down that border for 42 px)
+      if (!NEST && !map && near && best >= 0 && pd > dist[best] + 2 * BEND + 80) break;
       const d = dist[k];
       // in head-on if it can; else the cheapest way in, the first found (it kept the last, the dearest: a top-to-top line on
       // the top row ran past its card and back, #80)
@@ -1083,18 +1087,24 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // a state machine's X→Done ran along Waiting→Packed in the gap between X and Packed). Kept only when clean
   let tbBudget = 48; // ponytail: grid searches for all of a view's ends moved so, ample for the few lines a view leaves with no route
   const lenOf = P => segsOf(P).reduce((k, [a, b]) => k + Math.abs(b[0] - a[0]) + Math.abs(b[1] - a[1]), 0) + BEND * (P.length - 2);
-  const onTB = e => { if (!dg.typed || e.inner || e.fromPort != null || e.toPort != null || e.s === e.t) return false;
+  const onTB = (e, cross = false) => { if (!dg.typed || e.inner || e.fromPort != null || e.toPort != null || e.s === e.t) return false;
     const was = [e.p1, e.p2, e.fs, e.ts]; let best = null;
     for (const k of ['p1', 'p2']) { const n = k === 'p1' ? e.s : e.t, o = k === 'p1' ? e.t : e.s, fk = k === 'p1' ? 'fs' : 'ts';
       if (n.box || e[fk] === 'T' || e[fk] === 'B') continue;
       for (const side of ['T', 'B']) { const y = side === 'T' ? n.y : n.y + n.h, taken = edges.filter(x => x !== e && x.pts).flatMap(x => [[x.s, x.fs, x.p1], [x.t, x.ts, x.p2]]).filter(([m, sd]) => m === n && sd === side).map(([, , q]) => q[0]);
         const lo = n.x + n.w * .08, hi = n.x + n.w * .92, ox = o.x + o.w / 2, xs = [0, -1, 1, -2, 2].map(j => n.x + n.w / 2 + j * PORT).filter(x => x >= lo && x <= hi && taken.every(t => Math.abs(t - x) >= PORT)).sort((a, b) => Math.abs(a - ox) - Math.abs(b - ox));
-        for (const x of xs) { if (tbBudget-- <= 0) break; e[k] = [x, y]; e[fk] = side; restub(e); const P = wide(e, false);
-          if (P && (!best || lenOf(P) < lenOf(best[0]))) best = [P, k, [x, y], side];
+        for (const x of xs) { if (tbBudget-- <= 0) break; e[k] = [x, y]; e[fk] = side; restub(e); const P = wide(e, cross);
+          if (P && !(cross && heads(P)) && (!best || lenOf(P) < lenOf(best[0]))) best = [P, k, [x, y], side];
           [e.p1, e.p2, e.fs, e.ts] = was; restub(e); } } }
     if (!best) return false;
     const [P, k, q, side] = best; e[k] = q; e[k === 'p1' ? 'fs' : 'ts'] = side; restub(e); e.pts = P; e.how = 'grid'; return true; };
-  const issuesOf = e => { const ps = routeAudit({ edges, families, byId }, '', new Set([e])); return [ps.filter(p => / share a line$/.test(p)).length, ps.length]; };
+  // (a box's title the line crosses counts as a line it runs on: the last resort's search, kept out of a title only at the cost
+  // of a shared line, goes through it, audit 60: laid out down, a third line out of a card's top in a virtual network, between
+  // two that took the one track under its title; its end moved to the card's side clears both). headRect: the title as laid
+  // out, turned or not, which check() measures on the picture turned back
+  const issuesOf = e => { const ps = routeAudit({ edges, families, byId }, '', new Set([e])), hd = dg.typed ? families.filter(f => segsOf(e.pts).some(([a, b]) => segHitsRect(a, b, headRect(f)))).length : 0;
+    return [ps.filter(p => / share a line$/.test(p)).length + hd, ps.filter(p => !/ header crossed by /.test(p)).length + hd]; };
+  const heads = P => dg.typed && families.some(f => segsOf(P).some(([a, b]) => segHitsRect(a, b, headRect(f))));
   const lastR = dg.quick ? [] : free.filter(e => e.how === 'fallback');
   lastR.forEach(e => { ripUp(e); e.pts = wide(e, 2) || (dg.typed && through(e.pts, e) && gridRoute(e, 3, 0)) || e.pts; e.lbl = null; routed.push(e); placeLabel(e); });
   // then each of them whose route runs round one of its own ends (the last resort may: audit 21), that end tried on each other
@@ -1123,7 +1133,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // then each of them that runs along another line, its end moved (onTB), when that leaves it none and no more issues
   if (dg.typed) lastR.forEach(e => { const k0 = issuesOf(e); if (!k0[0]) return;
     const was = [e.p1, e.p2, e.fs, e.ts, e.pts, e.how]; ripUp(e);
-    if (onTB(e)) { e.lbl = null; routed.push(e); placeLabel(e); const k1 = issuesOf(e); if (!k1[0] && k1[1] <= k0[1]) return; ripUp(e); }
+    if (onTB(e) || (heads(e.pts) && onTB(e, 2))) { e.lbl = null; routed.push(e); placeLabel(e); const k1 = issuesOf(e); if (!k1[0] && k1[1] <= k0[1]) return; ripUp(e); }
     // else the last resort again, round what the lines before it moved: kept when it runs along fewer
     [e.p1, e.p2, e.fs, e.ts, e.pts, e.how] = was; restub(e); const P = wide(e, 2);
     if (P) { e.pts = P; e.lbl = null; routed.push(e); placeLabel(e); const k1 = issuesOf(e); if (k1[0] < k0[0] && k1[1] <= k0[1]) return; ripUp(e); e.pts = was[4]; }

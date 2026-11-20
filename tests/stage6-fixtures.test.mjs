@@ -42,7 +42,7 @@ function profileClean(m, vid) {
 // rerouting off), stated in docs/diagrams/conformance/uml-profile.md
 const PINNED = {
   'profile-minimal': { v: { right: [0, [], []], down: [0, [], []] } },
-  'profile-stress': { 'edge-cases': { right: [0, [], []], down: [0, [], []] }, all: { right: [17, [], []], down: [30, [], []] } },
+  'profile-stress': { 'edge-cases': { right: [0, [], []], down: [0, [], []] }, all: { right: [17, [], []], down: [31, [], []] } },
 };
 
 test('every profile view, right and down: no line through a node, check()\'s findings only as pinned (the generated view\'s crossings)', () => {

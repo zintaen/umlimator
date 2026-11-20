@@ -963,3 +963,12 @@ test('audit 58: a composite state taken out of the view (kept in the model): its
   // the view as it was: nothing marked
   assert.ok(layout(diff(SM, SM).model, V.id).families.every(f => !f.change));
 });
+
+// audit 60: a region's initial pseudostate dropped right of its composite, on a cell (enquiry's) where the composite's regions,
+// stacked after the cells are settled, grow over the composite beside it: no pin near it is clean, so the pin is dropped and
+// the pseudostate takes a slot as one with no pin does (a copy of the gallery model in tests/fixtures/)
+test('audit 60: a pseudostate pinned where its composite would lie over another is drawn with no box over another', () => {
+  const g = JSON.parse(readFileSync(new URL('fixtures/order-states.json', import.meta.url))), vid = g.views[0].id, g0 = layout(g, vid), at = g0.byId.enquiry;
+  const m = apply(g, [{ op: 'set', view: vid, path: ['layout', 'parcel-start'], value: [at.col, at.row] }]);
+  assert.deepEqual(check(m, vid).map(p => p.message).filter(x => /overlap|lies over/.test(x)), []);
+});
