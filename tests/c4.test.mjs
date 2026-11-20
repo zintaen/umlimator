@@ -689,7 +689,7 @@ test('audit 52: an element whose name ends a sentence and that opens a view says
 test('audit 55: an element whose description ends in an abbreviation keeps its period before ", opens", and only a sentence\'s stop is dropped', () => {
   const m = JSON.parse(readFileSync(new URL('../examples/bookshop-c4.json', import.meta.url)));
   const n = m.nodes.find(x => x.id === 'c4-bookshop');
-  for (const [d, said] of [['Sells books, maps, gift cards etc.', 'gift cards etc., opens'], ['Sells books in the U.S.', 'in the U.S., opens'], ['Sells books, approx.', 'approx., opens'], ['Sells books.', 'Sells books, opens'], ['Sells books...', 'Sells books..., opens']]) {
+  for (const [d, said] of [['Sells books, maps, gift cards etc.', 'gift cards etc., opens'], ['Sells books in the U.S.', 'in the U.S., opens'], ['Sells books, approx.', 'approx., opens'], ['Sells books.', 'Sells books, opens'], ['Sells books...', 'Sells books..., opens'], ['Answers every call within 200 ms.', 'within 200 ms, opens'], ['Signs with a CA.', 'with a CA, opens']]) {
     n.props = { ...n.props, description: d }; const g = layout(m, 'c4-context'), s = svgOf(g);
     assert.ok(g.byId['c4-bookshop'].aria.includes(said), g.byId['c4-bookshop'].aria);
     assert.ok(/data-id="c4-bookshop"[^>]*aria-label="([^"]*)"/.exec(s)[1].includes(said), d); }
