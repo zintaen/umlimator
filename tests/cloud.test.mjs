@@ -724,11 +724,11 @@ test('audit 62: laid out down, a third path into a product two paths from one ot
   m.views[0].direction = 'right'; assert.deepEqual(check(m, 'v').map(p => p.message), [], 'right');
 });
 
-// audit 62: Alt + Right on the AWS gallery view's CDN pins it a column right, where a label then lay on a group's border;
+// audit 62: Alt + Right on the AWS gallery view's CDN (a copy of the AWS gallery example, kept as tests/fixtures/aws-gallery.json) pins it a column right, where a label then lay on a group's border;
 // pinsClear settled the pin back on the card's own cell (the round-61 weighing), so the key changed the model and not the
 // picture. A pin one step from where its card goes with no pin is never settled back there, nor short of it on that way
 test('audit 62: one Alt + arrow on a card of the AWS gallery view never draws it back where it was', () => {
-  const ex = read('../examples/types/aws.json'), vid = 'on-aws', at = (m, id) => { const n = layout(m, vid).byId[id]; return [n.col, n.row]; };
+  const ex = read('fixtures/aws-gallery.json'), vid = 'on-aws', at = (m, id) => { const n = layout(m, vid).byId[id]; return [n.col, n.row]; };
   const [c, r] = at(ex, 'cdn'), m = apply(ex, [{ op: 'set', view: vid, path: ['layout', 'cdn'], value: [c + 1, r] }]), q = at(m, 'cdn');
   assert.ok(q[0] >= c + 1, JSON.stringify([[c, r], q]));
   assert.deepEqual(check(m, vid).map(p => p.message).filter(x => !/ cross$/.test(x)), []);
