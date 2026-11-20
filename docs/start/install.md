@@ -59,7 +59,7 @@ Load the module from a CDN, pinned to a version:
 
 ## The command line
 
-The CLI is `umlimator.py` in the repository. It needs Python 3.9+ (standard library only), Google Chrome or Chromium for pictures and checks, and Node 18+ for `diff`, `drift`, `trace` and `mcp` ([Command line](../use/cli.md)):
+The CLI is `umlimator.py` in the repository. It needs Python 3.9+ (standard library only), Google Chrome or Chromium for pictures and checks, and Node 18+ for `diff`, `drift`, `trace`, `mcp` and `export`, and for `import` of a Mermaid class, sequence, state, ER, requirement or mindmap diagram (or a flowchart with `--typed`), a Structurizr JSON workspace, DBML or BPMN XML ([Command line](../use/cli.md); [Import and export](../use/import-export.md) has each format's needs):
 
 ```bash
 git clone --depth 1 --branch v@@VERSION@@ https://github.com/zintaen/umlimator.git

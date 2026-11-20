@@ -15,6 +15,8 @@ const { version } = JSON.parse(readFileSync(new URL('../../package.json', import
 export const sidebar = JSON.parse(readFileSync(new URL('./sidebar.json', import.meta.url), 'utf8'));
 // docs/ files the site leaves out: their links go to GitHub
 const EXCLUDED = ['diagrams/**', 'editing.md', 'module-api.md'];   // module-api.md's releases are shown by changelog.md
+// a page tools/gallery.mjs writes: it holds that script's HEAD note
+const generated = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8').includes('<!-- Written by tools/gallery.mjs ');
 const excluded = (p: string) => p.startsWith('diagrams/') || p === 'editing.md' || p === 'module-api.md';
 
 // A heading's id as GitHub makes it, for the pages written for GitHub: a link to "#0210-..." there goes to "_0-21-0-..."
@@ -101,7 +103,12 @@ export default defineConfig({
   ignoreDeadLinks: [/^\/examples\//],
   // one contentinfo landmark per page: a doc page has its own footer (VPDocFooter), and the site footer (themeConfig.footer)
   // shows beside it on a page with no sidebar, so the site footer is a home page's only (audit 17)
-  transformPageData(page) { if (page.frontmatter.layout !== 'home') page.frontmatter.footer ??= false; },
+  transformPageData(page) {
+    if (page.frontmatter.layout !== 'home') page.frontmatter.footer ??= false;
+    // a page tools/gallery.mjs writes (types/, atlas/) has no edit link: its next run would overwrite the edit, and
+    // tests/gallery.test.mjs fails on it until then (audit 57)
+    if (generated(page.filePath)) page.frontmatter.editLink = false;
+  },
   markdown: {
     // code blocks at WCAG AA (4.5:1) on VitePress's block background in both themes: Shiki's default github-light and
     // github-dark have keywords, parameters and comments under it (audit 17)
@@ -118,6 +125,8 @@ export default defineConfig({
     resolve: { alias: [
       { find: /^\.\/VPHome\.vue$/, replacement: fileURLToPath(new URL('./theme/VPHomeMain.vue', import.meta.url)) },
       { find: /^\.\.\/NotFound\.vue$/, replacement: fileURLToPath(new URL('./theme/NotFoundMain.vue', import.meta.url)) },
+      // a collapsible sidebar group is one button with aria-expanded, not a button in a button (theme/VPSidebarItem.vue, audit 57)
+      { find: /^\.\/VPSidebarItem\.vue$/, replacement: fileURLToPath(new URL('./theme/VPSidebarItem.vue', import.meta.url)) },
     ] },
   },
   vue: { template: { compilerOptions: { isCustomElement: t => t.startsWith('umlimator-') } } },
@@ -141,7 +150,9 @@ export default defineConfig({
     ],
     search: { provider: 'local' },
     outline: { level: [2, 3] },
-    editLink: { pattern: `${REPO}/edit/main/docs/:path`, text: 'Edit this page on GitHub' },
+    // the changelog's releases are docs/module-api.md's, put in by changelog(): its link edits them there (audit 57).
+    // VitePress serializes this function for the browser, so it names the repository itself
+    editLink: { pattern: ({ filePath }) => `https://github.com/zintaen/umlimator/edit/main/docs/${filePath === 'changelog.md' ? 'module-api.md' : filePath}`, text: 'Edit this page on GitHub' },
     footer: {
       message: 'Released under the MIT License. Not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.',
       copyright: 'Like umlimator? Support it on <a href="https://buymeacoffee.com/cyberskill">Buy Me a Coffee</a> or <a href="https://github.com/sponsors/zintaen">GitHub Sponsors</a>.',
