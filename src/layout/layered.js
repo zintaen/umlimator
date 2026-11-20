@@ -1120,10 +1120,12 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // a line the search brought in from the side rather than head on (audit 60's rule) is routed head on too, and that way kept when
   // it has fewer issues: the rule weighs what the grid knows, and a way in from the side can cross more of the lines into that
   // side (bookshop-c4's containers in Linux CI's fonts: the worker's line to the database came in from above, over the API's two)
+  // or, no more issues, fewer of them a shared line (audit 62: laid out down, a GCP service's line into one that two lines from
+  // another reach, in from the side, ran down the stub track of one of those; head on it crosses it once)
   lastR.forEach(e => { ripUp(e); sidedIn = false; e.pts = wide(e, 2) || (dg.typed && through(e.pts, e) && gridRoute(e, 3, 0)) || e.pts; const sided = sidedIn; e.lbl = null; routed.push(e); placeLabel(e);
     if (!sided || !dg.typed) return;
-    const k0 = issuesOf(e)[1], was = e.pts; ripUp(e); headOn = true; const P = wide(e, 2); headOn = false;
-    if (P) { e.pts = P; e.lbl = null; routed.push(e); placeLabel(e); if (issuesOf(e)[1] < k0) return; ripUp(e); }
+    const k0 = issuesOf(e), was = e.pts; ripUp(e); headOn = true; const P = wide(e, 2); headOn = false;
+    if (P) { e.pts = P; e.lbl = null; routed.push(e); placeLabel(e); const k1 = issuesOf(e); if (k1[1] < k0[1] || (k1[0] < k0[0] && k1[1] <= k0[1] && k1[2] <= k0[2])) return; ripUp(e); }
     e.pts = was; e.lbl = null; routed.push(e); placeLabel(e); });
   // then each of them whose route runs round one of its own ends (the last resort may: audit 21), that end tried on each other
   // side of its card, kept when the route there runs round neither end and has no more issues (audit 28: er-through2-min laid
