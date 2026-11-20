@@ -339,7 +339,7 @@ The **activity diagram** (`uml.activity`, `examples/fulfil-activity.json`), laid
 | add a flow | the handle or a drag, then Control flow or Object flow | `L`, the other end, Enter | `add`; the second unguarded exit of a decision gets the guard `else`; a flow into an initial node, out of a final node or onto a partition is refused |
 | a flow's name and guard | double-click once selected | `F2`: `name [guard]`; an effect or a `/` outside brackets is refused | `set label`, `set props.guard` |
 | change a node's lane | drag it into another band (outside every band: no lane) | the Owner field | `reparent`, and its pin removed, in one transaction |
-| move a node within its lane | drag | `Alt + arrows` | a pin (its row is an order inside the lane) |
+| move a node within its lane | drag | `Alt + arrows` | a pin (its row is an order inside the lane); `Alt` + an arrow across the lanes on a node with no node of its lane on that side in its column does nothing and the hint line says why (the lane sets its row) |
 | nest a partition | | the Owner field | `reparent` |
 | move a lane | not by hand: a drag on a partition's header changes nothing | | (the lane's order is the view's `nodeIds` order) |
 | delete a partition | | `Shift + Delete` | a `reparent` of what it held to its own parent, then `delete` |
@@ -400,7 +400,7 @@ The **component diagram** (`uml.component`, `examples/bookshop-components.json`)
 | add or edit a port as a row | the component's member rows: `name` or `name : Type` | Enter | the member hook: `add` with `owner`, or `set label` and `set props.valueType` |
 | add a line | the handle or a drag, then its kind (Realization, Component realization, Usage, Assembly, Delegation, Dependency, Manifestation, Comment link) | `L`, the other end, Enter, the kind | `add`; a connector's kind is set by nesting (a box's port to what it holds: a delegation, else an assembly); a line to an interface is the picker's Realization or Usage; a connector from an element to itself or its own port, a delegation whose box end is not a port, or a connector with an end that is no component nor a component's port (an interface, an artifact), is refused and said; a manifestation drawn from a component to an artifact is added from the artifact, and a realization, a component realization or a manifestation between ends its rule does not allow (provided-ends, component-realization-ends, manifest-ends) is refused and said |
 | an interface as a ball or a rectangle | | `B` on a selected interface | `set` of `present.<id>.as` to `ball`, or removed |
-| a port's side | drag it to another side of its owner | `Alt + arrows` across its side | `set` of `present.<port>.side`; `Alt + arrows` along its side does nothing and the hint line says why (its order follows its lines) |
+| a port's side | drag it to another side of its owner | `Alt + arrows`: the arrow names the side, so every side a drag reaches | `set` of `present.<port>.side`; the arrow toward the side it is on does nothing and the hint line says why (its order along the side follows its lines) |
 | a connector's kind, a port's type, stereotypes | the properties panel | Enter | `set props.kind`, `set props.valueType`, `set props.stereotypes` |
 | nest a component | drop it into a component's or package's box | the Owner field (the element and what it holds are left out) | `reparent` |
 | rename | double-click once selected | `F2` | `set label` |
@@ -428,7 +428,7 @@ The **composite structure diagram** (`uml.composite-structure`, `examples/order-
 | rename a port on a part | double-click once selected | `F2` | `set label` on its class's port: every part of that type shows it, as the hint line says |
 | add a connector | the handle or a drag from a port, a part or a port on a part | `L`, the other end, Enter | `add`; an end through a part keeps `props.ends.<end>.part`; a connector whose ends lie in two structures (the subject's and a collaboration's, or two collaborations') is refused and said |
 | add a role binding | the handle or a drag from a part to a collaboration use | `L`, the other end, Enter, then the role (a picker of the collaboration's roles) | `add`, its `label` the role |
-| a port's side | drag it to another side | `Alt + arrows` | `set` of `present.<port>.side`; on a part, `present.<part>.ports.<port>.side` |
+| a port's side | drag it to another side | `Alt + arrows`: the arrow names the side | `set` of `present.<port>.side`; on a part, `present.<part>.ports.<port>.side`; the arrow toward the side it is on does nothing and the hint line says why |
 | a part's aggregation, a collaboration use's collaboration, stereotypes | the properties panel | Enter | `set props.aggregation`, `set props.collaboration`, `set props.stereotypes` |
 | delete a part | | `Delete` (said first), `Shift + Delete` | `delete`: its connectors go with it (the type's `refs` cascade), its role bindings by `delete`'s rule |
 | delete a port on a part | | `Delete` | the connectors through that part to that port; `Shift + Delete` deletes the class's port |
@@ -588,6 +588,7 @@ typed canvas's gestures (1.7), with the type's hooks:
 | a name, a flow's name, an annotation's text | double-click once selected | `F2` | `set label` |
 | task type, event definition, interrupting, called element, data store, direction, documentation | the properties panel | | `set props.<field>` |
 | move a flow node to another lane | drag it into the lane's band, or the Owner field | | `reparent` to the lane, its pin removed; its boundary events with it; into another pool refused while it has sequence flows ("Move its sequence flows first"); a drop on a pool's header strip refused; an Owner that would bring a new problem refused with the rule's words (audit 18) |
+| move an item within its lane | drag | `Alt + arrows` | a pin; `Alt` + an arrow across the lanes on an item that is the only one of its lane in its columns, or any arrow on data or an annotation drawn beside its flow node, does nothing and the hint line says why (the lane pass sets that place) |
 | move a boundary event | drag it onto another activity's border | `Alt + arrows` (its side) | `set props.attachedTo` (and `reparent` to that activity's owner); `set present.<id>.side` |
 | attach a boundary event | | `A`: a picker of the activities it can move to without a new problem | `set props.attachedTo` |
 | expand or collapse a sub-process in the view | | `X` | one `set` of the view's `nodeIds`: what it holds added or removed |

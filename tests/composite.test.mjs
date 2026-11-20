@@ -244,13 +244,15 @@ test('connect: a connector from a port on a part keeps the part (ends.<end>.part
   assert.ok(T.edits.connect(CS, V, 'order-service.checkout->checkout-class.quotes', 'order-events', null, { type: 'uml.CommentLink', label: 'Comment link' }).error);
 });
 
-test('moveTo: a port dropped goes to the side nearest the drop, Alt + an arrow across its side moves it; along its side, said; a part, or a panel row\'s ↑ ↓, the default', () => {
+test('moveTo: a port dropped goes to the side nearest the drop, Alt + an arrow to the side it names; its own side, said; a part, or a panel row\'s ↑ ↓, the default', () => {
   const geo = layout(CS, 'internals'), p = geo.byId['order-service.checkout->checkout-class.quotes'], o = geo.byId['order-service.checkout'];
   assert.deepEqual(T.edits.moveTo(CS, V, p.id, { pt: [o.x + o.w / 2, o.y - 2], geo }), [{ op: 'set', view: 'internals', path: ['present', 'order-service.checkout', 'ports', 'checkout-class.quotes', 'side'], value: 'top' }]);
   const s = geo.byId['order-service.api'];
-  assert.deepEqual(T.edits.moveTo(CS, V, s.id, { by: [0, 1], geo }), { error: 'A port\'s place along its side follows its lines and is not stored: Alt + an arrow across the side moves it to another side' });
+  // audit 64: Alt + Down or Up on a left port goes to the bottom or top, as a drag does (it was refused, "along its side")
+  assert.deepEqual(T.edits.moveTo(CS, V, s.id, { by: [0, 1], geo }), [{ op: 'set', view: 'internals', path: ['present', 'order-service.api', 'side'], value: 'bottom' }]);
+  assert.equal(T.edits.moveTo(CS, V, s.id, { by: [0, -1], geo })[0].value, 'top');
   assert.deepEqual(T.edits.moveTo(CS, V, s.id, { by: [1, 0], geo }), [{ op: 'set', view: 'internals', path: ['present', 'order-service.api', 'side'], value: 'right' }]);
-  assert.ok(T.edits.moveTo(CS, V, s.id, { by: [-1, 0], geo }).error, 'on that side already');
+  assert.deepEqual(T.edits.moveTo(CS, V, s.id, { by: [-1, 0], geo }), { error: 'The port is on its owner\'s left side already: its place along the side follows its lines and is not stored' }, 'on that side already');
   assert.equal(T.edits.moveTo(CS, V, s.id, { by: [0, 1] }), null, 'the member list\'s own move');
   assert.equal(T.edits.moveTo(CS, V, 'order-service.orders', { pt: [0, 0], geo }), null);
   // applied, the port is drawn on that side

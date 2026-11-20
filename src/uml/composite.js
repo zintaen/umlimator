@@ -429,9 +429,9 @@ function csMoveTo(model, view, id, at) {
   if (!mine || !CS_OBJ(at) || !CS_OBJ(at.geo)) return null;
   const g = at.geo, n = CS_OBJ(g.byId) && Object.hasOwn(g.byId, id) ? g.byId[id] : null, o = n && (Object.hasOwn(g.byId, n.owner) ? g.byId[n.owner] : CS_ARR(g.families).find(f => f.id === n.owner));
   let side = null;
+  // an arrow names the side it goes to: every side a drag reaches, by keyboard too (audit 64: Alt + Up on a left port was refused)
   if (Array.isArray(at.by)) { const [dx, dy] = at.by; side = dx ? (dx < 0 ? 'L' : 'R') : dy < 0 ? 'T' : 'B';
-    if (n && (side === n.side || (side === 'L' || side === 'R') !== (n.side === 'L' || n.side === 'R')))
-      return { error: side === n.side ? `The port is on its owner's ${CS_WORD[side]} side already` : 'A port\'s place along its side follows its lines and is not stored: Alt + an arrow across the side moves it to another side' }; }
+    if (n && side === n.side) return { error: `The port is on its owner's ${CS_WORD[side]} side already: its place along the side follows its lines and is not stored` }; }
   else if (Array.isArray(at.pt) && o) { const [x, y] = at.pt, d = { L: Math.abs(x - o.x), R: Math.abs(x - o.x - o.w), T: Math.abs(y - o.y), B: Math.abs(y - o.y - o.h) };
     side = Object.keys(d).reduce((a, k) => (d[k] < d[a] ? k : a), 'L'); }
   if (!side) return null;

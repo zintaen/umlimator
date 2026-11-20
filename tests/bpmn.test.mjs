@@ -1069,3 +1069,16 @@ test('Delete of a view-own activity with the model boundary event on it also sel
   const r = E.remove(m, V(m), ['cancel-order', 'payment-timeout'], false);
   assert.ok(r == null || !r.commands.some(c => c.op === 'delete'));
 });
+
+test('layout.keepsRow and keepsRank: Alt + an arrow on an item alone in its lane\'s columns, across, or on data drawn beside its flow node, is refused and said, and only where its pin would move nothing (audit 64)', () => {
+  const V = EX.views.find(v => v.diagram === 'bpmn'), L = diagramOf(V).layout, g = layout(EX, V.id), box = m => JSON.stringify(layout(m, V.id).nodes.map(n => [n.id, n.x, n.y]));
+  assert.equal(L.keepsRow(EX, V, 'pick-pack', g, [0, 1]), 'Pick and pack is the only item of Warehouse here: the Owner field, or a drag into another lane, moves it to another lane');
+  assert.equal(L.keepsRank(EX, V, 'pick-pack', g, [1, 0]), null, 'along the flow: a pin');
+  assert.equal(L.keepsRank(EX, V, 'bp-stock', g, [1, 0]), 'Stock database is drawn beside Pick and pack, the flow node it is associated with');
+  const base = box(EX); let refused = 0;
+  for (const n of g.nodes) for (const d of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+    if (!L[d[0] ? 'keepsRank' : 'keepsRow'](EX, V, n.id, g, d) || n.col + d[0] < 0 || n.row + d[1] < 0) continue; refused++;
+    assert.equal(box(apply(EX, [{ op: 'set', view: V.id, path: ['layout', n.id], value: [n.col + d[0], n.row + d[1]] }])), base, `${n.id} ${d}: refused, so its pin moves nothing`);
+  }
+  assert.ok(refused > 10, refused);
+});
