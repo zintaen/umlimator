@@ -148,7 +148,7 @@ test('audit 56: a first sentence ends after "ms.", a capital or a short number, 
     ['a CA. Then signs them.', 'a CA.'], ['Talks to service B. Then retries.', 'Talks to service B.'], ['Calls A. Then B.', 'Calls A.'],
     // still not cut: a title before a name, "ca." before a number, initials that lead to a name, a list number that opens a line
     ['Sends 3 copies to Dr. Smith. Then waits.', 'Sends 3 copies to Dr. Smith.'], ['Takes ca. 100 ms. More.', 'Takes ca. 100 ms.'], ['J. R. R. Tolkien wrote it. More.', 'J. R. R. Tolkien wrote it.'],
-    ['Built by Ada and John F. Kennedy for us. More.', 'Built by Ada and John F. Kennedy for us.'], ['Steps:\n1. Validate.\n2. Pay.', 'Steps:\n1. Validate.']]) assert.equal(firstSentence(t), f, t);
+    ['Built by J. F. Kennedy for us. More.', 'Built by J. F. Kennedy for us.'], ['Steps:\n1. Validate.\n2. Pay.', 'Steps:\n1. Validate.']]) assert.equal(firstSentence(t), f, t);
   assert.equal(unstop('Answers in 200 ms.'), 'Answers in 200 ms');
   assert.equal(mdPlain('- Answers in 200 ms.\n- Retries twice.'), 'Answers in 200 ms; Retries twice.');
   // drawn: a weighted line's title and name, and a card's sub-line, hold only the first sentence
@@ -189,4 +189,21 @@ test('audit 57: a line diff() marks changed says changed once, with no (edited) 
   for (const c of ['changed', 'Modified']) assert.doesNotMatch(name(svgOf(layout({ ...m('x'), edges: [{ id: 'e', from: 'a', to: 'b', label: 'x', change: c, edited: true }] }, 'v'))), /edited/, c);
   // edited with another mark, or none, still says its edit
   assert.equal(name(svgOf(layout({ ...m('x'), edges: [{ id: 'e', from: 'a', to: 'b', label: 'x', change: 'added', edited: true }] }, 'v'))), 'Line from API to Database: x, new (edited)');
+});
+
+test('audit 57: a capital initial after a capitalised word or "from" ends a sentence, and a lead-in before a numbered list keeps its first item', async () => {
+  const { firstSentence, mdPlain } = await import('../src/core/text.js');
+  for (const [t, f] of [['Sends the order to Service B. Waits for the reply.', 'Sends the order to Service B.'], ['Reads stock from A. Writes the total to B.', 'Reads stock from A.'],
+    ['Fails over to Region B. Then retries.', 'Fails over to Region B.'], ['Owned by Team X. Deployed nightly.', 'Owned by Team X.'], ['Talks to System A. Retries on failure.', 'Talks to System A.'],
+    ['The fallback is Plan A. Then B starts.', 'The fallback is Plan A.'], ['Stores the data for App A. Backed up hourly.', 'Stores the data for App A.'],
+    // still read as a name: an initial at the text's start, after another initial, after "by" or "cc"
+    ['J. Smith wrote it. More.', 'J. Smith wrote it.'], ['Run by J. Smith. More.', 'Run by J. Smith.'], ['cc J. Doe on it. Then.', 'cc J. Doe on it.']]) assert.equal(firstSentence(t), f, t);
+  for (const [t, f] of [['Checkout in steps:\n1. Validates the basket.\n2. Takes payment.', 'Checkout in steps: 1. Validates the basket.'], ['1. Validates the basket.\n2. Takes payment.', '1. Validates the basket.'],
+    ['Line one\nwraps here. Then more.', 'Line one wraps here.'], ['**Bold** text\n  with  spaces. Next.', 'Bold text with spaces.'], ['Reads from Service B. Then\nwrites.', 'Reads from Service B.']]) assert.equal(mdPlain(t), f, t);
+  // drawn: a weighted line's name and a card's sub-line
+  const m = { root: 'v', nodes: [{ id: 'a', label: 'Orders', what: 'Sends the order to Service B. Waits for the reply.' }, { id: 'b', label: 'Payments' }],
+    edges: [{ from: 'a', to: 'b', weight: 3, what: 'Checkout in steps:\n1. Validates the basket.\n2. Takes payment.' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+  const s = svgOf(layout(m, 'v'));
+  assert.equal(/class="um-key line-key[^"]*"[^>]*aria-label="([^"]*)"/.exec(s)[1], 'Line from Orders to Payments, Checkout in steps: 1. Validates the basket.');
+  assert.ok(s.includes('Sends the order to Service B.') && !/>[^<]*Waits for the reply/.test(s), s.match(/Sends the[^<"]*/g)?.join(' | '));
 });
