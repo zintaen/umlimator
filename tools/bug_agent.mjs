@@ -10,12 +10,14 @@
 //                                                                  rules, then the test fails without the fix and passes with it
 //   node tools/bug_agent.mjs check-patch <fix.patch>               the path rules again, as git reads the patch (publish job)
 //   node tools/bug_agent.mjs check-staged                          after git apply --index: what git staged (publish job)
+//   node tools/bug_agent.mjs settings <tests-dir> <n> <work> <out>  the agent's Claude Code settings (fixed commands only)
+//   node tools/bug_agent.mjs leak <ENV_NAME> <file>...             exits 1 when a file holds that variable's value
 //   node tools/bug_agent.mjs comment <result.json> <kind> <url>    the issue comment or pull request body, on stdout
 //
 // Issue text is data. It is written to a file inside a fence whose marker it cannot contain, it never enters the prompt
 // string, a shell command or a workflow expression, and what the agent writes back is cut, stripped of mentions and fences
 // and shown as quoted text.
-import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync, existsSync, readdirSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
@@ -103,33 +105,44 @@ export function checkPaths(files) {
 
 // What git itself reads in a patch: every path it would write (both sides of a rename or copy), and whether anything is
 // not a plain edit of a regular file. `git apply --numstat -z` and `--summary` parse the patch as `git apply` will, so a
-// second header, a traditional `---`/`+++` section or a rename cannot hide a path from the check. Nothing is applied.
-export function gitPatchInfo(patch, cwd = tmpdir()) {
-  const run = args => {
-    const r = spawnSync('git', ['apply', ...args], { cwd, input: patch, encoding: 'utf8', env: childEnv() });
-    if (r.status !== 0) throw new Error('git cannot read the patch: ' + String(r.stderr).trim().split('\n')[0]);
-    return r.stdout;
-  };
-  const files = [];
-  let binary = false;
-  const parts = run(['--numstat', '-z', '-']).split('\0');
-  for (let i = 0; i < parts.length; i++) {
-    const m = /^(-|\d+)\t(-|\d+)\t([\s\S]*)$/.exec(parts[i]);
-    if (!m) continue;
-    if (m[1] === '-' || m[2] === '-') binary = true;
-    if (m[3] !== '') files.push(m[3]);
-    else { files.push(parts[i + 1], parts[i + 2]); i += 2; }
+// second header, a traditional `---`/`+++` section or a rename cannot hide a path from the check. They run in a scratch
+// repository made for the call, so no configuration or attributes of a checkout change how git reads it. Nothing is
+// applied. The paths come from git's NUL-separated output, never from the patch's own header lines.
+export function gitPatchInfo(patch) {
+  const scratch = mkdtempSync(join(tmpdir(), 'bug-agent-scratch-'));
+  try {
+    const env = { ...childEnv(), GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null' };
+    spawnSync('git', ['init', '-q', scratch], { env, stdio: 'ignore' });
+    const run = args => {
+      const r = spawnSync('git', ['apply', ...args], { cwd: scratch, input: patch, encoding: 'utf8', env });
+      if (r.status !== 0) throw new Error('git cannot read the patch: ' + String(r.stderr).trim().split('\n')[0]);
+      return r.stdout;
+    };
+    const files = [];
+    const odd = [];
+    let binary = false;
+    const parts = run(['--numstat', '-z', '-']).split('\0');
+    for (let i = 0; i < parts.length; i++) {
+      const m = /^(-|\d+)\t(-|\d+)\t([\s\S]*)$/.exec(parts[i]);
+      if (!m) continue;
+      if (m[1] === '-' || m[2] === '-') binary = true;
+      if (m[3] !== '') files.push(m[3]);
+      else { files.push(parts[i + 1], parts[i + 2]); odd.push(`rename or copy ${parts[i + 1]} => ${parts[i + 2]}`); i += 2; }
+    }
+    for (const l of run(['--summary', '-']).split('\n').map(l => l.trim())) {
+      if (/^(rename|copy|mode change) /.test(l) || (/^(create|delete) mode /.test(l) && !/^(create|delete) mode 100644 /.test(l))) odd.push(l);
+    }
+    return { files, binary, odd };
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
   }
-  const odd = run(['--summary', '-']).split('\n').map(l => l.trim()).filter(l =>
-    /^(rename|copy|mode change) /.test(l) || (/^(create|delete) mode /.test(l) && !/^(create|delete) mode 100644 /.test(l)));
-  return { files, binary, odd };
 }
 
 // The path rules on a patch, as git reads it.
-export function checkPatch(patch, cwd) {
+export function checkPatch(patch) {
   if (!patch.trim()) return ['the patch changes nothing'];
   let info;
-  try { info = gitPatchInfo(patch, cwd); } catch (e) { return [e.message]; }
+  try { info = gitPatchInfo(patch); } catch (e) { return [e.message]; }
   const problems = [];
   if (!info.files.length) problems.push('the patch changes nothing');
   if (info.binary) problems.push('the patch holds a binary file');
@@ -137,16 +150,60 @@ export function checkPatch(patch, cwd) {
   return problems.concat(info.files.length ? checkPaths(info.files) : []);
 }
 
-// After `git apply --index` in the publish job: what git staged, checked against the rules once more.
+// After `git apply --index` in the publish job: what git staged, checked against the rules once more. `--raw -z` gives each
+// path with its old and new mode, so a link (120000), an executable (100755) or a submodule (160000) is seen whatever the
+// summary prints.
 export function checkStaged(cwd) {
-  const g = (...a) => execFileSync('git', ['-c', 'core.quotepath=off', ...a], { cwd, encoding: 'utf8', env: childEnv() });
-  const files = g('diff', '--cached', '--name-only', '-z', '--no-renames').split('\0').filter(Boolean);
-  const odd = g('diff', '--cached', '--summary', '--no-renames').split('\n').map(l => l.trim())
-    .filter(l => /^mode change /.test(l) || (/^(create|delete) mode /.test(l) && !/^(create|delete) mode 100644 /.test(l)));
+  const raw = execFileSync('git', ['-c', 'core.quotepath=off', 'diff', '--cached', '--raw', '-z', '--no-renames', '--no-abbrev'],
+    { cwd, encoding: 'utf8', env: childEnv() }).split('\0');
+  const files = [];
+  const odd = [];
+  for (let i = 0; i + 1 < raw.length; i += 2) {
+    const m = /^:(\d{6}) (\d{6}) [0-9a-f]+ [0-9a-f]+ ([A-Z])\d*$/.exec(raw[i]);
+    if (!m) { odd.push('git listed something it could not read: ' + raw[i].slice(0, 80)); break; }
+    const path = raw[i + 1];
+    files.push(path);
+    for (const mode of [m[1], m[2]]) if (mode !== '100644' && mode !== '000000') odd.push(`${path} (mode ${mode})`);
+  }
   const problems = [];
-  if (!files.length) problems.push('nothing is staged');
+  if (!files.length && !odd.length) problems.push('nothing is staged');
   if (odd.length) problems.push('the staged change links or changes the mode of a file: ' + odd.join('; '));
   return problems.concat(files.length ? checkPaths(files) : []);
+}
+
+// The agent's Claude Code settings (passed with --settings, from a file the agent cannot write). No rule has a wildcard
+// in a shell command: the shell takes the build, `git diff`, `git status`, and each test file of the base branch by its
+// exact command, plus the issue's own new test file. Edits are allowed only where a fix may write and in the work folder
+// (the result file). Everything else is denied without a prompt (dontAsk), and no hook runs.
+export function agentSettings(testFiles, number, workDir) {
+  if (!Number.isInteger(number) || number <= 0) throw new Error('issue number must be a positive integer');
+  if (!/^\/[A-Za-z0-9_./-]+$/.test(workDir) || workDir.split('/').includes('..')) throw new Error('work folder must be a plain absolute path');
+  const bash = ['node tools/build.mjs', 'git diff', 'git status', `node --test tests/issue-${number}.test.mjs`];
+  for (const f of [...testFiles].sort()) {
+    if (/^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*\.test\.mjs$/.test(f)) bash.push(`node --test tests/${f}`);
+    else if (/^[A-Za-z0-9_-]+\.py$/.test(f)) bash.push(`python3 tests/${f}`);
+  }
+  const allow = ['Read', 'Glob', 'Grep', 'Edit(src/**)', 'Edit(lib/**)', 'Edit(tests/**)', 'Edit(docs/**)', 'Edit(umlimator*.py)',
+    `Edit(/${workDir}/**)`, ...[...new Set(bash)].map(c => `Bash(${c})`)];
+  for (const r of allow) fixedRule(r);
+  return {
+    permissions: { defaultMode: 'dontAsk', allow, deny: ['WebFetch', 'WebSearch', 'Edit(.github/**)', 'Edit(.claude/**)', 'Edit(~/.claude/**)'] },
+    disableAllHooks: true,
+  };
+}
+
+// A shell rule is one exact command with no shell syntax in it.
+function fixedRule(rule) {
+  const m = /^Bash\((.*)\)$/.exec(rule);
+  if (m && (/[*;&|<>`$(){}\\'"\n]/.test(m[1]) || / :/.test(m[1]))) throw new Error('not a fixed command: ' + rule);
+}
+
+// Whether any of the files holds the secret, as it is or base64-encoded. The agent job runs this on the agent's diff and
+// result before they leave the job; GitHub masks a secret in logs, not in a file the job hands on.
+export function holdsSecret(secret, texts) {
+  if (!secret || secret.length < 8) return false;
+  const forms = [secret, Buffer.from(secret).toString('base64').replace(/=+$/, ''), Buffer.from(secret).toString('hex')];
+  return texts.some(t => forms.some(f => t.includes(f)));
 }
 
 // The agent's own words, made safe to post: no mentions (they notify), no fences or HTML comments (they could close the
@@ -189,20 +246,48 @@ export function childEnv(env = process.env) {
   return out;
 }
 
+// Runs the build and the test. With BUG_AGENT_SANDBOX_USER set (the verify job, after tools/bug_agent_jail.sh), they run as
+// that user, with no network, in a copy of the tree that user owns (BUG_AGENT_BOX, default /srv/bug-agent-box): the
+// patch's code never runs as the runner's user, never touches the checkout or its .git, and is killed when the test ends.
+// lib/ is then the box's build compared with the patch's. Without it (the tests here), it runs in place, and lib/ is
+// checked with git.
 function runTest(cwd, test, stdio) {
   const [cmd, args] = testArgv(test);
-  const env = childEnv();
-  const build = spawnSync('node', ['tools/build.mjs'], { cwd, env, stdio });
-  if (build.status !== 0) return { built: false, ok: false };
-  const r = spawnSync(cmd, args, { cwd, env, stdio, timeout: 10 * 60 * 1000 });
-  return { built: true, ok: r.status === 0 };
+  const user = process.env.BUG_AGENT_SANDBOX_USER;
+  if (!user) {
+    const env = childEnv();
+    const build = spawnSync('node', ['tools/build.mjs'], { cwd, env, stdio });
+    if (build.status !== 0) return { built: false, ok: false, libSame: false };
+    const r = spawnSync(cmd, args, { cwd, env, stdio, timeout: 10 * 60 * 1000 });
+    return { built: true, ok: r.status === 0, libSame: !git(cwd, 'diff', '--name-only', '--', 'lib').trim() };
+  }
+  if (!/^[a-z][a-z0-9_-]*$/.test(user)) throw new Error('BUG_AGENT_SANDBOX_USER is not a user name');
+  const box = process.env.BUG_AGENT_BOX || '/srv/bug-agent-box';
+  const sudo = (a, o = {}) => spawnSync('sudo', ['-n', ...a], { stdio, ...o });
+  const as = (c, a) => sudo(['-u', user, '-H', '--', 'env', '-C', box, 'PATH=' + (process.env.PATH || '/usr/bin:/bin'), 'timeout', '600', c, ...a]);
+  sudo(['rm', '-rf', box]);
+  try {
+    // a copy without .git: the patch's code cannot reach the git directory the checks use
+    for (const a of [['mkdir', '-p', box], ['cp', '-a', cwd + '/.', box], ['rm', '-rf', join(box, '.git')], ['chown', '-R', user + ':', box]]) {
+      if (sudo(a).status !== 0) throw new Error('cannot prepare ' + box);
+    }
+    const build = as('node', ['tools/build.mjs']);
+    if (build.status !== 0) return { built: false, ok: false, libSame: false };
+    const r = as(cmd, args);
+    sudo(['pkill', '-KILL', '-u', user]);
+    const libSame = sudo(['diff', '-rq', '--no-dereference', join(cwd, 'lib'), join(box, 'lib')]).status === 0;
+    return { built: true, ok: r.status === 0, libSame };
+  } finally {
+    sudo(['pkill', '-KILL', '-u', user]);
+    sudo(['rm', '-rf', box]);
+  }
 }
 
 // In a clean checkout of the base branch: check the patch's paths, then run its test with only tests/ applied (it must
 // fail) and with the whole patch (it must pass, and lib/ must be what src/ builds). Leaves the fix applied. Returns the
 // problems found ([] when the fix holds).
 export function verify(cwd, result, patch, stdio = 'inherit') {
-  const problems = checkPatch(patch, cwd);
+  const problems = checkPatch(patch);
   if (problems.length) return problems;
   const tmp = mkdtempSync(join(tmpdir(), 'bug-agent-patch-'));
   const file = join(tmp, 'fix.patch');
@@ -220,9 +305,9 @@ export function verify(cwd, result, patch, stdio = 'inherit') {
     if (without.built && without.ok) problems.push('the test passes without the fix');
     if (!withFix.built) problems.push('the fix does not build');
     else if (!withFix.ok) problems.push('the test fails with the fix');
-    else if (git(cwd, 'diff', '--name-only', '--', 'lib').trim()) problems.push('lib/ is not what src/ builds');
+    else if (!withFix.libSame) problems.push('lib/ is not what src/ builds');
   } catch (e) {
-    problems.push('the patch does not apply to the base branch');
+    problems.push(/cannot prepare|not a user name/.test(e.message) ? e.message : 'the patch does not apply to the base branch');
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
@@ -236,6 +321,7 @@ export function check(cwd, inDir, outDir, stdio = 'inherit') {
   mkdirSync(outDir, { recursive: true });
   const write = (f, t) => writeFileSync(join(outDir, f), t);
   const fail = reason => { write('outcome.txt', 'failed'); write('reason.txt', reason); return 'failed'; };
+  if (existsSync(join(inDir, 'leak.txt'))) return fail('the agent job found the API key in what the agent wrote, so nothing of it was kept');
   let text;
   try { text = readFileSync(join(inDir, 'result.json'), 'utf8'); } catch { return fail('the agent wrote no result file'); }
   let result;
@@ -262,17 +348,23 @@ function main(argv) {
   } else if (cmd === 'check') {
     process.stdout.write(check(process.cwd(), a[0], a[1]) + '\n');
   } else if (cmd === 'check-patch') {
-    const problems = checkPatch(readFileSync(a[0], 'utf8'), process.cwd());
+    const problems = checkPatch(readFileSync(a[0], 'utf8'));
     if (problems.length) { console.error(problems.join('\n')); process.exit(1); }
   } else if (cmd === 'check-staged') {
     const problems = checkStaged(process.cwd());
     if (problems.length) { console.error(problems.join('\n')); process.exit(1); }
+  } else if (cmd === 'settings') {
+    const files = readdirSync(a[0]);
+    writeFileSync(a[3], JSON.stringify(agentSettings(files, Number(a[1]), a[2]), null, 2) + '\n');
+  } else if (cmd === 'leak') {
+    const texts = a.slice(1).map(f => { try { return readFileSync(f, 'utf8'); } catch { return ''; } });
+    if (holdsSecret(process.env[a[0]] || '', texts)) { console.error('the secret is in what the agent wrote'); process.exit(1); }
   } else if (cmd === 'comment') {
     const extra = a[3] ? JSON.parse(a[3]) : {};
     const r = a[1] === 'failed' ? { summary: '', ...extra } : { ...readResult(readFileSync(a[0], 'utf8')), ...extra };
     process.stdout.write(message(a[1], r, a[2] || ''));
   } else {
-    console.error('usage: node tools/bug_agent.mjs issue|prompt|check|check-patch|check-staged|comment ...');
+    console.error('usage: node tools/bug_agent.mjs issue|prompt|settings|leak|check|check-patch|check-staged|comment ...');
     process.exit(2);
   }
 }

@@ -1,0 +1,42 @@
+name: bug-agent-jail
+
+# The bug agent's jail and sandbox, checked for real on a runner like the ones bug-agent.yml uses: a jailed user reaches
+# the Anthropic API and nothing else (or nothing at all), has no sudo and cannot read the runner's files, and a patch's
+# test runs as that user with no network and cannot write the checkout (tests/bug-agent-jail.test.mjs). No secret is
+# used: the API answers 401 without a key, which is enough to show it is reached.
+on:
+  pull_request:
+    paths:
+      - tools/bug_agent.mjs
+      - tools/bug_agent_jail.sh
+      - tests/bug-agent-jail.test.mjs
+      - .github/workflows/bug-agent.yml
+      - .github/workflows/bug-agent-jail.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bug-agent-jail-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  jail:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: The jail and the sandbox hold
+        env:
+          BUG_AGENT_JAIL_USER: agent
+        run: |
+          sudo bash tools/bug_agent_jail.sh agent api
+          node --test tests/bug-agent-jail.test.mjs

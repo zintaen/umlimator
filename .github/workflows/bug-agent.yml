@@ -1,16 +1,19 @@
 name: bug-agent
 
 # The bug agent: when a maintainer labels an issue `bug` (or runs this workflow by hand with an issue number), an agent
-# tries to reproduce the bug with a small script. If it reproduces and the agent fixes it, a draft pull request into
+# tries to reproduce the bug with a small test. If it reproduces and the agent fixes it, a draft pull request into
 # audit-loop proposes the fix with a test that fails without it; if not, a comment asks for a model and steps.
 #
 # Off unless the repository variable BUG_AGENT_ENABLED is "true" and the secret ANTHROPIC_API_KEY is set
 # (CONTRIBUTING.md, "The bug agent"). The issue's text is data, never instructions (SECURITY.md): it reaches the agent as
 # a fenced file, never through the prompt, a shell command or a workflow expression. Three jobs, each on a fresh runner:
-#   agent    a read-only token and the API key, egress blocked but for the API and installs, Bash in fixed forms only;
-#            the agent edits its checkout, and the job hands its diff and result on as a job output
+#   agent    a read-only token and the API key. The agent (the Claude Code CLI, pinned) runs as a user of its own that
+#            holds no token, whose processes reach no network but the Anthropic API (tools/bug_agent_jail.sh), and whose
+#            shell takes only exact commands. The runner's git takes its diff, and the job hands the diff and the
+#            result on as a job output, as data.
 #   verify   a read-only token and no secret; the base branch's checker (tools/bug_agent.mjs) takes the patch only within
-#            the allowed paths and only when its test fails on the base branch and passes with the fix
+#            the allowed paths and only when its test fails on the base branch and passes with the fix. The patch's
+#            code runs as a jailed user with no network at all, in a copy of the tree with no .git.
 #   publish  contents, pull-requests and issues write and no secret; runs no agent and none of the patch's code, checks
 #            the patch's paths again, pushes one new branch, opens a draft pull request or comments
 # No release secret is used here.
@@ -37,16 +40,15 @@ env:
 jobs:
   agent:
     # labelled `bug` by someone other than its author, or by an author who is a member or collaborator (an issue template
-    # that adds `bug` as an outsider opens it does not start a run); the action itself also refuses an actor without
-    # write access
+    # that adds `bug` as an outsider opens it does not start a run)
     if: >-
       vars.BUG_AGENT_ENABLED == 'true' && (
         github.event_name == 'workflow_dispatch' || (
           github.event.label.name == 'bug' && github.event.issue.state == 'open' && !github.event.issue.pull_request &&
           (github.event.sender.login != github.event.issue.user.login ||
            contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association))))
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
     permissions:
       contents: read   # the checkout
       issues: read     # the issue's text
@@ -54,16 +56,12 @@ jobs:
       number: ${{ steps.issue.outputs.number }}
       raw: ${{ steps.raw.outputs.raw }}
     env:
-      # no update checks, telemetry or error reports: the egress allowlist below does not carry them
-      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
-      # Claude Code's best-effort scrub of the API key and the runner's tokens from the shells the agent starts
-      CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"
       HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+      JAIL: /srv/bug-agent
+      CLI: /opt/bug-agent-cli
     steps:
-      # Egress is blocked except for these hosts: the Anthropic API, and what the checkout, setup-node and the action's
-      # own install (Bun from GitHub releases, its packages from npm) need. No storage host is allowed: the agent's diff
-      # leaves this job as a job output, not an artifact. Hosts on the list that take writes with someone else's
-      # credentials remain a way out (SECURITY.md).
+      # The runner's own steps (checkout, setup-node, the CLI's install, the issue) reach only these hosts. The agent's
+      # user is held tighter by tools/bug_agent_jail.sh: the Anthropic API and nothing else.
       - uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c  # v2.23.0
         with:
           egress-policy: block
@@ -79,8 +77,7 @@ jobs:
             registry.npmjs.org:443
             nodejs.org:443
 
-      - id: key
-        name: The API key is set
+      - name: The API key is set
         run: |
           if [ "$HAS_KEY" != true ]; then echo "::error::the secret ANTHROPIC_API_KEY is not set; see CONTRIBUTING.md"; exit 1; fi
           echo "WORK=$RUNNER_TEMP/bug-agent" >> "$GITHUB_ENV"
@@ -94,8 +91,16 @@ jobs:
         with:
           node-version: 24
 
+      # The official Claude Code CLI at a pinned version, outside the runner's home so the agent's user can run it.
+      # (The Claude Code GitHub Action runs as the runner's own user, which this workflow keeps away from the agent.)
+      - name: The Claude Code CLI
+        run: |
+          sudo install -d -o "$(id -u)" -g "$(id -g)" -m 755 "$CLI"
+          npm install --prefix "$CLI" --no-audit --no-fund --loglevel=error @anthropic-ai/claude-code@2.1.318
+          "$CLI/node_modules/.bin/claude" --version
+
       - id: issue
-        name: The issue, as a data file
+        name: The issue, as a data file, and the agent's prompt and settings
         env:
           GH_TOKEN: ${{ github.token }}
           NUMBER: ${{ github.event.issue.number || inputs.issue }}
@@ -105,38 +110,59 @@ jobs:
           gh issue view "$NUMBER" --repo "$GITHUB_REPOSITORY" --json number,title,body,author,labels,state > "$WORK/issue.json"
           node tools/bug_agent.mjs issue "$WORK/issue.json" "$WORK/issue.md"
           node tools/bug_agent.mjs prompt .github/bug-agent/prompt.md "$WORK/prompt.md" \
-            "BASE=$BASE" "NUMBER=$NUMBER" "ISSUE_FILE=$WORK/issue.md" "RESULT_FILE=$WORK/result.json" "WORK_DIR=$WORK/repro"
-          {
-            echo "number=$NUMBER"
-            d="EOF_$(openssl rand -hex 16)"
-            echo "prompt<<$d"; cat "$WORK/prompt.md"; echo "$d"
-          } >> "$GITHUB_OUTPUT"
+            "BASE=$BASE" "NUMBER=$NUMBER" "ISSUE_FILE=$JAIL/work/issue.md" "RESULT_FILE=$JAIL/work/result.json"
+          node tools/bug_agent.mjs settings tests "$NUMBER" "$JAIL/work" "$WORK/settings.json"
+          echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: A user of its own, with no token and no network but the API
+        run: |
+          sudo bash tools/bug_agent_jail.sh agent api
+          sudo install -d -o root -g root -m 755 "$JAIL"
+          sudo install -d -o agent -g agent -m 755 "$JAIL/work"
+          sudo cp -a "$GITHUB_WORKSPACE" "$JAIL/repo"
+          sudo chown -R agent:agent "$JAIL/repo"
+          sudo install -o root -g root -m 644 "$WORK/issue.md" "$JAIL/work/issue.md"
+          sudo install -o root -g root -m 644 "$WORK/settings.json" "$JAIL/settings.json"
 
       - id: claude
         name: The agent reproduces and fixes
-        uses: anthropics/claude-code-action@c84e279f859e2591391e95bd309286eb111c345f  # v1.0.284
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ github.token }}
-          prompt: ${{ steps.issue.outputs.prompt }}
-          # Bash only in fixed forms: the build, one test file, a script under the work folder, and git read-only.
-          # The test and the script are code the agent wrote, so the egress block above is what keeps the key in.
-          claude_args: >-
-            --max-turns 80
-            --add-dir ${{ runner.temp }}/bug-agent
-            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(node tools/build.mjs),Bash(node --test tests/:*),Bash(python3 tests/:*),Bash(node ${{ runner.temp }}/bug-agent/repro/:*),Bash(python3 ${{ runner.temp }}/bug-agent/repro/:*),Bash(git diff:*),Bash(git status:*),Bash(git checkout -- .),Bash(ls:*)"
-            --disallowedTools "WebFetch,WebSearch,Bash(git push:*),Bash(git commit:*),Bash(git config:*),Bash(gh:*),Bash(curl:*),Bash(wget:*),Bash(node -e:*),Bash(node --eval:*),Bash(node -p:*),Bash(python3 -c:*)"
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          # the key goes to the agent's user through the environment, never on a command line; nothing else of the
+          # runner's environment does (sudo resets it). The runner's shell reads the prompt, which the agent cannot.
+          # shellcheck disable=SC2024
+          sudo --preserve-env=ANTHROPIC_API_KEY -u agent -H -- env -C "$JAIL/repo" PATH="$PATH" \
+            CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 DISABLE_AUTOUPDATER=1 CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1 \
+            timeout 35m "$CLI/node_modules/.bin/claude" --bare -p --settings "$JAIL/settings.json" --setting-sources user \
+              --permission-mode dontAsk --tools Read,Edit,Write,Glob,Grep,Bash --strict-mcp-config \
+              --add-dir "$JAIL/work" --max-turns 80 --max-budget-usd 10 < "$WORK/prompt.md" || echo "::warning::the agent stopped with an error"
 
       - id: raw
         name: The agent's diff and result, as data for the verify job
         if: always() && steps.issue.outcome == 'success'
+        env:
+          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          # hooks, fsmonitor and external diff off: the agent could have written .git/config
-          g() { git -c core.hooksPath=/dev/null -c core.fsmonitor=false -c diff.external= "$@"; }
-          mkdir -p "$WORK/raw"
-          if [ -f "$WORK/result.json" ]; then head -c 20000 "$WORK/result.json" > "$WORK/raw/result.json"; fi
-          g add -A
-          g diff --cached --binary --no-ext-diff --no-renames --no-textconv > "$WORK/raw/fix.patch"
+          sudo pkill -KILL -u agent || true
+          mkdir -p "$WORK/raw" "$WORK/after"
+          # the agent's tree, copied as it is (links stay links) and handed to the runner's user without its .git; the
+          # runner's own git directory, which the agent never had, reads it
+          if [ -d "$JAIL/repo" ]; then
+            sudo cp -a "$JAIL/repo/." "$WORK/after/"
+            sudo rm -rf "$WORK/after/.git"
+            sudo chown -R "$(id -u):$(id -g)" "$WORK/after"
+            g() { git --git-dir="$GITHUB_WORKSPACE/.git" --work-tree="$WORK/after" -c core.hooksPath=/dev/null -c core.fsmonitor=false "$@"; }
+            g add -A
+            g diff --cached --binary --no-ext-diff --no-renames --no-textconv > "$WORK/raw/fix.patch"
+          fi
+          # read as the agent's user, so a link it left cannot point the runner at a file the agent could not read
+          # shellcheck disable=SC2024
+          sudo -u agent head -c 20000 "$JAIL/work/result.json" > "$WORK/raw/result.json" 2> /dev/null || rm -f "$WORK/raw/result.json"
+          # the key must not leave in what the agent wrote: GitHub masks it in logs, not in an output's files
+          if ! node tools/bug_agent.mjs leak KEY "$WORK/raw/result.json" "$WORK/raw/fix.patch"; then
+            rm -f "$WORK/raw/result.json" "$WORK/raw/fix.patch"; echo "the API key was in what the agent wrote" > "$WORK/raw/leak.txt"
+          fi
           # one base64 line, at most 700 kB (a job's outputs hold 1 MB); a bigger diff is left out and verify says so
           tar -czf "$WORK/raw.tgz" -C "$WORK/raw" .
           if [ "$(wc -c < "$WORK/raw.tgz")" -le 512000 ]; then echo "raw=$(base64 -w0 "$WORK/raw.tgz")" >> "$GITHUB_OUTPUT"; fi
@@ -144,7 +170,7 @@ jobs:
   verify:
     needs: agent
     if: always() && needs.agent.outputs.number != ''
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     permissions:
       contents: read   # the checkout of the base branch
@@ -164,18 +190,24 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: A user of its own, with no network at all, for the patch's code
+        run: sudo bash tools/bug_agent_jail.sh agent none
+
       - id: check
         name: The test fails without the fix and passes with it
         env:
           RAW: ${{ needs.agent.outputs.raw }}
+          BUG_AGENT_SANDBOX_USER: agent
         run: |
-          # the base branch's checker, copied out before the patch touches the tree; the patch's code runs without the
-          # runner's GITHUB_ and ACTIONS_ variables
+          # the base branch's checker, copied out before the patch touches the tree; the build and the test run as the
+          # jailed user in a copy of the tree with no .git (tools/bug_agent.mjs, runTest)
           ba="$RUNNER_TEMP/bug_agent.mjs"; cp tools/bug_agent.mjs "$ba"
           mkdir -p "$RUNNER_TEMP/raw"
           # the agent job's output, unpacked as plain files only (no links, no paths out of the folder)
           if [ -n "$RAW" ] && printf %s "$RAW" | base64 -d > "$RUNNER_TEMP/raw.tgz" 2>/dev/null; then
-            tar -xzf "$RUNNER_TEMP/raw.tgz" -C "$RUNNER_TEMP/raw" --no-same-owner --no-same-permissions ./result.json ./fix.patch 2>/dev/null || true
+            for f in ./result.json ./fix.patch ./leak.txt; do
+              tar -xzf "$RUNNER_TEMP/raw.tgz" -C "$RUNNER_TEMP/raw" --no-same-owner --no-same-permissions "$f" 2>/dev/null || true
+            done
             find "$RUNNER_TEMP/raw" -mindepth 1 ! -type f -exec rm -rf {} + 2>/dev/null || true
           fi
           node "$ba" check "$RUNNER_TEMP/raw" "$RUNNER_TEMP/out" > "$RUNNER_TEMP/outcome.txt" || echo failed > "$RUNNER_TEMP/outcome.txt"
@@ -192,7 +224,7 @@ jobs:
   publish:
     needs: [agent, verify]
     if: always() && needs.verify.result == 'success' && needs.verify.outputs.outcome != ''
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write        # one new branch, bug-agent/issue-<n>-<run>; nothing else is pushed
@@ -207,6 +239,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ env.BASE }}
+          persist-credentials: true   # the one push, of the new branch
 
       - uses: actions/setup-node@v4
         with:

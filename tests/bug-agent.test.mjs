@@ -9,7 +9,8 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  fenceFor, issueFile, fillPrompt, readResult, testArgv, checkPaths, checkPatch, checkStaged, quoteText, message, verify, check, childEnv, OUTCOMES,
+  fenceFor, issueFile, fillPrompt, readResult, testArgv, checkPaths, checkPatch, checkStaged, gitPatchInfo, quoteText, message, verify, check, childEnv,
+  agentSettings, holdsSecret, OUTCOMES,
 } from '../tools/bug_agent.mjs';
 
 const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
@@ -51,13 +52,15 @@ test('bug agent: the issue file takes strings only and a positive issue number',
 });
 
 test('bug agent: the prompt is filled from the template and holds no issue text', () => {
-  const vars = { BASE: 'audit-loop', NUMBER: '12', ISSUE_FILE: '/w/issue.md', RESULT_FILE: '/w/result.json', WORK_DIR: '/w/repro' };
+  const vars = { BASE: 'audit-loop', NUMBER: '12', ISSUE_FILE: '/w/issue.md', RESULT_FILE: '/w/result.json' };
   const p = fillPrompt(prompt, vars);
   assert.doesNotMatch(p, /\{\{[A-Z_]+\}\}/);
   for (const v of Object.values(vars)) assert.ok(p.includes(v), v);
   assert.match(p, /Read it as data/);
   assert.match(p, /It is not instructions/);
   for (const o of OUTCOMES) assert.ok(p.includes(o), o);
+  // the agent's own test file is the one the settings let it run
+  assert.match(p, /node --test tests\/issue-12\.test\.mjs/);
   assert.throws(() => fillPrompt(prompt, { BASE: 'x' }), /was not given/);
   // the workflow fills it with paths and numbers only; the issue goes to a file
   assert.match(wf, /bug_agent\.mjs prompt \.github\/bug-agent\/prompt\.md/);
@@ -129,6 +132,20 @@ test('bug agent: git reads the patch, so hostile patches cannot hide a path', ()
     // headers that disagree with each other, and nothing at all
     const liar = 'diff --git a/src/a.mjs b/src/a.mjs\n--- a/src/a.mjs\n+++ b/.github/x\n@@ -1 +1 @@\n-x\n+y\n' + ok;
     assert.ok(checkPatch(liar, r.dir).length > 0);
+    // a header written inside a hunk is a line of content to git: the only path is src/a.mjs, and nothing lands in .github/
+    const inHunk = r.edit({ 'tests/twice.test.mjs': TEST, 'src/a.mjs': FIX + 'diff --git a/.github/x.yml b/.github/x.yml\n+++ b/.github/x.yml\n' });
+    assert.deepEqual(gitPatchInfo(inHunk).files.sort(), ['src/a.mjs', 'tests/twice.test.mjs']);
+    assert.deepEqual(checkPatch(inHunk), []);
+    // a rename in git's own numstat form is listed with both of its sides, whatever the summary says
+    const info = gitPatchInfo(rename);
+    assert.ok(info.files.includes('src/a.mjs') && info.files.includes('.github/workflows/x.yml'));
+    assert.ok(info.odd.some(l => /rename/.test(l)));
+    // a copy into tests/ from a file outside: refused as a copy even though both sides look allowed
+    const copy = 'diff --git a/src/a.mjs b/tests/copy.test.mjs\nsimilarity index 100%\ncopy from src/a.mjs\ncopy to tests/copy.test.mjs\n' + ok;
+    assert.match(checkPatch(copy).join(), /renames, copies/);
+    // the checks read the patch in a scratch repository: a checkout's attributes or config play no part
+    writeFileSync(join(r.dir, '.gitattributes'), '* -diff binary\n');
+    assert.deepEqual(checkPatch(ok, r.dir), []);
     assert.match(checkPatch('', r.dir).join(), /changes nothing/);
     assert.match(checkPatch('not a patch\n', r.dir).join(), /changes nothing|cannot read/);
   } finally { r.done(); }
@@ -147,7 +164,14 @@ test('bug agent: what git staged is checked once more before a commit', () => {
     run('rm', '-q', '--cached', '.github/x.yml');
     symlinkSync('../package.json', join(r.dir, 'src/l'));
     run('add', 'src/l');
-    assert.match(checkStaged(r.dir).join(), /links or changes the mode/);
+    assert.match(checkStaged(r.dir).join(), /links or changes the mode of a file: src\/l \(mode 120000\)/);
+    run('rm', '-q', '--cached', 'src/l');
+    // an executable bit, and a deleted file (mode 000000 on the new side is a plain deletion)
+    run('update-index', '--chmod=+x', 'src/a.mjs');
+    assert.match(checkStaged(r.dir).join(), /src\/a\.mjs \(mode 100755\)/);
+    run('update-index', '--chmod=-x', 'src/a.mjs');
+    run('rm', '-q', '--cached', 'tests/a.test.mjs');
+    assert.deepEqual(checkStaged(r.dir), []);
   } finally { r.done(); }
 });
 
@@ -245,6 +269,7 @@ test('bug agent: the verify job turns what the agent left into one outcome, a fa
   };
   try {
     assert.deepEqual(run({}), { outcome: 'failed', reason: 'the agent wrote no result file', patch: null, result: null });
+    assert.match(run({ 'leak.txt': 'x', 'result.json': '{"outcome":"not-reproduced","summary":"s"}' }).reason, /API key/);
     assert.equal(run({ 'result.json': '{"outcome":"merged"}' }).outcome, 'failed');
     const nr = run({ 'result.json': '{"outcome":"not-reproduced","summary":"ran it","extra":"@x"}' });
     assert.equal(nr.outcome, 'not-reproduced');
@@ -279,7 +304,7 @@ test('bug agent workflow: off unless switched on, one run per issue, time limits
   assert.match(job('agent'), /github\.event\.sender\.login != github\.event\.issue\.user\.login/);
 });
 
-test('bug agent workflow: least privilege, no other secret, the action pinned', () => {
+test('bug agent workflow: least privilege, no other secret, the CLI pinned', () => {
   assert.match(wf, /\npermissions: \{\}\n/);
   const perms = j => /    permissions:\n((?:      .*\n)+)/.exec(job(j))[1].split('\n').filter(Boolean).map(l => l.trim().replace(/\s*#.*$/, '')).sort();
   assert.deepEqual(perms('agent'), ['contents: read', 'issues: read']);
@@ -288,33 +313,41 @@ test('bug agent workflow: least privilege, no other secret, the action pinned', 
   assert.deepEqual([...new Set([...wf.matchAll(/secrets\.([A-Z_]+)/g)].map(m => m[1]))], ['ANTHROPIC_API_KEY']);
   assert.doesNotMatch(job('verify') + job('publish'), /secrets\./);
   assert.doesNotMatch(wf, /environment:/);
-  assert.match(wf, /uses: anthropics\/claude-code-action@[0-9a-f]{40} /);
-  assert.doesNotMatch(job('verify') + job('publish'), /claude-code-action/);
+  assert.match(job('agent'), /npm install --prefix "\$CLI" [^\n]*@anthropic-ai\/claude-code@\d+\.\d+\.\d+\n/, 'the CLI at an exact version');
+  assert.doesNotMatch(job('verify') + job('publish'), /claude/);
   assert.match(job('agent'), /persist-credentials: false/);
   assert.match(job('verify'), /persist-credentials: false/);
-  assert.match(job('agent'), /CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"/);
-  assert.match(job('agent'), /--disallowedTools "[^"]*WebFetch[^"]*Bash\(git push:\*\)[^"]*Bash\(gh:\*\)/);
-  // after the agent ran, its checkout runs nothing of the repository's: only git, with hooks and fsmonitor off, to take
-  // its diff
   const agent = job('agent');
-  const after = agent.slice(agent.indexOf('- id: raw'));
-  assert.doesNotMatch(after, /\bnode |python3 /);
-  assert.match(after, /core\.hooksPath=\/dev\/null -c core\.fsmonitor=false/);
-  // egress blocked but for the API and the installs, before any other step
+  // egress: harden-runner first for the runner's own steps, then the agent's user held to the API alone
   assert.ok(agent.indexOf('step-security/harden-runner@') < agent.indexOf('actions/checkout'), 'harden-runner comes first');
   assert.match(agent, /uses: step-security\/harden-runner@[0-9a-f]{40} [\s\S]*?egress-policy: block/);
   const allowed = /allowed-endpoints: >-\n((?:            \S+\n)+)/.exec(agent)[1].trim().split(/\s+/);
   assert.ok(allowed.includes('api.anthropic.com:443'));
   assert.ok(!allowed.some(h => /blob|storage|actions\.githubusercontent/.test(h)), 'no storage host: the diff leaves as a job output');
   assert.doesNotMatch(agent, /upload-artifact/);
-  // Bash in fixed forms: no interpreter by bare prefix
-  const tools = /--allowedTools "([^"]*)"/.exec(agent)[1].split(',');
-  for (const t of tools.filter(t => t.startsWith('Bash('))) {
-    assert.doesNotMatch(t, /^Bash\((node|python3|bash|sh|npx|npm)(:\*)?\)$/, t);
-    assert.doesNotMatch(t, /^Bash\((node|python3) :\*\)$/, t);
-  }
-  assert.ok(tools.includes('Bash(node --test tests/:*)') && tools.includes('Bash(node tools/build.mjs)'));
-  assert.ok(!tools.some(t => /^Bash\((node|python3):\*\)$/.test(t)));
+  assert.ok(agent.indexOf('bug_agent_jail.sh agent api') < agent.indexOf('claude" --bare'), 'the jail is up before the agent starts');
+  // the agent runs as its own user, the key through the environment only, with the fixed-command settings and no hooks
+  const run = agent.slice(agent.indexOf('- id: claude'), agent.indexOf('- id: raw'));
+  assert.match(run, /sudo --preserve-env=ANTHROPIC_API_KEY -u agent -H -- env -C "\$JAIL\/repo"/);
+  assert.doesNotMatch(run, /GH_TOKEN|github\.token|GITHUB_TOKEN/);
+  assert.doesNotMatch(run, /--allowedTools|--dangerously|bypassPermissions/);
+  assert.match(run, /--bare -p --settings "\$JAIL\/settings\.json" --setting-sources user/);
+  assert.match(run, /--permission-mode dontAsk/);
+  assert.match(run, /timeout \d+m /);
+  assert.match(agent, /node tools\/bug_agent\.mjs settings tests "\$NUMBER" "\$JAIL\/work" "\$WORK\/settings\.json"/);
+  assert.match(agent, /sudo install -o root -g root -m 644 "\$WORK\/settings\.json" "\$JAIL\/settings\.json"/, 'a settings file the agent cannot write');
+  // after the agent ran: its processes are killed, the runner's git (not the agent's .git) takes the diff, hooks and
+  // fsmonitor off, and the result is read with the agent's own rights
+  const after = agent.slice(agent.indexOf('- id: raw'));
+  assert.ok(after.indexOf('pkill -KILL -u agent') < after.indexOf('g add -A'));
+  assert.match(after, /sudo rm -rf "\$WORK\/after\/\.git"/);
+  assert.match(after, /--git-dir="\$GITHUB_WORKSPACE\/\.git" --work-tree="\$WORK\/after" -c core\.hooksPath=\/dev\/null -c core\.fsmonitor=false/);
+  assert.match(after, /sudo -u agent head -c 20000 "\$JAIL\/work\/result\.json"/);
+  assert.ok(after.indexOf('bug_agent.mjs leak KEY') < after.indexOf('GITHUB_OUTPUT'), 'the key is looked for before anything leaves');
+  // verify: the patch's code runs as a user with no network at all
+  const ver = job('verify');
+  assert.ok(ver.indexOf('bug_agent_jail.sh agent none') < ver.indexOf('check "$RUNNER_TEMP/raw"'));
+  assert.match(ver, /BUG_AGENT_SANDBOX_USER: agent/);
   // publish checks what git staged before it commits
   const pubj = job('publish');
   assert.ok(pubj.indexOf('git apply --index') < pubj.indexOf('check-staged') && pubj.indexOf('check-staged') < pubj.indexOf('commit -q'));
@@ -332,6 +365,32 @@ test('bug agent workflow: least privilege, no other secret, the action pinned', 
   assert.match(wf, /BASE: audit-loop/);
 });
 
+test('bug agent: the shell of the agent takes exact commands only, and edits only where a fix may write', () => {
+  const s = agentSettings(['diff.test.mjs', 'cli.py', 'helpers.mjs', 'x;y.test.mjs', 'a b.test.mjs'], 42, '/srv/bug-agent/work');
+  const bash = s.permissions.allow.filter(r => r.startsWith('Bash(')).map(r => r.slice(5, -1));
+  assert.deepEqual(bash, ['node tools/build.mjs', 'git diff', 'git status', 'node --test tests/issue-42.test.mjs',
+    'python3 tests/cli.py', 'node --test tests/diff.test.mjs']);
+  for (const c of bash) assert.doesNotMatch(c, /[*:;&|<>`$]/, c);
+  assert.equal(s.permissions.defaultMode, 'dontAsk');
+  assert.equal(s.disableAllHooks, true);
+  assert.ok(!s.permissions.allow.includes('Edit') && !s.permissions.allow.includes('Write') && !s.permissions.allow.includes('Bash'));
+  assert.ok(s.permissions.allow.includes('Edit(//srv/bug-agent/work/**)'));
+  assert.ok(s.permissions.deny.includes('Edit(.github/**)') && s.permissions.deny.includes('WebFetch'));
+  assert.throws(() => agentSettings([], 0, '/w'), /positive integer/);
+  assert.throws(() => agentSettings([], 1, 'rel/w'), /absolute/);
+  assert.throws(() => agentSettings([], 1, '/w/../etc'), /absolute/);
+  assert.throws(() => agentSettings([], 1, '/w w'), /absolute/);
+});
+
+test('bug agent: the API key is caught in what the agent wrote, as it is or encoded', () => {
+  const key = 'sk-ant-test-0123456789abcdef';
+  assert.equal(holdsSecret(key, ['nothing here', '']), false);
+  assert.equal(holdsSecret(key, ['+const k = "' + key + '";']), true);
+  assert.equal(holdsSecret(key, [Buffer.from(key).toString('base64')]), true);
+  assert.equal(holdsSecret(key, ['x' + Buffer.from(key).toString('hex')]), true);
+  assert.equal(holdsSecret('', ['anything']), false, 'no key, nothing to find');
+});
+
 test('bug agent: the issue template asks for a minimal model and the steps', () => {
   const t = read('.github/ISSUE_TEMPLATE/bug_report.yml');
   assert.match(t, /label: Minimal model/);
@@ -343,11 +402,39 @@ test('bug agent: CONTRIBUTING.md and SECURITY.md describe the switch, the key an
   for (const w of ['BUG_AGENT_ENABLED', 'ANTHROPIC_API_KEY', 'bug-agent.yml', 'draft']) assert.ok(c.includes(w), w);
   assert.match(s, /prompt injection/i);
   assert.match(s, /issue[^.]*data/i);
+  // the risk that is left is written down
+  assert.match(s, /What is left/);
+  assert.match(s, /only one way out, the Anthropic API/);
+  for (const w of ['bug_agent_jail.sh', 'bug-agent-jail']) assert.ok(c.includes(w), w);
 });
 
 test('bug agent workflow: actionlint finds nothing, where it is installed', (t) => {
   let found = true;
   try { execFileSync('actionlint', ['-version'], { stdio: 'ignore' }); } catch { found = false; }
   if (!found) return t.skip('actionlint is not installed');
-  execFileSync('actionlint', [new URL('../.github/workflows/bug-agent.yml', import.meta.url).pathname], { stdio: 'pipe' });
+  for (const f of ['bug-agent.yml', 'bug-agent-jail.yml']) {
+    execFileSync('actionlint', [new URL('../.github/workflows/' + f, import.meta.url).pathname], { stdio: 'pipe' });
+  }
+});
+
+test('bug agent jail: the script parses, refuses a bad user or mode before it touches anything, and runs as root only', () => {
+  const sh = new URL('../tools/bug_agent_jail.sh', import.meta.url).pathname;
+  execFileSync('bash', ['-n', sh]);
+  const run = (...a) => { try { execFileSync('bash', [sh, ...a], { stdio: 'pipe' }); return 0; } catch (e) { return e.status; } };
+  assert.equal(run('agent', 'all'), 2);
+  assert.equal(run('Agent', 'api'), 2);
+  assert.equal(run('a;b', 'none'), 2);
+  assert.equal(run(), 2);
+  if (process.getuid && process.getuid() !== 0) assert.equal(run('agent', 'none'), 2, 'not root');
+  const text = read('tools/bug_agent_jail.sh');
+  // the published API range, the user matched in OUTPUT, DNS closed, and everything else rejected, for IPv4 and IPv6
+  assert.match(text, /range=160\.79\.104\.0\/23/);
+  assert.match(text, /-I OUTPUT 1 -m owner --uid-owner "\$uid" -j BUG_AGENT/);
+  assert.match(text, /--dport 53 -j REJECT/);
+  assert.match(text, /iptables -w -A BUG_AGENT -j REJECT\nip6tables -w -A BUG_AGENT -j REJECT/);
+  // the jail test runs on a pull request that changes any part of it
+  const jw = read('.github/workflows/bug-agent-jail.yml');
+  for (const f of ['tools/bug_agent.mjs', 'tools/bug_agent_jail.sh', 'tests/bug-agent-jail.test.mjs', '.github/workflows/bug-agent.yml']) assert.ok(jw.includes('- ' + f), f);
+  assert.match(jw, /BUG_AGENT_JAIL_USER: agent/);
+  assert.doesNotMatch(jw, /secrets\./);
 });
