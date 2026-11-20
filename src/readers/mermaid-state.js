@@ -264,6 +264,7 @@ function readMermaidState(text) {
     } else if (colon > 0) { // s1 : text
       const name = nameOf(s.slice(0, colon), no), codes = [], rawText = s.slice(colon + 1).trim(), t = mtDecode(rawText, code => codes.push(code));
       if (!name) { say(no, 'skipped', `"${mermaidClip(s)}" is not understood`); hint = {}; continue; }
+      if (!rawText) { say(no, 'skipped', `${name} : has no text: not read`); hint = {}; continue; } // no empty description (audit 56)
       const rec = mention(name, no), line = mtLine(t);
       if (line.activity || line.internal) for (const code of codes) say(no, 'approximated', mermaidBadChar(code)); // a description's are said when its note is read
       if (line.activity) {
@@ -517,8 +518,8 @@ function writeMermaidState(model, viewId) {
       const heads = [...(ch ? [`%% id: ${ch}`] : []), ...(lh ? [`%% link-id: ${lh}`] : [])];
       if (desc && has(c.label) && mtLine(String(c.label)).description) put(d, ...heads, textLine(n, c.label));
       else {
-        if (desc) lose(c.id, 'its text reads as an activity or a transition, so it is written as a note');
-        if (!has(c.label)) lose(c.id, 'no text');
+        // a note with no text reads back as the comment it is: said only of a description, which is written as a note (audit 56)
+        if (desc) lose(c.id, has(c.label) ? 'its text reads as an activity or a transition, so it is written as a note' : 'a description with no text, so it is written as a note');
         put(d, ...heads, `note right of ${names.get(n.id)} : ${has(c.label) ? enc(c.label) : ''}`);
       }
       Object.keys(c).filter(p => !['id', 'type', 'label', 'ext'].includes(p)).forEach(p => lose(c.id, p));

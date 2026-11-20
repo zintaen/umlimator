@@ -504,3 +504,20 @@ test('a %% comment line inside a state "description" over lines is taken out, as
   assert.deepEqual(r.model.nodes.map(n => [n.id, n.label]), [['A', 'first\n  second'], ['B', 'B']]);
   assert.deepEqual(r.report.map(x => [x.line, x.status, x.message]), [[3, 'approximated', 'a %% line inside a "string" is a comment to Mermaid, which takes it out first: not read']]);
 });
+
+test('audit 56: a description with no text is not read and said; a comment with no text is written as a note that reads back the same', () => {
+  for (const [text, line, name] of [['stateDiagram-v2\n  a :\n  a --> b', 2, 'a'], ['stateDiagram-v2\n  a :   \n  a --> b', 2, 'a'], ['stateDiagram-v2\n  state X {\n    config:\n    a --> b\n  }', 3, 'config']]) {
+    const { model, report } = read(text);
+    assert.deepEqual(report, [{ line, status: 'skipped', message: `${name} : has no text: not read` }], text);
+    assert.ok(!model.nodes.some(n => n.type === 'uml.Comment' || n.id === 'config'), JSON.stringify(model.nodes));
+  }
+  // a model's comments with no text, one marked a description: written as notes, said only of the description, and stable
+  const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 'a', type: 'uml.State', label: 'a' }, { id: 'n', type: 'uml.Comment', ext: { mermaid: { description: true } } }, { id: 'n2', type: 'uml.Comment' }],
+    edges: [{ id: 'l', type: 'uml.CommentLink', from: 'n', to: 'a' }, { id: 'l2', type: 'uml.CommentLink', from: 'n2', to: 'a' }], views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['a', 'n', 'n2'] }] };
+  const text = write(m, 'v');
+  assert.deepEqual(text.split('\n').filter(l => l.includes('not written')).map(l => l.trim()), ['%% not written: n: a description with no text, so it is written as a note']);
+  const back = read(text);
+  assert.deepEqual(back.report, []);
+  assert.deepEqual(back.model.nodes.filter(n => n.type === 'uml.Comment'), [{ id: 'n', type: 'uml.Comment' }, { id: 'n2', type: 'uml.Comment' }]);
+  assert.equal(write(back.model, 'v'), text.replace(/ {2}%% not written.*\n/, ''));
+});
