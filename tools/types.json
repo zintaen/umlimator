@@ -639,7 +639,7 @@
    "name": "Parametric",
    "text": "Constraint blocks that bind a system's values.",
    "title": "Parametric diagram",
-   "intro": "How far the bookshop's delivery cargo e-bike goes on a charge, empty and laden with a full payload: its battery's usable energy and each load's consumption bound to the parameters of the equations that give the two delivery ranges.",
+   "intro": "How far the bookshop's delivery cargo e-bike goes on a charge, empty and laden: its battery's usable energy, its empty consumption and its payload in kilograms bound to the parameters of the equations that give the laden consumption and the two delivery ranges.",
    "main": "range",
    "alternatives": [
     {
@@ -653,12 +653,12 @@
    ],
    "shows": [
     "The frame's header naming its block: `par [Block] CargoBike [...]`",
-    "Value properties as plain boxes `name : Type` (ladenConsumption : EnergyPerDistance, batteryCapacity : Energy)",
+    "Value properties as plain boxes `name : Type` (payload : Mass, batteryCapacity : Energy)",
     "Constraint properties as boxes with rounded corners, `name : ConstraintBlock`, the block's expression in braces under the name, cut to the box",
     "Two constraint properties typed by one constraint block (empty and laden : RangeEquation)",
     "Parameters as squares on a constraint property's border, `name : Type` beside each",
     "Binding connectors, plain lines with no ends, from value properties to parameters",
-    "A binding between parameters of two constraint properties (usable's usable to the energy of empty and of laden)"
+    "A binding between parameters of two constraint properties (usable's usable to the energy of empty and of laden; the consumption of empty into load, load's laden into the consumption of laden)"
    ]
   },
   "c4": {

@@ -1435,9 +1435,12 @@ with tempfile.TemporaryDirectory() as tmp:
                                    "BatterycapacityRequirementid:BAT-1", "Battery→Batterycapacity«satisfy»Satisfy", "Ladenrangerideonthetestcircuit→Deliveryrange«verify»Verify"],
             "ebike-blocks": ["ChargeInterfaceInterfaceblockflowproperties:indc:DCPowerflowproperties:outstateOfCharge:Percent",
                              "RangeEquationConstraintblockconstraints:{range=energy/consumption}parameters:range:Distance", "EnergyValuetypequantity:unit=Wh",
-                             "CargoBike→DeliveryVehicleGeneralization"],
-            "ebike-structure": ["CargoBikeBlockbattery:Battery[1]", "refdock:Dock[0..1]", "DCPower,batterytocontrollerConnector"],  # a connector: a Lines row (audit 17)
-            "ebike-range": ["empty:RangeEquation", "emptyRangetorangeofemptyBindingconnector", "usableofusabletoenergyofladenBindingconnector"]}  # a binding: a Lines row only (audit 18)
+                             "CargoBike→DeliveryVehicleGeneralization", "CargoBoxBlockvalues:maxPayload:Massports:parcelLock",
+                             "LadenConsumptionConstraintblockconstraints:{laden=empty+0.1*payload}parameters:laden:EnergyPerDistance", "MassValuetypequantity:unit=kg"],
+            "ebike-structure": ["CargoBikeBlockbattery:Battery[1]", "refdock:Dock[0..1]", "DCPower,batterytocontrollerConnector",  # a connector: a Lines row (audit 17)
+                                "cargoBox:CargoBox[1]", "UnlockCode,controllertocargoBoxConnector"],
+            "ebike-range": ["empty:RangeEquation", "emptyRangetorangeofemptyBindingconnector", "usableofusabletoenergyofladenBindingconnector",  # a binding: a Lines row only (audit 18)
+                            "load:LadenConsumption", "payloadtopayloadofloadBindingconnector", "consumptionofemptytoemptyofloadBindingconnector", "ladenofloadtoconsumptionofladenBindingconnector"]}
     for n, want in PDF3.items():
         if not part.of(f"typed {n}"):
             continue

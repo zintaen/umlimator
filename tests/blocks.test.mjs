@@ -26,7 +26,7 @@ import { classProblems } from '../src/uml/class.js';
 import { BD_RULES, bdProblems, bdParse, bdPrint } from '../src/sysml/blocks.js';
 
 const T = diagramOf({ diagram: 'sysml.block-definition' }), V = 'blocks';
-const M17 = {"schemaVersion":2,"title":"E-bike: blocks","root":"blocks","nodes":[{"id":"rental-vehicle","type":"sysml.Block","label":"RentalVehicle"},{"id":"ebike","type":"sysml.Block","label":"EBike","members":[{"id":"ebike.battery","type":"sysml.PartProperty","label":"battery","props":{"valueType":"Battery","multiplicity":"1"}},{"id":"ebike.controller","type":"sysml.PartProperty","label":"controller","props":{"valueType":"Controller","multiplicity":"1"}},{"id":"ebike.motor","type":"sysml.PartProperty","label":"motor","props":{"valueType":"Motor","multiplicity":"1"}},{"id":"ebike.wheels","type":"sysml.PartProperty","label":"wheels","props":{"valueType":"Wheel","multiplicity":"2"}},{"id":"ebike.dock","type":"sysml.ReferenceProperty","label":"dock","props":{"valueType":"Dock","multiplicity":"0..1"}},{"id":"ebike.rangeEq","type":"sysml.ConstraintProperty","label":"rangeEq","props":{"valueType":"RangeEquation"}}]},{"id":"battery","type":"sysml.Block","label":"Battery","members":[{"id":"battery.capacity","type":"sysml.ValueProperty","label":"capacity","props":{"valueType":"Energy"}},{"id":"battery.cellVoltage","type":"sysml.ValueProperty","label":"cellVoltage","props":{"valueType":"Voltage","multiplicity":"10"}},{"id":"battery.charge","type":"sysml.Port","label":"charge","props":{"valueType":"ChargeInterface"}}]},{"id":"motor","type":"sysml.Block","label":"Motor","members":[{"id":"motor.ratedPower","type":"sysml.ValueProperty","label":"ratedPower","props":{"valueType":"Power"}}]},{"id":"controller","type":"sysml.Block","label":"Controller","members":[{"id":"controller.setAssistLevel","type":"uml.Operation","label":"setAssistLevel","props":{"parameters":[{"name":"level","valueType":"Integer"}]}}]},{"id":"dock","type":"sysml.Block","label":"Dock","members":[{"id":"dock.charge","type":"sysml.Port","label":"charge","props":{"valueType":"~ChargeInterface"}}]},{"id":"charge-interface","type":"sysml.InterfaceBlock","label":"ChargeInterface","members":[{"id":"charge-interface.dc","type":"sysml.FlowProperty","label":"dc","props":{"valueType":"DCPower","direction":"in"}},{"id":"charge-interface.stateOfCharge","type":"sysml.FlowProperty","label":"stateOfCharge","props":{"valueType":"Percent","direction":"out"}}]},{"id":"range-equation","type":"sysml.ConstraintBlock","label":"RangeEquation","props":{"constraint":"range = energy / consumption"},"members":[{"id":"range-equation.range","type":"sysml.ConstraintParameter","label":"range","props":{"valueType":"Distance"}},{"id":"range-equation.energy","type":"sysml.ConstraintParameter","label":"energy","props":{"valueType":"Energy"}},{"id":"range-equation.consumption","type":"sysml.ConstraintParameter","label":"consumption","props":{"valueType":"EnergyPerDistance"}}]},{"id":"voltage","type":"sysml.ValueType","label":"Voltage","props":{"unit":"V","quantityKind":"voltage"}},{"id":"energy","type":"sysml.ValueType","label":"Energy","props":{"unit":"Wh","quantityKind":"energy"}}],"edges":[{"id":"ebike-battery","type":"uml.Association","from":"ebike","to":"battery","props":{"ends":{"from":{"aggregation":"composite","multiplicity":"0..1"},"to":{"role":"battery","multiplicity":"1"}}}},{"id":"ebike-motor","type":"uml.Association","from":"ebike","to":"motor","props":{"ends":{"from":{"aggregation":"composite","multiplicity":"1"},"to":{"role":"motor","multiplicity":"1"}}}},{"id":"ebike-controller","type":"uml.Association","from":"ebike","to":"controller","props":{"ends":{"from":{"aggregation":"composite","multiplicity":"1"},"to":{"role":"controller","multiplicity":"1"}}}},{"id":"ebike-is-rental-vehicle","type":"uml.Generalization","from":"ebike","to":"rental-vehicle"},{"id":"dock-uses-charge-interface","type":"uml.Dependency","from":"dock","to":"charge-interface","props":{"stereotypes":["use"]}}],"views":[{"id":"blocks","diagram":"sysml.block-definition","title":"E-bike blocks","parent":null,"direction":"down","nodeIds":["rental-vehicle","ebike","battery","motor","controller","dock","charge-interface","range-equation","voltage","energy"]}]};
+const M17 = {"schemaVersion":2,"title":"Cargo e-bike: blocks","root":"blocks","nodes":[{"id":"delivery-vehicle","type":"sysml.Block","label":"DeliveryVehicle"},{"id":"ebike","type":"sysml.Block","label":"CargoBike","members":[{"id":"ebike.battery","type":"sysml.PartProperty","label":"battery","props":{"valueType":"Battery","multiplicity":"1"}},{"id":"ebike.controller","type":"sysml.PartProperty","label":"controller","props":{"valueType":"Controller","multiplicity":"1"}},{"id":"ebike.motor","type":"sysml.PartProperty","label":"motor","props":{"valueType":"Motor","multiplicity":"1"}},{"id":"ebike.wheels","type":"sysml.PartProperty","label":"wheels","props":{"valueType":"Wheel","multiplicity":"2"}},{"id":"ebike.dock","type":"sysml.ReferenceProperty","label":"dock","props":{"valueType":"Dock","multiplicity":"0..1"}},{"id":"ebike.rangeEq","type":"sysml.ConstraintProperty","label":"rangeEq","props":{"valueType":"RangeEquation"}}]},{"id":"battery","type":"sysml.Block","label":"Battery","members":[{"id":"battery.capacity","type":"sysml.ValueProperty","label":"capacity","props":{"valueType":"Energy"}},{"id":"battery.cellVoltage","type":"sysml.ValueProperty","label":"cellVoltage","props":{"valueType":"Voltage","multiplicity":"10"}},{"id":"battery.charge","type":"sysml.Port","label":"charge","props":{"valueType":"ChargeInterface"}}]},{"id":"motor","type":"sysml.Block","label":"Motor","members":[{"id":"motor.ratedPower","type":"sysml.ValueProperty","label":"ratedPower","props":{"valueType":"Power"}}]},{"id":"controller","type":"sysml.Block","label":"Controller","members":[{"id":"controller.setAssistLevel","type":"uml.Operation","label":"setAssistLevel","props":{"parameters":[{"name":"level","valueType":"Integer"}]}}]},{"id":"dock","type":"sysml.Block","label":"Dock","members":[{"id":"dock.charge","type":"sysml.Port","label":"charge","props":{"valueType":"~ChargeInterface"}}]},{"id":"charge-interface","type":"sysml.InterfaceBlock","label":"ChargeInterface","members":[{"id":"charge-interface.dc","type":"sysml.FlowProperty","label":"dc","props":{"valueType":"DCPower","direction":"in"}},{"id":"charge-interface.stateOfCharge","type":"sysml.FlowProperty","label":"stateOfCharge","props":{"valueType":"Percent","direction":"out"}}]},{"id":"range-equation","type":"sysml.ConstraintBlock","label":"RangeEquation","props":{"constraint":"range = energy / consumption"},"members":[{"id":"range-equation.range","type":"sysml.ConstraintParameter","label":"range","props":{"valueType":"Distance"}},{"id":"range-equation.energy","type":"sysml.ConstraintParameter","label":"energy","props":{"valueType":"Energy"}},{"id":"range-equation.consumption","type":"sysml.ConstraintParameter","label":"consumption","props":{"valueType":"EnergyPerDistance"}}]},{"id":"voltage","type":"sysml.ValueType","label":"Voltage","props":{"unit":"V","quantityKind":"voltage"}},{"id":"energy","type":"sysml.ValueType","label":"Energy","props":{"unit":"Wh","quantityKind":"energy"}}],"edges":[{"id":"ebike-battery","type":"uml.Association","from":"ebike","to":"battery","props":{"ends":{"from":{"aggregation":"composite","multiplicity":"0..1"},"to":{"role":"battery","multiplicity":"1"}}}},{"id":"ebike-motor","type":"uml.Association","from":"ebike","to":"motor","props":{"ends":{"from":{"aggregation":"composite","multiplicity":"1"},"to":{"role":"motor","multiplicity":"1"}}}},{"id":"ebike-controller","type":"uml.Association","from":"ebike","to":"controller","props":{"ends":{"from":{"aggregation":"composite","multiplicity":"1"},"to":{"role":"controller","multiplicity":"1"}}}},{"id":"ebike-is-delivery-vehicle","type":"uml.Generalization","from":"ebike","to":"delivery-vehicle"},{"id":"dock-uses-charge-interface","type":"uml.Dependency","from":"dock","to":"charge-interface","props":{"stereotypes":["use"]}}],"views":[{"id":"blocks","diagram":"sysml.block-definition","title":"Cargo bike blocks","parent":null,"direction":"down","nodeIds":["delivery-vehicle","ebike","battery","motor","controller","dock","charge-interface","range-equation","voltage","energy"]}]};
 const by = (m, id) => m.nodes.find(n => n.id === id), mem = (m, id) => m.nodes.flatMap(n => n.members || []).find(x => x.id === id);
 const unid = s => s.replace(/\bg\d+-/g, 'g-');
 const withDir = (m, direction) => { const c = structuredClone(m); c.views[0].direction = direction; return c; };
@@ -58,7 +58,7 @@ test('17-block-definition.json (inline) validates clean, no part-agrees or part-
     g.nodes.forEach(n => assert.ok(inside(n, F), `${d}: ${n.id} inside the frame`)); }
   const plain = structuredClone(M17); delete plain.views[0].direction;
   const g = layout(plain, V);
-  assert.ok(g.byId['rental-vehicle'].y + g.byId['rental-vehicle'].h < g.byId.ebike.y, 'down: the general above its specialization');
+  assert.ok(g.byId['delivery-vehicle'].y + g.byId['delivery-vehicle'].h < g.byId.ebike.y, 'down: the general above its specialization');
   assert.equal(unid(svgOf(g)), unid(svgOf(layout(M17, V))), 'down by default');
   const memos = {}, first = mapContext(M17, { memos }).buildView(V), nodes = JSON.stringify(memos[V].g.nodes);
   const second = mapContext(M17, { memos }).buildView(V);
@@ -68,8 +68,8 @@ test('17-block-definition.json (inline) validates clean, no part-agrees or part-
 test('drawing (§7.1): the frame and its header; each kind\'s keyword over its name; every compartment titled, in SysML\'s order, the empty ones left out; rows with a port\'s kind, a flow\'s direction, an expression, a unit', () => {
   const g = layout(M17, V), s = svgOf(g), n = id => g.byId[id];
   const F = g.families.find(f => f.shape === 'sysml-frame');
-  assert.deepEqual([F.id, F.title, F.aria], ['blocks->frame', 'bdd [Model] E-bike: blocks [E-bike blocks]', 'Block definition diagram of model E-bike: blocks: E-bike blocks']);
-  assert.match(s, /<g class="family" data-family="blocks-&gt;frame" role="img" aria-label="Block definition diagram of model E-bike: blocks: E-bike blocks">/);
+  assert.deepEqual([F.id, F.title, F.aria], ['blocks->frame', 'bdd [Model] Cargo e-bike: blocks [Cargo bike blocks]', 'Block definition diagram of model Cargo e-bike: blocks: Cargo bike blocks']);
+  assert.match(s, /<g class="family" data-family="blocks-&gt;frame" role="img" aria-label="Block definition diagram of model Cargo e-bike: blocks: Cargo bike blocks">/);
   assert.deepEqual(['ebike', 'charge-interface', 'range-equation', 'energy'].map(id => n(id).stereotypes), [['block'], ['interfaceBlock'], ['constraintBlock'], ['valueType']]);
   const comps = id => n(id).compartments.map(c => [c.name, c.title, c.members.map(m => m.label)]);
   assert.deepEqual(comps('ebike'), [['parts', true, ['battery', 'controller', 'motor', 'wheels']], ['references', true, ['dock']], ['constraints', true, ['rangeEq']]]);
@@ -78,7 +78,7 @@ test('drawing (§7.1): the frame and its header; each kind\'s keyword over its n
   assert.deepEqual(comps('range-equation'), [['constraints', true, ['{range = energy / consumption}']], ['parameters', true, ['range', 'energy', 'consumption']]]);
   assert.deepEqual(comps('energy'), [['quantity', true, ['unit = Wh', 'quantityKind = energy']]]);
   assert.deepEqual(comps('controller'), [['operations', true, ['setAssistLevel']]]);
-  assert.deepEqual(comps('rental-vehicle'), [], 'an empty compartment is not drawn');
+  assert.deepEqual(comps('delivery-vehicle'), [], 'an empty compartment is not drawn');
   // a member of a type of no SysML kind (member-kinds refuses it) is drawn in the last compartment and counted, not hidden
   const o = structuredClone(M17); by(o, 'motor').members.push({ id: 'motor.torque', type: 'uml.Property', label: 'torque', props: { valueType: 'Real' } }, { id: 'motor.go', type: 'uml.Reception', label: 'go' });
   const go = layout(o, V).byId.motor; assert.deepEqual(go.compartments.map(c => [c.name, c.members.map(m => m.label)]), [['values', ['ratedPower']], ['other members', ['torque', 'go']]]);
@@ -98,47 +98,47 @@ test('drawing (§7.1): the frame and its header; each kind\'s keyword over its n
   // collapsed by present, as in the class type; a stored stereotype after the keyword
   const c = structuredClone(M17); c.views[0].present = { ebike: { collapsed: ['parts'] } }; by(c, 'ebike').props = { stereotypes: ['vehicle'] };
   const gc = layout(c, V); assert.deepEqual(gc.byId.ebike.compartments.map(x => x.name).filter(x => !gc.byId.ebike.collapsed.includes(x)), ['references', 'constraints']);
-  assert.deepEqual(gc.byId.ebike.stereotypes, ['block', 'vehicle']); assert.equal(gc.byId.ebike.aria, 'Block EBike (vehicle), 4 parts, 1 reference, 1 constraint');
+  assert.deepEqual(gc.byId.ebike.stereotypes, ['block', 'vehicle']); assert.equal(gc.byId.ebike.aria, 'Block CargoBike (vehicle), 4 parts, 1 reference, 1 constraint');
   // the class type's lines and legend
   const edge = id => g.edges.find(e => e.id === id);
   assert.deepEqual(edge('ebike-battery').end, { from: 'filled-diamond', to: 'none', labels: { from: { role: undefined, mult: '0..1' }, to: { role: 'battery', mult: '1' } } });
-  assert.deepEqual(edge('ebike-is-rental-vehicle').end, { from: 'none', to: 'triangle' });
+  assert.deepEqual(edge('ebike-is-delivery-vehicle').end, { from: 'none', to: 'triangle' });
   assert.equal(edge('dock-uses-charge-interface').label, '«use»');
   assert.deepEqual(g.legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Association', 'Generalization', 'Dependency', 'Composition']);
 });
 
 test('the frame (§5): a package subject is the frame, its id the package\'s, no box of its own, what it owns laid out in it; a package it holds is a box inside the frame', () => {
   const m = structuredClone(M17);
-  m.nodes.push({ id: 'eb', type: 'uml.Package', label: 'E-bike' }, { id: 'power', type: 'uml.Package', label: 'power', parent: 'eb' });
-  ['ebike', 'motor', 'controller', 'dock', 'rental-vehicle', 'charge-interface', 'range-equation', 'voltage', 'energy'].forEach(id => { by(m, id).parent = 'eb'; });
+  m.nodes.push({ id: 'eb', type: 'uml.Package', label: 'DeliveryFleet' }, { id: 'power', type: 'uml.Package', label: 'power', parent: 'eb' });
+  ['ebike', 'motor', 'controller', 'dock', 'delivery-vehicle', 'charge-interface', 'range-equation', 'voltage', 'energy'].forEach(id => { by(m, id).parent = 'eb'; });
   by(m, 'battery').parent = 'power'; Object.assign(m.views[0], { subject: 'eb' }); m.views[0].nodeIds.push('eb', 'power');
   assert.deepEqual(validate(m), []);
   for (const d of ['down', 'right']) { const g = layout(withDir(m, d), V);
     assert.deepEqual(check(withDir(m, d), V), [], d);
     assert.deepEqual(g.families.map(f => [f.id, f.shape, f.parent ?? null]), [['eb', 'sysml-frame', null], ['power', 'package', 'eb']], d);
     const F = g.families[0], P = g.families[1];
-    assert.equal(F.title, 'bdd [Package] E-bike [E-bike blocks]'); assert.ok(!g.byId.eb, 'the subject is no card');
+    assert.equal(F.title, 'bdd [Package] DeliveryFleet [Cargo bike blocks]'); assert.ok(!g.byId.eb, 'the subject is no card');
     assert.ok(inside(g.byId.battery, P) && inside(P, F) && g.nodes.every(n => inside(n, F)), d);
     assert.equal(g.byId.battery.label, 'Battery', 'named from the subject, the box it is in'); }
-  assert.deepEqual(T.boxes(m, m.views[0]).map(b => [b.id, b.nodeIds]), [['eb', ['rental-vehicle', 'ebike', 'motor', 'controller', 'dock', 'charge-interface', 'range-equation', 'voltage', 'energy']], ['power', ['battery']]]);
+  assert.deepEqual(T.boxes(m, m.views[0]).map(b => [b.id, b.nodeIds]), [['eb', ['delivery-vehicle', 'ebike', 'motor', 'controller', 'dock', 'charge-interface', 'range-equation', 'voltage', 'energy']], ['power', ['battery']]]);
   // with no subject, a package is a box in the frame; its block named as the package holds it
   const n = structuredClone(m); delete n.views[0].subject; n.views[0].nodeIds = n.views[0].nodeIds.filter(id => id !== 'eb');
   const g = layout(n, V); assert.deepEqual(g.families.map(f => [f.id, f.parent ?? null]), [['blocks->frame', null], ['power', 'blocks->frame']]);
-  assert.equal(g.byId.motor.label, 'E-bike::Motor', 'qualified by the owner the view does not show');
+  assert.equal(g.byId.motor.label, 'DeliveryFleet::Motor', 'qualified by the owner the view does not show');
   assert.deepEqual(T.owners(n, by(n, 'battery')).map(o => o.id), ['eb', 'power'], 'a block\'s Owner field offers the packages');
 });
 
 test('names (§13), the reading order and describe(): the frame, then each element in reading order, then each line; the PDF\'s word, rows and a line\'s text', () => {
   const g = layout(M17, V), s = svgOf(g);
-  assert.equal(g.byId.ebike.aria, 'Block EBike, 4 parts, 1 reference, 1 constraint');
+  assert.equal(g.byId.ebike.aria, 'Block CargoBike, 4 parts, 1 reference, 1 constraint');
   assert.equal(g.byId['range-equation'].aria, 'Constraint block RangeEquation, {range = energy / consumption}, 3 parameters');
   assert.equal(g.byId.energy.aria, 'Value type Energy, unit = Wh, quantityKind = energy');
   assert.equal(g.byId['charge-interface'].aria, 'Interface block ChargeInterface, 2 flow properties');
-  assert.match(s, /data-shape="classifier" tabindex="-1" role="img" aria-label="Block EBike, 4 parts, 1 reference, 1 constraint"/, 'the drawn node says it (ariaOwn)');
+  assert.match(s, /data-shape="classifier" tabindex="-1" role="img" aria-label="Block CargoBike, 4 parts, 1 reference, 1 constraint"/, 'the drawn node says it (ariaOwn)');
   assert.deepEqual(g.order, ['blocks->frame', ...M17.views[0].nodeIds, ...M17.edges.map(e => e.id)]);
   const d = describe(M17, V).split('\n');
-  assert.deepEqual(d.slice(0, 3), ['E-bike blocks: a block definition diagram of 10 elements and 5 lines.', 'Block definition diagram of model E-bike: blocks: E-bike blocks.', 'Block RentalVehicle.']);
-  assert.equal(d[3], 'Block EBike, 4 parts, 1 reference, 1 constraint.');
+  assert.deepEqual(d.slice(0, 3), ['Cargo bike blocks: a block definition diagram of 10 elements and 5 lines.', 'Block definition diagram of model Cargo e-bike: blocks: Cargo bike blocks.', 'Block DeliveryVehicle.']);
+  assert.equal(d[3], 'Block CargoBike, 4 parts, 1 reference, 1 constraint.');
   assert.equal(d.at(-1), 'Dependency from Dock to ChargeInterface: «use».');
   assert.equal(d.length, 2 + 10 + 5);
   assert.deepEqual(['ebike', 'charge-interface', 'range-equation', 'energy', 'nowhere'].map(id => T.word(M17, id)), ['Block', 'Interface block', 'Constraint block', 'Value type', null]);
@@ -148,7 +148,7 @@ test('names (§13), the reading order and describe(): the frame, then each eleme
   assert.equal(T.rows(M17, M17.views[0], 'nowhere'), null);
   assert.equal(T.text(M17, M17.views[0], 'ebike-battery'), '[0..1] · battery [1]');
   assert.equal(T.text(M17, M17.views[0], 'dock-uses-charge-interface'), '«use»');
-  assert.equal(T.text(M17, M17.views[0], 'ebike-is-rental-vehicle'), null);
+  assert.equal(T.text(M17, M17.views[0], 'ebike-is-delivery-vehicle'), null);
 });
 
 // ---- §7.3: validators, each with a passing and a failing case (the example passes every one)
@@ -175,8 +175,8 @@ test('validators (§7.3): the example breaks none; each rule fails on a model th
     assert.deepEqual([...p.ids].sort(), [...ids].sort(), rule);
     assert.ok(validate(m).some(q => q.rule === rule && q.path === p.path), `${rule}: in validate()`);
   }
-  assert.equal(bdProblems((m => (BREAKS['part-type'](m), m))(structuredClone(M17)))[0].message, 'part-type: part "EBike".wheels is typed by "Energy", a value type, not a block');
-  assert.equal(bdProblems((m => (BREAKS['part-agrees'](m), m))(structuredClone(M17)))[0].message, 'part-agrees: ebike-motor\'s part end (Motor [1]) and part "EBike".motor (Motor [2]) differ');
+  assert.equal(bdProblems((m => (BREAKS['part-type'](m), m))(structuredClone(M17)))[0].message, 'part-type: part "CargoBike".wheels is typed by "Energy", a value type, not a block');
+  assert.equal(bdProblems((m => (BREAKS['part-agrees'](m), m))(structuredClone(M17)))[0].message, 'part-agrees: ebike-motor\'s part end (Motor [1]) and part "CargoBike".motor (Motor [2]) differ');
 });
 
 test('validators (§7.3), the cases around each rule: what passes and what fails beyond the example', () => {
@@ -246,9 +246,9 @@ test('member rows (§7.4): a keyword picks the kind, the type picks it with none
 test('the panel\'s member rows (edits.member): New member adds the kind read, a row edited sets its kind, name and props in one transaction; errors said, nothing applied', () => {
   const add = (owner, text) => T.edits.member(M17, M17.views[0], owner, null, text);
   assert.deepEqual(add('motor', 'value torque: Torque [1]'), [{ op: 'add', element: { id: 'motor.torque', type: 'sysml.ValueProperty', label: 'torque', props: { valueType: 'Torque', multiplicity: '1' } }, owner: 'motor' }]);
-  const M2 = { ...M17, nodes: [...M17.nodes, { id: 'ebike.spare', type: 'uml.Comment', label: 'x' }] }; // an id taken by an element that is no member of EBike
+  const M2 = { ...M17, nodes: [...M17.nodes, { id: 'ebike.spare', type: 'uml.Comment', label: 'x' }] }; // an id taken by an element that is no member of CargoBike
   assert.deepEqual(T.edits.member(M2, M2.views[0], 'ebike', null, 'spare: Battery')[0].element, { id: 'ebike.spare2', type: 'sysml.PartProperty', label: 'spare', props: { valueType: 'Battery' } }, 'the type picks part; a fresh id');
-  assert.match(add('ebike', 'battery: Battery').error, /^member-names: "EBike" has a member named "battery" already/, 'a name EBike holds is refused (audit 39)');
+  assert.match(add('ebike', 'battery: Battery').error, /^member-names: "CargoBike" has a member named "battery" already/, 'a name CargoBike holds is refused (audit 39)');
   assert.deepEqual(add('range-equation', 'value v: Real'), { error: 'member-kinds: constraint block RangeEquation holds no value' });
   assert.equal(T.edits.member(M17, M17.views[0], 'nowhere', null, 'x'), null); assert.equal(T.edits.member({ ...M17, nodes: [...M17.nodes, { id: 'c', type: 'uml.Comment' }] }, M17.views[0], 'c', null, 'x'), null);
   const r = T.edits.member(M17, M17.views[0], 'ebike', 'ebike.dock', 'part dock: Dock [1]');
@@ -282,7 +282,7 @@ test('connect (§7.4): a part association adds the part property it draws, named
   assert.deepEqual(c('energy', 'battery', 0), { error: 'A value type holds no part' });
   assert.equal(c('motor', 'battery', 1), null, 'a reference association: the default');
   assert.deepEqual(c('energy', 'battery', 2), { error: 'A generalization joins two of one kind: value type and block differ' });
-  assert.equal(c('motor', 'rental-vehicle', 2), null); assert.equal(c('dock', 'charge-interface', 3), null);
+  assert.equal(c('motor', 'delivery-vehicle', 2), null); assert.equal(c('dock', 'charge-interface', 3), null);
   assert.deepEqual(c('dock', 'battery', 4), { error: 'A comment link runs from a comment' });
   // audit 48: drawn from a block to a comment, added from the comment, as every other SysML view's
   const n = { ...M17, nodes: [...M17.nodes, { id: 'note', type: 'uml.Comment', label: 'a note' }], views: [{ ...v, nodeIds: [...v.nodeIds, 'note'] }] };
@@ -300,7 +300,7 @@ test('save and reopen (DoD 6): a 30-step session undoes and redoes to byte-ident
   for (let i = 0; i < 5; i++) steps.push(
     [{ op: 'add', element: B(`b${i}`, `Part${i}`, [P(`b${i}.mass`, 'ValueProperty', 'mass', { valueType: 'Real' })]), view: V }],
     [{ op: 'add', element: { id: `t${i}`, type: 'sysml.ValueType', label: `Unit${i}`, props: { unit: 'kg' } }, view: V }],
-    [{ op: 'add', element: { id: `g${i}`, type: 'uml.Generalization', from: `b${i}`, to: 'rental-vehicle' }, view: V }],
+    [{ op: 'add', element: { id: `g${i}`, type: 'uml.Generalization', from: `b${i}`, to: 'delivery-vehicle' }, view: V }],
     [{ op: 'add', element: P(`b${i}.port`, 'Port', 'port', { kind: 'proxy', valueType: 'ChargeInterface' }), owner: `b${i}` }],
     [[{ op: 'set', id: `t${i}`, path: 'props.quantityKind', value: 'mass' }], [{ op: 'set', id: 'range-equation', path: 'props.constraint', value: `range = energy / consumption * ${i}` }], [{ op: 'set', id: `b${i}`, path: 'label', value: `Renamed${i}` }]][i % 3],
     [[{ op: 'hide', id: `b${i}`, view: V }], [{ op: 'delete', id: `t${i}` }], [{ op: 'set', id: `b${i}.port`, path: 'props.kind', value: 'full' }, { op: 'set', id: `b${i}.port`, path: 'props.valueType', value: 'Battery' }]][i % 3]);
@@ -358,7 +358,7 @@ test('audit 12: member-names judges a SysML classifier as a class: two parts nam
   const m = structuredClone(M17); by(m, 'ebike').members.push(P('ebike.battery-2', 'PartProperty', 'battery', { valueType: 'Battery' }));
   by(m, 'controller').members.push({ id: 'controller.set2', type: 'uml.Operation', label: 'setAssistLevel', props: { parameters: [{ name: 'level', valueType: 'Real' }] } });
   assert.deepEqual(T.validate(m, m.views[0]).filter(p => p.rule === 'member-names').map(p => [p.ids, p.message]),
-    [[['ebike', 'ebike.battery', 'ebike.battery-2'], 'member-names: "EBike" has two members named "battery" (ebike.battery, ebike.battery-2)']]);
+    [[['ebike', 'ebike.battery', 'ebike.battery-2'], 'member-names: "CargoBike" has two members named "battery" (ebike.battery, ebike.battery-2)']]);
   assert.deepEqual(T.validate(M17, M17.views[0]).filter(p => p.rule === 'member-names'), []);
 });
 
@@ -401,8 +401,8 @@ test('audit 20: what F2 on a frame edits (its field\'s text) is the view\'s titl
   const m = { schemaVersion: 2, nodes: [B('bike', 'Bike')], edges: [], views: [{ id: 'b', diagram: 'sysml.block-definition', title: 'Blocks', nodeIds: ['bike'] }] };
   const F = (x, id) => layout(x, 'b').families.find(f => f.id === id);
   assert.deepEqual([F(m, 'b->frame').title, F(m, 'b->frame').edit], ['bdd [Model] [Blocks]', 'Blocks']);
-  const p = structuredClone(m); p.nodes.push({ id: 'eb', type: 'uml.Package', label: 'E-bike' }); p.nodes[0].parent = 'eb'; Object.assign(p.views[0], { subject: 'eb', nodeIds: ['eb', 'bike'] });
-  assert.deepEqual([F(p, 'eb').title, F(p, 'eb').edit], ['bdd [Package] E-bike [Blocks]', 'E-bike']);
+  const p = structuredClone(m); p.nodes.push({ id: 'eb', type: 'uml.Package', label: 'DeliveryFleet' }); p.nodes[0].parent = 'eb'; Object.assign(p.views[0], { subject: 'eb', nodeIds: ['eb', 'bike'] });
+  assert.deepEqual([F(p, 'eb').title, F(p, 'eb').edit], ['bdd [Package] DeliveryFleet [Blocks]', 'DeliveryFleet']);
   delete m.views[0].title; assert.equal(F(m, 'b->frame').edit, '', 'no title: an empty field');
 });
 

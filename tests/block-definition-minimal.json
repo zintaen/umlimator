@@ -5,38 +5,38 @@
   {
    "id": "bike",
    "type": "sysml.Block",
-   "label": "Bike",
+   "label": "CargoBike",
    "members": [
     {
-     "id": "bike.wheel",
+     "id": "bike.cargoBox",
      "type": "sysml.PartProperty",
-     "label": "wheel",
+     "label": "cargoBox",
      "props": {
-      "valueType": "Wheel",
+      "valueType": "CargoBox",
       "multiplicity": "1"
      }
     }
    ]
   },
   {
-   "id": "wheel",
+   "id": "cargo-box",
    "type": "sysml.Block",
-   "label": "Wheel"
+   "label": "CargoBox"
   }
  ],
  "edges": [
   {
-   "id": "bike-wheel",
+   "id": "bike-cargo-box",
    "type": "uml.Association",
    "from": "bike",
-   "to": "wheel",
+   "to": "cargo-box",
    "props": {
     "ends": {
      "from": {
       "aggregation": "composite"
      },
      "to": {
-      "role": "wheel",
+      "role": "cargoBox",
       "multiplicity": "1"
      }
     }
@@ -50,7 +50,7 @@
    "title": "Minimal",
    "nodeIds": [
     "bike",
-    "wheel"
+    "cargo-box"
    ]
   }
  ]

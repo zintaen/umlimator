@@ -96,10 +96,10 @@ test('the minimal fixtures: what §15.3 says each holds, and no problem', () => 
   for (const t of TYPES) assert.deepEqual(said(FIX[`${t}-minimal`]), [], t);
   const r = FIX['requirement-minimal'];
   assert.deepEqual([r.nodes.map(n => [n.type, n.parent ?? null]), r.edges.map(e => [e.type, e.from, e.to])],
-    [[['sysml.Requirement', null], ['sysml.Requirement', 'need'], ['sysml.Block', null]], [['sysml.Satisfy', 'dock', 'lock']]], 'two requirements, one containing the other, a block satisfying one');
+    [[['sysml.Requirement', null], ['sysml.Requirement', 'need'], ['sysml.Block', null]], [['sysml.Satisfy', 'cargo-box', 'lock']]], 'two requirements, one containing the other, a block satisfying one');
   const b = FIX['block-definition-minimal'];
   assert.deepEqual([node(b, 'bike').members.map(x => [x.type, x.props.valueType]), b.edges.map(e => [e.type, e.props.ends.from.aggregation])],
-    [[['sysml.PartProperty', 'Wheel']], [['uml.Association', 'composite']]], 'a block with a part typed by a second block, one composite association');
+    [[['sysml.PartProperty', 'CargoBox']], [['uml.Association', 'composite']]], 'a block with a part typed by a second block, one composite association');
   const i = FIX['internal-block-minimal'];
   assert.deepEqual([node(i, 'bike').members.map(x => x.type), i.edges.map(e => e.type)], [['sysml.PartProperty', 'sysml.PartProperty'], ['sysml.Connector']], 'a block with two parts and one connector between their ports');
   const p = FIX['parametric-minimal'];

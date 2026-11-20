@@ -55,12 +55,29 @@
      }
     },
     {
+     "id": "ebike.cargoBox",
+     "type": "sysml.PartProperty",
+     "label": "cargoBox",
+     "props": {
+      "valueType": "CargoBox",
+      "multiplicity": "1"
+     }
+    },
+    {
      "id": "ebike.dock",
      "type": "sysml.ReferenceProperty",
      "label": "dock",
      "props": {
       "valueType": "Dock",
       "multiplicity": "0..1"
+     }
+    },
+    {
+     "id": "ebike.payload",
+     "type": "sysml.ValueProperty",
+     "label": "payload",
+     "props": {
+      "valueType": "Mass"
      }
     },
     {
@@ -88,14 +105,6 @@
      }
     },
     {
-     "id": "ebike.ladenConsumption",
-     "type": "sysml.ValueProperty",
-     "label": "ladenConsumption",
-     "props": {
-      "valueType": "EnergyPerDistance"
-     }
-    },
-    {
      "id": "ebike.emptyRange",
      "type": "sysml.ValueProperty",
      "label": "emptyRange",
@@ -117,6 +126,14 @@
      "label": "usable",
      "props": {
       "valueType": "UsableEnergy"
+     }
+    },
+    {
+     "id": "ebike.load",
+     "type": "sysml.ConstraintProperty",
+     "label": "load",
+     "props": {
+      "valueType": "LadenConsumption"
      }
     },
     {
@@ -167,6 +184,40 @@
      "label": "share",
      "props": {
       "valueType": "Real"
+     }
+    }
+   ]
+  },
+  {
+   "id": "laden-consumption",
+   "type": "sysml.ConstraintBlock",
+   "label": "LadenConsumption",
+   "props": {
+    "constraint": "laden = empty + 0.1 * payload"
+   },
+   "members": [
+    {
+     "id": "laden-consumption.laden",
+     "type": "sysml.ConstraintParameter",
+     "label": "laden",
+     "props": {
+      "valueType": "EnergyPerDistance"
+     }
+    },
+    {
+     "id": "laden-consumption.empty",
+     "type": "sysml.ConstraintParameter",
+     "label": "empty",
+     "props": {
+      "valueType": "EnergyPerDistance"
+     }
+    },
+    {
+     "id": "laden-consumption.payload",
+     "type": "sysml.ConstraintParameter",
+     "label": "payload",
+     "props": {
+      "valueType": "Mass"
      }
     }
    ]
@@ -292,6 +343,51 @@
    }
   },
   {
+   "id": "bind-payload",
+   "type": "sysml.BindingConnector",
+   "from": "ebike.payload",
+   "to": "laden-consumption.payload",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "ebike.load"
+     }
+    }
+   }
+  },
+  {
+   "id": "bind-load-empty",
+   "type": "sysml.BindingConnector",
+   "from": "range-equation.consumption",
+   "to": "laden-consumption.empty",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "ebike.empty"
+     },
+     "to": {
+      "part": "ebike.load"
+     }
+    }
+   }
+  },
+  {
+   "id": "bind-load-laden",
+   "type": "sysml.BindingConnector",
+   "from": "laden-consumption.laden",
+   "to": "range-equation.consumption",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "ebike.load"
+     },
+     "to": {
+      "part": "ebike.laden"
+     }
+    }
+   }
+  },
+  {
    "id": "bind-usable-empty",
    "type": "sysml.BindingConnector",
    "from": "usable-energy.usable",
@@ -332,19 +428,6 @@
     "ends": {
      "to": {
       "part": "ebike.empty"
-     }
-    }
-   }
-  },
-  {
-   "id": "bind-laden-consumption",
-   "type": "sysml.BindingConnector",
-   "from": "ebike.ladenConsumption",
-   "to": "range-equation.consumption",
-   "props": {
-    "ends": {
-     "to": {
-      "part": "ebike.laden"
      }
     }
    }
@@ -451,6 +534,15 @@
    "title": "The cargo bike's delivery range, empty and laden",
    "parent": null,
    "subject": "ebike",
+   "present": {
+    "ebike.empty": {
+     "ports": {
+      "range-equation.consumption": {
+       "side": "top"
+      }
+     }
+    }
+   },
    "nodeIds": [
     "ebike"
    ]
@@ -462,6 +554,15 @@
    "parent": "range",
    "direction": "down",
    "subject": "ebike",
+   "present": {
+    "ebike.empty": {
+     "ports": {
+      "range-equation.consumption": {
+       "side": "top"
+      }
+     }
+    }
+   },
    "nodeIds": [
     "ebike"
    ]

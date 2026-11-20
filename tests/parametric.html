@@ -55,9 +55,9 @@ try {
     const tag = `${theme}, ${fname}, ${direction}`, h = mount(M, { legend: true }), bad = [], svg = pick('.stage svg');
     check(`${tag}: the frame, nine boxes (three constraints), nine parameters, eight bindings`, all('.node.part').length === 9 && all('.node.part.constraint').length === 3 && all('.node.port').length === 9
       && all('.edge-g').length === 8 && !!pick('.family[data-family="ebike"] rect.family-box'), [all('.node').map(g => g.dataset.id), all('.edge-g').length]);
-    check(`${tag}: the frame's header`, pick('.family[data-family="ebike"] .family-title').textContent === 'par [Block] EBike [E-bike range]', pick('.family[data-family="ebike"] .family-title').textContent);
-    check(`${tag}: a constraint property rounded, its expression under its name`, pick('.node[data-id="ebike.eco"] .n-body').getAttribute('rx') === '10'
-      && /^\{range = energy/.test(pick('.node[data-id="ebike.eco"] .c-expr').textContent), pick('.node[data-id="ebike.eco"]').outerHTML.slice(0, 400));
+    check(`${tag}: the frame's header`, pick('.family[data-family="ebike"] .family-title').textContent === 'par [Block] CargoBike [Cargo bike range]', pick('.family[data-family="ebike"] .family-title').textContent);
+    check(`${tag}: a constraint property rounded, its expression under its name`, pick('.node[data-id="ebike.empty"] .n-body').getAttribute('rx') === '10'
+      && /^\{range = energy/.test(pick('.node[data-id="ebike.empty"] .c-expr').textContent), pick('.node[data-id="ebike.empty"]').outerHTML.slice(0, 400));
     const nodes = all('.node'), B = Object.fromEntries(nodes.map(g => [g.dataset.id, box(g.querySelector('.n-mask'))])), F = box(pick('.family[data-family="ebike"] .family-box'));
     all('.node.part').forEach(g => g.querySelectorAll('text').forEach(t => { if (!inside(box(t), B[g.dataset.id])) bad.push(`${g.dataset.id}: "${t.textContent}" spills`); }));
     all('.node.part').forEach(g => { if (!inside(B[g.dataset.id], F)) bad.push(`${g.dataset.id} outside the frame`); });
@@ -71,12 +71,12 @@ try {
     all('.edge-g').forEach(g => { const v = g.querySelector('path.edge').getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number);
       [v.slice(0, 2), v.slice(-2)].forEach(p => { const d = Math.min(...nodes.map(q => onEdge(p, B[q.dataset.id]))); if (d > 1) offs.push([g.dataset.from, g.dataset.to, p, +d.toFixed(2)]); }); });
     check(`${tag}: each line ends on a parameter's square or a value's box`, !offs.length, offs);
-    check(`${tag}: names a screen reader reads`, pick('.family[data-family="ebike"]').getAttribute('aria-label') === 'Parametric diagram of block EBike: E-bike range'
-      && pick('.node[data-id="ebike.eco"]').getAttribute('aria-label') === 'Constraint eco: RangeEquation {range = energy / consumption}, in EBike, 3 parameters'
-      && pick('.node[data-id="ebike.eco->range-equation.range"]').getAttribute('aria-label') === 'Parameter range: Distance of eco'
-      && pick('.node[data-id="ebike.ecoRange"]').getAttribute('aria-label') === 'Value ecoRange: Distance, in EBike'
-      && [...all('.edge-g title')].some(t => t.textContent === 'Binding from value ecoRange to parameter range of eco'),
-    [pick('.node[data-id="ebike.eco"]').getAttribute('aria-label'), all('.edge-g title').map(t => t.textContent)]);
+    check(`${tag}: names a screen reader reads`, pick('.family[data-family="ebike"]').getAttribute('aria-label') === 'Parametric diagram of block CargoBike: Cargo bike range'
+      && pick('.node[data-id="ebike.empty"]').getAttribute('aria-label') === 'Constraint empty: RangeEquation {range = energy / consumption}, in CargoBike, 3 parameters'
+      && pick('.node[data-id="ebike.empty->range-equation.range"]').getAttribute('aria-label') === 'Parameter range: Distance of empty'
+      && pick('.node[data-id="ebike.emptyRange"]').getAttribute('aria-label') === 'Value emptyRange: Distance, in CargoBike'
+      && [...all('.edge-g title')].some(t => t.textContent === 'Binding from value emptyRange to parameter range of empty'),
+    [pick('.node[data-id="ebike.empty"]').getAttribute('aria-label'), all('.edge-g title').map(t => t.textContent)]);
     check(`${tag}: reading order: the values, then each constraint and its parameters`, all('.keys .node-key').slice(0, 1).map(k => k.dataset.node).join() === 'ebike.batteryCapacity', all('.keys .node-key').slice(0, 4).map(k => k.dataset.node));
     const legend = all('.m-legend b').map(b => b.textContent);
     check(`${tag}: the legend keys the binding`, same(legend, ['Binding']), legend);
@@ -125,53 +125,53 @@ try {
   all('.um-editor .um-pal button')[1].click(); name('mass : Mass');
   gives('the palette\'s Value property: a sysml.ValueProperty', [{ op: 'add', element: { id: 'ebike.mass', type: 'sysml.ValueProperty', label: 'mass', props: { valueType: 'Mass' } }, owner: 'ebike' }],
     m => m.nodes[0].members.some(x => x.id === 'ebike.mass'), m1);
-  click('.node[data-id="ebike.boost"] .c-name'); key('F2');
-  check('F2 on a constraint property: a field holding name : Type', pick('.um-rename') && pick('.um-rename').value === 'boost : RangeEquation', pick('.um-rename') && pick('.um-rename').value);
+  click('.node[data-id="ebike.laden"] .c-name'); key('F2');
+  check('F2 on a constraint property: a field holding name : Type', pick('.um-rename') && pick('.um-rename').value === 'laden : RangeEquation', pick('.um-rename') && pick('.um-rename').value);
   name('sport : RangeEquation');
-  const m2 = gives('F2 on a constraint property: its name set', [{ op: 'set', id: 'ebike.boost', path: 'label', value: 'sport' }], m => m.nodes[0].members.find(x => x.id === 'ebike.boost').label === 'sport', m1);
+  const m2 = gives('F2 on a constraint property: its name set', [{ op: 'set', id: 'ebike.laden', path: 'label', value: 'sport' }], m => m.nodes[0].members.find(x => x.id === 'ebike.laden').label === 'sport', m1);
   h.update(m2);
   // F2 on the frame: a field holding the subject's name, not the whole header (audit 20)
   h.select({ type: 'container', id: 'ebike', view: VID }); key('F2');
-  check('F2 on the frame: a field holding the block\'s name', pick('.um-rename') && pick('.um-rename').value === 'EBike', pick('.um-rename') && pick('.um-rename').value);
+  check('F2 on the frame: a field holding the block\'s name', pick('.um-rename') && pick('.um-rename').value === 'CargoBike', pick('.um-rename') && pick('.um-rename').value);
   if (pick('.um-rename')) key('Escape', {}, pick('.um-rename'));
   // a binding from a value by L, arrows to a parameter and Enter, the picker: it runs to the parameter, through its constraint property
-  click('.node[data-id="ebike.ecoRange"] .c-name'); key('l');
+  click('.node[data-id="ebike.emptyRange"] .c-name'); key('l');
   for (let i = 0; i < 24 && !(pick('.um-target') && pick('.um-target').dataset.id.includes('->')); i++) key(['ArrowRight', 'ArrowDown', 'ArrowUp', 'ArrowLeft'][Math.floor(i / 6)]);
   const target = pick('.um-target') && pick('.um-target').dataset.id; key('Enter');
   check('L from a value, arrows to a parameter and Enter open the picker with the two lines', !!target && target.includes('->') && same(all('.um-pick button').map(b => b.textContent), ['Binding', 'Comment link']), [target, all('.um-pick button').map(b => b.textContent)]);
   all('.um-pick button')[0].click();
   { const e = last(), c = e && e.commands[0], m = c && apply(m2, e.commands);
     check('Binding: a sysml.BindingConnector from the value to the parameter, ends.to.part its constraint property, no label', e.commands.length === 1 && c.op === 'add' && c.element.type === 'sysml.BindingConnector'
-      && c.element.from === 'ebike.ecoRange' && same(c.element.props.ends, { to: { part: target.split('->')[0] } }) && c.element.to === target.split('->')[1] && !('label' in c.element) && !errors(m).length, [e, m && errors(m)]); }
+      && c.element.from === 'ebike.emptyRange' && same(c.element.props.ends, { to: { part: target.split('->')[0] } }) && c.element.to === target.split('->')[1] && !('label' in c.element) && !errors(m).length, [e, m && errors(m)]); }
   // the same by pointer: the handle dragged from a value onto a parameter, the picker
-  click('.node[data-id="ebike.boostRange"] .c-name'); handleTo(centre('.node[data-id="ebike.eco->range-equation.consumption"] .n-mask'));
+  click('.node[data-id="ebike.ladenRange"] .c-name'); handleTo(centre('.node[data-id="ebike.empty->range-equation.consumption"] .n-mask'));
   check('the handle dragged from a value onto a parameter opens the picker', same(all('.um-pick button').map(b => b.textContent), ['Binding', 'Comment link']), all('.um-pick button').map(b => b.textContent));
   if (pick('.um-pick button')) press(all('.um-pick button')[0]); // pressed, as a pointer does: a click alone just after a drag is the drag's
   { const e = last(), c = e && e.commands[0], m = c && apply(m2, e.commands);
-    check('Binding by the handle: from the value to the parameter, ends.to.part its constraint property', !!c && c.op === 'add' && c.element.type === 'sysml.BindingConnector' && c.element.from === 'ebike.boostRange'
-      && c.element.to === 'range-equation.consumption' && same(c.element.props.ends, { to: { part: 'ebike.eco' } }) && !errors(m).length, [e, m && errors(m)]); }
-  click('.node[data-id="ebike.eco->range-equation.range"] .n-mask');
+    check('Binding by the handle: from the value to the parameter, ends.to.part its constraint property', !!c && c.op === 'add' && c.element.type === 'sysml.BindingConnector' && c.element.from === 'ebike.ladenRange'
+      && c.element.to === 'range-equation.consumption' && same(c.element.props.ends, { to: { part: 'ebike.empty' } }) && !errors(m).length, [e, m && errors(m)]); }
+  click('.node[data-id="ebike.empty->range-equation.range"] .n-mask');
   { const n = ed.length; for (const k of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) if (ed.length === n) key(k, { altKey: true }); // the arrows along its side move nothing
     const e = ed.length > n ? last() : null, c = e && e.commands[0];
-    check('Alt + an arrow across a parameter\'s side: its side, under its constraint property in the view', !!c && c.op === 'set' && same(c.path, ['present', 'ebike.eco', 'ports', 'range-equation.range', 'side']), e); }
+    check('Alt + an arrow across a parameter\'s side: its side, under its constraint property in the view', !!c && c.op === 'set' && same(c.path, ['present', 'ebike.empty', 'ports', 'range-equation.range', 'side']), e); }
   // a parameter dragged onto its constraint property's other side (its side now: the one the arrows left it on, or not the top)
-  { const id = 'ebike.eco->range-equation.consumption', o = pick('.node[data-id="ebike.eco"] .n-mask').getBoundingClientRect(), from = centre(`.node[data-id="${id}"] .n-mask`);
+  { const id = 'ebike.empty->range-equation.consumption', o = pick('.node[data-id="ebike.empty"] .n-mask').getBoundingClientRect(), from = centre(`.node[data-id="${id}"] .n-mask`);
     const at = [o.x + o.width / 2, o.y + o.height - 2], n = ed.length;
     ptr(pick(`.node[data-id="${id}"]`), 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (at[0] - from[0]) * i / 4, from[1] + (at[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', at);
     const e = ed.length > n ? last() : null;
-    check('a parameter dragged to its constraint property\'s bottom: its side, under its constraint property in the view', !!e && same(e.commands, [{ op: 'set', view: VID, path: ['present', 'ebike.eco', 'ports', 'range-equation.consumption', 'side'], value: 'bottom' }]), e); }
+    check('a parameter dragged to its constraint property\'s bottom: its side, under its constraint property in the view', !!e && same(e.commands, [{ op: 'set', view: VID, path: ['present', 'ebike.empty', 'ports', 'range-equation.consumption', 'side'], value: 'bottom' }]), e); }
   h.select({ type: 'container', id: 'ebike', view: VID });
   const nw = panel('[data-new]');
-  check('the subject\'s members listed by their rows', !!nw && panel('[data-m="ebike.eco"]').value === 'eco : RangeEquation' && panel('[data-m="ebike.ecoRange"]').value === 'ecoRange : Distance',
+  check('the subject\'s members listed by their rows', !!nw && panel('[data-m="ebike.empty"]').value === 'empty : RangeEquation' && panel('[data-m="ebike.emptyRange"]').value === 'emptyRange : Distance',
     nw && all('.um-editor [data-m]').map(i => i.value));
   if (nw) { nw.value = 'speed : Speed'; key('Enter', {}, nw);
     gives('a member row `name : Type`: a value property of the subject', [{ op: 'add', element: { id: 'ebike.speed', type: 'sysml.ValueProperty', label: 'speed', props: { valueType: 'Speed' } }, owner: 'ebike' }],
       m => m.nodes[0].members.some(x => x.id === 'ebike.speed'), m2); }
   h = mount(m2, { editable: true });
-  click('.node[data-id="ebike.eco"] .c-name'); key('Delete');
-  gives('Delete on a constraint property: deleted from the model, its bindings with it', [{ op: 'delete', id: 'ebike.eco' }], m => !m.edges.some(e => e.id === 'bind-eco-range'), m2);
-  click('.node[data-id="ebike.eco->range-equation.range"] .n-mask'); key('Delete');
-  gives('Delete on a parameter on a constraint property: the bindings through it', [{ op: 'delete', id: 'bind-eco-range' }], m => !m.edges.some(e => e.id === 'bind-eco-range'), m2);
+  click('.node[data-id="ebike.empty"] .c-name'); key('Delete');
+  gives('Delete on a constraint property: deleted from the model, its bindings with it', [{ op: 'delete', id: 'ebike.empty' }], m => !m.edges.some(e => e.id === 'bind-empty-range'), m2);
+  click('.node[data-id="ebike.empty->range-equation.range"] .n-mask'); key('Delete');
+  gives('Delete on a parameter on a constraint property: the bindings through it', [{ op: 'delete', id: 'bind-empty-range' }], m => !m.edges.some(e => e.id === 'bind-empty-range'), m2);
   click('.node[data-id="ebike.usable->usable-energy.share"] .n-mask'); key('Delete', { shiftKey: true });
   gives('Shift + Delete on a parameter: the parameter from its constraint block, its bindings with it', [{ op: 'delete', id: 'usable-energy.share' }], m => !m.nodes.find(n => n.id === 'usable-energy').members.some(x => x.id === 'usable-energy.share'), m2);
   h.destroy();
