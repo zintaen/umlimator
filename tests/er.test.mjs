@@ -148,6 +148,12 @@ test('a column\'s row (S9): name type [PK] [FK table.column] [UK] [NULL], flags 
   assert.deepEqual(parseColumn('note  numeric(10, 2)  null uk', I), { label: 'note', props: { dataType: 'numeric(10, 2)', nullable: true, unique: true } });
   assert.deepEqual(parseColumn('ref FK er-book.id PK', I), { label: 'ref', props: { foreignKey: true, references: 'er-book.id', primaryKey: true } }, 'by id; no type');
   assert.deepEqual(parseColumn('x int FK', I), { label: 'x', props: { dataType: 'int', foreignKey: true } }, 'FK alone (fk-flag then warns)');
+  // a comparison inside paired parentheses is text, not a bracket; a bracket closed by another kind does not pair (audit 59)
+  assert.deepEqual(parseColumn('amount int CHECK (amount > 0)', I), { label: 'amount', props: { dataType: 'int CHECK (amount > 0)' } });
+  assert.deepEqual(parseColumn('qty int CHECK (qty >= 1)', I), { label: 'qty', props: { dataType: 'int CHECK (qty >= 1)' } });
+  assert.deepEqual(parseColumn('price numeric(10,2) CHECK (price < 1000) NULL', I), { label: 'price', props: { dataType: 'numeric(10,2) CHECK (price < 1000)', nullable: true } });
+  assert.deepEqual(parseColumn('m map<string, list<int>> NULL', I), { label: 'm', props: { dataType: 'map<string, list<int>>', nullable: true } });
+  for (const bad of ['x numeric(10]', 'x map<int', 'x int >', 'y list<int)>']) assert.match(parseColumn(bad, I).error, /its brackets do not pair/, bad);
   assert.deepEqual(parseColumn('x int FK NOT NULL', I), { label: 'x', props: { dataType: 'int', foreignKey: true } }, 'audit 16: FK with no target, then NOT NULL: NOT is no target');
   assert.deepEqual(parseColumn('id', I), { label: 'id', props: {} });
   for (const [t, why] of [['', 'it is empty'], ['id int PK pk', 'PK is written twice'], ['id int PK extra', '"extra" is left over: write name type [PK] [FK table.column] [UK] [NULL]'], ['x int FK customer.nope', 'FK customer.nope names no column (table.column)'],
