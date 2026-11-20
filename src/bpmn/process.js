@@ -253,6 +253,33 @@ function bzGeo({ model, view, pos: pins, memo }) {
   return bzFinish(P, g, { runs, anchors, grown, side, down });
 }
 
+// a line's label that lies on another line as drawn: the layout routes a line again after another's label was placed, and a
+// line's end sunk 16 px into a side grown for boundary events runs on (0.45.0's known gap: Alt + Up on the example's timer
+// put "Payment result" on the Charge request line). Such a label slides along its own line, centred on it as the layout puts
+// it, else beside it, to the nearest spot clear of every other line, node, label and pool, lane or box border; with none it stays. A label
+// on no other line is never moved, so a picture with none draws as before. edges: as drawn, a line with a moved label copied
+// in place (layoutTyped's own objects, which a memo may keep, are never changed); nodes: rectangles a label keeps off;
+// frames: rectangles whose borders it keeps off
+const bzSegs = P => P.slice(1).map((q, k) => [P[k], q]);
+const bzHits = (L, [a, b]) => Math.max(a[0], b[0]) > L.x && Math.min(a[0], b[0]) < L.x + L.w && Math.max(a[1], b[1]) > L.y && Math.min(a[1], b[1]) < L.y + L.h;
+const bzMeets = (L, r, k = 0) => L.x < r.x + r.w + k && r.x - k < L.x + L.w && L.y < r.y + r.h + k && r.y - k < L.y + L.h;
+const bzAcross = (L, f) => bzMeets(L, f) && !(L.x >= f.x && L.y >= f.y && L.x + L.w <= f.x + f.w && L.y + L.h <= f.y + f.h) && !(f.x >= L.x && f.y >= L.y && f.x + f.w <= L.x + L.w && f.y + f.h <= L.y + L.h);
+function bzRelabel(edges, nodes, frames) {
+  // as check() reads a label: 1 px in on each side
+  const onOther = (e, L) => { const r = { x: L.x + 1, y: L.y + 1, w: L.w - 2, h: L.h - 2 }; return edges.some(o => o !== e && bzSegs(o.pts).some(s => bzHits(r, s))); };
+  edges.forEach((e, i) => { const L = e.lbl; if (!L || !Array.isArray(e.pts) || !onOther(e, L)) return;
+    // the spots (a label's centre): on a segment, then beside it (4 px off the line, on either side), each set nearest first
+    const c0 = [L.x + L.w / 2, L.y + L.h / 2], on = [], beside = [], near = (p, q) => Math.hypot(p[0] - c0[0], p[1] - c0[1]) - Math.hypot(q[0] - c0[0], q[1] - c0[1]);
+    bzSegs(e.pts).forEach(([a, b]) => { const v = a[0] === b[0], h = a[1] === b[1]; if (v === h) return; // a slant or a point: no spot
+      const k = v ? 1 : 0, half = (v ? L.h : L.w) / 2, off = (v ? L.w : L.h) / 2 + 4;
+      for (let t = Math.min(a[k], b[k]) + half + 3; t <= Math.max(a[k], b[k]) - half - 3; t += 2) on.push(v ? [a[0], t] : [t, a[1]]);
+      for (let t = Math.min(a[k], b[k]) + 3; t <= Math.max(a[k], b[k]) - 3; t += 2) [-off, off].forEach(d => beside.push(v ? [a[0] + d, t] : [t, a[1] + d])); });
+    const spots = [...on.sort(near), ...beside.sort(near)];
+    const clear = M => !onOther(e, M) && !nodes.some(n => bzMeets(M, n, 2)) && !frames.some(f => bzAcross(M, f))
+      && !edges.some((o, j) => j !== i && o.lbl && bzMeets(M, o.lbl, 2));
+    for (const [x, y] of spots) { const M = { ...L, x: r2(x - L.w / 2), y: r2(y - L.h / 2) }; if (clear(M)) { edges[i] = { ...e, lbl: M }; return; } } });
+}
+
 /* The laid-out graph as it is drawn, a new object: the bands; the activities at their own size and the boundary circles on
    their borders; the anchors gone and their lines' ends on the pools' borders; the headers, groups and labels outside */
 function bzFinish(P, g, { runs, anchors, grown, side, down }) {
@@ -302,6 +329,7 @@ function bzFinish(P, g, { runs, anchors, grown, side, down }) {
     const b = l.anchor && band.get(l.anchor.pool);
     if (b) { const k = l.anchor.w === 'from' ? 0 : c.pts.length - 1; c.pts[k][down ? 0 : 1] = l.anchor.above ? b[A] : b[A] + b[S]; Object.assign(c, { [l.anchor.w === 'from' ? 's' : 't']: byId[l.anchor.pool], [l.anchor.w]: l.anchor.pool }); }
     return c; });
+  bzRelabel(edges, [...laid, ...circles, ...heads], [...families, ...bands]); // edges: bzFinish's own array
   // the reading order (§13): each pool, its lanes, each lane's items by rank (a box's contents after it, an activity's
   // boundary events after it), what is in no pool, the groups, then the lines
   const order = [];
