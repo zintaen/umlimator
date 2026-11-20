@@ -1,4 +1,4 @@
-import { jsonText, labelOr, elName } from '../core/model.js';
+import { jsonText, labelOr, elName, oneNamed } from '../core/model.js';
 import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { r2 } from '../draw/shapes.js';
@@ -34,7 +34,7 @@ function SYS_IB_INDEX(model, view) {
 }
 // a port's type: its name, and whether ~ conjugates it (§8.2)
 const SYS_IB_TYPE = p => { const t = String(SYS_IB_PROPS(p).valueType ?? '').trim(), name = t.replace(/^~\s*/, ''); return { conj: t.startsWith('~') && name !== '', name }; }; // a lone ~ conjugates nothing
-const SYS_IB_IFACE = (I, name) => { const c = name ? [...I.at.values()].filter(n => n.type === 'sysml.InterfaceBlock' && elName(n) === name) : []; return c.length === 1 ? c[0] : null; };
+const SYS_IB_IFACES = (I, name) => (name ? [...I.at.values()].filter(n => n.type === 'sysml.InterfaceBlock' && elName(n) === name) : []), SYS_IB_IFACE = (I, name) => oneNamed(SYS_IB_IFACES(I, name));
 // the way a port's items flow, seen from its owner: in, out or inout (both), from the flow properties of the interface block
 // that types it, turned round by ~; null when no interface block with flow properties types it
 function SYS_IB_FLOW(I, p) {
@@ -129,9 +129,10 @@ function SYS_IB_GEO({ model, view, pos, memo }) {
   const raw = csGeo({ model: P.model, view: P.view, pos, memo });
   const d = SYS_DRESS(raw, model, view, id => SYS_IB_SAY(I, raw, id));
   const memberOf = id => { const k = String(id).indexOf('->'); return k < 0 ? id : String(id).slice(k + 2); };
-  // a port reads the interface block that types it, whose flow properties its arrow draws: what diff() marks it by (audit 49)
-  const out = { ...d, nodes: d.nodes.map(n => { if (n.shape !== 'port') return n; const m = I.el(memberOf(n.id)), f = m ? SYS_IB_FLOW(I, m) : null, B = m ? SYS_IB_IFACE(I, SYS_IB_TYPE(m).name) : null;
-    const rd = B && typeof B.id === 'string' ? [...new Set([...(Array.isArray(n.reads) ? n.reads : []), B.id])] : null;
+  // a port reads the interface block that types it, whose flow properties its arrow draws: what diff() marks it by (audit 49),
+  // and each namesake, which leaves it no arrow when it comes (audit 53)
+  const out = { ...d, nodes: d.nodes.map(n => { if (n.shape !== 'port') return n; const m = I.el(memberOf(n.id)), f = m ? SYS_IB_FLOW(I, m) : null, Bs = m ? SYS_IB_IFACES(I, SYS_IB_TYPE(m).name).map(x => x.id).filter(k => typeof k === 'string') : [];
+    const rd = Bs.length ? [...new Set([...(Array.isArray(n.reads) ? n.reads : []), ...Bs])] : null;
     return { ...n, member: memberOf(n.id), ...(f ? { flow: f } : {}), ...(rd ? { reads: rd } : {}) }; }),
     edges: d.edges.map(e => { const x = I.E.get(e.id), f = x && x.type === 'sysml.Connector' ? SYS_IB_IF(x) : null, s = f && SYS_IB_SPOT(e);
       return s ? { ...e, item: { ...s, u: f.direction === 'to-from' ? [-s.u[0], -s.u[1]] : s.u } } : e; }) };

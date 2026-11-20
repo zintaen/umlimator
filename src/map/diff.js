@@ -396,19 +396,20 @@ export function diff(before, after) {
   const topOf = new Map(), elOf = new Map(), vids = new Set(views.filter(Boolean).map(v => v.id));
   [...out.nodes, ...views.flatMap(v => arr(v && v.nodes))].forEach(n => { if (!n || typeof n !== 'object' || n.id == null || elOf.has(n.id)) return; elOf.set(n.id, n);
     for (const s = [n], seen = new Set(); s.length;) { const x = s.pop(); if (!x || typeof x !== 'object' || seen.has(x)) continue; seen.add(x); if (x.id != null && !topOf.has(x.id)) topOf.set(x.id, n.id); arr(x.members).forEach(y => s.push(y)); } });
-  // an element named by its name (a part's valueType, an attribute's type), as it was or is: by the name before a rename too
-  const named0 = new Map(); [...arr(A.nodes), ...arr(A.views).flatMap(v => arr(v && v.nodes)), ...elOf.values()].forEach(n => { if (n && typeof n === 'object' && typeof n.label === 'string' && topOf.has(n.id) && !named0.has(n.label)) named0.set(n.label, topOf.get(n.id)); });
+  // an element named by its name (a part's valueType, an attribute's type), as it was or is: by the name before a rename too,
+  // and every element of that name (audit 53: a second interface block named as a port's type, which leaves it no arrow)
+  const named0 = new Map(); [...arr(A.nodes), ...arr(A.views).flatMap(v => arr(v && v.nodes)), ...elOf.values()].forEach(n => { if (n && typeof n === 'object' && typeof n.label === 'string' && topOf.has(n.id)) { const l = named0.get(n.label) || named0.set(n.label, []).get(n.label), t = topOf.get(n.id); if (!l.includes(t)) l.push(t); } });
   // the strings an element's fields hold, but for its own words (audit 43: a C4 container labelled Shop API read as naming the
   // map card Shop API, and its views were listed with the card's change): a name, a caption, a description names nothing
   const wordKeys = new Set(['label', 'sublabel', 'title', 'description', 'note', 'notes', 'doc', 'body', 'text', 'technology', 'caption', 'icon']);
   const texts = x => { const l = []; for (const s = [x], seen = new Set(); s.length;) { const y = s.pop(); if (typeof y === 'string') l.push(y); else if (y && typeof y === 'object' && !seen.has(y)) { seen.add(y); Object.entries(y).forEach(([k, z]) => { if (Array.isArray(y) || !wordKeys.has(k)) s.push(z); }); } } return l; };
-  const refs = v => { const ids = new Set(), vs = new Set(), name = s => topOf.has(s) ? topOf.get(s) : typeof s !== 'string' ? null : named0.get(s) ?? named0.get(s.split('::').pop());
+  const refs = v => { const ids = new Set(), vs = new Set(), name = s => topOf.has(s) ? [topOf.get(s)] : typeof s !== 'string' ? [] : named0.get(s) ?? named0.get(s.split('::').pop()) ?? [];
     const up = (t, l) => { for (let k = 0; t != null && !ids.has(t) && k < 1e4; k++) { ids.add(t); l.push(t); const p = (elOf.get(t) || {}).parent; t = topOf.has(p) ? topOf.get(p) : null; } };
     let now = []; [...arr(v.nodeIds), ...arr(v.nodes).map(n => n && n.id)].forEach(id => topOf.has(id) && up(topOf.get(id), now));
-    linesOf(out, v, ups).forEach(e => [e.from, e.to, ...texts(e.props)].forEach(s => { const n = name(s); if (n != null) up(n, now); }));
+    linesOf(out, v, ups).forEach(e => [e.from, e.to, ...texts(e.props)].forEach(s => name(s).forEach(n => up(n, now))));
     // what its elements name, and what those name in turn (a part's type's port's type), each with its owners; a view too when
     // an element has the view's id (audit 48: a map card named after the view it opens hid a retitle of that view)
-    for (let d = 0; d < 2 && now.length; d++) { const next = []; now.forEach(t => texts(elOf.get(t)).forEach(s => { const n = name(s); if (n != null) up(n, next); if (vids.has(s)) vs.add(s); })); now = next; }
+    for (let d = 0; d < 2 && now.length; d++) { const next = []; now.forEach(t => texts(elOf.get(t)).forEach(s => { name(s).forEach(n => up(n, next)); if (vids.has(s)) vs.add(s); })); now = next; }
     return { ids, vs }; };
   // a typed view whose type says which lines it draws (drawn) shows a line's change only through what it draws (audit 47: a
   // context-level line between a container view's subject, drawn as its boundary, and a person was counted as drawn there)
@@ -508,7 +509,17 @@ export function diff(before, after) {
       .filter(e => e && typeof e === 'object' && e.id != null).map(e => String(e.id)));
     const elId = id => at0.has(id) || have.has(id);
     // what diff() marks: a "none" only where marks() would put a mark (a shape reading, or an implied line standing for, one of them)
-    const hit = new Set([...cardHow.keys(), ...lineHow, ...edited.keys(), ...gained.keys()].map(String)), hits = l => Array.isArray(l) && l.some(r => typeof r === 'string' && hit.has(r));
+    const hit = new Set([...cardHow.keys(), ...lineHow, ...edited.keys(), ...gained.keys()].map(String));
+    // and what one view marks of its own, which marks() reads there: a model line taken out of its list or put in, its own lines,
+    // fragments and timeline, a card hidden by its overrides (audit 53: an IDEF1X entity reading a relationship its view no longer
+    // lists was marked changed, though it draws as it did). A shape reads in its view, or in the one it names (x.readsIn)
+    const VW = new Map(views.filter(w => w && typeof w === 'object').map(w => [w.id, w])), vHit = new Map();
+    const ownHit = id => { if (vHit.has(id)) return vHit.get(id); const w = VW.get(id), s = new Set(); vHit.set(id, s); if (!w) return s;
+      const tl = w.timeline && typeof w.timeline === 'object' ? [w.timeline.constraints, w.timeline.changes] : [];
+      for (const q = [w.edges, w.fragments, ...tl].flatMap(arr); q.length;) { const x = q.pop(); if (!x || typeof x !== 'object') continue; if (x.change != null && x.id != null) s.add(String(x.id)); arr(x.members).forEach(m => q.push(m)); }
+      const ov = w.nodeOverrides && typeof w.nodeOverrides === 'object' ? w.nodeOverrides : {}; Object.keys(ov).forEach(k => { if (ov[k] && typeof ov[k] === 'object' && ov[k].change != null) s.add(k); });
+      return s; };
+    const hitsAt = (vid, x, k) => { const l = x && x[k]; if (!Array.isArray(l)) return false; const o = ownHit(typeof x.readsIn === 'string' ? x.readsIn : vid); return l.some(r => typeof r === 'string' && (hit.has(r) || o.has(r))); };
     // a port on a part, <part>-><port>: both ends elements of the model, before or after
     const onPart = id => { const j = id.lastIndexOf('->'); return j > 0 && elId(id.slice(0, j)) && elId(id.slice(j + 2)) ? id.slice(0, j) : null; };
     const derivedL = (e, k) => Array.isArray(e.implied) || (k.includes('->') && !modelLine.has(k));
@@ -521,20 +532,21 @@ export function diff(before, after) {
       const vh = mine.length ? new Set([...hit, ...mine]) : hit, hitsV = l => Array.isArray(l) && l.some(r => typeof r === 'string' && vh.has(r));
       if (!T || !listed && typeof T.drawn !== 'function' && typeof T.touches !== 'function') return;
       const g1 = lay(1, v.id); if (!g1) return; const S1 = shapes(g1), L1 = linesG(g1);
-      const reading = [...S1.values(), ...L1.values()].some(x => hitsV(x.reads) || hits(x.implied));
+      // both audit 53 lanes: what the view marks of its own (hitsAt) and what diff() wrote into its nodeOverrides (hitsV)
+      const hits1 = (x, k = 'reads') => hitsAt(v.id, x, k), reading = [...S1.values(), ...L1.values()].some(x => hits1(x) || hitsV(x.reads) || hits1(x, 'implied'));
       if (!listed && !reading) return;
       const g0 = lay(0, v.id); if (!g0) return; const S0 = shapes(g0), L0 = linesG(g0), marks = Object.create(null), gone = [];
       // listed for what it draws from others (refs, drawn, touches), with the same picture before and after: not listed (audit 47)
       if (listed && !sure.has(v.id) && picture(g0) === picture(g1)) { changed.delete(v.id); listed = false; }
       const same = (x, y) => y && sig(x) === sig(y);
       S1.forEach((x, id) => { const y = S0.get(id), part = onPart(id);
-        if (hitsV(x.reads) && same(x, y)) marks[id] = 'none';
+        if ((hits1(x) || hitsV(x.reads)) && same(x, y)) marks[id] = 'none';
         else if (listed && part != null && !y && S0.has(part)) marks[id] = 'added';
         // one that read a marked element before and draws otherwise now, reading it no more (audit 48: a constraint property whose
         // block was renamed names no block, and draws no expression)
-        else if (listed && y && !hits(x.reads) && hits(y.reads) && !same(x, y)) marks[id] = 'changed'; });
+        else if (listed && y && !hits1(x) && hits1(y) && !same(x, y)) marks[id] = 'changed'; });
       L1.forEach((x, k) => { if (!derivedL(x, k) && !Array.isArray(x.reads)) return; const y = L0.get(k);
-        if (same(x, y)) { if (hitsV(x.reads) || hits(x.implied)) marks[k] = 'none'; } else if (listed && !y && !Array.isArray(x.implied) && derivedL(x, k)) marks[k] = 'added';
+        if (same(x, y)) { if (hits1(x) || hitsV(x.reads) || hits1(x, 'implied')) marks[k] = 'none'; } else if (listed && !y && !Array.isArray(x.implied) && derivedL(x, k)) marks[k] = 'added';
         // an implied line that came, or stands for other relationships, with none of them marked (audit 48: one it stood for removed,
         // or a direct relationship removed between its ends): added, or changed. One drawn before too is changed, though every one
         // it stands for now is new (audit 49: the only relationship behind it replaced by one of another label read as added).

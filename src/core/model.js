@@ -189,6 +189,9 @@ const labelOr = (label, id) => label == null || (typeof label === 'string' && la
 // what every typed view calls an element, in its picture, accessible names, describe(), PDF, hints and messages: its label,
 // else its id, so a label "" names it as no label does, as a map's card (audit 35: each type's own `label ?? id` kept "" blank)
 const elName = x => String(labelOr(x.label, x.id));
+// the one element a name resolves to among its namesakes: one diff() drew back removed makes no live name ambiguous (audit 53:
+// a constraint block re-created under a new id lost its expression on the diff page), so the others first, else all of them
+const oneNamed = c => { const live = c.filter(n => !(n && typeof n.change === 'string' && n.change.toLowerCase() === 'removed')), l = live.length ? live : c; return l.length === 1 ? l[0] : null; };
 // key: the field read, a label by default; a view's title too (audit 31: a view's title, a box's label and a card's label in a
 // view's nodeOverrides were drawn as "[object Object]" and said nowhere)
 // as: what happens to its text, "drawn as" by default; a panel field the picture never draws says so (audit 44)
@@ -322,4 +325,4 @@ const listOf = (m, i) => (Array.isArray(m.views[i] && m.views[i].edges) ? i : -1
 const lineNames = m => { const out = new Map([[-1, namesOf(m && m.edges)]]);
   (Array.isArray(m && m.views) ? m.views : []).forEach((v, i) => { if (v && Array.isArray(v.edges)) out.set(i, namesOf(v.edges)); }); return out; };
 
-export { canon, canonDeep, jsonText, labelOr, elName, labelProblem, propTextProblems, versionProblem, typedProblems, lineNames, namesOf, listOf, unreadable, copyOf, textOf, nameTable, usedIds };
+export { canon, canonDeep, jsonText, labelOr, elName, oneNamed, labelProblem, propTextProblems, versionProblem, typedProblems, lineNames, namesOf, listOf, unreadable, copyOf, textOf, nameTable, usedIds };
