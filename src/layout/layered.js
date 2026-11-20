@@ -1154,9 +1154,10 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   if (dg.typed) lastR.forEach(e => { const k0 = issuesOf(e); if (!k0[0]) return;
     const was = [e.p1, e.p2, e.fs, e.ts, e.pts, e.how]; ripUp(e);
     if (onTB(e) || (heads(e.pts) && onTB(e, 2))) { e.lbl = null; routed.push(e); placeLabel(e); const k1 = issuesOf(e); if (!k1[0] && k1[1] <= k0[1] && k1[2] <= k0[2]) return; ripUp(e); }
-    // else the last resort again, round what the lines before it moved: kept when it runs along fewer
+    // else the last resort again, round what the lines before it moved: kept when it runs along fewer (a label more on a line is
+    // no bar here: c4-stress's generated view laid out down kept a shared line and crossed 3 more lines with it, tests/m2-fixtures)
     [e.p1, e.p2, e.fs, e.ts, e.pts, e.how] = was; restub(e); const P = wide(e, 2);
-    if (P) { e.pts = P; e.lbl = null; routed.push(e); placeLabel(e); const k1 = issuesOf(e); if (k1[0] < k0[0] && k1[1] <= k0[1] && k1[2] <= k0[2]) return; ripUp(e); e.pts = was[4]; }
+    if (P) { e.pts = P; e.lbl = null; routed.push(e); placeLabel(e); const k1 = issuesOf(e); if (k1[0] < k0[0] && k1[1] <= k0[1]) return; ripUp(e); e.pts = was[4]; }
     e.lbl = null; routed.push(e); placeLabel(e); });
   // (a typed view with repair off) then each line the grid routed that runs along another, routed again round every other line,
   // kept on the same terms (audit 61: laid out down, a line into the top of a card under its source, its port level with another
