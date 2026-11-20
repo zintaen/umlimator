@@ -458,6 +458,18 @@ test('audit 58: module-api.md says destroy() leaves the rest of the container, i
 
 // audit 60 finding 7: the section after the last release names what a host sees change since, the round 58 and 59 changes
 // to an import, a reader, diff() and editing included, and the 0.44.0 note keeps only what 0.44.0 shipped
+// audit 62: the opening of the section after the last release said "audits 51 to 59 ... and of audit 60 so far" while the
+// section went on to describe audit 61's fixes: it names the rounds up to the last one the section holds
+test('audit 62: module-api.md\'s section after the last release opens with every round it holds, up to the last', () => {
+  const doc = readFileSync(new URL('../docs/module-api.md', import.meta.url), 'utf8'), at = h => doc.indexOf('\n## ' + h);
+  const version = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version, from = doc.indexOf('\n## ', at(version + ':') + 4);
+  const end = doc.indexOf('\n## ', from + 4), after = doc.slice(from, end > 0 ? end : undefined), open = after.split('\n').find(l => /^These changes/.test(l));
+  const rounds = [...after.matchAll(/\baudits? (\d+(?:(?:, | and | to )\d+)*)/g)].flatMap(m => m[1].match(/\d+/g).map(Number)), last = Math.max(...rounds);
+  assert.ok(open && last >= 61, 'an opening paragraph and the rounds named');
+  assert.match(open, new RegExp(`fixes of audits 51 to ${last} \\(\\d+ findings confirmed`), `the opening names audits 51 to ${last}`);
+  assert.doesNotMatch(open, /so far/);
+});
+
 test('audit 60: module-api.md\'s section after the last release names the behaviour changes of rounds 51 to 59; the 0.44.0 note claims none of them', () => {
   const doc = readFileSync(new URL('../docs/module-api.md', import.meta.url), 'utf8'), at = h => doc.indexOf('\n## ' + h);
   const version = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version, from = doc.indexOf('\n## ', at(version + ':') + 4);

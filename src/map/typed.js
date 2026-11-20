@@ -12,7 +12,8 @@ const MAP = registerDiagramType('map', { title: 'architecture map' });
 function plainViews(D) {
   const views = Array.isArray(D.views) ? D.views.filter(v => v && typeof v === 'object') : [];
   if (D.schemaVersion !== 2 || !views.some(v => v.diagram != null && !diagramOf(v))) return;
-  const ownerOf = Object.create(null), own = (x, top) => (Array.isArray(x.members) ? x.members : []).forEach(m => { if (m && typeof m.id === 'string') { ownerOf[m.id] = top; own(m, top); } });
+  const ownerOf = Object.create(null), own = (x, top) => { // a stack: members thousands deep (audit 62)
+    for (const s = [x], seen = new Set(); s.length;) { const y = s.pop(); for (const m of Array.isArray(y.members) ? y.members : []) if (m && typeof m.id === 'string' && !seen.has(m)) { seen.add(m); ownerOf[m.id] = top; s.push(m); } } };
   (Array.isArray(D.nodes) ? D.nodes : []).forEach(n => { if (n && typeof n.id === 'string') own(n, n.id); });
   // the view's own copies of its lines, so a map view of the same model sees the model's lines as they are
   const byId = new Map((Array.isArray(D.edges) ? D.edges : []).filter(e => e && typeof e.id === 'string').map(e => [e.id, e]));

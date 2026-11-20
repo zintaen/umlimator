@@ -1319,11 +1319,13 @@ def flowchart(lines, m):
         style = {"style": "async"} if "." in arrow else {"weight": 2} if "=" in arrow else {}
         label = text(lk["pipe"] or lk["text"], bad_code(m, no))
         # a map line always has one arrowhead: no arrowhead, a circle end and a cross end are said, and o--o and x--x are
-        # two lines as <--> is, in the typed reader's words (audit 61)
+        # two lines as <--> is, in the typed reader's words (audit 61). As in Mermaid, a link is two only when its start
+        # matches its end (< with >, o with o, x with x); another start is not drawn there, and is said (audit 62)
         head, tail = arrow[-1], arrow[0]
-        two = tail in "<ox"
-        how = (["no arrowhead"] if head not in ">ox" else []) + (["a circle end"] if "o" in (head, tail) else []) \
-            + (["a cross end"] if "x" in (head, tail) else []) + (["an arrowhead at each end"] if two and tail != "<" else [])
+        two = (tail, head) in (("<", ">"), ("o", "o"), ("x", "x"))
+        how = (["no arrowhead"] if head not in ">ox" else []) + (["a circle end"] if head == "o" else []) \
+            + (["a cross end"] if head == "x" else []) + (["an arrowhead at each end"] if two and tail != "<" else []) \
+            + ([f"the {tail} at its start is not drawn, as in Mermaid"] if tail in "<ox" and not two else [])
         if how:
             m.say(no, f"{a} {lk['plain'] or lk['open'] + ' ... ' + lk['close']} {b}: {', '.join(how)}: read as {'two lines' if two else 'a line'}")
         m.line(a, b, label, where=no, hint=eid, **style)  # the edge id names its first line
