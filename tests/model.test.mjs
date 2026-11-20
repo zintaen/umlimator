@@ -164,6 +164,17 @@ test('audit 55: an icon glyph that names an attribute twice or gives one no valu
     assert.ok(names.every(x => x[2] === '='), tag); assert.equal(new Set(names.map(x => x[1])).size, names.length, tag); }
 });
 
+test('audit 56: an icon glyph\'s end tag draws without attributes and every attribute value quoted, so the map stays well-formed XML', () => {
+  const gs = [['<path d="M4 4h16" stroke-width=2 />', '<path d="M4 4h16" stroke-width="2"/>'], ['<g><path d="M1 1"/></g class="x">', '<g><path d="M1 1"/></g>'],
+    ['<circle cx="12" cy="12" r="4"></circle onload="x">', '<circle cx="12" cy="12" r="4"></circle>'], ['<g><path d="M2 2"/></g >', '<g><path d="M2 2"/></g>'],
+    ['<path d="M1 1" fill=none stroke=red/>', '<path d="M1 1" fill="none"></path>'], ["<path d='M3 3' />", "<path d='M3 3' />"]];
+  const m = { icons: Object.fromEntries(gs.map(([g], i) => ['h' + i, { g }])), nodes: gs.map((_, i) => ({ id: 'n' + i, label: 'N', icon: 'h' + i })), views: [{ id: 'v', nodeIds: gs.map((_, i) => 'n' + i) }] };
+  const s = mapContext(m).buildView('v').markup;
+  for (const [g, drawn] of gs) assert.ok(s.includes(drawn), `${g} -> ${drawn}`);
+  assert.ok(!/<\/[^\s>]+\s+[^>]/.test(s), s.match(/<\/[^\s>]+\s+[^>]{0,30}/)?.[0]); // no end tag holds anything but its name
+  for (const [, tag] of s.matchAll(/<([^!?/][^>]*?)\/?>/g)) assert.ok(!/=[^"'\s]/.test(tag), tag); // every value quoted
+});
+
 test('a cut label ends on whole characters: never half an emoji (audit 1)', () => {
   const t = fit('\u{1F600}'.repeat(40), 13, 100, true);
   assert.ok(t.endsWith('…') && !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(t), JSON.stringify(t));
