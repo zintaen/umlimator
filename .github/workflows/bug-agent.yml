@@ -1,0 +1,228 @@
+name: bug-agent
+
+# The bug agent: when a maintainer labels an issue `bug` (or runs this workflow by hand with an issue number), an agent
+# tries to reproduce the bug with a small script. If it reproduces and the agent fixes it, a draft pull request into
+# audit-loop proposes the fix with a test that fails without it; if not, a comment asks for a model and steps.
+#
+# Off unless the repository variable BUG_AGENT_ENABLED is "true" and the secret ANTHROPIC_API_KEY is set
+# (CONTRIBUTING.md, "The bug agent"). The issue's text is data, never instructions (SECURITY.md): it reaches the agent as
+# a fenced file, never through the prompt, a shell command or a workflow expression. Three jobs, each on a fresh runner:
+#   agent    a read-only token and the API key; the agent edits its checkout, and the job uploads its diff and result
+#   verify   a read-only token and no secret; the base branch's checker (tools/bug_agent.mjs) takes the patch only within
+#            the allowed paths and only when its test fails on the base branch and passes with the fix
+#   publish  contents, pull-requests and issues write and no secret; runs no agent and none of the patch's code, checks
+#            the patch's paths again, pushes one new branch, opens a draft pull request or comments
+# No release secret is used here.
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: The issue number to work on
+        required: true
+        type: number
+
+permissions: {}
+
+# one run per issue at a time; a second label or dispatch for the same issue waits, it does not cancel a run mid-push
+concurrency:
+  group: bug-agent-${{ github.event.issue.number || inputs.issue }}
+  cancel-in-progress: false
+
+env:
+  BASE: audit-loop
+
+jobs:
+  agent:
+    # labelled `bug` by someone other than its author, or by an author who is a member or collaborator (an issue template
+    # that adds `bug` as an outsider opens it does not start a run); the action itself also refuses an actor without
+    # write access
+    if: >-
+      vars.BUG_AGENT_ENABLED == 'true' && (
+        github.event_name == 'workflow_dispatch' || (
+          github.event.label.name == 'bug' && github.event.issue.state == 'open' && !github.event.issue.pull_request &&
+          (github.event.sender.login != github.event.issue.user.login ||
+           contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association))))
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read   # the checkout
+      issues: read     # the issue's text
+    outputs:
+      number: ${{ steps.issue.outputs.number }}
+    env:
+      # Claude Code's best-effort scrub of the API key and the runner's tokens from the shells the agent starts
+      CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"
+      HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+    steps:
+      - id: key
+        name: The API key is set
+        run: |
+          if [ "$HAS_KEY" != true ]; then echo "::error::the secret ANTHROPIC_API_KEY is not set; see CONTRIBUTING.md"; exit 1; fi
+          echo "WORK=$RUNNER_TEMP/bug-agent" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - id: issue
+        name: The issue, as a data file
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ github.event.issue.number || inputs.issue }}
+        run: |
+          case "$NUMBER" in ''|*[!0-9]*) echo "::error::not an issue number"; exit 1;; esac
+          mkdir -p "$WORK"
+          gh issue view "$NUMBER" --repo "$GITHUB_REPOSITORY" --json number,title,body,author,labels,state > "$WORK/issue.json"
+          node tools/bug_agent.mjs issue "$WORK/issue.json" "$WORK/issue.md"
+          node tools/bug_agent.mjs prompt .github/bug-agent/prompt.md "$WORK/prompt.md" \
+            "BASE=$BASE" "NUMBER=$NUMBER" "ISSUE_FILE=$WORK/issue.md" "RESULT_FILE=$WORK/result.json" "WORK_DIR=$WORK/repro"
+          {
+            echo "number=$NUMBER"
+            d="EOF_$(openssl rand -hex 16)"
+            echo "prompt<<$d"; cat "$WORK/prompt.md"; echo "$d"
+          } >> "$GITHUB_OUTPUT"
+
+      - id: claude
+        name: The agent reproduces and fixes
+        uses: anthropics/claude-code-action@c84e279f859e2591391e95bd309286eb111c345f  # v1.0.284
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          prompt: ${{ steps.issue.outputs.prompt }}
+          claude_args: >-
+            --max-turns 80
+            --add-dir ${{ runner.temp }}/bug-agent
+            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(node:*),Bash(python3:*),Bash(git diff:*),Bash(git status:*),Bash(git checkout -- .),Bash(ls:*),Bash(mkdir:*)"
+            --disallowedTools "WebFetch,WebSearch,Bash(git push:*),Bash(git commit:*),Bash(gh:*),Bash(curl:*),Bash(wget:*)"
+
+      - name: The agent's diff and result, as data for the verify job
+        if: always() && steps.issue.outcome == 'success'
+        run: |
+          mkdir -p "$WORK/raw"
+          if [ -f "$WORK/result.json" ]; then cp "$WORK/result.json" "$WORK/raw/result.json"; fi
+          git add -A
+          git diff --cached --binary --no-ext-diff --no-renames > "$WORK/raw/fix.patch"
+
+      - if: always() && steps.issue.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bug-agent-raw
+          path: ${{ runner.temp }}/bug-agent/raw/
+          retention-days: 7
+
+  verify:
+    needs: agent
+    if: always() && needs.agent.outputs.number != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read   # the checkout of the base branch
+    outputs:
+      outcome: ${{ steps.check.outputs.outcome }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: bug-agent-raw
+          path: ${{ runner.temp }}/raw
+
+      - id: check
+        name: The test fails without the fix and passes with it
+        run: |
+          # the base branch's checker, copied out before the patch touches the tree; the patch's code runs without the
+          # runner's GITHUB_ and ACTIONS_ variables
+          ba="$RUNNER_TEMP/bug_agent.mjs"; cp tools/bug_agent.mjs "$ba"
+          mkdir -p "$RUNNER_TEMP/raw"
+          node "$ba" check "$RUNNER_TEMP/raw" "$RUNNER_TEMP/out" > "$RUNNER_TEMP/outcome.txt" || echo failed > "$RUNNER_TEMP/outcome.txt"
+          outcome=$(head -n 1 "$RUNNER_TEMP/outcome.txt")
+          case "$outcome" in fixed|reproduced|not-reproduced|failed) ;; *) outcome=failed ;; esac
+          echo "outcome=$outcome" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bug-agent
+          path: ${{ runner.temp }}/out/
+          retention-days: 7
+
+  publish:
+    needs: [agent, verify]
+    if: always() && needs.verify.result == 'success' && needs.verify.outputs.outcome != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write        # one new branch, bug-agent/issue-<n>-<run>; nothing else is pushed
+      pull-requests: write   # the draft pull request
+      issues: write          # the comment on the issue
+    env:
+      GH_TOKEN: ${{ github.token }}
+      NUMBER: ${{ needs.agent.outputs.number }}
+      OUTCOME: ${{ needs.verify.outputs.outcome }}
+      RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: bug-agent
+          path: ${{ runner.temp }}/out
+
+      - id: publish
+        name: A draft pull request, or a comment
+        run: |
+          out="$RUNNER_TEMP/out"
+          # the base branch's checker, copied out before the patch touches the tree, runs every step below
+          ba="$RUNNER_TEMP/bug_agent.mjs"; cp tools/bug_agent.mjs "$ba"
+          case "$NUMBER" in ''|*[!0-9]*) echo "::error::not an issue number"; exit 1;; esac
+          # the paths are checked again here, before the patch touches the tree
+          if [ "$OUTCOME" = fixed ] && ! node "$ba" check-patch "$out/fix.patch" 2> "$out/reason.txt"; then OUTCOME=failed; fi
+          case "$OUTCOME" in
+            fixed)
+              branch="bug-agent/issue-$NUMBER-$GITHUB_RUN_ID"
+              git switch -c "$branch"
+              git apply --index "$out/fix.patch"
+              git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+                commit -q -m "Bug agent: a proposed fix for #$NUMBER"
+              git push -q origin "$branch"
+              node "$ba" comment "$out/result.json" pr-body "$RUN" "{\"issue\":$NUMBER}" > "$out/body.md"
+              url=$(gh pr create --draft --base "$BASE" --head "$branch" --title "Bug agent: a proposed fix for #$NUMBER" --body-file "$out/body.md")
+              node "$ba" comment "$out/result.json" pr "$url" > "$out/comment.md"
+              ;;
+            reproduced|not-reproduced)
+              node "$ba" comment "$out/result.json" "$OUTCOME" "$RUN" > "$out/comment.md"
+              ;;
+            *)
+              reason=$(head -c 600 "$out/reason.txt" 2>/dev/null || true)
+              node "$ba" comment - failed "$RUN" "$(node -p 'JSON.stringify({reason: process.argv[1]})' "$reason")" > "$out/comment.md"
+              ;;
+          esac
+          gh issue comment "$NUMBER" --repo "$GITHUB_REPOSITORY" --body-file "$out/comment.md"

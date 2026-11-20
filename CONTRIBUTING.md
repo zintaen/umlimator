@@ -68,6 +68,19 @@ The bench lays out fixed models in headless Chrome and fails on a view that no l
 
 Every pull request runs the `cla` workflow (above) and the `check` workflow: the build check, the Node suite in shards, the timed tests, the examples' layout checks, the CLI, the embedded page in Chrome, the browser tests, the bench, and the documentation site build. The required check `check` passes only when every job did. A maintainer reviews the change once it is green.
 
+## The bug agent
+
+`.github/workflows/bug-agent.yml` runs an agent (the official Claude Code GitHub Action, pinned by commit) on a bug report. It starts when a maintainer adds the `bug` label to an open issue, or by hand from the Actions tab ("bug-agent", "Run workflow") with an issue number. The bug report template adds `bug` itself when an outside reporter opens an issue, and that does not start a run: a maintainer reads the issue first, then removes and adds the label again or runs the workflow by hand.
+
+The agent reads the issue, writes a small script that tries to reproduce it, and then does one of three things. If the bug reproduces and the agent fixes it, the workflow checks the fix (it changes only `src/`, `lib/`, `tests/`, `docs/` or `umlimator*.py`, adds a test under `tests/`, the test fails on the base branch with only the test applied and passes with the fix, and `lib/` is what `src/` builds) and opens a draft pull request into `audit-loop` from a new branch `bug-agent/issue-<n>-<run>`. If it reproduces without a fix the agent trusts, it says so on the issue. If it does not reproduce, it comments on the issue asking for a minimal model and exact steps. A fix that fails the checks is never pushed; the issue gets a comment saying why.
+
+It is off until both of these exist in the repository settings:
+
+- the repository variable `BUG_AGENT_ENABLED` set to `true` (Settings, Secrets and variables, Actions, Variables);
+- the repository secret `ANTHROPIC_API_KEY`, an Anthropic API key used only by this workflow (same page, Secrets).
+
+Each issue has at most one run at a time. The run has three jobs, each on a fresh runner and each with a time limit. The agent's job (40 minutes) holds a read-only token and the API key and nothing else, and uploads the agent's diff and result as data. The verify job (25 minutes) holds a read-only token and no secret; it applies the diff to a clean checkout of `audit-loop` and runs the base branch's own copy of `tools/bug_agent.mjs` on it, never the agent's. The publishing job (10 minutes) has `contents`, `pull-requests` and `issues` write and no secret, runs no agent and none of the patch's code, checks the patch's paths again itself, and pushes only its new branch (a workflow token cannot be limited to one branch, so the job's script is what keeps to it). No release secret is used. A pull request opened by the workflow's own token does not start the `check` workflow: the draft's checks run once a maintainer pushes to it, or closes and reopens it. Review the draft as you would any outside contribution. The deterministic parts live in `tools/bug_agent.mjs` and the agent's instructions in `.github/bug-agent/prompt.md`; `tests/bug-agent.test.mjs` covers both and the workflow's jobs and permissions.
+
 ## Commits
 
 Write the subject as `Area: what changed`, in plain words, for example `Docs: the MCP guide names the page tools` or `Sequence: a self-message keeps its label`. Keep one change per pull request where you can, and do not rewrite history on a branch that is under review: add commits instead.
