@@ -1783,3 +1783,51 @@ test('audit 56: on a typed view a line whose label changed goes (comes) with a c
   const gone = { ...edited(c4), views: edited(c4).views.filter(v => v.id !== V) };
   assert.equal(ch(all.diff(c4, gone).model), 'removed', 'its view removed, its label edited');
 });
+
+// audit 57: what reads the diff page's model reads the model after: a line or card diff() drew back removed is gone
+test('audit 57: rules() on the diff model of a change that fixes a rule finds nothing, and the page marks no line broken', async () => {
+  const { rules } = await import('../lib/umlimator.js'), { mapContext } = await import('../src/map/context.js');
+  const A = { nodes: [{ id: 'web', kind: 'ui' }, { id: 'db', kind: 'db' }, { id: 'api' }], edges: [{ id: 'bad', from: 'web', to: 'db' }, { id: 'ok', from: 'web', to: 'api' }, { id: 'ok2', from: 'api', to: 'db' }],
+    views: [{ id: 'v', nodeIds: ['web', 'db', 'api'] }], rules: [{ id: 'r', title: 'UI never reads the DB', from: { kind: 'ui' }, to: { kind: 'db' } }] };
+  const cases = { 'line removed': m => { m.edges = m.edges.filter(e => e.id !== 'bad'); },
+    'card taken out of the view': m => { m.views[0].nodeIds = ['web', 'api']; },
+    'card removed': m => { m.nodes = m.nodes.filter(n => n.id !== 'db'); m.edges = m.edges.filter(e => e.to !== 'db'); m.views[0].nodeIds = ['web', 'api']; } };
+  for (const [why, f] of Object.entries(cases)) { const B = structuredClone(A); f(B); const d = diff(A, B).model;
+    assert.equal(rules(A).length, 1, why); assert.deepEqual(rules(B), [], why); assert.deepEqual(rules(d), [], why);
+    assert.doesNotMatch(mapContext(d).buildView('v').markup, /Breaks rule|breaks rule/, why); }
+  // a cycle the change breaks, and one through a box it removes
+  const C = { nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ id: 'ab', from: 'a', to: 'b' }, { id: 'ba', from: 'b', to: 'a' }], views: [{ id: 'v', nodeIds: ['a', 'b'], containers: [{ id: 'X', nodeIds: ['a'] }, { id: 'Y', nodeIds: ['b'] }] }], rules: [{ id: 'c', noCycles: true }] };
+  const C2 = structuredClone(C); C2.edges.pop();
+  assert.equal(rules(C).length, 1); assert.deepEqual(rules(diff(C, C2).model), []);
+  const C3 = structuredClone(C); C3.views[0].containers = [{ id: 'X', nodeIds: ['a'] }]; // the box Y goes: no cycle of boxes is left
+  assert.deepEqual(rules(C3), []); assert.deepEqual(rules(diff(C, C3).model), []);
+  // a rule the change still breaks is still found
+  const D = structuredClone(A); D.edges = D.edges.filter(e => e.id !== 'ok');
+  assert.deepEqual(rules(diff(A, D).model).map(b => b.targets[0].ids), [['bad']]);
+});
+
+test('audit 57: diff() leaves a view that is no object out, as validate() does', () => {
+  const A = { nodes: [{ id: 'a' }], edges: [], views: [{ id: 'v', nodeIds: ['a'] }, { id: 'w', nodeIds: ['a'] }] };
+  for (const odd of ['w', 7, true, ['w'], { nodeIds: ['a'] }]) { const B = structuredClone(A); B.views[1] = odd;
+    const d = diff(A, B), back = diff(B, A);
+    assert.deepEqual([d.views, d.summary], [['w'], ['removes the view w']], JSON.stringify(odd));
+    assert.deepEqual([back.views, back.summary], [['w'], ['adds the view w']], JSON.stringify(odd));
+    for (const r of [d, back]) for (const id of r.views) assert.doesNotThrow(() => layout(r.model, id)); }
+});
+
+test('audit 57: describe(), paths(), reach() and critical() on the diff model read the model after', async () => {
+  const { describe, paths, reach, critical } = await import('../lib/umlimator.js');
+  const A = { nodes: [{ id: 'web', label: 'Web' }, { id: 'db', label: 'DB' }, { id: 'api', label: 'API' }, { id: 'old', label: 'Old cache' }],
+    edges: [{ id: 'bad', from: 'web', to: 'db', label: 'reads', latency: 9 }, { id: 'ok', from: 'web', to: 'api', latency: 1 }, { id: 'ok2', from: 'api', to: 'old' }],
+    views: [{ id: 'v', nodeIds: ['web', 'db', 'api', 'old'] }] };
+  const B = structuredClone(A); B.edges = B.edges.filter(e => e.id !== 'bad' && e.id !== 'ok2'); B.nodes = B.nodes.filter(n => n.id !== 'old'); B.views[0].nodeIds = ['web', 'db', 'api'];
+  const d = diff(A, B).model;
+  assert.equal(describe(d, 'v'), describe(B, 'v'));
+  assert.deepEqual(paths(d, 'v', 'web', 'db'), []); assert.deepEqual(paths(d, 'v', 'web', 'api'), paths(B, 'v', 'web', 'api'));
+  assert.deepEqual(reach(d, 'v', 'web'), reach(B, 'v', 'web')); assert.deepEqual(reach(d, 'v', 'old'), []);
+  assert.deepEqual(critical(d, 'v'), critical(B, 'v'));
+  // a card taken out of the view only, its lines kept in the model
+  const C = structuredClone(A); C.views[0].nodeIds = ['web', 'api', 'old'];
+  const dc = diff(A, C).model;
+  assert.equal(describe(dc, 'v'), describe(C, 'v')); assert.deepEqual(reach(dc, 'v', 'web'), reach(C, 'v', 'web'));
+});

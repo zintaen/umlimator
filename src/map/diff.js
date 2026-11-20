@@ -111,7 +111,10 @@ export function diff(before, after) {
   const goneLines = new Map(out.edges.filter(e => how.get(e) === 'removed' && e.id != null).map(e => [String(e.id), String(e.id)]));
   const keyed = l => { const k = lineKeys(l); return new Map(Array.from(l, (e, i) => [e, k[i]])); }, k1 = new Set(lineKeys(arr(after && after.edges)));
   const line0 = new Map([...keyed(arr(A.edges))].filter(([e, k]) => e && typeof e === 'object' && k1.has(k)).map(([e, k]) => [k, e])); // model lines in both, by their Ref name (an id-less one by its ends)
-  const V0 = new Map(arr(A.views).filter(Boolean).map(v => [v.id, v])), V1 = new Set(arr(out.views).filter(Boolean).map(v => v.id));
+  // a view as mapContext reads one: an object with an id; any other entry stays as it is, neither added nor removed (audit 57:
+  // a string view read as an added view {0:'w'}, "adds the view undefined", and diff().views listed undefined)
+  const isView = v => !!v && typeof v === 'object' && !!v.id;
+  const V0 = new Map(arr(A.views).filter(isView).map(v => [v.id, v])), V1 = new Set(arr(out.views).filter(isView).map(v => v.id));
   const stepped = x => x.render === 'sequence' || (diagramOf(x) || {}).steps === true; // a view that numbers its lines by their order (a C4 dynamic view's steps, audit 18)
   // a view its type lays out (version 2), which picks the lines it draws; version 1, or a map view, is drawn as a map
   const typedL = x => out.schemaVersion === 2 && (T => !!(T && T.layout && (T.layout.run || typeof T.layout === 'function')))(diagramOf(x));
@@ -144,7 +147,7 @@ export function diff(before, after) {
     const g0 = geoOf(ctx0, o.id), g1 = geoOf(ctx1, o.id);
     return g0 == null || g1 == null || g0 !== g1; };
   const views = arr(out.views).map(v => {
-    const o = v && V0.get(v.id); if (!v) return v;
+    if (!isView(v)) return v; const o = V0.get(v.id);
     if (!o) { touched.add(v.id); // an added view comes with everything of its own added, as a removed one goes
       const w = { ...v }; if (Array.isArray(v.nodes)) w.nodes = v.nodes.map(n => { if (!n || typeof n !== 'object') return n; const y = card(n, 'added'); how.set(y, 'added'); return y; });
       if (Array.isArray(v.edges)) w.edges = v.edges.map(e => e && typeof e === 'object' ? line(e, 'added') : e); return w; }
@@ -264,7 +267,7 @@ export function diff(before, after) {
       else w.edges = linesOf(out, w).map(e => lineNow(e) || (typeof e.id === 'string' ? e.id : e)); }
     return w;
   });
-  arr(A.views).forEach(o => { if (!o || V1.has(o.id)) return; // a removed view comes back with everything in it removed
+  arr(A.views).forEach(o => { if (!isView(o) || V1.has(o.id)) return; // a removed view comes back with everything in it removed
     const ov = idTable(o.nodeOverrides);
     arr(o.nodeIds).forEach(id => { ov[id] = { ...ov[id], change: 'removed' }; });
     const w = { ...o, nodeOverrides: plain(ov) };
@@ -334,8 +337,8 @@ export function diff(before, after) {
   const cardHow = new Map([...cards.filter(n => how.has(n)).map(n => [n.id, how.get(n)]), ...[...lost.keys()].map(id => [id, 'removed'])]);
   const lines = [...new Set([...out.edges.filter(e => e && typeof e === 'object'), ...views.flatMap(v => arr(v && v.edges).filter(e => e && typeof e === 'object'))])]; // a view that dropped its list holds the model's lines themselves
   const diffKeys = ([o, x]) => [...new Set([...Object.keys(o), ...Object.keys(x)])].filter(k => canon(o[k]) !== canon(x[k]));
-  views.forEach(v => { if (v && !V0.has(v.id)) said.push(`adds the view ${labelOr(v.title, v.id)}`); });
-  arr(A.views).forEach(o => { if (o && !V1.has(o.id)) said.push(`removes the view ${labelOr(o.title, o.id)}`); });
+  views.forEach(v => { if (isView(v) && !V0.has(v.id)) said.push(`adds the view ${labelOr(v.title, v.id)}`); });
+  arr(A.views).forEach(o => { if (isView(o) && !V1.has(o.id)) said.push(`removes the view ${labelOr(o.title, o.id)}`); });
   cards.forEach(n => { const h = how.get(n);
     if (h === 'added') { // each card at the far end named once, however many lines join them (audit 27: "to Queue and Queue")
       const far = (k, j) => [...new Set(lines.filter(e => e[k] === n.id && how.get(e) === 'added').map(e => name(e[j])))], ins = far('to', 'from'), outs = far('from', 'to');
@@ -596,7 +599,7 @@ export function diff(before, after) {
     hidIn.forEach(([v, L, C]) => { const rm = touching(L, h => h !== 'removed'); gone(v, touching(C, h => h == null || h === 'changed').filter(k => !rm.includes(k)), 'added'); gone(v, rm); });
     rmTyped.forEach(v => { let g = null; try { g = held(() => ctx0().buildGeo(v.id))[0]; } catch { g = null; } if (!g) return;
       gone(v, [...new Set([...arr(g.nodes), ...arr(g.families), ...arr(g.edges)].map(x => x && (x._id ?? x.id)).filter(k => typeof k === 'string'))]); }); }
-  return { model: out, summary: said, views: views.filter(v => v && changed.has(v.id)).map(v => v.id) };
+  return { model: out, summary: said, views: views.filter(v => isView(v) && changed.has(v.id)).map(v => v.id) };
 }
 
 /** The map against the traffic seen: a line that carries traffic but is not drawn comes in, dashed rose ("not drawn",

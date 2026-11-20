@@ -177,3 +177,16 @@ test('audit 56: an edited map line says (edited) in its title and name; a planne
   // the card keeps its planned word: a planned card is drawn planned
   assert.match(svgOf(layout({ root: 'v', nodes: [{ id: 'a', label: 'A', change: 'planned' }], edges: [], views: [{ id: 'v', nodeIds: ['a'] }] }, 'v')), /aria-label="A[^"]*, planned"/);
 });
+
+// audit 57: diff() marks a relabelled line both change 'changed' and edited: one amber dot, said once
+test('audit 57: a line diff() marks changed says changed once, with no (edited) beside it', async () => {
+  const { diff } = await import('../lib/umlimator.js');
+  const name = s => /class="um-key line-key[^"]*"[^>]*aria-label="([^"]*)"/.exec(s)[1], title = s => /<g class="edge-g[\s\S]*?<title>([^<]*)<\/title><\/g>/.exec(s)[1];
+  const m = l => ({ root: 'v', nodes: [{ id: 'a', label: 'API' }, { id: 'b', label: 'Database' }], edges: [{ id: 'e', from: 'a', to: 'b', label: l }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] });
+  const d = diff(m('reads'), m('writes')).model, s = svgOf(layout(d, 'v'));
+  assert.deepEqual([d.edges[0].change, d.edges[0].edited], ['changed', true]);
+  assert.equal(name(s), 'Line from API to Database: writes, changed'); assert.equal(title(s), 'API → Database: writes, changed');
+  for (const c of ['changed', 'Modified']) assert.doesNotMatch(name(svgOf(layout({ ...m('x'), edges: [{ id: 'e', from: 'a', to: 'b', label: 'x', change: c, edited: true }] }, 'v'))), /edited/, c);
+  // edited with another mark, or none, still says its edit
+  assert.equal(name(svgOf(layout({ ...m('x'), edges: [{ id: 'e', from: 'a', to: 'b', label: 'x', change: 'added', edited: true }] }, 'v'))), 'Line from API to Database: x, new (edited)');
+});

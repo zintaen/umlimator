@@ -1,4 +1,4 @@
-import { jsonText, labelOr, labelProblem, lineNames, listOf, markedCopy, typedProblems, unreadable, versionProblem } from '../core/model.js';
+import { isGone, jsonText, labelOr, labelProblem, lineNames, listOf, markedCopy, typedProblems, unreadable, versionProblem } from '../core/model.js';
 import { TYPED, diagramOf, drawnKind } from '../core/registry.js';
 import { XML_BAD } from '../core/text.js';
 import { held } from '../core/warn.js';
@@ -321,6 +321,14 @@ function endsIn(ctx, v) {
     : (n => ({ id, kind: kindOf(n.kind, true), boxes: chain(home[id]), owner: typeof n.owner === 'string' ? n.owner : undefined, label: n.label || id }))(ctx.nodeIn(id, v.id));
   return { box, end };
 }
+// on the diff page's model, what the model after has in a view (audit 57: rules(), describe(), paths() and reach() read the
+// removed lines and cards diff() draws back as live): a card or box isGone() leaves, here or in the model; a line too, and one
+// with an end that left. Each a test: card(id), box(c), line(e)
+function liveIn(ctx, v) {
+  const bx = Object.create(null); handBoxes(v).forEach(c => { if (c && c.id != null) bx[c.id] ||= c; });
+  const card = id => (bx[id] ? !isGone(bx[id]) : !isGone(ctx.nodeIn(id, v.id)));
+  return { card, box: c => !isGone(c), line: e => !isGone(e) && card(e.from) && card(e.to) };
+}
 /** Every rule the model breaks, in each view that draws it broken: a line a rule forbids, or a cycle of boxes. */
 export function rules(model) {
   model = unreadable(model).model; // read as validate() and mapContext read it: no text String() throws on (audit 20)
@@ -330,11 +338,11 @@ export function rules(model) {
   const anyBox = new Set(views.flatMap(v => handBoxes(v).map(c => c && c.id).filter(Boolean)));
   const named = new Map(list.map(r => [r, [r.from, r.to].flatMap(s => boxesNamed(s, id => anyBox.has(id) && !N[id]))]));
   views.forEach(v => {
-    const { box, end } = endsIn(ctx, v), order = Object.values(box).map(c => c.id);
+    const live = liveIn(ctx, v), { box, end } = endsIn(ctx, { ...v, containers: handBoxes(v).filter(live.box) }), order = Object.values(box).map(c => c.id); // what the model after has (audit 57)
     // a target names the drawn line, which may stand for several edges: grouped as prepEdges groups them (parallel edges, and
     // A→B with B→A, unless keepPairs), in its order, so select() finds it
     // ponytail: a copy of prepEdges' grouping; share one helper if that grouping changes
-    const lines = viewEdges(v).filter(e => e.from !== e.to), par = new Map(), drawn = new Map(), ends = new Map();
+    const lines = viewEdges(v).filter(e => e.from !== e.to && live.line(e)), par = new Map(), drawn = new Map(), ends = new Map();
     lines.forEach(e => { const k = e.from + '>' + e.to + (v.keepPairs ? '#' + e.id : ''); par.has(k) ? par.get(k).push(e) : par.set(k, [e]); });
     par.forEach(es => { const back = !v.keepPairs && ends.get(es[0].to + '>' + es[0].from);
       if (back) back.push(...es); else ends.set(es[0].from + '>' + es[0].to, es); es.forEach(e => drawn.set(e, back || es)); });
@@ -366,4 +374,4 @@ export function rules(model) {
   return out;
 }
 
-export { WIRE_KINDS, boxesNamed, picks, andList, arrOf, endsIn, handBoxes, runSteps };
+export { WIRE_KINDS, boxesNamed, picks, andList, arrOf, endsIn, handBoxes, liveIn, runSteps };

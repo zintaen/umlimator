@@ -44,7 +44,8 @@ function svgOf(geo, opts = {}) {
   const chWord = x => { const c = CHG[lc(x)]; return c ? ', ' + c[1].toLowerCase() : ''; }; // a key and a line's title say its change (audits 44, 45)
   // a line says only the marks a line is drawn with ('planned' is drawn unmarked, as validate() warns), and its edit mark, as
   // a card's name does (audit 56: a planned line was announced planned, an edited one's amber dot was never said)
-  const lnWord = e => (lc(e) === 'planned' ? '' : chWord(e)) + ((e.all || [e]).some(x => x && x.edited) && !e.strong ? ' (edited)' : '');
+  // a line diff() marks changed carries edited too: one amber dot, said once as changed (audit 57: "changed (edited)")
+  const lnWord = e => { const c = CHG[lc(e)]; return (lc(e) === 'planned' ? '' : chWord(e)) + (!(c && c[0] === 'amber') && (e.all || [e]).some(x => x && x.edited) && !e.strong ? ' (edited)' : ''); };
   // a map line's weight (2 or 3) shows as its width on hover, selection and focus only; its title and name say why: its what
   // (Markdown for the details panel: as plain words, its first sentence, as a card's sub-line), else "weight 2 of 3"
   const wtWord = e => { if (!map || !(e.weight > 1)) return ''; const w = [...new Set((e.all || [e]).map(x => x.what).filter(x => x != null && x !== '').map(mdPlain).filter(Boolean))].join(' / ');

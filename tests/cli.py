@@ -42,7 +42,7 @@ part = shards.Parts(__file__, {
     **{f"map-repo {n}": 6 for n in TYPED_EXAMPLES}, "map-repo pin": 5, "pdf integration": 13,
     **{f"typed {n}": SLOW.get(n, 8) for n in TYPED_EXAMPLES},
     "typed order-service-structure": "typed checkout-sequence",  # one check reads both PDFs
-    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "bench views": 1})
+    "import mindmap": 1, "pdf odd models": 15, "four renders at once": 3, "mcp": 6, "animated PNG delays": 1, "audit 26": 8, "audit 27": 6, "audit 28": 6, "audit 29": 4, "audit 30": 12, "audit 31": 14, "audit 32": 10, "audit 33": 4, "audit 34": 8, "audit 35": 2, "audit 36": 3, "audit 40": 2, "audit 41": 3, "audit 42": 4, "audit 44": 18, "audit 45": 4, "audit 51": 3, "audit 54 tools": 1, "audit 55 tools": 2, "audit 56 diff": 2, "audit 57 diff": 2, "bench views": 1})
 
 
 def ok(name, cond, info=""):
@@ -2471,6 +2471,34 @@ if part("audit 56 diff"):
         md = (g / "out" / "summary.md").read_text(encoding="utf-8") if (g / "out" / "summary.md").is_file() else ""
         ok("diff --base · the summary of a removed view sketches no card or line it shared (audit 56)",
            "removes the view Two" in md and ":::removed" not in md and "-.->" not in md, (r.stderr[-400:], md))
+if part("audit 57 diff"):
+    # audit 57: a removed view's copies of its model lines are the lines as they were before the change; the sketch matched
+    # them against the model after only, so a line re-pointed, or one with no id edited, while that view went was sketched
+    # removed beside its changed self
+    nodes = [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}, {"id": "c", "label": "C"}]
+    views = [{"id": "main", "title": "Main", "nodeIds": ["a", "b", "c"]}, {"id": "side", "title": "Side", "parent": "main", "nodeIds": ["a", "b", "c"]}]
+    for why, line, edit in (("re-pointed", {"id": "e1", "from": "a", "to": "b", "label": "calls"}, {"to": "c"}),
+                            ("no id, relabelled", {"from": "a", "to": "b", "label": "calls", "style": "dashed"}, {"label": "rings"}),
+                            ("no id, re-pointed", {"from": "a", "to": "b", "label": "calls"}, {"to": "c"})):
+        b7 = {"title": "T", "nodes": nodes, "edges": [line], "views": views}
+        a7 = {"title": "T", "nodes": nodes, "edges": [{**line, **edit}], "views": views[:1]}
+        same = {**b7, "views": views[:1]}
+        d = u.js("diff", b7, a7)
+        sk, plain = u.sketch(d["model"], after=a7, before=b7), u.sketch(u.js("diff", same, a7)["model"], after=a7, before=same)
+        ok(f"diff --base · a line {why} while a view that showed it is removed is sketched once, changed, not removed too (audit 57)",
+           "removes the view Side" in d["summary"] and sk == plain and (why == "no id, re-pointed" or not any("-.->" in x for x in sk)), (d["summary"], sk, plain))
+    # the CLI's diff --base passes the model before to the sketch
+    b7 = {"title": "T", "nodes": nodes, "edges": [{"from": "a", "to": "b", "label": "calls"}], "views": views}
+    a7 = {"title": "T", "nodes": nodes, "edges": [{"from": "a", "to": "b", "label": "rings"}], "views": views[:1]}
+    with tempfile.TemporaryDirectory() as tmp:
+        g = Path(tmp)
+        sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g, capture_output=True, text=True)
+        sh("init", "-q"); (g / "m.json").write_text(json.dumps(b7)); sh("add", "."); sh("commit", "-qm", "one"); (g / "m.json").write_text(json.dumps(a7))
+        r = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                            "sys.argv = ['umlimator.py', 'diff', '--base', 'HEAD', '--out', 'out']; u.main()", str(ROOT)], cwd=g, capture_output=True, text=True)
+        md = (g / "out" / "summary.md").read_text(encoding="utf-8") if (g / "out" / "summary.md").is_file() else ""
+        ok("diff --base · the summary of a removed view sketches a line it shared and the change relabelled once, not removed (audit 57)",
+           "removes the view Side" in md and '-->|"rings"|' in md and "-.->" not in md, (r.stderr[-400:], md))
 if part("audit 55 tools"):
     # audit 55: diff() writes a marked copy of a model line into each view that lists lines, and the sketch drew the model's
     # line and every copy, so one line came twice (a live copy beside a removed one, or the same mark twice); and a card a view

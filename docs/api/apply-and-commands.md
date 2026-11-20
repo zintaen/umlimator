@@ -191,6 +191,8 @@ function rules(model: MapModel): RuleBreak[];
 Every [rule](./model-and-schema.md#rule) in `model.rules` the model breaks, view by view. No browser needed. The map
 draws the lines that break a rule in rose, with a mark that names it; `umlimator.py check` fails on any break.
 
+A card, box or line marked removed (`change: "removed"`, as [`diff()`](#diff) draws back what a change took out) counts for nothing, so on a diff model `rules()` finds what the model after breaks: a pull request that takes out the line breaking a rule shows that line removed, with no rule mark.
+
 ```js
 import { rules } from 'umlimator';
 const m = {
@@ -305,6 +307,8 @@ function describe(model: MapModel, viewId: string): string;
 A view in plain sentences: its cards and their kinds, its boxes, what each card's lines do, and cards with no line.
 Deterministic. Useful as alt text, in a pull request, or for an assistant. With `umlimator/all` a typed view is
 described in its own terms.
+
+On a map view, `describe()`, `paths()`, `reach()` and `critical()` read the model after a change: a card, box or line marked removed, as [`diff()`](#diff) draws it back, is not counted, named or walked. A map sequence view still says a removed line as a removed step, in its place.
 
 ```js
 describe(model, 'system');

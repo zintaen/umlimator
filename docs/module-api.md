@@ -873,6 +873,7 @@ Nothing is removed. Two defaults change for a host that upgrades:
     - Each card comes with its `distance` in lines, starting with the card itself at 0.
     - `depth` stops the walk that many lines out.
   - A line's Ref names one model edge.
+  - A card, box or line marked removed (a diff model's) is not walked, and `rules(model)` and `describe()` leave it out the same way (audit 57).
   - **In the standalone page:**
     - the details panel's → and ← (or the > and < keys) light what a card leads to and what leads to it;
     - with two cards selected (Shift-click), ⇄ (or P) lights every path between them, in either direction;

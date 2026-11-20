@@ -1,9 +1,9 @@
-import { copyOf, nameTable, unreadable, jsonText, labelOr, usedIds } from '../core/model.js';
+import { copyOf, isGone, nameTable, unreadable, jsonText, labelOr, usedIds } from '../core/model.js';
 import { diagramOf } from '../core/registry.js';
 import { edgeRefIds } from './api.js';
 import { mapContext } from './context.js';
 import { KIND, kindOf } from './kinds.js';
-import { WIRE_KINDS, andList, arrOf, runSteps } from './validate.js';
+import { WIRE_KINDS, andList, arrOf, liveIn, runSteps } from './validate.js';
 
 /* ---------- paths(), reach(), describe() and otlpSpans(): a view's lines walked and put in words, with no DOM (#62, #64, #65) ----------
    A line runs from → to as the model gives it. Each result is a list of Refs a host can hand to highlight(); a line's Ref
@@ -12,14 +12,16 @@ import { WIRE_KINDS, andList, arrOf, runSteps } from './validate.js';
 // lines with their labels, steps and latency (it was walked as drawn, by model line, which lost a view's own lines' fields)
 const viewType = (model, viewId) => { const v = model && model.schemaVersion === 2 && arrOf(model.views).find(x => x && x.id === viewId);
   return v && v.diagram != null && v.diagram !== 'map' ? diagramOf(v) : null; };
+// on the diff page's model, the model after's: a card, box or line diff() drew back removed is not walked or counted (audit 57);
+// gone: a map sequence view's lines with the removed ones in their places, which describe() says as removed steps (audit 55)
 function lineGraph(model, viewId) {
   const ctx = mapContext(model), v = ctx.V[viewId];
   if (!v) throw new Error(`umlimator: no view ${jsonText(viewId)}`);
-  const ids = (v.nodeIds || []).filter(i => ctx.N[i]), M = new Map(arrOf(ctx.D.edges).map(e => [e && e._id, e]));
-  if (!viewType(model, viewId)) return { ctx, v, ids, edges: ctx.viewEdges(v).filter(e => e.from !== e.to) };
+  const live = liveIn(ctx, v), ids = (v.nodeIds || []).filter(i => ctx.N[i] && live.card(i)), M = new Map(arrOf(ctx.D.edges).map(e => [e && e._id, e]));
+  if (!viewType(model, viewId)) { const all = ctx.viewEdges(v).filter(e => e.from !== e.to); return { ctx, v, ids, edges: all.filter(live.line), gone: all }; }
   // a typed view: its lines as drawn (a port's between the cards it is on)
-  const g = ctx.buildGeo(viewId);
-  return { ctx, v, ids: [...new Set([...ids, ...g.nodes.map(n => n.id)])], edges: g.edges.flatMap(d => d.from === d.to ? [] : edgeRefIds(d).map(_id => ({ ...M.get(_id), _id, from: d.from, to: d.to }))) };
+  const g = ctx.buildGeo(viewId), out = new Set(g.nodes.filter(n => isGone(n) || !live.card(n.id)).map(n => n.id)), ok = id => !out.has(id) && live.card(id);
+  return { ctx, v, ids: [...new Set([...ids, ...g.nodes.map(n => n.id).filter(ok)])], edges: g.edges.flatMap(d => d.from === d.to || isGone(d) || !ok(d.from) || !ok(d.to) ? [] : edgeRefIds(d).map(_id => ({ ...M.get(_id), _id, from: d.from, to: d.to })).filter(e => !isGone(e))) };
 }
 const walkFrom = (edges, start, back) => { const seen = new Set([start]); // breadth first along lines (back: against them)
   for (let q = [start]; q.length;) { const u = q.shift(); edges.forEach(e => { const [a, b] = back ? [e.to, e.from] : [e.from, e.to]; if (a === u && !seen.has(b)) { seen.add(b); q.push(b); } }); }
@@ -67,7 +69,7 @@ function oneLine(model) {
 export function describe(model, viewId) {
   model = oneLine(unreadable(model).model); // as paths(): its view read once a host's getter is no value (audit 25)
   const T = viewType(model, viewId); if (T && T.describe) return T.describe(model, viewId); // a type's own words (1.9), read as mapContext reads them (audit 19)
-  const { ctx, v, ids, edges } = lineGraph(model, viewId), boxes = (v.containers || []).filter(c => c && c.id);
+  const { ctx, v, ids, edges, gone } = lineGraph(model, viewId), boxes = (v.containers || []).filter(c => c && c.id && !isGone(c));
   const name = id => ctx.N[id] ? ctx.nodeIn(id, viewId).label || id : (boxes.find(c => c.id === id) || {}).label || id;
   const list = xs => xs.length < 3 ? xs.join(' and ') : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1];
   const count = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
@@ -80,7 +82,7 @@ export function describe(model, viewId) {
   const out = [`${labelOr(v.title, v.id)}: ${count(ids.length, 'card')} and ${count(edges.length, 'line')}.`];
   if (ids.length) out.push(`Cards: ${ids.map(id => `${name(id)} (${KIND[kindOf(ctx.nodeIn(id, viewId).kind, true)][1]})`).join(', ')}.`);
   boxes.forEach(c => { const ins = (c.nodeIds || []).filter(i => ids.includes(i)); if (ins.length) out.push(`${name(c.id)} holds ${list(ins.map(name))}.`); });
-  if (v.render === 'sequence') { const k = runSteps(edges); edges.forEach((e, i) => out.push(`${k[i] == null ? 'Removed step' : 'Step ' + k[i]}: ${name(e.from)} ${VERB[kind(e)]} ${name(e.to)}${what(e)}.`)); } // audit 55
+  if (v.render === 'sequence') { const steps = gone || edges, k = runSteps(steps); steps.forEach((e, i) => out.push(`${k[i] == null ? 'Removed step' : 'Step ' + k[i]}: ${name(e.from)} ${VERB[kind(e)]} ${name(e.to)}${what(e)}.`)); } // audit 55
   else [...ids, ...boxes.map(c => c.id)].forEach(id => { const outs = edges.filter(e => e.from === id); if (!outs.length) return;
     out.push(`${name(id)} ${[...new Set(outs.map(kind))].map(k => `${VERB[k]} ${list(far(outs.filter(e => kind(e) === k)))}`).join('; ')}.`); });
   const alone = ids.filter(id => !edges.some(e => e.from === id || e.to === id));
