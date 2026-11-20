@@ -206,10 +206,11 @@ function propTextProblems(x, at, keys) {
   const P = x && typeof x === 'object' && x.props && typeof x.props === 'object' && !Array.isArray(x.props) ? x.props : null;
   return P ? keys.flatMap(k => (Object.hasOwn(P, k) ? [labelProblem(P, `${at}.props`, k)] : []).filter(Boolean)) : [];
 }
-// A view's removed copy of a model line, with its id and its ends, is that line drawn back removed, as diff() writes it for a line
-// taken out of a view, or with a card or a view (audit 53): it names the model line, so it is no second element. lines: id -> line
-const removedCopy = (lines, e) => { const l = e && typeof e === 'object' ? lines.get(e.id) : null;
-  return !!l && typeof l === 'object' && l !== e && typeof e.change === 'string' && e.change.toLowerCase() === 'removed' && l.from === e.from && l.to === e.to; };
+// A view's marked copy of a model line, with its id and its ends, is that line drawn back removed, as diff() writes it for a line
+// taken out of a view, or with a card or a view (audit 53), or drawn added, for a line or a card put back into a view that lists
+// its lines (audit 55): it names the model line, so it is no second element. lines: id -> line
+const markedCopy = (lines, e) => { const l = e && typeof e === 'object' ? lines.get(e.id) : null;
+  return !!l && typeof l === 'object' && l !== e && typeof e.change === 'string' && /^(removed|added)$/i.test(e.change) && l.from === e.from && l.to === e.to; };
 function typedProblems(model) {
   const out = [], err = (path, message) => out.push({ level: 'error', path, message }), warn = (path, message) => out.push({ level: 'warning', path, message });
   const m = model && typeof model === 'object' ? model : {}, arr = x => (Array.isArray(x) ? x : []), isObj = x => x && typeof x === 'object';
@@ -218,7 +219,7 @@ function typedProblems(model) {
   const where = new Map(), kindOf = new Map(), ownerOf = new Map(), parents = [], up = new Set(); // id -> its path, its kind, its owner; [element, path]; the elements whose members are being read
   // on a stack of its own, each member's subtree then its type, in the order a recursion took: members nested thousands
   // deep are read, never a stack overflow (audit 35)
-  // a typed view's removed copy of a model line (removedCopy) and its members name the model line's: read, their ids not held
+  // a typed view's marked copy of a model line (markedCopy) and its members name the model line's: read, their ids not held
   // again (audit 54: a typed view whose edges list dropped a line had diff() models validate() said "used twice")
   const modelL = new Map(Array.from(arr(m.edges), e => [e && e.id, e]));
   const element = (x0, at0, kind0, owner0, copy0) => { const todo = [() => one(x0, at0, kind0, owner0, copy0)]; while (todo.length) todo.pop()();
@@ -270,7 +271,7 @@ function typedProblems(model) {
   arr(m.edges).forEach((e, i) => { if (typedEdge(e)) { element(e, `edges[${i}]`, 'edge'); typeOf(e, `edges[${i}]`, true, 'line'); } });
   views.forEach((v, i) => { if (!typedView(v)) return;
     arr(v.nodes).forEach((n, j) => element(n, `views[${i}].nodes[${j}]`, 'node'));
-    arr(v.edges).forEach((e, j) => { if (isObj(e)) { element(e, `views[${i}].edges[${j}]`, 'edge', undefined, removedCopy(modelL, e)); typeOf(e, `views[${i}].edges[${j}]`, true, 'line'); } });
+    arr(v.edges).forEach((e, j) => { if (isObj(e)) { element(e, `views[${i}].edges[${j}]`, 'edge', undefined, markedCopy(modelL, e)); typeOf(e, `views[${i}].edges[${j}]`, true, 'line'); } });
     arr(v.fragments).forEach((f, j) => element(f, `views[${i}].fragments[${j}]`, 'fragment'));
     ['changes', 'constraints'].forEach(k => arr((v.timeline || {})[k]).forEach((c, j) => element(c, `views[${i}].timeline.${k}[${j}]`, 'time'))); });
   const has = id => where.has(id), name = id => jsonText(id); // a host's BigInt written 3n, never thrown on (audit 32)
@@ -332,4 +333,4 @@ const listOf = (m, i) => (Array.isArray(m.views[i] && m.views[i].edges) ? i : -1
 const lineNames = m => { const out = new Map([[-1, namesOf(m && m.edges)]]);
   (Array.isArray(m && m.views) ? m.views : []).forEach((v, i) => { if (v && Array.isArray(v.edges)) out.set(i, namesOf(v.edges)); }); return out; };
 
-export { canon, canonDeep, jsonText, labelOr, elName, oneNamed, labelProblem, removedCopy, propTextProblems, versionProblem, typedProblems, lineNames, namesOf, listOf, unreadable, copyOf, textOf, nameTable, usedIds };
+export { canon, canonDeep, jsonText, labelOr, elName, oneNamed, labelProblem, markedCopy, propTextProblems, versionProblem, typedProblems, lineNames, namesOf, listOf, unreadable, copyOf, textOf, nameTable, usedIds };

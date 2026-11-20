@@ -67,8 +67,8 @@ test("audit 50: a line's flow stops where the arrowhead drawn begins: weight 1's
   assert.match(STYLES, /\.edge-g:not\(\.faded\):is\(\.wt-2, \.wt-3\):is\(\.hov, \.hot, \.key-on\) \.fl-hv[^{]*\{ display: inline; \}/, 'and the hover one shown then');
 });
 
-// audit 51: the d.ts, the JSON Schema, the map type's checklist (tools/types.json, and the docs page tools/gallery.mjs
-// writes from it), the examples' README and monorepo.py still said a weight is drawn as a width, as before 19 Nov; each
+// audit 51: the d.ts, the JSON Schema, the map's checklist (tools/types.json then, tools/gallery.json's map now, and the
+// docs page tools/gallery.mjs writes from it, the Bookshop atlas's), the examples' README and monorepo.py still said a weight is drawn as a width, as before 19 Nov; each
 // now says what the test above draws: one width at rest, its width on hover, selection and keyboard focus
 test('every description of a line\'s weight says it shows on hover, selection and focus, not as a width at rest', async () => {
   const { readFileSync } = await import('node:fs');
@@ -78,9 +78,9 @@ test('every description of a line\'s weight says it shows on hover, selection an
   assert.ok(descs.length >= 1);
   const dts = /\/\*\*((?:(?!\*\/)[\s\S])*)\*\/\s*weight\?:/.exec(read('lib/umlimator.d.ts'));
   assert.ok(dts, 'the d.ts documents weight');
-  const map = JSON.parse(read('tools/types.json')).types.map, item = JSON.stringify(map).match(/"(Line weights[^"]*)"/);
+  const map = JSON.parse(read('tools/gallery.json')).map, item = JSON.stringify(map).match(/"(Line weights[^"]*)"/);
   assert.ok(item, 'the map checklist lists weights');
-  const said = { schema: descs.join(' '), dts: dts[1], checklist: item[1], page: read('docs/gallery/map.md').match(/<li>Line weights[^<]*<\/li>/)?.[0] ?? '',
+  const said = { schema: descs.join(' '), dts: dts[1], checklist: item[1], page: read('docs/gallery/bookshop-atlas.md').match(/<li>Line weights[^<]*<\/li>/)?.[0] ?? '',
     readme: read('examples/README.md').match(/^\| \[`monorepo\.json`\][^\n]*/m)[0], monorepo: read('examples/monorepo.py').split('"""')[1] };
   for (const [where, text] of Object.entries(said)) {
     assert.doesNotMatch(text, /drawn as (its )?widths?|heavier|about 1\.8, 3\.2 and 4\.5 px/, where);
@@ -124,4 +124,19 @@ test('audit 54 follow-up: firstSentence checks only a 9-character tail for an ab
   assert.equal(firstSentence('Carries orders, e.g. book orders. Then more.'), 'Carries orders, e.g. book orders.');
   assert.equal(firstSentence('vs. this. next'), 'vs. this.');
   assert.equal(firstSentence('Canvas. next'), 'Canvas.');
+});
+
+test('audit 55: a first sentence runs past a list number, a capital initial, a letter chain and a title; a bullet item drops its period before the "; "', async () => {
+  const { firstSentence, mdPlain } = await import('../src/core/text.js');
+  for (const [t, f] of [['1. Validates the basket.\n2. Charges the card.', '1. Validates the basket.'], ['Run by J. Smith in the U.S. office. More.', 'Run by J. Smith in the U.S. office.'],
+    ['Sends Dr. Smith the report. Then more.', 'Sends Dr. Smith the report.'], ['Runs at 3 p.m. daily. More.', 'Runs at 3 p.m. daily.'],
+    ['Released in 2024. Then more.', 'Released in 2024.'], ['Calls x vs. y. More', 'Calls x vs. y.'], ['Canvas. next', 'Canvas.']]) assert.equal(firstSentence(t), f, t);
+  for (const [t, f] of [['- Charges the card.\n- Sends the receipt.\n- Logs the order.', 'Charges the card; Sends the receipt; Logs the order.'], ['Carries:\n- orders.\n- refunds.', 'Carries: orders; refunds.'],
+    ['- gift cards etc.\n- maps', 'gift cards etc.; maps'], ['- orders\n- refunds', 'orders; refunds']]) assert.equal(mdPlain(t), f, t);
+  // drawn: a card's title and a weighted line's title and name
+  const m = { root: 'v', nodes: [{ id: 'a', label: 'Checkout', what: '1. Validates the basket.\n2. Charges the card.' }, { id: 'b', label: 'Gateway', what: 'Run by J. Smith in the U.S. office.' }],
+    edges: [{ from: 'a', to: 'b', weight: 3, what: '- Charges the card.\n- Sends the receipt.' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+  const s = svgOf(layout(m, 'v')), titles = [...s.matchAll(/<title>([^<]*)<\/title>/g)].map(x => x[1]);
+  assert.ok(titles.includes('Checkout \u00b7 1. Validates the basket.') && titles.includes('Gateway \u00b7 Run by J. Smith in the U.S. office.'), titles.join(' | '));
+  assert.equal(/class="um-key line-key[^"]*"[^>]*aria-label="([^"]*)"/.exec(s)[1], 'Line from Checkout to Gateway, Charges the card; Sends the receipt.');
 });

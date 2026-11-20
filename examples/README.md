@@ -1,11 +1,11 @@
 # Examples
 
 Every example below is live at **[zintaen.github.io/umlimator](https://zintaen.github.io/umlimator/)**, built from `main`.
-The systems are made up, except the Umlimator Atlas: umlimator's own model.
+The systems are made up, except the Umlimator atlas: umlimator's own model.
 
 ## Type pages
 
-Each diagram type, and the map, has one page drawing one comprehensive example of that type: [`types/<type>.json`](types/), hand-authored and committed, which CI renders to `types/<type>.html`. Its root and first view is the main view, one picture showing every element kind, line kind, marker, compartment, stereotype and option of the type that can coexist; a setting that cannot (a layout direction, a notation) is an alternative, a view of the same model under the main view. [`../tools/types.json`](../tools/types.json) says, per type, the page's title and intro, the main view, the alternatives with what differs, and what the main view shows, a checklist the docs page lists. Run `node tools/types.mjs uml-class` to validate, check and render one type (`--no-html` to skip rendering), or `node tools/types.mjs` for every type; `tests/types.test.mjs` checks the same.
+Each diagram type has one page drawing one comprehensive example of that type: [`types/<type>.json`](types/), hand-authored and committed, which CI renders to `types/<type>.html`. Its root and first view is the main view, one picture showing every element kind, line kind, marker, compartment, stereotype and option of the type that can coexist; a setting that cannot (a layout direction, a notation) is an alternative, a view of the same model under the main view. [`../tools/types.json`](../tools/types.json) says, per type, the page's title and intro, the main view, the alternatives with what differs, and what the main view shows, a checklist the docs page lists. Run `node tools/types.mjs uml-class` to validate, check and render one type (`--no-html` to skip rendering), or `node tools/types.mjs` for every type; `tests/types.test.mjs` checks the same. The layered map is not one of the types and has no page of its own: every atlas opens on a map, and the Bookshop atlas's `overview` (in [`bookshop-atlas.json`](bookshop-atlas.json)) is the map's example, showing everything a map draws, with its checklist on the atlas's docs page.
 
 ## Maps
 
@@ -15,15 +15,15 @@ Each map is a JSON model. CI turns it into a self-contained page (`python3 umlim
 |---|---|---|
 | [`shapes.json`](shapes.json) | Card shapes, the one style maps draw | A card of each kind that has a shape: people, a browser app, a phone, a window (its own `shape`), a terminal, an agent, a database, a queue, a file, a module, hosts, a hook and an external system |
 | [`monorepo.json`](monorepo.json) | A map generated from a monorepo's dependency list | What [`monorepo.py`](monorepo.py) writes from a list of imports: a card per package, a line per import, its weight by the count of imports (shown as its width on hover, selection and keyboard focus), a box per folder, nested as the folders are, and the same cards with no boxes |
-| [`umlimator-atlas.json`](umlimator-atlas.json) | The Umlimator Atlas: umlimator's own model, the gallery's first Atlas entry | A map of umlimator's parts and who uses each, its C4 context and containers, the module's layers (package), the typed families (component), the diff Action on a pull request (sequence) and umlimator's state machines, joined by cards that open them; two stories |
-| [`bookshop-atlas.json`](bookshop-atlas.json) | The Bookshop Atlas: an online bookshop as one model, the gallery's second Atlas entry | A map of the bookshop's systems opening into its C4 context, containers, components, dynamic and deployment views, the shoppers' use cases, buying a book (interaction overview and four sequences), components, the sales domain (class), an order's life (state machine) and a snapshot of one order (object), packages and the conventions profile, the order service's insides, the information flows, the database (ER), data flow at two levels, fulfilment and payment (activity) with one charge's timing, checkout as sequence and communication, order to shipment and pick and pack (BPMN), returns (flowchart), production (deployment), the opening plan (mindmap) and the bookshop on Google Cloud, Azure and AWS: one bookshop, the same names in every view |
+| [`umlimator-atlas.json`](umlimator-atlas.json) | Umlimator: umlimator's own model, the gallery's first Atlas entry | A map of umlimator's parts and who uses each, its C4 context and containers, the module's layers (package), the typed families (component), the diff Action on a pull request (sequence) and umlimator's state machines, joined by cards that open them; two stories |
+| [`bookshop-atlas.json`](bookshop-atlas.json) | Bookshop: an online bookshop as one model, the gallery's second Atlas entry | A map of the bookshop's systems, the map's example (every card kind, boxes, badges, change marks, line kinds, weights, styles and steps, two lenses, and the checkout in run order), opening into its C4 context, containers, components, dynamic and deployment views, the shoppers' use cases, buying a book (interaction overview and four sequences), components, the sales domain (class), an order's life (state machine) and a snapshot of one order (object), packages and the conventions profile, the order service's insides, the information flows, the database (ER), data flow at two levels, fulfilment and payment (activity) with one charge's timing, checkout as sequence and communication, order to shipment and pick and pack (BPMN), returns (flowchart), production (deployment), the opening plan (mindmap) and the bookshop on Google Cloud, Azure and AWS: one bookshop, the same names in every view |
 
-[![The Umlimator Atlas: what umlimator is made of](https://zintaen.github.io/umlimator/examples/stills/umlimator-atlas/overview.png)](https://zintaen.github.io/umlimator/examples/umlimator-atlas.html)
+[![The Umlimator atlas: what umlimator is made of](https://zintaen.github.io/umlimator/examples/stills/umlimator-atlas/overview.png)](https://zintaen.github.io/umlimator/examples/umlimator-atlas.html)
 
 The Atlas's story of a pull request, as `umlimator.py record` writes it (CI records each story for the site): open it in the page with
 [`#story=pull-request&step=1`](https://zintaen.github.io/umlimator/examples/umlimator-atlas.html#story=pull-request&step=1), or from its Stories menu.
 
-![The Umlimator Atlas: a pull request, from push to comment](https://zintaen.github.io/umlimator/examples/stills/umlimator-atlas/story-pull-request.png)
+![The Umlimator atlas: a pull request, from push to comment](https://zintaen.github.io/umlimator/examples/stills/umlimator-atlas/story-pull-request.png)
 
 ## Diagrams
 
@@ -91,7 +91,7 @@ this repository: every page and still committed is built with `UMLIMATOR_NO_PACK
 site is built with the Google Cloud, Azure and AWS packs fetched, their terms accepted, so the cloud examples there show
 the real icons with the vendors' legal lines.
 
-## Why the Umlimator Atlas is not a test model
+## Why the Umlimator atlas is not a test model
 
 The tests and the benchmark read their own models: the fixtures in [`../tests/fixtures/`](../tests/fixtures/) and next to each test, and the benchmark's in [`../bench/models/`](../bench/models/). A new test never reads the showcase. The older tests listed as `LEGACY` in [`../tests/showcase.test.mjs`](../tests/showcase.test.mjs) still read models in `examples/` until each moves to a fixture of its own; that list only shrinks, and the test fails when a file not on it starts reading `examples/`. [`umlimator-atlas.json`](umlimator-atlas.json), umlimator drawn by itself, is the gallery's Atlas and stays out of the bench and every layout, hash and count pin. The gallery and docs tests read it to check that its links, its export names and the docs' quotes of it hold, and that its Readers card says where each import format is read, the showcase test validates it and lays out each view, as it does every model in `examples/`, and [`edit.html`](edit.html), which the editing tests open, draws it. It has no honest trace, latency or cost data, no hardware for SysML and no business process for BPMN, and its content changes with the code, so a pinned picture of it would describe last month's umlimator. CI renders it, checks its layout and validates it, with nothing about its content pinned.
 
@@ -104,13 +104,13 @@ The module embedded in a page, as an app would use it. Serve the repository over
 |---|---|
 | [`playground.html`](playground.html) | Edit a model as JSON and the map follows, with `validate()`'s problems, and the broken rules (`rules()`) and `check()`'s layout issues for the view shown, each selecting what it is about; Share puts the model in the link |
 | [`embed.html`](embed.html) | `render()` with the standalone page's pieces, each a checkbox (`nav`, `details`, `legend`, `hints`), a view loaded when a card or its details open it (`open`, `update()`, `setView()`) or unfold it in place (`expand`, `map.expand()`), SVG and PNG export, light, dark and a host's own palette, the minimap |
-| [`live.html`](live.html) | `overlay()` once a second on the Umlimator Atlas's overview, the model unchanged: flow as fast as each line's made-up calls, lines that drop calls pulse rose, slow ones glow amber with their delay, and each card's tab shows its latency |
-| [`ask.html`](ask.html) | Questions about the Umlimator Atlas's overview answered on the map: words, the cards and lines they are about lit (`highlight()` with `paths()` and `reach()`), a flow played as a `tour()`, and the view in sentences (`describe()`), the text an AI model would get |
-| [`replay.html`](replay.html) | A trace replayed (`replay()`): a made-up OpenTelemetry export of the diff Action on a pull request ([`traces/pull-request.json`](traces/pull-request.json)) read by `otlpSpans()` on the Umlimator Atlas's overview, each call along its line at its time, its duration kept as a label, with pause and stop |
+| [`live.html`](live.html) | `overlay()` once a second on the Umlimator atlas's overview, the model unchanged: flow as fast as each line's made-up calls, lines that drop calls pulse rose, slow ones glow amber with their delay, and each card's tab shows its latency |
+| [`ask.html`](ask.html) | Questions about the Umlimator atlas's overview answered on the map: words, the cards and lines they are about lit (`highlight()` with `paths()` and `reach()`), a flow played as a `tour()`, and the view in sentences (`describe()`), the text an AI model would get |
+| [`replay.html`](replay.html) | A trace replayed (`replay()`): a made-up OpenTelemetry export of the diff Action on a pull request ([`traces/pull-request.json`](traces/pull-request.json)) read by `otlpSpans()` on the Umlimator atlas's overview, each call along its line at its time, its duration kept as a label, with pause and stop |
 | [`edit.html`](edit.html) | `editable`: the map emits `change` events, the host applies them and calls `update()`, with undo from `history()` |
 | [`class-editor.html`](class-editor.html) | `editable` on a class diagram: each gesture emits one `edit` event, a transaction of commands, which the host applies with `apply()`, keeps in `history()` for undo and redo, and draws with `update()`; it may refuse one, and it saves the model as it is |
-| [`timelapse.html`](timelapse.html) | Four made-up releases of umlimator (the Umlimator Atlas's overview) on a slider: `update()` eases from one to the next (new cards fade in, removed ones fade out, moved ones glide), `diff()` says what changed and marks it on request |
-| [`drift.html`](drift.html) | `drift()`: the Umlimator Atlas's overview against a week of made-up traffic, as a tracing backend lists it; the lines that ran undrawn come in, the drawn ones that carried nothing fade |
+| [`timelapse.html`](timelapse.html) | Four made-up releases of umlimator (the Umlimator atlas's overview) on a slider: `update()` eases from one to the next (new cards fade in, removed ones fade out, moved ones glide), `diff()` says what changed and marks it on request |
+| [`drift.html`](drift.html) | `drift()`: the Umlimator atlas's overview against a week of made-up traffic, as a tracing backend lists it; the lines that ran undrawn come in, the drawn ones that carried nothing fade |
 | [`notations.html`](notations.html) | `shapes.json` in the one card-shape style, light and dark, each a `<umlimator-map>` |
 | [`element.html`](element.html) | `<umlimator-map>`: a map from HTML alone, from `src` with a still until it is drawn, and from a model written in the page; controls that set its attributes, and its events as they come; the fenced block a docs site turns into it |
 | [`layout.mjs`](layout.mjs) | `layout()` in Node, with no DOM: lays out every view and fails when a line runs more than 3 times its direct route, a check a host can run in CI |
@@ -124,25 +124,25 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | Views a card opens (`opensView`) | umlimator-atlas: from the overview to the C4 context (umlimator.py), the module's layers, the typed families, the diff Action and the state machines, from the machines to each machine's states, and from the C4 context to the containers |
 | A view the host loads when it's opened (`opensView` with `opensCount`) | umlimator-atlas: umlimator/all and Diff Action, in `embed.html` |
 | A stacked card unfolded in place (E, Alt + click, `map.expand()`) | umlimator-atlas: The module and umlimator/all in `overview`; numbered, with its run order: Navigation in `machines` |
-| Boxes (`containers`) and their tabs (`badges`) | umlimator-atlas `machines` and `story`; [`types/map.json`](types/map.json) `shop` (Platform and Data) |
-| A box's tone, a tinted region (`tone`) | [`types/map.json`](types/map.json) `shop` (Data, Support) |
-| Nested boxes (`parent`) | [`types/map.json`](types/map.json) `shop` (Data in Platform), monorepo `boxed` |
+| Boxes (`containers`) and their tabs (`badges`) | umlimator-atlas `machines` and `story`; [`bookshop-atlas.json`](bookshop-atlas.json) `overview` (Bookshop and Data) |
+| A box's tone, a tinted region (`tone`) | [`bookshop-atlas.json`](bookshop-atlas.json) `overview` (Data, Support) |
+| Nested boxes (`parent`) | [`bookshop-atlas.json`](bookshop-atlas.json) `overview` (Data in Bookshop), monorepo `boxed` |
 | A line to or from a box | umlimator-atlas `machines` (The page to render()'s handle) and `story` (A story shown to Ended) |
-| Line kinds (`kind`: calls, feeds, triggers, state, guard) | [`types/map.json`](types/map.json) `shop` |
-| Line weights (`weight`), shown as widths on hover, selection and keyboard focus | umlimator-atlas `overview`, [`types/map.json`](types/map.json) `shop` (POST /orders 3, order 2), `live.html` |
-| A line's second label (`sublabel`) | umlimator-atlas `overview` (in Node, headless, MCP), [`types/map.json`](types/map.json) `shop` (POST /orders) |
+| Line kinds (`kind`: calls, feeds, triggers, state, guard) | [`bookshop-atlas.json`](bookshop-atlas.json) `overview` |
+| Line weights (`weight`), shown as widths on hover, selection and keyboard focus | umlimator-atlas `overview`, [`bookshop-atlas.json`](bookshop-atlas.json) `overview` (POST /orders 3, browses and orders 2), `live.html` |
+| A line's second label (`sublabel`) | umlimator-atlas `overview` (in Node, headless, MCP), [`bookshop-atlas.json`](bookshop-atlas.json) `overview` (POST /orders) |
 | The sides a line uses (`fromSide`, `toSide`) | umlimator-atlas `navigation` (a later request, back over the top) |
-| Tabs on cards (`badges`, with `tone`) | [`types/map.json`](types/map.json) `shop` (public, on call, backed up), `live.html` |
+| Tabs on cards (`badges`, with `tone`) | [`bookshop-atlas.json`](bookshop-atlas.json) `overview` (public, on call, backed up), `live.html` |
 | Line icons (`icon`) | every model |
-| A card with its name only (`noSub`) | [`types/map.json`](types/map.json) `shop` (Admin CLI) |
-| Edited marks (`edited`) | [`types/map.json`](types/map.json) `shop` (Shop API) |
-| Chips (`verbs`), planned and removed cards (`change`), brand logos (`icon`) | [`types/map.json`](types/map.json) `shop` (Shop API's checkout and refund; Gift cards; React, FastAPI and PostgreSQL) |
+| A card with its name only (`noSub`) | [`bookshop-atlas.json`](bookshop-atlas.json) `overview` (Admin CLI) |
+| Edited marks (`edited`) | [`bookshop-atlas.json`](bookshop-atlas.json) `overview` (Shop API) |
+| Chips (`verbs`), planned and removed cards (`change`), brand logos (`icon`) | [`bookshop-atlas.json`](bookshop-atlas.json) `overview` (Shop API's checkout and refund; Gift cards and Reminder bot; React, FastAPI and PostgreSQL) |
 | A card's setting in one view only (`nodeOverrides`) | bookshop-atlas `components` (the shop-api image opens `domain`) and `checkout-sequence` (api opens `checkout-communication`) |
 | Cards with no lines in a row of their own | monorepo `plain` (tools/release, tools/codemods) |
 | Positions set by hand (`layout`) | umlimator-atlas `overview`, `machines`, `story` and `tour` |
 | Space between columns and rows (`gap`, `rgap`) | umlimator-atlas `machines`, `story` and `tour` |
 | Steps in run order (`render: "sequence"`) and a tour | umlimator-atlas `navigation`, `keys` and `mcp`; a tour in `tour` |
-| Steps on the lines of any view (`step`) | [`types/map.json`](types/map.json) `shop`, and `shop-run` in run order |
+| Steps on the lines of any view (`step`) | [`bookshop-atlas.json`](bookshop-atlas.json) `overview`, and `overview-run` in run order |
 | `render()`, its events, `update()`, `setView()`, `focus()`, `toSVG()`, `toPNG()`, themes | `embed.html` |
 | Deeper tints (`--um-tint`) | `embed.html`, its host's palette |
 | The standalone page's pieces in `render()`: views list, details panel, legend, hint line (`nav`, `details`, `legend`, `hints`) | `embed.html` |
@@ -151,7 +151,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | A view in sentences (`describe()`), a tour along any path (`tour()`) | `ask.html` |
 | A trace replayed (`replay()`, `otlpSpans()`) | `replay.html` |
 | A trace kept as a numbered view (`sequenceFromTrace()`, `umlimator.py trace`): each call a step, its duration under its label | `python3 umlimator.py trace examples/umlimator-atlas.json examples/traces/pull-request.json --view diff-trace --match examples/traces/pull-request-match.json --out atlas.json` |
-| Lenses (`lenses`, `owner`, `map.lens()`), the page's Lenses menu and `#lens=<id>` | [`types/map.json`](types/map.json): Who owns what (cards ringed by owner, with a legend) and Where the money goes |
+| Lenses (`lenses`, `owner`, `map.lens()`), the page's Lenses menu and `#lens=<id>` | [`bookshop-atlas.json`](bookshop-atlas.json): Who owns what (cards ringed by owner, with a legend) and Where the money goes |
 | A story told step by step (`stories`, `play()`), its Stories menu and recording in the page, `umlimator.py record` | umlimator-atlas (`assistant` and `pull-request`), on the site; pictured under Maps |
 | Editing and undo (`editable`, `change`, `history()`) | `edit.html` |
 | A diagram type: a typed model in its own notation (`schemaVersion: 2`, a view's `diagram`), from `umlimator/all` | sales-classes (`uml.class`), order-objects (`uml.object`), bookshop-packages (`uml.package`), checkout-sequence (`uml.sequence`), checkout-communication (`uml.communication`), shopping-use-cases (`uml.use-case`), fulfil-activity (`uml.activity`), order-states (`uml.state-machine`), buy-book-overview (`uml.interaction-overview`), bookshop-components (`uml.component`), bookshop-deployment (`uml.deployment`), order-service-structure (`uml.composite-structure`) |

@@ -1019,3 +1019,11 @@ test('audit 54: 26 expanded sub-processes nested, each holding a start event, la
   const [c] = bzAdd(one([], []), one([], []).views[0], { type: 'bpmn.Task' }, `-a${d}b-`, null);
   assert.ok(performance.now() - t < 500, `${Math.round(performance.now() - t)} ms`); assert.equal(c.element.id, `a${d}b`);
 });
+
+test('audit 55: 150 sequence flows into one gateway lay out in about linear time (before: the lines into its side, too many for its tracks, each fell to the last resort, whose grid held every line before it and whose search visited all of it, 30 s; and each line marked its grid cell by cell) (timed)', () => {
+  const nodes = [N('p', 'Participant', 'P'), N('j', 'ExclusiveGateway', 'J', { parent: 'p' })], edges = [];
+  for (let i = 0; i < 150; i++) { nodes.push(N('t' + i, 'Task', 'T' + i, { parent: 'p' })); edges.push({ id: 'e' + i, type: 'bpmn.SequenceFlow', from: 't' + i, to: 'j' }); }
+  const t = performance.now(), g = layout(one(nodes, edges), 'v'), ms = performance.now() - t;
+  assert.ok(ms < 4000, `${Math.round(ms)} ms`);
+  assert.equal(g.edges.filter(e => e.pts && e.pts.length >= 2).length, 150, 'every flow drawn');
+});

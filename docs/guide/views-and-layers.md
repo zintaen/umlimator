@@ -91,6 +91,6 @@ broken rule. The exact selector syntax is in [`lib/umlimator.schema.json`](../..
 
 A view whose `diagram` is set draws one of the 28 diagram types in its own notation instead of map cards. A typed
 element can still open another view: a C4 element opens the next level, a call behaviour action opens the activity it
-calls, a collapsed BPMN sub-process opens its own view. The Umlimator Atlas
+calls, a collapsed BPMN sub-process opens its own view. The Umlimator atlas
 ([`examples/umlimator-atlas.json`](../../examples/umlimator-atlas.json)) joins a map, C4, package, component and sequence
 views and umlimator's state machines into one model you can click through.

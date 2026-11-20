@@ -205,9 +205,9 @@ Each problem is `{ level, rule, path, message, ids }`, as in `class.js`. Rules m
 | `contiguous` | error | A fragment's occurrences, nested ones included, are one run in `edges`, made of its operands' runs in `members` order. It replaces `check.mjs`'s operand check and catches Q1's split |
 | `message-ends` | error | A message joins two lifelines listed in `nodeIds` |
 | `reply-call` (shared) | error | `replyTo` names an earlier call of the view, and the reply goes back along it. A reply with no `replyTo` is a warning |
-| `reply-once` (shared) | error | Two replies to one call lie in different operands of one `alt` |
-| `create-once` (shared) | error | A lifeline is created at most once, by the first message to or from it; each operand of one `alt` may create it, but nothing reaches it before its first create, where its head is drawn (audit 10) |
-| `delete-once` (shared) | error | A lifeline is deleted at most once, by the last message to or from it; each operand of one `alt` may delete it, a cross at each delete, the stem ending at the last unless a later operand still reaches it (audit 10) |
+| `reply-once` (shared) | error | Two replies to one call lie in different operands of one `alt`, or the first in a `break` operand and the second after that `break` in the operand around it (or at the top level for a `break` there): a `break` operand is performed instead of the rest of the fragment around it (UML 2.5.1 17.6.3, audit 55) |
+| `create-once` (shared) | error | A lifeline is created at most once, by the first message to or from it; each operand of one `alt` may create it, and a `break` operand and what follows that `break` each may (audit 55), but nothing reaches it before its first create, where its head is drawn (audit 10) |
+| `delete-once` (shared) | error | A lifeline is deleted at most once, by the last message to or from it; each operand of one `alt` may delete it, and a `break` operand may delete it while what follows that `break` still reaches it (audit 55), a cross at each delete, the stem ending at the last unless a later operand still reaches it (audit 10) |
 | `covers` | error | `covers` names lifelines of the view that are next to each other in `nodeIds` (spike risk 4.4) |
 | `operator` | warning | `operator` is one of the five; any other is drawn by its name. `opt`, `loop` and `break` have one operand |
 | `sort` (shared) | warning | `sort` is one of the five; any other is drawn as a call |

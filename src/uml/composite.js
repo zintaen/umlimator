@@ -158,7 +158,9 @@ function csNodeName(P, id) {
   const x = P.el(id); if (!x) return String(id); // an id with '->' (invalid: validate says so) names nothing
   const st = csStereo(x), why = st.length ? ` (${st.join(', ')})` : '';
   if (x.type === 'uml.Comment') return 'Comment: ' + csName(x);
-  if (P.boxed.has(id)) { const held = id === P.sid ? [...P.parts.map(() => x.type === 'uml.Collaboration' ? 'role' : 'part'), ...P.uses.map(() => 'collaboration use')] : P.collabs.find(c => c.x.id === id).roles.map(() => 'role');
+  // the live ones: on the diff page not one diff() drew back removed (audit 55)
+  const live = y => { const c = (y || {}).change; return !(typeof c === 'string' && c.toLowerCase() === 'removed'); };
+  if (P.boxed.has(id)) { const held = id === P.sid ? [...P.parts.filter(live).map(() => x.type === 'uml.Collaboration' ? 'role' : 'part'), ...P.uses.filter(u => live(P.el(u))).map(() => 'collaboration use')] : P.collabs.find(c => c.x.id === id).roles.filter(live).map(() => 'role');
     return SN_SAY.component(csName(x), { stereotypes: st, ports: id === P.sid ? P.sPorts.length : 0, holds: held }).replace(/^Component/, csWord(x.type)); }
   if (P.partOf.has(id)) { const o = P.partOf.get(id), role = o.type === 'uml.Collaboration' && o !== P.S || P.S && P.S.type === 'uml.Collaboration', k = P.partPorts.get(id).length;
     return `${role ? 'Role' : 'Part'} ${csPartSaid(x)}${why}${!role && CS_PROPS(x).aggregation === 'shared' ? ', shared' : ''}, in ${csName(o)}${k ? ', ' + csPlural(k, 'port') : ''}`; }

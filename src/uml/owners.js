@@ -90,10 +90,14 @@ function ownersOn(model, view, look = {}) {
   const holds = o => by.get(o) || [], open = new Set([...by.keys()].filter(x => x != null));
   // an open box's title is qualified as a card's name is, so it reads those owners too (audit 49: a box titled "sales::orders"
   // was not marked when sales was renamed)
-  const boxes = all.filter(id => open.has(id)).map(id => { const p = at.get(id), st = stereoOf(p), held = holds(id), o = owner(id), nm = name(id), rd = via(id);
+  // the count in a box's name is the model after's on the diff page: a card diff() drew back removed is not counted, and a box
+  // holding only such cards says no count, as the model after's card says none (audit 55, as the overview's since audit 53)
+  const ov = OWN_OBJ(view) && OWN_OBJ(view.nodeOverrides) ? view.nodeOverrides : {}, gone1 = y => OWN_OBJ(y) && typeof y.change === 'string' && y.change.toLowerCase() === 'removed';
+  const gone = id => (gh ? gh(id) : false) || gone1(at.get(id)) || (Object.hasOwn(ov, id) && gone1(ov[id]));
+  const boxes = all.filter(id => open.has(id)).map(id => { const p = at.get(id), st = stereoOf(p), held = holds(id), o = owner(id), nm = name(id), rd = via(id), n = held.filter(x => !gone(x)).length;
     return boxHead({ id, label: ownName(p), title: [...(p.type === 'uml.Profile' ? ['«profile»'] : []), ...st.map(t => `«${t}»`), nm].join(' '), nodeIds: held.filter(x => !open.has(x)), ...(o != null ? { parent: o } : {}), shape: shape(p), ...(rd.length ? { reads: rd } : {}),
-      aria: `${word(p)} ${nm}${st.length ? ` (${st.join(', ')})` : ''}, holding ${held.length} element${held.length === 1 ? '' : 's'}` }); });
-  return { ids, owner, holds, boxes, name, full, via, open, chain, at };
+      aria: `${word(p)} ${nm}${st.length ? ` (${st.join(', ')})` : ''}${n ? `, holding ${n} element${n === 1 ? '' : 's'}` : ''}` }); });
+  return { ids, owner, holds, boxes, name, full, via, open, chain, at, gone };
 }
 
 // the reading order of a view's elements (§5): each box, then what it holds, depth first; the rest in the view's order

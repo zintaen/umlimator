@@ -152,6 +152,18 @@ test('audit 54: an icon glyph holding a vertical tab, form feed or other charact
   assert.match(validate({ nodes: [{ id: 'a', label: 'A\u000bB' }], views: [{ id: 'v', nodeIds: ['a'] }] }).find(p => p.path === 'nodes[0].label').message, /drawn as U\+FFFD$/);
 });
 
+test('audit 55: an icon glyph that names an attribute twice or gives one no value draws each kept attribute once, with a quoted value', () => {
+  const gs = [['<path d="M4 4h16" d="M4 12h16"/>', '<path d="M4 4h16"/>'], ['<rect x="4" y="4" width="16" height="16" width/>', '<rect x="4" y="4" width="16" height="16"/>'],
+    ['<rect x="4" width height="16"/>', '<rect x="4" height="16"/>'], ['<path d="M0 0" onclick="x" d="M1 1"/>', '<path d="M0 0"/>'],
+    ['<path d="url(#x)" d="M2 2"/>', '<path d="M2 2"/>'], ['<circle cx="12" cy="12" r="10"/>', '<circle cx="12" cy="12" r="10"/>']];
+  const m = { icons: Object.fromEntries(gs.map(([g], i) => ['h' + i, { g }])), nodes: gs.map((_, i) => ({ id: 'n' + i, label: 'N', icon: 'h' + i })), views: [{ id: 'v', nodeIds: gs.map((_, i) => 'n' + i) }] };
+  const s = mapContext(m).buildView('v').markup;
+  for (const [g, drawn] of gs) assert.ok(s.includes(drawn), `${g} -> ${drawn}`);
+  // no tag in the drawn markup repeats an attribute or holds one without a value
+  for (const [, tag] of s.matchAll(/<([^!?/][^>]*?)\/?>/g)) { const names = [...tag.replace(/="[^"]*"/g, '=""').matchAll(/\s([^\s=]+)(=?)/g)];
+    assert.ok(names.every(x => x[2] === '='), tag); assert.equal(new Set(names.map(x => x[1])).size, names.length, tag); }
+});
+
 test('a cut label ends on whole characters: never half an emoji (audit 1)', () => {
   const t = fit('\u{1F600}'.repeat(40), 13, 100, true);
   assert.ok(t.endsWith('…') && !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(t), JSON.stringify(t));

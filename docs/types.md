@@ -6,7 +6,7 @@ pageClass: types-page
 
 # Diagram types
 
-umlimator draws 28 diagram types besides its layered maps. Each one is a model of schema version 2 with `"diagram"` set on its views, drawn by `umlimator/all` ([Typed diagrams](./api/typed-diagrams.md)). Every type has a live example, made up for an online bookshop and its delivery cargo e-bike, and a conformance note saying which parts of its notation are drawn, which are left out, and why. Each type's "All examples" opens its page in the [examples](./examples.md#diagrams): one example, live, that shows everything the type draws, with a checklist of what to find in it and the settings that need a view of their own (a layout direction, a notation).
+umlimator draws 28 diagram types besides its layered maps. The maps have no page here: every [atlas](./examples.md#atlas) opens on one, and the [Bookshop atlas's overview](./gallery/bookshop-atlas.md#view-overview) shows everything a map draws. Each type is a model of schema version 2 with `"diagram"` set on its views, drawn by `umlimator/all` ([Typed diagrams](./api/typed-diagrams.md)). Every type has a live example, made up for an online bookshop and its delivery cargo e-bike, and a conformance note saying which parts of its notation are drawn, which are left out, and why. Each type's "All examples" opens its page in the [examples](./examples.md#diagrams): one example, live, that shows everything the type draws, with a checklist of what to find in it and the settings that need a view of their own (a layout direction, a notation).
 
 ## UML
 

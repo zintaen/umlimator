@@ -96,7 +96,9 @@ function actIndex(model, view) {
   const list = Array.isArray(view && view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)))] : [...E.values()].filter(e => AC_LINES.includes(e.type));
   const lines = list.filter(e => AC_OBJ(e) && typeof e.id === 'string' && on.has(e.from) && on.has(e.to));
   const n = new Map(), under = p => n.get(p) || 0; // the nodes under each lane, at any depth, counted in one pass
-  drawn.forEach(id => { for (let l = laneOf(id); l != null; l = outer(l)) n.set(l, under(l) + 1); });
+  // on the diff page not one diff() drew back removed, so a partition says the model after's count (audit 55)
+  const gone = id => { const c = (N.get(id) || {}).change; return typeof c === 'string' && c.toLowerCase() === 'removed'; };
+  drawn.forEach(id => { if (!gone(id)) for (let l = laneOf(id); l != null; l = outer(l)) n.set(l, under(l) + 1); });
   // an unfolded call's box: its title a line each where the author broke it (svgOf, 14 px apart), its header room grown for them (audit 23)
   return { N, E, path, ids, shown, parts, drawn, lines, up, laneOf, isPart, under, boxes: boxes.map(b => ({ id: b.id, label: acName(N.get(b.id)), title: acName(N.get(b.id)),
       ...(brLines(acName(N.get(b.id))).length > 1 ? { head: (brLines(acName(N.get(b.id))).length - 1) * 14 } : {}),

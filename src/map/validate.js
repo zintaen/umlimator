@@ -1,4 +1,4 @@
-import { jsonText, labelOr, labelProblem, lineNames, listOf, removedCopy, typedProblems, unreadable, versionProblem } from '../core/model.js';
+import { jsonText, labelOr, labelProblem, lineNames, listOf, markedCopy, typedProblems, unreadable, versionProblem } from '../core/model.js';
 import { TYPED, diagramOf, drawnKind } from '../core/registry.js';
 import { XML_BAD } from '../core/text.js';
 import { held } from '../core/warn.js';
@@ -107,8 +107,8 @@ export function validate(model) {
   const shared = (e, at) => { if (typeof e.id === 'string' && ids.has(e.id)) err(at + '.id', `line id "${e.id}" is also a card's id`); };
   // a view's own line is in that id space too: an id another view's own line or a model line holds sends apply()'s set or delete, and
   // references(), to the first of them, not the line selected (audit 30). lineAt: each line id -> where it is first
-  // a view's removed copy of a model line (core/model.js removedCopy, as diff() writes it) names the model line: no second line
-  const modelL = new Map(Array.from(arr(m.edges), e => [e && e.id, e])), ghostOf = e => removedCopy(modelL, e);
+  // a view's marked copy of a model line, removed or added (core/model.js markedCopy, as diff() writes it) names the model line: no second line
+  const modelL = new Map(Array.from(arr(m.edges), e => [e && e.id, e])), ghostOf = e => markedCopy(modelL, e);
   const lineAt = new Map(), ownLine = (e, at) => { if (e.id == null || ghostOf(e)) return; if (lineAt.has(e.id)) err(at + '.id', `line id "${e.id}" is used twice (also ${lineAt.get(e.id)})`); else lineAt.set(e.id, at); };
   // a model line may end on any view's box (#28); a view's own line only on that view's boxes
   const anyBox = new Set(views.flatMap(v => arr(v.containers).map(c => c && c.id)));
@@ -305,6 +305,10 @@ const picks = (s, end) => !s || ((s.id == null || [s.id].flat().includes(end.id)
   && (s.owner == null || [s.owner].flat().includes(end.owner))
   && (s.not == null || !picks(s.not, end)));
 const andList = xs => xs.length > 1 ? xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1] : xs.join(''), arrOf = x => (Array.isArray(x) ? x : []);
+// a map sequence view's step numbers, its lines in run order: on the diff page over the live ones only, as the model after counts
+// them; a line marked removed has no number (null) and is said without a place (audit 55, as the C4 dynamic, sequence and
+// communication views)
+const runSteps = l => { let k = 0; return Array.from(l, e => e && typeof e === 'object' && typeof e.change === 'string' && e.change.toLowerCase() === 'removed' ? null : ++k); };
 // a view's cards and boxes as a selector sees them (rules, lenses): a card's kind as drawn, the boxes it is in (outermost
 // first) and its owner; a box is in itself and its parents, and has no kind or owner
 // a view's hand-written boxes: none on a typed view whose type lays it out, which draws its own boxes (own-boxes, audit 10)
@@ -362,4 +366,4 @@ export function rules(model) {
   return out;
 }
 
-export { WIRE_KINDS, boxesNamed, picks, andList, arrOf, endsIn, handBoxes };
+export { WIRE_KINDS, boxesNamed, picks, andList, arrOf, endsIn, handBoxes, runSteps };

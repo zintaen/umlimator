@@ -1,5 +1,5 @@
 import { TYPED } from '../core/registry.js';
-import { EDGE_BREAK, EDGE_LH, clauseFit, esc, firstSentence, fit, glyph, mdPlain, measureText, sansW, textW, wrap2 } from '../core/text.js';
+import { EDGE_BREAK, EDGE_LH, clauseFit, esc, firstSentence, fit, glyph, mdPlain, measureText, sansW, textW, unstop, wrap2 } from '../core/text.js';
 import { roundPath, trimLine } from './lines.js';
 import { SHAPE, cardLook, drawnPts, markShape, r2, sidePorts, tabLine } from './shapes.js';
 import { CHG } from '../layout/layered.js';
@@ -228,7 +228,7 @@ return I && I.src ? `<rect x="${x - M * 3 / 28}" y="${y - M * 3 / 28}" width="${
         const key = point.join(','); const port = ports.get(key) || { point, indices: [] }; port.indices.push(i); ports.set(key, port); });
       ports.forEach(({ point, indices }) => { parts.push(`<circle cx="${point[0]}" cy="${point[1]}" r="3.5" class="n-port" data-edges="${indices.join(',')}" stroke="${c}"/>`); });
     }
-    const name = (s0 => (!map && n.opensTo ? `${s0.replace(/(?<!\.)\.\s*$/, '')}, opens ${n.opensTo}` : s0))(said.join(', ') + (n.edited ? ' (edited)' : '') + (stacked && !hint ? ' (opens inner view)' : '')); // no ".," (audit 52)
+    const name = (s0 => (!map && n.opensTo ? `${unstop(s0)}, opens ${n.opensTo}` : s0))(said.join(', ') + (n.edited ? ' (edited)' : '') + (stacked && !hint ? ' (opens inner view)' : '')); // no ".," (audit 52)
     s += `<g class="node${pub ? ' pub' : ''}${priv ? ' priv' : ''}${stacked ? ' has-child' : ''}${subject ? ' subject' : ''}${n.emphasis ? ' main-step' : ''}${planned ? ' planned' : ''}${tour && n.id in tour.at ? ' tour-stop' : ''}"${tour && n.id in tour.at ? ` style="animation-delay:${(tour.at[n.id] * TOUR - .32).toFixed(2)}s"` : ''}${L ? ` data-shape="${L.sh}" data-face="${r2(ft)} ${r2(fb)}"` : ''} data-id="${esc(n.id)}" tabindex="${map ? 0 : -1}" role="${map ? 'button' : 'img'}" aria-label="${esc(name)}">
       ${parts.join('\n')}
     </g>`;

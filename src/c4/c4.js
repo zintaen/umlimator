@@ -94,7 +94,8 @@ const c4Ghost = view => { const ov = C4_OBJ(view) && C4_OBJ(view.nodeOverrides) 
   return id => Object.hasOwn(ov, id) && C4_OBJ(ov[id]) && typeof ov[id].change === 'string' && ov[id].change.toLowerCase() === 'removed'; };
 function c4Pic(model, view) {
   const ghost = c4Ghost(view), pic = ownersOn(model, view, { ...C4_LOOK, ghost }), I = c4Index(model);
-  const boxes = pic.boxes.map(b => { const x = pic.at.get(b.id), held = pic.holds(b.id).map(id => pic.at.get(id)), k = new Map();
+  // counted as the model after counts them: not a card diff() drew back removed (audit 55)
+  const boxes = pic.boxes.map(b => { const x = pic.at.get(b.id), held = pic.holds(b.id).filter(id => !pic.gone(id)).map(id => pic.at.get(id)), k = new Map();
     held.forEach(y => { const w = c4Word(y).toLowerCase(); k.set(w, (k.get(w) || 0) + 1); });
     return { ...boxHead({ ...b, title: `${c4Name(x)} [${C4_TAG[x.type]}]` }), aria: `${c4Word(x)} ${c4Name(x)}, a boundary holding ${[...k].map(([w, c]) => c4Plural(c, w)).join(', ') || 'nothing'}` }; });
   return { ...pic, I, boxes, ghost };

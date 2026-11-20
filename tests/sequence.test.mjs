@@ -728,3 +728,23 @@ test('audit 53: a label holding a character XML cannot hold (U+0008, as Word\'s 
   assert.deepEqual(validate(map).filter(p => /XML cannot hold/.test(p.message)).map(p => p.path), ['nodes[0].label', 'edges[0].label']);
   assert.deepEqual(validate(JSON.parse(readFileSync(new URL('../examples/checkout-sequence.json', import.meta.url), 'utf8'))).filter(p => /XML cannot hold/.test(p.message)), []);
 });
+
+test('audit 55: a break operand is performed instead of the rest around it, so a reply, a create or a delete in it and another after it are apart', () => {
+  const brk = (parent = undefined) => FR('b', 'break', parent, 'b-op');
+  const once = m => validate(m).filter(p => /-once$/.test(p.rule)).map(p => p.rule);
+  // the early return: an error reply in the break, the normal one after it; at the top level and inside a loop's operand
+  const rep = [M('c', 'A', 'B', 'call'), M('r1', 'B', 'A', 'reply', { parent: 'b-op', props: { replyTo: 'c' } }), M('r2', 'B', 'A', 'reply', { props: { replyTo: 'c' } })];
+  assert.deepEqual(once(seq(rep, [brk()])), []);
+  assert.deepEqual(once(seq([M('c', 'A', 'B', 'call', { parent: 'l-op' }), { ...rep[1] }, { ...rep[2], parent: 'l-op' }], [FR('l', 'loop', null, 'l-op'), brk('l-op')])), []);
+  // a delete in the break and a use after it; a create in the break and another after it
+  assert.deepEqual(once(seq([M('o', 'A', 'B', 'call'), M('d', 'A', 'B', 'delete', { parent: 'b-op' }), M('u', 'A', 'B', 'async')], [brk()])), []);
+  assert.deepEqual(once(seq([M('k1', 'A', 'B', 'create', { parent: 'b-op' }), M('k2', 'A', 'B', 'create')], [brk()])), []);
+  // still errors: the second before the break, both in it, or the later one outside the operand round the break
+  assert.deepEqual(once(seq([M('c', 'A', 'B', 'call'), M('r2', 'B', 'A', 'reply', { props: { replyTo: 'c' } }), M('r1', 'B', 'A', 'reply', { parent: 'b-op', props: { replyTo: 'c' } })], [brk()])), ['reply-once']);
+  assert.deepEqual(once(seq([M('o', 'A', 'B', 'call'), M('d', 'A', 'B', 'delete', { parent: 'b-op' }), M('u', 'A', 'B', 'async', { parent: 'b-op' })], [brk()])), ['delete-once']);
+  assert.deepEqual(once(seq([M('o', 'A', 'B', 'call'), M('d', 'A', 'B', 'delete', { parent: 'b-op' }), M('u', 'A', 'B', 'async')], [FR('x', 'opt', null, 'x-op'), brk('x-op')])), ['delete-once']);
+  // the editor: a reply drawn after the break answers the call, which the break's reply does not close
+  const m = seq(rep.slice(0, 2), [brk()]), g = layout(m, 'v'), slot = g.slots[g.slots.length - 1];
+  const r = cmdsOf(sqConnect(m, V(m), 'B', 'A', slot, { type: 'uml.Message', props: { sort: 'reply' } }));
+  assert.equal(r[0].element.props.replyTo, 'c');
+});

@@ -33,9 +33,12 @@ function operandChain(w, id) {
   const out = []; while (id != null && w.ops.has(id) && !out.includes(id)) { out.push(id); id = w.ops.get(id).fragment.parent; }
   return out;
 }
-// whether what lies in operand p and what lies in operand q are in different operands of one alt (null: the top level)
-const apartInAlt = (w, p, q) => { const cq = operandChain(w, q);
-  return operandChain(w, p).some(a => { const F = w.ops.get(a).fragment; return IA_OBJ(F.props) && F.props.operator === 'alt' && cq.some(b => b !== a && w.ops.get(b).fragment === F); }); };
+/* whether what lies in operand p, first, and what lies in operand q, after it, never both happen (null: the top level): they
+   lie in different operands of one alt, or p in a break that q follows in the operand around it, or at the top level for a
+   break there. UML 2.5.1 17.6.3: a break operand is performed instead of the rest of the fragment around it (audit 55) */
+const apart = (w, p, q) => { const cq = operandChain(w, q);
+  return operandChain(w, p).some(a => { const F = w.ops.get(a).fragment, op = IA_OBJ(F.props) ? F.props.operator : null, inF = cq.some(b => w.ops.get(b).fragment === F);
+    return op === 'alt' ? inF && !cq.includes(a) : op === 'break' && !inF && (!w.ops.has(F.parent) || cq.includes(F.parent)); }); };
 
 /* Activations, derived by intervals (notes/spike-sequence.md §2.3): { head, call, to, a, b, depth }, a and b the rows of
    the call that opens it and the message that closes it */
@@ -84,13 +87,14 @@ function ianumber(model, view) {
 }
 
 /* The call a new reply from `from` to `to` answers (§5.2): the latest call from its receiver to its sender before the
-   slot `at` ({ index, parent }; absent: the end) that no reply answers, where a reply, or a call, in another operand of
-   an alt than the slot's does not count. Its id, or null */
+   slot `at` ({ index, parent }; absent: the end) that no reply answers, where a reply, or a call, that never happens with
+   the slot (another operand of an alt, a break the slot follows, or one the slot lies in and the reply follows) does not
+   count. Its id, or null */
 function replyCallFor(model, view, from, to, at) {
   const w = interactionWalk(model, view), ms = w.occ.filter(o => o.message), idx = at && at.index != null ? at.index : Infinity, where = at ? at.parent ?? null : null;
   for (let k = ms.length - 1; k >= 0; k--) { const c = ms[k];
-    if (c.i < idx && c.sort === 'call' && c.from === to && c.to === from && !apartInAlt(w, c.parent, where)
-      && !ms.some(r => r.r > c.r && r.sort === 'reply' && r.replyTo === c.id && !apartInAlt(w, r.parent, where))) return c.id; }
+    if (c.i < idx && c.sort === 'call' && c.from === to && c.to === from && !apart(w, c.parent, where)
+      && !ms.some(r => r.r > c.r && r.sort === 'reply' && r.replyTo === c.id && !(r.i < idx ? apart(w, r.parent, where) : apart(w, where, r.parent)))) return c.id; }
   return null;
 }
 
@@ -98,7 +102,7 @@ function replyCallFor(model, view, from, to, at) {
    src/uml/class.js. In a communication view there are no operands, so reply-once holds a call to one reply ---- */
 const INTERACTION_RULES = {
   'reply-call': 'a reply names an earlier call of the view in replyTo, and goes back along it',
-  'reply-once': 'two replies to one call lie in different operands of one alt',
+  'reply-once': 'two replies to one call lie in different operands of one alt, or the first in a break the second follows',
   'create-once': 'a lifeline is created at most once, by the first message to or from it, never by itself',
   'delete-once': 'a lifeline is deleted at most once, by the last message to or from it, never by itself',
   sort: 'a message\'s sort is call, async, reply, create or delete; any other is drawn as a call',
@@ -114,17 +118,17 @@ function interactionProblems(model, view) {
       if (m.replyTo == null) say('reply-call', m, '.props', [m.id], `${nm(m)} names no call in replyTo`, 'warning');
       else if (!c || c.r > m.r || c.sort !== 'call') say('reply-call', m, '.props.replyTo', [m.id, c && c.id], `${nm(m)} answers ${jsonText(m.replyTo)}, which is not an earlier call of this view`);
       else if (m.from !== c.to || m.to !== c.from) say('reply-call', m, '', [m.id, c.id], `${nm(m)} runs from ${m.from} to ${m.to}, not back along ${nm(c)} (${c.from} to ${c.to})`);
-      if (c && c.sort === 'call' && c.r < m.r) { const was = replies.get(c.id) || [], e = was.find(o => !apartInAlt(w, o.parent, m.parent));
-        if (e) say('reply-once', m, '.props.replyTo', [c.id, e.id, m.id], `${nm(e)} and ${nm(m)} both answer ${nm(c)}, and do not lie in different operands of one alt`);
+      if (c && c.sort === 'call' && c.r < m.r) { const was = replies.get(c.id) || [], e = was.find(o => !apart(w, o.parent, m.parent));
+        if (e) say('reply-once', m, '.props.replyTo', [c.id, e.id, m.id], `${nm(e)} and ${nm(m)} both answer ${nm(c)}, and do not lie in different operands of one alt, nor the first in a break the second follows`);
         replies.set(c.id, [...was, m]); } }
     // a lifeline does not create or delete itself: the connect hook refuses one, so validate reports one (audit 12)
-    // one alt's operands exclude each other, as for reply-once; but the head is drawn at the first create, so nothing reaches
+    // one alt's operands exclude each other, as for reply-once, and a break what follows it; but the head is drawn at the first create, so nothing reaches
     // the lifeline before that, in any operand (audit 10)
     if ((m.sort === 'create' || m.sort === 'delete') && m.to != null && m.from === m.to) say(m.sort + '-once', m, '', [m.id, m.to], `${nm(m)} ${m.sort}s ${m.to}, its own sender: a lifeline does not ${m.sort} itself`);
     else if (m.sort === 'create' && m.to != null) { const head = !ms.some(o => o.r < m.r && o.sort === 'create' && o.to === m.to);
-      const e = ms.find(o => o.r < m.r && touches(o, m.to) && (head || !apartInAlt(w, o.parent, m.parent)));
+      const e = ms.find(o => o.r < m.r && touches(o, m.to) && (head || !apart(w, o.parent, m.parent)));
       if (e) say('create-once', m, '', [m.id, m.to, e.id], e.sort === 'create' && e.to === m.to ? `${m.to} is created twice, by ${nm(e)} and ${nm(m)}` : `${nm(m)} creates ${m.to}, but ${nm(e)} reaches it first`); }
-    else if (m.sort === 'delete' && m.to != null) { const e = ms.find(o => o.r > m.r && touches(o, m.to) && !apartInAlt(w, o.parent, m.parent));
+    else if (m.sort === 'delete' && m.to != null) { const e = ms.find(o => o.r > m.r && touches(o, m.to) && !apart(w, m.parent, o.parent));
       if (e) say('delete-once', m, '', [m.id, m.to, e.id], e.sort === 'delete' && e.to === m.to ? `${m.to} is deleted twice, by ${nm(m)} and ${nm(e)}` : `${nm(m)} deletes ${m.to}, but ${nm(e)} reaches it later`); }
   });
   return out;

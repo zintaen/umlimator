@@ -1,11 +1,12 @@
 // The examples' pages of the documentation site, written by tools/gallery.mjs: docs/examples.md (the site's
 // /umlimator/examples.html), in three parts, a page per type and one for the Atlas (docs/gallery/), their sidebar
 // (docs/.vitepress/gallery.json), and examples/index.html, the old address, now a redirect to the docs page. Diagrams has
-// one card for every diagram type (the map and docs/types.md's 28), each opening the type's docs page, which shows its
+// one card for every diagram type (docs/types.md's 28; the map is no type: its example is the first layer of every atlas,
+// the Bookshop atlas's overview first), each opening the type's docs page, which shows its
 // rendered page (examples/types/<type>.html, tools/types.mjs; tests/types.test.mjs checks those) in a frame, opened on its
 // main view, and lists what the diagram shows and its alternatives (the maintainer's decision, 20 Nov 2026: one
 // comprehensive example per type); Atlas lists tools/gallery.json's atlases, whole businesses each one model of many types,
-// the Umlimator Atlas first; In an app lists the host pages. Every link, picture and frame on them names a file the site serves, as the site job builds it
+// the Umlimator atlas first; In an app lists the host pages. Every link, picture and frame on them names a file the site serves, as the site job builds it
 // (.github/workflows/check.yml), or a docs page. The models the gallery does not show (tools/gallery.json's retired list,
 // empty since the test models moved to tests/fixtures/) are linked from nowhere in the gallery, the docs or the README,
 // and nor are the models that left the gallery.
@@ -34,7 +35,7 @@ test('the committed examples pages, their sidebar and the redirect are what tool
   for (const [p, s] of Object.entries(written)) assert.equal(read(p), s, `${p} is stale: run node tools/gallery.mjs and commit it`);
   const pages = readdirSync(new URL('docs/gallery/', root)).map(f => `docs/gallery/${f}`).sort();
   assert.deepEqual(pages, Object.keys(written).filter(p => p.startsWith('docs/gallery/')).sort(), 'docs/gallery/ holds only the pages the tool writes');
-  assert.equal(pages.length, 29 + atlases().length, 'the map, the 28 types and each atlas');
+  assert.equal(pages.length, 28 + atlases().length, 'the 28 types and each atlas: the map has no page of its own');
 });
 
 test('the site shows the examples in its own layout: the nav\'s Examples opens examples.html, the sidebar lists every examples page', () => {
@@ -59,12 +60,19 @@ test('examples/index.html, the old address, sends a reader to the docs page with
   for (const id of ['diagrams', 'atlas', 'apps', ...inventory().map(t => `type-${t.id}`)]) assert.ok(ids.has(id), id);
 });
 
-test('Diagrams has a card for the map and each of docs/types.md\'s 28 types, in its order, each opening its docs page', () => {
+test('Diagrams has a card for each of docs/types.md\'s 28 types, in its order, each opening its docs page, and none for the map', () => {
   const T = types();
   assert.equal(T.length, 28);
-  const want = ['map', ...T.map(t => t.id)], D = section('diagrams'), got = [...D.matchAll(/<article class="ex-card" id="type-([\w-]+)"/g)].map(m => m[1]);
+  const want = T.map(t => t.id), D = section('diagrams'), got = [...D.matchAll(/<article class="ex-card" id="type-([\w-]+)"/g)].map(m => m[1]);
   assert.deepEqual(got, want);
   assert.deepEqual(typePages, [...want].sort(), 'examples/types/ holds a model for each type, and no other');
+  // the map is no type: no card, no page; its example is an atlas's first layer, and that atlas's page lists what it draws
+  assert.doesNotMatch(html, /id="type-map"|gallery\/map\.html|types\/map\./);
+  const M = json('tools/gallery.json').map, at = json(`examples/${M.atlas}.json`), page = written[`docs/gallery/${atlases().find(x => x.file === M.atlas).page}.md`];
+  assert.equal(at.root, M.main); assert.equal(groupOf(at.views[0]), 'map'); assert.equal(at.views[0].id, M.main);
+  const art = page.slice(page.indexOf(`id="view-${M.main}"`), page.indexOf('</article>', page.indexOf(`id="view-${M.main}"`)));
+  assert.equal(art.split('<li>').length - 1, M.shows.length, 'the atlas page lists every item of what the map draws');
+  for (const x of atlases()) assert.equal(groupOf(json(`examples/${x.file}.json`).views[0]), 'map', `${x.file} opens on a map`);
   // the type list at the top of Diagrams goes to each card
   const nav = D.slice(0, D.indexOf('</nav>'));
   assert.deepEqual(attrs(nav, 'href').filter(h => h.startsWith('#type-')).map(h => h.slice(6)), want);
@@ -88,11 +96,11 @@ test('Diagrams has a card for the map and each of docs/types.md\'s 28 types, in 
   }
 });
 
-test('Atlas lists tools/gallery.json\'s atlases in order, the Umlimator Atlas first, each framed on its page; its state machines are views of it', () => {
+test('Atlas lists tools/gallery.json\'s atlases in order, the Umlimator atlas first, each framed on its page; its state machines are views of it', () => {
   const A = section('atlas'), list = atlases();
   assert.deepEqual([...A.matchAll(/<article class="ex-card ex-wide" id="atlas-([\w-]+)"/g)].map(m => m[1]), list.map(x => x.file));
   assert.equal(list[0].file, 'umlimator-atlas');
-  assert.match(A, /<h3><a href="\.\/gallery\/atlas\.html">The Umlimator Atlas<\/a><\/h3>/);
+  assert.match(A, /<h3><a href="\.\/gallery\/atlas\.html">Umlimator<\/a><\/h3>/);
   for (const x of list) {
     assert.ok(attrs(A, 'href').includes(`${EX}${x.file}.json`), x.file);
     assert.deepEqual(attrs(read(`docs/gallery/${x.page}.md`), 'src'), [`${EX}${x.file}.html`], `${x.page}: the atlas page frames the atlas`);
@@ -100,7 +108,7 @@ test('Atlas lists tools/gallery.json\'s atlases in order, the Umlimator Atlas fi
     assert.ok(new Set(json(`examples/${x.file}.json`).views.map(groupOf)).size >= 3, `${x.file} uses many diagram types`);
   }
   const m = json('examples/umlimator-atlas.json'), ids = new Set(m.views.map(v => v.id));
-  assert.equal(m.title, 'Umlimator Atlas');
+  assert.equal(m.title, 'Umlimator');
   for (const v of ['overview', 'machines', 'navigation', 'story', 'tour', 'keys', 'mcp']) assert.ok(ids.has(v), v);
   // the machines are umlimator's (docs/module-api.md's State chapter), as examples/states.json drew them before it left
   // the gallery: written here, so that the check outlives that file, which step 4 of the one-model plan deleted
@@ -238,7 +246,7 @@ test('the examples\' README links every example model, and the gallery and the m
 });
 
 // audit 51: eleven feature rows linked examples/variants/*.json after #542 deleted the folder, and 'Not shown' named chips,
-// planned cards and nodeOverrides, which examples/types/map.json and the Bookshop Atlas set: every relative link of the
+// planned cards and nodeOverrides, which the Bookshop atlas sets: every relative link of the
 // README opens a file, and each `key` or `key: value` 'Not shown' names is set by no example model
 test('the examples\' README links only files that exist, and \'Not shown\' names nothing an example model sets', () => {
   const readme = read('examples/README.md');
@@ -254,7 +262,7 @@ test('the examples\' README links only files that exist, and \'Not shown\' names
   assert.deepEqual(said.flatMap(([k, v]) => models.filter(m => sets(m, k, v)).map(m => `${k}${v ? ': ' + v : ''} in ${m}`)), []);
 });
 
-// audit 54: the nodeOverrides row said the Bookshop Atlas's Shop API opens domain in components after audit 52 moved that
+// audit 54: the nodeOverrides row said the Bookshop atlas's Shop API opens domain in components after audit 52 moved that
 // opener to the shop-api image: each view the row names sets nodeOverrides, and each "(card opens `view`)" it says is the
 // opensView of the card of that label in that view's nodeOverrides
 test('the examples\' README nodeOverrides row names the cards that carry an override in each view it names', () => {
@@ -286,7 +294,7 @@ test('docs/types.md describes a type\'s page as tools/gallery.mjs writes it: one
   }
 });
 
-// audit 51: the Umlimator Atlas's C4 context view hung under the overview with no card opening it, so the C4 views of
+// audit 51: the Umlimator atlas's C4 context view hung under the overview with no card opening it, so the C4 views of
 // "views that open into each other" were reached from the views list only: in each atlas, every view is reached from the
 // root by opening cards, as the page's mapContext reads a card (opensView, view, its id, a view's node, nodeOverrides).
 // Audit 52: only a card the view draws as one opens, so a node the view lays out as a box (the Bookshop's Shop API holding
@@ -307,7 +315,7 @@ test('in each atlas every view is reached from the root by opening cards', async
 
 // audit 53: the Atlas's Readers card and its line said `umlimator.py import` runs every importer in Node; Structurizr DSL,
 // C4-PlantUML, Compose and Kubernetes it reads in Python (umlimator_import.FORMATS), only NODE_FORMATS go to the module's readers
-test('the Umlimator Atlas says which formats umlimator.py import reads in Node, as umlimator_import.py splits them', async () => {
+test('the Umlimator atlas says which formats umlimator.py import reads in Node, as umlimator_import.py splits them', async () => {
   const { execFileSync } = await import('node:child_process');
   const { FORMATS, NODE_FORMATS } = JSON.parse(execFileSync('python3', ['-c', 'import json, umlimator_import as i; print(json.dumps({"FORMATS": i.FORMATS, "NODE_FORMATS": i.NODE_FORMATS}))'], { cwd: root, encoding: 'utf8' }));
   const name = { structurizr: 'Structurizr DSL', plantuml: 'PlantUML', compose: 'Compose', kubernetes: 'Kubernetes', 'structurizr-json': 'Structurizr JSON', dbml: 'DBML' };
