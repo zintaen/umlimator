@@ -4511,7 +4511,7 @@ draw as they did (`bench/expected.json` is unchanged). What changes for callers:
   ids stay short. A lone surrogate (an escape or an entity) is written as U+FFFD and said in one stderr line, never a
   traceback. The class, state, sequence, mindmap and requirement writers end text that would be over the reader's
   1 MiB limit with `%% not written: … over its limit of 1048576`. The sequence writer writes `@{` in a label as
-  `#64;{`; the flowchart, state and sequence writers write a carriage return as `#13;`, so it reads back. The mindmap
+  `#64;{`; the flowchart, state, sequence and class writers write a carriage return as `#13;`, so it reads back. The mindmap
   reader no longer decodes `#constructor;` through `Object.prototype`. The class reader reports a `%% id:` hint that is
   taken or stands above a line that takes none, and the class writer names a class with no label. The BPMN reader
   reports, once per name per file, a set attribute outside its subset (`startQuantity`, `isForCompensation`, …).

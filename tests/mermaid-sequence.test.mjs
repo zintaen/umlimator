@@ -470,11 +470,27 @@ test('a destroy a later message still reaches is read as its arrow and reported,
   const errs = r => validate(r.model).filter(p => p.level === 'error').map(p => p.message);
   let r = read('sequenceDiagram\n    A->>B: one\n    destroy B\n    A-xB: bye\n    B->>A: ghost');
   assert.deepEqual([sorts(r), r.report.map(x => `${x.line} ${x.message}`), errs(r)], [['A-B:call', 'A-B-2:async', 'B-A:call'],
-    ['3 destroy B: a later message reaches B, so its stem is not ended', '4 A-xB: read as an async; its cross is not drawn'], []]);
+    ['3 destroy B: B sends a later message, so its stem is not ended', '4 A-xB: read as an async; its cross is not drawn'], []]);
   r = read('sequenceDiagram\n    participant A\n    destroy B\n    A->>B: one\n    A->>B: two');
   assert.deepEqual([sorts(r), r.report.map(x => `${x.line} ${x.message}`), errs(r)], [['A-B:call', 'A-B-2:call'], ['3 destroy B: a later message reaches B, so its stem is not ended'], []]);
   r = read('sequenceDiagram\n    A->>B: one\n    alt ok\n    destroy B\n    A-xB: bye\n    else no\n    A->>B: again\n    end');
   assert.deepEqual([sorts(r).filter(x => x.startsWith('A-B-2')), r.report, errs(r)], [['A-B-2:delete'], [], []]);
   r = read('sequenceDiagram\n    A->>B: one\n    destroy B\n    A-xB: bye');
   assert.deepEqual([sorts(r), r.report, errs(r)], [['A-B:call', 'A-B-2:delete'], [], []]);
+});
+
+test('a self-message after create or destroy is an ordinary message, a create and destroy on one message keeps the create when the destroy is dropped, and the report names a later message from the lifeline (audit 58)', () => {
+  const sorts = r => r.model.views[0].edges.map(e => `${e.id}:${e.props.sort}`);
+  const errs = r => validate(r.model).filter(p => p.level === 'error').map(p => p.message);
+  const all = t => { const r = read(t); return [sorts(r), r.report.map(x => `${x.line} ${x.message}`), errs(r)]; };
+  assert.deepEqual(all('sequenceDiagram\nA->>B: hi\ndestroy B\nA->>B: bye\nB->>A: still here'),
+    [['A-B:call', 'A-B-2:call', 'B-A:call'], ['3 destroy B: B sends a later message, so its stem is not ended'], []]);
+  assert.deepEqual(all('sequenceDiagram\nA->>B: hi\ndestroy B\nB->>B: cleanup'),
+    [['A-B:call', 'B-B:call'], ['3 destroy B: the next message is from it to itself, so its stem is not ended'], []]);
+  assert.deepEqual(all('sequenceDiagram\nA->>B: hi\ncreate participant C\nC->>C: init\nA->>C: x'),
+    [['A-B:call', 'C-C:call', 'A-C:call'], ['3 create C: the next message is from it to itself, so nothing creates it'], []]);
+  assert.deepEqual(all('sequenceDiagram\nA->>B: hi\ncreate participant C\ndestroy C\nA->>C: both\nA->>C: later'),
+    [['A-B:call', 'A-C:create', 'A-C-2:call'], ['4 destroy C: a later message reaches C, so its stem is not ended'], []]);
+  assert.deepEqual(all('sequenceDiagram\nA->>B: hi\ncreate participant C\ndestroy C\nA->>C: both'),
+    [['A-B:call', 'A-C:delete'], ['3 create C: the next message to it also destroys it, so it is read as a delete'], []]);
 });

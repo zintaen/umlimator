@@ -611,7 +611,7 @@ function writeMermaidClass(model, viewId) {
   const VIS = mcTable({ public: '+', private: '-', protected: '#', package: '~' });
   const ARROW = mcTable({ 'uml.Generalization': '--|>', 'uml.InterfaceRealization': '..|>', 'uml.Dependency': '..>' });
   const has = x => x != null && x !== '', gen = s => String(s).replace(/[<>]/g, '~');
-  const enc = s => String(s).replace(/[#\\]/g, c => (c === '#' ? '#35;' : '#92;')).replace(/"/g, '#quot;').replace(/</g, '#lt;').replace(/>/g, '#gt;').replace(/\n/g, '<br>');
+  const enc = s => String(s).replace(/[#\\]/g, c => (c === '#' ? '#35;' : '#92;')).replace(/"/g, '#quot;').replace(/</g, '#lt;').replace(/>/g, '#gt;').replace(/\r/g, '#13;').replace(/\n/g, '<br>');
   // a statement keyword in backticks too: the reader takes a line's first word as one (`note -- Order` is a note)
   const name = id => (/^[\p{L}\p{N}_]+(-[\p{L}\p{N}_]+)*$/u.test(id) && !MC_KEYWORDS.has(id) ? id : '`' + id + '`');
   // what Mermaid cannot carry: an element, as `<id> (<type>)`, or one property of one, as `<id>: <what>`
